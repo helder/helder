@@ -4,8 +4,8 @@ import haxe.io.Bytes;
 
 // Random bytes from the system's source, for keys (the Android debug key's
 // scalar and its certificate's serial: helder.pack.android.DebugKey):
-// Windows' BCryptGenRandom (the system's preferred generator), elsewhere
-// /dev/urandom (Linux's and macOS's; hxmc's static Linux runtime links no
+// Windows' BCryptGenRandom (the system's preferred generator), WASI's
+// random_get, elsewhere /dev/urandom (Linux's and macOS's; hxmc's static Linux runtime links no
 // getrandom or getentropy). Never a weaker fallback: without a source it
 // throws.
 @:hxmc.unsafe(gc)
@@ -25,8 +25,19 @@ class Entropy {
 			if (ok) return out;
 			throw "no random source: BCryptGenRandom failed";
 		}
-		if (hxmc.Platform.os() == 3) throw "no random source on wasm32-wasi";
 		#end
+		#if (hxmc.target == "wasm32-wasi")
+		// (WASI's random_get: the host's source, as hxmc.rt.Random seeds from)
+		var out = Bytes.alloc(n);
+		var ok = hxmc.unsafe.Arena.scopedValue(a -> {
+			var p = a.alloc(n < 1 ? 1 : n, 1);
+			var r = hxmc.rt.wasm.WasiApi.random_get(hxmc.rt.wasm.Wasi.a32(p), n);
+			if (r == 0) hxmc.unsafe.BytesPtr.copyIn(out, 0, p, n);
+			r == 0;
+		});
+		if (ok) return out;
+		throw "no random source: WASI's random_get failed";
+		#else
 		var f = try sys.io.File.read("/dev/urandom", true) catch (_:Dynamic) throw "no random source: no /dev/urandom";
 		var b = try f.read(n) catch (e:Dynamic) {
 			f.close();
@@ -35,6 +46,7 @@ class Entropy {
 		f.close();
 		if (b.length != n) throw "no random source: /dev/urandom gave " + b.length + " bytes";
 		return b;
+		#end
 	}
 }
 

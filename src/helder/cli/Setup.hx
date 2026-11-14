@@ -81,14 +81,19 @@ class Setup {
 
 	// (whether dir is root or under it: their full paths, Windows' case aside)
 	public static function inside(dir:String, root:String):Bool {
+		// (the working directory need not be absolute: WASI's is ./)
 		function full(p:String):String {
 			p = p.replace("\\", "/");
 			if (!Path.isAbsolute(p)) p = Path.removeTrailingSlashes(Sys.getCwd().replace("\\", "/")) + "/" + p;
+			var abs = Path.isAbsolute(p);
 			p = Path.removeTrailingSlashes(Path.normalize(p));
+			if (p == "" || p == ".") p = abs ? "/" : ".";
 			return Sys.systemName() == "Windows" ? p.toLowerCase() : p;
 		}
 		var d = full(dir), r = full(root);
-		return d == r || d.startsWith(r + "/");
+		if (d == r) return true;
+		if (r == ".") return !Path.isAbsolute(d) && d != ".." && !d.startsWith("../");
+		return d.startsWith(r.endsWith("/") ? r : r + "/");
 	}
 
 	static function home():String

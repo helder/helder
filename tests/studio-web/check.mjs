@@ -211,7 +211,7 @@ async function recolour(pg, x, y, tap) {
 	if (tap) await pg.touchscreen.tap(x, y);
 	else await pg.mouse.click(x, y);
 	await pg.waitForTimeout(300);
-	await pg.keyboard.press('Meta+a');
+	await pg.keyboard.press('ControlOrMeta+a');
 	await pg.keyboard.type('#ef4444');
 	await pg.keyboard.press('Enter');
 	const patched = await event(pg, 'patched', (e) => e.frame >= before);

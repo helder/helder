@@ -14,6 +14,8 @@ import helder.view.Render;
 // zoomed, the status line and the picker shown, as a user would
 function tests() {
 	describe("Viewer, scripted", () -> {
+		// (the keys as pressed off a Mac: secondary is Control, whichever host runs it)
+		beforeEach(() -> helder.ui.actions.Keymap.mac = false);
 		var dir = "tests/fixtures/folder";
 		function text(ui:Ui, tag:String):String {
 			var n = ui.root.find(tag);
