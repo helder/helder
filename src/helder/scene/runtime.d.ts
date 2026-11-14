@@ -50,6 +50,13 @@ export declare class Binding {
 	private readonly binding: never;
 }
 
+// What a device has beyond the render stages every back end has
+// (Device.has): the compute tier. WebGPU, Metal, D3D11 (feature level
+// 11_0: cs_5_0) and GL ES 3.1 (Android's floor) have all three; WebGL2 and
+// a GL ES 3.0 context none, the render stages' path (helder.scene's
+// fallbacks) staying theirs.
+export type Feature = number;
+
 export type AnyShader = unknown;
 
 // A scene: a scene graph of Nodes (handles) over flat arrays, one slot per
@@ -220,7 +227,7 @@ export declare class Renderer {
 	// a pipeline for what it draws into: the frame, or drawInto's targets
 	// (RGBA8, Depth32F, its samples); its features' and a program's own
 	// passes inside its frame (inject) make theirs with it
-	createPipeline(d: { vertex?: number; fragment?: number; program?: { vertex: { glsl?: string; msl?: string; hlsl?: string; wgsl?: string; bindings?: Array<{ name: string; slot: number; kind: number; size?: number }> }; fragment: { glsl?: string; msl?: string; hlsl?: string; wgsl?: string; bindings?: Array<{ name: string; slot: number; kind: number; size?: number }> } }; layout: Array<{ stride: number; attributes: Array<{ location: number; format: number; offset: number }>; step?: number }>; topology?: number; cull?: number; blend?: number; depthCompare?: number; depthWrite?: boolean; colorFormat?: number; depthFormat?: number; samples?: number }): number;
+	createPipeline(d: { vertex?: number; fragment?: number; program?: { vertex: { glsl?: string; msl?: string; hlsl?: string; wgsl?: string; bindings?: Array<{ name: string; slot: number; kind: number; size?: number; index?: number; format?: number }>; workgroupSize?: number[] }; fragment: { glsl?: string; msl?: string; hlsl?: string; wgsl?: string; bindings?: Array<{ name: string; slot: number; kind: number; size?: number; index?: number; format?: number }>; workgroupSize?: number[] } }; layout: Array<{ stride: number; attributes: Array<{ location: number; format: number; offset: number }>; step?: number }>; topology?: number; cull?: number; blend?: number; depthCompare?: number; depthWrite?: boolean; colorFormat?: number; depthFormat?: number; samples?: number }): number;
 	// draw into color (colorFormat, a render target) and depth (Depth32F, its size), an offscreen renderer's
 	// (multisampled, samples > 1: color and depth of those samples, color
 	// resolved into resolve, a single-sampled RGBA8 render target)
@@ -571,6 +578,11 @@ export declare class Device {
 	// resolved; render targets are multisampled by their own samples
 	// (TextureDesc.samples, resolved through ColorTarget.resolve)
 	static create(surface: Surface, options?: { antialias?: boolean }): Device;
+	// whether it has a feature of the compute tier (Feature: Compute,
+	// StorageTextures, Indirect): WebGPU, Metal, D3D11 at feature level
+	// 11_0 and a GL ES 3.1 context do; WebGL2 and GL ES 3.0 do not (their
+	// programs take the render stages' path)
+	has(feature: Feature): boolean;
 	// the frame's encoder (the same object each frame); null: no frame now
 	// (a hidden window: Metal has no drawable for it), skip it
 	beginFrame(): Encoder | null;

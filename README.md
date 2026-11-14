@@ -1089,7 +1089,10 @@ fix.
   3. `Lines` with width, `Debug` drawing and helpers, triangle raycasts
      on a BVH (packed by the asset step), `Text3D`;
   4. lights at scale: 8 a draw, `ClusteredLights` on GL ES 3.0 and
-     WebGL2 (CPU froxels), spot and point shadows in an atlas, LOD;
+     WebGL2 (CPU froxels), spot and point shadows in an atlas, LOD; and
+     the compute tier's paths where the device has it (gfx's compute:
+     WebGPU, Metal, D3D11, GL ES 3.1): lights clustered, instances culled
+     and drawn indirectly, skinning and particles on the GPU;
   5. indirect light: cube and array textures in gfx, the prefilter in
      helder, SH, light and reflection probes, lightmaps (TEXCOORD_1),
      area lights (LTC);

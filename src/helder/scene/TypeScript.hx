@@ -13,6 +13,6 @@ package helder.scene;
 @:typescript.classes(helder.scene.World, helder.scene.Camera, helder.scene.render.Light, helder.scene.render.Renderer, helder.scene.render.Fog, helder.scene.render.Material,
 	helder.scene.render.MeshRenderer, helder.scene.render.Shapes, helder.scene.render.Model, helder.scene.render.MaterialShader, helder.scene.input.InputMap,
 	helder.scene.input.Bindings, helder.scene.FixedStep, helder.gfx.Device, helder.os.Surface, helder.os.Window, helder.os.App, helder.os.Event, helder.scene.Script)
-@:typescript.types(helder.scene.render.Mesh, helder.gfx.Encoder, helder.os.Event.EventKind, helder.scene.input.Binding)
+@:typescript.types(helder.scene.render.Mesh, helder.gfx.Encoder, helder.os.Event.EventKind, helder.scene.input.Binding, helder.gfx.Feature)
 @:build(helder.typescript.api.Manifest.build())
 class TypeScript {}

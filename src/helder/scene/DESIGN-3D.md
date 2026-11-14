@@ -47,7 +47,13 @@ is not copied where another engine's is better.
 
 - **The floor is GL ES 3.0 and WebGL2.** Neither has storage buffers or
   compute. There are uniform blocks only, and GL ES 3.0 guarantees only
-  16 KB each (`GL_MAX_UNIFORM_BLOCK_SIZE`).
+  16 KB each (`GL_MAX_UNIFORM_BLOCK_SIZE`). Every feature below works on
+  this floor.
+- **A compute tier above it.** WebGPU, Metal, D3D11 and GL ES 3.1 (the
+  native Android floor) have compute stages, storage buffers, storage
+  textures and indirect draws and dispatches (`Device.has(Compute)`,
+  section 8). Features that gain from it get a compute path, with the
+  floor's path as their fallback (WebGL2 above all).
 - **Textures are 2D only.** `TextureDesc` has no cube or array textures,
   and the shader frontend has `Texture2D` alone.
 - **Few formats.** RGBA8, RGBA8Srgb, R8, RG8, RGBA16F, R32F, Depth16,
@@ -903,8 +909,9 @@ people want to see attached to a node.
   Metal's visibility results, D3D11's queries). `Occlusion` is a
   RenderFeature that tests large objects' bounds a frame late, as
   Babylon's occlusion queries do. It is last in the plan: Little Skies'
-  levels and most mobile games are not occlusion-bound, and GPU-driven
-  culling needs compute, which gfx lacks.
+  levels and most mobile games are not occlusion-bound. GPU-driven
+  culling, and with it two-phase occlusion against a depth pyramid, is the
+  compute tier's (section 8).
 - **Shadow culling.** Shadow casters are culled per cascade and per atlas
   tile against the light's frustum. Static local lights' tiles are cached
   (2.1).
@@ -999,6 +1006,7 @@ in `page.json`.
 | SSR, TAA, per-object motion blur | off | opt-in |
 | Post total (AO + DOF + bloom + composite) | ≤ 3.5 ms | ≤ 3 ms |
 | Memory: shadow atlas + view buffers + post | ≤ 40 MB | — |
+| Compute (where `has(Compute)`, section 8) | ≤ 8 dispatches a frame, batched in one compute pass; no readback | ≤ 32 |
 
 **The rules the defaults follow on phones:**
 
@@ -1009,7 +1017,87 @@ in `page.json`.
 - **Bound every loop** with a compile-time maximum folded into the
   variant.
 
-## 8. Implementation plan, in phases
+## 8. The compute tier
+
+**What gfx has** (src/helder/gfx/README.md, "Compute"). A device says
+whether it has compute with `Device.has(Compute)`. `StorageTextures` and
+`Indirect` are asked the same way, and today every device that has one
+has all three.
+
+| Back end | Compute | Notes |
+|---|---|---|
+| WebGPU | yes | A compute pass in the frame's encoder. WebGPU orders the passes. |
+| Metal | yes | A compute encoder, serial dispatches. |
+| D3D11 | feature level 11_0 (`cs_5_0`) | Storage buffers are raw (`ByteAddressBuffer`), with 8 UAVs a stage. |
+| GL ES 3.1 (Android's floor), Mesa | yes | `glMemoryBarrier` after each dispatch. |
+| WebGL2, GL ES 3.0 | **no** | The fallback tier. |
+
+The shader frontend has `compute({size, main})`. Its main function takes
+a `ComputeInput` and one object of parameters: uniform blocks, textures,
+`Storage<T>` and `RWStorage<T>` (std430), and `StorageTexture` (RGBA8,
+RGBA16F or R32F, written only). It also has `atomicAdd`, `atomicMin`,
+`atomicMax` and `textureStore`. On the GPU side there are storage and
+indirect buffers (a storage buffer is also a vertex and index buffer),
+dispatches (direct and indirect) and indirect draws. `readBuffer` is for
+tests. The back end puts in the barriers: a dispatch's writes are seen by
+the dispatches, draws and samples after it.
+
+**What it does not have yet.** Each of these is a gfx task, and the
+paths below say which one they wait for:
+
+- workgroup memory and `workgroupBarrier` (for in-pass reductions,
+  prefix sums, tiled light culling, and the fast GTAO);
+- storage read in the vertex and fragment stages (GL ES 3.1 guarantees
+  none outside compute, so results reach draws as vertex buffers,
+  indirect arguments or sampled textures);
+- read-write storage textures;
+- buffer lengths in shaders (Metal has none);
+- `Vec3` in storage (pack into `Vec4`);
+- subgroup operations;
+- timestamp queries.
+
+TypeScript sees `Device.has` and `Feature`. `compute(...)` definitions
+are Haxe's for now, because the TypeScript shader adapter has no `Int`
+for the ids and indices.
+
+**How a feature picks its path.** A `RenderFeature` with a compute path
+chooses at construction: `device.has(Compute)` makes it create its
+compute pipelines, and otherwise it creates its fallback's passes. Both
+paths are linked, and the choice costs a branch a frame. Both paths are
+also tested: the `3d` lane on Mesa (GL ES 3.1, compute) and the `3d-web`
+lane on WebGL2 (the fallback) draw the same golden frames within a
+tolerance. Each path's output has the same shape as the fallback's, so
+the passes after it do not change:
+
+- an index texture the fragment stage samples;
+- an instance vertex buffer;
+- an AO texture.
+
+**The planned features, and their compute paths:**
+
+| Feature (section) | Compute path | Fallback (the floor's) | Needs from gfx |
+|---|---|---|---|
+| `ClusteredLights` (2.2) | A dispatch a frame. Each workgroup takes a cell and tests the frame's lights against it. Each cell's offset and count, and the indices, go into R32F storage textures, which `pbr`'s `clustered` variant samples as it samples the CPU path's RG8 and R8 textures (an option picks the formats). No CPU assignment, and no upload of the grid. | The CPU froxels and their textures, as section 2.2 proposes | Today's storage textures. Workgroup memory would let a cell's lights be gathered once a workgroup. |
+| GPU culling and LOD (4.4) | Per instanced run, a dispatch tests each instance's bounds against the frustum, picks its `Lod` level and appends its transform to a storage buffer (atomics on `RWStorage<Int>`). That buffer is the run's instance vertex buffer, and the count goes into its `drawIndexedIndirect` arguments: `ComputeTest`'s pattern. Later, two-phase occlusion against a depth pyramid. | Today's culling by bounds at extraction, on the CPU, and `Lod` picked there | Today's (indirect draws). The depth pyramid needs a dispatch a level, or workgroup memory. |
+| GTAO (3.3, `Ssao`) | A dispatch at half resolution in 8×8 workgroups. It samples `ViewBuffers`' depth and normals and writes AO into an RGBA8 storage texture, then a dispatch for the bilateral upsample. | The fragment passes of phase 2 | First version: today's. The fast one (depth tiles in workgroup memory) waits for workgroup memory. |
+| DoF (3.3, `Dof`) | The CoC and the half-resolution gather as dispatches into RGBA16F storage textures. The gather's tiles of the CoC's maximum are a reduction. | The fragment passes of phase 2 | Workgroup memory for the tiles' reduction, else a dispatch a level |
+| Skinning (`Skinning`) | One dispatch a skinned mesh a frame. It writes skinned positions and normals into a storage buffer, which the shadow, prepass and main passes all draw as their vertex buffer: skinned once, not three times. | Today's vertex-shader skinning | Today's |
+| Particles (`GpuParticles`) | The state (position, velocity, age) is integrated each frame in an `RWStorage`: forces, collisions with the depth buffer, respawn. It is drawn as instances straight from the buffer, as `examples/fountain` does. | Today's analytic path (born once, moved in closed form by the vertex shader) | Today's |
+| The environment's prefilter and SH at load (2.4) | The GGX prefilter as a dispatch per roughness row into an RGBA16F storage texture (the octahedral atlas). The SH projection is a sum of `atomicAdd`s in fixed point, or a two-step reduction, read back once at load. | The prefilter as fragment passes (phase 5's plan), or the asset step's (`Pack --environment`) | Today's. Workgroup memory makes the SH sum one pass. |
+
+**Mobile.**
+
+- Compute on Adreno and Mali is worth it where it removes CPU work
+  (clustering, culling) or repeated vertex work (skinning). It is not
+  worth it for a full-screen effect that a fragment pass does in
+  on-chip tile memory.
+- GTAO and DoF stay fragment passes on phones by default. Their compute
+  variants are the desktop's and the web's.
+- A frame's dispatches are batched in one compute pass. Each
+  `glMemoryBarrier` is a pipeline drain on GL.
+- No feature reads results back to the CPU in a frame.
+
+## 9. Implementation plan, in phases
 
 The order is by value to games like Little Skies against cost.
 
@@ -1073,6 +1161,9 @@ Tests and frames:
 - `<effects>` markup.
 - The `BeforeComposite` stage point.
 
+These are the fallback tier's paths: GTAO and DoF as fragment passes,
+on every back end. Their compute variants are phase 4's (section 8).
+
 Tests and frames:
 
 - **Golden frames:** `prepass.png` (depth and normals shown),
@@ -1116,6 +1207,14 @@ Tests and frames:
   cached static tiles, per-light filters.
 - `light.castShadows` and `light.shadow`.
 - `Lod` and visibility ranges (cheap, and needed by large scenes).
+- **The compute paths (section 8)**, each choosing itself where
+  `device.has(Compute)`, with the paths above as their fallbacks:
+  - `ClusteredLights` assigned on the GPU;
+  - GPU culling and `Lod` with indirect draws;
+  - compute skinning;
+  - `GpuParticles` integrated in a storage buffer;
+  - the compute variants of `Ssao` and `Dof`, once gfx has workgroup
+    memory (a gfx task alongside).
 
 Tests and frames:
 
@@ -1126,6 +1225,14 @@ Tests and frames:
 - **Unit tests:** `Clusters.test.hx` (cell assignment against brute
   force; nothing allocated; 256 lights' CPU time recorded), `Lod.test.hx`
   (hysteresis).
+- **Compute against fallback:** `clustered.png`, `lod.png`,
+  `ssao.png`, `dof.png`, the skinned frames and a particles frame, each
+  drawn by its compute path (the `3d` lane: Mesa's GL ES 3.1, Metal,
+  D3D11; WebGPU in `3d-web`) and by its fallback (`3d-web`'s WebGL2, and
+  `HELDER_NO_COMPUTE=1` natively), against the same golden within a
+  tolerance. `--stats` counts dispatches (`FrameCounts.dispatches`).
+- **Allocation:** a GcStats run of a frame with every compute path
+  (nothing allocated, as `tests/gfx/ComputeTest.hx` checks gfx's).
 - **Example:** `examples/lights` (Sponza at night, 200 lights), with
   the site's numbers for it.
 
@@ -1133,8 +1240,9 @@ Tests and frames:
 
 - **gfx (a gfx task, alongside):** cube textures, 2D arrays and RGBA32F
   on every back end, with `TextureCube` in the shader frontend.
-- The environment prefilter in helder (passes at load, and `Pack
-  --environment`). SH for the environment's diffuse.
+- The environment prefilter in helder (at load, and `Pack
+  --environment`): dispatches where `has(Compute)`, fragment passes
+  elsewhere (section 8). SH for the environment's diffuse.
 - `LightProbe`, `ProbeGrid` (baked in the asset step), `ReflectionProbe`
   (box-projected, an octahedral atlas, captured).
 - Lightmaps (`uv1`, the `lightmap` option, `Lightmap.attach`).
