@@ -47,7 +47,7 @@ process.chdir(root);
 const out = process.argv[2] ?? 'bin/site';
 const work = 'bin/site-build';
 const cli = ['src/helder/cli/run.mjs'];
-const REPO = 'https://github.com/benmerckx/universe';
+const REPO = 'https://github.com/helder/helder';
 
 // (apk: android, an example built for Android phones too, with SITE_APK=1: its APK beside the page, linked from its card)
 const HEADER = /^\/\/ *(title|summary|tags|demo|apk|data): *(.*)$/;
