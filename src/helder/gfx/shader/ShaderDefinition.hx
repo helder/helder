@@ -161,7 +161,13 @@ class ShaderDefinition implements Definition<ShaderAdapter, ShaderOutput> {
 		for (i in 1...f.params.length) {
 			var p = f.params[i], name = f.fields[i - 1] ?? p.name, slot = i - 1;
 			resources.push(switch p.type {
-				case TStruct(s): RUniform(std140(a, s, slot, pos));
+				case TStruct(s):
+					for (r in resources)
+						switch r {
+							case RUniform(u) if (u.struct == s): a.error('the parameter $name is a second ${s.path} (a uniform block a struct: one parameter of it)', pos);
+							case _:
+						}
+					RUniform(std140(a, s, slot, pos));
 				case TTexture: RTexture(new STexture(p.name, slot));
 				case TStorage(e, write):
 					var l = std430(a, e, name, pos);
