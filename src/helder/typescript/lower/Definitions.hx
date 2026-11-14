@@ -238,6 +238,8 @@ class Definitions {
 										{field: u.struct.fields[i].field, kind: kind(u.struct.fields[i].type), offset: u.offsets[i]}
 								]
 							};
+						// (a compute stage's: compute(...) is Haxe's)
+						case RStorage(_) | RImage(_): throw "a render stage's storage";
 					}
 			]
 		});

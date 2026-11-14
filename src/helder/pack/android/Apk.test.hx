@@ -80,7 +80,7 @@ function tests() {
 			equals(lines[1], "<uses-sdk android:minSdkVersion(0x0101020c)=29 android:targetSdkVersion(0x01010270)=35>");
 			equals(lines[2], '<uses-permission android:name(0x01010003)="android.permission.INTERNET">');
 			equals(lines[3], '<uses-permission android:name(0x01010003)="com.example.permission.X">');
-			equals(lines[4], "<uses-feature android:glEsVersion(0x01010281)=0x30000 android:required(0x0101028e)=true>");
+			equals(lines[4], "<uses-feature android:glEsVersion(0x01010281)=0x30001 android:required(0x0101028e)=true>");
 			equals(lines[5], '<application android:label(0x01010001)="Hello" android:hasCode(0x0101000c)=true android:debuggable(0x0101000f)=true android:extractNativeLibs(0x010104ea)=false android:enableOnBackInvokedCallback(0x0101066c)=false>');
 			assert(lines[6].startsWith('<activity android:theme(0x01010000)=@0x010302e3 android:label(0x01010001)="Hello" android:name(0x01010003)="org.hxmc.Activity" android:exported(0x01010010)=true'), lines[6]);
 			equals(lines[7], '<meta-data android:name(0x01010003)="android.app.lib_name" android:value(0x01010024)="main">');
