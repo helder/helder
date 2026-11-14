@@ -6,7 +6,8 @@ import helder.os.Surface;
 import hxmc.Platform;
 import hxmc.unsafe.*;
 
-// The GL back end: an OpenGL ES 3.0 context through EGL, on an X11 window's
+// The GL back end: an OpenGL ES 3.1 context through EGL (3.0 where the
+// driver has no 3.1: no compute then), on an X11 window's
 // surface or, headless, on a pbuffer of Mesa's surfaceless platform (on
 // Android: the default display, the activity's ANativeWindow or a pbuffer;
 // the GL functions from libGLESv3.so; when the system takes the window,
@@ -29,6 +30,12 @@ import hxmc.unsafe.*;
 // first row is the image's top as elsewhere (u_target, set when a pipeline
 // is; the front faces turn clockwise there). A pass into a texture renders
 // into one framebuffer object, attached anew when the textures change.
+// The compute tier (a 3.1 context: GLSL ES 3.10's layout(binding)): a
+// storage buffer is a buffer bound at its binding (glBindBufferBase) at
+// each dispatch, a storage texture an image unit (glBindImageTexture); a
+// dispatch is followed by glMemoryBarrier(GL_ALL_BARRIER_BITS), so that the
+// next dispatches, draws (vertex, index, indirect buffers), samples and
+// readBuffer (glMapBufferRange) see what it wrote. WebGL2 has none.
 @:hxmc.unsafe(gc)
 class GLBackend {
 	public final backend = Platform.os() == 3 ? Backend.WebGL2 : Backend.GL;
@@ -57,6 +64,17 @@ class GLBackend {
 	final textures:Array<Int> = [];
 	final infos:Array<TextureInfo> = [];
 	final samplers:Array<Int> = [];
+	final computes:Array<GLCompute> = [];
+	final computeShaders = new Map<Int, Bool>(); // the shaders of Stage.Compute
+	// the compute tier: whether the context has it (3.1 and its functions);
+	// in a compute pass; its pipeline; each slot's storage buffer or texture
+	// (handles), bound at the next dispatch
+	var compute = false;
+	var computing = false;
+	var computePipeline:Null<GLCompute> = null;
+	final storageSlots = [for (_ in 0...16) 0];
+	final imageSlots = [for (_ in 0...16) 0];
+	var storageDirty = false;
 
 	// draw state
 	var pipeline:GLPipeline = null;
@@ -134,6 +152,8 @@ class GLBackend {
 		}
 		for (p in pipelines)
 			GL.glDeleteProgram(p.program);
+		for (c in computes)
+			GL.glDeleteProgram(c.program);
 		for (s in shaders)
 			GL.glDeleteShader(s);
 		if (vao != 0) {
@@ -142,6 +162,7 @@ class GLBackend {
 		}
 		samplers.resize(0);
 		pipelines.resize(0);
+		computes.resize(0);
 		shaders.resize(0);
 		vao = 0;
 	}
@@ -224,7 +245,9 @@ class GLBackend {
 				if (eglSurface.isNull()) fail("cannot create the EGL surface");
 			} else
 				attach();
-			context = Egl.eglCreateContext(display, config, Ptr.nil(), ints(a, [EGL.CONTEXT_MAJOR_VERSION, 3, EGL.CONTEXT_MINOR_VERSION, 0, EGL.NONE]));
+			// (GL ES 3.1: the compute tier, Android's floor; 3.0 where the driver has no more)
+			context = Egl.eglCreateContext(display, config, Ptr.nil(), ints(a, [EGL.CONTEXT_MAJOR_VERSION, 3, EGL.CONTEXT_MINOR_VERSION, 1, EGL.NONE]));
+			if (context.isNull()) context = Egl.eglCreateContext(display, config, Ptr.nil(), ints(a, [EGL.CONTEXT_MAJOR_VERSION, 3, EGL.CONTEXT_MINOR_VERSION, 0, EGL.NONE]));
 			if (context.isNull()) fail("cannot create a GLES 3.0 context");
 		});
 		#if hxmc.dev_host
@@ -277,6 +300,16 @@ class GLBackend {
 		querySize();
 		GL.glGetIntegerv(GL.UNIFORM_BUFFER_OFFSET_ALIGNMENT, scratch);
 		if (scratch.value > uniformAlign) uniformAlign = scratch.value;
+		// (compute: GL ES 3.1 or later, its functions found; HELDER_NO_COMPUTE=1: as a 3.0 context, the fallbacks' tests)
+		if (Platform.os() != 3) {
+			var v = GL.glGetString(GL.VERSION);
+			var version = v.isNull() ? "" : (cast v : CString).toString();
+			var m = ~/OpenGL ES (\d+)\.(\d+)/;
+			var es31 = m.match(version) && (Std.parseInt(m.matched(1)) > 3 || Std.parseInt(m.matched(1)) == 3 && Std.parseInt(m.matched(2)) >= 1);
+			compute = es31 && Sys.getEnv("HELDER_NO_COMPUTE") != "1" && GL.has_glDispatchCompute() && GL.has_glDispatchComputeIndirect() && GL.has_glMemoryBarrier()
+				&& GL.has_glBindBufferBase() && GL.has_glBindImageTexture() && GL.has_glDrawArraysIndirect() && GL.has_glDrawElementsIndirect()
+				&& GL.has_glMapBufferRange() && GL.has_glUnmapBuffer();
+		}
 	}
 
 	function fail(what:String):Dynamic
@@ -306,6 +339,7 @@ class GLBackend {
 
 	public function createBuffer(d:BufferDesc):Int {
 		use();
+		if ((d.usage == Storage || d.usage == Indirect) && !compute) throw "helder.gfx: createBuffer: storage and indirect buffers need compute (GL ES 3.1; not " + backend + ")";
 		var target = d.usage == Index ? GL.ELEMENT_ARRAY_BUFFER : d.usage == Uniform ? GL.UNIFORM_BUFFER : GL.ARRAY_BUFFER;
 		GL.glGenBuffers(1, scratch);
 		var b = scratch.value;
@@ -494,7 +528,8 @@ class GLBackend {
 	public function createShader(d:ShaderDesc):Int {
 		use();
 		if (d.code.glsl == null) throw "helder.gfx: createShader: no GLSL source for the GL back end";
-		var s = GL.glCreateShader(d.stage == Vertex ? GL.VERTEX_SHADER : GL.FRAGMENT_SHADER);
+		if (d.stage == Compute && !compute) throw "helder.gfx: createShader: compute shaders need GL ES 3.1";
+		var s = GL.glCreateShader(d.stage == Vertex ? GL.VERTEX_SHADER : d.stage == Compute ? GL.COMPUTE_SHADER : GL.FRAGMENT_SHADER);
 		Arena.scoped(a -> {
 			var src:Ptr<Ptr> = a.alloc(8);
 			src.value = a.cstring(d.code.glsl);
@@ -509,7 +544,120 @@ class GLBackend {
 		}
 		shaders.push(s);
 		bindings.push(d.code.bindings == null ? [] : d.code.bindings);
+		if (d.stage == Compute) computeShaders.set(shaders.length, true);
 		return shaders.length;
+	}
+
+	// ---- the compute tier
+
+	public function has(f:Feature):Bool
+		return compute;
+
+	// (its uniform blocks, textures, storage at their layout(binding)s)
+	public function createComputePipeline(shader:Int):Int {
+		use();
+		if (!computeShaders.exists(shader)) throw "helder.gfx: createComputePipeline: not a compute shader";
+		var p = GL.glCreateProgram();
+		GL.glAttachShader(p, shaders[shader - 1]);
+		GL.glLinkProgram(p);
+		GL.glGetProgramiv(p, GL.LINK_STATUS, scratch);
+		if (scratch.value == 0) {
+			var log = infoLog(p, true);
+			GL.glDeleteProgram(p);
+			throw "helder.gfx: the compute pipeline does not link:\n" + log;
+		}
+		computes.push(new GLCompute(p, bindings[shader - 1]));
+		return computes.length;
+	}
+
+	public function beginCompute() {
+		if (computing) throw "helder.gfx: beginCompute: in a compute pass already";
+		computing = true;
+		computePipeline = null;
+	}
+
+	public function setComputePipeline(id:Int) {
+		var c = computes[id - 1];
+		if (c == computePipeline) return;
+		computePipeline = c;
+		GL.glUseProgram(c.program);
+		// (the next draws' pipeline set anew)
+		pipeline = null;
+		storageDirty = true;
+	}
+
+	public function setStorage(slot:Int, id:Int) {
+		storageSlots[slot] = id;
+		storageDirty = true;
+	}
+
+	public function setStorageTexture(slot:Int, id:Int) {
+		imageSlots[slot] = id;
+		storageDirty = true;
+	}
+
+	function bindStorage() {
+		if (!storageDirty) return;
+		storageDirty = false;
+		if (Platform.os() == 3) return;
+		for (b in computePipeline.bindings)
+			switch b.kind {
+				case Storage | StorageWrite: GL.glBindBufferBase(GL.SHADER_STORAGE_BUFFER, b.index, buffers[storageSlots[b.slot] - 1]);
+				case StorageTexture:
+					var id = imageSlots[b.slot];
+					GL.glBindImageTexture(b.index, textures[id - 1], 0, false, 0, GL.WRITE_ONLY, internalFormat(infos[id - 1].format));
+				case _:
+			}
+	}
+
+	public function dispatch(x:Int, y:Int, z:Int) {
+		if (Platform.os() == 3) return;
+		bindStorage();
+		GL.glDispatchCompute(x, y, z);
+		GL.glMemoryBarrier(GL.ALL_BARRIER_BITS);
+	}
+
+	public function dispatchIndirect(id:Int, offset:Int) {
+		if (Platform.os() == 3) return;
+		bindStorage();
+		GL.glBindBuffer(GL.DISPATCH_INDIRECT_BUFFER, buffers[id - 1]);
+		GL.glDispatchComputeIndirect(offset);
+		GL.glMemoryBarrier(GL.ALL_BARRIER_BITS);
+	}
+
+	public function endCompute() {
+		computing = false;
+		computePipeline = null;
+		storageDirty = true;
+	}
+
+	public function drawIndirect(id:Int, offset:Int) {
+		if (Platform.os() == 3) return;
+		attributes(0);
+		GL.glBindBuffer(GL.DRAW_INDIRECT_BUFFER, buffers[id - 1]);
+		GL.glDrawArraysIndirect(pipeline.topology, Ptr.ofI64(offset));
+	}
+
+	// (the index buffer at offset 0: GL's indirect commands count from the buffer's start)
+	public function drawIndexedIndirect(id:Int, offset:Int) {
+		if (Platform.os() == 3) return;
+		if (ioffset != 0) throw "helder.gfx: drawIndexedIndirect: GL's index buffer is set at offset 0";
+		attributes(0);
+		if (ibuf != ibufSet) GL.glBindBuffer(GL.ELEMENT_ARRAY_BUFFER, ibuf = ibufSet);
+		GL.glBindBuffer(GL.DRAW_INDIRECT_BUFFER, buffers[id - 1]);
+		GL.glDrawElementsIndirect(pipeline.topology, itype, Ptr.ofI64(offset));
+	}
+
+	// (mapped for reading: the dispatches' barrier made their writes visible; waits for the GPU)
+	public function readBuffer(id:Int, offset:Int, dst:haxe.io.Bytes, dstOffset:Int, size:Int) {
+		if (Platform.os() == 3 || !compute) throw "helder.gfx: readBuffer: GL ES 3.1's (not " + backend + ")";
+		use();
+		if (size == 0) return;
+		GL.glBindBuffer(GL.COPY_READ_BUFFER, buffers[id - 1]);
+		var p = GL.glMapBufferRange(GL.COPY_READ_BUFFER, offset, size, GL.MAP_READ_BIT);
+		if (p.isNull()) throw "helder.gfx: readBuffer: glMapBufferRange failed (GL error 0x" + StringTools.hex(GL.glGetError()) + ")";
+		BytesPtr.copyIn(dst, dstOffset, p, size);
+		GL.glUnmapBuffer(GL.COPY_READ_BUFFER);
 	}
 
 	function infoLog(o:Int, program:Bool):String {
@@ -968,6 +1116,17 @@ class GLBackend {
 		}
 		LibC.free(pixels);
 		LibC.free(scratch);
+	}
+}
+
+// a compute stage's linked program and its resources
+private class GLCompute {
+	public final program:Int;
+	public final bindings:Array<ShaderBinding>;
+
+	public function new(program:Int, bindings:Array<ShaderBinding>) {
+		this.program = program;
+		this.bindings = bindings;
 	}
 }
 

@@ -23,7 +23,8 @@ import hxmc.unsafe.*;
 	static function write_buffer(buffer:Int, offset:Int, data:Ptr, size:Int):Void;
 	// a texture: its TextureFormat, mip levels, whether it is a render
 	// target, its samples a pixel; its first level's texels at data (or none)
-	static function texture(width:Int, height:Int, format:Int, levels:Int, target:Int, samples:Int, data:Ptr):Int;
+	// (storage 1: a compute stage writes it, STORAGE_BINDING)
+	static function texture(width:Int, height:Int, format:Int, levels:Int, target:Int, samples:Int, storage:Int, data:Ptr):Int;
 	// width x height texels at data into the mip level at x, y
 	static function write_texture(texture:Int, x:Int, y:Int, width:Int, height:Int, level:Int, data:Ptr):Void;
 	// the levels after the first, each a pass sampling the one before (in
@@ -48,8 +49,21 @@ import hxmc.unsafe.*;
 	static function pipeline_buffer(stride:Int, instance:Int):Void;
 	static function pipeline_attribute(location:Int, format:Int, offset:Int):Void;
 	// a resource of the pipeline (ShaderCode.bindings: kind, slot, a uniform
-	// block's size): its bind group layout
+	// block's size, a storage texture's TextureFormat): its bind group layout
 	static function pipeline_binding(slot:Int, kind:Int, size:Int):Void;
+	// a compute pipeline of the module's main and the resources given (pipeline_begin, pipeline_binding)
+	static function compute_pipeline_end(shader:Int):Int;
+	// a compute pass (in the frame's command encoder, else in one of its own, submitted at compute_end)
+	static function compute_begin():Void;
+	static function set_compute_pipeline(pipeline:Int):Void;
+	// the storage buffer or texture at the slot, for the bind group
+	static function set_storage(slot:Int, buffer:Int):Void;
+	static function set_storage_texture(slot:Int, texture:Int):Void;
+	static function dispatch(x:Int, y:Int, z:Int):Void;
+	static function dispatch_indirect(buffer:Int, offset:Int):Void;
+	static function compute_end():Void;
+	static function draw_indirect(buffer:Int, offset:Int):Void;
+	static function draw_indexed_indirect(buffer:Int, offset:Int):Void;
 	// (colorFormat: a TextureFormat, -1 the target's; depthFormat: -1 none;
 	// samples: a render target's, the frame's its own)
 	static function pipeline_end(vertex:Int, fragment:Int, target:Int, topology:Int, cull:Int, blend:Int, depthCompare:Int, depthWrite:Int,

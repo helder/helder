@@ -35,6 +35,16 @@
 // context's antialias. Render targets and headless targets stay single-
 // sampled, and readPixels reads what is shown (resolved).
 //
+// The compute tier: a compute pass in the frame's encoder (or one of its
+// own, submitted at compute_end, its uniforms written first); its bind
+// group (uniform blocks at dynamic offsets, textures, samplers, storage
+// buffers read-only-storage or storage, storage textures write-only) made
+// once per set of resources, set at a dispatch after a change. A storage
+// buffer is also a vertex and index buffer (BufferUsage.Storage), an
+// indirect one a storage buffer. host.gfx.readBuffer(handle, offset, size)
+// resolves to a buffer's bytes (a Uint8Array) once the frames writing it
+// are done.
+//
 // WebGPU's textures: their TextureFormat's GPU format; a pipeline is made
 // for its bind group layout reading every texture as filterable, and again
 // (once, at the first draw binding one) for R32F or depth textures at some
@@ -58,7 +68,7 @@ const BLENDS = [
 ];
 const INFO_LOG_LENGTH = 0x8b84; // (GL's, not WebGL's)
 const RING = 256 * 1024; // the uniform ring (Encoder.UNIFORM_RING)
-const UNIFORM = 0, TEXTURE = 1; // BindingKind
+const UNIFORM = 0, TEXTURE = 1, STORAGE = 2, STORAGE_WRITE = 3, STORAGE_TEXTURE = 4; // BindingKind
 // TextureFormat: WebGPU's, bytes a texel; R32F and the depth formats are unfilterable from R32F on
 const TEXTURE_FORMATS = ['rgba8unorm', 'rgba8unorm-srgb', 'r8unorm', 'rg8unorm', 'rgba16float', 'r32float', 'depth16unorm', 'depth32float', 'bc1-rgba-unorm',
 	'bc3-rgba-unorm', 'astc-4x4-unorm'];
@@ -229,6 +239,21 @@ export default async function (host) {
 			}
 			return new Promise((resolve, reject) => captures.push({ resolve, reject }));
 		},
+		// a buffer's bytes (its handle: Buffer.id(); WebGPU): size bytes from
+		// offset (by default all of it), once the work submitted before is done
+		readBuffer(h, offset = 0, size) {
+			const b = handles.get(h);
+			size ??= b.size - offset;
+			const n = Math.ceil(size / 4) * 4, read = device.createBuffer({ size: n, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
+			const enc = device.createCommandEncoder();
+			enc.copyBufferToBuffer(b, offset, read, 0, n);
+			device.queue.submit([enc.finish()]);
+			return read.mapAsync(GPUMapMode.READ).then(() => {
+				const data = new Uint8Array(read.getMappedRange()).slice(0, size);
+				read.destroy();
+				return data;
+			});
+		},
 		// a render target's pixels (its handle; WebGPU), as readPixels: once the frames drawing it are submitted
 		readTexture(h) {
 			const t = handles.get(h), enc = device.createCommandEncoder();
@@ -284,6 +309,64 @@ export default async function (host) {
 		return entries.length ? device.createBindGroupLayout({ entries }) : null;
 	}
 
+	// the compute pass: its encoder its own (none in a frame), its pipeline,
+	// each slot's storage buffer or texture (handles), whether its bind group needs setting
+	let own = false, cpipe = null, cdirty = false;
+	const storages = new Int32Array(16);
+	// (a buffer's serial, for the bind groups' keys: a released buffer's handle is given again)
+	const bufferSerials = new WeakMap();
+	const serialOf = (o) => {
+		let s = o.serial ?? bufferSerials.get(o);
+		if (s === undefined) bufferSerials.set(o, (s = ++serials));
+		return s;
+	};
+
+	// the compute pipeline's bind group (its variant for the unfilterable textures bound)
+	function bindCompute() {
+		if (!cdirty) return;
+		cdirty = false;
+		let mask = 0;
+		for (const t of cpipe.textures) if (handles.get(textures[t.slot])?.unfilterable) mask |= 1 << t.slot;
+		const c = cpipe.variants.get(mask) ?? computeVariant(cpipe, mask);
+		if (c !== cpipe.active) {
+			cpipe.active = c;
+			pass.setPipeline(c.pipeline);
+		}
+		if (!c.bgl) return;
+		let key = '';
+		for (const t of c.textures) key += handles.get(textures[t.slot]).serial + ':' + samplers[t.slot] + ',';
+		for (const s of c.storage) key += serialOf(handles.get(storages[s.slot])) + ';';
+		let group = c.groups.get(key);
+		if (!group) {
+			const entries = c.uniforms.map((u) => ({ binding: u.slot, resource: { buffer: ring.buffer, size: u.size } }));
+			for (const t of c.textures) entries.push({ binding: t.slot, resource: handles.get(textures[t.slot]).view }, { binding: 16 + t.slot, resource: handles.get(samplers[t.slot]) });
+			for (const s of c.storage) {
+				const o = handles.get(storages[s.slot]);
+				entries.push({ binding: s.slot, resource: s.kind === STORAGE_TEXTURE ? o.view : { buffer: o } });
+			}
+			group = device.createBindGroup({ layout: c.bgl, entries });
+			c.groups.set(key, group);
+		}
+		for (let i = 0; i < c.uniforms.length; i++) c.offsets[i] = offsets[c.uniforms[i].slot];
+		pass.setBindGroup(0, group, c.offsets);
+	}
+
+	// a compute pipeline's variant for unfilterable textures at the slots of mask
+	function computeVariant(p, mask) {
+		const visibility = GPUShaderStage.COMPUTE, entries = [];
+		for (const r of p.resources)
+			if (r.kind === UNIFORM) entries.push({ binding: r.slot, visibility, buffer: { type: 'uniform', hasDynamicOffset: true, minBindingSize: r.size } });
+			else if (r.kind === TEXTURE) {
+				const plain = (mask & (1 << r.slot)) === 0;
+				entries.push({ binding: r.slot, visibility, texture: { sampleType: plain ? 'float' : 'unfilterable-float' } }, { binding: 16 + r.slot, visibility, sampler: { type: plain ? 'filtering' : 'non-filtering' } });
+			} else if (r.kind === STORAGE_TEXTURE) entries.push({ binding: r.slot, visibility, storageTexture: { access: 'write-only', format: TEXTURE_FORMATS[r.size], viewDimension: '2d' } });
+			else entries.push({ binding: r.slot, visibility, buffer: { type: r.kind === STORAGE ? 'read-only-storage' : 'storage' } });
+		const bgl = entries.length ? device.createBindGroupLayout({ entries }) : null;
+		const v = { ...p.base, pipeline: device.createComputePipeline({ ...p.desc, layout: bgl ? device.createPipelineLayout({ bindGroupLayouts: [bgl] }) : 'auto' }), bgl, groups: new Map() };
+		p.variants.set(mask, v);
+		return v;
+	}
+
 	// the pipeline p for unfilterable textures at the slots of mask
 	function variant(p, mask) {
 		const bgl = bindGroupLayout(p.resources, mask);
@@ -313,7 +396,9 @@ export default async function (host) {
 			return handles.add({ texture, format });
 		},
 		buffer(size, usage, data, length) {
-			const u = [GPUBufferUsage.VERTEX, GPUBufferUsage.INDEX, GPUBufferUsage.UNIFORM][usage];
+			// (BufferUsage: a storage buffer is a vertex and index buffer too; read back: COPY_SRC)
+			const u = [GPUBufferUsage.VERTEX, GPUBufferUsage.INDEX, GPUBufferUsage.UNIFORM, GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX | GPUBufferUsage.INDEX | GPUBufferUsage.COPY_SRC,
+				GPUBufferUsage.STORAGE | GPUBufferUsage.INDIRECT | GPUBufferUsage.COPY_SRC][usage];
 			const b = device.createBuffer({ size: Math.ceil(size / 4) * 4, usage: u | GPUBufferUsage.COPY_DST });
 			if (length > 0) {
 				// (writeBuffer: a multiple of 4 bytes)
@@ -324,13 +409,13 @@ export default async function (host) {
 			return handles.add(b);
 		},
 		write_buffer: (b, offset, data, size) => device.queue.writeBuffer(handles.get(b), offset, host.bytes(data, size)),
-		texture(width, height, format, levels, target, samples, data) {
+		texture(width, height, format, levels, target, samples, storage, data) {
 			// (a mip chain's levels are drawn by generate_mips; a multisampled one is only drawn into, then resolved)
 			// (RGBA8's a render attachment too: copyExternalImageToTexture's, texture_image)
 			const usage = samples > 1 ? GPUTextureUsage.RENDER_ATTACHMENT
 				: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | (target ? GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC : (levels > 1 && format < R32F) || format < 2 ? GPUTextureUsage.RENDER_ATTACHMENT : 0);
 			const label = samples > 1 ? 'helder multisampled target' : target ? 'helder render target' : 'helder texture';
-			const texture = device.createTexture({ label, size: [width, height], format: TEXTURE_FORMATS[format], mipLevelCount: levels, sampleCount: samples, usage });
+			const texture = device.createTexture({ label, size: [width, height], format: TEXTURE_FORMATS[format], mipLevelCount: levels, sampleCount: samples, usage: usage | (storage ? GPUTextureUsage.STORAGE_BINDING : 0) });
 			const t = { serial: ++serials, texture, view: texture.createView(), target: target ? texture.createView({ mipLevelCount: 1 }) : null, texel: TEXEL[format],
 				unfilterable: format === R32F || format === DEPTH16 || format === DEPTH16 + 1, depth: format === DEPTH16 || format === DEPTH16 + 1, compressed: format >= BC1 };
 			if (data) write(t, 0, 0, width, height, 0, data);
@@ -399,6 +484,61 @@ export default async function (host) {
 		},
 		pipeline_binding(slot, kind, size) {
 			resources.push({ slot, kind, size });
+		},
+		compute_pipeline_end(shader) {
+			const uniforms = resources.filter((r) => r.kind === UNIFORM).sort((a, b) => a.slot - b.slot);
+			const desc = { compute: { module: handles.get(shader), entryPoint: 'main' } };
+			const base = { uniforms, textures: resources.filter((r) => r.kind === TEXTURE), storage: resources.filter((r) => r.kind >= STORAGE), offsets: new Uint32Array(uniforms.length) };
+			const p = { ...base, base, desc, resources, variants: new Map(), active: null, compute: true };
+			computeVariant(p, 0);
+			p.pipeline = p.variants.get(0).pipeline;
+			return handles.add(p);
+		},
+		compute_begin() {
+			own = !encoder;
+			if (own) encoder = device.createCommandEncoder();
+			pass = encoder.beginComputePass();
+			cpipe = null;
+		},
+		set_compute_pipeline(p) {
+			cpipe = handles.get(p);
+			cpipe.active = null;
+			cdirty = true;
+		},
+		set_storage(slot, b) {
+			storages[slot] = b;
+			cdirty = true;
+		},
+		set_storage_texture(slot, t) {
+			storages[slot] = t;
+			cdirty = true;
+		},
+		dispatch(x, y, z) {
+			bindCompute();
+			pass.dispatchWorkgroups(x, y, z);
+		},
+		dispatch_indirect(b, offset) {
+			bindCompute();
+			pass.dispatchWorkgroupsIndirect(handles.get(b), offset);
+		},
+		compute_end() {
+			pass.end();
+			pass = null;
+			if (own) {
+				if (ring.used) device.queue.writeBuffer(ring.buffer, 0, ring.staging, 0, Math.ceil(ring.used / 4) * 4);
+				ring.used = 0;
+				device.queue.submit([encoder.finish()]);
+				encoder = null;
+				own = false;
+			}
+		},
+		draw_indirect(b, offset) {
+			bind();
+			pass.drawIndirect(handles.get(b), offset);
+		},
+		draw_indexed_indirect(b, offset) {
+			bind();
+			pass.drawIndexedIndirect(handles.get(b), offset);
 		},
 		pipeline_end(vertex, fragment, target, topology, cull, blend, depthCompare, depthWrite, colorFormat, depthFormat, samples) {
 			const uniforms = resources.filter((r) => r.kind === UNIFORM).sort((a, b) => a.slot - b.slot);
@@ -470,13 +610,13 @@ export default async function (host) {
 		set_texture(slot, t, s) {
 			textures[slot] = t;
 			samplers[slot] = s;
-			dirty = true;
+			dirty = cdirty = true;
 		},
 		set_uniforms(slot, offset, data, size) {
 			ring.staging.set(host.bytes(data, size), offset);
 			ring.used = Math.max(ring.used, offset + size);
 			offsets[slot] = offset;
-			dirty = true;
+			dirty = cdirty = true;
 		},
 		set_index_buffer: (b, format, offset) => pass.setIndexBuffer(handles.get(b), INDEX[format], offset),
 		draw(vertices, instances, first) {
@@ -792,6 +932,9 @@ export default async function (host) {
 		// (pixels: the memory from p on, which WebGL fills as far as it needs)
 		glReadPixels: (x, y, w, h, format, type, p) => gl.readPixels(x, y, w, h, format, type, new Uint8Array(host.memory().buffer, p)),
 		glFinish: () => gl.finish(),
+		// (GL ES 3.1's: none on WebGL2, whose device has no compute; never called)
+		...Object.fromEntries(['glMapBufferRange', 'glUnmapBuffer', 'glDispatchCompute', 'glDispatchComputeIndirect', 'glMemoryBarrier', 'glBindBufferBase', 'glBindImageTexture',
+			'glDrawArraysIndirect', 'glDrawElementsIndirect'].map((n) => [n, () => { throw new Error('helder.gfx: ' + n + ': WebGL2 has no compute'); }])),
 	};
 	return { hxmc_gfx, hxmc_gl, helder_image };
 }

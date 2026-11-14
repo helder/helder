@@ -76,6 +76,7 @@ class MTL {
 	public static inline var TextureUsageShaderRead = 1;
 	public static inline var TextureUsageShaderReadRenderTarget = 5;
 	public static inline var TextureUsageRenderTarget = 4;
+	public static inline var TextureUsageShaderWrite = 2;
 	// MTLTextureType
 	public static inline var TextureType2DMultisample = 4;
 	// MTLSamplerMinMagFilter, MTLSamplerAddressMode

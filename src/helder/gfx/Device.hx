@@ -85,6 +85,13 @@ final class Device {
 	public function supports(format:TextureFormat):Bool
 		return impl.supports(format);
 
+	// whether it has a feature of the compute tier (Feature: Compute,
+	// StorageTextures, Indirect): WebGPU, Metal, D3D11 at feature level
+	// 11_0 and a GL ES 3.1 context do; WebGL2 and GL ES 3.0 do not (their
+	// programs take the render stages' path)
+	@:typescript public function has(feature:Feature):Bool
+		return impl.has(feature);
+
 	// the largest side of a 2D texture it creates: GL's and WebGL2's asked
 	// (phones' often 4096), WebGPU's device limit (8192 by default), Metal's
 	// and D3D11's 16384 (Apple's GPUs since A9, feature level 11)
@@ -183,6 +190,26 @@ final class Device {
 	// throws the compiler's log when the source does not compile
 	public function createShader(d:ShaderDesc):Shader
 		return new Shader(impl.createShader(d));
+
+	// a compute stage's pipeline (a ComputeShader's pipeline(); d.program: its
+	// shader created first); throws where the device has no compute
+	// (has(Compute))
+	public function createComputePipeline(d:ComputePipelineDesc):ComputePipeline {
+		if (!has(Compute)) throw "helder.gfx: createComputePipeline: this device has no compute stages (" + backend + ")";
+		var s = d.shader != null ? d.shader : createShader({stage: Compute, code: d.program});
+		return new ComputePipeline(impl.createComputePipeline(s.id()));
+	}
+
+	// size bytes (default: the rest of dst from dstOffset) of a buffer at
+	// offset into dst: what the GPU wrote there (a compute stage's storage),
+	// after the work recorded before it, which it waits for (tests, a
+	// result the CPU needs; in a frame or outside one); WebGPU reads back
+	// asynchronously only (readBuffer in src/helder/gfx/imports.mjs)
+	public function readBuffer(b:Buffer, offset:Int, dst:haxe.io.Bytes, dstOffset = 0, size = -1) {
+		if (size < 0) size = dst.length - dstOffset;
+		if (offset < 0 || dstOffset < 0 || dstOffset + size > dst.length) throw "helder.gfx: readBuffer: outside dst";
+		impl.readBuffer(b.id(), offset, dst, dstOffset, size);
+	}
 
 	// (d.program: its shaders created first)
 	public function createPipeline(d:PipelineDesc):Pipeline {

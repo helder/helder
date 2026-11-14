@@ -57,6 +57,72 @@ final class Encoder {
 	public inline function endPass()
 		impl.endPass();
 
+	// ---- the compute tier (Device.has(Compute))
+	//
+	// A compute pass, between render passes (not in one): its dispatches run
+	// in order, each seeing what the ones before wrote, and the draws after
+	// it see what they wrote (as vertex, index or indirect buffers, sampled
+	// textures; GL: glMemoryBarrier after each dispatch, D3D11: its storage
+	// unbound at endCompute, Metal: a compute encoder of serial dispatches,
+	// WebGPU: its passes' usage scopes). setUniforms and setTexture bind the
+	// stage's uniform blocks and textures in it, as they do the draws'.
+	public inline function beginCompute() {
+		FrameCounts.passes++;
+		impl.beginCompute();
+	}
+
+	public inline function setComputePipeline(p:ComputePipeline) {
+		FrameCounts.pipelines++;
+		impl.setComputePipeline(p.id());
+	}
+
+	// a storage buffer (BufferUsage.Storage or Indirect), all of it, at its
+	// slot (a ComputeShader's params.<name>.binding)
+	public inline function setStorage(slot:Int, b:Buffer) {
+		FrameCounts.buffers++;
+		impl.setStorage(slot, b.id());
+	}
+
+	// a storage texture (TextureDesc.storage) the stage writes, at its slot
+	// (Device.has(StorageTextures))
+	public inline function setStorageTexture(slot:Int, t:Texture) {
+		FrameCounts.textures++;
+		impl.setStorageTexture(slot, t.id());
+	}
+
+	// x * y * z workgroups of the pipeline's size (ComputeShader.groups)
+	public inline function dispatch(x:Int, y = 1, z = 1) {
+		FrameCounts.dispatches++;
+		impl.dispatch(x, y, z);
+	}
+
+	// the workgroups three UInt32s of b at offset (a multiple of 4) say:
+	// x, y, z (Device.has(Indirect))
+	public inline function dispatchIndirect(b:Buffer, offset = 0) {
+		FrameCounts.dispatches++;
+		impl.dispatchIndirect(b.id(), offset);
+	}
+
+	public inline function endCompute()
+		impl.endCompute();
+
+	// in a render pass, a draw whose counts four UInt32s of b at offset say
+	// (a multiple of 4): vertices, instances, the first vertex, the first
+	// instance (0: GL ES and WebGPU without indirect-first-instance have no
+	// other) (Device.has(Indirect))
+	public inline function drawIndirect(b:Buffer, offset = 0) {
+		FrameCounts.draws++;
+		impl.drawIndirect(b.id(), offset);
+	}
+
+	// ... of the index buffer (set at offset 0 on GL): five UInt32s, the
+	// indices, instances, the first index, the base vertex (an Int32), the
+	// first instance (0)
+	public inline function drawIndexedIndirect(b:Buffer, offset = 0) {
+		FrameCounts.draws++;
+		impl.drawIndexedIndirect(b.id(), offset);
+	}
+
 	// the uniform ring's size per frame in flight
 	public static inline var UNIFORM_RING = 256 * 1024;
 }

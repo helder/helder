@@ -21,6 +21,12 @@ enum SType {
 	TStruct(s:SStruct);
 	// n of them: a uniform block's field (Vec4s or Mat4s: std140's stride is theirs), read by index
 	TArray(t:SType, n:Int);
+	// a storage buffer of elements of t (a compute stage's parameter only:
+	// Storage, write false; RWStorage, write true), read by index, written by SStore
+	TStorage(t:SType, write:Bool);
+	// a storage texture, write only (a compute stage's parameter only), of a
+	// TextureFormat (its value: RGBA8, RGBA16F, R32F)
+	TImage(format:Int);
 }
 
 class SStruct {
@@ -118,6 +124,8 @@ enum SStmt {
 	SBreak;
 	SContinue;
 	SReturn(e:Null<SExpr>);
+	// b[i] = v, b a storage buffer written (TStorage(_, true))
+	SStore(b:SExpr, i:SExpr, v:SExpr);
 }
 
 class SFunction {
@@ -165,15 +173,61 @@ class STexture {
 	}
 }
 
+// a storage buffer parameter of a compute stage, by its name, at a slot;
+// its elements' std430 layout (a struct's offsets, the stride); index: its
+// place among the stage's storage buffers (GL's binding) or, written, among
+// the buffers and textures it writes (HLSL's u register: a UAV)
+class SStorage {
+	public final name:String;
+	public final slot:Int;
+	public final element:SType;
+	public final write:Bool;
+	public final offsets:Array<Int>;
+	public final stride:Int;
+	public final index:Int;
+
+	public function new(name, slot, element, write, offsets, stride, index) {
+		this.name = name;
+		this.slot = slot;
+		this.element = element;
+		this.write = write;
+		this.offsets = offsets;
+		this.stride = stride;
+		this.index = index;
+	}
+}
+
+// a storage texture parameter of a compute stage: its TextureFormat; index:
+// its place among the stage's storage textures (GL's image unit) and among
+// what it writes (HLSL's u register), apart
+class SImage {
+	public final name:String;
+	public final slot:Int;
+	public final format:Int;
+	public final index:Int;
+	public final uav:Int;
+
+	public function new(name, slot, format, index, uav) {
+		this.name = name;
+		this.slot = slot;
+		this.format = format;
+		this.index = index;
+		this.uav = uav;
+	}
+}
+
 // an entry point's parameter after its input
 enum SResource {
 	RUniform(u:SUniform);
 	RTexture(t:STexture);
+	RStorage(s:SStorage);
+	RImage(i:SImage);
 }
 
 enum abstract SStage(Int) {
 	var Vertex;
 	var Fragment;
+	var Compute;
 }
 
 // one stage: its function (input, then resources), what it needs in
@@ -203,6 +257,28 @@ class SEntry {
 		}];
 		this.structs = structs;
 		this.functions = functions;
+	}
+}
+
+// a compute stage (compute({size, main})): its entry, its workgroup's size
+// (x, y, z) and its resources by kind
+class SCompute {
+	public final entry:SEntry;
+	public final size:Array<Int>;
+	public final storage:Array<SStorage>;
+	public final images:Array<SImage>;
+
+	public function new(entry, size) {
+		this.entry = entry;
+		this.size = size;
+		storage = [for (r in entry.resources) switch r {
+			case RStorage(s): s;
+			case _: continue;
+		}];
+		images = [for (r in entry.resources) switch r {
+			case RImage(i): i;
+			case _: continue;
+		}];
 	}
 }
 

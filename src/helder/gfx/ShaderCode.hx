@@ -17,10 +17,20 @@ package helder.gfx;
 // named in bindings (texture unit n), MSL's [[texture(n)]] and
 // [[sampler(n)]], HLSL's register(tn) and register(sn), WGSL's @binding(n)
 // (the texture) and @binding(16 + n) (its sampler).
+//
+// A compute stage (Stage.Compute): GLSL ES 3.10 (`#version 310 es`), MSL's
+// kernel main0, HLSL's cs_5_0 main, WGSL's @compute main; its workgroup's
+// size in workgroupSize (Metal gives it at each dispatch). A storage buffer
+// at slot n is GLSL's buffer block at binding index (ShaderBinding.index),
+// MSL's [[buffer(n)]], HLSL's register(tn) read or register(u<index>)
+// written, WGSL's @binding(n); a storage texture GLSL's image unit index,
+// MSL's [[texture(n)]], HLSL's register(u<index>), WGSL's @binding(n).
 typedef ShaderCode = {
 	?glsl:String,
 	?msl:String,
 	?hlsl:String,
 	?wgsl:String,
-	?bindings:Array<ShaderBinding>
+	?bindings:Array<ShaderBinding>,
+	// (a compute stage's) its workgroup's size: x, y, z
+	?workgroupSize:Array<Int>
 }

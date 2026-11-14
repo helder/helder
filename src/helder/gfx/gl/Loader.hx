@@ -9,7 +9,9 @@ import haxe.macro.Expr;
 // unless the declaration says @:wait: calls that block) and an inline
 // wrapper of the declared name; load(get) fills the slots from a
 // GetProcAddress (eglGetProcAddress, wglGetProcAddress later), whose
-// argument is the name as a C string. On WebAssembly (-D
+// argument is the name as a C string; one declared @:optional (GL ES 3.1's
+// compute functions) may be missing: its slot stays nil, which the back end
+// checks before calling it. On WebAssembly (-D
 // hxmc.target=wasm32-wasi) each one is instead an import of that name from
 // the module "hxmc_gl", WebGL2 through src/helder/gfx/imports.mjs, and load
 // has nothing to fill.
@@ -31,6 +33,14 @@ class Loader {
 						{name: ":hxmc.fast", pos: f.pos}
 					];
 					out.push({name: f.name, access: [APublic, AStatic, AExtern], meta: meta, kind: FFun(fn), pos: f.pos});
+					// (WebGL2 has none of the optional ones: never called)
+					if (Lambda.exists(f.meta, m -> m.name == ":optional"))
+						out.push({
+							name: "has_" + f.name,
+							access: [APublic, AStatic, AInline],
+							kind: FFun({args: [], ret: macro :Bool, expr: macro return false}),
+							pos: f.pos
+						});
 				case FFun(fn) if (fn.expr == null):
 					var name = f.name, slot = "p_" + f.name, raw = "c_" + f.name;
 					var wait = Lambda.exists(f.meta, m -> m.name == ":wait");
@@ -51,10 +61,19 @@ class Loader {
 						kind: FFun({args: fn.args, ret: fn.ret, expr: macro return $i{raw}($a{args})}),
 						pos: f.pos
 					});
-					loads.push(macro {
+					var optional = Lambda.exists(f.meta, m -> m.name == ":optional");
+					loads.push(optional ? macro $i{slot} = get(hxmc.unsafe.Mem.cstr($v{name})) : macro {
 						$i{slot} = get(hxmc.unsafe.Mem.cstr($v{name}));
 						if ($i{slot}.isNull()) return $v{name};
 					});
+					// (whether an optional one was found: has_<name>)
+					if (optional)
+						out.push({
+							name: "has_" + name,
+							access: [APublic, AStatic, AInline],
+							kind: FFun({args: [], ret: macro :Bool, expr: macro return !$i{slot}.isNull()}),
+							pos: f.pos
+						});
 				case _:
 					out.push(f);
 			}

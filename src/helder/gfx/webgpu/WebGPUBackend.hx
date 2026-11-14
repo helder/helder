@@ -17,7 +17,11 @@ import hxmc.unsafe.*;
 // (group 0, its layout from the shaders' bindings; uniform blocks at dynamic
 // offsets into one ring buffer, written each frame before the submit). A
 // pass into a texture renders into its first level's view; generateMips is
-// a pass per level on the JavaScript side.
+// a pass per level on the JavaScript side. The compute tier: a compute pass
+// in the frame's command encoder, its bind group (uniform blocks, textures,
+// storage buffers and textures) set at a dispatch after a change; WebGPU
+// orders a pass's dispatches and the passes after it. readBuffer reads back
+// asynchronously only (readBuffer in imports.mjs).
 @:hxmc.unsafe(gc)
 class WebGPUBackend {
 	public final backend = Backend.WebGPU;
@@ -61,7 +65,8 @@ class WebGPUBackend {
 	public function createTexture(d:TextureDesc):Int {
 		var info = TextureInfo.of(d);
 		// (the Bytes cannot move during the call: no collection in an import)
-		var t = WebGPU.texture(info.width, info.height, cast info.format, info.levels, info.target ? 1 : 0, info.samples, d.data == null ? Ptr.nil() : BytesPtr.of(d.data, 0, d.data.length));
+		var t = WebGPU.texture(info.width, info.height, cast info.format, info.levels, info.target ? 1 : 0, info.samples, info.storage ? 1 : 0,
+			d.data == null ? Ptr.nil() : BytesPtr.of(d.data, 0, d.data.length));
 		infos.set(t, info);
 		handles.push(t);
 		return t;
@@ -137,6 +142,50 @@ class WebGPUBackend {
 		handles.push(p);
 		return p;
 	}
+
+	// ---- the compute tier
+
+	public function has(f:Feature):Bool
+		return true;
+
+	public function createComputePipeline(shader:Int):Int {
+		WebGPU.pipeline_begin();
+		for (b in bindings.get(shader))
+			WebGPU.pipeline_binding(b.slot, cast b.kind, b.kind == StorageTexture ? b.format : b.size == null ? 0 : b.size);
+		var p = WebGPU.compute_pipeline_end(shader);
+		handles.push(p);
+		return p;
+	}
+
+	public inline function beginCompute()
+		WebGPU.compute_begin();
+
+	public inline function setComputePipeline(id:Int)
+		WebGPU.set_compute_pipeline(id);
+
+	public inline function setStorage(slot:Int, id:Int)
+		WebGPU.set_storage(slot, id);
+
+	public inline function setStorageTexture(slot:Int, id:Int)
+		WebGPU.set_storage_texture(slot, id);
+
+	public inline function dispatch(x:Int, y:Int, z:Int)
+		WebGPU.dispatch(x, y, z);
+
+	public inline function dispatchIndirect(id:Int, offset:Int)
+		WebGPU.dispatch_indirect(id, offset);
+
+	public inline function endCompute()
+		WebGPU.compute_end();
+
+	public inline function drawIndirect(id:Int, offset:Int)
+		WebGPU.draw_indirect(id, offset);
+
+	public inline function drawIndexedIndirect(id:Int, offset:Int)
+		WebGPU.draw_indexed_indirect(id, offset);
+
+	public function readBuffer(id:Int, offset:Int, dst:haxe.io.Bytes, dstOffset:Int, size:Int)
+		throw "helder.gfx: readBuffer: WebGPU reads back asynchronously (readBuffer in src/helder/gfx/imports.mjs)";
 
 	public function beginFrame():Bool {
 		// (a canvas: its size now, which App's Resize events follow)

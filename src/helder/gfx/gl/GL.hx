@@ -91,6 +91,15 @@ class GL {
 	public static inline var READ_FRAMEBUFFER = 0x8CA8;
 	public static inline var DRAW_FRAMEBUFFER = 0x8CA9;
 	public static inline var RENDERBUFFER = 0x8D41;
+	// GL ES 3.1's compute (and indirect draws)
+	public static inline var COMPUTE_SHADER = 0x91B9;
+	public static inline var SHADER_STORAGE_BUFFER = 0x90D2;
+	public static inline var DISPATCH_INDIRECT_BUFFER = 0x90EE;
+	public static inline var DRAW_INDIRECT_BUFFER = 0x8F3F;
+	public static inline var COPY_READ_BUFFER = 0x8F36;
+	public static inline var MAP_READ_BIT = 0x0001;
+	public static inline var ALL_BARRIER_BITS = 0xFFFFFFFF;
+	public static inline var WRITE_ONLY = 0x88B9;
 
 	static function glGetString(name:Int):Ptr;
 	static function glGetError():Int;
@@ -171,6 +180,17 @@ class GL {
 	static function glSamplerParameteri(sampler:Int, pname:Int, param:Int):Void;
 	static function glBindSampler(unit:Int, sampler:Int):Void;
 	static function glPixelStorei(pname:Int, param:Int):Void;
+	// (GL ES 3.0's buffer mapping: Device.readBuffer; not WebGL2's)
+	@:optional @:wait static function glMapBufferRange(target:Int, offset:Int64, length:Int64, access:Int):Ptr;
+	@:optional static function glUnmapBuffer(target:Int):Bool;
+	// GL ES 3.1's compute stage and indirect draws (@:optional: a 3.0 context has none; never called on WebGL2)
+	@:optional static function glDispatchCompute(x:Int, y:Int, z:Int):Void;
+	@:optional static function glDispatchComputeIndirect(offset:Int64):Void;
+	@:optional static function glMemoryBarrier(barriers:Int):Void;
+	@:optional static function glBindBufferBase(target:Int, index:Int, buffer:Int):Void;
+	@:optional static function glBindImageTexture(unit:Int, texture:Int, level:Int, layered:Bool, layer:Int, access:Int, format:Int):Void;
+	@:optional static function glDrawArraysIndirect(mode:Int, indirect:Ptr):Void;
+	@:optional static function glDrawElementsIndirect(mode:Int, type:Int, indirect:Ptr):Void;
 	@:wait static function glReadPixels(x:Int, y:Int, width:Int, height:Int, format:Int, type:Int, pixels:Ptr):Void;
 	@:wait static function glFinish():Void;
 }

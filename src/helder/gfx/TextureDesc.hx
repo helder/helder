@@ -20,6 +20,10 @@ typedef TextureDesc = {
 	// (PipelineDesc.samples), never sampled; a pass's colour resolved into a
 	// single-sampled texture at its end (ColorTarget.resolve)
 	?samples:Int,
+	// (Device.has(StorageTextures)) a compute stage writes it
+	// (Encoder.setStorageTexture; RGBA8, RGBA16F or R32F, one level, one
+	// sample), then shaders sample it
+	?storage:Bool,
 	// the first level's texels (width * height * format.texelSize bytes)
 	?data:haxe.io.Bytes
 }

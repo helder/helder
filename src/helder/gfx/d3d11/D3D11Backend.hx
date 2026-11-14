@@ -30,6 +30,14 @@ import hxmc.unsafe.*;
 // without overwriting (discarded at the frame's first block), else a
 // dynamic constant buffer per slot, discarded at each setUniforms
 // (HXMC_GFX_D3D11_NO_OFFSETS=1 forces that).
+// The compute tier (feature level 11_0: cs_5_0): a storage buffer is a raw
+// buffer (BUFFER_ALLOW_RAW_VIEWS, its elements loaded and stored by the
+// HLSL at their std430 offsets) with a raw UAV (written: u<index>) and SRV
+// (read: t<slot>), also bindable as a vertex or index buffer (an indirect
+// buffer: DRAWINDIRECT_ARGS); a storage texture has a UAV. A compute pass
+// binds them at each dispatch that follows a change and unbinds them at
+// endCompute (so that draws may read them: Direct3D 11 orders the rest);
+// readBuffer copies a range into a staging buffer and maps it.
 @:hxmc.unsafe(gc)
 class D3D11Backend {
 	public final backend = Backend.D3D11;
@@ -68,6 +76,9 @@ class D3D11Backend {
 
 	// tables (handle = index + 1)
 	final buffers:Array<Ptr> = []; // ID3D11Buffer
+	final bufferViews:Array<Ptr> = []; // a storage buffer's raw ID3D11ShaderResourceView, and its ID3D11UnorderedAccessView
+	final bufferUavs:Array<Ptr> = [];
+	final computes:Array<D3DCompute> = [];
 	final textures:Array<D3DTexture> = [];
 	final samplers:Array<Ptr> = []; // ID3D11SamplerState
 	final shaders:Array<D3DShader> = [];
@@ -86,6 +97,20 @@ class D3D11Backend {
 	var cursor = 0;
 	final slotBuffers:Array<Ptr> = [];
 	final slotSizes:Array<Int> = [];
+	// the compute pass: in one; its pipeline; each slot's storage buffer or
+	// texture (handles), bound at the next dispatch; the UAVs and shader
+	// resource views bound (unbound at endCompute: nils)
+	var computing = false;
+	var compute:Null<D3DCompute> = null;
+	final storageSlots = [for (_ in 0...16) 0];
+	final imageSlots = [for (_ in 0...16) 0];
+	var storageDirty = false;
+	final uavs:Ptr<Ptr>;
+	final nils:Ptr<Ptr>;
+	var uavsBound = 0;
+	var srvsBound = 0; // (a mask of the compute stage's shader resource slots)
+	var readback = Ptr.nil(); // readBuffer's staging buffer, of readbackSize bytes
+	var readbackSize = 0;
 
 	// frameInto's texture (0: the surface's); the headless target's size and
 	// its view; the depth buffer's size; the shared textures this frame
@@ -115,6 +140,9 @@ class D3D11Backend {
 		cbuf = LibC.malloc(8);
 		cfirst = LibC.malloc(4);
 		cnum = LibC.malloc(4);
+		uavs = LibC.malloc(8 * 8);
+		nils = LibC.malloc(8 * 16);
+		LibC.memset(nils, 0, 8 * 16);
 		var level:Ptr<Int32> = scratch.offset(2).raw();
 		#if hxmc.dev_host
 		// (hxmc dev's host: the device, its context and the window's swap chain as the last build left them)
@@ -380,16 +408,21 @@ class D3D11Backend {
 	public function createBuffer(d:BufferDesc):Int {
 		var data = d.data, size = d.size;
 		if (data != null && data.length < size) throw "helder.gfx: createBuffer: data has fewer than size bytes";
+		var storage = d.usage == Storage || d.usage == Indirect;
+		if (storage && !has(Compute)) throw "helder.gfx: createBuffer: storage buffers need feature level 11_0";
 		var hr = Arena.scopedValue(a -> {
 			var desc = a.make(D3D11_BUFFER_DESC);
-			// (constant buffers: a multiple of 16 bytes)
-			desc.value.ByteWidth = d.usage == Uniform ? (size + 15) & ~15 : size;
+			// (constant buffers: a multiple of 16 bytes; raw ones of 4)
+			desc.value.ByteWidth = d.usage == Uniform ? (size + 15) & ~15 : storage ? (size + 3) & ~3 : size;
 			desc.value.Usage = D3D.USAGE_DEFAULT;
 			desc.value.BindFlags = switch d.usage {
 				case Index: D3D.BIND_INDEX_BUFFER;
 				case Uniform: D3D.BIND_CONSTANT_BUFFER;
+				case Storage: D3D.BIND_UNORDERED_ACCESS | D3D.BIND_SHADER_RESOURCE | D3D.BIND_VERTEX_BUFFER | D3D.BIND_INDEX_BUFFER;
+				case Indirect: D3D.BIND_UNORDERED_ACCESS | D3D.BIND_SHADER_RESOURCE;
 				case _: D3D.BIND_VERTEX_BUFFER;
 			}
+			desc.value.MiscFlags = d.usage == Indirect ? D3D.RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS | D3D.RESOURCE_MISC_DRAWINDIRECT_ARGS : storage ? D3D.RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS : 0;
 			var init:Ptr<D3D11_SUBRESOURCE_DATA> = Ptr.nil();
 			if (data != null) {
 				init = a.make(D3D11_SUBRESOURCE_DATA);
@@ -398,7 +431,36 @@ class D3D11Backend {
 			ID3D11Device.CreateBuffer(device, desc, init, scratch);
 		});
 		check(hr, "CreateBuffer (" + size + " bytes)");
-		buffers.push(scratch.value);
+		var b = scratch.value;
+		buffers.push(b);
+		bufferViews.push(Ptr.nil());
+		bufferUavs.push(Ptr.nil());
+		if (storage) {
+			// (raw views of all of it: R32_TYPELESS, a 4-byte element each)
+			var n = ((size + 3) & ~3) >> 2;
+			hr = Arena.scopedValue(a -> {
+				var v:Ptr<Int32> = a.alloc(32);
+				LibC.memset(v, 0, 32);
+				v[0] = D3D.FORMAT_R32_TYPELESS;
+				v[1] = D3D.SRV_DIMENSION_BUFFEREX;
+				v[3] = n;
+				v[4] = D3D.BUFFEREX_SRV_FLAG_RAW;
+				ID3D11Device.CreateShaderResourceView(device, b, v, scratch);
+			});
+			check(hr, "CreateShaderResourceView (a storage buffer)");
+			bufferViews[buffers.length - 1] = scratch.value;
+			hr = Arena.scopedValue(a -> {
+				var v:Ptr<Int32> = a.alloc(32);
+				LibC.memset(v, 0, 32);
+				v[0] = D3D.FORMAT_R32_TYPELESS;
+				v[1] = D3D.UAV_DIMENSION_BUFFER;
+				v[3] = n;
+				v[4] = D3D.BUFFER_UAV_FLAG_RAW;
+				ID3D11Device.CreateUnorderedAccessView(device, b, v, scratch);
+			});
+			check(hr, "CreateUnorderedAccessView (a storage buffer)");
+			bufferUavs[buffers.length - 1] = scratch.value;
+		}
 		return buffers.length;
 	}
 
@@ -433,7 +495,8 @@ class D3D11Backend {
 			t.value.SampleCount = info.samples;
 			t.value.Usage = D3D.USAGE_DEFAULT;
 			// (GenerateMips draws into the levels; a multisampled texture is only drawn into and resolved)
-			t.value.BindFlags = (multi ? 0 : D3D.BIND_SHADER_RESOURCE) | (depth ? D3D.BIND_DEPTH_STENCIL : target || mips ? D3D.BIND_RENDER_TARGET : 0);
+			t.value.BindFlags = (multi ? 0 : D3D.BIND_SHADER_RESOURCE) | (depth ? D3D.BIND_DEPTH_STENCIL : target || mips ? D3D.BIND_RENDER_TARGET : 0)
+				| (info.storage ? D3D.BIND_UNORDERED_ACCESS : 0);
 			t.value.MiscFlags = mips ? D3D.RESOURCE_MISC_GENERATE_MIPS : 0;
 			ID3D11Device.CreateTexture2D(device, t, Ptr.nil(), scratch);
 		});
@@ -469,6 +532,10 @@ class D3D11Backend {
 		} else if (target) {
 			check(ID3D11Device.CreateRenderTargetView(device, tex, Ptr.nil(), scratch), "CreateRenderTargetView");
 			t.rtv = scratch.value;
+		}
+		if (info.storage) {
+			check(ID3D11Device.CreateUnorderedAccessView(device, tex, Ptr.nil(), scratch), "CreateUnorderedAccessView");
+			t.uav = scratch.value;
 		}
 		if (d.data != null) writeTexture(textures.length, d.data, 0, 0, -1, -1, 0, 0);
 		return textures.length;
@@ -524,8 +591,10 @@ class D3D11Backend {
 
 	public function destroyBuffer(id:Int) {
 		if (buffers[id - 1].isNull()) return;
+		Com.release(bufferUavs[id - 1]);
+		Com.release(bufferViews[id - 1]);
 		Com.release(buffers[id - 1]);
-		buffers[id - 1] = Ptr.nil();
+		buffers[id - 1] = bufferViews[id - 1] = bufferUavs[id - 1] = Ptr.nil();
 	}
 
 	public function destroyTexture(id:Int) {
@@ -571,6 +640,7 @@ class D3D11Backend {
 
 	public function createShader(d:ShaderDesc):Int {
 		if (d.code.hlsl == null) throw "helder.gfx: createShader: no HLSL source for the D3D11 back end";
+		if (d.stage == Compute) return createComputeShader(d);
 		var vertex = d.stage == Vertex;
 		scratch.offset(1).value = Ptr.nil();
 		var hr = Arena.scopedValue(a -> {
@@ -595,6 +665,156 @@ class D3D11Backend {
 		}
 		shaders.push(new D3DShader(scratch.value, blob));
 		return shaders.length;
+	}
+
+	// a compute shader (cs_5_0), its bindings kept for its pipelines
+	function createComputeShader(d:ShaderDesc):Int {
+		if (!has(Compute)) throw "helder.gfx: createShader: compute shaders need feature level 11_0";
+		scratch.offset(1).value = Ptr.nil();
+		var hr = Arena.scopedValue(a -> {
+			var src = a.cstring(d.code.hlsl);
+			D3DCompiler.D3DCompile(src, LibC.strlen(src), Ptr.nil(), Ptr.nil(), Ptr.nil(), Mem.cstr("main"), Mem.cstr("cs_5_0"), 0, 0, scratch, scratch.offset(1));
+		});
+		var errors = scratch.offset(1).value;
+		var text:Ptr<UInt8> = errors.isNull() ? Ptr.nil() : ID3DBlob.GetBufferPointer(errors);
+		var log = errors.isNull() ? "" : (text : CString).toString();
+		Com.release(errors);
+		if (hr < 0) throw "helder.gfx: the shader does not compile (HRESULT 0x" + StringTools.hex(hr, 8) + "):\n" + log;
+		var blob = scratch.value;
+		hr = ID3D11Device.CreateComputeShader(device, ID3DBlob.GetBufferPointer(blob), ID3DBlob.GetBufferSize(blob), Ptr.nil(), scratch);
+		Com.release(blob);
+		check(hr, "CreateComputeShader");
+		var s = new D3DShader(scratch.value, Ptr.nil());
+		s.bindings = d.code.bindings == null ? [] : d.code.bindings;
+		shaders.push(s);
+		return shaders.length;
+	}
+
+	// ---- the compute tier
+
+	public function has(f:Feature):Bool
+		return shaderModel == "_5_0";
+
+	public function createComputePipeline(shader:Int):Int {
+		var s = shaders[shader - 1];
+		if (s.bindings == null) throw "helder.gfx: createComputePipeline: not a compute shader";
+		computes.push(new D3DCompute(s.shader, s.bindings));
+		return computes.length;
+	}
+
+	public function beginCompute() {
+		if (computing) throw "helder.gfx: beginCompute: in a compute pass already";
+		computing = true;
+		compute = null;
+	}
+
+	public function setComputePipeline(id:Int) {
+		var c = computes[id - 1];
+		if (c == compute) return;
+		compute = c;
+		ID3D11DeviceContext.CSSetShader(context, c.shader, Ptr.nil(), 0);
+		storageDirty = true;
+	}
+
+	public function setStorage(slot:Int, id:Int) {
+		storageSlots[slot] = id;
+		storageDirty = true;
+	}
+
+	public function setStorageTexture(slot:Int, id:Int) {
+		imageSlots[slot] = id;
+		storageDirty = true;
+	}
+
+	// the pipeline's storage at its registers: the written buffers' and
+	// textures' UAVs at their indices first (a buffer the last dispatch wrote
+	// and this one reads is no UAV any more: Direct3D 11 binds no view of a
+	// resource bound as a UAV), then the read buffers' views at their slots
+	function bindStorage() {
+		if (!storageDirty) return;
+		storageDirty = false;
+		var c = compute, n = 0;
+		for (b in c.bindings)
+			switch b.kind {
+				case StorageWrite:
+					uavs[b.index] = bufferUavs[storageSlots[b.slot] - 1];
+					if (b.index + 1 > n) n = b.index + 1;
+				case StorageTexture:
+					uavs[b.index] = textures[imageSlots[b.slot] - 1].uav;
+					if (b.index + 1 > n) n = b.index + 1;
+				case _:
+			}
+		// (the UAVs bound before past this pipeline's: unbound too)
+		for (i in n...uavsBound)
+			uavs[i] = Ptr.nil();
+		if (uavsBound > n) n = uavsBound;
+		if (n > 0) ID3D11DeviceContext.CSSetUnorderedAccessViews(context, 0, n, uavs, Ptr.nil());
+		uavsBound = n;
+		for (b in c.bindings)
+			if (b.kind == Storage) {
+				cbuf.value = bufferViews[storageSlots[b.slot] - 1];
+				ID3D11DeviceContext.CSSetShaderResources(context, b.slot, 1, cbuf);
+				srvsBound |= 1 << b.slot;
+			}
+	}
+
+	public function dispatch(x:Int, y:Int, z:Int) {
+		bindStorage();
+		ID3D11DeviceContext.Dispatch(context, x, y, z);
+	}
+
+	public function dispatchIndirect(id:Int, offset:Int) {
+		bindStorage();
+		ID3D11DeviceContext.DispatchIndirect(context, buffers[id - 1], offset);
+	}
+
+	// (the storage unbound: draws may read it next; the uniform blocks and textures stay)
+	public function endCompute() {
+		if (uavsBound > 0) ID3D11DeviceContext.CSSetUnorderedAccessViews(context, 0, uavsBound, nils, Ptr.nil());
+		for (slot in 0...16)
+			if (srvsBound & (1 << slot) != 0) ID3D11DeviceContext.CSSetShaderResources(context, slot, 1, nils);
+		uavsBound = srvsBound = 0;
+		computing = false;
+		storageDirty = true;
+	}
+
+	public function drawIndirect(id:Int, offset:Int) {
+		vertexBuffers();
+		ID3D11DeviceContext.DrawInstancedIndirect(context, buffers[id - 1], offset);
+	}
+
+	public function drawIndexedIndirect(id:Int, offset:Int) {
+		vertexBuffers();
+		ID3D11DeviceContext.DrawIndexedInstancedIndirect(context, buffers[id - 1], offset);
+	}
+
+	// a range copied into a staging buffer (as big as the largest read yet), mapped (waits for the GPU)
+	public function readBuffer(id:Int, offset:Int, dst:haxe.io.Bytes, dstOffset:Int, size:Int) {
+		if (size == 0) return;
+		if (readbackSize < size) {
+			Com.release(readback);
+			var hr = Arena.scopedValue(a -> {
+				var desc = a.make(D3D11_BUFFER_DESC);
+				desc.value.ByteWidth = size;
+				desc.value.Usage = D3D.USAGE_STAGING;
+				desc.value.BindFlags = 0;
+				desc.value.CPUAccessFlags = D3D.CPU_ACCESS_READ;
+				ID3D11Device.CreateBuffer(device, desc, Ptr.nil(), scratch);
+			});
+			check(hr, "CreateBuffer (staging, " + size + " bytes)");
+			readback = scratch.value;
+			readbackSize = size;
+		}
+		box.value.left = offset;
+		box.value.right = offset + size;
+		box.value.top = 0;
+		box.value.bottom = 1;
+		box.value.front = 0;
+		box.value.back = 1;
+		ID3D11DeviceContext.CopySubresourceRegion(context, readback, 0, 0, 0, 0, buffers[id - 1], 0, box);
+		check(ID3D11DeviceContext.Map(context, readback, 0, D3D.MAP_READ, 0, mapped), "Map (readBuffer)");
+		BytesPtr.copyIn(dst, dstOffset, mapped.value.pData, size);
+		ID3D11DeviceContext.Unmap(context, readback, 0);
 	}
 
 	public function createPipeline(d:PipelineDesc):Int {
@@ -789,8 +1009,10 @@ class D3D11Backend {
 			cbuf.value = ring;
 			cfirst.value = cursor >> 4;
 			cnum.value = n >> 4;
-			ID3D11DeviceContext1.VSSetConstantBuffers1(context1, slot, 1, cbuf, cfirst, cnum);
-			ID3D11DeviceContext1.PSSetConstantBuffers1(context1, slot, 1, cbuf, cfirst, cnum);
+			if (computing) ID3D11DeviceContext1.CSSetConstantBuffers1(context1, slot, 1, cbuf, cfirst, cnum) else {
+				ID3D11DeviceContext1.VSSetConstantBuffers1(context1, slot, 1, cbuf, cfirst, cnum);
+				ID3D11DeviceContext1.PSSetConstantBuffers1(context1, slot, 1, cbuf, cfirst, cnum);
+			}
 			cursor += n;
 			return;
 		}
@@ -808,8 +1030,10 @@ class D3D11Backend {
 		LibC.memcpy(mapped.value.pData, BytesPtr.of(data, offset, size), (size : Int64));
 		ID3D11DeviceContext.Unmap(context, b, 0);
 		cbuf.value = b;
-		ID3D11DeviceContext.VSSetConstantBuffers(context, slot, 1, cbuf);
-		ID3D11DeviceContext.PSSetConstantBuffers(context, slot, 1, cbuf);
+		if (computing) ID3D11DeviceContext.CSSetConstantBuffers(context, slot, 1, cbuf) else {
+			ID3D11DeviceContext.VSSetConstantBuffers(context, slot, 1, cbuf);
+			ID3D11DeviceContext.PSSetConstantBuffers(context, slot, 1, cbuf);
+		}
 	}
 
 	// a constant buffer the CPU writes (Map)
@@ -837,6 +1061,12 @@ class D3D11Backend {
 		// (another process's texture: its mutex held while this frame samples it; not in time, sampled as it is)
 		if (!t.mutex.isNull()) hold(t, 100);
 		cbuf.value = t.view;
+		if (computing) {
+			ID3D11DeviceContext.CSSetShaderResources(context, slot, 1, cbuf);
+			cbuf.value = samplers[sampler - 1];
+			ID3D11DeviceContext.CSSetSamplers(context, slot, 1, cbuf);
+			return;
+		}
 		ID3D11DeviceContext.VSSetShaderResources(context, slot, 1, cbuf);
 		ID3D11DeviceContext.PSSetShaderResources(context, slot, 1, cbuf);
 		cbuf.value = samplers[sampler - 1];
@@ -935,6 +1165,9 @@ class D3D11Backend {
 		}
 		for (b in buffers)
 			Com.release(b);
+		for (v in bufferViews.concat(bufferUavs))
+			Com.release(v);
+		Com.release(readback);
 		for (b in slotBuffers)
 			Com.release(b);
 		letGo();
@@ -980,6 +1213,8 @@ class D3D11Backend {
 		LibC.free(cbuf);
 		LibC.free(cfirst);
 		LibC.free(cnum);
+		LibC.free(uavs);
+		LibC.free(nils);
 	}
 }
 
@@ -989,6 +1224,8 @@ class D3D11Backend {
 private class D3DShader {
 	public final shader:Ptr;
 	public final code:Ptr;
+	// (a compute shader's: its resources)
+	public var bindings:Null<Array<ShaderBinding>> = null;
 
 	public function new(shader:Ptr, code:Ptr) {
 		this.shader = shader;
@@ -1008,6 +1245,7 @@ private class D3DTexture {
 	public var view = Ptr.nil();
 	public var rtv = Ptr.nil();
 	public var dsv = Ptr.nil();
+	public var uav = Ptr.nil(); // a storage texture's
 
 	public function new(texture:Ptr, info:TextureInfo) {
 		this.texture = texture;
@@ -1015,11 +1253,25 @@ private class D3DTexture {
 	}
 
 	public function release() {
+		Com.release(uav);
 		Com.release(mutex);
 		Com.release(dsv);
 		Com.release(rtv);
 		Com.release(view);
 		Com.release(texture);
+	}
+}
+
+// a compute pipeline: its shader (ID3D11ComputeShader; its own: released
+// with the shader's table) and its resources
+@:hxmc.unsafe(gc)
+private class D3DCompute {
+	public final shader:Ptr;
+	public final bindings:Array<ShaderBinding>;
+
+	public function new(shader:Ptr, bindings:Array<ShaderBinding>) {
+		this.shader = shader;
+		this.bindings = bindings;
 	}
 }
 

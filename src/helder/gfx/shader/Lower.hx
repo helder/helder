@@ -184,7 +184,9 @@ class Lower implements ShaderAdapter {
 			paramsObject = {id: v.id, name: v.name, fields: new Map()};
 			for (f in sortedFields(a)) {
 				var optional = f.meta.has(":optional");
-				var s = declareNamed(f.name, type(optional ? unNull(f.type) : f.type, f.pos), f.pos, vs, true);
+				var t = type(optional ? unNull(f.type) : f.type, f.pos);
+				if (t.match(TImage(_))) t = TImage(imageFormat(f));
+				var s = declareNamed(f.name, t, f.pos, vs, true);
 				s.optional = optional;
 				paramsObject.fields.set(f.name, s);
 				params.push(s);
@@ -220,11 +222,29 @@ class Lower implements ShaderAdapter {
 		if (t == TVoid) error('$name has no value', pos);
 		// (a texture: a parameter, its sampler <name>_smp next to it where the language has one)
 		if (t == TTexture && !param) error('$name: a texture is a parameter, not a local', pos);
+		if (t.match(TStorage(_, _) | TImage(_)) && (!param || kind != Stage))
+			error('$name: a ${Names.typeName(t)} is a parameter of a compute stage (its object of parameters), read and written there', pos);
 		var s = new SVar(Names.unique(Names.sanitize(name), n -> !localNames.exists(n) && (t != TTexture || !localNames.exists(n + "_smp"))), t);
 		localNames.set(s.name, true);
 		if (t == TTexture) localNames.set(s.name + "_smp", true);
 		list.push(s);
 		return s;
+	}
+
+	// a storage texture's format: its field's @:format(RGBA8 | RGBA16F | R32F), RGBA8 by default (TextureFormat's values)
+	function imageFormat(f:ClassField):Int {
+		var m = f.meta.extract(":format");
+		if (m.length == 0) return 0;
+		var name = m[0].params.length == 1 ? switch m[0].params[0].expr {
+			case EConst(CIdent(s) | CString(s)): s;
+			case _: "";
+		} : "";
+		return switch name {
+			case "RGBA8": 0;
+			case "RGBA16F": 4;
+			case "R32F": 5;
+			case _: error('${f.name}: a storage texture\'s @:format is RGBA8, RGBA16F or R32F, not $name', f.pos);
+		}
 	}
 
 	// (an optional field's type: T of Null<T>)
@@ -273,6 +293,9 @@ class Lower implements ShaderAdapter {
 					case [SHADER_PACK, "Vec3"]: TVec(3);
 					case [SHADER_PACK, "Vec4"]: TVec(4);
 					case [SHADER_PACK, "Mat4"]: TMat4;
+					// (a compute stage's storage buffers)
+					case [SHADER_PACK, "Storage"]: TStorage(type(params[0], pos), false);
+					case [SHADER_PACK, "RWStorage"]: TStorage(type(params[0], pos), true);
 					case ["", "Null"]: error('${t.toString()}: a nullable type is not a shader type', pos);
 					case _: error('${t.toString()} is not a shader type (Float, Int, Bool, Vec2, Vec3, Vec4, Mat4 and structs of them)', pos);
 				}
@@ -287,6 +310,8 @@ class Lower implements ShaderAdapter {
 					case [SHADER_PACK, "Vec4Data"]: TVec(4);
 					case [SHADER_PACK, "Mat4Data"]: TMat4;
 					case [SHADER_PACK, "Texture2D"]: TTexture;
+					// (RGBA8: a parameter's @:format another)
+					case [SHADER_PACK, "StorageTexture"]: TImage(0);
 					case _:
 						var s = struct(c, pos);
 						if (!haxeTypes.exists(s)) haxeTypes.set(s, t.follow());
@@ -531,7 +556,7 @@ class Lower implements ShaderAdapter {
 			case _:
 				var x = expr(e, out);
 				switch x.e {
-					case ECall(_) | EBuiltin("discard", _):
+					case ECall(_) | EBuiltin("discard" | "atomicAdd" | "atomicMin" | "atomicMax" | "textureStore", _):
 						out.push(SEval(x));
 					case _:
 				}
@@ -561,6 +586,7 @@ class Lower implements ShaderAdapter {
 				var s = locals.get(v.id);
 				if (s == null) error('${v.name} is not a local of this function', e.pos);
 				if (s.type == TTexture) error('${v.name}: a texture parameter is not assigned', e.pos);
+				if (s.type.match(TStorage(_, _) | TImage(_))) error('${v.name}: a storage parameter is not assigned (its elements are: ${v.name}[i] = x)', e.pos);
 				s.assigned = true;
 				s;
 			case TParenthesis(x) | TMeta(_, x): target(x);
@@ -630,6 +656,7 @@ class Lower implements ShaderAdapter {
 			case TIf(c, a, b) if (b != null):
 				var t = type(e.t, e.pos);
 				if (t == TTexture) error("a texture is chosen by no condition (pass the parameter on)", e.pos);
+				if (t.match(TStorage(_, _) | TImage(_))) error("a storage buffer or texture is chosen by no condition", e.pos);
 				var cond = coerce(expr(c, out), TBool, c.pos);
 				// (a variant's choice by a constant: the branch it takes alone)
 				switch cond.e {
@@ -861,6 +888,31 @@ class Lower implements ShaderAdapter {
 			}
 		}
 		switch c.kind {
+			case KAbstractImpl(a) if (a.get().pack.join(".") == SHADER_PACK && (a.get().name == "Storage" || a.get().name == "RWStorage")):
+				// (a storage buffer's element read, b[i], or written, b[i] = v: SStore, its value the expression's)
+				var b = expr(args[0], out);
+				return switch cf.name {
+					case "get":
+						{e: EIndex(b, coerce(expr(args[1], out), TInt, args[1].pos)), t: t};
+					case "set":
+						var i = coerce(expr(args[1], out), TInt, args[1].pos), v = coerce(expr(args[2], out), t, args[2].pos);
+						// (the index and the value read once: locals unless they are)
+						if (!i.e.match(ELocal(_) | EInt(_))) {
+							var tmp = temp(TInt);
+							out.push(SDecl(tmp, i));
+							i = local(tmp);
+						}
+						if (!v.e.match(ELocal(_))) {
+							var tmp = temp(t);
+							out.push(SDecl(tmp, v));
+							v = local(tmp);
+						}
+						out.push(SStore(b, i, v));
+						v;
+					case "get_length":
+						error("the length of a storage buffer is not known to every back end (Metal's buffers have none): pass the count in a uniform block", e.pos);
+					case name: error('${a.get().name}.$name is not supported in a shader', e.pos);
+				}
 			case KAbstractImpl(a) if (a.get().pack.join(".") == SHADER_PACK):
 				var xs = lowered();
 				var name = cf.name;
@@ -890,6 +942,9 @@ class Lower implements ShaderAdapter {
 		if (p == "Std" && cf.name == "int") return {e: EConvert(coerce(expr(args[0], out), TFloat, args[0].pos)), t: TInt};
 		var g = func(c, cf, e.pos);
 		var xs = [for (i in 0...args.length) coerce(expr(args[i], out), g.params[i].type, args[i].pos)];
+		for (x in xs)
+			if (x.t.match(TStorage(_, _) | TImage(_)))
+				error('${cf.name}: a ${Names.typeName(x.t)} is read and written in the compute function itself, not passed on (GLSL\'s buffers are no parameters)', e.pos);
 		return {e: ECall(g, xs), t: g.ret};
 	}
 
