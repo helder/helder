@@ -1072,7 +1072,28 @@ fix.
   prefilter in helder itself (a pass at load, or the asset step), cubemaps
   in gfx.
 - **The 3D API close to three.js** (see Aims), after a study of three.js,
-  Babylon.js, PlayCanvas, Godot and Bevy.
+  Babylon.js, PlayCanvas, Godot and Bevy (*the study and the design*:
+  src/helder/scene/DESIGN-3D.md, with each area's comparison, the API in
+  Haxe and markup, the mobile budgets and their frames). In phases,
+  ordered by value to games like Little Skies against cost:
+  1. shapes (`Geometry`: cylinder, cone, torus, lathe, tube, `Curve3`),
+     shading models as slots of pbr (`direct` and `indirect`: lambert,
+     toon, phong; unlit, matcap, normals, depth), `Sprites`, the
+     hemisphere light;
+  2. a single-sampled depth and normal prepass (`ViewBuffers`) and the
+     effects on it, merged into one composite: depth of field (tilt-shift
+     by depth), GTAO, outlines and selection, FXAA, LUTs;
+  3. `Lines` with width, `Debug` drawing and helpers, triangle raycasts
+     on a BVH (packed by the asset step), `Text3D`;
+  4. lights at scale: 8 a draw, `ClusteredLights` on GL ES 3.0 and
+     WebGL2 (CPU froxels), spot and point shadows in an atlas, LOD;
+  5. indirect light: cube and array textures in gfx, the prefilter in
+     helder, SH, light and reflection probes, lightmaps (TEXCOORD_1),
+     area lights (LTC);
+  6. glTF's remaining material extensions, their variants chosen from
+     the typed models when compiling;
+  7. the high end: SSR, TAA, SMAA, motion blur, god rays, occlusion
+     queries, a transform gizmo.
 - **The scene in view's markup**, react-three-fiber's model on
   `helder.scene.view` (a prototype: `<Scene>` in ui's layout, `<Ui>`, picking
   by bounds; examples/planets, tests/3d-ui):
