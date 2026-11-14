@@ -90,10 +90,12 @@ class Instancing {
 			var k = rand(), g = 0.35 + rand() * 0.4;
 			tints.push(k < 0.15 ? new Vec3(g * 0.7, g * 0.85, g * 1.2) : k < 0.55 ? new Vec3(g * 1.15, g * 0.8, g * 0.55) : new Vec3(g, g * 0.95, g * 0.9));
 		}
+		// #region instanced-mesh
 		set = new InstancedMesh(rock, MAX_INSTANCES, count);
 		for (i in 0...MAX_INSTANCES)
 			set.setColor(i, tints[i].x, tints[i].y, tints[i].z);
 		InstancedMesh.attach(world.node("belt"), set);
+		// #endregion
 		// (a planet in the middle)
 		var planet = world.node("planet");
 		MeshRenderer.attach(planet, Shapes.sphere(device, new Material("planet", new Vec4(0.75, 0.55, 0.35, 1), 0, 0.6), 9, 48, 24));
@@ -142,6 +144,7 @@ class Instancing {
 		eye.position = new Vec3(Math.cos(a) * 105, 34 + Math.sin(t * 0.13) * 10, Math.sin(a) * 105);
 		eye.lookAt(new Vec3(0, 0, 0));
 		var n = mode == 2 ? count : shownNodes;
+		// #region update
 		for (i in 0...n) {
 			var o = phase[i] + t * speed[i], r = radius[i];
 			var x = Math.cos(o) * r, z = Math.sin(o) * r, y = height[i];
@@ -154,6 +157,7 @@ class Instancing {
 				node.scale = new Vec3(size[i], size[i], size[i]);
 			}
 		}
+		// #endregion
 	}
 
 	public function draw(enc:Encoder)

@@ -2,7 +2,10 @@
 // Chromium (Playwright): bin/site served, every example a card, then the
 // Play button of every demo pressed (or of the ids given): each started (data-hydrated, the
 // graphics API it draws with in data-gfx), its canvas drawn (it looks
-// different from before; a sound only started), no console errors. With a
+// different from before; a sound only started), no console errors. Then
+// the docs (bin/site/docs): every page, its sidebar and its examples'
+// sources, a TypeScript twin's tab, and docs/examples' demos played in
+// their pages (the index's were played above). With a
 // directory, the page's screenshots at a phone's width and a desktop's are
 // written there.
 //
@@ -21,9 +24,11 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dir = path.join(root, 'bin/site');
 const [shots, ...ids] = process.argv.slice(2);
 const site = JSON.parse(fs.readFileSync(path.join(root, 'bin/site-build/examples.json'), 'utf8'));
-const play = ids.length ? ids : site.examples.filter((e) => e.demo).map((e) => e.id);
+// (the index's examples: docs/examples' are played in their pages, below)
+const listed = site.examples.filter((e) => !e.docs);
+const play = ids.length ? ids.filter((id) => !site.examples.find((e) => e.id === id)?.docs) : listed.filter((e) => e.demo).map((e) => e.id);
 
-const types = { '.mjs': 'text/javascript', '.js': 'text/javascript', '.wasm': 'application/wasm', '.html': 'text/html', '.json': 'application/json' };
+const types = { '.css': 'text/css', '.mjs': 'text/javascript', '.js': 'text/javascript', '.wasm': 'application/wasm', '.html': 'text/html', '.json': 'application/json' };
 const server = createServer(async (req, res) => {
 	const p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
 	try {
@@ -50,10 +55,10 @@ try {
 	page.on('pageerror', (e) => errors.push(String(e)));
 	await page.goto(url);
 	const cards = await page.locator('article.card').count();
-	check(cards === site.examples.length, `${cards} cards, ${site.examples.length} examples`);
+	check(cards === listed.length, `${cards} cards, ${listed.length} examples`);
 	const buttons = await page.locator('button.play').count();
-	check(buttons === site.examples.filter((e) => e.demo).length, `${buttons} Play buttons`);
-	for (const e of site.examples) {
+	check(buttons === listed.filter((e) => e.demo).length, `${buttons} Play buttons`);
+	for (const e of listed) {
 		const card = page.locator(`#${e.id}`);
 		const title = await card.locator('h2').textContent();
 		if (title !== e.title) check(false, `${e.id}'s title: ${title}`);
@@ -115,12 +120,69 @@ try {
 		await start('planets');
 		await phone(page, shots, 'planets');
 	}
+	await checkDocs(page);
 	check(errors.length === 0, `no console errors${errors.length ? ': ' + errors.join('\n') : ''}`);
 } finally {
 	await browser.close();
 	server.close();
 }
 if (failures) process.exit(1);
+
+// the docs: each page of docs/search.json (Docs.hx's, every page) loaded,
+// its sidebar listing every page, each example's source shown (one tab's);
+// the docs' own examples played as the index's are
+async function checkDocs(page) {
+	const pages = JSON.parse(fs.readFileSync(path.join(dir, 'docs/search.json'), 'utf8'));
+	check(pages.length > 0, `${pages.length} docs pages`);
+	for (const p of pages) {
+		await page.goto(url + p.url);
+		const title = await page.locator('main h1').textContent();
+		check(title === p.title, `${p.url}: its title, ${title}`);
+		const links = await page.locator('.sidebar a').count();
+		if (links !== pages.length) check(false, `${p.url}: ${links} pages in its sidebar, of ${pages.length}`);
+		const figures = page.locator('figure.example');
+		const n = await figures.count();
+		for (let k = 0; k < n; k++) {
+			const f = figures.nth(k);
+			const shown = f.locator('pre.code:not([hidden])');
+			const text = (await shown.count()) === 1 ? await shown.textContent() : '';
+			check(text.length > 0, `${p.url}: example ${k + 1}'s source shown (${text.length} characters)`);
+			// (a TypeScript twin: its tab shows its source)
+			const tabs = f.locator('.tabs button');
+			if ((await tabs.count()) > 1) {
+				await tabs.nth(1).click();
+				const file = await tabs.nth(1).getAttribute('data-file');
+				check((await f.locator('pre.code:not([hidden])').getAttribute('data-file')) === file, `${p.url}: the ${file} tab shows it`);
+				await tabs.nth(0).click();
+			}
+			const island = f.locator('hxmc-island');
+			if (!(await island.count())) continue;
+			const id = (await island.getAttribute('id')).slice('play-'.length);
+			const e = site.examples.find((x) => x.id === id);
+			if (!e || !e.docs || (ids.length && !ids.includes(id))) continue;
+			const canvas = island.locator('canvas');
+			await island.scrollIntoViewIfNeeded();
+			const before = await canvas.screenshot();
+			await island.locator('button.play').click();
+			await page.waitForFunction((id) => {
+				const el = document.getElementById('play-' + id);
+				return el.hasAttribute('data-hydrated') || el.hasAttribute('data-error');
+			}, id, { timeout: 60000 });
+			const error = await island.getAttribute('data-error');
+			check(error === null, `${p.url}: ${id} started${error ? ': ' + error : ''}`);
+			await page.waitForTimeout(1500);
+			await island.scrollIntoViewIfNeeded();
+			check(!before.equals(await canvas.screenshot()), `${p.url}: ${id}'s canvas drawn`);
+			if (shots) await page.screenshot({ path: path.join(shots, `docs-${id}.png`) });
+		}
+	}
+	// (the search: a word of a page's heading finds it)
+	await page.goto(url + pages[0].url);
+	await page.locator('.search').fill('bloom');
+	await page.waitForSelector('.results:not([hidden]) a', { timeout: 10000 });
+	const first = await page.locator('.results a').first().getAttribute('href');
+	check(first.startsWith('docs/'), `the search finds "bloom": ${first}`);
+}
 
 // a demo at 390x844: full screen (the Fullscreen API) then expanded (as on
 // an iPhone, without element full screen): the canvas filling the screen

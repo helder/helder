@@ -20,7 +20,11 @@
 //    slots: site/numbers.mjs measures them into <out>/numbers.json, which
 //    the page reads; real devices', three.js' for the same scene, credits).
 //
-// 5. the videos are not built here: site/reel.mjs records them into
+// 5. the docs: site/docs/Docs.hx built natively and run, docs/<section>/
+// *.md into <out>/docs (docs/examples' builds among the examples above,
+// not on the index: CONTRIBUTING.md, "Docs");
+//
+// 6. the videos are not built here: site/reel.mjs records them into
 // <out>/media afterwards (pages.yml runs both); the page links them, and
 // stage.js shows a note where one is missing.
 //
@@ -28,6 +32,8 @@
 // (tens of MB of models): its fetch.mjs run first (downloading them into
 // examples/<dir>/<folder>), the folder copied beside its module and its
 // URL (relative to the pages) passed as the program's first argument.
+// SITE_SKIP_DATA=1: those not built (listed, no Play button): a quick
+// local build, or one where their fetch.mjs cannot run (Windows).
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -66,25 +72,34 @@ function demoOf(s) {
 	return null;
 }
 
-// the examples, by directory (their ids as tests/Run.hx's examples lane names them)
+// the examples, by directory (their ids as tests/Run.hx's examples lane names them);
+// then docs/examples' (the docs' own, not on the index: docs: true), a
+// directory's Haxe program its entry and its main.ts, when it has one, its
+// TypeScript twin (alt: shown beside it in the docs, built by the examples lane)
 function examples() {
 	const list = [];
-	for (const dir of fs.readdirSync('examples').sort()) {
-		const p = `examples/${dir}`;
-		if (!fs.statSync(p).isDirectory()) continue;
-		const hx = fs.readdirSync(p).filter((f) => f.endsWith('.hx')).sort();
-		const ts = ['main.ts', 'main.tsx'].find((f) => fs.existsSync(`${p}/${f}`));
-		const entries = ts ? [{ file: `${p}/${ts}`, entry: p, main: 'main', id: dir }]
-			: hx.map((f) => {
-				const main = f.slice(0, -3);
-				return { file: `${p}/${f}`, entry: `${p}/${f}`, main, id: dir + (hx.length > 1 && main.toLowerCase() !== dir.replace('-', '') ? '-' + main.toLowerCase() : '') };
-			});
-		for (const e of entries) {
-			const head = header(e.file);
-			if (!head) continue;
-			const page = fs.existsSync(`${p}/page.json`) ? JSON.parse(fs.readFileSync(`${p}/page.json`, 'utf8')) : null;
-			list.push({ ...e, dir, title: head.title, summary: head.summary ?? '', tags: (head.tags ?? '').split(',').map((t) => t.trim()).filter((t) => t),
-				demo: demoOf(head.demo), apk: head.apk === 'android', data: head.data ?? null, page });
+	for (const root of ['examples', 'docs/examples']) {
+		const docs = root !== 'examples';
+		if (!fs.existsSync(root)) continue;
+		for (const dir of fs.readdirSync(root).sort()) {
+			const p = `${root}/${dir}`;
+			if (!fs.statSync(p).isDirectory()) continue;
+			const hx = fs.readdirSync(p).filter((f) => f.endsWith('.hx')).sort();
+			const ts = ['main.ts', 'main.tsx'].find((f) => fs.existsSync(`${p}/${f}`));
+			const alt = docs && ts && hx.length > 0 && header(`${p}/${ts}`) ? `${p}/${ts}` : '';
+			const entries = ts && !alt ? [{ file: `${p}/${ts}`, entry: p, main: 'main', id: dir }]
+				: hx.map((f) => {
+					const main = f.slice(0, -3);
+					return { file: `${p}/${f}`, entry: `${p}/${f}`, main, id: dir + (hx.length > 1 && main.toLowerCase() !== dir.replace('-', '') ? '-' + main.toLowerCase() : '') };
+				});
+			for (const e of entries) {
+				const head = header(e.file);
+				if (!head) continue;
+				if (list.some((x) => x.id === e.id)) throw new Error(`site: two examples named ${e.id} (${e.file})`);
+				const page = fs.existsSync(`${p}/page.json`) ? JSON.parse(fs.readFileSync(`${p}/page.json`, 'utf8')) : null;
+				list.push({ ...e, dir, root, docs, alt, title: head.title, summary: head.summary ?? '', tags: (head.tags ?? '').split(',').map((t) => t.trim()).filter((t) => t),
+					demo: process.env.SITE_SKIP_DATA && head.data ? null : demoOf(head.demo), apk: head.apk === 'android', data: head.data ?? null, page });
+			}
 		}
 	}
 	return list;
@@ -124,9 +139,9 @@ if (help.status !== 0) {
 
 // (the files fetched at run time: each example's fetch.mjs, one at a time)
 for (const e of builds.filter((e) => e.data)) {
-	const r = spawnSync(process.execPath, [`examples/${e.dir}/fetch.mjs`], { stdio: 'inherit' });
-	if (r.status !== 0 || !fs.existsSync(`examples/${e.dir}/${e.data}`)) {
-		console.error(`site: ${e.id}'s examples/${e.dir}/fetch.mjs failed`);
+	const r = spawnSync(process.execPath, [`${e.root}/${e.dir}/fetch.mjs`], { stdio: 'inherit' });
+	if (r.status !== 0 || !fs.existsSync(`${e.root}/${e.dir}/${e.data}`)) {
+		console.error(`site: ${e.id}'s ${e.root}/${e.dir}/fetch.mjs failed`);
 		process.exit(1);
 	}
 }
@@ -157,8 +172,9 @@ if (failed.length) {
 // the layout: each build's module and assets, the browser modules and fonts shared
 const site = [];
 for (const e of all) {
-	const item = { id: e.id, title: e.title, summary: e.summary, tags: e.tags, source: `${REPO}/tree/main/examples/${e.dir}`,
-		demo: e.demo, wasm: '', imports: [], fonts: [], assets: '', apk: null, args: [], page: null, dataBytes: 0 };
+	const item = { id: e.id, title: e.title, summary: e.summary, tags: e.tags, source: `${REPO}/tree/main/${e.root}/${e.dir}`,
+		demo: e.demo, wasm: '', imports: [], fonts: [], assets: '', apk: null, args: [], page: null, dataBytes: 0,
+		docs: e.docs, file: e.file, alt: e.alt, dir: `${e.root}/${e.dir}` };
 	if (e.page) item.page = { description: e.page.description ?? [], compare: e.page.compare ?? [], devices: (e.page.devices ?? []).map((d) => ({ fetchedGzMB: '–', ...d })), credits: e.page.credits ?? [],
 		numbers: e.page.numbers ?? [], seconds: e.page.seconds ?? 0 };
 	if (e.apk && process.env.SITE_APK) {
@@ -183,9 +199,9 @@ for (const e of all) {
 			// (only the data files: the fetch's metadata and references stay out,
 			// and a .glb packed into .hxm3d files, which the program reads instead)
 			fs.mkdirSync(`${dest}/${e.data}`, { recursive: true });
-			const files = fs.readdirSync(`examples/${e.dir}/${e.data}`);
+			const files = fs.readdirSync(`${e.root}/${e.dir}/${e.data}`);
 			for (const f of files.filter((f) => /\.(glb|hxm3d|ktx2|bin)$/.test(f) && !(f.endsWith('.glb') && files.includes(f.slice(0, -4) + '.hxm3d')))) {
-				fs.copyFileSync(`examples/${e.dir}/${e.data}/${f}`, `${dest}/${e.data}/${f}`);
+				fs.copyFileSync(`${e.root}/${e.dir}/${e.data}/${f}`, `${dest}/${e.data}/${f}`);
 				item.dataBytes += fs.statSync(`${dest}/${e.data}/${f}`).size;
 			}
 			item.args = [`examples/${e.id}/${e.data}/`];
@@ -221,14 +237,30 @@ const clips = CLIPS.map((c) => {
 fs.writeFileSync(`${work}/examples.json`, JSON.stringify({ out: `${out}/index.html`, dir: out, repository: REPO, examples: site, clips }, null, '\t') + '\n');
 
 // the page: index.tsx built natively, then run
-const page = await run([...cli, 'build', 'site/index.tsx', '-o', `${work}/page`], `${work}/page.log`);
+// (.exe on Windows: the build names its output so)
+const exe = process.platform === 'win32' ? '.exe' : '';
+const page = await run([...cli, 'build', 'site/index.tsx', '-o', `${work}/page${exe}`], `${work}/page.log`);
 if (page.code !== 0) {
 	console.error(page.text);
 	process.exit(1);
 }
-const r = spawnSync(path.resolve(`${work}/page`), [], { stdio: 'inherit' });
+const r = spawnSync(path.resolve(`${work}/page${exe}`), [], { stdio: 'inherit' });
 if (r.status !== 0 || !fs.existsSync(`${out}/index.html`)) {
 	console.error('site: the page did not write ' + out + '/index.html');
 	process.exit(1);
 }
-console.log(`site: ${out}/index.html, ${site.length} examples (${builds.length} playable), ${((Date.now() - t0) / 1000).toFixed(0)}s`);
+
+// the docs (docs/: site/docs/Docs.hx, helder.web's static renderer on the
+// Markdown pages, their examples the builds above): built natively, then run
+const docs = await run([...cli, 'build', 'site/docs/Docs.hx', '-o', `${work}/docs${exe}`], `${work}/docs.log`);
+if (docs.code !== 0) {
+	console.error(docs.text);
+	process.exit(1);
+}
+const d = spawnSync(path.resolve(`${work}/docs${exe}`), [out], { stdio: 'inherit' });
+if (d.status !== 0) {
+	console.error('site: the docs failed (bin/site-build/docs ' + out + ')');
+	process.exit(1);
+}
+for (const f of ['docs.css', 'docs.js']) fs.copyFileSync(`site/docs/${f}`, `${out}/docs/${f}`);
+console.log(`site: ${out}/index.html, ${site.filter((e) => !e.docs).length} examples (${builds.filter((e) => !e.docs).length} playable), ${out}/docs, ${((Date.now() - t0) / 1000).toFixed(0)}s`);

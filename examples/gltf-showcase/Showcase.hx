@@ -45,6 +45,7 @@ class Showcase {
 		camera = Camera.attach(eye, Camera.perspective(0.8, 0.01, 100));
 	}
 
+	// #region environments
 	// the renderer's features: normal maps, the environments (the first
 	// shown), bloom and ACES; envs: each environment's atlas bytes
 	public function setup(r:Renderer, envs:Array<haxe.io.Bytes>) {
@@ -62,6 +63,7 @@ class Showcase {
 		r.exposure = 1;
 		environment(r, 0);
 	}
+	// #endregion
 
 	// the environment k lights and is drawn behind the scene
 	public function environment(r:Renderer, k:Int) {

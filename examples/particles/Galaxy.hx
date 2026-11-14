@@ -62,6 +62,7 @@ class Galaxy {
 		return seed / 0x7fffffff;
 	}
 
+	// #region emit
 	// a frame of dt seconds: the clock moved, its share of a million particles born
 	public function update(dt:Float) {
 		fx.advance(dt);
@@ -95,6 +96,7 @@ class Galaxy {
 					LIFE * (0.4 + rand() * 0.6), 0, 0.5);
 			}
 		}
+		// #endregion
 		// (the camera about the core, turning slowly by itself)
 		yaw += dt * 0.04;
 		var cp = Math.cos(pitch);

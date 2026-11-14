@@ -127,7 +127,7 @@ All under `src/helder`, Haxe package `helder.<name>`:
 | `view` | signals and JSX-like markup, compiled to direct calls on the renderer each subtree's tag chooses |
 | `ui` | flexbox layout, events, focus and accessibility, actions and keymaps, menus, drawn on gfx; the platform's menus and text editors where asked (helder.ui.platform) |
 | `web` | `view` on the web: DOM and static renderers, hydration, islands |
-| `scene` | 3D on gfx: glTF, a PBR renderer, animation, input actions |
+| `scene` | 3D on gfx: glTF, a PBR renderer, animation, input actions (docs/scene: its docs, each page's examples playable on the site) |
 | `asset` | files by path: images, fonts, models, sounds, bytes; checked when compiling, bundled by use (the executable, the APK, the app, beside the page), loaded by a coroutine, reloaded in place under `helder dev` |
 | `physics` | a small rigid-body core for `scene` |
 | `sprite` | 2D sprites on gfx: TexturePacker atlases, a batcher of textured quads (moved, scaled, turned, faded, added), `<Sprites>` in ui's layout |
@@ -140,6 +140,9 @@ All under `src/helder`, Haxe package `helder.<name>`:
 | `cli` | the `helder` command, a native program on `async`: `dev`, `build`, `run`, `test` and `inspect`, for desktop, the web, Android and iOS |
 | `pack` | Android's APKs and iOS's app bundles around hxmc's native code, without an SDK: zip, binary XML, resources.arsc (icons, the splash theme), DEX, v2 signing (P-256), the debug key; Info.plist, CodeResources, .ipa |
 
+`docs/` has the docs' pages (Markdown, rendered by helder.web's static
+renderer into the site, each feature's example played in its page; the
+packages' READMEs they cover are generated from them: CONTRIBUTING.md),
 `examples/` has a program per folder, `apps/` whole apps (`apps/viewer`:
 an image viewer, apps/viewer/README.md; `apps/foundry`: a font editor,
 apps/foundry/README.md); `tests/Run.hx` has the checks, and
