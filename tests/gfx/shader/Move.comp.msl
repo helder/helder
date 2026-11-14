@@ -1,0 +1,43 @@
+#include <metal_stdlib>
+using namespace metal;
+struct ComputeInput {
+	int x;
+	int y;
+	int z;
+	int localX;
+	int localY;
+	int localZ;
+	int localIndex;
+	int groupX;
+	int groupY;
+	int groupZ;
+};
+struct MoveStep {
+	float dt;
+	int count;
+};
+struct Particle {
+	float4 pos;
+	float4 vel;
+};
+void cs(ComputeInput id, MoveStep step_2, device Particle* sb_1, device float4* sb_2, device atomic_int* sb_3) {
+	if (id.x >= step_2.count) {
+		return;
+	}
+	Particle q = sb_1[id.x];
+	Particle moved = Particle{float4(q.pos.xyz + (q.vel.xyz * step_2.dt), q.pos.w), q.vel};
+	int t0 = id.x;
+	sb_1[t0] = moved;
+	if (moved.pos.w > 0.5) {
+		int k = atomic_fetch_add_explicit(&sb_3[1], 1, memory_order_relaxed);
+		float4 t1 = moved.pos;
+		sb_2[k] = t1;
+	}
+}
+struct MoveStep_buffer {
+	float dt;
+	int count;
+};
+kernel void main0(uint3 gid [[thread_position_in_grid]], uint3 lid [[thread_position_in_threadgroup]], uint lidx [[thread_index_in_threadgroup]], uint3 grp [[threadgroup_position_in_grid]], constant MoveStep_buffer& u_0 [[buffer(0)]], device Particle* sb_1 [[buffer(1)]], device float4* sb_2 [[buffer(2)]], device atomic_int* sb_3 [[buffer(3)]]) {
+	cs(ComputeInput{int(gid.x), int(gid.y), int(gid.z), int(lid.x), int(lid.y), int(lid.z), int(lidx), int(grp.x), int(grp.y), int(grp.z)}, MoveStep{u_0.dt, u_0.count}, sb_1, sb_2, sb_3);
+}

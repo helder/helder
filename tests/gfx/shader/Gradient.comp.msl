@@ -1,0 +1,31 @@
+#include <metal_stdlib>
+using namespace metal;
+struct ComputeInput {
+	int x;
+	int y;
+	int z;
+	int localX;
+	int localY;
+	int localZ;
+	int localIndex;
+	int groupX;
+	int groupY;
+	int groupZ;
+};
+struct GradientSize {
+	int width;
+	int height;
+};
+void cs(ComputeInput id, GradientSize size, texture2d<float, access::write> img_1) {
+	if ((id.x >= size.width) || (id.y >= size.height)) {
+		return;
+	}
+	img_1.write(float4(float(id.x * 8) / 255.0, float(id.y * 8) / 255.0, 0.5, 1.0), uint2(id.x, id.y));
+}
+struct GradientSize_buffer {
+	int width;
+	int height;
+};
+kernel void main0(uint3 gid [[thread_position_in_grid]], uint3 lid [[thread_position_in_threadgroup]], uint lidx [[thread_index_in_threadgroup]], uint3 grp [[threadgroup_position_in_grid]], constant GradientSize_buffer& u_0 [[buffer(0)]], texture2d<float, access::write> img_1 [[texture(1)]]) {
+	cs(ComputeInput{int(gid.x), int(gid.y), int(gid.z), int(lid.x), int(lid.y), int(lid.z), int(lidx), int(grp.x), int(grp.y), int(grp.z)}, GradientSize{u_0.width, u_0.height}, img_1);
+}
