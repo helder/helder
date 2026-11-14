@@ -75,6 +75,8 @@ interface Example {
 	args: string[];
 	page: Page | null;
 	dataBytes: number;
+	// docs/examples' (the docs' own: played in their pages, not listed here)
+	docs: boolean;
 }
 
 // a video site/reel.mjs records (media/<id>.mp4 and its poster): the showreel, then a clip of each showcase demo
@@ -89,7 +91,7 @@ interface Clip {
 	seconds: number;
 }
 
-const examples = site.examples as Example[];
+const examples = (site.examples as Example[]).filter(e => !e.docs);
 const clips = site.clips as Clip[];
 const reel = clips.filter(c => c.id === "showreel");
 const demoClips = clips.filter(c => c.id !== "showreel");
@@ -324,7 +326,7 @@ Static.write(site.out, Static.document(<html lang="en">
 			<h1>helder</h1>
 			<p class="lead">An app and game stack in Haxe, with a TypeScript frontend, compiled by hxmc to native code and WebAssembly.
 				These are its examples; the {playable} with a Play button run here, in your browser.</p>
-			<p class="lead"><a href={site.repository}>Source on GitHub</a></p>
+			<p class="lead"><a href="docs/scene/index.html">Docs</a> · <a href={site.repository}>Source on GitHub</a></p>
 			<nav class="showcase" aria-label="Showcase">
 				<h2>Showcase</h2>
 				<ul>{showcase.map(ex => <li><a href={ex.id + ".html"}><strong>{ex.title}</strong><span>{ex.summary}</span></a></li>)}</ul>

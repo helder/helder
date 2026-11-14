@@ -1,10 +1,13 @@
-# The examples' page (site/, bun run site) on GitHub Pages: on pushes to
+# The examples' page (site/, bun run site) and the docs (docs/, rendered by
+# site/docs/Docs.hx into bin/site/docs) on GitHub Pages: on pushes to
 # main, bin/site built (each example that runs in a browser built for the
-# web, an `apk: android` example's APK, the page's TSX built and run), the showreel
+# web, docs/examples' too, an `apk: android` example's APK, the page's TSX
+# built and run, the docs' pages built and run), the showreel
 # and the demos' clips recorded headless into bin/site/media (bun run
 # site:reel: helder run --headless's frames streamed to ffmpeg; the videos
 # are not in git), checked in headless Chromium (bun run
-# site:check: every card, every demo played), the demos' numbers measured
+# site:check: every card, every demo played, every docs page and the docs'
+# own examples), the demos' numbers measured
 # (bun run site:numbers), then deployed as the Pages
 # artifact (the repository's Pages source: GitHub Actions).
 name: pages

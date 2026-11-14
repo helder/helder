@@ -1,7 +1,9 @@
+<!-- Generated from docs/scene/markup.md by site/docs/readme.mjs: edit those, not this file. -->
+
 # helder.scene.view
 
-`helder.view`'s markup and signals on `helder.scene`'s scene graph (Haxe package
-`helder.scene.view`; a prototype, see the README's roadmap). An
+`helder.view`'s markup and signals on `helder.scene`'s scene graph (Haxe
+package `helder.scene.view`; a prototype, see the [roadmap](/README.md)). An
 optional package: the 3D core knows nothing of it.
 
 ```haxe
@@ -23,6 +25,14 @@ UiWindow.run(<Surface title="Lamp" width={640} height={400}>
 </Surface>);
 pos(new Vec3(1, 1, 0));   // the node moves at the next flush: no reconciliation, no re-render
 ```
+
+A scene in ui's layout, all markup: a `<Scene>` beside a panel, the
+orbits' rotations signals the ui's clock turns, a planet picked by a
+click, its name over it with `<Ui>`:
+
+Example: [Planets](/examples/planets/Planets.hx) (`helder run examples/planets/Planets.hx`; it plays in the docs' page).
+
+## Elements
 
 - **`<Scene>`** (`SceneTags.Scene`): a ui node, a box in ui's layout (`grow`,
   `width`, `height`, `style`), drawing its `world` (its own by default) as
@@ -67,9 +77,9 @@ pos(new Vec3(1, 1, 0));   // the node moves at the next flush: no reconciliation
   go moving it glides on, slowing by `damping` a frame. A tap on a mesh
   selects, a drag from it orbits.
 - **`<Stick>`** (`SceneTags.Stick`): an on-screen stick
-  (`helder.scene.input.VirtualStick`, bound by `InputMap`) drawn over the
-  ui, at rest at `left`, `bottom`, under the thumb once it holds it; the
-  pointer goes through it.
+  (`helder.scene.input.VirtualStick`, bound by `InputMap`: [Input](/docs/scene/input.md))
+  drawn over the ui, at rest at `left`, `bottom`, under the thumb once it
+  holds it; the pointer goes through it.
 - **`<Ui>`** (`SceneTags.Ui`): back to ui inside a scene, drei's `<Html>`:
   a scene node (`position`) whose children, ui's markup, are drawn over the
   box at its place, centred; placed from the frame drawn (a frame late) and
@@ -80,11 +90,14 @@ pos(new Vec3(1, 1, 0));   // the node moves at the next flush: no reconciliation
 
 Elements: `node`, `mesh` (shape `box`, `sphere`, `plane`; size, color,
 metallic, roughness), `light` (kind `directional`, `point`; color,
-intensity, range), `camera` (fov, near, far); `position`, `rotation`,
+intensity, range), `camera` (fov, near, far), `instances` (an
+`InstancedMesh`: [Instancing](/docs/scene/instancing.md)); `position`, `rotation`,
 `scale`, `name`, `visible` on all. Markup outside a `<Scene>` renders into a
 world's root: `Render.render(<node/>, SceneRenderer.root(world))`. Per-frame
 work goes through the frame stages (`helder.scene.Stages`), not through
 signals.
+
+## Status
 
 A prototype: properties go through `setProperty` by name; typed
 constructors per tag, checked when compiling, come next. A struct value
@@ -100,4 +113,3 @@ world), `tests/3d-ui/SurfaceTest.hx` (under Xvfb: two `<Surface>`s, a
 their presses, a tap on the mesh, a drag from it orbiting the camera, a
 cancel, `<Ui>` placed, `<Stick>` drawn); `OrbitControls.test.hx` (the
 camera's motion without a GPU, natively and as wasm32-wasi).
-`examples/planets` puts them together.
