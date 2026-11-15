@@ -36,7 +36,7 @@
     {"property": "grid-template-columns, grid-template-rows", "status": "partial", "values": ["<px>", "<percentage>", "<flex>", "auto", "min-content", "max-content", "minmax()", "repeat(<integer>, ...)"], "note": "named lines, fit-content() and repeat(auto-fill | auto-fit) are unsupported"},
     {"property": "grid-auto-columns, grid-auto-rows", "status": "partial", "values": ["<track size>"], "note": "one track, not a list"},
     {"property": "grid-auto-flow", "status": "implemented", "values": ["row", "column", "row dense", "column dense"]},
-    {"property": "grid-row-start, grid-row-end, grid-column-start, grid-column-end", "status": "partial", "values": ["auto", "<integer>", "span <integer>", "<area name>"], "note": "named lines (span <name>, <name> <integer>) are unsupported"}
+    {"property": "grid-row-start, grid-row-end, grid-column-start, grid-column-end", "status": "partial", "values": ["auto", "<integer>", "span <integer>", "<area name>"], "note": "named lines (span <name>, <name> <integer>) are unsupported; lines past ±32767 are clamped there and an axis has at most 65,535 tracks, as Taffy (Chrome 145 places lines to ±2,000,000 at least)"}
   ],
   "deviations": [
     {"property": "flex-direction", "value": "column", "reason": "helder.ui's default (CSS's is row); the runner sets row"},

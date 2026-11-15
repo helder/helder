@@ -16,6 +16,11 @@ package helder.ui;
 @:access(helder.ui.Layout)
 @:access(helder.ui.Node)
 class GridLayout {
+	// (the line numbers' limit, the tracks an axis has at most, an area of more cells than LARGE kept as a rectangle)
+	static inline var LINES = 32767;
+	static inline var MAX_TRACKS = 65535;
+	static inline var LARGE = 64;
+
 	static function grid(l:Layout, n:Node, w:Float, h:Float, availW:Float, availH:Float, minW:Float, maxW:Float, minH:Float, maxH:Float, padL:Float, padT:Float,
 			padH:Float, padV:Float, perform:Bool, least:Float, defH:Bool) {
 		var s = n.style, rtl = n.rtl();
@@ -264,9 +269,12 @@ class GridLayout {
 		var areas = s.gridTemplateAreas;
 		// (a line's index from 0; negative lines from the explicit grid's end;
 		// a name's: its area's start or end line, else the first line past the explicit grid)
-		function resolve(p:Grid.GridPlacement, count:Int, columns:Bool):{start:Int, span:Int} {
-			inline function index(line:Int):Int
+		// (lines clamped to ±LINES, an area to the tracks there are room for: MAX_TRACKS, as Taffy's i16 lines)
+		function resolveLines(p:Grid.GridPlacement, count:Int, columns:Bool):{start:Int, span:Int} {
+			inline function index(line:Int):Int {
+				if (line > LINES) line = LINES else if (line < -LINES) line = -LINES;
 				return line > 0 ? line - 1 : count + 1 + line;
+			}
 			function named(name:String, isEnd:Bool):Int {
 				var atEnd = isEnd;
 				var a = areas == null ? null : areas.areas.get(name);
@@ -305,21 +313,49 @@ class GridLayout {
 			if (p.end != 0) return {start: Std.int(Math.max(0, index(p.end) - p.span)), span: p.span};
 			return {start: -1, span: p.span};
 		}
+		function resolve(p:Grid.GridPlacement, count:Int, columns:Bool):{start:Int, span:Int} {
+			var r = resolveLines(p, count, columns);
+			if (r.span > MAX_TRACKS) r.span = MAX_TRACKS;
+			if (r.start > MAX_TRACKS - r.span) r.start = MAX_TRACKS - r.span;
+			return r;
+		}
 		// (the flow's axes: major across, minor along a row of the flow)
 		var minorCount = byColumn ? explicitRows : explicitCols;
-		var taken = new Map<Int, Bool>();
-		inline function key(major:Int, minor:Int):Int
-			return major * 4096 + minor;
+		// (the cells taken: a small area's each in taken (by major, then minor), a large one's as its
+		// rectangle (major, minor, majorSpan, minorSpan) in large, each small one's in small too)
+		var taken = new Map<Int, Map<Int, Bool>>(), small:Array<Int> = [], large:Array<Int> = [];
+		inline function overlaps(r:Array<Int>, major:Int, minor:Int, majorSpan:Int, minorSpan:Int):Bool {
+			var i = 0, hit = false;
+			while (i < r.length && !hit) {
+				hit = major < r[i] + r[i + 2] && r[i] < major + majorSpan && minor < r[i + 1] + r[i + 3] && r[i + 1] < minor + minorSpan;
+				i += 4;
+			}
+			return hit;
+		}
 		function free(major:Int, minor:Int, majorSpan:Int, minorSpan:Int):Bool {
-			for (a in major...major + majorSpan)
-				for (b in minor...minor + minorSpan)
-					if (taken.exists(key(a, b))) return false;
+			if (overlaps(large, major, minor, majorSpan, minorSpan)) return false;
+			if (majorSpan * minorSpan > LARGE) return !overlaps(small, major, minor, majorSpan, minorSpan);
+			for (a in major...major + majorSpan) {
+				var t = taken.get(a);
+				if (t != null)
+					for (b in minor...minor + minorSpan)
+						if (t.exists(b)) return false;
+			}
 			return true;
 		}
 		function take(it:GridItem, major:Int, minor:Int, majorSpan:Int, minorSpan:Int) {
-			for (a in major...major + majorSpan)
-				for (b in minor...minor + minorSpan)
-					taken.set(key(a, b), true);
+			var r = majorSpan * minorSpan > LARGE ? large : small;
+			r.push(major);
+			r.push(minor);
+			r.push(majorSpan);
+			r.push(minorSpan);
+			if (r == small)
+				for (a in major...major + majorSpan) {
+					var t = taken.get(a);
+					if (t == null) taken.set(a, t = new Map());
+					for (b in minor...minor + minorSpan)
+						t.set(b, true);
+				}
 			if (byColumn) {
 				it.col = major;
 				it.row = minor;
