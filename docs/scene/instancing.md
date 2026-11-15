@@ -51,18 +51,25 @@ optimisation against:
 |---|---|---|
 | main (the scene's colour pass) | `renderer.draws` (and `instanced`, `culled`) | `FrameCounts.sceneDraws` |
 | shadow maps (every cascade) | `renderer.shadowDraws` (`Shadows.draws`) | `FrameCounts.shadowDraws` |
-| post (bloom down and up, the composite, stages) | `renderer.post.draws` | `FrameCounts.postDraws` |
+| the view buffers' prepass (`ViewBuffers`: the opaque draws again, single-sampled) | `renderer.prepassDraws` | `FrameCounts.prepassDraws` |
+| post (AO's and depth of field's passes, bloom down and up, the composite, stages) | `renderer.post.draws` | `FrameCounts.postDraws` |
 | everything the GPU was given (the UI's too) | | `FrameCounts.draws`, `passes`, `instances` |
 
 `helder.gfx.FrameCounts` is counted from its last `reset()`; a headless
 run's `--stats out.json` resets it at each frame and writes these for every
-frame (`sceneDraws`, `shadowDraws`, `postDraws` beside `draws` and
-`passes`), and prints their medians:
+frame (`sceneDraws`, `shadowDraws`, `prepassDraws`, `postDraws` beside
+`draws` and `passes`), and prints their medians:
 
 ```
 HELDER_CONTROLS=none bun run helder run examples/showroom --headless --stats bin/showroom-stats.json --at 4
-headless: 3D draws by pass: main 17 (at most 18), shadow maps 17 (at most 17), post 12 (at most 12)
+headless: 3D draws by pass: main 12 (at most 12), shadow maps 24 (at most 24), prepass 0 (at most 0), post 0 (at most 0)
+bun run helder run examples/postfx --headless --stats bin/postfx-stats.json --at 2
+headless: 3D draws by pass: main 7 (at most 7), shadow maps 0 (at most 0), prepass 7 (at most 7), post 15 (at most 15)
 ```
+
+(examples/postfx: the prepass draws the opaque shapes again, one sample
+a pixel; post is AO's two passes, depth of field's one, bloom's 11 and
+one composite, the outline, FXAA and the tilt-shift's mix folded in.)
 
 ## Sprites
 

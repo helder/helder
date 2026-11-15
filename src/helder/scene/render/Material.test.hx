@@ -42,7 +42,7 @@ function tests() {
 		// the colour at the origin, its normal n, the node's up, tinted
 		function shade(m:Material, n:Vec3, up:Vec3, l:Vec3, eye:Vec3, ?tint:Vec3, ?fog:Fog):Vec4
 			return shadeAt(n, new Vec3(0, 0, 0), new Vec2(0, 0), up, tint ?? new Vec3(1, 1, 1), frame(l, eye, fog), material(m), white, white, white,
-				white, white, white, white);
+				white, white, white, white, white);
 		function sum(c:Vec4):Float
 			return c.x + c.y + c.z;
 

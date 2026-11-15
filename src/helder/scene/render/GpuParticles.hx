@@ -47,6 +47,8 @@ class GpuParticles implements RenderFeature {
 	final quad:Buffer;
 	final indices:Buffer;
 	final viewBytes = Bytes.alloc(GpuParticleShader.uniforms[0].size);
+	// (the block as written, kept: nothing allocated per frame)
+	final viewBlock:GpuParticleView = {viewProj: helder.gfx.shader.Mat4.identity(), right: new Vec4(0, 0, 0, 0), up: new Vec4(0, 0, 0, 0), forward: new Vec4(0, 0, 0, 0), gravity: new Vec4(0, 0, 0, 0), fog: new Vec4(0, 0, 0, 0), fogShape: new Vec4(0, 0, 0, 0), eye: new Vec4(0, 0, 0, 0)};
 	var pipeline:Pipeline = cast 0;
 	// the next slot written, and the run written since the last upload (from, count)
 	var next = 0;
@@ -153,16 +155,16 @@ class GpuParticles implements RenderFeature {
 		var m = frame.camera.node.worldMatrix();
 		var right = MathTools.transformDir(m, new Vec3(1, 0, 0)), up = MathTools.transformDir(m, new Vec3(0, 1, 0)),
 			forward = MathTools.transformDir(m, new Vec3(0, 0, -1));
-		GpuParticleShader.params.view.write({
-			viewProj: frame.viewProj,
-			right: new Vec4(right.x, right.y, right.z, frame.hdr ? 1 : 0),
-			up: new Vec4(up.x, up.y, up.z, time),
-			forward: new Vec4(forward.x, forward.y, forward.z, drag),
-			gravity: new Vec4(gravity.x, gravity.y, gravity.z, 0),
-			fog: Fog.colorOf(frame.fog),
-			fogShape: Fog.shapeOf(frame.fog),
-			eye: new Vec4(frame.eye.x, frame.eye.y, frame.eye.z, 1)
-		}, viewBytes);
+		var b = viewBlock;
+		b.viewProj = frame.viewProj;
+		b.right = new Vec4(right.x, right.y, right.z, frame.hdr ? 1 : 0);
+		b.up = new Vec4(up.x, up.y, up.z, time);
+		b.forward = new Vec4(forward.x, forward.y, forward.z, drag);
+		b.gravity = new Vec4(gravity.x, gravity.y, gravity.z, 0);
+		b.fog = Fog.colorOf(frame.fog);
+		b.fogShape = Fog.shapeOf(frame.fog);
+		b.eye = new Vec4(frame.eye.x, frame.eye.y, frame.eye.z, 1);
+		GpuParticleShader.params.view.write(b, viewBytes);
 		enc.setPipeline(pipeline);
 		enc.setUniforms(GpuParticleShader.uniforms[0].binding, viewBytes);
 		enc.setVertexBuffer(0, quad);

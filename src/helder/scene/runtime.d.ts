@@ -4,18 +4,20 @@
 // class over a node's handle, its members Script's), cameras, lights,
 // meshes (Shapes, Geometry's shapes and Curve3, MeshRenderer, InstancedMesh,
 // Sprites) and materials (Material's factories: toon, lambert, unlit...), glTF models (Model,
-// helder/asset's model(path) loads one; GltfScene), the renderer, input
+// helder/asset's model(path) loads one; GltfScene), the renderer and its
+// post chain (PostProcess: its effects Ssao, Dof, Outline, Lut; the view
+// buffers they read, ViewBuffers), input
 // actions (InputMap, Bindings), a fixed simulation step, and what a scene is
 // drawn with: a window, its device (or a headless one), the app's loop. A
 // program imports helder/scene, not this module.
 //
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
-import type {Asset} from "helder/asset";
+import type {Asset, Image} from "helder/asset";
 import type {Mat4, Quat, Vec2, Vec3, Vec4} from "helder/gfx";
 import type {Node} from "helder/scene";
 
-declare const __haxe: {Mesh: "helder.scene.render.Mesh", Encoder: "helder.gfx.Encoder", World: "helder.scene.World", Camera: "helder.scene.Camera", Light: "helder.scene.render.Light", Renderer: "helder.scene.render.Renderer", Shadows: "helder.scene.render.Shadows", Fog: "helder.scene.render.Fog", Material: "helder.scene.render.Material", MeshRenderer: "helder.scene.render.MeshRenderer", Shapes: "helder.scene.render.Shapes", Geometry: "helder.scene.render.Geometry", VertexData: "helder.scene.render.VertexData", Curve3: "helder.scene.math.Curve3", InstancedMesh: "helder.scene.render.InstancedMesh", Sprites: "helder.scene.render.Sprites", Model: "helder.scene.render.Model", MaterialShader: "helder.scene.render.MaterialShader", InputMap: "helder.scene.input.InputMap", Bindings: "helder.scene.input.Bindings", FixedStep: "helder.scene.FixedStep", Device: "helder.gfx.Device", Surface: "helder.os.Surface", Window: "helder.os.Window", App: "helder.os.App", Event: "helder.os.Event", Script: "helder.scene.Script", __module: "helder.scene.TypeScript"};
+declare const __haxe: {Mesh: "helder.scene.render.Mesh", Encoder: "helder.gfx.Encoder", World: "helder.scene.World", Camera: "helder.scene.Camera", Light: "helder.scene.render.Light", Renderer: "helder.scene.render.Renderer", Shadows: "helder.scene.render.Shadows", Fog: "helder.scene.render.Fog", Material: "helder.scene.render.Material", MeshRenderer: "helder.scene.render.MeshRenderer", Shapes: "helder.scene.render.Shapes", Geometry: "helder.scene.render.Geometry", VertexData: "helder.scene.render.VertexData", Curve3: "helder.scene.math.Curve3", InstancedMesh: "helder.scene.render.InstancedMesh", Sprites: "helder.scene.render.Sprites", Model: "helder.scene.render.Model", MaterialShader: "helder.scene.render.MaterialShader", PostProcess: "helder.scene.render.PostProcess", Ssao: "helder.scene.render.Ssao", Dof: "helder.scene.render.Dof", Outline: "helder.scene.render.Outline", Lut: "helder.scene.render.Lut", ViewBuffers: "helder.scene.render.ViewBuffers", InputMap: "helder.scene.input.InputMap", Bindings: "helder.scene.input.Bindings", FixedStep: "helder.scene.FixedStep", Device: "helder.gfx.Device", Surface: "helder.os.Surface", Window: "helder.os.Window", App: "helder.os.App", Event: "helder.os.Event", Script: "helder.scene.Script", __module: "helder.scene.TypeScript"};
 
 // What a node draws (node.mesh): primitives, each a vertex buffer in the
 // renderer's layout (PbrVertex: position, normal, uv; 32 bytes a vertex),
@@ -58,6 +60,17 @@ export declare class Binding {
 // fallbacks) staying theirs.
 export type Feature = number;
 
+// the curve from linear light to the display
+export type ToneMap = number;
+
+// antialiasing in post (PostProcess.antialias), beside a <Scene>'s MSAA:
+// None, or Fxaa (in the composite: its read of the scene along the edges;
+// SMAA and TAA come later, desktop and web)
+export type Antialias = number;
+
+// how depth of field's circle grows (Dof.focus, Dof.tiltShift)
+export type DofMode = number;
+
 export type AnyShader = unknown;
 
 export type BoxOptions = { flat?: boolean; tangents?: boolean; width?: number; height?: number; depth?: number; widthSegments?: number; heightSegments?: number; depthSegments?: number };
@@ -96,6 +109,8 @@ export type SphereOptions = { flat?: boolean; tangents?: boolean; radius?: numbe
 // (Spherical), the axis Axis turns about (y), the atlas' columns and rows
 // (1 by 1), the sprites shown (all)
 export type SpritesOptions = { mode?: number; axis?: Vec3; columns?: number; rows?: number; count?: number };
+
+export type SsaoOptions = { radius?: number; intensity?: number; samples?: number; slices?: number; halfRes?: boolean };
 
 // Material.toon's: also its bands and its shade
 export type ToonOptions = { name?: string; color?: Vec4; texture?: number; metallic?: number; roughness?: number; emissive?: Vec3; doubleSided?: boolean; blend?: boolean; blending?: number; alphaCutoff?: number; fog?: boolean; castShadows?: boolean; toneMapped?: boolean; steps?: number; shade?: Vec3 };
@@ -218,7 +233,12 @@ export declare class Light {
 // Draws a world's meshes (MeshRenderer) as seen by a camera, lit by its
 // first directional Light and up to four point Lights (a world without
 // lights: the renderer's sun) and an ambient from the sky and the ground,
-// with PbrShader. Two stages:
+// with PbrShader. The passes a frame records, in order (all but the main
+// one opted in): the shadow maps (Shadows), the view buffers' prepass
+// (ViewBuffers: depth, normals, roughness and selection, for post's
+// effects), the screen's ambient occlusion (post.ao: Ssao), the main pass,
+// then the AfterPass hooks; post (PostProcess) after, into the image shown.
+// Two stages:
 //
 //   extract   the world's meshes into a flat draw list: the nodes shown,
 //             their bounds inside the camera's view, a draw per primitive
@@ -239,10 +259,13 @@ export declare class Renderer {
 	constructor(device: Device, offscreen?: boolean, samples?: number, hdr?: boolean);
 	// (no tint: MeshRenderer.tint's default)
 	static readonly WHITE: Vec3;
+	// where a variant's slots of a material's own blocks begin (slotsOf's length)
+	static readonly OWN: number;
 	// a shader's slots for its blocks and textures, in the renderer's order:
 	// frame, object (-1: none), material, base colour, shadow map, skin,
 	// joints, metallic-roughness, emissive, occlusion, normal, the far shadow
-	// map, the environment map
+	// map, the environment map, the screen's ambient occlusion; then a
+	// material's own blocks (OWN on)
 	static slotsOf(uniforms: Array<{ name: string; binding: number; size: number }>, textures: Array<{ name: string; binding: number }>): number[];
 	readonly device: Device;
 	// without a Light in the world: towards the light (normalized when
@@ -268,6 +291,8 @@ export declare class Renderer {
 	readonly draws: number;
 	readonly culled: number;
 	readonly shadowDraws: number;
+	// the view buffers' prepass draws (ViewBuffers; 0 without)
+	readonly prepassDraws: number;
 	// whether runs of one primitive are drawn instanced (on by default)
 	instancing: boolean;
 	// the last draw's instances drawn by instanced draws (statistics)
@@ -288,7 +313,7 @@ export declare class Renderer {
 	readonly colorFormat: number;
 	// hdr: what turns the frame into the 8-bit image shown (bloom, tone
 	// mapping, grading); a <Scene>'s box makes one when there is none
-	post: unknown | null;
+	post: PostProcess | null;
 	// a pipeline for what it draws into: the frame, or drawInto's targets
 	// (RGBA8, Depth32F, its samples); its features' and a program's own
 	// passes inside its frame (inject) make theirs with it
@@ -939,7 +964,10 @@ export declare class Model<N, M, A, C> {
 // block and textures, the frame's); the others are uniform blocks of the
 // material's own, bound from material.uniforms by their parameter's name
 // (params: the plain variant's writers, typed; the class is the material's
-// own, made beside its module).
+// own, made beside its module). A material that replaces the position,
+// normal, roughness or alpha slot also gets the view buffers' prepass
+// variants (prepass, prepassInstanced: ViewBuffers); one that replaces none
+// is drawn there by the standard material's, which is the same.
 export declare class MaterialShader {
 	// a TypeScript program's material (helder/scene's material(pbr.with({...})),
 	// a definition: helder.typescript.lower's Definitions compiles the same
@@ -950,8 +978,316 @@ export declare class MaterialShader {
 	readonly skinned: AnyShader;
 	readonly instanced: AnyShader;
 	readonly instancedNormalMapped: AnyShader | null;
-	// the blocks of the material's own: its parameter's name, its slot, in each variant (in the order above)
+	// the view buffers' (ViewBuffers): plain and instanced; null, the
+	// standard material's (its position, normal, roughness and alpha slots
+	// as they are)
+	readonly prepass: AnyShader | null;
+	// the view buffers' (ViewBuffers): plain and instanced; null, the
+	// standard material's (its position, normal, roughness and alpha slots
+	// as they are)
+	readonly prepassInstanced: AnyShader | null;
+	// the blocks of the material's own: its parameter's name, its slot, in
+	// each variant (in the order above; -1: not in it)
 	readonly blocks: Array<{ name: string; bindings: number[] }>;
+}
+
+// The post-process chain of an HDR frame (Renderer.hdr: drawn in linear
+// light into an RGBA16F target): its effects, physically based bloom, then
+// the frame tone mapped, graded and finished into an 8-bit target, in an
+// order fixed by what is right (AO in the lighting, depth of field in
+// linear light, bloom, the curve, the grade, the LUT, FXAA in the
+// composite's read of the scene):
+//
+//   var post = new PostProcess(device);
+//   post.bloom = 0.05;                 // the share of the light spread (0: none)
+//   post.toneMap = Aces;               // or AgX, Clamp
+//   post.saturation = 1.1; post.vignette = 0.25; post.grain = 0.03;
+//   post.ao = new Ssao({radius: 0.5, intensity: 1, samples: 8, halfRes: true});   // GTAO
+//   post.dof = Dof.tiltShift({band: 0.2, falloff: 0.3, strength: 1});           // or Dof.focus({distance, aperture})
+//   post.outline = new Outline({width: 2, color: new Vec4(1, 0.8, 0.2, 1)});     // Outline.select(node)
+//   post.antialias = Fxaa;             // None (MSAA alone: the <Scene>'s antialias)
+//   post.lut = Lut.fromImage(device, image);
+//   renderer.post = post;              // a <Scene>'s box runs it (hdr={true})
+//   // or by hand, after the renderer's drawInto into hdrColor:
+//   post.run(enc, hdrColor, ldrColor, width, height, time);
+//   post.add(FinishShader, finishBytes);  // a pass of its own after the grade (PostStage)
+//   post.add(BlurShader, bytes, BeforeComposite);  // one in linear light
+//
+// The effects are null by default: one never set is never linked, its
+// shaders and passes neither (an effect's class installs PostEffects:
+// their passes and the composite with them folded in). AO, depth of field
+// and the outline read the renderer's view buffers (ViewBuffers: a
+// prepass of depth, normals and selection), which they ask the renderer
+// for themselves, so the chain is the renderer's (renderer.post = post)
+// for them to be drawn; AO is drawn before the frame's pass and darkens
+// its indirect light (PbrShader's aoMap). The composite is one pass
+// whatever the effects: a variant (compiled at build time) by FXAA and by
+// whether an effect is folded in.
+//
+// Bloom has no threshold: everything spreads a little, what is bright
+// (an engine, a laser, the sun: values far over 1) spreads visibly. The
+// scene is filtered down a chain of RGBA16F targets each half the one
+// above (levels, at most 6; the first half the frame's size, or a quarter
+// with base 2: Jimenez's 13-tap filter, the first level in Karis' average)
+// and back up it (a tent filter, each level added to the one above), as
+// Call of Duty: Advanced Warfare and Unity's HDRP do; the composite mixes
+// it in. The targets are the GPU's (as many as the levels, made at the
+// first run and when the size, base or levels change, freed by dispose);
+// a run records 2 * levels passes and allocates nothing. Without grain
+// the dither is still: a frame drawn again is the same pixels. A program's
+// own stages (add: a pixel art finish, a CRT, an outline) come after the
+// composite, in order, each a pass reading the last one's image: the
+// composite and all but the last stage into two RGBA8 targets of the
+// run's size taken in turn, the last into the output; those added
+// BeforeComposite before it, in linear light, into two RGBA16F ones.
+export declare class PostProcess {
+	// output: the format of the targets run writes (RGBA8: a <Scene>'s
+	// box's); frame: run writes the frame instead (output unused)
+	constructor(device: Device, output?: number, frame?: boolean);
+	readonly device: Device;
+	// the light before the curve (1: as drawn)
+	exposure: number;
+	// bloom's share of the frame (0 to 1: 0.04 is subtle, 0.15 dreamy; 0: no bloom passes)
+	bloom: number;
+	// how far each level up spreads (its texels: 1 a tight halo, 2 wider)
+	radius: number;
+	// the bloom chain's levels (1 to 6; fewer: a tighter, cheaper glow)
+	levels: number;
+	// the first level's size: the frame's halved this many times (1 or 2;
+	// 2: a quarter of the pixels to filter, the glow a little softer)
+	base: number;
+	toneMap: ToneMap;
+	// the grade, on the tone mapped colour: 1 as it is
+	saturation: number;
+	contrast: number;
+	// added to the shadows (rgb, 0 to about 0.05) and the colour's gain (rgb)
+	lift: Vec3;
+	gain: Vec3;
+	// how much darker the corners are (0 to 1)
+	vignette: number;
+	// film grain's strength (0 to about 0.1); a dither below a step of 8 bits is always there
+	grain: number;
+	// whether the frame's alpha is kept (the scene's coverage, where bloom
+	// adds light its brightness: over a ui behind it, premultiplied); false: opaque
+	transparent: boolean;
+	// the screen's ambient occlusion (Ssao: GTAO; null none)
+	ao: Ssao | null;
+	// depth of field (Dof.focus, Dof.tiltShift; null none)
+	dof: Dof | null;
+	// the selection's outlines (Outline, Outline.select; null none)
+	outline: Outline | null;
+	// antialiasing after the frame's own (None, Fxaa: in the composite; its
+	// variant linked only by a program that sets it)
+	antialias: Antialias;
+	// colour grading by a lookup table (Lut; null none), after the grade
+	lut: Lut | null;
+	// the last run's draws (each a full-screen pass: AO's, depth of field's,
+	// bloom down and up, the composite, the stages; helder.gfx.FrameCounts.postDraws too)
+	readonly draws: number;
+	// the run's context, for its stages (PostStage's prepare and bind): the
+	// scene's light it was given (linear, RGBA16F, its alpha the scene's
+	// coverage) and its size in pixels; null and 0 outside a run
+	readonly source: number | null;
+	readonly width: number;
+	readonly height: number;
+	// a stage of the program's own (PostStage: its shader's first texture
+	// the image so far, its first block bytes): after those before it at its
+	// point (AfterComposite: tone mapped; BeforeComposite: in linear light)
+	add<V, P>(shader: unknown, bytes?: Uint8Array, point?: number): unknown;
+	remove(stage: unknown): void;
+	// the frame: source (the scene's RGBA16F, width by height) into target
+	// (the output format's render target of that size, or with stages any
+	// size; null: the frame, a PostProcess made for it); time: seconds, the
+	// grain's
+	run(enc: Encoder, source: number, target: number | null, width: number, height: number, time?: number): void;
+	dispose(): void;
+}
+
+// Screen-space ambient occlusion, a PostProcess's (post.ao = new
+// Ssao({...})): GTAO (Jimenez et al. 2016) from the renderer's view
+// buffers (ViewBuffers: their depth and normals, asked for by the chain),
+// at half their size (halfRes) or whole, then blurred up to their size by
+// depth (bilateral), before the frame's pass, whose standard material
+// darkens its indirect light by it alone (the ambient, the environment's
+// light and reflections: PbrShader's aoMap), not the sun's or the lamps'
+// (three.js' classic passes darken the whole frame). Its targets are R8;
+// nothing is allocated per frame.
+//
+//   post.ao = new Ssao({radius: 0.5, intensity: 1, samples: 8, halfRes: true});
+//
+// On a phone: one slice of 4 to 6 steps at half size (samples 4, slices 1).
+// Its options alone: its passes are SsaoPass's, linked by a program that
+// sets it on a chain (post.ao's setter).
+export declare class Ssao {
+	constructor(options?: SsaoOptions);
+	// how far an occluder reaches (metres)
+	radius: number;
+	// how dark: the occlusion's power (1 as found, 2 darker)
+	intensity: number;
+	// the steps along each side of a slice
+	samples: number;
+	// the slices of the hemisphere (1 or 2: the noise turns them per pixel)
+	slices: number;
+	// at half the frame's size (a quarter of the pixels: the view buffers'
+	// when they are at half, else half theirs), blurred up to theirs
+	halfRes: boolean;
+	// the last frame's occlusion (R8, the view buffers' size; red 1 open, 0 occluded)
+	readonly texture: number | null;
+}
+
+// Depth of field, a PostProcess's (post.dof): a circle of confusion from
+// the view buffers' depth (ViewBuffers, asked for by the chain), the
+// scene's light gathered on a disc that wide at half the frame's size in
+// linear light (before bloom and the curve: bright specks spread as
+// discs), then mixed into the composite where the circle is wider than a
+// texel. Two lenses:
+//
+//   post.dof = Dof.focus({distance: 6, aperture: 0.02});   // sharp at 6 m, a thin lens's blur
+//   post.dof = Dof.tiltShift({band: 0.2, falloff: 0.3, strength: 1});
+//
+// focus: sharp at distance (metres), the blur growing as a thin lens's to
+// aperture at infinity (a share of the frame's height). tiltShift, a
+// diorama's: sharp within band of the focus depth (a share of it: 0.2,
+// within 20% nearer or farther), the blur growing past it to strength
+// times radius over falloff more; its focus the depth under the frame at
+// center (0 the top, 1 the bottom; the screen's centre by default), or
+// distance when given. A world's depth, not the screen's band: a far
+// island inside the band is blurred, as a lens would. Its target is
+// RGBA16F, half the frame's size; nothing is allocated per frame. Its
+// options alone: its pass is DofPass's, linked by a program that sets it
+// on a chain (post.dof's setter).
+export declare class Dof {
+	// a lens focused at distance metres, aperture its blur at infinity (a
+	// share of the frame's height), at most radius
+	static focus(options: { distance: number; aperture?: number; radius?: number; samples?: number }): Dof;
+	// a diorama's lens: sharp within band of the focus depth, blurred to
+	// strength times radius past falloff more
+	static tiltShift(options: { band?: number; falloff?: number; strength?: number; radius?: number; center?: number; distance?: number; samples?: number }): Dof;
+	mode: DofMode;
+	// focus: the distance in focus (metres); tiltShift: its focus (0: the
+	// depth at center)
+	distance: number;
+	// focus: the blur at infinity (a share of the frame's height)
+	aperture: number;
+	// tiltShift: the depth kept sharp about the focus, and the depth past it
+	// over which the blur reaches its most (shares of the focus depth)
+	band: number;
+	falloff: number;
+	// tiltShift: how much of the radius the blur reaches (0 none, 1 all)
+	strength: number;
+	// the most blur (a share of the frame's height)
+	radius: number;
+	// tiltShift: where on the frame its focus is read (0 the top, 1 the bottom)
+	center: number;
+	// the taps of the blur's disc (16 for phones, 24, 32)
+	samples: number;
+	// the last frame's blur (RGBA16F, half the frame's size)
+	readonly texture: number | null;
+}
+
+// Outlines around selected nodes, a PostProcess's (post.outline): the
+// selection is data, a group (1 to 255) on a node (Outline.select: a
+// component, its descendants drawn in it too), written by the view
+// buffers' prepass (ViewBuffers: their normals' w) and its edges found in
+// the composite, over everything drawn (see-through surfaces too). Each
+// group has its colour (its alpha the outline's) and width in pixels:
+//
+//   post.outline = new Outline({width: 2, color: new Vec4(1, 0.8, 0.2, 1)});   // group 1
+//   post.outline.group(2, new Vec4(0.3, 0.7, 1, 1), 3);
+//   Outline.select(node);          // group 1; Outline.select(other, 2); Outline.select(node, 0): none
+//
+// The view buffers are drawn whole for it (scale 1). Nothing is allocated
+// per frame; the groups' texture (256 x 2 RGBA8) is written when a group
+// changes. Its groups alone: its part of the composite is OutlinePass's,
+// linked by a program that sets it on a chain (post.outline's setter);
+// selecting (Outline.select, Selection) links neither.
+export declare class Outline {
+	constructor(options?: { width?: number; color?: Vec4 });
+	// node and its descendants outlined in group (1 to 255; 0: not selected)
+	static select(node: Node, group?: number): void;
+	// node's own group (0: none)
+	static selected(node: Node): number;
+	// group 1's width in pixels and colour
+	width: number;
+	color: Vec4;
+	// a group's colour (its alpha the outline's) and width in pixels (at most 32)
+	group(k: number, color: Vec4, width: number): Outline;
+}
+
+// Colour grading by a lookup table, a PostProcess's (post.lut): a size cubed
+// table (16 or 32) as a 2D strip of size slices side by side (size^2 by
+// size texels: red across a slice, green down it, blue by slice; gfx has no
+// 3D textures), read once in the composite after the curve and the grade,
+// display values in and out (an identity strip graded in an image editor,
+// as Unreal's and Unity's LUT strips are):
+//
+//   post.lut = Lut.fromImage(device, image);                 // a 256 x 16 strip (helder.image's Image)
+//   post.lut = Lut.of(device, 16, (r, g, b) -> new Vec3(...));   // a grade of the program's own
+//   post.lut.strength = 0.5;                                 // halfway from none to the table
+export declare class Lut {
+	// a strip's image (size * size by size: 256 x 16, 1024 x 32), its pixels RGBA8
+	static fromImage(device: Device, image: Image): Lut;
+	// a strip's RGBA8 texels (size * size by size: strip's), size a side
+	static fromBytes(device: Device, size: number, bytes: Uint8Array): Lut;
+	// the identity table (what a strip to grade in an editor starts from)
+	static identity(device: Device, size?: number): Lut;
+	readonly device: Device;
+	// the table's size a side (16, 32)
+	readonly size: number;
+	// how much of it (0: none, 1: the table's)
+	strength: number;
+	// the strip (RGBA8, size * size by size)
+	readonly texture: number;
+	dispose(): void;
+}
+
+// The view buffers: a single-sampled prepass of the frame's opaque draws
+// that post's effects read (Bevy's DepthPrepass and NormalPrepass, as one
+// pass of one colour target: gfx has no MRT), after the shadow maps and
+// before the frame's pass:
+//
+//   depth     Depth32F, sampled (Nearest): the view's depth, 0 near, 1 far
+//   normals   RGBA8: the view-space normal (octahedral, xy), roughness (z),
+//             the selection group (w, times 255: Outline.select)
+//
+// Effects ask for them (post.ao, post.dof, post.outline call
+// ViewBuffers.of(renderer) themselves); a program's own passes may too
+// (renderer.use(ViewBuffers.of(renderer)), then reads them in an AfterPass
+// hook). The main pass's depth is not theirs: it is multisampled, these
+// are not. scale draws them at a share of the frame's size (0.5: a quarter
+// of the pixels, what AO and depth of field tolerate; an outline wants
+// them whole). The shaders are pbr's prepass variants (PbrPrepassShader):
+// the position, normal, roughness and alpha slots alone, a material's own
+// (MaterialShader: its prepass variants, made when it replaces one of
+// those). Nothing is allocated per frame.
+export declare class ViewBuffers {
+	constructor(device: Device);
+	// the renderer's view buffers: made and turned on when first asked
+	static of(renderer: Renderer): ViewBuffers;
+	// a node's selection group: its own (Outline.select), else the nearest
+	// of its ancestors' (0: none; Selection's)
+	static groupOf(node: Node): number;
+	readonly device: Device;
+	// the share of the frame's size they are drawn at (0: the effects'
+	// choice, 1 with an outline, else 0.5; a program's own use: 1)
+	scale: number;
+	// off: no prepass drawn, no groups taken (what the effects made, while none reads them)
+	enabled: boolean;
+	// the last prepass's targets and their size
+	readonly depth: number;
+	readonly normals: number;
+	readonly width: number;
+	readonly height: number;
+	// the last prepass's draws
+	readonly draws: number;
+	// the share of the frame's size they were last drawn at
+	readonly drawnScale: number;
+	// the last prepass's camera: its projection, the projection's inverse
+	// (a view-space point from a texel's depth), its view
+	readonly projection: Mat4;
+	readonly inverseProjection: Mat4;
+	readonly view: Mat4;
+	dispose(): void;
 }
 
 // Named actions bound to input (Binding: keys, mouse buttons, screen

@@ -49,6 +49,12 @@ abstract Slots(Int) {
 	public macro function variant(self:Expr, ?options:Expr):Expr
 		return helder.gfx.shader.SlotsMacro.variant(self, options);
 
+	// variant, drawn on the GPU alone: no CPU stages (its vertex and
+	// fragment null), none of their code made or linked (helder.scene's
+	// view buffers' prepass and its composites: never run on the CPU)
+	public macro function gpuVariant(self:Expr, ?options:Expr):Expr
+		return helder.gfx.shader.SlotsMacro.variant(self, options, false);
+
 	public macro function with(self:Expr, overrides:Expr):Expr
 		return helder.gfx.shader.SlotsMacro.with(self, overrides);
 

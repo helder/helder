@@ -87,8 +87,10 @@ import StageShaders;
 //          additive halos; its draws checked (one a set)
 //   hemisphere a hemisphere light alone (Light.hemisphere): Lambert's,
 //          pbr's and a rough metal's spheres and boxes
+//   prepass, ssao, dof, tiltshift, outline, fxaa, lut, effects  the view
+//          buffers and post's effects (EffectScenes)
 class Scenes {
-	public static final NAMES = ["gltf", "orbits", "shadows", "physics", "instances", "skin", "overlay", "textured", "packed", "spot", "sky", "lazy", "normals", "blend", "walker", "packedskin", "packednormals", "cascades", "environment", "morph", "chains", "packedmorph", "bloom", "normalgrid", "gpuparticles", "crystal", "khrtransform", "khrclearcoat", "compressed", "packedbc", "packedastc", "instancedmesh", "glow", "tsscene", "fog", "poststage", "unevenscale", "softshadows", "shading", "primitives", "toon", "sprites", "hemisphere"];
+	public static final NAMES = ["gltf", "orbits", "shadows", "physics", "instances", "skin", "overlay", "textured", "packed", "spot", "sky", "lazy", "normals", "blend", "walker", "packedskin", "packednormals", "cascades", "environment", "morph", "chains", "packedmorph", "bloom", "normalgrid", "gpuparticles", "crystal", "khrtransform", "khrclearcoat", "compressed", "packedbc", "packedastc", "instancedmesh", "glow", "tsscene", "fog", "poststage", "unevenscale", "softshadows", "shading", "primitives", "toon", "sprites", "hemisphere"].concat(EffectScenes.NAMES);
 	// whether the last scene has what it draws (a lazy one: once its files loaded)
 	public static var ready:Void->Bool = () -> true;
 	// the last scene's renderer (its statistics: RenderTest)
@@ -1028,6 +1030,7 @@ class Scenes {
 				eye.position = new Vec3(0, 0.6, 4.2);
 				eye.lookAt(new Vec3(0, 0.25, 0));
 				enc -> r.draw(enc, world, camera);
+			case n if (EffectScenes.NAMES.contains(n)): EffectScenes.make(n, device);
 			case n: throw 'Scenes: no scene $n';
 		}
 	}

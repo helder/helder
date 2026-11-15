@@ -152,16 +152,18 @@ class Definitions {
 	// helder/scene's material(pbr.with({...})), as Haxe's MaterialShader.material
 	// (src/helder/scene/render/MaterialShader.hx): the slot object's variants
 	// the renderer draws with (plain, normal mapped, skinned, instanced,
-	// instanced and normal mapped), each compiled by an adapter of its own,
-	// and the blocks of the material's own (a slot's parameters that are not
-	// the stages': their slot in each variant), JSON for
-	// MaterialShader.script
+	// instanced and normal mapped; the view buffers' prepass, plain and
+	// instanced, when it replaces a slot the prepass reads), each compiled by
+	// an adapter of its own, and the blocks of the material's own (a slot's
+	// parameters that are not the stages': their slot in each variant), JSON
+	// for MaterialShader.script
 	function material(e:Node, n:Node):String {
 		var kinds = [[], ["normalMap"], ["skinned"], ["instanced"], ["instanced", "normalMap"]];
-		var standard = ["PbrFrame", "PbrObject", "PbrMaterial", "PbrSkinInfo"];
+		if (new TsAdapter(src, defined, "material").replacesPrepass(e)) kinds = kinds.concat([["prepass"], ["prepass", "instanced"]]);
+		var standard = ["PbrFrame", "PbrObject", "PbrMaterial", "PbrSkinInfo", "PbrPrepass"];
 		var textures = [
 			"baseColorTexture", "metallicRoughnessTexture", "emissiveTexture", "occlusionTexture", "shadowMap", "shadowMapFar", "environmentMap", "normalTexture",
-			"jointMatrices"
+			"jointMatrices", "aoMap"
 		];
 		var variants = [], blocks = new Map<String, Array<Int>>(), order = [];
 		for (k in 0...kinds.length) {
@@ -181,7 +183,7 @@ class Definitions {
 				switch p.resource {
 					case RUniform(u) if (!standard.contains(u.struct.name)):
 						if (!blocks.exists(p.name)) {
-							blocks.set(p.name, [for (_ in 0...kinds.length) -1]);
+							blocks.set(p.name, [for (_ in 0...7) -1]);
 							order.push(p.name);
 						}
 						blocks.get(p.name)[k] = u.binding;
@@ -415,6 +417,33 @@ class TsAdapter implements ShaderAdapter {
 	// a slot object's definition: the argument of the slots(...) call a
 	// module-level const was made by (here or imported), with(...)'s
 	// overrides applied, a spread object's fields; null: not one
+	// whether a material's slot object (pbr.with({...}), with's of with's)
+	// replaces a slot the view buffers' prepass reads (Haxe's
+	// MaterialShader.PREPASS_SLOTS: position, normal, roughness, alpha)
+	public function replacesPrepass(e:Node):Bool {
+		var x = strip(e);
+		switch x.kind {
+			case KindCallExpression if (strip(x.expression()).kind == KindPropertyAccessExpression && strip(x.expression()).name().text == "with"):
+				var args = x.arguments() ?? [];
+				if (args.length == 1)
+					switch node(args[0]).value {
+						case KObject(os):
+							for (o in os)
+								if (["position", "normal", "roughness", "alpha"].contains(o.name)) return true;
+						case _:
+					}
+				return replacesPrepass(strip(x.expression()).expression());
+			case KindIdentifier:
+				var d = Scope.declared(x.file, x.text, KindVariableDeclaration);
+				var from = d == null ? Scope.imported(x.file, x.text) : null;
+				if (from != null) d = declaration(from.specifier, from.name, KindVariableDeclaration);
+				if (d == null || d.initializer() == null) return false;
+				return replacesPrepass(d.initializer());
+			case _:
+				return false;
+		}
+	}
+
 	public function slotsSource(e:Node):Null<KNode> {
 		var x = strip(e);
 		switch x.kind {

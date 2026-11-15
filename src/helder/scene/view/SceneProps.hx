@@ -13,7 +13,7 @@ import helder.scene.render.Material;
 // material tags' are the options of Geometry's and Material's factories, so
 // a tag is its factory's options by name (<cylinderGeometry radiusTop>,
 // <toonMaterial steps>); the nodes' are a node's (position, rotation,
-// scale, name, visible) and their component's.
+// scale, name, visible, outline) and their component's.
 typedef SceneProps = {
 	node:NodeProps,
 	mesh:MeshProps,
@@ -53,7 +53,9 @@ typedef NodeProps = {
 	?position:Vec3,
 	?rotation:Quat,
 	?scale:Vec3,
-	?visible:Bool
+	?visible:Bool,
+	// its selection group (0: none; post.outline draws it: Outline.select)
+	?outline:Int
 }
 
 // a mesh's: its geometry and material (shared: a geometry or material made

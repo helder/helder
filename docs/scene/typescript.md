@@ -3,7 +3,12 @@
 `helder/scene` (src/helder/scene/index.ts, over `helder/scene/runtime`,
 which `TypeScript.hx` declares: [helder.typescript](/src/helder/typescript/README.md))
 is this package for TypeScript programs: World, Camera, Light, Material,
-MeshRenderer, Shapes, Model, Renderer, InputMap (its bindings made by
+MeshRenderer, Shapes, Model, Renderer, PostProcess and its effects (Ssao,
+Dof, Outline, Lut; ViewBuffers; `ToneMap`, `Antialias` and `DofMode` by
+name; `lutStrip(size, grade)`, a LUT's strip from a grade written in
+TypeScript, for `Lut.fromBytes`: a `Vec3` a TypeScript function returns
+does not cross into Haxe yet, so `Lut.of` and `Lut.strip`, whose grade is
+one, are Haxe's alone), InputMap (its bindings made by
 Bindings: `actions.bind("jump", Bindings.key(0x20))`), FixedStep, and what
 a scene is drawn with (helder.os's Window, App, Event and Surface,
 helder.gfx's Device). A Node is the program's class over a node's handle

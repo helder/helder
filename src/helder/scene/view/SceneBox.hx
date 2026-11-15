@@ -60,6 +60,29 @@ class SceneBox extends helder.ui.Node {
 	// tone mapped by the shaders into RGBA8. A GPU that cannot draw into
 	// half floats: said once, then false (set before it is first drawn)
 	public var hdr = false;
+	// (what is set on its post chain: EffectTags' <Effects> and the effects
+	// in it; each applied to the chain when it is made, again when it is
+	// made again)
+	final postSetters:Array<helder.scene.render.PostProcess->Void> = [];
+
+	// f applied to its post chain (a PostProcess: hdr), now when there is
+	// one, and to each one made after (the renderer made again); the box
+	// turned hdr
+	public function withPost(f:helder.scene.render.PostProcess->Void) {
+		hdr = true;
+		postSetters.push(f);
+		var p = renderer != null ? renderer.post : null;
+		if (p != null) f(p);
+		if (ui != null) ui.requestFrame();
+	}
+
+	// f applied to its post chain now, if it has one (not kept: a change of a
+	// setter's value, its effect's cleanup)
+	public function onPost(f:helder.scene.render.PostProcess->Void) {
+		var p = renderer != null ? renderer.post : null;
+		if (p != null) f(p);
+		if (ui != null) ui.requestFrame();
+	}
 	var color:Null<Texture>;
 	// (hdr: the scene's linear light, the multisampled colour's resolve or the pass's own target)
 	var light:Null<Texture>;
@@ -282,6 +305,9 @@ class SceneBox extends helder.ui.Node {
 			if (SceneRenderer.device == null) SceneRenderer.device = r.device;
 			// (the post chain first: onRenderer sets it up with the rest)
 			if (renderer.hdr && renderer.post == null) renderer.post = new helder.scene.render.PostProcess(r.device);
+			if (renderer.post != null)
+				for (f in postSetters)
+					f(renderer.post);
 			if (onRenderer != null) onRenderer(renderer);
 		}
 		// (the textures a resize replaced in an earlier frame: no pass left reading them)

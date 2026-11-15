@@ -44,14 +44,14 @@ class SlotsMacro {
 	// (the scope a module-level final made by with(...) is typed in: resolve's)
 	static var typing:Null<Scopes.Scope> = null;
 
-	public static function variant(self:Expr, options:Null<Expr>):Expr {
+	public static function variant(self:Expr, options:Null<Expr>, cpu = true):Expr {
 		var pos = Context.currentPos();
 		var a = new HaxeAdapter("shader");
 		var lower = new Lower();
 		var r = resolve(Context.typeExpr(self), lower, a);
 		var given = options == null || options.expr.match(EConst(CIdent("null"))) ? null : a.node(options);
 		var out = new ShaderDefinition().variant(r.def, given, lower, pos);
-		return build(r, r.def.values(given, a), out, lower);
+		return build(r, r.def.values(given, a), out, lower, cpu);
 	}
 
 	// a variant's Shader, its CPU stages static functions of their own (hxmc

@@ -248,7 +248,9 @@ the stage's of the same names, the others joining them). `variant(options)`
 is a shader compiled at build time with the options folded (an `if` on
 one takes its branch, a loop over constants is unrolled), the slots
 inlined and what it never reads of the optional fields (`@:optional`:
-vertex attributes, varyings, parameters) dropped; `with({<slot>: ...})`
+vertex attributes, varyings, parameters) dropped; `gpuVariant(options)`
+the same without its CPU stages (`vertex` and `fragment` null: a shader
+only ever drawn, none of their code linked); `with({<slot>: ...})`
 replaces slots. helder.scene's standard material is one (`pbr`).
 
 `uniform(value)` (a module-level final) is a value the CPU sets

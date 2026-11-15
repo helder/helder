@@ -8,6 +8,9 @@ import helder.os.*;
 // on llvmpipe; macOS: Metal; Windows: D3D11):
 //
 //   RenderTest <scene> <golden.png> <out.png> [--bless]
+//
+// HXMC_ALLOC_ALL=1: also what a frame of the scene allocates, warm (four
+// frames' hxmc.GcStats bytes, printed; the effects frame checks its own)
 class RenderTest {
 	static inline var WIDTH = 256;
 	static inline var HEIGHT = 192;
@@ -41,6 +44,22 @@ class RenderTest {
 			// (169 nodes of two meshes: two instanced draws, unless culled)
 			if (name == "instances" && (stats.draws > 2 || stats.instanced + stats.culled != 169)) drawsOk = false;
 		}
+		#if (target.name == "hxmc")
+		if (Sys.getEnv("HXMC_ALLOC_ALL") == "1") {
+			for (_ in 0...3) {
+				var enc = device.beginFrame();
+				draw(enc);
+				device.endFrame();
+			}
+			var before = hxmc.GcStats.bytesAllocated();
+			for (_ in 0...4) {
+				var enc = device.beginFrame();
+				draw(enc);
+				device.endFrame();
+			}
+			Sys.println('RenderTest: $name: ${hxmc.GcStats.bytesAllocated() - before} bytes allocated by 4 frames');
+		}
+		#end
 		if (Scenes.probe != null) {
 			var wrong = Scenes.probe();
 			if (wrong != null) {

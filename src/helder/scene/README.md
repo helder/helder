@@ -1,4 +1,4 @@
-<!-- Generated from docs/scene/index.md, docs/scene/world.md, docs/scene/models.md, docs/scene/geometry.md, docs/scene/materials.md, docs/scene/lights.md, docs/scene/fog.md, docs/scene/post.md, docs/scene/instancing.md, docs/scene/particles.md, docs/scene/input.md, docs/scene/debugging.md, docs/scene/typescript.md by site/docs/readme.mjs: edit those, not this file. -->
+<!-- Generated from docs/scene/index.md, docs/scene/world.md, docs/scene/models.md, docs/scene/geometry.md, docs/scene/materials.md, docs/scene/lights.md, docs/scene/fog.md, docs/scene/post.md, docs/scene/effects.md, docs/scene/instancing.md, docs/scene/particles.md, docs/scene/input.md, docs/scene/debugging.md, docs/scene/typescript.md by site/docs/readme.mjs: edit those, not this file. -->
 
 # helder.scene
 
@@ -11,8 +11,9 @@ These pages go from the scene graph to what draws it:
 - [World and nodes](#world-and-nodes): the scene graph, cameras, the fixed step;
 - [glTF and models](#gltf-and-models): files typed when compiling, packed for
   run time, animated;
-- [Materials](#materials), [Lights and shadows](#lights-and-shadows), [Fog](#fog)
-  and [HDR and post-processing](#hdr-and-post-processing): the renderer;
+- [Materials](#materials), [Lights and shadows](#lights-and-shadows), [Fog](#fog),
+  [HDR and post-processing](#hdr-and-post-processing) and [Post effects](#post-effects-and-the-view-buffers) (AO,
+  depth of field, outlines, FXAA, a LUT): the renderer;
 - [Instancing](#instancing) and [GPU particles](#gpu-particles): many
   things in few draws;
 - [`<Scene>` markup](/docs/scene/markup.md): the scene in helder.view's markup, inside a
@@ -288,6 +289,14 @@ features reach the renderer through `RenderFeature` (`renderer.use(...)`),
 so unused ones are not linked. Shapes are made in code with `Geometry`
 and `Shapes` ([Geometry](#geometry)).
 
+A frame records, in order: the shadow maps, the view buffers' prepass
+(when an effect or the program asks for them: [Post effects](#post-effects-and-the-view-buffers)),
+the screen's ambient occlusion (`post.ao`), the main pass, the
+`AfterPass` hooks; then post. Nothing is allocated per frame: the blocks
+the renderer writes are kept and their fields set (a struct literal per
+write would allocate on hxmc), and each uniform block's writer is a class
+of its own (helder.gfx's `UniformWriter`: no closure).
+
 ### The standard material
 
 ```haxe
@@ -316,9 +325,10 @@ Example: [Materials](/docs/examples/scene-materials/Materials.hx) (`helder run d
 The standard material is a slot object, `pbr` (`PbrShader`; helder.gfx's
 `slots`, [DESIGN.md](/src/helder/compiler/DESIGN.md) 3): one shader whose
 variants are the renderer's (`pbr.variant({normalMap, skinned,
-instanced})`: `PbrShader`, `PbrNormalShader`, `PbrSkinnedShader`,
-`PbrInstancedShader`, `PbrInstancedNormalShader`; the shadow map's casters
-are `shadowCaster`'s) and whose slots a material replaces: `color`,
+instanced, prepass})`: `PbrShader`, `PbrNormalShader`, `PbrSkinnedShader`,
+`PbrInstancedShader`, `PbrInstancedNormalShader`; the view buffers'
+`PbrPrepassShader`, `PbrPrepassInstancedShader`, `PbrPrepassSkinnedShader`;
+the shadow map's casters are `shadowCaster`'s) and whose slots a material replaces: `color`,
 `alpha`, `normal`, `roughness`, `metalness` and `emissive` (of the
 fragment's `PbrSurface`), `position` (of the vertex's `PbrPoint`), and
 how light reaches the surface: `direct(s, l, p)`, the light one source
@@ -512,6 +522,9 @@ targets (RGBA16F: light brighter than white kept; the shaders' last step
 `PbrShader.output` leaves the tone mapping to later), and a `PostProcess`
 turns the frame into the 8-bit image shown:
 
+Its effects (AO, depth of field, outlines, FXAA, a LUT: [Post effects
+and the view buffers](#post-effects-and-the-view-buffers)) are fields of it, null by default.
+
 ```haxe
 var post = new PostProcess(device);   // into RGBA8 targets (a <Scene>'s box's); (device, RGBA8, true): the frame
 post.bloom = 0.05;                    // the share of the light spread: no threshold, what is bright blooms
@@ -546,7 +559,11 @@ either): a `<Scene>` says so once and draws in 8 bits.
 
 ### Stages of your own
 
-A program's own passes join the chain after the grade (`PostStage`): a
+A program's own passes join the chain after the grade (`PostStage`), or
+before the composite in linear light (`post.add(shader, bytes,
+BeforeComposite)`: its image the scene's RGBA16F light, drawn into RGBA16F
+targets, the last one's what depth of field, bloom and the composite
+read; a blur of the program's own belongs there): a
 shader drawn over the whole target, its vertex `{pos:Vec2}` (a triangle
 in clip space, the chain's), its first texture the image so far (tone
 mapped: a pixel art finish, a CRT, an outline), its first uniform block
@@ -576,6 +593,157 @@ mixes the blur in as its stage. A `<Scene hdr>`'s chain is there when its
 `tests/3d/poststage.png` is the bloom frame through two (a sepia grade,
 then scanlines: tests/3d/StageShaders.hx). [examples/afterglow](/examples/afterglow)
 finishes its whole frame as a painting this way.
+
+## Post effects and the view buffers
+
+```haxe
+var post = new PostProcess(device);
+post.ao = new Ssao({radius: 0.5, intensity: 1, samples: 8, halfRes: true});   // GTAO
+post.dof = Dof.tiltShift({band: 0.2, falloff: 0.3, strength: 1});           // or Dof.focus({distance: 6, aperture: 0.02})
+post.outline = new Outline({width: 2, color: new Vec4(1, 0.8, 0.2, 1)});     // group 1; outline.group(2, color, width)
+Outline.select(node);                                                          // node and what is under it, group 1 (0: none)
+post.antialias = Fxaa;                                                         // None | Fxaa
+post.lut = Lut.fromImage(device, image);                                       // a 16 cubed strip (256 x 16); Lut.of(device, 16, grade)
+renderer.post = post;                                                          // the renderer draws what they read
+```
+
+The effects are a `PostProcess`'s fields, null by default: an effect a
+program never sets is not linked (its class, its passes, its shaders,
+and the view buffers if none reads them: `tests/3d/size/PostSize.hx`).
+The order is fixed by what is right: AO in the lighting, depth of field
+in linear light before bloom, the curve, the grade, the LUT; FXAA in
+the composite's read of the scene, the outline over everything. The
+composite stays one pass: a variant compiled at build time with the
+effects folded in (and one with FXAA), each effect off while its part of
+the block is zero.
+
+### The effects
+
+- **The view buffers** (`ViewBuffers.of(renderer)`, a `RenderFeature`):
+  a single-sampled prepass of the frame's opaque draws (pbr's prepass
+  variants: the position, normal, roughness and alpha slots alone; a
+  material of its own that replaces one of those gets its own prepass
+  variants) into a sampled `Depth32F` depth and an `RGBA8` target of the
+  view-space normal (octahedral, xy), roughness (z) and the selection
+  group (w). One pass of one colour target: gfx has no MRT. The main
+  pass's multisampled depth is not theirs. AO, depth of field and the
+  outline ask for them (`renderer.post` must be the chain: the renderer
+  draws them); `scale` draws them at a share of the frame's size, by
+  default half for AO and depth of field, whole with an outline. A
+  program's own pass may read them (`depth`, `normals`,
+  `inverseProjection`) in an `AfterPass` hook.
+- **`Ssao`**: GTAO (Jimenez et al. 2016): slices of the hemisphere about
+  the view (`slices`, 1 or 2), each's two horizons found in `samples`
+  steps out to `radius` metres along whole texel steps (each tap a
+  texel's centre on the slice), the visible arc integrated against the
+  projected normal as a share of the slice's arc unoccluded (a plane is
+  open whatever the slices: no stripes), at half the frame's size
+  (`halfRes`), then blurred up to the view buffers' size by depth
+  (bilateral), before the main pass. The standard material darkens its
+  indirect light by it alone (the ambient, the environment's light and
+  reflections), not the sun's or the lamps': a lit wall keeps its
+  light. `intensity` is a power.
+- **`Dof`**: a circle of confusion from the view buffers' depth, the
+  scene's light gathered on a disc that wide (Vogel's, `samples` taps) at
+  half the frame's size, a nearer tap taken only where its own circle
+  reaches (a sharp foreground does not bleed), mixed in where the circle
+  is wider than a texel. `Dof.focus({distance, aperture})`: a thin lens,
+  sharp at the distance, its blur at infinity the aperture (a share of
+  the frame's height), at most `radius`. `Dof.tiltShift({band, falloff,
+  strength})`: a diorama's lens, sharp within `band` of the focus depth
+  (a share of it), blurred past `falloff` more to `strength` times
+  `radius`; its focus the depth under the frame at `center` (its v; the
+  middle by default), or `distance`. A world's depth, not the screen's
+  band: a far island inside the band is blurred.
+- **`Outline`**: the selection is data, a group (1 to 255) on a node
+  (`Outline.select(node, group)`, a component; its descendants take the
+  nearest's), written by the prepass; the composite finds a group's edge
+  within its width of a pixel (16 taps) and draws its colour over
+  everything, see-through surfaces too. Each group has a colour and a
+  width (`group(k, color, width)`); the view buffers are drawn whole.
+- **`Fxaa`** (`post.antialias`): Lottes' FXAA 3 console pass, in the
+  composite's read of the scene (its light read along the edge through
+  the pixel, before the curve). A `<Scene>`'s MSAA stays the default:
+  FXAA is for a box drawn with one sample (`antialias={false}`), or both.
+- **`Lut`**: a 16 cubed (or 32) table as a 2D strip (gfx has no 3D
+  textures: size slices of size by size side by side, red across, green
+  down, blue by slice), read once in the composite after the grade,
+  display values in and out: `Lut.fromImage(device, image)` (an
+  identity strip graded in an image editor), `Lut.fromBytes(device,
+  size, bytes)`, `Lut.of(device, size, (r, g, b) -> new Vec3(...))`;
+  `strength` mixes it in.
+
+### In markup
+
+`<Effects>` configures a `<Scene>`'s chain (its box turned
+HDR), and the effects in it are set while their tags are there (`import
+helder.scene.view.EffectTags.*`; a `<Show>` toggles one); a node's
+`outline` prop is its selection group, so a hover is a binding:
+
+```haxe
+<Scene grow={1}>
+  <Effects bloom={0.05} toneMap={AgX}>
+    <Ssao radius={0.5} samples={8}/>
+    <Dof tiltShift={true} band={0.2}/>
+    <Outline width={2.0} color={gold}/>
+    <Fxaa/>
+    <Lut grade={grade}/>
+  </Effects>
+  <mesh shape="box" outline={hovered() ? 1 : 0} onPointerEnter={_ -> hovered(true)} onPointerLeave={_ -> hovered(false)}/>
+</Scene>
+```
+
+The tags are typed components (their props the effects' options: a typo
+is a compile error, and an effect never named is not linked).
+The example toggles each effect, the outline following the shape
+clicked (drag to orbit):
+
+Example: [Post effects](/examples/postfx/Postfx.hx) (`helder run examples/postfx/Postfx.hx`; it plays in the docs' page).
+
+### What they cost
+
+Measured headless (`tests/3d/EffectBench.hx`: the
+frames' courtyard below at a phone's render size, 0.75 of 1080 x 2400,
+810 x 1800, each frame read back, the median of 15) on Mesa's llvmpipe (a
+Ryzen 5 3600's 12 threads): a CPU's rasterizer, not a phone's GPU, so
+the ratio to the frame without them is what carries over, not the
+milliseconds. The passes and the texel reads a pixel are the code's:
+
+| | Passes | Reads a pixel | llvmpipe, 810 x 1800 |
+|---|---|---|---|
+| the frame without them | | | 37.6 ms |
+| view buffers (half size) | 1 geometry pass: the opaque draws | 2 (base colour, roughness) | +3.4 ms (+9%) |
+| `Ssao` (2 slices of 8 steps; with the view buffers) | 2, half size | 34 (GTAO), 19 (blur), 1 in the main pass | +17.5 ms (+47%) |
+| `Dof.focus` (16 taps; with the view buffers) | 1, half size | 34, 3 in the composite | +18.1 ms (+48%) |
+| `Dof.tiltShift` (16 taps; with the view buffers) | 1, half size | 34, 3 in the composite | +13.1 ms (+35%) |
+| `Outline` (with the view buffers, whole) | none | 17 to 33 in the composite | +13.0 ms (+35%) |
+| `Fxaa` | none | 8 in the composite | +3.1 ms (+8%) |
+| `Lut` | none | 2 in the composite | +1.0 ms (+3%) |
+| all of them, and bloom (6 levels) | 15 post passes | | +60 ms (x2.6) |
+
+D3D11's WARP finds the same order (`EffectBench` on Windows). On a phone,
+prefer AO's one slice of 4 to 6 steps (`slices: 1, samples: 6`), depth of
+field's 16 taps and the view buffers at half size (no outline). What each
+adds to a program, natively (Linux x86-64) and as wasm, against the chain
+without one (`tests/3d/size/sizes.sh`'s post table): FXAA 8 KB and 16
+KB; a LUT 67 KB and 83 KB (the composite's variants with the effects);
+an outline 167 KB and 201 KB, AO 204 KB and 245 KB, depth of field 187 KB
+and 226 KB (those and the view buffers' prepass); all of them 268 KB and
+310 KB. The prepass's and the composites' variants are drawn on the GPU
+alone (`gpuVariant`: no CPU stages linked). An effect's passes are its
+pass's class (`SsaoPass`, `DofPass`, `OutlinePass`), linked when it is set
+on a chain: an effect made and not set, or a node selected
+(`Outline.select`, `Selection`), links no GPU code and no device.
+
+### Tests
+
+The frames: `tests/3d`'s prepass (the view buffers shown: depth, normals,
+the selected tinted), ssao, dof, tiltshift, outline (two groups, one
+behind a glass pane), fxaa, lut and effects (all at once; its probe
+draws it again and checks a frame allocates nothing: `hxmc.GcStats`),
+natively and in Chromium (`3d-web`); their CPU halves in
+`src/helder/scene/render/Effects.test.hx` (natively and as wasm32-wasi);
+from TypeScript, `tests/typescript/helder/effects.ts`.
 
 ## Instancing
 
@@ -630,18 +798,25 @@ optimisation against:
 |---|---|---|
 | main (the scene's colour pass) | `renderer.draws` (and `instanced`, `culled`) | `FrameCounts.sceneDraws` |
 | shadow maps (every cascade) | `renderer.shadowDraws` (`Shadows.draws`) | `FrameCounts.shadowDraws` |
-| post (bloom down and up, the composite, stages) | `renderer.post.draws` | `FrameCounts.postDraws` |
+| the view buffers' prepass (`ViewBuffers`: the opaque draws again, single-sampled) | `renderer.prepassDraws` | `FrameCounts.prepassDraws` |
+| post (AO's and depth of field's passes, bloom down and up, the composite, stages) | `renderer.post.draws` | `FrameCounts.postDraws` |
 | everything the GPU was given (the UI's too) | | `FrameCounts.draws`, `passes`, `instances` |
 
 `helder.gfx.FrameCounts` is counted from its last `reset()`; a headless
 run's `--stats out.json` resets it at each frame and writes these for every
-frame (`sceneDraws`, `shadowDraws`, `postDraws` beside `draws` and
-`passes`), and prints their medians:
+frame (`sceneDraws`, `shadowDraws`, `prepassDraws`, `postDraws` beside
+`draws` and `passes`), and prints their medians:
 
 ```
 HELDER_CONTROLS=none bun run helder run examples/showroom --headless --stats bin/showroom-stats.json --at 4
-headless: 3D draws by pass: main 17 (at most 18), shadow maps 17 (at most 17), post 12 (at most 12)
+headless: 3D draws by pass: main 12 (at most 12), shadow maps 24 (at most 24), prepass 0 (at most 0), post 0 (at most 0)
+bun run helder run examples/postfx --headless --stats bin/postfx-stats.json --at 2
+headless: 3D draws by pass: main 7 (at most 7), shadow maps 0 (at most 0), prepass 7 (at most 7), post 15 (at most 15)
 ```
+
+(examples/postfx: the prepass draws the opaque shapes again, one sample
+a pixel; post is AO's two passes, depth of field's one, bloom's 11 and
+one composite, the outline, FXAA and the tilt-shift's mix folded in.)
 
 ### Sprites
 
@@ -791,7 +966,12 @@ lane's frames and the examples' videos on the site are made this way.
 `helder/scene` (src/helder/scene/index.ts, over `helder/scene/runtime`,
 which `TypeScript.hx` declares: [helder.typescript](/src/helder/typescript/README.md))
 is this package for TypeScript programs: World, Camera, Light, Material,
-MeshRenderer, Shapes, Model, Renderer, InputMap (its bindings made by
+MeshRenderer, Shapes, Model, Renderer, PostProcess and its effects (Ssao,
+Dof, Outline, Lut; ViewBuffers; `ToneMap`, `Antialias` and `DofMode` by
+name; `lutStrip(size, grade)`, a LUT's strip from a grade written in
+TypeScript, for `Lut.fromBytes`: a `Vec3` a TypeScript function returns
+does not cross into Haxe yet, so `Lut.of` and `Lut.strip`, whose grade is
+one, are Haxe's alone), InputMap (its bindings made by
 Bindings: `actions.bind("jump", Bindings.key(0x20))`), FixedStep, and what
 a scene is drawn with (helder.os's Window, App, Event and Surface,
 helder.gfx's Device). A Node is the program's class over a node's handle

@@ -2,10 +2,48 @@ package helder.scene.render;
 
 // An optional part of the renderer, turned on by the program
 // (renderer.use(new Shadows(device))): the renderer core reaches it only
-// through the interfaces it fills (ShadowSource, SkinSource, NormalSource), so a program
-// that never makes one links none of its code or shaders.
+// through the interfaces it fills (ShadowSource, SkinSource, NormalSource,
+// ViewSource; post's effects through PostEffects), so a program that never
+// makes one links none of its code or shaders.
 interface RenderFeature {
 	function attach(renderer:Renderer):Void;
+}
+
+// what the renderer asks of the view buffers (ViewBuffers)
+interface ViewSource {
+	// the prepass: the frame's opaque draws (the renderer's draw list,
+	// extracted) into the depth and normal targets, after the shadow maps
+	// and before the frame's pass
+	function render(enc:helder.gfx.Encoder, renderer:Renderer, frame:Renderer.FrameInfo):Void;
+	// a node's selection group (Outline.select, on it or the nearest of its
+	// ancestors; 0: none), taken into the draw list
+	function group(node:helder.scene.Node):Int;
+	// the last prepass's draws
+	function drawn():Int;
+}
+
+// what a PostProcess asks of its effects beyond bloom and the grade
+// (PostEffects.hx: the first effect made installs them, PostProcess.effects)
+interface PostEffects {
+	// before the frame's draw list: what the effects set need of the
+	// renderer (the view buffers: ViewBuffers.of)
+	function require(renderer:Renderer):Void;
+	// after the prepass, before the frame's pass: the screen's ambient
+	// occlusion (post.ao; null without), which the standard material reads
+	function occlusion(enc:helder.gfx.Encoder, frame:Renderer.FrameInfo):Null<helder.gfx.Texture>;
+	// before bloom (BeforeComposite: linear light): depth of field's passes
+	function beforeComposite(enc:helder.gfx.Encoder):Void;
+	// whether the composite mixes an effect in (dof, outline, lut)
+	function folded():Bool;
+	// the composite's pipeline with the effects (fxaa: post.antialias's)
+	// into a format (null: the frame), and its effects bound
+	function composite(fxaa:Bool, format:Null<helder.gfx.TextureFormat>):helder.gfx.Pipeline;
+	function bind(enc:helder.gfx.Encoder, fxaa:Bool):Void;
+	// its slots of the chain's own: the composite's block, the scene, the bloom
+	function slots(fxaa:Bool):Array<Int>;
+	// the last frame's draws of their own passes (AO's, DOF's)
+	function drawn():Int;
+	function dispose():Void;
 }
 
 // what the renderer asks of a shadow map (Shadows)
@@ -49,6 +87,11 @@ interface SkinSource {
 	// Shadows) and its slots (caster, skin, joints)
 	function shadowPipeline():helder.gfx.Pipeline;
 	function shadowSlots():Array<Int>;
+	// the view buffers' skinned prepass (made when first asked: only with
+	// ViewBuffers), its slots in Renderer.slotsOf's order, its blocks
+	function prepassPipeline(doubleSided:Bool):helder.gfx.Pipeline;
+	function prepassSlots():Array<Int>;
+	function prepassUniforms():Array<helder.gfx.shader.Shader.UniformBlock>;
 }
 
 // what the renderer asks of normal mapping (NormalMaps)
