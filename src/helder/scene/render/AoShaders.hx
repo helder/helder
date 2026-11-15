@@ -13,7 +13,10 @@ final GtaoShader = shader({
 		return fullscreen(v),
 	fragment: function(i:PostVaryings, params:{a:AoParams, depth:Texture2D, normals:Texture2D}):Vec4 {
 		var a = params.a;
-		var uv = (floor(i.uv * a.size.zw) + 0.5) / a.size.zw;
+		// (the view buffers' texel under this pixel: viewTexel's, exact on
+		// every back end at half their size too)
+		var px = floor(i.uv * a.size.xy);
+		var uv = viewTexel(i.uv, a.size.xy, a.size.zw);
 		var d = sampleLevel(params.depth, uv, 0).x;
 		var visibility = 1.0;
 		if (d < 0.99999) {
@@ -23,7 +26,6 @@ final GtaoShader = shader({
 			var radius = a.p.x;
 			// (the radius on the screen, in the height's uv; x by the aspect)
 			var screen = a.p.w > 0 ? a.p.w * radius / max(-pos.z, 0.0001) : a.more.w;
-			var px = floor(i.uv * a.size.xy);
 			var noise = ign(px);
 			var jitter = fract(noise * 7.13 + 0.5);
 			var slices = a.p.y;

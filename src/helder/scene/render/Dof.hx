@@ -51,7 +51,7 @@ class Dof implements PostPass {
 	var device:Null<Device> = null;
 	var pipeline:Null<Pipeline> = null;
 	final bytes = Bytes.alloc(DofShader.uniforms[1].size);
-	final block:DofParams = {size: new Vec4(0, 0, 0, 0)};
+	final block:DofParams = {size: new Vec4(0, 0, 0, 0), views: new Vec4(0, 0, 0, 0)};
 	final pass:PassDesc = {colors: [{load: Clear, clear: new Color(0, 0, 0, 0)}]};
 	var w = 0;
 	var h = 0;
@@ -126,6 +126,7 @@ class Dof implements PostPass {
 		}
 		size(Std.int(Math.max(1, (fx.post.width + 1) >> 1)), Std.int(Math.max(1, (fx.post.height + 1) >> 1)));
 		block.size = new Vec4(w, h, fx.post.width / Math.max(1, fx.post.height), Math.max(4, samples));
+		block.views = new Vec4(fx.views.width, fx.views.height, 0, 0);
 		DofShader.params.d.write(block, bytes);
 		enc.beginPass(pass);
 		enc.setPipeline(pipeline);

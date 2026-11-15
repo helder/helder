@@ -57,6 +57,17 @@ import helder.scene.render.PostShader;
 // depth of field's blur: xy the target's pixels, z the frame's aspect, w its taps
 @:structInit @:publicFields class DofParams {
 	var size:Vec4;
+	var views:Vec4; // xy: the view buffers' pixels
+}
+
+// the view buffers' texel under a pixel of a target of size pixels (views
+// theirs, a whole multiple of it), from the pixel's own index: a pixel's
+// centre in a target smaller than theirs is the corner of their texels,
+// where flooring its uv against their size picks one by the last bit of
+// the interpolated uv, which back ends round apart (WGSL's and GLSL's)
+function viewTexel(uv:Vec2, size:Vec2, views:Vec2):Vec2 {
+	var px = floor(uv * size);
+	return (floor(px * floor(views / size + 0.5)) + 0.5) / views;
 }
 
 // (interleaved gradient noise: Jimenez's, 0..1 by pixel)

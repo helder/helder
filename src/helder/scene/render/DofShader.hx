@@ -12,7 +12,8 @@ final DofShader = shader({
 	fragment: function(i:PostVaryings, params:{fx:CompositeFx, d:DofParams, scene:Texture2D, viewDepth:Texture2D}):Vec4 {
 		var fx = params.fx;
 		var focus = focusOf(fx, params.viewDepth);
-		var zc = viewDepthAt(fx.inverseProjection, i.uv, sampleLevel(params.viewDepth, i.uv, 0).x);
+		var at = viewTexel(i.uv, params.d.size.xy, params.d.views.xy);
+		var zc = viewDepthAt(fx.inverseProjection, at, sampleLevel(params.viewDepth, at, 0).x);
 		var radius = cocOf(fx.dof, focus, zc);
 		var c = sampleLevel(params.scene, i.uv, 0);
 		var texel = 1 / params.d.size.y;
