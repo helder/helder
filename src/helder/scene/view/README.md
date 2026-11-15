@@ -76,6 +76,26 @@ Example: [Planets](/examples/planets/Planets.hx) (`helder run examples/planets/P
   right button moves the target, the wheel zooms about the pointer; let
   go moving it glides on, slowing by `damping` a frame. A tap on a mesh
   selects, a drag from it orbits.
+- **`<TransformGizmo>`** (`SceneTags.TransformGizmo`, `TransformGizmo`:
+  three.js's TransformControls): handles at a node (`of`: a node, or a
+  value read from signals: the gizmo follows it), `mode` `Translate`
+  (arrows), `Rotate` (rings) or `Scale` (arms), `space` `World` or
+  `Local`, `snap`, `rotationSnap`, `scaleSnap`, `size` (the arms' length in
+  points). Its gesture is in the box's arena beside the orbit's and the
+  taps: a press on a handle is the gizmo's at once (it accepts at the
+  press, before the orbit's drag passes its slop), a press elsewhere fails
+  it at once, so a drag there orbits. A drag moves the node along the
+  axis (the pointer's ray's nearest point on it), turns it about it (the
+  angle the pointer turns through on the ring's plane) or scales it along
+  it (the node's own axes), in its parent's frame; `position`, `rotation`
+  and `scale` given signals take the new value instead of the node
+  (`writesNode` off), `onChange` after each step. Its handles are lines
+  over everything (the box's renderer given a `LineRenderer`), the same
+  size on the screen at any distance.
+
+  ```haxe
+  <TransformGizmo of={world.root.find(picked())} mode={mode} snap={0.25}/>
+  ```
 - **`<Stick>`** (`SceneTags.Stick`): an on-screen stick
   (`helder.scene.input.VirtualStick`, bound by `InputMap`: [Input](/docs/scene/input.md))
   drawn over the ui, at rest at `left`, `bottom`, under the thumb once it
@@ -185,5 +205,9 @@ rejected), `tests/3d-ui/SurfaceTest.hx` (under Xvfb: two `<Surface>`s, a
 their presses, a tap on the mesh, a drag from it orbiting the camera, a
 cancel, `<Ui>` placed, `<Stick>` drawn, a click picked by triangles (its
 uv and normal), `<lines>`, `<axesHelper>`, `<boundsHelper>` and
-`<text3d>` on their nodes, the text following its signal); `OrbitControls.test.hx` (the
+`<text3d>` on their nodes, the text following its signal, a drag on a
+`<TransformGizmo>`'s arm moving its node and not the camera);
+`TransformGizmo.test.hx` (natively and as wasm32-wasi: arms, rings,
+snaps, a turned parent, the orbit beside it, nothing allocated a frame
+or a drag); `OrbitControls.test.hx` (the
 camera's motion without a GPU, natively and as wasm32-wasi).

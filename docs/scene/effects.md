@@ -200,6 +200,23 @@ milliseconds. The passes and the texel reads a pixel are the code's:
 | `Lut` | none | 2 in the composite | +1.0 ms (+3%) |
 | all of them, and bloom (6 levels) | 15 post passes | | +60 ms (x2.6) |
 
+Phase 7's, measured the same way (`EffectBench`'s `bench-*` on the same
+courtyard; the machine shared, so the least of three runs' medians), each
+with what it reads:
+
+| | Passes | Reads a pixel | llvmpipe, 810 x 1800 |
+|---|---|---|---|
+| `Ssr` (32 steps, half size; with the view buffers) | 2: the rays at half size, the mix | up to 2 a step and 8 refining, at half size; 5 at full | +20 ms (+41%) |
+| `Taa` (with the view buffers whole and their motion) | 1, and the motion's geometry pass | 12 | +35 ms (+73%) |
+| `Smaa` | 2: edges, weights; the blending in the composite | 7 (edges), up to 70 on an edge (weights), 6 in the composite | +8 ms (+17%) |
+| `MotionBlur` (the camera's, 12 taps, every pixel moving; with the view buffers) | 5: the motion, tiles, neighbourhoods at their sizes, the gather at half size, the mix | 2 (motion), 24 (gather, half size), 3 (mix) | about +30 ms (+70%) |
+| `MotionBlur` by objects | the same, and the motion's geometry pass | | about +35 ms (+80%) |
+| `GodRays` (32 taps; with the view buffers) | 1, a quarter of the size | 64 at a quarter's size, 1 in the composite | +17 ms (+36%) |
+| `Occlusion` (9 boxes tested) | none: a box a tested node in the main pass | | under the noise (a box's draw a node; what it culls is what it saves) |
+
+TAA, SSR and motion blur by objects are the desktop's and the web's:
+MSAA stays a phone's antialiasing, and motion blur of the camera alone
+(from depth) is the phone's.
 D3D11's WARP finds the same order (`EffectBench` on Windows). On a phone,
 prefer AO's one slice of 4 to 6 steps (`slices: 1, samples: 6`), depth of
 field's 16 taps and the view buffers at half size (no outline). What each
@@ -208,7 +225,15 @@ without one (`tests/3d/size/sizes.sh`'s post table): FXAA 8 KB and 16
 KB; a LUT 67 KB and 83 KB (the composite's variants with the effects);
 an outline 167 KB and 201 KB, AO 204 KB and 245 KB, depth of field 187 KB
 and 226 KB (those and the view buffers' prepass); all of them 268 KB and
-310 KB. The prepass's and the composites' variants are drawn on the GPU
+310 KB. Phase 7's, the same way (the effects' composite and the view
+buffers counted in each where it reads them): SSR 221 KB and 267 KB, TAA
+(with the view buffers' motion pass) 279 KB and 333 KB, SMAA 130 KB and
+165 KB, motion blur 271 KB and 327 KB, god rays 192 KB and 230 KB,
+occlusion culling (`Occlusion` and gfx's queries) 39 KB and 39 KB; every
+effect at once 595 KB and 676 KB. The renderer's own share (the jitter,
+the frame before's view-projection, occlusion's hooks, gfx's query
+plumbing in each back end) is 23 KB natively and 16 KB as wasm, there
+whether or not a program uses them. The prepass's and the composites' variants are drawn on the GPU
 alone (`gpuVariant`: no CPU stages linked). An effect's passes are its
 pass's class (`SsaoPass`, `DofPass`, `OutlinePass`), linked when it is set
 on a chain: an effect made and not set, or a node selected
@@ -222,4 +247,12 @@ behind a glass pane), fxaa, lut and effects (all at once; its probe
 draws it again and checks a frame allocates nothing: `hxmc.GcStats`),
 natively and in Chromium (`3d-web`); their CPU halves in
 `src/helder/scene/render/Effects.test.hx` (natively and as wasm32-wasi);
-from TypeScript, `tests/typescript/helder/effects.ts`.
+from TypeScript, `tests/typescript/helder/effects.ts`. Phase 7's: ssr,
+taa (8 jittered frames from a cut: the same still however often drawn),
+smaa, motionblur (two frames, the second's shown: the camera turning, a
+box flying, a wheel turning), godrays and occlusion (a crowd behind a
+wall culled once its queries answer, the frame the same as without:
+its twin; `renderer.occluded` counted), each checking a frame allocates
+nothing, natively (llvmpipe, WARP) and in Chromium's WebGPU and WebGL2
+(`tests/3d/HighEndScenes.hx`); from TypeScript,
+`tests/typescript/helder/highend.ts`.

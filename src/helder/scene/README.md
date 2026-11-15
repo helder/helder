@@ -608,15 +608,21 @@ post.outline = new Outline({width: 2, color: new Vec4(1, 0.8, 0.2, 1)});     // 
 Outline.select(node);                                                          // node and what is under it, group 1 (0: none)
 post.antialias = Fxaa;                                                         // None | Fxaa
 post.lut = Lut.fromImage(device, image);                                       // a 16 cubed strip (256 x 16); Lut.of(device, 16, grade)
+post.ssr = new Ssr({maxDistance: 8, thickness: 0.25});                         // screen-space reflections
+post.taa = new Taa();                                                          // temporal antialiasing; or post.smaa = new Smaa()
+post.motionBlur = new MotionBlur({strength: 0.5});                             // the camera's; {objects: true} each object's too
+post.godRays = new GodRays({intensity: 0.5});                                  // the sky's light streaming towards the sun
 renderer.post = post;                                                          // the renderer draws what they read
 ```
 
 The effects are a `PostProcess`'s fields, null by default: an effect a
 program never sets is not linked (its class, its passes, its shaders,
 and the view buffers if none reads them: `tests/3d/size/PostSize.hx`).
-The order is fixed by what is right: AO in the lighting, depth of field
-in linear light before bloom, the curve, the grade, the LUT; FXAA in
-the composite's read of the scene, the outline over everything. The
+The order is fixed by what is right: AO in the lighting; in linear light
+before bloom, reflections, then temporal antialiasing, then motion blur,
+then depth of field; god rays added before the curve; the curve, the
+grade, the LUT; FXAA or SMAA's blending in the composite's read of the
+scene, the outline over everything. The
 composite stays one pass: a variant compiled at build time with the
 effects folded in (and one with FXAA), each effect off while its part of
 the block is zero.
@@ -628,8 +634,17 @@ the block is zero.
   variants: the position, normal, roughness and alpha slots alone; a
   material of its own that replaces one of those gets its own prepass
   variants) into a sampled `Depth32F` depth and an `RGBA8` target of the
-  view-space normal (octahedral, xy), roughness (z) and the selection
-  group (w). One pass of one colour target: gfx has no MRT. The main
+  view-space normal (octahedral, xy), roughness and metalness (z, four
+  bits each) and the selection group (w). One pass of one colour target:
+  gfx has no MRT. Their **motion** (`withVelocity()`, which TAA and motion
+  blur by objects ask for themselves) is a second pass of the same draws
+  into an `RGBA16F` target (`motion`): how far each pixel's point moved
+  on the screen since the frame before, by each node's world matrix then
+  and now (kept by node, nothing allocated) and the camera's
+  view-projections, the jitter left out; an instanced run reads its last
+  matrices from a buffer beside the renderer's, an instanced set moves
+  with the camera alone, a skinned mesh is not drawn (what reads it takes
+  the camera's motion from depth there). The main
   pass's multisampled depth is not theirs. AO, depth of field and the
   outline ask for them (`renderer.post` must be the chain: the renderer
   draws them); `scale` draws them at a share of the frame's size, by
@@ -669,6 +684,55 @@ the block is zero.
   composite's read of the scene (its light read along the edge through
   the pixel, before the curve). A `<Scene>`'s MSAA stays the default:
   FXAA is for a box drawn with one sample (`antialias={false}`), or both.
+- **`Ssr`** (desktop and web): each glossy pixel's reflected ray
+  marched in view space (`steps` of `maxDistance` metres, the first
+  dithered), a hit where it passes behind the view buffers' depth by less
+  than `thickness`, refined by four halvings; at half the frame's size
+  (`halfRes`), then mixed over the scene's light at the frame's size by
+  Schlick's Fresnel (its F0 from the surface's metalness: the view buffers
+  keep no base colour, a metal's reflection is untinted), the surface's
+  gloss (none past `maxRoughness`) and the hit's confidence (faded at the
+  screen's edges, with the distance, for rays towards the eye). Where
+  nothing is hit the scene keeps its own (the environment's, the sky's).
+  A linear march, not a hierarchical one: gfx's depth has no mip chain
+  of its minimums yet.
+- **`Taa`** (`post.taa`; desktop and web): the projection jittered by the
+  next of 8 points of Halton's (2, 3) sequence each frame (to a
+  sixteenth of a pixel: every rasterizer's grid, so edges match across
+  back ends), the frame gathered with its history where its point was the
+  frame before (the view buffers' motion, else the camera's from depth),
+  the history kept within the pixel's 3 x 3 neighbourhood (YCoCg, its mean
+  and spread inside their box: Salvi's variance clipping in Karis' clamp),
+  in a tone mapped space (a bright speck weighs as a dim one), `blend` the
+  new frame's share (0.1). The history is let go at a cut
+  (`post.resetHistory()`), the first frame and a resize. The view buffers
+  are drawn whole, with their motion.
+- **`Smaa`** (`post.smaa`): Jimenez et al.'s morphological antialiasing,
+  in three passes: the edges of the light's perceptual luma (local
+  contrast adaptation: an edge beside one twice as strong is not one),
+  then for each edge its run searched both ways (16 pixels) and the edges
+  crossing its ends, the line a silhouette took through the staircase
+  (MLAA's L, Z and U patterns; a crossing counted only where the edge
+  steps on, not at a T) and the share of each pixel it covers, worked out
+  rather than looked up; then the blending, in the composite. Its medium
+  preset: no diagonal or corner patterns. It needs no view buffers.
+- **`MotionBlur`**: McGuire et al.'s reconstruction in four passes: each
+  texel's motion at the view buffers' size (the camera's from depth and
+  the last view-projection, or with `objects` the view buffers' motion:
+  a second geometry pass) times the shutter (`strength`: 0.5 a half-open
+  one), at most `max` of the frame's height; the longest of each 8 x 8
+  tile and of its neighbours; then each pixel gathers `samples` taps along
+  its tile's line (every other one along its own motion when it moves at
+  least half as fast: a turning wheel keeps its arcs), a tap counting
+  where its motion reaches the pixel or the pixel's reaches it. A still
+  background beside a moving object takes the object's smear.
+- **`GodRays`**: from each pixel of a target a quarter of the frame's
+  size, `samples` taps towards the sun's place on the screen, each the
+  scene's light where the view buffers' depth is the sky's, weighted by
+  its nearness to the sun (`falloff`) and fading by `decay`; added to the
+  light before the curve (`intensity`). The sun is the world's first
+  directional light (else the renderer's); behind the camera, none; faded
+  as it leaves the screen (Mitchell, GPU Gems 3). Not volumetric fog.
 - **`Lut`**: a 16 cubed (or 32) table as a 2D strip (gfx has no 3D
   textures: size slices of size by size side by side, red across, green
   down, blue by slice), read once in the composite after the grade,
@@ -692,17 +756,28 @@ helder.scene.view.EffectTags.*`; a `<Show>` toggles one); a node's
     <Outline width={2.0} color={gold}/>
     <Fxaa/>
     <Lut grade={grade}/>
+    <Ssr maxDistance={8.0}/>
+    <MotionBlur strength={0.5}/>
+    <GodRays intensity={0.5}/>
   </Effects>
   <mesh shape="box" outline={hovered() ? 1 : 0} onPointerEnter={_ -> hovered(true)} onPointerLeave={_ -> hovered(false)}/>
 </Scene>
 ```
 
 The tags are typed components (their props the effects' options: a typo
-is a compile error, and an effect never named is not linked).
+is a compile error, and an effect never named is not linked). `<Smaa/>`
+or `<Taa blend={0.1}/>` in place of `<Fxaa/>`.
 The example toggles each effect, the outline following the shape
 clicked (drag to orbit):
 
 Example: [Post effects](/examples/postfx/Postfx.hx) (`helder run examples/postfx/Postfx.hx`; it plays in the docs' page).
+
+The high end's own: reflections on a polished floor and a mirror, god
+rays from a low sun behind a colonnade, TAA or SMAA or FXAA, the camera's
+motion blur as you orbit, and a transform gizmo on the shape clicked
+([Markup](/docs/scene/markup.md)):
+
+Example: [High-end effects](/examples/highend/Highend.hx) (`helder run examples/highend/Highend.hx`; it plays in the docs' page).
 
 ### What they cost
 
@@ -725,6 +800,23 @@ milliseconds. The passes and the texel reads a pixel are the code's:
 | `Lut` | none | 2 in the composite | +1.0 ms (+3%) |
 | all of them, and bloom (6 levels) | 15 post passes | | +60 ms (x2.6) |
 
+Phase 7's, measured the same way (`EffectBench`'s `bench-*` on the same
+courtyard; the machine shared, so the least of three runs' medians), each
+with what it reads:
+
+| | Passes | Reads a pixel | llvmpipe, 810 x 1800 |
+|---|---|---|---|
+| `Ssr` (32 steps, half size; with the view buffers) | 2: the rays at half size, the mix | up to 2 a step and 8 refining, at half size; 5 at full | +20 ms (+41%) |
+| `Taa` (with the view buffers whole and their motion) | 1, and the motion's geometry pass | 12 | +35 ms (+73%) |
+| `Smaa` | 2: edges, weights; the blending in the composite | 7 (edges), up to 70 on an edge (weights), 6 in the composite | +8 ms (+17%) |
+| `MotionBlur` (the camera's, 12 taps, every pixel moving; with the view buffers) | 5: the motion, tiles, neighbourhoods at their sizes, the gather at half size, the mix | 2 (motion), 24 (gather, half size), 3 (mix) | about +30 ms (+70%) |
+| `MotionBlur` by objects | the same, and the motion's geometry pass | | about +35 ms (+80%) |
+| `GodRays` (32 taps; with the view buffers) | 1, a quarter of the size | 64 at a quarter's size, 1 in the composite | +17 ms (+36%) |
+| `Occlusion` (9 boxes tested) | none: a box a tested node in the main pass | | under the noise (a box's draw a node; what it culls is what it saves) |
+
+TAA, SSR and motion blur by objects are the desktop's and the web's:
+MSAA stays a phone's antialiasing, and motion blur of the camera alone
+(from depth) is the phone's.
 D3D11's WARP finds the same order (`EffectBench` on Windows). On a phone,
 prefer AO's one slice of 4 to 6 steps (`slices: 1, samples: 6`), depth of
 field's 16 taps and the view buffers at half size (no outline). What each
@@ -733,7 +825,15 @@ without one (`tests/3d/size/sizes.sh`'s post table): FXAA 8 KB and 16
 KB; a LUT 67 KB and 83 KB (the composite's variants with the effects);
 an outline 167 KB and 201 KB, AO 204 KB and 245 KB, depth of field 187 KB
 and 226 KB (those and the view buffers' prepass); all of them 268 KB and
-310 KB. The prepass's and the composites' variants are drawn on the GPU
+310 KB. Phase 7's, the same way (the effects' composite and the view
+buffers counted in each where it reads them): SSR 221 KB and 267 KB, TAA
+(with the view buffers' motion pass) 279 KB and 333 KB, SMAA 130 KB and
+165 KB, motion blur 271 KB and 327 KB, god rays 192 KB and 230 KB,
+occlusion culling (`Occlusion` and gfx's queries) 39 KB and 39 KB; every
+effect at once 595 KB and 676 KB. The renderer's own share (the jitter,
+the frame before's view-projection, occlusion's hooks, gfx's query
+plumbing in each back end) is 23 KB natively and 16 KB as wasm, there
+whether or not a program uses them. The prepass's and the composites' variants are drawn on the GPU
 alone (`gpuVariant`: no CPU stages linked). An effect's passes are its
 pass's class (`SsaoPass`, `DofPass`, `OutlinePass`), linked when it is set
 on a chain: an effect made and not set, or a node selected
@@ -747,7 +847,15 @@ behind a glass pane), fxaa, lut and effects (all at once; its probe
 draws it again and checks a frame allocates nothing: `hxmc.GcStats`),
 natively and in Chromium (`3d-web`); their CPU halves in
 `src/helder/scene/render/Effects.test.hx` (natively and as wasm32-wasi);
-from TypeScript, `tests/typescript/helder/effects.ts`.
+from TypeScript, `tests/typescript/helder/effects.ts`. Phase 7's: ssr,
+taa (8 jittered frames from a cut: the same still however often drawn),
+smaa, motionblur (two frames, the second's shown: the camera turning, a
+box flying, a wheel turning), godrays and occlusion (a crowd behind a
+wall culled once its queries answer, the frame the same as without:
+its twin; `renderer.occluded` counted), each checking a frame allocates
+nothing, natively (llvmpipe, WARP) and in Chromium's WebGPU and WebGL2
+(`tests/3d/HighEndScenes.hx`); from TypeScript,
+`tests/typescript/helder/highend.ts`.
 
 ## Instancing
 
@@ -793,6 +901,28 @@ Tests: `src/helder/scene/render/InstancedMesh.test.hx` (the layout, resize,
 nothing allocated), the 3d lane's `instancedmesh` frame (shadows, a set
 culled), `tests/3d-ui/SceneUiTest.hx`.
 
+### Occlusion culling
+
+```haxe
+renderer.use(new Occlusion(device));        // gfx's occlusion queries (1024 by default)
+Occlusion.test(building);                   // its meshes culled while hidden; untest(node)
+renderer.occluded;                          // the last frame's primitives not drawn
+```
+
+Each tested node's bounds are drawn as a box after the frame's opaque
+surfaces, depth tested and not written, inside an occlusion query of
+gfx's (`Device.createQueries`; `Encoder.beginQuery`, `endQuery`; GL ES
+3.0's and WebGL2's `ANY_SAMPLES_PASSED`, WebGPU's occlusion query sets,
+Metal's visibility results, D3D11's occlusion queries). A node whose last
+answered query passed no sample is culled at the next frames' extraction
+(Babylon's occlusion queries: a frame or more late, never waited for);
+its box is still drawn each frame, so it comes back when it is seen
+again. A node outside the view, or whose bounds hold the eye, is not
+tested and never culled, its last answer let go (`Device.resetQuery`).
+Each box is a draw of its own (a query each): test what a wall may hide
+(a building, a room's contents), not every pebble. GPU-driven culling
+against a depth pyramid is the compute tier's.
+
 ### Draw calls by pass
 
 What a frame costs in draw calls, by pass, to measure the next
@@ -800,7 +930,7 @@ optimisation against:
 
 | Pass | The last frame's, this renderer | Every renderer's, summed |
 |---|---|---|
-| main (the scene's colour pass) | `renderer.draws` (and `instanced`, `culled`) | `FrameCounts.sceneDraws` |
+| main (the scene's colour pass) | `renderer.draws` (and `instanced`, `culled`, `occluded`) | `FrameCounts.sceneDraws` (and `occluded`) |
 | shadow maps (every cascade) | `renderer.shadowDraws` (`Shadows.draws`) | `FrameCounts.shadowDraws` |
 | the view buffers' prepass (`ViewBuffers`: the opaque draws again, single-sampled) | `renderer.prepassDraws` | `FrameCounts.prepassDraws` |
 | post (AO's and depth of field's passes, bloom down and up, the composite, stages) | `renderer.post.draws` | `FrameCounts.postDraws` |
@@ -1225,7 +1355,8 @@ lane's frames and the examples' videos on the site are made this way.
 which `TypeScript.hx` declares: [helder.typescript](/src/helder/typescript/README.md))
 is this package for TypeScript programs: World, Camera, Light, Material,
 MeshRenderer, Shapes, Model, Renderer, PostProcess and its effects (Ssao,
-Dof, Outline, Lut; ViewBuffers; `ToneMap`, `Antialias` and `DofMode` by
+Dof, Outline, Lut, Ssr, Taa, Smaa, MotionBlur, GodRays; ViewBuffers;
+Occlusion and `Occlusion.test`; `ToneMap`, `Antialias` and `DofMode` by
 name; `Lut.of(device, size, grade)` a LUT from a grade written in
 TypeScript, its `Vec3` returned into Haxe), InputMap (its bindings made by
 Bindings: `actions.bind("jump", Bindings.key(0x20))`), FixedStep, and what
@@ -1288,7 +1419,11 @@ is Haxe's alone for now.
 `tests/typescript/helder/scene.ts` checks it without a GPU, and
 `tests/typescript/helder/picking.ts` phase 3's (rays at meshes of data
 alone, a tree read back from its bytes, lines' points as uploaded,
-DebugDraw's ring, helpers), a static build linking no device.
+DebugDraw's ring, helpers), a static build linking no device, and
+`tests/typescript/helder/highend.ts` phase 7's (the high end's effects'
+options and defaults, a node marked for occlusion culling: no query
+made, no device linked). The transform gizmo is markup's and Haxe's
+(`helder.scene.view`, as `OrbitControls`).
 `examples/ts-scene` puts it together (scene.ts: examples/gltf-viewer's
 sample model, a point light, glowing orbs of a material of their own; the
 arrow keys turn the camera, an InputMap's axis), and the 3d lane draws its
