@@ -546,8 +546,6 @@ golden, and is its brute force's: every light at every pixel). The lists
 and the lights go into one R32F texture the standard material reads in a
 branch, so no material has a variant more and it runs on WebGL2.
 
-Example: [Many lights](/docs/examples/scene-clustered/ManyLights.hx) (`helder run docs/examples/scene-clustered/ManyLights.hx`; it plays in the docs' page).
-
 Measured (`tests/3d/LightBench.hx`, headless at a phone's render size,
 810 x 1800, on Mesa's llvmpipe; a CPU's rasterizer is not a phone's GPU,
 the ratios are what carry over; a floor and nine pillars, 24.5 ms with no
@@ -616,8 +614,6 @@ filter is a 3x3 or a disc of 12 taps (`radius`, in the tile's texels),
 their bias in metres a metre from the light (`localBias`, `bias`), and an
 offset along the surface's normal (`normalBias`, in texels), both growing
 with the distance as the tile's texels do.
-
-Example: [Spot and point shadows](/docs/examples/scene-shadows/SpotAndPoint.hx) (`helder run docs/examples/scene-shadows/SpotAndPoint.hx`; it plays in the docs' page).
 
 tests/3d's `spotshadow` (two spot lights, a 3x3 and a disc), `pointshadow`
 (a point light between pillars and two walls) and `shadowatlas` (six

@@ -132,7 +132,7 @@ export default async function (host) {
 		o?.depth?.destroy?.();
 		o?.msaa?.destroy?.();
 	};
-	// a canvas's frames submitted and not yet done (frame_begin)
+	// a canvas's frames submitted and not yet done (host.gfx.behind)
 	let inFlight = 0;
 	const submitted = () => {
 		for (const o of doomed.splice(0)) destroy(o);
@@ -235,6 +235,11 @@ export default async function (host) {
 		adapter,
 		device,
 		backend: null,
+		// whether two of a canvas's frames are still on the GPU: the os's
+		// loop skips its frame then (as a swapchain's acquire waits
+		// natively), else frames queue up on a slow GPU, SwiftShader's, and
+		// the page's thread waits behind them, unresponsive for seconds
+		behind: () => inFlight >= 2,
 		// the GPU's memory given back: the device destroyed, the WebGL contexts lost
 		release() {
 			released = true;
@@ -580,11 +585,6 @@ export default async function (host) {
 		},
 		frame_begin(target) {
 			const t = handles.get(target);
-			// (a canvas's frames two in flight at most: no frame while the GPU
-			// is behind, as a swapchain's acquire waits natively; else frames
-			// queue up on a slow GPU, SwiftShader's, and the page's thread waits
-			// behind them, unresponsive for seconds)
-			if (!t.texture && inFlight >= 2) return 0;
 			texture = t.texture ?? t.context.getCurrentTexture();
 			if (texture.width === 0 || texture.height === 0) return 0;
 			frameTarget = t;

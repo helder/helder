@@ -58,8 +58,6 @@ golden, and is its brute force's: every light at every pixel). The lists
 and the lights go into one R32F texture the standard material reads in a
 branch, so no material has a variant more and it runs on WebGL2.
 
-<Example id="scene-clustered"/>
-
 Measured (`tests/3d/LightBench.hx`, headless at a phone's render size,
 810 x 1800, on Mesa's llvmpipe; a CPU's rasterizer is not a phone's GPU,
 the ratios are what carry over; a floor and nine pillars, 24.5 ms with no
@@ -111,7 +109,7 @@ sun's map the whole atlas (tests/3d's `softshadows` frame; `shadows` and
 **Point and spot lights** cast when asked, `light.castShadows = true`
 (three.js's `castShadow`), each with its own `light.shadow`:
 
-<Example id="scene-shadows" region="lights"/>
+<Example id="scene-shadows" region="shadows,lights"/>
 
 The first local light to cast makes the atlas wider by a square of
 `atlas` texels (1024: `new Shadows(device, size, {atlas: 1024, maxLocal:
@@ -128,8 +126,6 @@ filter is a 3x3 or a disc of 12 taps (`radius`, in the tile's texels),
 their bias in metres a metre from the light (`localBias`, `bias`), and an
 offset along the surface's normal (`normalBias`, in texels), both growing
 with the distance as the tile's texels do.
-
-<Example id="scene-shadows"/>
 
 tests/3d's `spotshadow` (two spot lights, a 3x3 and a disc), `pointshadow`
 (a point light between pillars and two walls) and `shadowatlas` (six
