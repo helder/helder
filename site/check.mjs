@@ -107,7 +107,7 @@ try {
 		await island.locator('button.play').click();
 		await page.waitForFunction((id) => document.getElementById('play-' + id).hasAttribute('data-hydrated'), id, { timeout: 60000 });
 	}
-	await each(pages, play, async (page, id) => {
+	await each(pages, play, async (page, id, check) => {
 		await page.goto(url + 'examples/');
 		const island = page.locator(`#play-${id}`), canvas = island.locator('canvas');
 		await island.scrollIntoViewIfNeeded();
@@ -163,7 +163,7 @@ if (failures) process.exit(1);
 async function checkDocs(pool) {
 	const pages = JSON.parse(fs.readFileSync(path.join(dir, 'docs/search.json'), 'utf8'));
 	check(pages.length > 0, `${pages.length} docs pages`);
-	await each(pool, pages, async (page, p) => {
+	await each(pool, pages, async (page, p, check) => {
 		await page.goto(url + p.url);
 		const title = await page.locator('main h1').textContent();
 		check(title === p.title, `${p.url}: its title, ${title}`);
@@ -297,10 +297,31 @@ async function phone(page, shots, id) {
 	await page.setViewportSize({ width: 1280, height: 900 });
 }
 
-// the items shared by the pages, each page taking the next when it is done
+// the items shared by the pages, each page taking the next when it is done;
+// an item whose run throws or fails a check while others run (a heavy demo
+// beside it, the CPU's SwiftShader shared: a canvas not drawn in time) run
+// again alone after them, its checks that run's: a serial run's verdict
 async function each(pages, items, f) {
 	let next = 0;
+	const again = [], name = (item) => typeof item === 'string' ? item : item.url;
+	const attempt = async (page, item, retry) => {
+		const log = [];
+		await page.setViewportSize({ width: 1280, height: 900 });
+		try {
+			await f(page, item, (ok, what) => log.push([ok, what]));
+		} catch (e) {
+			if (!retry) throw e;
+			log.push([false, `${name(item)}: ${e.message.split('\n')[0]}`]);
+		}
+		if (retry && log.some(([ok]) => !ok)) {
+			console.log(`AGAIN ${name(item)}, alone after the others: ${log.filter(([ok]) => !ok).map(([, w]) => w).join('; ')}`);
+			again.push(item);
+			return;
+		}
+		for (const [ok, what] of log) check(ok, what);
+	};
 	await Promise.all(pages.map(async (page) => {
-		while (next < items.length) await f(page, items[next++]);
+		while (next < items.length) await attempt(page, items[next++], pages.length > 1);
 	}));
+	for (const item of again) await attempt(pages[0], item, false);
 }
