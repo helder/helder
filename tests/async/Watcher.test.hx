@@ -49,6 +49,17 @@ function tests() {
 			File.saveContent('$root/sub/new.txt', "new");
 			notEquals(ticks(t.w, '$root/sub', 21), null);
 		});
+		test("a directory's listing filtered: a temporary file is no change, a source is", () -> {
+			var t = tree(10);
+			var sources = (n:String) -> StringTools.endsWith(n, ".hx");
+			t.w.watch(t.files, [root, '$root/sub'], sources);
+			// (an editor's save, beside the file: what helder dev's assets get)
+			File.saveContent('$root/sub/f1.txt.tmp', "y");
+			for (_ in 0...25) equals(t.w.tick(), null);
+			FileSystem.deleteFile('$root/sub/f1.txt.tmp');
+			File.saveContent('$root/sub/New.hx', "class New {}");
+			notEquals(ticks(t.w, '$root/sub', 21), null);
+		});
 		test("a removed file", () -> {
 			var t = tree(100);
 			FileSystem.deleteFile(t.files[7]);

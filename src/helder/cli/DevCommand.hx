@@ -321,7 +321,7 @@ class DevCommand {
 				if (FileSystem.isDirectory(p)) {
 					dirs.push(p);
 					walk(p, all);
-				} else if (all || n.endsWith(".hx") || ~/\.(m|c)?tsx?$/.match(n)) files.push(p);
+				} else if (all || source(n)) files.push(p);
 			}
 		var deps = try File.getContent(depsFile()).split("\n") catch (_:Dynamic) null;
 		if (deps == null) for (r in roots) {
@@ -335,8 +335,19 @@ class DevCommand {
 		for (f in assetFiles)
 			if (!files.contains(f)) files.push(f);
 		for (f in [e.hxml, '${e.root}/package.json']) if (f != null && FileSystem.exists(f)) files.push(FileSystem.fullPath(f));
-		w.watch(files, dirs);
+		// (a directory's listing: its sources alone, a new module there; an
+		// asset's change is its file's, and an editor's temporary file beside
+		// it, written then renamed over it, is no change of the directory's.
+		// After a failed build every name: the file it lacked may come)
+		w.watch(files, dirs, lastError == null ? sourceNames : null);
 	}
+
+	// (one value: a directory watched before keeps its state, SampledWatcher's)
+	static final sourceNames:String->Bool = source;
+
+	// a file name the build reads as a source (Haxe, TypeScript)
+	static function source(name:String):Bool
+		return name.endsWith(".hx") || ~/\.(m|c)?tsx?$/.match(name);
 
 	static function depsFile():String
 		return Path.withoutExtension(out) + ".deps";
