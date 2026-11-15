@@ -12,11 +12,18 @@ import helder.test.Test;
 // blend), the nearest of several, a node's children, an instanced set's
 // instances, hidden nodes and other layers skipped, maxDistance, bounds
 // alone, backs only when asked, raycastAll's hits nearest first, and a cast
-// allocating nothing (natively and as wasm32-wasi).
+// allocating nothing (natively and as wasm32-wasi). Each test's worlds are
+// disposed after it.
 function tests() {
 	describe("Raycaster", () -> {
+		// (each test's worlds let go after it: a program holds 16 at once)
+		afterEach(() -> {
+			for (w in worlds)
+				w.dispose();
+			worlds.resize(0);
+		});
 		test("a plane's triangle: its point, distance, normal and uv", () -> {
-			var w = new World();
+			var w = world();
 			var n = meshNode(w, Geometry.plane({width: 2, height: 2}));
 			// (the plane turned to face +y, 1 up)
 			n.position = new Vec3(0, 1, 0);
@@ -38,7 +45,7 @@ function tests() {
 			equals(hit.instance, -1);
 		});
 		test("an unevenly scaled sphere: hit at its surface, not its bounds", () -> {
-			var w = new World();
+			var w = world();
 			var n = meshNode(w, Geometry.sphere({radius: 1, widthSegments: 64, heightSegments: 32}));
 			n.scale = new Vec3(2, 1, 1);
 			var hit = new Hit();
@@ -56,7 +63,7 @@ function tests() {
 			approx(hit.normal.y, ny / l, 2e-2);
 		});
 		test("the nearest of several, children too; hidden ones and other layers skipped", () -> {
-			var w = new World();
+			var w = world();
 			var far = meshNode(w, Geometry.box());
 			far.position = new Vec3(0, 0, -6);
 			var near = meshNode(w, Geometry.box());
@@ -80,7 +87,7 @@ function tests() {
 			assert(!w.raycast(o, d, new Hit(), new RaycastOptions({maxDistance: 1})), "within 1: none");
 		});
 		test("bounds alone: the box's point, no triangle", () -> {
-			var w = new World();
+			var w = world();
 			meshNode(w, Geometry.sphere({radius: 1}));
 			var hit = new Hit();
 			assert(w.raycast(new Vec3(3, 3, 0), new Vec3(-1, -1, 0), hit, new RaycastOptions({triangles: false})), "hit");
@@ -89,7 +96,7 @@ function tests() {
 			approx(hit.point.y, 1, 1e-6);
 		});
 		test("backs: a box from inside only with backfaces", () -> {
-			var w = new World();
+			var w = world();
 			meshNode(w, Geometry.box({width: 2, height: 2, depth: 2}));
 			var hit = new Hit();
 			assert(!w.raycast(new Vec3(0, 0, 0), new Vec3(1, 0, 0), hit), "from inside: the backs culled");
@@ -100,7 +107,7 @@ function tests() {
 			approx(hit.normal.x, -1, 1e-6);
 		});
 		test("an instanced set's instances, each where its matrix puts it", () -> {
-			var w = new World();
+			var w = world();
 			var mesh = new Mesh();
 			mesh.addCpu(Geometry.box(), new Material());
 			var set = new InstancedMesh(mesh, 3);
@@ -119,7 +126,7 @@ function tests() {
 			assert(!w.raycast(new Vec3(3, 0, 5), new Vec3(0, 0, -1), hit, new RaycastOptions({instances: false})), "instances off");
 		});
 		test("raycastAll: every triangle crossed, nearest first", () -> {
-			var w = new World();
+			var w = world();
 			for (k in 0...3) {
 				var n = meshNode(w, Geometry.box());
 				n.position = new Vec3(0, 0, -2.0 * k);
@@ -133,7 +140,7 @@ function tests() {
 			equals(w.raycastAll(new Vec3(0.1, 0.2, 3), new Vec3(0, 0, -1), hits), 3);
 		});
 		test("a cast allocates nothing (its trees made)", () -> {
-			var w = new World();
+			var w = world();
 			// (one mesh for them all: its tree made by the first cast at it, an allocation once)
 			var knot = new Mesh();
 			knot.addCpu(Geometry.torusKnot({tubularSegments: 48, radialSegments: 6}), new Material());
@@ -167,6 +174,14 @@ function tests() {
 			equals(hxmc.GcStats.bytesAllocated() - before, 0.0);
 		});
 	});
+}
+
+private final worlds:Array<World> = [];
+
+private function world():World {
+	var w = new World();
+	worlds.push(w);
+	return w;
 }
 
 private function meshNode(w:World, g:VertexData, ?parent:helder.scene.Node):helder.scene.Node {

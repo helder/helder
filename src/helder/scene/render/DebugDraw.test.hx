@@ -113,6 +113,7 @@ function tests() {
 				frame(k);
 			equals(hxmc.GcStats.bytesAllocated() - before, 0.0);
 			clearRings();
+			w.dispose();
 		});
 	});
 }
