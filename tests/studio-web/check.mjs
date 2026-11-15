@@ -268,7 +268,9 @@ async function recolour(pg, x, y, tap) {
 	if (compiler) {
 		check(built && built.ok, `a padding added: built by the compiler's worker in ${built?.ms} ms (${JSON.stringify(built)})`);
 		// (the new build's preview: the title's box grown by its padding, read from its tree again)
-		const grown = await event(pg, 'selection', (e) => e.frame > built.frame && e.rect && e.rect[3] > 35, 30000);
+		// (from the build's frame on: the reload can land in the frame its answer
+		// does; the box tells the builds apart, 35 high before it)
+		const grown = await event(pg, 'selection', (e) => e.frame >= built.frame && e.rect && e.rect[3] > 35, 30000);
 		check(grown, `the screens reloaded from the new build, the title's box ${JSON.stringify(grown?.rect)}` + (grown ? ''
 			: ' ' + JSON.stringify((await events(pg)).filter((e) => e.frame >= before).map((e) => [e.event, e.frame, e.rect, e.ok, e.why ?? e.file]))
 				+ JSON.stringify(await pg.evaluate(() => [window.studioWeb.frames, window.studioWeb.framesByScreen, window.studioWeb.logs.slice(-15)]))));
@@ -277,7 +279,8 @@ async function recolour(pg, x, y, tap) {
 		check(await press(pg, 'Undo'), 'the padding undone (the header\'s Undo)');
 		const again = await event(pg, 'built', (e) => e.frame > at, 120000);
 		check(again && again.ok, `the undo built warm in ${again?.ms} ms`);
-		const back = await event(pg, 'selection', (e) => e.frame > again.frame && e.rect && e.rect[3] === 35, 30000);
+		// (75 high before it: 35 is the undo's build)
+		const back = await event(pg, 'selection', (e) => e.frame >= again.frame && e.rect && e.rect[3] === 35, 30000);
 		await pg.screenshot({ path: path.join(out, 'desktop-undone.png') });
 		check(back, `the title's box back to 35 high ${JSON.stringify(back?.rect)}` + (back ? '' : ' ' + JSON.stringify((await events(pg)).filter((e) => e.frame >= at).map((e) => [e.event, e.frame, e.rect, e.ok])) + JSON.stringify(await pg.evaluate(() => [window.studioWeb.frames, window.studioWeb.logs.slice(-12)]))));
 		numbers.push(['structural', built, grown, await pg.evaluate(() => window.studioWeb.compilerInit), again]);

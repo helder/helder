@@ -84,6 +84,10 @@ class WebPreviews {
 		setStatus("running");
 		task.async(_ -> while (!stopping) {
 			poll();
+			// (the worker's loop turns on its animation frames, which come with
+			// the page's: while a build's screens reload, the page draws, or an
+			// idle studio would wait for good on the new build's frames)
+			if (running && Lambda.exists(screens, s -> s.reloading)) Main.window?.ui.requestFrame();
 			Async.delay(0.004);
 		});
 		// (no module yet: a project from a link or an agent's, built first by the compiler's worker)
@@ -192,6 +196,9 @@ class WebPreviews {
 		s.reloading = false;
 		if (s.crashed) s.crashed = false;
 		if (first) s.shownAt = haxe.Timer.stamp();
+		// (the image and its count landed before it is told: what onFrame says,
+		// all-shown, a tool may read at once (a signal's write waits for a flush))
+		helder.view.graph.Graph.flush();
 		if (onFrame != null) onFrame(s);
 	}
 
