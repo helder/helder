@@ -25,6 +25,11 @@ typedef RendererInfo = {
 	// structure, each element's a structure of its props), as a path; else
 	// null: any name
 	props:Null<String>,
+	// the class of its props' typed setters when it has one (@:setters(T): T's
+	// static functions <element>_<prop>(el, value) and any_<prop>(el, value),
+	// a prop's typed value given to its own function; prop(el, name, value)
+	// for the others), as a path; else null: props set by name
+	setters:Null<String>,
 	// its identity at run time (Render.idOf)
 	id:Int,
 	// whether a region that ends its parent has a marker too (a static function markEnds: the page's renderers)
@@ -80,6 +85,7 @@ class HostMacro {
 				var els = c.meta.extract(":elements");
 				var evs = c.meta.extract(":events");
 				var ps = c.meta.extract(":props");
+				var ss = c.meta.extract(":setters");
 				i = {
 					path: full,
 					node: Context.toComplexType(it.params[0]),
@@ -96,6 +102,8 @@ class HostMacro {
 						evs[0].pos) : haxe.macro.ExprTools.toString(evs[0].params[0]),
 					props: ps.length == 0 ? null : ps[0].params == null || ps[0].params.length != 1 ? Context.fatalError("helder.view: @:props names a type (a structure of each element's props)",
 						ps[0].pos) : haxe.macro.ExprTools.toString(ps[0].params[0]),
+					setters: ss.length == 0 ? null : ss[0].params == null || ss[0].params.length != 1 ? Context.fatalError("helder.view: @:setters names a class (its props' typed setters)",
+						ss[0].pos) : resolve(ss[0].params[0]),
 					id: id(full),
 					markEnds: have.exists("markEnds"),
 					leaving: have.exists("leaving"),
@@ -133,6 +141,46 @@ class HostMacro {
 	}
 
 	static var propsOf = new Map<String, Null<Array<String>>>();
+
+	// a prop's type (@:props(T): the element's structure's field, Null<X>
+	// as X), null when it declares none
+	public static function propType(path:String, element:String, name:String):Null<Type> {
+		var i = info(path);
+		if (i.props == null) return null;
+		switch Context.follow(Context.getType(i.props)) {
+			case TAnonymous(a):
+				for (f in a.get().fields)
+					if (f.name == element)
+						switch Context.follow(f.type) {
+							case TAnonymous(b):
+								for (g in b.get().fields)
+									if (g.name == name) return switch g.type {
+										case TAbstract(_.get() => {name: "Null", pack: []}, [p]): p;
+										case TType(_.get() => {name: "Null", pack: []}, [p]): p;
+										case t: t;
+									}
+							case _:
+						}
+			case _:
+		}
+		return null;
+	}
+
+	// a typed prop's setter (@:setters' <element>_<name>, else any_<name>,
+	// else null: its prop function, by name), as a path
+	public static function setterOf(path:String, element:String, name:String):Null<Array<String>> {
+		var i = info(path);
+		if (i.setters == null) return null;
+		var c = switch Context.getType(i.setters) {
+			case TInst(c, _): c.get();
+			case _: return null;
+		}
+		var cls = i.setters.split(".");
+		for (f in [element + "_" + name, "any_" + name])
+			for (s in c.statics.get())
+				if (s.name == f) return cls.concat([f]);
+		return null;
+	}
 
 	// a renderer's identity at run time: a hash of its class path (FNV-1a, 31 bits; never 0)
 	public static function id(path:String):Int {

@@ -453,8 +453,89 @@ class HaxeTarget implements Target<Expr> {
 		return calls(t);
 	}
 
-	public function thunk(e:Expr):Expr
+	public function thunk(e:Expr):Expr {
+		// (a struct value, a Quat: no function returning one may become a
+		// function returning Dynamic, as a hole's or a Read's)
+		var t = try Context.typeof(e) catch (_:Dynamic) null;
+		if (t != null && isStruct(t))
+			Context.error("markup: this value is a " + haxe.macro.TypeTools.toString(t)
+				+ " (a struct value), which a function returning Dynamic cannot return yet: bind a Signal<" + haxe.macro.TypeTools.toString(t)
+				+ ">, or give the renderer typed setters (Renders' @:setters)", e.pos);
 		return macro @:pos(e.pos) () -> $e;
+	}
+
+	// whether t is a struct value (@:hxmc.struct: Vec3, Quat), through abstracts
+	public static function isStruct(t:Type):Bool
+		return switch Context.follow(t) {
+			case TInst(c, _): c.get().meta.has(":hxmc.struct");
+			case TAbstract(_.get() => a, ps) if (a.name != "Null" && !a.meta.has(":coreType")):
+				isStruct(haxe.macro.TypeTools.applyTypeParameters(a.type, a.params, ps));
+			case _: false;
+		}
+
+	public function typedProp(renderer:String, element:String, name:String):Bool
+		return HostMacro.info(renderer).setters != null && HostMacro.propType(renderer, element, name) != null;
+
+	public function typedReads(renderer:String, element:String, name:String, value:Expr, reads:Bool):Bool {
+		if (reads) return true;
+		var want = HostMacro.propType(renderer, element, name);
+		var t = try Context.typeof(value) catch (_:Dynamic) return false;
+		if (Context.unify(t, want)) return false;
+		var of = readerOf(t);
+		return of != null && Context.unify(of, want);
+	}
+
+	// (a typed prop's value: of its type, or a reader of it: a Signal, a
+	// Memo, a function of none; another an error at the attribute)
+	public function typedValue(renderer:String, element:String, name:String, value:Expr, reads:Bool, where:Where):Expr {
+		var want = HostMacro.propType(renderer, element, name);
+		var ct = Context.toComplexType(want);
+		var t = try Context.typeof(value) catch (e:Dynamic) Context.error(Std.string(e), value.pos);
+		var p = value.pos;
+		if (Context.unify(t, want)) return reads ? macro @:pos(p) ((() -> (($value : $ct) : Dynamic)) : Void->Dynamic) : macro @:pos(p) (($value : $ct) : Null<Any>);
+		var of = readerOf(t);
+		// (a signal's, a memo's or a Read's value read as it is held, boxed:
+		// not unboxed and boxed again; a function of none called typed, as a
+		// function returning a struct may not be called as one returning Dynamic)
+		if (of != null && Context.unify(of, want))
+			return isNode(t) ? macro @:pos(p) ((() -> helder.view.Render.read($value)) : Void->Dynamic) : macro @:pos(p) ((() -> (($value() : $ct) : Dynamic)) : Void->Dynamic);
+		var tn = haxe.macro.TypeTools.toString(want);
+		return Context.error("markup: <" + element + ">'s " + name + " is " + article(tn) + ", not " + article(haxe.macro.TypeTools.toString(t))
+			+ (of != null ? " (it reads " + article(haxe.macro.TypeTools.toString(of)) + ")" : ""), at(where));
+	}
+
+	// (whether t is a Signal, a Memo or a Read)
+	static function isNode(t:Type):Bool
+		return switch t {
+			case TAbstract(_.get() => {pack: ["helder", "view", "graph"], name: "Signal" | "Memo" | "Read"}, _): true;
+			case TAbstract(_.get() => {name: "Null", pack: []}, [x]): isNode(x);
+			case TType(_, _) | TLazy(_): isNode(Context.follow(t, true));
+			case TMono(m) if (m.get() != null): isNode(m.get());
+			case _: false;
+		}
+
+	// (what a reader gives: a Signal's, a Memo's, a Read's value, a function of none's result; else null)
+	static function readerOf(t:Type):Null<Type>
+		return switch t {
+			case TAbstract(_.get() => {pack: ["helder", "view", "graph"], name: "Signal" | "Memo" | "Read"}, [v]): v;
+			case TAbstract(_.get() => {name: "Null", pack: []}, [x]): readerOf(x);
+			case TType(_, _) | TLazy(_): readerOf(Context.follow(t, true));
+			case TFun([], r): r;
+			case TMono(m) if (m.get() != null): readerOf(m.get());
+			case _: null;
+		}
+
+	public function typedSet(renderer:String, element:String, name:String, el:Expr, held:Expr, reads:Bool, where:Where):Expr {
+		var want = HostMacro.propType(renderer, element, name);
+		var ct = Context.toComplexType(want);
+		var p = at(where);
+		var fn = HostMacro.setterOf(renderer, element, name);
+		var setters = HostMacro.info(renderer).setters.split(".");
+		var set = (v:Expr) -> fn != null ? macro @:pos(p) $p{fn}($el, ($v : $ct)) : macro @:pos(p) $p{setters}.prop($el, $v{name}, $v);
+		if (!reads) return set(macro cast $held);
+		var x = set(macro __x);
+		return macro @:pos(p) helder.view.graph.Graph.renderEffect((cast $held : Void->Dynamic), (__x:Dynamic) -> $x);
+	}
 
 	// a listener checked against its renderer's events (MarkupMacro.events; a
 	// neutral element's: ui's): a function of its event or of none, an untyped

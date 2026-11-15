@@ -106,6 +106,18 @@ class Interpreter implements Target<Step> {
 	public function props(renderer:String, element:String):Null<Array<String>>
 		return null;
 
+	public function typedProp(renderer:String, element:String, name:String):Bool
+		return false;
+
+	public function typedReads(renderer:String, element:String, name:String, value:Step, reads:Bool):Bool
+		return reads;
+
+	public function typedValue(renderer:String, element:String, name:String, value:Step, reads:Bool, where:Where):Step
+		throw "Interpreter: no typed props";
+
+	public function typedSet(renderer:String, element:String, name:String, el:Step, held:Step, reads:Bool, where:Where):Step
+		throw "Interpreter: no typed props";
+
 	// a number, a quoted string, true, false or null; any other code a Code
 	public function code(code:String, at:Int, renderer:Null<String>, required:Bool):Null<Step> {
 		var t = StringTools.trim(Plan.stripComments(code));

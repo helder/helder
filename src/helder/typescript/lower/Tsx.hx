@@ -873,6 +873,15 @@ class TsTarget implements Target<TsMarkup> {
 	// (an element's props are its declarations' to TypeScript's checker)
 	public function props(renderer:String, element:String):Null<Array<String>> return null;
 
+	// (TypeScript's props are its declarations' to its checker: set by name)
+	public function typedProp(renderer:String, element:String, name:String):Bool return false;
+
+	public function typedReads(renderer:String, element:String, name:String, value:TsMarkup, reads:Bool):Bool return reads;
+
+	public function typedValue(renderer:String, element:String, name:String, value:TsMarkup, reads:Bool, where:Where):TsMarkup throw "Tsx: no typed props";
+
+	public function typedSet(renderer:String, element:String, name:String, el:TsMarkup, held:TsMarkup, reads:Bool, where:Where):TsMarkup throw "Tsx: no typed props";
+
 	public function code(code:String, at:Int, renderer:Null<String>, required:Bool):Null<TsMarkup> {
 		if (code == "") {
 			if (required) error("markup: an empty expression", {at: at, length: 1});

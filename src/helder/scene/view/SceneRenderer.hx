@@ -65,10 +65,12 @@ import helder.scene.view.SceneProps;
 //
 // Other names are an error (@:elements), and so is a prop an element does
 // not take (@:props: SceneProps, from Geometry's and Material's options),
-// when compiling. Texts and markers are hidden nodes. <Ui> (SceneTags) goes
-// back to ui inside a scene. A prototype of the reactive layer for scenes
-// (see the README's roadmap): properties go through setProperty by name
-// here, their names checked, their values when set.
+// when compiling, and so is a value not of its prop's type. Each prop is
+// set by its own typed function (SceneSet, @:setters): a node's props its
+// node's, a set prop its component in place (a light's intensity, a
+// camera's fov), a make prop its component made again (setProperty by
+// name: a geometry's, a material's options). Texts and markers are hidden
+// nodes. <Ui> (SceneTags) goes back to ui inside a scene.
 @:elements("node", "mesh", "instances", "sprites", "light", "directionalLight", "pointLight", "spotLight", "hemisphereLight", "camera", "boxGeometry",
 	"sphereGeometry", "cylinderGeometry", "coneGeometry", "capsuleGeometry", "torusGeometry", "torusKnotGeometry", "ringGeometry", "circleGeometry",
 	"planeGeometry", "latheGeometry", "tubeGeometry", "standardMaterial", "lambertMaterial", "phongMaterial", "toonMaterial", "unlitMaterial",
@@ -76,6 +78,7 @@ import helder.scene.view.SceneProps;
 	"skeletonHelper", "lod")
 @:events(helder.scene.view.SceneEvents)
 @:props(helder.scene.view.SceneProps)
+@:setters(helder.scene.view.SceneSet)
 class SceneRenderer implements helder.view.Renders<SceneNode> {
 	// the device meshes are made on (a <Scene> sets it when first drawn: the meshes made before it, then)
 	public static var device(default, set):Null<helder.gfx.Device>;
@@ -320,6 +323,8 @@ class SceneRenderer implements helder.view.Renders<SceneNode> {
 			case "visible": n.visible = value;
 			// (its selection group: post.outline's, 0 none; Outline.select)
 			case "outline": helder.scene.render.Outline.select(n, value);
+			// (a set prop: its component's field, as SceneSet's own function)
+			case _ if (SceneSet.byName(el, name, value)):
 			case _:
 				// (a component's property: the component made again from them)
 				el.props.set(name, value);
@@ -470,6 +475,8 @@ class SceneNode {
 	@:allow(helder.scene.view.SceneRenderer) var key = "";
 	// a mesh's own material (its color, metallic and roughness props'), kept
 	var own:Null<Material> = null;
+	// (whether castShadows was set: kept when its light is made again)
+	@:allow(helder.scene.view.SceneSet) var castSet = false;
 	// a geometry tag's last upload (let go when made again)
 	var uploaded:Null<VertexData> = null;
 
@@ -515,14 +522,19 @@ class SceneNode {
 		}
 		// (its material: its tag's, its prop's, else its own of color, metallic and roughness)
 		var material:Null<Material> = materialPart != null ? materialPart.material() : get("material", null);
-		if (material == null) {
-			if (own == null) own = new Material(tag);
-			own.baseColor = get("color", new Vec4(0.8, 0.8, 0.8, 1));
-			own.metallic = SceneOptions.float(get("metallic", 0.0));
-			own.roughness = SceneOptions.float(get("roughness", 0.5));
-			material = own;
-		}
+		if (material == null) material = ownMaterial();
 		MeshRenderer.attach(node, SceneRenderer.meshOf(device, geometry, material));
+	}
+
+	// (a mesh's own material: its color, metallic and roughness props', set in place: SceneSet)
+	function ownMaterial():Material {
+		if (own == null) {
+			own = new Material(tag);
+			own.baseColor = new Vec4(0.8, 0.8, 0.8, 1);
+			own.metallic = 0;
+			own.roughness = 0.5;
+		}
+		return own;
 	}
 
 	// (the shapes of shape and size made so far: one geometry each)
@@ -569,9 +581,15 @@ class SceneNode {
 		if (set != null) InstancedMesh.attach(node, set) else InstancedMesh.detach(node);
 	}
 
+	// (its light made of its make props, kind and shadow; its set props,
+	// color, intensity, range, cones, castShadows, its last light's: SceneSet)
 	@:allow(helder.scene.view.SceneRenderer) function relight() {
-		var c:Vec3 = get("color", new Vec3(1, 1, 1));
-		var i = SceneOptions.float(get("intensity", 1.0));
+		var old = Light.of(node);
+		var c:Vec3 = old != null ? old.color : tag == "hemisphereLight" ? new Vec3(0.3, 0.36, 0.48) : new Vec3(1, 1, 1);
+		var i = old != null ? old.intensity : 1.0;
+		var range = old != null && old.range > 0 ? old.range : 10.0;
+		var inner = old != null && old.outerCone > 0 ? old.innerCone : 0.3, outer = old != null && old.outerCone > 0 ? old.outerCone : 0.5;
+		var ground = old != null ? old.groundColor : new Vec3(0.12, 0.1, 0.09);
 		var kind:String = switch tag {
 			case "directionalLight": "directional";
 			case "pointLight": "point";
@@ -580,13 +598,13 @@ class SceneNode {
 			case _: get("kind", "directional");
 		}
 		var light = Light.attach(node, switch kind {
-			case "point": Light.pointLight(c, i, SceneOptions.float(get("range", 10.0)));
-			case "spot": Light.spot(c, i, SceneOptions.float(get("range", 10.0)), SceneOptions.float(get("inner", 0.3)), SceneOptions.float(get("outer", 0.5)));
-			case "hemisphere": Light.hemisphere(get("sky", new Vec3(0.3, 0.36, 0.48)), get("ground", new Vec3(0.12, 0.1, 0.09)), i);
+			case "point": Light.pointLight(c, i, range);
+			case "spot": Light.spot(c, i, range, inner, outer);
+			case "hemisphere": Light.hemisphere(c, ground, i);
 			case _: Light.directional(c, i);
 		});
-		// (its shadow: castShadows, its kind's default without; Light.shadow from the shadow props)
-		if (props.exists("castShadows")) light.castShadows = get("castShadows", false) == true;
+		// (its shadow: castShadows as it was set, its kind's default without; Light.shadow from the shadow props)
+		if (old != null && castSet) light.castShadows = old.castShadows;
 		inline function some(name:String):Null<Float>
 			return props.exists(name) ? SceneOptions.float(get(name, 0.0)) : null;
 		if (props.exists("shadowSize") || props.exists("shadowBias") || props.exists("shadowNormalBias") || props.exists("shadowRadius")

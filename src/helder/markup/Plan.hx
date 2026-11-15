@@ -179,7 +179,7 @@ class Plan<E> {
 		var located = target.located(e, at);
 		if (located != null) out.push(located);
 		for (a in attrs) {
-			var s = attr(e, a, neutral ? name : null);
+			var s = attr(e, a, neutral ? name : null, name);
 			if (s != null) out.push(s);
 		}
 		var kids = clean(children);
@@ -279,11 +279,15 @@ class Plan<E> {
 		}].join(""));
 
 	// an attribute's statement (null: none, as key)
-	function attr(e:E, a:PAttr, ?tag:String):Null<E> {
+	function attr(e:E, a:PAttr, ?tag:String, ?element:String):Null<E> {
 		var name = a.name;
 		var event = StringTools.startsWith(name, "on") && name.length > 2;
 		var ap = {at: a.at, length: name.length};
 		if (tag != null) return neutralAttr(e, a, tag, event, ap);
+		// (a prop of its own typed setter: Renders' @:setters)
+		if (!event && renderer != null && element != null && name != "ref" && name != "key" && name != "style" && !a.value.match(ASpread(_, _))
+			&& target.typedProp(renderer, element, name))
+			return typedAttr(e, a, element, ap);
 		return switch a.value {
 			case AStatic(_) | AFlag:
 				var v = switch a.value {
@@ -326,6 +330,47 @@ class Plan<E> {
 				target.call(Runtime, "spread", [e, h], ap);
 		}
 	}
+
+	// a prop of an element whose renderer has its typed setter (Renders'
+	// @:setters): its value typed as the prop's type where the literal is,
+	// set once, or bound when it may read (a live literal's slot too), by
+	// the setter's own function, never by name
+	function typedAttr(e:E, a:PAttr, element:String, ap:Where):E {
+		var name = a.name, value:E, reads = false;
+		switch a.value {
+			case AStatic(_) | AFlag:
+				value = switch a.value {
+					case AStatic(s): target.string(s, ap);
+					case _: target.bool(true, ap);
+				}
+				var live = liveAttr0(value, LAttr(a.at, name), name);
+				if (live != null) {
+					value = live;
+					reads = true;
+				}
+			case AExpr(code, at):
+				value = target.code(code, at, inner(), true);
+				if (target.isLiteral(value)) {
+					var live = liveAttr0(value, LExpr, name);
+					if (live != null) {
+						value = live;
+						reads = true;
+					}
+				} else {
+					if (target.liveOn() && !Live.fixed(name)) value = target.liveIn(value);
+					reads = target.mayRead(value);
+				}
+			case ASpread(_, _):
+				throw "unreachable";
+		}
+		reads = target.typedReads(renderer, element, name, value, reads);
+		var h = hole(target.typedValue(renderer, element, name, value, reads, ap));
+		return target.typedSet(renderer, element, name, e, h, reads, ap);
+	}
+
+	// (a literal's read of its slot, not yet a hole: null when not live)
+	function liveAttr0(value:E, at:LiveAt, name:String):Null<E>
+		return !target.liveOn() || Live.fixed(name) ? null : target.live(value, at);
 
 	// a neutral element's attribute: through the renderer's neutral functions where it has them
 	function neutralAttr(e:E, a:PAttr, tag:String, event:Bool, ap:Where):Null<E> {
@@ -460,6 +505,18 @@ interface Target<E> {
 	function mayRead(e:E):Bool;
 	// () -> e
 	function thunk(e:E):E;
+	// whether a prop of an element of renderer has its own typed setter
+	// (Renders' @:setters, its type the @:props structure's): its value typed
+	// and set by typedValue and typedSet, not by name
+	function typedProp(renderer:String, element:String, name:String):Bool;
+	// whether a typed prop's value is bound (it may read, or it is a reader
+	// of the prop's type: a Signal, a function of none)
+	function typedReads(renderer:String, element:String, name:String, value:E, reads:Bool):Bool;
+	// a typed prop's hole: its value checked against the prop's type (an
+	// error at where), as it is held (reads: a function of it)
+	function typedValue(renderer:String, element:String, name:String, value:E, reads:Bool, where:Where):E;
+	// the statement setting a typed prop of el from its hole: once, or bound
+	function typedSet(renderer:String, element:String, name:String, el:E, held:E, reads:Bool, where:Where):E;
 	// whether e is a function literal
 	function isFunction(e:E):Bool;
 	// a listener named name, of an element of renderer (null: agnostic;

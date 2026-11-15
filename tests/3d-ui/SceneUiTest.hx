@@ -13,9 +13,8 @@ import helder.view.graph.Signal;
 
 // helder.scene.view (npm test -- 3d: natively): markup making a
 // world's nodes, lights and cameras; properties bound to signals following
-// them (a struct value, Vec3, bound through a Signal: hxmc does not yet
-// pass a closure returning one where a function of another type is
-// expected, memo's or a bare function's); Show adding and removing a
+// them, struct values (Quat, Vec3, Vec4) inline through the typed setters,
+// set props written in place (DESIGN-MARKUP.md 10.1); Show adding and removing a
 // subtree; For keyed rows; <instances> attaching an InstancedMesh; a spot
 // light's shadow props (Light.castShadows, Light.shadow); <lod> (Lod's
 // levels, a visible range).
@@ -104,9 +103,55 @@ class SceneUiTest implements Markup {
 		check("<lod>: its first level drawn", helder.scene.render.MeshRenderer.of(tree) == hi);
 		var range = tree.world.store(helder.scene.render.Lod.RANGE).get(tree);
 		check("<lod end>: a visible range", range != null && range.end == 80 && range.begin == 0);
+		typed();
 		leaks();
 		Sys.println('SceneUiTest: $checks checks, ' + (failed == 0 ? "ok" : '$failed FAILED'));
 		if (failed > 0) Sys.exit(1);
+	}
+
+	// (DESIGN-MARKUP.md 10.1: struct values inline, constant and reactive,
+	// through each prop's typed setter; set props written in place)
+	static final up = new Vec3(0, 1, 0);
+
+	static function typed() {
+		var world = new World();
+		var angle = signal(0.5), lift = signal(1.0), red = signal(0.25), power = signal(2.0), kind = signal("point");
+		Render.render(<node>
+			<node name="turned" rotation={helder.scene.math.Quat.axisAngle(up, angle())} position={new Vec3(0, lift(), 0)} scale={new Vec3(2, 2, 2)}/>
+			<node name="fixed" rotation={helder.scene.math.Quat.axisAngle(up, 0.25)}/>
+			<mesh name="painted" shape="box" color={new helder.gfx.shader.Vec4(red(), 0, 0, 1)} roughness={0.75}/>
+			<light name="bulb" kind={kind()} intensity={power()} range={6} castShadows/>
+			<camera name="lens" fov={angle() * 2}/>
+		</node>, SceneRenderer.root(world));
+		var turned = world.root.find("turned"), fixed = world.root.find("fixed");
+		inline function near(a:Float, b:Float)
+			return Math.abs(a - b) < 1e-9;
+		check("an inline Quat, reactive", near(turned.rotation.y, Math.sin(0.25)));
+		check("an inline Quat, constant", near(fixed.rotation.y, Math.sin(0.125)));
+		check("an inline Vec3, reactive and constant", turned.position.y == 1 && turned.scale.x == 2);
+		angle(1.0);
+		lift(3.0);
+		flush();
+		check("an inline Quat follows its signal", near(turned.rotation.y, Math.sin(0.5)));
+		check("an inline Vec3 follows its signal", turned.position.y == 3);
+		var painted = world.root.find("painted");
+		var own = @:privateAccess SceneRenderer.of(painted).ownMaterial();
+		check("an inline Vec4 on a mesh's own material", own.baseColor.x == 0.25 && own.roughness == 0.75);
+		red(0.5);
+		flush();
+		check("its own material's colour in place", @:privateAccess SceneRenderer.of(painted).ownMaterial() == own && own.baseColor.x == 0.5);
+		var bulb = world.root.find("bulb"), light = Light.of(bulb);
+		check("a light's set props", light.kind == Point && light.intensity == 2 && light.range == 6 && light.castShadows);
+		power(5.0);
+		flush();
+		check("a light's intensity in place (the same Light)", Light.of(bulb) == light && light.intensity == 5);
+		kind("spot");
+		flush();
+		var spot = Light.of(bulb);
+		check("a make prop (kind): a new light, its set props kept", spot.kind == Spot && spot.intensity == 5 && spot.range == 6 && spot.castShadows);
+		var lens = Camera.of(world.root.find("lens"));
+		check("a camera's fov in place", lens != null && near(lens.fovY, 2.0));
+		world.dispose();
 	}
 
 	// a <Show> of meshes toggled a hundred times and a For of them mounted and
