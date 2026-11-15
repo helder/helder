@@ -469,6 +469,7 @@ jobs:
         if: always()
         run: |
           cat "${TMPDIR:-/tmp}"/helder-simulator-*.log 2> /dev/null || true
+          du -sh ~/Library/Developer/CoreSimulator/Caches/* /Library/Developer/CoreSimulator/Caches/* ~/Library/Developer/CoreSimulator/Caches/dyld/*/* /Library/Developer/CoreSimulator/Caches/dyld/*/* 2> /dev/null || true
           [ -z "${HELDER_IOS_SIMULATOR:-}" ] || sh tests/pack/simulator.sh delete "$HELDER_IOS_SIMULATOR"
       - uses: actions/upload-artifact@v7
         if: always()
