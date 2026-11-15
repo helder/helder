@@ -149,7 +149,7 @@ helder inspect [dir] [options]
 Builds a release, signs it and uploads it. With no destination, it publishes to every one helder.json names. See [Publishing](publishing.md).
 
 ```sh
-helder publish [entry] [--run | --play | --testflight | --notarize | --screenshots | --listing] [options]
+helder publish [entry] [--run | --play | --testflight | --notarize | --screenshots | --listing | --pull] [options]
 ```
 
 | Flag | What it does |
@@ -163,7 +163,10 @@ helder publish [entry] [--run | --play | --testflight | --notarize | --screensho
 | `--dry-run` | Build and sign, read what is there, print what would change. Nothing is uploaded. |
 | `--no-screenshot` | With `--run`: take no screenshot of the program when `run.screenshots` names none. |
 | `--screenshots` | Render the stories marked for the stores at the stores' sizes, with a review sheet, in `bin/store`. |
-| `--listing` | Upload the screenshots to the stores' listings. With `--play` or `--testflight`: that store only. |
+| `--listing` | Send helder.json's `listing` and the screenshots to the stores' pages. With `--play` or `--testflight`: that store only. Never a build. |
+| `--submit` | With `--testflight`: once processed, the build on its App Store version, `listing.notes` its what's new, sent for App Review. |
+| `--create-version` | With `--listing` or `--submit`: make the App Store version when helder.json's is not being prepared. |
+| `--pull` | Print the stores' listing text as helder.json's `listing`. |
 | `--locale <l>` | The listing's language. Default: `en-US`. |
 | `-o, --out <path>` | The output of the build. |
 

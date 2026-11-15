@@ -21,7 +21,11 @@
 // account's edit opened and deleted, Google's 403s explained. No secret in
 // the output. helder publish --listing --no-screenshot: the App Store's
 // price (a price point found across pages) and availability made, then
-// one territory patched, Play's data safety CSV sent.
+// one territory patched, Play's data safety CSV sent. --listing with the
+// screenshots: Play's image type replaced whole (deleteall, ours in order)
+// in the edit, App Store Connect read through once before its first write.
+// (Each against this stand-in only: none of it has been run against the
+// live stores.)
 import { spawn } from "node:child_process";
 import { X509Certificate, createHash, createPrivateKey, createPublicKey, sign, verify } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -250,6 +254,7 @@ const server = createServer((req, res) => {
     if (req.method === "GET" && rest.startsWith("/tracks/")) return send(200, { track: rest.slice(8), releases: [{ status: "completed", versionCodes: ["1"] }] });
     if (req.method === "DELETE" && rest === "") { play.deleted = true; return send(204); }
     if (req.method === "GET" && rest === "/details") return send(200, { defaultLanguage: "en-US" });
+    if (req.method === "GET" && rest === "/listings") return send(200, { listings: [{ language: "en-US", title: "Listed" }] });
     if (req.method === "GET" && rest === "/listings/en-US") return send(200, { language: "en-US", title: "Listed" });
     if (req.method === "POST" && m[1] && rest === "/bundles") {
       play.uploaded = body;
@@ -260,6 +265,8 @@ const server = createServer((req, res) => {
     if (req.method === "GET" && image && !image[2])
       return send(200, { images: image[1] === "phoneScreenshots" ? [{ id: "img-old", sha256: "00" }] : [] });
     if (req.method === "DELETE" && image?.[2]) { play.deletedImages = [...(play.deletedImages ?? []), image[2]]; return send(204); }
+    // (deleteall: every image of the type)
+    if (req.method === "DELETE" && image && !m[1]) { play.deletedTypes = [...(play.deletedTypes ?? []), image[1]]; return send(200, { deleted: [] }); }
     if (req.method === "POST" && m[1] && image) {
       play.images = [...(play.images ?? []), body];
       return send(200, { image: { id: "img-new", sha256: createHash("sha256").update(body).digest("hex") } });
@@ -361,10 +368,11 @@ else {
   calls = []; play = {}; asc = {}; parts = {};
   out = await publish(["--listing"], both);
   const android = shots.filter((s) => s.store === "android"), ios = shots.filter((s) => s.store === "ios");
-  check("Play: the old image deleted, ours uploaded (its bytes), committed", play.deletedImages?.join() === "img-old" && play.images?.length === android.length
-    && Buffer.compare(play.images[0], png(android[0].file)) === 0 && play.committed === true);
-  check("App Store: the old screenshot deleted, the missing sets made", asc.deleted?.join() === "shot-old" && asc.sets?.sort().join() === "APP_IPAD_PRO_3GEN_129,APP_IPHONE_65",
-    `${asc.deleted} ${asc.sets}`);
+  check("Play: phoneScreenshots replaced whole (deleteall), ours uploaded in order (their bytes), committed", play.deletedTypes?.join() === "phoneScreenshots"
+    && !play.deletedImages && play.images?.length === android.length && android.every((s, i) => Buffer.compare(play.images[i], png(s.file)) === 0) && play.committed === true,
+    `${play.deletedTypes} ${play.deletedImages}`);
+  check("App Store: the old screenshot deleted, the missing sets made, once (the dry pass writes nothing)", asc.deleted?.join() === "shot-old"
+    && asc.sets?.sort().join() === "APP_IPAD_PRO_3GEN_129,APP_IPHONE_65", `${asc.deleted} ${asc.sets}`);
   check("App Store: each screenshot reserved, sent, committed with its MD5", asc.shots?.length === ios.length && asc.shots.every((s, i) =>
     asc.committed?.[s.id]?.uploaded === true && asc.committed[s.id].sourceFileChecksum === createHash("md5").update(parts[`/part/${s.id}`] ?? "").digest("hex")
     && ios.some((x) => x.md5 === asc.committed[s.id].sourceFileChecksum)));
@@ -462,7 +470,7 @@ check("listing dry run: the price, the availability and the data safety would be
   && out.includes("data safety") && !asc.priceSchedule && !asc.availability && !play.dataSafety);
 calls = []; play = {}; asc = {};
 out = await listed([]);
-check("listing: free from the USA's price points (the second page's), the schedule made", asc.pricePages === 2
+check("listing: free from the USA's price points (the second page's, read by the dry pass and the writing one), the schedule made", asc.pricePages === 4
   && asc.priceSchedule?.data?.relationships?.baseTerritory?.data?.id === "USA" && asc.priceSchedule.included[0].relationships.appPricePoint.data.id === "pp-free",
   JSON.stringify(asc.priceSchedule));
 check("listing: available in every territory, new ones too", asc.availability?.data?.attributes?.availableInNewTerritories === true
