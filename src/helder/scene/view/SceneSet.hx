@@ -21,33 +21,67 @@ class SceneSet {
 
 	public static function any_name(n:SceneNode, v:String) {
 		n.node.name = v;
-		SceneRenderer.changed();
+		n.scope.invalidate();
 	}
 
 	public static function any_position(n:SceneNode, v:Vec3) {
+		#if hxmc.dev
+		if (n.bound & 1 != 0 && !same3(n.node.position, n.wrotePosition)) fight(n, "position");
+		n.bound |= 1;
+		n.wrotePosition = v;
+		#end
 		n.node.position = v;
-		SceneRenderer.changed();
+		n.scope.invalidate();
 	}
 
 	public static function any_rotation(n:SceneNode, v:Quat) {
+		#if hxmc.dev
+		var q = n.node.rotation, w = n.wroteRotation;
+		if (n.bound & 2 != 0 && (q.x != w.x || q.y != w.y || q.z != w.z || q.w != w.w)) fight(n, "rotation");
+		n.bound |= 2;
+		n.wroteRotation = v;
+		#end
 		n.node.rotation = v;
-		SceneRenderer.changed();
+		n.scope.invalidate();
 	}
 
 	public static function any_scale(n:SceneNode, v:Vec3) {
+		#if hxmc.dev
+		if (n.bound & 4 != 0 && !same3(n.node.scale, n.wroteScale)) fight(n, "scale");
+		n.bound |= 4;
+		n.wroteScale = v;
+		#end
 		n.node.scale = v;
-		SceneRenderer.changed();
+		n.scope.invalidate();
 	}
+
+	#if hxmc.dev
+	static inline function same3(a:Vec3, b:Vec3):Bool
+		return a.x == b.x && a.y == b.y && a.z == b.z;
+
+	// (a dev build's check, DESIGN-MARKUP.md 3.2: a prop bound and written in
+	// code too, its binding about to overwrite what code wrote; said once a node)
+	// (what a fight is told to: printed; a test's own)
+	public static var onFight:Null<(SceneNode, String) -> Void> = null;
+
+	static function fight(n:SceneNode, prop:String) {
+		if (n.said) return;
+		n.said = true;
+		if (onFight != null) return onFight(n, prop);
+		var at = n.source == null ? "" : " (" + n.source.toString() + ")";
+		Sys.println('helder.scene: <${n.tag}>\'s $prop is bound and was written in code since its binding set it$at: a prop is bound or driven (onFrame, Frame.on), never both; the binding now overwrites it');
+	}
+	#end
 
 	public static function any_visible(n:SceneNode, v:Bool) {
 		n.node.visible = v;
-		SceneRenderer.changed();
+		n.scope.invalidate();
 	}
 
 	// (its selection group: post.outline's, 0 none; Outline.select)
 	public static function any_outline(n:SceneNode, v:Int) {
 		helder.scene.render.Outline.select(n.node, v);
-		SceneRenderer.changed();
+		n.scope.invalidate();
 	}
 
 	// a make prop (or one of no setter of its own yet): by name, its
@@ -62,33 +96,33 @@ class SceneSet {
 
 	static function color(n:SceneNode, v:Vec3) {
 		light(n).color = v;
-		SceneRenderer.changed();
+		n.scope.invalidate();
 	}
 
 	static function intensity(n:SceneNode, v:Float) {
 		light(n).intensity = v;
-		SceneRenderer.changed();
+		n.scope.invalidate();
 	}
 
 	static function range(n:SceneNode, v:Float) {
 		light(n).range = v;
-		SceneRenderer.changed();
+		n.scope.invalidate();
 	}
 
 	static function inner(n:SceneNode, v:Float) {
 		light(n).innerCone = v;
-		SceneRenderer.changed();
+		n.scope.invalidate();
 	}
 
 	static function outer(n:SceneNode, v:Float) {
 		light(n).outerCone = v;
-		SceneRenderer.changed();
+		n.scope.invalidate();
 	}
 
 	static function castShadows(n:SceneNode, v:Bool) {
 		light(n).castShadows = v;
 		@:privateAccess n.castSet = true;
-		SceneRenderer.changed();
+		n.scope.invalidate();
 	}
 
 	public static inline function light_color(n:SceneNode, v:Vec3)
@@ -153,7 +187,7 @@ class SceneSet {
 
 	public static function hemisphereLight_ground(n:SceneNode, v:Vec3) {
 		light(n).groundColor = v;
-		SceneRenderer.changed();
+		n.scope.invalidate();
 	}
 
 	public static inline function hemisphereLight_intensity(n:SceneNode, v:Float)
@@ -163,17 +197,17 @@ class SceneSet {
 
 	public static function camera_fov(n:SceneNode, v:Float) {
 		Camera.of(n.node).fovY = v;
-		SceneRenderer.changed();
+		n.scope.invalidate();
 	}
 
 	public static function camera_near(n:SceneNode, v:Float) {
 		Camera.of(n.node).near = v;
-		SceneRenderer.changed();
+		n.scope.invalidate();
 	}
 
 	public static function camera_far(n:SceneNode, v:Float) {
 		Camera.of(n.node).far = v;
-		SceneRenderer.changed();
+		n.scope.invalidate();
 	}
 
 	// --- a mesh's own material (its shape's, without a material part or
@@ -181,17 +215,17 @@ class SceneSet {
 
 	public static function mesh_color(n:SceneNode, v:Vec4) {
 		@:privateAccess n.ownMaterial().baseColor = v;
-		SceneRenderer.changed();
+		n.scope.invalidate();
 	}
 
 	public static function mesh_metallic(n:SceneNode, v:Float) {
 		@:privateAccess n.ownMaterial().metallic = v;
-		SceneRenderer.changed();
+		n.scope.invalidate();
 	}
 
 	public static function mesh_roughness(n:SceneNode, v:Float) {
 		@:privateAccess n.ownMaterial().roughness = v;
-		SceneRenderer.changed();
+		n.scope.invalidate();
 	}
 
 	// the same by name (SceneRenderer.setProperty: a spread, a late

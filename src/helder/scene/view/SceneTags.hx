@@ -50,6 +50,7 @@ class SceneTags {
 		?height:helder.view.graph.Read<Dynamic>,
 		?style:Dynamic,
 		?animate:Bool,
+		?render:SceneBox.SceneRender,
 		?antialias:Bool,
 		?scale:helder.view.graph.Read<Float>,
 		?density:helder.view.graph.Read<Float>,
@@ -61,6 +62,7 @@ class SceneTags {
 	}):helder.ui.Node {
 		var box = new SceneBox(props.world ?? new World("scene"), props.camera);
 		if (props.animate != null) box.animate = props.animate;
+		if (props.render != null) box.render = props.render;
 		if (props.antialias != null) box.antialias = props.antialias;
 		if (props.hdr != null) box.hdr = props.hdr;
 		if (props.pick != null) box.picker = props.pick;
@@ -78,7 +80,7 @@ class SceneTags {
 		if (props.height != null) bind(box, "height", props.height);
 		if (props.style != null) NodeRenderer.setStyle(box, props.style);
 		// (in this owner: what is above the boundary, contexts, seen below it)
-		Graph.provide(SceneRenderer.WORLD, box.world, () -> Graph.provide(BOX, box, () -> Render.insert(props.children, box.root, null)));
+		Graph.provide(SceneRenderer.SCOPE, box.scope, () -> Graph.provide(BOX, box, () -> Render.insert(props.children, box.root, null)));
 		Graph.onCleanup(box.dispose);
 		if (props.ref != null) props.ref(box);
 		return box;

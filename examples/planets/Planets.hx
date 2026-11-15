@@ -1,5 +1,5 @@
 // title: Planets
-// summary: A scene in ui's layout, all markup: <Scene> beside a panel, nodes turned by signals, a planet picked by a click, its name over it (<Ui>)
+// summary: A scene in ui's layout, all markup: <Scene> beside a panel, orbits turned by onFrame, a planet picked by a click, its name over it (<Ui>)
 // tags: 3d, ui, view, scene markup
 // demo: canvas 640x400
 import helder.gfx.shader.Vec3;
@@ -20,7 +20,8 @@ import helder.view.graph.Signal;
 // helder.view's markup across three renderers' boundaries: the window
 // (<Surface>), ui's layout in it, a <Scene> box whose children are scene
 // nodes, and <Ui> back to ui over a picked planet. Each orbit is a node
-// whose rotation is a signal the ui's clock turns; a click on a planet
+// its onFrame turns (motion in code, structure in markup: its node written
+// each frame, nothing bound, stopped with its planet); a click on a planet
 // (ui's pointer event, picked in the scene) selects it, the panel and the
 // label follow the signal. No define names a renderer: each subtree is
 // compiled for the tag that owns it.
@@ -60,14 +61,12 @@ class Planets implements Markup {
 		</Surface>);
 	}
 
-	// an orbit (a node the clock turns) and its planet, its name over it once picked
+	static final UP = new Vec3(0, 1, 0);
+
+	// an orbit (a node its onFrame turns) and its planet, its name over it once picked
 	static function Planet(props:{name:String, r:Float, size:Float, speed:Float, color:Vec4, picked:Signal<String>}):SceneView {
-		var turn = signal(Quat.identity());
-		Clock.add(t -> {
-			turn(Quat.axisAngle(new Vec3(0, 1, 0), t * props.speed));
-			true;
-		});
-		return <node rotation={turn}>
+		var angle = 0.0, speed = props.speed;
+		return <node onFrame={f -> f.node.rotation = Quat.axisAngle(UP, angle += f.dt * speed)}>
 			<node position={new Vec3(props.r, 0, 0)}>
 				<mesh shape="sphere" size={props.size} color={props.color} onClick={_ -> props.picked(props.name)}/>
 				<Show when={props.picked() == props.name}>

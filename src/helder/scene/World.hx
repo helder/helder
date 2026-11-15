@@ -255,6 +255,27 @@ class World {
 		return child;
 	}
 
+	// (child put under parent just before before, one of its children; at the end when before is NONE)
+	@:allow(helder.scene) function attachBefore(parent:Node, child:Node, before:Node):Node {
+		if (before.isNone) return attach(parent, child);
+		var p = slotOf(parent), c = slotOf(child), b = slotOf(before);
+		if (parents[b] != p) throw "helder.scene: addBefore's before is not a child of the node";
+		if (c == b) return child;
+		var a = p;
+		while (a >= 0) {
+			if (a == c) throw "helder.scene: a node cannot be added under itself";
+			a = parents[a];
+		}
+		detach(c);
+		parents[c] = p;
+		prevSibling[c] = prevSibling[b];
+		nextSibling[c] = b;
+		if (prevSibling[b] >= 0) nextSibling[prevSibling[b]] = c else firstChild[p] = c;
+		prevSibling[b] = c;
+		worldValid[c] = false;
+		return child;
+	}
+
 	@:allow(helder.scene) function detach(c:Int) {
 		var p = parents[c];
 		if (p < 0) return;

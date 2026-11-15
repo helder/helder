@@ -27,8 +27,8 @@ pos(new Vec3(1, 1, 0));   // the node moves at the next flush: no reconciliation
 ```
 
 A scene in ui's layout, all markup: a `<Scene>` beside a panel, the
-orbits' rotations signals the ui's clock turns, a planet picked by a
-click, its name over it with `<Ui>`:
+orbits turned by their `onFrame`, a planet picked by a click, its name
+over it with `<Ui>`:
 
 Example: [Planets](/examples/planets/Planets.hx) (`helder run examples/planets/Planets.hx`; it plays in the docs' page).
 
@@ -216,26 +216,87 @@ boxed: a `Quat` 56 bytes, a `Float` 32), so motion every frame belongs in
 code, not in signals.
 
 Markup outside a `<Scene>` renders into a
-world's root: `Render.render(<node/>, SceneRenderer.root(world))`. Per-frame
-work goes through the frame stages (`helder.scene.Stages`), not through
-signals.
+world's root: `Render.render(<node/>, SceneRenderer.root(world))`.
+
+An element is owned by the markup that made it: when it goes (a `<Show>`
+turned off, a `<For>`'s row removed, the root disposed) its node is
+disposed with what is under it, its components' rows removed from the
+world's stores, and its mesh's upload given back (an upload is counted by
+the meshes drawing it, and let go with the last). What a prop was given (a
+geometry, a material, an `InstancedMesh` made in code) is borrowed: markup
+never disposes it.
+
+## Motion and onFrame
+
+Structure is markup: what exists, what it is made of, what it looks like
+at rest, changing through signals at the rate of events. Motion is code:
+what moves every frame writes its nodes directly, in `onFrame`, not
+through a signal (a signal written each frame is a graph write, a flush
+and a binding per node, and allocates when its value is boxed).
+
+```haxe
+// an element's own: its node, the frame's seconds (f.dt)
+<mesh shape="box" onFrame={f -> f.node.rotation = Quat.axisAngle(UP, spin += f.dt)}/>
+
+// a component's: drei's useFrame, removed with the component
+function Ring(props:{}):SceneView {
+	var ring = Node.NONE, angle = 0.0;
+	Frame.on(dt -> ring.rotation = Quat.axisAngle(UP, angle += dt * 0.4));
+	return <node ref={n -> ring = n.node}>...</node>;
+}
+```
+
+Both run in the frame's `Update` stage (`Frame.on(f, FixedUpdate)` and the
+others by name: `helder.scene.Stages`), once a frame however many boxes
+draw the world, outside the graph (a signal read there is not subscribed
+to), and stop when their owner is unmounted. Nothing is allocated a
+frame: the `FrameEvent` is refilled, and the stages' lists are iterated in
+place. A prop is bound or driven, never both: a dev build (`hxmc.dev`)
+says once, with the element's place in the source, when a node's
+`position`, `rotation` or `scale` was written in code since its binding
+set it (the binding would overwrite the motion).
+
+Example: [Motion in markup](/docs/examples/scene-motion/Motion.hx) (`helder run docs/examples/scene-motion/Motion.hx`; it plays in the docs' page).
+
+## When a scene draws
+
+A `<Scene>` draws on demand: it records a pass only when something in its
+world's markup changed, and otherwise ui draws the frame it has. What asks
+for one, by itself:
+
+- a binding's set, an element made, inserted, removed or disposed (its
+  world's: two `<Scene>`s of two worlds are apart);
+- an `onFrame` or `Frame.on` registered (every frame while it is);
+- a control's glide (`<OrbitControls>`, `<TransformGizmo>`), a scene
+  event's handler having run, a resize, `scale` or `density` changed, the
+  post chain changed (`<Effects>`), TAA's history settling (16 frames).
+
+Code that writes the world outside markup (a node moved in a coroutine, an
+`Animator`, particles) calls `box.invalidate()` (the box: `ref`), or sets
+`render="always"`. `render` is `"demand"` (the default), `"always"` (every
+frame; `animate` is the same) or `"manual"` (only `invalidate()`, not the
+markup's changes). `box.passes` counts the passes it recorded.
 
 ## Status
 
-Typed bindings (DESIGN-MARKUP.md M1). Next: removed elements disposing
-their nodes, drawing on demand per world, `onFrame` (M2), then tags
-generated from the classes (M3). In a `<Scene>`, the renderer's own
+Typed bindings (DESIGN-MARKUP.md M1); lifetimes, drawing on demand and
+`onFrame` (M2). Next: tags generated from the classes, and TSX's
+declarations with them (M3). In a `<Scene>`, the renderer's own
 pipelines draw into its target; its features' (skins, normal maps, the
 sky, particles) are the frame's still.
 
 Tests (`bun run test 3d`): `tests/3d-ui/SceneUiTest.hx` (markup on a
 world; the geometry, material, light and sprites tags; inline `Quat`,
-`Vec3` and `Vec4` values, constant and bound; set props in place),
+`Vec3` and `Vec4` values, constant and bound; set props in place; a
+`<Show>` toggled and a `<For>` emptied leaving no node; `onFrame` and
+`Frame.on` run once a frame and stopped with their owner; a dev build's
+bound-and-driven check),
 `tests/3d-ui/reject` (a prop an element does not take, a value not of
 its type, a signal of another type: rejected), `tests/3d-ui/SurfaceTest.hx` (under Xvfb: two `<Surface>`s, a
 `<Scene>`'s pixels in its box, a click picked in it, fingers picked at
 their presses, a tap on the mesh, a drag from it orbiting the camera, a
-cancel, `<Ui>` placed, `<Stick>` drawn, a click picked by triangles (its
+cancel, `<Ui>` placed, `<Stick>` drawn, an idle box recording no pass in
+100 of ui's frames and `invalidate()` one, a click picked by triangles (its
 uv and normal), `<lines>`, `<axesHelper>`, `<boundsHelper>` and
 `<text3d>` on their nodes, the text following its signal, a drag on a
 `<TransformGizmo>`'s arm moving its node and not the camera);

@@ -102,6 +102,10 @@ abstract Node(Int) {
 	public inline function add(child:Node):Node
 		return world.attach(cast this, child);
 
+	// child put under it just before before (one of its children; NONE: at the end), moved when it is there already
+	public inline function addBefore(child:Node, before:Node):Node
+		return world.attachBefore(cast this, child, before);
+
 	// out of its parent (it and what is below it are no longer drawn or reached from the root)
 	public inline function detach():Void
 		world.detach(slot);

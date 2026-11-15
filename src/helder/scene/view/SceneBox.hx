@@ -18,14 +18,70 @@ import helder.ui.Event;
 // press (the node hit owns the pointer until it lifts: its moves, its
 // release, its cancel, its click), and as a hovering mouse or pen moves
 // (enter, leave). Its pointers are the game's (ownsPointer: false). Drawn
-// again when a scene node of the markup changes, or each frame while
-// animate is set.
+// on demand (DESIGN-MARKUP.md 3.4): when its world's markup changes (a
+// binding, an element made or removed: SceneScope), while an onFrame or
+// Frame.on is registered, a control glides, after a scene event's handler,
+// a resize, a temporal effect settling; invalidate() for a change made in
+// code. Otherwise it records no pass and ui draws its last frame.
 class SceneBox extends helder.ui.Node {
 	public final world:World;
 	public final root:SceneNode;
+	// its world's markup (device, frame, the boxes drawing it)
+	public final scope:SceneScope;
 	public var camera:Null<Camera>;
-	// a frame each tick (an animation outside the markup's signals)
-	public var animate = false;
+	// when it draws: Demand (when something changed, the default), Always
+	// (every frame: an animation outside the markup), Manual (only when
+	// invalidate() is called)
+	public var render(default, set):SceneRender = Demand;
+	// render = Always (kept: <Scene animate>)
+	public var animate(get, set):Bool;
+
+	inline function get_animate():Bool
+		return render == Always;
+
+	function set_animate(v:Bool):Bool {
+		render = v ? Always : Demand;
+		return v;
+	}
+
+	function set_render(v:SceneRender):SceneRender {
+		render = v;
+		invalidate();
+		return v;
+	}
+
+	// (a frame asked for: its pass recorded at the next paint; the frames a temporal effect still settles)
+	var stale = true;
+	var settling = 0;
+	// (whether its scope's frame is a step of its ui's clock)
+	var stepping = false;
+
+	// drawn again at the next frame (Demand and Manual: what changed in code)
+	public function invalidate() {
+		stale = true;
+		if (ui != null) ui.requestFrame();
+	}
+
+	// (its world's markup changed: drawn again, unless only invalidate() draws it)
+	@:allow(helder.scene.view.SceneScope) function changed()
+		if (render != Manual) invalidate();
+
+	// (its scope's frame stepped by its ui's clock, while it has frame callbacks)
+	@:allow(helder.scene.view.SceneScope) function step() {
+		if (stepping) return;
+		stepping = true;
+		helder.ui.Clock.addFor(this, t -> {
+			var go = scope.frame(t);
+			if (!go) stepping = false;
+			go;
+		});
+	}
+
+	// the passes it has recorded (an idle box records none)
+	public var passes(get, never):Int;
+
+	inline function get_passes():Int
+		return records;
 	@:allow(helder.scene.view.SceneTags) var overlays:Array<{node:SceneNode, ui:helder.ui.Node, x:Float, y:Float}> = [];
 	// its offscreen renderer (made when first drawn: onRenderer then)
 	public var renderer(default, null):Null<Renderer>;
@@ -46,13 +102,13 @@ class SceneBox extends helder.ui.Node {
 	public var density(default, set) = 0.0;
 
 	function set_density(v:Float):Float {
-		if (v != density && ui != null) ui.requestFrame();
+		if (v != density) invalidate();
 		return density = Math.max(0, v);
 	}
 
 	function set_scale(v:Float):Float {
 		var k = Math.max(0.25, Math.min(1, v));
-		if (k != scale && ui != null) ui.requestFrame();
+		if (k != scale) invalidate();
 		return scale = k;
 	}
 	// its world drawn in linear light into a half-float target (RGBA16F),
@@ -74,7 +130,7 @@ class SceneBox extends helder.ui.Node {
 		postSetters.push(f);
 		var p = renderer != null ? renderer.post : null;
 		if (p != null) f(p);
-		if (ui != null) ui.requestFrame();
+		invalidate();
 	}
 
 	// (what its markup needs of its renderer: DrawTags' line renderer and
@@ -86,7 +142,7 @@ class SceneBox extends helder.ui.Node {
 	public function withRenderer(f:Renderer->Void) {
 		rendererSetters.push(f);
 		if (renderer != null) f(renderer);
-		if (ui != null) ui.requestFrame();
+		invalidate();
 	}
 
 	// f applied to its post chain now, if it has one (not kept: a change of a
@@ -94,7 +150,7 @@ class SceneBox extends helder.ui.Node {
 	public function onPost(f:helder.scene.render.PostProcess->Void) {
 		var p = renderer != null ? renderer.post : null;
 		if (p != null) f(p);
-		if (ui != null) ui.requestFrame();
+		invalidate();
 	}
 	var color:Null<Texture>;
 	// (hdr: the scene's linear light, the multisampled colour's resolve or the pass's own target)
@@ -124,7 +180,6 @@ class SceneBox extends helder.ui.Node {
 	final id = -(++ids);
 
 	static var ids = 0;
-	static final boxes:Array<SceneBox> = [];
 
 	// (per pointer, 0 the mouse: the node its press picked, where, how far;
 	// the one its release left, for its click)
@@ -146,9 +201,10 @@ class SceneBox extends helder.ui.Node {
 		super("scene");
 		this.world = world;
 		this.camera = camera;
-		root = SceneRenderer.root(world);
-		boxes.push(this);
-		SceneRenderer.changed = redraw;
+		scope = SceneScope.of(world);
+		root = new SceneNode(world.root, "root", scope);
+		scope.boxes.push(this);
+		if (scope.active) step();
 		// (picked at a press only: the node hit owns the pointer until it lifts;
 		// a hovering mouse or pen picks as it moves, for enter and leave)
 		onPointerDown = e -> {
@@ -234,13 +290,8 @@ class SceneBox extends helder.ui.Node {
 	override public function ownsPointer():Bool
 		return false;
 
-	// (every box drawn again: a scene node changed)
-	static function redraw()
-		for (b in boxes)
-			if (b.ui != null) b.ui.requestFrame();
-
 	public function dispose() {
-		boxes.remove(this);
+		scope.boxes.remove(this);
 		if (device != null) {
 			if (color != null) device.destroyTexture(color);
 			if (light != null) device.destroyTexture(light);
@@ -297,9 +348,10 @@ class SceneBox extends helder.ui.Node {
 		return true;
 	}
 
-	// se's node's listener of that kind called, then its ancestors'
-	static function dispatch(se:SceneEvent, kind:Int) {
-		var n = se.node;
+	// se's node's listener of that kind called, then its ancestors' (one
+	// called: the box drawn again, what it changed in code shown)
+	function dispatch(se:SceneEvent, kind:Int) {
+		var n = se.node, called = false;
 		while (!n.isNone && !se.stopped) {
 			var s = SceneRenderer.of(n);
 			if (s != null && s.handlers != null) {
@@ -307,10 +359,12 @@ class SceneBox extends helder.ui.Node {
 				if (h != null) {
 					@:privateAccess se.current = n;
 					h(se);
+					called = true;
 				}
 			}
 			n = n.parent;
 		}
+		if (called) invalidate();
 	}
 
 	override public function hasContent():Bool
@@ -320,18 +374,19 @@ class SceneBox extends helder.ui.Node {
 		// (on the GPU only: a canvas recording, a test's, draws nothing)
 		var r = Std.downcast(canvas, helder.ui.draw.Renderer);
 		if (r == null) return;
-		if (animate && ui != null) ui.requestFrame();
+		if (render == Always) invalidate();
 		// (its controls' glides, by the time since the last frame drawn)
 		var now = helder.ui.Ui.now(), dt = steppedAt < 0 ? 0 : Math.min(0.1, now - steppedAt);
 		steppedAt = now;
 		for (c in controls)
-			if (c.update(dt) && ui != null) ui.requestFrame();
+			if (c.update(dt)) invalidate();
 		var k = density > 0 ? Math.min(scale, density / r.scale) : scale;
 		var pw = Std.int(Math.max(1, Math.round(width * r.scale * k))), ph = Std.int(Math.max(1, Math.round(height * r.scale * k)));
 		if (renderer == null) {
 			device = r.device;
 			renderer = new Renderer(r.device, true, antialias ? 4 : 1, hdr);
-			if (SceneRenderer.device == null) SceneRenderer.device = r.device;
+			if (scope.device == null) scope.device = r.device;
+			stale = true;
 			// (the post chain first: onRenderer sets it up with the rest)
 			if (renderer.hdr && renderer.post == null) renderer.post = new helder.scene.render.PostProcess(r.device);
 			if (renderer.post != null)
@@ -355,6 +410,7 @@ class SceneBox extends helder.ui.Node {
 			multi = samples > 1 ? device.createTexture({width: pw, height: ph, format: format, renderTarget: true, samples: samples}) : null;
 			tw = pw;
 			th = ph;
+			stale = true;
 		}
 		// (destroyed two recorded frames after they were replaced: no frame left that may read them)
 		while (retired.length > 0 && records >= retiredAt[0] + 2) {
@@ -362,11 +418,18 @@ class SceneBox extends helder.ui.Node {
 			retiredAt.shift();
 		}
 		var cam = view();
-		// (once a frame, with the textures there are when it records: a frame
-		// skipped, its recording runs with the next one's)
-		if (queued != r.frames) {
+		// (a temporal effect, TAA's history, settles over the frames after a change)
+		var post = renderer.post;
+		if (stale && post != null && post.taa != null) settling = 16;
+		// (once a frame, with the textures there are when it records, when
+		// something changed: a frame skipped, its recording runs with the
+		// next one's; else ui draws the last one)
+		if ((stale || settling > 0) && queued != r.frames) {
 			queued = r.frames;
 			r.beforePass(record);
+			if (!stale) settling--;
+			stale = false;
+			if (settling > 0 && ui != null) ui.requestFrame();
 		}
 		r.gpuTexture(color, id, x, y, width, height);
 		place(cam, width, height);
@@ -404,7 +467,7 @@ class SceneBox extends helder.ui.Node {
 			tw = th = 0;
 			sr.dispose();
 			renderer = null;
-			if (ui != null) ui.requestFrame();
+			invalidate();
 		}
 	}
 
@@ -423,6 +486,13 @@ class SceneBox extends helder.ui.Node {
 			if (o.ui.style.visibility != shown) o.ui.style.visibility = shown;
 		}
 	}
+}
+
+// when a <Scene> draws (SceneBox.render)
+enum abstract SceneRender(String) from String to String {
+	var Demand = "demand";
+	var Always = "always";
+	var Manual = "manual";
 }
 
 // what a box steps before each frame it draws (OrbitControls' glide,

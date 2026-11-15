@@ -22,8 +22,8 @@ class MarkupSize implements Markup {
 		var material = helder.scene.render.Material.standard({color: new Vec4(0.8, 0.3, 0.2, 1)});
 		var node = world.node("box");
 		node.position = new Vec3(0, 1, 0);
-		if (SceneRenderer.device != null)
-			helder.scene.render.MeshRenderer.attach(node, SceneRenderer.meshOf(SceneRenderer.device, mesh, material));
+		if (helder.scene.view.SceneScope.of(world).device != null)
+			helder.scene.render.MeshRenderer.attach(node, SceneRenderer.meshOf(helder.scene.view.SceneScope.of(world).device, mesh, material));
 		#else
 		Render.render(<node name="box" position={new Vec3(0, 1, 0)}>
 			<mesh>

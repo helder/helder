@@ -242,6 +242,25 @@ class SurfaceTest implements Markup {
 			after.x > before.x + 0.2 && Math.abs(after.y - before.y) < 1e-9 && eyeAfter.x == eyeBefore.x && eyeAfter.z == eyeBefore.z,
 			'$before to $after, the eye $eyeBefore to $eyeAfter, the arm at $gx, $gy');
 
+		// (drawing on demand, DESIGN-MARKUP.md 3.4: once the orbit's glide has
+		// settled, ui's frames record no pass of an unchanged box; invalidate() one)
+		var last = -1, settle = 0;
+		while (box.passes != last && settle++ < 300) {
+			last = box.passes;
+			w.ui.requestFrame();
+			w.frame();
+		}
+		var idle = box.passes;
+		for (_ in 0...100) {
+			w.ui.requestFrame();
+			w.frame();
+		}
+		check("an idle box records no pass in 100 of ui's frames", box.passes == idle, '${box.passes - idle} passes');
+		box.invalidate();
+		w.frame();
+		w.frame();
+		check("invalidate(): one pass", box.passes == idle + 1, '${box.passes - idle} passes');
+
 		// (density: at most a quarter of a device pixel a point here, under scale's half)
 		box.density = s * 0.25;
 		w.ui.requestFrame();

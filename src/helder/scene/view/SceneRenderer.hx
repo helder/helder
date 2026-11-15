@@ -16,6 +16,7 @@ import helder.scene.render.Shapes;
 import helder.scene.render.Sprites;
 import helder.scene.render.VertexData;
 import helder.scene.view.SceneProps;
+import helder.scene.view.Frame.FrameEvent;
 
 // helder.view's renderer for helder.scene: markup makes nodes of a World,
 // and a property bound to a signal sets the node's value when the signal
@@ -32,7 +33,7 @@ import helder.scene.view.SceneProps;
 // material made in code, shared; or its children, a geometry tag and a
 // material tag, made from their props, again when one changes; or a shape
 // made in code: shape box | sphere | plane, size, color, metallic,
-// roughness; SceneRenderer.device must be set), the geometry tags
+// roughness; made once its scope has a device: SceneScope), the geometry tags
 // (boxGeometry, sphereGeometry, cylinderGeometry, coneGeometry,
 // capsuleGeometry, torusGeometry, torusKnotGeometry, ringGeometry,
 // circleGeometry, planeGeometry, latheGeometry, tubeGeometry: Geometry's
@@ -80,24 +81,12 @@ import helder.scene.view.SceneProps;
 @:props(helder.scene.view.SceneProps)
 @:setters(helder.scene.view.SceneSet)
 class SceneRenderer implements helder.view.Renders<SceneNode> {
-	// the device meshes are made on (a <Scene> sets it when first drawn: the meshes made before it, then)
-	public static var device(default, set):Null<helder.gfx.Device>;
-	// the world elements are made in: a <Scene>'s (WORLD, provided to its children), else root's
-	public static var world:Null<World>;
-	public static final WORLD = new helder.view.graph.Context<Null<World>>(null, true);
-	// (the markup's nodes by their scene nodes' ids: picking's; the meshes waiting for a device)
+	// the scope elements are made in (its world, device, frame): a
+	// <Scene>'s (provided to its children), else the last root's
+	public static final SCOPE = new helder.view.graph.Context<Null<SceneScope>>(null, true);
+	static var current:Null<SceneScope> = null;
+	// (the markup's nodes by their scene nodes' ids: picking's)
 	static final nodes = new Map<Int, SceneNode>();
-	static final pending:Array<SceneNode> = [];
-
-	static function set_device(d:Null<helder.gfx.Device>) {
-		device = d;
-		if (d != null) {
-			for (n in pending)
-				if (n.node.valid) n.remesh();
-			pending.resize(0);
-		}
-		return d;
-	}
 
 	// the markup's node of a scene node (null: none, or not made by markup)
 	public static function of(n:Node):Null<SceneNode>
@@ -105,16 +94,22 @@ class SceneRenderer implements helder.view.Renders<SceneNode> {
 
 	// the node of world's root, to render into
 	public static function root(w:World):SceneNode {
-		world = w;
-		return new SceneNode(w.root, "root");
+		current = SceneScope.of(w);
+		return new SceneNode(w.root, "root", current);
 	}
 
+	// an element: its node in its scope's world, owned (2.4): disposed with
+	// the owner that made it (its node and its components' rows, its
+	// upload's reference), never by its removal (a boundary takes its nodes
+	// out and puts them back)
 	public static function createElement(tag:String):SceneNode {
-		var w = (helder.view.graph.Graph.getOwner() == null ? null : helder.view.graph.Graph.use(WORLD)) ?? world;
-		if (w == null) throw "SceneRenderer: no world (a <Scene>'s children, or rendered into SceneRenderer.root(world))";
-		var n = new SceneNode(w.node(tag), tag);
+		var owned = helder.view.graph.Graph.getOwner() != null;
+		var scope = (owned ? helder.view.graph.Graph.use(SCOPE) : null) ?? current;
+		if (scope == null) throw "SceneRenderer: no world (a <Scene>'s children, or rendered into SceneRenderer.root(world))";
+		var n = new SceneNode(scope.world.node(tag), tag, scope);
 		n.node.detach();
 		nodes.set(n.node.id(), n);
+		if (owned) helder.view.graph.Graph.onCleanup(n.dispose);
 		return n;
 	}
 
@@ -207,8 +202,9 @@ class SceneRenderer implements helder.view.Renders<SceneNode> {
 				// (made of its props once inserted; again when one it is made of changes)
 				var font:Null<helder.text.FontFile> = n.get("font", null);
 				if (font == null) return;
+				var device = n.scope.device;
 				if (device == null) {
-					if (pending.indexOf(n) < 0) pending.push(n);
+					if (n.scope.pending.indexOf(n) < 0) n.scope.pending.push(n);
 					return;
 				}
 				var key = [for (k in ["size", "depth", "bevelSize", "align", "color", "lit", "castShadows"]) Std.string(n.get(k, null))].join("|");
@@ -314,7 +310,7 @@ class SceneRenderer implements helder.view.Renders<SceneNode> {
 
 	public static function setProperty(el:SceneNode, name:String, value:Dynamic) {
 		var n = el.node;
-		changed();
+		el.scope.invalidate();
 		switch name {
 			case "name": n.name = value;
 			case "position": n.position = (value : Vec3);
@@ -333,14 +329,14 @@ class SceneRenderer implements helder.view.Renders<SceneNode> {
 					return;
 				}
 				switch el.tag {
-					case "mesh": el.remesh();
+					case "mesh": el.restale();
 					case "instances" | "sprites": el.reinstance();
 					case "light" | "directionalLight" | "pointLight" | "spotLight" | "hemisphereLight": el.relight();
 					case "camera": el.recamera();
 					// (a geometry or a material of a mesh: the mesh made again)
 					case t if (part(t) != None):
 						el.made = null;
-						if (el.parent != null && el.parent.tag == "mesh") el.parent.remesh();
+						if (el.parent != null && el.parent.tag == "mesh") el.parent.restale();
 					case _:
 				}
 		}
@@ -350,6 +346,17 @@ class SceneRenderer implements helder.view.Renders<SceneNode> {
 
 	// (a listener kept by its kind, found by index at each event: SceneBox's dispatch)
 	public static function listen(el:SceneNode, name:String, handler:Dynamic) {
+		// (its own frame work: the scope's Update while its owner lives, its event refilled)
+		if (name == "onFrame") {
+			var h:FrameEvent->Void = handler, ev = new FrameEvent();
+			@:privateAccess ev.element = el;
+			@:privateAccess ev.node = el.node;
+			el.scope.on(Update, dt -> {
+				@:privateAccess ev.dt = dt;
+				h(ev);
+			});
+			return;
+		}
 		var k = LISTENERS.indexOf(name);
 		if (k < 0) throw 'SceneRenderer: no event $name (${LISTENERS.join(", ")})';
 		if (el.handlers == null) el.handlers = [for (_ in LISTENERS) null];
@@ -360,47 +367,41 @@ class SceneRenderer implements helder.view.Renders<SceneNode> {
 	public static final LISTENERS = ["onPointerDown", "onPointerUp", "onPointerMove", "onPointerEnter", "onPointerLeave", "onClick", "onPointerCancel", "onTap"];
 
 	public static function insert(parent:SceneNode, node:SceneNode, before:Null<SceneNode>) {
-		parent.node.add(node.node);
+		// (before its marker or row: the scene graph's own order, no children walked)
+		if (before != null && before.node.valid && before.node.parent == parent.node) parent.node.addBefore(node.node, before.node) else parent.node.add(node.node);
 		nodes.set(node.node.id(), node);
-		changed();
+		node.scope.invalidate();
 		// (a mesh's geometry or material tag: its mesh made with it)
 		if (parent.tag == "mesh")
 			switch part(node.tag) {
 				case IsGeometry:
 					parent.geometryPart = node;
-					parent.remesh();
+					parent.restale();
 				case IsMaterial:
 					parent.materialPart = node;
-					parent.remesh();
+					parent.restale();
 				case None:
 			}
-		if (before != null) {
-			// (the scene graph appends: move the ones from before on after it)
-			var after = false, move = [];
-			for (c in parent.node.children()) {
-				if (c == before.node) after = true;
-				if (after && c != node.node) move.push(c);
-			}
-			for (c in move)
-				parent.node.add(c);
-		}
+		// (a mesh made once its props and parts are set: when the commit settles)
+		if (node.tag == "mesh") node.restale();
 		node.parent = parent;
 		// (one made of its props once in the scene: text3d)
 		if (node.refresh != null) node.refresh(node);
 	}
 
 	public static function remove(parent:SceneNode, node:SceneNode) {
-		node.node.detach();
 		node.parent = null;
-		nodes.remove(node.node.id());
-		changed();
+		// (disposed already: its owner's cleanup, or its parent's node's)
+		if (!node.node.valid) return;
+		node.node.detach();
+		node.scope.invalidate();
 		if (parent.geometryPart == node) {
 			parent.geometryPart = null;
-			parent.remesh();
+			parent.restale();
 		}
 		if (parent.materialPart == node) {
 			parent.materialPart = null;
-			parent.remesh();
+			parent.restale();
 		}
 	}
 
@@ -410,35 +411,53 @@ class SceneRenderer implements helder.view.Renders<SceneNode> {
 
 	// (a geometry uploaded once for its device, its primitives by material: a
 	// mesh of markup per geometry and material, so that the same ones are
-	// one instanced draw)
-	static final uploads = new haxe.ds.ObjectMap<VertexData, Array<Mesh>>();
+	// one instanced draw; each counted by the meshes drawing it, the upload
+	// let go with the last: 2.4)
+	static final uploads = new haxe.ds.ObjectMap<VertexData, Upload>();
 
+	// the mesh drawing geometry in material on device: one reference to it
+	// taken (releaseMesh gives it back)
 	public static function meshOf(device:helder.gfx.Device, geometry:VertexData, material:Material):Mesh {
-		var list = uploads.get(geometry);
-		if (list == null) {
+		var u = uploads.get(geometry);
+		if (u == null) {
 			var m = Shapes.of(device, geometry, material);
-			uploads.set(geometry, [m]);
+			u = {base: m, variants: new haxe.ds.ObjectMap(), count: 1, device: device};
+			u.variants.set(material, {mesh: m, refs: 1});
+			uploads.set(geometry, u);
 			return m;
 		}
-		for (m in list)
-			if (m.primitives[0].material == material) return m;
-		var p = list[0].primitives[0];
-		var m = new Mesh();
-		m.addPrimitive(p.withMaterial(material));
-		list.push(m);
-		return m;
+		var v = u.variants.get(material);
+		if (v == null) {
+			var m = new Mesh();
+			m.addPrimitive(u.base.primitives[0].withMaterial(material));
+			u.variants.set(material, v = {mesh: m, refs: 0});
+			u.count++;
+		}
+		v.refs++;
+		return v.mesh;
 	}
 
-	// a geometry's uploads let go (one made by a tag, made again)
-	static function release(device:helder.gfx.Device, geometry:VertexData) {
-		var list = uploads.get(geometry);
-		if (list == null) return;
-		list[0].dispose(device);
+	// a reference to geometry's mesh in material given back: the upload let go with the last
+	public static function releaseMesh(geometry:VertexData, material:Material) {
+		var u = uploads.get(geometry);
+		if (u == null) return;
+		var v = u.variants.get(material);
+		if (v == null || --v.refs > 0) return;
+		u.variants.remove(material);
+		if (--u.count > 0) return;
+		u.base.dispose(u.device);
 		uploads.remove(geometry);
 	}
 
-	// (a node's property or place changed: the <Scene>s drawn again)
-	public static var changed:Void->Void = () -> {};
+	// the uploads markup holds (a leak test's)
+	public static var uploadCount(get, never):Int;
+
+	static function get_uploadCount():Int {
+		var n = 0;
+		for (_ in uploads)
+			n++;
+		return n;
+	}
 
 	public static function parentOf(node:SceneNode):Null<SceneNode>
 		return node.parent;
@@ -454,9 +473,26 @@ class SceneRenderer implements helder.view.Renders<SceneNode> {
 // a node of the scene as markup sees it: the World's node, its tag, the
 // properties that make its components
 @:rendered(helder.scene.view.SceneRenderer)
-class SceneNode {
+class SceneNode #if ((hxmc.dev || helder.headless) && !macro) implements helder.view.Source.Located #end {
+	#if ((hxmc.dev || helder.headless) && !macro)
+	// (where it was written: helder.view.Source)
+	public var source:Null<helder.view.Source> = null;
+	public var sourceComponent:Null<helder.view.Source.SourceComponent> = null;
+	#end
+	#if hxmc.dev
+	// (the dev check of 3.2, a prop bound or driven: the node props its
+	// bindings set, bits of position 1, rotation 2, scale 4, what they last
+	// wrote, and whether a fight was said)
+	@:allow(helder.scene.view.SceneSet) var bound = 0;
+	@:allow(helder.scene.view.SceneSet) var wrotePosition = new Vec3(0, 0, 0);
+	@:allow(helder.scene.view.SceneSet) var wroteRotation = helder.scene.math.Quat.identity();
+	@:allow(helder.scene.view.SceneSet) var wroteScale = new Vec3(1, 1, 1);
+	@:allow(helder.scene.view.SceneSet) var said = false;
+	#end
 	public final node:Node;
 	public final tag:String;
+	// its world's markup: its device, its frame, its boxes (SceneScope)
+	public final scope:SceneScope;
 	public var parent:Null<SceneNode>;
 	public final props = new Map<String, Dynamic>();
 	// its listeners by kind (SceneRenderer.LISTENERS; null: none)
@@ -477,12 +513,16 @@ class SceneNode {
 	var own:Null<Material> = null;
 	// (whether castShadows was set: kept when its light is made again)
 	@:allow(helder.scene.view.SceneSet) var castSet = false;
-	// a geometry tag's last upload (let go when made again)
-	var uploaded:Null<VertexData> = null;
+	// (the geometry and material its mesh draws: its upload's reference, given back when it draws another or is disposed)
+	var drawn:Null<VertexData> = null;
+	var drawnIn:Null<Material> = null;
+	// (waiting to be made again: its scope's, at the commit's end)
+	var queued = false;
 
-	public function new(node:Node, tag:String) {
+	public function new(node:Node, tag:String, scope:SceneScope) {
 		this.node = node;
 		this.tag = tag;
+		this.scope = scope;
 		if (SceneRenderer.part(tag) != None) node.visible = false;
 		switch tag {
 			case "light" | "directionalLight" | "pointLight" | "spotLight" | "hemisphereLight": relight();
@@ -491,18 +531,43 @@ class SceneNode {
 		}
 	}
 
+	// (its owner's cleanup: its node and what is under it disposed, its upload's reference given back)
+	@:allow(helder.scene.view.SceneRenderer) function dispose() {
+		if (drawn != null) {
+			SceneRenderer.releaseMesh(drawn, drawnIn);
+			drawn = null;
+			drawnIn = null;
+		}
+		@:privateAccess SceneRenderer.nodes.remove(node.id());
+		var i = scope.pending.indexOf(this);
+		if (i >= 0) scope.pending.splice(i, 1);
+		if (node.valid) {
+			node.dispose();
+			scope.invalidate();
+		}
+	}
+
 	@:allow(helder.scene.view.SceneRenderer) function get(name:String, def:Dynamic):Dynamic
 		return props.exists(name) ? props.get(name) : def;
 
+	// (made again once, when the commit settles: its make props and parts all set; SceneScope)
+	@:allow(helder.scene.view) function restale() {
+		if (queued) return;
+		queued = true;
+		scope.remake(this);
+	}
+
 	@:allow(helder.scene.view) function remesh() {
+		queued = false;
 		// (one of its own component's, waiting for a device: text3d)
 		if (refresh != null) {
 			refresh(this);
 			return;
 		}
-		var device = SceneRenderer.device;
+		if (!node.valid) return;
+		var device = scope.device;
 		if (device == null) {
-			@:privateAccess if (SceneRenderer.pending.indexOf(this) < 0) SceneRenderer.pending.push(this);
+			if (scope.pending.indexOf(this) < 0) scope.pending.push(this);
 			return;
 		}
 		// (its geometry: its tag's, its prop's, else its shape's)
@@ -523,7 +588,11 @@ class SceneNode {
 		// (its material: its tag's, its prop's, else its own of color, metallic and roughness)
 		var material:Null<Material> = materialPart != null ? materialPart.material() : get("material", null);
 		if (material == null) material = ownMaterial();
+		// (the new one's reference taken before the last one's is given back: the same geometry stays uploaded)
 		MeshRenderer.attach(node, SceneRenderer.meshOf(device, geometry, material));
+		if (drawn != null) SceneRenderer.releaseMesh(drawn, drawnIn);
+		drawn = geometry;
+		drawnIn = material;
 	}
 
 	// (a mesh's own material: its color, metallic and roughness props', set in place: SceneSet)
@@ -545,10 +614,6 @@ class SceneNode {
 		if (made != null) return made;
 		if (make == null) throw 'SceneRenderer: <$tag> made by createElement, not by its element_$tag';
 		var g:VertexData = make(this);
-		// (its last upload let go: none else draws it)
-		var device = SceneRenderer.device;
-		if (uploaded != null && device != null) @:privateAccess SceneRenderer.release(device, uploaded);
-		uploaded = g;
 		made = g;
 		return g;
 	}
@@ -628,6 +693,9 @@ class SceneNode {
 		}
 	}
 }
+
+// (an upload of markup's: its meshes by material, the meshes drawing it)
+typedef Upload = {base:Mesh, variants:haxe.ds.ObjectMap<Material, {mesh:Mesh, refs:Int}>, count:Int, device:helder.gfx.Device};
 
 // what a tag is to a mesh (SceneRenderer.part)
 enum abstract Part(Int) {

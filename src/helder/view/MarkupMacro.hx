@@ -596,6 +596,21 @@ class HaxeTarget implements Target<Expr> {
 			if (!args[k].opt) return Context.error("markup: " + name + "'s handler takes " + args.length + " arguments: " + want, attr);
 		if (event != null && !Context.unify(event, args[0].t))
 			return Context.error("markup: " + name + "'s handler takes " + article(haxe.macro.TypeTools.toString(args[0].t)) + gives + ": " + want, attr);
+		// (one returning a struct value, its body's last a Quat set: called
+		// typed by one returning nothing, as no function returning a struct
+		// may be called as one of Dynamic)
+		switch Context.follow(t) {
+			case TFun(_, r) if (isStruct(r)):
+				var ct = haxe.macro.TypeTools.toComplexType(args[0].t);
+				return macro @:pos(e.pos) {
+					var __f = $e;
+					(__e:$ct) -> {
+						__f(__e);
+						return;
+					};
+				};
+			case _:
+		}
 		return e;
 	}
 

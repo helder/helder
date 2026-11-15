@@ -22,21 +22,24 @@ import helder.view.graph.Signal;
 //   signals     each mesh's position bound to a signal of its own, each
 //               written every frame, then a flush (the worst case)
 //   steps       each mesh's own clock step writing its signal (examples/
-//               planets' pattern: helder.ui.Clock.add per node)
+//               planets' pattern before M2: helder.ui.Clock.add per node)
+//   onFrame     each mesh's own onFrame writing its node (M2)
+//   oneFrame    one Frame.on writing every node (M2: the pattern the
+//               design recommends)
 //
 // Measured, each variant in a process of its own: mounting (ms, GC bytes),
 // FRAMES frames with every node moving (the markup's share: the writes, the
 // clock and the flush; then the renderer's recorded pass; ms and GC bytes
-// each, the mean of the frames: wasm32's clock is too coarse for one), IDLE idle frames (those asking for a redraw: SceneRenderer.changed
+// each, the mean of the frames: wasm32's clock is too coarse for one), IDLE idle frames (those asking for a redraw: the scope's changes
 // called, or a clock still stepping), unmounting (ms, the world's nodes left over the
-// count before mounting). wasm32-wasi has no GPU: its nodes are bare (no
+// count before mounting, and the uploads markup still holds). wasm32-wasi has no GPU: its nodes are bare (no
 // mesh, no pass recorded).
 //
 //   SceneMarkupBench <variant> <n>
 //
 // One line:
 //
-//   scene-markup <variant> <n> <mount ms> <mount KB> <frame ms> <frame B> <pass ms> <pass B> <idle frames drawing> <unmount ms> <nodes left>
+//   scene-markup <variant> <n> <mount ms> <mount KB> <frame ms> <frame B> <pass ms> <pass B> <idle frames drawing> <unmount ms> <nodes and uploads left>
 class SceneMarkupBench implements Markup {
 	static inline var FRAMES = 200;
 	static inline var WARM = 20;
@@ -46,7 +49,8 @@ class SceneMarkupBench implements Markup {
 	static var geometry:VertexData;
 	static var material:Material;
 	static var mesh:Null<Mesh>;
-	static var asks = 0;
+	// (the frame's time, the onFrame variants' motion's)
+	static var clock = 0.0;
 	#if (hxmc.target != "wasm32-wasi")
 	static var device:helder.gfx.Device;
 	static var renderer:helder.scene.render.Renderer;
@@ -66,11 +70,13 @@ class SceneMarkupBench implements Markup {
 		#if (hxmc.target != "wasm32-wasi")
 		device = helder.gfx.Device.create(helder.os.Surface.headless(64, 64));
 		renderer = new helder.scene.render.Renderer(device);
-		SceneRenderer.device = device;
 		mesh = helder.scene.render.Shapes.of(device, geometry, material);
 		#end
-		SceneRenderer.changed = () -> asks++;
 		var root = SceneRenderer.root(world);
+		var scope = helder.scene.view.SceneScope.of(world);
+		#if (hxmc.target != "wasm32-wasi")
+		scope.device = device;
+		#end
 		var before = world.count;
 
 		// --- mount
@@ -109,8 +115,26 @@ class SceneMarkupBench implements Markup {
 							true;
 						});
 					}
+			case "onFrame":
+				#if (hxmc.target != "wasm32-wasi")
+				dispose = Render.render(<node>{[for (k in 0...n) <mesh position={start(k, n)} geometry={geometry} material={material} onFrame={f -> f.node.position = moved(k, n, clock)}/>]}</node>, root);
+				#else
+				dispose = Render.render(<node>{[for (k in 0...n) <node position={start(k, n)} onFrame={f -> f.node.position = moved(k, n, clock)}/>]}</node>, root);
+				#end
+			case "oneFrame":
+				#if (hxmc.target != "wasm32-wasi")
+				dispose = Render.render(<node>
+					<Mover nodes={nodes} n={n}/>
+					{[for (k in 0...n) <mesh position={start(k, n)} geometry={geometry} material={material} ref={s -> nodes.push(s.node)}/>]}
+				</node>, root);
+				#else
+				dispose = Render.render(<node>
+					<Mover nodes={nodes} n={n}/>
+					{[for (k in 0...n) <node position={start(k, n)} ref={s -> nodes.push(s.node)}/>]}
+				</node>, root);
+				#end
 			case _:
-				throw 'SceneMarkupBench: no variant $variant (code, constant, signals, steps)';
+				throw 'SceneMarkupBench: no variant $variant (code, constant, signals, steps, onFrame, oneFrame)';
 		}
 		Graph.flush();
 		var mountMs = (Timer.stamp() - t0) * 1000, mountBytes = GcStats.bytes() - b0;
@@ -132,6 +156,9 @@ class SceneMarkupBench implements Markup {
 				case "steps":
 					helder.ui.Clock.tick(t);
 					Graph.flush();
+				case "onFrame" | "oneFrame":
+					clock = t;
+					scope.frame(t);
 				case _:
 			}
 			var t2 = Timer.stamp(), b2 = GcStats.bytes();
@@ -156,12 +183,13 @@ class SceneMarkupBench implements Markup {
 
 		// --- idle frames: nothing changes
 		var idle = 0;
+		var removed = false;
 		for (_ in 0...IDLE) {
-			asks = 0;
+			var asks = scope.changes;
 			// (the steps go on: each writes its signal again)
 			if (variant == "steps") helder.ui.Clock.tick(t);
 			Graph.flush();
-			if (asks > 0 || helder.ui.Clock.active) idle++;
+			if (scope.changes > asks || helder.ui.Clock.active || scope.active) idle++;
 		}
 
 		// --- unmount
@@ -169,7 +197,8 @@ class SceneMarkupBench implements Markup {
 		dispose();
 		Graph.flush();
 		var unmountMs = (Timer.stamp() - t4) * 1000;
-		var left = world.count - before;
+		// (and the uploads markup still holds: given back with the last mesh drawing each)
+		var left = world.count - before + SceneRenderer.uploadCount;
 		inline function r(v:Float):String
 			return Std.string(Math.round(v * 1000) / 1000);
 		Sys.println([
@@ -177,6 +206,13 @@ class SceneMarkupBench implements Markup {
 			Std.string(Math.round(passBytes / FRAMES)), Std.string(idle), r(unmountMs), Std.string(left)
 		].join(" "));
 		Sys.exit(0);
+	}
+
+	// (the one onFrame writing every node: Frame.on in a component's body)
+	static function Mover(props:{nodes:Array<Node>, n:Int}):helder.scene.view.SceneView {
+		var nodes = props.nodes, n = props.n;
+		helder.scene.view.Frame.on(dt -> for (k in 0...nodes.length) nodes[k].position = moved(k, n, clock));
+		return <node name="mover"/>;
 	}
 
 	// (every node's world matrix, under n)

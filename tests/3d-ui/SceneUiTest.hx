@@ -73,14 +73,14 @@ class SceneUiTest implements Markup {
 		var flag = world.root.find("flag");
 		shown(false);
 		flush();
-		check("Show: taken out", world.root.find("flag").isNone && !world.inTree(flag));
+		check("Show: taken out, its node disposed", world.root.find("flag").isNone && !flag.valid);
 		shown(true);
 		flush();
 		check("Show: back", !world.root.find("flag").isNone);
 		check("For: rows", !world.root.find("io").isNone && !world.root.find("europa").isNone);
 		moons(["europa", "ganymede"]);
 		flush();
-		check("For: a row removed, one added", world.root.find("io").isNone || !world.inTree(world.root.find("io")));
+		check("For: a row removed (its node disposed), one added", world.root.find("io").isNone);
 		check("For: the new row", !world.root.find("ganymede").isNone && world.inTree(world.root.find("ganymede")));
 		check("instances: the set on its node", InstancedMesh.of(world.root.find("belt")) == rocks);
 		var sky = Light.of(world.root.find("sky"));
@@ -105,6 +105,10 @@ class SceneUiTest implements Markup {
 		check("<lod end>: a visible range", range != null && range.end == 80 && range.begin == 0);
 		typed();
 		leaks();
+		frames();
+		#if hxmc.dev
+		fights();
+		#end
 		Sys.println('SceneUiTest: $checks checks, ' + (failed == 0 ? "ok" : '$failed FAILED'));
 		if (failed > 0) Sys.exit(1);
 	}
@@ -164,7 +168,7 @@ class SceneUiTest implements Markup {
 		var before = world.count;
 		var dispose = Render.render(<node>
 			<Show when={shown}><node name="a"><node name="b"/></node></Show>
-			<For each={rows}>{k -> <node name="row"/>}</For>
+			<For each={rows}>{k -> <node name="row"><node name="inner"/></node>}</For>
 		</node>, root);
 		for (_ in 0...100) {
 			shown(!shown.peek());
@@ -176,7 +180,66 @@ class SceneUiTest implements Markup {
 		flush();
 		dispose();
 		flush();
-		known('removed elements dispose their world nodes (${world.count - before} left of ${before} before)', world.count == before);
+		check('removed elements dispose their world nodes (${world.count - before} left of ${before} before)', world.count == before);
 		world.dispose();
+	}
+
+	// (3.3: an element's onFrame and a component's Frame.on, run by the
+	// scope's frame while mounted, stopped with their owner)
+	static function frames() {
+		var world = new World();
+		var scope = helder.scene.view.SceneScope.of(world);
+		var shown = signal(true);
+		var ticks = 0, spun = 0.0;
+		Render.render(<node>
+			<Show when={shown}>
+				<node name="spinner" onFrame={f -> {
+					ticks++;
+					f.node.rotation = helder.scene.math.Quat.axisAngle(up, spun += f.dt);
+				}}/>
+				<Spinner/>
+			</Show>
+		</node>, SceneRenderer.root(world));
+		check("onFrame: registered", scope.active);
+		// (the first frame's seconds 0, then the time since the last, at most 0.1; one run a time)
+		scope.frame(1.0);
+		scope.frame(1.05);
+		scope.frame(1.05);
+		check("onFrame: run once a frame, given its seconds", ticks == 2 && Math.abs(spun - 0.05) < 1e-9 && spinnerTicks == 2);
+		check("onFrame: its node written", Math.abs(world.root.find("spinner").rotation.y - Math.sin(0.025)) < 1e-9);
+		shown(false);
+		flush();
+		scope.frame(2.0);
+		check("onFrame and Frame.on: stopped with their owner", ticks == 2 && spinnerTicks == 2 && !scope.active);
+		world.dispose();
+	}
+
+	#if hxmc.dev
+	// (3.2's dev check: a bound prop written in code, then its binding again: said once, where it is written)
+	static function fights() {
+		var world = new World();
+		var lift = signal(1.0);
+		var told:Array<String> = [];
+		helder.scene.view.SceneSet.onFight = (n, prop) -> told.push(n.tag + " " + prop + " " + (n.source != null));
+		Render.render(<node name="fought" position={new Vec3(0, lift(), 0)}/>, SceneRenderer.root(world));
+		lift(2.0);
+		flush();
+		check("bound, not driven: nothing said", told.length == 0);
+		world.root.find("fought").position = new Vec3(5, 0, 0);
+		lift(3.0);
+		flush();
+		lift(4.0);
+		flush();
+		check("bound and driven: said once, with its source", told.join(",") == "node position true");
+		helder.scene.view.SceneSet.onFight = null;
+		world.dispose();
+	}
+	#end
+
+	static var spinnerTicks = 0;
+
+	static function Spinner(props:{}):helder.scene.view.SceneView {
+		helder.scene.view.Frame.on(dt -> spinnerTicks++);
+		return <node name="spun"/>;
 	}
 }

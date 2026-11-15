@@ -14,5 +14,7 @@ typedef SceneEvents = {
 	onPointerLeave:SceneEvent,
 	onClick:SceneEvent,
 	onPointerCancel:SceneEvent,
-	onTap:SceneEvent
+	onTap:SceneEvent,
+	// each frame while mounted (Frame's: its node, the frame's seconds)
+	onFrame:helder.scene.view.Frame.FrameEvent
 }

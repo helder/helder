@@ -1121,6 +1121,9 @@ class Run {
 		// (helder.scene.view: view's markup on the scene graph; natively: its meshes import gfx, which node lacks)
 		native('bin/3d/$t/SceneUiTest', cps(["src", "tests/3d-ui"]).concat(["-main", "SceneUiTest"]), t);
 		run(exePath('bin/3d/$t/SceneUiTest', t), []);
+		// (a dev build's checks too: a prop bound and driven said, 3.2)
+		native('bin/3d/$t/SceneUiTestDev', cps(["src", "tests/3d-ui"]).concat(["-main", "SceneUiTest", "-D", "hxmc.dev"]), t);
+		run(exePath('bin/3d/$t/SceneUiTestDev', t), []);
 		// (the boundary tags in windows: <Surface>s, a <Scene> box, picking through it, <Ui>; Xvfb)
 		native('bin/3d/$t/SurfaceTest', cps(["src", "tests/gfx", "tests/3d-ui"]).concat(["-main", "SurfaceTest"]), t);
 		shell('LIBGL_ALWAYS_SOFTWARE=1 $XVFB -a -s "-screen 0 640x480x24" ' + exePath('bin/3d/$t/SurfaceTest', t));
@@ -1787,9 +1790,12 @@ class Run {
 		exe('$b/SceneMarkupBench', cp);
 		wasm('$b/SceneMarkupBench.wasm', cp);
 		var runs = Std.parseInt(Sys.getEnv("RUNS") ?? "3");
-		var variants = (Sys.getEnv("SCENE_BENCH") ?? "code constant signals steps").split(" ").filter(v -> v != "");
+		var variants = (Sys.getEnv("SCENE_BENCH") ?? "code constant signals steps onFrame oneFrame").split(" ").filter(v -> v != "");
 		var md = ["# 3D in markup against code", "", 'tests/bench/SceneMarkupBench.hx (`bun run test scene-markup-bench`), ${Date.now().toString().substr(0, 10)}, ${cpuName()}; the median of $runs runs.', "",
 			"A frame: every node moved (the markup's share: the writes, the clock's steps and the flush), then the renderer's pass recorded (natively, a headless device; wasm32-wasi has no GPU, its nodes are bare). Idle: of 100 frames with nothing changed, those asking for a redraw. Left: the world's nodes after unmounting, over its count before mounting."];
+		// (the design's targets, 9.2: always those that are not timings; the
+		// frames' ratios with SCENE_BENCH_CHECK=1, a quiet machine's)
+		var failures = [], timed = Sys.getEnv("SCENE_BENCH_CHECK") == "1";
 		for (target in [HOST, "wasm32-wasi"]) {
 			md = md.concat(["", '## $target', "", "| variant | nodes | mount ms | mount KB | frame ms | x code | B a frame | pass ms | with the pass, x code | idle drawing | unmount ms | left |", "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"]);
 			for (n in [1000, 10000]) {
@@ -1817,6 +1823,12 @@ class Run {
 					}
 					var ratio = code > 0 ? Math.round(m[2] / code * 100) / 100 : 0.0, all = codeAll > 0 ? Math.round((m[2] + m[4]) / codeAll * 100) / 100 : 0.0;
 					md.push('| $v | $n | ${m[0]} | ${Math.round(m[1])} | ${m[2]} | ${v == "code" ? "1" : Std.string(ratio)} | ${m[3]} | ${m[4]} | ${v == "code" ? "1" : Std.string(all)} | ${m[6]} | ${m[7]} | ${m[8]} |');
+					var at = '$target $v $n';
+					if (m[8] != 0) failures.push('$at: ${m[8]} nodes left after unmounting');
+					if (["code", "constant", "onFrame", "oneFrame"].indexOf(v) >= 0 && m[3] != 0) failures.push('$at: ${m[3]} bytes a frame');
+					if (["code", "constant", "signals"].indexOf(v) >= 0 && m[6] != 0) failures.push('$at: ${m[6]} idle frames drawing');
+					if (timed && target == HOST && v == "oneFrame" && all > 1.1) failures.push('$at: a frame ${all}x the code variant, at most 1.1x');
+					if (timed && target == HOST && v == "onFrame" && all > 1.5) failures.push('$at: a frame ${all}x the code variant, at most 1.5x');
 					Sys.println('scene-markup-bench $target $v $n: mount ${m[0]} ms, frame ${m[2]} ms (${ratio}x code), ${m[3]} B a frame, idle ${m[6]}, left ${m[8]}');
 				}
 			}
@@ -1826,6 +1838,7 @@ class Run {
 ");
 		Sys.println(md.join("
 "));
+		if (failures.length > 0) throw new Failed(failures.join("; "));
 	}
 
 	// tests/bench/Jobs.hx: each variant RUNS times, each in a process of its
