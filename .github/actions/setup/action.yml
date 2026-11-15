@@ -39,9 +39,14 @@ runs:
       run: |
         hxmc=$(node -p "require('./package.json').dependencies['@hxmc/cli']")
         prefix="${{ runner.os }}-${{ runner.arch }}-${{ inputs.cache }}-hxmc-$hxmc"
+        # (git's hashes of the commit's files, not hashFiles: that one reads
+        # every file, and timed out on a Mac busy booting its simulator)
+        lock=$(git rev-parse HEAD:bun.lock | cut -c1-16)
+        sources=$(git rev-parse HEAD:src HEAD:tests HEAD:examples HEAD:apps HEAD:docs/examples HEAD:site | git hash-object --stdin | cut -c1-16)
         echo "hxmc=$hxmc" >> "$GITHUB_OUTPUT"
+        echo "lock=$lock" >> "$GITHUB_OUTPUT"
         echo "prefix=$prefix" >> "$GITHUB_OUTPUT"
-        echo "key=$prefix-${{ hashFiles('bun.lock') }}-${{ hashFiles('src/**', 'tests/**', 'examples/**', 'apps/**', 'docs/examples/**', 'site/**') }}" >> "$GITHUB_OUTPUT"
+        echo "key=$prefix-$lock-$sources" >> "$GITHUB_OUTPUT"
     - id: restore
       uses: actions/cache/restore@v6
       with:
@@ -54,7 +59,7 @@ runs:
           ~/AppData/Local/helder
         key: ${{ steps.key.outputs.key }}
         restore-keys: |
-          ${{ steps.key.outputs.prefix }}-${{ hashFiles('bun.lock') }}-
+          ${{ steps.key.outputs.prefix }}-${{ steps.key.outputs.lock }}-
           ${{ steps.key.outputs.prefix }}-
     - shell: bash
       run: |
