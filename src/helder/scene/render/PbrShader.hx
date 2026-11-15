@@ -1434,8 +1434,9 @@ final pbr = slots({
 			tangent: m.options.normalMap ? vec4((model * vec4(v.tangent.xyz, 0)).xyz, v.tangent.w) : vec4(0),
 			up: m.options.instanced ? v.m1.xyz : (model * vec4(0, 1, 0, 0)).xyz,
 			tint: m.options.instanced ? vec3(1 + v.m0.w, 1 + v.m1.w, 1 + v.m2.w) : p.object.tint.xyz,
-			lights0: p.object.lights0,
-			lights1: p.object.lights1
+			// (the prepass lights nothing: its instanced variants bind no PbrObject)
+			lights0: m.options.prepass ? vec4(-1) : p.object.lights0,
+			lights1: m.options.prepass ? vec4(-1) : p.object.lights1
 		};
 	},
 	fragment: function(i:PbrVaryings, p:PbrFragmentParams, m:Pbr):Vec4 {
