@@ -14,6 +14,9 @@ These pages go from the scene graph to what draws it:
   depth of field, outlines, FXAA, a LUT): the renderer;
 - [Instancing](instancing.md) and [GPU particles](particles.md): many
   things in few draws;
+- [Lines](lines.md), [Text in the world](text.md) and
+  [Picking](picking.md): lines with a width, text as geometry, rays cast
+  at triangles;
 - [`<Scene>` markup](markup.md): the scene in helder.view's markup, inside a
   ui;
 - [Input](input.md), [Debugging](debugging.md) and
@@ -43,7 +46,8 @@ are the CPU's types too, so what the CPU computes is what a shader reads.
 
 `tests/3d/SceneTest.hx`, `tests/3d/GltfTest.hx`, the `*.test.hx` beside
 the sources (Geometry, Curve3, Sprites, the shading models, Material,
-InstancedMesh: `helder test`, natively and as wasm32-wasi) and the frames
+InstancedMesh, Bvh, Raycaster, DebugDraw, Extrude: `helder test`,
+natively and as wasm32-wasi) and the frames
 of `tests/3d/Scenes.hx` against `tests/3d/<scene>.png` (`bun run test 3d`,
 natively, and some from TypeScript too: tests/3d/ts; `bun run test
 3d-web`, WebGPU and WebGL2 in Chromium). The

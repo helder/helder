@@ -29,8 +29,9 @@ import helder.view.Render;
 // <Scene> is a box in ui's layout drawing a world (its own, or world)
 // as camera sees it (else the world's first camera, else one at (0, 2, 6)
 // looking at the origin), its children scene nodes; ui's pointer events
-// over it go to the scene node under the pointer (Pick: bounds, not
-// triangles), then its ancestors. <Ui> goes back to ui inside a scene: its
+// over it go to the scene node under the pointer (by bounds, Pick; with
+// pick="triangles" its triangles, Raycaster: SceneEvent's normal and uv
+// the triangle's), then its ancestors. <Ui> goes back to ui inside a scene: its
 // children drawn by the <Scene>'s ui over the box, at its node's place.
 // scale and density draw its world at fewer pixels than the box has (a
 // share of them; at most so many a point), stretched over it: a phone's
@@ -53,6 +54,7 @@ class SceneTags {
 		?scale:helder.view.graph.Read<Float>,
 		?density:helder.view.graph.Read<Float>,
 		?hdr:Bool,
+		?pick:ScenePick,
 		?setup:Renderer->Void,
 		?ref:SceneBox->Void,
 		?children:SceneView
@@ -61,6 +63,7 @@ class SceneTags {
 		if (props.animate != null) box.animate = props.animate;
 		if (props.antialias != null) box.antialias = props.antialias;
 		if (props.hdr != null) box.hdr = props.hdr;
+		if (props.pick != null) box.picker = props.pick;
 		if (props.scale != null) {
 			var v:Dynamic = props.scale;
 			Render.isReactive(v) ? Graph.renderEffect(() -> (Render.read(v) : Float), (k:Float) -> box.scale = k) : box.scale = Render.read(v);

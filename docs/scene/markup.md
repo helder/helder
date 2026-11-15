@@ -88,13 +88,18 @@ click, its name over it with `<Ui>`:
   the chain while its tag is there (`<Ssao>`, `<Dof>`, `<Outline>`,
   `<Fxaa>`, `<Lut>`; a `<Show>` toggles one): typed components, their props
   the effects' options ([Post effects](effects.md)).
+- **`pick`**: `<Scene pick="triangles">` picks by the meshes' triangles
+  (`SceneEvent`'s `normal` and `uv` the triangle's: [Picking](picking.md)),
+  `"bounds"` (the default) by their boxes; told when compiling, so a box
+  picking by bounds links no raycaster.
 - **Errors**: `<view>` in a scene's markup is no element of
   `SceneRenderer` (`@:elements`: node, mesh, light, camera); `<Scene>` in a
   scene's markup is ui's (it returns a `helder.ui.Node`).
 
 Elements: `node`, `mesh`, the geometry and material tags, the lights,
 `camera` (fov, near, far), `instances` (an `InstancedMesh`:
-[Instancing](instancing.md)) and `sprites`; `position`, `rotation`,
+[Instancing](instancing.md)), `sprites`, `lines`, `text3d` and the
+helpers; `position`, `rotation`,
 `scale`, `name`, `visible` and `outline` (the node's selection group, 0
 none: `Outline.select`, drawn by `<Outline>`) on every node.
 
@@ -134,6 +139,18 @@ none: `Outline.select`, drawn by `<Outline>`) on every node.
   `hemisphere`) stays as their alias.
 - **`sprites`**: a node drawing `Sprites` (`of={set}`, `mode` `spherical`,
   `axis` or `fixed`), as `instances` draws an `InstancedMesh`.
+- **`lines`**: a node drawing `Lines` (`of={path}`, made by the program,
+  its points its own; `width`, `dashOffset`): [Lines](lines.md). Its box's
+  renderer is given a `LineRenderer`.
+- **`text3d`**: a node drawing a `Text3D` ([Text in the world](text.md)):
+  `of={label}`, or made of `font`, `text`, `size`, `depth`, `bevelSize`,
+  `align`, `color`, `lit`, `billboard` and `castShadows` once inserted
+  (again when one it is made of changes; `text` and `billboard` set on it).
+- **The helpers** ([Debugging](debugging.md)): `axesHelper` (size) and
+  `gridHelper` (size, divisions, fade, color, majorColor) at their own
+  node; `boundsHelper`, `lightHelper`, `cameraHelper` (aspect) and
+  `skeletonHelper` showing the node they are in (`<mesh><boundsHelper/></mesh>`);
+  color. Their box's renderer is given a `DebugDraw`.
 
 An element's props are checked by name when compiling: `SceneRenderer`
 declares them (`@:props(SceneProps)`: each tag's structure, its factory's
@@ -164,5 +181,7 @@ world; the geometry, material, light and sprites tags),
 rejected), `tests/3d-ui/SurfaceTest.hx` (under Xvfb: two `<Surface>`s, a
 `<Scene>`'s pixels in its box, a click picked in it, fingers picked at
 their presses, a tap on the mesh, a drag from it orbiting the camera, a
-cancel, `<Ui>` placed, `<Stick>` drawn); `OrbitControls.test.hx` (the
+cancel, `<Ui>` placed, `<Stick>` drawn, a click picked by triangles (its
+uv and normal), `<lines>`, `<axesHelper>`, `<boundsHelper>` and
+`<text3d>` on their nodes, the text following its signal); `OrbitControls.test.hx` (the
 camera's motion without a GPU, natively and as wasm32-wasi).

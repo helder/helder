@@ -1,4 +1,4 @@
-<!-- Generated from docs/scene/index.md, docs/scene/world.md, docs/scene/models.md, docs/scene/geometry.md, docs/scene/materials.md, docs/scene/lights.md, docs/scene/fog.md, docs/scene/post.md, docs/scene/effects.md, docs/scene/instancing.md, docs/scene/particles.md, docs/scene/input.md, docs/scene/debugging.md, docs/scene/typescript.md by site/docs/readme.mjs: edit those, not this file. -->
+<!-- Generated from docs/scene/index.md, docs/scene/world.md, docs/scene/models.md, docs/scene/geometry.md, docs/scene/materials.md, docs/scene/lights.md, docs/scene/fog.md, docs/scene/post.md, docs/scene/effects.md, docs/scene/instancing.md, docs/scene/particles.md, docs/scene/lines.md, docs/scene/text.md, docs/scene/picking.md, docs/scene/input.md, docs/scene/debugging.md, docs/scene/typescript.md by site/docs/readme.mjs: edit those, not this file. -->
 
 # helder.scene
 
@@ -16,6 +16,9 @@ These pages go from the scene graph to what draws it:
   depth of field, outlines, FXAA, a LUT): the renderer;
 - [Instancing](#instancing) and [GPU particles](#gpu-particles): many
   things in few draws;
+- [Lines](#lines), [Text in the world](#text-in-the-world) and
+  [Picking](#picking): lines with a width, text as geometry, rays cast
+  at triangles;
 - [`<Scene>` markup](/docs/scene/markup.md): the scene in helder.view's markup, inside a
   ui;
 - [Input](#input), [Debugging](#debugging) and
@@ -45,7 +48,8 @@ are the CPU's types too, so what the CPU computes is what a shader reads.
 
 `tests/3d/SceneTest.hx`, `tests/3d/GltfTest.hx`, the `*.test.hx` beside
 the sources (Geometry, Curve3, Sprites, the shading models, Material,
-InstancedMesh: `helder test`, natively and as wasm32-wasi) and the frames
+InstancedMesh, Bvh, Raycaster, DebugDraw, Extrude: `helder test`,
+natively and as wasm32-wasi) and the frames
 of `tests/3d/Scenes.hx` against `tests/3d/<scene>.png` (`bun run test 3d`,
 natively, and some from TypeScript too: tests/3d/ts; `bun run test
 3d-web`, WebGPU and WebGL2 in Chromium). The
@@ -887,6 +891,202 @@ Example: [GPU particles](/examples/particles/Galaxy.hx) (`helder run examples/pa
 
 Fog fades them (light added, not turned to the fog's colour: [Fog](#fog)).
 
+## Lines
+
+```haxe
+renderer.use(new LineRenderer(device));
+var path = Lines.attach(world.node("aim"), new Lines(512, {width: 6, join: Round, cap: Round, dash: 0.2, gap: 0.15}));
+// each frame: nothing allocated
+path.count = n;
+for (i in 0...n) path.setPoint(i, xs[i], ys[i], zs[i], 1, 1, 1, fade(i));
+path.dashOffset = -time;     // the dashes march along it
+```
+
+`Lines` are a polyline through their points, or separate segments
+(`segments: true`, a pair of points each), drawn by a `LineRenderer` (a
+`RenderFeature`) as quads on the screen: gfx's `Lines` topology is one
+pixel wide, and WebGL ignores a line's width, so a width here is the
+same on every back end (three's `Line2` and `LineMaterial`, Babylon's
+GreasedLine). A point is a position in its node's frame and a colour
+(linear rgb and alpha, blended along a segment). The program writes them
+into the line's flat data, as an `InstancedMesh` takes its instances:
+nothing is allocated a frame, and the renderer uploads the points once
+they changed.
+
+- **`width`** in pixels (`widthUnits: Pixels`, the default), or in the
+  world's units (`World`: thinner far off, as geometry is).
+- **`join`**, where segments meet: `Miter` (bevelled past four half
+  widths out), `Round` or `Bevel`; **`cap`**, the line's ends: `Butt`,
+  `Round` or `Square`; `closed` joins the last point back to the first.
+- **`dash`** and **`gap`**: a dashed line, lengths in the line's own
+  units along it, `dashOffset` moving them (a marching line).
+- **`onTop`**: drawn over everything, after the scene, not depth tested;
+  else depth tested and written. **`transparent`**: blended by the
+  colours' alpha, after the see-through surfaces (not written to depth);
+  an opaque line ignores alpha.
+- **`toneMapped: false`**: its colours as they are into an 8-bit target
+  (a debug colour's pure red), not tone mapped. Lines are fogged.
+
+Each line is one instanced draw of a segment an instance: a quad across
+the segment and a fan of eight triangles at each end (the start's cap,
+the end's join with the next segment or cap), placed in pixels by the
+vertex stage from four views of one point buffer (the point before, the
+segment's two, the point after). A segment crossing the near plane is
+cut at it.
+
+Example: [Lines](/docs/examples/scene-lines/LinesDemo.hx) (`helder run docs/examples/scene-lines/LinesDemo.hx`; it plays in the docs' page).
+
+A program drawing lines links the `LineRenderer` and its shader: 64 KB
+natively, 80 KB as wasm32 (`tests/3d/size/sizes.sh`); one that never
+makes one, nothing.
+
+In markup a line is `<lines of={path}/>` ([`<Scene>` markup](/docs/scene/markup.md):
+its box given a `LineRenderer`). Lines are what `DebugDraw` draws with
+([Debugging](#debugging)).
+
+Tests: `src/helder/scene/render/DebugDraw.test.hx` (a polyline's points
+as uploaded: its ends padded as neighbours, closed's wrapped, distances
+along it); the 3d lane's `lines` frame (each join and cap at 9 pixels, a
+ribbon 0.12 metres wide running away, a dashed ring behind a pillar, a
+line over everything, see-through segments), on llvmpipe, WARP, WebGPU
+and WebGL2.
+
+## Text in the world
+
+```haxe
+var font = FontFile.parse(Asset.embed("fonts/Inter.ttf"));
+var label = Text3D.attach(world.node("score"), new Text3D(device, font, "0", {size: 0.3, billboard: true}));
+label.text = Std.string(score);   // its glyphs made again: a change, not a frame
+
+var word = Geometry.text(font, "helder", {size: 1, depth: 0.2, bevelSize: 0.02});   // a VertexData
+var badge = Geometry.extrude(path, {depth: 0.1});   // any helder.canvas Path, holes and all
+```
+
+### Extruded shapes and text
+
+`Geometry.extrude(path, options)` makes a solid of a `helder.canvas`
+`Path` (three's `ExtrudeGeometry`): the path made polygonal and simple
+by canvas' boolean ops first (`PathOps.simplify`: curves flattened within
+`tolerance`, overlaps merged, holes found by the fill rule, `evenOdd` or
+non-zero), so an SVG icon, a union of shapes or a glyph run is one
+shape; its caps cut into triangles (ear clipping, holes bridged in) and
+its sides walled, from z 0 (the back, facing -z) to `depth` (the front,
+facing +z). A `bevelSize` rounds the caps' edges inwards over
+`bevelSegments` steps of a quarter circle; the sides are smooth along a
+curve, sharp where the outline turns by more than 30 degrees. `depth: 0`
+is the front alone, a flat shape.
+
+`Geometry.text(font, text, options)` is a text's outlines made so
+(three's `TextGeometry`): helder.text lays it out (`size` the em's height
+in the scene's units, `lineHeight`, `letterSpacing`, lines aligned by
+`align`: 0 left, 0.5 centred, 1 right), helder.canvas gives each glyph's
+curves (`Glyphs`), and they are extruded as above, the first baseline at
+y 0. Both are linked only by a program that calls them.
+
+### Text3D
+
+`Text3D` is text that belongs to the world (Godot's `Label3D` and
+`TextMesh`): a component drawing `Geometry.text`'s geometry in one
+instanced draw, sized in the scene's units, centred on its node, depth
+tested, fogged, sorted and shadowed like any mesh, sharp at any
+distance. Unlit by default (its `color` as given); `lit: true` makes it a
+Lambert material, `material` any of the program's. `billboard` turns it
+to the camera each frame, its node's position and scale kept. Setting
+`text` makes its glyphs again. Rays hit its triangles
+([Picking](#picking)). `<Ui>` stays for text that is ui (layout,
+wrapping, input) over the scene.
+
+Example: [Text in the world](/docs/examples/scene-text/TextDemo.hx) (`helder run docs/examples/scene-text/TextDemo.hx`; it plays in the docs' page).
+
+It costs what it links (`tests/3d/size/sizes.sh`): 647 KB natively, 701
+KB as wasm32, most of it helder.text's layout and font reading, canvas'
+boolean ops and the unlit material's shaders; a program that already
+draws text or uses `Material.unlit` pays less.
+
+In markup: `<text3d font={face} text={score} size={0.3} billboard/>`, or
+`of={label}` for one made in code ([`<Scene>` markup](/docs/scene/markup.md)).
+
+Tests: `src/helder/scene/render/Extrude.test.hx` (a square's and a ring's
+solids closed and facing out, a circle's caps' area, a bevel's inset
+caps, the triangulator with two holes, a text's glyphs flat, solid,
+aligned and on two lines); the 3d lane's `text3d` frame (a word extruded,
+bevelled, lit and shadowed, a label turned to the camera, two lines
+aligned right; its probe casts rays at the word's glyphs, the word made
+shorter, fewer hit).
+
+## Picking
+
+```haxe
+final hit = new Hit();                                   // the program's, refilled by each cast
+var ray = camera.ray(x, y, aspect);
+if (world.raycast(ray.origin, ray.dir, hit)) paint(hit.node, hit.uv);
+
+final hits = new HitList(), through = new RaycastOptions({maxDistance: 50, layers: 2, backfaces: true});
+world.raycastAll(origin, dir, hits, through);            // every triangle crossed, nearest first
+```
+
+`world.raycast(origin, dir, hit, ?options)` casts a ray at a world's
+triangles (three's `Raycaster`, Bevy's `MeshRayCast`): each shown node
+drawing a mesh, and each instance of an instanced set (`InstancedMesh`,
+`Sprites`, `Text3D`), the ray brought into its frame (turned, moved,
+scaled unevenly too), its bounds first, then each primitive's bounds and
+its triangles. The nearest hit fills a `Hit` the program owns: the
+node, the distance (the world's units), the point, the normal there (its
+vertices' normals blended, in the world, turned towards the ray), which
+side was hit (`front`), the primitive, its `triangle`, the barycentric
+weights of its corners, the `uv` there and the `instance` (-1 for a
+node's mesh). `raycastAll` refills a `HitList` with every triangle
+crossed. Nothing is allocated a cast.
+
+`RaycastOptions` (kept, not made a cast): `maxDistance`, `layers` (a
+mask; a node's are 1 unless `Raycaster.setLayers(node, mask)`),
+`triangles: false` (the primitives' bounds alone, `Pick.ray`'s way),
+`backfaces` and `instances`. `Pick.ray(world, origin, dir)` stays the
+bounds-only path.
+
+### Trees
+
+Each primitive's triangles are searched through a `Bvh` (three-mesh-bvh's
+MeshBVH): a flat array of nodes, each a box and two children or a leaf of
+at most 8 triangles, built by the surface area heuristic over 12 bins a
+split, the triangles' corners copied in its order beside it. A primitive
+keeps its data on the CPU for it (`Primitive.data`: the bytes the GPU was
+given; `Mesh.keepCpu = false` lets them go, and its casts are by bounds)
+and builds its tree when first cast at; `Shapes.cpu(geometry, material)`
+is a mesh of data alone, cast at but not drawn (a level's collision
+shapes, tests). The asset step packs the trees with a model
+(`helder.scene.gltf.Pack --bvh`: read as they are, so a level loads
+pickable). A tree is a cast's alone (its stack is its own: one cast at a
+time). Skinned and morphed meshes are cast at in their rest pose;
+`bvh.refit(vertices, stride, data)` fits a tree to moved vertices.
+
+Raycasting costs a program that casts 55 KB natively, 53 KB as wasm32
+(`tests/3d/size/sizes.sh`: the raycaster, the tree's build and casts).
+
+### In a `<Scene>`
+
+`<Scene pick="triangles">` picks the pointers' nodes by their triangles,
+and `SceneEvent` gains the triangle's `normal` and `uv`, a drag that
+stays on its node updating them: painting on a model, placing on a
+surface. `pick="bounds"` (the default) picks by the meshes' boxes. The
+choice is made when compiling, so a box picking by bounds links no
+raycaster.
+
+Example: [Picking](/examples/picking/Picking.hx) (`helder run examples/picking/Picking.hx`; it plays in the docs' page).
+
+Tests: `src/helder/scene/render/Bvh.test.hx` (against brute force on
+random rays at a torus knot, a soup of crossing triangles and a flat grid:
+the same nearest triangle at the same distance, every triangle by
+`intersectAll`; its leaves; packed equal to built; backs; refit; nothing
+allocated a cast), `Raycaster.test.hx` (turned and unevenly scaled nodes,
+the nearest of several, children, hidden nodes and layers, bounds alone,
+backs, instances, every hit in order, nothing allocated a cast),
+`tests/3d-ui/SurfaceTest.hx` (a click on a box's face in a `<Scene
+pick="triangles">`: its uv and normal), the 3d lane's `packed` frame (the
+sample packed with `--bvh`: each tree the one built from its data) and
+`text3d` frame (rays at a word's glyphs), `tests/typescript/helder/picking.ts`
+(from TypeScript, without a GPU).
+
 ## Input
 
 ```haxe
@@ -954,6 +1154,64 @@ belt, [GPU particles](#gpu-particles)' galaxy,
 [examples/physics-stress](/examples/physics-stress). What a frame costs
 in draw calls, by pass: [Instancing](#draw-calls-by-pass).
 
+### Debug drawing
+
+```haxe
+renderer.use(new DebugDraw());
+// anywhere, each frame (a script, the physics step): gone the next frame
+Debug.line(a, b, 0xFF4040);
+Debug.ray(origin, velocity, 0.5);
+Debug.aabb(mesh.bounds);
+Debug.sphere(target, 2);
+Debug.onTop(true);  Debug.axes(player.worldMatrix(), 0.5);  Debug.onTop(false);
+```
+
+`Debug`'s calls draw lines for one frame from anywhere (Bevy's gizmos):
+nothing to keep or remove, and nothing allocated, written into a ring of
+segments that the `DebugDraw` feature draws through a `LineRenderer`
+([Lines](#lines)), one draw depth tested and one over everything
+(`Debug.onTop`), then clears. A colour is `0xRRGGBB` as written, not lit,
+fogged or tone mapped. The calls: `line`, `ray` (an arrow's head at its
+end), `arrow`, `aabb`, `boxOf(matrix, min, max)` (a turned box: a node's
+bounds), `sphere`, `circle`, `cross3`, `axes(matrix, size)`, `grid`,
+`frustum(camera, aspect)`, `light(node)` (a directional light's arrows, a
+point light's range, a spot's cone), `skeleton(skin)` and `path(curve,
+n)`.
+
+**Compiled out of a release.** `Debug`'s calls are macros: in a release
+build (`helder build`'s `-D helder.release`) they are nothing, their
+arguments not computed either, unless `-D helder.debugdraw`. `DebugDraw`'s
+own functions of the same names are always there (TypeScript calls
+those). The ring holds `DebugDraw.capacity` segments a frame (16,384; set
+before the first call), calls past it dropped and counted (`dropped`).
+
+### Helpers
+
+Helpers are components of a node that make those calls for it each frame
+(three's helpers): `AxesHelper.attach(node, size)`,
+`BoundsHelper.attach(node)` (its mesh's box, turned with it),
+`LightHelper.attach(node)`, `CameraHelper.attach(node)` (its camera's view
+volume), `SkeletonHelper.attach(node)` (its skin's bones), and
+`GridHelper.attach(node, {size, divisions})`: an infinite grid on the
+node's plane, a shader, not lines (each line a pixel wide however far, a
+major line every tenth, the axes red and blue, fading out at `fade`).
+Unlike `Debug`'s calls they stay in a release: a program attaching one
+wants it. In markup: `<axesHelper size={1}/>`, `<gridHelper size={10}/>`,
+`<boundsHelper/>` in a mesh, `<lightHelper/>` in a light ([`<Scene>`
+markup](/docs/scene/markup.md)), their box given a `DebugDraw`.
+
+What it costs a program that uses it (`tests/3d/size/sizes.sh`):
+`DebugDraw` with its calls and the line helpers, 82 KB natively and 99 KB
+as wasm32 (the lines' renderer with it); `GridHelper` 21 KB more; `Debug`'s
+calls in a release, nothing.
+
+Example: [Debug drawing](/docs/examples/scene-debug/DebugDemo.hx) (`helder run docs/examples/scene-debug/DebugDemo.hx`; it plays in the docs' page).
+
+Tests: `src/helder/scene/render/DebugDraw.test.hx` (each call's segments,
+a colour as written, the ring's capacity, nothing allocated); the 3d
+lane's `debugdraw` frame (each call, a frame allocating nothing) and
+`helpers` frame (each helper, the grid under them).
+
 ### Headless
 
 `helder run <entry> --headless` runs a program offscreen on a virtual
@@ -1018,7 +1276,19 @@ enums' values by name). A slot of several inputs is typed as its default:
 draws `primitives` and `toon` from TypeScript too (tests/3d/ts/twins.ts),
 node for node as Scenes.hx's, against the same goldens.
 
-`tests/typescript/helder/scene.ts` checks it without a GPU.
+Phase 3's are there too: `Lines` (`LineJoin`, `LineCap` and `LineUnits`
+by name) and `LineRenderer`, `DebugDraw` and the helpers (TypeScript has
+no release build to compile `Debug` out of: it calls `DebugDraw`'s
+functions), `world.raycast` with `Hit`, `HitList`, `RaycastOptions`,
+`Raycaster` and `Bvh`, `Shapes.cpu`, and `Text3D` and `Geometry.text`
+with a font from helder/asset. `Geometry.extrude` takes a helder.canvas
+`Path`, which helder/canvas' TypeScript (a DOM facade) does not give: it
+is Haxe's alone for now.
+
+`tests/typescript/helder/scene.ts` checks it without a GPU, and
+`tests/typescript/helder/picking.ts` phase 3's (rays at meshes of data
+alone, a tree read back from its bytes, lines' points as uploaded,
+DebugDraw's ring, helpers), a static build linking no device.
 `examples/ts-scene` puts it together (scene.ts: examples/gltf-viewer's
 sample model, a point light, glowing orbs of a material of their own; the
 arrow keys turn the camera, an InputMap's axis), and the 3d lane draws its

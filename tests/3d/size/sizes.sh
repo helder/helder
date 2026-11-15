@@ -31,6 +31,17 @@ for o in toon models geometry sprites; do
 	sn=$(wc -c < "$out/$o") sw=$(wc -c < "$out/$o.wasm")
 	printf '%-12s %10d %8d %10d %8d  (against renderer)\n' $o $sn $((sn - rn)) $sw $((sw - rw))
 done
+# (phase 3's opt-ins at the renderer's level, each a cost only when used;
+# debugcalls: Debug's calls in a release build, compiled out)
+for o in lines debug grid raycast text3d debugcalls; do
+	extra=""
+	[ $o = debugcalls ] && extra="-D helder.release"
+	"$tool" "$out/$o" "$@" -main Size -D size_level=4 -D size_$o $extra -D hxmc.libc=glibc -D hxmc.target=linux-x86_64 > "$out/$o.log" 2>&1 || { cat "$out/$o.log"; exit 1; }
+	"$tool" "$out/$o.wasm" "$@" -main Size -D size_level=4 -D size_$o $extra -D hxmc.target=wasm32-wasi > "$out/$o.wasm.log" 2>&1 || { cat "$out/$o.wasm.log"; exit 1; }
+	sn=$(wc -c < "$out/$o") sw=$(wc -c < "$out/$o.wasm")
+	printf '%-12s %10d %8d %10d %8d  (against renderer)
+' $o $sn $((sn - rn)) $sw $((sw - rw))
+done
 # (post's effects, each alone and all, against the chain without one: PostSize.hx)
 printf '\n%-12s %10s %8s %10s %8s\n' post native +native wasm +wasm
 for e in none fxaa lut outline ssao dof all; do

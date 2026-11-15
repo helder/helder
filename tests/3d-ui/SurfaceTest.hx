@@ -23,7 +23,10 @@ import helder.view.graph.Graph.*;
 // hdr> whose setup finds its post chain and adds a stage (StageProbe: the
 // frame marked green) that prepares from the chain's context (the
 // scene's light and its size); the second window closed by a Show, both
-// by the root's dispose.
+// by the root's dispose. The first box picks by triangles (pick="triangles":
+// a click's uv and normal the face's) and holds <lines>, <axesHelper>,
+// <boundsHelper> and <text3d> (their renderer's features added, their
+// components on their nodes, a text following its signal).
 class SurfaceTest implements Markup {
 	static var checks = 0;
 	static var failed = 0;
@@ -40,6 +43,11 @@ class SurfaceTest implements Markup {
 		var title = signal("one");
 		var second = signal(true);
 		var picked = signal("");
+		// (the last click's uv and normal's z: a struct local a closure assigns is not supported)
+		var click:Array<Float> = [-1, -1, 0];
+		var label = signal("one");
+		var face = helder.text.FontFile.parse(helder.asset.Asset.embed("tests/canvas/fonts/DejaVuSans-canvas.ttf"));
+		var path = new helder.scene.render.Lines(null, 4, {width: 3});
 		var touches:Array<String> = [];
 		var orbit:Null<helder.scene.view.OrbitControls> = null;
 		var stick = new helder.scene.input.VirtualStick({zone: helder.scene.input.Zone.rect(0, 0, 0.3, 1), radius: 20});
@@ -73,11 +81,19 @@ class SurfaceTest implements Markup {
 			<Surface title={title} width={320} height={200} background={0xFFFFFFFF} ref={w -> windows.push(w)}>
 				<view direction="row" grow={1}>
 					<view width={120}><text tag="label">{picked}</text><Sprites width={100} height={20} density={0.5} ref={b -> sprites = b}/></view>
-					<Scene world={world} camera={camera} grow={1} scale={0.5} ref={b -> box = b}>
-						<mesh shape="box" size={1.4} color={new Vec4(1, 0.2, 0.1, 1)} onClick={(e:SceneEvent) -> picked("box")}
+					<Scene world={world} camera={camera} grow={1} scale={0.5} pick="triangles" ref={b -> box = b}>
+						<lines of={path} position={new Vec3(0, -1.2, 0)}/>
+						<axesHelper size={0.5}/>
+						<text3d font={face} text={label} size={0.3} billboard position={new Vec3(0, 1.1, 0)}/>
+						<mesh name="cube" shape="box" size={1.4} color={new Vec4(1, 0.2, 0.1, 1)} onClick={(e:SceneEvent) -> {
+							picked("box");
+							click[0] = e.uv.x;
+							click[1] = e.uv.y;
+							click[2] = e.normal.z;
+						}}
 							onPointerDown={(e:SceneEvent) -> touches.push('down ${e.pointerId}')} onPointerMove={(e:SceneEvent) -> touches.push('move ${e.pointerId}')}
 							onPointerUp={(e:SceneEvent) -> touches.push('up ${e.pointerId}')} onPointerCancel={(e:SceneEvent) -> touches.push('cancel ${e.pointerId}')}
-							onTap={(e:SceneEvent) -> touches.push('tap ${e.pointerId}')}/>
+							onTap={(e:SceneEvent) -> touches.push('tap ${e.pointerId}')}><boundsHelper/></mesh>
 						<OrbitControls damping={0.0} ref={o -> orbit = o}/>
 						<light kind="directional" intensity={2.0}/>
 						<Ui><text tag="over">over</text></Ui>
@@ -145,6 +161,33 @@ class SurfaceTest implements Markup {
 		w.ui.pointerDown(220, 100, 1);
 		w.ui.pointerUp(220, 100, 1);
 		check("a click routed into the scene: the mesh picked", picked() == "box", picked());
+		// (by triangles: the box's front face, left of and above its middle)
+		w.ui.pointerMove(205, 85);
+		w.ui.pointerDown(205, 85, 1);
+		w.ui.pointerUp(205, 85, 1);
+		check("pick=\"triangles\": the face's uv", click[0] > 0.05 && click[0] < 0.5 && click[1] > 0.05 && click[1] < 0.5, '$click');
+		check("pick=\"triangles\": the face's normal", click[2] > 0.99, '$click');
+		// (the phase 3 tags: the box's renderer given lines and debug drawing; the components on their nodes)
+		var sr = box.renderer;
+		check("<lines>, <axesHelper>: the renderer's LineRenderer and DebugDraw", @:privateAccess sr.lines != null && @:privateAccess sr.debug != null);
+		var lineNodes = world.store(helder.scene.render.Lines.KIND);
+		check("<lines>: its lines on a node of the scene", lineNodes.length == 1 && lineNodes.valueAt(0) == path && lineNodes.nodeAt(0).position.y == -1.2);
+		var helpers = world.store(helder.scene.render.Helper.KIND);
+		var bounds = false, axes = false;
+		for (k in 0...helpers.length) {
+			var h = helpers.valueAt(k);
+			if (Std.isOfType(h, helder.scene.render.BoundsHelper)) bounds = h.ofParent && helpers.nodeAt(k).parent.name == "cube";
+			if (Std.isOfType(h, helder.scene.render.AxesHelper)) axes = true;
+		}
+		check("<boundsHelper>: the mesh's it is in; <axesHelper> its own", bounds && axes);
+		var texts = world.store(helder.scene.render.InstancedMesh.KIND), text:Null<helder.scene.render.Text3D> = null;
+		for (k in 0...texts.length)
+			if (Std.isOfType(texts.valueAt(k), helder.scene.render.Text3D)) text = cast texts.valueAt(k);
+		check("<text3d>: made on the box's device, billboard", text != null && text.text == "one" && text.billboard && text.mesh.primitives.length > 0);
+		var triangles = text == null ? 0 : text.mesh.primitives[0].count;
+		label("three");
+		flush();
+		check("<text3d>: its text follows its signal", text != null && text.text == "three" && text.mesh.primitives[0].count != triangles);
 		w.ui.pointerDown(130, 10, 1);
 		w.ui.pointerUp(130, 10, 1);
 		check("a click beside the mesh: none", picked() == "box");

@@ -979,8 +979,9 @@ class Run {
 
 	static function pack() {
 		mkdirs("bin/3d");
+		// (the sample scene with its primitives' trees: Pack --bvh, the packed scene's probe)
 		for (glb in PACKED)
-			interp(sceneCp(), "helder.scene.gltf.Pack", [glb, "bin/3d/" + Path.withoutExtension(Path.withoutDirectory(glb)) + ".hxm3d"]);
+			interp(sceneCp(), "helder.scene.gltf.Pack", [glb, "bin/3d/" + Path.withoutExtension(Path.withoutDirectory(glb)) + ".hxm3d"].concat(Path.withoutDirectory(glb) == "sample.glb" ? ["--bvh"] : []));
 		// (the textured sample's texture compressed for the GPU: BC1, ASTC 4x4)
 		for (t in ["bc", "astc"])
 			interp(sceneCp(), "helder.scene.gltf.Pack", ["tests/3d/textured.glb", 'bin/3d/textured.$t.hxm3d', "--textures", t]);

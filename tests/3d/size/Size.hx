@@ -21,7 +21,14 @@ import helder.os.*;
 // -D size_toon (Material.toon: one shading model's shader), -D size_models
 // (every Material factory: lambert, phong, toon, unlit, matcap, normals,
 // depth), -D size_geometry (every Geometry generator and Curve3),
-// -D size_sprites (Sprites on an unlit material)
+// -D size_sprites (Sprites on an unlit material); and phase 3's: -D
+// size_lines (a LineRenderer and Lines), -D size_debug (DebugDraw, its
+// calls and the line helpers), -D size_grid (GridHelper's infinite grid),
+// -D size_raycast (world.raycast: Raycaster and Bvh), -D size_text3d
+// (Text3D: helder.text's layout, canvas' outlines and boolean ops, the
+// triangulator; its font read at run time, not embedded), -D
+// size_debugcalls (Debug's calls alone, built with -D helder.release:
+// compiled out, nothing linked)
 class Size {
 	static function main() {
 		var window = new Window("Size", 320, 240);
@@ -88,6 +95,28 @@ class Size {
 		helder.scene.render.Sprites.attach(world.node(), sprites);
 		sprites.set(0, 0, 1, 0, 1, 1);
 		#end
+		#if size_lines
+		renderer.use(new helder.scene.render.LineRenderer(device));
+		var lines = helder.scene.render.Lines.attach(world.node(), new helder.scene.render.Lines(8, {width: 4}));
+		lines.count = 2;
+		lines.setPoint(1, 1, 1, 0);
+		#end
+		#if size_debug
+		renderer.use(new helder.scene.render.DebugDraw());
+		helder.scene.render.AxesHelper.attach(world.node(), 1);
+		helder.scene.render.BoundsHelper.attach(world.node());
+		#end
+		#if size_grid
+		renderer.use(new helder.scene.render.DebugDraw());
+		helder.scene.render.GridHelper.attach(world.node());
+		#end
+		#if size_text3d
+		var font = helder.text.FontFile.parse(sys.io.File.getBytes(Sys.args()[0]));
+		helder.scene.render.Text3D.attach(world.node(), new helder.scene.render.Text3D(device, font, "size"));
+		#end
+		#if size_raycast
+		var hit = new helder.scene.render.Hit();
+		#end
 		#if (size_level >= 6)
 		var actions = new helder.scene.input.InputMap().bind("turn", KeyAxis(0xFF51, 0xFF53));
 		#end
@@ -109,6 +138,13 @@ class Size {
 				animator.update(dt);
 				#end
 			});
+			#end
+			#if (size_debug || size_debugcalls)
+			helder.scene.render.Debug.line(new Vec3(0, 0, 0), eye.position, 0xFF0000);
+			helder.scene.render.Debug.sphere(new Vec3(0, 0, 0), 1);
+			#end
+			#if size_raycast
+			if (world.raycast(eye.position, eye.position * -1, hit)) eye.position = hit.point;
 			#end
 			var enc = device.beginFrame();
 			if (enc == null) return;

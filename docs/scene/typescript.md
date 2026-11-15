@@ -55,7 +55,19 @@ enums' values by name). A slot of several inputs is typed as its default:
 draws `primitives` and `toon` from TypeScript too (tests/3d/ts/twins.ts),
 node for node as Scenes.hx's, against the same goldens.
 
-`tests/typescript/helder/scene.ts` checks it without a GPU.
+Phase 3's are there too: `Lines` (`LineJoin`, `LineCap` and `LineUnits`
+by name) and `LineRenderer`, `DebugDraw` and the helpers (TypeScript has
+no release build to compile `Debug` out of: it calls `DebugDraw`'s
+functions), `world.raycast` with `Hit`, `HitList`, `RaycastOptions`,
+`Raycaster` and `Bvh`, `Shapes.cpu`, and `Text3D` and `Geometry.text`
+with a font from helder/asset. `Geometry.extrude` takes a helder.canvas
+`Path`, which helder/canvas' TypeScript (a DOM facade) does not give: it
+is Haxe's alone for now.
+
+`tests/typescript/helder/scene.ts` checks it without a GPU, and
+`tests/typescript/helder/picking.ts` phase 3's (rays at meshes of data
+alone, a tree read back from its bytes, lines' points as uploaded,
+DebugDraw's ring, helpers), a static build linking no device.
 `examples/ts-scene` puts it together (scene.ts: examples/gltf-viewer's
 sample model, a point light, glowing orbs of a material of their own; the
 arrow keys turn the camera, an InputMap's axis), and the 3d lane draws its

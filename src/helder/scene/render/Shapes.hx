@@ -15,6 +15,15 @@ class Shapes {
 		return m;
 	}
 
+	// a mesh of a geometry's data alone, on the CPU (Mesh.addCpu): not drawn,
+	// cast at (world.raycast), with no device (tests, a level's collision
+	// shapes)
+	public static function cpu(geometry:VertexData, material:Material):Mesh {
+		var m = new Mesh();
+		m.addCpu(geometry, material);
+		return m;
+	}
+
 	// a box of width, height and depth, centred, flat faces
 	public static function box(device:Device, material:Material, w = 1.0, h = 1.0, d = 1.0):Mesh
 		return of(device, Geometry.box({width: w, height: h, depth: d}), material);

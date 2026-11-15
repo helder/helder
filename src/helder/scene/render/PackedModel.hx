@@ -66,7 +66,7 @@ class PackedModel {
 		function floats():Array<Float>
 			return [for (_ in 0...i.readInt32()) i.readFloat()];
 		if (i.readInt32() != 0x334D5848) throw "PackedModel: not a packed model";
-		if (i.readInt32() != 4) throw "PackedModel: another version (pack it again)";
+		if (i.readInt32() != 5) throw "PackedModel: another version (pack it again)";
 		for (_ in 0...i.readInt32()) {
 			var mime = str(), n = i.readInt32();
 			var b = n > 0 ? i.read(n) : null;
@@ -111,10 +111,13 @@ class PackedModel {
 			m.materials.push(mat);
 		}
 		var datas:Array<VertexData> = [];
+		// (the trees packed with them: Pack --bvh; null: made when first cast at)
+		var trees:Array<Null<Bytes>> = [];
 		for (_ in 0...i.readInt32()) {
 			var flags = i.readByte(), count = i.readInt32();
 			var vertices = i.read(i.readInt32()), indices = i.read(i.readInt32());
 			var tangents = flags & 8 != 0 ? i.read(i.readInt32()) : null;
+			trees.push(flags & 16 != 0 ? i.read(i.readInt32()) : null);
 			var b = [for (_ in 0...6) i.readFloat()];
 			// (tangents uploaded only with NormalMaps made)
 			datas.push(new VertexData(vertices, indices, flags & 2 != 0, count, flags & 4 != 0, new Aabb(new Vec3(b[0], b[1], b[2]), new Vec3(b[3], b[4], b[5])),
@@ -131,6 +134,7 @@ class PackedModel {
 					fallback;
 				}
 				var prim = mesh.addData(device, datas[data], mat);
+				if (trees[data] != null && prim.data != null) prim.bvh = Bvh.read(trees[data]);
 				var targets = i.readInt32();
 				if (targets > 0) {
 					var positions:Array<Null<Array<Float>>> = [], normals:Array<Null<Array<Float>>> = [];

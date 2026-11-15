@@ -5,6 +5,7 @@ import helder.asset.Assets;
 import helder.scene.*;
 import helder.scene.gltf.*;
 import helder.scene.render.*;
+import helder.scene.math.MathTools;
 import StageShaders;
 
 // packages/3d's test scenes (RenderTest natively, SceneWebTest in the
@@ -89,8 +90,10 @@ import StageShaders;
 //          pbr's and a rough metal's spheres and boxes
 //   prepass, ssao, dof, tiltshift, outline, fxaa, lut, effects  the view
 //          buffers and post's effects (EffectScenes)
+//   lines, debugdraw, helpers, text3d  lines with width, debug drawing, the
+//          helpers, text in the world (LineScenes)
 class Scenes {
-	public static final NAMES = ["gltf", "orbits", "shadows", "physics", "instances", "skin", "overlay", "textured", "packed", "spot", "sky", "lazy", "normals", "blend", "walker", "packedskin", "packednormals", "cascades", "environment", "morph", "chains", "packedmorph", "bloom", "normalgrid", "gpuparticles", "crystal", "khrtransform", "khrclearcoat", "compressed", "packedbc", "packedastc", "instancedmesh", "glow", "tsscene", "fog", "poststage", "unevenscale", "softshadows", "shading", "primitives", "toon", "sprites", "hemisphere"].concat(EffectScenes.NAMES);
+	public static final NAMES = ["gltf", "orbits", "shadows", "physics", "instances", "skin", "overlay", "textured", "packed", "spot", "sky", "lazy", "normals", "blend", "walker", "packedskin", "packednormals", "cascades", "environment", "morph", "chains", "packedmorph", "bloom", "normalgrid", "gpuparticles", "crystal", "khrtransform", "khrclearcoat", "compressed", "packedbc", "packedastc", "instancedmesh", "glow", "tsscene", "fog", "poststage", "unevenscale", "softshadows", "shading", "primitives", "toon", "sprites", "hemisphere"].concat(EffectScenes.NAMES).concat(LineScenes.NAMES);
 	// whether the last scene has what it draws (a lazy one: once its files loaded)
 	public static var ready:Void->Bool = () -> true;
 	// the last scene's renderer (its statistics: RenderTest)
@@ -483,8 +486,23 @@ class Scenes {
 				var r = new Renderer(device);
 				renderer = r;
 				var world = new World();
-				PackedModel.read(Asset.embed("bin/3d/sample.hxm3d"), device).instantiate(world);
+				var model = PackedModel.read(Asset.embed("bin/3d/sample.hxm3d"), device);
+				model.instantiate(world);
 				var camera = Camera.first(world);
+				// (packed with its trees, Pack --bvh: each the tree made from its data)
+				probe = () -> {
+					var trees = 0;
+					for (m in model.meshes)
+						for (p in m.primitives) {
+							@:privateAccess var packed = p.tree;
+							if (packed == null) return "a primitive packed without its tree";
+							if (packed.bytes().compare(Bvh.build(p.data).bytes()) != 0) return "a packed tree not the one built from its data";
+							trees++;
+						}
+					var hit = new Hit();
+					if (!world.raycast(camera.eye(), MathTools.transformDir(camera.node.worldMatrix(), new Vec3(0, 0, -1)), hit)) return 'no hit through the middle of the view ($trees trees)';
+					null;
+				};
 				enc -> r.draw(enc, world, camera);
 			case "spot":
 				// two spot lights and a point light over a floor and spheres, no sun
@@ -1031,6 +1049,7 @@ class Scenes {
 				eye.lookAt(new Vec3(0, 0.25, 0));
 				enc -> r.draw(enc, world, camera);
 			case n if (EffectScenes.NAMES.contains(n)): EffectScenes.make(n, device);
+			case n if (LineScenes.NAMES.contains(n)): LineScenes.make(n, device);
 			case n: throw 'Scenes: no scene $n';
 		}
 	}

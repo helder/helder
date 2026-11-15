@@ -8,8 +8,16 @@ import helder.scene.math.Aabb;
 
 // What a node draws (node.mesh): primitives, each a vertex buffer in the
 // renderer's layout (PbrVertex: position, normal, uv; 32 bytes a vertex),
-// triangles' indices and a material, and the bounds of them all.
+// triangles' indices and a material, and the bounds of them all. Each
+// primitive keeps its data on the CPU too (Primitive.data: the same bytes
+// the GPU was given, for casting rays at its triangles: Raycaster), unless
+// Mesh.keepCpu is off when it is made.
 class Mesh {
+	// whether the primitives made from now on keep their data on the CPU
+	// (Primitive.data: raycasts against their triangles; off: only their
+	// bounds are cast at, the bytes let go once uploaded)
+	public static var keepCpu = true;
+
 	public var primitives(default, null):Array<Primitive> = [];
 	public var bounds(default, null):Aabb = Aabb.empty();
 
@@ -28,6 +36,18 @@ class Mesh {
 		var prim = new Primitive(device.createBuffer({size: d.vertices.length, usage: Vertex, data: d.vertices}),
 			device.createBuffer({size: d.indices.length, usage: Index, data: d.indices}), d.wide ? UInt32 : UInt16, d.count, material, d.bounds, d.skinned);
 		if (d.tangents != null) prim.tangents = device.createBuffer({size: d.tangents.length, usage: Vertex, data: d.tangents});
+		if (keepCpu) prim.data = d;
+		primitives.push(prim);
+		bounds = bounds.union(prim.bounds);
+		return prim;
+	}
+
+	// a primitive of data on the CPU alone, no GPU buffers (not drawn): its
+	// triangles cast at (Raycaster) and its bounds, without a device (tests,
+	// a level's collision shapes)
+	public function addCpu(d:VertexData, material:Material):Primitive {
+		var prim = new Primitive(Buffer.NONE, Buffer.NONE, d.wide ? UInt32 : UInt16, d.count, material, d.bounds, d.skinned);
+		prim.data = d;
 		primitives.push(prim);
 		bounds = bounds.union(prim.bounds);
 		return prim;
@@ -53,6 +73,7 @@ class Mesh {
 
 	public function dispose(device:Device) {
 		for (p in primitives) {
+			if (p.vertices == Buffer.NONE) continue;
 			device.destroyBuffer(p.vertices);
 			device.destroyBuffer(p.indices);
 			if (p.tangents != null) device.destroyBuffer(p.tangents);
@@ -80,6 +101,29 @@ class Primitive {
 	public final skinned:Bool;
 	// its vertices' tangents (VertexData.tangents), for normal maps; null: none
 	public var tangents:Null<Buffer>;
+	// its data on the CPU (Mesh.keepCpu; null: let go), what rays are cast at
+	public var data:Null<VertexData> = null;
+	// the tree over its triangles rays are cast through: made from data when
+	// first asked (null: no data), or the asset step's (Pack --bvh)
+	public var bvh(get, set):Null<Bvh>;
+	var tree:Null<Bvh> = null;
+
+	function get_bvh():Null<Bvh> {
+		if (tree == null && data != null) tree = Bvh.build(data);
+		return tree;
+	}
+
+	inline function set_bvh(b:Null<Bvh>):Null<Bvh>
+		return tree = b;
+
+	// a primitive sharing this one's buffers, data and tree in another material
+	public function withMaterial(material:Material):Primitive {
+		var p = new Primitive(vertices, indices, indexFormat, count, material, bounds, skinned);
+		p.tangents = tangents;
+		p.data = data;
+		p.tree = tree;
+		return p;
+	}
 
 	public function new(vertices:Buffer, indices:Buffer, indexFormat:IndexFormat, count:Int, material:Material, bounds:Aabb, skinned = false) {
 		this.skinned = skinned;
