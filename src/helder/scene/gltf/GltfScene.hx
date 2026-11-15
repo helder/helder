@@ -19,6 +19,9 @@ import helder.scene.render.MeshRenderer;
 // Skin components on the nodes they deform (joints, inverse bind
 // matrices; JOINTS_0 and WEIGHTS_0 in the meshes' vertices).
 class GltfScene {
+	// what sets a material's other extensions (GltfExtensions.install: null, none)
+	public static var extensions:Null<GltfExtensions.ExtensionApplier>;
+
 	public final doc:GltfDoc;
 	// per mesh with morph targets: its primitives' rest vertices and displacements
 	final morphs:Array<Null<Array<{prim:helder.scene.render.Mesh.Primitive, data:helder.scene.render.VertexData, positions:Array<Null<Array<Float>>>,
@@ -79,10 +82,9 @@ class GltfScene {
 				mat.clearcoatRoughness = m.clearcoatRoughness;
 				mat.transmission = m.transmission;
 				// (the other extensions, read with GltfExtensions installed)
-				if (Gltf.extensions != null) Gltf.extensions.apply(mat, m, textureOf);
+				if (extensions != null) extensions.apply(mat, m, textureOf);
 				// (its extensions' variants, Model.of's)
-				var e = mat.extensions();
-				if (e != 0 && physical != null) mat.shader = physical.get(e);
+				if (physical != null) mat.shader = physical.get(mat.extensions());
 				if (m.transmission > 0) {
 					// (light through it: see-through, its colours premultiplied, no shadow)
 					mat.blend = true;
@@ -124,8 +126,8 @@ class GltfScene {
 					p.weights >= 0 ? doc.floats(p.weights) : null, tangents);
 				var prim = mesh.addData(device, data, material);
 				// (the second uvs, for maps on them: GltfExtensions')
-				if (Gltf.extensions != null && material.textureTransforms != null) {
-					var second = Gltf.extensions.secondUvs(doc, p, material, Std.int(positions.length / 3), uvs);
+				if (extensions != null && material.textureTransforms != null) {
+					var second = extensions.secondUvs(doc, p, material, Std.int(positions.length / 3), uvs);
 					if (second != null) prim.uv1 = device.createBuffer({size: second.length, usage: Vertex, data: second});
 				}
 				if (p.targets.length > 0) {

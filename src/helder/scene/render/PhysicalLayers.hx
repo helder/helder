@@ -32,6 +32,41 @@ class PhysicalLayers implements RenderFeature.LayerSource {
 		out.maps0 = new Vec4(slot(m.sheenColorTexture), slot(m.sheenRoughnessTexture), slot(m.specularTexture), slot(m.specularColorTexture));
 		out.maps1 = new Vec4(slot(m.clearcoatTexture), slot(m.clearcoatRoughnessTexture), slot(m.clearcoatNormalTexture), slot(m.transmissionTexture));
 		out.maps2 = new Vec4(slot(m.thicknessTexture), slot(m.iridescenceTexture), slot(m.iridescenceThicknessTexture), slot(m.anisotropyTexture));
+		var t = m.textureTransforms;
+		if (t != null) {
+			// (each core map its own uvs: uvSets; uvU's w the base colour's texCoord)
+			out.uvU = transformU(t[0]);
+			var v = transformV(t[0]);
+			out.uvV = new Vec4(v.x, v.y, v.z, out.uvV.w);
+			out.uvMetallicRoughnessU = transformU(t[1]);
+			out.uvMetallicRoughnessV = transformV(t[1]);
+			out.uvNormalU = transformU(t[2]);
+			out.uvNormalV = transformV(t[2]);
+			out.uvOcclusionU = transformU(t[3]);
+			out.uvOcclusionV = transformV(t[3]);
+			out.uvEmissiveU = transformU(t[4]);
+			out.uvEmissiveV = transformV(t[4]);
+		}
+	}
+
+	// a vertex layout with the second uvs (uvSets' variants: a buffer of
+	// their own, last, its attribute after the others)
+	public function layout(base:Array<VertexBufferLayout>):Array<VertexBufferLayout> {
+		var n = 0;
+		for (l in base)
+			n += l.attributes.length;
+		return base.concat([{stride: 8, attributes: [{location: n, format: Float2, offset: 0}]}]);
+	}
+
+	// (a map's transform's rows, uvU and uvV's)
+	static function transformU(t:Material.UvTransform):Vec4 {
+		var c = Math.cos(t.rotation), s = Math.sin(t.rotation);
+		return new Vec4(c * t.scale.x, s * t.scale.y, t.offset.x, t.texCoord);
+	}
+
+	static function transformV(t:Material.UvTransform):Vec4 {
+		var c = Math.cos(t.rotation), s = Math.sin(t.rotation);
+		return new Vec4(-s * t.scale.x, c * t.scale.y, t.offset.y, 0);
 	}
 
 	public function bind(enc:Encoder, slots:Array<Int>, sampler:Sampler, white:Texture, behind:Texture, behindSampler:Sampler) {

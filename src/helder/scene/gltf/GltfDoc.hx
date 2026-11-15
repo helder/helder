@@ -209,6 +209,11 @@ class GltfDoc {
 	public var layers:Null<GltfLayers> = null;
 }
 
+// what reads a glTF material's other extensions into its layers (Gltf.extensions: GltfExtensions)
+interface LayerReader {
+	function read(m:Dynamic, ext:Dynamic, tex:(Dynamic, String) -> Int):GltfLayers;
+}
+
 // a map's uvs: its texCoord (TEXCOORD_0 or _1, KHR_texture_transform's own
 // when it has one) and transform (identity without one)
 @:structInit class GltfMap {

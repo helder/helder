@@ -194,12 +194,8 @@ class ShaderMacro {
 						b.fill(o + $v{off} + $v{size} * m, $v{size} * ($v{len} - m), 0);
 					});
 				case TInt: stores.push(macro b.setInt32(o + $v{off}, $v));
-				case TMat4:
-					for (c in 0...4)
-						for (k in 0...4) {
-							var col = "c" + c, comp = "xyzw".charAt(k);
-							stores.push(macro b.setFloat(o + $v{off + 16 * c + 4 * k}, $v.$col.$comp));
-						}
+				case TMat4: stores.push(macro helder.gfx.shader.Shader.UniformWriter.mat4(b, o + $v{off}, $v));
+				case TVec(4): stores.push(macro helder.gfx.shader.Shader.UniformWriter.vec4(b, o + $v{off}, $v));
 				case t:
 					var k = 0;
 					for (c in components(switch t {

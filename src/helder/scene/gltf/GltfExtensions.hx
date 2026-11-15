@@ -13,12 +13,16 @@ import helder.scene.render.Material;
 // run time) and by Model.of for a file whose materials use some (its
 // PhysicalShader sets). A program whose models use none reads and links
 // none of it.
-class GltfExtensions implements ExtensionReader {
+class GltfExtensions implements GltfDoc.LayerReader implements ExtensionApplier {
 	function new() {}
 
 	// read from now on (Gltf.parse's, GltfScene's)
 	public static function install()
-		if (Gltf.extensions == null) Gltf.extensions = new GltfExtensions();
+		if (Gltf.extensions == null) {
+			var x = new GltfExtensions();
+			Gltf.extensions = x;
+			GltfScene.extensions = x;
+		}
 
 	public function read(m:Dynamic, ext:Dynamic, tex:(Dynamic, String) -> Int):GltfLayers {
 		inline function obj(o:Dynamic, f:String):Dynamic
@@ -145,9 +149,8 @@ class GltfExtensions implements ExtensionReader {
 	}
 }
 
-// (Gltf.extensions: GltfExtensions, through an interface: linked when installed)
-interface ExtensionReader {
-	function read(m:Dynamic, ext:Dynamic, tex:(Dynamic, String) -> Int):GltfLayers;
+// (GltfScene.extensions: GltfExtensions, through an interface: linked when installed)
+interface ExtensionApplier {
 	function apply(mat:Material, m:GltfMaterial, textureOf:Int->Null<helder.gfx.Texture>):Void;
 	function secondUvs(doc:GltfDoc, p:GltfPrimitive, material:Material, count:Int, first:Null<Array<Float>>):Null<haxe.io.Bytes>;
 }

@@ -127,7 +127,6 @@ class Renderer {
 	// the last draw's main pass split for Transmission's copy (1: the frame
 	// behind its see-through surfaces copied; statistics)
 	public var splits(default, null) = 0;
-	final resume:PassDesc = {colors: [{load: Load}], depth: {load: Load}};
 	final black:Texture;
 	final flatNormal:Texture;
 	final mipClamped:Sampler;
@@ -631,18 +630,8 @@ class Renderer {
 	// (the frame's pass ended after its opaque surfaces, its colour copied
 	// by Transmission, the pass begun again where it was)
 	function split(enc:Encoder) {
-		enc.endPass();
-		var c = pass.colors[0];
-		var source = c.resolve != null ? c.resolve : c.texture;
-		behind = transmissionSource.capture(enc, source, targetWidth, targetHeight, colorFormat);
+		behind = transmissionSource.capture(enc, pass, targetWidth, targetHeight, colorFormat);
 		behindLevels = transmissionSource.levels();
-		resume.colors[0].texture = c.texture;
-		resume.colors[0].resolve = c.resolve;
-		resume.depth.texture = pass.depth.texture;
-		enc.beginPass(resume);
-		resume.colors[0].texture = null;
-		resume.colors[0].resolve = null;
-		resume.depth.texture = null;
 		splits = 1;
 	}
 
@@ -758,13 +747,7 @@ class Renderer {
 			if (kind == 1 || kind == 4) d.layout = normalSource.layout(kind == 4);
 			if (kind == 3) d.layout = INSTANCED_LAYOUT;
 			// (each map its own uvs: the second uvs a buffer of their own, last)
-			if (s.extensions & Material.UV_SETS != 0) {
-				var base = kind == 0 ? [INSTANCED_LAYOUT[0]] : kind == 2 ? [SKINNED_LAYOUT] : d.layout;
-				var n = 0;
-				for (l in base)
-					n += l.attributes.length;
-				d.layout = base.concat([{stride: 8, attributes: [{location: n, format: Float2, offset: 0}]}]);
-			}
+			if (s.extensions & Material.UV_SETS != 0) d.layout = s.layers.layout(kind == 0 ? [INSTANCED_LAYOUT[0]] : kind == 2 ? [SKINNED_LAYOUT] : d.layout);
 			c = list[k] = {pipeline: create(d), slots: slotsOf(v.uniforms, v.textures).concat([for (b in s.blocks) b.bindings[kind]])};
 		}
 		return c;

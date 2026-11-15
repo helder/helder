@@ -145,6 +145,7 @@ interface PhysicalSource {
 // into the material's block, their maps and the frame behind bound
 interface LayerSource {
 	function block(m:Material, out:PbrShader.PbrMaterial, behind:Float):Void;
+	function layout(base:Array<helder.gfx.VertexBufferLayout>):Array<helder.gfx.VertexBufferLayout>;
 	function bind(enc:helder.gfx.Encoder, slots:Array<Int>, sampler:helder.gfx.Sampler, white:helder.gfx.Texture, behind:helder.gfx.Texture,
 		behindSampler:helder.gfx.Sampler):Void;
 }
@@ -152,6 +153,6 @@ interface LayerSource {
 // what draws the opaque frame behind see-through surfaces (Transmission:
 // Renderer splits its pass there, the copy read by the physical shaders)
 interface TransmissionSource {
-	function capture(enc:helder.gfx.Encoder, source:helder.gfx.Texture, width:Int, height:Int, format:helder.gfx.TextureFormat):helder.gfx.Texture;
+	function capture(enc:helder.gfx.Encoder, pass:helder.gfx.PassDesc, width:Int, height:Int, format:helder.gfx.TextureFormat):helder.gfx.Texture;
 	function levels():Float;
 }

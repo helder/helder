@@ -17,7 +17,7 @@ import helder.scene.math.Quat;
 class Gltf {
 	// what reads a material's other extensions (GltfExtensions.install:
 	// Physical's, Model.of's for a file that has some); null: none read
-	public static var extensions:Null<GltfExtensions.ExtensionReader>;
+	public static var extensions:Null<GltfDoc.LayerReader>;
 
 	// whether bytes are a .glb file
 	public static inline function isGlb(b:Bytes):Bool

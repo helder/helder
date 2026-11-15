@@ -44,9 +44,13 @@ class Transmission implements RenderFeature implements RenderFeature.Transmissio
 	public function attach(renderer:Renderer)
 		@:privateAccess renderer.transmissionSource = this;
 
-	// the frame's colour so far (source, width x height texels of format)
-	// copied, its mips made; returns the copy
-	public function capture(enc:Encoder, source:Texture, width:Int, height:Int, format:TextureFormat):Texture {
+	// the frame's pass (pass, into textures of width x height texels of
+	// format) ended, its colour so far copied (resolved) and its mips made,
+	// the pass begun again where it was; returns the copy
+	public function capture(enc:Encoder, pass:PassDesc, width:Int, height:Int, format:TextureFormat):Texture {
+		enc.endPass();
+		var c = pass.colors[0];
+		var source = c.resolve != null ? c.resolve : c.texture;
 		if (texture == null || this.width != width || this.height != height || this.format != format) {
 			if (texture != null) device.destroyTexture(texture);
 			texture = device.createTexture({width: width, height: height, format: format, renderTarget: true, mipLevels: 0});
@@ -74,8 +78,17 @@ class Transmission implements RenderFeature implements RenderFeature.Transmissio
 		enc.endPass();
 		copy.colors[0].texture = null;
 		device.generateMips(texture);
+		resume.colors[0].texture = c.texture;
+		resume.colors[0].resolve = c.resolve;
+		resume.depth.texture = pass.depth.texture;
+		enc.beginPass(resume);
+		resume.colors[0].texture = null;
+		resume.colors[0].resolve = null;
+		resume.depth.texture = null;
 		return texture;
 	}
+
+	final resume:PassDesc = {colors: [{load: Load}], depth: {load: Load}};
 
 	// the copy's mip levels below its first (the roughest's)
 	public function levels():Float

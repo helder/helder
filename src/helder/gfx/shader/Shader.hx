@@ -131,6 +131,24 @@ class UniformWriter<T> {
 		this.block = block;
 
 	public function write(value:T, bytes:Bytes, offset = 0) {}
+
+	#if !macro
+	// (a Vec4's and a Mat4's floats at an offset: the writers' stores, a call
+	// each rather than their floats' stores inline in every writer)
+	@:noCompletion public static function vec4(b:Bytes, at:Int, v:Vec4) {
+		b.setFloat(at, v.x);
+		b.setFloat(at + 4, v.y);
+		b.setFloat(at + 8, v.z);
+		b.setFloat(at + 12, v.w);
+	}
+
+	@:noCompletion public static function mat4(b:Bytes, at:Int, m:Mat4) {
+		vec4(b, at, m.c0);
+		vec4(b, at + 16, m.c1);
+		vec4(b, at + 32, m.c2);
+		vec4(b, at + 48, m.c3);
+	}
+	#end
 }
 
 // a texture parameter's slot (Encoder.setTexture(slot.binding, ...))

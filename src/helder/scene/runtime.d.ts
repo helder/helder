@@ -782,9 +782,10 @@ export declare class Transmission {
 	constructor(device: Device);
 	readonly device: Device;
 	attach(renderer: Renderer): void;
-	// the frame's colour so far (source, width x height texels of format)
-	// copied, its mips made; returns the copy
-	capture(enc: Encoder, source: number, width: number, height: number, format: number): number;
+	// the frame's pass (pass, into textures of width x height texels of
+	// format) ended, its colour so far copied (resolved) and its mips made,
+	// the pass begun again where it was; returns the copy
+	capture(enc: Encoder, pass: { colors: Array<{ load: number; clear?: unknown; texture?: number; resolve?: number }>; depth?: { load: number; clear?: number; texture?: number }; queries?: number }, width: number, height: number, format: number): number;
 	// the copy's mip levels below its first (the roughest's)
 	levels(): number;
 	dispose(): void;

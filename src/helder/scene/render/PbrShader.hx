@@ -389,48 +389,18 @@ function materialOf(m:Material):PbrMaterial {
 // materialOf into a block kept (the renderer's: nothing allocated per draw)
 function materialInto(m:Material, out:PbrMaterial):PbrMaterial {
 	var c = Math.cos(m.uvRotation), s = Math.sin(m.uvRotation);
-	var t = m.textureTransforms;
-	if (t != null) {
-		// (each core map its own uvs: uvSets)
-		var base = t[0];
-		c = Math.cos(base.rotation);
-		s = Math.sin(base.rotation);
-		out.uvU = new Vec4(c * base.scale.x, s * base.scale.y, base.offset.x, base.texCoord);
-		out.uvV = new Vec4(-s * base.scale.x, c * base.scale.y, base.offset.y, m.blend && m.blending == Additive ? 1 : 0);
-		out.uvMetallicRoughnessU = transformU(t[1]);
-		out.uvMetallicRoughnessV = transformV(t[1]);
-		out.uvNormalU = transformU(t[2]);
-		out.uvNormalV = transformV(t[2]);
-		out.uvOcclusionU = transformU(t[3]);
-		out.uvOcclusionV = transformV(t[3]);
-		out.uvEmissiveU = transformU(t[4]);
-		out.uvEmissiveV = transformV(t[4]);
-	}
 	out.baseColor = m.baseColor;
 	out.params = new Vec4(m.metallic, m.roughness, m.normalScale, m.doubleSided ? 1 : 0);
 	out.emissive = new Vec4(m.emissive.x, m.emissive.y, m.emissive.z, m.emissiveNight);
 	out.ground = new Vec4(m.ground, m.air.w, m.crystal, m.fog ? 1 : 0);
 	out.air = m.air;
-	if (t == null) {
-		out.uvU = new Vec4(c * m.uvScale.x, s * m.uvScale.y, m.uvOffset.x, 0);
-		out.uvV = new Vec4(-s * m.uvScale.x, c * m.uvScale.y, m.uvOffset.y, m.blend && m.blending == Additive ? 1 : 0);
-	}
+	out.uvU = new Vec4(c * m.uvScale.x, s * m.uvScale.y, m.uvOffset.x, 0);
+	out.uvV = new Vec4(-s * m.uvScale.x, c * m.uvScale.y, m.uvOffset.y, m.blend && m.blending == Additive ? 1 : 0);
 	out.layers = new Vec4(m.clearcoat, m.clearcoatRoughness, m.transmission, m.alphaCutoff);
 	out.model = new Vec4(m.steps, m.toneMapped ? 1 : 0, m.depthNear, m.depthFar);
 	out.shadeColor = new Vec4(m.shade.x, m.shade.y, m.shade.z, 0);
-	// (the glTF extensions' fields: a physical shader's, PhysicalLayers.block)
+	// (the glTF extensions' fields and each map's uvs: a physical shader's, PhysicalLayers.block)
 	return out;
-}
-
-// (a map's transform's rows, uvU and uvV's: Material.UvTransform)
-function transformU(t:Material.UvTransform):Vec4 {
-	var c = Math.cos(t.rotation), s = Math.sin(t.rotation);
-	return new Vec4(c * t.scale.x, s * t.scale.y, t.offset.x, t.texCoord);
-}
-
-function transformV(t:Material.UvTransform):Vec4 {
-	var c = Math.cos(t.rotation), s = Math.sin(t.rotation);
-	return new Vec4(-s * t.scale.x, c * t.scale.y, t.offset.y, 0);
 }
 
 // a map's uvs (uvSets): TEXCOORD_0 or _1 (u.w), moved by its transform's rows
@@ -1043,14 +1013,14 @@ function physicalDirect(s:LitSurface, l:LightSample, p:{material:PbrMaterial}):V
 		f0 = s.specularColor;
 		f90 = s.specularWeight;
 	}
-	var fresnel = f0 + (vec3(f90) - f0) * pow(1 - vh, 5);
+	var fresnel = f0 + (f90 - f0) * pow(1 - vh, 5);
 	if (s.iridescence > 0) fresnel = mix(fresnel, s.iridescenceFresnel, s.iridescence);
 	var a = s.roughness * s.roughness;
 	var a2 = a * a;
 	var dd = nh * nh * (a2 - 1) + 1;
 	var lobe = a2 / (3.14159265 * dd * dd) * (0.5 / max(nl * sqrt(nv * nv * (1 - a2) + a2) + nv * sqrt(nl * nl * (1 - a2) + a2), 0.0001));
 	if (s.anisotropy > 0) lobe = anisotropic(s, d, h, a, nl, nv, nh);
-	var diffuse = (vec3(1) - fresnel) * s.albedo * ((1 - s.metalness) / 3.14159265);
+	var diffuse = (1 - fresnel) * s.albedo * ((1 - s.metalness) / 3.14159265);
 	if (s.transmission > 0) diffuse = diffuse * (1 - s.transmission);
 	var c = (diffuse + fresnel * lobe) * nl;
 	if (s.sheen > 0) c = c * (1 - 0.157 * s.sheen) + s.sheenColor * (charlie(s.sheenRoughness, nh) * neubelt(nv, nl) * nl);
@@ -1103,7 +1073,7 @@ function physicalIndirect(s:LitSurface, env:IndirectLight,
 	}
 	var diffuse = env.irradiance * s.albedo * (1 - s.metalness);
 	if (s.transmission > 0)
-		diffuse = mix(diffuse, transmitted(s, p.material, p.frame, p.environmentMap, p.transmissionMap) * (vec3(1) - specular), s.transmission * (1 - s.metalness));
+		diffuse = mix(diffuse, transmitted(s, p.material, p.frame, p.environmentMap, p.transmissionMap) * (1 - specular), s.transmission * (1 - s.metalness));
 	var c = (diffuse + radiance * specular) * env.occlusion;
 	if (s.sheen > 0) c = c * (1 - 0.157 * s.sheen) + env.irradiance * s.sheenColor * (sheenAlbedo(nv, s.sheenRoughness) * env.occlusion);
 	if (s.coat > 0) {
@@ -1201,16 +1171,16 @@ function iridescent(filmIor:Float, c1:Float, thickness:Float, f0:Vec3):Vec3 {
 		var phi12 = film < 1 ? 3.14159265 : 0;
 		var phi21 = 3.14159265 - phi12;
 		var root = sqrt(clamp(f0, vec3(0), vec3(0.9999)));
-		var baseIor = (vec3(1) + root) / (vec3(1) - root);
+		var baseIor = (vec3(1) + root) / (1 - root);
 		var q = (baseIor - vec3(film)) / (baseIor + vec3(film));
 		var r1 = q * q;
-		var r23 = r1 + (vec3(1) - r1) * pow(1 - c2, 5);
+		var r23 = r1 + (1 - r1) * pow(1 - c2, 5);
 		var phi23 = vec3(baseIor.x < film ? 3.14159265 : 0, baseIor.y < film ? 3.14159265 : 0, baseIor.z < film ? 3.14159265 : 0);
 		var opd = 2 * film * thickness * c2;
 		var phi = vec3(phi21) + phi23;
 		var r123 = clamp(r23 * r12, vec3(0.0001), vec3(0.9999));
 		var amp = sqrt(r123);
-		var rs = r23 * (t121 * t121) / (vec3(1) - r123);
+		var rs = r23 * (t121 * t121) / (1 - r123);
 		var cm = (rs - vec3(t121)) * amp;
 		var sum = vec3(r12) + rs + cm * (sensitivity(opd, phi) * 2);
 		cm = cm * amp;
