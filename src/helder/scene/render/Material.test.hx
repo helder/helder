@@ -14,6 +14,16 @@ import helder.scene.render.PbrShader.uvOf;
 import helder.scene.render.PbrShader.fogAmount;
 import helder.scene.render.PbrShader.instanceNormal;
 
+// (a draw lit by no local light)
+private function noLights():PbrObject
+	return {
+		model: Mat4.identity(),
+		normalMatrix: Mat4.identity(),
+		tint: new Vec4(1, 1, 1, 1),
+		lights0: new Vec4(-1, -1, -1, -1),
+		lights1: new Vec4(-1, -1, -1, -1)
+	};
+
 // The standard shader's material options run on the CPU (shadeAt
 // as the GPU runs it, its textures white): Material.ground's sunset with
 // the sphere under it and the sky it no longer reflects below its
@@ -32,16 +42,24 @@ function tests() {
 			return {
 				viewProj: Mat4.identity(), eye: new Vec4(eye.x, eye.y, eye.z, 1), lightDir: new Vec4(l.x, l.y, l.z, 0), lightColor: new Vec4(3, 3, 3, 0),
 				sky: new Vec4(0.1, 0.1, 0.1, 0), ground: new Vec4(0.1, 0.1, 0.1, 0), exposure: new Vec4(1, 1, 0, 0), lightViewProj: Mat4.identity(),
-				shadow: zero, point0: zero, point1: zero, point2: zero, point3: zero, pointColor0: zero, pointColor1: zero, pointColor2: zero,
-				pointColor3: zero, spot0: new Vec4(0, 0, 0, -2), spot1: new Vec4(0, 0, 0, -2), spot2: new Vec4(0, 0, 0, -2), spot3: new Vec4(0, 0, 0, -2),
-				lightViewProjFar: Mat4.identity(), shadowFar: zero, environment: zero, rim: zero, fog: Fog.colorOf(fog), fogShape: Fog.shapeOf(fog), shadowSoft: zero
+				shadow: zero, lightViewProjFar: Mat4.identity(), shadowFar: zero, shadowRect: zero, shadowRectFar: zero, shadowAtlas: zero, environment: zero,
+				rim: zero, fog: Fog.colorOf(fog), fogShape: Fog.shapeOf(fog), shadowSoft: zero, clusters: zero, clusterDepth: zero, clusterAxis: zero
 			};
 		}
 		function material(m:Material):PbrMaterial
 			return materialOf(m);
+		// (no local lights: the draw's list empty, the frame's lights and tiles zeros)
+		final lights:PbrLights = {
+			position: [for (_ in 0...32) new Vec4(0, 0, 0, 0)],
+			color: [for (_ in 0...32) new Vec4(0, 0, 0, 0)],
+			cone: [for (_ in 0...32) new Vec4(0, 0, 0, 1)],
+			tileViewProj: [for (_ in 0...12) Mat4.identity()],
+			tileRect: [for (_ in 0...12) new Vec4(0, 0, 0, 0)],
+			tileParams: [for (_ in 0...12) new Vec4(0, 0, 0, 0)]
+		};
 		// the colour at the origin, its normal n, the node's up, tinted
 		function shade(m:Material, n:Vec3, up:Vec3, l:Vec3, eye:Vec3, ?tint:Vec3, ?fog:Fog):Vec4
-			return shadeAt(n, new Vec3(0, 0, 0), new Vec2(0, 0), up, tint ?? new Vec3(1, 1, 1), frame(l, eye, fog), material(m), white, white, white,
+			return shadeAt(n, new Vec3(0, 0, 0), new Vec2(0, 0), up, tint ?? new Vec3(1, 1, 1), frame(l, eye, fog), noLights(), material(m), lights, white, white, white,
 				white, white, white, white, white);
 		function sum(c:Vec4):Float
 			return c.x + c.y + c.z;

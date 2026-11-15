@@ -42,14 +42,22 @@ for o in lines debug grid raycast text3d debugcalls; do
 	printf '%-12s %10d %8d %10d %8d  (against renderer)
 ' $o $sn $((sn - rn)) $sw $((sw - rw))
 done
-# (phase 6's glTF material extensions at the renderer's level, each alone, then Physical's and Transmission)
-for o in sheen specular clearcoat transmission iridescence anisotropy uvsets physical refraction; do
+# (phase 4's opt-ins at the renderer's level: clustered lighting, instance
+# culling, levels of detail, each a cost only when used; phase 6's glTF
+# material extensions, each alone, then Physical's and Transmission)
+for o in clustered culling lod sheen specular clearcoat transmission iridescence anisotropy uvsets physical refraction; do
 	"$tool" "$out/$o" "$@" -main Size -D size_level=4 -D size_$o -D hxmc.libc=glibc -D hxmc.target=linux-x86_64 > "$out/$o.log" 2>&1 || { cat "$out/$o.log"; exit 1; }
 	"$tool" "$out/$o.wasm" "$@" -main Size -D size_level=4 -D size_$o -D hxmc.target=wasm32-wasi > "$out/$o.wasm.log" 2>&1 || { cat "$out/$o.wasm.log"; exit 1; }
 	sn=$(wc -c < "$out/$o") sw=$(wc -c < "$out/$o.wasm")
 	printf '%-12s %10d %8d %10d %8d  (against renderer)
 ' $o $sn $((sn - rn)) $sw $((sw - rw))
 done
+# (the point and spot lights' shadows, against Shadows alone: shadows.local())
+"$tool" "$out/local" "$@" -main Size -D size_level=5 -D size_local -D hxmc.libc=glibc -D hxmc.target=linux-x86_64 > "$out/local.log" 2>&1 || { cat "$out/local.log"; exit 1; }
+"$tool" "$out/local.wasm" "$@" -main Size -D size_level=5 -D size_local -D hxmc.target=wasm32-wasi > "$out/local.wasm.log" 2>&1 || { cat "$out/local.wasm.log"; exit 1; }
+sn=$(wc -c < "$out/local") sw=$(wc -c < "$out/local.wasm") hn=$(wc -c < "$out/size5") hw=$(wc -c < "$out/size5.wasm")
+printf '%-12s %10d %8d %10d %8d  (against shadows)
+' local $sn $((sn - hn)) $sw $((sw - hw))
 # (post's effects, each alone and all, against the chain without one: PostSize.hx)
 printf '\n%-12s %10s %8s %10s %8s\n' post native +native wasm +wasm
 for e in none fxaa lut outline ssao dof ssr taa smaa motionblur godrays occlusion all; do

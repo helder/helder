@@ -8,7 +8,7 @@
 // PbrShader.hx: what one changes the other does.
 import {
 	slots, position, vec2, vec3, vec4, mat4, sample, sampleLevel, dot, cross, normalize, reflect, mix, clamp, smoothstep, pow, min, max, abs,
-	sqrt, floor, fract, step, discard, length, exp, cos, type Vec2, type Vec3, type Vec4, type Mat4, type Texture2D,
+	sqrt, floor, fract, step, discard, length, exp, cos, log, type Vec2, type Vec3, type Vec4, type Mat4, type Texture2D, type UniformArray,
 } from "helder/gfx";
 
 // the combined vertex: a variant's attributes those it reads, in this order
@@ -17,18 +17,24 @@ export type PbrVertex = {
 	tangent?: Vec4, joints?: Vec4, weights?: Vec4, m0?: Vec4, m1?: Vec4, m2?: Vec4, m3?: Vec4, uv1?: Vec2,
 };
 
-export type PbrVaryings = {clip: Vec4, world: Vec3, normal: Vec3, uv: Vec2, tangent?: Vec4, up: Vec3, tint: Vec3, uv1?: Vec2};
+export type PbrVaryings = {clip: Vec4, world: Vec3, normal: Vec3, uv: Vec2, tangent?: Vec4, up: Vec3, tint: Vec3, uv1?: Vec2, lights0: Vec4, lights1: Vec4};
+
+// the frame's point and spot lights (PbrShader.hx's PbrLights): position
+// and range, colour and first shadow tile plus 1, cone; their shadow tiles
+export type PbrLights = {
+	position: UniformArray<Vec4, 32>, color: UniformArray<Vec4, 32>, cone: UniformArray<Vec4, 32>,
+	tileViewProj: UniformArray<Mat4, 12>, tileRect: UniformArray<Vec4, 12>, tileParams: UniformArray<Vec4, 12>,
+};
 
 // per frame: the camera and the lights (PbrShader.hx's PbrFrame)
 export type PbrFrame = {
 	viewProj: Mat4, eye: Vec4, lightDir: Vec4, lightColor: Vec4, sky: Vec4, ground: Vec4, exposure: Vec4, lightViewProj: Mat4, shadow: Vec4,
-	point0: Vec4, point1: Vec4, point2: Vec4, point3: Vec4, pointColor0: Vec4, pointColor1: Vec4, pointColor2: Vec4, pointColor3: Vec4,
-	spot0: Vec4, spot1: Vec4, spot2: Vec4, spot3: Vec4, lightViewProjFar: Mat4, shadowFar: Vec4, environment: Vec4, rim: Vec4,
-	fog: Vec4, fogShape: Vec4, shadowSoft: Vec4,
+	lightViewProjFar: Mat4, shadowFar: Vec4, shadowRect: Vec4, shadowRectFar: Vec4, shadowAtlas: Vec4, environment: Vec4, rim: Vec4,
+	fog: Vec4, fogShape: Vec4, shadowSoft: Vec4, clusters: Vec4, clusterDepth: Vec4, clusterAxis: Vec4,
 };
 
-// per draw: the node's matrices
-export type PbrObject = {model: Mat4, normalMatrix: Mat4, tint: Vec4};
+// per draw: the node's matrices, its light list
+export type PbrObject = {model: Mat4, normalMatrix: Mat4, tint: Vec4, lights0: Vec4, lights1: Vec4};
 
 // per draw: the material
 export type PbrMaterial = {
@@ -44,9 +50,9 @@ export type PbrSkinInfo = {rows: Vec4};
 export type PbrVertexParams = {frame: PbrFrame, object?: PbrObject, skin?: PbrSkinInfo, jointMatrices?: Texture2D};
 
 export type PbrFragmentParams = {
-	frame: PbrFrame, material: PbrMaterial, baseColorTexture: Texture2D, metallicRoughnessTexture: Texture2D, emissiveTexture: Texture2D,
-	occlusionTexture: Texture2D, shadowMap: Texture2D, shadowMapFar: Texture2D, environmentMap: Texture2D, aoMap: Texture2D, normalTexture?: Texture2D,
-	prepass?: PbrPrepass, layerMap0?: Texture2D, layerMap1?: Texture2D, transmissionMap?: Texture2D,
+	frame: PbrFrame, object?: PbrObject, material: PbrMaterial, lights: PbrLights, baseColorTexture: Texture2D, metallicRoughnessTexture: Texture2D,
+	emissiveTexture: Texture2D, occlusionTexture: Texture2D, shadowMap: Texture2D, clusterMap: Texture2D, environmentMap: Texture2D, aoMap: Texture2D,
+	normalTexture?: Texture2D, prepass?: PbrPrepass, layerMap0?: Texture2D, layerMap1?: Texture2D, transmissionMap?: Texture2D,
 };
 
 // (prepass: the view buffers' variant, ViewBuffers; the glTF extensions,
@@ -168,26 +174,127 @@ export function daylight(s: LitSurface, frame: PbrFrame, material: PbrMaterial):
 	return mix(1.0, smoothstep(-0.08, 0.22, dot(s.up, frame.lightDir.xyz)), material.ground.x);
 }
 
-// the sun at a surface, shadowed by the maps
-export function sunLight(s: LitSurface, frame: PbrFrame, material: PbrMaterial, shadowMap: Texture2D, shadowMapFar: Texture2D): LightSample {
+// the sun at a surface, shadowed by its cascades
+export function sunLight(s: LitSurface, frame: PbrFrame, material: PbrMaterial, shadowMap: Texture2D): LightSample {
 	const l = frame.lightDir.xyz;
 	const c = frame.lightColor.xyz.mul(daylight(s, frame, material));
-	const lit = shadowed(frame, shadowMap, shadowMapFar, s.world, s.normal);
+	const lit = shadowed(frame, shadowMap, s.world, s.normal);
 	return {color: c, shadow: lit, radiance: c.mul(lit), direction: l, ndotl: max(dot(s.normal, l), 0)};
 }
 
-// a point or spot light at pos.xyz (pos.w: its range, above 0) at a surface
-export function pointLight(s: LitSurface, pos: Vec4, color: Vec4, spot: Vec4): LightSample {
+// where a point's local lights are listed: ClusteredLights' cell, else the draw's list (PbrShader.hx's clusterCell)
+export function clusterCell(viewProj: Mat4, eye: Vec4, clusters: Vec4, clusterDepth: Vec4, clusterAxis: Vec4, clusterMap: Texture2D, world: Vec3): Vec3 {
+	let cell = vec3(0, 0, 8);
+	if (clusters.x > 0) {
+		const sc = viewProj.mul(vec4(world, 1));
+		const x = clamp(floor((sc.x / sc.w * 0.5 + 0.5) * clusters.x), 0, clusters.x - 1);
+		const y = clamp(floor((0.5 - sc.y / sc.w * 0.5) * clusters.y), 0, clusters.y - 1);
+		const depth = max(dot(world.sub(eye.xyz), clusterAxis.xyz), clusterDepth.x);
+		const z = clamp(floor(log(depth / clusterDepth.x) * clusterDepth.y), 0, clusters.z - 1);
+		const column = x * (clusters.w + 1);
+		const row = y + z * clusters.y;
+		cell = vec3(column, row, mapTexel(clusterMap, column, row, clusterDepth));
+	}
+	return cell;
+}
+
+// the k-th light a point's list names, a row of the frame's lights; -1: none (PbrShader.hx's lightIndex)
+export function lightIndex(clusters: Vec4, clusterDepth: Vec4, lights0: Vec4, lights1: Vec4, clusterMap: Texture2D, cell: Vec3, k: number): number {
+	let index = -1.0;
+	if (clusters.x > 0) index = mapTexel(clusterMap, cell.x + 1 + k, cell.y, clusterDepth);
+	else {
+		const four = k < 4 ? lights0 : lights1;
+		const j = k < 4 ? k : k - 4;
+		index = floor((j < 0.5 ? four.x : j < 1.5 ? four.y : j < 2.5 ? four.z : four.w) + 0.5);
+	}
+	return index;
+}
+
+// texel (x, y) of an R32F map of size.z by size.w texels
+function mapTexel(t: Texture2D, x: number, y: number, size: Vec4): number {
+	return sampleLevel(t, vec2((x + 0.5) / size.z, (y + 0.5) / size.w), 0).x;
+}
+
+// four texels of light k's row of the cluster map, from column x
+function lightRow(t: Texture2D, x: number, k: number, clusterAxis: Vec4, clusterDepth: Vec4): Vec4 {
+	const v = (clusterAxis.w + k + 0.5) / clusterDepth.w;
+	const w = clusterDepth.z;
+	return vec4(sampleLevel(t, vec2((x + 0.5) / w, v), 0).x, sampleLevel(t, vec2((x + 1.5) / w, v), 0).x, sampleLevel(t, vec2((x + 2.5) / w, v), 0).x,
+		sampleLevel(t, vec2((x + 3.5) / w, v), 0).x);
+}
+
+// a local light at a surface from its three vectors, its lit share (PbrShader.hx's localLight)
+export function localLight(s: LitSurface, pos: Vec4, color: Vec4, cone: Vec4, shadow: number): LightSample {
 	const d = pos.xyz.sub(s.world);
 	const dist2 = max(dot(d, d), 0.0001);
 	const dist = sqrt(dist2);
 	const q = dist / pos.w;
 	const window = clamp(1 - q * q * q * q, 0, 1);
-	let cone = 1.0;
-	if (spot.w > -1.5) cone = smoothstep(spot.w, color.w, dot(d.neg().div(dist), spot.xyz));
 	const l = d.div(dist);
-	const c = color.xyz.mul(window * window / dist2 * cone);
-	return {color: c, shadow: 1.0, radiance: c, direction: l, ndotl: max(dot(s.normal, l), 0)};
+	const t = clamp(dot(l.neg(), cone.xyz) + cone.w, 0, 1);
+	const c = color.xyz.mul(window * window / dist2 * (t * t * (3 - 2 * t)));
+	return {color: c, shadow: shadow, radiance: c.mul(shadow), direction: l, ndotl: max(dot(s.normal, l), 0)};
+}
+
+// where a surface's point is looked up in a local light's tiles (PbrShader.hx's shadowPoint)
+function shadowPoint(s: LitSurface, light: Vec3, params: Vec4): Vec3 {
+	const d = light.sub(s.world);
+	const dist = max(length(d), 0.0001);
+	return s.world.add(d.mul(params.y)).add(s.normal.mul(params.z * dist));
+}
+
+// the face of a point light's tiles a moved point is in (PbrShader.hx's tileFace)
+function tileFace(at: Vec3, light: Vec3, point: boolean): number {
+	let face = 0.0;
+	if (point) {
+		const d = at.sub(light);
+		const a = abs(d);
+		face = a.x >= a.y && a.x >= a.z ? (d.x > 0 ? 0 : 1) : a.y >= a.z ? (d.y > 0 ? 2 : 3) : (d.z > 0 ? 4 : 5);
+	}
+	return face;
+}
+
+// a local light's lit share at a moved point from a tile of the atlas (PbrShader.hx's tileShadow)
+function tileShadow(map: Texture2D, viewProj: Mat4, rect: Vec4, params: Vec4, inv: Vec4, at: Vec3): number {
+	const c = viewProj.mul(vec4(at, 1));
+	const p = c.xyz.div(c.w);
+	const uv = vec2(p.x * 0.5 + 0.5, 0.5 - p.y * 0.5);
+	let result = 1.0;
+	if (c.w > 0 && uv.x > 0 && uv.x < 1 && uv.y > 0 && uv.y < 1 && p.z < 1) {
+		const t = inv.x / rect.z;
+		let lit = 0.0;
+		if (params.w > 0) lit = disc(map, uv, rect, inv, p.z, params.w, t);
+		else
+			lit = (tap(map, uv, rect, inv, p.z, -t, -t) + tap(map, uv, rect, inv, p.z, 0, -t) + tap(map, uv, rect, inv, p.z, t, -t)
+				+ tap(map, uv, rect, inv, p.z, -t, 0) + tap(map, uv, rect, inv, p.z, 0, 0) + tap(map, uv, rect, inv, p.z, t, 0)
+				+ tap(map, uv, rect, inv, p.z, -t, t) + tap(map, uv, rect, inv, p.z, 0, t) + tap(map, uv, rect, inv, p.z, t, t)) / 9;
+		result = 1 - params.x * (1 - lit);
+	}
+	return result;
+}
+
+// a tile's uv in the atlas, held inside the tile's edge texels (PbrShader.hx's atlasUv)
+function atlasUv(uv: Vec2, rect: Vec4, inv: Vec4): Vec2 {
+	return clamp(rect.xy.add(uv.mul(rect.zw)), rect.xy.add(inv.xy.mul(0.5)), rect.xy.add(rect.zw).sub(inv.xy.mul(0.5)));
+}
+
+// a disc of 12 taps out to radius in the tile's uv (PbrShader.hx's disc)
+function disc(map: Texture2D, uv: Vec2, rect: Vec4, inv: Vec4, depth: number, radius: number, texel: number): number {
+	const cell = fract(floor(uv.div(texel)).div(64)).mul(64);
+	const h = fract(52.9829189 * fract(dot(cell, vec2(0.06711056, 0.00583715))));
+	const t = 2 * fract(2 * h) - 1;
+	let dir = vec2(1 - t * t, 2 * t).mul((h < 0.5 ? 1 : -1) / (1 + t * t));
+	const c = -0.7373688;
+	const s = 0.6754903;
+	let sum = 0.0;
+	let k = 0.0;
+	while (k < 12) {
+		const off = dir.mul(sqrt((k + 0.5) / 12) * radius);
+		sum += step(depth, sampleLevel(map, atlasUv(uv.add(off), rect, inv), 0).x);
+		dir = vec2(dir.x * c - dir.y * s, dir.x * s + dir.y * c);
+		k += 1;
+	}
+	return sum / 12;
 }
 
 // the light around a surface (IndirectLight)
@@ -249,7 +356,7 @@ function arcCos(x: number): number {
 // the fragment's colour from its surface, the direct light summed, the
 // indirect slot's and the light it emits (PbrShader.hx's shade)
 function shade(s: LitSurface, lights: Vec3, indirect: Vec3, env: IndirectLight, emissive: Vec3, frame: PbrFrame, material: PbrMaterial, shadowMap: Texture2D,
-		shadowMapFar: Texture2D, environmentMap: Texture2D): Vec4 {
+		environmentMap: Texture2D): Vec4 {
 	const crystal = material.ground.z;
 	const n = s.normal;
 	const v = s.view;
@@ -274,7 +381,7 @@ function shade(s: LitSurface, lights: Vec3, indirect: Vec3, env: IndirectLight, 
 		const cr = clamp(material.layers.y, 0.04, 1);
 		const ca = cr * cr;
 		const fc = (0.04 + 0.96 * pow(1 - nv, 5)) * coat;
-		const lit = shadowed(frame, shadowMap, shadowMapFar, s.world, n) * day;
+		const lit = shadowed(frame, shadowMap, s.world, n) * day;
 		const layer = coatLobe(n, v, l, ca * ca).mul(frame.lightColor.xyz).mul(lit * coat).add(reflected(frame, environmentMap, r, cr).mul(fc));
 		direct = direct.mul(1 - fc);
 		ambient = ambient.mul(1 - fc).add(layer);
@@ -366,21 +473,22 @@ function brdf(n: Vec3, v: Vec3, l: Vec3, base: Vec3, metallic: number, a2: numbe
 	return diffuse.add(fresnel.mul(distribution * visibility)).mul(nl);
 }
 
-// the direct light's share at a point (1: lit) from the shadow maps (n: the surface's unit normal)
-function shadowed(frame: PbrFrame, map: Texture2D, far: Texture2D, world: Vec3, n: Vec3): number {
+// the sun's share at a point (1: lit) from its cascades' tiles of the atlas (n: the surface's unit normal)
+function shadowed(frame: PbrFrame, map: Texture2D, world: Vec3, n: Vec3): number {
 	const strength = frame.shadow.x;
 	let result = 1.0;
 	if (strength > 0) {
 		const nl = max(dot(n, frame.lightDir.xyz), 0);
-		let lit = cascade(map, frame.lightViewProj, frame.shadow, frame.shadowSoft, frame.shadowSoft.y, world, n, nl);
-		if (lit < 0) lit = cascade(far, frame.lightViewProjFar, frame.shadowFar, frame.shadowSoft, frame.shadowSoft.z, world, n, nl);
+		let lit = cascade(map, frame.lightViewProj, frame.shadow, frame.shadowRect, frame.shadowAtlas, frame.shadowSoft, frame.shadowSoft.y, world, n, nl);
+		if (lit < 0)
+			lit = cascade(map, frame.lightViewProjFar, frame.shadowFar, frame.shadowRectFar, frame.shadowAtlas, frame.shadowSoft, frame.shadowSoft.z, world, n, nl);
 		if (lit >= 0) result = 1 - strength * (1 - lit);
 	}
 	return result;
 }
 
-// a cascade's lit share (0 to 1) at a point, or -1 where its map does not reach
-function cascade(map: Texture2D, viewProj: Mat4, params: Vec4, soft: Vec4, deep: number, world: Vec3, n: Vec3, nl: number): number {
+// a cascade's lit share (0 to 1) at a point, or -1 where its tile does not reach
+function cascade(map: Texture2D, viewProj: Mat4, params: Vec4, rect: Vec4, inv: Vec4, soft: Vec4, deep: number, world: Vec3, n: Vec3, nl: number): number {
 	let result = -1.0;
 	const ls = viewProj.mul(vec4(world, 1));
 	const p = ls.xyz.div(ls.w);
@@ -388,18 +496,18 @@ function cascade(map: Texture2D, viewProj: Mat4, params: Vec4, soft: Vec4, deep:
 	if (uv.x > 0 && uv.x < 1 && uv.y > 0 && uv.y < 1 && p.z < 1) {
 		const depth = p.z - params.y * (1 + 2 * (1 - nl));
 		const t = params.z;
-		if (soft.x > 0 && params.w > 0) result = softly(map, uv, depth, params.w, t, soft, deep, plane(viewProj, n, deep));
+		if (soft.x > 0 && params.w > 0) result = softly(map, uv, rect, inv, depth, params.w, t, soft, deep, plane(viewProj, n, deep));
 		else
-			result = (tap(map, uv, depth, -t, -t) + tap(map, uv, depth, 0, -t) + tap(map, uv, depth, t, -t) + tap(map, uv, depth, -t, 0)
-				+ tap(map, uv, depth, 0, 0) + tap(map, uv, depth, t, 0) + tap(map, uv, depth, -t, t) + tap(map, uv, depth, 0, t)
-				+ tap(map, uv, depth, t, t)) / 9;
+			result = (tap(map, uv, rect, inv, depth, -t, -t) + tap(map, uv, rect, inv, depth, 0, -t) + tap(map, uv, rect, inv, depth, t, -t)
+				+ tap(map, uv, rect, inv, depth, -t, 0) + tap(map, uv, rect, inv, depth, 0, 0) + tap(map, uv, rect, inv, depth, t, 0)
+				+ tap(map, uv, rect, inv, depth, -t, t) + tap(map, uv, rect, inv, depth, 0, t) + tap(map, uv, rect, inv, depth, t, t)) / 9;
 	}
 	return result;
 }
 
-// 1 where the map's depth at uv + (dx, dy) is not nearer than depth
-function tap(map: Texture2D, uv: Vec2, depth: number, dx: number, dy: number): number {
-	return step(depth, sampleLevel(map, uv.add(vec2(dx, dy)), 0).x);
+// 1 where the tile's depth at uv + (dx, dy) is not nearer than depth
+function tap(map: Texture2D, uv: Vec2, rect: Vec4, inv: Vec4, depth: number, dx: number, dy: number): number {
+	return step(depth, sampleLevel(map, atlasUv(uv.add(vec2(dx, dy)), rect, inv), 0).x);
 }
 
 // how the depth of the surface's plane changes across the map, a uv (PbrShader.hx's plane)
@@ -420,7 +528,7 @@ function plane(viewProj: Mat4, n: Vec3, deep: number): Vec2 {
 }
 
 // the soft filter's lit share (Shadows.soft; PbrShader.hx's softly)
-function softly(map: Texture2D, uv: Vec2, depth: number, widest: number, texel: number, soft: Vec4, deep: number, g: Vec2): number {
+function softly(map: Texture2D, uv: Vec2, rect: Vec4, inv: Vec4, depth: number, widest: number, texel: number, soft: Vec4, deep: number, g: Vec2): number {
 	const n = soft.x;
 	const margin = depth;
 	const cell = fract(floor(uv.div(texel)).div(64)).mul(64);
@@ -439,7 +547,7 @@ function softly(map: Texture2D, uv: Vec2, depth: number, widest: number, texel: 
 		let k = 0.0;
 		while (k < m) {
 			const off = dir.mul(sqrt((k + 0.5) / m) * widest);
-			const d = sampleLevel(map, uv.add(off), 0).x;
+			const d = sampleLevel(map, atlasUv(uv.add(off), rect, inv), 0).x;
 			const at = dot(g, off);
 			if (d < margin + at) {
 				sum += margin + at - d;
@@ -457,7 +565,7 @@ function softly(map: Texture2D, uv: Vec2, depth: number, widest: number, texel: 
 		let k = 0.0;
 		while (k < n) {
 			const off = dir.mul(sqrt((k + 0.5) / n) * radius);
-			sum += step(margin + dot(g, off), sampleLevel(map, uv.add(off), 0).x);
+			sum += step(margin + dot(g, off), sampleLevel(map, atlasUv(uv.add(off), rect, inv), 0).x);
 			dir = vec2(dir.x * c - dir.y * s, dir.x * s + dir.y * c);
 			k += 1;
 		}
@@ -791,6 +899,8 @@ export const pbr = slots({
 			tangent: m.options.normalMap ? vec4(model.mul(vec4(v.tangent!.xyz, 0)).xyz, v.tangent!.w) : vec4(0),
 			up: m.options.instanced ? v.m1!.xyz : model.mul(vec4(0, 1, 0, 0)).xyz,
 			tint: m.options.instanced ? vec3(1 + v.m0!.w, 1 + v.m1!.w, 1 + v.m2!.w) : p.object!.tint.xyz,
+			lights0: p.object!.lights0,
+			lights1: p.object!.lights1,
 		};
 	},
 	fragment: (i: PbrVaryings, p: PbrFragmentParams, m: Pbr): Vec4 => {
@@ -928,14 +1038,40 @@ export const pbr = slots({
 				};
 				lit = layered;
 			}
-			// (the sun, then each point or spot light there is: the direct slot's, summed)
-			let direct = m.direct(lit, sunLight(lit, p.frame, p.material, p.shadowMap, p.shadowMapFar), p);
-			if (p.frame.point0.w > 0) direct = direct.add(m.direct(lit, pointLight(lit, p.frame.point0, p.frame.pointColor0, p.frame.spot0), p));
-			if (p.frame.point1.w > 0) direct = direct.add(m.direct(lit, pointLight(lit, p.frame.point1, p.frame.pointColor1, p.frame.spot1), p));
-			if (p.frame.point2.w > 0) direct = direct.add(m.direct(lit, pointLight(lit, p.frame.point2, p.frame.pointColor2, p.frame.spot2), p));
-			if (p.frame.point3.w > 0) direct = direct.add(m.direct(lit, pointLight(lit, p.frame.point3, p.frame.pointColor3, p.frame.spot3), p));
+			// (the sun, then each local light the draw's list or the pixel's cell names: the direct slot's, summed)
+			let direct = m.direct(lit, sunLight(lit, p.frame, p.material, p.shadowMap), p);
+			const cell = clusterCell(p.frame.viewProj, p.frame.eye, p.frame.clusters, p.frame.clusterDepth, p.frame.clusterAxis, p.clusterMap, s.world);
+			// (a list ends at its first -1: a draw lit by none loops not at all)
+			let k = 0.0;
+			let index = lightIndex(p.frame.clusters, p.frame.clusterDepth, i.lights0, i.lights1, p.clusterMap, cell, k);
+			while (k < cell.z && index >= 0) {
+				// (the light's row, its shadow: read here, the arrays not passed on)
+				let pos = vec4(0);
+				let color = vec4(0);
+				let cone = vec4(0);
+				if (p.frame.clusters.x > 0) {
+					pos = lightRow(p.clusterMap, 0, index, p.frame.clusterAxis, p.frame.clusterDepth);
+					color = lightRow(p.clusterMap, 4, index, p.frame.clusterAxis, p.frame.clusterDepth);
+					cone = lightRow(p.clusterMap, 8, index, p.frame.clusterAxis, p.frame.clusterDepth);
+				} else {
+					pos = p.lights.position[index];
+					color = p.lights.color[index];
+					cone = p.lights.cone[index];
+				}
+				let shadow = 1.0;
+				if (color.w > 0.5) {
+					const first = color.w - 1;
+					const params = p.lights.tileParams[first + 0.5];
+					const at = shadowPoint(lit, pos.xyz, params);
+					const tile = first + tileFace(at, pos.xyz, dot(cone.xyz, cone.xyz) < 0.0001) + 0.5;
+					shadow = tileShadow(p.shadowMap, p.lights.tileViewProj[tile], p.lights.tileRect[tile], params, p.frame.shadowAtlas, at);
+				}
+				direct = direct.add(m.direct(lit, localLight(lit, pos, color, cone, shadow), p));
+				k += 1;
+				index = lightIndex(p.frame.clusters, p.frame.clusterDepth, i.lights0, i.lights1, p.clusterMap, cell, k);
+			}
 			const env = ambientAt(lit, p.frame, p.material, p.occlusionTexture, p.environmentMap, p.aoMap);
-			out = shade(lit, direct, m.indirect(lit, env, p), env, m.emissive(s, p), p.frame, p.material, p.shadowMap, p.shadowMapFar, p.environmentMap);
+			out = shade(lit, direct, m.indirect(lit, env, p), env, m.emissive(s, p), p.frame, p.material, p.shadowMap, p.environmentMap);
 		}
 		return out;
 	},

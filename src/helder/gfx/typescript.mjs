@@ -93,6 +93,11 @@ export class Quat {
 	}
 }
 
+// a uniform block's field of N values (Haxe's @:length(N) var f:Array<T>),
+// Vec4s or Mat4s (std140 pads the others to 16 bytes), read by an index known
+// or not when compiling (its whole part); the writer takes the elements given
+export type UniformArray<T, N extends number> = readonly T[] & {readonly length: N};
+
 // a texture and its sampler, a shader's parameter (sample(t, uv)); on the
 // CPU, RGBA8 texels, rows top to bottom, read at the nearest, repeating
 export class Texture2D {

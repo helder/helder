@@ -100,8 +100,7 @@ private function frameOf(viewProj:Mat4):PbrFrame {
 	var zero = new Vec4(0, 0, 0, 0);
 	return {
 		viewProj: viewProj, eye: zero, lightDir: zero, lightColor: zero, sky: zero, ground: zero, exposure: zero, lightViewProj: Mat4.identity(), shadow: zero,
-		point0: zero, point1: zero, point2: zero, point3: zero, pointColor0: zero, pointColor1: zero, pointColor2: zero, pointColor3: zero, spot0: zero,
-		spot1: zero, spot2: zero, spot3: zero, lightViewProjFar: Mat4.identity(), shadowFar: zero, environment: zero, rim: zero, fog: zero, fogShape: zero,
-		shadowSoft: zero
+		lightViewProjFar: Mat4.identity(), shadowFar: zero, shadowRect: zero, shadowRectFar: zero, shadowAtlas: zero, environment: zero, rim: zero, fog: zero,
+		fogShape: zero, shadowSoft: zero, clusters: zero, clusterDepth: zero, clusterAxis: zero
 	};
 }

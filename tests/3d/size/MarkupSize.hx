@@ -9,7 +9,7 @@ import helder.view.*;
 // markup (Tiny), against every geometry and material tag (-D markup_all:
 // All, so that the check checks something) and against the same mesh made
 // in code (-D markup_code: what markup adds over it, its budget; phase 3's
-// lines, text and helpers among All's). Each tag's
+// lines, text and helpers among All's, phase 4's lod). Each tag's
 // factory is called by its own function (SceneRenderer.element_<tag>), not
 // by a switch on every name, so Tiny links one generator and one shading
 // model (PBR's), not twelve and eight with their shaders. Built only: no
@@ -53,6 +53,7 @@ class MarkupSize implements Markup {
 			<lightHelper/>
 			<cameraHelper/>
 			<skeletonHelper/>
+			<lod hysteresis={0.1} end={80.0}/>
 		</node>, SceneRenderer.root(world));
 		#end
 		Sys.println("markup size: " + Lambda.count({iterator: () -> world.root.children()}));

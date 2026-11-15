@@ -13,7 +13,9 @@ package helder.scene;
 // culling (Occlusion), lines with width and debug drawing
 // (Lines, LineRenderer, DebugDraw, the helpers), rays cast at triangles
 // (world.raycast: Hit, HitList, RaycastOptions, Bvh), text in the world
-// (Text3D), input
+// (Text3D), lights at scale and their shadows (ClusteredLights and its
+// grid, Clusters; Shadows' atlas, a light's castShadows and shadow), levels
+// of detail (Lod, InstanceCulling), input
 // actions (InputMap, Bindings), a fixed simulation step, and what a scene is
 // drawn with: a window, its device (or a headless one), the app's loop. A
 // program imports helder/scene, not this module.
@@ -28,10 +30,11 @@ package helder.scene;
 	helder.scene.render.Lines, helder.scene.render.LineRenderer, helder.scene.render.DebugDraw, helder.scene.render.Helper, helder.scene.render.AxesHelper,
 	helder.scene.render.GridHelper, helder.scene.render.BoundsHelper, helder.scene.render.LightHelper, helder.scene.render.CameraHelper,
 	helder.scene.render.SkeletonHelper, helder.scene.render.Hit, helder.scene.render.Hit.HitList, helder.scene.render.Hit.RaycastOptions,
-	helder.scene.render.Raycaster, helder.scene.render.Bvh, helder.scene.render.Text3D, helder.scene.input.InputMap,
+	helder.scene.render.Raycaster, helder.scene.render.Bvh, helder.scene.render.Text3D, helder.scene.render.ClusteredLights, helder.scene.render.Clusters,
+	helder.scene.render.Lod, helder.scene.render.InstanceCulling, helder.scene.input.InputMap,
 	helder.scene.input.Bindings, helder.scene.FixedStep, helder.gfx.Device, helder.os.Surface, helder.os.Window, helder.os.App, helder.os.Event, helder.scene.Script)
 @:typescript.types(helder.scene.render.Mesh, helder.gfx.Encoder, helder.os.Event.EventKind, helder.scene.input.Binding, helder.gfx.Feature,
 	helder.scene.render.PostProcess.ToneMap, helder.scene.render.PostProcess.Antialias, helder.scene.render.Dof.DofMode, helder.scene.render.Lines.LineUnits,
-	helder.scene.render.Lines.LineJoin, helder.scene.render.Lines.LineCap)
+	helder.scene.render.Lines.LineJoin, helder.scene.render.Lines.LineCap, helder.scene.render.Light.LightKind)
 @:build(helder.typescript.api.Manifest.build())
 class TypeScript {}

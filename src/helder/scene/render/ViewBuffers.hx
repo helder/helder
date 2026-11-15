@@ -200,6 +200,7 @@ class ViewBuffers implements RenderFeature implements RenderFeature.ViewSource {
 					sl = own != null ? own.slots : slots[1];
 					ps = own != null ? own.prepass : prepassSlots[1];
 					enc.setUniforms(sl[0], r.frameBytes);
+					if (sl[18] >= 0) enc.setUniforms(sl[18], r.lightBytes);
 					writeGroup(enc, ps, 0);
 					bindMaterial(enc, sl, m, own != null ? 6 : -1);
 					enc.setVertexBuffer(0, p.vertices);
@@ -224,6 +225,7 @@ class ViewBuffers implements RenderFeature implements RenderFeature.ViewSource {
 					sl = own != null ? own.slots : skin != null ? skin.prepassSlots() : slots[many ? 1 : 0];
 					ps = own != null ? own.prepass : skin != null ? block(skin.prepassUniforms()) : prepassSlots[many ? 1 : 0];
 					enc.setUniforms(sl[0], r.frameBytes);
+					if (sl[18] >= 0) enc.setUniforms(sl[18], r.lightBytes);
 					current = want;
 					material = null;
 					node = Node.NONE;
@@ -274,8 +276,12 @@ class ViewBuffers implements RenderFeature implements RenderFeature.ViewSource {
 		PbrShader.params.material.write(materialInto(m, materialBlock), materialBytes);
 		enc.setUniforms(sl[2], materialBytes);
 		var ms = m.sampler != null ? m.sampler : sampler;
+		// (every texture slot the variant keeps, the material's or white: a
+		// parameter not optional stays in every variant, read or not, and
+		// WebGPU binds none left unset; not the skin's, 5 and 6, a physical
+		// shader's flag, 14, nor the lights' block, 18)
 		for (k in 3...Renderer.OWN) {
-			if (sl[k] < 0 || k == 5 || k == 6) continue;
+			if (sl[k] < 0 || k == 5 || k == 6 || k == 14 || k == 18) continue;
 			var t = k == 3 ? m.baseColorTexture : k == 7 ? m.metallicRoughnessTexture : k == 8 ? m.emissiveTexture : k == 9 ? m.occlusionTexture : k == 10 ? m.normalTexture : null;
 			enc.setTexture(sl[k], t != null ? t : white, ms);
 		}

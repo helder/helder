@@ -50,7 +50,7 @@ class LinesDemo {
 		// a ring round the pillar, hidden behind it; a line over everything
 		var ring = Lines.attach(world.node("ring"), new Lines(48, {width: 4, closed: true}));
 		var over = Lines.attach(world.node("over"), new Lines(2, {width: 3, onTop: true}));
-		// #endregion lines
+		// #endregion
 		var pillar = world.node("pillar");
 		pillar.position = new Vec3(1.8, 0.9, -1.2);
 		MeshRenderer.attach(pillar, Shapes.of(device, Geometry.cylinder({radiusTop: 0.35, radiusBottom: 0.35, height: 1.8}), Material.lambert({color: new Vec4(0.75, 0.55, 0.35, 1)})));
@@ -74,7 +74,7 @@ class LinesDemo {
 				aim.setPoint(i, -3 + (tx + 3) * s, 0.05 + Math.sin(s * Math.PI) * 1.6, 2.4 + (tz - 2.4) * s, 1, 0.8, 0.3, 1 - s * 0.8);
 			}
 			aim.dashOffset = -t * 0.8;
-			// #endregion frame
+			// #endregion
 			ring.count = 48;
 			for (i in 0...48) {
 				var a = i / 48 * Math.PI * 2;

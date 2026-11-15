@@ -1100,11 +1100,14 @@ fix.
      `<Scene pick="triangles">`), `Text3D` and `Geometry.extrude` and
      `text` on helder.canvas' paths (src/helder/scene/README.md;
      examples/picking);
-  4. lights at scale: 8 a draw, `ClusteredLights` on GL ES 3.0 and
-     WebGL2 (CPU froxels), spot and point shadows in an atlas, LOD; and
-     the compute tier's paths where the device has it (gfx's compute:
-     WebGPU, Metal, D3D11, GL ES 3.1): lights clustered, instances culled
-     and drawn indirectly, skinning and particles on the GPU;
+  4. done: lights at scale, 8 a draw, `ClusteredLights` on GL ES 3.0 and
+     WebGL2 (CPU froxels), spot and point shadows in one atlas
+     (`shadows.local`: a budget, tiles kept while nothing moves), `Lod`
+     and visible ranges; the compute tier's paths where the device has it
+     (gfx's compute: WebGPU, Metal, D3D11, GL ES 3.1): lights clustered,
+     instances culled, levelled and drawn indirectly (`InstanceCulling`)
+     (src/helder/scene/README.md; examples/lights); skinning and particles
+     on the GPU still to come;
   5. indirect light: cube and array textures in gfx, the prefilter in
      helder, SH, light and reflection probes, lightmaps (TEXCOORD_1),
      area lights (LTC);

@@ -57,8 +57,18 @@ class InstancedMesh {
 	public var bounds:Aabb = Aabb.empty();
 	// whether it casts shadows (Shadows; its materials' castShadows too)
 	public var castShadows = true;
+	// its levels of detail (InstanceCulling: each instance drawn at the one
+	// its share of the view's height picks, Lod's thresholds; null: its mesh)
+	public var levels:Null<Array<Lod.LodLevel>> = null;
+	// whether the GPU's copies are storage buffers too (InstanceCulling's
+	// compute path reads them: set when it is made)
+	@:noCompletion public static var storage = false;
+	// counted up at each change (Shadows: a cached tile drawn again when a
+	// set it holds changed)
+	public var version(default, null) = 0;
 	var dirty = true;
 	var gpuCapacity = 0;
+	var storageBuffer = false;
 	var device:Null<Device> = null;
 
 	public function new(mesh:Mesh, capacity:Int, count = -1, custom = 0) {
@@ -84,7 +94,7 @@ class InstancedMesh {
 
 	function set_count(n:Int):Int {
 		if (n < 0 || n > capacity) throw 'helder.scene: InstancedMesh count $n outside 0...$capacity';
-		dirty = true;
+		touch();
 		return count = n;
 	}
 
@@ -102,12 +112,17 @@ class InstancedMesh {
 		for (i in old...capacity)
 			identity(i);
 		if (count > capacity) count = capacity;
-		dirty = true;
+		touch();
 	}
 
 	// marks the data written directly as changed (the setters do)
 	public inline function changed()
+		touch();
+
+	inline function touch() {
 		dirty = true;
+		version++;
+	}
 
 	// instance i at x, y, z, turned by the unit quaternion (qx, qy, qz, qw)
 	// and scaled by s, its colour kept
@@ -126,7 +141,7 @@ class InstancedMesh {
 		d.setFloat(o + 48, x);
 		d.setFloat(o + 52, y);
 		d.setFloat(o + 56, z);
-		dirty = true;
+		touch();
 	}
 
 	// instance i's position only (its turn, scale and colour kept)
@@ -135,7 +150,7 @@ class InstancedMesh {
 		data.setFloat(o + 48, x);
 		data.setFloat(o + 52, y);
 		data.setFloat(o + 56, z);
-		dirty = true;
+		touch();
 	}
 
 	// instance i's world matrix (affine: any scale, uneven too), its colour kept
@@ -153,7 +168,7 @@ class InstancedMesh {
 		d.setFloat(o + 48, m.c3.x);
 		d.setFloat(o + 52, m.c3.y);
 		d.setFloat(o + 56, m.c3.z);
-		dirty = true;
+		touch();
 	}
 
 	// instance i's colour (linear rgb, times the material's base colour)
@@ -162,7 +177,7 @@ class InstancedMesh {
 		data.setFloat(o + 12, r - 1);
 		data.setFloat(o + 28, g - 1);
 		data.setFloat(o + 44, b - 1);
-		dirty = true;
+		touch();
 	}
 
 	// instance i's position (axis 0, 1, 2: x, y, z), as written
@@ -176,7 +191,7 @@ class InstancedMesh {
 	// instance i's custom float k (0 to custom - 1)
 	public inline function setCustom(i:Int, k:Int, v:Float) {
 		customData.setFloat((i * custom + k) * 4, v);
-		dirty = true;
+		touch();
 	}
 
 	public inline function getCustom(i:Int, k:Int):Float
@@ -198,15 +213,16 @@ class InstancedMesh {
 	// program drawing them with its own pipeline calls it too): count of
 	// them, the buffers made or grown to the capacity
 	public function upload(device:Device) {
-		if (!dirty || count == 0) return;
-		if (gpuCapacity < capacity || this.device != device) {
+		if ((!dirty && storageBuffer == storage) || count == 0) return;
+		if (gpuCapacity < capacity || this.device != device || storageBuffer != storage) {
 			if (gpuCapacity > 0 && this.device != null) {
 				this.device.destroyBuffer(buffer);
 				if (custom > 0) this.device.destroyBuffer(customBuffer);
 			}
 			this.device = device;
 			gpuCapacity = capacity;
-			buffer = device.createBuffer({size: capacity * STRIDE, usage: Vertex});
+			buffer = device.createBuffer({size: capacity * STRIDE, usage: storage ? Storage : Vertex});
+			storageBuffer = storage;
 			if (custom > 0) customBuffer = device.createBuffer({size: capacity * custom * 4, usage: Vertex});
 		}
 		device.writeBuffer(buffer, 0, data, 0, count * STRIDE);
@@ -222,6 +238,6 @@ class InstancedMesh {
 		}
 		gpuCapacity = 0;
 		buffer = customBuffer = Buffer.NONE;
-		dirty = true;
+		touch();
 	}
 }

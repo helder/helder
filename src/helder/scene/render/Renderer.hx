@@ -16,21 +16,26 @@ import helder.scene.render.PbrShader.materialInto;
 import helder.scene.render.PbrShader.output;
 
 // Draws a world's meshes (MeshRenderer) as seen by a camera, lit by its
-// first directional Light and up to four point Lights (a world without
-// lights: the renderer's sun) and an ambient from the sky and the ground,
-// with PbrShader. The passes a frame records, in order (all but the main
-// one opted in): the shadow maps (Shadows), the view buffers' prepass
-// (ViewBuffers: depth, normals, roughness and selection, for post's
-// effects), the screen's ambient occlusion (post.ao: Ssao), the main pass,
-// then the AfterPass hooks; post (PostProcess) after, into the image shown.
-// Two stages:
+// first directional Light (a world without lights: the renderer's sun),
+// its point and spot Lights (the frame's MAX_LIGHTS most important to the
+// view, FrameLights: each draw lit by the eight that reach it most, or
+// each pixel by its cell's with ClusteredLights) and an ambient from the
+// sky and the ground, with PbrShader. The passes a frame records, in order
+// (all but the main one opted in): instance culling (InstanceCulling: a
+// compute pass where the device has one), the shadow atlas (Shadows), the
+// lights' cells (ClusteredLights: a compute pass where it can), the view
+// buffers' prepass (ViewBuffers: depth, normals, roughness and selection,
+// for post's effects), the screen's ambient occlusion (post.ao: Ssao), the
+// main pass, then the AfterPass hooks; post (PostProcess) after, into the
+// image shown. Two stages:
 //
 //   extract   the world's meshes into a flat draw list: the nodes shown,
-//             their bounds inside the camera's view, a draw per primitive
-//             sorted by pipeline, material and primitive; runs of one
-//             primitive become one instanced draw (PbrInstancedShader:
-//             the matrices in an instance buffer); the seam for threads
-//             and GPU culling later
+//             their level (Lod) and their visible range, their bounds
+//             inside the camera's view, a draw per primitive sorted by
+//             pipeline, material and primitive; runs of one primitive
+//             become one instanced draw (PbrInstancedShader: the matrices
+//             in an instance buffer), each run's light list from its
+//             bounds; the seam for threads
 //   record    the list as one depth-tested pass into the caller's encoder
 //             (see-through materials last, farthest first, blended),
 //             each draw's matrices and material in uniform blocks through
@@ -102,15 +107,18 @@ class Renderer {
 	public var jitter:helder.gfx.shader.Vec2 = new helder.gfx.shader.Vec2(0, 0);
 	// the frames drawn (each draw one)
 	public var frames(default, null) = 0;
+	// the frame's point and spot lights (gathered by draw: what the draws'
+	// lists, Shadows' tiles and ClusteredLights' cells are made of)
+	@:noCompletion public final frameLights = new FrameLights();
 
-	final pipeline:Pipeline;
-	final doubleSided:Pipeline;
+	// the opaque materials' pipelines (plain, double-sided, instanced, both),
+	// made when first drawn: each a full fragment stage to compile, seconds
+	// on a software GPU (SwiftShader: the page stalled while the four were)
+	final opaquePipelines:Array<Null<Pipeline>> = [null, null, null, null];
 	// (see-through materials: made when first drawn)
 	// the see-through materials' pipelines, made when first drawn: by
 	// Material.blending, then double-sided
 	final blendedPipelines:Array<Null<Pipeline>> = [for (_ in 0...8) null];
-	var instancedPipeline:Pipeline;
-	var instancedDoubleSided:Pipeline;
 	final plainSlots:Array<Int>;
 	var skinSource:Null<RenderFeature.SkinSource>;
 	var normalSource:Null<RenderFeature.NormalSource>;
@@ -155,24 +163,34 @@ class Renderer {
 	final sampler:Sampler;
 	final nearest:Sampler;
 	final clamped:Sampler;
-	// (no shadows: a 1x1 map, never read)
+	// (no shadows: a 1x1 map, never read; no ClusteredLights: its textures', 1x1)
 	final noShadow:Texture;
 	var shadowSource:Null<RenderFeature.ShadowSource>;
+	var clusterSource:Null<RenderFeature.ClusterSource>;
+	var cullSource:Null<RenderFeature.CullSource>;
 	final frameBytes = Bytes.alloc(PbrShader.uniforms[0].size);
+	// (PbrLights' block: three arrays of MAX_LIGHTS vectors, then the shadow
+	// tiles: Shadows.MAX_TILES' matrices and two vectors)
+	static inline var TILES = FrameLights.MAX_LIGHTS * 48;
+	final lightBytes = Bytes.alloc(TILES + Shadows.MAX_TILES * 96);
+	// (each batch's lights, each instanced set's: FrameLights.PER_DRAW rows of the frame's lights)
+	final batchLights:Array<Float> = [];
+	final setLights:Array<Float> = [];
 	// (the blocks as written, kept: a struct literal per write would allocate)
 	final frameBlock:PbrFrame = blankFrame();
-	@:allow(helder.scene.render) final objectBlock:PbrObject = {model: Mat4.identity(), normalMatrix: Mat4.identity(), tint: new Vec4(1, 1, 1, 1)};
+	@:allow(helder.scene.render) final objectBlock:PbrObject = {
+		model: Mat4.identity(),
+		normalMatrix: Mat4.identity(),
+		tint: new Vec4(1, 1, 1, 1),
+		lights0: new Vec4(-1, -1, -1, -1),
+		lights1: new Vec4(-1, -1, -1, -1)
+	};
 	@:allow(helder.scene.render) final materialBlock:PbrMaterial = materialOf(new Material());
 	final objectBytes = Bytes.alloc(PbrShader.uniforms[1].size);
 	final materialBytes = Bytes.alloc(PbrShader.uniforms[2].size);
 	final pass:PassDesc;
 	// the draw list: entries kept between frames, count of them in use
 	final list:Array<DrawItem> = [];
-	// (the frame's point lights: position and range, colour)
-	// (four Vec4s, indexed: an Array<Vec4> boxes each value stored)
-	final pointLights = new Vec4Slots();
-	final pointColors = new Vec4Slots();
-	final spots = new Vec4Slots();
 	var count = 0;
 	// the frame's instanced sets (InstancedMesh), setCount of them in use
 	final sets:Array<InstancedMesh> = [];
@@ -202,13 +220,6 @@ class Renderer {
 		this.samples = offscreen ? samples : 1;
 		this.hdr = offscreen && hdr;
 		colorFormat = this.hdr ? RGBA16F : RGBA8;
-		pipeline = create(PbrShader.pipeline({cull: Back, depthCompare: Less, depthWrite: true}));
-		doubleSided = create(PbrShader.pipeline({cull: None, depthCompare: Less, depthWrite: true}));
-		for (cull in [helder.gfx.Cull.Back, helder.gfx.Cull.None]) {
-			var d = PbrInstancedShader.pipeline({cull: cull, depthCompare: Less, depthWrite: true});
-			d.layout = INSTANCED_LAYOUT;
-			if (cull == Back) instancedPipeline = create(d) else instancedDoubleSided = create(d);
-		}
 		plainSlots = slotsOf(PbrShader.uniforms, PbrShader.textures);
 		instancedSlots = slotsOf(PbrInstancedShader.uniforms, PbrInstancedShader.textures);
 		var w = Bytes.alloc(4);
@@ -230,6 +241,7 @@ class Renderer {
 		f.set(3, 255);
 		flatNormal = device.createTexture({width: 1, height: 1, data: f});
 		mipClamped = device.createSampler({filter: Linear, mipFilter: Linear, wrap: Clamp});
+		frameLights.writeBlock(lightBytes);
 		pass = {colors: [{load: Clear, clear: clearColor}], depth: {load: Clear}};
 	}
 
@@ -281,7 +293,8 @@ class Renderer {
 	public function inject(point:InjectionPoint, f:(Encoder, FrameInfo) -> Void)
 		hooks[point].push(f);
 
-	// turns on an optional feature (Shadows, Skinning, NormalMaps, Sky, Environment); returns the renderer
+	// turns on an optional feature (Shadows, Skinning, NormalMaps, Sky,
+	// Environment, ClusteredLights, InstanceCulling); returns the renderer
 	public function use(feature:RenderFeature):Renderer {
 		feature.attach(this);
 		return this;
@@ -303,9 +316,13 @@ class Renderer {
 		var jx = jitter.x * 2 / width, jy = -jitter.y * 2 / height;
 		var jittered = jx != 0 || jy != 0;
 		var viewProj = jittered ? jitterOf(still, jx, jy) : still;
+		var eye = camera.eye();
 		// (occlusion's results of the frames before: the nodes hidden then, culled)
-		if (occluder != null) occluder.prepare(this, world, viewProj, camera.eye());
-		extract(world, viewProj);
+		if (occluder != null) occluder.prepare(this, world, viewProj, eye);
+		// (the frame's local lights first: each draw's list is made as it is extracted)
+		if (clusterSource != null) frameLights.reserve(clusterSource.capacity());
+		frameLights.gather(world, eye, viewProj);
+		extractFrom(world, viewProj, eye);
 		occlusion = null;
 		var toLight = writeFrame(world, camera, viewProj, false);
 		frame.world = world;
@@ -319,19 +336,24 @@ class Renderer {
 		frame.stillViewProj = still;
 		frame.previousViewProj = frames > 0 && lastWorld == world ? lastViewProj : still;
 		frame.index = frames;
-		frame.eye = camera.eye();
+		frame.eye = eye;
 		frame.toLight = toLight;
 		frame.hdr = hdr;
 		frame.fog = fog;
 		frame.exposure = exposure;
+		lists();
+		if (cullSource != null) cullSource.cull(enc, this, frame);
 		shadowDraws = 0;
 		var shadowed = false;
 		if (shadowSource != null) {
-			shadowSource.render(enc, world, toLight, skinSource, frame);
-			writeFrame(world, camera, viewProj, shadowed = true);
+			shadowSource.render(enc, this, toLight, frame);
+			shadowed = true;
 			shadowDraws = shadowSource.shadowFrame().draws;
 			FrameCounts.shadowDraws += shadowDraws;
 		}
+		if (clusterSource != null) clusterSource.assign(enc, this, frame);
+		frameLights.writeBlock(lightBytes);
+		writeFrame(world, camera, viewProj, shadowed);
 		prepassDraws = 0;
 		if (views != null) {
 			views.render(enc, this, frame);
@@ -367,17 +389,36 @@ class Renderer {
 		return new Mat4(moved(m.c0), moved(m.c1), moved(m.c2), moved(m.c3));
 	}
 
-	// the draw list: each shown mesh inside the view, a draw per primitive, sorted
-	public function extract(world:World, viewProj:Mat4) {
+	// the draw list: each shown mesh inside the view (at its level: Lod; in
+	// its visible range), a draw per primitive, sorted (seen from the centre
+	// of the view's near plane: the camera, a near plane's distance off)
+	public inline function extract(world:World, viewProj:Mat4)
+		extractFrom(world, viewProj, MathTools.transformPoint(MathTools.inverse(viewProj), new Vec3(0, 0, 0)));
+
+	// extract's, seen from eye (the camera's; an optional Vec3 would be boxed)
+	@:noCompletion public function extractFrom(world:World, viewProj:Mat4, eye:Vec3) {
 		count = 0;
 		culled = 0;
 		occluded = 0;
 		refracts = false;
+		extractViewProj = viewProj;
+		extractEye = eye;
 		var meshes = world.store(MeshRenderer.KIND), tints = world.store(MeshRenderer.TINT);
+		var levels = Lod.pick;
+		var listed = clusterSource == null;
 		for (k in 0...meshes.length) {
 			var node = meshes.nodeAt(k), mesh = meshes.valueAt(k);
 			if (!node.shown() || !world.inTree(node)) continue;
 			var model = node.worldMatrix();
+			// (its level of detail and its visible range: Lod's, linked by Lod.attach)
+			if (levels != null) {
+				var m = levels(node, mesh, this);
+				if (m == null) {
+					culled += mesh.primitives.length;
+					continue;
+				}
+				mesh = m;
+			}
 			var skinned = mesh.primitives.length > 0 && mesh.primitives[0].skinned;
 			// (skinned: drawn only with Skinning, its bounds its rest pose's: not culled)
 			if (skinned && (skinSource == null || !skinSource.prepare(node))) continue;
@@ -400,6 +441,21 @@ class Renderer {
 				d.node = node;
 				d.tint = tint;
 				d.group = group;
+				// (its lights: the eight of the frame's that reach its bounds most, by their rows)
+				if (listed) {
+					bx0 = by0 = bz0 = Math.POSITIVE_INFINITY;
+					bx1 = by1 = bz1 = Math.NEGATIVE_INFINITY;
+					grow(p.bounds, model);
+					if (bx0 > bx1) frameLights.first(d.lights, 0) else {
+						var dx = bx1 - bx0, dy = by1 - by0, dz = bz1 - bz0;
+						frameLights.select((bx0 + bx1) / 2, (by0 + by1) / 2, (bz0 + bz1) / 2, Math.sqrt(dx * dx + dy * dy + dz * dz) / 2, d.lights, 0);
+					}
+					d.lightKey = DrawItem.keyOf(d.lights);
+				} else {
+					for (i in 0...FrameLights.PER_DRAW)
+						d.lights[i] = -1;
+					d.lightKey = 0;
+				}
 				d.primitive = p;
 				// (the pipeline, then the material)
 				d.key = (p.material.blend ? 1 << 26 : 0) | (mapped(p) ? 1 << 25 : 0) | (p.material.doubleSided ? 1 << 24 : 0) | (p.material.id & 0xFFFFFF);
@@ -429,7 +485,8 @@ class Renderer {
 		// (insertion sort: a scene's order changes little from frame to frame)
 		for (i in 1...count) {
 			var d = list[i], j = i - 1;
-			while (j >= 0 && (list[j].key > d.key || list[j].key == d.key && (list[j].primitive.id > d.primitive.id || list[j].primitive == d.primitive && list[j].group > d.group))) {
+			while (j >= 0 && (list[j].key > d.key || list[j].key == d.key && (list[j].primitive.id > d.primitive.id || list[j].primitive == d.primitive && (list[j].group > d.group
+				|| list[j].group == d.group && list[j].lightKey > d.lightKey)))) {
 				list[j + 1] = list[j];
 				j--;
 			}
@@ -455,17 +512,65 @@ class Renderer {
 		}
 	}
 
+	// (each batch's lights, its draws' (one list: a run joins draws of the
+	// same list alone), and each set's: the eight the frame's that reach its
+	// bounds most; none read with ClusteredLights)
+	function lists() {
+		var per = FrameLights.PER_DRAW;
+		while (batchLights.length < batchCount * per)
+			batchLights.push(-1);
+		while (setLights.length < setCount * per)
+			setLights.push(-1);
+		var clustered = clusterSource != null;
+		for (b in 0...batchCount) {
+			var d = list[batchStart[b]];
+			for (i in 0...per)
+				batchLights[b * per + i] = clustered ? -1 : d.lights[i];
+		}
+		for (k in 0...setCount) {
+			var s = sets[k];
+			if (clustered) {
+				for (i in 0...per)
+					setLights[k * per + i] = -1;
+			} else if (s.bounds.isEmpty()) frameLights.first(setLights, k * per) else {
+				var b = s.bounds, dx = b.max.x - b.min.x, dy = b.max.y - b.min.y, dz = b.max.z - b.min.z;
+				frameLights.select((b.min.x + b.max.x) / 2, (b.min.y + b.max.y) / 2, (b.min.z + b.max.z) / 2, Math.sqrt(dx * dx + dy * dy + dz * dz) / 2, setLights,
+					k * per);
+			}
+		}
+	}
+
+	// (a draw's bounds in the world, grown by a box through a matrix: Arvo's, as numbers)
+	var bx0 = 0.0;
+	var by0 = 0.0;
+	var bz0 = 0.0;
+	var bx1 = 0.0;
+	var by1 = 0.0;
+	var bz1 = 0.0;
+
+	function grow(b:helder.scene.math.Aabb, m:Mat4) {
+		if (b.isEmpty()) return;
+		var cx = (b.min.x + b.max.x) * 0.5, cy = (b.min.y + b.max.y) * 0.5, cz = (b.min.z + b.max.z) * 0.5;
+		var hx = (b.max.x - b.min.x) * 0.5, hy = (b.max.y - b.min.y) * 0.5, hz = (b.max.z - b.min.z) * 0.5;
+		var tc = m * new Vec4(cx, cy, cz, 1);
+		var ex = Math.abs(m.c0.x) * hx + Math.abs(m.c1.x) * hy + Math.abs(m.c2.x) * hz;
+		var ey = Math.abs(m.c0.y) * hx + Math.abs(m.c1.y) * hy + Math.abs(m.c2.y) * hz;
+		var ez = Math.abs(m.c0.z) * hx + Math.abs(m.c1.z) * hy + Math.abs(m.c2.z) * hz;
+		bx0 = Math.min(bx0, tc.x - ex);
+		by0 = Math.min(by0, tc.y - ey);
+		bz0 = Math.min(bz0, tc.z - ez);
+		bx1 = Math.max(bx1, tc.x + ex);
+		by1 = Math.max(by1, tc.y + ey);
+		bz1 = Math.max(bz1, tc.z + ez);
+	}
+
 	// (the frame's block; returns the direction towards the light)
 	function writeFrame(world:World, camera:Camera, viewProj:Mat4, shadowed:Bool):Vec3 {
 		var eye = camera.eye();
 		var l = sunDirection, c = sunColor;
 		var lights = world.store(Light.KIND);
-		var sun = false, points = 0, hemisphere = false;
+		var sun = false, hemisphere = false;
 		var up = sky, down = ground;
-		for (k in 0...4) {
-			pointLights[k] = pointColors[k] = new Vec4(0, 0, 0, 0);
-			spots[k] = new Vec4(0, 0, 0, -2);
-		}
 		for (k in 0...lights.length) {
 			var node = lights.nodeAt(k), light = lights.valueAt(k);
 			if (!node.shown() || !world.inTree(node)) continue;
@@ -477,16 +582,7 @@ class Renderer {
 					hemisphere = true;
 				}
 			} else if (light.local) {
-				if (points == 4) continue;
-				var p = node.worldPosition(), q = light.color * light.intensity;
-				pointLights[points] = new Vec4(p.x, p.y, p.z, light.range);
-				if (light.kind == Spot) {
-					var dir = MathTools.transformDir(node.worldMatrix(), new Vec3(0, 0, -1));
-					dir = dir / Math.sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
-					spots[points] = new Vec4(dir.x, dir.y, dir.z, Math.cos(light.outerCone));
-					pointColors[points++] = new Vec4(q.x, q.y, q.z, Math.cos(light.innerCone));
-				} else
-					pointColors[points++] = new Vec4(q.x, q.y, q.z, 0);
+				// (FrameLights': PbrLights' block)
 			} else if (!sun) {
 				// (it shines down its node's -z: the light is towards +z)
 				l = MathTools.transformDir(node.worldMatrix(), new Vec3(0, 0, 1));
@@ -499,6 +595,7 @@ class Renderer {
 		l = l / Math.sqrt(l.x * l.x + l.y * l.y + l.z * l.z);
 		var lightViewProj:Mat4 = Mat4.identity(), lightViewProjFar:Mat4 = Mat4.identity();
 		var shadow:Vec4 = new Vec4(0, 0, 0, 0), shadowFar:Vec4 = new Vec4(0, 0, 0, 0), soft:Vec4 = new Vec4(0, 0, 0, 0);
+		var rect = new Vec4(0, 0, 1, 1), rectFar = rect, atlas = new Vec4(1, 1, 0, 0);
 		if (shadowed) {
 			var f = shadowSource.shadowFrame();
 			lightViewProj = f.viewProj;
@@ -506,6 +603,9 @@ class Renderer {
 			lightViewProjFar = f.viewProjFar;
 			shadowFar = f.paramsFar;
 			soft = f.soft;
+			rect = f.rect;
+			rectFar = f.rectFar;
+			atlas = f.atlas;
 		}
 		// (the block kept, its fields set: nothing allocated)
 		var b = frameBlock;
@@ -518,34 +618,54 @@ class Renderer {
 		b.exposure = new Vec4(exposure, hdr ? 1 : 0, occlusion != null ? 1 : 0, 0);
 		b.lightViewProj = lightViewProj;
 		b.shadow = shadow;
-		b.point0 = pointLights[0];
-		b.point1 = pointLights[1];
-		b.point2 = pointLights[2];
-		b.point3 = pointLights[3];
-		b.pointColor0 = pointColors[0];
-		b.pointColor1 = pointColors[1];
-		b.pointColor2 = pointColors[2];
-		b.pointColor3 = pointColors[3];
-		b.spot0 = spots[0];
-		b.spot1 = spots[1];
-		b.spot2 = spots[2];
-		b.spot3 = spots[3];
 		b.lightViewProjFar = lightViewProjFar;
 		b.shadowFar = shadowFar;
+		b.shadowRect = rect;
+		b.shadowRectFar = rectFar;
+		b.shadowAtlas = atlas;
 		b.environment = environment != null ? new Vec4(environment.intensity, environment.levels, environment.rows, @:privateAccess environment.edge) : new Vec4(0, 0, 0, 0);
 		b.rim = new Vec4(rim.x, rim.y, rim.z, rimPower);
 		b.fog = Fog.colorOf(fog);
 		b.fogShape = Fog.shapeOf(fog);
 		b.shadowSoft = soft;
+		if (clusterSource != null) {
+			var cf = clusterSource.clusterFrame();
+			b.clusters = cf.clusters;
+			b.clusterDepth = cf.depth;
+			b.clusterAxis = cf.axis;
+		} else
+			b.clusters = b.clusterDepth = b.clusterAxis = new Vec4(0, 0, 0, 0);
 		PbrShader.params.frame.write(b, frameBytes);
+		// (the local lights' tiles, Shadows' bytes: the arrays as written are zeros, an Array<Mat4> would box what it holds)
+		var tiles = shadowed ? shadowSource.shadowFrame().tiles : null;
+		if (tiles != null) lightBytes.blit(TILES, tiles, 0, tiles.length);
 		return l;
 	}
+
+	// a pipeline for the frame's pass, its frame's blocks bound (the frame,
+	// the lights, their shadows' tiles) when it is not the one bound
+	function bindPipeline(enc:Encoder, p:Pipeline, slots:Array<Int>) {
+		if (p == bound) return;
+		enc.setPipeline(p);
+		enc.setUniforms(slots[0], frameBytes);
+		if (slots[18] >= 0) enc.setUniforms(slots[18], lightBytes);
+		bound = p;
+	}
+
+	// (the view extract draws for: Lod.pick's)
+	var extractViewProj:Mat4 = Mat4.identity();
+	var extractEye:Vec3 = new Vec3(0, 0, 0);
+
+	// (the pipeline last bound in the frame's pass: null after a hook)
+	var bound:Null<Pipeline> = null;
 
 	function record(enc:Encoder) {
 		pass.colors[0].clear = clearColor;
 		enc.beginPass(pass);
+		bound = null;
 		for (f in hooks[BeforeOpaque])
 			f(enc, frame);
+		bound = null;
 		var current:Null<Pipeline> = null, material:Null<Material> = null, node = Node.NONE;
 		var slots = plainSlots;
 		draws = 0;
@@ -554,6 +674,7 @@ class Renderer {
 		behind = null;
 		splits = 0;
 		recordSets(enc, false);
+		current = null;
 		for (b in 0...batchCount) {
 			var start = batchStart[b], n = batchSize[b];
 			var d = list[start], p = d.primitive, m = p.material;
@@ -563,10 +684,12 @@ class Renderer {
 				// then the see-through instanced sets: Sprites' halos)
 				opaque = false;
 				if (occluder != null) occluder.draw(enc, this);
+				bound = null;
 				for (f in hooks[AfterOpaque])
 					f(enc, frame);
 				// (the opaque frame copied, behind the physical shaders' transmission)
 				if (refracts && transmissionSource != null && offscreen) split(enc);
+				bound = null;
 				recordSets(enc, true);
 				current = null;
 				material = null;
@@ -576,7 +699,7 @@ class Renderer {
 			if (m.transmission > 0 && !p.skinned && (shader == null || shader.extensions & Material.TRANSMISSION == 0)) {
 				// (transmission: what is behind first tinted by the surface's
 				// colour (Multiply), then its own light over it: the draw below)
-				tint(enc, d, p, m);
+				tint(enc, d, p, m, b);
 				current = null;
 				material = null;
 				node = Node.NONE;
@@ -585,18 +708,22 @@ class Renderer {
 			var skin = p.skinned ? skinSource : null;
 			var normals = skin == null && mapped(p) ? normalSource : null;
 			var own = shader != null ? custom(shader, m, many ? (normals != null ? 4 : 3) : skin != null ? 2 : normals != null ? 1 : 0) : null;
-			var want = own != null ? own.pipeline : many ? (normals != null ? normals.instancedPipeline(m.doubleSided) : m.doubleSided ? instancedDoubleSided : instancedPipeline) : skin != null ? skin.pipeline(m.doubleSided) : normals != null ? normals.pipeline(m.doubleSided) : m.blend ? blended(m) : (m.doubleSided ? doubleSided : pipeline);
+			var want = own != null ? own.pipeline : many ? (normals != null ? normals.instancedPipeline(m.doubleSided) : opaquePipeline(true, m.doubleSided)) : skin != null ? skin.pipeline(m.doubleSided) : normals != null ? normals.pipeline(m.doubleSided) : m.blend ? blended(m) : opaquePipeline(false, m.doubleSided);
 			if (want != current) {
-				enc.setPipeline(want);
 				slots = own != null ? own.slots : many ? (normals != null ? normals.instancedSlots() : instancedSlots) : skin != null ? skin.slots() : normals != null ? normals.slots() : plainSlots;
-				enc.setUniforms(slots[0], frameBytes);
+				bindPipeline(enc, want, slots);
 				current = want;
 				material = null;
 				node = Node.NONE;
 			}
-			if (!many && d.node != node) {
+			if (many) {
+				// (an instanced run: its matrices the instances', its block its light list)
+				writeObject(Mat4.identity(), WHITE, batchLights, b * FrameLights.PER_DRAW);
+				if (slots[1] >= 0) enc.setUniforms(slots[1], objectBytes);
+				node = Node.NONE;
+			} else if (d.node != node) {
 				var model = d.node.worldMatrix(), t = d.tint;
-				writeObject(model, t);
+				writeObject(model, t, batchLights, b * FrameLights.PER_DRAW);
 				enc.setUniforms(slots[1], objectBytes);
 				node = d.node;
 			}
@@ -618,13 +745,17 @@ class Renderer {
 		}
 		if (opaque) {
 			if (occluder != null) occluder.draw(enc, this);
+			bound = null;
 			for (f in hooks[AfterOpaque])
 				f(enc, frame);
+			bound = null;
 			recordSets(enc, true);
 		}
+		bound = null;
 		for (f in hooks[AfterTransparent])
 			f(enc, frame);
 		enc.endPass();
+		bound = null;
 	}
 
 	// (the frame's pass ended after its opaque surfaces, its colour copied
@@ -640,21 +771,27 @@ class Renderer {
 	inline function shaderOf(m:Material):Null<MaterialShader>
 		return m.shader != null ? m.shader : physical != null ? physical.shaderOf(m) : null;
 
-	// (a node's block into objectBytes: its matrices, its tint)
-	@:allow(helder.scene.render) function writeObject(model:Mat4, t:Vec3) {
+	// (a node's block into objectBytes: its matrices, its tint, its light
+	// list (lights' rows from at; none: -1s))
+	@:allow(helder.scene.render) function writeObject(model:Mat4, t:Vec3, ?lights:Array<Float>, at = 0) {
 		var o = objectBlock;
 		o.model = model;
 		o.normalMatrix = MathTools.normalMatrix(model);
 		o.tint = new Vec4(t.x, t.y, t.z, 1);
+		if (lights != null) {
+			o.lights0 = new Vec4(lights[at], lights[at + 1], lights[at + 2], lights[at + 3]);
+			o.lights1 = new Vec4(lights[at + 4], lights[at + 5], lights[at + 6], lights[at + 7]);
+		} else
+			o.lights0 = o.lights1 = new Vec4(-1, -1, -1, -1);
 		PbrShader.params.object.write(o, objectBytes);
 	}
 
 	static function blankFrame():PbrFrame {
 		var z = new Vec4(0, 0, 0, 0), m = Mat4.identity();
 		return {
-			viewProj: m, eye: z, lightDir: z, lightColor: z, sky: z, ground: z, exposure: z, lightViewProj: m, shadow: z, point0: z, point1: z, point2: z,
-			point3: z, pointColor0: z, pointColor1: z, pointColor2: z, pointColor3: z, spot0: z, spot1: z, spot2: z, spot3: z, lightViewProjFar: m,
-			shadowFar: z, environment: z, rim: z, fog: z, fogShape: z, shadowSoft: z
+			viewProj: m, eye: z, lightDir: z, lightColor: z, sky: z, ground: z, exposure: z, lightViewProj: m, shadow: z, lightViewProjFar: m, shadowFar: z,
+			shadowRect: z, shadowRectFar: z, shadowAtlas: z, environment: z, rim: z, fog: z, fogShape: z, shadowSoft: z, clusters: z, clusterDepth: z,
+			clusterAxis: z
 		};
 	}
 
@@ -666,24 +803,38 @@ class Renderer {
 	function recordSets(enc:Encoder, blended:Bool) {
 		for (k in 0...setCount) {
 			var s = sets[k];
-			for (p in s.mesh.primitives) {
-				if (p.skinned || p.material.blend != blended) continue;
-				var m = p.material;
-				var normals = mapped(p) ? normalSource : null;
-				var shader = shaderOf(m);
-				var own = shader != null ? custom(shader, m, normals != null ? 4 : 3) : null;
-				enc.setPipeline(own != null ? own.pipeline : normals != null ? normals.instancedPipeline(m.doubleSided) : m.blend ? blendedInstanced(m) : m.doubleSided ? instancedDoubleSided : instancedPipeline);
-				var slots = own != null ? own.slots : normals != null ? normals.instancedSlots() : instancedSlots;
-				enc.setUniforms(slots[0], frameBytes);
-				bindMaterial(enc, slots, m, normals);
-				enc.setVertexBuffer(0, p.vertices);
-				if (normals != null) enc.setVertexBuffer(1, p.tangents);
-				enc.setVertexBuffer(normals != null ? 2 : 1, s.buffer);
-				if (shader != null && shader.extensions & Material.UV_SETS != 0) enc.setVertexBuffer(normals != null ? 3 : 2, p.uv1 != null ? p.uv1 : p.vertices);
-				enc.setIndexBuffer(p.indices, p.indexFormat);
-				enc.drawIndexed(p.count, s.count);
-				draws++;
-				instanced += s.count;
+			var culls = cullSource != null && cullSource.takes(s);
+			var levels = culls ? s.levels : null;
+			for (level in 0...(levels != null ? levels.length : 1)) {
+				var mesh = levels != null ? levels[level].mesh : s.mesh;
+				for (i in 0...mesh.primitives.length) {
+					var p = mesh.primitives[i];
+					if (p.skinned || p.material.blend != blended) continue;
+					var m = p.material;
+					var normals = mapped(p) ? normalSource : null;
+					var shader = shaderOf(m);
+					var own = shader != null ? custom(shader, m, normals != null ? 4 : 3) : null;
+					var slots = own != null ? own.slots : normals != null ? normals.instancedSlots() : instancedSlots;
+					bindPipeline(enc, own != null ? own.pipeline : normals != null ? normals.instancedPipeline(m.doubleSided) : m.blend ? blendedInstanced(m) : opaquePipeline(true, m.doubleSided),
+						slots);
+					writeObject(Mat4.identity(), WHITE, setLights, k * FrameLights.PER_DRAW);
+					if (slots[1] >= 0) enc.setUniforms(slots[1], objectBytes);
+					bindMaterial(enc, slots, m, normals);
+					enc.setVertexBuffer(0, p.vertices);
+					if (normals != null) enc.setVertexBuffer(1, p.tangents);
+					// (the second uvs after the instances' buffer: a physical shader's with uvSets)
+					if (shader != null && shader.extensions & Material.UV_SETS != 0) enc.setVertexBuffer(normals != null ? 3 : 2, p.uv1 != null ? p.uv1 : p.vertices);
+					enc.setIndexBuffer(p.indices, p.indexFormat);
+					if (culls) {
+						// (its instances culled, at their level: the culling's buffer and counts)
+						draws += cullSource.draw(enc, s, i, level, normals != null ? 2 : 1);
+						continue;
+					}
+					enc.setVertexBuffer(normals != null ? 2 : 1, s.buffer);
+					enc.drawIndexed(p.count, s.count);
+					draws++;
+					instanced += s.count;
+				}
 			}
 		}
 	}
@@ -703,13 +854,19 @@ class Renderer {
 		enc.setTexture(slots[9], m.occlusionTexture != null ? m.occlusionTexture : white, ms);
 		var sf = shadowSource != null ? shadowSource.shadowFrame() : null;
 		enc.setTexture(slots[4], sf != null ? sf.map : noShadow, nearest);
-		enc.setTexture(slots[11], sf != null ? sf.mapFar : noShadow, nearest);
+		bindClusters(enc, slots);
 		if (environment != null) environment.bind(enc, slots[12]) else enc.setTexture(slots[12], white, sampler);
 		if (slots[13] >= 0) enc.setTexture(slots[13], occlusion != null ? occlusion : white, clamped);
 		if (normals != null) enc.setTexture(slots[10], m.normalTexture != null ? m.normalTexture : flatNormal, ms);
 		if (layers != null) layers.bind(enc, slots, ms, white, behind != null ? behind : black, mipClamped);
 		// (a shader of its own: its own blocks, after the renderer's slots)
 		if (m.shader != null && m.uniforms != null) bindOwn(enc, slots, m);
+	}
+
+	// ClusteredLights' map (its cells' lists and its lights; without, a 1x1 texel never read)
+	inline function bindClusters(enc:Encoder, slots:Array<Int>) {
+		var cf = clusterSource != null ? clusterSource.clusterFrame() : null;
+		if (slots[11] >= 0) enc.setTexture(slots[11], cf != null ? cf.clusterMap : noShadow, nearest);
 	}
 
 	// a material's own blocks (MaterialShader's) at a variant's slots: after the renderer's (OWN)
@@ -720,11 +877,28 @@ class Renderer {
 		}
 
 	// where a variant's slots of a material's own blocks begin (slotsOf's length)
-	public static inline var OWN = 18;
+	public static inline var OWN = 19;
 
 	// a material's own shader's pipeline and slots for a kind of draw (0
 	// plain, 1 normal mapped, 2 skinned, 3 instanced, 4 instanced and normal
 	// mapped), made when first drawn; its own blocks' slots after the renderer's
+	// an opaque material's pipeline (opaquePipelines), made the first time
+	function opaquePipeline(instanced:Bool, doubleSided:Bool):Pipeline {
+		var k = (instanced ? 2 : 0) + (doubleSided ? 1 : 0);
+		var p = opaquePipelines[k];
+		if (p == null) {
+			var cull:helder.gfx.Cull = doubleSided ? None : Back;
+			if (instanced) {
+				var d = PbrInstancedShader.pipeline({cull: cull, depthCompare: Less, depthWrite: true});
+				d.layout = INSTANCED_LAYOUT;
+				p = create(d);
+			} else
+				p = create(PbrShader.pipeline({cull: cull, depthCompare: Less, depthWrite: true}));
+			opaquePipelines[k] = p;
+		}
+		return p;
+	}
+
 	final customs = new Map<MaterialShader, Array<Null<{pipeline:Pipeline, slots:Array<Int>}>>>();
 
 	function custom(s:MaterialShader, m:Material, kind:Int):{pipeline:Pipeline, slots:Array<Int>} {
@@ -764,7 +938,8 @@ class Renderer {
 			// (any scale: the instanced shader turns normals by the matrix's
 			// inverse transpose, as the object's normalMatrix)
 			if (instancing && !list[i].primitive.skinned && !list[i].primitive.material.blend)
-				while (j < count && list[j].primitive == list[i].primitive && list[j].group == list[i].group)
+				while (j < count && list[j].primitive == list[i].primitive && list[j].group == list[i].group && list[j].lightKey == list[i].lightKey
+					&& DrawItem.same(list[j].lights, list[i].lights))
 					j++;
 			if (batchCount == batchStart.length) {
 				batchStart.push(0);
@@ -808,14 +983,13 @@ class Renderer {
 
 	// a transmitting material's first draw: the target multiplied by its
 	// colour where light goes through it (PbrShader: layers.z negative)
-	function tint(enc:Encoder, d:DrawItem, p:Mesh.Primitive, m:Material) {
+	function tint(enc:Encoder, d:DrawItem, p:Mesh.Primitive, m:Material, batch:Int) {
 		var k = m.doubleSided ? 1 : 0;
 		if (tintPipelines[k] == null) tintPipelines[k] = create(PbrShader.pipeline({cull: m.doubleSided ? None : Back, depthCompare: Less, depthWrite: false, blend: Multiply}));
 		var slots = plainSlots;
-		enc.setPipeline(tintPipelines[k]);
-		enc.setUniforms(slots[0], frameBytes);
+		bindPipeline(enc, tintPipelines[k], slots);
 		var model = d.node.worldMatrix(), t = d.tint;
-		writeObject(model, t);
+		writeObject(model, t, batchLights, batch * FrameLights.PER_DRAW);
 		enc.setUniforms(slots[1], objectBytes);
 		var block = materialInto(m, materialBlock);
 		block.layers = new Vec4(block.layers.x, block.layers.y, -m.transmission, block.layers.w);
@@ -827,7 +1001,7 @@ class Renderer {
 		enc.setTexture(slots[8], white, ms);
 		enc.setTexture(slots[9], white, ms);
 		enc.setTexture(slots[4], noShadow, nearest);
-		enc.setTexture(slots[11], noShadow, nearest);
+		bindClusters(enc, slots);
 		if (environment != null) environment.bind(enc, slots[12]) else enc.setTexture(slots[12], white, sampler);
 		enc.setTexture(slots[13], white, clamped);
 		enc.setVertexBuffer(0, p.vertices);
@@ -869,11 +1043,12 @@ class Renderer {
 			&& (shaderOf(p.material) == null || shaderOf(p.material).normalMapped != null);
 
 	// a shader's slots for its blocks and textures, in the renderer's order:
-	// frame, object (-1: none), material, base colour, shadow map, skin,
-	// joints, metallic-roughness, emissive, occlusion, normal, the far shadow
-	// map, the environment map, the screen's ambient occlusion; a physical
-	// shader's (0: one, -1: not), its two maps, the frame behind
-	// (Transmission's); then a material's own blocks (OWN on)
+	// frame, object (-1: none), material, base colour, shadow atlas, skin,
+	// joints, metallic-roughness, emissive, occlusion, normal, the cluster map
+	// (ClusteredLights'), the environment map, the screen's ambient
+	// occlusion; a physical shader's (0: one, -1: not), its two maps, the
+	// frame behind (Transmission's); the frame's lights; then a material's
+	// own blocks (OWN on)
 	public static function slotsOf(uniforms:Array<helder.gfx.shader.Shader.UniformBlock>, textures:Array<helder.gfx.shader.Shader.TextureBinding>):Array<Int> {
 		function u(name:String):Int {
 			for (b in uniforms)
@@ -886,8 +1061,9 @@ class Renderer {
 			return -1;
 		}
 		return [u("PbrFrame"), u("PbrObject"), u("PbrMaterial"), t("baseColorTexture"), t("shadowMap"), u("PbrSkinInfo"), t("jointMatrices"),
-			t("metallicRoughnessTexture"), t("emissiveTexture"), t("occlusionTexture"), t("normalTexture"), t("shadowMapFar"), t("environmentMap"), t("aoMap"),
-			layered(textures), t("layerMap0"), t("layerMap1"), t("transmissionMap")];
+			t("metallicRoughnessTexture"), t("emissiveTexture"), t("occlusionTexture"), t("normalTexture"), t("clusterMap"), t("environmentMap"), t("aoMap"),
+			layered(textures), t("layerMap0"), t("layerMap1"), t("transmissionMap"),
+			u("PbrLights")];
 	}
 
 	// (a physical shader's variant: one reading a layer's map)
@@ -920,6 +1096,10 @@ class Renderer {
 	public function dispose() {
 		if (post != null) post.dispose();
 		post = null;
+		if (clusterSource != null) clusterSource.dispose();
+		clusterSource = null;
+		if (cullSource != null) cullSource.dispose();
+		cullSource = null;
 		device.destroyTexture(white);
 		device.destroyTexture(noShadow);
 		device.destroyTexture(black);
@@ -983,35 +1163,26 @@ class DrawItem {
 	// (its node's selection group: the view buffers', 0 without; runs of
 	// one primitive are split by it)
 	public var group = 0;
+	// (its lights: FrameLights.PER_DRAW rows of the frame's, by row, -1
+	// after the last; a key of them: runs of one primitive split by them)
+	public final lights:Array<Float> = Filled.floats(FrameLights.PER_DRAW, -1.0);
+	public var lightKey = 0;
 
 	public function new() {}
-}
 
-// four Vec4s indexed 0 to 3 (the frame's lights: Renderer.writeFrame),
-// fields: nothing boxed as an Array<Vec4> boxes what it stores
-abstract Vec4Slots(Vec4Fields) {
-	public inline function new()
-		this = new Vec4Fields();
+	// (a list's key: its rows mixed, the same for the same rows)
+	public static function keyOf(l:Array<Float>):Int {
+		var h = 17;
+		for (i in 0...FrameLights.PER_DRAW)
+			h = (h * 31 + Std.int(l[i]) + 1) & 0x3FFFFFFF;
+		return h;
+	}
 
-	@:arrayAccess inline function get(k:Int):Vec4
-		return k == 0 ? this.a : k == 1 ? this.b : k == 2 ? this.c : this.d;
-
-	@:arrayAccess inline function set(k:Int, v:Vec4):Vec4 {
-		switch k {
-			case 0: this.a = v;
-			case 1: this.b = v;
-			case 2: this.c = v;
-			case _: this.d = v;
-		}
-		return v;
+	public static function same(a:Array<Float>, b:Array<Float>):Bool {
+		for (i in 0...FrameLights.PER_DRAW)
+			if (a[i] != b[i]) return false;
+		return true;
 	}
 }
 
-class Vec4Fields {
-	public var a = new Vec4(0, 0, 0, 0);
-	public var b = new Vec4(0, 0, 0, 0);
-	public var c = new Vec4(0, 0, 0, 0);
-	public var d = new Vec4(0, 0, 0, 0);
 
-	public function new() {}
-}

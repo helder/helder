@@ -160,9 +160,9 @@ class Definitions {
 	function material(e:Node, n:Node):String {
 		var kinds = [[], ["normalMap"], ["skinned"], ["instanced"], ["instanced", "normalMap"]];
 		if (new TsAdapter(src, defined, "material").replacesPrepass(e)) kinds = kinds.concat([["prepass"], ["prepass", "instanced"]]);
-		var standard = ["PbrFrame", "PbrObject", "PbrMaterial", "PbrSkinInfo", "PbrPrepass"];
+		var standard = ["PbrFrame", "PbrObject", "PbrMaterial", "PbrSkinInfo", "PbrPrepass", "PbrLights"];
 		var textures = [
-			"baseColorTexture", "metallicRoughnessTexture", "emissiveTexture", "occlusionTexture", "shadowMap", "shadowMapFar", "environmentMap", "normalTexture",
+			"baseColorTexture", "metallicRoughnessTexture", "emissiveTexture", "occlusionTexture", "shadowMap", "clusterMap", "environmentMap", "normalTexture",
 			"jointMatrices", "aoMap"
 		];
 		var variants = [], blocks = new Map<String, Array<Int>>(), order = [];
@@ -660,7 +660,15 @@ class TsAdapter implements ShaderAdapter {
 						case "Vec4": TVec(4);
 						case "Mat4": TMat4;
 						case "Texture2D": TTexture;
-						case other: error('$other is not a shader type (number, boolean, Vec2, Vec3, Vec4, Mat4, Texture2D and type aliases of object types of them)', t);
+						// (a uniform block's field of n values: Haxe's @:length(n) var f:Array<T>)
+						case "UniformArray":
+							var args = t.typeArguments() ?? [];
+							var n = args.length == 2 && args[1].kind == KindLiteralType && args[1].literal().kind == KindNumericLiteral ? Std.parseInt(args[1].literal().text) : null;
+							if (n == null || n < 1) error('UniformArray<T, N>: N a whole number literal, the length of the array', t);
+							var e = typeOf(args[0]);
+							if (!e.match(TVec(4) | TMat4)) error('UniformArray<T, N>: T a Vec4 or a Mat4 (std140 pads the others to 16 bytes: pack them into Vec4s)', t);
+							TArray(e, n);
+						case other: error('$other is not a shader type (number, boolean, Vec2, Vec3, Vec4, Mat4, Texture2D, UniformArray and type aliases of object types of them)', t);
 					}
 				var alias = from != null ? declaration(from.specifier, from.name, KindTypeAliasDeclaration) : Scope.declared(t.file, n, KindTypeAliasDeclaration);
 				if (alias == null) error('$n is not a shader type (number, boolean, Vec2, Vec3, Vec4, Mat4, Texture2D and type aliases of object types of them)', t);
@@ -953,7 +961,23 @@ class TsAdapter implements ShaderAdapter {
 					xs.push(coerce(expr(v, out, s.fields[i].type), s.fields[i].type, v));
 				}
 				{e: ENew(xs), t: TStruct(s)};
-			case KindArrayLiteralExpression | KindElementAccessExpression: error("arrays are not supported in a shader (yet)", n);
+			case KindElementAccessExpression:
+				// (a uniform array's element, by an index known or not when compiling: a
+				// number's whole part, as Haxe's Std.int)
+				var o = expr(n.expression(), out);
+				var k = expr(n.argumentExpression(), out);
+				var i:SExpr = switch [k.e, k.t] {
+					case [EFloat(f), _] if (Math.ffloor(f) == f): {e: EInt(Std.int(f)), t: TInt};
+					case [_, TInt]: k;
+					case [_, TFloat]: {e: EConvert(k), t: TInt};
+					case _: error('an array is indexed by a number, not a ${Names.typeName(k.t)}', n.argumentExpression());
+				}
+				switch [o.t, i.e] {
+					case [TArray(_, len), EInt(j)] if (j < 0 || j >= len): error('$j is outside the array (0 to ${len - 1})', n.argumentExpression());
+					case [TArray(t, _), _]: {e: EIndex(o, i), t: t};
+					case _: error('a ${Names.typeName(o.t)} is not indexed in a shader (a UniformArray of a uniform block is)', n);
+				}
+			case KindArrayLiteralExpression: error("arrays are not supported in a shader but as a uniform block's field (UniformArray<Vec4, 8>)", n);
 			case KindArrowFunction | KindFunctionExpression: error("a closure is not supported in a shader", n);
 			case _: error("not supported in a shader", n);
 		}

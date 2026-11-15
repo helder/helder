@@ -52,7 +52,8 @@ typedef SceneProps = {
 	boundsHelper:HelperProps,
 	lightHelper:HelperProps,
 	cameraHelper:CameraHelperProps,
-	skeletonHelper:HelperProps
+	skeletonHelper:HelperProps,
+	lod:LodProps
 }
 
 // <lines of={path}/>: the lines (made by the program, its points its own),
@@ -146,7 +147,8 @@ typedef SpritesProps = {
 }
 
 // a light's (light's kind: directional, point, spot, hemisphere; inner and
-// outer a spot's cones, radians)
+// outer a spot's cones, radians; castShadows and its shadow's size, bias,
+// normal offset, radius and strength: Light.castShadows, Light.shadow)
 typedef LightProps = {
 	> NodeProps,
 	?kind:String,
@@ -154,7 +156,24 @@ typedef LightProps = {
 	?intensity:Float,
 	?range:Float,
 	?inner:Float,
-	?outer:Float
+	?outer:Float,
+	?castShadows:Bool,
+	?shadowSize:Int,
+	?shadowBias:Float,
+	?shadowNormalBias:Float,
+	?shadowRadius:Float,
+	?shadowStrength:Float
+}
+
+// <lod levels={[{mesh: hi, until: 0.15}, {mesh: lo}]}/>: a node drawn at
+// its levels of detail (Lod), held within hysteresis; begin and end a
+// visible range (Lod.range: metres from the camera, it and what is under it)
+typedef LodProps = {
+	> NodeProps,
+	?levels:Array<helder.scene.render.Lod.LodLevel>,
+	?hysteresis:Float,
+	?begin:Float,
+	?end:Float
 }
 
 typedef HemisphereProps = {
