@@ -174,8 +174,11 @@ interface SkinSource {
 	function pipeline(doubleSided:Bool):helder.gfx.Pipeline;
 	// the skinned shader's slots, in Renderer.slotsOf's order
 	function slots():Array<Int>;
-	// the node's skin bound for a draw
+	// the node's skin bound for a draw (its joints' count: PbrSkinInfo's, a
+	// shader's that has it; pbr's reads rows' in PbrObject's tint.w)
 	function bind(enc:helder.gfx.Encoder, slots:Array<Int>, node:helder.scene.Node):Void;
+	// the node's skin's joints (the rows of its joints' texture)
+	function rows(node:helder.scene.Node):Float;
 	// the shadow pass's skinned pipeline (made when first asked: only with
 	// Shadows) and its slots (caster, skin, joints)
 	function shadowPipeline():helder.gfx.Pipeline;

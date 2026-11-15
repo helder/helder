@@ -336,7 +336,7 @@ typedef Pbr = {
 @:structInit @:publicFields class PbrObject {
 	var model:Mat4;
 	var normalMatrix:Mat4;
-	var tint:Vec4; // rgb: the node's tint (MeshRenderer.tint)
+	var tint:Vec4; // rgb: the node's tint (MeshRenderer.tint); w: skinned, its joints' count (else 1)
 	// the draw's lights (Renderer: the eight that light its bounds most),
 	// rows of PbrLights, -1 after the last
 	var lights0:Vec4;
@@ -1414,9 +1414,11 @@ final pbr = slots({
 		var pos = m.position({pos: v.pos, normal: v.normal, uv: v.uv}, p);
 		var nr = v.normal;
 		if (m.options.skinned) {
-			// (moved by its four joints' matrices, weighted)
-			var j0 = joint(p.jointMatrices, v.joints.x, p.skin.rows.x), j1 = joint(p.jointMatrices, v.joints.y, p.skin.rows.x);
-			var j2 = joint(p.jointMatrices, v.joints.z, p.skin.rows.x), j3 = joint(p.jointMatrices, v.joints.w, p.skin.rows.x);
+			// (moved by its four joints' matrices, weighted; their count
+			// PbrObject's tint.w: no block of the skin's, a slot kept for the
+			// physical shaders' maps, sixteen in all)
+			var j0 = joint(p.jointMatrices, v.joints.x, p.object.tint.w), j1 = joint(p.jointMatrices, v.joints.y, p.object.tint.w);
+			var j2 = joint(p.jointMatrices, v.joints.z, p.object.tint.w), j3 = joint(p.jointMatrices, v.joints.w, p.object.tint.w);
 			var q = vec4(pos, 1), n4 = vec4(v.normal, 0);
 			pos = ((j0 * q) * v.weights.x + (j1 * q) * v.weights.y + (j2 * q) * v.weights.z + (j3 * q) * v.weights.w).xyz;
 			nr = ((j0 * n4) * v.weights.x + (j1 * n4) * v.weights.y + (j2 * n4) * v.weights.z + (j3 * n4) * v.weights.w).xyz;

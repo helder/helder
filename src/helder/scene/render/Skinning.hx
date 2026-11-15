@@ -96,10 +96,13 @@ class Skinning implements RenderFeature implements RenderFeature.SkinSource {
 	public function prepassUniforms():Array<helder.gfx.shader.Shader.UniformBlock>
 		return PbrPrepassSkinnedShader.uniforms;
 
+	public function rows(node:Node):Float
+		return Skin.of(node).joints.length;
+
 	public function bind(enc:Encoder, slots:Array<Int>, node:Node) {
 		var skin = Skin.of(node);
 		info.setFloat(0, skin.joints.length);
-		enc.setUniforms(slots[5], info);
+		if (slots[5] >= 0) enc.setUniforms(slots[5], info);
 		enc.setTexture(slots[6], skin.texture, nearest);
 	}
 }

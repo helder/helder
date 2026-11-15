@@ -882,8 +882,8 @@ export const pbr = slots({
 		let pos = m.position({pos: v.pos, normal: v.normal, uv: v.uv}, p);
 		let nr = v.normal;
 		if (m.options.skinned) {
-			const j0 = joint(p.jointMatrices!, v.joints!.x, p.skin!.rows.x), j1 = joint(p.jointMatrices!, v.joints!.y, p.skin!.rows.x);
-			const j2 = joint(p.jointMatrices!, v.joints!.z, p.skin!.rows.x), j3 = joint(p.jointMatrices!, v.joints!.w, p.skin!.rows.x);
+			const j0 = joint(p.jointMatrices!, v.joints!.x, p.object!.tint.w), j1 = joint(p.jointMatrices!, v.joints!.y, p.object!.tint.w);
+			const j2 = joint(p.jointMatrices!, v.joints!.z, p.object!.tint.w), j3 = joint(p.jointMatrices!, v.joints!.w, p.object!.tint.w);
 			const q = vec4(pos, 1), n4 = vec4(v.normal, 0);
 			pos = j0.mul(q).mul(v.weights!.x).add(j1.mul(q).mul(v.weights!.y)).add(j2.mul(q).mul(v.weights!.z)).add(j3.mul(q).mul(v.weights!.w)).xyz;
 			nr = j0.mul(n4).mul(v.weights!.x).add(j1.mul(n4).mul(v.weights!.y)).add(j2.mul(n4).mul(v.weights!.z)).add(j3.mul(n4).mul(v.weights!.w)).xyz;

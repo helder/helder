@@ -723,7 +723,7 @@ class Renderer {
 				node = Node.NONE;
 			} else if (d.node != node) {
 				var model = d.node.worldMatrix(), t = d.tint;
-				writeObject(model, t, batchLights, b * FrameLights.PER_DRAW);
+				writeObject(model, t, batchLights, b * FrameLights.PER_DRAW, skin != null ? skin.rows(d.node) : 1);
 				enc.setUniforms(slots[1], objectBytes);
 				node = d.node;
 			}
@@ -772,12 +772,12 @@ class Renderer {
 		return m.shader != null ? m.shader : physical != null ? physical.shaderOf(m) : null;
 
 	// (a node's block into objectBytes: its matrices, its tint, its light
-	// list (lights' rows from at; none: -1s))
-	@:allow(helder.scene.render) function writeObject(model:Mat4, t:Vec3, ?lights:Array<Float>, at = 0) {
+	// list (lights' rows from at; none: -1s), w: a skin's joints' count)
+	@:allow(helder.scene.render) function writeObject(model:Mat4, t:Vec3, ?lights:Array<Float>, at = 0, w = 1.0) {
 		var o = objectBlock;
 		o.model = model;
 		o.normalMatrix = MathTools.normalMatrix(model);
-		o.tint = new Vec4(t.x, t.y, t.z, 1);
+		o.tint = new Vec4(t.x, t.y, t.z, w);
 		if (lights != null) {
 			o.lights0 = new Vec4(lights[at], lights[at + 1], lights[at + 2], lights[at + 3]);
 			o.lights1 = new Vec4(lights[at + 4], lights[at + 5], lights[at + 6], lights[at + 7]);

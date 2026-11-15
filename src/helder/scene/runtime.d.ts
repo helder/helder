@@ -11,7 +11,9 @@
 // culling (Occlusion), lines with width and debug drawing
 // (Lines, LineRenderer, DebugDraw, the helpers), rays cast at triangles
 // (world.raycast: Hit, HitList, RaycastOptions, Bvh), text in the world
-// (Text3D), input
+// (Text3D), lights at scale and their shadows (ClusteredLights and its
+// grid, Clusters; Shadows' atlas, a light's castShadows and shadow), levels
+// of detail (Lod, InstanceCulling), input
 // actions (InputMap, Bindings), a fixed simulation step, and what a scene is
 // drawn with: a window, its device (or a headless one), the app's loop. A
 // program imports helder/scene, not this module.
@@ -22,7 +24,7 @@ import type {Asset, FontFile, Image} from "helder/asset";
 import type {Mat4, Quat, Vec2, Vec3, Vec4} from "helder/gfx";
 import type {Node} from "helder/scene";
 
-declare const __haxe: {Mesh: "helder.scene.render.Mesh", Encoder: "helder.gfx.Encoder", World: "helder.scene.World", Camera: "helder.scene.Camera", Light: "helder.scene.render.Light", Renderer: "helder.scene.render.Renderer", Shadows: "helder.scene.render.Shadows", Fog: "helder.scene.render.Fog", Material: "helder.scene.render.Material", UvTransform: "helder.scene.render.Material.UvTransform", Physical: "helder.scene.render.Physical", Transmission: "helder.scene.render.Transmission", MeshRenderer: "helder.scene.render.MeshRenderer", Shapes: "helder.scene.render.Shapes", Geometry: "helder.scene.render.Geometry", VertexData: "helder.scene.render.VertexData", Curve3: "helder.scene.math.Curve3", InstancedMesh: "helder.scene.render.InstancedMesh", Sprites: "helder.scene.render.Sprites", Model: "helder.scene.render.Model", MaterialShader: "helder.scene.render.MaterialShader", PostProcess: "helder.scene.render.PostProcess", Ssao: "helder.scene.render.Ssao", Dof: "helder.scene.render.Dof", Outline: "helder.scene.render.Outline", Lut: "helder.scene.render.Lut", ViewBuffers: "helder.scene.render.ViewBuffers", Ssr: "helder.scene.render.Ssr", MotionBlur: "helder.scene.render.MotionBlur", GodRays: "helder.scene.render.GodRays", Taa: "helder.scene.render.Taa", Smaa: "helder.scene.render.Smaa", Occlusion: "helder.scene.render.Occlusion", Lines: "helder.scene.render.Lines", LineRenderer: "helder.scene.render.LineRenderer", DebugDraw: "helder.scene.render.DebugDraw", Helper: "helder.scene.render.Helper", AxesHelper: "helder.scene.render.AxesHelper", GridHelper: "helder.scene.render.GridHelper", BoundsHelper: "helder.scene.render.BoundsHelper", LightHelper: "helder.scene.render.LightHelper", CameraHelper: "helder.scene.render.CameraHelper", SkeletonHelper: "helder.scene.render.SkeletonHelper", Hit: "helder.scene.render.Hit", HitList: "helder.scene.render.Hit.HitList", RaycastOptions: "helder.scene.render.Hit.RaycastOptions", Raycaster: "helder.scene.render.Raycaster", Bvh: "helder.scene.render.Bvh", Text3D: "helder.scene.render.Text3D", InputMap: "helder.scene.input.InputMap", Bindings: "helder.scene.input.Bindings", FixedStep: "helder.scene.FixedStep", Device: "helder.gfx.Device", Surface: "helder.os.Surface", Window: "helder.os.Window", App: "helder.os.App", Event: "helder.os.Event", Script: "helder.scene.Script", __module: "helder.scene.TypeScript"};
+declare const __haxe: {Mesh: "helder.scene.render.Mesh", Encoder: "helder.gfx.Encoder", World: "helder.scene.World", Camera: "helder.scene.Camera", Light: "helder.scene.render.Light", Renderer: "helder.scene.render.Renderer", Shadows: "helder.scene.render.Shadows", Fog: "helder.scene.render.Fog", Material: "helder.scene.render.Material", UvTransform: "helder.scene.render.Material.UvTransform", Physical: "helder.scene.render.Physical", Transmission: "helder.scene.render.Transmission", MeshRenderer: "helder.scene.render.MeshRenderer", Shapes: "helder.scene.render.Shapes", Geometry: "helder.scene.render.Geometry", VertexData: "helder.scene.render.VertexData", Curve3: "helder.scene.math.Curve3", InstancedMesh: "helder.scene.render.InstancedMesh", Sprites: "helder.scene.render.Sprites", Model: "helder.scene.render.Model", MaterialShader: "helder.scene.render.MaterialShader", PostProcess: "helder.scene.render.PostProcess", Ssao: "helder.scene.render.Ssao", Dof: "helder.scene.render.Dof", Outline: "helder.scene.render.Outline", Lut: "helder.scene.render.Lut", ViewBuffers: "helder.scene.render.ViewBuffers", Ssr: "helder.scene.render.Ssr", MotionBlur: "helder.scene.render.MotionBlur", GodRays: "helder.scene.render.GodRays", Taa: "helder.scene.render.Taa", Smaa: "helder.scene.render.Smaa", Occlusion: "helder.scene.render.Occlusion", Lines: "helder.scene.render.Lines", LineRenderer: "helder.scene.render.LineRenderer", DebugDraw: "helder.scene.render.DebugDraw", Helper: "helder.scene.render.Helper", AxesHelper: "helder.scene.render.AxesHelper", GridHelper: "helder.scene.render.GridHelper", BoundsHelper: "helder.scene.render.BoundsHelper", LightHelper: "helder.scene.render.LightHelper", CameraHelper: "helder.scene.render.CameraHelper", SkeletonHelper: "helder.scene.render.SkeletonHelper", Hit: "helder.scene.render.Hit", HitList: "helder.scene.render.Hit.HitList", RaycastOptions: "helder.scene.render.Hit.RaycastOptions", Raycaster: "helder.scene.render.Raycaster", Bvh: "helder.scene.render.Bvh", Text3D: "helder.scene.render.Text3D", ClusteredLights: "helder.scene.render.ClusteredLights", Clusters: "helder.scene.render.Clusters", Lod: "helder.scene.render.Lod", InstanceCulling: "helder.scene.render.InstanceCulling", InputMap: "helder.scene.input.InputMap", Bindings: "helder.scene.input.Bindings", FixedStep: "helder.scene.FixedStep", Device: "helder.gfx.Device", Surface: "helder.os.Surface", Window: "helder.os.Window", App: "helder.os.App", Event: "helder.os.Event", Script: "helder.scene.Script", __module: "helder.scene.TypeScript"};
 
 // What a node draws (node.mesh): primitives, each a vertex buffer in the
 // renderer's layout (PbrVertex: position, normal, uv; 32 bytes a vertex),
@@ -89,6 +91,9 @@ export type LineJoin = number;
 // a line's ends
 export type LineCap = number;
 
+// what kind of light a Light is
+export type LightKind = number;
+
 export type AnyShader = unknown;
 
 export type BoxOptions = { flat?: boolean; tangents?: boolean; width?: number; height?: number; depth?: number; widthSegments?: number; heightSegments?: number; depthSegments?: number };
@@ -96,6 +101,9 @@ export type BoxOptions = { flat?: boolean; tangents?: boolean; width?: number; h
 export type CapsuleOptions = { flat?: boolean; tangents?: boolean; radius?: number; height?: number; capSegments?: number; radialSegments?: number; heightSegments?: number };
 
 export type CircleOptions = { flat?: boolean; tangents?: boolean; radius?: number; segments?: number; thetaStart?: number; thetaLength?: number };
+
+// ClusteredLights' options (new ClusteredLights(device, options))
+export type ClusteredOptions = { maxLights?: number; grid?: { x?: number; y?: number; z?: number }; maxPerCell?: number; gpu?: boolean };
 
 export type ConeOptions = { flat?: boolean; tangents?: boolean; radius?: number; height?: number; radialSegments?: number; heightSegments?: number; openEnded?: boolean; thetaStart?: number; thetaLength?: number };
 
@@ -117,9 +125,20 @@ export type GridOptions = { size?: number; divisions?: number; fade?: number; co
 
 export type LatheOptions = { flat?: boolean; tangents?: boolean; segments?: number; phiStart?: number; phiLength?: number };
 
+// a light's shadow (light.shadow = {size: 512, radius: 1.5}; a field left
+// out: Shadows' default)
+export type LightShadow = { size?: number; bias?: number; normalBias?: number; radius?: number; strength?: number; cached?: boolean };
+
 // what Lines are made with (each optional): 2 pixels wide, mitred, butt
 // ends, solid, depth tested, opaque, tone mapped, none drawn
 export type LinesOptions = { segments?: boolean; width?: number; widthUnits?: LineUnits; join?: LineJoin; cap?: LineCap; dash?: number; gap?: number; dashOffset?: number; closed?: boolean; onTop?: boolean; transparent?: boolean; toneMapped?: boolean; count?: number };
+
+// LocalShadows' options (shadows.local(options))
+export type LocalShadowsOptions = { atlas?: number; maxLocal?: number; tileSize?: number };
+
+// a level of a Lod ({mesh: m, until: 0.1}): its mesh, the least share of
+// the view's height it is drawn at (null: 0, however far)
+export type LodLevel = { mesh: Mesh; until?: number };
 
 // Material.matcap's: also the matcap, a lit sphere's picture (sRGB)
 export type MatcapOptions = { name?: string; color?: Vec4; texture?: number; metallic?: number; roughness?: number; emissive?: Vec3; doubleSided?: boolean; blend?: boolean; blending?: number; alphaCutoff?: number; fog?: boolean; castShadows?: boolean; toneMapped?: boolean; matcap: number };
@@ -262,9 +281,13 @@ export declare class Camera {
 //                 HemisphereLight, the renderer's sky and ground (which a
 //                 world without one uses)
 //
-// The renderer takes the world's first directional light (shadowed by
-// Shadows), its first hemisphere light, and up to four point and spot
-// lights.
+// The renderer takes the world's first directional light (its cascades
+// Shadows'), its first hemisphere light, and up to MAX_LIGHTS point and
+// spot lights a frame (the nearest the view and the brightest): each draw
+// lit by the eight that reach its bounds most, or each pixel by its
+// cell's with ClusteredLights. A light casts shadows with Shadows when
+// castShadows (a directional light by default, a point or spot light when
+// asked: Shadows' tiles, within its budget), filtered as shadow says.
 export declare class Light {
 	static readonly KIND: unknown;
 	static directional(color: Vec3, intensity: number): Light;
@@ -277,7 +300,7 @@ export declare class Light {
 	static hemisphere(sky: Vec3, ground: Vec3, intensity?: number): Light;
 	static attach(node: Node, light: Light): Light;
 	static of(node: Node): Light | null;
-	readonly kind: number;
+	readonly kind: LightKind;
 	color: Vec3;
 	intensity: number;
 	// a point or spot light's reach (scene units)
@@ -287,26 +310,37 @@ export declare class Light {
 	outerCone: number;
 	// a hemisphere light's colour from below (linear; color is the sky's)
 	groundColor: Vec3;
+	// whether it casts shadows (Shadows): a directional light's first of
+	// the world (its cascades), a point or spot light's (its tiles of the
+	// atlas: a spot's one, a point's six) while within shadows.maxLocal
+	castShadows: boolean;
+	// its shadow's size and filter (null: Shadows' defaults)
+	shadow: LightShadow | null;
 	// whether it shines from a point (a point or a spot light)
 	readonly local: boolean;
 }
 
 // Draws a world's meshes (MeshRenderer) as seen by a camera, lit by its
-// first directional Light and up to four point Lights (a world without
-// lights: the renderer's sun) and an ambient from the sky and the ground,
-// with PbrShader. The passes a frame records, in order (all but the main
-// one opted in): the shadow maps (Shadows), the view buffers' prepass
-// (ViewBuffers: depth, normals, roughness and selection, for post's
-// effects), the screen's ambient occlusion (post.ao: Ssao), the main pass,
-// then the AfterPass hooks; post (PostProcess) after, into the image shown.
-// Two stages:
+// first directional Light (a world without lights: the renderer's sun),
+// its point and spot Lights (the frame's MAX_LIGHTS most important to the
+// view, FrameLights: each draw lit by the eight that reach it most, or
+// each pixel by its cell's with ClusteredLights) and an ambient from the
+// sky and the ground, with PbrShader. The passes a frame records, in order
+// (all but the main one opted in): instance culling (InstanceCulling: a
+// compute pass where the device has one), the shadow atlas (Shadows), the
+// lights' cells (ClusteredLights: a compute pass where it can), the view
+// buffers' prepass (ViewBuffers: depth, normals, roughness and selection,
+// for post's effects), the screen's ambient occlusion (post.ao: Ssao), the
+// main pass, then the AfterPass hooks; post (PostProcess) after, into the
+// image shown. Two stages:
 //
 //   extract   the world's meshes into a flat draw list: the nodes shown,
-//             their bounds inside the camera's view, a draw per primitive
-//             sorted by pipeline, material and primitive; runs of one
-//             primitive become one instanced draw (PbrInstancedShader:
-//             the matrices in an instance buffer); the seam for threads
-//             and GPU culling later
+//             their level (Lod) and their visible range, their bounds
+//             inside the camera's view, a draw per primitive sorted by
+//             pipeline, material and primitive; runs of one primitive
+//             become one instanced draw (PbrInstancedShader: the matrices
+//             in an instance buffer), each run's light list from its
+//             bounds; the seam for threads
 //   record    the list as one depth-tested pass into the caller's encoder
 //             (see-through materials last, farthest first, blended),
 //             each draw's matrices and material in uniform blocks through
@@ -323,11 +357,12 @@ export declare class Renderer {
 	// where a variant's slots of a material's own blocks begin (slotsOf's length)
 	static readonly OWN: number;
 	// a shader's slots for its blocks and textures, in the renderer's order:
-	// frame, object (-1: none), material, base colour, shadow map, skin,
-	// joints, metallic-roughness, emissive, occlusion, normal, the far shadow
-	// map, the environment map, the screen's ambient occlusion; a physical
-	// shader's (0: one, -1: not), its two maps, the frame behind
-	// (Transmission's); then a material's own blocks (OWN on)
+	// frame, object (-1: none), material, base colour, shadow atlas, skin,
+	// joints, metallic-roughness, emissive, occlusion, normal, the cluster map
+	// (ClusteredLights'), the environment map, the screen's ambient
+	// occlusion; a physical shader's (0: one, -1: not), its two maps, the
+	// frame behind (Transmission's); the frame's lights; then a material's
+	// own blocks (OWN on)
 	static slotsOf(uniforms: Array<{ name: string; binding: number; size: number }>, textures: Array<{ name: string; binding: number }>): number[];
 	readonly device: Device;
 	// without a Light in the world: towards the light (normalized when
@@ -405,73 +440,99 @@ export declare class Renderer {
 	// see-through surfaces too: what is drawn over everything), AfterPass
 	// after it (passes of your own: an overlay)
 	inject(point: number, f: (arg0: Encoder, arg1: unknown) => void): void;
-	// turns on an optional feature (Shadows, Skinning, NormalMaps, Sky, Environment); returns the renderer
+	// turns on an optional feature (Shadows, Skinning, NormalMaps, Sky,
+	// Environment, ClusteredLights, InstanceCulling); returns the renderer
 	use(feature: unknown): Renderer;
 	// records the frame's pass: world seen by camera (aspect: the target's,
 	// by default the device's)
 	draw(enc: Encoder, world: World, camera: Camera, aspect?: number): void;
-	// the draw list: each shown mesh inside the view, a draw per primitive, sorted
+	// the draw list: each shown mesh inside the view (at its level: Lod; in
+	// its visible range), a draw per primitive, sorted (seen from the centre
+	// of the view's near plane: the camera, a near plane's distance off)
 	extract(world: World, viewProj: Mat4): void;
 	dispose(): void;
 }
 
-// Shadow maps for the directional light, opted in (renderer.use(new
-// Shadows(device))): before the frame's pass, every shown mesh drawn from
-// the light into size x size R32F targets (the casters of one primitive
-// in one instanced draw, their matrices in an instance buffer written once
-// for every cascade), which the standard material then reads with a 3x3
-// percentage-closer filter, or a soft one (soft: a wider disc of taps,
-// sharper where the shadow meets its caster). One cascade: an
-// orthographic view fitted to the casters' bounds. Two (Shadows.cascaded,
-// whose fitting code a program without it does not link):
-// the first fitted to the camera's view up to split metres (its bounding
-// sphere, moved by whole texels: steady as the camera moves), sharp near
-// the camera, the second the whole scene's, read beyond the first. A
-// program that never makes a Shadows links none of this but the
-// material's lookup of a 1x1 map that shadows nothing.
+// The shadow system, opted in (renderer.use(new Shadows(device))): one
+// atlas (an R32F texture, each texel a depth from its light, and its depth
+// buffer) holding, as tiles, the sun's cascades and, opted in, the point
+// and spot lights' shadows, drawn before the frame's pass and read by the
+// standard material.
+//
+//   the sun     the world's first directional light that casts
+//               (Light.castShadows, a directional light's default; the
+//               renderer's sun without lights): one cascade of size x size
+//               fitted to the casters' bounds, or two (Shadows.cascaded,
+//               whose fitting code a program without it does not link):
+//               the first fitted to the camera's view up to split metres
+//               (its bounding sphere, moved by whole texels: steady as the
+//               camera moves), sharp near the camera, the second the whole
+//               scene's, read beyond the first; a 3x3 percentage-closer
+//               filter or a soft one (soft: a disc of taps, a blocker
+//               search, sharper where the shadow meets its caster)
+//   local       shadows.local({atlas, maxLocal, tileSize}): the point and
+//               spot lights that cast, their tiles in a square of the atlas
+//               beside the cascades (LocalShadows: a spot light's one, a
+//               point light's six, a budget, kept while nothing moves); a
+//               program that never asks links none of it
+//
+// The casters: every shown mesh whose material casts (Material.castShadows,
+// InstancedMesh.castShadows), a primitive's in one instanced draw a tile
+// (their matrices in an instance buffer written once for every tile), a
+// local tile's culled by its frustum, each tile's draws kept to its
+// rectangle (ShadowShader). Nothing is allocated a frame. A program that
+// never makes a Shadows links none of this but the material's lookup of a
+// 1x1 map that shadows nothing.
 export declare class Shadows {
-	// one cascade
+	// one cascade of size texels
 	constructor(device: Device, size?: number);
 	// two cascades, the first reaching split metres from the camera
 	static cascaded(device: Device, size?: number, split?: number): Shadows;
+	// the local lights' tiles a frame at most (PbrLights' tile arrays)
+	static readonly MAX_TILES: number;
 	readonly device: Device;
+	// a cascade's tile, in texels
 	readonly size: number;
 	// 1, or 2 (Shadows.cascaded)
 	readonly cascades: number;
 	// how far from the camera the first of two cascades reaches (metres)
 	split: number;
-	// the depth offset against shadow acne (in the whole scene's map's 0..1
-	// depth; the first of two cascades', as many of its texels)
+	// the sun's depth offset against shadow acne (in the whole scene's map's
+	// 0..1 depth; the first of two cascades', as many of its texels)
 	bias: number;
 	// the shadows' strength, 0 (none) to 1 (no direct light at all)
 	strength: number;
-	// the first cascade's map (one cascade: the only one), the second's
-	readonly map: number;
-	readonly mapFar: number;
-	// the soft filter (soft): the widest penumbra's radius in metres (0: the
-	// 3x3 filter), its taps a point (8 for phones, 16, 32), and how much
-	// the penumbra widens a metre from its caster (0: the radius
+	// the sun's soft filter (soft): the widest penumbra's radius in metres
+	// (0: the 3x3 filter), its taps a point (8 for phones, 16, 32), and how
+	// much the penumbra widens a metre from its caster (0: the radius
 	// everywhere, no blocker search)
 	softRadius: number;
 	softSamples: number;
 	softSpread: number;
-	// the last frame's draws into the maps (every cascade's: a primitive's
-	// casters one instanced draw, a skinned caster one draw)
+	// the point and spot lights' shadows (local: null without)
+	readonly locals: unknown | null;
+	// the atlas (made again, wider, when a local light first casts) and its size
+	readonly atlas: number;
+	readonly atlasWidth: number;
+	readonly atlasHeight: number;
+	// the last frame's draws into the atlas (every tile's: a primitive's
+	// casters one instanced draw a tile, a skinned caster one draw)
 	readonly draws: number;
-	// the last frame's light view-projections (the first cascade's, the second's)
+	// the last frame's sun's view-projections (the first cascade's, the second's)
 	readonly viewProj: Mat4;
 	readonly viewProjFar: Mat4;
-	// the soft filter on (returns the shadows): taps on a disc out to radius
-	// metres, samples a point (8: phones; 16; 32), and with a spread a
-	// blocker search first, the penumbra growing by spread a metre from its
-	// caster up to the radius (contact hardening: PCSS); spread 0, the
+	// the point and spot lights' shadows on (returns the shadows): their
+	// tiles in a square of the atlas atlas texels wide (1024), at most
+	// maxLocal lights a frame (4), a spot light's tile tileSize texels (512;
+	// a point light's faces half); the lights that cast, Light.castShadows
+	local(options?: LocalShadowsOptions): Shadows;
+	// the sun's soft filter on (returns the shadows): taps on a disc out to
+	// radius metres, samples a point (8: phones; 16; 32), and with a spread
+	// a blocker search first, the penumbra growing by spread a metre from
+	// its caster up to the radius (contact hardening: PCSS); spread 0, the
 	// radius everywhere
 	soft(radius?: number, samples?: number, spread?: number): Shadows;
 	attach(renderer: Renderer): void;
-	shadowFrame(): unknown;
-	// the maps' passes: the world's shown meshes that cast (Material.castShadows)
-	// seen from a light shining along -toLight, the map fitted to them
-	render(enc: Encoder, world: World, toLight: Vec3, skins: unknown | null, view: unknown): void;
 	dispose(): void;
 }
 
@@ -1042,6 +1103,12 @@ export declare class InstancedMesh {
 	bounds: unknown;
 	// whether it casts shadows (Shadows; its materials' castShadows too)
 	castShadows: boolean;
+	// its levels of detail (InstanceCulling: each instance drawn at the one
+	// its share of the view's height picks, Lod's thresholds; null: its mesh)
+	levels: LodLevel[] | null;
+	// counted up at each change (Shadows: a cached tile drawn again when a
+	// set it holds changed)
+	readonly version: number;
 	// room for capacity instances (the data kept, new ones at the origin, white)
 	resize(capacity: number): void;
 	// marks the data written directly as changed (the setters do)
@@ -2164,6 +2231,177 @@ export declare class Text3D extends InstancedMesh {
 	readonly node: Node;
 	// (its instance's matrix: its node's, turned to the camera when billboard)
 	prepare(viewProj: Mat4): void;
+}
+
+// Clustered lighting (Forward+), opted in for scenes of many lights
+// (renderer.use(new ClusteredLights(device, {maxLights: 256}))): the view
+// cut into a grid of cells (Clusters: grid.x by grid.y tiles, grid.z slices
+// of depth growing away from the camera), each cell listing the frame's
+// lights that reach it (at most maxPerCell), and each pixel lit by its
+// cell's lights instead of its draw's eight. The lists and the frame's
+// lights (up to maxLights, the renderer's FrameLights: the most important
+// to the view) go into one texture, the cluster map (R32F: each cell its
+// count then its lights' rows, then a row a light), read by pbr's light
+// loop where frame.clusters.x is on: no variant of any material more, no
+// uniform block past GL ES 3.0's 16 KB or Metal's 4 KB (PbrLights' 32 rows
+// stay the draws'), one texture more (a pipeline's slots are 16), so it
+// runs on WebGL2.
+//
+// Where the device has compute (Device.has(Compute)) the cells are
+// assigned on the GPU (ClusterShader: a dispatch a frame, an invocation a
+// cell, the lights copied in from a storage buffer), else on the CPU
+// (Clusters.assign, then the map uploaded): the
+// same test in the same order, so the same lists. Shadowed local lights
+// take part with their tiles (Shadows). The camera is perspective. Nothing
+// is allocated a frame.
+export declare class ClusteredLights {
+	// options: maxLights (256), grid ({x: 16, y: 9, z: 24}), maxPerCell (32),
+	// gpu (true: on the GPU where the device can)
+	constructor(device: Device, options?: ClusteredOptions);
+	readonly device: Device;
+	// the frame's lights it lights with at most
+	readonly maxLights: number;
+	// whether its cells are assigned on the GPU (the device has compute and
+	// gpu was not turned off), else on the CPU
+	readonly gpu: boolean;
+	// the grid and its lists (the CPU's assignment, the map's layout)
+	readonly clusters: Clusters;
+	// the last frame's lights, its full cells' lights left out (the CPU's only)
+	readonly lights: number;
+	readonly overflow: number;
+	// the CPU's last assignment, in ms (the GPU's: 0)
+	readonly assignMs: number;
+	attach(renderer: Renderer): void;
+	dispose(): void;
+}
+
+// The view's grid of cells (froxels: tiles across the view, slices of
+// depth growing exponentially from the camera) and the lights that reach
+// each, on the CPU (ClusteredLights' path without compute; its compute
+// path, ClusterShader, does the same work a cell an invocation). A light
+// reaches a cell when its sphere (its range about it) meets the cell's box
+// in the view; a cell lists the first perCell that do, in the frame's
+// order. The lists are the cluster map's texels (map, R32F: a row a tile's
+// row and slice, a cell a block of perCell + 1 texels: its count, then
+// its lights' rows). Each light is tested against the cells its sphere's
+// bounds touch (a few of the grid, not all of it); assign allocates
+// nothing.
+export declare class Clusters {
+	constructor(tilesX?: number, tilesY?: number, slices?: number, perCell?: number, lights?: number);
+	readonly tilesX: number;
+	readonly tilesY: number;
+	readonly slices: number;
+	readonly perCell: number;
+	// the cluster map: its width (tilesX * (perCell + 1), 12 at least) and
+	// height (tilesY * slices, then lights), its first light's row, its texels
+	readonly width: number;
+	readonly height: number;
+	readonly lights: number;
+	readonly lightRow: number;
+	readonly map: Uint8Array;
+	// the last assign's lens (as ClusterGrid's: the slopes, the near depth, a slice's step of log depth)
+	readonly slopeX: number;
+	readonly slopeY: number;
+	readonly near: number;
+	readonly step: number;
+	// the last assign's lists that were full (a light left out of a cell)
+	readonly overflow: number;
+	// the lens for a perspective projection, its slices from near to far
+	// (each slice's depths, each tile's slopes: worked out once a frame)
+	lens(projection: Mat4, near: number, far: number): void;
+	// a cell's count, its k-th light's row
+	count(x: number, y: number, z: number): number;
+	light(x: number, y: number, z: number, k: number): number;
+	// each cell's lights: of the count lights at (xs, ys, zs) (in the
+	// world, their ranges rs), seen through view (the world to the view)
+	assign(view: Mat4, xs: number[], ys: number[], zs: number[], rs: number[], count: number): void;
+	// whether a sphere in the view (centre c, radius r) meets cell (x, y, z)'s
+	// box: ClusterShader's test, the same numbers
+	reaches(x: number, y: number, z: number, cx: number, cy: number, cz: number, r: number): boolean;
+}
+
+// Levels of detail, a component of a node: its meshes from the finest to
+// the coarsest, each drawn while the node covers at least its `until` of
+// the view's height (its bounds' sphere, Babylon's screen coverage: the
+// same at any field of view or resolution), the last one's 0 by default
+// (drawn however far; an until past 0: beyond it nothing is drawn). A
+// level holds within a band of hysteresis about its threshold (0.1: 5%
+// each way), so a node at the edge does not flicker between two. The
+// renderer picks the level as it extracts the frame's draws (Lod.pick:
+// set when a program first attaches one, so a program without links
+// none of this); nodes of one level and material still batch.
+//
+//   Lod.attach(world.node("tree"), [{mesh: hi, until: 0.15}, {mesh: mid, until: 0.04}, {mesh: lo}]);
+//
+// A visible range (Lod.range: Godot's, three's LOD with nothing past it)
+// draws a node and what is under it only while the camera is between
+// begin and end metres from it: a cluster of nodes swapped for one far
+// off (HLOD). The level is the last camera's: a world drawn by several
+// cameras keeps one level a node.
+export declare class Lod {
+	constructor(levels: LodLevel[], hysteresis?: number);
+	static readonly KIND: unknown;
+	static readonly RANGE: unknown;
+	// the levels on node (its MeshRenderer the first's, made if it has none)
+	static attach(node: Node, levels: LodLevel[], hysteresis?: number): Lod;
+	static of(node: Node): Lod | null;
+	// node and what is under it drawn only while the camera is begin to end
+	// metres from it
+	static range(node: Node, begin: number, end: number): unknown;
+	// a node's mesh seen through viewProj from eye: its level's (Lod), null
+	// past its last level or out of its visible range, else mesh
+	static meshOf(node: Node, mesh: Mesh, viewProj: Mat4, eye: Vec3): Mesh | null;
+	// the share of the view's height a sphere (centre x, y, z, radius r)
+	// covers through viewProj: its radius times the projection's vertical
+	// scale (the length of the matrix's second row: the view a rotation)
+	// over its depth (the fourth row's w; 1 for an orthographic camera)
+	static coverageOf(viewProj: Mat4, x: number, y: number, z: number, r: number): number;
+	// a level's threshold (none given: 0, however far)
+	static untilOf(l: LodLevel): number;
+	readonly levels: LodLevel[];
+	// the band about each threshold a level holds within (a share of it)
+	hysteresis: number;
+	// the last level drawn (levels.length: none; -1 before the first frame)
+	readonly level: number;
+	// the last share of the view's height its bounds covered
+	readonly coverage: number;
+	// the level for a coverage, from the last one within its bands
+	// (levels.length: none)
+	choose(coverage: number): number;
+}
+
+// Instanced sets culled one instance at a time, opted in
+// (renderer.use(new InstanceCulling(device))): each InstancedMesh's
+// instances tested against the view (their mesh's bounds' sphere through
+// each one's matrix) and each kept one drawn at its level (the set's
+// levels: Lod's thresholds, a share of the view's height; without, its
+// mesh), so a set of a hundred thousand rocks draws the few thousand in
+// view, the far ones coarse. Where the device has compute and indirect
+// draws (Device.has(Compute), has(Indirect)) it runs on the GPU
+// (CullShader: a dispatch a set, the kept matrices appended to a buffer the
+// draws read, their counts into indirect draws' arguments: no readback),
+// else on the CPU (the same test, the kept ones' matrices uploaded by
+// level). A set it does not take is drawn whole, as without it: one with
+// custom data (its second buffer is not culled with it), a see-through one
+// (its order is its own: Sprites), more than four levels or four
+// primitives a level. Shadows draw every instance at the set's mesh.
+// Nothing is allocated a frame but a set's buffers when first seen or
+// grown.
+export declare class InstanceCulling {
+	// gpu false: on the CPU even where the device has compute
+	constructor(device: Device, gpu?: boolean);
+	static readonly MAX_LEVELS: number;
+	static readonly MAX_PRIMITIVES: number;
+	readonly device: Device;
+	// whether it culls on the GPU (else the CPU)
+	readonly gpu: boolean;
+	// the last frame's instances kept and culled (the CPU's: the GPU's are
+	// on the GPU), and its dispatches
+	readonly kept: number;
+	readonly culled: number;
+	readonly dispatches: number;
+	attach(renderer: Renderer): void;
+	dispose(): void;
 }
 
 // Named actions bound to input (Binding: keys, mouse buttons, screen

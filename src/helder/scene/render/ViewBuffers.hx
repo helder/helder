@@ -237,7 +237,7 @@ class ViewBuffers implements RenderFeature implements RenderFeature.ViewSource {
 				}
 				if (!many && d.node != node) {
 					var model = d.node.worldMatrix(), t = d.tint;
-					r.writeObject(model, t);
+					r.writeObject(model, t, null, 0, skin != null ? skin.rows(d.node) : 1);
 					enc.setUniforms(sl[1], r.objectBytes);
 					node = d.node;
 				}
