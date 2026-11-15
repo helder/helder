@@ -1,13 +1,32 @@
 # The checks (tests/Run.hx: bun run test <lane>), with @hxmc/cli's compiler
 # installed by bun (package.json's dependencies; node runs the compiler's
-# launcher and the test scripts).
-# - headless: the lanes that need no GPU, display or browser (bun run test),
-#   then helder.image's decoders fuzzed for 30 s (image-fuzz);
-# - gfx: the native GPU and audio lanes on Mesa's llvmpipe and Xvfb;
-# - browser: WebGPU, WebGL2, WebAudio and the DOM in headless Chromium, and
-#   helder studio built for the web (studio-web), helder's toolchain as
-#   wasm in a worker there (compiler-web);
-# - android: tests/pack/Hello.hx on an emulator (helder run, adb), the
+# launcher and the test scripts). Each job starts with .github/actions/setup
+# (node, bun, the compilers' caches restored: hxmc's module cache and
+# helder's, keyed by the OS, the job, hxmc's version, the lockfile and the
+# sources) and saves them at its end (.github/actions/save).
+# - changes: what the change touches; one of docs alone (docs/**, **/*.md)
+#   runs only the docs' checks (examples, site) and ci;
+# - headless: the lanes that need no GPU, display or browser (bun run test
+#   headless) but typescript and examples, which are jobs of their own; the
+#   pack lane's Android half with bundletool (PACK_REQUIRE: the runtime
+#   objects required);
+# - typescript: the TypeScript frontend's checks (tests/typescript/run.mjs,
+#   in shards over the runner's cores);
+# - examples: every example built (EXAMPLES_WEB=site: the web builds the
+#   site job makes too left to it), the READMEs against the docs' pages;
+# - site: the examples' pages and the docs built (every web example's
+#   build, an unknown example, region, page or link a failure) and checked
+#   in headless Chromium (bun run site:check, not required);
+# - fuzz (pushes to main, nightly): helder.image's decoders and helder.pdf
+#   fuzzed for 30 s each;
+# - gfx, gfx-apps: the native GPU and audio lanes on Mesa's llvmpipe and
+#   Xvfb (gfx: helder.gfx, 3d, audio, ui, helder run --headless, Wayland;
+#   gfx-apps: the demos, syntax-run, the studio, the story host, the
+#   window lanes and the viewer's);
+# - browser, studio-web: WebGPU, WebGL2, WebAudio and the DOM in headless
+#   Chromium, helder's toolchain as wasm in a worker there (compiler-web);
+#   helder studio built for the web (studio-web) on its own;
+# - android: on an emulator: tests/pack/Hello.hx (helder run, adb), the
 #   screen fixture (tests/pack/Screen.hx: its window, safe area and the
 #   display's frames, a rotation, the background), helder dev's loop there
 #   (tests/os/dev/dev-android.mjs), the cube's window and touches
@@ -16,77 +35,212 @@
 #   web view (tests/platform/webview-android.sh: a page through its scheme
 #   handler, cross-origin isolated, wasm, the bridge's round trip, a
 #   snapshot, examples/todo's web build in it; over a drawn window and on
-#   the whole screen);
-# - ios-simulator: tests/pack/Hello.hx on an iPhone simulator of a macOS
-#   runner (helder run, simctl), the screen fixture, codesign --verify and
-#   plutil; the cube's window and touches (tests/gfx/ios.sh: SimTap's clicks);
-#   the web view (tests/platform/webview-ios.sh, as Android's).
-# - ios-signing: an iPhone's app signed for distribution by helder with a
-#   throwaway identity, checked by codesign and assetutil on a macOS runner.
+#   the whole screen); the APKs' own checks are the headless job's pack lane;
+# - ios-simulator: one iPhone simulator for the job (tests/pack/simulator.sh:
+#   made and booting at the start, while the CLI and the apps build; shared
+#   by the three scripts through HELDER_IOS_SIMULATOR; deleted at the end):
+#   tests/pack/Hello.hx (helder run, simctl), the audio stream, the cube's
+#   window and a tap (tests/gfx/ios.sh: SimTap's clicks), the web view
+#   (tests/platform/webview-ios.sh, as Android's). That is a pull request's
+#   (IOS_SUITE=smoke); pushes to main and the nightly run the full suite:
+#   the assets, the screen fixture, the planets example, UIAccessibility,
+#   the cube's drags, fling and background, the whole-screen web view;
+# - ios-signing: the pack lane's iOS half on a Mac (PACK_ONLY=ios: the
+#   bundles also checked by codesign --verify, plutil -lint and assetutil,
+#   the static checks the simulator scripts made before), then an iPhone's
+#   app signed for distribution by helder with a throwaway identity,
+#   checked by codesign and assetutil;
 # - desktop-macos, desktop-windows: the window lane (and helder's viewer,
 #   apps/viewer), helder/native from TypeScript (typescript-native:
 #   Objective-C, COM) and helder.gfx's shared textures between two
 #   processes (gfx-shared: IOSurface, DXGI), the story host through them
 #   (story-shared) on a macOS and a Windows runner; on macOS the web
 #   view too (tests/platform/webview-macos.sh);
+# - ci: always run, the required jobs' verdict (changes, headless,
+#   typescript, examples, site): one check to require, also when a change
+#   to the docs alone skips the others;
 # - the viewer's releases are release.yml's (a tag viewer-v<version>);
 # - the npm packages' nightlies are npm.yml's.
-# gfx, browser, android, ios-simulator, ios-signing and the desktops are not required
-# (continue-on-error) while the stack is unstable (android and
-# ios-simulator were written without an emulator, a simulator or a Mac:
-# CI is where they run).
+# gfx, gfx-apps, browser, studio-web, android, ios-simulator, ios-signing,
+# fuzz and the desktops are not required (continue-on-error) while the
+# stack is unstable (android and ios-simulator were written without an
+# emulator, a simulator or a Mac: CI is where they run).
 name: ci
 
 on:
   push:
-    branches: ['**']
+    branches: [main]
   pull_request:
+  schedule:
+    # (nightly: the full iOS suite and the fuzzers on main)
+    - cron: '17 3 * * *'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'schedule' && 'nightly' || 'run' }}
   cancel-in-progress: true
 
 jobs:
-  headless:
+  changes:
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.code.outputs.code }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - id: filter
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        uses: dorny/paths-filter@v4
         with:
-          node-version: 24
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile
+          predicate-quantifier: every
+          filters: |
+            code:
+              - '**'
+              - '!docs/**'
+              - '!**/*.md'
+      - id: code
+        run: echo "code=${{ (github.event_name != 'pull_request' && github.event_name != 'push') || steps.filter.outputs.code == 'true' }}" >> "$GITHUB_OUTPUT"
+
+  headless:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - id: setup
+        uses: ./.github/actions/setup
+        with: {cache: headless, node-version: 24}
       - name: Fonts (DejaVu Sans, for text and ui), libEGL and Mesa's llvmpipe
         # (helder test's host build links helder.gfx's libEGL.so.1 when a test
         # reaches the scene; nothing opens a display. llvmpipe: the pack
         # lane's store screenshots, rendered offscreen: STORE_SHOTS_REQUIRE)
         run: sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core fonts-liberation libegl1 libegl-mesa0 libgl1-mesa-dri
       - name: Headless checks
-        # (pack: the Android and iOS runtime objects fetched, their builds
-        # skipped without them: the android job requires them; the SDK's
-        # build tools on the PATH: zipalign, aapt, apksigner)
+        # (pack: the Android and iOS runtime objects fetched and required;
+        # the SDK's build tools on the PATH: zipalign, aapt, apksigner;
+        # bundletool: the App Bundle validated and its APKs built)
+        env:
+          STORE_SHOTS_REQUIRE: 1
+          PACK_REQUIRE: 1
         run: |
           export PATH="$PATH:$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
-          STORE_SHOTS_REQUIRE=1 bun run test -k headless
-      - name: helder.image's decoders fuzzed for 30 s (tests/image/Fuzz.hx)
-        run: bun run test image-fuzz
-      - name: helder.pdf fuzzed for 30 s (tests/pdf/Fuzz.hx)
-        run: bun run test pdf-fuzz
+          curl -sSL --retry 3 -o "$RUNNER_TEMP/bundletool.jar" https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar
+          export BUNDLETOOL="$RUNNER_TEMP/bundletool.jar"
+          bun run test -k headless -x typescript -x examples
+      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+        uses: ./.github/actions/save
+        with: {key: '${{ steps.setup.outputs.key }}'}
 
-  gfx:
+  typescript:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
-    continue-on-error: true
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile
+      - id: setup
+        uses: ./.github/actions/setup
+        with: {cache: typescript, node-version: 24}
+      - name: Fonts and libEGL (the programs rendering headless)
+        run: sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core fonts-liberation libegl1 libegl-mesa0 libgl1-mesa-dri
+      - name: The TypeScript frontend (tests/typescript/run.mjs, sharded)
+        run: bun run test typescript
+      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+        uses: ./.github/actions/save
+        with: {key: '${{ steps.setup.outputs.key }}'}
+
+  examples:
+    needs: changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - id: setup
+        uses: ./.github/actions/setup
+        with: {cache: examples, node-version: 24}
+      - name: Fonts (DejaVu Sans) and libEGL
+        run: sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core fonts-liberation libegl1 libegl-mesa0 libgl1-mesa-dri
+      - name: Every example built, the READMEs against the docs (the web builds the site job makes too, there)
+        env:
+          EXAMPLES_WEB: site
+        run: bun run test examples
+      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+        uses: ./.github/actions/save
+        with: {key: '${{ steps.setup.outputs.key }}'}
+
+  # The examples' pages and the docs (site/, docs/: bun run site), built and
+  # checked, not deployed: helder.build's deploy builds them from main on its
+  # own theme and serves them at helder.build/examples/ and /docs/. Here:
+  # every example that runs in a browser built for the web (the examples
+  # job leaves those builds to this one), the pages and the docs built and
+  # run (an unknown example, region, component, page or heading link fails
+  # the build), then the pages in headless Chromium (bun run site:check:
+  # every card, every demo played, every docs page and the docs' own
+  # examples, the top bar's links on an iPhone's screen; not required, as
+  # the browser job), its screenshots kept a week. SITE_SKIP_DATA: the
+  # examples of fetched models (Sponza's, tens of MB) listed without a Play
+  # button (the examples job builds them).
+  site:
+    needs: changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - id: setup
+        uses: ./.github/actions/setup
+        with: {cache: site, node-version: 24}
+      - name: Fonts (DejaVu Sans, for the ui and text examples), Mesa and Playwright
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core libegl1 libegl-mesa0
+          bun add --no-save playwright@1.56.1
+          bunx playwright install --with-deps chromium > /dev/null
+      - name: Build
+        env:
+          SITE_SKIP_DATA: 1
+        run: bun run site
+      - name: Check (the pages in Chromium)
+        continue-on-error: true
+        run: bun run site:check bin/site-check
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with: {name: site, path: bin/site-check/*.png, retention-days: 7, if-no-files-found: ignore}
+      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+        uses: ./.github/actions/save
+        with: {key: '${{ steps.setup.outputs.key }}'}
+
+  fuzz:
+    needs: changes
+    if: needs.changes.outputs.code == 'true' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - id: setup
+        uses: ./.github/actions/setup
+        with: {cache: fuzz, node-version: 24}
+      - name: helder.image's decoders fuzzed for 30 s (tests/image/Fuzz.hx), helder.pdf for 30 s (tests/pdf/Fuzz.hx)
+        run: bun run test -k image-fuzz pdf-fuzz
+      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+        uses: ./.github/actions/save
+        with: {key: '${{ steps.setup.outputs.key }}'}
+
+  gfx:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - id: setup
+        uses: ./.github/actions/setup
+        with: {cache: gfx}
       - name: System packages
         run: |
           sudo apt-get update -qq
@@ -96,22 +250,50 @@ jobs:
         timeout-minutes: 6
         continue-on-error: true
         run: sudo apt-get install -qqy --no-install-recommends weston wayland-protocols libwayland-dev libwayland-egl1 libxkbcommon0
-      - name: gfx, 3d, audio, ui, helder run --headless, the showcase demos headless, helder.syntax's edits run headless, helder studio headless, the story host against a process a screen, window, the viewer's (Mesa llvmpipe, Xvfb; its release packages), Wayland (a headless weston), the platform's text
-        run: bun run test -k gfx gfx-compute gfx-shared story-shared 3d audio ui-draw headless-run demos syntax-run studio story-host window viewer-window viewer-package wayland dbus system-text system-images canvas-gpu
+      - name: gfx, 3d, audio, ui, helder run --headless, the shared textures and the story host across processes, Wayland (a headless weston), the platform's text and images (Mesa llvmpipe, Xvfb)
+        run: bun run test -k gfx gfx-compute gfx-shared story-shared 3d audio ui-draw headless-run wayland dbus system-text system-images canvas-gpu
       - uses: actions/upload-artifact@v7
         if: always()
-        with: {name: images, path: "bin/gfx/**/*.png\nbin/headless-run/**/*.png\nbin/demos/*.png\nbin/studio-check/*.png\nbin/canvas/*.png\nbin/3d/**/*.png\nbin/ui/**/*.png\nbin/text/*.png\nbin/os/*.png", retention-days: 7, if-no-files-found: ignore}
+        with: {name: images, path: "bin/gfx/**/*.png\nbin/headless-run/**/*.png\nbin/canvas/*.png\nbin/3d/**/*.png\nbin/ui/**/*.png\nbin/text/*.png\nbin/os/*.png", retention-days: 7, if-no-files-found: ignore}
+      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+        uses: ./.github/actions/save
+        with: {key: '${{ steps.setup.outputs.key }}'}
 
-  browser:
+  gfx-apps:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     continue-on-error: true
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile
+      - id: setup
+        uses: ./.github/actions/setup
+        with: {cache: gfx-apps}
+      - name: System packages
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -qqy --no-install-recommends libegl1 libegl-mesa0 libgl1-mesa-dri libgles2 xvfb xauth libasound2t64 fonts-dejavu-core fonts-inter libgtk-3-0t64 dbus at-spi2-core fonts-noto-color-emoji fonts-freefont-ttf libharfbuzz0b libfreetype6 fontconfig libtiff6 libheif1 libheif-plugin-aomdec libraw23t64 osslsigncode desktop-file-utils appstream libenchant-2-2 hunspell-en-us
+      - name: The showcase demos headless, helder.syntax's edits run headless, helder studio headless, the story host, a window, the viewer's (Mesa llvmpipe, Xvfb; its release packages)
+        run: bun run test -k demos syntax-run studio story-host window viewer-window viewer-package
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with: {name: images-apps, path: "bin/demos/*.png\nbin/studio-check/*.png\nbin/os/*.png", retention-days: 7, if-no-files-found: ignore}
+      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+        uses: ./.github/actions/save
+        with: {key: '${{ steps.setup.outputs.key }}'}
+
+  browser:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - id: setup
+        uses: ./.github/actions/setup
+        with: {cache: browser}
       - name: Playwright
         run: |
           set -ex
@@ -119,11 +301,38 @@ jobs:
           sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core poppler-utils libegl1 libegl-mesa0
           bun add --no-save playwright@1.56.1
           bunx playwright install --with-deps chromium > /dev/null
-      - name: gfx, 3d, audio, web and ui in Chromium, helder studio and its compiler in the browser
-        run: bun run test -k gfx-web gfx-compute-web 3d-web audio-web web ui-web canvas-web canvas-doc studio-web compiler-web
+      - name: gfx, 3d, audio, web and ui in Chromium, helder's compiler in the browser
+        run: bun run test -k gfx-web gfx-compute-web 3d-web audio-web web ui-web canvas-web canvas-doc compiler-web
+      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+        uses: ./.github/actions/save
+        with: {key: '${{ steps.setup.outputs.key }}'}
+
+  studio-web:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - id: setup
+        uses: ./.github/actions/setup
+        with: {cache: studio-web}
+      - name: Playwright
+        run: |
+          set -ex
+          sudo apt-get update -qq
+          sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core libegl1 libegl-mesa0
+          bun add --no-save playwright@1.56.1
+          bunx playwright install --with-deps chromium > /dev/null
+      - name: helder studio in the browser
+        run: bun run test studio-web
       - uses: actions/upload-artifact@v7
         if: always()
         with: {name: studio-web, path: "bin/studio-web/*.png\nbin/studio-web/results.md", retention-days: 7, if-no-files-found: ignore}
+      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+        uses: ./.github/actions/save
+        with: {key: '${{ steps.setup.outputs.key }}'}
 
   # Android on an x86-64 emulator with KVM (reactivecircus/android-emulator-runner,
   # API 34, as hxmc's CI): tests/pack/android.sh (helder run --target
@@ -132,31 +341,29 @@ jobs:
   # checked by tests/pack/screen.mjs) and tests/os/dev/dev-android.mjs
   # (helder dev --target android: the APK installed once, two edits swapped
   # into the same process, the state kept). A Pixel 6's profile: a
-  # navigation bar and a camera's cutout, for the insets.
+  # navigation bar and a camera's cutout, for the insets. (The APKs' and the
+  # App Bundle's checks without a device, bundletool's too, are the
+  # headless job's pack lane.)
   android:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     continue-on-error: true
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile
-      - name: The CLI, Android's runtime objects, the APKs and the App Bundle checked (pack; bundletool validate and build-apks)
+      - id: setup
+        uses: ./.github/actions/setup
+        with: {cache: android}
+      - name: The CLI, Android's runtime objects, the device tests' apps (tests/gfx/android, the cube and its touches; tests/os/AndroidTouchTest.hx, a drawn ui's fling)
         env:
           PACK_REQUIRE: 1
-        run: |
-          curl -sSL -o "$RUNNER_TEMP/bundletool.jar" https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar
-          export BUNDLETOOL="$RUNNER_TEMP/bundletool.jar"
-          export PATH="$PATH:$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
-          bun run test pack
-      - name: The device tests' apps (tests/gfx/android, the cube and its touches; tests/os/AndroidTouchTest.hx, a drawn ui's fling)
-        env:
           HXMC_RT_DIR: ${{ github.workspace }}/bin/pack/rt
           HELDER_CACHE: ${{ github.workspace }}/bin/pack/cache
         run: |
+          node src/helder/cli/run.mjs help > /dev/null
+          node tests/pack/runtime.mjs bin/pack/rt
+          mkdir -p bin/pack/cache
           bin/cli/helder build tests/gfx/android --target android-x86_64 -o bin/pack/AndroidTest.apk
           bin/cli/helder build tests/os/AndroidTouchTest.hx --target android-x86_64 -o bin/pack/AndroidTouchTest.apk
       - name: KVM
@@ -200,39 +407,68 @@ jobs:
             bin/pack/*.apk
           retention-days: 7
           if-no-files-found: ignore
+      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+        uses: ./.github/actions/save
+        with: {key: '${{ steps.setup.outputs.key }}'}
 
   # iOS on an iPhone simulator of a macOS runner (Apple silicon: hxmc's
-  # ios-sim-arm64), as hxmc's CI: the pack lane (its bundles checked with
-  # codesign --verify and plutil too, the dev loop against a stand-in
-  # simctl) and tests/pack/ios.sh (a simulator of the newest runtime made,
-  # helder run --target ios -d <it>: booted, installed, launched, the hello
-  # line from simctl launch --console; then tests/pack/Screen.hx in the
-  # background of the script, checked by tests/pack/screen.mjs).
+  # ios-sim-arm64), as hxmc's CI. One simulator for the job: made and
+  # booting first (its first boot on a fresh runner is minutes), while the
+  # CLI and every app the scripts install are built (IOS_BUILD_ONLY, the
+  # three scripts at once); then the scripts on it (HELDER_IOS_SIMULATOR,
+  # IOS_PREBUILT: the builds kept): tests/pack/ios.sh (helder run --target
+  # ios -d <it>: installed, launched, the hello line from the app's output;
+  # the audio stream; full: the assets, tests/pack/Screen.hx checked by
+  # tests/pack/screen.mjs, the planets example, UIAccessibility),
+  # tests/gfx/ios.sh, tests/platform/webview-ios.sh. IOS_SUITE: smoke on a
+  # pull request, full on main and nightly.
   ios-simulator:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: macos-15
     continue-on-error: true
     timeout-minutes: 40
+    env:
+      IOS_SUITE: ${{ github.event_name == 'pull_request' && 'smoke' || 'full' }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile
-      - name: The CLI, the bundles checked (pack)
-        run: bun run test pack
-      - name: Hello on a simulator
+      - name: A simulator, booting while the job builds (tests/pack/simulator.sh)
+        run: echo "HELDER_IOS_SIMULATOR=$(sh tests/pack/simulator.sh create helder-ci)" >> "$GITHUB_ENV"
+      - id: setup
+        uses: ./.github/actions/setup
+        with: {cache: ios-simulator}
+      - name: The CLI and the apps (IOS_BUILD_ONLY)
+        run: |
+          set -u
+          node src/helder/cli/run.mjs help > /dev/null
+          bin/cli/helder build tests/gfx/SimTap.hx -o bin/pack/SimTap &
+          a=$!
+          bin/cli/helder build tests/gfx/ios --target ios-sim -o bin/pack/IosTest.app &
+          b=$!
+          IOS_BUILD_ONLY=1 sh tests/pack/ios.sh bin/cli/helder bin/pack/ios > "$RUNNER_TEMP/build-hello.txt" 2>&1 &
+          c=$!
+          IOS_BUILD_ONLY=1 sh tests/platform/webview-ios.sh bin/cli/helder bin/pack/ios-webview > "$RUNNER_TEMP/build-webview.txt" 2>&1 &
+          d=$!
+          status=0
+          for p in $a $b $c $d; do wait $p || status=1; done
+          cat "$RUNNER_TEMP"/build-*.txt
+          echo "IOS_PREBUILT=1" >> "$GITHUB_ENV"
+          exit $status
+      - name: Hello and the audio stream on the simulator (tests/pack/ios.sh)
+        if: ${{ !cancelled() }}
         run: sh tests/pack/ios.sh bin/cli/helder bin/pack/ios
-      - name: The cube and its touches on a simulator (tests/gfx/ios.sh, SimTap's clicks)
+      - name: The cube and its touches on the simulator (tests/gfx/ios.sh, SimTap's clicks)
         # (also when Hello's step failed: their checks are their own)
         if: ${{ !cancelled() }}
-        run: |
-          bin/cli/helder build tests/gfx/ios --target ios-sim -o bin/pack/IosTest.app
-          bin/cli/helder build tests/gfx/SimTap.hx -o bin/pack/SimTap
-          sh tests/gfx/ios.sh bin/pack/IosTest.app bin/pack/ios-gfx "$PWD/bin/pack/SimTap"
-      - name: The web view on a simulator (tests/platform/webview-ios.sh)
+        run: sh tests/gfx/ios.sh bin/pack/IosTest.app bin/pack/ios-gfx "$PWD/bin/pack/SimTap"
+      - name: The web view on the simulator (tests/platform/webview-ios.sh)
         if: ${{ !cancelled() }}
         run: sh tests/platform/webview-ios.sh bin/cli/helder bin/pack/ios-webview
+      - name: The simulator deleted
+        if: always()
+        run: |
+          cat "${TMPDIR:-/tmp}"/helder-simulator-*.log 2> /dev/null || true
+          [ -z "${HELDER_IOS_SIMULATOR:-}" ] || sh tests/pack/simulator.sh delete "$HELDER_IOS_SIMULATOR"
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -246,42 +482,56 @@ jobs:
             bin/pack/ios-webview/*.png
           retention-days: 7
           if-no-files-found: ignore
+      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+        uses: ./.github/actions/save
+        with: {key: '${{ steps.setup.outputs.key }}'}
 
-  # An iPhone's app signed for distribution without Apple's tools
-  # (helder.pack.apple.CodeSign, tests/pack/signing's throwaway CA and
-  # profile), then checked by them on a macOS runner: codesign --verify
-  # --deep --strict, its entitlements and requirement, assetutil --info on
-  # the icon's Assets.car (tests/pack/signing/verify.sh). App Store
-  # Connect's acceptance is a TestFlight upload with the owner's account
-  # (src/helder/pack/README.md).
+  # The iOS bundles' checks that need a Mac but no simulator: the pack
+  # lane's iOS half (PACK_ONLY=ios: tests/pack/PackCheck.hx on every .app
+  # and .ipa, there with codesign --verify --strict, plutil -lint and
+  # assetutil), then an iPhone's app signed for distribution without Apple's
+  # tools (helder.pack.apple.CodeSign, tests/pack/signing's throwaway CA and
+  # profile), checked by them: codesign --verify --deep --strict, its
+  # entitlements and requirement, assetutil --info on the icon's Assets.car
+  # (tests/pack/signing/verify.sh). App Store Connect's acceptance is a
+  # TestFlight upload with the owner's account (src/helder/pack/README.md).
   ios-signing:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: macos-15
     continue-on-error: true
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile
+      - id: setup
+        uses: ./.github/actions/setup
+        with: {cache: ios-signing}
+      - name: The iOS bundles checked by Apple's tools too (pack, PACK_ONLY=ios)
+        env:
+          PACK_ONLY: ios
+          PACK_REQUIRE: 1
+        run: bun run test pack
       - name: Signed by helder, checked by codesign and assetutil
+        if: ${{ !cancelled() }}
         run: sh tests/pack/signing/verify.sh
+      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+        uses: ./.github/actions/save
+        with: {key: '${{ steps.setup.outputs.key }}'}
 
   # The desktops beside Linux's: macOS (Apple silicon) and Windows, their
   # windows (the window lane: a drop through each system's own mechanism,
   # moveTo and position, fullscreen) on the runner's own session.
   desktop-macos:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: macos-15
     continue-on-error: true
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile
+      - id: setup
+        uses: ./.github/actions/setup
+        with: {cache: desktop-macos}
       - name: macOS x86-64's runtime objects (the universal bundle's second slice)
         run: |
           v=$(node -p "require('./node_modules/@hxmc/cli/package.json').version")
@@ -300,8 +550,13 @@ jobs:
         if: always()
         # (and CoreText's sheets for the text-quality lane: tests/text/coretext/sheets is a copy of bin/text/coretext)
         with: {name: text-macos, path: "bin/text/*.png\nbin/text/coretext/*", retention-days: 7, if-no-files-found: ignore}
+      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+        uses: ./.github/actions/save
+        with: {key: '${{ steps.setup.outputs.key }}'}
 
   desktop-windows:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: windows-2025
     continue-on-error: true
     timeout-minutes: 30
@@ -313,13 +568,26 @@ jobs:
       HAXE: haxe
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile
+      - id: setup
+        uses: ./.github/actions/setup
+        with: {cache: desktop-windows}
       - name: window, the viewer (its tests, its builds, a real window), the system's decoders, helder/native from TypeScript (COM), shared textures (DXGI, helder.gfx's and the story host's)
         run: bun run test -k window viewer viewer-window system-images system-text typescript-native gfx-shared story-shared gfx-compute
       - uses: actions/upload-artifact@v7
         if: always()
         with: {name: text-windows, path: "bin/text/*.png", retention-days: 7, if-no-files-found: ignore}
+      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+        uses: ./.github/actions/save
+        with: {key: '${{ steps.setup.outputs.key }}'}
+
+  # The required jobs' verdict, always reported: a skipped job (a change to
+  # the docs alone) passes, a failed or cancelled one fails it.
+  ci:
+    needs: [changes, headless, typescript, examples, site]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - run: |
+          echo '${{ toJSON(needs) }}' | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          ! echo '${{ toJSON(needs) }}' | jq -e 'to_entries | any(.value.result == "failure" or .value.result == "cancelled")' > /dev/null

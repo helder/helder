@@ -41,8 +41,8 @@ truth: a package's README that has pages is generated from them.
   models). Serve `bin/site` (any static server) and open `docs/`.
   `bun run site:check` (Playwright) opens every page, its sources and tabs,
   plays the docs' own examples, and checks the top bar on an iPhone's
-  screen; `.github/workflows/site.yml` runs both on pull requests that touch
-  the site, the docs or the examples. An unknown example, region,
+  screen; CI's site job (`.github/workflows/ci.yml`) runs both on every
+  pull request, one to the docs alone too. An unknown example, region,
   component, page or heading link fails the build.
 
 The pages are rendered by `site/docs/Docs.hx`: helder.web's static

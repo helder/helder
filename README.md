@@ -171,8 +171,8 @@ TypeScript frontend and rendered by helder.web's static renderer
 button starting their wasm32 build in the page (a WebAssembly island
 loaded on the click). `site/build.mjs` builds each of them for the web,
 lays out `bin/site` (`examples/`, `docs/`, `static/`) and runs the pages'
-programs; `.github/workflows/site.yml` builds and checks it on pull
-requests. An example with a `page.json` beside it has a page of its own,
+programs; CI's site job (`.github/workflows/ci.yml`) builds and checks it
+on pull requests. An example with a `page.json` beside it has a page of its own,
 `examples/<id>/` (its demo, description, numbers, comparable downloads
 elsewhere, credits): `bun run site:numbers` plays each in headless
 Chromium (SwiftShader: software rendering, labelled so) and keeps what the

@@ -1,16 +1,23 @@
 #!/bin/sh
 # tests/pack/Hello.hx on an iPhone simulator (macOS with Xcode: CI's
-# ios-simulator job; not run elsewhere): the .app checked with Apple's tools
-# (codesign --verify --strict, plutil -lint), a simulator of the newest iOS
-# runtime and iPhone made and booted, then `helder run --target ios -d
-# <it>` (built, installed, launched, its output followed from the files
-# simctl writes it to until it ends) prints the hello line; the simulator
-# deleted at the end.
+# ios-simulator job; not run elsewhere): the apps built first, then on the
+# simulator (tests/pack/simulator.sh: HELDER_IOS_SIMULATOR's, else one of
+# the newest iOS runtime and iPhone made, booted and deleted at the end)
+# `helder run --target ios -d <it>` (built, installed, launched, its output
+# followed from the files simctl writes it to until it ends) prints the
+# hello line; then the audio stream. IOS_SUITE=smoke stops there (CI's pull
+# requests); the full suite (the default; CI's pushes to main and its
+# nightly) goes on: the assets, the screen, the planets example,
+# UIAccessibility. IOS_BUILD_ONLY=1: the builds alone (CI's build step,
+# while the simulator boots), IOS_PREBUILT=1: a build there already kept.
+# (The bundles' static checks, codesign --verify and plutil -lint, are the
+# pack lane's on a Mac: CI's ios-signing job.)
 #   sh tests/pack/ios.sh <helder> [out dir]
 set -u
 helder=$1
 out=$(mkdir -p "${2:-bin/pack/ios}" && cd "${2:-bin/pack/ios}" && pwd)
 line="hello from helder on .*: 998001 6 boom"
+suite=${IOS_SUITE:-full}
 failed=0
 
 check() {
@@ -20,24 +27,26 @@ check() {
 	fi
 }
 
-"$helder" build tests/pack/Hello.hx --target ios-sim -o "$out/Hello.app"
-check "helder build --target ios-sim" $?
-codesign --verify --strict --verbose=2 "$out/Hello.app"
-check "codesign --verify --strict" $?
-plutil -lint "$out/Hello.app/Info.plist"
-check "plutil -lint Info.plist" $?
-
-runtime=$(xcrun simctl list runtimes available | grep -o 'com\.apple\.CoreSimulator\.SimRuntime\.iOS-[0-9-]*' | sort -t- -k2,2n -k3,3n | tail -1)
-type=$(xcrun simctl list devicetypes | grep -o 'com\.apple\.CoreSimulator\.SimDeviceType\.iPhone-[0-9][0-9]*)' | tr -d ')' | sort -t- -k2,2n | tail -1)
-echo "ios.sh: $type on $runtime"
-udid=$(xcrun simctl create helder-ios-hello "$type" "$runtime")
-check "a simulator made" $?
-cleanup() {
-	xcrun simctl shutdown "$udid" > /dev/null 2>&1
-	xcrun simctl delete "$udid" > /dev/null 2>&1
+# build <entry> <app>: for the simulator, unless built already (IOS_PREBUILT=1)
+build() {
+	if [ "${IOS_PREBUILT:-}" = 1 ] && [ -d "$2" ]; then return 0; fi
+	"$helder" build "$1" --target ios-sim -o "$2"
+	check "helder build $1 --target ios-sim" $?
 }
-trap cleanup EXIT
-# (helder run boots it: the simulator named is not booted yet)
+
+# (Hello's, Checksum's and AudioCheck's: helder run builds them again, warm)
+build tests/pack/Hello.hx "$out/Hello.app"
+build tests/pack/AudioCheck.hx "$out/AudioCheck.app"
+if [ "$suite" = full ]; then
+	build tests/asset/Checksum.hx "$out/Checksum.app"
+	build tests/pack/Screen.hx "$out/Screen.app"
+	build examples/planets/Planets.hx "$out/Planets.app"
+	build tests/ui/IosAccessCheck.hx "$out/IosAccessCheck.app"
+fi
+[ -n "${IOS_BUILD_ONLY:-}" ] && exit $failed
+
+. "$(dirname "$0")/simulator.sh"
+simulator helder-ios-hello
 "$helder" run tests/pack/Hello.hx --target ios -d "$udid" > "$out/run.txt" 2>&1
 code=$?
 cat "$out/run.txt"
@@ -51,24 +60,6 @@ check "helder run --target ios -d <simulator>" $code
 grep -q "$line" "$out/run.txt"
 check "its line, from helder run" $?
 
-# The assets (tests/asset/Checksum.hx: helder.asset's files in the app's
-# assets/, sealed by CodeResources): Apple's codesign verifies the bundle,
-# then `helder run` prints each file's size and CRC-32, an image's decoded
-# pixels', the bundle's list: the lines of tests/asset/checksum.txt.
-"$helder" build tests/asset/Checksum.hx --target ios-sim -o "$out/Checksum.app"
-check "helder build tests/asset/Checksum.hx --target ios-sim" $?
-codesign --verify --strict --verbose=2 "$out/Checksum.app"
-check "codesign --verify --strict: the assets sealed" $?
-"$helder" run tests/asset/Checksum.hx --target ios -d "$udid" > "$out/checksum.txt" 2>&1
-code=$?
-cat "$out/checksum.txt"
-if [ $code != 0 ] && grep -q "pixels crc" "$out/checksum.txt"; then code=0; fi
-check "helder run tests/asset/Checksum.hx --target ios" $code
-while IFS= read -r l; do
-	grep -qF "$l" "$out/checksum.txt"
-	check "assets: $l" $?
-done < tests/asset/checksum.txt
-
 # Audio (tests/pack/AudioCheck.hx): a RemoteIO output opened (the
 # session's category ambient), a tone for two seconds, its line: "audio:
 # started" when the device pulled half a second's worth or more.
@@ -79,6 +70,23 @@ if [ $code != 0 ] && grep -q "audio:" "$out/audio.txt"; then code=0; fi
 check "helder run tests/pack/AudioCheck.hx --target ios" $code
 grep -q "audio: started" "$out/audio.txt"
 check "audio: the stream started (RemoteIO's render callbacks)" $?
+
+[ "$suite" = full ] || exit $failed
+
+# The assets (tests/asset/Checksum.hx: helder.asset's files in the app's
+# assets/, sealed by CodeResources: the pack lane's codesign on a Mac
+# verifies the bundle), `helder run` prints each file's size and CRC-32,
+# an image's decoded pixels', the bundle's list: the lines of
+# tests/asset/checksum.txt.
+"$helder" run tests/asset/Checksum.hx --target ios -d "$udid" > "$out/checksum.txt" 2>&1
+code=$?
+cat "$out/checksum.txt"
+if [ $code != 0 ] && grep -q "pixels crc" "$out/checksum.txt"; then code=0; fi
+check "helder run tests/asset/Checksum.hx --target ios" $code
+while IFS= read -r l; do
+	grep -qF "$l" "$out/checksum.txt"
+	check "assets: $l" $?
+done < tests/asset/checksum.txt
 
 # The screen (tests/pack/Screen.hx) on the same simulator: launched with
 # its output here (--console-pty, in the background: <out dir>/screen.txt),
@@ -95,9 +103,6 @@ wait_for() {
 	grep -q "$1" "$out/screen.txt"
 	check "screen: $1" $?
 }
-"$helder" build tests/pack/Screen.hx --target ios-sim -o "$out/Screen.app"
-check "helder build tests/pack/Screen.hx --target ios-sim" $?
-xcrun simctl bootstatus "$udid" -b > /dev/null 2>&1
 xcrun simctl install "$udid" "$out/Screen.app"
 check "simctl install Screen.app" $?
 : > "$out/screen.txt"
@@ -121,8 +126,6 @@ check "the screen's lines (tests/pack/screen.mjs)" $?
 # screenshot kept in <out dir>/planets.png. (helder/little-skies, the game,
 # has its own CI.)
 gid=org.helder.Planets
-"$helder" build examples/planets/Planets.hx --target ios-sim -o "$out/Planets.app"
-check "helder build examples/planets --target ios-sim" $?
 xcrun simctl install "$udid" "$out/Planets.app"
 check "simctl install Planets.app" $?
 : > "$out/planets.txt"
@@ -147,8 +150,6 @@ kill $console > /dev/null 2>&1
 # window read as VoiceOver reads it, a button activated, a slider
 # incremented; its lines end with "access: N checks, ok".
 aid=org.helder.IosAccessCheck
-"$helder" build tests/ui/IosAccessCheck.hx --target ios-sim -o "$out/IosAccessCheck.app"
-check "helder build tests/ui/IosAccessCheck.hx --target ios-sim" $?
 xcrun simctl install "$udid" "$out/IosAccessCheck.app"
 check "simctl install IosAccessCheck.app" $?
 : > "$out/access.txt"

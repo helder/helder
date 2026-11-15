@@ -1,0 +1,32 @@
+# The compilers' caches saved at a job's end (.github/actions/setup restored
+# them), unless the key was restored exactly: helder's compiler builds of
+# other sources than the newest two dropped first (each is tens of MB;
+# hxmc's module cache trims itself).
+name: save
+description: the compilers' caches saved
+inputs:
+  key:
+    description: the setup step's key
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        for d in ~/.cache/helder ~/Library/Caches/helder ~/AppData/Local/helder/cache; do
+          for k in compiler compiler-web; do
+            [ -d "$d/$k" ] || continue
+            ls -1td "$d/$k"/*/ 2> /dev/null | tail -n +3 | xargs -r rm -rf
+          done
+        done
+        du -sh ~/.cache/hxmc ~/.cache/helder ~/Library/Caches/hxmc ~/Library/Caches/helder ~/AppData/Local/hxmc/cache ~/AppData/Local/helder 2> /dev/null || true
+    - uses: actions/cache/save@v6
+      with:
+        path: |
+          ~/.cache/hxmc
+          ~/.cache/helder
+          ~/Library/Caches/hxmc
+          ~/Library/Caches/helder
+          ~/AppData/Local/hxmc/cache
+          ~/AppData/Local/helder
+        key: ${{ inputs.key }}

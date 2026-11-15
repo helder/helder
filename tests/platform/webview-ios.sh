@@ -6,11 +6,16 @@
 # screen) built for the simulator, launched with their output here
 # (simctl launch --console-pty; HELDER_WEB_DIR: the web build, read from
 # the Mac's disk), each ending with "webview: <mode>: N checks, ok"; a
-# screenshot of each in <out dir>.
+# screenshot of each in <out dir>. The simulator: HELDER_IOS_SIMULATOR's,
+# else one made, booted and deleted here (tests/pack/simulator.sh).
+# IOS_SUITE=smoke (CI's pull requests): WebViewCheck alone; full (the
+# default): WebShellCheck too, through the loopback and the scheme handler.
+# IOS_BUILD_ONLY=1: the builds alone; IOS_PREBUILT=1: a build there kept.
 #   sh tests/platform/webview-ios.sh <helder> [out dir]
 set -u
 helder=$1
 out=$(mkdir -p "${2:-bin/pack/ios-webview}" && cd "${2:-bin/pack/ios-webview}" && pwd)
+suite=${IOS_SUITE:-full}
 failed=0
 
 check() {
@@ -25,26 +30,22 @@ if [ ! -f "$out/fonts/DejaVuSans.ttf" ]; then
 	mkdir -p "$out/fonts"
 	curl -sSfL --retry 3 https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.tar.bz2 | tar xjf - -C "$out/fonts" --strip-components 2 dejavu-fonts-ttf-2.37/ttf/DejaVuSans.ttf dejavu-fonts-ttf-2.37/ttf/DejaVuSans-Bold.ttf
 fi
-HELDER_FONT_DIRS="$out/fonts" "$helder" build examples/todo/Todo.hx --target web -o "$out/todo/Todo.wasm"
-check "helder build examples/todo --target web" $?
-ls "$out/todo"
-"$helder" build tests/platform/WebViewCheck.hx --target ios-sim -o "$out/WebViewCheck.app"
-check "helder build tests/platform/WebViewCheck.hx --target ios-sim" $?
-"$helder" build tests/platform/WebShellCheck.hx --target ios-sim -o "$out/WebShellCheck.app"
-check "helder build tests/platform/WebShellCheck.hx --target ios-sim" $?
+prebuilt() { [ "${IOS_PREBUILT:-}" = 1 ] && [ -e "$1" ]; }
+if ! prebuilt "$out/todo/Todo.wasm"; then
+	HELDER_FONT_DIRS="$out/fonts" "$helder" build examples/todo/Todo.hx --target web -o "$out/todo/Todo.wasm"
+	check "helder build examples/todo --target web" $?
+	ls "$out/todo"
+fi
+for name in WebViewCheck WebShellCheck; do
+	[ "$name" = WebShellCheck ] && [ "$suite" != full ] && continue
+	prebuilt "$out/$name.app" && continue
+	"$helder" build tests/platform/$name.hx --target ios-sim -o "$out/$name.app"
+	check "helder build tests/platform/$name.hx --target ios-sim" $?
+done
+[ -n "${IOS_BUILD_ONLY:-}" ] && exit $failed
 
-runtime=$(xcrun simctl list runtimes available | grep -o 'com\.apple\.CoreSimulator\.SimRuntime\.iOS-[0-9-]*' | sort -t- -k2,2n -k3,3n | tail -1)
-type=$(xcrun simctl list devicetypes | grep -o 'com\.apple\.CoreSimulator\.SimDeviceType\.iPhone-[0-9][0-9]*)' | tr -d ')' | sort -t- -k2,2n | tail -1)
-echo "webview-ios.sh: $type on $runtime"
-udid=$(xcrun simctl create helder-ios-webview "$type" "$runtime")
-check "a simulator made" $?
-cleanup() {
-	xcrun simctl shutdown "$udid" > /dev/null 2>&1
-	xcrun simctl delete "$udid" > /dev/null 2>&1
-}
-trap cleanup EXIT
-xcrun simctl boot "$udid"
-xcrun simctl bootstatus "$udid" -b > /dev/null 2>&1
+. "$(dirname "$0")/../pack/simulator.sh"
+simulator helder-ios-webview
 
 # the newest crash report of the apps here: its exception, the crashed thread's frames
 report() {
@@ -145,7 +146,9 @@ run() {
 	kill $console > /dev/null 2>&1
 }
 run WebViewCheck
-run WebShellCheck
-# (the same through WKURLSchemeHandler's app:// instead of the loopback's HTTP: WebContent.local false)
-run WebShellCheck 0
+if [ "$suite" = full ]; then
+	run WebShellCheck
+	# (the same through WKURLSchemeHandler's app:// instead of the loopback's HTTP: WebContent.local false)
+	run WebShellCheck 0
+fi
 exit $failed
