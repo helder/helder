@@ -8,7 +8,9 @@ import helder.os.*;
 // render size (0.75 of 1080 x 2400: 810 x 1800), each configuration
 // drawn FRAMES times after WARM frames, each frame read back (the GPU's work
 // done), its median time; "plain" is the frame with no effect (bloom off),
-// "views" the view buffers' prepass alone. A CPU's rasterizer is not a
+// "views" the view buffers' prepass alone; bench-* phase 7's effects
+// (SSR, TAA, SMAA, motion blur of the camera and by objects, god rays,
+// occlusion culling). A CPU's rasterizer is not a
 // phone's GPU: the ratios to plain are what carry over, the ms do not.
 //
 //   EffectBench [width height]
@@ -23,7 +25,12 @@ class EffectBench {
 		var pixels = Bytes.alloc(w * h * 4);
 		var plain = 0.0;
 		Sys.println('EffectBench: ${w}x$h, the median of $FRAMES frames (each read back)');
-		for (name in ["plain", "views", "ssao", "dof", "tiltshift", "outline", "fxaa", "lut", "effects"]) {
+		var names = ["plain", "views", "ssao", "dof", "tiltshift", "outline", "fxaa", "lut", "effects"];
+		// (phase 7's: EffectScenes' bench-*; BENCH=a,b: those alone)
+		names = names.concat(["bench-ssr", "bench-taa", "bench-smaa", "bench-motion", "bench-objects", "bench-godrays", "bench-occlusion"]);
+		var only = Sys.getEnv("BENCH");
+		if (only != null) names = ["plain"].concat(only.split(","));
+		for (name in names) {
 			var draw = EffectScenes.make(name, device);
 			var times = [];
 			for (k in 0...WARM + FRAMES) {

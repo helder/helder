@@ -27,7 +27,8 @@ import StageShaders;
 //               boxes, those behind it culled once their queries answer (a
 //               frame or more late); the frame the same as without, the
 //               culled counted (Renderer.occluded, --stats' occluded)
-// Each frame's probe checks what it drew (its passes, its draws).
+// Each frame's probe checks what it drew (its passes, its draws) and that
+// a frame, once warm, allocates nothing (hxmc.GcStats).
 class HighEndScenes {
 	public static final NAMES = ["ssr", "taa", "smaa", "motionblur", "godrays", "occlusion"];
 
@@ -58,6 +59,7 @@ class HighEndScenes {
 				case "weights": @:privateAccess cast(cast(@:privateAccess post.fx, PostFx).smaaPass, SmaaPass).weights;
 				case "motion": ViewBuffers.of(r).motion;
 				case "rays": post.godRays.texture;
+				case "prep" | "tiles" | "neighbours": @:privateAccess cast(cast(@:privateAccess post.fx, PostFx).blurPass, MotionBlurPass).targets[show == "prep" ? 0 : show == "tiles" ? 1 : 2];
 				case _: null;
 			});
 		};
@@ -67,7 +69,7 @@ class HighEndScenes {
 				eye.position = new Vec3(0.4, 1.5, 5.6);
 				eye.lookAt(new Vec3(0, 0.5, 0));
 				post.ssr = new Ssr({maxDistance: 10, thickness: 0.3, steps: 40});
-				Scenes.probe = () -> post.draws >= 3 && post.ssr.texture != null ? null : 'ssr: ${post.draws} post draws';
+				Scenes.probe = () -> post.draws >= 3 && post.ssr.texture != null ? allocated(device, frame) : 'ssr: ${post.draws} post draws';
 				return frame;
 			case "taa" | "smaa":
 				if (name == "taa") bars(world, device) else shapes(world, device);
@@ -76,20 +78,21 @@ class HighEndScenes {
 				if (name == "smaa") {
 					// (HXMC_AA=none: the same without, to compare)
 					if (Sys.getEnv("HXMC_AA") != "none") post.smaa = new Smaa();
-					Scenes.probe = () -> post.draws == 3 ? null : 'smaa: ${post.draws} post draws (the edges, the weights, the composite)';
+					Scenes.probe = () -> post.draws == 3 ? allocated(device, frame) : 'smaa: ${post.draws} post draws (the edges, the weights, the composite)';
 					return frame;
 				}
 				post.taa = new Taa();
-				Scenes.probe = () -> {
-					var v = ViewBuffers.of(r);
-					v.velocity == false && v.motion != null && r.jitter.x != 0 ? null : 'taa: no motion or jitter';
-				};
 				// (8 frames from a cut, the jitter's whole cycle: a still, the same each time drawn)
-				return enc -> {
+				var still = (enc:Encoder) -> {
 					post.resetHistory();
 					for (_ in 0...8)
 						frame(enc);
 				};
+				Scenes.probe = () -> {
+					var v = ViewBuffers.of(r);
+					v.velocity == false && v.motion != null && r.jitter.x != 0 ? allocated(device, still) : 'taa: no motion or jitter';
+				};
+				return still;
 			case "motionblur":
 				var moving = motion(world, device);
 				post.motionBlur = new MotionBlur({strength: 0.8, samples: 16, max: 0.08, objects: true});
@@ -101,13 +104,14 @@ class HighEndScenes {
 					moving.box.position = new Vec3(-1.6 + t * 1.2, 1.23 + t * 0.1, 0.6);
 					moving.wheel.rotation = helder.scene.math.Quat.axisAngle(new Vec3(0, 0, 1), t * 0.9);
 				}
-				Scenes.probe = () -> ViewBuffers.of(r).motionDraws > 0 ? null : 'motionblur: no motion pass';
-				return enc -> {
+				var moved = (enc:Encoder) -> {
 					place(0);
 					frame(enc);
 					place(1);
 					frame(enc);
 				};
+				Scenes.probe = () -> ViewBuffers.of(r).motionDraws > 0 && post.draws >= 5 ? allocated(device, moved) : 'motionblur: no motion pass';
+				return moved;
 			case "godrays":
 				var sky = new Sky(device);
 				sky.zenith = new Vec3(0.01, 0.015, 0.04);
@@ -124,7 +128,7 @@ class HighEndScenes {
 				pillars(world, device);
 				eye.position = new Vec3(0, 1.6, 7);
 				eye.lookAt(new Vec3(0, 2.2, -10));
-				Scenes.probe = () -> post.godRays.texture != null ? null : 'godrays: no shafts drawn';
+				Scenes.probe = () -> post.godRays.texture != null ? allocated(device, frame) : 'godrays: no shafts drawn';
 				return frame;
 			case "occlusion":
 				var crowd = occluders(world, device);
@@ -144,7 +148,7 @@ class HighEndScenes {
 						culled = r.occluded;
 						if (culled > 0) break;
 					}
-					culled >= 20 ? null : 'occlusion: ${culled} culled (of 30 behind the wall)';
+					culled >= 20 ? allocated(device, frame) : 'occlusion: ${culled} culled (of 30 behind the wall)';
 				};
 				// (the same frame without occlusion: the culled draws were hidden)
 				Scenes.twin = enc -> {
@@ -155,6 +159,27 @@ class HighEndScenes {
 			case _:
 				throw 'HighEndScenes: no scene $name';
 		}
+	}
+
+	// (the frame drawn again: once warm, nothing allocated by a frame)
+	static function allocated(device:Device, draw:Encoder->Void):Null<String> {
+		for (_ in 0...3) {
+			var enc = device.beginFrame();
+			draw(enc);
+			device.endFrame();
+		}
+		#if (target.name == "hxmc")
+		var before = hxmc.GcStats.bytesAllocated();
+		for (_ in 0...4) {
+			var enc = device.beginFrame();
+			draw(enc);
+			device.endFrame();
+		}
+		var bytes = hxmc.GcStats.bytesAllocated() - before;
+		Sys.println('HighEndScenes: $bytes bytes allocated by 4 frames');
+		if (bytes != 0) return '$bytes bytes allocated by 4 frames (none expected)';
+		#end
+		return null;
 	}
 
 	static function put(world:World, name:String, mesh:Mesh, x:Float, y:Float, z:Float, ?turn:Float):Node {

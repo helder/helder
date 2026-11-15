@@ -81,6 +81,23 @@ class EffectScenes {
 			// (EffectBench's: the view buffers alone, at half size, no effect reading them)
 			case "views":
 				ViewBuffers.of(r).scale = 0.5;
+			// (EffectBench's, phase 7's on the same courtyard: each effect alone)
+			case "bench-ssr":
+				post.ssr = new Ssr();
+			case "bench-taa":
+				post.taa = new Taa();
+			case "bench-smaa":
+				post.smaa = new Smaa();
+			case "bench-motion" | "bench-objects":
+				post.motionBlur = new MotionBlur({objects: name == "bench-objects"});
+			case "bench-godrays":
+				// (a sun before the camera, low)
+				r.sunDirection = new Vec3(0.2, 0.25, -1);
+				post.godRays = new GodRays();
+			case "bench-occlusion":
+				r.use(new Occlusion(device));
+				for (n in ["box", "box2", "stack1", "stack2", "stack3", "sphere", "pillar", "island", "islandTop"])
+					Occlusion.test(world.root.find(n));
 			case "effects":
 				// (HXMC_FX: the effects on, by their names; all by default)
 				var on = (Sys.getEnv("HXMC_FX") ?? "ao,dof,outline,fxaa,lut").split(",");
@@ -125,7 +142,14 @@ class EffectScenes {
 				enc.endPass();
 			};
 		}
+		// (motion blur's bench: the camera swaying, a frame's motion every frame)
+		var sway = name == "bench-motion" || name == "bench-objects", t = 0.0;
 		var draw = (enc:Encoder) -> {
+			if (sway) {
+				t += 1;
+				eye.position = new Vec3(0.2 + Math.sin(t) * 0.15, 1.7, 6.2);
+				eye.lookAt(new Vec3(0, 0.8, 0));
+			}
 			r.drawInto(enc, world, camera, light, depth, w, h);
 			post.run(enc, light, null, w, h);
 		};
