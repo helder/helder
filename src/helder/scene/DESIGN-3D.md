@@ -1793,6 +1793,14 @@ capture, with the departures said where the design describes them (0, 2.3,
 - **TypeScript:** the classes above in helder/scene; pbr.ts's options,
   blocks and functions (tests/typescript/definitions' pbr: the probes and
   area variants); `tests/typescript/helder/indirect.ts` without a device.
+- **Sizes** (`tests/3d/size/sizes.sh`, the renderer's level, Linux x86-64
+  and wasm32): unused, +27 KB and +29 KB against main (gfx's cubes and
+  arrays in the back ends, the renderer's hooks, the octahedral reads in
+  the standard variants); `Environment.prefilter` +144 and +145 KB,
+  `Probes` +300 and +334 KB (the prefilter's with it), `AreaLights` +295
+  and +355 KB (four variants, the tables), `Lightmaps` +71 and +98 KB.
+- **Not measured:** the frame's milliseconds on a phone (`page.json`'s
+  device slots, as phase 2's), the prefilter's time at load.
 - **Docs:** [Indirect light](/docs/scene/indirect.md), its examples
   `scene-environment` and `scene-probes`. examples/gltf-showcase's
   environments are prefiltered by helder at load from their atlases' first

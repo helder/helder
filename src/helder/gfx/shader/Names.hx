@@ -101,7 +101,7 @@ class Names {
 				+ "mat2x4 mat3x2 mat3x3 mat3x4 mat4x2 mat4x3 mat4x4 vec2 vec3 vec4 ivec2 ivec3 ivec4 bvec2 bvec3 bvec4 uint uvec2 uvec3 uvec4 lowp mediump "
 				+ "highp precision sampler2D sampler3D samplerCube struct common partition active asm class union enum typedef template this resource "
 				+ "goto inline noinline public static extern external interface long short half fixed unsigned superp input output filter sizeof cast "
-				+ "namespace using texture sampler gl_Position gl_FragCoord "
+				+ "namespace using texture sampler gl_Position gl_FragCoord packed hvec2 hvec3 hvec4 fvec2 fvec3 fvec4 sampler1D sampler2DArray sampler3DRect isampler2D usampler2D "
 				+ "fn let var alias override bitcast enable requires diagnostic loop continuing fallthrough f16 f32 i32 u32 vec2f vec3f vec4f vec2i "
 				+ "vec3i vec4i mat4x4f array atomic ptr private storage workgroup function read write read_write select module "
 				+ "auto catch char const_cast constexpr decltype delete dynamic_cast explicit export friend mutable new noexcept nullptr operator protected "

@@ -73,7 +73,10 @@ window.start = async (gfx, mode, scene) => {
 	}
 	const px = await r.host.gfx.readPixels();
 	window.pixels = Array.from(px.data);
-	return compare(scene + ' ' + gfx + ' ' + mode, px, golden);
+	// (probes on WebGPU: its prefilter's dispatch and its captures' mips
+	// within 3 to 9 levels of the other APIs', over the floor's reflection)
+	const loose = { probes: { webgpu: 10 } };
+	return compare(scene + ' ' + gfx + ' ' + mode, px, golden, undefined, loose[scene]?.[gfx]);
 };
 </script>`;
 const server = createServer(async (req, res) => {
