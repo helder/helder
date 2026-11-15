@@ -1955,6 +1955,8 @@ class Run {
 	// (only under bin/; a link is removed, never followed: a link to the
 	// checkout once took the checkout with it)
 	static function rmrf(path:String) {
+		// (bin/ there first: fullPath fails on a path that is not, a job's first lane's rmrf)
+		mkdirs("bin");
 		var bin = FileSystem.fullPath("bin");
 		var parent = FileSystem.fullPath(Path.directory(FileSystem.absolutePath(path)));
 		if (bin == null || parent == null || !(parent + "/").startsWith(bin + "/") && parent != bin)
