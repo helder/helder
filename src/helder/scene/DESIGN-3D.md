@@ -6,9 +6,10 @@ Aims > Familiar APIs). It covers the areas where helder.scene trails
 three.js: materials, lights and shadows, post-processing, and geometry,
 helpers, picking and culling. Loaders and the ecosystem are out of scope.
 
-It is a design. Phase 1 (section 8) is built, its deviations said
-there. No spike was needed: every claim about helder's internals below was
-read from the source, and the file is named where it matters.
+It is a design. Phases 1 and 2 (section 8) are built, their deviations
+said there and, for phase 2, at the places they depart from. No spike
+was needed: every claim about helder's internals below was read from the
+source, and the file is named where it matters.
 
 The aim is the best API, not three.js's. three.js's names are kept where
 they are what people know (`MeshToonMaterial`'s *toon*, `HemisphereLight`,
@@ -36,7 +37,11 @@ is not copied where another engine's is better.
   lights in `PbrFrame`. A sky-and-ground ambient. An equirectangular or
   prefiltered-atlas environment.
 - **Post.** HDR into RGBA16F, then `PostProcess`: bloom, tone maps, a
-  grade, a vignette, grain, and the program's own `PostStage`s.
+  grade, a vignette, grain, and the program's own `PostStage`s. Built in
+  phase 2: the view buffers (`ViewBuffers`), `ao` (`Ssao`), `dof`,
+  `outline`, `antialias` (`Fxaa`), `lut`, `<Effects>` in markup and the
+  `BeforeComposite` stage point (src/helder/scene/README.md, "Post
+  effects and the view buffers").
 - **Shapes and picking.** `Shapes.box`, `sphere`, `capsule` and `plane`.
   `Pick.ray` tests bounds, not triangles.
 - **Markup.** A prototype: `<Scene>`, `node`, `mesh`, `light`, `camera`
@@ -653,8 +658,8 @@ map and the grade, and `PostStage`s after.
   post.ao = new Ssao({radius: 0.5, intensity: 1, samples: 8, halfRes: true});   // GTAO
   post.dof = Dof.tiltShift({band: 0.2, falloff: 0.3, strength: 1});           // or Dof.focus({distance, aperture})
   post.outline = new Outline({width: 2, color: new Vec4(1, 0.8, 0.2, 1)});     // nodes selected: Outline.select(node)
-  post.antialias = Fxaa;                                                         // None | Fxaa | Smaa | Taa
-  post.lut = Lut.fromImage(device, Asset.image("grade.png"));                    // a 16³ strip, sampled 2D
+  post.antialias = Fxaa;                                                         // None | Fxaa (Smaa, Taa: phase 7)
+  post.lut = Lut.fromImage(device, image);                                       // a 16³ strip (an Image: Asset.image's value), sampled 2D
   post.bloom = 0.05; post.toneMap = AgX;                                         // as now
   renderer.post = post;
   ```
@@ -664,10 +669,23 @@ map and the grade, and `PostStage`s after.
   mix and DOF's mix happen in one full-screen pass. Its variant comes from
   which fields are set (compiled at build time, a few variants), as
   pmndrs merges effects at run time.
+
+  *As built (phase 2):* the slot object (`composite`, PostShader.hx) has
+  two options, `fxaa` and `effects`, so four variants. Inside the
+  `effects` variant each effect is a branch on its part of the effects'
+  block (zero: off), uniform across the pass. Folding each effect into
+  its own option was not built: four effects make sixteen variants, and
+  since a variant's code is linked by whatever can pick it, any one
+  effect would link all sixteen (a program's set of effects is known at
+  run time, not when linking). With two options, the plain variant is
+  the chain's, FXAA's is linked by the `antialias` setter, and the
+  effects' two by the first effect made. The branches left off are
+  cheap: a LUT alone, in the effects' variant with the other effects'
+  branches off, adds 3% of the frame on llvmpipe (README's table).
 - **`PostStage`s keep their place** after the composite, plus two more
   points:
   - `BeforeComposite`, in linear light: Little Skies' tilt-shift blur
-    belongs there;
+    belongs there (built: `post.add(shader, bytes, BeforeComposite)`);
   - `AfterOpaque`, with depth, through `renderer.inject`.
 - **Markup is configuration of the box, not scene nodes:**
 
@@ -687,6 +705,29 @@ map and the grade, and `PostStage`s after.
   Each tag is generated from the effect's class, so a typo is a compile
   error.
 
+  *As built (phase 2):* the tags are capitalized components,
+  `<Effects>`, `<Ssao>`, `<Dof>`, `<Outline>`, `<Fxaa>`, `<Lut>`
+  (`helder.scene.view.EffectTags`), their props the effects' options:
+
+  ```html
+  <Effects bloom={0.05} toneMap={AgX}>
+    <Ssao radius={0.5} samples={8}/>
+    <Dof tiltShift={true} band={0.2}/>
+    <Outline width={2.0} color={gold}/>
+    <Fxaa/>
+  </Effects>
+  ```
+
+  Why not lowercase: a lowercase tag is an element of the scene's
+  renderer, its props set by name at run time, so `<ssao>` could not be
+  checked when compiling, and the renderer's element code would link
+  every effect into every program with markup. A component is typed,
+  and linked only where it is named. When phase 5 generates the tags from
+  the classes, the lowercase names can be those components'. A `<Show>`
+  around an effect's tag toggles it (the effect is unset when its tag
+  goes); `<node outline={group}>` is built too (5, "Selection and
+  hover").
+
 ### 3.2 The shared view buffers: a depth and normal prepass
 
 **The problem.** helder's `<Scene>` draws multisampled, and a multisampled
@@ -695,7 +736,10 @@ no normals.
 
 **Proposal: `ViewBuffers`, a RenderFeature that effects request.**
 `post.ao` and `post.dof` call `renderer.use(ViewBuffers.of(renderer))`
-themselves; Bevy adds `DepthPrepass` the same way.
+themselves; Bevy adds `DepthPrepass` the same way. (Built: each effect
+that reads them asks in its `require`, before the frame's draw list,
+through `ViewBuffers.of(renderer)`, which makes them and uses them once;
+`post.outline` asks too, whole.)
 
 - **What it draws.** A single-sampled prepass of the opaque draws, at
   full or half resolution (`scale`), into:
@@ -706,36 +750,51 @@ themselves; Bevy adds `DepthPrepass` the same way.
   One pass, one colour target, so it works on today's gfx.
 - **The shaders.** `pbr`'s `prepass` variant: the position, normal,
   roughness and alpha slots only. Custom materials get it for free,
-  since it is a variant of their slot object.
+  since it is a variant of their slot object. (Built: a material's own
+  shader gets its prepass variants, plain and instanced, only when it
+  replaces one of those four slots, in Haxe and in TypeScript; one that
+  replaces only colour or emissive is drawn there by the standard
+  material's, which is the same, and links nothing more. The skinned
+  prepass is Skinning's, linked only with it.)
 - **Velocity.** Motion vectors are a further option (`velocity: true`),
   for TAA and motion blur. That needs MRT or a second pass, so it is
-  desktop only until gfx has MRT.
+  desktop only until gfx has MRT. (Not built in phase 2: phase 7's.)
 - **The main pass.** The prepass's depth is not reused as the main pass's
   depth: the main pass is multisampled and the prepass is not. On
   desktops, which are not tilers, `ViewBuffers.depthOnly = false` could
   later share it in an early-Z way, if gfx learns to resolve depth.
 - **Cost.** One more geometry pass. Its vertex work is about the main
-  pass's; its fragment work is small. On a phone at 60 fps, a scene of
-  Little Skies' size (main 17 draws, from the README's showroom numbers)
-  costs about 0.3 to 0.6 ms, an estimate. At `scale: 0.5`, which AO and
-  DOF both tolerate, it is a quarter of the fill.
+  pass's; its fragment work is small. At `scale: 0.5`, which AO and DOF
+  both tolerate, it is a quarter of the fill. Measured (phase 2,
+  tests/3d/EffectBench.hx: 810 x 1800, Mesa's llvmpipe): +9% of the frame
+  without it at half size, as many draws as the main pass's opaque ones
+  (`--stats`' `prepassDraws`). A phone's milliseconds come with the
+  devices' slots in `page.json`; the design's 0.3 to 0.6 ms stays an
+  estimate until then.
 
 ### 3.3 The effects
 
 The "cost on a phone" column is an estimate, at 1080×2400 with the
 effect at half resolution unless marked. Each estimate is replaced by its
-frame's measurement in the phase that builds it.
+frame's measurement in the phase that builds it. Phase 2's rows (AO, DOF,
+FXAA, outlines, LUT) now give what was measured: headless, on a CPU's
+rasterizer (Mesa's llvmpipe on a Ryzen 5 3600, 12 threads) at a phone's
+render size (0.75 of 1080×2400: 810×1800), what each adds to the frame
+without it (37.6 ms there), the view buffers included where the effect
+reads them (tests/3d/EffectBench.hx). A CPU's rasterizer is not a
+phone's GPU: the share of the frame is what carries over, not the
+milliseconds; the devices' own come with `page.json`'s slots.
 
 | Effect | three.js | Babylon | PlayCanvas | Godot | Bevy | helder proposal | Cost on a phone |
 |---|---|---|---|---|---|---|---|
-| **AO** | `GTAOPass`, `SAOPass`, `SSAOPass`; N8AO | SSAO2 | SSAO (in `CameraFrame`) | SSAO (not on Mobile) [25] | SSAO (GTAO-based, needs compute) | `Ssao`: GTAO, Jimenez et al. 2016 [52], half-res from `ViewBuffers`, 1 to 2 slices of 4 to 8 steps, a depth-aware bilateral upsample. It multiplies the indirect light only, in the composite or in `pbr` (option `ssao`: one texture read), not over the direct light (three's classic passes darken the whole frame) | 1 to 1.5 ms |
+| **AO** | `GTAOPass`, `SAOPass`, `SSAOPass`; N8AO | SSAO2 | SSAO (in `CameraFrame`) | SSAO (not on Mobile) [25] | SSAO (GTAO-based, needs compute) | `Ssao`: GTAO, Jimenez et al. 2016 [52], half-res from `ViewBuffers`, 1 to 2 slices of 4 to 8 steps, a depth-aware bilateral upsample. It multiplies the indirect light only, in the composite or in `pbr` (option `ssao`: one texture read), not over the direct light (three's classic passes darken the whole frame). *Built:* in `pbr`, as a branch on the frame's block (`exposure.z`), not an option: no new variants of every material, one texture read where it is on; each slice along whole texel steps and its visibility a share of the slice's arc unoccluded, so one or two slices leave a plane open (no stripes) | measured: +47% (2 slices of 8 steps, with the view buffers), 2 passes; estimate was 1 to 1.5 ms |
 | **SSR** | `SSRPass` | `SSRRenderingPipeline` | no | yes (Forward+) | yes (deferred or prepass) | `Ssr`, desktop: a hierarchical-depth march, half-res, falling back to the probes. Off on mobile (no renderer listed ships it there) | desktop only |
-| **DOF** | `BokehPass` | DOF in the default pipeline | DOF | `CameraAttributesPractical` near and far blur | `DepthOfField` (Gaussian, bokeh) | `Dof.focus({distance, aperture})` or `Dof.tiltShift({band, falloff})`. A circle of confusion from depth, gathered at half-res, then merged. Tilt-shift in world depth is what Little Skies' TiltShift.hx can't do now | 0.8 to 1.2 ms |
+| **DOF** | `BokehPass` | DOF in the default pipeline | DOF | `CameraAttributesPractical` near and far blur | `DepthOfField` (Gaussian, bokeh) | `Dof.focus({distance, aperture})` or `Dof.tiltShift({band, falloff})`. A circle of confusion from depth, gathered at half-res, then merged. Tilt-shift in world depth is what Little Skies' TiltShift.hx can't do now. *Built:* tilt-shift's band is a share of the focus depth, its focus the depth under the frame's centre unless given | measured: focus +48%, tilt-shift +35% (16 taps, with the view buffers), 1 pass; estimate was 0.8 to 1.2 ms |
 | **Motion blur** | addons | `MotionBlurPostProcess` | no | no | `MotionBlur` | `MotionBlur`: camera-only from depth and the last frame's view-projection (no velocity target: mobile-friendly); per-object with `ViewBuffers.velocity` on desktop | 0.5 ms |
-| **AA** | `FXAAPass`, `SMAAPass`, `TAARenderPass` | FXAA, TAA | TAA | MSAA, FXAA, TAA, FSR2 | `Fxaa`, `Smaa`, `TemporalAntiAliasing` | MSAA stays the default (cheap on tiled GPUs, which resolve on chip). Then `Fxaa` in the composite (one variant), `Smaa` (three passes, desktop and web), and `Taa` (jitter plus velocity, desktop; it needs the prepass's velocity) | FXAA 0.3 ms |
-| **Outlines and selection** | `OutlinePass` (mask, edge detect, blur) | `HighlightLayer`, `renderOutline` on meshes [53] | addons | the next-pass material trick | crates | `Outline`: the selection ids in `ViewBuffers`' colour target (8 bits: 255 groups, each a colour and width), edges found in the composite. `Outline.select(node, group)` is a component, so selection is data and a hover in markup is a binding | 0.3 ms |
+| **AA** | `FXAAPass`, `SMAAPass`, `TAARenderPass` | FXAA, TAA | TAA | MSAA, FXAA, TAA, FSR2 | `Fxaa`, `Smaa`, `TemporalAntiAliasing` | MSAA stays the default (cheap on tiled GPUs, which resolve on chip). Then `Fxaa` in the composite (one variant), `Smaa` (three passes, desktop and web), and `Taa` (jitter plus velocity, desktop; it needs the prepass's velocity) | FXAA measured: +8%, no pass of its own; estimate was 0.3 ms |
+| **Outlines and selection** | `OutlinePass` (mask, edge detect, blur) | `HighlightLayer`, `renderOutline` on meshes [53] | addons | the next-pass material trick | crates | `Outline`: the selection ids in `ViewBuffers`' colour target (8 bits: 255 groups, each a colour and width), edges found in the composite. `Outline.select(node, group)` is a component, so selection is data and a hover in markup is a binding | measured: +35% (the view buffers whole included), no pass of its own; estimate was 0.3 ms |
 | **God rays** | `GodRaysShader` (examples) | `VolumetricLightScatteringPostProcess` | no | volumetric fog | volumetric fog | `GodRays`: radial blur of the sky's coverage (from depth) toward the sun's screen point, at quarter-res (Mitchell's GPU Gems 3 approach). Volumetric fog is out of scope | 0.4 ms |
-| **LUT grading** | `LUTPass` | `ColorGradingTexture` | grading | `adjustment_color_correction` (a LUT) | no (`ColorGrading` values) | `Lut`: a 16³ or 32³ LUT as a 2D strip (no 3D textures in gfx), one read in the composite after the tone map | ~0 |
+| **LUT grading** | `LUTPass` | `ColorGradingTexture` | grading | `adjustment_color_correction` (a LUT) | no (`ColorGrading` values) | `Lut`: a 16³ or 32³ LUT as a 2D strip (no 3D textures in gfx), one read in the composite after the tone map (built: two reads, the blue slices blended) | measured: +3% |
 
 ## 4. Geometry and helpers
 
@@ -1024,9 +1083,9 @@ in `page.json`.
 | Shadowed local lights | ≤ 2 (atlas 2048², cached when static) | ≤ 8 (atlas 4096²) |
 | Area lights | ≤ 1 to 2 | ≤ 8 |
 | Probes | SH per object (free per pixel); ≤ 2 reflection probes blended per draw | the same |
-| Prepass (`ViewBuffers`) | at `scale: 0.5` when only AO and DOF read it | full |
-| AO | GTAO half-res, 1 slice, 4 to 6 steps: ~1 to 1.5 ms | 2 slices, 8 steps |
-| DOF | half-res gather: ~1 ms | full |
+| Prepass (`ViewBuffers`) | at `scale: 0.5` when only AO and DOF read it (measured: +9% of the frame on llvmpipe) | full |
+| AO | GTAO half-res, 1 slice, 4 to 6 steps: ~1 to 1.5 ms (measured, 2 slices of 8: +47% on llvmpipe) | 2 slices, 8 steps |
+| DOF | half-res gather: ~1 ms (measured, 16 taps: +35 to +48% on llvmpipe) | full |
 | Bloom | 4 levels from a quarter (`base = 2`): ~0.6 ms | 6 from half |
 | AA | MSAA 4x (resolved on tile); FXAA when MSAA is off | MSAA or SMAA; TAA opt-in |
 | SSR, TAA, per-object motion blur | off | opt-in |
@@ -1218,11 +1277,14 @@ Tests and frames:
 - **Example:** `examples/primitives`; Little Skies' Kit moved onto
   `Geometry`, pixels unchanged.
 
-### Phase 2: view buffers and the first screen-space effects
+### Phase 2: view buffers and the first screen-space effects (built)
 
 - (From phase 1) the slots `normalVertex`, `output` and `shadowAlpha`, the
   shadow casters as a slot object of their own, and varyings between
-  slots.
+  slots. (Not built in phase 2 either: varyings are a change to `Slots`
+  and its two lowerings, Haxe's and TypeScript's, and the casters as slots
+  a change to `Shadows`, neither one the effects need; a change of their
+  own, next.)
 - `ViewBuffers` (a single-sampled depth plus normal, roughness and id
   prepass; `scale`).
 - `PostProcess` fields, and the composite as a folded slot object.
@@ -1246,6 +1308,31 @@ Tests and frames:
   draw-calls table gains its row.
 - **Example:** `examples/postfx` (each effect toggled); Little Skies'
   TiltShift replaced by `Dof.tiltShift`, measured on its page's numbers.
+
+As built: every item above, with the departures noted where the design
+describes them (the composite's options, AO in `pbr` as a branch, the
+tags capitalized), and:
+
+- **Frames:** all seven, and `effects` (every effect at once, its probe
+  checking a frame allocates nothing), natively (llvmpipe, WARP) and in
+  Chromium's WebGL2. TypeScript twins of them are not built (the
+  renderer's `clearColor` is not typed in TypeScript yet).
+- **Nothing allocated per frame**, the renderer's and the chain's own
+  frames included: a struct literal per uniform write allocated on hxmc
+  (2.6 KB a frame for a plain scene before phase 2), so the blocks are
+  kept and their fields set, and gfx's `UniformWriter` is a class per
+  block (a closure through a generic field boxed its call).
+- **Linked only when used:** each effect is reached through an
+  interface, and each effect's shaders are a module of their own (a
+  module's finals are made together). README's table gives what each
+  adds.
+- **TypeScript:** the effects and the view buffers are in helder/scene;
+  a `Vec3` returned by a TypeScript callback, or a `Vec4` in an options
+  object, does not cross into Haxe yet (helder.typescript), so
+  `lutStrip` makes a LUT's strip in TypeScript and an outline's colour
+  is set as a property.
+- **Little Skies** is its own repository: the switch to `Dof.tiltShift`
+  is not in this phase's change.
 
 ### Phase 3: lines, debug drawing, picking
 

@@ -12,12 +12,18 @@ import helder.scene.math.MathTools;
 import helder.scene.render.PbrShader;
 import helder.scene.render.PbrInstancedShader;
 import helder.scene.render.PbrShader.materialOf;
+import helder.scene.render.PbrShader.materialInto;
 import helder.scene.render.PbrShader.output;
 
 // Draws a world's meshes (MeshRenderer) as seen by a camera, lit by its
 // first directional Light and up to four point Lights (a world without
 // lights: the renderer's sun) and an ambient from the sky and the ground,
-// with PbrShader. Two stages:
+// with PbrShader. The passes a frame records, in order (all but the main
+// one opted in): the shadow maps (Shadows), the view buffers' prepass
+// (ViewBuffers: depth, normals, roughness and selection, for post's
+// effects), the screen's ambient occlusion (post.ao: Ssao), the main pass,
+// then the AfterPass hooks; post (PostProcess) after, into the image shown.
+// Two stages:
 //
 //   extract   the world's meshes into a flat draw list: the nodes shown,
 //             their bounds inside the camera's view, a draw per primitive
@@ -76,6 +82,8 @@ class Renderer {
 	public var draws(default, null) = 0;
 	public var culled(default, null) = 0;
 	public var shadowDraws(default, null) = 0;
+	// the view buffers' prepass draws (ViewBuffers; 0 without)
+	public var prepassDraws(default, null) = 0;
 
 	final pipeline:Pipeline;
 	final doubleSided:Pipeline;
@@ -89,6 +97,13 @@ class Renderer {
 	var skinSource:Null<RenderFeature.SkinSource>;
 	var normalSource:Null<RenderFeature.NormalSource>;
 	var environment:Null<Environment>;
+	// (the view buffers: ViewBuffers, attached by use or by post's effects)
+	var views:Null<RenderFeature.ViewSource>;
+	// (the frame's ambient occlusion: post.ao's, null without)
+	var occlusion:Null<Texture> = null;
+	// (drawInto's target size; 0: the device's)
+	var targetWidth = 0;
+	var targetHeight = 0;
 	final instancedSlots:Array<Int>;
 	// whether runs of one primitive are drawn instanced (on by default)
 	public var instancing = true;
@@ -105,19 +120,25 @@ class Renderer {
 	final white:Texture;
 	final sampler:Sampler;
 	final nearest:Sampler;
+	final clamped:Sampler;
 	// (no shadows: a 1x1 map, never read)
 	final noShadow:Texture;
 	var shadowSource:Null<RenderFeature.ShadowSource>;
 	final frameBytes = Bytes.alloc(PbrShader.uniforms[0].size);
+	// (the blocks as written, kept: a struct literal per write would allocate)
+	final frameBlock:PbrFrame = blankFrame();
+	@:allow(helder.scene.render) final objectBlock:PbrObject = {model: Mat4.identity(), normalMatrix: Mat4.identity(), tint: new Vec4(1, 1, 1, 1)};
+	@:allow(helder.scene.render) final materialBlock:PbrMaterial = materialOf(new Material());
 	final objectBytes = Bytes.alloc(PbrShader.uniforms[1].size);
 	final materialBytes = Bytes.alloc(PbrShader.uniforms[2].size);
 	final pass:PassDesc;
 	// the draw list: entries kept between frames, count of them in use
 	final list:Array<DrawItem> = [];
 	// (the frame's point lights: position and range, colour)
-	final pointLights:Array<Vec4> = [for (_ in 0...4) new Vec4(0, 0, 0, 0)];
-	final pointColors:Array<Vec4> = [for (_ in 0...4) new Vec4(0, 0, 0, 0)];
-	final spots:Array<Vec4> = [for (_ in 0...4) new Vec4(0, 0, 0, -2)];
+	// (four Vec4s, indexed: an Array<Vec4> boxes each value stored)
+	final pointLights = new Vec4Slots();
+	final pointColors = new Vec4Slots();
+	final spots = new Vec4Slots();
 	var count = 0;
 	// the frame's instanced sets (InstancedMesh), setCount of them in use
 	final sets:Array<InstancedMesh> = [];
@@ -161,6 +182,7 @@ class Renderer {
 		white = device.createTexture({width: 1, height: 1, data: w});
 		sampler = device.createSampler({filter: Linear, mipFilter: Linear, wrap: Repeat});
 		nearest = device.createSampler({filter: Nearest, wrap: Clamp});
+		clamped = device.createSampler({filter: Linear, wrap: Clamp});
 		var one = Bytes.alloc(4);
 		one.setFloat(0, 1);
 		noShadow = device.createTexture({width: 1, height: 1, format: R32F, data: one});
@@ -190,10 +212,13 @@ class Renderer {
 		pass.colors[0].texture = color;
 		pass.colors[0].resolve = resolve;
 		pass.depth.texture = depth;
+		targetWidth = width;
+		targetHeight = height;
 		draw(enc, world, camera, width / Math.max(1, height));
 		pass.colors[0].texture = null;
 		pass.colors[0].resolve = null;
 		pass.depth.texture = null;
+		targetWidth = targetHeight = 0;
 	}
 
 	// what the frame's hooks get: the camera's view, the light (FrameInfo)
@@ -219,11 +244,18 @@ class Renderer {
 		var viewProj = camera.viewProjection(aspect);
 		// (morph targets blended where their weights changed: Morph)
 		if (Morph.updateWorld != null) Morph.updateWorld(world);
+		// (post's effects' needs first: the view buffers, whose groups the draw list takes)
+		if (post != null) post.require(this);
 		extract(world, viewProj);
+		occlusion = null;
 		var toLight = writeFrame(world, camera, viewProj, false);
 		frame.world = world;
 		frame.camera = camera;
 		frame.aspect = aspect;
+		frame.width = targetWidth > 0 ? targetWidth : device.width;
+		frame.height = targetHeight > 0 ? targetHeight : device.height;
+		frame.view = camera.view();
+		frame.projection = camera.projection(aspect);
 		frame.viewProj = viewProj;
 		frame.eye = camera.eye();
 		frame.toLight = toLight;
@@ -231,11 +263,23 @@ class Renderer {
 		frame.fog = fog;
 		frame.exposure = exposure;
 		shadowDraws = 0;
+		var shadowed = false;
 		if (shadowSource != null) {
 			shadowSource.render(enc, world, toLight, skinSource, frame);
-			writeFrame(world, camera, viewProj, true);
+			writeFrame(world, camera, viewProj, shadowed = true);
 			shadowDraws = shadowSource.shadowFrame().draws;
 			FrameCounts.shadowDraws += shadowDraws;
+		}
+		prepassDraws = 0;
+		if (views != null) {
+			views.render(enc, this, frame);
+			prepassDraws = views.drawn();
+			FrameCounts.prepassDraws += prepassDraws;
+		}
+		// (the screen's ambient occlusion from the view buffers, read by the main pass)
+		if (post != null) {
+			occlusion = post.occlusion(enc, frame);
+			if (occlusion != null) writeFrame(world, camera, viewProj, shadowed);
 		}
 		record(enc);
 		FrameCounts.sceneDraws += draws;
@@ -260,11 +304,14 @@ class Renderer {
 				continue;
 			}
 			var tint = tints.get(node) ?? WHITE;
+			// (its selection group: the view buffers', Outline.select)
+			var group = views != null ? views.group(node) : 0;
 			for (p in mesh.primitives) {
 				if (count == list.length) list.push(new DrawItem());
 				var d = list[count++];
 				d.node = node;
 				d.tint = tint;
+				d.group = group;
 				d.primitive = p;
 				// (the pipeline, then the material)
 				d.key = (p.material.blend ? 1 << 26 : 0) | (mapped(p) ? 1 << 25 : 0) | (p.material.doubleSided ? 1 << 24 : 0) | (p.material.id & 0xFFFFFF);
@@ -291,7 +338,7 @@ class Renderer {
 		// (insertion sort: a scene's order changes little from frame to frame)
 		for (i in 1...count) {
 			var d = list[i], j = i - 1;
-			while (j >= 0 && (list[j].key > d.key || list[j].key == d.key && list[j].primitive.id > d.primitive.id)) {
+			while (j >= 0 && (list[j].key > d.key || list[j].key == d.key && (list[j].primitive.id > d.primitive.id || list[j].primitive == d.primitive && list[j].group > d.group))) {
 				list[j + 1] = list[j];
 				j--;
 			}
@@ -369,36 +416,37 @@ class Renderer {
 			shadowFar = f.paramsFar;
 			soft = f.soft;
 		}
-		PbrShader.params.frame.write({
-			viewProj: viewProj,
-			eye: new Vec4(eye.x, eye.y, eye.z, 1),
-			lightDir: new Vec4(l.x, l.y, l.z, 0),
-			lightColor: new Vec4(c.x, c.y, c.z, 0),
-			sky: new Vec4(up.x, up.y, up.z, 0),
-			ground: new Vec4(down.x, down.y, down.z, 0),
-			exposure: new Vec4(exposure, hdr ? 1 : 0, 0, 0),
-			lightViewProj: lightViewProj,
-			shadow: shadow,
-			point0: pointLights[0],
-			point1: pointLights[1],
-			point2: pointLights[2],
-			point3: pointLights[3],
-			pointColor0: pointColors[0],
-			pointColor1: pointColors[1],
-			pointColor2: pointColors[2],
-			pointColor3: pointColors[3],
-			spot0: spots[0],
-			spot1: spots[1],
-			spot2: spots[2],
-			spot3: spots[3],
-			lightViewProjFar: lightViewProjFar,
-			shadowFar: shadowFar,
-			environment: environment != null ? new Vec4(environment.intensity, environment.levels, environment.rows, @:privateAccess environment.edge) : new Vec4(0, 0, 0, 0),
-			rim: new Vec4(rim.x, rim.y, rim.z, rimPower),
-			fog: Fog.colorOf(fog),
-			fogShape: Fog.shapeOf(fog),
-			shadowSoft: soft
-		}, frameBytes);
+		// (the block kept, its fields set: nothing allocated)
+		var b = frameBlock;
+		b.viewProj = viewProj;
+		b.eye = new Vec4(eye.x, eye.y, eye.z, 1);
+		b.lightDir = new Vec4(l.x, l.y, l.z, 0);
+		b.lightColor = new Vec4(c.x, c.y, c.z, 0);
+		b.sky = new Vec4(up.x, up.y, up.z, 0);
+		b.ground = new Vec4(down.x, down.y, down.z, 0);
+		b.exposure = new Vec4(exposure, hdr ? 1 : 0, occlusion != null ? 1 : 0, 0);
+		b.lightViewProj = lightViewProj;
+		b.shadow = shadow;
+		b.point0 = pointLights[0];
+		b.point1 = pointLights[1];
+		b.point2 = pointLights[2];
+		b.point3 = pointLights[3];
+		b.pointColor0 = pointColors[0];
+		b.pointColor1 = pointColors[1];
+		b.pointColor2 = pointColors[2];
+		b.pointColor3 = pointColors[3];
+		b.spot0 = spots[0];
+		b.spot1 = spots[1];
+		b.spot2 = spots[2];
+		b.spot3 = spots[3];
+		b.lightViewProjFar = lightViewProjFar;
+		b.shadowFar = shadowFar;
+		b.environment = environment != null ? new Vec4(environment.intensity, environment.levels, environment.rows, @:privateAccess environment.edge) : new Vec4(0, 0, 0, 0);
+		b.rim = new Vec4(rim.x, rim.y, rim.z, rimPower);
+		b.fog = Fog.colorOf(fog);
+		b.fogShape = Fog.shapeOf(fog);
+		b.shadowSoft = soft;
+		PbrShader.params.frame.write(b, frameBytes);
 		return l;
 	}
 
@@ -449,7 +497,7 @@ class Renderer {
 			}
 			if (!many && d.node != node) {
 				var model = d.node.worldMatrix(), t = d.tint;
-				PbrShader.params.object.write({model: model, normalMatrix: MathTools.normalMatrix(model), tint: new Vec4(t.x, t.y, t.z, 1)}, objectBytes);
+				writeObject(model, t);
 				enc.setUniforms(slots[1], objectBytes);
 				node = d.node;
 			}
@@ -472,6 +520,24 @@ class Renderer {
 			recordSets(enc, true);
 		}
 		enc.endPass();
+	}
+
+	// (a node's block into objectBytes: its matrices, its tint)
+	@:allow(helder.scene.render) function writeObject(model:Mat4, t:Vec3) {
+		var o = objectBlock;
+		o.model = model;
+		o.normalMatrix = MathTools.normalMatrix(model);
+		o.tint = new Vec4(t.x, t.y, t.z, 1);
+		PbrShader.params.object.write(o, objectBytes);
+	}
+
+	static function blankFrame():PbrFrame {
+		var z = new Vec4(0, 0, 0, 0), m = Mat4.identity();
+		return {
+			viewProj: m, eye: z, lightDir: z, lightColor: z, sky: z, ground: z, exposure: z, lightViewProj: m, shadow: z, point0: z, point1: z, point2: z,
+			point3: z, pointColor0: z, pointColor1: z, pointColor2: z, pointColor3: z, spot0: z, spot1: z, spot2: z, spot3: z, lightViewProjFar: m,
+			shadowFar: z, environment: z, rim: z, fog: z, fogShape: z, shadowSoft: z
+		};
 	}
 
 	// the instanced sets (InstancedMesh, Sprites) of the frame, each
@@ -504,7 +570,7 @@ class Renderer {
 
 	// a material's block and textures, at a shader's slots
 	function bindMaterial(enc:Encoder, slots:Array<Int>, m:Material, normals:Null<RenderFeature.NormalSource>) {
-		PbrShader.params.material.write(materialOf(m), materialBytes);
+		PbrShader.params.material.write(materialInto(m, materialBlock), materialBytes);
 		enc.setUniforms(slots[2], materialBytes);
 		var ms = m.sampler != null ? m.sampler : sampler;
 		enc.setTexture(slots[3], m.baseColorTexture != null ? m.baseColorTexture : white, ms);
@@ -515,14 +581,21 @@ class Renderer {
 		enc.setTexture(slots[4], sf != null ? sf.map : noShadow, nearest);
 		enc.setTexture(slots[11], sf != null ? sf.mapFar : noShadow, nearest);
 		if (environment != null) environment.bind(enc, slots[12]) else enc.setTexture(slots[12], white, sampler);
+		if (slots[13] >= 0) enc.setTexture(slots[13], occlusion != null ? occlusion : white, clamped);
 		if (normals != null) enc.setTexture(slots[10], m.normalTexture, ms);
 		// (a shader of its own: its own blocks, after the renderer's slots)
-		if (m.shader != null && m.uniforms != null)
-			for (i in 0...m.shader.blocks.length) {
-				var bytes = m.uniforms.get(m.shader.blocks[i].name);
-				if (bytes != null && slots[13 + i] >= 0) enc.setUniforms(slots[13 + i], bytes);
-			}
+		if (m.shader != null && m.uniforms != null) bindOwn(enc, slots, m);
 	}
+
+	// a material's own blocks (MaterialShader's) at a variant's slots: after the renderer's (OWN)
+	@:allow(helder.scene.render) function bindOwn(enc:Encoder, slots:Array<Int>, m:Material)
+		for (i in 0...m.shader.blocks.length) {
+			var bytes = m.uniforms.get(m.shader.blocks[i].name);
+			if (bytes != null && slots[OWN + i] >= 0) enc.setUniforms(slots[OWN + i], bytes);
+		}
+
+	// where a variant's slots of a material's own blocks begin (slotsOf's length)
+	public static inline var OWN = 14;
 
 	// a material's own shader's pipeline and slots for a kind of draw (0
 	// plain, 1 normal mapped, 2 skinned, 3 instanced, 4 instanced and normal
@@ -565,7 +638,7 @@ class Renderer {
 			// (any scale: the instanced shader turns normals by the matrix's
 			// inverse transpose, as the object's normalMatrix)
 			if (instancing && !list[i].primitive.skinned && !list[i].primitive.material.blend)
-				while (j < count && list[j].primitive == list[i].primitive)
+				while (j < count && list[j].primitive == list[i].primitive && list[j].group == list[i].group)
 					j++;
 			if (batchCount == batchStart.length) {
 				batchStart.push(0);
@@ -616,9 +689,9 @@ class Renderer {
 		enc.setPipeline(tintPipelines[k]);
 		enc.setUniforms(slots[0], frameBytes);
 		var model = d.node.worldMatrix(), t = d.tint;
-		PbrShader.params.object.write({model: model, normalMatrix: MathTools.normalMatrix(model), tint: new Vec4(t.x, t.y, t.z, 1)}, objectBytes);
+		writeObject(model, t);
 		enc.setUniforms(slots[1], objectBytes);
-		var block = materialOf(m);
+		var block = materialInto(m, materialBlock);
 		block.layers = new Vec4(block.layers.x, block.layers.y, -m.transmission, block.layers.w);
 		PbrShader.params.material.write(block, materialBytes);
 		enc.setUniforms(slots[2], materialBytes);
@@ -630,6 +703,7 @@ class Renderer {
 		enc.setTexture(slots[4], noShadow, nearest);
 		enc.setTexture(slots[11], noShadow, nearest);
 		if (environment != null) environment.bind(enc, slots[12]) else enc.setTexture(slots[12], white, sampler);
+		enc.setTexture(slots[13], white, clamped);
 		enc.setVertexBuffer(0, p.vertices);
 		enc.setIndexBuffer(p.indices, p.indexFormat);
 		enc.drawIndexed(p.count, 1);
@@ -670,7 +744,8 @@ class Renderer {
 	// a shader's slots for its blocks and textures, in the renderer's order:
 	// frame, object (-1: none), material, base colour, shadow map, skin,
 	// joints, metallic-roughness, emissive, occlusion, normal, the far shadow
-	// map, the environment map
+	// map, the environment map, the screen's ambient occlusion; then a
+	// material's own blocks (OWN on)
 	public static function slotsOf(uniforms:Array<helder.gfx.shader.Shader.UniformBlock>, textures:Array<helder.gfx.shader.Shader.TextureBinding>):Array<Int> {
 		function u(name:String):Int {
 			for (b in uniforms)
@@ -683,7 +758,7 @@ class Renderer {
 			return -1;
 		}
 		return [u("PbrFrame"), u("PbrObject"), u("PbrMaterial"), t("baseColorTexture"), t("shadowMap"), u("PbrSkinInfo"), t("jointMatrices"),
-			t("metallicRoughnessTexture"), t("emissiveTexture"), t("occlusionTexture"), t("normalTexture"), t("shadowMapFar"), t("environmentMap")];
+			t("metallicRoughnessTexture"), t("emissiveTexture"), t("occlusionTexture"), t("normalTexture"), t("shadowMapFar"), t("environmentMap"), t("aoMap")];
 	}
 
 	// whether a mesh's bounds, through mvp, reach the view: not all eight
@@ -727,6 +802,12 @@ class FrameInfo {
 	public var world:Null<World>;
 	public var camera:Null<Camera>;
 	public var aspect = 1.0;
+	// the target's size in pixels (drawInto's, else the device's)
+	public var width = 1;
+	public var height = 1;
+	// the camera's view (the scene's space to the camera's) and projection
+	public var view:Mat4 = Mat4.identity();
+	public var projection:Mat4 = Mat4.identity();
 	public var viewProj:Mat4 = Mat4.identity();
 	public var eye:Vec3 = new Vec3(0, 0, 0);
 	// towards the light (the world's sun or the renderer's)
@@ -751,6 +832,38 @@ class DrawItem {
 	public var depth = 0.0;
 	// (its node's tint: MeshRenderer.tint)
 	public var tint:Vec3 = Renderer.WHITE;
+	// (its node's selection group: the view buffers', 0 without; runs of
+	// one primitive are split by it)
+	public var group = 0;
+
+	public function new() {}
+}
+
+// four Vec4s indexed 0 to 3 (the frame's lights: Renderer.writeFrame),
+// fields: nothing boxed as an Array<Vec4> boxes what it stores
+abstract Vec4Slots(Vec4Fields) {
+	public inline function new()
+		this = new Vec4Fields();
+
+	@:arrayAccess inline function get(k:Int):Vec4
+		return k == 0 ? this.a : k == 1 ? this.b : k == 2 ? this.c : this.d;
+
+	@:arrayAccess inline function set(k:Int, v:Vec4):Vec4 {
+		switch k {
+			case 0: this.a = v;
+			case 1: this.b = v;
+			case 2: this.c = v;
+			case _: this.d = v;
+		}
+		return v;
+	}
+}
+
+class Vec4Fields {
+	public var a = new Vec4(0, 0, 0, 0);
+	public var b = new Vec4(0, 0, 0, 0);
+	public var c = new Vec4(0, 0, 0, 0);
+	public var d = new Vec4(0, 0, 0, 0);
 
 	public function new() {}
 }

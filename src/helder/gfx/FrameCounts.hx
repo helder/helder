@@ -12,8 +12,9 @@ package helder.gfx;
 // glyphs' texels it wrote (glyphTexels: the atlas's changed region, the
 // large glyphs drawn alone). And a 3D renderer's (helder.scene's Renderer)
 // draws of those, by pass: its main pass's (sceneDraws: renderer.draws),
-// its shadow maps' (shadowDraws: every cascade's, Shadows.draws) and its
-// post-processing's (postDraws: bloom, the composite, the stages;
+// its shadow maps' (shadowDraws: every cascade's, Shadows.draws), its view
+// buffers' prepass (prepassDraws: ViewBuffers.draws) and its
+// post-processing's (postDraws: bloom, AO, DOF, the composite, the stages;
 // PostProcess.draws), every renderer's summed.
 // Counted from the last reset: a headless run's --stats resets them at
 // each frame's start.
@@ -36,11 +37,12 @@ class FrameCounts {
 	public static var postDraws = 0;
 	// compute dispatches (Encoder.dispatch, dispatchIndirect)
 	public static var dispatches = 0;
+	public static var prepassDraws = 0;
 
 	public static function reset() {
 		dispatches = 0;
 		passes = draws = quads = instances = pipelines = textures = buffers = uploaded = glyphTexels = 0;
-		sceneDraws = shadowDraws = postDraws = 0;
+		sceneDraws = shadowDraws = postDraws = prepassDraws = 0;
 		uiMs = uploadMs = encodeMs = uiBytes = 0;
 	}
 }

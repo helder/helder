@@ -31,3 +31,12 @@ for o in toon models geometry sprites; do
 	sn=$(wc -c < "$out/$o") sw=$(wc -c < "$out/$o.wasm")
 	printf '%-12s %10d %8d %10d %8d  (against renderer)\n' $o $sn $((sn - rn)) $sw $((sw - rw))
 done
+# (post's effects, each alone and all, against the chain without one: PostSize.hx)
+printf '\n%-12s %10s %8s %10s %8s\n' post native +native wasm +wasm
+for e in none fxaa lut outline ssao dof all; do
+	"$tool" "$out/post-$e" "$@" -main PostSize -D post_effect=$e -D hxmc.libc=glibc -D hxmc.target=linux-x86_64 > "$out/post-$e.log" 2>&1 || { cat "$out/post-$e.log"; exit 1; }
+	"$tool" "$out/post-$e.wasm" "$@" -main PostSize -D post_effect=$e -D hxmc.target=wasm32-wasi > "$out/post-$e.wasm.log" 2>&1 || { cat "$out/post-$e.wasm.log"; exit 1; }
+	sn=$(wc -c < "$out/post-$e") sw=$(wc -c < "$out/post-$e.wasm")
+	if [ $e = none ]; then bn=$sn bw=$sw dn=- dw=-; else dn=$((sn - bn)) dw=$((sw - bw)); fi
+	printf '%-12s %10d %8s %10d %8s\n' $e $sn $dn $sw $dw
+done

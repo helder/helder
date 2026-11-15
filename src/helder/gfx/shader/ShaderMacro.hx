@@ -102,7 +102,7 @@ class ShaderMacro {
 					continue;
 				case RStorage(_) | RImage(_): throw "a render stage's storage";
 			}
-			params.push({field: b.name, expr: uniformWriter(u, lower)});
+			params.push({field: b.name, expr: uniformWriter(u, lower, b.name)});
 		}
 		// the shader's own class (its stages' exact types: hxmc calls a function
 		// of struct values only as such), named after its module, its field and
@@ -160,7 +160,12 @@ class ShaderMacro {
 	}
 
 	// a uniform block's writer (UniformWriter): each field stored at its std140 offset
-	static function uniformWriter(u:SUniform, lower:Lower):Expr {
+	// a block's writer: a class of its own (write overridden, no closure: a
+	// closure through a field of the generic type boxes its call on hxmc, a
+	// write per draw allocating), named after the module, its field and its
+	// content; typed as the base, UniformWriter<T>, so that shaders of one
+	// slot object are of one type
+	static function uniformWriter(u:SUniform, lower:Lower, name:String):Expr {
 		var ut = lower.haxeType(u.struct).toComplexType(), stores = [];
 		for (i in 0...u.struct.fields.length) {
 			var f = u.struct.fields[i], off = u.offsets[i];
@@ -205,9 +210,25 @@ class ShaderMacro {
 			}
 		}
 		var block = macro {name: $v{u.struct.name}, binding: $v{u.binding}, size: $v{u.size}};
-		return macro new helder.gfx.shader.Shader.UniformWriter<$ut>($block, function(u:$ut, b:haxe.io.Bytes, o:Int):Void {
-			$b{stores};
-		});
+		var writer = macro class UniformWriter extends helder.gfx.shader.Shader.UniformWriter<$ut> {
+			public function new()
+				super($block);
+
+			override public function write(u:$ut, b:haxe.io.Bytes, o = 0) {
+				$b{stores};
+			}
+		};
+		var pos = Context.currentPos();
+		var module = Context.getLocalModule(), pack = module.split(".");
+		var base = pack.pop() + "_" + (Context.getLocalMethod() ?? "shader") + "_" + name;
+		writer.name = base + "_" + haxe.crypto.Md5.encode(new haxe.macro.Printer().printTypeDefinition(writer)).substr(0, 8);
+		writer.pack = pack;
+		writer.pos = pos;
+		writer.meta = [{name: ":noCompletion", pos: pos}];
+		var exists = try Context.getType(pack.concat([writer.name]).join(".")) != null catch (_:Dynamic) false;
+		if (!exists) Context.defineType(writer, module);
+		var tp:TypePath = {pack: pack, name: writer.name};
+		return macro(new $tp() : helder.gfx.shader.Shader.UniformWriter<$ut>);
 	}
 
 	// compute({size, main}) in Haxe (ShaderMath.compute forwards here): the
@@ -255,7 +276,7 @@ class ShaderMacro {
 			params.push({
 				field: b.name,
 				expr: switch b.resource {
-					case RUniform(u): uniformWriter(u, lower);
+					case RUniform(u): uniformWriter(u, lower, b.name);
 					case RTexture(t): macro new helder.gfx.shader.Shader.TextureSlot($v{t.name}, $v{t.slot});
 					case RStorage(s): storageSlot(s, lower, module, pack, base);
 					case RImage(m): macro new helder.gfx.shader.ComputeShader.StorageTextureSlot($v{m.name}, $v{m.slot}, cast $v{m.format});

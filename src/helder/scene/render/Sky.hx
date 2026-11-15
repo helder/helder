@@ -22,6 +22,8 @@ class Sky implements RenderFeature {
 	var pipeline:Pipeline = cast 0; // (the renderer's, when attached)
 	final quad:Buffer;
 	final bytes = Bytes.alloc(SkyShader.uniforms[0].size);
+	// (the block as written, kept: nothing allocated per frame)
+	final block:SkyParams = {invViewProj: helder.gfx.shader.Mat4.identity(), eye: new Vec4(0, 0, 0, 0), zenith: new Vec4(0, 0, 0, 0), horizon: new Vec4(0, 0, 0, 0), ground: new Vec4(0, 0, 0, 0), sun: new Vec4(0, 0, 0, 0), sunColor: new Vec4(0, 0, 0, 0), fog: new Vec4(0, 0, 0, 0), fogShape: new Vec4(0, 0, 0, 0)};
 
 	public function new(device:Device) {
 		this.device = device;
@@ -39,17 +41,17 @@ class Sky implements RenderFeature {
 
 	function draw(enc:Encoder, frame:Renderer.FrameInfo, renderer:Renderer) {
 		var e = frame.eye, l = frame.toLight;
-		SkyShader.params.sky.write({
-			invViewProj: MathTools.inverse(frame.viewProj),
-			eye: new Vec4(e.x, e.y, e.z, 1),
-			zenith: new Vec4(zenith.x, zenith.y, zenith.z, 0),
-			horizon: new Vec4(horizon.x, horizon.y, horizon.z, 0),
-			ground: new Vec4(ground.x, ground.y, ground.z, 0),
-			sun: new Vec4(l.x, l.y, l.z, renderer.exposure),
-			sunColor: new Vec4(sunColor.x, sunColor.y, sunColor.z, frame.hdr ? 1 : 0),
-			fog: Fog.colorOf(frame.fog),
-			fogShape: Fog.shapeOf(frame.fog)
-		}, bytes);
+		var b = block;
+		b.invViewProj = MathTools.inverse(frame.viewProj);
+		b.eye = new Vec4(e.x, e.y, e.z, 1);
+		b.zenith = new Vec4(zenith.x, zenith.y, zenith.z, 0);
+		b.horizon = new Vec4(horizon.x, horizon.y, horizon.z, 0);
+		b.ground = new Vec4(ground.x, ground.y, ground.z, 0);
+		b.sun = new Vec4(l.x, l.y, l.z, renderer.exposure);
+		b.sunColor = new Vec4(sunColor.x, sunColor.y, sunColor.z, frame.hdr ? 1 : 0);
+		b.fog = Fog.colorOf(frame.fog);
+		b.fogShape = Fog.shapeOf(frame.fog);
+		SkyShader.params.sky.write(b, bytes);
 		enc.setPipeline(pipeline);
 		enc.setUniforms(0, bytes);
 		enc.setVertexBuffer(0, quad);

@@ -5,6 +5,7 @@ import helder.gfx.*;
 import helder.scene.Node;
 import helder.scene.render.PbrSkinnedShader;
 import helder.scene.render.ShadowSkinnedShader;
+import helder.scene.render.PbrPrepassSkinnedShader;
 
 // Skinned meshes drawn, opted in (renderer.use(new Skinning(device))):
 // PbrSkinnedShader's pipelines, each frame's joint matrices (Skin.update)
@@ -69,6 +70,31 @@ class Skinning implements RenderFeature implements RenderFeature.SkinSource {
 
 	public function shadowSlots():Array<Int>
 		return shadowSlotList;
+
+	var prepass:Null<Pipeline>;
+	var prepassDouble:Null<Pipeline>;
+	var prepassSlotList:Array<Int> = [];
+
+	public function prepassPipeline(doubleSided:Bool):Pipeline {
+		if (prepass == null) {
+			function made(d:PipelineDesc):Pipeline {
+				d.colorFormat = RGBA8;
+				d.depthFormat = Depth32F;
+				d.samples = 1;
+				return device.createPipeline(d);
+			}
+			prepass = made(PbrPrepassSkinnedShader.pipeline({cull: Back, depthCompare: Less, depthWrite: true}));
+			prepassDouble = made(PbrPrepassSkinnedShader.pipeline({cull: None, depthCompare: Less, depthWrite: true}));
+			prepassSlotList = Renderer.slotsOf(PbrPrepassSkinnedShader.uniforms, PbrPrepassSkinnedShader.textures);
+		}
+		return doubleSided ? prepassDouble : prepass;
+	}
+
+	public function prepassSlots():Array<Int>
+		return prepassSlotList;
+
+	public function prepassUniforms():Array<helder.gfx.shader.Shader.UniformBlock>
+		return PbrPrepassSkinnedShader.uniforms;
 
 	public function bind(enc:Encoder, slots:Array<Int>, node:Node) {
 		var skin = Skin.of(node);

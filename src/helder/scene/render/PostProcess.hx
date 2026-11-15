@@ -5,24 +5,41 @@ import helder.gfx.*;
 import helder.gfx.shader.Vec2;
 import helder.gfx.shader.Vec4;
 import helder.scene.render.PostShader;
-import helder.scene.render.PbrShader.aces;
-import helder.scene.render.PostShader.BloomDownShader;
-import helder.scene.render.PostShader.BloomUpShader;
-import helder.scene.render.PostShader.CompositeShader;
+import helder.scene.render.CompositeFxaaShader;
+import helder.scene.render.PostStage.PostPoint;
 
 // The post-process chain of an HDR frame (Renderer.hdr: drawn in linear
-// light into an RGBA16F target): physically based bloom, then the frame
-// tone mapped, graded and finished into an 8-bit target.
+// light into an RGBA16F target): its effects, physically based bloom, then
+// the frame tone mapped, graded and finished into an 8-bit target, in an
+// order fixed by what is right (AO in the lighting, depth of field in
+// linear light, bloom, the curve, the grade, the LUT, FXAA in the
+// composite's read of the scene):
 //
 //   var post = new PostProcess(device);
 //   post.bloom = 0.05;                 // the share of the light spread (0: none)
 //   post.toneMap = Aces;               // or AgX, Clamp
 //   post.saturation = 1.1; post.vignette = 0.25; post.grain = 0.03;
+//   post.ao = new Ssao({radius: 0.5, intensity: 1, samples: 8, halfRes: true});   // GTAO
+//   post.dof = Dof.tiltShift({band: 0.2, falloff: 0.3, strength: 1});           // or Dof.focus({distance, aperture})
+//   post.outline = new Outline({width: 2, color: new Vec4(1, 0.8, 0.2, 1)});     // Outline.select(node)
+//   post.antialias = Fxaa;             // None (MSAA alone: the <Scene>'s antialias)
+//   post.lut = Lut.fromImage(device, image);
 //   renderer.post = post;              // a <Scene>'s box runs it (hdr={true})
-//   // or by hand, after the scene's pass into hdrColor:
+//   // or by hand, after the renderer's drawInto into hdrColor:
 //   post.run(enc, hdrColor, ldrColor, width, height, time);
 //   post.add(FinishShader, finishBytes);  // a pass of its own after the grade (PostStage)
-//   stage.prepare = enc -> ...;        // its own passes first, from post.source (the scene's light)
+//   post.add(BlurShader, bytes, BeforeComposite);  // one in linear light
+//
+// The effects are null by default: one never set is never linked, its
+// shaders and passes neither (an effect's class installs PostEffects:
+// their passes and the composite with them folded in). AO, depth of field
+// and the outline read the renderer's view buffers (ViewBuffers: a
+// prepass of depth, normals and selection), which they ask the renderer
+// for themselves, so the chain is the renderer's (renderer.post = post)
+// for them to be drawn; AO is drawn before the frame's pass and darkens
+// its indirect light (PbrShader's aoMap). The composite is one pass
+// whatever the effects: a variant (compiled at build time) by FXAA and by
+// whether an effect is folded in.
 //
 // Bloom has no threshold: everything spreads a little, what is bright
 // (an engine, a laser, the sun: values far over 1) spreads visibly. The
@@ -38,7 +55,8 @@ import helder.scene.render.PostShader.CompositeShader;
 // own stages (add: a pixel art finish, a CRT, an outline) come after the
 // composite, in order, each a pass reading the last one's image: the
 // composite and all but the last stage into two RGBA8 targets of the
-// run's size taken in turn, the last into the output.
+// run's size taken in turn, the last into the output; those added
+// BeforeComposite before it, in linear light, into two RGBA16F ones.
 class PostProcess {
 	public final device:Device;
 	// the light before the curve (1: as drawn)
@@ -66,8 +84,19 @@ class PostProcess {
 	// whether the frame's alpha is kept (the scene's coverage, where bloom
 	// adds light its brightness: over a ui behind it, premultiplied); false: opaque
 	public var transparent = true;
-	// the last run's draws (each a full-screen pass: bloom down and up, the
-	// composite, the stages; helder.gfx.FrameCounts.postDraws too)
+	// the screen's ambient occlusion (Ssao: GTAO; null none)
+	public var ao:Null<Ssao> = null;
+	// depth of field (Dof.focus, Dof.tiltShift; null none)
+	public var dof:Null<Dof> = null;
+	// the selection's outlines (Outline, Outline.select; null none)
+	public var outline:Null<Outline> = null;
+	// antialiasing after the frame's own (None, Fxaa: in the composite; its
+	// variant linked only by a program that sets it)
+	public var antialias(default, set):Antialias = None;
+	// colour grading by a lookup table (Lut; null none), after the grade
+	public var lut:Null<Lut> = null;
+	// the last run's draws (each a full-screen pass: AO's, depth of field's,
+	// bloom down and up, the composite, the stages; helder.gfx.FrameCounts.postDraws too)
 	public var draws(default, null) = 0;
 	// the run's context, for its stages (PostStage's prepare and bind): the
 	// scene's light it was given (linear, RGBA16F, its alpha the scene's
@@ -76,27 +105,41 @@ class PostProcess {
 	public var width(default, null) = 0;
 	public var height(default, null) = 0;
 
+	// (the effects beyond bloom and the grade: installed by the first
+	// effect's class, made for a chain when one is set)
+	@:noCompletion public static var effects:Null<PostProcess->RenderFeature.PostEffects> = null;
+
 	static inline var MAX_LEVELS = 6;
 
 	final down:Pipeline;
 	final up:Pipeline;
-	final composite:Pipeline;
 	final triangle:Buffer;
 	final linear:Sampler;
 	final nearest:Sampler;
-	// a program's own stages, after the composite (add)
+	// a program's own stages, after the composite (add) and before it
 	final stages:Array<PostStage> = [];
-	// (the targets between them, made for a size)
+	final early:Array<PostStage> = [];
+	// (the targets between them, made for a size: RGBA8 after, RGBA16F before)
 	final between:Array<Texture> = [];
 	final betweenPasses:Array<PassDesc> = [];
 	var betweenW = 0;
 	var betweenH = 0;
-	var compositeBetween:Null<Pipeline> = null;
+	final linearTargets:Array<Texture> = [];
+	final linearPasses:Array<PassDesc> = [];
+	var linearW = 0;
+	var linearH = 0;
+	// (the plain composite's pipelines: by FXAA, into the output and between)
+	final composites:Array<Null<Pipeline>> = [null, null, null, null];
 	final output:TextureFormat;
 	final frame:Bool;
 	final black:Texture;
 	final bloomBytes = Bytes.alloc(BloomDownShader.uniforms[0].size);
 	final compositeBytes = Bytes.alloc(CompositeShader.uniforms[0].size);
+	// (the blocks as written, kept: a struct literal per write would allocate)
+	final bloomBlock:BloomParams = {texel: new Vec4(0, 0, 0, 0)};
+	final compositeBlock:CompositeParams = {
+		exposure: new Vec4(0, 0, 0, 0), grade: new Vec4(0, 0, 0, 0), lift: new Vec4(0, 0, 0, 0), gain: new Vec4(0, 0, 0, 0), size: new Vec4(0, 0, 0, 0)
+	};
 	// (the chain's targets and their passes: made for a size)
 	final chain:Array<Texture> = [];
 	final widths:Array<Int> = [];
@@ -110,7 +153,11 @@ class PostProcess {
 	var chainN = 0;
 	final downSlots:Array<Int>;
 	final upSlots:Array<Int>;
-	final compositeSlots:Array<Int>;
+	// (each composite variant's: its block, the scene, the bloom; plain, FXAA)
+	final compositeSlots:Array<Array<Int>>;
+	// (the effects, made when the first is set; the light the composite reads)
+	var fx:Null<RenderFeature.PostEffects> = null;
+	var light:Null<Texture> = null;
 
 	// output: the format of the targets run writes (RGBA8: a <Scene>'s
 	// box's); frame: run writes the frame instead (output unused)
@@ -124,9 +171,6 @@ class PostProcess {
 		var u = BloomUpShader.pipeline({blend: Additive});
 		u.colorFormat = RGBA16F;
 		up = device.createPipeline(u);
-		var c = CompositeShader.pipeline({});
-		if (!frame) c.colorFormat = output;
-		composite = device.createPipeline(c);
 		var v = BloomDownShader.vertexBytes([{pos: new Vec2(-1, -1)}, {pos: new Vec2(3, -1)}, {pos: new Vec2(-1, 3)}]);
 		triangle = device.createBuffer({size: v.length, usage: Vertex, data: v});
 		linear = device.createSampler({filter: Linear, wrap: Clamp});
@@ -135,7 +179,47 @@ class PostProcess {
 		black = device.createTexture({width: 1, height: 1, format: RGBA16F, data: b});
 		downSlots = [BloomDownShader.uniforms[0].binding, BloomDownShader.textures[0].binding];
 		upSlots = [BloomUpShader.uniforms[0].binding, BloomUpShader.textures[0].binding];
-		compositeSlots = [CompositeShader.uniforms[0].binding, CompositeShader.textures[0].binding, CompositeShader.textures[1].binding];
+		compositeSlots = [slotsOf(CompositeShader.uniforms, CompositeShader.textures), []];
+	}
+
+	// (FXAA's composite: its pipeline's description and slots, here once set)
+	var fxaaDesc:Null<Void->PipelineDesc> = null;
+
+	function set_antialias(v:Antialias):Antialias {
+		if (v == Fxaa && fxaaDesc == null) {
+			fxaaDesc = () -> CompositeFxaaShader.pipeline({});
+			compositeSlots[1] = slotsOf(CompositeFxaaShader.uniforms, CompositeFxaaShader.textures);
+		}
+		return antialias = v;
+	}
+
+	// a composite variant's slots: its block (CompositeParams), the scene, the bloom
+	@:allow(helder.scene.render) static function slotsOf(uniforms:Array<helder.gfx.shader.Shader.UniformBlock>,
+			textures:Array<helder.gfx.shader.Shader.TextureBinding>):Array<Int> {
+		var s = [-1, -1, -1];
+		for (u in uniforms)
+			if (u.name == "CompositeParams") s[0] = u.binding;
+		for (t in textures)
+			if (t.name == "scene") s[1] = t.binding else if (t.name == "bloom") s[2] = t.binding;
+		return s;
+	}
+
+	// (the effects', made when an effect is set: null without)
+	inline function effectsOf():Null<RenderFeature.PostEffects> {
+		if (fx == null && effects != null && (ao != null || dof != null || outline != null || lut != null)) fx = effects(this);
+		return fx;
+	}
+
+	// (the renderer's frame, before its draw list: the effects' needs)
+	@:allow(helder.scene.render.Renderer) function require(renderer:Renderer) {
+		var e = effectsOf();
+		if (e != null) e.require(renderer);
+	}
+
+	// (the renderer's frame, after the prepass: the screen's ambient occlusion)
+	@:allow(helder.scene.render.Renderer) function occlusion(enc:Encoder, frame:Renderer.FrameInfo):Null<Texture> {
+		var e = fx;
+		return e != null && ao != null ? e.occlusion(enc, frame) : null;
 	}
 
 	// the chain for a frame of width by height (its targets made again when that changes)
@@ -160,16 +244,19 @@ class PostProcess {
 		}
 	}
 
-	// a stage of the program's own after those before it (PostStage: its
-	// shader's first texture the image so far, its first block bytes)
-	public function add<V, P>(shader:helder.gfx.shader.Shader<V, P>, ?bytes:Bytes):PostStage {
-		var s = new PostStage(shader, bytes);
-		stages.push(s);
+	// a stage of the program's own (PostStage: its shader's first texture
+	// the image so far, its first block bytes): after those before it at its
+	// point (AfterComposite: tone mapped; BeforeComposite: in linear light)
+	public function add<V, P>(shader:helder.gfx.shader.Shader<V, P>, ?bytes:Bytes, point:PostPoint = AfterComposite):PostStage {
+		var s = new PostStage(shader, bytes, point);
+		(point == BeforeComposite ? early : stages).push(s);
 		return s;
 	}
 
-	public function remove(stage:PostStage)
+	public function remove(stage:PostStage) {
 		stages.remove(stage);
+		early.remove(stage);
+	}
 
 	// the frame: source (the scene's RGBA16F, width by height) into target
 	// (the output format's render target of that size, or with stages any
@@ -180,15 +267,41 @@ class PostProcess {
 		this.source = source;
 		this.width = width;
 		this.height = height;
+		for (s in early)
+			if (s.prepare != null) s.prepare(enc);
 		for (s in stages)
 			if (s.prepare != null) s.prepare(enc);
+		// (the stages in linear light: each from the last, into RGBA16F targets)
+		light = source;
+		var from = 0;
+		for (s in early) {
+			if (!s.enabled) continue;
+			linearTargetsFor(width, height);
+			enc.beginPass(linearPasses[from]);
+			if (s.middle == null) {
+				s.desc.colorFormat = RGBA16F;
+				s.middle = device.createPipeline(s.desc);
+			}
+			enc.setPipeline(s.middle);
+			if (s.block >= 0 && s.bytes != null) enc.setUniforms(s.block, s.bytes);
+			enc.setTexture(s.source, light, s.filter == Nearest ? nearest : linear);
+			if (s.bind != null) s.bind(enc);
+			enc.setVertexBuffer(0, triangle);
+			enc.draw(3);
+			draws++;
+			enc.endPass();
+			light = linearTargets[from];
+			from = 1 - from;
+		}
+		var e = effectsOf();
+		if (e != null) e.beforeComposite(enc);
 		var n = bloom > 0 ? Std.int(Math.max(1, Math.min(levels, MAX_LEVELS))) : 0;
 		var b = base >= 2 ? 2 : 1;
 		if (n > 0) size(width, height, b, n);
 		if (n > chain.length) n = chain.length;
 		// (down the chain: each level from the one above, the first from the scene)
 		for (k in 0...n) {
-			var from = k == 0 ? source : chain[k - 1];
+			var from = k == 0 ? light : chain[k - 1];
 			var fw = k == 0 ? width : widths[k - 1], fh = k == 0 ? height : heights[k - 1];
 			enc.beginPass(clearPasses[k]);
 			enc.setPipeline(down);
@@ -223,23 +336,27 @@ class PostProcess {
 		var into = count > 0 ? betweenPasses[0] : outPass;
 		outPass.colors[0].texture = target;
 		enc.beginPass(into);
-		if (count > 0 && compositeBetween == null) {
-			var c = CompositeShader.pipeline({});
-			c.colorFormat = RGBA8;
-			compositeBetween = device.createPipeline(c);
-		}
-		enc.setPipeline(count > 0 ? compositeBetween : composite);
+		var fxaa = antialias == Fxaa;
+		var format:Null<TextureFormat> = count > 0 ? RGBA8 : frame ? null : output;
+		var folded = e != null && e.folded();
+		var slots = compositeSlots[fxaa ? 1 : 0];
+		if (folded) {
+			enc.setPipeline(e.composite(fxaa, format));
+			slots = e.slots(fxaa);
+		} else
+			enc.setPipeline(plain(fxaa, count > 0));
 		// (the first level holds the n levels' light added: lift.w, 1 / n, scales it back)
-		CompositeShader.params.p.write({
-			exposure: new Vec4(exposure, n > 0 ? Math.min(1, bloom) : 0, (cast toneMap : Int), grain > 0 ? time % 1000 : 0),
-			grade: new Vec4(saturation, contrast, vignette, grain),
-			lift: new Vec4(lift.x, lift.y, lift.z, n > 0 ? 1 / n : 0),
-			gain: new Vec4(gain.x, gain.y, gain.z, 0),
-			size: new Vec4(width, height, width / Math.max(1, height), transparent ? 1 : 0)
-		}, compositeBytes);
-		enc.setUniforms(compositeSlots[0], compositeBytes);
-		enc.setTexture(compositeSlots[1], source, linear);
-		enc.setTexture(compositeSlots[2], n > 0 ? chain[0] : black, linear);
+		var c = compositeBlock;
+		c.exposure = new Vec4(exposure, n > 0 ? Math.min(1, bloom) : 0, (cast toneMap : Int), grain > 0 ? time % 1000 : 0);
+		c.grade = new Vec4(saturation, contrast, vignette, grain);
+		c.lift = new Vec4(lift.x, lift.y, lift.z, n > 0 ? 1 / n : 0);
+		c.gain = new Vec4(gain.x, gain.y, gain.z, 0);
+		c.size = new Vec4(width, height, width / Math.max(1, height), transparent ? 1 : 0);
+		CompositeShader.params.p.write(c, compositeBytes);
+		enc.setUniforms(slots[0], compositeBytes);
+		enc.setTexture(slots[1], light, linear);
+		enc.setTexture(slots[2], n > 0 ? chain[0] : black, linear);
+		if (folded) e.bind(enc, fxaa);
 		enc.setVertexBuffer(0, triangle);
 		enc.draw(3);
 		draws++;
@@ -261,9 +378,23 @@ class PostProcess {
 			from = 1 - from;
 		}
 		outPass.colors[0].texture = null;
+		if (e != null) draws += e.drawn();
 		helder.gfx.FrameCounts.postDraws += draws;
 		this.source = null;
+		light = null;
 		this.width = this.height = 0;
+	}
+
+	// (the plain composite: with FXAA or not, into the output or between)
+	function plain(fxaa:Bool, middle:Bool):Pipeline {
+		var k = (fxaa ? 2 : 0) + (middle ? 1 : 0);
+		var p = composites[k];
+		if (p == null) {
+			var c = fxaa ? fxaaDesc() : CompositeShader.pipeline({});
+			c.colorFormat = middle ? RGBA8 : frame ? null : output;
+			p = composites[k] = device.createPipeline(c);
+		}
+		return p;
 	}
 
 	function stageBetween(s:PostStage):Pipeline {
@@ -295,6 +426,19 @@ class PostProcess {
 		}
 	}
 
+	// the two RGBA16F targets of the stages before the composite
+	function linearTargetsFor(width:Int, height:Int) {
+		if (width == linearW && height == linearH) return;
+		releaseLinear();
+		linearW = width;
+		linearH = height;
+		for (_ in 0...2) {
+			var t = device.createTexture({width: width, height: height, format: RGBA16F, renderTarget: true});
+			linearTargets.push(t);
+			linearPasses.push({colors: [{load: Clear, clear: new Color(0, 0, 0, 0), texture: t}]});
+		}
+	}
+
 	function releaseBetween() {
 		for (t in between)
 			device.destroyTexture(t);
@@ -303,8 +447,18 @@ class PostProcess {
 		betweenW = betweenH = 0;
 	}
 
-	inline function bloomParams(tx:Float, ty:Float, r:Float, first:Float)
-		BloomDownShader.params.p.write({texel: new Vec4(tx, ty, r, first)}, bloomBytes);
+	function releaseLinear() {
+		for (t in linearTargets)
+			device.destroyTexture(t);
+		linearTargets.resize(0);
+		linearPasses.resize(0);
+		linearW = linearH = 0;
+	}
+
+	inline function bloomParams(tx:Float, ty:Float, r:Float, first:Float) {
+		bloomBlock.texel = new Vec4(tx, ty, r, first);
+		BloomDownShader.params.p.write(bloomBlock, bloomBytes);
+	}
 
 	function release() {
 		for (t in chain)
@@ -320,6 +474,9 @@ class PostProcess {
 	public function dispose() {
 		release();
 		releaseBetween();
+		releaseLinear();
+		if (fx != null) fx.dispose();
+		fx = null;
 		device.destroyBuffer(triangle);
 		device.destroyTexture(black);
 	}
@@ -334,4 +491,12 @@ enum abstract ToneMap(Int) to Int {
 	var Aces;
 	// none: clipped at 1
 	var Clamp;
+}
+
+// antialiasing in post (PostProcess.antialias), beside a <Scene>'s MSAA:
+// None, or Fxaa (in the composite: its read of the scene along the edges;
+// SMAA and TAA come later, desktop and web)
+enum abstract Antialias(Int) {
+	var None;
+	var Fxaa;
 }

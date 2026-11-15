@@ -56,6 +56,8 @@ class Shadows implements RenderFeature implements RenderFeature.ShadowSource {
 	// (the casters' pipeline: their matrices from the instance buffer)
 	final pipeline:Pipeline;
 	final casterBytes = Bytes.alloc(ShadowShader.uniforms[0].size);
+	// (the block as written, kept: a struct literal per write would allocate)
+	final casterBlock:ShadowCaster = {mvp: Mat4.identity()};
 	final pass:PassDesc;
 	var passFar:PassDesc;
 	// the last frame's light view-projections (the first cascade's, the second's)
@@ -146,13 +148,15 @@ class Shadows implements RenderFeature implements RenderFeature.ShadowSource {
 	// seen from a light shining along -toLight, the map fitted to them
 	public function render(enc:Encoder, world:World, toLight:Vec3, skins:Null<RenderFeature.SkinSource>, view:Renderer.FrameInfo) {
 		var meshes = world.store(MeshRenderer.KIND);
-		var bounds = Aabb.empty();
+		// (the casters' bounds as numbers: an Aabb a caster would allocate)
+		bx0 = by0 = bz0 = Math.POSITIVE_INFINITY;
+		bx1 = by1 = bz1 = Math.NEGATIVE_INFINITY;
 		count = 0;
 		skinnedCount = 0;
 		for (k in 0...meshes.length) {
 			var n = meshes.nodeAt(k), mesh = meshes.valueAt(k);
 			if (!n.shown() || !world.inTree(n) || !casts(mesh)) continue;
-			bounds = bounds.union(mesh.bounds.transform(n.worldMatrix()));
+			grow(mesh.bounds, n.worldMatrix());
 			// (the casters: a skinned node drawn alone, else each casting primitive)
 			if (mesh.primitives[0].skinned) {
 				if (skinnedCount == skinned.length) {
@@ -182,10 +186,21 @@ class Shadows implements RenderFeature implements RenderFeature.ShadowSource {
 		var sets = world.store(InstancedMesh.KIND);
 		for (k in 0...sets.length) {
 			var n = sets.nodeAt(k), s = sets.valueAt(k);
-			if (n.shown() && world.inTree(n) && s.count > 0 && s.castShadows && casts(s.mesh)) bounds = bounds.union(s.bounds);
+			if (n.shown() && world.inTree(n) && s.count > 0 && s.castShadows && casts(s.mesh) && !s.bounds.isEmpty()) {
+				var b = s.bounds;
+				bx0 = Math.min(bx0, b.min.x);
+				by0 = Math.min(by0, b.min.y);
+				bz0 = Math.min(bz0, b.min.z);
+				bx1 = Math.max(bx1, b.max.x);
+				by1 = Math.max(by1, b.max.y);
+				bz1 = Math.max(bz1, b.max.z);
+			}
 		}
-		if (bounds.isEmpty()) bounds = new Aabb(new Vec3(-1, -1, -1), new Vec3(1, 1, 1));
-		var c = bounds.center(), e = bounds.size();
+		if (bx0 > bx1 || by0 > by1 || bz0 > bz1) {
+			bx0 = by0 = bz0 = -1;
+			bx1 = by1 = bz1 = 1;
+		}
+		var c = new Vec3((bx0 + bx1) * 0.5, (by0 + by1) * 0.5, (bz0 + bz1) * 0.5), e = new Vec3(bx1 - bx0, by1 - by0, bz1 - bz0);
 		var r = Math.sqrt(e.x * e.x + e.y * e.y + e.z * e.z) / 2 + 0.01;
 		// (up: any direction not along the light's)
 		var up = Math.abs(toLight.y) > 0.99 ? new Vec3(0, 0, 1) : new Vec3(0, 1, 0);
@@ -211,21 +226,30 @@ class Shadows implements RenderFeature implements RenderFeature.ShadowSource {
 	function fitNear(view:Renderer.FrameInfo, toLight:Vec3, up:Vec3, c:Vec3, r:Float):Mat4 {
 		var cam = view.camera, inv = MathTools.inverse(view.viewProj);
 		var f = Math.min(Math.max((split - cam.near) / (cam.far - cam.near), 0), 1);
-		var corners = [];
+		// (the eight corners as numbers, kept: an array of Vec3s would box them)
 		for (k in 0...4) {
 			var x = (k & 1) == 0 ? -1.0 : 1.0, y = (k & 2) == 0 ? -1.0 : 1.0;
 			var a = MathTools.transformPoint(inv, new Vec3(x, y, 0)), b = MathTools.transformPoint(inv, new Vec3(x, y, 1));
-			corners.push(a);
 			// (along the corner's edge: linear in the view's depth)
-			corners.push(a + (b - a) * f);
+			var q = a + (b - a) * f;
+			cornerX[2 * k] = a.x;
+			cornerY[2 * k] = a.y;
+			cornerZ[2 * k] = a.z;
+			cornerX[2 * k + 1] = q.x;
+			cornerY[2 * k + 1] = q.y;
+			cornerZ[2 * k + 1] = q.z;
 		}
-		var centre = new Vec3(0, 0, 0);
-		for (p in corners)
-			centre = centre + p * (1 / 8);
+		var sx = 0.0, sy = 0.0, sz = 0.0;
+		for (k in 0...8) {
+			sx += cornerX[k];
+			sy += cornerY[k];
+			sz += cornerZ[k];
+		}
+		var centre = new Vec3(sx / 8, sy / 8, sz / 8);
 		var radius = 0.0;
-		for (p in corners) {
-			var d = p - centre;
-			radius = Math.max(radius, Math.sqrt(d.x * d.x + d.y * d.y + d.z * d.z));
+		for (k in 0...8) {
+			var dx = cornerX[k] - centre.x, dy = cornerY[k] - centre.y, dz = cornerZ[k] - centre.z;
+			radius = Math.max(radius, Math.sqrt(dx * dx + dy * dy + dz * dz));
 		}
 		radius += 0.01;
 		// (the centre moved by whole texels in the light's view: shadows do not crawl)
@@ -241,6 +265,35 @@ class Shadows implements RenderFeature implements RenderFeature.ShadowSource {
 		nearRange = back + radius + r - 0.01;
 		return Mat4.orthographic(-radius, radius, -radius, radius, 0.01, back + radius + r) * MathTools.lookAt(snapped + toLight * back, snapped, up);
 	}
+
+	// (the casters' bounds, grown by a mesh's box through its node's matrix:
+	// Aabb.transform's, Arvo's, as numbers)
+	var bx0 = 0.0;
+	var by0 = 0.0;
+	var bz0 = 0.0;
+	var bx1 = 0.0;
+	var by1 = 0.0;
+	var bz1 = 0.0;
+
+	function grow(b:Aabb, m:Mat4) {
+		if (b.isEmpty()) return;
+		var cx = (b.min.x + b.max.x) * 0.5, cy = (b.min.y + b.max.y) * 0.5, cz = (b.min.z + b.max.z) * 0.5;
+		var hx = (b.max.x - b.min.x) * 0.5, hy = (b.max.y - b.min.y) * 0.5, hz = (b.max.z - b.min.z) * 0.5;
+		var tc = m * new Vec4(cx, cy, cz, 1);
+		var ex = Math.abs(m.c0.x) * hx + Math.abs(m.c1.x) * hy + Math.abs(m.c2.x) * hz;
+		var ey = Math.abs(m.c0.y) * hx + Math.abs(m.c1.y) * hy + Math.abs(m.c2.y) * hz;
+		var ez = Math.abs(m.c0.z) * hx + Math.abs(m.c1.z) * hy + Math.abs(m.c2.z) * hz;
+		bx0 = Math.min(bx0, tc.x - ex);
+		by0 = Math.min(by0, tc.y - ey);
+		bz0 = Math.min(bz0, tc.z - ez);
+		bx1 = Math.max(bx1, tc.x + ex);
+		by1 = Math.max(by1, tc.y + ey);
+		bz1 = Math.max(bz1, tc.z + ez);
+	}
+
+	final cornerX:Array<Float> = [for (_ in 0...8) 0.0];
+	final cornerY:Array<Float> = [for (_ in 0...8) 0.0];
+	final cornerZ:Array<Float> = [for (_ in 0...8) 0.0];
 
 	static function casts(m:Mesh):Bool {
 		for (p in m.primitives)
@@ -302,7 +355,8 @@ class Shadows implements RenderFeature implements RenderFeature.ShadowSource {
 	function draw(enc:Encoder, pass:PassDesc, world:World, skins:Null<RenderFeature.SkinSource>, viewProj:Mat4) {
 		enc.beginPass(pass);
 		enc.setPipeline(pipeline);
-		ShadowShader.params.caster.write({mvp: viewProj}, casterBytes);
+		casterBlock.mvp = viewProj;
+		ShadowShader.params.caster.write(casterBlock, casterBytes);
 		enc.setUniforms(ShadowInstancedShader.uniforms[0].binding, casterBytes);
 		for (b in 0...batchCount) {
 			var p = casterPrims[batchStart[b]];
@@ -319,7 +373,8 @@ class Shadows implements RenderFeature implements RenderFeature.ShadowSource {
 			var slots = skins.shadowSlots();
 			for (k in 0...skinnedCount) {
 				var n = skinned[k];
-				ShadowShader.params.caster.write({mvp: viewProj * n.worldMatrix()}, casterBytes);
+				casterBlock.mvp = viewProj * n.worldMatrix();
+				ShadowShader.params.caster.write(casterBlock, casterBytes);
 				enc.setUniforms(slots[0], casterBytes);
 				skins.bind(enc, slots, n);
 				for (p in skinnedMeshes[k].primitives) {

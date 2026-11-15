@@ -1,5 +1,5 @@
 // helder.scene's standard material's variants (PbrShader.hx: the
-// renderer's five), as pbr.ts prints TypeScript's (src/helder/scene/pbr.ts).
+// renderer's five, the view buffers' prepass three), as pbr.ts prints TypeScript's (src/helder/scene/pbr.ts).
 // (A literal below 1e-4 is printed by each runtime's Std.string: Haxe's
 // macros write 1e-06 where helder's compiler writes 0.000001; written here
 // as pbr.ts's)
@@ -10,7 +10,10 @@ class Pbr {
 			cast helder.scene.render.PbrNormalShader.PbrNormalShader,
 			cast helder.scene.render.PbrSkinnedShader.PbrSkinnedShader,
 			cast helder.scene.render.PbrInstancedShader.PbrInstancedShader,
-			cast helder.scene.render.PbrInstancedNormalShader.PbrInstancedNormalShader
+			cast helder.scene.render.PbrInstancedNormalShader.PbrInstancedNormalShader,
+			cast helder.scene.render.PbrPrepassShader.PbrPrepassShader,
+			cast helder.scene.render.PbrPrepassInstancedShader.PbrPrepassInstancedShader,
+			cast helder.scene.render.PbrPrepassSkinnedShader.PbrPrepassSkinnedShader
 		];
 		for (v in vs)
 			Print.shader(new helder.gfx.shader.Shader<Dynamic, Dynamic>(code(v.vertexCode), code(v.fragmentCode), v.layout, v.uniforms, v.textures, null, null));

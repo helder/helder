@@ -46,6 +46,8 @@ class Environment implements RenderFeature {
 	// (an atlas's: one level)
 	final flat:Sampler;
 	final bytes = Bytes.alloc(EnvironmentShader.uniforms[0].size);
+	// (the block as written, kept: nothing allocated per frame)
+	final block:EnvironmentParams = {invViewProj: helder.gfx.shader.Mat4.identity(), eye: new Vec4(0, 0, 0, 0), params: new Vec4(0, 0, 0, 0), fog: new Vec4(0, 0, 0, 0), fogShape: new Vec4(0, 0, 0, 0)};
 
 	// texture: mip-mapped (Images.mipmapped's), width twice its height; or
 	// a prefiltered atlas of rows levels (prefiltered), width its width
@@ -98,13 +100,13 @@ class Environment implements RenderFeature {
 
 	function draw(enc:Encoder, frame:Renderer.FrameInfo, renderer:Renderer) {
 		var e = frame.eye;
-		EnvironmentShader.params.env.write({
-			invViewProj: MathTools.inverse(frame.viewProj),
-			eye: new Vec4(e.x, e.y, e.z, 1),
-			params: new Vec4(intensity * renderer.exposure, frame.hdr ? 1 : 0, rows, edge),
-			fog: Fog.colorOf(frame.fog) * renderer.exposure,
-			fogShape: Fog.shapeOf(frame.fog)
-		}, bytes);
+		var b = block;
+		b.invViewProj = MathTools.inverse(frame.viewProj);
+		b.eye = new Vec4(e.x, e.y, e.z, 1);
+		b.params = new Vec4(intensity * renderer.exposure, frame.hdr ? 1 : 0, rows, edge);
+		b.fog = Fog.colorOf(frame.fog) * renderer.exposure;
+		b.fogShape = Fog.shapeOf(frame.fog);
+		EnvironmentShader.params.env.write(b, bytes);
 		enc.setPipeline(pipeline);
 		enc.setUniforms(0, bytes);
 		enc.setTexture(EnvironmentShader.textures[0].binding, texture, rows > 0 ? flat : sampler);

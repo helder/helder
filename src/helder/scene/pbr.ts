@@ -39,10 +39,15 @@ export type PbrVertexParams = {frame: PbrFrame, object?: PbrObject, skin?: PbrSk
 
 export type PbrFragmentParams = {
 	frame: PbrFrame, material: PbrMaterial, baseColorTexture: Texture2D, metallicRoughnessTexture: Texture2D, emissiveTexture: Texture2D,
-	occlusionTexture: Texture2D, shadowMap: Texture2D, shadowMapFar: Texture2D, environmentMap: Texture2D, normalTexture?: Texture2D,
+	occlusionTexture: Texture2D, shadowMap: Texture2D, shadowMapFar: Texture2D, environmentMap: Texture2D, aoMap: Texture2D, normalTexture?: Texture2D,
+	prepass?: PbrPrepass,
 };
 
-export type PbrOptions = {normalMap: boolean, skinned: boolean, instanced: boolean};
+// (prepass: the view buffers' variant, ViewBuffers)
+export type PbrOptions = {normalMap: boolean, skinned: boolean, instanced: boolean, prepass: boolean};
+
+// per draw in the prepass (ViewBuffers): the camera's view, x the selection group
+export type PbrPrepass = {view: Mat4, id: Vec4};
 
 // what the fragment's slots read: the point in the world, its unit normal,
 // the material's uvs, the node's unit up, the base colour (linear)
@@ -172,7 +177,7 @@ export function pointLight(s: LitSurface, pos: Vec4, color: Vec4, spot: Vec4): L
 }
 
 // the light around a surface (IndirectLight)
-export function ambientAt(s: LitSurface, frame: PbrFrame, material: PbrMaterial, occlusionTexture: Texture2D, environmentMap: Texture2D): IndirectLight {
+export function ambientAt(s: LitSurface, frame: PbrFrame, material: PbrMaterial, occlusionTexture: Texture2D, environmentMap: Texture2D, aoMap: Texture2D): IndirectLight {
 	const n = s.normal;
 	const above = n.y * 0.5 + 0.5;
 	let irradiance = mix(frame.ground.xyz, frame.sky.xyz, above);
@@ -188,10 +193,15 @@ export function ambientAt(s: LitSurface, frame: PbrFrame, material: PbrMaterial,
 	}
 	const day = daylight(s, frame, material);
 	const horizon = smoothstep(-0.2, 0.2, dot(r, s.up));
+	let occlusion = sample(occlusionTexture, s.uv).x;
+	if (frame.exposure.z > 0.5) {
+		const sc = frame.viewProj.mul(vec4(s.world, 1));
+		occlusion = occlusion * sampleLevel(aoMap, vec2(sc.x / sc.w * 0.5 + 0.5, 0.5 - sc.y / sc.w * 0.5), 0).x;
+	}
 	return {
 		irradiance: irradiance.mul(mix(1.0, 0.55 + 0.45 * smoothstep(-0.6, 0.6, dot(n, s.up)), material.ground.x)),
 		radiance: env.mul(mix(1.0, mix(0.12, 1, horizon) * (0.45 + 0.55 * day), material.ground.x)),
-		occlusion: sample(occlusionTexture, s.uv).x,
+		occlusion: occlusion,
 	};
 }
 
@@ -478,6 +488,14 @@ export function encode(c: Vec3): Vec3 {
 	return pow(c, vec3(1 / 2.2));
 }
 
+// a unit vector in two components 0..1 (octahedral)
+function octEncode(n: Vec3): Vec2 {
+	const a = n.div(abs(n.x) + abs(n.y) + abs(n.z));
+	let e = a.xy;
+	if (a.z < 0) e = vec2((1 - abs(a.y)) * (a.x >= 0 ? 1 : -1), (1 - abs(a.x)) * (a.y >= 0 ? 1 : -1));
+	return e.mul(0.5).add(0.5);
+}
+
 // joint k's matrix from its row of the texture
 export function joint(t: Texture2D, k: number, rows: number): Mat4 {
 	const y = (k + 0.5) / rows;
@@ -508,7 +526,7 @@ export function instanceNormal(c0: Vec3, c1: Vec3, c2: Vec3, n: Vec3): Vec3 {
 }
 
 export const pbr = slots({
-	options: {normalMap: false, skinned: false, instanced: false},
+	options: {normalMap: false, skinned: false, instanced: false, prepass: false},
 	vertex: (v: PbrVertex, p: PbrVertexParams, m: Pbr): PbrVaryings => {
 		let pos = m.position({pos: v.pos, normal: v.normal, uv: v.uv}, p);
 		let nr = v.normal;
@@ -550,15 +568,27 @@ export const pbr = slots({
 			up: normalize(i.up),
 			baseColor: vec4(p.material.baseColor.xyz.mul(pow(texel.xyz, vec3(2.2))), p.material.baseColor.w * texel.w),
 		};
-		const lit = litSurface(m.normal(s, p), s.world, uv, s.up, m.color(s, p).mul(i.tint), m.alpha(s, p), m.metalness(s, p), m.roughness(s, p), p.frame, p.material);
-		// (the sun, then each point or spot light there is: the direct slot's, summed)
-		let direct = m.direct(lit, sunLight(lit, p.frame, p.material, p.shadowMap, p.shadowMapFar), p);
-		if (p.frame.point0.w > 0) direct = direct.add(m.direct(lit, pointLight(lit, p.frame.point0, p.frame.pointColor0, p.frame.spot0), p));
-		if (p.frame.point1.w > 0) direct = direct.add(m.direct(lit, pointLight(lit, p.frame.point1, p.frame.pointColor1, p.frame.spot1), p));
-		if (p.frame.point2.w > 0) direct = direct.add(m.direct(lit, pointLight(lit, p.frame.point2, p.frame.pointColor2, p.frame.spot2), p));
-		if (p.frame.point3.w > 0) direct = direct.add(m.direct(lit, pointLight(lit, p.frame.point3, p.frame.pointColor3, p.frame.spot3), p));
-		const env = ambientAt(lit, p.frame, p.material, p.occlusionTexture, p.environmentMap);
-		return shade(lit, direct, m.indirect(lit, env, p), env, m.emissive(s, p), p.frame, p.material, p.shadowMap, p.shadowMapFar, p.environmentMap);
+		let out = vec4(0);
+		if (m.options.prepass) {
+			const a = m.alpha(s, p);
+			if (p.material.layers.w > 0 && a < p.material.layers.w) discard();
+			let f = m.normal(s, p);
+			if (p.material.params.w > 0.5 && dot(f, p.frame.eye.xyz.sub(s.world)) < 0) f = f.neg();
+			const vn = normalize(p.prepass!.view.mul(vec4(f, 0)).xyz);
+			out = vec4(octEncode(vn), m.roughness(s, p), p.prepass!.id.x / 255);
+		} else {
+			const lit = litSurface(m.normal(s, p), s.world, uv, s.up, m.color(s, p).mul(i.tint), m.alpha(s, p), m.metalness(s, p), m.roughness(s, p), p.frame,
+				p.material);
+			// (the sun, then each point or spot light there is: the direct slot's, summed)
+			let direct = m.direct(lit, sunLight(lit, p.frame, p.material, p.shadowMap, p.shadowMapFar), p);
+			if (p.frame.point0.w > 0) direct = direct.add(m.direct(lit, pointLight(lit, p.frame.point0, p.frame.pointColor0, p.frame.spot0), p));
+			if (p.frame.point1.w > 0) direct = direct.add(m.direct(lit, pointLight(lit, p.frame.point1, p.frame.pointColor1, p.frame.spot1), p));
+			if (p.frame.point2.w > 0) direct = direct.add(m.direct(lit, pointLight(lit, p.frame.point2, p.frame.pointColor2, p.frame.spot2), p));
+			if (p.frame.point3.w > 0) direct = direct.add(m.direct(lit, pointLight(lit, p.frame.point3, p.frame.pointColor3, p.frame.spot3), p));
+			const env = ambientAt(lit, p.frame, p.material, p.occlusionTexture, p.environmentMap, p.aoMap);
+			out = shade(lit, direct, m.indirect(lit, env, p), env, m.emissive(s, p), p.frame, p.material, p.shadowMap, p.shadowMapFar, p.environmentMap);
+		}
+		return out;
 	},
 	color: pbrColor,
 	alpha: pbrAlpha,

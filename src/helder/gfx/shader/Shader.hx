@@ -120,19 +120,17 @@ typedef PipelineOptions = {
 }
 
 // a uniform block's writer: the block's struct at offset, std140
-// (bytes.length >= offset + size)
+// (bytes.length >= offset + size). Each block's is a class of its own
+// (the shader definition's), write overridden: a closure through a field
+// of the generic type would box its call on hxmc, a write per draw
+// allocating
 class UniformWriter<T> {
 	public final block:UniformBlock;
 
-	final store:(T, Bytes, Int) -> Void;
-
-	public function new(block, store) {
+	public function new(block)
 		this.block = block;
-		this.store = store;
-	}
 
-	public inline function write(value:T, bytes:Bytes, offset = 0)
-		store(value, bytes, offset);
+	public function write(value:T, bytes:Bytes, offset = 0) {}
 }
 
 // a texture parameter's slot (Encoder.setTexture(slot.binding, ...))

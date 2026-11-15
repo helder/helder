@@ -30,24 +30,38 @@ import helder.gfx.shader.SlotsMacro;
 // block and textures, the frame's); the others are uniform blocks of the
 // material's own, bound from material.uniforms by their parameter's name
 // (params: the plain variant's writers, typed; the class is the material's
-// own, made beside its module).
+// own, made beside its module). A material that replaces the position,
+// normal, roughness or alpha slot also gets the view buffers' prepass
+// variants (prepass, prepassInstanced: ViewBuffers); one that replaces none
+// is drawn there by the standard material's, which is the same.
 class MaterialShader {
 	@:typescript public final plain:AnyShader;
 	@:typescript public final normalMapped:Null<AnyShader>;
 	@:typescript public final skinned:AnyShader;
 	@:typescript public final instanced:AnyShader;
 	@:typescript public final instancedNormalMapped:Null<AnyShader>;
-	// the blocks of the material's own: its parameter's name, its slot, in each variant (in the order above)
+	// the view buffers' (ViewBuffers): plain and instanced; null, the
+	// standard material's (its position, normal, roughness and alpha slots
+	// as they are)
+	@:typescript public final prepass:Null<AnyShader>;
+	@:typescript public final prepassInstanced:Null<AnyShader>;
+	// the blocks of the material's own: its parameter's name, its slot, in
+	// each variant (in the order above; -1: not in it)
 	@:typescript public final blocks:Array<{name:String, bindings:Array<Int>}>;
 
-	public function new(plain, normalMapped, skinned, instanced, instancedNormalMapped, blocks) {
+	public function new(plain, normalMapped, skinned, instanced, instancedNormalMapped, blocks, ?prepass, ?prepassInstanced) {
 		this.plain = plain;
 		this.normalMapped = normalMapped;
 		this.skinned = skinned;
 		this.instanced = instanced;
 		this.instancedNormalMapped = instancedNormalMapped;
 		this.blocks = blocks;
+		this.prepass = prepass;
+		this.prepassInstanced = prepassInstanced;
 	}
+
+	// the slots whose replacement the view buffers' prepass draws (the others' are not read there)
+	public static final PREPASS_SLOTS = ["position", "normal", "roughness", "alpha"];
 
 	// a TypeScript program's material (helder/scene's material(pbr.with({...})),
 	// a definition: helder.typescript.lower's Definitions compiles the same
@@ -57,7 +71,8 @@ class MaterialShader {
 		var vs:Array<Dynamic> = d.variants;
 		var s = [for (v in vs) v == null ? null : shaderOf(v)];
 		var bs:Array<Dynamic> = d.blocks;
-		return new MaterialShader(s[0], s[1], s[2], s[3], s[4], [for (b in bs) {name: (b.name : String), bindings: [for (x in (b.bindings : Array<Dynamic>)) (x : Int)]}]);
+		return new MaterialShader(s[0], s[1], s[2], s[3], s[4], [for (b in bs) {name: (b.name : String), bindings: [for (x in (b.bindings : Array<Dynamic>)) (x : Int)]}],
+			s.length > 5 ? s[5] : null, s.length > 6 ? s[6] : null);
 	}
 
 	static function shaderOf(v:Dynamic):AnyShader {
@@ -91,13 +106,19 @@ class MaterialShader {
 		var pos = Context.currentPos();
 		var a = new HaxeAdapter("material");
 		var typed = Context.typeExpr(def);
-		var kinds:Array<Array<String>> = [[], ["normalMap"], ["skinned"], ["instanced"], ["instanced", "normalMap"]];
+		var kinds:Array<Array<String>> = [[], ["normalMap"], ["skinned"], ["instanced"], ["instanced", "normalMap"], ["prepass"], ["prepass", "instanced"]];
 		// (the kinds of draw its options have: a slot object without normalMap, none normal mapped)
-		var options = SlotsMacro.resolve(typed, new helder.gfx.shader.Lower(), a).def.options;
-		var standard = ["PbrFrame", "PbrObject", "PbrMaterial", "PbrSkinInfo"];
+		var first = SlotsMacro.resolve(typed, new helder.gfx.shader.Lower(), a);
+		var options = first.def.options;
+		// (the prepass's variants only when a slot it reads is replaced)
+		var replaced = false;
+		for (s in PREPASS_SLOTS)
+			if (first.def.slots.exists(s) && first.def.slots.get(s) != first.defaults.get(s)) replaced = true;
+		if (!replaced) kinds = kinds.slice(0, 5);
+		var standard = ["PbrFrame", "PbrObject", "PbrMaterial", "PbrSkinInfo", "PbrPrepass"];
 		var textures = [
 			"baseColorTexture", "metallicRoughnessTexture", "emissiveTexture", "occlusionTexture", "shadowMap", "shadowMapFar", "environmentMap", "normalTexture",
-			"jointMatrices"
+			"jointMatrices", "aoMap"
 		];
 		var shaders = [], blocks = new Map<String, Array<Int>>(), order = [];
 		for (k in 0...kinds.length) {
@@ -113,7 +134,7 @@ class MaterialShader {
 				switch p.resource {
 					case RUniform(u) if (!standard.contains(u.struct.name)):
 						if (!blocks.exists(p.name)) {
-							blocks.set(p.name, [for (_ in 0...kinds.length) -1]);
+							blocks.set(p.name, [for (_ in 0...7) -1]);
 							order.push(p.name);
 						}
 						blocks.get(p.name)[k] = u.binding;
@@ -134,8 +155,8 @@ class MaterialShader {
 		var cls = macro class Material extends helder.scene.render.MaterialShader {
 			public final params:$pt;
 
-			public function new(params:$pt, plain, normalMapped, skinned, instanced, instancedNormalMapped, blocks) {
-				super(plain, normalMapped, skinned, instanced, instancedNormalMapped, blocks);
+			public function new(params:$pt, plain, normalMapped, skinned, instanced, instancedNormalMapped, blocks, ?prepass, ?prepassInstanced) {
+				super(plain, normalMapped, skinned, instanced, instancedNormalMapped, blocks, prepass, prepassInstanced);
 				this.params = params;
 			}
 		};
@@ -147,9 +168,12 @@ class MaterialShader {
 		var exists = try Context.getType(pack.concat([name]).join(".")) != null catch (_:Dynamic) false;
 		if (!exists) Context.defineType(cls, module);
 		var tp:TypePath = {pack: pack, name: name};
-		var any = [for (i in 1...shaders.length) shaders[i] == null ? macro null : macro(cast ${shaders[i]} : helder.scene.render.MaterialShader.AnyShader)];
+		function shader(i:Int):Expr
+			return shaders[i] == null ? macro null : macro(cast ${shaders[i]} : helder.scene.render.MaterialShader.AnyShader);
+		var any = [for (i in 1...5) shader(i)];
+		var pre = [for (i in 5...shaders.length) shader(i)];
 		var made:Expr = {
-			expr: ENew(tp, [macro plain.params, macro(cast plain : helder.scene.render.MaterialShader.AnyShader)].concat(any).concat([macro [$a{bs}]])),
+			expr: ENew(tp, [macro plain.params, macro(cast plain : helder.scene.render.MaterialShader.AnyShader)].concat(any).concat([macro [$a{bs}]]).concat(pre)),
 			pos: pos
 		};
 		return macro {

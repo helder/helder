@@ -27,7 +27,8 @@ import helder.scene.view.SceneProps;
 //   </node>, SceneRenderer.root(world));
 //
 // Elements: node (position, rotation, scale: Vec3, Quat, Vec3; name,
-// visible), mesh (a node drawing a geometry in a material: geometry and
+// visible; outline: its selection group, 0 none, drawn by post.outline:
+// Outline.select), mesh (a node drawing a geometry in a material: geometry and
 // material made in code, shared; or its children, a geometry tag and a
 // material tag, made from their props, again when one changes; or a shape
 // made in code: shape box | sphere | plane, size, color, metallic,
@@ -126,6 +127,8 @@ class SceneRenderer implements helder.view.Renders<SceneNode> {
 			case "rotation": n.rotation = (value : Quat);
 			case "scale": n.scale = (value : Vec3);
 			case "visible": n.visible = value;
+			// (its selection group: post.outline's, 0 none; Outline.select)
+			case "outline": helder.scene.render.Outline.select(n, value);
 			case _:
 				// (a component's property: the component made again from them)
 				el.props.set(name, value);
