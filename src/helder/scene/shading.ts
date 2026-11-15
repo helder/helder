@@ -122,6 +122,8 @@ export const unlit = slots({
 			uv: m.options.instanced ? instanceUv(v.uv, v.m3!.w) : v.uv,
 			up: m.options.instanced ? v.m1!.xyz : model.mul(vec4(0, 1, 0, 0)).xyz,
 			tint: m.options.instanced ? vec3(1 + v.m0!.w, 1 + v.m1!.w, 1 + v.m2!.w) : p.object!.tint.xyz,
+			lights0: vec4(-1),
+			lights1: vec4(-1),
 		};
 	},
 	fragment: (i: PbrVaryings, p: PbrFragmentParams, m: Unlit): Vec4 => {

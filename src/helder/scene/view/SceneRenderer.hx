@@ -50,7 +50,11 @@ import helder.scene.view.SceneProps;
 // once inserted; text follows its prop), the helpers (axesHelper size and
 // gridHelper size, divisions, fade at their own node; boundsHelper,
 // lightHelper, cameraHelper, skeletonHelper showing the node they are in;
-// their box's renderer given a DebugDraw); listeners (onClick, onPointerDown, onPointerUp, onPointerMove,
+// their box's renderer given a DebugDraw), lod (a node drawn at its levels:
+// levels, hysteresis, a visible range's begin and end; Lod), the lights'
+// shadows (castShadows, shadowSize, shadowBias, shadowNormalBias,
+// shadowRadius, shadowStrength: drawn by its box's Shadows, its setup's);
+// listeners (onClick, onPointerDown, onPointerUp, onPointerMove,
 // onPointerCancel, onPointerEnter, onPointerLeave, onTap: a SceneEvent) on
 // any, called by a <Scene>'s picking (at a pointer's press: the node hit
 // then owns it until it lifts), the nearest node hit and then its
@@ -69,7 +73,7 @@ import helder.scene.view.SceneProps;
 	"sphereGeometry", "cylinderGeometry", "coneGeometry", "capsuleGeometry", "torusGeometry", "torusKnotGeometry", "ringGeometry", "circleGeometry",
 	"planeGeometry", "latheGeometry", "tubeGeometry", "standardMaterial", "lambertMaterial", "phongMaterial", "toonMaterial", "unlitMaterial",
 	"matcapMaterial", "normalMaterial", "depthMaterial", "lines", "text3d", "axesHelper", "gridHelper", "boundsHelper", "lightHelper", "cameraHelper",
-	"skeletonHelper")
+	"skeletonHelper", "lod")
 @:events(helder.scene.view.SceneEvents)
 @:props(helder.scene.view.SceneProps)
 class SceneRenderer implements helder.view.Renders<SceneNode> {
@@ -244,6 +248,23 @@ class SceneRenderer implements helder.view.Renders<SceneNode> {
 
 	public static function element_skeletonHelper():SceneNode
 		return helper("skeletonHelper", n -> new helder.scene.render.SkeletonHelper(n.get("color", 0xFFA0FF)), true);
+
+	// a node at its levels of detail (Lod), its own element_<tag>: a program
+	// links Lod only when its markup names one
+	public static function element_lod():SceneNode
+		return drawn("lod", n -> {
+			var levels:Null<Array<helder.scene.render.Lod.LodLevel>> = n.get("levels", null);
+			if (levels != null && levels.length > 0) {
+				var lod = helder.scene.render.Lod.of(n.node);
+				if (lod == null || lod.levels != levels) {
+					helder.scene.render.MeshRenderer.attach(n.node, levels[0].mesh);
+					lod = helder.scene.render.Lod.attach(n.node, levels);
+				}
+				lod.hysteresis = SceneOptions.float(n.get("hysteresis", 0.1));
+			}
+			if (n.props.exists("begin") || n.props.exists("end"))
+				helder.scene.render.Lod.range(n.node, SceneOptions.float(n.get("begin", 0.0)), SceneOptions.float(n.get("end", Math.POSITIVE_INFINITY)));
+		}, null);
 
 	// (a helper's node: its helper made of its props again when one changes;
 	// ofParent: the node it is in shown, not its own)
@@ -558,12 +579,25 @@ class SceneNode {
 			case "hemisphereLight": "hemisphere";
 			case _: get("kind", "directional");
 		}
-		Light.attach(node, switch kind {
+		var light = Light.attach(node, switch kind {
 			case "point": Light.pointLight(c, i, SceneOptions.float(get("range", 10.0)));
 			case "spot": Light.spot(c, i, SceneOptions.float(get("range", 10.0)), SceneOptions.float(get("inner", 0.3)), SceneOptions.float(get("outer", 0.5)));
 			case "hemisphere": Light.hemisphere(get("sky", new Vec3(0.3, 0.36, 0.48)), get("ground", new Vec3(0.12, 0.1, 0.09)), i);
 			case _: Light.directional(c, i);
 		});
+		// (its shadow: castShadows, its kind's default without; Light.shadow from the shadow props)
+		if (props.exists("castShadows")) light.castShadows = get("castShadows", false) == true;
+		inline function some(name:String):Null<Float>
+			return props.exists(name) ? SceneOptions.float(get(name, 0.0)) : null;
+		if (props.exists("shadowSize") || props.exists("shadowBias") || props.exists("shadowNormalBias") || props.exists("shadowRadius")
+			|| props.exists("shadowStrength"))
+			light.shadow = {
+				size: props.exists("shadowSize") ? Std.int(SceneOptions.float(get("shadowSize", 0))) : null,
+				bias: some("shadowBias"),
+				normalBias: some("shadowNormalBias"),
+				radius: some("shadowRadius"),
+				strength: some("shadowStrength")
+			};
 	}
 
 	@:allow(helder.scene.view.SceneRenderer) function recamera() {

@@ -6,7 +6,7 @@ Aims > Familiar APIs). It covers the areas where helder.scene trails
 three.js: materials, lights and shadows, post-processing, and geometry,
 helpers, picking and culling. Loaders and the ecosystem are out of scope.
 
-It is a design. Phases 1, 2, 3 and 7 (section 9) are built, their
+It is a design. Phases 1 to 4 and 7 (section 9) are built, their
 deviations said there and at the places they depart from. No spike
 was needed: every claim about helder's internals below was read from the
 source, and the file is named where it matters.
@@ -444,11 +444,28 @@ lacks against the others:
   `renderer.use(new Shadows(device))` keeps working: the first
   directional light casts, as now.
 
+  *As built (phase 4):* the local lights' tiles are opted in on the
+  shadows, `new Shadows(device, size).local({atlas, maxLocal, tileSize})`
+  (`LocalShadows`), not an options argument of the constructor: `local`
+  makes the object that places, culls, caches and draws them, so a program
+  whose sun alone casts (Little Skies) links none of it, as `soft` and
+  `cascaded` already worked. The atlas is an R32F texture and its depth
+  buffer, as the maps were (gfx draws no pass without a colour target):
+  the sun's tiles (`size`, one a cascade) in a row, the local lights'
+  square (`atlas`, 1024) beside them, made when a local light first casts.
+  A tile is drawn into its rectangle by mapping its view into it and
+  dropping what falls outside (gfx has no viewport); a tile is cleared by
+  a quad when others are kept. `light.shadow` is an options structure
+  (`{size, bias, normalBias, radius, strength, cached}`, each optional);
+  `castShadows` is a directional light's by default, a local light's when
+  asked. The local filters are the 3x3 and a disc of 12 taps (`radius`):
+  PCSS's blocker search assumes the sun's orthographic view.
+
   ```haxe
   var lamp = Light.attach(world.node("lamp"), Light.spot(new Vec3(1, 0.8, 0.6), 30, 12, 0.3, 0.5));
   lamp.castShadows = true;
   lamp.shadow = {size: 512, bias: 0.002, radius: 0.05};
-  renderer.use(new Shadows(device, {atlas: 2048, maxLocal: 2}));
+  renderer.use(new Shadows(device, 2048).local({atlas: 2048, maxLocal: 2}));   // as built
   ```
 
   ```html
@@ -518,6 +535,44 @@ lights on screen. It costs per pixel one texel read, plus a loop over a
 cell's lights (typically 2 to 6 in a level). The CPU assignment costs
 about 0.1 ms for 100 lights (an estimate, measured in phase 4's
 `clustered` frame).
+
+*As built (phase 4):*
+
+- **Per object.** The frame's lights are `FrameLights`: the local lights
+  whose range meets the view, ranked by brightness over their distance
+  past their range, 32 kept (PbrLights' block: three vectors a light,
+  position and range, colour and its first shadow tile, the spot's cone as
+  the smoothstep's scale and offset from one dot: 1.5 KB). Not 64: the
+  Android emulator's GL ES counts a block's members among the fragment
+  stage's uniform vectors (261 there; GL ES 3.0 guarantees 224 of them),
+  and the stage's blocks are about 221 vectors with these 32 lights and
+  12 shadow tiles (two point lights' worth; 64 and 24 failed to link there). Each draw's eight go into `PbrObject` (`lights0`, `lights1`),
+  listed by row, so draws of the same lights batch; a run is cut where its
+  draws' lists differ (a floor of tiles gets a list a tile). The light
+  loop is a loop of eight in the shader, not unrolled, with no option:
+  every material's variants stay as they were. The 3d frames' run is
+  `lights8`.
+- **ClusteredLights.** No new variant: `pbr` reads the cluster map in a
+  branch on the frame's block (`clusters.x`), as phase 2's AO. The lights
+  are not a uniform block (Metal's 4 KB a block, the frame's uniform ring:
+  a block is copied each pipeline change) but rows of the cluster map, one
+  R32F texture for the lists and the lights (a pipeline's slots are 16,
+  blocks and textures together: one texture more fits, two did not). A
+  cell's list is a block of `maxPerCell + 1` texels (its count, then its
+  lights' rows), not an offset into a packed index texture: the compute
+  path writes its cell's block without a prefix sum, and the CPU's lists
+  are the same texels. The CPU tests each light against the cells its box
+  touches (the slices it spans, then the tiles whose boxes meet it); the
+  GPU tests every light at each cell; the test is the same (a sphere
+  against the cell's box in the view), so the lists are the same, in the
+  same order (`clustered` drawn by both against one golden, and equal to
+  its brute force, one cell of every light). The camera is perspective.
+- **Measured** (tests/3d/LightBench.hx, 810 x 1800, Mesa's llvmpipe on a
+  Ryzen 5 3600; a floor and nine pillars, 24.5 ms with no local light):
+  128 lights, each draw's eight, 1.95x the frame; clustered, 3.03x (cells
+  on the GPU) and 2.92x (on the CPU: 0.37 ms of it); every light at every
+  pixel, 13.3x. The CPU's cells for 256 lights take 0.6 ms
+  (`Clusters.test.hx`); the estimate's 0.1 ms for 100 was low.
 
 ### 2.3 Area lights (LTC) and the hemisphere light
 
@@ -1016,6 +1071,21 @@ people want to see attached to a node.
   tile against the light's frustum. Static local lights' tiles are cached
   (2.1).
 
+*As built (phase 4):* `Lod.attach(node, levels)` with levels `{mesh,
+until}` (the thresholds a share of the view's height, the bounds' sphere's
+radius times the projection's vertical scale over its depth), 10%
+hysteresis, the level picked at extraction through `Lod.pick` (set by
+`attach`: a program without a Lod links none of it). Visible ranges are
+`Lod.range(node, begin, end)` (a component, not a `node.visibleRange`
+field: a node is a handle, its data components), applying to the node's
+subtree. Not built: the dithered crossfade (`fade`, pbr's `lodFade`) and
+`Pack --lod` (mesh simplification at build time: its own change). Shadow
+casters are culled per local tile (each tile's runs), the sun's cascades
+draw every caster as before. Per-instance culling and levels are
+`InstanceCulling` (8's GPU culling), for `InstancedMesh` sets (their
+`levels`), its CPU path the fallback: a node's level stays the CPU's
+(extraction already culls nodes one by one).
+
 ## 5. Markup and TypeScript, across all of it
 
 - **Tags are generated, one per class or factory**, with their props from
@@ -1094,8 +1164,8 @@ in `page.json`.
 | Main pass draws (after instancing) | ≤ 150 | ≤ 1,000 |
 | Shadow draws, all maps and tiles | ≤ 100 | ≤ 600 |
 | Directional light | 1, shadowed: 1 map 2048² (or 2 cascades of 1024²), PCSS 8 to 12 taps | 1 to 2, 2 to 4 cascades, 16 to 32 taps |
-| Local lights shading a pixel | ≤ 8 (forward, per object); `ClusteredLights` when more than 16 on screen | up to 32 a cell |
-| Shadowed local lights | ≤ 2 (atlas 2048², cached when static) | ≤ 8 (atlas 4096²) |
+| Local lights shading a pixel | ≤ 8 (forward, per object); `ClusteredLights` when more than 16 on screen (measured: 8 a draw 1.95x a frame without, 128 clustered 3.0x, on llvmpipe) | up to 32 a cell |
+| Shadowed local lights | ≤ 2 (atlas 2048², cached when static; measured: three casting 1.85x the frame, 1.46x kept) | ≤ 8 (atlas 4096²) |
 | Area lights | ≤ 1 to 2 | ≤ 8 |
 | Probes | SH per object (free per pixel); ≤ 2 reflection probes blended per draw | the same |
 | Prepass (`ViewBuffers`) | at `scale: 0.5` when only AO and DOF read it (measured: +9% of the frame on llvmpipe) | full |
@@ -1177,8 +1247,8 @@ the passes after it do not change:
 
 | Feature (section) | Compute path | Fallback (the floor's) | Needs from gfx |
 |---|---|---|---|
-| `ClusteredLights` (2.2) | A dispatch a frame. Each workgroup takes a cell and tests the frame's lights against it. Each cell's offset and count, and the indices, go into R32F storage textures, which `pbr`'s `clustered` variant samples as it samples the CPU path's RG8 and R8 textures (an option picks the formats). No CPU assignment, and no upload of the grid. | The CPU froxels and their textures, as section 2.2 proposes | Today's storage textures. Workgroup memory would let a cell's lights be gathered once a workgroup. |
-| GPU culling and LOD (4.4) | Per instanced run, a dispatch tests each instance's bounds against the frustum, picks its `Lod` level and appends its transform to a storage buffer (atomics on `RWStorage<Int>`). That buffer is the run's instance vertex buffer, and the count goes into its `drawIndexedIndirect` arguments: `ComputeTest`'s pattern. Later, two-phase occlusion against a depth pyramid. | Today's culling by bounds at extraction, on the CPU, and `Lod` picked there | Today's (indirect draws). The depth pyramid needs a dispatch a level, or workgroup memory. |
+| `ClusteredLights` (2.2) | A dispatch a frame. Each workgroup takes a cell and tests the frame's lights against it. Each cell's offset and count, and the indices, go into R32F storage textures, which `pbr`'s `clustered` variant samples as it samples the CPU path's RG8 and R8 textures (an option picks the formats). No CPU assignment, and no upload of the grid. *Built:* an invocation a cell, its count and lights' rows into its block of one R32F storage texture, the frame's lights copied into the same texture by the dispatch's invocations past the cells (from a storage buffer: Metal's storage textures take no CPU upload); the CPU path writes the same texels, so `pbr` reads one map either way, in a branch, not a variant | The CPU froxels and their textures, as section 2.2 proposes | Today's storage textures. Workgroup memory would let a cell's lights be gathered once a workgroup. |
+| GPU culling and LOD (4.4) | Per instanced run, a dispatch tests each instance's bounds against the frustum, picks its `Lod` level and appends its transform to a storage buffer (atomics on `RWStorage<Int>`). That buffer is the run's instance vertex buffer, and the count goes into its `drawIndexedIndirect` arguments: `ComputeTest`'s pattern. Later, two-phase occlusion against a depth pyramid. *Built:* `InstanceCulling`, for `InstancedMesh` sets (a node's draw is culled at extraction already): a dispatch a set, up to four levels of up to four primitives, one output buffer of a part a level (GL ES 3.1 guarantees four storage buffers a stage), the counts atomics into five-Int arguments a draw; its CPU path the same test, the kept matrices uploaded by level | Today's culling by bounds at extraction, on the CPU, and `Lod` picked there | Today's (indirect draws). The depth pyramid needs a dispatch a level, or workgroup memory. |
 | GTAO (3.3, `Ssao`) | A dispatch at half resolution in 8×8 workgroups. It samples `ViewBuffers`' depth and normals and writes AO into an RGBA8 storage texture, then a dispatch for the bilateral upsample. | The fragment passes of phase 2 | First version: today's. The fast one (depth tiles in workgroup memory) waits for workgroup memory. |
 | DoF (3.3, `Dof`) | The CoC and the half-resolution gather as dispatches into RGBA16F storage textures. The gather's tiles of the CoC's maximum are a reduction. | The fragment passes of phase 2 | Workgroup memory for the tiles' reduction, else a dispatch a level |
 | Skinning (`Skinning`) | One dispatch a skinned mesh a frame. It writes skinned positions and normals into a storage buffer, which the shadow, prepass and main passes all draw as their vertex buffer: skinned once, not three times. | Today's vertex-shader skinning | Today's |
@@ -1460,7 +1530,7 @@ design describes it):
   material's shaders, phase 1's 230 KB); `Debug`'s calls in a release:
   nothing. Unused, each is nothing.
 
-### Phase 4: lights at scale and their shadows
+### Phase 4: lights at scale and their shadows (built)
 
 - Per-object light lists (8 per draw, 64 in a frame).
 - `ClusteredLights` (CPU froxels, uniform block, RG8 and R8 textures).
@@ -1496,6 +1566,95 @@ Tests and frames:
   (nothing allocated, as `tests/gfx/ComputeTest.hx` checks gfx's).
 - **Example:** `examples/lights` (Sponza at night, 200 lights), with
   the site's numbers for it.
+
+As built: the lights, the clustered lighting, the shadow atlas with its
+local tiles, `castShadows` and `shadow`, `Lod` and visible ranges, and the
+compute paths of `ClusteredLights` and of culling with levels, each with
+its fallback; the departures said where the design describes them (2.1,
+2.2, 4.4, 8), and:
+
+- **Not in this phase** (the task's scope): compute skinning, `GpuParticles`
+  in a storage buffer, and the compute variants of `Ssao` and `Dof` (they
+  wait for workgroup memory, a gfx task, too): section 8 keeps them.
+- **The renderer's variants are GPU-only** (`gpuVariant`: pbr's five and
+  the shadow casters', their CPU stages never run), 56 KB smaller
+  natively, 69 KB as wasm32, than before this phase, its lights included;
+  arrays filled by a loop where a comprehension over a constant range was
+  unrolled into a constructor (`Filled`: 90 KB of Shadows' first cut).
+- **TypeScript**: helder/gfx's `UniformArray<T, N>` is a uniform block's
+  array (Haxe's `@:length(N)`), indexed by a number's whole part, so
+  `pbr.ts` declares PbrLights and its tiles and prints the same
+  text as `PbrShader.hx` (tests/typescript/definitions). `Light.shadow`,
+  `LodLevel` and the options are object literals; `tests/typescript/
+  helder/lights.ts` uses the API without a device (the lane's static
+  build).
+- **Markup**: the lights' `castShadows`, `shadowSize`, `shadowBias`,
+  `shadowNormalBias`, `shadowRadius`, `shadowStrength`, and `<lod levels
+  hysteresis begin end>` (its own `element_lod`).
+- **Frames** (tests/3d/LightScenes.hx): `lights8`, `clustered` (its twin
+  the brute force), `spotshadow`, `pointshadow`, `shadowatlas` (its probe:
+  the budget's three, a second frame keeping their tiles, a moved caster
+  drawing them again) and `lod`; on Mesa's GL ES 3.1 (compute) and, for
+  `clustered` and `lod`, again with `HELDER_NO_COMPUTE=1` (check.sh),
+  against one golden each; in Chromium on WebGPU (compute) and WebGL2 (the
+  fallbacks). `clustered` and `lod` allocate nothing a frame on either
+  path (their probes). Sponza is fetched by examples/sponza, not in the
+  repository: the frames' scenes are made in code.
+- **Unit tests**: `Clusters.test.hx` (the cells against brute force, a
+  full cell, nothing allocated, 256 lights timed), `FrameLights.test.hx`
+  (the gathering, a draw's eight, PbrLights' bytes), `Lod.test.hx` (the
+  coverage, the bands, ranges).
+- **Sizes** (tests/3d/size/sizes.sh, Linux x86-64 and wasm32): `Shadows`
+  115 and 117 KB over the renderer (80 and 81 before: the atlas, its
+  tiles' drawing), `local` 46 and 43 KB more, `ClusteredLights` 66 and
+  61 KB, `InstanceCulling` 52 and 50 KB, `Lod` 42 and 28 KB; unused, each
+  nothing.
+- **Measured** (LightBench, as 2.2): three local lights casting, 1.85x the
+  frame without (eight tiles drawn), 1.46x kept; a field of 20,000
+  instances drawn whole 438 ms, culled and levelled 42 ms (0.1x) on the
+  GPU, 41 ms on the CPU. A phone's milliseconds wait for `page.json`'s
+  device slots, as phase 2's.
+- **Example**: `examples/lights` is a cloister at night made in code (200
+  lights, four lanterns casting, columns at three levels), not Sponza;
+  the docs' examples are `scene-clustered`, `scene-shadows` and
+  `scene-lod`.
+- **The fragment stage copies no arrays.** GLSL passes a block to a
+  function by value, and Android's emulator's GL (its host's legacy
+  SwiftShader) crashed, its JIT's routine null, compiling a stage that
+  passed the frame with twelve tiles' matrices, or the lights' arrays, to
+  each function: the tiles are PbrLights' (after its lights, not
+  PbrFrame's), the light loop reads a light's row and its tile itself and
+  hands `localLight`, `shadowPoint`, `tileFace` and `tileShadow` vectors,
+  and a draw's list reaches the fragment as two varyings (the vertex stage
+  reads PbrObject; the fragment stage reading it crashed the emulator too).
+  The loop ends at a list's first -1 (a draw lit by none loops not at
+  all), and the renderer's four opaque pipelines (plain, double-sided,
+  instanced, both) are made when first drawn: each a fragment stage of a
+  few seconds to compile on a software GPU, where the page waited for
+  all four before.
+- **Follow-up: the light loop's compile.** On SwiftShader's WebGPU (the
+  site's check) the instancing example's page waits about 22 s for its
+  first frame's pipelines against main's 16 s (the same page without the
+  light loop: 16 s): the loop, a light's row and its tile's filter
+  inlined in it, is the standard material's costliest part to compile. Not
+  trimmed in this phase: a frame without local lights (nor
+  ClusteredLights) draws its opaque standard materials with pbr's
+  `sunOnly` variants (`PbrSunShader`, `PbrInstancedSunShader`: no loop),
+  so such scenes compile as before; and gfx's WebGPU glue makes a
+  pipeline's variants when first drawn (none up front for unfilterable
+  slots no draw binds: every PBR pipeline was compiled twice).
+- **Untiled variants.** After phase 6 (its larger surface), Android's
+  emulator's SwiftShader again failed to compile the standard material
+  with the local shadows' lookup in its light loop: a frame none of whose
+  local lights casts draws with pbr's `untiled` variants
+  (`PbrUntiledShader`, `PbrInstancedUntiledShader`: the loop without the
+  tiles), as one without local lights with `sunOnly`'s; the 3x3 filter of
+  a tile is a loop of its taps (`grid`), the surface passed to the loop's
+  functions as its point and normal. A scene of casting local lights still
+  compiles the full stage: on that emulator it does not run (a follow-up).
+- **The skin's joints' count is PbrObject's `tint.w`** for pbr's variants
+  (`PbrSkinInfo` stays the shadow casters' and Unlit's): PbrLights' block
+  made a skinned physical variant's slots 17, past gfx's 16.
 
 ### Phase 5: indirect light
 

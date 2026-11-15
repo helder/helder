@@ -33,7 +33,11 @@ import helder.os.*;
 // size_transmission, size_iridescence, size_anisotropy, size_uvsets (a box
 // drawn by that extension's variants alone: PhysicalShader.of), -D
 // size_physical (Physical: every extension's), -D size_refraction
-// (Transmission, the frame behind see-through surfaces)
+// (Transmission, the frame behind see-through surfaces); and phase 4's:
+// -D size_clustered (ClusteredLights: the CPU's cells and the compute path's shader), -D
+// size_culling (InstanceCulling: the CPU's and the compute path's), -D
+// size_lod (Lod on a node: its levels, the visible ranges); and at level 5,
+// -D size_local (Shadows' point and spot lights' tiles: LocalShadows)
 class Size {
 	static function main() {
 		var window = new Window("Size", 320, 240);
@@ -63,7 +67,9 @@ class Size {
 		helder.scene.render.PackedModel.read(helder.asset.Asset.embed("bin/3d/sample.hxm3d"), device).instantiate(world);
 		#elseif (size_level >= 4)
 		var renderer = new helder.scene.render.Renderer(device);
-		#if (size_level >= 5)
+		#if (size_level >= 5 && size_local)
+		renderer.use(new helder.scene.render.Shadows(device).local());
+		#elseif (size_level >= 5)
 		renderer.use(new helder.scene.render.Shadows(device));
 		#end
 		#if (size_level >= 8)
@@ -132,6 +138,16 @@ class Size {
 		#end
 		#if size_raycast
 		var hit = new helder.scene.render.Hit();
+		#end
+		#if size_clustered
+		renderer.use(new helder.scene.render.ClusteredLights(device));
+		#end
+		#if size_culling
+		renderer.use(new helder.scene.render.InstanceCulling(device));
+		#end
+		#if size_lod
+		var lodMesh = helder.scene.render.Shapes.box(device, new helder.scene.render.Material());
+		helder.scene.render.Lod.attach(world.node(), [{mesh: lodMesh, until: 0.1}, {mesh: lodMesh}]);
 		#end
 		#if (size_level >= 6)
 		var actions = new helder.scene.input.InputMap().bind("turn", KeyAxis(0xFF51, 0xFF53));

@@ -5,8 +5,10 @@ import helder.gfx.shader.ShaderMath.*;
 import helder.scene.render.Equirect;
 
 // The renderer's shader (Renderer): glTF's metallic-roughness model lit by
-// a directional light, up to four point lights and a sky-and-ground
-// ambient, in linear light,
+// a directional light (its cascades: tiles of Shadows' atlas), the frame's
+// point and spot lights (a draw's eight from its list, PbrObject's, or a
+// pixel's cell's: ClusteredLights; shadowed by their tiles of the atlas)
+// and a sky-and-ground ambient, in linear light,
 // tone mapped (ACES, Narkowicz's fit) and encoded to sRGB for an 8-bit
 // target. The specular term is Cook-Torrance: GGX's distribution, the
 // height-correlated Smith visibility and Schlick's Fresnel; the ambient's
@@ -71,10 +73,15 @@ typedef PbrVaryings = {
 	var tint:Vec3;
 	// (uvSets: the second uvs)
 	@:optional var uv1:Vec2;
+	// the draw's lights (PbrObject's lists, passed on: a fragment stage that
+	// reads PbrObject crashes Android's emulator's GL, its host SwiftShader)
+	var lights0:Vec4;
+	var lights1:Vec4;
 }
 
-// the vertex stage's parameters: per frame, per node (instanced: none),
-// the skin (skinned: its joints' count, their matrices: Skin.update)
+// the vertex stage's parameters: per frame, per node (instanced: its light
+// list alone, passed on to the fragment), the skin (skinned: its joints'
+// count, their matrices: Skin.update)
 typedef PbrVertexParams = {
 	var frame:PbrFrame;
 	@:optional var object:PbrObject;
@@ -82,17 +89,27 @@ typedef PbrVertexParams = {
 	@:optional var jointMatrices:Texture2D;
 }
 
-// the fragment stage's: per frame, the material and its textures, the
-// shadow maps and the environment's (normal mapped: the normal map)
+// the fragment stage's: per frame (the shadow atlas' tiles in it), the
+// object (shadeAt's; the stages' read its light list from the
+// varyings), the material and its textures, the
+// frame's lights, the shadow atlas, ClusteredLights' map, the
+// environment's (normal mapped: the normal map)
 typedef PbrFragmentParams = {
 	var frame:PbrFrame;
+	@:optional var object:PbrObject;
 	var material:PbrMaterial;
+	var lights:PbrLights;
 	var baseColorTexture:Texture2D;
 	var metallicRoughnessTexture:Texture2D;
 	var emissiveTexture:Texture2D;
 	var occlusionTexture:Texture2D;
+	// the shadow atlas (Shadows: the sun's cascades' tiles and the local
+	// lights'; R32F, each texel its depth from its light)
 	var shadowMap:Texture2D;
-	var shadowMapFar:Texture2D;
+	// ClusteredLights' (a 1x1 texel without): R32F, its cells' lists (a row
+	// a tile's row and slice, a cell its count then its lights' rows), then
+	// the frame's lights, a row each (12 texels: PbrLights' three vectors)
+	var clusterMap:Texture2D;
 	var environmentMap:Texture2D;
 	// the screen's ambient occlusion (PostProcess.ao, Ssao: the view's
 	// pixels, red; read where frame.exposure.z is 1, else a white texel)
@@ -131,7 +148,11 @@ typedef PbrOptions = {
 	transmission:Bool,
 	iridescence:Bool,
 	anisotropy:Bool,
-	uvSets:Bool
+	uvSets:Bool,
+	// (the sun alone: no local lights' loop; the renderer's, a frame without them)
+	sunOnly:Bool,
+	// (the local lights unshadowed: no tile read; the renderer's, a frame none of whose local lights casts)
+	untiled:Bool
 };
 
 // per draw in the prepass (ViewBuffers): the camera's view (the normals
@@ -239,6 +260,32 @@ typedef Pbr = {
 	position:(PbrPoint, PbrVertexParams) -> Vec3
 }
 
+// the frame's point and spot lights (Renderer: up to MAX_LIGHTS, the
+// nearest the view's and the brightest), each three vectors: position (xyz;
+// w its range, 0: none), colour (rgb its colour times intensity; w 1 plus
+// its first tile in the tiles after, 0: unshadowed), cone (a spot's axis times
+// 1 / (cos inner - cos outer), w -cos outer times that: the cone's
+// smoothstep from one dot; a point light's 0, 0, 0, 1). Then their
+// shadows (Shadows: a spot light's tile, a point light's six, faces +x,
+// -x, +y, -y, +z, -z; the block's last bytes, Shadows.MAX_TILES of each),
+// each the light's view-projection of the tile, its place in the atlas
+// (tileRect: xy its corner, z and w its share of the atlas' width and
+// height) and its filter (tileParams: x strength, y the depth bias in
+// metres a metre from the light, z the normal offset likewise, w the disc
+// filter's radius in the tile's uv, 0: the 3x3 filter). (Here, not in
+// PbrFrame: the stages' functions take the frame by value, and Android's
+// emulator's GL, its host SwiftShader, crashed copying a frame of twelve
+// more matrices into each.)
+@:structInit @:publicFields class PbrLights {
+	@:length(32) var position:Array<Vec4>;
+	@:length(32) var color:Array<Vec4>;
+	@:length(32) var cone:Array<Vec4>;
+	@:length(12) var tileViewProj:Array<Mat4>;
+	@:length(12) var tileRect:Array<Vec4>;
+	@:length(12) var tileParams:Array<Vec4>;
+}
+
+
 // per frame: the camera and the lights
 @:structInit @:publicFields class PbrFrame {
 	var viewProj:Mat4;
@@ -248,27 +295,17 @@ typedef Pbr = {
 	var sky:Vec4; // the ambient from above, rgb
 	var ground:Vec4; // the ambient from below, rgb
 	var exposure:Vec4; // x: exposure; y: 1 for a linear, HDR target (Renderer.hdr: tone mapped later, PostProcess); z: 1 the screen's ambient occlusion read (aoMap)
-	var lightViewProj:Mat4; // the shadow map's view-projection (Shadows)
+	var lightViewProj:Mat4; // the first cascade's view-projection (Shadows)
 	var shadow:Vec4; // x: strength (0: no shadows), y: bias, z: a texel of the map
-	// up to four point lights: position (w: range, 0 for none), colour times intensity
-	var point0:Vec4;
-	var point1:Vec4;
-	var point2:Vec4;
-	var point3:Vec4;
-	var pointColor0:Vec4;
-	var pointColor1:Vec4;
-	var pointColor2:Vec4;
-	var pointColor3:Vec4;
-	// spot lights: the direction they shine (xyz) and the cosine of the outer
-	// cone (w; below -1 for a point light); pointColor's w the inner cone's
-	var spot0:Vec4;
-	var spot1:Vec4;
-	var spot2:Vec4;
-	var spot3:Vec4;
 	// the second shadow cascade (Shadows with two: the whole scene's map,
 	// read where the first, near the camera, does not reach; else the first's)
 	var lightViewProjFar:Mat4;
 	var shadowFar:Vec4;
+	// the cascades' tiles in the atlas: xy their corner, z and w their share
+	// of its width and height; shadowAtlas: x and y a texel of the atlas
+	var shadowRect:Vec4;
+	var shadowRectFar:Vec4;
+	var shadowAtlas:Vec4;
 	// the environment's light (Environment): x its intensity (0: none, the
 	// sky and the ground instead), y its map's mip levels below the first;
 	// a prefiltered atlas's (Environment.prefiltered): z its levels of
@@ -288,13 +325,26 @@ typedef Pbr = {
 	// radius alone, no blocker search); shadow.w and shadowFar.w each
 	// cascade's widest radius, in its uv
 	var shadowSoft:Vec4;
+	// ClusteredLights' grid (x 0: the draws' lists instead): x its tiles
+	// across the view, y down it, z its depth slices, w a cell's lights at
+	// most; clusterDepth: x the first slice's near depth, y slices a unit of
+	// log depth, z and w the cluster map's width and height; clusterAxis: xyz
+	// the camera's forward, w the map's first row of lights
+	var clusters:Vec4;
+	var clusterDepth:Vec4;
+	var clusterAxis:Vec4;
 }
 
-// per draw: the node's matrices
+// per draw: the node's matrices, its light list (instanced: the run's,
+// the matrices unread)
 @:structInit @:publicFields class PbrObject {
 	var model:Mat4;
 	var normalMatrix:Mat4;
-	var tint:Vec4; // rgb: the node's tint (MeshRenderer.tint)
+	var tint:Vec4; // rgb: the node's tint (MeshRenderer.tint); w: skinned, its joints' count (else 1)
+	// the draw's lights (Renderer: the eight that light its bounds most),
+	// rows of PbrLights, -1 after the last
+	var lights0:Vec4;
+	var lights1:Vec4;
 }
 
 // per draw: the material
@@ -417,31 +467,58 @@ function uvOf(material:PbrMaterial, uv:Vec2):Vec2
 // node's unit up and its tint, uv already the material's (uvOf), from the
 // material's own terms (the slots' defaults: CPU code, Material.test), as
 // pbr's fragment stage shades it
-function shadeAt(facing:Vec3, world:Vec3, uv:Vec2, up:Vec3, tint:Vec3, frame:PbrFrame, material:PbrMaterial, baseColorTexture:Texture2D,
-		metallicRoughnessTexture:Texture2D, emissiveTexture:Texture2D, occlusionTexture:Texture2D, shadowMap:Texture2D, shadowMapFar:Texture2D, environmentMap:Texture2D,
-		aoMap:Texture2D):Vec4 {
+function shadeAt(facing:Vec3, world:Vec3, uv:Vec2, up:Vec3, tint:Vec3, frame:PbrFrame, object:PbrObject, material:PbrMaterial, lights:PbrLights,
+		baseColorTexture:Texture2D, metallicRoughnessTexture:Texture2D, emissiveTexture:Texture2D, occlusionTexture:Texture2D, shadowMap:Texture2D,
+		clusterMap:Texture2D, environmentMap:Texture2D, aoMap:Texture2D):Vec4 {
 	var texel = sample(baseColorTexture, uv);
 	var s:PbrSurface = {world: world, normal: facing, uv: uv, up: up, baseColor: vec4(material.baseColor.xyz * pow(texel.xyz, vec3(2.2)), material.baseColor.w * texel.w)};
 	var p:PbrFragmentParams = {
 		frame: frame,
+		object: object,
 		material: material,
+		lights: lights,
 		baseColorTexture: baseColorTexture,
 		metallicRoughnessTexture: metallicRoughnessTexture,
 		emissiveTexture: emissiveTexture,
 		occlusionTexture: occlusionTexture,
 		shadowMap: shadowMap,
-		shadowMapFar: shadowMapFar,
+		clusterMap: clusterMap,
 		environmentMap: environmentMap,
 		aoMap: aoMap
 	};
 	var lit = litSurface(pbrNormal(s, p), world, uv, up, pbrColor(s, p) * tint, pbrAlpha(s, p), pbrMetalness(s, p), pbrRoughness(s, p), frame, material);
-	var direct = pbrDirect(lit, sunLight(lit, frame, material, shadowMap, shadowMapFar), p);
-	if (frame.point0.w > 0) direct += pbrDirect(lit, pointLight(lit, frame.point0, frame.pointColor0, frame.spot0), p);
-	if (frame.point1.w > 0) direct += pbrDirect(lit, pointLight(lit, frame.point1, frame.pointColor1, frame.spot1), p);
-	if (frame.point2.w > 0) direct += pbrDirect(lit, pointLight(lit, frame.point2, frame.pointColor2, frame.spot2), p);
-	if (frame.point3.w > 0) direct += pbrDirect(lit, pointLight(lit, frame.point3, frame.pointColor3, frame.spot3), p);
+	var direct = pbrDirect(lit, sunLight(lit, frame, material, shadowMap), p);
+	var cell = clusterCell(frame.viewProj, frame.eye, frame.clusters, frame.clusterDepth, frame.clusterAxis, clusterMap, world);
+	var k = 0.0;
+	var index = lightIndex(frame.clusters, frame.clusterDepth, object.lights0, object.lights1, clusterMap, cell, k);
+	while (k < cell.z && index >= 0) {
+	// (the light's row, its shadow: read here, the arrays not passed on)
+	var pos = vec4(0);
+	var color = vec4(0);
+	var cone = vec4(0);
+	if (frame.clusters.x > 0) {
+		pos = lightRow(clusterMap, 0, index, frame.clusterAxis, frame.clusterDepth);
+		color = lightRow(clusterMap, 4, index, frame.clusterAxis, frame.clusterDepth);
+		cone = lightRow(clusterMap, 8, index, frame.clusterAxis, frame.clusterDepth);
+	} else {
+		pos = lights.position[Std.int(index)];
+		color = lights.color[Std.int(index)];
+		cone = lights.cone[Std.int(index)];
+	}
+	var shadow = 1.0;
+	if (color.w > 0.5) {
+		var first = color.w - 1;
+		var params = lights.tileParams[Std.int(first + 0.5)];
+		var at = shadowPoint(lit.world, lit.normal, pos.xyz, params);
+		var tile = first + tileFace(at, pos.xyz, dot(cone.xyz, cone.xyz) < 0.0001) + 0.5;
+		shadow = tileShadow(shadowMap, lights.tileViewProj[Std.int(tile)], lights.tileRect[Std.int(tile)], params, frame.shadowAtlas, at);
+	}
+	direct += pbrDirect(lit, localLight(lit.world, lit.normal, pos, color, cone, shadow), p);
+		k += 1;
+		index = lightIndex(frame.clusters, frame.clusterDepth, object.lights0, object.lights1, clusterMap, cell, k);
+	}
 	var env = ambientAt(lit, frame, material, occlusionTexture, environmentMap, aoMap);
-	return shade(lit, direct, pbrIndirect(lit, env, p), env, pbrEmissive(s, p), frame, material, shadowMap, shadowMapFar, environmentMap);
+	return shade(lit, direct, pbrIndirect(lit, env, p), env, pbrEmissive(s, p), frame, material, shadowMap, environmentMap);
 }
 
 // the slots' defaults: the base colour (the texture's sRGB decoded: the
@@ -522,11 +599,11 @@ function litSurface(facing:Vec3, world:Vec3, uv:Vec2, up:Vec3, albedo:Vec3, alph
 function daylight(s:LitSurface, frame:PbrFrame, material:PbrMaterial):Float
 	return mix(1.0, smoothstep(-0.08, 0.22, dot(s.up, frame.lightDir.xyz)), material.ground.x);
 
-// the sun (the frame's directional light) at a surface, shadowed by the maps
-function sunLight(s:LitSurface, frame:PbrFrame, material:PbrMaterial, shadowMap:Texture2D, shadowMapFar:Texture2D):LightSample {
+// the sun (the frame's directional light) at a surface, shadowed by its cascades
+function sunLight(s:LitSurface, frame:PbrFrame, material:PbrMaterial, shadowMap:Texture2D):LightSample {
 	var l = frame.lightDir.xyz;
 	var c = frame.lightColor.xyz * daylight(s, frame, material);
-	var lit = shadowed(frame, shadowMap, shadowMapFar, s.world, s.normal);
+	var lit = shadowed(frame, shadowMap, s.world, s.normal);
 	return {
 		color: c,
 		shadow: lit,
@@ -536,28 +613,163 @@ function sunLight(s:LitSurface, frame:PbrFrame, material:PbrMaterial, shadowMap:
 	};
 }
 
-// a point or spot light at pos.xyz (pos.w: its range, above 0) at a
-// surface: the inverse square falloff windowed to reach 0 at the range
-// (glTF's KHR_lights_punctual), a spot's cone (spot.w above -1.5: the
-// outer cone's cosine, color.w the inner's); unshadowed
-function pointLight(s:LitSurface, pos:Vec4, color:Vec4, spot:Vec4):LightSample {
-	var d = pos.xyz - s.world;
+// where a point's local lights are listed: ClusteredLights' cell under it
+// (x the column of its first texel in the cluster map, y its row, z its
+// lights' count: the cell's at the point's pixel and its depth's slice,
+// exponential from the near depth), else the draw's list (z 8)
+// (PbrFrame's viewProj, eye, clusters, clusterDepth, clusterAxis: the
+// vectors, not the frame, which a function's call copies)
+function clusterCell(viewProj:Mat4, eye:Vec4, clusters:Vec4, clusterDepth:Vec4, clusterAxis:Vec4, clusterMap:Texture2D, world:Vec3):Vec3 {
+	var cell = vec3(0, 0, 8);
+	if (clusters.x > 0) {
+		var sc = viewProj * vec4(world, 1);
+		var x = clamp(floor((sc.x / sc.w * 0.5 + 0.5) * clusters.x), 0, clusters.x - 1);
+		var y = clamp(floor((0.5 - sc.y / sc.w * 0.5) * clusters.y), 0, clusters.y - 1);
+		var depth = max(dot(world - eye.xyz, clusterAxis.xyz), clusterDepth.x);
+		var z = clamp(floor(log(depth / clusterDepth.x) * clusterDepth.y), 0, clusters.z - 1);
+		var column = x * (clusters.w + 1);
+		var row = y + z * clusters.y;
+		cell = vec3(column, row, mapTexel(clusterMap, column, row, clusterDepth));
+	}
+	return cell;
+}
+
+// the k-th light a point's list names (clusterCell's: the cell's, else the
+// draw's, PbrObject's lights0 and lights1: as varyings, rounded), a row of
+// the frame's lights; -1: none
+function lightIndex(clusters:Vec4, clusterDepth:Vec4, lights0:Vec4, lights1:Vec4, clusterMap:Texture2D, cell:Vec3, k:Float):Float {
+	var index = -1.0;
+	if (clusters.x > 0) index = mapTexel(clusterMap, cell.x + 1 + k, cell.y, clusterDepth);
+	else {
+		var four = k < 4 ? lights0 : lights1;
+		var j = k < 4 ? k : k - 4;
+		index = floor((j < 0.5 ? four.x : j < 1.5 ? four.y : j < 2.5 ? four.z : four.w) + 0.5);
+	}
+	return index;
+}
+
+// texel (x, y) of an R32F map of size.z by size.w texels
+function mapTexel(t:Texture2D, x:Float, y:Float, size:Vec4):Float
+	return sampleLevel(t, vec2((x + 0.5) / size.z, (y + 0.5) / size.w), 0).x;
+
+// four texels of light k's row of the cluster map (ClusteredLights: after
+// its cells' rows, from PbrFrame's clusterAxis.w; clusterDepth's z and w:
+// the map's size), from column x
+function lightRow(t:Texture2D, x:Float, k:Float, clusterAxis:Vec4, clusterDepth:Vec4):Vec4 {
+	var v = (clusterAxis.w + k + 0.5) / clusterDepth.w;
+	var w = clusterDepth.z;
+	return vec4(sampleLevel(t, vec2((x + 0.5) / w, v), 0).x, sampleLevel(t, vec2((x + 1.5) / w, v), 0).x, sampleLevel(t, vec2((x + 2.5) / w, v), 0).x,
+		sampleLevel(t, vec2((x + 3.5) / w, v), 0).x);
+}
+
+// a local light at a surface (its three vectors: PbrLights' row or
+// ClusteredLights' map's; its lit share, 1 unshadowed: tileShadow's): the
+// inverse square falloff windowed to reach 0 at its range (glTF's
+// KHR_lights_punctual), a spot's cone (the smoothstep from its outer cone
+// to its inner, from one dot: PbrLights' cone). (The vectors, not the
+// blocks nor the surface: a function's call copies what it is passed, and
+// Android's emulator's GL, its host SwiftShader, failed to compile a stage
+// that copied the lights' and the tiles' arrays, or the lit surface, into
+// each.)
+function localLight(world:Vec3, normal:Vec3, pos:Vec4, color:Vec4, cone:Vec4, shadow:Float):LightSample {
+	var d = pos.xyz - world;
 	var dist2 = max(dot(d, d), 0.0001);
 	var dist = sqrt(dist2);
 	var q = dist / pos.w;
 	var window = clamp(1 - q * q * q * q, 0, 1);
-	// (a spot light: full inside the inner cone, nothing outside the outer)
-	var cone = 1.0;
-	if (spot.w > -1.5) cone = smoothstep(spot.w, color.w, dot(-d / dist, spot.xyz));
 	var l = d / dist;
-	var c = color.xyz * (window * window / dist2 * cone);
+	var t = clamp(dot(-l, cone.xyz) + cone.w, 0, 1);
+	var c = color.xyz * (window * window / dist2 * (t * t * (3 - 2 * t)));
 	return {
 		color: c,
-		shadow: 1.0,
-		radiance: c,
+		shadow: shadow,
+		radiance: c * shadow,
 		direction: l,
-		ndotl: max(dot(s.normal, l), 0)
+		ndotl: max(dot(normal, l), 0)
 	};
+}
+
+// where a surface's point is looked up in a local light's tiles (PbrLights'
+// tiles: a spot light's own, a point light's the face the point is in,
+// from its first): moved towards the light (at light) by the bias and off
+// its surface by the normal offset, both scaled by its distance (params:
+// its first tile's filter)
+function shadowPoint(world:Vec3, normal:Vec3, light:Vec3, params:Vec4):Vec3 {
+	var d = light - world;
+	var dist = max(length(d), 0.0001);
+	return world + d * params.y + normal * (params.z * dist);
+}
+
+// the face of a point light's tiles (0 to 5: +x, -x, +y, -y, +z, -z) a
+// moved point is in (a spot light's: 0)
+function tileFace(at:Vec3, light:Vec3, point:Bool):Float {
+	var face = 0.0;
+	if (point) {
+		var d = at - light;
+		var a = abs(d);
+		face = a.x >= a.y && a.x >= a.z ? (d.x > 0 ? 0.0 : 1.0) : a.y >= a.z ? (d.y > 0 ? 2.0 : 3.0) : (d.z > 0 ? 4.0 : 5.0);
+	}
+	return face;
+}
+
+// a local light's lit share at a moved point (1: lit) from a tile of the
+// atlas (viewProj, rect: the tile's; params: the light's filter; inv: a
+// texel of the atlas): the 3x3 filter or a disc of taps; 1 outside the tile
+function tileShadow(map:Texture2D, viewProj:Mat4, rect:Vec4, params:Vec4, inv:Vec4, at:Vec3):Float {
+	var c = viewProj * vec4(at, 1);
+	var p = c.xyz / c.w;
+	var uv = vec2(p.x * 0.5 + 0.5, 0.5 - p.y * 0.5);
+	var result = 1.0;
+	if (c.w > 0 && uv.x > 0 && uv.x < 1 && uv.y > 0 && uv.y < 1 && p.z < 1) {
+		var t = inv.x / rect.z;
+		var lit = 0.0;
+		if (params.w > 0) lit = disc(map, uv, rect, inv, p.z, params.w, t);
+		else
+			lit = grid(map, uv, rect, inv, p.z, t);
+		result = 1 - params.x * (1 - lit);
+	}
+	return result;
+}
+
+// the 3x3 filter's lit share, a loop of its nine taps (the same taps, the
+// same sum, as cascade's; once in the stage's code, not nine times in the
+// light loop's: Android's emulator's SwiftShader failed to compile the
+// stage with them unrolled there)
+function grid(map:Texture2D, uv:Vec2, rect:Vec4, inv:Vec4, depth:Float, t:Float):Float {
+	var sum = 0.0;
+	var k = 0.0;
+	while (k < 9) {
+		var row = floor(k / 3);
+		sum += tap(map, uv, rect, inv, depth, (k - row * 3 - 1) * t, (row - 1) * t);
+		k += 1;
+	}
+	return sum / 9;
+}
+
+// a tile's uv in the atlas (rect: its corner, its share of the atlas; inv:
+// a texel of the atlas), held inside the tile's edge texels (the taps past
+// its edge read the edge, as a map of its own clamped)
+function atlasUv(uv:Vec2, rect:Vec4, inv:Vec4):Vec2
+	return clamp(rect.xy + uv * rect.zw, rect.xy + inv.xy * 0.5, rect.xy + rect.zw - inv.xy * 0.5);
+
+// a disc of 12 taps out to radius (in the tile's uv) on a golden-angle
+// spiral, turned at each of the tile's texels as softly's
+function disc(map:Texture2D, uv:Vec2, rect:Vec4, inv:Vec4, depth:Float, radius:Float, texel:Float):Float {
+	var cell = fract(floor(uv / texel) / 64) * 64;
+	var h = fract(52.9829189 * fract(dot(cell, vec2(0.06711056, 0.00583715))));
+	var t = 2 * fract(2 * h) - 1;
+	var dir = vec2(1 - t * t, 2 * t) * ((h < 0.5 ? 1.0 : -1.0) / (1 + t * t));
+	var c = -0.7373688;
+	var s = 0.6754903;
+	var sum = 0.0;
+	var k = 0.0;
+	while (k < 12) {
+		var off = dir * (sqrt((k + 0.5) / 12) * radius);
+		sum += step(depth, sampleLevel(map, atlasUv(uv + off, rect, inv), 0).x);
+		dir = vec2(dir.x * c - dir.y * s, dir.x * s + dir.y * c);
+		k += 1;
+	}
+	return sum / 12;
 }
 
 // the light around a surface (IndirectLight): the sky and the ground (a
@@ -605,7 +817,7 @@ function ambientAt(s:LitSurface, frame:PbrFrame, material:PbrMaterial, occlusion
 // light, transmission, the air, the fog, the target's encoding and the
 // alpha's modes
 function shade(s:LitSurface, lights:Vec3, indirect:Vec3, env:IndirectLight, emissive:Vec3, frame:PbrFrame, material:PbrMaterial, shadowMap:Texture2D,
-		shadowMapFar:Texture2D, environmentMap:Texture2D):Vec4 {
+		environmentMap:Texture2D):Vec4 {
 	var crystal = material.ground.z;
 	var n = s.normal;
 	var v = s.view;
@@ -635,7 +847,7 @@ function shade(s:LitSurface, lights:Vec3, indirect:Vec3, env:IndirectLight, emis
 		var cr = clamp(material.layers.y, 0.04, 1);
 		var ca = cr * cr;
 		var fc = (0.04 + 0.96 * pow(1 - nv, 5)) * coat;
-		var lit = shadowed(frame, shadowMap, shadowMapFar, s.world, n) * day;
+		var lit = shadowed(frame, shadowMap, s.world, n) * day;
 		var layer = coatLobe(n, v, l, ca * ca) * frame.lightColor.xyz * (lit * coat) + reflected(frame, environmentMap, r, cr) * fc;
 		direct = direct * (1 - fc);
 		ambient = ambient * (1 - fc) + layer;
@@ -750,27 +962,28 @@ function brdf(n:Vec3, v:Vec3, l:Vec3, base:Vec3, metallic:Float, a2:Float, f0:Ve
 	return (diffuse + fresnel * (distribution * visibility)) * nl;
 }
 
-// the direct light's share at a point (1: lit) from the shadow maps: the
-// first cascade's where it reaches, else the second's; a 3x3
+// the sun's share at a point (1: lit) from its cascades' tiles of the
+// atlas: the first cascade's where it reaches, else the second's; a 3x3
 // percentage-closer filter, or the soft one (Shadows.soft); 1 outside
 // them or without shadows (n: the surface's unit normal)
-function shadowed(frame:PbrFrame, map:Texture2D, far:Texture2D, world:Vec3, n:Vec3):Float {
+function shadowed(frame:PbrFrame, map:Texture2D, world:Vec3, n:Vec3):Float {
 	var strength = frame.shadow.x;
 	var result = 1.0;
 	if (strength > 0) {
 		var nl = max(dot(n, frame.lightDir.xyz), 0);
-		var lit = cascade(map, frame.lightViewProj, frame.shadow, frame.shadowSoft, frame.shadowSoft.y, world, n, nl);
-		if (lit < 0) lit = cascade(far, frame.lightViewProjFar, frame.shadowFar, frame.shadowSoft, frame.shadowSoft.z, world, n, nl);
+		var lit = cascade(map, frame.lightViewProj, frame.shadow, frame.shadowRect, frame.shadowAtlas, frame.shadowSoft, frame.shadowSoft.y, world, n, nl);
+		if (lit < 0)
+			lit = cascade(map, frame.lightViewProjFar, frame.shadowFar, frame.shadowRectFar, frame.shadowAtlas, frame.shadowSoft, frame.shadowSoft.z, world, n, nl);
 		if (lit >= 0) result = 1 - strength * (1 - lit);
 	}
 	return result;
 }
 
-// a cascade's lit share (0 to 1) at a point, or -1 where its map does not
+// a cascade's lit share (0 to 1) at a point, or -1 where its tile does not
 // reach (params: y the bias, z a texel of the map, w the soft filter's
-// widest radius in its uv; soft and deep: shadowSoft's, this map's depth
-// a uv)
-function cascade(map:Texture2D, viewProj:Mat4, params:Vec4, soft:Vec4, deep:Float, world:Vec3, n:Vec3, nl:Float):Float {
+// widest radius in its uv; rect its tile in the atlas, inv a texel of the
+// atlas; soft and deep: shadowSoft's, this map's depth a uv)
+function cascade(map:Texture2D, viewProj:Mat4, params:Vec4, rect:Vec4, inv:Vec4, soft:Vec4, deep:Float, world:Vec3, n:Vec3, nl:Float):Float {
 	var result = -1.0;
 	var ls = viewProj * vec4(world, 1);
 	var p = ls.xyz / ls.w;
@@ -779,18 +992,18 @@ function cascade(map:Texture2D, viewProj:Mat4, params:Vec4, soft:Vec4, deep:Floa
 		// (more bias where the light grazes the surface)
 		var depth = p.z - params.y * (1 + 2 * (1 - nl));
 		var t = params.z;
-		if (soft.x > 0 && params.w > 0) result = softly(map, uv, depth, params.w, t, soft, deep, plane(viewProj, n, deep));
+		if (soft.x > 0 && params.w > 0) result = softly(map, uv, rect, inv, depth, params.w, t, soft, deep, plane(viewProj, n, deep));
 		else
-			result = (tap(map, uv, depth, -t, -t) + tap(map, uv, depth, 0, -t) + tap(map, uv, depth, t, -t) + tap(map, uv, depth, -t, 0)
-				+ tap(map, uv, depth, 0, 0) + tap(map, uv, depth, t, 0) + tap(map, uv, depth, -t, t) + tap(map, uv, depth, 0, t)
-				+ tap(map, uv, depth, t, t)) / 9;
+			result = (tap(map, uv, rect, inv, depth, -t, -t) + tap(map, uv, rect, inv, depth, 0, -t) + tap(map, uv, rect, inv, depth, t, -t)
+				+ tap(map, uv, rect, inv, depth, -t, 0) + tap(map, uv, rect, inv, depth, 0, 0) + tap(map, uv, rect, inv, depth, t, 0)
+				+ tap(map, uv, rect, inv, depth, -t, t) + tap(map, uv, rect, inv, depth, 0, t) + tap(map, uv, rect, inv, depth, t, t)) / 9;
 	}
 	return result;
 }
 
-// 1 where the map's depth at uv + (dx, dy) is not nearer than depth
-function tap(map:Texture2D, uv:Vec2, depth:Float, dx:Float, dy:Float):Float
-	return step(depth, sampleLevel(map, uv + vec2(dx, dy), 0).x);
+// 1 where the tile's depth at uv + (dx, dy) is not nearer than depth
+function tap(map:Texture2D, uv:Vec2, rect:Vec4, inv:Vec4, depth:Float, dx:Float, dy:Float):Float
+	return step(depth, sampleLevel(map, atlasUv(uv + vec2(dx, dy), rect, inv), 0).x);
 
 // how the depth of the surface's plane (unit normal n) changes across the
 // map, a uv (an orthographic light's viewProj: two directions along the
@@ -824,7 +1037,7 @@ function plane(viewProj:Mat4, n:Vec3, deep:Float):Vec2 {
 // surface's own depth there (its plane in the light's view, g: plane),
 // less a texel's change of it (the nearest texel's reach), so a tilted
 // surface does not shadow itself and what stands on it still does
-function softly(map:Texture2D, uv:Vec2, depth:Float, widest:Float, texel:Float, soft:Vec4, deep:Float, g:Vec2):Float {
+function softly(map:Texture2D, uv:Vec2, rect:Vec4, inv:Vec4, depth:Float, widest:Float, texel:Float, soft:Vec4, deep:Float, g:Vec2):Float {
 	var n = soft.x;
 	var margin = depth;
 	var cell = fract(floor(uv / texel) / 64) * 64;
@@ -846,7 +1059,7 @@ function softly(map:Texture2D, uv:Vec2, depth:Float, widest:Float, texel:Float, 
 		var k = 0.0;
 		while (k < m) {
 			var off = dir * (sqrt((k + 0.5) / m) * widest);
-			var d = sampleLevel(map, uv + off, 0).x;
+			var d = sampleLevel(map, atlasUv(uv + off, rect, inv), 0).x;
 			var at = dot(g, off);
 			if (d < margin + at) {
 				// (the blocker's distance above the surface there)
@@ -865,7 +1078,7 @@ function softly(map:Texture2D, uv:Vec2, depth:Float, widest:Float, texel:Float, 
 		var k = 0.0;
 		while (k < n) {
 			var off = dir * (sqrt((k + 0.5) / n) * radius);
-			sum += step(margin + dot(g, off), sampleLevel(map, uv + off, 0).x);
+			sum += step(margin + dot(g, off), sampleLevel(map, atlasUv(uv + off, rect, inv), 0).x);
 			dir = vec2(dir.x * c - dir.y * s, dir.x * s + dir.y * c);
 			k += 1;
 		}
@@ -1213,15 +1426,24 @@ final pbr = slots({
 		transmission: false,
 		iridescence: false,
 		anisotropy: false,
-		uvSets: false
+		uvSets: false,
+		// (the sun alone: no local lights' loop, for a frame without them,
+		// the renderer's; a smaller stage, faster to compile)
+		sunOnly: false,
+		// (the local lights unshadowed: no tile read, for a frame none of
+		// whose local lights casts, the renderer's; Android's emulator's
+		// SwiftShader fails to compile the stage with the tiles' lookup)
+		untiled: false
 	},
 	vertex: function(v:PbrVertex, p:PbrVertexParams, m:Pbr):PbrVaryings {
 		var pos = m.position({pos: v.pos, normal: v.normal, uv: v.uv}, p);
 		var nr = v.normal;
 		if (m.options.skinned) {
-			// (moved by its four joints' matrices, weighted)
-			var j0 = joint(p.jointMatrices, v.joints.x, p.skin.rows.x), j1 = joint(p.jointMatrices, v.joints.y, p.skin.rows.x);
-			var j2 = joint(p.jointMatrices, v.joints.z, p.skin.rows.x), j3 = joint(p.jointMatrices, v.joints.w, p.skin.rows.x);
+			// (moved by its four joints' matrices, weighted; their count
+			// PbrObject's tint.w: no block of the skin's, a slot kept for the
+			// physical shaders' maps, sixteen in all)
+			var j0 = joint(p.jointMatrices, v.joints.x, p.object.tint.w), j1 = joint(p.jointMatrices, v.joints.y, p.object.tint.w);
+			var j2 = joint(p.jointMatrices, v.joints.z, p.object.tint.w), j3 = joint(p.jointMatrices, v.joints.w, p.object.tint.w);
 			var q = vec4(pos, 1), n4 = vec4(v.normal, 0);
 			pos = ((j0 * q) * v.weights.x + (j1 * q) * v.weights.y + (j2 * q) * v.weights.z + (j3 * q) * v.weights.w).xyz;
 			nr = ((j0 * n4) * v.weights.x + (j1 * n4) * v.weights.y + (j2 * n4) * v.weights.z + (j3 * n4) * v.weights.w).xyz;
@@ -1236,7 +1458,10 @@ final pbr = slots({
 			uv1: m.options.uvSets ? v.uv1 : vec2(0),
 			tangent: m.options.normalMap ? vec4((model * vec4(v.tangent.xyz, 0)).xyz, v.tangent.w) : vec4(0),
 			up: m.options.instanced ? v.m1.xyz : (model * vec4(0, 1, 0, 0)).xyz,
-			tint: m.options.instanced ? vec3(1 + v.m0.w, 1 + v.m1.w, 1 + v.m2.w) : p.object.tint.xyz
+			tint: m.options.instanced ? vec3(1 + v.m0.w, 1 + v.m1.w, 1 + v.m2.w) : p.object.tint.xyz,
+			// (the prepass lights nothing: its instanced variants bind no PbrObject)
+			lights0: m.options.prepass ? vec4(-1) : p.object.lights0,
+			lights1: m.options.prepass ? vec4(-1) : p.object.lights1
 		};
 	},
 	fragment: function(i:PbrVaryings, p:PbrFragmentParams, m:Pbr):Vec4 {
@@ -1390,14 +1615,46 @@ final pbr = slots({
 				};
 				lit = layered;
 			}
-			// (the sun, then each point or spot light there is: the direct slot's, summed)
-			var direct = m.direct(lit, sunLight(lit, p.frame, p.material, p.shadowMap, p.shadowMapFar), p);
-			if (p.frame.point0.w > 0) direct += m.direct(lit, pointLight(lit, p.frame.point0, p.frame.pointColor0, p.frame.spot0), p);
-			if (p.frame.point1.w > 0) direct += m.direct(lit, pointLight(lit, p.frame.point1, p.frame.pointColor1, p.frame.spot1), p);
-			if (p.frame.point2.w > 0) direct += m.direct(lit, pointLight(lit, p.frame.point2, p.frame.pointColor2, p.frame.spot2), p);
-			if (p.frame.point3.w > 0) direct += m.direct(lit, pointLight(lit, p.frame.point3, p.frame.pointColor3, p.frame.spot3), p);
+			// (the sun, then each local light the draw's list or the pixel's
+			// cell names: the direct slot's, summed)
+			var direct = m.direct(lit, sunLight(lit, p.frame, p.material, p.shadowMap), p);
+			if (!m.options.sunOnly) {
+				var cell = clusterCell(p.frame.viewProj, p.frame.eye, p.frame.clusters, p.frame.clusterDepth, p.frame.clusterAxis, p.clusterMap, s.world);
+				// (a list ends at its first -1: a draw lit by none loops not at all)
+				var k = 0.0;
+				var index = lightIndex(p.frame.clusters, p.frame.clusterDepth, i.lights0, i.lights1, p.clusterMap, cell, k);
+				while (k < cell.z && index >= 0) {
+					// (the light's row, its shadow: read here, the arrays not passed on)
+					var pos = vec4(0);
+					var color = vec4(0);
+					var cone = vec4(0);
+					if (p.frame.clusters.x > 0) {
+						pos = lightRow(p.clusterMap, 0, index, p.frame.clusterAxis, p.frame.clusterDepth);
+						color = lightRow(p.clusterMap, 4, index, p.frame.clusterAxis, p.frame.clusterDepth);
+						cone = lightRow(p.clusterMap, 8, index, p.frame.clusterAxis, p.frame.clusterDepth);
+					} else {
+						pos = p.lights.position[Std.int(index)];
+						color = p.lights.color[Std.int(index)];
+						cone = p.lights.cone[Std.int(index)];
+					}
+					var shadow = 1.0;
+					// (untiled: no local light casts this frame, no tile read)
+					if (!m.options.untiled) {
+						if (color.w > 0.5) {
+							var first = color.w - 1;
+							var params = p.lights.tileParams[Std.int(first + 0.5)];
+							var at = shadowPoint(lit.world, lit.normal, pos.xyz, params);
+							var tile = first + tileFace(at, pos.xyz, dot(cone.xyz, cone.xyz) < 0.0001) + 0.5;
+							shadow = tileShadow(p.shadowMap, p.lights.tileViewProj[Std.int(tile)], p.lights.tileRect[Std.int(tile)], params, p.frame.shadowAtlas, at);
+						}
+					}
+					direct += m.direct(lit, localLight(lit.world, lit.normal, pos, color, cone, shadow), p);
+					k += 1;
+					index = lightIndex(p.frame.clusters, p.frame.clusterDepth, i.lights0, i.lights1, p.clusterMap, cell, k);
+				}
+			}
 			var env = ambientAt(lit, p.frame, p.material, p.occlusionTexture, p.environmentMap, p.aoMap);
-			out = shade(lit, direct, m.indirect(lit, env, p), env, m.emissive(s, p), p.frame, p.material, p.shadowMap, p.shadowMapFar, p.environmentMap);
+			out = shade(lit, direct, m.indirect(lit, env, p), env, m.emissive(s, p), p.frame, p.material, p.shadowMap, p.environmentMap);
 		}
 		return out;
 	},
@@ -1413,4 +1670,12 @@ final pbr = slots({
 });
 
 // the standard material, its plain variant
-final PbrShader = pbr.variant();
+final PbrShader = pbr.gpuVariant();
+
+// the standard material lit by the sun alone (the renderer's, for a frame
+// without local lights: no light loop to compile)
+final PbrSunShader = pbr.gpuVariant({sunOnly: true});
+
+// the standard material, its local lights unshadowed (the renderer's, for
+// a frame none of whose local lights casts: no tile read)
+final PbrUntiledShader = pbr.gpuVariant({untiled: true});

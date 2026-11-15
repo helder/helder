@@ -74,32 +74,97 @@ interface OcclusionSource {
 	function draw(enc:helder.gfx.Encoder, renderer:Renderer):Void;
 }
 
-// what the renderer asks of a shadow map (Shadows)
+// what the renderer asks of its shadows (Shadows)
 interface ShadowSource {
-	// the map's pass, before the frame's
-	// (skins: the renderer's skinning, for skinned casters; null without it)
-	// (frame: the camera's view, for cascades fitted to it)
-	function render(enc:helder.gfx.Encoder, world:helder.scene.World, toLight:helder.gfx.shader.Vec3, skins:Null<SkinSource>, frame:Renderer.FrameInfo):Void;
-	// the last pass's map and how to read it (an object: hxmc passes struct
+	// the atlas' pass, before the frame's: the sun's cascades (towards the
+	// light toLight, fitted to frame's view), the local lights' tiles (the
+	// renderer's frameLights, their tiles set there)
+	function render(enc:helder.gfx.Encoder, renderer:Renderer, toLight:helder.gfx.shader.Vec3, frame:Renderer.FrameInfo):Void;
+	// the last pass's atlas and how to read it (an object: hxmc passes struct
 	// values through interface calls wrongly for now)
 	function shadowFrame():ShadowFrame;
 }
 
 class ShadowFrame {
+	// the atlas
 	public var map:helder.gfx.Texture = cast 0;
+	// the sun's first cascade: its view-projection; x strength, y bias, z a
+	// texel of the tile, w the soft radius in its uv; its tile in the atlas
 	public var viewProj:helder.gfx.shader.Mat4 = helder.gfx.shader.Mat4.identity();
-	// x: strength, y: bias, z: a texel of the map
 	public var params:helder.gfx.shader.Vec4 = new helder.gfx.shader.Vec4(0, 0, 0, 0);
+	public var rect:helder.gfx.shader.Vec4 = new helder.gfx.shader.Vec4(0, 0, 1, 1);
 	// the second cascade's (one cascade: the first's)
-	public var mapFar:helder.gfx.Texture = cast 0;
 	public var viewProjFar:helder.gfx.shader.Mat4 = helder.gfx.shader.Mat4.identity();
 	public var paramsFar:helder.gfx.shader.Vec4 = new helder.gfx.shader.Vec4(0, 0, 0, 0);
+	public var rectFar:helder.gfx.shader.Vec4 = new helder.gfx.shader.Vec4(0, 0, 1, 1);
 	// the soft filter's (PbrFrame.shadowSoft; x 0: the 3x3 filter)
 	public var soft:helder.gfx.shader.Vec4 = new helder.gfx.shader.Vec4(0, 0, 0, 0);
-	// the last frame's draws into the maps, every cascade's
+	// a texel of the atlas (x, y)
+	public var atlas:helder.gfx.shader.Vec4 = new helder.gfx.shader.Vec4(1, 1, 0, 0);
+	// PbrLights' tiles: the local lights'
+	public var tiles:Null<haxe.io.Bytes> = null;
+	// the last frame's draws into the atlas, every tile's
 	public var draws = 0;
 
 	public function new() {}
+}
+
+// what Shadows asks of its local lights' tiles (LocalShadows: made by
+// shadows.local, so a program without links none of it)
+interface LocalShadowSource {
+	// the frame's tiles for its casting local lights (their first tiles set
+	// in lights), each one's casters, whether each is kept
+	function place(shadows:Shadows, lights:FrameLights, world:helder.scene.World):Void;
+	// the instances its tiles drawn draw, their matrices into the shadows'
+	// instance bytes from at (returns the end)
+	function instances():Int;
+	function layout(shadows:Shadows, at:Int):Int;
+	// its tiles not kept drawn, the atlas' pass begun (clear: some kept)
+	function draw(enc:helder.gfx.Encoder, shadows:Shadows, world:helder.scene.World, skins:Null<SkinSource>, clear:Bool):Void;
+	// the tiles it kept this frame; PbrLights' tiles' bytes
+	function kept():Int;
+	function tiles():haxe.io.Bytes;
+	// the atlas made again: nothing kept
+	function forget():Void;
+}
+
+// what the renderer asks of clustered lighting (ClusteredLights)
+interface ClusterSource {
+	// the frame's lights it takes at most (FrameLights.reserve)
+	function capacity():Int;
+	// after the frame's lights are gathered (renderer.frameLights) and
+	// their shadows' tiles set, before the frame's pass: their cells (a
+	// compute pass, or the CPU's), the light data and the cluster map
+	function assign(enc:helder.gfx.Encoder, renderer:Renderer, frame:Renderer.FrameInfo):Void;
+	// what the frame's block and the material read (an object, as ShadowFrame)
+	function clusterFrame():ClusterFrame;
+	function dispose():Void;
+}
+
+class ClusterFrame {
+	// the cells' lists, then the lights' rows
+	public var clusterMap:helder.gfx.Texture = cast 0;
+	// PbrFrame's clusters, clusterDepth, clusterAxis
+	public var clusters:helder.gfx.shader.Vec4 = new helder.gfx.shader.Vec4(0, 0, 0, 0);
+	public var depth:helder.gfx.shader.Vec4 = new helder.gfx.shader.Vec4(0, 0, 0, 0);
+	public var axis:helder.gfx.shader.Vec4 = new helder.gfx.shader.Vec4(0, 0, 0, 0);
+
+	public function new() {}
+}
+
+// what the renderer asks of instance culling (InstanceCulling): each
+// instanced set's instances culled one by one and their levels picked
+interface CullSource {
+	// before the frame's passes (a compute pass, or the CPU's): the frame's
+	// sets (the renderer's sets, setCount of them) culled for the view
+	function cull(enc:helder.gfx.Encoder, renderer:Renderer, frame:Renderer.FrameInfo):Void;
+	// whether it draws a set (else the renderer draws it whole)
+	function takes(set:InstancedMesh):Bool;
+	// a set's draws of one material's pass (blended: false, true) at the
+	// renderer's bound pipeline and blocks; the draws it made
+	// (slot: the instances' vertex buffer's)
+	function draw(enc:helder.gfx.Encoder, set:InstancedMesh, primitive:Int, level:Int, slot:Int):Int;
+	function dispose():Void;
 }
 
 // what the renderer asks of skinning (Skinning)
@@ -109,8 +174,11 @@ interface SkinSource {
 	function pipeline(doubleSided:Bool):helder.gfx.Pipeline;
 	// the skinned shader's slots, in Renderer.slotsOf's order
 	function slots():Array<Int>;
-	// the node's skin bound for a draw
+	// the node's skin bound for a draw (its joints' count: PbrSkinInfo's, a
+	// shader's that has it; pbr's reads rows' in PbrObject's tint.w)
 	function bind(enc:helder.gfx.Encoder, slots:Array<Int>, node:helder.scene.Node):Void;
+	// the node's skin's joints (the rows of its joints' texture)
+	function rows(node:helder.scene.Node):Float;
 	// the shadow pass's skinned pipeline (made when first asked: only with
 	// Shadows) and its slots (caster, skin, joints)
 	function shadowPipeline():helder.gfx.Pipeline;

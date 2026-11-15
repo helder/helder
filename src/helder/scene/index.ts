@@ -44,9 +44,9 @@ import type { World } from "helder/scene/runtime";
 export * from "helder/scene/runtime";
 export {
 	pbr, pbrColor, pbrAlpha, pbrNormal, pbrRoughness, pbrMetalness, pbrEmissive, pbrPosition, pbrDirect, pbrIndirect, reflectance, litSurface, daylight,
-	sunLight, pointLight, ambientAt, physicalDirect, physicalIndirect, physicalMetalness, physicalRoughness, physicalEmissive, uvSetOf, layerMap, iorF0,
+	sunLight, localLight, ambientAt, physicalDirect, physicalIndirect, physicalMetalness, physicalRoughness, physicalEmissive, uvSetOf, layerMap, iorF0,
 	iridescent, type Pbr, type PbrVertex, type PbrVaryings, type LitSurface, type LightSample, type IndirectLight,
-	type PbrFrame, type PbrObject, type PbrMaterial, type PbrSkinInfo, type PbrVertexParams, type PbrFragmentParams, type PbrOptions, type PbrPrepass,
+	type PbrFrame, type PbrObject, type PbrLights, type PbrMaterial, type PbrSkinInfo, type PbrVertexParams, type PbrFragmentParams, type PbrOptions, type PbrPrepass,
 	type PbrSurface, type PbrPoint,
 } from "./pbr";
 // the shading models' slot objects (./shading.ts, helder.scene.render.shading's)

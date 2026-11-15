@@ -11,8 +11,8 @@ import helder.scene.math.*;
 import helder.scene.render.*;
 
 // Lights are attached to nodes: the world's first directional light is
-// the sun (its node's -z the way it shines), up to four point or spot
-// lights add to it. Shadows are opted in with renderer.use: one shadow map
+// the sun (its node's -z the way it shines), point and spot lights add to
+// it (each draw lit by the eight that reach it most). Shadows are opted in with renderer.use: one shadow map
 // for the sun, fitted to the casters, here with soft edges (PCSS). Sky
 // draws a sky behind the scene.
 //

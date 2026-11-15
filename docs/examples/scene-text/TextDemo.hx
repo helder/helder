@@ -41,7 +41,7 @@ class TextDemo {
 		sign.position = new Vec3(-2.6, 1.9, -2);
 		sign.rotation = Quat.fromEuler(0, 0.4, 0);
 		Text3D.attach(sign, new Text3D(device, font, "Text in the world\ndepth tested, lit, sharp", {size: 0.22, align: 0, color: new Vec4(0.6, 0.9, 1, 1)}));
-		// #endregion text
+		// #endregion
 		var ball = world.node("ball");
 		ball.position = new Vec3(2.4, 0.45, -0.6);
 		MeshRenderer.attach(ball, Shapes.of(device, Geometry.sphere({radius: 0.45}), Material.lambert({color: new Vec4(0.35, 0.6, 0.95, 1)})));

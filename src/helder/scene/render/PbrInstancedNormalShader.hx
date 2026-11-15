@@ -7,4 +7,4 @@ import helder.scene.render.PbrShader;
 // buffer (the mesh's vertices, its tangents, the instances'), tangents
 // turned by its upper 3x3, normals by its inverse transpose (pbr's
 // instanced and normalMap).
-final PbrInstancedNormalShader = pbr.variant({instanced: true, normalMap: true});
+final PbrInstancedNormalShader = pbr.gpuVariant({instanced: true, normalMap: true});

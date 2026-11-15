@@ -7,8 +7,12 @@ MeshRenderer, Shapes, Model, Renderer, PostProcess and its effects (Ssao,
 Dof, Outline, Lut, Ssr, Taa, Smaa, MotionBlur, GodRays; ViewBuffers;
 Occlusion and `Occlusion.test`; `ToneMap`, `Antialias` and `DofMode` by
 name; `Lut.of(device, size, grade)` a LUT from a grade written in
-TypeScript, its `Vec3` returned into Haxe), InputMap (its bindings made by
-Bindings: `actions.bind("jump", Bindings.key(0x20))`), FixedStep, and what
+TypeScript, its `Vec3` returned into Haxe), lights at scale and their
+shadows (a light's `castShadows` and `shadow` an object literal,
+`Shadows`' `local`, ClusteredLights and its grid, Clusters), levels of
+detail (Lod, its levels object literals; InstanceCulling), InputMap (its
+bindings made by Bindings: `actions.bind("jump", Bindings.key(0x20))`),
+FixedStep, and what
 a scene is drawn with (helder.os's Window, App, Event and Surface,
 helder.gfx's Device). A Node is the program's class over a node's handle
 (its members `Script`'s functions: Node's own are inline), Vec3 and Quat
@@ -32,7 +36,9 @@ graph's, node for node in either language:
 A material of its own is `material(pbr.with({...}))`, as Haxe's
 MaterialShader.material: `pbr` is the standard material's slot object
 (src/helder/scene/pbr.ts: PbrShader.hx in TypeScript, keep the two in
-step; tests/typescript/definitions/pbr.ts checks their text is the same),
+step; tests/typescript/definitions/pbr.ts checks their text is the same;
+its uniform blocks' arrays, PbrLights' and the frame's shadow tiles, are
+helder/gfx's `UniformArray<Vec4, 64>`, Haxe's `@:length(64)`),
 and its value's `apply(material, {glow: bytes})` gives a material the
 shader and its blocks (`params.glow.write(value, bytes)`):
 

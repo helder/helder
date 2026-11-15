@@ -120,7 +120,7 @@ Example: [Planets](/examples/planets/Planets.hx) (`helder run examples/planets/P
 
 Elements: `node`, `mesh`, the geometry and material tags, the lights,
 `camera` (fov, near, far), `instances` (an `InstancedMesh`:
-[Instancing](/docs/scene/instancing.md)), `sprites`, `lines`, `text3d` and the
+[Instancing](/docs/scene/instancing.md)), `sprites`, `lines`, `text3d`, `lod` and the
 helpers; `position`, `rotation`,
 `scale`, `name`, `visible` and `outline` (the node's selection group, 0
 none: `Outline.select`, drawn by `<Outline>`) on every node.
@@ -158,7 +158,20 @@ none: `Outline.select`, drawn by `<Outline>`) on every node.
 - **The lights**: `directionalLight`, `pointLight` (range), `spotLight`
   (range, inner, outer), `hemisphereLight` (sky, ground); color and
   intensity. `light` and its `kind` (`directional`, `point`, `spot`,
-  `hemisphere`) stays as their alias.
+  `hemisphere`) stays as their alias. Their shadows: `castShadows` (a
+  directional light's by default), `shadowSize`, `shadowBias`,
+  `shadowNormalBias`, `shadowRadius`, `shadowStrength` (`Light.shadow`'s
+  fields), drawn by the box's `Shadows` (given in `setup`: [Lights and
+  shadows](/docs/scene/lights.md#shadows)):
+
+  ```haxe
+  <spotLight color={warm} intensity={30} range={12} inner={0.3} outer={0.5} castShadows shadowSize={512}/>
+  ```
+- **`lod`**: a node drawn at its levels of detail (`Lod`: [Levels of
+  detail](/docs/scene/lod.md)), `levels={[{mesh: hi, until: 0.15}, {mesh: lo}]}`,
+  `hysteresis`, and a visible range, `begin` and `end` metres from the
+  camera; made by its own `element_lod`, so a program links `Lod` only when
+  its markup names one.
 - **`sprites`**: a node drawing `Sprites` (`of={set}`, `mode` `spherical`,
   `axis` or `fixed`), as `instances` draws an `InstancedMesh`.
 - **`lines`**: a node drawing `Lines` (`of={path}`, made by the program,

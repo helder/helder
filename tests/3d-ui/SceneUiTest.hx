@@ -16,7 +16,9 @@ import helder.view.graph.Signal;
 // them (a struct value, Vec3, bound through a Signal: hxmc does not yet
 // pass a closure returning one where a function of another type is
 // expected, memo's or a bare function's); Show adding and removing a
-// subtree; For keyed rows; <instances> attaching an InstancedMesh.
+// subtree; For keyed rows; <instances> attaching an InstancedMesh; a spot
+// light's shadow props (Light.castShadows, Light.shadow); <lod> (Lod's
+// levels, a visible range).
 class SceneUiTest implements Markup {
 	static var checks = 0;
 	static var failed = 0;
@@ -37,6 +39,7 @@ class SceneUiTest implements Markup {
 		var moons = signal(["io", "europa"]);
 		var rocks = new InstancedMesh(new Mesh(), 8);
 		var clouds = new Sprites(null, new Material(), 4);
+		var hi = new Mesh(), lo = new Mesh();
 		Render.render(<node name="planet" position={pos}>
 			<instances name="belt" of={rocks}/>
 			<node name="ring" scale={new Vec3(2, 0.1, 2)}/>
@@ -46,6 +49,8 @@ class SceneUiTest implements Markup {
 			<hemisphereLight name="sky" sky={new helder.gfx.shader.Vec3(0.5, 0.6, 0.9)} ground={new helder.gfx.shader.Vec3(0.3, 0.2, 0.1)} intensity={2}/>
 			<sprites name="clouds" of={clouds} mode="axis"/>
 			<mesh name="post"><cylinderGeometry radiusTop={0.2} height={1} flat/><toonMaterial steps={3}/></mesh>
+			<spotLight name="lamp" range={12.0} castShadows shadowSize={512} shadowBias={0.002} shadowRadius={1.5}/>
+			<lod name="tree" levels={[{mesh: hi, until: 0.15}, {mesh: lo}]} hysteresis={0.2} end={80.0}/>
 		</node>, SceneRenderer.root(world));
 		var planet = world.root.find("planet");
 		check("made", !planet.isNone && planet.parent == world.root && !world.root.find("ring").isNone);
@@ -84,6 +89,16 @@ class SceneUiTest implements Markup {
 		var g = post.geometryPart.geometry();
 		check("<cylinderGeometry>: Geometry.cylinder of its props (flat: a vertex a corner)", g.vertexCount == g.count && Math.abs(g.bounds.max.y - 0.5) < 1e-6);
 		check("<toonMaterial>: Material.toon of its props", post.materialPart.material().steps == 3);
+		var lamp = Light.of(world.root.find("lamp"));
+		check("<spotLight castShadows shadowSize shadowBias shadowRadius>: its shadow", lamp != null && lamp.castShadows && lamp.shadow != null
+			&& lamp.shadow.size == 512 && lamp.shadow.bias == 0.002 && lamp.shadow.radius == 1.5 && lamp.shadow.strength == null);
+		var tree = world.root.find("tree");
+		var lod = helder.scene.render.Lod.of(tree);
+		check("<lod levels>: its levels", lod != null && lod.levels.length == 2 && lod.levels[0].until == 0.15 && lod.levels[1].until == null);
+		check("<lod hysteresis>", lod != null && lod.hysteresis == 0.2);
+		check("<lod>: its first level drawn", helder.scene.render.MeshRenderer.of(tree) == hi);
+		var range = tree.world.store(helder.scene.render.Lod.RANGE).get(tree);
+		check("<lod end>: a visible range", range != null && range.end == 80 && range.begin == 0);
 		Sys.println('SceneUiTest: $checks checks, ' + (failed == 0 ? "ok" : '$failed FAILED'));
 		if (failed > 0) Sys.exit(1);
 	}

@@ -44,7 +44,7 @@ class DebugDemo {
 		other.position = new Vec3(2.6, 1, 1.6);
 		other.lookAt(new Vec3(1, 0.4, -1));
 		CameraHelper.attach(other, 0xFFC040, 1.5);
-		// #endregion helpers
+		// #endregion
 		var sun = world.node("sun");
 		sun.rotation = Quat.fromEuler(-0.9, 0.4, 0);
 		Light.attach(sun, Light.directional(new Vec3(1, 0.95, 0.9), 1.2));
@@ -70,7 +70,7 @@ class DebugDemo {
 			DebugDraw.onTop = true;
 			DebugDraw.cross3(new Vec3(p.x, 0, p.z), 0.3, 0xFFFFFF);
 			DebugDraw.onTop = false;
-			// #endregion calls
+			// #endregion
 			var enc = device.beginFrame();
 			if (enc == null) return;
 			renderer.draw(enc, world, camera);

@@ -82,7 +82,9 @@ final unlit = slots({
 			normal: m.options.instanced ? instanceNormal(v.m0.xyz, v.m1.xyz, v.m2.xyz, nr) : (p.object.normalMatrix * vec4(nr, 0)).xyz,
 			uv: m.options.instanced ? instanceUv(v.uv, v.m3.w) : v.uv,
 			up: m.options.instanced ? v.m1.xyz : (model * vec4(0, 1, 0, 0)).xyz,
-			tint: m.options.instanced ? vec3(1 + v.m0.w, 1 + v.m1.w, 1 + v.m2.w) : p.object.tint.xyz
+			tint: m.options.instanced ? vec3(1 + v.m0.w, 1 + v.m1.w, 1 + v.m2.w) : p.object.tint.xyz,
+			lights0: vec4(-1),
+			lights1: vec4(-1)
 		};
 	},
 	fragment: function(i:PbrVaryings, p:PbrFragmentParams, m:Unlit):Vec4 {
