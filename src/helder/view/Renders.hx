@@ -100,4 +100,17 @@ package helder.view;
 // attribute when compiling (helder.scene.view's SceneProps: a geometry or
 // material tag's props its factory's options). Haxe's markup checks them;
 // TypeScript's are its declarations' to its checker.
+//
+// Optional with @:props, @:setters(S): the props' typed setters, S a class
+// of static functions <element>_<prop>(el:N, value:T) and any_<prop>(el:N,
+// value:T), T the prop's type as @:props declares it, and prop(el:N,
+// name:String, value:Dynamic) for a prop of neither. Haxe's markup then
+// types each attribute's value against its prop's type where the literal
+// is (another type an error at the attribute; a Signal, a Memo, a Read or
+// a function of none bound by what it reads) and calls the prop's own
+// function, once or from one binding, never setProperty by name; a struct
+// value (a Quat) never goes through a function of Dynamic. Spreads, an
+// agnostic literal's own elements and TypeScript's markup set by name.
+//
+//   @:props(helder.scene.view.SceneProps) @:setters(helder.scene.view.SceneSet) class SceneRenderer ...
 interface Renders<N> {}
