@@ -54,9 +54,14 @@ if [ "$(basename "$0")" = simulator.sh ]; then
 	create)
 		udid=$(simulator_create "${2:-helder-ios}") || exit 1
 		# (the boot left to run while the job builds: CoreSimulator's service
-		# boots it, simctl boot only asks; bootstatus -b waits for the end)
+		# boots it, simctl boot only asks; bootstatus -b waits for the end.
+		# Then an app launched and ended there, Settings: a fresh simulator's
+		# first launch after its boot took minutes more, which the first
+		# script paid; here it is the builds' time too)
 		log="${TMPDIR:-/tmp}/helder-simulator-$udid.log"
-		nohup sh -c 'xcrun simctl boot "$1"; xcrun simctl bootstatus "$1" -b' sh "$udid" > "$log" 2>&1 &
+		nohup sh -c 't0=$(date +%s); xcrun simctl boot "$1"; xcrun simctl bootstatus "$1" -b; echo "simulator: booted in $(($(date +%s) - t0)) s"
+			xcrun simctl launch "$1" com.apple.Preferences; sleep 3; xcrun simctl terminate "$1" com.apple.Preferences
+			echo "simulator: a first app launched and ended, $(($(date +%s) - t0)) s"' sh "$udid" > "$log" 2>&1 &
 		echo "$udid"
 		;;
 	delete)
