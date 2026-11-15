@@ -43,7 +43,7 @@ function tests() {
 		// (a TypeScript program's: its full path)
 		equals(f.files, [FileSystem.fullPath(d).split("\\").join("/") + "/app.story.tsx"]);
 		equals(f.stores, 2);
-		var main:String = @:privateAccess Shots.typescriptMain(f.files, FileSystem.fullPath('$d/bin/shots'));
+		var main:String = @:privateAccess Shots.typescriptMain(f.files, FileSystem.fullPath(d).split("\\").join("/") + "/bin/shots");
 		equals(main.split("\n").slice(1, 4), ['import { shots } from "helder/story";', 'import { home as s0, list as s1 } from "../../app.story";', "shots([s0, s1]);"]);
 	});
 }

@@ -48,7 +48,14 @@ using StringTools;
 class Check {
 	static var failed = 0;
 	static var checks = 0;
-	static final here = "tests/studio";
+	// (the goldens of the host the run is on: a headless studio draws the
+	// system's chrome, its window buttons at macOS's start or Windows' and
+	// Linux's end, ⌘ or Ctrl; Linux's, CI's, here, macOS's in macos/)
+	static final here = switch Sys.systemName() {
+		case "Mac": "tests/studio/macos";
+		case "Windows": "tests/studio/windows";
+		case _: "tests/studio";
+	}
 
 	static function check(what:String, ok:Bool, ?detail:String) {
 		checks++;
@@ -238,6 +245,7 @@ class Check {
 	// against tests/studio/<golden> (BLESS: rewritten): at most 1% of the pixels more than 3 levels off
 	static function image(golden:String, got:String, bless:Bool) {
 		if (bless) {
+			if (!FileSystem.exists(here)) FileSystem.createDirectory(here);
 			File.saveBytes('$here/$golden', File.getBytes(got));
 			Sys.println('studio: blessed $here/$golden');
 			return;

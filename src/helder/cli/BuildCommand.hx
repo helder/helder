@@ -193,8 +193,17 @@ class BuildCommand {
 		var target = e.isWeb() ? "wasm32-wasi" : e.target, roots = e.classPaths.concat([e.root]);
 		var copied = prepare != null ? prepare() : null;
 		// (macOS kills a signed executable rewritten in place: its inode's
-		// signature is cached, so the build writes a new file)
-		try FileSystem.deleteFile(exe) catch (_:Dynamic) {}
+		// signature is cached, so the build writes a new file; the last one
+		// moved aside, and back when the build fails: the last good build
+		// is still there to run and serve, helder dev's)
+		var prev = exe + ".prev";
+		try FileSystem.deleteFile(prev) catch (_:Dynamic) {}
+		var moved = false;
+		if (FileSystem.exists(exe) && !FileSystem.isDirectory(exe) && !FileSystem.exists(prev)) moved = try {
+			FileSystem.rename(exe, prev);
+			true;
+		} catch (_:Dynamic) false;
+		if (!moved) try FileSystem.deleteFile(exe) catch (_:Dynamic) {}
 		var r = compile(words, server);
 		// (the files built in were not those the program uses: a reference
 		// added, or one left in dead code only; built again with them)
@@ -202,6 +211,13 @@ class BuildCommand {
 			copied = prepare != null ? prepare() : null;
 			r = compile(words, server);
 			if (r.ok) AssetStep.after(exe, target, roots, mode == Dev, copied);
+		}
+		if (moved) {
+			if (r.ok && FileSystem.exists(exe)) try FileSystem.deleteFile(prev) catch (_:Dynamic) {}
+			else {
+				try FileSystem.deleteFile(exe) catch (_:Dynamic) {}
+				try FileSystem.rename(prev, exe) catch (_:Dynamic) {}
+			}
 		}
 		var shown = exe;
 		if (r.ok && pack != null) shown = try pack() catch (err:Dynamic) {

@@ -661,7 +661,7 @@ function softly(map:Texture2D, uv:Vec2, depth:Float, widest:Float, texel:Float, 
 	// (the turn without trigonometry, whose precision GPUs differ in: a half
 	// turn's direction from t = tan(angle / 2), the other half its opposite)
 	var t = 2 * fract(2 * h) - 1;
-	var start = vec2(1 - t * t, 2 * t) * ((h < 0.5 ? 1 : -1) / (1 + t * t));
+	var start = vec2(1 - t * t, 2 * t) * ((h < 0.5 ? 1.0 : -1.0) / (1 + t * t));
 	// (the golden angle's turn, a tap to the next)
 	var c = -0.7373688;
 	var s = 0.6754903;

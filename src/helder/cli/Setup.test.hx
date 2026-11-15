@@ -19,8 +19,10 @@ function tests() {
 		equals([o.positionals[0], o.positionals[1], o.out], ["ios", "examples/todo", "/keys"]);
 		assert(o.has("github"), "--github");
 		equals(parse(["android"]).positionals, ["android"]);
-		equals(usage(() -> parse([])), "helder setup: ios or android: helder setup ios (helder setup --help)");
-		equals(usage(() -> parse(["web"])), "helder setup: web: ios or android (helder setup --help)");
+		// (none: check, both stores' list)
+		equals(parse([]).positionals, []);
+		equals(parse(["check", "examples/todo"]).positionals, ["check", "examples/todo"]);
+		equals(usage(() -> parse(["web"])), "helder setup: web: ios, android or check (helder setup --help)");
 		equals(usage(() -> parse(["ios", "a", "b"])), "helder setup: one entry, not a and b");
 	});
 

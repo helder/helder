@@ -211,7 +211,7 @@ async function recolour(pg, x, y, tap) {
 	if (tap) await pg.touchscreen.tap(x, y);
 	else await pg.mouse.click(x, y);
 	await pg.waitForTimeout(300);
-	await pg.keyboard.press('Meta+a');
+	await pg.keyboard.press('ControlOrMeta+a');
 	await pg.keyboard.type('#ef4444');
 	await pg.keyboard.press('Enter');
 	const patched = await event(pg, 'patched', (e) => e.frame >= before);
@@ -269,7 +269,9 @@ async function recolour(pg, x, y, tap) {
 		check(built && built.ok, `a padding added: built by the compiler's worker in ${built?.ms} ms (${JSON.stringify(built)})`);
 		// (the new build's preview: the title's box grown by its padding, read from its tree again)
 		const grown = await event(pg, 'selection', (e) => e.frame > built.frame && e.rect && e.rect[3] > 35, 30000);
-		check(grown, `the screens reloaded from the new build, the title's box ${JSON.stringify(grown?.rect)}`);
+		check(grown, `the screens reloaded from the new build, the title's box ${JSON.stringify(grown?.rect)}` + (grown ? ''
+			: ' ' + JSON.stringify((await events(pg)).filter((e) => e.frame >= before).map((e) => [e.event, e.frame, e.rect, e.ok, e.why ?? e.file]))
+				+ JSON.stringify(await pg.evaluate(() => [window.studioWeb.frames, window.studioWeb.framesByScreen, window.studioWeb.logs.slice(-15)]))));
 		// undone: the attribute removed, a warm build
 		const at = await lastFrame(pg);
 		check(await press(pg, 'Undo'), 'the padding undone (the header\'s Undo)');
@@ -392,11 +394,19 @@ async function recolour(pg, x, y, tap) {
 	await pg.waitForTimeout(1600);
 	await golden(pg, 'phone-zoomed');
 	// (a double tap: the frame entered, its title selected)
-	await pg.touchscreen.tap(52, 210);
-	await pg.waitForTimeout(80);
-	await pg.touchscreen.tap(52, 210);
+	// (its four touch events sent at once, in order: tap() waits for each to be
+	// handled, and with a software GPU's slow frames between them the studio,
+	// timing clicks as it handles them, saw two taps far apart)
+	{
+		const tapper = await pg.context().newCDPSession(pg);
+		const at = [{ x: 52, y: 210, id: 1 }];
+		await Promise.all(['touchStart', 'touchEnd', 'touchStart', 'touchEnd'].map((type) =>
+			tapper.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : at })));
+		await tapper.detach();
+	}
 	const sel = await event(pg, 'selected', (e) => e.tag !== 'Frame');
-	check(sel && sel.tag === 'text' && sel.screen === 'Todo/Three items', 'phone: the title double-tapped and selected: ' + JSON.stringify(sel && [sel.screen, sel.tag, sel.rect]));
+	check(sel && sel.tag === 'text' && sel.screen === 'Todo/Three items', 'phone: the title double-tapped and selected: ' + JSON.stringify(sel && [sel.screen, sel.tag, sel.rect])
+		+ (sel ? '' : ' ' + JSON.stringify((await events(pg)).slice(-12).map((e) => [e.event, e.frame, e.tag, e.screen]))));
 	await pg.waitForTimeout(500);
 	check(await press(pg, 'Inspect'), 'phone: the inspector\'s sheet opened from the bar');
 	await pg.waitForTimeout(800);

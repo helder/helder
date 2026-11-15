@@ -173,6 +173,16 @@ class X11Window {
 		#else
 		display = Xlib.XOpenDisplay(Ptr.nil());
 		#end
+		// (a server started with the program, Xvfb's under xvfb-run, may not take
+		// connections yet: asked again for a moment while DISPLAY names one)
+		var d = Sys.getEnv("DISPLAY"), since = haxe.Timer.stamp();
+		while (display.isNull() && d != null && d != "" && haxe.Timer.stamp() - since < 2) {
+			Sys.sleep(0.05);
+			display = Xlib.XOpenDisplay(Ptr.nil());
+			#if hxmc.dev_host
+			if (!display.isNull() && helder.dev.Hosted.hosted()) helder.dev.Hosted.set(helder.dev.Hosted.X11_DISPLAY, display);
+			#end
+		}
 		if (display.isNull()) throw "helder.os: cannot open the X display (DISPLAY=" + Sys.getEnv("DISPLAY") + ")";
 		wmDelete = Xlib.XInternAtom(display, Mem.cstr("WM_DELETE_WINDOW"), 0);
 		CLIPBOARD = Xlib.XInternAtom(display, Mem.cstr("CLIPBOARD"), 0);

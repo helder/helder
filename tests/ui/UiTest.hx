@@ -2535,9 +2535,11 @@ static function transitions() {
 		item1.focusable = true;
 		ui.setFocus(item1, false);
 		ui.keyDown(Key.DOWN, 0);
-		var mid = -1.0;
-		Clock.tick(Clock.now + ui.scrollDuration / 2);
-		mid = list.scrollY;
+		// (its start the first tick's, as a window's next frame: then half its duration on)
+		var start = Clock.now + 1;
+		Clock.tick(start);
+		Clock.tick(start + ui.scrollDuration / 2);
+		var mid = list.scrollY;
 		Clock.finish();
 		check("scroll keys: an arrow, eased", list.scrollY == 40 && mid > 0 && mid < 40, mid + " " + list.scrollY);
 		ui.keyDown(Key.DOWN, 0);

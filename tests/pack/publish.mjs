@@ -24,7 +24,8 @@
 // one territory patched, Play's data safety CSV sent.
 import { spawn } from "node:child_process";
 import { X509Certificate, createHash, createPrivateKey, createPublicKey, sign, verify } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { createServer } from "node:http";
 import { join, resolve } from "node:path";
 
@@ -398,7 +399,10 @@ async function helderRun(args, env, want = 0) {
 }
 // (a secret's body: a line from the middle of its base64)
 const secretLine = (pem) => pem.split("\n").filter((l) => /^[A-Za-z0-9+/]{64}$/.test(l))[3];
-const apple = resolve(dir, "keys", "apple");
+// (the keys outside the project, as helder setup insists: a temporary directory)
+const keys = mkdtempSync(join(tmpdir(), "helder-setup-"));
+process.on("exit", () => rmSync(keys, { recursive: true, force: true }));
+const apple = join(keys, "apple");
 calls = []; asc = {}; kept.noBundle = true; kept.noApp = true;
 out = await helderRun(["setup", "ios", "tests/pack/Hello.hx", "-o", apple], ascEnv);
 check("setup ios: the App ID made (identifier, the app's label, iOS)", asc.bundleMade?.identifier === "org.helder.Hello" && asc.bundleMade.platform === "IOS",
@@ -426,7 +430,7 @@ check("setup ios again: identity.pem kept, no certificate or profile made (the p
 out = await helderRun(["setup", "ios", "tests/pack/Hello.hx", "-o", "tests/pack/keys"], ascEnv, 2);
 check("setup: not into the project", out.includes("inside the project") && !existsSync("tests/pack/keys"));
 
-const droid = resolve(dir, "keys", "android");
+const droid = join(keys, "android");
 calls = []; play = {};
 out = await helderRun(["setup", "android", "tests/pack/Hello.hx", "-o", droid], playEnv);
 const upPem = existsSync(join(droid, "upload-identity.pem")) ? readFileSync(join(droid, "upload-identity.pem"), "utf8") : "";

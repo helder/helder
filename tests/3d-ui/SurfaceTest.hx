@@ -64,6 +64,11 @@ class SurfaceTest implements Markup {
 		eye.position = new Vec3(0, 0, 4);
 		eye.lookAt(new Vec3(0, 0, 0));
 		var camera = Camera.attach(eye, Camera.perspective(0.8, 0.1, 100));
+		// (the hdr box's world its own: a world's meshes are made on one device,
+		// the first window's, and a GL context draws no other context's buffers)
+		var hdrWorld = new World("hdr"), hdrEye = hdrWorld.node("eye");
+		hdrEye.position = new Vec3(0, 0, 4);
+		var hdrCamera = Camera.attach(hdrEye, Camera.perspective(0.8, 0.1, 100));
 		var dispose = Render.open(<>
 			<Surface title={title} width={320} height={200} background={0xFFFFFFFF} ref={w -> windows.push(w)}>
 				<view direction="row" grow={1}>
@@ -82,7 +87,7 @@ class SurfaceTest implements Markup {
 			</Surface>
 			<Show when={second}><Surface title="two" width={160} height={100} background={0xFFFFFFFF} ref={w -> windows.push(w)}>
 				<text>two</text>
-				<Scene world={world} camera={camera} grow={1} hdr setup={setup} ref={b -> hdrBox = b}/>
+				<Scene world={hdrWorld} camera={hdrCamera} grow={1} hdr setup={setup} ref={b -> hdrBox = b}/>
 			</Surface></Show>
 		</>);
 		check("two windows", windows.length == 2 && windows[0].window.title == "one" && windows[1].window.title == "two",

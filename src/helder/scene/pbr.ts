@@ -398,7 +398,7 @@ function plane(viewProj: Mat4, n: Vec3, deep: number): Vec2 {
 // the soft filter's lit share (Shadows.soft; PbrShader.hx's softly)
 function softly(map: Texture2D, uv: Vec2, depth: number, widest: number, texel: number, soft: Vec4, deep: number, g: Vec2): number {
 	const n = soft.x;
-	const margin = depth - length(g) * texel;
+	const margin = depth;
 	const cell = fract(floor(uv.div(texel)).div(64)).mul(64);
 	const h = fract(52.9829189 * fract(dot(cell, vec2(0.06711056, 0.00583715))));
 	const t = 2 * fract(2 * h) - 1;
