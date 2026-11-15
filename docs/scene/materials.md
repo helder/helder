@@ -106,8 +106,27 @@ refracted through it. A material's extension maps are read from up to two
 images (glTF's channels: sheen's colour and roughness in one, the coat's
 factor and roughness...: helder.gfx's 16 slots a shader).
 
-Costs, against the renderer (`tests/3d/size/sizes.sh`, Windows x86-64 and
-wasm32): see src/helder/scene/README.md's table; unused, nothing.
+Costs, at the renderer's level (`tests/3d/size/sizes.sh`'s phase 6 rows, a
+glTF model drawn, `-dce full`), what each adds when a material uses it,
+its variants' shader text most of it:
+
+| Used | Linux x86-64 | wasm32 |
+|---|---|---|
+| none (the renderer, against main before phase 6) | +5.5 KB | -4.8 KB |
+| sheen | +228 KB | +343 KB |
+| specular (and ior) | +224 KB | +335 KB |
+| clearcoat | +228 KB | +341 KB |
+| transmission (and volume) | +228 KB | +347 KB |
+| iridescence | +236 KB | +358 KB |
+| anisotropy | +228 KB | +346 KB |
+| uvSets (TEXCOORD_1) | +253 KB | +375 KB |
+| `Physical` (every one) | +303 KB | +492 KB |
+| `Transmission` | +23 KB | +22 KB |
+
+Unused, the extensions add the larger material block alone (its fields
+in each variant's text): their reading and binding are linked by
+`Physical` and `Model.of`'s sets only (helder.gfx's writers, shorter with
+this change, make up for it as wasm32).
 
 Against Khronos' sample viewer: [examples/gltf-showcase](/examples/gltf-showcase/README.md).
 

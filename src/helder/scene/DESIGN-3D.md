@@ -1583,6 +1583,18 @@ describes them, 1.3):
   transmitting physical surface shows the environment refracted through
   it. Punctual lights through a volume (the sample viewer's
   `getPunctualRadianceTransmission`) are not built.
+- **Unused, nearly nothing:** the extensions' reading (GltfExtensions)
+  is installed by `Physical` and by `Model.of` for a file that has some,
+  and the code that writes a physical shader's fields and binds its maps
+  (`PhysicalLayers`) is reached through its shader. Two helder.gfx changes
+  came with it, every program's gain: a uniform block's writer stores a
+  `Vec4` or `Mat4` field with one call, and a slot object's CPU stages
+  fold their option tests when compiling. What stays is `PbrMaterial`'s
+  larger block (the extensions' 18 vectors in every variant's text).
+- **Measured** (`tests/3d/size/sizes.sh`, the renderer's level, Linux
+  x86-64 and wasm32): unused, +5.5 KB and -4.8 KB against main; each
+  extension's set alone +224 to +253 KB and +335 to +375 KB (uvSets the
+  most), Physical +303 and +492 KB, Transmission +23 and +22 KB.
 - **Sheen's albedo** is three.js' analytic fit and its energy scaling
   (1 - 0.157 max(sheen)), not the sample viewer's lookup textures; the
   split sum stays Karis' fit.
