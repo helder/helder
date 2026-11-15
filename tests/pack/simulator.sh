@@ -35,7 +35,15 @@ simulator() {
 		t0=$(date +%s)
 		# (bootstatus -b: boots it if it is not, waits while it boots)
 		xcrun simctl bootstatus "$udid" -b > /dev/null 2>&1
-		check "the shared simulator $udid booted (waited $(($(date +%s) - t0)) s)" $?
+		r=$?
+		# (and its first app's launch, when `create` started one: its log's line)
+		log="${TMPDIR:-/tmp}/helder-simulator-$udid.log"
+		i=0
+		while [ -f "$log" ] && [ $i -lt 600 ] && ! grep -q "a first app launched" "$log"; do
+			sleep 1
+			i=$((i + 1))
+		done
+		check "the shared simulator $udid booted (waited $(($(date +%s) - t0)) s)" $r
 		return
 	fi
 	udid=$(simulator_create "$1")
