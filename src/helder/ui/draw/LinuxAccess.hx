@@ -91,8 +91,21 @@ class LinuxAccess {
 		if (bus == null) return;
 		unique = bus.name;
 		// the application in the desktop (its answer, the desktop's reference, not awaited)
-		bus.callLater("org.a11y.atspi.Registry", ROOT, "org.a11y.atspi.Socket", "Embed", "(so)", [[unique, ROOT]]);
+		embedSince = haxe.Timer.stamp();
+		embed();
 		state = 1;
+	}
+
+	// Embed's call; refused (the registry not on the bus yet: a session's
+	// accessibility bus starts it after the bus itself, and an application
+	// started with it can ask first), asked again a little later, for a while
+	static var embedSerial = 0;
+	static var embedSince = 0.0;
+	static var embedAgain = -1.0;
+
+	static function embed() {
+		embedAgain = -1;
+		embedSerial = bus.callLater("org.a11y.atspi.Registry", ROOT, "org.a11y.atspi.Socket", "Embed", "(so)", [[unique, ROOT]]);
 	}
 
 	// the messages that came: answered (each loop turn)
@@ -101,8 +114,13 @@ class LinuxAccess {
 		var m = bus.poll();
 		while (m != null) {
 			if (m.type == DBus.METHOD_CALL) message(m);
+			else if (m.type == DBus.ERROR && m.replySerial == embedSerial && embedSerial != 0) {
+				embedSerial = 0;
+				if (haxe.Timer.stamp() - embedSince < 30) embedAgain = haxe.Timer.stamp() + 0.25;
+			} else if (m.type == DBus.METHOD_RETURN && m.replySerial == embedSerial) embedSerial = 0;
 			m = bus.poll();
 		}
+		if (embedAgain >= 0 && haxe.Timer.stamp() >= embedAgain) embed();
 	}
 
 	// --- the tree after a frame: its events ---
