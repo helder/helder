@@ -1114,7 +1114,13 @@ fix.
      queries, a transform gizmo.
 - **The scene in view's markup**, react-three-fiber's model on
   `helder.scene.view` (a prototype: `<Scene>` in ui's layout, `<Ui>`, picking
-  by bounds; examples/planets, tests/3d-ui):
+  by bounds; examples/planets, tests/3d-ui). Designed in
+  src/helder/scene/view/DESIGN-MARKUP.md, after a study of react-three-fiber, drei and pmndrs, Threlte, TresJS,
+  solid-three, A-Frame, Babylon.js, Godot, Bevy and Unity: tags generated
+  with typed slots and setters, owned and borrowed lifetimes, `onFrame`,
+  drawing on demand, picking by triangles by default, typed `<model>`s, a
+  drei-like `helder.scene.view.extras`, measured at 1,000 and 10,000 nodes,
+  in phases M0 to M8 after DESIGN-3D.md's phases 4 to 6:
   - the tags generated from the 3D API's classes, their props its
     properties, so markup and code stay one API;
   - bindings that store into the scene's flat data; signals' changes
