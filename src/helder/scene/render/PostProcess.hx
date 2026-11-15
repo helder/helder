@@ -6,6 +6,7 @@ import helder.gfx.shader.Vec2;
 import helder.gfx.shader.Vec4;
 import helder.scene.render.PostShader;
 import helder.scene.render.CompositeFxaaShader;
+import helder.scene.render.PostEffects;
 import helder.scene.render.PostStage.PostPoint;
 
 // The post-process chain of an HDR frame (Renderer.hdr: drawn in linear
@@ -85,16 +86,16 @@ class PostProcess {
 	// adds light its brightness: over a ui behind it, premultiplied); false: opaque
 	public var transparent = true;
 	// the screen's ambient occlusion (Ssao: GTAO; null none)
-	public var ao:Null<Ssao> = null;
+	public var ao(default, set):Null<Ssao> = null;
 	// depth of field (Dof.focus, Dof.tiltShift; null none)
-	public var dof:Null<Dof> = null;
+	public var dof(default, set):Null<Dof> = null;
 	// the selection's outlines (Outline, Outline.select; null none)
-	public var outline:Null<Outline> = null;
+	public var outline(default, set):Null<Outline> = null;
 	// antialiasing after the frame's own (None, Fxaa: in the composite; its
 	// variant linked only by a program that sets it)
 	public var antialias(default, set):Antialias = None;
 	// colour grading by a lookup table (Lut; null none), after the grade
-	public var lut:Null<Lut> = null;
+	public var lut(default, set):Null<Lut> = null;
 	// the last run's draws (each a full-screen pass: AO's, depth of field's,
 	// bloom down and up, the composite, the stages; helder.gfx.FrameCounts.postDraws too)
 	public var draws(default, null) = 0;
@@ -184,6 +185,39 @@ class PostProcess {
 
 	// (FXAA's composite: its pipeline's description and slots, here once set)
 	var fxaaDesc:Null<Void->PipelineDesc> = null;
+
+	// (an effect set: the effects' composite installed, PostFx, and the
+	// effect's pass's factory; here, not in the effects' constructors, so
+	// that an effect made and never set on a chain links none of its GPU
+	// code, the device's neither)
+	function set_ao(v:Null<Ssao>):Null<Ssao> {
+		if (v != null) {
+			PostFx.install();
+			PostFx.makeAo = SsaoPass.make;
+		}
+		return ao = v;
+	}
+
+	function set_dof(v:Null<Dof>):Null<Dof> {
+		if (v != null) {
+			PostFx.install();
+			PostFx.makeDof = DofPass.make;
+		}
+		return dof = v;
+	}
+
+	function set_outline(v:Null<Outline>):Null<Outline> {
+		if (v != null) {
+			PostFx.install();
+			PostFx.makeOutline = OutlinePass.make;
+		}
+		return outline = v;
+	}
+
+	function set_lut(v:Null<Lut>):Null<Lut> {
+		if (v != null) PostFx.install();
+		return lut = v;
+	}
 
 	function set_antialias(v:Antialias):Antialias {
 		if (v == Fxaa && fxaaDesc == null) {

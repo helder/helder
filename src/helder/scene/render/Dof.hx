@@ -1,11 +1,7 @@
 package helder.scene.render;
 
-import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.gfx.shader.Vec4;
-import helder.scene.render.EffectShaders;
-import helder.scene.render.DofShader;
-import helder.scene.render.PostEffects;
 
 // Depth of field, a PostProcess's (post.dof): a circle of confusion from
 // the view buffers' depth (ViewBuffers, asked for by the chain), the
@@ -25,8 +21,10 @@ import helder.scene.render.PostEffects;
 // center (0 the top, 1 the bottom; the screen's centre by default), or
 // distance when given. A world's depth, not the screen's band: a far
 // island inside the band is blurred, as a lens would. Its target is
-// RGBA16F, half the frame's size; nothing is allocated per frame.
-class Dof implements PostPass {
+// RGBA16F, half the frame's size; nothing is allocated per frame. Its
+// options alone: its pass is DofPass's, linked by a program that sets it
+// on a chain (post.dof's setter).
+class Dof {
 	public var mode:DofMode;
 	// focus: the distance in focus (metres); tiltShift: its focus (0: the
 	// depth at center)
@@ -48,16 +46,7 @@ class Dof implements PostPass {
 	// the last frame's blur (RGBA16F, half the frame's size)
 	public var texture(default, null):Null<Texture> = null;
 
-	var device:Null<Device> = null;
-	var pipeline:Null<Pipeline> = null;
-	final bytes = Bytes.alloc(DofShader.uniforms[1].size);
-	final block:DofParams = {size: new Vec4(0, 0, 0, 0), views: new Vec4(0, 0, 0, 0)};
-	final pass:PassDesc = {colors: [{load: Clear, clear: new Color(0, 0, 0, 0)}]};
-	var w = 0;
-	var h = 0;
-
 	function new(mode:DofMode) {
-		PostFx.install();
 		this.mode = mode;
 		distance = 0;
 		aperture = 0.02;
@@ -95,68 +84,9 @@ class Dof implements PostPass {
 	}
 
 	// (the composite's and the blur's dof: PostShader's cocOf)
-	function params():Vec4
+	@:allow(helder.scene.render) function params():Vec4
 		return mode == Focus ? new Vec4(1, distance, aperture, radius) : new Vec4(2, band, Math.max(falloff, 0.0001), radius * Math.max(0, strength));
 
-	@:noCompletion public function require(fx:PostFx, renderer:Renderer)
-		fx.read(ViewBuffers.of(renderer), 0.5);
-
-	@:noCompletion public function result():Null<Texture>
-		return null;
-
-	// (its part of the composite's block: the circle of confusion's, the focus)
-	@:noCompletion public function write(fx:PostFx) {
-		fx.block.dof = params();
-		fx.block.dofFocus = new Vec4(mode == TiltShift ? distance : 0, center, 2, 0);
-	}
-
-	@:noCompletion public function bind(enc:Encoder, fx:PostFx, slots:Array<Int>) {
-		var t = texture;
-		if (slots[3] >= 0 && t != null) enc.setTexture(slots[3], t, fx.linear);
-	}
-
-	@:noCompletion public function draw(enc:Encoder, fx:PostFx):Int {
-		var light = fx.light;
-		if (light == null || fx.views == null) return 0;
-		if (device == null) {
-			device = fx.device;
-			var d = DofShader.pipeline({});
-			d.colorFormat = RGBA16F;
-			pipeline = device.createPipeline(d);
-		}
-		size(Std.int(Math.max(1, (fx.post.width + 1) >> 1)), Std.int(Math.max(1, (fx.post.height + 1) >> 1)));
-		block.size = new Vec4(w, h, fx.post.width / Math.max(1, fx.post.height), Math.max(4, samples));
-		block.views = new Vec4(fx.views.width, fx.views.height, 0, 0);
-		DofShader.params.d.write(block, bytes);
-		enc.beginPass(pass);
-		enc.setPipeline(pipeline);
-		enc.setUniforms(DofShader.uniforms[0].binding, fx.blockBytes);
-		enc.setUniforms(DofShader.uniforms[1].binding, bytes);
-		enc.setTexture(DofShader.params.scene.binding, light, fx.linear);
-		enc.setTexture(DofShader.params.viewDepth.binding, fx.views.depth, fx.nearest);
-		enc.setVertexBuffer(0, fx.triangle);
-		enc.draw(3);
-		enc.endPass();
-		return 1;
-	}
-
-	function size(width:Int, height:Int) {
-		if (width == w && height == h) return;
-		release();
-		w = width;
-		h = height;
-		texture = device.createTexture({width: w, height: h, format: RGBA16F, renderTarget: true});
-		pass.colors[0].texture = texture;
-	}
-
-	function release() {
-		if (texture != null) device.destroyTexture(texture);
-		texture = null;
-		w = h = 0;
-	}
-
-	public function dispose()
-		if (device != null) release();
 }
 
 // how depth of field's circle grows (Dof.focus, Dof.tiltShift)

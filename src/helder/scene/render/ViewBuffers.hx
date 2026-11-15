@@ -33,9 +33,6 @@ import helder.scene.render.PbrShader.materialInto;
 // (MaterialShader: its prepass variants, made when it replaces one of
 // those). Nothing is allocated per frame.
 class ViewBuffers implements RenderFeature implements RenderFeature.ViewSource {
-	// a node's selection group (Outline.select: 1 to 255; its descendants
-	// take the nearest's)
-	@:noCompletion public static final GROUP = new StoreKind<Int>("selection");
 
 	public final device:Device;
 	// the share of the frame's size they are drawn at (0: the effects'
@@ -116,18 +113,9 @@ class ViewBuffers implements RenderFeature implements RenderFeature.ViewSource {
 		return enabled ? groupOf(node) : 0;
 
 	// a node's selection group: its own (Outline.select), else the nearest
-	// of its ancestors' (0: none)
-	public static function groupOf(node:Node):Int {
-		var store = node.world.store(GROUP);
-		if (store.length == 0) return 0;
-		var n = node;
-		while (!n.isNone) {
-			var g = store.get(n);
-			if (g != null) return g;
-			n = n.parent;
-		}
-		return 0;
-	}
+	// of its ancestors' (0: none; Selection's)
+	public static inline function groupOf(node:Node):Int
+		return Selection.groupOf(node);
 
 	// (a pipeline into the targets: RGBA8 and Depth32F, one sample; Skinning's too)
 	@:allow(helder.scene.render) function made(d:PipelineDesc):Pipeline {

@@ -26,7 +26,6 @@ class Lut implements PostPass {
 	public final texture:Texture;
 
 	function new(device:Device, size:Int, pixels:Bytes) {
-		PostFx.install();
 		this.device = device;
 		this.size = size;
 		texture = device.createTexture({width: size * size, height: size, data: pixels});

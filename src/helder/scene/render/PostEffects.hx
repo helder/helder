@@ -58,9 +58,56 @@ class PostFx implements RenderFeature.PostEffects {
 	function get_light():Null<Texture>
 		return @:privateAccess post.light;
 
-	// (made by the first effect: PostProcess.effects)
+	// (made by the first effect set on a chain: PostProcess.effects)
 	public static function install()
 		if (PostProcess.effects == null) PostProcess.effects = p -> new PostFx(p);
+
+	// the effects' passes, made from them (installed by PostProcess's
+	// setters: an effect never set on a chain links none of its pass)
+	@:noCompletion public static var makeAo:Null<Ssao->PostPass> = null;
+	@:noCompletion public static var makeDof:Null<Dof->PostPass> = null;
+	@:noCompletion public static var makeOutline:Null<Outline->PostPass> = null;
+
+	// (the passes of the effects set, made again when an effect is replaced)
+	var aoPass:Null<PostPass> = null;
+	var aoOf:Null<Ssao> = null;
+	var dofPass:Null<PostPass> = null;
+	var dofOf:Null<Dof> = null;
+	var outlinePass:Null<PostPass> = null;
+	var outlineOf:Null<Outline> = null;
+
+	function passOfAo():Null<PostPass> {
+		var e = post.ao;
+		if (e == null) return null;
+		if (aoOf != e) {
+			if (aoPass != null) aoPass.dispose();
+			aoPass = makeAo(e);
+			aoOf = e;
+		}
+		return aoPass;
+	}
+
+	function passOfDof():Null<PostPass> {
+		var e = post.dof;
+		if (e == null) return null;
+		if (dofOf != e) {
+			if (dofPass != null) dofPass.dispose();
+			dofPass = makeDof(e);
+			dofOf = e;
+		}
+		return dofPass;
+	}
+
+	function passOfOutline():Null<PostPass> {
+		var e = post.outline;
+		if (e == null) return null;
+		if (outlineOf != e) {
+			if (outlinePass != null) outlinePass.dispose();
+			outlinePass = makeOutline(e);
+			outlineOf = e;
+		}
+		return outlinePass;
+	}
 
 	function new(post:PostProcess) {
 		this.post = post;
@@ -108,7 +155,7 @@ class PostFx implements RenderFeature.PostEffects {
 		aoDraws = dofDraws = 0;
 		wanted = 0;
 		hadViews = views == null && @:privateAccess renderer.views != null;
-		var a:Null<PostPass> = post.ao, d:Null<PostPass> = post.dof, o:Null<PostPass> = post.outline, l:Null<PostPass> = post.lut;
+		var a = passOfAo(), d = passOfDof(), o = passOfOutline(), l:Null<PostPass> = post.lut;
 		if (a != null) a.require(this, renderer);
 		if (d != null) d.require(this, renderer);
 		if (o != null) o.require(this, renderer);
@@ -122,14 +169,14 @@ class PostFx implements RenderFeature.PostEffects {
 	}
 
 	public function occlusion(enc:Encoder, frame:Renderer.FrameInfo):Null<Texture> {
-		var a:Null<PostPass> = post.ao;
+		var a = passOfAo();
 		if (a == null || !ready()) return null;
 		aoDraws = a.draw(enc, this);
 		return a.result();
 	}
 
 	public function beforeComposite(enc:Encoder) {
-		var d:Null<PostPass> = post.dof;
+		var d = passOfDof();
 		if (d == null || !ready()) return;
 		write();
 		dofDraws = d.draw(enc, this);
@@ -166,7 +213,7 @@ class PostFx implements RenderFeature.PostEffects {
 		b.outline = z;
 		b.lut = z;
 		b.inverseProjection = views != null ? views.inverseProjection : Mat4.identity();
-		var d:Null<PostPass> = post.dof, o:Null<PostPass> = post.outline, l:Null<PostPass> = post.lut;
+		var d = passOfDof(), o = passOfOutline(), l:Null<PostPass> = post.lut;
 		var on = ready();
 		if (d != null && on) d.write(this);
 		if (o != null && on) o.write(this);
@@ -183,7 +230,7 @@ class PostFx implements RenderFeature.PostEffects {
 		if (sl[2] >= 0) enc.setTexture(sl[2], on ? v.normals : white, nearest);
 		for (k in 3...6)
 			if (sl[k] >= 0) enc.setTexture(sl[k], white, linear);
-		var d:Null<PostPass> = post.dof, o:Null<PostPass> = post.outline, l:Null<PostPass> = post.lut;
+		var d = passOfDof(), o = passOfOutline(), l:Null<PostPass> = post.lut;
 		if (d != null && on) d.bind(enc, this, sl);
 		if (o != null && on) o.bind(enc, this, sl);
 		if (l != null) l.bind(enc, this, sl);
@@ -199,14 +246,20 @@ class PostFx implements RenderFeature.PostEffects {
 		for (k in 0...8)
 			pipelines[k] = null;
 		device.destroyTexture(white);
-		var a:Null<PostPass> = post.ao, d:Null<PostPass> = post.dof;
+		var a = aoPass, d = dofPass, o = outlinePass;
 		if (a != null) a.dispose();
 		if (d != null) d.dispose();
+		if (o != null) o.dispose();
+		aoPass = dofPass = outlinePass = null;
+		aoOf = null;
+		dofOf = null;
+		outlineOf = null;
 	}
 }
 
-// what PostFx asks of an effect (Ssao, Dof, Outline, Lut), reached through
-// this alone: a program links an effect only when it makes one. Its slots
+// what PostFx asks of an effect's pass (SsaoPass, DofPass, OutlinePass;
+// Lut, its own), reached through this alone: a program links a pass only
+// when it sets its effect on a chain. Its slots
 // in bind: the effects' block, then the view buffers' depth and normals,
 // the blur, the LUT, the groups (PostFx's textures)
 interface PostPass {

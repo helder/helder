@@ -1116,6 +1116,8 @@ export declare class PostProcess {
 //   post.ao = new Ssao({radius: 0.5, intensity: 1, samples: 8, halfRes: true});
 //
 // On a phone: one slice of 4 to 6 steps at half size (samples 4, slices 1).
+// Its options alone: its passes are SsaoPass's, linked by a program that
+// sets it on a chain (post.ao's setter).
 export declare class Ssao {
 	constructor(options?: SsaoOptions);
 	// how far an occluder reaches (metres)
@@ -1131,7 +1133,6 @@ export declare class Ssao {
 	halfRes: boolean;
 	// the last frame's occlusion (R8, the view buffers' size; red 1 open, 0 occluded)
 	readonly texture: number | null;
-	dispose(): void;
 }
 
 // Depth of field, a PostProcess's (post.dof): a circle of confusion from
@@ -1152,7 +1153,9 @@ export declare class Ssao {
 // center (0 the top, 1 the bottom; the screen's centre by default), or
 // distance when given. A world's depth, not the screen's band: a far
 // island inside the band is blurred, as a lens would. Its target is
-// RGBA16F, half the frame's size; nothing is allocated per frame.
+// RGBA16F, half the frame's size; nothing is allocated per frame. Its
+// options alone: its pass is DofPass's, linked by a program that sets it
+// on a chain (post.dof's setter).
 export declare class Dof {
 	// a lens focused at distance metres, aperture its blur at infinity (a
 	// share of the frame's height), at most radius
@@ -1180,7 +1183,6 @@ export declare class Dof {
 	samples: number;
 	// the last frame's blur (RGBA16F, half the frame's size)
 	readonly texture: number | null;
-	dispose(): void;
 }
 
 // Outlines around selected nodes, a PostProcess's (post.outline): the
@@ -1196,7 +1198,9 @@ export declare class Dof {
 //
 // The view buffers are drawn whole for it (scale 1). Nothing is allocated
 // per frame; the groups' texture (256 x 2 RGBA8) is written when a group
-// changes.
+// changes. Its groups alone: its part of the composite is OutlinePass's,
+// linked by a program that sets it on a chain (post.outline's setter);
+// selecting (Outline.select, Selection) links neither.
 export declare class Outline {
 	constructor(options?: { width?: number; color?: Vec4 });
 	// node and its descendants outlined in group (1 to 255; 0: not selected)
@@ -1208,7 +1212,6 @@ export declare class Outline {
 	color: Vec4;
 	// a group's colour (its alpha the outline's) and width in pixels (at most 32)
 	group(k: number, color: Vec4, width: number): Outline;
-	dispose(): void;
 }
 
 // Colour grading by a lookup table, a PostProcess's (post.lut): a size cubed
@@ -1262,7 +1265,7 @@ export declare class ViewBuffers {
 	// the renderer's view buffers: made and turned on when first asked
 	static of(renderer: Renderer): ViewBuffers;
 	// a node's selection group: its own (Outline.select), else the nearest
-	// of its ancestors' (0: none)
+	// of its ancestors' (0: none; Selection's)
 	static groupOf(node: Node): number;
 	readonly device: Device;
 	// the share of the frame's size they are drawn at (0: the effects'

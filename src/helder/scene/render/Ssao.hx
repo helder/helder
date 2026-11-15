@@ -1,11 +1,7 @@
 package helder.scene.render;
 
-import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.gfx.shader.Vec4;
-import helder.scene.render.EffectShaders;
-import helder.scene.render.AoShaders;
-import helder.scene.render.PostEffects;
 
 // Screen-space ambient occlusion, a PostProcess's (post.ao = new
 // Ssao({...})): GTAO (Jimenez et al. 2016) from the renderer's view
@@ -20,7 +16,9 @@ import helder.scene.render.PostEffects;
 //   post.ao = new Ssao({radius: 0.5, intensity: 1, samples: 8, halfRes: true});
 //
 // On a phone: one slice of 4 to 6 steps at half size (samples 4, slices 1).
-class Ssao implements PostPass {
+// Its options alone: its passes are SsaoPass's, linked by a program that
+// sets it on a chain (post.ao's setter).
+class Ssao {
 	// how far an occluder reaches (metres)
 	public var radius:Float;
 	// how dark: the occlusion's power (1 as found, 2 darker)
@@ -35,111 +33,13 @@ class Ssao implements PostPass {
 	// the last frame's occlusion (R8, the view buffers' size; red 1 open, 0 occluded)
 	public var texture(default, null):Null<Texture> = null;
 
-	var device:Null<Device> = null;
-	var raw:Null<Texture> = null;
-	var gtao:Null<Pipeline> = null;
-	var blur:Null<Pipeline> = null;
-	final aoBytes = Bytes.alloc(GtaoShader.uniforms[0].size);
-	final blurBytes = Bytes.alloc(AoBlurShader.uniforms[0].size);
-	// (the blocks as written, kept: nothing allocated per frame)
-	final aoBlock:AoParams = {inverseProjection: helder.gfx.shader.Mat4.identity(), p: new Vec4(0, 0, 0, 0), size: new Vec4(0, 0, 0, 0), more: new Vec4(0, 0, 0, 0)};
-	final blurBlock:AoBlurParams = {p: new Vec4(0, 0, 0, 0), inverseProjection: helder.gfx.shader.Mat4.identity()};
-	final rawPass:PassDesc = {colors: [{load: Clear, clear: new Color(1, 1, 1, 1)}]};
-	final outPass:PassDesc = {colors: [{load: Clear, clear: new Color(1, 1, 1, 1)}]};
-	var w = 0;
-	var h = 0;
-	var rw = 0;
-	var rh = 0;
-
 	public function new(?options:SsaoOptions) {
-		PostFx.install();
 		radius = options?.radius ?? 0.5;
 		intensity = options?.intensity ?? 1.0;
 		samples = options?.samples ?? 8;
 		slices = options?.slices ?? 2;
 		halfRes = options?.halfRes ?? true;
 	}
-
-	@:noCompletion public function require(fx:PostFx, renderer:Renderer)
-		fx.read(ViewBuffers.of(renderer), 0.5);
-
-	@:noCompletion public function result():Null<Texture>
-		return texture;
-
-	@:noCompletion public function write(fx:PostFx) {}
-
-	@:noCompletion public function bind(enc:Encoder, fx:PostFx, slots:Array<Int>) {}
-
-	@:noCompletion public function draw(enc:Encoder, fx:PostFx):Int {
-		var v = fx.views;
-		if (v == null) return 0;
-		if (device == null) {
-			device = fx.device;
-			var g = GtaoShader.pipeline({});
-			g.colorFormat = R8;
-			gtao = device.createPipeline(g);
-			var b = AoBlurShader.pipeline({});
-			b.colorFormat = R8;
-			blur = device.createPipeline(b);
-		}
-		// (half the frame's size: the view buffers' halved when they are whole)
-		size(v.width, v.height, halfRes && v.drawnScale > 0.75);
-		var p = v.projection;
-		var perspective = p.c3.w == 0;
-		// (a metre at a distance of 1 in the height's uv: the projection's y scale, halved)
-		var scale = perspective ? p.c1.y * 0.5 : 0;
-		var a = aoBlock;
-		a.inverseProjection = v.inverseProjection;
-		a.p = new Vec4(radius, Math.max(1, slices), Math.max(1, samples), scale);
-		a.size = new Vec4(rw, rh, v.width, v.height);
-		a.more = new Vec4(v.width / Math.max(1, v.height), intensity, 0, perspective ? 0 : p.c1.y * 0.5 * radius);
-		GtaoShader.params.a.write(a, aoBytes);
-		enc.beginPass(rawPass);
-		enc.setPipeline(gtao);
-		enc.setUniforms(GtaoShader.uniforms[0].binding, aoBytes);
-		enc.setTexture(GtaoShader.params.depth.binding, v.depth, fx.nearest);
-		enc.setTexture(GtaoShader.params.normals.binding, v.normals, fx.nearest);
-		enc.setVertexBuffer(0, fx.triangle);
-		enc.draw(3);
-		enc.endPass();
-		blurBlock.p = new Vec4(1 / rw, 1 / rh, intensity, 0);
-		blurBlock.inverseProjection = v.inverseProjection;
-		AoBlurShader.params.b.write(blurBlock, blurBytes);
-		enc.beginPass(outPass);
-		enc.setPipeline(blur);
-		enc.setUniforms(AoBlurShader.uniforms[0].binding, blurBytes);
-		enc.setTexture(AoBlurShader.params.occlusion.binding, raw, fx.nearest);
-		enc.setTexture(AoBlurShader.params.depth.binding, v.depth, fx.nearest);
-		enc.setVertexBuffer(0, fx.triangle);
-		enc.draw(3);
-		enc.endPass();
-		return 2;
-	}
-
-	// (the targets for view buffers of width x height)
-	function size(width:Int, height:Int, half:Bool) {
-		var hw = half ? Std.int(Math.max(1, (width + 1) >> 1)) : width, hh = half ? Std.int(Math.max(1, (height + 1) >> 1)) : height;
-		if (width == w && height == h && hw == rw && hh == rh) return;
-		release();
-		w = width;
-		h = height;
-		rw = hw;
-		rh = hh;
-		raw = device.createTexture({width: rw, height: rh, format: R8, renderTarget: true});
-		texture = device.createTexture({width: w, height: h, format: R8, renderTarget: true});
-		rawPass.colors[0].texture = raw;
-		outPass.colors[0].texture = texture;
-	}
-
-	function release() {
-		if (raw != null) device.destroyTexture(raw);
-		if (texture != null) device.destroyTexture(texture);
-		raw = texture = null;
-		w = h = rw = rh = 0;
-	}
-
-	public function dispose()
-		if (device != null) release();
 }
 
 typedef SsaoOptions = {
