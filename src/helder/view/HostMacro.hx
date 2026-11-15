@@ -12,6 +12,8 @@ typedef RendererInfo = {
 	node:ComplexType,
 	type:Type,
 	setter:Bool,
+	// the elements it makes with a function of their own (a static function element_<tag>():N, Renders)
+	creators:Array<String>,
 	neutral:Bool,
 	native:Bool,
 	// its elements when it lists them (@:elements), else null: any name
@@ -83,6 +85,7 @@ class HostMacro {
 					node: Context.toComplexType(it.params[0]),
 					type: it.params[0],
 					setter: have.exists("setter"),
+					creators: [for (f in c.statics.get()) if (StringTools.startsWith(f.name, "element_")) f.name.substr(8)],
 					neutral: have.exists("neutralElement"),
 					native: have.exists("neutralNative"),
 					elements: els.length == 0 ? null : [for (e in els[0].params) switch e.expr {

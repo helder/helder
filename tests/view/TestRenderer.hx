@@ -12,6 +12,14 @@ class TestRenderer implements helder.view.Renders<TestNode> {
 	public static function createElement(tag:String):TestNode
 		return new TestNode(Element, tag);
 
+	// (<card>: made by a function of its own, Renders' element_<tag>, which
+	// markup calls for that literal name, Haxe's and TypeScript's)
+	public static function element_card():TestNode {
+		var n = createElement("card");
+		n.props.set("made", "element_card");
+		return n;
+	}
+
 	public static function createText(text:String):TestNode {
 		var n = new TestNode(Text, "#text");
 		n.text = text;

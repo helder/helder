@@ -104,6 +104,78 @@ class SceneRenderer implements helder.view.Renders<SceneNode> {
 		return n;
 	}
 
+	// the geometry and material tags, each made with its factory (markup
+	// calls a literal tag's element_<tag>, Renders: a program links the
+	// generators, the shading models and their shaders its markup names, not
+	// every one createElement's switch on a name would)
+	public static function element_boxGeometry():SceneNode
+		return madeBy("boxGeometry", n -> Geometry.box(SceneOptions.of(BoxOptions, n.props)));
+
+	public static function element_sphereGeometry():SceneNode
+		return madeBy("sphereGeometry", n -> Geometry.sphere(SceneOptions.of(SphereOptions, n.props)));
+
+	public static function element_cylinderGeometry():SceneNode
+		return madeBy("cylinderGeometry", n -> Geometry.cylinder(SceneOptions.of(CylinderOptions, n.props)));
+
+	public static function element_coneGeometry():SceneNode
+		return madeBy("coneGeometry", n -> Geometry.cone(SceneOptions.of(ConeOptions, n.props)));
+
+	public static function element_capsuleGeometry():SceneNode
+		return madeBy("capsuleGeometry", n -> Geometry.capsule(SceneOptions.of(CapsuleOptions, n.props)));
+
+	public static function element_torusGeometry():SceneNode
+		return madeBy("torusGeometry", n -> Geometry.torus(SceneOptions.of(TorusOptions, n.props)));
+
+	public static function element_torusKnotGeometry():SceneNode
+		return madeBy("torusKnotGeometry", n -> Geometry.torusKnot(SceneOptions.of(TorusKnotOptions, n.props)));
+
+	public static function element_ringGeometry():SceneNode
+		return madeBy("ringGeometry", n -> Geometry.ring(SceneOptions.of(RingOptions, n.props)));
+
+	public static function element_circleGeometry():SceneNode
+		return madeBy("circleGeometry", n -> Geometry.circle(SceneOptions.of(CircleOptions, n.props)));
+
+	public static function element_planeGeometry():SceneNode
+		return madeBy("planeGeometry", n -> Geometry.plane(SceneOptions.of(PlaneOptions, n.props)));
+
+	public static function element_latheGeometry():SceneNode
+		return madeBy("latheGeometry", n -> Geometry.lathe(n.get("points", [new helder.gfx.shader.Vec2(0, -0.5), new helder.gfx.shader.Vec2(0.5, 0), new helder.gfx.shader.Vec2(0, 0.5)]),
+			SceneOptions.of(LatheOptions, n.props)));
+
+	public static function element_tubeGeometry():SceneNode
+		return madeBy("tubeGeometry", n -> Geometry.tube(n.get("curve", helder.scene.math.Curve3.line(new Vec3(0, -0.5, 0), new Vec3(0, 0.5, 0))), SceneOptions.of(TubeOptions, n.props)));
+
+	public static function element_standardMaterial():SceneNode
+		return madeBy("standardMaterial", n -> Material.standard(SceneOptions.of(MaterialOptions, n.props)));
+
+	public static function element_lambertMaterial():SceneNode
+		return madeBy("lambertMaterial", n -> Material.lambert(SceneOptions.of(MaterialOptions, n.props)));
+
+	public static function element_phongMaterial():SceneNode
+		return madeBy("phongMaterial", n -> Material.phong(SceneOptions.of(PhongOptions, n.props)));
+
+	public static function element_toonMaterial():SceneNode
+		return madeBy("toonMaterial", n -> Material.toon(SceneOptions.of(ToonOptions, n.props)));
+
+	public static function element_unlitMaterial():SceneNode
+		return madeBy("unlitMaterial", n -> Material.unlit(SceneOptions.of(MaterialOptions, n.props)));
+
+	public static function element_matcapMaterial():SceneNode
+		return madeBy("matcapMaterial", n -> Material.matcap(SceneOptions.of(MatcapOptions, n.props)));
+
+	public static function element_normalMaterial():SceneNode
+		return madeBy("normalMaterial", n -> Material.normals(SceneOptions.of(MaterialOptions, n.props)));
+
+	public static function element_depthMaterial():SceneNode
+		return madeBy("depthMaterial", n -> Material.depth(SceneOptions.float(n.get("near", 0.1)), SceneOptions.float(n.get("far", 100.0)), SceneOptions.of(MaterialOptions, n.props)));
+
+	// (a part's node, its factory)
+	static function madeBy(tag:String, make:SceneNode->Dynamic):SceneNode {
+		var n = createElement(tag);
+		n.make = make;
+		return n;
+	}
+
 	public static function createText(text:String):SceneNode
 		return createMarker("#text");
 
@@ -264,6 +336,8 @@ class SceneNode {
 	public var materialPart:Null<SceneNode> = null;
 	// a geometry or material tag's value, made from its props when asked (null: made again)
 	public var made:Null<Dynamic> = null;
+	// a geometry or material tag's factory over its props (its element_<tag>'s: the factory linked only by the tags markup names)
+	public var make:Null<SceneNode->Dynamic> = null;
 	// a mesh's own material (its color, metallic and roughness props'), kept
 	var own:Null<Material> = null;
 	// a geometry tag's last upload (let go when made again)
@@ -280,7 +354,7 @@ class SceneNode {
 		}
 	}
 
-	function get(name:String, def:Dynamic):Dynamic
+	@:allow(helder.scene.view.SceneRenderer) function get(name:String, def:Dynamic):Dynamic
 		return props.exists(name) ? props.get(name) : def;
 
 	@:allow(helder.scene.view) function remesh() {
@@ -322,22 +396,8 @@ class SceneNode {
 	// a geometry tag's geometry, made from its props (Geometry's generator of its name)
 	public function geometry():VertexData {
 		if (made != null) return made;
-		var g:VertexData = switch tag {
-			case "boxGeometry": Geometry.box(SceneOptions.of(BoxOptions, props));
-			case "sphereGeometry": Geometry.sphere(SceneOptions.of(SphereOptions, props));
-			case "cylinderGeometry": Geometry.cylinder(SceneOptions.of(CylinderOptions, props));
-			case "coneGeometry": Geometry.cone(SceneOptions.of(ConeOptions, props));
-			case "capsuleGeometry": Geometry.capsule(SceneOptions.of(CapsuleOptions, props));
-			case "torusGeometry": Geometry.torus(SceneOptions.of(TorusOptions, props));
-			case "torusKnotGeometry": Geometry.torusKnot(SceneOptions.of(TorusKnotOptions, props));
-			case "ringGeometry": Geometry.ring(SceneOptions.of(RingOptions, props));
-			case "circleGeometry": Geometry.circle(SceneOptions.of(CircleOptions, props));
-			case "planeGeometry": Geometry.plane(SceneOptions.of(PlaneOptions, props));
-			case "latheGeometry": Geometry.lathe(get("points", [new helder.gfx.shader.Vec2(0, -0.5), new helder.gfx.shader.Vec2(0.5, 0), new helder.gfx.shader.Vec2(0, 0.5)]),
-					SceneOptions.of(LatheOptions, props));
-			case "tubeGeometry": Geometry.tube(get("curve", helder.scene.math.Curve3.line(new Vec3(0, -0.5, 0), new Vec3(0, 0.5, 0))), SceneOptions.of(TubeOptions, props));
-			case t: throw 'SceneRenderer: no geometry $t';
-		}
+		if (make == null) throw 'SceneRenderer: <$tag> made by createElement, not by its element_$tag';
+		var g:VertexData = make(this);
 		// (its last upload let go: none else draws it)
 		var device = SceneRenderer.device;
 		if (uploaded != null && device != null) @:privateAccess SceneRenderer.release(device, uploaded);
@@ -349,17 +409,8 @@ class SceneNode {
 	// a material tag's material, made from its props (Material's factory of its name)
 	public function material():Material {
 		if (made != null) return made;
-		var m:Material = switch tag {
-			case "standardMaterial": Material.standard(SceneOptions.of(MaterialOptions, props));
-			case "lambertMaterial": Material.lambert(SceneOptions.of(MaterialOptions, props));
-			case "phongMaterial": Material.phong(SceneOptions.of(PhongOptions, props));
-			case "toonMaterial": Material.toon(SceneOptions.of(ToonOptions, props));
-			case "unlitMaterial": Material.unlit(SceneOptions.of(MaterialOptions, props));
-			case "matcapMaterial": Material.matcap(SceneOptions.of(MatcapOptions, props));
-			case "normalMaterial": Material.normals(SceneOptions.of(MaterialOptions, props));
-			case "depthMaterial": Material.depth(SceneOptions.float(get("near", 0.1)), SceneOptions.float(get("far", 100.0)), SceneOptions.of(MaterialOptions, props));
-			case t: throw 'SceneRenderer: no material $t';
-		}
+		if (make == null) throw 'SceneRenderer: <$tag> made by createElement, not by its element_$tag';
+		var m:Material = make(this);
 		made = m;
 		return m;
 	}

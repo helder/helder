@@ -134,6 +134,8 @@ class ViewTest implements Markup {
 		check("plain values set once, holes that read, signals and a Dynamic holding a function bound",
 			first == '<root><b data-d="yes" data-f="on" data-k="4" data-s="true" title="big"></b></root>'
 			&& at.toHtml() == '<root><b data-d="no" data-f="off" data-k="4" data-s="false" title="big"></b></root>', first + " " + at.toHtml());
+		// an element its renderer makes with a function of its own (element_card), the others with createElement
+		check("an element's own function", html(<div><card title="c"/></div>) == '<div><card made="element_card" title="c"></card></div>', html(<div><card title="c"/></div>));
 		// whitespace and entities as JSX has them
 		check("JSX's whitespace", html(<p>
 			Hello,

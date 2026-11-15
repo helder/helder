@@ -704,6 +704,11 @@ class Tsx {
 		switch of {
 			case Host:
 				if (name == "setProperty" && r.functions.get("setProperty") == "macro") return setProperty(r, args, raw, ctx);
+				// (an element of a literal name the renderer makes with a function of its own: Renders' element_<tag>)
+				if (name == "createElement") switch raw[0] {
+					case MString(tag) if (r.functions.get("element_" + tag) == "function"): return hostCall(r, "element_" + tag, [], ctx);
+					case _:
+				}
 				return hostCall(r, name, args, ctx);
 			case Runtime:
 				if (name == "prop" && r.setters != null) switch raw[1] {

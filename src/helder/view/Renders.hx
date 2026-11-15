@@ -52,6 +52,15 @@ package helder.view;
 //
 //   static macro function setterTable():Expr;  // [{name: "padding", fn: "pack.Class.setPadding"}, ...]
 //
+// Optional: an element's own function, element_<its tag>, for any of its
+// elements: markup makes an element of that literal name with it instead of
+// createElement(tag), Haxe's and TypeScript's, so that what the element
+// links (helder.scene.view's material tags: their shading models'
+// shaders) is linked only when markup names it, not by createElement's
+// switch on every name. createElement still makes the others.
+//
+//   static function element_toonMaterial():N;
+//
 // Optional: a function markEnds (its body empty): a region that ends its
 // parent gets a marker too, which hydration reads (the page's renderers:
 // helder.web's DOM and static ones); without it such a region needs none.

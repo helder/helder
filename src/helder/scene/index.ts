@@ -94,20 +94,6 @@ export function material<D extends SlotsDef, X>(def: Slots<D, X>, generated?: st
 	};
 }
 
-// a LUT's strip (Lut.fromBytes) made from a grade written in TypeScript:
-// display values 0..1 in, out (Lut.strip's layout: size * size by size
-// texels, red across a slice, green down it, blue by slice)
-export function lutStrip(size: number, grade: (r: number, g: number, b: number) => [number, number, number]): Uint8Array {
-	const w = size * size, bytes = new Uint8Array(w * size * 4), k = size - 1;
-	for (let y = 0; y < size; y++)
-		for (let x = 0; x < w; x++) {
-			const c = grade((x % size) / k, y / k, Math.floor(x / size) / k), o = (y * w + x) * 4;
-			for (let i = 0; i < 3; i++) bytes[o + i] = Math.round(Math.max(0, Math.min(1, c[i])) * 255);
-			bytes[o + 3] = 255;
-		}
-	return bytes;
-}
-
 // the post chain's enums by name (PostProcess.toneMap, antialias; Dof.mode)
 export const ToneMap = {AgX: 0, Aces: 1, Clamp: 2} as const;
 export type ToneMap = number;

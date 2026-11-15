@@ -309,6 +309,19 @@ class Haxe {
 		b.out.push(SSet(js, any(e)));
 		var fi = Builder.func(p, "adapter" + serial++, s.ret);
 		fi.args = [new Local(0, "closure", TRef(RAny))].concat([for (i in 0...s.args.length) new Local(i + 1, "a" + i, s.args[i])]);
+		// (a struct result, a math value: written to the caller's memory, the
+		// address its last argument, and that address returned, as hxmc's
+		// closures of a struct return it (FuncInfo.sret); a slot of this
+		// frame would be gone when the caller reads it: zeros natively, a
+		// trap as wasm32)
+		var sret = switch s.ret {
+			case TStruct(_, size):
+				fi.sret = true;
+				var a = new Local(s.args.length + 1, "sret", TI64);
+				fi.args.push(a);
+				{local: a, size: size};
+			case _: null;
+		}
 		var li = new LambdaInfo(p.lambdas.length, s, Vector.fromArrayCopy([js]), fi);
 		p.lambdas.push(li);
 		fi.lambda = li;
@@ -317,7 +330,23 @@ class Haxe {
 		var target = b.temp(ECapture(li, 0, ELocal(fi.args[0])));
 		var list = b.temp(ENewArr(TRef(RAny), Vector.fromArrayCopy([for (i in 0...s.args.length) any(toJs(ELocal(fi.args[i + 1]), i < args.length ? args[i].t : HDynamic))])));
 		var r = b.temp(ECall(interop("call"), Vector.fromArrayCopy([target, list])));
-		if (s.ret == TVoid) b.out.push(SReturn(null)); else b.out.push(SReturn(b.coerce(toHaxe(r, ret, s.ret, where), s.ret)));
+		if (s.ret == TVoid) b.out.push(SReturn(null));
+		else if (sret != null) {
+			var to = ELocal(sret.local);
+			var math = mathOf(ret);
+			if (math != null) {
+				// (the components written straight there)
+				var values = mathValues(r, math, where);
+				for (k in 0...values.length)
+					b.out.push(SExpr(ECallHost("hxmc_unsafe_Mem_setF64", Vector.fromArrayCopy([to, EInt(8 * k), values[k]]), TVoid)));
+			} else {
+				// (another struct: made here, then copied there word by word)
+				var from = b.temp(ECast(TI64, toHaxe(r, ret, s.ret, where)));
+				for (k in 0...(sret.size >> 3))
+					b.out.push(SExpr(ECallHost("hxmc_unsafe_Mem_setF64", Vector.fromArrayCopy([to, EInt(8 * k), ECallHost("hxmc_unsafe_Mem_getF64", Vector.fromArrayCopy([from, EInt(8 * k)]), TF64)]), TVoid)));
+			}
+			b.out.push(SReturn(ECast(s.ret, to)));
+		} else b.out.push(SReturn(b.coerce(toHaxe(r, ret, s.ret, where), s.ret)));
 		b.finish();
 		f.b = outer;
 		var l = b.local("closure", TRef(RClos(s)));
