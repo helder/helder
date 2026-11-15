@@ -193,7 +193,7 @@ class SlotsMacro {
 			var g = Reflect.copy(f);
 			g.args = [for (i in 0...2) Reflect.copy(f.args[i])];
 			if (g.args[0].type == null) g.args[0].type = lower.haxeType(out.program.varyings).toComplexType();
-			g.expr = map(f.expr);
+			g.expr = folded(map(f.expr));
 			return {
 				name: name,
 				access: [APublic, AStatic],
@@ -228,6 +228,31 @@ class SlotsMacro {
 			vertexType: TFunction(vt.args, vt.ret),
 			fragmentType: TFunction(ft.args, ft.ret)
 		});
+	}
+
+	// (a CPU stage's tests of its options, constants now, folded as the
+	// GPU's lowering folds them: the branches a variant never takes left out)
+	static function folded(e:Expr):Expr {
+		function bool(x:Expr):Null<Bool>
+			return switch x.expr {
+				case EConst(CIdent("true")): true;
+				case EConst(CIdent("false")): false;
+				case EParenthesis(y): bool(y);
+				case _: null;
+			}
+		var f = haxe.macro.ExprTools.map(e, folded);
+		return switch f.expr {
+			case EUnop(OpNot, false, x) if (bool(x) != null): macro @:pos(f.pos) $v{!bool(x)};
+			case EBinop(OpBoolOr, x, y) if (bool(x) == true || bool(y) == true): macro @:pos(f.pos) true;
+			case EBinop(OpBoolOr, x, y) if (bool(x) == false): y;
+			case EBinop(OpBoolOr, x, y) if (bool(y) == false): x;
+			case EBinop(OpBoolAnd, x, y) if (bool(x) == false || bool(y) == false): macro @:pos(f.pos) false;
+			case EBinop(OpBoolAnd, x, y) if (bool(x) == true): y;
+			case EBinop(OpBoolAnd, x, y) if (bool(y) == true): x;
+			case ETernary(c, a, b) if (bool(c) != null): bool(c) ? a : b;
+			case EIf(c, a, b) if (bool(c) != null): bool(c) ? a : (b != null ? b : macro @:pos(f.pos) {});
+			case _: f;
+		}
 	}
 
 	static function func(e:Expr):Function

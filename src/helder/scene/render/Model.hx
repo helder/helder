@@ -36,7 +36,12 @@ import helder.scene.gltf.GltfScene;
 // path known only at run time (an Asset, names unknown, not bundled).
 //
 // Its GPU meshes are made by the first instantiate with a device and
-// shared by every instance.
+// shared by every instance. Its materials' glTF extensions (sheen,
+// specular, clearcoat, transmission, iridescence, anisotropy) are read when
+// compiling too: each set its materials use is compiled into the build
+// (PhysicalShader), and no other, so a game whose models have no sheen links
+// no sheen; a model Model.load reads is drawn by Physical's (every
+// extension), when the program uses it.
 class Model<N, M, A, C> {
 	#if !macro
 	public var doc(default, null):GltfDoc;
@@ -47,19 +52,22 @@ class Model<N, M, A, C> {
 
 	var scene:Null<GltfScene>;
 	var device:Null<Device>;
+	// (the shaders of its materials' sets of extensions: Model.of's)
+	final physical:Null<Map<Int, MaterialShader>>;
 
-	@:noCompletion public function new(bytes:Bytes, nodes:N, meshes:M, materials:A, animations:C) {
+	@:noCompletion public function new(bytes:Bytes, nodes:N, meshes:M, materials:A, animations:C, ?physical:Map<Int, MaterialShader>) {
 		doc = Gltf.parse(bytes);
 		this.nodes = nodes;
 		this.meshes = meshes;
 		this.materials = materials;
 		this.animations = animations;
+		this.physical = physical;
 	}
 
 	// the model's scene as nodes of world (under parent, by default the root)
 	@:typescript public function instantiate(world:World, device:Device, ?parent:Node, ?made:Array<Node>):Node {
 		if (scene == null || this.device != device) {
-			scene = new GltfScene(doc, device);
+			scene = new GltfScene(doc, device, physical);
 			this.device = device;
 		}
 		return scene.instantiate(world, parent, null, made);
@@ -84,15 +92,15 @@ class Model<N, M, A, C> {
 	public function replace(fresh:Model<N, M, A, C>) {
 		doc = fresh.doc;
 		if (scene == null) return;
-		var next = new GltfScene(doc, device);
+		var next = new GltfScene(doc, device, physical);
 		scene.handOver(next);
 		scene = next;
 	}
 
 	// (Asset.model's and Model.of(path, Lazy)'s loader)
-	@:noCompletion public static function asset<N, M, A, C>(key:String, file:Null<String>, nodes:N, meshes:M, materials:A,
-			animations:C):helder.asset.Asset<Model<N, M, A, C>>
-		return helder.asset.Assets.handle("model", key, _ -> new Model(helder.asset.Files.read(key, file), nodes, meshes, materials, animations), (old, fresh) -> {
+	@:noCompletion public static function asset<N, M, A, C>(key:String, file:Null<String>, nodes:N, meshes:M, materials:A, animations:C,
+			?physical:Map<Int, MaterialShader>):helder.asset.Asset<Model<N, M, A, C>>
+		return helder.asset.Assets.handle("model", key, _ -> new Model(helder.asset.Files.read(key, file), nodes, meshes, materials, animations, physical), (old, fresh) -> {
 			old.replace(fresh);
 			old;
 		});
@@ -120,14 +128,19 @@ class Model<N, M, A, C> {
 		Context.registerModuleDependency(Context.getLocalModule(), file);
 		var n = names(sys.io.File.getBytes(file), path, Context.currentPos());
 		var read = macro helder.asset.Files.readNow(${helder.asset.AssetMacro.key(path, true)}, $v{helder.asset.AssetMacro.devPath(file)});
-		return macro new helder.scene.render.Model($read, ${n.nodes}, ${n.meshes}, ${n.materials}, ${n.animations});
+		var made = macro new helder.scene.render.Model($read, ${n.nodes}, ${n.meshes}, ${n.materials}, ${n.animations}, ${n.physical});
+		// (its extensions read when it has some: GltfExtensions)
+		return n.physical.expr.match(EConst(CIdent("null"))) ? made : macro {
+			helder.scene.gltf.GltfExtensions.install();
+			$made;
+		};
 	}
 
 	#if macro
 	// a glTF file's names as objects of fields (nodes, meshes, materials,
 	// animations), read with the runtime's file splitting (its reader checks
 	// the rest when the model is made)
-	public static function names(bytes:haxe.io.Bytes, path:String, pos:Position):{nodes:Expr, meshes:Expr, materials:Expr, animations:Expr} {
+	public static function names(bytes:haxe.io.Bytes, path:String, pos:Position):{nodes:Expr, meshes:Expr, materials:Expr, animations:Expr, physical:Expr} {
 		var root:Dynamic = try haxe.Json.parse(helder.scene.gltf.GltfFile.split(bytes).json) catch (e:Dynamic) Context.error('Model.of: $path: $e', pos);
 		function list(f:String):Array<Dynamic> {
 			var v:Dynamic = Reflect.field(root, f);
@@ -154,11 +167,22 @@ class Model<N, M, A, C> {
 			}
 			return {expr: EObjectDecl(fields), pos: pos};
 		}
+		// (the sets of glTF extensions its materials use, each compiled once: PhysicalShader)
+		var sets = [];
+		var flags = try helder.scene.render.PhysicalShader.flagsOfFile(bytes) catch (e:Dynamic) Context.error('Model.of: $path: $e', pos);
+		for (f in flags)
+			if (f != 0 && !sets.contains(f)) sets.push(f);
+		sets.sort((a, b) -> a - b);
+		var physical = sets.length == 0 ? macro null : {
+			expr: EArrayDecl([for (f in sets) macro $v{f} => ${helder.scene.render.PhysicalShader.shader(f)}]),
+			pos: pos
+		};
 		return {
 			nodes: names([for (x in list("nodes")) nameOf(x)]),
 			meshes: names([for (x in list("meshes")) nameOf(x)]),
 			materials: names([for (x in list("materials")) nameOf(x)]),
-			animations: names([for (x in list("animations")) nameOf(x)])
+			animations: names([for (x in list("animations")) nameOf(x)]),
+			physical: physical
 		};
 	}
 	#end

@@ -5,7 +5,8 @@ package helder.scene;
 // exports of helder's Haxe classes. A World of nodes (Node: helder/scene's
 // class over a node's handle, its members Script's), cameras, lights,
 // meshes (Shapes, Geometry's shapes and Curve3, MeshRenderer, InstancedMesh,
-// Sprites) and materials (Material's factories: toon, lambert, unlit...), glTF models (Model,
+// Sprites) and materials (Material's factories: toon, lambert, unlit...;
+// the glTF extensions' fields, drawn by Physical, Transmission), glTF models (Model,
 // helder/asset's model(path) loads one; GltfScene), the renderer and its
 // post chain (PostProcess: its effects Ssao, Dof, Outline, Lut, Ssr,
 // MotionBlur, GodRays, Taa, Smaa; the view buffers they read, ViewBuffers), occlusion
@@ -18,6 +19,7 @@ package helder.scene;
 // program imports helder/scene, not this module.
 @:typescript("helder/scene/runtime", "runtime.d.ts")
 @:typescript.classes(helder.scene.World, helder.scene.Camera, helder.scene.render.Light, helder.scene.render.Renderer, helder.scene.render.Shadows, helder.scene.render.Fog, helder.scene.render.Material,
+	helder.scene.render.Material.UvTransform, helder.scene.render.Physical, helder.scene.render.Transmission,
 	helder.scene.render.MeshRenderer, helder.scene.render.Shapes, helder.scene.render.Geometry, helder.scene.render.VertexData, helder.scene.math.Curve3,
 	helder.scene.render.InstancedMesh, helder.scene.render.Sprites, helder.scene.render.Model, helder.scene.render.MaterialShader, helder.scene.render.PostProcess,
 	helder.scene.render.Ssao, helder.scene.render.Dof, helder.scene.render.Outline, helder.scene.render.Lut, helder.scene.render.ViewBuffers,

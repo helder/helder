@@ -19,6 +19,9 @@ import helder.scene.render.MeshRenderer;
 // Skin components on the nodes they deform (joints, inverse bind
 // matrices; JOINTS_0 and WEIGHTS_0 in the meshes' vertices).
 class GltfScene {
+	// what sets a material's other extensions (GltfExtensions.install: null, none)
+	public static var extensions:Null<GltfExtensions.ExtensionApplier>;
+
 	public final doc:GltfDoc;
 	// per mesh with morph targets: its primitives' rest vertices and displacements
 	final morphs:Array<Null<Array<{prim:helder.scene.render.Mesh.Primitive, data:helder.scene.render.VertexData, positions:Array<Null<Array<Float>>>,
@@ -31,7 +34,11 @@ class GltfScene {
 	public final textures:Array<Null<helder.gfx.Texture>> = [];
 	final device:Device;
 
-	public function new(doc:GltfDoc, device:Device) {
+	// physical: the shaders of the sets of glTF extensions its materials use
+	// (Material.extensions' flags to PhysicalShader's: Model.of's, made when
+	// compiling), set as their shaders; a material whose set it lacks (or
+	// without it) is drawn by Physical's, else by the standard shader
+	public function new(doc:GltfDoc, device:Device, ?physical:Map<Int, helder.scene.render.MaterialShader>) {
 		this.doc = doc;
 		this.device = device;
 		for (k in 0...doc.images.length)
@@ -74,6 +81,10 @@ class GltfScene {
 				mat.clearcoat = m.clearcoat;
 				mat.clearcoatRoughness = m.clearcoatRoughness;
 				mat.transmission = m.transmission;
+				// (the other extensions, read with GltfExtensions installed)
+				if (extensions != null) extensions.apply(mat, m, textureOf);
+				// (its extensions' variants, Model.of's)
+				if (physical != null) mat.shader = physical.get(mat.extensions());
 				if (m.transmission > 0) {
 					// (light through it: see-through, its colours premultiplied, no shadow)
 					mat.blend = true;
@@ -104,7 +115,7 @@ class GltfScene {
 				// (tangents where a normal map is drawn, with NormalMaps made: the
 				// file's, else from the uvs)
 				var tangents:Null<Array<Float>> = null, make = helder.scene.render.VertexData.tangentsFrom;
-				if (make != null && material.normalTexture != null && uvs != null && p.joints < 0) {
+				if (make != null && material.tangents() && uvs != null && p.joints < 0) {
 					if (p.tangent >= 0) tangents = doc.floats(p.tangent) else {
 						if (indices == null) indices = [for (i in 0...Std.int(positions.length / 3)) i];
 						if (normals == null) normals = Mesh.smoothNormals(positions, indices);
@@ -114,6 +125,11 @@ class GltfScene {
 				var data = helder.scene.render.VertexData.make(positions, normals, uvs, indices, p.joints >= 0 ? doc.floats(p.joints) : null,
 					p.weights >= 0 ? doc.floats(p.weights) : null, tangents);
 				var prim = mesh.addData(device, data, material);
+				// (the second uvs, for maps on them: GltfExtensions')
+				if (extensions != null && material.textureTransforms != null) {
+					var second = extensions.secondUvs(doc, p, material, Std.int(positions.length / 3), uvs);
+					if (second != null) prim.uv1 = device.createBuffer({size: second.length, usage: Vertex, data: second});
+				}
 				if (p.targets.length > 0) {
 					// (morph targets: the vertices at rest and the displacements, for each instance's own copy)
 					if (morphs[meshes.length] == null) morphs[meshes.length] = [];

@@ -7,11 +7,12 @@ URIs or files `resolve` returns) and .glb, into a `GltfDoc`: typed and
 checked data (indices in range, views inside buffers, accessors inside
 views). `doc.floats(accessor)` and `doc.indices(accessor)` read accessors of
 any component type, normalized or strided. Materials' extensions:
-KHR_texture_transform (one transform for a material's maps: the base
-colour's, else the first one's), KHR_materials_emissive_strength,
-KHR_materials_clearcoat (its factor and roughness) and
-KHR_materials_transmission (its factor); alphaMode MASK is cut out at
-alphaCutoff. `GltfNodes.build(doc, world, ?parent, ?scene, ?mesh)` makes the node
+KHR_texture_transform (one transform for a material's maps, or each map
+its own with TEXCOORD_1: `Material.textureTransforms`),
+KHR_materials_emissive_strength, KHR_materials_clearcoat,
+_transmission, _volume, _ior, _specular, _sheen, _iridescence and
+_anisotropy with their maps ([Materials](materials.md#the-gltf-material-extensions));
+alphaMode MASK is cut out at alphaCutoff. `GltfNodes.build(doc, world, ?parent, ?scene, ?mesh)` makes the node
 hierarchy (TRS or matrices, cameras); `GltfScene` makes the GPU meshes and
 materials once and `instantiate(world)` copies the hierarchy into a world.
 helder.asset's `Asset.embed(path)` builds a file into the code itself.

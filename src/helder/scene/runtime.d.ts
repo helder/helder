@@ -3,7 +3,8 @@
 // exports of helder's Haxe classes. A World of nodes (Node: helder/scene's
 // class over a node's handle, its members Script's), cameras, lights,
 // meshes (Shapes, Geometry's shapes and Curve3, MeshRenderer, InstancedMesh,
-// Sprites) and materials (Material's factories: toon, lambert, unlit...), glTF models (Model,
+// Sprites) and materials (Material's factories: toon, lambert, unlit...;
+// the glTF extensions' fields, drawn by Physical, Transmission), glTF models (Model,
 // helder/asset's model(path) loads one; GltfScene), the renderer and its
 // post chain (PostProcess: its effects Ssao, Dof, Outline, Lut, Ssr,
 // MotionBlur, GodRays, Taa, Smaa; the view buffers they read, ViewBuffers), occlusion
@@ -21,7 +22,7 @@ import type {Asset, FontFile, Image} from "helder/asset";
 import type {Mat4, Quat, Vec2, Vec3, Vec4} from "helder/gfx";
 import type {Node} from "helder/scene";
 
-declare const __haxe: {Mesh: "helder.scene.render.Mesh", Encoder: "helder.gfx.Encoder", World: "helder.scene.World", Camera: "helder.scene.Camera", Light: "helder.scene.render.Light", Renderer: "helder.scene.render.Renderer", Shadows: "helder.scene.render.Shadows", Fog: "helder.scene.render.Fog", Material: "helder.scene.render.Material", MeshRenderer: "helder.scene.render.MeshRenderer", Shapes: "helder.scene.render.Shapes", Geometry: "helder.scene.render.Geometry", VertexData: "helder.scene.render.VertexData", Curve3: "helder.scene.math.Curve3", InstancedMesh: "helder.scene.render.InstancedMesh", Sprites: "helder.scene.render.Sprites", Model: "helder.scene.render.Model", MaterialShader: "helder.scene.render.MaterialShader", PostProcess: "helder.scene.render.PostProcess", Ssao: "helder.scene.render.Ssao", Dof: "helder.scene.render.Dof", Outline: "helder.scene.render.Outline", Lut: "helder.scene.render.Lut", ViewBuffers: "helder.scene.render.ViewBuffers", Ssr: "helder.scene.render.Ssr", MotionBlur: "helder.scene.render.MotionBlur", GodRays: "helder.scene.render.GodRays", Taa: "helder.scene.render.Taa", Smaa: "helder.scene.render.Smaa", Occlusion: "helder.scene.render.Occlusion", Lines: "helder.scene.render.Lines", LineRenderer: "helder.scene.render.LineRenderer", DebugDraw: "helder.scene.render.DebugDraw", Helper: "helder.scene.render.Helper", AxesHelper: "helder.scene.render.AxesHelper", GridHelper: "helder.scene.render.GridHelper", BoundsHelper: "helder.scene.render.BoundsHelper", LightHelper: "helder.scene.render.LightHelper", CameraHelper: "helder.scene.render.CameraHelper", SkeletonHelper: "helder.scene.render.SkeletonHelper", Hit: "helder.scene.render.Hit", HitList: "helder.scene.render.Hit.HitList", RaycastOptions: "helder.scene.render.Hit.RaycastOptions", Raycaster: "helder.scene.render.Raycaster", Bvh: "helder.scene.render.Bvh", Text3D: "helder.scene.render.Text3D", InputMap: "helder.scene.input.InputMap", Bindings: "helder.scene.input.Bindings", FixedStep: "helder.scene.FixedStep", Device: "helder.gfx.Device", Surface: "helder.os.Surface", Window: "helder.os.Window", App: "helder.os.App", Event: "helder.os.Event", Script: "helder.scene.Script", __module: "helder.scene.TypeScript"};
+declare const __haxe: {Mesh: "helder.scene.render.Mesh", Encoder: "helder.gfx.Encoder", World: "helder.scene.World", Camera: "helder.scene.Camera", Light: "helder.scene.render.Light", Renderer: "helder.scene.render.Renderer", Shadows: "helder.scene.render.Shadows", Fog: "helder.scene.render.Fog", Material: "helder.scene.render.Material", UvTransform: "helder.scene.render.Material.UvTransform", Physical: "helder.scene.render.Physical", Transmission: "helder.scene.render.Transmission", MeshRenderer: "helder.scene.render.MeshRenderer", Shapes: "helder.scene.render.Shapes", Geometry: "helder.scene.render.Geometry", VertexData: "helder.scene.render.VertexData", Curve3: "helder.scene.math.Curve3", InstancedMesh: "helder.scene.render.InstancedMesh", Sprites: "helder.scene.render.Sprites", Model: "helder.scene.render.Model", MaterialShader: "helder.scene.render.MaterialShader", PostProcess: "helder.scene.render.PostProcess", Ssao: "helder.scene.render.Ssao", Dof: "helder.scene.render.Dof", Outline: "helder.scene.render.Outline", Lut: "helder.scene.render.Lut", ViewBuffers: "helder.scene.render.ViewBuffers", Ssr: "helder.scene.render.Ssr", MotionBlur: "helder.scene.render.MotionBlur", GodRays: "helder.scene.render.GodRays", Taa: "helder.scene.render.Taa", Smaa: "helder.scene.render.Smaa", Occlusion: "helder.scene.render.Occlusion", Lines: "helder.scene.render.Lines", LineRenderer: "helder.scene.render.LineRenderer", DebugDraw: "helder.scene.render.DebugDraw", Helper: "helder.scene.render.Helper", AxesHelper: "helder.scene.render.AxesHelper", GridHelper: "helder.scene.render.GridHelper", BoundsHelper: "helder.scene.render.BoundsHelper", LightHelper: "helder.scene.render.LightHelper", CameraHelper: "helder.scene.render.CameraHelper", SkeletonHelper: "helder.scene.render.SkeletonHelper", Hit: "helder.scene.render.Hit", HitList: "helder.scene.render.Hit.HitList", RaycastOptions: "helder.scene.render.Hit.RaycastOptions", Raycaster: "helder.scene.render.Raycaster", Bvh: "helder.scene.render.Bvh", Text3D: "helder.scene.render.Text3D", InputMap: "helder.scene.input.InputMap", Bindings: "helder.scene.input.Bindings", FixedStep: "helder.scene.FixedStep", Device: "helder.gfx.Device", Surface: "helder.os.Surface", Window: "helder.os.Window", App: "helder.os.App", Event: "helder.os.Event", Script: "helder.scene.Script", __module: "helder.scene.TypeScript"};
 
 // What a node draws (node.mesh): primitives, each a vertex buffer in the
 // renderer's layout (PbrVertex: position, normal, uv; 32 bytes a vertex),
@@ -324,8 +325,9 @@ export declare class Renderer {
 	// a shader's slots for its blocks and textures, in the renderer's order:
 	// frame, object (-1: none), material, base colour, shadow map, skin,
 	// joints, metallic-roughness, emissive, occlusion, normal, the far shadow
-	// map, the environment map, the screen's ambient occlusion; then a
-	// material's own blocks (OWN on)
+	// map, the environment map, the screen's ambient occlusion; a physical
+	// shader's (0: one, -1: not), its two maps, the frame behind
+	// (Transmission's); then a material's own blocks (OWN on)
 	static slotsOf(uniforms: Array<{ name: string; binding: number; size: number }>, textures: Array<{ name: string; binding: number }>): number[];
 	readonly device: Device;
 	// without a Light in the world: towards the light (normalized when
@@ -363,6 +365,9 @@ export declare class Renderer {
 	jitter: Vec2;
 	// the frames drawn (each draw one)
 	readonly frames: number;
+	// the last draw's main pass split for Transmission's copy (1: the frame
+	// behind its see-through surfaces copied; statistics)
+	readonly splits: number;
 	// whether runs of one primitive are drawn instanced (on by default)
 	instancing: boolean;
 	// the last draw's instances drawn by instanced draws (statistics)
@@ -549,6 +554,13 @@ export declare class Material {
 	// the depth along the view as a grey, white at near and black at far
 	// (three's MeshDepthMaterial, linear), not tone mapped
 	static depth(near?: number, far?: number, options?: MaterialOptions): Material;
+	static readonly SHEEN: number;
+	static readonly SPECULAR: number;
+	static readonly CLEARCOAT: number;
+	static readonly TRANSMISSION: number;
+	static readonly IRIDESCENCE: number;
+	static readonly ANISOTROPY: number;
+	static readonly UV_SETS: number;
 	// the material's index (draws sort by it; an index into a material buffer later)
 	readonly id: number;
 	name: string;
@@ -613,6 +625,13 @@ export declare class Material {
 	uvOffset: Vec2;
 	uvRotation: number;
 	uvScale: Vec2;
+	// each core map's own uvs (glTF: a texture's texCoord, TEXCOORD_0 or
+	// _1, and its own KHR_texture_transform), in order base colour,
+	// metallic-roughness, normal, occlusion, emissive (the extensions' maps
+	// read the base colour's); null: the transform above for all, on the
+	// first uvs. Drawn by a physical shader (PhysicalShader's uvSets), its
+	// primitives' second uvs their own buffer (Mesh.Primitive.uv1)
+	textureTransforms: UvTransform[] | null;
 	// glTF's alphaMode MASK: fragments whose alpha is below it are dropped,
 	// the rest opaque (0: none)
 	alphaCutoff: number;
@@ -624,14 +643,69 @@ export declare class Material {
 	// a clear coat over the surface (KHR_materials_clearcoat): how much (0
 	// to 1) and its roughness; a polished dielectric layer (f0 0.04) whose
 	// reflection, from the sun and the environment, is added over the base
-	// and dims it by its Fresnel
+	// and dims it by its Fresnel. With a physical shader (PhysicalShader:
+	// Model.of's, or Physical's for any material) each light's, and its maps:
+	// clearcoatTexture's red times clearcoat, clearcoatRoughnessTexture's
+	// green times its roughness, clearcoatNormalTexture its own normal map
+	// (its x and y scaled by clearcoatNormalScale; else the geometry's normal)
 	clearcoat: number;
 	clearcoatRoughness: number;
+	clearcoatTexture: number | null;
+	clearcoatRoughnessTexture: number | null;
+	clearcoatNormalTexture: number | null;
+	clearcoatNormalScale: number;
 	// how much of the light goes through it (KHR_materials_transmission, 0
-	// to 1), a thin surface without refraction: its diffuse light replaced
+	// to 1; transmissionTexture's red times it): its diffuse light replaced
 	// by what is behind it (drawn see-through, Premultiplied, after the
-	// opaque surfaces), its reflections kept
+	// opaque surfaces), its reflections kept. The standard shader's: a thin
+	// surface, what is behind tinted by its colour; a physical shader's:
+	// what is behind refracted through it (the opaque frame with
+	// Transmission, else the environment), blurred by its roughness
 	transmission: number;
+	transmissionTexture: number | null;
+	// its volume (KHR_materials_volume, a physical shader's): how thick it
+	// is (in its node's units, 0: thin; thicknessTexture's green times it),
+	// and the light it absorbs on the way through: attenuationColor reached
+	// at attenuationDistance (0: none, glTF's infinity), Beer's law
+	thickness: number;
+	thicknessTexture: number | null;
+	attenuationColor: Vec3;
+	attenuationDistance: number;
+	// its index of refraction (KHR_materials_ior: 1.5, a dielectric's 0.04
+	// reflectance at normal incidence), and that reflectance's strength and
+	// colour (KHR_materials_specular: specularTexture's alpha times
+	// specularFactor, specularColorTexture's colour, sRGB, times
+	// specularColor; a metal's is its albedo); a physical shader's
+	ior: number;
+	specularFactor: number;
+	specularColor: Vec3;
+	specularTexture: number | null;
+	specularColorTexture: number | null;
+	// a sheen over it (KHR_materials_sheen, cloth's and velvet's: black for
+	// none), its colour (linear; sheenColorTexture's, sRGB, times it) and
+	// roughness (sheenRoughnessTexture's alpha times it); a physical shader's
+	sheenColor: Vec3;
+	sheenRoughness: number;
+	sheenColorTexture: number | null;
+	sheenRoughnessTexture: number | null;
+	// a thin film over it (KHR_materials_iridescence: soap bubbles, oil):
+	// how much (iridescenceTexture's red times it), the film's index of
+	// refraction and thickness in nanometres (iridescenceThicknessTexture's
+	// green from the minimum to the maximum); a physical shader's
+	iridescence: number;
+	iridescenceIor: number;
+	iridescenceThicknessMinimum: number;
+	iridescenceThicknessMaximum: number;
+	iridescenceTexture: number | null;
+	iridescenceThicknessTexture: number | null;
+	// its highlight stretched (KHR_materials_anisotropy: brushed metal):
+	// how much (0 to 1), along the tangent turned by anisotropyRotation
+	// (radians), or anisotropyTexture's direction (red and green) and
+	// strength (blue, times anisotropy); drawn with its primitive's
+	// tangents (NormalMaps); a physical shader's
+	anisotropy: number;
+	anisotropyRotation: number;
+	anisotropyTexture: number | null;
 	// the toon model's (Material.toon): bands of each light's n.l (1 or
 	// more), and the shaded side's share of the albedo (linear)
 	steps: number;
@@ -644,6 +718,77 @@ export declare class Material {
 	// black at depthFar (scene units)
 	depthNear: number;
 	depthFar: number;
+	// the glTF extensions its fields use (PhysicalShader's options, as
+	// flags: SHEEN, SPECULAR, CLEARCOAT, TRANSMISSION, IRIDESCENCE,
+	// ANISOTROPY; 0: none, the standard shader's surface); what Physical
+	// draws it with
+	extensions(): number;
+	// whether it is drawn with its primitives' tangents (a normal map, the
+	// clear coat's own, an anisotropy: NormalMaps)
+	tangents(): boolean;
+}
+
+// a map's uvs (Material.textureTransforms): TEXCOORD_0 or _1 (texCoord),
+// turned by rotation (radians), scaled, then moved (KHR_texture_transform)
+export declare class UvTransform {
+	constructor(offset?: Vec2, rotation?: number, scale?: Vec2, texCoord?: number);
+	offset: Vec2;
+	rotation: number;
+	scale: Vec2;
+	texCoord: number;
+}
+
+// The physical shader for every material (DESIGN-3D.md 1.3): one variant
+// set with every glTF material extension (PhysicalShader.ALL: sheen,
+// specular and ior, clearcoat with its maps, transmission and volume,
+// iridescence, anisotropy; each core map at its own uvs), drawing each material whose fields use one
+// (Material.extensions) and that has no shader of its own: a model loaded
+// at run time (Model.load, whose extensions are not known when compiling),
+// or materials made in code. Opted in, as it is big (one shader with every
+// layer, each a branch on the material's values):
+//
+//   renderer.use(new Physical());   // made before Model.load's models are read
+//
+// Model.of's models need none: their materials get the variants of the
+// extensions they use, made when compiling (PhysicalShader).
+export declare class Physical {
+	// (glTF files read from now on read their extensions: GltfExtensions;
+	// made before the models load)
+	constructor();
+	attach(renderer: Renderer): void;
+	// the shader of a material that uses an extension (Material.extensions)
+	shaderOf(m: Material): MaterialShader | null;
+}
+
+// The opaque frame behind see-through surfaces (DESIGN-3D.md 1.3:
+// KHR_materials_transmission and _volume), what a physical shader's
+// transmitting surface (PhysicalShader, Material.transmission) shows
+// through it, refracted by its ior and thickness and blurred by its
+// roughness (a mip level a roughness): once a frame that draws one, after
+// the opaque surfaces and the AfterOpaque hooks (the sky), the frame's pass
+// is ended, its colour copied into a mip-mapped texture of the target's
+// format, and the pass begun again where it was (its colour and depth
+// kept), the see-through surfaces drawn after:
+//
+//   renderer.use(new Transmission(renderer.device));
+//
+// An offscreen renderer's (a <Scene>'s box, drawInto: the frame's colour
+// is a texture there); a renderer of the device's frame, or a frame with no
+// transmitting surface in view, copies nothing. Without it a transmitting
+// surface shows the environment refracted through it instead. Its cost: a
+// copy of the frame and its mips (a third more) in the target's format,
+// a pass split in two on the frames that need it (Renderer.split counts them).
+export declare class Transmission {
+	constructor(device: Device);
+	readonly device: Device;
+	attach(renderer: Renderer): void;
+	// the frame's pass (pass, into textures of width x height texels of
+	// format) ended, its colour so far copied (resolved) and its mips made,
+	// the pass begun again where it was; returns the copy
+	capture(enc: Encoder, pass: { colors: Array<{ load: number; clear?: unknown; texture?: number; resolve?: number }>; depth?: { load: number; clear?: number; texture?: number }; queries?: number }, width: number, height: number, format: number): number;
+	// the copy's mip levels below its first (the roughest's)
+	levels(): number;
+	dispose(): void;
 }
 
 // The mesh a node draws: a component (a store keyed by node), several
@@ -1019,7 +1164,12 @@ export declare class Sprites extends InstancedMesh {
 // path known only at run time (an Asset, names unknown, not bundled).
 //
 // Its GPU meshes are made by the first instantiate with a device and
-// shared by every instance.
+// shared by every instance. Its materials' glTF extensions (sheen,
+// specular, clearcoat, transmission, iridescence, anisotropy) are read when
+// compiling too: each set its materials use is compiled into the build
+// (PhysicalShader), and no other, so a game whose models have no sheen links
+// no sheen; a model Model.load reads is drawn by Physical's (every
+// extension), when the program uses it.
 export declare class Model<N, M, A, C> {
 	// a model whose path is known only at run time: loaded in the background
 	// (in the browser fetched, relative to the page; natively read at once),
@@ -1076,6 +1226,9 @@ export declare class MaterialShader {
 	// the blocks of the material's own: its parameter's name, its slot, in
 	// each variant (in the order above; -1: not in it)
 	readonly blocks: Array<{ name: string; bindings: number[] }>;
+	// the glTF extensions its variants have (PhysicalShader's: Material's
+	// flags, SHEEN ...; 0: none, a material's own slots)
+	extensions: number;
 }
 
 // The post-process chain of an HDR frame (Renderer.hdr: drawn in linear

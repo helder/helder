@@ -116,11 +116,12 @@ URIs or files `resolve` returns) and .glb, into a `GltfDoc`: typed and
 checked data (indices in range, views inside buffers, accessors inside
 views). `doc.floats(accessor)` and `doc.indices(accessor)` read accessors of
 any component type, normalized or strided. Materials' extensions:
-KHR_texture_transform (one transform for a material's maps: the base
-colour's, else the first one's), KHR_materials_emissive_strength,
-KHR_materials_clearcoat (its factor and roughness) and
-KHR_materials_transmission (its factor); alphaMode MASK is cut out at
-alphaCutoff. `GltfNodes.build(doc, world, ?parent, ?scene, ?mesh)` makes the node
+KHR_texture_transform (one transform for a material's maps, or each map
+its own with TEXCOORD_1: `Material.textureTransforms`),
+KHR_materials_emissive_strength, KHR_materials_clearcoat,
+_transmission, _volume, _ior, _specular, _sheen, _iridescence and
+_anisotropy with their maps ([Materials](#the-gltf-material-extensions));
+alphaMode MASK is cut out at alphaCutoff. `GltfNodes.build(doc, world, ?parent, ?scene, ?mesh)` makes the node
 hierarchy (TRS or matrices, cameras); `GltfScene` makes the GPU meshes and
 materials once and `instantiate(world)` copies the hierarchy into a world.
 helder.asset's `Asset.embed(path)` builds a file into the code itself.
@@ -320,9 +321,86 @@ dropped), a clear coat (`clearcoat`, `clearcoatRoughness`: a polished
 dielectric layer, its reflection of the sun and the environment over the
 base) and transmission (`transmission`: a thin surface, drawn see-through
 twice: what is behind multiplied by its colour, then its reflections over
-it; no refraction or blur).
+it). The rest of glTF's material extensions are the physical shaders',
+below.
 
 Example: [Materials](/docs/examples/scene-materials/Materials.hx) (`helder run docs/examples/scene-materials/Materials.hx`; it plays in the docs' page).
+
+### The glTF material extensions
+
+glTF's material extensions are `Material`'s fields, with glTF's names:
+
+| Extension | Fields |
+|---|---|
+| KHR_materials_sheen | `sheenColor`, `sheenRoughness`, `sheenColorTexture`, `sheenRoughnessTexture` |
+| KHR_materials_specular, _ior | `specularFactor`, `specularColor`, `specularTexture`, `specularColorTexture`, `ior` |
+| KHR_materials_clearcoat | `clearcoat`, `clearcoatRoughness`, `clearcoatTexture`, `clearcoatRoughnessTexture`, `clearcoatNormalTexture`, `clearcoatNormalScale` |
+| KHR_materials_transmission, _volume | `transmission`, `transmissionTexture`, `thickness`, `thicknessTexture`, `attenuationColor`, `attenuationDistance` |
+| KHR_materials_iridescence | `iridescence`, `iridescenceIor`, `iridescenceThicknessMinimum`, `iridescenceThicknessMaximum`, `iridescenceTexture`, `iridescenceThicknessTexture` |
+| KHR_materials_anisotropy | `anisotropy`, `anisotropyRotation`, `anisotropyTexture` |
+| TEXCOORD_1, a transform a map | `textureTransforms` (a `UvTransform` each for the base colour, metallic-roughness, normal, occlusion and emissive maps) |
+
+They are build-time options of `pbr` (`sheen`, `specular`, `clearcoat`,
+`transmission`, `iridescence`, `anisotropy`, `uvSets`), not a shader
+made at run time: a variant with one fills that layer of the surface
+(`LitSurface`'s optional fields) between the surface's slots and the
+lights, and its `direct` and `indirect` slots are the physical ones
+(`physicalDirect`, `physicalIndirect`): Charlie's sheen, the specular
+layer's f0 and f90, a clear coat with its own normal and roughness,
+Belcour and Barla's thin film, anisotropic GGX with a bent reflection,
+refraction through a volume with Beer's absorption. A layer a variant does
+not fill reads as nothing and its code folds away (helder.gfx's `Prune`):
+a variant without sheen has no sheen in its text. `PhysicalShader.of({sheen:
+true, clearcoat: true})` is the `MaterialShader` of a set, each set
+compiled once a build, linked only where it is named.
+
+Which sets a game has comes from its models: `Model.of` reads each
+material's extensions when compiling and names the sets they use, so a
+game whose models have no sheen links no sheen. Materials made in code, and
+models loaded at run time (`Model.load`, whose files are not known when
+compiling), are drawn by `Physical`, the set with every extension, opted
+in (one large shader):
+
+```haxe
+renderer.use(new Physical());                 // materials whose fields use an extension
+renderer.use(new Transmission(device));       // the opaque frame behind see-through ones
+```
+
+Example: [glTF material extensions](/docs/examples/scene-physical/Extensions.hx) (`helder run docs/examples/scene-physical/Extensions.hx`; it plays in the docs' page).
+
+`Transmission` copies the opaque frame (with its mips) once a frame that
+has a transmitting surface in view, after the opaque surfaces and the sky:
+the frame's pass is split there, the copy read through the surface at the
+point its refracted view leaves it, at the mip level of its roughness. It
+needs the frame in a texture (an offscreen renderer: a `<Scene>`'s box,
+`drawInto`); without it a transmitting surface shows the environment
+refracted through it. A material's extension maps are read from up to two
+images (glTF's channels: sheen's colour and roughness in one, the coat's
+factor and roughness...: helder.gfx's 16 slots a shader).
+
+Costs, at the renderer's level (`tests/3d/size/sizes.sh`'s phase 6 rows, a
+glTF model drawn, `-dce full`), what each adds when a material uses it,
+its variants' shader text most of it:
+
+| Used | Linux x86-64 | wasm32 |
+|---|---|---|
+| none (the renderer, against main before phase 6) | +5.5 KB | -4.8 KB |
+| sheen | +228 KB | +343 KB |
+| specular (and ior) | +224 KB | +335 KB |
+| clearcoat | +228 KB | +341 KB |
+| transmission (and volume) | +228 KB | +347 KB |
+| iridescence | +236 KB | +358 KB |
+| anisotropy | +228 KB | +346 KB |
+| uvSets (TEXCOORD_1) | +253 KB | +375 KB |
+| `Physical` (every one) | +303 KB | +492 KB |
+| `Transmission` | +23 KB | +22 KB |
+
+Unused, the extensions add the larger material block alone (its fields
+in each variant's text): their reading and binding are linked by
+`Physical` and `Model.of`'s sets only (helder.gfx's writers, shorter with
+this change, make up for it as wasm32).
+
+Against Khronos' sample viewer: [examples/gltf-showcase](/examples/gltf-showcase/README.md).
 
 ### A material of its own
 

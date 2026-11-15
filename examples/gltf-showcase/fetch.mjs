@@ -28,6 +28,21 @@ export const SHOWCASE = [
 	['EmissiveStrengthTest', 'glTF-Binary/EmissiveStrengthTest.glb'],
 	['ClearCoatTest', 'glTF-Binary/ClearCoatTest.glb'],
 	['TransmissionTest', 'glTF-Binary/TransmissionTest.glb'],
+	// (the other material extensions: KHR_materials_sheen, _iridescence, _anisotropy, _ior, _specular, _volume)
+	['SheenChair', 'glTF-Binary/SheenChair.glb'],
+	['IridescenceLamp', 'glTF-Binary/IridescenceLamp.glb'],
+	['AnisotropyBarnLamp', 'glTF-Binary/AnisotropyBarnLamp.glb'],
+	['IORTestGrid', 'glTF-Binary/IORTestGrid.glb'],
+	['SpecularTest', 'glTF-Binary/SpecularTest.glb'],
+	['DragonAttenuation', 'glTF-Binary/DragonAttenuation.glb'],
+	['CompareSheen', 'glTF-Binary/CompareSheen.glb'],
+	['CompareIridescence', 'glTF-Binary/CompareIridescence.glb'],
+	['CompareAnisotropy', 'glTF-Binary/CompareAnisotropy.glb'],
+	['CompareSpecular', 'glTF-Binary/CompareSpecular.glb'],
+	['CompareIor', 'glTF-Binary/CompareIor.glb'],
+	['CompareVolume', 'glTF-Binary/CompareVolume.glb'],
+	['AttenuationTest', 'glTF-Binary/AttenuationTest.glb'],
+	['TransmissionRoughnessTest', 'glTF-Binary/TransmissionRoughnessTest.glb'],
 ];
 
 async function get(url) {

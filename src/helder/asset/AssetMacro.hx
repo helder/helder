@@ -37,8 +37,13 @@ class AssetMacro {
 		// (its names typed from the file: a change to it types the module again)
 		Context.registerModuleDependency(Context.getLocalModule(), f);
 		var n = helder.scene.render.Model.names(File.getBytes(f), path, Context.currentPos());
-		return macro @:pos(Context.currentPos()) helder.scene.render.Model.asset(${key(path, false)}, $v{devPath(f)}, ${n.nodes}, ${n.meshes},
-			${n.materials}, ${n.animations});
+		var made = macro @:pos(Context.currentPos()) helder.scene.render.Model.asset(${key(path, false)}, $v{devPath(f)}, ${n.nodes}, ${n.meshes},
+			${n.materials}, ${n.animations}, ${n.physical});
+		// (its extensions read when it has some: GltfExtensions)
+		return n.physical.expr.match(EConst(CIdent("null"))) ? made : macro {
+			helder.scene.gltf.GltfExtensions.install();
+			$made;
+		};
 	}
 
 	public static function embed(path:String):Expr {

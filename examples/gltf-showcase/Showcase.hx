@@ -21,7 +21,21 @@ class Showcase {
 		{name: "TextureTransformTest", credit: "CC0 Microsoft"},
 		{name: "EmissiveStrengthTest", credit: "CC BY 4.0 Ed Mackey"},
 		{name: "ClearCoatTest", credit: "CC BY 4.0 Ed Mackey"},
-		{name: "TransmissionTest", credit: "CC0 Adobe"}
+		{name: "TransmissionTest", credit: "CC0 Adobe"},
+		{name: "SheenChair", credit: "CC0 Eric Chadwick"},
+		{name: "IridescenceLamp", credit: "CC BY 4.0 Eric Chadwick"},
+		{name: "AnisotropyBarnLamp", credit: "CC BY 4.0 Eric Chadwick"},
+		{name: "IORTestGrid", credit: "CC0 Eric Chadwick"},
+		{name: "SpecularTest", credit: "CC BY 4.0 Ed Mackey"},
+		{name: "DragonAttenuation", credit: "Stanford Graphics, Morgan McGuire's archive; CC0 Adobe"},
+		{name: "CompareSheen", credit: "CC0 Eric Chadwick and DGG"},
+		{name: "CompareIridescence", credit: "CC0 Eric Chadwick and DGG"},
+		{name: "CompareAnisotropy", credit: "CC0 Eric Chadwick and DGG"},
+		{name: "CompareSpecular", credit: "CC0 Eric Chadwick and DGG"},
+		{name: "CompareIor", credit: "CC0 Eric Chadwick and DGG"},
+		{name: "CompareVolume", credit: "CC0 Eric Chadwick and DGG"},
+		{name: "AttenuationTest", credit: "CC BY 4.0 Ed Mackey"},
+		{name: "TransmissionRoughnessTest", credit: "CC BY 4.0 Ed Mackey"}
 	];
 	// the environments: file, label, intensity (envbake.py's scale)
 	public static final ENVIRONMENTS:Array<{file:String, label:String, intensity:Float}> = [
@@ -46,11 +60,15 @@ class Showcase {
 	}
 
 	// #region environments
-	// the renderer's features: normal maps, the environments (the first
-	// shown), bloom and ACES; envs: each environment's atlas bytes
+	// the renderer's features: normal maps, the glTF extensions of models
+	// loaded at run time (Physical) with the frame behind see-through ones
+	// (Transmission), the environments (the first shown), bloom and ACES;
+	// envs: each environment's atlas bytes
 	public function setup(r:Renderer, envs:Array<haxe.io.Bytes>) {
 		r.clearColor = new helder.gfx.Color(0.05, 0.05, 0.06, 1);
 		r.use(new NormalMaps(r.device));
+		r.use(new Physical());
+		r.use(new Transmission(r.device));
 		environments = [];
 		for (k in 0...envs.length) {
 			var e = Environment.prefiltered(r.device, "image/png", envs[k], 6);

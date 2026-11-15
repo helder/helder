@@ -134,3 +134,25 @@ interface NormalSource {
 	// the vertex buffers' layout (instanced: with the instances' third), for a material's own shader
 	function layout(instanced:Bool):Array<helder.gfx.VertexBufferLayout>;
 }
+
+// the physical shader of materials with glTF extensions and none of their
+// own (Physical: every extension's; null for a material that uses none)
+interface PhysicalSource {
+	function shaderOf(m:Material):Null<MaterialShader>;
+}
+
+// a physical shader's material data (PhysicalLayers): the extensions' fields
+// into the material's block, their maps and the frame behind bound
+interface LayerSource {
+	function block(m:Material, out:PbrShader.PbrMaterial, behind:Float):Void;
+	function layout(base:Array<helder.gfx.VertexBufferLayout>):Array<helder.gfx.VertexBufferLayout>;
+	function bind(enc:helder.gfx.Encoder, slots:Array<Int>, sampler:helder.gfx.Sampler, white:helder.gfx.Texture, behind:helder.gfx.Texture,
+		behindSampler:helder.gfx.Sampler):Void;
+}
+
+// what draws the opaque frame behind see-through surfaces (Transmission:
+// Renderer splits its pass there, the copy read by the physical shaders)
+interface TransmissionSource {
+	function capture(enc:helder.gfx.Encoder, pass:helder.gfx.PassDesc, width:Int, height:Int, format:helder.gfx.TextureFormat):helder.gfx.Texture;
+	function levels():Float;
+}

@@ -4,7 +4,7 @@
 // textures. (A literal below 1e-4 is printed by each runtime's Std.string:
 // Haxe's macros write 1e-06 where helder's compiler writes 0.000001, so
 // Pbr.hx writes it as this does.)
-import {pbr} from "helder/scene";
+import {pbr, physicalDirect, physicalIndirect, physicalMetalness, physicalRoughness, physicalEmissive} from "helder/scene";
 import {print} from "./print";
 
 print(pbr.variant());
@@ -16,3 +16,7 @@ print(pbr.variant({instanced: true, normalMap: true}));
 print(pbr.variant({prepass: true}));
 print(pbr.variant({prepass: true, instanced: true}));
 print(pbr.variant({prepass: true, skinned: true}));
+// (the physical material's, PhysicalShader's: every glTF extension, normal mapped; sheen alone)
+const physical = pbr.with({direct: physicalDirect, indirect: physicalIndirect, metalness: physicalMetalness, roughness: physicalRoughness, emissive: physicalEmissive});
+print(physical.variant({sheen: true, specular: true, clearcoat: true, transmission: true, iridescence: true, anisotropy: true, uvSets: true, normalMap: true}));
+print(pbr.with({direct: physicalDirect, indirect: physicalIndirect}).variant({sheen: true}));

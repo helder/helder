@@ -94,6 +94,13 @@ class Material {
 	public var uvOffset = new Vec2(0, 0);
 	public var uvRotation = 0.0;
 	public var uvScale = new Vec2(1, 1);
+	// each core map's own uvs (glTF: a texture's texCoord, TEXCOORD_0 or
+	// _1, and its own KHR_texture_transform), in order base colour,
+	// metallic-roughness, normal, occlusion, emissive (the extensions' maps
+	// read the base colour's); null: the transform above for all, on the
+	// first uvs. Drawn by a physical shader (PhysicalShader's uvSets), its
+	// primitives' second uvs their own buffer (Mesh.Primitive.uv1)
+	public var textureTransforms:Null<Array<UvTransform>> = null;
 	// glTF's alphaMode MASK: fragments whose alpha is below it are dropped,
 	// the rest opaque (0: none)
 	public var alphaCutoff = 0.0;
@@ -105,14 +112,69 @@ class Material {
 	// a clear coat over the surface (KHR_materials_clearcoat): how much (0
 	// to 1) and its roughness; a polished dielectric layer (f0 0.04) whose
 	// reflection, from the sun and the environment, is added over the base
-	// and dims it by its Fresnel
+	// and dims it by its Fresnel. With a physical shader (PhysicalShader:
+	// Model.of's, or Physical's for any material) each light's, and its maps:
+	// clearcoatTexture's red times clearcoat, clearcoatRoughnessTexture's
+	// green times its roughness, clearcoatNormalTexture its own normal map
+	// (its x and y scaled by clearcoatNormalScale; else the geometry's normal)
 	public var clearcoat = 0.0;
 	public var clearcoatRoughness = 0.0;
+	public var clearcoatTexture:Null<Texture>;
+	public var clearcoatRoughnessTexture:Null<Texture>;
+	public var clearcoatNormalTexture:Null<Texture>;
+	public var clearcoatNormalScale = 1.0;
 	// how much of the light goes through it (KHR_materials_transmission, 0
-	// to 1), a thin surface without refraction: its diffuse light replaced
+	// to 1; transmissionTexture's red times it): its diffuse light replaced
 	// by what is behind it (drawn see-through, Premultiplied, after the
-	// opaque surfaces), its reflections kept
+	// opaque surfaces), its reflections kept. The standard shader's: a thin
+	// surface, what is behind tinted by its colour; a physical shader's:
+	// what is behind refracted through it (the opaque frame with
+	// Transmission, else the environment), blurred by its roughness
 	public var transmission = 0.0;
+	public var transmissionTexture:Null<Texture>;
+	// its volume (KHR_materials_volume, a physical shader's): how thick it
+	// is (in its node's units, 0: thin; thicknessTexture's green times it),
+	// and the light it absorbs on the way through: attenuationColor reached
+	// at attenuationDistance (0: none, glTF's infinity), Beer's law
+	public var thickness = 0.0;
+	public var thicknessTexture:Null<Texture>;
+	public var attenuationColor = new Vec3(1, 1, 1);
+	public var attenuationDistance = 0.0;
+	// its index of refraction (KHR_materials_ior: 1.5, a dielectric's 0.04
+	// reflectance at normal incidence), and that reflectance's strength and
+	// colour (KHR_materials_specular: specularTexture's alpha times
+	// specularFactor, specularColorTexture's colour, sRGB, times
+	// specularColor; a metal's is its albedo); a physical shader's
+	public var ior = 1.5;
+	public var specularFactor = 1.0;
+	public var specularColor = new Vec3(1, 1, 1);
+	public var specularTexture:Null<Texture>;
+	public var specularColorTexture:Null<Texture>;
+	// a sheen over it (KHR_materials_sheen, cloth's and velvet's: black for
+	// none), its colour (linear; sheenColorTexture's, sRGB, times it) and
+	// roughness (sheenRoughnessTexture's alpha times it); a physical shader's
+	public var sheenColor = new Vec3(0, 0, 0);
+	public var sheenRoughness = 0.0;
+	public var sheenColorTexture:Null<Texture>;
+	public var sheenRoughnessTexture:Null<Texture>;
+	// a thin film over it (KHR_materials_iridescence: soap bubbles, oil):
+	// how much (iridescenceTexture's red times it), the film's index of
+	// refraction and thickness in nanometres (iridescenceThicknessTexture's
+	// green from the minimum to the maximum); a physical shader's
+	public var iridescence = 0.0;
+	public var iridescenceIor = 1.3;
+	public var iridescenceThicknessMinimum = 100.0;
+	public var iridescenceThicknessMaximum = 400.0;
+	public var iridescenceTexture:Null<Texture>;
+	public var iridescenceThicknessTexture:Null<Texture>;
+	// its highlight stretched (KHR_materials_anisotropy: brushed metal):
+	// how much (0 to 1), along the tangent turned by anisotropyRotation
+	// (radians), or anisotropyTexture's direction (red and green) and
+	// strength (blue, times anisotropy); drawn with its primitive's
+	// tangents (NormalMaps); a physical shader's
+	public var anisotropy = 0.0;
+	public var anisotropyRotation = 0.0;
+	public var anisotropyTexture:Null<Texture>;
 	// the toon model's (Material.toon): bands of each light's n.l (1 or
 	// more), and the shaded side's share of the albedo (linear)
 	public var steps = 3;
@@ -210,6 +272,27 @@ class Material {
 		return m;
 	}
 
+	// the glTF extensions its fields use (PhysicalShader's options, as
+	// flags: SHEEN, SPECULAR, CLEARCOAT, TRANSMISSION, IRIDESCENCE,
+	// ANISOTROPY; 0: none, the standard shader's surface); what Physical
+	// draws it with
+	public function extensions():Int
+		return PhysicalShader.flags(sheenColor.x, sheenColor.y, sheenColor.z, ior, specularFactor, specularColor.x, specularColor.y, specularColor.z,
+			specularTexture != null || specularColorTexture != null, clearcoat, transmission, iridescence, anisotropy, textureTransforms != null);
+
+	// whether it is drawn with its primitives' tangents (a normal map, the
+	// clear coat's own, an anisotropy: NormalMaps)
+	public function tangents():Bool
+		return normalTexture != null || (clearcoat > 0 && clearcoatNormalTexture != null) || anisotropy > 0;
+
+	public static inline var SHEEN = 1;
+	public static inline var SPECULAR = 2;
+	public static inline var CLEARCOAT = 4;
+	public static inline var TRANSMISSION = 8;
+	public static inline var IRIDESCENCE = 16;
+	public static inline var ANISOTROPY = 32;
+	public static inline var UV_SETS = 64;
+
 	// (a material of the options given, the others the defaults)
 	static function made(o:Null<MaterialOptions>):Material {
 		var m = new Material();
@@ -228,6 +311,22 @@ class Material {
 		if (o.castShadows != null) m.castShadows = o.castShadows;
 		if (o.toneMapped != null) m.toneMapped = o.toneMapped;
 		return m;
+	}
+}
+
+// a map's uvs (Material.textureTransforms): TEXCOORD_0 or _1 (texCoord),
+// turned by rotation (radians), scaled, then moved (KHR_texture_transform)
+class UvTransform {
+	public var offset:Vec2;
+	public var rotation:Float;
+	public var scale:Vec2;
+	public var texCoord:Int;
+
+	public function new(?offset:Vec2, rotation = 0.0, ?scale:Vec2, texCoord = 0) {
+		this.offset = offset != null ? offset : new Vec2(0, 0);
+		this.rotation = rotation;
+		this.scale = scale != null ? scale : new Vec2(1, 1);
+		this.texCoord = texCoord;
 	}
 }
 
