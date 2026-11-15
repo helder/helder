@@ -1205,8 +1205,6 @@ one with custom data (its second buffer is not culled with it), a
 see-through one (its order is its own: `Sprites`), more than four levels
 or four primitives a level. Shadows draw every instance at the set's mesh.
 
-Example: [Levels of detail](/docs/examples/scene-lod/Levels.hx) (`helder run docs/examples/scene-lod/Levels.hx`; it plays in the docs' page).
-
 Measured (`tests/3d/LightBench.hx`, as [Lights and
 shadows](#many-lights)): a field of 20,000 spheres of three
 levels, 678 of them in view, drawn whole 438 ms a frame; culled and
