@@ -26,6 +26,10 @@ class Pbr {
 			cast helder.scene.render.PbrPrepassShader.PbrPrepassShader,
 			cast helder.scene.render.PbrPrepassInstancedShader.PbrPrepassInstancedShader,
 			cast helder.scene.render.PbrPrepassSkinnedShader.PbrPrepassSkinnedShader,
+			cast helder.scene.render.PbrProbesShader.PbrProbesShader,
+			cast helder.scene.render.PbrProbesShader.PbrInstancedProbesShader,
+			cast helder.scene.render.PbrAreaShader.PbrAreaShader,
+			cast helder.scene.render.PbrAreaShader.PbrInstancedAreaProbesShader,
 			all.normalMapped,
 			sheen.plain
 		];

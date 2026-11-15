@@ -44,8 +44,9 @@ for o in lines debug grid raycast text3d debugcalls; do
 done
 # (phase 4's opt-ins at the renderer's level: clustered lighting, instance
 # culling, levels of detail, each a cost only when used; phase 6's glTF
-# material extensions, each alone, then Physical's and Transmission)
-for o in clustered culling lod sheen specular clearcoat transmission iridescence anisotropy uvsets physical refraction; do
+# material extensions, each alone, then Physical's and Transmission; phase
+# 5's indirect light: the prefilter, Probes, AreaLights, Lightmaps)
+for o in clustered culling lod sheen specular clearcoat transmission iridescence anisotropy uvsets physical refraction prefilter probes area lightmaps; do
 	"$tool" "$out/$o" "$@" -main Size -D size_level=4 -D size_$o -D hxmc.libc=glibc -D hxmc.target=linux-x86_64 > "$out/$o.log" 2>&1 || { cat "$out/$o.log"; exit 1; }
 	"$tool" "$out/$o.wasm" "$@" -main Size -D size_level=4 -D size_$o -D hxmc.target=wasm32-wasi > "$out/$o.wasm.log" 2>&1 || { cat "$out/$o.wasm.log"; exit 1; }
 	sn=$(wc -c < "$out/$o") sw=$(wc -c < "$out/$o.wasm")

@@ -57,7 +57,6 @@ class Environment implements RenderFeature {
 	var prefilterer:Null<Prefilter> = null;
 	@:noCompletion public var linear(default, null) = false;
 
-	var pipeline:Pipeline = cast 0; // (the renderer's, when attached)
 	final quad:Buffer;
 	final sampler:Sampler;
 	// (an atlas's: one level)
@@ -175,10 +174,11 @@ class Environment implements RenderFeature {
 
 	var filled = false;
 
+	// (each renderer its pipeline: Probes' twin draws it too)
 	public function attach(renderer:Renderer) {
-		pipeline = renderer.createPipeline(EnvironmentShader.pipeline());
+		var pipeline = renderer.createPipeline(EnvironmentShader.pipeline());
 		@:privateAccess renderer.environment = this;
-		renderer.inject(BeforeOpaque, (enc, frame) -> if (background) draw(enc, frame, renderer));
+		renderer.inject(BeforeOpaque, (enc, frame) -> if (background) draw(enc, frame, renderer, pipeline));
 		// (prefilter's atlas filled at the first frame)
 		if (atlas != null) renderer.inject(BeforePass, (enc, frame) -> fill(enc));
 	}
@@ -201,7 +201,7 @@ class Environment implements RenderFeature {
 	@:allow(helder.scene.render) function frameVector():Vec4
 		return atlas != null ? new Vec4(intensity, -1, cellLevels, cellSize) : new Vec4(intensity, levels, rows, edge);
 
-	function draw(enc:Encoder, frame:Renderer.FrameInfo, renderer:Renderer) {
+	function draw(enc:Encoder, frame:Renderer.FrameInfo, renderer:Renderer, pipeline:Pipeline) {
 		var e = frame.eye;
 		var b = block;
 		b.invViewProj = MathTools.inverse(frame.viewProj);

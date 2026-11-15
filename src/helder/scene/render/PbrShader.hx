@@ -77,6 +77,16 @@ typedef PbrVaryings = {
 	// reads PbrObject crashes Android's emulator's GL, its host SwiftShader)
 	var lights0:Vec4;
 	var lights1:Vec4;
+	// (probes: the light probes' irradiance along the vertex's normal, w 1
+	// when it has some; the draw's two reflection probes, PbrProbes')
+	@:optional var ambient:Vec4;
+	@:optional var probeA:Vec4;
+	@:optional var extentA:Vec4;
+	@:optional var probeB:Vec4;
+	@:optional var extentB:Vec4;
+	// (lightmap: xy the lightmap's uvs, z its intensity, w its mode: 1 the
+	// lights baked too, plus 2 its colours sRGB-encoded)
+	@:optional var lightmapUv:Vec4;
 }
 
 // the vertex stage's parameters: per frame, per node (instanced: its light
@@ -85,6 +95,8 @@ typedef PbrVaryings = {
 typedef PbrVertexParams = {
 	var frame:PbrFrame;
 	@:optional var object:PbrObject;
+	@:optional var probes:PbrProbes;
+	@:optional var lightmap:PbrLightmap;
 	@:optional var skin:PbrSkinInfo;
 	@:optional var jointMatrices:Texture2D;
 }
@@ -115,6 +127,11 @@ typedef PbrFragmentParams = {
 	// pixels, red; read where frame.exposure.z is 1, else a white texel)
 	var aoMap:Texture2D;
 	@:optional var normalTexture:Texture2D;
+	// (area: AreaLights' linearly transformed cosines' two tables, 64 x 64
+	// each, one above the other: RGBA16F)
+	@:optional var ltcMap:Texture2D;
+	// (lightmap: the node's baked light, Lightmap's)
+	@:optional var lightMap:Texture2D;
 	// the prepass's (ViewBuffers: prepass variants only)
 	@:optional var prepass:PbrPrepass;
 	// the glTF extensions' (a variant with one: their factors the
@@ -152,8 +169,36 @@ typedef PbrOptions = {
 	// (the sun alone: no local lights' loop; the renderer's, a frame without them)
 	sunOnly:Bool,
 	// (the local lights unshadowed: no tile read; the renderer's, a frame none of whose local lights casts)
-	untiled:Bool
+	untiled:Bool,
+	// (the draw's light probes and reflection probes: Probes', PbrProbes)
+	probes:Bool,
+	// (area lights shaded with LTC: AreaLights')
+	area:Bool,
+	// (a baked lightmap at the second uvs: Lightmap's)
+	lightmap:Bool
 };
+
+// per draw, the probes' (Probes; the probes variants' vertex stage): the
+// light probes' irradiance at its centre (Sh.pack's seven vectors), and its
+// two reflection probes, each its box's centre (xyz; w its column of the
+// atlas, 0 none) and half size (xyz); extentA.w A's share against B (or
+// the environment), extentB.w 1 when sh holds light probes' light
+// per draw, a lightmap's (Lightmaps; the lightmap variant's vertex stage):
+// rect its place in its texture (xy the second uvs' offset, zw their scale),
+// params x its intensity, y its mode (1: the lights baked too, plus 2: its
+// colours sRGB-encoded)
+@:structInit @:publicFields class PbrLightmap {
+	var rect:Vec4;
+	var params:Vec4;
+}
+
+@:structInit @:publicFields class PbrProbes {
+	@:length(7) var sh:Array<Vec4>;
+	var probeA:Vec4;
+	var extentA:Vec4;
+	var probeB:Vec4;
+	var extentB:Vec4;
+}
 
 // per draw in the prepass (ViewBuffers): the camera's view (the normals
 // into view space) and x the draw's selection group (Outline.select: 0 none)
@@ -943,6 +988,115 @@ function reflected(frame:PbrFrame, environmentMap:Texture2D, r:Vec3, rough:Float
 	return env;
 }
 
+// the light around a surface with probes (Probes: the draw's, as varyings):
+// the light probes' irradiance where it has some (ambient.w), the
+// reflection probes' light along the reflection (A's share against B's, or
+// the environment's)
+function probeLight(env:IndirectLight, world:Vec3, n:Vec3, v:Vec3, rough:Float, ambient:Vec4, probeA:Vec4, extentA:Vec4, probeB:Vec4, extentB:Vec4,
+		t:Texture2D, e:Vec4):IndirectLight {
+	var irradiance = env.irradiance;
+	if (ambient.w > 0.5) irradiance = ambient.xyz;
+	var radiance = env.radiance;
+	if (probeA.w > 0.5) {
+		var r = reflect(-v, n);
+		var b = env.radiance;
+		if (probeB.w > 0.5) b = boxReflected(t, world, r, rough, probeB, extentB, e);
+		radiance = mix(b, boxReflected(t, world, r, rough, probeA, extentA, e), extentA.w);
+	}
+	return {irradiance: irradiance, radiance: radiance, occlusion: env.occlusion};
+}
+
+// a reflection probe's light along r from a point (its box: probe's centre,
+// extent's half size; captured at its centre): the direction from the centre
+// to where r leaves the box (parallax-corrected), in its column of the atlas
+function boxReflected(t:Texture2D, world:Vec3, r:Vec3, rough:Float, probe:Vec4, extent:Vec4, e:Vec4):Vec3 {
+	var rr = r + vec3(0.000001);
+	var a = (probe.xyz - extent.xyz - world) / rr;
+	var b = (probe.xyz + extent.xyz - world) / rr;
+	var far = max(a, b);
+	var dist = min(min(far.x, far.y), far.z);
+	return octReflected(t, world + r * max(dist, 0) - probe.xyz, rough, probe.w, e);
+}
+
+// an area light at a surface (AreaLights: its row, PbrLights' or the
+// cluster map's; ltc: the tables), linearly transformed cosines (Heitz et
+// al., three.js's fit): the light's polygon (a rectangle; a disc as an
+// octagon of its area) seen from the point, integrated against the cosine
+// (diffuse) and against GGX's lobe turned to a cosine by the tables' matrix
+// (specular, its Fresnel from the tables' magnitudes); none behind its
+// face; windowed to its range
+function areaLight(world:Vec3, n:Vec3, v:Vec3, rough:Float, albedo:Vec3, metalness:Float, f0:Vec3, pos:Vec4, color:Vec4, cone:Vec4, ltc:Texture2D):Vec3 {
+	var c = pos.xyz;
+	// (its normal: the row's packed octahedral place, FrameLights.packNormal)
+	var packed = cone.w - 4194304;
+	var qu = floor(packed / 2048);
+	var qv = packed - qu * 2048;
+	var ln = octDirection(vec2(qu, qv) / 2047 * 2 - 1);
+	var result = vec3(0);
+	if (dot(ln, world - c) > 0) {
+		var right = cone.xyz;
+		var r = normalize(right);
+		var up = cross(ln, r);
+		var rect = color.w < -0.75;
+		var count = rect ? 4.0 : 8.0;
+		var radius = length(right) * 1.0539889;
+		var ru = rect ? right * 1.4142136 : r * radius;
+		var uu = rect ? up * ((-1 - color.w) * 1.4142136) : up * radius;
+		var nv = clamp(dot(n, v), 0, 1);
+		var uv = vec2(rough, sqrt(1 - nv)) * 0.984375 + 0.0078125;
+		var t1 = sampleLevel(ltc, vec2(uv.x, uv.y * 0.5), 0);
+		var t2 = sampleLevel(ltc, vec2(uv.x, uv.y * 0.5 + 0.5), 0);
+		var tx = normalize(v - n * dot(v, n) + vec3(0.0001, 0, 0));
+		var ty = -cross(n, tx);
+		var rel = c - world;
+		var spec = ltcPolygon(rel, ru, uu, count, tx, ty, n, vec3(t1.x, 0, t1.y), vec3(t1.z, 0, t1.w));
+		var diff = ltcPolygon(rel, ru, uu, count, tx, ty, n, vec3(1, 0, 0), vec3(0, 0, 1));
+		var fresnel = f0 * t2.x + (vec3(1) - f0) * t2.y;
+		var q = length(rel) / pos.w;
+		var window = clamp(1 - q * q * q * q, 0, 1);
+		result = color.xyz * (albedo * ((1 - metalness) * diff) + fresnel * spec) * (window * window);
+	}
+	return result;
+}
+
+// a polygon's (count vertices round rel, its centre from the point: ru and uu
+// its axes to its vertices' circle) form factor through an LTC matrix (its
+// columns m0, (0, 1, 0), m2) in the frame tx, ty, n: each edge's vector form
+// factor summed, the clipped sphere's (three.js's LTC_ClippedSphereFormFactor)
+function ltcPolygon(rel:Vec3, ru:Vec3, uu:Vec3, count:Float, tx:Vec3, ty:Vec3, n:Vec3, m0:Vec3, m2:Vec3):Float {
+	var step = 6.2831853 / count;
+	var a = ltcVertex(rel, ru, uu, 0.5 * step, tx, ty, n, m0, m2);
+	var sum = vec3(0);
+	var k = 1.0;
+	while (k <= count) {
+		var b = ltcVertex(rel, ru, uu, (k + 0.5) * step, tx, ty, n, m0, m2);
+		sum += edgeFormFactor(a, b);
+		a = b;
+		k += 1;
+	}
+	var l = length(sum);
+	return max((l * l + sum.z) / (l + 1), 0);
+}
+
+// a polygon's vertex at an angle, into the LTC's space, unit
+function ltcVertex(rel:Vec3, ru:Vec3, uu:Vec3, angle:Float, tx:Vec3, ty:Vec3, n:Vec3, m0:Vec3, m2:Vec3):Vec3 {
+	var p = rel + ru * cos(angle) + uu * sin(angle);
+	var y = vec3(dot(tx, p), dot(ty, p), dot(n, p));
+	return normalize(m0 * y.x + vec3(0, y.y, 0) + m2 * y.z);
+}
+
+// an edge's vector form factor between two unit vertices (three.js's
+// LTC_EdgeVectorFormFactor: a fit of theta over sin theta)
+function edgeFormFactor(a:Vec3, b:Vec3):Vec3 {
+	var x = dot(a, b);
+	var y = abs(x);
+	var fa = 0.8543985 + (0.4965155 + 0.0145206 * y) * y;
+	var fb = 3.417594 + (4.1616724 + y) * y;
+	var v = fa / fb;
+	var t = x > 0 ? v : 0.5 * inversesqrt(max(1 - x * x, 0.000001)) - v;
+	return cross(a, b) * t;
+}
+
 // an octahedral atlas' light along a direction at a roughness (its column's
 // two rows by it, blended; e: PbrFrame's environment, its columns -y, its
 // rows of roughness z, its cells' texels w)
@@ -1456,7 +1610,12 @@ final pbr = slots({
 		// (the local lights unshadowed: no tile read, for a frame none of
 		// whose local lights casts, the renderer's; Android's emulator's
 		// SwiftShader fails to compile the stage with the tiles' lookup)
-		untiled: false
+		untiled: false,
+		// (each a feature's, compiled only where a frame uses it: Probes',
+		// AreaLights', Lightmap's)
+		probes: false,
+		area: false,
+		lightmap: false
 	},
 	vertex: function(v:PbrVertex, p:PbrVertexParams, m:Pbr):PbrVaryings {
 		var pos = m.position({pos: v.pos, normal: v.normal, uv: v.uv}, p);
@@ -1484,7 +1643,17 @@ final pbr = slots({
 			tint: m.options.instanced ? vec3(1 + v.m0.w, 1 + v.m1.w, 1 + v.m2.w) : p.object.tint.xyz,
 			// (the prepass lights nothing: its instanced variants bind no PbrObject)
 			lights0: m.options.prepass ? vec4(-1) : p.object.lights0,
-			lights1: m.options.prepass ? vec4(-1) : p.object.lights1
+			lights1: m.options.prepass ? vec4(-1) : p.object.lights1,
+			// (the light probes' irradiance along the vertex's normal, per vertex: their harmonics' polynomial)
+			ambient: m.options.probes ? vec4(shIrradiance(p.probes.sh[0], p.probes.sh[1], p.probes.sh[2], p.probes.sh[3], p.probes.sh[4], p.probes.sh[5],
+				p.probes.sh[6], normalize(m.options.instanced ? instanceNormal(v.m0.xyz, v.m1.xyz, v.m2.xyz, nr) : (p.object.normalMatrix * vec4(nr, 0)).xyz)),
+				p.probes.extentB.w) : vec4(0),
+			probeA: m.options.probes ? p.probes.probeA : vec4(0),
+			extentA: m.options.probes ? p.probes.extentA : vec4(0),
+			probeB: m.options.probes ? p.probes.probeB : vec4(0),
+			extentB: m.options.probes ? p.probes.extentB : vec4(0),
+			// (the lightmap's place at the second uvs)
+			lightmapUv: m.options.lightmap ? vec4(v.uv1 * p.lightmap.rect.zw + p.lightmap.rect.xy, p.lightmap.params.x, p.lightmap.params.y) : vec4(0)
 		};
 	},
 	fragment: function(i:PbrVaryings, p:PbrFragmentParams, m:Pbr):Vec4 {
@@ -1671,12 +1840,28 @@ final pbr = slots({
 							shadow = tileShadow(p.shadowMap, p.lights.tileViewProj[Std.int(tile)], p.lights.tileRect[Std.int(tile)], params, p.frame.shadowAtlas, at);
 						}
 					}
-					direct += m.direct(lit, localLight(lit.world, lit.normal, pos, color, cone, shadow), p);
+					// (area: a rect or disc light (colour's w below 0) by LTC; else, and
+					// in the variants without area lights, a point light)
+					if (m.options.area && color.w < -0.25) direct += areaLight(lit.world, lit.normal, lit.view, lit.roughness, lit.albedo, lit.metalness,
+						reflectance(lit, p.material), pos, color, cone, p.ltcMap);
+					else direct += m.direct(lit, localLight(lit.world, lit.normal, pos, color, cone, shadow), p);
 					k += 1;
 					index = lightIndex(p.frame.clusters, p.frame.clusterDepth, i.lights0, i.lights1, p.clusterMap, cell, k);
 				}
 			}
 			var env = ambientAt(lit, p.frame, p.material, p.occlusionTexture, p.environmentMap, p.aoMap);
+			// (probes: the light probes' irradiance, the reflection probes' light)
+			if (m.options.probes) env = probeLight(env, lit.world, lit.normal, lit.view, lit.roughness, i.ambient, i.probeA, i.extentA, i.probeB, i.extentB,
+				p.environmentMap, p.frame.environment);
+			// (lightmap: its baked light the irradiance; All: the lights' too, none added)
+			if (m.options.lightmap) {
+				var baked = sample(p.lightMap, i.lightmapUv.xy).xyz;
+				if (i.lightmapUv.w > 1.5) baked = pow(baked, vec3(2.2));
+				env = {irradiance: baked * i.lightmapUv.z, radiance: env.radiance, occlusion: env.occlusion};
+				// (the mode rounded: an interpolated 2 may be just below it)
+				var mode = floor(i.lightmapUv.w + 0.5);
+				if (mode - floor(mode * 0.5) * 2 > 0.5) direct = vec3(0);
+			}
 			out = shade(lit, direct, m.indirect(lit, env, p), env, m.emissive(s, p), p.frame, p.material, p.shadowMap, p.environmentMap);
 		}
 		return out;

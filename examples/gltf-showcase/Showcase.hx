@@ -62,8 +62,9 @@ class Showcase {
 	// #region environments
 	// the renderer's features: normal maps, the glTF extensions of models
 	// loaded at run time (Physical) with the frame behind see-through ones
-	// (Transmission), the environments (the first shown), bloom and ACES;
-	// envs: each environment's atlas bytes
+	// (Transmission), the environments (the first shown; prefiltered by
+	// helder at load from their atlases' first row, the panorama itself:
+	// Environment.prefilter), bloom and ACES; envs: each environment's atlas bytes
 	public function setup(r:Renderer, envs:Array<haxe.io.Bytes>) {
 		r.clearColor = new helder.gfx.Color(0.05, 0.05, 0.06, 1);
 		r.use(new NormalMaps(r.device));
@@ -71,8 +72,11 @@ class Showcase {
 		r.use(new Transmission(r.device));
 		environments = [];
 		for (k in 0...envs.length) {
-			var e = Environment.prefiltered(r.device, "image/png", envs[k], 6);
-			if (e == null) continue;
+			var image = Images.decode == null ? null : Images.decode("image/png", envs[k]);
+			if (image == null) continue;
+			// (the first row: the sphere at roughness 0, width by width / 2)
+			var w = image.width, h = w >> 1;
+			var e = Environment.prefilter(r.device, w, h, image.rgba.sub(0, w * h * 4), helder.gfx.TextureFormat.RGBA8, {size: 128, levels: 6});
 			e.intensity = ENVIRONMENTS[k].intensity;
 			r.use(e);
 			environments.push(e);

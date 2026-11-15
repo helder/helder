@@ -13,7 +13,9 @@
 // (world.raycast: Hit, HitList, RaycastOptions, Bvh), text in the world
 // (Text3D), lights at scale and their shadows (ClusteredLights and its
 // grid, Clusters; Shadows' atlas, a light's castShadows and shadow), levels
-// of detail (Lod, InstanceCulling), input
+// of detail (Lod, InstanceCulling), indirect light (Environment, prefiltered
+// by helder; Sh, LightProbe, ProbeGrid, ReflectionProbe and Probes; Lightmap
+// and Lightmaps; AreaLights), input
 // actions (InputMap, Bindings), a fixed simulation step, and what a scene is
 // drawn with: a window, its device (or a headless one), the app's loop. A
 // program imports helder/scene, not this module.
@@ -24,7 +26,7 @@ import type {Asset, FontFile, Image} from "helder/asset";
 import type {Mat4, Quat, Vec2, Vec3, Vec4} from "helder/gfx";
 import type {Node} from "helder/scene";
 
-declare const __haxe: {Mesh: "helder.scene.render.Mesh", Encoder: "helder.gfx.Encoder", World: "helder.scene.World", Camera: "helder.scene.Camera", Light: "helder.scene.render.Light", Renderer: "helder.scene.render.Renderer", Shadows: "helder.scene.render.Shadows", Fog: "helder.scene.render.Fog", Material: "helder.scene.render.Material", UvTransform: "helder.scene.render.Material.UvTransform", Physical: "helder.scene.render.Physical", Transmission: "helder.scene.render.Transmission", MeshRenderer: "helder.scene.render.MeshRenderer", Shapes: "helder.scene.render.Shapes", Geometry: "helder.scene.render.Geometry", VertexData: "helder.scene.render.VertexData", Curve3: "helder.scene.math.Curve3", InstancedMesh: "helder.scene.render.InstancedMesh", Sprites: "helder.scene.render.Sprites", Model: "helder.scene.render.Model", MaterialShader: "helder.scene.render.MaterialShader", PostProcess: "helder.scene.render.PostProcess", Ssao: "helder.scene.render.Ssao", Dof: "helder.scene.render.Dof", Outline: "helder.scene.render.Outline", Lut: "helder.scene.render.Lut", ViewBuffers: "helder.scene.render.ViewBuffers", Ssr: "helder.scene.render.Ssr", MotionBlur: "helder.scene.render.MotionBlur", GodRays: "helder.scene.render.GodRays", Taa: "helder.scene.render.Taa", Smaa: "helder.scene.render.Smaa", Occlusion: "helder.scene.render.Occlusion", Lines: "helder.scene.render.Lines", LineRenderer: "helder.scene.render.LineRenderer", DebugDraw: "helder.scene.render.DebugDraw", Helper: "helder.scene.render.Helper", AxesHelper: "helder.scene.render.AxesHelper", GridHelper: "helder.scene.render.GridHelper", BoundsHelper: "helder.scene.render.BoundsHelper", LightHelper: "helder.scene.render.LightHelper", CameraHelper: "helder.scene.render.CameraHelper", SkeletonHelper: "helder.scene.render.SkeletonHelper", Hit: "helder.scene.render.Hit", HitList: "helder.scene.render.Hit.HitList", RaycastOptions: "helder.scene.render.Hit.RaycastOptions", Raycaster: "helder.scene.render.Raycaster", Bvh: "helder.scene.render.Bvh", Text3D: "helder.scene.render.Text3D", ClusteredLights: "helder.scene.render.ClusteredLights", Clusters: "helder.scene.render.Clusters", Lod: "helder.scene.render.Lod", InstanceCulling: "helder.scene.render.InstanceCulling", InputMap: "helder.scene.input.InputMap", Bindings: "helder.scene.input.Bindings", FixedStep: "helder.scene.FixedStep", Device: "helder.gfx.Device", Surface: "helder.os.Surface", Window: "helder.os.Window", App: "helder.os.App", Event: "helder.os.Event", Script: "helder.scene.Script", __module: "helder.scene.TypeScript"};
+declare const __haxe: {Mesh: "helder.scene.render.Mesh", Encoder: "helder.gfx.Encoder", World: "helder.scene.World", Camera: "helder.scene.Camera", Light: "helder.scene.render.Light", Renderer: "helder.scene.render.Renderer", Shadows: "helder.scene.render.Shadows", Fog: "helder.scene.render.Fog", Material: "helder.scene.render.Material", UvTransform: "helder.scene.render.Material.UvTransform", Physical: "helder.scene.render.Physical", Transmission: "helder.scene.render.Transmission", MeshRenderer: "helder.scene.render.MeshRenderer", Shapes: "helder.scene.render.Shapes", Geometry: "helder.scene.render.Geometry", VertexData: "helder.scene.render.VertexData", Curve3: "helder.scene.math.Curve3", InstancedMesh: "helder.scene.render.InstancedMesh", Sprites: "helder.scene.render.Sprites", Model: "helder.scene.render.Model", MaterialShader: "helder.scene.render.MaterialShader", PostProcess: "helder.scene.render.PostProcess", Ssao: "helder.scene.render.Ssao", Dof: "helder.scene.render.Dof", Outline: "helder.scene.render.Outline", Lut: "helder.scene.render.Lut", ViewBuffers: "helder.scene.render.ViewBuffers", Ssr: "helder.scene.render.Ssr", MotionBlur: "helder.scene.render.MotionBlur", GodRays: "helder.scene.render.GodRays", Taa: "helder.scene.render.Taa", Smaa: "helder.scene.render.Smaa", Occlusion: "helder.scene.render.Occlusion", Lines: "helder.scene.render.Lines", LineRenderer: "helder.scene.render.LineRenderer", DebugDraw: "helder.scene.render.DebugDraw", Helper: "helder.scene.render.Helper", AxesHelper: "helder.scene.render.AxesHelper", GridHelper: "helder.scene.render.GridHelper", BoundsHelper: "helder.scene.render.BoundsHelper", LightHelper: "helder.scene.render.LightHelper", CameraHelper: "helder.scene.render.CameraHelper", SkeletonHelper: "helder.scene.render.SkeletonHelper", Hit: "helder.scene.render.Hit", HitList: "helder.scene.render.Hit.HitList", RaycastOptions: "helder.scene.render.Hit.RaycastOptions", Raycaster: "helder.scene.render.Raycaster", Bvh: "helder.scene.render.Bvh", Text3D: "helder.scene.render.Text3D", ClusteredLights: "helder.scene.render.ClusteredLights", Clusters: "helder.scene.render.Clusters", Lod: "helder.scene.render.Lod", InstanceCulling: "helder.scene.render.InstanceCulling", Environment: "helder.scene.render.Environment", Sh: "helder.scene.render.Sh", LightProbe: "helder.scene.render.LightProbe", ProbeGrid: "helder.scene.render.ProbeGrid", ReflectionProbe: "helder.scene.render.ReflectionProbe", Probes: "helder.scene.render.Probes", Lightmap: "helder.scene.render.Lightmap", Lightmaps: "helder.scene.render.Lightmaps", AreaLights: "helder.scene.render.AreaLights", InputMap: "helder.scene.input.InputMap", Bindings: "helder.scene.input.Bindings", FixedStep: "helder.scene.FixedStep", Device: "helder.gfx.Device", Surface: "helder.os.Surface", Window: "helder.os.Window", App: "helder.os.App", Event: "helder.os.Event", Script: "helder.scene.Script", __module: "helder.scene.TypeScript"};
 
 // What a node draws (node.mesh): primitives, each a vertex buffer in the
 // renderer's layout (PbrVertex: position, normal, uv; 32 bytes a vertex),
@@ -93,6 +95,9 @@ export type LineCap = number;
 
 // what kind of light a Light is
 export type LightKind = number;
+
+// what a Lightmap holds: the ambient light alone (the lights added), or all of it
+export type LightmapMode = number;
 
 export type AnyShader = unknown;
 
@@ -280,6 +285,17 @@ export declare class Camera {
 //                 (groundColor), blended by a surface's normal: three's
 //                 HemisphereLight, the renderer's sky and ground (which a
 //                 world without one uses)
+//   RectArea      a rectangle (width along its node's x, height along its
+//                 y) shining down its node's -z, from its front only: a
+//                 window, a panel, a screen (three's RectAreaLight); color
+//                 times intensity its radiance (three's units), windowed to
+//                 nothing at its range
+//   DiscArea      a disc of radius, likewise
+//
+// Area lights are shaded with linearly transformed cosines (Heitz et al.)
+// with AreaLights (renderer.use(new AreaLights(device)): the standard
+// material's area variants); without it, and by other materials, as a
+// point light at their centre. They cast no shadows.
 //
 // The renderer takes the world's first directional light (its cascades
 // Shadows'), its first hemisphere light, and up to MAX_LIGHTS point and
@@ -298,6 +314,12 @@ export declare class Light {
 	// three's HemisphereLight: the sky's colour from above, the ground's from
 	// below, both times intensity (in place of the renderer's sky and ground)
 	static hemisphere(sky: Vec3, ground: Vec3, intensity?: number): Light;
+	// three's RectAreaLight: a rectangle of width (its node's x) by height
+	// (its y) shining down its node's -z (color times intensity its
+	// radiance), reaching range
+	static rectArea(color: Vec3, intensity: number, width: number, height: number, range?: number): Light;
+	// a disc of radius shining down its node's -z, reaching range
+	static discArea(color: Vec3, intensity: number, radius: number, range?: number): Light;
 	static attach(node: Node, light: Light): Light;
 	static of(node: Node): Light | null;
 	readonly kind: LightKind;
@@ -310,14 +332,20 @@ export declare class Light {
 	outerCone: number;
 	// a hemisphere light's colour from below (linear; color is the sky's)
 	groundColor: Vec3;
+	// an area light's size: a rectangle's width and height, a disc's radius in width
+	width: number;
+	height: number;
 	// whether it casts shadows (Shadows): a directional light's first of
 	// the world (its cascades), a point or spot light's (its tiles of the
 	// atlas: a spot's one, a point's six) while within shadows.maxLocal
 	castShadows: boolean;
 	// its shadow's size and filter (null: Shadows' defaults)
 	shadow: LightShadow | null;
-	// whether it shines from a point (a point or a spot light)
+	// whether it shines from a place (a point, spot or area light: the
+	// frame's local lights)
 	readonly local: boolean;
+	// whether it is an area light (rect or disc)
+	readonly area: boolean;
 }
 
 // Draws a world's meshes (MeshRenderer) as seen by a camera, lit by its
@@ -427,18 +455,20 @@ export declare class Renderer {
 	// a pipeline for what it draws into: the frame, or drawInto's targets
 	// (RGBA8, Depth32F, its samples); its features' and a program's own
 	// passes inside its frame (inject) make theirs with it
-	createPipeline(d: { vertex?: number; fragment?: number; program?: { vertex: { glsl?: string; msl?: string; hlsl?: string; wgsl?: string; bindings?: Array<{ name: string; slot: number; kind: number; size?: number; index?: number; format?: number }>; workgroupSize?: number[] }; fragment: { glsl?: string; msl?: string; hlsl?: string; wgsl?: string; bindings?: Array<{ name: string; slot: number; kind: number; size?: number; index?: number; format?: number }>; workgroupSize?: number[] } }; layout: Array<{ stride: number; attributes: Array<{ location: number; format: number; offset: number }>; step?: number }>; topology?: number; cull?: number; blend?: number; depthCompare?: number; depthWrite?: boolean; colorFormat?: number; depthFormat?: number; samples?: number }): number;
+	createPipeline(d: { vertex?: number; fragment?: number; program?: { vertex: { glsl?: string; msl?: string; hlsl?: string; wgsl?: string; bindings?: Array<{ name: string; slot: number; kind: number; size?: number; index?: number; format?: number; dimension?: number }>; workgroupSize?: number[] }; fragment: { glsl?: string; msl?: string; hlsl?: string; wgsl?: string; bindings?: Array<{ name: string; slot: number; kind: number; size?: number; index?: number; format?: number; dimension?: number }>; workgroupSize?: number[] } }; layout: Array<{ stride: number; attributes: Array<{ location: number; format: number; offset: number }>; step?: number }>; topology?: number; cull?: number; blend?: number; depthCompare?: number; depthWrite?: boolean; colorFormat?: number; depthFormat?: number; samples?: number }): number;
 	// draw into color (colorFormat, a render target) and depth (Depth32F, its size), an offscreen renderer's
 	// (multisampled, samples > 1: color and depth of those samples, color
 	// resolved into resolve, a single-sampled RGBA8 render target)
-	drawInto(enc: Encoder, world: World, camera: Camera, color: number, depth: number, width: number, height: number, resolve?: number): void;
+	// (layer: color's, a cube's face or a 2D array's layer)
+	drawInto(enc: Encoder, world: World, camera: Camera, color: number, depth: number, width: number, height: number, resolve?: number, layer?: number): void;
 	// what the frame's hooks get: the camera's view, the light (FrameInfo)
 	readonly frame: unknown;
 	// f runs at a point of each frame: BeforeOpaque, AfterOpaque and
 	// AfterTransparent inside the frame's pass (draw with your own
 	// pipelines, depth-tested against the scene; AfterTransparent after the
 	// see-through surfaces too: what is drawn over everything), AfterPass
-	// after it (passes of your own: an overlay)
+	// after it (passes of your own: an overlay), BeforePass before the
+	// frame's passes (a texture of your own the frame reads)
 	inject(point: number, f: (arg0: Encoder, arg1: unknown) => void): void;
 	// turns on an optional feature (Shadows, Skinning, NormalMaps, Sky,
 	// Environment, ClusteredLights, InstanceCulling); returns the renderer
@@ -846,7 +876,7 @@ export declare class Transmission {
 	// the frame's pass (pass, into textures of width x height texels of
 	// format) ended, its colour so far copied (resolved) and its mips made,
 	// the pass begun again where it was; returns the copy
-	capture(enc: Encoder, pass: { colors: Array<{ load: number; clear?: unknown; texture?: number; resolve?: number }>; depth?: { load: number; clear?: number; texture?: number }; queries?: number }, width: number, height: number, format: number): number;
+	capture(enc: Encoder, pass: { colors: Array<{ load: number; clear?: unknown; texture?: number; resolve?: number; layer?: number }>; depth?: { load: number; clear?: number; texture?: number }; queries?: number }, width: number, height: number, format: number): number;
 	// the copy's mip levels below its first (the roughest's)
 	levels(): number;
 	dispose(): void;
@@ -2400,6 +2430,341 @@ export declare class InstanceCulling {
 	readonly kept: number;
 	readonly culled: number;
 	readonly dispatches: number;
+	attach(renderer: Renderer): void;
+	dispose(): void;
+}
+
+// An environment, opted in (renderer.use(new Environment(device,
+// texture))): an equirectangular image (longitude across, latitude down;
+// sRGB, mip-mapped) drawn behind the scene (at the renderer's BeforeOpaque
+// point, as the sky) and lighting it: the standard material's ambient
+// from it, diffuse from a small mip level along the normal, specular
+// along the reflection from a level by roughness (mip levels standing in
+// for a filtered map: a cheap image-based light). A program without one
+// keeps the sky-and-ground ambient and links none of this.
+//   var env = Environment.fromImage(device, "image/png", helder.asset.Asset.embed("sky.png")); // with Images.decode set (Images.png)
+//
+// Prefiltered (Environment.prefiltered): the light filtered once ahead,
+// image-based lighting proper. An atlas of levels + 1 rows, each the whole
+// sphere (equirectangular, width by width / 2): row k the specular light
+// for a roughness of k / (levels - 1) (the environment convolved with
+// GGX's lobe, the split sum's first half), the last the diffuse
+// irradiance (cosine weighted, over pi); the material reads two rows by
+// its roughness, blended, and the last along its normal. Small (128 x 448
+// for 6 levels: 224 KB on the GPU), made by a tool once (Expansion's
+// tools/envbake.py), no mips; the decoded pixels freed after the upload.
+//   var env = Environment.prefiltered(device, "image/png", bytes, 6);
+//
+// Prefiltered by helder (Environment.prefilter): an equirectangular image
+// (RGBA8 sRGB, or linear RGBA16F or RGBA32F: HDR) filtered at load into an
+// octahedral atlas (Prefilter: a compute dispatch where the device has
+// compute, else a fragment pass; done at the first frame's BeforePass
+// point), levels rows of roughness and the irradiance's, made from its
+// spherical harmonics (sh: projected from the image here, the diffuse
+// light ReflectionProbes and ProbeGrid fall back to); the image itself
+// drawn behind the scene.
+//   var env = Environment.prefilter(device, image.width, image.height, image.rgba); // or prefilterImage(device, mime, bytes)
+export declare class Environment {
+	// texture: mip-mapped (Images.mipmapped's), width twice its height; or
+	// a prefiltered atlas of rows levels (prefiltered), width its width
+	constructor(device: Device, texture: number, width: number, rows?: number);
+	// an encoded image's environment (Images.decode must read it); null when it cannot
+	static fromImage(device: Device, mime: string, bytes: Uint8Array): Environment | null;
+	// a prefiltered atlas's environment (levels rows of roughness and the
+	// irradiance's, each width by width / 2; Images.decode must read it); null when it cannot
+	static prefiltered(device: Device, mime: string, bytes: Uint8Array, levels: number): Environment | null;
+	// an equirectangular image's environment prefiltered by helder (width x
+	// height texels, its rows top to bottom; RGBA8: sRGB-encoded, as an
+	// image's; RGBA16F or RGBA32F: linear light, HDR): an octahedral atlas of
+	// size-texel cells, levels rows of roughness (Prefilter; samples a texel),
+	// filled at the first frame drawn with it, and its harmonics (sh)
+	static prefilter(device: Device, width: number, height: number, texels: Uint8Array, format?: number, options?: { size?: number; levels?: number; samples?: number }): Environment;
+	// an encoded image's environment prefiltered by helder (prefilter; Images.decode must read it); null when it cannot
+	static prefilterImage(device: Device, mime: string, bytes: Uint8Array, options?: { size?: number; levels?: number; samples?: number }): Environment | null;
+	readonly device: Device;
+	readonly texture: number;
+	// the mip levels below the first (the map's width 2^levels)
+	readonly levels: number;
+	// how bright the environment is, as light (1: its colours)
+	intensity: number;
+	// whether it is drawn behind the scene (false: it only lights it)
+	background: boolean;
+	// a prefiltered atlas's levels of roughness (0: a mip-mapped image)
+	readonly rows: number;
+	// the diffuse light as spherical harmonics (prefilter's; else null)
+	readonly sh: Sh | null;
+	// (each renderer its pipeline: Probes' twin draws it too)
+	attach(renderer: Renderer): void;
+	dispose(): void;
+}
+
+// Light around a point as L2 spherical harmonics (Ramamoorthi and Hanrahan,
+// "An Efficient Representation for Irradiance Environment Maps"): nine RGB
+// coefficients of the radiance arriving from each direction (the real SH
+// basis, bands 0 to 2), from which the diffuse light along any normal is a
+// polynomial of it: smooth, cheap, free of seams. An Environment's diffuse
+// light (Environment.sh), a LightProbe's, a ProbeGrid's at a point.
+//
+// coefficients: 27 floats, coefficient k's red, green and blue at 3k, in the
+// order Y00, Y1-1 (y), Y10 (z), Y11 (x), Y2-2 (xy), Y2-1 (yz), Y20 (3z^2 - 1),
+// Y21 (xz), Y22 (x^2 - y^2). Directions are the world's (y up).
+//
+// irradiance(n) is the irradiance along n over pi (the light a white
+// Lambertian surface reflects: an environment atlas' irradiance row's
+// meaning); pack writes it as the seven vectors a shader evaluates
+// (irradianceOf in PbrShader: Unity's SHAr, SHAg, SHAb, SHBr, SHBg, SHBb, SHC).
+export declare class Sh {
+	constructor(coefficients?: number[]);
+	// the nine basis functions at a unit direction, into out (nine floats)
+	static basis(x: number, y: number, z: number, out: number[]): void;
+	// the light of a sky over a ground (a hemisphere light: sky above,
+	// ground below, the horizon between blended as the standard material's
+	// ambient blends them by the normal's height)
+	static ofHemisphere(sky: Vec3, ground: Vec3): Sh;
+	// the radiance f gives each direction, projected (integrated over a grid
+	// of the sphere, size rows of latitude by twice as many of longitude)
+	static ofFunction(f: (arg0: Vec3) => Vec3, size?: number): Sh;
+	// an equirectangular image's light (longitude across, -z at its centre,
+	// latitude down: Environment's layout), its texels of format (RGBA8:
+	// sRGB-encoded, decoded as the standard material decodes it, c^2.2;
+	// RGBA16F, RGBA32F: linear), each its solid angle's share, times intensity
+	static ofEquirect(width: number, height: number, texels: Uint8Array, format?: number, intensity?: number): Sh;
+	// an IEEE 754 binary16's value
+	static half(h: number): number;
+	readonly coefficients: number[];
+	// a copy
+	copy(): Sh;
+	// every coefficient 0
+	clear(): Sh;
+	// a light of colour c from the unit direction d (a delta: the sun's
+	// light as a point of the sky), added
+	addDirectional(d: Vec3, c: Vec3): Sh;
+	// o's coefficients times w, added
+	addScaled(o: Sh, w: number): Sh;
+	// every coefficient times s
+	scale(s: number): Sh;
+	// a's blended towards b by t, into this (nothing allocated)
+	setLerp(a: Sh, b: Sh, t: number): Sh;
+	// the irradiance along the unit normal n over pi (Lambert's reflected
+	// light for a white surface)
+	irradiance(n: Vec3): Vec3;
+	// the radiance arriving from the unit direction d (the band-limited light
+	// itself, not convolved: a probe's preview)
+	radiance(d: Vec3): Vec3;
+	// the seven vectors of irradiance's polynomial (over pi) into out from at:
+	// for each of red, green and blue its band 0 and 1 (x, y, z: the normal's
+	// factors, w the constant), then its band 2's xy, yz, zz, zx, then the
+	// x^2 - y^2 factor of each (rgb); what PbrObject's and the prefilter's
+	// blocks hold
+	pack(out: Vec4[], at?: number): void;
+}
+
+// A light probe, a component of a node: the light around its node's position
+// as spherical harmonics (Sh: baked, projected from an image or a function,
+// Sh.ofHemisphere), lighting the draws whose centres are within radius of it
+// with Probes (three.js's LightProbe, placed). A draw takes the nearest
+// probe that reaches it, blended towards the next nearest by their
+// distances; a ProbeGrid that holds the draw comes first. Diffuse light
+// only, a draw's (its centre's) and evaluated at its vertices: nothing
+// per pixel.
+export declare class LightProbe {
+	constructor(sh: Sh, radius?: number);
+	static readonly KIND: unknown;
+	// probe on node (a node has one; the one it had is replaced)
+	static attach(node: Node, probe: LightProbe): LightProbe;
+	static of(node: Node): LightProbe | null;
+	sh: Sh;
+	// how far it reaches (scene units)
+	radius: number;
+	// its light's scale
+	intensity: number;
+	readonly node: Node;
+}
+
+// A grid of light probes, a component of a node: a box (size, centred on
+// its node's position, the world's axes) of nx x ny x nz probes at its
+// corners and between, each the light there as spherical harmonics (Sh).
+// With Probes, a draw whose centre is in the box is lit by the probes
+// around it, blended trilinearly on the CPU (Unity's light probes, on a
+// grid): its diffuse light, per draw, evaluated at its vertices. Filled by
+// a program (set, fill), or read from its bytes (read, write: baked once,
+// by a tool or a program, kept as an asset).
+//   var grid = new ProbeGrid(new Vec3(12, 4, 8), 4, 2, 3);
+//   grid.fill(p -> Sh.ofHemisphere(...));
+//   ProbeGrid.attach(world.node("gi"), grid);
+export declare class ProbeGrid {
+	constructor(size: Vec3, nx: number, ny: number, nz: number);
+	static readonly KIND: unknown;
+	// grid on node (a node has one)
+	static attach(node: Node, grid: ProbeGrid): ProbeGrid;
+	static of(node: Node): ProbeGrid | null;
+	static read(b: Uint8Array): ProbeGrid;
+	// the box's size (scene units) and its probes along each axis (2 or more)
+	readonly size: Vec3;
+	readonly nx: number;
+	readonly ny: number;
+	readonly nz: number;
+	// each probe, x fastest, then y, then z
+	readonly probes: Sh[];
+	// its light's scale
+	intensity: number;
+	readonly node: Node;
+	// probe (i, j, k)'s place relative to the box's centre
+	offset(i: number, j: number, k: number): Vec3;
+	at(i: number, j: number, k: number): Sh;
+	set(i: number, j: number, k: number, sh: Sh): void;
+	// each probe's light from f (its place, relative to the box's centre)
+	fill(f: (arg0: Vec3) => Sh): void;
+	// whether a point relative to the box's centre is inside it
+	holds(p: Vec3): boolean;
+	// the light at a point relative to the box's centre (held in the box),
+	// its eight probes blended trilinearly, into out (nothing allocated)
+	sample(p: Vec3, out: Sh): Sh;
+	// the grid as bytes (its size, counts, each probe's 27 floats; read gives it back)
+	write(): Uint8Array;
+}
+
+// A reflection probe, a component of a node: the scene seen from its node's
+// position, captured once (six faces into a cube, then prefiltered into its
+// column of Probes' atlas: its rows by roughness), reflected by the draws
+// whose bounds are in its box (size: centred on the node, the world's
+// axes), parallax-corrected: a reflection is looked up where it leaves
+// the box, so a room's walls reflect where they are (Godot's and Unity's
+// box projection). A draw takes the two probes that hold most of it, A
+// blended over B (or the environment) by its share inside A's box, the
+// box's walls soft over blend. Captured when first drawn with Probes, again after
+// capture(); never every frame.
+//   var hall = ReflectionProbe.attach(world.node("hall"), new ReflectionProbe(new Vec3(12, 4, 8), 0.5));
+//   hall.node.position = new Vec3(0, 2, 0);
+export declare class ReflectionProbe {
+	constructor(size: Vec3, blend?: number);
+	static readonly KIND: unknown;
+	// probe on node (a node has one)
+	static attach(node: Node, probe: ReflectionProbe): ReflectionProbe;
+	static of(node: Node): ReflectionProbe | null;
+	// its box's size (scene units), centred on its node
+	size: Vec3;
+	// the depth inside its box over which it fades out towards its walls
+	blend: number;
+	// its light's scale
+	intensity: number;
+	readonly node: Node;
+	// captured again at the next frame drawn with Probes (the scene changed)
+	capture(): void;
+	// whether it has been captured since it was attached or capture() was called
+	readonly captured: boolean;
+	// how much of a box (its centre, its half size; the world's axes) is in
+	// this one: 0 outside, 1 inside, the walls soft over blend (along each
+	// axis the membership averaged over the box's extent, Simpson's rule)
+	weight(cx: number, cy: number, cz: number, ex: number, ey: number, ez: number): number;
+}
+
+// Light probes and reflection probes, opted in (renderer.use(new
+// Probes(device))): the world's LightProbes, ProbeGrids and
+// ReflectionProbes light the standard material's draws (pbr's probes
+// variants: PbrProbesShader).
+//
+//   - Each draw's diffuse light is its centre's (the run's centre for an
+//     instanced run): a ProbeGrid holding it (trilinear), else its nearest
+//     LightProbes, blended; evaluated at its vertices (spherical harmonics:
+//     nothing per pixel). Without, the environment's or the sky's.
+//   - Its reflections are its two reflection probes' (the two whose boxes
+//     hold most of its bounds), box-projected per pixel, A blended over B
+//     or the environment.
+//
+// The atlas: one RGBA16F texture of octahedral cells (Prefilter), a column a
+// probe and the environment's first (Environment's image prefiltered again,
+// whatever kind it is but a prefiltered atlas), bound where the
+// environment is: every material, the standard one or not, reads the
+// environment from it. A probe is captured when first drawn and after
+// capture(): the world drawn six times from its centre into a cube (an
+// offscreen renderer of the renderer's light, sky and environment: a twin,
+// its faces mirrored as a cube's are), then prefiltered into its column; at
+// the frame's BeforePass point, a probe or two a frame (captures).
+//
+// Not lit by probes (they read the environment, from the atlas): the
+// normal-mapped, skinned and see-through draws, instanced sets
+// (InstancedMesh, Sprites) and materials of their own shader (Physical's
+// among them).
+export declare class Probes {
+	constructor(device: Device, options?: { size?: number; levels?: number; max?: number; captureSize?: number; samples?: number });
+	// the light probes' light at a point (a grid's holding it, else the
+	// nearest two probes' that reach it, blended by their distances), into
+	// out; false: none
+	static lightAt(world: World, p: Vec3, out: Sh): boolean;
+	readonly device: Device;
+	// a cell's texels, the rows of roughness, the probes at most (the
+	// atlas' columns less the environment's), a capture's face's texels
+	readonly size: number;
+	readonly levels: number;
+	readonly max: number;
+	readonly captureSize: number;
+	// captures done a frame at most
+	capturesPerFrame: number;
+	// captures done so far
+	readonly captures: number;
+	// the atlas (Prefilter's: columns of octahedral cells)
+	readonly atlas: number;
+	attach(renderer: Renderer): void;
+	dispose(): void;
+}
+
+// A baked lightmap, a component of a node (Bevy's model, not a material's
+// field: nodes of one mesh and one material share both and keep their own
+// lightmaps): its texture (an atlas several nodes share), its rectangle of
+// it (rect: xy the offset, zw the scale of the second uvs, TEXCOORD_1: a
+// primitive's uv1), the light it holds (the irradiance over pi a white
+// surface reflects: linear RGBA16F, or sRGB-encoded RGBA8 with srgb) times
+// intensity. Drawn with Lightmaps (renderer.use(new Lightmaps())): mode
+// Indirect (the default) replaces the ambient (the sky's, the environment's,
+// the probes') and keeps the lights; All has the lights baked too, none
+// added. A primitive without second uvs is drawn as before. Baking is a
+// tool's (Blender's, another's atlas).
+//   Lightmap.attach(node, new Lightmap(baked, new Vec4(0, 0, 0.5, 0.5)));
+export declare class Lightmap {
+	constructor(texture: number, rect?: Vec4, srgb?: boolean);
+	static readonly KIND: unknown;
+	// lightmap on node (a node has one)
+	static attach(node: Node, lightmap: Lightmap): Lightmap;
+	static of(node: Node): Lightmap | null;
+	texture: number;
+	rect: Vec4;
+	intensity: number;
+	mode: LightmapMode;
+	// whether its colours are sRGB-encoded (an image's RGBA8; RGBA16F's are linear)
+	srgb: boolean;
+	readonly node: Node;
+}
+
+// Baked lightmaps, opted in (renderer.use(new Lightmaps(device))): the
+// standard material's opaque draws of nodes with a Lightmap (and second
+// uvs) are drawn with pbr's lightmap variant (PbrLightmapShader: the
+// lightmap read at the second uvs placed in its rectangle, its light the
+// ambient), one a node: a run of instanced draws stops at a lightmapped node.
+// A program without one links none of it.
+export declare class Lightmaps {
+	constructor(device: Device);
+	readonly device: Device;
+	attach(renderer: Renderer): void;
+}
+
+// Area lights shaded with linearly transformed cosines (Heitz, Dupuy, Hill
+// and Neubelt, "Real-Time Polygonal-Light Shading with Linearly Transformed
+// Cosines"), opted in (renderer.use(new AreaLights(device))): in a frame
+// with rect or disc lights (Light.rectArea, discArea), the standard
+// material's opaque draws are drawn with pbr's area variants
+// (PbrAreaShader), which integrate each area light's polygon (a disc as an
+// octagon of its area) against the cosine and against GGX's lobe through
+// the fitted tables (ltcMap: two 64 x 64 tables, three.js's, in RGBA16F
+// one above the other: 64 KB, an embedded asset). The other materials, and
+// a frame without the feature, light an area light as a point light at its
+// centre. No shadows. A frame without area lights draws as before: its
+// variants are compiled only when one is drawn.
+export declare class AreaLights {
+	constructor(device: Device);
+	readonly device: Device;
+	// the tables (RGBA16F, 64 x 128)
+	readonly ltc: number;
 	attach(renderer: Renderer): void;
 	dispose(): void;
 }

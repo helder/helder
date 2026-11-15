@@ -183,6 +183,16 @@ class Renderer {
 	var shadowSource:Null<RenderFeature.ShadowSource>;
 	var clusterSource:Null<RenderFeature.ClusterSource>;
 	var cullSource:Null<RenderFeature.CullSource>;
+	// (Probes': the standard material's opaque draws lit by probes)
+	var probeSource:Null<RenderFeature.ProbeSource>;
+	// (AreaLights': the standard material's opaque draws' area lights by LTC)
+	var areaSource:Null<RenderFeature.AreaSource>;
+	// (Lightmaps': the standard material's opaque draws of lightmapped nodes)
+	var lightmapSource:Null<RenderFeature.LightmapSource>;
+	// (Sky's, when used: a twin draws it too)
+	var skyFeature:Null<Sky> = null;
+	// (a twin capturing a cube's faces: its views mirrored, its faces' winding turned)
+	var mirrored = false;
 	final frameBytes = Bytes.alloc(PbrShader.uniforms[0].size);
 	// (PbrLights' block: three arrays of MAX_LIGHTS vectors, then the shadow
 	// tiles: Shadows.MAX_TILES' matrices and two vectors)
@@ -271,6 +281,7 @@ class Renderer {
 		return create(d);
 
 	function create(d:PipelineDesc):Pipeline {
+		if (mirrored) d.cull = d.cull == Back ? Front : d.cull == Front ? Back : d.cull;
 		if (offscreen) {
 			d.colorFormat = colorFormat;
 			d.depthFormat = Depth32F;
@@ -282,18 +293,47 @@ class Renderer {
 	// draw into color (colorFormat, a render target) and depth (Depth32F, its size), an offscreen renderer's
 	// (multisampled, samples > 1: color and depth of those samples, color
 	// resolved into resolve, a single-sampled RGBA8 render target)
-	public function drawInto(enc:Encoder, world:World, camera:Camera, color:Texture, depth:Texture, width:Int, height:Int, ?resolve:Texture) {
+	// (layer: color's, a cube's face or a 2D array's layer)
+	public function drawInto(enc:Encoder, world:World, camera:Camera, color:Texture, depth:Texture, width:Int, height:Int, ?resolve:Texture, layer = 0) {
 		if (!offscreen) throw "helder.scene: drawInto needs an offscreen Renderer (new Renderer(device, true))";
 		pass.colors[0].texture = color;
 		pass.colors[0].resolve = resolve;
+		pass.colors[0].layer = layer;
 		pass.depth.texture = depth;
 		targetWidth = width;
 		targetHeight = height;
 		draw(enc, world, camera, width / Math.max(1, height));
 		pass.colors[0].texture = null;
 		pass.colors[0].resolve = null;
+		pass.colors[0].layer = 0;
 		pass.depth.texture = null;
 		targetWidth = targetHeight = 0;
+	}
+
+	// (Probes' captures) an offscreen HDR renderer of this one's light (copyInto),
+	// its sky and environment, its shadows and physical materials; mirrored
+	function twin():Renderer {
+		var t = new Renderer(device, true, 1, true);
+		t.mirrored = true;
+		t.shadowSource = shadowSource;
+		t.physical = physical;
+		if (skyFeature != null) skyFeature.attach(t);
+		if (environment != null) environment.attach(t);
+		return t;
+	}
+
+	// (a twin's) this one's light, sky, ground, fog and exposure
+	function copyInto(t:Renderer) {
+		t.sunDirection = sunDirection;
+		t.sunColor = sunColor;
+		t.sky = sky;
+		t.ground = ground;
+		t.exposure = exposure;
+		t.rim = rim;
+		t.rimPower = rimPower;
+		t.fog = fog;
+		t.clearColor = clearColor;
+		if (environment != null && t.environment != environment) environment.attach(t);
 	}
 
 	// what the frame's hooks get: the camera's view, the light (FrameInfo)
@@ -649,7 +689,7 @@ class Renderer {
 		b.shadowRect = rect;
 		b.shadowRectFar = rectFar;
 		b.shadowAtlas = atlas;
-		b.environment = environment != null ? environment.frameVector() : new Vec4(0, 0, 0, 0);
+		b.environment = probeSource != null ? probeSource.environmentVector() : environment != null ? environment.frameVector() : new Vec4(0, 0, 0, 0);
 		b.rim = new Vec4(rim.x, rim.y, rim.z, rimPower);
 		b.fog = Fog.colorOf(fog);
 		b.fogShape = Fog.shapeOf(fog);
@@ -734,10 +774,17 @@ class Renderer {
 			var skin = p.skinned ? skinSource : null;
 			var normals = skin == null && mapped(p) ? normalSource : null;
 			var own = shader != null ? custom(shader, m, many ? (normals != null ? 4 : 3) : skin != null ? 2 : normals != null ? 1 : 0) : null;
-			var want = own != null ? own.pipeline : many ? (normals != null ? normals.instancedPipeline(m.doubleSided) : opaquePipeline(true, m.doubleSided)) : skin != null ? skin.pipeline(m.doubleSided) : normals != null ? normals.pipeline(m.doubleSided) : m.blend ? blended(m) : opaquePipeline(false, m.doubleSided);
+			// (lit by probes, area lights by LTC: the standard material's opaque draws, plain and instanced)
+			var standard = own == null && skin == null && normals == null && !m.blend;
+			// (a lightmapped node with second uvs: the lightmap variant, alone)
+			var baked = lightmapSource != null && standard && !many && p.uv1 != null && lightmapSource.has(d.node);
+			var probed = probeSource != null && standard && !baked;
+			var areaLit = areaSource != null && frameLights.areas > 0 && standard && !baked;
+			var want = baked ? lightmapSource.pipeline(m.doubleSided) : areaLit ? areaSource.pipeline(many, m.doubleSided, probed) : probed ? probeSource.pipeline(many, m.doubleSided) : own != null ? own.pipeline : many ? (normals != null ? normals.instancedPipeline(m.doubleSided) : opaquePipeline(true, m.doubleSided)) : skin != null ? skin.pipeline(m.doubleSided) : normals != null ? normals.pipeline(m.doubleSided) : m.blend ? blended(m) : opaquePipeline(false, m.doubleSided);
 			if (want != current) {
-				slots = own != null ? own.slots : many ? (normals != null ? normals.instancedSlots() : m.blend ? instancedSlots : sunOnly ? sunInstancedSlots : untiled ? untiledInstancedSlots : instancedSlots) : skin != null ? skin.slots() : normals != null ? normals.slots() : m.blend ? plainSlots : sunOnly ? sunSlots : untiled ? untiledSlots : plainSlots;
+				slots = baked ? lightmapSource.slots() : areaLit ? areaSource.slots(many, probed) : probed ? probeSource.slots(many) : own != null ? own.slots : many ? (normals != null ? normals.instancedSlots() : m.blend ? instancedSlots : sunOnly ? sunInstancedSlots : untiled ? untiledInstancedSlots : instancedSlots) : skin != null ? skin.slots() : normals != null ? normals.slots() : m.blend ? plainSlots : sunOnly ? sunSlots : untiled ? untiledSlots : plainSlots;
 				bindPipeline(enc, want, slots);
+				if (areaLit) areaSource.bind(enc, many, probed);
 				current = want;
 				material = null;
 				node = Node.NONE;
@@ -746,11 +793,21 @@ class Renderer {
 				// (an instanced run: its matrices the instances', its block its light list)
 				writeObject(Mat4.identity(), WHITE, batchLights, b * FrameLights.PER_DRAW);
 				if (slots[1] >= 0) enc.setUniforms(slots[1], objectBytes);
+				// (its probes the run's bounds')
+				if (probed) bindRun(start, n, p, enc);
 				node = Node.NONE;
 			} else if (d.node != node) {
 				var model = d.node.worldMatrix(), t = d.tint;
 				writeObject(model, t, batchLights, b * FrameLights.PER_DRAW, skin != null ? skin.rows(d.node) : 1);
 				enc.setUniforms(slots[1], objectBytes);
+				if (baked) lightmapSource.bind(enc, d.node);
+				if (probed) {
+					// (its bounds in the world: the centre moved, the half size by the matrix's absolute values)
+					var c = p.bounds.center(), e = (p.bounds.max - p.bounds.min) * 0.5;
+					var w = MathTools.transformPoint(model, c), x = MathTools.col(model, 0), y = MathTools.col(model, 1), z = MathTools.col(model, 2);
+					probeSource.bind(enc, w.x, w.y, w.z, Math.abs(x.x) * e.x + Math.abs(y.x) * e.y + Math.abs(z.x) * e.z,
+						Math.abs(x.y) * e.x + Math.abs(y.y) * e.y + Math.abs(z.y) * e.z, Math.abs(x.z) * e.x + Math.abs(y.z) * e.y + Math.abs(z.z) * e.z);
+				}
 				node = d.node;
 			}
 			if (skin != null) skin.bind(enc, slots, d.node);
@@ -761,6 +818,7 @@ class Renderer {
 			enc.setVertexBuffer(0, p.vertices);
 			if (normals != null) enc.setVertexBuffer(1, p.tangents);
 			if (many) enc.setVertexBuffer(normals != null ? 2 : 1, instanceBuffer, batchOffset[b]);
+			if (baked) enc.setVertexBuffer(1, p.uv1);
 			// (each map its own uvs: the second uvs' buffer, after the others)
 			if (shader != null && shader.extensions & Material.UV_SETS != 0)
 				enc.setVertexBuffer(1 + (normals != null ? 1 : 0) + (many ? 1 : 0), p.uv1 != null ? p.uv1 : p.vertices);
@@ -782,6 +840,29 @@ class Renderer {
 			f(enc, frame);
 		enc.endPass();
 		bound = null;
+	}
+
+	inline function lightmapped(n:Node):Bool
+		return lightmapSource != null && lightmapSource.has(n);
+
+	// an instanced run's probes (Probes): its draws' bounds' union's
+	function bindRun(start:Int, n:Int, p:Mesh.Primitive, enc:Encoder) {
+		var x0 = Math.POSITIVE_INFINITY, y0 = x0, z0 = x0, x1 = Math.NEGATIVE_INFINITY, y1 = x1, z1 = x1;
+		var c = p.bounds.center(), e = (p.bounds.max - p.bounds.min) * 0.5;
+		for (k in start...start + n) {
+			var m = list[k].node.worldMatrix();
+			var w = MathTools.transformPoint(m, c), a = MathTools.col(m, 0), b = MathTools.col(m, 1), d = MathTools.col(m, 2);
+			var ex = Math.abs(a.x) * e.x + Math.abs(b.x) * e.y + Math.abs(d.x) * e.z;
+			var ey = Math.abs(a.y) * e.x + Math.abs(b.y) * e.y + Math.abs(d.y) * e.z;
+			var ez = Math.abs(a.z) * e.x + Math.abs(b.z) * e.y + Math.abs(d.z) * e.z;
+			x0 = Math.min(x0, w.x - ex);
+			y0 = Math.min(y0, w.y - ey);
+			z0 = Math.min(z0, w.z - ez);
+			x1 = Math.max(x1, w.x + ex);
+			y1 = Math.max(y1, w.y + ey);
+			z1 = Math.max(z1, w.z + ez);
+		}
+		probeSource.bind(enc, (x0 + x1) * 0.5, (y0 + y1) * 0.5, (z0 + z1) * 0.5, (x1 - x0) * 0.5, (y1 - y0) * 0.5, (z1 - z0) * 0.5);
 	}
 
 	// (the frame's pass ended after its opaque surfaces, its colour copied
@@ -881,7 +962,8 @@ class Renderer {
 		var sf = shadowSource != null ? shadowSource.shadowFrame() : null;
 		enc.setTexture(slots[4], sf != null ? sf.map : noShadow, nearest);
 		bindClusters(enc, slots);
-		if (environment != null) environment.bind(enc, slots[12]) else enc.setTexture(slots[12], white, sampler);
+		if (probeSource != null) probeSource.bindAtlas(enc, slots[12], clamped) else if (environment != null) environment.bind(enc, slots[12]) else
+			enc.setTexture(slots[12], white, sampler);
 		if (slots[13] >= 0) enc.setTexture(slots[13], occlusion != null ? occlusion : white, clamped);
 		if (normals != null) enc.setTexture(slots[10], m.normalTexture != null ? m.normalTexture : flatNormal, ms);
 		if (layers != null) layers.bind(enc, slots, ms, white, behind != null ? behind : black, mipClamped);
@@ -965,8 +1047,10 @@ class Renderer {
 			var j = i + 1;
 			// (any scale: the instanced shader turns normals by the matrix's
 			// inverse transpose, as the object's normalMatrix)
-			if (instancing && !list[i].primitive.skinned && !list[i].primitive.material.blend)
+			// (a lightmapped node a draw of its own: its lightmap its)
+			if (instancing && !list[i].primitive.skinned && !list[i].primitive.material.blend && !lightmapped(list[i].node))
 				while (j < count && list[j].primitive == list[i].primitive && list[j].group == list[i].group && list[j].lightKey == list[i].lightKey
+					&& !lightmapped(list[j].node)
 					&& DrawItem.same(list[j].lights, list[i].lights))
 					j++;
 			if (batchCount == batchStart.length) {

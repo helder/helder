@@ -36,7 +36,10 @@ import helder.os.*;
 // (Transmission, the frame behind see-through surfaces); and phase 4's:
 // -D size_clustered (ClusteredLights: the CPU's cells and the compute path's shader), -D
 // size_culling (InstanceCulling: the CPU's and the compute path's), -D
-// size_lod (Lod on a node: its levels, the visible ranges); and at level 5,
+// size_lod (Lod on a node: its levels, the visible ranges); phase 5's: -D
+// size_prefilter (Environment.prefilter: Sh, the prefilter's two paths), -D
+// size_probes (Probes, its components and variants), -D size_area
+// (AreaLights: its variants, the tables), -D size_lightmaps (Lightmaps); and at level 5,
 // -D size_local (Shadows' point and spot lights' tiles: LocalShadows)
 class Size {
 	static function main() {
@@ -144,6 +147,21 @@ class Size {
 		#end
 		#if size_culling
 		renderer.use(new helder.scene.render.InstanceCulling(device));
+		#end
+		#if size_prefilter
+		renderer.use(helder.scene.render.Environment.prefilter(device, 8, 4, haxe.io.Bytes.alloc(8 * 4 * 4)));
+		#end
+		#if size_probes
+		renderer.use(new helder.scene.render.Probes(device));
+		helder.scene.render.ProbeGrid.attach(world.node(), new helder.scene.render.ProbeGrid(new Vec3(4, 4, 4), 2, 2, 2));
+		helder.scene.render.ReflectionProbe.attach(world.node(), new helder.scene.render.ReflectionProbe(new Vec3(4, 4, 4)));
+		#end
+		#if size_area
+		renderer.use(new helder.scene.render.AreaLights(device));
+		helder.scene.render.Light.attach(world.node(), helder.scene.render.Light.rectArea(new Vec3(1, 1, 1), 2, 1, 1));
+		#end
+		#if size_lightmaps
+		renderer.use(new helder.scene.render.Lightmaps(device));
 		#end
 		#if size_lod
 		var lodMesh = helder.scene.render.Shapes.box(device, new helder.scene.render.Material());

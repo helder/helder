@@ -6,7 +6,7 @@ Aims > Familiar APIs). It covers the areas where helder.scene trails
 three.js: materials, lights and shadows, post-processing, and geometry,
 helpers, picking and culling. Loaders and the ecosystem are out of scope.
 
-It is a design. Phases 1 to 4 and 7 (section 9) are built, their
+It is a design. Phases 1 to 7 (section 9) are built, their
 deviations said there and at the places they depart from. No spike
 was needed: every claim about helder's internals below was read from the
 source, and the file is named where it matters.
@@ -60,10 +60,12 @@ is not copied where another engine's is better.
   section 8). Features that gain from it get a compute path, with the
   floor's path as their fallback (WebGL2 above all).
 - **Textures are 2D only.** `TextureDesc` has no cube or array textures,
-  and the shader frontend has `Texture2D` alone.
+  and the shader frontend has `Texture2D` alone. (Phase 5 added cubes and
+  2D arrays: `TextureDesc.cube`, `layers`, `TextureCube`,
+  `Texture2DArray`, a pass into a layer.)
 - **Few formats.** RGBA8, RGBA8Srgb, R8, RG8, RGBA16F, R32F, Depth16,
   Depth32F, and the BC1, BC3 and ASTC 4x4 block formats. There is no
-  RGBA32F and no integer format.
+  RGBA32F and no integer format. (Phase 5 added RGBA32F, unfilterable.)
 - **One colour target a pass.** Every back end reads `PassDesc.colors[0]`
   only (for example `GLBackend.hx:721`, `WebGPUBackend.hx:150`), so there
   is no MRT.
@@ -591,6 +593,24 @@ about 0.1 ms for 100 lights (an estimate, measured in phase 4's
   - no shadows at first, as everywhere;
   - roughly 3× a point light per pixel, so they are best used one or two
     at a time on phones.
+  *As built (phase 5):* `Light.rectArea(color, intensity, width, height,
+  range)` and `discArea(color, intensity, radius, range)` (a range: they
+  are the frame's local lights, gathered, listed and clustered as their
+  sphere), and `AreaLights`. The tables are three.js's (Heitz's fit), not
+  made at build time: a 64 KB RGBA16F asset (`ltc.bin`, the two tables one
+  above the other: one texture slot, not two). An area light is one row of
+  the light table, not a block of its own (the fragment stage's uniforms
+  are full): its cone's xyz the rectangle's half width along its x, its w
+  the normal packed (an octahedral place in two 11-bit halves past 2^22,
+  exact in a float; a spot's cone test then passes whole), its colour's w
+  below zero its kind and half height; so a variant without area lights
+  (any material but the standard one's area variants, or a frame without
+  `AreaLights`) lights it as a point light at its centre, and
+  `ClusteredLights` and its compute path need nothing new. The standard
+  material's `area` variants (plain and instanced, alone and with probes:
+  `PbrAreaShader`) are drawn in frames with area lights, compiled then. A
+  disc is an octagon of its area (no disc LTC). Not built: a reference
+  against three.js's renders (the `arealight` frame is a golden of its own).
 - **Hemisphere.** This is today's `renderer.sky` and `renderer.ground`,
   as a light. A world with a `Hemisphere` light uses it, else the
   renderer's fields as now. Nothing new is linked.
@@ -645,6 +665,49 @@ about 0.1 ms for 100 lights (an estimate, measured in phase 4's
   image)`) or in the asset step (`Pack --environment sky.hdr`). This
   replaces Expansion's `tools/envbake.py`.
 
+*As built (phase 5):*
+
+- **The atlas stays.** With cube textures in gfx the probes could have
+  been cubes, but WebGL2 and GL ES 3.0 have no cube arrays: a cube a probe
+  is a texture slot a probe, and the standard material's slots are 16 in
+  all (the physical variants use every one). One octahedral atlas is one
+  slot for the environment and every probe, the slot the environment
+  already had, so every material, the physical ones included, reads the
+  environment from it. Cubes are what a capture draws into (six passes
+  into a cube's faces, its mips generated, then prefiltered). The atlas is
+  `Prefilter`'s: columns of square octahedral cells (a texel's gutter
+  folded across the octahedron's edges: no seams), its rows by roughness
+  and the irradiance's, RGBA16F; the environment's is the first column.
+- **Light probes per vertex, not in PbrFrame.** The fragment stage's
+  uniforms are full (Android's emulator's 224 vectors), and a fragment
+  stage reading PbrObject crashed that emulator (phase 4), so the draw's
+  harmonics are a block of the vertex stage (`PbrProbes`: 7 vectors and
+  the two probes' 4; a block of its own, not PbrObject's: the uniform
+  ring's 256-byte slots would hold half the draws), evaluated at each
+  vertex along its normal and passed on as a varying. The environment's
+  harmonics make its atlas' irradiance row instead (`Environment.sh`, from
+  the image on the CPU at load), read per pixel as before.
+- **Reflection probes as varyings.** A draw's two probes (each its box's
+  centre and half size, its column) are four varyings. A probe is captured
+  at its box's centre: the box is centred on its node (`size`), not an
+  `Aabb` of its own. Its share of a draw is how much of the draw's bounds
+  its box holds (each axis' membership averaged over the bounds, its
+  walls soft over `blend`), not the draw's centre's depth (a floor's
+  centre lies on its room's box's face).
+- **Captures** draw the world through a twin of the renderer (offscreen,
+  RGBA16F; its light, sky and environment, its shadows and physical
+  materials; mirrored: a cube's faces are seen as from inside, so its
+  winding is turned by its pipelines' culling), a probe or two a frame,
+  at the frame's new `BeforePass` point.
+- **Drawn with probes:** the standard material's opaque draws, plain and
+  instanced (pbr's `probes` variants, `PbrProbesShader`). Normal-mapped,
+  skinned and see-through draws, instanced sets and materials of their own
+  shader (Physical's) read the environment alone: their variants with
+  probes would double their shaders' text.
+- **Not built:** capturing a `ProbeGrid` on the GPU (a readback; the grid
+  is filled by code or read from bytes, `ProbeGrid.read`, baked by a
+  tool), `Pack --environment` (the prefilter runs at load, in a frame).
+
 ```haxe
 var probe = ReflectionProbe.attach(world.node("hall"), {box: Aabb.of(new Vec3(-6, 0, -4), new Vec3(6, 4, 4)), blend: 0.5});
 probe.capture(renderer);                   // once, after the level is built
@@ -679,6 +742,17 @@ ProbeGrid.attach(world.node("gi"), PackedProbes.read(Asset.embed("level.probes")
 - **Baking stays outside.** Use Blender or another tool's atlas, or a
   later helder baker on the GPU. Packing the result (RGBM or RGBA16F,
   then BC6 or ASTC HDR when gfx gains them) is the asset step's.
+
+*As built (phase 5):* `Lightmap.attach(node, new Lightmap(texture, rect,
+srgb))` (the texture linear RGBA16F, or RGBA8 sRGB-encoded), its `mode`
+`Indirect` or `All`, drawn with `renderer.use(new Lightmaps(device))`:
+the standard material's opaque plain draws of a lightmapped node with
+second uvs (pbr's `lightmap` variant, `PbrLightmapShader`; its block, the
+rectangle and the mode, the vertex stage's). A lightmapped node is a draw
+of its own (instanced runs stop at it); its draws are not lit by probes.
+The second uvs are a primitive's `uv1` (glTF's TEXCOORD_1, phase 6's);
+the `lightmap` frame's model is made in code (a plane given second uvs),
+not a glTF.
 
 ## 3. Post-processing
 
@@ -1253,7 +1327,7 @@ the passes after it do not change:
 | DoF (3.3, `Dof`) | The CoC and the half-resolution gather as dispatches into RGBA16F storage textures. The gather's tiles of the CoC's maximum are a reduction. | The fragment passes of phase 2 | Workgroup memory for the tiles' reduction, else a dispatch a level |
 | Skinning (`Skinning`) | One dispatch a skinned mesh a frame. It writes skinned positions and normals into a storage buffer, which the shadow, prepass and main passes all draw as their vertex buffer: skinned once, not three times. | Today's vertex-shader skinning | Today's |
 | Particles (`GpuParticles`) | The state (position, velocity, age) is integrated each frame in an `RWStorage`: forces, collisions with the depth buffer, respawn. It is drawn as instances straight from the buffer, as `examples/fountain` does. | Today's analytic path (born once, moved in closed form by the vertex shader) | Today's |
-| The environment's prefilter and SH at load (2.4) | The GGX prefilter as a dispatch per roughness row into an RGBA16F storage texture (the octahedral atlas). The SH projection is a sum of `atomicAdd`s in fixed point, or a two-step reduction, read back once at load. | The prefilter as fragment passes (phase 5's plan), or the asset step's (`Pack --environment`) | Today's. Workgroup memory makes the SH sum one pass. |
+| The environment's prefilter and SH at load (2.4) | The GGX prefilter as a dispatch per roughness row into an RGBA16F storage texture (the octahedral atlas). The SH projection is a sum of `atomicAdd`s in fixed point, or a two-step reduction, read back once at load. *Built:* one dispatch a column of the atlas (an invocation a texel, every row: `PrefilterDispatch`), the same function as the fallback's pass; the SH projection on the CPU from the image at load (no readback: the image is there) | The prefilter as fragment passes (phase 5's plan), or the asset step's (`Pack --environment`). *Built:* a fragment pass a column (`PrefilterPass`) | Today's. Workgroup memory makes the SH sum one pass. |
 
 **Mobile.**
 
@@ -1656,7 +1730,7 @@ its fallback; the departures said where the design describes them (2.1,
   (`PbrSkinInfo` stays the shadow casters' and Unlit's): PbrLights' block
   made a skinned physical variant's slots 17, past gfx's 16.
 
-### Phase 5: indirect light
+### Phase 5: indirect light (built)
 
 - **gfx (a gfx task, alongside):** cube textures, 2D arrays and RGBA32F
   on every back end, with `TextureCube` in the shader frontend.
@@ -1679,6 +1753,51 @@ Tests and frames:
   gfx's cube and array frames in the gfx lane.
 - **Example:** `examples/gltf-showcase` gains its environments
   prefiltered by helder.
+
+As built: every item above but `Pack --environment` and the probe grid's
+capture, with the departures said where the design describes them (0, 2.3,
+2.4, 2.5, 8), and:
+
+- **gfx:** `TextureDesc.cube` and `layers` (a 2D array of any count, a
+  cube's six), `TextureCube` (`sample(t, dir)`) and `Texture2DArray`
+  (`sample(t, uv, layer)`) in the shader frontend and in TypeScript,
+  `ColorTarget.layer` (a pass into a face or a layer), `writeTexture`'s
+  layer, `RGBA32F` (unfilterable), on GL and WebGL2, D3D11, Metal and
+  WebGPU (a binding's `dimension`: WebGPU's view dimension). The gfx
+  lanes' `layers` frame checks every face's orientation, uploaded and
+  drawn into, on each back end.
+- **The prefilter** (`Prefilter`, `PrefilterShader`): a column of the
+  atlas a source (an equirectangular image, mip-mapped, or a cube), GGX's
+  rows by filtered importance samples (a golden-ratio sequence: no
+  integer bit ops in the fragment stages), the irradiance row from the
+  harmonics (or cosine samples for a cube); a dispatch where the device
+  has compute, else a fragment pass into the atlas (a render target), at
+  the renderer's new `BeforePass` injection point, once.
+  `Environment.prefilter(device, w, h, texels, format)` takes RGBA8 (sRGB),
+  RGBA16F or RGBA32F (halved to 16F); the background stays the image.
+- **Probes** is one feature (`renderer.use(new Probes(device))`) for
+  `LightProbe`, `ProbeGrid` and `ReflectionProbe`, not one each; `Sh` is
+  helder.scene.render's (L2: projections, irradiance, `pack`, the
+  shaders' seven vectors).
+- **Variants:** each part is a pbr option compiled only when a frame draws
+  with it (`probes`, `area`, `lightmap`), a module of its own linked with
+  its feature alone. They are full light loops (not `sunOnly` or
+  `untiled`): on Android's emulator a frame with area lights or probes
+  compiles the full stage, as one with casting local lights does (phase
+  4's follow-up).
+- **Frames** (tests/3d/IndirectScenes.hx): `sh`, `probes`, `arealight`,
+  `lightmap`; `sh` on Mesa's GL ES 3.1 (the dispatch) and again with
+  `HELDER_NO_COMPUTE=1` (the pass), one golden; in Chromium on WebGPU and
+  WebGL2. `Sh.test.hx` (projections of known functions, the packed
+  polynomial against irradiance).
+- **TypeScript:** the classes above in helder/scene; pbr.ts's options,
+  blocks and functions (tests/typescript/definitions' pbr: the probes and
+  area variants); `tests/typescript/helder/indirect.ts` without a device.
+- **Docs:** [Indirect light](/docs/scene/indirect.md), its examples
+  `scene-environment` and `scene-probes`. examples/gltf-showcase's
+  environments are prefiltered by helder at load from their atlases' first
+  row (the panorama at roughness 0, 8-bit: its HDR sources are not in the
+  repository; envbake.py made the atlases).
 
 ### Phase 6: glTF materials, complete
 

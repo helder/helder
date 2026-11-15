@@ -121,7 +121,7 @@ class LocalShadows implements RenderFeature.LocalShadowSource {
 		for (k in 0...fl.count) {
 			fl.setTile(k, -1);
 			var light = fl.lights[k];
-			if (!light.castShadows || atlas <= 0 || asks == maxLocal) continue;
+			if (!light.castShadows || light.area || atlas <= 0 || asks == maxLocal) continue;
 			var faces = fl.isPoint(k) ? 6 : 1;
 			if (tiles + faces > MAX_TILES) continue;
 			var s = light.shadow != null && light.shadow.size != null && light.shadow.size > 0 ? light.shadow.size : faces == 6 ? tileSize >> 1 : tileSize;

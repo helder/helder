@@ -19,7 +19,6 @@ class Sky implements RenderFeature {
 	public var sunColor = new Vec3(1, 0.9, 0.7);
 
 	final device:Device;
-	var pipeline:Pipeline = cast 0; // (the renderer's, when attached)
 	final quad:Buffer;
 	final bytes = Bytes.alloc(SkyShader.uniforms[0].size);
 	// (the block as written, kept: nothing allocated per frame)
@@ -34,12 +33,14 @@ class Sky implements RenderFeature {
 		quad = device.createBuffer({size: v.length, usage: Vertex, data: v});
 	}
 
+	// (each renderer its pipeline: Probes' twin draws it too)
 	public function attach(renderer:Renderer) {
-		pipeline = renderer.createPipeline(SkyShader.pipeline());
-		renderer.inject(BeforeOpaque, (enc, frame) -> draw(enc, frame, renderer));
+		var pipeline = renderer.createPipeline(SkyShader.pipeline());
+		@:privateAccess renderer.skyFeature = this;
+		renderer.inject(BeforeOpaque, (enc, frame) -> draw(enc, frame, renderer, pipeline));
 	}
 
-	function draw(enc:Encoder, frame:Renderer.FrameInfo, renderer:Renderer) {
+	function draw(enc:Encoder, frame:Renderer.FrameInfo, renderer:Renderer, pipeline:Pipeline) {
 		var e = frame.eye, l = frame.toLight;
 		var b = block;
 		b.invViewProj = MathTools.inverse(frame.viewProj);

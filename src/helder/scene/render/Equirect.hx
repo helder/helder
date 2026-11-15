@@ -53,6 +53,16 @@ function octAtlas(t:Texture2D, d:Vec3, col:Float, row:Float, cols:Float, rows:Fl
 	return sampleLevel(t, vec2((col * size + o.x) / (cols * size), (row * size + o.y) / (rows * size)), 0).xyz;
 }
 
+// spherical harmonics' irradiance over pi at a unit normal (Sh.pack's
+// seven vectors: each channel's bands 0 and 1, their band 2, its x^2 - y^2)
+function shIrradiance(sh0:Vec4, sh1:Vec4, sh2:Vec4, sh3:Vec4, sh4:Vec4, sh5:Vec4, sh6:Vec4, n:Vec3):Vec3 {
+	var n4 = vec4(n, 1);
+	var b = vec4(n.x * n.y, n.y * n.z, n.z * n.z, n.z * n.x);
+	var c = n.x * n.x - n.y * n.y;
+	var e = vec3(dot(sh0, n4), dot(sh1, n4), dot(sh2, n4)) + vec3(dot(sh3, b), dot(sh4, b), dot(sh5, b)) + sh6.xyz * c;
+	return max(e, vec3(0));
+}
+
 // (the shaders have no inverse trigonometry: polynomial fits, within
 // 2e-5 radians of atan2 and 7e-5 of acos)
 function arcTan2(y:Float, x:Float):Float {
