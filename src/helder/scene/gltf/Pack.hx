@@ -16,7 +16,11 @@ import helder.scene.render.VertexData;
 // JSON, so a program loading only packed models links no JSON reader.
 //
 //   haxe -cp src \
-//     --run helder.scene.gltf.Pack <in.glb> <out.hxm3d> [--textures bc|astc]
+//     --run helder.scene.gltf.Pack <in.glb> <out.hxm3d> [--textures bc|astc] [--bvh]
+//
+// --bvh: each primitive's tree for casting rays at its triangles (Bvh: what
+// world.raycast builds when it first casts at one), made here and read with
+// the model as it is, so a level loads pickable.
 //
 // --textures: the images compressed for the GPU, per target (decoded here
 // by helder.image, their mip chains made, each level in blocks by
@@ -26,7 +30,7 @@ import helder.scene.render.VertexData;
 // them decoded on the CPU (PackedModel). (Natively built, it runs in
 // seconds: examples/sponza/fetch.mjs builds it so.)
 //
-// The format (little-endian): "HXM3", version 4, then counts and records:
+// The format (little-endian): "HXM3", version 5, then counts and records:
 //   images      mime, byte count, bytes (mime image/x-hxm3d-blocks: a
 //               compressed image, its bytes the format (1 BC1, 2 BC3, 3
 //               ASTC 4x4), width, height, levels, each level's byte count
@@ -38,8 +42,9 @@ import helder.scene.render.VertexData;
 //               minFilter, wrapS, wrapT; glTF's), alpha cutoff (0: not
 //               MASK), uv offset 2, rotation, scale 2 floats, clear coat
 //               and its roughness, transmission
-//   vertex data flags (2: wide indices, 4: skinned, 8: tangents), index
-//               count, vertex bytes, index bytes, tangent bytes (flag 8),
+//   vertex data flags (2: wide indices, 4: skinned, 8: tangents, 16: a
+//               tree), index count, vertex bytes, index bytes, tangent
+//               bytes (flag 8), the tree's bytes (flag 16: Bvh.bytes),
 //               bounds 6 floats: once per set of accessors
 //   meshes      name, primitives: material, vertex data, morph targets
 //               (each: flags (1 positions, 2 normals), their displacements),
@@ -57,7 +62,7 @@ import helder.scene.render.VertexData;
 // (nodes are referred to by their place in the nodes' list)
 class Pack {
 	public static inline var MAGIC = 0x334D5848; // "HXM3"
-	public static inline var VERSION = 4;
+	public static inline var VERSION = 5;
 	public static inline var BLOCKS = "image/x-hxm3d-blocks";
 
 	static function main() {
@@ -68,8 +73,13 @@ class Pack {
 			textures = args[at + 1];
 			args.splice(at, 2);
 		}
+		var b = args.indexOf("--bvh");
+		if (b >= 0) {
+			trees = true;
+			args.splice(b, 1);
+		}
 		if (args.length != 2 || (textures != "" && textures != "bc" && textures != "astc")) {
-			Sys.println("usage: Pack <in.gltf|in.glb> <out.hxm3d> [--textures bc|astc]");
+			Sys.println("usage: Pack <in.gltf|in.glb> <out.hxm3d> [--textures bc|astc] [--bvh]");
 			Sys.exit(2);
 		}
 		compress = textures;
@@ -87,6 +97,8 @@ class Pack {
 
 	// the textures' compression (Pack's --textures: "", bc, astc), and what it made
 	public static var compress = "";
+	// whether each primitive's tree is packed (--bvh)
+	public static var trees = false;
 	static var compressed = 0;
 	static var gpuBytes = 0.0;
 	static var doc:GltfDoc;
@@ -194,7 +206,7 @@ class Pack {
 		var meshPrims = [for (mesh in doc.meshes) [for (p in mesh.primitives) if (p.mode == 4 && p.position >= 0) {material: p.material, data: dataOf(p), prim: p}]];
 		o.writeInt32(datas.length);
 		for (d in datas) {
-			o.writeByte((d.wide ? 2 : 0) | (d.skinned ? 4 : 0) | (d.tangents != null ? 8 : 0));
+			o.writeByte((d.wide ? 2 : 0) | (d.skinned ? 4 : 0) | (d.tangents != null ? 8 : 0) | (trees ? 16 : 0));
 			o.writeInt32(d.count);
 			o.writeInt32(d.vertices.length);
 			o.write(d.vertices);
@@ -203,6 +215,11 @@ class Pack {
 			if (d.tangents != null) {
 				o.writeInt32(d.tangents.length);
 				o.write(d.tangents);
+			}
+			if (trees) {
+				var t = helder.scene.render.Bvh.build(d).bytes();
+				o.writeInt32(t.length);
+				o.write(t);
 			}
 			for (x in [d.bounds.min.x, d.bounds.min.y, d.bounds.min.z, d.bounds.max.x, d.bounds.max.y, d.bounds.max.z])
 				o.writeFloat(x);

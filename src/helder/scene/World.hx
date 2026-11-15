@@ -326,6 +326,20 @@ class World {
 		live--;
 	}
 
+	#if !eval // (casting reaches meshes, and through them gfx's native back ends: not on Eval, where a world's own tests run)
+
+	// the nearest triangle a ray from origin along dir meets, into hit (a
+	// Hit the program keeps: nothing allocated a cast); false when none.
+	// options (kept too): a distance, layers, bounds alone, backs
+	// (helder.scene.render.Raycaster)
+	public function raycast(origin:Vec3, dir:Vec3, hit:helder.scene.render.Hit, ?options:helder.scene.render.Hit.RaycastOptions):Bool
+		return helder.scene.render.Raycaster.raycast(this, origin, dir, hit, options);
+
+	// every triangle the ray meets into hits, nearest first; their count
+	public function raycastAll(origin:Vec3, dir:Vec3, hits:helder.scene.render.Hit.HitList, ?options:helder.scene.render.Hit.RaycastOptions):Int
+		return helder.scene.render.Raycaster.raycastAll(this, origin, dir, hits, options);
+	#end
+
 	// (component stores)
 
 	// the world's store of a kind (made on first use)

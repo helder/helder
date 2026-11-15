@@ -6,22 +6,28 @@
 // Sprites) and materials (Material's factories: toon, lambert, unlit...), glTF models (Model,
 // helder/asset's model(path) loads one; GltfScene), the renderer and its
 // post chain (PostProcess: its effects Ssao, Dof, Outline, Lut; the view
-// buffers they read, ViewBuffers), input
+// buffers they read, ViewBuffers), lines with width and debug drawing
+// (Lines, LineRenderer, DebugDraw, the helpers), rays cast at triangles
+// (world.raycast: Hit, HitList, RaycastOptions, Bvh), text in the world
+// (Text3D), input
 // actions (InputMap, Bindings), a fixed simulation step, and what a scene is
 // drawn with: a window, its device (or a headless one), the app's loop. A
 // program imports helder/scene, not this module.
 //
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
-import type {Asset, Image} from "helder/asset";
+import type {Asset, FontFile, Image} from "helder/asset";
 import type {Mat4, Quat, Vec2, Vec3, Vec4} from "helder/gfx";
 import type {Node} from "helder/scene";
 
-declare const __haxe: {Mesh: "helder.scene.render.Mesh", Encoder: "helder.gfx.Encoder", World: "helder.scene.World", Camera: "helder.scene.Camera", Light: "helder.scene.render.Light", Renderer: "helder.scene.render.Renderer", Shadows: "helder.scene.render.Shadows", Fog: "helder.scene.render.Fog", Material: "helder.scene.render.Material", MeshRenderer: "helder.scene.render.MeshRenderer", Shapes: "helder.scene.render.Shapes", Geometry: "helder.scene.render.Geometry", VertexData: "helder.scene.render.VertexData", Curve3: "helder.scene.math.Curve3", InstancedMesh: "helder.scene.render.InstancedMesh", Sprites: "helder.scene.render.Sprites", Model: "helder.scene.render.Model", MaterialShader: "helder.scene.render.MaterialShader", PostProcess: "helder.scene.render.PostProcess", Ssao: "helder.scene.render.Ssao", Dof: "helder.scene.render.Dof", Outline: "helder.scene.render.Outline", Lut: "helder.scene.render.Lut", ViewBuffers: "helder.scene.render.ViewBuffers", InputMap: "helder.scene.input.InputMap", Bindings: "helder.scene.input.Bindings", FixedStep: "helder.scene.FixedStep", Device: "helder.gfx.Device", Surface: "helder.os.Surface", Window: "helder.os.Window", App: "helder.os.App", Event: "helder.os.Event", Script: "helder.scene.Script", __module: "helder.scene.TypeScript"};
+declare const __haxe: {Mesh: "helder.scene.render.Mesh", Encoder: "helder.gfx.Encoder", World: "helder.scene.World", Camera: "helder.scene.Camera", Light: "helder.scene.render.Light", Renderer: "helder.scene.render.Renderer", Shadows: "helder.scene.render.Shadows", Fog: "helder.scene.render.Fog", Material: "helder.scene.render.Material", MeshRenderer: "helder.scene.render.MeshRenderer", Shapes: "helder.scene.render.Shapes", Geometry: "helder.scene.render.Geometry", VertexData: "helder.scene.render.VertexData", Curve3: "helder.scene.math.Curve3", InstancedMesh: "helder.scene.render.InstancedMesh", Sprites: "helder.scene.render.Sprites", Model: "helder.scene.render.Model", MaterialShader: "helder.scene.render.MaterialShader", PostProcess: "helder.scene.render.PostProcess", Ssao: "helder.scene.render.Ssao", Dof: "helder.scene.render.Dof", Outline: "helder.scene.render.Outline", Lut: "helder.scene.render.Lut", ViewBuffers: "helder.scene.render.ViewBuffers", Lines: "helder.scene.render.Lines", LineRenderer: "helder.scene.render.LineRenderer", DebugDraw: "helder.scene.render.DebugDraw", Helper: "helder.scene.render.Helper", AxesHelper: "helder.scene.render.AxesHelper", GridHelper: "helder.scene.render.GridHelper", BoundsHelper: "helder.scene.render.BoundsHelper", LightHelper: "helder.scene.render.LightHelper", CameraHelper: "helder.scene.render.CameraHelper", SkeletonHelper: "helder.scene.render.SkeletonHelper", Hit: "helder.scene.render.Hit", HitList: "helder.scene.render.Hit.HitList", RaycastOptions: "helder.scene.render.Hit.RaycastOptions", Raycaster: "helder.scene.render.Raycaster", Bvh: "helder.scene.render.Bvh", Text3D: "helder.scene.render.Text3D", InputMap: "helder.scene.input.InputMap", Bindings: "helder.scene.input.Bindings", FixedStep: "helder.scene.FixedStep", Device: "helder.gfx.Device", Surface: "helder.os.Surface", Window: "helder.os.Window", App: "helder.os.App", Event: "helder.os.Event", Script: "helder.scene.Script", __module: "helder.scene.TypeScript"};
 
 // What a node draws (node.mesh): primitives, each a vertex buffer in the
 // renderer's layout (PbrVertex: position, normal, uv; 32 bytes a vertex),
-// triangles' indices and a material, and the bounds of them all.
+// triangles' indices and a material, and the bounds of them all. Each
+// primitive keeps its data on the CPU too (Primitive.data: the same bytes
+// the GPU was given, for casting rays at its triangles: Raycaster), unless
+// Mesh.keepCpu is off when it is made.
 export declare class Mesh {
 	private readonly mesh: never;
 }
@@ -71,6 +77,15 @@ export type Antialias = number;
 // how depth of field's circle grows (Dof.focus, Dof.tiltShift)
 export type DofMode = number;
 
+// a line's width: in pixels on the screen, or in the world's units
+export type LineUnits = number;
+
+// where a polyline's segments meet
+export type LineJoin = number;
+
+// a line's ends
+export type LineCap = number;
+
 export type AnyShader = unknown;
 
 export type BoxOptions = { flat?: boolean; tangents?: boolean; width?: number; height?: number; depth?: number; widthSegments?: number; heightSegments?: number; depthSegments?: number };
@@ -83,10 +98,23 @@ export type ConeOptions = { flat?: boolean; tangents?: boolean; radius?: number;
 
 export type CylinderOptions = { flat?: boolean; tangents?: boolean; radiusTop?: number; radiusBottom?: number; height?: number; radialSegments?: number; heightSegments?: number; openEnded?: boolean; thetaStart?: number; thetaLength?: number };
 
+// what Geometry.extrude takes (each optional): its depth (1), a bevel's
+// size (0: none) and steps (3), the curves' flattening tolerance (0.01, the
+// path's units), the fill rule that finds its holes (non-zero; evenOdd),
+// and every generator's flat and tangents
+export type ExtrudeOptions = { depth?: number; bevelSize?: number; bevelSegments?: number; tolerance?: number; evenOdd?: boolean; flat?: boolean; tangents?: boolean };
+
 // a curve's frames (Curve3.frames): as many tangents, normals and binormals
 export type Frames = { tangents: Vec3[]; normals: Vec3[]; binormals: Vec3[] };
 
+// a GridHelper's (each optional): 10 wide in 10 cells, fading at 30
+export type GridOptions = { size?: number; divisions?: number; fade?: number; color?: Vec4; majorColor?: Vec4 };
+
 export type LatheOptions = { flat?: boolean; tangents?: boolean; segments?: number; phiStart?: number; phiLength?: number };
+
+// what Lines are made with (each optional): 2 pixels wide, mitred, butt
+// ends, solid, depth tested, opaque, tone mapped, none drawn
+export type LinesOptions = { segments?: boolean; width?: number; widthUnits?: LineUnits; join?: LineJoin; cap?: LineCap; dash?: number; gap?: number; dashOffset?: number; closed?: boolean; onTop?: boolean; transparent?: boolean; toneMapped?: boolean; count?: number };
 
 // Material.matcap's: also the matcap, a lit sphere's picture (sRGB)
 export type MatcapOptions = { name?: string; color?: Vec4; texture?: number; metallic?: number; roughness?: number; emissive?: Vec3; doubleSided?: boolean; blend?: boolean; blending?: number; alphaCutoff?: number; fog?: boolean; castShadows?: boolean; toneMapped?: boolean; matcap: number };
@@ -111,6 +139,19 @@ export type SphereOptions = { flat?: boolean; tangents?: boolean; radius?: numbe
 export type SpritesOptions = { mode?: number; axis?: Vec3; columns?: number; rows?: number; count?: number };
 
 export type SsaoOptions = { radius?: number; intensity?: number; samples?: number; slices?: number; halfRes?: boolean };
+
+// what a Text3D is made with (each optional): the em's height (0.3), a
+// depth (0: flat, double-sided), a bevel, the lines' alignment (0.5:
+// centred), height and letter spacing (Geometry.text's), its colour
+// (white), lit (false: unlit, its colour as given) or a material of its
+// own, turned to the camera (billboard), casting shadows (false)
+export type Text3DOptions = { size?: number; depth?: number; bevelSize?: number; align?: number; lineHeight?: number; letterSpacing?: number; color?: Vec4; lit?: boolean; material?: Material; billboard?: boolean; castShadows?: boolean };
+
+// what Geometry.text takes (each optional): the em's size (1), its depth
+// (0: flat), a bevel (as extrude's), the lines' height (1.2 ems), the
+// letters' spacing (ems), the lines' alignment (0 left, 0.5 centred, 1
+// right), the curves' tolerance (the scene's units: size / 200)
+export type TextGeometryOptions = { size?: number; depth?: number; bevelSize?: number; bevelSegments?: number; lineHeight?: number; letterSpacing?: number; align?: number; tolerance?: number; flat?: boolean; tangents?: boolean };
 
 // Material.toon's: also its bands and its shade
 export type ToonOptions = { name?: string; color?: Vec4; texture?: number; metallic?: number; roughness?: number; emissive?: Vec3; doubleSided?: boolean; blend?: boolean; blending?: number; alphaCutoff?: number; fog?: boolean; castShadows?: boolean; toneMapped?: boolean; steps?: number; shade?: Vec3 };
@@ -147,6 +188,13 @@ export declare class World {
 	node(name?: string, parent?: Node): Node;
 	// whether a node is in the tree under the root (not detached)
 	inTree(n: Node): boolean;
+	// the nearest triangle a ray from origin along dir meets, into hit (a
+	// Hit the program keeps: nothing allocated a cast); false when none.
+	// options (kept too): a distance, layers, bounds alone, backs
+	// (helder.scene.render.Raycaster)
+	raycast(origin: Vec3, dir: Vec3, hit: Hit, options?: RaycastOptions): boolean;
+	// every triangle the ray meets into hits, nearest first; their count
+	raycastAll(origin: Vec3, dir: Vec3, hits: HitList, options?: RaycastOptions): number;
 	// the world's store of a kind (made on first use)
 	store<T>(kind: unknown): unknown;
 }
@@ -324,9 +372,11 @@ export declare class Renderer {
 	drawInto(enc: Encoder, world: World, camera: Camera, color: number, depth: number, width: number, height: number, resolve?: number): void;
 	// what the frame's hooks get: the camera's view, the light (FrameInfo)
 	readonly frame: unknown;
-	// f runs at a point of each frame: BeforeOpaque and AfterOpaque inside
-	// the frame's pass (draw with your own pipelines, depth-tested against
-	// the scene), AfterPass after it (passes of your own: an overlay)
+	// f runs at a point of each frame: BeforeOpaque, AfterOpaque and
+	// AfterTransparent inside the frame's pass (draw with your own
+	// pipelines, depth-tested against the scene; AfterTransparent after the
+	// see-through surfaces too: what is drawn over everything), AfterPass
+	// after it (passes of your own: an overlay)
 	inject(point: number, f: (arg0: Encoder, arg1: unknown) => void): void;
 	// turns on an optional feature (Shadows, Skinning, NormalMaps, Sky, Environment); returns the renderer
 	use(feature: unknown): Renderer;
@@ -596,6 +646,10 @@ export declare class MeshRenderer {
 export declare class Shapes {
 	// a geometry (Geometry's, or any VertexData) as a mesh of one primitive
 	static of(device: Device, geometry: VertexData, material: Material): Mesh;
+	// a mesh of a geometry's data alone, on the CPU (Mesh.addCpu): not drawn,
+	// cast at (world.raycast), with no device (tests, a level's collision
+	// shapes)
+	static cpu(geometry: VertexData, material: Material): Mesh;
 	// a box of width, height and depth, centred, flat faces
 	static box(device: Device, material: Material, w?: number, h?: number, d?: number): Mesh;
 	// a sphere of radius, segments around and rings from pole to pole
@@ -630,7 +684,12 @@ export declare class Shapes {
 //   Geometry.plane({width, height, widthSegments, heightSegments})
 //   Geometry.lathe(points, {segments, phiStart, phiLength})
 //   Geometry.tube(curve, {tubularSegments, radius, radialSegments, closed})
+//   Geometry.extrude(path, {depth, bevelSize, bevelSegments, tolerance, evenOdd})
+//   Geometry.text(font, text, {size, depth, bevelSize, bevelSegments, lineHeight, letterSpacing, align})
 //
+// extrude and text make solids of helder.canvas' paths and helder.text's
+// outlines (Extrude: canvas' boolean ops, then the caps triangulated):
+// linked only by a program that calls them.
 // Like three's: y up, the plane, circle and ring in xy facing +z, the
 // torus about z, a cylinder's seam at +z. Unlike three's, uvs run down the
 // image as glTF's (three's v flipped: 1 - v), as every helder material
@@ -661,6 +720,12 @@ export declare class Geometry {
 	// a tube of radius along a curve, its rings on the curve's frames
 	// (Curve3.frames: no twist where the curve bends back), at equal lengths
 	// along it (three's TubeGeometry)
+	// a 2D path (helder.canvas.Path: lines, curves, holes, unions) made
+	// solid, from z 0 to depth (Extrude.shape)
+	static extrude(shape: unknown, o?: ExtrudeOptions): VertexData;
+	// a text's outlines in font made solid (or flat: depth 0), size the em's
+	// height, its first baseline at y 0 (Extrude.text)
+	static text(font: FontFile, text: string, o?: TextGeometryOptions): VertexData;
 	static tube(curve: Curve3, o?: TubeOptions): VertexData;
 }
 
@@ -1292,6 +1357,439 @@ export declare class ViewBuffers {
 	readonly inverseProjection: Mat4;
 	readonly view: Mat4;
 	dispose(): void;
+}
+
+// Lines with a width (three's Line2 and LineMaterial, Babylon's
+// GreasedLine): a polyline through its points, or separate segments (a
+// pair of points each), drawn by LineRenderer (renderer.use(new
+// LineRenderer(device))) as quads on the screen, so a width is the same on
+// every back end (gfx's Lines topology is 1 px, and WebGL ignores widths):
+//
+//   width        in pixels (widthUnits Pixels, the default) or in the
+//                world's units (World: thinner far off, as geometry is)
+//   join         where segments meet: Miter (Bevel past 4 half widths),
+//                Round or Bevel
+//   cap          the line's ends: Butt, Round or Square
+//   dash, gap    a dashed line (lengths in the line's own units along it;
+//                0: solid), dashOffset moving the dashes along (animated:
+//                a marching line)
+//   onTop        drawn over everything (not depth tested), after the
+//                scene; else depth tested against it
+//   transparent  blended by its colours' alpha, after the see-through
+//                surfaces (not written to depth)
+//   toneMapped   false: its colours as they are into an 8-bit target (a
+//                debug colour's pure red), not tone mapped
+//
+// A point is a position in the node's frame (Lines.attach) and a colour
+// (linear rgb and alpha, blended along a segment). The program writes
+// them into the line's flat data, as InstancedMesh takes its instances:
+// nothing is allocated a frame, and the line renderer uploads the points
+// once they changed (one writeBuffer; its GPU copy made when first drawn,
+// so lines themselves link no device).
+//
+//   var path = new Lines(512, {width: 6, join: Round, dash: 0.2, gap: 0.15});
+//   Lines.attach(world.node("aim"), path);
+//   // each frame:
+//   path.count = n;
+//   for (i in 0...n) path.setPoint(i, xs[i], ys[i], zs[i], 1, 1, 1, fade(i));
+export declare class Lines {
+	// capacity points (count of them drawn: none by default)
+	constructor(capacity: number, options?: LinesOptions);
+	static readonly KIND: unknown;
+	// the triangles of a join's or a round cap's fan
+	static readonly FAN: number;
+	static readonly RECORD: number;
+	static attach(node: Node, lines: Lines): Lines;
+	static of(node: Node): Lines | null;
+	static detach(node: Node): void;
+	readonly capacity: number;
+	// separate segments (points 2k and 2k + 1), not a polyline
+	readonly segments: boolean;
+	// the points drawn (0 to capacity; a polyline's segments count - 1, closed's count)
+	count: number;
+	width: number;
+	widthUnits: LineUnits;
+	join: LineJoin;
+	cap: LineCap;
+	dash: number;
+	gap: number;
+	dashOffset: number;
+	// a polyline's last point joined back to its first
+	closed: boolean;
+	onTop: boolean;
+	transparent: boolean;
+	toneMapped: boolean;
+	visible: boolean;
+	// its GPU copy, LineRenderer's (made when first drawn: Buffer.NONE before)
+	readonly buffer: number;
+	// point i at x, y, z (the node's frame), of the linear colour r, g, b and alpha a
+	setPoint(i: number, x: number, y: number, z: number, r?: number, g?: number, b?: number, a?: number): void;
+	setPosition(i: number, x: number, y: number, z: number): void;
+	setColor(i: number, r: number, g: number, b: number, a?: number): void;
+	// point i's field: 0 to 2 its position, 3 to 6 its colour
+	get(i: number, field: number): number;
+	// the segments drawn (instances of LineRenderer's draw)
+	readonly drawn: number;
+	// the records as uploaded (the point buffer's bytes: tests)
+	readonly data: Uint8Array;
+	// the records made from the points, when they changed (the renderer
+	// uploads them after: their bytes, data)
+	prepare(): void;
+	// its GPU copy let go (made again if drawn again)
+	dispose(device: Device): void;
+}
+
+// Draws a world's Lines (renderer.use(new LineRenderer(device)), or
+// LineRenderer.of(renderer)): each shown node's lines one instanced draw
+// (LineShader: a segment an instance), the depth-tested opaque ones after
+// the opaque surfaces (AfterOpaque), the see-through ones (transparent)
+// after the see-through surfaces, those drawn over everything (onTop) last
+// (AfterTransparent). Their points are uploaded once changed; nothing is
+// allocated a frame. DebugDraw draws through it.
+export declare class LineRenderer {
+	constructor(device: Device);
+	// the renderer's line renderer, made and turned on when it has none
+	static of(renderer: Renderer): LineRenderer;
+	readonly device: Device;
+	// the last frame's draws (statistics)
+	readonly draws: number;
+	attach(renderer: Renderer): void;
+	dispose(): void;
+}
+
+// Immediate-mode debug drawing (Bevy's gizmos, PlayCanvas' drawLine): a
+// frame's calls, from anywhere (a script, the physics step, a loop), are
+// written into a ring of segments, drawn by the DebugDraw feature
+// (renderer.use(new DebugDraw())) as one draw of lines through the
+// renderer's LineRenderer, another for those drawn over everything
+// (onTop), then cleared: nothing to keep or remove, and nothing allocated
+// a frame. A colour is 0xRRGGBB as a page writes it (shown as written: not
+// lit, fogged or tone mapped).
+//
+//   DebugDraw.line(a, b, 0xFF4040);
+//   DebugDraw.aabb(mesh.bounds, 0x40FF40);
+//   DebugDraw.onTop = true;               // the calls from here on over everything
+//   DebugDraw.axes(player.worldMatrix(), 0.5);
+//   DebugDraw.onTop = false;
+//
+// Debug's calls are these, compiled out of a release build (helder build's
+// -D helder.release) unless -D helder.debugdraw: their arguments not
+// computed either. The helpers (AxesHelper, GridHelper, BoundsHelper,
+// LightHelper, CameraHelper, SkeletonHelper: components of a node) draw
+// through them each frame the feature draws.
+//
+// The ring holds capacity segments (set before the first call): calls past
+// it in a frame are dropped (dropped counts them). Several renderers
+// drawing in a frame: the first one's DebugDraw takes them.
+export declare class DebugDraw {
+	constructor(options?: { width?: number });
+	// the segments a frame holds (before the first call), and those dropped
+	// past it (the last frame's)
+	static capacity: number;
+	static readonly dropped: number;
+	// whether the calls from here on are drawn over everything (not depth tested)
+	static onTop: boolean;
+	// the renderer's DebugDraw, made and turned on when it has none
+	static of(renderer: Renderer): DebugDraw;
+	// a segment from a to b
+	static line(a: Vec3, b: Vec3, color?: number): void;
+	// from origin along dir for length (dir's length times it), an arrow's head at its end
+	static ray(origin: Vec3, dir: Vec3, length?: number, color?: number): void;
+	// an arrow from a to b
+	static arrow(a: Vec3, b: Vec3, color?: number): void;
+	// a box's twelve edges (in the world)
+	static aabb(box: unknown, color?: number): void;
+	// the box min to max moved by m (an oriented box: a node's bounds through its world matrix)
+	static boxOf(m: Mat4, min: Vec3, max: Vec3, color?: number): void;
+	// a circle about center facing normal
+	static circle(center: Vec3, normal: Vec3, radius: number, color?: number, segments?: number): void;
+	// a sphere as its three great circles
+	static sphere(center: Vec3, radius: number, color?: number, segments?: number): void;
+	// a point's three crossed strokes, size long
+	static cross3(p: Vec3, size?: number, color?: number): void;
+	// a frame's axes from its origin, size long: x red, y green, z blue (a node's: its worldMatrix())
+	static axes(m: Mat4, size?: number): void;
+	// a node's axes (axes of its world matrix)
+	static axesOf(node: Node, size?: number): void;
+	// a square grid on the xz plane about center, size wide, of divisions cells a side
+	static grid(center: Vec3, size?: number, divisions?: number, color?: number): void;
+	// a camera's view volume (its frustum) at an aspect (width over height)
+	static frustum(camera: Camera, aspect: number, color?: number): void;
+	// a light of a node: a directional one's arrows down its -z, a point
+	// light's range, a spot's cone to its range, a hemisphere's two halves;
+	// in its colour unless one is given (-1)
+	static light(node: Node, color?: number): void;
+	// a skin's bones: each joint to its parent where that is a joint too
+	static skeleton(skin: unknown, color?: number): void;
+	// joints' bones: each joint to its parent where that is one of them too
+	static bones(joints: Node[], color?: number): void;
+	// a curve as n segments
+	static path(curve: Curve3, n?: number, color?: number): void;
+	// its lines' width in pixels (2 by default)
+	width: number;
+	attach(renderer: Renderer): void;
+	// the segments the last frame drew (both rings)
+	readonly drawn: number;
+	dispose(): void;
+}
+
+// A debug view of a node (three's helpers: AxesHelper, Box3Helper,
+// CameraHelper, the light helpers, SkeletonHelper), a component drawn each
+// frame by the renderer's DebugDraw (renderer.use(new DebugDraw())):
+// the same calls as DebugDraw's, for its node, so a helper is what a
+// program could write itself. A node may have several (attach adds one).
+//
+//   AxesHelper.attach(node, 0.5);        // its axes: x red, y green, z blue
+//   BoundsHelper.attach(node);           // its mesh's box, turned with it
+//   LightHelper.attach(lamp);            // a light's direction, range or cone
+//   CameraHelper.attach(eye);            // a camera's view volume
+//   SkeletonHelper.attach(character);    // a skin's bones
+//   GridHelper.attach(floor, {size: 10, divisions: 10});   // an infinite grid (a shader)
+//
+// Unlike DebugDraw's calls, helpers are not compiled out of a release build:
+// a program attaching one wants it.
+export declare class Helper {
+	static readonly KIND: unknown;
+	// h added to node's helpers
+	static add<T>(node: Node, h: T): T;
+	// node's helpers removed
+	static clear(node: Node): void;
+	// whether it is drawn
+	visible: boolean;
+	// drawn for its node's parent, not its node (markup's helper tags: a
+	// <BoundsHelper/> in a mesh shows the mesh's)
+	ofParent: boolean;
+	// (its calls for node, each frame DebugDraw draws; enc, frame and the
+	// renderer for one drawing on its own: GridHelper)
+	draw(node: Node, enc: Encoder, frame: unknown, renderer: Renderer): void;
+}
+
+// a node's axes, size long: x red, y green, z blue
+export declare class AxesHelper extends Helper {
+	constructor(size?: number);
+	static attach(node: Node, size?: number): AxesHelper;
+	size: number;
+	draw(node: Node, enc: Encoder, frame: unknown, renderer: Renderer): void;
+}
+
+// An infinite grid on its node's xz plane (a studio's viewport, an editor's
+// floor: GridShader, not lines): cells of size / divisions (the node's
+// units), a major line every tenth, the x axis red and the z axis blue,
+// each line a pixel wide however far, fading out at fade (size * 3 by
+// default) from the eye. Drawn by DebugDraw (its pipeline made on its
+// renderer when first drawn), blended over the scene, depth tested.
+//
+//   GridHelper.attach(world.node("grid"), {size: 10, divisions: 10});
+export declare class GridHelper extends Helper {
+	constructor(options?: GridOptions);
+	static attach(node: Node, options?: GridOptions): GridHelper;
+	size: number;
+	divisions: number;
+	fade: number;
+	// the cells' lines' colour and the major ones' (linear, alpha their opacity)
+	color: Vec4;
+	majorColor: Vec4;
+	draw(node: Node, enc: Encoder, frame: unknown, renderer: Renderer): void;
+}
+
+// a node's mesh's (or instanced set's) box, in its frame: turned and scaled with it
+export declare class BoundsHelper extends Helper {
+	constructor(color?: number);
+	static attach(node: Node, color?: number): BoundsHelper;
+	color: number;
+	draw(node: Node, enc: Encoder, frame: unknown, renderer: Renderer): void;
+}
+
+// a node's light (DebugDraw.light: its direction, range or cone), in its
+// colour unless one is given (-1)
+export declare class LightHelper extends Helper {
+	constructor(color?: number);
+	static attach(node: Node, color?: number): LightHelper;
+	color: number;
+	draw(node: Node, enc: Encoder, frame: unknown, renderer: Renderer): void;
+}
+
+// a node's camera's view volume, at the frame's aspect (or its own, above 0)
+export declare class CameraHelper extends Helper {
+	constructor(color?: number, aspect?: number);
+	static attach(node: Node, color?: number, aspect?: number): CameraHelper;
+	color: number;
+	aspect: number;
+	draw(node: Node, enc: Encoder, frame: unknown, renderer: Renderer): void;
+}
+
+// a node's skin's bones (its Skin's joints, each to its parent)
+export declare class SkeletonHelper extends Helper {
+	constructor(color?: number);
+	static attach(node: Node, color?: number): SkeletonHelper;
+	color: number;
+	draw(node: Node, enc: Encoder, frame: unknown, renderer: Renderer): void;
+}
+
+// Where a ray met the world (world.raycast, Raycaster): filled by the cast,
+// owned by the program (one kept and refilled: nothing allocated a cast).
+// The node hit, how far along the ray (the world's units), the point,
+// the surface's normal there (its vertices' normals blended, in the world,
+// turned towards the ray: the back's when the back was hit), which side,
+// the primitive and its triangle (indices 3 * triangle on), the
+// barycentrics of the triangle's corners and the uvs there; an instanced
+// set's instance (-1: a node's mesh). A cast at bounds alone (triangles
+// off, or a primitive with no data on the CPU) gives the box's point, no
+// triangle (-1), the ray's opposite for a normal.
+export declare class Hit {
+	constructor();
+	node: Node;
+	distance: number;
+	point: Vec3;
+	normal: Vec3;
+	// whether the triangle's front was hit (counter-clockwise towards the ray)
+	front: boolean;
+	primitive: unknown | null;
+	triangle: number;
+	// the weights of the triangle's three corners (x the first's)
+	barycentric: Vec3;
+	uv: Vec2;
+	instance: number;
+	// another hit's values in this one
+	copyFrom(h: Hit): Hit;
+}
+
+// The hits of world.raycastAll, nearest first, refilled by each cast: its
+// hits kept between casts (more made only when a cast has more hits than
+// any before it).
+export declare class HitList {
+	constructor();
+	// the last cast's hits
+	readonly count: number;
+	get(i: number): Hit;
+}
+
+// What a cast looks at (world.raycast's options; kept by the program, not
+// made a cast): as far as maxDistance, the nodes of layers (a mask of
+// Raycaster.setLayers' bits: a node's 1 unless set), at the triangles
+// (false: the primitives' bounds alone, Pick.ray's way), their backs too
+// with backfaces, instanced sets (InstancedMesh, Sprites, Text3D) with
+// instances.
+export declare class RaycastOptions {
+	constructor(o?: { maxDistance?: number; layers?: number; triangles?: boolean; backfaces?: boolean; instances?: boolean });
+	maxDistance: number;
+	layers: number;
+	triangles: boolean;
+	backfaces: boolean;
+	instances: boolean;
+}
+
+// Rays cast at a world's triangles (world.raycast, world.raycastAll: three's
+// Raycaster, Bevy's MeshRayCast): each shown node drawing a mesh
+// (MeshRenderer) and each instance of an instanced set (InstancedMesh,
+// Sprites, Text3D), the ray brought into its frame (turned, moved and
+// scaled, unevenly too), its bounds first, then each primitive's bounds and
+// its triangles through the primitive's Bvh (made when first cast at, from
+// the data it keeps on the CPU: Mesh.keepCpu; or the asset step's). The
+// nearest hit fills a Hit the program owns, every hit a HitList: nothing is
+// allocated a cast, the trees once made.
+//
+//   final hit = new Hit();
+//   if (world.raycast(ray.origin, ray.dir, hit)) paint(hit.node, hit.uv);
+//
+// Skinned and morphed meshes are cast at in their rest pose (Bvh.refit to
+// fit a tree to moved vertices). Pick.ray stays the bounds-only fast path.
+export declare class Raycaster {
+	// a node's layers (a mask; 1 unless set), which a cast's options.layers picks
+	static readonly LAYERS: unknown;
+	static setLayers(node: Node, mask: number): void;
+	static layersOf(node: Node): number;
+	// the nearest hit of the ray from origin along dir (normalized here)
+	// into hit; false when it hits nothing (hit as it was)
+	static raycast(world: World, origin: Vec3, dir: Vec3, hit: Hit, options?: RaycastOptions): boolean;
+	// every hit of the ray into hits, nearest first (the list refilled);
+	// their count
+	static raycastAll(world: World, origin: Vec3, dir: Vec3, hits: HitList, options?: RaycastOptions): number;
+	// (castAll's: each triangle hit)
+	hit(t: number, triangle: number, u: number, v: number, front: boolean): void;
+}
+
+// A bounding volume hierarchy over one primitive's triangles (three-mesh-bvh's
+// MeshBVH), for casting rays against them (Raycaster, world.raycast): a flat
+// array of nodes, each a box and either two children (the next pair) or a
+// leaf's run of triangles, built by the surface area heuristic over 12 bins
+// a split (at most 8 triangles a leaf, more only where their centres
+// coincide), the triangles' corners copied in the tree's order beside it.
+// Built when first cast against (Primitive.bvh), or in the asset step
+// (helder.scene.gltf.Pack --bvh) and read with the packed model, its bytes
+// as they are (bytes(), read): a level loads with its trees made.
+//
+// A cast allocates nothing: the traversal's stack is the tree's own (one
+// cast at a time: not shared between threads), the nearest hit's distance,
+// triangle and barycentrics left in t, triangle, u and v.
+//
+//   var bvh = Bvh.build(Geometry.sphere());
+//   if (bvh.intersect(origin, dir, 100, false)) trace(bvh.t, bvh.triangle);
+export declare class Bvh {
+	// the tree of a primitive's data (its positions and triangles)
+	static build(data: VertexData): Bvh;
+	// the tree of positions (x, y, z a vertex) and triangles' indices
+	static fromArrays(positions: number[], indices: number[]): Bvh;
+	static read(b: Uint8Array): Bvh;
+	readonly nodes: Uint8Array;
+	readonly triangles: Uint8Array;
+	readonly nodeCount: number;
+	readonly triangleCount: number;
+	// the tree's depth (its traversal's stack)
+	readonly depth: number;
+	// the last cast's nearest hit: its distance along the ray (in the ray
+	// direction's lengths), its triangle (the primitive's: indices 3k to
+	// 3k + 2), the barycentrics of its second and third corners (the first's
+	// 1 - u - v), whether its front was hit (counter-clockwise towards the ray)
+	readonly t: number;
+	readonly triangle: number;
+	readonly u: number;
+	readonly v: number;
+	readonly front: boolean;
+	// the nearest triangle the ray from origin along dir (any length: the
+	// distances are in its lengths) crosses within maxT, its back too when
+	// backfaces; false when none (t, triangle, u, v, front: the hit's)
+	intersect(origin: Vec3, dir: Vec3, maxT: number, backfaces: boolean): boolean;
+	// every triangle the ray crosses within maxT, each given to sink (in no
+	// order); their count
+	intersectAll(origin: Vec3, dir: Vec3, maxT: number, backfaces: boolean, sink: unknown): number;
+	// its boxes fitted again to moved vertices (a morph's or a skin's
+	// positions on the CPU: vertices of stride bytes, the primitive's own
+	// triangles' indices), the tree's shape kept (three-mesh-bvh's refit)
+	refit(vertices: Uint8Array, stride: number, data: VertexData): void;
+	// the tree as bytes (the asset step's: read takes them back as they are)
+	bytes(): Uint8Array;
+}
+
+// Text in the world (Godot's Label3D and TextMesh, three's TextGeometry): a
+// component drawing a text's glyphs as geometry (Geometry.text: helder.text's
+// layout, its outlines through helder.canvas, flat or extruded) in one
+// instanced draw, sized in the scene's units (size: the em's height),
+// centred on its node (align: its lines left, centred or right), depth
+// tested, fogged and sorted with the scene, sharp at any distance. Unlit by
+// default (its colour as given); lit: a lambert material, or any of the
+// program's. billboard: turned to face the camera each frame (its node's
+// position and scale kept). Setting text makes its geometry again (a
+// score's change, not a frame's); nothing is allocated a frame. Rays hit
+// it (world.raycast: its triangles).
+//
+//   var label = Text3D.attach(world.node("score"), new Text3D(device, font, "0", {size: 0.3, billboard: true}));
+//   label.text = Std.string(score);
+export declare class Text3D extends InstancedMesh {
+	constructor(device: Device | null, font: FontFile, text: string, options?: Text3DOptions);
+	static attach(node: Node, t: Text3D): Text3D;
+	readonly font: FontFile;
+	text: string;
+	readonly size: number;
+	readonly depth: number;
+	readonly align: number;
+	readonly material: Material;
+	// turned to face the camera
+	billboard: boolean;
+	// its node (Text3D.attach's)
+	readonly node: Node;
+	// (its instance's matrix: its node's, turned to the camera when billboard)
+	prepare(viewProj: Mat4): void;
 }
 
 // Named actions bound to input (Binding: keys, mouse buttons, screen

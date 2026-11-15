@@ -26,6 +26,9 @@ for (const m of ["lambert", "phong", "toon", "unlit", "matcap", "normals", "dept
 	unused[`Material.${m}`] = `helder_scene_render_Material_${m}`;
 for (const s of ["Lambert", "Phong", "Toon", "Unlit", "Matcap", "Normals", "Depth"])
 	unused[`shading's ${s}`] = `helder_scene_render_shading_${s}`;
+// (phase 3's: lines, debug drawing, the grid, text, its extrusion; the trees, Bvh, only a <Scene pick="triangles"> links)
+for (const c of ["LineRenderer", "DebugDraw", "GridHelper", "Text3D", "Extrude", "Triangulate"])
+	unused[c] = `helder_scene_render_${c}`;
 
 const t = symbols(`${dir}/tiny-sym`), a = symbols(`${dir}/all-sym`);
 // (a prefix and the next character not a name's: Geometry_torus is not Geometry_torusKnot)

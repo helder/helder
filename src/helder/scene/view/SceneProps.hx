@@ -44,7 +44,67 @@ typedef SceneProps = {
 	unlitMaterial:MaterialOptions,
 	matcapMaterial:MatcapOptions,
 	normalMaterial:MaterialOptions,
-	depthMaterial:DepthProps
+	depthMaterial:DepthProps,
+	lines:LinesProps,
+	text3d:Text3DProps,
+	axesHelper:AxesHelperProps,
+	gridHelper:GridHelperProps,
+	boundsHelper:HelperProps,
+	lightHelper:HelperProps,
+	cameraHelper:CameraHelperProps,
+	skeletonHelper:HelperProps
+}
+
+// <lines of={path}/>: the lines (made by the program, its points its own),
+// their width and dashes' offset
+typedef LinesProps = {
+	> NodeProps,
+	?of:helder.scene.render.Lines,
+	?width:Float,
+	?dashOffset:Float
+}
+
+// <text3d font={face} text={score} size={0.3} billboard/>, or of={label}
+// (Text3D's options)
+typedef Text3DProps = {
+	> NodeProps,
+	?of:helder.scene.render.Text3D,
+	?font:helder.text.FontFile,
+	?text:String,
+	?size:Float,
+	?depth:Float,
+	?bevelSize:Float,
+	?align:Float,
+	?color:Vec4,
+	?lit:Bool,
+	?billboard:Bool,
+	?castShadows:Bool
+}
+
+typedef AxesHelperProps = {
+	> NodeProps,
+	?size:Float
+}
+
+// (GridHelper's options)
+typedef GridHelperProps = {
+	> NodeProps,
+	?size:Float,
+	?divisions:Int,
+	?fade:Float,
+	?color:Vec4,
+	?majorColor:Vec4
+}
+
+// a helper of the node it is in: its colour (0xRRGGBB)
+typedef HelperProps = {
+	> NodeProps,
+	?color:Int
+}
+
+typedef CameraHelperProps = {
+	> HelperProps,
+	?aspect:Float
 }
 
 // every node's

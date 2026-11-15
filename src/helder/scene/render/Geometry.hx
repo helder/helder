@@ -26,7 +26,12 @@ import helder.scene.math.Curve3;
 //   Geometry.plane({width, height, widthSegments, heightSegments})
 //   Geometry.lathe(points, {segments, phiStart, phiLength})
 //   Geometry.tube(curve, {tubularSegments, radius, radialSegments, closed})
+//   Geometry.extrude(path, {depth, bevelSize, bevelSegments, tolerance, evenOdd})
+//   Geometry.text(font, text, {size, depth, bevelSize, bevelSegments, lineHeight, letterSpacing, align})
 //
+// extrude and text make solids of helder.canvas' paths and helder.text's
+// outlines (Extrude: canvas' boolean ops, then the caps triangulated):
+// linked only by a program that calls them.
 // Like three's: y up, the plane, circle and ring in xy facing +z, the
 // torus about z, a cylinder's seam at +z. Unlike three's, uvs run down the
 // image as glTF's (three's v flipped: 1 - v), as every helder material
@@ -327,6 +332,16 @@ class Geometry {
 	// a tube of radius along a curve, its rings on the curve's frames
 	// (Curve3.frames: no twist where the curve bends back), at equal lengths
 	// along it (three's TubeGeometry)
+	// a 2D path (helder.canvas.Path: lines, curves, holes, unions) made
+	// solid, from z 0 to depth (Extrude.shape)
+	public static function extrude(shape:helder.canvas.Path, ?o:Extrude.ExtrudeOptions):VertexData
+		return Extrude.shape(shape, o);
+
+	// a text's outlines in font made solid (or flat: depth 0), size the em's
+	// height, its first baseline at y 0 (Extrude.text)
+	public static function text(font:helder.text.FontFile, text:String, ?o:Extrude.TextGeometryOptions):VertexData
+		return Extrude.text(font, text, o);
+
 	public static function tube(curve:Curve3, ?o:TubeOptions):VertexData {
 		var ts = Std.int(Math.max(1, o?.tubularSegments ?? 64)), radius = o?.radius ?? 1.0, rs = Std.int(Math.max(3, o?.radialSegments ?? 8));
 		var closed = o?.closed ?? false;
@@ -364,8 +379,8 @@ class Geometry {
 	}
 }
 
-// (a generator's arrays, then its VertexData: flat and tangents applied)
-private class Builder {
+// (a generator's arrays, then its VertexData: flat and tangents applied; Extrude's too)
+@:allow(helder.scene.render) class Builder {
 	final p:Array<Float> = [];
 	final n:Array<Float> = [];
 	final uv:Array<Float> = [];

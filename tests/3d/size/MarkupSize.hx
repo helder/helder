@@ -8,7 +8,8 @@ import helder.view.*;
 // 3d lane on Linux): a mesh of a box in the standard material, written as
 // markup (Tiny), against every geometry and material tag (-D markup_all:
 // All, so that the check checks something) and against the same mesh made
-// in code (-D markup_code: what markup adds over it, its budget). Each tag's
+// in code (-D markup_code: what markup adds over it, its budget; phase 3's
+// lines, text and helpers among All's). Each tag's
 // factory is called by its own function (SceneRenderer.element_<tag>), not
 // by a switch on every name, so Tiny links one generator and one shading
 // model (PBR's), not twelve and eight with their shaders. Built only: no
@@ -44,6 +45,14 @@ class MarkupSize implements Markup {
 			<mesh><planeGeometry/><standardMaterial/></mesh>
 			<mesh><latheGeometry/><standardMaterial/></mesh>
 			<mesh><tubeGeometry/><standardMaterial/></mesh>
+			<lines/>
+			<text3d text="all"/>
+			<axesHelper/>
+			<gridHelper/>
+			<mesh><boundsHelper/></mesh>
+			<lightHelper/>
+			<cameraHelper/>
+			<skeletonHelper/>
 		</node>, SceneRenderer.root(world));
 		#end
 		Sys.println("markup size: " + Lambda.count({iterator: () -> world.root.children()}));

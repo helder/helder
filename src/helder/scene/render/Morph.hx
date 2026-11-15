@@ -52,6 +52,8 @@ class Morph {
 			var b = p.bounds, r = new helder.gfx.shader.Vec3(reach, reach, reach);
 			var prim = new Mesh.Primitive(buffer, p.indices, p.indexFormat, p.count, p.material, new helder.scene.math.Aabb(b.min - r, b.max + r), p.skinned);
 			prim.tangents = p.tangents;
+			// (rays cast at its rest pose: Bvh.refit for the bent one)
+			prim.data = p.data;
 			copy.addPrimitive(prim);
 			parts.push(new MorphPrimitive(buffer, src.vertices, src.stride, src.positions, src.normals));
 		}

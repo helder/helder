@@ -1336,7 +1336,7 @@ tags capitalized), and:
 - **Little Skies** is its own repository: the switch to `Dof.tiltShift`
   is not in this phase's change.
 
-### Phase 3: lines, debug drawing, picking
+### Phase 3: lines, debug drawing, picking (built)
 
 - `Lines` (pixel or world width, joins, dashes) with `LineRenderer`.
 - `Debug` and `DebugDraw`, and the helpers.
@@ -1357,6 +1357,93 @@ Tests and frames:
 - **3d-ui:** a tap on a mesh's triangle gives its uv
   (`tests/3d-ui/SurfaceTest.hx`).
 - **Example:** `examples/picking` (paint on a model).
+
+As built: every item above, with these departures (each said where the
+design describes it):
+
+- **No compute path.** Section 8 plans none for this phase's features,
+  and none is built: casts are the CPU's (a GPU raycast would read back),
+  lines and the grid are draws.
+- **`Lines`** (1.2): `new Lines(capacity, options)` takes no device: its
+  GPU copy is the `LineRenderer`'s, made when first drawn, as an
+  `InstancedMesh`'s is the renderer's (a program writing lines it never
+  draws links no device: the static TypeScript test). Dashes are in the
+  line's own units along it. Added: `closed`, `segments`, `transparent`
+  (blended by the colours' alpha; an opaque line ignores it),
+  `toneMapped`, and the renderer's `AfterTransparent` injection point
+  (drawn after the see-through surfaces: transparent and `onTop` lines).
+  Joins and caps are fans of 8 triangles placed in pixels by the vertex
+  stage, from four views of one point buffer.
+- **Markup** (5): the tags are the design's (`<lines of>`, `<text3d>`,
+  `<axesHelper>`, `<gridHelper>`, `<boundsHelper>`), each its own
+  `element_<tag>` (main's #14), so a program links the line renderer,
+  helder.text or debug drawing only when its markup names one (the 3d
+  lane's markup size check). Added: `<lightHelper>`, `<cameraHelper>`,
+  `<skeletonHelper>`; those and `<boundsHelper>` show the node they are
+  in. `<text3d>` takes a `font` (or `of`, one made in code), and is made
+  once inserted. A tag's box's renderer is given what draws it.
+- **`Debug`** (4.2): macros, not inline functions: an inline function
+  still evaluates an argument with side effects (`node.worldMatrix()`), a
+  macro drops the whole call. Colours are `0xRRGGBB` (as written, into
+  linear light), not a `Vec4`: an optional struct argument would be
+  boxed. `Debug.onTop(true)` switches the calls after it to the
+  depth-ignoring draw. `axes` and `light` take a matrix and a node (a
+  light is a component: its node gives its place). The "ring" is a
+  buffer of `DebugDraw.capacity` segments a frame, calls past it dropped
+  and counted; several renderers drawing in a frame: the first one's
+  `DebugDraw` takes them. `DebugDraw`'s own functions are always there
+  (TypeScript calls them). `new DebugDraw()` takes no device.
+- **Helpers** extend one `Helper` (one store, several a node), drawn by
+  `DebugDraw`; they are not compiled out of a release (a program
+  attaching one wants it).
+- **`GridHelper`** antialiases its lines from the fragment's footprint on
+  the plane (its distance and the view's slant): gfx's shader frontend
+  has no derivatives.
+- **Raycasting** (4.3): `world.raycast(origin, dir, hit, ?options)` and
+  `raycastAll(…, hits:HitList, ?options)`; the options a class
+  (`RaycastOptions`, kept by the program: a structure literal would be
+  made a cast), with `instances` added. `Hit` has `barycentric` (a
+  `Vec3`), `front` and `instance` beside the design's fields. A node's
+  layers are `Raycaster.setLayers(node, mask)` (1 unless set). `Bvh`'s
+  casts are `intersect` and `intersectAll` (`cast` is Haxe's keyword).
+- **CPU data**: every primitive keeps its data (`Primitive.data`, the
+  bytes the GPU was given) unless `Mesh.keepCpu` is off when it is made,
+  not `keepCpu` per mesh in `PackedModel`; `Pack --bvh` packs each
+  primitive's tree (the format's version 5). `Shapes.cpu(geometry,
+  material)` makes a mesh of data alone (cast at, not drawn).
+- **Skinned and morphed meshes** are cast at in their rest pose:
+  `skin.refit()` is not built (helder skins on the GPU; there are no CPU
+  skinned positions to fit to). `Bvh.refit(vertices, stride, data)` fits
+  a tree to positions a program has.
+- **`<Scene pick>`** stays `"bounds"` by default, not triangles "once
+  BVHs exist": picking by triangles links the raycaster and the trees, so
+  it is asked for, and the choice is made when compiling (the string's
+  `@:from` macro). A drag that stays on its node updates its event's
+  point, normal and uv.
+- **`Text3D`** (4.1) is geometry, `Geometry.text`'s (helder.text's
+  layout, helder.canvas' outlines, flat or extruded), not quads from the
+  window's glyph atlas: that atlas is ui's renderer's (another pass and,
+  in a `<Scene>`, another target), while geometry is depth tested, lit,
+  shadowed, fogged and sharp at any distance through the scene's own
+  renderer, still one instanced draw a text. Outlined text is not built
+  (`Outline.select` on its node is post's). `Geometry.extrude` and
+  `Geometry.text` are built with it (canvas' `PathOps.simplify`, then an
+  ear-clipping triangulator: `Triangulate`, earcut's algorithm).
+- **TypeScript**: `Geometry.extrude` is Haxe's alone (helder/canvas'
+  TypeScript is a DOM facade with no `Path`).
+- **`Bvh.test.hx`** checks a generated torus knot, a soup of crossing
+  triangles and a flat grid against brute force, not Sponza's triangles:
+  Sponza is fetched by examples/sponza, not in the repository.
+- **The 3d-ui check** is a click (`tests/3d-ui/SurfaceTest.hx`: its uv and
+  normal), with the new tags on their nodes.
+- **Measured** (`tests/3d/size/sizes.sh`, against the renderer, Linux
+  x86-64 and wasm32): lines (a `LineRenderer`, its shader) 64 and 80 KB;
+  debug drawing (`DebugDraw`, its calls, the line helpers, with the lines)
+  82 and 99 KB; the grid 103 and 122 KB with them; raycasting (`Raycaster`,
+  `Bvh`) 55 and 53 KB; `Text3D` 647 and 701 KB (helder.text's layout and
+  font reading, canvas' boolean ops, the triangulator, and the unlit
+  material's shaders, phase 1's 230 KB); `Debug`'s calls in a release:
+  nothing. Unused, each is nothing.
 
 ### Phase 4: lights at scale and their shadows
 

@@ -43,8 +43,14 @@ import helder.scene.view.SceneProps;
 // pointLight, spotLight, hemisphereLight; light, its kind a prop: directional
 // | point | spot | hemisphere), camera (fov, near, far), instances (a node
 // drawing an InstancedMesh: of={set}, its data the program's), sprites (a
-// node drawing Sprites: of={set}, mode spherical | axis | fixed);
-// listeners (onClick, onPointerDown, onPointerUp, onPointerMove,
+// node drawing Sprites: of={set}, mode spherical | axis | fixed), lines
+// (a node drawing Lines: of={lines}, width, dashOffset; its box's renderer
+// given a LineRenderer), text3d (a Text3D: of={label}, or made of font,
+// text, size, depth, bevelSize, align, color, lit, billboard, castShadows
+// once inserted; text follows its prop), the helpers (axesHelper size and
+// gridHelper size, divisions, fade at their own node; boundsHelper,
+// lightHelper, cameraHelper, skeletonHelper showing the node they are in;
+// their box's renderer given a DebugDraw); listeners (onClick, onPointerDown, onPointerUp, onPointerMove,
 // onPointerCancel, onPointerEnter, onPointerLeave, onTap: a SceneEvent) on
 // any, called by a <Scene>'s picking (at a pointer's press: the node hit
 // then owns it until it lifts), the nearest node hit and then its
@@ -62,7 +68,8 @@ import helder.scene.view.SceneProps;
 @:elements("node", "mesh", "instances", "sprites", "light", "directionalLight", "pointLight", "spotLight", "hemisphereLight", "camera", "boxGeometry",
 	"sphereGeometry", "cylinderGeometry", "coneGeometry", "capsuleGeometry", "torusGeometry", "torusKnotGeometry", "ringGeometry", "circleGeometry",
 	"planeGeometry", "latheGeometry", "tubeGeometry", "standardMaterial", "lambertMaterial", "phongMaterial", "toonMaterial", "unlitMaterial",
-	"matcapMaterial", "normalMaterial", "depthMaterial")
+	"matcapMaterial", "normalMaterial", "depthMaterial", "lines", "text3d", "axesHelper", "gridHelper", "boundsHelper", "lightHelper", "cameraHelper",
+	"skeletonHelper")
 @:events(helder.scene.view.SceneEvents)
 @:props(helder.scene.view.SceneProps)
 class SceneRenderer implements helder.view.Renders<SceneNode> {
@@ -169,6 +176,97 @@ class SceneRenderer implements helder.view.Renders<SceneNode> {
 	public static function element_depthMaterial():SceneNode
 		return madeBy("depthMaterial", n -> Material.depth(SceneOptions.float(n.get("near", 0.1)), SceneOptions.float(n.get("far", 100.0)), SceneOptions.of(MaterialOptions, n.props)));
 
+	// lines, text and the helpers (DESIGN-3D.md's phase 3), each its own
+	// element_<tag> too: a program links the line renderer, text's layout or
+	// debug drawing only when its markup names one
+	public static function element_lines():SceneNode
+		return drawn("lines", n -> {
+			var l:Null<helder.scene.render.Lines> = n.get("of", null);
+			if (l == null) {
+				helder.scene.render.Lines.detach(n.node);
+				return;
+			}
+			if (n.props.exists("width")) l.width = SceneOptions.float(n.get("width", 2.0));
+			if (n.props.exists("dashOffset")) l.dashOffset = SceneOptions.float(n.get("dashOffset", 0.0));
+			helder.scene.render.Lines.attach(n.node, l);
+		}, r -> helder.scene.render.LineRenderer.of(r));
+
+	public static function element_text3d():SceneNode
+		return drawn("text3d", n -> {
+			if (n.parent == null) return;
+			var t:Null<helder.scene.render.Text3D> = n.get("of", null);
+			var text:String = Std.string(n.get("text", ""));
+			if (t == null) {
+				// (made of its props once inserted; again when one it is made of changes)
+				var font:Null<helder.text.FontFile> = n.get("font", null);
+				if (font == null) return;
+				if (device == null) {
+					if (pending.indexOf(n) < 0) pending.push(n);
+					return;
+				}
+				var key = [for (k in ["size", "depth", "bevelSize", "align", "color", "lit", "castShadows"]) Std.string(n.get(k, null))].join("|");
+				var made:Null<helder.scene.render.Text3D> = n.made;
+				if (made == null || n.key != key || made.font != font) {
+					if (made != null) made.mesh.dispose(device);
+					made = new helder.scene.render.Text3D(device, font, text, {
+						size: SceneOptions.float(n.get("size", null)),
+						depth: SceneOptions.float(n.get("depth", null)),
+						bevelSize: SceneOptions.float(n.get("bevelSize", null)),
+						align: SceneOptions.float(n.get("align", null)),
+						color: n.get("color", null),
+						lit: n.get("lit", null),
+						castShadows: n.get("castShadows", null)
+					});
+					n.made = made;
+					n.key = key;
+				}
+				t = made;
+			}
+			if (n.props.exists("text")) t.text = text;
+			if (n.props.exists("billboard")) t.billboard = n.get("billboard", false) == true;
+			helder.scene.render.Text3D.attach(n.node, t);
+		}, null);
+
+	public static function element_axesHelper():SceneNode
+		return helper("axesHelper", n -> new helder.scene.render.AxesHelper(SceneOptions.float(n.get("size", 1.0))), false);
+
+	public static function element_gridHelper():SceneNode
+		return helper("gridHelper", n -> new helder.scene.render.GridHelper(SceneOptions.of(GridHelperProps, n.props)), false);
+
+	public static function element_boundsHelper():SceneNode
+		return helper("boundsHelper", n -> new helder.scene.render.BoundsHelper(n.get("color", 0x40FF40)), true);
+
+	public static function element_lightHelper():SceneNode
+		return helper("lightHelper", n -> new helder.scene.render.LightHelper(n.get("color", -1)), true);
+
+	public static function element_cameraHelper():SceneNode
+		return helper("cameraHelper", n -> new helder.scene.render.CameraHelper(n.get("color", 0xFFC040), SceneOptions.float(n.get("aspect", 0.0))), true);
+
+	public static function element_skeletonHelper():SceneNode
+		return helper("skeletonHelper", n -> new helder.scene.render.SkeletonHelper(n.get("color", 0xFFA0FF)), true);
+
+	// (a helper's node: its helper made of its props again when one changes;
+	// ofParent: the node it is in shown, not its own)
+	static function helper(tag:String, make:SceneNode->helder.scene.render.Helper, ofParent:Bool):SceneNode
+		return drawn(tag, n -> {
+			helder.scene.render.Helper.clear(n.node);
+			helder.scene.render.Helper.add(n.node, make(n)).ofParent = ofParent;
+		}, r -> helder.scene.render.DebugDraw.of(r));
+
+	// (a node of its own component: refresh makes it of its props, when
+	// one changes and when inserted; need, what its box's renderer must
+	// have to draw it)
+	static function drawn(tag:String, refresh:SceneNode->Void, need:Null<helder.scene.render.Renderer->Void>):SceneNode {
+		var n = createElement(tag);
+		n.refresh = refresh;
+		if (need != null) {
+			var box = helder.view.graph.Graph.getOwner() == null ? null : helder.view.graph.Graph.use(SceneTags.BOX);
+			if (box != null) box.withRenderer(need);
+		}
+		refresh(n);
+		return n;
+	}
+
 	// (a part's node, its factory)
 	static function madeBy(tag:String, make:SceneNode->Dynamic):SceneNode {
 		var n = createElement(tag);
@@ -204,6 +302,10 @@ class SceneRenderer implements helder.view.Renders<SceneNode> {
 			case _:
 				// (a component's property: the component made again from them)
 				el.props.set(name, value);
+				if (el.refresh != null) {
+					el.refresh(el);
+					return;
+				}
 				switch el.tag {
 					case "mesh": el.remesh();
 					case "instances" | "sprites": el.reinstance();
@@ -257,6 +359,8 @@ class SceneRenderer implements helder.view.Renders<SceneNode> {
 				parent.node.add(c);
 		}
 		node.parent = parent;
+		// (one made of its props once in the scene: text3d)
+		if (node.refresh != null) node.refresh(node);
 	}
 
 	public static function remove(parent:SceneNode, node:SceneNode) {
@@ -294,7 +398,7 @@ class SceneRenderer implements helder.view.Renders<SceneNode> {
 			if (m.primitives[0].material == material) return m;
 		var p = list[0].primitives[0];
 		var m = new Mesh();
-		m.addPrimitive(new helder.scene.render.Mesh.Primitive(p.vertices, p.indices, p.indexFormat, p.count, material, p.bounds, p.skinned));
+		m.addPrimitive(p.withMaterial(material));
 		list.push(m);
 		return m;
 	}
@@ -338,6 +442,11 @@ class SceneNode {
 	public var made:Null<Dynamic> = null;
 	// a geometry or material tag's factory over its props (its element_<tag>'s: the factory linked only by the tags markup names)
 	public var make:Null<SceneNode->Dynamic> = null;
+	// a node of its own component's (lines, text3d, the helpers: their
+	// element_<tag>'s), made of its props again when one changes
+	public var refresh:Null<SceneNode->Void> = null;
+	// (what a text3d was last made of)
+	@:allow(helder.scene.view.SceneRenderer) var key = "";
 	// a mesh's own material (its color, metallic and roughness props'), kept
 	var own:Null<Material> = null;
 	// a geometry tag's last upload (let go when made again)
@@ -358,6 +467,11 @@ class SceneNode {
 		return props.exists(name) ? props.get(name) : def;
 
 	@:allow(helder.scene.view) function remesh() {
+		// (one of its own component's, waiting for a device: text3d)
+		if (refresh != null) {
+			refresh(this);
+			return;
+		}
 		var device = SceneRenderer.device;
 		if (device == null) {
 			@:privateAccess if (SceneRenderer.pending.indexOf(this) < 0) SceneRenderer.pending.push(this);

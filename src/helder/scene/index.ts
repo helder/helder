@@ -101,6 +101,13 @@ export const Antialias = {None: 0, Fxaa: 1} as const;
 export type Antialias = number;
 export const DofMode = {Focus: 0, TiltShift: 1} as const;
 export type DofMode = number;
+// Lines' enums by name (widthUnits, join, cap)
+export const LineUnits = {Pixels: 0, World: 1} as const;
+export type LineUnits = number;
+export const LineJoin = {Miter: 0, Round: 1, Bevel: 2} as const;
+export type LineJoin = number;
+export const LineCap = {Butt: 0, Round: 1, Square: 2} as const;
+export type LineCap = number;
 
 // helder.os's EventKind (an Event's kind) by name
 export const EventKind = {

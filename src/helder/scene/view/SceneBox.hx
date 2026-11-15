@@ -6,6 +6,7 @@ import helder.scene.Camera;
 import helder.scene.Node as SceneGraphNode;
 import helder.scene.World;
 import helder.scene.math.MathTools;
+import helder.scene.render.Hit;
 import helder.scene.render.Pick;
 import helder.scene.render.Renderer;
 import helder.scene.view.SceneRenderer.SceneNode;
@@ -76,6 +77,18 @@ class SceneBox extends helder.ui.Node {
 		if (ui != null) ui.requestFrame();
 	}
 
+	// (what its markup needs of its renderer: DrawTags' line renderer and
+	// debug drawing, applied to each renderer it makes)
+	final rendererSetters:Array<Renderer->Void> = [];
+
+	// f applied to its renderer, now when there is one, and to each one made
+	// after (before onRenderer): a feature its markup needs
+	public function withRenderer(f:Renderer->Void) {
+		rendererSetters.push(f);
+		if (renderer != null) f(renderer);
+		if (ui != null) ui.requestFrame();
+	}
+
 	// f applied to its post chain now, if it has one (not kept: a change of a
 	// setter's value, its effect's cleanup)
 	public function onPost(f:helder.scene.render.PostProcess->Void) {
@@ -117,8 +130,10 @@ class SceneBox extends helder.ui.Node {
 	// the one its release left, for its click)
 	final picked:Array<SceneGraphNode> = [for (_ in 0...helder.ui.Ui.POINTERS) SceneGraphNode.NONE];
 	final lifted:Array<SceneGraphNode> = [for (_ in 0...helder.ui.Ui.POINTERS) SceneGraphNode.NONE];
-	final points:Array<Vec3> = [for (_ in 0...helder.ui.Ui.POINTERS) new Vec3(0, 0, 0)];
-	final distances:Array<Float> = [for (_ in 0...helder.ui.Ui.POINTERS) 0.0];
+	final hits:Array<Hit> = [for (_ in 0...helder.ui.Ui.POINTERS) new Hit()];
+	// how a pointer's ray finds its node (null: by bounds, Pick.ray; <Scene
+	// pick="triangles">: its triangles, Raycaster)
+	public var picker:Null<ScenePicker> = null;
 	// (the one event refilled for each dispatch)
 	final event = new SceneEvent();
 	// the controls moving its camera (OrbitControls), stepped before each frame it draws
@@ -137,26 +152,26 @@ class SceneBox extends helder.ui.Node {
 		// (picked at a press only: the node hit owns the pointer until it lifts;
 		// a hovering mouse or pen picks as it moves, for enter and leave)
 		onPointerDown = e -> {
-			var id = pointerOf(e), hit = pick(e);
-			picked[id] = hit == null ? SceneGraphNode.NONE : hit.node;
-			if (hit != null) {
-				points[id] = hit.point;
-				distances[id] = hit.distance;
-			}
+			var id = pointerOf(e);
+			picked[id] = pick(e, hits[id]) ? hits[id].node : SceneGraphNode.NONE;
 			send(id, DOWN, e);
 		};
 		onPointerMove = e -> {
 			var id = pointerOf(e);
-			if (!picked[id].isNone) return send(id, MOVE, e);
+			if (!picked[id].isNone) {
+				// (its node keeps the pointer; where on it, while the ray still meets it: a stroke's)
+				if (pick(e, hoverHit) && hoverHit.node == picked[id]) hits[id].copyFrom(hoverHit);
+				return send(id, MOVE, e);
+			}
 			if (e.pointerType == Touch || ui != null && ui.captureOf(id) != null) return;
-			var hit = pick(e);
-			var now = hit == null ? SceneGraphNode.NONE : hit.node;
+			var hit = hoverHit;
+			var now = pick(e, hit) ? hit.node : SceneGraphNode.NONE;
 			if (now != under) {
-				if (!under.isNone && under.valid) dispatch(event.set(under, new Vec3(0, 0, 0), 0, e, null, id), LEAVE);
-				if (hit != null) dispatch(event.set(hit.node, hit.point, hit.distance, e, null, id), ENTER);
+				if (!under.isNone && under.valid) dispatch(event.set(under, null, e, null, id), LEAVE);
+				if (!now.isNone) dispatch(event.set(now, hit, e, null, id), ENTER);
 				under = now;
 			}
-			if (hit != null) dispatch(event.set(hit.node, hit.point, hit.distance, e, null, id), MOVE);
+			if (!now.isNone) dispatch(event.set(now, hit, e, null, id), MOVE);
 		};
 		onPointerUp = e -> {
 			var id = pointerOf(e);
@@ -179,7 +194,7 @@ class SceneBox extends helder.ui.Node {
 			if (id >= 0 && id < helder.ui.Ui.POINTERS) send(id, TAP, null, lifted[id], g);
 		};
 		onPointerLeave = e -> {
-			if (!under.isNone && under.valid) dispatch(event.set(under, new Vec3(0, 0, 0), 0, e, null, 0), LEAVE);
+			if (!under.isNone && under.valid) dispatch(event.set(under, null, e, null, 0), LEAVE);
 			under = SceneGraphNode.NONE;
 		};
 	}
@@ -201,7 +216,7 @@ class SceneBox extends helder.ui.Node {
 	function send(id:Int, kind:Int, e:Null<Event>, ?n:SceneGraphNode, ?g:helder.ui.gesture.Gesture) {
 		var node = n ?? picked[id];
 		if (node.isNone || !node.valid) return;
-		dispatch(event.set(node, points[id], distances[id], e, g, id), kind);
+		dispatch(event.set(node, hits[id], e, g, id), kind);
 	}
 
 	// a world drawn under the ui: its pointers are the game's (Pointer.owner)
@@ -259,13 +274,27 @@ class SceneBox extends helder.ui.Node {
 	final pickBounds = new helder.ui.Bounds();
 	final pickRay = new helder.scene.Camera.CameraRay();
 
-	// the node under a pointer event (window points)
-	function pick(e:Event):Null<{node:SceneGraphNode, distance:Float, point:Vec3}> {
+	// (a hovering pointer's hit)
+	final hoverHit = new Hit();
+
+	// whether a node is under a pointer event (window points): into hit
+	function pick(e:Event, hit:Hit):Bool {
 		var r = windowBoundsInto(pickBounds);
-		if (r.width <= 0 || r.height <= 0) return null;
+		if (r.width <= 0 || r.height <= 0) return false;
 		var lx = localX(e.x, e.y), ly = localY(e.x, e.y);
 		var ray = view().rayInto(lx / r.width * 2 - 1, 1 - ly / r.height * 2, r.width / r.height, pickRay);
-		return Pick.ray(world, ray.origin, ray.dir);
+		if (picker != null) return picker.pick(world, ray.origin, ray.dir, hit);
+		var b = Pick.ray(world, ray.origin, ray.dir);
+		if (b == null) return false;
+		hit.node = b.node;
+		hit.distance = b.distance;
+		hit.point = b.point;
+		hit.normal = ray.dir * -1;
+		hit.uv = new helder.gfx.shader.Vec2(0, 0);
+		hit.triangle = -1;
+		hit.primitive = null;
+		hit.instance = -1;
+		return true;
 	}
 
 	// se's node's listener of that kind called, then its ancestors'
@@ -308,6 +337,8 @@ class SceneBox extends helder.ui.Node {
 			if (renderer.post != null)
 				for (f in postSetters)
 					f(renderer.post);
+			for (f in rendererSetters)
+				f(renderer);
 			if (onRenderer != null) onRenderer(renderer);
 		}
 		// (the textures a resize replaced in an earlier frame: no pass left reading them)

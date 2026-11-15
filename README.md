@@ -1093,8 +1093,13 @@ fix.
   2. a single-sampled depth and normal prepass (`ViewBuffers`) and the
      effects on it, merged into one composite: depth of field (tilt-shift
      by depth), GTAO, outlines and selection, FXAA, LUTs;
-  3. `Lines` with width, `Debug` drawing and helpers, triangle raycasts
-     on a BVH (packed by the asset step), `Text3D`;
+  3. done: `Lines` with width (pixels or metres, joins, caps, dashes),
+     `Debug` drawing (compiled out of a release) and the helpers (an
+     infinite grid among them), `world.raycast` at triangles through a
+     `Bvh` a primitive (packed by the asset step: `Pack --bvh`;
+     `<Scene pick="triangles">`), `Text3D` and `Geometry.extrude` and
+     `text` on helder.canvas' paths (src/helder/scene/README.md;
+     examples/picking);
   4. lights at scale: 8 a draw, `ClusteredLights` on GL ES 3.0 and
      WebGL2 (CPU froxels), spot and point shadows in an atlas, LOD; and
      the compute tier's paths where the device has it (gfx's compute:
