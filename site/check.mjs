@@ -1,5 +1,8 @@
 // The site's check (bun run site:check, after bun run site), in headless
-// Chromium (Playwright): bin/site served, every example a card, then the
+// Chromium (Playwright): bin/site served, every example a card on
+// examples/, the top bar's links (Examples, Docs, GitHub) on an iPhone's
+// screen (Playwright's device: its viewport, scale and touch) on the
+// examples' pages, and behind the docs' menu there; then the
 // Play button of every demo pressed (or of the ids given): each started (data-hydrated, the
 // graphics API it draws with in data-gfx), its canvas drawn (it looks
 // different from before; a sound only started), no console errors. Then
@@ -28,7 +31,7 @@ const site = JSON.parse(fs.readFileSync(path.join(root, 'bin/site-build/examples
 const listed = site.examples.filter((e) => !e.docs);
 const play = ids.length ? ids.filter((id) => !site.examples.find((e) => e.id === id)?.docs) : listed.filter((e) => e.demo).map((e) => e.id);
 
-const types = { '.css': 'text/css', '.mjs': 'text/javascript', '.js': 'text/javascript', '.wasm': 'application/wasm', '.html': 'text/html', '.json': 'application/json' };
+const types = { '.css': 'text/css', '.ttf': 'font/ttf', '.mjs': 'text/javascript', '.js': 'text/javascript', '.wasm': 'application/wasm', '.html': 'text/html', '.json': 'application/json' };
 const server = createServer(async (req, res) => {
 	const p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
 	try {
@@ -51,16 +54,19 @@ const check = (ok, what) => {
 try {
 	const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 	const errors = [];
-	page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+	// (a failed fetch by its URL, not the console's line: the videos and numbers a build without site/reel.mjs or site/numbers.mjs has not)
+	const later = ['examples/media/', 'examples/numbers.json'].filter((f) => !fs.existsSync(path.join(dir, f)));
+	page.on('console', (m) => m.type() === 'error' && !m.text().startsWith('Failed to load resource') && errors.push(m.text()));
+	page.on('response', (r) => r.status() >= 400 && !later.some((f) => r.url().startsWith(url + f)) && errors.push(`${r.status()} ${r.url()}`));
 	page.on('pageerror', (e) => errors.push(String(e)));
-	await page.goto(url);
+	await page.goto(url + 'examples/');
 	const cards = await page.locator('article.card').count();
 	check(cards === listed.length, `${cards} cards, ${listed.length} examples`);
 	const buttons = await page.locator('button.play').count();
 	check(buttons === listed.filter((e) => e.demo).length, `${buttons} Play buttons`);
 	for (const e of listed) {
 		const card = page.locator(`#${e.id}`);
-		const title = await card.locator('h2').textContent();
+		const title = await card.locator('h3').textContent();
 		if (title !== e.title) check(false, `${e.id}'s title: ${title}`);
 	}
 	if (shots) {
@@ -74,14 +80,14 @@ try {
 	// (each demo alone in the page, loaded again: the heavy ones, a million
 	// particles on a software GPU, would slow the next ones' checks)
 	async function start(id) {
-		await page.goto(url);
+		await page.goto(url + 'examples/');
 		const island = page.locator(`#play-${id}`);
 		await island.scrollIntoViewIfNeeded();
 		await island.locator('button.play').click();
 		await page.waitForFunction((id) => document.getElementById('play-' + id).hasAttribute('data-hydrated'), id, { timeout: 60000 });
 	}
 	for (const id of play) {
-		await page.goto(url);
+		await page.goto(url + 'examples/');
 		const island = page.locator(`#play-${id}`), canvas = island.locator('canvas');
 		await island.scrollIntoViewIfNeeded();
 		// (a sound has no canvas: started, nothing drawn)
@@ -121,6 +127,7 @@ try {
 		await phone(page, shots, 'planets');
 	}
 	await checkDocs(page);
+	await checkPhone(shots);
 	check(errors.length === 0, `no console errors${errors.length ? ': ' + errors.join('\n') : ''}`);
 } finally {
 	await browser.close();
@@ -138,13 +145,13 @@ async function checkDocs(page) {
 		await page.goto(url + p.url);
 		const title = await page.locator('main h1').textContent();
 		check(title === p.title, `${p.url}: its title, ${title}`);
-		const links = await page.locator('.sidebar a').count();
+		const links = await page.locator('.sidebar ul a').count();
 		if (links !== pages.length) check(false, `${p.url}: ${links} pages in its sidebar, of ${pages.length}`);
 		const figures = page.locator('figure.example');
 		const n = await figures.count();
 		for (let k = 0; k < n; k++) {
 			const f = figures.nth(k);
-			const shown = f.locator('pre.code:not([hidden])');
+			const shown = f.locator('.sources .code:not([hidden])');
 			const text = (await shown.count()) === 1 ? await shown.textContent() : '';
 			check(text.length > 0, `${p.url}: example ${k + 1}'s source shown (${text.length} characters)`);
 			// (a TypeScript twin: its tab shows its source)
@@ -152,7 +159,7 @@ async function checkDocs(page) {
 			if ((await tabs.count()) > 1) {
 				await tabs.nth(1).click();
 				const file = await tabs.nth(1).getAttribute('data-file');
-				check((await f.locator('pre.code:not([hidden])').getAttribute('data-file')) === file, `${p.url}: the ${file} tab shows it`);
+				check((await f.locator('.sources .code:not([hidden])').getAttribute('data-file')) === file, `${p.url}: the ${file} tab shows it`);
 				await tabs.nth(0).click();
 			}
 			const island = f.locator('hxmc-island');
@@ -177,11 +184,42 @@ async function checkDocs(page) {
 		}
 	}
 	// (the search: a word of a page's heading finds it)
-	await page.goto(url + pages[0].url);
+	await page.goto(url + pages[1].url);
 	await page.locator('.search').fill('bloom');
 	await page.waitForSelector('.results:not([hidden]) a', { timeout: 10000 });
 	const first = await page.locator('.results a').first().getAttribute('href');
 	check(first.startsWith('docs/'), `the search finds "bloom": ${first}`);
+}
+
+// on an iPhone (Playwright's iPhone 13: 390x844 at 3x, touch, its user
+// agent; a window's size alone lays the page out otherwise): the examples'
+// pages show the top bar's links; a docs page hides them, its menu (☰)
+// opening the pages with the site's links over it
+async function checkPhone(shots) {
+	const context = await browser.newContext({ ...pw.devices['iPhone 13'] });
+	const page = await context.newPage();
+	const visible = (sel) => page.locator(sel).evaluateAll((els) => els.filter((e) => e.offsetParent !== null && e.getBoundingClientRect().right <= innerWidth + 1)
+		.map((e) => e.textContent.trim()));
+	const paged = listed.find((e) => e.page);
+	for (const [name, at] of [['examples', 'examples/'], ...(paged ? [['example', `examples/${paged.id}/`]] : [])]) {
+		await page.goto(url + at);
+		const links = await visible('.top nav a');
+		check(['Examples', 'Docs', 'GitHub'].every((l) => links.includes(l)), `phone, ${at}: the top bar's links (${links.join(', ')})`);
+		check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `phone, ${at}: no sideways scroll`);
+		if (shots) await page.screenshot({ path: path.join(shots, `phone-${name}.png`) });
+	}
+	const docs = JSON.parse(fs.readFileSync(path.join(dir, 'docs/search.json'), 'utf8'));
+	await page.goto(url + docs[1].url);
+	check((await visible('.top nav a')).length === 0, `phone, ${docs[1].url}: the top bar's links hidden`);
+	check(await page.locator('.menu').isVisible(), `phone, ${docs[1].url}: the menu shown`);
+	check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `phone, ${docs[1].url}: no sideways scroll`);
+	if (shots) await page.screenshot({ path: path.join(shots, 'phone-docs.png') });
+	await page.locator('.menu').tap();
+	const inMenu = await visible('.sidebar .links a');
+	check(['Examples', 'GitHub'].every((l) => inMenu.includes(l)) && (await page.locator('.sidebar ul a').first().isVisible()),
+		`phone, ${docs[1].url}: the menu holds the site's links (${inMenu.join(', ')}) and the pages`);
+	if (shots) await page.screenshot({ path: path.join(shots, 'phone-docs-menu.png') });
+	await context.close();
 }
 
 // a demo at 390x844: full screen (the Fullscreen API) then expanded (as on

@@ -2,12 +2,12 @@
 // and a clip of each showcase demo, recorded headless (helder run
 // --headless: the virtual clock, frame n at n / 60 s, so every frame is
 // exact whatever the machine's speed) and encoded by ffmpeg into
-// <out>/media/<id>.mp4, with a poster (<id>.jpg) from a frame chosen for
+// <out>/examples/media/<id>.mp4, with a poster (<id>.jpg) from a frame chosen for
 // it. The frames stream into ffmpeg as the run writes them and are deleted
 // as they go, so a minute of 1280×720 needs a few frames' disk, not
 // gigabytes (REEL_TMP: where they pass through, bin/reel by default; a
-// tmpfs such as /dev/shm on a full disk). Not in git: pages.yml runs this
-// before deploying, and the page shows a note where a video is missing.
+// tmpfs such as /dev/shm on a full disk). Not in git: helder.build's deploy runs this
+// (cached by what the clips show), and the page shows a note where a video is missing.
 //
 //   node site/reel.mjs [out] [ids...]      (default bin/site; every clip)
 import { spawn } from 'node:child_process';
@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 process.chdir(root);
 const [outArg, ...only] = process.argv.slice(2);
-const out = path.join(outArg ?? 'bin/site', 'media');
+const out = path.join(outArg ?? 'bin/site', 'examples/media');
 const FPS = 60;
 
 // each clip: the program, how long, its arguments, a script driving it (the

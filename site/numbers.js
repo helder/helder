@@ -1,6 +1,6 @@
 // A demo page's numbers (site/index.tsx's DemoPage): the cells marked
 // data-num="<id>[.<scene>].<key>" filled from numbers.json, which
-// site/numbers.mjs measured headless in CI; "–" where it has none.
+// site/numbers.mjs measured headless (examples/numbers.json); "–" where it has none.
 (() => {
 	const cells = document.querySelectorAll('[data-num]');
 	if (!cells.length) return;
@@ -11,5 +11,5 @@
 			c.textContent = v === undefined || v === null ? '–' : String(v);
 		}
 	};
-	fetch('numbers.json').then((r) => (r.ok ? r.json() : {})).then(fill, () => fill({}));
+	fetch('examples/numbers.json').then((r) => (r.ok ? r.json() : {})).then(fill, () => fill({}));
 })();

@@ -4,7 +4,7 @@
 // it names (page.json's numbers: an argument after the data folder's), for
 // SECONDS (and until its first stats line, a minute at most); its program prints `stats: {...}` lines (firstFrameMs,
 // downloadBytes, textureBytes, p50Ms, p99Ms), the last of which is kept.
-// Written to bin/site/numbers.json, which the pages read (numbers.js): per
+// Written to bin/site/examples/numbers.json, which the pages read (numbers.js): per
 // <id>[.<scene>] the first frame (ms), the download and GPU textures (MB),
 // what the Play button fetched (the module and all, raw and gzipped, MB),
 // the frame times' p50 and p99 (ms), and the graphics API it drew with.
@@ -41,7 +41,7 @@ const server = createServer(async (req, res) => {
 	}
 }).listen(0);
 const url = `http://localhost:${server.address().port}/`;
-const out = path.join(dir, 'numbers.json');
+const out = path.join(dir, 'examples/numbers.json');
 const numbers = fs.existsSync(out) ? JSON.parse(fs.readFileSync(out, 'utf8')) : {};
 const mb = (b) => Math.round(b / 104857.6) / 10;
 
@@ -56,7 +56,7 @@ try {
 				if (t.startsWith('stats: ')) try { last = JSON.parse(t.slice(7)); } catch {}
 			});
 			// (a scene: the island's arguments with it after the data folder's)
-			await page.goto(`${url}${e.id}.html`);
+			await page.goto(`${url}examples/${e.id}/`);
 			if (scene) await page.evaluate(([id, s]) => {
 				const el = document.getElementById('play-' + id);
 				el.dataset.args = JSON.stringify([...JSON.parse(el.dataset.args || '[]'), s]);

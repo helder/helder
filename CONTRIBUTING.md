@@ -3,16 +3,20 @@
 ## Docs
 
 The docs are Markdown pages under `docs/`, published with the examples'
-site (GitHub Pages, `.github/workflows/pages.yml`). They are the source of
+pages on [helder.build](https://helder.build/docs/) (helder.build's deploy
+builds them from main, daily and on its own pushes). They are the source of
 truth: a package's README that has pages is generated from them.
 
-- **Pages**: `docs/<section>/<page>.md`, in the order `docs/docs.json`
-  lists them (the sidebar, previous and next). A page starts with its
+- **Pages**: `docs/index.md` (the overview, `/docs/`), then
+  `docs/<section>/<page>.md` (`/docs/<section>/<page>/`), in the order
+  `docs/docs.json` lists them (the sidebar, previous and next). A page starts with its
   title, `# Title`; its sections are `##`. Markdown as GitHub renders it,
   less raw HTML: headings, paragraphs, lists, fenced code (` ```haxe `,
-  ` ```ts ` highlighted), tables, quotes. Links: another page as
-  `world.md#fog`, a file of the repository from its root as
-  `/src/helder/asset/README.md` (both work on GitHub too).
+  ` ```ts ` highlighted; ` ```tsx src/main.tsx ` shows the file's name
+  above it), tables, quotes. Links: another page as `world.md#fog`, a
+  file of the repository from its root as `/src/helder/asset/README.md`
+  (both work on GitHub too). `<Sections/>` lists every section's pages
+  with their first paragraphs (the overview's).
 - **Examples**: `<Example id="scene-nodes"/>` alone on a line plays an
   example in the page (a WebAssembly island, Play to start) with its
   source beside it: the file itself, so what a page shows is what builds.
@@ -32,13 +36,18 @@ truth: a package's README that has pages is generated from them.
   hand. The examples lane fails when one is not what the pages make
   (`node site/docs/readme.mjs --check`).
 - **Building**: `node site/build.mjs` (`bun run site`) builds the examples
-  for the web, the index and the docs into `bin/site`
+  for the web, their pages and the docs into `bin/site`
   (`SITE_SKIP_DATA=1`: without the examples that fetch tens of MB of
   models). Serve `bin/site` (any static server) and open `docs/`.
   `bun run site:check` (Playwright) opens every page, its sources and tabs,
-  and plays the docs' own examples. An unknown example, region, component
-  or page link fails the build.
+  plays the docs' own examples, and checks the top bar on an iPhone's
+  screen; `.github/workflows/site.yml` runs both on pull requests that touch
+  the site, the docs or the examples. An unknown example, region,
+  component, page or heading link fails the build.
 
 The pages are rendered by `site/docs/Docs.hx`: helder.web's static
 renderer, helder.syntax's lexer for the highlighting (Markdown.hx is the
-parser), built natively and run by `site/build.mjs`.
+parser), built natively and run by `site/build.mjs`. One sheet,
+`site/site.css`, styles them and the examples' pages, in helder.build's
+look; the host's theme (`SITE_THEME`, `site/build.mjs`) sets the top bar's
+links, a notice, the footer and its own sheets over it.

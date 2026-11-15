@@ -3,7 +3,7 @@ using StringTools;
 // The docs pages' Markdown (docs/<section>/<page>.md): the CommonMark that
 // the pages use, parsed into blocks and inlines that Docs.hx renders with
 // helder.web's static renderer. Blocks: ATX headings, paragraphs, fenced
-// code (```lang), lists (- or 1., nested by indentation), pipe tables,
+// code (```lang, or ```lang title: a file's name shown above it), lists (- or 1., nested by indentation), pipe tables,
 // block quotes, rules, and components: a line that is a capitalised tag
 // alone (`<Example id="scene-nodes"/>`), its attributes strings. Inlines:
 // `code`, **strong**, *em* or _em_, [links](url), backslash escapes. No raw
@@ -12,7 +12,7 @@ using StringTools;
 enum Block {
 	Heading(level:Int, id:String, content:Array<Inline>);
 	Para(content:Array<Inline>);
-	Code(lang:String, text:String);
+	Code(lang:String, title:String, text:String);
 	List(ordered:Bool, items:Array<Array<Block>>);
 	Table(head:Array<Array<Inline>>, rows:Array<Array<Array<Inline>>>);
 	Quote(blocks:Array<Block>);
@@ -30,7 +30,7 @@ enum Inline {
 
 class Markdown {
 	static final HEADING = ~/^(#{1,6})\s+(.*?)\s*#*\s*$/;
-	static final FENCE = ~/^(\s*)(```+|~~~+)\s*([^`\s]*)/;
+	static final FENCE = ~/^(\s*)(```+|~~~+)\s*([^`\s]*)\s*([^`]*?)\s*$/;
 	static final BULLET = ~/^(\s*)([-*+]|\d+[.)])(\s+|$)/;
 	static final COMPONENT = ~/^<([A-Z][A-Za-z0-9]*)((?:\s+[a-zA-Z-]+="[^"]*")*)\s*\/>\s*$/;
 	static final ATTR = ~/([a-zA-Z-]+)="([^"]*)"/;
@@ -52,13 +52,13 @@ class Markdown {
 				continue;
 			}
 			if (FENCE.match(line)) {
-				var indent = FENCE.matched(1).length, mark = FENCE.matched(2), lang = FENCE.matched(3);
+				var indent = FENCE.matched(1).length, mark = FENCE.matched(2), lang = FENCE.matched(3), title = FENCE.matched(4);
 				var body = [];
 				i++;
 				while (i < lines.length && !lines[i].trim().startsWith(mark))
 					body.push(dedent(lines[i++], indent));
 				i++;
-				out.push(Code(lang, body.join("\n")));
+				out.push(Code(lang, title, body.join("\n")));
 				continue;
 			}
 			if (HEADING.match(line)) {
