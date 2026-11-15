@@ -97,7 +97,7 @@ export function material<D extends SlotsDef, X>(def: Slots<D, X>, generated?: st
 // the post chain's enums by name (PostProcess.toneMap, antialias; Dof.mode)
 export const ToneMap = {AgX: 0, Aces: 1, Clamp: 2} as const;
 export type ToneMap = number;
-export const Antialias = {None: 0, Fxaa: 1} as const;
+export const Antialias = {None: 0, Fxaa: 1, Smaa: 2, Taa: 3} as const;
 export type Antialias = number;
 export const DofMode = {Focus: 0, TiltShift: 1} as const;
 export type DofMode = number;
