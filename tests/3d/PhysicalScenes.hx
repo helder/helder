@@ -155,6 +155,8 @@ class PhysicalScenes {
 				for (k in 0...meshes.length)
 					b = b.union(meshes.valueAt(k).bounds.transform(meshes.nodeAt(k).worldMatrix()));
 				var c = (b.min + b.max) * 0.5, d = b.max - b.min, t = Math.tan(0.4);
+				// (CompareIridescence's two balls: the frame's centre on the iridescent one)
+				if (name == "khriridescence") c = c + new Vec3(d.x * 0.25, 0, 0);
 				eye.position = c + new Vec3(0, 0, Math.max(d.x * 0.5 / (t * device.width / device.height), d.y * 0.5 / t) * 1.1 + d.z * 0.5);
 				eye.lookAt(c);
 				return hdr ? offscreen(device, r, world, camera) : enc -> r.draw(enc, world, camera);
