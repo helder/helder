@@ -26,7 +26,7 @@ function atlas(t:Texture2D, uv:Vec2, row:Float, levels:Float, edge:Float):Vec3
 function octahedral(d:Vec3):Vec2 {
 	var n = d / (abs(d.x) + abs(d.y) + abs(d.z));
 	var uv = n.xz;
-	if (n.y < 0) uv = (vec2(1) - abs(n.zx)) * vec2(n.x >= 0 ? 1.0 : -1.0, n.z >= 0 ? 1.0 : -1.0);
+	if (n.y < 0) uv = (1 - abs(n.zx)) * vec2(n.x >= 0 ? 1.0 : -1.0, n.z >= 0 ? 1.0 : -1.0);
 	return uv * 0.5 + 0.5;
 }
 
@@ -39,7 +39,7 @@ function octDirection(p:Vec2):Vec3 {
 	if (abs(uv.y) > 1) uv = vec2(-uv.x, (uv.y > 0 ? 2.0 : -2.0) - uv.y);
 	var n = vec3(uv.x, 1 - abs(uv.x) - abs(uv.y), uv.y);
 	if (n.y < 0) {
-		var f = (vec2(1) - abs(vec2(n.z, n.x))) * vec2(n.x >= 0 ? 1.0 : -1.0, n.z >= 0 ? 1.0 : -1.0);
+		var f = (1 - abs(vec2(n.z, n.x))) * vec2(n.x >= 0 ? 1.0 : -1.0, n.z >= 0 ? 1.0 : -1.0);
 		n = vec3(f.x, n.y, f.y);
 	}
 	return normalize(n);

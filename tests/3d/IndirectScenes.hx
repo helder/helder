@@ -110,6 +110,7 @@ class IndirectScenes {
 				eye.lookAt(new Vec3(0, 1, -1));
 				var frames = 0;
 				Scenes.probe = () -> probes.captures == 1 ? null : 'probes: ${probes.captures} captures after ${frames} frames, not 1';
+				blackCorner(device, r);
 				enc -> {
 					frames++;
 					r.draw(enc, world, camera);
@@ -184,14 +185,14 @@ class IndirectScenes {
 				var tiles = [];
 				for (k in 0...2) {
 					var n = world.node();
-					n.position = new Vec3(k == 0 ? -1.6 : 1.6, 0, 0);
+					n.position = new Vec3(k == 0 ? -1.5 : 1.5, 0, 0);
 					n.rotation = helder.scene.math.Quat.axisAngle(new Vec3(1, 0, 0), -Math.PI / 2);
 					MeshRenderer.attach(n, tile);
 					var l = Lightmap.attach(n, new Lightmap(baked, new Vec4(k * 0.5, 0, 0.5, 1), true));
 					l.mode = k == 0 ? Indirect : All;
 					tiles.push(n);
 				}
-				for (x in [-1.6, 1.6]) {
+				for (x in [-1.5, 1.5]) {
 					var box = world.node();
 					box.position = new Vec3(x, 0.4, 0);
 					MeshRenderer.attach(box, Shapes.of(device, Geometry.box({width: 0.8, height: 0.8, depth: 0.8}), new Material("box", new Vec4(0.7, 0.3, 0.2, 1), 0, 0.5)));

@@ -179,9 +179,9 @@ class STexture {
 }
 
 class Textures {
-	// whether t is a texture parameter's type (2D, cube or array)
-	public static function isTexture(t:SType):Bool
-		return switch t {
+	// whether t is a texture parameter's type (2D, cube or array; null: none)
+	public static function isTexture(t:Null<SType>):Bool
+		return t != null && switch t {
 			case TTexture | TTextureCube | TTextureArray: true;
 			case _: false;
 		}

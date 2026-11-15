@@ -391,6 +391,10 @@ jobs:
           SCENES_WINDOW: ${{ github.event_name == 'pull_request' && 'gltf,textured,skin,gpuparticles,taa,motionblur,bloom,transmission,lod' || '' }}
           SCENES_SHARD: ${{ matrix.shard }}/2
         run: bun run test -k ${{ matrix.lanes }}
+      # (the frames each API drew: a golden's difference seen)
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with: {name: 'images-browser-${{ matrix.shard }}', path: "bin/3d/*-webgpu-*.png\nbin/3d/*-webgl2-*.png", retention-days: 7, if-no-files-found: ignore}
       - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
         with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}

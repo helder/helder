@@ -1051,7 +1051,7 @@ function areaLight(world:Vec3, n:Vec3, v:Vec3, rough:Float, albedo:Vec3, metalne
 		var rel = c - world;
 		var spec = ltcPolygon(rel, ru, uu, count, tx, ty, n, vec3(t1.x, 0, t1.y), vec3(t1.z, 0, t1.w));
 		var diff = ltcPolygon(rel, ru, uu, count, tx, ty, n, vec3(1, 0, 0), vec3(0, 0, 1));
-		var fresnel = f0 * t2.x + (vec3(1) - f0) * t2.y;
+		var fresnel = f0 * t2.x + (1 - f0) * t2.y;
 		var q = length(rel) / pos.w;
 		var window = clamp(1 - q * q * q * q, 0, 1);
 		result = color.xyz * (albedo * ((1 - metalness) * diff) + fresnel * spec) * (window * window);
