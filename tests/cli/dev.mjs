@@ -58,10 +58,14 @@ const png = (w, h, rgba) => {
 	for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) rows.writeUInt32BE(rgba, y * (1 + 4 * w) + 1 + 4 * x);
 	return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(rows)), chunk('IEND', Buffer.alloc(0))]);
 };
-// (written beside and renamed over, as editors save)
+// (written beside and renamed over, as editors save; the file beside held
+// longer than a tick of the watcher and its debounce, as a slow machine may:
+// it is no change of the directory's, nothing built)
 const write = (name, data) => {
 	const f = path.join(work, 'app', name);
 	fs.writeFileSync(f + '.tmp', data);
+	const held = performance.now();
+	while (performance.now() - held < 60) {}
 	fs.renameSync(f + '.tmp', f);
 	return performance.now();
 };

@@ -16,11 +16,14 @@ import haxe.io.Bytes;
 // mtime is too recent to tell a later edit from it (within 10 ms natively,
 // the file system's clock being coarser than the wall clock; 2 s on Eval),
 // its content too. A directory's check is its sorted entries: a file added
-// or removed there. A batch comes `debounce` seconds after the first
+// or removed there (only those of the names watch() is given a filter for:
+// helder dev's sources, not an editor's temporary file beside an asset,
+// written then renamed over it). A batch comes `debounce` seconds after the first
 // change, with what else changed among the recent paths by then.
 //
 //   var w = new SampledWatcher();
 //   w.watch(files, dirs);          // after each build: the set replaced
+//   w.watch(files, dirs, n -> n.endsWith(".hx"));   // directories' .hx files alone
 //   var changed = w.next();
 class SampledWatcher implements Watcher {
 	static inline var RECENT = 16;
@@ -34,6 +37,7 @@ class SampledWatcher implements Watcher {
 	var queue:Array<String> = [];
 	var perTick = MIN_PER_TICK;
 	var closed = false;
+	var listed:Null<String->Bool> = null;
 
 	public function new(interval = 0.1, debounce = 0.02) {
 		this.interval = interval;
@@ -42,14 +46,16 @@ class SampledWatcher implements Watcher {
 
 	// the set replaced: these files and directories, as they are now; a
 	// path watched before keeps its state (taken when it was first watched,
-	// or when next() reported it): a change while the build ran is seen next
-	public function watch(files:Array<String>, dirs:Array<String>) {
+	// or when next() reported it): a change while the build ran is seen next.
+	// listed: the names a directory's entries count (null: every one)
+	public function watch(files:Array<String>, dirs:Array<String>, ?listed:String->Bool) {
 		var old = entries;
 		entries = new Map();
+		this.listed = listed;
 		function add(p:String, dir:Bool) {
 			if (entries.exists(p)) return;
 			var o = old.get(p);
-			entries.set(p, o != null && o.dir == dir ? o : Entry.of(p, dir));
+			entries.set(p, o != null && o.dir == dir && o.listed == listed ? o : Entry.of(p, dir, listed));
 		}
 		for (d in dirs) add(d, true);
 		for (f in files) add(f, false);
@@ -70,7 +76,7 @@ class SampledWatcher implements Watcher {
 			if (debounce > 0) Async.delay(debounce);
 			var out = [dirty];
 			for (r in recent) if (r != dirty && entries.get(r).changed(r)) out.push(r);
-			for (p in out) entries.set(p, Entry.of(p, entries.get(p).dir));
+			for (p in out) entries.set(p, Entry.of(p, entries.get(p).dir, listed));
 			return out;
 		}
 	}
@@ -118,20 +124,23 @@ private class Entry {
 	static inline var TRUST = #if (target.name == "hxmc") 0.01 #else 2.0 #end;
 
 	public final dir:Bool;
+	// (a directory's: the names its entries count, null every one)
+	public final listed:Null<String->Bool>;
 	// a file's stamp (null: missing), its content when the stamp cannot be trusted alone; a directory's entries
 	final stamp:Null<Array<Float>>;
 	final content:Null<Bytes>;
 	final entries:String;
 
-	function new(dir, stamp, content, entries = "") {
+	function new(dir, stamp, content, entries = "", ?listed:String->Bool) {
 		this.dir = dir;
+		this.listed = listed;
 		this.stamp = stamp;
 		this.content = content;
 		this.entries = entries;
 	}
 
-	public static function of(path:String, dir:Bool):Entry {
-		if (dir) return new Entry(true, null, null, listing(path));
+	public static function of(path:String, dir:Bool, ?listed:String->Bool):Entry {
+		if (dir) return new Entry(true, null, null, listing(path, listed), listed);
 		var t = stampOf(path);
 		if (t == null) return new Entry(false, null, null);
 		var recent = Sys.time() - mtime(t) < TRUST;
@@ -153,14 +162,15 @@ private class Entry {
 	static inline function mtime(t:Array<Float>):Float
 		return #if (target.name == "hxmc") t[0] + t[1] / 1e9 #else t[2] / 1000 #end;
 
-	static function listing(path:String):String {
+	static function listing(path:String, listed:Null<String->Bool>):String {
 		var names = try sys.FileSystem.readDirectory(path) catch (_:Dynamic) return "-";
+		if (listed != null) names = names.filter(listed);
 		names.sort(Reflect.compare);
 		return names.join("\n");
 	}
 
 	public function changed(path:String):Bool {
-		if (dir) return listing(path) != entries;
+		if (dir) return listing(path, listed) != entries;
 		var t = stampOf(path);
 		if (t == null || stamp == null) return t != stamp;
 		for (i in 0...t.length)
