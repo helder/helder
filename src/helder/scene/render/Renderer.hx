@@ -689,7 +689,8 @@ class Renderer {
 		b.shadowRect = rect;
 		b.shadowRectFar = rectFar;
 		b.shadowAtlas = atlas;
-		b.environment = probeSource != null ? probeSource.environmentVector() : environment != null ? environment.frameVector() : new Vec4(0, 0, 0, 0);
+		b.environment = environment != null ? environment.frameVector() : new Vec4(0, 0, 0, 0);
+		if (probeSource != null) probeSource.writeEnvironment(b);
 		b.rim = new Vec4(rim.x, rim.y, rim.z, rimPower);
 		b.fog = Fog.colorOf(fog);
 		b.fogShape = Fog.shapeOf(fog);

@@ -245,8 +245,8 @@ class Probes implements RenderFeature implements RenderFeature.ProbeSource {
 		enc.setTexture(slot, atlas, sampler);
 
 	// PbrFrame's environment: the atlas' (the environment's intensity, 0 without one)
-	@:noCompletion public function environmentVector():Vec4
-		return new Vec4(environment != null && environment.rows == 0 ? environment.intensity : 0, -(max + 1), levels, size);
+	@:noCompletion public function writeEnvironment(frame:PbrFrame)
+		frame.environment = new Vec4(environment != null && environment.rows == 0 ? environment.intensity : 0, -(max + 1), levels, size);
 
 	public function dispose() {
 		device.destroyTexture(atlas);

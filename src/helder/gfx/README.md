@@ -110,10 +110,10 @@ enc.drawIndexed(6, count);                            // count instances of the 
 
 Textures: `TextureFormat` has the formats every back end has: `RGBA8`,
 `RGBA8Srgb` (decoded when sampled, encoded when rendered to), `R8`, `RG8`,
-`RGBA16F` (half floats), `R32F` and the depth formats `Depth16` and
-`Depth32F`; data is `format.texelSize` bytes a texel. R32F and depth
-textures are not filterable everywhere: they are read through a sampler of
-`Nearest` filters and have no generated mip levels. `Device.textureBytes`
+`RGBA16F` (half floats), `R32F`, `RGBA32F` (floats) and the depth formats
+`Depth16` and `Depth32F`; data is `format.texelSize` bytes a texel. R32F,
+RGBA32F and depth textures are not filterable everywhere: they are read
+through a sampler of `Nearest` filters and have no generated mip levels. `Device.textureBytes`
 counts the bytes of the textures alive (their levels and samples, as
 their formats store them): the GPU memory a scene's textures take.
 
@@ -150,6 +150,26 @@ enc.setPipeline(offscreen);                           // ... draw into it
 enc.endPass();
 enc.beginPass(framePass);
 enc.setTexture(1, color, sampler);                    // ... and sample it
+```
+
+Cubes and arrays: `cube: true` makes a cube texture (six square layers,
+its faces +x, -x, +y, -y, +z, -z), `layers: n` a 2D array; data fills
+every layer one after another, `writeTexture`'s `layer` one of them, a
+pass draws into one (`ColorTarget.layer`, its first level). Shaders take
+them as `TextureCube` (`sample(t, dir)`: along a direction, as every API
+reads a cube's faces) and `Texture2DArray` (`sample(t, uv, layer)`):
+GLSL's `samplerCube` and `sampler2DArray`, WGSL's `texture_cube` and
+`texture_2d_array`, MSL's `texturecube` and `texture2d_array`, HLSL's
+`TextureCube` and `Texture2DArray`. A face drawn into has its rows top to
+bottom as a 2D target's, so a camera drawing a face sees it mirrored (a
+cube is seen from inside): helder.scene's reflection probes turn their
+winding. tests/gfx's `layers` frame checks every face and layer, uploaded
+and drawn into, on each back end:
+
+```haxe
+var sky = device.createTexture({width: 64, height: 64, cube: true, format: RGBA16F, renderTarget: true, mipLevels: 0});
+enc.beginPass({colors: [{load: Clear, texture: sky, layer: 2}]});   // the +y face
+// ... fragment: function(i:Varyings, p:{sky:TextureCube}) return sample(p.sky, i.dir)
 ```
 
 Shared textures: a render target another process samples without a copy

@@ -18,7 +18,9 @@ interface ProbeSource {
 	// (a draw's bounds in the world: its centre, its half size)
 	function bind(enc:helder.gfx.Encoder, cx:Float, cy:Float, cz:Float, ex:Float, ey:Float, ez:Float):Void;
 	function bindAtlas(enc:helder.gfx.Encoder, slot:Int, sampler:helder.gfx.Sampler):Void;
-	function environmentVector():helder.gfx.shader.Vec4;
+	// (into the frame's block: a value through an interface call is lowered
+	// wrongly for now, ShadowSource's note)
+	function writeEnvironment(frame:PbrShader.PbrFrame):Void;
 }
 
 // what the renderer asks of area lights (AreaLights): the standard
