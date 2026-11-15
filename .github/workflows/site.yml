@@ -7,8 +7,8 @@
 # site:check: every card, every demo played, every docs page and the docs'
 # own examples, the top bar's links on an iPhone's screen), its screenshots
 # kept a week. SITE_SKIP_DATA: the examples of fetched models (Sponza's,
-# tens of MB) listed without a Play button. Not required while the stack is
-# unstable, as ci's browser job.
+# tens of MB) listed without a Play button. A failing check fails the
+# workflow (no continue-on-error: that reported a failed job as a success).
 name: site
 
 on:
@@ -26,7 +26,6 @@ concurrency:
 jobs:
   site:
     runs-on: ubuntu-24.04
-    continue-on-error: true
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7

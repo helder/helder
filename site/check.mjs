@@ -56,9 +56,11 @@ try {
 	const errors = [];
 	// (a failed fetch by its URL, not the console's line: the videos and numbers a build without site/reel.mjs or site/numbers.mjs has not)
 	const later = ['examples/media/', 'examples/numbers.json'].filter((f) => !fs.existsSync(path.join(dir, f)));
-	page.on('console', (m) => m.type() === 'error' && !m.text().startsWith('Failed to load resource') && errors.push(m.text()));
+	// (each with the page it came from: the pages are many, one at a time)
+	const at = () => page.url().replace(url, '/');
+	page.on('console', (m) => m.type() === 'error' && !m.text().startsWith('Failed to load resource') && errors.push(`${at()}: ${m.text()}`));
 	page.on('response', (r) => r.status() >= 400 && !later.some((f) => r.url().startsWith(url + f)) && errors.push(`${r.status()} ${r.url()}`));
-	page.on('pageerror', (e) => errors.push(String(e)));
+	page.on('pageerror', (e) => errors.push(`${at()}: ${e}`));
 	await page.goto(url + 'examples/');
 	const cards = await page.locator('article.card').count();
 	check(cards === listed.length, `${cards} cards, ${listed.length} examples`);
