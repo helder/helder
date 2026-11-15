@@ -90,12 +90,16 @@ class GLBackend {
 	var ioffset = 0;
 	var depthMask = true; // glDepthMask as it is
 	final units = [for (_ in 0...16) 0]; // each texture unit's texture (setTexture)
+	// (each unit's cube and 2D array: GL binds a unit's textures by target)
+	final unitsCube = [for (_ in 0...16) 0];
+	final unitsArray = [for (_ in 0...16) 0];
 	// passes into textures: the framebuffer object (made at the first), its
 	// attachments (texture names), the framebuffer bound; the pass's flip
 	// (rendering upside down into a texture, front faces clockwise)
 	var fbo = 0;
 	var fboColor = 0;
 	var fboDepth = 0;
+	var fboLayer = 0;
 	// (a multisampled pass's resolve: the framebuffer blitted into, its
 	// texture attached, the pass's resolve target and size; 0: none)
 	var resolveFbo = 0;
@@ -385,13 +389,27 @@ class GLBackend {
 		textures.push(t);
 		infos.push(info);
 		GL.glActiveTexture(GL.TEXTURE0);
-		GL.glBindTexture(GL.TEXTURE_2D, t);
+		var target = targetOf(info);
+		GL.glBindTexture(target, t);
 		// (immutable storage: every level, complete with any sampler)
-		GL.glTexStorage2D(GL.TEXTURE_2D, info.levels, internalFormat(info.format), info.width, info.height);
-		GL.glBindTexture(GL.TEXTURE_2D, units[0]);
-		if (d.data != null) writeTexture(textures.length, d.data, 0, 0, -1, -1, 0, 0);
+		if (info.array) GL.glTexStorage3D(target, info.levels, internalFormat(info.format), info.width, info.height, info.layers)
+		else GL.glTexStorage2D(target, info.levels, internalFormat(info.format), info.width, info.height);
+		rebind(target);
+		if (d.data != null) {
+			var n = info.format.levelBytes(info.width, info.height);
+			for (l in 0...info.layers)
+				writeTexture(textures.length, d.data, 0, 0, -1, -1, l * n, 0, l);
+		}
 		return textures.length;
 	}
+
+	// a texture's GL target: a cube's, a 2D array's, else TEXTURE_2D
+	static inline function targetOf(info:TextureInfo):Int
+		return info.cube ? GL.TEXTURE_CUBE_MAP : info.array ? GL.TEXTURE_2D_ARRAY : GL.TEXTURE_2D;
+
+	// (unit 0's texture of a target bound again, as setTexture left it)
+	inline function rebind(target:Int)
+		GL.glBindTexture(target, target == GL.TEXTURE_CUBE_MAP ? unitsCube[0] : target == GL.TEXTURE_2D_ARRAY ? unitsArray[0] : units[0]);
 
 	static function internalFormat(f:TextureFormat):Int
 		return switch f {
@@ -401,6 +419,7 @@ class GLBackend {
 			case RG8: GL.RG8;
 			case RGBA16F: GL.RGBA16F;
 			case R32F: GL.R32F;
+			case RGBA32F: GL.RGBA32F;
 			case Depth16: GL.DEPTH_COMPONENT16;
 			case Depth32F: GL.DEPTH_COMPONENT32F;
 			case BC1: GL.COMPRESSED_RGBA_S3TC_DXT1;
@@ -446,33 +465,38 @@ class GLBackend {
 		#end
 	}
 
-	public function writeTexture(id:Int, data:haxe.io.Bytes, x:Int, y:Int, w:Int, h:Int, dataOffset:Int, level:Int) {
+	public function writeTexture(id:Int, data:haxe.io.Bytes, x:Int, y:Int, w:Int, h:Int, dataOffset:Int, level:Int, layer:Int) {
 		use();
 		var info = infos[id - 1];
-		info.checkWrite(data, x, y, w, h, dataOffset, level);
-		var f = info.format;
+		info.checkWrite(data, x, y, w, h, dataOffset, level, layer);
+		var f = info.format, target = targetOf(info);
 		GL.glActiveTexture(GL.TEXTURE0);
-		GL.glBindTexture(GL.TEXTURE_2D, textures[id - 1]);
+		GL.glBindTexture(target, textures[id - 1]);
 		GL.glPixelStorei(GL.UNPACK_ALIGNMENT, 1);
 		if (f.compressed) {
 			var n = f.levelBytes(info.w, info.h);
 			GL.glCompressedTexSubImage2D(GL.TEXTURE_2D, level, 0, 0, info.w, info.h, internalFormat(f), n, BytesPtr.of(data, dataOffset, n));
-			GL.glBindTexture(GL.TEXTURE_2D, units[0]);
+			rebind(target);
 			return;
 		}
+		var format = f == R8 ? GL.RED : f == RG8 ? GL.RG : f == R32F ? GL.RED : GL.RGBA;
+		var type = f == RGBA16F ? GL.HALF_FLOAT : f == R32F || f == RGBA32F ? GL.FLOAT : GL.UNSIGNED_BYTE;
 		// (a fast call: the Bytes cannot move during it)
-		GL.glTexSubImage2D(GL.TEXTURE_2D, level, x, y, info.w, info.h, f == R8 ? GL.RED : f == RG8 ? GL.RG : f == R32F ? GL.RED : GL.RGBA,
-			f == RGBA16F ? GL.HALF_FLOAT : f == R32F ? GL.FLOAT : GL.UNSIGNED_BYTE, BytesPtr.of(data, dataOffset, data.length - dataOffset));
-		GL.glBindTexture(GL.TEXTURE_2D, units[0]);
+		var pixels = BytesPtr.of(data, dataOffset, f.levelBytes(info.w, info.h));
+		if (info.array) GL.glTexSubImage3D(target, level, x, y, layer, info.w, info.h, 1, format, type, pixels)
+		else GL.glTexSubImage2D(info.cube ? GL.TEXTURE_CUBE_MAP_POSITIVE_X + layer : target, level, x, y, info.w, info.h, format, type, pixels);
+		rebind(target);
 	}
 
 	public function generateMips(id:Int) {
 		use();
-		infos[id - 1].checkMips();
+		var info = infos[id - 1];
+		info.checkMips();
+		var target = targetOf(info);
 		GL.glActiveTexture(GL.TEXTURE0);
-		GL.glBindTexture(GL.TEXTURE_2D, textures[id - 1]);
-		GL.glGenerateMipmap(GL.TEXTURE_2D);
-		GL.glBindTexture(GL.TEXTURE_2D, units[0]);
+		GL.glBindTexture(target, textures[id - 1]);
+		GL.glGenerateMipmap(target);
+		rebind(target);
 	}
 
 	public function destroyBuffer(id:Int) {
@@ -875,7 +899,8 @@ class GLBackend {
 		} else {
 			// (one framebuffer object, its attachments changed when the pass's textures do)
 			var info = infos[c.texture.id() - 1];
-			info.checkPass(d);
+			var layer = c.layer == null ? 0 : c.layer;
+			info.checkPass(d, layer);
 			if (fbo == 0) {
 				GL.glGenFramebuffers(1, scratch);
 				fbo = scratch.value;
@@ -885,8 +910,8 @@ class GLBackend {
 			var colorId = c.texture.id(), depthId = d == null ? 0 : d.texture.id();
 			if (info.samples > 1 || c.resolve != null)
 				info.checkSamples(depthId == 0 ? null : infos[depthId - 1], c.resolve == null ? null : infos[c.resolve.id() - 1]);
-			if (colorId != fboColor || depthId != fboDepth) {
-				attachTarget(GL.COLOR_ATTACHMENT0, fboColor = colorId);
+			if (colorId != fboColor || depthId != fboDepth || layer != fboLayer) {
+				attachTarget(GL.COLOR_ATTACHMENT0, fboColor = colorId, fboLayer = layer);
 				attachTarget(GL.DEPTH_ATTACHMENT, fboDepth = depthId);
 				var status = GL.glCheckFramebufferStatus(GL.FRAMEBUFFER);
 				if (status != GL.FRAMEBUFFER_COMPLETE) throw "helder.gfx: beginPass: the textures are no complete framebuffer (status " + status + ")";
@@ -977,7 +1002,10 @@ class GLBackend {
 
 	public function setTexture(slot:Int, texture:Int, sampler:Int) {
 		GL.glActiveTexture(GL.TEXTURE0 + slot);
-		GL.glBindTexture(GL.TEXTURE_2D, units[slot] = textures[texture - 1]);
+		var info = infos[texture - 1];
+		if (info.cube) GL.glBindTexture(GL.TEXTURE_CUBE_MAP, unitsCube[slot] = textures[texture - 1]);
+		else if (info.array) GL.glBindTexture(GL.TEXTURE_2D_ARRAY, unitsArray[slot] = textures[texture - 1]);
+		else GL.glBindTexture(GL.TEXTURE_2D, units[slot] = textures[texture - 1]);
 		GL.glBindSampler(slot, samplers[sampler - 1]);
 	}
 
@@ -1020,9 +1048,11 @@ class GLBackend {
 
 	// (the bound framebuffer's attachment: a texture's, a renderbuffer's, or none)
 	// (attaching replaces what was attached there, 0 detaches it)
-	function attachTarget(at:Int, id:Int) {
-		if (id != 0 && infos[id - 1].samples > 1) GL.glFramebufferRenderbuffer(GL.FRAMEBUFFER, at, GL.RENDERBUFFER, textures[id - 1]);
-		else GL.glFramebufferTexture2D(GL.FRAMEBUFFER, at, GL.TEXTURE_2D, id == 0 ? 0 : textures[id - 1], 0);
+	function attachTarget(at:Int, id:Int, layer = 0) {
+		var info = id == 0 ? null : infos[id - 1];
+		if (info != null && info.samples > 1) GL.glFramebufferRenderbuffer(GL.FRAMEBUFFER, at, GL.RENDERBUFFER, textures[id - 1]);
+		else if (info != null && info.array) GL.glFramebufferTextureLayer(GL.FRAMEBUFFER, at, textures[id - 1], 0, layer);
+		else GL.glFramebufferTexture2D(GL.FRAMEBUFFER, at, info != null && info.cube ? GL.TEXTURE_CUBE_MAP_POSITIVE_X + layer : GL.TEXTURE_2D, id == 0 ? 0 : textures[id - 1], 0);
 	}
 
 	// a multisampled pass's colour resolved into its resolve target (a blit)

@@ -109,6 +109,49 @@ export class Texture2D {
 	}
 }
 
+// a cube texture and its sampler (sample(t, dir), along a direction): on the
+// CPU, six faces of size x size RGBA8 texels (+x, -x, +y, -y, +z, -z), read
+// at the nearest as every API reads a cube
+export class TextureCube {
+	constructor(readonly size: number, readonly texels: Uint8Array) {}
+	read(d: Vec3): Vec4 {
+		const ax = Math.abs(d.x), ay = Math.abs(d.y), az = Math.abs(d.z);
+		let face = 0, sc = 0, tc = 0, ma = 1;
+		if (ax >= ay && ax >= az) {
+			ma = ax;
+			face = d.x > 0 ? 0 : 1;
+			sc = d.x > 0 ? -d.z : d.z;
+			tc = -d.y;
+		} else if (ay >= az) {
+			ma = ay;
+			face = d.y > 0 ? 2 : 3;
+			sc = d.x;
+			tc = d.y > 0 ? d.z : -d.z;
+		} else {
+			ma = az;
+			face = d.z > 0 ? 4 : 5;
+			sc = d.z > 0 ? d.x : -d.x;
+			tc = -d.y;
+		}
+		if (ma === 0) ma = 1;
+		const n = this.size, x = Math.min(Math.floor((sc / ma + 1) * 0.5 * n), n - 1), y = Math.min(Math.floor((tc / ma + 1) * 0.5 * n), n - 1);
+		const p = 4 * ((face * n + y) * n + x);
+		return new Vec4(this.texels[p] / 255, this.texels[p + 1] / 255, this.texels[p + 2] / 255, this.texels[p + 3] / 255);
+	}
+}
+
+// a 2D array texture and its sampler (sample(t, uv, layer)): on the CPU,
+// layers of width x height RGBA8 texels, read at the nearest, repeating
+export class Texture2DArray {
+	constructor(readonly width: number, readonly height: number, readonly layers: number, readonly texels: Uint8Array) {}
+	read(uv: Vec2, layer: number): Vec4 {
+		const x = Math.floor((uv.x - Math.floor(uv.x)) * this.width), y = Math.floor((uv.y - Math.floor(uv.y)) * this.height);
+		const l = Math.min(Math.max(Math.round(layer), 0), this.layers - 1);
+		const p = 4 * ((l * this.height + y) * this.width + x);
+		return new Vec4(this.texels[p] / 255, this.texels[p + 1] / 255, this.texels[p + 2] / 255, this.texels[p + 3] / 255);
+	}
+}
+
 type Vec = Vec2 | Vec3 | Vec4;
 type Flat = number | Vec;
 
@@ -169,12 +212,19 @@ export function cross(a: Vec3, b: Vec3): Vec3 {
 	return new Vec3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
 }
 // a texture's colour at uv (the fragment stage: at the mip level its footprint needs)
-export function sample(t: Texture2D, uv: Vec2): Vec4 {
-	return t.read(uv);
+// (a cube's along a direction, a 2D array's at a layer)
+export function sample(t: Texture2D, uv: Vec2): Vec4;
+export function sample(t: TextureCube, dir: Vec3): Vec4;
+export function sample(t: Texture2DArray, uv: Vec2, layer: number): Vec4;
+export function sample(t: Texture2D | TextureCube | Texture2DArray, a: any, layer?: number): Vec4 {
+	return (t as any).read(a, layer);
 }
 // at a mip level (the CPU's textures have one)
-export function sampleLevel(t: Texture2D, uv: Vec2, level: number): Vec4 {
-	return t.read(uv);
+export function sampleLevel(t: Texture2D, uv: Vec2, level: number): Vec4;
+export function sampleLevel(t: TextureCube, dir: Vec3, level: number): Vec4;
+export function sampleLevel(t: Texture2DArray, uv: Vec2, layer: number, level: number): Vec4;
+export function sampleLevel(t: Texture2D | TextureCube | Texture2DArray, a: any, b: number, level?: number): Vec4 {
+	return (t as any).read(a, b);
 }
 // (the fragment dropped: alpha testing; nothing on the CPU)
 export function discard(): void {}
@@ -257,7 +307,7 @@ export class TextureSlot {
 
 // a shader's parameters, the fields of its stages' objects of parameters:
 // a writer per uniform block, a slot per texture
-export type Params<P> = {readonly [K in keyof P]: P[K] extends Texture2D ? TextureSlot : UniformWriter<P[K]>};
+export type Params<P> = {readonly [K in keyof P]: P[K] extends Texture2D | TextureCube | Texture2DArray ? TextureSlot : UniformWriter<P[K]>};
 type ParamsOf<R> = R extends [infer P] ? P : {};
 
 export type Shader<V, VS, FS, P> = {

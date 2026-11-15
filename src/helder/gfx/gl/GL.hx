@@ -57,6 +57,10 @@ class GL {
 	public static inline var DST_COLOR = 0x0306;
 	public static inline var NEVER = 0x0200; // LESS, EQUAL, LEQUAL, GREATER, NOTEQUAL, GEQUAL, ALWAYS: + 1 to + 7
 	public static inline var TEXTURE_2D = 0x0DE1;
+	public static inline var TEXTURE_CUBE_MAP = 0x8513;
+	public static inline var TEXTURE_CUBE_MAP_POSITIVE_X = 0x8515; // -X, +Y, -Y, +Z, -Z: + 1 to + 5
+	public static inline var TEXTURE_2D_ARRAY = 0x8C1A;
+	public static inline var RGBA32F = 0x8814;
 	public static inline var TEXTURE0 = 0x84C0;
 	public static inline var RGBA8 = 0x8058;
 	public static inline var EXTENSIONS = 0x1F03;
@@ -172,6 +176,10 @@ class GL {
 	static function glRenderbufferStorageMultisample(target:Int, samples:Int, internalFormat:Int, width:Int, height:Int):Void;
 	static function glFramebufferRenderbuffer(target:Int, attachment:Int, renderbufferTarget:Int, renderbuffer:Int):Void;
 	static function glBlitFramebuffer(x0:Int, y0:Int, x1:Int, y1:Int, dx0:Int, dy0:Int, dx1:Int, dy1:Int, mask:Int, filter:Int):Void;
+	// (2D arrays)
+	static function glTexStorage3D(target:Int, levels:Int, internalFormat:Int, width:Int, height:Int, depth:Int):Void;
+	static function glTexSubImage3D(target:Int, level:Int, x:Int, y:Int, z:Int, width:Int, height:Int, depth:Int, format:Int, type:Int, pixels:Ptr):Void;
+	static function glFramebufferTextureLayer(target:Int, attachment:Int, texture:Int, level:Int, layer:Int):Void;
 	static function glTexSubImage2D(target:Int, level:Int, x:Int, y:Int, width:Int, height:Int, format:Int, type:Int, pixels:Ptr):Void;
 	static function glCompressedTexSubImage2D(target:Int, level:Int, x:Int, y:Int, width:Int, height:Int, format:Int, size:Int, data:Ptr):Void;
 	static function glGenSamplers(n:Int, samplers:Ptr<Int32>):Void;

@@ -59,10 +59,10 @@ abstract Impl(Any) {
 	public inline function createTexture(d:TextureDesc):Int
 		return Platform.os() == 1 ? mtl().createTexture(d) : Platform.os() == 2 ? d3d().createTexture(d) : Platform.os() != 3 ? gl().createTexture(d) : webgl() ? gl().createTexture(d) : wgpu().createTexture(d);
 
-	public inline function writeTexture(id:Int, data:haxe.io.Bytes, x:Int, y:Int, w:Int, h:Int, dataOffset:Int, level:Int)
-		Platform.os() == 1 ? mtl().writeTexture(id, data, x, y, w, h, dataOffset, level) : Platform.os() == 2 ? d3d().writeTexture(id, data, x, y, w, h, dataOffset,
-			level) : Platform.os() != 3 ? gl().writeTexture(id, data, x, y, w, h, dataOffset, level) : webgl() ? gl().writeTexture(id, data, x, y, w, h,
-			dataOffset, level) : wgpu().writeTexture(id, data, x, y, w, h, dataOffset, level);
+	public inline function writeTexture(id:Int, data:haxe.io.Bytes, x:Int, y:Int, w:Int, h:Int, dataOffset:Int, level:Int, layer:Int)
+		Platform.os() == 1 ? mtl().writeTexture(id, data, x, y, w, h, dataOffset, level, layer) : Platform.os() == 2 ? d3d().writeTexture(id, data, x, y, w, h, dataOffset,
+			level, layer) : Platform.os() != 3 ? gl().writeTexture(id, data, x, y, w, h, dataOffset, level, layer) : webgl() ? gl().writeTexture(id, data, x, y, w, h,
+			dataOffset, level, layer) : wgpu().writeTexture(id, data, x, y, w, h, dataOffset, level, layer);
 
 	// (the browser's: WebGPU's or WebGL2's)
 	public inline function writeTextureImage(id:Int, image:Int, release:Bool)

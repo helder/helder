@@ -41,8 +41,8 @@ class GfxTest {
 
 	static function main() {
 		var args = Sys.args();
-		if (args.length < 4 || !["triangle", "cube", "instances", "targets", "msaa", "mips", "formats", "blend", "palette"].contains(args[1])) {
-			Sys.println("usage: GfxTest headless|window triangle|cube|instances|targets|msaa|mips|formats|blend|palette <golden.png> <out.png> [--bless | frames]");
+		if (args.length < 4 || !["triangle", "cube", "instances", "targets", "msaa", "mips", "formats", "blend", "palette", "layers"].contains(args[1])) {
+			Sys.println("usage: GfxTest headless|window triangle|cube|instances|targets|msaa|mips|formats|blend|palette|layers <golden.png> <out.png> [--bless | frames]");
 			Sys.exit(2);
 		}
 		var name = args[1], golden = args[2], out = args[3];
@@ -83,6 +83,11 @@ class GfxTest {
 		if (name == "palette") {
 			var wrong = Palette.check(pixels, WIDTH, HEIGHT);
 			Sys.println("GfxTest: palette: " + (wrong == null ? "the colours as expected" : "FAIL: " + wrong));
+			if (wrong != null) return false;
+		}
+		if (name == "layers") {
+			var wrong = Layers.check(pixels, WIDTH, HEIGHT);
+			Sys.println("GfxTest: layers: " + (wrong == null ? "the cube's faces and the arrays' layers as expected" : "FAIL: " + wrong));
 			if (wrong != null) return false;
 		}
 		if (bless) {

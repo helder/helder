@@ -199,7 +199,7 @@ class Lower implements ShaderAdapter {
 		}
 		var f = new SFunction(names.global(name), params, type(tf.t, pos));
 		f.fields = fields;
-		if (f.ret == TTexture) error('$name: a texture is not a result (pass the parameter on)', pos);
+		if (Textures.isTexture(f.ret)) error('$name: a texture is not a result (pass the parameter on)', pos);
 		fn = f;
 		vars.set(f, vs);
 		var body = [];
@@ -225,12 +225,12 @@ class Lower implements ShaderAdapter {
 	function declareNamed(name:String, t:SType, pos:Position, list:Array<SVar>, param:Bool):SVar {
 		if (t == TVoid) error('$name has no value', pos);
 		// (a texture: a parameter, its sampler <name>_smp next to it where the language has one)
-		if (t == TTexture && !param) error('$name: a texture is a parameter, not a local', pos);
+		if (Textures.isTexture(t) && !param) error('$name: a texture is a parameter, not a local', pos);
 		if (t.match(TStorage(_, _) | TImage(_)) && (!param || kind != Stage))
 			error('$name: a ${Names.typeName(t)} is a parameter of a compute stage (its object of parameters), read and written there', pos);
-		var s = new SVar(Names.unique(Names.sanitize(name), n -> !localNames.exists(n) && (t != TTexture || !localNames.exists(n + "_smp"))), t);
+		var s = new SVar(Names.unique(Names.sanitize(name), n -> !localNames.exists(n) && (!Textures.isTexture(t) || !localNames.exists(n + "_smp"))), t);
 		localNames.set(s.name, true);
-		if (t == TTexture) localNames.set(s.name + "_smp", true);
+		if (Textures.isTexture(t)) localNames.set(s.name + "_smp", true);
 		list.push(s);
 		return s;
 	}
@@ -314,6 +314,8 @@ class Lower implements ShaderAdapter {
 					case [SHADER_PACK, "Vec4Data"]: TVec(4);
 					case [SHADER_PACK, "Mat4Data"]: TMat4;
 					case [SHADER_PACK, "Texture2D"]: TTexture;
+					case [SHADER_PACK, "TextureCube"]: TTextureCube;
+					case [SHADER_PACK, "Texture2DArray"]: TTextureArray;
 					// (RGBA8: a parameter's @:format another)
 					case [SHADER_PACK, "StorageTexture"]: TImage(0);
 					case _:
@@ -403,7 +405,7 @@ class Lower implements ShaderAdapter {
 				position: false,
 				optional: optional
 			});
-			if (fields[fields.length - 1].type == TTexture) error('$key.${f.name}: a texture is not a struct field (it is a parameter)', f.pos);
+			if (Textures.isTexture(fields[fields.length - 1].type)) error('$key.${f.name}: a texture is not a struct field (it is a parameter)', f.pos);
 		}
 		if (fields.length == 0) error('$key has no fields', pos);
 		building.remove(key);
@@ -589,7 +591,7 @@ class Lower implements ShaderAdapter {
 			case TLocal(v):
 				var s = locals.get(v.id);
 				if (s == null) error('${v.name} is not a local of this function', e.pos);
-				if (s.type == TTexture) error('${v.name}: a texture parameter is not assigned', e.pos);
+				if (Textures.isTexture(s.type)) error('${v.name}: a texture parameter is not assigned', e.pos);
 				if (s.type.match(TStorage(_, _) | TImage(_))) error('${v.name}: a storage parameter is not assigned (its elements are: ${v.name}[i] = x)', e.pos);
 				s.assigned = true;
 				s;
@@ -659,7 +661,7 @@ class Lower implements ShaderAdapter {
 			case TUnop(_, _, _): error("not supported in a shader", e.pos);
 			case TIf(c, a, b) if (b != null):
 				var t = type(e.t, e.pos);
-				if (t == TTexture) error("a texture is chosen by no condition (pass the parameter on)", e.pos);
+				if (Textures.isTexture(t)) error("a texture is chosen by no condition (pass the parameter on)", e.pos);
 				if (t.match(TStorage(_, _) | TImage(_))) error("a storage buffer or texture is chosen by no condition", e.pos);
 				var cond = coerce(expr(c, out), TBool, c.pos);
 				// (a variant's choice by a constant: the branch it takes alone)
@@ -884,7 +886,7 @@ class Lower implements ShaderAdapter {
 				case name:
 					// (a Float bound or weight of a vector function: a vector, as WGSL wants it)
 					switch t {
-						case TVec(n) if (name != "reflect" && name != "cross" && name != "sampleLevel"):
+						case TVec(n) if (name != "reflect" && name != "cross" && name != "sampleLevel" && name != "sample"):
 							xs = [for (x in xs) x.t == TFloat ? {e: ENew([x]), t: t} : x];
 						case _:
 					}

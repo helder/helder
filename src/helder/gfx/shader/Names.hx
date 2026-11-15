@@ -81,6 +81,8 @@ class Names {
 			case TVec(n): 'Vec$n';
 			case TMat4: "Mat4";
 			case TTexture: "Texture2D";
+			case TTextureCube: "TextureCube";
+			case TTextureArray: "Texture2DArray";
 			case TStruct(s): s.path;
 			case TArray(t, n): 'Array<${typeName(t)}> of $n';
 			case TStorage(t, w): (w ? "RWStorage<" : "Storage<") + typeName(t) + ">";

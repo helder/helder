@@ -8,5 +8,8 @@ typedef ColorTarget = {
 	load:LoadOp,
 	?clear:Color,
 	?texture:Texture,
-	?resolve:Texture
+	?resolve:Texture,
+	// the layer of texture drawn into (default 0): a cube's face (0 to 5:
+	// +x, -x, +y, -y, +z, -z) or a 2D array's layer; its first mip level
+	?layer:Int
 }

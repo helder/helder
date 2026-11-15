@@ -35,6 +35,11 @@ enum abstract TextureFormat(Int) {
 	var BC1;
 	var BC3;
 	var ASTC4x4;
+	// 16 bytes: 4 floats; not filterable (read through a sampler of Nearest
+	// filters, no generated mips: GL ES's, WebGL2's and WebGPU's need an
+	// extension for it); a target where RGBA16F is one with
+	// EXT_color_buffer_float (GL ES)
+	var RGBA32F;
 
 	public var texelSize(get, never):Int;
 	public var depth(get, never):Bool;
@@ -45,6 +50,7 @@ enum abstract TextureFormat(Int) {
 			case R8: 1;
 			case RG8 | Depth16: 2;
 			case RGBA16F: 8;
+			case RGBA32F: 16;
 			case _: 4;
 		}
 
@@ -62,11 +68,12 @@ enum abstract TextureFormat(Int) {
 		return (cast this : TextureFormat) == BC1 ? 8 : 16;
 
 	inline function get_compressed():Bool
-		return this >= (cast BC1 : Int);
+		return this >= (cast BC1 : Int) && this <= (cast ASTC4x4 : Int);
 
 	inline function get_depth():Bool
 		return this == (cast Depth16 : Int) || this == (cast Depth32F : Int);
 
 	inline function get_filterable():Bool
 		return this < (cast R32F : Int) || compressed;
+	// (RGBA32F: after the compressed ones, not filterable)
 }

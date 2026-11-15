@@ -33,6 +33,8 @@ class Msl extends Emit {
 			case TVec(n): 'float$n';
 			case TMat4: "float4x4";
 			case TTexture: "texture2d<float>";
+			case TTextureCube: "texturecube<float>";
+			case TTextureArray: "texture2d_array<float>";
 			case TStruct(s): s.name;
 			// (metal::array: copied from the constant buffer as a value)
 			case TArray(t, n): 'array<${type(t)}, $n>';
@@ -68,7 +70,7 @@ class Msl extends Emit {
 		for (r in e.resources)
 			params.push(switch r {
 				case RUniform(u): 'constant ${u.struct.name}_buffer& u_${u.binding} [[buffer(${u.binding})]]';
-				case RTexture(t): 'texture2d<float> tex_${t.slot} [[texture(${t.slot})]], sampler smp_${t.slot} [[sampler(${t.slot})]]';
+				case RTexture(t): '${type(Emit.textureType(t))} tex_${t.slot} [[texture(${t.slot})]], sampler smp_${t.slot} [[sampler(${t.slot})]]';
 				case RStorage(s): '${type(TStorage(s.element, s.write))} sb_${s.slot} [[buffer(${s.slot})]]';
 				case RImage(m): '${type(TImage(m.format))} img_${m.slot} [[texture(${m.slot})]]';
 			});
@@ -105,10 +107,10 @@ class Msl extends Emit {
 		].join(", ") + "}";
 
 	override function param(v:SVar):String
-		return type(v.type) + " " + v.name + (v.type == TTexture ? ", sampler " + v.name + "_smp" : "");
+		return type(v.type) + " " + v.name + (Textures.isTexture(v.type) ? ", sampler " + v.name + "_smp" : "");
 
 	override function arg(e:SExpr):String
-		return e.t == TTexture ? expr(e) + ", " + expr(e) + "_smp" : expr(e);
+		return Textures.isTexture(e.t) ? expr(e) + ", " + expr(e) + "_smp" : expr(e);
 
 	override function construct(t:SType, args:Array<SExpr>):String
 		return switch t {
@@ -118,6 +120,10 @@ class Msl extends Emit {
 
 	override function builtin(name:String, args:Array<SExpr>, t:SType):String
 		return switch name {
+			case "sample" | "sampleLevel" if (args[0].t == TTextureArray):
+				// (a 2D array's layer: an index)
+				var at = expr(args[1]) + ", uint(rint(" + expr(args[2]) + "))";
+				operand(args[0]) + ".sample(" + expr(args[0]) + "_smp, " + at + (name == "sampleLevel" ? ", level(" + expr(args[3]) + "))" : fragment ? ")" : ", level(0.0))");
 			case "sample" if (fragment): operand(args[0]) + ".sample(" + expr(args[0]) + "_smp, " + expr(args[1]) + ")";
 			case "sample": operand(args[0]) + ".sample(" + expr(args[0]) + "_smp, " + expr(args[1]) + ", level(0.0))";
 			case "sampleLevel": operand(args[0]) + ".sample(" + expr(args[0]) + "_smp, " + expr(args[1]) + ", level(" + expr(args[2]) + "))";
@@ -149,7 +155,7 @@ class Msl extends Emit {
 			for (r in e.resources)
 				switch r {
 					case RUniform(u): 'constant ${u.struct.name}_buffer& u_${u.binding} [[buffer(${u.binding})]]';
-					case RTexture(t): 'texture2d<float> tex_${t.slot} [[texture(${t.slot})]], sampler smp_${t.slot} [[sampler(${t.slot})]]';
+					case RTexture(t): '${type(Emit.textureType(t))} tex_${t.slot} [[texture(${t.slot})]], sampler smp_${t.slot} [[sampler(${t.slot})]]';
 					case RStorage(_) | RImage(_): throw "a render stage's storage";
 				}
 		];

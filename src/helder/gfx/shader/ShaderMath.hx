@@ -12,7 +12,8 @@ import haxe.macro.Expr;
 // and sample(t, uv), a Texture2D's colour at uv (in the fragment stage at
 // the mip level its footprint needs, in the vertex stage the first), and
 // sampleLevel(t, uv, level) at a mip level (fractions blend two levels with
-// a sampler's mipFilter Linear); discard(), in the fragment stage, drops the
+// a sampler's mipFilter Linear), and their forms for a TextureCube (sample(t,
+// dir), along a direction) and a Texture2DArray (sample(t, uv, layer)); discard(), in the fragment stage, drops the
 // fragment (alpha testing: nothing on the CPU). Written out by
 // VecBuild.builtins. The compute stage's: atomicAdd(b, i, v), atomicMin and
 // atomicMax on an RWStorage<Int>'s element (its value before), and

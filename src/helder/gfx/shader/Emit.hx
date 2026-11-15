@@ -252,6 +252,10 @@ class Emit {
 	}
 
 	// the varyings but the position, in order: locations 0, 1, ...
+	// a texture parameter's type (its dimension's)
+	public static function textureType(t:STexture):SType
+		return t.dimension == 1 ? TTextureCube : t.dimension == 2 ? TTextureArray : TTexture;
+
 	static function varyings(p:SProgram):Array<SField>
 		return [for (f in p.varyings.fields) if (!f.position) f];
 

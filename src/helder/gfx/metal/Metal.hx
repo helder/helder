@@ -25,6 +25,7 @@ class MTL {
 	public static inline var PixelFormatR8Unorm = 10;
 	public static inline var PixelFormatRG8Unorm = 30;
 	public static inline var PixelFormatR32Float = 55;
+	public static inline var PixelFormatRGBA32Float = 125;
 	public static inline var PixelFormatRGBA8Unorm = 70;
 	public static inline var PixelFormatRGBA8UnormSrgb = 71;
 	public static inline var PixelFormatRGBA16Float = 115;
@@ -78,7 +79,9 @@ class MTL {
 	public static inline var TextureUsageRenderTarget = 4;
 	public static inline var TextureUsageShaderWrite = 2;
 	// MTLTextureType
+	public static inline var TextureType2DArray = 3;
 	public static inline var TextureType2DMultisample = 4;
+	public static inline var TextureTypeCube = 5;
 	// MTLSamplerMinMagFilter, MTLSamplerAddressMode
 	public static inline var SamplerMinMagFilterNearest = 0;
 	public static inline var SamplerMinMagFilterLinear = 1;

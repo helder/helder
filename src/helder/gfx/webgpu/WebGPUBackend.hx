@@ -65,17 +65,17 @@ class WebGPUBackend {
 	public function createTexture(d:TextureDesc):Int {
 		var info = TextureInfo.of(d);
 		// (the Bytes cannot move during the call: no collection in an import)
-		var t = WebGPU.texture(info.width, info.height, cast info.format, info.levels, info.target ? 1 : 0, info.samples, info.storage ? 1 : 0,
-			d.data == null ? Ptr.nil() : BytesPtr.of(d.data, 0, d.data.length));
+		var t = WebGPU.texture(info.width, info.height, cast info.format, info.levels, info.target ? 1 : 0, info.samples, info.storage ? 1 : 0, info.layers,
+			info.cube ? 1 : info.array ? 2 : 0, d.data == null ? Ptr.nil() : BytesPtr.of(d.data, 0, d.data.length));
 		infos.set(t, info);
 		handles.push(t);
 		return t;
 	}
 
-	public function writeTexture(id:Int, data:haxe.io.Bytes, x:Int, y:Int, w:Int, h:Int, dataOffset:Int, level:Int) {
+	public function writeTexture(id:Int, data:haxe.io.Bytes, x:Int, y:Int, w:Int, h:Int, dataOffset:Int, level:Int, layer:Int) {
 		var info = infos.get(id);
-		info.checkWrite(data, x, y, w, h, dataOffset, level);
-		WebGPU.write_texture(id, x, y, info.w, info.h, level, BytesPtr.of(data, dataOffset, data.length - dataOffset));
+		info.checkWrite(data, x, y, w, h, dataOffset, level, layer);
+		WebGPU.write_texture(id, x, y, info.w, info.h, level, layer, BytesPtr.of(data, dataOffset, data.length - dataOffset));
 	}
 
 	public function maxTextureSize():Int
@@ -131,7 +131,8 @@ class WebGPUBackend {
 		for (b in bindings.get(d.vertex.id()).concat(bindings.get(d.fragment.id())))
 			if (seen & (1 << b.slot) == 0) {
 				seen |= 1 << b.slot;
-				WebGPU.pipeline_binding(b.slot, cast b.kind, b.size == null ? 0 : b.size);
+				// (a texture's: its view's dimension)
+				WebGPU.pipeline_binding(b.slot, cast b.kind, b.kind == Texture ? (b.dimension ?? 0) : b.size == null ? 0 : b.size);
 			}
 		var topology:Topology = d.topology == null ? Triangles : d.topology, cull:Cull = d.cull == null ? None : d.cull;
 		var blend:Blend = d.blend == null ? Opaque : d.blend, compare:Compare = d.depthCompare == null ? Always : d.depthCompare;
@@ -151,7 +152,7 @@ class WebGPUBackend {
 	public function createComputePipeline(shader:Int):Int {
 		WebGPU.pipeline_begin();
 		for (b in bindings.get(shader))
-			WebGPU.pipeline_binding(b.slot, cast b.kind, b.kind == StorageTexture ? b.format : b.size == null ? 0 : b.size);
+			WebGPU.pipeline_binding(b.slot, cast b.kind, b.kind == StorageTexture ? b.format : b.kind == Texture ? (b.dimension ?? 0) : b.size == null ? 0 : b.size);
 		var p = WebGPU.compute_pipeline_end(shader);
 		handles.push(p);
 		return p;
@@ -202,12 +203,13 @@ class WebGPUBackend {
 		var resolve = c.resolve == null ? 0 : c.resolve.id();
 		if (color != 0) {
 			var info = infos.get(color);
-			info.checkPass(d);
+			info.checkPass(d, c.layer == null ? 0 : c.layer);
 			if (info.samples > 1 || resolve != 0) info.checkSamples(depthTexture == 0 ? null : infos.get(depthTexture), resolve == 0 ? null : infos.get(resolve));
 		}
 		var queries = p.queries == null ? 0 : p.queries.id();
-		if (k == null) WebGPU.pass_begin(color, resolve, cast c.load, 0, 0, 0, 1, depthTexture, cast depthLoad, depth, queries) else
-			WebGPU.pass_begin(color, resolve, cast c.load, k.r, k.g, k.b, k.a, depthTexture, cast depthLoad, depth, queries);
+		var layer = c.layer == null ? 0 : c.layer;
+		if (k == null) WebGPU.pass_begin(color, resolve, cast c.load, 0, 0, 0, 1, depthTexture, cast depthLoad, depth, queries, layer) else
+			WebGPU.pass_begin(color, resolve, cast c.load, k.r, k.g, k.b, k.a, depthTexture, cast depthLoad, depth, queries, layer);
 	}
 
 	// ---- occlusion queries (the JavaScript side's: query_set)
