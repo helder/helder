@@ -169,40 +169,47 @@ class Run {
 		for (l in lanes) if (!Lambda.exists(LANES, x -> x.name == l)) throw new Failed('no lane $l (bun run test help)');
 		helderCli();
 		Sys.putEnv("RUN_CLI_BUILT", "1");
-		// (the long ones first, CI's minutes: the short ones fill in after)
-		var long = ["pack", "test", "cli", "ui", "canvas", "syntax", "devtools"];
-		var queue = [for (l in long) if (lanes.contains(l)) l].concat([for (l in lanes) if (!long.contains(l)) l]);
+		// (the long ones first, CI's minutes: the short ones fill in after;
+		// the dev loops' lanes alone at the end, as a serial run has them: a
+		// watcher's and a build's times under the others' load timed out)
+		var long = ["pack", "test", "ui", "canvas", "syntax"], alone = ["cli", "devtools"];
+		var queue = [for (l in long) if (lanes.contains(l)) l].concat([for (l in lanes) if (!long.contains(l) && !alone.contains(l)) l]);
+		var last = [for (l in alone) if (lanes.contains(l)) l];
 		var failed = [], times = new Map<String, Int>();
 		var mutex = new sys.thread.Mutex(), done = new sys.thread.Lock();
 		var t0 = Sys.time();
-		var workers = Std.int(Math.min(jobs, queue.length));
-		Sys.println('--- ${lanes.length} lanes, $workers at once: ${lanes.join(" ")}');
-		for (_ in 0...workers)
-			sys.thread.Thread.create(() -> {
-				while (true) {
-					mutex.acquire();
-					var l = failed.length > 0 && !keepGoing ? null : queue.shift();
-					mutex.release();
-					if (l == null) break;
-					var s = Sys.time();
-					var p = new Process(TOOL, ["-cp", "tests", "--run", "Run", l]);
-					var r = drain(p);
-					var code = p.exitCode();
-					p.close();
-					var t = Math.round(Sys.time() - s);
-					mutex.acquire();
-					Sys.print(r.out + r.err);
-					if (code != 0) {
-						Sys.println('\n$l: FAILED (exit code $code)');
-						failed.push(l);
+		var workers = Std.int(Math.max(1, Math.min(jobs, queue.length)));
+		Sys.println('--- ${lanes.length} lanes, $workers at once: ${queue.join(" ")}' + (last.length > 0 ? '; then alone: ${last.join(" ")}' : ""));
+		function pool(queue:Array<String>, workers:Int) {
+			for (_ in 0...workers)
+				sys.thread.Thread.create(() -> {
+					while (true) {
+						mutex.acquire();
+						var l = failed.length > 0 && !keepGoing ? null : queue.shift();
+						mutex.release();
+						if (l == null) break;
+						var s = Sys.time();
+						var p = new Process(TOOL, ["-cp", "tests", "--run", "Run", l]);
+						var r = drain(p);
+						var code = p.exitCode();
+						p.close();
+						var t = Math.round(Sys.time() - s);
+						mutex.acquire();
+						Sys.print(r.out + r.err);
+						if (code != 0) {
+							Sys.println('\n$l: FAILED (exit code $code)');
+							failed.push(l);
+						}
+						Sys.println('--- $l: $t s (at ${Math.round(Sys.time() - t0)} s)');
+						times.set(l, t);
+						mutex.release();
 					}
-					Sys.println('--- $l: $t s (at ${Math.round(Sys.time() - t0)} s)');
-					times.set(l, t);
-					mutex.release();
-				}
-				done.release();
-			});
-		for (_ in 0...workers) done.wait();
+					done.release();
+				});
+			for (_ in 0...workers) done.wait();
+		}
+		pool(queue, workers);
+		pool(last, 1);
 		Sys.println('\nlanes ($workers at once, ${Math.round(Sys.time() - t0)} s):\n  '
 			+ [for (l in lanes) if (times.exists(l)) l.rpad(" ", 16) + " " + Std.string(times.get(l)).lpad(" ", 5) + " s" + (failed.contains(l) ? "  FAILED" : "")].join("\n  "));
 		if (failed.length > 0) {

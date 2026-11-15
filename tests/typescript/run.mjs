@@ -11,20 +11,23 @@ import os from 'node:os';
 // (the machine's cores, at most 4; TS_JOBS=1: this process alone) and fails
 // when one does; a shard (TS_SHARD=<i>/<n>) runs every n-th unit of the
 // checks below (a case, a case's target, a block), in this order on every shard.
+// TS_PART=<k>/<m>: this machine's part of m (CI's jobs): its TS_JOBS shards
+// are those k*TS_JOBS.. of the m*TS_JOBS (every part the same TS_JOBS).
 const T='tests/typescript';
 if(!process.env.TS_SHARD) {
     const jobs=Number(process.env.TS_JOBS)||Math.max(1,Math.min(4,os.availableParallelism()));
-    if(jobs>1) {
+    const [partK,partM]=(process.env.TS_PART??'0/1').split('/').map(Number);
+    if(jobs>1||partM>1) {
         const b=spawnSync(process.execPath,['src/helder/compiler/build.mjs'],{stdio:['ignore','ignore','inherit']});
         if(b.status!==0)process.exit(1);
         const {spawn}=await import('node:child_process');
         const t0=Date.now();
         const codes=await Promise.all(Array.from({length:jobs},(_,i)=>new Promise(resolve=>{
-            const p=spawn(process.execPath,[process.argv[1],...process.argv.slice(2)],{env:{...process.env,TS_SHARD:`${i}/${jobs}`},stdio:['ignore','inherit','inherit']});
+            const p=spawn(process.execPath,[process.argv[1],...process.argv.slice(2)],{env:{...process.env,TS_SHARD:`${partK*jobs+i}/${partM*jobs}`},stdio:['ignore','inherit','inherit']});
             p.on('close',code=>resolve(code));
         })));
-        const failed=codes.map((c,i)=>c===0?null:`${i}/${jobs}`).filter(x=>x);
-        console.log(`typescript: ${jobs} shards in ${Math.round((Date.now()-t0)/1000)} s${failed.length?`, failed: ${failed.join(', ')}`:', all passed'}`);
+        const failed=codes.map((c,i)=>c===0?null:`${partK*jobs+i}/${partM*jobs}`).filter(x=>x);
+        console.log(`typescript: ${jobs} shards${partM>1?` (part ${partK} of ${partM})`:''} in ${Math.round((Date.now()-t0)/1000)} s${failed.length?`, failed: ${failed.join(', ')}`:', all passed'}`);
         process.exit(failed.length?1:0);
     }
 }

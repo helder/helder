@@ -14,7 +14,8 @@
 //
 //   node site/check.mjs [screenshots dir] [ids to play...]   (default: every demo)
 // SITE_JOBS: the demos and the docs' pages checked that many at once, each
-// in a page of its own (the cores', at most 3).
+// in a page of its own (the cores', at most 2; a busy page's canvas
+// screenshots given 60 s).
 import { createServer } from 'node:http';
 import { readFile, mkdir } from 'node:fs/promises';
 import fs from 'node:fs';
@@ -74,7 +75,7 @@ try {
 		page.on('pageerror', (e) => errors.push(`${at()}: ${e}`));
 		return page;
 	};
-	const jobs = Number(process.env.SITE_JOBS) || Math.max(1, Math.min(3, os.availableParallelism()));
+	const jobs = Number(process.env.SITE_JOBS) || Math.max(1, Math.min(2, os.availableParallelism()));
 	const pages = [await open()];
 	while (pages.length < jobs) pages.push(await open());
 	const page = pages[0];
@@ -112,7 +113,7 @@ try {
 		await island.scrollIntoViewIfNeeded();
 		// (a sound has no canvas: started, nothing drawn)
 		const drawn = (await canvas.count()) > 0;
-		const before = drawn ? await canvas.screenshot() : null;
+		const before = drawn ? await canvas.screenshot({ timeout: 60000 }) : null;
 		await island.locator('button.play').click();
 		await page.waitForFunction((id) => {
 			const el = document.getElementById('play-' + id);
@@ -124,7 +125,7 @@ try {
 		check(!!gfx, `${id} draws with ${gfx}`);
 		await page.waitForTimeout(1500);
 		await island.scrollIntoViewIfNeeded();
-		const after = await canvas.screenshot();
+		const after = await canvas.screenshot({ timeout: 60000 });
 		check(!before.equals(after), `${id}'s canvas drawn`);
 		if (shots) {
 			await page.screenshot({ path: path.join(shots, `site-desktop-${id}.png`) });
@@ -190,7 +191,7 @@ async function checkDocs(pool) {
 			if (!e || !e.docs || (ids.length && !ids.includes(id))) continue;
 			const canvas = island.locator('canvas');
 			await island.scrollIntoViewIfNeeded();
-			const before = await canvas.screenshot();
+			const before = await canvas.screenshot({ timeout: 60000 });
 			await island.locator('button.play').click();
 			await page.waitForFunction((id) => {
 				const el = document.getElementById('play-' + id);
@@ -200,7 +201,7 @@ async function checkDocs(pool) {
 			check(error === null, `${p.url}: ${id} started${error ? ': ' + error : ''}`);
 			await page.waitForTimeout(1500);
 			await island.scrollIntoViewIfNeeded();
-			check(!before.equals(await canvas.screenshot()), `${p.url}: ${id}'s canvas drawn`);
+			check(!before.equals(await canvas.screenshot({ timeout: 60000 })), `${p.url}: ${id}'s canvas drawn`);
 			if (shots) await page.screenshot({ path: path.join(shots, `docs-${id}.png`) });
 		}
 	});

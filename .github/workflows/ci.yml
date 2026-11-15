@@ -11,7 +11,7 @@
 #   pack lane's Android half with bundletool (PACK_REQUIRE: the runtime
 #   objects required);
 # - typescript: the TypeScript frontend's checks (tests/typescript/run.mjs,
-#   in shards over the runner's cores);
+#   in shards over two jobs' cores, TS_PART);
 # - examples: every example built (EXAMPLES_WEB=site: the web builds the
 #   site job makes too left to it), the READMEs against the docs' pages;
 # - site: the examples' pages and the docs built (every web example's
@@ -137,19 +137,28 @@ jobs:
         uses: ./.github/actions/save
         with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
+  # (two jobs, 4 shards each: TS_PART, tests/typescript/run.mjs; one job's
+  # 4 cores took 5.5 min)
   typescript:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [0, 1]
     steps:
       - uses: actions/checkout@v7
       - id: setup
         uses: ./.github/actions/setup
-        with: {cache: typescript, node-version: 24}
+        with: {cache: 'typescript-${{ matrix.part }}', node-version: 24}
       - name: Fonts and libEGL (the programs rendering headless)
         run: sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core fonts-liberation libegl1 libegl-mesa0 libgl1-mesa-dri
       - name: The TypeScript frontend (tests/typescript/run.mjs, sharded)
+        env:
+          TS_JOBS: 4
+          TS_PART: ${{ matrix.part }}/2
         run: bun run test typescript
       - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
@@ -282,26 +291,34 @@ jobs:
         uses: ./.github/actions/save
         with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
+  # (two jobs: the demos and the viewer's packages and windows; the studio's
+  # lanes. One took 7 min)
   gfx-apps:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     continue-on-error: true
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {part: apps, lanes: demos viewer-package window}
+          - {part: studio, lanes: studio syntax-run story-host viewer-window}
     steps:
       - uses: actions/checkout@v7
       - id: setup
         uses: ./.github/actions/setup
-        with: {cache: gfx-apps}
+        with: {cache: 'gfx-${{ matrix.part }}'}
       - name: System packages
         run: |
           sudo apt-get update -qq
           sudo apt-get install -qqy --no-install-recommends libegl1 libegl-mesa0 libgl1-mesa-dri libgles2 xvfb xauth libasound2t64 fonts-dejavu-core fonts-inter libgtk-3-0t64 dbus at-spi2-core fonts-noto-color-emoji fonts-freefont-ttf libharfbuzz0b libfreetype6 fontconfig libtiff6 libheif1 libheif-plugin-aomdec libraw23t64 osslsigncode desktop-file-utils appstream libenchant-2-2 hunspell-en-us
       - name: The showcase demos headless, helder.syntax's edits run headless, helder studio headless, the story host, a window, the viewer's (Mesa llvmpipe, Xvfb; its release packages)
-        run: bun run test -k demos syntax-run studio story-host window viewer-window viewer-package
+        run: bun run test -k ${{ matrix.lanes }}
       - uses: actions/upload-artifact@v7
         if: always()
-        with: {name: images-apps, path: "bin/demos/*.png\nbin/studio-check/*.png\nbin/os/*.png", retention-days: 7, if-no-files-found: ignore}
+        with: {name: 'images-${{ matrix.part }}', path: "bin/demos/*.png\nbin/studio-check/*.png\nbin/os/*.png", retention-days: 7, if-no-files-found: ignore}
       - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
         with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
