@@ -156,7 +156,7 @@ class BuildCommand {
 			Term.done();
 			var id = Ios.id(e);
 			Term.out(Style.status("running", Info, '$id on ${d.name}'));
-			return Ios.run(d.id, id, Path.directory(app) + "/run");
+			return Ios.run(d.id, id, FileSystem.fullPath(Path.directory(app)) + "/run");
 		} catch (err:Dynamic) {
 			Term.done();
 			Term.err(Style.status("error", Fail, Std.string(err)));

@@ -359,6 +359,9 @@ class Ios {
 	// The app's own exit status is not simctl's to give: 0 once it has run.
 	@:coroutine public static function run(udid:String, id:String, dir:String):Int {
 		TestCommand.mkdirs(dir);
+		// (the host's absolute paths: the simulator's launchd opens them, a
+		// relative one is not the command's directory there and the launch is refused)
+		dir = FileSystem.fullPath(dir).split("\\").join("/");
 		var out = '$dir/$id.stdout', err = '$dir/$id.stderr';
 		for (f in [out, err])
 			File.saveContent(f, "");

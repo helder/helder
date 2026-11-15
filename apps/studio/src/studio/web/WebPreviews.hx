@@ -46,6 +46,8 @@ class WebPreviews {
 	var shown = "";
 	// (the last show asked: told again to a host once it is ready, a new build's too)
 	var showWanted:Null<{names:Array<String>, focused:Null<String>, scale:Float}> = null;
+	// (since when the page draws for a build's reload: -1, not)
+	var drawingSince = -1.0;
 	final pending = new Map<Int, Dynamic->Void>();
 	var nextId = 1;
 	// the live literals' tables the preview was built with, by the project's path; the patches sent since
@@ -85,9 +87,16 @@ class WebPreviews {
 		task.async(_ -> while (!stopping) {
 			poll();
 			// (the worker's loop turns on its animation frames, which come with
-			// the page's: while a build's screens reload, the page draws, or an
-			// idle studio would wait for good on the new build's frames)
-			if (running && Lambda.exists(screens, s -> s.reloading)) Main.window?.ui.requestFrame();
+			// the page's: while a build's screens in view reload, the page draws,
+			// or an idle studio would wait for good on the new build's frames;
+			// until they have them, the preview fails, or 10 s have gone: the
+			// screens out of view get none, suspended in the host)
+			if (drawingSince >= 0) {
+				var wanted = showWanted?.names;
+				var waiting = Lambda.exists(screens, s -> s.reloading && (wanted == null || wanted.contains(s.info.name)));
+				if (!running || failed || !waiting || haxe.Timer.stamp() - drawingSince > 10) drawingSince = -1;
+				else Main.window?.ui.requestFrame();
+			}
 			Async.delay(0.004);
 		});
 		// (no module yet: a project from a link or an agent's, built first by the compiler's worker)
@@ -340,6 +349,7 @@ class WebPreviews {
 		}
 		for (s in screens)
 			s.reloading = true;
+		drawingSince = haxe.Timer.stamp();
 		setStatus("running");
 		return true;
 	}
