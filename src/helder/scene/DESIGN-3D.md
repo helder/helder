@@ -1583,7 +1583,7 @@ its fallback; the departures said where the design describes them (2.1,
   unrolled into a constructor (`Filled`: 90 KB of Shadows' first cut).
 - **TypeScript**: helder/gfx's `UniformArray<T, N>` is a uniform block's
   array (Haxe's `@:length(N)`), indexed by a number's whole part, so
-  `pbr.ts` declares PbrLights and the frame's tiles and prints the same
+  `pbr.ts` declares PbrLights and its tiles and prints the same
   text as `PbrShader.hx` (tests/typescript/definitions). `Light.shadow`,
   `LodLevel` and the options are object literals; `tests/typescript/
   helder/lights.ts` uses the API without a device (the lane's static
@@ -1618,6 +1618,20 @@ its fallback; the departures said where the design describes them (2.1,
   lights, four lanterns casting, columns at three levels), not Sponza;
   the docs' examples are `scene-clustered`, `scene-shadows` and
   `scene-lod`.
+- **The fragment stage copies no arrays.** GLSL passes a block to a
+  function by value, and Android's emulator's GL (its host's legacy
+  SwiftShader) crashed, its JIT's routine null, compiling a stage that
+  passed the frame with twelve tiles' matrices, or the lights' arrays, to
+  each function: the tiles are PbrLights' (after its lights, not
+  PbrFrame's), the light loop reads a light's row and its tile itself and
+  hands `localLight`, `shadowPoint`, `tileFace` and `tileShadow` vectors,
+  and a draw's list reaches the fragment as two varyings (the vertex stage
+  reads PbrObject; the fragment stage reading it crashed the emulator too).
+  The loop ends at a list's first -1 (a draw lit by none loops not at
+  all), and the renderer's four opaque pipelines (plain, double-sided,
+  instanced, both) are made when first drawn: each a fragment stage of a
+  few seconds to compile on a software GPU, where the page waited for
+  all four before.
 
 ### Phase 5: indirect light
 
