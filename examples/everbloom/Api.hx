@@ -8,8 +8,10 @@ import helder.async.http.Client;
 class Api {
 	public static final endpoint:String = {
 		var env = Sys.getEnv("SHOP_API_URL");
-		env != null && env != "" ? env : #if shop_api_url haxe.macro.Compiler.getDefine("shop_api_url") #else "https://apparel-large-catalog.mock.shop/api" #end;
+		var built = BuildEnv.shopApiUrl();
+		env != null && env != "" ? env : built != "" ? built : "https://apparel-large-catalog.mock.shop/api";
 	}
+
 
 	// a URL the API gave relative to its origin (the replay server's checkout: "/checkout")
 	public static function absolute(url:String):String {

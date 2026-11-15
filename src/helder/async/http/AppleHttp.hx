@@ -1,6 +1,7 @@
 package helder.async.http;
 
-#if (target.name == "hxmc" && hxmc.target != "wasm32-wasi")
+#if (target.name == "hxmc" && (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64"))
+// (Apple's targets only: a block is linked where it is compiled, a constant branch or not)
 import haxe.Exception;
 import haxe.io.Bytes;
 import helder.async.*;

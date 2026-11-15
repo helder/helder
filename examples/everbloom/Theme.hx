@@ -51,7 +51,7 @@ class Theme implements Markup {
 	public static function Card(props:{product:Product, id:String, onOpen:Product->Void, ?width:Float}):View {
 		var p = props.product;
 		return <view:button id={props.id} role="button" label={p.title} focusable width={props.width} grow={props.width == null ? 1 : 0}
-			basis={props.width == null ? 0 : null} shrink={0} row-gap={8} onPress={() -> props.onOpen(p)}>
+			basis={props.width == null ? 0 : null} min-width={0} shrink={props.width == null ? 1 : 0} row-gap={8} onPress={() -> props.onOpen(p)}>
 			<Picture url={p.image} width={480} ratio={0.75}/>
 			<text font-size={14} line-height="18px" max-lines={2} text-overflow="ellipsis">{p.title}</text>
 			<Price price={p.price} compareAt={p.compareAt}/>

@@ -17,13 +17,14 @@ import helder.async.*;
 //   trace(res.status, res.text());
 class Client {
 	@:coroutine public static function request(url:String, ?options:RequestOptions):Reply {
-		#if (target.name == "hxmc" && hxmc.target != "wasm32-wasi")
 		// (https: the system's stack where there is one; macOS and iOS: AppleHttp)
 		if (StringTools.startsWith(url, "https://")) {
-			if (hxmc.Platform.os() == hxmc.Platform.MACOS) return AppleHttp.request(url, options);
+			#if (target.name == "hxmc" && (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64"))
+			return AppleHttp.request(url, options);
+			#else
 			throw new Exception('https needs macOS or iOS here (NSURLSession): $url');
+			#end
 		}
-		#end
 		var u = Url.parse(url);
 		var method = options?.method ?? "GET";
 		var body = options?.body ?? (options?.text != null ? Bytes.ofString(options.text) : Bytes.alloc(0));

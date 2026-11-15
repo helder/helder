@@ -513,14 +513,14 @@ class Headless {
 
 	// where a step aims (points): its node's centre (or ox, oy from its top left), x, y, else the pointer
 	function target(s:Step):{x:Float, y:Float} {
-		var tag = s.str("tag"), path = s.str("path"), role = s.str("role"), label = s.str("label");
-		if (tag == null && path == null && role == null && label == null) {
+		var tag = s.str("tag"), path = s.str("path"), role = s.str("role"), label = s.str("label"), id = s.str("id");
+		if (tag == null && path == null && role == null && label == null && id == null) {
 			if (Reflect.hasField(s.data, "x") || Reflect.hasField(s.data, "y")) return {x: s.num("x", px), y: s.num("y", py)};
 			return {x: px, y: py};
 		}
 		if (inspector == null) failStep(s, 'aims at ${s.target()}, but this window has no node tree (a scene\'s, gfx\'s): aim at x, y');
 		var nodes = inspector.nodes();
-		var n = find(nodes, tag, path, role, label, Std.int(s.num("index", 0)));
+		var n = id != null ? Lambda.find(nodes, x -> x.identifier == id) : find(nodes, tag, path, role, label, Std.int(s.num("index", 0)));
 		if (n == null) {
 			var tags = [];
 			for (x in nodes)

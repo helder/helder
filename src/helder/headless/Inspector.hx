@@ -35,6 +35,8 @@ interface Inspector {
 	public var path:String;
 	public var role:Null<String> = null;
 	public var label:Null<String> = null;
+	// what UI tests find it by (Semantics.identifier: markup's id)
+	public var identifier:Null<String> = null;
 	public var text:Null<String> = null;
 	public var value:Null<String> = null;
 	public var checked:Null<Bool> = null;

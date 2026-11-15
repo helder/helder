@@ -25,6 +25,13 @@ class Screens implements Markup {
 			case Cart: CartScreen.view();
 		}
 
+	// (after the screen is made: its first load's writes not in its making)
+	public static function later(f:Void->Void)
+		Async.launch(@:coroutine function(_) {
+			f();
+			return null;
+		});
+
 	public static function openProduct(p:Product)
 		Everbloom.push(new Route(ProductPage(p.handle)));
 
@@ -143,7 +150,7 @@ class HomeScreen implements Markup {
 	final failed = signal(false);
 
 	public function new()
-		load();
+		Screens.later(load);
 
 	function load() {
 		failed(false);
@@ -158,7 +165,7 @@ class HomeScreen implements Markup {
 	public function view():View
 		return <view grow={1}>
 			<Show when={!failed()} fallback={<view grow={1} padding-top="env(safe-area-inset-top)">{header()}<Failed onRetry={load}/></view>}>
-				<scroll id="home-scroll" grow={1} min-height={0}>
+				<scroll id="home-scroll" grow={1} min-height={0} scrollbar-width="none">
 					<view padding-top="env(safe-area-inset-top)" padding-bottom={24}>
 						{header()}
 						<Show when={data() != null} fallback={skeleton()}>{content(data())}</Show>
@@ -186,7 +193,7 @@ class HomeScreen implements Markup {
 	static function content(d:HomeData):View {
 		var featured = d.collections[0];
 		return <view>
-			<scroll direction="row" column-gap={8} padding="8 16 12" shrink={0} role="navigation" label="Collections">
+			<scroll direction="row" scrollbar-width="none" column-gap={8} padding="8 16 12" shrink={0} role="navigation" label="Collections">
 				<Repeat count={d.collections.length}>{i -> <view:button id={"collection-chip-" + i} role="button" focusable shrink={0} height={36}
 					padding="0 14" radius={18} background={SURFACE} justify="center" onPress={() -> Screens.openCollection(d.collections[i])}>
 					<text font-size={14} font-weight={500} text-wrap="nowrap">{d.collections[i].title}</text>
@@ -205,7 +212,7 @@ class HomeScreen implements Markup {
 			</Show>
 			<view padding="28 0 0">
 				<text padding="0 16 12" font-size={17} font-weight={700} role="heading">Collections</text>
-				<scroll direction="row" column-gap={12} padding="0 16" shrink={0}>
+				<scroll direction="row" scrollbar-width="none" column-gap={12} padding="0 16" shrink={0}>
 					<Repeat count={d.collections.length}>{i -> {
 						var c = d.collections[i];
 						<view:button id={"collection-card-" + i} role="button" label={c.title} focusable shrink={0} width={140} row-gap={8}
@@ -251,7 +258,7 @@ class CollectionScreen implements Markup {
 			t.onCompletion(done);
 			t;
 		});
-		paged.more();
+		Screens.later(paged.more);
 	}
 
 	function pick(i:Int) {
@@ -291,7 +298,7 @@ class CollectionScreen implements Markup {
 			<Show when={(paged.description() ?? "") != ""}>
 				<text padding="4 16 0" font-size={14} line-height="20px" color={MUTED}>{paged.description() ?? ""}</text>
 			</Show>
-			<scroll direction="row" column-gap={8} padding="12 16" role="radiogroup" label="Sort">
+			<scroll direction="row" scrollbar-width="none" column-gap={8} padding="12 16" role="radiogroup" label="Sort">
 				<Repeat count={SORTS.length}>{i -> <view:button id={SORTS[i].id} role="radio" checked={sort() == i} focusable shrink={0} height={32}
 					padding="0 12" radius={16} border-width={1} border-color={sort() == i ? TEXT : BORDER} background={sort() == i ? TEXT : BACKGROUND}
 					justify="center" onPress={() -> pick(i)}>
@@ -310,7 +317,7 @@ class ProductScreen implements Markup {
 
 	public function new(handle:String) {
 		this.handle = handle;
-		load();
+		Screens.later(load);
 	}
 
 	function load() {
@@ -381,7 +388,7 @@ class ProductScreen implements Markup {
 						var opt = o();
 						<view padding="24 16 0" row-gap={12}>
 							<view direction="row">
-								<text font-size={15} font-weight={600}>{opt.name + ": "}</text>
+								<text font-size={15} font-weight={600} padding-right={4}>{opt.name + ":"}</text>
 								<text font-size={15} color={MUTED}>{variant()?.options.get(opt.name) ?? ""}</text>
 							</view>
 							<view direction="row" wrap column-gap={8} row-gap={8}>
@@ -403,7 +410,7 @@ class ProductScreen implements Markup {
 					<Show when={d.recommendations.length > 0}>
 						<view padding="32 0 0" row-gap={12}>
 							<text padding="0 16" font-size={17} font-weight={700} role="heading">You may also like</text>
-							<scroll direction="row" column-gap={12} padding="0 16">
+							<scroll direction="row" scrollbar-width="none" column-gap={12} padding="0 16">
 								<Repeat count={d.recommendations.length}>{i -> <Card product={d.recommendations[i]} id={"recommendation-" + i} width={140}
 									onOpen={Screens.openProduct}/>}</Repeat>
 							</scroll>

@@ -115,8 +115,9 @@ class Everbloom implements Markup {
 			<view grow={1} min-height={0}>
 				<Repeat count={3}>{t -> <view position="absolute" left={0} top={0} right={0} bottom={0} display={tab() == t ? "flex" : "none"}>
 					<For each={stacks[t]}>{(route:Read<Route>) -> {
-						var r = route();
-						<view position="absolute" left={0} top={0} right={0} bottom={0} display={top() == r ? "flex" : "none"}>{Screens.of(r)}</view>;
+						// (the screen made once, untracked: its row's)
+						var r = untrack(() -> route()), screen = untrack(() -> Screens.of(r));
+						<view position="absolute" left={0} top={0} right={0} bottom={0} display={top() == r ? "flex" : "none"}>{screen}</view>;
 					}}</For>
 				</view>}</Repeat>
 			</view>

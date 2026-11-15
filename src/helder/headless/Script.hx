@@ -113,10 +113,10 @@ class Step {
 
 	// its target, as said in messages
 	public function target():String {
-		var tag = str("tag"), path = str("path"), role = str("role"), label = str("label");
+		var tag = str("tag"), path = str("path"), role = str("role"), label = str("label"), id = str("id");
 		var index:Null<Int> = Reflect.field(data, "index");
-		if (tag != null || path != null || role != null || label != null) {
-			var s = path ?? tag ?? "";
+		if (tag != null || path != null || role != null || label != null || id != null) {
+			var s = id != null ? '#$id' : path ?? tag ?? "";
 			if (role != null) s += '[role=$role]';
 			if (label != null) s += '[label=${haxe.Json.stringify(label)}]';
 			return s + (index != null ? '[$index]' : "");

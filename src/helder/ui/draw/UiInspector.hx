@@ -61,6 +61,7 @@ class UiInspector implements Inspector {
 			path: path,
 			role: a == null ? null : a.role.aria(),
 			label: a == null || a.name == "" || a.name == text ? null : a.name,
+			identifier: n.semantics?.identifier,
 			text: text,
 			value: a == null ? null : a.value,
 			checked: a == null ? null : a.checked,
