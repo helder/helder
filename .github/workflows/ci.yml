@@ -16,7 +16,7 @@
 #   site job makes too left to it), the READMEs against the docs' pages;
 # - site: the examples' pages and the docs built (every web example's
 #   build, an unknown example, region, page or link a failure) and checked
-#   in headless Chromium (bun run site:check, not required);
+#   in headless Chromium (bun run site:check);
 # - fuzz (pushes to main, nightly): helder.image's decoders and helder.pdf
 #   fuzzed for 30 s each;
 # - gfx, gfx-apps: the native GPU and audio lanes on Mesa's llvmpipe and
@@ -180,10 +180,9 @@ jobs:
   # run (an unknown example, region, component, page or heading link fails
   # the build), then the pages in headless Chromium (bun run site:check:
   # every card, every demo played, every docs page and the docs' own
-  # examples, the top bar's links on an iPhone's screen; not required, as
-  # the browser job), its screenshots kept a week. SITE_SKIP_DATA: the
-  # examples of fetched models (Sponza's, tens of MB) listed without a Play
-  # button (the examples job builds them).
+  # examples, the top bar's links on an iPhone's screen), its screenshots
+  # kept a week. SITE_SKIP_DATA: the examples of fetched models (Sponza's,
+  # tens of MB) listed without a Play button (the examples job builds them).
   site:
     needs: changes
     runs-on: ubuntu-24.04
@@ -204,7 +203,6 @@ jobs:
           SITE_SKIP_DATA: 1
         run: bun run site
       - name: Check (the pages in Chromium)
-        continue-on-error: true
         run: bun run site:check bin/site-check
       - uses: actions/upload-artifact@v7
         if: always()

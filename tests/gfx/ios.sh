@@ -129,13 +129,27 @@ if [ -n "$tap" ] && [ "$suite" = full ]; then
 	echo "ios.sh: let go: angle $free1, then $free2"
 	[ -n "$free1" ] && [ "$free1" != "$free2" ]
 	check "the cube turning again once let go" $?
+	# (the fling: the speed the cube was let go at, logged at the lift, not
+	# sampled from a later spin line (a frame pacing's 20 frames of decay
+	# after it); against the drag's speed as the app received it: the
+	# simulator delivers SimTap's moves at its own pace, a drag posted over
+	# 0.1 s arriving over 0.3 to 0.7 s, so its speed is the drag's, not a
+	# number fixed here. Let go at half the drag's speed or more (Spin's
+	# smoothing), and at twice the cube's own 600 or more: a flick, not its
+	# own turn nor a release from rest)
 	lines=$(wc -l < "$stdout")
 	"$tap" 0.3 0.55 0.7 0.55
-	sleep 1
-	flick=$(tail -n +$((lines + 1)) "$stdout" | awk '/event PointerUp [0-9]* touch/ {r = 1; next} r && /IosTest: spin free/ {print; exit}' | grep -o -- "speed -*[0-9]*" | grep -o -- "-*[0-9]*$")
-	echo "ios.sh: the fling's speed after it: $flick mrad/s (its own 600)"
-	[ -n "$flick" ] && [ "$flick" -ge 1500 ]
-	check "a fling carries the cube on at the drag's speed" $?
+	i=0
+	while [ $i -lt 20 ] && ! tail -n +$((lines + 1)) "$stdout" | grep -q "IosTest: released speed"; do
+		sleep 0.5
+		i=$((i + 1))
+	done
+	released=$(tail -n +$((lines + 1)) "$stdout" | grep -o "IosTest: released speed .*" | tail -1)
+	echo "ios.sh: the fling: ${released:-no release logged}"
+	flick=$(echo "$released" | sed -n 's/^IosTest: released speed \(-*[0-9]*\) drag \(-*[0-9]*\) .*/\1/p')
+	drag=$(echo "$released" | sed -n 's/^IosTest: released speed \(-*[0-9]*\) drag \(-*[0-9]*\) .*/\2/p')
+	[ -n "$flick" ] && [ -n "$drag" ] && [ "$flick" -ge 1200 ] && [ $((flick * 2)) -ge "$drag" ]
+	check "a fling carries the cube on at the drag's speed (let go at $flick mrad/s, the drag $drag)" $?
 	! grep -q "event MouseDown\|event MouseUp\|event Scroll" "$stdout"
 	check "the drags: no mouse events, no scrolls" $?
 fi

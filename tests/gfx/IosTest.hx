@@ -18,7 +18,10 @@ import Cube.Spin;
 //   the app's lifecycle (Suspend, Resume) logged as their events; the cube
 //   turned as Cube.hx turns it (Spin: held while a finger drags it,
 //   flicked on at the drag's speed once let go), its state logged every 20
-//   frames. The app runs until the system ends it (simctl terminate).
+//   frames; at a lift, the speed it was let go at and the drag's own as
+//   the app received it (its moves' times: a simulator delivers injected
+//   moves at its own pace, so the speed is the drag's, not the injector's).
+//   The app runs until the system ends it (simctl terminate).
 class IosTest {
 	static inline var WIDTH = 256;
 	static inline var HEIGHT = 192;
@@ -39,6 +42,8 @@ class IosTest {
 		var device = Device.create(w.surface);
 		var cube = new Cube(device);
 		var spin = new Spin(Spin.SPEED), last = Sys.time(), frames = 0, lit = false;
+		// (the dragging pointer's moves: their times (ms) and x)
+		var moves:Array<{t:Float, x:Float}> = [];
 		App.run(() -> {
 			var now = Sys.time();
 			spin.advance(Math.min(now - last, 0.1));
@@ -81,7 +86,24 @@ class IosTest {
 					Sys.println('IosTest: event Scroll ${e.x},${e.y} by ${e.deltaX},${e.deltaY} mods ${e.mods}');
 				case _:
 			}
+			switch e.kind {
+				case PointerDown if (e.pointer.primary):
+					moves = [{t: e.pointer.time, x: e.pointer.x}];
+				case PointerMove if (e.pointer.primary && moves.length > 0):
+					moves.push({t: e.pointer.time, x: e.pointer.x});
+				case _:
+			}
 			spin.input(e, w);
+			if (e.kind == PointerUp && e.pointer.primary && moves.length > 1) {
+				// (the drag's speed over its last 100 ms, Spin.release's window, from the move before them)
+				var up = e.pointer.time, i = moves.length - 1;
+				while (i > 0 && up - moves[i - 1].t <= 100) i--;
+				var a = moves[i > 0 ? i - 1 : 0], b = moves[moves.length - 1];
+				var drag = b.t > a.t ? (b.x - a.x) / w.width * Math.PI / ((b.t - a.t) / 1000) : 0.0;
+				Sys.println('IosTest: released speed ${Math.round(spin.speed * 1000)} drag ${Math.round(drag * 1000)} over ${Math.round(b.t - a.t)} ms, '
+					+ '${moves.length - 1} moves in ${Math.round(up - moves[0].t)} ms');
+				moves = [];
+			}
 			if (e.kind == Resize) Sys.println('IosTest: safe area ${w.safeTop},${w.safeLeft},${w.safeBottom},${w.safeRight}');
 		});
 		Sys.println("IosTest: done");
