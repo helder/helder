@@ -43,7 +43,8 @@ ok(run(process.execPath,[launcher,'-cp','src','-cp',T,'-cp',`${hxmc}/haxe/src`,'
 const ir=run(`${dir}/ir-tests`,process.env.BLESS?['--write-golden']:[]);ok(ir,'IR checks');process.stdout.write(ir.stdout);
 }
 const tsc=['node_modules/typescript/bin/tsc','--target','esnext','--strict','--skipLibCheck'];
-function run(cmd,args) {const r=spawnSync(cmd,args,{encoding:'utf8',timeout:120000});if(r.error)throw r.error;return r;}
+// (maxBuffer: definitions/pbr.ts prints every variant's shader text in four languages, past spawnSync's 1 MB)
+function run(cmd,args) {const r=spawnSync(cmd,args,{encoding:'utf8',timeout:120000,maxBuffer:64*1024*1024});if(r.error)throw r.error;return r;}
 // (util.inspect's symbol keys: Node 24 writes Symbol(k): v, earlier ones
 // [Symbol(k)]: v; helder's one way: both outputs written one way, so the
 // oracle's version does not matter)
