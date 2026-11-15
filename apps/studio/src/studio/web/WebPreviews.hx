@@ -114,6 +114,7 @@ class WebPreviews {
 					onLog('[preview] ' + WebText.take(ev[0]));
 				case 4:
 					running = false;
+					unanswered("the preview ended");
 					var said = ev[1] == 0 ? "" : WebText.take(ev[1]);
 					for (s in screens) {
 						s.crashed = true;
@@ -144,6 +145,8 @@ class WebPreviews {
 		}
 		switch (m.method : String) {
 			case "Host.ready":
+				// (a new program, a build's swap: what the last one was asked, never answered now)
+				unanswered("the preview started again");
 				var list:Array<Dynamic> = m.params.screens;
 				order = [for (x in list) screen(x.name)];
 				if (showWanted != null) send("Host.show", {screens: showWanted.names, focused: showWanted.focused, scale: showWanted.scale}, null);
@@ -152,6 +155,15 @@ class WebPreviews {
 					s.patchedMs = m.params.ms;
 			case _:
 		}
+	}
+
+	// the requests waiting on a program that is gone: answered with an error,
+	// so what waits on them (the selection's refresh: one at a time) goes on
+	function unanswered(why:String) {
+		var waiting = [for (id => f in pending) {id: id, f: f}];
+		pending.clear();
+		for (w in waiting)
+			w.f({jsonrpc: "2.0", id: w.id, error: {code: -32000, message: why}});
 	}
 
 	// a frame: its bitmap the screen's image (replaced in place: the renderer uploads it again)
