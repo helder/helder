@@ -10,7 +10,8 @@ using StringTools;
 //
 //   bun run test                   the headless lanes (no GPU, display or browser)
 //   bun run test <lane> ...        those lanes (-k: the next one after a failure,
-//                                  headless's too; every failure listed at the end)
+//                                  headless's too; every failure listed at the end;
+//                                  -x <lane>: not that one, as headless -x typescript)
 //   bun run test help              the lanes
 //
 // Outputs go to bin/<lane>. GFX_TARGET and AUDIO_TARGET (the host's by
@@ -109,6 +110,12 @@ class Run {
 		if (Sys.getEnv("HELDER_TEXT_ENGINE") == null) Sys.putEnv("HELDER_TEXT_ENGINE", "helder");
 		var args = Sys.args();
 		var keepGoing = args.remove("-k");
+		var skipped = [];
+		while (args.indexOf("-x") >= 0) {
+			var i = args.indexOf("-x");
+			if (i + 1 < args.length) skipped.push(args[i + 1]);
+			args.splice(i, 2);
+		}
 		if (args.length == 0) args = ["headless"];
 		if (args.contains("help")) {
 			Sys.println("bun run test [-k] <lane> ...\n");
@@ -117,17 +124,23 @@ class Run {
 		}
 		// (headless as its lanes, each run on its own: with -k every one runs
 		// and each failure is reported, not the first alone)
-		args = [for (a in args) for (l in (a == "headless" ? HEADLESS : [a])) l];
-		var failed = [];
+		args = [for (a in args) for (l in (a == "headless" ? HEADLESS : [a])) if (!skipped.contains(l)) l];
+		var failed = [], times = [];
 		for (a in args) {
+			var t0 = Sys.time();
 			try {
 				lane(a);
 			} catch (e:Failed) {
 				Sys.println('\n$a: FAILED: ${e.message}');
 				failed.push(a);
-				if (!keepGoing) break;
 			}
+			// (each lane's time, and all of them at the end: where a job's minutes go)
+			var t = Math.round(Sys.time() - t0);
+			times.push(a.rpad(" ", 16) + " " + Std.string(t).lpad(" ", 5) + " s" + (failed.contains(a) ? "  FAILED" : ""));
+			Sys.println('--- $a: $t s');
+			if (failed.length > 0 && !keepGoing) break;
 		}
+		if (times.length > 1) Sys.println("\nlanes:\n  " + times.join("\n  "));
 		if (failed.length > 0) {
 			Sys.println("failed: " + failed.join(", "));
 			Sys.exit(1);
@@ -772,7 +785,12 @@ class Run {
 		var src = FileSystem.fullPath("src").split("\\").join("/");
 		File.saveContent("bin/pack/project/node_modules/helder/package.json", haxe.Json.stringify({name: "helder", haxe: {name: "helder", classPath: src}}));
 		var checks = [];
-		if (have("android-arm64") && have("android-x86_64")) {
+		// (PACK_ONLY=ios: the iOS half alone, as CI's Mac runs it for Apple's
+		// own tools on the bundles: codesign, plutil, assetutil; Android's is
+		// the headless job's, on Linux)
+		var only = Sys.getEnv("PACK_ONLY") ?? "";
+		var android = only == "" || only == "android", ios = only == "" || only == "ios";
+		if (android && have("android-arm64") && have("android-x86_64")) {
 			run(h, ["build", "tests/pack/Hello.hx", "--target", "android", "-o", "bin/pack/Hello-arm64.apk"], env);
 			run(h, ["build", "tests/pack/Hello.hx", "--target", "android-x86_64", "-o", "bin/pack/Hello-x86_64.apk"], env);
 			run(h, ["build", "bin/pack/project", "--target", "android-x86_64"], env);
@@ -826,8 +844,8 @@ class Run {
 			Sys.println('pack: Android\'s runtime objects fetched on first use (${fetched[0]})');
 		}
 		// (helder publish against a stand-in of Google Play's and App Store Connect's APIs)
-		if (have("android-arm64") && have("android-x86_64") && have("macos-arm64")) run(NODE, ["tests/pack/publish.mjs", h, "bin/pack/publish"], env);
-		if (have("macos-arm64")) {
+		if (android && ios && have("android-arm64") && have("android-x86_64") && have("macos-arm64")) run(NODE, ["tests/pack/publish.mjs", h, "bin/pack/publish"], env);
+		if (ios && have("macos-arm64")) {
 			run(h, ["build", "tests/pack/Hello.hx", "--target", "ios", "-o", "bin/pack/Hello.ipa"], env);
 			run(h, ["build", "tests/pack/Hello.hx", "--target", "ios-sim", "-o", "bin/pack/Hello.app"], env);
 			run(h, ["build", "bin/pack/project", "--target", "ios-sim"], env);
@@ -864,11 +882,11 @@ class Run {
 		if (HOST.startsWith("windows-")) return;
 		var fake = ["ADB" => FileSystem.fullPath("tests/pack/fake/adb"), "XCRUN" => FileSystem.fullPath("tests/pack/fake/xcrun")];
 		for (k => v in env) fake.set(k, v);
-		if (FileSystem.exists('$rt/android-x86_64/rt.o')) {
+		if (android && FileSystem.exists('$rt/android-x86_64/rt.o')) {
 			expect(h, ["run", "tests/pack/Hello.hx", "--target", "android"], fake, "running org.helder.hello on Pixel 7");
 			run(NODE, ["tests/pack/dev.mjs", h, "bin/pack/dev-android", "android"], env);
 		}
-		if (FileSystem.exists('$rt/macos-arm64/rt.o')) run(NODE, ["tests/pack/dev.mjs", h, "bin/pack/dev-ios", "ios"], env);
+		if (ios && only != "ios" && FileSystem.exists('$rt/macos-arm64/rt.o')) run(NODE, ["tests/pack/dev.mjs", h, "bin/pack/dev-ios", "ios"], env);
 	}
 
 	static function devtools() {
@@ -1514,7 +1532,7 @@ class Run {
 
 	// --- the examples
 
-	static final HEADER = ~/^\/\/ *(title|summary|tags|demo): *(.*)$/;
+	static final HEADER = ~/^\/\/ *(title|summary|tags|demo|data):*(.*)$/;
 
 	// each example directory's programs with a header naming them,
 	//
@@ -1555,7 +1573,10 @@ class Run {
 				var main = Path.withoutExtension(f);
 				var demo = head.get("demo") ?? "";
 				var id = dir + (files.length > 1 && main.toLowerCase() != dir.replace("-", "") ? "-" + main.toLowerCase() : "");
-				if (demo != "" && demo != "island") {
+				// (EXAMPLES_WEB=site: not those the site's build makes too, CI's site
+				// job: a canvas or a sound without fetched data, site/build.mjs)
+				var bySite = Sys.getEnv("EXAMPLES_WEB") == "site" && (demo.startsWith("canvas") || demo == "sound") && !head.exists("data");
+				if (demo != "" && demo != "island" && !bySite) {
 					var out = 'bin/examples/wasm32-wasi/$id.wasm';
 					builds.push({id: id, target: "wasm32-wasi", out: out, args: ["build", '$path/$f', "--target", "web", "-o", out]});
 				}

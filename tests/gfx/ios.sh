@@ -1,29 +1,33 @@
 #!/bin/sh
 # IosTest.app (IosTest.hx) on an iPhone simulator (macOS with Xcode; CI's
-# ios-simulator job): checks the bundle with Apple's tools (codesign
-# --verify, plutil -lint), makes and boots a simulator of the newest iOS
-# runtime and iPhone, installs the app and launches it with its stdout and
-# stderr in files (what the app prints: its lines), then:
+# ios-simulator job): on HELDER_IOS_SIMULATOR's simulator, else one of the
+# newest iOS runtime and iPhone made and booted (tests/pack/simulator.sh),
+# installs the app and launches it with its stdout and stderr in files
+# (what the app prints: its lines), then:
 #   - the cube rendered headless on the simulator's Metal matches cube.png
 #     (GfxTest's rule); the window has a size, and its frame is lit;
 #   - 120 frames drawn in the window;
 #   - a tap on the Simulator's window (SimTap: a click posted as an HID
 #     event, the simulator's touch) comes back as a touch's PointerDown and
-#     PointerUp, without mouse events or scrolls; a drag held on the cube
+#     PointerUp, without mouse events or scrolls; (IOS_SUITE=full, the
+#     default: CI's pushes to main and its nightly) a drag held on the cube
 #     (SimTap's drag, resting before the lift) turns it with the finger,
 #     still while the finger rests, turning again once let go; a fling
 #     (SimTap's quick drag) flicks it on at the drag's speed; never a mouse
 #     event or a scroll (a touch is its pointer's alone);
 #   - a screenshot (simctl io) to <out>/cube-ios.png;
-#   - another app (Settings) sends it to the background (Suspend), launching
-#     it again brings it back (Resume) and frames go on;
-#   - the system log of the app's process to <out>/log.txt; the simulator is
-#     deleted at the end.
+#   - (full) another app (Settings) sends it to the background (Suspend),
+#     launching it again brings it back (Resume) and frames go on;
+#   - the system log of the app's process to <out>/log.txt; a simulator made
+#     here is deleted at the end.
+# (The bundle's static checks, codesign --verify and plutil -lint, are the
+# pack lane's on a Mac, CI's ios-signing job, on bundles built alike.)
 #   sh tests/gfx/ios.sh <IosTest.app> [out dir] [SimTap]
 set -u
 app=$1
 out=$(mkdir -p "${2:-.}" && cd "${2:-.}" && pwd)
 tap=${3:-}
+suite=${IOS_SUITE:-full}
 id=org.helder.IosTest
 stdout="$out/stdout.txt"
 failed=0
@@ -52,24 +56,8 @@ wait_for() {
 	return 1
 }
 
-codesign --verify --strict --verbose=2 "$app"
-check "codesign --verify" $?
-plutil -lint "$app/Info.plist"
-check "plutil -lint Info.plist" $?
-
-runtime=$(xcrun simctl list runtimes available | grep -o 'com\.apple\.CoreSimulator\.SimRuntime\.iOS-[0-9-]*' | sort -t- -k2,2n -k3,3n | tail -1)
-type=$(xcrun simctl list devicetypes | grep -o 'com\.apple\.CoreSimulator\.SimDeviceType\.iPhone-[0-9][0-9]*)' | tr -d ')' | sort -t- -k2,2n | tail -1)
-echo "ios.sh: $type on $runtime"
-udid=$(xcrun simctl create hxmc-ios-test "$type" "$runtime")
-check "a simulator made" $?
-cleanup() {
-	xcrun simctl shutdown "$udid" > /dev/null 2>&1
-	xcrun simctl delete "$udid" > /dev/null 2>&1
-}
-trap cleanup EXIT
-xcrun simctl boot "$udid"
-xcrun simctl bootstatus "$udid" -b > /dev/null
-check "booted" $?
+. "$(dirname "$0")/../pack/simulator.sh"
+simulator hxmc-ios-test
 # (the Simulator app's window: what SimTap clicks)
 open -a Simulator --args -CurrentDeviceUDID "$udid"
 xcrun simctl install "$udid" "$app"
@@ -107,6 +95,8 @@ if [ -n "$tap" ]; then
 	check "the tap: its PointerDown, the primary pointer" $?
 	! grep -q "event MouseDown\|event MouseUp\|event Scroll" "$stdout"
 	check "the tap: no mouse events, no scrolls (a touch is its pointer's alone)" $?
+fi
+if [ -n "$tap" ] && [ "$suite" = full ]; then
 	# a drag held on the cube (SimTap's drag sideways, a quarter of the
 	# screen, resting 4 s before the lift): the cube turned by the finger's
 	# pointer, held still while it rests, turning again once let go; then a
@@ -149,15 +139,17 @@ if [ -n "$tap" ]; then
 	! grep -q "event MouseDown\|event MouseUp\|event Scroll" "$stdout"
 	check "the drags: no mouse events, no scrolls" $?
 fi
-xcrun simctl launch "$udid" com.apple.Preferences > /dev/null
-wait_for "event Suspend" 30
-check "another app: Suspend" $?
-xcrun simctl launch "$udid" $id > /dev/null
-wait_for "event Resume" 30
-check "back again: Resume" $?
-frames=$(grep -o "frames [0-9]*" "$stdout" | tail -1 | cut -d' ' -f2)
-wait_for "IosTest: frames $((frames + 60))" 60
-check "frames after Resume" $?
+if [ "$suite" = full ]; then
+	xcrun simctl launch "$udid" com.apple.Preferences > /dev/null
+	wait_for "event Suspend" 30
+	check "another app: Suspend" $?
+	xcrun simctl launch "$udid" $id > /dev/null
+	wait_for "event Resume" 30
+	check "back again: Resume" $?
+	frames=$(grep -o "frames [0-9]*" "$stdout" | tail -1 | cut -d' ' -f2)
+	wait_for "IosTest: frames $((frames + 60))" 60
+	check "frames after Resume" $?
+fi
 xcrun simctl spawn "$udid" log show --last 10m --style compact --predicate 'process == "IosTest"' > "$out/log.txt" 2>&1
 xcrun simctl terminate "$udid" $id
 cat "$stdout"
