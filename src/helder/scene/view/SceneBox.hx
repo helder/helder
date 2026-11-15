@@ -136,8 +136,8 @@ class SceneBox extends helder.ui.Node {
 	public var picker:Null<ScenePicker> = null;
 	// (the one event refilled for each dispatch)
 	final event = new SceneEvent();
-	// the controls moving its camera (OrbitControls), stepped before each frame it draws
-	@:allow(helder.scene.view) final controls:Array<OrbitControls> = [];
+	// the controls over it (OrbitControls, TransformGizmo), stepped before each frame it draws
+	@:allow(helder.scene.view) final controls:Array<SceneControl> = [];
 	var steppedAt = -1.0;
 	// its scene nodes' taps (onTap): a recogniser of its own, in the arena with the controls'
 	final tap = new helder.ui.gesture.Tap();
@@ -423,4 +423,10 @@ class SceneBox extends helder.ui.Node {
 			if (o.ui.style.visibility != shown) o.ui.style.visibility = shown;
 		}
 	}
+}
+
+// what a box steps before each frame it draws (OrbitControls' glide,
+// TransformGizmo's handles): whether it goes on moving (another frame)
+interface SceneControl {
+	function update(seconds:Float):Bool;
 }
