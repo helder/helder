@@ -1,13 +1,14 @@
-// The site: one page listing helder's examples, each a card of its title,
-// summary and tags (its header), those that run in a browser with a Play
-// button starting their wasm32 build in the page. TSX through helder's
+// The examples' pages: examples/index.html, every example of examples/ a
+// card of its title, summary and tags (its header), those that run in a
+// browser with a Play button starting their wasm32 build in the page; and
+// examples/<id>/index.html for each with a page.json: its demo,
+// description, numbers (site/numbers.mjs's, measured headless, read from
+// examples/numbers.json by numbers.js; real devices' from page.json;
+// three.js' for the same scene) and credits. TSX through helder's
 // TypeScript frontend, rendered to HTML by helder.web's static renderer
 // when this program runs (site/build.mjs builds it after the examples and
-// writes the JSON it imports: their headers and builds). An example with a
-// page.json has a page of its own too, <id>.html: its demo, description,
-// numbers (site/numbers.mjs's, measured headless in CI, read from
-// numbers.json by numbers.js; real devices' from page.json; three.js' for
-// the same scene) and credits.
+// writes the JSON it imports: their headers and builds, and the site's
+// theme: its top bar's links, a host's sheets and starters).
 import { Static, Island } from "helder/web";
 import site from "../bin/site-build/examples.json";
 
@@ -79,7 +80,7 @@ interface Example {
 	docs: boolean;
 }
 
-// a video site/reel.mjs records (media/<id>.mp4 and its poster): the showreel, then a clip of each showcase demo
+// a video site/reel.mjs records (examples/media/<id>.mp4 and its poster): the showreel, then a clip of each showcase demo
 interface Clip {
 	id: string;
 	// the example it shows (its card's id)
@@ -91,105 +92,85 @@ interface Clip {
 	seconds: number;
 }
 
+// the site's theme (site/build.mjs: its defaults, or a host's SITE_THEME); links relative to the site's root
+interface Link {
+	// (examples, docs: the part of the site it marks current)
+	id: string;
+	label: string;
+	href: string;
+}
+
+interface Starter {
+	title: string;
+	summary: string;
+	href: string;
+	image: string;
+	width: number;
+	height: number;
+	kind: string;
+}
+
+interface Theme {
+	brand: string;
+	home: string;
+	nav: Link[];
+	// a button at the top bar's end ("" label: none)
+	action: Link;
+	css: string[];
+	js: string[];
+	notice: string;
+	footer: Link[];
+	// cards above the examples (a host's: helder.build's projects to open in its studio); none without items
+	starters: { title: string; lede: string; items: Starter[] };
+}
+
+const theme = site.theme as Theme;
 const examples = (site.examples as Example[]).filter(e => !e.docs);
 const clips = site.clips as Clip[];
 const reel = clips.filter(c => c.id === "showreel");
 const demoClips = clips.filter(c => c.id !== "showreel");
-const playable = examples.filter(e => e.demo !== null).length;
+const playable = examples.filter(e => e.demo !== null);
+const others = examples.filter(e => e.demo === null);
 // the demos with a page of their own (page.json), linked from the top of the index
 // (the most striking first; any other after them, in the index's order)
 const SHOWCASE = ["sponza", "gltf-showcase", "planet", "particles", "instancing", "physics-stress", "bunnymark"];
 const rank = (e: Example) => SHOWCASE.indexOf(e.id) < 0 ? SHOWCASE.length : SHOWCASE.indexOf(e.id);
 const showcase = examples.filter(e => e.page !== null).sort((a, b) => rank(a) - rank(b));
-const RUNNER = "helder/os/browser.mjs";
+const RUNNER = "static/helder/os/browser.mjs";
+const pageOf = (e: Example) => "examples/" + e.id + "/";
 
-const CSS = `
-:root { color-scheme: light dark; --bg: #f6f6f4; --fg: #1b1b1f; --muted: #5b5b66; --card: #fff; --line: #e3e3e0; --accent: #1d4ed8;
-	--chip: #eeeef0; --stage: #141418; }
-@media (prefers-color-scheme: dark) {
-	:root { --bg: #0e0e11; --fg: #ececf1; --muted: #a1a1ad; --card: #18181d; --line: #2a2a31; --accent: #8ab4ff; --chip: #24242b; --stage: #050507; }
+// the page's head: the site's sheet and scripts, a host's after them; base: the site's root from the page
+function Head(props: { title: string, about: string, base: string, numbers: boolean }) {
+	return <head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<base href={props.base} />
+		<title>{props.title}</title>
+		<meta name="description" content={props.about} />
+		<link rel="stylesheet" href="static/site.css" />
+		{theme.css.map(h => <link rel="stylesheet" href={h} />)}
+		<script src="static/stage.js" defer></script>
+		<script src="static/loader.js" defer></script>
+		{props.numbers ? <script src="static/numbers.js" defer></script> : null}
+		{theme.js.map(h => <script src={h} defer></script>)}
+	</head>;
 }
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--fg); font: 17px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-	-webkit-text-size-adjust: 100%; }
-a { color: var(--accent); }
-header, main, footer { max-width: 1240px; margin: 0 auto; padding: 0 16px; }
-header { padding-top: 40px; }
-h1 { font-size: clamp(2.2rem, 7vw, 3.2rem); line-height: 1.1; margin: 0 0 12px; letter-spacing: -0.02em; }
-.lead { margin: 0 0 8px; max-width: 64ch; color: var(--muted); }
-main { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; padding-top: 24px; padding-bottom: 32px; }
-@media (min-width: 760px) { main { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; } }
-.card { min-width: 0; background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
-.card:has(hxmc-island[data-loading]), .card:has(hxmc-island[data-hydrated]), .card:has(hxmc-island[data-error]) { grid-column: 1 / -1; }
-.body { padding: 14px 16px 16px; }
-h2 { font-size: 1.2rem; line-height: 1.3; margin: 0 0 6px; }
-.summary { margin: 0 0 10px; }
-.tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; padding: 0; list-style: none; }
-.tags li { background: var(--chip); color: var(--muted); border-radius: 999px; padding: 1px 10px; font-size: 0.85rem; }
-.links { margin: 0; font-size: 0.95rem; }
-.stage { background: var(--stage); }
-.stage hxmc-island { display: block; position: relative; margin: 0 auto; max-width: var(--w); }
-.stage canvas { display: block; width: 100%; height: auto; aspect-ratio: var(--ratio); outline: none; }
-.sound hxmc-island { display: grid; place-items: center; min-height: 120px; max-width: none; }
-.play { font: inherit; font-weight: 600; font-size: 1.05rem; color: #111; background: #fff; border: 0; border-radius: 999px; padding: 10px 22px;
-	cursor: pointer; box-shadow: 0 2px 12px rgba(0, 0, 0, .35); }
-.play:hover, .play:focus-visible { background: #dbe7ff; }
-.stage:not(.sound) .play { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
-.size { position: absolute; right: 10px; bottom: 8px; color: #9a9aa6; font-size: 0.8rem; }
-.sound .size { display: none; }
-hxmc-island[data-loading] .play, hxmc-island[data-hydrated] .play, hxmc-island[data-error] .play,
-hxmc-island[data-loading] .size, hxmc-island[data-hydrated] .size, hxmc-island[data-error] .size { display: none; }
-hxmc-island[data-loading]::after, hxmc-island[data-error]::after { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px;
-	color: #e8e8ee; text-align: center; pointer-events: none; }
-hxmc-island[data-loading]::after { content: "Loading…"; }
-hxmc-island[data-error]::after { content: "Could not run: " attr(data-error); color: #ffb4b4; }
-.sound hxmc-island[data-hydrated]::after { content: "Played"; color: #e8e8ee; }
-.full, .exit { position: absolute; z-index: 2; font: inherit; font-size: 0.85rem; font-weight: 600; color: #111; background: #ffffffe0; border: 0;
-	border-radius: 999px; padding: 6px 14px; cursor: pointer; box-shadow: 0 2px 10px rgba(0, 0, 0, .3); display: none; }
-.full { right: 10px; top: 10px; }
-.exit { left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top) + 8px); padding: 6px 12px; opacity: 0.85; }
-.stage { position: relative; }
-.stage:has(hxmc-island[data-hydrated]) .full { display: block; }
-.stage.expanded { position: fixed; inset: 0; z-index: 1000; height: 100vh; height: 100dvh; display: flex; align-items: stretch; justify-content: center;
-	padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
-.stage.expanded hxmc-island { max-width: none; width: 100%; height: 100%; margin: 0; }
-.stage.expanded canvas { width: 100%; height: 100%; aspect-ratio: auto; touch-action: none; }
-.stage.expanded .full, .stage.expanded:has(hxmc-island[data-hydrated]) .full { display: none; }
-.stage.expanded .exit { display: block; }
-html.playing, html.playing body { overflow: hidden; overscroll-behavior: none; }
-.apk { margin: 8px 0 10px; font-size: 0.95rem; }
-.apk a { font-weight: 600; }
-.apk span { color: var(--muted); font-size: 0.85rem; }
-footer { padding-bottom: 40px; color: var(--muted); font-size: 0.95rem; }
-code { font-size: 0.92em; }
-.showcase { margin: 18px 0 4px; }
-.showcase h2 { font-size: 1rem; color: var(--muted); font-weight: 600; margin: 0 0 8px; }
-.showcase ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
-.showcase a { display: block; height: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px;
-	background: var(--chip); color: inherit; text-decoration: none; }
-.showcase a:hover, .showcase a:focus-visible { border-color: var(--muted); }
-.showcase strong { display: block; margin-bottom: 2px; }
-.showcase span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; color: var(--muted);
-	font-size: 0.88rem; line-height: 1.35; }
-main.page { display: block; max-width: 1000px; }
-.reel { max-width: 1240px; margin: 0 auto; padding: 18px 16px 0; }
-.reel h2, .demos h2 { font-size: 1rem; color: var(--muted); font-weight: 600; margin: 0 0 8px; }
-.video { position: relative; background: #07080d; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); aspect-ratio: 16 / 9; }
-.video video { display: block; width: 100%; height: 100%; object-fit: cover; }
-.video.missing::after { content: "This build has no recording (node site/reel.mjs makes them)"; position: absolute; left: 12px; bottom: 10px; color: #c9cede;
-	font-size: 0.85rem; background: #000a; padding: 4px 10px; border-radius: 999px; }
-.reel p { margin: 10px 0 0; color: var(--muted); max-width: 80ch; }
-.demos { max-width: 1240px; margin: 0 auto; padding: 22px 16px 0; }
-.demos ul { display: grid; grid-template-columns: 1fr; gap: 16px; margin: 0; padding: 0; list-style: none; }
-@media (min-width: 760px) { .demos ul { grid-template-columns: repeat(3, 1fr); } }
-.demos h3 { font-size: 1.05rem; margin: 10px 0 2px; }
-.demos p { margin: 0; color: var(--muted); font-size: 0.92rem; line-height: 1.4; }
-.page h2 { margin-top: 22px; }
-.muted { color: var(--muted); font-size: 0.92rem; }
-.numbers { width: 100%; border-collapse: collapse; font-size: 0.92rem; display: block; overflow-x: auto; }
-.numbers th, .numbers td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
-.numbers th[scope=row] { text-align: left; white-space: normal; min-width: 180px; }
-`;
+
+// the top bar: the brand, the site's links (the current one marked), a host's button
+function Top(props: { current: string }) {
+	return <header class="top"><div class="wrap">
+		<a class="brand" href={theme.home}>{theme.brand}</a>
+		<nav aria-label="Site">{theme.nav.map(l => <a href={l.href} aria-current={l.id !== "" && l.id === props.current ? "page" : undefined}>{l.label}</a>)}</nav>
+		{theme.action.label !== "" ? <a class="btn" href={theme.action.href}>{theme.action.label}</a> : null}
+	</div></header>;
+}
+
+function Foot() {
+	return <footer class="foot"><div class="wrap">
+		{theme.footer.length > 0 ? theme.footer.map(l => <a href={l.href}>{l.label}</a>)
+			: <span>Rendered by helder.web's static renderer from site/index.tsx and the docs' Markdown.</span>}
+	</div></footer>;
+}
 
 // the canvas (or, for a sound, none) its Play button starts: a WebAssembly island loaded on the first click
 function Stage(props: { ex: Example }) {
@@ -214,20 +195,17 @@ function Stage(props: { ex: Example }) {
 function Download(props: { apk: Apk }) {
 	const a = props.apk;
 	const mb = Math.round(a.bytes / 104857.6) / 10;
-	return <p class="apk"><a href={a.file} download="">Download for Android (APK)</a> <span>{mb + " MB · built from " + a.commit}</span></p>;
+	return <p class="apk"><a href={a.file} download="">Download for Android (APK)</a>{" · " + mb + " MB, built from " + a.commit}</p>;
 }
 
 function Card(props: { ex: Example }) {
 	const ex = props.ex;
 	return <article class="card" id={ex.id}>
 		{ex.demo !== null ? <Stage ex={ex} /> : null}
-		<div class="body">
-			<h2>{ex.title}</h2>
-			<p class="summary">{ex.summary}</p>
-			<ul class="tags">{ex.tags.map(t => <li>{t}</li>)}</ul>
-			{ex.apk !== null ? <Download apk={ex.apk as Apk} /> : null}
-			<p class="links">{ex.page !== null ? <a href={ex.id + ".html"}>Details and numbers</a> : null}{ex.page !== null ? " · " : ""}<a href={ex.source}>Source</a></p>
-		</div>
+		<div class="row"><h3>{ex.title}</h3><ul class="tags">{ex.tags.map(t => <li>{t}</li>)}</ul></div>
+		<p>{ex.summary}</p>
+		{ex.apk !== null ? <Download apk={ex.apk as Apk} /> : null}
+		<p class="links">{ex.page !== null ? <a href={pageOf(ex)}>Details and numbers</a> : null}<a href={ex.source}>Source</a></p>
 	</article>;
 }
 
@@ -266,92 +244,93 @@ function DemoPage(props: { ex: Example }) {
 	const ex = props.ex;
 	const page = ex.page as Page;
 	return <html lang="en">
-		<head>
-			<meta charset="utf-8" />
-			<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-			<title>{ex.title + " · helder examples"}</title>
-			<meta name="description" content={ex.summary} />
-			<style>{CSS}</style>
-			<script src="stage.js" defer></script>
-			<script src="loader.js" defer></script>
-			<script src="numbers.js" defer></script>
-		</head>
+		<Head title={ex.title + " · Examples · " + theme.brand} about={ex.summary} base="../../" numbers={true} />
 		<body>
-			<header>
-				<p class="lead"><a href="index.html">← helder examples</a></p>
-				<h1>{ex.title}</h1>
-				<p class="lead">{ex.summary}</p>
-			</header>
-			<main class="page">
-				<article class="card" id={ex.id}>
+			{theme.notice !== "" ? <div class="notice">{theme.notice}</div> : null}
+			<Top current="examples" />
+			<main class="wrap"><article class="page" id={ex.id}>
+				<div class="intro">
+					<a class="back" href="examples/">← Examples</a>
+					<h1>{ex.title}</h1>
+					<p class="lede">{ex.summary}</p>
 					{ex.demo !== null ? <Stage ex={ex} /> : null}
-					<div class="body">
-						{page.description.map(p => <p>{p}</p>)}
-						<h2>Numbers</h2>
-						<p class="muted">The first frame: from the program's start to its first frame (a model's fetch, decoding and upload included); fetched: all the Play
-							button downloads, the module, its browser modules, fonts and assets, gzipped; the data download: what the program fetches
-							beyond the module{ex.dataBytes > 0 ? " (" + Math.round(ex.dataBytes / 104857.6) / 10 + " MB of data beside it)" : ""}; GPU textures:
-							the bytes of the textures alive (helder.gfx's Device.textureBytes); frame times from its overlay. CI's are headless software
-							rendering, not a phone's or a desktop's GPU; the real devices' rows are measured by hand.</p>
-						<Numbers ex={ex} />
-						{page.compare.length > 0 ? <h2>The same elsewhere</h2> : null}
-						{page.compare.length > 0 ? <ul>{page.compare.map(c => <li><a href={c.url}>{c.what}</a>{": " + c.downloadMB + " MB downloaded. " + c.note}</li>)}</ul> : null}
-						<h2>Credits</h2>
-						<ul>{page.credits.map(c => <li>{c}</li>)}</ul>
-						<ul class="tags">{ex.tags.map(t => <li>{t}</li>)}</ul>
-						<p class="links"><a href={ex.source}>Source</a></p>
-					</div>
-				</article>
-			</main>
+				</div>
+				{page.description.map(p => <p>{p}</p>)}
+				<h2>Numbers</h2>
+				<p>The first frame: from the program's start to its first frame (a model's fetch, decoding and upload included); fetched: all the Play
+					button downloads, the module, its browser modules, fonts and assets, gzipped; the data download: what the program fetches
+					beyond the module{ex.dataBytes > 0 ? " (" + Math.round(ex.dataBytes / 104857.6) / 10 + " MB of data beside it)" : ""}; GPU textures:
+					the bytes of the textures alive (helder.gfx's Device.textureBytes); frame times from its overlay. CI's are headless software
+					rendering, not a phone's or a desktop's GPU; the real devices' rows are measured by hand.</p>
+				<Numbers ex={ex} />
+				{page.compare.length > 0 ? <h2>The same elsewhere</h2> : null}
+				{page.compare.length > 0 ? <ul>{page.compare.map(c => <li><a href={c.url}>{c.what}</a>{": " + c.downloadMB + " MB downloaded. " + c.note}</li>)}</ul> : null}
+				<h2>Credits</h2>
+				<ul>{page.credits.map(c => <li>{c}</li>)}</ul>
+				<ul class="tags">{ex.tags.map(t => <li>{t}</li>)}</ul>
+				<p class="links"><a href={ex.source}>Source</a></p>
+			</article></main>
+			<Foot />
 		</body>
 	</html>;
 }
 
-for (const ex of examples) {
-	if (ex.page !== null) Static.write(site.dir + "/" + ex.id + ".html", Static.document(<DemoPage ex={ex} />));
+function Video(props: { c: Clip }) {
+	const c = props.c;
+	return <div class="video"><video data-clip={c.id} src={c.video} poster={c.poster} controls muted loop playsinline preload="none" aria-label={c.title}></video></div>;
 }
 
-Static.write(site.out, Static.document(<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-		<title>helder examples</title>
-		<meta name="description" content="helder's examples: games and apps in Haxe and TypeScript on the hxmc compiler, running in the page as WebAssembly." />
-		<style>{CSS}</style>
-		<script src="stage.js" defer></script>
-		<script src="loader.js" defer></script>
-	</head>
+for (const ex of examples) {
+	if (ex.page !== null) Static.write(site.dir + "/" + pageOf(ex) + "index.html", Static.document(<DemoPage ex={ex} />));
+}
+
+const starters = theme.starters;
+Static.write(site.dir + "/examples/index.html", Static.document(<html lang="en">
+	<Head title={"Examples · " + theme.brand} about="helder's examples: apps and games in TypeScript and Haxe, compiled to native code and WebAssembly, playing in your browser." base="../" numbers={false} />
 	<body>
-		<header>
-			<h1>helder</h1>
-			<p class="lead">An app and game stack in Haxe, with a TypeScript frontend, compiled by hxmc to native code and WebAssembly.
-				These are its examples; the {playable} with a Play button run here, in your browser.</p>
-			<p class="lead"><a href="docs/scene/index.html">Docs</a> · <a href={site.repository}>Source on GitHub</a></p>
-			<nav class="showcase" aria-label="Showcase">
+		{theme.notice !== "" ? <div class="notice">{theme.notice}</div> : null}
+		<Top current="examples" />
+		<main class="wrap">
+			<section class="intro">
+				<h1>Examples</h1>
+				<p class="lede">{"Apps and games in TypeScript and Haxe, compiled to native code and WebAssembly. The " + playable.length + " with a Play button run here, in your browser."}</p>
+			</section>
+			{starters.items.length > 0 ? <section class="band starters" aria-label={starters.title}>
+				<h2>{starters.title}</h2>
+				{starters.lede !== "" ? <p>{starters.lede}</p> : null}
+				<div class="grid">{starters.items.map(s => <a class="card" href={s.href}>
+					<div class="cover">{s.image !== "" ? <img src={s.image} width={"" + s.width} height={"" + s.height} alt={s.title} loading="lazy" decoding="async" /> : <span class="plus" aria-hidden="true"></span>}</div>
+					<div class="row"><h3>{s.title}</h3>{s.kind !== "" ? <span class="kind">{s.kind}</span> : null}</div>
+					<p>{s.summary}</p>
+				</a>)}</div>
+			</section> : null}
+			<section class="band showcase" aria-label="Showcase">
 				<h2>Showcase</h2>
-				<ul>{showcase.map(ex => <li><a href={ex.id + ".html"}><strong>{ex.title}</strong><span>{ex.summary}</span></a></li>)}</ul>
-			</nav>
-		</header>
-		{reel.map(c => <section class="reel" aria-label="Showreel">
-			<h2>Showreel</h2>
-			<div class="video"><video data-clip={c.id} src={c.video} poster={c.poster} controls muted loop playsinline preload="none"
-				aria-label={c.title}></video></div>
-			<p>{c.summary + ". Recorded headless, frame-exact, from "}<a href={"#" + c.example}>its example</a>{", which also runs here."}</p>
-		</section>)}
-		<section class="demos" aria-label="Demos">
-			<h2>Demos</h2>
-			<ul>{demoClips.map(c => <li>
-				<div class="video"><video data-clip={c.id} src={c.video} poster={c.poster} controls muted loop playsinline preload="none" aria-label={c.title}></video></div>
-				<h3><a href={"#" + c.example}>{c.title}</a></h3>
-				<p>{c.summary}</p>
-			</li>)}</ul>
-		</section>
-		<main>
-			{examples.map(ex => <Card ex={ex} />)}
+				<div class="grid">{showcase.map(ex => <a class="card" href={pageOf(ex)}><div class="cover"><b>{ex.title}</b><span>{ex.summary}</span></div></a>)}</div>
+			</section>
+			{reel.map(c => <section class="band" aria-label="Showreel">
+				<h2>Showreel</h2>
+				<Video c={c} />
+				<p class="say">{c.summary + ". Recorded headless, frame-exact, from "}<a href={"examples/#" + c.example}>its example</a>{", which also runs here."}</p>
+			</section>)}
+			{demoClips.length > 0 ? <section class="band" aria-label="Demos">
+				<h2>Demos</h2>
+				<div class="grid">{demoClips.map(c => <div class="card">
+					<Video c={c} />
+					<div class="row"><h3><a href={"examples/#" + c.example}>{c.title}</a></h3></div>
+					<p>{c.summary}</p>
+				</div>)}</div>
+			</section> : null}
+			<section class="band" aria-label="In your browser">
+				<h2>In your browser</h2>
+				<div class="grid">{playable.map(ex => <Card ex={ex} />)}</div>
+			</section>
+			<section class="band" aria-label="On your desktop">
+				<h2>On your desktop and phone</h2>
+				<p>These run natively: <code>helder run</code> and the example's folder.</p>
+				<div class="grid">{others.map(ex => <Card ex={ex} />)}</div>
+			</section>
 		</main>
-		<footer>
-			<p>This page is <code>site/index.tsx</code>: TSX through helder's TypeScript frontend, rendered to HTML by helder.web's static renderer.
-				Its videos are <code>site/reel.mjs</code>'s: each demo run by <code>helder run --headless</code> on its virtual clock, every frame streamed to ffmpeg.</p>
-		</footer>
+		<Foot />
 	</body>
 </html>));

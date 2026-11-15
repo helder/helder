@@ -1,7 +1,26 @@
-// The site (bun run site): one page listing the examples, written by
-// site/index.tsx (TSX, helder's TypeScript frontend, rendered by
-// helder.web's static renderer), each example that runs in a browser a
-// WebAssembly island started by its Play button.
+// The site (bun run site): the examples' pages and the docs, laid out to
+// be served from a site's root (helder.build's: its assemble.mjs builds this
+// with its theme):
+//
+//   examples/            the examples' page (site/index.tsx: TSX through
+//                        helder's TypeScript frontend, rendered by
+//                        helder.web's static renderer), each example that
+//                        runs in a browser a WebAssembly island started by
+//                        its Play button
+//   examples/<id>/       its module, assets and data; index.html for an
+//                        example with a page.json (its demo, description,
+//                        the numbers' slots: site/numbers.mjs measures them
+//                        into examples/numbers.json, which the page reads;
+//                        real devices', three.js' for the same scene, credits)
+//   examples/media/      the videos site/reel.mjs records (not built here:
+//                        stage.js shows a note where one is missing)
+//   examples/apk/        SITE_APK=1: the `// apk: android` examples' APKs
+//   docs/                site/docs/Docs.hx's pages from docs/ (docs/examples'
+//                        builds among the examples', not on the index:
+//                        CONTRIBUTING.md, "Docs")
+//   static/              the pages' sheet, scripts and fonts, the packages'
+//                        browser modules (all the builds' together)
+//   index.html           (to examples/, for a local server)
 //
 //   node site/build.mjs [out]      (default bin/site)
 //
@@ -10,23 +29,16 @@
 //    `// demo:`), a .hx file or a TypeScript directory's main.ts(x);
 // 2. those whose demo is `canvas WxH` or `sound` built for the web
 //    (`helder build <entry> --target web`, one build each), into
-//    bin/site-build/<id>/;
-// 3. <out>: examples/<id>/ (each one's module and assets), helder/ (the
-//    packages' browser modules, all the builds' together), fonts/,
-//    loader.js (helder.web's island loader);
-// 4. bin/site-build/examples.json, which index.tsx imports, then the page
-//    built (natively) and run: <out>/index.html, and <out>/<id>.html for
-//    each example with a page.json beside it (its description, the numbers'
-//    slots: site/numbers.mjs measures them into <out>/numbers.json, which
-//    the page reads; real devices', three.js' for the same scene, credits).
+//    bin/site-build/<id>/, then laid out as above;
+// 3. bin/site-build/examples.json (their headers and builds, the clips, the
+//    theme), which index.tsx imports and Docs.hx reads; both built natively
+//    and run.
 //
-// 5. the docs: site/docs/Docs.hx built natively and run, docs/<section>/
-// *.md into <out>/docs (docs/examples' builds among the examples above,
-// not on the index: CONTRIBUTING.md, "Docs");
-//
-// 6. the videos are not built here: site/reel.mjs records them into
-// <out>/media afterwards (pages.yml runs both); the page links them, and
-// stage.js shows a note where one is missing.
+// SITE_THEME=<file.json>: a host's theme over the default one (THEME below):
+// the brand and its link, the top bar's links and button, a notice line,
+// sheets and scripts after static/site.css, the footer's links, starters
+// (cards above the examples). Links are relative to the site's root (each
+// page's <base>) or absolute.
 //
 // `// data: <folder>`: files the example fetches at run time, not bundled
 // (tens of MB of models): its fetch.mjs run first (downloading them into
@@ -48,6 +60,16 @@ const out = process.argv[2] ?? 'bin/site';
 const work = 'bin/site-build';
 const cli = ['src/helder/cli/run.mjs'];
 const REPO = 'https://github.com/helder/helder';
+const THEME = {
+	brand: 'helder', home: 'examples/',
+	nav: [{ id: 'examples', label: 'Examples', href: 'examples/' }, { id: 'docs', label: 'Docs', href: 'docs/' }, { id: '', label: 'GitHub', href: REPO }],
+	action: { id: '', label: '', href: '' }, css: [], js: [], notice: '', footer: [], starters: { title: '', lede: '', items: [] }
+};
+const theme = { ...THEME, ...(process.env.SITE_THEME ? JSON.parse(fs.readFileSync(process.env.SITE_THEME, 'utf8')) : {}) };
+theme.action = { ...THEME.action, ...theme.action };
+theme.starters = { ...THEME.starters, ...theme.starters };
+theme.starters.items = theme.starters.items.map((s) => ({ summary: '', image: '', width: 0, height: 0, kind: '', ...s }));
+for (const l of [...theme.nav, ...theme.footer]) l.id ??= '';
 
 // (apk: android, an example built for Android phones too, with SITE_APK=1: its APK beside the page, linked from its card)
 const HEADER = /^\/\/ *(title|summary|tags|demo|apk|data): *(.*)$/;
@@ -179,8 +201,8 @@ for (const e of all) {
 		numbers: e.page.numbers ?? [], seconds: e.page.seconds ?? 0 };
 	if (e.apk && process.env.SITE_APK) {
 		// (arm64, a phone's; signed with the key HELDER_ANDROID_KEY names when it is set, else helder's cached one)
-		const file = `apk/${e.id}.apk`;
-		fs.mkdirSync(`${out}/apk`, { recursive: true });
+		const file = `examples/apk/${e.id}.apk`;
+		fs.mkdirSync(`${out}/examples/apk`, { recursive: true });
 		const r = await run([...cli, 'build', e.entry, '--target', 'android', '-o', `${out}/${file}`], `${work}/${e.id}-apk.log`);
 		if (r.code !== 0 || !fs.existsSync(`${out}/${file}`)) {
 			console.error(`site: ${e.id}'s APK failed to build\n` + r.text.slice(-1500));
@@ -214,27 +236,30 @@ for (const e of all) {
 		}
 		// (the packages whose browser modules the build put beside it: Page.hx's)
 		for (const p of fs.readdirSync(`${dir}/helder`).sort()) {
-			copyDir(`${dir}/helder/${p}`, `${out}/helder/${p}`);
-			if (fs.existsSync(`${dir}/helder/${p}/imports.mjs`)) item.imports.push(`helder/${p}/imports.mjs`);
+			copyDir(`${dir}/helder/${p}`, `${out}/static/helder/${p}`);
+			if (fs.existsSync(`${dir}/helder/${p}/imports.mjs`)) item.imports.push(`static/helder/${p}/imports.mjs`);
 		}
 		if (fs.existsSync(`${dir}/fonts`)) for (const f of fs.readdirSync(`${dir}/fonts`).sort()) {
-			fs.mkdirSync(`${out}/fonts`, { recursive: true });
-			fs.copyFileSync(`${dir}/fonts/${f}`, `${out}/fonts/${f}`);
-			item.fonts.push(`fonts/${f}`);
+			fs.mkdirSync(`${out}/static/fonts`, { recursive: true });
+			fs.copyFileSync(`${dir}/fonts/${f}`, `${out}/static/fonts/${f}`);
+			item.fonts.push(`static/fonts/${f}`);
 		}
 	}
 	site.push(item);
 }
-fs.copyFileSync('src/helder/web/loader.js', `${out}/loader.js`);
-fs.copyFileSync('site/stage.js', `${out}/stage.js`);
-fs.copyFileSync('site/numbers.js', `${out}/numbers.js`);
-// the videos site/reel.mjs records into <out>/media after this (the showreel first): each clip's example
+// the pages' sheet, scripts and fonts (helder studio's type, as helder.build's)
+fs.mkdirSync(`${out}/static/fonts`, { recursive: true });
+fs.copyFileSync('src/helder/web/loader.js', `${out}/static/loader.js`);
+for (const f of ['site.css', 'stage.js', 'numbers.js', 'docs.js']) fs.copyFileSync(`site/${f}`, `${out}/static/${f}`);
+for (const f of ['HankenGrotesk-Regular.ttf', 'HankenGrotesk-Medium.ttf', 'GeistMono-Regular.ttf']) fs.copyFileSync(`apps/studio/fonts/${f}`, `${out}/static/fonts/${f}`);
+fs.writeFileSync(`${out}/index.html`, '<!doctype html>\n<meta charset="utf-8">\n<meta http-equiv="refresh" content="0; url=examples/">\n<title>helder</title>\n<a href="examples/">Examples</a>\n');
+// the videos site/reel.mjs records into <out>/examples/media after this (the showreel first): each clip's example
 const clips = CLIPS.map((c) => {
 	const e = site.find((x) => x.source.endsWith('/' + c.entry));
-	return { id: c.id, example: e ? e.id : '', title: e ? e.title : c.id, summary: e ? e.summary : '', video: `media/${c.id}.mp4`, poster: `media/${c.id}.jpg`,
+	return { id: c.id, example: e ? e.id : '', title: e ? e.title : c.id, summary: e ? e.summary : '', video: `examples/media/${c.id}.mp4`, poster: `examples/media/${c.id}.jpg`,
 		seconds: c.seconds };
 });
-fs.writeFileSync(`${work}/examples.json`, JSON.stringify({ out: `${out}/index.html`, dir: out, repository: REPO, examples: site, clips }, null, '\t') + '\n');
+fs.writeFileSync(`${work}/examples.json`, JSON.stringify({ dir: out, repository: REPO, examples: site, clips, theme }, null, '\t') + '\n');
 
 // the page: index.tsx built natively, then run
 // (.exe on Windows: the build names its output so)
@@ -245,8 +270,8 @@ if (page.code !== 0) {
 	process.exit(1);
 }
 const r = spawnSync(path.resolve(`${work}/page${exe}`), [], { stdio: 'inherit' });
-if (r.status !== 0 || !fs.existsSync(`${out}/index.html`)) {
-	console.error('site: the page did not write ' + out + '/index.html');
+if (r.status !== 0 || !fs.existsSync(`${out}/examples/index.html`)) {
+	console.error('site: the page did not write ' + out + '/examples/index.html');
 	process.exit(1);
 }
 
@@ -262,5 +287,4 @@ if (d.status !== 0) {
 	console.error('site: the docs failed (bin/site-build/docs ' + out + ')');
 	process.exit(1);
 }
-for (const f of ['docs.css', 'docs.js']) fs.copyFileSync(`site/docs/${f}`, `${out}/docs/${f}`);
-console.log(`site: ${out}/index.html, ${site.filter((e) => !e.docs).length} examples (${builds.filter((e) => !e.docs).length} playable), ${out}/docs, ${((Date.now() - t0) / 1000).toFixed(0)}s`);
+console.log(`site: ${out}/examples, ${site.filter((e) => !e.docs).length} examples (${builds.filter((e) => !e.docs).length} playable), ${out}/docs, ${((Date.now() - t0) / 1000).toFixed(0)}s`);

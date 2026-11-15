@@ -1,6 +1,6 @@
-// The docs' pages in the browser (site/docs/Docs.hx writes them): an
-// example's source tabs (Haxe, its TypeScript twin), the sidebar on a
-// phone, and the search: docs/search.json (every page's title, headings and
+// The docs' pages in the browser (static/docs.js; site/docs/Docs.hx writes
+// them): an example's source tabs (Haxe, its TypeScript twin), the sidebar
+// on a phone (the top bar's menu: the pages and the site's links), and the search: docs/search.json (every page's title, headings and
 // text) fetched on the first focus, matched word by word as you type.
 (() => {
 	for (const tabs of document.querySelectorAll('.example .tabs')) {
@@ -9,15 +9,22 @@
 			const b = e.target.closest('button[role=tab]');
 			if (!b) return;
 			for (const t of tabs.querySelectorAll('button')) t.setAttribute('aria-selected', String(t === b));
-			for (const p of box.querySelectorAll('pre.code')) p.hidden = p.dataset.file !== b.dataset.file;
+			for (const p of box.querySelectorAll('.code')) p.hidden = p.dataset.file !== b.dataset.file;
 		});
 	}
 
 	const menu = document.querySelector('.menu'), sidebar = document.getElementById('sidebar');
-	menu?.addEventListener('click', () => {
-		const open = sidebar.classList.toggle('open');
+	const show = (open) => {
+		// (under the top bar wherever it is: a host's notice above it scrolls)
+		if (open) sidebar.style.top = menu.closest('.top').getBoundingClientRect().bottom + 'px';
+		sidebar.classList.toggle('open', open);
 		menu.setAttribute('aria-expanded', String(open));
-	});
+		document.documentElement.classList.toggle('menu-open', open);
+	};
+	menu?.addEventListener('click', () => show(!sidebar.classList.contains('open')));
+	// (a page or heading chosen, or Escape: the menu closed)
+	sidebar?.addEventListener('click', (e) => e.target.closest('a') && show(false));
+	document.addEventListener('keydown', (e) => e.key === 'Escape' && sidebar?.classList.contains('open') && show(false));
 
 	const input = document.querySelector('.search'), list = document.querySelector('.results');
 	if (!input || !list) return;

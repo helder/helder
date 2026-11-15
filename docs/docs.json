@@ -1,12 +1,59 @@
 {
 	"sections": [
 		{
+			"id": "guide",
+			"title": "Guide",
+			"pages": [
+				"start",
+				"ui",
+				"settings",
+				"publishing",
+				"cli"
+			]
+		},
+		{
 			"id": "scene",
 			"title": "3D: helder.scene",
-			"pages": ["index", "world", "models", "materials", "lights", "fog", "post", "instancing", "particles", "markup", "input", "debugging", "typescript"],
+			"pages": [
+				"index",
+				"world",
+				"models",
+				"materials",
+				"lights",
+				"fog",
+				"post",
+				"instancing",
+				"particles",
+				"markup",
+				"input",
+				"debugging",
+				"typescript"
+			],
 			"readmes": [
-				{"path": "src/helder/scene/README.md", "pages": ["index", "world", "models", "materials", "lights", "fog", "post", "instancing", "particles", "input", "debugging", "typescript"]},
-				{"path": "src/helder/scene/view/README.md", "title": "helder.scene.view", "pages": ["markup"]}
+				{
+					"path": "src/helder/scene/README.md",
+					"pages": [
+						"index",
+						"world",
+						"models",
+						"materials",
+						"lights",
+						"fog",
+						"post",
+						"instancing",
+						"particles",
+						"input",
+						"debugging",
+						"typescript"
+					]
+				},
+				{
+					"path": "src/helder/scene/view/README.md",
+					"title": "helder.scene.view",
+					"pages": [
+						"markup"
+					]
+				}
 			]
 		}
 	]

@@ -5,6 +5,9 @@ mobile and the web, from one npm package. Built on
 [hxmc](https://github.com/benmerckx/hxmc), the Haxe compiler with a native
 and WebAssembly target. **Unstable**: APIs change without notice.
 
+Docs: <https://helder.build/docs/>. Examples, playing in your browser:
+<https://helder.build/examples/>.
+
 The goal (desktop and web work from this checkout: `bun run helder ...`,
 src/helder/cli/README.md; the rest is on the roadmap):
 
@@ -155,26 +158,29 @@ bun run test              # the lanes that need no GPU, display or browser
 bun run test help         # every lane
 bun run helder test       # the *.test.hx files (--target all: host and wasm, --watch, -t <name>)
 bun run helder examples/counter/Counter.hx       # an example, live (helder dev; --target web: a page)
-bun run site              # the examples' page, bin/site (site/), then bun run site:check
+bun run site              # the examples' pages and the docs, bin/site (site/, docs/), then bun run site:check
 ```
 
-The examples' page, <https://benmerckx.github.io/helder/>, is `site/`: one
-page of every example's card (its header: `// title:`, `// summary:`,
-`// tags:`, `// demo:`), written in TSX through helder's TypeScript frontend
-and rendered by helder.web's static renderer (`site/index.tsx`); those whose
-`demo:` is a canvas or a sound have a Play button starting their wasm32 build
-in the page (a WebAssembly island loaded on the click). `site/build.mjs`
-builds each of them for the web, lays out `bin/site` and runs the page's
-program; `.github/workflows/pages.yml` deploys it on pushes to main. An
-example with a `page.json` beside it has a page of its own, `<id>.html`
-(its demo, description, numbers, comparable downloads elsewhere, credits):
-`bun run site:numbers` plays each in headless Chromium (SwiftShader:
-software rendering, labelled so) and keeps what the program last printed
-as `stats: {...}` (helder.scene.debug's `FrameStats.report`: first frame,
-textures, frame p50 and p99) and what the Play button fetched, gzipped;
-the real devices' rows are slots in `page.json`. The performance demos
-have one each: `instancing`, `bunnymark`, `particles`, `physics-stress`,
-`planet`.
+The examples' pages and the docs are on <https://helder.build>
+(`/examples/`, `/docs/`), built from `site/` and `docs/` by helder.build's
+deploy (its `sites/build/assemble.mjs`, daily and on its own pushes). The
+examples' page has every example's card (its header: `// title:`,
+`// summary:`, `// tags:`, `// demo:`), written in TSX through helder's
+TypeScript frontend and rendered by helder.web's static renderer
+(`site/index.tsx`); those whose `demo:` is a canvas or a sound have a Play
+button starting their wasm32 build in the page (a WebAssembly island
+loaded on the click). `site/build.mjs` builds each of them for the web,
+lays out `bin/site` (`examples/`, `docs/`, `static/`) and runs the pages'
+programs; `.github/workflows/site.yml` builds and checks it on pull
+requests. An example with a `page.json` beside it has a page of its own,
+`examples/<id>/` (its demo, description, numbers, comparable downloads
+elsewhere, credits): `bun run site:numbers` plays each in headless
+Chromium (SwiftShader: software rendering, labelled so) and keeps what the
+program last printed as `stats: {...}` (helder.scene.debug's
+`FrameStats.report`: first frame, textures, frame p50 and p99) and what
+the Play button fetched, gzipped; the real devices' rows are slots in
+`page.json`. The performance demos have one each: `instancing`,
+`bunnymark`, `particles`, `physics-stress`, `planet`.
 
 ## Agents
 
