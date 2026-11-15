@@ -26,7 +26,8 @@ using StringTools;
 // page, a WebAssembly island, with its source beside it, the file itself
 // (highlighted by helder.syntax's lexer; tabs for a Haxe example's
 // TypeScript twin, docs/examples/<dir>/main.ts); region="name" shows the
-// lines between `// #region name` and `// #endregion` alone; <Sections/>,
+// lines between `// #region name` and `// #endregion` (or `// #endregion
+// name`) alone; <Sections/>,
 // every section's pages with their first paragraphs (the overview's). An
 // unknown example, region, component, page or heading link fails the
 // build: what a page shows is what builds.
@@ -322,7 +323,7 @@ class Docs implements Markup {
 				for (k in 0...lines.length) {
 					var t = lines[k].trim();
 					if (from < 0 && t == "// #region " + name) from = k + 1;
-					else if (from >= 0 && to < 0 && t == "// #endregion") to = k;
+					else if (from >= 0 && to < 0 && (t == "// #endregion" || t == "// #endregion " + name)) to = k;
 				}
 				if (from < 0 || to < 0) throw '${current.file}: region="$name": $file has no `// #region $name` ... `// #endregion`';
 				var part = lines.slice(from, to);
