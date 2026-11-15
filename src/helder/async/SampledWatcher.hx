@@ -55,7 +55,10 @@ class SampledWatcher implements Watcher {
 		function add(p:String, dir:Bool) {
 			if (entries.exists(p)) return;
 			var o = old.get(p);
-			entries.set(p, o != null && o.dir == dir && o.listed == listed ? o : Entry.of(p, dir, listed));
+			// (its state kept whatever the filter, which applies when a
+			// directory's listing is compared: taken again here, an edit
+			// while the build ran would be taken with it, never seen)
+			entries.set(p, o != null && o.dir == dir ? o : Entry.of(p, dir));
 		}
 		for (d in dirs) add(d, true);
 		for (f in files) add(f, false);
@@ -75,8 +78,8 @@ class SampledWatcher implements Watcher {
 			// (editors saving several files: what else changed by then, among the recent ones)
 			if (debounce > 0) Async.delay(debounce);
 			var out = [dirty];
-			for (r in recent) if (r != dirty && entries.get(r).changed(r)) out.push(r);
-			for (p in out) entries.set(p, Entry.of(p, entries.get(p).dir, listed));
+			for (r in recent) if (r != dirty && entries.get(r).changed(r, listed)) out.push(r);
+			for (p in out) entries.set(p, Entry.of(p, entries.get(p).dir));
 			return out;
 		}
 	}
@@ -95,7 +98,7 @@ class SampledWatcher implements Watcher {
 		}
 		for (i in 0...recent.length) {
 			var p = recent[i];
-			if (entries.get(p).changed(p)) {
+			if (entries.get(p).changed(p, listed)) {
 				recent.splice(i, 1);
 				recent.push(p);
 				return p;
@@ -105,7 +108,7 @@ class SampledWatcher implements Watcher {
 		for (_ in 0...n) {
 			var p = queue.pop();
 			var e = entries.get(p);
-			if (e != null && e.changed(p)) {
+			if (e != null && e.changed(p, listed)) {
 				recent.remove(p);
 				recent.push(p);
 				if (recent.length > RECENT) recent.shift();
@@ -124,23 +127,22 @@ private class Entry {
 	static inline var TRUST = #if (target.name == "hxmc") 0.01 #else 2.0 #end;
 
 	public final dir:Bool;
-	// (a directory's: the names its entries count, null every one)
-	public final listed:Null<String->Bool>;
-	// a file's stamp (null: missing), its content when the stamp cannot be trusted alone; a directory's entries
+	// a file's stamp (null: missing), its content when the stamp cannot be
+	// trusted alone; a directory's entries, every one (sorted; null: no
+	// directory), the filter applied when they are compared (changed)
 	final stamp:Null<Array<Float>>;
 	final content:Null<Bytes>;
-	final entries:String;
+	final entries:Null<Array<String>>;
 
-	function new(dir, stamp, content, entries = "", ?listed:String->Bool) {
+	function new(dir, stamp, content, ?entries:Array<String>) {
 		this.dir = dir;
-		this.listed = listed;
 		this.stamp = stamp;
 		this.content = content;
 		this.entries = entries;
 	}
 
-	public static function of(path:String, dir:Bool, ?listed:String->Bool):Entry {
-		if (dir) return new Entry(true, null, null, listing(path, listed), listed);
+	public static function of(path:String, dir:Bool):Entry {
+		if (dir) return new Entry(true, null, null, listing(path));
 		var t = stampOf(path);
 		if (t == null) return new Entry(false, null, null);
 		var recent = Sys.time() - mtime(t) < TRUST;
@@ -162,15 +164,21 @@ private class Entry {
 	static inline function mtime(t:Array<Float>):Float
 		return #if (target.name == "hxmc") t[0] + t[1] / 1e9 #else t[2] / 1000 #end;
 
-	static function listing(path:String, listed:Null<String->Bool>):String {
-		var names = try sys.FileSystem.readDirectory(path) catch (_:Dynamic) return "-";
-		if (listed != null) names = names.filter(listed);
+	// (a directory's names, sorted; null: none there)
+	static function listing(path:String):Null<Array<String>> {
+		var names = try sys.FileSystem.readDirectory(path) catch (_:Dynamic) return null;
 		names.sort(Reflect.compare);
-		return names.join("\n");
+		return names;
 	}
 
-	public function changed(path:String):Bool {
-		if (dir) return listing(path, listed) != entries;
+	// (the names the filter counts, joined)
+	static function counted(names:Null<Array<String>>, listed:Null<String->Bool>):String
+		return names == null ? "-" : (listed == null ? names : names.filter(listed)).join("\n");
+
+	// whether it changed since its state was taken (a directory: the names
+	// the filter counts, null every one)
+	public function changed(path:String, listed:Null<String->Bool>):Bool {
+		if (dir) return counted(listing(path), listed) != counted(entries, listed);
 		var t = stampOf(path);
 		if (t == null || stamp == null) return t != stamp;
 		for (i in 0...t.length)

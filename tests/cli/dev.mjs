@@ -138,6 +138,21 @@ async function native() {
 		check(`edit ${v - 1}: the new build, the count kept (${before} then ${n})`, n >= before && n <= before + 10);
 	}
 	if (hosted) check(`the dev host: the same process (${pids().length} builds)`, pids().length >= 4 && pids().every((p) => p === pids()[0]), pids().join(' '));
+	// (an edit while a build runs: seen after it, built again; the second
+	// written 60 ms after the first, which is seen within 35 ms and built in
+	// about 200)
+	{
+		await sleep(300);
+		const reloads = () => lines.filter((l) => /^\s*reloaded in/.test(l)).length, r0 = reloads();
+		const again = line(/^v4 count=/);
+		edit((s) => s.replace('"v4 count="', '"v4b count="'));
+		await sleep(60);
+		edit((s) => s.replace('"v4b count="', '"v4 count="'));
+		await line(/^v4b count=/, 5000).catch(() => null);
+		await again;
+		for (let i = 0; i < 100 && reloads() < r0 + 2; i++) await sleep(50);
+		check(`an edit while building: built after it (${reloads() - r0} reloads)`, reloads() >= r0 + 2);
+	}
 	const failed = line(/^\s*failed in/);
 	edit((s) => s.replace('"v4 count="', '"v5 count=" +* broken'));
 	await failed;

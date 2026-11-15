@@ -60,6 +60,24 @@ function tests() {
 			File.saveContent('$root/sub/New.hx', "class New {}");
 			notEquals(ticks(t.w, '$root/sub', 21), null);
 		});
+		test("watched again with a filter: a file's change while the build ran is seen next", () -> {
+			var t = tree(10);
+			var sources = (n:String) -> StringTools.endsWith(n, ".hx");
+			t.w.watch(t.files, [root, '$root/sub'], sources);
+			// (edited while a build runs, between a batch and the next watch())
+			File.saveContent(t.files[3], "edited while building");
+			t.w.watch(t.files, [root, '$root/sub'], sources);
+			notEquals(ticks(t.w, t.files[3], 21), null);
+		});
+		test("the filter changed (a failed build): a directory's change while it ran is seen next", () -> {
+			var t = tree(10);
+			var sources = (n:String) -> StringTools.endsWith(n, ".hx");
+			t.w.watch(t.files, [root, '$root/sub'], sources);
+			// (the module the build lacked, made while it ran)
+			File.saveContent('$root/sub/Lacked.hx', "class Lacked {}");
+			t.w.watch(t.files, [root, '$root/sub']);
+			notEquals(ticks(t.w, '$root/sub', 21), null);
+		});
 		test("a removed file", () -> {
 			var t = tree(100);
 			FileSystem.deleteFile(t.files[7]);
