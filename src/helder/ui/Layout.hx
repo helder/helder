@@ -331,7 +331,8 @@ class Layout {
 			if (it.align == Stretch && (row ? cs.height : cs.width) != DimValue.Auto) it.align = Start;
 			it.styleCross = clamp(!row && cs.width.intrinsic() ? intrinsicWidth(c, cs.width, pctCross, roomC) : (row ? cs.height : cs.width).resolve(pctCross), it.minCross,
 				it.maxCross);
-			var b = cs.basis.resolve(pctMain);
+			// (min-content, max-content, fit-content: a row's that width; a column's its content's height)
+			var b = row && cs.basis.intrinsic() ? intrinsicWidth(c, cs.basis, pctMain, roomM) : cs.basis.resolve(pctMain);
 			// (a percentage basis of an indefinite size: content, the width or height left out)
 			if (!known(b) && cs.basis == DimValue.Auto) b = row && cs.width.intrinsic() ? intrinsicWidth(c, cs.width, pctMain, roomM) : (row ? cs.width : cs.height).resolve(pctMain);
 			var contentBasis = !known(b);
@@ -498,8 +499,9 @@ class Layout {
 				var oc = it.cross + it.mCrossStart + it.mCrossEnd;
 				if (oc > lc) lc = oc;
 				if (it.align == Baseline) {
-					// (a column's: each one's start edge, as Chromium synthesizes it across)
-					var b = 0.0;
+					// (a column's: each one's left edge, as Chromium synthesizes it across: its start edge, its far one
+					// right to left)
+					var b = row || !flipCross ? 0.0 : it.cross;
 					if (row) {
 						looseH = true;
 						size(it.node, it.main, it.cross, innerW, pctH, it.main, it.cross, true);
@@ -941,7 +943,7 @@ class Layout {
 		}
 		var c = clamp(w, it.minMain, it.maxMain), b = it.basis;
 		// (a percentage basis of the container's indefinite width: its width's or content's, as auto's)
-		if (!known(cs.basis.resolve(innerW))) b = Math.max(w, it.edges);
+		if (!known(cs.basis.resolve(innerW)) && !cs.basis.intrinsic()) b = Math.max(w, it.edges);
 		var stays = c > b && cs.grow == 0 || c < b && cs.shrink == 0;
 		return clamp(stays ? b : c, it.minMain, it.maxMain);
 	}

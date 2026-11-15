@@ -1433,7 +1433,13 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	// NaN: none (no text, no items)
 	public function firstBaseline():Float {
 		if (!Math.isNaN(lb)) return lb;
-		for (c in inOrder()) {
+		// (a reversed column's: its last item's, the first from the top, as Chromium)
+		var items = inOrder();
+		if (style.display != Grid && style.direction == ColumnReverse) {
+			items = items.copy();
+			items.reverse();
+		}
+		for (c in items) {
 			var cs = c.style;
 			if (cs.display == None || cs.position == Absolute) continue;
 			var b = c.firstBaseline();
