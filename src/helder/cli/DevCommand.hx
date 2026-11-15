@@ -342,7 +342,7 @@ class DevCommand {
 		w.watch(files, dirs, lastError == null ? sourceNames : null);
 	}
 
-	// (one value: a directory watched before keeps its state, SampledWatcher's)
+	// (SampledWatcher's filter: the names a directory's listing counts)
 	static final sourceNames:String->Bool = source;
 
 	// a file name the build reads as a source (Haxe, TypeScript)
