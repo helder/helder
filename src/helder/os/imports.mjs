@@ -748,9 +748,6 @@ export default function (host) {
 				frameId = 0;
 				if (stopped) return;
 				if (windows.size > 0 && [...windows].every((h) => host.handles.get(h).hxmcShown === false)) return (frameId = requestAnimationFrame(tick));
-				// (no frame while the GPU is behind, host.gfx.behind, unless input
-				// waits: a press is handled at once, its frame drawn or not)
-				if (queue.length === 0 && host.gfx && host.gfx.behind && host.gfx.behind()) return (frameId = requestAnimationFrame(tick));
 				if (pixelRatio() !== ratio) {
 					ratio = pixelRatio();
 					for (const h of windows) {

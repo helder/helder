@@ -132,8 +132,6 @@ export default async function (host) {
 		o?.depth?.destroy?.();
 		o?.msaa?.destroy?.();
 	};
-	// a canvas's frames submitted and not yet done (host.gfx.behind)
-	let inFlight = 0;
 	const submitted = () => {
 		for (const o of doomed.splice(0)) destroy(o);
 	};
@@ -235,11 +233,6 @@ export default async function (host) {
 		adapter,
 		device,
 		backend: null,
-		// whether two of a canvas's frames are still on the GPU: the os's
-		// loop skips its frame then (as a swapchain's acquire waits
-		// natively), else frames queue up on a slow GPU, SwiftShader's, and
-		// the page's thread waits behind them, unresponsive for seconds
-		behind: () => inFlight >= 2,
 		// the GPU's memory given back: the device destroyed, the WebGL contexts lost
 		release() {
 			released = true;
@@ -714,10 +707,6 @@ export default async function (host) {
 			}
 			frameQueries = [];
 			device.queue.submit([encoder.finish()]);
-			if (!frameTarget.texture) {
-				inFlight++;
-				device.queue.onSubmittedWorkDone().then(() => inFlight--, () => inFlight--);
-			}
 			for (const q of reads)
 				q.read.mapAsync(GPUMapMode.READ).then(() => {
 					const v = new BigUint64Array(q.read.getMappedRange());
