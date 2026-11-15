@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "policy": {
+    "basis": "taffy",
+    "revision": "1abd8eeaf6059336a7026c31e0f1b769d2f04a3a",
+    "reference": "Chrome's boxes for Taffy's test_fixtures (flex, grid, gridflex, leaf), as Taffy's gentest measured them",
+    "rule": "helder.ui lays out CSS flexbox and grid as Chrome does for the subset below; outside it a case is pending with the property it uses, and a pending case that starts to pass fails the run until it is required."
+  },
+  "statuses": ["implemented", "partial", "unsupported"],
+  "variants": {
+    "border-box-ltr": "laid out",
+    "border-box-rtl": "laid out",
+    "content-box-ltr": "decoded and validated only: helder.ui's sizes are border boxes",
+    "content-box-rtl": "decoded and validated only: helder.ui's sizes are border boxes"
+  },
+  "properties": [
+    {"property": "display", "status": "partial", "values": ["flex", "grid", "none", "block"], "note": "block is a column whose children neither grow nor shrink: no margin collapsing, no inline formatting (Taffy's block category is not imported)"},
+    {"property": "position", "status": "implemented", "values": ["relative", "absolute"]},
+    {"property": "direction", "status": "implemented", "values": ["ltr", "rtl"], "note": "Style.dir, inherited"},
+    {"property": "box-sizing", "status": "partial", "values": ["border-box"], "note": "content-box is unsupported"},
+    {"property": "width, height, min-width, min-height, max-width, max-height", "status": "partial", "values": ["<px>", "<percentage>", "auto", "min-content", "max-content", "fit-content", "calc(<percentage> + <px>)"], "note": "stretch and fit-content(<length>) are unsupported"},
+    {"property": "flex-basis", "status": "partial", "values": ["<px>", "<percentage>", "auto", "min-content", "max-content", "fit-content"], "note": "content and stretch are unsupported"},
+    {"property": "aspect-ratio", "status": "implemented", "values": ["<number>"]},
+    {"property": "margin-*", "status": "partial", "values": ["<px>", "auto"], "note": "percentages are unsupported"},
+    {"property": "padding-*", "status": "partial", "values": ["<px>"], "note": "percentages are unsupported"},
+    {"property": "border-*-width", "status": "partial", "values": ["<px>"], "note": "percentages are unsupported"},
+    {"property": "row-gap, column-gap", "status": "partial", "values": ["<px>"], "note": "percentages are unsupported"},
+    {"property": "top, right, bottom, left", "status": "implemented", "values": ["<px>", "<percentage>", "auto"]},
+    {"property": "flex-direction", "status": "implemented", "values": ["row", "row-reverse", "column", "column-reverse"]},
+    {"property": "flex-wrap", "status": "partial", "values": ["nowrap", "wrap"], "note": "wrap-reverse is unsupported"},
+    {"property": "flex-grow, flex-shrink", "status": "implemented", "values": ["<number>"]},
+    {"property": "justify-content", "status": "partial", "values": ["flex-start", "flex-end", "center", "space-between", "space-around", "space-evenly", "start", "end", "stretch", "normal"], "note": "start and end are flex-start and flex-end (they differ in a reverse direction); no safe or unsafe"},
+    {"property": "align-content", "status": "partial", "values": ["flex-start", "flex-end", "center", "stretch", "space-between", "space-around", "space-evenly", "start", "end", "normal"], "note": "as justify-content"},
+    {"property": "align-items, align-self, justify-items, justify-self", "status": "partial", "values": ["auto", "flex-start", "flex-end", "start", "end", "center", "stretch", "baseline"], "note": "self-start, self-end, safe and unsafe are unsupported"},
+    {"property": "overflow-x, overflow-y", "status": "partial", "values": ["visible", "hidden", "scroll"], "note": "scrollbars overlay the content: no gutter (Taffy's scrollbar-width: 15)"},
+    {"property": "grid-template-columns, grid-template-rows", "status": "partial", "values": ["<px>", "<percentage>", "<flex>", "auto", "min-content", "max-content", "minmax()", "repeat(<integer>, ...)"], "note": "named lines, fit-content() and repeat(auto-fill | auto-fit) are unsupported"},
+    {"property": "grid-auto-columns, grid-auto-rows", "status": "partial", "values": ["<track size>"], "note": "one track, not a list"},
+    {"property": "grid-auto-flow", "status": "implemented", "values": ["row", "column", "row dense", "column dense"]},
+    {"property": "grid-row-start, grid-row-end, grid-column-start, grid-column-end", "status": "partial", "values": ["auto", "<integer>", "span <integer>", "<area name>"], "note": "named lines (span <name>, <name> <integer>) are unsupported"}
+  ],
+  "deviations": [
+    {"property": "flex-direction", "value": "column", "reason": "helder.ui's default (CSS's is row); the runner sets row"},
+    {"property": "align-content", "value": "normal", "reason": "flex-start in a flex container (CSS: stretch); the runner sets stretch"},
+    {"property": "display", "value": "block", "reason": "a flex row when a row direction is given; the runner gives a block none"}
+  ],
+  "unsupported_browser_subset": [
+    {"property": "box-sizing", "value": "content-box", "reason": "sizes are border boxes"},
+    {"property": "flex-wrap", "value": "balance", "reason": "Taffy's extension (flex-line-count), not Chrome's"},
+    {"property": "writing-mode", "reason": "horizontal only"},
+    {"property": "float, clear", "reason": "no floats (Taffy's float category is not imported)"},
+    {"property": "contain", "reason": "not a layout property of helder.ui (Taffy's contain category is not imported)"},
+    {"property": "display", "value": "block (the block category)", "reason": "no block formatting context: margin collapsing, inline layout"}
+  ]
+}

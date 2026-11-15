@@ -169,8 +169,7 @@ class GridLayout {
 				case Center: (roomH - ih) / 2;
 				case _: 0;
 			}
-			var dx = cs.left.resolve(aw), dy = cs.top.resolve(ah);
-			if (!Layout.known(dx)) dx = -cs.right.resolve(aw);
+			var dx = Layout.relativeX(cs, aw, rtl), dy = cs.top.resolve(ah);
 			if (!Layout.known(dy)) dy = -cs.bottom.resolve(ah);
 			if (cs.position == Sticky) dx = dy = Math.NaN;
 			c.lx = padL + x + (Layout.known(dx) ? dx : 0);

@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://helder.build/schema/layout-conformance/fixture-v1.json",
+  "title": "helder.ui layout conformance fixture",
+  "description": "A style tree in CSS's own property names and values, and each variant's boxes as Chrome measured them (Taffy's generated expectations): one [x, y, width, height] a node, in the tree's pre-order, x and y from the parent's border box.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "upstream", "viewport", "rounding", "tree", "variants"],
+  "properties": {
+    "schema": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[a-z]+/[A-Za-z0-9_]+$" },
+    "upstream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "revision", "path", "generated", "license"],
+      "properties": {
+        "repository": { "const": "https://github.com/DioxusLabs/taffy" },
+        "revision": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "path": { "type": "string", "description": "The HTML fixture, test_fixtures/<category>/<name>.html" },
+        "generated": { "type": "string", "description": "The XML Taffy's gentest made from it in Chrome, one a variant" },
+        "license": { "const": "MIT" }
+      }
+    },
+    "viewport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "$ref": "#/$defs/space" },
+        "height": { "$ref": "#/$defs/space" }
+      }
+    },
+    "rounding": { "type": "boolean", "description": "Whether Taffy rounds its boxes for this case" },
+    "tree": { "$ref": "#/$defs/node" },
+    "variants": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["border-box-ltr", "border-box-rtl", "content-box-ltr", "content-box-rtl"],
+      "patternProperties": {
+        "^(border|content)-box-(ltr|rtl)$": {
+          "type": "array",
+          "items": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "space": { "type": "string", "pattern": "^(max-content|min-content|[0-9.]+px)$" },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["style"],
+      "properties": {
+        "style": {
+          "type": "object",
+          "description": "CSS properties as Taffy's XML spells them (kebab-case, values as in CSS; grid-row-start and the like apart). direction and box-sizing appear only where the fixture sets them itself; elsewhere each variant sets them on every node. position: relative, the base sheet's, is left out.",
+          "additionalProperties": { "type": "string" }
+        },
+        "tag": { "type": "string", "description": "The element when not a div (text)" },
+        "text": { "type": "string", "description": "A leaf's text in the Ahem convention: 10px squares, lines broken only at U+200B" },
+        "children": { "type": "array", "items": { "$ref": "#/$defs/node" } }
+      }
+    }
+  }
+}

@@ -642,10 +642,9 @@ class Layout {
 				var c = it.node;
 				var cx = padL + (row ? mainPos : crossPos), cy = padT + (row ? crossPos : mainPos);
 				var cwid = row ? it.main : it.cross, chei = row ? it.cross : it.main;
-				// (Relative: shifted by its offsets)
+				// (Relative: shifted by its offsets; both left and right: right's in a right-to-left container)
 				var cs = c.style;
-				var dx = cs.left.resolve(innerW), dy = cs.top.resolve(pctH);
-				if (!known(dx)) dx = -cs.right.resolve(innerW);
+				var dx = relativeX(cs, innerW, rtl), dy = cs.top.resolve(pctH);
 				if (!known(dy)) dy = -cs.bottom.resolve(pctH);
 				// (Sticky: its offsets are where it sticks, not a shift)
 				if (cs.position == Sticky) dx = dy = Math.NaN;
@@ -1130,6 +1129,13 @@ class Layout {
 		c[at + 7] = pw;
 		c[at + 8] = ph;
 		c[0] = at + ENTRY - 1;
+	}
+
+	// (a relative box's shift across: its left, else minus its right; both: the
+	// container's direction's start, as CSS 2's 9.4.3; NaN: none)
+	@:allow(helder.ui) static function relativeX(cs:Style, w:Float, rtl:Bool):Float {
+		var l = cs.left.resolve(w), r = cs.right.resolve(w);
+		return known(l) && !(rtl && known(r)) ? l : -r;
 	}
 
 	// (whether a node's own size is relative to its parent's box: a percentage of it)
