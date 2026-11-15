@@ -59,6 +59,19 @@ class AsyncTest {
 		ok(dt < 0.15 && order.length == 2, 'turn(0.02) returns early: $dt');
 		l.runUntil(() -> order.length == 3);
 		eq(order[2], "late", "runUntil");
+		// (two timers due in one turn, the loop a turn late: what the first
+		// sets going runs before the second, as JavaScript's microtasks after
+		// each timer: tests/typescript/helder/async.ts' write after an await)
+		var due = [];
+		l.schedule(5, new Fn(l, () -> {
+			due.push("first");
+			l.dispatch(new Ready(() -> due.push("after first")));
+		}));
+		l.schedule(10, new Fn(l, () -> due.push("second")));
+		var t1 = haxe.Timer.stamp();
+		while (haxe.Timer.stamp() - t1 < 0.02) {}
+		l.turn(0);
+		eq(due.join(","), "first,after first,second", "a timer's follow-up before the next timer due in its turn");
 		#if target.threaded
 		var got = 0;
 		l.hold();
@@ -400,6 +413,17 @@ class AsyncTest {
 }
 
 // a function as a continuation, on a loop (the scheduler's tests)
+// (a dispatch of f: Loop.dispatch's)
+class Ready implements haxe.coro.dispatchers.IDispatchObject {
+	final f:Void->Void;
+
+	public function new(f)
+		this.f = f;
+
+	public function onDispatch()
+		f();
+}
+
 class Fn implements haxe.coro.IContinuation<Any> {
 	public var context(get, never):haxe.coro.context.Context;
 

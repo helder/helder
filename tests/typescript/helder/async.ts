@@ -49,3 +49,10 @@ tick();
 // (run 1 superseded while it waits: cancelled, its load with it)
 setTimeout(() => id(2), 10);
 setTimeout(() => id(3), 100);
+
+// (busy past the first two timers, so they come due in one turn of the
+// loop, as on a slow machine: tick's write after its await still commits
+// before the next timer's write, as JavaScript's microtasks after each
+// timer; the order is the same however late the loop turns)
+const busy = Date.now();
+while (Date.now() - busy < 15) {}

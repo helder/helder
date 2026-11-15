@@ -372,7 +372,13 @@ class Loop extends Dispatcher implements IScheduler implements Driven {
 		#end
 	}
 
-	// the due timers' continuations dispatched (each through its own dispatcher)
+	// the due timers' continuations dispatched (each through its own
+	// dispatcher), one at a time: what each sets going (a promise's
+	// reactions, helder.view's flush of the writes it made) runs before the
+	// next timer, as JavaScript's microtasks run after each timer's callback.
+	// So the order does not depend on how many timers came due in one turn
+	// (a turn late, two timers 5 ms apart would run back to back, the first's
+	// writes committed after the second ran)
 	function fire(now:Float) {
 		while (timers.length > 0 && timers[0].time <= now) {
 			var t = pop();
@@ -381,6 +387,7 @@ class Loop extends Dispatcher implements IScheduler implements Driven {
 			live--;
 			var d = t.cont.context.get(Dispatcher);
 			(d ?? this).dispatch(t);
+			drain();
 		}
 	}
 
