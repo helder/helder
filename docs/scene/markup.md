@@ -86,19 +86,57 @@ click, its name over it with `<Ui>`:
   `SceneRenderer` (`@:elements`: node, mesh, light, camera); `<Scene>` in a
   scene's markup is ui's (it returns a `helder.ui.Node`).
 
-Elements: `node`, `mesh` (shape `box`, `sphere`, `plane`; size, color,
-metallic, roughness), `light` (kind `directional`, `point`; color,
-intensity, range), `camera` (fov, near, far), `instances` (an
-`InstancedMesh`: [Instancing](instancing.md)); `position`, `rotation`,
-`scale`, `name`, `visible` on all. Markup outside a `<Scene>` renders into a
+Elements: `node`, `mesh`, the geometry and material tags, the lights,
+`camera` (fov, near, far), `instances` (an `InstancedMesh`:
+[Instancing](instancing.md)) and `sprites`; `position`, `rotation`,
+`scale`, `name`, `visible` on every node.
+
+- **`mesh`**: its geometry and material given (made in code: shared, not
+  made again), else its children's, a geometry tag and a material tag
+  (react-three-fiber's attach convention), else a shape made in code
+  (shape `box`, `sphere`, `plane`; size, color, metallic, roughness):
+
+  ```haxe
+  <mesh position={p}><cylinderGeometry radiusTop={0.2} radiusBottom={0.2} height={1} flat/><toonMaterial color={c} steps={3}/></mesh>
+  <mesh geometry={rail} material={grass}/>
+  ```
+
+  A mesh of markup is one upload per geometry, and one primitive per
+  geometry and material, so the same ones are one instanced draw.
+- **The geometry tags** are `Geometry`'s generators ([Geometry](geometry.md)),
+  their props its options: `boxGeometry`, `sphereGeometry`,
+  `cylinderGeometry`, `coneGeometry`, `capsuleGeometry`, `torusGeometry`,
+  `torusKnotGeometry`, `ringGeometry`, `circleGeometry`, `planeGeometry`,
+  `latheGeometry` (points), `tubeGeometry` (curve). A prop's change makes
+  the geometry again (structure, not motion).
+- **The material tags** are `Material`'s factories ([Materials](materials.md)),
+  their props their options: `standardMaterial`, `lambertMaterial`,
+  `phongMaterial`, `toonMaterial`, `unlitMaterial`, `matcapMaterial`,
+  `normalMaterial`, `depthMaterial` (near, far).
+- **The lights**: `directionalLight`, `pointLight` (range), `spotLight`
+  (range, inner, outer), `hemisphereLight` (sky, ground); color and
+  intensity. `light` and its `kind` (`directional`, `point`, `spot`,
+  `hemisphere`) stays as their alias.
+- **`sprites`**: a node drawing `Sprites` (`of={set}`, `mode` `spherical`,
+  `axis` or `fixed`), as `instances` draws an `InstancedMesh`.
+
+An element's props are checked by name when compiling: `SceneRenderer`
+declares them (`@:props(SceneProps)`: each tag's structure, its factory's
+options for a geometry or material tag), and a name its element does not
+take is an error at the attribute, its props listed
+(`<toonMaterial stepz={3}/>`: "markup: <toonMaterial> has no prop stepz";
+tests/3d-ui/reject/PropTypo.hx). Values are checked when set.
+
+Markup outside a `<Scene>` renders into a
 world's root: `Render.render(<node/>, SceneRenderer.root(world))`. Per-frame
 work goes through the frame stages (`helder.scene.Stages`), not through
 signals.
 
 ## Status
 
-A prototype: properties go through `setProperty` by name; typed
-constructors per tag, checked when compiling, come next. A struct value
+A prototype: properties go through `setProperty` by name, their names
+checked when compiling (@:props), their values when set; a value's type
+checked when compiling comes next. A struct value
 (`Vec3`, `Quat`) is bound through a `Signal` for now (hxmc does not yet
 pass a closure returning one where a function of another type is
 expected). In a `<Scene>`, the renderer's own pipelines draw into its
@@ -106,7 +144,9 @@ target; its features' (skins, normal maps, the sky, particles) are the
 frame's still.
 
 Tests (`bun run test 3d`): `tests/3d-ui/SceneUiTest.hx` (markup on a
-world), `tests/3d-ui/SurfaceTest.hx` (under Xvfb: two `<Surface>`s, a
+world; the geometry, material, light and sprites tags),
+`tests/3d-ui/reject/PropTypo.hx` (a prop an element does not take,
+rejected), `tests/3d-ui/SurfaceTest.hx` (under Xvfb: two `<Surface>`s, a
 `<Scene>`'s pixels in its box, a click picked in it, fingers picked at
 their presses, a tap on the mesh, a drag from it orbiting the camera, a
 cancel, `<Ui>` placed, `<Stick>` drawn); `OrbitControls.test.hx` (the

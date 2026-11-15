@@ -1026,6 +1026,10 @@ class Run {
 		var r = build(cp.concat(cps(["tests/3d/reject"])).concat(["-main", "ModelTypo", "--custom-target", "hxmc=bin/3d/ModelTypo"]), "bin/3d/ModelTypo.log");
 		if (r.code == 0 || !r.log.contains("has no field bal"))
 			throw new Failed("ModelTypo: expected the error \"has no field bal\":\n" + r.log);
+		// (markup: a prop its element does not take is a compile error, SceneProps')
+		var r = build(cps(["src", "tests/3d-ui/reject"]).concat(["-main", "PropTypo", "--custom-target", "hxmc=bin/3d/PropTypo"]), "bin/3d/PropTypo.log");
+		if (r.code == 0 || !r.log.contains("<toonMaterial> has no prop stepz"))
+			throw new Failed("PropTypo: expected the error \"<toonMaterial> has no prop stepz\":\n" + r.log);
 	}
 
 	// helder/scene from TypeScript (tests/3d/ts/frames.ts, examples/ts-scene's
@@ -1039,7 +1043,7 @@ class Run {
 		var exe = exePath('bin/3d/$t/ts-frames', t);
 		mkdirs(Path.directory(exe));
 		run(compiler, ["tests/3d/ts/frames.ts", "-o", exe].concat(cp).concat(targetArgs(t)));
-		for (s in ["glow", "tsscene"])
+		for (s in ["glow", "tsscene", "primitives", "toon"])
 			shell('LIBGL_ALWAYS_SOFTWARE=1 HXMC_GFX_SOFTWARE=1 env -u DISPLAY $exe $s tests/3d/$s.png bin/3d/$t/ts-$s.png');
 	}
 

@@ -14,7 +14,7 @@ const Glow = material(pbr.with({
 	color: (s: PbrSurface, p: {}): Vec3 => s.baseColor.xyz.mul(1.4),
 }));
 
-for (const v of Glow.variants) print(v);
+for (const v of Glow.variants) if (v !== null) print(v);
 for (const b of Glow.blocks) console.log(`block ${b.name} ${b.bindings.join(" ")}`);
 const bytes = new Uint8Array(32);
 Glow.params.glow.write({color: vec4(1, 0.55, 0.2, 1), time: vec4(2.5, 0, 0, 0)}, bytes);

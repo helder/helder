@@ -31,7 +31,7 @@ export type PbrFrame = {
 export type PbrObject = {model: Mat4, normalMatrix: Mat4, tint: Vec4};
 
 // per draw: the material
-export type PbrMaterial = {baseColor: Vec4, params: Vec4, emissive: Vec4, ground: Vec4, air: Vec4, uvU: Vec4, uvV: Vec4, layers: Vec4};
+export type PbrMaterial = {baseColor: Vec4, params: Vec4, emissive: Vec4, ground: Vec4, air: Vec4, uvU: Vec4, uvV: Vec4, layers: Vec4, model: Vec4, shadeColor: Vec4};
 
 export type PbrSkinInfo = {rows: Vec4};
 
@@ -60,11 +60,27 @@ export type Pbr = {
 	roughness: (s: PbrSurface, p: PbrFragmentParams) => number,
 	metalness: (s: PbrSurface, p: PbrFragmentParams) => number,
 	emissive: (s: PbrSurface, p: PbrFragmentParams) => Vec3,
+	direct: (s: LitSurface, l: LightSample, p: PbrFragmentParams) => Vec3,
+	indirect: (s: LitSurface, env: IndirectLight, p: PbrFragmentParams) => Vec3,
 	position: (v: PbrPoint, p: PbrVertexParams) => Vec3,
 };
 
+// what the lighting slots (direct, indirect) read: the surface with the
+// other slots' results (PbrShader.hx's LitSurface)
+export type LitSurface = {
+	world: Vec3, normal: Vec3, view: Vec3, uv: Vec2, up: Vec3, albedo: Vec3, alpha: number, metalness: number, roughness: number,
+};
+
+// one light at a surface: its colour times its intensity and attenuation,
+// its shadow (1: lit), the two multiplied, the direction towards it, n.l
+export type LightSample = {color: Vec3, shadow: number, radiance: Vec3, direction: Vec3, ndotl: number};
+
+// the light around a surface: the ambient along its normal, the
+// environment's along its reflection, the material's occlusion
+export type IndirectLight = {irradiance: Vec3, radiance: Vec3, occlusion: number};
+
 // a vertex's uvs as the material's textures read them (KHR_texture_transform)
-function uvOf(material: PbrMaterial, uv: Vec2): Vec2 {
+export function uvOf(material: PbrMaterial, uv: Vec2): Vec2 {
 	return vec2(dot(material.uvU.xy, uv) + material.uvU.z, dot(material.uvV.xy, uv) + material.uvV.z);
 }
 
@@ -97,6 +113,88 @@ export function pbrPosition(v: PbrPoint, p: {}): Vec3 {
 	return v.pos;
 }
 
+// the direct slot's default: one light's Lambert diffuse and Cook-Torrance specular
+export function pbrDirect(s: LitSurface, l: LightSample, p: {material: PbrMaterial}): Vec3 {
+	const a = s.roughness * s.roughness;
+	return brdf(s.normal, s.view, l.direction, s.albedo, s.metalness, a * a, reflectance(s, p.material)).mul(l.radiance);
+}
+
+// the indirect slot's default: the irradiance's diffuse share and the
+// environment's reflection (Karis' fit of the split sum), occluded
+export function pbrIndirect(s: LitSurface, env: IndirectLight, p: {material: PbrMaterial}): Vec3 {
+	const nv = max(dot(s.normal, s.view), 0.0001);
+	const c0 = vec4(-1, -0.0275, -0.572, 0.022);
+	const c1 = vec4(1, 0.0425, 1.04, -0.04);
+	const rr = c0.mul(s.roughness).add(c1);
+	const a004 = min(rr.x * rr.x, pow(2, -9.28 * nv)) * rr.x + rr.y;
+	const ab = vec2(-1.04, 1.04).mul(a004).add(rr.zw);
+	return env.irradiance.mul(s.albedo).mul(1 - s.metalness).add(env.radiance.mul(reflectance(s, p.material).mul(ab.x).add(ab.y))).mul(env.occlusion);
+}
+
+// a surface's reflectance at normal incidence (a dielectric's, a metal's, a crystal's)
+export function reflectance(s: LitSurface, material: PbrMaterial): Vec3 {
+	return mix(mix(vec3(0.04), s.albedo, s.metalness), vec3(0.12), material.ground.z);
+}
+
+// the lighting slots' surface from the other slots' results
+export function litSurface(facing: Vec3, world: Vec3, uv: Vec2, up: Vec3, albedo: Vec3, alpha: number, metalness: number, roughness: number, frame: PbrFrame,
+		material: PbrMaterial): LitSurface {
+	const v = normalize(frame.eye.xyz.sub(world));
+	const n = material.params.w > 0.5 && dot(facing, v) < 0 ? facing.neg() : facing;
+	return {world: world, normal: n, view: v, uv: uv, up: up, albedo: albedo, alpha: alpha, metalness: metalness, roughness: roughness};
+}
+
+// how much of the sun reaches a surface standing on Material.ground's sphere
+export function daylight(s: LitSurface, frame: PbrFrame, material: PbrMaterial): number {
+	return mix(1.0, smoothstep(-0.08, 0.22, dot(s.up, frame.lightDir.xyz)), material.ground.x);
+}
+
+// the sun at a surface, shadowed by the maps
+export function sunLight(s: LitSurface, frame: PbrFrame, material: PbrMaterial, shadowMap: Texture2D, shadowMapFar: Texture2D): LightSample {
+	const l = frame.lightDir.xyz;
+	const c = frame.lightColor.xyz.mul(daylight(s, frame, material));
+	const lit = shadowed(frame, shadowMap, shadowMapFar, s.world, s.normal);
+	return {color: c, shadow: lit, radiance: c.mul(lit), direction: l, ndotl: max(dot(s.normal, l), 0)};
+}
+
+// a point or spot light at pos.xyz (pos.w: its range, above 0) at a surface
+export function pointLight(s: LitSurface, pos: Vec4, color: Vec4, spot: Vec4): LightSample {
+	const d = pos.xyz.sub(s.world);
+	const dist2 = max(dot(d, d), 0.0001);
+	const dist = sqrt(dist2);
+	const q = dist / pos.w;
+	const window = clamp(1 - q * q * q * q, 0, 1);
+	let cone = 1.0;
+	if (spot.w > -1.5) cone = smoothstep(spot.w, color.w, dot(d.neg().div(dist), spot.xyz));
+	const l = d.div(dist);
+	const c = color.xyz.mul(window * window / dist2 * cone);
+	return {color: c, shadow: 1.0, radiance: c, direction: l, ndotl: max(dot(s.normal, l), 0)};
+}
+
+// the light around a surface (IndirectLight)
+export function ambientAt(s: LitSurface, frame: PbrFrame, material: PbrMaterial, occlusionTexture: Texture2D, environmentMap: Texture2D): IndirectLight {
+	const n = s.normal;
+	const above = n.y * 0.5 + 0.5;
+	let irradiance = mix(frame.ground.xyz, frame.sky.xyz, above);
+	const r = reflect(s.view.neg(), n);
+	const env = reflected(frame, environmentMap, r, s.roughness);
+	if (frame.environment.x > 0) {
+		const top = frame.environment.y;
+		irradiance = pow(sampleLevel(environmentMap, equirect(n), max(top - 2, 0)).xyz, vec3(2.2)).mul(frame.environment.x);
+		if (frame.environment.z > 0) {
+			const rows = frame.environment.z;
+			irradiance = pow(atlas(environmentMap, equirect(n), rows, rows, frame.environment.w), vec3(2.2)).mul(frame.environment.x);
+		}
+	}
+	const day = daylight(s, frame, material);
+	const horizon = smoothstep(-0.2, 0.2, dot(r, s.up));
+	return {
+		irradiance: irradiance.mul(mix(1.0, 0.55 + 0.45 * smoothstep(-0.6, 0.6, dot(n, s.up)), material.ground.x)),
+		radiance: env.mul(mix(1.0, mix(0.12, 1, horizon) * (0.45 + 0.55 * day), material.ground.x)),
+		occlusion: sample(occlusionTexture, s.uv).x,
+	};
+}
+
 // (Equirect.hx's)
 function equirect(d: Vec3): Vec2 {
 	return vec2(arcTan2(d.x, -d.z) * 0.15915494 + 0.5, arcCos(clamp(d.y, -1, 1)) * 0.31830989);
@@ -124,58 +222,35 @@ function arcCos(x: number): number {
 	return r;
 }
 
-// the fragment's colour from its surface's terms
-function shade(facing: Vec3, world: Vec3, uv: Vec2, up: Vec3, base: Vec3, baseAlpha: number, metallic: number, rough: number, emissive: Vec3,
-		frame: PbrFrame, material: PbrMaterial, occlusionTexture: Texture2D, shadowMap: Texture2D, shadowMapFar: Texture2D, environmentMap: Texture2D): Vec4 {
+// the fragment's colour from its surface, the direct light summed, the
+// indirect slot's and the light it emits (PbrShader.hx's shade)
+function shade(s: LitSurface, lights: Vec3, indirect: Vec3, env: IndirectLight, emissive: Vec3, frame: PbrFrame, material: PbrMaterial, shadowMap: Texture2D,
+		shadowMapFar: Texture2D, environmentMap: Texture2D): Vec4 {
 	const crystal = material.ground.z;
-	const v = normalize(frame.eye.xyz.sub(world));
-	const n = material.params.w > 0.5 && dot(facing, v) < 0 ? facing.neg() : facing;
+	const n = s.normal;
+	const v = s.view;
+	const base = s.albedo;
+	const metallic = s.metalness;
 	const l = frame.lightDir.xyz;
 	const nv = max(dot(n, v), 0.0001);
-	const a = rough * rough;
-	const a2 = a * a;
-	const f0 = mix(mix(vec3(0.04), base, metallic), vec3(0.12), crystal);
-	const sunUp = dot(up, l);
-	const day = mix(1.0, smoothstep(-0.08, 0.22, sunUp), material.ground.x);
-	let direct = brdf(n, v, l, base, metallic, a2, f0).mul(frame.lightColor.xyz).mul(shadowed(frame, shadowMap, shadowMapFar, world, n) * day);
-	direct = direct.add(point(n, v, world, base, metallic, a2, f0, frame.point0, frame.pointColor0, frame.spot0)
-		.add(point(n, v, world, base, metallic, a2, f0, frame.point1, frame.pointColor1, frame.spot1))
-		.add(point(n, v, world, base, metallic, a2, f0, frame.point2, frame.pointColor2, frame.spot2))
-		.add(point(n, v, world, base, metallic, a2, f0, frame.point3, frame.pointColor3, frame.spot3)));
-	const above = n.y * 0.5 + 0.5;
-	let irradiance = mix(frame.ground.xyz, frame.sky.xyz, above);
+	const f0 = reflectance(s, material);
+	const day = daylight(s, frame, material);
+	const sunUp = dot(s.up, l);
+	let direct = lights;
 	const r = reflect(v.neg(), n);
-	const env = reflected(frame, environmentMap, r, rough);
-	if (frame.environment.x > 0) {
-		const top = frame.environment.y;
-		irradiance = pow(sampleLevel(environmentMap, equirect(n), max(top - 2, 0)).xyz, vec3(2.2)).mul(frame.environment.x);
-		if (frame.environment.z > 0) {
-			const rows = frame.environment.z;
-			irradiance = pow(atlas(environmentMap, equirect(n), rows, rows, frame.environment.w), vec3(2.2)).mul(frame.environment.x);
-		}
-	}
-	const c0 = vec4(-1, -0.0275, -0.572, 0.022);
-	const c1 = vec4(1, 0.0425, 1.04, -0.04);
-	const rr = c0.mul(rough).add(c1);
-	const a004 = min(rr.x * rr.x, pow(2, -9.28 * nv)) * rr.x + rr.y;
-	const ab = vec2(-1.04, 1.04).mul(a004).add(rr.zw);
-	const horizon = smoothstep(-0.2, 0.2, dot(r, up));
-	const specularAmbient = env.mul(f0.mul(ab.x).add(ab.y)).mul(mix(1.0, mix(0.12, 1, horizon) * (0.45 + 0.55 * day), material.ground.x));
-	irradiance = irradiance.mul(mix(1.0, 0.55 + 0.45 * smoothstep(-0.6, 0.6, dot(n, up)), material.ground.x));
-	const occlusion = sample(occlusionTexture, uv).x;
-	let ambient = irradiance.mul(base).mul(1 - metallic).add(specularAmbient).mul(occlusion);
+	let ambient = indirect;
 	let emitted = emissive;
 	emitted = emitted.mul(mix(1.0, smoothstep(0.12, -0.18, dot(n, l)), material.emissive.w));
 	const edge = 1 - nv;
 	const rim = frame.rim.xyz.mul(pow(edge, frame.rim.w) * smoothstep(-0.25, 0.5, dot(n, l)) * day);
 	direct = direct.add(rim.mul(mix(vec3(1), base, 0.5)));
-	let alpha = baseAlpha;
+	let alpha = s.alpha;
 	const coat = material.layers.x;
 	if (coat > 0) {
 		const cr = clamp(material.layers.y, 0.04, 1);
 		const ca = cr * cr;
 		const fc = (0.04 + 0.96 * pow(1 - nv, 5)) * coat;
-		const lit = shadowed(frame, shadowMap, shadowMapFar, world, n) * day;
+		const lit = shadowed(frame, shadowMap, shadowMapFar, s.world, n) * day;
 		const layer = coatLobe(n, v, l, ca * ca).mul(frame.lightColor.xyz).mul(lit * coat).add(reflected(frame, environmentMap, r, cr).mul(fc));
 		direct = direct.mul(1 - fc);
 		ambient = ambient.mul(1 - fc).add(layer);
@@ -185,23 +260,23 @@ function shade(facing: Vec3, world: Vec3, uv: Vec2, up: Vec3, base: Vec3, baseAl
 		const glow = mix(material.emissive.xyz, vec3(dot(material.emissive.xyz, vec3(0.3, 0.4, 0.3))).mul(1.6).add(material.emissive.xyz.mul(0.4)), 0.22);
 		const inner = glow.mul(0.35 + 0.65 * nv * nv).mul(0.75 + 0.25 * day);
 		const through = frame.lightColor.xyz.mul(base).mul(pow(max(dot(v, l.neg()), 0), 6) * 0.6 * day);
-		const sheen = env.mul(1.4).add(frame.rim.xyz.mul(day)).mul(f0.add(vec3(1).sub(f0).mul(fres))).mul(fres);
+		const sheen = env.radiance.mul(1.4).add(frame.rim.xyz.mul(day)).mul(f0.add(vec3(1).sub(f0).mul(fres))).mul(fres);
 		emitted = mix(emitted, inner.add(through), crystal).add(sheen.mul(crystal));
 		alpha = mix(alpha, 1, fres * crystal);
 	}
 	const transmission = max(material.layers.z, 0) * (1 - metallic);
 	if (transmission > 0) {
-		const diffuse = irradiance.mul(base).mul(1 - metallic).mul(occlusion);
+		const diffuse = env.irradiance.mul(base).mul(1 - metallic).mul(env.occlusion);
 		ambient = ambient.sub(diffuse.mul(transmission));
 		direct = direct.mul(1 - transmission * 0.9);
 	}
 	let color = direct.add(ambient).add(emitted).mul(frame.exposure.x);
-	const limb = 1 - max(dot(up, v), 0);
+	const limb = 1 - max(dot(s.up, v), 0);
 	const haze = material.ground.y * limb * limb;
 	color = mix(color, material.air.xyz.mul(0.12 + 0.88 * smoothstep(-0.2, 0.35, sunUp)).mul(frame.exposure.x), haze);
-	const mist = fogAmount(frame.fog, frame.fogShape, frame.eye.xyz, world) * material.ground.w;
+	const mist = fogAmount(frame.fog, frame.fogShape, frame.eye.xyz, s.world) * material.ground.w;
 	color = mix(color, material.uvV.w > 0 ? vec3(0) : frame.fog.xyz.mul(frame.exposure.x), mist);
-	let shown = output(color, frame.exposure.y);
+	let shown = display(color, frame, material);
 	if (material.layers.w > 0) {
 		if (alpha < material.layers.w) discard();
 		alpha = 1;
@@ -265,22 +340,6 @@ function brdf(n: Vec3, v: Vec3, l: Vec3, base: Vec3, metallic: number, a2: numbe
 	const visibility = 0.5 / max(nl * sqrt(nv * nv * (1 - a2) + a2) + nv * sqrt(nl * nl * (1 - a2) + a2), 0.0001);
 	const diffuse = vec3(1).sub(fresnel).mul(1 - metallic).mul(base).div(3.14159265);
 	return diffuse.add(fresnel.mul(distribution * visibility)).mul(nl);
-}
-
-// a point or spot light at pos.xyz (pos.w: its range, 0 for no light)
-function point(n: Vec3, v: Vec3, world: Vec3, base: Vec3, metallic: number, a2: number, f0: Vec3, pos: Vec4, color: Vec4, spot: Vec4): Vec3 {
-	let result = vec3(0);
-	if (pos.w > 0) {
-		const d = pos.xyz.sub(world);
-		const dist2 = max(dot(d, d), 0.0001);
-		const dist = sqrt(dist2);
-		const q = dist / pos.w;
-		const window = clamp(1 - q * q * q * q, 0, 1);
-		let cone = 1.0;
-		if (spot.w > -1.5) cone = smoothstep(spot.w, color.w, dot(d.neg().div(dist), spot.xyz));
-		result = brdf(n, v, d.div(dist), base, metallic, a2, f0).mul(color.xyz).mul(window * window / dist2 * cone);
-	}
-	return result;
 }
 
 // the direct light's share at a point (1: lit) from the shadow maps (n: the surface's unit normal)
@@ -384,7 +443,7 @@ function softly(map: Texture2D, uv: Vec2, depth: number, widest: number, texel: 
 }
 
 // how much of the fog lies between the eye and a point (PbrShader.hx's fogAmount)
-function fogAmount(fog: Vec4, shape: Vec4, eye: Vec3, at: Vec3): number {
+export function fogAmount(fog: Vec4, shape: Vec4, eye: Vec3, at: Vec3): number {
 	const d = at.sub(eye);
 	const dist = max(length(d), 0.0001);
 	const through = max(dist - shape.x, 0);
@@ -396,9 +455,16 @@ function fogAmount(fog: Vec4, shape: Vec4, eye: Vec3, at: Vec3): number {
 }
 
 // a colour in linear light as the target takes it
-function output(c: Vec3, hdr: number): Vec3 {
+export function output(c: Vec3, hdr: number): Vec3 {
 	let result = c;
 	if (hdr < 0.5) result = encode(aces(c));
+	return result;
+}
+
+// a material's colour as the target takes it, or, not tone mapped (Material.toneMapped false), only encoded
+export function display(c: Vec3, frame: PbrFrame, material: PbrMaterial): Vec3 {
+	let result = output(c, frame.exposure.y);
+	if (material.model.y < 0.5 && frame.exposure.y < 0.5) result = encode(c);
 	return result;
 }
 
@@ -408,12 +474,12 @@ function aces(x: Vec3): Vec3 {
 }
 
 // linear to sRGB
-function encode(c: Vec3): Vec3 {
+export function encode(c: Vec3): Vec3 {
 	return pow(c, vec3(1 / 2.2));
 }
 
 // joint k's matrix from its row of the texture
-function joint(t: Texture2D, k: number, rows: number): Mat4 {
+export function joint(t: Texture2D, k: number, rows: number): Mat4 {
 	const y = (k + 0.5) / rows;
 	return mat4(vec4(texel(t, 0, y), texel(t, 1, y), texel(t, 2, y), texel(t, 3, y)), vec4(texel(t, 4, y), texel(t, 5, y), texel(t, 6, y), texel(t, 7, y)),
 		vec4(texel(t, 8, y), texel(t, 9, y), texel(t, 10, y), texel(t, 11, y)),
@@ -424,10 +490,18 @@ function texel(t: Texture2D, x: number, y: number): number {
 	return sampleLevel(t, vec2((x + 0.5) / 16, y), 0).x;
 }
 
+// an instance's uvs moved to its cell of an atlas (Sprites): the matrix's
+// last w is 1 plus the cell, its column plus 256 times its row (PbrShader.hx's instanceUv)
+export function instanceUv(uv: Vec2, w: number): Vec2 {
+	const cell = w - 1;
+	const row = floor(cell / 256);
+	return uv.add(vec2(cell - row * 256, row));
+}
+
 // a normal turned to the world by an instance's matrix (its columns): by
 // its cofactors, the inverse transpose times the determinant, with the
 // determinant's sign (PbrShader.hx's instanceNormal)
-function instanceNormal(c0: Vec3, c1: Vec3, c2: Vec3, n: Vec3): Vec3 {
+export function instanceNormal(c0: Vec3, c1: Vec3, c2: Vec3, n: Vec3): Vec3 {
 	const x = cross(c1, c2);
 	const turned = x.mul(n.x).add(cross(c2, c0).mul(n.y)).add(cross(c0, c1).mul(n.z));
 	return dot(c0, x) < 0 ? turned.neg() : turned;
@@ -445,13 +519,13 @@ export const pbr = slots({
 			pos = j0.mul(q).mul(v.weights!.x).add(j1.mul(q).mul(v.weights!.y)).add(j2.mul(q).mul(v.weights!.z)).add(j3.mul(q).mul(v.weights!.w)).xyz;
 			nr = j0.mul(n4).mul(v.weights!.x).add(j1.mul(n4).mul(v.weights!.y)).add(j2.mul(n4).mul(v.weights!.z)).add(j3.mul(n4).mul(v.weights!.w)).xyz;
 		}
-		const model = m.options.instanced ? mat4(vec4(v.m0!.xyz, 0), vec4(v.m1!.xyz, 0), vec4(v.m2!.xyz, 0), v.m3!) : p.object!.model;
+		const model = m.options.instanced ? mat4(vec4(v.m0!.xyz, 0), vec4(v.m1!.xyz, 0), vec4(v.m2!.xyz, 0), vec4(v.m3!.xyz, 1)) : p.object!.model;
 		const world = model.mul(vec4(pos, 1));
 		return {
 			clip: position(p.frame.viewProj.mul(world)),
 			world: world.xyz,
 			normal: m.options.instanced ? instanceNormal(v.m0!.xyz, v.m1!.xyz, v.m2!.xyz, nr) : p.object!.normalMatrix.mul(vec4(nr, 0)).xyz,
-			uv: v.uv,
+			uv: m.options.instanced ? instanceUv(v.uv, v.m3!.w) : v.uv,
 			tangent: m.options.normalMap ? vec4(model.mul(vec4(v.tangent!.xyz, 0)).xyz, v.tangent!.w) : vec4(0),
 			up: m.options.instanced ? v.m1!.xyz : model.mul(vec4(0, 1, 0, 0)).xyz,
 			tint: m.options.instanced ? vec3(1 + v.m0!.w, 1 + v.m1!.w, 1 + v.m2!.w) : p.object!.tint.xyz,
@@ -476,8 +550,15 @@ export const pbr = slots({
 			up: normalize(i.up),
 			baseColor: vec4(p.material.baseColor.xyz.mul(pow(texel.xyz, vec3(2.2))), p.material.baseColor.w * texel.w),
 		};
-		return shade(m.normal(s, p), s.world, uv, s.up, m.color(s, p).mul(i.tint), m.alpha(s, p), m.metalness(s, p), m.roughness(s, p), m.emissive(s, p),
-			p.frame, p.material, p.occlusionTexture, p.shadowMap, p.shadowMapFar, p.environmentMap);
+		const lit = litSurface(m.normal(s, p), s.world, uv, s.up, m.color(s, p).mul(i.tint), m.alpha(s, p), m.metalness(s, p), m.roughness(s, p), p.frame, p.material);
+		// (the sun, then each point or spot light there is: the direct slot's, summed)
+		let direct = m.direct(lit, sunLight(lit, p.frame, p.material, p.shadowMap, p.shadowMapFar), p);
+		if (p.frame.point0.w > 0) direct = direct.add(m.direct(lit, pointLight(lit, p.frame.point0, p.frame.pointColor0, p.frame.spot0), p));
+		if (p.frame.point1.w > 0) direct = direct.add(m.direct(lit, pointLight(lit, p.frame.point1, p.frame.pointColor1, p.frame.spot1), p));
+		if (p.frame.point2.w > 0) direct = direct.add(m.direct(lit, pointLight(lit, p.frame.point2, p.frame.pointColor2, p.frame.spot2), p));
+		if (p.frame.point3.w > 0) direct = direct.add(m.direct(lit, pointLight(lit, p.frame.point3, p.frame.pointColor3, p.frame.spot3), p));
+		const env = ambientAt(lit, p.frame, p.material, p.occlusionTexture, p.environmentMap);
+		return shade(lit, direct, m.indirect(lit, env, p), env, m.emissive(s, p), p.frame, p.material, p.shadowMap, p.shadowMapFar, p.environmentMap);
 	},
 	color: pbrColor,
 	alpha: pbrAlpha,
@@ -485,5 +566,7 @@ export const pbr = slots({
 	roughness: pbrRoughness,
 	metalness: pbrMetalness,
 	emissive: pbrEmissive,
+	direct: pbrDirect,
+	indirect: pbrIndirect,
 	position: pbrPosition,
 });

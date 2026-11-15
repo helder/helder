@@ -3,7 +3,7 @@
 // light, a material's fields and its constructor's defaults, a fixed step.
 // (InputMap's is examples/ts-scene's: it reaches the windows' code, which a
 // static build does not link)
-import { World, Node, Camera, Light, Material, FixedStep } from "helder/scene";
+import { World, Node, Camera, Light, LightKind, Material, FixedStep } from "helder/scene";
 import { vec3, vec4, Quat } from "helder/gfx";
 
 const world = new World("test");
@@ -32,7 +32,7 @@ const clip = camera.viewProjection(1).mul(vec4(0, 0, 0, 1));
 console.log((clip.z / clip.w).toFixed(4), clip.x, clip.y);
 
 const lamp = Light.attach(world.node("lamp"), Light.pointLight(vec3(1, 0.8, 0.6), 6, 8));
-console.log(lamp.point, lamp.range, lamp.color.y, Light.of(arm) === null);
+console.log(lamp.kind === LightKind.Point, lamp.range, lamp.color.y, Light.of(arm) === null);
 
 const m = new Material("orb", vec4(0.35, 0.3, 0.5, 1), 0, 0.4);
 m.emissive = vec3(0.5, 0, 0);

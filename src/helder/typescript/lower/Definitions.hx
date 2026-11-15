@@ -169,6 +169,11 @@ class Definitions {
 			var source = a.slotsSource(e);
 			if (source == null) a.error("material takes a slot object made from helder/scene's pbr (pbr, pbr.with({...})), a module-level one or written there", e);
 			var def = SlotsDef.read(source, a);
+			// (a slot object without normalMap, as shading's unlit: no normal-mapped variants)
+			if (!Lambda.foreach(kinds[k], o -> def.options.exists(o))) {
+				variants.push("null");
+				continue;
+			}
 			var given = new KNode(KObject([for (o in kinds[k]) {name: o, node: new KNode(KBool(true), n)}]), n);
 			var out = new ShaderDefinition().variant(def, given, a, n);
 			if (out.uniforms != null) a.error("material: uniform(...) is not read by a material's slots (a block of the material's own instead: a slot's parameter)", e);
@@ -474,7 +479,9 @@ class TsAdapter implements ShaderAdapter {
 	public function useSlots(use:SlotsUse)
 		slots = use;
 
-	function lower(key:String, name:String, f:Node, kind:LowerKind, ?input:SType):SFunction {
+	// (inputs: a slot's inputs' types before its object of parameters, as the
+	// slot object's type gives them: direct(s, l, p)'s two; null: one, untyped)
+	function lower(key:String, name:String, f:Node, kind:LowerKind, ?inputs:Array<Null<SType>>):SFunction {
 		var g = functions.get(key);
 		if (g != null) return g;
 		if (active.contains(key)) error("recursion: " + active.slice(active.indexOf(key)).concat([key]).map(display).join(" -> ") + " (shader functions cannot recurse)", f);
@@ -497,12 +504,14 @@ class TsAdapter implements ShaderAdapter {
 			if (ps[2].type() != null) selfType = ps[2].type();
 			count = 2;
 		}
-		if (stage && count > 2) error('a ${kind == Slot ? "slot" : "stage"} takes its input and one object of parameters ({frame: Frame, image: Texture2D}), not ${count - 1}', f);
+		var n = kind == Slot && inputs != null ? inputs.length : 1;
+		if (stage && count > n + 1)
+			error(n > 1 ? 'a slot takes its $n inputs and one object of parameters ({frame: Frame, image: Texture2D}), not ${count - n}' : 'a ${kind == Slot ? "slot" : "stage"} takes its input and one object of parameters ({frame: Frame, image: Texture2D}), not ${count - 1}', f);
 		for (i in 0...count) {
 			var p = ps[i];
 			if (p.name().kind != KindIdentifier) error("a destructuring is not supported in a shader", p);
-			if (!stage || i == 0) {
-				var t = p.type() != null ? typeOf(p.type()) : kind == Slot && i == 0 && input != null ? input : kind == Stage && i == 0 && varyings != null
+			if (!stage || i < n) {
+				var t = p.type() != null ? typeOf(p.type()) : kind == Slot && inputs != null && inputs[i] != null ? inputs[i] : kind == Stage && i == 0 && varyings != null
 					&& f.kind != KindFunctionDeclaration ? varyings : error('the parameter ${p.name().text} needs its type', p);
 				params.push(declare(p.name().text, t, p, vs, true));
 				continue;
@@ -1266,7 +1275,12 @@ class TsAdapter implements ShaderAdapter {
 	function slotCall(name:String, actual:Array<Node>, n:Node, out:Array<SStmt>, want:Null<SType>):SExpr {
 		var node = slots.slots.get(name);
 		if (node == null) error('the slot object has no slot $name', n);
-		if (actual.length == 0 || actual.length > 2) error('a slot is called with its input and the stage\'s parameters: $slotsSelf.$name(s, p)', n);
+		// (its inputs' types, when not written: what the slot object's type
+		// says; as many as it gives before the parameters: direct(s, l, p)'s two)
+		var inputs = slotInputs(name, n);
+		var count = inputs.length;
+		if (actual.length < count || actual.length > count + 1)
+			error(count > 1 ? 'the slot $name is called with its $count inputs and the stage\'s parameters' : 'a slot is called with its input and the stage\'s parameters: $slotsSelf.$name(s, p)', n);
 		var g = slotFunctions.get(name);
 		if (g == null) {
 			var f:Node = switch node.value {
@@ -1279,33 +1293,35 @@ class TsAdapter implements ShaderAdapter {
 					decl;
 				case _: error('the slot $name is a function, not ${node.describe()}', node.pos);
 			}
-			// (its input's type, when not written: what the slot object's type says)
-			var input = slotInput(name, n);
 			// (named as Haxe's: a module-level function by its own name, an override by its slot's)
-			g = lower(f.file.path + ":" + f.pos, f.kind == KindFunctionDeclaration ? f.name().text : name, f, Slot, input);
+			g = lower(f.file.path + ":" + f.pos, f.kind == KindFunctionDeclaration ? f.name().text : name, f, Slot, inputs);
 			slotFunctions.set(name, g);
 		}
-		if (g.params.length == 0) error('the slot $name takes no input', n);
-		var xs = [coerce(expr(actual[0], out, g.params[0].type), g.params[0].type, actual[0])];
+		if (g.params.length < count) error(count > 1 ? 'the slot $name takes fewer than its $count inputs' : 'the slot $name takes no input', n);
+		var xs = [for (i in 0...count) coerce(expr(actual[i], out, g.params[i].type), g.params[i].type, actual[i])];
 		for (i in 0...g.fields.length)
-			xs.push(local(stageParam(g.fields[i], g.params[i + 1].type, n)));
+			xs.push(local(stageParam(g.fields[i], g.params[i + count].type, n)));
 		if (want != null && !Names.same(g.ret, want)) error('the slot $name returns a ${Names.typeName(g.ret)}, where a ${Names.typeName(want)} is needed', n);
 		return {e: ECall(g, xs), t: g.ret};
 	}
 
-	// the type of a slot's input the slot object's type gives (the stage's third parameter's type: {color: (s: Surface, p: Params) => Vec3, ...})
+	// the types of a slot's inputs the slot object's type gives (the stage's
+	// third parameter's type: {color: (s: Surface, p: Params) => Vec3, ...}):
+	// all but its function type's last parameter, the slot's parameters; one,
+	// of a type unknown, without it
 	var selfType:Null<Node>;
 
-	function slotInput(name:String, at:Node):Null<SType> {
-		if (selfType == null) return null;
+	function slotInputs(name:String, at:Node):Array<Null<SType>> {
+		if (selfType == null) return [null];
 		var members = objectMembers(selfType);
-		if (members == null) return null;
+		if (members == null) return [null];
 		for (m in members)
 			if (m.name() != null && m.name().text == name && m.type() != null && m.type().kind == KindFunctionType) {
 				var ps = m.type().parameters();
-				if (ps.length > 0 && ps[0].type() != null) return typeOf(ps[0].type());
+				var n = ps.length > 1 ? ps.length - 1 : 1;
+				return [for (i in 0...n) i < ps.length && ps[i].type() != null ? typeOf(ps[i].type()) : null];
 			}
-		return null;
+		return [null];
 	}
 
 	// the stage's parameter of a name (a slot's: made one when the stage has none of it)

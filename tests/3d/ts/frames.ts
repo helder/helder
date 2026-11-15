@@ -4,18 +4,25 @@
 //   glow     examples/glow's scene in TypeScript: Haxe's frame, glow.png
 //   tsscene  the Showcase (the sample model, a point light, glowing
 //            orbs): tsscene.png, which Scenes.hx's Haxe twin draws too
+//   primitives, toon  Scenes.hx's phase 1 frames in TypeScript (twins.ts):
+//            every Geometry generator; toon shading: their goldens
 //
 //   frames <scene> <golden.png> <out.png> [--bless]
 import { FrameCheck } from "./frames/frame-check";
 import { loaded, model } from "helder/asset";
 import { Glow, Showcase } from "../../../examples/ts-scene/scene";
+import { primitives, toon } from "./twins";
 
 // (Scenes.TIME: the glow's phase)
 const TIME = 2.0;
 
 async function main() {
 	const name = FrameCheck.args()[0];
-	if (name === "glow") {
+	if (name === "primitives") {
+		FrameCheck.run(device => primitives(device));
+	} else if (name === "toon") {
+		FrameCheck.run(device => toon(device));
+	} else if (name === "glow") {
 		FrameCheck.run(device => {
 			const glow = new Glow(device);
 			glow.at(TIME);

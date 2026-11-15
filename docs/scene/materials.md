@@ -19,8 +19,8 @@ drawn in one instanced call (`renderer.instancing`, on by default:
 [Instancing](instancing.md)). Programs draw at injection points:
 `renderer.inject(BeforeOpaque | AfterOpaque | AfterPass, (enc, frame) -> ...)`;
 features reach the renderer through `RenderFeature` (`renderer.use(...)`),
-so unused ones are not linked. `Shapes.box`, `sphere`, `capsule` and
-`plane` make meshes in code.
+so unused ones are not linked. Shapes are made in code with `Geometry`
+and `Shapes` ([Geometry](geometry.md)).
 
 ## The standard material
 
@@ -54,13 +54,76 @@ instanced})`: `PbrShader`, `PbrNormalShader`, `PbrSkinnedShader`,
 `PbrInstancedShader`, `PbrInstancedNormalShader`; the shadow map's casters
 are `shadowCaster`'s) and whose slots a material replaces: `color`,
 `alpha`, `normal`, `roughness`, `metalness` and `emissive` (of the
-fragment's `PbrSurface`), `position` (of the vertex's `PbrPoint`).
-`MaterialShader.material(pbr.with({...}))` compiles them, at build time,
-into a shader of the material's own (`material.shader`, every variant the
-renderer draws with); a slot's parameters beyond the standard ones are
+fragment's `PbrSurface`), `position` (of the vertex's `PbrPoint`), and
+how light reaches the surface: `direct(s, l, p)`, the light one source
+adds (the sun's, each point or spot light's; `l` a `LightSample`: its
+`color` times its attenuation, its `shadow`, the two multiplied as
+`radiance`, its `direction`, `ndotl`), and `indirect(s, env, p)`, the
+ambient and the reflections (`env` an `IndirectLight`: `irradiance` along
+the normal, `radiance` along the reflection, `occlusion`), each of the
+surface with the other slots' results (`s` a `LitSurface`: `albedo`,
+`alpha`, `metalness`, `roughness`, `normal`, `view`, `world`, `uv`, `up`).
+A slot takes as many inputs as the slot object's type gives it before its
+parameters. `MaterialShader.material(pbr.with({...}))` compiles them, at
+build time, into a shader of the material's own (`material.shader`, every
+variant the renderer draws with, for the GPU only: no CPU twin of its
+stages is linked); a slot's parameters beyond the standard ones are
 blocks of its own (`material.uniforms`, written by its `params`). Here the
 emissive and colour slots are replaced:
 
 <Example id="glow"/>
+
+## Shading models
+
+A shading model is a material's shader, made by `Material`'s factories,
+three.js's materials by name:
+
+```haxe
+var grass = Material.toon({color: new Vec4(0.4, 0.8, 0.3, 1), steps: 3, shade: new Vec3(0.35, 0.4, 0.6)});
+var sign  = Material.unlit({color: new Vec4(1, 0.9, 0.2, 1), texture: signImage});
+var clay  = Material.matcap({matcap: clayImage});   // the normal in view space reads the sphere's picture
+var debug = Material.normals();                     // MeshNormalMaterial; Material.depth(near, far): MeshDepthMaterial
+var lam   = Material.lambert({color: c});           // 1 dot a light, no GGX: the cheap lit one for phones
+var shiny = Material.phong({color: c, shininess: 60});
+var std   = Material.standard({color: c, roughness: 0.4});   // pbr, as new Material(...)
+```
+
+| Factory | three.js | How | Per pixel, per light |
+|---|---|---|---|
+| `unlit` | `MeshBasicMaterial` | the colour times its texture, fogged | none |
+| `matcap` | `MeshMatcapMaterial` | a lit sphere's picture (`matcap`, kept as the `emissiveTexture`) by the normal as the eye sees it | none (1 texture read) |
+| `normals` | `MeshNormalMaterial` | the normal in view space as a colour | none |
+| `depth(near, far)` | `MeshDepthMaterial` | the depth along the view, white at near, black at far (linear) | none |
+| `lambert` | `MeshLambertMaterial` | each light's diffuse, the ambient's diffuse, no highlight | 1 dot |
+| `toon` | `MeshToonMaterial` | each light's n.l times its shadow in `steps` bands, the side away from every light the albedo times `shade` | 1 dot and a step |
+| `phong` | `MeshPhongMaterial` | Lambert's diffuse and a Blinn-Phong highlight (three's `shininess`, kept as the roughness of the same lobe), pbr's reflections | a pow |
+| `standard` | `MeshStandardMaterial` | pbr: GGX, Smith and Schlick | GGX, Smith and Schlick |
+
+The lit ones are `pbr` with `direct` and `indirect` replaced
+(`helder.scene.render.shading`: `lambert`, `toon`, `phong`), so they keep
+the shadows, the point and spot lights, the fog, normal maps, instancing
+and skinning; toon's bands are per light, its shadow banded with it. The
+unlit ones are a slot object of their own, `unlit` (its slots `color`,
+`alpha`, `position`; its variants plain, skinned and instanced, no normal
+map), which sums no light and reads no shadow map; `matcap`, `normals` and
+`depth` are `unlit.with({color: ...})`. A material of one's own on any of
+them is `MaterialShader.material(toon.with({...}))`. `material.toneMapped`
+(three's) false shows a colour as it is, only encoded for an 8-bit target
+(`normals` and `depth` by default).
+
+Each factory references its own shader alone: a program that never calls
+`Material.toon` links none of toon's. Unused, they cost the renderer 39 KB
+natively and as wasm32 (its shader's text, the slots' structure); a lit
+model, when used, costs its five variants' shader text, about 230 KB
+natively (HLSL) and 300 KB as wasm32 (GLSL and WGSL)
+(`tests/3d/size/sizes.sh`). Each row here is a model, each column a shape:
+
+<Example id="primitives"/>
+
+Tests: `src/helder/scene/render/shading/Shading.test.hx` (the slots on the
+CPU), the 3d lane's `shading` (the seven in a row) and `toon` (soft
+shadows and a point light; its TypeScript twin the same frame) frames,
+`tests/typescript/definitions/shading.ts` (src/helder/scene/shading.ts the
+same text as these).
 
 The same in TypeScript: [TypeScript](typescript.md).

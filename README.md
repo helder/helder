@@ -130,7 +130,7 @@ All under `src/helder`, Haxe package `helder.<name>`:
 | `view` | signals and JSX-like markup, compiled to direct calls on the renderer each subtree's tag chooses |
 | `ui` | flexbox layout, events, focus and accessibility, actions and keymaps, menus, drawn on gfx; the platform's menus and text editors where asked (helder.ui.platform) |
 | `web` | `view` on the web: DOM and static renderers, hydration, islands |
-| `scene` | 3D on gfx: glTF, a PBR renderer, animation, input actions (docs/scene: its docs, each page's examples playable on the site) |
+| `scene` | 3D on gfx: glTF, a PBR renderer and its shading models (toon, Lambert, Phong, unlit, matcap), shapes made in code (three.js's geometries, curves), sprites, animation, input actions (docs/scene: its docs, each page's examples playable on the site) |
 | `asset` | files by path: images, fonts, models, sounds, bytes; checked when compiling, bundled by use (the executable, the APK, the app, beside the page), loaded by a coroutine, reloaded in place under `helder dev` |
 | `physics` | a small rigid-body core for `scene` |
 | `sprite` | 2D sprites on gfx: TexturePacker atlases, a batcher of textured quads (moved, scaled, turned, faded, added), `<Sprites>` in ui's layout |
@@ -1085,10 +1085,11 @@ fix.
   src/helder/scene/DESIGN-3D.md, with each area's comparison, the API in
   Haxe and markup, the mobile budgets and their frames). In phases,
   ordered by value to games like Little Skies against cost:
-  1. shapes (`Geometry`: cylinder, cone, torus, lathe, tube, `Curve3`),
-     shading models as slots of pbr (`direct` and `indirect`: lambert,
-     toon, phong; unlit, matcap, normals, depth), `Sprites`, the
-     hemisphere light;
+  1. done: shapes (`Geometry`: three.js's generators, flat or smooth,
+     `Curve3`), shading models as slots of pbr (`direct` and `indirect`:
+     lambert, toon, phong; unlit, matcap, normals, depth; `Material`'s
+     factories), `Sprites`, the hemisphere light, their markup tags
+     (src/helder/scene/README.md; examples/primitives);
   2. a single-sampled depth and normal prepass (`ViewBuffers`) and the
      effects on it, merged into one composite: depth of field (tilt-shift
      by depth), GTAO, outlines and selection, FXAA, LUTs;

@@ -1,16 +1,22 @@
 package helder.scene.render;
 
 import haxe.io.Bytes;
+import helder.gfx.shader.Mat4;
+import helder.gfx.shader.Vec2;
+import helder.gfx.shader.Vec3;
 import helder.scene.math.Aabb;
+import helder.scene.math.MathTools;
+import helder.scene.math.Quat;
 
 // A primitive's vertices and indices in the renderer's layout, made from
-// arrays (Mesh.add at run time, the asset step's packer at build time:
-// one implementation, free of the GPU so that it runs on Eval): 32 bytes a
-// vertex (position, normal, uv), 64 with joints and weights (skinned);
-// indices of 16 bits where the vertices allow, else 32; tangents (x, y, z
-// and the bitangent's sign, 16 bytes a vertex) in a buffer of their own,
-// for normal maps (NormalMaps): drawn without them, the vertices are as
-// any other's.
+// arrays (Mesh.add at run time, the asset step's packer at build time,
+// Geometry's generators: one implementation, free of the GPU so that it
+// runs on Eval): 32 bytes a vertex (position, normal, uv), 64 with joints
+// and weights (skinned); indices of 16 bits where the vertices allow, else
+// 32; tangents (x, y, z and the bitangent's sign, 16 bytes a vertex) in a
+// buffer of their own, for normal maps (NormalMaps): drawn without them,
+// the vertices are as any other's. An immutable value: read with
+// position(i), normal(i), uv(i), index(k); transformed makes another.
 class VertexData {
 	public final vertices:Bytes;
 	public final indices:Bytes;
@@ -29,6 +35,96 @@ class VertexData {
 		this.skinned = skinned;
 		this.bounds = bounds;
 	}
+
+	// the vertices there are (count is the indices')
+	public var vertexCount(get, never):Int;
+
+	inline function get_vertexCount():Int
+		return Std.int(vertices.length / (skinned ? 64 : 32));
+
+	// vertex i's position, normal (unit) and uvs
+	public function position(i:Int):Vec3 {
+		var o = i * (skinned ? 64 : 32);
+		return new Vec3(vertices.getFloat(o), vertices.getFloat(o + 4), vertices.getFloat(o + 8));
+	}
+
+	public function normal(i:Int):Vec3 {
+		var o = i * (skinned ? 64 : 32);
+		return new Vec3(vertices.getFloat(o + 12), vertices.getFloat(o + 16), vertices.getFloat(o + 20));
+	}
+
+	public function uv(i:Int):Vec2 {
+		var o = i * (skinned ? 64 : 32);
+		return new Vec2(vertices.getFloat(o + 24), vertices.getFloat(o + 28));
+	}
+
+	// the k-th index (a triangle is 3k, 3k + 1, 3k + 2: counter-clockwise from its front)
+	public inline function index(k:Int):Int
+		return wide ? indices.getInt32(4 * k) : indices.getUInt16(2 * k);
+
+	// the same moved by an affine matrix (its normals by the inverse
+	// transpose, unit again; its tangents turned); three's applyMatrix4
+	public function transformed(m:Mat4):VertexData {
+		var stride = skinned ? 64 : 32, v = Bytes.alloc(vertices.length);
+		v.blit(0, vertices, 0, vertices.length);
+		var nm = MathTools.normalMatrix(m);
+		var lo = new Vec3(Math.POSITIVE_INFINITY, Math.POSITIVE_INFINITY, Math.POSITIVE_INFINITY);
+		var hi = new Vec3(Math.NEGATIVE_INFINITY, Math.NEGATIVE_INFINITY, Math.NEGATIVE_INFINITY);
+		for (i in 0...vertexCount) {
+			var o = i * stride;
+			var p = MathTools.transformPoint(m, position(i));
+			var n = MathTools.transformDir(nm, normal(i));
+			var l = Math.sqrt(n.x * n.x + n.y * n.y + n.z * n.z);
+			if (l > 0) n = n / l;
+			v.setFloat(o, p.x);
+			v.setFloat(o + 4, p.y);
+			v.setFloat(o + 8, p.z);
+			v.setFloat(o + 12, n.x);
+			v.setFloat(o + 16, n.y);
+			v.setFloat(o + 20, n.z);
+			lo = new Vec3(Math.min(lo.x, p.x), Math.min(lo.y, p.y), Math.min(lo.z, p.z));
+			hi = new Vec3(Math.max(hi.x, p.x), Math.max(hi.y, p.y), Math.max(hi.z, p.z));
+		}
+		var t:Null<Bytes> = null;
+		if (tangents != null) {
+			t = Bytes.alloc(tangents.length);
+			for (i in 0...vertexCount) {
+				var d = MathTools.transformDir(m, new Vec3(tangents.getFloat(16 * i), tangents.getFloat(16 * i + 4), tangents.getFloat(16 * i + 8)));
+				var l = Math.sqrt(d.x * d.x + d.y * d.y + d.z * d.z);
+				if (l > 0) d = d / l;
+				t.setFloat(16 * i, d.x);
+				t.setFloat(16 * i + 4, d.y);
+				t.setFloat(16 * i + 8, d.z);
+				t.setFloat(16 * i + 12, tangents.getFloat(16 * i + 12) * (MathTools.determinant(m) < 0 ? -1 : 1));
+			}
+		}
+		// (a mirroring matrix turns the triangles' winding: swapped back)
+		var ib = indices;
+		if (MathTools.determinant(m) < 0) {
+			ib = Bytes.alloc(indices.length);
+			ib.blit(0, indices, 0, indices.length);
+			var k = 0;
+			while (k + 2 < count) {
+				var a = index(k + 1), b = index(k + 2);
+				if (wide) {
+					ib.setInt32(4 * (k + 1), b);
+					ib.setInt32(4 * (k + 2), a);
+				} else {
+					ib.setUInt16(2 * (k + 1), b);
+					ib.setUInt16(2 * (k + 2), a);
+				}
+				k += 3;
+			}
+		}
+		return new VertexData(v, ib, wide, count, skinned, vertexCount == 0 ? Aabb.empty() : new Aabb(lo, hi), t);
+	}
+
+	// turned by Euler angles (radians: x, then y, then z, as Quat.fromEuler)
+	public function rotated(x:Float, y:Float, z:Float):VertexData
+		return transformed(Quat.fromEuler(x, y, z).toMat4());
+
+	public function translated(x:Float, y:Float, z:Float):VertexData
+		return transformed(Mat4.translation(x, y, z));
 
 	// normals null: computed from the triangles (smooth where vertices are
 	// shared); indices null: 0, 1, 2, ...

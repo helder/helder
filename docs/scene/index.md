@@ -40,9 +40,12 @@ are the CPU's types too, so what the CPU computes is what a shader reads.
 
 ## Tests
 
-`tests/3d/SceneTest.hx`, `tests/3d/GltfTest.hx` and the frames of
-`tests/3d/Scenes.hx` against `tests/3d/<scene>.png` (`bun run test 3d`,
-natively; `bun run test 3d-web`, WebGPU and WebGL2 in Chromium). The
+`tests/3d/SceneTest.hx`, `tests/3d/GltfTest.hx`, the `*.test.hx` beside
+the sources (Geometry, Curve3, Sprites, the shading models, Material,
+InstancedMesh: `helder test`, natively and as wasm32-wasi) and the frames
+of `tests/3d/Scenes.hx` against `tests/3d/<scene>.png` (`bun run test 3d`,
+natively, and some from TypeScript too: tests/3d/ts; `bun run test
+3d-web`, WebGPU and WebGL2 in Chromium). The
 examples on these pages are built by the examples lane (`bun run test
 examples`).
 

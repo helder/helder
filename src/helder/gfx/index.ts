@@ -1851,11 +1851,17 @@ type InputOf<F> = F extends (i: infer I, ...rest: any[]) => any ? I : never;
 type ParamsOfStage<F> = F extends (i: any, p: infer P, ...rest: any[]) => any ? P : {};
 // (an override's own parameters join the variants': X, their intersection)
 type Intersect<U> = (U extends any ? (x: U) => void : never) extends (x: infer I) => void ? I : never;
-type SlotParams<O> = Intersect<{[K in keyof O]-?: O[K] extends (s: any, p: infer P) => any ? P : {}}[keyof O]>;
+// (an override's own parameters: its argument after the inputs, as many as
+// the slot's default takes before its parameters: direct(s, l, p)'s third)
+type ParamsIndex<B extends any[]> = B extends [...infer I, any] ? I["length"] : 1;
+type OwnParams<A extends any[], N> = N extends 1 ? (A extends [any, infer P, ...any[]] ? P : {}) : N extends 2 ? (A extends [any, any, infer P, ...any[]] ? P : {})
+	: N extends 3 ? (A extends [any, any, any, infer P, ...any[]] ? P : {}) : {};
+type SlotParams<O, D> = Intersect<{[K in keyof O]-?: O[K] extends (...a: infer A) => any
+	? (K extends keyof D ? (D[K] extends (...b: infer B) => any ? OwnParams<A, ParamsIndex<B>> : {}) : {}) : {}}[keyof O]>;
 export type SlotsDef = {options: object, vertex: (v: any, p: any, m: any) => any, fragment: (i: any, p: any, m: any) => Vec4};
 export type Slots<D extends SlotsDef, X = {}> = D & {
 	variant(options?: Partial<D["options"]>): Shader<InputOf<D["vertex"]>, Stage<D["vertex"]>, Stage<D["fragment"]>, ParamsOfStage<D["vertex"]> & ParamsOfStage<D["fragment"]> & X>,
-	with<O extends {[K in Exclude<keyof D, "vertex" | "fragment" | "options">]?: (s: any, p: any) => any}>(slots: O): Slots<D, X & SlotParams<O>>,
+	with<O extends {[K in Exclude<keyof D, "vertex" | "fragment" | "options">]?: (...args: any[]) => any}>(slots: O): Slots<D, X & SlotParams<O, D>>,
 };
 
 export function slots<D extends SlotsDef>(def: D): Slots<D> {

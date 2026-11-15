@@ -43,10 +43,16 @@ import type { World } from "helder/scene/runtime";
 
 export * from "helder/scene/runtime";
 export {
-	pbr, pbrColor, pbrAlpha, pbrNormal, pbrRoughness, pbrMetalness, pbrEmissive, pbrPosition, type Pbr, type PbrVertex, type PbrVaryings,
+	pbr, pbrColor, pbrAlpha, pbrNormal, pbrRoughness, pbrMetalness, pbrEmissive, pbrPosition, pbrDirect, pbrIndirect, reflectance, litSurface, daylight,
+	sunLight, pointLight, ambientAt, type Pbr, type PbrVertex, type PbrVaryings, type LitSurface, type LightSample, type IndirectLight,
 	type PbrFrame, type PbrObject, type PbrMaterial, type PbrSkinInfo, type PbrVertexParams, type PbrFragmentParams, type PbrOptions,
 	type PbrSurface, type PbrPoint,
 } from "./pbr";
+// the shading models' slot objects (./shading.ts, helder.scene.render.shading's)
+export {
+	lambert, lambertDirect, lambertIndirect, toon, toonDirect, toonIndirect, ramp, phong, phongDirect, phongShininess, unlit, unlitShade, toView,
+	matcap, matcapColor, normals, normalsColor, depth, depthColor, type Unlit, type UnlitOptions,
+} from "./shading";
 
 // a material's own shader (material(...)): the renderer's MaterialShader, the
 // writers of its own blocks (and its textures' slots), and apply(m, blocks),
@@ -54,8 +60,8 @@ export {
 export type MaterialOf<P> = {
 	readonly shader: MaterialShader,
 	readonly params: Params<P>,
-	// (each variant's code and layout, as MaterialShader's: plain, normal mapped, skinned, instanced, instanced and normal mapped)
-	readonly variants: readonly MaterialVariant[],
+	// (each variant's code and layout, as MaterialShader's: plain, normal mapped, skinned, instanced, instanced and normal mapped; null: a slot object without normalMap's)
+	readonly variants: readonly (MaterialVariant | null)[],
 	// its blocks: their parameters' names, their slots in each variant
 	readonly blocks: readonly {name: string, bindings: number[]}[],
 	apply(m: Material, blocks: {readonly [K in keyof P]?: Uint8Array}): void,
@@ -76,7 +82,7 @@ export function material<D extends SlotsDef, X>(def: Slots<D, X>, generated?: st
 	return {
 		shader,
 		params: params as any,
-		variants: g.variants.map((v: any) => ({vertexCode: v.vertexCode, fragmentCode: v.fragmentCode, layout: v.layout, uniforms: v.uniforms, textures: v.textures})),
+		variants: g.variants.map((v: any) => v === null ? null : ({vertexCode: v.vertexCode, fragmentCode: v.fragmentCode, layout: v.layout, uniforms: v.uniforms, textures: v.textures})),
 		blocks: g.blocks,
 		apply(m: Material, blocks: {[name: string]: Uint8Array | undefined}) {
 			m.shader = shader;
@@ -99,6 +105,18 @@ export type EventKind = number;
 // Metal, D3D11 and GL ES 3.1 have, WebGL2 not)
 export const Feature = { Compute: 0, StorageTextures: 1, Indirect: 2 } as const;
 export type Feature = number;
+
+// a Light's kind (Light.kind) by name
+export const LightKind = {Directional: 0, Point: 1, Spot: 2, Hemisphere: 3} as const;
+export type LightKind = number;
+
+// how Sprites face the camera (Sprites.mode, SpritesOptions.mode) by name
+export const SpriteMode = {Spherical: 0, Axis: 1, Fixed: 2} as const;
+export type SpriteMode = number;
+
+// helder.gfx's Blend (Material.blending, MaterialOptions.blending) by name
+export const Blend = {Opaque: 0, Alpha: 1, Additive: 2, Premultiplied: 3, Multiply: 4} as const;
+export type Blend = number;
 
 export class Node {
 	constructor(readonly id: number) {}

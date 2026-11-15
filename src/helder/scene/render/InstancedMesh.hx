@@ -189,6 +189,11 @@ class InstancedMesh {
 			data.setFloat(o + k * 4, k == 0 || k == 5 || k == 10 || k == 15 ? 1 : 0);
 	}
 
+	// what a set does before it is uploaded for a camera's view-projection
+	// (the renderer's, each frame it is shown: Sprites turns its quads to
+	// the camera there); nothing by default
+	public function prepare(viewProj:Mat4) {}
+
 	// the changed instances to the GPU (the renderer's, before its pass; a
 	// program drawing them with its own pipeline calls it too): count of
 	// them, the buffers made or grown to the capacity

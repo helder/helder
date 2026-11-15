@@ -40,7 +40,7 @@ final shadowCaster = slots({
 			var q = vec4(v.pos, 1);
 			pos = ((j0 * q) * v.weights.x + (j1 * q) * v.weights.y + (j2 * q) * v.weights.z + (j3 * q) * v.weights.w).xyz;
 		}
-		var clip = m.options.instanced ? p.caster.mvp * (mat4(vec4(v.m0.xyz, 0), vec4(v.m1.xyz, 0), vec4(v.m2.xyz, 0), v.m3) * vec4(pos, 1)) : p.caster.mvp * vec4(pos, 1);
+		var clip = m.options.instanced ? p.caster.mvp * (mat4(vec4(v.m0.xyz, 0), vec4(v.m1.xyz, 0), vec4(v.m2.xyz, 0), vec4(v.m3.xyz, 1)) * vec4(pos, 1)) : p.caster.mvp * vec4(pos, 1);
 		return {clip: position(clip), depth: clip.z / clip.w};
 	},
 	fragment: function(i:ShadowVaryings, p:{}, m:Shadow):Vec4

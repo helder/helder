@@ -153,7 +153,9 @@ class Lower implements ShaderAdapter {
 		return lower(key, cf.name, tf, cf.pos);
 	}
 
-	function lower(key:String, name:String, tf:TFunc, pos:Position, kind = Plain):SFunction {
+	// (inputs: a slot's inputs before its object of parameters, as many as
+	// the slot object's type gives it: direct(s, l, p)'s two; a stage's one)
+	function lower(key:String, name:String, tf:TFunc, pos:Position, kind = Plain, inputs = 1):SFunction {
 		active.push(key);
 		var saved = {fn: fn, locals: locals, names: localNames, object: paramsObject, self: slotsSelf, kind: this.kind};
 		this.kind = kind;
@@ -170,11 +172,13 @@ class Lower implements ShaderAdapter {
 			slotsSelf = tf.args[2].v.id;
 			count = 2;
 		}
-		if (stage && count > 2)
-			error('a ${kind == Slot ? "slot" : "stage"} takes its input and one object of parameters ({frame: Frame, image: Texture2D}), not ${count - 1}', pos);
+		if (kind != Slot) inputs = 1;
+		if (stage && count > inputs + 1)
+			error(inputs > 1 ? 'a slot takes its $inputs inputs and one object of parameters ({frame: Frame, image: Texture2D}), not ${count - inputs}' : 'a ${kind == Slot ? "slot" : "stage"} takes its input and one object of parameters ({frame: Frame, image: Texture2D}), not ${count - 1}',
+				pos);
 		for (i in 0...count) {
 			var v = tf.args[i].v;
-			if (!stage || i == 0) {
+			if (!stage || i < inputs) {
 				params.push(declare(v, pos, vs));
 				continue;
 			}
@@ -1046,13 +1050,20 @@ class Lower implements ShaderAdapter {
 	}
 
 	// m.<slot>(s, p): the slot's function (the override's, else the
-	// default's), its input s; its own parameters the stage's of the same
-	// names, the others joining the stage's
+	// default's), its input s (or inputs, as many as the slot object's type
+	// gives it before its parameters: m.direct(s, l, p)'s two); its own
+	// parameters the stage's of the same names, the others joining the stage's
 	function slotCall(field:ClassField, args:Array<TypedExpr>, e:TypedExpr, out:Array<SStmt>):SExpr {
 		var name = field.name;
 		var node = slots.slots.get(name);
 		if (node == null) error('the slot object has no slot $name', e.pos);
-		if (args.length == 0 || args.length > 2) error('a slot is called with its input and the stage\'s parameters: m.$name(s, p)', e.pos);
+		var declared = switch field.type.follow() {
+			case TFun(as, _): as;
+			case _: [];
+		}
+		var inputs = declared.length > 1 ? declared.length - 1 : 1;
+		if (args.length < inputs || args.length > inputs + 1)
+			error(inputs > 1 ? 'the slot $name is called with its $inputs inputs and the stage\'s parameters' : 'a slot is called with its input and the stage\'s parameters: m.$name(s, p)', e.pos);
 		var g = slotFunctions.get(name);
 		if (g == null) {
 			g = switch node.value {
@@ -1062,19 +1073,15 @@ class Lower implements ShaderAdapter {
 						case EFunction(_, f): f;
 						case _: throw "slot";
 					}
-					// (its input's type, when not written: what the stage passes)
-					if (f.args.length > 0 && f.args[0].type == null) {
-						f = Reflect.copy(f);
-						f.args = [Reflect.copy(f.args[0])].concat(f.args.slice(1));
-						f.args[0].type = Context.toComplexType(switch field.type.follow() {
-							case TFun(as, _) if (as.length > 0): as[0].t;
-							case _: args[0].t;
-						});
-					}
-					if (f.args.length > 1 && f.args[1].type == null) error('the slot $name: its parameters\' type is written ({time: Float})', source.pos);
+					// (its inputs' types, when not written: what the stage passes)
+					f = Reflect.copy(f);
+					f.args = [for (a in f.args) Reflect.copy(a)];
+					for (i in 0...(f.args.length < inputs ? f.args.length : inputs))
+						if (f.args[i].type == null) f.args[i].type = Context.toComplexType(i < declared.length ? declared[i].t : args[i].t);
+					if (f.args.length > inputs && f.args[inputs].type == null) error('the slot $name: its parameters\' type is written ({time: Float})', source.pos);
 					var te = typeIn(source, {expr: EFunction(FAnonymous, f), pos: source.pos});
 					switch strip(te).expr {
-						case TFunction(tf): lower("<slot>." + name, name, tf, source.pos, Slot);
+						case TFunction(tf): lower("<slot>." + name, name, tf, source.pos, Slot, inputs);
 						case _: throw "slot";
 					}
 				case KRef(ref):
@@ -1083,17 +1090,17 @@ class Lower implements ShaderAdapter {
 					var te = Sources.typed(r.c, r.cf);
 					if (te == null) error('${display(r.c, r.cf)} has no source a shader can compile (a static or module-level function written in Haxe)', node.pos);
 					switch strip(te).expr {
-						case TFunction(tf): lower(path(r.c) + "." + r.cf.name, r.cf.name, tf, r.cf.pos, Slot);
+						case TFunction(tf): lower(path(r.c) + "." + r.cf.name, r.cf.name, tf, r.cf.pos, Slot, inputs);
 						case _: error('the slot $name is not a function', node.pos);
 					}
 				case _: error('the slot $name is a function, not ${node.describe()}', node.pos);
 			}
 			slotFunctions.set(name, g);
 		}
-		if (g.params.length == 0) error('the slot $name takes no input', e.pos);
-		var xs = [coerce(expr(args[0], out), g.params[0].type, args[0].pos)];
+		if (g.params.length < inputs) error(inputs > 1 ? 'the slot $name takes fewer than its $inputs inputs' : 'the slot $name takes no input', e.pos);
+		var xs = [for (i in 0...inputs) coerce(expr(args[i], out), g.params[i].type, args[i].pos)];
 		for (i in 0...g.fields.length)
-			xs.push(local(stageParam(g.fields[i], g.params[i + 1].type, e.pos)));
+			xs.push(local(stageParam(g.fields[i], g.params[i + inputs].type, e.pos)));
 		var want = type(e.t, e.pos);
 		if (!Names.same(g.ret, want)) error('the slot $name returns a ${Names.typeName(g.ret)}, where a ${Names.typeName(want)} is needed', e.pos);
 		return {e: ECall(g, xs), t: g.ret};

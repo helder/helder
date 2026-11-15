@@ -73,8 +73,22 @@ import StageShaders;
 //          blocker search, the penumbra widening away from the caster):
 //          pillars, slabs on stems and balls down a street, sharp where
 //          they stand, soft under the slabs, in both cascades
+//   shading  the shading models in a row, a sphere each (Material's
+//          factories): unlit, matcap, normals, depth, Lambert, Blinn-Phong,
+//          pbr, under a sun and a blue point light
+//   primitives every Geometry generator, smooth (their normals as
+//          colours: Material.normals) and flat (flat: true, Lambert's light);
+//          its TypeScript twin, tests/3d/ts/twins.ts, the same frame
+//   toon   Material.toon: three bands of the sun's light and its soft
+//          shadow (Shadows.soft) banded with it, a point light's bands;
+//          its TypeScript twin too
+//   sprites Sprites: trees turning about y (Axis, an atlas' two cells, cut
+//          out), clouds facing the camera (see-through, sorted), lamps'
+//          additive halos; its draws checked (one a set)
+//   hemisphere a hemisphere light alone (Light.hemisphere): Lambert's,
+//          pbr's and a rough metal's spheres and boxes
 class Scenes {
-	public static final NAMES = ["gltf", "orbits", "shadows", "physics", "instances", "skin", "overlay", "textured", "packed", "spot", "sky", "lazy", "normals", "blend", "walker", "packedskin", "packednormals", "cascades", "environment", "morph", "chains", "packedmorph", "bloom", "normalgrid", "gpuparticles", "crystal", "khrtransform", "khrclearcoat", "compressed", "packedbc", "packedastc", "instancedmesh", "glow", "tsscene", "fog", "poststage", "unevenscale", "softshadows"];
+	public static final NAMES = ["gltf", "orbits", "shadows", "physics", "instances", "skin", "overlay", "textured", "packed", "spot", "sky", "lazy", "normals", "blend", "walker", "packedskin", "packednormals", "cascades", "environment", "morph", "chains", "packedmorph", "bloom", "normalgrid", "gpuparticles", "crystal", "khrtransform", "khrclearcoat", "compressed", "packedbc", "packedastc", "instancedmesh", "glow", "tsscene", "fog", "poststage", "unevenscale", "softshadows", "shading", "primitives", "toon", "sprites", "hemisphere"];
 	// whether the last scene has what it draws (a lazy one: once its files loaded)
 	public static var ready:Void->Bool = () -> true;
 	// the last scene's renderer (its statistics: RenderTest)
@@ -816,7 +830,268 @@ class Scenes {
 				eye.position = new Vec3(0.4, 3.2, 4.5);
 				eye.lookAt(new Vec3(0, 0.2, -5));
 				enc -> r.draw(enc, world, camera);
+			case "shading":
+				// the shading models side by side, a sphere each (Material's
+				// factories): unlit, matcap, normals, depth; lambert, phong, pbr;
+				// under a sun and a blue point light, on a floor of lambert
+				var r = new Renderer(device);
+				renderer = r;
+				var world = new World();
+				var ball = Geometry.sphere({radius: 0.4, widthSegments: 32, heightSegments: 16});
+				var orange = new helder.gfx.shader.Vec4(0.9, 0.25, 0.05, 1);
+				var materials = [
+					Material.unlit({color: orange}),
+					Material.matcap({matcap: matcapImage(device)}),
+					Material.normals(),
+					Material.depth(5.5, 8.5),
+					Material.lambert({color: orange}),
+					Material.phong({color: orange, shininess: 80}),
+					Material.standard({color: orange, roughness: 0.3})
+				];
+				for (i in 0...materials.length) {
+					var n = world.node();
+					n.position = new Vec3(-2.7 + i * 0.9, 0.4, 0);
+					MeshRenderer.attach(n, Shapes.of(device, ball, materials[i]));
+				}
+				var floor = world.node("floor");
+				MeshRenderer.attach(floor,
+					Shapes.of(device, Geometry.plane({width: 9, height: 4}).rotated(-Math.PI / 2, 0, 0), Material.lambert({color: new helder.gfx.shader.Vec4(0.45, 0.47, 0.5, 1)})));
+				var sun = world.node("sun");
+				Light.attach(sun, Light.directional(new Vec3(1, 0.96, 0.9), 2.4));
+				sun.rotation = helder.scene.math.Quat.fromEuler(-0.8, 0.6, 0);
+				var lamp = world.node("lamp");
+				lamp.position = new Vec3(2.2, 1.2, 1.0);
+				Light.attach(lamp, Light.pointLight(new Vec3(0.3, 0.55, 1), 4, 4));
+				var eye = world.node("eye");
+				var camera = Camera.attach(eye, Camera.perspective(0.62, 0.1, 50));
+				eye.position = new Vec3(0, 2.4, 7);
+				eye.lookAt(new Vec3(0, 0.3, 0));
+				enc -> r.draw(enc, world, camera);
+			case "primitives":
+				// every Geometry generator at three's parameters, smooth above
+				// (their normals as colours: Material.normals, a wrong one shows)
+				// and flat below (flat: true, lit by Lambert: each face its own)
+				var r = new Renderer(device);
+				renderer = r;
+				var world = new World();
+				var helix = helder.scene.math.Curve3.catmullRom([for (k in 0...9) new Vec3(Math.cos(k * 1.4) * 0.22, -0.3 + k * 0.075, Math.sin(k * 1.4) * 0.22)]);
+				var vase = [
+					new helder.gfx.shader.Vec2(0.01, -0.3), new helder.gfx.shader.Vec2(0.22, -0.28), new helder.gfx.shader.Vec2(0.3, -0.1),
+					new helder.gfx.shader.Vec2(0.18, 0.12), new helder.gfx.shader.Vec2(0.14, 0.24), new helder.gfx.shader.Vec2(0.22, 0.32)
+				];
+				function shapes(flat:Bool):Array<VertexData>
+					return [
+						Geometry.box({width: 0.5, height: 0.5, depth: 0.5, flat: flat}),
+						Geometry.sphere({radius: 0.32, widthSegments: flat ? 12 : 32, heightSegments: flat ? 8 : 16, flat: flat}),
+						Geometry.cylinder({radiusTop: 0.22, radiusBottom: 0.28, height: 0.6, radialSegments: flat ? 8 : 32, flat: flat}),
+						Geometry.cone({radius: 0.3, height: 0.65, radialSegments: flat ? 8 : 32, flat: flat}),
+						Geometry.capsule({radius: 0.2, height: 0.3, capSegments: flat ? 3 : 6, radialSegments: flat ? 8 : 16, flat: flat}),
+						Geometry.torus({radius: 0.24, tube: 0.1, radialSegments: flat ? 6 : 12, tubularSegments: flat ? 16 : 48, flat: flat}),
+						Geometry.torusKnot({radius: 0.2, tube: 0.06, tubularSegments: flat ? 48 : 96, radialSegments: flat ? 5 : 8, flat: flat}),
+						Geometry.ring({innerRadius: 0.14, outerRadius: 0.32, thetaSegments: flat ? 10 : 32, flat: flat}),
+						Geometry.circle({radius: 0.32, segments: flat ? 8 : 32, flat: flat}),
+						Geometry.plane({width: 0.55, height: 0.55, widthSegments: 2, heightSegments: 2, flat: flat}),
+						Geometry.lathe(vase, {segments: flat ? 8 : 24, flat: flat}),
+						Geometry.tube(helix, {tubularSegments: flat ? 24 : 64, radius: 0.06, radialSegments: flat ? 5 : 8, flat: flat})
+					];
+				var normals = Material.normals({doubleSided: true});
+				var clay = Material.lambert({color: new helder.gfx.shader.Vec4(0.85, 0.62, 0.4, 1), doubleSided: true});
+				for (flat in [false, true]) {
+					var all = shapes(flat);
+					for (i in 0...all.length) {
+						var n = world.node();
+						n.position = new Vec3(-2.25 + (i % 6) * 0.9, (flat ? -0.55 : 1.45) - Std.int(i / 6) * 0.95, 0);
+						// (turned a little: the flat shapes' faces and the discs' fronts seen)
+						n.rotation = helder.scene.math.Quat.fromEuler(0.35, i < 7 ? 0.5 : 0.2, 0);
+						MeshRenderer.attach(n, Shapes.of(device, all[i], flat ? clay : normals));
+					}
+				}
+				var sun = world.node("sun");
+				Light.attach(sun, Light.directional(new Vec3(1, 0.97, 0.92), 2.6));
+				sun.rotation = helder.scene.math.Quat.fromEuler(-0.7, 0.5, 0);
+				Light.attach(world.node("sky"), Light.hemisphere(new Vec3(0.35, 0.4, 0.5), new Vec3(0.12, 0.1, 0.08)));
+				var eye = world.node("eye");
+				var camera = Camera.attach(eye, Camera.perspective(0.9, 0.1, 50));
+				// (a column at the frame's centre, which RenderTest checks is drawn)
+				eye.position = new Vec3(0.45, 0.45, 5);
+				eye.lookAt(new Vec3(0.45, 0.45, 0));
+				enc -> r.draw(enc, world, camera);
+			case "toon":
+				// toon shading (Material.toon): three bands of the sun's light,
+				// its soft shadow banded with it, a warm point light's own bands,
+				// the shaded sides the materials' shade; a toon floor
+				var shadows = new Shadows(device, 1024);
+				shadows.soft(0.12, 12, 0.08);
+				var r = new Renderer(device).use(shadows);
+				renderer = r;
+				var world = new World();
+				var floor = world.node("floor");
+				MeshRenderer.attach(floor, Shapes.of(device, Geometry.plane({width: 10, height: 10}).rotated(-Math.PI / 2, 0, 0),
+					Material.toon({color: new helder.gfx.shader.Vec4(0.45, 0.75, 0.35, 1), steps: 2, shade: new Vec3(0.22, 0.3, 0.45)})));
+				var red = Material.toon({color: new helder.gfx.shader.Vec4(0.9, 0.2, 0.15, 1), steps: 3, shade: new Vec3(0.12, 0.12, 0.3)});
+				var gold = Material.toon({color: new helder.gfx.shader.Vec4(0.95, 0.7, 0.2, 1), steps: 4, shade: new Vec3(0.15, 0.12, 0.28)});
+				var blue = Material.toon({color: new helder.gfx.shader.Vec4(0.25, 0.45, 0.95, 1), steps: 2, shade: new Vec3(0.15, 0.15, 0.35)});
+				function put(g:VertexData, m:Material, x:Float, y:Float, z:Float) {
+					var n = world.node();
+					n.position = new Vec3(x, y, z);
+					MeshRenderer.attach(n, Shapes.of(device, g, m));
+					return n;
+				}
+				put(Geometry.sphere({radius: 0.6}), red, -1.4, 0.6, 0);
+				put(Geometry.torusKnot({radius: 0.45, tube: 0.16, tubularSegments: 128, radialSegments: 12}), gold, 0.2, 0.85, -0.3).rotation = helder.scene.math.Quat.fromEuler(0.3, 0.4, 0);
+				put(Geometry.cylinder({radiusTop: 0.35, radiusBottom: 0.45, height: 1.4}), blue, 1.6, 0.7, 0.2);
+				put(Geometry.box({width: 0.6, height: 0.6, depth: 0.6}), blue, -0.4, 0.3, 1.1).rotation = helder.scene.math.Quat.fromEuler(0, 0.6, 0);
+				var sun = world.node("sun");
+				Light.attach(sun, Light.directional(new Vec3(1, 0.96, 0.88), 3));
+				sun.rotation = helder.scene.math.Quat.fromEuler(-0.85, 0.9, 0);
+				var lamp = world.node("lamp");
+				lamp.position = new Vec3(0.9, 0.5, 1.4);
+				Light.attach(lamp, Light.pointLight(new Vec3(1, 0.55, 0.2), 3, 2.5));
+				var eye = world.node("eye");
+				var camera = Camera.attach(eye, Camera.perspective(0.8, 0.1, 50));
+				eye.position = new Vec3(0, 2.6, 5.2);
+				eye.lookAt(new Vec3(0, 0.5, 0));
+				enc -> r.draw(enc, world, camera);
+			case "sprites":
+				// Sprites: trees as cards turning about y (Axis, two cells of an
+				// atlas, cut out), clouds facing the camera (Spherical, see-through,
+				// sorted far to near), lamps' halos added (Additive, unlit)
+				var r = new Renderer(device);
+				renderer = r;
+				r.clearColor = new Color(0.05, 0.07, 0.12);
+				var world = new World();
+				var floor = world.node("floor");
+				MeshRenderer.attach(floor,
+					Shapes.of(device, Geometry.plane({width: 14, height: 14}).rotated(-Math.PI / 2, 0, 0), Material.lambert({color: new helder.gfx.shader.Vec4(0.35, 0.5, 0.3, 1)})));
+				var trees = new Sprites(device,
+					Material.unlit({color: new helder.gfx.shader.Vec4(1, 1, 1, 1), texture: treeAtlas(device), alphaCutoff: 0.5, doubleSided: true}), 16,
+					{mode: Axis, columns: 2, rows: 1});
+				Sprites.attach(world.node("trees"), trees);
+				trees.count = 9;
+				for (i in 0...9) {
+					var x = -3.2 + i * 0.8, z = -1.5 - (i % 3) * 0.9, h = 1.1 + (i % 4) * 0.25;
+					trees.set(i, x, h / 2, z, h * 0.7, h, 0, i % 2);
+					trees.setColor(i, 0.7 + 0.1 * (i % 3), 0.9, 0.7);
+				}
+				var clouds = new Sprites(device,
+					Material.unlit({color: new helder.gfx.shader.Vec4(1, 1, 1, 0.85), texture: softDisc(device), blend: true, fog: false}), 8);
+				Sprites.attach(world.node("clouds"), clouds);
+				clouds.count = 5;
+				for (i in 0...5)
+					clouds.set(i, -2.6 + i * 1.3, 2.4 + (i % 2) * 0.3, -3 + (i % 3) * 0.6, 1.6, 0.8, (i - 2) * 0.12);
+				var lamps = Material.lambert({color: new helder.gfx.shader.Vec4(0.25, 0.25, 0.28, 1)});
+				var post = Geometry.cylinder({radiusTop: 0.04, radiusBottom: 0.05, height: 1, radialSegments: 8});
+				var halos = new Sprites(device,
+					Material.unlit({color: new helder.gfx.shader.Vec4(0.9, 0.5, 0.15, 1), texture: softDisc(device), blend: true, blending: Additive}), 4);
+				Sprites.attach(world.node("halos"), halos);
+				halos.count = 3;
+				var postMesh = Shapes.of(device, post, lamps);
+				for (i in 0...3) {
+					var x = -1.6 + i * 1.6;
+					var n = world.node();
+					n.position = new Vec3(x, 0.5, 0.6);
+					MeshRenderer.attach(n, postMesh);
+					halos.set(i, x, 1.05, 0.6, 0.7, 0.7);
+					halos.setColor(i, 1, 1 - i * 0.25, 0.5 + i * 0.5);
+				}
+				var sun = world.node("sun");
+				Light.attach(sun, Light.directional(new Vec3(1, 0.9, 0.8), 1.6));
+				sun.rotation = helder.scene.math.Quat.fromEuler(-0.6, 0.4, 0);
+				var eye = world.node("eye");
+				var camera = Camera.attach(eye, Camera.perspective(0.85, 0.1, 50));
+				eye.position = new Vec3(0, 1.6, 4.6);
+				eye.lookAt(new Vec3(0, 0.9, -1));
+				probe = () -> r.draws == 5 && r.instanced == 20 ? null : '${r.draws} draws, ${r.instanced} instanced (5, 20: the floor, three posts in one, trees, clouds, halos)';
+				enc -> r.draw(enc, world, camera);
+			case "hemisphere":
+				// a hemisphere light alone (Light.hemisphere: a sky's blue from
+				// above, a ground's brown from below, three's HemisphereLight):
+				// lambert and standard spheres, a rough metal one, boxes
+				var r = new Renderer(device);
+				renderer = r;
+				r.clearColor = new Color(0.08, 0.1, 0.14);
+				var world = new World();
+				Light.attach(world.node("sky"), Light.hemisphere(new Vec3(0.55, 0.7, 1.0), new Vec3(0.45, 0.28, 0.12), 1.6));
+				var white = new helder.gfx.shader.Vec4(0.9, 0.9, 0.9, 1);
+				var ms = [Material.lambert({color: white}), Material.standard({color: white, roughness: 0.6}), Material.standard({color: white, metallic: 1, roughness: 0.35})];
+				for (i in 0...3) {
+					var n = world.node();
+					n.position = new Vec3(-1.3 + i * 1.3, 0.55, 0);
+					MeshRenderer.attach(n, Shapes.of(device, Geometry.sphere({radius: 0.5}), ms[i]));
+					var b = world.node();
+					b.position = new Vec3(-1.3 + i * 1.3, -0.45, 0);
+					b.rotation = helder.scene.math.Quat.fromEuler(0.5, 0.7, 0);
+					MeshRenderer.attach(b, Shapes.of(device, Geometry.box({width: 0.55, height: 0.55, depth: 0.55}), ms[i]));
+				}
+				var eye = world.node("eye");
+				var camera = Camera.attach(eye, Camera.perspective(0.8, 0.1, 50));
+				eye.position = new Vec3(0, 0.6, 4.2);
+				eye.lookAt(new Vec3(0, 0.25, 0));
+				enc -> r.draw(enc, world, camera);
 			case n: throw 'Scenes: no scene $n';
 		}
+	}
+
+	// two trees side by side in a 2 x 1 atlas (64 x 64 each, cut out by
+	// alpha): a fir's triangles and a round crown on a trunk
+	public static function treeAtlas(device:Device):Texture {
+		var w = 128, h = 64, px = haxe.io.Bytes.alloc(w * h * 4);
+		for (y in 0...h)
+			for (x in 0...w) {
+				var cell = x >> 6, u = (x & 63) / 63 * 2 - 1, v = y / 63;
+				var trunk = Math.abs(u) < 0.09 && v > 0.78;
+				var crown = cell == 0 ? Math.abs(u) < (v - 0.05) * 0.85 && v < 0.82 && (v * 3 % 1 > 0.15 || Math.abs(u) < (v - 0.05) * 0.6) : u * u + (v - 0.42) * (v - 0.42) * 1.6 < 0.36;
+				var o = (y * w + x) * 4;
+				if (crown) {
+					var shadeK = 0.75 + 0.25 * (1 - v) - 0.15 * u;
+					px.set(o, Std.int((cell == 0 ? 40 : 70) * shadeK));
+					px.set(o + 1, Std.int((cell == 0 ? 120 : 150) * shadeK));
+					px.set(o + 2, Std.int(50 * shadeK));
+					px.set(o + 3, 255);
+				} else if (trunk) {
+					px.set(o, 110);
+					px.set(o + 1, 75);
+					px.set(o + 2, 45);
+					px.set(o + 3, 255);
+				}
+			}
+		return device.createTexture({width: w, height: h, data: px});
+	}
+
+	// a white disc fading out from its middle (32 x 32, alpha)
+	public static function softDisc(device:Device):Texture {
+		var size = 32, px = haxe.io.Bytes.alloc(size * size * 4);
+		for (y in 0...size)
+			for (x in 0...size) {
+				var u = (x + 0.5) / size * 2 - 1, v = (y + 0.5) / size * 2 - 1;
+				var a = Math.max(0, 1 - Math.sqrt(u * u + v * v));
+				var o = (y * size + x) * 4;
+				px.set(o, 255);
+				px.set(o + 1, 255);
+				px.set(o + 2, 255);
+				px.set(o + 3, Std.int(a * a * (3 - 2 * a) * 255));
+			}
+		return device.createTexture({width: size, height: size, data: px});
+	}
+
+	// a matcap drawn in code: a sphere lit from the upper left, a warm key
+	// and a cool rim (64x64 sRGB)
+	public static function matcapImage(device:Device):Texture {
+		var size = 64, px = haxe.io.Bytes.alloc(size * size * 4);
+		for (y in 0...size)
+			for (x in 0...size) {
+				var u = (x + 0.5) / size * 2 - 1, v = 1 - (y + 0.5) / size * 2;
+				var d = u * u + v * v, z = Math.sqrt(Math.max(0, 1 - d));
+				var key = Math.max(0, -0.5 * u + 0.6 * v + 0.62 * z), rim = Math.pow(1 - z, 3);
+				var spec = Math.pow(key, 24);
+				function ch(k:Float, base:Float, cool:Float):Int
+					return Std.int(Math.min(255, Math.pow(Math.min(1, base * (0.12 + 0.9 * key) + cool * rim + spec * k), 1 / 2.2) * 255));
+				var o = (y * size + x) * 4;
+				px.set(o, ch(1, 0.85, 0.15));
+				px.set(o + 1, ch(1, 0.8, 0.35));
+				px.set(o + 2, ch(1, 0.75, 0.7));
+				px.set(o + 3, 255);
+			}
+		return device.createTexture({width: size, height: size, data: px});
 	}
 }

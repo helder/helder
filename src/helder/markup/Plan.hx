@@ -160,6 +160,14 @@ class Plan<E> {
 			var els = target.elements(renderer);
 			if (els != null && els.indexOf(name) < 0)
 				target.error("markup: <" + name + "> is no element of " + renderer + " (" + els.join(", ") + ")", {at: at, length: name.length});
+			// (its props, when its renderer declares them: another name an error at it)
+			var props = target.props(renderer, name);
+			if (props != null)
+				for (a in attrs) {
+					var n = a.name;
+					if (a.value.match(ASpread(_, _)) || n == "key" || n == "ref" || n == "style" || (StringTools.startsWith(n, "on") && n.length > 2)) continue;
+					if (props.indexOf(n) < 0) target.error("markup: <" + name + "> has no prop " + n + " (" + props.join(", ") + ")", {at: a.at, length: n.length});
+				}
 		}
 		var v = fresh("e");
 		var e = target.ident(v);
@@ -437,6 +445,9 @@ interface Target<E> {
 
 	// the elements a renderer lists (null: any name)
 	function elements(renderer:String):Null<Array<String>>;
+	// the props an element of a renderer takes, when it declares them
+	// (@:props: null, any name; on*, key, ref and style always taken)
+	function props(renderer:String, element:String):Null<Array<String>>;
 	// an embedded expression ({...}), at an offset of the root literal, its own
 	// literals for renderer; null: empty (an error if required)
 	function code(code:String, at:Int, renderer:Null<String>, required:Bool):Null<E>;

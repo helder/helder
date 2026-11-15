@@ -9,6 +9,23 @@ import helder.gfx.shader.Vec4;
 // times the texture's sRGB colour when there is one), metallic and
 // roughness from 0 to 1, emitted light (linear); double-sided ones are
 // drawn without back-face culling.
+//
+// Its shading model is its shader's (helder.scene.render.shading), chosen
+// by the factory it is made with, three.js's materials by name:
+//
+//   Material.standard({...})   pbr, the default (MeshStandardMaterial; new Material(...))
+//   Material.lambert({...})    a light's diffuse alone (MeshLambertMaterial): the cheap lit one for phones
+//   Material.phong({...})      Blinn-Phong (MeshPhongMaterial), shininess as three's
+//   Material.toon({...})       light in steps bands, the shade away from it (MeshToonMaterial)
+//   Material.unlit({...})      the colour alone, no light (MeshBasicMaterial)
+//   Material.matcap({...})     a lit sphere's picture by the normal (MeshMatcapMaterial)
+//   Material.normals()         the normal in view space as a colour (MeshNormalMaterial)
+//   Material.depth(near, far)  the view's depth as a grey (MeshDepthMaterial)
+//
+// The lit ones keep pbr's shadows, lights, fog and normal maps (only how a
+// light reaches the surface differs); the unlit ones read no light. A
+// factory references its model's shader alone, so a program that never
+// calls Material.toon links no toon shader.
 class Material {
 	static var count = 0;
 
@@ -96,6 +113,18 @@ class Material {
 	// by what is behind it (drawn see-through, Premultiplied, after the
 	// opaque surfaces), its reflections kept
 	public var transmission = 0.0;
+	// the toon model's (Material.toon): bands of each light's n.l (1 or
+	// more), and the shaded side's share of the albedo (linear)
+	public var steps = 3;
+	public var shade = new Vec3(0.4, 0.4, 0.5);
+	// tone mapped as the target takes it (three's toneMapped); false: its
+	// colour shown as it is, only encoded for an 8-bit target (the debug
+	// views: Material.normals, Material.depth)
+	public var toneMapped = true;
+	// Material.depth's range along the camera's view: white at depthNear,
+	// black at depthFar (scene units)
+	public var depthNear = 0.1;
+	public var depthFar = 100.0;
 
 	public function new(?name:String, ?baseColor:Vec4, metallic = 0.0, roughness = 0.5, ?emissive:Vec3, doubleSided = false) {
 		this.name = name != null ? name : "";
@@ -105,4 +134,137 @@ class Material {
 		this.emissive = emissive != null ? emissive : new Vec3(0, 0, 0);
 		this.doubleSided = doubleSided;
 	}
+
+	// the standard material (pbr: three's MeshStandardMaterial), made from options
+	public static function standard(?options:MaterialOptions):Material
+		return made(options);
+
+	// Lambert's (three's MeshLambertMaterial): each light's diffuse alone,
+	// the ambient's diffuse alone; no highlight, no reflection
+	public static function lambert(?options:MaterialOptions):Material {
+		var m = made(options);
+		m.shader = helder.scene.render.shading.Lambert.LambertShader;
+		return m;
+	}
+
+	// Blinn-Phong (three's MeshPhongMaterial): a highlight of shininess
+	// (three's: 30 by default), kept as the roughness that lobe matches
+	// (shading's Phong), the reflections pbr's
+	public static function phong(?options:PhongOptions):Material {
+		var m = made(options);
+		var shininess = options != null && options.shininess != null ? options.shininess : 30.0;
+		m.roughness = Math.pow(2 / (Math.max(shininess, 0) + 2), 0.25);
+		m.shader = helder.scene.render.shading.Phong.PhongShader;
+		return m;
+	}
+
+	// toon shading (three's MeshToonMaterial): each light in steps bands
+	// (3 by default), its shadow banded with it, the side away from every
+	// light the albedo times shade (linear)
+	public static function toon(?options:ToonOptions):Material {
+		var m = made(options);
+		if (options != null) {
+			if (options.steps != null) m.steps = options.steps;
+			if (options.shade != null) m.shade = options.shade;
+		}
+		m.shader = helder.scene.render.shading.Toon.ToonShader;
+		return m;
+	}
+
+	// no light (three's MeshBasicMaterial): the colour times its texture,
+	// tinted and fogged
+	public static function unlit(?options:MaterialOptions):Material {
+		var m = made(options);
+		m.castShadows = options != null && options.castShadows != null ? options.castShadows : false;
+		m.shader = helder.scene.render.shading.Unlit.UnlitShader;
+		return m;
+	}
+
+	// a matcap (three's MeshMatcapMaterial): the picture of a lit sphere
+	// (an sRGB image: matcap, kept as the emissiveTexture) read by the
+	// normal as the eye sees it, times the colour
+	public static function matcap(options:MatcapOptions):Material {
+		var m = made(options);
+		m.emissiveTexture = options.matcap;
+		m.shader = helder.scene.render.shading.Matcap.MatcapShader;
+		return m;
+	}
+
+	// the normal in view space as a colour (three's MeshNormalMaterial),
+	// not tone mapped
+	public static function normals(?options:MaterialOptions):Material {
+		var m = made(options);
+		m.toneMapped = options != null && options.toneMapped != null ? options.toneMapped : false;
+		m.shader = helder.scene.render.shading.Normals.NormalsShader;
+		return m;
+	}
+
+	// the depth along the view as a grey, white at near and black at far
+	// (three's MeshDepthMaterial, linear), not tone mapped
+	public static function depth(near = 0.1, far = 100.0, ?options:MaterialOptions):Material {
+		var m = made(options);
+		m.depthNear = near;
+		m.depthFar = far;
+		m.toneMapped = options != null && options.toneMapped != null ? options.toneMapped : false;
+		m.shader = helder.scene.render.shading.Depth.DepthShader;
+		return m;
+	}
+
+	// (a material of the options given, the others the defaults)
+	static function made(o:Null<MaterialOptions>):Material {
+		var m = new Material();
+		if (o == null) return m;
+		if (o.name != null) m.name = o.name;
+		if (o.color != null) m.baseColor = o.color;
+		if (o.texture != null) m.baseColorTexture = o.texture;
+		if (o.metallic != null) m.metallic = o.metallic;
+		if (o.roughness != null) m.roughness = o.roughness;
+		if (o.emissive != null) m.emissive = o.emissive;
+		if (o.doubleSided != null) m.doubleSided = o.doubleSided;
+		if (o.blend != null) m.blend = o.blend;
+		if (o.blending != null) m.blending = o.blending;
+		if (o.alphaCutoff != null) m.alphaCutoff = o.alphaCutoff;
+		if (o.fog != null) m.fog = o.fog;
+		if (o.castShadows != null) m.castShadows = o.castShadows;
+		if (o.toneMapped != null) m.toneMapped = o.toneMapped;
+		return m;
+	}
+}
+
+// what a material is made from (Material's factories): each field the
+// material's of the same meaning, its default where not given (color the
+// base colour, linear; texture the base colour's, sRGB)
+typedef MaterialOptions = {
+	?name:String,
+	?color:Vec4,
+	?texture:Texture,
+	?metallic:Float,
+	?roughness:Float,
+	?emissive:Vec3,
+	?doubleSided:Bool,
+	?blend:Bool,
+	?blending:helder.gfx.Blend,
+	?alphaCutoff:Float,
+	?fog:Bool,
+	?castShadows:Bool,
+	?toneMapped:Bool
+}
+
+// Material.toon's: also its bands and its shade
+typedef ToonOptions = {
+	> MaterialOptions,
+	?steps:Int,
+	?shade:Vec3
+}
+
+// Material.phong's: also three's shininess (30 by default)
+typedef PhongOptions = {
+	> MaterialOptions,
+	?shininess:Float
+}
+
+// Material.matcap's: also the matcap, a lit sphere's picture (sRGB)
+typedef MatcapOptions = {
+	> MaterialOptions,
+	matcap:Texture
 }

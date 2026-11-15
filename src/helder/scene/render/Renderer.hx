@@ -310,9 +310,11 @@ class Renderer {
 			list[j + 1] = d;
 		}
 		batch();
-		// (their data to the GPU, before the pass)
-		for (k in 0...setCount)
+		// (their data to the GPU, before the pass: Sprites turned to the camera first)
+		for (k in 0...setCount) {
+			sets[k].prepare(viewProj);
 			sets[k].upload(device);
+		}
 	}
 
 	// (the frame's block; returns the direction towards the light)
@@ -320,7 +322,8 @@ class Renderer {
 		var eye = camera.eye();
 		var l = sunDirection, c = sunColor;
 		var lights = world.store(Light.KIND);
-		var sun = false, points = 0;
+		var sun = false, points = 0, hemisphere = false;
+		var up = sky, down = ground;
 		for (k in 0...4) {
 			pointLights[k] = pointColors[k] = new Vec4(0, 0, 0, 0);
 			spots[k] = new Vec4(0, 0, 0, -2);
@@ -328,11 +331,18 @@ class Renderer {
 		for (k in 0...lights.length) {
 			var node = lights.nodeAt(k), light = lights.valueAt(k);
 			if (!node.shown() || !world.inTree(node)) continue;
-			if (light.point) {
+			if (light.kind == Hemisphere) {
+				// (the world's first hemisphere light: the ambient, in place of sky and ground)
+				if (!hemisphere) {
+					up = light.color * light.intensity;
+					down = light.groundColor * light.intensity;
+					hemisphere = true;
+				}
+			} else if (light.local) {
 				if (points == 4) continue;
 				var p = node.worldPosition(), q = light.color * light.intensity;
 				pointLights[points] = new Vec4(p.x, p.y, p.z, light.range);
-				if (light.outerCone > 0) {
+				if (light.kind == Spot) {
 					var dir = MathTools.transformDir(node.worldMatrix(), new Vec3(0, 0, -1));
 					dir = dir / Math.sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
 					spots[points] = new Vec4(dir.x, dir.y, dir.z, Math.cos(light.outerCone));
@@ -364,8 +374,8 @@ class Renderer {
 			eye: new Vec4(eye.x, eye.y, eye.z, 1),
 			lightDir: new Vec4(l.x, l.y, l.z, 0),
 			lightColor: new Vec4(c.x, c.y, c.z, 0),
-			sky: new Vec4(sky.x, sky.y, sky.z, 0),
-			ground: new Vec4(ground.x, ground.y, ground.z, 0),
+			sky: new Vec4(up.x, up.y, up.z, 0),
+			ground: new Vec4(down.x, down.y, down.z, 0),
 			exposure: new Vec4(exposure, hdr ? 1 : 0, 0, 0),
 			lightViewProj: lightViewProj,
 			shadow: shadow,
@@ -402,16 +412,18 @@ class Renderer {
 		draws = 0;
 		instanced = 0;
 		var opaque = true;
-		recordSets(enc);
+		recordSets(enc, false);
 		for (b in 0...batchCount) {
 			var start = batchStart[b], n = batchSize[b];
 			var d = list[start], p = d.primitive, m = p.material;
 			if (opaque && m.blend) {
 				// (the hooks after the opaque surfaces, the sky's among them,
-				// before the see-through ones; their pipelines are theirs)
+				// before the see-through ones; their pipelines are theirs;
+				// then the see-through instanced sets: Sprites' halos)
 				opaque = false;
 				for (f in hooks[AfterOpaque])
 					f(enc, frame);
+				recordSets(enc, true);
 				current = null;
 			}
 			if (m.transmission > 0 && !p.skinned) {
@@ -454,23 +466,28 @@ class Renderer {
 			draws++;
 			if (many) instanced += n;
 		}
-		if (opaque)
+		if (opaque) {
 			for (f in hooks[AfterOpaque])
 				f(enc, frame);
+			recordSets(enc, true);
+		}
 		enc.endPass();
 	}
 
-	// the instanced sets (InstancedMesh) of the frame, each primitive one
-	// instanced draw with their own buffer; first in the pass (opaque)
-	function recordSets(enc:Encoder) {
+	// the instanced sets (InstancedMesh, Sprites) of the frame, each
+	// primitive one instanced draw with their own buffer: the opaque ones
+	// first in the pass, the see-through ones (blended: false, true) after
+	// the opaque surfaces and their hooks, in the sets' order (a set sorts
+	// its own instances: Sprites)
+	function recordSets(enc:Encoder, blended:Bool) {
 		for (k in 0...setCount) {
 			var s = sets[k];
 			for (p in s.mesh.primitives) {
-				if (p.skinned) continue;
+				if (p.skinned || p.material.blend != blended) continue;
 				var m = p.material;
 				var normals = mapped(p) ? normalSource : null;
 				var own = m.shader != null ? custom(m, normals != null ? 4 : 3) : null;
-				enc.setPipeline(own != null ? own.pipeline : normals != null ? normals.instancedPipeline(m.doubleSided) : m.doubleSided ? instancedDoubleSided : instancedPipeline);
+				enc.setPipeline(own != null ? own.pipeline : normals != null ? normals.instancedPipeline(m.doubleSided) : m.blend ? blendedInstanced(m) : m.doubleSided ? instancedDoubleSided : instancedPipeline);
 				var slots = own != null ? own.slots : normals != null ? normals.instancedSlots() : instancedSlots;
 				enc.setUniforms(slots[0], frameBytes);
 				bindMaterial(enc, slots, m, normals);
@@ -516,8 +533,9 @@ class Renderer {
 		var s = m.shader;
 		var list = customs.get(s);
 		if (list == null) customs.set(s, list = []);
-		var blend = kind == 0 && m.blend;
-		var k = kind * 2 + (m.doubleSided ? 1 : 0) + (blend ? 10 + 2 * (cast m.blending : Int) : 0);
+		// (blended: a plain draw's, or an instanced set's)
+		var blend = (kind == 0 || kind == 3) && m.blend;
+		var k = kind * 2 + (m.doubleSided ? 1 : 0) + (blend ? 10 * (1 + (cast m.blending : Int)) : 0);
 		var c = list[k];
 		if (c == null) {
 			var v = switch kind {
@@ -628,10 +646,26 @@ class Renderer {
 		return p;
 	}
 
+	// its instanced variant's, for a see-through instanced set (Sprites' halos)
+	function blendedInstanced(m:Material):Pipeline {
+		var k = (cast m.blending : Int) * 2 + (m.doubleSided ? 1 : 0);
+		var p = blendedInstancedPipelines[k];
+		if (p == null) {
+			var d = PbrInstancedShader.pipeline({cull: m.doubleSided ? None : Back, depthCompare: Less, depthWrite: false, blend: m.blending});
+			d.layout = INSTANCED_LAYOUT;
+			p = blendedInstancedPipelines[k] = create(d);
+		}
+		return p;
+	}
+
+	final blendedInstancedPipelines:Array<Null<Pipeline>> = [for (_ in 0...10) null];
+
 	// whether a primitive is drawn with its normal map (NormalMaps on, its
-	// tangents and its material's map there)
+	// tangents and its material's map there, its material's shader with
+	// normal-mapped variants: not shading's unlit ones)
 	inline function mapped(p:Mesh.Primitive):Bool
-		return normalSource != null && p.tangents != null && p.material.normalTexture != null && !p.skinned;
+		return normalSource != null && p.tangents != null && p.material.normalTexture != null && !p.skinned
+			&& (p.material.shader == null || p.material.shader.normalMapped != null);
 
 	// a shader's slots for its blocks and textures, in the renderer's order:
 	// frame, object (-1: none), material, base colour, shadow map, skin,

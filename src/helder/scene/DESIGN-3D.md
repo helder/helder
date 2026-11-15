@@ -6,7 +6,7 @@ Aims > Familiar APIs). It covers the areas where helder.scene trails
 three.js: materials, lights and shadows, post-processing, and geometry,
 helpers, picking and culling. Loaders and the ecosystem are out of scope.
 
-It is a design. Nothing in it is built yet, except what "Today" says is
+It is a design. Phase 1 (section 8) is built, its deviations said
 there. No spike was needed: every claim about helder's internals below was
 read from the source, and the file is named where it matters.
 
@@ -130,28 +130,52 @@ of the same skeleton:
   spot or area light, shadowed;
 - `indirect(s, env)`: the ambient, the probes' light and the reflections.
 
-Here `s:Surface` is today's `PbrSurface` extended with the slots'
-results: albedo, roughness, metalness, normal and view. `l:LightSample`
-is the light's colour times its attenuation and shadow, its direction,
-and its `NdotL`.
+Here `s:LitSurface` is today's `PbrSurface` extended with the slots'
+results: albedo, alpha, roughness, metalness, normal and view (named
+`LitSurface`, not `Surface`: helder/scene's TypeScript module exports
+helder.os's `Surface`). `l:LightSample` is the light's `color` times its
+attenuation, its `shadow`, the two multiplied (`radiance`), its
+`direction`, and its `ndotl`. `env:IndirectLight` is the `irradiance`
+along the normal, the environment's `radiance` along the reflection, and
+the material's `occlusion`. A slot of two inputs and its parameters is a
+change to `Slots` (both languages): a slot takes as many inputs as the
+slot object's type gives it before its parameters.
 
 The models are slot objects in `helder.scene.render.shading`, each
 `pbr.with({...})`:
 
 ```haxe
 // what they are, in helder (compiled at build time, like any material)
-final lambert = pbr.with({direct: (s, l) -> s.albedo * l.radiance * l.ndotl, indirect: diffuseOnly});
+final lambert = pbr.with({direct: (s, l) -> s.albedo * l.radiance * (l.ndotl / PI), indirect: diffuseOnly});
 final toon = pbr.with({
-	direct: (s, l, p:{toon:ToonParams}) -> s.albedo * l.radiance * ramp(l.ndotl * l.shadow, p.toon),   // banded, shadows banded too
-	indirect: (s, env, p:{toon:ToonParams}) -> s.albedo * p.toon.shade.xyz,
+	direct: (s, l, p:{material:PbrMaterial}) -> s.albedo * l.color * (ramp(l.ndotl * l.shadow, p.material.model.x) / PI),   // banded, shadows banded too
+	indirect: (s, env, p:{material:PbrMaterial}) -> s.albedo * p.material.shadeColor.xyz * env.occlusion,
 });
 final phong = pbr.with({direct: blinnPhong});   // three's MeshPhongMaterial, for ports; shininess from roughness
+```
+
+As built, a model's parameters (toon's `steps` and `shade`, the depth's
+range, `toneMapped`) are `Material` fields in `PbrMaterial`'s block, not a
+block of the model's own (`p.toon`): markup sets them as any field, and
+there are no bytes to write. The diffuse is over pi, as pbr's diffuse
+and three's `BRDF_Lambert` are, so a model swapped for another keeps its
+brightness. Toon multiplies `l.color`, not `l.radiance`, so the shadow
+is banded once, through the ramp.
+
+```haxe
 ```
 
 Unlit, matcap, normal and depth have no lights to sum. Each is a small
 shader of its own, `unlit`, with the same `color`, `alpha` and `position`
 slots. It reads no light uniforms, so a cheap material does not pay
-`PbrFrame`'s 40 vectors.
+`PbrFrame`'s 40 vectors in its pixels. (As built, `PbrFrame` is still its
+parameter, bound at pbr's slot, so the renderer draws it as any material's
+own shader; it reads the view-projection, the eye, the fog and the
+exposure only. The camera's axes, for matcap's and normals' view space, are
+the view-projection's rows. Matcap's picture is the material's
+`emissiveTexture`. `Material.depth` is linear along the view, not the
+depth buffer's curve. `material.toneMapped`, three's, false: a colour
+shown as it is.)
 
 Programs pick a model through factories on `Material`. Each factory sets
 `material.shader` to the model's compiled `MaterialShader`, so a program
@@ -211,8 +235,10 @@ in phase 1's frames.
 and `Points` topologies stay for 1 px debug lines only.
 
 - **`Sprites`** is an `InstancedMesh` of quads facing the camera:
-  - `mode`: `Spherical` (always facing the camera), `Axis(up)` (turning
-    about an axis: trees, Little Skies' clouds), or `Fixed`;
+  - `mode`: `Spherical` (always facing the camera), `Axis` (turning
+    about `sprites.axis`: trees, Little Skies' clouds), or `Fixed` (as
+    built an enum of values and an `axis` field, not `Axis(up)`: the same
+    in TypeScript, and in markup as `mode="axis"`);
   - per-instance position, size, rotation, colour and an atlas cell;
   - a material, which may be `unlit` (halos, `Additive`) or lit (its
     normal faces the camera, so its lighting is cheap).
@@ -742,11 +768,11 @@ frame's measurement in the phase that builds it.
     named, defaults filled):
 
     ```haxe
-    Geometry.box({width, height, depth, segments});
+    Geometry.box({width, height, depth, widthSegments, heightSegments, depthSegments});   // three's names (built so)
     Geometry.sphere({radius, widthSegments, heightSegments});
     Geometry.cylinder({radiusTop, radiusBottom, height, radialSegments, heightSegments, openEnded});
     Geometry.cone({radius, height, radialSegments});        // cylinder with radiusTop 0
-    Geometry.capsule({radius, length, capSegments, radialSegments});
+    Geometry.capsule({radius, height, capSegments, radialSegments, heightSegments});   // three's current names (r174: length is height)
     Geometry.torus({radius, tube, radialSegments, tubularSegments, arc});
     Geometry.torusKnot({...}); Geometry.ring({...}); Geometry.circle({...}); Geometry.plane({...});
     Geometry.lathe(points:Array<Vec2>, {segments, phiStart, phiLength});
@@ -1130,12 +1156,53 @@ natively and as wasm32-wasi, and an example where a feature needs showing.
   `toon` and `phong` slot objects. The `unlit` shader (unlit, matcap,
   normals, depth). The `Material.*` factories.
 - **Slots.** `normalVertex`, `output`, `shadowAlpha`, the casters as
-  slots, and varyings between slots (a `Slots` change).
+  slots, and varyings between slots (a `Slots` change). (Not built in
+  phase 1: moved to phase 2's start, below. Phase 1's `Slots` change is
+  slots of several inputs, for `direct` and `indirect`.)
 - **Lights.** `Light.hemisphere`, and `Light.kind` with today's kinds.
 - **Sprites.** `Sprites` (spherical and axis billboards, atlas cells),
   `<sprites of>`.
 - **Markup.** Generated tags for the above: `<cylinderGeometry>`,
   `<toonMaterial>`, `<hemisphereLight>`.
+
+**As built** (the deviations, each said where it applies above):
+
+- `LitSurface`, not `Surface`; `LightSample` has `color` and `radiance`
+  both; the models' parameters are `Material` fields, not blocks of their
+  own; the lit models' diffuse is over pi (1.1).
+- `unlit` takes pbr's parameters (bound at the renderer's slots, read in
+  part), its view space from the view-projection's rows; matcap's image is
+  the `emissiveTexture`; `Material.depth` is linear; `material.toneMapped`
+  added (1.1).
+- `Sprites.mode` is `Spherical | Axis | Fixed` with an `axis` field (1.2).
+  A sprite's atlas cell rides in its instance matrix's last w (an affine
+  matrix's last row is 0, 0, 0, 1: the w's are free); the instanced
+  variants read it (`instanceUv`), the shadow caster ignores it.
+- `Geometry.box` takes three's three segment counts; `Geometry.capsule`
+  three's `height`. The counts and parameters are three's; two shapes
+  keep helder's old layout where three's would only move pixels:
+  `Geometry.sphere`'s quads are cut along the other diagonal, and
+  `Geometry.box` lists its +z and -z faces first (a see-through box's own
+  triangles blended in the order its frames had). `Shapes.box`, `sphere`,
+  `capsule` and `plane` are `Shapes.of` of them, every existing frame
+  unchanged.
+- Markup's props are checked by name when compiling (`@:props(T)` on a
+  renderer, helder.view; `SceneProps` from the factories' options); a
+  value's type is checked when it is set. `light kind=` stays an alias.
+- A `MaterialShader`'s variants are compiled for the GPU only: no CPU
+  twin of their stages, and only the plain variant's parameter writers.
+  A model's cost when used is its variants' shader text (about 230 KB
+  natively, 300 KB as wasm32 for a lit one); unused, phase 1 costs the
+  renderer 39 KB (`tests/3d/size/sizes.sh`).
+- The per-pixel cost table (1.1) is not yet measured on a phone: this
+  phase's frames run on the CI's software renderers. Its rows stay
+  estimates until `site:numbers` has a device's.
+- TypeScript: helder's lowering passes a math value inside an options
+  object or an array as its struct's box (hxmc's layout for a structure's
+  field and an array's element), which `Material.toon({color: vec4(...)})`
+  and `Geometry.lathe([vec2(...)])` need.
+- Little Skies' Kit is not moved onto `Geometry` here: Little Skies is
+  its own repository (helder/little-skies), its own change.
 
 Tests and frames:
 
@@ -1153,6 +1220,9 @@ Tests and frames:
 
 ### Phase 2: view buffers and the first screen-space effects
 
+- (From phase 1) the slots `normalVertex`, `output` and `shadowAlpha`, the
+  shadow casters as a slot object of their own, and varyings between
+  slots.
 - `ViewBuffers` (a single-sampled depth plus normal, roughness and id
   prepass; `scale`).
 - `PostProcess` fields, and the composite as a folded slot object.

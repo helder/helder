@@ -16,7 +16,12 @@ import helder.os.*;
 //   8  + skinning (Skinning: the skinned shader)
 //   9  + normal maps (NormalMaps: the normal-mapped shader)
 // and, with -D size_packed at level 4, the renderer drawing the sample
-// packed at build time (PackedModel: no glTF reader, no JSON)
+// packed at build time (PackedModel: no glTF reader, no JSON); at level 4
+// too, the opt-ins of DESIGN-3D.md's phase 1, each a cost only when used:
+// -D size_toon (Material.toon: one shading model's shader), -D size_models
+// (every Material factory: lambert, phong, toon, unlit, matcap, normals,
+// depth), -D size_geometry (every Geometry generator and Curve3),
+// -D size_sprites (Sprites on an unlit material)
 class Size {
 	static function main() {
 		var window = new Window("Size", 320, 240);
@@ -56,6 +61,32 @@ class Size {
 		renderer.use(new helder.scene.render.NormalMaps(device));
 		#end
 		new helder.scene.gltf.GltfScene(doc, device).instantiate(world);
+		#end
+		#if size_toon
+		helder.scene.render.MeshRenderer.attach(world.node(), helder.scene.render.Shapes.box(device, helder.scene.render.Material.toon()));
+		#end
+		#if size_models
+		for (m in [
+			helder.scene.render.Material.lambert(), helder.scene.render.Material.phong(), helder.scene.render.Material.toon(), helder.scene.render.Material.unlit(),
+			helder.scene.render.Material.matcap({matcap: cast 0}), helder.scene.render.Material.normals(), helder.scene.render.Material.depth()
+		])
+			helder.scene.render.MeshRenderer.attach(world.node(), helder.scene.render.Shapes.box(device, m));
+		#end
+		#if size_geometry
+		var curve = helder.scene.math.Curve3.catmullRom([new Vec3(0, 0, 0), new Vec3(1, 1, 0), new Vec3(2, 0, 1)]);
+		for (g in [
+			helder.scene.render.Geometry.box(), helder.scene.render.Geometry.sphere(), helder.scene.render.Geometry.cylinder(),
+			helder.scene.render.Geometry.cone(), helder.scene.render.Geometry.capsule(), helder.scene.render.Geometry.torus(),
+			helder.scene.render.Geometry.torusKnot(), helder.scene.render.Geometry.ring(), helder.scene.render.Geometry.circle(),
+			helder.scene.render.Geometry.plane(), helder.scene.render.Geometry.lathe([new helder.gfx.shader.Vec2(0.5, 0), new helder.gfx.shader.Vec2(0.2, 1)]),
+			helder.scene.render.Geometry.tube(curve, {radius: 0.1})
+		])
+			helder.scene.render.MeshRenderer.attach(world.node(), helder.scene.render.Shapes.of(device, g, new helder.scene.render.Material()));
+		#end
+		#if size_sprites
+		var sprites = new helder.scene.render.Sprites(device, helder.scene.render.Material.unlit(), 16);
+		helder.scene.render.Sprites.attach(world.node(), sprites);
+		sprites.set(0, 0, 1, 0, 1, 1);
 		#end
 		#if (size_level >= 6)
 		var actions = new helder.scene.input.InputMap().bind("turn", KeyAxis(0xFF51, 0xFF53));

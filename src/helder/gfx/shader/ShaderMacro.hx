@@ -46,7 +46,10 @@ class ShaderMacro {
 
 	// the expression of a Shader: the handler's output as literals and
 	// writers, the stages' CPU code as given (with their types)
-	public static function build(out:ShaderOutput, lower:Lower, stages:{vertex:Expr, fragment:Expr, vertexType:ComplexType, fragmentType:ComplexType}):Expr {
+	// (lean: its code, layout, blocks and textures alone, no params' writers
+	// nor vertexBytes: a variant drawn as another's twin, its writers the
+	// other's: helder.scene's MaterialShader)
+	public static function build(out:ShaderOutput, lower:Lower, stages:{vertex:Expr, fragment:Expr, vertexType:ComplexType, fragmentType:ComplexType}, lean = false):Expr {
 		var p = out.program;
 		var pos = Context.currentPos();
 		function code(s:StageCode):Expr {
@@ -109,8 +112,9 @@ class ShaderMacro {
 		var base = pack.pop() + "_" + field;
 		var vt = stages.vertexType, ft = stages.fragmentType;
 		var vti = lower.haxeType(p.vertex.input).toComplexType();
-		var paramsExpr:Expr = {expr: EObjectDecl(params), pos: pos};
-		var pt = Context.toComplexType(Context.typeof(paramsExpr));
+		var paramsExpr:Expr = lean ? macro null : {expr: EObjectDecl(params), pos: pos};
+		var pt = lean ? macro :Dynamic : Context.toComplexType(Context.typeof(paramsExpr));
+		if (lean) writeVertices = macro null;
 		var cls = macro class Shader extends helder.gfx.shader.Shader<$vti, $pt> {
 			public final vertex:$vt;
 			public final fragment:$ft;

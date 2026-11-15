@@ -865,6 +865,9 @@ class TsTarget implements Target<TsMarkup> {
 		return r == null ? null : r.elements;
 	}
 
+	// (an element's props are its declarations' to TypeScript's checker)
+	public function props(renderer:String, element:String):Null<Array<String>> return null;
+
 	public function code(code:String, at:Int, renderer:Null<String>, required:Bool):Null<TsMarkup> {
 		if (code == "") {
 			if (required) error("markup: an empty expression", {at: at, length: 1});
