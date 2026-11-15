@@ -26,6 +26,10 @@ class Compiler {
 		return found;
 	}
 
+	// (the compiler another process chose: helder build's server, BuildServer)
+	public static function use(tool:String)
+		found = tool;
+
 	static function find():String {
 		var env = Sys.getEnv("HAXE");
 		if (env != null && env != "") return env;

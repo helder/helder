@@ -108,6 +108,8 @@ class Run {
 	static function main() {
 		// (helder.text's own engine for every lane's program: goldens the same on every OS; system-text's the platform's)
 		if (Sys.getEnv("HELDER_TEXT_ENGINE") == null) Sys.putEnv("HELDER_TEXT_ENGINE", "helder");
+		// (no helder build server kept warm: the lanes' builds, many at once, each its own compiler; BuildServer)
+		if (Sys.getEnv("HELDER_BUILD_SERVER") == null) Sys.putEnv("HELDER_BUILD_SERVER", "0");
 		var args = Sys.args();
 		var keepGoing = args.remove("-k");
 		var skipped = [];

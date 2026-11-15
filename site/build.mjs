@@ -56,6 +56,8 @@ import { CLIPS } from './reel.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 process.chdir(root);
+// (builds four at once, each its own compiler: no helder build server kept warm)
+process.env.HELDER_BUILD_SERVER ??= '0';
 const out = process.argv[2] ?? 'bin/site';
 const work = 'bin/site-build';
 const cli = ['src/helder/cli/run.mjs'];
