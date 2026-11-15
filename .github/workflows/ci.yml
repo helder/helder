@@ -24,8 +24,8 @@
 #   gfx-apps: the demos, syntax-run, the studio, the story host, the
 #   window lanes and the viewer's);
 # - browser, studio-web: WebGPU, WebGL2, WebAudio and the DOM in headless
-#   Chromium, helder's toolchain as wasm in a worker there (compiler-web);
-#   helder studio built for the web (studio-web) on its own;
+#   Chromium; helder studio built for the web (studio-web) and helder's
+#   toolchain as wasm in a worker there (compiler-web), one build of it for both;
 # - android: on an emulator: tests/pack/Hello.hx (helder run, adb), the
 #   screen fixture (tests/pack/Screen.hx: its window, safe area and the
 #   display's frames, a rotation, the background), helder dev's loop there
@@ -299,8 +299,8 @@ jobs:
           sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core poppler-utils libegl1 libegl-mesa0
           bun add --no-save playwright@1.56.1
           bunx playwright install --with-deps chromium > /dev/null
-      - name: gfx, 3d, audio, web and ui in Chromium, helder's compiler in the browser
-        run: bun run test -k gfx-web gfx-compute-web 3d-web audio-web web ui-web canvas-web canvas-doc compiler-web
+      - name: gfx, 3d, audio, web and ui in Chromium
+        run: bun run test -k gfx-web gfx-compute-web 3d-web audio-web web ui-web canvas-web canvas-doc
       - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
         uses: ./.github/actions/save
         with: {key: '${{ steps.setup.outputs.key }}'}
@@ -323,8 +323,9 @@ jobs:
           sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core libegl1 libegl-mesa0
           bun add --no-save playwright@1.56.1
           bunx playwright install --with-deps chromium > /dev/null
-      - name: helder studio in the browser
-        run: bun run test studio-web
+      # (one job: compiler-web's toolchain is studio-web's too, built once in bin/compiler-web)
+      - name: helder studio in the browser, helder's compiler in the browser
+        run: bun run test -k studio-web compiler-web
       - uses: actions/upload-artifact@v7
         if: always()
         with: {name: studio-web, path: "bin/studio-web/*.png\nbin/studio-web/results.md", retention-days: 7, if-no-files-found: ignore}

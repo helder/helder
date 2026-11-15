@@ -18,8 +18,8 @@
 #   - a screenshot (simctl io) to <out>/cube-ios.png;
 #   - (full) another app (Settings) sends it to the background (Suspend),
 #     launching it again brings it back (Resume) and frames go on;
-#   - the system log of the app's process to <out>/log.txt; a simulator made
-#     here is deleted at the end.
+#   - (full, or a failure) the system log of the app's process to
+#     <out>/log.txt; a simulator made here is deleted at the end.
 # (The bundle's static checks, codesign --verify and plutil -lint, are the
 # pack lane's on a Mac, CI's ios-signing job, on bundles built alike.)
 #   sh tests/gfx/ios.sh <IosTest.app> [out dir] [SimTap]
@@ -164,7 +164,10 @@ if [ "$suite" = full ]; then
 	wait_for "IosTest: frames $((frames + 60))" 60
 	check "frames after Resume" $?
 fi
-xcrun simctl spawn "$udid" log show --last 10m --style compact --predicate 'process == "IosTest"' > "$out/log.txt" 2>&1
+# (the system log: a minute and more on a runner, so on a failure and in the full suite)
+if [ $failed != 0 ] || [ "$suite" = full ]; then
+	xcrun simctl spawn "$udid" log show --last 10m --style compact --predicate 'process == "IosTest"' > "$out/log.txt" 2>&1
+fi
 xcrun simctl terminate "$udid" $id
 cat "$stdout"
 exit $failed
