@@ -13,16 +13,16 @@
 // written there.
 //
 //   node site/check.mjs [screenshots dir] [ids to play...]   (default: every demo)
-// SITE_JOBS: the demos and the docs' pages checked that many at once, each
-// in a page of its own (the cores', at most 2; a busy page's canvas
-// screenshots given 60 s).
+// SITE_SHARD=<i>/<n>: every n-th demo and docs page from the i-th (CI's
+// check jobs, a machine each: two SwiftShader browsers on one machine's
+// cores starved each other's frames); the index's and the search's
+// checks on every shard, the phone's on the first.
 import { createServer } from 'node:http';
 import { readFile, mkdir } from 'node:fs/promises';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import os from 'node:os';
 
 const require = createRequire(import.meta.url);
 let pw;
@@ -33,7 +33,10 @@ const [shots, ...ids] = process.argv.slice(2);
 const site = JSON.parse(fs.readFileSync(path.join(root, 'bin/site-build/examples.json'), 'utf8'));
 // (the index's examples: docs/examples' are played in their pages, below)
 const listed = site.examples.filter((e) => !e.docs);
-const play = ids.length ? ids.filter((id) => !site.examples.find((e) => e.id === id)?.docs) : listed.filter((e) => e.demo).map((e) => e.id);
+const [shard, shards] = (process.env.SITE_SHARD ?? '0/1').split('/').map(Number);
+const mine = (_, k) => k % shards === shard;
+const play = (ids.length ? ids.filter((id) => !site.examples.find((e) => e.id === id)?.docs) : listed.filter((e) => e.demo).map((e) => e.id)).filter(mine);
+if (shards > 1) console.log(`site/check.mjs: shard ${shard} of ${shards}: ${play.length} demos`);
 
 const types = { '.css': 'text/css', '.ttf': 'font/ttf', '.mjs': 'text/javascript', '.js': 'text/javascript', '.wasm': 'application/wasm', '.html': 'text/html', '.json': 'application/json' };
 const server = createServer(async (req, res) => {
@@ -49,37 +52,22 @@ const server = createServer(async (req, res) => {
 }).listen(0);
 const url = `http://localhost:${server.address().port}/`;
 
-const CHROMIUM_ARGS = ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-vulkan=swiftshader', '--use-angle=swiftshader'];
-const browser = await pw.chromium.launch({ args: CHROMIUM_ARGS });
-// (the pool's: SITE_JOBS)
-const browsers = [];
+const browser = await pw.chromium.launch({ args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-vulkan=swiftshader', '--use-angle=swiftshader'] });
 let failures = 0;
 const check = (ok, what) => {
 	console.log(`${ok ? 'PASS' : 'FAIL'} ${what}`);
 	if (!ok) failures++;
 };
 try {
+	const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 	const errors = [];
 	// (a failed fetch by its URL, not the console's line: the videos and numbers a build without site/reel.mjs or site/numbers.mjs has not)
 	const later = ['examples/media/', 'examples/numbers.json'].filter((f) => !fs.existsSync(path.join(dir, f)));
-	// (each error with the page it came from; each page but the first in a
-	// browser of its own: one browser's pages share its GPU process, whose
-	// SwiftShader drew them one after another, slower than alone)
-	const open = async () => {
-		const b = browsers.length === 0 ? browser : await pw.chromium.launch({ args: CHROMIUM_ARGS });
-		browsers.push(b);
-		const page = await b.newPage({ viewport: { width: 1280, height: 900 } });
-		const at = () => page.url().replace(url, '/');
-		page.on('console', (m) => m.type() === 'error' && !m.text().startsWith('Failed to load resource') && errors.push(`${at()}: ${m.text()}`));
-		page.on('response', (r) => r.status() >= 400 && !later.some((f) => r.url().startsWith(url + f)) && errors.push(`${r.status()} ${r.url()}`));
-		page.on('pageerror', (e) => errors.push(`${at()}: ${e}`));
-		return page;
-	};
-	const jobs = Number(process.env.SITE_JOBS) || Math.max(1, Math.min(2, os.availableParallelism()));
-	const pages = [await open()];
-	while (pages.length < jobs) pages.push(await open());
-	const page = pages[0];
-	console.log(`site/check.mjs: ${pages.length} pages at once`);
+	// (each with the page it came from: the pages are many, one at a time)
+	const at = () => page.url().replace(url, '/');
+	page.on('console', (m) => m.type() === 'error' && !m.text().startsWith('Failed to load resource') && errors.push(`${at()}: ${m.text()}`));
+	page.on('response', (r) => r.status() >= 400 && !later.some((f) => r.url().startsWith(url + f)) && errors.push(`${r.status()} ${r.url()}`));
+	page.on('pageerror', (e) => errors.push(`${at()}: ${e}`));
 	await page.goto(url + 'examples/');
 	const cards = await page.locator('article.card').count();
 	check(cards === listed.length, `${cards} cards, ${listed.length} examples`);
@@ -100,20 +88,20 @@ try {
 	}
 	// (each demo alone in the page, loaded again: the heavy ones, a million
 	// particles on a software GPU, would slow the next ones' checks)
-	async function start(page, id) {
+	async function start(id) {
 		await page.goto(url + 'examples/');
 		const island = page.locator(`#play-${id}`);
 		await island.scrollIntoViewIfNeeded();
 		await island.locator('button.play').click();
 		await page.waitForFunction((id) => document.getElementById('play-' + id).hasAttribute('data-hydrated'), id, { timeout: 60000 });
 	}
-	await each(pages, play, async (page, id, check) => {
+	for (const id of play) {
 		await page.goto(url + 'examples/');
 		const island = page.locator(`#play-${id}`), canvas = island.locator('canvas');
 		await island.scrollIntoViewIfNeeded();
 		// (a sound has no canvas: started, nothing drawn)
 		const drawn = (await canvas.count()) > 0;
-		const before = drawn ? await canvas.screenshot({ timeout: 60000 }) : null;
+		const before = drawn ? await canvas.screenshot() : null;
 		await island.locator('button.play').click();
 		await page.waitForFunction((id) => {
 			const el = document.getElementById('play-' + id);
@@ -121,11 +109,11 @@ try {
 		}, id, { timeout: 60000 });
 		const error = await island.getAttribute('data-error'), gfx = await island.getAttribute('data-gfx');
 		check(error === null, `${id} started${error ? ': ' + error : ''}`);
-		if (!drawn) return;
+		if (!drawn) continue;
 		check(!!gfx, `${id} draws with ${gfx}`);
 		await page.waitForTimeout(1500);
 		await island.scrollIntoViewIfNeeded();
-		const after = await canvas.screenshot({ timeout: 60000 });
+		const after = await canvas.screenshot();
 		check(!before.equals(after), `${id}'s canvas drawn`);
 		if (shots) {
 			await page.screenshot({ path: path.join(shots, `site-desktop-${id}.png`) });
@@ -141,17 +129,16 @@ try {
 			await page.waitForFunction((id) => document.getElementById('play-' + id).hasAttribute('data-stopped'), id, { timeout: 30000 });
 			check(true, `${id} stopped out of view`);
 		}
-	});
+	}
 	// (a demo full screen and expanded at a phone's size: planets, ui's markup with a <Scene> in it)
 	if (play.includes('planets')) {
-		await start(page, 'planets');
+		await start('planets');
 		await phone(page, shots, 'planets');
 	}
-	await checkDocs(pages);
-	await checkPhone(shots);
+	await checkDocs(page);
+	if (shard === 0) await checkPhone(shots);
 	check(errors.length === 0, `no console errors${errors.length ? ': ' + errors.join('\n') : ''}`);
 } finally {
-	await Promise.all(browsers.filter((b) => b !== browser).map((b) => b.close()));
 	await browser.close();
 	server.close();
 }
@@ -160,10 +147,10 @@ if (failures) process.exit(1);
 // the docs: each page of docs/search.json (Docs.hx's, every page) loaded,
 // its sidebar listing every page, each example's source shown (one tab's);
 // the docs' own examples played as the index's are
-async function checkDocs(pool) {
+async function checkDocs(page) {
 	const pages = JSON.parse(fs.readFileSync(path.join(dir, 'docs/search.json'), 'utf8'));
 	check(pages.length > 0, `${pages.length} docs pages`);
-	await each(pool, pages, async (page, p, check) => {
+	for (const p of pages.filter(mine)) {
 		await page.goto(url + p.url);
 		const title = await page.locator('main h1').textContent();
 		check(title === p.title, `${p.url}: its title, ${title}`);
@@ -191,7 +178,7 @@ async function checkDocs(pool) {
 			if (!e || !e.docs || (ids.length && !ids.includes(id))) continue;
 			const canvas = island.locator('canvas');
 			await island.scrollIntoViewIfNeeded();
-			const before = await canvas.screenshot({ timeout: 60000 });
+			const before = await canvas.screenshot();
 			await island.locator('button.play').click();
 			await page.waitForFunction((id) => {
 				const el = document.getElementById('play-' + id);
@@ -201,11 +188,10 @@ async function checkDocs(pool) {
 			check(error === null, `${p.url}: ${id} started${error ? ': ' + error : ''}`);
 			await page.waitForTimeout(1500);
 			await island.scrollIntoViewIfNeeded();
-			check(!before.equals(await canvas.screenshot({ timeout: 60000 })), `${p.url}: ${id}'s canvas drawn`);
+			check(!before.equals(await canvas.screenshot()), `${p.url}: ${id}'s canvas drawn`);
 			if (shots) await page.screenshot({ path: path.join(shots, `docs-${id}.png`) });
 		}
-	});
-	const page = pool[0];
+	}
 	// (the search: a word of a page's heading finds it)
 	await page.goto(url + pages[1].url);
 	await page.locator('.search').fill('bloom');
@@ -295,33 +281,4 @@ async function phone(page, shots, id) {
 	await page.waitForTimeout(500);
 	check(await page.evaluate((id) => !document.querySelector(`#${id} .stage.expanded`) && !document.documentElement.classList.contains('playing'), id), `${id} expanded: left by Exit`);
 	await page.setViewportSize({ width: 1280, height: 900 });
-}
-
-// the items shared by the pages, each page taking the next when it is done;
-// an item whose run throws or fails a check while others run (a heavy demo
-// beside it, the CPU's SwiftShader shared: a canvas not drawn in time) run
-// again alone after them, its checks that run's: a serial run's verdict
-async function each(pages, items, f) {
-	let next = 0;
-	const again = [], name = (item) => typeof item === 'string' ? item : item.url;
-	const attempt = async (page, item, retry) => {
-		const log = [];
-		await page.setViewportSize({ width: 1280, height: 900 });
-		try {
-			await f(page, item, (ok, what) => log.push([ok, what]));
-		} catch (e) {
-			if (!retry) throw e;
-			log.push([false, `${name(item)}: ${e.message.split('\n')[0]}`]);
-		}
-		if (retry && log.some(([ok]) => !ok)) {
-			console.log(`AGAIN ${name(item)}, alone after the others: ${log.filter(([ok]) => !ok).map(([, w]) => w).join('; ')}`);
-			again.push(item);
-			return;
-		}
-		for (const [ok, what] of log) check(ok, what);
-	};
-	await Promise.all(pages.map(async (page) => {
-		while (next < items.length) await attempt(page, items[next++], pages.length > 1);
-	}));
-	for (const item of again) await attempt(pages[0], item, false);
 }

@@ -98,6 +98,7 @@ console.log(`web.mjs: chromium ${browsers[0].version()}, ${runs.length} runs, ${
 let failed = 0, next = 0;
 const t0 = Date.now();
 async function one(browser, [scene, gfx, mode]) {
+	const started = Date.now();
 	const p = await browser.newPage({ viewport: { width: 400, height: 300 } });
 	const errors = [];
 	p.on('pageerror', (e) => errors.push(e.message));
@@ -119,7 +120,7 @@ async function one(browser, [scene, gfx, mode]) {
 	const ok = r.ok && missing.length === 0 && errors.length === 0 && log.includes('exit 0');
 	if (!ok) failed++;
 	// (a run's lines together: the runs at once end in any order)
-	console.log([`web.mjs: ${r.text}${ok ? '' : ' FAILED'}`, ...log.map((l) => '  ' + l), ...missing.map((m) => '  missing: ' + m), ...errors.map((e) => '  error: ' + e)].join('\n'));
+	console.log([`web.mjs: ${r.text}${ok ? '' : ' FAILED'} (${Date.now() - started} ms)`, ...log.map((l) => '  ' + l), ...missing.map((m) => '  missing: ' + m), ...errors.map((e) => '  error: ' + e)].join('\n'));
 	await p.close();
 }
 await Promise.all(browsers.map(async (b) => {

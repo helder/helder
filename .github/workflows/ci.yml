@@ -16,7 +16,8 @@
 #   site job makes too left to it), the READMEs against the docs' pages;
 # - site: the examples' pages and the docs built (every web example's
 #   build, an unknown example, region, page or link a failure) and checked
-#   in headless Chromium (bun run site:check);
+#   in headless Chromium (site-check: bun run site:check, its demos and
+#   docs pages in two shards, a machine each);
 # - fuzz (pushes to main, nightly): helder.image's decoders and helder.pdf
 #   fuzzed for 30 s each;
 # - gfx, gfx-3d, gfx-apps: the native GPU and audio lanes on Mesa's
@@ -57,7 +58,7 @@
 #   (story-shared) on a macOS and a Windows runner; on macOS the web
 #   view too (tests/platform/webview-macos.sh);
 # - ci: always run, the required jobs' verdict (changes, headless,
-#   typescript, examples, site): one check to require, also when a change
+#   typescript, examples, site, site-check): one check to require, also when a change
 #   to the docs alone skips the others;
 # - the viewer's releases are release.yml's (a tag viewer-v<version>);
 # - the npm packages' nightlies are npm.yml's.
@@ -202,21 +203,48 @@ jobs:
       - uses: actions/checkout@v7
       - id: setup
         uses: ./.github/actions/setup
-        with: {cache: site, node-version: 24, playwright: 1.56.1}
-      - name: Fonts (DejaVu Sans, for the ui and text examples), Mesa
-        run: sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core libegl1 libegl-mesa0
+        with: {cache: site, node-version: 24}
+      - name: Fonts (DejaVu Sans, for the ui and text examples)
+        run: sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core
       - name: Build
         env:
           SITE_SKIP_DATA: 1
         run: bun run site
-      - name: Check (the pages in Chromium)
-        run: bun run site:check bin/site-check
+      # (the built site for site-check's machines)
       - uses: actions/upload-artifact@v7
-        if: always()
-        with: {name: site, path: bin/site-check/*.png, retention-days: 7, if-no-files-found: ignore}
+        with: {name: site-built, path: "bin/site\nbin/site-build/examples.json", retention-days: 1, compression-level: 1}
       - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
         with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
+
+  # The site's check (bun run site:check), its demos and docs pages in two
+  # shards (SITE_SHARD), a machine each: on one machine, two Chromiums'
+  # SwiftShader starved each other's frames (a heavy demo's canvas beside
+  # the other's); each is alone on its cores as main's single check was.
+  site-check:
+    needs: site
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1]
+    steps:
+      - uses: actions/checkout@v7
+      - id: setup
+        uses: ./.github/actions/setup
+        with: {cache: site-check, node-version: 24, playwright: 1.56.1}
+      - name: Fonts (DejaVu Sans), Mesa
+        run: sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core libegl1 libegl-mesa0
+      - uses: actions/download-artifact@v7
+        with: {name: site-built, path: bin}
+      - name: Check (the pages in Chromium)
+        env:
+          SITE_SHARD: ${{ matrix.shard }}/2
+        run: bun run site:check bin/site-check
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with: {name: 'site-${{ matrix.shard }}', path: bin/site-check/*.png, retention-days: 7, if-no-files-found: ignore}
 
   fuzz:
     needs: changes
@@ -626,7 +654,7 @@ jobs:
   # The required jobs' verdict, always reported: a skipped job (a change to
   # the docs alone) passes, a failed or cancelled one fails it.
   ci:
-    needs: [changes, headless, typescript, examples, site]
+    needs: [changes, headless, typescript, examples, site, site-check]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5

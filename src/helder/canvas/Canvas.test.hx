@@ -196,10 +196,13 @@ function tests() {
 			// (the buffers grown to the largest frame first)
 			for (k in 0...5)
 				frame(k);
-			var before = hxmc.GcStats.bytesAllocated();
+			// (this thread's bytes, as helder.view's Alloc.test.hx counts: the
+			// process's count takes another thread's new TLAB whole, 64 KB, when
+			// it takes one meanwhile, the canvas's drawing or not)
+			var before = hxmc.GcStats.threadBytesAllocated();
 			for (k in 0...200)
 				frame(k);
-			equals(hxmc.GcStats.bytesAllocated() - before, 0.0);
+			equals(hxmc.GcStats.threadBytesAllocated() - before, 0.0);
 		});
 	});
 }
