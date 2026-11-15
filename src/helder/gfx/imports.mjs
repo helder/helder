@@ -147,6 +147,8 @@ export default async function (host) {
 	const textures = new Int32Array(16), samplers = new Int32Array(16);
 	// the pipeline set (its bind group layout and groups), and whether its bind group needs setting
 	let pipe = null, dirty = false;
+	// (the pass's occlusion query set, a query open in it, the sets the frame wrote)
+	let passQueries = null, queryOpen = false, frameQueries = [];
 	const attachment = { view: null, loadOp: 'clear', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 1 } };
 	const depthAttachment = { view: null, depthLoadOp: 'clear', depthStoreOp: 'store', depthClearValue: 1 };
 	const passDesc = { colorAttachments: [attachment], depthStencilAttachment: depthAttachment };
@@ -593,7 +595,46 @@ export default async function (host) {
 			encoder = device.createCommandEncoder();
 			return 1;
 		},
-		pass_begin(color, resolve, load, r, g, b, a, depthTexture, depthLoad, depth) {
+		// (occlusion queries: a query set, its resolve buffer and a buffer it
+		// is read back through; the queries a frame wrote resolved at its
+		// end, read once mapped, while one read is on its way the next
+		// frames' answers let go)
+		query_set(count) {
+			const q = {
+				set: device.createQuerySet({ type: 'occlusion', count }),
+				resolve: device.createBuffer({ label: 'helder queries', size: count * 8, usage: GPUBufferUsage.QUERY_RESOLVE | GPUBufferUsage.COPY_SRC }),
+				read: device.createBuffer({ label: 'helder queries (read)', size: count * 8, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST }),
+				count, results: new Int32Array(count).fill(-1), written: new Uint8Array(count), reading: null,
+				destroy() {
+					this.set.destroy();
+					this.resolve.destroy();
+					this.read.destroy();
+				},
+			};
+			return handles.add(q);
+		},
+		query_result: (h, k) => handles.get(h)?.results[k] ?? -1,
+		reset_query(h, k) {
+			const q = handles.get(h);
+			if (!q) return;
+			q.results[k] = -1;
+			if (q.reading) q.reading[k] = 0;
+		},
+		begin_query(k) {
+			if (!passQueries || k < 0 || k >= passQueries.count) return;
+			pass.beginOcclusionQuery(k);
+			passQueries.written[k] = 1;
+			queryOpen = true;
+		},
+		end_query() {
+			if (!queryOpen) return;
+			pass.endOcclusionQuery();
+			queryOpen = false;
+			if (!frameQueries.includes(passQueries)) frameQueries.push(passQueries);
+		},
+		pass_begin(color, resolve, load, r, g, b, a, depthTexture, depthLoad, depth, queries) {
+			passQueries = queries ? handles.get(queries) : null;
+			passDesc.occlusionQuerySet = passQueries ? passQueries.set : undefined;
 			// (a render target: its first level, and its depth texture or none;
 			// multisampled, resolved into resolve's at the end)
 			const t = color ? handles.get(color) : null, d = depthTexture ? handles.get(depthTexture) : null;
@@ -651,7 +692,26 @@ export default async function (host) {
 			const pixels = waiting.length ? copy(encoder, texture, frameTarget.format) : null;
 			if (ring.used) device.queue.writeBuffer(ring.buffer, 0, ring.staging, 0, Math.ceil(ring.used / 4) * 4);
 			ring.used = 0;
+			// (the queries the frame wrote, resolved and copied where they are read back)
+			const reads = [];
+			for (const q of frameQueries) {
+				if (!q.reading) {
+					encoder.resolveQuerySet(q.set, 0, q.count, q.resolve, 0);
+					encoder.copyBufferToBuffer(q.resolve, 0, q.read, 0, q.count * 8);
+					q.reading = q.written.slice();
+					reads.push(q);
+				}
+				q.written.fill(0);
+			}
+			frameQueries = [];
 			device.queue.submit([encoder.finish()]);
+			for (const q of reads)
+				q.read.mapAsync(GPUMapMode.READ).then(() => {
+					const v = new BigUint64Array(q.read.getMappedRange());
+					for (let k = 0; k < q.count; k++) if (q.reading[k]) q.results[k] = v[k] > 0n ? 1 : 0;
+					q.read.unmap();
+					q.reading = null;
+				}, () => { q.reading = null; });
 			pixels?.().then((px) => waiting.forEach((w) => w.resolve(px)), (e) => waiting.forEach((w) => w.reject(e)));
 			encoder = null;
 			submitted();
@@ -949,6 +1009,12 @@ export default async function (host) {
 		// (pixels: the memory from p on, which WebGL fills as far as it needs)
 		glReadPixels: (x, y, w, h, format, type, p) => gl.readPixels(x, y, w, h, format, type, new Uint8Array(host.memory().buffer, p)),
 		glFinish: () => gl.finish(),
+		// (occlusion queries: a result is not available in the task that ended it, WebGL2's rule)
+		glGenQueries: (n, p) => gen(n, p, () => gl.createQuery()),
+		glDeleteQueries: (n, p) => del(n, p, (q) => gl.deleteQuery(q)),
+		glBeginQuery: (target, q) => gl.beginQuery(target, get(q)),
+		glEndQuery: (target) => gl.endQuery(target),
+		glGetQueryObjectuiv: (q, pname, p) => view().setInt32(p, Number(gl.getQueryParameter(get(q), pname)) | 0, true),
 		// (GL ES 3.1's: none on WebGL2, whose device has no compute; never called)
 		...Object.fromEntries(['glMapBufferRange', 'glUnmapBuffer', 'glDispatchCompute', 'glDispatchComputeIndirect', 'glMemoryBarrier', 'glBindBufferBase', 'glBindImageTexture',
 			'glDrawArraysIndirect', 'glDrawElementsIndirect'].map((n) => [n, () => { throw new Error('helder.gfx: ' + n + ': WebGL2 has no compute'); }])),

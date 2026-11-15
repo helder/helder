@@ -213,6 +213,34 @@ final class Device {
 		impl.readBuffer(b.id(), offset, dst, dstOffset, size);
 	}
 
+	// ---- occlusion queries (every back end: GL ES 3.0's and WebGL2's
+	// ANY_SAMPLES_PASSED_CONSERVATIVE, WebGPU's occlusion query sets, Metal's
+	// visibility results, D3D11's occlusion queries)
+	//
+	// count queries, each counting whether any sample of the draws inside
+	// it passed the depth test: a pass naming the set (PassDesc.queries),
+	// Encoder.beginQuery(k) ... endQuery() about its draws, answered a frame
+	// or more later by queryResult, never waited for
+	public function createQueries(count:Int):QuerySet {
+		if (count <= 0) throw "helder.gfx: createQueries: count must be positive";
+		return new QuerySet(impl.createQueries(count));
+	}
+
+	public function destroyQueries(q:QuerySet)
+		impl.destroyQueries(q.id());
+
+	// query k's last answer: 1 some sample passed, 0 none, -1 none yet (not
+	// begun, or its first answer still on its way); a query begun again
+	// before its last answer came is not begun (its draws drawn, uncounted),
+	// so an answer always comes
+	public function queryResult(q:QuerySet, k:Int):Int
+		return impl.queryResult(q.id(), k);
+
+	// query k's last answer let go (-1 until one begun after this comes;
+	// one on its way now is let go too): what was out of view since
+	public function resetQuery(q:QuerySet, k:Int)
+		impl.resetQuery(q.id(), k);
+
 	// (d.program: its shaders created first)
 	public function createPipeline(d:PipelineDesc):Pipeline {
 		if (d.program != null)

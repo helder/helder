@@ -626,6 +626,9 @@ class MetalBackend {
 		Msg.vInt(depthAttachment, S.setLoadAction, d == null || d.load == Load ? MTL.LoadActionLoad : MTL.LoadActionClear);
 		Msg.vInt(depthAttachment, S.setStoreAction, MTL.StoreActionStore);
 		Msg.vFloat(depthAttachment, S.setClearDepth, d == null || d.clear == null ? 1 : d.clear);
+		// (the pass's occlusion queries: its visibility result buffer)
+		passQueries = p.queries == null ? 0 : p.queries.id();
+		if (passQueries != 0) Msg.vPtr(pass, ObjC.sel("setVisibilityResultBuffer:"), querySets[passQueries - 1].buffer);
 		enc = Msg.idPtr(cmd, S.renderCommandEncoderWithDescriptor, pass);
 		viewport.value.originX = 0;
 		viewport.value.originY = 0;
@@ -694,6 +697,85 @@ class MetalBackend {
 	public function endPass() {
 		Msg.v(enc, S.endEncoding);
 		enc = Ptr.nil();
+		if (passQueries != 0) Msg.vPtr(pass, ObjC.sel("setVisibilityResultBuffer:"), Ptr.nil());
+		passQueries = 0;
+	}
+
+	// ---- occlusion queries (a pass's visibility result buffer, shared
+	// memory: 8 bytes a query, MTLVisibilityResultModeBoolean, cleared by the
+	// CPU when begun): each query's state (begun, its frame's command buffer
+	// kept until it completed) and last answer (-1 none)
+	final querySets:Array<Null<{buffer:Ptr, pending:Array<Bool>, results:Array<Int>, buffers:Array<Ptr>, stale:Array<Bool>}>> = [];
+	var passQueries = 0;
+	var activeQuery = -1;
+
+	public function createQueries(count:Int):Int {
+		var b = Msg.idIntInt(device, ObjC.sel("newBufferWithLength:options:"), count * 8, MTL.ResourceStorageModeShared);
+		if (b.isNull()) throw "helder.gfx: createQueries: no buffer for " + count + " queries";
+		LibC.memset(Msg.id(b, ObjC.sel("contents")), 0, (count * 8 : Int64));
+		querySets.push({
+			buffer: b,
+			pending: [for (_ in 0...count) false],
+			results: [for (_ in 0...count) -1],
+			buffers: [for (_ in 0...count) Ptr.nil()],
+			stale: [for (_ in 0...count) false]
+		});
+		return querySets.length;
+	}
+
+	public function destroyQueries(id:Int) {
+		var q = querySets[id - 1];
+		if (q == null) return;
+		for (c in q.buffers)
+			if (!c.isNull()) Runtime.objc_release(c);
+		ObjC.release(q.buffer);
+		querySets[id - 1] = null;
+	}
+
+	public function queryResult(id:Int, k:Int):Int {
+		var q = querySets[id - 1];
+		if (q == null || k < 0 || k >= q.results.length) return -1;
+		// (its frame's command buffer completed, MTLCommandBufferStatusCompleted or Error: its answer there)
+		if (q.pending[k] && Msg.i(q.buffers[k], ObjC.sel("status")) >= 4) {
+			var p:Ptr<Int32> = Msg.id(q.buffer, ObjC.sel("contents"));
+			q.results[k] = q.stale[k] ? -1 : p.offset(k * 2).value != 0 || p.offset(k * 2 + 1).value != 0 ? 1 : 0;
+			q.pending[k] = q.stale[k] = false;
+			Runtime.objc_release(q.buffers[k]);
+			q.buffers[k] = Ptr.nil();
+		}
+		return q.results[k];
+	}
+
+	public function resetQuery(id:Int, k:Int) {
+		var q = querySets[id - 1];
+		if (q == null || k < 0 || k >= q.results.length) return;
+		q.results[k] = -1;
+		if (q.pending[k]) q.stale[k] = true;
+	}
+
+	public function beginQuery(k:Int) {
+		activeQuery = -1;
+		var q = passQueries == 0 ? null : querySets[passQueries - 1];
+		if (q == null || k < 0 || k >= q.results.length) return;
+		// (its last answer still to come: not begun again, so that one comes)
+		if (q.pending[k]) {
+			queryResult(passQueries, k);
+			if (q.pending[k]) return;
+		}
+		var p:Ptr<Int32> = Msg.id(q.buffer, ObjC.sel("contents"));
+		p.offset(k * 2).value = 0;
+		p.offset(k * 2 + 1).value = 0;
+		Msg.vIntInt(enc, ObjC.sel("setVisibilityResultMode:offset:"), 1, k * 8);
+		activeQuery = k;
+	}
+
+	public function endQuery() {
+		if (activeQuery < 0) return;
+		var q = querySets[passQueries - 1];
+		Msg.vIntInt(enc, ObjC.sel("setVisibilityResultMode:offset:"), 0, 0);
+		q.pending[activeQuery] = true;
+		q.buffers[activeQuery] = Runtime.objc_retain(cmd);
+		activeQuery = -1;
 	}
 
 	public function endFrame() {

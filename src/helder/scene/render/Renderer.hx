@@ -81,9 +81,19 @@ class Renderer {
 	// (sceneDraws, shadowDraws, postDraws: PostProcess.draws)
 	public var draws(default, null) = 0;
 	public var culled(default, null) = 0;
+	// the last draw's primitives not drawn as hidden behind others
+	// (Occlusion: its queries of the frames before; 0 without)
+	public var occluded(default, null) = 0;
 	public var shadowDraws(default, null) = 0;
 	// the view buffers' prepass draws (ViewBuffers; 0 without)
 	public var prepassDraws(default, null) = 0;
+	// a sub-pixel offset of the projection this frame, in pixels of the
+	// target (x right, y down; 0, 0: none): temporal antialiasing's
+	// (post.antialias Taa sets it before each frame), the view buffers' and
+	// the main pass's alike; the motion the view buffers record leaves it out
+	public var jitter:helder.gfx.shader.Vec2 = new helder.gfx.shader.Vec2(0, 0);
+	// the frames drawn (each draw one)
+	public var frames(default, null) = 0;
 
 	final pipeline:Pipeline;
 	final doubleSided:Pipeline;
@@ -247,22 +257,34 @@ class Renderer {
 	// by default the device's)
 	public function draw(enc:Encoder, world:World, camera:Camera, ?aspect:Float) {
 		if (aspect == null) aspect = device.width / device.height;
-		var viewProj = camera.viewProjection(aspect);
+		var still = camera.viewProjection(aspect);
 		// (morph targets blended where their weights changed: Morph)
 		if (Morph.updateWorld != null) Morph.updateWorld(world);
-		// (post's effects' needs first: the view buffers, whose groups the draw list takes)
+		var width = targetWidth > 0 ? targetWidth : device.width, height = targetHeight > 0 ? targetHeight : device.height;
+		frame.width = width;
+		frame.height = height;
+		// (post's effects' needs first: the view buffers, whose groups the
+		// draw list takes; temporal antialiasing's jitter)
 		if (post != null) post.require(this);
+		var jx = jitter.x * 2 / width, jy = -jitter.y * 2 / height;
+		var jittered = jx != 0 || jy != 0;
+		var viewProj = jittered ? jitterOf(still, jx, jy) : still;
+		// (occlusion's results of the frames before: the nodes hidden then, culled)
+		if (occluder != null) occluder.prepare(this, world, viewProj, camera.eye());
 		extract(world, viewProj);
 		occlusion = null;
 		var toLight = writeFrame(world, camera, viewProj, false);
 		frame.world = world;
 		frame.camera = camera;
 		frame.aspect = aspect;
-		frame.width = targetWidth > 0 ? targetWidth : device.width;
-		frame.height = targetHeight > 0 ? targetHeight : device.height;
 		frame.view = camera.view();
-		frame.projection = camera.projection(aspect);
+		var projection = camera.projection(aspect);
+		frame.projection = jittered ? jitterOf(projection, jx, jy) : projection;
 		frame.viewProj = viewProj;
+		frame.jitter = new helder.gfx.shader.Vec2(jx, jy);
+		frame.stillViewProj = still;
+		frame.previousViewProj = frames > 0 && lastWorld == world ? lastViewProj : still;
+		frame.index = frames;
 		frame.eye = camera.eye();
 		frame.toLight = toLight;
 		frame.hdr = hdr;
@@ -291,12 +313,31 @@ class Renderer {
 		FrameCounts.sceneDraws += draws;
 		for (f in hooks[AfterPass])
 			f(enc, frame);
+		lastViewProj = still;
+		lastWorld = world;
+		frames++;
+	}
+
+	// (the frame before's unjittered view-projection, and its world)
+	var lastViewProj:Mat4 = Mat4.identity();
+	var lastWorld:Null<World> = null;
+
+	// (occlusion culling: Occlusion's, attached by use)
+	var occluder:Null<RenderFeature.OcclusionSource> = null;
+
+	// m with clip space moved by x, y (a sub-pixel jitter: each column's x
+	// and y plus its w times the offset)
+	static function jitterOf(m:Mat4, x:Float, y:Float):Mat4 {
+		inline function moved(c:Vec4):Vec4
+			return new Vec4(c.x + x * c.w, c.y + y * c.w, c.z, c.w);
+		return new Mat4(moved(m.c0), moved(m.c1), moved(m.c2), moved(m.c3));
 	}
 
 	// the draw list: each shown mesh inside the view, a draw per primitive, sorted
 	public function extract(world:World, viewProj:Mat4) {
 		count = 0;
 		culled = 0;
+		occluded = 0;
 		var meshes = world.store(MeshRenderer.KIND), tints = world.store(MeshRenderer.TINT);
 		for (k in 0...meshes.length) {
 			var node = meshes.nodeAt(k), mesh = meshes.valueAt(k);
@@ -307,6 +348,12 @@ class Renderer {
 			if (skinned && (skinSource == null || !skinSource.prepare(node))) continue;
 			if (!skinned && !visible(viewProj * model, mesh)) {
 				culled += mesh.primitives.length;
+				continue;
+			}
+			// (hidden behind others the frames before: Occlusion's)
+			if (occluder != null && occluder.hidden(node)) {
+				occluded += mesh.primitives.length;
+				FrameCounts.occluded += mesh.primitives.length;
 				continue;
 			}
 			var tint = tints.get(node) ?? WHITE;
@@ -475,6 +522,7 @@ class Renderer {
 				// before the see-through ones; their pipelines are theirs;
 				// then the see-through instanced sets: Sprites' halos)
 				opaque = false;
+				if (occluder != null) occluder.draw(enc, this);
 				for (f in hooks[AfterOpaque])
 					f(enc, frame);
 				recordSets(enc, true);
@@ -521,6 +569,7 @@ class Renderer {
 			if (many) instanced += n;
 		}
 		if (opaque) {
+			if (occluder != null) occluder.draw(enc, this);
 			for (f in hooks[AfterOpaque])
 				f(enc, frame);
 			recordSets(enc, true);
@@ -818,6 +867,15 @@ class FrameInfo {
 	public var view:Mat4 = Mat4.identity();
 	public var projection:Mat4 = Mat4.identity();
 	public var viewProj:Mat4 = Mat4.identity();
+	// the view-projection without the frame's jitter (Renderer.jitter), and
+	// the frame before's (its first frame, or a world's first: this one's):
+	// what moved on the screen since (post's motion: TAA, motion blur)
+	public var stillViewProj:Mat4 = Mat4.identity();
+	public var previousViewProj:Mat4 = Mat4.identity();
+	// the jitter in clip space (x, y: Renderer.jitter's)
+	public var jitter:helder.gfx.shader.Vec2 = new helder.gfx.shader.Vec2(0, 0);
+	// the renderer's frames drawn before this one
+	public var index = 0;
 	public var eye:Vec3 = new Vec3(0, 0, 0);
 	// towards the light (the world's sun or the renderer's)
 	public var toLight:Vec3 = new Vec3(0, 1, 0);

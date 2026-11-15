@@ -74,3 +74,12 @@ final ShowShader = shader({
 		return vec4(vec3(sampleLevel(p.image, i.uv, 0).x), 1);
 	}
 });
+
+// (debugging: a texture's colour, its alpha into blue, shown over the frame: HighEndScenes' HXMC_SHOW)
+final ShowColorShader = shader({
+	vertex: function(v:StageVertex):StageVaryings return fullscreen(v),
+	fragment: function(i:StageVaryings, p:{image:Texture2D}):Vec4 {
+		var c = sampleLevel(p.image, i.uv, 0);
+		return vec4(c.x, c.y, max(c.z, c.w), 1);
+	}
+});

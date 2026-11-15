@@ -36,6 +36,8 @@ class ID3D11Device {
 	@:slot(21) static function CreateDepthStencilState(self:Ptr, desc:Ptr<D3D11_DEPTH_STENCIL_DESC>, out:Ptr<Ptr>):Int;
 	@:slot(22) static function CreateRasterizerState(self:Ptr, desc:Ptr<D3D11_RASTERIZER_DESC>, out:Ptr<Ptr>):Int;
 	@:slot(23) static function CreateSamplerState(self:Ptr, desc:Ptr<D3D11_SAMPLER_DESC>, out:Ptr<Ptr>):Int;
+	// (desc: a D3D11_QUERY_DESC, two UINTs: the query's kind, its flags)
+	@:slot(24) static function CreateQuery(self:Ptr, desc:Ptr<Int32>, out:Ptr<Ptr>):Int;
 	@:slot(28) static function OpenSharedResource(self:Ptr, handle:Ptr, iid:Ptr, out:Ptr<Ptr>):Int;
 	@:slot(30) static function CheckMultisampleQualityLevels(self:Ptr, format:Int, samples:Int, levels:Ptr<Int32>):Int;
 	@:slot(33) static function CheckFeatureSupport(self:Ptr, feature:Int, data:Ptr, size:Int):Int;
@@ -64,6 +66,10 @@ class ID3D11DeviceContext {
 	@:slot(24) static function IASetPrimitiveTopology(self:Ptr, topology:Int):Void;
 	@:slot(25) static function VSSetShaderResources(self:Ptr, start:Int, count:Int, views:Ptr<Ptr>):Void;
 	@:slot(26) static function VSSetSamplers(self:Ptr, start:Int, count:Int, samplers:Ptr<Ptr>):Void;
+	// (an ID3D11Asynchronous: a query; GetData's S_OK once its answer is there, S_FALSE before)
+	@:slot(27) static function Begin(self:Ptr, async:Ptr):Void;
+	@:slot(28) static function End(self:Ptr, async:Ptr):Void;
+	@:slot(29) static function GetData(self:Ptr, async:Ptr, data:Ptr<Int32>, size:Int, flags:Int):Int;
 	@:slot(33) static function OMSetRenderTargets(self:Ptr, count:Int, views:Ptr<Ptr>, depth:Ptr):Void;
 	@:slot(35) static function OMSetBlendState(self:Ptr, state:Ptr, factor:Ptr<Float32>, mask:Int):Void;
 	@:slot(36) static function OMSetDepthStencilState(self:Ptr, state:Ptr, ref:Int):Void;

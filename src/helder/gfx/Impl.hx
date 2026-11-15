@@ -122,6 +122,24 @@ abstract Impl(Any) {
 	public inline function endPass()
 		Platform.os() == 1 ? mtl().endPass() : Platform.os() == 2 ? d3d().endPass() : Platform.os() != 3 ? gl().endPass() : webgl() ? gl().endPass() : wgpu().endPass();
 
+	public inline function createQueries(count:Int):Int
+		return Platform.os() == 1 ? mtl().createQueries(count) : Platform.os() == 2 ? d3d().createQueries(count) : Platform.os() != 3 ? gl().createQueries(count) : webgl() ? gl().createQueries(count) : wgpu().createQueries(count);
+
+	public inline function destroyQueries(id:Int)
+		Platform.os() == 1 ? mtl().destroyQueries(id) : Platform.os() == 2 ? d3d().destroyQueries(id) : Platform.os() != 3 ? gl().destroyQueries(id) : webgl() ? gl().destroyQueries(id) : wgpu().destroyQueries(id);
+
+	public inline function queryResult(id:Int, k:Int):Int
+		return Platform.os() == 1 ? mtl().queryResult(id, k) : Platform.os() == 2 ? d3d().queryResult(id, k) : Platform.os() != 3 ? gl().queryResult(id, k) : webgl() ? gl().queryResult(id, k) : wgpu().queryResult(id, k);
+
+	public inline function resetQuery(id:Int, k:Int)
+		Platform.os() == 1 ? mtl().resetQuery(id, k) : Platform.os() == 2 ? d3d().resetQuery(id, k) : Platform.os() != 3 ? gl().resetQuery(id, k) : webgl() ? gl().resetQuery(id, k) : wgpu().resetQuery(id, k);
+
+	public inline function beginQuery(k:Int)
+		Platform.os() == 1 ? mtl().beginQuery(k) : Platform.os() == 2 ? d3d().beginQuery(k) : Platform.os() != 3 ? gl().beginQuery(k) : webgl() ? gl().beginQuery(k) : wgpu().beginQuery(k);
+
+	public inline function endQuery()
+		Platform.os() == 1 ? mtl().endQuery() : Platform.os() == 2 ? d3d().endQuery() : Platform.os() != 3 ? gl().endQuery() : webgl() ? gl().endQuery() : wgpu().endQuery();
+
 	public inline function endFrame()
 		Platform.os() == 1 ? mtl().endFrame() : Platform.os() == 2 ? d3d().endFrame() : Platform.os() != 3 ? gl().endFrame() : webgl() ? gl().endFrame() : wgpu().endFrame();
 

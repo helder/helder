@@ -40,6 +40,15 @@ class ViewBuffers implements RenderFeature implements RenderFeature.ViewSource {
 	public var scale = 0.0;
 	// off: no prepass drawn, no groups taken (what the effects made, while none reads them)
 	public var enabled = true;
+	// whether their motion is drawn too (motion: a second pass, gfx having
+	// one colour target a pass; TAA and motion blur by objects ask for it
+	// themselves): what moved since the frame before, by each node's matrix
+	// then and now and the camera's (MotionPass; desktop and web)
+	public var velocity(default, set) = false;
+	// the last frame's motion (RGBA16F, their size: xy this pixel's point's
+	// uv now less the frame before's, z 1 where a surface wrote it; null:
+	// velocity off)
+	public var motion(get, never):Null<Texture>;
 	// the last prepass's targets and their size
 	public var depth(default, null):Texture = cast 0;
 	public var normals(default, null):Texture = cast 0;
@@ -55,8 +64,27 @@ class ViewBuffers implements RenderFeature implements RenderFeature.ViewSource {
 	public var inverseProjection(default, null):Mat4 = Mat4.identity();
 	public var view(default, null):Mat4 = Mat4.identity();
 
-	// (the effects' share, when scale is 0)
+	// (the effects' share, when scale is 0; whether one wants the motion)
 	@:allow(helder.scene.render) var wanted = 1.0;
+	@:allow(helder.scene.render) var wantedMotion = false;
+	// (the motion's pass, made when first asked for: a program that never
+	// asks links none of it)
+	var motionPass:Null<MotionPass> = null;
+	@:allow(helder.scene.render) static var makeMotion:Null<ViewBuffers->MotionPass> = null;
+
+	function set_velocity(v:Bool):Bool {
+		if (v) makeMotion = MotionPass.make;
+		return velocity = v;
+	}
+
+	function get_motion():Null<Texture>
+		return motionPass != null && (velocity || wantedMotion) ? motionPass.texture : null;
+
+	// the last frame's motion pass's draws (0 without)
+	public var motionDraws(get, never):Int;
+
+	function get_motionDraws():Int
+		return motionPass != null && (velocity || wantedMotion) ? motionPass.draws : 0;
 
 	final pipelines:Array<Pipeline> = [];
 	final slots:Array<Array<Int>> = [];
@@ -220,6 +248,11 @@ class ViewBuffers implements RenderFeature implements RenderFeature.ViewSource {
 			}
 			enc.endPass();
 		}
+		if ((velocity || wantedMotion) && makeMotion != null) {
+			if (motionPass == null) motionPass = makeMotion(this);
+			motionPass.render(enc, renderer, frame);
+			draws += motionPass.draws;
+		}
 	}
 
 	inline function writeGroup(enc:Encoder, slot:Int, group:Int) {
@@ -275,6 +308,8 @@ class ViewBuffers implements RenderFeature implements RenderFeature.ViewSource {
 
 	public function dispose() {
 		release();
+		if (motionPass != null) motionPass.dispose();
+		motionPass = null;
 		device.destroyTexture(white);
 		if (renderer != null && @:privateAccess renderer.views == this) @:privateAccess renderer.views = null;
 	}

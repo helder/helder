@@ -102,3 +102,57 @@ function texelStep(k:Float):Vec2 {
 	if (k > 6.5) d = vec2(-2, 1);
 	return d;
 }
+
+// (a clip-space point's uv: the frame's top left 0, 0)
+function clipUv(c:Vec4):Vec2 {
+	var n = c.xy / max(c.w, 0.000001);
+	return vec2(n.x * 0.5 + 0.5, 0.5 - n.y * 0.5);
+}
+
+// the motion's pass (TAA, motion blur): inverseViewProj the frame's
+// jittered view-projection's inverse (a texel's depth to the world),
+// current and previous its view-projections without jitter, now and the
+// frame before; size: xy the target's pixels, zw the view buffers'; p, the
+// pass's own (TaaShader, MotionBlurShader); q: x 1 where the view buffers'
+// motion is drawn (velocity), y the target's aspect
+@:structInit @:publicFields class MotionParams {
+	var inverseViewProj:Mat4;
+	var current:Mat4;
+	var previous:Mat4;
+	var size:Vec4;
+	var p:Vec4;
+	var q:Vec4;
+}
+
+// a point's motion on the screen since the frame before (its uv now less
+// then): the view buffers' motion where a surface wrote it, else the
+// camera's from depth (a still world's: what a skinned mesh or the sky
+// moves by); uv the pixel's centre, at the view buffers' texel views (the
+// motion read at at: views, or uv itself through a linear sampler)
+function motionAt(m:MotionParams, motion:Texture2D, depth:Texture2D, uv:Vec2, views:Vec2, at:Vec2):Vec2 {
+	var v = vec2(0);
+	var drawn = 0.0;
+	if (m.q.x > 0.5) {
+		var t = sampleLevel(motion, at, 0);
+		if (t.z > 0.5) {
+			v = t.xy;
+			drawn = 1;
+		}
+	}
+	if (drawn < 0.5) {
+		var d = sampleLevel(depth, views, 0).x;
+		var w = m.inverseViewProj * vec4(uv.x * 2 - 1, 1 - uv.y * 2, d, 1);
+		var p = vec4(w.xyz / w.w, 1);
+		v = clipUv(m.current * p) - clipUv(m.previous * p);
+	}
+	return v;
+}
+
+// the view buffers' roughness and metalness (their normals' z: 4 bits each)
+function roughnessOf(z:Float):Float
+	return floor(floor(z * 255 + 0.5) / 16) / 15;
+
+function metalnessOf(z:Float):Float {
+	var v = floor(z * 255 + 0.5);
+	return (v - floor(v / 16) * 16) / 15;
+}

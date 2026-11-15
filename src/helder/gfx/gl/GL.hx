@@ -12,6 +12,9 @@ import hxmc.unsafe.*;
 @:hxmc.unsafe(gc)
 class GL {
 	public static inline var NO_ERROR = 0;
+	public static inline var ANY_SAMPLES_PASSED = 0x8C2F;
+	public static inline var QUERY_RESULT = 0x8866;
+	public static inline var QUERY_RESULT_AVAILABLE = 0x8867;
 	public static inline var COLOR_BUFFER_BIT = 0x4000;
 	public static inline var DEPTH_BUFFER_BIT = 0x0100;
 	public static inline var TRIANGLES = 0x0004;
@@ -193,4 +196,10 @@ class GL {
 	@:optional static function glDrawElementsIndirect(mode:Int, type:Int, indirect:Ptr):Void;
 	@:wait static function glReadPixels(x:Int, y:Int, width:Int, height:Int, format:Int, type:Int, pixels:Ptr):Void;
 	@:wait static function glFinish():Void;
+	// occlusion queries (GL ES 3.0's, WebGL2's: ANY_SAMPLES_PASSED)
+	static function glGenQueries(n:Int, ids:Ptr<Int32>):Void;
+	static function glDeleteQueries(n:Int, ids:Ptr<Int32>):Void;
+	static function glBeginQuery(target:Int, id:Int):Void;
+	static function glEndQuery(target:Int):Void;
+	static function glGetQueryObjectuiv(id:Int, pname:Int, value:Ptr<Int32>):Void;
 }

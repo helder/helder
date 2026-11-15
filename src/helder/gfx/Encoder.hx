@@ -57,6 +57,14 @@ final class Encoder {
 	public inline function endPass()
 		impl.endPass();
 
+	// the draws until endQuery counted by query k of the pass's set
+	// (PassDesc.queries; one query at a time, each at most once a pass)
+	public inline function beginQuery(k:Int)
+		impl.beginQuery(k);
+
+	public inline function endQuery()
+		impl.endQuery();
+
 	// ---- the compute tier (Device.has(Compute))
 	//
 	// A compute pass, between render passes (not in one): its dispatches run
