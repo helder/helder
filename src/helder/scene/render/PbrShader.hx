@@ -777,7 +777,7 @@ function encode(c:Vec3):Vec3
 function octEncode(n:Vec3):Vec2 {
 	var a = n / (abs(n.x) + abs(n.y) + abs(n.z));
 	var e = a.xy;
-	if (a.z < 0) e = vec2((1 - abs(a.y)) * (a.x >= 0 ? 1 : -1), (1 - abs(a.x)) * (a.y >= 0 ? 1 : -1));
+	if (a.z < 0) e = vec2((1 - abs(a.y)) * (a.x >= 0 ? 1.0 : -1.0), (1 - abs(a.x)) * (a.y >= 0 ? 1.0 : -1.0));
 	return e * 0.5 + 0.5;
 }
 
