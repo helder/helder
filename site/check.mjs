@@ -48,7 +48,10 @@ const server = createServer(async (req, res) => {
 }).listen(0);
 const url = `http://localhost:${server.address().port}/`;
 
-const browser = await pw.chromium.launch({ args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-vulkan=swiftshader', '--use-angle=swiftshader'] });
+const CHROMIUM_ARGS = ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-vulkan=swiftshader', '--use-angle=swiftshader'];
+const browser = await pw.chromium.launch({ args: CHROMIUM_ARGS });
+// (the pool's: SITE_JOBS)
+const browsers = [];
 let failures = 0;
 const check = (ok, what) => {
 	console.log(`${ok ? 'PASS' : 'FAIL'} ${what}`);
@@ -58,9 +61,13 @@ try {
 	const errors = [];
 	// (a failed fetch by its URL, not the console's line: the videos and numbers a build without site/reel.mjs or site/numbers.mjs has not)
 	const later = ['examples/media/', 'examples/numbers.json'].filter((f) => !fs.existsSync(path.join(dir, f)));
-	// (each error with the page it came from)
+	// (each error with the page it came from; each page but the first in a
+	// browser of its own: one browser's pages share its GPU process, whose
+	// SwiftShader drew them one after another, slower than alone)
 	const open = async () => {
-		const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+		const b = browsers.length === 0 ? browser : await pw.chromium.launch({ args: CHROMIUM_ARGS });
+		browsers.push(b);
+		const page = await b.newPage({ viewport: { width: 1280, height: 900 } });
 		const at = () => page.url().replace(url, '/');
 		page.on('console', (m) => m.type() === 'error' && !m.text().startsWith('Failed to load resource') && errors.push(`${at()}: ${m.text()}`));
 		page.on('response', (r) => r.status() >= 400 && !later.some((f) => r.url().startsWith(url + f)) && errors.push(`${r.status()} ${r.url()}`));
@@ -143,6 +150,7 @@ try {
 	await checkPhone(shots);
 	check(errors.length === 0, `no console errors${errors.length ? ': ' + errors.join('\n') : ''}`);
 } finally {
+	await Promise.all(browsers.filter((b) => b !== browser).map((b) => b.close()));
 	await browser.close();
 	server.close();
 }
