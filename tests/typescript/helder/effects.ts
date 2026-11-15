@@ -1,9 +1,10 @@
 // helder/scene's post effects without a GPU: an effect's options and its
 // defaults (Ssao, Dof's two lenses), the selection as data (Outline.select
 // on a node: its own group, 0 once deselected), an outline's groups (its
-// colour set as a property: a Vec4 in an options object does not cross
-// into Haxe yet), a LUT's strip made from a grade in TypeScript
-// (lutStrip, for Lut.fromBytes: the identity's corners), the enums by name.
+// colour a Vec4 in its options), a LUT's strip made from a grade in
+// TypeScript (lutStrip, for Lut.fromBytes: the identity's corners; a Vec3
+// a TypeScript function returns does not cross into Haxe yet, so not
+// Lut.of's grade), the enums by name.
 // (Drawn: the 3d lane's frames, tests/3d/EffectScenes.hx.)
 import { World, Ssao, Dof, Outline, ToneMap, Antialias, DofMode, lutStrip } from "helder/scene";
 import { vec4 } from "helder/gfx";
@@ -23,8 +24,7 @@ console.log(Outline.selected(model), Outline.selected(part));
 Outline.select(model, 0);
 console.log(Outline.selected(model));
 
-const o = new Outline({width: 3});
-o.color = vec4(0.2, 0.6, 1, 1);
+const o = new Outline({width: 3, color: vec4(0.2, 0.6, 1, 1)});
 o.group(2, vec4(1, 0, 0, 1), 4);
 console.log(o.width, o.color.y);
 o.width = 1.5;

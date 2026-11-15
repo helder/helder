@@ -1324,13 +1324,16 @@ tags capitalized), and:
   block (a closure through a generic field boxed its call).
 - **Linked only when used:** each effect is reached through an
   interface, and each effect's shaders are a module of their own (a
-  module's finals are made together). README's table gives what each
-  adds.
-- **TypeScript:** the effects and the view buffers are in helder/scene;
-  a `Vec3` returned by a TypeScript callback, or a `Vec4` in an options
-  object, does not cross into Haxe yet (helder.typescript), so
-  `lutStrip` makes a LUT's strip in TypeScript and an outline's colour
-  is set as a property.
+  module's finals are made together); the prepass's and the
+  composites' variants are drawn on the GPU alone (helder.gfx's
+  `gpuVariant`, phase 1's GPU-only build made a slot object's method: no
+  CPU stages linked). README's table gives what each adds.
+- **TypeScript:** the effects and the view buffers are in helder/scene,
+  their options object literals (a `Vec4` in one crosses since phase 1).
+  A `Vec3` a TypeScript callback returns does not cross into Haxe yet
+  (helder.typescript: zeros natively, a trap as wasm32), so `Lut.of` and
+  `Lut.strip` are Haxe's alone and `lutStrip` makes a LUT's strip in
+  TypeScript, for `Lut.fromBytes`.
 - **Little Skies** is its own repository: the switch to `Dof.tiltShift`
   is not in this phase's change.
 

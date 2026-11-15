@@ -129,11 +129,12 @@ D3D11's WARP finds the same order (`EffectBench` on Windows). On a phone,
 prefer AO's one slice of 4 to 6 steps (`slices: 1, samples: 6`), depth of
 field's 16 taps and the view buffers at half size (no outline). What each
 adds to a program, natively (Linux x86-64) and as wasm, against the chain
-without one (`tests/3d/size/sizes.sh`'s post table): FXAA 29 KB and 29
-KB; a LUT 100 KB and 111 KB (the composite's variants with the effects);
-an outline 224 KB and 254 KB, AO 261 KB and 297 KB, depth of field 241 KB
-and 275 KB (those and the view buffers' prepass); all of them 329 KB and
-364 KB.
+without one (`tests/3d/size/sizes.sh`'s post table): FXAA 12 KB and 16
+KB; a LUT 58 KB and 77 KB (the composite's variants with the effects);
+an outline 163 KB and 194 KB, AO 199 KB and 238 KB, depth of field 179 KB
+and 218 KB (those and the view buffers' prepass); all of them 255 KB and
+299 KB. The prepass's and the composites' variants are drawn on the GPU
+alone (`gpuVariant`: no CPU stages linked).
 
 ## Tests
 

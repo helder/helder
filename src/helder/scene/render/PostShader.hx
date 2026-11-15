@@ -343,4 +343,4 @@ final composite = slots({
 // grade; with FXAA, CompositeFxaaShader (post.antialias Fxaa), and the
 // effects' variants, CompositeFxShader (PostFx's), are modules of their
 // own: linked only by a program that sets them
-final CompositeShader = composite.variant();
+final CompositeShader = composite.gpuVariant();

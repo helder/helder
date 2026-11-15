@@ -46,15 +46,18 @@ class Lut implements PostPass {
 	}
 
 	// a table made from a grade (display values 0..1 in, out), size a side
-	public static function of(device:Device, size:Int, grade:(r:Float, g:Float, b:Float) -> Vec3):Lut
+	// (not TypeScript's yet: a Vec3 a TypeScript function returns does not
+	// cross into Haxe; there helder/scene's lutStrip and fromBytes)
+	@:noCompletion public static function of(device:Device, size:Int, grade:(r:Float, g:Float, b:Float) -> Vec3):Lut
 		return new Lut(device, size, strip(size, grade));
 
 	// the identity table (what a strip to grade in an editor starts from)
 	public static function identity(device:Device, size = 16):Lut
 		return of(device, size, (r, g, b) -> new Vec3(r, g, b));
 
-	// a grade's strip, RGBA8 (a PNG of it is a strip to grade elsewhere)
-	public static function strip(size:Int, grade:(r:Float, g:Float, b:Float) -> Vec3):Bytes {
+	// a grade's strip, RGBA8 (a PNG of it is a strip to grade elsewhere;
+	// TypeScript's: lutStrip, as of's)
+	@:noCompletion public static function strip(size:Int, grade:(r:Float, g:Float, b:Float) -> Vec3):Bytes {
 		var w = size * size, bytes = Bytes.alloc(w * size * 4), k = size - 1;
 		for (y in 0...size)
 			for (x in 0...w) {

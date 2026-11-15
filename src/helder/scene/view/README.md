@@ -84,6 +84,12 @@ Example: [Planets](/examples/planets/Planets.hx) (`helder run examples/planets/P
   a scene node (`position`) whose children, ui's markup, are drawn over the
   box at its place, centred; placed from the frame drawn (a frame late) and
   hidden behind the camera.
+- **`<Effects>`** (`EffectTags.Effects`, `import
+  helder.scene.view.EffectTags.*`): the box's post chain (the box turned
+  HDR: bloom, the tone map, the grade), and in it the effects, each set on
+  the chain while its tag is there (`<Ssao>`, `<Dof>`, `<Outline>`,
+  `<Fxaa>`, `<Lut>`; a `<Show>` toggles one): typed components, their props
+  the effects' options ([Post effects](/docs/scene/effects.md)).
 - **Errors**: `<view>` in a scene's markup is no element of
   `SceneRenderer` (`@:elements`: node, mesh, light, camera); `<Scene>` in a
   scene's markup is ui's (it returns a `helder.ui.Node`).
@@ -91,7 +97,8 @@ Example: [Planets](/examples/planets/Planets.hx) (`helder run examples/planets/P
 Elements: `node`, `mesh`, the geometry and material tags, the lights,
 `camera` (fov, near, far), `instances` (an `InstancedMesh`:
 [Instancing](/docs/scene/instancing.md)) and `sprites`; `position`, `rotation`,
-`scale`, `name`, `visible` on every node.
+`scale`, `name`, `visible` and `outline` (the node's selection group, 0
+none: `Outline.select`, drawn by `<Outline>`) on every node.
 
 - **`mesh`**: its geometry and material given (made in code: shared, not
   made again), else its children's, a geometry tag and a material tag

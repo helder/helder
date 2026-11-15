@@ -7,5 +7,5 @@ import helder.scene.render.PostShader;
 
 // the composite with the effects folded in (PostShader's composite, effects;
 // with FXAA): PostFx's, a module of its own (linked with the first effect).
-final CompositeFxShader = composite.variant({effects: true});
-final CompositeFxFxaaShader = composite.variant({effects: true, fxaa: true});
+final CompositeFxShader = composite.gpuVariant({effects: true});
+final CompositeFxFxaaShader = composite.gpuVariant({effects: true, fxaa: true});

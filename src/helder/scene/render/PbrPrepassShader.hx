@@ -9,4 +9,4 @@ import helder.scene.render.PbrShader;
 // too, by their surface's normal); PbrPrepassInstancedShader the
 // instanced runs' and sets', PbrPrepassSkinnedShader the skinned ones'
 // (Skinning's): modules of their own, linked only where they are drawn.
-final PbrPrepassShader = pbr.variant({prepass: true});
+final PbrPrepassShader = pbr.gpuVariant({prepass: true});
