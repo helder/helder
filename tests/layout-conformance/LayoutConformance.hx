@@ -338,8 +338,6 @@ class LayoutConformance {
 			}
 		// (a block: helder.ui's column, not a flex row)
 		if (s.display == Block && !style.exists("flex-direction")) s.direction = Column;
-		// (CSS's align-content: normal is stretch in a flex container; helder.ui's flex-start)
-		if (!style.exists("align-content") && s.display != Grid) s.alignContent = Stretch;
 		// (start and end, not flex-start and flex-end: the same but in a reverse flex direction)
 		if (s.display != Grid && (s.direction == RowReverse || s.direction == ColumnReverse))
 			for (k in ["justify-content", "align-content"])

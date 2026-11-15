@@ -537,13 +537,14 @@ class Layout {
 			used += lines[k].cross + (k > firstLine ? gapCross : 0);
 		var free = crossSize - used, start = 0.0, between = 0.0;
 		if (multi) switch s.alignContent {
-			case Start | Normal:
+			case Start:
 			case End: start = free;
 			case Center: start = lu(free / 2);
-			case Stretch if (free > 0):
+			// (normal: stretch, as CSS's in a flex container)
+			case Stretch | Normal if (free > 0):
 				for (k in firstLine...lastLine)
 					lines[k].cross += free / count;
-			case Stretch:
+			case Stretch | Normal:
 			case SpaceBetween if (free > 0 && count > 1): between = lu(free / (count - 1));
 			case SpaceBetween:
 			case SpaceAround if (free > 0):

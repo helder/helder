@@ -40,7 +40,6 @@
   ],
   "deviations": [
     {"property": "flex-direction", "value": "column", "reason": "helder.ui's default (CSS's is row); the runner sets row"},
-    {"property": "align-content", "value": "normal", "reason": "flex-start in a flex container (CSS: stretch); the runner sets stretch"},
     {"property": "display", "value": "block", "reason": "a flex row when a row direction is given; the runner gives a block none"}
   ],
   "unsupported_browser_subset": [
