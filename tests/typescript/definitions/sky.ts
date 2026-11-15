@@ -1,11 +1,11 @@
 // helder.scene's sky (src/helder/scene/render/SkyShader.hx) in TypeScript:
 // the same text in every language as Haxe's (Sky.hx prints that one).
-import {shader, position, vec2, vec3, vec4, mix, normalize, pow, clamp, max, dot, type Vec2, type Vec3, type Vec4, type Mat4} from "helder/gfx";
+import {shader, position, vec2, vec3, vec4, mix, normalize, pow, clamp, max, min, dot, length, abs, exp, type Vec2, type Vec3, type Vec4, type Mat4} from "helder/gfx";
 import {print} from "./print";
 
 type SkyVertex = {pos: Vec2};
 type SkyVaryings = {clip: Vec4, ndc: Vec2};
-type SkyParams = {invViewProj: Mat4, eye: Vec4, zenith: Vec4, horizon: Vec4, ground: Vec4, sun: Vec4, sunColor: Vec4};
+type SkyParams = {invViewProj: Mat4, eye: Vec4, zenith: Vec4, horizon: Vec4, ground: Vec4, sun: Vec4, sunColor: Vec4, fog: Vec4, fogShape: Vec4};
 
 function output(c: Vec3, hdr: number): Vec3 {
 	let result = c;
@@ -21,6 +21,17 @@ function encode(c: Vec3): Vec3 {
 	return pow(c, vec3(1 / 2.2));
 }
 
+function fogAmount(fog: Vec4, shape: Vec4, eye: Vec3, at: Vec3): number {
+	const d = at.sub(eye);
+	const dist = max(length(d), 0.0001);
+	const through = max(dist - shape.x, 0);
+	const y = eye.y + d.y * min(shape.x / dist, 1);
+	const k = clamp(shape.y * d.y / dist * through, -30, 30);
+	const mean = abs(k) > 0.0001 ? (1 - exp(-k)) / k : 1 - 0.5 * k;
+	const depth = fog.w * exp(clamp(shape.y * (shape.z - y), -30, 30)) * through * mean;
+	return min(1 - exp(-depth), shape.w);
+}
+
 export const SkyShader = shader({
 	vertex: (v: SkyVertex): SkyVaryings => ({clip: position(vec4(v.pos, 0.9999, 1)), ndc: v.pos}),
 	fragment: (i, p: {sky: SkyParams}) => {
@@ -32,6 +43,7 @@ export const SkyShader = shader({
 		let color = up > 0 ? above : below;
 		const s = max(dot(d, p.sky.sun.xyz), 0);
 		color = color.add(p.sky.sunColor.xyz.mul(pow(s, 600) * 8 + pow(s, 12) * 0.25));
+		color = mix(color, p.sky.fog.xyz, fogAmount(p.sky.fog, p.sky.fogShape, p.sky.eye.xyz, far.xyz.div(far.w)));
 		return vec4(output(color.mul(p.sky.sun.w), p.sky.sunColor.w), 1);
 	},
 });

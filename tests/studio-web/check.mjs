@@ -393,9 +393,16 @@ async function recolour(pg, x, y, tap) {
 	await pg.waitForTimeout(1600);
 	await golden(pg, 'phone-zoomed');
 	// (a double tap: the frame entered, its title selected)
-	await pg.touchscreen.tap(52, 210);
-	await pg.waitForTimeout(80);
-	await pg.touchscreen.tap(52, 210);
+	// (its four touch events sent at once, in order: tap() waits for each to be
+	// handled, and with a software GPU's slow frames between them the studio,
+	// timing clicks as it handles them, saw two taps far apart)
+	{
+		const tapper = await pg.context().newCDPSession(pg);
+		const at = [{ x: 52, y: 210, id: 1 }];
+		await Promise.all(['touchStart', 'touchEnd', 'touchStart', 'touchEnd'].map((type) =>
+			tapper.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : at })));
+		await tapper.detach();
+	}
 	const sel = await event(pg, 'selected', (e) => e.tag !== 'Frame');
 	check(sel && sel.tag === 'text' && sel.screen === 'Todo/Three items', 'phone: the title double-tapped and selected: ' + JSON.stringify(sel && [sel.screen, sel.tag, sel.rect])
 		+ (sel ? '' : ' ' + JSON.stringify((await events(pg)).slice(-12).map((e) => [e.event, e.frame, e.tag, e.screen]))));

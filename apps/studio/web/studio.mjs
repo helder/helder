@@ -457,13 +457,17 @@ let compiles = 0;
 const compiled = new Map();
 const work = (p) => (p === dir || p.startsWith(dir + '/') ? '/work/' + projectName + p.slice(dir.length) : p);
 const unwork = (p) => (p && (p === '/work/' + projectName || p.startsWith('/work/' + projectName + '/')) ? dir + p.slice(('/work/' + projectName).length) : p);
+// (one build at a time, in the order asked: two at once wrote and built over
+// each other in the one compiler, and their swaps of the preview, each its
+// snapshot asked of the one worker, lost one another's)
+let building = Promise.resolve();
 function compile(host, req, cold = false) {
 	const id = ++compiles;
 	const answer = (r) => {
 		preview.events.push([6, id, host.handles.add(JSON.stringify(r))]);
 		host.wake?.(0);
 	};
-	(async () => {
+	building = building.then(async () => {
 		const c = await compilerClient();
 		if (!c) return answer({ ok: false, why: 'no compiler' });
 		// (the files changed since the compiler last had them, told as changed: its server's stamps are not trusted)
@@ -499,7 +503,7 @@ function compile(host, req, cold = false) {
 			preview.lastBuild = { req, at: performance.now(), cold };
 		}
 		answer({ ok: b.ok, diagnostics: (b.diagnostics ?? []).map((d) => ({ ...d, file: unwork(d.file) })), messages: b.messages, ms: b.ms, tables });
-	})().catch((e) => answer({ ok: false, why: String(e?.message ?? e) }));
+	}).catch((e) => answer({ ok: false, why: String(e?.message ?? e) }));
 	return id;
 }
 
