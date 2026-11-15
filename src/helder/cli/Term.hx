@@ -117,6 +117,20 @@ class Term {
 		#end
 	}
 
+	// this process's standard handles not inherited by the processes it
+	// starts (Windows: each one's are pipes of its own, but CreateProcess
+	// hands over every inheritable handle too, these among them: a process
+	// left running, BuildServer's, would hold them open)
+	public static function noInherit() {
+		#if (target.name == "hxmc" && hxmc.target != "wasm32-wasi")
+		if (hxmc.Platform.os() != 2) return;
+		for (which in [-10, -11, -12]) {
+			var h = TermK32.GetStdHandle(which);
+			if (hxmc.Handle.valid(h)) TermK32.SetHandleInformation(h, 1, 0); // HANDLE_FLAG_INHERIT
+		}
+		#end
+	}
+
 	#if (target.name == "hxmc" && hxmc.target != "wasm32-wasi")
 	// (Windows: ENABLE_VIRTUAL_TERMINAL_PROCESSING on the console's handle; false where it has none)
 	static function vt(which:Int):Bool {
@@ -139,5 +153,6 @@ class Term {
 	@:hxmc.len(mode, 1) static function GetConsoleMode(h:StdHandle, mode:hxmc.Span<Int>):Int;
 	static function SetConsoleMode(h:StdHandle, mode:Int):Int;
 	static function GetConsoleOutputCP():Int;
+	static function SetHandleInformation(h:StdHandle, mask:Int, flags:Int):Int;
 }
 #end

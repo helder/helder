@@ -1031,6 +1031,42 @@ server are given their environment (`HXMC_DEV`, `HXMC_DEV_SNAPSHOT`; the
 server's `RT_OLD_MB`, `RT_MINOR_KB`) through `Process`'s `env`, the CLI's
 own left alone.
 
+## Build times
+
+- **`helder build` and `helder run`** build through a compilation server
+  of their own kept warm between builds (`BuildServer.hx`): the first
+  build of a project starts it in the background (`helder
+  __build-server`, a copy of the CLI in `<helder's cache>/build-server`
+  on Windows, so that the checkout's bin/cli/helder can be rebuilt) and
+  builds through it, as cold as before; the builds after it are warm
+  (Little Skies on Windows: 7.5 to 10 s cold, 2.5 to 4.5 s warm, the same
+  bytes; beside a `helder dev` of it too), and
+  it ends after `HELDER_BUILD_SERVER_IDLE` seconds without one (300). One
+  at a time: one started asks the others (other projects', a GB or more
+  each) to end. Its key is the CLI, the compiler, the project's root and
+  the environment the compiler reads (`HAXE*`, `HXMC*`, `HELDER*`,
+  `RT_*`); the project's `.hx` files changed since the last build are
+  invalidated first (the server compares a file's time, which two saves in
+  one second share). Off with `HELDER_BUILD_SERVER=0`, and in CI (`CI` set)
+  unless it is `1`; when it does not start or answer, the build is made
+  without it. Not `helder dev`'s server: that one is warm for dev builds
+  (`-D hxmc.dev`, the dev host's defines), and a release build through it
+  is as cold as one without it and leaves dev's next build cold too (a
+  build of other defines between two dev builds: both cold, 7 s, where
+  the dev build alone is warm in 3 to 4 s). The two run side by side.
+  While it lives, on Windows, the compiler's executable is in use (an npm
+  install that replaces it waits for the server to end, or
+  `HELDER_BUILD_SERVER=0`).
+- **`helder test` with several targets** (`--target all`, `host,wasm,interp`)
+  builds them at once, each by a compiler of its own (at most
+  `HELDER_TEST_JOBS`, 4; `1`: one after the other), each one's output kept
+  and shown in its turn, then runs them one after the other in order: the
+  same lines as before, each build's time its own (Little Skies on a busy
+  Windows machine: 24 to 26 s for host and wasm one after the other, 15 to
+  16 s at once). With
+  `--watch` they share its compilation server, a request at a time: one
+  after the other.
+
 ## hxmc
 
 No workarounds left:
