@@ -489,6 +489,10 @@ function compile(host, req, cold = false) {
 			previewBytes = b.wasm;
 			meta ??= { root: '/work/' + projectName };
 			startPreview(host);
+		} else if (b.ok && b.wasm && id !== compiles) {
+			// (a newer build asked already: the preview swapped once, to that one;
+			// a swap right after another's left the worker without frames)
+			previewBytes = b.wasm;
 		} else if (b.ok && b.wasm) {
 			previewBytes = b.wasm;
 			preview.crashes = 0;
