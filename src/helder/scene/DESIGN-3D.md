@@ -1643,6 +1643,15 @@ its fallback; the departures said where the design describes them (2.1,
   so such scenes compile as before; and gfx's WebGPU glue makes a
   pipeline's variants when first drawn (none up front for unfilterable
   slots no draw binds: every PBR pipeline was compiled twice).
+- **Untiled variants.** After phase 6 (its larger surface), Android's
+  emulator's SwiftShader again failed to compile the standard material
+  with the local shadows' lookup in its light loop: a frame none of whose
+  local lights casts draws with pbr's `untiled` variants
+  (`PbrUntiledShader`, `PbrInstancedUntiledShader`: the loop without the
+  tiles), as one without local lights with `sunOnly`'s; the 3x3 filter of
+  a tile is a loop of its taps (`grid`), the surface passed to the loop's
+  functions as its point and normal. A scene of casting local lights still
+  compiles the full stage: on that emulator it does not run (a follow-up).
 - **The skin's joints' count is PbrObject's `tint.w`** for pbr's variants
   (`PbrSkinInfo` stays the shadow casters' and Unlit's): PbrLights' block
   made a skinned physical variant's slots 17, past gfx's 16.

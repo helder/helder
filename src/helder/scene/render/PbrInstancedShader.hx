@@ -11,3 +11,6 @@ final PbrInstancedShader = pbr.gpuVariant({instanced: true});
 
 // the instanced lit by the sun alone (a frame without local lights)
 final PbrInstancedSunShader = pbr.gpuVariant({instanced: true, sunOnly: true});
+
+// the instanced, its local lights unshadowed (a frame none of whose local lights casts)
+final PbrInstancedUntiledShader = pbr.gpuVariant({instanced: true, untiled: true});

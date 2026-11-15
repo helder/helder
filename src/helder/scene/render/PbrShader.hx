@@ -150,7 +150,9 @@ typedef PbrOptions = {
 	anisotropy:Bool,
 	uvSets:Bool,
 	// (the sun alone: no local lights' loop; the renderer's, a frame without them)
-	sunOnly:Bool
+	sunOnly:Bool,
+	// (the local lights unshadowed: no tile read; the renderer's, a frame none of whose local lights casts)
+	untiled:Bool
 };
 
 // per draw in the prepass (ViewBuffers): the camera's view (the normals
@@ -507,11 +509,11 @@ function shadeAt(facing:Vec3, world:Vec3, uv:Vec2, up:Vec3, tint:Vec3, frame:Pbr
 	if (color.w > 0.5) {
 		var first = color.w - 1;
 		var params = lights.tileParams[Std.int(first + 0.5)];
-		var at = shadowPoint(lit, pos.xyz, params);
+		var at = shadowPoint(lit.world, lit.normal, pos.xyz, params);
 		var tile = first + tileFace(at, pos.xyz, dot(cone.xyz, cone.xyz) < 0.0001) + 0.5;
 		shadow = tileShadow(shadowMap, lights.tileViewProj[Std.int(tile)], lights.tileRect[Std.int(tile)], params, frame.shadowAtlas, at);
 	}
-	direct += pbrDirect(lit, localLight(lit, pos, color, cone, shadow), p);
+	direct += pbrDirect(lit, localLight(lit.world, lit.normal, pos, color, cone, shadow), p);
 		k += 1;
 		index = lightIndex(frame.clusters, frame.clusterDepth, object.lights0, object.lights1, clusterMap, cell, k);
 	}
@@ -665,11 +667,12 @@ function lightRow(t:Texture2D, x:Float, k:Float, clusterAxis:Vec4, clusterDepth:
 // inverse square falloff windowed to reach 0 at its range (glTF's
 // KHR_lights_punctual), a spot's cone (the smoothstep from its outer cone
 // to its inner, from one dot: PbrLights' cone). (The vectors, not the
-// blocks: a function's call copies what it is passed, and Android's
-// emulator's GL, its host SwiftShader, failed to compile a stage that
-// copied the lights' and the tiles' arrays into each.)
-function localLight(s:LitSurface, pos:Vec4, color:Vec4, cone:Vec4, shadow:Float):LightSample {
-	var d = pos.xyz - s.world;
+// blocks nor the surface: a function's call copies what it is passed, and
+// Android's emulator's GL, its host SwiftShader, failed to compile a stage
+// that copied the lights' and the tiles' arrays, or the lit surface, into
+// each.)
+function localLight(world:Vec3, normal:Vec3, pos:Vec4, color:Vec4, cone:Vec4, shadow:Float):LightSample {
+	var d = pos.xyz - world;
 	var dist2 = max(dot(d, d), 0.0001);
 	var dist = sqrt(dist2);
 	var q = dist / pos.w;
@@ -682,7 +685,7 @@ function localLight(s:LitSurface, pos:Vec4, color:Vec4, cone:Vec4, shadow:Float)
 		shadow: shadow,
 		radiance: c * shadow,
 		direction: l,
-		ndotl: max(dot(s.normal, l), 0)
+		ndotl: max(dot(normal, l), 0)
 	};
 }
 
@@ -691,10 +694,10 @@ function localLight(s:LitSurface, pos:Vec4, color:Vec4, cone:Vec4, shadow:Float)
 // from its first): moved towards the light (at light) by the bias and off
 // its surface by the normal offset, both scaled by its distance (params:
 // its first tile's filter)
-function shadowPoint(s:LitSurface, light:Vec3, params:Vec4):Vec3 {
-	var d = light - s.world;
+function shadowPoint(world:Vec3, normal:Vec3, light:Vec3, params:Vec4):Vec3 {
+	var d = light - world;
 	var dist = max(length(d), 0.0001);
-	return s.world + d * params.y + s.normal * (params.z * dist);
+	return world + d * params.y + normal * (params.z * dist);
 }
 
 // the face of a point light's tiles (0 to 5: +x, -x, +y, -y, +z, -z) a
@@ -722,12 +725,25 @@ function tileShadow(map:Texture2D, viewProj:Mat4, rect:Vec4, params:Vec4, inv:Ve
 		var lit = 0.0;
 		if (params.w > 0) lit = disc(map, uv, rect, inv, p.z, params.w, t);
 		else
-			lit = (tap(map, uv, rect, inv, p.z, -t, -t) + tap(map, uv, rect, inv, p.z, 0, -t) + tap(map, uv, rect, inv, p.z, t, -t)
-				+ tap(map, uv, rect, inv, p.z, -t, 0) + tap(map, uv, rect, inv, p.z, 0, 0) + tap(map, uv, rect, inv, p.z, t, 0)
-				+ tap(map, uv, rect, inv, p.z, -t, t) + tap(map, uv, rect, inv, p.z, 0, t) + tap(map, uv, rect, inv, p.z, t, t)) / 9;
+			lit = grid(map, uv, rect, inv, p.z, t);
 		result = 1 - params.x * (1 - lit);
 	}
 	return result;
+}
+
+// the 3x3 filter's lit share, a loop of its nine taps (the same taps, the
+// same sum, as cascade's; once in the stage's code, not nine times in the
+// light loop's: Android's emulator's SwiftShader failed to compile the
+// stage with them unrolled there)
+function grid(map:Texture2D, uv:Vec2, rect:Vec4, inv:Vec4, depth:Float, t:Float):Float {
+	var sum = 0.0;
+	var k = 0.0;
+	while (k < 9) {
+		var row = floor(k / 3);
+		sum += tap(map, uv, rect, inv, depth, (k - row * 3 - 1) * t, (row - 1) * t);
+		k += 1;
+	}
+	return sum / 9;
 }
 
 // a tile's uv in the atlas (rect: its corner, its share of the atlas; inv:
@@ -1413,7 +1429,11 @@ final pbr = slots({
 		uvSets: false,
 		// (the sun alone: no local lights' loop, for a frame without them,
 		// the renderer's; a smaller stage, faster to compile)
-		sunOnly: false
+		sunOnly: false,
+		// (the local lights unshadowed: no tile read, for a frame none of
+		// whose local lights casts, the renderer's; Android's emulator's
+		// SwiftShader fails to compile the stage with the tiles' lookup)
+		untiled: false
 	},
 	vertex: function(v:PbrVertex, p:PbrVertexParams, m:Pbr):PbrVaryings {
 		var pos = m.position({pos: v.pos, normal: v.normal, uv: v.uv}, p);
@@ -1618,14 +1638,17 @@ final pbr = slots({
 						cone = p.lights.cone[Std.int(index)];
 					}
 					var shadow = 1.0;
-					if (color.w > 0.5) {
-						var first = color.w - 1;
-						var params = p.lights.tileParams[Std.int(first + 0.5)];
-						var at = shadowPoint(lit, pos.xyz, params);
-						var tile = first + tileFace(at, pos.xyz, dot(cone.xyz, cone.xyz) < 0.0001) + 0.5;
-						shadow = tileShadow(p.shadowMap, p.lights.tileViewProj[Std.int(tile)], p.lights.tileRect[Std.int(tile)], params, p.frame.shadowAtlas, at);
+					// (untiled: no local light casts this frame, no tile read)
+					if (!m.options.untiled) {
+						if (color.w > 0.5) {
+							var first = color.w - 1;
+							var params = p.lights.tileParams[Std.int(first + 0.5)];
+							var at = shadowPoint(lit.world, lit.normal, pos.xyz, params);
+							var tile = first + tileFace(at, pos.xyz, dot(cone.xyz, cone.xyz) < 0.0001) + 0.5;
+							shadow = tileShadow(p.shadowMap, p.lights.tileViewProj[Std.int(tile)], p.lights.tileRect[Std.int(tile)], params, p.frame.shadowAtlas, at);
+						}
 					}
-					direct += m.direct(lit, localLight(lit, pos, color, cone, shadow), p);
+					direct += m.direct(lit, localLight(lit.world, lit.normal, pos, color, cone, shadow), p);
 					k += 1;
 					index = lightIndex(p.frame.clusters, p.frame.clusterDepth, i.lights0, i.lights1, p.clusterMap, cell, k);
 				}
@@ -1652,3 +1675,7 @@ final PbrShader = pbr.gpuVariant();
 // the standard material lit by the sun alone (the renderer's, for a frame
 // without local lights: no light loop to compile)
 final PbrSunShader = pbr.gpuVariant({sunOnly: true});
+
+// the standard material, its local lights unshadowed (the renderer's, for
+// a frame none of whose local lights casts: no tile read)
+final PbrUntiledShader = pbr.gpuVariant({untiled: true});

@@ -13,6 +13,8 @@ import helder.scene.render.PbrShader;
 import helder.scene.render.PbrInstancedShader;
 import helder.scene.render.PbrShader.PbrSunShader;
 import helder.scene.render.PbrInstancedShader.PbrInstancedSunShader;
+import helder.scene.render.PbrShader.PbrUntiledShader;
+import helder.scene.render.PbrInstancedShader.PbrInstancedUntiledShader;
 import helder.scene.render.PbrShader.materialOf;
 import helder.scene.render.PbrShader.materialInto;
 import helder.scene.render.PbrShader.output;
@@ -116,7 +118,10 @@ class Renderer {
 	// the opaque materials' pipelines (plain, double-sided, instanced, both),
 	// made when first drawn: each a full fragment stage to compile, seconds
 	// on a software GPU (SwiftShader: the page stalled while the four were)
-	final opaquePipelines:Array<Null<Pipeline>> = [for (_ in 0...8) null];
+	final opaquePipelines:Array<Null<Pipeline>> = [for (_ in 0...12) null];
+	// whether no local light casts this frame (its tiles: none): the opaque
+	// standard materials drawn by the untiled variants (PbrUntiledShader)
+	var untiled = false;
 	// whether this frame has no local lights (and no ClusteredLights): its
 	// opaque standard materials drawn by the sun-only variants (PbrSunShader,
 	// no light loop: their compile as before phase 4's lights)
@@ -128,6 +133,8 @@ class Renderer {
 	final plainSlots:Array<Int>;
 	final sunSlots:Array<Int>;
 	final sunInstancedSlots:Array<Int>;
+	final untiledSlots:Array<Int>;
+	final untiledInstancedSlots:Array<Int>;
 	var skinSource:Null<RenderFeature.SkinSource>;
 	var normalSource:Null<RenderFeature.NormalSource>;
 	// (the physical shader of the materials with glTF extensions and no
@@ -232,6 +239,8 @@ class Renderer {
 		instancedSlots = slotsOf(PbrInstancedShader.uniforms, PbrInstancedShader.textures);
 		sunSlots = slotsOf(PbrSunShader.uniforms, PbrSunShader.textures);
 		sunInstancedSlots = slotsOf(PbrInstancedSunShader.uniforms, PbrInstancedSunShader.textures);
+		untiledSlots = slotsOf(PbrUntiledShader.uniforms, PbrUntiledShader.textures);
+		untiledInstancedSlots = slotsOf(PbrInstancedUntiledShader.uniforms, PbrInstancedUntiledShader.textures);
 		var w = Bytes.alloc(4);
 		w.fill(0, 4, 255);
 		white = device.createTexture({width: 1, height: 1, data: w});
@@ -363,6 +372,9 @@ class Renderer {
 			FrameCounts.shadowDraws += shadowDraws;
 		}
 		if (clusterSource != null) clusterSource.assign(enc, this, frame);
+		untiled = true;
+		for (k in 0...frameLights.count)
+			if (frameLights.tile(k) >= 0) untiled = false;
 		frameLights.writeBlock(lightBytes);
 		writeFrame(world, camera, viewProj, shadowed);
 		prepassDraws = 0;
@@ -721,7 +733,7 @@ class Renderer {
 			var own = shader != null ? custom(shader, m, many ? (normals != null ? 4 : 3) : skin != null ? 2 : normals != null ? 1 : 0) : null;
 			var want = own != null ? own.pipeline : many ? (normals != null ? normals.instancedPipeline(m.doubleSided) : opaquePipeline(true, m.doubleSided)) : skin != null ? skin.pipeline(m.doubleSided) : normals != null ? normals.pipeline(m.doubleSided) : m.blend ? blended(m) : opaquePipeline(false, m.doubleSided);
 			if (want != current) {
-				slots = own != null ? own.slots : many ? (normals != null ? normals.instancedSlots() : m.blend || !sunOnly ? instancedSlots : sunInstancedSlots) : skin != null ? skin.slots() : normals != null ? normals.slots() : m.blend || !sunOnly ? plainSlots : sunSlots;
+				slots = own != null ? own.slots : many ? (normals != null ? normals.instancedSlots() : m.blend ? instancedSlots : sunOnly ? sunInstancedSlots : untiled ? untiledInstancedSlots : instancedSlots) : skin != null ? skin.slots() : normals != null ? normals.slots() : m.blend ? plainSlots : sunOnly ? sunSlots : untiled ? untiledSlots : plainSlots;
 				bindPipeline(enc, want, slots);
 				current = want;
 				material = null;
@@ -825,7 +837,7 @@ class Renderer {
 					var normals = mapped(p) ? normalSource : null;
 					var shader = shaderOf(m);
 					var own = shader != null ? custom(shader, m, normals != null ? 4 : 3) : null;
-					var slots = own != null ? own.slots : normals != null ? normals.instancedSlots() : m.blend || !sunOnly ? instancedSlots : sunInstancedSlots;
+					var slots = own != null ? own.slots : normals != null ? normals.instancedSlots() : m.blend ? instancedSlots : sunOnly ? sunInstancedSlots : untiled ? untiledInstancedSlots : instancedSlots;
 					bindPipeline(enc, own != null ? own.pipeline : normals != null ? normals.instancedPipeline(m.doubleSided) : m.blend ? blendedInstanced(m) : opaquePipeline(true, m.doubleSided),
 						slots);
 					writeObject(Mat4.identity(), WHITE, setLights, k * FrameLights.PER_DRAW);
@@ -895,18 +907,18 @@ class Renderer {
 	// mapped), made when first drawn; its own blocks' slots after the renderer's
 	// an opaque material's pipeline (opaquePipelines), made the first time
 	function opaquePipeline(instanced:Bool, doubleSided:Bool):Pipeline {
-		var k = (sunOnly ? 4 : 0) + (instanced ? 2 : 0) + (doubleSided ? 1 : 0);
+		var k = (sunOnly ? 4 : untiled ? 8 : 0) + (instanced ? 2 : 0) + (doubleSided ? 1 : 0);
 		var p = opaquePipelines[k];
 		if (p == null) {
 			var cull:helder.gfx.Cull = doubleSided ? None : Back;
 			if (instanced) {
-				var d = sunOnly ? PbrInstancedSunShader.pipeline({cull: cull, depthCompare: Less, depthWrite: true}) : PbrInstancedShader.pipeline({cull: cull,
-					depthCompare: Less, depthWrite: true});
+				var d = sunOnly ? PbrInstancedSunShader.pipeline({cull: cull, depthCompare: Less, depthWrite: true}) : untiled ? PbrInstancedUntiledShader.pipeline({
+					cull: cull, depthCompare: Less, depthWrite: true}) : PbrInstancedShader.pipeline({cull: cull, depthCompare: Less, depthWrite: true});
 				d.layout = INSTANCED_LAYOUT;
 				p = create(d);
 			} else
-				p = create(sunOnly ? PbrSunShader.pipeline({cull: cull, depthCompare: Less, depthWrite: true}) : PbrShader.pipeline({cull: cull,
-					depthCompare: Less, depthWrite: true}));
+				p = create(sunOnly ? PbrSunShader.pipeline({cull: cull, depthCompare: Less, depthWrite: true}) : untiled ? PbrUntiledShader.pipeline({cull: cull,
+					depthCompare: Less, depthWrite: true}) : PbrShader.pipeline({cull: cull, depthCompare: Less, depthWrite: true}));
 			opaquePipelines[k] = p;
 		}
 		return p;

@@ -57,10 +57,10 @@ export type PbrFragmentParams = {
 
 // (prepass: the view buffers' variant, ViewBuffers; the glTF extensions,
 // each a layer of the surface; uvSets: each core map its own uvs; sunOnly:
-// no local lights' loop)
+// no local lights' loop; untiled: the local lights unshadowed)
 export type PbrOptions = {
 	normalMap: boolean, skinned: boolean, instanced: boolean, prepass: boolean, sheen: boolean, specular: boolean, clearcoat: boolean,
-	transmission: boolean, iridescence: boolean, anisotropy: boolean, uvSets: boolean, sunOnly: boolean,
+	transmission: boolean, iridescence: boolean, anisotropy: boolean, uvSets: boolean, sunOnly: boolean, untiled: boolean,
 };
 
 // per draw in the prepass (ViewBuffers): the camera's view, x the selection group
@@ -225,8 +225,8 @@ function lightRow(t: Texture2D, x: number, k: number, clusterAxis: Vec4, cluster
 }
 
 // a local light at a surface from its three vectors, its lit share (PbrShader.hx's localLight)
-export function localLight(s: LitSurface, pos: Vec4, color: Vec4, cone: Vec4, shadow: number): LightSample {
-	const d = pos.xyz.sub(s.world);
+export function localLight(world: Vec3, normal: Vec3, pos: Vec4, color: Vec4, cone: Vec4, shadow: number): LightSample {
+	const d = pos.xyz.sub(world);
 	const dist2 = max(dot(d, d), 0.0001);
 	const dist = sqrt(dist2);
 	const q = dist / pos.w;
@@ -234,14 +234,14 @@ export function localLight(s: LitSurface, pos: Vec4, color: Vec4, cone: Vec4, sh
 	const l = d.div(dist);
 	const t = clamp(dot(l.neg(), cone.xyz) + cone.w, 0, 1);
 	const c = color.xyz.mul(window * window / dist2 * (t * t * (3 - 2 * t)));
-	return {color: c, shadow: shadow, radiance: c.mul(shadow), direction: l, ndotl: max(dot(s.normal, l), 0)};
+	return {color: c, shadow: shadow, radiance: c.mul(shadow), direction: l, ndotl: max(dot(normal, l), 0)};
 }
 
 // where a surface's point is looked up in a local light's tiles (PbrShader.hx's shadowPoint)
-function shadowPoint(s: LitSurface, light: Vec3, params: Vec4): Vec3 {
-	const d = light.sub(s.world);
+function shadowPoint(world: Vec3, normal: Vec3, light: Vec3, params: Vec4): Vec3 {
+	const d = light.sub(world);
 	const dist = max(length(d), 0.0001);
-	return s.world.add(d.mul(params.y)).add(s.normal.mul(params.z * dist));
+	return world.add(d.mul(params.y)).add(normal.mul(params.z * dist));
 }
 
 // the face of a point light's tiles a moved point is in (PbrShader.hx's tileFace)
@@ -266,12 +266,22 @@ function tileShadow(map: Texture2D, viewProj: Mat4, rect: Vec4, params: Vec4, in
 		let lit = 0.0;
 		if (params.w > 0) lit = disc(map, uv, rect, inv, p.z, params.w, t);
 		else
-			lit = (tap(map, uv, rect, inv, p.z, -t, -t) + tap(map, uv, rect, inv, p.z, 0, -t) + tap(map, uv, rect, inv, p.z, t, -t)
-				+ tap(map, uv, rect, inv, p.z, -t, 0) + tap(map, uv, rect, inv, p.z, 0, 0) + tap(map, uv, rect, inv, p.z, t, 0)
-				+ tap(map, uv, rect, inv, p.z, -t, t) + tap(map, uv, rect, inv, p.z, 0, t) + tap(map, uv, rect, inv, p.z, t, t)) / 9;
+			lit = grid(map, uv, rect, inv, p.z, t);
 		result = 1 - params.x * (1 - lit);
 	}
 	return result;
+}
+
+// the 3x3 filter's lit share, a loop of its nine taps (PbrShader.hx's grid)
+function grid(map: Texture2D, uv: Vec2, rect: Vec4, inv: Vec4, depth: number, t: number): number {
+	let sum = 0.0;
+	let k = 0.0;
+	while (k < 9) {
+		const row = floor(k / 3);
+		sum += tap(map, uv, rect, inv, depth, (k - row * 3 - 1) * t, (row - 1) * t);
+		k += 1;
+	}
+	return sum / 9;
 }
 
 // a tile's uv in the atlas, held inside the tile's edge texels (PbrShader.hx's atlasUv)
@@ -877,7 +887,7 @@ function sensitivity(opd: number, shift: Vec3): Vec3 {
 export const pbr = slots({
 	options: {
 		normalMap: false, skinned: false, instanced: false, prepass: false, sheen: false, specular: false, clearcoat: false, transmission: false,
-		iridescence: false, anisotropy: false, uvSets: false, sunOnly: false,
+		iridescence: false, anisotropy: false, uvSets: false, sunOnly: false, untiled: false,
 	},
 	vertex: (v: PbrVertex, p: PbrVertexParams, m: Pbr): PbrVaryings => {
 		let pos = m.position({pos: v.pos, normal: v.normal, uv: v.uv}, p);
@@ -1062,14 +1072,17 @@ export const pbr = slots({
 						cone = p.lights.cone[index];
 					}
 					let shadow = 1.0;
-					if (color.w > 0.5) {
-						const first = color.w - 1;
-						const params = p.lights.tileParams[first + 0.5];
-						const at = shadowPoint(lit, pos.xyz, params);
-						const tile = first + tileFace(at, pos.xyz, dot(cone.xyz, cone.xyz) < 0.0001) + 0.5;
-						shadow = tileShadow(p.shadowMap, p.lights.tileViewProj[tile], p.lights.tileRect[tile], params, p.frame.shadowAtlas, at);
+					// (untiled: no local light casts this frame, no tile read)
+					if (!m.options.untiled) {
+						if (color.w > 0.5) {
+							const first = color.w - 1;
+							const params = p.lights.tileParams[first + 0.5];
+							const at = shadowPoint(lit.world, lit.normal, pos.xyz, params);
+							const tile = first + tileFace(at, pos.xyz, dot(cone.xyz, cone.xyz) < 0.0001) + 0.5;
+							shadow = tileShadow(p.shadowMap, p.lights.tileViewProj[tile], p.lights.tileRect[tile], params, p.frame.shadowAtlas, at);
+						}
 					}
-					direct = direct.add(m.direct(lit, localLight(lit, pos, color, cone, shadow), p));
+					direct = direct.add(m.direct(lit, localLight(lit.world, lit.normal, pos, color, cone, shadow), p));
 					k += 1;
 					index = lightIndex(p.frame.clusters, p.frame.clusterDepth, i.lights0, i.lights1, p.clusterMap, cell, k);
 				}
