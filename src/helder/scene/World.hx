@@ -326,9 +326,8 @@ class World {
 		live--;
 	}
 
-	#if !eval
-	// (not on Eval: casting reaches meshes, and through them gfx's native
-	// back ends; a world's own tests run there)
+	#if !eval // (casting reaches meshes, and through them gfx's native back ends: not on Eval, where a world's own tests run)
+
 	// the nearest triangle a ray from origin along dir meets, into hit (a
 	// Hit the program keeps: nothing allocated a cast); false when none.
 	// options (kept too): a distance, layers, bounds alone, backs
