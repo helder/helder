@@ -11,7 +11,8 @@ using StringTools;
 //   bun run test                   the headless lanes (no GPU, display or browser)
 //   bun run test <lane> ...        those lanes (-k: the next one after a failure,
 //                                  headless's too; every failure listed at the end;
-//                                  -x <lane>: not that one, as headless -x typescript)
+//                                  -x <lane>: not that one, as headless -x typescript;
+//                                  -j <n>: n lanes at once, each its own process)
 //   bun run test help              the lanes
 //
 // Outputs go to bin/<lane>. GFX_TARGET and AUDIO_TARGET (the host's by
@@ -118,6 +119,12 @@ class Run {
 			if (i + 1 < args.length) skipped.push(args[i + 1]);
 			args.splice(i, 2);
 		}
+		var jobs = 1;
+		if (args.indexOf("-j") >= 0) {
+			var i = args.indexOf("-j");
+			jobs = Std.parseInt(args[i + 1] ?? "") ?? cpus();
+			args.splice(i, 2);
+		}
 		if (args.length == 0) args = ["headless"];
 		if (args.contains("help")) {
 			Sys.println("bun run test [-k] <lane> ...\n");
@@ -127,6 +134,10 @@ class Run {
 		// (headless as its lanes, each run on its own: with -k every one runs
 		// and each failure is reported, not the first alone)
 		args = [for (a in args) for (l in (a == "headless" ? HEADLESS : [a])) if (!skipped.contains(l)) l];
+		if (jobs > 1 && args.length > 1) {
+			lanesAtOnce(args, jobs, keepGoing);
+			return;
+		}
 		var failed = [], times = [];
 		for (a in args) {
 			var t0 = Sys.time();
@@ -143,6 +154,64 @@ class Run {
 			if (failed.length > 0 && !keepGoing) break;
 		}
 		if (times.length > 1) Sys.println("\nlanes:\n  " + times.join("\n  "));
+		if (failed.length > 0) {
+			Sys.println("failed: " + failed.join(", "));
+			Sys.exit(1);
+		}
+	}
+
+	// -j <n>: the lanes n at once, each in a process of its own (bun run test
+	// <lane>), the long ones first (CI's), then in the order given, each
+	// one's output printed whole when it ends; the CLI built once before
+	// (RUN_CLI_BUILT: the lanes run it, none builds it again). Without -k,
+	// none is started after a failure.
+	static function lanesAtOnce(lanes:Array<String>, jobs:Int, keepGoing:Bool) {
+		for (l in lanes) if (!Lambda.exists(LANES, x -> x.name == l)) throw new Failed('no lane $l (bun run test help)');
+		helderCli();
+		Sys.putEnv("RUN_CLI_BUILT", "1");
+		// (the long ones first, CI's minutes: the short ones fill in after;
+		// the dev loops' lanes alone at the end, as a serial run has them: a
+		// watcher's and a build's times under the others' load timed out)
+		var long = ["pack", "test", "ui", "canvas", "syntax"], alone = ["cli", "devtools"];
+		var queue = [for (l in long) if (lanes.contains(l)) l].concat([for (l in lanes) if (!long.contains(l) && !alone.contains(l)) l]);
+		var last = [for (l in alone) if (lanes.contains(l)) l];
+		var failed = [], times = new Map<String, Int>();
+		var mutex = new sys.thread.Mutex(), done = new sys.thread.Lock();
+		var t0 = Sys.time();
+		var workers = Std.int(Math.max(1, Math.min(jobs, queue.length)));
+		Sys.println('--- ${lanes.length} lanes, $workers at once: ${queue.join(" ")}' + (last.length > 0 ? '; then alone: ${last.join(" ")}' : ""));
+		function pool(queue:Array<String>, workers:Int) {
+			for (_ in 0...workers)
+				sys.thread.Thread.create(() -> {
+					while (true) {
+						mutex.acquire();
+						var l = failed.length > 0 && !keepGoing ? null : queue.shift();
+						mutex.release();
+						if (l == null) break;
+						var s = Sys.time();
+						var p = new Process(TOOL, ["-cp", "tests", "--run", "Run", l]);
+						var r = drain(p);
+						var code = p.exitCode();
+						p.close();
+						var t = Math.round(Sys.time() - s);
+						mutex.acquire();
+						Sys.print(r.out + r.err);
+						if (code != 0) {
+							Sys.println('\n$l: FAILED (exit code $code)');
+							failed.push(l);
+						}
+						Sys.println('--- $l: $t s (at ${Math.round(Sys.time() - t0)} s)');
+						times.set(l, t);
+						mutex.release();
+					}
+					done.release();
+				});
+			for (_ in 0...workers) done.wait();
+		}
+		pool(queue, workers);
+		pool(last, 1);
+		Sys.println('\nlanes ($workers at once, ${Math.round(Sys.time() - t0)} s):\n  '
+			+ [for (l in lanes) if (times.exists(l)) l.rpad(" ", 16) + " " + Std.string(times.get(l)).lpad(" ", 5) + " s" + (failed.contains(l) ? "  FAILED" : "")].join("\n  "));
 		if (failed.length > 0) {
 			Sys.println("failed: " + failed.join(", "));
 			Sys.exit(1);
@@ -634,6 +703,8 @@ class Run {
 
 	// (the CLI's own build, as `bun run helder` makes it)
 	static function helderCli():String {
+		// (built by the run that started this lane: -j's)
+		if (Sys.getEnv("RUN_CLI_BUILT") == "1" && FileSystem.exists(exePath("bin/cli/helder", HOST))) return exePath("bin/cli/helder", HOST);
 		exe("bin/cli/helder", cps(["src"]).concat(["-main", "helder.cli.Cli"]));
 		return exePath("bin/cli/helder", HOST);
 	}
@@ -1017,6 +1088,18 @@ class Run {
 	static function scene() {
 		var cp = sceneCp();
 		var tests = ["SceneTest", "GltfTest", "PhysicsTest"];
+		// (the lane's programs built at once first: below, each call finds its build)
+		pack();
+		var g = GFX_TARGET, ui = cps(["src", "tests/3d-ui"]);
+		prebuild([for (t in tests) {out: exePath('bin/3d/$t', HOST), args: cp.concat(["-main", t])}].concat([
+			for (t in tests.concat(["InputTest"])) {out: 'bin/3d/$t.wasm', args: cp.concat(["-main", t]).concat(targetArgs("wasm32-wasi"))}
+		]).concat([
+			for (m in ["RenderTest", "GltfViewer", "Orbits", "Showroom", "Falling", "Walker", "Chains", "InputTest"])
+				{out: exePath('bin/3d/$g/$m', g), args: cp.concat(["-main", m]).concat(targetArgs(g))}
+		]).concat([
+			{out: exePath('bin/3d/$g/SceneUiTest', g), args: ui.concat(["-main", "SceneUiTest"]).concat(targetArgs(g))},
+			{out: exePath('bin/3d/$g/SurfaceTest', g), args: cps(["src", "tests/gfx", "tests/3d-ui"]).concat(["-main", "SurfaceTest"]).concat(targetArgs(g))}
+		]));
 		for (t in tests)
 			interp(cp, t);
 		for (t in tests) {
@@ -1832,8 +1915,18 @@ class Run {
 	static function exePath(out:String, target:String):String
 		return target.startsWith("windows-") ? '$out.exe' : out;
 
-	// a build by hxmc, its log beside the output (printed when it fails)
+	// a build by hxmc, its log beside the output (printed when it fails); the
+	// same output with the same arguments built once a run (prebuild's, then
+	// the lane's own call; the CLI's, by every lane that runs it)
+	static final built = new Map<String, Bool>();
+	static final builtLock = new sys.thread.Mutex();
+
 	static function hxmc(out:String, args:Array<String>) {
+		var key = out + "\x00" + args.join("\x00");
+		builtLock.acquire();
+		var done = built.exists(key);
+		builtLock.release();
+		if (done && FileSystem.exists(out)) return;
 		mkdirs(Path.directory(out));
 		var r = build(args.concat(["--custom-target", 'hxmc=$out']), '$out.log');
 		if (r.code != 0) {
@@ -1841,6 +1934,18 @@ class Run {
 			throw new Failed('$out: the build failed');
 		}
 		Sys.println('$out (${Math.round(r.seconds * 10) / 10}s)');
+		builtLock.acquire();
+		built.set(key, true);
+		builtLock.release();
+	}
+
+	// builds made at once (parallel: half the cores' worth), before the lane's
+	// own calls, which then find them built (hxmc's memo); a failed one is
+	// built again by its call, its log printed there
+	static function prebuild(builds:Array<{out:String, args:Array<String>}>) {
+		var t0 = Sys.time();
+		parallel(builds, b -> try hxmc(b.out, b.args) catch (_:Failed) {});
+		Sys.println('prebuilt ${builds.length} in ${Math.round(Sys.time() - t0)} s');
 	}
 
 	static function build(args:Array<String>, log:String, ?tool:String):{code:Int, log:String, seconds:Float} {

@@ -13,6 +13,10 @@
 // written there.
 //
 //   node site/check.mjs [screenshots dir] [ids to play...]   (default: every demo)
+// SITE_SHARD=<i>/<n>: every n-th demo and docs page from the i-th (CI's
+// check jobs, a machine each: two SwiftShader browsers on one machine's
+// cores starved each other's frames); the index's and the search's
+// checks on every shard, the phone's on the first.
 import { createServer } from 'node:http';
 import { readFile, mkdir } from 'node:fs/promises';
 import fs from 'node:fs';
@@ -29,7 +33,10 @@ const [shots, ...ids] = process.argv.slice(2);
 const site = JSON.parse(fs.readFileSync(path.join(root, 'bin/site-build/examples.json'), 'utf8'));
 // (the index's examples: docs/examples' are played in their pages, below)
 const listed = site.examples.filter((e) => !e.docs);
-const play = ids.length ? ids.filter((id) => !site.examples.find((e) => e.id === id)?.docs) : listed.filter((e) => e.demo).map((e) => e.id);
+const [shard, shards] = (process.env.SITE_SHARD ?? '0/1').split('/').map(Number);
+const mine = (_, k) => k % shards === shard;
+const play = (ids.length ? ids.filter((id) => !site.examples.find((e) => e.id === id)?.docs) : listed.filter((e) => e.demo).map((e) => e.id)).filter(mine);
+if (shards > 1) console.log(`site/check.mjs: shard ${shard} of ${shards}: ${play.length} demos`);
 
 const types = { '.css': 'text/css', '.ttf': 'font/ttf', '.mjs': 'text/javascript', '.js': 'text/javascript', '.wasm': 'application/wasm', '.html': 'text/html', '.json': 'application/json' };
 const server = createServer(async (req, res) => {
@@ -129,7 +136,7 @@ try {
 		await phone(page, shots, 'planets');
 	}
 	await checkDocs(page);
-	await checkPhone(shots);
+	if (shard === 0) await checkPhone(shots);
 	check(errors.length === 0, `no console errors${errors.length ? ': ' + errors.join('\n') : ''}`);
 } finally {
 	await browser.close();
@@ -143,7 +150,7 @@ if (failures) process.exit(1);
 async function checkDocs(page) {
 	const pages = JSON.parse(fs.readFileSync(path.join(dir, 'docs/search.json'), 'utf8'));
 	check(pages.length > 0, `${pages.length} docs pages`);
-	for (const p of pages) {
+	for (const p of pages.filter(mine)) {
 		await page.goto(url + p.url);
 		const title = await page.locator('main h1').textContent();
 		check(title === p.title, `${p.url}: its title, ${title}`);

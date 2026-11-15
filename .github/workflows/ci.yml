@@ -6,23 +6,24 @@
 # sources) and saves them at its end (.github/actions/save).
 # - changes: what the change touches; one of docs alone (docs/**, **/*.md)
 #   runs only the docs' checks (examples, site) and ci;
-# - headless: the lanes that need no GPU, display or browser (bun run test
-#   headless) but typescript and examples, which are jobs of their own; the
+# - headless: the lanes that need no GPU, display or browser (bun run test -j 3
+#   headless; pack a job of its own) but typescript and examples, which are jobs of their own; the
 #   pack lane's Android half with bundletool (PACK_REQUIRE: the runtime
 #   objects required);
 # - typescript: the TypeScript frontend's checks (tests/typescript/run.mjs,
-#   in shards over the runner's cores);
+#   in shards over two jobs' cores, TS_PART);
 # - examples: every example built (EXAMPLES_WEB=site: the web builds the
 #   site job makes too left to it), the READMEs against the docs' pages;
 # - site: the examples' pages and the docs built (every web example's
 #   build, an unknown example, region, page or link a failure) and checked
-#   in headless Chromium (bun run site:check);
+#   in headless Chromium (site-check: bun run site:check, its demos and
+#   docs pages in two shards, a machine each);
 # - fuzz (pushes to main, nightly): helder.image's decoders and helder.pdf
 #   fuzzed for 30 s each;
-# - gfx, gfx-apps: the native GPU and audio lanes on Mesa's llvmpipe and
-#   Xvfb (gfx: helder.gfx, 3d, audio, ui, helder run --headless, Wayland;
-#   gfx-apps: the demos, syntax-run, the studio, the story host, the
-#   window lanes and the viewer's);
+# - gfx, gfx-3d, gfx-apps: the native GPU and audio lanes on Mesa's
+#   llvmpipe and Xvfb (gfx: helder.gfx, audio, ui, helder run --headless,
+#   Wayland; gfx-3d: helder.scene and helder.physics; gfx-apps: the demos,
+#   syntax-run, the studio, the story host, the window lanes and the viewer's);
 # - browser, studio-web: WebGPU, WebGL2, WebAudio and the DOM in headless
 #   Chromium; helder studio built for the web (studio-web) and helder's
 #   toolchain as wasm in a worker there (compiler-web), one build of it for both;
@@ -57,11 +58,11 @@
 #   (story-shared) on a macOS and a Windows runner; on macOS the web
 #   view too (tests/platform/webview-macos.sh);
 # - ci: always run, the required jobs' verdict (changes, headless,
-#   typescript, examples, site): one check to require, also when a change
+#   typescript, examples, site, site-check): one check to require, also when a change
 #   to the docs alone skips the others;
 # - the viewer's releases are release.yml's (a tag viewer-v<version>);
 # - the npm packages' nightlies are npm.yml's.
-# gfx, gfx-apps, browser, studio-web, android, ios-simulator, ios-signing,
+# gfx, gfx-3d, gfx-apps, browser, studio-web, android, ios-simulator, ios-signing,
 # fuzz and the desktops are not required (continue-on-error) while the
 # stack is unstable (android and ios-simulator were written without an
 # emulator, a simulator or a Mac: CI is where they run).
@@ -78,6 +79,8 @@ on:
 
 permissions:
   contents: read
+  # (main's older caches deleted once a job saved its newest: .github/actions/save)
+  actions: write
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'schedule' && 'nightly' || 'run' }}
@@ -104,16 +107,24 @@ jobs:
       - id: code
         run: echo "code=${{ (github.event_name != 'pull_request' && github.event_name != 'push') || steps.filter.outputs.code == 'true' }}" >> "$GITHUB_OUTPUT"
 
+  # (two jobs: the pack lane, then the others 3 at once; beside them pack
+  # took 254 s, 112 s alone, and was the job's minutes)
   headless:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {part: lanes, cache: headless, run: -j 3 headless -x typescript -x examples -x pack}
+          - {part: pack, cache: headless-pack, run: pack}
     steps:
       - uses: actions/checkout@v7
       - id: setup
         uses: ./.github/actions/setup
-        with: {cache: headless, node-version: 24}
+        with: {cache: '${{ matrix.cache }}', node-version: 24}
       - name: Fonts (DejaVu Sans, for text and ui), libEGL and Mesa's llvmpipe
         # (helder test's host build links helder.gfx's libEGL.so.1 when a test
         # reaches the scene; nothing opens a display. llvmpipe: the pack
@@ -130,28 +141,37 @@ jobs:
           export PATH="$PATH:$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
           curl -sSL --retry 3 -o "$RUNNER_TEMP/bundletool.jar" https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar
           export BUNDLETOOL="$RUNNER_TEMP/bundletool.jar"
-          bun run test -k headless -x typescript -x examples
-      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+          bun run test -k ${{ matrix.run }}
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}'}
+        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
+  # (two jobs, 4 shards each: TS_PART, tests/typescript/run.mjs; one job's
+  # 4 cores took 5.5 min)
   typescript:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [0, 1]
     steps:
       - uses: actions/checkout@v7
       - id: setup
         uses: ./.github/actions/setup
-        with: {cache: typescript, node-version: 24}
+        with: {cache: 'typescript-${{ matrix.part }}', node-version: 24}
       - name: Fonts and libEGL (the programs rendering headless)
         run: sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core fonts-liberation libegl1 libegl-mesa0 libgl1-mesa-dri
       - name: The TypeScript frontend (tests/typescript/run.mjs, sharded)
+        env:
+          TS_JOBS: 4
+          TS_PART: ${{ matrix.part }}/2
         run: bun run test typescript
-      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}'}
+        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
   examples:
     needs: changes
@@ -168,9 +188,9 @@ jobs:
         env:
           EXAMPLES_WEB: site
         run: bun run test examples
-      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}'}
+        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
   # The examples' pages and the docs (site/, docs/: bun run site), built and
   # checked, not deployed: helder.build's deploy builds them from main on its
@@ -192,24 +212,47 @@ jobs:
       - id: setup
         uses: ./.github/actions/setup
         with: {cache: site, node-version: 24}
-      - name: Fonts (DejaVu Sans, for the ui and text examples), Mesa and Playwright
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core libegl1 libegl-mesa0
-          bun add --no-save playwright@1.56.1
-          bunx playwright install --with-deps chromium > /dev/null
+      - name: Fonts (DejaVu Sans, for the ui and text examples)
+        run: sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core
       - name: Build
         env:
           SITE_SKIP_DATA: 1
         run: bun run site
+      # (the built site for site-check's machines)
+      - uses: actions/upload-artifact@v7
+        with: {name: site-built, path: "bin/site\nbin/site-build/examples.json", retention-days: 1, compression-level: 1}
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
+        uses: ./.github/actions/save
+        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
+
+  # The site's check (bun run site:check), its demos and docs pages in two
+  # shards (SITE_SHARD), a machine each: on one machine, two Chromiums'
+  # SwiftShader starved each other's frames (a heavy demo's canvas beside
+  # the other's); each is alone on its cores as main's single check was.
+  site-check:
+    needs: site
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1]
+    steps:
+      - uses: actions/checkout@v7
+      - id: setup
+        uses: ./.github/actions/setup
+        with: {cache: site-check, node-version: 24, playwright: 1.56.1}
+      - name: Fonts (DejaVu Sans), Mesa
+        run: sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core libegl1 libegl-mesa0
+      - uses: actions/download-artifact@v7
+        with: {name: site-built, path: bin}
       - name: Check (the pages in Chromium)
+        env:
+          SITE_SHARD: ${{ matrix.shard }}/2
         run: bun run site:check bin/site-check
       - uses: actions/upload-artifact@v7
         if: always()
-        with: {name: site, path: bin/site-check/*.png, retention-days: 7, if-no-files-found: ignore}
-      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
-        uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}'}
+        with: {name: 'site-${{ matrix.shard }}', path: bin/site-check/*.png, retention-days: 7, if-no-files-found: ignore}
 
   fuzz:
     needs: changes
@@ -224,9 +267,9 @@ jobs:
         with: {cache: fuzz, node-version: 24}
       - name: helder.image's decoders fuzzed for 30 s (tests/image/Fuzz.hx), helder.pdf for 30 s (tests/pdf/Fuzz.hx)
         run: bun run test -k image-fuzz pdf-fuzz
-      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}'}
+        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
   gfx:
     needs: changes
@@ -248,62 +291,109 @@ jobs:
         timeout-minutes: 6
         continue-on-error: true
         run: sudo apt-get install -qqy --no-install-recommends weston wayland-protocols libwayland-dev libwayland-egl1 libxkbcommon0
-      - name: gfx, 3d, audio, ui, helder run --headless, the shared textures and the story host across processes, Wayland (a headless weston), the platform's text and images (Mesa llvmpipe, Xvfb)
-        run: bun run test -k gfx gfx-compute gfx-shared story-shared 3d audio ui-draw headless-run wayland dbus system-text system-images canvas-gpu
+      - name: gfx, audio, ui, helder run --headless, the shared textures and the story host across processes, Wayland (a headless weston), the platform's text and images (Mesa llvmpipe, Xvfb)
+        run: bun run test -k headless-run gfx gfx-compute gfx-shared story-shared audio ui-draw wayland dbus system-text system-images canvas-gpu
       - uses: actions/upload-artifact@v7
         if: always()
-        with: {name: images, path: "bin/gfx/**/*.png\nbin/headless-run/**/*.png\nbin/canvas/*.png\nbin/3d/**/*.png\nbin/ui/**/*.png\nbin/text/*.png\nbin/os/*.png", retention-days: 7, if-no-files-found: ignore}
-      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+        with: {name: images, path: "bin/gfx/**/*.png\nbin/headless-run/**/*.png\nbin/canvas/*.png\nbin/ui/**/*.png\nbin/text/*.png\nbin/os/*.png", retention-days: 7, if-no-files-found: ignore}
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}'}
+        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
+  # helder.scene and helder.physics (the 3d lane), a job of their own: its
+  # builds (about 20 programs, made at once) and frames were half of gfx's
+  gfx-3d:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - id: setup
+        uses: ./.github/actions/setup
+        with: {cache: gfx-3d}
+      - name: System packages
+        run: sudo apt-get install -qqy --no-install-recommends libegl1 libegl-mesa0 libgl1-mesa-dri libgles2 xvfb xauth fonts-dejavu-core fonts-inter libharfbuzz0b libfreetype6 fontconfig
+      - name: helder.scene and helder.physics (Mesa llvmpipe, Xvfb)
+        # (3 builds at once: the runner's 4 cores)
+        env:
+          JOBS: 3
+        run: bun run test 3d
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with: {name: images-3d, path: "bin/3d/**/*.png", retention-days: 7, if-no-files-found: ignore}
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
+        uses: ./.github/actions/save
+        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
+
+  # (two jobs: the demos and the viewer's packages and windows; the studio's
+  # lanes. One took 7 min)
   gfx-apps:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     continue-on-error: true
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {part: apps, lanes: demos viewer-package window}
+          - {part: studio, lanes: studio syntax-run story-host viewer-window}
     steps:
       - uses: actions/checkout@v7
       - id: setup
         uses: ./.github/actions/setup
-        with: {cache: gfx-apps}
+        with: {cache: 'gfx-${{ matrix.part }}'}
       - name: System packages
         run: |
           sudo apt-get update -qq
           sudo apt-get install -qqy --no-install-recommends libegl1 libegl-mesa0 libgl1-mesa-dri libgles2 xvfb xauth libasound2t64 fonts-dejavu-core fonts-inter libgtk-3-0t64 dbus at-spi2-core fonts-noto-color-emoji fonts-freefont-ttf libharfbuzz0b libfreetype6 fontconfig libtiff6 libheif1 libheif-plugin-aomdec libraw23t64 osslsigncode desktop-file-utils appstream libenchant-2-2 hunspell-en-us
       - name: The showcase demos headless, helder.syntax's edits run headless, helder studio headless, the story host, a window, the viewer's (Mesa llvmpipe, Xvfb; its release packages)
-        run: bun run test -k demos syntax-run studio story-host window viewer-window viewer-package
+        run: bun run test -k ${{ matrix.lanes }}
       - uses: actions/upload-artifact@v7
         if: always()
-        with: {name: images-apps, path: "bin/demos/*.png\nbin/studio-check/*.png\nbin/os/*.png", retention-days: 7, if-no-files-found: ignore}
-      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+        with: {name: 'images-${{ matrix.part }}', path: "bin/demos/*.png\nbin/studio-check/*.png\nbin/os/*.png", retention-days: 7, if-no-files-found: ignore}
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}'}
+        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
+  # (two jobs, 3d-web's runs in two shards, SCENES_SHARD, a machine each: one
+  # run at a time on a machine's cores, as SwiftShader's frames need; the
+  # first also the other lanes)
   browser:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     continue-on-error: true
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {shard: 0, lanes: 3d-web gfx-web ui-web canvas-web web canvas-doc audio-web gfx-compute-web}
+          - {shard: 1, lanes: 3d-web}
     steps:
       - uses: actions/checkout@v7
       - id: setup
         uses: ./.github/actions/setup
-        with: {cache: browser}
-      - name: Playwright
-        run: |
-          set -ex
-          sudo apt-get update -qq
-          sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core poppler-utils libegl1 libegl-mesa0
-          bun add --no-save playwright@1.56.1
-          bunx playwright install --with-deps chromium > /dev/null
+        with: {cache: 'browser-${{ matrix.shard }}', playwright: 1.56.1}
+      - name: Fonts, poppler, Mesa
+        run: sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core poppler-utils libegl1 libegl-mesa0
       - name: gfx, 3d, audio, web and ui in Chromium
-        run: bun run test -k gfx-web gfx-compute-web 3d-web audio-web web ui-web canvas-web canvas-doc
-      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+        env:
+          # (a pull request's: every scene headless on both APIs, in the
+          # window those whose frames the canvas and the browser's loop could
+          # change: a glTF, a texture, skinning, GPU particles, the temporal
+          # and the post passes, transmission, levels of detail; main and the
+          # nightly: every one in both)
+          SCENES_WINDOW: ${{ github.event_name == 'pull_request' && 'gltf,textured,skin,gpuparticles,taa,motionblur,bloom,transmission,lod' || '' }}
+          SCENES_SHARD: ${{ matrix.shard }}/2
+        run: bun run test -k ${{ matrix.lanes }}
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}'}
+        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
   studio-web:
     needs: changes
@@ -315,23 +405,19 @@ jobs:
       - uses: actions/checkout@v7
       - id: setup
         uses: ./.github/actions/setup
-        with: {cache: studio-web}
-      - name: Playwright
-        run: |
-          set -ex
-          sudo apt-get update -qq
-          sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core libegl1 libegl-mesa0
-          bun add --no-save playwright@1.56.1
-          bunx playwright install --with-deps chromium > /dev/null
+        # (bin/compiler-web kept: its brotli files, minutes at quality 11, reused for the same bytes)
+        with: {cache: studio-web, playwright: 1.56.1, extra: bin/compiler-web}
+      - name: Fonts, Mesa
+        run: sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core libegl1 libegl-mesa0
       # (one job: compiler-web's toolchain is studio-web's too, built once in bin/compiler-web)
       - name: helder studio in the browser, helder's compiler in the browser
         run: bun run test -k studio-web compiler-web
       - uses: actions/upload-artifact@v7
         if: always()
         with: {name: studio-web, path: "bin/studio-web/*.png\nbin/studio-web/results.md", retention-days: 7, if-no-files-found: ignore}
-      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}'}
+        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}', extra: bin/compiler-web}
 
   # Android on an x86-64 emulator with KVM (reactivecircus/android-emulator-runner,
   # API 34, as hxmc's CI): tests/pack/android.sh (helder run --target
@@ -406,9 +492,9 @@ jobs:
             bin/pack/*.apk
           retention-days: 7
           if-no-files-found: ignore
-      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}'}
+        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
   # iOS on an iPhone simulator of a macOS runner (Apple silicon: hxmc's
   # ios-sim-arm64), as hxmc's CI. One simulator for the job: made and
@@ -431,11 +517,13 @@ jobs:
       IOS_SUITE: ${{ github.event_name == 'pull_request' && 'smoke' || 'full' }}
     steps:
       - uses: actions/checkout@v7
-      - name: A simulator, booting while the job builds (tests/pack/simulator.sh)
-        run: echo "HELDER_IOS_SIMULATOR=$(sh tests/pack/simulator.sh create helder-ci)" >> "$GITHUB_ENV"
+      # (setup first: beside a booting simulator, setup-node and setup-bun
+      # took 1 and 3 minutes, 20 s otherwise; the boot is the builds' time)
       - id: setup
         uses: ./.github/actions/setup
         with: {cache: ios-simulator}
+      - name: A simulator, booting while the job builds (tests/pack/simulator.sh)
+        run: echo "HELDER_IOS_SIMULATOR=$(sh tests/pack/simulator.sh create helder-ci)" >> "$GITHUB_ENV"
       - name: The CLI and the apps (IOS_BUILD_ONLY)
         run: |
           set -u
@@ -483,9 +571,9 @@ jobs:
             bin/pack/ios-webview/*.png
           retention-days: 7
           if-no-files-found: ignore
-      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}'}
+        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
   # The iOS bundles' checks that need a Mac but no simulator: the pack
   # lane's iOS half (PACK_ONLY=ios: tests/pack/PackCheck.hx on every .app
@@ -515,9 +603,9 @@ jobs:
       - name: Signed by helder, checked by codesign and assetutil
         if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
         run: sh tests/pack/signing/verify.sh
-      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}'}
+        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
   # The desktops beside Linux's: macOS (Apple silicon) and Windows, their
   # windows (the window lane: a drop through each system's own mechanism,
@@ -551,9 +639,9 @@ jobs:
         if: always()
         # (and CoreText's sheets for the text-quality lane: tests/text/coretext/sheets is a copy of bin/text/coretext)
         with: {name: text-macos, path: "bin/text/*.png\nbin/text/coretext/*", retention-days: 7, if-no-files-found: ignore}
-      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}'}
+        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
   desktop-windows:
     needs: changes
@@ -577,14 +665,14 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with: {name: text-windows, path: "bin/text/*.png", retention-days: 7, if-no-files-found: ignore}
-      - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}'}
+        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
   # The required jobs' verdict, always reported: a skipped job (a change to
   # the docs alone) passes, a failed or cancelled one fails it.
   ci:
-    needs: [changes, headless, typescript, examples, site]
+    needs: [changes, headless, typescript, examples, site, site-check]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
