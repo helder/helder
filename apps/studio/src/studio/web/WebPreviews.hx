@@ -145,11 +145,14 @@ class WebPreviews {
 		}
 		switch (m.method : String) {
 			case "Host.ready":
-				// (a new program, a build's swap: what the last one was asked, never answered now)
-				unanswered("the preview started again");
 				var list:Array<Dynamic> = m.params.screens;
 				order = [for (x in list) screen(x.name)];
+				// (a new program, a build's swap: what the last one was asked, never answered now; after
+				// the new one is told what to show, since what waited may ask the new one again)
+				var ask = pending.copy();
+				pending.clear();
 				if (showWanted != null) send("Host.show", {screens: showWanted.names, focused: showWanted.focused, scale: showWanted.scale}, null);
+				answerAll(ask, "the preview started again");
 			case "Hot.patched":
 				for (s in screens)
 					s.patchedMs = m.params.ms;
@@ -160,11 +163,14 @@ class WebPreviews {
 	// the requests waiting on a program that is gone: answered with an error,
 	// so what waits on them (the selection's refresh: one at a time) goes on
 	function unanswered(why:String) {
-		var waiting = [for (id => f in pending) {id: id, f: f}];
+		var ask = pending.copy();
 		pending.clear();
-		for (w in waiting)
-			w.f({jsonrpc: "2.0", id: w.id, error: {code: -32000, message: why}});
+		answerAll(ask, why);
 	}
+
+	function answerAll(ask:Map<Int, Dynamic->Void>, why:String)
+		for (id => f in ask)
+			try f({jsonrpc: "2.0", id: id, error: {code: -32000, message: why}}) catch (e:Dynamic) onLog("studio: an answer to a request (" + why + ") failed: " + Std.string(e));
 
 	// a frame: its bitmap the screen's image (replaced in place: the renderer uploads it again)
 	function frame(index:Int, handle:Int, width:Int, height:Int, version:Int) {
