@@ -6,8 +6,10 @@ import helder.os.*;
 // What each of post's effects adds to a program (sizes.sh's post table):
 // a window drawing a scene in HDR through a PostProcess (bloom, the grade:
 // -D post_effect=none), and with one effect set (-D post_effect=ssao, dof,
-// outline, fxaa, lut), or all (all). An effect a program never sets is not
-// linked (its class, its passes, its shaders, the view buffers it reads).
+// outline, fxaa, lut; phase 7's ssr, taa, smaa, motionblur, godrays, and
+// occlusion: the renderer's Occlusion and gfx's queries), or all (all). An
+// effect a program never sets is not linked (its class, its passes, its
+// shaders, the view buffers it reads, their motion pass).
 class PostSize {
 	static function main() {
 		var window = new Window("PostSize", 320, 240);
@@ -37,6 +39,25 @@ class PostSize {
 		#end
 		#if (post_effect == "lut" || post_effect == "all")
 		post.lut = helder.scene.render.Lut.identity(device);
+		#end
+		#if (post_effect == "ssr" || post_effect == "all")
+		post.ssr = new helder.scene.render.Ssr({maxDistance: 8});
+		#end
+		#if (post_effect == "taa" || post_effect == "all")
+		post.taa = new helder.scene.render.Taa();
+		#end
+		#if (post_effect == "smaa" || post_effect == "all")
+		post.smaa = new helder.scene.render.Smaa();
+		#end
+		#if (post_effect == "motionblur" || post_effect == "all")
+		post.motionBlur = new helder.scene.render.MotionBlur({objects: true});
+		#end
+		#if (post_effect == "godrays" || post_effect == "all")
+		post.godRays = new helder.scene.render.GodRays();
+		#end
+		#if (post_effect == "occlusion" || post_effect == "all")
+		renderer.use(new helder.scene.render.Occlusion(device));
+		helder.scene.render.Occlusion.test(world.root);
 		#end
 		var light = device.createTexture({width: 320, height: 240, format: RGBA16F, renderTarget: true});
 		var depth = device.createTexture({width: 320, height: 240, format: Depth32F});

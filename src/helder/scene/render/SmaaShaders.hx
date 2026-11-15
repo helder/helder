@@ -5,7 +5,7 @@ import helder.gfx.shader.ShaderMath.*;
 import helder.scene.render.EffectShaders;
 import helder.scene.render.PostShader;
 
-// SMAA's first two passes (post.antialias Smaa: SmaaPass; Jimenez, Echevarria,
+// SMAA's first two passes (post.smaa: Smaa: SmaaPass; Jimenez, Echevarria,
 // Sousa, Gutierrez, "SMAA: Enhanced Subpixel Morphological Antialiasing",
 // 2012), its third, the blending, in the composite (PostShader's
 // smaaBlend). A module of its own.

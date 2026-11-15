@@ -17,7 +17,7 @@ import helder.scene.render.VelocityShaders;
 // with the camera alone, a skinned mesh is not drawn (0 there: the
 // camera's motion from depth, what reads it falls back to). A module of
 // its own, made by ViewBuffers when velocity is first asked for.
-class MotionPass {
+class MotionPass implements RenderFeature.MotionSource {
 	final views:ViewBuffers;
 	final device:Device;
 	final pipelines:Array<Pipeline> = [];
@@ -37,9 +37,15 @@ class MotionPass {
 	var lastCapacity = 0;
 	var width = 0;
 	var height = 0;
-	public var texture(default, null):Texture = cast 0;
+	var target:Texture = cast 0;
 	var depth:Texture = cast 0;
-	public var draws(default, null) = 0;
+	var draws = 0;
+
+	public function texture():Texture
+		return target;
+
+	public function drawn():Int
+		return draws;
 
 	static final INSTANCED:Array<VertexBufferLayout> = [
 		{
@@ -85,7 +91,7 @@ class MotionPass {
 		instancedFrame = VelocityInstancedShader.uniforms[slot(VelocityInstancedShader.uniforms, "VelocityFrame")].binding;
 	}
 
-	public static function make(views:ViewBuffers):MotionPass
+	public static function make(views:ViewBuffers):RenderFeature.MotionSource
 		return new MotionPass(views);
 
 	static function slot(uniforms:Array<helder.gfx.shader.Shader.UniformBlock>, name:String):Int {
@@ -99,9 +105,9 @@ class MotionPass {
 		release();
 		width = w;
 		height = h;
-		texture = device.createTexture({width: w, height: h, format: RGBA16F, renderTarget: true});
+		target = device.createTexture({width: w, height: h, format: RGBA16F, renderTarget: true});
 		depth = device.createTexture({width: w, height: h, format: Depth32F});
-		pass.colors[0].texture = texture;
+		pass.colors[0].texture = target;
 		pass.depth.texture = depth;
 	}
 
@@ -209,7 +215,7 @@ class MotionPass {
 
 	function release() {
 		if (width == 0) return;
-		device.destroyTexture(texture);
+		device.destroyTexture(target);
 		device.destroyTexture(depth);
 		width = height = 0;
 	}

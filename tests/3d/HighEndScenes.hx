@@ -12,12 +12,12 @@ import StageShaders;
 //   ssr         screen-space reflections (Ssr): a dark polished floor and a
 //               mirror of metal reflecting coloured blocks, a sphere and
 //               the back wall
-//   taa         temporal antialiasing (post.antialias Taa): thin bars and
+//   taa         temporal antialiasing (post.taa: Taa): thin bars and
 //               a fence, one sample a pixel, a still after 8 frames (each
 //               jittered, gathered with its history), drawn again from a
 //               cut each time (PostProcess.resetHistory): the same pixels
 //               whatever the frames before
-//   smaa        SMAA (post.antialias Smaa) on the same bars
+//   smaa        SMAA (post.smaa: Smaa) on turned boxes and spheres
 //   motionblur  motion blur by objects (MotionBlur, objects: the view
 //               buffers' motion): the camera panning, a box flying across
 //               and a wheel turning; two frames drawn, the second's shown
@@ -75,11 +75,11 @@ class HighEndScenes {
 				eye.lookAt(new Vec3(0, 1, 0));
 				if (name == "smaa") {
 					// (HXMC_AA=none: the same without, to compare)
-					post.antialias = Sys.getEnv("HXMC_AA") == "none" ? None : Smaa;
+					if (Sys.getEnv("HXMC_AA") != "none") post.smaa = new Smaa();
 					Scenes.probe = () -> post.draws == 3 ? null : 'smaa: ${post.draws} post draws (the edges, the weights, the composite)';
 					return frame;
 				}
-				post.antialias = Taa;
+				post.taa = new Taa();
 				Scenes.probe = () -> {
 					var v = ViewBuffers.of(r);
 					v.velocity == false && v.motion != null && r.jitter.x != 0 ? null : 'taa: no motion or jitter';

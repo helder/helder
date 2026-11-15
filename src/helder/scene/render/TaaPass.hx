@@ -10,7 +10,7 @@ import helder.scene.render.EffectShaders;
 import helder.scene.render.PostEffects;
 import helder.scene.render.TaaShader;
 
-// Temporal antialiasing's passes (post.antialias Taa, TaaShader's notes):
+// Temporal antialiasing's passes (post.taa: Taa, TaaShader's notes):
 // before each frame the renderer's projection jittered by the next of 8
 // points of Halton's (2, 3) sequence about the pixel's centre (to a
 // sixteenth of a pixel: the same edges on every rasterizer; its view
@@ -20,9 +20,9 @@ import helder.scene.render.TaaShader;
 // one the light the chain goes on with (depth of field, motion blur,
 // bloom, the composite). A history is let go when the frame's size
 // changes, for the first frame, and at a cut (PostProcess.resetHistory).
-// A module of its own: linked by a program that sets antialias to Taa.
+// A module of its own: linked by a program that sets post.taa.
 class TaaPass implements LightPass {
-	final post:PostProcess;
+	final taa:Taa;
 
 	var device:Null<Device> = null;
 	var pipeline:Null<Pipeline> = null;
@@ -41,11 +41,11 @@ class TaaPass implements LightPass {
 	var cuts = 0;
 	var draws = 0;
 
-	public function new(post:PostProcess)
-		this.post = post;
+	public function new(taa:Taa)
+		this.taa = taa;
 
-	public static function make(post:PostProcess):LightPass
-		return new TaaPass(post);
+	public static function make(taa:Taa):LightPass
+		return new TaaPass(taa);
 
 	// the k-th point of Halton's sequence in a base (0..1)
 	static function halton(k:Int, base:Int):Float {
@@ -81,8 +81,8 @@ class TaaPass implements LightPass {
 			pipeline = device.createPipeline(d);
 		}
 		size(fx.post.width, fx.post.height);
-		if (@:privateAccess post.cuts != cuts) {
-			cuts = @:privateAccess post.cuts;
+		if (@:privateAccess fx.post.cuts != cuts) {
+			cuts = @:privateAccess fx.post.cuts;
 			valid = false;
 		}
 		var b = block;
@@ -90,7 +90,7 @@ class TaaPass implements LightPass {
 		b.current = f.stillViewProj;
 		b.previous = f.previousViewProj;
 		b.size = new Vec4(w, h, v.width, v.height);
-		b.p = new Vec4(Math.max(0.01, Math.min(1, post.taaBlend)), valid ? 1 : 0, 0, 0);
+		b.p = new Vec4(Math.max(0.01, Math.min(1, taa.blend)), valid ? 1 : 0, 0, 0);
 		var motion = v.motion;
 		b.q = new Vec4(motion != null ? 1 : 0, w / Math.max(1, h), 0, 0);
 		TaaShader.params.m.write(b, bytes);

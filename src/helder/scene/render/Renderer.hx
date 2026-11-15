@@ -89,7 +89,7 @@ class Renderer {
 	public var prepassDraws(default, null) = 0;
 	// a sub-pixel offset of the projection this frame, in pixels of the
 	// target (x right, y down; 0, 0: none): temporal antialiasing's
-	// (post.antialias Taa sets it before each frame), the view buffers' and
+	// (post.taa: Taa sets it before each frame), the view buffers' and
 	// the main pass's alike; the motion the view buffers record leaves it out
 	public var jitter:helder.gfx.shader.Vec2 = new helder.gfx.shader.Vec2(0, 0);
 	// the frames drawn (each draw one)

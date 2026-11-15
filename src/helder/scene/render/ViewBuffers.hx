@@ -42,9 +42,10 @@ class ViewBuffers implements RenderFeature implements RenderFeature.ViewSource {
 	public var enabled = true;
 	// whether their motion is drawn too (motion: a second pass, gfx having
 	// one colour target a pass; TAA and motion blur by objects ask for it
-	// themselves): what moved since the frame before, by each node's matrix
-	// then and now and the camera's (MotionPass; desktop and web)
-	public var velocity(default, set) = false;
+	// themselves; a program's own: withVelocity()): what moved since the
+	// frame before, by each node's matrix then and now and the camera's
+	// (MotionPass; desktop and web)
+	public var velocity(default, null) = false;
 	// the last frame's motion (RGBA16F, their size: xy this pixel's point's
 	// uv now less the frame before's, z 1 where a surface wrote it; null:
 	// velocity off)
@@ -69,22 +70,25 @@ class ViewBuffers implements RenderFeature implements RenderFeature.ViewSource {
 	@:allow(helder.scene.render) var wantedMotion = false;
 	// (the motion's pass, made when first asked for: a program that never
 	// asks links none of it)
-	var motionPass:Null<MotionPass> = null;
-	@:allow(helder.scene.render) static var makeMotion:Null<ViewBuffers->MotionPass> = null;
+	var motionPass:Null<RenderFeature.MotionSource> = null;
+	@:allow(helder.scene.render) static var makeMotion:Null<ViewBuffers->RenderFeature.MotionSource> = null;
 
-	function set_velocity(v:Bool):Bool {
-		if (v) makeMotion = MotionPass.make;
-		return velocity = v;
+	// their motion drawn too (velocity, motion; a method, not a setter: a
+	// program that never calls it links no motion pass), or no longer
+	public function withVelocity(on = true):ViewBuffers {
+		if (on) makeMotion = MotionPass.make;
+		velocity = on;
+		return this;
 	}
 
 	function get_motion():Null<Texture>
-		return motionPass != null && (velocity || wantedMotion) ? motionPass.texture : null;
+		return motionPass != null && (velocity || wantedMotion) ? motionPass.texture() : null;
 
 	// the last frame's motion pass's draws (0 without)
 	public var motionDraws(get, never):Int;
 
 	function get_motionDraws():Int
-		return motionPass != null && (velocity || wantedMotion) ? motionPass.draws : 0;
+		return motionPass != null && (velocity || wantedMotion) ? motionPass.drawn() : 0;
 
 	final pipelines:Array<Pipeline> = [];
 	final slots:Array<Array<Int>> = [];
@@ -251,7 +255,7 @@ class ViewBuffers implements RenderFeature implements RenderFeature.ViewSource {
 		if ((velocity || wantedMotion) && makeMotion != null) {
 			if (motionPass == null) motionPass = makeMotion(this);
 			motionPass.render(enc, renderer, frame);
-			draws += motionPass.draws;
+			draws += motionPass.drawn();
 		}
 	}
 

@@ -5,7 +5,7 @@ import helder.gfx.shader.ShaderMath.*;
 import helder.scene.render.EffectShaders;
 import helder.scene.render.PostShader;
 
-// Temporal antialiasing's resolve (post.antialias Taa: TaaPass), a module
+// Temporal antialiasing's resolve (post.taa: Taa: TaaPass), a module
 // of its own: this frame's light, jittered by a sub-pixel (Renderer.jitter),
 // gathered with the history (the frames before, resolved) where this
 // pixel's point was the frame before (motionAt: the view buffers' motion,

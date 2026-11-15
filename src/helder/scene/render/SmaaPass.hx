@@ -7,13 +7,13 @@ import helder.scene.render.CompositeFxSmaaShader;
 import helder.scene.render.PostEffects;
 import helder.scene.render.SmaaShaders;
 
-// SMAA's passes (post.antialias Smaa, SmaaShaders' notes): the edges of
+// SMAA's passes (post.smaa: Smaa, SmaaShaders' notes): the edges of
 // the light the composite reads into an RGBA8 target of the frame's size,
 // their blending weights into another, blended by the composite's SMAA
 // variant (CompositeFxSmaaShader). A module of its own, installed by
-// post.antialias's setter: a program that never sets Smaa links none of it.
+// post.smaa's setter: a program that never sets one links none of it.
 class SmaaPass implements PostPass {
-	final post:PostProcess;
+	final smaa:Smaa;
 
 	var device:Null<Device> = null;
 	var edgePipeline:Null<Pipeline> = null;
@@ -27,15 +27,12 @@ class SmaaPass implements PostPass {
 	var w = 0;
 	var h = 0;
 
-	// the edges' threshold (of perceptual luma: 0.1 SMAA's medium, 0.05 finer)
-	public static var threshold = 0.1;
+	function new(smaa:Smaa)
+		this.smaa = smaa;
 
-	function new(post:PostProcess)
-		this.post = post;
-
-	// (post.antialias Smaa: the pass and the composite's variant)
+	// (post.smaa: the pass and the composite's variant)
 	public static function install() {
-		PostFx.makeSmaa = p -> new SmaaPass(p);
+		PostFx.makeSmaa = s -> new SmaaPass(s);
 		PostFx.smaaComposite = () -> CompositeFxSmaaShader.pipeline({});
 		PostFx.smaaUniforms = CompositeFxSmaaShader.uniforms;
 		PostFx.smaaTextures = CompositeFxSmaaShader.textures;
@@ -65,7 +62,7 @@ class SmaaPass implements PostPass {
 			weightPipeline = device.createPipeline(g);
 		}
 		size(fx.post.width, fx.post.height);
-		block.size = new Vec4(w, h, threshold, 16);
+		block.size = new Vec4(w, h, smaa.threshold, 16);
 		SmaaEdgeShader.params.s.write(block, bytes);
 		enc.beginPass(edgePass);
 		enc.setPipeline(edgePipeline);

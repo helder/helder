@@ -23,7 +23,9 @@ import helder.scene.render.PostStage.PostPoint;
 //   post.ao = new Ssao({radius: 0.5, intensity: 1, samples: 8, halfRes: true});   // GTAO
 //   post.dof = Dof.tiltShift({band: 0.2, falloff: 0.3, strength: 1});           // or Dof.focus({distance, aperture})
 //   post.outline = new Outline({width: 2, color: new Vec4(1, 0.8, 0.2, 1)});     // Outline.select(node)
-//   post.antialias = Fxaa;             // None (MSAA alone: the <Scene>'s antialias), Smaa, Taa
+//   post.antialias = Fxaa;             // None (MSAA alone: the <Scene>'s antialias)
+//   post.smaa = new Smaa();            // or SMAA's edges and weights, blended in the composite
+//   post.taa = new Taa();              // or temporal: jittered, gathered with its history (desktop, web)
 //   post.lut = Lut.fromImage(device, image);
 //   post.ssr = new Ssr({maxDistance: 8});            // screen-space reflections (desktop, web)
 //   post.motionBlur = new MotionBlur({strength: 0.5}); // the camera's, or by objects ({objects: true})
@@ -94,15 +96,16 @@ class PostProcess {
 	public var dof(default, set):Null<Dof> = null;
 	// the selection's outlines (Outline, Outline.select; null none)
 	public var outline(default, set):Null<Outline> = null;
-	// antialiasing after the frame's own (None; Fxaa: in the composite;
-	// Smaa: edges and their blending weights found in two passes, blended in
-	// the composite; Taa: the frame jittered by a sub-pixel each frame and
-	// gathered with its history, reprojected by the view buffers' motion;
-	// each one's variant and passes linked only by a program that sets it)
+	// antialiasing after the frame's own (None, Fxaa: in the composite; its
+	// variant linked only by a program that sets it); smaa and taa are
+	// effects of their own, below
 	public var antialias(default, set):Antialias = None;
-	// Taa: the share of each new frame in the history (0.1: about ten frames
-	// gathered; more: quicker to follow, less smooth)
-	public var taaBlend = 0.1;
+	// SMAA (Smaa: edges and their blending weights in two passes, blended in
+	// the composite, in place of antialias'; null none)
+	public var smaa(default, set):Null<Smaa> = null;
+	// temporal antialiasing (Taa: the frame jittered, gathered with its
+	// history reprojected by the view buffers' motion; null none)
+	public var taa(default, set):Null<Taa> = null;
 	// screen-space reflections (Ssr; null none): before the other effects,
 	// from the view buffers, mixed by each surface's Fresnel, roughness and metalness
 	public var ssr(default, set):Null<Ssr> = null;
@@ -249,6 +252,8 @@ class PostProcess {
 		if (v != null) {
 			PostFx.install();
 			PostFx.makeMotionBlur = MotionBlurPass.make;
+			// (by objects: the view buffers' motion; a MotionBlur whose objects are turned on later too)
+			@:privateAccess ViewBuffers.makeMotion = MotionPass.make;
 		}
 		return motionBlur = v;
 	}
@@ -266,15 +271,24 @@ class PostProcess {
 			fxaaDesc = () -> CompositeFxaaShader.pipeline({});
 			compositeSlots[1] = slotsOf(CompositeFxaaShader.uniforms, CompositeFxaaShader.textures);
 		}
-		if (v == Smaa) {
+		return antialias = v;
+	}
+
+	function set_smaa(v:Null<Smaa>):Null<Smaa> {
+		if (v != null) {
 			PostFx.install();
 			SmaaPass.install();
 		}
-		if (v == Taa) {
+		return smaa = v;
+	}
+
+	function set_taa(v:Null<Taa>):Null<Taa> {
+		if (v != null) {
 			PostFx.install();
 			PostFx.makeTaa = TaaPass.make;
+			@:privateAccess ViewBuffers.makeMotion = MotionPass.make;
 		}
-		return antialias = v;
+		return taa = v;
 	}
 
 	// a composite variant's slots: its block (CompositeParams), the scene, the bloom
@@ -290,7 +304,7 @@ class PostProcess {
 
 	// (the effects', made when an effect is set: null without)
 	inline function effectsOf():Null<RenderFeature.PostEffects> {
-		if (fx == null && effects != null && (ao != null || dof != null || outline != null || lut != null || ssr != null || motionBlur != null || godRays != null || antialias == Smaa || antialias == Taa)) fx = effects(this);
+		if (fx == null && effects != null && (ao != null || dof != null || outline != null || lut != null || ssr != null || motionBlur != null || godRays != null || smaa != null || taa != null)) fx = effects(this);
 		return fx;
 	}
 
@@ -428,7 +442,7 @@ class PostProcess {
 		outPass.colors[0].texture = target;
 		enc.beginPass(into);
 		var fxaa = antialias == Fxaa;
-		var aa = fxaa ? 1 : antialias == Smaa ? 2 : 0;
+		var aa = smaa != null ? 2 : fxaa ? 1 : 0;
 		var format:Null<TextureFormat> = count > 0 ? RGBA8 : frame ? null : output;
 		var folded = e != null && e.folded();
 		var slots = compositeSlots[fxaa ? 1 : 0];
@@ -586,13 +600,10 @@ enum abstract ToneMap(Int) to Int {
 }
 
 // antialiasing in post (PostProcess.antialias), beside a <Scene>'s MSAA:
-// None; Fxaa (in the composite: its read of the scene along the edges);
-// Smaa (Jimenez et al.'s morphological antialiasing: edges and their
-// blending weights in two passes, blended in the composite); Taa (temporal:
-// the frame jittered, gathered with its reprojected history; desktop and web)
+// None, or Fxaa (in the composite: its read of the scene along the edges);
+// SMAA and TAA are effects of their own (post.smaa, post.taa: an enum's
+// value set at run time would link every technique's passes)
 enum abstract Antialias(Int) {
 	var None;
 	var Fxaa;
-	var Smaa;
-	var Taa;
 }

@@ -6,7 +6,7 @@
 // Sprites) and materials (Material's factories: toon, lambert, unlit...), glTF models (Model,
 // helder/asset's model(path) loads one; GltfScene), the renderer and its
 // post chain (PostProcess: its effects Ssao, Dof, Outline, Lut, Ssr,
-// MotionBlur, GodRays; the view buffers they read, ViewBuffers), occlusion
+// MotionBlur, GodRays, Taa, Smaa; the view buffers they read, ViewBuffers), occlusion
 // culling (Occlusion), lines with width and debug drawing
 // (Lines, LineRenderer, DebugDraw, the helpers), rays cast at triangles
 // (world.raycast: Hit, HitList, RaycastOptions, Bvh), text in the world
@@ -21,7 +21,7 @@ import type {Asset, FontFile, Image} from "helder/asset";
 import type {Mat4, Quat, Vec2, Vec3, Vec4} from "helder/gfx";
 import type {Node} from "helder/scene";
 
-declare const __haxe: {Mesh: "helder.scene.render.Mesh", Encoder: "helder.gfx.Encoder", World: "helder.scene.World", Camera: "helder.scene.Camera", Light: "helder.scene.render.Light", Renderer: "helder.scene.render.Renderer", Shadows: "helder.scene.render.Shadows", Fog: "helder.scene.render.Fog", Material: "helder.scene.render.Material", MeshRenderer: "helder.scene.render.MeshRenderer", Shapes: "helder.scene.render.Shapes", Geometry: "helder.scene.render.Geometry", VertexData: "helder.scene.render.VertexData", Curve3: "helder.scene.math.Curve3", InstancedMesh: "helder.scene.render.InstancedMesh", Sprites: "helder.scene.render.Sprites", Model: "helder.scene.render.Model", MaterialShader: "helder.scene.render.MaterialShader", PostProcess: "helder.scene.render.PostProcess", Ssao: "helder.scene.render.Ssao", Dof: "helder.scene.render.Dof", Outline: "helder.scene.render.Outline", Lut: "helder.scene.render.Lut", ViewBuffers: "helder.scene.render.ViewBuffers", Ssr: "helder.scene.render.Ssr", MotionBlur: "helder.scene.render.MotionBlur", GodRays: "helder.scene.render.GodRays", Occlusion: "helder.scene.render.Occlusion", Lines: "helder.scene.render.Lines", LineRenderer: "helder.scene.render.LineRenderer", DebugDraw: "helder.scene.render.DebugDraw", Helper: "helder.scene.render.Helper", AxesHelper: "helder.scene.render.AxesHelper", GridHelper: "helder.scene.render.GridHelper", BoundsHelper: "helder.scene.render.BoundsHelper", LightHelper: "helder.scene.render.LightHelper", CameraHelper: "helder.scene.render.CameraHelper", SkeletonHelper: "helder.scene.render.SkeletonHelper", Hit: "helder.scene.render.Hit", HitList: "helder.scene.render.Hit.HitList", RaycastOptions: "helder.scene.render.Hit.RaycastOptions", Raycaster: "helder.scene.render.Raycaster", Bvh: "helder.scene.render.Bvh", Text3D: "helder.scene.render.Text3D", InputMap: "helder.scene.input.InputMap", Bindings: "helder.scene.input.Bindings", FixedStep: "helder.scene.FixedStep", Device: "helder.gfx.Device", Surface: "helder.os.Surface", Window: "helder.os.Window", App: "helder.os.App", Event: "helder.os.Event", Script: "helder.scene.Script", __module: "helder.scene.TypeScript"};
+declare const __haxe: {Mesh: "helder.scene.render.Mesh", Encoder: "helder.gfx.Encoder", World: "helder.scene.World", Camera: "helder.scene.Camera", Light: "helder.scene.render.Light", Renderer: "helder.scene.render.Renderer", Shadows: "helder.scene.render.Shadows", Fog: "helder.scene.render.Fog", Material: "helder.scene.render.Material", MeshRenderer: "helder.scene.render.MeshRenderer", Shapes: "helder.scene.render.Shapes", Geometry: "helder.scene.render.Geometry", VertexData: "helder.scene.render.VertexData", Curve3: "helder.scene.math.Curve3", InstancedMesh: "helder.scene.render.InstancedMesh", Sprites: "helder.scene.render.Sprites", Model: "helder.scene.render.Model", MaterialShader: "helder.scene.render.MaterialShader", PostProcess: "helder.scene.render.PostProcess", Ssao: "helder.scene.render.Ssao", Dof: "helder.scene.render.Dof", Outline: "helder.scene.render.Outline", Lut: "helder.scene.render.Lut", ViewBuffers: "helder.scene.render.ViewBuffers", Ssr: "helder.scene.render.Ssr", MotionBlur: "helder.scene.render.MotionBlur", GodRays: "helder.scene.render.GodRays", Taa: "helder.scene.render.Taa", Smaa: "helder.scene.render.Smaa", Occlusion: "helder.scene.render.Occlusion", Lines: "helder.scene.render.Lines", LineRenderer: "helder.scene.render.LineRenderer", DebugDraw: "helder.scene.render.DebugDraw", Helper: "helder.scene.render.Helper", AxesHelper: "helder.scene.render.AxesHelper", GridHelper: "helder.scene.render.GridHelper", BoundsHelper: "helder.scene.render.BoundsHelper", LightHelper: "helder.scene.render.LightHelper", CameraHelper: "helder.scene.render.CameraHelper", SkeletonHelper: "helder.scene.render.SkeletonHelper", Hit: "helder.scene.render.Hit", HitList: "helder.scene.render.Hit.HitList", RaycastOptions: "helder.scene.render.Hit.RaycastOptions", Raycaster: "helder.scene.render.Raycaster", Bvh: "helder.scene.render.Bvh", Text3D: "helder.scene.render.Text3D", InputMap: "helder.scene.input.InputMap", Bindings: "helder.scene.input.Bindings", FixedStep: "helder.scene.FixedStep", Device: "helder.gfx.Device", Surface: "helder.os.Surface", Window: "helder.os.Window", App: "helder.os.App", Event: "helder.os.Event", Script: "helder.scene.Script", __module: "helder.scene.TypeScript"};
 
 // What a node draws (node.mesh): primitives, each a vertex buffer in the
 // renderer's layout (PbrVertex: position, normal, uv; 32 bytes a vertex),
@@ -71,10 +71,9 @@ export type Feature = number;
 export type ToneMap = number;
 
 // antialiasing in post (PostProcess.antialias), beside a <Scene>'s MSAA:
-// None; Fxaa (in the composite: its read of the scene along the edges);
-// Smaa (Jimenez et al.'s morphological antialiasing: edges and their
-// blending weights in two passes, blended in the composite); Taa (temporal:
-// the frame jittered, gathered with its reprojected history; desktop and web)
+// None, or Fxaa (in the composite: its read of the scene along the edges);
+// SMAA and TAA are effects of their own (post.smaa, post.taa: an enum's
+// value set at run time would link every technique's passes)
 export type Antialias = number;
 
 // how depth of field's circle grows (Dof.focus, Dof.tiltShift)
@@ -138,6 +137,8 @@ export type PlaneOptions = { flat?: boolean; tangents?: boolean; width?: number;
 
 export type RingOptions = { flat?: boolean; tangents?: boolean; innerRadius?: number; outerRadius?: number; thetaSegments?: number; phiSegments?: number; thetaStart?: number; thetaLength?: number };
 
+export type SmaaOptions = { threshold?: number };
+
 export type SphereOptions = { flat?: boolean; tangents?: boolean; radius?: number; widthSegments?: number; heightSegments?: number; phiStart?: number; phiLength?: number; thetaStart?: number; thetaLength?: number };
 
 // what Sprites are made with (each optional): how they face the camera
@@ -148,6 +149,8 @@ export type SpritesOptions = { mode?: number; axis?: Vec3; columns?: number; row
 export type SsaoOptions = { radius?: number; intensity?: number; samples?: number; slices?: number; halfRes?: boolean };
 
 export type SsrOptions = { intensity?: number; maxDistance?: number; thickness?: number; steps?: number; maxRoughness?: number; halfRes?: boolean };
+
+export type TaaOptions = { blend?: number };
 
 // what a Text3D is made with (each optional): the em's height (0.3), a
 // depth (0: flat, double-sided), a bevel, the lines' alignment (0.5:
@@ -355,7 +358,7 @@ export declare class Renderer {
 	readonly prepassDraws: number;
 	// a sub-pixel offset of the projection this frame, in pixels of the
 	// target (x right, y down; 0, 0: none): temporal antialiasing's
-	// (post.antialias Taa sets it before each frame), the view buffers' and
+	// (post.taa: Taa sets it before each frame), the view buffers' and
 	// the main pass's alike; the motion the view buffers record leaves it out
 	jitter: Vec2;
 	// the frames drawn (each draw one)
@@ -1089,7 +1092,9 @@ export declare class MaterialShader {
 //   post.ao = new Ssao({radius: 0.5, intensity: 1, samples: 8, halfRes: true});   // GTAO
 //   post.dof = Dof.tiltShift({band: 0.2, falloff: 0.3, strength: 1});           // or Dof.focus({distance, aperture})
 //   post.outline = new Outline({width: 2, color: new Vec4(1, 0.8, 0.2, 1)});     // Outline.select(node)
-//   post.antialias = Fxaa;             // None (MSAA alone: the <Scene>'s antialias), Smaa, Taa
+//   post.antialias = Fxaa;             // None (MSAA alone: the <Scene>'s antialias)
+//   post.smaa = new Smaa();            // or SMAA's edges and weights, blended in the composite
+//   post.taa = new Taa();              // or temporal: jittered, gathered with its history (desktop, web)
 //   post.lut = Lut.fromImage(device, image);
 //   post.ssr = new Ssr({maxDistance: 8});            // screen-space reflections (desktop, web)
 //   post.motionBlur = new MotionBlur({strength: 0.5}); // the camera's, or by objects ({objects: true})
@@ -1163,15 +1168,16 @@ export declare class PostProcess {
 	dof: Dof | null;
 	// the selection's outlines (Outline, Outline.select; null none)
 	outline: Outline | null;
-	// antialiasing after the frame's own (None; Fxaa: in the composite;
-	// Smaa: edges and their blending weights found in two passes, blended in
-	// the composite; Taa: the frame jittered by a sub-pixel each frame and
-	// gathered with its history, reprojected by the view buffers' motion;
-	// each one's variant and passes linked only by a program that sets it)
+	// antialiasing after the frame's own (None, Fxaa: in the composite; its
+	// variant linked only by a program that sets it); smaa and taa are
+	// effects of their own, below
 	antialias: Antialias;
-	// Taa: the share of each new frame in the history (0.1: about ten frames
-	// gathered; more: quicker to follow, less smooth)
-	taaBlend: number;
+	// SMAA (Smaa: edges and their blending weights in two passes, blended in
+	// the composite, in place of antialias'; null none)
+	smaa: Smaa | null;
+	// temporal antialiasing (Taa: the frame jittered, gathered with its
+	// history reprojected by the view buffers' motion; null none)
+	taa: Taa | null;
 	// screen-space reflections (Ssr; null none): before the other effects,
 	// from the view buffers, mixed by each surface's Fresnel, roughness and metalness
 	ssr: Ssr | null;
@@ -1384,9 +1390,10 @@ export declare class ViewBuffers {
 	enabled: boolean;
 	// whether their motion is drawn too (motion: a second pass, gfx having
 	// one colour target a pass; TAA and motion blur by objects ask for it
-	// themselves): what moved since the frame before, by each node's matrix
-	// then and now and the camera's (MotionPass; desktop and web)
-	velocity: boolean;
+	// themselves; a program's own: withVelocity()): what moved since the
+	// frame before, by each node's matrix then and now and the camera's
+	// (MotionPass; desktop and web)
+	readonly velocity: boolean;
 	// the last frame's motion (RGBA16F, their size: xy this pixel's point's
 	// uv now less the frame before's, z 1 where a surface wrote it; null:
 	// velocity off)
@@ -1405,6 +1412,9 @@ export declare class ViewBuffers {
 	readonly projection: Mat4;
 	readonly inverseProjection: Mat4;
 	readonly view: Mat4;
+	// their motion drawn too (velocity, motion; a method, not a setter: a
+	// program that never calls it links no motion pass), or no longer
+	withVelocity(on?: boolean): ViewBuffers;
 	// the last frame's motion pass's draws (0 without)
 	readonly motionDraws: number;
 	dispose(): void;
@@ -1498,6 +1508,38 @@ export declare class GodRays {
 	falloff: number;
 	// the last frame's shafts (RGBA16F, a quarter of the frame's size)
 	readonly texture: number | null;
+}
+
+// Temporal antialiasing, a PostProcess's (post.taa = new Taa()): the
+// frame's projection jittered by a sub-pixel each frame (Renderer.jitter),
+// gathered with its history reprojected by the view buffers' motion (asked
+// for whole, with ViewBuffers.velocity), the history kept within each
+// pixel's neighbourhood (TaaShader's notes); in linear light, before depth
+// of field, motion blur and bloom. Desktop and web (MSAA stays a phone's).
+// A cut (a camera's jump): PostProcess.resetHistory. Its options alone: its
+// passes are TaaPass's, linked by a program that sets it on a chain.
+//
+//   post.taa = new Taa({blend: 0.1});
+export declare class Taa {
+	constructor(options?: TaaOptions);
+	// the share of each new frame in the history (0.1: about ten frames
+	// gathered; more: quicker to follow, less smooth)
+	blend: number;
+}
+
+// SMAA, a PostProcess's (post.smaa = new Smaa()): Jimenez et al.'s
+// morphological antialiasing of the light the composite reads, its edges
+// and their blending weights in two passes, blended in the composite (its
+// own variant), in place of FXAA's (SmaaShaders' notes: the orthogonal
+// patterns, their areas worked out; no diagonal or corner patterns: SMAA's
+// medium preset). Its options alone: its passes are SmaaPass's, linked by
+// a program that sets it on a chain.
+//
+//   post.smaa = new Smaa({threshold: 0.1});
+export declare class Smaa {
+	constructor(options?: SmaaOptions);
+	// the edges' threshold, of perceptual luma (0.1 SMAA's medium, 0.05 finer)
+	threshold: number;
 }
 
 // Occlusion culling by queries, a RenderFeature (renderer.use(new

@@ -83,8 +83,8 @@ class PostFx implements RenderFeature.PostEffects {
 	@:noCompletion public static var makeGodRays:Null<GodRays->PostPass> = null;
 	// (temporal antialiasing's and SMAA's, installed by post.antialias's setter;
 	// SMAA's composite variant's description and bindings with them)
-	@:noCompletion public static var makeTaa:Null<PostProcess->LightPass> = null;
-	@:noCompletion public static var makeSmaa:Null<PostProcess->PostPass> = null;
+	@:noCompletion public static var makeTaa:Null<Taa->LightPass> = null;
+	@:noCompletion public static var makeSmaa:Null<Smaa->PostPass> = null;
 	@:noCompletion public static var smaaComposite:Null<Void->PipelineDesc> = null;
 	@:noCompletion public static var smaaUniforms:Null<Array<helder.gfx.shader.Shader.UniformBlock>> = null;
 	@:noCompletion public static var smaaTextures:Null<Array<helder.gfx.shader.Shader.TextureBinding>> = null;
@@ -104,7 +104,9 @@ class PostFx implements RenderFeature.PostEffects {
 	var raysPass:Null<PostPass> = null;
 	var raysOf:Null<GodRays> = null;
 	var taaPass:Null<LightPass> = null;
+	var taaOf:Null<Taa> = null;
 	var smaaPass:Null<PostPass> = null;
+	var smaaOf:Null<Smaa> = null;
 	var lightDraws = 0;
 
 	function passOfSsr():Null<LightPass> {
@@ -141,14 +143,24 @@ class PostFx implements RenderFeature.PostEffects {
 	}
 
 	function passOfTaa():Null<LightPass> {
-		if (post.antialias != Taa || makeTaa == null) return null;
-		if (taaPass == null) taaPass = makeTaa(post);
+		var e = post.taa;
+		if (e == null) return null;
+		if (taaOf != e) {
+			if (taaPass != null) taaPass.dispose();
+			taaPass = makeTaa(e);
+			taaOf = e;
+		}
 		return taaPass;
 	}
 
 	function passOfSmaa():Null<PostPass> {
-		if (post.antialias != Smaa || makeSmaa == null) return null;
-		if (smaaPass == null) smaaPass = makeSmaa(post);
+		var e = post.smaa;
+		if (e == null) return null;
+		if (smaaOf != e) {
+			if (smaaPass != null) smaaPass.dispose();
+			smaaPass = makeSmaa(e);
+			smaaOf = e;
+		}
 		return smaaPass;
 	}
 
@@ -236,10 +248,8 @@ class PostFx implements RenderFeature.PostEffects {
 			views = v;
 		}
 		if (share > wanted) wanted = share;
-		if (motion) {
-			wantedMotion = true;
-			@:privateAccess ViewBuffers.makeMotion = MotionPass.make;
-		}
+		// (its motion pass installed by the effect that asks: TAA's, motion blur's setters)
+		if (motion) wantedMotion = true;
 	}
 
 	var wantedMotion = false;
@@ -307,7 +317,7 @@ class PostFx implements RenderFeature.PostEffects {
 		return views != null && views.enabled && views.width > 0;
 
 	public function folded():Bool
-		return post.lut != null || smaaPass != null && post.antialias == Smaa || ready() && (post.dof != null || post.outline != null || post.godRays != null);
+		return post.lut != null || smaaPass != null && post.smaa != null || ready() && (post.dof != null || post.outline != null || post.godRays != null);
 
 	public function composite(aa:Int, format:Null<TextureFormat>):Pipeline {
 		var base = aa * 4;
@@ -394,6 +404,8 @@ class PostFx implements RenderFeature.PostEffects {
 		ssrOf = null;
 		blurOf = null;
 		raysOf = null;
+		taaOf = null;
+		smaaOf = null;
 	}
 }
 

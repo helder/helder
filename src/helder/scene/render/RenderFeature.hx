@@ -22,6 +22,16 @@ interface ViewSource {
 	function drawn():Int;
 }
 
+// what the view buffers ask of their motion's pass (MotionPass: made when
+// their velocity is first asked for)
+interface MotionSource {
+	function render(enc:helder.gfx.Encoder, renderer:Renderer, frame:Renderer.FrameInfo):Void;
+	// its target (RGBA16F) and the last frame's draws into it
+	function texture():helder.gfx.Texture;
+	function drawn():Int;
+	function dispose():Void;
+}
+
 // what a PostProcess asks of its effects beyond bloom and the grade
 // (PostEffects.hx: the first effect made installs them, PostProcess.effects)
 interface PostEffects {
