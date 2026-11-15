@@ -57,6 +57,14 @@ class Renderer {
 			]
 		}
 	];
+	// (a skinned vertex: position, normal, uvs, joints, weights)
+	static final SKINNED_LAYOUT:VertexBufferLayout = {
+		stride: 64,
+		attributes: [
+			{location: 0, format: Float3, offset: 0}, {location: 1, format: Float3, offset: 12}, {location: 2, format: Float2, offset: 24},
+			{location: 3, format: Float4, offset: 32}, {location: 4, format: Float4, offset: 48}
+		]
+	};
 	// without a Light in the world: towards the light (normalized when
 	// drawn), and its colour times intensity
 	public var sunDirection = new Vec3(-0.4, 0.8, 0.45);
@@ -106,6 +114,23 @@ class Renderer {
 	final plainSlots:Array<Int>;
 	var skinSource:Null<RenderFeature.SkinSource>;
 	var normalSource:Null<RenderFeature.NormalSource>;
+	// (the physical shader of the materials with glTF extensions and no
+	// shader of their own: Physical's, every extension's; null: the standard)
+	var physical:Null<RenderFeature.PhysicalSource> = null;
+	// (the opaque frame behind see-through surfaces: Transmission; this
+	// frame's copy, null before it or without; whether the frame's list has
+	// a surface a physical shader refracts through)
+	var transmissionSource:Null<RenderFeature.TransmissionSource> = null;
+	var behind:Null<Texture> = null;
+	var behindLevels = 0.0;
+	var refracts = false;
+	// the last draw's main pass split for Transmission's copy (1: the frame
+	// behind its see-through surfaces copied; statistics)
+	public var splits(default, null) = 0;
+	final resume:PassDesc = {colors: [{load: Load}], depth: {load: Load}};
+	final black:Texture;
+	final flatNormal:Texture;
+	final mipClamped:Sampler;
 	var environment:Null<Environment>;
 	// (the view buffers: ViewBuffers, attached by use or by post's effects)
 	var views:Null<RenderFeature.ViewSource>;
@@ -196,6 +221,16 @@ class Renderer {
 		var one = Bytes.alloc(4);
 		one.setFloat(0, 1);
 		noShadow = device.createTexture({width: 1, height: 1, format: R32F, data: one});
+		var k = Bytes.alloc(4);
+		k.set(3, 255);
+		black = device.createTexture({width: 1, height: 1, data: k});
+		var f = Bytes.alloc(4);
+		f.set(0, 128);
+		f.set(1, 128);
+		f.set(2, 255);
+		f.set(3, 255);
+		flatNormal = device.createTexture({width: 1, height: 1, data: f});
+		mipClamped = device.createSampler({filter: Linear, mipFilter: Linear, wrap: Clamp});
 		pass = {colors: [{load: Clear, clear: clearColor}], depth: {load: Clear}};
 	}
 
@@ -338,6 +373,7 @@ class Renderer {
 		count = 0;
 		culled = 0;
 		occluded = 0;
+		refracts = false;
 		var meshes = world.store(MeshRenderer.KIND), tints = world.store(MeshRenderer.TINT);
 		for (k in 0...meshes.length) {
 			var node = meshes.nodeAt(k), mesh = meshes.valueAt(k);
@@ -372,6 +408,9 @@ class Renderer {
 					// (how far: the bounds' centre's depth in clip space)
 					var b = p.bounds, c = viewProj * (model * new Vec4((b.min.x + b.max.x) / 2, (b.min.y + b.max.y) / 2, (b.min.z + b.max.z) / 2, 1));
 					d.depth = c.w != 0 ? c.z / c.w : c.z;
+					// (a physical shader's transmission: the opaque frame copied behind it)
+					var s = shaderOf(p.material);
+					if (p.material.transmission > 0 && s != null && s.extensions & Material.TRANSMISSION != 0) refracts = true;
 				}
 			}
 		}
@@ -513,6 +552,8 @@ class Renderer {
 		draws = 0;
 		instanced = 0;
 		var opaque = true;
+		behind = null;
+		splits = 0;
 		recordSets(enc, false);
 		for (b in 0...batchCount) {
 			var start = batchStart[b], n = batchSize[b];
@@ -525,10 +566,15 @@ class Renderer {
 				if (occluder != null) occluder.draw(enc, this);
 				for (f in hooks[AfterOpaque])
 					f(enc, frame);
+				// (the opaque frame copied, behind the physical shaders' transmission)
+				if (refracts && transmissionSource != null && offscreen) split(enc);
 				recordSets(enc, true);
 				current = null;
+				material = null;
+				node = Node.NONE;
 			}
-			if (m.transmission > 0 && !p.skinned) {
+			var shader = shaderOf(m);
+			if (m.transmission > 0 && !p.skinned && (shader == null || shader.extensions & Material.TRANSMISSION == 0)) {
 				// (transmission: what is behind first tinted by the surface's
 				// colour (Multiply), then its own light over it: the draw below)
 				tint(enc, d, p, m);
@@ -539,7 +585,7 @@ class Renderer {
 			var many = n > 1;
 			var skin = p.skinned ? skinSource : null;
 			var normals = skin == null && mapped(p) ? normalSource : null;
-			var own = m.shader != null ? custom(m, many ? (normals != null ? 4 : 3) : skin != null ? 2 : normals != null ? 1 : 0) : null;
+			var own = shader != null ? custom(shader, m, many ? (normals != null ? 4 : 3) : skin != null ? 2 : normals != null ? 1 : 0) : null;
 			var want = own != null ? own.pipeline : many ? (normals != null ? normals.instancedPipeline(m.doubleSided) : m.doubleSided ? instancedDoubleSided : instancedPipeline) : skin != null ? skin.pipeline(m.doubleSided) : normals != null ? normals.pipeline(m.doubleSided) : m.blend ? blended(m) : (m.doubleSided ? doubleSided : pipeline);
 			if (want != current) {
 				enc.setPipeline(want);
@@ -563,6 +609,9 @@ class Renderer {
 			enc.setVertexBuffer(0, p.vertices);
 			if (normals != null) enc.setVertexBuffer(1, p.tangents);
 			if (many) enc.setVertexBuffer(normals != null ? 2 : 1, instanceBuffer, batchOffset[b]);
+			// (each map its own uvs: the second uvs' buffer, after the others)
+			if (shader != null && shader.extensions & Material.UV_SETS != 0)
+				enc.setVertexBuffer(1 + (normals != null ? 1 : 0) + (many ? 1 : 0), p.uv1 != null ? p.uv1 : p.vertices);
 			enc.setIndexBuffer(p.indices, p.indexFormat);
 			enc.drawIndexed(p.count, n);
 			draws++;
@@ -578,6 +627,29 @@ class Renderer {
 			f(enc, frame);
 		enc.endPass();
 	}
+
+	// (the frame's pass ended after its opaque surfaces, its colour copied
+	// by Transmission, the pass begun again where it was)
+	function split(enc:Encoder) {
+		enc.endPass();
+		var c = pass.colors[0];
+		var source = c.resolve != null ? c.resolve : c.texture;
+		behind = transmissionSource.capture(enc, source, targetWidth, targetHeight, colorFormat);
+		behindLevels = transmissionSource.levels();
+		resume.colors[0].texture = c.texture;
+		resume.colors[0].resolve = c.resolve;
+		resume.depth.texture = pass.depth.texture;
+		enc.beginPass(resume);
+		resume.colors[0].texture = null;
+		resume.colors[0].resolve = null;
+		resume.depth.texture = null;
+		splits = 1;
+	}
+
+	// the shader a material is drawn with: its own, else Physical's where
+	// its fields use a glTF extension, else null (the standard one)
+	inline function shaderOf(m:Material):Null<MaterialShader>
+		return m.shader != null ? m.shader : physical != null ? physical.shaderOf(m) : null;
 
 	// (a node's block into objectBytes: its matrices, its tint)
 	@:allow(helder.scene.render) function writeObject(model:Mat4, t:Vec3) {
@@ -609,7 +681,8 @@ class Renderer {
 				if (p.skinned || p.material.blend != blended) continue;
 				var m = p.material;
 				var normals = mapped(p) ? normalSource : null;
-				var own = m.shader != null ? custom(m, normals != null ? 4 : 3) : null;
+				var shader = shaderOf(m);
+				var own = shader != null ? custom(shader, m, normals != null ? 4 : 3) : null;
 				enc.setPipeline(own != null ? own.pipeline : normals != null ? normals.instancedPipeline(m.doubleSided) : m.blend ? blendedInstanced(m) : m.doubleSided ? instancedDoubleSided : instancedPipeline);
 				var slots = own != null ? own.slots : normals != null ? normals.instancedSlots() : instancedSlots;
 				enc.setUniforms(slots[0], frameBytes);
@@ -617,6 +690,7 @@ class Renderer {
 				enc.setVertexBuffer(0, p.vertices);
 				if (normals != null) enc.setVertexBuffer(1, p.tangents);
 				enc.setVertexBuffer(normals != null ? 2 : 1, s.buffer);
+				if (shader != null && shader.extensions & Material.UV_SETS != 0) enc.setVertexBuffer(normals != null ? 3 : 2, p.uv1 != null ? p.uv1 : p.vertices);
 				enc.setIndexBuffer(p.indices, p.indexFormat);
 				enc.drawIndexed(p.count, s.count);
 				draws++;
@@ -627,7 +701,11 @@ class Renderer {
 
 	// a material's block and textures, at a shader's slots
 	function bindMaterial(enc:Encoder, slots:Array<Int>, m:Material, normals:Null<RenderFeature.NormalSource>) {
-		PbrShader.params.material.write(materialInto(m, materialBlock), materialBytes);
+		var block = materialInto(m, materialBlock);
+		// (a physical shader's: the glTF extensions' fields, the frame behind)
+		var layers = slots[14] >= 0 ? shaderOf(m).layers : null;
+		if (layers != null) layers.block(m, block, behind != null ? behindLevels : 0);
+		PbrShader.params.material.write(block, materialBytes);
 		enc.setUniforms(slots[2], materialBytes);
 		var ms = m.sampler != null ? m.sampler : sampler;
 		enc.setTexture(slots[3], m.baseColorTexture != null ? m.baseColorTexture : white, ms);
@@ -639,7 +717,8 @@ class Renderer {
 		enc.setTexture(slots[11], sf != null ? sf.mapFar : noShadow, nearest);
 		if (environment != null) environment.bind(enc, slots[12]) else enc.setTexture(slots[12], white, sampler);
 		if (slots[13] >= 0) enc.setTexture(slots[13], occlusion != null ? occlusion : white, clamped);
-		if (normals != null) enc.setTexture(slots[10], m.normalTexture, ms);
+		if (normals != null) enc.setTexture(slots[10], m.normalTexture != null ? m.normalTexture : flatNormal, ms);
+		if (layers != null) layers.bind(enc, slots, ms, white, behind != null ? behind : black, mipClamped);
 		// (a shader of its own: its own blocks, after the renderer's slots)
 		if (m.shader != null && m.uniforms != null) bindOwn(enc, slots, m);
 	}
@@ -652,15 +731,14 @@ class Renderer {
 		}
 
 	// where a variant's slots of a material's own blocks begin (slotsOf's length)
-	public static inline var OWN = 14;
+	public static inline var OWN = 18;
 
 	// a material's own shader's pipeline and slots for a kind of draw (0
 	// plain, 1 normal mapped, 2 skinned, 3 instanced, 4 instanced and normal
 	// mapped), made when first drawn; its own blocks' slots after the renderer's
 	final customs = new Map<MaterialShader, Array<Null<{pipeline:Pipeline, slots:Array<Int>}>>>();
 
-	function custom(m:Material, kind:Int):{pipeline:Pipeline, slots:Array<Int>} {
-		var s = m.shader;
+	function custom(s:MaterialShader, m:Material, kind:Int):{pipeline:Pipeline, slots:Array<Int>} {
 		var list = customs.get(s);
 		if (list == null) customs.set(s, list = []);
 		// (blended: a plain draw's, or an instanced set's)
@@ -679,6 +757,14 @@ class Renderer {
 			var d = blend ? v.pipeline({cull: cull, depthCompare: Less, depthWrite: false, blend: m.blending}) : v.pipeline({cull: cull, depthCompare: Less, depthWrite: true});
 			if (kind == 1 || kind == 4) d.layout = normalSource.layout(kind == 4);
 			if (kind == 3) d.layout = INSTANCED_LAYOUT;
+			// (each map its own uvs: the second uvs a buffer of their own, last)
+			if (s.extensions & Material.UV_SETS != 0) {
+				var base = kind == 0 ? [INSTANCED_LAYOUT[0]] : kind == 2 ? [SKINNED_LAYOUT] : d.layout;
+				var n = 0;
+				for (l in base)
+					n += l.attributes.length;
+				d.layout = base.concat([{stride: 8, attributes: [{location: n, format: Float2, offset: 0}]}]);
+			}
 			c = list[k] = {pipeline: create(d), slots: slotsOf(v.uniforms, v.textures).concat([for (b in s.blocks) b.bindings[kind]])};
 		}
 		return c;
@@ -791,18 +877,20 @@ class Renderer {
 
 	final blendedInstancedPipelines:Array<Null<Pipeline>> = [for (_ in 0...10) null];
 
-	// whether a primitive is drawn with its normal map (NormalMaps on, its
-	// tangents and its material's map there, its material's shader with
-	// normal-mapped variants: not shading's unlit ones)
+	// whether a primitive is drawn with its tangents (NormalMaps on, its
+	// tangents there, its material's normal map, coat's normal map or
+	// anisotropy: Material.tangents; its shader with normal-mapped variants:
+	// not shading's unlit ones)
 	inline function mapped(p:Mesh.Primitive):Bool
-		return normalSource != null && p.tangents != null && p.material.normalTexture != null && !p.skinned
-			&& (p.material.shader == null || p.material.shader.normalMapped != null);
+		return normalSource != null && p.tangents != null && !p.skinned && p.material.tangents()
+			&& (shaderOf(p.material) == null || shaderOf(p.material).normalMapped != null);
 
 	// a shader's slots for its blocks and textures, in the renderer's order:
 	// frame, object (-1: none), material, base colour, shadow map, skin,
 	// joints, metallic-roughness, emissive, occlusion, normal, the far shadow
-	// map, the environment map, the screen's ambient occlusion; then a
-	// material's own blocks (OWN on)
+	// map, the environment map, the screen's ambient occlusion; a physical
+	// shader's (0: one, -1: not), its two maps, the frame behind
+	// (Transmission's); then a material's own blocks (OWN on)
 	public static function slotsOf(uniforms:Array<helder.gfx.shader.Shader.UniformBlock>, textures:Array<helder.gfx.shader.Shader.TextureBinding>):Array<Int> {
 		function u(name:String):Int {
 			for (b in uniforms)
@@ -815,7 +903,15 @@ class Renderer {
 			return -1;
 		}
 		return [u("PbrFrame"), u("PbrObject"), u("PbrMaterial"), t("baseColorTexture"), t("shadowMap"), u("PbrSkinInfo"), t("jointMatrices"),
-			t("metallicRoughnessTexture"), t("emissiveTexture"), t("occlusionTexture"), t("normalTexture"), t("shadowMapFar"), t("environmentMap"), t("aoMap")];
+			t("metallicRoughnessTexture"), t("emissiveTexture"), t("occlusionTexture"), t("normalTexture"), t("shadowMapFar"), t("environmentMap"), t("aoMap"),
+			layered(textures), t("layerMap0"), t("layerMap1"), t("transmissionMap")];
+	}
+
+	// (a physical shader's variant: one reading a layer's map)
+	static function layered(textures:Array<helder.gfx.shader.Shader.TextureBinding>):Int {
+		for (b in textures)
+			if (b.name == "layerMap0" || b.name == "transmissionMap") return 0;
+		return -1;
 	}
 
 	// whether a mesh's bounds, through mvp, reach the view: not all eight
@@ -843,6 +939,8 @@ class Renderer {
 		post = null;
 		device.destroyTexture(white);
 		device.destroyTexture(noShadow);
+		device.destroyTexture(black);
+		device.destroyTexture(flatNormal);
 		if (instanceCapacity > 0) device.destroyBuffer(instanceBuffer);
 	}
 }

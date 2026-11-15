@@ -28,7 +28,12 @@ import helder.os.*;
 // (Text3D: helder.text's layout, canvas' outlines and boolean ops, the
 // triangulator; its font read at run time, not embedded), -D
 // size_debugcalls (Debug's calls alone, built with -D helder.release:
-// compiled out, nothing linked)
+// compiled out, nothing linked); and phase 6's, the glTF material
+// extensions: -D size_sheen, size_specular, size_clearcoat,
+// size_transmission, size_iridescence, size_anisotropy, size_uvsets (a box
+// drawn by that extension's variants alone: PhysicalShader.of), -D
+// size_physical (Physical: every extension's), -D size_refraction
+// (Transmission, the frame behind see-through surfaces)
 class Size {
 	static function main() {
 		var window = new Window("Size", 320, 240);
@@ -113,6 +118,17 @@ class Size {
 		#if size_text3d
 		var font = helder.text.FontFile.parse(sys.io.File.getBytes(Sys.args()[0]));
 		helder.scene.render.Text3D.attach(world.node(), new helder.scene.render.Text3D(device, font, "size"));
+		#end
+		#if (size_sheen || size_specular || size_clearcoat || size_transmission || size_iridescence || size_anisotropy || size_uvsets)
+		var layered = new helder.scene.render.Material();
+		layered.shader = #if size_sheen helder.scene.render.PhysicalShader.of({sheen: true}) #elseif size_specular helder.scene.render.PhysicalShader.of({specular: true}) #elseif size_clearcoat helder.scene.render.PhysicalShader.of({clearcoat: true}) #elseif size_transmission helder.scene.render.PhysicalShader.of({transmission: true}) #elseif size_iridescence helder.scene.render.PhysicalShader.of({iridescence: true}) #elseif size_anisotropy helder.scene.render.PhysicalShader.of({anisotropy: true}) #else helder.scene.render.PhysicalShader.of({uvSets: true}) #end;
+		helder.scene.render.MeshRenderer.attach(world.node(), helder.scene.render.Shapes.box(device, layered));
+		#end
+		#if size_physical
+		renderer.use(new helder.scene.render.Physical());
+		#end
+		#if size_refraction
+		renderer.use(new helder.scene.render.Transmission(device));
 		#end
 		#if size_raycast
 		var hit = new helder.scene.render.Hit();

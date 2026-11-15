@@ -316,6 +316,12 @@ pbr.variant({normalMap, skinned, instanced, sheen, specular, volume, iridescence
 The options a material needs are worked out from its fields. They become
 its pipeline key, as `normalMap` is now.
 
+*As built (phase 6, 9):* the options are `sheen`, `specular` (with
+`ior`), `clearcoat`, `transmission` (with `volume`), `iridescence`,
+`anisotropy` and `uvSets` (TEXCOORD_1); the extensions' factors live in
+`PbrMaterial`, their maps in two images a material; `Transmission` is an
+offscreen renderer's.
+
 **Doing better: the variants come from the typed model.** `Model.of` and
 the packed `.hxm3d` already know every material when compiling. The
 macro, or the asset step, records which extension sets the model uses.
@@ -1532,6 +1538,63 @@ Tests and frames:
   DragonAttenuation, compared with the sample viewer's renders.
 - **Size:** a size test (`tests/3d/size`) that a model without an
   extension links no code of it.
+
+As built: every item above, with these departures (said where the design
+describes them, 1.3):
+
+- **The options** are `sheen`, `specular` (KHR_materials_specular and
+  _ior), `clearcoat` (its maps with it), `transmission` (KHR_materials_
+  transmission and _volume: refraction), `iridescence`, `anisotropy` and
+  `uvSets` (each core map its own uvs: TEXCOORD_1 and a
+  KHR_texture_transform a map, `Material.textureTransforms`; SheenChair's
+  occlusion needs it), not `volume` and `layerTextures`: each extension's
+  maps are part of its option. The standard variants are as they were.
+- **Folded by a pass of helder.gfx's, not by hand:** a variant with an
+  option fills that layer of its surface (`LitSurface`'s optional fields,
+  between the surface's slots and the lights: the light loop is
+  untouched), and the physical `direct` and `indirect` slots read every
+  layer behind a test of its weight. helder.gfx's `Prune` gained the rule
+  that makes that exact: an optional field of a struct a variant never
+  gives (left out, or copied from the same field) reads as zero, the tests
+  on it fold, the field goes. Both lowerings share it, so pbr.ts prints
+  the same text (tests/typescript/definitions' pbr: the physical variants
+  too).
+- **Model.of's sets:** each set of options its materials use is a module of
+  its own (`helder.scene.render.physical.Physical<flags>`,
+  `PhysicalShader.of`), made once a build; the model's materials get them
+  as their `shader` (`Model`'s map from the flags). `Physical` is the set
+  with every option, for `Model.load` and materials made in code.
+  `.hxm3d` (Pack) does not carry the extensions yet: a packed model is
+  drawn with its core material.
+- **Bindings:** helder.gfx's 16 slots a shader (uniform blocks and
+  textures; D3D11's and Metal's sampler registers, WGSL's samplers at 16 +
+  n) leave a physical variant three: the extensions' factors are
+  `PbrMaterial`'s (no block of their own), their maps read from two images
+  a material (`layerMap0`, `layerMap1`; glTF's channel layout lets a pair
+  share one), and the frame behind (`transmissionMap`). A material whose
+  extension maps are in more than two images loses the third's. After
+  phase 4 (its light list a block more) a skinned variant with
+  `transmission` would need 17: to be dropped there.
+- **Transmission** splits the main pass at the opaque surfaces' end (after
+  the AfterOpaque hooks: the sky), copies the colour (resolved) into a
+  mip-mapped texture of the target's format, and begins the pass again
+  with its colour and depth loaded: an offscreen renderer's only (the
+  device's frame is no texture); `renderer.splits` counts it. Without it a
+  transmitting physical surface shows the environment refracted through
+  it. Punctual lights through a volume (the sample viewer's
+  `getPunctualRadianceTransmission`) are not built.
+- **Sheen's albedo** is three.js' analytic fit and its energy scaling
+  (1 - 0.157 max(sheen)), not the sample viewer's lookup textures; the
+  split sum stays Karis' fit.
+- **Frames:** `physical` (materials made in code, every extension, drawn
+  by Physical; nothing allocated a frame), `transmission` (refraction and
+  absorption through Transmission's copy), `khrspecular`,
+  `khriridescence`, `khrvolume` (SpecularTest, CompareIridescence,
+  AttenuationTest vendored, through Model.of's sets), and `khrclearcoat`
+  again with its maps. SheenChair, IridescenceLamp, AnisotropyBarnLamp,
+  TransmissionTest, IORTestGrid, DragonAttenuation and the Compare* models
+  are examples/gltf-showcase's (fetched, 1 to 8 MB each), compared with
+  the sample viewer there.
 
 ### Phase 7: the high end (desktop and web first)
 

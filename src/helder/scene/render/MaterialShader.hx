@@ -48,6 +48,13 @@ class MaterialShader {
 	// the blocks of the material's own: its parameter's name, its slot, in
 	// each variant (in the order above; -1: not in it)
 	@:typescript public final blocks:Array<{name:String, bindings:Array<Int>}>;
+	// the glTF extensions its variants have (PhysicalShader's: Material's
+	// flags, SHEEN ...; 0: none, a material's own slots)
+	@:typescript public var extensions = 0;
+	// (a physical shader's material data: PhysicalLayers; null: none)
+	#if !macro
+	public var layers:Null<RenderFeature.LayerSource> = null;
+	#end
 
 	public function new(plain, normalMapped, skinned, instanced, instancedNormalMapped, blocks, ?prepass, ?prepassInstanced) {
 		this.plain = plain;
@@ -101,8 +108,10 @@ class MaterialShader {
 			_ -> throw "MaterialShader: a TypeScript material's vertices are the renderer's", null);
 	}
 
-	// the material's variants of a slot object made from pbr (pbr.with({...}))
-	public static macro function material(def:Expr):Expr {
+	// the material's variants of a slot object made from pbr (pbr.with({...})),
+	// options (an object of the slot object's, constants) given to each
+	// (PhysicalShader's: the glTF extensions)
+	public static macro function material(def:Expr, ?extra:Expr):Expr {
 		var pos = Context.currentPos();
 		var a = new HaxeAdapter("material");
 		var typed = Context.typeExpr(def);
@@ -114,12 +123,25 @@ class MaterialShader {
 		var replaced = false;
 		for (s in PREPASS_SLOTS)
 			if (first.def.slots.exists(s) && first.def.slots.get(s) != first.defaults.get(s)) replaced = true;
+		// (nor with each map's own uvs, uvSets: the view buffers bind no second uvs)
+		if (extra != null && new haxe.macro.Printer().printExpr(extra).indexOf("uvSets: true") >= 0) replaced = false;
 		if (!replaced) kinds = kinds.slice(0, 5);
 		var standard = ["PbrFrame", "PbrObject", "PbrMaterial", "PbrSkinInfo", "PbrPrepass"];
 		var textures = [
 			"baseColorTexture", "metallicRoughnessTexture", "emissiveTexture", "occlusionTexture", "shadowMap", "shadowMapFar", "environmentMap", "normalTexture",
-			"jointMatrices", "aoMap"
+			"jointMatrices", "aoMap", "layerMap0", "layerMap1", "transmissionMap"
 		];
+		// (the options given to every variant)
+		var more:Array<{name:String, node:KNode}> = [];
+		switch extra {
+			case null | {expr: EConst(CIdent("null"))}:
+			case {expr: EObjectDecl(fs)}:
+				for (f in fs) {
+					if (!options.exists(f.field)) Context.error('material: the slot object has no option ${f.field}', f.expr.pos);
+					more.push({name: f.field, node: a.node(f.expr)});
+				}
+			case _: Context.error("material: the options given to every variant are an object of constants", extra.pos);
+		}
 		var shaders = [], blocks = new Map<String, Array<Int>>(), order = [];
 		for (k in 0...kinds.length) {
 			if (!Lambda.foreach(kinds[k], o -> options.exists(o))) {
@@ -128,7 +150,7 @@ class MaterialShader {
 			}
 			var lower = new helder.gfx.shader.Lower();
 			var r = SlotsMacro.resolve(typed, lower, a);
-			var given = new KNode(KObject([for (o in kinds[k]) {name: o, node: new KNode(KBool(true), pos)}]), pos);
+			var given = new KNode(KObject([for (o in kinds[k]) {name: o, node: new KNode(KBool(true), pos)}].concat(more)), pos);
 			var out = new ShaderDefinition().variant(r.def, given, lower, pos);
 			for (p in out.params)
 				switch p.resource {

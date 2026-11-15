@@ -162,6 +162,7 @@ class GltfDoc {
 	public var position:Int;
 	public var normal:Int;
 	public var texcoord:Int;
+	public var texcoord1 = -1; // TEXCOORD_1 (a map's texCoord 1: Material.textureTransforms)
 	public var tangent:Int;
 	public var color:Int;
 	public var joints:Int; // JOINTS_0, WEIGHTS_0: skinning (-1: none)
@@ -201,6 +202,59 @@ class GltfDoc {
 	public var alphaMode:String; // OPAQUE, MASK, BLEND
 	public var alphaCutoff:Float;
 	public var doubleSided:Bool;
+	// the other glTF material extensions' (KHR_materials_sheen, _specular,
+	// _ior, _volume, _iridescence, _anisotropy; clearcoat's and
+	// transmission's maps; each core map's own uvs): their defaults where the
+	// file has none; null: not read (GltfExtensions not installed)
+	public var layers:Null<GltfLayers> = null;
+}
+
+// a map's uvs: its texCoord (TEXCOORD_0 or _1, KHR_texture_transform's own
+// when it has one) and transform (identity without one)
+@:structInit class GltfMap {
+	public var texCoord = 0;
+	public var offset = new Vec2(0, 0);
+	public var rotation = 0.0;
+	public var scale = new Vec2(1, 1);
+}
+
+// a glTF material's extensions beyond the core (GltfMaterial.layers), with
+// glTF's names and defaults (Material's fields of the same names); each map
+// a texture's index (-1: none)
+@:structInit class GltfLayers {
+	// the extensions the material names (its extensions object's keys)
+	public var used:Array<String> = [];
+	public var clearcoatTexture = -1;
+	public var clearcoatRoughnessTexture = -1;
+	public var clearcoatNormalTexture = -1;
+	public var clearcoatNormalScale = 1.0;
+	public var transmissionTexture = -1;
+	public var thickness = 0.0;
+	public var thicknessTexture = -1;
+	public var attenuationColor = new Vec3(1, 1, 1);
+	public var attenuationDistance = 0.0; // (0: glTF's infinity, none)
+	public var ior = 1.5;
+	public var specularFactor = 1.0;
+	public var specularColor = new Vec3(1, 1, 1);
+	public var specularTexture = -1;
+	public var specularColorTexture = -1;
+	public var sheenColor = new Vec3(0, 0, 0);
+	public var sheenRoughness = 0.0;
+	public var sheenColorTexture = -1;
+	public var sheenRoughnessTexture = -1;
+	public var iridescence = 0.0;
+	public var iridescenceIor = 1.3;
+	public var iridescenceThicknessMinimum = 100.0;
+	public var iridescenceThicknessMaximum = 400.0;
+	public var iridescenceTexture = -1;
+	public var iridescenceThicknessTexture = -1;
+	public var anisotropy = 0.0;
+	public var anisotropyRotation = 0.0;
+	public var anisotropyTexture = -1;
+	// the core maps' own uvs, in order base colour, metallic-roughness,
+	// normal, occlusion, emissive (null: the map absent): their texCoord and
+	// KHR_texture_transform
+	public var maps:Array<Null<GltfMap>> = [];
 }
 
 @:structInit class GltfTexture {

@@ -42,6 +42,14 @@ for o in lines debug grid raycast text3d debugcalls; do
 	printf '%-12s %10d %8d %10d %8d  (against renderer)
 ' $o $sn $((sn - rn)) $sw $((sw - rw))
 done
+# (phase 6's glTF material extensions at the renderer's level, each alone, then Physical's and Transmission)
+for o in sheen specular clearcoat transmission iridescence anisotropy uvsets physical refraction; do
+	"$tool" "$out/$o" "$@" -main Size -D size_level=4 -D size_$o -D hxmc.libc=glibc -D hxmc.target=linux-x86_64 > "$out/$o.log" 2>&1 || { cat "$out/$o.log"; exit 1; }
+	"$tool" "$out/$o.wasm" "$@" -main Size -D size_level=4 -D size_$o -D hxmc.target=wasm32-wasi > "$out/$o.wasm.log" 2>&1 || { cat "$out/$o.wasm.log"; exit 1; }
+	sn=$(wc -c < "$out/$o") sw=$(wc -c < "$out/$o.wasm")
+	printf '%-12s %10d %8d %10d %8d  (against renderer)
+' $o $sn $((sn - rn)) $sw $((sw - rw))
+done
 # (post's effects, each alone and all, against the chain without one: PostSize.hx)
 printf '\n%-12s %10s %8s %10s %8s\n' post native +native wasm +wasm
 for e in none fxaa lut outline ssao dof ssr taa smaa motionblur godrays occlusion all; do

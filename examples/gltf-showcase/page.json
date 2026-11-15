@@ -1,6 +1,6 @@
 {
 	"description": [
-		"Khronos' glTF sample models, the scenes other engines show theirs with, fetched from KhronosGroup/glTF-Sample-Assets (examples/gltf-showcase/fetch.mjs, at a pinned commit; not in the repository) and loaded at run time by helder.scene's glTF reader: DamagedHelmet, FlightHelmet, SciFiHelmet and MetalRoughSpheres, and the tests of the extensions helder implements, KHR_texture_transform, KHR_materials_emissive_strength, KHR_materials_clearcoat and KHR_materials_transmission (a thin surface: what is behind shows through, untinted).",
+		"Khronos' glTF sample models, the scenes other engines show theirs with, fetched from KhronosGroup/glTF-Sample-Assets (examples/gltf-showcase/fetch.mjs, at a pinned commit; not in the repository) and loaded at run time by helder.scene's glTF reader: DamagedHelmet, FlightHelmet, SciFiHelmet and MetalRoughSpheres, and the tests of the extensions helder implements, KHR_texture_transform, KHR_materials_emissive_strength, _clearcoat, _transmission, _volume, _ior, _specular, _sheen, _iridescence and _anisotropy (Physical: every extension's shader for models loaded at run time; Transmission: the frame behind see-through surfaces, refracted).",
 		"Lit by three prefiltered environments (Environment.prefiltered: Poly Haven's CC0 panoramas filtered once by envbake.py into GGX rows and the irradiance), drawn in HDR into half floats, then bloom and ACES (PostProcess). Drag to orbit, pinch or scroll to zoom. The example's README compares each model with the Khronos sample viewer's render."
 	],
 	"numbers": [
@@ -42,6 +42,10 @@
 		"SciFiHelmet: CC0 Michael Pavlovic, Norbert Nopper",
 		"MetalRoughSpheres, EmissiveStrengthTest, ClearCoatTest: CC BY 4.0 Ed Mackey",
 		"TextureTransformTest: CC0 Microsoft",
+		"SheenChair, IORTestGrid: CC0 Eric Chadwick; IridescenceLamp, AnisotropyBarnLamp: CC BY 4.0 Eric Chadwick",
+		"SpecularTest, AttenuationTest, TransmissionRoughnessTest: CC BY 4.0 Ed Mackey",
+		"DragonAttenuation: Stanford Graphics, Morgan McGuire's Computer Graphics Archive, CC0 Adobe",
+		"CompareSheen, CompareIridescence, CompareAnisotropy, CompareSpecular, CompareIor, CompareVolume: CC0 Eric Chadwick and DGG",
 		"TransmissionTest: CC0 Adobe",
 		"Panoramas: Poly Haven (studio_small_09, venice_sunset, kloofendal_48d_partly_cloudy_puresky), CC0",
 		"Models from KhronosGroup/glTF-Sample-Assets; each one's licence and credits in its metadata.json, fetched beside it"

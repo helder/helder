@@ -4,9 +4,14 @@ Khronos' [glTF sample models](https://github.com/KhronosGroup/glTF-Sample-Assets
 the scenes other engines demo with, in helder.scene: DamagedHelmet,
 FlightHelmet, SciFiHelmet and MetalRoughSpheres, and the tests of the glTF
 extensions helder reads: KHR_texture_transform, KHR_materials_emissive_strength,
-KHR_materials_clearcoat and KHR_materials_transmission. A model picker and an
-environment picker over a `<Scene hdr>` with `<OrbitControls>`; prefiltered
-image-based light (`Environment.prefiltered`), bloom and ACES (`PostProcess`).
+_clearcoat, _transmission, _volume, _ior, _specular, _sheen, _iridescence and
+_anisotropy (SheenChair, IridescenceLamp, AnisotropyBarnLamp, IORTestGrid,
+SpecularTest, DragonAttenuation, the Compare* models, AttenuationTest,
+TransmissionRoughnessTest). A model picker and an environment picker over a
+`<Scene hdr>` with `<OrbitControls>`; prefiltered image-based light
+(`Environment.prefiltered`), bloom and ACES (`PostProcess`); the models,
+loaded at run time, drawn by `Physical` (every extension's shader) with
+`Transmission` (the opaque frame behind see-through surfaces).
 
 ```sh
 node examples/gltf-showcase/fetch.mjs                     # the models, into models/ (91 MB, git-ignored)
@@ -54,8 +59,32 @@ LIBGL_ALWAYS_SOFTWARE=1 bin/shots examples/gltf-showcase bin/shots-out
 | MetalRoughSpheres | correct | metal and roughness by the texture's rows and columns |
 | TextureTransformTest | correct | offset, rotation and scale: every check mark where the test puts it, no cross |
 | EmissiveStrengthTest | correct | brighter left to right (strengths 1 to 16); the reference's darker grid and stronger glow are its exposure and bloom |
-| ClearCoatTest | mostly | the coat's factor and roughness, its reflection of the sun and the environment over the base; not its textures (clearcoatTexture, clearcoatRoughnessTexture, clearcoatNormalTexture): the partial coat and coat normal rows show the coat whole and smooth |
-| TransmissionTest | mostly | a thin surface: what is behind multiplied by the base colour (a first draw blended Multiply), the reflections over it; not transmissionTexture (the textured columns transmit everywhere), nor rough transmission's blur (no refraction, no screen-space copy of the frame) |
+| ClearCoatTest | correct | the coat's factor, roughness and their maps (the partial coat's stripes), its own normal map (the last row) |
+| TransmissionTest | correct | the checker refracted through each ball (Transmission's copy of the frame), blurred by roughness, transmissionTexture's stripes; the opacity column cut out |
+
+The other material extensions, each model's reference render beside
+helder's (Shots.hx, the same way; `comparison-extensions.jpg`):
+
+![The sample viewer's renders beside helder's, the material extensions](comparison-extensions.jpg)
+
+| Model | | |
+| --- | --- | --- |
+| SheenChair | correct | the velvet's sheen (KHR_materials_sheen), its tufts (the normal map at its own transform) and the occlusion on TEXCOORD_1 (`uvSets`) |
+| IridescenceLamp | mostly | the globe's thin film and its glass refracting the stand; the film fainter than the reference's, whose environment is brighter around it |
+| AnisotropyBarnLamp | correct | the brushed copper's stretched highlights (the anisotropy map's directions), the clear coat with its own normal map, the bulb's glass |
+| IORTestGrid | correct | each row's ior: the reflections stronger and the checker bent more from air to diamond |
+| SpecularTest | correct | the specular factor and colour, by factors and maps, rows as the reference's |
+| DragonAttenuation | correct | the dragon's volume absorbing towards amber, more where it is thicker (its thickness map) |
+| CompareSheen, CompareSpecular | correct | the sheen's rim; the darker specular |
+| CompareIridescence | correct | the film's colours over the black ball |
+| CompareAnisotropy | correct | the disc brushed radially, the ball along its tangents |
+| CompareIor, CompareVolume, AttenuationTest | correct | the logo bent by the higher ior; the bowl's water absorbing towards green; the cubes darker with thickness, by factor, map and node scale, and by distance |
+| TransmissionRoughnessTest | correct | the grid blurred more with roughness, more with ior (`applyIorToRoughness`) |
+
+The sample viewer differs in how it lights (its own environment and
+punctual lights) and in two approximations here: the sheen's albedo is
+three.js' fit, not the viewer's lookup tables, and light from punctual
+lights through a volume is not added.
 
 alphaMode MASK (TransmissionTest's opacity column) is cut out (`discard()`,
 new in gfx's shaders). The 3d lane's goldens `khrtransform` and
@@ -70,5 +99,9 @@ vendored there (CC0, CC BY 4.0).
 - MetalRoughSpheres, EmissiveStrengthTest, ClearCoatTest: CC BY 4.0 Ed Mackey
 - TextureTransformTest: CC0 Microsoft
 - TransmissionTest: CC0 Adobe
+- SheenChair, IORTestGrid: CC0 Eric Chadwick; IridescenceLamp, AnisotropyBarnLamp: CC BY 4.0 Eric Chadwick
+- SpecularTest, AttenuationTest, TransmissionRoughnessTest: CC BY 4.0 Ed Mackey
+- DragonAttenuation: Stanford Graphics (the dragon), Morgan McGuire's Computer Graphics Archive, CC0 Adobe
+- CompareSheen, CompareIridescence, CompareAnisotropy, CompareSpecular, CompareIor, CompareVolume: CC0 Eric Chadwick and DGG (the glTF logo a Khronos trademark)
 - The reference renders in `comparison.jpg`: from glTF-Sample-Assets, under the models' licences
 - Panoramas: Poly Haven, CC0

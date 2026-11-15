@@ -15,6 +15,10 @@ import helder.scene.math.Quat;
 // after parse sees Dynamic or reads out of bounds. Errors throw a String
 // starting with "glTF: ".
 class Gltf {
+	// what reads a material's other extensions (GltfExtensions.install:
+	// Physical's, Model.of's for a file that has some); null: none read
+	public static var extensions:Null<GltfExtensions.ExtensionReader>;
+
 	// whether bytes are a .glb file
 	public static inline function isGlb(b:Bytes):Bool
 		return GltfFile.isGlb(b);
@@ -152,6 +156,9 @@ class Gltf {
 			// (KHR_materials_emissive_strength: the factor times it)
 			var strength = num(obj(ext, "KHR_materials_emissive_strength"), "emissiveStrength", 1);
 			var coat = obj(ext, "KHR_materials_clearcoat"), transmission = obj(ext, "KHR_materials_transmission");
+			// (the other extensions and each core map's own uvs: read with
+			// GltfExtensions installed, Physical's and Model.of's; else none)
+			var layers = extensions != null ? extensions.read(m, ext, tex) : null;
 			doc.materials.push({
 				name: str(m, "name", ""),
 				baseColor: bc != null && bc.length == 4 ? new Vec4(bc[0], bc[1], bc[2], bc[3]) : new Vec4(1, 1, 1, 1),
@@ -172,7 +179,8 @@ class Gltf {
 				emissiveTexture: tex(m, "emissiveTexture"),
 				alphaMode: str(m, "alphaMode", "OPAQUE"),
 				alphaCutoff: num(m, "alphaCutoff", 0.5),
-				doubleSided: Reflect.field(m, "doubleSided") == true
+				doubleSided: Reflect.field(m, "doubleSided") == true,
+				layers: layers
 			});
 			i++;
 		}
@@ -188,6 +196,7 @@ class Gltf {
 					position: index(at, "POSITION", n, what, true),
 					normal: index(at, "NORMAL", n, what, true),
 					texcoord: index(at, "TEXCOORD_0", n, what, true),
+					texcoord1: index(at, "TEXCOORD_1", n, what, true),
 					tangent: index(at, "TANGENT", n, what, true),
 					color: index(at, "COLOR_0", n, what, true),
 					joints: index(at, "JOINTS_0", n, what, true),

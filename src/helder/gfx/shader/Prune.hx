@@ -13,6 +13,11 @@ class Prune {
 	public static function program(vf:SFunction, ff:SFunction) {
 		var vfs = reachable(vf), ffs = reachable(ff);
 		var all = vfs.concat([for (f in ffs) if (!vfs.contains(f)) f]);
+		ungiven(all, [vf.ret, vf.params.length > 0 ? vf.params[0].type : TVoid]);
+		// (the branches folded away may have been a function's only call)
+		vfs = reachable(vf);
+		ffs = reachable(ff);
+		all = vfs.concat([for (f in ffs) if (!vfs.contains(f)) f]);
 		switch vf.ret {
 			case TStruct(varyings):
 				var read = fieldsRead(all, varyings);
@@ -50,6 +55,127 @@ class Prune {
 					f.params.splice(k, 1);
 					f.fields.splice(k - 1, 1);
 				}
+		}
+	}
+
+	// The optional fields of a struct of values (not the vertex's, not the
+	// varyings', handled above: a struct the functions build) that the
+	// variant never gives (every value of them built zero: left out, or the
+	// same field of a value of the struct copied) read as their zero, the
+	// tests on them folded (an if, a ?: and the comparisons of constants), the
+	// fields dropped. So a stage that fills a field only under an option
+	// (helder.scene's pbr: a glTF extension's layer of its LitSurface) has,
+	// without it, neither the field nor the code that reads it.
+	static function ungiven(fs:Array<SFunction>, skip:Array<SType>) {
+		var structs:Array<SStruct> = [];
+		for (f in fs)
+			eachExpr(f.body, x -> switch [x.e, x.t] {
+				case [ENew(_), TStruct(s)] if (!structs.contains(s) && Lambda.exists(s.fields, g -> g.optional == true) && !Lambda.exists(skip, t -> sameStruct(t, s))):
+					structs.push(s);
+				case _:
+			});
+		var changed = false;
+		for (s in structs) {
+			var never = [for (g in s.fields) g.optional == true];
+			for (f in fs)
+				eachExpr(f.body, x -> switch [x.e, x.t] {
+					case [ENew(args), TStruct(t)] if (t == s):
+						for (i in 0...args.length)
+							if (never[i] && !zeroOf(args[i]) && !copied(args[i], s, s.fields[i].name)) never[i] = false;
+					case _:
+				});
+			for (i in 0...never.length)
+				if (never[i]) {
+					var name = s.fields[i].name, type = s.fields[i].type;
+					for (f in fs)
+						eachExpr(f.body, x -> switch x.e {
+							case EField(o, n) if (n == name && sameStruct(o.t, s)):
+								x.e = Names.zero(type).e;
+								changed = true;
+							case _:
+						});
+				}
+			var k = never.length;
+			while (k-- > 0)
+				if (never[k]) {
+					for (f in fs)
+						eachExpr(f.body, x -> switch [x.e, x.t] {
+							case [ENew(args), TStruct(t)] if (t == s): args.splice(k, 1);
+							case _:
+						});
+					s.fields.splice(k, 1);
+				}
+		}
+		if (changed)
+			for (f in fs)
+				f.body = folded(f.body);
+	}
+
+	// a value built of zeros (a field left out: Names.zero's)
+	static function zeroOf(x:SExpr):Bool
+		return switch x.e {
+			case EFloat(v): v == 0;
+			case EInt(v): v == 0;
+			case EBool(b): !b;
+			case ENew(args): Lambda.foreach(args, zeroOf);
+			case _: false;
+		}
+
+	// a value's field of the same name, of the same struct (a copy of the field)
+	static function copied(x:SExpr, s:SStruct, name:String):Bool
+		return switch x.e {
+			case EField(o, n): n == name && sameStruct(o.t, s);
+			case _: false;
+		}
+
+	// statements with their constants folded: an if or a loop on a constant
+	// taken or dropped, its expressions folded from the leaves up
+	static function folded(ss:Array<SStmt>):Array<SStmt> {
+		var out = [];
+		for (st in ss)
+			switch st {
+				case SDecl(v, init): out.push(SDecl(v, init == null ? null : fold(init)));
+				case SAssign(v, op, x): out.push(SAssign(v, op, fold(x)));
+				case SEval(x): out.push(SEval(fold(x)));
+				case SReturn(x): out.push(SReturn(x == null ? null : fold(x)));
+				case SStore(b, i, v): out.push(SStore(fold(b), fold(i), fold(v)));
+				case SIf(c, a, b):
+					var cf = fold(c);
+					switch cf.e {
+						case EBool(true): for (x in folded(a)) out.push(x);
+						case EBool(false): if (b != null) for (x in folded(b)) out.push(x);
+						case _: out.push(SIf(cf, folded(a), b == null ? null : folded(b)));
+					}
+				case SWhile(c, body):
+					var cf = fold(c);
+					if (!cf.e.match(EBool(false))) out.push(SWhile(cf, folded(body)));
+				case SBreak | SContinue: out.push(st);
+			}
+		return out;
+	}
+
+	static function fold(x:SExpr):SExpr {
+		var e = switch x.e {
+			case EField(a, n): EField(fold(a), n);
+			case ESwizzle(a, c): ESwizzle(fold(a), c);
+			case EColumn(a, i): EColumn(fold(a), i);
+			case EUnop(op, a): EUnop(op, fold(a));
+			case EConvert(a): EConvert(fold(a));
+			case EIndex(a, i): EIndex(fold(a), fold(i));
+			case EBinop(op, a, b): EBinop(op, fold(a), fold(b));
+			case ECond(c, a, b): ECond(fold(c), fold(a), fold(b));
+			case ENew(args): ENew([for (a in args) fold(a)]);
+			case EBuiltin(n, args): EBuiltin(n, [for (a in args) fold(a)]);
+			case ECall(f, args): ECall(f, [for (a in args) fold(a)]);
+			case v: v;
+		}
+		var y:SExpr = {e: e, t: x.t};
+		return switch e {
+			case ECond({e: EBool(c)}, a, b): c ? a : b;
+			// (a component of a vector of one constant: zero's)
+			case ESwizzle({e: ENew([{e: EFloat(v)}])}, comps) if (comps.length == 1): {e: EFloat(v), t: x.t};
+			case ESwizzle({e: ENew([{e: EFloat(v)}])}, _): {e: ENew([{e: EFloat(v), t: TFloat}]), t: x.t};
+			case _: Fold.expr(y);
 		}
 	}
 

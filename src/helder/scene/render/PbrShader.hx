@@ -27,6 +27,16 @@ import helder.scene.render.Equirect;
 // the other slots' results (LitSurface). A shading model is those two
 // replaced (helder.scene.render.shading: lambert, toon, phong), its
 // shadows, lights, fog and normal maps kept.
+//
+// The glTF material extensions are its options (sheen, specular, clearcoat,
+// transmission, iridescence, anisotropy: KHR_materials_*), folded at build
+// time: a variant with one fills that layer of its surface (LitSurface's
+// optional fields, from PbrMaterial's and its maps) between the surface's slots
+// and the lights, and its direct and indirect slots are the physical ones
+// (physicalDirect, physicalIndirect: PhysicalShader), which read the layers
+// filled. A layer a variant does not fill reads as nothing, and the code
+// that reads it folds away (helder.gfx's Prune): a variant without sheen has
+// no sheen in its text.
 
 // the combined vertex: a variant's attributes those it reads, in this order
 // (pos, normal, uv; the tangent: x, y, z and the bitangent's sign; joints
@@ -44,6 +54,8 @@ typedef PbrVertex = {
 	@:optional var m1:Vec4;
 	@:optional var m2:Vec4;
 	@:optional var m3:Vec4;
+	// (uvSets: TEXCOORD_1, a buffer of its own)
+	@:optional var uv1:Vec2;
 }
 
 typedef PbrVaryings = {
@@ -57,6 +69,8 @@ typedef PbrVaryings = {
 	// normal) and its tint (MeshRenderer.tint: rgb times the base colour)
 	var up:Vec3;
 	var tint:Vec3;
+	// (uvSets: the second uvs)
+	@:optional var uv1:Vec2;
 }
 
 // the vertex stage's parameters: per frame, per node (instanced: none),
@@ -86,6 +100,14 @@ typedef PbrFragmentParams = {
 	@:optional var normalTexture:Texture2D;
 	// the prepass's (ViewBuffers: prepass variants only)
 	@:optional var prepass:PbrPrepass;
+	// the glTF extensions' (a variant with one: their factors the
+	// material's): the two images their maps are read from (PbrMaterial's
+	// maps: which map in which), and the opaque frame behind a transmitting
+	// surface (Transmission: mip-mapped, refracted through it; a black texel
+	// without)
+	@:optional var layerMap0:Texture2D;
+	@:optional var layerMap1:Texture2D;
+	@:optional var transmissionMap:Texture2D;
 }
 
 @:structInit @:publicFields class PbrSkinInfo {
@@ -94,7 +116,23 @@ typedef PbrFragmentParams = {
 
 // (prepass: the view buffers' variant, ViewBuffers: the view-space normal,
 // roughness and selection group of the opaque surfaces, nothing lit)
-typedef PbrOptions = {normalMap:Bool, skinned:Bool, instanced:Bool, prepass:Bool};
+// (the glTF extensions, each a layer of the surface: KHR_materials_sheen,
+// _specular and _ior, _clearcoat, _transmission and _volume, _iridescence,
+// _anisotropy, their maps with them; uvSets: each core map its own uvs,
+// TEXCOORD_0 or _1, and KHR_texture_transform)
+typedef PbrOptions = {
+	normalMap:Bool,
+	skinned:Bool,
+	instanced:Bool,
+	prepass:Bool,
+	sheen:Bool,
+	specular:Bool,
+	clearcoat:Bool,
+	transmission:Bool,
+	iridescence:Bool,
+	anisotropy:Bool,
+	uvSets:Bool
+};
 
 // per draw in the prepass (ViewBuffers): the camera's view (the normals
 // into view space) and x the draw's selection group (Outline.select: 0 none)
@@ -107,7 +145,16 @@ typedef PbrOptions = {normalMap:Bool, skinned:Bool, instanced:Bool, prepass:Bool
 // (normal mapped, before a double-sided face's turn), the material's uvs,
 // the node's unit up, the base colour (rgb: the material's times its
 // texture's, in linear light; a: their alpha)
-typedef PbrSurface = {world:Vec3, normal:Vec3, uv:Vec2, up:Vec3, baseColor:Vec4};
+// (uvSets: the metallic-roughness and emissive maps' own uvs)
+typedef PbrSurface = {
+	world:Vec3,
+	normal:Vec3,
+	uv:Vec2,
+	up:Vec3,
+	baseColor:Vec4,
+	?uvMetallicRoughness:Vec2,
+	?uvEmissive:Vec2
+};
 
 // what the position slot reads: the vertex's point, normal and uvs (as
 // the mesh has them, before skinning and the node's matrices)
@@ -117,7 +164,19 @@ typedef PbrPoint = {pos:Vec3, normal:Vec3, uv:Vec2};
 // other slots' results: the point in the world, the unit normal (turned to
 // the eye on a double-sided face seen from behind), the unit direction to
 // the eye, the material's uvs, the node's unit up, the albedo (the color
-// slot's, tinted, linear), its alpha, metalness and roughness
+// slot's, tinted, linear), its alpha, metalness and roughness; then the glTF
+// extensions' layers, filled by a variant with them (its options), read as
+// nothing by one without (each layer's first field its weight, 0: none):
+//   sheen            its colour's largest share; sheenColor (linear), sheenRoughness
+//   specular         1; specularColor the reflectance at normal incidence (f0:
+//                    the ior's and the specular colour's, a metal's albedo),
+//                    specularWeight at grazing angles (f90)
+//   coat             the clear coat's share; coatRoughness, coatNormal (unit)
+//   transmission     the light's share let through; thickness (0: thin)
+//   iridescence      the thin film's share; iridescenceFresnel its reflectance
+//                    seen from the eye
+//   anisotropy       its strength; anisotropyDirection, the unit tangent the
+//                    highlight stretches along, anisotropyBitangent across it
 typedef LitSurface = {
 	world:Vec3,
 	normal:Vec3,
@@ -127,7 +186,23 @@ typedef LitSurface = {
 	albedo:Vec3,
 	alpha:Float,
 	metalness:Float,
-	roughness:Float
+	roughness:Float,
+	?sheen:Float,
+	?sheenColor:Vec3,
+	?sheenRoughness:Float,
+	?specular:Float,
+	?specularColor:Vec3,
+	?specularWeight:Float,
+	?coat:Float,
+	?coatRoughness:Float,
+	?coatNormal:Vec3,
+	?transmission:Float,
+	?thickness:Float,
+	?iridescence:Float,
+	?iridescenceFresnel:Vec3,
+	?anisotropy:Float,
+	?anisotropyDirection:Vec3,
+	?anisotropyBitangent:Vec3
 }
 
 // one light at a surface (the sun, a point or a spot light): color its
@@ -242,28 +317,126 @@ typedef Pbr = {
 	var model:Vec4;
 	// rgb: the toon's shade (Material.shade: the albedo's share away from the light)
 	var shadeColor:Vec4;
+	// the glTF extensions' (Material's fields of their names; read by the
+	// variants with them: PhysicalShader)
+	var sheen:Vec4; // rgb: sheenColor (linear), a: sheenRoughness
+	var specular:Vec4; // rgb: specularColor (linear), a: specularFactor
+	var coat:Vec4; // x: clearcoat, y: clearcoatRoughness, z: clearcoatNormalScale, w: ior
+	// x: transmission, y: thickness, z: attenuationDistance (0: none), w: the
+	// opaque frame's mip levels behind it (Transmission, the renderer's; 0:
+	// none, the environment seen through instead)
+	var transmission:Vec4;
+	var attenuation:Vec4; // rgb: attenuationColor (linear)
+	var iridescence:Vec4; // x: iridescence, y: iridescenceIor, z and w: its thickness' range (nm)
+	var anisotropy:Vec4; // x: anisotropy (strength), y and z: its rotation's cosine and sine
+	// the maps' images (1 or 2: layerMap0 or 1, 0: none): sheenColorTexture,
+	// sheenRoughnessTexture, specularTexture, specularColorTexture;
+	// clearcoatTexture, clearcoatRoughnessTexture, clearcoatNormalTexture,
+	// transmissionTexture; thicknessTexture, iridescenceTexture,
+	// iridescenceThicknessTexture, anisotropyTexture (the renderer's)
+	var maps0:Vec4;
+	var maps1:Vec4;
+	var maps2:Vec4;
+	// the core maps' own uvs (uvSets: Material.textureTransforms): the
+	// metallic-roughness, normal, occlusion and emissive maps', as uvU and
+	// uvV are the base colour's (the extensions' maps read the base
+	// colour's); U.w 1: TEXCOORD_1 (uvU.w the base colour's)
+	var uvMetallicRoughnessU:Vec4;
+	var uvMetallicRoughnessV:Vec4;
+	var uvNormalU:Vec4;
+	var uvNormalV:Vec4;
+	var uvOcclusionU:Vec4;
+	var uvOcclusionV:Vec4;
+	var uvEmissiveU:Vec4;
+	var uvEmissiveV:Vec4;
 }
 
 // a material's block (PbrMaterial) as the renderer writes it
 function materialOf(m:Material):PbrMaterial {
 	var z = new Vec4(0, 0, 0, 0);
-	return materialInto(m, {baseColor: z, params: z, emissive: z, ground: z, air: z, uvU: z, uvV: z, layers: z, model: z, shadeColor: z});
+	return materialInto(m, {
+		baseColor: z,
+		params: z,
+		emissive: z,
+		ground: z,
+		air: z,
+		uvU: z,
+		uvV: z,
+		layers: z,
+		model: z,
+		shadeColor: z,
+		sheen: z,
+		specular: z,
+		coat: z,
+		transmission: z,
+		attenuation: z,
+		iridescence: z,
+		anisotropy: z,
+		maps0: z,
+		maps1: z,
+		maps2: z,
+		uvMetallicRoughnessU: z,
+		uvMetallicRoughnessV: z,
+		uvNormalU: z,
+		uvNormalV: z,
+		uvOcclusionU: z,
+		uvOcclusionV: z,
+		uvEmissiveU: z,
+		uvEmissiveV: z
+	});
 }
 
 // materialOf into a block kept (the renderer's: nothing allocated per draw)
 function materialInto(m:Material, out:PbrMaterial):PbrMaterial {
 	var c = Math.cos(m.uvRotation), s = Math.sin(m.uvRotation);
+	var t = m.textureTransforms;
+	if (t != null) {
+		// (each core map its own uvs: uvSets)
+		var base = t[0];
+		c = Math.cos(base.rotation);
+		s = Math.sin(base.rotation);
+		out.uvU = new Vec4(c * base.scale.x, s * base.scale.y, base.offset.x, base.texCoord);
+		out.uvV = new Vec4(-s * base.scale.x, c * base.scale.y, base.offset.y, m.blend && m.blending == Additive ? 1 : 0);
+		out.uvMetallicRoughnessU = transformU(t[1]);
+		out.uvMetallicRoughnessV = transformV(t[1]);
+		out.uvNormalU = transformU(t[2]);
+		out.uvNormalV = transformV(t[2]);
+		out.uvOcclusionU = transformU(t[3]);
+		out.uvOcclusionV = transformV(t[3]);
+		out.uvEmissiveU = transformU(t[4]);
+		out.uvEmissiveV = transformV(t[4]);
+	}
 	out.baseColor = m.baseColor;
 	out.params = new Vec4(m.metallic, m.roughness, m.normalScale, m.doubleSided ? 1 : 0);
 	out.emissive = new Vec4(m.emissive.x, m.emissive.y, m.emissive.z, m.emissiveNight);
 	out.ground = new Vec4(m.ground, m.air.w, m.crystal, m.fog ? 1 : 0);
 	out.air = m.air;
-	out.uvU = new Vec4(c * m.uvScale.x, s * m.uvScale.y, m.uvOffset.x, 0);
-	out.uvV = new Vec4(-s * m.uvScale.x, c * m.uvScale.y, m.uvOffset.y, m.blend && m.blending == Additive ? 1 : 0);
+	if (t == null) {
+		out.uvU = new Vec4(c * m.uvScale.x, s * m.uvScale.y, m.uvOffset.x, 0);
+		out.uvV = new Vec4(-s * m.uvScale.x, c * m.uvScale.y, m.uvOffset.y, m.blend && m.blending == Additive ? 1 : 0);
+	}
 	out.layers = new Vec4(m.clearcoat, m.clearcoatRoughness, m.transmission, m.alphaCutoff);
 	out.model = new Vec4(m.steps, m.toneMapped ? 1 : 0, m.depthNear, m.depthFar);
 	out.shadeColor = new Vec4(m.shade.x, m.shade.y, m.shade.z, 0);
+	// (the glTF extensions' fields: a physical shader's, PhysicalLayers.block)
 	return out;
+}
+
+// (a map's transform's rows, uvU and uvV's: Material.UvTransform)
+function transformU(t:Material.UvTransform):Vec4 {
+	var c = Math.cos(t.rotation), s = Math.sin(t.rotation);
+	return new Vec4(c * t.scale.x, s * t.scale.y, t.offset.x, t.texCoord);
+}
+
+function transformV(t:Material.UvTransform):Vec4 {
+	var c = Math.cos(t.rotation), s = Math.sin(t.rotation);
+	return new Vec4(-s * t.scale.x, c * t.scale.y, t.offset.y, 0);
+}
+
+// a map's uvs (uvSets): TEXCOORD_0 or _1 (u.w), moved by its transform's rows
+function uvSetOf(u:Vec4, v:Vec4, uv0:Vec2, uv1:Vec2):Vec2 {
+	var t = u.w > 0.5 ? uv1 : uv0;
+	return vec2(dot(u.xy, t) + u.z, dot(v.xy, t) + v.z);
 }
 
 // a vertex's uvs as the material's textures read them (KHR_texture_transform)
@@ -819,8 +992,259 @@ function instanceNormal(c0:Vec3, c1:Vec3, c2:Vec3, n:Vec3):Vec3 {
 	return dot(c0, x) < 0 ? -turned : turned;
 }
 
+// --- the glTF extensions' layers (PbrOptions' sheen, specular, clearcoat,
+// transmission, iridescence and anisotropy; PhysicalShader's variants) ---
+
+// a map of a layer (PbrMaterial's maps: 1 or 2 its image, layerMap0 or 1;
+// 0 none: fallback, the map's neutral texel)
+function layerMap(slot:Float, uv:Vec2, fallback:Vec4, t0:Texture2D, t1:Texture2D):Vec4 {
+	var c = fallback;
+	if (slot > 0.5) c = slot < 1.5 ? sample(t0, uv) : sample(t1, uv);
+	return c;
+}
+
+// a dielectric's reflectance at normal incidence from its index of
+// refraction (KHR_materials_ior: 1.5's, 0.04)
+function iorF0(ior:Float):Float {
+	var r = (ior - 1) / (ior + 1);
+	return r * r;
+}
+
+// the metalness, roughness and emissive slots of a variant whose maps have
+// their own uvs (uvSets: PhysicalShader's), pbr's at those uvs
+function physicalMetalness(s:PbrSurface, p:{material:PbrMaterial, metallicRoughnessTexture:Texture2D}):Float
+	return clamp(p.material.params.x * sample(p.metallicRoughnessTexture, s.uvMetallicRoughness).z, 0, 1);
+
+function physicalRoughness(s:PbrSurface, p:{material:PbrMaterial, metallicRoughnessTexture:Texture2D}):Float
+	return clamp(mix(p.material.params.y * sample(p.metallicRoughnessTexture, s.uvMetallicRoughness).y, 0.07, p.material.ground.z), 0.04, 1);
+
+function physicalEmissive(s:PbrSurface, p:{material:PbrMaterial, emissiveTexture:Texture2D}):Vec3
+	return p.material.emissive.xyz * pow(sample(p.emissiveTexture, s.uvEmissive).xyz, vec3(2.2));
+
+// the physical direct slot (PhysicalShader's): one light's diffuse and
+// specular (GGX, height-correlated Smith, Schlick's Fresnel from the
+// specular layer's f0 and f90, the thin film's mixed in; anisotropic GGX
+// with the anisotropy layer), the diffuse less what transmission lets
+// through, a sheen's lobe over it (Charlie's distribution, Neubelt's
+// visibility; the base dimmed by its albedo), then a clear coat's over all
+// (its own normal and roughness, the base dimmed by its Fresnel)
+function physicalDirect(s:LitSurface, l:LightSample, p:{material:PbrMaterial}):Vec3 {
+	var n = s.normal;
+	var v = s.view;
+	var d = l.direction;
+	var h = normalize(d + v);
+	var nl = max(dot(n, d), 0);
+	var nv = max(dot(n, v), 0.0001);
+	var nh = max(dot(n, h), 0);
+	var vh = max(dot(v, h), 0);
+	var f0 = reflectance(s, p.material);
+	var f90 = 1.0;
+	if (s.specular > 0) {
+		f0 = s.specularColor;
+		f90 = s.specularWeight;
+	}
+	var fresnel = f0 + (vec3(f90) - f0) * pow(1 - vh, 5);
+	if (s.iridescence > 0) fresnel = mix(fresnel, s.iridescenceFresnel, s.iridescence);
+	var a = s.roughness * s.roughness;
+	var a2 = a * a;
+	var dd = nh * nh * (a2 - 1) + 1;
+	var lobe = a2 / (3.14159265 * dd * dd) * (0.5 / max(nl * sqrt(nv * nv * (1 - a2) + a2) + nv * sqrt(nl * nl * (1 - a2) + a2), 0.0001));
+	if (s.anisotropy > 0) lobe = anisotropic(s, d, h, a, nl, nv, nh);
+	var diffuse = (vec3(1) - fresnel) * s.albedo * ((1 - s.metalness) / 3.14159265);
+	if (s.transmission > 0) diffuse = diffuse * (1 - s.transmission);
+	var c = (diffuse + fresnel * lobe) * nl;
+	if (s.sheen > 0) c = c * (1 - 0.157 * s.sheen) + s.sheenColor * (charlie(s.sheenRoughness, nh) * neubelt(nv, nl) * nl);
+	if (s.coat > 0) {
+		var cn = s.coatNormal;
+		var cr = s.coatRoughness * s.coatRoughness;
+		var fc = (0.04 + 0.96 * pow(1 - max(dot(cn, v), 0), 5)) * s.coat;
+		c = c * (1 - fc) + coatLobe(cn, v, d, cr * cr) * s.coat;
+	}
+	return c * l.radiance;
+}
+
+// the physical indirect slot: the irradiance's diffuse share (less what
+// transmission lets through: the frame behind refracted through it instead,
+// or the environment), the environment's reflection weighted by the split
+// sum's fit (Karis') of the specular layer's f0 and f90 (the thin film's
+// mixed in; along the anisotropy's bent normal), a sheen's (the irradiance
+// times its albedo), then a clear coat's reflection over all
+function physicalIndirect(s:LitSurface, env:IndirectLight,
+		p:{material:PbrMaterial, frame:PbrFrame, environmentMap:Texture2D, transmissionMap:Texture2D}):Vec3 {
+	var n = s.normal;
+	var v = s.view;
+	var nv = max(dot(n, v), 0.0001);
+	var c0 = vec4(-1, -0.0275, -0.572, 0.022);
+	var c1 = vec4(1, 0.0425, 1.04, -0.04);
+	var rr = c0 * s.roughness + c1;
+	var a004 = min(rr.x * rr.x, pow(2, -9.28 * nv)) * rr.x + rr.y;
+	var ab = vec2(-1.04, 1.04) * a004 + rr.zw;
+	var f0 = reflectance(s, p.material);
+	var f90 = 1.0;
+	if (s.specular > 0) {
+		f0 = s.specularColor;
+		f90 = s.specularWeight;
+	}
+	var specular = f0 * ab.x + vec3(f90 * ab.y);
+	if (s.iridescence > 0) {
+		// (the film's reflectance seen from the eye as an f0: Schlick's backwards)
+		var k = pow(1 - nv, 5);
+		var fi = clamp((s.iridescenceFresnel - vec3(k)) / max(1 - k, 0.0001), 0, 1);
+		specular = mix(specular, fi * ab.x + vec3(f90 * ab.y), s.iridescence);
+	}
+	var radiance = env.radiance;
+	if (s.anisotropy > 0) {
+		// (the reflection about the normal bent towards the highlight's stretch)
+		var bent = normalize(cross(cross(s.anisotropyBitangent, v), s.anisotropyBitangent));
+		var w = 1 - s.anisotropy * (1 - s.roughness);
+		w = w * w;
+		bent = normalize(mix(bent, n, w * w));
+		radiance = reflected(p.frame, p.environmentMap, reflect(-v, bent), s.roughness);
+	}
+	var diffuse = env.irradiance * s.albedo * (1 - s.metalness);
+	if (s.transmission > 0)
+		diffuse = mix(diffuse, transmitted(s, p.material, p.frame, p.environmentMap, p.transmissionMap) * (vec3(1) - specular), s.transmission * (1 - s.metalness));
+	var c = (diffuse + radiance * specular) * env.occlusion;
+	if (s.sheen > 0) c = c * (1 - 0.157 * s.sheen) + env.irradiance * s.sheenColor * (sheenAlbedo(nv, s.sheenRoughness) * env.occlusion);
+	if (s.coat > 0) {
+		var cn = s.coatNormal;
+		var fc = (0.04 + 0.96 * pow(1 - max(dot(cn, v), 0), 5)) * s.coat;
+		c = c * (1 - fc) + reflected(p.frame, p.environmentMap, reflect(-v, cn), s.coatRoughness) * (fc * env.occlusion);
+	}
+	return c;
+}
+
+// the light through a transmitting surface (KHR_materials_transmission,
+// _volume): the view refracted by its ior through its thickness (0: thin,
+// straight through), where it leaves read from the opaque frame behind
+// (Transmission's, at the mip level of its roughness widened by the ior),
+// else the environment along it; absorbed along the way (Beer's law: the
+// attenuation colour at its distance), times the surface's colour
+function transmitted(s:LitSurface, layers:PbrMaterial, frame:PbrFrame, environmentMap:Texture2D, transmissionMap:Texture2D):Vec3 {
+	var ior = layers.coat.w;
+	var i = -s.view;
+	var eta = 1 / ior;
+	var ni = dot(s.normal, i);
+	var k = max(1 - eta * eta * (1 - ni * ni), 0);
+	var r = normalize(i * eta - s.normal * (eta * ni + sqrt(k)));
+	var exit = s.world + r * s.thickness;
+	var rough = s.roughness * clamp(ior * 2 - 2, 0, 1);
+	var light = vec3(0);
+	if (layers.transmission.w > 0) {
+		var c = frame.viewProj * vec4(exit, 1);
+		var uv = vec2(c.x / c.w * 0.5 + 0.5, 0.5 - c.y / c.w * 0.5);
+		light = sampleLevel(transmissionMap, uv, rough * layers.transmission.w).xyz;
+		// (an 8-bit frame's colours encoded: decoded; the frame's exposure undone)
+		if (frame.exposure.y < 0.5) light = pow(light, vec3(2.2));
+		light = light / max(frame.exposure.x, 0.0001);
+	} else
+		light = reflected(frame, environmentMap, s.thickness > 0 ? r : i, rough);
+	var absorbed = vec3(1);
+	if (layers.transmission.z > 0) absorbed = pow(max(layers.attenuation.xyz, vec3(0.0001)), vec3(s.thickness / layers.transmission.z));
+	return light * absorbed * s.albedo;
+}
+
+// Charlie's sheen distribution (Estevez and Kulla) at a roughness
+function charlie(roughness:Float, nh:Float):Float {
+	var a = max(roughness * roughness, 0.0049);
+	var inv = 1 / a;
+	var sin2 = max(1 - nh * nh, 0.0001);
+	return (2 + inv) * pow(sin2, inv * 0.5) / 6.2831853;
+}
+
+// Neubelt's visibility for the sheen
+function neubelt(nv:Float, nl:Float):Float
+	return clamp(1 / (4 * (nl + nv - nl * nv)), 0, 1);
+
+// a sheen's directional albedo under an even light (three.js' fit)
+function sheenAlbedo(nv:Float, roughness:Float):Float {
+	var r2 = roughness * roughness;
+	var a = roughness < 0.25 ? -339.2 * r2 + 161.4 * roughness - 25.9 : -8.48 * r2 + 14.3 * roughness - 9.95;
+	var b = roughness < 0.25 ? 44 * r2 - 23.7 * roughness + 3.26 : 1.97 * r2 - 3.27 * roughness + 0.72;
+	var dg = exp(a * nv + b) + (roughness < 0.25 ? 0 : 0.1 * (roughness - 0.25));
+	return clamp(dg / 3.14159265, 0, 1);
+}
+
+// the anisotropic GGX lobe, its distribution times visibility
+// (KHR_materials_anisotropy: alpha along the stretch mixed to 1 by the
+// strength squared, across it the roughness'), towards a unit light along d
+function anisotropic(s:LitSurface, d:Vec3, h:Vec3, a:Float, nl:Float, nv:Float, nh:Float):Float {
+	var t = s.anisotropyDirection;
+	var b = s.anisotropyBitangent;
+	var at = mix(a, 1, s.anisotropy * s.anisotropy);
+	var ab = max(a, 0.0001);
+	var th = dot(t, h);
+	var bh = dot(b, h);
+	var a2 = at * ab;
+	var f = vec3(ab * th, at * bh, a2 * nh);
+	var w2 = a2 / max(dot(f, f), 0.0001);
+	var dist = a2 * w2 * w2 / 3.14159265;
+	var vv = nl * length(vec3(at * dot(t, s.view), ab * dot(b, s.view), nv));
+	var vl = nv * length(vec3(at * dot(t, d), ab * dot(b, d), nl));
+	return dist * clamp(0.5 / max(vv + vl, 0.0001), 0, 1);
+}
+
+// a thin film's reflectance (KHR_materials_iridescence: Belcour and
+// Barla's model, as the glTF sample viewer has it) seen at cosine c1 from
+// outside (ior 1), the film of an ior and thickness (nm) over a base of
+// reflectance f0; out of gamut colours clamped
+function iridescent(filmIor:Float, c1:Float, thickness:Float, f0:Vec3):Vec3 {
+	var film = mix(1, filmIor, smoothstep(0, 0.03, thickness));
+	var sin2 = (1 / (film * film)) * (1 - c1 * c1);
+	var cos2sq = 1 - sin2;
+	var result = vec3(1);
+	if (cos2sq >= 0) {
+		var c2 = sqrt(cos2sq);
+		var r0 = iorF0(film);
+		var r12 = r0 + (1 - r0) * pow(1 - c1, 5);
+		var t121 = 1 - r12;
+		var phi12 = film < 1 ? 3.14159265 : 0;
+		var phi21 = 3.14159265 - phi12;
+		var root = sqrt(clamp(f0, vec3(0), vec3(0.9999)));
+		var baseIor = (vec3(1) + root) / (vec3(1) - root);
+		var q = (baseIor - vec3(film)) / (baseIor + vec3(film));
+		var r1 = q * q;
+		var r23 = r1 + (vec3(1) - r1) * pow(1 - c2, 5);
+		var phi23 = vec3(baseIor.x < film ? 3.14159265 : 0, baseIor.y < film ? 3.14159265 : 0, baseIor.z < film ? 3.14159265 : 0);
+		var opd = 2 * film * thickness * c2;
+		var phi = vec3(phi21) + phi23;
+		var r123 = clamp(r23 * r12, vec3(0.0001), vec3(0.9999));
+		var amp = sqrt(r123);
+		var rs = r23 * (t121 * t121) / (vec3(1) - r123);
+		var cm = (rs - vec3(t121)) * amp;
+		var sum = vec3(r12) + rs + cm * (sensitivity(opd, phi) * 2);
+		cm = cm * amp;
+		sum = sum + cm * (sensitivity(opd * 2, phi * 2) * 2);
+		result = max(sum, vec3(0));
+	}
+	return result;
+}
+
+// the film's interference at an optical path (nm) and phase shift, in
+// linear sRGB (the sample viewer's fit of the CIE matching functions, in
+// micrometres)
+function sensitivity(opd:Float, shift:Vec3):Vec3 {
+	var phase = 6.2831853 * opd * 0.001;
+	var xyz = vec3(0.84659, 1.0002219, 1.0011225) * cos(vec3(1.681, 1.7953, 2.2084) * phase + shift) * exp(vec3(-0.0043278, -0.0093046, -0.0066121) * (phase * phase));
+	var x = xyz.x + 0.1538683 * cos(2.2399 * phase + shift.x) * exp(-0.0045282 * phase * phase);
+	return vec3(3.2404542 * x - 1.5371385 * xyz.y - 0.4985314 * xyz.z, -0.969266 * x + 1.8760108 * xyz.y + 0.041556 * xyz.z,
+		0.0556434 * x - 0.2040259 * xyz.y + 1.0572252 * xyz.z);
+}
+
 final pbr = slots({
-	options: {normalMap: false, skinned: false, instanced: false, prepass: false},
+	options: {
+		normalMap: false,
+		skinned: false,
+		instanced: false,
+		prepass: false,
+		sheen: false,
+		specular: false,
+		clearcoat: false,
+		transmission: false,
+		iridescence: false,
+		anisotropy: false,
+		uvSets: false
+	},
 	vertex: function(v:PbrVertex, p:PbrVertexParams, m:Pbr):PbrVaryings {
 		var pos = m.position({pos: v.pos, normal: v.normal, uv: v.uv}, p);
 		var nr = v.normal;
@@ -839,6 +1263,7 @@ final pbr = slots({
 			world: world.xyz,
 			normal: m.options.instanced ? instanceNormal(v.m0.xyz, v.m1.xyz, v.m2.xyz, nr) : (p.object.normalMatrix * vec4(nr, 0)).xyz,
 			uv: m.options.instanced ? instanceUv(v.uv, v.m3.w) : v.uv,
+			uv1: m.options.uvSets ? v.uv1 : vec2(0),
 			tangent: m.options.normalMap ? vec4((model * vec4(v.tangent.xyz, 0)).xyz, v.tangent.w) : vec4(0),
 			up: m.options.instanced ? v.m1.xyz : (model * vec4(0, 1, 0, 0)).xyz,
 			tint: m.options.instanced ? vec3(1 + v.m0.w, 1 + v.m1.w, 1 + v.m2.w) : p.object.tint.xyz
@@ -847,14 +1272,28 @@ final pbr = slots({
 	fragment: function(i:PbrVaryings, p:PbrFragmentParams, m:Pbr):Vec4 {
 		var ng = normalize(i.normal);
 		var uv = uvOf(p.material, i.uv);
+		// (uvSets: each core map at its own uvs)
+		var uvNormal = uv;
+		var uvOcclusion = uv;
+		var uvMr = uv;
+		var uvEm = uv;
+		if (m.options.uvSets) {
+			uv = uvSetOf(p.material.uvU, p.material.uvV, i.uv, i.uv1);
+			uvNormal = uvSetOf(p.material.uvNormalU, p.material.uvNormalV, i.uv, i.uv1);
+			uvOcclusion = uvSetOf(p.material.uvOcclusionU, p.material.uvOcclusionV, i.uv, i.uv1);
+			uvMr = uvSetOf(p.material.uvMetallicRoughnessU, p.material.uvMetallicRoughnessV, i.uv, i.uv1);
+			uvEm = uvSetOf(p.material.uvEmissiveU, p.material.uvEmissiveV, i.uv, i.uv1);
+		}
 		var n = ng;
+		var t = vec3(0);
+		var b = vec3(0);
 		if (m.options.normalMap) {
 			// (the tangent made at right angles to the interpolated normal;
 			// the map's x and y scaled by the material's normal scale, the
 			// bitangent n x t times the sign, green up the image: glTF's)
-			var t = normalize(i.tangent.xyz - ng * dot(ng, i.tangent.xyz));
-			var b = cross(ng, t) * i.tangent.w;
-			var mapped = sample(p.normalTexture, uv).xyz * 2 - 1;
+			t = normalize(i.tangent.xyz - ng * dot(ng, i.tangent.xyz));
+			b = cross(ng, t) * i.tangent.w;
+			var mapped = sample(p.normalTexture, m.options.uvSets ? uvNormal : uv).xyz * 2 - 1;
 			var scale = p.material.params.z;
 			n = normalize(t * (mapped.x * scale) + b * (mapped.y * scale) + ng * mapped.z);
 		}
@@ -864,7 +1303,9 @@ final pbr = slots({
 			normal: n,
 			uv: uv,
 			up: normalize(i.up),
-			baseColor: vec4(p.material.baseColor.xyz * pow(texel.xyz, vec3(2.2)), p.material.baseColor.w * texel.w)
+			baseColor: vec4(p.material.baseColor.xyz * pow(texel.xyz, vec3(2.2)), p.material.baseColor.w * texel.w),
+			uvMetallicRoughness: m.options.uvSets ? uvMr : vec2(0),
+			uvEmissive: m.options.uvSets ? uvEm : vec2(0)
 		};
 		var out = vec4(0);
 		if (m.options.prepass) {
@@ -878,8 +1319,107 @@ final pbr = slots({
 			var vn = normalize((p.prepass.view * vec4(f, 0)).xyz);
 			out = vec4(octEncode(vn), packRoughMetal(m.roughness(s, p), m.metalness(s, p)), p.prepass.id.x / 255);
 		} else {
-			var lit = litSurface(m.normal(s, p), s.world, uv, s.up, m.color(s, p) * i.tint, m.alpha(s, p), m.metalness(s, p), m.roughness(s, p), p.frame,
-				p.material);
+			// (uvSets: the lit surface's uvs the occlusion map's, ambientAt's)
+			var lit = litSurface(m.normal(s, p), s.world, m.options.uvSets ? uvOcclusion : uv, s.up, m.color(s, p) * i.tint, m.alpha(s, p), m.metalness(s, p),
+				m.roughness(s, p), p.frame, p.material);
+			if (m.options.sheen || m.options.specular || m.options.clearcoat || m.options.transmission || m.options.iridescence || m.options.anisotropy) {
+				// (the glTF extensions' layers of the surface, those of the
+				// variant's options: the material's and its maps, at its
+				// uvs, in the normal map's tangent frame (else one made about
+				// the normal); the others copied, read as nothing)
+				var x = p.material;
+				if (!m.options.normalMap) {
+					t = normalize(cross(ng, abs(ng.y) < 0.9 ? vec3(0, 1, 0) : vec3(1, 0, 0)));
+					b = cross(ng, t);
+				}
+				var sheenColor = vec3(0);
+				var sheenRoughness = 0.0;
+				if (m.options.sheen) {
+					sheenColor = x.sheen.xyz * pow(layerMap(x.maps0.x, uv, vec4(1), p.layerMap0, p.layerMap1).xyz, vec3(2.2));
+					sheenRoughness = clamp(x.sheen.w * layerMap(x.maps0.y, uv, vec4(1), p.layerMap0, p.layerMap1).w, 0, 1);
+				}
+				var f0 = vec3(0);
+				var f90 = 1.0;
+				if (m.options.specular) {
+					// (the ior's reflectance tinted, scaled by the factor; a metal's its albedo)
+					var weight = x.specular.w * layerMap(x.maps0.z, uv, vec4(1), p.layerMap0, p.layerMap1).w;
+					var tint = x.specular.xyz * pow(layerMap(x.maps0.w, uv, vec4(1), p.layerMap0, p.layerMap1).xyz, vec3(2.2));
+					f0 = mix(min(vec3(iorF0(x.coat.w)) * tint, vec3(1)) * weight, lit.albedo, lit.metalness);
+					f90 = mix(weight, 1, lit.metalness);
+				}
+				var coat = 0.0;
+				var coatRoughness = 0.0;
+				var coatNormal = ng;
+				if (m.options.clearcoat) {
+					// (the coat's normal the geometry's, or its own map's)
+					coat = x.coat.x * layerMap(x.maps1.x, uv, vec4(1), p.layerMap0, p.layerMap1).x;
+					coatRoughness = clamp(x.coat.y * layerMap(x.maps1.y, uv, vec4(1), p.layerMap0, p.layerMap1).y, 0.04, 1);
+					if (x.maps1.z > 0.5) {
+						var cm = layerMap(x.maps1.z, uv, vec4(0.5, 0.5, 1, 1), p.layerMap0, p.layerMap1).xyz * 2 - 1;
+						coatNormal = normalize(t * (cm.x * x.coat.z) + b * (cm.y * x.coat.z) + ng * cm.z);
+					}
+					if (p.material.params.w > 0.5 && dot(coatNormal, lit.view) < 0) coatNormal = -coatNormal;
+				}
+				var transmission = 0.0;
+				var thickness = 0.0;
+				if (m.options.transmission) {
+					// (the thickness in the node's units: its up's length, its scale)
+					transmission = x.transmission.x * layerMap(x.maps1.w, uv, vec4(1), p.layerMap0, p.layerMap1).x;
+					thickness = x.transmission.y * layerMap(x.maps2.x, uv, vec4(1), p.layerMap0, p.layerMap1).y * length(i.up);
+				}
+				var iridescence = 0.0;
+				var iridescenceFresnel = vec3(0);
+				if (m.options.iridescence) {
+					// (the film's thickness across its range by its map; none: no film)
+					iridescence = x.iridescence.x * layerMap(x.maps2.y, uv, vec4(1), p.layerMap0, p.layerMap1).x;
+					var film = mix(x.iridescence.z, x.iridescence.w, layerMap(x.maps2.z, uv, vec4(1), p.layerMap0, p.layerMap1).y);
+					if (film <= 0) iridescence = 0;
+					var base = m.options.specular ? f0 : reflectance(lit, p.material);
+					iridescenceFresnel = iridescent(x.iridescence.y, max(dot(lit.normal, lit.view), 0.0001), film, base);
+				}
+				var anisotropy = 0.0;
+				var direction = vec3(0);
+				var across = vec3(0);
+				if (m.options.anisotropy) {
+					// (its map's direction in the tangent frame, turned by its
+					// rotation, its strength times the map's blue)
+					var am = layerMap(x.maps2.w, uv, vec4(1, 0.5, 1, 1), p.layerMap0, p.layerMap1);
+					var dir = am.xy * 2 - 1;
+					var turned = vec2(x.anisotropy.y * dir.x - x.anisotropy.z * dir.y, x.anisotropy.z * dir.x + x.anisotropy.y * dir.y);
+					anisotropy = x.anisotropy.x * am.z;
+					var ta = t * turned.x + b * turned.y;
+					direction = normalize(ta - lit.normal * dot(lit.normal, ta));
+					across = cross(lit.normal, direction);
+				}
+				var layered:LitSurface = {
+					world: lit.world,
+					normal: lit.normal,
+					view: lit.view,
+					uv: lit.uv,
+					up: lit.up,
+					albedo: lit.albedo,
+					alpha: lit.alpha,
+					metalness: lit.metalness,
+					roughness: lit.roughness,
+					sheen: m.options.sheen ? max(max(sheenColor.x, sheenColor.y), sheenColor.z) : lit.sheen,
+					sheenColor: m.options.sheen ? sheenColor : lit.sheenColor,
+					sheenRoughness: m.options.sheen ? sheenRoughness : lit.sheenRoughness,
+					specular: m.options.specular ? 1.0 : lit.specular,
+					specularColor: m.options.specular ? f0 : lit.specularColor,
+					specularWeight: m.options.specular ? f90 : lit.specularWeight,
+					coat: m.options.clearcoat ? coat : lit.coat,
+					coatRoughness: m.options.clearcoat ? coatRoughness : lit.coatRoughness,
+					coatNormal: m.options.clearcoat ? coatNormal : lit.coatNormal,
+					transmission: m.options.transmission ? transmission : lit.transmission,
+					thickness: m.options.transmission ? thickness : lit.thickness,
+					iridescence: m.options.iridescence ? iridescence : lit.iridescence,
+					iridescenceFresnel: m.options.iridescence ? iridescenceFresnel : lit.iridescenceFresnel,
+					anisotropy: m.options.anisotropy ? anisotropy : lit.anisotropy,
+					anisotropyDirection: m.options.anisotropy ? direction : lit.anisotropyDirection,
+					anisotropyBitangent: m.options.anisotropy ? across : lit.anisotropyBitangent
+				};
+				lit = layered;
+			}
 			// (the sun, then each point or spot light there is: the direct slot's, summed)
 			var direct = m.direct(lit, sunLight(lit, p.frame, p.material, p.shadowMap, p.shadowMapFar), p);
 			if (p.frame.point0.w > 0) direct += m.direct(lit, pointLight(lit, p.frame.point0, p.frame.pointColor0, p.frame.spot0), p);

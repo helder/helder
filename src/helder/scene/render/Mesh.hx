@@ -77,6 +77,7 @@ class Mesh {
 			device.destroyBuffer(p.vertices);
 			device.destroyBuffer(p.indices);
 			if (p.tangents != null) device.destroyBuffer(p.tangents);
+			if (p.uv1 != null) device.destroyBuffer(p.uv1);
 		}
 		primitives = [];
 	}
@@ -101,6 +102,9 @@ class Primitive {
 	public final skinned:Bool;
 	// its vertices' tangents (VertexData.tangents), for normal maps; null: none
 	public var tangents:Null<Buffer>;
+	// its vertices' second uvs (TEXCOORD_1: two floats a vertex), for a
+	// material whose maps have their own (Material.textureTransforms); null: none
+	public var uv1:Null<Buffer> = null;
 	// its data on the CPU (Mesh.keepCpu; null: let go), what rays are cast at
 	public var data:Null<VertexData> = null;
 	// the tree over its triangles rays are cast through: made from data when
