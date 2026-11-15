@@ -155,6 +155,10 @@ class Prune {
 					for (x in body)
 						s(x);
 				case SReturn(x): if (x != null) e(x);
+				case SStore(b, i, v):
+					e(b);
+					e(i);
+					e(v);
 				case SBreak | SContinue:
 			}
 		for (st in ss)

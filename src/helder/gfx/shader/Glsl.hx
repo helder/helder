@@ -14,6 +14,14 @@ import helder.gfx.shader.Ir;
 // first row its top (in a pass into a texture, the position's y is
 // flipped instead): u_target, which the back end sets, is (height, -1) in
 // the frame, (0, 1) in a texture.
+//
+// A compute stage is GLSL ES 3.10 (GL ES 3.1's: `#version 310 es`, which
+// has layout(binding)): its uniform blocks and textures at their slots'
+// bindings and units, a storage buffer `layout(std430, binding = n)
+// buffer sb_<slot>_block { T data[]; } sb_<slot>` (n: its index, the
+// written ones first: GL ES 3.1 has 4 bindings at least), a storage
+// texture `layout(binding = n, <format>) writeonly uniform highp image2D
+// img_<slot>` (n: its image unit).
 class Glsl extends Emit {
 	// structs made through make_<Struct> functions instead of their
 	// constructors (as Hlsl): the shader compiler of Android's emulator
@@ -31,9 +39,9 @@ class Glsl extends Emit {
 		super.struct(s);
 		if (!makers) return;
 		line('${s.name} make_${s.name}(' + [for (i in 0...s.fields.length) type(s.fields[i].type) + " f" + i].join(", ") + ") {");
-		line('	${s.name} s;');
+		line('\t${s.name} s;');
 		for (i in 0...s.fields.length)
-			line('	s.${s.fields[i].name} = f$i;');
+			line('\ts.${s.fields[i].name} = f$i;');
 		line("\treturn s;");
 		line("}");
 	}
@@ -68,6 +76,8 @@ class Glsl extends Emit {
 			case TTexture: "sampler2D";
 			case TStruct(s): s.name;
 			case TArray(t, n): type(t) + "[" + n + "]";
+			case TStorage(t, _): type(t);
+			case TImage(_): "image2D";
 		}
 
 	override function builtin(name:String, args:Array<SExpr>, t:SType):String
@@ -77,8 +87,55 @@ class Glsl extends Emit {
 			case "sampleLevel": super.builtin("textureLod", args, t);
 			// (GLSL's two-argument atan)
 			case "atan2": super.builtin("atan", args, t);
+			case "atomicAdd" | "atomicMin" | "atomicMax": name + "(" + load(args[0], args[1]) + ", " + expr(args[2]) + ")";
+			case "textureStore": "imageStore(" + expr(args[0]) + ", ivec2(" + expr(args[1]) + ", " + expr(args[2]) + "), " + expr(args[3]) + ")";
 			case _: super.builtin(name, args, t);
 		}
+
+	override function load(b:SExpr, i:SExpr):String
+		return operand(b) + ".data[" + expr(i) + "]";
+
+	override function store(b:SExpr, i:SExpr, v:SExpr):String
+		return operand(b) + ".data[" + expr(i) + "] = " + expr(v) + ";";
+
+	override function computeHeader(c:SCompute) {
+		line("#version 310 es");
+		line('layout(local_size_x = ${c.size[0]}, local_size_y = ${c.size[1]}, local_size_z = ${c.size[2]}) in;');
+		line("precision highp float;");
+		line("precision highp int;");
+		if (c.entry.textures.length > 0) line("precision highp sampler2D;");
+		if (c.images.length > 0) line("precision highp image2D;");
+	}
+
+	static function imageFormat(f:Int):String
+		return f == 4 ? "rgba16f" : f == 5 ? "r32f" : "rgba8";
+
+	override function storage(c:SCompute) {
+		for (s in c.storage) {
+			line('layout(std430, binding = ${s.index}) ' + (s.write ? "" : "readonly ") + 'buffer sb_${s.slot}_block {');
+			line('\t${type(s.element)} data[];');
+			line('} sb_${s.slot};');
+		}
+		for (m in c.images)
+			line('layout(binding = ${m.index}, ${imageFormat(m.format)}) writeonly uniform highp image2D img_${m.slot};');
+	}
+
+	override function computeEntry(c:SCompute) {
+		var e = c.entry;
+		for (u in e.uniforms) {
+			line('layout(std140, binding = ${u.binding}) uniform ${u.struct.name}_block {');
+			for (f in u.struct.fields)
+				line('\t${type(f.type)} ${f.name};');
+			line('} u_${u.binding};');
+		}
+		for (t in e.textures)
+			line('layout(binding = ${t.slot}) uniform sampler2D tex_${t.slot};');
+		var args = Emit.computeArgs(e, u -> make(u.struct.name) + "(" + [for (f in u.struct.fields) 'u_${u.binding}.${f.name}'].join(", ") + ")", t -> 'tex_${t.slot}', s -> null, m -> null);
+		var ids = "int(gl_GlobalInvocationID.x), int(gl_GlobalInvocationID.y), int(gl_GlobalInvocationID.z), int(gl_LocalInvocationID.x), int(gl_LocalInvocationID.y), int(gl_LocalInvocationID.z), int(gl_LocalInvocationIndex), int(gl_WorkGroupID.x), int(gl_WorkGroupID.y), int(gl_WorkGroupID.z)";
+		line("void main() {");
+		line('\t${e.fn.name}(' + [make(e.input.name) + "(" + ids + ")"].concat(args).join(", ") + ");");
+		line("}");
+	}
 
 	override function entry(p:SProgram, e:SEntry) {
 		for (u in e.uniforms) {
@@ -94,6 +151,7 @@ class Glsl extends Emit {
 				switch r {
 					case RUniform(u): make(u.struct.name) + "(" + [for (f in u.struct.fields) 'u_${u.binding}.${f.name}'].join(", ") + ")";
 					case RTexture(t): 'tex_${t.slot}';
+					case RStorage(_) | RImage(_): throw "a render stage's storage";
 				}
 		];
 		if (e.stage == Vertex) {

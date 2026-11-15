@@ -78,6 +78,8 @@ class Run {
 		{name: "story-shared", about: "helder.story's native preview host end to end, as the desktop studio uses it (tests/story/host: SmokeStudio stands in for the studio, SmokeHost is a dev build of one story): the host's dev connection, Host.ready, Host.show, its frames (Host.frame) opened in the stand-in's own device as shared textures (IOSurface, DXGI, dma-buf) or read through shared memory (llvmpipe), drawn and read back: the story's square and background at 1x, then zoomed to 2x (a new target, the first released); the shared textures required on macOS and Windows", run: storyShared},
 		{name: "sprite", about: "helder.sprite's SpriteBatch on a GPU, headless (tests/sprite/SpriteFrame.hx; Linux: Mesa): sprites placed, scaled, turned, faded and added, two textures; its CPU half and the atlas are the test lane's", run: sprite},
 		{name: "gfx-web", about: "helder.gfx on WebGPU and WebGL2 (wasm32-wasi) in headless Chromium", run: gfxWeb},
+		{name: "gfx-compute", about: "helder.gfx's compute tier, headless (tests/gfx/ComputeTest.hx, GFX_TARGET's build: GL ES 3.1 on Mesa's llvmpipe, D3D11 on WARP, Metal; Windows' build from Linux under Wine): a prefix sum of ten dispatches read back, particles moved by a dispatch whose workgroups a buffer holds, the kept ones appended and counted (atomics) into an indirect draw that reads them as instances, a storage texture written and sampled, the frame's pixels checked, nothing allocated by the second frame; skipped without a Metal device", run: gfxCompute},
+		{name: "gfx-compute-web", about: "helder.gfx's compute tier in headless Chromium (tests/gfx/compute-web.mjs, ComputeTest as wasm32-wasi): on WebGPU the same checks, the buffers and pixels read back by the harness; on WebGL2 Device.has(Compute) false, createComputePipeline and a storage buffer refused", run: gfxComputeWeb},
 		{name: "audio", about: "helder.os's audio through each back end without speakers (tests/os/audio.sh)", run: audio},
 		{name: "audio-web", about: "helder.os's audio on WebAudio in headless Chromium", run: audioWeb},
 		{name: "touch-web", about: "helder.os's pointers in headless Chromium: two fingers, a pen, the mouse, samples, a cancel, a tap and a drag without mouse events or scrolls, a pointer event sent from JavaScript (tests/os/PointersWeb.hx); App.onBack and App.backDepth's history entry, history back, Escape as the back, haxe.Timer.delay in App.run (tests/os/BackWeb.hx); Pointers' own tests are the test lane's (src/helder/os/Pointers.test.hx)", run: touchWeb},
@@ -926,6 +928,25 @@ class Run {
 	static function gfxWeb() {
 		wasm("bin/gfx/WebTest.wasm", gfxCp().concat(["-main", "WebTest"]));
 		run(NODE, ["tests/gfx/web.mjs", "bin/gfx/WebTest.wasm", "bin/gfx"]);
+	}
+
+	static function gfxCompute() {
+		native('bin/gfx-compute/$GFX_TARGET/ComputeTest', cps(["src", "tests/gfx"]).concat(["-main", "ComputeTest"]), GFX_TARGET);
+		var exe = exePath('bin/gfx-compute/$GFX_TARGET/ComputeTest', GFX_TARGET);
+		// (Mesa's llvmpipe and WARP: software; no Metal device on a Mac VM: exit 3, skipped)
+		Sys.putEnv("LIBGL_ALWAYS_SOFTWARE", "1");
+		Sys.putEnv("HXMC_GFX_SOFTWARE", "1");
+		var p = GFX_TARGET.startsWith("windows-") && !HOST.startsWith("windows-") ? new Process("wine", [exe]) : new Process(exe, []);
+		var r = drain(p);
+		var code = p.exitCode();
+		p.close();
+		Sys.print(r.out + r.err);
+		if (code == 3) Sys.println("gfx-compute: skipped (no Metal device)") else if (code != 0) throw new Failed('$exe: exit code $code');
+	}
+
+	static function gfxComputeWeb() {
+		wasm("bin/gfx-compute/ComputeTest.wasm", cps(["src", "tests/gfx"]).concat(["-main", "ComputeTest"]));
+		run(NODE, ["tests/gfx/compute-web.mjs", "bin/gfx-compute/ComputeTest.wasm"]);
 	}
 
 	static function osCp()

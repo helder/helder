@@ -25,11 +25,13 @@ class ID3D11Device {
 	@:slot(3) static function CreateBuffer(self:Ptr, desc:Ptr<D3D11_BUFFER_DESC>, data:Ptr<D3D11_SUBRESOURCE_DATA>, out:Ptr<Ptr>):Int;
 	@:slot(5) static function CreateTexture2D(self:Ptr, desc:Ptr<D3D11_TEXTURE2D_DESC>, data:Ptr, out:Ptr<Ptr>):Int;
 	@:slot(7) static function CreateShaderResourceView(self:Ptr, resource:Ptr, desc:Ptr, out:Ptr<Ptr>):Int;
+	@:slot(8) static function CreateUnorderedAccessView(self:Ptr, resource:Ptr, desc:Ptr, out:Ptr<Ptr>):Int;
 	@:slot(9) static function CreateRenderTargetView(self:Ptr, resource:Ptr, desc:Ptr, out:Ptr<Ptr>):Int;
 	@:slot(10) static function CreateDepthStencilView(self:Ptr, resource:Ptr, desc:Ptr, out:Ptr<Ptr>):Int;
 	@:slot(11) static function CreateInputLayout(self:Ptr, elements:Ptr<D3D11_INPUT_ELEMENT_DESC>, count:Int, code:Ptr, size:Int64, out:Ptr<Ptr>):Int;
 	@:slot(12) static function CreateVertexShader(self:Ptr, code:Ptr, size:Int64, linkage:Ptr, out:Ptr<Ptr>):Int;
 	@:slot(15) static function CreatePixelShader(self:Ptr, code:Ptr, size:Int64, linkage:Ptr, out:Ptr<Ptr>):Int;
+	@:slot(18) static function CreateComputeShader(self:Ptr, code:Ptr, size:Int64, linkage:Ptr, out:Ptr<Ptr>):Int;
 	@:slot(20) static function CreateBlendState(self:Ptr, desc:Ptr<D3D11_BLEND_DESC>, out:Ptr<Ptr>):Int;
 	@:slot(21) static function CreateDepthStencilState(self:Ptr, desc:Ptr<D3D11_DEPTH_STENCIL_DESC>, out:Ptr<Ptr>):Int;
 	@:slot(22) static function CreateRasterizerState(self:Ptr, desc:Ptr<D3D11_RASTERIZER_DESC>, out:Ptr<Ptr>):Int;
@@ -65,14 +67,25 @@ class ID3D11DeviceContext {
 	@:slot(33) static function OMSetRenderTargets(self:Ptr, count:Int, views:Ptr<Ptr>, depth:Ptr):Void;
 	@:slot(35) static function OMSetBlendState(self:Ptr, state:Ptr, factor:Ptr<Float32>, mask:Int):Void;
 	@:slot(36) static function OMSetDepthStencilState(self:Ptr, state:Ptr, ref:Int):Void;
+	@:slot(39) static function DrawIndexedInstancedIndirect(self:Ptr, args:Ptr, offset:Int):Void;
+	@:slot(40) static function DrawInstancedIndirect(self:Ptr, args:Ptr, offset:Int):Void;
+	@:slot(41) static function Dispatch(self:Ptr, x:Int, y:Int, z:Int):Void;
+	@:slot(42) static function DispatchIndirect(self:Ptr, args:Ptr, offset:Int):Void;
 	@:slot(43) static function RSSetState(self:Ptr, state:Ptr):Void;
 	@:slot(44) static function RSSetViewports(self:Ptr, count:Int, viewports:Ptr<D3D11_VIEWPORT>):Void;
+	@:slot(46) static function CopySubresourceRegion(self:Ptr, dst:Ptr, dstSubresource:Int, x:Int, y:Int, z:Int, src:Ptr, srcSubresource:Int, box:Ptr<D3D11_BOX>):Void;
 	@:slot(47) static function CopyResource(self:Ptr, dst:Ptr, src:Ptr):Void;
 	@:slot(48) static function UpdateSubresource(self:Ptr, dst:Ptr, subresource:Int, box:Ptr<D3D11_BOX>, src:Ptr, rowPitch:Int, depthPitch:Int):Void;
 	@:slot(50) static function ClearRenderTargetView(self:Ptr, view:Ptr, rgba:Ptr<Float32>):Void;
 	@:slot(53) static function ClearDepthStencilView(self:Ptr, view:Ptr, flags:Int, depth:Float32, stencil:Int):Void;
 	@:slot(54) static function GenerateMips(self:Ptr, view:Ptr):Void;
 	@:slot(57) static function ResolveSubresource(self:Ptr, dst:Ptr, dstSubresource:Int, src:Ptr, srcSubresource:Int, format:Int):Void;
+	// (the compute stage)
+	@:slot(67) static function CSSetShaderResources(self:Ptr, start:Int, count:Int, views:Ptr<Ptr>):Void;
+	@:slot(68) static function CSSetUnorderedAccessViews(self:Ptr, start:Int, count:Int, views:Ptr<Ptr>, initialCounts:Ptr<Int32>):Void;
+	@:slot(69) static function CSSetShader(self:Ptr, shader:Ptr, classes:Ptr, count:Int):Void;
+	@:slot(70) static function CSSetSamplers(self:Ptr, start:Int, count:Int, samplers:Ptr<Ptr>):Void;
+	@:slot(71) static function CSSetConstantBuffers(self:Ptr, start:Int, count:Int, buffers:Ptr<Ptr>):Void;
 	@:slot(110) static function ClearState(self:Ptr):Void;
 	@:slot(111) static function Flush(self:Ptr):Void;
 }
@@ -83,6 +96,7 @@ class ID3D11DeviceContext {
 class ID3D11DeviceContext1 {
 	@:slot(119) static function VSSetConstantBuffers1(self:Ptr, start:Int, count:Int, buffers:Ptr<Ptr>, first:Ptr<Int32>, num:Ptr<Int32>):Void;
 	@:slot(123) static function PSSetConstantBuffers1(self:Ptr, start:Int, count:Int, buffers:Ptr<Ptr>, first:Ptr<Int32>, num:Ptr<Int32>):Void;
+	@:slot(124) static function CSSetConstantBuffers1(self:Ptr, start:Int, count:Int, buffers:Ptr<Ptr>, first:Ptr<Int32>, num:Ptr<Int32>):Void;
 }
 
 @:build(helder.os.win32.Com.build())
@@ -172,6 +186,15 @@ class D3D {
 	public static inline var BIND_SHADER_RESOURCE = 0x8;
 	public static inline var BIND_RENDER_TARGET = 0x20;
 	public static inline var BIND_DEPTH_STENCIL = 0x40;
+	public static inline var BIND_UNORDERED_ACCESS = 0x80;
+	public static inline var RESOURCE_MISC_DRAWINDIRECT_ARGS = 0x10;
+	public static inline var RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS = 0x20;
+	// D3D11_UAV_DIMENSION, D3D11_BUFFER_UAV_FLAG; D3D11_SRV_DIMENSION_BUFFEREX, D3D11_BUFFEREX_SRV_FLAG
+	public static inline var UAV_DIMENSION_BUFFER = 1;
+	public static inline var UAV_DIMENSION_TEXTURE2D = 4;
+	public static inline var BUFFER_UAV_FLAG_RAW = 1;
+	public static inline var SRV_DIMENSION_BUFFEREX = 11;
+	public static inline var BUFFEREX_SRV_FLAG_RAW = 1;
 	public static inline var RESOURCE_MISC_GENERATE_MIPS = 0x1;
 	public static inline var RESOURCE_MISC_SHARED_KEYEDMUTEX = 0x100;
 	// D3D11_DSV_DIMENSION, D3D11_SRV_DIMENSION

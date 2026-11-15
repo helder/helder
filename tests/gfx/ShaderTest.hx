@@ -8,6 +8,7 @@ import SlotsShader;
 import TexturedShader;
 import TriangleShader;
 import PaletteShader;
+import ComputeShaders;
 
 // The shader definition's tests, on Eval (npm test -- gfx-shader):
 //
@@ -36,6 +37,7 @@ class ShaderTest {
 		math();
 		shaders();
 		layouts();
+		compute();
 		png();
 		golden(here + "/shader", bless);
 		if (tool != null && tool != "--bless") rejects(tool, here);
@@ -202,6 +204,41 @@ class ShaderTest {
 		check("TexturedShader.fragmentCode.bindings", bs.length == 3 && bs[0].name == "Fade_block" && bs[0].slot == 1 && bs[1].name == "tex_2" && bs[2].name == "tex_0", Std.string(bs));
 	}
 
+	// compute({size, main}): the stages on the CPU, the storage slots' std430 layouts, the bindings
+	static function compute() {
+		// (a scan step: in -> out)
+		var src:Array<Int> = [1, 2, 3, 4, 5], dst:Array<Int> = [0, 0, 0, 0, 0];
+		for (x in 0...8)
+			Scan.main(ComputeInput.at(x, 0, 0, 64, 1, 1), {step: {offset: 2, count: 5}, src: src, dst: dst});
+		check("Scan.main", dst.join(",") == "1,2,4,6,8", dst.join(","));
+		var ps:Array<Particle> = [{pos: vec4(0, 0, 0, 1), vel: vec4(1, 2, 0, 0)}, {pos: vec4(5, 0, 0, 0), vel: vec4(1, 0, 0, 0)}];
+		var kept:Array<Vec4> = [vec4(0), vec4(0)], args:Array<Int> = [6, 0, 0, 0];
+		for (x in 0...2)
+			Move.main(ComputeInput.at(x, 0, 0, 64, 1, 1), {step: {dt: 0.5, count: 2}, particles: ps, kept: kept, args: args});
+		check("Move.main", args[1] == 1 && kept[0].x == 0.5 && kept[0].y == 1 && ps[1].pos.x == 5.5, args.join(",") + " " + kept[0].x + " " + ps[1].pos.x);
+		var img = new StorageTexture(2, 2);
+		for (y in 0...2)
+			for (x in 0...2)
+				Gradient.main(ComputeInput.at(x, y, 0, 8, 8, 1), {size: {width: 2, height: 2}, image: img});
+		check("Gradient.main", img.texels.get(4 * 3) == 8 && img.texels.get(4 * 3 + 1) == 8 && img.texels.get(2) == 128, [for (i in 0...16) img.texels.get(i)].join(","));
+		var i = ComputeInput.at(70, 9, 0, 64, 8, 1);
+		check("ComputeInput.at", i.localX == 6 && i.groupX == 1 && i.localY == 1 && i.groupY == 1 && i.localIndex == 6 + 64 * 1, Std.string(i));
+		// (std430: a struct of two Vec4s 32 bytes, Vec4s 16, Ints 4)
+		check("Move.params strides", Move.params.particles.stride == 32 && Move.params.kept.stride == 16 && Move.params.args.stride == 4 && Move.params.particles.writable
+			&& !Scan.params.src.writable);
+		var b = Move.params.particles.bytesOf(ps);
+		var back = Move.params.particles.load(b, 1);
+		check("StorageSlot store, load", b.length == 64 && b.getFloat(32) == 5.5 && b.getFloat(48) == 1 && back.pos.x == 5.5 && back.vel.x == 1);
+		check("Move.groups", Move.groups(64) == 1 && Move.groups(65) == 2 && Gradient.groups(17, 1) == 3);
+		var bs = Move.code.bindings;
+		// (slots in order; GL's storage bindings and D3D11's UAVs: the written buffers 0, 1, 2)
+		check("Move.code.bindings", bs.length == 4 && bs[0].name == "MoveStep_block" && bs[1].kind == StorageWrite && bs[1].index == 0 && bs[3].index == 2
+			&& Move.code.workgroupSize.join(",") == "64,1,1", Std.string(bs));
+		var sb = Scan.code.bindings;
+		check("Scan.code.bindings", sb[1].kind == Storage && sb[1].index == 1 && sb[2].kind == StorageWrite && sb[2].index == 0, Std.string(sb));
+		check("Gradient.code", Gradient.code.workgroupSize.join(",") == "8,8,1" && Gradient.code.bindings[1].kind == StorageTexture, Std.string(Gradient.code.bindings));
+	}
+
 	// the emitted source against the golden files
 	static function golden(dir:String, bless:Bool) {
 		var codes:Array<{name:String, code:helder.gfx.ShaderCode}> = [
@@ -222,7 +259,10 @@ class ShaderTest {
 			{name: "SlotsTextured.vert", code: SlotsTextured.vertexCode},
 			{name: "SlotsTextured.frag", code: SlotsTextured.fragmentCode},
 			{name: "PaletteShader.vert", code: PaletteShader.vertexCode},
-			{name: "PaletteShader.frag", code: PaletteShader.fragmentCode}
+			{name: "PaletteShader.frag", code: PaletteShader.fragmentCode},
+			{name: "Scan.comp", code: Scan.code},
+			{name: "Move.comp", code: Move.code},
+			{name: "Gradient.comp", code: Gradient.code}
 		];
 		for (c in codes)
 			for (l in ["glsl", "wgsl", "msl", "hlsl"]) {

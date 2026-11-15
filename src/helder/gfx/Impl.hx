@@ -128,6 +128,44 @@ abstract Impl(Any) {
 	public inline function readPixels(dst:haxe.io.Bytes)
 		Platform.os() == 1 ? mtl().readPixels(dst) : Platform.os() == 2 ? d3d().readPixels(dst) : Platform.os() != 3 ? gl().readPixels(dst) : webgl() ? gl().readPixels(dst) : wgpu().readPixels(dst);
 
+	// ---- the compute tier (Device.has: WebGL2's GLBackend has none)
+
+	public inline function has(f:Feature):Bool
+		return Platform.os() == 1 ? mtl().has(f) : Platform.os() == 2 ? d3d().has(f) : Platform.os() != 3 ? gl().has(f) : webgl() ? gl().has(f) : wgpu().has(f);
+
+	public inline function createComputePipeline(shader:Int):Int
+		return Platform.os() == 1 ? mtl().createComputePipeline(shader) : Platform.os() == 2 ? d3d().createComputePipeline(shader) : Platform.os() != 3 ? gl().createComputePipeline(shader) : webgl() ? gl().createComputePipeline(shader) : wgpu().createComputePipeline(shader);
+
+	public inline function readBuffer(id:Int, offset:Int, dst:haxe.io.Bytes, dstOffset:Int, size:Int)
+		Platform.os() == 1 ? mtl().readBuffer(id, offset, dst, dstOffset, size) : Platform.os() == 2 ? d3d().readBuffer(id, offset, dst, dstOffset, size) : Platform.os() != 3 ? gl().readBuffer(id, offset, dst, dstOffset, size) : webgl() ? gl().readBuffer(id, offset, dst, dstOffset, size) : wgpu().readBuffer(id, offset, dst, dstOffset, size);
+
+	public inline function beginCompute()
+		Platform.os() == 1 ? mtl().beginCompute() : Platform.os() == 2 ? d3d().beginCompute() : Platform.os() != 3 ? gl().beginCompute() : webgl() ? gl().beginCompute() : wgpu().beginCompute();
+
+	public inline function setComputePipeline(id:Int)
+		Platform.os() == 1 ? mtl().setComputePipeline(id) : Platform.os() == 2 ? d3d().setComputePipeline(id) : Platform.os() != 3 ? gl().setComputePipeline(id) : webgl() ? gl().setComputePipeline(id) : wgpu().setComputePipeline(id);
+
+	public inline function setStorage(slot:Int, id:Int)
+		Platform.os() == 1 ? mtl().setStorage(slot, id) : Platform.os() == 2 ? d3d().setStorage(slot, id) : Platform.os() != 3 ? gl().setStorage(slot, id) : webgl() ? gl().setStorage(slot, id) : wgpu().setStorage(slot, id);
+
+	public inline function setStorageTexture(slot:Int, id:Int)
+		Platform.os() == 1 ? mtl().setStorageTexture(slot, id) : Platform.os() == 2 ? d3d().setStorageTexture(slot, id) : Platform.os() != 3 ? gl().setStorageTexture(slot, id) : webgl() ? gl().setStorageTexture(slot, id) : wgpu().setStorageTexture(slot, id);
+
+	public inline function dispatch(x:Int, y:Int, z:Int)
+		Platform.os() == 1 ? mtl().dispatch(x, y, z) : Platform.os() == 2 ? d3d().dispatch(x, y, z) : Platform.os() != 3 ? gl().dispatch(x, y, z) : webgl() ? gl().dispatch(x, y, z) : wgpu().dispatch(x, y, z);
+
+	public inline function dispatchIndirect(id:Int, offset:Int)
+		Platform.os() == 1 ? mtl().dispatchIndirect(id, offset) : Platform.os() == 2 ? d3d().dispatchIndirect(id, offset) : Platform.os() != 3 ? gl().dispatchIndirect(id, offset) : webgl() ? gl().dispatchIndirect(id, offset) : wgpu().dispatchIndirect(id, offset);
+
+	public inline function endCompute()
+		Platform.os() == 1 ? mtl().endCompute() : Platform.os() == 2 ? d3d().endCompute() : Platform.os() != 3 ? gl().endCompute() : webgl() ? gl().endCompute() : wgpu().endCompute();
+
+	public inline function drawIndirect(id:Int, offset:Int)
+		Platform.os() == 1 ? mtl().drawIndirect(id, offset) : Platform.os() == 2 ? d3d().drawIndirect(id, offset) : Platform.os() != 3 ? gl().drawIndirect(id, offset) : webgl() ? gl().drawIndirect(id, offset) : wgpu().drawIndirect(id, offset);
+
+	public inline function drawIndexedIndirect(id:Int, offset:Int)
+		Platform.os() == 1 ? mtl().drawIndexedIndirect(id, offset) : Platform.os() == 2 ? d3d().drawIndexedIndirect(id, offset) : Platform.os() != 3 ? gl().drawIndexedIndirect(id, offset) : webgl() ? gl().drawIndexedIndirect(id, offset) : wgpu().drawIndexedIndirect(id, offset);
+
 	// (shared textures: Metal's, D3D11's and GL's; none in a browser)
 	public inline function sharing():Null<String>
 		return Platform.os() == 1 ? mtl().sharing() : Platform.os() == 2 ? d3d().sharing() : Platform.os() != 3 ? gl().sharing() : null;

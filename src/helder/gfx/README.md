@@ -1,11 +1,12 @@
 # helder.gfx
 
 A portable GPU layer for hxmc in pure Haxe (`helder.gfx`): integer handles,
-immutable pipelines, back ends over GL through EGL (Linux, Android: GLES 3.0
-on the activity's window), Metal (macOS, iOS),
+immutable pipelines, back ends over GL through EGL (Linux, Android: GLES 3.1,
+or 3.0 where the driver has no more, on the activity's window), Metal (macOS, iOS),
 Direct3D 11 (Windows), WebGPU and WebGL2 (the browser). See
 `examples/triangle/Triangle.hx` (the least a program needs), `examples/cube/Cube.hx`
-(textures, depth, uniforms, blending, indices), `examples/instances/Instances.hx`
+(textures, depth, uniforms, blending, indices), `examples/fountain/Fountain.hx`
+(a compute stage and its fallback), `examples/instances/Instances.hx`
 (instanced draws), `examples/cube/Targets.hx` (render targets),
 `examples/mips/Mips.hx` (mip maps) and `examples/formats/Formats.hx` (texture formats).
 
@@ -267,3 +268,102 @@ a `UniformWriter<T>` for the others).
 `tests/gfx/ShaderTest.hx` (`bun run test gfx-shader`) and GfxTest and WebTest,
 the examples' frames against `tests/gfx/<scene>.png` (triangle, cube,
 instances, targets, mips, formats) on each back end (`bun run test gfx`, `bun run test gfx-web`).
+
+## Compute
+
+A tier above the render stages every back end has: `Device.has(Compute)`
+(and `StorageTextures`, `Indirect`, the same devices today) says whether
+the device runs compute stages. WebGPU, Metal, Direct3D 11 at feature
+level 11_0 (`cs_5_0`) and a GL ES 3.1 context (Android's native floor:
+the manifest asks for it; Mesa's) do; WebGL2 and a GL ES 3.0 context do
+not, and a program takes the render stages' path there (`examples/fountain`
+runs its compute stage's function on the CPU). Without compute,
+`createComputePipeline` and storage buffers throw.
+
+```haxe
+@:structInit @:publicFields class Particle { var pos:Vec4; var vel:Vec4; }
+@:structInit @:publicFields class Step { var dt:Float; var count:Int; }
+
+final Move = compute({
+	size: [64],                                    // the workgroup's (x, y, z), 256 invocations at most
+	main: function(id:ComputeInput, p:{step:Step, particles:RWStorage<Particle>, kept:RWStorage<Vec4>, args:RWStorage<Int>}) {
+		if (id.x >= p.step.count) return;          // (the last workgroup's past the data)
+		var q = p.particles[id.x];                 // an element read
+		var moved:Particle = {pos: q.pos + q.vel * p.step.dt, vel: q.vel};
+		p.particles[id.x] = moved;                 // and written (a local of the struct's type)
+		p.kept[atomicAdd(p.args, 1, 1)] = moved.pos;   // appended, counted into a draw's instances
+	}
+});
+
+var particles = device.createBuffer({size: n * Move.params.particles.stride, usage: Storage, data: Move.params.particles.bytesOf(list)});
+var args = device.createBuffer({size: 16, usage: Indirect});   // vertices, instances, first vertex, first instance
+var move = device.createComputePipeline(Move.pipeline());
+...
+var enc = device.beginFrame();
+enc.beginCompute();                                // between render passes
+enc.setComputePipeline(move);
+enc.setUniforms(Move.params.step.block.binding, stepBytes);
+enc.setStorage(Move.params.particles.binding, particles);
+enc.setStorage(Move.params.kept.binding, kept);
+enc.setStorage(Move.params.args.binding, args);
+enc.dispatch(Move.groups(n));                      // or dispatchIndirect(buffer, offset)
+enc.endCompute();
+enc.beginPass(pass);
+enc.setVertexBuffer(1, kept);                      // a storage buffer is a vertex (and index) buffer too
+enc.drawIndirect(args);                            // (drawIndexedIndirect: five UInt32s)
+enc.endPass();
+device.readBuffer(particles, 0, bytes);            // tests: waits for the GPU (WebGPU: imports.mjs's readBuffer)
+```
+
+The compute function takes the invocation's ids (`ComputeInput`: `x, y,
+z` in the dispatch, `localX ... localIndex` in the workgroup, `groupX ...`
+the workgroup's) and an object of parameters, at slots in order as the
+render stages' are: uniform blocks (std140), `Texture2D`s (sampled at a
+mip level: `sampleLevel`, or the first), `Storage<T>` (read) and
+`RWStorage<T>` (read and written) buffers, and `StorageTexture`s
+(written by `textureStore(t, x, y, c)`; RGBA8, or the field's
+`@:format(RGBA16F)` or `@:format(R32F)`; the texture made with
+`storage: true`). A storage buffer's elements are Float, Int, Vec2, Vec4,
+Mat4 or structs of them (no Vec3: 16 bytes in std430 and WGSL, 12 in
+HLSL), laid out as std430 everywhere; `params.<name>` (a `StorageSlot`
+of its own class) has its `stride`, `store`, `storeAt`, `load` and
+`bytesOf` for the CPU's bytes. An `RWStorage<Int>` has `atomicAdd`,
+`atomicMin` and `atomicMax` (its value before). Storage is read and
+written in the compute function itself, not passed on to the functions
+it calls (GLSL's buffers are no parameters); a buffer's length is not
+known to every back end (Metal's): counts go in a uniform block. The
+function runs on the CPU as it is (`ComputeInput.at(x, y, z, sx, sy, sz)`
+gives the ids). It compiles, as the render stages do, to:
+
+| | Storage buffer | Written | Storage texture | Ids |
+|---|---|---|---|---|
+| GLSL ES 3.10 | `layout(std430, binding = index) readonly buffer` | `buffer` | `layout(binding, rgba8) writeonly image2D` | `gl_GlobalInvocationID` ... |
+| WGSL | `var<storage, read>` at `@binding(slot)` | `read_write` (Ints: `atomic<i32>`) | `texture_storage_2d<..., write>` | `@builtin(global_invocation_id)` ... |
+| MSL | `const device T* [[buffer(slot)]]` | `device T*` (Ints: `atomic_int`) | `texture2d<float, access::write>` | `[[thread_position_in_grid]]` ... |
+| HLSL (cs_5_0) | `ByteAddressBuffer : register(t<slot>)`, loaded at the std430 offsets | `RWByteAddressBuffer : register(u<index>)` | `RWTexture2D<float4>` (a UAV) | `SV_DispatchThreadID` ... |
+
+Synchronisation is the back end's: a compute pass's dispatches run in
+order, each seeing what the ones before wrote, and the draws, samples and
+`readBuffer` after it see what they wrote (GL: `glMemoryBarrier(
+GL_ALL_BARRIER_BITS)` after each dispatch; D3D11: the written buffers
+bound as UAVs before the read ones' views, all unbound at `endCompute`;
+Metal: a compute encoder of serial dispatches; WebGPU: its passes' usage
+scopes). A frame's uniform ring serves the compute passes' blocks too.
+Recording a compute pass allocates nothing, as a render pass does.
+Limits: 16 resources a stage, 8 of them written (D3D11's UAVs; GL ES
+3.1's devices have 4 storage buffers and 4 images at least), 256
+invocations a workgroup (WebGPU's default); no workgroup memory or
+barriers inside a dispatch yet, no storage in the render stages (GL ES
+3.1 guarantees none there: results reach draws as vertex, index and
+indirect buffers and sampled textures). `compute(...)` is Haxe's: the
+TypeScript shader adapter has no Int yet; TypeScript sees `Device.has`
+and `Feature` (helder/scene).
+
+The tests: `tests/gfx/ComputeTest.hx` (`bun run test gfx-compute`: GL on
+Mesa, D3D11, Metal; `gfx-compute-web`: WebGPU in Chromium, and WebGL2's
+lack of it) runs a prefix sum of ten dispatches, an indirect dispatch
+that moves particles and counts the kept ones into an indirect draw of
+them, a storage texture sampled into the frame, and checks that a frame
+allocates nothing; `ShaderTest` the compute stages' text in the four
+languages (`tests/gfx/shader/*.comp.*`), their CPU runs and the programs
+it rejects.

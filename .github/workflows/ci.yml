@@ -97,7 +97,7 @@ jobs:
         continue-on-error: true
         run: sudo apt-get install -qqy --no-install-recommends weston wayland-protocols libwayland-dev libwayland-egl1 libxkbcommon0
       - name: gfx, 3d, audio, ui, helder run --headless, the showcase demos headless, helder.syntax's edits run headless, helder studio headless, the story host against a process a screen, window, the viewer's (Mesa llvmpipe, Xvfb; its release packages), Wayland (a headless weston), the platform's text
-        run: bun run test -k gfx gfx-shared story-shared 3d audio ui-draw headless-run demos syntax-run studio story-host window viewer-window viewer-package wayland dbus system-text system-images canvas-gpu
+        run: bun run test -k gfx gfx-compute gfx-shared story-shared 3d audio ui-draw headless-run demos syntax-run studio story-host window viewer-window viewer-package wayland dbus system-text system-images canvas-gpu
       - uses: actions/upload-artifact@v7
         if: always()
         with: {name: images, path: "bin/gfx/**/*.png\nbin/headless-run/**/*.png\nbin/demos/*.png\nbin/studio-check/*.png\nbin/canvas/*.png\nbin/3d/**/*.png\nbin/ui/**/*.png\nbin/text/*.png\nbin/os/*.png", retention-days: 7, if-no-files-found: ignore}
@@ -120,7 +120,7 @@ jobs:
           bun add --no-save playwright@1.56.1
           bunx playwright install --with-deps chromium > /dev/null
       - name: gfx, 3d, audio, web and ui in Chromium, helder studio and its compiler in the browser
-        run: bun run test -k gfx-web 3d-web audio-web web ui-web canvas-web canvas-doc studio-web compiler-web
+        run: bun run test -k gfx-web gfx-compute-web 3d-web audio-web web ui-web canvas-web canvas-doc studio-web compiler-web
       - uses: actions/upload-artifact@v7
         if: always()
         with: {name: studio-web, path: "bin/studio-web/*.png\nbin/studio-web/results.md", retention-days: 7, if-no-files-found: ignore}
@@ -290,7 +290,7 @@ jobs:
           cp -R node_modules/@hxmc/darwin-arm64/macos-arm64 "$RUNNER_TEMP/rt/package/"
           echo "HXMC_RT_DIR=$RUNNER_TEMP/rt/package" >> "$GITHUB_ENV"
       - name: window, the viewer (its tests, its builds, a real window, its app bundle, its release packages), helder/native from TypeScript (Core Foundation, Objective-C), shared textures (IOSurface, helder.gfx's and the story host's)
-        run: bun run test -k window viewer viewer-window viewer-app viewer-package system-images system-text typescript-native gfx-shared story-shared
+        run: bun run test -k window viewer viewer-window viewer-app viewer-package system-images system-text typescript-native gfx-shared story-shared gfx-compute
       - name: The web view (tests/platform/webview-macos.sh, WKWebView in a drawn window)
         if: ${{ !cancelled() }}
         run: |
@@ -319,7 +319,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - name: window, the viewer (its tests, its builds, a real window), the system's decoders, helder/native from TypeScript (COM), shared textures (DXGI, helder.gfx's and the story host's)
-        run: bun run test -k window viewer viewer-window system-images system-text typescript-native gfx-shared story-shared
+        run: bun run test -k window viewer viewer-window system-images system-text typescript-native gfx-shared story-shared gfx-compute
       - uses: actions/upload-artifact@v7
         if: always()
         with: {name: text-windows, path: "bin/text/*.png", retention-days: 7, if-no-files-found: ignore}

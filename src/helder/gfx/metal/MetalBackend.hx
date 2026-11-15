@@ -24,6 +24,14 @@ import hxmc.unsafe.*;
 // resolved into the drawable at each pass's end (and kept, for a next
 // pass's Load), the frame's pipelines (no colorFormat) made for it; render
 // targets and headless targets stay single-sampled.
+// The compute tier: a compute pass is a compute command encoder (serial
+// dispatches: each sees what the ones before wrote; Metal orders the
+// encoders after it) in the frame's command buffer, else in one of its own
+// committed at endCompute; its uniform blocks setBytes, its storage buffers
+// setBuffer at their slots, its textures (storage ones ShaderWrite) at
+// theirs; a dispatch gives the workgroup's size (ShaderCode.workgroupSize).
+// readBuffer commits the frame's work so far and waits for it (as
+// readPixels), then copies from the buffer's shared memory.
 @:hxmc.unsafe(gc)
 class MetalBackend {
 	public final backend = Backend.Metal;
@@ -56,12 +64,24 @@ class MetalBackend {
 
 	// tables (handle = index + 1)
 	final buffers:Array<Ptr> = [];
+	// (Storage and Indirect buffers: the GPU writes them, writeBuffer waits for the work committed)
+	final gpuWritten:Array<Bool> = [];
+	// the last command buffer committed (retained), which such a write waits for
+	var inFlight = Ptr.nil();
 	final shaders:Array<Ptr> = []; // MTLFunction
 	final libraries:Array<Ptr> = [];
 	final pipelines:Array<MtlPipeline> = [];
 	final textures:Array<Ptr> = []; // MTLTexture
 	final infos:Array<TextureInfo> = [];
 	final samplers:Array<Ptr> = []; // MTLSamplerState
+	final computes:Array<MtlCompute> = [];
+	final workgroups = new Map<Int, Array<Int>>(); // the compute shaders' workgroup sizes
+	// a compute pass: its encoder, its pipeline, whether its command buffer is its own; the dispatch's sizes
+	var computeEnc = Ptr.nil();
+	var computePipeline:Null<MtlCompute> = null;
+	var ownCompute = false;
+	final groupSize:Ptr<MTLSize>;
+	final threadSize:Ptr<MTLSize>;
 
 	// the frame
 	var pool = Ptr.nil();
@@ -100,6 +120,8 @@ class MetalBackend {
 		size = LibC.malloc(24);
 		region = LibC.malloc(48);
 		uniforms = LibC.malloc(MAX_BYTES);
+		groupSize = LibC.malloc(24);
+		threadSize = LibC.malloc(24);
 		pass = make("MTLRenderPassDescriptor");
 		attachment = Msg.idInt(Msg.id(pass, ObjC.sel("colorAttachments")), ObjC.sel("objectAtIndexedSubscript:"), 0);
 		depthAttachment = Msg.id(pass, ObjC.sel("depthAttachment"));
@@ -237,6 +259,7 @@ class MetalBackend {
 		// (a fast call: the Bytes cannot move during it)
 		if (data != null) LibC.memcpy(Msg.id(b, ObjC.sel("contents")), BytesPtr.of(data, 0, size), (size : Int64));
 		buffers.push(b);
+		gpuWritten.push(d.usage == Storage || d.usage == Indirect);
 		return buffers.length;
 	}
 
@@ -244,8 +267,17 @@ class MetalBackend {
 	public function writeBuffer(id:Int, offset:Int, data:haxe.io.Bytes, dataOffset:Int, size:Int) {
 		var b = buffers[id - 1];
 		if (offset + size > Msg.i(b, ObjC.sel("length")).toInt()) throw "helder.gfx: writeBuffer: past the buffer's end";
+		// (shared memory, written at once: a buffer the GPU writes may be in use by a
+		// frame committed and not yet run, whose work would then see this write)
+		if (gpuWritten[id - 1] && !inFlight.isNull()) Msg.v(inFlight, ObjC.sel("waitUntilCompleted"));
 		var dst:Ptr<UInt8> = Msg.id(b, ObjC.sel("contents"));
 		LibC.memcpy(dst.add(offset), BytesPtr.of(data, dataOffset, size), (size : Int64));
+	}
+
+	// (a command buffer committed: the one writes into GPU-written buffers wait for)
+	function committed(c:Ptr) {
+		if (!inFlight.isNull()) Runtime.objc_release(inFlight);
+		inFlight = Runtime.objc_retain(c);
 	}
 
 	static function pixelFormat(f:TextureFormat):Int
@@ -278,8 +310,9 @@ class MetalBackend {
 		// (a render target: in the GPU's memory only, as depth textures must be;
 		// multisampled, only drawn into and resolved)
 		var multi = info.samples > 1;
-		Msg.vInt(desc, ObjC.sel("setUsage:"), multi ? MTL.TextureUsageRenderTarget : target ? MTL.TextureUsageShaderRead | MTL.TextureUsageRenderTarget : MTL.TextureUsageShaderRead);
-		if (target) Msg.vInt(desc, ObjC.sel("setStorageMode:"), MTL.StorageModePrivate);
+		Msg.vInt(desc, ObjC.sel("setUsage:"), (multi ? MTL.TextureUsageRenderTarget : target ? MTL.TextureUsageShaderRead | MTL.TextureUsageRenderTarget : MTL.TextureUsageShaderRead)
+			| (info.storage ? MTL.TextureUsageShaderWrite : 0));
+		if (target || info.storage) Msg.vInt(desc, ObjC.sel("setStorageMode:"), MTL.StorageModePrivate);
 		if (multi) {
 			Msg.vInt(desc, ObjC.sel("setTextureType:"), MTL.TextureType2DMultisample);
 			Msg.vInt(desc, ObjC.sel("setSampleCount:"), info.samples);
@@ -381,7 +414,97 @@ class MetalBackend {
 		if (fn.isNull()) throw "helder.gfx: the shader has no function main0";
 		libraries.push(lib);
 		shaders.push(fn);
+		if (d.stage == Compute) workgroups.set(shaders.length, d.code.workgroupSize == null ? [1, 1, 1] : d.code.workgroupSize);
 		return shaders.length;
+	}
+
+	// ---- the compute tier
+
+	public function has(f:Feature):Bool
+		return true;
+
+	public function createComputePipeline(shader:Int):Int {
+		var size = workgroups.get(shader);
+		if (size == null) throw "helder.gfx: createComputePipeline: not a compute shader";
+		scratch.value = Ptr.nil();
+		var pool = Runtime.objc_autoreleasePoolPush();
+		var state = Msg.idPtrPtr(device, ObjC.sel("newComputePipelineStateWithFunction:error:"), shaders[shader - 1], scratch);
+		var error = state.isNull() ? describe(scratch.value) : null;
+		Runtime.objc_autoreleasePoolPop(pool);
+		if (error != null) throw "helder.gfx: the compute pipeline does not link:\n" + error;
+		computes.push(new MtlCompute(state, size));
+		return computes.length;
+	}
+
+	public function beginCompute() {
+		if (!computeEnc.isNull()) throw "helder.gfx: beginCompute: in a compute pass already";
+		ownCompute = cmd.isNull();
+		if (ownCompute) {
+			pool = Runtime.objc_autoreleasePoolPush();
+			cmd = Msg.id(queue, S.commandBuffer);
+		}
+		computeEnc = Msg.id(cmd, S.computeCommandEncoder);
+		computePipeline = null;
+	}
+
+	public function setComputePipeline(id:Int) {
+		var c = computes[id - 1];
+		if (c == computePipeline) return;
+		computePipeline = c;
+		Msg.vPtr(computeEnc, S.setComputePipelineState, c.state);
+		threadSize.value.width = c.size[0];
+		threadSize.value.height = c.size[1];
+		threadSize.value.depth = c.size[2];
+	}
+
+	public function setStorage(slot:Int, id:Int)
+		MtlMsg.vPtrIntInt(computeEnc, S.setBuffer, buffers[id - 1], 0, slot);
+
+	public function setStorageTexture(slot:Int, id:Int)
+		MtlMsg.vPtrInt(computeEnc, S.setTextureAt, textures[id - 1], slot);
+
+	public function dispatch(x:Int, y:Int, z:Int) {
+		groupSize.value.width = x;
+		groupSize.value.height = y;
+		groupSize.value.depth = z;
+		MtlMsg.vSizeSize(computeEnc, S.dispatchThreadgroups, groupSize.value, threadSize.value);
+	}
+
+	public function dispatchIndirect(id:Int, offset:Int)
+		MtlMsg.vPtrIntSize(computeEnc, S.dispatchThreadgroupsWithIndirectBuffer, buffers[id - 1], offset, threadSize.value);
+
+	public function endCompute() {
+		Msg.v(computeEnc, S.endEncoding);
+		computeEnc = Ptr.nil();
+		computePipeline = null;
+		if (ownCompute) {
+			Msg.v(cmd, S.commit);
+			committed(cmd);
+			cmd = Ptr.nil();
+			Runtime.objc_autoreleasePoolPop(pool);
+			pool = Ptr.nil();
+			ownCompute = false;
+		}
+	}
+
+	public function drawIndirect(id:Int, offset:Int)
+		MtlMsg.vIntPtrInt(enc, S.drawPrimitivesIndirect, pipeline.topology, buffers[id - 1], offset);
+
+	public function drawIndexedIndirect(id:Int, offset:Int)
+		MtlMsg.vIntIntPtrIntPtrInt(enc, S.drawIndexedPrimitivesIndirect, pipeline.topology, itype, ibuf, ioffset, buffers[id - 1], offset);
+
+	// the work so far committed and waited for (a frame's: it goes on in a new command buffer), then the shared memory read
+	public function readBuffer(id:Int, offset:Int, dst:haxe.io.Bytes, dstOffset:Int, size:Int) {
+		var b = buffers[id - 1];
+		if (offset + size > Msg.i(b, ObjC.sel("length")).toInt()) throw "helder.gfx: readBuffer: past the buffer's end";
+		var inFrame = !cmd.isNull();
+		var own = inFrame ? Ptr.nil() : Runtime.objc_autoreleasePoolPush();
+		var c = inFrame ? cmd : Msg.id(queue, S.commandBuffer);
+		Msg.v(c, S.commit);
+		Msg.v(c, ObjC.sel("waitUntilCompleted"));
+		if (inFrame) cmd = Msg.id(queue, S.commandBuffer) else Runtime.objc_autoreleasePoolPop(own);
+		var src:Ptr<UInt8> = Msg.id(b, ObjC.sel("contents"));
+		BytesPtr.copyIn(dst, dstOffset, src.add(offset), size);
 	}
 
 	public function createPipeline(d:PipelineDesc):Int {
@@ -533,6 +656,10 @@ class MetalBackend {
 		if (size > MAX_BYTES) throw "helder.gfx: setUniforms: a block of more than " + MAX_BYTES + " bytes";
 		// (a copy first: the Bytes may move during a message)
 		LibC.memcpy(uniforms, BytesPtr.of(data, offset, size), (size : Int64));
+		if (!computeEnc.isNull()) {
+			MtlMsg.vPtrIntInt(computeEnc, S.setBytes, uniforms, size, slot);
+			return;
+		}
 		MtlMsg.vPtrIntInt(enc, S.setVertexBytes, uniforms, size, slot);
 		MtlMsg.vPtrIntInt(enc, S.setFragmentBytes, uniforms, size, slot);
 	}
@@ -542,6 +669,11 @@ class MetalBackend {
 
 	public function setTexture(slot:Int, texture:Int, sampler:Int) {
 		var t = textures[texture - 1], s = samplers[sampler - 1];
+		if (!computeEnc.isNull()) {
+			MtlMsg.vPtrInt(computeEnc, S.setTextureAt, t, slot);
+			MtlMsg.vPtrInt(computeEnc, S.setSamplerState, s, slot);
+			return;
+		}
 		MtlMsg.vPtrInt(enc, S.setVertexTexture, t, slot);
 		MtlMsg.vPtrInt(enc, S.setFragmentTexture, t, slot);
 		MtlMsg.vPtrInt(enc, S.setVertexSamplerState, s, slot);
@@ -568,6 +700,7 @@ class MetalBackend {
 		var presented = !drawable.isNull() && frameTarget == 0;
 		if (presented) Msg.vPtr(cmd, S.presentDrawable, drawable);
 		Msg.v(cmd, S.commit);
+		committed(cmd);
 		// (a frame into a shared texture: complete before the other process is told)
 		if (frameTarget != 0 && shared.exists(frameTarget)) Msg.v(cmd, ObjC.sel("waitUntilCompleted"));
 		cmd = Ptr.nil();
@@ -613,10 +746,13 @@ class MetalBackend {
 	}
 
 	public function dispose() {
+		if (!inFlight.isNull()) Runtime.objc_release(inFlight);
 		for (p in pipelines) {
 			Runtime.objc_release(p.state);
 			Runtime.objc_release(p.depth);
 		}
+		for (c in computes)
+			Runtime.objc_release(c.state);
 		for (o in shaders.concat(libraries).concat(buffers).concat(textures).concat(samplers))
 			Runtime.objc_release(o);
 		ObjC.release(readback);
@@ -639,6 +775,20 @@ class MetalBackend {
 		LibC.free(size);
 		LibC.free(region);
 		LibC.free(uniforms);
+		LibC.free(groupSize);
+		LibC.free(threadSize);
+	}
+}
+
+// a compute pipeline state and its workgroup's size
+@:hxmc.unsafe(gc)
+private class MtlCompute {
+	public final state:Ptr;
+	public final size:Array<Int>;
+
+	public function new(state:Ptr, size:Array<Int>) {
+		this.state = state;
+		this.size = size;
 	}
 }
 
@@ -684,6 +834,17 @@ private class S {
 	public static final setDepthStencilState = ObjC.sel("setDepthStencilState:");
 	public static final drawIndexedPrimitives = ObjC.sel("drawIndexedPrimitives:indexCount:indexType:indexBuffer:indexBufferOffset:instanceCount:baseVertex:baseInstance:");
 	public static final renderCommandEncoderWithDescriptor = ObjC.sel("renderCommandEncoderWithDescriptor:");
+	// (the compute tier)
+	public static final computeCommandEncoder = ObjC.sel("computeCommandEncoder");
+	public static final setComputePipelineState = ObjC.sel("setComputePipelineState:");
+	public static final setBuffer = ObjC.sel("setBuffer:offset:atIndex:");
+	public static final setBytes = ObjC.sel("setBytes:length:atIndex:");
+	public static final setTextureAt = ObjC.sel("setTexture:atIndex:");
+	public static final setSamplerState = ObjC.sel("setSamplerState:atIndex:");
+	public static final dispatchThreadgroups = ObjC.sel("dispatchThreadgroups:threadsPerThreadgroup:");
+	public static final dispatchThreadgroupsWithIndirectBuffer = ObjC.sel("dispatchThreadgroupsWithIndirectBuffer:indirectBufferOffset:threadsPerThreadgroup:");
+	public static final drawPrimitivesIndirect = ObjC.sel("drawPrimitives:indirectBuffer:indirectBufferOffset:");
+	public static final drawIndexedPrimitivesIndirect = ObjC.sel("drawIndexedPrimitives:indexType:indexBuffer:indexBufferOffset:indirectBuffer:indirectBufferOffset:");
 	public static final setViewport = ObjC.sel("setViewport:");
 	public static final setFrontFacingWinding = ObjC.sel("setFrontFacingWinding:");
 	public static final setRenderPipelineState = ObjC.sel("setRenderPipelineState:");

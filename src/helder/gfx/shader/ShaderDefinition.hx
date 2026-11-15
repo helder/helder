@@ -114,6 +114,134 @@ class ShaderDefinition implements Definition<ShaderAdapter, ShaderOutput> {
 			case _: false;
 		}
 
+	// compute({size, main}): the compute stage (its input a ComputeInput, its
+	// result none), the fields of its object of parameters uniform blocks
+	// (std140), textures, storage buffers (std430) and storage textures at
+	// slots in order of appearance, its text in the build's languages
+	public function compute(arg:KNode, a:ShaderAdapter):ComputeOutput {
+		var r = new KObjectReader(arg, a, "the argument", ["size", "main"]);
+		var mk = r.func("main");
+		if (mk == null) a.error("a compute definition needs its main function", arg.pos);
+		var size = [1, 1, 1];
+		var sn = r.get("size");
+		if (sn != null) {
+			var items = switch sn.value {
+				case KArray(xs) if (xs.length >= 1 && xs.length <= 3): xs;
+				case KInt(_): [sn];
+				case _: a.error('size is the workgroup\'s size, an array of 1 to 3 integers ([64], [8, 8]), not ${sn.describe()}', sn.pos);
+			}
+			for (i in 0...items.length)
+				size[i] = switch items[i].value {
+					case KInt(n) if (n >= 1): n;
+					case KFloat(f) if (f >= 1 && Math.ffloor(f) == f): Std.int(f);
+					case _: a.error('size: ${items[i].describe()} is not a positive integer', items[i].pos);
+				}
+		}
+		// (256 invocations a workgroup at most: WebGPU's default limit; GL ES 3.1's and D3D11's are higher)
+		if (size[0] * size[1] * size[2] > 256) a.error('size: ${size.join(" x ")} is more than 256 invocations a workgroup (WebGPU\'s default limit)', sn.pos);
+		var f = a.lowerStage(mk, mk.name ?? "cs");
+		var pos = mk.pos;
+		var input = f.params.length == 0 ? null : switch f.params[0].type {
+			case TStruct(s) if (s.path == "helder.gfx.shader.ComputeInput"): s;
+			case _: null;
+		}
+		if (input == null) a.error("the compute function takes the invocation's ids first (id:ComputeInput)", pos);
+		if (f.ret != TVoid) a.error('the compute function returns nothing (it writes its storage), not a ${Names.typeName(f.ret)}', pos);
+		var resources:Array<SResource> = [];
+		var written = 0;
+		for (i in 1...f.params.length)
+			switch f.params[i].type {
+				case TStorage(_, true): written++;
+				case _:
+			}
+		// (indices: a storage buffer's binding in GL, the read ones after the
+		// written ones; a written buffer's or texture's u register in HLSL;
+		// a storage texture's image unit in GL)
+		var reads = 0, uavs = 0, images = 0;
+		for (i in 1...f.params.length) {
+			var p = f.params[i], name = f.fields[i - 1] ?? p.name, slot = i - 1;
+			resources.push(switch p.type {
+				case TStruct(s):
+					for (r in resources)
+						switch r {
+							case RUniform(u) if (u.struct == s): a.error('the parameter $name is a second ${s.path} (a uniform block a struct: one parameter of it)', pos);
+							case _:
+						}
+					RUniform(std140(a, s, slot, pos));
+				case TTexture: RTexture(new STexture(p.name, slot));
+				case TStorage(e, write):
+					var l = std430(a, e, name, pos);
+					RStorage(new SStorage(name, slot, e, write, l.offsets, l.stride, write ? uavs++ : written + reads++));
+				case TImage(format):
+					RImage(new SImage(name, slot, format, images++, uavs++));
+				case t: a.error('the parameter $name is a ${Names.typeName(t)}, not a uniform block (a struct), a Texture2D, a Storage, an RWStorage or a StorageTexture', pos);
+			});
+		}
+		if (resources.length > MAX_SLOTS) a.error('more than $MAX_SLOTS uniform blocks, textures and storage buffers', pos);
+		// (D3D11's compute stage has 8 UAVs; GL ES 3.1's devices 4 storage buffers and 4 images at least)
+		if (uavs > 8) a.error('more than 8 storage buffers and textures written (D3D11\'s UAVs)', pos);
+		a.finish();
+		var c = new SCompute(entry(Compute, f, input, resources), size);
+		var bindings = [
+			for (r in resources)
+				switch r {
+					case RUniform(u): {name: u.struct.name + "_block", slot: u.binding, kind: 0, size: u.size, index: u.binding, format: 0};
+					case RTexture(t): {name: "tex_" + t.slot, slot: t.slot, kind: 1, size: 0, index: t.slot, format: 0};
+					case RStorage(s): {name: "sb_" + s.slot, slot: s.slot, kind: s.write ? 3 : 2, size: s.stride, index: s.index, format: 0};
+					case RImage(m): {name: "img_" + m.slot, slot: m.slot, kind: 4, size: 0, index: m.index, format: m.format};
+				}
+		];
+		var params:Array<ShaderParam> = [for (i in 0...resources.length) {name: f.fields[i], resource: resources[i]}];
+		var block = a.uniforms();
+		return {
+			program: c,
+			code: [
+				for (l in languages(a, arg.pos))
+					{
+						language: l,
+						text: switch l {
+							case "glsl": new Glsl(StringTools.startsWith(a.defined("hxmc.target") ?? "", "android")).compute(c);
+							case "wgsl": new Wgsl().compute(c);
+							case "msl": new Msl().compute(c);
+							case _: new Hlsl().compute(c);
+						}
+					}
+			],
+			bindings: bindings,
+			params: params,
+			uniforms: block == null ? null : Lambda.find(c.entry.uniforms, u -> u.struct == block)
+		};
+	}
+
+	// std430 (WGSL's storage layout, MSL's and C's for these types): a
+	// storage buffer's element, a scalar, a Vec2, Vec4, Mat4 or a struct of
+	// them, its offsets (a struct's fields) and the stride of the array
+	public static function std430(a:Adapter, t:SType, name:String, pos:KPos):{offsets:Array<Int>, stride:Int} {
+		function sizeAlign(t:SType, what:String):Array<Int>
+			return switch t {
+				case TFloat | TInt: [4, 4];
+				case TVec(2): [8, 8];
+				case TVec(4): [16, 16];
+				case TMat4: [64, 16];
+				case TVec(3): a.error('$what is a Vec3: a storage buffer has no Vec3 (16 bytes in std430 and WGSL, 12 in HLSL): pack it into a Vec4', pos);
+				case t: a.error('$what is a ${Names.typeName(t)}: a storage buffer\'s elements are Float, Int, Vec2, Vec4, Mat4 or structs of those', pos);
+			}
+		return switch t {
+			case TStruct(s):
+				var off = 0, align = 4, offsets = [];
+				for (f in s.fields) {
+					var sa = sizeAlign(f.type, '${s.path}.${f.field}');
+					off = (off + sa[1] - 1) & ~(sa[1] - 1);
+					offsets.push(off);
+					off += sa[0];
+					if (sa[1] > align) align = sa[1];
+				}
+				{offsets: offsets, stride: (off + align - 1) & ~(align - 1)};
+			case t:
+				{offsets: [0], stride: sizeAlign(t, 'the storage $name\'s element')[0]};
+		}
+	}
+
 	function program(a:ShaderAdapter, vk:KFunction, fk:KFunction, variant:Bool):SProgram {
 		var vf = a.lowerStage(vk, vk.name ?? "vs"), ff = a.lowerStage(fk, fk.name ?? "fs");
 		var vpos = vk.pos, fpos = fk.pos;
@@ -189,6 +317,7 @@ class ShaderDefinition implements Definition<ShaderAdapter, ShaderOutput> {
 					for (f in s.fields)
 						ty(f.type);
 					ss.push(s);
+				case TStorage(e, _): ty(e);
 				case _:
 			}
 		function visit(f:SFunction) {
@@ -235,6 +364,10 @@ class ShaderDefinition implements Definition<ShaderAdapter, ShaderOutput> {
 						for (x in body)
 							s(x);
 					case SReturn(x): if (x != null) e(x);
+					case SStore(b, i, v):
+						e(b);
+						e(i);
+						e(v);
 					case SBreak | SContinue:
 				}
 			for (st in f.body)
@@ -245,7 +378,8 @@ class ShaderDefinition implements Definition<ShaderAdapter, ShaderOutput> {
 		for (r in resources)
 			switch r {
 				case RUniform(u): ty(TStruct(u.struct));
-				case RTexture(_):
+				case RStorage(s): ty(s.element);
+				case RTexture(_) | RImage(_):
 			}
 		return new SEntry(stage, f, input, resources, ss, fs);
 	}
@@ -422,6 +556,19 @@ class SlotsDef {
 		}
 		return out;
 	}
+}
+
+// What the handler makes of a compute definition: the stage, its text in
+// the build's languages, its bindings (ShaderBinding's: kind 0 a uniform
+// block, 1 a texture, 2 a storage buffer read, 3 one written, 4 a storage
+// texture; index its binding in GL and its register in HLSL where that is
+// not the slot) and its parameters.
+typedef ComputeOutput = {
+	program:SCompute,
+	code:Array<{language:String, text:String}>,
+	bindings:Array<{name:String, slot:Int, kind:Int, size:Int, index:Int, format:Int}>,
+	params:Array<ShaderParam>,
+	uniforms:Null<SUniform>
 }
 
 typedef StageCode = {

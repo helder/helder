@@ -137,7 +137,8 @@ class Apk {
 		], [
 			el("uses-sdk", [i("minSdkVersion", minSdk), i("targetSdkVersion", targetSdk)]),
 		].concat(uses).concat([
-			el("uses-feature", [i("glEsVersion", 0x30000, true), b("required", true)]),
+			// (GL ES 3.1: the native floor, helder.gfx's compute tier: Play offers the app to the devices that have it)
+			el("uses-feature", [i("glEsVersion", 0x30001, true), b("required", true)]),
 			el("application", [
 				s("label", label),
 				b("hasCode", code),

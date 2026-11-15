@@ -14,6 +14,14 @@ import helder.gfx.shader.Ir;
 // free); sample reads the mip level the fragment's footprint needs (its
 // derivatives) in the fragment stage and the first in the vertex stage,
 // sampleLevel the level given.
+//
+// A compute stage (compute) is its header, its structs, its resources
+// (storage buffers and textures: globals but in MSL, named sb_<slot> and
+// img_<slot>, which its parameters are renamed to), its functions and the
+// entry point, which builds the ComputeInput from the language's ids and
+// calls the stage's function with its uniform blocks and textures. Storage
+// is read and written in the stage's function only (Lower): an element read
+// is load(b, i), written store(b, i, v), each language's own.
 class Emit {
 	var buf:StringBuf;
 	var indent = "";
@@ -34,9 +42,64 @@ class Emit {
 		return buf.toString();
 	}
 
+	// the compute stage's source
+	public function compute(c:SCompute):String {
+		buf = new StringBuf();
+		fragment = false;
+		var e = c.entry;
+		// (its storage parameters: the globals' names)
+		for (i in 0...e.resources.length)
+			switch e.resources[i] {
+				case RStorage(s): e.fn.params[i + 1].name = "sb_" + s.slot;
+				case RImage(m): e.fn.params[i + 1].name = "img_" + m.slot;
+				case _:
+			}
+		computeHeader(c);
+		for (s in e.structs)
+			struct(s);
+		storage(c);
+		for (f in e.functions)
+			func(f);
+		computeEntry(c);
+		return buf.toString();
+	}
+
 	function header(e:SEntry) {}
 
 	function entry(p:SProgram, e:SEntry) {}
+
+	function computeHeader(c:SCompute) {}
+
+	// the storage buffers' and textures' declarations (and their helpers)
+	function storage(c:SCompute) {}
+
+	function computeEntry(c:SCompute) {}
+
+	// a storage parameter is a global (GLSL, WGSL, HLSL), not a parameter
+	function global(t:SType):Bool
+		return t.match(TStorage(_, _) | TImage(_));
+
+	// b[i] of a storage buffer, and b[i] = v
+	function load(b:SExpr, i:SExpr):String
+		return operand(b) + "[" + expr(i) + "]";
+
+	function store(b:SExpr, i:SExpr, v:SExpr):String
+		return operand(b) + "[" + expr(i) + "] = " + expr(v) + ";";
+
+	// the uniform blocks and textures a compute stage's function takes, by their globals' names
+	static function computeArgs(e:SEntry, uniform:SUniform->String, texture:STexture->String, storageArg:SStorage->Null<String>, image:SImage->Null<String>):Array<String> {
+		var out = [];
+		for (r in e.resources) {
+			var a = switch r {
+				case RUniform(u): uniform(u);
+				case RTexture(t): texture(t);
+				case RStorage(s): storageArg(s);
+				case RImage(m): image(m);
+			}
+			if (a != null) out.push(a);
+		}
+		return out;
+	}
 
 	function type(t:SType):String
 		return "";
@@ -53,7 +116,7 @@ class Emit {
 		return type(t) + " " + name;
 
 	function func(f:SFunction) {
-		line(type(f.ret) + " " + f.name + "(" + [for (p in f.params) param(p)].join(", ") + ") {");
+		line(type(f.ret) + " " + f.name + "(" + [for (p in f.params) if (!global(p.type)) param(p)].join(", ") + ") {");
 		body(f.body);
 		line("}");
 	}
@@ -108,6 +171,7 @@ class Emit {
 			case SContinue: line("continue;");
 			case SReturn(null): line("return;");
 			case SReturn(e): line("return " + expr(e) + ";");
+			case SStore(b, i, v): line(store(b, i, v));
 		}
 
 	function expr(e:SExpr):String
@@ -119,6 +183,7 @@ class Emit {
 			case EField(x, n): operand(x) + "." + n;
 			case ESwizzle(x, c): operand(x) + "." + c;
 			case EColumn(x, i): operand(x) + "[" + i + "]";
+			case EIndex(x, i) if (x.t.match(TStorage(_, _))): load(x, i);
 			case EIndex(x, i): operand(x) + "[" + expr(i) + "]";
 			case EUnop(op, x): (op == Neg ? "-" : op == Not ? "!" : "~") + operand(x);
 			case EBinop(op, a, b): binary(op, a, b);

@@ -7,8 +7,8 @@ import helder.gfx.shader.Ir;
 // the order they are met, locals theirs per function, each one every
 // language takes (letters, digits and single underscores, no keyword or
 // builtin of GLSL, WGSL, MSL or HLSL, none of the entry points' own: main,
-// main0, i, r, o, s, StageIn, StageOut, in_*, v_*, out_*, u_*, make_*,
-// tex_*, smp_*), with _2, _3, ... when taken. The order is what keeps the
+// main0, i, r, o, s, gid, lid, lidx, grp, StageIn, StageOut, in_*, v_*,
+// out_*, u_*, make_*, tex_*, smp_*, sb_*, img_*), with _2, _3, ... when taken. The order is what keeps the
 // emitted text the same from either language.
 class Names {
 	final globals = new Map<String, Bool>();
@@ -54,6 +54,8 @@ class Names {
 			case [TVec(n), TVec(m)]: n == m;
 			case [TStruct(s), TStruct(r)]: s == r;
 			case [TArray(t, n), TArray(u, m)]: n == m && same(t, u);
+			case [TStorage(t, w), TStorage(u, v)]: w == v && same(t, u);
+			case [TImage(_), TImage(_)]: true;
 			case _: a == b;
 		}
 
@@ -81,9 +83,11 @@ class Names {
 			case TTexture: "Texture2D";
 			case TStruct(s): s.path;
 			case TArray(t, n): 'Array<${typeName(t)}> of $n';
+			case TStorage(t, w): (w ? "RWStorage<" : "Storage<") + typeName(t) + ">";
+			case TImage(_): "StorageTexture";
 		}
 
-	static final ENTRY = ~/^(main|main0|i|r|o|s|StageIn|StageOut|(in|v|out|u|make|tex|smp)_.*)$/;
+	static final ENTRY = ~/^(main|main0|i|r|o|s|gid|lid|lidx|grp|StageIn|StageOut|(in|v|out|u|make|tex|smp|sb|img)_.*)$/;
 	static var RESERVED:Map<String, Bool>;
 
 	// the keywords and builtins of GLSL ES 3.00, WGSL, MSL (C++) and HLSL

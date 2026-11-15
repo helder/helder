@@ -95,6 +95,11 @@ export const EventKind = {
 } as const;
 export type EventKind = number;
 
+// helder.gfx's Feature by name (Device.has: the compute tier, which WebGPU,
+// Metal, D3D11 and GL ES 3.1 have, WebGL2 not)
+export const Feature = { Compute: 0, StorageTextures: 1, Indirect: 2 } as const;
+export type Feature = number;
+
 export class Node {
 	constructor(readonly id: number) {}
 	get world(): World {

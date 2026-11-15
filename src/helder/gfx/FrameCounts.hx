@@ -34,8 +34,11 @@ class FrameCounts {
 	public static var sceneDraws = 0;
 	public static var shadowDraws = 0;
 	public static var postDraws = 0;
+	// compute dispatches (Encoder.dispatch, dispatchIndirect)
+	public static var dispatches = 0;
 
 	public static function reset() {
+		dispatches = 0;
 		passes = draws = quads = instances = pipelines = textures = buffers = uploaded = glyphTexels = 0;
 		sceneDraws = shadowDraws = postDraws = 0;
 		uiMs = uploadMs = encodeMs = uiBytes = 0;

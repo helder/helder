@@ -10,12 +10,14 @@ class TextureInfo {
 	public final levels:Int;
 	public final target:Bool; // a render target
 	public final samples:Int; // 1, or 4: multisampled
+	public final storage:Bool; // a compute stage writes it (TextureDesc.storage)
 	// the last region checked (checkWrite)
 	public var w = 0;
 	public var h = 0;
 
-	function new(width:Int, height:Int, format:TextureFormat, levels:Int, target:Bool, samples:Int) {
+	function new(width:Int, height:Int, format:TextureFormat, levels:Int, target:Bool, samples:Int, storage:Bool) {
 		this.samples = samples;
+		this.storage = storage;
 		this.width = width;
 		this.height = height;
 		this.format = format;
@@ -39,7 +41,10 @@ class TextureInfo {
 		var samples = d.samples == null ? 1 : d.samples;
 		if (samples != 1 && (samples != 4 || !target || levels != 1 || format == R8 || format == RG8 || format == R32F))
 			throw "helder.gfx: createTexture: samples is 1, or 4 for a render target or depth texture of one level (RGBA8, RGBA8Srgb, RGBA16F, depths)";
-		return new TextureInfo(w, h, format, levels, target, samples);
+		var storage = d.storage == true;
+		if (storage && (levels != 1 || samples != 1 || format != RGBA8 && format != RGBA16F && format != R32F || data != null))
+			throw "helder.gfx: createTexture: a storage texture is of one level and one sample, RGBA8, RGBA16F or R32F, without data";
+		return new TextureInfo(w, h, format, levels, target, samples, storage);
 	}
 
 	public inline function levelWidth(level:Int):Int

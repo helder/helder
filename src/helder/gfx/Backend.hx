@@ -1,7 +1,8 @@
 package helder.gfx;
 
 enum abstract Backend(Int) {
-	// OpenGL ES 3.0 through EGL (Linux)
+	// OpenGL ES 3.1 through EGL (Linux, Android; 3.0 where the driver has no
+	// more: no compute then, Device.has)
 	var GL;
 	// Metal (macOS)
 	var Metal;
@@ -10,6 +11,6 @@ enum abstract Backend(Int) {
 	// WebGPU (the browser, WebAssembly)
 	var WebGPU;
 	// WebGL2 (the browser without WebGPU): the GL back end on OpenGL ES 3.0's
-	// web counterpart
+	// web counterpart (no compute: the fallback tier)
 	var WebGL2;
 }
