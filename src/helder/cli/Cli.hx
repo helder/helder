@@ -53,6 +53,8 @@ class Cli {
 				Async.main(_ -> Sys.exit(Publish.run(o)));
 			case "setup":
 				Async.main(_ -> Sys.exit(Setup.run(o)));
+			case "credentials":
+				Sys.exit(Credentials.run(o));
 			case "share":
 				Async.main(_ -> Sys.exit(Run.share(o)));
 			case "login":

@@ -81,7 +81,7 @@ class Publish {
 			if (listing) {
 				var both = !play && !testflight;
 				if (play || both) changes = changes.concat(playListing(e, dir, list, App.android(e.name, e.config).id, o.value("locale") ?? "en-US", dry, serviceAccount(e)));
-				if (testflight || both) changes = changes.concat(ascListing(e, dir, list, App.ios(e.name, e.config), o.value("locale") ?? "en-US", dry, ascKey()));
+				if (testflight || both) changes = changes.concat(ascListing(e, dir, list, App.ios(e.name, e.config), o.value("locale") ?? "en-US", dry, ascKey(e)));
 			}
 			review(dir, list, listing ? changes : null, dry);
 			0;
@@ -101,7 +101,7 @@ class Publish {
 			} else {
 				e.target = "ios-arm64";
 				Term.out(Style.header("publish", ["TestFlight", e.main]));
-				var key = ascKey();
+				var key = ascKey(e);
 				var out = o.out ?? Ios.out(e);
 				if (Ios.signing(App.ios(e.name, e.config), e.root) == null)
 					throw "TestFlight takes an .ipa signed for distribution: HELDER_IOS_IDENTITY (or HELDER_IOS_CERTIFICATE and HELDER_IOS_KEY)";
@@ -192,8 +192,10 @@ class Publish {
 	// short-lived one through Workload Identity Federation), else a service
 	// account's JSON key (HELDER_PLAY_SERVICE_ACCOUNT: its path or text; the
 	// manifest's "android": {"serviceAccount"}; GOOGLE_APPLICATION_CREDENTIALS
-	// when it is one), signed for a token
-	public static function serviceAccount(e:Entry):Dynamic {
+	// when it is one; the credentials store's, the app's or default's:
+	// Credentials), signed for a token
+	public static function serviceAccount(e:Entry, ?store:Credentials.Lookup):Dynamic {
+		var stored = null;
 		for (n in ["HELDER_PLAY_ACCESS_TOKEN", "GOOGLE_OAUTH_ACCESS_TOKEN"]) {
 			var t = Sys.getEnv(n);
 			if (t != null && t.trim() != "") return {token: t.trim()};
@@ -207,6 +209,9 @@ class Publish {
 			} else if (adc != null && adc.trim() != "") {
 				v = adc;
 				name = "GOOGLE_APPLICATION_CREDENTIALS";
+			} else if ((stored = (store ?? Credentials.of(e.root))("android", App.android(e.name, e.config).id, "service-account")) != null) {
+				v = stored.data.toString();
+				name = stored.label;
 			} else
 				throw 'Google Play takes an access token (GOOGLE_OAUTH_ACCESS_TOKEN: Workload Identity Federation\'s, or HELDER_PLAY_ACCESS_TOKEN) or a service account\'s JSON key (HELDER_PLAY_SERVICE_ACCOUNT, its path or text; "helder": {"android": {"serviceAccount"}})';
 		}
@@ -284,24 +289,34 @@ class Publish {
 
 	// the App Store Connect API key: HELDER_ASC_API_KEY (one secret: JSON
 	// {"key_id", "issuer_id", "private_key"}, its path or text), else
-	// HELDER_ASC_KEY_ID, HELDER_ASC_ISSUER_ID and HELDER_ASC_KEY (the .p8)
-	public static function ascKey():{id:String, issuer:String, key:PrivateKey} {
-		var k = ascKeyText();
+	// HELDER_ASC_KEY_ID, HELDER_ASC_ISSUER_ID and HELDER_ASC_KEY (the .p8),
+	// else (none of them given) the credentials store's asc-api-key, the
+	// app's or default's (Credentials: the same JSON)
+	public static function ascKey(?e:Entry):{id:String, issuer:String, key:PrivateKey} {
+		var k = ascKeyText(e);
 		var key = try PrivateKey.fromPem(k.pem) catch (err:String) throw 'HELDER_ASC_KEY: $err';
 		if (key.ec == null) throw "HELDER_ASC_KEY: not an App Store Connect key (a P-256 .p8)";
 		return {id: k.id, issuer: k.issuer, key: key};
 	}
 
 	// the API key's id, issuer id and the .p8's text (notarytool's --key is a file)
-	public static function ascKeyText():{id:String, issuer:String, pem:String} {
+	public static function ascKeyText(?e:Entry, ?store:Credentials.Lookup):{id:String, issuer:String, pem:String} {
 		var id = Sys.getEnv("HELDER_ASC_KEY_ID"), issuer = Sys.getEnv("HELDER_ASC_ISSUER_ID"), key = Sys.getEnv("HELDER_ASC_KEY");
-		var bundle = Sys.getEnv("HELDER_ASC_API_KEY");
+		var bundle = Sys.getEnv("HELDER_ASC_API_KEY"), name = "HELDER_ASC_API_KEY";
+		var none = (v:Null<String>) -> v == null || v.trim() == "";
+		if (none(bundle) && none(id) && none(issuer) && none(key) && e != null) {
+			var s = (store ?? Credentials.of(e.root))("ios", App.ios(e.name, e.config).id, "asc-api-key");
+			if (s != null) {
+				bundle = s.data.toString();
+				name = s.label;
+			}
+		}
 		if (bundle != null && bundle.trim() != "") {
-			var j:Dynamic = try haxe.Json.parse(textOrFile("HELDER_ASC_API_KEY", bundle)) catch (err:String) throw err catch (err:Dynamic) throw 'HELDER_ASC_API_KEY: not JSON ($err)';
+			var j:Dynamic = try haxe.Json.parse(textOrFile(name, bundle)) catch (err:String) throw err catch (err:Dynamic) throw '$name: not JSON ($err)';
 			id = j.key_id ?? j.keyId;
 			issuer = j.issuer_id ?? j.issuerId;
 			key = j.private_key ?? j.privateKey ?? j.key;
-			if (id == null || issuer == null || key == null) throw 'HELDER_ASC_API_KEY: JSON of "key_id", "issuer_id" and "private_key" (the .p8\'s text)';
+			if (id == null || issuer == null || key == null) throw '$name: JSON of "key_id", "issuer_id" and "private_key" (the .p8\'s text)';
 		}
 		var missing = [for (n => v in ["HELDER_ASC_KEY_ID" => id, "HELDER_ASC_ISSUER_ID" => issuer, "HELDER_ASC_KEY" => key]) if (v == null || v.trim() == "") n];
 		missing.sort(Reflect.compare);

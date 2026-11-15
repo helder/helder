@@ -66,6 +66,14 @@ class Setup {
 			Term.out(Style.status("secrets", Info, "in GitHub (values not shown; from the files):"));
 			for (s in r.secrets) Term.out('  gh secret set ${s.name} < ${quote(s.file.replace("\\", "/"))}');
 			if (o.has("github")) github(r.secrets);
+			// (a credentials store in the project: the same files into it instead)
+			if (FileSystem.exists('${Credentials.store(e.root)}/${Credentials.RECIPIENTS}')) {
+				Term.out(Style.status("or", Info, "in the project's credentials store (HELDER_CREDENTIALS_KEY the one secret then):"));
+				for (s in r.secrets) {
+					var k = Lambda.find(Credentials.KINDS, k -> k.env == s.name);
+					if (k != null) Term.out('  helder credentials add ${k.platform} ${k.name} ${quote(s.file.replace("\\", "/"))}' + (e.root == "." ? "" : ' ${quote(e.root)}'));
+				}
+			}
 			if (r.todo.length > 0) {
 				Term.out("");
 				Term.out(Style.status("next", Warn, "for these keys:"));
@@ -119,7 +127,7 @@ class Setup {
 	// ---- iOS
 
 	@:coroutine static function ios(e:Entry, dir:String):{secrets:Array<Secret>, todo:Array<String>, ?failed:Bool} {
-		var k = Publish.ascKey(), api = Publish.ascApi();
+		var k = Publish.ascKey(e), api = Publish.ascApi();
 		var i = App.ios(e.name, e.config);
 		var bundleId = i.id, label:String = i.label;
 		var todo = [];
@@ -184,7 +192,7 @@ class Setup {
 		var given = Sys.getEnv("HELDER_ASC_API_KEY");
 		var keyFile = given != null && !given.trim().startsWith("{") && FileSystem.exists(given.trim()) ? given.trim() : '$dir/asc-api-key.json';
 		if (!FileSystem.exists(keyFile)) {
-			var t = Publish.ascKeyText();
+			var t = Publish.ascKeyText(e);
 			save(keyFile, haxe.Json.stringify({key_id: t.id, issuer_id: t.issuer, private_key: t.pem}, null, "  ") + "\n");
 			Term.out(Style.status("API key", Ok, Style.path(keyFile)));
 		}

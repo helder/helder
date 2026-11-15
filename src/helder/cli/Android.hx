@@ -67,7 +67,7 @@ class Android {
 	// helder dev serves those)
 	public static function pack(e:Entry, lib:String, apk:String, dev = false) {
 		var c = classes(apk);
-		var release = dev ? null : releaseSigner(e.config, e.root);
+		var release = dev ? null : releaseSigner(e.config, e.root, null, App.android(e.name, e.config).id);
 		var key = release ?? Apk.debugSigner(debugKey(e));
 		var assets = dev ? [] : [for (a in AssetStep.assets(lib)) {name: helder.asset.AssetPath.bundled(a.key), data: File.getBytes(a.file)}];
 		var o = options(e, c.views, dev, release == null);
@@ -83,8 +83,9 @@ class Android {
 	// the release key: HELDER_ANDROID_UPLOAD_IDENTITY (one PEM of both), or HELDER_ANDROID_SIGNING_CERTIFICATE and
 	// HELDER_ANDROID_SIGNING_KEY (PEM: each a file's path or its text), else
 	// the manifest's "android": {"signing": {"certificate", "key"}} (paths
-	// from the project); null: none (the debug key). One without the other: an error
-	public static function releaseSigner(cfg:Dynamic, root:String, ?env:String->Null<String>):Null<Signer> {
+	// from the project), else the credentials store's upload-identity for
+	// the app's id (Credentials); null: none (the debug key). One without the other: an error
+	public static function releaseSigner(cfg:Dynamic, root:String, ?env:String->Null<String>, ?id:String, ?store:Credentials.Lookup):Null<Signer> {
 		env = env ?? Sys.getEnv;
 		var m:Dynamic = cfg?.android?.signing;
 		function given(name:String, key:String):Null<{name:String, value:String, file:Bool}> {
@@ -100,6 +101,13 @@ class Android {
 			var g = {name: "HELDER_ANDROID_UPLOAD_IDENTITY", value: both, file: both.indexOf("-----BEGIN") < 0};
 			cert = g;
 			key = g;
+		}
+		if (cert == null && key == null && id != null) {
+			var s = (store ?? Credentials.of(root))("android", id, "upload-identity");
+			if (s != null) {
+				cert = {name: s.label, value: s.data.toString(), file: false};
+				key = cert;
+			}
 		}
 		if (cert == null && key == null) return null;
 		if (cert == null || key == null)
@@ -150,7 +158,7 @@ class Android {
 	// formats, signed by the release key (required: Play's upload key)
 	@:coroutine public static function bundle(e:Entry, out:String):{ok:Bool, ms:Int, messages:String} {
 		if (!out.endsWith(".aab")) throw '$out: an App Bundle is an .aab';
-		var key = releaseSigner(e.config, e.root);
+		var key = releaseSigner(e.config, e.root, null, App.android(e.name, e.config).id);
 		if (key == null)
 			throw "an App Bundle is signed by the upload key: HELDER_ANDROID_SIGNING_CERTIFICATE and HELDER_ANDROID_SIGNING_KEY (or \"helder\": {\"android\": {\"signing\"}}) not given";
 		var libs = [], last = null, ms = 0;

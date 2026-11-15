@@ -47,7 +47,7 @@ class Checklist {
 		var cfg:Manifest.AppConfig = e.config, l:Dynamic = cfg?.listing ?? {};
 		var i = App.ios(e.name, e.config);
 		var name:String = l.title ?? cfg?.name ?? e.name;
-		var k = try Publish.ascKey() catch (_:Dynamic) null;
+		var k = try Publish.ascKey(e) catch (_:Dynamic) null;
 		var app:Dynamic = null, known = false;
 		if (k != null) {
 			var apps:Array<Dynamic> = try Publish.json("GET", '${Publish.ascApi()}/v1/apps?filter%5BbundleId%5D=' + StringTools.urlEncode(i.id), Publish.ascToken(k)).data catch (_:Dynamic) null;
