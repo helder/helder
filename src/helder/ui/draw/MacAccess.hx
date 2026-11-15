@@ -231,6 +231,8 @@ class MacAccess {
 		// (the value: accessibilityValue's, from the tree)
 		if (n.role != Label) Msg.vPtr(e, ObjC.sel("setAccessibilityLabel:"), str(n.name));
 		if (n.description != null) Msg.vPtr(e, ObjC.sel("setAccessibilityHelp:"), str(n.description));
+		// (what UI tests find it by: XCUITest's identifier)
+		Msg.vPtr(e, ObjC.sel("setAccessibilityIdentifier:"), str(n.identifier ?? "helder-" + n.id));
 		if (n.valueMin != null) Msg.vPtr(e, ObjC.sel("setAccessibilityMinValue:"), number(n.valueMin));
 		if (n.valueMax != null) Msg.vPtr(e, ObjC.sel("setAccessibilityMaxValue:"), number(n.valueMax));
 		if (n.valueText != null) Msg.vPtr(e, ObjC.sel("setAccessibilityValueDescription:"), str(n.valueText));

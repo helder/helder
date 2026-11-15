@@ -98,6 +98,8 @@ export default function (host) {
 		} else set('aria-label', n.name || null);
 		set('aria-description', n.description);
 		set('data-href', n.href);
+		// (what UI tests find it by: Playwright's getByTestId)
+		set('data-testid', n.identifier);
 		set('aria-checked', n.checked);
 		set('aria-selected', n.selected);
 		set('aria-multiselectable', n.multiselectable ? 'true' : null);

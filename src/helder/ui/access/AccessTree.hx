@@ -5,7 +5,8 @@ import helder.ui.*;
 // The accessibility tree of a Ui (AccessKit's model): the nodes assistive
 // technology sees, built from the Node tree after layout. A Node is in it
 // when it has a role (its semantics, or by kind: a TextNode is a Label of
-// its text, an ImageNode with a label an Image, a focusable node a Group);
+// its text, an ImageNode with a label an Image, a focusable node or one
+// with an identifier a Group);
 // the others only group (their children go to the nearest node in it).
 // The roles named by their content (a button) take their text from the
 // TextNodes inside, which are then not nodes of their own. Ids are the
@@ -198,7 +199,7 @@ class AccessTree {
 		var role:Null<Role> = !seen ? null : sem != null ? sem.role : null;
 		if (role == null && seen) {
 			if (Std.isOfType(n, ImageNode)) role = sem != null && sem.label != null ? Image : null else if (Std.isOfType(n, TextNode))
-				role = inName || (cast n : TextNode).allText() == "" ? null : Label else if (n.focusable || sem != null && sem.live != Off) role = Group;
+				role = inName || (cast n : TextNode).allText() == "" ? null : Label else if (n.focusable || sem != null && (sem.live != Off || sem.identifier != null)) role = Group;
 		}
 		var here = parent;
 		if (role != null) {
@@ -216,6 +217,7 @@ class AccessTree {
 			if (sem != null) {
 				a.description = sem.description;
 				a.href = sem.href;
+				a.identifier = sem.identifier;
 				a.checked = sem.checked;
 				a.mixed = sem.mixed;
 				a.selected = sem.selected;

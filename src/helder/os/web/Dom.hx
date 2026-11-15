@@ -37,6 +37,10 @@ import hxmc.unsafe.*;
 	@:hxmc.fast @:hxmc.len(data, n) static function download(name:CString, data:hxmc.ReadOnlySpan<UInt8>, n:Int, type:CString):Void;
 	// a vibration of ms (helder.os.Haptics: navigator.vibrate, nothing where there is none)
 	static function vibrate(ms:Int):Void;
+	// a page opened in a new tab (helder.os.Links)
+	static function open_url(url:CString):Void;
+	// a line in the console (helder.os.SystemLog)
+	static function console_log(line:CString):Void;
 	// a string handle's UTF-8 length; its bytes into p (the handle freed)
 	static function text_length(h:Int):Int;
 	static function text_take(h:Int, p:Ptr):Void;

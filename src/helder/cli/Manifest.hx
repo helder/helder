@@ -32,7 +32,8 @@ using StringTools;
 //               "signing": {"certificate": "<pem>", "key": "<pem>", "profile": "<.mobileprovision>"},
 //               "sdk": {"version": "26.0", "build": "23A339", "xcode": "2600", "xcodeBuild": "17A324", "machine": "25A354"},
 //               "nonExemptEncryption": false,
-//               "privacy": {"NSPrivacyAccessedAPICategoryUserDefaults": ["CA92.1"]}},
+//               "privacy": {"NSPrivacyAccessedAPICategoryUserDefaults": ["CA92.1"]},
+//               "infoPlist": {"NSAppTransportSecurity": {"NSAllowsLocalNetworking": true}}},   Info.plist's keys, over helder's
 //       "splash": {"background_color": "#060912", "image": "splash.png",
 //                  "dark": {"background_color": "#000000", "image": "splash-dark.png"}}
 //     }
@@ -53,7 +54,7 @@ class Manifest {
 	static final PURPOSE = ["any", "maskable", "monochrome"];
 	static final HELDER = ["version", "build", "id", "android", "ios", "splash"];
 	static final ANDROID = ["package", "minSdk", "targetSdk", "permissions", "key", "signing", "serviceAccount", "adaptiveIcon"];
-	static final IOS = ["bundleId", "minVersion", "entitlements", "signing", "sdk", "nonExemptEncryption", "privacy"];
+	static final IOS = ["bundleId", "minVersion", "entitlements", "signing", "sdk", "nonExemptEncryption", "privacy", "infoPlist"];
 	static final SIGNING = ["certificate", "key", "profile"];
 	public static final SDK = ["version", "build", "xcode", "xcodeBuild", "machine"];
 	static final SPLASH = ["background_color", "image", "dark"];
@@ -185,6 +186,9 @@ class Manifest {
 					throw '$where: "helder": {"ios": {"privacy": {"$k"}}}: an array of reasons (strings: "CA92.1")';
 			}
 		}
+		var plist:Dynamic = i.infoPlist;
+		if (plist != null && (!Reflect.isObject(plist) || Std.isOfType(plist, String) || Std.isOfType(plist, Array)))
+			throw '$where: "helder": {"ios": {"infoPlist"}}: an object of Info.plist keys';
 		var s:Dynamic = h.splash ?? {};
 		known(s, SPLASH, '"helder": {"splash"}');
 		var d:Dynamic = s.dark ?? {};
@@ -242,7 +246,8 @@ class Manifest {
 				signing: signing,
 				sdk: sdk,
 				nonExemptEncryption: encryption,
-				privacy: privacy
+				privacy: privacy,
+				infoPlist: plist
 			},
 		};
 	}

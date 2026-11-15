@@ -603,6 +603,12 @@ export default function (host) {
 				navigator.vibrate?.(ms);
 			} catch {}
 		},
+		open_url(p) {
+			globalThis.open?.(host.string(p), '_blank', 'noopener');
+		},
+		console_log(p) {
+			console.log(host.string(p));
+		},
 		download(name, p, n, type) {
 			if (typeof document == 'undefined') return;
 			const url = URL.createObjectURL(new Blob([new Uint8Array(host.memory().buffer, p, n).slice()], { type: host.string(type) }));

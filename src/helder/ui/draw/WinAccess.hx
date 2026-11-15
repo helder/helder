@@ -441,7 +441,7 @@ class WinAccess {
 			case 30009: bool(v, n.focusable); // IsKeyboardFocusable
 			case 30008: bool(v, a.tree.focus == n.id); // HasKeyboardFocus
 			case 30010: bool(v, !n.disabled); // IsEnabled
-			case 30011: str(v, "helder-" + n.id); // AutomationId
+			case 30011: str(v, n.identifier ?? "helder-" + n.id); // AutomationId (Semantics.identifier, else the node's)
 			case 30012: str(v, "helder"); // ClassName
 			case 30024: str(v, "helder"); // FrameworkId
 			case 30016 | 30017: bool(v, true); // IsControlElement, IsContentElement

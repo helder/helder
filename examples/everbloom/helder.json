@@ -1,0 +1,21 @@
+{
+  "$schema": "https://helder.build/schema/helder.json",
+  "name": "Everbloom",
+  "description": "The shop app of the frameworks benchmark (whiskerrs/benchmarks): collections, products, search and a cart on the Storefront API.",
+  "id": "dev.whiskerrs.shopbench.helder",
+  "entry": "Everbloom.hx",
+  "orientation": "portrait",
+  "colors": {"theme": "#FFFFFF", "background": "#FFFFFF"},
+  "targets": {
+    "android": {"permissions": ["INTERNET"]},
+    "ios": {
+      "infoPlist": {
+        "UIDeviceFamily": [1],
+        "UIUserInterfaceStyle": "Light",
+        "CADisableMinimumFrameDurationOnPhone": true,
+        "NSLocalNetworkUsageDescription": "Everbloom loads its catalog from the benchmark's server on this network.",
+        "NSAppTransportSecurity": {"NSAllowsArbitraryLoads": true, "NSAllowsLocalNetworking": true}
+      }
+    }
+  }
+}

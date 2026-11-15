@@ -11,7 +11,7 @@ import Plain.*;
 // checkbox, a slider, a field and a read-only one, a text area, a
 // disclosure (expanded or not), a list of three items, a table (a header
 // row and two rows of cells, the rows selectable), tabs, a live region and
-// a scroll view whose last item starts out of sight. The state the actions
+// a scroll view whose last item starts out of sight (its identifier: id). The state the actions
 // change is in its fields.
 class AccessFixture implements Markup {
 	public var saved = 0;
@@ -51,7 +51,7 @@ class AccessFixture implements Markup {
 				<Repeat count={2}>{i -> <view:button role="tab" focusable selected={() -> tab() == i} onPress={() -> tab(i)}>{["General", "Advanced"][i]}</view:button>}</Repeat>
 			</view>
 			<view tag="status" live="polite"><text>{status}</text></view>
-			<view tag="scroller" overflow="scroll" height={20} width={80}>
+			<view tag="scroller" id="scroller" overflow="scroll" height={20} width={80}>
 				<text>First</text><text>Second</text><text tag="last">Last</text>
 			</view>
 		</view>;

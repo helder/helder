@@ -31,7 +31,7 @@ using StringTools;
 //     "targets": {
 //       "android": {"package", "minSdk", "targetSdk", "permissions", "key", "signing", "serviceAccount", "adaptiveIcon",
 //                   "publish": ["play"] or [{"to": "play", "track": "internal"}], "store": "<url>"},
-//       "ios": {"bundleId", "minVersion", "entitlements", "signing", "sdk", "nonExemptEncryption", "privacy",
+//       "ios": {"bundleId", "minVersion", "entitlements", "signing", "sdk", "nonExemptEncryption", "privacy", "infoPlist",
 //               "publish": ["testflight"], "store": "<url>"},
 //       "macos": {"publish": ["notarize"], "store": "<url>"}, "windows": {"store": "<url>"}, "linux": {"store": "<url>"}
 //     }

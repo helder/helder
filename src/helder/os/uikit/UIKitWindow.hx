@@ -446,6 +446,10 @@ class UIKitWindow {
 
 	// helder.os.Haptics: a selection's tick (UISelectionFeedbackGenerator),
 	// a medium impact (UIImpactFeedbackGenerator, style 1), each made and let go
+	// the root view controller of the window shown (nil: none yet; helder.os.Links presents over it)
+	static function controllerNow():Ptr
+		return current == null ? Ptr.nil() : current.controller;
+
 	static function haptic(strong:Bool) {
 		var g = strong ? Msg.idInt(Msg.id(ObjC.cls("UIImpactFeedbackGenerator"), ObjC.sel("alloc")), ObjC.sel("initWithStyle:"), 1) : Msg.id(Msg.id(ObjC.cls("UISelectionFeedbackGenerator"),
 			ObjC.sel("alloc")), ObjC.sel("init"));

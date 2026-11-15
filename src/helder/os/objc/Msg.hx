@@ -46,6 +46,8 @@ class Msg {
 	static function vPoint(self:Ptr, sel:Ptr, a:CGPoint):Void;
 	static function vPtrBool(self:Ptr, sel:Ptr, a:Ptr, b:Bool):Void;
 	static function vPtrPtr(self:Ptr, sel:Ptr, a:Ptr, b:Ptr):Void;
+	static function vPtrPtrPtr(self:Ptr, sel:Ptr, a:Ptr, b:Ptr, c:Ptr):Void;
+	static function vPtrBoolPtr(self:Ptr, sel:Ptr, a:Ptr, b:Bool, c:Ptr):Void;
 	// (an NSRange by value: two NSUIntegers)
 	static function vPtrIntInt(self:Ptr, sel:Ptr, a:Ptr, b:Int64, c:Int64):Void;
 	// (an NSRange by value: its location and length)

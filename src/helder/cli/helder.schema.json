@@ -194,6 +194,7 @@
             "sdk": {"type": "object"},
             "nonExemptEncryption": {"type": "boolean"},
             "privacy": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "string"}}},
+            "infoPlist": {"type": "object", "description": "Info.plist's keys, over helder's (NSAppTransportSecurity, NSLocalNetworkUsageDescription...)"},
             "publish": {"type": "array", "items": {"enum": ["testflight"]}},
             "store": {"$ref": "#/$defs/store"}
           }

@@ -76,6 +76,7 @@ class Ios {
 		var keys = art.keys;
 		if (device) for (k => v in dtKeys(o)) keys.set(k, v);
 		if (o.nonExemptEncryption != null) keys.set("ITSAppUsesNonExemptEncryption", PBool(o.nonExemptEncryption));
+		if (o.infoPlist != null) for (k in Reflect.fields(o.infoPlist)) keys.set(k, plistOf(Reflect.field(o.infoPlist, k), 'infoPlist.$k'));
 		var info = Bundle.infoPlist(name, o.id, o.label, o.version, o.versionName, o.minVersion, !device, o.orientation, o.fullscreen, keys);
 		TestCommand.mkdirs(Path.directory(app) == "" ? "." : Path.directory(app));
 		var full = FileSystem.fullPath(Path.directory(app) == "" ? "." : Path.directory(app)) + "/" + Path.withoutDirectory(app);
@@ -166,6 +167,18 @@ class Ios {
 	// --- distribution
 
 	public static inline var PRIVACY = "PrivacyInfo.xcprivacy";
+
+	// a JSON value of helder.json's "infoPlist" as a property list's (a
+	// whole number an integer, another a real is not one Info.plist takes: refused)
+	public static function plistOf(v:Dynamic, where:String):PValue {
+		if (Std.isOfType(v, Bool)) return PBool(v);
+		if (Std.isOfType(v, String)) return PString(v);
+		if (Std.isOfType(v, Int)) return PInt(v);
+		if (Std.isOfType(v, Float) && Math.ffloor(v) == v && Math.abs(v) < 2147483648.0) return PInt(Std.int(v));
+		if (Std.isOfType(v, Array)) return PArray([for (i => x in (v : Array<Dynamic>)) plistOf(x, '$where[$i]')]);
+		if (v != null && Reflect.isObject(v)) return PDict([for (k in Reflect.fields(v)) k => plistOf(Reflect.field(v, k), '$where.$k')]);
+		throw 'helder.json: targets.ios.$where: a string, boolean, integer, array or object';
+	}
 
 	// Xcode's values the App Store's validation reads (Info.plist's DT*
 	// keys, LC_BUILD_VERSION's SDK): Xcode 26.0's, iOS 26.0's SDK, on macOS

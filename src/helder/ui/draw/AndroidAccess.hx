@@ -305,6 +305,8 @@ class AndroidAccess {
 		} else if (n.name != "" && (n.role == Label || n.role == Heading || n.role.namedByContent())) Jni.call(info, m(INFO, "setText", cs), Jni.string(n.name).toI64())
 		else if (n.name != "") Jni.call(info, m(INFO, "setContentDescription", cs), Jni.string(n.name).toI64());
 		if (n.description != null) set(info, "setTooltipText", cs, Jni.string(n.description).toI64());
+		// (what UI tests find it by: UiAutomator's resource-id, Espresso's and Compose's test tags; API 18)
+		if (n.identifier != null) set(info, "setViewIdResourceName", "(Ljava/lang/String;)V", Jni.string(n.identifier).toI64());
 		// bounds: the screen's pixels, and the parent's (the host's)
 		var o = origin(), k = a.scale;
 		var l = Math.round(n.x * k), tp = Math.round(n.y * k), r = Math.round((n.x + n.width) * k), b = Math.round((n.y + n.height) * k);

@@ -692,6 +692,9 @@ class MarkupTest implements Markup {
 		ui.update();
 		check("fixture: its state after", ui.accessTree().nodes.get(row1.id).selected == true);
 		var scroller = ui.root.find("scroller"), last = byName(Label, "Last");
+		var held = [for (id in t.order) if (t.nodes.get(id).identifier == "scroller") t.nodes.get(id)];
+		check("fixture: an identifier (id) puts a group in the tree, its items in it", held.length == 1 && held[0].role == Group && held[0].children.indexOf(last.id) >= 0
+			&& haxe.Json.stringify(held[0].toJson()).indexOf('"identifier":"scroller"') >= 0);
 		check("fixture: ScrollIntoView", ui.accessAction(last.id, ScrollIntoView) && scroller.scrollY > 0, '${scroller.scrollY}');
 		var vol = byName(Slider, "Volume");
 		check("fixture: SetValue on a range: stepped there", ui.accessAction(vol.id, SetValue, "0.8") && Math.abs(f.volume.peek() - 0.8) < 1e-9, '${f.volume.peek()}');

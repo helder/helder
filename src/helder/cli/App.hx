@@ -67,6 +67,7 @@ class App {
 			sdk: i?.sdk,
 			nonExemptEncryption: i?.nonExemptEncryption,
 			privacy: i?.privacy,
+			infoPlist: i?.infoPlist,
 			orientation: orientation(config),
 			fullscreen: fullscreen(config),
 		};
@@ -130,6 +131,8 @@ typedef IosOptions = {
 	sdk:Null<Dynamic<String>>,
 	nonExemptEncryption:Null<Bool>,
 	privacy:Null<Dynamic<Array<String>>>,
+	// Info.plist's keys over helder's (JSON's values: strings, booleans, integers, arrays, objects); null: none
+	infoPlist:Null<Dynamic>,
 	// "portrait", "landscape" or "any"; the status bar hidden
 	orientation:String,
 	fullscreen:Bool,

@@ -105,7 +105,7 @@ class WinPatternsTest {
 				case 0:
 					var a:WinAccess = cast @:privateAccess w.winAccess;
 					nodes = all(qi(a.rootProvider(), FRAGMENT), []);
-					check("the fixture's nodes", nodes.length == 31, '${nodes.length}');
+					check("the fixture's nodes (the scroll view a group: its id)", nodes.length == 32, '${nodes.length}');
 					// a table
 					var grid = find("Mail"), g = pattern(grid, 10006);
 					check("Grid", !g.isNull() && Grid.get_RowCount(g, i32) == 0 && i32.value == 3 && Grid.get_ColumnCount(g, i32) == 0 && i32.value == 2);

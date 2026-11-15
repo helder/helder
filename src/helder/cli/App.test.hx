@@ -68,6 +68,7 @@ function tests() {
 			sdk: null,
 			nonExemptEncryption: null,
 			privacy: null,
+			infoPlist: null,
 			orientation: "any",
 			fullscreen: false
 		});
@@ -135,7 +136,8 @@ function tests() {
 					signing: {certificate: "dist.pem", key: "dist.key", profile: "app.mobileprovision"},
 					sdk: {version: "26.1", xcode: "2610"},
 					nonExemptEncryption: false,
-					privacy: {NSPrivacyAccessedAPICategoryUserDefaults: ["CA92.1"]}
+					privacy: {NSPrivacyAccessedAPICategoryUserDefaults: ["CA92.1"]},
+					infoPlist: {CADisableMinimumFrameDurationOnPhone: true, UIDeviceFamily: [1], NSAppTransportSecurity: {NSAllowsArbitraryLoads: true}}
 				}
 			}
 		})));
@@ -143,6 +145,11 @@ function tests() {
 		equals([signed.sdk.version, signed.sdk.xcode], ["26.1", "2610"]);
 		equals(signed.nonExemptEncryption, false);
 		equals(Reflect.field(signed.privacy, "NSPrivacyAccessedAPICategoryUserDefaults"), ["CA92.1"]);
+		// (Info.plist's keys given: property list values, over helder's)
+		var plist = [for (k in Reflect.fields(signed.infoPlist)) k => Ios.plistOf(Reflect.field(signed.infoPlist, k), k)];
+		equals(Std.string(plist.get("UIDeviceFamily")), Std.string(helder.pack.ios.Plist.PValue.PArray([PInt(1)])));
+		equals(Std.string(plist.get("NSAppTransportSecurity")), Std.string(helder.pack.ios.Plist.PValue.PDict(["NSAllowsArbitraryLoads" => PBool(true)])));
+		equals(Std.string(plist.get("CADisableMinimumFrameDurationOnPhone")), "PBool(true)");
 		equals(App.defines(m), ["-D", "helder.fullscreen"]);
 		equals([m.theme, m.background, m.splash.background, m.splash.darkBackground], [0xFF3ED6C3, 0xFF060912, 0xFF060912, 0xFF000000]);
 		equals(m.icons[1].sizes, [512, 1024]);

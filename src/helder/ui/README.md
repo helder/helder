@@ -882,7 +882,15 @@ model: roles, names, states, actions) from the nodes: each node's
 `semantics` (in markup: `role`, `label`, `description`, `checked`,
 `selected`, `expanded`, `disabled`, `value-now`, `value-min`,
 `value-max`, `value-text`, `multiselectable`, `live`, `current`), text as labels,
-focusable nodes as groups; the text fields declare theirs. A `navigation`
+focusable nodes as groups; the text fields declare theirs. An `id`
+(`Semantics.identifier`) is what UI tests find a node by, and puts it in
+the tree (a group when it has no role): iOS's and macOS's
+accessibilityIdentifier (XCUITest's `app.descendants(matching: .any)["cart"]`;
+on iOS an identified group is a container of the elements below it, with
+its frame), Android's view id resource name (UiAutomator's `By.res`),
+UI Automation's AutomationId, AT-SPI's accessible id, the browser
+mirror's `data-testid` (Playwright's `getByTestId`). A node without one
+is `helder-<n>`, stable while it lives. A `navigation`
 role is a landmark (ARIA's navigation, AT-SPI's landmark, UI Automation's
 navigation landmark type, macOS's AXLandmarkNavigation); `current` marks
 the current one of a set (aria-current="page"; AT-SPI's current

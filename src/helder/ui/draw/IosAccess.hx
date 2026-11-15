@@ -14,7 +14,10 @@ import hxmc.unsafe.*;
 // accessibilityActivate, accessibilityIncrement and accessibilityDecrement
 // come back as Ui.accessAction), one per node VoiceOver stops at, in the
 // tree's order: a control, or a node with no children in the tree (a
-// label, an image, a cell); groups and rows only hold them. Each its
+// label, an image, a cell); groups and rows only hold them, but for one
+// with an identifier (Semantics.identifier), an element that is a
+// container of those below it (XCUITest's element of that frame and
+// identifier, as a scroll view: not one VoiceOver stops at). Each its
 // label, value (a text's, a toggle's state, a range's text or percent,
 // a tab's selection), hint (the description), traits (button, link,
 // image, header, static text, adjustable, selected, not enabled; a text
@@ -38,6 +41,7 @@ class IosAccess {
 	final view:Ptr;
 	final elements = new Map<Int, Ptr>();
 	final ids = new Map<String, Int>();
+	final containers = new Map<Int, Ptr>();
 	var tree:Null<AccessTree>;
 	var active = false;
 	// the container's elements (retained)
@@ -104,13 +108,14 @@ class IosAccess {
 				ids.remove(key(e));
 				Runtime.objc_release(e);
 				elements.remove(id);
+				containers.remove(id);
 			}
 		}
 		tree = t;
 		for (n in c.nodes)
-			if (n.id != t.root && stops(n)) set(element(n.id), n);
-		// the elements in order
-		var order = [for (id in t.order) if (id != t.root && stops(t.nodes.get(id))) element(id)];
+			if (n.id != t.root && (stops(n) || holds(n))) set(element(n.id), n);
+		// the elements in order, those of a container in it
+		var order = collect(t, t.root, view, []);
 		if (!list.isNull()) Runtime.objc_release(list);
 		list = Msg.id(array(order), ObjC.sel("retain"));
 		if (old != null) {
@@ -128,6 +133,40 @@ class IosAccess {
 		return p.isNull() ? 0 : p.value;
 	}
 
+	// the elements below a node, in tree order: those VoiceOver stops at (and
+	// those below them), a container's (holds) in it, each told its container
+	function collect(t:AccessTree, id:Int, parent:Ptr, out:Array<Ptr>):Array<Ptr> {
+		for (k in t.nodes.get(id).children) {
+			var n = t.nodes.get(k);
+			if (holds(n)) {
+				var e = element(k);
+				contain(k, e, parent);
+				Msg.vPtr(e, ObjC.sel("setAccessibilityElements:"), array(collect(t, k, e, [])));
+				out.push(e);
+				continue;
+			}
+			if (stops(n)) {
+				var e = element(k);
+				contain(k, e, parent);
+				out.push(e);
+			}
+			collect(t, k, parent, out);
+		}
+		return out;
+	}
+
+	// (an element's container: the view or a container element, told when it changes)
+	function contain(id:Int, e:Ptr, parent:Ptr) {
+		if (containers.get(id) == parent) return;
+		containers.set(id, parent);
+		Msg.vPtr(e, ObjC.sel("setAccessibilityContainer:"), parent);
+	}
+
+	// whether a node is a container of elements, not one: a group UI tests
+	// find (its identifier: XCUITest's element of that frame, its elements below it)
+	static function holds(n:AccessNode):Bool
+		return n.identifier != null && !stops(n);
+
 	// whether VoiceOver stops at a node: a control, or one with nothing below it
 	static function stops(n:AccessNode):Bool
 		return n.children.length == 0 || n.pressable() || n.editable() || n.valueNow != null || n.checked != null || n.role == Image || n.role == Heading
@@ -138,6 +177,7 @@ class IosAccess {
 			Runtime.objc_release(e);
 		elements.clear();
 		ids.clear();
+		containers.clear();
 		if (!list.isNull()) Runtime.objc_release(list);
 		list = Ptr.nil();
 		all.remove(this);
@@ -205,13 +245,16 @@ class IosAccess {
 
 	// an element's properties from its node
 	function set(e:Ptr, n:AccessNode) {
+		// (a container's elements are below it: not one itself)
+		Msg.vBool(e, ObjC.sel("setIsAccessibilityElement:"), !holds(n));
 		Msg.vPtr(e, ObjC.sel("setAccessibilityLabel:"), str(n.name));
 		var v = valueOf(n);
 		Msg.vPtr(e, ObjC.sel("setAccessibilityValue:"), v == null ? Ptr.nil() : str(v));
 		var hint = n.description ?? (n.editable() ? (n.readOnly ? "read only" : "text field") : null);
 		Msg.vPtr(e, ObjC.sel("setAccessibilityHint:"), hint == null ? Ptr.nil() : str(hint));
 		Msg.vInt(e, ObjC.sel("setAccessibilityTraits:"), traitsOf(n));
-		Msg.vPtr(e, ObjC.sel("setAccessibilityIdentifier:"), str("helder-" + n.id));
+		// (what UI tests find it by: Semantics.identifier, else the node's)
+		Msg.vPtr(e, ObjC.sel("setAccessibilityIdentifier:"), str(n.identifier ?? "helder-" + n.id));
 		// the frame: UI pixels to the view's points
 		var b = Msg.rect(view, ObjC.sel("bounds"));
 		var k = ui.width > 0 ? b.size.width / ui.width : 1.0;

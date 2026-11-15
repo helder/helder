@@ -894,7 +894,7 @@ class LinuxAccess {
 				new Variant("(so)", w == null ? ["org.a11y.atspi.Registry", ROOT] : id == w.tree.root ? ref(0) : ref(w.parents.get(id) ?? w.tree.root));
 			case ["org.a11y.atspi.Accessible", "ChildCount"]: new Variant("i", w == null ? frames().length : n.children.length);
 			case ["org.a11y.atspi.Accessible", "Locale"]: new Variant("s", "C");
-			case ["org.a11y.atspi.Accessible", "AccessibleId"]: new Variant("s", w == null ? "" : "helder-" + id);
+			case ["org.a11y.atspi.Accessible", "AccessibleId"]: new Variant("s", w == null ? "" : n?.identifier ?? "helder-" + id);
 			case ["org.a11y.atspi.Application", "ToolkitName"]: new Variant("s", "helder");
 			case ["org.a11y.atspi.Application", "Version"]: new Variant("s", "1");
 			case ["org.a11y.atspi.Application", "AtspiVersion"]: new Variant("s", "2.1");

@@ -3,7 +3,7 @@ package helder.ui.access;
 // What a node declares about itself for assistive technology (Node.semantics;
 // in markup, the attributes role, label, description, href, checked, selected,
 // expanded, level, disabled, value-now, value-min, value-max, value-text,
-// multiselectable, live, current, hidden, pos-in-set, set-size). Unset
+// multiselectable, live, current, hidden, pos-in-set, set-size, id). Unset
 // fields say nothing: a TextNode is a Label of its text, an ImageNode an
 // Image, a focusable node a Group.
 @:structInit class Semantics {
@@ -42,6 +42,12 @@ package helder.ui.access;
 	// among its siblings (AccessTree)
 	public var posInSet(default, set):Int = 0;
 	public var setSize(default, set):Int = 0;
+	// what UI tests find it by (markup: id): iOS's accessibilityIdentifier,
+	// Android's view id resource name, macOS's accessibilityIdentifier,
+	// UI Automation's AutomationId, AT-SPI's AccessibleId, the browser
+	// mirror's element's data-testid. A node with one is in the tree (a Group when
+	// it has no role of its own)
+	public var identifier(default, set):Null<String> = null;
 
 	// (a change: the accessibility trees built again)
 	function set_role(v:Null<Role>):Null<Role> {
@@ -147,5 +153,10 @@ package helder.ui.access;
 	function set_hidden(v:Bool):Bool {
 		if (v != hidden) helder.ui.Ui.accessEpoch++;
 		return hidden = v;
+	}
+
+	function set_identifier(v:Null<String>):Null<String> {
+		if (v != identifier) helder.ui.Ui.accessEpoch++;
+		return identifier = v;
 	}
 }

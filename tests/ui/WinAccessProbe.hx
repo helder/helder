@@ -380,10 +380,18 @@ class WinAccessProbe {
 		el(50000, "More");
 		el(50002, "Remember");
 		el(50015, "Volume");
+		identified();
+	}
+
+	// the scroll view's identifier (its id): its AutomationId (30011), a group's
+	static function identified() {
+		var ids = [for (x in elements) if (prop(x.e, 30011) == "scroller") x.e];
+		check("an identifier: the AutomationId", ids.length == 1 && type(ids[0]) == 50026, '${ids.length}');
 	}
 
 	static function fixture() {
 		if (Sys.getEnv("HELDER_UNDER_WINE") != null) return wineFixture();
+		identified();
 		// the handlers, on the window's subtree (TreeScope_Subtree: 7)
 		var top = elements[0].e;
 		// (Wine's UI Automation hangs adding a focus handler: the events checked on Windows)

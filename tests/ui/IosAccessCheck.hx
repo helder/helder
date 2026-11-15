@@ -56,7 +56,20 @@ class IosAccessCheck {
 					var a = Msg.id(view, sel("accessibilityElements"));
 					els = a.isNull() ? [] : [for (i in 0...Msg.i(a, ObjC.sel("count")).toInt()) Msg.idInt(a, ObjC.sel("objectAtIndex:"), i)];
 					Sys.println('access: ${els.length} elements: ' + [for (e in els) str(e, "accessibilityLabel")].join(", "));
-					check("its elements", els.length >= 20, '${els.length}');
+					// (an identified group: a container of its elements, XCUITest's element by that identifier)
+					var held = [for (e in els) if (str(e, "accessibilityIdentifier") == "scroller") e];
+					check("an identified group: a container", held.length == 1 && !Msg.b(held[0], sel("isAccessibilityElement")));
+					var inner = [];
+					if (held.length == 1) {
+						var ia = Msg.id(held[0], sel("accessibilityElements"));
+						inner = ia.isNull() ? [] : [for (i in 0...Msg.i(ia, ObjC.sel("count")).toInt()) Msg.idInt(ia, ObjC.sel("objectAtIndex:"), i)];
+						check("its elements, in it", [for (e in inner) str(e, "accessibilityLabel")].join(",") == "First,Second,Last",
+							[for (e in inner) str(e, "accessibilityLabel")].join(","));
+						check("their container", inner.length > 0 && Msg.id(inner[0], sel("accessibilityContainer")) == held[0]);
+						var fr = Msg.rect(held[0], sel("accessibilityFrame"));
+						check("the container's frame", fr.size.width > 20 && fr.size.height > 5, '${fr.size.width}x${fr.size.height}');
+					}
+					check("its elements", els.length + inner.length >= 21, '${els.length}+${inner.length}');
 					var save = find("Save"), vol = find("Volume"), name = find("Name");
 					if (!save.isNull()) {
 						var t = Msg.i(save, sel("accessibilityTraits")).toInt();

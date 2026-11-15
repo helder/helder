@@ -344,9 +344,10 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 	@:attribute static function tag(n:Node, name:String, v:Dynamic)
 		if (v != null) n.tag = v;
 
-	// (a page's element's id, where a page's renderer realises a neutral element: none here, Node.find takes tag;
-	// a label's for, html-for, none either)
-	@:attribute static function id(n:Node, name:String, v:Dynamic) {}
+	// (what UI tests find it by: Semantics.identifier, as a page's element's id;
+	// Node.find takes tag. A label's for, html-for: none here)
+	@:attribute static function id(n:Node, name:String, v:Dynamic)
+		semantics(n).identifier = v == null || v == false ? null : Std.string(v);
 
 	@:attribute static function htmlFor(n:Node, name:String, v:Dynamic) {}
 

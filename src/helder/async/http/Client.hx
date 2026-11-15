@@ -7,14 +7,23 @@ import helder.async.*;
 
 // An HTTP/1.1 client on helder.async's TCP, for talking to a local server
 // (plain http, one connection a request): the body read by Content-Length,
-// chunked or until the server closes. No TLS, no redirects, no
-// compression asked for.
+// chunked or until the server closes. No redirects, no compression asked
+// for. An https URL goes to the system's stack instead: NSURLSession on
+// macOS and iOS (AppleHttp: its TLS, redirects, HTTP/2 and cache); none
+// elsewhere yet (an exception).
 //
 //   var res = Client.request("http://127.0.0.1:4983/", {method: "POST", body: '{"type":"init"}',
 //     headers: ["content-type" => "application/json"]});
 //   trace(res.status, res.text());
 class Client {
 	@:coroutine public static function request(url:String, ?options:RequestOptions):Reply {
+		#if (target.name == "hxmc" && hxmc.target != "wasm32-wasi")
+		// (https: the system's stack where there is one; macOS and iOS: AppleHttp)
+		if (StringTools.startsWith(url, "https://")) {
+			if (hxmc.Platform.os() == hxmc.Platform.MACOS) return AppleHttp.request(url, options);
+			throw new Exception('https needs macOS or iOS here (NSURLSession): $url');
+		}
+		#end
 		var u = Url.parse(url);
 		var method = options?.method ?? "GET";
 		var body = options?.body ?? (options?.text != null ? Bytes.ofString(options.text) : Bytes.alloc(0));
