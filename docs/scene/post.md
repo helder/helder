@@ -6,6 +6,9 @@ targets (RGBA16F: light brighter than white kept; the shaders' last step
 `PbrShader.output` leaves the tone mapping to later), and a `PostProcess`
 turns the frame into the 8-bit image shown:
 
+Its effects (AO, depth of field, outlines, FXAA, a LUT: [Post effects
+and the view buffers](effects.md)) are fields of it, null by default.
+
 ```haxe
 var post = new PostProcess(device);   // into RGBA8 targets (a <Scene>'s box's); (device, RGBA8, true): the frame
 post.bloom = 0.05;                    // the share of the light spread: no threshold, what is bright blooms
@@ -40,7 +43,11 @@ either): a `<Scene>` says so once and draws in 8 bits.
 
 ## Stages of your own
 
-A program's own passes join the chain after the grade (`PostStage`): a
+A program's own passes join the chain after the grade (`PostStage`), or
+before the composite in linear light (`post.add(shader, bytes,
+BeforeComposite)`: its image the scene's RGBA16F light, drawn into RGBA16F
+targets, the last one's what depth of field, bloom and the composite
+read; a blur of the program's own belongs there): a
 shader drawn over the whole target, its vertex `{pos:Vec2}` (a triangle
 in clip space, the chain's), its first texture the image so far (tone
 mapped: a pixel art finish, a CRT, an outline), its first uniform block

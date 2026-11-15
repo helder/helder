@@ -22,6 +22,14 @@ features reach the renderer through `RenderFeature` (`renderer.use(...)`),
 so unused ones are not linked. Shapes are made in code with `Geometry`
 and `Shapes` ([Geometry](geometry.md)).
 
+A frame records, in order: the shadow maps, the view buffers' prepass
+(when an effect or the program asks for them: [Post effects](effects.md)),
+the screen's ambient occlusion (`post.ao`), the main pass, the
+`AfterPass` hooks; then post. Nothing is allocated per frame: the blocks
+the renderer writes are kept and their fields set (a struct literal per
+write would allocate on hxmc), and each uniform block's writer is a class
+of its own (helder.gfx's `UniformWriter`: no closure).
+
 ## The standard material
 
 ```haxe
@@ -50,9 +58,10 @@ it; no refraction or blur).
 The standard material is a slot object, `pbr` (`PbrShader`; helder.gfx's
 `slots`, [DESIGN.md](/src/helder/compiler/DESIGN.md) 3): one shader whose
 variants are the renderer's (`pbr.variant({normalMap, skinned,
-instanced})`: `PbrShader`, `PbrNormalShader`, `PbrSkinnedShader`,
-`PbrInstancedShader`, `PbrInstancedNormalShader`; the shadow map's casters
-are `shadowCaster`'s) and whose slots a material replaces: `color`,
+instanced, prepass})`: `PbrShader`, `PbrNormalShader`, `PbrSkinnedShader`,
+`PbrInstancedShader`, `PbrInstancedNormalShader`; the view buffers'
+`PbrPrepassShader`, `PbrPrepassInstancedShader`, `PbrPrepassSkinnedShader`;
+the shadow map's casters are `shadowCaster`'s) and whose slots a material replaces: `color`,
 `alpha`, `normal`, `roughness`, `metalness` and `emissive` (of the
 fragment's `PbrSurface`), `position` (of the vertex's `PbrPoint`), and
 how light reaches the surface: `direct(s, l, p)`, the light one source

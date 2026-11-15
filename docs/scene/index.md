@@ -9,8 +9,9 @@ These pages go from the scene graph to what draws it:
 - [World and nodes](world.md): the scene graph, cameras, the fixed step;
 - [glTF and models](models.md): files typed when compiling, packed for
   run time, animated;
-- [Materials](materials.md), [Lights and shadows](lights.md), [Fog](fog.md)
-  and [HDR and post-processing](post.md): the renderer;
+- [Materials](materials.md), [Lights and shadows](lights.md), [Fog](fog.md),
+  [HDR and post-processing](post.md) and [Post effects](effects.md) (AO,
+  depth of field, outlines, FXAA, a LUT): the renderer;
 - [Instancing](instancing.md) and [GPU particles](particles.md): many
   things in few draws;
 - [`<Scene>` markup](markup.md): the scene in helder.view's markup, inside a
