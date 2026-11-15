@@ -773,6 +773,8 @@ class Studio {
 
 	// the selection's box again from the program's tree (after a frame: a
 	// layout moved it): the nodes its source makes now (Ui.nodesAt), their boxes
+	var lastMiss:Null<String> = null;
+
 	function refreshSelection() {
 		var sel = selection.peek();
 		var s = sel == null ? null : previews?.screen(sel.screen);
@@ -801,6 +803,11 @@ class Studio {
 				var nodes:Array<Dynamic> = r.result?.nodes ?? [];
 				var found = nodes.length == 0 ? null : findId(root, nodes[0].id);
 				var cur = selection.peek();
+				// (said once a reason: why the selected node's box is not read again)
+				var miss = found != null ? null : '${sel.screen}, $line:$col: '
+					+ (t?.error != null ? 'the tree: ${t.error.message}' : root == null ? "no tree" : r?.error != null ? r.error.message : '${nodes.length} node(s) there');
+				if (miss != null && miss != lastMiss) Sys.println('studio: the selected node not found again ($miss)');
+				lastMiss = miss;
 				if (found != null && cur != null && cur.file == file) {
 					var next:Selection = Reflect.copy(cur);
 					next.id = found.id;
