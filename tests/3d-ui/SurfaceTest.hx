@@ -47,7 +47,7 @@ class SurfaceTest implements Markup {
 		var click:Array<Float> = [-1, -1, 0];
 		var label = signal("one");
 		var face = helder.text.FontFile.parse(helder.asset.Asset.embed("tests/canvas/fonts/DejaVuSans-canvas.ttf"));
-		var path = new helder.scene.render.Lines(null, 4, {width: 3});
+		var path = new helder.scene.render.Lines(4, {width: 3});
 		var touches:Array<String> = [];
 		var orbit:Null<helder.scene.view.OrbitControls> = null;
 		var stick = new helder.scene.input.VirtualStick({zone: helder.scene.input.Zone.rect(0, 0, 0.3, 1), radius: 20});
