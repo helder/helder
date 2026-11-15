@@ -1,5 +1,5 @@
 // title: Spot and point shadows
-// summary: A lantern's point light casting all round (six tiles of the shadow atlas) and two spot lights sweeping a courtyard of posts (a tile each, one filtered soft), beside the sun's cascade, in one atlas
+// summary: A lantern's point light casting all round (six tiles of the shadow atlas, kept while nothing near it moves) and two spot lights sweeping a courtyard of posts (a tile each, one filtered soft), beside the sun's cascade, in one atlas
 // tags: 3d, lights, shadows, docs
 // demo: canvas 640x400
 import helder.gfx.*;
@@ -48,7 +48,8 @@ class SpotAndPoint {
 		Light.attach(moon, Light.directional(new Vec3(0.5, 0.6, 0.9), 0.25));
 		moon.lookAt(new Vec3(0.4, -1, -0.3));
 		// #region lights
-		// the lantern: a point light casting all round
+		// the lantern: a point light casting all round (still: its six tiles
+		// drawn once, then kept)
 		var lantern = world.node("lantern");
 		lantern.position = new Vec3(1, 1.6, 1);
 		var bulb = Light.attach(lantern, Light.pointLight(new Vec3(1, 0.75, 0.45), 9, 7));
@@ -74,7 +75,6 @@ class SpotAndPoint {
 			var t = App.frame.time - start;
 			for (k in 0...2)
 				spots[k].lookAt(new Vec3(Math.cos(t * 0.5 + k * 3) * 2.5, 0, Math.sin(t * 0.7 + k * 3) * 2.5));
-			lantern.position = new Vec3(Math.cos(t * 0.3) * 1.2, 1.6, Math.sin(t * 0.3) * 1.2);
 			var enc = device.beginFrame();
 			if (enc == null) return;
 			renderer.draw(enc, world, camera);
