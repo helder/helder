@@ -144,8 +144,8 @@ class SceneTags {
 	// position, rotation, scale: signals a drag writes instead of the node
 	public static function TransformGizmo(props:{
 		?of:Dynamic,
-		?mode:helder.scene.view.TransformGizmo.GizmoMode,
-		?space:helder.scene.view.TransformGizmo.GizmoSpace,
+		?mode:helder.view.graph.Read<helder.scene.view.TransformGizmo.GizmoMode>,
+		?space:helder.view.graph.Read<helder.scene.view.TransformGizmo.GizmoSpace>,
 		?snap:Float,
 		?rotationSnap:Float,
 		?scaleSnap:Float,
@@ -160,8 +160,16 @@ class SceneTags {
 		var box = Graph.use(BOX);
 		if (box == null) throw "helder.scene: <TransformGizmo> is in a <Scene>'s markup";
 		var g = new helder.scene.view.TransformGizmo(box);
-		if (props.mode != null) g.mode = props.mode;
-		if (props.space != null) g.space = props.space;
+		if (props.mode != null) {
+			var v:Dynamic = props.mode;
+			if (Render.isReactive(v)) Graph.renderEffect(() -> (Render.read(v) : Int), (m:Int) -> g.mode = cast m) else
+				g.mode = Render.read(v);
+		}
+		if (props.space != null) {
+			var v:Dynamic = props.space;
+			if (Render.isReactive(v)) Graph.renderEffect(() -> (Render.read(v) : Int), (m:Int) -> g.space = cast m) else
+				g.space = Render.read(v);
+		}
 		if (props.snap != null) g.snap = props.snap;
 		if (props.rotationSnap != null) g.rotationSnap = props.rotationSnap;
 		if (props.scaleSnap != null) g.scaleSnap = props.scaleSnap;

@@ -11,9 +11,9 @@ import helder.scene.render.PostEffects;
 
 // MotionBlur's passes (PostFx's, made by post.motionBlur's setter's
 // factory; MotionBlurShader's notes): the motion at the view buffers' size,
-// its tiles' longest and their neighbourhoods' (RGBA16F), then the light
-// along each pixel's line into an RGBA16F target of the frame's size, the
-// light the chain goes on with. A module of its own: a MotionBlur made and
+// its tiles' longest and their neighbourhoods' (RGBA16F), the light along
+// each pixel's line at half the frame's size, then mixed in at the frame's
+// size where it moves (an RGBA16F target), the light the chain goes on with. A module of its own: a MotionBlur made and
 // never set on a chain links none of it.
 class MotionBlurPass implements LightPass {
 	final blur:MotionBlur;
@@ -22,13 +22,13 @@ class MotionBlurPass implements LightPass {
 	final pipelines:Array<Pipeline> = [];
 	// (each pass's block's slot)
 	final slots = [MotionPrepShader.uniforms[0].binding, MotionTileShader.uniforms[0].binding, MotionNeighbourShader.uniforms[0].binding,
-		MotionBlurShader.uniforms[0].binding];
+		MotionBlurShader.uniforms[0].binding, MotionMixShader.uniforms[0].binding];
 	final bytes = Bytes.alloc(MotionBlurShader.uniforms[0].size);
 	final block:MotionParams = {
 		inverseViewProj: Mat4.identity(), current: Mat4.identity(), previous: Mat4.identity(), size: new Vec4(0, 0, 0, 0), p: new Vec4(0, 0, 0, 0),
 		q: new Vec4(0, 0, 0, 0)
 	};
-	// (the targets: the motion, the tiles, their neighbourhoods, the blur)
+	// (the targets: the motion, the tiles, their neighbourhoods, the blur at half size, the mix)
 	final targets:Array<Texture> = [];
 	final passes:Array<PassDesc> = [];
 	var w = 0;
@@ -37,6 +37,8 @@ class MotionBlurPass implements LightPass {
 	var vh = 0;
 	var tw = 0;
 	var th = 0;
+	var bw = 0;
+	var bh = 0;
 	var draws = 0;
 
 	public function new(blur:MotionBlur)
@@ -57,7 +59,13 @@ class MotionBlurPass implements LightPass {
 		if (v == null || f == null || blur.strength <= 0) return light;
 		if (device == null) {
 			device = fx.device;
-			for (d in [MotionPrepShader.pipeline({}), MotionTileShader.pipeline({}), MotionNeighbourShader.pipeline({}), MotionBlurShader.pipeline({})]) {
+			for (d in [
+				MotionPrepShader.pipeline({}),
+				MotionTileShader.pipeline({}),
+				MotionNeighbourShader.pipeline({}),
+				MotionBlurShader.pipeline({}),
+				MotionMixShader.pipeline({})
+			]) {
 				d.colorFormat = RGBA16F;
 				pipelines.push(device.createPipeline(d));
 			}
@@ -85,15 +93,23 @@ class MotionBlurPass implements LightPass {
 		pass(enc, 2, fx);
 		enc.setTexture(MotionNeighbourShader.params.tiles.binding, targets[1], fx.nearest);
 		draw(enc, fx);
-		// (the blur: q.z the view buffers' share of the frame, to find a pixel's tile)
-		b.size = new Vec4(w, h, tw, th);
-		b.q = new Vec4(0, w / Math.max(1, h), vw / Math.max(1, w), 0);
+		// (the blur at half size: q.z the view buffers' share of it, to find a pixel's tile)
+		b.size = new Vec4(bw, bh, tw, th);
+		b.q = new Vec4(0, w / Math.max(1, h), vw / Math.max(1, bw), 0);
 		pass(enc, 3, fx);
 		enc.setTexture(MotionBlurShader.params.scene.binding, light, fx.linear);
 		enc.setTexture(MotionBlurShader.params.prep.binding, targets[0], fx.linear);
 		enc.setTexture(MotionBlurShader.params.neighbours.binding, targets[2], fx.nearest);
 		draw(enc, fx);
-		return targets[3];
+		// (mixed in at the frame's size where it moves)
+		b.size = new Vec4(w, h, tw, th);
+		b.q = new Vec4(0, w / Math.max(1, h), vw / Math.max(1, w), 0);
+		pass(enc, 4, fx);
+		enc.setTexture(MotionMixShader.params.scene.binding, light, fx.nearest);
+		enc.setTexture(MotionMixShader.params.blur.binding, targets[3], fx.linear);
+		enc.setTexture(MotionMixShader.params.neighbours.binding, targets[2], fx.nearest);
+		draw(enc, fx);
+		return targets[4];
 	}
 
 	// (a pass of the four: its target, its pipeline, the block as it is now)
@@ -120,7 +136,9 @@ class MotionBlurPass implements LightPass {
 		vh = viewsHeight;
 		tw = Std.int(Math.max(1, (vw + 7) >> 3));
 		th = Std.int(Math.max(1, (vh + 7) >> 3));
-		for (s in [[vw, vh], [tw, th], [tw, th], [w, h]]) {
+		bw = Std.int(Math.max(1, (w + 1) >> 1));
+		bh = Std.int(Math.max(1, (h + 1) >> 1));
+		for (s in [[vw, vh], [tw, th], [tw, th], [bw, bh], [w, h]]) {
 			var t = device.createTexture({width: s[0], height: s[1], format: RGBA16F, renderTarget: true});
 			targets.push(t);
 			passes.push({colors: [{load: Clear, clear: new Color(0, 0, 0, 0), texture: t}]});

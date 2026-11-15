@@ -64,7 +64,9 @@ class SsrPass implements LightPass {
 		b.inverseProjection = v.inverseProjection;
 		b.p = new Vec4(Math.max(0.01, ssr.maxDistance), Math.max(0.001, ssr.thickness), Math.max(4, ssr.steps), Math.max(0.01, ssr.maxRoughness));
 		b.size = new Vec4(rw, rh, v.width, v.height);
-		b.q = new Vec4(ssr.intensity, 0, 0, 0);
+		// (with TAA the dither turned each frame by the golden ratio: the history gathers it smooth)
+		var f = fx.frame;
+		b.q = new Vec4(ssr.intensity, fx.post.taa != null && f != null ? (f.index * 0.618034) % 1 : 0, 0, 0);
 		SsrTraceShader.params.s.write(b, bytes);
 		enc.beginPass(tracePass);
 		enc.setPipeline(trace);

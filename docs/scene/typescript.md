@@ -4,7 +4,8 @@
 which `TypeScript.hx` declares: [helder.typescript](/src/helder/typescript/README.md))
 is this package for TypeScript programs: World, Camera, Light, Material,
 MeshRenderer, Shapes, Model, Renderer, PostProcess and its effects (Ssao,
-Dof, Outline, Lut; ViewBuffers; `ToneMap`, `Antialias` and `DofMode` by
+Dof, Outline, Lut, Ssr, Taa, Smaa, MotionBlur, GodRays; ViewBuffers;
+Occlusion and `Occlusion.test`; `ToneMap`, `Antialias` and `DofMode` by
 name; `Lut.of(device, size, grade)` a LUT from a grade written in
 TypeScript, its `Vec3` returned into Haxe), InputMap (its bindings made by
 Bindings: `actions.bind("jump", Bindings.key(0x20))`), FixedStep, and what
@@ -67,7 +68,11 @@ is Haxe's alone for now.
 `tests/typescript/helder/scene.ts` checks it without a GPU, and
 `tests/typescript/helder/picking.ts` phase 3's (rays at meshes of data
 alone, a tree read back from its bytes, lines' points as uploaded,
-DebugDraw's ring, helpers), a static build linking no device.
+DebugDraw's ring, helpers), a static build linking no device, and
+`tests/typescript/helder/highend.ts` phase 7's (the high end's effects'
+options and defaults, a node marked for occlusion culling: no query
+made, no device linked). The transform gizmo is markup's and Haxe's
+(`helder.scene.view`, as `OrbitControls`).
 `examples/ts-scene` puts it together (scene.ts: examples/gltf-viewer's
 sample model, a point light, glowing orbs of a material of their own; the
 arrow keys turn the camera, an InputMap's axis), and the 3d lane draws its

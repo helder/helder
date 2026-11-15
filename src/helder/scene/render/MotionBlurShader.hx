@@ -7,7 +7,7 @@ import helder.scene.render.PostShader;
 
 // Motion blur's shaders (MotionBlur, MotionBlurPass), a module of their
 // own: McGuire et al.'s reconstruction ("A Reconstruction Filter for
-// Plausible Motion Blur", 2012), simplified, in four passes:
+// Plausible Motion Blur", 2012), simplified, in five passes:
 //
 //   MotionPrepShader      each texel of the view buffers' size: its motion
 //                         (motionAt: theirs where a surface wrote it, else
@@ -19,7 +19,8 @@ import helder.scene.render.PostShader;
 //                         a pixel there gathers along (a still background
 //                         beside a moving object takes the object's smear,
 //                         not only the object its own edges)
-//   MotionBlurShader      each pixel of the frame: taps along its tile's
+//   MotionBlurShader      each pixel of a target half the frame's size:
+//                         taps along its tile's
 //                         line (every other one along the pixel's own
 //                         motion, when it moves at least half as fast: McGuire's 2014 variant, so a
 //                         turning wheel keeps its arcs), each counting where its own motion reaches
@@ -27,6 +28,11 @@ import helder.scene.render.PostShader;
 //                         centred), the pixel itself always; turned by
 //                         interleaved gradient noise (no bands); under half a
 //                         pixel of motion about it, the pixel as it is
+//   MotionMixShader       each pixel of the frame: its light, mixed
+//                         towards the blur where its tile's longest motion
+//                         is over a pixel (as depth of field's blur is
+//                         mixed in: what moves is soft, what is still keeps
+//                         its pixels)
 // Texels read at their centres by index (the frame's pixel's, its tile's),
 // the motion between them filtered: no texel's edge that back ends round
 // apart (a tile's side: 8 texels). p: x the shutter's share, y the taps, w the longest blur (a share
@@ -94,7 +100,8 @@ final MotionNeighbourShader = shader({
 function reaches(d:Float, l:Float):Float
 	return clamp(1 - (d - l * 0.5), 0, 1);
 
-// size: xy the frame's pixels, zw the tiles'; q: z the view buffers' share of the frame
+// size: xy the target's pixels (half the frame's), zw the tiles'; q: z
+// the view buffers' share of the target
 final MotionBlurShader = shader({
 	vertex: function(v:PostVertex):PostVaryings
 		return fullscreen(v),
@@ -129,6 +136,23 @@ final MotionBlurShader = shader({
 			}
 			out = sum / weights;
 		}
+		return out;
+	}
+});
+
+// size: xy the frame's pixels, zw the tiles'; q: z the view buffers' share of the frame
+final MotionMixShader = shader({
+	vertex: function(v:PostVertex):PostVaryings
+		return fullscreen(v),
+	fragment: function(i:PostVaryings, params:{m:MotionParams, scene:Texture2D, blur:Texture2D, neighbours:Texture2D}):Vec4 {
+		var m = params.m;
+		var px = floor(i.uv * m.size.xy);
+		var uv = (px + 0.5) / m.size.xy;
+		var c = sampleLevel(params.scene, uv, 0);
+		var tile = (floor(floor(px * m.q.z) / 8.0) + 0.5) / m.size.zw;
+		var most = sampleLevel(params.neighbours, tile, 0).z;
+		var out = c;
+		if (most > 0.5) out = mix(c, sampleLevel(params.blur, uv, 0), smoothstep(0.5, 1.5, most));
 		return out;
 	}
 });

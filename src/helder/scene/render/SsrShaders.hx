@@ -26,7 +26,7 @@ import helder.scene.render.PostShader;
 	var inverseProjection:Mat4;
 	var p:Vec4; // x max distance (m), y thickness (m), z steps, w the roughest reflecting
 	var size:Vec4; // xy the target's pixels, zw the view buffers'
-	var q:Vec4; // x intensity
+	var q:Vec4; // x intensity, y the dither's turn this frame (0: still)
 }
 
 final SsrTraceShader = shader({
@@ -47,7 +47,8 @@ final SsrTraceShader = shader({
 			var step = s.p.x / s.p.z;
 			// (from a little off the surface, along the normal: not hitting itself)
 			var origin = pos + n * (0.02 + 0.002 * -pos.z);
-			var t = step * ign(floor(i.uv * s.size.xy));
+			// (the first step's dither: still, or turned each frame where TAA gathers the frames: q.y)
+			var t = step * fract(ign(floor(i.uv * s.size.xy)) + s.q.y);
 			var last = t;
 			var hit = vec2(-1);
 			var k = 0.0;
