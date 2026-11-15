@@ -19,7 +19,8 @@ import helder.view.graph.Read;
 //       <Ssao radius={0.5} samples={8}/>
 //       <Dof tiltShift band={0.2}/>
 //       <Outline width={2} color={gold}/>
-//       <Fxaa/>
+//       <Fxaa/>                     // or <Smaa/>, <Taa blend={0.1}/>
+//       <Ssr maxDistance={8}/> <MotionBlur strength={0.5}/> <GodRays intensity={0.5}/>
 //     </Effects>
 //     <node outline={hovered.value ? 1 : 0}>...</node>   // Outline.select, as data
 //   </Scene>
@@ -125,6 +126,69 @@ class EffectTags {
 	public static function Fxaa(props:{}):SceneNode {
 		var box = boxOf("Fxaa");
 		return effect(box, "fxaa", p -> p.antialias = helder.scene.render.PostProcess.Antialias.Fxaa, p -> p.antialias = helder.scene.render.PostProcess.Antialias.None);
+	}
+
+	// SMAA (helder.scene.render.Smaa): edges and their blending weights,
+	// blended in the composite
+	public static function Smaa(props:{?threshold:Read<Float>}):SceneNode {
+		var box = boxOf("Smaa");
+		var smaa = new helder.scene.render.Smaa();
+		number(box, props.threshold, (_, v) -> smaa.threshold = v);
+		return effect(box, "smaa", p -> p.smaa = smaa, p -> if (p.smaa == smaa) p.smaa = null);
+	}
+
+	// temporal antialiasing (helder.scene.render.Taa): the frame jittered,
+	// gathered with its history; blend the new frame's share
+	public static function Taa(props:{?blend:Read<Float>}):SceneNode {
+		var box = boxOf("Taa");
+		var taa = new helder.scene.render.Taa();
+		number(box, props.blend, (_, v) -> taa.blend = v);
+		return effect(box, "taa", p -> p.taa = taa, p -> if (p.taa == taa) p.taa = null);
+	}
+
+	// screen-space reflections (helder.scene.render.Ssr)
+	public static function Ssr(props:{
+		?intensity:Read<Float>,
+		?maxDistance:Read<Float>,
+		?thickness:Read<Float>,
+		?maxRoughness:Read<Float>,
+		?steps:Int,
+		?halfRes:Bool
+	}):SceneNode {
+		var box = boxOf("Ssr");
+		var ssr = new helder.scene.render.Ssr({steps: props.steps, halfRes: props.halfRes});
+		number(box, props.intensity, (_, v) -> ssr.intensity = v);
+		number(box, props.maxDistance, (_, v) -> ssr.maxDistance = v);
+		number(box, props.thickness, (_, v) -> ssr.thickness = v);
+		number(box, props.maxRoughness, (_, v) -> ssr.maxRoughness = v);
+		return effect(box, "ssr", p -> p.ssr = ssr, p -> if (p.ssr == ssr) p.ssr = null);
+	}
+
+	// motion blur (helder.scene.render.MotionBlur): the camera's, or with
+	// objects each object's too
+	public static function MotionBlur(props:{?strength:Read<Float>, ?max:Read<Float>, ?samples:Int, ?objects:Bool}):SceneNode {
+		var box = boxOf("MotionBlur");
+		var blur = new helder.scene.render.MotionBlur({samples: props.samples, objects: props.objects});
+		number(box, props.strength, (_, v) -> blur.strength = v);
+		number(box, props.max, (_, v) -> blur.max = v);
+		return effect(box, "motion-blur", p -> p.motionBlur = blur, p -> if (p.motionBlur == blur) p.motionBlur = null);
+	}
+
+	// god rays (helder.scene.render.GodRays): the sky's light towards the sun
+	public static function GodRays(props:{
+		?intensity:Read<Float>,
+		?density:Read<Float>,
+		?decay:Read<Float>,
+		?falloff:Read<Float>,
+		?samples:Int
+	}):SceneNode {
+		var box = boxOf("GodRays");
+		var rays = new helder.scene.render.GodRays({samples: props.samples});
+		number(box, props.intensity, (_, v) -> rays.intensity = v);
+		number(box, props.density, (_, v) -> rays.density = v);
+		number(box, props.decay, (_, v) -> rays.decay = v);
+		number(box, props.falloff, (_, v) -> rays.falloff = v);
+		return effect(box, "god-rays", p -> p.godRays = rays, p -> if (p.godRays == rays) p.godRays = null);
 	}
 
 	// colour grading by a table (helder.scene.render.Lut): of (made by the

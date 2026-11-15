@@ -369,3 +369,30 @@ them, a storage texture sampled into the frame, and checks that a frame
 allocates nothing; `ShaderTest` the compute stages' text in the four
 languages (`tests/gfx/shader/*.comp.*`), their CPU runs and the programs
 it rejects.
+
+## Occlusion queries
+
+Every back end counts whether a draw's samples passed the depth test (GL
+ES 3.0's and WebGL2's `ANY_SAMPLES_PASSED`, WebGPU's occlusion query sets,
+Metal's visibility results, D3D11's occlusion queries), answered a frame
+or more later and never waited for:
+
+```haxe
+var queries = device.createQueries(64);
+var pass:PassDesc = {colors: [...], depth: {...}, queries: queries};   // WebGPU names the set when a pass begins
+enc.beginPass(pass);
+enc.beginQuery(k);                                 // one at a time, each at most once a pass
+enc.drawIndexed(36);                               // a box, depth tested, not written
+enc.endQuery();
+enc.endPass();
+// a frame or more later:
+device.queryResult(queries, k);                    // 1 some sample passed, 0 none, -1 no answer yet
+device.resetQuery(queries, k);                     // its answer let go (one on its way too)
+```
+
+A query begun again before its last answer came is not begun (its draws
+drawn, uncounted), so an answer always comes: GL and D3D11 poll their
+queries without flushing, Metal reads its shared buffer once the frame's
+command buffer completed, WebGPU resolves a frame's queries into a buffer
+mapped after its submit (while one read is on its way, the next frames'
+answers are let go). helder.scene's `Occlusion` culls by them.

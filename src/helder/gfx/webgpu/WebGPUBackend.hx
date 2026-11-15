@@ -205,9 +205,33 @@ class WebGPUBackend {
 			info.checkPass(d);
 			if (info.samples > 1 || resolve != 0) info.checkSamples(depthTexture == 0 ? null : infos.get(depthTexture), resolve == 0 ? null : infos.get(resolve));
 		}
-		if (k == null) WebGPU.pass_begin(color, resolve, cast c.load, 0, 0, 0, 1, depthTexture, cast depthLoad, depth) else
-			WebGPU.pass_begin(color, resolve, cast c.load, k.r, k.g, k.b, k.a, depthTexture, cast depthLoad, depth);
+		var queries = p.queries == null ? 0 : p.queries.id();
+		if (k == null) WebGPU.pass_begin(color, resolve, cast c.load, 0, 0, 0, 1, depthTexture, cast depthLoad, depth, queries) else
+			WebGPU.pass_begin(color, resolve, cast c.load, k.r, k.g, k.b, k.a, depthTexture, cast depthLoad, depth, queries);
 	}
+
+	// ---- occlusion queries (the JavaScript side's: query_set)
+
+	public function createQueries(count:Int):Int {
+		var q = WebGPU.query_set(count);
+		handles.push(q);
+		return q;
+	}
+
+	public function destroyQueries(id:Int)
+		destroyBuffer(id);
+
+	public inline function queryResult(id:Int, k:Int):Int
+		return WebGPU.query_result(id, k);
+
+	public inline function resetQuery(id:Int, k:Int)
+		WebGPU.reset_query(id, k);
+
+	public inline function beginQuery(k:Int)
+		WebGPU.begin_query(k);
+
+	public inline function endQuery()
+		WebGPU.end_query();
 
 	public inline function setPipeline(id:Int)
 		WebGPU.set_pipeline(id);

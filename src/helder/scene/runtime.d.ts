@@ -5,8 +5,9 @@
 // meshes (Shapes, Geometry's shapes and Curve3, MeshRenderer, InstancedMesh,
 // Sprites) and materials (Material's factories: toon, lambert, unlit...), glTF models (Model,
 // helder/asset's model(path) loads one; GltfScene), the renderer and its
-// post chain (PostProcess: its effects Ssao, Dof, Outline, Lut; the view
-// buffers they read, ViewBuffers), lines with width and debug drawing
+// post chain (PostProcess: its effects Ssao, Dof, Outline, Lut, Ssr,
+// MotionBlur, GodRays, Taa, Smaa; the view buffers they read, ViewBuffers), occlusion
+// culling (Occlusion), lines with width and debug drawing
 // (Lines, LineRenderer, DebugDraw, the helpers), rays cast at triangles
 // (world.raycast: Hit, HitList, RaycastOptions, Bvh), text in the world
 // (Text3D), input
@@ -20,7 +21,7 @@ import type {Asset, FontFile, Image} from "helder/asset";
 import type {Mat4, Quat, Vec2, Vec3, Vec4} from "helder/gfx";
 import type {Node} from "helder/scene";
 
-declare const __haxe: {Mesh: "helder.scene.render.Mesh", Encoder: "helder.gfx.Encoder", World: "helder.scene.World", Camera: "helder.scene.Camera", Light: "helder.scene.render.Light", Renderer: "helder.scene.render.Renderer", Shadows: "helder.scene.render.Shadows", Fog: "helder.scene.render.Fog", Material: "helder.scene.render.Material", MeshRenderer: "helder.scene.render.MeshRenderer", Shapes: "helder.scene.render.Shapes", Geometry: "helder.scene.render.Geometry", VertexData: "helder.scene.render.VertexData", Curve3: "helder.scene.math.Curve3", InstancedMesh: "helder.scene.render.InstancedMesh", Sprites: "helder.scene.render.Sprites", Model: "helder.scene.render.Model", MaterialShader: "helder.scene.render.MaterialShader", PostProcess: "helder.scene.render.PostProcess", Ssao: "helder.scene.render.Ssao", Dof: "helder.scene.render.Dof", Outline: "helder.scene.render.Outline", Lut: "helder.scene.render.Lut", ViewBuffers: "helder.scene.render.ViewBuffers", Lines: "helder.scene.render.Lines", LineRenderer: "helder.scene.render.LineRenderer", DebugDraw: "helder.scene.render.DebugDraw", Helper: "helder.scene.render.Helper", AxesHelper: "helder.scene.render.AxesHelper", GridHelper: "helder.scene.render.GridHelper", BoundsHelper: "helder.scene.render.BoundsHelper", LightHelper: "helder.scene.render.LightHelper", CameraHelper: "helder.scene.render.CameraHelper", SkeletonHelper: "helder.scene.render.SkeletonHelper", Hit: "helder.scene.render.Hit", HitList: "helder.scene.render.Hit.HitList", RaycastOptions: "helder.scene.render.Hit.RaycastOptions", Raycaster: "helder.scene.render.Raycaster", Bvh: "helder.scene.render.Bvh", Text3D: "helder.scene.render.Text3D", InputMap: "helder.scene.input.InputMap", Bindings: "helder.scene.input.Bindings", FixedStep: "helder.scene.FixedStep", Device: "helder.gfx.Device", Surface: "helder.os.Surface", Window: "helder.os.Window", App: "helder.os.App", Event: "helder.os.Event", Script: "helder.scene.Script", __module: "helder.scene.TypeScript"};
+declare const __haxe: {Mesh: "helder.scene.render.Mesh", Encoder: "helder.gfx.Encoder", World: "helder.scene.World", Camera: "helder.scene.Camera", Light: "helder.scene.render.Light", Renderer: "helder.scene.render.Renderer", Shadows: "helder.scene.render.Shadows", Fog: "helder.scene.render.Fog", Material: "helder.scene.render.Material", MeshRenderer: "helder.scene.render.MeshRenderer", Shapes: "helder.scene.render.Shapes", Geometry: "helder.scene.render.Geometry", VertexData: "helder.scene.render.VertexData", Curve3: "helder.scene.math.Curve3", InstancedMesh: "helder.scene.render.InstancedMesh", Sprites: "helder.scene.render.Sprites", Model: "helder.scene.render.Model", MaterialShader: "helder.scene.render.MaterialShader", PostProcess: "helder.scene.render.PostProcess", Ssao: "helder.scene.render.Ssao", Dof: "helder.scene.render.Dof", Outline: "helder.scene.render.Outline", Lut: "helder.scene.render.Lut", ViewBuffers: "helder.scene.render.ViewBuffers", Ssr: "helder.scene.render.Ssr", MotionBlur: "helder.scene.render.MotionBlur", GodRays: "helder.scene.render.GodRays", Taa: "helder.scene.render.Taa", Smaa: "helder.scene.render.Smaa", Occlusion: "helder.scene.render.Occlusion", Lines: "helder.scene.render.Lines", LineRenderer: "helder.scene.render.LineRenderer", DebugDraw: "helder.scene.render.DebugDraw", Helper: "helder.scene.render.Helper", AxesHelper: "helder.scene.render.AxesHelper", GridHelper: "helder.scene.render.GridHelper", BoundsHelper: "helder.scene.render.BoundsHelper", LightHelper: "helder.scene.render.LightHelper", CameraHelper: "helder.scene.render.CameraHelper", SkeletonHelper: "helder.scene.render.SkeletonHelper", Hit: "helder.scene.render.Hit", HitList: "helder.scene.render.Hit.HitList", RaycastOptions: "helder.scene.render.Hit.RaycastOptions", Raycaster: "helder.scene.render.Raycaster", Bvh: "helder.scene.render.Bvh", Text3D: "helder.scene.render.Text3D", InputMap: "helder.scene.input.InputMap", Bindings: "helder.scene.input.Bindings", FixedStep: "helder.scene.FixedStep", Device: "helder.gfx.Device", Surface: "helder.os.Surface", Window: "helder.os.Window", App: "helder.os.App", Event: "helder.os.Event", Script: "helder.scene.Script", __module: "helder.scene.TypeScript"};
 
 // What a node draws (node.mesh): primitives, each a vertex buffer in the
 // renderer's layout (PbrVertex: position, normal, uv; 32 bytes a vertex),
@@ -70,8 +71,9 @@ export type Feature = number;
 export type ToneMap = number;
 
 // antialiasing in post (PostProcess.antialias), beside a <Scene>'s MSAA:
-// None, or Fxaa (in the composite: its read of the scene along the edges;
-// SMAA and TAA come later, desktop and web)
+// None, or Fxaa (in the composite: its read of the scene along the edges);
+// SMAA and TAA are effects of their own (post.smaa, post.taa: an enum's
+// value set at run time would link every technique's passes)
 export type Antialias = number;
 
 // how depth of field's circle grows (Dof.focus, Dof.tiltShift)
@@ -107,6 +109,8 @@ export type ExtrudeOptions = { depth?: number; bevelSize?: number; bevelSegments
 // a curve's frames (Curve3.frames): as many tangents, normals and binormals
 export type Frames = { tangents: Vec3[]; normals: Vec3[]; binormals: Vec3[] };
 
+export type GodRaysOptions = { intensity?: number; density?: number; decay?: number; samples?: number; falloff?: number };
+
 // a GridHelper's (each optional): 10 wide in 10 cells, fading at 30
 export type GridOptions = { size?: number; divisions?: number; fade?: number; color?: Vec4; majorColor?: Vec4 };
 
@@ -124,12 +128,16 @@ export type MatcapOptions = { name?: string; color?: Vec4; texture?: number; met
 // base colour, linear; texture the base colour's, sRGB)
 export type MaterialOptions = { name?: string; color?: Vec4; texture?: number; metallic?: number; roughness?: number; emissive?: Vec3; doubleSided?: boolean; blend?: boolean; blending?: number; alphaCutoff?: number; fog?: boolean; castShadows?: boolean; toneMapped?: boolean };
 
+export type MotionBlurOptions = { strength?: number; samples?: number; max?: number; objects?: boolean };
+
 // Material.phong's: also three's shininess (30 by default)
 export type PhongOptions = { name?: string; color?: Vec4; texture?: number; metallic?: number; roughness?: number; emissive?: Vec3; doubleSided?: boolean; blend?: boolean; blending?: number; alphaCutoff?: number; fog?: boolean; castShadows?: boolean; toneMapped?: boolean; shininess?: number };
 
 export type PlaneOptions = { flat?: boolean; tangents?: boolean; width?: number; height?: number; widthSegments?: number; heightSegments?: number };
 
 export type RingOptions = { flat?: boolean; tangents?: boolean; innerRadius?: number; outerRadius?: number; thetaSegments?: number; phiSegments?: number; thetaStart?: number; thetaLength?: number };
+
+export type SmaaOptions = { threshold?: number };
 
 export type SphereOptions = { flat?: boolean; tangents?: boolean; radius?: number; widthSegments?: number; heightSegments?: number; phiStart?: number; phiLength?: number; thetaStart?: number; thetaLength?: number };
 
@@ -139,6 +147,10 @@ export type SphereOptions = { flat?: boolean; tangents?: boolean; radius?: numbe
 export type SpritesOptions = { mode?: number; axis?: Vec3; columns?: number; rows?: number; count?: number };
 
 export type SsaoOptions = { radius?: number; intensity?: number; samples?: number; slices?: number; halfRes?: boolean };
+
+export type SsrOptions = { intensity?: number; maxDistance?: number; thickness?: number; steps?: number; maxRoughness?: number; halfRes?: boolean };
+
+export type TaaOptions = { blend?: number };
 
 // what a Text3D is made with (each optional): the em's height (0.3), a
 // depth (0: flat, double-sided), a bevel, the lines' alignment (0.5:
@@ -338,9 +350,19 @@ export declare class Renderer {
 	// (sceneDraws, shadowDraws, postDraws: PostProcess.draws)
 	readonly draws: number;
 	readonly culled: number;
+	// the last draw's primitives not drawn as hidden behind others
+	// (Occlusion: its queries of the frames before; 0 without)
+	readonly occluded: number;
 	readonly shadowDraws: number;
 	// the view buffers' prepass draws (ViewBuffers; 0 without)
 	readonly prepassDraws: number;
+	// a sub-pixel offset of the projection this frame, in pixels of the
+	// target (x right, y down; 0, 0: none): temporal antialiasing's
+	// (post.taa: Taa sets it before each frame), the view buffers' and
+	// the main pass's alike; the motion the view buffers record leaves it out
+	jitter: Vec2;
+	// the frames drawn (each draw one)
+	readonly frames: number;
 	// whether runs of one primitive are drawn instanced (on by default)
 	instancing: boolean;
 	// the last draw's instances drawn by instanced draws (statistics)
@@ -1071,7 +1093,12 @@ export declare class MaterialShader {
 //   post.dof = Dof.tiltShift({band: 0.2, falloff: 0.3, strength: 1});           // or Dof.focus({distance, aperture})
 //   post.outline = new Outline({width: 2, color: new Vec4(1, 0.8, 0.2, 1)});     // Outline.select(node)
 //   post.antialias = Fxaa;             // None (MSAA alone: the <Scene>'s antialias)
+//   post.smaa = new Smaa();            // or SMAA's edges and weights, blended in the composite
+//   post.taa = new Taa();              // or temporal: jittered, gathered with its history (desktop, web)
 //   post.lut = Lut.fromImage(device, image);
+//   post.ssr = new Ssr({maxDistance: 8});            // screen-space reflections (desktop, web)
+//   post.motionBlur = new MotionBlur({strength: 0.5}); // the camera's, or by objects ({objects: true})
+//   post.godRays = new GodRays({intensity: 0.6});      // the sky's light streaming past what is before it
 //   renderer.post = post;              // a <Scene>'s box runs it (hdr={true})
 //   // or by hand, after the renderer's drawInto into hdrColor:
 //   post.run(enc, hdrColor, ldrColor, width, height, time);
@@ -1142,8 +1169,24 @@ export declare class PostProcess {
 	// the selection's outlines (Outline, Outline.select; null none)
 	outline: Outline | null;
 	// antialiasing after the frame's own (None, Fxaa: in the composite; its
-	// variant linked only by a program that sets it)
+	// variant linked only by a program that sets it); smaa and taa are
+	// effects of their own, below
 	antialias: Antialias;
+	// SMAA (Smaa: edges and their blending weights in two passes, blended in
+	// the composite, in place of antialias'; null none)
+	smaa: Smaa | null;
+	// temporal antialiasing (Taa: the frame jittered, gathered with its
+	// history reprojected by the view buffers' motion; null none)
+	taa: Taa | null;
+	// screen-space reflections (Ssr; null none): before the other effects,
+	// from the view buffers, mixed by each surface's Fresnel, roughness and metalness
+	ssr: Ssr | null;
+	// motion blur (MotionBlur; null none): the camera's from depth, or each
+	// object's by the view buffers' motion
+	motionBlur: MotionBlur | null;
+	// god rays (GodRays; null none): the sky's light behind the scene blurred
+	// towards the sun's place on the screen, added before the curve
+	godRays: GodRays | null;
 	// colour grading by a lookup table (Lut; null none), after the grade
 	lut: Lut | null;
 	// the last run's draws (each a full-screen pass: AO's, depth of field's,
@@ -1159,6 +1202,9 @@ export declare class PostProcess {
 	// the image so far, its first block bytes): after those before it at its
 	// point (AfterComposite: tone mapped; BeforeComposite: in linear light)
 	add<V, P>(shader: unknown, bytes?: Uint8Array, point?: number): unknown;
+	// a cut: the history temporal antialiasing gathers let go (a camera
+	// jumped, a scene changed), the next frame alone
+	resetHistory(): void;
 	remove(stage: unknown): void;
 	// the frame: source (the scene's RGBA16F, width by height) into target
 	// (the output format's render target of that size, or with stages any
@@ -1342,6 +1388,16 @@ export declare class ViewBuffers {
 	scale: number;
 	// off: no prepass drawn, no groups taken (what the effects made, while none reads them)
 	enabled: boolean;
+	// whether their motion is drawn too (motion: a second pass, gfx having
+	// one colour target a pass; TAA and motion blur by objects ask for it
+	// themselves; a program's own: withVelocity()): what moved since the
+	// frame before, by each node's matrix then and now and the camera's
+	// (MotionPass; desktop and web)
+	readonly velocity: boolean;
+	// the last frame's motion (RGBA16F, their size: xy this pixel's point's
+	// uv now less the frame before's, z 1 where a surface wrote it; null:
+	// velocity off)
+	readonly motion: number | null;
 	// the last prepass's targets and their size
 	readonly depth: number;
 	readonly normals: number;
@@ -1356,6 +1412,171 @@ export declare class ViewBuffers {
 	readonly projection: Mat4;
 	readonly inverseProjection: Mat4;
 	readonly view: Mat4;
+	// their motion drawn too (velocity, motion; a method, not a setter: a
+	// program that never calls it links no motion pass), or no longer
+	withVelocity(on?: boolean): ViewBuffers;
+	// the last frame's motion pass's draws (0 without)
+	readonly motionDraws: number;
+	dispose(): void;
+}
+
+// Screen-space reflections, a PostProcess's (post.ssr = new Ssr({...})):
+// from the view buffers' depth and normals (asked for by the chain), each
+// glossy pixel's reflected ray marched through the depth in view space at
+// half the frame's size (or whole), its hit refined between its last two
+// steps, the scene's light there taken; then, at the frame's size, mixed
+// over the scene's light by the surface's Fresnel (Schlick's, its F0 from
+// its metalness: the view buffers keep no base colour, a metal's
+// reflection is untinted), its gloss and the hit's confidence (faded at
+// the screen's edges, with the distance, for rays towards the camera).
+// Where nothing is hit the scene keeps what the frame's pass gave it (the
+// environment's or the sky's reflection). Desktop and web: no renderer
+// listed ships it on phones. Its targets are RGBA16F; nothing is allocated
+// per frame. Its options alone: its passes are SsrPass's, linked by a
+// program that sets it on a chain.
+//
+//   post.ssr = new Ssr({maxDistance: 8, thickness: 0.2});
+export declare class Ssr {
+	constructor(options?: SsrOptions);
+	// how much of the reflection is mixed in (1: as Fresnel says)
+	intensity: number;
+	// how far a ray goes (metres)
+	maxDistance: number;
+	// how thick a surface is taken to be behind its depth (metres): a ray
+	// behind it by more passes behind it
+	thickness: number;
+	// the steps along a ray (16 to 48), then 4 halvings between the last two
+	steps: number;
+	// the roughest surface that reflects (0..1: rougher ones keep their
+	// own light); the reflection fades towards it
+	maxRoughness: number;
+	// at half the frame's size (a quarter of the rays)
+	halfRes: boolean;
+	// the last frame's reflections (RGBA16F: rgb the light hit, a its weight)
+	readonly texture: number | null;
+}
+
+// Motion blur, a PostProcess's (post.motionBlur = new MotionBlur({...})):
+// each pixel's light gathered along its motion on the screen since the
+// frame before, in linear light before depth of field and bloom: the
+// camera's motion from the view buffers' depth and the last frame's
+// view-projection (no motion target: what a phone affords), or with objects
+// each node's own too (the view buffers' motion, ViewBuffers.velocity: a
+// second geometry pass, desktop and web). Its target is RGBA16F, the frame's
+// size; nothing is allocated per frame. Its options alone: its pass is
+// MotionBlurPass's, linked by a program that sets it on a chain.
+//
+//   post.motionBlur = new MotionBlur({strength: 0.5});                 // the camera's
+//   post.motionBlur = new MotionBlur({strength: 0.5, objects: true});  // and each object's
+export declare class MotionBlur {
+	constructor(options?: MotionBlurOptions);
+	// the share of the frame's motion blurred (the shutter: 0.5 a half-open
+	// one, 180 degrees; 1 the whole frame's)
+	strength: number;
+	// the taps along the motion (8 for phones, 12, 16)
+	samples: number;
+	// the longest blur (a share of the frame's height)
+	max: number;
+	// each object's motion too (the view buffers' motion), not the camera's alone
+	objects: boolean;
+}
+
+// God rays, a PostProcess's (post.godRays = new GodRays({...})): the sky's
+// light (where the view buffers' depth is the far plane's) blurred towards
+// the sun's place on the screen, at a quarter of the frame's size, added to
+// the scene's light before the curve, so what stands before the sky casts
+// shafts of shadow through the glow (Mitchell's "Volumetric Light
+// Scattering as a Post-Process", GPU Gems 3). The sun is the renderer's:
+// the world's first directional light, else Renderer.sunDirection; behind
+// the camera, none. One pass at a quarter of the pixels; its target RGBA16F;
+// nothing is allocated per frame. Volumetric fog is not this. Its options
+// alone: its pass is GodRaysPass's, linked by a program that sets it.
+//
+//   post.godRays = new GodRays({intensity: 0.6, decay: 0.96});
+export declare class GodRays {
+	constructor(options?: GodRaysOptions);
+	// how much light the shafts add
+	intensity: number;
+	// how far towards the sun each pixel gathers (a share of the way)
+	density: number;
+	// how much each tap weighs against the one nearer the pixel (0..1: less
+	// fades the shafts sooner)
+	decay: number;
+	// the taps along the way (24 for phones, 32, 48)
+	samples: number;
+	// how tight the glow is about the sun (more: only near it)
+	falloff: number;
+	// the last frame's shafts (RGBA16F, a quarter of the frame's size)
+	readonly texture: number | null;
+}
+
+// Temporal antialiasing, a PostProcess's (post.taa = new Taa()): the
+// frame's projection jittered by a sub-pixel each frame (Renderer.jitter),
+// gathered with its history reprojected by the view buffers' motion (asked
+// for whole, with ViewBuffers.velocity), the history kept within each
+// pixel's neighbourhood (TaaShader's notes); in linear light, before depth
+// of field, motion blur and bloom. Desktop and web (MSAA stays a phone's).
+// A cut (a camera's jump): PostProcess.resetHistory. Its options alone: its
+// passes are TaaPass's, linked by a program that sets it on a chain.
+//
+//   post.taa = new Taa({blend: 0.1});
+export declare class Taa {
+	constructor(options?: TaaOptions);
+	// the share of each new frame in the history (0.1: about ten frames
+	// gathered; more: quicker to follow, less smooth)
+	blend: number;
+}
+
+// SMAA, a PostProcess's (post.smaa = new Smaa()): Jimenez et al.'s
+// morphological antialiasing of the light the composite reads, its edges
+// and their blending weights in two passes, blended in the composite (its
+// own variant), in place of FXAA's (SmaaShaders' notes: the orthogonal
+// patterns, their areas worked out; no diagonal or corner patterns: SMAA's
+// medium preset). Its options alone: its passes are SmaaPass's, linked by
+// a program that sets it on a chain.
+//
+//   post.smaa = new Smaa({threshold: 0.1});
+export declare class Smaa {
+	constructor(options?: SmaaOptions);
+	// the edges' threshold, of perceptual luma (0.1 SMAA's medium, 0.05 finer)
+	threshold: number;
+}
+
+// Occlusion culling by queries, a RenderFeature (renderer.use(new
+// Occlusion(device))), as Babylon's occlusion queries: each node marked
+// (Occlusion.test(node): large ones, what a wall may hide) has its bounds
+// drawn as a box after the frame's opaque surfaces, depth tested and not
+// written, inside a query of gfx's (Device.createQueries); a node whose
+// last answered query passed no sample is culled at the next frames'
+// extraction (Renderer.occluded counts it, --stats' occluded), its box
+// still drawn each frame so that it comes back when it is seen again (a
+// frame or more late: the queries are never waited for). A node outside
+// the view, or whose bounds hold the eye, is not tested and never culled;
+// its last answer is let go (Device.resetQuery). The boxes are one draw
+// each (a query each): test what is worth it, not every pebble. Nothing is
+// allocated per frame. GPU-driven culling against a depth pyramid is the
+// compute tier's (DESIGN-3D.md, section 8).
+//
+//   renderer.use(new Occlusion(device));
+//   Occlusion.test(building);           // its node's meshes culled while hidden
+export declare class Occlusion {
+	constructor(device: Device, capacity?: number);
+	// a node's meshes culled while what is drawn before them hides their bounds
+	static test(node: Node): void;
+	// a node no longer tested (drawn whenever in view)
+	static untest(node: Node): void;
+	// whether a node is tested (Occlusion.test)
+	static tested(node: Node): boolean;
+	readonly device: Device;
+	// the queries (one a node tested, at most capacity: those past it untested)
+	readonly capacity: number;
+	// off: nothing culled, no boxes drawn (the answers let go)
+	enabled: boolean;
+	// the last frame's boxes drawn (each a query)
+	readonly draws: number;
+	// how much larger than its bounds a box is drawn (a share of its size,
+	// and metres: its own surfaces not taken for what hides it)
+	margin: number;
 	dispose(): void;
 }
 

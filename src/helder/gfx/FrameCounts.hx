@@ -38,11 +38,14 @@ class FrameCounts {
 	// compute dispatches (Encoder.dispatch, dispatchIndirect)
 	public static var dispatches = 0;
 	public static var prepassDraws = 0;
+	// a 3D renderer's draws not drawn as hidden behind others (helder.scene's
+	// Occlusion: Renderer.occluded), every renderer's summed
+	public static var occluded = 0;
 
 	public static function reset() {
 		dispatches = 0;
 		passes = draws = quads = instances = pipelines = textures = buffers = uploaded = glyphTexels = 0;
-		sceneDraws = shadowDraws = postDraws = prepassDraws = 0;
+		sceneDraws = shadowDraws = postDraws = prepassDraws = occluded = 0;
 		uiMs = uploadMs = encodeMs = uiBytes = 0;
 	}
 }

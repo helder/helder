@@ -92,8 +92,11 @@ import StageShaders;
 //          buffers and post's effects (EffectScenes)
 //   lines, debugdraw, helpers, text3d  lines with width, debug drawing, the
 //          helpers, text in the world (LineScenes)
+//   ssr, taa, smaa, motionblur, godrays, occlusion  the high end: reflections,
+//          temporal and morphological antialiasing, motion blur, god rays,
+//          occlusion culling (HighEndScenes)
 class Scenes {
-	public static final NAMES = ["gltf", "orbits", "shadows", "physics", "instances", "skin", "overlay", "textured", "packed", "spot", "sky", "lazy", "normals", "blend", "walker", "packedskin", "packednormals", "cascades", "environment", "morph", "chains", "packedmorph", "bloom", "normalgrid", "gpuparticles", "crystal", "khrtransform", "khrclearcoat", "compressed", "packedbc", "packedastc", "instancedmesh", "glow", "tsscene", "fog", "poststage", "unevenscale", "softshadows", "shading", "primitives", "toon", "sprites", "hemisphere"].concat(EffectScenes.NAMES).concat(LineScenes.NAMES);
+	public static final NAMES = ["gltf", "orbits", "shadows", "physics", "instances", "skin", "overlay", "textured", "packed", "spot", "sky", "lazy", "normals", "blend", "walker", "packedskin", "packednormals", "cascades", "environment", "morph", "chains", "packedmorph", "bloom", "normalgrid", "gpuparticles", "crystal", "khrtransform", "khrclearcoat", "compressed", "packedbc", "packedastc", "instancedmesh", "glow", "tsscene", "fog", "poststage", "unevenscale", "softshadows", "shading", "primitives", "toon", "sprites", "hemisphere"].concat(EffectScenes.NAMES).concat(LineScenes.NAMES).concat(HighEndScenes.NAMES);
 	// whether the last scene has what it draws (a lazy one: once its files loaded)
 	public static var ready:Void->Bool = () -> true;
 	// the last scene's renderer (its statistics: RenderTest)
@@ -1050,6 +1053,7 @@ class Scenes {
 				enc -> r.draw(enc, world, camera);
 			case n if (EffectScenes.NAMES.contains(n)): EffectScenes.make(n, device);
 			case n if (LineScenes.NAMES.contains(n)): LineScenes.make(n, device);
+			case n if (HighEndScenes.NAMES.contains(n)): HighEndScenes.make(n, device);
 			case n: throw 'Scenes: no scene $n';
 		}
 	}

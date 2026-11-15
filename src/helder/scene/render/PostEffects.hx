@@ -33,7 +33,8 @@ class PostFx implements RenderFeature.PostEffects {
 	public final nearest:Sampler;
 	// the effects' block (CompositeFx: each effect writes its part)
 	public final block:CompositeFx = {
-		dof: new Vec4(0, 0, 0, 0), dofFocus: new Vec4(0, 0, 0, 0), outline: new Vec4(0, 0, 0, 0), lut: new Vec4(0, 0, 0, 0), inverseProjection: Mat4.identity()
+		dof: new Vec4(0, 0, 0, 0), dofFocus: new Vec4(0, 0, 0, 0), outline: new Vec4(0, 0, 0, 0), lut: new Vec4(0, 0, 0, 0), rays: new Vec4(0, 0, 0, 0),
+		smaa: new Vec4(0, 0, 0, 0), inverseProjection: Mat4.identity()
 	};
 	public final blockBytes = Bytes.alloc(CompositeFxShader.uniforms[slot(CompositeFxShader.uniforms, "CompositeFx")].size);
 	// a white texel (a texture slot no effect fills)
@@ -46,9 +47,9 @@ class PostFx implements RenderFeature.PostEffects {
 	var aoDraws = 0;
 	var dofDraws = 0;
 	// (the composite's pipelines with the effects: by fxaa, then by format)
-	final pipelines:Array<Null<Pipeline>> = [for (_ in 0...8) null];
-	final formats:Array<Null<TextureFormat>> = [for (_ in 0...8) null];
-	final used:Array<Bool> = [for (_ in 0...8) false];
+	final pipelines:Array<Null<Pipeline>> = [for (_ in 0...12) null];
+	final formats:Array<Null<TextureFormat>> = [for (_ in 0...12) null];
+	final used:Array<Bool> = [for (_ in 0...12) false];
 	// (each variant's slots: the effects' block, the view buffers' depth and
 	// normals, the blur, the lut, the groups; the chain's: its block, the
 	// scene, the bloom)
@@ -56,7 +57,17 @@ class PostFx implements RenderFeature.PostEffects {
 	final baseSlots:Array<Array<Int>> = [];
 
 	function get_light():Null<Texture>
-		return @:privateAccess post.light;
+		return current;
+
+	// (the light so far in beforeComposite: the scene's, then each light pass's)
+	var current:Null<Texture> = null;
+	// the renderer whose frame the chain finishes (its last require's; null: none yet)
+	public var renderer(default, null):Null<Renderer> = null;
+	// the frame it drew (its FrameInfo: the camera, the jitter, the motion's matrices)
+	public var frame(get, never):Null<Renderer.FrameInfo>;
+
+	function get_frame():Null<Renderer.FrameInfo>
+		return renderer != null ? renderer.frame : null;
 
 	// (made by the first effect set on a chain: PostProcess.effects)
 	public static function install()
@@ -67,6 +78,16 @@ class PostFx implements RenderFeature.PostEffects {
 	@:noCompletion public static var makeAo:Null<Ssao->PostPass> = null;
 	@:noCompletion public static var makeDof:Null<Dof->PostPass> = null;
 	@:noCompletion public static var makeOutline:Null<Outline->PostPass> = null;
+	@:noCompletion public static var makeSsr:Null<Ssr->LightPass> = null;
+	@:noCompletion public static var makeMotionBlur:Null<MotionBlur->LightPass> = null;
+	@:noCompletion public static var makeGodRays:Null<GodRays->PostPass> = null;
+	// (temporal antialiasing's and SMAA's, installed by post.antialias's setter;
+	// SMAA's composite variant's description and bindings with them)
+	@:noCompletion public static var makeTaa:Null<Taa->LightPass> = null;
+	@:noCompletion public static var makeSmaa:Null<Smaa->PostPass> = null;
+	@:noCompletion public static var smaaComposite:Null<Void->PipelineDesc> = null;
+	@:noCompletion public static var smaaUniforms:Null<Array<helder.gfx.shader.Shader.UniformBlock>> = null;
+	@:noCompletion public static var smaaTextures:Null<Array<helder.gfx.shader.Shader.TextureBinding>> = null;
 
 	// (the passes of the effects set, made again when an effect is replaced)
 	var aoPass:Null<PostPass> = null;
@@ -75,6 +96,73 @@ class PostFx implements RenderFeature.PostEffects {
 	var dofOf:Null<Dof> = null;
 	var outlinePass:Null<PostPass> = null;
 	var outlineOf:Null<Outline> = null;
+
+	var ssrPass:Null<LightPass> = null;
+	var ssrOf:Null<Ssr> = null;
+	var blurPass:Null<LightPass> = null;
+	var blurOf:Null<MotionBlur> = null;
+	var raysPass:Null<PostPass> = null;
+	var raysOf:Null<GodRays> = null;
+	var taaPass:Null<LightPass> = null;
+	var taaOf:Null<Taa> = null;
+	var smaaPass:Null<PostPass> = null;
+	var smaaOf:Null<Smaa> = null;
+	var lightDraws = 0;
+
+	function passOfSsr():Null<LightPass> {
+		var e = post.ssr;
+		if (e == null) return null;
+		if (ssrOf != e) {
+			if (ssrPass != null) ssrPass.dispose();
+			ssrPass = makeSsr(e);
+			ssrOf = e;
+		}
+		return ssrPass;
+	}
+
+	function passOfMotionBlur():Null<LightPass> {
+		var e = post.motionBlur;
+		if (e == null) return null;
+		if (blurOf != e) {
+			if (blurPass != null) blurPass.dispose();
+			blurPass = makeMotionBlur(e);
+			blurOf = e;
+		}
+		return blurPass;
+	}
+
+	function passOfGodRays():Null<PostPass> {
+		var e = post.godRays;
+		if (e == null) return null;
+		if (raysOf != e) {
+			if (raysPass != null) raysPass.dispose();
+			raysPass = makeGodRays(e);
+			raysOf = e;
+		}
+		return raysPass;
+	}
+
+	function passOfTaa():Null<LightPass> {
+		var e = post.taa;
+		if (e == null) return null;
+		if (taaOf != e) {
+			if (taaPass != null) taaPass.dispose();
+			taaPass = makeTaa(e);
+			taaOf = e;
+		}
+		return taaPass;
+	}
+
+	function passOfSmaa():Null<PostPass> {
+		var e = post.smaa;
+		if (e == null) return null;
+		if (smaaOf != e) {
+			if (smaaPass != null) smaaPass.dispose();
+			smaaPass = makeSmaa(e);
+			smaaOf = e;
+		}
+		return smaaPass;
+	}
 
 	function passOfAo():Null<PostPass> {
 		var e = post.ao;
@@ -123,6 +211,16 @@ class PostFx implements RenderFeature.PostEffects {
 		var u0 = CompositeFxShader.uniforms, u1 = CompositeFxFxaaShader.uniforms;
 		fxSlots.push([u0[slot(u0, "CompositeFx")].binding].concat(textures(CompositeFxShader.textures)));
 		fxSlots.push([u1[slot(u1, "CompositeFx")].binding].concat(textures(CompositeFxFxaaShader.textures)));
+		baseSlots.push([]);
+		fxSlots.push([]);
+	}
+
+	// (SMAA's composite variant's slots, once it is set)
+	function smaaSlots() {
+		if (baseSlots[2].length > 0 || smaaUniforms == null) return;
+		var u = smaaUniforms;
+		baseSlots[2] = PostProcess.slotsOf(u, smaaTextures);
+		fxSlots[2] = [u[slot(u, "CompositeFx")].binding].concat(textures(smaaTextures));
 	}
 
 	static function slot(uniforms:Array<helder.gfx.shader.Shader.UniformBlock>, name:String):Int {
@@ -138,31 +236,45 @@ class PostFx implements RenderFeature.PostEffects {
 				if (b.name == name) return b.binding;
 			return -1;
 		}
-		return [t("viewDepth"), t("viewNormals"), t("blur"), t("lut"), t("groups")];
+		return [t("viewDepth"), t("viewNormals"), t("blur"), t("lut"), t("groups"), t("rays"), t("weights")];
 	}
 
 	// (an effect's, in its require: it reads the renderer's view buffers v,
 	// ViewBuffers.of(renderer), at least at share of the frame's size)
-	public function read(v:ViewBuffers, share:Float) {
+	// (motion: it reads their motion too, ViewBuffers.velocity's)
+	public function read(v:ViewBuffers, share:Float, motion = false) {
 		if (views != v) {
 			made = !hadViews;
 			views = v;
 		}
 		if (share > wanted) wanted = share;
+		// (its motion pass installed by the effect that asks: TAA's, motion blur's setters)
+		if (motion) wantedMotion = true;
 	}
 
+	var wantedMotion = false;
+
 	public function require(renderer:Renderer) {
-		aoDraws = dofDraws = 0;
+		this.renderer = renderer;
+		aoDraws = dofDraws = lightDraws = 0;
 		wanted = 0;
+		wantedMotion = false;
 		hadViews = views == null && @:privateAccess renderer.views != null;
 		var a = passOfAo(), d = passOfDof(), o = passOfOutline(), l:Null<PostPass> = post.lut;
 		if (a != null) a.require(this, renderer);
 		if (d != null) d.require(this, renderer);
 		if (o != null) o.require(this, renderer);
 		if (l != null) l.require(this, renderer);
+		var sr = passOfSsr(), t = passOfTaa(), mb = passOfMotionBlur(), g = passOfGodRays(), sm = passOfSmaa();
+		if (sr != null) sr.require(this, renderer);
+		if (t != null) t.require(this, renderer) else renderer.jitter = new helder.gfx.shader.Vec2(0, 0);
+		if (mb != null) mb.require(this, renderer);
+		if (g != null) g.require(this, renderer);
+		if (sm != null) sm.require(this, renderer);
 		var v = views;
 		if (v != null) {
 			v.wanted = wanted > 0 ? wanted : 0.5;
+			v.wantedMotion = wantedMotion;
 			// (made here and read by none now: no prepass drawn)
 			if (made) v.enabled = wanted > 0;
 		}
@@ -175,11 +287,29 @@ class PostFx implements RenderFeature.PostEffects {
 		return a.result();
 	}
 
-	public function beforeComposite(enc:Encoder) {
-		var d = passOfDof();
-		if (d == null || !ready()) return;
-		write();
-		dofDraws = d.draw(enc, this);
+	public function beforeComposite(enc:Encoder, light:Texture):Texture {
+		current = light;
+		if (ready()) {
+			// (the passes making a new light: reflections, the history's, motion blur)
+			var sr = passOfSsr(), t = passOfTaa(), mb = passOfMotionBlur();
+			if (sr != null) current = sr.run(enc, this, current);
+			if (t != null) current = t.run(enc, this, current);
+			if (mb != null) current = mb.run(enc, this, current);
+			if (sr != null) lightDraws += sr.drawn();
+			if (t != null) lightDraws += t.drawn();
+			if (mb != null) lightDraws += mb.drawn();
+			// (then what the composite reads of it)
+			write();
+			var d = passOfDof(), g = passOfGodRays();
+			if (d != null) dofDraws = d.draw(enc, this);
+			if (g != null) lightDraws += g.draw(enc, this);
+		}
+		// (SMAA's edges and weights, of the light the composite reads: no view buffers)
+		var sm = passOfSmaa();
+		if (sm != null) lightDraws += sm.draw(enc, this);
+		var out = current;
+		current = null;
+		return out;
 	}
 
 	// whether the view buffers were drawn this frame (what AO, depth of field and the outline read)
@@ -187,15 +317,15 @@ class PostFx implements RenderFeature.PostEffects {
 		return views != null && views.enabled && views.width > 0;
 
 	public function folded():Bool
-		return post.lut != null || ready() && (post.dof != null || post.outline != null);
+		return post.lut != null || smaaPass != null && post.smaa != null || ready() && (post.dof != null || post.outline != null || post.godRays != null);
 
-	public function composite(fxaa:Bool, format:Null<TextureFormat>):Pipeline {
-		var base = fxaa ? 4 : 0;
+	public function composite(aa:Int, format:Null<TextureFormat>):Pipeline {
+		var base = aa * 4;
 		for (k in base...base + 4)
 			if (used[k] && formats[k] == format) return pipelines[k];
 		for (k in base...base + 4)
 			if (!used[k]) {
-				var d = (fxaa ? CompositeFxFxaaShader : CompositeFxShader).pipeline({});
+				var d = aa == 2 ? smaaComposite() : (aa == 1 ? CompositeFxFxaaShader : CompositeFxShader).pipeline({});
 				d.colorFormat = format;
 				pipelines[k] = device.createPipeline(d);
 				formats[k] = format;
@@ -212,56 +342,90 @@ class PostFx implements RenderFeature.PostEffects {
 		b.dofFocus = z;
 		b.outline = z;
 		b.lut = z;
+		b.rays = z;
+		b.smaa = z;
 		b.inverseProjection = views != null ? views.inverseProjection : Mat4.identity();
 		var d = passOfDof(), o = passOfOutline(), l:Null<PostPass> = post.lut;
 		var on = ready();
 		if (d != null && on) d.write(this);
 		if (o != null && on) o.write(this);
 		if (l != null) l.write(this);
+		var g = passOfGodRays(), sm = passOfSmaa();
+		if (g != null && on) g.write(this);
+		if (sm != null) sm.write(this);
 		CompositeFxShader.params.fx.write(b, blockBytes);
 	}
 
-	public function bind(enc:Encoder, fxaa:Bool) {
+	public function bind(enc:Encoder, aa:Int) {
 		write();
-		var sl = fxSlots[fxaa ? 1 : 0];
+		if (aa == 2) smaaSlots();
+		var sl = fxSlots[aa];
 		enc.setUniforms(sl[0], blockBytes);
 		var on = ready(), v = views;
 		if (sl[1] >= 0) enc.setTexture(sl[1], on ? v.depth : white, nearest);
 		if (sl[2] >= 0) enc.setTexture(sl[2], on ? v.normals : white, nearest);
-		for (k in 3...6)
+		for (k in 3...8)
 			if (sl[k] >= 0) enc.setTexture(sl[k], white, linear);
-		var d = passOfDof(), o = passOfOutline(), l:Null<PostPass> = post.lut;
+		var d = passOfDof(), o = passOfOutline(), l:Null<PostPass> = post.lut, g = passOfGodRays(), sm = passOfSmaa();
 		if (d != null && on) d.bind(enc, this, sl);
 		if (o != null && on) o.bind(enc, this, sl);
 		if (l != null) l.bind(enc, this, sl);
+		if (g != null && on) g.bind(enc, this, sl);
+		if (sm != null) sm.bind(enc, this, sl);
 	}
 
-	public function slots(fxaa:Bool):Array<Int>
-		return baseSlots[fxaa ? 1 : 0];
+	public function slots(aa:Int):Array<Int> {
+		if (aa == 2) smaaSlots();
+		return baseSlots[aa];
+	}
 
 	public function drawn():Int
-		return aoDraws + dofDraws;
+		return aoDraws + dofDraws + lightDraws;
 
 	public function dispose() {
-		for (k in 0...8)
+		for (k in 0...12)
 			pipelines[k] = null;
 		device.destroyTexture(white);
-		var a = aoPass, d = dofPass, o = outlinePass;
+		var a = aoPass, d = dofPass, o = outlinePass, g = raysPass, sm = smaaPass;
 		if (a != null) a.dispose();
 		if (d != null) d.dispose();
 		if (o != null) o.dispose();
-		aoPass = dofPass = outlinePass = null;
+		if (g != null) g.dispose();
+		if (sm != null) sm.dispose();
+		var sr = ssrPass, t = taaPass, mb = blurPass;
+		if (sr != null) sr.dispose();
+		if (t != null) t.dispose();
+		if (mb != null) mb.dispose();
+		aoPass = dofPass = outlinePass = raysPass = smaaPass = null;
+		ssrPass = taaPass = blurPass = null;
 		aoOf = null;
 		dofOf = null;
 		outlineOf = null;
+		ssrOf = null;
+		blurOf = null;
+		raysOf = null;
+		taaOf = null;
+		smaaOf = null;
 	}
 }
 
-// what PostFx asks of an effect's pass (SsaoPass, DofPass, OutlinePass;
-// Lut, its own), reached through this alone: a program links a pass only
-// when it sets its effect on a chain. Its slots
+// what PostFx asks of an effect's pass that makes a new light of the
+// scene's before the composite (SsrPass, TaaPass, MotionBlurPass), in this
+// order: screen-space reflections, temporal antialiasing, motion blur
+interface LightPass {
+	function require(fx:PostFx, renderer:Renderer):Void;
+	// its passes: the light so far in, the new one out (its own target's)
+	function run(enc:Encoder, fx:PostFx, light:Texture):Texture;
+	// the last run's draws
+	function drawn():Int;
+	function dispose():Void;
+}
+
+// what PostFx asks of an effect's pass (SsaoPass, DofPass, OutlinePass,
+// GodRaysPass, SmaaPass; Lut, its own), reached through this alone: a
+// program links a pass only when it sets its effect on a chain. Its slots
 // in bind: the effects' block, then the view buffers' depth and normals,
-// the blur, the LUT, the groups (PostFx's textures)
+// the blur, the LUT, the groups, the god rays, SMAA's weights (PostFx's textures)
 interface PostPass {
 	// what it needs of the renderer before the frame's draw list: the view
 	// buffers (fx.read(ViewBuffers.of(renderer), share))

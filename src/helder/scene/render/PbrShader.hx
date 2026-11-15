@@ -781,6 +781,11 @@ function octEncode(n:Vec3):Vec2 {
 	return e * 0.5 + 0.5;
 }
 
+// roughness and metalness in one channel (4 bits each: the view buffers' z,
+// screen-space reflections' Fresnel and gloss)
+function packRoughMetal(r:Float, m:Float):Float
+	return (floor(clamp(r, 0, 1) * 15 + 0.5) * 16 + floor(clamp(m, 0, 1) * 15 + 0.5)) / 255;
+
 // joint k's matrix from its row of the texture (rows of them: 16 R32F texels a joint)
 function joint(t:Texture2D, k:Float, rows:Float):Mat4 {
 	var y = (k + 0.5) / rows;
@@ -871,7 +876,7 @@ final pbr = slots({
 			var f = m.normal(s, p);
 			if (p.material.params.w > 0.5 && dot(f, p.frame.eye.xyz - s.world) < 0) f = -f;
 			var vn = normalize((p.prepass.view * vec4(f, 0)).xyz);
-			out = vec4(octEncode(vn), m.roughness(s, p), p.prepass.id.x / 255);
+			out = vec4(octEncode(vn), packRoughMetal(m.roughness(s, p), m.metalness(s, p)), p.prepass.id.x / 255);
 		} else {
 			var lit = litSurface(m.normal(s, p), s.world, uv, s.up, m.color(s, p) * i.tint, m.alpha(s, p), m.metalness(s, p), m.roughness(s, p), p.frame,
 				p.material);

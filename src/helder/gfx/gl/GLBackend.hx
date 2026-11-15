@@ -865,6 +865,7 @@ class GLBackend {
 	}
 
 	public function beginPass(p:PassDesc) {
+		passQueries = p.queries == null ? 0 : p.queries.id();
 		p = framePass(p);
 		var c = p.colors[0], d = p.depth, mask = 0;
 		if (c.texture == null) {
@@ -1025,7 +1026,75 @@ class GLBackend {
 	}
 
 	// a multisampled pass's colour resolved into its resolve target (a blit)
+	// ---- occlusion queries: a set's GL names, each one's state (1 begun,
+	// its answer not yet read) and last answer (-1 none)
+	final querySets:Array<Null<{names:Array<Int>, pending:Array<Bool>, results:Array<Int>, stale:Array<Bool>}>> = [];
+	var passQueries = 0;
+	var activeQuery = -1;
+
+	public function createQueries(count:Int):Int {
+		var names = [];
+		for (_ in 0...count) {
+			GL.glGenQueries(1, scratch);
+			names.push(scratch.value);
+		}
+		querySets.push({names: names, pending: [for (_ in 0...count) false], results: [for (_ in 0...count) -1], stale: [for (_ in 0...count) false]});
+		return querySets.length;
+	}
+
+	public function destroyQueries(id:Int) {
+		var q = querySets[id - 1];
+		if (q == null) return;
+		for (n in q.names) {
+			scratch.value = n;
+			GL.glDeleteQueries(1, scratch);
+		}
+		querySets[id - 1] = null;
+	}
+
+	public function queryResult(id:Int, k:Int):Int {
+		var q = querySets[id - 1];
+		if (q == null || k < 0 || k >= q.names.length) return -1;
+		if (q.pending[k]) {
+			GL.glGetQueryObjectuiv(q.names[k], GL.QUERY_RESULT_AVAILABLE, scratch);
+			if (scratch.value != 0) {
+				GL.glGetQueryObjectuiv(q.names[k], GL.QUERY_RESULT, scratch);
+				q.results[k] = q.stale[k] ? -1 : scratch.value != 0 ? 1 : 0;
+				q.pending[k] = q.stale[k] = false;
+			}
+		}
+		return q.results[k];
+	}
+
+	public function resetQuery(id:Int, k:Int) {
+		var q = querySets[id - 1];
+		if (q == null || k < 0 || k >= q.names.length) return;
+		q.results[k] = -1;
+		if (q.pending[k]) q.stale[k] = true;
+	}
+
+	public function beginQuery(k:Int) {
+		activeQuery = -1;
+		var q = passQueries == 0 ? null : querySets[passQueries - 1];
+		if (q == null || k < 0 || k >= q.names.length) return;
+		// (its last answer still to come: not begun again, so that one comes)
+		if (q.pending[k]) {
+			queryResult(passQueries, k);
+			if (q.pending[k]) return;
+		}
+		GL.glBeginQuery(GL.ANY_SAMPLES_PASSED, q.names[k]);
+		activeQuery = k;
+	}
+
+	public function endQuery() {
+		if (activeQuery < 0) return;
+		GL.glEndQuery(GL.ANY_SAMPLES_PASSED);
+		querySets[passQueries - 1].pending[activeQuery] = true;
+		activeQuery = -1;
+	}
+
 	public function endPass() {
+		passQueries = 0;
 		if (resolving == 0) return;
 		if (resolveFbo == 0) {
 			GL.glGenFramebuffers(1, scratch);

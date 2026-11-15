@@ -17,7 +17,7 @@ import helder.ui.gesture.Scale;
 // the box's arena with its scene nodes' taps: a tap on a mesh still
 // selects it, a drag from it orbits. In markup: <OrbitControls target=
 // {...} minDistance={3} maxDistance={20}/> in a <Scene> (SceneTags).
-class OrbitControls {
+class OrbitControls implements SceneBox.SceneControl {
 	public final box:SceneBox;
 	// (the box's bounds, filled each gesture's move: nothing made, Node.rectInto)
 	final bounds = new helder.ui.Bounds();
@@ -156,7 +156,7 @@ class OrbitControls {
 	}
 
 	// a frame of seconds (the box's, before it draws): the glide; whether it still moves
-	@:allow(helder.scene.view) function update(seconds:Float):Bool {
+	public function update(seconds:Float):Bool {
 		if (yawSpeed == 0 && pitchSpeed == 0) return false;
 		yaw += yawSpeed * seconds;
 		pitch += pitchSpeed * seconds;

@@ -6,8 +6,8 @@ Aims > Familiar APIs). It covers the areas where helder.scene trails
 three.js: materials, lights and shadows, post-processing, and geometry,
 helpers, picking and culling. Loaders and the ecosystem are out of scope.
 
-It is a design. Phases 1 and 2 (section 8) are built, their deviations
-said there and, for phase 2, at the places they depart from. No spike
+It is a design. Phases 1, 2, 3 and 7 (section 9) are built, their
+deviations said there and at the places they depart from. No spike
 was needed: every claim about helder's internals below was read from the
 source, and the file is named where it matters.
 
@@ -658,7 +658,7 @@ map and the grade, and `PostStage`s after.
   post.ao = new Ssao({radius: 0.5, intensity: 1, samples: 8, halfRes: true});   // GTAO
   post.dof = Dof.tiltShift({band: 0.2, falloff: 0.3, strength: 1});           // or Dof.focus({distance, aperture})
   post.outline = new Outline({width: 2, color: new Vec4(1, 0.8, 0.2, 1)});     // nodes selected: Outline.select(node)
-  post.antialias = Fxaa;                                                         // None | Fxaa (Smaa, Taa: phase 7)
+  post.antialias = Fxaa;                                                         // None | Fxaa (phase 7: post.smaa, post.taa)
   post.lut = Lut.fromImage(device, image);                                       // a 16³ strip (an Image: Asset.image's value), sampled 2D
   post.bloom = 0.05; post.toneMap = AgX;                                         // as now
   renderer.post = post;
@@ -788,12 +788,12 @@ milliseconds; the devices' own come with `page.json`'s slots.
 | Effect | three.js | Babylon | PlayCanvas | Godot | Bevy | helder proposal | Cost on a phone |
 |---|---|---|---|---|---|---|---|
 | **AO** | `GTAOPass`, `SAOPass`, `SSAOPass`; N8AO | SSAO2 | SSAO (in `CameraFrame`) | SSAO (not on Mobile) [25] | SSAO (GTAO-based, needs compute) | `Ssao`: GTAO, Jimenez et al. 2016 [52], half-res from `ViewBuffers`, 1 to 2 slices of 4 to 8 steps, a depth-aware bilateral upsample. It multiplies the indirect light only, in the composite or in `pbr` (option `ssao`: one texture read), not over the direct light (three's classic passes darken the whole frame). *Built:* in `pbr`, as a branch on the frame's block (`exposure.z`), not an option: no new variants of every material, one texture read where it is on; each slice along whole texel steps and its visibility a share of the slice's arc unoccluded, so one or two slices leave a plane open (no stripes) | measured: +47% (2 slices of 8 steps, with the view buffers), 2 passes; estimate was 1 to 1.5 ms |
-| **SSR** | `SSRPass` | `SSRRenderingPipeline` | no | yes (Forward+) | yes (deferred or prepass) | `Ssr`, desktop: a hierarchical-depth march, half-res, falling back to the probes. Off on mobile (no renderer listed ships it there) | desktop only |
+| **SSR** | `SSRPass` | `SSRRenderingPipeline` | no | yes (Forward+) | yes (deferred or prepass) | `Ssr`, desktop: a hierarchical-depth march, half-res, falling back to the probes. Off on mobile (no renderer listed ships it there). *Built (phase 7):* a linear view-space march (32 steps, 4 halvings), not a hierarchical one (gfx's depth has no mip chain of minimums); mixed by Schlick's Fresnel with F0 from metalness (the prepass's z packs roughness and metalness, 4 bits each; no base colour: a metal's reflection untinted); after the frame's pass (see-through surfaces included), not before the transparents; where nothing is hit, what the frame's pass gave | measured: +41% (32 steps, half size, with the view buffers), 2 passes |
 | **DOF** | `BokehPass` | DOF in the default pipeline | DOF | `CameraAttributesPractical` near and far blur | `DepthOfField` (Gaussian, bokeh) | `Dof.focus({distance, aperture})` or `Dof.tiltShift({band, falloff})`. A circle of confusion from depth, gathered at half-res, then merged. Tilt-shift in world depth is what Little Skies' TiltShift.hx can't do now. *Built:* tilt-shift's band is a share of the focus depth, its focus the depth under the frame's centre unless given | measured: focus +48%, tilt-shift +35% (16 taps, with the view buffers), 1 pass; estimate was 0.8 to 1.2 ms |
-| **Motion blur** | addons | `MotionBlurPostProcess` | no | no | `MotionBlur` | `MotionBlur`: camera-only from depth and the last frame's view-projection (no velocity target: mobile-friendly); per-object with `ViewBuffers.velocity` on desktop | 0.5 ms |
-| **AA** | `FXAAPass`, `SMAAPass`, `TAARenderPass` | FXAA, TAA | TAA | MSAA, FXAA, TAA, FSR2 | `Fxaa`, `Smaa`, `TemporalAntiAliasing` | MSAA stays the default (cheap on tiled GPUs, which resolve on chip). Then `Fxaa` in the composite (one variant), `Smaa` (three passes, desktop and web), and `Taa` (jitter plus velocity, desktop; it needs the prepass's velocity) | FXAA measured: +8%, no pass of its own; estimate was 0.3 ms |
+| **Motion blur** | addons | `MotionBlurPostProcess` | no | no | `MotionBlur` | `MotionBlur`: camera-only from depth and the last frame's view-projection (no velocity target: mobile-friendly); per-object with `ViewBuffers.velocity` on desktop. *Built:* McGuire's reconstruction in 5 passes (the motion at the view buffers' size, tiles of 8, their neighbourhoods, the gather at half size, a mix at full size where a tile moves); `objects: true` the per-object path | measured: about +70% (12 taps, every pixel moving, with the view buffers); +80% by objects; estimate was 0.5 ms |
+| **AA** | `FXAAPass`, `SMAAPass`, `TAARenderPass` | FXAA, TAA | TAA | MSAA, FXAA, TAA, FSR2 | `Fxaa`, `Smaa`, `TemporalAntiAliasing` | MSAA stays the default (cheap on tiled GPUs, which resolve on chip). Then `Fxaa` in the composite (one variant), `Smaa` (three passes, desktop and web), and `Taa` (jitter plus velocity, desktop; it needs the prepass's velocity). *Built:* `post.smaa` and `post.taa` are fields of their own, not `antialias`' values (an enum's value set at run time links every technique; hxmc folds no inline setter's comparison); SMAA's medium preset (orthogonal patterns, areas worked out, not an area texture; no diagonals or corners; its blending in the composite's own variant); TAA's jitter Halton (2, 3) on a sixteenth's grid (the same edges on every rasterizer), YCoCg variance clipping | FXAA +8%; SMAA +17%; TAA +73% (the view buffers whole and their motion) |
 | **Outlines and selection** | `OutlinePass` (mask, edge detect, blur) | `HighlightLayer`, `renderOutline` on meshes [53] | addons | the next-pass material trick | crates | `Outline`: the selection ids in `ViewBuffers`' colour target (8 bits: 255 groups, each a colour and width), edges found in the composite. `Outline.select(node, group)` is a component, so selection is data and a hover in markup is a binding | measured: +35% (the view buffers whole included), no pass of its own; estimate was 0.3 ms |
-| **God rays** | `GodRaysShader` (examples) | `VolumetricLightScatteringPostProcess` | no | volumetric fog | volumetric fog | `GodRays`: radial blur of the sky's coverage (from depth) toward the sun's screen point, at quarter-res (Mitchell's GPU Gems 3 approach). Volumetric fog is out of scope | 0.4 ms |
+| **God rays** | `GodRaysShader` (examples) | `VolumetricLightScatteringPostProcess` | no | volumetric fog | volumetric fog | `GodRays`: radial blur of the sky's coverage (from depth) toward the sun's screen point, at quarter-res (Mitchell's GPU Gems 3 approach). Volumetric fog is out of scope. *Built:* one pass (the sky's mask read in the taps), added in the composite before the curve | measured: +36% (32 taps, with the view buffers); estimate was 0.4 ms |
 | **LUT grading** | `LUTPass` | `ColorGradingTexture` | grading | `adjustment_color_correction` (a LUT) | no (`ColorGrading` values) | `Lut`: a 16³ or 32³ LUT as a 2D strip (no 3D textures in gfx), one read in the composite after the tone map (built: two reads, the blue slices blended) | measured: +3% |
 
 ## 4. Geometry and helpers
@@ -927,6 +927,12 @@ people want to see attached to a node.
   - It binds to a `Signal<Vec3>` or writes the node.
   - It is the studio's scene inspector's (phase 5, "Games in the
     extension"), and examples' too.
+  - *Built (phase 7):* `TransformGizmo` and `<TransformGizmo of mode space
+    snap rotationSnap scaleSnap size>`; its gesture accepts at a press on
+    a handle (the orbit's waits for its slop). A drag's values are in
+    `position`, `rotation`, `scale`, written to the node unless
+    `writesNode` is off (markup's signals). The studio's inspector on it is
+    the studio's change, not this one's.
 
 ### 4.3 Raycasting against triangles, with a BVH
 
@@ -996,7 +1002,10 @@ people want to see attached to a node.
   Babylon's occlusion queries do. It is last in the plan: Little Skies'
   levels and most mobile games are not occlusion-bound. GPU-driven
   culling, and with it two-phase occlusion against a depth pyramid, is the
-  compute tier's (section 8).
+  compute tier's (section 8). *Built (phase 7):* `Device.createQueries`,
+  `queryResult`, `resetQuery`, `Encoder.beginQuery`, `endQuery`,
+  `PassDesc.queries` on all five back ends; `Occlusion` tests the nodes
+  marked (`Occlusion.test`), not "large objects" by a rule of its own.
 - **Shadow culling.** Shadow casters are culled per cascade and per atlas
   tile against the light's frustum. Static local lights' tiles are cached
   (2.1).
@@ -1537,6 +1546,47 @@ Tests and frames:
   `smaa.png`, `motionblur.png`, `godrays.png`, `occlusion` (draws
   culled, counted by `--stats`).
 - **3d-ui:** a gizmo drag test in `tests/3d-ui`.
+
+As built: every item above but the studio's inspector (the studio's
+own change), with these departures (each said where the design
+describes it):
+
+- **Velocity** is a second geometry pass of the view buffers' draws
+  (`ViewBuffers.withVelocity()`, `motion`: RGBA16F, its own depth), not
+  MRT: each node's world matrix then and now (kept by node slot, nothing
+  allocated), the camera's view-projections without the jitter; instanced
+  runs' last matrices in a buffer beside the renderer's; instanced sets
+  move with the camera alone; skinned meshes and a material's own
+  position slot are not drawn there (the camera's motion from depth). The
+  renderer gained `jitter`, `frames` and FrameInfo's `stillViewProj`,
+  `previousViewProj`, `jitter`, `index`.
+- **The antialiasing options** are effects of their own (`post.smaa =
+  new Smaa()`, `post.taa = new Taa()`), not `Antialias` values: see the AA
+  row. `post.resetHistory()` is a cut.
+- **SSR, SMAA, motion blur, god rays**: see their rows (a linear march,
+  the medium preset, five passes, one pass).
+- **The light passes** (SSR, TAA, motion blur) make a new light of the
+  scene's before the composite (`LightPass`: in that order, then depth of
+  field's blur, god rays, SMAA's edges and weights); the composite gained
+  god rays' add and a variant with SMAA's blending.
+- **No compute paths**: section 8 plans none for these effects (a
+  full-screen effect a fragment pass does in tile memory), and none is
+  built; every path is the floor's, on WebGL2 too.
+- **Occlusion queries**: see 4.4. A query begun again before its last
+  answer came is not begun, so an answer always comes; a node out of view
+  or holding the eye is not tested and its answer is let go.
+- **The gizmo**: see 4.2. A Quat given straight to a markup prop
+  crashed an hxmc program (the example passes a signal, as the others
+  do); not this phase's to fix.
+- **Frames**: ssr, taa (8 frames from a cut a draw, so the browser's
+  window, drawing more frames, shows the same still), smaa (turned boxes
+  and spheres: long runs of a near-vertical bar spread one rasterizer's
+  different step along them), motionblur, godrays, occlusion (its twin:
+  the frame without occlusion), blessed on llvmpipe, within the rule on
+  WARP, WebGPU and WebGL2; each checks a frame allocates nothing.
+- **Measured** (`tests/3d/EffectBench.hx`, sizes `tests/3d/size/sizes.sh`):
+  the rows above; sizes in `docs/scene/effects.md`. The renderer's own
+  share of the phase is 23 KB natively, 16 KB as wasm.
 
 ## Sources
 

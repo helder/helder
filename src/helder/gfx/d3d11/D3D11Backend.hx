@@ -939,6 +939,7 @@ class D3D11Backend {
 	}
 
 	public function beginPass(p:PassDesc) {
+		passQueries = p.queries == null ? 0 : p.queries.id();
 		// (a flip-model swap chain unbinds its buffer at each Present)
 		var c = p.colors[0], d = p.depth, rtv = view, dsv = depthView, w = width, h = height;
 		offscreen = c.texture != null;
@@ -1095,7 +1096,75 @@ class D3D11Backend {
 	}
 
 	// (a render target: unbound, so that it can be sampled next)
+	// ---- occlusion queries (D3D11_QUERY_OCCLUSION: the samples passed,
+	// read by GetData without flushing): a set's queries, each one's state
+	// (begun, its answer not yet read) and last answer (-1 none)
+	final querySets:Array<Null<{queries:Array<Ptr>, pending:Array<Bool>, results:Array<Int>, stale:Array<Bool>}>> = [];
+	var queryBytes:Ptr<Int32> = Ptr.nil();
+	var passQueries = 0;
+	var activeQuery = -1;
+
+	public function createQueries(count:Int):Int {
+		if (queryBytes.isNull()) queryBytes = LibC.malloc(16);
+		var list = [];
+		for (_ in 0...count) {
+			queryBytes.value = 1;
+			queryBytes.offset(1).value = 0;
+			check(ID3D11Device.CreateQuery(device, queryBytes, scratch), "CreateQuery (occlusion)");
+			list.push(scratch.value);
+		}
+		querySets.push({queries: list, pending: [for (_ in 0...count) false], results: [for (_ in 0...count) -1], stale: [for (_ in 0...count) false]});
+		return querySets.length;
+	}
+
+	public function destroyQueries(id:Int) {
+		var q = querySets[id - 1];
+		if (q == null) return;
+		for (p in q.queries)
+			Com.release(p);
+		querySets[id - 1] = null;
+	}
+
+	public function queryResult(id:Int, k:Int):Int {
+		var q = querySets[id - 1];
+		if (q == null || k < 0 || k >= q.queries.length) return -1;
+		if (q.pending[k] && ID3D11DeviceContext.GetData(context, q.queries[k], queryBytes, 8, 1) == 0) {
+			q.results[k] = q.stale[k] ? -1 : queryBytes.value != 0 || queryBytes.offset(1).value != 0 ? 1 : 0;
+			q.pending[k] = q.stale[k] = false;
+		}
+		return q.results[k];
+	}
+
+	public function resetQuery(id:Int, k:Int) {
+		var q = querySets[id - 1];
+		if (q == null || k < 0 || k >= q.queries.length) return;
+		q.results[k] = -1;
+		if (q.pending[k]) q.stale[k] = true;
+	}
+
+	public function beginQuery(k:Int) {
+		activeQuery = -1;
+		var q = passQueries == 0 ? null : querySets[passQueries - 1];
+		if (q == null || k < 0 || k >= q.queries.length) return;
+		// (its last answer still to come: not begun again, so that one comes)
+		if (q.pending[k]) {
+			queryResult(passQueries, k);
+			if (q.pending[k]) return;
+		}
+		ID3D11DeviceContext.Begin(context, q.queries[k]);
+		activeQuery = k;
+	}
+
+	public function endQuery() {
+		if (activeQuery < 0) return;
+		var q = querySets[passQueries - 1];
+		ID3D11DeviceContext.End(context, q.queries[activeQuery]);
+		q.pending[activeQuery] = true;
+		activeQuery = -1;
+	}
+
 	public function endPass() {
+		passQueries = 0;
 		if (offscreen) ID3D11DeviceContext.OMSetRenderTargets(context, 0, Ptr.nil(), Ptr.nil());
 		// (a multisampled pass's colour into its resolve target)
 		if (resolveFrom != null) {

@@ -138,6 +138,62 @@ class SceneTags {
 		return SceneRenderer.createMarker("orbit-controls");
 	}
 
+	// a transform gizmo over the <Scene>'s box (TransformGizmo: a drag on a
+	// handle moves, turns or scales of, the node; elsewhere the orbit's):
+	// its props TransformGizmo's (of, a node or a signal of one, followed);
+	// position, rotation, scale: signals a drag writes instead of the node
+	public static function TransformGizmo(props:{
+		?of:Dynamic,
+		?mode:helder.view.graph.Read<helder.scene.view.TransformGizmo.GizmoMode>,
+		?space:helder.view.graph.Read<helder.scene.view.TransformGizmo.GizmoSpace>,
+		?snap:Float,
+		?rotationSnap:Float,
+		?scaleSnap:Float,
+		?size:Float,
+		?enabled:Bool,
+		?position:helder.view.graph.Signal<Vec3>,
+		?rotation:helder.view.graph.Signal<helder.scene.math.Quat>,
+		?scale:helder.view.graph.Signal<Vec3>,
+		?onChange:helder.scene.view.TransformGizmo->Void,
+		?ref:helder.scene.view.TransformGizmo->Void
+	}):SceneNode {
+		var box = Graph.use(BOX);
+		if (box == null) throw "helder.scene: <TransformGizmo> is in a <Scene>'s markup";
+		var g = new helder.scene.view.TransformGizmo(box);
+		if (props.mode != null) {
+			var v:Dynamic = props.mode;
+			if (Render.isReactive(v)) Graph.renderEffect(() -> (Render.read(v) : Int), (m:Int) -> g.mode = cast m) else
+				g.mode = Render.read(v);
+		}
+		if (props.space != null) {
+			var v:Dynamic = props.space;
+			if (Render.isReactive(v)) Graph.renderEffect(() -> (Render.read(v) : Int), (m:Int) -> g.space = cast m) else
+				g.space = Render.read(v);
+		}
+		if (props.snap != null) g.snap = props.snap;
+		if (props.rotationSnap != null) g.rotationSnap = props.rotationSnap;
+		if (props.scaleSnap != null) g.scaleSnap = props.scaleSnap;
+		if (props.size != null) g.size = props.size;
+		if (props.enabled != null) g.enabled = props.enabled;
+		// (signals written from its values, the node left to them)
+		var position = props.position, rotation = props.rotation, scale = props.scale, change = props.onChange;
+		g.writesNode = position == null && rotation == null && scale == null;
+		g.onChange = x -> {
+			if (position != null && x.mode == Translate) position(x.position);
+			if (rotation != null && x.mode == Rotate) rotation(x.rotation);
+			if (scale != null && x.mode == Scale) scale(x.scale);
+			if (change != null) change(x);
+		};
+		if (props.of != null) {
+			// (a node, or a signal of one: the gizmo follows it)
+			if (Render.isReactive(props.of)) Graph.renderEffect(() -> (Render.read(props.of) : Dynamic), (n:Dynamic) -> g.node = n == null ? helder.scene.Node.NONE : (n : helder.scene.Node)) else
+				g.node = Render.read(props.of);
+		}
+		if (props.ref != null) props.ref(g);
+		Graph.onCleanup(g.dispose);
+		return SceneRenderer.createMarker("transform-gizmo");
+	}
+
 	// an on-screen stick drawn over the ui (helder.scene.input.VirtualStick,
 	// which InputMap bind): at rest at left, bottom (points from the lower
 	// left), where the thumb holds it once it does; the pointer goes through

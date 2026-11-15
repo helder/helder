@@ -44,7 +44,7 @@ for o in lines debug grid raycast text3d debugcalls; do
 done
 # (post's effects, each alone and all, against the chain without one: PostSize.hx)
 printf '\n%-12s %10s %8s %10s %8s\n' post native +native wasm +wasm
-for e in none fxaa lut outline ssao dof all; do
+for e in none fxaa lut outline ssao dof ssr taa smaa motionblur godrays occlusion all; do
 	"$tool" "$out/post-$e" "$@" -main PostSize -D post_effect=$e -D hxmc.libc=glibc -D hxmc.target=linux-x86_64 > "$out/post-$e.log" 2>&1 || { cat "$out/post-$e.log"; exit 1; }
 	"$tool" "$out/post-$e.wasm" "$@" -main PostSize -D post_effect=$e -D hxmc.target=wasm32-wasi > "$out/post-$e.wasm.log" 2>&1 || { cat "$out/post-$e.wasm.log"; exit 1; }
 	sn=$(wc -c < "$out/post-$e") sw=$(wc -c < "$out/post-$e.wasm")

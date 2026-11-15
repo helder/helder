@@ -26,7 +26,9 @@ import helder.view.graph.Graph.*;
 // by the root's dispose. The first box picks by triangles (pick="triangles":
 // a click's uv and normal the face's) and holds <lines>, <axesHelper>,
 // <boundsHelper> and <text3d> (their renderer's features added, their
-// components on their nodes, a text following its signal).
+// components on their nodes, a text following its signal), and a
+// <TransformGizmo> on a node of its own: a drag on its arm moves the node
+// along it, the camera not (the gizmo's gesture before the orbit's).
 class SurfaceTest implements Markup {
 	static var checks = 0;
 	static var failed = 0;
@@ -72,6 +74,10 @@ class SurfaceTest implements Markup {
 		eye.position = new Vec3(0, 0, 4);
 		eye.lookAt(new Vec3(0, 0, 0));
 		var camera = Camera.attach(eye, Camera.perspective(0.8, 0.1, 100));
+		// (the gizmo's node: right of and below the mesh)
+		var handle = world.node("handle");
+		handle.position = new Vec3(1.2, -0.6, 0);
+		var gizmo:Null<helder.scene.view.TransformGizmo> = null;
 		// (the hdr box's world its own: a world's meshes are made on one device,
 		// the first window's, and a GL context draws no other context's buffers)
 		var hdrWorld = new World("hdr"), hdrEye = hdrWorld.node("eye");
@@ -95,6 +101,7 @@ class SurfaceTest implements Markup {
 							onPointerUp={(e:SceneEvent) -> touches.push('up ${e.pointerId}')} onPointerCancel={(e:SceneEvent) -> touches.push('cancel ${e.pointerId}')}
 							onTap={(e:SceneEvent) -> touches.push('tap ${e.pointerId}')}><boundsHelper/></mesh>
 						<OrbitControls damping={0.0} ref={o -> orbit = o}/>
+						<TransformGizmo of={handle} size={30.0} ref={g -> gizmo = g}/>
 						<light kind="directional" intensity={2.0}/>
 						<Ui><text tag="over">over</text></Ui>
 					</Scene>
@@ -171,7 +178,11 @@ class SurfaceTest implements Markup {
 		var sr = box.renderer;
 		check("<lines>, <axesHelper>: the renderer's LineRenderer and DebugDraw", @:privateAccess sr.lines != null && @:privateAccess sr.debug != null);
 		var lineNodes = world.store(helder.scene.render.Lines.KIND);
-		check("<lines>: its lines on a node of the scene", lineNodes.length == 1 && lineNodes.valueAt(0) == path && lineNodes.nodeAt(0).position.y == -1.2);
+		// (the gizmo's handles are lines too, on a node of their own)
+		var pathAt = -1;
+		for (k in 0...lineNodes.length)
+			if (lineNodes.valueAt(k) == path) pathAt = k;
+		check("<lines>: its lines on a node of the scene", lineNodes.length == 2 && pathAt >= 0 && lineNodes.nodeAt(pathAt).position.y == -1.2);
 		var helpers = world.store(helder.scene.render.Helper.KIND);
 		var bounds = false, axes = false;
 		for (k in 0...helpers.length) {
@@ -217,6 +228,19 @@ class SurfaceTest implements Markup {
 		var moved = camera.eye();
 		check("a drag from the mesh orbits the camera", orbit != null && moved.x < eye.x - 0.5 && touches.join(", ") == "down 4, move 4, move 4, up 4", '$eye to $moved; ' + touches.join(", "));
 		touches.resize(0);
+		// (a drag on the gizmo's x arm, its middle: the node moved along x, the camera not)
+		var before = handle.position, eyeBefore = camera.eye();
+		var arm = gizmo == null ? new Vec3(-100, -100, 0) : @:privateAccess gizmo.onBox(handle.worldPosition() + new Vec3(@:privateAccess gizmo.length() * 0.6, 0, 0));
+		var gx = 120 + arm.x, gy = arm.y;
+		w.ui.pointerDown(gx, gy, 1, 5, Touch);
+		w.ui.pointerMove(gx + 10, gy, 5);
+		w.ui.pointerMove(gx + 20, gy, 5);
+		w.ui.pointerUp(gx + 20, gy, 1, 5);
+		var after = handle.position, eyeAfter = camera.eye();
+		check("<TransformGizmo>: its handles drawn over the scene", gizmo != null && gizmo.lines.count == 30 && @:privateAccess sr.lines != null);
+		check("<TransformGizmo>: a drag on its arm moves its node along it, the camera not",
+			after.x > before.x + 0.2 && Math.abs(after.y - before.y) < 1e-9 && eyeAfter.x == eyeBefore.x && eyeAfter.z == eyeBefore.z,
+			'$before to $after, the eye $eyeBefore to $eyeAfter, the arm at $gx, $gy');
 
 		// (density: at most a quarter of a device pixel a point here, under scale's half)
 		box.density = s * 0.25;

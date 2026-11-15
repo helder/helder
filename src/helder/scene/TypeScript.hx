@@ -7,8 +7,9 @@ package helder.scene;
 // meshes (Shapes, Geometry's shapes and Curve3, MeshRenderer, InstancedMesh,
 // Sprites) and materials (Material's factories: toon, lambert, unlit...), glTF models (Model,
 // helder/asset's model(path) loads one; GltfScene), the renderer and its
-// post chain (PostProcess: its effects Ssao, Dof, Outline, Lut; the view
-// buffers they read, ViewBuffers), lines with width and debug drawing
+// post chain (PostProcess: its effects Ssao, Dof, Outline, Lut, Ssr,
+// MotionBlur, GodRays, Taa, Smaa; the view buffers they read, ViewBuffers), occlusion
+// culling (Occlusion), lines with width and debug drawing
 // (Lines, LineRenderer, DebugDraw, the helpers), rays cast at triangles
 // (world.raycast: Hit, HitList, RaycastOptions, Bvh), text in the world
 // (Text3D), input
@@ -20,6 +21,8 @@ package helder.scene;
 	helder.scene.render.MeshRenderer, helder.scene.render.Shapes, helder.scene.render.Geometry, helder.scene.render.VertexData, helder.scene.math.Curve3,
 	helder.scene.render.InstancedMesh, helder.scene.render.Sprites, helder.scene.render.Model, helder.scene.render.MaterialShader, helder.scene.render.PostProcess,
 	helder.scene.render.Ssao, helder.scene.render.Dof, helder.scene.render.Outline, helder.scene.render.Lut, helder.scene.render.ViewBuffers,
+	helder.scene.render.Ssr, helder.scene.render.MotionBlur, helder.scene.render.GodRays, helder.scene.render.Taa, helder.scene.render.Smaa,
+	helder.scene.render.Occlusion,
 	helder.scene.render.Lines, helder.scene.render.LineRenderer, helder.scene.render.DebugDraw, helder.scene.render.Helper, helder.scene.render.AxesHelper,
 	helder.scene.render.GridHelper, helder.scene.render.BoundsHelper, helder.scene.render.LightHelper, helder.scene.render.CameraHelper,
 	helder.scene.render.SkeletonHelper, helder.scene.render.Hit, helder.scene.render.Hit.HitList, helder.scene.render.Hit.RaycastOptions,

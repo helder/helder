@@ -75,7 +75,18 @@ import hxmc.unsafe.*;
 	// a pass into the color texture (0: the frame's target and its depth
 	// texture) resolved into resolve (0: none; a multisampled colour's), and
 	// the depth texture (0: none); loads: LoadOp
-	static function pass_begin(color:Int, resolve:Int, load:Int, r:Float, g:Float, b:Float, a:Float, depthTexture:Int, depthLoad:Int, depth:Float):Void;
+	// (queries: an occlusion query set the pass's draws count into, 0 none)
+	static function pass_begin(color:Int, resolve:Int, load:Int, r:Float, g:Float, b:Float, a:Float, depthTexture:Int, depthLoad:Int, depth:Float,
+		queries:Int):Void;
+	// an occlusion query set of count queries, its answers read back after
+	// the frames that wrote them (query_result: 1 some sample passed, 0 none,
+	// -1 none yet)
+	static function query_set(count:Int):Int;
+	static function query_result(set:Int, k:Int):Int;
+	// (its last answer let go, one on its way too)
+	static function reset_query(set:Int, k:Int):Void;
+	static function begin_query(k:Int):Void;
+	static function end_query():Void;
 	static function set_pipeline(pipeline:Int):Void;
 	static function set_vertex_buffer(slot:Int, buffer:Int, offset:Int):Void;
 	// size bytes at data into the frame's uniform ring at offset (256-byte

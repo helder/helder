@@ -42,6 +42,28 @@ Tests: `src/helder/scene/render/InstancedMesh.test.hx` (the layout, resize,
 nothing allocated), the 3d lane's `instancedmesh` frame (shadows, a set
 culled), `tests/3d-ui/SceneUiTest.hx`.
 
+## Occlusion culling
+
+```haxe
+renderer.use(new Occlusion(device));        // gfx's occlusion queries (1024 by default)
+Occlusion.test(building);                   // its meshes culled while hidden; untest(node)
+renderer.occluded;                          // the last frame's primitives not drawn
+```
+
+Each tested node's bounds are drawn as a box after the frame's opaque
+surfaces, depth tested and not written, inside an occlusion query of
+gfx's (`Device.createQueries`; `Encoder.beginQuery`, `endQuery`; GL ES
+3.0's and WebGL2's `ANY_SAMPLES_PASSED`, WebGPU's occlusion query sets,
+Metal's visibility results, D3D11's occlusion queries). A node whose last
+answered query passed no sample is culled at the next frames' extraction
+(Babylon's occlusion queries: a frame or more late, never waited for);
+its box is still drawn each frame, so it comes back when it is seen
+again. A node outside the view, or whose bounds hold the eye, is not
+tested and never culled, its last answer let go (`Device.resetQuery`).
+Each box is a draw of its own (a query each): test what a wall may hide
+(a building, a room's contents), not every pebble. GPU-driven culling
+against a depth pyramid is the compute tier's.
+
 ## Draw calls by pass
 
 What a frame costs in draw calls, by pass, to measure the next
@@ -49,7 +71,7 @@ optimisation against:
 
 | Pass | The last frame's, this renderer | Every renderer's, summed |
 |---|---|---|
-| main (the scene's colour pass) | `renderer.draws` (and `instanced`, `culled`) | `FrameCounts.sceneDraws` |
+| main (the scene's colour pass) | `renderer.draws` (and `instanced`, `culled`, `occluded`) | `FrameCounts.sceneDraws` (and `occluded`) |
 | shadow maps (every cascade) | `renderer.shadowDraws` (`Shadows.draws`) | `FrameCounts.shadowDraws` |
 | the view buffers' prepass (`ViewBuffers`: the opaque draws again, single-sampled) | `renderer.prepassDraws` | `FrameCounts.prepassDraws` |
 | post (AO's and depth of field's passes, bloom down and up, the composite, stages) | `renderer.post.draws` | `FrameCounts.postDraws` |

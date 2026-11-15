@@ -22,6 +22,16 @@ interface ViewSource {
 	function drawn():Int;
 }
 
+// what the view buffers ask of their motion's pass (MotionPass: made when
+// their velocity is first asked for)
+interface MotionSource {
+	function render(enc:helder.gfx.Encoder, renderer:Renderer, frame:Renderer.FrameInfo):Void;
+	// its target (RGBA16F) and the last frame's draws into it
+	function texture():helder.gfx.Texture;
+	function drawn():Int;
+	function dispose():Void;
+}
+
 // what a PostProcess asks of its effects beyond bloom and the grade
 // (PostEffects.hx: the first effect made installs them, PostProcess.effects)
 interface PostEffects {
@@ -31,19 +41,37 @@ interface PostEffects {
 	// after the prepass, before the frame's pass: the screen's ambient
 	// occlusion (post.ao; null without), which the standard material reads
 	function occlusion(enc:helder.gfx.Encoder, frame:Renderer.FrameInfo):Null<helder.gfx.Texture>;
-	// before bloom (BeforeComposite: linear light): depth of field's passes
-	function beforeComposite(enc:helder.gfx.Encoder):Void;
-	// whether the composite mixes an effect in (dof, outline, lut)
+	// before bloom (BeforeComposite: linear light), after the program's
+	// stages there: the passes that make a new light of the scene's
+	// (reflections, temporal antialiasing, motion blur; light the stages'),
+	// returned, then those the composite reads (depth of field's blur, god
+	// rays, SMAA's edges and weights)
+	function beforeComposite(enc:helder.gfx.Encoder, light:helder.gfx.Texture):helder.gfx.Texture;
+	// whether the composite mixes an effect in (dof, outline, lut, god rays, SMAA)
 	function folded():Bool;
-	// the composite's pipeline with the effects (fxaa: post.antialias's)
-	// into a format (null: the frame), and its effects bound
-	function composite(fxaa:Bool, format:Null<helder.gfx.TextureFormat>):helder.gfx.Pipeline;
-	function bind(enc:helder.gfx.Encoder, fxaa:Bool):Void;
+	// the composite's pipeline with the effects (aa: post.antialias's in
+	// the composite, 0 none, 1 FXAA, 2 SMAA's blending) into a format
+	// (null: the frame), and its effects bound
+	function composite(aa:Int, format:Null<helder.gfx.TextureFormat>):helder.gfx.Pipeline;
+	function bind(enc:helder.gfx.Encoder, aa:Int):Void;
 	// its slots of the chain's own: the composite's block, the scene, the bloom
-	function slots(fxaa:Bool):Array<Int>;
+	function slots(aa:Int):Array<Int>;
 	// the last frame's draws of their own passes (AO's, DOF's)
 	function drawn():Int;
 	function dispose():Void;
+}
+
+// what the renderer asks of occlusion culling (Occlusion)
+interface OcclusionSource {
+	// before the draw list: the results of the frames before read (what
+	// hidden answers), the queries' pass set up
+	// (viewProj: the frame's, eye: the camera's place)
+	function prepare(renderer:Renderer, world:helder.scene.World, viewProj:helder.gfx.shader.Mat4, eye:helder.gfx.shader.Vec3):Void;
+	// whether a node tested was hidden behind others when last answered
+	function hidden(node:helder.scene.Node):Bool;
+	// in the frame's pass, after its opaque surfaces: the tested nodes'
+	// bounds drawn, each in its query
+	function draw(enc:helder.gfx.Encoder, renderer:Renderer):Void;
 }
 
 // what the renderer asks of a shadow map (Shadows)

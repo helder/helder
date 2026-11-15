@@ -158,6 +158,8 @@ typedef CompositeInputs = {
 	@:optional var blur:Texture2D;
 	@:optional var lut:Texture2D;
 	@:optional var groups:Texture2D;
+	@:optional var rays:Texture2D;
+	@:optional var weights:Texture2D;
 }
 
 // the effects folded into the composite (PostEffects: those set on the
@@ -167,10 +169,13 @@ typedef CompositeInputs = {
 	var dofFocus:Vec4; // x: tilt-shift's focus (metres; 0: the depth at the band's centre, y its uv's v), z: the blur's texels in the target's (2: half size), w unused
 	var outline:Vec4; // x: 1 on, y: the widest group's width (pixels), zw: a pixel of the target (uv)
 	var lut:Vec4; // x: its size (16, 32; 0 off), y: its strength (0..1)
+	var rays:Vec4; // x: 1 god rays on, y: their intensity
+	var smaa:Vec4; // xy: a pixel of the target (uv), the weights' (smaa's variant)
 	var inverseProjection:Mat4; // the view buffers' (a texel's depth to view space)
 }
 
-typedef CompositeOptions = {fxaa:Bool, effects:Bool};
+// (smaa: SMAA's blending, with the effects: SmaaPass's weights)
+typedef CompositeOptions = {fxaa:Bool, effects:Bool, smaa:Bool};
 typedef Composite = {options:CompositeOptions};
 
 // a point's distance in front of the camera (metres) from the view
@@ -284,13 +289,33 @@ function outlineAt(fx:CompositeFx, normals:Texture2D, groups:Texture2D, uv:Vec2)
 	return color;
 }
 
+// SMAA's blending (its third pass, Jimenez et al.'s neighbourhood
+// blending): the pixel mixed towards each neighbour across an edge by the
+// share the edge's line covers of it (SmaaPass's weights: r towards the
+// pixel above, b towards the left one, from the pixel's own texel; g and a
+// of the one below and the one to the right, theirs towards this one)
+function smaaBlend(scene:Texture2D, weights:Texture2D, uv:Vec2, t:Vec2):Vec4 {
+	var w = sampleLevel(weights, uv, 0);
+	var down = sampleLevel(weights, uv + vec2(0, t.y), 0).y;
+	var right = sampleLevel(weights, uv + vec2(t.x, 0), 0).w;
+	var c = sampleLevel(scene, uv, 0);
+	var sum = w.x + w.z + down + right;
+	if (sum > 0.0001) {
+		var k = 1 / max(sum, 1);
+		c = c * (1 - min(sum, 1)) + (sampleLevel(scene, uv - vec2(0, t.y), 0) * w.x + sampleLevel(scene, uv - vec2(t.x, 0), 0) * w.z
+			+ sampleLevel(scene, uv + vec2(0, t.y), 0) * down + sampleLevel(scene, uv + vec2(t.x, 0), 0) * right) * k;
+	}
+	return c;
+}
+
 final composite = slots({
-	options: {fxaa: false, effects: false},
+	options: {fxaa: false, effects: false, smaa: false},
 	vertex: function(v:PostVertex, p:{}, m:Composite):PostVaryings
 		return fullscreen(v),
 	fragment: function(i:PostVaryings, params:CompositeInputs, m:Composite):Vec4 {
 		var s = sampleLevel(params.scene, i.uv, 0);
 		if (m.options.fxaa) s = fxaa(params.scene, i.uv, vec2(1 / params.p.size.x, 1 / params.p.size.y));
+		if (m.options.smaa) s = smaaBlend(params.scene, params.weights, i.uv, vec2(1 / params.p.size.x, 1 / params.p.size.y));
 		if (m.options.effects) {
 			if (params.fx.dof.x > 0.5) {
 				// (depth of field: the half-size blur where the circle is wider than its texels)
@@ -298,6 +323,8 @@ final composite = slots({
 				var coc = cocOf(params.fx.dof, focusOf(params.fx, params.viewDepth), z) * params.p.size.y;
 				s = mix(s, sampleLevel(params.blur, i.uv, 0), smoothstep(0.5, params.fx.dofFocus.z * 1.5, coc));
 			}
+			// (god rays: the sky's light streaming towards the sun, added)
+			if (params.fx.rays.x > 0.5) s = vec4(s.xyz + sampleLevel(params.rays, i.uv, 0).xyz * params.fx.rays.y, s.w);
 		}
 		var hdr = clamp(s.xyz, 0, 65000);
 		var spread = sampleLevel(params.bloom, i.uv, 0).xyz * params.p.lift.w;
