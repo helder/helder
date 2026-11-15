@@ -5,11 +5,16 @@
 // Chromium renders with WebGPU on SwiftShader and WebGL2 on ANGLE's
 // SwiftShader, as in tests/gfx/web.mjs.
 //   node tests/3d/web.mjs <SceneWebTest.wasm> [out dir]
+// SCENES_WINDOW=a,b: those scenes in the window too, the others headless
+// alone (CI's pull requests: the window's path, the canvas and the
+// browser's loop, is the scene's own in few; every scene's in both on main);
+// WEB_JOBS: the runs at once, each in a browser of its own (the cores', at most 4).
 import { createServer } from 'node:http';
 import { readFile, writeFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import os from 'node:os';
 
 const require = createRequire(import.meta.url);
 let pw;
@@ -82,11 +87,17 @@ const server = createServer(async (req, res) => {
 	}
 }).listen(0);
 const url = `http://localhost:${server.address().port}/`;
-const browser = await pw.chromium.launch({ args: CHROMIUM_ARGS });
-console.log(`web.mjs: chromium ${browser.version()}`);
-let failed = 0;
+const jobs = Number(process.env.WEB_JOBS) || Math.max(1, Math.min(4, os.availableParallelism()));
+const windowed = process.env.SCENES_WINDOW ? process.env.SCENES_WINDOW.split(',') : null;
 // (a lazy scene in a window only: headless, main draws once, before its files load)
-for (const [scene, gfx, mode] of scenes.flatMap((s) => [[s, 'webgpu', 'headless'], [s, 'webgpu', 'window'], [s, 'webgl2', 'headless'], [s, 'webgl2', 'window']]).filter(([s, , m]) => s !== 'lazy' || m === 'window')) {
+const runs = scenes.flatMap((s) => [[s, 'webgpu', 'headless'], [s, 'webgpu', 'window'], [s, 'webgl2', 'headless'], [s, 'webgl2', 'window']])
+	.filter(([s, , m]) => s !== 'lazy' || m === 'window')
+	.filter(([s, , m]) => m !== 'window' || !windowed || windowed.includes(s) || s === 'lazy');
+const browsers = await Promise.all(Array.from({ length: Math.min(jobs, runs.length) }, () => pw.chromium.launch({ args: CHROMIUM_ARGS })));
+console.log(`web.mjs: chromium ${browsers[0].version()}, ${runs.length} runs, ${browsers.length} at once${windowed ? `, in a window: ${windowed.join(', ')}` : ''}`);
+let failed = 0, next = 0;
+const t0 = Date.now();
+async function one(browser, [scene, gfx, mode]) {
 	const p = await browser.newPage({ viewport: { width: 400, height: 300 } });
 	const errors = [];
 	p.on('pageerror', (e) => errors.push(e.message));
@@ -107,12 +118,14 @@ for (const [scene, gfx, mode] of scenes.flatMap((s) => [[s, 'webgpu', 'headless'
 	const missing = expect.filter((e) => !log.some((l) => l.startsWith(e)));
 	const ok = r.ok && missing.length === 0 && errors.length === 0 && log.includes('exit 0');
 	if (!ok) failed++;
-	console.log(`web.mjs: ${r.text}${ok ? '' : ' FAILED'}`);
-	for (const l of log) console.log('  ' + l);
-	for (const m of missing) console.log('  missing: ' + m);
-	for (const e of errors) console.log('  error: ' + e);
+	// (a run's lines together: the runs at once end in any order)
+	console.log([`web.mjs: ${r.text}${ok ? '' : ' FAILED'}`, ...log.map((l) => '  ' + l), ...missing.map((m) => '  missing: ' + m), ...errors.map((e) => '  error: ' + e)].join('\n'));
 	await p.close();
 }
-await browser.close();
+await Promise.all(browsers.map(async (b) => {
+	while (next < runs.length) await one(b, runs[next++]);
+}));
+console.log(`web.mjs: ${runs.length} runs in ${Math.round((Date.now() - t0) / 1000)} s${failed ? `, ${failed} failed` : ''}`);
+await Promise.all(browsers.map((b) => b.close()));
 server.close();
 process.exit(failed ? 1 : 0);

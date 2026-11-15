@@ -13,12 +13,15 @@
 // written there.
 //
 //   node site/check.mjs [screenshots dir] [ids to play...]   (default: every demo)
+// SITE_JOBS: the demos and the docs' pages checked that many at once, each
+// in a page of its own (the cores', at most 3).
 import { createServer } from 'node:http';
 import { readFile, mkdir } from 'node:fs/promises';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import os from 'node:os';
 
 const require = createRequire(import.meta.url);
 let pw;
@@ -52,15 +55,23 @@ const check = (ok, what) => {
 	if (!ok) failures++;
 };
 try {
-	const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 	const errors = [];
 	// (a failed fetch by its URL, not the console's line: the videos and numbers a build without site/reel.mjs or site/numbers.mjs has not)
 	const later = ['examples/media/', 'examples/numbers.json'].filter((f) => !fs.existsSync(path.join(dir, f)));
-	// (each with the page it came from: the pages are many, one at a time)
-	const at = () => page.url().replace(url, '/');
-	page.on('console', (m) => m.type() === 'error' && !m.text().startsWith('Failed to load resource') && errors.push(`${at()}: ${m.text()}`));
-	page.on('response', (r) => r.status() >= 400 && !later.some((f) => r.url().startsWith(url + f)) && errors.push(`${r.status()} ${r.url()}`));
-	page.on('pageerror', (e) => errors.push(`${at()}: ${e}`));
+	// (each error with the page it came from)
+	const open = async () => {
+		const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+		const at = () => page.url().replace(url, '/');
+		page.on('console', (m) => m.type() === 'error' && !m.text().startsWith('Failed to load resource') && errors.push(`${at()}: ${m.text()}`));
+		page.on('response', (r) => r.status() >= 400 && !later.some((f) => r.url().startsWith(url + f)) && errors.push(`${r.status()} ${r.url()}`));
+		page.on('pageerror', (e) => errors.push(`${at()}: ${e}`));
+		return page;
+	};
+	const jobs = Number(process.env.SITE_JOBS) || Math.max(1, Math.min(3, os.availableParallelism()));
+	const pages = [await open()];
+	while (pages.length < jobs) pages.push(await open());
+	const page = pages[0];
+	console.log(`site/check.mjs: ${pages.length} pages at once`);
 	await page.goto(url + 'examples/');
 	const cards = await page.locator('article.card').count();
 	check(cards === listed.length, `${cards} cards, ${listed.length} examples`);
@@ -81,14 +92,14 @@ try {
 	}
 	// (each demo alone in the page, loaded again: the heavy ones, a million
 	// particles on a software GPU, would slow the next ones' checks)
-	async function start(id) {
+	async function start(page, id) {
 		await page.goto(url + 'examples/');
 		const island = page.locator(`#play-${id}`);
 		await island.scrollIntoViewIfNeeded();
 		await island.locator('button.play').click();
 		await page.waitForFunction((id) => document.getElementById('play-' + id).hasAttribute('data-hydrated'), id, { timeout: 60000 });
 	}
-	for (const id of play) {
+	await each(pages, play, async (page, id) => {
 		await page.goto(url + 'examples/');
 		const island = page.locator(`#play-${id}`), canvas = island.locator('canvas');
 		await island.scrollIntoViewIfNeeded();
@@ -102,7 +113,7 @@ try {
 		}, id, { timeout: 60000 });
 		const error = await island.getAttribute('data-error'), gfx = await island.getAttribute('data-gfx');
 		check(error === null, `${id} started${error ? ': ' + error : ''}`);
-		if (!drawn) continue;
+		if (!drawn) return;
 		check(!!gfx, `${id} draws with ${gfx}`);
 		await page.waitForTimeout(1500);
 		await island.scrollIntoViewIfNeeded();
@@ -122,13 +133,13 @@ try {
 			await page.waitForFunction((id) => document.getElementById('play-' + id).hasAttribute('data-stopped'), id, { timeout: 30000 });
 			check(true, `${id} stopped out of view`);
 		}
-	}
+	});
 	// (a demo full screen and expanded at a phone's size: planets, ui's markup with a <Scene> in it)
 	if (play.includes('planets')) {
-		await start('planets');
+		await start(page, 'planets');
 		await phone(page, shots, 'planets');
 	}
-	await checkDocs(page);
+	await checkDocs(pages);
 	await checkPhone(shots);
 	check(errors.length === 0, `no console errors${errors.length ? ': ' + errors.join('\n') : ''}`);
 } finally {
@@ -140,10 +151,10 @@ if (failures) process.exit(1);
 // the docs: each page of docs/search.json (Docs.hx's, every page) loaded,
 // its sidebar listing every page, each example's source shown (one tab's);
 // the docs' own examples played as the index's are
-async function checkDocs(page) {
+async function checkDocs(pool) {
 	const pages = JSON.parse(fs.readFileSync(path.join(dir, 'docs/search.json'), 'utf8'));
 	check(pages.length > 0, `${pages.length} docs pages`);
-	for (const p of pages) {
+	await each(pool, pages, async (page, p) => {
 		await page.goto(url + p.url);
 		const title = await page.locator('main h1').textContent();
 		check(title === p.title, `${p.url}: its title, ${title}`);
@@ -184,7 +195,8 @@ async function checkDocs(page) {
 			check(!before.equals(await canvas.screenshot()), `${p.url}: ${id}'s canvas drawn`);
 			if (shots) await page.screenshot({ path: path.join(shots, `docs-${id}.png`) });
 		}
-	}
+	});
+	const page = pool[0];
 	// (the search: a word of a page's heading finds it)
 	await page.goto(url + pages[1].url);
 	await page.locator('.search').fill('bloom');
@@ -274,4 +286,12 @@ async function phone(page, shots, id) {
 	await page.waitForTimeout(500);
 	check(await page.evaluate((id) => !document.querySelector(`#${id} .stage.expanded`) && !document.documentElement.classList.contains('playing'), id), `${id} expanded: left by Exit`);
 	await page.setViewportSize({ width: 1280, height: 900 });
+}
+
+// the items shared by the pages, each page taking the next when it is done
+async function each(pages, items, f) {
+	let next = 0;
+	await Promise.all(pages.map(async (page) => {
+		while (next < items.length) await f(page, items[next++]);
+	}));
 }

@@ -1,16 +1,24 @@
 # A job's start after its checkout: node and bun, the compilers' caches
-# restored, bun install. The caches (actions/cache):
+# restored, bun install (and Playwright's Chromium, cached, where asked).
+# The caches (actions/cache):
 # - hxmc's module cache (~/.cache/hxmc, ~/Library/Caches/hxmc,
 #   %LOCALAPPDATA%\hxmc\cache): typed modules and objects, content-addressed
 #   per tool build (hxmc's CacheDir.hx; it trims itself past 1 GB);
 # - helder's (~/.cache/helder, ...): helder's compiler and its web build,
 #   each in a directory per hash of its sources and hxmc's version
-#   (src/helder/compiler/build.mjs), the dev host, the fetched runtime objects.
-# Both are keyed by what they are made from, so a restored entry is reused
+#   (src/helder/compiler/build.mjs), the dev host, the fetched runtime objects;
+# - a job's own (extra): what it makes that checks itself against its
+#   inputs (studio-web's bin/compiler-web: its brotli files reused only for
+#   the same bytes, src/helder/compiler/web/build.mjs).
+# All are keyed by what they are made from, so a restored entry is reused
 # only where it still fits; the key is the OS, the job, @hxmc/cli's version
 # (the compiler: a new one starts cold, nothing older is restored), the
 # lockfile, then the sources (unchanged sources: the same key, nothing saved
-# again). A job saves it at its end with .github/actions/save.
+# again). A job saves it at its end with .github/actions/save when `save`
+# says so: on main (a push, the nightly, a run by hand), where every pull
+# request finds it; a pull request saves only when it restored nothing (a
+# new hxmc), else each of its pushes added a set of every job's (GBs) to the
+# repository's 10 GB, and main's own were evicted first.
 name: setup
 description: node, bun, the compilers' caches, bun install
 inputs:
@@ -20,13 +28,25 @@ inputs:
   node-version:
     description: node's version
     default: '22'
+  extra:
+    description: the job's own paths cached with the compilers' (one a line)
+    default: ''
+  playwright:
+    description: Playwright's version, installed with its Chromium (cached) and Chromium's system packages
+    default: ''
 outputs:
   key:
     description: the cache's key
     value: ${{ steps.key.outputs.key }}
+  prefix:
+    description: the key's part without the sources (the job's caches on main pruned to the newest)
+    value: ${{ steps.key.outputs.prefix }}
   hit:
     description: the key restored exactly
     value: ${{ steps.restore.outputs.cache-hit }}
+  save:
+    description: whether the job's end saves the caches (.github/actions/save)
+    value: ${{ steps.save.outputs.save }}
 runs:
   using: composite
   steps:
@@ -57,11 +77,39 @@ runs:
           ~/Library/Caches/helder
           ~/AppData/Local/hxmc/cache
           ~/AppData/Local/helder
+          ${{ inputs.extra }}
         key: ${{ steps.key.outputs.key }}
         restore-keys: |
           ${{ steps.key.outputs.prefix }}-${{ steps.key.outputs.lock }}-
           ${{ steps.key.outputs.prefix }}-
-    - shell: bash
+    - id: save
+      shell: bash
       run: |
-        echo "cache: ${{ steps.restore.outputs.cache-matched-key || 'none' }} (hit: ${{ steps.restore.outputs.cache-hit || 'false' }})"
-        bun install --frozen-lockfile
+        # (saved: not restored exactly, and on main, or on a pull request that found nothing)
+        save=false
+        if [ "${{ steps.restore.outputs.cache-hit }}" != true ]; then
+          if [ "${{ github.event_name }}" != pull_request ] || [ -z "${{ steps.restore.outputs.cache-matched-key }}" ]; then save=true; fi
+        fi
+        echo "save=$save" >> "$GITHUB_OUTPUT"
+        echo "cache: ${{ steps.restore.outputs.cache-matched-key || 'none' }} (hit: ${{ steps.restore.outputs.cache-hit || 'false' }}; saved at the end: $save)"
+    - shell: bash
+      run: bun install --frozen-lockfile
+    # (Playwright: its browsers, ~/.cache/ms-playwright, cached by its version
+    # alone: they are its; Chromium's system packages installed each time)
+    - id: pw-restore
+      if: inputs.playwright != ''
+      uses: actions/cache/restore@v6
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ inputs.playwright }}
+    - if: inputs.playwright != ''
+      shell: bash
+      run: |
+        bun add --no-save playwright@${{ inputs.playwright }}
+        bunx playwright install --with-deps chromium > /dev/null
+    - if: inputs.playwright != '' && steps.pw-restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v6
+      continue-on-error: true
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ inputs.playwright }}
