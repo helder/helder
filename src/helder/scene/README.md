@@ -725,12 +725,15 @@ D3D11's WARP finds the same order (`EffectBench` on Windows). On a phone,
 prefer AO's one slice of 4 to 6 steps (`slices: 1, samples: 6`), depth of
 field's 16 taps and the view buffers at half size (no outline). What each
 adds to a program, natively (Linux x86-64) and as wasm, against the chain
-without one (`tests/3d/size/sizes.sh`'s post table): FXAA 12 KB and 16
-KB; a LUT 58 KB and 77 KB (the composite's variants with the effects);
-an outline 163 KB and 194 KB, AO 199 KB and 238 KB, depth of field 179 KB
-and 218 KB (those and the view buffers' prepass); all of them 255 KB and
-299 KB. The prepass's and the composites' variants are drawn on the GPU
-alone (`gpuVariant`: no CPU stages linked).
+without one (`tests/3d/size/sizes.sh`'s post table): FXAA 8 KB and 16
+KB; a LUT 67 KB and 83 KB (the composite's variants with the effects);
+an outline 167 KB and 201 KB, AO 204 KB and 245 KB, depth of field 187 KB
+and 226 KB (those and the view buffers' prepass); all of them 268 KB and
+310 KB. The prepass's and the composites' variants are drawn on the GPU
+alone (`gpuVariant`: no CPU stages linked). An effect's passes are its
+pass's class (`SsaoPass`, `DofPass`, `OutlinePass`), linked when it is set
+on a chain: an effect made and not set, or a node selected
+(`Outline.select`, `Selection`), links no GPU code and no device.
 
 ### Tests
 
