@@ -2,7 +2,8 @@
 // helder/scene (src/helder/scene/index.ts, with its Node, pbr and material)
 // exports of helder's Haxe classes. A World of nodes (Node: helder/scene's
 // class over a node's handle, its members Script's), cameras, lights,
-// meshes (Shapes, MeshRenderer) and materials, glTF models (Model,
+// meshes (Shapes, Geometry's shapes and Curve3, MeshRenderer, InstancedMesh,
+// Sprites) and materials (Material's factories: toon, lambert, unlit...), glTF models (Model,
 // helder/asset's model(path) loads one; GltfScene), the renderer, input
 // actions (InputMap, Bindings), a fixed simulation step, and what a scene is
 // drawn with: a window, its device (or a headless one), the app's loop. A
@@ -14,7 +15,7 @@ import type {Asset} from "helder/asset";
 import type {Mat4, Quat, Vec2, Vec3, Vec4} from "helder/gfx";
 import type {Node} from "helder/scene";
 
-declare const __haxe: {Mesh: "helder.scene.render.Mesh", Encoder: "helder.gfx.Encoder", World: "helder.scene.World", Camera: "helder.scene.Camera", Light: "helder.scene.render.Light", Renderer: "helder.scene.render.Renderer", Fog: "helder.scene.render.Fog", Material: "helder.scene.render.Material", MeshRenderer: "helder.scene.render.MeshRenderer", Shapes: "helder.scene.render.Shapes", Model: "helder.scene.render.Model", MaterialShader: "helder.scene.render.MaterialShader", InputMap: "helder.scene.input.InputMap", Bindings: "helder.scene.input.Bindings", FixedStep: "helder.scene.FixedStep", Device: "helder.gfx.Device", Surface: "helder.os.Surface", Window: "helder.os.Window", App: "helder.os.App", Event: "helder.os.Event", Script: "helder.scene.Script", __module: "helder.scene.TypeScript"};
+declare const __haxe: {Mesh: "helder.scene.render.Mesh", Encoder: "helder.gfx.Encoder", World: "helder.scene.World", Camera: "helder.scene.Camera", Light: "helder.scene.render.Light", Renderer: "helder.scene.render.Renderer", Shadows: "helder.scene.render.Shadows", Fog: "helder.scene.render.Fog", Material: "helder.scene.render.Material", MeshRenderer: "helder.scene.render.MeshRenderer", Shapes: "helder.scene.render.Shapes", Geometry: "helder.scene.render.Geometry", VertexData: "helder.scene.render.VertexData", Curve3: "helder.scene.math.Curve3", InstancedMesh: "helder.scene.render.InstancedMesh", Sprites: "helder.scene.render.Sprites", Model: "helder.scene.render.Model", MaterialShader: "helder.scene.render.MaterialShader", InputMap: "helder.scene.input.InputMap", Bindings: "helder.scene.input.Bindings", FixedStep: "helder.scene.FixedStep", Device: "helder.gfx.Device", Surface: "helder.os.Surface", Window: "helder.os.Window", App: "helder.os.App", Event: "helder.os.Event", Script: "helder.scene.Script", __module: "helder.scene.TypeScript"};
 
 // What a node draws (node.mesh): primitives, each a vertex buffer in the
 // renderer's layout (PbrVertex: position, normal, uv; 32 bytes a vertex),
@@ -58,6 +59,52 @@ export declare class Binding {
 export type Feature = number;
 
 export type AnyShader = unknown;
+
+export type BoxOptions = { flat?: boolean; tangents?: boolean; width?: number; height?: number; depth?: number; widthSegments?: number; heightSegments?: number; depthSegments?: number };
+
+export type CapsuleOptions = { flat?: boolean; tangents?: boolean; radius?: number; height?: number; capSegments?: number; radialSegments?: number; heightSegments?: number };
+
+export type CircleOptions = { flat?: boolean; tangents?: boolean; radius?: number; segments?: number; thetaStart?: number; thetaLength?: number };
+
+export type ConeOptions = { flat?: boolean; tangents?: boolean; radius?: number; height?: number; radialSegments?: number; heightSegments?: number; openEnded?: boolean; thetaStart?: number; thetaLength?: number };
+
+export type CylinderOptions = { flat?: boolean; tangents?: boolean; radiusTop?: number; radiusBottom?: number; height?: number; radialSegments?: number; heightSegments?: number; openEnded?: boolean; thetaStart?: number; thetaLength?: number };
+
+// a curve's frames (Curve3.frames): as many tangents, normals and binormals
+export type Frames = { tangents: Vec3[]; normals: Vec3[]; binormals: Vec3[] };
+
+export type LatheOptions = { flat?: boolean; tangents?: boolean; segments?: number; phiStart?: number; phiLength?: number };
+
+// Material.matcap's: also the matcap, a lit sphere's picture (sRGB)
+export type MatcapOptions = { name?: string; color?: Vec4; texture?: number; metallic?: number; roughness?: number; emissive?: Vec3; doubleSided?: boolean; blend?: boolean; blending?: number; alphaCutoff?: number; fog?: boolean; castShadows?: boolean; toneMapped?: boolean; matcap: number };
+
+// what a material is made from (Material's factories): each field the
+// material's of the same meaning, its default where not given (color the
+// base colour, linear; texture the base colour's, sRGB)
+export type MaterialOptions = { name?: string; color?: Vec4; texture?: number; metallic?: number; roughness?: number; emissive?: Vec3; doubleSided?: boolean; blend?: boolean; blending?: number; alphaCutoff?: number; fog?: boolean; castShadows?: boolean; toneMapped?: boolean };
+
+// Material.phong's: also three's shininess (30 by default)
+export type PhongOptions = { name?: string; color?: Vec4; texture?: number; metallic?: number; roughness?: number; emissive?: Vec3; doubleSided?: boolean; blend?: boolean; blending?: number; alphaCutoff?: number; fog?: boolean; castShadows?: boolean; toneMapped?: boolean; shininess?: number };
+
+export type PlaneOptions = { flat?: boolean; tangents?: boolean; width?: number; height?: number; widthSegments?: number; heightSegments?: number };
+
+export type RingOptions = { flat?: boolean; tangents?: boolean; innerRadius?: number; outerRadius?: number; thetaSegments?: number; phiSegments?: number; thetaStart?: number; thetaLength?: number };
+
+export type SphereOptions = { flat?: boolean; tangents?: boolean; radius?: number; widthSegments?: number; heightSegments?: number; phiStart?: number; phiLength?: number; thetaStart?: number; thetaLength?: number };
+
+// what Sprites are made with (each optional): how they face the camera
+// (Spherical), the axis Axis turns about (y), the atlas' columns and rows
+// (1 by 1), the sprites shown (all)
+export type SpritesOptions = { mode?: number; axis?: Vec3; columns?: number; rows?: number; count?: number };
+
+// Material.toon's: also its bands and its shade
+export type ToonOptions = { name?: string; color?: Vec4; texture?: number; metallic?: number; roughness?: number; emissive?: Vec3; doubleSided?: boolean; blend?: boolean; blending?: number; alphaCutoff?: number; fog?: boolean; castShadows?: boolean; toneMapped?: boolean; steps?: number; shade?: Vec3 };
+
+export type TorusKnotOptions = { flat?: boolean; tangents?: boolean; radius?: number; tube?: number; tubularSegments?: number; radialSegments?: number; p?: number; q?: number };
+
+export type TorusOptions = { flat?: boolean; tangents?: boolean; radius?: number; tube?: number; radialSegments?: number; tubularSegments?: number; arc?: number };
+
+export type TubeOptions = { flat?: boolean; tangents?: boolean; tubularSegments?: number; radius?: number; radialSegments?: number; closed?: boolean };
 
 // A scene: a scene graph of Nodes (handles) over flat arrays, one slot per
 // node: its local translation, rotation and scale (10 floats), its local
@@ -125,12 +172,23 @@ export declare class Camera {
 	rayInto(x: number, y: number, aspect: number, out: unknown): unknown;
 }
 
-// A light, a component of a node, as glTF's KHR_lights_punctual: a
-// directional light shines down its node's -z; a point light shines from
-// its node's position, falling off with the inverse square of the
-// distance, windowed to nothing at its range; a spot light is a point
-// light within a cone down its node's -z. Its colour (linear) times its
-// intensity.
+// A light, a component of a node, as glTF's KHR_lights_punctual and
+// three.js's lights: what kind of light it is (kind), its colour (linear)
+// times its intensity.
+//
+//   Directional   shines down its node's -z, from far away (the sun)
+//   Point         shines from its node's position, falling off with the
+//                 inverse square of the distance, windowed to nothing at
+//                 its range
+//   Spot          a point light within a cone down its node's -z
+//   Hemisphere    the ambient from above (color, the sky's) and below
+//                 (groundColor), blended by a surface's normal: three's
+//                 HemisphereLight, the renderer's sky and ground (which a
+//                 world without one uses)
+//
+// The renderer takes the world's first directional light (shadowed by
+// Shadows), its first hemisphere light, and up to four point and spot
+// lights.
 export declare class Light {
 	static readonly KIND: unknown;
 	static directional(color: Vec3, intensity: number): Light;
@@ -138,16 +196,23 @@ export declare class Light {
 	// a point light shining down its node's -z within a cone: full inside
 	// inner, fading to nothing at outer (radians from the axis)
 	static spot(color: Vec3, intensity: number, range: number, inner: number, outer: number): Light;
+	// three's HemisphereLight: the sky's colour from above, the ground's from
+	// below, both times intensity (in place of the renderer's sky and ground)
+	static hemisphere(sky: Vec3, ground: Vec3, intensity?: number): Light;
 	static attach(node: Node, light: Light): Light;
 	static of(node: Node): Light | null;
-	readonly point: boolean;
+	readonly kind: number;
 	color: Vec3;
 	intensity: number;
-	// a point light's reach (scene units)
+	// a point or spot light's reach (scene units)
 	range: number;
-	// a spot light's cones (radians from its axis; outer 0: a point light)
+	// a spot light's cones (radians from its axis)
 	innerCone: number;
 	outerCone: number;
+	// a hemisphere light's colour from below (linear; color is the sky's)
+	groundColor: Vec3;
+	// whether it shines from a point (a point or a spot light)
+	readonly local: boolean;
 }
 
 // Draws a world's meshes (MeshRenderer) as seen by a camera, lit by its
@@ -248,6 +313,66 @@ export declare class Renderer {
 	dispose(): void;
 }
 
+// Shadow maps for the directional light, opted in (renderer.use(new
+// Shadows(device))): before the frame's pass, every shown mesh drawn from
+// the light into size x size R32F targets (the casters of one primitive
+// in one instanced draw, their matrices in an instance buffer written once
+// for every cascade), which the standard material then reads with a 3x3
+// percentage-closer filter, or a soft one (soft: a wider disc of taps,
+// sharper where the shadow meets its caster). One cascade: an
+// orthographic view fitted to the casters' bounds. Two (Shadows.cascaded,
+// whose fitting code a program without it does not link):
+// the first fitted to the camera's view up to split metres (its bounding
+// sphere, moved by whole texels: steady as the camera moves), sharp near
+// the camera, the second the whole scene's, read beyond the first. A
+// program that never makes a Shadows links none of this but the
+// material's lookup of a 1x1 map that shadows nothing.
+export declare class Shadows {
+	// one cascade
+	constructor(device: Device, size?: number);
+	// two cascades, the first reaching split metres from the camera
+	static cascaded(device: Device, size?: number, split?: number): Shadows;
+	readonly device: Device;
+	readonly size: number;
+	// 1, or 2 (Shadows.cascaded)
+	readonly cascades: number;
+	// how far from the camera the first of two cascades reaches (metres)
+	split: number;
+	// the depth offset against shadow acne (in the whole scene's map's 0..1
+	// depth; the first of two cascades', as many of its texels)
+	bias: number;
+	// the shadows' strength, 0 (none) to 1 (no direct light at all)
+	strength: number;
+	// the first cascade's map (one cascade: the only one), the second's
+	readonly map: number;
+	readonly mapFar: number;
+	// the soft filter (soft): the widest penumbra's radius in metres (0: the
+	// 3x3 filter), its taps a point (8 for phones, 16, 32), and how much
+	// the penumbra widens a metre from its caster (0: the radius
+	// everywhere, no blocker search)
+	softRadius: number;
+	softSamples: number;
+	softSpread: number;
+	// the last frame's draws into the maps (every cascade's: a primitive's
+	// casters one instanced draw, a skinned caster one draw)
+	readonly draws: number;
+	// the last frame's light view-projections (the first cascade's, the second's)
+	readonly viewProj: Mat4;
+	readonly viewProjFar: Mat4;
+	// the soft filter on (returns the shadows): taps on a disc out to radius
+	// metres, samples a point (8: phones; 16; 32), and with a spread a
+	// blocker search first, the penumbra growing by spread a metre from its
+	// caster up to the radius (contact hardening: PCSS); spread 0, the
+	// radius everywhere
+	soft(radius?: number, samples?: number, spread?: number): Shadows;
+	attach(renderer: Renderer): void;
+	shadowFrame(): unknown;
+	// the maps' passes: the world's shown meshes that cast (Material.castShadows)
+	// seen from a light shining along -toLight, the map fitted to them
+	render(enc: Encoder, world: World, toLight: Vec3, skins: unknown | null, view: unknown): void;
+	dispose(): void;
+}
+
 // Fog over a scene (Renderer.fog; null: none). A surface's light is mixed
 // towards color (linear, times the exposure) by the fog between it and
 // the eye: 1 - e^(-density * the distance past start), at most max. With
@@ -282,8 +407,51 @@ export declare class Fog {
 // times the texture's sRGB colour when there is one), metallic and
 // roughness from 0 to 1, emitted light (linear); double-sided ones are
 // drawn without back-face culling.
+//
+// Its shading model is its shader's (helder.scene.render.shading), chosen
+// by the factory it is made with, three.js's materials by name:
+//
+//   Material.standard({...})   pbr, the default (MeshStandardMaterial; new Material(...))
+//   Material.lambert({...})    a light's diffuse alone (MeshLambertMaterial): the cheap lit one for phones
+//   Material.phong({...})      Blinn-Phong (MeshPhongMaterial), shininess as three's
+//   Material.toon({...})       light in steps bands, the shade away from it (MeshToonMaterial)
+//   Material.unlit({...})      the colour alone, no light (MeshBasicMaterial)
+//   Material.matcap({...})     a lit sphere's picture by the normal (MeshMatcapMaterial)
+//   Material.normals()         the normal in view space as a colour (MeshNormalMaterial)
+//   Material.depth(near, far)  the view's depth as a grey (MeshDepthMaterial)
+//
+// The lit ones keep pbr's shadows, lights, fog and normal maps (only how a
+// light reaches the surface differs); the unlit ones read no light. A
+// factory references its model's shader alone, so a program that never
+// calls Material.toon links no toon shader.
 export declare class Material {
 	constructor(name?: string, baseColor?: Vec4, metallic?: number, roughness?: number, emissive?: Vec3, doubleSided?: boolean);
+	// the standard material (pbr: three's MeshStandardMaterial), made from options
+	static standard(options?: MaterialOptions): Material;
+	// Lambert's (three's MeshLambertMaterial): each light's diffuse alone,
+	// the ambient's diffuse alone; no highlight, no reflection
+	static lambert(options?: MaterialOptions): Material;
+	// Blinn-Phong (three's MeshPhongMaterial): a highlight of shininess
+	// (three's: 30 by default), kept as the roughness that lobe matches
+	// (shading's Phong), the reflections pbr's
+	static phong(options?: PhongOptions): Material;
+	// toon shading (three's MeshToonMaterial): each light in steps bands
+	// (3 by default), its shadow banded with it, the side away from every
+	// light the albedo times shade (linear)
+	static toon(options?: ToonOptions): Material;
+	// no light (three's MeshBasicMaterial): the colour times its texture,
+	// tinted and fogged
+	static unlit(options?: MaterialOptions): Material;
+	// a matcap (three's MeshMatcapMaterial): the picture of a lit sphere
+	// (an sRGB image: matcap, kept as the emissiveTexture) read by the
+	// normal as the eye sees it, times the colour
+	static matcap(options: MatcapOptions): Material;
+	// the normal in view space as a colour (three's MeshNormalMaterial),
+	// not tone mapped
+	static normals(options?: MaterialOptions): Material;
+	// the depth along the view as a grey, white at near and black at far
+	// (three's MeshDepthMaterial, linear), not tone mapped
+	static depth(near?: number, far?: number, options?: MaterialOptions): Material;
 	// the material's index (draws sort by it; an index into a material buffer later)
 	readonly id: number;
 	name: string;
@@ -367,6 +535,18 @@ export declare class Material {
 	// by what is behind it (drawn see-through, Premultiplied, after the
 	// opaque surfaces), its reflections kept
 	transmission: number;
+	// the toon model's (Material.toon): bands of each light's n.l (1 or
+	// more), and the shaded side's share of the albedo (linear)
+	steps: number;
+	shade: Vec3;
+	// tone mapped as the target takes it (three's toneMapped); false: its
+	// colour shown as it is, only encoded for an 8-bit target (the debug
+	// views: Material.normals, Material.depth)
+	toneMapped: boolean;
+	// Material.depth's range along the camera's view: white at depthNear,
+	// black at depthFar (scene units)
+	depthNear: number;
+	depthFar: number;
 }
 
 // The mesh a node draws: a component (a store keyed by node), several
@@ -383,9 +563,14 @@ export declare class MeshRenderer {
 	static tint(node: Node, color: Vec3): void;
 }
 
-// Meshes made in code (no file): a box, a UV sphere, a plane; positions,
-// normals and uvs for the renderer, each one primitive of material.
+// Meshes made in code (no file): Geometry's shapes uploaded, each one
+// primitive of a material. Shapes.of takes any Geometry (or VertexData);
+// box, sphere, capsule and plane are the common ones at their usual sizes.
+//
+//   var post = Shapes.of(device, Geometry.cylinder({radiusTop: 0.1, radiusBottom: 0.1, height: 2, flat: true}), wood);
 export declare class Shapes {
+	// a geometry (Geometry's, or any VertexData) as a mesh of one primitive
+	static of(device: Device, geometry: VertexData, material: Material): Mesh;
 	// a box of width, height and depth, centred, flat faces
 	static box(device: Device, material: Material, w?: number, h?: number, d?: number): Mesh;
 	// a sphere of radius, segments around and rings from pole to pole
@@ -394,8 +579,309 @@ export declare class Shapes {
 	// to half (physics' Capsule(radius, half)), segments around, rings in
 	// each end's hemisphere
 	static capsule(device: Device, material: Material, radius?: number, half?: number, segments?: number, rings?: number): Mesh;
-	// a square of size on y = 0, facing up
+	// a square of size on y = 0, facing up (Geometry.plane turned from xy)
 	static plane(device: Device, material: Material, size?: number): Mesh;
+}
+
+// Shapes made in code, on the CPU (three's geometries, Bevy's meshable
+// primitives): each generator returns a VertexData (positions, normals,
+// uvs and triangles in the renderer's layout; tangents with tangents:
+// true), free of the GPU, so it is tested on Eval, read by physics for its
+// colliders and packed by the asset step. Shapes.of(device, geometry,
+// material) uploads one as a Mesh.
+//
+// The parameters, their names and defaults, their vertex counts and their
+// triangles are three.js's, as option structures (each field optional):
+//
+//   Geometry.box({width, height, depth, widthSegments, heightSegments, depthSegments})
+//   Geometry.sphere({radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength})
+//   Geometry.cylinder({radiusTop, radiusBottom, height, radialSegments, heightSegments, openEnded, thetaStart, thetaLength})
+//   Geometry.cone({radius, height, radialSegments, heightSegments, openEnded, thetaStart, thetaLength})
+//   Geometry.capsule({radius, height, capSegments, radialSegments, heightSegments})
+//   Geometry.torus({radius, tube, radialSegments, tubularSegments, arc})
+//   Geometry.torusKnot({radius, tube, tubularSegments, radialSegments, p, q})
+//   Geometry.ring({innerRadius, outerRadius, thetaSegments, phiSegments, thetaStart, thetaLength})
+//   Geometry.circle({radius, segments, thetaStart, thetaLength})
+//   Geometry.plane({width, height, widthSegments, heightSegments})
+//   Geometry.lathe(points, {segments, phiStart, phiLength})
+//   Geometry.tube(curve, {tubularSegments, radius, radialSegments, closed})
+//
+// Like three's: y up, the plane, circle and ring in xy facing +z, the
+// torus about z, a cylinder's seam at +z. Unlike three's, uvs run down the
+// image as glTF's (three's v flipped: 1 - v), as every helder material
+// reads them. Each also takes flat: true (its vertices unshared, each
+// triangle's three with its face's normal: flat shading, a low-poly
+// look) and tangents: true (VertexData.computeTangents', for normal maps).
+export declare class Geometry {
+	static box(o?: BoxOptions): VertexData;
+	static sphere(o?: SphereOptions): VertexData;
+	static cylinder(o?: CylinderOptions): VertexData;
+	// a cylinder whose top is a point (three's ConeGeometry)
+	static cone(o?: ConeOptions): VertexData;
+	// a cylinder of height with half spheres of radius at its ends, along y
+	// (physics' Capsule(radius, height / 2)): rows from the top pole down,
+	// capSegments in each half sphere, heightSegments along the side
+	static capsule(o?: CapsuleOptions): VertexData;
+	static torus(o?: TorusOptions): VertexData;
+	// a tube wound p times about the torus' axis and q times through its
+	// hole (three's TorusKnotGeometry)
+	static torusKnot(o?: TorusKnotOptions): VertexData;
+	static ring(o?: RingOptions): VertexData;
+	static circle(o?: CircleOptions): VertexData;
+	static plane(o?: PlaneOptions): VertexData;
+	// points (x the distance from the y axis, y the height) turned about y
+	// (three's LatheGeometry: its normals from the profile's, averaged
+	// between its segments)
+	static lathe(points: Vec2[], o?: LatheOptions): VertexData;
+	// a tube of radius along a curve, its rings on the curve's frames
+	// (Curve3.frames: no twist where the curve bends back), at equal lengths
+	// along it (three's TubeGeometry)
+	static tube(curve: Curve3, o?: TubeOptions): VertexData;
+}
+
+// A primitive's vertices and indices in the renderer's layout, made from
+// arrays (Mesh.add at run time, the asset step's packer at build time,
+// Geometry's generators: one implementation, free of the GPU so that it
+// runs on Eval): 32 bytes a vertex (position, normal, uv), 64 with joints
+// and weights (skinned); indices of 16 bits where the vertices allow, else
+// 32; tangents (x, y, z and the bitangent's sign, 16 bytes a vertex) in a
+// buffer of their own, for normal maps (NormalMaps): drawn without them,
+// the vertices are as any other's. An immutable value: read with
+// position(i), normal(i), uv(i), index(k); transformed makes another.
+export declare class VertexData {
+	constructor(vertices: Uint8Array, indices: Uint8Array, wide: boolean, count: number, skinned: boolean, bounds: unknown, tangents?: Uint8Array);
+	// normals null: computed from the triangles (smooth where vertices are
+	// shared); indices null: 0, 1, 2, ...
+	static make(positions: number[], normals: number[] | null, uvs: number[] | null, indices: number[] | null, joints?: number[], weights?: number[], tangents?: number[]): VertexData;
+	// how loaders make tangents where a file has none (GltfScene): set by
+	// NormalMaps when made (computeTangents), so that a program without
+	// normal maps links neither; null: no tangents loaded
+	static tangentsFrom: ((positions: number[], normals: number[], uvs: number[], indices: number[]) => number[]) | null;
+	// each vertex's tangent (x, y, z: along the uvs' u, at right angles to
+	// its normal; w: 1 or -1, the bitangent n x t's sign, the bitangent
+	// pointing up the image) from its
+	// triangles' uvs (Lengyel's method, summed over the triangles: glTF asks
+	// for MikkTSpace's where a file has none, which agrees on meshes whose
+	// uvs are not mirrored within a triangle fan)
+	static computeTangents(positions: number[], normals: number[], uvs: number[], indices: number[]): number[];
+	// each vertex's normal: the sum of its triangles' (area-weighted), normalized
+	static smoothNormals(positions: number[], indices: number[]): number[];
+	readonly vertices: Uint8Array;
+	readonly indices: Uint8Array;
+	readonly wide: boolean;
+	readonly count: number;
+	readonly skinned: boolean;
+	readonly bounds: unknown;
+	readonly tangents: Uint8Array | null;
+	// the vertices there are (count is the indices')
+	readonly vertexCount: number;
+	// vertex i's position, normal (unit) and uvs
+	position(i: number): Vec3;
+	normal(i: number): Vec3;
+	uv(i: number): Vec2;
+	// the k-th index (a triangle is 3k, 3k + 1, 3k + 2: counter-clockwise from its front)
+	index(k: number): number;
+	// the same moved by an affine matrix (its normals by the inverse
+	// transpose, unit again; its tangents turned); three's applyMatrix4
+	transformed(m: Mat4): VertexData;
+	// turned by Euler angles (radians: x, then y, then z, as Quat.fromEuler)
+	rotated(x: number, y: number, z: number): VertexData;
+	translated(x: number, y: number, z: number): VertexData;
+}
+
+// A curve in space, an immutable value (three's Curve and its kinds): a
+// cubic Bezier, a Catmull-Rom spline through points (open or closed), a
+// straight line, or a path of curves end to end. It is read by a parameter
+// t from 0 to 1 (point, tangent: a path's t runs by length across its
+// curves), or by a distance along it (pointAt, tangentAt: its length
+// tabulated once, when made, over 200 steps as three's arcLengthDivisions).
+// frames(n) gives n + 1 frames along it by length that turn as little as
+// they can (parallel transport, three's computeFrenetFrames): a tube's
+// rings (Geometry.tube), a camera on rails.
+//
+//   var rail = Curve3.catmullRom([a, b, c, d], true);
+//   var p = rail.pointAt(rail.length * 0.25);
+export declare class Curve3 {
+	// a cubic Bezier from a to d, its handles b and c (three's CubicBezierCurve3)
+	static bezier(a: Vec3, b: Vec3, c: Vec3, d: Vec3): Curve3;
+	// a straight line from a to b (three's LineCurve3)
+	static line(a: Vec3, b: Vec3): Curve3;
+	// a Catmull-Rom spline through points (two at least), back to the
+	// first when closed; tension 0.5 the classic spline (three's
+	// CatmullRomCurve3 of type "catmullrom")
+	static catmullRom(points: Vec3[], closed?: boolean, tension?: number): Curve3;
+	// curves end to end (three's CurvePath), t by length across them
+	static path(curves: Curve3[]): Curve3;
+	// the curve's length (scene units)
+	readonly length: number;
+	// the point at t (0 to 1)
+	point(t: number): Vec3;
+	// the unit tangent at t (its derivative's direction)
+	tangent(t: number): Vec3;
+	// the point at a distance along it from the start (0 to length)
+	pointAt(distance: number): Vec3;
+	// the unit tangent at a distance along it
+	tangentAt(distance: number): Vec3;
+	// the parameter t at a distance along it (the table searched, linear between its steps)
+	paramAt(distance: number): number;
+	// n + 1 frames at equal lengths along it (n at least 1): each a unit
+	// tangent, normal and binormal (tangent x normal), the normal carried
+	// from one to the next by the turn between their tangents (no flips at
+	// inflections, unlike Frenet's); closed, the twist between the last and
+	// the first spread over them, so the ends meet
+	frames(n: number, closed?: boolean): Frames;
+}
+
+// One mesh drawn many times in one instanced draw a primitive, its
+// instances' data in flat arrays the program writes (no node, no object
+// an instance): a swarm of asteroids, a fleet of ships, a forest. Each
+// instance is a world transform (a position, a unit quaternion and a
+// uniform scale, or any affine matrix: uneven scales too, the normals
+// turned by its inverse transpose), a colour (rgb times the material's base colour, white by default)
+// and, for a program's own shader, `custom` floats of its own (a second
+// buffer, `custom` floats an instance, a multiple of 4). Attached to a
+// node (InstancedMesh.attach), drawn by the Renderer while the node is
+// shown (culled whole by bounds when given, never one by one; casting
+// into Shadows' map), with the standard material (PbrInstancedShader: its layout's
+// instance buffer, LAYOUT's second). Nothing is allocated a frame: a write
+// marks the instances changed and the renderer uploads count of them
+// before its pass (one writeBuffer, two with custom data).
+//
+//   var rocks = new InstancedMesh(Shapes.sphere(device, rock, 1), 100000);
+//   InstancedMesh.attach(world.node("belt"), rocks);
+//   // each frame:
+//   for (i in 0...rocks.count) rocks.setTransform(i, x, y, z, qx, qy, qz, qw, s);
+//
+// The data's layout is the instance buffer's (`data`, 16 floats an
+// instance, the matrix by columns, each of the first three columns' w the
+// colour's channel less 1, the last column's w 1), so a program can also
+// write it directly (data.setFloat, then changed()).
+export declare class InstancedMesh {
+	constructor(mesh: Mesh, capacity: number, count?: number, custom?: number);
+	static readonly KIND: unknown;
+	// bytes an instance in data
+	static readonly STRIDE: number;
+	static attach(node: Node, instances: InstancedMesh): InstancedMesh;
+	static of(node: Node): InstancedMesh | null;
+	static detach(node: Node): void;
+	readonly mesh: Mesh;
+	// the instances there is room for; grow with resize
+	readonly capacity: number;
+	// the instances drawn (0 to capacity)
+	count: number;
+	// custom floats an instance (custom's stride: 4 * custom bytes)
+	readonly custom: number;
+	// the instance buffer's data: STRIDE bytes an instance
+	readonly data: Uint8Array;
+	// the custom data (custom floats an instance; empty without)
+	readonly customData: Uint8Array;
+	// the GPU's copies, made by the renderer when first drawn (Buffer.NONE before)
+	readonly buffer: number;
+	readonly customBuffer: number;
+	// the instances' bounds in the world, when the program knows them
+	// (empty: unknown): the renderer culls the whole set by them and
+	// Shadows fits its map to them; without, the set is always drawn and
+	// casts into a map fitted to the other casters
+	bounds: unknown;
+	// whether it casts shadows (Shadows; its materials' castShadows too)
+	castShadows: boolean;
+	// room for capacity instances (the data kept, new ones at the origin, white)
+	resize(capacity: number): void;
+	// marks the data written directly as changed (the setters do)
+	changed(): void;
+	// instance i at x, y, z, turned by the unit quaternion (qx, qy, qz, qw)
+	// and scaled by s, its colour kept
+	setTransform(i: number, x: number, y: number, z: number, qx: number, qy: number, qz: number, qw: number, s?: number): void;
+	// instance i's position only (its turn, scale and colour kept)
+	setPosition(i: number, x: number, y: number, z: number): void;
+	// instance i's world matrix (affine: any scale, uneven too), its colour kept
+	setMatrix(i: number, m: Mat4): void;
+	// instance i's colour (linear rgb, times the material's base colour)
+	setColor(i: number, r: number, g: number, b: number): void;
+	// instance i's position (axis 0, 1, 2: x, y, z), as written
+	position(i: number, axis: number): number;
+	// instance i's colour channel (0, 1, 2: r, g, b)
+	color(i: number, channel: number): number;
+	// instance i's custom float k (0 to custom - 1)
+	setCustom(i: number, k: number, v: number): void;
+	getCustom(i: number, k: number): number;
+	// what a set does before it is uploaded for a camera's view-projection
+	// (the renderer's, each frame it is shown: Sprites turns its quads to
+	// the camera there); nothing by default
+	prepare(viewProj: Mat4): void;
+	// the changed instances to the GPU (the renderer's, before its pass; a
+	// program drawing them with its own pipeline calls it too): count of
+	// them, the buffers made or grown to the capacity
+	upload(device: Device): void;
+	// the GPU's buffers freed (the mesh is the caller's)
+	dispose(): void;
+}
+
+// Quads that face the camera (three's Sprite, Godot's billboard modes), as
+// one InstancedMesh: clouds, halos, trees far off, particles of one's own.
+// Each sprite is a position (in the world), a width and a height (scene
+// units), a turn in the screen's plane, a cell of an atlas and a colour;
+// all of them are one instanced draw. The renderer turns them before its
+// pass (prepare: from the camera's view-projection, the matrices written
+// into the instance data and uploaded), so nothing is allocated a frame.
+//
+//   mode Spherical  facing the camera, upright on the screen (turned by rotation)
+//   mode Axis       turning about axis only (a tree, a cloud's column, a
+//                   flame): upright along it, as near facing the camera as it can
+//   mode Fixed      facing +z, turned by rotation about z (a decal of one's own)
+//
+// Its material is any (Material.unlit with Additive: halos; with a texture
+// and alphaCutoff: leaves; a lit one: its normal faces the camera, so it is
+// lit as a card). See-through ones are drawn after the opaque surfaces
+// (Material.blend), Alpha's sorted far to near among themselves when the
+// camera moves. An atlas is columns by rows cells of the material's
+// texture, left to right then top to bottom (the material's uvScale set to a
+// cell's share; a sprite's cell moves its uvs there: PbrShader.instanceUv).
+//
+//   var halos = new Sprites(device, Material.unlit({color: gold, texture: glow, blend: true, blending: Additive}), 64);
+//   Sprites.attach(world.node("halos"), halos);
+//   halos.count = lamps.length;
+//   for (i in 0...halos.count) halos.set(i, lamps[i].x, lamps[i].y, lamps[i].z, 0.8, 0.8);
+//
+// InstancedMesh's own setTransform and setMatrix are overwritten by the
+// turn: a sprite is set with set, setPosition, setSize, setRotation,
+// setCell and setColor. Its bounds (InstancedMesh.bounds: the whole set's,
+// culled by them) are the program's, as an InstancedMesh's.
+export declare class Sprites extends InstancedMesh {
+	// capacity sprites of material (count of them shown: all by default);
+	// their quad (Geometry.plane) made on device (null: none, their data
+	// alone: tests)
+	constructor(device: Device | null, material: Material, capacity: number, options?: SpritesOptions);
+	static attach(node: Node, sprites: Sprites): Sprites;
+	// what they are drawn with (the quad's)
+	readonly material: Material;
+	// how they face the camera
+	mode: number;
+	// the axis Axis turns about (the world's; unit)
+	axis: Vec3;
+	// the atlas' cells (1 by 1: the whole image)
+	readonly columns: number;
+	readonly rows: number;
+	// sprite i at x, y, z, of width and height, turned by rotation
+	// (radians, counter-clockwise on the screen; Axis: none), its atlas cell
+	// (0 the first, left to right then down), its colour kept
+	set(i: number, x: number, y: number, z: number, width: number, height: number, rotation?: number, cell?: number): void;
+	setPosition(i: number, x: number, y: number, z: number): void;
+	setSize(i: number, width: number, height: number): void;
+	setRotation(i: number, rotation: number): void;
+	// (column + columns * row)
+	setCell(i: number, cell: number): void;
+	// sprite i's colour (linear rgb, times the material's base colour)
+	setColor(i: number, r: number, g: number, b: number): void;
+	// sprite i's field: 0 to 2 its position, 3 and 4 its size, 5 its
+	// rotation, 6 its cell, 7 to 9 its colour
+	get(i: number, field: number): number;
+	resize(capacity: number): void;
+	// the instances turned to the camera of viewProj (the renderer's, before
+	// its upload): its axes from the view-projection's rows (a symmetric
+	// projection's right and up, its back the third row's opposite); nothing
+	// done when neither the camera nor a sprite changed
+	prepare(viewProj: Mat4): void;
 }
 
 // A glTF model referenced where it is used: Model.of("models/hero.glb") is
@@ -437,7 +923,10 @@ export declare class Model<N, M, A, C> {
 // standard material, PbrShader) with some of its slots replaced, compiled
 // at build time into the variants the renderer draws with (plain, normal
 // mapped, skinned, instanced, instanced and normal mapped), set on a
-// Material (material.shader) as the shader its primitives are drawn with:
+// Material (material.shader) as the shader its primitives are drawn with.
+// Another slot object of the renderer's vertex and parameters (shading's
+// unlit) works too: one without pbr's normalMap option has no normal-mapped
+// variants (null; its primitives drawn without their normal maps):
 //
 //   final Glow = MaterialShader.material(pbr.with({
 //     emissive: function(s, p:{glow:GlowParams}):Vec3 return p.glow.color.xyz * (0.5 + 0.5 * sin(p.glow.time.x)),
@@ -457,10 +946,10 @@ export declare class MaterialShader {
 	// variants and passes them here, JSON)
 	static script(json: string): MaterialShader;
 	readonly plain: AnyShader;
-	readonly normalMapped: AnyShader;
+	readonly normalMapped: AnyShader | null;
 	readonly skinned: AnyShader;
 	readonly instanced: AnyShader;
-	readonly instancedNormalMapped: AnyShader;
+	readonly instancedNormalMapped: AnyShader | null;
 	// the blocks of the material's own: its parameter's name, its slot, in each variant (in the order above)
 	readonly blocks: Array<{ name: string; bindings: number[] }>;
 }

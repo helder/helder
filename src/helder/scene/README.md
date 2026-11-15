@@ -1,4 +1,4 @@
-<!-- Generated from docs/scene/index.md, docs/scene/world.md, docs/scene/models.md, docs/scene/materials.md, docs/scene/lights.md, docs/scene/fog.md, docs/scene/post.md, docs/scene/instancing.md, docs/scene/particles.md, docs/scene/input.md, docs/scene/debugging.md, docs/scene/typescript.md by site/docs/readme.mjs: edit those, not this file. -->
+<!-- Generated from docs/scene/index.md, docs/scene/world.md, docs/scene/models.md, docs/scene/geometry.md, docs/scene/materials.md, docs/scene/lights.md, docs/scene/fog.md, docs/scene/post.md, docs/scene/instancing.md, docs/scene/particles.md, docs/scene/input.md, docs/scene/debugging.md, docs/scene/typescript.md by site/docs/readme.mjs: edit those, not this file. -->
 
 # helder.scene
 
@@ -42,9 +42,12 @@ are the CPU's types too, so what the CPU computes is what a shader reads.
 
 ## Tests
 
-`tests/3d/SceneTest.hx`, `tests/3d/GltfTest.hx` and the frames of
-`tests/3d/Scenes.hx` against `tests/3d/<scene>.png` (`bun run test 3d`,
-natively; `bun run test 3d-web`, WebGPU and WebGL2 in Chromium). The
+`tests/3d/SceneTest.hx`, `tests/3d/GltfTest.hx`, the `*.test.hx` beside
+the sources (Geometry, Curve3, Sprites, the shading models, Material,
+InstancedMesh: `helder test`, natively and as wasm32-wasi) and the frames
+of `tests/3d/Scenes.hx` against `tests/3d/<scene>.png` (`bun run test 3d`,
+natively, and some from TypeScript too: tests/3d/ts; `bun run test
+3d-web`, WebGPU and WebGL2 in Chromium). The
 examples on these pages are built by the examples lane (`bun run test
 examples`).
 
@@ -203,6 +206,64 @@ instance, joint matrices in a texture: `renderer.use(new
 Skinning(device))`); `tests/3d/skinned.glb` is a generated two-joint
 sample.
 
+## Geometry
+
+### Shapes made in code
+
+Shapes are made in code on the CPU, three.js's geometries by name, their
+parameters three's names and defaults (option structures, each field
+optional), their vertex and index counts three's for the same parameters:
+
+```haxe
+var rail = Geometry.cylinder({radiusTop: 0.2, radiusBottom: 0.2, height: 1, radialSegments: 8, flat: true});
+var post = Shapes.of(device, rail, wood);    // the upload: a Mesh of one primitive
+var knot = Geometry.torusKnot({radius: 0.5, tube: 0.15, p: 2, q: 3});
+var vase = Geometry.lathe([new Vec2(0.2, 0), new Vec2(0.4, 0.5), new Vec2(0.15, 1)], {segments: 24});
+var hose = Geometry.tube(Curve3.catmullRom(points), {radius: 0.05, tubularSegments: 96});
+```
+
+`Geometry.box`, `sphere`, `cylinder`, `cone`, `capsule`, `torus`,
+`torusKnot`, `ring`, `circle`, `plane`, `lathe(points, ...)` and
+`tube(curve, ...)` return a `VertexData`, free of the GPU: tested on Eval,
+read by physics, packable. Like three's: y up, the plane, circle and ring
+in xy facing +z, the torus about z, a cylinder's seam at +z; unlike
+three's, uvs run down the image (v flipped) as glTF's do and every helder
+material reads them. Every generator also takes `flat: true` (its vertices
+unshared, each triangle its face's normal: the low-poly look) and
+`tangents: true` (for normal maps).
+
+A `VertexData` is read with `position(i)`, `normal(i)`, `uv(i)`,
+`index(k)`, `vertexCount` and `count`, and moved into another with
+`transformed(m)`, `rotated(x, y, z)` and `translated(x, y, z)` (three's
+`applyMatrix4`; a mirror keeps the winding). `Shapes.of(device, geometry,
+material)` uploads one; `Shapes.box`, `sphere`, `capsule` and `plane` are
+the common ones at their usual sizes (`Shapes.plane` is `Geometry.plane`
+turned to face up). In markup a geometry is a tag: `<cylinderGeometry
+radiusTop={0.2} height={1}/>` ([`<Scene>` markup](/docs/scene/markup.md)).
+
+Each column here is a generator, each row a shading model
+([Materials](#materials)):
+
+Example: [Primitives](/examples/primitives/Primitives.hx) (`helder run examples/primitives/Primitives.hx`; it plays in the docs' page).
+
+### Curves
+
+`Curve3` is a curve in space, an immutable value (three's `Curve`):
+`Curve3.bezier(a, b, c, d)`, `catmullRom(points, closed, tension)`,
+`line(a, b)` and `path(curves)`, read by a parameter (`point(t)`,
+`tangent(t)`) or by a distance along it (`pointAt(d)`, `tangentAt(d)`:
+its `length` tabulated once, when made), and `frames(n, closed)`: n + 1
+frames at equal lengths that turn as little as they can (parallel
+transport, so no flip where the curve bends back), for a tube's rings or
+a camera on rails.
+
+Tests: `src/helder/scene/render/Geometry.test.hx` (three's counts, closed
+shapes closed and wound one way round, normals unit, uvs 0 to 1, flat, the
+transforms), `src/helder/scene/math/Curve3.test.hx` (lengths, frames
+without flips); the 3d lane's `primitives` frame (every generator, smooth
+with its normals as colours, flat in Lambert's light; its TypeScript twin
+the same frame).
+
 ## Materials
 
 ### The renderer
@@ -224,8 +285,8 @@ drawn in one instanced call (`renderer.instancing`, on by default:
 [Instancing](#instancing)). Programs draw at injection points:
 `renderer.inject(BeforeOpaque | AfterOpaque | AfterPass, (enc, frame) -> ...)`;
 features reach the renderer through `RenderFeature` (`renderer.use(...)`),
-so unused ones are not linked. `Shapes.box`, `sphere`, `capsule` and
-`plane` make meshes in code.
+so unused ones are not linked. Shapes are made in code with `Geometry`
+and `Shapes` ([Geometry](#geometry)).
 
 ### The standard material
 
@@ -259,14 +320,77 @@ instanced})`: `PbrShader`, `PbrNormalShader`, `PbrSkinnedShader`,
 `PbrInstancedShader`, `PbrInstancedNormalShader`; the shadow map's casters
 are `shadowCaster`'s) and whose slots a material replaces: `color`,
 `alpha`, `normal`, `roughness`, `metalness` and `emissive` (of the
-fragment's `PbrSurface`), `position` (of the vertex's `PbrPoint`).
-`MaterialShader.material(pbr.with({...}))` compiles them, at build time,
-into a shader of the material's own (`material.shader`, every variant the
-renderer draws with); a slot's parameters beyond the standard ones are
+fragment's `PbrSurface`), `position` (of the vertex's `PbrPoint`), and
+how light reaches the surface: `direct(s, l, p)`, the light one source
+adds (the sun's, each point or spot light's; `l` a `LightSample`: its
+`color` times its attenuation, its `shadow`, the two multiplied as
+`radiance`, its `direction`, `ndotl`), and `indirect(s, env, p)`, the
+ambient and the reflections (`env` an `IndirectLight`: `irradiance` along
+the normal, `radiance` along the reflection, `occlusion`), each of the
+surface with the other slots' results (`s` a `LitSurface`: `albedo`,
+`alpha`, `metalness`, `roughness`, `normal`, `view`, `world`, `uv`, `up`).
+A slot takes as many inputs as the slot object's type gives it before its
+parameters. `MaterialShader.material(pbr.with({...}))` compiles them, at
+build time, into a shader of the material's own (`material.shader`, every
+variant the renderer draws with, for the GPU only: no CPU twin of its
+stages is linked); a slot's parameters beyond the standard ones are
 blocks of its own (`material.uniforms`, written by its `params`). Here the
 emissive and colour slots are replaced:
 
 Example: [Glow](/examples/glow/Glow.hx) (`helder run examples/glow/Glow.hx`; it plays in the docs' page).
+
+### Shading models
+
+A shading model is a material's shader, made by `Material`'s factories,
+three.js's materials by name:
+
+```haxe
+var grass = Material.toon({color: new Vec4(0.4, 0.8, 0.3, 1), steps: 3, shade: new Vec3(0.35, 0.4, 0.6)});
+var sign  = Material.unlit({color: new Vec4(1, 0.9, 0.2, 1), texture: signImage});
+var clay  = Material.matcap({matcap: clayImage});   // the normal in view space reads the sphere's picture
+var debug = Material.normals();                     // MeshNormalMaterial; Material.depth(near, far): MeshDepthMaterial
+var lam   = Material.lambert({color: c});           // 1 dot a light, no GGX: the cheap lit one for phones
+var shiny = Material.phong({color: c, shininess: 60});
+var std   = Material.standard({color: c, roughness: 0.4});   // pbr, as new Material(...)
+```
+
+| Factory | three.js | How | Per pixel, per light |
+|---|---|---|---|
+| `unlit` | `MeshBasicMaterial` | the colour times its texture, fogged | none |
+| `matcap` | `MeshMatcapMaterial` | a lit sphere's picture (`matcap`, kept as the `emissiveTexture`) by the normal as the eye sees it | none (1 texture read) |
+| `normals` | `MeshNormalMaterial` | the normal in view space as a colour | none |
+| `depth(near, far)` | `MeshDepthMaterial` | the depth along the view, white at near, black at far (linear) | none |
+| `lambert` | `MeshLambertMaterial` | each light's diffuse, the ambient's diffuse, no highlight | 1 dot |
+| `toon` | `MeshToonMaterial` | each light's n.l times its shadow in `steps` bands, the side away from every light the albedo times `shade` | 1 dot and a step |
+| `phong` | `MeshPhongMaterial` | Lambert's diffuse and a Blinn-Phong highlight (three's `shininess`, kept as the roughness of the same lobe), pbr's reflections | a pow |
+| `standard` | `MeshStandardMaterial` | pbr: GGX, Smith and Schlick | GGX, Smith and Schlick |
+
+The lit ones are `pbr` with `direct` and `indirect` replaced
+(`helder.scene.render.shading`: `lambert`, `toon`, `phong`), so they keep
+the shadows, the point and spot lights, the fog, normal maps, instancing
+and skinning; toon's bands are per light, its shadow banded with it. The
+unlit ones are a slot object of their own, `unlit` (its slots `color`,
+`alpha`, `position`; its variants plain, skinned and instanced, no normal
+map), which sums no light and reads no shadow map; `matcap`, `normals` and
+`depth` are `unlit.with({color: ...})`. A material of one's own on any of
+them is `MaterialShader.material(toon.with({...}))`. `material.toneMapped`
+(three's) false shows a colour as it is, only encoded for an 8-bit target
+(`normals` and `depth` by default).
+
+Each factory references its own shader alone: a program that never calls
+`Material.toon` links none of toon's. Unused, they cost the renderer 39 KB
+natively and as wasm32 (its shader's text, the slots' structure); a lit
+model, when used, costs its five variants' shader text, about 230 KB
+natively (HLSL) and 300 KB as wasm32 (GLSL and WGSL)
+(`tests/3d/size/sizes.sh`). Each row here is a model, each column a shape:
+
+Example: [Primitives](/examples/primitives/Primitives.hx) (`helder run examples/primitives/Primitives.hx`; it plays in the docs' page).
+
+Tests: `src/helder/scene/render/shading/Shading.test.hx` (the slots on the
+CPU), the 3d lane's `shading` (the seven in a row) and `toon` (soft
+shadows and a point light; its TypeScript twin the same frame) frames,
+`tests/typescript/definitions/shading.ts` (src/helder/scene/shading.ts the
+same text as these).
 
 The same in TypeScript: [TypeScript](#typescript).
 
@@ -280,12 +404,17 @@ Light.attach(sun, Light.directional(new Vec3(1, 0.95, 0.85), 2.2));   // colour,
 sun.lookAt(new Vec3(0.35, -0.45, 0.82));                              // it shines along its node's -z
 Light.attach(world.node("lamp"), Light.pointLight(new Vec3(1, 0.3, 0.1), 3, 4));   // and a range, metres
 Light.attach(world.node("spot"), Light.spot(color, 6, 10, 0.15, 0.3));            // inner and outer cones, radians
+Light.attach(world.node("sky"), Light.hemisphere(skyColor, groundColor, 1));     // three's HemisphereLight
 ```
 
 The standard material is lit by the world's first directional `Light`
 and up to four point or spot lights (a world without lights:
-`renderer.sun*`), with a sky-and-ground ambient (`renderer.sky`,
-`renderer.ground`). `renderer.rim` (a colour times intensity) and
+`renderer.sun*`), with a sky-and-ground ambient: the world's first
+hemisphere light (`Light.hemisphere(sky, ground, intensity)`: the sky's
+colour from above, the ground's from below, blended by the normal), else
+`renderer.sky` and `renderer.ground`. A light's `kind` is `Directional`,
+`Point`, `Spot` or `Hemisphere` (`light.local`: a point or a spot light);
+tests/3d's `hemisphere` frame is lit by a hemisphere light alone. `renderer.rim` (a colour times intensity) and
 `rimPower` add a rim light from the sun's side along the silhouettes.
 `material.emissiveNight` (0 to 1) keeps a material's light to its night
 side, faded in across the terminator (a planet's city lights).
@@ -514,6 +643,36 @@ HELDER_CONTROLS=none bun run helder run examples/showroom --headless --stats bin
 headless: 3D draws by pass: main 17 (at most 18), shadow maps 17 (at most 17), post 12 (at most 12)
 ```
 
+### Sprites
+
+Quads that face the camera (three's `Sprite`, Godot's billboard modes), as
+one `InstancedMesh` of a material: clouds, halos, trees far off.
+
+```haxe
+var trees = new Sprites(device, Material.unlit({texture: atlas, alphaCutoff: 0.5}), 64, {mode: Axis, columns: 2, rows: 1});
+Sprites.attach(world.node("trees"), trees);
+trees.count = n;
+for (i in 0...n) trees.set(i, x[i], h[i] / 2, z[i], h[i] * 0.7, h[i], 0, i % 2);   // position, size, rotation, atlas cell
+trees.setColor(i, r, g, b);
+```
+
+`mode` is `Spherical` (facing the camera, turned on the screen by a
+sprite's rotation), `Axis` (turning about `axis` alone: upright along it)
+or `Fixed` (facing +z). Each sprite is a position in the world, a width and
+a height, a rotation, an atlas cell (`columns` by `rows` of the material's
+texture, left to right then down: the material's `uvScale` set to a
+cell's share, the cell in the instance matrix's last w, which the
+instanced variants read: `PbrShader.instanceUv`) and a colour. The
+renderer turns them before its pass (`InstancedMesh.prepare(viewProj)`:
+the camera's axes from its view-projection), only when the camera or a
+sprite changed; see-through ones are drawn after the opaque surfaces with
+the see-through instanced sets (an `Additive` halo), `Alpha`'s sorted far
+to near among themselves. Nothing is allocated a frame. In markup:
+`<sprites of={trees} mode="axis"/>`. Tests:
+`src/helder/scene/render/Sprites.test.hx` (the turn, the atlas, the
+sorting, nothing allocated, natively and as wasm32-wasi), the 3d lane's
+`sprites` frame (trees on an axis, clouds sorted, additive halos).
+
 ## GPU particles
 
 ```haxe
@@ -668,6 +827,18 @@ const Glow = material(pbr.with({
 }));
 Glow.apply(orb, {glow: bytes});
 ```
+
+The shading models are `helder/scene`'s too: `lambert`, `toon`, `phong`,
+`unlit`, `matcap`, `normals` and `depth` (src/helder/scene/shading.ts,
+helder.scene.render.shading's in TypeScript, checked the same text by
+tests/typescript/definitions/shading.ts), so `material(toon.with({...}))`
+is a toon material of one's own; `Material.toon({...})` and the other
+factories, `Geometry`, `Curve3`, `Sprites` and `Light.hemisphere` are the
+generated declarations' (`LightKind`, `SpriteMode` and `Blend` their
+enums' values by name). A slot of several inputs is typed as its default:
+`direct: (s: LitSurface, l: LightSample, p: {...}) => Vec3`. The 3d lane
+draws `primitives` and `toon` from TypeScript too (tests/3d/ts/twins.ts),
+node for node as Scenes.hx's, against the same goldens.
 
 `tests/typescript/helder/scene.ts` checks it without a GPU.
 `examples/ts-scene` puts it together (scene.ts: examples/gltf-viewer's

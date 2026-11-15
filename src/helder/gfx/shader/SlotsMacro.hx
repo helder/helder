@@ -34,8 +34,15 @@ class SlotsMacro {
 	public static function with(self:Expr, overrides:Expr):Expr {
 		var id = merges.length;
 		merges.push(overrides);
+		// (the module its overrides are written in: a module-level final's,
+		// typed by resolve, else the caller's)
+		mergeScopes.push(typing ?? Scopes.at(Context.getLocalModule(), overrides.pos));
 		return macro @:pos(Context.currentPos()) helder.gfx.shader.Slots.merged($self, $v{id});
 	}
+
+	static final mergeScopes:Array<Scopes.Scope> = [];
+	// (the scope a module-level final made by with(...) is typed in: resolve's)
+	static var typing:Null<Scopes.Scope> = null;
 
 	public static function variant(self:Expr, options:Null<Expr>):Expr {
 		var pos = Context.currentPos();
@@ -55,9 +62,20 @@ class SlotsMacro {
 	// default by its name; an override, from the caller's module, a static
 	// of a module made with the caller's imports; one whose parameters are
 	// not the stage's throws on the CPU: it runs on the GPU only)
-	public static function build(r:Resolved, values:Map<String, KValue>, out:ShaderOutput, lower:Lower):Expr {
+	//
+	// cpu false: no CPU stages (the shader's vertex and fragment null), for a
+	// shader only ever drawn on the GPU (helder.scene's MaterialShader): its
+	// stages' CPU code neither made nor linked
+	public static function build(r:Resolved, values:Map<String, KValue>, out:ShaderOutput, lower:Lower, cpu = true, lean = false):Expr {
 		var pos = Context.currentPos();
 		var def = r.def;
+		if (!cpu)
+			return ShaderMacro.build(out, lower, {
+				vertex: macro null,
+				fragment: macro null,
+				vertexType: macro :Dynamic,
+				fragmentType: macro :Dynamic
+			}, lean);
 		var vertexSource:Expr = def.vertex.source, fragmentSource:Expr = def.fragment.source;
 		var vf = func(vertexSource), ff = func(fragmentSource);
 		if (vf.args.length != 3 || ff.args.length != 3)
@@ -67,14 +85,15 @@ class SlotsMacro {
 			case TAnonymous(an): [for (f in an.get().fields) f.name => f.type];
 			case t: Context.error('slots: the slot object\'s type is a structure of its options and slots, not ${t.toString()}', pos);
 		}
-		// the overrides written in the caller's module: statics of a module made with its imports
+		// the overrides: statics of a module made with the imports of the
+		// module each is written in (the caller's, or a module-level final's
+		// made by with(...): resolve's overrideScopes)
 		var callerModule = Context.getLocalModule();
 		var callerScope = Scopes.of(callerModule, Context.getPosInfos(pos).file);
-		var overrides:Array<Field> = [];
+		var groups:Array<{scope:Scopes.Scope, fields:Array<Field>, slots:Array<String>}> = [];
 		var calls = new Map<String, Expr>();
 		var overridePack = callerModule.split(".");
 		var overrideBase = overridePack.pop() + "_" + (Context.getLocalMethod() ?? "slots") + "_slots";
-		var overridden = [];
 		for (slot in def.slotOrder) {
 			var node = def.slots.get(slot);
 			var t = expected.get(slot);
@@ -90,33 +109,43 @@ class SlotsMacro {
 					g.args = [for (a in f.args) Reflect.copy(a)];
 					switch t.follow() {
 						case TFun(as, ret):
-							if (g.args.length > 0 && g.args[0].type == null) g.args[0].type = as[0].t.toComplexType();
+							// (its inputs, as many as the type gives before its
+							// parameters: direct(s, l, p)'s two; one without
+							// parameters of its own takes the stage's, unread)
+							var inputs = as.length > 1 ? as.length - 1 : 1;
+							for (i in 0...(g.args.length < inputs ? g.args.length : inputs))
+								if (g.args[i].type == null) g.args[i].type = as[i].t.toComplexType();
+							if (g.args.length == inputs && as.length > inputs)
+								g.args.push({name: "_unread", type: as[inputs].t.toComplexType()});
 							if (g.ret == null) g.ret = ret.toComplexType();
 						case _:
 					}
-					overrides.push({
+					var scope = r.overrideScopes.get(slot) ?? callerScope;
+					var group = Lambda.find(groups, x -> x.scope == scope);
+					if (group == null) groups.push(group = {scope: scope, fields: [], slots: []});
+					group.fields.push({
 						name: slot,
 						access: [APublic, AStatic],
 						kind: FFun(g),
 						pos: (k.source : Expr).pos
 					});
-					overridden.push(slot);
+					group.slots.push(slot);
 				case _: calls.set(slot, refExpr(node));
 			}
 		}
-		if (overrides.length > 0) {
+		for (group in groups) {
 			var cls:TypeDefinition = {
 				pack: overridePack,
 				name: overrideBase,
 				pos: pos,
 				kind: TDClass(),
-				fields: overrides,
+				fields: group.fields,
 				meta: [{name: ":noCompletion", pos: pos}]
 			};
-			var name = overrideBase + "_" + haxe.crypto.Md5.encode(new haxe.macro.Printer().printTypeDefinition(cls)).substr(0, 8);
+			var name = overrideBase + "_" + haxe.crypto.Md5.encode(new haxe.macro.Printer().printTypeDefinition(cls) + group.scope.imports.join(",")).substr(0, 8);
 			cls.name = name;
-			define(overridePack.concat([name]).join("."), cls, callerScope);
-			for (slot in overridden)
+			define(overridePack.concat([name]).join("."), cls, group.scope);
+			for (slot in group.slots)
 				calls.set(slot, macro $p{overridePack.concat([name, slot])});
 		}
 		// (a call of a slot whose parameters are not the stage's: the GPU's only)
@@ -128,7 +157,18 @@ class SlotsMacro {
 				Context.typeExpr(macro($e : $ct));
 				true;
 			} catch (_:Dynamic) false;
-			if (!ok) calls.set(slot, macro(function(s, p) return throw $v{'the slot $slot of this variant runs on the GPU only (its parameters are not the stage\'s)'} : $ct));
+			if (!ok) {
+				var arity = switch t.follow() {
+					case TFun(as, _): as.length;
+					case _: 2;
+				}
+				var gpu:Function = {
+					args: [for (i in 0...arity) {name: "a" + i, type: null}],
+					ret: null,
+					expr: macro return throw $v{'the slot $slot of this variant runs on the GPU only (its parameters are not the stage\'s)'}
+				};
+				calls.set(slot, macro(${{expr: EFunction(FAnonymous, gpu), pos: pos}} : $ct));
+			}
 		}
 		// the stages: the object's, the slot object read as constants and calls
 		var pack = r.module.split(".");
@@ -237,7 +277,35 @@ class SlotsMacro {
 			case TParenthesis(x) | TMeta(_, x) | TCast(x, null): resolve(x, lower, a);
 			case TCall({expr: TField(_, FStatic(_, cf))}, [base, {expr: TConst(TInt(id))}]) if (cf.get().name == "merged"):
 				var r = resolve(base, lower, a);
-				{def: r.def.with(a.node(merges[id]), a), root: r.root, defaults: r.defaults, scope: r.scope, module: r.module, field: r.field};
+				var scope = mergeScopes[id];
+				var given = Context.withImports(scope.imports, scope.usings, () -> a.node(merges[id]));
+				var scopes = [for (k => v in r.overrideScopes) k => v];
+				switch given.value {
+					case KObject(fs):
+						for (f in fs)
+							switch f.node.value {
+								case KFunction(k):
+									lower.scopes.set(k.source, scope);
+									scopes.set(f.name, scope);
+								case _:
+							}
+					case _:
+				}
+				{def: r.def.with(given, a), root: r.root, defaults: r.defaults, scope: r.scope, module: r.module, field: r.field, overrideScopes: scopes};
+			case TField(_, FStatic(c, cf)) if (madeByWith(c.get(), cf.get())):
+				// (a module-level final made by with(...) of another: its
+				// initializer typed in its module's scope)
+				var cls = c.get(), field = cf.get();
+				var scope = Scopes.of(cls.module, Context.getPosInfos(field.pos).file);
+				var init = initializer(cls, field, a, e.pos);
+				var saved = typing;
+				typing = scope;
+				var typed = try Context.withImports(scope.imports, scope.usings, () -> Context.typeExpr(init)) catch (x:Dynamic) {
+					typing = saved;
+					throw x;
+				}
+				typing = saved;
+				resolve(typed, lower, a);
 			case TField(_, FStatic(c, cf)):
 				var src = source(c.get(), cf.get(), a, e.pos);
 				var def = SlotsDef.read(src.node, a);
@@ -250,9 +318,39 @@ class SlotsMacro {
 				lower.scopes.set(def.fragment.source, src.scope);
 				for (s in def.slotOrder)
 					scoped(def.slots.get(s));
-				{def: def, root: e, defaults: def.slots, scope: src.scope, module: c.get().module, field: cf.get().name};
+				{def: def, root: e, defaults: def.slots, scope: src.scope, module: c.get().module, field: cf.get().name, overrideScopes: new Map()};
 			case _: a.error("a slot object is a module-level final made by slots({...}) (or with(...) of one)", e.pos);
 		}
+	}
+
+	// whether a module-level final is made by with(...) of a slot object
+	// (`final toon = pbr.with({...})`), not by slots(...)
+	static function madeByWith(c:ClassType, cf:ClassField):Bool {
+		var key = c.module + "." + c.name + "." + cf.name;
+		var known = withMade.get(key);
+		if (known != null) return known;
+		var info = Context.getPosInfos(cf.pos);
+		var text = sys.io.File.getContent(info.file).substr(info.min);
+		var r = ~/^[^=;]*=\s*([A-Za-z_][\w.]*)\s*\.\s*with\s*\(/;
+		var made = r.match(text);
+		withMade.set(key, made);
+		return made;
+	}
+
+	static final withMade = new Map<String, Bool>();
+
+	// a module-level final's initializer, parsed (its text up to the ; that ends it)
+	static function initializer(c:ClassType, cf:ClassField, a:HaxeAdapter, pos:Position):Expr {
+		var info = Context.getPosInfos(cf.pos);
+		var file = info.file;
+		var bytes = Bytes.ofString(sys.io.File.getContent(file));
+		var text = bytes.getString(info.min, bytes.length - info.min);
+		var eq = text.indexOf("=");
+		var open = text.indexOf("(", eq);
+		var close = matching(text, open);
+		var at = info.min + Bytes.ofString(text.substr(0, eq + 1)).length;
+		var end = info.min + Bytes.ofString(text.substr(0, close + 1)).length;
+		return Context.parseInlineString(bytes.getString(at, end - at), Context.makePosition({min: at, max: end, file: file}));
 	}
 
 	// the argument of the slots(...) call a module-level final is made by, in its module's scope
@@ -318,6 +416,9 @@ typedef Resolved = {
 	// (the module the object is written in, its scope, its final's name)
 	scope:Scopes.Scope,
 	module:String,
-	field:String
+	field:String,
+	// (the scopes the overrides of with(...)s are written in, by slot: a
+	// module-level final's, typed in its module; others the caller's)
+	overrideScopes:Map<String, Scopes.Scope>
 }
 #end

@@ -63,3 +63,33 @@ frame (`sceneDraws`, `shadowDraws`, `postDraws` beside `draws` and
 HELDER_CONTROLS=none bun run helder run examples/showroom --headless --stats bin/showroom-stats.json --at 4
 headless: 3D draws by pass: main 17 (at most 18), shadow maps 17 (at most 17), post 12 (at most 12)
 ```
+
+## Sprites
+
+Quads that face the camera (three's `Sprite`, Godot's billboard modes), as
+one `InstancedMesh` of a material: clouds, halos, trees far off.
+
+```haxe
+var trees = new Sprites(device, Material.unlit({texture: atlas, alphaCutoff: 0.5}), 64, {mode: Axis, columns: 2, rows: 1});
+Sprites.attach(world.node("trees"), trees);
+trees.count = n;
+for (i in 0...n) trees.set(i, x[i], h[i] / 2, z[i], h[i] * 0.7, h[i], 0, i % 2);   // position, size, rotation, atlas cell
+trees.setColor(i, r, g, b);
+```
+
+`mode` is `Spherical` (facing the camera, turned on the screen by a
+sprite's rotation), `Axis` (turning about `axis` alone: upright along it)
+or `Fixed` (facing +z). Each sprite is a position in the world, a width and
+a height, a rotation, an atlas cell (`columns` by `rows` of the material's
+texture, left to right then down: the material's `uvScale` set to a
+cell's share, the cell in the instance matrix's last w, which the
+instanced variants read: `PbrShader.instanceUv`) and a colour. The
+renderer turns them before its pass (`InstancedMesh.prepare(viewProj)`:
+the camera's axes from its view-projection), only when the camera or a
+sprite changed; see-through ones are drawn after the opaque surfaces with
+the see-through instanced sets (an `Additive` halo), `Alpha`'s sorted far
+to near among themselves. Nothing is allocated a frame. In markup:
+`<sprites of={trees} mode="axis"/>`. Tests:
+`src/helder/scene/render/Sprites.test.hx` (the turn, the atlas, the
+sorting, nothing allocated, natively and as wasm32-wasi), the 3d lane's
+`sprites` frame (trees on an axis, clouds sorted, additive halos).

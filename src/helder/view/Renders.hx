@@ -83,4 +83,12 @@ package helder.view;
 // data, which helder.typescript's manifest and declarations read (DESIGN.md
 // 7.3) as they read the elements: ui's NodeEvents, helder.web's DomEvents
 // (the DOM's and the static renderer's), helder.scene.view's SceneEvents.
+//
+// Optional metadata @:props(T), its elements' props when it declares them:
+// T a structure of each element's (by its name) props, a structure; markup
+// checks each attribute of an element T names (but on*, key, ref and
+// style) against its structure's fields, a name not there an error at the
+// attribute when compiling (helder.scene.view's SceneProps: a geometry or
+// material tag's props its factory's options). Haxe's markup checks them;
+// TypeScript's are its declarations' to its checker.
 interface Renders<N> {}

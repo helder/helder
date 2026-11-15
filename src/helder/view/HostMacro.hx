@@ -19,6 +19,10 @@ typedef RendererInfo = {
 	// the type of its events when it declares them (@:events(T): a structure, each
 	// attribute's event type), as a path; else null: any on* name, any event
 	events:Null<String>,
+	// the type of its elements' props when it declares them (@:props(T): a
+	// structure, each element's a structure of its props), as a path; else
+	// null: any name
+	props:Null<String>,
 	// its identity at run time (Render.idOf)
 	id:Int,
 	// whether a region that ends its parent has a marker too (a static function markEnds: the page's renderers)
@@ -73,6 +77,7 @@ class HostMacro {
 			if (it.t.toString() == "helder.view.Renders") {
 				var els = c.meta.extract(":elements");
 				var evs = c.meta.extract(":events");
+				var ps = c.meta.extract(":props");
 				i = {
 					path: full,
 					node: Context.toComplexType(it.params[0]),
@@ -86,6 +91,8 @@ class HostMacro {
 					}],
 					events: evs.length == 0 ? null : evs[0].params == null || evs[0].params.length != 1 ? Context.fatalError("helder.view: @:events names a type (a structure of the events by attribute)",
 						evs[0].pos) : haxe.macro.ExprTools.toString(evs[0].params[0]),
+					props: ps.length == 0 ? null : ps[0].params == null || ps[0].params.length != 1 ? Context.fatalError("helder.view: @:props names a type (a structure of each element's props)",
+						ps[0].pos) : haxe.macro.ExprTools.toString(ps[0].params[0]),
 					id: id(full),
 					markEnds: have.exists("markEnds"),
 					leaving: have.exists("leaving"),
@@ -97,6 +104,32 @@ class HostMacro {
 			}
 		return Context.fatalError('helder.view: the renderer $path does not implement helder.view.Renders<Node>', c.pos);
 	}
+
+	// the props an element of a renderer takes (@:props(T): T's field of the
+	// element's name, a structure: its fields' names), null when it declares
+	// none or none for the element
+	public static function props(path:String, element:String):Null<Array<String>> {
+		var i = info(path);
+		if (i.props == null) return null;
+		var key = i.path + "." + element;
+		if (propsOf.exists(key)) return propsOf.get(key);
+		var out:Null<Array<String>> = null;
+		switch Context.follow(Context.getType(i.props)) {
+			case TAnonymous(a):
+				for (f in a.get().fields)
+					if (f.name == element)
+						switch Context.follow(f.type) {
+							case TAnonymous(b): out = [for (g in b.get().fields) g.name];
+							case _:
+						}
+			case _: Context.fatalError('helder.view: @:props(${i.props}) is not a structure', Context.currentPos());
+		}
+		if (out != null) out.sort(Reflect.compare);
+		propsOf.set(key, out);
+		return out;
+	}
+
+	static var propsOf = new Map<String, Null<Array<String>>>();
 
 	// a renderer's identity at run time: a hash of its class path (FNV-1a, 31 bits; never 0)
 	public static function id(path:String):Int {

@@ -40,6 +40,18 @@ const Glow = material(pbr.with({
 Glow.apply(orb, {glow: bytes});
 ```
 
+The shading models are `helder/scene`'s too: `lambert`, `toon`, `phong`,
+`unlit`, `matcap`, `normals` and `depth` (src/helder/scene/shading.ts,
+helder.scene.render.shading's in TypeScript, checked the same text by
+tests/typescript/definitions/shading.ts), so `material(toon.with({...}))`
+is a toon material of one's own; `Material.toon({...})` and the other
+factories, `Geometry`, `Curve3`, `Sprites` and `Light.hemisphere` are the
+generated declarations' (`LightKind`, `SpriteMode` and `Blend` their
+enums' values by name). A slot of several inputs is typed as its default:
+`direct: (s: LitSurface, l: LightSample, p: {...}) => Vec3`. The 3d lane
+draws `primitives` and `toon` from TypeScript too (tests/3d/ts/twins.ts),
+node for node as Scenes.hx's, against the same goldens.
+
 `tests/typescript/helder/scene.ts` checks it without a GPU.
 `examples/ts-scene` puts it together (scene.ts: examples/gltf-viewer's
 sample model, a point light, glowing orbs of a material of their own; the

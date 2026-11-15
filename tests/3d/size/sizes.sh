@@ -24,3 +24,10 @@ done
 "$tool" "$out/packed.wasm" "$@" -main Size -D size_level=4 -D size_packed -D hxmc.target=wasm32-wasi > "$out/packed.wasm.log" 2>&1 || { cat "$out/packed.wasm.log"; exit 1; }
 sn=$(wc -c < "$out/packed") sw=$(wc -c < "$out/packed.wasm") rn=$(wc -c < "$out/size4") rw=$(wc -c < "$out/size4.wasm")
 printf '%-12s %10d %8d %10d %8d  (against renderer)\n' packed $sn $((sn - rn)) $sw $((sw - rw))
+# (phase 1's opt-ins at the renderer's level: each a cost only when used)
+for o in toon models geometry sprites; do
+	"$tool" "$out/$o" "$@" -main Size -D size_level=4 -D size_$o -D hxmc.libc=glibc -D hxmc.target=linux-x86_64 > "$out/$o.log" 2>&1 || { cat "$out/$o.log"; exit 1; }
+	"$tool" "$out/$o.wasm" "$@" -main Size -D size_level=4 -D size_$o -D hxmc.target=wasm32-wasi > "$out/$o.wasm.log" 2>&1 || { cat "$out/$o.wasm.log"; exit 1; }
+	sn=$(wc -c < "$out/$o") sw=$(wc -c < "$out/$o.wasm")
+	printf '%-12s %10d %8d %10d %8d  (against renderer)\n' $o $sn $((sn - rn)) $sw $((sw - rw))
+done

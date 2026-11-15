@@ -166,6 +166,18 @@ class Haxe {
 				ELocal(l);
 			case HAbstract(path, _, _, _) if (MATH.exists(path) && to.match(TStruct(_))):
 				ECast(to, mathToHaxe(e, MATH.get(path), where));
+			case HAbstract(path, _, _, _) if (MATH.exists(path) && to.match(TRef(RObj(_)))):
+				// (a math value stored as its struct's box: an array's element, a structure's field)
+				var box = switch to {
+					case TRef(RObj(ci)): ci;
+					case _: throw "unreachable";
+				}
+				var values = mathValues(e, MATH.get(path), where);
+				var o = b.temp(ENewObj(box));
+				var at = b.temp(EFieldAddr(box, 0, o));
+				for (k in 0...values.length)
+					b.out.push(SExpr(ECallHost("hxmc_unsafe_Mem_setF64", Vector.fromArrayCopy([at, EInt(8 * k), values[k]]), TVoid)));
+				o;
 			case HNull(x) if (to.match(TRef(_))):
 				// (null or undefined: null, the rest converted)
 				var v = b.temp(any(e));
@@ -224,9 +236,36 @@ class Haxe {
 			case _: false;
 		}
 
+	// the IR type a structure's field of Haxe type t has: ty's, a math
+	// value's its struct's box (as hxmc stores a struct in a structure's
+	// field, Null<Vec4> or Vec4 alike)
+	public function fieldTy(t:HType):Ty {
+		var box = mathBox(t);
+		return box != null ? TRef(RObj(box)) : ty(t);
+	}
+
+	// (a math type's struct's box, null when the program boxes none: hxmc's
+	// box of a struct class, named by its class, its native name's __box)
+	function mathBox(t:HType):Null<ClassInfo>
+		return switch t {
+			case HNull(x): mathBox(x);
+			case HAbstract(path, _, under, _) if (MATH.exists(path)):
+				switch under {
+					case HClass(data, _):
+						var direct = classInfos.get(data);
+						if (direct != null && StringTools.endsWith(direct.ident, "__box")) return direct;
+						var name = data.split(".").pop();
+						for (ci in classInfos)
+							if (StringTools.endsWith(ci.ident, "__box") && (ci.name == name || StringTools.endsWith(ci.name, "." + name))) return ci;
+						null;
+					case _: null;
+				}
+			case _: null;
+		}
+
 	// a structure of fields from a JavaScript object's properties (each converted by its type)
 	function structure(o:Ex, fields:Array<HArg>, where:String):Ex {
-		var shape = [for (x in fields) {name: x.name, ty: ty(x.t)}];
+		var shape = [for (x in fields) {name: x.name, ty: fieldTy(x.t)}];
 		var values = [for (x in fields) {
 			var v = b.temp(call(interop("field"), [o, EStr(x.name)]));
 			fieldValue(v, x, where);
@@ -238,7 +277,7 @@ class Haxe {
 
 	// (a field's value: undefined, when optional, its type's null)
 	public function fieldValue(v:Ex, x:HArg, where:String):Ex {
-		var t = ty(x.t);
+		var t = fieldTy(x.t);
 		if (!x.opt) return b.coerce(toHaxe(v, x.t, t, where), t);
 		var l = b.local("field", t);
 		b.out.push(SIf(nullish(v), b.block(() -> b.out.push(SSet(l, zero(t)))), b.block(() -> b.out.push(SSet(l, b.coerce(toHaxe(v, x.t, t, where), t))))));
@@ -248,11 +287,11 @@ class Haxe {
 	// a structure from values given by name (a component's props: the
 	// JavaScript values of those given, converted; the others null)
 	public function props(fields:Array<HArg>, given:Map<String, Ex>, where:String):Ex {
-		var shape = [for (x in fields) {name: x.name, ty: ty(x.t)}];
+		var shape = [for (x in fields) {name: x.name, ty: fieldTy(x.t)}];
 		var values = new Map<String, Ex>();
 		for (x in fields) {
 			var v = given.get(x.name);
-			values.set(x.name, v == null ? zero(ty(x.t)) : fieldValue(b.temp(any(v)), x, where));
+			values.set(x.name, v == null ? zero(fieldTy(x.t)) : fieldValue(b.temp(any(v)), x, where));
 		}
 		var s = p.shape(shape);
 		return b.temp(ENewAnon(s, Vector.fromArrayCopy([for (k in 0...s.fields.length) values.get(s.fields[k].name)])));

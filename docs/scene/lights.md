@@ -8,12 +8,17 @@ Light.attach(sun, Light.directional(new Vec3(1, 0.95, 0.85), 2.2));   // colour,
 sun.lookAt(new Vec3(0.35, -0.45, 0.82));                              // it shines along its node's -z
 Light.attach(world.node("lamp"), Light.pointLight(new Vec3(1, 0.3, 0.1), 3, 4));   // and a range, metres
 Light.attach(world.node("spot"), Light.spot(color, 6, 10, 0.15, 0.3));            // inner and outer cones, radians
+Light.attach(world.node("sky"), Light.hemisphere(skyColor, groundColor, 1));     // three's HemisphereLight
 ```
 
 The standard material is lit by the world's first directional `Light`
 and up to four point or spot lights (a world without lights:
-`renderer.sun*`), with a sky-and-ground ambient (`renderer.sky`,
-`renderer.ground`). `renderer.rim` (a colour times intensity) and
+`renderer.sun*`), with a sky-and-ground ambient: the world's first
+hemisphere light (`Light.hemisphere(sky, ground, intensity)`: the sky's
+colour from above, the ground's from below, blended by the normal), else
+`renderer.sky` and `renderer.ground`. A light's `kind` is `Directional`,
+`Point`, `Spot` or `Hemisphere` (`light.local`: a point or a spot light);
+tests/3d's `hemisphere` frame is lit by a hemisphere light alone. `renderer.rim` (a colour times intensity) and
 `rimPower` add a rim light from the sun's side along the silhouettes.
 `material.emissiveNight` (0 to 1) keeps a material's light to its night
 side, faded in across the terminator (a planet's city lights).

@@ -403,6 +403,9 @@ class HaxeTarget implements Target<Expr> {
 	public function elements(renderer:String):Null<Array<String>>
 		return HostMacro.info(renderer).elements;
 
+	public function props(renderer:String, element:String):Null<Array<String>>
+		return HostMacro.props(renderer, element);
+
 	public function code(code:String, at:Int, renderer:Null<String>, required:Bool):Null<Expr>
 		return MarkupMacro.expr(code, file, base + at, renderer, required);
 

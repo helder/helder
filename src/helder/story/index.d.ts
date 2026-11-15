@@ -107,7 +107,9 @@ export declare const screens: typeof Screens.run;
 // Written as opaque RGB PNGs (no alpha channel: Apple's rule).
 //
 // - The stores' (store): at each store's size (SIZES), the story's caption
-//   (StoreOptions) in a band over it: <dir>/<size>/<story>.png.
+//   (StoreOptions) in a band over it: <dir>/<size>/<story>.png; the first
+//   story with feature: true also as Google Play's feature graphic
+//   (FEATURE, no band): <dir>/android-feature/<story>.png.
 // - helder.run's (web): at one size (a window's, 1280x800, or a phone's,
 //   390x844 at 2x, for a portrait app), no band (helder.run's page shows
 //   plain frames), in the stories' order, at most a number of them:

@@ -14,7 +14,10 @@ import helder.gfx.shader.SlotsMacro;
 // standard material, PbrShader) with some of its slots replaced, compiled
 // at build time into the variants the renderer draws with (plain, normal
 // mapped, skinned, instanced, instanced and normal mapped), set on a
-// Material (material.shader) as the shader its primitives are drawn with:
+// Material (material.shader) as the shader its primitives are drawn with.
+// Another slot object of the renderer's vertex and parameters (shading's
+// unlit) works too: one without pbr's normalMap option has no normal-mapped
+// variants (null; its primitives drawn without their normal maps):
 //
 //   final Glow = MaterialShader.material(pbr.with({
 //     emissive: function(s, p:{glow:GlowParams}):Vec3 return p.glow.color.xyz * (0.5 + 0.5 * sin(p.glow.time.x)),
@@ -30,10 +33,10 @@ import helder.gfx.shader.SlotsMacro;
 // own, made beside its module).
 class MaterialShader {
 	@:typescript public final plain:AnyShader;
-	@:typescript public final normalMapped:AnyShader;
+	@:typescript public final normalMapped:Null<AnyShader>;
 	@:typescript public final skinned:AnyShader;
 	@:typescript public final instanced:AnyShader;
-	@:typescript public final instancedNormalMapped:AnyShader;
+	@:typescript public final instancedNormalMapped:Null<AnyShader>;
 	// the blocks of the material's own: its parameter's name, its slot, in each variant (in the order above)
 	@:typescript public final blocks:Array<{name:String, bindings:Array<Int>}>;
 
@@ -52,7 +55,7 @@ class MaterialShader {
 	@:typescript public static function script(json:String):MaterialShader {
 		var d:Dynamic = haxe.Json.parse(json);
 		var vs:Array<Dynamic> = d.variants;
-		var s = [for (v in vs) shaderOf(v)];
+		var s = [for (v in vs) v == null ? null : shaderOf(v)];
 		var bs:Array<Dynamic> = d.blocks;
 		return new MaterialShader(s[0], s[1], s[2], s[3], s[4], [for (b in bs) {name: (b.name : String), bindings: [for (x in (b.bindings : Array<Dynamic>)) (x : Int)]}]);
 	}
@@ -89,6 +92,8 @@ class MaterialShader {
 		var a = new HaxeAdapter("material");
 		var typed = Context.typeExpr(def);
 		var kinds:Array<Array<String>> = [[], ["normalMap"], ["skinned"], ["instanced"], ["instanced", "normalMap"]];
+		// (the kinds of draw its options have: a slot object without normalMap, none normal mapped)
+		var options = SlotsMacro.resolve(typed, new helder.gfx.shader.Lower(), a).def.options;
 		var standard = ["PbrFrame", "PbrObject", "PbrMaterial", "PbrSkinInfo"];
 		var textures = [
 			"baseColorTexture", "metallicRoughnessTexture", "emissiveTexture", "occlusionTexture", "shadowMap", "shadowMapFar", "environmentMap", "normalTexture",
@@ -96,6 +101,10 @@ class MaterialShader {
 		];
 		var shaders = [], blocks = new Map<String, Array<Int>>(), order = [];
 		for (k in 0...kinds.length) {
+			if (!Lambda.foreach(kinds[k], o -> options.exists(o))) {
+				shaders.push(null);
+				continue;
+			}
 			var lower = new helder.gfx.shader.Lower();
 			var r = SlotsMacro.resolve(typed, lower, a);
 			var given = new KNode(KObject([for (o in kinds[k]) {name: o, node: new KNode(KBool(true), pos)}]), pos);
@@ -112,7 +121,9 @@ class MaterialShader {
 						Context.error('material: the texture ${p.name} is not one the renderer binds (a slot\'s textures are the material\'s: ' + textures.join(", ") + ")", pos);
 					case _:
 				}
-			shaders.push(SlotsMacro.build(r, r.def.values(given, a), out, lower));
+			// (drawn on the GPU only: no CPU stages, none of their code linked;
+			// the plain variant's params the writers, the others' none)
+			shaders.push(SlotsMacro.build(r, r.def.values(given, a), out, lower, false, k > 0));
 		}
 		var bs = [for (n in order) macro {name: $v{n}, bindings: $v{blocks.get(n)}}];
 		// (its own class: params, the plain variant's, typed)
@@ -136,7 +147,7 @@ class MaterialShader {
 		var exists = try Context.getType(pack.concat([name]).join(".")) != null catch (_:Dynamic) false;
 		if (!exists) Context.defineType(cls, module);
 		var tp:TypePath = {pack: pack, name: name};
-		var any = [for (i in 1...shaders.length) macro(cast ${shaders[i]} : helder.scene.render.MaterialShader.AnyShader)];
+		var any = [for (i in 1...shaders.length) shaders[i] == null ? macro null : macro(cast ${shaders[i]} : helder.scene.render.MaterialShader.AnyShader)];
 		var made:Expr = {
 			expr: ENew(tp, [macro plain.params, macro(cast plain : helder.scene.render.MaterialShader.AnyShader)].concat(any).concat([macro [$a{bs}]])),
 			pos: pos

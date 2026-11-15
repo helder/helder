@@ -103,6 +103,9 @@ class Interpreter implements Target<Step> {
 	public function elements(renderer:String):Null<Array<String>>
 		return null;
 
+	public function props(renderer:String, element:String):Null<Array<String>>
+		return null;
+
 	// a number, a quoted string, true, false or null; any other code a Code
 	public function code(code:String, at:Int, renderer:Null<String>, required:Bool):Null<Step> {
 		var t = StringTools.trim(Plan.stripComments(code));
