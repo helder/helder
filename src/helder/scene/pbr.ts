@@ -56,10 +56,11 @@ export type PbrFragmentParams = {
 };
 
 // (prepass: the view buffers' variant, ViewBuffers; the glTF extensions,
-// each a layer of the surface; uvSets: each core map its own uvs)
+// each a layer of the surface; uvSets: each core map its own uvs; sunOnly:
+// no local lights' loop)
 export type PbrOptions = {
 	normalMap: boolean, skinned: boolean, instanced: boolean, prepass: boolean, sheen: boolean, specular: boolean, clearcoat: boolean,
-	transmission: boolean, iridescence: boolean, anisotropy: boolean, uvSets: boolean,
+	transmission: boolean, iridescence: boolean, anisotropy: boolean, uvSets: boolean, sunOnly: boolean,
 };
 
 // per draw in the prepass (ViewBuffers): the camera's view, x the selection group
@@ -876,7 +877,7 @@ function sensitivity(opd: number, shift: Vec3): Vec3 {
 export const pbr = slots({
 	options: {
 		normalMap: false, skinned: false, instanced: false, prepass: false, sheen: false, specular: false, clearcoat: false, transmission: false,
-		iridescence: false, anisotropy: false, uvSets: false,
+		iridescence: false, anisotropy: false, uvSets: false, sunOnly: false,
 	},
 	vertex: (v: PbrVertex, p: PbrVertexParams, m: Pbr): PbrVaryings => {
 		let pos = m.position({pos: v.pos, normal: v.normal, uv: v.uv}, p);
@@ -1041,35 +1042,37 @@ export const pbr = slots({
 			}
 			// (the sun, then each local light the draw's list or the pixel's cell names: the direct slot's, summed)
 			let direct = m.direct(lit, sunLight(lit, p.frame, p.material, p.shadowMap), p);
-			const cell = clusterCell(p.frame.viewProj, p.frame.eye, p.frame.clusters, p.frame.clusterDepth, p.frame.clusterAxis, p.clusterMap, s.world);
-			// (a list ends at its first -1: a draw lit by none loops not at all)
-			let k = 0.0;
-			let index = lightIndex(p.frame.clusters, p.frame.clusterDepth, i.lights0, i.lights1, p.clusterMap, cell, k);
-			while (k < cell.z && index >= 0) {
-				// (the light's row, its shadow: read here, the arrays not passed on)
-				let pos = vec4(0);
-				let color = vec4(0);
-				let cone = vec4(0);
-				if (p.frame.clusters.x > 0) {
-					pos = lightRow(p.clusterMap, 0, index, p.frame.clusterAxis, p.frame.clusterDepth);
-					color = lightRow(p.clusterMap, 4, index, p.frame.clusterAxis, p.frame.clusterDepth);
-					cone = lightRow(p.clusterMap, 8, index, p.frame.clusterAxis, p.frame.clusterDepth);
-				} else {
-					pos = p.lights.position[index];
-					color = p.lights.color[index];
-					cone = p.lights.cone[index];
+			if (!m.options.sunOnly) {
+				const cell = clusterCell(p.frame.viewProj, p.frame.eye, p.frame.clusters, p.frame.clusterDepth, p.frame.clusterAxis, p.clusterMap, s.world);
+				// (a list ends at its first -1: a draw lit by none loops not at all)
+				let k = 0.0;
+				let index = lightIndex(p.frame.clusters, p.frame.clusterDepth, i.lights0, i.lights1, p.clusterMap, cell, k);
+				while (k < cell.z && index >= 0) {
+					// (the light's row, its shadow: read here, the arrays not passed on)
+					let pos = vec4(0);
+					let color = vec4(0);
+					let cone = vec4(0);
+					if (p.frame.clusters.x > 0) {
+						pos = lightRow(p.clusterMap, 0, index, p.frame.clusterAxis, p.frame.clusterDepth);
+						color = lightRow(p.clusterMap, 4, index, p.frame.clusterAxis, p.frame.clusterDepth);
+						cone = lightRow(p.clusterMap, 8, index, p.frame.clusterAxis, p.frame.clusterDepth);
+					} else {
+						pos = p.lights.position[index];
+						color = p.lights.color[index];
+						cone = p.lights.cone[index];
+					}
+					let shadow = 1.0;
+					if (color.w > 0.5) {
+						const first = color.w - 1;
+						const params = p.lights.tileParams[first + 0.5];
+						const at = shadowPoint(lit, pos.xyz, params);
+						const tile = first + tileFace(at, pos.xyz, dot(cone.xyz, cone.xyz) < 0.0001) + 0.5;
+						shadow = tileShadow(p.shadowMap, p.lights.tileViewProj[tile], p.lights.tileRect[tile], params, p.frame.shadowAtlas, at);
+					}
+					direct = direct.add(m.direct(lit, localLight(lit, pos, color, cone, shadow), p));
+					k += 1;
+					index = lightIndex(p.frame.clusters, p.frame.clusterDepth, i.lights0, i.lights1, p.clusterMap, cell, k);
 				}
-				let shadow = 1.0;
-				if (color.w > 0.5) {
-					const first = color.w - 1;
-					const params = p.lights.tileParams[first + 0.5];
-					const at = shadowPoint(lit, pos.xyz, params);
-					const tile = first + tileFace(at, pos.xyz, dot(cone.xyz, cone.xyz) < 0.0001) + 0.5;
-					shadow = tileShadow(p.shadowMap, p.lights.tileViewProj[tile], p.lights.tileRect[tile], params, p.frame.shadowAtlas, at);
-				}
-				direct = direct.add(m.direct(lit, localLight(lit, pos, color, cone, shadow), p));
-				k += 1;
-				index = lightIndex(p.frame.clusters, p.frame.clusterDepth, i.lights0, i.lights1, p.clusterMap, cell, k);
 			}
 			const env = ambientAt(lit, p.frame, p.material, p.occlusionTexture, p.environmentMap, p.aoMap);
 			out = shade(lit, direct, m.indirect(lit, env, p), env, m.emissive(s, p), p.frame, p.material, p.shadowMap, p.environmentMap);

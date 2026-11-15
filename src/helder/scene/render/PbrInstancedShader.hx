@@ -8,3 +8,6 @@ import helder.scene.render.PbrShader;
 // (layout), normals turned by its upper 3x3's inverse transpose (any
 // scale, uneven too: pbr's instanceNormal; pbr's instanced).
 final PbrInstancedShader = pbr.gpuVariant({instanced: true});
+
+// the instanced lit by the sun alone (a frame without local lights)
+final PbrInstancedSunShader = pbr.gpuVariant({instanced: true, sunOnly: true});
