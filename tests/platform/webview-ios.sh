@@ -100,9 +100,27 @@ run() {
 	elif [ -z "${2:-}" ]; then
 		check "$base: the loopback's origin printed" 1
 	fi
+	# (its checks awaited while they go on: each step's time is the simulator's
+	# (a web build loaded and run in WebKit, a minute and more on a loaded
+	# runner), so not a total of seconds, which ran out with every check
+	# passing and the last line 3 s away; no new output for 90 s is a stall,
+	# 10 minutes in all the limit)
 	i=0
 	shot=0
-	while [ $i -lt 150 ] && ! grep -q "webview: [a-z]*: [0-9]* checks" "$out/$base.txt"; do
+	size=0
+	idle=0
+	while [ $i -lt 600 ] && ! grep -q "webview: [a-z]*: [0-9]* checks" "$out/$base.txt"; do
+		now=$(wc -c < "$out/$base.txt")
+		if [ "$now" != "$size" ]; then
+			size=$now
+			idle=0
+		else
+			idle=$((idle + 1))
+		fi
+		if [ $idle -ge 90 ]; then
+			echo "webview-ios.sh: $base: no new output for 90 s"
+			break
+		fi
 		if [ $shot = 0 ] && grep -q "a snapshot of the page" "$out/$base.txt"; then
 			sleep 1
 			xcrun simctl io "$udid" screenshot "$out/$base.png" > /dev/null 2>&1
@@ -116,6 +134,7 @@ run() {
 		sleep 1
 		i=$((i + 1))
 	done
+	echo "webview-ios.sh: $base: its checks awaited about $i s"
 	[ $shot = 0 ] && xcrun simctl io "$udid" screenshot "$out/$base.png" > /dev/null 2>&1
 	grep "webview:" "$out/$base.txt"
 	grep -q "webview: [a-z]*: [0-9]* checks, ok" "$out/$base.txt"
