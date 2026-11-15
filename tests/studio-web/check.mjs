@@ -270,7 +270,8 @@ async function recolour(pg, x, y, tap) {
 		// (the new build's preview: the title's box grown by its padding, read from its tree again)
 		const grown = await event(pg, 'selection', (e) => e.frame > built.frame && e.rect && e.rect[3] > 35, 30000);
 		check(grown, `the screens reloaded from the new build, the title's box ${JSON.stringify(grown?.rect)}` + (grown ? ''
-			: ' ' + JSON.stringify((await events(pg)).filter((e) => e.frame >= before).map((e) => [e.event, e.frame, e.rect, e.ok, e.why ?? e.file]))));
+			: ' ' + JSON.stringify((await events(pg)).filter((e) => e.frame >= before).map((e) => [e.event, e.frame, e.rect, e.ok, e.why ?? e.file]))
+				+ JSON.stringify(await pg.evaluate(() => [window.studioWeb.frames, window.studioWeb.framesByScreen, window.studioWeb.logs.slice(-15)]))));
 		// undone: the attribute removed, a warm build
 		const at = await lastFrame(pg);
 		check(await press(pg, 'Undo'), 'the padding undone (the header\'s Undo)');
