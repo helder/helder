@@ -2457,7 +2457,7 @@ export declare class InstanceCulling {
 //
 // Prefiltered by helder (Environment.prefilter): an equirectangular image
 // (RGBA8 sRGB, or linear RGBA16F or RGBA32F: HDR) filtered at load into an
-// octahedral atlas (Prefilter: a compute dispatch where the device has
+// prefiltered atlas as above (Prefilter: a compute dispatch where the device has
 // compute, else a fragment pass; done at the first frame's BeforePass
 // point), levels rows of roughness and the irradiance's, made from its
 // spherical harmonics (sh: projected from the image here, the diffuse
@@ -2475,8 +2475,8 @@ export declare class Environment {
 	static prefiltered(device: Device, mime: string, bytes: Uint8Array, levels: number): Environment | null;
 	// an equirectangular image's environment prefiltered by helder (width x
 	// height texels, its rows top to bottom; RGBA8: sRGB-encoded, as an
-	// image's; RGBA16F or RGBA32F: linear light, HDR): an octahedral atlas of
-	// size-texel cells, levels rows of roughness (Prefilter; samples a texel),
+	// image's; RGBA16F or RGBA32F: linear light, HDR): a prefiltered atlas,
+	// rows of size x size / 2 texels, levels of roughness (Prefilter; samples a texel),
 	// filled at the first frame drawn with it, and its harmonics (sh)
 	static prefilter(device: Device, width: number, height: number, texels: Uint8Array, format?: number, options?: { size?: number; levels?: number; samples?: number }): Environment;
 	// an encoded image's environment prefiltered by helder (prefilter; Images.decode must read it); null when it cannot
@@ -2672,17 +2672,16 @@ export declare class ReflectionProbe {
 //     hold most of its bounds), box-projected per pixel, A blended over B
 //     or the environment.
 //
-// The atlas: one RGBA16F texture of octahedral cells (Prefilter), a column a
-// probe and the environment's first (Environment's image prefiltered again,
-// whatever kind it is but a prefiltered atlas), bound where the
-// environment is: every material, the standard one or not, reads the
-// environment from it. A probe is captured when first drawn and after
+// The atlas: one RGBA16F texture (Prefilter's: a prefiltered atlas' rows by
+// roughness, a column a probe), the probes variants' own texture
+// (probesMap); the environment stays its own, read as before by every
+// material (the probes' fallback). A probe is captured when first drawn and after
 // capture(): the world drawn six times from its centre into a cube (an
 // offscreen renderer of the renderer's light, sky and environment: a twin,
 // its faces mirrored as a cube's are), then prefiltered into its column; at
 // the frame's BeforePass point, a probe or two a frame (captures).
 //
-// Not lit by probes (they read the environment, from the atlas): the
+// Not lit by probes (they read the environment alone): the
 // normal-mapped, skinned and see-through draws, instanced sets
 // (InstancedMesh, Sprites) and materials of their own shader (Physical's
 // among them).
@@ -2693,8 +2692,8 @@ export declare class Probes {
 	// out; false: none
 	static lightAt(world: World, p: Vec3, out: Sh): boolean;
 	readonly device: Device;
-	// a cell's texels, the rows of roughness, the probes at most (the
-	// atlas' columns less the environment's), a capture's face's texels
+	// a cell's texels across (its height half), the rows of roughness, the
+	// probes at most (the atlas' columns), a capture's face's texels
 	readonly size: number;
 	readonly levels: number;
 	readonly max: number;
@@ -2703,7 +2702,7 @@ export declare class Probes {
 	capturesPerFrame: number;
 	// captures done so far
 	readonly captures: number;
-	// the atlas (Prefilter's: columns of octahedral cells)
+	// the atlas (Prefilter's: a column of rows a probe)
 	readonly atlas: number;
 	attach(renderer: Renderer): void;
 	dispose(): void;
