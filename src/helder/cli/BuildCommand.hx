@@ -156,16 +156,7 @@ class BuildCommand {
 			Term.done();
 			var id = Ios.id(e);
 			Term.out(Style.status("running", Info, '$id on ${d.name}'));
-			var p = Ios.launch(d.id, id);
-			p.closeStdin();
-			Async.scope(task -> {
-				task.async(_ -> Lines.forward(p.stdout, false));
-				task.async(_ -> Lines.forward(p.stderr, true));
-				null;
-			});
-			var code = p.wait();
-			p.close();
-			return code;
+			return Ios.run(d.id, id, Path.directory(app) + "/run");
 		} catch (err:Dynamic) {
 			Term.done();
 			Term.err(Style.status("error", Fail, Std.string(err)));

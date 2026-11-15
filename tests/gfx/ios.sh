@@ -88,7 +88,18 @@ check "the window's frame is lit" $?
 xcrun simctl io "$udid" screenshot "$out/cube-ios.png"
 check "screenshot" $?
 if [ -n "$tap" ]; then
-	sleep 2
+	# (the Simulator app frontmost before the first click: a click on an app
+	# that is not takes it to the front and goes no further, so the first tap
+	# was lost whenever another app had the focus: lsappinfo's front app,
+	# which needs no accessibility permission)
+	open -a Simulator
+	i=0
+	while [ $i -lt 100 ] && ! lsappinfo info -only name "$(lsappinfo front)" 2>/dev/null | grep -q '"Simulator"'; do
+		sleep 0.2
+		i=$((i + 1))
+	done
+	lsappinfo info -only name "$(lsappinfo front)" 2>/dev/null | grep -q '"Simulator"'
+	check "the Simulator app in front (for SimTap's clicks)" $?
 	"$tap"
 	wait_for "event PointerUp [0-9]* touch" 20
 	check "a tap: a touch's PointerDown and PointerUp" $?
