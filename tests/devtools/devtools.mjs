@@ -184,12 +184,7 @@ async function console_() {
 
 	// a broken build: the error to the tool, the program keeps running
 	from = t.notes.length;
-	// (this run's own broken text, a nonce in it: with hxmc's module cache
-	// kept from an earlier run that broke the file the same way (CI's
-	// actions/cache), the build reported "Module Pulse does not define type
-	// Pulse" at no position instead of the parse error: a cached entry of a
-	// file that failed, hxmc's to fix; the check below is the parse error's)
-	edit((s) => s.replace('ALLOC = 100', `ALLOC = 100 +* broken${process.pid}`));
+	edit((s) => s.replace('ALLOC = 100', 'ALLOC = 100 +* broken'));
 	const error = await t.note((m) => m.method === 'Runtime.buildError', from, 60000);
 	check('Runtime.buildError', /Pulse\.hx/.test(error.params.message), error.params.message.slice(0, 200));
 	check('the build error in the log', t.notes.slice(from).some((m) => m.method === 'Log.entry' && m.params.source === 'build'));

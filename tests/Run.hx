@@ -895,7 +895,14 @@ class Run {
 		var h = helderCli();
 		exe("bin/devtools/FrameCost", cps(["src", "tests/devtools"]).concat(["-main", "FrameCost", "-D", "hxmc.dev"]));
 		run(exePath("bin/devtools/FrameCost", HOST), []);
-		run(NODE, ["tests/devtools/devtools.mjs", h, "bin/devtools/console", "console"]);
+		// (helder dev's compilation server on an empty hxmc cache of its own: with
+		// one kept from an earlier run (CI's actions/cache), a parse error in a
+		// module the server had from that cache came back at times as "Module
+		// Pulse does not define type Pulse" at no position, not the error: hxmc's
+		// to fix; the check of the error's position stands)
+		rmrf("bin/devtools/hxmc-cache");
+		mkdirs("bin/devtools/hxmc-cache");
+		run(NODE, ["tests/devtools/devtools.mjs", h, "bin/devtools/console", "console"], ["HXMC_CACHE" => FileSystem.fullPath("bin/devtools/hxmc-cache")]);
 		run(NODE, ["tests/devtools/devtools.mjs", h, "bin/devtools/ui", "ui"]);
 	}
 
