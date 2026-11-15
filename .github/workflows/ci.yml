@@ -453,15 +453,17 @@ jobs:
           cat "$RUNNER_TEMP"/build-*.txt
           echo "IOS_PREBUILT=1" >> "$GITHUB_ENV"
           exit $status
+      # (each device step its own checks, also after another's failure; none
+      # without the setup: no CLI, nothing to run but timeouts)
       - name: Hello and the audio stream on the simulator (tests/pack/ios.sh)
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
         run: sh tests/pack/ios.sh bin/cli/helder bin/pack/ios
       - name: The cube and its touches on the simulator (tests/gfx/ios.sh, SimTap's clicks)
         # (also when Hello's step failed: their checks are their own)
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
         run: sh tests/gfx/ios.sh bin/pack/IosTest.app bin/pack/ios-gfx "$PWD/bin/pack/SimTap"
       - name: The web view on the simulator (tests/platform/webview-ios.sh)
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
         run: sh tests/platform/webview-ios.sh bin/cli/helder bin/pack/ios-webview
       - name: The simulator deleted
         if: always()
@@ -511,7 +513,7 @@ jobs:
           PACK_REQUIRE: 1
         run: bun run test pack
       - name: Signed by helder, checked by codesign and assetutil
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
         run: sh tests/pack/signing/verify.sh
       - if: ${{ !cancelled() && steps.setup.outputs.hit != 'true' }}
         uses: ./.github/actions/save
@@ -541,7 +543,7 @@ jobs:
       - name: window, the viewer (its tests, its builds, a real window, its app bundle, its release packages), helder/native from TypeScript (Core Foundation, Objective-C), shared textures (IOSurface, helder.gfx's and the story host's)
         run: bun run test -k window viewer viewer-window viewer-app viewer-package system-images system-text typescript-native gfx-shared story-shared gfx-compute
       - name: The web view (tests/platform/webview-macos.sh, WKWebView in a drawn window)
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
         run: |
           node src/helder/cli/run.mjs help > /dev/null
           sh tests/platform/webview-macos.sh bin/cli/helder bin/pack/macos-webview
