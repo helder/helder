@@ -17,7 +17,8 @@ using StringTools;
 // `helder run [entry] [-o <path>] [-- args...]`: the same for this machine,
 // then run; with --target android or ios on a device (-d, else the one
 // there is: Devices.pick), installed and started there, its output here.
-// (Their options: Options.)
+// (Their options: Options.) A build of either through a compilation
+// server kept warm between them (BuildServer), else the compiler's process.
 class BuildCommand {
 	@:coroutine public static function run(o:Options, andRun:Bool):Int {
 		var e = try Entry.of(o) catch (err:Dynamic) {
@@ -67,7 +68,10 @@ class BuildCommand {
 		Term.out(Style.header(o.command, [e.target, e.label()]));
 		var out = o.out, programArgs = o.programArgs ?? [];
 		var exe = out ?? e.out(e.target);
+		// (a compilation server kept warm between builds: BuildServer)
+		warm = BuildServer.of(e);
 		var r = build(e, exe, Release);
+		warm = null;
 		if (!r.ok) return 1;
 		if (e.target == "web") try {
 			Manifest.warn(e);
@@ -225,8 +229,21 @@ class BuildCommand {
 		return {ok: r.ok, ms: ms, messages: r.messages};
 	}
 
+	// (helder build's and run's own builds: through the server it keeps warm, else as before)
+	static var warm:Null<BuildServer> = null;
+
 	@:coroutine public static function compile(words:Array<String>, server:Null<Compiler.CompileServer>):{ok:Bool, messages:String} {
 		if (server != null) return server.request(words, Sys.getCwd());
+		var w = warm;
+		if (w != null) {
+			var r = w.build(words, Sys.getCwd());
+			if (r != null) {
+				if (r.printed != "") Term.write(r.printed);
+				return {ok: r.ok, messages: r.messages};
+			}
+			// (it did not start or answer: this build and the next ones without it)
+			warm = null;
+		}
 		var p = new Process(Compiler.tool(), words);
 		p.closeStdin();
 		var lines = [];

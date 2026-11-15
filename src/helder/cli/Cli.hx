@@ -15,6 +15,11 @@ import helder.cli.Options.Usage;
 class Cli {
 	static function main() {
 		Term.init();
+		// (helder build's compilation server, started by it in the background)
+		if (BuildServer.isCommand(Sys.args())) {
+			Async.main(task -> Sys.exit(BuildServer.serve(task, Sys.args())));
+			return;
+		}
 		var o = try {
 			var r = Options.route(Sys.args());
 			if (r.command == "help") {

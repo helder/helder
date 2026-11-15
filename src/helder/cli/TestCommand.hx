@@ -26,7 +26,7 @@ using StringTools;
 // HelderTestInterp.hx, the files that opt in) calls each one's
 // module-level `tests()`. The compiler's output and the program's are
 // written with the real paths again (the content, so the positions, are
-// the same).
+// the same). Several targets' builds at once, then each run in turn (once).
 class TestCommand {
 	public static inline var GEN = "bin/test/src";
 	// (a test file's opt-in to interp: on its tests())
@@ -101,24 +101,50 @@ class TestCommand {
 		var map = new Mapper(files);
 		var cp = [];
 		for (c in p.classPaths(files).concat([GEN])) cp = cp.concat(["-cp", c]);
-		var results = [], failed = false;
+		// (each target's build then its run, its TypeScript program's first)
+		var steps:Array<Step> = [];
 		for (t in targets) {
-			if (ts.length > 0 && t != "interp") {
-				var r = typescript(t, p, runner, map, server);
-				results.push(Style.status(t + " ts", r.ok ? Ok : Fail, r.summary));
-				if (!r.ok) failed = true;
-			}
+			if (ts.length > 0 && t != "interp") steps.push({target: t, ts: true});
 			if (files.length == 0 && t != "interp") continue;
 			// (interp: the files that opt in, else a line, not a failure)
-			if (t == "interp" && !Lambda.exists(files, f -> f.interp)) {
+			steps.push({target: t, ts: false, none: t == "interp" && !Lambda.exists(files, f -> f.interp)});
+		}
+		// (several builds and no compilation server: compiled at once, each
+		// by a process of its own (the module cache's files are written
+		// beside and renamed into place: hxmc.CacheStore), their output kept
+		// and shown in its turn as it would have come; then run one after
+		// the other, in order. --watch's server takes a request at a time:
+		// one after the other. HELDER_TEST_JOBS: at most that many at once)
+		var jobs = Lambda.count(steps, s -> s.none != true);
+		var width = Std.parseInt(Sys.getEnv("HELDER_TEST_JOBS") ?? "") ?? 4;
+		var built:Array<Null<Built>> = [for (_ in steps) null];
+		if (server == null && jobs > 1 && width > 1) {
+			var next = 0;
+			Term.spin("building the tests for " + [for (s in steps) if (s.none != true) s.ts ? s.target + " (TypeScript)" : s.target].join(", "));
+			Async.scope(task -> {
+				for (_ in 0...width)
+					task.async(_ -> while (next < steps.length) {
+						var i = next++;
+						var s = steps[i];
+						if (s.none != true) built[i] = s.ts ? buildTypescript(s.target, p, runner, map, server, true) : build(s.target, p, cp, runner, map, server, true);
+					});
+				null;
+			});
+			Term.done();
+		}
+		var results = [], failed = false;
+		for (i in 0...steps.length) {
+			var s = steps[i], t = s.target;
+			if (s.none == true) {
 				var none = "no test file opts in (@:test.interp on its tests())";
 				Term.out("");
 				Term.out(Style.status("interp", Quiet, none));
 				results.push(Style.status(t, Quiet, none));
 				continue;
 			}
-			var r = target(t, p, cp, runner, map, server);
-			results.push(Style.status(t, r.ok ? Ok : Fail, r.summary));
+			var b = built[i] ?? (s.ts ? buildTypescript(t, p, runner, map, server, false) : build(t, p, cp, runner, map, server, false));
+			var r = finish(b, p, runner, map);
+			results.push(Style.status(b.target, r.ok ? Ok : Fail, r.summary));
 			if (!r.ok) failed = true;
 		}
 		if (targets.length > 1) {
@@ -131,57 +157,51 @@ class TestCommand {
 	// (the assets the tests name, helder.asset's: natively built into the
 	// executable, for wasm copied beside it in bin/test/assets/; built again
 	// when what was built in was not what the tests use: AssetStep)
-	@:coroutine static function assets(words:Array<String>, exe:String, target:String, map:Mapper, what:String, b:Output):Output {
+	@:coroutine static function assets(words:Array<String>, exe:String, target:String, map:Mapper, what:String, b:Output, hold:Bool):Output {
 		var roots = [for (i in 0...words.length - 1) if (words[i] == "-cp") words[i + 1]].concat(["."]);
 		if (b.code != 0 || AssetStep.after(exe, target, roots, false)) return b;
-		b = Output.of(Compiler.tool(), words, map, what);
-		if (b.code == 0) AssetStep.after(exe, target, roots, false);
-		return b;
+		var again = Output.of(Compiler.tool(), words, map, what, hold);
+		again.prepend(b);
+		if (again.code == 0) AssetStep.after(exe, target, roots, false);
+		return again;
 	}
 
-	@:coroutine static function target(t:String, p:Project, cp:Array<String>, runner:Array<String>, map:Mapper, server:Null<Int>):{ok:Bool, summary:String} {
+	// a target's build (interp's: built and run by the compiler, Eval);
+	// hold: its output kept for finish, nothing printed (one of several at once)
+	@:coroutine static function build(t:String, p:Project, cp:Array<String>, runner:Array<String>, map:Mapper, server:Null<Int>, hold:Bool):Built {
 		// (helder.text's own engine: the same glyphs and pixels on every OS, helder.text.Shaping)
 		var connect = (server == null ? [] : ["--connect", Std.string(server)]).concat(["-D", "helder.text.engine=helder"]);
 		var t0 = haxe.Timer.stamp();
-		var out:Output;
 		switch t {
 			case "interp":
-				// (built and run by one process: Eval)
-				Term.out("");
-				Term.out(Style.status("running", Info, "interp" + Style.dim(Style.sep() + "built and run by the compiler (Eval)")));
-				out = Output.of(Compiler.tool(), cp.concat(["--run", "HelderTestInterp"]).concat(runner), map, "building and running the tests on interp");
-				return {ok: out.code == 0, summary: out.summary() + ' (${secs(haxe.Timer.stamp() - t0)} built and run)'};
+				if (!hold) interpHeader();
+				var out = Output.of(Compiler.tool(), cp.concat(["--run", "HelderTestInterp"]).concat(runner), map, "building and running the tests on interp", hold);
+				return {target: t, label: t, exe: null, wasm: false, output: out, seconds: haxe.Timer.stamp() - t0, held: hold};
 			case "wasm":
 				var exe = "bin/test/test.wasm";
 				var words = connect.concat(cp).concat(AssetStep.define(exe)).concat(["-main", "HelderTestMain", "-D", "hxmc.target=wasm32-wasi", "--custom-target", 'hxmc=$exe']);
-				var b = assets(words, exe, "wasm32-wasi", map, "building the tests for wasm", Output.of(Compiler.tool(), words, map, "building the tests for wasm"));
-				var built = haxe.Timer.stamp() - t0;
-				if (b.code != 0) return buildFailed(t, built);
-				Term.out("");
-				Term.out(Style.status("built", Ok, 'wasm in ${Style.bold(secs(built))}' + Style.dim(Style.sep() + kb(exe))));
-				var t1 = haxe.Timer.stamp();
-				var node = Sys.getEnv("NODE") ?? "node";
-				out = Output.of(node, ["--no-warnings", "--no-turbo-fast-api-calls", "--stack-size=65500", p.helder + "/helder/test/wasi.mjs", exe].concat(runner), map);
-				return {ok: out.code == 0, summary: out.summary() + ' (${secs(built)} build, ${secs(haxe.Timer.stamp() - t1)} run)'};
+				var what = "building the tests for wasm";
+				var b = assets(words, exe, "wasm32-wasi", map, what, Output.of(Compiler.tool(), words, map, what, hold), hold);
+				return {target: t, label: "wasm", exe: exe, wasm: true, output: b, seconds: haxe.Timer.stamp() - t0, held: hold};
 			case _:
 				var exe = Sys.systemName() == "Windows" ? "bin/test/host.exe" : "bin/test/host";
 				// (Linux: the dynamic glibc mode, as helder build's: tests of helder.os link the system's libraries)
 				var mode = Sys.systemName() == "Linux" ? ["-D", "hxmc.libc=glibc"] : [];
 				var words = connect.concat(cp).concat(AssetStep.define(exe)).concat(["-main", "HelderTestMain", "--custom-target", 'hxmc=$exe']).concat(mode);
-				var b = assets(words, exe, Compiler.hostTarget(), map, "building the tests for host", Output.of(Compiler.tool(), words, map, "building the tests for host"));
-				var built = haxe.Timer.stamp() - t0;
-				if (b.code != 0) return buildFailed(t, built);
-				Term.out("");
-				Term.out(Style.status("built", Ok, 'host in ${Style.bold(secs(built))}' + Style.dim(Style.sep() + kb(exe))));
-				var t1 = haxe.Timer.stamp();
-				out = Output.of(exe, runner, map);
-				return {ok: out.code == 0, summary: out.summary() + ' (${secs(built)} build, ${secs(haxe.Timer.stamp() - t1)} run)'};
+				var what = "building the tests for host";
+				var b = assets(words, exe, Compiler.hostTarget(), map, what, Output.of(Compiler.tool(), words, map, what, hold), hold);
+				return {target: t, label: "host", exe: exe, wasm: false, output: b, seconds: haxe.Timer.stamp() - t0, held: hold};
 		}
+	}
+
+	static function interpHeader() {
+		Term.out("");
+		Term.out(Style.status("running", Info, "interp" + Style.dim(Style.sep() + "built and run by the compiler (Eval)")));
 	}
 
 	// the TypeScript test files' program (bin/test/ts/main.ts), built by
 	// helder's compiler and run as the Haxe one is
-	@:coroutine static function typescript(t:String, p:Project, runner:Array<String>, map:Mapper, server:Null<Int>):{ok:Bool, summary:String} {
+	@:coroutine static function buildTypescript(t:String, p:Project, runner:Array<String>, map:Mapper, server:Null<Int>, hold:Bool):Built {
 		var connect = (server == null ? [] : ["--connect", Std.string(server)]).concat(["-D", "helder.text.engine=helder"]);
 		var wasm = t == "wasm";
 		var exe = wasm ? "bin/test/ts.wasm" : Sys.systemName() == "Windows" ? "bin/test/ts-host.exe" : "bin/test/ts-host";
@@ -192,14 +212,26 @@ class TestCommand {
 		]).concat(target);
 		var t0 = haxe.Timer.stamp();
 		var what = 'building the TypeScript tests for ${wasm ? "wasm" : "host"}';
-		var b = assets(words, exe, wasm ? "wasm32-wasi" : Compiler.hostTarget(), map, what, Output.of(Compiler.tool(), words, map, what));
-		var built = haxe.Timer.stamp() - t0;
-		if (b.code != 0) return buildFailed(t + " ts", built);
+		var b = assets(words, exe, wasm ? "wasm32-wasi" : Compiler.hostTarget(), map, what, Output.of(Compiler.tool(), words, map, what, hold), hold);
+		return {target: t + " ts", label: '${wasm ? "wasm" : "host"} (TypeScript)', exe: exe, wasm: wasm, output: b, seconds: haxe.Timer.stamp() - t0, held: hold};
+	}
+
+	// a build's output shown (when it was kept), then the program run; its result
+	@:coroutine static function finish(b:Built, p:Project, runner:Array<String>, map:Mapper):{ok:Bool, summary:String} {
+		var exe = b.exe;
+		if (exe == null) {
+			// (interp: built and run, its output the run's)
+			if (b.held) interpHeader();
+			b.output.replay();
+			return {ok: b.output.code == 0, summary: b.output.summary() + ' (${secs(b.seconds)} built and run)'};
+		}
+		b.output.replay();
+		if (b.output.code != 0) return buildFailed(b.target, b.seconds);
 		Term.out("");
-		Term.out(Style.status("built", Ok, '${wasm ? "wasm" : "host"} (TypeScript) in ${Style.bold(secs(built))}' + Style.dim(Style.sep() + kb(exe))));
+		Term.out(Style.status("built", Ok, '${b.label} in ${Style.bold(secs(b.seconds))}' + Style.dim(Style.sep() + kb(exe))));
 		var t1 = haxe.Timer.stamp();
-		var out = wasm ? Output.of(Sys.getEnv("NODE") ?? "node", ["--no-warnings", "--no-turbo-fast-api-calls", "--stack-size=65500", p.helder + "/helder/test/wasi.mjs", exe].concat(runner), map) : Output.of(exe, runner, map);
-		return {ok: out.code == 0, summary: out.summary() + ' (${secs(built)} build, ${secs(haxe.Timer.stamp() - t1)} run)'};
+		var out = b.wasm ? Output.of(Sys.getEnv("NODE") ?? "node", ["--no-warnings", "--no-turbo-fast-api-calls", "--stack-size=65500", p.helder + "/helder/test/wasi.mjs", exe].concat(runner), map) : Output.of(exe, runner, map);
+		return {ok: out.code == 0, summary: out.summary() + ' (${secs(b.seconds)} build, ${secs(haxe.Timer.stamp() - t1)} run)'};
 	}
 
 	public static inline var TS_MAIN = "bin/test/ts/main.ts";
@@ -293,6 +325,28 @@ class TestCommand {
 			FileSystem.deleteDirectory(path);
 		} else FileSystem.deleteFile(path);
 	}
+}
+
+// (a target's place in the run: its TypeScript program's, or none: interp
+// without a file that opts in)
+typedef Step = {
+	target:String,
+	ts:Bool,
+	?none:Bool,
+}
+
+// a target's build: its output (held: kept until finish shows it), its
+// time; exe null for interp (built and run by the compiler)
+typedef Built = {
+	// (the results' name: host, wasm ts)
+	target:String,
+	// (the built line's: host, wasm (TypeScript))
+	label:String,
+	exe:Null<String>,
+	wasm:Bool,
+	output:Output,
+	seconds:Float,
+	held:Bool,
 }
 
 typedef TestFile = {
@@ -436,8 +490,9 @@ class Output {
 
 	function new() {}
 
-	// (spin: the spinner's text while it runs, the compiler's messages readable)
-	@:coroutine public static function of(cmd:String, args:Array<String>, map:Mapper, ?spin:String):Output {
+	// (spin: the spinner's text while it runs, the compiler's messages
+	// readable; hold: nothing printed, the lines kept for replay)
+	@:coroutine public static function of(cmd:String, args:Array<String>, map:Mapper, ?spin:String, hold = false):Output {
 		var o = new Output();
 		var p = try new Process(cmd, args) catch (e:haxe.Exception) {
 			Term.err(Style.usage('helder test: $cmd: ${e.message}'));
@@ -445,27 +500,57 @@ class Output {
 			return o;
 		}
 		p.closeStdin();
-		var d = spin == null ? null : new Diagnostics();
-		if (spin != null) Term.spin(spin);
+		o.diagnostics = spin != null;
+		if (hold) o.held = [];
+		var d = spin == null || hold ? null : new Diagnostics();
+		if (spin != null && !hold) Term.spin(spin);
 		Async.scope(task -> {
 			task.async(_ -> o.pipe(p.stdout, false, map, d));
 			task.async(_ -> o.pipe(p.stderr, true, map, d));
 			null;
 		});
 		o.code = p.wait();
-		Term.done();
+		if (!hold) Term.done();
 		p.close();
 		return o;
 	}
+
+	// (held: the lines as they came, each with its stream; diagnostics:
+	// the compiler's, shown readable)
+	var held:Null<Array<{line:String, err:Bool}>> = null;
+	var diagnostics = false;
 
 	@:coroutine function pipe(s:Stream.Source, err:Bool, map:Mapper, d:Null<Diagnostics>) {
 		var r = new Reader(s), line;
 		while ((line = r.readLine()) != null) {
 			line = map.apply(line);
 			lines.push(Style.strip(line));
+			if (held != null) {
+				held.push({line: line, err: err});
+				continue;
+			}
 			if (d != null) line = d.line(line);
 			if (err) Term.err(line) else Term.out(line);
 		}
+	}
+
+	// the lines kept, printed as they would have been
+	public function replay() {
+		var h = held;
+		if (h == null) return;
+		held = null;
+		var d = diagnostics ? new Diagnostics() : null;
+		for (l in h) {
+			var line = d != null ? d.line(l.line) : l.line;
+			if (l.err) Term.err(line) else Term.out(line);
+		}
+	}
+
+	// an earlier run's lines before this one's (a build made again: both shown)
+	public function prepend(o:Output) {
+		var h = held, before = o.held;
+		if (h != null && before != null) held = before.concat(h);
+		for (i in 0...o.lines.length) lines.insert(i, o.lines[i]);
 	}
 
 	// "3 pass, 1 fail", from the runner's summary
