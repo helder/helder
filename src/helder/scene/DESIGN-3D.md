@@ -1637,9 +1637,12 @@ its fallback; the departures said where the design describes them (2.1,
   first frame's pipelines against main's 16 s (the same page without the
   light loop: 16 s): the loop, a light's row and its tile's filter
   inlined in it, is the standard material's costliest part to compile. Not
-  trimmed in this phase; with it, gfx's WebGPU glue makes a pipeline's
-  variants when first drawn (none up front for unfilterable slots no draw
-  binds) and holds a canvas's frames to two in flight.
+  trimmed in this phase: a frame without local lights (nor
+  ClusteredLights) draws its opaque standard materials with pbr's
+  `sunOnly` variants (`PbrSunShader`, `PbrInstancedSunShader`: no loop),
+  so such scenes compile as before; and gfx's WebGPU glue makes a
+  pipeline's variants when first drawn (none up front for unfilterable
+  slots no draw binds: every PBR pipeline was compiled twice).
 - **The skin's joints' count is PbrObject's `tint.w`** for pbr's variants
   (`PbrSkinInfo` stays the shadow casters' and Unlit's): PbrLights' block
   made a skinned physical variant's slots 17, past gfx's 16.
