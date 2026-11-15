@@ -285,7 +285,8 @@ Taken:
 
 - r3f's vocabulary: three.js's class names as tags, `attach`, `onFrame`
   for `useFrame`, `onPointerMissed`, portals, `invalidate`, `regress`.
-- drei's choice of what deserves a tag (section 7), and its props' names
+- drei's names for what deserves a tag where helder's apps need the same
+  (section 7: chosen for apps and games, not copied), and its props' names
   (`fit`, `clip`, `occlude`, `distanceFactor`, `frames`, `flipflops`).
 - Threlte's on-demand default with automatic invalidation, and its named
   stages for per-frame work.
@@ -629,7 +630,7 @@ phone's fill rate), `antialias`, and the post chain's effects.
 
 - `<Scene regress={0.5}>`: while a control glides or a gizmo drags, the
   box draws at that share of its scale, and back after it rests.
-- `<Adapt>` (section 7): from the frame times of the last second, steps
+- `<Adapt>` (section 7.7): from the frame times of the last second, steps
   `scale`, then effects off in a declared order, then back up with
   hysteresis. Its state is a signal (`quality()`), so markup can read it
   (`<Show when={quality() > 1}><Ssao/></Show>`). drei's monitor's
@@ -860,7 +861,7 @@ cost of CPU overhead"; `<Merged>` does the same for several meshes
 - **Contexts** reach across every boundary (they do today: `<Scene>`
   provides its world and box to its children and runs them in its owner).
 
-## 7. A standard library, after drei
+## 7. A standard library for apps and games
 
 drei is react-three-fiber's standard library in all but name: dozens of
 helpers, of which a few are in nearly every r3f project (OrbitControls,
@@ -871,44 +872,160 @@ Environment, useGLTF, Html, Text, ContactShadows, Bounds, Instances)
 [42]: capitalized components over the 3D API, each its own
 function, so an unused one is not linked.
 
-| priority | helder | drei, and others | on |
-| --- | --- | --- | --- |
-| P0 | `<model>` (5.1) | `useGLTF`, `<Clone>`, gltfjsx | `Model` |
-| P0 | `<Bounds fit clip observe margin>`, `fitCamera(box, nodes)` | `<Bounds>`, `useBounds` | `Aabb`, the camera |
-| P0 | `<Environment preset file background blur intensity>` | `<Environment>` | `Environment`, `Sky` (and DESIGN-3D phase 5's prefilter) |
-| P0 | `<ContactShadows opacity blur far resolution>` | `<ContactShadows>` | a depth pass from below into a blurred texture on a plane (works on the GL ES 3.0 floor) |
-| P0 | `<Ui>` with `occlude`, `distanceFactor`, `center`, made exact (10.2) | `<Html>` | ui |
-| P0 | `<OrbitControls>`, `<TransformGizmo>` (exist) | `<OrbitControls>`, `<TransformControls>` | the arena |
-| P0 | `<Controls map={...}>`, `controls("jump")` | `<KeyboardControls>` | `InputMap` (keys, pads, touch zones, sticks) |
-| P0 | `<Adapt>`, `regress` (3.5) | `<PerformanceMonitor>`, `<AdaptiveDpr>`, `regress` | the box's `scale`, the effects |
-| P1 | `<Physics gravity>`, `<RigidBody type collider>`, `<Joint>` | @react-three/rapier's `<Physics>`, `<RigidBody>`, auto colliders | helder.physics |
-| P1 | `<text3d>` (exists), `<Label>` (flat text facing the camera, the glyph atlas) | `<Text>` (troika SDF), `<Text3D>`, `<Billboard>` | helder.text, `Sprites` |
-| P1 | `<Center>`, `<Stage>` (environment, contact shadow and bounds in one) | `<Center>`, `<Stage>` | the above |
-| P1 | `<Lod>` | `<Detailed>` | DESIGN-3D phase 4's `Lod` |
-| P1 | `<Loading>` (exists), `Assets.progress` | `<Suspense>`, `<Loader>`, `useProgress`, `<Preload>` | helder.asset |
-| P1 | `<Stats>` | `<Stats>`, `<StatsGl>`, r3f-perf | `--stats`' counters |
-| P2 | `<RenderTexture>`, `<Ui transform>`, `<Portal>` (6.3) | `<RenderTexture>`, `<Html transform>`, uikit | render targets |
-| P2 | `<GizmoHelper>` (a viewcube) | `<GizmoHelper>` | a nested `<Scene>` |
-| P2 | `<AccumulativeShadows>` | `<AccumulativeShadows>` | soft shadows converged over frames, then still |
-| P2 | `<Float>`, `<Sparkles>`, `<Stars>`, `<Cloud>` | the same names | `onFrame`, `GpuParticles`, `Sprites` |
+It is not a drei clone. helder is both a ui framework and a game
+framework, so an extra earns its place by making a real app of either
+kind shorter to write. Two apps are the test cases, and each extra names
+the one it shortens:
 
-Not shipped: drei's materials that exist for three.js's limits
+- **a game**: Little Skies (helder/little-skies), a mobile golf game. It
+  hand-rolls today what P0's physics and P1's camera rig, triggers, tweens
+  and audio would give it;
+- **a ui app with 3D**: a product viewer or configurator, data
+  visualisation, 3D widgets inside a ui layout. Its needs are staging,
+  selection, accessibility, theming and a battery that lasts.
+
+### 7.1 P0: the core both kinds of app need
+
+| helder | drei, and others | on | for |
+| --- | --- | --- | --- |
+| `<model>` (5.1) | `useGLTF`, `<Clone>`, gltfjsx | `Model` | both |
+| `<Bounds fit clip observe margin>`, `fitCamera(box, nodes)` | `<Bounds>`, `useBounds` | `Aabb`, the camera | both |
+| `<Environment preset file background blur intensity>` | `<Environment>` | `Environment`, `Sky` (and DESIGN-3D phase 5's prefilter) | both |
+| `<ContactShadows opacity blur far resolution>` | `<ContactShadows>` | a depth pass from below into a blurred texture on a plane (works on the GL ES 3.0 floor) | both |
+| `<Ui>` in the world, made exact (7.2, 10.2) | `<Html>`, `<Html transform>`, uikit | ui, the box's depth, render targets | both |
+| `<OrbitControls>`, `<TransformGizmo>` (exist) | `<OrbitControls>`, `<TransformControls>` | the arena | both |
+| `<Controls map={...}>`, `controls("jump")` | `<KeyboardControls>` | `InputMap` (keys, pads, touch zones, sticks) | both |
+| `<Physics gravity>`, `<RigidBody type collider>` (auto colliders), `<Joint>` (7.3) | @react-three/rapier's `<Physics>`, `<RigidBody>`, auto colliders | helder.physics | games first |
+| the interaction layer: `hover`, `selected`, `<Draggable plane axis snap>`, focus and accessibility (7.4) | drei's `<Select>`, `<DragControls>`, @react-three/a11y | phase 2's outlines, the arena, ui's focus and accessibility tree | ui apps first |
+
+### 7.2 `<Ui>` in the world, helder's own
+
+No web stack has this: the world's labels, panels and widgets are
+helder.ui itself, drawn on the same GPU, in the same input arena, with the
+same text and layout. drei's `<Html>` is the DOM over a canvas, a frame
+behind and blind to depth unless it raycasts; its `transform` mode "can
+look blurry" [17]. So `<Ui>` gets P0's focus, to this bar:
+
+- **No lag.** Its place is the frame's own camera's (10.2).
+- **Occluded by depth, per pixel.** A label behind a mesh is hidden
+  where the mesh covers it, read from the box's depth, not drei's one ray
+  to its centre. `occlude="ray"` stays the cheap opt-in.
+- **Crisp at any distance.** Over the box (`<Ui>`): ui's own pixels,
+  `distanceFactor` scaling its layout, never a texture. On a plane in the
+  world (`<Ui transform>`, promoted from P2): drawn into a render target at
+  the density it covers on screen this frame, again when that changes past
+  a step, so it is sharp up close and cheap far away.
+- **The same input.** Its pointer events are ui's, in the box's arena: a
+  button on a panel in the world wins its press against the orbit as a
+  HUD's does, through the plane's uv (4.3's triangle picking).
+- **Measured.** Its tests (10.2) check the pixels in the frame the camera
+  moved, an occluded label's pixels, and a world panel's text against the
+  same text drawn flat at the same size.
+
+### 7.3 Physics
+
+Promoted from P1: Little Skies is a physics game, and most games are. In
+@react-three/rapier "RigidBodies generate automatic colliders by
+default" from the meshes inside (`cuboid`, `ball`, `trimesh`, `hull`), and
+`<InstancedRigidBodies>` gives each instance a body; Rapier loads lazily,
+so `<Physics>` sits in a `<Suspense>` [31]. helder's `<RigidBody>` does
+the same on helder.physics: `collider="auto"` fits a box, sphere or
+capsule to the children's bounds; `"box" | "sphere" | "capsule" | "mesh"`
+with sizes; `type="dynamic" | "fixed" | "kinematic"`. `<instances>` takes
+bodies too.
+
+The fixed step and interpolation are done right, not left to the
+program:
+
+- the world steps in `FixedUpdate`, at `<Physics rate>` (60 a second by
+  default), as many steps as the frame holds, capped so that a slow frame
+  does not spiral (`FixedStep`);
+- a body's node is written in `PreRender`, interpolated between the last
+  two steps by the clock's alpha, so motion is smooth at any refresh rate
+  (a 120 Hz phone, a frame dropped) while the game's logic reads the
+  step's exact state;
+- a body's transform is driven (3.2), so its `position` prop is its
+  start, not a binding: the dev check says so if it changes;
+- events: `onContact`, `onSleep`, and 7.5's triggers;
+- the box keeps drawing while a body is awake, and stops when all sleep
+  (3.4).
+
+### 7.4 The interaction layer
+
+What every ui app with 3D writes by hand, and what a game's editor and
+menus need:
+
+- **Hover and selection.** `hover` and `selected` on any element draw
+  phase 2's outlines (`Outline`'s groups), bound to the node's own hover
+  and to a selection signal: `<model of={car} selected={pick() == car}/>`.
+  `<Selection value={sel}>` keeps one or many, and a tap in empty space
+  (`onPointerMissed`) clears it.
+- **Dragging.** `<Draggable plane="xz" axis snap={0.5} onDrag>` moves its
+  children on a plane or along an axis, in the arena (4.4); `surface`
+  snaps them to what is under the pointer (a part placed on a table, a
+  piece on a board).
+- **Focus and accessibility.** A pickable node (one with a listener or a
+  `role`) is focusable: Tab and the arrows move between them, Enter and
+  Space press, the focused one is outlined. Each is a node of ui's
+  accessibility tree (`role`, `label`, `description`) at its projected
+  bounds, so a screen reader finds "Wheel, button" in a configurator and
+  VoiceOver's touch exploration works over the box.
+
+### 7.5 P1, games
+
+| helder | others | on |
+| --- | --- | --- |
+| `<CameraRig follow behind lookAhead ease>`: follow, orbit behind, look ahead of the velocity, eased transitions between rigs (Little Skies hand-rolls one) | Cinemachine, Godot's `SpringArm3D` | `LateUpdate`, the camera |
+| triggers and sensors: `<Trigger shape onEnter onExit>` | rapier's sensors, Unity's triggers | helder.physics' sensors, else bounds |
+| tweens and timelines: `tween(node, {position: p}, 0.4, easeOut)`, `<Timeline>` | GSAP, drei's `<Float>` | `onFrame` and ui's transitions and easings (helder.ui.motion): ui and 3D animate the same way |
+| spatial audio: `<Sound src loop distance>` at a node | drei's `<PositionalAudio>` | helder.os's audio, panned and attenuated from the camera |
+| scene and state switching: a `<Switch>` of scenes, kept or disposed (2.4), a fade between | Godot's `change_scene`, Unity's scenes | `<Show>`, `<Loading>` |
+| `<text3d>` (exists), `<Label>` (flat text facing the camera, the glyph atlas) | `<Text>` (troika SDF), `<Text3D>`, `<Billboard>` | helder.text, `Sprites` |
+
+### 7.6 P1, ui apps
+
+| helder | others | on |
+| --- | --- | --- |
+| `<Stage>` (environment, contact shadow and bounds in one) and `<Center>`: a product viewer's defaults | `<Stage>`, `<Center>` | 7.1 |
+| theming: the environment, the clear colour and materials' colours following ui's light and dark theme | | ui's theme |
+| drawing on demand by default (3.4), measured for battery: an idle box records no pass | r3f's `frameloop="demand"` | 3.4 |
+| scroll- and layout-linked 3D: a `<Scene>` reading ui's scroll and its own transitions (`progress={scroll()}`) | drei's `<ScrollControls>` | ui's scroll and motion signals |
+| `<Lod>` | `<Detailed>` | DESIGN-3D phase 4's `Lod` |
+| `<Loading>` (exists), `Assets.progress` | `<Suspense>`, `<Loader>`, `useProgress`, `<Preload>` | helder.asset |
+| `<Stats>` | `<Stats>`, `<StatsGl>`, r3f-perf | `--stats`' counters |
+
+### 7.7 Adaptive quality
+
+`<Adapt>` and `regress` (3.5) stay, to a high bar, because a wrong step
+is worse than none: a scene that flickers between qualities, or one that
+drops its resolution when an effect was the cost.
+
+- **Hysteresis**: it steps down after a sustained drop and up only after
+  a longer sustained margin, and gives up after `flipflops` changes
+  (`onFallback`) [21].
+- **Per feature, in a declared order**: effects first (the costliest
+  first, as measured), then resolution (`scale`), not the reverse unless
+  the program says so.
+- **Measured on real devices** (the pack lanes' phones, Little Skies on a
+  mid-range Android), not only on CI's software GPU, whose costs are not
+  a phone's.
+
+### 7.8 P2, and examples rather than API
+
+`<RenderTexture>`, `<Portal>` (6.3), `<GizmoHelper>` (a viewcube, a nested
+`<Scene>`) and `<AccumulativeShadows>` (soft shadows converged over
+frames, then still). The flourishes (`<Float>`, `<Sparkles>`, `<Stars>`,
+`<Cloud>`) may be examples rather than API: each is a few lines of
+`onFrame`, `GpuParticles` or `Sprites`, better copied and changed than
+configured.
+
+### 7.9 Not shipped
+
+drei's materials that exist for three.js's limits
 (`MeshReflectorMaterial`, where helder has `Ssr`; `MeshTransmissionMaterial`,
 where DESIGN-3D phase 6 has `Transmission`), its camera-shake and scroll
 helpers (an `onFrame` each), and leva (helder's studio has an inspector
 that edits the literal, README.md phase 6) [30].
-
-**Physics.** In @react-three/rapier "RigidBodies generate automatic
-colliders by default" from the meshes inside (`cuboid`, `ball`, `trimesh`,
-`hull`), and `<InstancedRigidBodies>` gives each instance a body; Rapier
-loads lazily, so `<Physics>` sits in a `<Suspense>` [31]. helder's
-`<RigidBody>` does the same on helder.physics: `collider="auto"` fits a
-box, sphere or capsule to the children's bounds; `"box" | "sphere" |
-"capsule"` with sizes; `type="dynamic" | "fixed" | "kinematic"`. The body
-moves the node in `FixedUpdate` (`physics.add(body, node)` does today),
-interpolated in `PreRender`. A body's transform is driven (3.2), so its
-`position` prop is its start, not a binding: the dev check says so if it
-changes. `<instances>` takes bodies too (rapier's `<InstancedRigidBodies>`).
 
 **State outside the tree.** zustand's "transient updates" subscribe to the
 store outside React so that a value changing each frame skips React's
@@ -1170,37 +1287,69 @@ bindings); rejects (a node or material name not in the file). Example:
 ui, a loading placeholder). Docs: "Models in markup" in
 docs/scene/models.md.
 
-### Phase M6: the standard library, P0
+### Phase M6: the P0 core
 
-- `<Bounds>`, `<Environment>`, `<ContactShadows>`, `<Controls>`,
-  `<Adapt>` and `regress` (7, 3.5).
+- `<Bounds>` and `fitCamera`, `<Environment>`, `<ContactShadows>`,
+  `<Controls>` (7.1).
+- `<Ui>` in the world to 7.2's bar: per-pixel depth occlusion, `<Ui
+  transform>` at the density it covers, its events in the arena.
+- The interaction layer (7.4): `hover`, `selected`, `<Selection>`,
+  `<Draggable>`, focus and the accessibility tree.
 
 Tests: golden frames for `<ContactShadows>` and `<Environment>`
 (tests/3d's frames, natively and on WebGPU and WebGL2); `<Bounds>`'s fit
-checked by numbers; `<Adapt>` stepping down under a forced slow frame.
-Example: `examples/configurator` gains `<Stage>`. Docs:
-docs/scene/extras.md, a section per component, each with a live example.
+checked by numbers; 7.2's pixels; a drag on a plane and one snapped to a
+surface, by numbers; Tab through three pickable nodes, and their nodes in
+the accessibility tree. Example: `examples/configurator` (M5's) gains
+selection, dragging and focus. Docs: docs/scene/extras.md, a section per
+component, each with a live example.
 
-### Phase M7: physics and the rest of P1
+### Phase M7: physics
 
 - `<Physics>`, `<RigidBody>`, `<Joint>` on helder.physics, auto colliders,
-  instanced bodies.
-- `<Label>`, `<Center>`, `<Stage>`, `<Lod>`, `<Stats>`.
+  instanced bodies, the fixed step and interpolation (7.3).
 
 Tests: a body's node after N steps equal to the same world in code
 (natively and as wasm32-wasi, the same numbers on each, as helder.physics
-tests); GcStats on a step with markup. Example: examples/falling in
-markup beside the code version. Docs: docs/scene/extras.md's physics
-section.
+tests); a node interpolated between two steps at the clock's alpha;
+GcStats on a step with markup; a box idle once every body sleeps.
+Example: examples/falling in markup beside the code version. Docs:
+docs/scene/extras.md's physics section.
 
-### Phase M8: composition and P2
+### Phase M8: P1 for games
 
-- `<Portal>`, `<RenderTexture>`, `<Ui transform>`, `<GizmoHelper>`,
-  `<AccumulativeShadows>`, `<instances count each>`.
+- `<CameraRig>`, `<Trigger>`, tweens and `<Timeline>` on ui's easings,
+  `<Sound>`, scene switching, `<Label>` (7.5).
 
-Tests: a render texture's frame; a ui panel in the world pressed through
-its uv. Example: `examples/arcade` (a screen in the world showing another
-world, a ui panel on a wall). Docs: "Composition" in docs/scene/markup.md.
+Tests: a rig's camera after N frames, by numbers; a trigger's enter and
+exit, once each; a tween's values at its ends and midpoint equal to ui's
+transition's; GcStats on a frame with each. Example: a small course in
+markup (a ball, a rig, the hole a trigger). Moving Little Skies onto them
+is the check that they shorten a real game. Docs: docs/scene/extras.md's
+games section.
+
+### Phase M9: P1 for ui apps, and adaptive quality
+
+- `<Stage>`, `<Center>`, theming, scroll- and layout-linked scenes,
+  `<Lod>`, `Assets.progress`, `<Stats>` (7.6).
+- `<Adapt>` and `regress` to 7.7's bar.
+
+Tests: a theme switched redraws the box once, in the new colours; an
+idle viewer records no pass in 100 frames; `<Adapt>` steps effects down
+before scale under a forced slow frame, and does not flip under a noisy
+one. Measured on the pack lanes' devices, the numbers in the docs.
+Example: `examples/configurator` gains `<Stage>` and theming; a data
+visualisation in a scrolling ui page. Docs: docs/scene/extras.md's ui
+apps section.
+
+### Phase M10: composition and P2
+
+- `<Portal>`, `<RenderTexture>`, `<GizmoHelper>`, `<AccumulativeShadows>`,
+  `<instances count each>` (6.2, 6.3, 7.8); the flourishes as examples.
+
+Tests: a render texture's frame. Example: `examples/arcade` (a screen in
+the world showing another world). Docs: "Composition" in
+docs/scene/markup.md.
 
 The benchmark (M0) runs again at the end of each phase, and its results
 file keeps each phase's row.
@@ -1234,8 +1383,11 @@ file keeps each phase's row.
     (5).
 11. **Components are prefabs, and markup is the scene format.** There is
     no separate file (6.1).
-12. **`helder.scene.view.extras` is the drei-like library**, P0 first,
-    each component linked only when used, measured against code at 1,000
+12. **`helder.scene.view.extras` serves apps and games**, not drei's
+    list: each extra makes Little Skies or a ui app with 3D shorter to
+    write. P0 is the core both need (models, staging, `<Ui>` in the world,
+    controls, physics, interaction); P1 is split into games' and ui
+    apps'. Each is linked only when used, measured against code at 1,000
     and 10,000 nodes with zero bytes allocated per frame (7, 9).
 
 ## 13. Where helder does better
