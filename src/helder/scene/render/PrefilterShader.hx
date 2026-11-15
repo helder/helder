@@ -4,11 +4,13 @@ import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 import helder.scene.render.Equirect;
 
-// The environment's prefilter (Prefilter): a column of an octahedral atlas
-// (RGBA16F) filled from a source, an equirectangular image (mip-mapped) or
-// a cube (a reflection probe's capture, mip-mapped), each texel's
-// direction its place in its cell (octDirection, its gutter folded back).
-// The cells of rows 0 to levels - 1 hold the light along a reflection for
+// The environment's prefilter (Prefilter): a column of an atlas (RGBA16F)
+// filled from a source, an equirectangular image (mip-mapped) or a cube (a
+// reflection probe's capture, mip-mapped). Its layout is a prefiltered
+// atlas' (Environment.prefiltered's, the standard material's lookup:
+// levels + 1 rows of the sphere, equirectangular, a cell width by width /
+// 2), its colours sRGB-encoded (c^(1/2.2), which the lookup decodes: a
+// linear HDR value kept in RGBA16F). The cells of rows 0 to levels - 1 hold the light along a reflection for
 // a roughness of row / (levels - 1): the source convolved with GGX's lobe
 // (the split sum's first half, N = V = R), by importance samples read at
 // the mip level their share of the sphere covers (Karis' filtered
@@ -18,8 +20,8 @@ import helder.scene.render.Equirect;
 // (the fallback: GL ES 3.0, WebGL2) or a compute dispatch writing it (a
 // storage texture: Device.has(Compute)); the same function either way.
 @:structInit @:publicFields class PrefilterParams {
-	// x: the column's first texel, y: a cell's size in texels, z: the rows of
-	// roughness (levels), w: importance samples a texel
+	// x: the column's first texel, y: a cell's width in texels (its height
+	// half), z: the rows of roughness (levels), w: importance samples a texel
 	var cell:Vec4;
 	// x: 1 a cube, 0 an equirectangular image; y: its mip levels below the
 	// first; z: its first level's texels (a texel's share of the sphere:
@@ -46,15 +48,16 @@ function sourceAt(p:PrefilterParams, equirectMap:Texture2D, cubeMap:TextureCube,
 }
 
 // the texel (x, y) of the column (x across a cell, y down the column): its
-// cell's row, its direction, its light
+// cell's row, its direction (equirectangular: longitude across, -z at the
+// middle, latitude down), its light
 function prefilterTexel(x:Float, y:Float, p:PrefilterParams, equirectMap:Texture2D, cubeMap:TextureCube):Vec4 {
-	var size = p.cell.y;
+	var width = p.cell.y;
+	var height = floor(width * 0.5);
 	var levels = p.cell.z;
-	var row = floor(y / size);
-	var t = vec2(x, y - row * size);
-	// (the cell's inner texels -1 to 1, its gutter past them)
-	var uv = (t + 0.5 - 1) / (size - 2) * 2 - 1;
-	var n = octDirection(uv);
+	var row = floor(y / height);
+	var theta = (y - row * height + 0.5) / height * 3.1415927;
+	var phi = ((x + 0.5) / width - 0.5) * 6.2831853;
+	var n = vec3(sin(theta) * sin(phi), cos(theta), -sin(theta) * cos(phi));
 	var up = abs(n.y) < 0.999 ? vec3(0, 1, 0) : vec3(1, 0, 0);
 	var tx = normalize(cross(up, n));
 	var ty = cross(n, tx);
@@ -109,7 +112,8 @@ function prefilterTexel(x:Float, y:Float, p:PrefilterParams, equirectMap:Texture
 		}
 		color = sum / max(weight, 0.0001);
 	}
-	return vec4(color, 1);
+	// (encoded as an image's: the lookup decodes c^2.2)
+	return vec4(pow(max(color, vec3(0)), vec3(0.4545454)), 1);
 }
 
 // (the fallback) a quad over the column, each fragment its texel
@@ -125,7 +129,7 @@ final PrefilterDispatch = compute({
 	size: [8, 8],
 	main: function(id:ComputeInput, p:{var prefilter:PrefilterParams; var equirectMap:Texture2D; var cubeMap:TextureCube; @:format(RGBA16F) var atlas:StorageTexture;}) {
 		var size = Std.int(p.prefilter.cell.y);
-		if (id.x >= size || id.y >= size * (Std.int(p.prefilter.cell.z) + 1)) return;
+		if (id.x >= size || id.y >= (size >> 1) * (Std.int(p.prefilter.cell.z) + 1)) return;
 		textureStore(p.atlas, Std.int(p.prefilter.cell.x) + id.x, id.y, prefilterTexel(id.x, id.y, p.prefilter, p.equirectMap, p.cubeMap));
 	}
 });

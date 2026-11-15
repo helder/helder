@@ -6,10 +6,11 @@ import helder.gfx.shader.Vec2;
 import helder.gfx.shader.Vec4;
 import helder.scene.render.PrefilterShader;
 
-// The environment prefilter in helder (PrefilterShader): fills a column of an
-// octahedral atlas (atlas: RGBA16F, columns of cells of size x size texels,
-// levels + 1 rows of them: the light along a reflection by roughness, then
-// the irradiance) from an equirectangular image or a cube, once, at load.
+// The environment prefilter in helder (PrefilterShader): fills a column of a
+// prefiltered atlas (atlas: RGBA16F, columns of cells of size x size / 2
+// texels, equirectangular, levels + 1 rows of them: the light along a
+// reflection by roughness, then the irradiance; Environment.prefiltered's
+// layout, sRGB-encoded) from an equirectangular image or a cube, once, at load.
 // Where the device has compute (Device.has(Compute)) a dispatch a column
 // writes the atlas (a storage texture), else a fragment pass draws into it
 // (a render target); the same texels either way. An Environment's
@@ -20,7 +21,7 @@ class Prefilter {
 	public final device:Device;
 	// whether it dispatches (Device.has(Compute)) or draws
 	public final compute:Bool;
-	// a cell's texels across, the rows of roughness, the samples a texel
+	// a cell's texels across (its height half), the rows of roughness, the samples a texel
 	public final size:Int;
 	public final levels:Int;
 	public final samples:Int;
@@ -56,9 +57,9 @@ class Prefilter {
 	// an atlas of columns cells across (RGBA16F; a storage texture where it
 	// dispatches, else a render target)
 	public function atlas(columns:Int):Texture
-		return compute ? device.createTexture({width: columns * size, height: (levels + 1) * size, format: RGBA16F, storage: true}) : device.createTexture({
+		return compute ? device.createTexture({width: columns * size, height: (levels + 1) * (size >> 1), format: RGBA16F, storage: true}) : device.createTexture({
 			width: columns * size,
-			height: (levels + 1) * size,
+			height: (levels + 1) * (size >> 1),
 			format: RGBA16F,
 			renderTarget: true
 		});
@@ -85,7 +86,7 @@ class Prefilter {
 			enc.setTexture(PrefilterDispatch.params.equirectMap.binding, image, sampler);
 			enc.setTexture(PrefilterDispatch.params.cubeMap.binding, faces, sampler);
 			enc.setStorageTexture(PrefilterDispatch.params.atlas.binding, atlas);
-			enc.dispatch((size + 7) >> 3, ((levels + 1) * size + 7) >> 3);
+			enc.dispatch((size + 7) >> 3, ((levels + 1) * (size >> 1) + 7) >> 3);
 			enc.endCompute();
 			return;
 		}

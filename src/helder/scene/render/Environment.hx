@@ -29,7 +29,7 @@ import helder.scene.render.EnvironmentShader;
 //
 // Prefiltered by helder (Environment.prefilter): an equirectangular image
 // (RGBA8 sRGB, or linear RGBA16F or RGBA32F: HDR) filtered at load into an
-// octahedral atlas (Prefilter: a compute dispatch where the device has
+// prefiltered atlas as above (Prefilter: a compute dispatch where the device has
 // compute, else a fragment pass; done at the first frame's BeforePass
 // point), levels rows of roughness and the irradiance's, made from its
 // spherical harmonics (sh: projected from the image here, the diffuse
@@ -51,7 +51,7 @@ class Environment implements RenderFeature {
 	final edge:Float;
 	// the diffuse light as spherical harmonics (prefilter's; else null)
 	public var sh(default, null):Null<Sh> = null;
-	// (prefilter's) its octahedral atlas (one column), the work, whether its
+	// (prefilter's) its prefiltered atlas (one column), the work, whether its
 	// image is linear (HDR) or sRGB-encoded
 	@:noCompletion public var atlas(default, null):Null<Texture> = null;
 	var prefilterer:Null<Prefilter> = null;
@@ -106,8 +106,8 @@ class Environment implements RenderFeature {
 
 	// an equirectangular image's environment prefiltered by helder (width x
 	// height texels, its rows top to bottom; RGBA8: sRGB-encoded, as an
-	// image's; RGBA16F or RGBA32F: linear light, HDR): an octahedral atlas of
-	// size-texel cells, levels rows of roughness (Prefilter; samples a texel),
+	// image's; RGBA16F or RGBA32F: linear light, HDR): a prefiltered atlas,
+	// rows of size x size / 2 texels, levels of roughness (Prefilter; samples a texel),
 	// filled at the first frame drawn with it, and its harmonics (sh)
 	public static function prefilter(device:Device, width:Int, height:Int, texels:Bytes, format:TextureFormat = RGBA8, ?options:{?size:Int, ?levels:Int,
 			?samples:Int}):Environment {
@@ -123,7 +123,7 @@ class Environment implements RenderFeature {
 		var e = new Environment(device, t, width);
 		e.sh = sh;
 		e.linear = format != RGBA8;
-		var p = new Prefilter(device, options == null || options.size == null ? 64 : options.size, options == null || options.levels == null ? 6 : options.levels,
+		var p = new Prefilter(device, options == null || options.size == null ? 128 : options.size, options == null || options.levels == null ? 6 : options.levels,
 			options == null || options.samples == null ? 64 : options.samples);
 		e.prefilterer = p;
 		e.atlas = p.atlas(1);
@@ -190,16 +190,15 @@ class Environment implements RenderFeature {
 		prefilterer.run(enc, atlas, 1, 0, texture, false, Math.round(1 / edge), levels + 1, !linear, sh, 1);
 	}
 
-	// (the standard material's binding: the octahedral atlas, a prefiltered
-	// atlas, or the mip-mapped image)
+	// (the standard material's binding: helder's prefiltered atlas, a
+	// prefiltered atlas, or the mip-mapped image)
 	@:allow(helder.scene.render.Renderer) function bind(enc:Encoder, slot:Int)
 		atlas != null ? enc.setTexture(slot, atlas, flat) : enc.setTexture(slot, texture, rows > 0 ? flat : sampler);
 
-	// (PbrFrame's environment: x the intensity; an octahedral atlas' y -1 (its
-	// columns, negated), z its rows of roughness, w a cell's texels; else y the
-	// image's mip levels, z a prefiltered atlas' rows, w half its texel)
+	// (PbrFrame's environment: x the intensity, y the image's mip levels, z a
+	// prefiltered atlas' rows (helder's or one's own), w half its texel)
 	@:allow(helder.scene.render) function frameVector():Vec4
-		return atlas != null ? new Vec4(intensity, -1, cellLevels, cellSize) : new Vec4(intensity, levels, rows, edge);
+		return atlas != null ? new Vec4(intensity, levels, cellLevels, 1 / cellSize) : new Vec4(intensity, levels, rows, edge);
 
 	function draw(enc:Encoder, frame:Renderer.FrameInfo, renderer:Renderer, pipeline:Pipeline) {
 		var e = frame.eye;

@@ -61,10 +61,9 @@ class AreaLights implements RenderFeature implements RenderFeature.AreaSource {
 	@:noCompletion public function slots(instanced:Bool, probes:Bool):Array<Int>
 		return slotsOf[(probes ? 2 : 0) + (instanced ? 1 : 0)];
 
-	// the tables at a variant's slot
-	@:noCompletion public function bind(enc:Encoder, instanced:Bool, probes:Bool)
-		enc.setTexture(probes ? (instanced ? PbrInstancedAreaProbesShader.params.ltcMap.binding : PbrAreaProbesShader.params.ltcMap.binding) : instanced ? PbrInstancedAreaShader.params.ltcMap.binding : PbrAreaShader.params.ltcMap.binding,
-			ltc, sampler);
+	// the tables at a variant's slot (Renderer.slotsOf's 21)
+	@:noCompletion public function bind(enc:Encoder, slots:Array<Int>)
+		if (slots[21] >= 0) enc.setTexture(slots[21], ltc, sampler);
 
 	public function dispose()
 		device.destroyTexture(ltc);

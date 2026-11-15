@@ -1,5 +1,5 @@
 // title: An environment prefiltered by helder
-// summary: An HDR sky made in code (a gradient and a bright sun) prefiltered at load into an octahedral atlas (a compute dispatch where the device has compute, else a fragment pass) lighting spheres from mirror to rough, metal and not
+// summary: An HDR sky made in code (a gradient and a bright sun) prefiltered at load into rows of light by roughness (a compute dispatch where the device has compute, else a fragment pass) lighting spheres from mirror to rough, metal and not
 // tags: 3d, lights, environment, docs
 // demo: canvas 640x400
 import haxe.io.Bytes;

@@ -19,7 +19,7 @@ export type PbrVertex = {
 
 export type PbrVaryings = {
 	clip: Vec4, world: Vec3, normal: Vec3, uv: Vec2, tangent?: Vec4, up: Vec3, tint: Vec3, uv1?: Vec2, lights0: Vec4, lights1: Vec4,
-	ambient?: Vec4, probeA?: Vec4, extentA?: Vec4, probeB?: Vec4, extentB?: Vec4, lightmapUv?: Vec4,
+	ambient?: Vec4, probeA?: Vec4, extentA?: Vec4, probeB?: Vec4, extentB?: Vec4, probeAtlas?: Vec4, lightmapUv?: Vec4,
 };
 
 // the frame's point and spot lights (PbrShader.hx's PbrLights): position
@@ -51,7 +51,7 @@ export type PbrMaterial = {
 export type PbrSkinInfo = {rows: Vec4};
 
 // per draw, the probes' (PbrShader.hx's PbrProbes)
-export type PbrProbes = {sh: UniformArray<Vec4, 7>, probeA: Vec4, extentA: Vec4, probeB: Vec4, extentB: Vec4};
+export type PbrProbes = {sh: UniformArray<Vec4, 7>, probeA: Vec4, extentA: Vec4, probeB: Vec4, extentB: Vec4, atlas: Vec4};
 
 // per draw, a lightmap's (PbrShader.hx's PbrLightmap)
 export type PbrLightmap = {rect: Vec4, params: Vec4};
@@ -61,7 +61,7 @@ export type PbrVertexParams = {frame: PbrFrame, object?: PbrObject, probes?: Pbr
 export type PbrFragmentParams = {
 	frame: PbrFrame, object?: PbrObject, material: PbrMaterial, lights: PbrLights, baseColorTexture: Texture2D, metallicRoughnessTexture: Texture2D,
 	emissiveTexture: Texture2D, occlusionTexture: Texture2D, shadowMap: Texture2D, clusterMap: Texture2D, environmentMap: Texture2D, aoMap: Texture2D,
-	normalTexture?: Texture2D, ltcMap?: Texture2D, lightMap?: Texture2D, prepass?: PbrPrepass, layerMap0?: Texture2D, layerMap1?: Texture2D, transmissionMap?: Texture2D,
+	normalTexture?: Texture2D, ltcMap?: Texture2D, lightMap?: Texture2D, probesMap?: Texture2D, prepass?: PbrPrepass, layerMap0?: Texture2D, layerMap1?: Texture2D, transmissionMap?: Texture2D,
 };
 
 // (prepass: the view buffers' variant, ViewBuffers; the glTF extensions,
@@ -327,15 +327,11 @@ export function ambientAt(s: LitSurface, frame: PbrFrame, material: PbrMaterial,
 	const r = reflect(s.view.neg(), n);
 	const env = reflected(frame, environmentMap, r, s.roughness);
 	if (frame.environment.x > 0) {
-		if (frame.environment.y < 0) irradiance = octAtlas(environmentMap, n, 0, frame.environment.z, -frame.environment.y, frame.environment.z + 1,
-			frame.environment.w).mul(frame.environment.x);
-		else {
-			const top = frame.environment.y;
-			irradiance = pow(sampleLevel(environmentMap, equirect(n), max(top - 2, 0)).xyz, vec3(2.2)).mul(frame.environment.x);
-			if (frame.environment.z > 0) {
-				const rows = frame.environment.z;
-				irradiance = pow(atlas(environmentMap, equirect(n), rows, rows, frame.environment.w), vec3(2.2)).mul(frame.environment.x);
-			}
+		const top = frame.environment.y;
+		irradiance = pow(sampleLevel(environmentMap, equirect(n), max(top - 2, 0)).xyz, vec3(2.2)).mul(frame.environment.x);
+		if (frame.environment.z > 0) {
+			const rows = frame.environment.z;
+			irradiance = pow(atlas(environmentMap, equirect(n), rows, rows, frame.environment.w), vec3(2.2)).mul(frame.environment.x);
 		}
 	}
 	const day = daylight(s, frame, material);
@@ -359,18 +355,6 @@ function equirect(d: Vec3): Vec2 {
 
 function atlas(t: Texture2D, uv: Vec2, row: number, levels: number, edge: number): Vec3 {
 	return sampleLevel(t, vec2(uv.x, (row + clamp(uv.y, edge, 1 - edge)) / (levels + 1)), 0).xyz;
-}
-
-function octahedral(d: Vec3): Vec2 {
-	const n = d.div(abs(d.x) + abs(d.y) + abs(d.z));
-	let uv = n.xz;
-	if (n.y < 0) uv = vec2(1).sub(abs(n.zx)).mul(vec2(n.x >= 0 ? 1.0 : -1.0, n.z >= 0 ? 1.0 : -1.0));
-	return uv.mul(0.5).add(0.5);
-}
-
-function octAtlas(t: Texture2D, d: Vec3, col: number, row: number, cols: number, rows: number, size: number): Vec3 {
-	const o = octahedral(d).mul(size - 2).add(1);
-	return sampleLevel(t, vec2((col * size + o.x) / (cols * size), (row * size + o.y) / (rows * size)), 0).xyz;
 }
 
 function arcTan2(y: number, x: number): number {
@@ -468,20 +452,17 @@ function shade(s: LitSurface, lights: Vec3, indirect: Vec3, env: IndirectLight, 
 function reflected(frame: PbrFrame, environmentMap: Texture2D, r: Vec3, rough: number): Vec3 {
 	let env = mix(frame.ground.xyz, frame.sky.xyz, smoothstep(-0.2, 0.2, r.y));
 	if (frame.environment.x > 0) {
-		if (frame.environment.y < 0) env = octReflected(environmentMap, r, rough, 0, frame.environment).mul(frame.environment.x);
-		else {
-			const top = frame.environment.y;
-			env = pow(sampleLevel(environmentMap, equirect(r), rough * max(top - 1, 0)).xyz, vec3(2.2)).mul(frame.environment.x);
-			if (frame.environment.z > 0) {
-				const rows = frame.environment.z;
-				const edge = frame.environment.w;
-				const at = rough * (rows - 1);
-				const r0 = floor(at);
-				const ru = equirect(r);
-				const lo = atlas(environmentMap, ru, r0, rows, edge);
-				const hi = atlas(environmentMap, ru, min(r0 + 1, rows - 1), rows, edge);
-				env = pow(mix(lo, hi, at - r0), vec3(2.2)).mul(frame.environment.x);
-			}
+		const top = frame.environment.y;
+		env = pow(sampleLevel(environmentMap, equirect(r), rough * max(top - 1, 0)).xyz, vec3(2.2)).mul(frame.environment.x);
+		if (frame.environment.z > 0) {
+			const rows = frame.environment.z;
+			const edge = frame.environment.w;
+			const at = rough * (rows - 1);
+			const r0 = floor(at);
+			const ru = equirect(r);
+			const lo = atlas(environmentMap, ru, r0, rows, edge);
+			const hi = atlas(environmentMap, ru, min(r0 + 1, rows - 1), rows, edge);
+			env = pow(mix(lo, hi, at - r0), vec3(2.2)).mul(frame.environment.x);
 		}
 	}
 	return env;
@@ -587,7 +568,20 @@ function boxReflected(t: Texture2D, world: Vec3, r: Vec3, rough: number, probe: 
 	const b = probe.xyz.add(extent.xyz).sub(world).div(rr);
 	const far = max(a, b);
 	const dist = min(min(far.x, far.y), far.z);
-	return octReflected(t, world.add(r.mul(max(dist, 0))).sub(probe.xyz), rough, probe.w, e);
+	return probeAtlas(t, world.add(r.mul(max(dist, 0))).sub(probe.xyz), rough, probe.w - 1, e);
+}
+
+// a probe's light along a direction at a roughness: its column of the probes' atlas, two rows by it, blended
+function probeAtlas(t: Texture2D, d: Vec3, rough: number, column: number, e: Vec4): Vec3 {
+	const rows = e.y;
+	const at = rough * (rows - 1);
+	const r0 = floor(at);
+	const uv = equirect(d);
+	const u = (column + clamp(uv.x, e.z, 1 - e.z)) / e.x;
+	const v = clamp(uv.y, e.w, 1 - e.w);
+	const lo = sampleLevel(t, vec2(u, (r0 + v) / (rows + 1)), 0).xyz;
+	const hi = sampleLevel(t, vec2(u, (min(r0 + 1, rows - 1) + v) / (rows + 1)), 0).xyz;
+	return pow(mix(lo, hi, at - r0), vec3(2.2));
 }
 
 // (Equirect.hx's shIrradiance)
@@ -599,15 +593,6 @@ function shIrradiance(sh0: Vec4, sh1: Vec4, sh2: Vec4, sh3: Vec4, sh4: Vec4, sh5
 	return max(e, vec3(0));
 }
 
-// an octahedral atlas' light along a direction at a roughness (its column's two rows by it, blended)
-function octReflected(t: Texture2D, d: Vec3, rough: number, column: number, e: Vec4): Vec3 {
-	const rows = e.z;
-	const at = rough * (rows - 1);
-	const r0 = floor(at);
-	const lo = octAtlas(t, d, column, r0, -e.y, rows + 1, e.w);
-	const hi = octAtlas(t, d, column, min(r0 + 1, rows - 1), -e.y, rows + 1, e.w);
-	return mix(lo, hi, at - r0);
-}
 
 // a clear coat's specular lobe
 function coatLobe(n: Vec3, v: Vec3, l: Vec3, a2: number): Vec3 {
@@ -1072,6 +1057,7 @@ export const pbr = slots({
 			extentA: m.options.probes ? p.probes!.extentA : vec4(0),
 			probeB: m.options.probes ? p.probes!.probeB : vec4(0),
 			extentB: m.options.probes ? p.probes!.extentB : vec4(0),
+			probeAtlas: m.options.probes ? p.probes!.atlas : vec4(0),
 			lightmapUv: m.options.lightmap ? vec4(v.uv1!.mul(p.lightmap!.rect.zw).add(p.lightmap!.rect.xy), p.lightmap!.params.x, p.lightmap!.params.y) : vec4(0),
 		};
 	},
@@ -1251,7 +1237,7 @@ export const pbr = slots({
 			}
 			let env = ambientAt(lit, p.frame, p.material, p.occlusionTexture, p.environmentMap, p.aoMap);
 			if (m.options.probes) env = probeLight(env, lit.world, lit.normal, lit.view, lit.roughness, i.ambient!, i.probeA!, i.extentA!, i.probeB!, i.extentB!,
-				p.environmentMap, p.frame.environment);
+				p.probesMap!, i.probeAtlas!);
 			if (m.options.lightmap) {
 				let baked = sample(p.lightMap!, i.lightmapUv!.xy).xyz;
 				if (i.lightmapUv!.w > 1.5) baked = pow(baked, vec3(2.2));

@@ -279,9 +279,9 @@ class ViewBuffers implements RenderFeature implements RenderFeature.ViewSource {
 		// (every texture slot the variant keeps, the material's or white: a
 		// parameter not optional stays in every variant, read or not, and
 		// WebGPU binds none left unset; not the skin's, 5 and 6, a physical
-		// shader's flag, 14, nor the lights' block, 18)
+		// shader's flag, 14, nor the lights' block, 18, nor phase 5's blocks, 19 and 22)
 		for (k in 3...Renderer.OWN) {
-			if (sl[k] < 0 || k == 5 || k == 6 || k == 14 || k == 18) continue;
+			if (sl[k] < 0 || k == 5 || k == 6 || k == 14 || k == 18 || k == 19 || k == 22) continue;
 			var t = k == 3 ? m.baseColorTexture : k == 7 ? m.metallicRoughnessTexture : k == 8 ? m.emissiveTexture : k == 9 ? m.occlusionTexture : k == 10 ? m.normalTexture : null;
 			enc.setTexture(sl[k], t != null ? t : white, ms);
 		}

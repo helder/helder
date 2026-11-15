@@ -9,10 +9,10 @@ and a program that names none of them links none of it.
 `Environment.prefilter(device, width, height, texels, format)` takes an
 equirectangular image (longitude across, latitude down; RGBA8 sRGB as an
 image decodes, or linear `RGBA16F` or `RGBA32F` for an HDR sky) and
-filters it once, at the first frame drawn with it, into an octahedral
-atlas: `levels` rows of the sphere by roughness (GGX's lobe, the split
-sum's first half, by filtered importance samples) and the diffuse
-irradiance's row, made from the image's spherical harmonics (`env.sh`,
+filters it once, at the first frame drawn with it, into the atlas
+`Environment.prefiltered` reads: `levels` rows of the sphere by roughness
+(GGX's lobe, the split sum's first half, by filtered importance samples)
+and the diffuse irradiance's row, made from the image's spherical harmonics (`env.sh`,
 projected on the CPU at load). Where the device has compute (WebGPU,
 Metal, D3D11, GL ES 3.1) the atlas is written by a dispatch, elsewhere
 (WebGL2) by a fragment pass: the same texels, one golden frame (tests/3d's
@@ -50,9 +50,9 @@ captures it again; nothing is captured every frame.
 
 <Example id="scene-probes" region="probes"/>
 
-The atlas holds the environment too (its first column), so every
-material, lit by probes or not, reads the environment from it. Drawn with
-probes: the standard material's opaque draws, plain and instanced (pbr's
+The probes share one atlas (a column a probe, the environment's layout),
+read by the probes variants alone; the environment stays its own, the
+probes' fallback. Drawn with probes: the standard material's opaque draws, plain and instanced (pbr's
 `probes` variants); normal-mapped, skinned and see-through draws, instanced
 sets and materials of their own shader read the environment alone.
 

@@ -11,16 +11,12 @@ interface RenderFeature {
 
 // what the renderer asks of light and reflection probes (Probes): the
 // standard material's variants with them, each draw's probes (by its
-// centre), the atlas where the environment is bound, its frame vector
+// bounds) and their atlas at a variant's slots (Renderer.slotsOf's)
 interface ProbeSource {
 	function pipeline(instanced:Bool, doubleSided:Bool):helder.gfx.Pipeline;
 	function slots(instanced:Bool):Array<Int>;
 	// (a draw's bounds in the world: its centre, its half size)
-	function bind(enc:helder.gfx.Encoder, cx:Float, cy:Float, cz:Float, ex:Float, ey:Float, ez:Float):Void;
-	function bindAtlas(enc:helder.gfx.Encoder, slot:Int, sampler:helder.gfx.Sampler):Void;
-	// (into the frame's block: a value through an interface call is lowered
-	// wrongly for now, ShadowSource's note)
-	function writeEnvironment(frame:PbrShader.PbrFrame):Void;
+	function bind(enc:helder.gfx.Encoder, slots:Array<Int>, cx:Float, cy:Float, cz:Float, ex:Float, ey:Float, ez:Float):Void;
 }
 
 // what the renderer asks of area lights (AreaLights): the standard
@@ -28,7 +24,7 @@ interface ProbeSource {
 interface AreaSource {
 	function pipeline(instanced:Bool, doubleSided:Bool, probes:Bool):helder.gfx.Pipeline;
 	function slots(instanced:Bool, probes:Bool):Array<Int>;
-	function bind(enc:helder.gfx.Encoder, instanced:Bool, probes:Bool):Void;
+	function bind(enc:helder.gfx.Encoder, slots:Array<Int>):Void;
 }
 
 // what the renderer asks of lightmaps (Lightmaps): whether a node has one,

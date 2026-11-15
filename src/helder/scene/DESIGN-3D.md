@@ -667,17 +667,24 @@ about 0.1 ms for 100 lights (an estimate, measured in phase 4's
 
 *As built (phase 5):*
 
-- **The atlas stays.** With cube textures in gfx the probes could have
-  been cubes, but WebGL2 and GL ES 3.0 have no cube arrays: a cube a probe
-  is a texture slot a probe, and the standard material's slots are 16 in
-  all (the physical variants use every one). One octahedral atlas is one
-  slot for the environment and every probe, the slot the environment
-  already had, so every material, the physical ones included, reads the
-  environment from it. Cubes are what a capture draws into (six passes
-  into a cube's faces, its mips generated, then prefiltered). The atlas is
-  `Prefilter`'s: columns of square octahedral cells (a texel's gutter
-  folded across the octahedron's edges: no seams), its rows by roughness
-  and the irradiance's, RGBA16F; the environment's is the first column.
+- **The atlas stays, but equirectangular, and the environment's apart.**
+  With cube textures in gfx the probes could have been cubes, but WebGL2
+  and GL ES 3.0 have no cube arrays: a cube a probe is a texture slot a
+  probe, and the standard material's slots are 16 in all (the physical
+  variants use every one). The probes share one atlas (`probesMap`), a
+  slot of the probes variants alone. Cubes are what a capture draws into
+  (six passes into a cube's faces, its mips generated, then prefiltered).
+  The atlas is `Prefilter`'s, in the layout `Environment.prefiltered`
+  already read (rows of the sphere by roughness and the irradiance's,
+  equirectangular, a cell width by width / 2; RGBA16F, its colours
+  c^(1/2.2) so the existing lookup's decode gives the linear light back),
+  a column a probe; not octahedral, and the environment not its first
+  column: a first cut (octahedral cells, the environment in the atlas,
+  every variant reading it) added an octahedral lookup to every variant
+  of the standard material, and Android's emulator's SwiftShader, at its
+  limit since phase 6, crashed compiling the untiled one (the planets
+  example). The environment's own atlas, helder's prefilter's, is read by
+  the lookup every variant has.
 - **Light probes per vertex, not in PbrFrame.** The fragment stage's
   uniforms are full (Android's emulator's 224 vectors), and a fragment
   stage reading PbrObject crashed that emulator (phase 4), so the draw's
@@ -688,7 +695,7 @@ about 0.1 ms for 100 lights (an estimate, measured in phase 4's
   harmonics make its atlas' irradiance row instead (`Environment.sh`, from
   the image on the CPU at load), read per pixel as before.
 - **Reflection probes as varyings.** A draw's two probes (each its box's
-  centre and half size, its column) are four varyings. A probe is captured
+  centre and half size, its column) and their atlas' shape are five varyings. A probe is captured
   at its box's centre: the box is centred on its node (`size`), not an
   `Aabb` of its own. Its share of a draw is how much of the draw's bounds
   its box holds (each axis' membership averaged over the bounds, its
@@ -703,7 +710,8 @@ about 0.1 ms for 100 lights (an estimate, measured in phase 4's
   instanced (pbr's `probes` variants, `PbrProbesShader`). Normal-mapped,
   skinned and see-through draws, instanced sets and materials of their own
   shader (Physical's) read the environment alone: their variants with
-  probes would double their shaders' text.
+  probes would double their shaders' text. The probes fall back to the
+  environment, read as every variant reads it.
 - **Not built:** capturing a `ProbeGrid` on the GPU (a readback; the grid
   is filled by code or read from bytes, `ProbeGrid.read`, baked by a
   tool), `Pack --environment` (the prefilter runs at load, in a frame).
@@ -1770,9 +1778,11 @@ capture, with the departures said where the design describes them (0, 2.3,
   atlas a source (an equirectangular image, mip-mapped, or a cube), GGX's
   rows by filtered importance samples (a golden-ratio sequence: no
   integer bit ops in the fragment stages), the irradiance row from the
-  harmonics (or cosine samples for a cube); a dispatch where the device
-  has compute, else a fragment pass into the atlas (a render target), at
-  the renderer's new `BeforePass` injection point, once.
+  harmonics (or cosine samples for a cube), in `Environment.prefiltered`'s
+  layout (the standard material's lookup unchanged: no new code in its
+  variants); a dispatch where the device has compute, else a fragment pass
+  into the atlas (a render target), at the renderer's new `BeforePass`
+  injection point, once.
   `Environment.prefilter(device, w, h, texels, format)` takes RGBA8 (sRGB),
   RGBA16F or RGBA32F (halved to 16F); the background stays the image.
 - **Probes** is one feature (`renderer.use(new Probes(device))`) for
@@ -1795,8 +1805,8 @@ capture, with the departures said where the design describes them (0, 2.3,
   area variants); `tests/typescript/helder/indirect.ts` without a device.
 - **Sizes** (`tests/3d/size/sizes.sh`, the renderer's level, Linux x86-64
   and wasm32): unused, +27 KB and +29 KB against main (gfx's cubes and
-  arrays in the back ends, the renderer's hooks, the octahedral reads in
-  the standard variants); `Environment.prefilter` +144 and +145 KB,
+  arrays in the back ends, the renderer's hooks; measured before the
+  octahedral reads left the standard variants: less now); `Environment.prefilter` +144 and +145 KB,
   `Probes` +300 and +334 KB (the prefilter's with it), `AreaLights` +295
   and +355 KB (four variants, the tables), `Lightmaps` +71 and +98 KB.
 - **Not measured:** the frame's milliseconds on a phone (`page.json`'s

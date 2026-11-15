@@ -84,6 +84,7 @@ typedef PbrVaryings = {
 	@:optional var extentA:Vec4;
 	@:optional var probeB:Vec4;
 	@:optional var extentB:Vec4;
+	@:optional var probeAtlas:Vec4;
 	// (lightmap: xy the lightmap's uvs, z its intensity, w its mode: 1 the
 	// lights baked too, plus 2 its colours sRGB-encoded)
 	@:optional var lightmapUv:Vec4;
@@ -132,6 +133,8 @@ typedef PbrFragmentParams = {
 	@:optional var ltcMap:Texture2D;
 	// (lightmap: the node's baked light, Lightmap's)
 	@:optional var lightMap:Texture2D;
+	// (probes: the reflection probes' atlas, Probes')
+	@:optional var probesMap:Texture2D;
 	// the prepass's (ViewBuffers: prepass variants only)
 	@:optional var prepass:PbrPrepass;
 	// the glTF extensions' (a variant with one: their factors the
@@ -181,8 +184,10 @@ typedef PbrOptions = {
 // per draw, the probes' (Probes; the probes variants' vertex stage): the
 // light probes' irradiance at its centre (Sh.pack's seven vectors), and its
 // two reflection probes, each its box's centre (xyz; w its column of the
-// atlas, 0 none) and half size (xyz); extentA.w A's share against B (or
-// the environment), extentB.w 1 when sh holds light probes' light
+// atlas plus 1, 0 none) and half size (xyz); extentA.w A's share against B
+// (or the environment), extentB.w 1 when sh holds light probes' light;
+// atlas the probes' atlas (probesMap): x its columns, y its rows of
+// roughness, z and w half a texel of a cell across and down
 // per draw, a lightmap's (Lightmaps; the lightmap variant's vertex stage):
 // rect its place in its texture (xy the second uvs' offset, zw their scale),
 // params x its intensity, y its mode (1: the lights baked too, plus 2: its
@@ -198,6 +203,7 @@ typedef PbrOptions = {
 	var extentA:Vec4;
 	var probeB:Vec4;
 	var extentB:Vec4;
+	var atlas:Vec4;
 }
 
 // per draw in the prepass (ViewBuffers): the camera's view (the normals
@@ -354,9 +360,8 @@ typedef Pbr = {
 	// the environment's light (Environment): x its intensity (0: none, the
 	// sky and the ground instead), y its map's mip levels below the first;
 	// a prefiltered atlas's (Environment.prefiltered): z its levels of
-	// roughness (0: a mip-mapped image), w half a texel of a row; an
-	// octahedral atlas' (Environment.prefilter, ReflectionProbes): y its
-	// columns negated, z its rows of roughness, w a cell's texels
+	// roughness (0: a mip-mapped image), w half a texel of a row (helder's
+	// own prefilter, Environment.prefilter, writes one too)
 	var environment:Vec4;
 	// a rim light (Renderer.rim): rgb its colour times intensity, w the
 	// falloff's power; the silhouette's edge lit from the light's side
@@ -836,15 +841,11 @@ function ambientAt(s:LitSurface, frame:PbrFrame, material:PbrMaterial, occlusion
 	var r = reflect(-s.view, n);
 	var env = reflected(frame, environmentMap, r, s.roughness);
 	if (frame.environment.x > 0) {
-		if (frame.environment.y < 0) irradiance = octAtlas(environmentMap, n, 0, frame.environment.z, -frame.environment.y, frame.environment.z + 1,
-			frame.environment.w) * frame.environment.x;
-		else {
-			var top = frame.environment.y;
-			irradiance = pow(sampleLevel(environmentMap, equirect(n), max(top - 2, 0)).xyz, vec3(2.2)) * frame.environment.x;
-			if (frame.environment.z > 0) {
-				var rows = frame.environment.z;
-				irradiance = pow(atlas(environmentMap, equirect(n), rows, rows, frame.environment.w), vec3(2.2)) * frame.environment.x;
-			}
+		var top = frame.environment.y;
+		irradiance = pow(sampleLevel(environmentMap, equirect(n), max(top - 2, 0)).xyz, vec3(2.2)) * frame.environment.x;
+		if (frame.environment.z > 0) {
+			var rows = frame.environment.z;
+			irradiance = pow(atlas(environmentMap, equirect(n), rows, rows, frame.environment.w), vec3(2.2)) * frame.environment.x;
 		}
 	}
 	var day = daylight(s, frame, material);
@@ -961,28 +962,23 @@ function shade(s:LitSurface, lights:Vec3, indirect:Vec3, env:IndirectLight, emis
 	return vec4(shown, alpha);
 }
 
-// the light from the environment along a reflection r at a roughness: an
-// octahedral atlas' two rows by it (Environment.prefilter, ReflectionProbes:
-// the first column, the environment's), a prefiltered atlas's two rows,
-// blended, a mip-mapped image's level by it, else the sky and the ground
-// blended by r's height
+// the light from the environment along a reflection r at a roughness:
+// a prefiltered atlas's two rows by it, blended, a mip-mapped image's
+// level by it, else the sky and the ground blended by r's height
 function reflected(frame:PbrFrame, environmentMap:Texture2D, r:Vec3, rough:Float):Vec3 {
 	var env = mix(frame.ground.xyz, frame.sky.xyz, smoothstep(-0.2, 0.2, r.y));
 	if (frame.environment.x > 0) {
-		if (frame.environment.y < 0) env = octReflected(environmentMap, r, rough, 0, frame.environment) * frame.environment.x;
-		else {
-			var top = frame.environment.y;
-			env = pow(sampleLevel(environmentMap, equirect(r), rough * max(top - 1, 0)).xyz, vec3(2.2)) * frame.environment.x;
-			if (frame.environment.z > 0) {
-				var rows = frame.environment.z;
-				var edge = frame.environment.w;
-				var at = rough * (rows - 1);
-				var r0 = floor(at);
-				var ru = equirect(r);
-				var lo = atlas(environmentMap, ru, r0, rows, edge);
-				var hi = atlas(environmentMap, ru, min(r0 + 1, rows - 1), rows, edge);
-				env = pow(mix(lo, hi, at - r0), vec3(2.2)) * frame.environment.x;
-			}
+		var top = frame.environment.y;
+		env = pow(sampleLevel(environmentMap, equirect(r), rough * max(top - 1, 0)).xyz, vec3(2.2)) * frame.environment.x;
+		if (frame.environment.z > 0) {
+			var rows = frame.environment.z;
+			var edge = frame.environment.w;
+			var at = rough * (rows - 1);
+			var r0 = floor(at);
+			var ru = equirect(r);
+			var lo = atlas(environmentMap, ru, r0, rows, edge);
+			var hi = atlas(environmentMap, ru, min(r0 + 1, rows - 1), rows, edge);
+			env = pow(mix(lo, hi, at - r0), vec3(2.2)) * frame.environment.x;
 		}
 	}
 	return env;
@@ -991,7 +987,7 @@ function reflected(frame:PbrFrame, environmentMap:Texture2D, r:Vec3, rough:Float
 // the light around a surface with probes (Probes: the draw's, as varyings):
 // the light probes' irradiance where it has some (ambient.w), the
 // reflection probes' light along the reflection (A's share against B's, or
-// the environment's)
+// the environment's), from their atlas (t; e: its shape, PbrProbes' atlas)
 function probeLight(env:IndirectLight, world:Vec3, n:Vec3, v:Vec3, rough:Float, ambient:Vec4, probeA:Vec4, extentA:Vec4, probeB:Vec4, extentB:Vec4,
 		t:Texture2D, e:Vec4):IndirectLight {
 	var irradiance = env.irradiance;
@@ -1015,7 +1011,22 @@ function boxReflected(t:Texture2D, world:Vec3, r:Vec3, rough:Float, probe:Vec4, 
 	var b = (probe.xyz + extent.xyz - world) / rr;
 	var far = max(a, b);
 	var dist = min(min(far.x, far.y), far.z);
-	return octReflected(t, world + r * max(dist, 0) - probe.xyz, rough, probe.w, e);
+	return probeAtlas(t, world + r * max(dist, 0) - probe.xyz, rough, probe.w - 1, e);
+}
+
+// a probe's light along a direction at a roughness: its column of the
+// probes' atlas (e: its columns, rows, half a texel across and down a cell),
+// two rows by it, blended (sRGB-encoded as an environment's atlas: decoded)
+function probeAtlas(t:Texture2D, d:Vec3, rough:Float, column:Float, e:Vec4):Vec3 {
+	var rows = e.y;
+	var at = rough * (rows - 1);
+	var r0 = floor(at);
+	var uv = equirect(d);
+	var u = (column + clamp(uv.x, e.z, 1 - e.z)) / e.x;
+	var v = clamp(uv.y, e.w, 1 - e.w);
+	var lo = sampleLevel(t, vec2(u, (r0 + v) / (rows + 1)), 0).xyz;
+	var hi = sampleLevel(t, vec2(u, (min(r0 + 1, rows - 1) + v) / (rows + 1)), 0).xyz;
+	return pow(mix(lo, hi, at - r0), vec3(2.2));
 }
 
 // an area light at a surface (AreaLights: its row, PbrLights' or the
@@ -1097,17 +1108,6 @@ function edgeFormFactor(a:Vec3, b:Vec3):Vec3 {
 	return cross(a, b) * t;
 }
 
-// an octahedral atlas' light along a direction at a roughness (its column's
-// two rows by it, blended; e: PbrFrame's environment, its columns -y, its
-// rows of roughness z, its cells' texels w)
-function octReflected(t:Texture2D, d:Vec3, rough:Float, column:Float, e:Vec4):Vec3 {
-	var rows = e.z;
-	var at = rough * (rows - 1);
-	var r0 = floor(at);
-	var lo = octAtlas(t, d, column, r0, -e.y, rows + 1, e.w);
-	var hi = octAtlas(t, d, column, min(r0 + 1, rows - 1), -e.y, rows + 1, e.w);
-	return mix(lo, hi, at - r0);
-}
 
 // a clear coat's specular lobe towards v from a unit light along l,
 // times n.l (GGX, height-correlated Smith, a dielectric's Fresnel)
@@ -1652,6 +1652,7 @@ final pbr = slots({
 			extentA: m.options.probes ? p.probes.extentA : vec4(0),
 			probeB: m.options.probes ? p.probes.probeB : vec4(0),
 			extentB: m.options.probes ? p.probes.extentB : vec4(0),
+			probeAtlas: m.options.probes ? p.probes.atlas : vec4(0),
 			// (the lightmap's place at the second uvs)
 			lightmapUv: m.options.lightmap ? vec4(v.uv1 * p.lightmap.rect.zw + p.lightmap.rect.xy, p.lightmap.params.x, p.lightmap.params.y) : vec4(0)
 		};
@@ -1852,7 +1853,7 @@ final pbr = slots({
 			var env = ambientAt(lit, p.frame, p.material, p.occlusionTexture, p.environmentMap, p.aoMap);
 			// (probes: the light probes' irradiance, the reflection probes' light)
 			if (m.options.probes) env = probeLight(env, lit.world, lit.normal, lit.view, lit.roughness, i.ambient, i.probeA, i.extentA, i.probeB, i.extentB,
-				p.environmentMap, p.frame.environment);
+				p.probesMap, i.probeAtlas);
 			// (lightmap: its baked light the irradiance; All: the lights' too, none added)
 			if (m.options.lightmap) {
 				var baked = sample(p.lightMap, i.lightmapUv.xy).xyz;

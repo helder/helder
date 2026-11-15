@@ -23,24 +23,23 @@ import helder.scene.render.PbrShader;
 //     hold most of its bounds), box-projected per pixel, A blended over B
 //     or the environment.
 //
-// The atlas: one RGBA16F texture of octahedral cells (Prefilter), a column a
-// probe and the environment's first (Environment's image prefiltered again,
-// whatever kind it is but a prefiltered atlas), bound where the
-// environment is: every material, the standard one or not, reads the
-// environment from it. A probe is captured when first drawn and after
+// The atlas: one RGBA16F texture (Prefilter's: a prefiltered atlas' rows by
+// roughness, a column a probe), the probes variants' own texture
+// (probesMap); the environment stays its own, read as before by every
+// material (the probes' fallback). A probe is captured when first drawn and after
 // capture(): the world drawn six times from its centre into a cube (an
 // offscreen renderer of the renderer's light, sky and environment: a twin,
 // its faces mirrored as a cube's are), then prefiltered into its column; at
 // the frame's BeforePass point, a probe or two a frame (captures).
 //
-// Not lit by probes (they read the environment, from the atlas): the
+// Not lit by probes (they read the environment alone): the
 // normal-mapped, skinned and see-through draws, instanced sets
 // (InstancedMesh, Sprites) and materials of their own shader (Physical's
 // among them).
 class Probes implements RenderFeature implements RenderFeature.ProbeSource {
 	public final device:Device;
-	// a cell's texels, the rows of roughness, the probes at most (the
-	// atlas' columns less the environment's), a capture's face's texels
+	// a cell's texels across (its height half), the rows of roughness, the
+	// probes at most (the atlas' columns), a capture's face's texels
 	public final size:Int;
 	public final levels:Int;
 	public final max:Int;
@@ -49,7 +48,7 @@ class Probes implements RenderFeature implements RenderFeature.ProbeSource {
 	public var capturesPerFrame = 2;
 	// captures done so far
 	public var captures(default, null) = 0;
-	// the atlas (Prefilter's: columns of octahedral cells)
+	// the atlas (Prefilter's: a column of rows a probe)
 	public final atlas:Texture;
 
 	final prefilter:Prefilter;
@@ -58,7 +57,7 @@ class Probes implements RenderFeature implements RenderFeature.ProbeSource {
 	final cubeLevels:Int;
 	var renderer:Null<Renderer> = null;
 	var twin:Null<Renderer> = null;
-	var environment:Null<Environment> = null;
+	final atlasSampler:Sampler;
 	final block:PbrProbes;
 	final bytes = Bytes.alloc(PbrProbesShader.params.probes.block.size);
 	final sh = new Sh();
@@ -74,7 +73,8 @@ class Probes implements RenderFeature implements RenderFeature.ProbeSource {
 		max = options != null && options.max != null ? options.max : 8;
 		captureSize = options != null && options.captureSize != null ? options.captureSize : 128;
 		prefilter = new Prefilter(device, size, levels, options != null && options.samples != null ? options.samples : 64);
-		atlas = prefilter.atlas(max + 1);
+		atlas = prefilter.atlas(max);
+		atlasSampler = device.createSampler({filter: Linear, wrap: Clamp});
 		cube = device.createTexture({width: captureSize, height: captureSize, cube: true, format: RGBA16F, renderTarget: true, mipLevels: 0});
 		depth = device.createTexture({width: captureSize, height: captureSize, format: Depth32F});
 		var l = 0;
@@ -82,7 +82,8 @@ class Probes implements RenderFeature implements RenderFeature.ProbeSource {
 			l++;
 		cubeLevels = l;
 		var z = new Vec4(0, 0, 0, 0);
-		block = {sh: [for (_ in 0...7) z], probeA: z, extentA: z, probeB: z, extentB: z};
+		// (the atlas' shape: its columns, rows of roughness, half a texel across and down a cell)
+		block = {sh: [for (_ in 0...7) z], probeA: z, extentA: z, probeB: z, extentB: z, atlas: new Vec4(max, levels, 0.5 / size, 1 / size)};
 		plainSlots = Renderer.slotsOf(PbrProbesShader.uniforms, PbrProbesShader.textures);
 		instancedSlots = Renderer.slotsOf(PbrInstancedProbesShader.uniforms, PbrInstancedProbesShader.textures);
 	}
@@ -93,19 +94,9 @@ class Probes implements RenderFeature implements RenderFeature.ProbeSource {
 		renderer.inject(BeforePass, (enc, frame) -> prepare(enc, renderer, frame));
 	}
 
-	var filled = false;
-
-	// (BeforePass) the environment's column, the stale probes captured
+	// (BeforePass) the stale probes captured
 	function prepare(enc:Encoder, renderer:Renderer, frame:Renderer.FrameInfo) {
 		world = frame.world;
-		var env = @:privateAccess renderer.environment;
-		if (env != environment || !filled) {
-			environment = env;
-			filled = true;
-			// (an image's or prefilter's, not a prefiltered atlas)
-			if (env != null && env.rows == 0)
-				prefilter.run(enc, atlas, max + 1, 0, env.texture, false, Math.round(1 / @:privateAccess env.edge), env.levels + 1, !env.linear, env.sh, 1);
-		}
 		var store = world.store(ReflectionProbe.KIND), done = 0;
 		for (k in 0...store.length) {
 			var p = store.valueAt(k);
@@ -143,7 +134,7 @@ class Probes implements RenderFeature implements RenderFeature.ProbeSource {
 		}
 		eye.dispose();
 		device.generateMips(cube);
-		prefilter.run(enc, atlas, max + 1, probe.column, cube, true, captureSize, cubeLevels, false, null, probe.intensity);
+		prefilter.run(enc, atlas, max, probe.column - 1, cube, true, captureSize, cubeLevels, false, null, probe.intensity);
 		captures++;
 	}
 
@@ -168,8 +159,9 @@ class Probes implements RenderFeature implements RenderFeature.ProbeSource {
 	@:noCompletion public function slots(instanced:Bool):Array<Int>
 		return instanced ? instancedSlots : plainSlots;
 
-	// a draw's probes (its bounds': its centre, its half size) into its block, set
-	@:noCompletion public function bind(enc:Encoder, cx:Float, cy:Float, cz:Float, ex:Float, ey:Float, ez:Float) {
+	// a draw's probes (its bounds': its centre, its half size) into its block,
+	// set with the atlas at a variant's slots (Renderer.slotsOf's 19 and 20)
+	@:noCompletion public function bind(enc:Encoder, slots:Array<Int>, cx:Float, cy:Float, cz:Float, ex:Float, ey:Float, ez:Float) {
 		var b = block;
 		var has = world != null && lightAt(world, new Vec3(cx, cy, cz), sh);
 		if (has) sh.pack(b.sh) else for (k in 0...7)
@@ -199,7 +191,8 @@ class Probes implements RenderFeature implements RenderFeature.ProbeSource {
 		b.probeB = c == null ? new Vec4(0, 0, 0, 0) : vec(c.node.worldPosition(), c.column);
 		b.extentB = c == null ? new Vec4(0, 0, 0, has ? 1 : 0) : vec(c.size * 0.5, has ? 1 : 0);
 		PbrProbesShader.params.probes.write(b, bytes);
-		enc.setUniforms(PbrProbesShader.params.probes.block.binding, bytes);
+		enc.setUniforms(slots[19], bytes);
+		enc.setTexture(slots[20], atlas, atlasSampler);
 	}
 
 	static inline function vec(v:Vec3, w:Float):Vec4
@@ -239,14 +232,6 @@ class Probes implements RenderFeature implements RenderFeature.ProbeSource {
 		if (b != null) out.addScaled(b.sh, b.intensity * da / (da + db));
 		return true;
 	}
-
-	// the atlas at the environment's slot
-	@:noCompletion public function bindAtlas(enc:Encoder, slot:Int, sampler:Sampler)
-		enc.setTexture(slot, atlas, sampler);
-
-	// PbrFrame's environment: the atlas' (the environment's intensity, 0 without one)
-	@:noCompletion public function writeEnvironment(frame:PbrFrame)
-		frame.environment = new Vec4(environment != null && environment.rows == 0 ? environment.intensity : 0, -(max + 1), levels, size);
 
 	public function dispose() {
 		device.destroyTexture(atlas);

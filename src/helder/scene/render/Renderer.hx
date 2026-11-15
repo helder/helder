@@ -690,7 +690,6 @@ class Renderer {
 		b.shadowRectFar = rectFar;
 		b.shadowAtlas = atlas;
 		b.environment = environment != null ? environment.frameVector() : new Vec4(0, 0, 0, 0);
-		if (probeSource != null) probeSource.writeEnvironment(b);
 		b.rim = new Vec4(rim.x, rim.y, rim.z, rimPower);
 		b.fog = Fog.colorOf(fog);
 		b.fogShape = Fog.shapeOf(fog);
@@ -785,7 +784,7 @@ class Renderer {
 			if (want != current) {
 				slots = baked ? lightmapSource.slots() : areaLit ? areaSource.slots(many, probed) : probed ? probeSource.slots(many) : own != null ? own.slots : many ? (normals != null ? normals.instancedSlots() : m.blend ? instancedSlots : sunOnly ? sunInstancedSlots : untiled ? untiledInstancedSlots : instancedSlots) : skin != null ? skin.slots() : normals != null ? normals.slots() : m.blend ? plainSlots : sunOnly ? sunSlots : untiled ? untiledSlots : plainSlots;
 				bindPipeline(enc, want, slots);
-				if (areaLit) areaSource.bind(enc, many, probed);
+				if (areaLit) areaSource.bind(enc, slots);
 				current = want;
 				material = null;
 				node = Node.NONE;
@@ -795,7 +794,7 @@ class Renderer {
 				writeObject(Mat4.identity(), WHITE, batchLights, b * FrameLights.PER_DRAW);
 				if (slots[1] >= 0) enc.setUniforms(slots[1], objectBytes);
 				// (its probes the run's bounds')
-				if (probed) bindRun(start, n, p, enc);
+				if (probed) bindRun(start, n, p, enc, slots);
 				node = Node.NONE;
 			} else if (d.node != node) {
 				var model = d.node.worldMatrix(), t = d.tint;
@@ -806,7 +805,7 @@ class Renderer {
 					// (its bounds in the world: the centre moved, the half size by the matrix's absolute values)
 					var c = p.bounds.center(), e = (p.bounds.max - p.bounds.min) * 0.5;
 					var w = MathTools.transformPoint(model, c), x = MathTools.col(model, 0), y = MathTools.col(model, 1), z = MathTools.col(model, 2);
-					probeSource.bind(enc, w.x, w.y, w.z, Math.abs(x.x) * e.x + Math.abs(y.x) * e.y + Math.abs(z.x) * e.z,
+					probeSource.bind(enc, slots, w.x, w.y, w.z, Math.abs(x.x) * e.x + Math.abs(y.x) * e.y + Math.abs(z.x) * e.z,
 						Math.abs(x.y) * e.x + Math.abs(y.y) * e.y + Math.abs(z.y) * e.z, Math.abs(x.z) * e.x + Math.abs(y.z) * e.y + Math.abs(z.z) * e.z);
 				}
 				node = d.node;
@@ -847,7 +846,7 @@ class Renderer {
 		return lightmapSource != null && lightmapSource.has(n);
 
 	// an instanced run's probes (Probes): its draws' bounds' union's
-	function bindRun(start:Int, n:Int, p:Mesh.Primitive, enc:Encoder) {
+	function bindRun(start:Int, n:Int, p:Mesh.Primitive, enc:Encoder, slots:Array<Int>) {
 		var x0 = Math.POSITIVE_INFINITY, y0 = x0, z0 = x0, x1 = Math.NEGATIVE_INFINITY, y1 = x1, z1 = x1;
 		var c = p.bounds.center(), e = (p.bounds.max - p.bounds.min) * 0.5;
 		for (k in start...start + n) {
@@ -863,7 +862,7 @@ class Renderer {
 			y1 = Math.max(y1, w.y + ey);
 			z1 = Math.max(z1, w.z + ez);
 		}
-		probeSource.bind(enc, (x0 + x1) * 0.5, (y0 + y1) * 0.5, (z0 + z1) * 0.5, (x1 - x0) * 0.5, (y1 - y0) * 0.5, (z1 - z0) * 0.5);
+		probeSource.bind(enc, slots, (x0 + x1) * 0.5, (y0 + y1) * 0.5, (z0 + z1) * 0.5, (x1 - x0) * 0.5, (y1 - y0) * 0.5, (z1 - z0) * 0.5);
 	}
 
 	// (the frame's pass ended after its opaque surfaces, its colour copied
@@ -963,8 +962,7 @@ class Renderer {
 		var sf = shadowSource != null ? shadowSource.shadowFrame() : null;
 		enc.setTexture(slots[4], sf != null ? sf.map : noShadow, nearest);
 		bindClusters(enc, slots);
-		if (probeSource != null) probeSource.bindAtlas(enc, slots[12], clamped) else if (environment != null) environment.bind(enc, slots[12]) else
-			enc.setTexture(slots[12], white, sampler);
+		if (environment != null) environment.bind(enc, slots[12]) else enc.setTexture(slots[12], white, sampler);
 		if (slots[13] >= 0) enc.setTexture(slots[13], occlusion != null ? occlusion : white, clamped);
 		if (normals != null) enc.setTexture(slots[10], m.normalTexture != null ? m.normalTexture : flatNormal, ms);
 		if (layers != null) layers.bind(enc, slots, ms, white, behind != null ? behind : black, mipClamped);
@@ -986,7 +984,7 @@ class Renderer {
 		}
 
 	// where a variant's slots of a material's own blocks begin (slotsOf's length)
-	public static inline var OWN = 19;
+	public static inline var OWN = 24;
 
 	// a material's own shader's pipeline and slots for a kind of draw (0
 	// plain, 1 normal mapped, 2 skinned, 3 instanced, 4 instanced and normal
@@ -1176,7 +1174,7 @@ class Renderer {
 		return [u("PbrFrame"), u("PbrObject"), u("PbrMaterial"), t("baseColorTexture"), t("shadowMap"), u("PbrSkinInfo"), t("jointMatrices"),
 			t("metallicRoughnessTexture"), t("emissiveTexture"), t("occlusionTexture"), t("normalTexture"), t("clusterMap"), t("environmentMap"), t("aoMap"),
 			layered(textures), t("layerMap0"), t("layerMap1"), t("transmissionMap"),
-			u("PbrLights")];
+			u("PbrLights"), u("PbrProbes"), t("probesMap"), t("ltcMap"), u("PbrLightmap"), t("lightMap")];
 	}
 
 	// (a physical shader's variant: one reading a layer's map)
