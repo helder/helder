@@ -701,7 +701,10 @@ build time.
   start`, after `force-stop`) and streams logcat's `hxmc` tag (the
   program's stdout and stderr) until the app's process ends; on iOS `xcrun
   simctl` boots the simulator when it is not, installs, and launches with
-  `--console` (its output here, its end the command's).
+  `--stdout` and `--stderr` into files beside the app, followed here until
+  the app's process ends (its end the command's; `--console` lost all of a
+  short program's output when it ended during the launch). The app's own
+  exit status is not simctl's to give: 0 once it has run.
 - **assets** (helder.asset: src/helder/asset/README.md): after each build
   the keys whose markers the output has are the program's assets
   (`AssetStep`: their files found under the class paths, then the

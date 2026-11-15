@@ -3,8 +3,9 @@
 # ios-simulator job; not run elsewhere): the .app checked with Apple's tools
 # (codesign --verify --strict, plutil -lint), a simulator of the newest iOS
 # runtime and iPhone made and booted, then `helder run --target ios -d
-# <it>` (built, installed, launched with its output here: simctl launch
-# --console) prints the hello line; the simulator deleted at the end.
+# <it>` (built, installed, launched, its output followed from the files
+# simctl writes it to until it ends) prints the hello line; the simulator
+# deleted at the end.
 #   sh tests/pack/ios.sh <helder> [out dir]
 set -u
 helder=$1
@@ -48,7 +49,7 @@ if [ $code != 0 ] && grep -q "$line" "$out/run.txt"; then
 fi
 check "helder run --target ios -d <simulator>" $code
 grep -q "$line" "$out/run.txt"
-check "its line, from simctl launch --console" $?
+check "its line, from helder run" $?
 
 # The assets (tests/asset/Checksum.hx: helder.asset's files in the app's
 # assets/, sealed by CodeResources): Apple's codesign verifies the bundle,

@@ -349,6 +349,55 @@ class Ios {
 	@:coroutine public static function install(udid:String, app:String)
 		check('xcrun simctl install $app', simctl(["install", udid, app]));
 
+	// launched (a running one ended first) and followed to its end, its
+	// output here as it comes (helder run). simctl writes the app's stdout and
+	// stderr into files (--stdout, --stderr), followed while its process
+	// lives (a simulator's app is the Mac's process: kill -0), then read to
+	// their ends: --console lost the whole output of an app that ended while
+	// simctl was still launching it (it found the app gone and read nothing:
+	// a program that prints its lines and returns, as helder's checks do).
+	// The app's own exit status is not simctl's to give: 0 once it has run.
+	@:coroutine public static function run(udid:String, id:String, dir:String):Int {
+		TestCommand.mkdirs(dir);
+		// (the host's absolute paths: the simulator's launchd opens them, a
+		// relative one is not the command's directory there and the launch is refused)
+		dir = FileSystem.fullPath(dir).split("\\").join("/");
+		var out = '$dir/$id.stdout', err = '$dir/$id.stderr';
+		for (f in [out, err])
+			File.saveContent(f, "");
+		var r = simctl(["launch", "--terminate-running-process", '--stdout=$out', '--stderr=$err', udid, id]);
+		check('xcrun simctl launch $id', r);
+		// (its answer: "<id>: <pid>")
+		var m = ~/: *([0-9]+)\s*$/;
+		if (!m.match(r.text.trim())) throw 'xcrun simctl launch $id: no process id in "${r.text.trim()}"';
+		var pid = m.matched(1);
+		var at = [0, 0], partial = ["", ""];
+		function follow(last:Bool) {
+			for (k in 0...2) {
+				var path = k == 0 ? out : err;
+				var b = try File.getBytes(path) catch (_:Dynamic) null;
+				if (b != null && b.length > at[k]) {
+					var text = partial[k] + b.getString(at[k], b.length - at[k]);
+					at[k] = b.length;
+					var lines = text.split("\n");
+					partial[k] = lines.pop();
+					for (l in lines)
+						if (k == 0) Term.out(l) else Term.err(l);
+				}
+				if (last && partial[k] != "") {
+					if (k == 0) Term.out(partial[k]) else Term.err(partial[k]);
+					partial[k] = "";
+				}
+			}
+		}
+		while (Devices.output("/bin/kill", ["-0", pid]).code == 0) {
+			follow(false);
+			Async.delay(0.1);
+		}
+		follow(true);
+		return 0;
+	}
+
 	// launched (a running one ended first), its output on the process's
 	// (--console: simctl stays until the app ends); env: the app's
 	// environment (SIMCTL_CHILD_ for each)

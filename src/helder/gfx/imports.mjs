@@ -123,6 +123,18 @@ export default async function (host) {
 	let layout = [], resources = [];
 	// the frame
 	let encoder = null, texture = null, frameTarget = null, frameView = null, pass = null;
+	// (what was released while the encoder's commands were not submitted: destroyed after)
+	const doomed = [];
+	const destroy = (o) => {
+		o?.destroy?.();
+		o?.texture?.destroy();
+		// (a target's depth and multisampled textures; a texture's depth is whether it is one)
+		o?.depth?.destroy?.();
+		o?.msaa?.destroy?.();
+	};
+	const submitted = () => {
+		for (const o of doomed.splice(0)) destroy(o);
+	};
 	// generateMips: its pipeline per format, its sampler
 	const mipPipelines = new Map();
 	let mipSampler = null;
@@ -530,6 +542,7 @@ export default async function (host) {
 				device.queue.submit([encoder.finish()]);
 				encoder = null;
 				own = false;
+				submitted();
 			}
 		},
 		draw_indirect(b, offset) {
@@ -641,17 +654,19 @@ export default async function (host) {
 			device.queue.submit([encoder.finish()]);
 			pixels?.().then((px) => waiting.forEach((w) => w.resolve(px)), (e) => waiting.forEach((w) => w.reject(e)));
 			encoder = null;
+			submitted();
 			attachment.view = attachment.resolveTarget = frameView = null;
 			depthAttachment.view = null;
 			texture = null;
 		},
 		release(h) {
 			const o = handles.get(h);
-			o?.destroy?.();
-			o?.texture?.destroy();
-			// (a target's depth and multisampled textures; a texture's depth is whether it is one)
-			o?.depth?.destroy?.();
-			o?.msaa?.destroy?.();
+			// (commands recorded and not yet submitted may use it, a frame's or a
+			// compute pass's: destroyed after their submit, which WebGPU lets
+			// finish with it; destroyed now, the submit failed: "used in submit
+			// while destroyed", a buffer grown in the middle of a frame)
+			if (encoder) doomed.push(o);
+			else destroy(o);
 			// (swapped out: the canvas stays configured, its last frame shown)
 			if (o?.context && !host.swapping) {
 				o.context.unconfigure();
@@ -663,6 +678,8 @@ export default async function (host) {
 
 	// (hxmc dev: swapped out; what the program did not release, released and counted)
 	host.onDispose?.(() => {
+		// (what waited on a submit that will not come)
+		submitted();
 		let left = 0;
 		const glObject = typeof WebGLObject === 'function' ? WebGLObject : null;
 		for (const g of contexts) resetGL(g);
