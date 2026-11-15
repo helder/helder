@@ -4,7 +4,9 @@ package helder.ui;
 // Baseline: a row's items on their first baselines, a text's first line's or
 // else their first item's, one without any on its bottom edge, as CSS's
 // flexbox; in a column on their start edges, the largest start margin
-// before them all, as Chromium; in a grid and for an absolute box, as Start)
+// before them all, as Chromium; in a grid, the items starting in a row on
+// the deepest one's first baseline (CSS Grid 11.5's shims), else their bottom
+// edge; for an absolute box, as Start)
 enum abstract Align(Int) {
 	var Auto;
 	@:css("flex-start") var Start;
