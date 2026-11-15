@@ -132,6 +132,8 @@ export default async function (host) {
 		o?.depth?.destroy?.();
 		o?.msaa?.destroy?.();
 	};
+	// a canvas's frames submitted and not yet done (frame_begin)
+	let inFlight = 0;
 	const submitted = () => {
 		for (const o of doomed.splice(0)) destroy(o);
 	};
@@ -292,6 +294,7 @@ export default async function (host) {
 			pipe.active = c;
 			pass.setPipeline(c.pipeline);
 		}
+		if (!c.bgl) return;
 		// (by the objects' serials, not their handles: a released texture's handle is given again to the next one)
 		let key = '';
 		for (const t of c.textures) key += handles.get(textures[t.slot]).serial + ':' + samplers[t.slot] + ',';
@@ -381,10 +384,13 @@ export default async function (host) {
 		return v;
 	}
 
-	// the pipeline p for unfilterable textures at the slots of mask
+	// the pipeline p for unfilterable textures at the slots of mask, made
+	// when first drawn with them (each a whole compile: seconds of a
+	// software GPU's, SwiftShader's, for a large fragment stage, and a
+	// pipeline whose textures are never all filterable never needs mask 0's)
 	function variant(p, mask) {
 		const bgl = bindGroupLayout(p.resources, mask);
-		const v = { ...p.base, pipeline: device.createRenderPipeline({ ...p.desc, layout: device.createPipelineLayout({ bindGroupLayouts: [bgl] }) }), bgl, groups: new Map() };
+		const v = { ...p.base, pipeline: device.createRenderPipeline({ ...p.desc, layout: bgl ? device.createPipelineLayout({ bindGroupLayouts: [bgl] }) : 'auto' }), bgl, groups: new Map() };
 		p.variants.set(mask, v);
 		return v;
 	}
@@ -567,15 +573,18 @@ export default async function (host) {
 				// (the frame's: its samples; a render target's, the pipeline's)
 				multisample: { count: colorFormat < 0 ? handles.get(target).samples ?? 1 : samples },
 			};
-			const pipeline = device.createRenderPipeline({ ...desc, layout: bgl ? device.createPipelineLayout({ bindGroupLayouts: [bgl] }) : 'auto' });
-			// (base: what its variants share, variant())
+			// (base: what its variants share; each variant made when first drawn, variant())
 			const base = { uniforms, textures: resources.filter((r) => r.kind === TEXTURE), offsets: new Uint32Array(uniforms.length) };
-			const p = { ...base, pipeline, bgl, groups: new Map(), base, desc, resources, variants: new Map(), active: null };
-			p.variants.set(0, p);
+			const p = { ...base, bgl, groups: new Map(), base, desc, resources, variants: new Map(), active: null };
 			return handles.add(p);
 		},
 		frame_begin(target) {
 			const t = handles.get(target);
+			// (a canvas's frames two in flight at most: no frame while the GPU
+			// is behind, as a swapchain's acquire waits natively; else frames
+			// queue up on a slow GPU, SwiftShader's, and the page's thread waits
+			// behind them, unresponsive for seconds)
+			if (!t.texture && inFlight >= 2) return 0;
 			texture = t.texture ?? t.context.getCurrentTexture();
 			if (texture.width === 0 || texture.height === 0) return 0;
 			frameTarget = t;
@@ -656,9 +665,9 @@ export default async function (host) {
 		},
 		set_pipeline(p) {
 			pipe = handles.get(p);
-			pipe.active = pipe;
-			pass.setPipeline(pipe.pipeline);
-			dirty = !!pipe.bgl;
+			// (its variant set by the first draw: bind)
+			pipe.active = null;
+			dirty = true;
 		},
 		set_vertex_buffer: (slot, b, offset) => pass.setVertexBuffer(slot, handles.get(b), offset),
 		set_texture(slot, t, s) {
@@ -705,6 +714,10 @@ export default async function (host) {
 			}
 			frameQueries = [];
 			device.queue.submit([encoder.finish()]);
+			if (!frameTarget.texture) {
+				inFlight++;
+				device.queue.onSubmittedWorkDone().then(() => inFlight--, () => inFlight--);
+			}
 			for (const q of reads)
 				q.read.mapAsync(GPUMapMode.READ).then(() => {
 					const v = new BigUint64Array(q.read.getMappedRange());
