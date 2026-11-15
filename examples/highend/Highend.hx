@@ -39,8 +39,6 @@ class Highend implements Markup {
 	static function main() {
 		var ssr = signal(true), rays = signal(true), blur = signal(true), aa = signal("taa");
 		var picked = signal("sphere"), mode = signal(Translate);
-		// (the mirror's turn: a signal, as markup takes a Quat)
-		var mirror = signal(Quat.axisAngle(new Vec3(0, 1, 0), -0.6));
 		var world = new World("highend"), eye = world.node("eye");
 		var camera = Camera.attach(eye, Camera.perspective(0.85, 0.1, 80));
 		eye.position = new Vec3(0.3, 1.8, 6.5);
@@ -68,7 +66,7 @@ class Highend implements Markup {
 					</Effects>
 					<OrbitControls target={new Vec3(0, 0.8, 0)} minDistance={3.0} maxDistance={20.0}/>
 					<mesh shape="plane" size={60.0} color={new Vec4(0.08, 0.08, 0.09, 1)} metallic={0.2} roughness={0.08}/>
-					<mesh shape="box" position={new Vec3(2.3, 0.85, -1.4)} rotation={mirror} scale={new Vec3(1.6, 1.6, 0.06)}
+					<mesh shape="box" position={new Vec3(2.3, 0.85, -1.4)} rotation={Quat.axisAngle(new Vec3(0, 1, 0), -0.6)} scale={new Vec3(1.6, 1.6, 0.06)}
 						color={new Vec4(0.95, 0.95, 0.95, 1)} metallic={1.0} roughness={0.02}/>
 					<Shape name="box" shape="box" at={new Vec3(-1.8, 0.5, -0.4)} size={1.0} color={new Vec4(0.85, 0.3, 0.2, 1)} picked={picked}/>
 					<Shape name="sphere" shape="sphere" at={new Vec3(0, 0.6, 0.4)} size={1.2} color={new Vec4(0.9, 0.88, 0.82, 1)} picked={picked}/>

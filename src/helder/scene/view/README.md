@@ -187,12 +187,33 @@ none: `Outline.select`, drawn by `<Outline>`) on every node.
   `skeletonHelper` showing the node they are in (`<mesh><boundsHelper/></mesh>`);
   color. Their box's renderer is given a `DebugDraw`.
 
-An element's props are checked by name when compiling: `SceneRenderer`
-declares them (`@:props(SceneProps)`: each tag's structure, its factory's
-options for a geometry or material tag), and a name its element does not
-take is an error at the attribute, its props listed
-(`<toonMaterial stepz={3}/>`: "markup: <toonMaterial> has no prop stepz";
-tests/3d-ui/reject/PropTypo.hx). Values are checked when set.
+An element's props are checked when compiling, by name and by type:
+`SceneRenderer` declares them (`@:props(SceneProps)`: each tag's structure,
+its factory's options for a geometry or material tag), and a name its
+element does not take is an error at the attribute, its props listed
+(`<toonMaterial stepz={3}/>`: "markup: <toonMaterial> has no prop stepz").
+A value not of its prop's type is one too (`<pointLight
+intensity="bright"/>`: "markup: <pointLight>'s intensity is a Float, not a
+String"), and so is a signal of another type, by what it reads.
+
+Each prop is set by its own typed function (`SceneSet`, the renderer's
+`@:setters`), never by name: a constant once, a value that reads (a call,
+a signal, a function of none) by one binding. Struct values go inline:
+
+```haxe
+<node rotation={Quat.axisAngle(up, angle())} position={new Vec3(0, lift(), 0)}/>
+```
+
+A prop is one of three kinds. A node's own (`position`, `rotation`,
+`scale`, `visible`, `name`, `outline`) writes its node. A set prop writes
+its component in place: a light's `color`, `intensity`, `range`, `inner`,
+`outer`, `castShadows`, a hemisphere's `sky` and `ground`, a camera's
+`fov`, `near`, `far`, a mesh's own material's `color`, `metallic`,
+`roughness`. A make prop makes its component again: a geometry tag's
+options, a material tag's, a light's `kind` and shadow (its set props
+kept). A binding allocates when its value changes (the graph holds values
+boxed: a `Quat` 56 bytes, a `Float` 32), so motion every frame belongs in
+code, not in signals.
 
 Markup outside a `<Scene>` renders into a
 world's root: `Render.render(<node/>, SceneRenderer.root(world))`. Per-frame
@@ -201,19 +222,17 @@ signals.
 
 ## Status
 
-A prototype: properties go through `setProperty` by name, their names
-checked when compiling (@:props), their values when set; a value's type
-checked when compiling comes next. A struct value
-(`Vec3`, `Quat`) is bound through a `Signal` for now (hxmc does not yet
-pass a closure returning one where a function of another type is
-expected). In a `<Scene>`, the renderer's own pipelines draw into its
-target; its features' (skins, normal maps, the sky, particles) are the
-frame's still.
+Typed bindings (DESIGN-MARKUP.md M1). Next: removed elements disposing
+their nodes, drawing on demand per world, `onFrame` (M2), then tags
+generated from the classes (M3). In a `<Scene>`, the renderer's own
+pipelines draw into its target; its features' (skins, normal maps, the
+sky, particles) are the frame's still.
 
 Tests (`bun run test 3d`): `tests/3d-ui/SceneUiTest.hx` (markup on a
-world; the geometry, material, light and sprites tags),
-`tests/3d-ui/reject/PropTypo.hx` (a prop an element does not take,
-rejected), `tests/3d-ui/SurfaceTest.hx` (under Xvfb: two `<Surface>`s, a
+world; the geometry, material, light and sprites tags; inline `Quat`,
+`Vec3` and `Vec4` values, constant and bound; set props in place),
+`tests/3d-ui/reject` (a prop an element does not take, a value not of
+its type, a signal of another type: rejected), `tests/3d-ui/SurfaceTest.hx` (under Xvfb: two `<Surface>`s, a
 `<Scene>`'s pixels in its box, a click picked in it, fingers picked at
 their presses, a tap on the mesh, a drag from it orbiting the camera, a
 cancel, `<Ui>` placed, `<Stick>` drawn, a click picked by triangles (its

@@ -1138,10 +1138,10 @@ class Run {
 		var r = build(cp.concat(cps(["tests/3d/reject"])).concat(["-main", "ModelTypo", "--custom-target", "hxmc=bin/3d/ModelTypo"]), "bin/3d/ModelTypo.log");
 		if (r.code == 0 || !r.log.contains("has no field bal"))
 			throw new Failed("ModelTypo: expected the error \"has no field bal\":\n" + r.log);
-		// (markup: a prop its element does not take is a compile error, SceneProps')
-		var r = build(cps(["src", "tests/3d-ui/reject"]).concat(["-main", "PropTypo", "--custom-target", "hxmc=bin/3d/PropTypo"]), "bin/3d/PropTypo.log");
-		if (r.code == 0 || !r.log.contains("<toonMaterial> has no prop stepz"))
-			throw new Failed("PropTypo: expected the error \"<toonMaterial> has no prop stepz\":\n" + r.log);
+		// (markup: what SceneProps reject when compiling, each its errors as
+		// its "// expect:" lines say: a prop its element does not take, a
+		// value not of its prop's type)
+		sceneRejects();
 		// (markup links the tags it names alone: a box in the standard
 		// material holds no other generator, shading model or factory, and
 		// adds within its budget over the same mesh in code; Linux: nm)
@@ -1154,6 +1154,20 @@ class Run {
 				if (m.name != "code") native('bin/3d/size/${m.name}-sym', args.concat(["-D", "hxmc.symbols"]), HOST);
 			}
 			run(NODE, ["tests/3d/size/markup.mjs", "bin/3d/size"]);
+		}
+	}
+
+	static function sceneRejects() {
+		var dir = "tests/3d-ui/reject";
+		for (f in FileSystem.readDirectory(dir)) {
+			if (!f.endsWith(".hx")) continue;
+			var main = f.substr(0, f.length - 3);
+			var expect = [for (l in File.getContent('$dir/$f').split("\n")) if (l.startsWith("// expect: ")) l.substr(11).trim()];
+			var r = build(cps(["src", dir]).concat(["-main", main, "--custom-target", 'hxmc=bin/3d/reject/$main']), 'bin/3d/reject/$main.log');
+			var log = r.log.split("\\").join("/");
+			for (e in expect)
+				if (r.code == 0 || !log.contains(e)) throw new Failed('$main: expected the error "$e":\n' + r.log);
+			Sys.println('$main: rejected');
 		}
 	}
 
