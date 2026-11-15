@@ -100,6 +100,7 @@ class Run {
 		{name: "headless-run", about: "`helder run --headless` (helder.headless; Linux: Mesa's llvmpipe, no display): examples/todo and examples/ts-todo driven by one script (tests/headless/todo.json: typed into, Enter, the Add button, a checkbox by its role and label, a filter), their --tree at a mark and at the end checked, their --snap against tests/headless's goldens, the --trace's lines, --frames with --every and keycaps; examples/glow's --snap at 0.5 s against its golden; examples/million and ts-million (a VirtualList of a million rows of their own heights, tests/headless/million.json: the wheel, End, the keyboard, the selection through recycling, rows put in above the view; their trees' options, places and rects at each mark, their last frame against its golden); examples/code-editor (helder.ui.code) on a 2,000-line TSX file (tests/headless/code-editor.tsx.txt repeated; tests/headless/code-editor.json: a word double-clicked and typed over, go to line, three cursors by secondary-D, undo and redo, find and replace all, a drag), its text and status bar at each mark and its last frame against its golden; apps/viewer opening a file through its file dialog (the script's answer) and a context menu's item picked (tests/headless/viewer.json; its status bar shown by its key, its store empty as in every headless run); examples/todo's and ts-todo's dev builds with a live literal's colour and a text patched by the script (tests/headless/literals.json: helder.dev.Literals), the frame after showing them; all run twice, the outputs byte for byte the same (tests/headless/Check.hx); a --video when ffmpeg is installed", run: headlessRun},
 		{name: "ui-web", about: "the todo example, text editors and the accessibility fixture's ARIA mirror (web-access.mjs) as wasm32-wasi in headless Chromium", run: uiWeb},
 		{name: "bench", about: "the engine's benchmarks (tests/bench) natively and as wasm32-wasi, and the examples' sizes and compile times: a table (bin/bench/results.md)", run: bench},
+		{name: "scene-markup-bench", about: "3D in markup against the same scene in code (tests/bench/SceneMarkupBench.hx, DESIGN-MARKUP.md 9): 1,000 and 10,000 meshes mounted, moved every frame (the markup's share and the recorded pass; natively on a headless device, as wasm32-wasi without a GPU), idle, unmounted; each variant in a process of its own, the median of RUNS (3) (SCENE_BENCH: the variants): bin/bench/scene-markup.md, the results' tests/bench/results/scene-markup.md", run: sceneMarkupBench},
 		{name: "jobs-bench", about: "background work against the main thread's frames: a 4K PNG decoded between frames, as a GC job, as a GC-free job on off-heap memory (IoBuffer), natively and as wasm32-wasi workers, by hand (tests/bench/Jobs.hx) and through helder.jobs (JobsApi.hx), and a job's round trip: a table (bin/jobs/results.md)", run: jobs},
 		{name: "dev", about: "the dev loop: helder.dev.Hot and view's signals across a reload, then `haxe --dev` in Chromium and natively", run: dev},
 		{name: "edit-loop", about: "the edit loop's times (tests/edit-loop/edit-loop.mjs): `helder dev` warm on copies of examples/todo and examples/ts-todo in a window (Linux: Xvfb), a literal, a component's body and a new component edited, each timed from the save to the new frame and split by where the time went (the watcher, tsgo, typing, lowering, codegen, link, the reload, the first frame): bin/edit-loop/results.md", run: editLoop},
@@ -1762,6 +1763,55 @@ class Run {
 			md.push('| ${b.what} | ${b.target} | ${Math.round(FileSystem.stat(b.out).size / 1024)} | ' + [for (t in b.times) Math.round(t * 10) / 10].join(" | ") + " |");
 		File.saveContent("bin/bench/results.md", md.join("\n") + "\n");
 		Sys.println(md.join("\n"));
+	}
+
+	// tests/bench/SceneMarkupBench.hx: each variant at 1,000 and 10,000 nodes,
+	// RUNS times (each a process), the medians of each column; a table of
+	// them with each frame's ratio to code's (bin/bench/scene-markup.md)
+	static function sceneMarkupBench() {
+		var b = "bin/bench", cp = cps(["src", "tests/bench"]).concat(["-main", "SceneMarkupBench"]);
+		exe('$b/SceneMarkupBench', cp);
+		wasm('$b/SceneMarkupBench.wasm', cp);
+		var runs = Std.parseInt(Sys.getEnv("RUNS") ?? "3");
+		var variants = (Sys.getEnv("SCENE_BENCH") ?? "code constant signals steps").split(" ").filter(v -> v != "");
+		var md = ["# 3D in markup against code", "", 'tests/bench/SceneMarkupBench.hx (`bun run test scene-markup-bench`), ${Date.now().toString().substr(0, 10)}, ${cpuName()}; the median of $runs runs.', "",
+			"A frame: every node moved (the markup's share: the writes, the clock's steps and the flush), then the renderer's pass recorded (natively, a headless device; wasm32-wasi has no GPU, its nodes are bare). Idle: of 100 frames with nothing changed, those asking for a redraw. Left: the world's nodes after unmounting, over its count before mounting."];
+		for (target in [HOST, "wasm32-wasi"]) {
+			md = md.concat(["", '## $target', "", "| variant | nodes | mount ms | mount KB | frame ms | x code | B a frame | pass ms | with the pass, x code | idle drawing | unmount ms | left |", "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"]);
+			for (n in [1000, 10000]) {
+				var code = 0.0, codeAll = 0.0;
+				for (v in variants) {
+					var rows:Array<Array<Float>> = [];
+					for (_ in 0...runs) {
+						var out = target == HOST ? output(exePath('$b/SceneMarkupBench', HOST), [v, '$n']) : output(NODE, ["--stack-size=65500", "tests/bench/wasi.mjs", '$b/SceneMarkupBench.wasm', v, '$n']);
+						for (l in out.split("
+")) {
+							var c = l.trim().split(" ");
+							if (c[0] == "scene-markup") rows.push([for (k in 3...c.length) Std.parseFloat(c[k])]);
+						}
+					}
+					if (rows.length == 0) throw new Failed('scene-markup-bench: $v $n printed no result');
+					var m = [for (k in 0...rows[0].length) {
+						var col = [for (r in rows) r[k]];
+						col.sort(Reflect.compare);
+						col[col.length >> 1];
+					}];
+					// (mount ms, mount KB, frame ms, frame B, pass ms, pass B, idle, unmount ms, left)
+					if (v == "code") {
+						code = m[2];
+						codeAll = m[2] + m[4];
+					}
+					var ratio = code > 0 ? Math.round(m[2] / code * 100) / 100 : 0.0, all = codeAll > 0 ? Math.round((m[2] + m[4]) / codeAll * 100) / 100 : 0.0;
+					md.push('| $v | $n | ${m[0]} | ${Math.round(m[1])} | ${m[2]} | ${v == "code" ? "1" : Std.string(ratio)} | ${m[3]} | ${m[4]} | ${v == "code" ? "1" : Std.string(all)} | ${m[6]} | ${m[7]} | ${m[8]} |');
+					Sys.println('scene-markup-bench $target $v $n: mount ${m[0]} ms, frame ${m[2]} ms (${ratio}x code), ${m[3]} B a frame, idle ${m[6]}, left ${m[8]}');
+				}
+			}
+		}
+		File.saveContent('$b/scene-markup.md', md.join("
+") + "
+");
+		Sys.println(md.join("
+"));
 	}
 
 	// tests/bench/Jobs.hx: each variant RUNS times, each in a process of its

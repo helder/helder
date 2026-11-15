@@ -31,6 +31,11 @@ class SceneUiTest implements Markup {
 		}
 	}
 
+	// (a check known to fail until its milestone lands, DESIGN-MARKUP.md 11:
+	// said, not counted; one that passes is said too, to be made a check)
+	static function known(what:String, ok:Bool)
+		Sys.println('SceneUiTest: ' + (ok ? 'known failure now passes (make it a check): $what' : 'known failure: $what'));
+
 	static function main() {
 		var world = new World();
 		var x = signal(1.0);
@@ -99,7 +104,34 @@ class SceneUiTest implements Markup {
 		check("<lod>: its first level drawn", helder.scene.render.MeshRenderer.of(tree) == hi);
 		var range = tree.world.store(helder.scene.render.Lod.RANGE).get(tree);
 		check("<lod end>: a visible range", range != null && range.end == 80 && range.begin == 0);
+		leaks();
 		Sys.println('SceneUiTest: $checks checks, ' + (failed == 0 ? "ok" : '$failed FAILED'));
 		if (failed > 0) Sys.exit(1);
+	}
+
+	// a <Show> of meshes toggled a hundred times and a For of them mounted and
+	// unmounted: the world's live nodes where they started (2.4; M2 fixes
+	// remove, which detaches its nodes but never disposes them)
+	static function leaks() {
+		var world = new World();
+		var root = SceneRenderer.root(world);
+		var shown = signal(true), rows = signal([for (k in 0...100) k]);
+		var before = world.count;
+		var dispose = Render.render(<node>
+			<Show when={shown}><node name="a"><node name="b"/></node></Show>
+			<For each={rows}>{k -> <node name="row"/>}</For>
+		</node>, root);
+		for (_ in 0...100) {
+			shown(!shown.peek());
+			flush();
+		}
+		rows([]);
+		flush();
+		rows([for (k in 0...100) k]);
+		flush();
+		dispose();
+		flush();
+		known('removed elements dispose their world nodes (${world.count - before} left of ${before} before)', world.count == before);
+		world.dispose();
 	}
 }
