@@ -67,7 +67,7 @@ class Ios {
 		// (the identity and profile checked before the build: its mistakes first)
 		var sign = device ? signing(o, e.root) : null;
 		if (sign != null && sign.profile == null) {
-			var key = try Publish.ascKey() catch (err:String)
+			var key = try Publish.ascKey(e) catch (err:String)
 				throw 'no provisioning profile given (HELDER_IOS_PROFILE): it is fetched from App Store Connect, which takes an API key: $err';
 			sign.profile = Publish.profile(o.id, sign.identity.leaf.der, key);
 		}
@@ -254,9 +254,12 @@ class Ios {
 	// (the .mobileprovision; else build fetches the bundle id's active App
 	// Store profile from App Store Connect: Publish.profile), each a file's
 	// path or its contents (PEM's text; the profile's base64), else the
-	// manifest's "signing" (paths from the project's directory); null: none
-	// given (an .ipa signed ad hoc, for no device). A key without its certificate: an error
-	public static function signing(o:App.IosOptions, root:String, ?env:String->Null<String>):Null<{identity:Identity, profile:Null<Profile>}> {
+	// manifest's "signing" (paths from the project's directory), else the
+	// credentials store's identity and profile for the bundle id
+	// (Credentials: the identity when neither the certificate nor the key
+	// is given; the profile when it is not); null: none given (an .ipa
+	// signed ad hoc, for no device). A key without its certificate: an error
+	public static function signing(o:App.IosOptions, root:String, ?env:String->Null<String>, ?store:Credentials.Lookup):Null<{identity:Identity, profile:Null<Profile>}> {
 		env = env ?? Sys.getEnv;
 		// (HELDER_IOS_IDENTITY: the certificate, its chain and the key in one PEM)
 		var bundle = env("HELDER_IOS_IDENTITY");
@@ -278,6 +281,19 @@ class Ios {
 				given.push(m == null ? null : {name: '"helder": {"ios": {"signing": {"${n.key}"}}}', value: Path.isAbsolute(m) || root == "." ? m : '$root/$m', file: true});
 			}
 		}
+		// (the store last: the identity as one PEM, the profile in base64)
+		var lookup = store ?? Credentials.of(root);
+		if (given[0] == null && given[1] == null) {
+			var s = lookup("ios", o.id, "identity");
+			if (s != null) {
+				given[0] = {name: s.label, value: s.data.toString(), file: false};
+				given[1] = given[0];
+			}
+		}
+		if (given[2] == null) {
+			var s = lookup("ios", o.id, "profile");
+			if (s != null) given[2] = {name: s.label, value: haxe.crypto.Base64.encode(s.data), file: false};
+		}
 		if (!Lambda.exists(given, g -> g != null)) return null;
 		var missing = [for (i => g in given) if (g == null && i < 2) '${names[i].env} (or "helder": {"ios": {"signing": {"${names[i].key}"}}})'];
 		if (missing.length > 0) throw 'signing for the App Store takes a certificate and its key (HELDER_IOS_IDENTITY: both in one PEM): ${missing.join(", ")} not given';
@@ -293,7 +309,7 @@ class Ios {
 		}
 		function named(g:{name:String, value:String, file:Bool}, f:Void->Dynamic):Dynamic
 			return try f() catch (err:String) throw err.startsWith("HELDER_IOS_") || err.startsWith('"helder"') ? err : '${g.name}: $err';
-		var who = bundle != null && bundle.trim() != "" ? "HELDER_IOS_IDENTITY" : '${given[0].name}, ${given[1].name}';
+		var who = bundle != null && bundle.trim() != "" ? "HELDER_IOS_IDENTITY" : given[0] == given[1] ? given[0].name : '${given[0].name}, ${given[1].name}';
 		var identity:Identity = named({name: who, value: "", file: false}, () -> Identity.fromPem(bytes(given[0], true).toString(), bytes(given[1], true).toString()));
 		// (no profile given: App Store Connect's, fetched by build: Publish.profile)
 		var profile:Null<Profile> = given[2] == null ? null : named(given[2], () -> Profile.parse(bytes(given[2], false)));

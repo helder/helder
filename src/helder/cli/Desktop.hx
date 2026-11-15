@@ -192,7 +192,7 @@ class Desktop {
 	@:coroutine public static function notarize(e:Entry, ?out:String, dry:Bool):Int {
 		if (macSigning() == null)
 			throw "notarisation takes a Developer ID identity: HELDER_MACOS_IDENTITY, or HELDER_MACOS_CERTIFICATE and HELDER_MACOS_KEY (a Developer ID Application certificate and its key)";
-		var key = Publish.ascKeyText();
+		var key = Publish.ascKeyText(e);
 		var xcrun = Sys.getEnv("XCRUN") ?? "xcrun";
 		if (Sys.systemName() != "Mac" && Sys.getEnv("XCRUN") == null) throw "notarisation is notarytool's: on a Mac (xcrun)";
 		if (pack(e, "macos", out) != 0) return 1;

@@ -12,6 +12,10 @@ then grown here.
   PngEncoder's compressor: LZ77 and the fixed Huffman codes, pure Haxe),
   a ustar archive (files with their modes, directories, links; a fixed
   time, root's owner): Linux's .tar.gz.
+- `age`: age's file format (https://age-encryption.org/v1) with X25519
+  recipients (`Age`), on `X25519` (RFC 7748), `Hkdf` (HMAC-SHA256,
+  HKDF-SHA256), `ChaCha20Poly1305` (RFC 8439) and `Bech32`: helder.cli's
+  credentials store.
 - `Timestamp`: RFC 3161's request for a signature's bytes and its reply's
   token (the caller posts it: helder.cli's curl), for Authenticode and
   Developer ID signatures.

@@ -10,7 +10,9 @@
 // its kid, issuer, audience), the app looked up by bundle id, Apple's
 // build upload (buildUploads, buildUploadFiles, the parts PUT where the
 // upload operations say, put together equal to the .ipa, the commit's
-// MD5). Then the missing credentials' messages.
+// MD5). Then the same from the credentials store alone (helder credentials
+// init, add, list; HELDER_CREDENTIALS_KEY the only secret), then the
+// missing credentials' messages.
 //
 // helder setup: ios's certificate request (its RSA key's signature, checked
 // here), the certificate made of it (issued as by Apple's WWDR G3, signed
@@ -474,6 +476,40 @@ kept.availability.BEL = false;
 out = await listed([]);
 check("listing again: the price as it is, nothing sent for it; the one territory that differs patched", !asc.priceSchedule && !asc.availability
   && JSON.stringify(asc.territoryPatched) === JSON.stringify([["ta-BEL", true]]), JSON.stringify(asc.territoryPatched));
+
+// the credentials store alone (helder credentials: no HELDER_* key but
+// HELDER_CREDENTIALS_KEY, age's testkit identity): the upload key, the
+// identity, Play's service account and App Store Connect's key read from
+// the project's credentials/, the account's two from default
+const stored = join(dir, "stored");
+mkdirSync(stored, { recursive: true });
+writeFileSync(join(stored, "helder.json"), JSON.stringify({ name: "Stored", id: "org.helder.hello", targets: { ios: { bundleId: "org.helder.Hello" } } }));
+writeFileSync(join(stored, "Main.hx"), "class Main { static function main() {} }\n");
+writeFileSync(join(dir, "identity.pem"), identity);
+writeFileSync(join(dir, "asc-api-key.json"), ascEnv.HELDER_ASC_API_KEY);
+const bare = Object.fromEntries(Object.entries(base).filter(([k]) => !/^HELDER_(ANDROID|IOS|ASC_KEY|ASC_API_KEY|ASC_ISSUER|PLAY_SERVICE|PLAY_ACCESS)|^GOOGLE_/.test(k)));
+const keyed = { ...bare, HELDER_CREDENTIALS_KEY: "AGE-SECRET-KEY-1EGTZVFFV20835NWYV6270LXYVK2VKNX2MMDKWYKLMGR48UAWX40Q2P2LM0" };
+out = await helderRun(["credentials", "init", stored], keyed);
+check("credentials init with HELDER_CREDENTIALS_KEY: its public key, no secret printed", readFileSync(join(stored, "credentials/recipients.txt"), "utf8").includes("age1")
+  && !out.includes("AGE-SECRET-KEY"));
+for (const [platform, kind, file] of [["android", "upload-identity", "identity.pem"], ["android", "service-account", "service-account.json"],
+  ["ios", "identity", "identity.pem"], ["ios", "asc-api-key", "asc-api-key.json"]])
+  await helderRun(["credentials", "add", platform, kind, join(dir, file), stored], bare);
+check("credentials add: the entries, the account's under default", ["android/org.helder.hello/upload-identity.pem.age", "android/default/service-account.json.age",
+  "ios/org.helder.Hello/identity.pem.age", "ios/default/asc-api-key.json.age"].every((f) => existsSync(join(stored, "credentials", f))));
+out = await helderRun(["credentials", "list", stored], keyed);
+check("credentials list: each entry opens", (out.match(/, opens/g) ?? []).length === 4, out);
+calls = []; play = {};
+out = await helderRun(["publish", stored, "--play", "--dry-run", "-o", join(dir, "Stored.aab")], keyed);
+check("the store's service account: its JWT at the token endpoint, the edit opened and deleted", play.jwt?.ok
+  && play.jwt.claims.iss === "publisher@helder-tests.iam.gserviceaccount.com" && play.deleted && !play.uploaded);
+check("the store's secrets never printed", !out.includes("PRIVATE KEY") && !out.includes("AGE-SECRET-KEY"));
+calls = []; asc = {};
+out = await helderRun(["publish", stored, "--testflight", "--dry-run", "-o", join(dir, "Stored.ipa")], keyed);
+check("the store's App Store Connect key and identity: the ES256 JWT, the .ipa signed for distribution", asc.jwt?.ok && asc.jwt.header.kid === "ABC123DEFG"
+  && asc.bundleId === "org.helder.Hello" && existsSync(join(dir, "Stored.ipa")));
+out = await helderRun(["publish", stored, "--play", "--dry-run", "-o", join(dir, "Stored.aab")], bare, 1);
+check("no HELDER_CREDENTIALS_KEY: the store's entries named, not read", out.includes("HELDER_CREDENTIALS_KEY not set"));
 
 // missing credentials
 out = await publish(["--play", "-o", aab], { ...base, HELDER_PLAY_SERVICE_ACCOUNT: "" }, 1);

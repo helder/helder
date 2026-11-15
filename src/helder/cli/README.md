@@ -85,7 +85,7 @@ token.
 helder <command> [entry] [options]      entry: a .hx file, a directory or a project (default: .)
 helder <entry>                          shorthand for: helder dev <entry>
 
-commands: dev, run, build, test, inspect, publish, setup, share, login, logout, migrate, studio, devices, help
+commands: dev, run, build, test, inspect, publish, setup, credentials, share, login, logout, migrate, studio, devices, help
 
   --target <t>       host (default), web, android, ios, ios-sim, macos (a universal app bundle), or an exact hxmc target (windows-x86_64, android-x86_64, ...)
   -d, --device <d>   which phone, emulator or simulator (android, ios); `helder devices` lists them
@@ -434,7 +434,8 @@ names (helder.run's first, when it has a run block, then each target's
   google-github-actions/auth with `token_format: access_token`), else a
   service account's JSON key (`HELDER_PLAY_SERVICE_ACCOUNT`: its path or
   text; the manifest's `"android": {"serviceAccount"}`;
-  `GOOGLE_APPLICATION_CREDENTIALS` when it is one) signed for one: an
+  `GOOGLE_APPLICATION_CREDENTIALS` when it is one; else the credentials
+  store's `service-account`, below) signed for one: an
   RS256 JWT (`helder.pack.Jwt`, `Rsa`) for the `androidpublisher` scope,
   exchanged at the key's `token_uri`; then the Play Developer Publishing
   API's edit: `edits.insert`, `bundles.upload`, `tracks.update`
@@ -447,7 +448,8 @@ names (helder.run's first, when it has a run block, then each target's
   ES256 JWT of the App Store Connect API key (`HELDER_ASC_API_KEY`: JSON
   of `key_id`, `issuer_id` and `private_key`, the `.p8`'s text; or
   `HELDER_ASC_KEY_ID`, `HELDER_ASC_ISSUER_ID`, `HELDER_ASC_KEY`: the
-  `.p8`'s path or text;
+  `.p8`'s path or text; none of them given: the credentials store's
+  `asc-api-key`, below;
   `helder.pack.Jwt` with `P256`), the app found by its bundle id
   (`/v1/apps`), then Apple's build upload API (App Store Connect API,
   2025): `POST /v1/buildUploads` (the versions, `IOS`), `POST
@@ -554,11 +556,71 @@ gh's standard input).
   The first bundle uploaded with the key (`helder publish --play
   --draft`) makes it the app's upload key under Play App Signing.
 
+### Keeping the keys: helder credentials
+
+`helder credentials` (`Credentials.hx`) keeps the app's signing and
+store keys in its own repository, encrypted in
+[age](https://age-encryption.org/v1)'s format to X25519 recipients
+(`helder.pack.age`, plain Haxe: X25519, HKDF-SHA256, ChaCha20-Poly1305,
+Bech32), so that the repository is their backup and how a team shares
+them; the idea is Whisker's (whisker-credentials). `credentials/` at the
+project's root:
+
+```
+credentials/recipients.txt                          the public keys, age1... (committed)
+credentials/ios/default/asc-api-key.json.age        the App Store Connect API key, the team's
+credentials/ios/<bundle id>/asc-api-key.json.age    one app's own, over default's
+credentials/ios/<bundle id>/identity.pem.age        the distribution certificate, its chain, its key
+credentials/ios/<bundle id>/profile.mobileprovision.age
+credentials/android/default/service-account.json.age   Play's service account (one app's over it)
+credentials/android/<package>/upload-identity.pem.age  Play's upload key and certificate
+```
+
+```sh
+helder credentials init                       # recipients.txt, and the secret key printed once
+helder credentials add ios identity ~/.helder/little-skies/apple/identity.pem
+helder credentials add ios asc-api-key ~/.helder/little-skies/apple/asc-api-key.json   # default's (--app <id>: one app's)
+helder credentials add android upload-identity ~/.helder/little-skies/android/upload-identity.pem
+helder credentials list                       # the entries, and whether HELDER_CREDENTIALS_KEY opens each
+```
+
+- **Keys**: encrypting takes the public keys alone, so anyone with a clone
+  adds an entry; reading one takes the secret key (`AGE-SECRET-KEY-1...`),
+  which helder never writes: `init` prints it once (with
+  `HELDER_CREDENTIALS_KEY` set, its own public key is written and nothing
+  printed), and builds and publish read it from `HELDER_CREDENTIALS_KEY`:
+  CI's one secret (`gh secret set HELDER_CREDENTIALS_KEY`). More public
+  keys in recipients.txt, one a line: the entries added after are for
+  each of them.
+- **Entries**: `add <platform> <kind> <file> [entry]` checks the file
+  (JSON of the key's fields, one PEM of a certificate and its key, a
+  profile's DER) and encrypts it under the app's id (helder.json's;
+  `--app` another), the account's keys (`asc-api-key`,
+  `service-account`) under `default` unless `--app` names an app; a
+  second add replaces it. `helder setup`'s files are what it takes, and
+  setup prints these lines when the project has a store.
+- **Reading**: the store is the last place each key is looked for: what
+  the environment (`HELDER_ASC_*`, `HELDER_PLAY_SERVICE_ACCOUNT`,
+  `HELDER_ANDROID_*`, `HELDER_IOS_*`) and helder.json give comes first.
+  The account's keys come from the app's entry, else default's; the
+  app's signing material from its own entry alone. An entry is decrypted
+  in memory and handed on as its text (as those variables take it):
+  nothing decrypted is written to disk. An entry with no
+  `HELDER_CREDENTIALS_KEY` is a warning (a build goes on without it: the
+  debug key, an ad hoc signature); a key that does not open it is an
+  error.
+- **age's own files**: `age -d -i key.txt credentials/ios/default/asc-api-key.json.age`
+  reads one, `age -R credentials/recipients.txt -o <entry>.age <file>`
+  writes one (checked both ways against age 1.2.1); helder.pack.age is
+  tested against RFC 7748, 8439, 4231 and 5869's vectors, BIP 173's and
+  age's testkit (C2SP CCTV, `tests/pack/age-testkit`: the X25519, header
+  and STREAM vectors). No passphrases (scrypt), no armor.
+
 Checked against a stand-in of both APIs (`tests/pack/publish.mjs`, the
 pack lane: the JWTs verified with the keys' public halves, every call
 and its order, the uploaded bytes against the files, the dry run's
-calls; setup's certificate request verified and a certificate issued of
-it, the identities and the upload certificate checked by node's crypto);
+calls, the same from a credentials store alone; setup's certificate
+request verified and a certificate issued of it, the identities and the upload certificate checked by node's crypto);
 a real upload needs the owner's accounts (`helder.pack`'s README).
 
 ## Android and iOS
@@ -591,7 +653,7 @@ build time.
   (the certificate and the key in one PEM), or `HELDER_ANDROID_SIGNING_CERTIFICATE`
   and `HELDER_ANDROID_SIGNING_KEY` (PEM, RSA or P-256: each a file's path
   or its text), else the manifest's `"android": {"signing": {"certificate",
-  "key"}}`, sign the APK (v2, RSA PKCS#1 or ECDSA) instead of the debug
+  "key"}}`, else the credentials store's `upload-identity` (above), sign the APK (v2, RSA PKCS#1 or ECDSA) instead of the debug
   key, not debuggable; one without the other is an error. `helder build
   --target android --release --bundle` writes `bin/android/<name>.aab`
   (`helder.pack.android.Aab`): both ABIs built (`android-arm64`,
@@ -656,7 +718,8 @@ build time.
   below), each a file's path or its contents (PEM's
   text; the profile's base64, as CI secrets hold them), else the
   manifest's `"ios": {"signing": {"certificate", "key", "profile"}}`
-  (paths from the project). Some of them without the others is an error
+  (paths from the project), else the credentials store's `identity` (when
+  neither the certificate nor the key is given) and `profile` (above). Some of them without the others is an error
   naming the missing; so are a key of another certificate, an encrypted
   key, a profile without the certificate, expired, for another bundle id
   or not granting an entitlement the app asks for. From Keychain's .p12:

@@ -199,6 +199,24 @@ class Options {
 			],
 		},
 		{
+			name: "credentials",
+			usage: "[init | add <ios|android> <kind> <file> | list] [entry] [options]",
+			about: "the app's signing and store keys kept in its repository, encrypted (age's format: credentials/, HELDER_CREDENTIALS_KEY reads them)",
+			entry: false,
+			common: [],
+			own: [
+				{key: "app", names: ["--app"], value: "<id>", about: "add: whose entry: an app's id (helder.json's, by default), or default (the account's keys' default)"},
+			],
+			notes: [
+				"init: credentials/recipients.txt (the public key: committed) and the secret key, printed once",
+				"(HELDER_CREDENTIALS_KEY set: its own, nothing printed); add: a file encrypted into its entry;",
+				"list (or none): the entries, and whether HELDER_CREDENTIALS_KEY opens each one.",
+				"kinds: ios asc-api-key (default's unless --app), identity, profile; android",
+				"service-account (default's unless --app), upload-identity: helder setup's files.",
+				"HELDER_* and helder.json come first; the store is the last place builds and publish look",
+			],
+		},
+		{
 			name: "share",
 			usage: "[entry] [options]",
 			about: "the web build on helder.run for a week, without an account: a link to send (unlisted)",
@@ -378,6 +396,15 @@ class Options {
 			if (positionals.length > 2) throw usage('one entry, not ${positionals.slice(1).join(" and ")}');
 			return;
 		}
+		if (command == "credentials") {
+			var a = positionals[0] ?? "list";
+			if (!["init", "add", "list"].contains(a)) throw usage('$a: init, add or list', true);
+			if (a == "add" && positionals.length < 4) throw usage('add <ios|android> <kind> <file> [entry]', true);
+			if (a == "add" && !["ios", "android"].contains(positionals[1])) throw usage('add ${positionals[1]}: ios or android', true);
+			if (positionals.length > (a == "add" ? 5 : 2)) throw usage('one entry, not ${positionals.slice(a == "add" ? 4 : 1).join(" and ")}');
+			if (has("app") && a != "add") throw usage('--app: with add', true);
+			return;
+		}
 		if (c.entry) {
 			if (positionals.length > 1) throw usage('one entry, not ${positionals.join(" and ")}');
 			var p = positionals[0];
@@ -460,7 +487,9 @@ class Options {
 				"",
 				"commands:",
 			];
-			for (c in COMMANDS) out.push("  " + c.name.rpad(" ", 9) + c.about);
+			var w = 0;
+			for (c in COMMANDS) w = Std.int(Math.max(w, c.name.length + 2));
+			for (c in COMMANDS) out.push("  " + c.name.rpad(" ", w) + c.about);
 			out = out.concat(["", "options:"]);
 			var opts = COMMON.concat([HELP]);
 			for (o in opts) out.push(line(o, width(opts)));
