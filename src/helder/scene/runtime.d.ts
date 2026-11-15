@@ -1229,8 +1229,12 @@ export declare class Lut {
 	static fromImage(device: Device, image: Image): Lut;
 	// a strip's RGBA8 texels (size * size by size: strip's), size a side
 	static fromBytes(device: Device, size: number, bytes: Uint8Array): Lut;
+	// a table made from a grade (display values 0..1 in, out), size a side
+	static of(device: Device, size: number, grade: (r: number, g: number, b: number) => Vec3): Lut;
 	// the identity table (what a strip to grade in an editor starts from)
 	static identity(device: Device, size?: number): Lut;
+	// a grade's strip, RGBA8 (a PNG of it is a strip to grade elsewhere)
+	static strip(size: number, grade: (r: number, g: number, b: number) => Vec3): Uint8Array;
 	readonly device: Device;
 	// the table's size a side (16, 32)
 	readonly size: number;

@@ -122,6 +122,14 @@ none: `Outline.select`, drawn by `<Outline>`) on every node.
   their props their options: `standardMaterial`, `lambertMaterial`,
   `phongMaterial`, `toonMaterial`, `unlitMaterial`, `matcapMaterial`,
   `normalMaterial`, `depthMaterial` (near, far).
+
+  A program links the generators and the shading models its markup
+  names, as code calling the factories does: each tag is made by its own
+  function (`SceneRenderer.element_toonMaterial`, which markup calls for
+  that name, Haxe's and TypeScript's), not by a switch on every name. A
+  box in the standard material is 473 KB natively, every tag 1.2 MB
+  (`tests/3d/size/markup.mjs`, the 3d lane's check; a mesh's `shape`
+  links the box, sphere and plane).
 - **The lights**: `directionalLight`, `pointLight` (range), `spotLight`
   (range, inner, outer), `hemisphereLight` (sky, ground); color and
   intensity. `light` and its `kind` (`directional`, `point`, `spot`,

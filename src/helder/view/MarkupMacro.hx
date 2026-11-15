@@ -306,6 +306,12 @@ class MarkupMacro {
 					macro @:pos(e.pos) $p{host}.setProperty(${sub(el)}, @:lenient $name, ${sub(v)});
 				case ECall({expr: EField({expr: EConst(CIdent("__RT__"))}, "prop")}, [el, name = {expr: EConst(CString(s, _))}, v]) if (setter && late):
 					macro @:pos(e.pos) $p{rt}.propWith(${sub(el)}, $name, ${sub(v)}, $p{host}.setter(@:lenient $v{s}));
+				// (an element of a literal name the renderer makes with a function
+				// of its own: that function, Renders' element_<tag>; what it links
+				// linked only when markup names it)
+				case ECall({expr: EField({expr: EConst(CIdent("__HOST__"))}, "createElement")}, [{expr: EConst(CString(tag, _))}]) if (i.creators.indexOf(tag) >= 0):
+					var f = "element_" + tag;
+					macro @:pos(e.pos) $p{host}.$f();
 				case EConst(CIdent("__HOST__")): macro @:pos(e.pos) $p{host};
 				case EConst(CIdent("__RT__")): macro @:pos(e.pos) $p{rt};
 				case ECall({expr: EField({expr: EConst(CIdent("__RT__"))}, "prop")}, [el, name = {expr: EConst(CString(s, _))}, v]) if (setter):

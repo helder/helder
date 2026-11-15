@@ -1030,6 +1030,19 @@ class Run {
 		var r = build(cps(["src", "tests/3d-ui/reject"]).concat(["-main", "PropTypo", "--custom-target", "hxmc=bin/3d/PropTypo"]), "bin/3d/PropTypo.log");
 		if (r.code == 0 || !r.log.contains("<toonMaterial> has no prop stepz"))
 			throw new Failed("PropTypo: expected the error \"<toonMaterial> has no prop stepz\":\n" + r.log);
+		// (markup links the tags it names alone: a box in the standard
+		// material holds no other generator, shading model or factory, and
+		// adds within its budget over the same mesh in code; Linux: nm)
+		if (Sys.systemName() == "Linux") {
+			var size = cps(["src", "tests/3d/size"]).concat(["-main", "MarkupSize", "-dce", "full"]);
+			for (m in [{name: "tiny", d: "markup_tiny"}, {name: "all", d: "markup_all"}, {name: "code", d: "markup_code"}]) {
+				var args = size.concat(["-D", m.d]);
+				native('bin/3d/size/${m.name}', args, HOST);
+				wasm('bin/3d/size/${m.name}.wasm', args);
+				if (m.name != "code") native('bin/3d/size/${m.name}-sym', args.concat(["-D", "hxmc.symbols"]), HOST);
+			}
+			run(NODE, ["tests/3d/size/markup.mjs", "bin/3d/size"]);
+		}
 	}
 
 	// helder/scene from TypeScript (tests/3d/ts/frames.ts, examples/ts-scene's

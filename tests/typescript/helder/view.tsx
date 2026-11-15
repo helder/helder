@@ -35,3 +35,9 @@ items([...items(), "c"]);
 count(count() * 10);
 flush();
 console.log(root.toHtml(), doubled(), items().length);
+
+// an element its renderer makes with a function of its own (TestRenderer's
+// element_card, as helder.scene.view's material tags): called for its name
+const cards = TestNode.root("cards");
+Render.render(<div><card title="c" /></div>, cards);
+console.log(cards.toHtml());

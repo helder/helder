@@ -27,6 +27,19 @@ export declare class MathProbe {
 	static translation(x: number, y: number, z: number): Mat4;
 	static apply(m: Mat4, v: Vec4): Vec4;
 	static spin(a: Quat, b: Quat): Quat;
+	// struct values a TypeScript function returns (math.ts): each called
+	// from Haxe, its results read here (a Vec2, Vec3, Vec4, Quat, Mat4;
+	// each function type's arguments its own: hxmc keys a closure's
+	// signature by its result's being a struct, not by which, so that
+	// () -> Vec3 and () -> Vec4 in one program do not compile)
+	static made2(f: (x: number, y: number) => Vec2): number;
+	// (a struct given and one returned, n times: a grade's shape, Lut.strip's)
+	static mapped3(v: Vec3, n: number, f: (v: Vec3, i: number) => Vec3): Vec3;
+	static made4(f: (i: number) => Vec4): Vec4;
+	static turned(f: (angle: number) => Quat): Quat;
+	static placed(f: (x: number, y: number, z: number) => Mat4, v: Vec4): Vec4;
+	static keep(f: () => Vec3): void;
+	static callKept(): Vec3;
 	// where it is (a struct stored in the object)
 	at: Vec3;
 	// its turn (a property: through its accessors)

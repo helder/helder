@@ -1330,10 +1330,9 @@ tags capitalized), and:
   CPU stages linked). README's table gives what each adds.
 - **TypeScript:** the effects and the view buffers are in helder/scene,
   their options object literals (a `Vec4` in one crosses since phase 1).
-  A `Vec3` a TypeScript callback returns does not cross into Haxe yet
-  (helder.typescript: zeros natively, a trap as wasm32), so `Lut.of` and
-  `Lut.strip` are Haxe's alone and `lutStrip` makes a LUT's strip in
-  TypeScript, for `Lut.fromBytes`.
+  A struct a TypeScript callback returns (`Lut.of`'s grade's `Vec3`)
+  crosses since a later fix (helder.typescript's adapter writes it to the
+  caller's memory: it was zeros natively, a trap as wasm32).
 - **Little Skies** is its own repository: the switch to `Dof.tiltShift`
   is not in this phase's change.
 
