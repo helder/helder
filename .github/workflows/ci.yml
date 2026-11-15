@@ -6,8 +6,8 @@
 # sources) and saves them at its end (.github/actions/save).
 # - changes: what the change touches; one of docs alone (docs/**, **/*.md)
 #   runs only the docs' checks (examples, site) and ci;
-# - headless: the lanes that need no GPU, display or browser (bun run test -j 3:
-#   headless) but typescript and examples, which are jobs of their own; the
+# - headless: the lanes that need no GPU, display or browser (bun run test -j 3
+#   headless; pack a job of its own) but typescript and examples, which are jobs of their own; the
 #   pack lane's Android half with bundletool (PACK_REQUIRE: the runtime
 #   objects required);
 # - typescript: the TypeScript frontend's checks (tests/typescript/run.mjs,
@@ -107,16 +107,24 @@ jobs:
       - id: code
         run: echo "code=${{ (github.event_name != 'pull_request' && github.event_name != 'push') || steps.filter.outputs.code == 'true' }}" >> "$GITHUB_OUTPUT"
 
+  # (two jobs: the pack lane, then the others 3 at once; beside them pack
+  # took 254 s, 112 s alone, and was the job's minutes)
   headless:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {part: lanes, cache: headless, run: -j 3 headless -x typescript -x examples -x pack}
+          - {part: pack, cache: headless-pack, run: pack}
     steps:
       - uses: actions/checkout@v7
       - id: setup
         uses: ./.github/actions/setup
-        with: {cache: headless, node-version: 24}
+        with: {cache: '${{ matrix.cache }}', node-version: 24}
       - name: Fonts (DejaVu Sans, for text and ui), libEGL and Mesa's llvmpipe
         # (helder test's host build links helder.gfx's libEGL.so.1 when a test
         # reaches the scene; nothing opens a display. llvmpipe: the pack
@@ -133,7 +141,7 @@ jobs:
           export PATH="$PATH:$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
           curl -sSL --retry 3 -o "$RUNNER_TEMP/bundletool.jar" https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar
           export BUNDLETOOL="$RUNNER_TEMP/bundletool.jar"
-          bun run test -k -j 3 headless -x typescript -x examples
+          bun run test -k ${{ matrix.run }}
       - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
         with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
