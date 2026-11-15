@@ -68,7 +68,8 @@ window.start = async (gfx) => {
 			if ([3, 4, 5].some((k, i) => Math.abs(got[i] - +m[k]) > 2)) wrong.push('pixel (' + m[1] + ', ' + m[2] + '): ' + got.join(' ') + ', not ' + m.slice(3).join(' '));
 		}
 	}
-	return { ok: wrong.length === 0, text: gfx + ': ' + checked + ' checks' + (wrong.length ? ', ' + wrong.slice(0, 6).join('; ') : ''), checked };
+	const what = gfx === 'webgpu' ? checked + ' buffer and pixel checks by the harness' : 'no compute: the program checks that it has none and refuses it (nothing to read back)';
+	return { ok: wrong.length === 0, text: gfx + ': ' + what + (wrong.length ? ', ' + wrong.slice(0, 6).join('; ') : ''), checked };
 };
 </script>`;
 const server = createServer(async (req, res) => {

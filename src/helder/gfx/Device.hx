@@ -43,7 +43,9 @@ final class Device {
 	// size bytes of data from dataOffset (default: the rest) into the buffer
 	// at offset, before the next commands: a frame's draws read what the
 	// buffer holds when the frame is submitted (endFrame), so data that
-	// changes within a frame goes to other offsets
+	// changes within a frame goes to other offsets. A Storage or Indirect
+	// buffer (one the GPU writes) is written after the frames committed
+	// before are done (Metal waits for them: its buffers are shared memory)
 	public function writeBuffer(b:Buffer, offset:Int, data:haxe.io.Bytes, dataOffset = 0, size = -1) {
 		if (size < 0) size = data.length - dataOffset;
 		if (dataOffset < 0 || offset < 0 || dataOffset + size > data.length) throw "helder.gfx: writeBuffer: outside the data";
