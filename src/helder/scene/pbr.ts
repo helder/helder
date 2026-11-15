@@ -316,11 +316,15 @@ export function ambientAt(s: LitSurface, frame: PbrFrame, material: PbrMaterial,
 	const r = reflect(s.view.neg(), n);
 	const env = reflected(frame, environmentMap, r, s.roughness);
 	if (frame.environment.x > 0) {
-		const top = frame.environment.y;
-		irradiance = pow(sampleLevel(environmentMap, equirect(n), max(top - 2, 0)).xyz, vec3(2.2)).mul(frame.environment.x);
-		if (frame.environment.z > 0) {
-			const rows = frame.environment.z;
-			irradiance = pow(atlas(environmentMap, equirect(n), rows, rows, frame.environment.w), vec3(2.2)).mul(frame.environment.x);
+		if (frame.environment.y < 0) irradiance = octAtlas(environmentMap, n, 0, frame.environment.z, -frame.environment.y, frame.environment.z + 1,
+			frame.environment.w).mul(frame.environment.x);
+		else {
+			const top = frame.environment.y;
+			irradiance = pow(sampleLevel(environmentMap, equirect(n), max(top - 2, 0)).xyz, vec3(2.2)).mul(frame.environment.x);
+			if (frame.environment.z > 0) {
+				const rows = frame.environment.z;
+				irradiance = pow(atlas(environmentMap, equirect(n), rows, rows, frame.environment.w), vec3(2.2)).mul(frame.environment.x);
+			}
 		}
 	}
 	const day = daylight(s, frame, material);
@@ -344,6 +348,18 @@ function equirect(d: Vec3): Vec2 {
 
 function atlas(t: Texture2D, uv: Vec2, row: number, levels: number, edge: number): Vec3 {
 	return sampleLevel(t, vec2(uv.x, (row + clamp(uv.y, edge, 1 - edge)) / (levels + 1)), 0).xyz;
+}
+
+function octahedral(d: Vec3): Vec2 {
+	const n = d.div(abs(d.x) + abs(d.y) + abs(d.z));
+	let uv = n.xz;
+	if (n.y < 0) uv = vec2(1).sub(abs(n.zx)).mul(vec2(n.x >= 0 ? 1.0 : -1.0, n.z >= 0 ? 1.0 : -1.0));
+	return uv.mul(0.5).add(0.5);
+}
+
+function octAtlas(t: Texture2D, d: Vec3, col: number, row: number, cols: number, rows: number, size: number): Vec3 {
+	const o = octahedral(d).mul(size - 2).add(1);
+	return sampleLevel(t, vec2((col * size + o.x) / (cols * size), (row * size + o.y) / (rows * size)), 0).xyz;
 }
 
 function arcTan2(y: number, x: number): number {
@@ -441,20 +457,33 @@ function shade(s: LitSurface, lights: Vec3, indirect: Vec3, env: IndirectLight, 
 function reflected(frame: PbrFrame, environmentMap: Texture2D, r: Vec3, rough: number): Vec3 {
 	let env = mix(frame.ground.xyz, frame.sky.xyz, smoothstep(-0.2, 0.2, r.y));
 	if (frame.environment.x > 0) {
-		const top = frame.environment.y;
-		env = pow(sampleLevel(environmentMap, equirect(r), rough * max(top - 1, 0)).xyz, vec3(2.2)).mul(frame.environment.x);
-		if (frame.environment.z > 0) {
-			const rows = frame.environment.z;
-			const edge = frame.environment.w;
-			const at = rough * (rows - 1);
-			const r0 = floor(at);
-			const ru = equirect(r);
-			const lo = atlas(environmentMap, ru, r0, rows, edge);
-			const hi = atlas(environmentMap, ru, min(r0 + 1, rows - 1), rows, edge);
-			env = pow(mix(lo, hi, at - r0), vec3(2.2)).mul(frame.environment.x);
+		if (frame.environment.y < 0) env = octReflected(environmentMap, r, rough, 0, frame.environment).mul(frame.environment.x);
+		else {
+			const top = frame.environment.y;
+			env = pow(sampleLevel(environmentMap, equirect(r), rough * max(top - 1, 0)).xyz, vec3(2.2)).mul(frame.environment.x);
+			if (frame.environment.z > 0) {
+				const rows = frame.environment.z;
+				const edge = frame.environment.w;
+				const at = rough * (rows - 1);
+				const r0 = floor(at);
+				const ru = equirect(r);
+				const lo = atlas(environmentMap, ru, r0, rows, edge);
+				const hi = atlas(environmentMap, ru, min(r0 + 1, rows - 1), rows, edge);
+				env = pow(mix(lo, hi, at - r0), vec3(2.2)).mul(frame.environment.x);
+			}
 		}
 	}
 	return env;
+}
+
+// an octahedral atlas' light along a direction at a roughness (its column's two rows by it, blended)
+function octReflected(t: Texture2D, d: Vec3, rough: number, column: number, e: Vec4): Vec3 {
+	const rows = e.z;
+	const at = rough * (rows - 1);
+	const r0 = floor(at);
+	const lo = octAtlas(t, d, column, r0, -e.y, rows + 1, e.w);
+	const hi = octAtlas(t, d, column, min(r0 + 1, rows - 1), -e.y, rows + 1, e.w);
+	return mix(lo, hi, at - r0);
 }
 
 // a clear coat's specular lobe

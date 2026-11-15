@@ -99,8 +99,9 @@ import StageShaders;
 //          material extensions (PhysicalScenes)
 //   lights8, clustered, spotshadow, pointshadow, shadowatlas, lod  lights at
 //          scale, local lights' shadows, levels of detail (LightScenes)
+//   sh     indirect light: the environment prefiltered by helder (IndirectScenes)
 class Scenes {
-	public static final NAMES = ["gltf", "orbits", "shadows", "physics", "instances", "skin", "overlay", "textured", "packed", "spot", "sky", "lazy", "normals", "blend", "walker", "packedskin", "packednormals", "cascades", "environment", "morph", "chains", "packedmorph", "bloom", "normalgrid", "gpuparticles", "crystal", "khrtransform", "khrclearcoat", "compressed", "packedbc", "packedastc", "instancedmesh", "glow", "tsscene", "fog", "poststage", "unevenscale", "softshadows", "shading", "primitives", "toon", "sprites", "hemisphere"].concat(EffectScenes.NAMES).concat(LineScenes.NAMES).concat(HighEndScenes.NAMES).concat(PhysicalScenes.NAMES).concat(LightScenes.NAMES);
+	public static final NAMES = ["gltf", "orbits", "shadows", "physics", "instances", "skin", "overlay", "textured", "packed", "spot", "sky", "lazy", "normals", "blend", "walker", "packedskin", "packednormals", "cascades", "environment", "morph", "chains", "packedmorph", "bloom", "normalgrid", "gpuparticles", "crystal", "khrtransform", "khrclearcoat", "compressed", "packedbc", "packedastc", "instancedmesh", "glow", "tsscene", "fog", "poststage", "unevenscale", "softshadows", "shading", "primitives", "toon", "sprites", "hemisphere"].concat(EffectScenes.NAMES).concat(LineScenes.NAMES).concat(HighEndScenes.NAMES).concat(PhysicalScenes.NAMES).concat(LightScenes.NAMES).concat(IndirectScenes.NAMES);
 	// whether the last scene has what it draws (a lazy one: once its files loaded)
 	public static var ready:Void->Bool = () -> true;
 	// the last scene's renderer (its statistics: RenderTest)
@@ -1060,6 +1061,7 @@ class Scenes {
 			case n if (HighEndScenes.NAMES.contains(n)): HighEndScenes.make(n, device);
 			case n if (PhysicalScenes.NAMES.contains(n)): PhysicalScenes.make(n, device);
 			case n if (LightScenes.NAMES.contains(n)): LightScenes.make(n, device);
+			case n if (IndirectScenes.NAMES.contains(n)): IndirectScenes.make(n, device);
 			case n: throw 'Scenes: no scene $n';
 		}
 	}

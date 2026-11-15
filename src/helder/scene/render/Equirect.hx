@@ -20,6 +20,39 @@ function equirect(d:Vec3):Vec2
 function atlas(t:Texture2D, uv:Vec2, row:Float, levels:Float, edge:Float):Vec3
 	return sampleLevel(t, vec2(uv.x, (row + clamp(uv.y, edge, 1 - edge)) / (levels + 1)), 0).xyz;
 
+// a unit direction's place in an octahedral map (the octahedron's upper
+// half folded out from the middle, y up; its lower half's four corners
+// folded over the edges), each component 0 to 1
+function octahedral(d:Vec3):Vec2 {
+	var n = d / (abs(d.x) + abs(d.y) + abs(d.z));
+	var uv = n.xz;
+	if (n.y < 0) uv = (vec2(1) - abs(n.zx)) * vec2(n.x >= 0 ? 1.0 : -1.0, n.z >= 0 ? 1.0 : -1.0);
+	return uv * 0.5 + 0.5;
+}
+
+// the unit direction at a place of an octahedral map (-1 to 1 each way;
+// past an edge, folded back: the map's gutter, Prefilter's)
+function octDirection(p:Vec2):Vec3 {
+	var uv = p;
+	// (past an edge the octahedron's map mirrors: across x, y flips; across y, x)
+	if (abs(uv.x) > 1) uv = vec2((uv.x > 0 ? 2.0 : -2.0) - uv.x, -uv.y);
+	if (abs(uv.y) > 1) uv = vec2(-uv.x, (uv.y > 0 ? 2.0 : -2.0) - uv.y);
+	var n = vec3(uv.x, 1 - abs(uv.x) - abs(uv.y), uv.y);
+	if (n.y < 0) {
+		var f = (vec2(1) - abs(vec2(n.z, n.x))) * vec2(n.x >= 0 ? 1.0 : -1.0, n.z >= 0 ? 1.0 : -1.0);
+		n = vec3(f.x, n.y, f.y);
+	}
+	return normalize(n);
+}
+
+// an octahedral atlas' colour (Prefilter's: columns of cells, each its
+// rows of size x size texels, an octahedral map within a texel's gutter)
+// at a direction, in a cell (col, row) of an atlas of cols by rows cells
+function octAtlas(t:Texture2D, d:Vec3, col:Float, row:Float, cols:Float, rows:Float, size:Float):Vec3 {
+	var o = octahedral(d) * (size - 2) + 1;
+	return sampleLevel(t, vec2((col * size + o.x) / (cols * size), (row * size + o.y) / (rows * size)), 0).xyz;
+}
+
 // (the shaders have no inverse trigonometry: polynomial fits, within
 // 2e-5 radians of atan2 and 7e-5 of acos)
 function arcTan2(y:Float, x:Float):Float {

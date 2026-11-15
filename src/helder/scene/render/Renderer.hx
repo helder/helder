@@ -298,7 +298,7 @@ class Renderer {
 
 	// what the frame's hooks get: the camera's view, the light (FrameInfo)
 	public final frame = new FrameInfo();
-	final hooks:Array<Array<(Encoder, FrameInfo) -> Void>> = [[], [], [], []];
+	final hooks:Array<Array<(Encoder, FrameInfo) -> Void>> = [[], [], [], [], []];
 	// (the line renderer, LineRenderer.of's: attached by use, by DebugDraw or by
 	// markup; the debug drawing, DebugDraw.of's)
 	var lines:Null<RenderFeature> = null;
@@ -308,7 +308,8 @@ class Renderer {
 	// AfterTransparent inside the frame's pass (draw with your own
 	// pipelines, depth-tested against the scene; AfterTransparent after the
 	// see-through surfaces too: what is drawn over everything), AfterPass
-	// after it (passes of your own: an overlay)
+	// after it (passes of your own: an overlay), BeforePass before the
+	// frame's passes (a texture of your own the frame reads)
 	public function inject(point:InjectionPoint, f:(Encoder, FrameInfo) -> Void)
 		hooks[point].push(f);
 
@@ -361,6 +362,8 @@ class Renderer {
 		frame.hdr = hdr;
 		frame.fog = fog;
 		frame.exposure = exposure;
+		for (f in hooks[BeforePass])
+			f(enc, frame);
 		lists();
 		if (cullSource != null) cullSource.cull(enc, this, frame);
 		shadowDraws = 0;
@@ -646,7 +649,7 @@ class Renderer {
 		b.shadowRect = rect;
 		b.shadowRectFar = rectFar;
 		b.shadowAtlas = atlas;
-		b.environment = environment != null ? new Vec4(environment.intensity, environment.levels, environment.rows, @:privateAccess environment.edge) : new Vec4(0, 0, 0, 0);
+		b.environment = environment != null ? environment.frameVector() : new Vec4(0, 0, 0, 0);
 		b.rim = new Vec4(rim.x, rim.y, rim.z, rimPower);
 		b.fog = Fog.colorOf(fog);
 		b.fogShape = Fog.shapeOf(fog);
@@ -1139,6 +1142,10 @@ enum abstract InjectionPoint(Int) to Int {
 	var AfterOpaque;
 	var AfterPass;
 	var AfterTransparent;
+	// before the frame's passes (its shadows, its prepass, its main pass):
+	// passes and dispatches of one's own the frame then reads (a prefilter,
+	// a capture)
+	var BeforePass;
 }
 
 // the frame being drawn, for the hooks

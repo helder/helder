@@ -309,7 +309,9 @@ typedef Pbr = {
 	// the environment's light (Environment): x its intensity (0: none, the
 	// sky and the ground instead), y its map's mip levels below the first;
 	// a prefiltered atlas's (Environment.prefiltered): z its levels of
-	// roughness (0: a mip-mapped image), w half a texel of a row
+	// roughness (0: a mip-mapped image), w half a texel of a row; an
+	// octahedral atlas' (Environment.prefilter, ReflectionProbes): y its
+	// columns negated, z its rows of roughness, w a cell's texels
 	var environment:Vec4;
 	// a rim light (Renderer.rim): rgb its colour times intensity, w the
 	// falloff's power; the silhouette's edge lit from the light's side
@@ -789,11 +791,15 @@ function ambientAt(s:LitSurface, frame:PbrFrame, material:PbrMaterial, occlusion
 	var r = reflect(-s.view, n);
 	var env = reflected(frame, environmentMap, r, s.roughness);
 	if (frame.environment.x > 0) {
-		var top = frame.environment.y;
-		irradiance = pow(sampleLevel(environmentMap, equirect(n), max(top - 2, 0)).xyz, vec3(2.2)) * frame.environment.x;
-		if (frame.environment.z > 0) {
-			var rows = frame.environment.z;
-			irradiance = pow(atlas(environmentMap, equirect(n), rows, rows, frame.environment.w), vec3(2.2)) * frame.environment.x;
+		if (frame.environment.y < 0) irradiance = octAtlas(environmentMap, n, 0, frame.environment.z, -frame.environment.y, frame.environment.z + 1,
+			frame.environment.w) * frame.environment.x;
+		else {
+			var top = frame.environment.y;
+			irradiance = pow(sampleLevel(environmentMap, equirect(n), max(top - 2, 0)).xyz, vec3(2.2)) * frame.environment.x;
+			if (frame.environment.z > 0) {
+				var rows = frame.environment.z;
+				irradiance = pow(atlas(environmentMap, equirect(n), rows, rows, frame.environment.w), vec3(2.2)) * frame.environment.x;
+			}
 		}
 	}
 	var day = daylight(s, frame, material);
@@ -910,26 +916,43 @@ function shade(s:LitSurface, lights:Vec3, indirect:Vec3, env:IndirectLight, emis
 	return vec4(shown, alpha);
 }
 
-// the light from the environment along a reflection r at a roughness:
-// a prefiltered atlas's two rows by it, blended, a mip-mapped image's
-// level by it, else the sky and the ground blended by r's height
+// the light from the environment along a reflection r at a roughness: an
+// octahedral atlas' two rows by it (Environment.prefilter, ReflectionProbes:
+// the first column, the environment's), a prefiltered atlas's two rows,
+// blended, a mip-mapped image's level by it, else the sky and the ground
+// blended by r's height
 function reflected(frame:PbrFrame, environmentMap:Texture2D, r:Vec3, rough:Float):Vec3 {
 	var env = mix(frame.ground.xyz, frame.sky.xyz, smoothstep(-0.2, 0.2, r.y));
 	if (frame.environment.x > 0) {
-		var top = frame.environment.y;
-		env = pow(sampleLevel(environmentMap, equirect(r), rough * max(top - 1, 0)).xyz, vec3(2.2)) * frame.environment.x;
-		if (frame.environment.z > 0) {
-			var rows = frame.environment.z;
-			var edge = frame.environment.w;
-			var at = rough * (rows - 1);
-			var r0 = floor(at);
-			var ru = equirect(r);
-			var lo = atlas(environmentMap, ru, r0, rows, edge);
-			var hi = atlas(environmentMap, ru, min(r0 + 1, rows - 1), rows, edge);
-			env = pow(mix(lo, hi, at - r0), vec3(2.2)) * frame.environment.x;
+		if (frame.environment.y < 0) env = octReflected(environmentMap, r, rough, 0, frame.environment) * frame.environment.x;
+		else {
+			var top = frame.environment.y;
+			env = pow(sampleLevel(environmentMap, equirect(r), rough * max(top - 1, 0)).xyz, vec3(2.2)) * frame.environment.x;
+			if (frame.environment.z > 0) {
+				var rows = frame.environment.z;
+				var edge = frame.environment.w;
+				var at = rough * (rows - 1);
+				var r0 = floor(at);
+				var ru = equirect(r);
+				var lo = atlas(environmentMap, ru, r0, rows, edge);
+				var hi = atlas(environmentMap, ru, min(r0 + 1, rows - 1), rows, edge);
+				env = pow(mix(lo, hi, at - r0), vec3(2.2)) * frame.environment.x;
+			}
 		}
 	}
 	return env;
+}
+
+// an octahedral atlas' light along a direction at a roughness (its column's
+// two rows by it, blended; e: PbrFrame's environment, its columns -y, its
+// rows of roughness z, its cells' texels w)
+function octReflected(t:Texture2D, d:Vec3, rough:Float, column:Float, e:Vec4):Vec3 {
+	var rows = e.z;
+	var at = rough * (rows - 1);
+	var r0 = floor(at);
+	var lo = octAtlas(t, d, column, r0, -e.y, rows + 1, e.w);
+	var hi = octAtlas(t, d, column, min(r0 + 1, rows - 1), -e.y, rows + 1, e.w);
+	return mix(lo, hi, at - r0);
 }
 
 // a clear coat's specular lobe towards v from a unit light along l,
