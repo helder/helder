@@ -94,7 +94,13 @@ class WorkerHost implements HostRuntime {
 		surface = new Surface(Canvas, Ptr.nil(), Ptr.ofI64(canvas), 1, 1);
 	}
 
+	// (an unchanged frame, the focused screen's of every turn: not drawn. Its
+	// pixels are the page's already, never posted again (present), and drawn
+	// sixty times a second they took the GPU from the page: with a software
+	// one (SwiftShader, Chromium's GPU process) the page drew no frames while
+	// the studio waited on it, its input and Playwright's screenshots with it)
 	public function begin(s:HostScreen, device:Device, width:Int, height:Int, changed:Bool):Bool {
+		if (!changed) return false;
 		if (surface.width == width && surface.height == height) return true;
 		PreviewWeb.resize(canvas, width, height);
 		@:privateAccess surface.resized(width, height);
