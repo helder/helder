@@ -351,17 +351,26 @@ jobs:
         uses: ./.github/actions/save
         with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
+  # (two jobs, 3d-web's runs in two shards, SCENES_SHARD, a machine each: one
+  # run at a time on a machine's cores, as SwiftShader's frames need; the
+  # first also the other lanes)
   browser:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     continue-on-error: true
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {shard: 0, lanes: 3d-web gfx-web ui-web canvas-web web canvas-doc audio-web gfx-compute-web}
+          - {shard: 1, lanes: 3d-web}
     steps:
       - uses: actions/checkout@v7
       - id: setup
         uses: ./.github/actions/setup
-        with: {cache: browser, playwright: 1.56.1}
+        with: {cache: 'browser-${{ matrix.shard }}', playwright: 1.56.1}
       - name: Fonts, poppler, Mesa
         run: sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core poppler-utils libegl1 libegl-mesa0
       - name: gfx, 3d, audio, web and ui in Chromium
@@ -372,7 +381,8 @@ jobs:
           # and the post passes, transmission, levels of detail; main and the
           # nightly: every one in both)
           SCENES_WINDOW: ${{ github.event_name == 'pull_request' && 'gltf,textured,skin,gpuparticles,taa,motionblur,bloom,transmission,lod' || '' }}
-        run: bun run test -k 3d-web gfx-web ui-web canvas-web web canvas-doc audio-web gfx-compute-web
+          SCENES_SHARD: ${{ matrix.shard }}/2
+        run: bun run test -k ${{ matrix.lanes }}
       - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
         with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}

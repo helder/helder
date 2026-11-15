@@ -8,13 +8,14 @@
 // SCENES_WINDOW=a,b: those scenes in the window too, the others headless
 // alone (CI's pull requests: the window's path, the canvas and the
 // browser's loop, is the scene's own in few; every scene's in both on main);
-// WEB_JOBS: the runs at once, each in a browser of its own (the cores', at most 4).
+// SCENES_SHARD=<i>/<n>: every n-th run from the i-th (CI's jobs, a machine
+// each: runs at once on one machine's cores starved SwiftShader's frames,
+// a window's 3 frames near their 10 s); one run at a time.
 import { createServer } from 'node:http';
 import { readFile, writeFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import os from 'node:os';
 
 const require = createRequire(import.meta.url);
 let pw;
@@ -87,17 +88,18 @@ const server = createServer(async (req, res) => {
 	}
 }).listen(0);
 const url = `http://localhost:${server.address().port}/`;
-const jobs = Number(process.env.WEB_JOBS) || Math.max(1, Math.min(4, os.availableParallelism()));
+const [shard, shards] = (process.env.SCENES_SHARD ?? '0/1').split('/').map(Number);
 const windowed = process.env.SCENES_WINDOW ? process.env.SCENES_WINDOW.split(',') : null;
 // (a lazy scene in a window only: headless, main draws once, before its files load)
 const runs = scenes.flatMap((s) => [[s, 'webgpu', 'headless'], [s, 'webgpu', 'window'], [s, 'webgl2', 'headless'], [s, 'webgl2', 'window']])
 	.filter(([s, , m]) => s !== 'lazy' || m === 'window')
-	.filter(([s, , m]) => m !== 'window' || !windowed || windowed.includes(s) || s === 'lazy');
-const browsers = await Promise.all(Array.from({ length: Math.min(jobs, runs.length) }, () => pw.chromium.launch({ args: CHROMIUM_ARGS })));
-console.log(`web.mjs: chromium ${browsers[0].version()}, ${runs.length} runs, ${browsers.length} at once${windowed ? `, in a window: ${windowed.join(', ')}` : ''}`);
-let failed = 0, next = 0;
+	.filter(([s, , m]) => m !== 'window' || !windowed || windowed.includes(s) || s === 'lazy')
+	.filter((_, k) => k % shards === shard);
+const browser = await pw.chromium.launch({ args: CHROMIUM_ARGS });
+console.log(`web.mjs: chromium ${browser.version()}, ${runs.length} runs${shards > 1 ? ` (shard ${shard} of ${shards})` : ''}${windowed ? `, in a window: ${windowed.join(', ')}` : ''}`);
+let failed = 0;
 const t0 = Date.now();
-async function one(browser, [scene, gfx, mode]) {
+async function one([scene, gfx, mode]) {
 	const started = Date.now();
 	const p = await browser.newPage({ viewport: { width: 400, height: 300 } });
 	const errors = [];
@@ -119,14 +121,11 @@ async function one(browser, [scene, gfx, mode]) {
 	const missing = expect.filter((e) => !log.some((l) => l.startsWith(e)));
 	const ok = r.ok && missing.length === 0 && errors.length === 0 && log.includes('exit 0');
 	if (!ok) failed++;
-	// (a run's lines together: the runs at once end in any order)
 	console.log([`web.mjs: ${r.text}${ok ? '' : ' FAILED'} (${Date.now() - started} ms)`, ...log.map((l) => '  ' + l), ...missing.map((m) => '  missing: ' + m), ...errors.map((e) => '  error: ' + e)].join('\n'));
 	await p.close();
 }
-await Promise.all(browsers.map(async (b) => {
-	while (next < runs.length) await one(b, runs[next++]);
-}));
+for (const r of runs) await one(r);
 console.log(`web.mjs: ${runs.length} runs in ${Math.round((Date.now() - t0) / 1000)} s${failed ? `, ${failed} failed` : ''}`);
-await Promise.all(browsers.map((b) => b.close()));
+await browser.close();
 server.close();
 process.exit(failed ? 1 : 0);
