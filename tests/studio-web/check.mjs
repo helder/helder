@@ -269,7 +269,8 @@ async function recolour(pg, x, y, tap) {
 		check(built && built.ok, `a padding added: built by the compiler's worker in ${built?.ms} ms (${JSON.stringify(built)})`);
 		// (the new build's preview: the title's box grown by its padding, read from its tree again)
 		const grown = await event(pg, 'selection', (e) => e.frame > built.frame && e.rect && e.rect[3] > 35, 30000);
-		check(grown, `the screens reloaded from the new build, the title's box ${JSON.stringify(grown?.rect)}`);
+		check(grown, `the screens reloaded from the new build, the title's box ${JSON.stringify(grown?.rect)}` + (grown ? ''
+			: ' ' + JSON.stringify((await events(pg)).filter((e) => e.frame >= before).map((e) => [e.event, e.frame, e.rect, e.ok, e.why ?? e.file]))));
 		// undone: the attribute removed, a warm build
 		const at = await lastFrame(pg);
 		check(await press(pg, 'Undo'), 'the padding undone (the header\'s Undo)');
@@ -396,7 +397,8 @@ async function recolour(pg, x, y, tap) {
 	await pg.waitForTimeout(80);
 	await pg.touchscreen.tap(52, 210);
 	const sel = await event(pg, 'selected', (e) => e.tag !== 'Frame');
-	check(sel && sel.tag === 'text' && sel.screen === 'Todo/Three items', 'phone: the title double-tapped and selected: ' + JSON.stringify(sel && [sel.screen, sel.tag, sel.rect]));
+	check(sel && sel.tag === 'text' && sel.screen === 'Todo/Three items', 'phone: the title double-tapped and selected: ' + JSON.stringify(sel && [sel.screen, sel.tag, sel.rect])
+		+ (sel ? '' : ' ' + JSON.stringify((await events(pg)).slice(-12).map((e) => [e.event, e.frame, e.tag, e.screen]))));
 	await pg.waitForTimeout(500);
 	check(await press(pg, 'Inspect'), 'phone: the inspector\'s sheet opened from the bar');
 	await pg.waitForTimeout(800);
