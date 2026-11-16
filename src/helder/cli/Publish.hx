@@ -42,22 +42,34 @@ using StringTools;
 // track's releases; the app), prints what would change, and uploads or
 // commits nothing (a Play edit it opened is deleted). HELDER_PLAY_API and
 // HELDER_ASC_API point elsewhere than Google's and Apple's (the tests' stand-in).
+//
+// Split by lifetime: --play and --testflight send the build and what is
+// the build's (listing.notes: Play's release notes, the App Store's
+// whatsNew with --submit), never the store page; --listing the store page
+// (Listing) and the screenshots, never a build. --pull prints the stores'
+// listing text as helder.json's.
 class Publish {
 	public static inline var PLAY = "https://androidpublisher.googleapis.com";
 	public static inline var ASC = "https://api.appstoreconnect.apple.com";
 
 	@:coroutine public static function run(o:Options):Int {
 		if (o.has("run")) {
-			if (o.has("play") || o.has("testflight") || o.has("notarize") || o.has("screenshots") || o.has("listing")) {
+			if (o.has("play") || o.has("testflight") || o.has("notarize") || o.has("screenshots") || o.has("listing") || o.has("pull")) {
 				Term.err(Style.usage("helder publish: --run alone (each destination is its own publish)"));
 				return 2;
 			}
 			return Run.publish(o);
 		}
-		if (!Lambda.exists(["play", "testflight", "notarize", "screenshots", "listing"], k -> o.has(k))) return every(o);
-		var play = o.has("play"), testflight = o.has("testflight"), shots = o.has("screenshots"), listing = o.has("listing"), notarize = o.has("notarize");
-		if (!shots && !listing && !notarize && play == testflight || notarize && (play || testflight || shots || listing)) {
-			Term.err(Style.usage("helder publish: --play or --testflight, --notarize, or --screenshots, --listing (helder publish --help)"));
+		if (!Lambda.exists(["play", "testflight", "notarize", "screenshots", "listing", "pull"], k -> o.has(k))) return every(o);
+		var play = o.has("play"), testflight = o.has("testflight"), shots = o.has("screenshots"), listing = o.has("listing"), notarize = o.has("notarize"),
+			pull = o.has("pull");
+		if (!pull && !shots && !listing && !notarize && play == testflight || notarize && (play || testflight || shots || listing || pull)
+			|| pull && (shots || listing)) {
+			Term.err(Style.usage("helder publish: --play or --testflight, --notarize, or --screenshots, --listing, --pull (helder publish --help)"));
+			return 2;
+		}
+		if (o.has("create-version") && !(listing || testflight && o.has("submit"))) {
+			Term.err(Style.usage("helder publish: --create-version with --listing, or --testflight --submit"));
 			return 2;
 		}
 		var e = try Entry.of(o) catch (err:Dynamic) {
@@ -72,17 +84,29 @@ class Publish {
 			Term.err(Style.status("error", Fail, Std.string(err)));
 			1;
 		}
+		if (pull) return try {
+			pullListing(e, play || !testflight, testflight || !play);
+			0;
+		} catch (err:Dynamic) {
+			Term.err(Style.status("error", Fail, Std.string(err)));
+			1;
+		}
 		if (shots || listing) return try {
 			Term.out(Style.header("publish", [listing ? "store listings" : "store screenshots", e.main]));
-			var dir = "bin/store";
+			var dir = "bin/store", cfg:Manifest.AppConfig = e.config;
+			var both = !play && !testflight, toPlay = listing && (play || both), toAsc = listing && (testflight || both);
+			// (all that can be checked before the first request: the text, the language, then the images)
+			var locale = o.value("locale") ?? "en-US";
+			if (listing) Listing.validate(cfg?.listing, e.root);
+			for (s in [toPlay ? "play" : null, toAsc ? "appStore" : null])
+				if (s != null && Listing.code(locale, s) == null) throw '--locale $locale: not ${s == "play" ? "a Google Play language" : "an App Store locale"}';
 			// (--listing --no-screenshot: the text alone, the stores' screenshots left as they are)
 			var list = listing && o.has("no-screenshot") ? [] : screenshots(e, dir, App.android(e.name, e.config).orientation == "landscape");
+			Listing.images(list, dir);
+			var sa = toPlay ? serviceAccount(e) : null, key = toAsc ? ascKey() : null;
 			var changes = [];
-			if (listing) {
-				var both = !play && !testflight;
-				if (play || both) changes = changes.concat(playListing(e, dir, list, App.android(e.name, e.config).id, o.value("locale") ?? "en-US", dry, serviceAccount(e)));
-				if (testflight || both) changes = changes.concat(ascListing(e, dir, list, App.ios(e.name, e.config), o.value("locale") ?? "en-US", dry, ascKey()));
-			}
+			if (toPlay) changes = changes.concat(playListing(e, dir, list, App.android(e.name, e.config).id, Listing.code(locale, "play"), dry, sa));
+			if (toAsc) changes = changes.concat(ascListing(e, dir, list, App.ios(e.name, e.config), Listing.code(locale, "appStore"), dry, key, o.has("create-version")));
 			review(dir, list, listing ? changes : null, dry);
 			0;
 		} catch (err:Dynamic) {
@@ -94,20 +118,25 @@ class Publish {
 				e.target = "android-arm64";
 				Term.out(Style.header("publish", ["Google Play", e.main]));
 				var sa = serviceAccount(e);
+				// (the build's notes, checked before it is built)
+				var cfg:Manifest.AppConfig = e.config;
+				var notes = Listing.notes(cfg?.listing, e.root, "play", 500);
 				var out = o.out ?? Android.out(e, true);
 				if (!Android.bundle(e, out).ok) return 1;
 				var id = App.android(e.name, e.config).id;
-				toPlay(out, id, App.android(e.name, e.config).versionCode, o.value("track") ?? "internal", o.has("draft"), dry, sa);
+				toPlay(out, id, App.android(e.name, e.config).versionCode, o.value("track") ?? "internal", o.has("draft"), dry, sa, notes);
 			} else {
 				e.target = "ios-arm64";
 				Term.out(Style.header("publish", ["TestFlight", e.main]));
 				var key = ascKey();
+				var cfg:Manifest.AppConfig = e.config;
+				if (o.has("submit")) Listing.notes(cfg?.listing, e.root, "appStore", 4000);
 				var out = o.out ?? Ios.out(e);
 				if (Ios.signing(App.ios(e.name, e.config), e.root) == null)
 					throw "TestFlight takes an .ipa signed for distribution: HELDER_IOS_IDENTITY (or HELDER_IOS_CERTIFICATE and HELDER_IOS_KEY)";
 				if (!Ios.build(e, out, Release).ok) return 1;
 				var i = App.ios(e.name, e.config);
-				toTestFlight(out, i.id, i.versionName, i.version, dry, key, o.has("submit"));
+				toTestFlight(out, i.id, i.versionName, i.version, dry, key, o.has("submit") ? {listing: cfg?.listing, root: e.root, make: o.has("create-version")} : null);
 			}
 		} catch (err:Dynamic) {
 			Term.err(Style.status("error", Fail, Std.string(err)));
@@ -141,10 +170,17 @@ class Publish {
 
 	// ---- HTTP (curl): the status and the body
 
+	// (the tests' stand-in for curl: the stores' answers as recorded, Publish.test.hx)
+	public static var transport:Null<(method:String, url:String, headers:Array<String>, body:Null<Bytes>, file:Null<{path:String, offset:Int, length:Int}>) -> {
+		code:Int,
+		body:String
+	}> = null;
+
 	@:coroutine public static function http(method:String, url:String, headers:Array<String>, ?body:Bytes, ?file:{path:String, offset:Int, length:Int}):{
 		code:Int,
 		body:String
 	} {
+		if (transport != null) return transport(method, url, headers, body, file);
 		var args = ["-sS", "-X", method, "-w", "\n%{http_code}"];
 		for (h in headers)
 			args = args.concat(["-H", h]);
@@ -235,18 +271,27 @@ class Publish {
 		return haxe.Json.parse(r.body).access_token;
 	}
 
-	@:coroutine public static function toPlay(aab:String, pkg:String, versionCode:Int, track:String, draft:Bool, dry:Bool, sa:Dynamic) {
+	// notes: the release's (listing.notes; lang null: the app's default language)
+	@:coroutine public static function toPlay(aab:String, pkg:String, versionCode:Int, track:String, draft:Bool, dry:Bool, sa:Dynamic,
+			?notes:Array<{lang:Null<String>, text:String}>) {
 		if (!["internal", "alpha", "beta", "production"].contains(track)) throw '--track $track: internal, alpha, beta or production';
 		var api = playApi();
 		var base = '$api/androidpublisher/v3/applications/$pkg';
 		var token = googleToken(sa);
 		var edit:String = json("POST", '$base/edits', token, {}).id;
 		var status = draft ? "draft" : "completed";
+		var releaseNotes:Array<Dynamic> = [];
+		if (notes != null && notes.length > 0) {
+			var deflt = "";
+			if (Lambda.exists(notes, n -> n.lang == null)) deflt = json("GET", '$base/edits/$edit/details', token).defaultLanguage ?? "en-US";
+			releaseNotes = [for (n in notes) {language: n.lang ?? deflt, text: n.text}];
+		}
 		if (dry) {
 			var t:Dynamic = try json("GET", '$base/edits/$edit/tracks/$track', token) catch (_:Dynamic) {releases: []};
 			var now = [for (r in (t.releases ?? [] : Array<Dynamic>)) '${r.status} ${(r.versionCodes ?? [] : Array<Dynamic>).join(",")}'];
 			Term.out(Style.status("dry run", Info, '$pkg: $track has ${now.length == 0 ? "no release" : now.join("; ")}'));
-			Term.out(Style.status("would", Info, 'upload ${Path.withoutDirectory(aab)} (versionCode $versionCode, ${Math.round(FileSystem.stat(aab).size / 1024)} KB) and release it on $track ($status)'));
+			Term.out(Style.status("would", Info, 'upload ${Path.withoutDirectory(aab)} (versionCode $versionCode, ${Math.round(FileSystem.stat(aab).size / 1024)} KB) and release it on $track ($status)'
+				+ (releaseNotes.length == 0 ? "" : ', its notes in ${[for (n in releaseNotes) n.language].join(", ")}')));
 			json("DELETE", '$base/edits/$edit', token);
 			return;
 		}
@@ -256,17 +301,24 @@ class Publish {
 		Term.done();
 		if (r.code != 200) throw 'bundles.upload: HTTP ${r.code} ${r.body.trim()}';
 		var code:Int = haxe.Json.parse(r.body).versionCode;
-		json("PUT", '$base/edits/$edit/tracks/$track', token, {track: track, releases: [{versionCodes: [Std.string(code)], status: status}]});
+		json("PUT", '$base/edits/$edit/tracks/$track', token, release(track, code, status, releaseNotes));
 		try json("POST", '$base/edits/$edit:commit', token) catch (err:String) {
 			// (an app never published takes drafts alone: its first release
 			// sent for review in Play Console, the ones after it directly)
 			if (status == "draft" || err.indexOf("status draft") < 0) throw err;
 			status = "draft";
-			json("PUT", '$base/edits/$edit/tracks/$track', token, {track: track, releases: [{versionCodes: [Std.string(code)], status: status}]});
+			json("PUT", '$base/edits/$edit/tracks/$track', token, release(track, code, status, releaseNotes));
 			json("POST", '$base/edits/$edit:commit', token);
 			Term.out(Style.status("draft", Warn, '$pkg has never been published: its first release is a draft; send it for review in Play Console (Publishing overview), the ones after it go out directly'));
 		}
 		Term.out(Style.status("published", Ok, '$pkg versionCode $code on $track ($status)'));
+	}
+
+	// (a track's release: the version code, its status, its notes)
+	static function release(track:String, code:Int, status:String, notes:Array<Dynamic>):Dynamic {
+		var r:Dynamic = {versionCodes: [Std.string(code)], status: status};
+		if (notes.length > 0) r.releaseNotes = notes;
+		return {track: track, releases: [r]};
 	}
 
 	// ---- App Store Connect
@@ -314,17 +366,22 @@ class Publish {
 		return Jwt.sign({alg: "ES256", kid: k.id, typ: "JWT"}, {iss: k.issuer, iat: now, exp: now + 1200, aud: "appstoreconnect-v1"}, k.key);
 	}
 
-	@:coroutine public static function toTestFlight(ipa:String, bundleId:String, version:String, build:String, dry:Bool, k:{id:String, issuer:String, key:PrivateKey}, submit = false) {
+	// submit: the build sent for App Review once processed (Listing.submit),
+	// its version resolved before the upload (Listing.submission)
+	@:coroutine public static function toTestFlight(ipa:String, bundleId:String, version:String, build:String, dry:Bool, k:{id:String, issuer:String, key:PrivateKey},
+			?submit:{listing:Null<Dynamic>, root:String, make:Bool}) {
 		var api = ascApi();
 		var token = ascToken(k);
 		var apps:Array<Dynamic> = json("GET", '$api/v1/apps?filter%5BbundleId%5D=' + StringTools.urlEncode(bundleId), token).data;
 		if (apps == null || apps.length == 0) throw 'App Store Connect has no app $bundleId (make its record first: Apps, +, New App)';
 		var app:String = apps[0].id;
 		var size = FileSystem.stat(ipa).size;
+		var plan:Null<Listing.Submission> = null;
+		if (submit != null) plan = Listing.submission(api, token, apps[0], version, submit.listing, submit.root, submit.make);
 		if (dry) {
 			Term.out(Style.status("dry run", Info, '$bundleId is app $app on App Store Connect'));
 			Term.out(Style.status("would", Info, 'upload ${Path.withoutDirectory(ipa)} ($version ($build), ${Math.round(size / 1024)} KB) for TestFlight'));
-			if (submit) Listing.submit(api, () -> ascToken(k), app, version, build, true);
+			if (plan != null) Listing.submit(api, () -> ascToken(k), app, version, build, true, plan);
 			return;
 		}
 		var upload:Dynamic = json("POST", '$api/v1/buildUploads', token, {
@@ -358,7 +415,7 @@ class Publish {
 		});
 		var state:Dynamic = json("GET", '$api/v1/buildUploads/${upload.id}', token).data;
 		Term.out(Style.status("uploaded", Ok, '$bundleId $version ($build): App Store Connect\'s build upload ${upload.id}, ${haxe.Json.stringify(state.attributes?.state ?? "")}; TestFlight lists it once processed'));
-		if (submit) Listing.submit(api, () -> ascToken(k), app, version, build, false, upload.id);
+		if (plan != null) Listing.submit(api, () -> ascToken(k), app, version, build, false, plan, upload.id);
 	}
 
 	// ---- store screenshots (helder.story.StoreShots, built and run by Shots)
@@ -404,33 +461,32 @@ class Publish {
 		Term.out(Style.status("review", Info, Style.path('$dir/review.html')));
 	}
 
-	// Google Play's listing: each image type's screenshots against ours by
-	// SHA-256: the ones not ours deleted, ours not there uploaded, committed
-	@:coroutine static function playListing(e:Entry, dir:String, list:Array<Dynamic>, pkg:String, lang:String, dry:Bool, sa:Dynamic):Array<String> {
+	// Google Play's store page, in one edit committed at the end (any
+	// failure: the edit deleted, the store as it was): Listing.play's
+	// details and listings, then each image type of the language
+	// (Listing.playImages: authoritative, by SHA-256 in order); Play keeps
+	// no image of a language without a listing, so that is refused. The
+	// data safety form after it (its own call, no edit)
+	@:coroutine public static function playListing(e:Entry, dir:String, list:Array<Dynamic>, pkg:String, lang:String, dry:Bool, sa:Dynamic):Array<String> {
+		var cfg:Manifest.AppConfig = e.config;
+		var android = [for (s in list) if (s.store == "android") s];
+		if (cfg?.listing == null && android.length == 0) return [];
 		var api = playApi();
 		var base = '$api/androidpublisher/v3/applications/$pkg';
 		var token = googleToken(sa);
 		var edit:String = json("POST", '$base/edits', token, {}).id;
-		var cfg:Manifest.AppConfig = e.config;
-		var changes = cfg?.listing == null ? [] : Listing.play(cfg.listing, cfg.name ?? e.name, e.root, base, edit, token, lang, dry), types = [];
-		for (s in list) if (s.store == "android" && !types.contains(s.type)) types.push(s.type);
-		for (type in types) {
-			var ours:Array<Dynamic> = [for (s in list) if (s.store == "android" && s.type == type) s];
-			var theirs:Array<Dynamic> = json("GET", '$base/edits/$edit/listings/$lang/$type', token).images ?? [];
-			for (t in theirs)
-				if (!Lambda.exists(ours, s -> s.sha256 == t.sha256)) {
-					changes.push('Google Play $lang $type: delete ${t.id}');
-					if (!dry) json("DELETE", '$base/edits/$edit/listings/$lang/$type/${t.id}', token);
-				}
-			for (s in ours)
-				if (!Lambda.exists(theirs, t -> t.sha256 == s.sha256)) {
-					changes.push('Google Play $lang $type: upload ${s.file}');
-					if (!dry) {
-						var r = http("POST", '$api/upload/androidpublisher/v3/applications/$pkg/edits/$edit/listings/$lang/$type?uploadType=media',
-							["Authorization: Bearer " + token, "Content-Type: image/png"], null, {path: '$dir/${s.file}', offset: 0, length: FileSystem.stat('$dir/${s.file}').size});
-						if (r.code != 200) throw 'images.upload ${s.file}: HTTP ${r.code} ${r.body.trim()}';
-					}
-				}
+		var changes = [];
+		try {
+			var listed = [];
+			changes = Listing.play(cfg?.listing, e.root, base, edit, token, dry, listed);
+			if (android.length > 0) {
+				if (!listed.contains(lang))
+					throw 'Google Play has no $lang listing, and would keep no screenshots of it: listing.title, summary and description for $lang (or --locale)';
+				changes = changes.concat(Listing.playImages(api, pkg, edit, token, lang, dir, android, dry));
+			}
+		} catch (err:Dynamic) {
+			try json("DELETE", '$base/edits/$edit', token) catch (_:Dynamic) {}
+			throw err;
 		}
 		if (dry || changes.length == 0) json("DELETE", '$base/edits/$edit', token) else json("POST", '$base/edits/$edit:commit', token);
 		changes = changes.concat(Listing.dataSafety(cfg?.listing, e.root, base, token, dry));
@@ -438,82 +494,72 @@ class Publish {
 		return changes;
 	}
 
-	// App Store Connect's: the editable version's localization, its
-	// screenshot sets by display type (made when missing), each set's
-	// screenshots against ours by MD5 (sourceFileChecksum): the others
-	// deleted, ours missing uploaded (reserved, the parts sent, committed)
-	@:coroutine static function ascListing(e:Entry, dir:String, list:Array<Dynamic>, ios:Dynamic, locale:String, dry:Bool, k:{id:String, issuer:String, key:PrivateKey}):Array<String> {
+	// App Store Connect's (Listing.appStore): no transaction, so run dry
+	// first, every read made and whatever is missing refused, then again
+	// writing; the version made or renamed only with --create-version
+	@:coroutine public static function ascListing(e:Entry, dir:String, list:Array<Dynamic>, ios:Dynamic, locale:String, dry:Bool, k:{id:String, issuer:String, key:PrivateKey},
+			make:Bool):Array<String> {
+		var cfg:Manifest.AppConfig = e.config;
+		var shots = [for (s in list) if (s.store == "ios") s];
+		if (cfg?.listing == null && shots.length == 0) return [];
 		var bundleId:String = ios.id;
 		var api = ascApi();
 		var token = ascToken(k);
 		var apps:Array<Dynamic> = json("GET", '$api/v1/apps?filter%5BbundleId%5D=' + StringTools.urlEncode(bundleId), token).data;
 		if (apps == null || apps.length == 0) throw 'App Store Connect has no app $bundleId';
-		var cfg:Manifest.AppConfig = e.config, changes = [];
-		var version = Listing.appStore(cfg?.listing, cfg?.name ?? e.name, e.root, api, token, apps[0], ios.versionName, dry, changes);
-		if (version == null) {
-			for (c in changes) Term.out(Style.status("would", Info, c));
-			Term.out(Style.status("would", Info, 'App Store screenshots: compared once version ${ios.versionName} is made'));
-			return changes;
+		var at = {dir: dir, list: shots, locale: locale};
+		var plan = [];
+		Listing.appStore(cfg?.listing, e.root, api, token, apps[0], ios.versionName, at, make, true, plan);
+		if (dry || plan.length == 0) {
+			for (c in plan) Term.out(Style.status("would", Info, c));
+			return plan;
 		}
-		if (!Lambda.exists(list, s -> s.store == "ios")) {
-			for (c in changes) Term.out(Style.status(dry ? "would" : "listing", dry ? Info : Ok, c));
-			return changes;
-		}
-		var locs:Array<Dynamic> = json("GET", '$api/v1/appStoreVersions/$version/appStoreVersionLocalizations', token).data;
-		var loc:Dynamic = Lambda.find(locs ?? [], l -> l.attributes.locale == locale);
-		if (loc == null) {
-			if (dry && changes.length > 0) {
-				for (c in changes) Term.out(Style.status("would", Info, c));
-				return changes;
+		var done = [];
+		Listing.appStore(cfg?.listing, e.root, api, ascToken(k), apps[0], ios.versionName, at, make, false, done);
+		for (c in done) Term.out(Style.status("listing", Ok, c));
+		return done;
+	}
+
+	// helder publish --pull: the stores' listing text printed as
+	// helder.json's "listing" (Listing.pulled), to adopt an app already
+	// listed; read alone (Play's edit deleted), no image
+	@:coroutine static function pullListing(e:Entry, play:Bool, appStore:Bool) {
+		var p:Dynamic = null, a:Dynamic = null;
+		if (play) {
+			var pkg = App.android(e.name, e.config).id;
+			var base = '${playApi()}/androidpublisher/v3/applications/$pkg';
+			var token = googleToken(serviceAccount(e));
+			var edit:String = json("POST", '$base/edits', token, {}).id;
+			try {
+				p = {details: json("GET", '$base/edits/$edit/details', token), listings: json("GET", '$base/edits/$edit/listings', token).listings ?? []};
+			} catch (err:Dynamic) {
+				try json("DELETE", '$base/edits/$edit', token) catch (_:Dynamic) {}
+				throw err;
 			}
-			throw 'App Store Connect: the version has no $locale localization';
+			json("DELETE", '$base/edits/$edit', token);
 		}
-		var sets:Array<Dynamic> = json("GET", '$api/v1/appStoreVersionLocalizations/${loc.id}/appScreenshotSets', token).data ?? [];
-		var types = [];
-		for (s in list) if (s.store == "ios" && !types.contains(s.type)) types.push(s.type);
-		for (type in types) {
-			var ours:Array<Dynamic> = [for (s in list) if (s.store == "ios" && s.type == type) s];
-			var set:Dynamic = Lambda.find(sets, x -> x.attributes.screenshotDisplayType == type);
-			var theirs:Array<Dynamic> = [];
-			if (set == null) {
-				changes.push('App Store $locale $type: a screenshot set made');
-				if (!dry) set = json("POST", '$api/v1/appScreenshotSets', token, {
-					data: {
-						type: "appScreenshotSets",
-						attributes: {screenshotDisplayType: type},
-						relationships: {appStoreVersionLocalization: {data: {type: "appStoreVersionLocalizations", id: loc.id}}}
-					}
-				}, 201).data;
-			} else theirs = json("GET", '$api/v1/appScreenshotSets/${set.id}/appScreenshots', token).data ?? [];
-			for (t in theirs)
-				if (!Lambda.exists(ours, s -> s.md5 == t.attributes.sourceFileChecksum)) {
-					changes.push('App Store $locale $type: delete ${t.id}');
-					if (!dry) json("DELETE", '$api/v1/appScreenshots/${t.id}', token, null, 204);
+		if (appStore) {
+			var bundleId = App.ios(e.name, e.config).id;
+			var api = ascApi(), token = ascToken(ascKey());
+			var apps:Array<Dynamic> = json("GET", '$api/v1/apps?filter%5BbundleId%5D=' + StringTools.urlEncode(bundleId), token).data;
+			if (apps == null || apps.length == 0) throw 'App Store Connect has no app $bundleId';
+			var app:Dynamic = apps[0];
+			// (the app info and the version being prepared, else the latest)
+			var infos:Array<Dynamic> = json("GET", '$api/v1/apps/${app.id}/appInfos', token).data ?? [];
+			var info:Dynamic = Lambda.find(infos, i -> (i.attributes?.state ?? i.attributes?.appStoreState) != "READY_FOR_DISTRIBUTION"
+				&& (i.attributes?.state ?? i.attributes?.appStoreState) != "READY_FOR_SALE") ?? infos[0];
+			var versions:Array<Dynamic> = json("GET", '$api/v1/apps/${app.id}/appStoreVersions?filter%5Bplatform%5D=IOS&limit=10', token).data ?? [];
+			var version:Dynamic = versions[0];
+			a = {
+				primaryLocale: app.attributes?.primaryLocale,
+				info: info == null ? [] : json("GET", '$api/v1/appInfos/${info.id}/appInfoLocalizations', token).data ?? [],
+				version: version == null ? null : {
+					attributes: version.attributes,
+					localizations: json("GET", '$api/v1/appStoreVersions/${version.id}/appStoreVersionLocalizations', token).data ?? []
 				}
-			for (s in ours)
-				if (!Lambda.exists(theirs, t -> t.attributes.sourceFileChecksum == s.md5)) {
-					changes.push('App Store $locale $type: upload ${s.file}');
-					if (dry) continue;
-					var path = '$dir/${s.file}', size = FileSystem.stat(path).size;
-					var shot:Dynamic = json("POST", '$api/v1/appScreenshots', token, {
-						data: {
-							type: "appScreenshots",
-							attributes: {fileName: Path.withoutDirectory(s.file), fileSize: size},
-							relationships: {appScreenshotSet: {data: {type: "appScreenshotSets", id: set.id}}}
-						}
-					}, 201).data;
-					for (op in (shot.attributes.uploadOperations ?? [] : Array<Dynamic>)) {
-						var headers = [for (h in (op.requestHeaders ?? [] : Array<Dynamic>)) '${h.name}: ${h.value}'];
-						var r = http(op.method ?? "PUT", op.url, headers, null, {path: path, offset: op.offset ?? 0, length: op.length ?? size});
-						if (r.code < 200 || r.code >= 300) throw 'a screenshot\'s part: HTTP ${r.code} ${r.body.trim()}';
-					}
-					json("PATCH", '$api/v1/appScreenshots/${shot.id}', token, {
-						data: {type: "appScreenshots", id: shot.id, attributes: {uploaded: true, sourceFileChecksum: s.md5}}
-					});
-				}
+			};
 		}
-		for (c in changes) Term.out(Style.status(dry ? "would" : "listing", dry ? Info : Ok, c));
-		return changes;
+		Sys.println(haxe.Json.stringify({listing: Listing.pulled(p, a)}, null, "  "));
 	}
 
 	// the active App Store profile of a bundle id for the certificate, from

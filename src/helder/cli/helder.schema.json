@@ -63,16 +63,16 @@
     },
     "listing": {
       "type": "object",
-      "description": "The stores' pages: helder publish --listing sends them with the screenshots. A field not given is left as the store has it.",
+      "description": "The stores' pages: helder publish --listing sends them with the screenshots (notes: with the build). Only what is set is sent: a field, language or image type not given is left as the store has it.",
       "additionalProperties": false,
       "properties": {
-        "title": {"type": "string", "maxLength": 30, "description": "Play's title, the App Store's name (else name)."},
+        "title": {"type": "string", "maxLength": 30, "description": "Play's title, the App Store's name."},
         "subtitle": {"type": "string", "maxLength": 30, "description": "The App Store's subtitle."},
         "summary": {"type": "string", "maxLength": 80, "description": "Google Play's short description."},
         "description": {"type": "string", "maxLength": 4000, "description": "Both stores' description: the text, or a .txt or .md file beside helder.json."},
         "keywords": {"type": "array", "items": {"type": "string"}, "description": "The App Store's keywords (100 characters together)."},
         "promo": {"type": "string", "maxLength": 170, "description": "The App Store's promotional text."},
-        "notes": {"type": "string", "maxLength": 4000, "description": "What's new (the App Store's whatsNew; not on an app's first version)."},
+        "notes": {"type": "string", "maxLength": 4000, "description": "The build's notes: Google Play's release notes (500 characters; helder publish --play), the App Store's whatsNew (--testflight --submit; not on an app's first version)."},
         "website": {"type": "string", "pattern": "^https://[^ ]+$", "description": "The app's website (Play's contact website, the App Store's marketing URL)."},
         "support": {"type": "string", "pattern": "^https://[^ ]+$", "description": "The App Store's support URL."},
         "privacy": {"type": "string", "pattern": "^https://[^ ]+$", "description": "The privacy policy (the App Store's; Play's is set in Play Console)."},
@@ -119,18 +119,18 @@
         },
         "locales": {
           "type": "object",
-          "description": "Other languages' localized fields, by language tag (nl-NL).",
+          "description": "Other languages' localized fields: a Google Play language or an App Store locale in either store's spelling (nl-NL; ja-JP or ja), sent to each store in its own.",
           "additionalProperties": {
             "type": "object",
             "additionalProperties": false,
             "properties": {
-              "title": {"type": "string", "maxLength": 30, "description": "Play's title, the App Store's name (else name)."},
+              "title": {"type": "string", "maxLength": 30, "description": "Play's title, the App Store's name."},
               "subtitle": {"type": "string", "maxLength": 30, "description": "The App Store's subtitle."},
               "summary": {"type": "string", "maxLength": 80, "description": "Google Play's short description."},
               "description": {"type": "string", "maxLength": 4000, "description": "Both stores' description: the text, or a .txt or .md file beside helder.json."},
               "keywords": {"type": "array", "items": {"type": "string"}, "description": "The App Store's keywords (100 characters together)."},
               "promo": {"type": "string", "maxLength": 170, "description": "The App Store's promotional text."},
-              "notes": {"type": "string", "maxLength": 4000, "description": "What's new (the App Store's whatsNew; not on an app's first version)."},
+              "notes": {"type": "string", "maxLength": 4000, "description": "The build's notes: Google Play's release notes (500 characters; helder publish --play), the App Store's whatsNew (--testflight --submit; not on an app's first version)."},
               "play": {"type": "object", "additionalProperties": false, "properties": {"listing": {"$ref": "#/$defs/storeAttributes"}}},
               "appStore": {"type": "object", "additionalProperties": false, "properties": {"infoLocalization": {"$ref": "#/$defs/storeAttributes"}, "versionLocalization": {"$ref": "#/$defs/storeAttributes"}}}
             }

@@ -426,7 +426,9 @@ helder logout
 it through the store's own API, without fastlane, Transporter or Xcode
 (HTTP by curl). With no destination it publishes to each one `helder.json`
 names (helder.run's first, when it has a run block, then each target's
-`publish` list):
+`publish` list). Split by lifetime: `--play` and `--testflight` send the
+build and what is the build's (`listing.notes`), never the store page;
+`--listing` sends the store page, never a build:
 
 - **`--play`**: the App Bundle (below: the release key's), an access
   token: `GOOGLE_OAUTH_ACCESS_TOKEN` or `HELDER_PLAY_ACCESS_TOKEN` as it
@@ -440,7 +442,8 @@ names (helder.run's first, when it has a run block, then each target's
   API's edit: `edits.insert`, `bundles.upload`, `tracks.update`
   (`--track`: `internal`, the default, `alpha`, `beta`, `production`; the
   release `completed`, or `--draft` for an app never published yet),
-  `edits.commit`. The service account needs the app's release
+  `edits.commit`; `listing.notes` the release's notes (`releaseNotes`,
+  500 characters a language, the default one Play's). The service account needs the app's release
   permissions in Play Console (Users and permissions), and Play needs a
   first bundle uploaded by hand to create the app's listing.
 - **`--testflight`**: the `.ipa` signed for distribution (below), an
@@ -456,10 +459,15 @@ names (helder.run's first, when it has a run block, then each target's
   uploaded with its MD5, the upload's state read back. No Transporter.
   TestFlight lists the build once App Store Connect has processed it;
   its validation's errors come by email and on the build's page.
-  With **`--submit`**: the build waited for while App Store Connect
-  processes it (`HELDER_ASC_WAIT` seconds at most, 3600), put on the
-  editable App Store version and sent for App Review (a review
-  submission, its item, submitted).
+  With **`--submit`**: the App Store version of the build's version
+  being prepared looked up before the upload (none, or another one
+  being prepared: refused; with `--create-version` made, or that one
+  renamed: App Store Connect prepares one at a time), the build waited
+  for while App Store Connect processes it (`HELDER_ASC_WAIT` seconds at
+  most, 3600), `listing.notes` the version's `whatsNew` (each
+  localization it has; not on an app's first version), the build put on
+  the version and sent for App Review (a review submission, its item,
+  submitted).
 - **`--dry-run`**: built and signed, the token got, what is there read
   (the track's releases; the app's id), what would change printed;
   nothing uploaded, nothing committed (Play's edit deleted).
@@ -477,11 +485,18 @@ names (helder.run's first, when it has a run block, then each target's
   fields both stores share, mapped onto each one's; under `play` and
   `appStore` the stores' resources by their API names, their attributes
   sent as they are, so a field a store adds works without helder knowing
-  it; `locales` for other languages; `"${NAME}"` from the environment),
-  only what differs from the store's sent: Play's listing and details;
-  App Store Connect's app, app info (name, subtitle, privacy URL,
-  categories, the age rating: questions still unanswered named), the
-  version (made when there is none) and its listing, the review's
+  it; `locales` for other languages, each a Play language or an App
+  Store locale in either store's spelling, sent to each store in its
+  own: `ja-JP` and `ja`, `iw-IL` and `he`, `zh-CN` and `zh-Hans`; to
+  neither when it has none; `"${NAME}"` from the environment). Only
+  what is set is sent, where it differs from the store's: a field, a
+  language or an image type not given is left as it is, nothing deleted
+  for being absent. Checked before the first request: the limits in
+  characters (the description's file read), the languages, each image a
+  PNG of a size its store takes for its type, within its count. Play's
+  listing and details; App Store Connect's app, app info (name,
+  subtitle, privacy URL, categories, the age rating: questions still
+  unanswered named), the version's listing and copyright, the review's
   contact; `appStore.price` (`0`: free, the USA's price; `{"amount":
   0.99, "territory": "FRA"}`: another base territory, Apple pricing the
   others from it: a new price schedule of the price point of that
@@ -494,15 +509,33 @@ names (helder.run's first, when it has a run block, then each target's
   Play Console exports it (App content, Data safety, Export to CSV, once:
   a file beside helder.json), sent every time (`applications.dataSafety`:
   Play cannot read it back). With `--no-screenshot`: the text alone, no
-  story rendered, the stores' screenshots left as they are. Play's icon (the app's, 512 px) and feature graphic (the first
-  story with `feature: true`, 1024x500) go with the screenshots. And the
-  same screenshots against each store's listing by hash, those not ours deleted and ours missing uploaded:
-  Google Play's image types (`phoneScreenshots`) in an edit, committed;
-  App Store Connect's version being prepared, its localization's
-  screenshot sets by display type (`APP_IPHONE_67`, `APP_IPHONE_65`,
-  `APP_IPAD_PRO_3GEN_129`, made when missing), each screenshot reserved,
-  sent and committed with its MD5. With `--dry-run` the changes are only
-  listed, in the review sheet too.
+  story rendered, the stores' screenshots left as they are. Play's icon
+  (the app's, 512 px) and feature graphic (the first story with
+  `feature: true`, 1024x500) go with the screenshots. Each image type
+  rendered is authoritative: the store ends up with exactly ours, in
+  order, and one already so is left alone. Google Play's (by the
+  SHA-256 Play gives back; a type otherwise replaced whole: `deleteall`,
+  ours uploaded in order; a language Play has no listing of refused, as
+  Play would drop them), all of Play's in one edit committed at the end
+  (a failure deletes it: the store as it was). App Store Connect's
+  version being prepared, its localization's screenshot sets by display
+  type (`APP_IPHONE_67`, `APP_IPHONE_65`, `APP_IPAD_PRO_3GEN_129`, made
+  when missing; by the MD5 App Store Connect gives back,
+  `sourceFileChecksum`, else the file's name and size; one failed or
+  awaiting its upload counted missing): the others deleted, ours missing
+  reserved, sent and committed with their MD5, the set put in our order.
+  App Store Connect has no transaction, so it is read through first
+  with nothing written, and refused when what the listing sets has
+  nowhere to go: no version of the app's version being prepared (or
+  another one: `--create-version` makes it, or renames that one), no
+  app info being edited. With `--dry-run` the changes are only listed,
+  in the review sheet too.
+- **`--pull`** (with `--play` or `--testflight` for one store, else
+  both): the stores' listing text printed as helder.json's `listing`, to
+  adopt an app already listed: the default language's at the top, the
+  others under `locales`, Play's shared where the stores differ and the
+  App Store's under `appStore`; read alone (Play's edit deleted), no
+  image.
 
 ### Setting up: helder setup
 
@@ -558,8 +591,12 @@ Checked against a stand-in of both APIs (`tests/pack/publish.mjs`, the
 pack lane: the JWTs verified with the keys' public halves, every call
 and its order, the uploaded bytes against the files, the dry run's
 calls; setup's certificate request verified and a certificate issued of
-it, the identities and the upload certificate checked by node's crypto);
-a real upload needs the owner's accounts (`helder.pack`'s README).
+it, the identities and the upload certificate checked by node's crypto),
+and the listing's sync against both stores' answers as their API
+references give them (`Publish.test.hx`, `Listing.test.hx`, the test
+lane: `Publish.transport` in curl's place); a real upload needs the
+owner's accounts (`helder.pack`'s README). The listing's sync has not
+been run against the live stores.
 
 ## Android and iOS
 

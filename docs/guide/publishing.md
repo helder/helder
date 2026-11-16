@@ -165,6 +165,10 @@ If Apple refuses the app, the command prints the notary log.
 
 `helder publish --screenshots` renders the project's stories that are marked for the stores, at the stores' sizes, into `bin/store`, with a review sheet. `--listing` uploads them to the stores' listings (`--locale` sets the language, `en-US` by default).
 
+`--listing` also sends helder.json's `listing`, the store page's text. Only what it sets is sent; a field, language or image type it leaves out stays as the store has it. Each set of screenshots it sends replaces the store's, in order, and one already the same is left alone. Everything is checked before the first request. Google Play's changes go in one edit, committed at the end, so a failure changes nothing. App Store Connect has no such thing, so helder reads everything first and refuses to start when the version being prepared is missing: `--create-version` makes it.
+
+`listing.notes` belongs to the build, not the page: `--play` sends it as the release's notes, `--testflight --submit` as the version's what's new. `helder publish --pull` prints what the stores have now as a `listing`, to start from for an app already in the stores.
+
 ## --dry-run
 
 Add `--dry-run` to see what a publish would do. It builds and signs, signs in, reads what is there now, and prints what would change. Nothing is uploaded.
