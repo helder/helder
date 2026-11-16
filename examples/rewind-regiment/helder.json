@@ -1,0 +1,10 @@
+{
+  "$schema": "https://helder.build/schema/helder.json",
+  "name": "Rewind Regiment",
+  "description": "Toy soldiers fight by themselves on a play tray. Lose, drag the timeline back to where it went wrong, change one thing, and watch the battle play out anew. Seventeen levels in six rooms: grunts, riflemen, bazookas, tin tanks, jeeps, helicopters and wind-up robots, with marbles, dominoes, trains, jack-in-the-boxes, block towers, catapults and spinning tops.",
+  "entry": "RewindRegiment.hx",
+  "colors": {
+    "theme": "#4f5f28",
+    "background": "#2c3514"
+  }
+}
