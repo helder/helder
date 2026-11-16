@@ -527,7 +527,7 @@ class GridLayout {
 	// a track sizing function's kind, once its percentage is resolved (one
 	// of an indefinite size: auto)
 	static inline var FIXED = 0;
-	static inline var AUTO = 1;
+	static inline var AUTO_TRACK = 1;
 	static inline var MIN_CONTENT = 2;
 	static inline var MAX_CONTENT = 3;
 	static inline var FLEX = 4;
@@ -565,7 +565,7 @@ class GridLayout {
 					FIXED;
 				case MinContent: MIN_CONTENT;
 				case MaxContent: MAX_CONTENT;
-				case _: AUTO;
+				case _: AUTO_TRACK;
 			}
 			fr[i] = 0;
 			maxK[i] = switch d.max {
@@ -580,7 +580,7 @@ class GridLayout {
 					FLEX;
 				case MinContent: MIN_CONTENT;
 				case MaxContent: MAX_CONTENT;
-				case _: AUTO;
+				case _: AUTO_TRACK;
 			}
 			base[i] = mn;
 			limit[i] = mx < mn ? mn : mx;
@@ -614,7 +614,7 @@ class GridLayout {
 			for (i in a...b) {
 				if (minK[i] != FIXED || maxK[i] != FIXED) sized = true;
 				if (maxK[i] == FLEX) crossesFlex = true;
-				if (minK[i] == AUTO) spansAutoMin = true;
+				if (minK[i] == AUTO_TRACK) spansAutoMin = true;
 				if (maxK[i] == FIXED) fixedMax += limit[i] else allFixedMax = false;
 			}
 			flexed[k] = crossesFlex;
@@ -636,7 +636,7 @@ class GridLayout {
 			} else if (columns) {
 				// (its percentages of its area, not known yet: auto meanwhile; within its min and max widths, which
 				// Layout.minContentWidth leaves out when it has the content's cached)
-				mins[k] = Layout.clamp(l.minContentWidth(c, Math.NaN, true), Layout.min(cs.minWidth, Math.NaN), Layout.max(cs.maxWidth, Math.NaN)) + edges;
+				mins[k] = l.minContentWidth(c, Math.NaN, true) + edges;
 				l.size(c, Math.NaN, Math.NaN, Math.NaN, gridH, Math.NaN, Math.NaN, false);
 				maxes[k] = l.rw + edges;
 			} else {
@@ -726,7 +726,7 @@ class GridLayout {
 				have += base[i];
 			var extra = upTo(Math.max(0, space - have), a, b, aff, weight, false, lim);
 			if (extra > 0.000001) {
-				var past = ofMax ? i -> maxK[i] == MAX_CONTENT : i -> maxK[i] == AUTO || maxK[i] == MIN_CONTENT || maxK[i] == MAX_CONTENT;
+				var past = ofMax ? i -> maxK[i] == MAX_CONTENT : i -> maxK[i] == AUTO_TRACK || maxK[i] == MIN_CONTENT || maxK[i] == MAX_CONTENT;
 				var some = false;
 				for (i in a...b)
 					if (aff(i) && past(i)) some = true;
@@ -816,12 +816,12 @@ class GridLayout {
 							base[i] = Math.max(base[i], mins[k]);
 						case MAX_CONTENT:
 							base[i] = Math.max(base[i], maxes[k]);
-						case AUTO:
+						case AUTO_TRACK:
 							base[i] = Math.max(base[i], !definite && !scroller(k) ? Math.max(minimums[k], cap(k, mins[k])) : minimums[k]);
 						case _:
 					}
 					var want = switch maxK[i] {
-						case AUTO | MAX_CONTENT: maxes[k];
+						case AUTO_TRACK | MAX_CONTENT: maxes[k];
 						case MIN_CONTENT: mins[k];
 						case _: -1.0;
 					}
@@ -860,7 +860,7 @@ class GridLayout {
 			flushBase();
 			// the max-content minimums: under a max-content constraint, their limited max-content contributions
 			if (maxContent) {
-				var autoMin = i -> minK[i] == AUTO && maxK[i] != MIN_CONTENT, maxMin = i -> minK[i] == MAX_CONTENT;
+				var autoMin = i -> minK[i] == AUTO_TRACK && maxK[i] != MIN_CONTENT, maxMin = i -> minK[i] == MAX_CONTENT;
 				for (k in batch) {
 					if (!spans(k, i -> autoMin(i) || maxMin(i))) continue;
 					var a = startOf(items[k]), b = a + spanOf(items[k]);
@@ -890,7 +890,7 @@ class GridLayout {
 				if (mins[k] > 0) toLimit(mins[k], a, a + spanOf(items[k]), intrinsicMax);
 			}
 			flushLimit(true);
-			var maxMax = i -> maxK[i] == AUTO || maxK[i] == MAX_CONTENT;
+			var maxMax = i -> maxK[i] == AUTO_TRACK || maxK[i] == MAX_CONTENT;
 			for (k in batch) {
 				if (!spans(k, maxMax)) continue;
 				var a = startOf(items[k]);
