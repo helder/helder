@@ -33,8 +33,10 @@ simulator() {
 	if [ -n "${HELDER_IOS_SIMULATOR:-}" ]; then
 		udid=$HELDER_IOS_SIMULATOR
 		t0=$(date +%s)
-		# (bootstatus -b: boots it if it is not, waits while it boots)
-		xcrun simctl bootstatus "$udid" -b > /dev/null 2>&1
+		# (bootstatus -b: boots it if it is not, waits while it boots; on one
+		# booting already, `create`'s, it can fail after waiting: then
+		# bootstatus alone, which waits for a boot under way)
+		xcrun simctl bootstatus "$udid" -b > /dev/null 2>&1 || xcrun simctl bootstatus "$udid" > /dev/null 2>&1
 		r=$?
 		# (and its first app's launch, when `create` started one: its log's line)
 		log="${TMPDIR:-/tmp}/helder-simulator-$udid.log"
