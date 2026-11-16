@@ -84,6 +84,8 @@ class IosAccessCheck {
 						check("incremented", Math.abs(f.volume.peek() - 0.6) < 1e-9, '${f.volume.peek()}');
 					}
 					if (!name.isNull()) check("a field's value", str(name, "accessibilityValue") == "Ada");
+					// (UIKit's private text entry trait: XCUITest's text field)
+					if (!name.isNull()) check("a field's traits: a text entry", Msg.i(name, sel("accessibilityTraits")).toInt() & (1 << 18) != 0);
 					step = 1;
 				case 1:
 					var vol = find("Volume");

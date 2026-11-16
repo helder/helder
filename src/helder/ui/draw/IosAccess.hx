@@ -21,7 +21,8 @@ import hxmc.unsafe.*;
 // label, value (a text's, a toggle's state, a range's text or percent,
 // a tab's selection), hint (the description), traits (button, link,
 // image, header, static text, adjustable, selected, not enabled; a text
-// input, a search field), and frame on the screen (the view's points
+// input UIKit's private text entry, editing while focused with the
+// keyboard up), and frame on the screen (the view's points
 // converted to the window's). Nothing is built until UIKit
 // first asks the view for its elements; from then on updated after each
 // frame from what changed (AccessTree.changes), UIKit told
@@ -42,6 +43,8 @@ class IosAccess {
 	final elements = new Map<Int, Ptr>();
 	final ids = new Map<String, Int>();
 	final containers = new Map<Int, Ptr>();
+	// each element's traits (its node's), editing added while focused (traitsNow)
+	final traitsBy = new Map<Int, Int64>();
 	var tree:Null<AccessTree>;
 	var active = false;
 	// the container's elements (retained)
@@ -65,16 +68,22 @@ class IosAccess {
 		Runtime.class_replaceMethod(e, ObjC.sel("accessibilityActivate"), Callback.addr(activate), Mem.cstr("B@:"));
 		Runtime.class_replaceMethod(e, ObjC.sel("accessibilityIncrement"), Callback.addr(increment), Mem.cstr("v@:"));
 		Runtime.class_replaceMethod(e, ObjC.sel("accessibilityDecrement"), Callback.addr(decrement), Mem.cstr("v@:"));
+		Runtime.class_replaceMethod(e, ObjC.sel("accessibilityTraits"), Callback.addr(traitsNow), Mem.cstr("Q@:"));
 		if (fresh) Runtime.objc_registerClassPair(e);
 		elementClass = e;
 		// (the traits are UIKit's constants, read where they are: a trait iOS lacks is none)
 		traits = new Map();
 		present = new Map();
-		for (t in ["Button", "Link", "Image", "Header", "StaticText", "Adjustable", "Selected", "NotEnabled", "SearchField", "UpdatesFrequently", "TabBar", "ToggleButton"]) {
+		for (t in ["Button", "Link", "Image", "Header", "StaticText", "Adjustable", "Selected", "NotEnabled", "SearchField", "UpdatesFrequently", "TabBar", "ToggleButton",
+			"TextEntry", "IsEditing"]) {
 			var p:Ptr<Int64> = Arena.scopedValue(a -> Posix.dlsym(Ptr.ofI64(-2), a.cstring("UIAccessibilityTrait" + t)));
 			traits.set(t, p.isNull() ? 0 : p.value);
 			present.set(t, !p.isNull());
 		}
+		// (private, UIAccessibility.framework's, not loaded before an assistive technology or a UI test: their values as
+		// UIKit's text fields have them; a text entry is XCUITest's text field, editing its keyboard focus)
+		if (!present.get("TextEntry")) traits.set("TextEntry", (1 : Int64) << 18);
+		if (!present.get("IsEditing")) traits.set("IsEditing", (1 : Int64) << 21);
 	}
 
 	// the view a container (once: its class's methods)
@@ -109,6 +118,7 @@ class IosAccess {
 				Runtime.objc_release(e);
 				elements.remove(id);
 				containers.remove(id);
+				traitsBy.remove(id);
 			}
 		}
 		tree = t;
@@ -240,6 +250,7 @@ class IosAccess {
 		if (n.role == Button && n.checked != null && present.get("ToggleButton")) on("ToggleButton");
 		if (n.selected == true || n.checked == true && n.role != CheckBox && n.role != Switch) on("Selected");
 		if (n.disabled) on("NotEnabled");
+		if (n.editable() && !n.readOnly) on("TextEntry");
 		return t;
 	}
 
@@ -252,7 +263,9 @@ class IosAccess {
 		Msg.vPtr(e, ObjC.sel("setAccessibilityValue:"), v == null ? Ptr.nil() : str(v));
 		var hint = n.description ?? (n.editable() ? (n.readOnly ? "read only" : "text field") : null);
 		Msg.vPtr(e, ObjC.sel("setAccessibilityHint:"), hint == null ? Ptr.nil() : str(hint));
-		Msg.vInt(e, ObjC.sel("setAccessibilityTraits:"), traitsOf(n));
+		var t = traitsOf(n);
+		traitsBy.set(ids.get(key(e)), t);
+		Msg.vInt(e, ObjC.sel("setAccessibilityTraits:"), t);
 		// (what UI tests find it by: Semantics.identifier, else the node's)
 		Msg.vPtr(e, ObjC.sel("setAccessibilityIdentifier:"), str(n.identifier ?? "helder-" + n.id));
 		// the frame: UI pixels to the view's points
@@ -297,6 +310,16 @@ class IosAccess {
 
 	@:hxmc.callback static function notElement(self:Ptr, cmd:Ptr):Int
 		return 0;
+
+	// its traits, a text entry's editing while focused with the keyboard's text (the view first responder)
+	@:hxmc.callback static function traitsNow(self:Ptr, cmd:Ptr):Int64 {
+		var o = owner(self), a = o.a;
+		if (a == null) return 0;
+		var t = a.traitsBy.get(o.id) ?? 0;
+		if ((t & traits.get("TextEntry")) != 0 && a.tree != null && a.tree.focus == o.id && Msg.b(a.view, ObjC.sel("isFirstResponder")))
+			t = t | traits.get("IsEditing");
+		return t;
+	}
 
 	// (the first question builds the tree)
 	@:hxmc.callback static function viewElements(self:Ptr, cmd:Ptr):Ptr {

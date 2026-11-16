@@ -16,6 +16,8 @@ import hxmc.unsafe.*;
 	// (adds or replaces: under hxmc dev's host, a class an earlier build made, its methods this build's)
 	static function class_replaceMethod(cls:Ptr, sel:Ptr, imp:Ptr, types:Ptr):Ptr;
 	static function object_getClass(o:Ptr):Ptr;
+	static function objc_getProtocol(name:Ptr):Ptr;
+	static function class_addProtocol(cls:Ptr, protocol:Ptr):Bool;
 	static function object_setClass(o:Ptr, cls:Ptr):Ptr;
 	static function objc_retain(o:Ptr):Ptr;
 	static function objc_release(o:Ptr):Void;

@@ -364,7 +364,7 @@ class ProductScreen implements Markup {
 	}
 
 	public function view():View
-		return <view grow={1}>
+		return <view grow={1} min-height={0}>
 			<Show when={data() != null} fallback={<view grow={1}>
 				<view padding="calc(env(safe-area-inset-top) + 4px) 12 0" shrink={0}><Back round/></view>
 				<Show when={failed()} fallback={<view grow={1} justify="center">{Spinner()}</view>}><Failed onRetry={load}/></Show>
@@ -373,7 +373,7 @@ class ProductScreen implements Markup {
 
 	function content(d:ProductDetail):View {
 		var options = [for (o in d.options) if (!(o.name == "Title" && o.values.length == 1 && o.values[0] == "Default Title")) o];
-		return <view grow={1}>
+		return <view grow={1} min-height={0}>
 			<scroll grow={1} min-height={0}>
 				<view padding-bottom={32}>
 					<view>

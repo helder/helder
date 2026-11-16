@@ -390,7 +390,7 @@ class CoreText implements TextBackend {
 	static function CFEqual(a:Ptr, b:Ptr):Bool;
 	static function CFArrayGetCount(a:Ptr):hxmc.I64;
 	static function CFArrayGetValueAtIndex(a:Ptr, i:hxmc.I64):Ptr;
-	static function CFStringCreateWithCharacters(alloc:Ptr, chars:Ptr, n:hxmc.I64):Ptr;
+	@:hxmc.fast static function CFStringCreateWithCharacters(alloc:Ptr, chars:Ptr, n:hxmc.I64):Ptr;
 	static function CFAttributedStringCreate(alloc:Ptr, str:Ptr, attrs:Ptr):Ptr;
 	static function CFURLGetFileSystemRepresentation(url:Ptr, resolve:Bool, buf:Ptr, max:hxmc.I64):Bool;
 }

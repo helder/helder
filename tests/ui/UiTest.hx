@@ -1696,6 +1696,13 @@ class UiTest {
 		ui.update();
 		check("images: the natural size", natural.width == 40 && natural.height == 20, '${natural.width}x${natural.height}');
 		check("images: the aspect ratio kept", wide.width == 100 && wide.height == 50, '${wide.width}x${wide.height}');
+		// (aspect-ratio given: it, not the image's, in a column's item and through its automatic minimum)
+		var col = new Ui(new MonoText(), 300, 600);
+		var framed = new ImageNode(new Image(40, 70));
+		framed.style.aspectRatio = 0.75;
+		col.root.append(framed);
+		col.update();
+		check("images: a given aspect ratio over the image's", framed.width == 300 && framed.height == 400, '${framed.width}x${framed.height}');
 		check("images: Fill", box.placement(0, 0, 100, 100).join(",") == "0,0,100,100,0,0,1,1");
 		box.fit = Contain;
 		check("images: Contain", box.placement(0, 0, 100, 100).join(",") == "0,25,100,50,0,0,1,1", box.placement(0, 0, 100, 100).join(","));

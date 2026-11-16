@@ -218,6 +218,9 @@ class ImageNode extends Node {
 	override public function measureContent(engine:TextEngine, knownWidth:Float, knownHeight:Float, availWidth:Float, availHeight:Float):Size {
 		if (image == null && svg == null) return new Size(Math.isNaN(knownWidth) ? 0 : knownWidth, Math.isNaN(knownHeight) ? 0 : knownHeight);
 		var iw = intrinsicWidth(), ih = intrinsicHeight();
+		// (a ratio given, CSS's aspect-ratio without auto: the image's own not, a 4:7 photo in a 3:4 frame)
+		var ar = style.aspectRatio;
+		if (ar > 0) ih = iw / ar;
 		var kw = !Math.isNaN(knownWidth), kh = !Math.isNaN(knownHeight);
 		return if (kw && kh) new Size(knownWidth, knownHeight) else if (kw) new Size(knownWidth, knownWidth * ih / iw) else if (kh)
 			new Size(knownHeight * iw / ih, knownHeight) else new Size(iw, ih);
