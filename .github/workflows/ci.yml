@@ -292,7 +292,8 @@ jobs:
         continue-on-error: true
         run: sudo apt-get install -qqy --no-install-recommends weston wayland-protocols libwayland-dev libwayland-egl1 libxkbcommon0
       - name: gfx, audio, ui, helder run --headless, the shared textures and the story host across processes, Wayland (a headless weston), the platform's text and images (Mesa llvmpipe, Xvfb)
-        run: bun run test -k headless-run gfx gfx-compute gfx-shared story-shared audio ui-draw wayland dbus system-text system-images canvas-gpu
+        # (two at once: headless-run alone was 171 s of the step's 235)
+        run: bun run test -k -j 2 headless-run gfx gfx-compute gfx-shared story-shared audio ui-draw wayland dbus system-text system-images canvas-gpu
       - uses: actions/upload-artifact@v7
         if: always()
         with: {name: images, path: "bin/gfx/**/*.png\nbin/headless-run/**/*.png\nbin/canvas/*.png\nbin/ui/**/*.png\nbin/text/*.png\nbin/os/*.png", retention-days: 7, if-no-files-found: ignore}
@@ -359,9 +360,10 @@ jobs:
         uses: ./.github/actions/save
         with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
-  # (two jobs, 3d-web's runs in two shards, SCENES_SHARD, a machine each: one
-  # run at a time on a machine's cores, as SwiftShader's frames need; the
-  # first also the other lanes)
+  # (four jobs, 3d-web's runs in three shards, SCENES_SHARD, a machine each:
+  # one run at a time on a machine's cores, as SwiftShader's frames need;
+  # the other lanes a job of their own. Two shards, the other lanes on the
+  # first: 371 and 328 s)
   browser:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -372,8 +374,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {shard: 0, lanes: 3d-web gfx-web ui-web canvas-web web canvas-doc audio-web gfx-compute-web}
+          - {shard: 0, lanes: 3d-web}
           - {shard: 1, lanes: 3d-web}
+          - {shard: 2, lanes: 3d-web}
+          - {shard: lanes, lanes: gfx-web ui-web canvas-web web canvas-doc audio-web gfx-compute-web}
     steps:
       - uses: actions/checkout@v7
       - id: setup
@@ -389,7 +393,7 @@ jobs:
           # and the post passes, transmission, levels of detail; main and the
           # nightly: every one in both)
           SCENES_WINDOW: ${{ github.event_name == 'pull_request' && 'gltf,textured,skin,gpuparticles,taa,motionblur,bloom,transmission,lod' || '' }}
-          SCENES_SHARD: ${{ matrix.shard }}/2
+          SCENES_SHARD: ${{ matrix.shard }}/3
         run: bun run test -k ${{ matrix.lanes }}
       # (the frames each API drew: a golden's difference seen)
       - uses: actions/upload-artifact@v7
