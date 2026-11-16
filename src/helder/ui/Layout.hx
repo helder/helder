@@ -893,8 +893,9 @@ class Layout {
 		if (contribution && known(w)) return Math.max(clamp(w, minW, maxW), edgesH(s));
 		// (an intrinsic width's min-content contribution: max-content's, the others' min-content)
 		if (contribution && s.width == DimValue.MaxContent) return Math.max(clamp(intrinsicWidth(n, s.width, parentW, Math.NaN), minW, maxW), edgesH(s));
+		// (cached: the content's, this node's min and max still its contribution's)
 		var cached = n.minContent;
-		if (known(cached)) return cached;
+		if (known(cached)) return contribution ? clamp(cached, minW, maxW) : cached;
 		var padH = s.padding.left + s.padding.right + s.borderEdges.left + s.borderEdges.right;
 		var inner = 0.0;
 		if (n.hasContent() && (n.children.length == 0 || n.contentOwnsChildren())) inner = n.minContentWidth(text) else if (s.display == Grid) inner = GridLayout.minContent(this, n) else {
