@@ -14,8 +14,10 @@ export type RequestOptions = { method?: string; headers?: unknown; body?: Uint8A
 
 // An HTTP/1.1 client on helder.async's TCP, for talking to a local server
 // (plain http, one connection a request): the body read by Content-Length,
-// chunked or until the server closes. No TLS, no redirects, no
-// compression asked for.
+// chunked or until the server closes. No redirects, no compression asked
+// for. An https URL goes to the system's stack instead: NSURLSession on
+// macOS and iOS (AppleHttp: its TLS, redirects, HTTP/2 and cache); none
+// elsewhere yet (an exception).
 //
 //   var res = Client.request("http://127.0.0.1:4983/", {method: "POST", body: '{"type":"init"}',
 //     headers: ["content-type" => "application/json"]});

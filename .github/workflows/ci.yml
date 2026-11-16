@@ -37,11 +37,11 @@
 #   handler, cross-origin isolated, wasm, the bridge's round trip, a
 #   snapshot, examples/todo's web build in it; over a drawn window and on
 #   the whole screen); the APKs' own checks are the headless job's pack lane;
-# - ios-simulator: one iPhone simulator for the job (tests/pack/simulator.sh:
-#   made and booting at the start, while the CLI and the apps build; shared
-#   by the three scripts through HELDER_IOS_SIMULATOR; deleted at the end):
-#   tests/pack/Hello.hx (helder run, simctl), the audio stream, the cube's
-#   window and a tap (tests/gfx/ios.sh: SimTap's clicks), the web view
+# - ios-simulator: two shards, an iPhone simulator each (tests/pack/simulator.sh:
+#   made and booting once the CLI and helder's compiler are built, while
+#   the apps build; shared by a shard's scripts through HELDER_IOS_SIMULATOR;
+#   deleted at the end): pack, tests/pack/Hello.hx (helder run, simctl), the audio stream, the cube's
+#   window and a tap (gfx-webview: tests/gfx/ios.sh, SimTap's clicks), the web view
 #   (tests/platform/webview-ios.sh, as Android's). That is a pull request's
 #   (IOS_SUITE=smoke); pushes to main and the nightly run the full suite:
 #   the assets, the screen fixture, the planets example, UIAccessibility,
@@ -511,51 +511,73 @@ jobs:
   # tests/pack/screen.mjs, the planets example, UIAccessibility),
   # tests/gfx/ios.sh, tests/platform/webview-ios.sh. IOS_SUITE: smoke on a
   # pull request, full on main and nightly.
+  # (two shards, a simulator each: the boot, about five minutes, the floor
+  # of both. The CLI and helder's compiler built before the simulator is
+  # made: beside its first boot they took 245 and 190 s, 2 and 11 s on
+  # other runners; the apps, small builds, while it boots)
   ios-simulator:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: macos-15
     continue-on-error: true
     timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [pack, gfx-webview]
     env:
       IOS_SUITE: ${{ github.event_name == 'pull_request' && 'smoke' || 'full' }}
     steps:
       - uses: actions/checkout@v7
       # (setup first: beside a booting simulator, setup-node and setup-bun
-      # took 1 and 3 minutes, 20 s otherwise; the boot is the builds' time)
+      # took 1 and 3 minutes, 20 s otherwise)
       - id: setup
         uses: ./.github/actions/setup
-        with: {cache: ios-simulator}
-      - name: A simulator, booting while the job builds (tests/pack/simulator.sh)
-        run: echo "HELDER_IOS_SIMULATOR=$(sh tests/pack/simulator.sh create helder-ci)" >> "$GITHUB_ENV"
-      - name: The CLI and the apps (IOS_BUILD_ONLY)
+        with: {cache: 'ios-simulator-${{ matrix.shard }}'}
+      - name: The CLI and helder's compiler, before the simulator
         run: |
           set -u
-          node src/helder/cli/run.mjs help > /dev/null
-          bin/cli/helder build tests/gfx/SimTap.hx -o bin/pack/SimTap &
+          node src/helder/cli/run.mjs help > /dev/null &
           a=$!
-          bin/cli/helder build tests/gfx/ios --target ios-sim -o bin/pack/IosTest.app &
+          node src/helder/compiler/build.mjs > /dev/null &
           b=$!
-          IOS_BUILD_ONLY=1 sh tests/pack/ios.sh bin/cli/helder bin/pack/ios > "$RUNNER_TEMP/build-hello.txt" 2>&1 &
-          c=$!
-          IOS_BUILD_ONLY=1 sh tests/platform/webview-ios.sh bin/cli/helder bin/pack/ios-webview > "$RUNNER_TEMP/build-webview.txt" 2>&1 &
-          d=$!
           status=0
-          for p in $a $b $c $d; do wait $p || status=1; done
-          cat "$RUNNER_TEMP"/build-*.txt
+          for p in $a $b; do wait $p || status=1; done
+          exit $status
+      - name: A simulator booting (tests/pack/simulator.sh) while the apps build (IOS_BUILD_ONLY)
+        run: |
+          set -u
+          sh tests/pack/simulator.sh create helder-ci > "$RUNNER_TEMP/udid" &
+          s=$!
+          status=0
+          if [ "${{ matrix.shard }}" = pack ]; then
+            IOS_BUILD_ONLY=1 sh tests/pack/ios.sh bin/cli/helder bin/pack/ios || status=1
+          else
+            bin/cli/helder build tests/gfx/SimTap.hx -o bin/pack/SimTap &
+            a=$!
+            bin/cli/helder build tests/gfx/ios --target ios-sim -o bin/pack/IosTest.app &
+            b=$!
+            IOS_BUILD_ONLY=1 sh tests/platform/webview-ios.sh bin/cli/helder bin/pack/ios-webview > "$RUNNER_TEMP/build-webview.txt" 2>&1 &
+            c=$!
+            for p in $a $b $c; do wait $p || status=1; done
+            cat "$RUNNER_TEMP/build-webview.txt"
+          fi
           echo "IOS_PREBUILT=1" >> "$GITHUB_ENV"
+          wait $s || status=1
+          udid=$(cat "$RUNNER_TEMP/udid")
+          [ -n "$udid" ] && echo "HELDER_IOS_SIMULATOR=$udid" >> "$GITHUB_ENV" || status=1
           exit $status
       # (each device step its own checks, also after another's failure; none
       # without the setup: no CLI, nothing to run but timeouts)
       - name: Hello and the audio stream on the simulator (tests/pack/ios.sh)
-        if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.setup.outcome == 'success' && matrix.shard == 'pack' }}
         run: sh tests/pack/ios.sh bin/cli/helder bin/pack/ios
       - name: The cube and its touches on the simulator (tests/gfx/ios.sh, SimTap's clicks)
-        # (also when Hello's step failed: their checks are their own)
-        if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.setup.outcome == 'success' && matrix.shard == 'gfx-webview' }}
         run: sh tests/gfx/ios.sh bin/pack/IosTest.app bin/pack/ios-gfx "$PWD/bin/pack/SimTap"
       - name: The web view on the simulator (tests/platform/webview-ios.sh)
-        if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
+        # (also when the cube's step failed: their checks are their own)
+        if: ${{ !cancelled() && steps.setup.outcome == 'success' && matrix.shard == 'gfx-webview' }}
         run: sh tests/platform/webview-ios.sh bin/cli/helder bin/pack/ios-webview
       - name: The simulator deleted
         if: always()
@@ -565,7 +587,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: ios
+          name: ios-${{ matrix.shard }}
           path: |
             bin/pack/ios/*.txt
             bin/pack/ios/*.png
