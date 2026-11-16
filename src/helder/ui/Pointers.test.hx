@@ -99,6 +99,22 @@ function tests() {
 			ui.update();
 			equals(list.scrollY, 50.0);
 		});
+		test("a drag a node captured as it went down is that node's: nothing scrolled, its press not cancelled", () -> {
+			item.onPointerDown = e -> {
+				log.push('item down ${e.pointerId}');
+				e.current.capture();
+			};
+			ui.pointerDown(50, 150, 1, 1, Touch);
+			t += 0.016;
+			ui.pointerMove(50, 130, 1);
+			t += 0.016;
+			ui.pointerMove(50, 100, 1);
+			t += 0.016;
+			ui.pointerMove(50, 20, 1);
+			ui.pointerUp(50, 20, 1, 1);
+			equals(list.scrollY, 0.0);
+			equals(log, ["item down 1", "item move 1", "item move 1", "item move 1", "item up 1", "item lost 1"]);
+		});
 		test("a flick glides on, slowing; a new touch stops it", () -> {
 			ui.pointerDown(50, 190, 1, 1, Touch);
 			for (k in 1...4) {

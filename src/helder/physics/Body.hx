@@ -13,6 +13,7 @@ import helder.scene.math.Quat;
 // angular velocity the program sets (a moving platform, a paddle, a
 // door): contacts push others out of its way, never it, and it wakes the
 // sleeping bodies it touches.
+@:allow(helder.physics.Snapshot)
 class Body {
 	public final shape:Shape;
 	public var position:Vec3;

@@ -25,7 +25,7 @@ impulse, when a moving body (dynamic or kinematic) touches them, or when
 the body under them is removed (`wakeAll` after moving a static body by
 hand); kinematic bodies (`Body.kinematic`: no mass, moved by the velocity
 and angular velocity set on them, as platforms, paddles and doors); the same steps give the same numbers on every target (Eval,
-native, wasm32-wasi: tested). Joints: `physics.join(Joint.ball(a, anchorA, b, anchorB))` (a ball and socket; `b` null: a point of the world) `Joint.distanceOf(...)` (a rigid rod) and `Joint.hinge(a, anchorA, axisA, b, anchorB, axisB)` (doors, wheels). `Character` walks an upright capsule: steered towards a wanted velocity, grounded by a ray, jumping, climbing steps. Next: convex hulls (GJK and EPA), box edge-against-edge axes, slopes for characters; a binding to an
+native, wasm32-wasi: tested). Snapshots: `var at = physics.snapshot()` and later `physics.restore(at)` put the world back as it was (its bodies, their state, the joints): the steps after it give the same numbers again, for rewinds, replays and branches (`Snapshot`; examples/rewind-regiment keeps one every 10 steps, its timeline dragged back and branched). Joints: `physics.join(Joint.ball(a, anchorA, b, anchorB))` (a ball and socket; `b` null: a point of the world) `Joint.distanceOf(...)` (a rigid rod) and `Joint.hinge(a, anchorA, axisA, b, anchorB, axisB)` (doors, wheels). `Character` walks an upright capsule: steered towards a wanted velocity, grounded by a ray, jumping, climbing steps. Next: convex hulls (GJK and EPA), box edge-against-edge axes, slopes for characters; a binding to an
 established engine behind the same API later.
 
 A step allocates nothing on the GC heap once its buffers have grown to the world's size: the contacts

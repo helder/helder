@@ -147,6 +147,9 @@ class Ui {
 	final pLive:Array<Bool> = [for (_ in 0...POINTERS) false];
 	final pClick:Array<Bool> = [for (_ in 0...POINTERS) false];
 	final pPrimary:Array<Bool> = [for (_ in 0...POINTERS) false];
+	// (whether a node captured it, Node.capture, as its press went down:
+	// the drag is that node's, the first finger's scroll left out)
+	final pCaptured:Array<Bool> = [for (_ in 0...POINTERS) false];
 	// the arenas (the mouse's 0): the recognisers competing for each
 	// pointer, the innermost first; the one that won it
 	final arenas:Array<Array<Gesture>> = [for (_ in 0...POINTERS) []];
@@ -912,6 +915,7 @@ class Ui {
 		}
 		pDown[id] = pLive[id] = pClick[id] = true;
 		pPrimary[id] = primary;
+		pCaptured[id] = false;
 		pTarget[id] = target;
 		pType[id] = type;
 		pStartX[id] = x;
@@ -926,7 +930,7 @@ class Ui {
 				f = f.parent;
 			setFocus(f, false);
 		}
-		if (pDown[id]) openArena(id, target, type, 1, x, y, primary && type != Mouse);
+		if (pDown[id]) openArena(id, target, type, 1, x, y, primary && type != Mouse && !pCaptured[id]);
 		return owns(target);
 	}
 
@@ -1019,6 +1023,7 @@ class Ui {
 		if (id >= POINTERS || !pDown[id] || !pLive[id]) return;
 		var old = pTarget[id];
 		pTarget[id] = n;
+		pCaptured[id] = true;
 		if (old != null && old != n) lose(old, id, pStartX[id], pStartY[id]);
 	}
 
@@ -1149,9 +1154,20 @@ class Ui {
 
 	// whether a wheel at x, y by deltaX, deltaY would scroll something: a
 	// scroller under the point (the innermost first) not at its end that
-	// way (a touch drag's question, helder.os's Window.scrollsAt: UiWindow)
-	public function scrollsAt(x:Float, y:Float, deltaX:Float, deltaY:Float):Bool
-		return Scrolling.scrollsAt(this, hit(x, y), deltaX, deltaY);
+	// way (a touch drag's question, helder.os's Window.scrollsAt: UiWindow).
+	// A node there, or around it, that follows the pointer's moves
+	// (onPointerMove: a slider, a timeline, a field things are dragged
+	// over) takes the drag too: in a browser whose canvas pans the page,
+	// the page would take it from it otherwise (the pointer cancelled)
+	public function scrollsAt(x:Float, y:Float, deltaX:Float, deltaY:Float):Bool {
+		var n = hit(x, y);
+		if (Scrolling.scrollsAt(this, n, deltaX, deltaY)) return true;
+		while (n != null) {
+			if (n.onPointerMove != null) return true;
+			n = n.parent;
+		}
+		return false;
+	}
 
 	// --- keyboard ---
 

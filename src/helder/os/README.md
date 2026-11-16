@@ -265,7 +265,8 @@ glides; the examples drag with any pointer, the mouse's left button too;
 (every drag the program's); with `'pan-y'` a drag that starts vertical asks
 the program first, once, at its first move: `Window.scrollsAt(x, y, dx,
 dy)`, whether something where it started scrolls that way (helder.ui
-answers from its scrollers, innermost first; the cube takes only sideways
+answers from its scrollers, innermost first, and from what follows the
+pointer's moves there: an `onPointerMove`; the cube takes only sideways
 drags). Yes: the drag is the program's, the page held still (its
 touchmoves cancelled); no, or no answer: the page scrolls instead, as at a
 scroller's end (a canvas as wide as a phone's screen that the page must

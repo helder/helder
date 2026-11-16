@@ -266,6 +266,32 @@ class PhysicsTest {
 		Sys.println('PhysicsTest: pile checksum ${Math.round(sum * 1e6)}');
 		// (the value on Eval, natively and as wasm32-wasi alike)
 		check("the pile's checksum, the same on every target", Math.round(sum * 1e6) == CHECKSUM);
+		// snapshots: a pile restored to step 120 and stepped on to 300 ends as it ended
+		// the first time, a body added after the snapshot taken out, one removed back
+		var again = new PhysicsWorld();
+		again.add(new Body(Plane(new Vec3(0, 1, 0), 0), new Vec3(0, 0, 0), 0));
+		for (k in 0...12)
+			again.add(new Body(Sphere(0.3), new Vec3((k % 3) * 0.7 - 0.7 + k * 0.01, 1 + k * 0.5, (k % 2) * 0.4 - 0.2)));
+		for (k in 0...3)
+			again.add(new Body(Box(new Vec3(0.25, 0.2, 0.3)), new Vec3(k * 0.6 - 0.6, 8 + k, 0.1 * k)));
+		var at = null;
+		for (s in 0...300) {
+			if (s == 120) at = again.snapshot();
+			again.step(dt);
+		}
+		var first = [for (bd in again.bodies) bd.position.x + bd.position.y * 3 + bd.orientation.z * 5];
+		var extra = again.add(new Body(Sphere(0.3), new Vec3(0, 0.3, 0)));
+		var gone = again.bodies[3];
+		again.remove(gone);
+		again.restore(at);
+		for (_ in 120...300)
+			again.step(dt);
+		var second = [for (bd in again.bodies) bd.position.x + bd.position.y * 3 + bd.orientation.z * 5];
+		var same = first.length == second.length;
+		for (i in 0...first.length)
+			if (same && first[i] != second[i]) same = false;
+		check("restored and stepped again: the same numbers", same);
+		check("restored: the body added after gone, the one removed back", again.bodies.indexOf(extra) < 0 && again.bodies.indexOf(gone) >= 0);
 		Sys.println('PhysicsTest: $checks checks, ' + (failed == 0 ? "ok" : '$failed FAILED'));
 		if (failed > 0) Sys.exit(1);
 	}

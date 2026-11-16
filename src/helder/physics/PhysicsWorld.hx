@@ -61,6 +61,18 @@ class PhysicsWorld {
 		for (b in bodies)
 			if (b.sleeping) b.wake();
 
+	// the world's state now (into: written again instead of made), for
+	// restore: a rewind, a replay, a branch (Snapshot)
+	public function snapshot(?into:Snapshot):Snapshot {
+		var s = into ?? new Snapshot();
+		s.write(this);
+		return s;
+	}
+
+	// the world as it was at the snapshot: the steps after it give the same numbers again
+	public function restore(s:Snapshot)
+		s.read(this);
+
 	// a joint between bodies (Joint.ball, Joint.distanceOf), solved with the contacts
 	public function join(joint:Joint):Joint {
 		joints.push(joint);
