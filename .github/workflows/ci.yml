@@ -40,9 +40,10 @@
 # - ios-simulator: two shards, an iPhone simulator each (tests/pack/simulator.sh:
 #   made and booting once the CLI and helder's compiler are built, while
 #   the apps build; shared by a shard's scripts through HELDER_IOS_SIMULATOR;
-#   deleted at the end): pack, tests/pack/Hello.hx (helder run, simctl), the audio stream, the cube's
-#   window and a tap (gfx-webview: tests/gfx/ios.sh, SimTap's clicks), the web view
-#   (tests/platform/webview-ios.sh, as Android's). That is a pull request's
+#   deleted at the end): pack-webview, tests/pack/Hello.hx (helder run,
+#   simctl), the audio stream and the web view (tests/platform/webview-ios.sh,
+#   as Android's); gfx, the cube's window and a tap (tests/gfx/ios.sh:
+#   SimTap's clicks). That is a pull request's
 #   (IOS_SUITE=smoke); pushes to main and the nightly run the full suite:
 #   the assets, the screen fixture, the planets example, UIAccessibility,
 #   the cube's drags, fling and background, the whole-screen web view;
@@ -515,10 +516,11 @@ jobs:
   # tests/pack/screen.mjs, the planets example, UIAccessibility),
   # tests/gfx/ios.sh, tests/platform/webview-ios.sh. IOS_SUITE: smoke on a
   # pull request, full on main and nightly.
-  # (two shards, a simulator each: the boot, about five minutes, the floor
-  # of both. The CLI and helder's compiler built before the simulator is
-  # made: beside its first boot they took 245 and 190 s, 2 and 11 s on
-  # other runners; the apps, small builds, while it boots)
+  # (two shards, a simulator each: its boot and first app, three and a half
+  # minutes, the floor of both; pack-webview's builds take about that
+  # beside it, gfx's a minute. The CLI and helder's compiler built before
+  # the simulator is made: beside its first boot they took 245 and 190 s,
+  # 4 and 17 s without it; the apps while it boots. One job: 910 s)
   ios-simulator:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -528,7 +530,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [pack, gfx-webview]
+        shard: [pack-webview, gfx]
     env:
       IOS_SUITE: ${{ github.event_name == 'pull_request' && 'smoke' || 'full' }}
     steps:
@@ -554,17 +556,17 @@ jobs:
           sh tests/pack/simulator.sh create helder-ci > "$RUNNER_TEMP/udid" &
           s=$!
           status=0
-          if [ "${{ matrix.shard }}" = pack ]; then
+          if [ "${{ matrix.shard }}" = pack-webview ]; then
+            IOS_BUILD_ONLY=1 sh tests/platform/webview-ios.sh bin/cli/helder bin/pack/ios-webview > "$RUNNER_TEMP/build-webview.txt" 2>&1 &
+            a=$!
             IOS_BUILD_ONLY=1 sh tests/pack/ios.sh bin/cli/helder bin/pack/ios || status=1
+            wait $a || status=1
+            cat "$RUNNER_TEMP/build-webview.txt"
           else
             bin/cli/helder build tests/gfx/SimTap.hx -o bin/pack/SimTap &
             a=$!
-            bin/cli/helder build tests/gfx/ios --target ios-sim -o bin/pack/IosTest.app &
-            b=$!
-            IOS_BUILD_ONLY=1 sh tests/platform/webview-ios.sh bin/cli/helder bin/pack/ios-webview > "$RUNNER_TEMP/build-webview.txt" 2>&1 &
-            c=$!
-            for p in $a $b $c; do wait $p || status=1; done
-            cat "$RUNNER_TEMP/build-webview.txt"
+            bin/cli/helder build tests/gfx/ios --target ios-sim -o bin/pack/IosTest.app || status=1
+            wait $a || status=1
           fi
           echo "IOS_PREBUILT=1" >> "$GITHUB_ENV"
           wait $s || status=1
@@ -574,14 +576,14 @@ jobs:
       # (each device step its own checks, also after another's failure; none
       # without the setup: no CLI, nothing to run but timeouts)
       - name: Hello and the audio stream on the simulator (tests/pack/ios.sh)
-        if: ${{ !cancelled() && steps.setup.outcome == 'success' && matrix.shard == 'pack' }}
+        if: ${{ !cancelled() && steps.setup.outcome == 'success' && matrix.shard == 'pack-webview' }}
         run: sh tests/pack/ios.sh bin/cli/helder bin/pack/ios
       - name: The cube and its touches on the simulator (tests/gfx/ios.sh, SimTap's clicks)
-        if: ${{ !cancelled() && steps.setup.outcome == 'success' && matrix.shard == 'gfx-webview' }}
+        if: ${{ !cancelled() && steps.setup.outcome == 'success' && matrix.shard == 'gfx' }}
         run: sh tests/gfx/ios.sh bin/pack/IosTest.app bin/pack/ios-gfx "$PWD/bin/pack/SimTap"
       - name: The web view on the simulator (tests/platform/webview-ios.sh)
-        # (also when the cube's step failed: their checks are their own)
-        if: ${{ !cancelled() && steps.setup.outcome == 'success' && matrix.shard == 'gfx-webview' }}
+        # (also when Hello's step failed: their checks are their own)
+        if: ${{ !cancelled() && steps.setup.outcome == 'success' && matrix.shard == 'pack-webview' }}
         run: sh tests/platform/webview-ios.sh bin/cli/helder bin/pack/ios-webview
       - name: The simulator deleted
         if: always()
