@@ -27,6 +27,8 @@ class Wgsl extends Emit {
 			case TVec(n): 'vec${n}f';
 			case TMat4: "mat4x4f";
 			case TTexture: "texture_2d<f32>";
+			case TTextureCube: "texture_cube<f32>";
+			case TTextureArray: "texture_2d_array<f32>";
 			case TStruct(s): s.name;
 			case TArray(t, n): 'array<${type(t)}, $n>';
 			case TStorage(TInt, true): "array<atomic<i32>>";
@@ -61,7 +63,7 @@ class Wgsl extends Emit {
 		for (u in e.uniforms)
 			line('@group(0) @binding(${u.binding}) var<uniform> u_${u.binding}: ${u.struct.name};');
 		for (t in e.textures) {
-			line('@group(0) @binding(${t.slot}) var tex_${t.slot}: texture_2d<f32>;');
+			line('@group(0) @binding(${t.slot}) var tex_${t.slot}: ${type(Emit.textureType(t))};');
 			line('@group(0) @binding(${16 + t.slot}) var smp_${t.slot}: sampler;');
 		}
 		var args = Emit.computeArgs(e, u -> 'u_${u.binding}', t -> 'tex_${t.slot}, smp_${t.slot}', s -> null, m -> null);
@@ -88,10 +90,10 @@ class Wgsl extends Emit {
 	}
 
 	override function param(v:SVar):String
-		return v.name + ": " + type(v.type) + (v.type == TTexture ? ", " + v.name + "_smp: sampler" : "");
+		return v.name + ": " + type(v.type) + (Textures.isTexture(v.type) ? ", " + v.name + "_smp: sampler" : "");
 
 	override function arg(e:SExpr):String
-		return e.t == TTexture ? expr(e) + ", " + expr(e) + "_smp" : expr(e);
+		return Textures.isTexture(e.t) ? expr(e) + ", " + expr(e) + "_smp" : expr(e);
 
 	override function declare(v:SVar, init:Null<SExpr>):String
 		return (v.assigned || init == null ? "var " : "let ") + v.name + ": " + type(v.type) + (init == null ? "" : " = " + expr(init)) + ";";
@@ -114,6 +116,10 @@ class Wgsl extends Emit {
 
 	override function builtin(name:String, args:Array<SExpr>, t:SType):String
 		return switch name {
+			case "sample" | "sampleLevel" if (args[0].t == TTextureArray):
+				// (a 2D array's layer: an index)
+				var at = arg(args[0]) + ", " + expr(args[1]) + ", i32(round(" + expr(args[2]) + "))";
+				name == "sampleLevel" ? "textureSampleLevel(" + at + ", " + expr(args[3]) + ")" : fragment ? "textureSample(" + at + ")" : "textureSampleLevel(" + at + ", 0.0)";
 			case "sample" if (fragment): "textureSample(" + arg(args[0]) + ", " + expr(args[1]) + ")";
 			case "sample": "textureSampleLevel(" + arg(args[0]) + ", " + expr(args[1]) + ", 0.0)";
 			case "sampleLevel": "textureSampleLevel(" + arg(args[0]) + ", " + expr(args[1]) + ", " + expr(args[2]) + ")";
@@ -131,7 +137,7 @@ class Wgsl extends Emit {
 		for (u in e.uniforms)
 			line('@group(0) @binding(${u.binding}) var<uniform> u_${u.binding}: ${u.struct.name};');
 		for (t in e.textures) {
-			line('@group(0) @binding(${t.slot}) var tex_${t.slot}: texture_2d<f32>;');
+			line('@group(0) @binding(${t.slot}) var tex_${t.slot}: ${type(Emit.textureType(t))};');
 			line('@group(0) @binding(${16 + t.slot}) var smp_${t.slot}: sampler;');
 		}
 		var uniforms = [

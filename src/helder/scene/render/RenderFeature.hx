@@ -9,6 +9,33 @@ interface RenderFeature {
 	function attach(renderer:Renderer):Void;
 }
 
+// what the renderer asks of light and reflection probes (Probes): the
+// standard material's variants with them, each draw's probes (by its
+// bounds) and their atlas at a variant's slots (Renderer.slotsOf's)
+interface ProbeSource {
+	function pipeline(instanced:Bool, doubleSided:Bool):helder.gfx.Pipeline;
+	function slots(instanced:Bool):Array<Int>;
+	// (a draw's bounds in the world: its centre, its half size)
+	function bind(enc:helder.gfx.Encoder, slots:Array<Int>, cx:Float, cy:Float, cz:Float, ex:Float, ey:Float, ez:Float):Void;
+}
+
+// what the renderer asks of area lights (AreaLights): the standard
+// material's variants with them (with probes or not), the tables bound
+interface AreaSource {
+	function pipeline(instanced:Bool, doubleSided:Bool, probes:Bool):helder.gfx.Pipeline;
+	function slots(instanced:Bool, probes:Bool):Array<Int>;
+	function bind(enc:helder.gfx.Encoder, slots:Array<Int>):Void;
+}
+
+// what the renderer asks of lightmaps (Lightmaps): whether a node has one,
+// the standard material's lightmap variant, a node's block and texture bound
+interface LightmapSource {
+	function has(node:helder.scene.Node):Bool;
+	function pipeline(doubleSided:Bool):helder.gfx.Pipeline;
+	function slots():Array<Int>;
+	function bind(enc:helder.gfx.Encoder, node:helder.scene.Node):Void;
+}
+
 // what the renderer asks of the view buffers (ViewBuffers)
 interface ViewSource {
 	// the prepass: the frame's opaque draws (the renderer's draw list,

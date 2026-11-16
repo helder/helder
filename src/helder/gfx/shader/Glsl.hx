@@ -63,6 +63,13 @@ class Glsl extends Emit {
 			line("precision highp int;");
 		}
 		if (e.textures.length > 0) line("precision highp sampler2D;");
+		precisions(e);
+	}
+
+	// (cubes and 2D arrays: samplerCube's default is lowp, sampler2DArray has none)
+	function precisions(e:SEntry) {
+		if (Lambda.exists(e.textures, t -> t.dimension == 1)) line("precision highp samplerCube;");
+		if (Lambda.exists(e.textures, t -> t.dimension == 2)) line("precision highp sampler2DArray;");
 	}
 
 	override function type(t:SType):String
@@ -74,6 +81,8 @@ class Glsl extends Emit {
 			case TVec(n): 'vec$n';
 			case TMat4: "mat4";
 			case TTexture: "sampler2D";
+			case TTextureCube: "samplerCube";
+			case TTextureArray: "sampler2DArray";
 			case TStruct(s): s.name;
 			case TArray(t, n): type(t) + "[" + n + "]";
 			case TStorage(t, _): type(t);
@@ -82,6 +91,11 @@ class Glsl extends Emit {
 
 	override function builtin(name:String, args:Array<SExpr>, t:SType):String
 		return switch name {
+			case "sample" | "sampleLevel" if (args[0].t == TTextureArray):
+				// (a 2D array's uv and layer: one vec3)
+				var at = "vec3(" + expr(args[1]) + ", " + expr(args[2]) + ")";
+				name == "sampleLevel" ? "textureLod(" + expr(args[0]) + ", " + at + ", " + expr(args[3]) + ")" : fragment ? "texture(" + expr(args[0]) + ", " + at
+					+ ")" : "textureLod(" + expr(args[0]) + ", " + at + ", 0.0)";
 			case "sample" if (fragment): super.builtin("texture", args, t);
 			case "sample": "textureLod(" + expr(args[0]) + ", " + expr(args[1]) + ", 0.0)";
 			case "sampleLevel": super.builtin("textureLod", args, t);
@@ -104,6 +118,7 @@ class Glsl extends Emit {
 		line("precision highp float;");
 		line("precision highp int;");
 		if (c.entry.textures.length > 0) line("precision highp sampler2D;");
+		precisions(c.entry);
 		if (c.images.length > 0) line("precision highp image2D;");
 	}
 
@@ -129,7 +144,7 @@ class Glsl extends Emit {
 			line('} u_${u.binding};');
 		}
 		for (t in e.textures)
-			line('layout(binding = ${t.slot}) uniform sampler2D tex_${t.slot};');
+			line('layout(binding = ${t.slot}) uniform ${type(Emit.textureType(t))} tex_${t.slot};');
 		var args = Emit.computeArgs(e, u -> make(u.struct.name) + "(" + [for (f in u.struct.fields) 'u_${u.binding}.${f.name}'].join(", ") + ")", t -> 'tex_${t.slot}', s -> null, m -> null);
 		var ids = "int(gl_GlobalInvocationID.x), int(gl_GlobalInvocationID.y), int(gl_GlobalInvocationID.z), int(gl_LocalInvocationID.x), int(gl_LocalInvocationID.y), int(gl_LocalInvocationID.z), int(gl_LocalInvocationIndex), int(gl_WorkGroupID.x), int(gl_WorkGroupID.y), int(gl_WorkGroupID.z)";
 		line("void main() {");
@@ -145,7 +160,7 @@ class Glsl extends Emit {
 			line('} u_${u.binding};');
 		}
 		for (t in e.textures)
-			line('uniform sampler2D tex_${t.slot};');
+			line('uniform ${type(Emit.textureType(t))} tex_${t.slot};');
 		var args = [
 			for (r in e.resources)
 				switch r {

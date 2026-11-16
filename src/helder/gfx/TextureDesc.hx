@@ -1,6 +1,6 @@
 package helder.gfx;
 
-// A 2D texture, its rows top to bottom: the first row of data is v = 0
+// A 2D texture (or a 2D array, a cube: layers, cube), its rows top to bottom: the first row of data is v = 0
 // (helder.gfx.shader.Texture2D), on every back end, a render target's too.
 typedef TextureDesc = {
 	width:Int,
@@ -24,6 +24,16 @@ typedef TextureDesc = {
 	// (Encoder.setStorageTexture; RGBA8, RGBA16F or R32F, one level, one
 	// sample), then shaders sample it
 	?storage:Bool,
-	// the first level's texels (width * height * format.texelSize bytes)
+	// layers (default 1): a 2D array texture (Texture2DArray in shaders) of
+	// layers images of the size, each with its mip levels; data and
+	// Device.writeTexture fill one layer at a time; a pass draws into one
+	// (ColorTarget.layer); not multisampled, not storage, not compressed
+	?layers:Int,
+	// a cube texture (TextureCube in shaders): six square layers, its faces
+	// +x, -x, +y, -y, +z, -z (layers is 6 then, or left out); as a 2D array
+	// otherwise
+	?cube:Bool,
+	// the first level's texels (width * height * format.texelSize bytes),
+	// every layer's one after another
 	?data:haxe.io.Bytes
 }

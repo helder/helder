@@ -71,10 +71,13 @@ const RING = 256 * 1024; // the uniform ring (Encoder.UNIFORM_RING)
 const UNIFORM = 0, TEXTURE = 1, STORAGE = 2, STORAGE_WRITE = 3, STORAGE_TEXTURE = 4; // BindingKind
 // TextureFormat: WebGPU's, bytes a texel; R32F and the depth formats are unfilterable from R32F on
 const TEXTURE_FORMATS = ['rgba8unorm', 'rgba8unorm-srgb', 'r8unorm', 'rg8unorm', 'rgba16float', 'r32float', 'depth16unorm', 'depth32float', 'bc1-rgba-unorm',
-	'bc3-rgba-unorm', 'astc-4x4-unorm'];
+	'bc3-rgba-unorm', 'astc-4x4-unorm', 'rgba32float'];
 // (compressed: a 4x4 block's bytes)
-const TEXEL = [4, 4, 1, 2, 8, 4, 2, 4, 8, 16, 16];
-const R32F = 5, DEPTH16 = 6, BC1 = 8;
+const TEXEL = [4, 4, 1, 2, 8, 4, 2, 4, 8, 16, 16, 16];
+const R32F = 5, DEPTH16 = 6, BC1 = 8, RGBA32F = 11;
+const compressed = (format) => format >= BC1 && format < RGBA32F;
+// a texture's views' dimension (WebGPU's), by its dimension: 2D, a cube, a 2D array
+const DIMENSIONS = ['2d', 'cube', '2d-array'];
 // the compressed formats' features, asked for with the device where the adapter has them (TextureFormat: from BC1)
 const FEATURES = ['texture-compression-bc', 'texture-compression-bc', 'texture-compression-astc'];
 // generateMips: a level drawn from the one before, sampled at its texels' centres
@@ -89,11 +92,11 @@ struct V { @builtin(position) pos: vec4f, @location(0) uv: vec2f }
 
 // texels (or a compressed level's blocks: rows of 4x4 blocks, the level's
 // size rounded up to them, WebGPU's physical size) into a texture's level
-function writeTextureData(device, host, t, x, y, w, h, level, data) {
+function writeTextureData(device, host, t, x, y, w, h, level, data, layer = 0) {
 	if (t.compressed) {
 		const bw = (w + 3) >> 2, bh = (h + 3) >> 2;
 		device.queue.writeTexture({ texture: t.texture, mipLevel: level }, host.bytes(data, bw * bh * t.texel), { bytesPerRow: bw * t.texel, rowsPerImage: bh }, [bw * 4, bh * 4]);
-	} else device.queue.writeTexture({ texture: t.texture, mipLevel: level, origin: [x, y] }, host.bytes(data, w * h * t.texel), { bytesPerRow: w * t.texel }, [w, h]);
+	} else device.queue.writeTexture({ texture: t.texture, mipLevel: level, origin: [x, y, layer] }, host.bytes(data, w * h * t.texel), { bytesPerRow: w * t.texel }, [w, h]);
 }
 
 // (a canvas's WebGPU configuration, kept across instances: hxmc dev)
@@ -117,7 +120,7 @@ export default async function (host) {
 	if (device) device.lost.then((info) => lost('the WebGPU device was lost' + (info.message ? ': ' + info.message : '')));
 	const contexts = [];
 	const { handles } = host;
-	const write = (t, x, y, w, h, level, data) => writeTextureData(device, host, t, x, y, w, h, level, data);
+	const write = (t, x, y, w, h, level, data, layer) => writeTextureData(device, host, t, x, y, w, h, level, data, layer);
 	// a pipeline's vertex buffers and resources, as pipeline_buffer,
 	// pipeline_attribute and pipeline_binding give them
 	let layout = [], resources = [];
@@ -319,7 +322,7 @@ export default async function (host) {
 			if (r.kind === UNIFORM) entries.push({ binding: r.slot, visibility, buffer: { type: 'uniform', hasDynamicOffset: true, minBindingSize: r.size } });
 			else {
 				const plain = (mask & (1 << r.slot)) === 0;
-				entries.push({ binding: r.slot, visibility, texture: { sampleType: plain ? 'float' : 'unfilterable-float' } }, { binding: 16 + r.slot, visibility, sampler: { type: plain ? 'filtering' : 'non-filtering' } });
+				entries.push({ binding: r.slot, visibility, texture: { sampleType: plain ? 'float' : 'unfilterable-float', viewDimension: DIMENSIONS[r.size] } }, { binding: 16 + r.slot, visibility, sampler: { type: plain ? 'filtering' : 'non-filtering' } });
 			}
 		return entries.length ? device.createBindGroupLayout({ entries }) : null;
 	}
@@ -373,7 +376,7 @@ export default async function (host) {
 			if (r.kind === UNIFORM) entries.push({ binding: r.slot, visibility, buffer: { type: 'uniform', hasDynamicOffset: true, minBindingSize: r.size } });
 			else if (r.kind === TEXTURE) {
 				const plain = (mask & (1 << r.slot)) === 0;
-				entries.push({ binding: r.slot, visibility, texture: { sampleType: plain ? 'float' : 'unfilterable-float' } }, { binding: 16 + r.slot, visibility, sampler: { type: plain ? 'filtering' : 'non-filtering' } });
+				entries.push({ binding: r.slot, visibility, texture: { sampleType: plain ? 'float' : 'unfilterable-float', viewDimension: DIMENSIONS[r.size] } }, { binding: 16 + r.slot, visibility, sampler: { type: plain ? 'filtering' : 'non-filtering' } });
 			} else if (r.kind === STORAGE_TEXTURE) entries.push({ binding: r.slot, visibility, storageTexture: { access: 'write-only', format: TEXTURE_FORMATS[r.size], viewDimension: '2d' } });
 			else entries.push({ binding: r.slot, visibility, buffer: { type: r.kind === STORAGE ? 'read-only-storage' : 'storage' } });
 		const bgl = entries.length ? device.createBindGroupLayout({ entries }) : null;
@@ -427,22 +430,24 @@ export default async function (host) {
 			return handles.add(b);
 		},
 		write_buffer: (b, offset, data, size) => device.queue.writeBuffer(handles.get(b), offset, host.bytes(data, size)),
-		texture(width, height, format, levels, target, samples, storage, data) {
+		texture(width, height, format, levels, target, samples, storage, layers, dimension, data) {
 			// (a mip chain's levels are drawn by generate_mips; a multisampled one is only drawn into, then resolved)
 			// (RGBA8's a render attachment too: copyExternalImageToTexture's, texture_image)
 			const usage = samples > 1 ? GPUTextureUsage.RENDER_ATTACHMENT
 				: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | (target ? GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC : (levels > 1 && format < R32F) || format < 2 ? GPUTextureUsage.RENDER_ATTACHMENT : 0);
 			const label = samples > 1 ? 'helder multisampled target' : target ? 'helder render target' : 'helder texture';
-			const texture = device.createTexture({ label, size: [width, height], format: TEXTURE_FORMATS[format], mipLevelCount: levels, sampleCount: samples, usage: usage | (storage ? GPUTextureUsage.STORAGE_BINDING : 0) });
-			const t = { serial: ++serials, texture, view: texture.createView(), target: target ? texture.createView({ mipLevelCount: 1 }) : null, texel: TEXEL[format],
-				unfilterable: format === R32F || format === DEPTH16 || format === DEPTH16 + 1, depth: format === DEPTH16 || format === DEPTH16 + 1, compressed: format >= BC1 };
-			if (data) write(t, 0, 0, width, height, 0, data);
+			const texture = device.createTexture({ label, size: [width, height, layers], format: TEXTURE_FORMATS[format], mipLevelCount: levels, sampleCount: samples, usage: usage | (storage ? GPUTextureUsage.STORAGE_BINDING : 0) });
+			// (a cube's or a 2D array's target: a view a layer)
+			const targets = target && dimension ? Array.from({ length: layers }, (_, l) => texture.createView({ dimension: '2d', baseArrayLayer: l, arrayLayerCount: 1, mipLevelCount: 1 })) : null;
+			const t = { serial: ++serials, texture, view: texture.createView({ dimension: DIMENSIONS[dimension] }), target: targets ? targets[0] : target ? texture.createView({ mipLevelCount: 1 }) : null, targets, layers, texel: TEXEL[format],
+				unfilterable: format === R32F || format === DEPTH16 || format === DEPTH16 + 1 || format === RGBA32F, depth: format === DEPTH16 || format === DEPTH16 + 1, compressed: compressed(format) };
+			if (data) for (let l = 0; l < layers; l++) write(t, 0, 0, width, height, 0, data + l * width * height * t.texel, l);
 			return handles.add(t);
 		},
-		write_texture: (h, x, y, w, height, level, data) => write(handles.get(h), x, y, w, height, level, data),
+		write_texture: (h, x, y, w, height, level, layer, data) => write(handles.get(h), x, y, w, height, level, data, layer),
 		// 1: the device samples the TextureFormat (the compressed ones: their features)
 		max_texture: () => (device ? device.limits.maxTextureDimension2D : 8192),
-		supports: (format) => (format < BC1 || (device && device.features.has(FEATURES[format - BC1])) ? 1 : 0),
+		supports: (format) => (!compressed(format) || (device && device.features.has(FEATURES[format - BC1])) ? 1 : 0),
 		generate_mips(h) {
 			const t = handles.get(h), { texture } = t;
 			let pipeline = mipPipelines.get(texture.format);
@@ -454,12 +459,16 @@ export default async function (host) {
 			}
 			// (each level's view and the bind group reading the one before, made once)
 			if (!t.mips) {
-				const views = [];
-				for (let i = 0; i < texture.mipLevelCount; i++) views.push(texture.createView({ baseMipLevel: i, mipLevelCount: 1 }));
-				t.mips = views.slice(1).map((view, i) => ({
-					attachments: [{ view, loadOp: 'clear', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 0 } }],
-					group: device.createBindGroup({ layout: pipeline.getBindGroupLayout(0), entries: [{ binding: 0, resource: views[i] }, { binding: 1, resource: mipSampler }] }),
-				}));
+				// (each layer's levels: a cube's faces, a 2D array's layers)
+				t.mips = [];
+				for (let l = 0; l < texture.depthOrArrayLayers; l++) {
+					const views = [];
+					for (let i = 0; i < texture.mipLevelCount; i++) views.push(texture.createView({ dimension: '2d', baseMipLevel: i, mipLevelCount: 1, baseArrayLayer: l, arrayLayerCount: 1 }));
+					t.mips.push(...views.slice(1).map((view, i) => ({
+						attachments: [{ view, loadOp: 'clear', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 0 } }],
+						group: device.createBindGroup({ layout: pipeline.getBindGroupLayout(0), entries: [{ binding: 0, resource: views[i] }, { binding: 1, resource: mipSampler }] }),
+					})));
+				}
 			}
 			const enc = encoder ?? device.createCommandEncoder();
 			for (const m of t.mips) {
@@ -634,13 +643,13 @@ export default async function (host) {
 			queryOpen = false;
 			if (!frameQueries.includes(passQueries)) frameQueries.push(passQueries);
 		},
-		pass_begin(color, resolve, load, r, g, b, a, depthTexture, depthLoad, depth, queries) {
+		pass_begin(color, resolve, load, r, g, b, a, depthTexture, depthLoad, depth, queries, layer) {
 			passQueries = queries ? handles.get(queries) : null;
 			passDesc.occlusionQuerySet = passQueries ? passQueries.set : undefined;
 			// (a render target: its first level, and its depth texture or none;
 			// multisampled, resolved into resolve's at the end)
 			const t = color ? handles.get(color) : null, d = depthTexture ? handles.get(depthTexture) : null;
-			attachment.view = t ? t.target : frameTarget.msaaView ?? frameView;
+			attachment.view = t ? (t.targets ? t.targets[layer] : t.target) : frameTarget.msaaView ?? frameView;
 			attachment.resolveTarget = t ? (resolve ? handles.get(resolve).target : undefined) : frameTarget.msaa ? frameView : undefined;
 			attachment.loadOp = LOADS[load];
 			depthAttachment.view = t ? d?.target : frameTarget.depthView;
@@ -972,6 +981,13 @@ export default async function (host) {
 			const b = host.bytes(p, n * size);
 			gl.texSubImage2D(target, level, x, y, w, h, format, type, size === 1 ? b : new (size === 4 ? Float32Array : Uint16Array)(b.slice().buffer));
 		},
+		glTexStorage3D: (target, levels, internal, w, h, d) => gl.texStorage3D(target, levels, internal, w, h, d),
+		glTexSubImage3D(target, level, x, y, z, w, h, d, format, type, p) {
+			const n = w * h * d * (format === gl.RED ? 1 : format === gl.RG ? 2 : 4), size = type === gl.FLOAT ? 4 : type === gl.HALF_FLOAT ? 2 : 1;
+			const b = host.bytes(p, n * size);
+			gl.texSubImage3D(target, level, x, y, z, w, h, d, format, type, size === 1 ? b : new (size === 4 ? Float32Array : Uint16Array)(b.slice().buffer));
+		},
+		glFramebufferTextureLayer: (target, attachment, t, level, layer) => gl.framebufferTextureLayer(target, attachment, get(t), level, layer),
 		glGenerateMipmap: (target) => gl.generateMipmap(target),
 		glCompressedTexSubImage2D: (target, level, x, y, w, h, format, size, p) => gl.compressedTexSubImage2D(target, level, x, y, w, h, format, host.bytes(p, size)),
 		texture_image(texture, image, levels, release) {

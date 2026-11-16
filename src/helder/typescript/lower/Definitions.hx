@@ -204,7 +204,7 @@ class Definitions {
 				Reflect.setField(o, c.language, c.text);
 			o.bindings = [
 				for (b in s.bindings)
-					b.uniform ? ({name: b.name, slot: b.slot, kind: 0, size: b.size} : Dynamic) : {name: b.name, slot: b.slot, kind: 1}
+					b.uniform ? ({name: b.name, slot: b.slot, kind: 0, size: b.size} : Dynamic) : b.dimension == 0 ? ({name: b.name, slot: b.slot, kind: 1} : Dynamic) : {name: b.name, slot: b.slot, kind: 1, dimension: b.dimension}
 			];
 			return o;
 		}
@@ -564,7 +564,7 @@ class TsAdapter implements ShaderAdapter {
 		var ret = f.type() != null ? typeOf(f.type()) : null;
 		g = new SFunction(names.global(name), params, ret ?? TVoid);
 		g.fields = fields;
-		if (ret == TTexture) error('$name: a texture is not a result (pass the parameter on)', f);
+		if (Textures.isTexture(ret)) error('$name: a texture is not a result (pass the parameter on)', f);
 		fn = g;
 		vars.set(g, vs);
 		var body = [];
@@ -613,10 +613,10 @@ class TsAdapter implements ShaderAdapter {
 
 	function declare(name:String, t:SType, at:Node, list:Array<SVar>, param = false):SVar {
 		if (t == TVoid) error('$name has no value', at);
-		if (t == TTexture && !param) error('$name: a texture is a parameter, not a local', at);
-		var s = new SVar(Names.unique(Names.sanitize(name), n -> !localNames.exists(n) && (t != TTexture || !localNames.exists(n + "_smp"))), t);
+		if (Textures.isTexture(t) && !param) error('$name: a texture is a parameter, not a local', at);
+		var s = new SVar(Names.unique(Names.sanitize(name), n -> !localNames.exists(n) && (!Textures.isTexture(t) || !localNames.exists(n + "_smp"))), t);
 		localNames.set(s.name, true);
-		if (t == TTexture) localNames.set(s.name + "_smp", true);
+		if (Textures.isTexture(t)) localNames.set(s.name + "_smp", true);
 		scopes[scopes.length - 1].set(name, s);
 		list.push(s);
 		return s;
@@ -660,6 +660,8 @@ class TsAdapter implements ShaderAdapter {
 						case "Vec4": TVec(4);
 						case "Mat4": TMat4;
 						case "Texture2D": TTexture;
+						case "TextureCube": TTextureCube;
+						case "Texture2DArray": TTextureArray;
 						// (a uniform block's field of n values: Haxe's @:length(n) var f:Array<T>)
 						case "UniformArray":
 							var args = t.typeArguments() ?? [];
@@ -707,7 +709,7 @@ class TsAdapter implements ShaderAdapter {
 		for (m in literal.members()) {
 			if (m.kind != KindPropertySignature || m.type() == null) error('$name: a struct has fields of shader types (no methods, each typed)', m);
 			var t = typeOf(m.type());
-			if (t == TTexture) error('$name.${m.name().text}: a texture is not a struct field (it is a parameter)', m);
+			if (Textures.isTexture(t)) error('$name.${m.name().text}: a texture is not a struct field (it is a parameter)', m);
 			fields.push({
 				name: Names.unique(Names.sanitize(m.name().text), n -> !Lambda.exists(fields, g -> g.name == n)),
 				field: m.name().text,
@@ -872,7 +874,7 @@ class TsAdapter implements ShaderAdapter {
 			case KindIdentifier:
 				var s = find(x.text);
 				if (s == null) error('${x.text} is not a local of this function', x);
-				if (s.type == TTexture) error('${x.text}: a texture parameter is not assigned', x);
+				if (Textures.isTexture(s.type)) error('${x.text}: a texture parameter is not assigned', x);
 				s.assigned = true;
 				s;
 			case KindPropertyAccessExpression | KindElementAccessExpression: error("shader values are immutable: assign to a local, not to a field", x);
@@ -918,7 +920,7 @@ class TsAdapter implements ShaderAdapter {
 				var pa = [], pb = [];
 				var x = expr(n.whenTrue(), pa, want);
 				var t = want ?? x.t;
-				if (t == TTexture) error("a texture is chosen by no condition (pass the parameter on)", n);
+				if (Textures.isTexture(t)) error("a texture is chosen by no condition (pass the parameter on)", n);
 				x = coerce(x, t, n.whenTrue());
 				var y = coerce(expr(n.whenFalse(), pb, t), t, n.whenFalse());
 				if (pa.length == 0 && pb.length == 0) {e: ECond(cond, x, y), t: t} else {

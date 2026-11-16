@@ -3,7 +3,8 @@
 // a pixel matches when no channel differs by more than TOLERANCE, and at
 // most MAX_OFF of the pixels may differ by more (the edges); the centre
 // must not be the clear colour, a corner must be (probe [x, y, 'contrast']:
-// another pixel, for a light scene only far from the corner's colour).
+// another pixel, for a light scene only far from the corner's colour;
+// tolerance: a scene's own, where an API's arithmetic differs more).
 export const TOLERANCE = 2;
 export const MAX_OFF = 0.005;
 
@@ -16,7 +17,7 @@ export async function decode(url) {
 }
 
 // {ok, text}: px and golden are {width, height, data}
-export function compare(what, px, golden, probe) {
+export function compare(what, px, golden, probe, tolerance = TOLERANCE) {
 	const { width, height } = golden;
 	if (px.width !== width || px.height !== height) return { ok: false, text: `${what}: FAIL: ${px.width}x${px.height}, not ${width}x${height}` };
 	let off = 0, differ = 0, max = 0;
@@ -24,7 +25,7 @@ export function compare(what, px, golden, probe) {
 		let d = 0;
 		for (let k = 0; k < 3; k++) d = Math.max(d, Math.abs(px.data[4 * p + k] - golden.data[4 * p + k]));
 		if (d > 0) differ++;
-		if (d > TOLERANCE) off++;
+		if (d > tolerance) off++;
 		max = Math.max(max, d);
 	}
 	const [x, y, mode] = probe ?? [width >> 1, height >> 1];
@@ -34,6 +35,6 @@ export function compare(what, px, golden, probe) {
 	const ok = lit && off <= MAX_OFF * width * height;
 	return {
 		ok,
-		text: `${what}: ${ok ? 'ok' : 'FAIL'}` + (differ === 0 ? ' (exact)' : ` (${differ} pixels differ, ${off} by more than ${TOLERANCE}, at most ${max})`) + (lit ? '' : ' (nothing drawn)'),
+		text: `${what}: ${ok ? 'ok' : 'FAIL'}` + (differ === 0 ? ' (exact)' : ` (${differ} pixels differ, ${off} by more than ${tolerance}, at most ${max})`) + (lit ? '' : ' (nothing drawn)'),
 	};
 }

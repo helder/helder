@@ -24,7 +24,7 @@ else
 	Linux-aarch64 | Linux-arm64) export HXMC_3D_TOLERANCE=3 ;;
 	esac
 fi
-for s in gltf orbits shadows physics instances skin overlay textured packed spot sky lazy normals blend walker packedskin packednormals cascades environment morph chains packedmorph bloom normalgrid gpuparticles crystal khrtransform khrclearcoat compressed packedbc packedastc instancedmesh glow tsscene fog poststage unevenscale softshadows shading primitives toon sprites hemisphere prepass ssao dof tiltshift outline fxaa lut effects lines debugdraw helpers text3d ssr taa smaa motionblur godrays occlusion physical transmission khrspecular khriridescence khrvolume lights8 clustered spotshadow pointshadow shadowatlas lod; do
+for s in gltf orbits shadows physics instances skin overlay textured packed spot sky lazy normals blend walker packedskin packednormals cascades environment morph chains packedmorph bloom normalgrid gpuparticles crystal khrtransform khrclearcoat compressed packedbc packedastc instancedmesh glow tsscene fog poststage unevenscale softshadows shading primitives toon sprites hemisphere prepass ssao dof tiltshift outline fxaa lut effects lines debugdraw helpers text3d ssr taa smaa motionblur godrays occlusion physical transmission khrspecular khriridescence khrvolume lights8 clustered spotshadow pointshadow shadowatlas lod sh probes arealight lightmap; do
 	g=$s
 	# (the packed sample draws the glTF one's frame, the lazy skin the skin's)
 	[ $s = packed ] && g=gltf
@@ -41,6 +41,6 @@ done
 # (the compute paths' fallbacks, the same goldens: ClusteredLights' cells and
 # InstanceCulling on the CPU, GL as a 3.0 context; the other back ends draw
 # their compute paths again)
-for s in clustered lod; do
+for s in clustered lod sh; do
 	(export HELDER_NO_COMPUTE=1; run $s "$here/$s.png" "$out/$s-nocompute.png")
 done

@@ -123,8 +123,12 @@ export const Feature = { Compute: 0, StorageTextures: 1, Indirect: 2 } as const;
 export type Feature = number;
 
 // a Light's kind (Light.kind) by name
-export const LightKind = {Directional: 0, Point: 1, Spot: 2, Hemisphere: 3} as const;
+export const LightKind = {Directional: 0, Point: 1, Spot: 2, Hemisphere: 3, RectArea: 4, DiscArea: 5} as const;
 export type LightKind = number;
+
+// what a Lightmap holds (Lightmap.mode) by name: the ambient alone, or all the light
+export const LightmapMode = {Indirect: 0, All: 1} as const;
+export type LightmapMode = number;
 
 // how Sprites face the camera (Sprites.mode, SpritesOptions.mode) by name
 export const SpriteMode = {Spherical: 0, Axis: 1, Fixed: 2} as const;

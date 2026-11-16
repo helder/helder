@@ -117,6 +117,11 @@ class VecBuild {
 		add("sample", [["t", "Texture2D"], ["uv", "Vec2"]], "Vec4", "t.read(uv)");
 		// (a mip level: the CPU's textures have one)
 		add("sampleLevel", [["t", "Texture2D"], ["uv", "Vec2"], ["level", "Float"]], "Vec4", "t.read(uv)");
+		// (a cube along a direction: TextureCube; a 2D array's layer: Texture2DArray)
+		add("sample", [["t", "TextureCube"], ["dir", "Vec3"]], "Vec4", "t.read(dir)");
+		add("sampleLevel", [["t", "TextureCube"], ["dir", "Vec3"], ["level", "Float"]], "Vec4", "t.read(dir)");
+		add("sample", [["t", "Texture2DArray"], ["uv", "Vec2"], ["layer", "Float"]], "Vec4", "t.read(uv, layer)");
+		add("sampleLevel", [["t", "Texture2DArray"], ["uv", "Vec2"], ["layer", "Float"], ["level", "Float"]], "Vec4", "t.read(uv, layer)");
 		// constructors
 		add("vec2", [["x", "Float"], ["y", "Float"]], "Vec2", "new Vec2(x, y)");
 		add("vec2", [["s", "Float"]], "Vec2", "new Vec2(s, s)");

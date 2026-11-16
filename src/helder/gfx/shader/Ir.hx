@@ -18,6 +18,8 @@ enum SType {
 	TVec(n:Int); // 2 to 4 floats
 	TMat4; // 4 columns of vec4
 	TTexture; // a Texture2D: a texture and its sampler (parameters only)
+	TTextureCube; // a TextureCube: a cube texture and its sampler (parameters only)
+	TTextureArray; // a Texture2DArray: a 2D array texture and its sampler (parameters only)
 	TStruct(s:SStruct);
 	// n of them: a uniform block's field (Vec4s or Mat4s: std140's stride is theirs), read by index
 	TArray(t:SType, n:Int);
@@ -161,16 +163,37 @@ class SUniform {
 	}
 }
 
-// a texture parameter of an entry point after its input (Texture2D), by
-// its name, at a slot shared by both stages
+// a texture parameter of an entry point after its input (Texture2D,
+// TextureCube, Texture2DArray: dimension 0, 1, 2), by its name, at a slot
+// shared by both stages
 class STexture {
 	public final name:String;
 	public final slot:Int;
+	public final dimension:Int;
 
-	public function new(name, slot) {
+	public function new(name, slot, dimension = 0) {
 		this.name = name;
 		this.slot = slot;
+		this.dimension = dimension;
 	}
+}
+
+class Textures {
+	// whether t is a texture parameter's type (2D, cube or array; null: none)
+	public static function isTexture(t:Null<SType>):Bool
+		return t != null && switch t {
+			case TTexture | TTextureCube | TTextureArray: true;
+			case _: false;
+		}
+
+	// a texture type's dimension (STexture's), -1 for any other type
+	public static function dimension(t:SType):Int
+		return switch t {
+			case TTexture: 0;
+			case TTextureCube: 1;
+			case TTextureArray: 2;
+			case _: -1;
+		}
 }
 
 // a storage buffer parameter of a compute stage, by its name, at a slot;

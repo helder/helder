@@ -7,7 +7,7 @@ import helder.scene.Node;
 import helder.scene.World;
 import helder.scene.math.MathTools;
 
-// The frame's point and spot lights, gathered by the Renderer before its
+// The frame's point, spot and area lights, gathered by the Renderer before its
 // passes (gather): the world's shown local lights whose reach (a sphere of
 // their range) meets the view, the most important to it first (the
 // brightest over their distance beyond their range, as three's and
@@ -35,6 +35,8 @@ class FrameLights {
 	public var count(default, null) = 0;
 	// the lights in the world that the last gather left out (beyond capacity)
 	public var dropped(default, null) = 0;
+	// the area lights among the gathered (AreaLights' variants drawn when some)
+	public var areas(default, null) = 0;
 	// the lights, their nodes, in order
 	public final lights:Array<Light> = [];
 	public final nodes:Array<Node> = [];
@@ -69,6 +71,7 @@ class FrameLights {
 	public function gather(world:World, eye:Vec3, viewProj:Mat4) {
 		count = 0;
 		dropped = 0;
+		areas = 0;
 		frustum(viewProj);
 		var store = world.store(Light.KIND);
 		for (k in 0...store.length) {
@@ -92,6 +95,7 @@ class FrameLights {
 				move(at - 1, at);
 				at--;
 			}
+			if (light.area) areas++;
 			lights[at] = light;
 			nodes[at] = node;
 			score[at] = s;
@@ -105,7 +109,20 @@ class FrameLights {
 			data[o + 5] = c.y * light.intensity;
 			data[o + 6] = c.z * light.intensity;
 			data[o + 7] = 0;
-			if (light.kind == Spot) {
+			if (light.area) {
+				// (an area light's row: cone its half width along its x, w its
+				// normal (-z) packed, 2^22 past: a point light's cone to the
+				// variants without area lights; colour's w -1 less its half
+				// height (a rect) or -0.5 (a disc, its radius cone's length))
+				var m = node.worldMatrix();
+				var x = MathTools.transformDir(m, new Vec3(light.kind == RectArea ? light.width * 0.5 : light.width, 0, 0));
+				var nz = MathTools.transformDir(m, new Vec3(0, 0, -1));
+				data[o + 7] = light.kind == RectArea ? -1 - light.height * 0.5 * scaleY(m) : -0.5;
+				data[o + 8] = x.x;
+				data[o + 9] = x.y;
+				data[o + 10] = x.z;
+				data[o + 11] = packNormal(nz);
+			} else if (light.kind == Spot) {
 				var d = MathTools.transformDir(node.worldMatrix(), new Vec3(0, 0, -1));
 				var len = Math.sqrt(d.x * d.x + d.y * d.y + d.z * d.z);
 				var outer = Math.cos(light.outerCone), inner = Math.cos(light.innerCone);
@@ -120,6 +137,26 @@ class FrameLights {
 				data[o + 11] = 1;
 			}
 		}
+	}
+
+	// (an area light's height's scale: its node's y axis' length)
+	static inline function scaleY(m:Mat4):Float {
+		var c = m.c1;
+		return Math.sqrt(c.x * c.x + c.y * c.y + c.z * c.z);
+	}
+
+	// a direction's octahedral place (Equirect's octahedral) as one float: 2^22
+	// plus its u and v each of 2048 steps (exact in a 32-bit float)
+	public static function packNormal(d:Vec3):Float {
+		var s = Math.abs(d.x) + Math.abs(d.y) + Math.abs(d.z);
+		var nx = d.x / s, ny = d.y / s, nz = d.z / s;
+		var u = nx, v = nz;
+		if (ny < 0) {
+			u = (1 - Math.abs(nz)) * (nx >= 0 ? 1 : -1);
+			v = (1 - Math.abs(nx)) * (nz >= 0 ? 1 : -1);
+		}
+		var qu = Math.round((u * 0.5 + 0.5) * 2047), qv = Math.round((v * 0.5 + 0.5) * 2047);
+		return 4194304 + qu * 2048 + qv;
 	}
 
 	function move(from:Int, to:Int) {

@@ -26,6 +26,16 @@ import helder.scene.render.EnvironmentShader;
 // for 6 levels: 224 KB on the GPU), made by a tool once (Expansion's
 // tools/envbake.py), no mips; the decoded pixels freed after the upload.
 //   var env = Environment.prefiltered(device, "image/png", bytes, 6);
+//
+// Prefiltered by helder (Environment.prefilter): an equirectangular image
+// (RGBA8 sRGB, or linear RGBA16F or RGBA32F: HDR) filtered at load into an
+// prefiltered atlas as above (Prefilter: a compute dispatch where the device has
+// compute, else a fragment pass; done at the first frame's BeforePass
+// point), levels rows of roughness and the irradiance's, made from its
+// spherical harmonics (sh: projected from the image here, the diffuse
+// light ReflectionProbes and ProbeGrid fall back to); the image itself
+// drawn behind the scene.
+//   var env = Environment.prefilter(device, image.width, image.height, image.rgba); // or prefilterImage(device, mime, bytes)
 class Environment implements RenderFeature {
 	public final device:Device;
 	public final texture:Texture;
@@ -39,8 +49,14 @@ class Environment implements RenderFeature {
 	public final rows:Int;
 	// (half a texel of an atlas's row, in its rows' v)
 	final edge:Float;
+	// the diffuse light as spherical harmonics (prefilter's; else null)
+	public var sh(default, null):Null<Sh> = null;
+	// (prefilter's) its prefiltered atlas (one column), the work, whether its
+	// image is linear (HDR) or sRGB-encoded
+	@:noCompletion public var atlas(default, null):Null<Texture> = null;
+	var prefilterer:Null<Prefilter> = null;
+	@:noCompletion public var linear(default, null) = false;
 
-	var pipeline:Pipeline = cast 0; // (the renderer's, when attached)
 	final quad:Buffer;
 	final sampler:Sampler;
 	// (an atlas's: one level)
@@ -88,22 +104,109 @@ class Environment implements RenderFeature {
 		return new Environment(device, t, image.width, levels);
 	}
 
-	public function attach(renderer:Renderer) {
-		pipeline = renderer.createPipeline(EnvironmentShader.pipeline());
-		@:privateAccess renderer.environment = this;
-		renderer.inject(BeforeOpaque, (enc, frame) -> if (background) draw(enc, frame, renderer));
+	// an equirectangular image's environment prefiltered by helder (width x
+	// height texels, its rows top to bottom; RGBA8: sRGB-encoded, as an
+	// image's; RGBA16F or RGBA32F: linear light, HDR): a prefiltered atlas,
+	// rows of size x size / 2 texels, levels of roughness (Prefilter; samples a texel),
+	// filled at the first frame drawn with it, and its harmonics (sh)
+	public static function prefilter(device:Device, width:Int, height:Int, texels:Bytes, format:TextureFormat = RGBA8, ?options:{?size:Int, ?levels:Int,
+			?samples:Int}):Environment {
+		if (format != RGBA8 && format != RGBA16F && format != RGBA32F) throw "helder.scene: Environment.prefilter: RGBA8, RGBA16F or RGBA32F texels";
+		var sh = Sh.ofEquirect(width, height, texels, format);
+		var t:Texture;
+		if (format == RGBA8) t = Images.mipmapped(device, width, height, texels) else {
+			// (RGBA32F: halved to RGBA16F, filterable, its mips made by the GPU)
+			var data = format == RGBA16F ? texels : halves(texels, width * height * 4);
+			t = device.createTexture({width: width, height: height, format: RGBA16F, mipLevels: 0, data: data});
+			device.generateMips(t);
+		}
+		var e = new Environment(device, t, width);
+		e.sh = sh;
+		e.linear = format != RGBA8;
+		var p = new Prefilter(device, options == null || options.size == null ? 128 : options.size, options == null || options.levels == null ? 6 : options.levels,
+			options == null || options.samples == null ? 64 : options.samples);
+		e.prefilterer = p;
+		e.atlas = p.atlas(1);
+		return e;
 	}
 
-	// (the standard material's binding)
-	@:allow(helder.scene.render.Renderer) function bind(enc:Encoder, slot:Int)
-		enc.setTexture(slot, texture, rows > 0 ? flat : sampler);
+	// an encoded image's environment prefiltered by helder (prefilter; Images.decode must read it); null when it cannot
+	public static function prefilterImage(device:Device, mime:String, bytes:Bytes, ?options:{?size:Int, ?levels:Int, ?samples:Int}):Null<Environment> {
+		if (Images.decode == null) return null;
+		var image = Images.decode(mime, bytes);
+		if (image == null) return null;
+		return prefilter(device, image.width, image.height, image.rgba, RGBA8, options);
+	}
 
-	function draw(enc:Encoder, frame:Renderer.FrameInfo, renderer:Renderer) {
+	// (n floats as IEEE 754 binary16s)
+	static function halves(floats:Bytes, n:Int):Bytes {
+		var out = Bytes.alloc(n * 2);
+		for (k in 0...n)
+			out.setUInt16(2 * k, half(floats.getFloat(4 * k)));
+		return out;
+	}
+
+	// a float as an IEEE 754 binary16 (rounded; past its range, its largest)
+	@:noCompletion public static function half(f:Float):Int {
+		if (Math.isNaN(f)) return 0x7E00;
+		var s = f < 0 ? 0x8000 : 0;
+		var a = Math.abs(f);
+		if (a >= 65504) return s | 0x7BFF;
+		if (a < 6.103515625e-5) return s | Math.round(a / 5.960464477539063e-8);
+		var e = Math.floor(Math.log(a) / Math.log(2));
+		var m = Math.round((a / Math.pow(2, e) - 1) * 1024);
+		if (m == 1024) {
+			m = 0;
+			e++;
+		}
+		return s | ((e + 15) << 10) | m;
+	}
+
+	// the cells' texels across, the rows of roughness (prefilter's; 0: none)
+	@:noCompletion public var cellSize(get, never):Int;
+	@:noCompletion public var cellLevels(get, never):Int;
+
+	inline function get_cellSize()
+		return prefilterer == null ? 0 : prefilterer.size;
+
+	inline function get_cellLevels()
+		return prefilterer == null ? 0 : prefilterer.levels;
+
+	var filled = false;
+
+	// (each renderer its pipeline: Probes' twin draws it too)
+	public function attach(renderer:Renderer) {
+		var pipeline = renderer.createPipeline(EnvironmentShader.pipeline());
+		@:privateAccess renderer.environment = this;
+		renderer.inject(BeforeOpaque, (enc, frame) -> if (background) draw(enc, frame, renderer, pipeline));
+		// (prefilter's atlas filled at the first frame)
+		if (atlas != null) renderer.inject(BeforePass, (enc, frame) -> fill(enc));
+	}
+
+	// (prefilter's atlas filled, once)
+	@:noCompletion public function fill(enc:Encoder) {
+		if (filled || atlas == null) return;
+		filled = true;
+		prefilterer.run(enc, atlas, 1, 0, texture, false, Math.round(1 / edge), levels + 1, !linear, sh, 1);
+	}
+
+	// (the standard material's binding: helder's prefiltered atlas, a
+	// prefiltered atlas, or the mip-mapped image)
+	@:allow(helder.scene.render.Renderer) function bind(enc:Encoder, slot:Int)
+		atlas != null ? enc.setTexture(slot, atlas, flat) : enc.setTexture(slot, texture, rows > 0 ? flat : sampler);
+
+	// (PbrFrame's environment: x the intensity, y the image's mip levels, z a
+	// prefiltered atlas' rows (helder's or one's own), w half its texel)
+	@:allow(helder.scene.render) function frameVector():Vec4
+		return atlas != null ? new Vec4(intensity, levels, cellLevels, 1 / cellSize) : new Vec4(intensity, levels, rows, edge);
+
+	function draw(enc:Encoder, frame:Renderer.FrameInfo, renderer:Renderer, pipeline:Pipeline) {
 		var e = frame.eye;
 		var b = block;
 		b.invViewProj = MathTools.inverse(frame.viewProj);
 		b.eye = new Vec4(e.x, e.y, e.z, 1);
-		b.params = new Vec4(intensity * renderer.exposure, frame.hdr ? 1 : 0, rows, edge);
+		// (z -1: a linear image, not decoded)
+		b.params = new Vec4(intensity * renderer.exposure, frame.hdr ? 1 : 0, linear ? -1 : rows, edge);
 		b.fog = Fog.colorOf(frame.fog) * renderer.exposure;
 		b.fogShape = Fog.shapeOf(frame.fog);
 		EnvironmentShader.params.env.write(b, bytes);
@@ -116,6 +219,8 @@ class Environment implements RenderFeature {
 
 	public function dispose() {
 		device.destroyTexture(texture);
+		if (atlas != null) device.destroyTexture(atlas);
+		if (prefilterer != null) prefilterer.dispose();
 		device.destroyBuffer(quad);
 	}
 }

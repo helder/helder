@@ -22,11 +22,12 @@ import hxmc.unsafe.*;
 	// size bytes at data into the buffer at offset (multiples of 4: WebGPU's writeBuffer)
 	static function write_buffer(buffer:Int, offset:Int, data:Ptr, size:Int):Void;
 	// a texture: its TextureFormat, mip levels, whether it is a render
-	// target, its samples a pixel; its first level's texels at data (or none)
-	// (storage 1: a compute stage writes it, STORAGE_BINDING)
-	static function texture(width:Int, height:Int, format:Int, levels:Int, target:Int, samples:Int, storage:Int, data:Ptr):Int;
-	// width x height texels at data into the mip level at x, y
-	static function write_texture(texture:Int, x:Int, y:Int, width:Int, height:Int, level:Int, data:Ptr):Void;
+	// target, its samples a pixel; its first level's texels at data (or none,
+	// every layer's); storage 1: a compute stage writes it, STORAGE_BINDING;
+	// layers, dimension: 0 a 2D texture, 1 a cube, 2 a 2D array
+	static function texture(width:Int, height:Int, format:Int, levels:Int, target:Int, samples:Int, storage:Int, layers:Int, dimension:Int, data:Ptr):Int;
+	// width x height texels at data into the mip level and layer at x, y
+	static function write_texture(texture:Int, x:Int, y:Int, width:Int, height:Int, level:Int, layer:Int, data:Ptr):Void;
 	// the levels after the first, each a pass sampling the one before (in
 	// the frame's command encoder, else in one of its own)
 	static function generate_mips(texture:Int):Void;
@@ -77,7 +78,7 @@ import hxmc.unsafe.*;
 	// the depth texture (0: none); loads: LoadOp
 	// (queries: an occlusion query set the pass's draws count into, 0 none)
 	static function pass_begin(color:Int, resolve:Int, load:Int, r:Float, g:Float, b:Float, a:Float, depthTexture:Int, depthLoad:Int, depth:Float,
-		queries:Int):Void;
+		queries:Int, layer:Int):Void;
 	// an occlusion query set of count queries, its answers read back after
 	// the frames that wrote them (query_result: 1 some sample passed, 0 none,
 	// -1 none yet)

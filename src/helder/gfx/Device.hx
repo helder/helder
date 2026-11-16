@@ -67,7 +67,7 @@ final class Device {
 			bytes += format.levelBytes(d.width >> l > 0 ? d.width >> l : 1, d.height >> l > 0 ? d.height >> l : 1);
 			l++;
 		}
-		bytes *= d.samples == null ? 1 : d.samples;
+		bytes *= (d.samples == null ? 1 : d.samples) * (d.layers != null ? d.layers : d.cube == true ? 6 : 1);
 		textureSizes.set(t.id(), bytes);
 		textureBytes += bytes;
 		return t;
@@ -76,9 +76,10 @@ final class Device {
 	// texels into the texture's mip level (default 0), rows top to bottom:
 	// all of them (its width * height * texelSize bytes), or the region w x h
 	// at x, y (w * h * texelSize bytes from dataOffset), as a glyph atlas
-	// updates the part that changed; not into a render target
-	public function writeTexture(t:Texture, data:haxe.io.Bytes, x = 0, y = 0, w = -1, h = -1, dataOffset = 0, level = 0) {
-		impl.writeTexture(t.id(), data, x, y, w, h, dataOffset, level);
+	// updates the part that changed; not into a render target; layer: a 2D
+	// array's or a cube's face (TextureDesc.layers, cube)
+	public function writeTexture(t:Texture, data:haxe.io.Bytes, x = 0, y = 0, w = -1, h = -1, dataOffset = 0, level = 0, layer = 0) {
+		impl.writeTexture(t.id(), data, x, y, w, h, dataOffset, level, layer);
 	}
 
 	// whether its GPU samples textures of a format: the compressed ones (BC1,

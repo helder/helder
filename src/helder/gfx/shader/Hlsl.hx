@@ -30,6 +30,8 @@ class Hlsl extends Emit {
 			case TVec(n): 'float$n';
 			case TMat4: "float4x4";
 			case TTexture: "Texture2D";
+			case TTextureCube: "TextureCube";
+			case TTextureArray: "Texture2DArray";
 			case TStruct(s): s.name;
 			case TArray(t, _): type(t);
 			case TStorage(_, w): w ? "RWByteAddressBuffer" : "ByteAddressBuffer";
@@ -109,7 +111,7 @@ class Hlsl extends Emit {
 			line("};");
 		}
 		for (t in e.textures) {
-			line('Texture2D tex_${t.slot} : register(t${t.slot});');
+			line('${type(Emit.textureType(t))} tex_${t.slot} : register(t${t.slot});');
 			line('SamplerState smp_${t.slot} : register(s${t.slot});');
 		}
 		var args = Emit.computeArgs(e, u -> 'make_${u.struct.name}(' + [for (f in u.struct.fields) 'u_${u.binding}_${f.name}'].join(", ") + ")", t -> 'tex_${t.slot}, smp_${t.slot}', s -> null, m -> null);
@@ -137,10 +139,10 @@ class Hlsl extends Emit {
 	}
 
 	override function param(v:SVar):String
-		return type(v.type) + " " + v.name + (v.type == TTexture ? ", SamplerState " + v.name + "_smp" : "");
+		return type(v.type) + " " + v.name + (Textures.isTexture(v.type) ? ", SamplerState " + v.name + "_smp" : "");
 
 	override function arg(e:SExpr):String
-		return e.t == TTexture ? expr(e) + ", " + expr(e) + "_smp" : expr(e);
+		return Textures.isTexture(e.t) ? expr(e) + ", " + expr(e) + "_smp" : expr(e);
 
 	override function construct(t:SType, args:Array<SExpr>):String
 		return switch [t, args] {
@@ -162,6 +164,11 @@ class Hlsl extends Emit {
 			case "fract": super.builtin("frac", args, t);
 			case "mix": super.builtin("lerp", args, t);
 			case "inversesqrt": super.builtin("rsqrt", args, t);
+			case "sample" | "sampleLevel" if (args[0].t == TTextureArray):
+				// (a 2D array's uv and layer: one float3)
+				var at = "float3(" + expr(args[1]) + ", " + expr(args[2]) + ")";
+				operand(args[0]) + (name == "sampleLevel" ? ".SampleLevel(" + expr(args[0]) + "_smp, " + at + ", " + expr(args[3]) + ")" : fragment ? ".Sample(" + expr(args[0])
+					+ "_smp, " + at + ")" : ".SampleLevel(" + expr(args[0]) + "_smp, " + at + ", 0.0)");
 			case "sample" if (fragment): operand(args[0]) + ".Sample(" + expr(args[0]) + "_smp, " + expr(args[1]) + ")";
 			case "sample": operand(args[0]) + ".SampleLevel(" + expr(args[0]) + "_smp, " + expr(args[1]) + ", 0.0)";
 			case "sampleLevel": operand(args[0]) + ".SampleLevel(" + expr(args[0]) + "_smp, " + expr(args[1]) + ", " + expr(args[2]) + ")";
@@ -183,7 +190,7 @@ class Hlsl extends Emit {
 			line("};");
 		}
 		for (t in e.textures) {
-			line('Texture2D tex_${t.slot} : register(t${t.slot});');
+			line('${type(Emit.textureType(t))} tex_${t.slot} : register(t${t.slot});');
 			line('SamplerState smp_${t.slot} : register(s${t.slot});');
 		}
 		var args = [

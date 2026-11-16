@@ -310,6 +310,19 @@ class DebugDraw implements RenderFeature {
 				circle(p, up, 0.5, rgb(l.color), 24);
 				ray(p, up, 0.6, rgb(l.color));
 				ray(p, up * -1, 0.6, rgb(l.groundColor));
+			case RectArea | DiscArea:
+				// (its shape, its facing: down its node's -z)
+				var x = MathTools.transformDir(m, new Vec3(1, 0, 0)), y = MathTools.transformDir(m, new Vec3(0, 1, 0));
+				if (l.kind == RectArea) {
+					var hx = x * (l.width * 0.5), hy = y * (l.height * 0.5);
+					var a = p + hx + hy, b = p - hx + hy, d = p - hx - hy, e = p + hx - hy;
+					segment(a.x, a.y, a.z, b.x, b.y, b.z, c);
+					segment(b.x, b.y, b.z, d.x, d.y, d.z, c);
+					segment(d.x, d.y, d.z, e.x, e.y, e.z, c);
+					segment(e.x, e.y, e.z, a.x, a.y, a.z, c);
+				} else
+					circle(p, down, l.width, c, 24);
+				ray(p, down, 0.5, c);
 		}
 	}
 

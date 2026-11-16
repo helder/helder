@@ -27,7 +27,7 @@ if (!wasm) {
 	process.exit(2);
 }
 const CHROMIUM_ARGS = ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-vulkan=swiftshader', '--use-angle=swiftshader'];
-const scenes = process.env.SCENES ? process.env.SCENES.split(',') : ['gltf', 'orbits', 'shadows', 'physics', 'instances', 'skin', 'overlay', 'textured', 'packed', 'spot', 'sky', 'lazy', 'normals', 'blend', 'walker', 'packedskin', 'packednormals', 'cascades', 'environment', 'morph', 'chains', 'packedmorph', 'bloom', 'normalgrid', 'gpuparticles', 'fog', 'poststage', 'unevenscale', 'softshadows', 'shading', 'primitives', 'toon', 'sprites', 'hemisphere', 'prepass', 'ssao', 'dof', 'tiltshift', 'outline', 'fxaa', 'lut', 'effects', 'lines', 'debugdraw', 'helpers', 'text3d', 'ssr', 'taa', 'smaa', 'motionblur', 'godrays', 'occlusion', 'physical', 'transmission', 'lights8', 'clustered', 'spotshadow', 'pointshadow', 'shadowatlas', 'lod'];
+const scenes = process.env.SCENES ? process.env.SCENES.split(',') : ['gltf', 'orbits', 'shadows', 'physics', 'instances', 'skin', 'overlay', 'textured', 'packed', 'spot', 'sky', 'lazy', 'normals', 'blend', 'walker', 'packedskin', 'packednormals', 'cascades', 'environment', 'morph', 'chains', 'packedmorph', 'bloom', 'normalgrid', 'gpuparticles', 'fog', 'poststage', 'unevenscale', 'softshadows', 'shading', 'primitives', 'toon', 'sprites', 'hemisphere', 'prepass', 'ssao', 'dof', 'tiltshift', 'outline', 'fxaa', 'lut', 'effects', 'lines', 'debugdraw', 'helpers', 'text3d', 'ssr', 'taa', 'smaa', 'motionblur', 'godrays', 'occlusion', 'physical', 'transmission', 'lights8', 'clustered', 'spotshadow', 'pointshadow', 'shadowatlas', 'lod', 'sh', 'probes', 'arealight', 'lightmap'];
 const files = {
 	'/test.wasm': wasm,
 	'/os/browser.mjs': path.join(here, '../../src/helder/os/browser.mjs'),
@@ -73,7 +73,10 @@ window.start = async (gfx, mode, scene) => {
 	}
 	const px = await r.host.gfx.readPixels();
 	window.pixels = Array.from(px.data);
-	return compare(scene + ' ' + gfx + ' ' + mode, px, golden);
+	// (probes on WebGPU: its prefilter's dispatch and its captures' mips
+	// within 3 to 9 levels of the other APIs', over the floor's reflection)
+	const loose = { probes: { webgpu: 10 } };
+	return compare(scene + ' ' + gfx + ' ' + mode, px, golden, undefined, loose[scene]?.[gfx]);
 };
 </script>`;
 const server = createServer(async (req, res) => {

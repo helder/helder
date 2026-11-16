@@ -16,6 +16,12 @@ print(pbr.variant({instanced: true, normalMap: true}));
 print(pbr.variant({prepass: true}));
 print(pbr.variant({prepass: true, instanced: true}));
 print(pbr.variant({prepass: true, skinned: true}));
+// (Probes': the draw's light and reflection probes, plain and instanced)
+print(pbr.variant({probes: true}));
+print(pbr.variant({instanced: true, probes: true}));
+// (AreaLights': area lights by LTC, alone and with probes)
+print(pbr.variant({area: true}));
+print(pbr.variant({instanced: true, area: true, probes: true}));
 // (the physical material's, PhysicalShader's: every glTF extension, normal mapped; sheen alone)
 const physical = pbr.with({direct: physicalDirect, indirect: physicalIndirect, metalness: physicalMetalness, roughness: physicalRoughness, emissive: physicalEmissive});
 print(physical.variant({sheen: true, specular: true, clearcoat: true, transmission: true, iridescence: true, anisotropy: true, uvSets: true, normalMap: true}));

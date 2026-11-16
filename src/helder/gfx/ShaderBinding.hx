@@ -19,7 +19,10 @@ typedef ShaderBinding = {
 	// texture's image unit in GL
 	?index:Int,
 	// a storage texture's TextureFormat
-	?format:Int
+	?format:Int,
+	// a texture's: 0 (or none) a 2D texture (Texture2D), 1 a cube
+	// (TextureCube), 2 a 2D array (Texture2DArray); WebGPU's view dimension
+	?dimension:Int
 }
 
 enum abstract BindingKind(Int) {

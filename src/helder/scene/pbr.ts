@@ -8,7 +8,7 @@
 // PbrShader.hx: what one changes the other does.
 import {
 	slots, position, vec2, vec3, vec4, mat4, sample, sampleLevel, dot, cross, normalize, reflect, mix, clamp, smoothstep, pow, min, max, abs,
-	sqrt, floor, fract, step, discard, length, exp, cos, log, type Vec2, type Vec3, type Vec4, type Mat4, type Texture2D, type UniformArray,
+	sqrt, floor, fract, step, discard, length, exp, cos, sin, log, inversesqrt, type Vec2, type Vec3, type Vec4, type Mat4, type Texture2D, type UniformArray,
 } from "helder/gfx";
 
 // the combined vertex: a variant's attributes those it reads, in this order
@@ -17,7 +17,10 @@ export type PbrVertex = {
 	tangent?: Vec4, joints?: Vec4, weights?: Vec4, m0?: Vec4, m1?: Vec4, m2?: Vec4, m3?: Vec4, uv1?: Vec2,
 };
 
-export type PbrVaryings = {clip: Vec4, world: Vec3, normal: Vec3, uv: Vec2, tangent?: Vec4, up: Vec3, tint: Vec3, uv1?: Vec2, lights0: Vec4, lights1: Vec4};
+export type PbrVaryings = {
+	clip: Vec4, world: Vec3, normal: Vec3, uv: Vec2, tangent?: Vec4, up: Vec3, tint: Vec3, uv1?: Vec2, lights0: Vec4, lights1: Vec4,
+	ambient?: Vec4, probeA?: Vec4, extentA?: Vec4, probeB?: Vec4, extentB?: Vec4, probeAtlas?: Vec4, lightmapUv?: Vec4,
+};
 
 // the frame's point and spot lights (PbrShader.hx's PbrLights): position
 // and range, colour and first shadow tile plus 1, cone; their shadow tiles
@@ -47,20 +50,28 @@ export type PbrMaterial = {
 
 export type PbrSkinInfo = {rows: Vec4};
 
-export type PbrVertexParams = {frame: PbrFrame, object?: PbrObject, skin?: PbrSkinInfo, jointMatrices?: Texture2D};
+// per draw, the probes' (PbrShader.hx's PbrProbes)
+export type PbrProbes = {sh: UniformArray<Vec4, 7>, probeA: Vec4, extentA: Vec4, probeB: Vec4, extentB: Vec4, atlas: Vec4};
+
+// per draw, a lightmap's (PbrShader.hx's PbrLightmap)
+export type PbrLightmap = {rect: Vec4, params: Vec4};
+
+export type PbrVertexParams = {frame: PbrFrame, object?: PbrObject, probes?: PbrProbes, lightmap?: PbrLightmap, skin?: PbrSkinInfo, jointMatrices?: Texture2D};
 
 export type PbrFragmentParams = {
 	frame: PbrFrame, object?: PbrObject, material: PbrMaterial, lights: PbrLights, baseColorTexture: Texture2D, metallicRoughnessTexture: Texture2D,
 	emissiveTexture: Texture2D, occlusionTexture: Texture2D, shadowMap: Texture2D, clusterMap: Texture2D, environmentMap: Texture2D, aoMap: Texture2D,
-	normalTexture?: Texture2D, prepass?: PbrPrepass, layerMap0?: Texture2D, layerMap1?: Texture2D, transmissionMap?: Texture2D,
+	normalTexture?: Texture2D, ltcMap?: Texture2D, lightMap?: Texture2D, probesMap?: Texture2D, prepass?: PbrPrepass, layerMap0?: Texture2D, layerMap1?: Texture2D, transmissionMap?: Texture2D,
 };
 
 // (prepass: the view buffers' variant, ViewBuffers; the glTF extensions,
 // each a layer of the surface; uvSets: each core map its own uvs; sunOnly:
-// no local lights' loop; untiled: the local lights unshadowed)
+// no local lights' loop; untiled: the local lights unshadowed; probes,
+// area, lightmap: Probes', AreaLights', Lightmap's)
 export type PbrOptions = {
 	normalMap: boolean, skinned: boolean, instanced: boolean, prepass: boolean, sheen: boolean, specular: boolean, clearcoat: boolean,
 	transmission: boolean, iridescence: boolean, anisotropy: boolean, uvSets: boolean, sunOnly: boolean, untiled: boolean,
+	probes: boolean, area: boolean, lightmap: boolean,
 };
 
 // per draw in the prepass (ViewBuffers): the camera's view, x the selection group
@@ -456,6 +467,132 @@ function reflected(frame: PbrFrame, environmentMap: Texture2D, r: Vec3, rough: n
 	}
 	return env;
 }
+
+// an area light at a surface by linearly transformed cosines (PbrShader.hx's areaLight)
+function areaLight(world: Vec3, n: Vec3, v: Vec3, rough: number, albedo: Vec3, metalness: number, f0: Vec3, pos: Vec4, color: Vec4, cone: Vec4, ltc: Texture2D): Vec3 {
+	const c = pos.xyz;
+	const packed = cone.w - 4194304;
+	const qu = floor(packed / 2048);
+	const qv = packed - qu * 2048;
+	const ln = octDirection(vec2(qu, qv).div(2047).mul(2).sub(1));
+	let result = vec3(0);
+	if (dot(ln, world.sub(c)) > 0) {
+		const right = cone.xyz;
+		const r = normalize(right);
+		const up = cross(ln, r);
+		const rect = color.w < -0.75;
+		const count = rect ? 4.0 : 8.0;
+		const radius = length(right) * 1.0539889;
+		const ru = rect ? right.mul(1.4142136) : r.mul(radius);
+		const uu = rect ? up.mul((-1 - color.w) * 1.4142136) : up.mul(radius);
+		const nv = clamp(dot(n, v), 0, 1);
+		const uv = vec2(rough, sqrt(1 - nv)).mul(0.984375).add(0.0078125);
+		const t1 = sampleLevel(ltc, vec2(uv.x, uv.y * 0.5), 0);
+		const t2 = sampleLevel(ltc, vec2(uv.x, uv.y * 0.5 + 0.5), 0);
+		const tx = normalize(v.sub(n.mul(dot(v, n))).add(vec3(0.0001, 0, 0)));
+		const ty = cross(n, tx).neg();
+		const rel = c.sub(world);
+		const spec = ltcPolygon(rel, ru, uu, count, tx, ty, n, vec3(t1.x, 0, t1.y), vec3(t1.z, 0, t1.w));
+		const diff = ltcPolygon(rel, ru, uu, count, tx, ty, n, vec3(1, 0, 0), vec3(0, 0, 1));
+		const fresnel = f0.mul(t2.x).add(vec3(1).sub(f0).mul(t2.y));
+		const q = length(rel) / pos.w;
+		const window = clamp(1 - q * q * q * q, 0, 1);
+		result = color.xyz.mul(albedo.mul((1 - metalness) * diff).add(fresnel.mul(spec))).mul(window * window);
+	}
+	return result;
+}
+
+function ltcPolygon(rel: Vec3, ru: Vec3, uu: Vec3, count: number, tx: Vec3, ty: Vec3, n: Vec3, m0: Vec3, m2: Vec3): number {
+	const step = 6.2831853 / count;
+	let a = ltcVertex(rel, ru, uu, 0.5 * step, tx, ty, n, m0, m2);
+	let sum = vec3(0);
+	let k = 1.0;
+	while (k <= count) {
+		const b = ltcVertex(rel, ru, uu, (k + 0.5) * step, tx, ty, n, m0, m2);
+		sum = sum.add(edgeFormFactor(a, b));
+		a = b;
+		k += 1;
+	}
+	const l = length(sum);
+	return max((l * l + sum.z) / (l + 1), 0);
+}
+
+function ltcVertex(rel: Vec3, ru: Vec3, uu: Vec3, angle: number, tx: Vec3, ty: Vec3, n: Vec3, m0: Vec3, m2: Vec3): Vec3 {
+	const p = rel.add(ru.mul(cos(angle))).add(uu.mul(sin(angle)));
+	const y = vec3(dot(tx, p), dot(ty, p), dot(n, p));
+	return normalize(m0.mul(y.x).add(vec3(0, y.y, 0)).add(m2.mul(y.z)));
+}
+
+function edgeFormFactor(a: Vec3, b: Vec3): Vec3 {
+	const x = dot(a, b);
+	const y = abs(x);
+	const fa = 0.8543985 + (0.4965155 + 0.0145206 * y) * y;
+	const fb = 3.417594 + (4.1616724 + y) * y;
+	const v = fa / fb;
+	const t = x > 0 ? v : 0.5 * inversesqrt(max(1 - x * x, 0.000001)) - v;
+	return cross(a, b).mul(t);
+}
+
+// (Equirect.hx's octDirection)
+function octDirection(p: Vec2): Vec3 {
+	let uv = p;
+	if (abs(uv.x) > 1) uv = vec2((uv.x > 0 ? 2.0 : -2.0) - uv.x, -uv.y);
+	if (abs(uv.y) > 1) uv = vec2(-uv.x, (uv.y > 0 ? 2.0 : -2.0) - uv.y);
+	let n = vec3(uv.x, 1 - abs(uv.x) - abs(uv.y), uv.y);
+	if (n.y < 0) {
+		const f = vec2(1).sub(abs(vec2(n.z, n.x))).mul(vec2(n.x >= 0 ? 1.0 : -1.0, n.z >= 0 ? 1.0 : -1.0));
+		n = vec3(f.x, n.y, f.y);
+	}
+	return normalize(n);
+}
+
+// the light around a surface with probes (PbrShader.hx's probeLight)
+function probeLight(env: IndirectLight, world: Vec3, n: Vec3, v: Vec3, rough: number, ambient: Vec4, probeA: Vec4, extentA: Vec4, probeB: Vec4, extentB: Vec4,
+		t: Texture2D, e: Vec4): IndirectLight {
+	let irradiance = env.irradiance;
+	if (ambient.w > 0.5) irradiance = ambient.xyz;
+	let radiance = env.radiance;
+	if (probeA.w > 0.5) {
+		const r = reflect(v.neg(), n);
+		let b = env.radiance;
+		if (probeB.w > 0.5) b = boxReflected(t, world, r, rough, probeB, extentB, e);
+		radiance = mix(b, boxReflected(t, world, r, rough, probeA, extentA, e), extentA.w);
+	}
+	return {irradiance: irradiance, radiance: radiance, occlusion: env.occlusion};
+}
+
+// a reflection probe's light along r from a point, parallax-corrected by its box
+function boxReflected(t: Texture2D, world: Vec3, r: Vec3, rough: number, probe: Vec4, extent: Vec4, e: Vec4): Vec3 {
+	const rr = r.add(vec3(0.000001));
+	const a = probe.xyz.sub(extent.xyz).sub(world).div(rr);
+	const b = probe.xyz.add(extent.xyz).sub(world).div(rr);
+	const far = max(a, b);
+	const dist = min(min(far.x, far.y), far.z);
+	return probeAtlas(t, world.add(r.mul(max(dist, 0))).sub(probe.xyz), rough, probe.w - 1, e);
+}
+
+// a probe's light along a direction at a roughness: its column of the probes' atlas, two rows by it, blended
+function probeAtlas(t: Texture2D, d: Vec3, rough: number, column: number, e: Vec4): Vec3 {
+	const rows = e.y;
+	const at = rough * (rows - 1);
+	const r0 = floor(at);
+	const uv = equirect(d);
+	const u = (column + clamp(uv.x, e.z, 1 - e.z)) / e.x;
+	const v = clamp(uv.y, e.w, 1 - e.w);
+	const lo = sampleLevel(t, vec2(u, (r0 + v) / (rows + 1)), 0).xyz;
+	const hi = sampleLevel(t, vec2(u, (min(r0 + 1, rows - 1) + v) / (rows + 1)), 0).xyz;
+	return pow(mix(lo, hi, at - r0), vec3(2.2));
+}
+
+// (Equirect.hx's shIrradiance)
+function shIrradiance(sh0: Vec4, sh1: Vec4, sh2: Vec4, sh3: Vec4, sh4: Vec4, sh5: Vec4, sh6: Vec4, n: Vec3): Vec3 {
+	const n4 = vec4(n, 1);
+	const b = vec4(n.x * n.y, n.y * n.z, n.z * n.z, n.z * n.x);
+	const c = n.x * n.x - n.y * n.y;
+	const e = vec3(dot(sh0, n4), dot(sh1, n4), dot(sh2, n4)).add(vec3(dot(sh3, b), dot(sh4, b), dot(sh5, b))).add(sh6.xyz.mul(c));
+	return max(e, vec3(0));
+}
+
 
 // a clear coat's specular lobe
 function coatLobe(n: Vec3, v: Vec3, l: Vec3, a2: number): Vec3 {
@@ -887,7 +1024,7 @@ function sensitivity(opd: number, shift: Vec3): Vec3 {
 export const pbr = slots({
 	options: {
 		normalMap: false, skinned: false, instanced: false, prepass: false, sheen: false, specular: false, clearcoat: false, transmission: false,
-		iridescence: false, anisotropy: false, uvSets: false, sunOnly: false, untiled: false,
+		iridescence: false, anisotropy: false, uvSets: false, sunOnly: false, untiled: false, probes: false, area: false, lightmap: false,
 	},
 	vertex: (v: PbrVertex, p: PbrVertexParams, m: Pbr): PbrVaryings => {
 		let pos = m.position({pos: v.pos, normal: v.normal, uv: v.uv}, p);
@@ -913,6 +1050,15 @@ export const pbr = slots({
 			// (the prepass lights nothing: its instanced variants bind no PbrObject)
 			lights0: m.options.prepass ? vec4(-1) : p.object!.lights0,
 			lights1: m.options.prepass ? vec4(-1) : p.object!.lights1,
+			ambient: m.options.probes ? vec4(shIrradiance(p.probes!.sh[0], p.probes!.sh[1], p.probes!.sh[2], p.probes!.sh[3], p.probes!.sh[4], p.probes!.sh[5],
+				p.probes!.sh[6], normalize(m.options.instanced ? instanceNormal(v.m0!.xyz, v.m1!.xyz, v.m2!.xyz, nr) : p.object!.normalMatrix.mul(vec4(nr, 0)).xyz)),
+				p.probes!.extentB.w) : vec4(0),
+			probeA: m.options.probes ? p.probes!.probeA : vec4(0),
+			extentA: m.options.probes ? p.probes!.extentA : vec4(0),
+			probeB: m.options.probes ? p.probes!.probeB : vec4(0),
+			extentB: m.options.probes ? p.probes!.extentB : vec4(0),
+			probeAtlas: m.options.probes ? p.probes!.atlas : vec4(0),
+			lightmapUv: m.options.lightmap ? vec4(v.uv1!.mul(p.lightmap!.rect.zw).add(p.lightmap!.rect.xy), p.lightmap!.params.x, p.lightmap!.params.y) : vec4(0),
 		};
 	},
 	fragment: (i: PbrVaryings, p: PbrFragmentParams, m: Pbr): Vec4 => {
@@ -1082,12 +1228,23 @@ export const pbr = slots({
 							shadow = tileShadow(p.shadowMap, p.lights.tileViewProj[tile], p.lights.tileRect[tile], params, p.frame.shadowAtlas, at);
 						}
 					}
-					direct = direct.add(m.direct(lit, localLight(lit.world, lit.normal, pos, color, cone, shadow), p));
+					if (m.options.area && color.w < -0.25) direct = direct.add(areaLight(lit.world, lit.normal, lit.view, lit.roughness, lit.albedo, lit.metalness,
+						reflectance(lit, p.material), pos, color, cone, p.ltcMap!));
+					else direct = direct.add(m.direct(lit, localLight(lit.world, lit.normal, pos, color, cone, shadow), p));
 					k += 1;
 					index = lightIndex(p.frame.clusters, p.frame.clusterDepth, i.lights0, i.lights1, p.clusterMap, cell, k);
 				}
 			}
-			const env = ambientAt(lit, p.frame, p.material, p.occlusionTexture, p.environmentMap, p.aoMap);
+			let env = ambientAt(lit, p.frame, p.material, p.occlusionTexture, p.environmentMap, p.aoMap);
+			if (m.options.probes) env = probeLight(env, lit.world, lit.normal, lit.view, lit.roughness, i.ambient!, i.probeA!, i.extentA!, i.probeB!, i.extentB!,
+				p.probesMap!, i.probeAtlas!);
+			if (m.options.lightmap) {
+				let baked = sample(p.lightMap!, i.lightmapUv!.xy).xyz;
+				if (i.lightmapUv!.w > 1.5) baked = pow(baked, vec3(2.2));
+				env = {irradiance: baked.mul(i.lightmapUv!.z), radiance: env.radiance, occlusion: env.occlusion};
+				const mode = floor(i.lightmapUv!.w + 0.5);
+				if (mode - floor(mode * 0.5) * 2 > 0.5) direct = vec3(0);
+			}
 			out = shade(lit, direct, m.indirect(lit, env, p), env, m.emissive(s, p), p.frame, p.material, p.shadowMap, p.environmentMap);
 		}
 		return out;

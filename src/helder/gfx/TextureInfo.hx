@@ -11,11 +11,18 @@ class TextureInfo {
 	public final target:Bool; // a render target
 	public final samples:Int; // 1, or 4: multisampled
 	public final storage:Bool; // a compute stage writes it (TextureDesc.storage)
+	public final layers:Int; // 1, a 2D array's (TextureDesc.layers) or a cube's 6
+	public final cube:Bool;
+	// a 2D array (TextureDesc.layers given, of any count; not a cube)
+	public final array:Bool;
 	// the last region checked (checkWrite)
 	public var w = 0;
 	public var h = 0;
 
-	function new(width:Int, height:Int, format:TextureFormat, levels:Int, target:Bool, samples:Int, storage:Bool) {
+	function new(width:Int, height:Int, format:TextureFormat, levels:Int, target:Bool, samples:Int, storage:Bool, layers = 1, cube = false, array = false) {
+		this.layers = layers;
+		this.cube = cube;
+		this.array = array;
 		this.samples = samples;
 		this.storage = storage;
 		this.width = width;
@@ -44,7 +51,11 @@ class TextureInfo {
 		var storage = d.storage == true;
 		if (storage && (levels != 1 || samples != 1 || format != RGBA8 && format != RGBA16F && format != R32F || data != null))
 			throw "helder.gfx: createTexture: a storage texture is of one level and one sample, RGBA8, RGBA16F or R32F, without data";
-		return new TextureInfo(w, h, format, levels, target, samples, storage);
+		var cube = d.cube == true, layers = d.layers == null ? (cube ? 6 : 1) : d.layers;
+		if (layers < 1 || cube && (layers != 6 || w != h) || (cube || d.layers != null) && (samples != 1 || storage || format.compressed))
+			throw "helder.gfx: createTexture: layers is 1 or more (a cube's 6, square), not multisampled, storage or compressed";
+		if (data != null && data.length < format.levelBytes(w, h) * layers) throw "helder.gfx: createTexture: too little data for its layers";
+		return new TextureInfo(w, h, format, levels, target, samples, storage, layers, cube, d.layers != null && !cube);
 	}
 
 	public inline function levelWidth(level:Int):Int
@@ -53,10 +64,10 @@ class TextureInfo {
 	public inline function levelHeight(level:Int):Int
 		return height >> level > 0 ? height >> level : 1;
 
-	// a write of the region w x h at x, y of the level (w < 0: all of it)
-	// from data at dataOffset: throws when it does not fit; then w and h
-	public function checkWrite(data:haxe.io.Bytes, x:Int, y:Int, w:Int, h:Int, dataOffset:Int, level:Int) {
-		if (target || level < 0 || level >= levels) throw "helder.gfx: writeTexture: a render target, or no such mip level";
+	// a write of the region w x h at x, y of the level and layer (w < 0: all
+	// of it) from data at dataOffset: throws when it does not fit; then w and h
+	public function checkWrite(data:haxe.io.Bytes, x:Int, y:Int, w:Int, h:Int, dataOffset:Int, level:Int, layer = 0) {
+		if (target || level < 0 || level >= levels || layer < 0 || layer >= layers) throw "helder.gfx: writeTexture: a render target, or no such mip level or layer";
 		var lw = levelWidth(level), lh = levelHeight(level);
 		if (w < 0) {
 			w = lw;
@@ -74,8 +85,8 @@ class TextureInfo {
 		if (!format.filterable || format.compressed) throw "helder.gfx: generateMips: not of a filterable, uncompressed format";
 
 	// (beginPass) a colour texture of a pass, and the pass's depth: a texture
-	public function checkPass(depth:DepthTarget)
-		if (!target || depth != null && depth.texture == null) throw "helder.gfx: beginPass: not into a render target, or without a depth texture";
+	public function checkPass(depth:DepthTarget, layer = 0)
+		if (!target || depth != null && depth.texture == null || layer < 0 || layer >= layers) throw "helder.gfx: beginPass: not into a render target, or without a depth texture, or no such layer";
 
 	// (beginPass) a multisampled pass's depth texture's samples and its resolve target (null: none)
 	public function checkSamples(depth:Null<TextureInfo>, resolve:Null<TextureInfo>) {

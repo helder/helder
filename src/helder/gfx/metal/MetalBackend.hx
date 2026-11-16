@@ -288,6 +288,7 @@ class MetalBackend {
 			case RG8: MTL.PixelFormatRG8Unorm;
 			case RGBA16F: MTL.PixelFormatRGBA16Float;
 			case R32F: MTL.PixelFormatR32Float;
+			case RGBA32F: MTL.PixelFormatRGBA32Float;
 			case Depth16: MTL.PixelFormatDepth16Unorm;
 			case Depth32F: MTL.PixelFormatDepth32Float;
 			case BC1: MTL.PixelFormatBC1_RGBA;
@@ -313,6 +314,11 @@ class MetalBackend {
 		Msg.vInt(desc, ObjC.sel("setUsage:"), (multi ? MTL.TextureUsageRenderTarget : target ? MTL.TextureUsageShaderRead | MTL.TextureUsageRenderTarget : MTL.TextureUsageShaderRead)
 			| (info.storage ? MTL.TextureUsageShaderWrite : 0));
 		if (target || info.storage) Msg.vInt(desc, ObjC.sel("setStorageMode:"), MTL.StorageModePrivate);
+		if (info.cube) Msg.vInt(desc, ObjC.sel("setTextureType:"), MTL.TextureTypeCube);
+		else if (info.array) {
+			Msg.vInt(desc, ObjC.sel("setTextureType:"), MTL.TextureType2DArray);
+			Msg.vInt(desc, ObjC.sel("setArrayLength:"), info.layers);
+		}
 		if (multi) {
 			Msg.vInt(desc, ObjC.sel("setTextureType:"), MTL.TextureType2DMultisample);
 			Msg.vInt(desc, ObjC.sel("setSampleCount:"), info.samples);
@@ -322,13 +328,15 @@ class MetalBackend {
 		if (t.isNull()) throw "helder.gfx: cannot create a " + d.width + "x" + d.height + " texture";
 		textures.push(t);
 		infos.push(info);
-		if (d.data != null) writeTexture(textures.length, d.data, 0, 0, -1, -1, 0, 0);
+		if (d.data != null)
+			for (l in 0...info.layers)
+				writeTexture(textures.length, d.data, 0, 0, -1, -1, l * info.format.levelBytes(info.width, info.height), 0, l);
 		return textures.length;
 	}
 
-	public function writeTexture(id:Int, data:haxe.io.Bytes, x:Int, y:Int, w:Int, h:Int, dataOffset:Int, level:Int) {
+	public function writeTexture(id:Int, data:haxe.io.Bytes, x:Int, y:Int, w:Int, h:Int, dataOffset:Int, level:Int, layer:Int) {
 		var t = textures[id - 1], info = infos[id - 1];
-		info.checkWrite(data, x, y, w, h, dataOffset, level);
+		info.checkWrite(data, x, y, w, h, dataOffset, level, layer);
 		w = info.w;
 		h = info.h;
 		var f = info.format, n = f.texelSize;
@@ -341,7 +349,11 @@ class MetalBackend {
 		// (a copy first: the Bytes may move during a message)
 		// (compressed: rows of blocks)
 		var bytes = f.levelBytes(w, h), row = f.compressed ? ((w + 3) >> 2) * f.blockBytes : w * n;
-		Arena.scoped(a -> MtlMsg.vRegionIntPtrInt(t, ObjC.sel("replaceRegion:mipmapLevel:withBytes:bytesPerRow:"), region.value, level, a.copyBytes(data, dataOffset, bytes), row));
+		if (info.cube || info.array)
+			Arena.scoped(a -> MtlMsg.vRegionIntIntPtrIntInt(t, ObjC.sel("replaceRegion:mipmapLevel:slice:withBytes:bytesPerRow:bytesPerImage:"), region.value, level, layer,
+				a.copyBytes(data, dataOffset, bytes), row, bytes));
+		else
+			Arena.scoped(a -> MtlMsg.vRegionIntPtrInt(t, ObjC.sel("replaceRegion:mipmapLevel:withBytes:bytesPerRow:"), region.value, level, a.copyBytes(data, dataOffset, bytes), row));
 	}
 
 	// a blit in the frame's command buffer (between its passes), else in one of its own
@@ -598,7 +610,7 @@ class MetalBackend {
 		if (c.texture != null) {
 			// (a render target, its depth texture or none)
 			var info = infos[c.texture.id() - 1];
-			info.checkPass(d);
+			info.checkPass(d, c.layer == null ? 0 : c.layer);
 			w = info.width;
 			h = info.height;
 			depthTexture = d == null ? Ptr.nil() : textures[d.texture.id() - 1];
@@ -608,6 +620,8 @@ class MetalBackend {
 		var resolve = c.texture == null && samples > 1, into = c.texture != null && c.resolve != null;
 		Msg.vPtr(attachment, S.setTexture, c.texture != null ? textures[c.texture.id() - 1] : resolve ? msaa : texture);
 		Msg.vPtr(attachment, S.setResolveTexture, resolve ? texture : into ? textures[c.resolve.id() - 1] : Ptr.nil());
+		// (a cube's face, a 2D array's layer)
+		Msg.vInt(attachment, S.setSlice, c.texture != null && c.layer != null ? c.layer : 0);
 		Msg.vInt(attachment, S.setLoadAction, switch c.load {
 			case Clear: MTL.LoadActionClear;
 			case Load: MTL.LoadActionLoad;
@@ -910,6 +924,7 @@ private class S {
 	public static final setTexture = ObjC.sel("setTexture:");
 	public static final setResolveTexture = ObjC.sel("setResolveTexture:");
 	public static final setLoadAction = ObjC.sel("setLoadAction:");
+	public static final setSlice = ObjC.sel("setSlice:");
 	public static final setStoreAction = ObjC.sel("setStoreAction:");
 	public static final setClearColor = ObjC.sel("setClearColor:");
 	public static final setClearDepth = ObjC.sel("setClearDepth:");

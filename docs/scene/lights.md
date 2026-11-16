@@ -158,6 +158,8 @@ roughness (GGX's lobe convolved, the split sum's first half) and the
 diffuse irradiance's row below them. The standard material reads two rows
 by its roughness, blended, along the reflection, and the last along its
 normal: 128 x 448 for 6 levels, 224 KB on the GPU, no mip levels.
+[Indirect light](indirect.md) prefilters an environment in helder itself,
+at load, with light and reflection probes, area lights and lightmaps.
 
 [examples/gltf-showcase](/examples/gltf-showcase) shows Khronos' sample
 models (DamagedHelmet, FlightHelmet, SciFiHelmet, the extensions' tests)

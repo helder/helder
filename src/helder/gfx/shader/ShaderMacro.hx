@@ -56,10 +56,15 @@ class ShaderMacro {
 			var fields:Array<ObjectField> = [for (c in s.code) {field: c.language, expr: macro $v{c.text}}];
 			var bindings = [
 				for (b in s.bindings)
-					b.uniform ? macro {name: $v{b.name}, slot: $v{b.slot}, kind: helder.gfx.ShaderBinding.BindingKind.Uniform, size: $v{b.size}} : macro {
+					b.uniform ? macro {name: $v{b.name}, slot: $v{b.slot}, kind: helder.gfx.ShaderBinding.BindingKind.Uniform, size: $v{b.size}} : b.dimension == 0 ? macro {
 						name: $v{b.name},
 						slot: $v{b.slot},
 						kind: helder.gfx.ShaderBinding.BindingKind.Texture
+					} : macro {
+						name: $v{b.name},
+						slot: $v{b.slot},
+						kind: helder.gfx.ShaderBinding.BindingKind.Texture,
+						dimension: $v{b.dimension}
 					}
 			];
 			fields.push({field: "bindings", expr: macro [$a{bindings}]});
@@ -254,7 +259,8 @@ class ShaderMacro {
 								kind: (cast $v{b.kind} : helder.gfx.ShaderBinding.BindingKind),
 								size: $v{b.size},
 								index: $v{b.index},
-								format: $v{b.format}
+								format: $v{b.format},
+								dimension: $v{b.dimension}
 							}
 					]
 				}

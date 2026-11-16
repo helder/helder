@@ -1,5 +1,5 @@
 // The examples' scenes (Scene.hx: triangle, cube, instances, targets, mips,
-// formats, blend, palette; SCENES=a,b for some) on WebGPU, then on WebGL2 (forced:
+// formats, blend, palette, layers; SCENES=a,b for some) on WebGPU, then on WebGL2 (forced:
 // browser.mjs's option gfx: 'webgl2'), in headless Chromium (make
 // gfx-web-check), against <scene>.png with GfxTest's rule (compare.mjs): WebTest.wasm (WebTest.hx)
 // headless (on WebGL2 also Device.readPixels, whose checksum must be the
@@ -47,6 +47,7 @@ const files = {
 	'/formats.png': path.join(here, 'formats.png'),
 	'/blend.png': path.join(here, 'blend.png'),
 	'/palette.png': path.join(here, 'palette.png'),
+	'/layers.png': path.join(here, 'layers.png'),
 };
 const types = { '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.png': 'image/png' };
 const page = `<!doctype html><title>WebTest</title>
@@ -86,7 +87,7 @@ const url = `http://localhost:${server.address().port}/`;
 const browser = await pw.chromium.launch({ args: CHROMIUM_ARGS });
 console.log(`web.mjs: chromium ${browser.version()}`);
 let failed = 0;
-const scenes = process.env.SCENES ? process.env.SCENES.split(',') : ['triangle', 'cube', 'instances', 'targets', 'msaa', 'mips', 'formats', 'blend', 'palette'];
+const scenes = process.env.SCENES ? process.env.SCENES.split(',') : ['triangle', 'cube', 'instances', 'targets', 'msaa', 'mips', 'formats', 'blend', 'palette', 'layers'];
 for (const [scene, gfx, mode] of scenes.flatMap((s) => [[s, 'webgpu', 'headless'], [s, 'webgpu', 'window'], [s, 'webgl2', 'headless'], [s, 'webgl2', 'window']])) {
 	const p = await browser.newPage({ viewport: { width: 400, height: 300 } });
 	const errors = [];

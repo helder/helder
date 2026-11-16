@@ -207,6 +207,10 @@ class D3D {
 	public static inline var DSV_DIMENSION_TEXTURE2D = 3;
 	public static inline var DSV_DIMENSION_TEXTURE2DMS = 5;
 	public static inline var SRV_DIMENSION_TEXTURE2D = 4;
+	public static inline var SRV_DIMENSION_TEXTURE2DARRAY = 5;
+	public static inline var SRV_DIMENSION_TEXTURECUBE = 9;
+	public static inline var RTV_DIMENSION_TEXTURE2DARRAY = 5;
+	public static inline var RESOURCE_MISC_TEXTURECUBE = 0x4;
 	public static inline var CPU_ACCESS_WRITE = 0x10000;
 	public static inline var CPU_ACCESS_READ = 0x20000;
 	public static inline var MAP_READ = 1;

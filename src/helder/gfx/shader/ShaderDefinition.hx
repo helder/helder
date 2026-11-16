@@ -70,9 +70,9 @@ class ShaderDefinition implements Definition<ShaderAdapter, ShaderOutput> {
 						}
 				],
 				// (GL binds them by their GLSL names, WebGPU makes its bind group layout of them)
-				bindings: [for (u in e.uniforms) {name: u.struct.name + "_block", slot: u.binding, uniform: true, size: u.size}].concat([
+				bindings: [for (u in e.uniforms) {name: u.struct.name + "_block", slot: u.binding, uniform: true, size: u.size, dimension: 0}].concat([
 					for (t in e.textures)
-						{name: "tex_" + t.slot, slot: t.slot, uniform: false, size: 0}
+						{name: "tex_" + t.slot, slot: t.slot, uniform: false, size: 0, dimension: t.dimension}
 				])
 			};
 		var attributes:Array<{field:String, components:Int, offset:Int}> = [], off = 0;
@@ -168,13 +168,13 @@ class ShaderDefinition implements Definition<ShaderAdapter, ShaderOutput> {
 							case _:
 						}
 					RUniform(std140(a, s, slot, pos));
-				case TTexture: RTexture(new STexture(p.name, slot));
+				case TTexture | TTextureCube | TTextureArray: RTexture(new STexture(p.name, slot, Textures.dimension(p.type)));
 				case TStorage(e, write):
 					var l = std430(a, e, name, pos);
 					RStorage(new SStorage(name, slot, e, write, l.offsets, l.stride, write ? uavs++ : written + reads++));
 				case TImage(format):
 					RImage(new SImage(name, slot, format, images++, uavs++));
-				case t: a.error('the parameter $name is a ${Names.typeName(t)}, not a uniform block (a struct), a Texture2D, a Storage, an RWStorage or a StorageTexture', pos);
+				case t: a.error('the parameter $name is a ${Names.typeName(t)}, not a uniform block (a struct), a Texture2D, TextureCube or Texture2DArray, a Storage, an RWStorage or a StorageTexture', pos);
 			});
 		}
 		if (resources.length > MAX_SLOTS) a.error('more than $MAX_SLOTS uniform blocks, textures and storage buffers', pos);
@@ -185,10 +185,10 @@ class ShaderDefinition implements Definition<ShaderAdapter, ShaderOutput> {
 		var bindings = [
 			for (r in resources)
 				switch r {
-					case RUniform(u): {name: u.struct.name + "_block", slot: u.binding, kind: 0, size: u.size, index: u.binding, format: 0};
-					case RTexture(t): {name: "tex_" + t.slot, slot: t.slot, kind: 1, size: 0, index: t.slot, format: 0};
-					case RStorage(s): {name: "sb_" + s.slot, slot: s.slot, kind: s.write ? 3 : 2, size: s.stride, index: s.index, format: 0};
-					case RImage(m): {name: "img_" + m.slot, slot: m.slot, kind: 4, size: 0, index: m.index, format: m.format};
+					case RUniform(u): {name: u.struct.name + "_block", slot: u.binding, kind: 0, size: u.size, index: u.binding, format: 0, dimension: 0};
+					case RTexture(t): {name: "tex_" + t.slot, slot: t.slot, kind: 1, size: 0, index: t.slot, format: 0, dimension: t.dimension};
+					case RStorage(s): {name: "sb_" + s.slot, slot: s.slot, kind: s.write ? 3 : 2, size: s.stride, index: s.index, format: 0, dimension: 0};
+					case RImage(m): {name: "img_" + m.slot, slot: m.slot, kind: 4, size: 0, index: m.index, format: m.format, dimension: 0};
 				}
 		];
 		var params:Array<ShaderParam> = [for (i in 0...resources.length) {name: f.fields[i], resource: resources[i]}];
@@ -291,14 +291,14 @@ class ShaderDefinition implements Definition<ShaderAdapter, ShaderOutput> {
 								uniforms.push(u);
 							}
 							RUniform(u);
-						case TTexture:
+						case TTexture | TTextureCube | TTextureArray:
 							var t = Lambda.find(textures, t -> t.name == p.name);
 							if (t == null) {
-								t = new STexture(p.name, slot);
+								t = new STexture(p.name, slot, Textures.dimension(p.type));
 								textures.push(t);
 							}
 							RTexture(t);
-						case t: a.error('the parameter $name is a ${Names.typeName(t)}, not a uniform block (a struct) or a Texture2D', k.pos);
+						case t: a.error('the parameter $name is a ${Names.typeName(t)}, not a uniform block (a struct) or a texture (Texture2D, TextureCube, Texture2DArray)', k.pos);
 					}
 				}
 			];
@@ -566,12 +566,12 @@ class SlotsDef {
 typedef ComputeOutput = {
 	program:SCompute,
 	code:Array<{language:String, text:String}>,
-	bindings:Array<{name:String, slot:Int, kind:Int, size:Int, index:Int, format:Int}>,
+	bindings:Array<{name:String, slot:Int, kind:Int, size:Int, index:Int, format:Int, dimension:Int}>,
 	params:Array<ShaderParam>,
 	uniforms:Null<SUniform>
 }
 
 typedef StageCode = {
 	code:Array<{language:String, text:String}>,
-	bindings:Array<{name:String, slot:Int, uniform:Bool, size:Int}>
+	bindings:Array<{name:String, slot:Int, uniform:Bool, size:Int, dimension:Int}>
 }

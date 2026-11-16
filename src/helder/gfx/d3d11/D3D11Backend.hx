@@ -490,14 +490,14 @@ class D3D11Backend {
 			t.value.Width = info.width;
 			t.value.Height = info.height;
 			t.value.MipLevels = levels;
-			t.value.ArraySize = 1;
+			t.value.ArraySize = info.layers;
 			t.value.Format = dxgiFormat(format);
 			t.value.SampleCount = info.samples;
 			t.value.Usage = D3D.USAGE_DEFAULT;
 			// (GenerateMips draws into the levels; a multisampled texture is only drawn into and resolved)
 			t.value.BindFlags = (multi ? 0 : D3D.BIND_SHADER_RESOURCE) | (depth ? D3D.BIND_DEPTH_STENCIL : target || mips ? D3D.BIND_RENDER_TARGET : 0)
 				| (info.storage ? D3D.BIND_UNORDERED_ACCESS : 0);
-			t.value.MiscFlags = mips ? D3D.RESOURCE_MISC_GENERATE_MIPS : 0;
+			t.value.MiscFlags = (mips ? D3D.RESOURCE_MISC_GENERATE_MIPS : 0) | (info.cube ? D3D.RESOURCE_MISC_TEXTURECUBE : 0);
 			ID3D11Device.CreateTexture2D(device, t, Ptr.nil(), scratch);
 		});
 		check(hr, "CreateTexture2D (" + info.width + "x" + info.height + ")");
@@ -513,6 +513,14 @@ class D3D11Backend {
 					v[0] = format == Depth16 ? D3D.FORMAT_R16_UNORM : D3D.FORMAT_R32_FLOAT;
 					v[1] = D3D.SRV_DIMENSION_TEXTURE2D;
 					v[3] = levels; // (Texture2D.MostDetailedMip, MipLevels)
+				} else if (info.cube || info.array) {
+					// (a cube's view, or a 2D array's of every layer: TextureCube.MipLevels; Texture2DArray's MipLevels, FirstArraySlice, ArraySize)
+					v = a.alloc(32);
+					LibC.memset(v, 0, 32);
+					v[0] = dxgiFormat(format);
+					v[1] = info.cube ? D3D.SRV_DIMENSION_TEXTURECUBE : D3D.SRV_DIMENSION_TEXTURE2DARRAY;
+					v[3] = levels;
+					v[5] = info.layers;
 				}
 				ID3D11Device.CreateShaderResourceView(device, tex, v, scratch);
 			});
@@ -529,6 +537,22 @@ class D3D11Backend {
 			});
 			check(hr, "CreateDepthStencilView");
 			t.dsv = scratch.value;
+		} else if (target && (info.cube || info.array)) {
+			// (a view a layer: Texture2DArray's MipSlice, FirstArraySlice, ArraySize)
+			for (l in 0...info.layers) {
+				hr = Arena.scopedValue(a -> {
+					var v:Ptr<Int32> = a.alloc(32);
+					LibC.memset(v, 0, 32);
+					v[0] = dxgiFormat(format);
+					v[1] = D3D.RTV_DIMENSION_TEXTURE2DARRAY;
+					v[3] = l;
+					v[4] = 1;
+					ID3D11Device.CreateRenderTargetView(device, tex, v, scratch);
+				});
+				check(hr, "CreateRenderTargetView");
+				t.layers.push(scratch.value);
+			}
+			t.rtv = t.layers[0];
 		} else if (target) {
 			check(ID3D11Device.CreateRenderTargetView(device, tex, Ptr.nil(), scratch), "CreateRenderTargetView");
 			t.rtv = scratch.value;
@@ -537,7 +561,9 @@ class D3D11Backend {
 			check(ID3D11Device.CreateUnorderedAccessView(device, tex, Ptr.nil(), scratch), "CreateUnorderedAccessView");
 			t.uav = scratch.value;
 		}
-		if (d.data != null) writeTexture(textures.length, d.data, 0, 0, -1, -1, 0, 0);
+		if (d.data != null)
+			for (l in 0...info.layers)
+				writeTexture(textures.length, d.data, 0, 0, -1, -1, l * format.levelBytes(info.width, info.height), 0, l);
 		return textures.length;
 	}
 
@@ -549,6 +575,7 @@ class D3D11Backend {
 			case RG8: D3D.FORMAT_R8G8_UNORM;
 			case RGBA16F: D3D.FORMAT_R16G16B16A16_FLOAT;
 			case R32F: D3D.FORMAT_R32_FLOAT;
+			case RGBA32F: D3D.FORMAT_R32G32B32A32_FLOAT;
 			case Depth16: D3D.FORMAT_R16_TYPELESS;
 			case Depth32F: D3D.FORMAT_R32_TYPELESS;
 			case BC1: D3D.FORMAT_BC1_UNORM;
@@ -560,9 +587,11 @@ class D3D11Backend {
 	public function supports(f:TextureFormat):Bool
 		return f != ASTC4x4;
 
-	public function writeTexture(id:Int, data:haxe.io.Bytes, x:Int, y:Int, w:Int, h:Int, dataOffset:Int, level:Int) {
+	public function writeTexture(id:Int, data:haxe.io.Bytes, x:Int, y:Int, w:Int, h:Int, dataOffset:Int, level:Int, layer:Int) {
 		var t = textures[id - 1], info = t.info;
-		info.checkWrite(data, x, y, w, h, dataOffset, level);
+		info.checkWrite(data, x, y, w, h, dataOffset, level, layer);
+		// (the layer's level: its subresource)
+		level += layer * info.levels;
 		var n = info.format.texelSize;
 		if (info.format.compressed) {
 			// (a whole level: rows of blocks, no box)
@@ -945,12 +974,13 @@ class D3D11Backend {
 		offscreen = c.texture != null;
 		if (offscreen) {
 			var t = textures[c.texture.id() - 1];
-			t.info.checkPass(d);
+			var layer = c.layer == null ? 0 : c.layer;
+			t.info.checkPass(d, layer);
 			if (t.info.samples > 1 || c.resolve != null)
 				t.info.checkSamples(d == null ? null : textures[d.texture.id() - 1].info, c.resolve == null ? null : textures[c.resolve.id() - 1].info);
 			resolveFrom = c.resolve == null ? null : t;
 			resolveInto = c.resolve == null ? null : textures[c.resolve.id() - 1];
-			rtv = t.rtv;
+			rtv = t.layers.length > 0 ? t.layers[layer] : t.rtv;
 			dsv = d == null ? Ptr.nil() : textures[d.texture.id() - 1].dsv;
 			w = t.info.width;
 			h = t.info.height;
@@ -1313,6 +1343,8 @@ private class D3DTexture {
 	public var held = false;
 	public var view = Ptr.nil();
 	public var rtv = Ptr.nil();
+	// (a cube's or a 2D array's render target views, one a layer: rtv the first)
+	public final layers:Array<Ptr> = [];
 	public var dsv = Ptr.nil();
 	public var uav = Ptr.nil(); // a storage texture's
 
@@ -1325,7 +1357,11 @@ private class D3DTexture {
 		Com.release(uav);
 		Com.release(mutex);
 		Com.release(dsv);
-		Com.release(rtv);
+		if (layers.length > 0) {
+			for (l in layers)
+				Com.release(l);
+		} else
+			Com.release(rtv);
 		Com.release(view);
 		Com.release(texture);
 	}
