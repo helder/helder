@@ -1,6 +1,6 @@
 // The layout tests' reference: each case of layout-cases.mjs drawn by
 // Chromium's flexbox (with the CSS that sets helder.ui's defaults: border-box,
-// column, position relative), its boxes read back, each
+// column, position relative; align-content CSS's own, normal), its boxes read back, each
 // edge rounded as helder.ui.Layout rounds them, into layout-expected.json,
 // which UiTest compares with (npm test -- ui). Run it after changing the
 // cases (Playwright from npm, with Chromium):
@@ -29,8 +29,7 @@ const VALUES = { Row: 'row', Column: 'column', RowReverse: 'row-reverse', Column
 	Rtl: 'rtl', Ltr: 'ltr', RowDense: 'row dense', ColumnDense: 'column dense' };
 
 function css(style) {
-	// (a grid: CSS's normal track alignment, auto tracks stretched, where the page's rule says flex-start)
-	let s = style?.display === 'Grid' && style.alignContent === undefined ? 'align-content:normal;' : '';
+	let s = '';
 	for (const [k, v] of Object.entries(style ?? {})) {
 		const name = KEBAB[k] ?? k;
 		let value;
@@ -51,7 +50,7 @@ function html(node) {
 
 const page = `<!doctype html><style>
 body { margin: 0 }
-div { display: flex; flex-direction: column; box-sizing: border-box; position: relative; border-style: solid; border-width: 0; flex-shrink: 1; align-content: flex-start }
+div { display: flex; flex-direction: column; box-sizing: border-box; position: relative; border-style: solid; border-width: 0; flex-shrink: 1 }
 #root > div { position: absolute; left: 0; top: 0 }
 </style><div id="root"></div>`;
 

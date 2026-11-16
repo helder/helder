@@ -15,7 +15,7 @@
   },
   "properties": [
     {"property": "display", "status": "partial", "values": ["flex", "grid", "none", "block"], "note": "block is a column whose children neither grow nor shrink: no margin collapsing, no inline formatting (Taffy's block category is not imported)"},
-    {"property": "position", "status": "implemented", "values": ["relative", "absolute"]},
+    {"property": "position", "status": "partial", "values": ["relative", "absolute"], "note": "static is unsupported: a box is its absolute children's containing block and shifted by its offsets (static with neither is relative)"},
     {"property": "direction", "status": "implemented", "values": ["ltr", "rtl"], "note": "Style.dir, inherited"},
     {"property": "box-sizing", "status": "partial", "values": ["border-box"], "note": "content-box is unsupported"},
     {"property": "width, height, min-width, min-height, max-width, max-height", "status": "partial", "values": ["<px>", "<percentage>", "auto", "min-content", "max-content", "fit-content", "calc(<percentage> + <px>)"], "note": "stretch and fit-content(<length>) are unsupported"},
@@ -36,11 +36,10 @@
     {"property": "grid-template-columns, grid-template-rows", "status": "partial", "values": ["<px>", "<percentage>", "<flex>", "auto", "min-content", "max-content", "minmax()", "repeat(<integer>, ...)"], "note": "named lines, fit-content() and repeat(auto-fill | auto-fit) are unsupported"},
     {"property": "grid-auto-columns, grid-auto-rows", "status": "partial", "values": ["<track size>"], "note": "one track, not a list"},
     {"property": "grid-auto-flow", "status": "implemented", "values": ["row", "column", "row dense", "column dense"]},
-    {"property": "grid-row-start, grid-row-end, grid-column-start, grid-column-end", "status": "partial", "values": ["auto", "<integer>", "span <integer>", "<area name>"], "note": "named lines (span <name>, <name> <integer>) are unsupported"}
+    {"property": "grid-row-start, grid-row-end, grid-column-start, grid-column-end", "status": "partial", "values": ["auto", "<integer>", "span <integer>", "<area name>"], "note": "named lines (span <name>, <name> <integer>) are unsupported; lines past ±32767 are clamped there and an axis has at most 65,535 tracks, as Taffy (Chrome 145 places lines to ±2,000,000 at least)"}
   ],
   "deviations": [
     {"property": "flex-direction", "value": "column", "reason": "helder.ui's default (CSS's is row); the runner sets row"},
-    {"property": "align-content", "value": "normal", "reason": "flex-start in a flex container (CSS: stretch); the runner sets stretch"},
     {"property": "display", "value": "block", "reason": "a flex row when a row direction is given; the runner gives a block none"}
   ],
   "unsupported_browser_subset": [

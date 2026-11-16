@@ -252,7 +252,15 @@ class LayoutConformance {
 						case "none": None;
 						case _: Flex;
 					}
-				case "position": s.position = v == "absolute" ? Absolute : Relative;
+				case "position":
+					s.position = v == "absolute" ? Absolute : Relative;
+					// (static: relative but for its offsets and its absolute children's containing block)
+					if (v == "static") {
+						var ch:Array<Dynamic> = t.children ?? [];
+						if ([for (k in ["top", "right", "bottom", "left"]) if (style.exists(k)) k].length > 0
+							|| [for (c in ch) if ((c.style : DynamicAccess<String>).get("position") == "absolute") c].length > 0)
+							note("position: static");
+					}
 				case "flex-direction": s.direction = switch v {
 						case "column": Column;
 						case "row-reverse": RowReverse;
@@ -338,8 +346,6 @@ class LayoutConformance {
 			}
 		// (a block: helder.ui's column, not a flex row)
 		if (s.display == Block && !style.exists("flex-direction")) s.direction = Column;
-		// (CSS's align-content: normal is stretch in a flex container; helder.ui's flex-start)
-		if (!style.exists("align-content") && s.display != Grid) s.alignContent = Stretch;
 		// (start and end, not flex-start and flex-end: the same but in a reverse flex direction)
 		if (s.display != Grid && (s.direction == RowReverse || s.direction == ColumnReverse))
 			for (k in ["justify-content", "align-content"])
