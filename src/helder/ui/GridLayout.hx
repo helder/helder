@@ -69,7 +69,8 @@ class GridLayout {
 		var cols:Array<Float> = null, rows:Array<Float> = null, gridW = 0.0, width = 0.0, gridH = 0.0;
 		for (pass in 0...2) {
 			// (its percentages auto while its width is its content's, as Chromium sizes it)
-			cols = tracks(l, colTracks, items, true, innerW, innerW, colGap, stretchCols, innerW, innerH, null);
+			// (an indefinite width's fr within its min- and max-width)
+			cols = tracks(l, colTracks, items, true, innerW, innerW, colGap, stretchCols, innerW, innerH, null, false, Math.max(0, minW - padH), maxW - padH);
 			gridW = sum(cols, colGap);
 			if (!Layout.known(innerW) && Layout.known(availInW) && gridW > availInW + 1e-6) {
 				cols = tracks(l, colTracks, items, true, availInW, innerW, colGap, false, innerW, innerH, null);
@@ -91,7 +92,7 @@ class GridLayout {
 			// (a height laid out, not definite (an auto one within its min- or max-height): the rows sized in an
 			// indefinite room, their percentages of it; stretched to it when it is more (a min-height's), not shrunk
 			// to it when less (a max-height's: the grid overflowing it), as Chromium has it)
-			rows = tracks(l, rowTracks, items, false, defH ? innerH : Math.NaN, innerH, rowGap, stretchRows && defH, width, innerH, cols);
+			rows = tracks(l, rowTracks, items, false, defH ? innerH : Math.NaN, innerH, rowGap, stretchRows && defH, width, innerH, cols, false, Math.max(0, minH - padV), maxH - padV);
 			if (!defH && stretchRows && Layout.known(innerH) && innerH > sum(rows, rowGap) + 1e-6)
 				rows = tracks(l, rowTracks, items, false, innerH, innerH, rowGap, true, width, innerH, cols);
 			if (pass == 0) gridH = sum(rows, rowGap);
@@ -109,6 +110,10 @@ class GridLayout {
 			l.rh = bh;
 			return;
 		}
+		// (flexible rows of a height that was not definite: sized again at the height it came to, as Chromium, so
+		// that fr factors adding up to less than 1 take their share of it)
+		if (!defH && Lambda.exists(rowTracks, t -> t.max.match(Fr(_))))
+			rows = tracks(l, rowTracks, items, false, height, innerH, rowGap, stretchRows, width, innerH, cols);
 
 		// the tracks' places (justify and alignContent: the tracks in the content box)
 		var colPos = positions(cols, colGap, width, s.justify);
@@ -622,13 +627,16 @@ class GridLayout {
 			var edges = columns ? Layout.mz(m.left) + Layout.mz(m.right) : Layout.mz(m.top) + Layout.mz(m.bottom) + it.shim;
 			var pb = columns ? Layout.edgesH(cs) : Layout.edgesV(cs);
 			if (columns && Layout.known(it.areaH) && cs.aspectRatio > 0 && !Layout.known(cs.width.resolve(Math.NaN)) && !Layout.known(cs.height.resolve(Math.NaN))) {
-				// (sized again, its rows known: its width through the ratio from their height, within its heights)
-				var ih = Layout.clamp(Math.max(0, it.areaH - Layout.mz(m.top) - Layout.mz(m.bottom)), Math.max(Layout.min(cs.minHeight, it.areaH), Layout.edgesV(cs)), Layout.max(cs.maxHeight, it.areaH));
+				// (sized again, its rows known: its width through the ratio from its height, a percentage one of
+				// theirs, else their height, within its heights)
+				var own = cs.height.resolve(it.areaH);
+				var ih = Layout.clamp(Layout.known(own) ? own : Math.max(0, it.areaH - Layout.mz(m.top) - Layout.mz(m.bottom)), Math.max(Layout.min(cs.minHeight, it.areaH), Layout.edgesV(cs)), Layout.max(cs.maxHeight, it.areaH));
 				l.size(c, Math.NaN, ih, Math.NaN, it.areaH, Math.NaN, ih, false);
 				mins[k] = maxes[k] = l.rw + edges;
 			} else if (columns) {
-				// (its percentages of its area, not known yet: auto meanwhile)
-				mins[k] = l.minContentWidth(c, Math.NaN, true) + edges;
+				// (its percentages of its area, not known yet: auto meanwhile; within its min and max widths, which
+				// Layout.minContentWidth leaves out when it has the content's cached)
+				mins[k] = Layout.clamp(l.minContentWidth(c, Math.NaN, true), Layout.min(cs.minWidth, Math.NaN), Layout.max(cs.maxWidth, Math.NaN)) + edges;
 				l.size(c, Math.NaN, Math.NaN, Math.NaN, gridH, Math.NaN, Math.NaN, false);
 				maxes[k] = l.rw + edges;
 			} else {
