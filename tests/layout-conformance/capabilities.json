@@ -15,7 +15,7 @@
   },
   "properties": [
     {"property": "display", "status": "partial", "values": ["flex", "grid", "none", "block"], "note": "block is a column whose children neither grow nor shrink: no margin collapsing, no inline formatting (Taffy's block category is not imported)"},
-    {"property": "position", "status": "implemented", "values": ["relative", "absolute"]},
+    {"property": "position", "status": "partial", "values": ["relative", "absolute"], "note": "static is unsupported: a box is its absolute children's containing block and shifted by its offsets (static with neither is relative)"},
     {"property": "direction", "status": "implemented", "values": ["ltr", "rtl"], "note": "Style.dir, inherited"},
     {"property": "box-sizing", "status": "partial", "values": ["border-box"], "note": "content-box is unsupported"},
     {"property": "width, height, min-width, min-height, max-width, max-height", "status": "partial", "values": ["<px>", "<percentage>", "auto", "min-content", "max-content", "fit-content", "calc(<percentage> + <px>)"], "note": "stretch and fit-content(<length>) are unsupported"},
