@@ -33,8 +33,10 @@ import hxmc.unsafe.*;
 // the app is inactive (willResignActive: a call, the app switcher) no
 // frame is drawn either, without an event. The controller is an
 // HxmcViewController (made at run time) whose status bar and home
-// indicator Window.immersive hides. Keys
-// and text input come later (a UIKeyInput view, as the macOS text view).
+// indicator Window.immersive hides. Text input (Window.startTextInput) is
+// the view's UIKeyInput: first responder while it is on, the keyboard
+// shown; what it inserts a TextInput event (a newline: Enter's KeyDown and
+// KeyUp), deleteBackward Backspace's. No composition (UITextInput) yet.
 @:allow(helder.os)
 @:hxmc.unsafe(gc)
 class UIKitWindow {
@@ -69,6 +71,8 @@ class UIKitWindow {
 	var safeRight = 0;
 	// a touch's position in pixels (locate's)
 	var lastX = 0.0;
+	// (Window.startTextInput on: the view may be first responder)
+	var typing = false;
 	var lastY = 0.0;
 	final size:Ptr<CGSize>;
 
@@ -186,6 +190,7 @@ class UIKitWindow {
 			Runtime.class_replaceMethod(made, ObjC.sel("touchesEnded:withEvent:"), Callback.addr(touchesEnded), Mem.cstr("v@:@@"));
 			Runtime.class_replaceMethod(made, ObjC.sel("touchesCancelled:withEvent:"), Callback.addr(touchesCancelled), Mem.cstr("v@:@@"));
 			Runtime.class_replaceMethod(made, ObjC.sel("hxmcFrame:"), Callback.addr(displayFrame), Mem.cstr("v@:@"));
+			keyInput(made, true);
 			var vc = Runtime.objc_getClass(Mem.cstr("HxmcViewController"));
 			if (vc.isNull()) controllerClass = makeController() else {
 				controllerMethods(vc, true);
@@ -207,10 +212,78 @@ class UIKitWindow {
 		Runtime.class_addMethod(cls, ObjC.sel("touchesEnded:withEvent:"), Callback.addr(touchesEnded), Mem.cstr("v@:@@"));
 		Runtime.class_addMethod(cls, ObjC.sel("touchesCancelled:withEvent:"), Callback.addr(touchesCancelled), Mem.cstr("v@:@@"));
 		Runtime.class_addMethod(cls, ObjC.sel("hxmcFrame:"), Callback.addr(displayFrame), Mem.cstr("v@:@"));
+		keyInput(cls, false);
 		Runtime.objc_registerClassPair(cls);
 		viewClass = cls;
 		controllerClass = makeController();
 		UIKitApp.running = true;
+	}
+
+	// UIKeyInput's methods (and canBecomeFirstResponder) on the view's class
+	static function keyInput(cls:Ptr, replace:Bool) {
+		inline function add(sel:String, imp:Ptr, types:String)
+			if (replace) Runtime.class_replaceMethod(cls, ObjC.sel(sel), imp, Mem.cstr(types)) else Runtime.class_addMethod(cls, ObjC.sel(sel), imp, Mem.cstr(types));
+		add("canBecomeFirstResponder", Callback.addr(canBecomeFirstResponder), "B@:");
+		add("hasText", Callback.addr(hasText), "B@:");
+		add("insertText:", Callback.addr(insertText), "v@:@");
+		add("deleteBackward", Callback.addr(deleteBackward), "v@:");
+		var protocol = Runtime.objc_getProtocol(Mem.cstr("UIKeyInput"));
+		if (!protocol.isNull()) Runtime.class_addProtocol(cls, protocol);
+	}
+
+	// Window.startTextInput and stopTextInput: the view first responder (the keyboard up) or not
+	function textInput(on:Bool) {
+		typing = on;
+		var first = Msg.b(view, ObjC.sel("isFirstResponder"));
+		if (on && !first) Msg.b(view, ObjC.sel("becomeFirstResponder")) else if (!on && first) Msg.b(view, ObjC.sel("resignFirstResponder"));
+	}
+
+	@:hxmc.callback static function canBecomeFirstResponder(self:Ptr, cmd:Ptr):Int
+		return current != null && current.typing ? 1 : 0;
+
+	// (always: Backspace reaches the field, which knows whether it has text)
+	@:hxmc.callback static function hasText(self:Ptr, cmd:Ptr):Int
+		return 1;
+
+	@:hxmc.callback static function insertText(self:Ptr, cmd:Ptr, text:Ptr):Void {
+		var w = current, s = ObjC.string(text);
+		if (w == null || s == null) return;
+		var typed = new StringBuf();
+		for (cp in new haxe.iterators.StringIteratorUnicode(s))
+			if (cp == "\n".code || cp == "\r".code) {
+				w.typeText(typed.toString());
+				typed = new StringBuf();
+				w.press(0xFF0D);
+			} else if (cp >= 0x20 && cp != 0x7F) typed.addChar(cp);
+		w.typeText(typed.toString());
+	}
+
+	@:hxmc.callback static function deleteBackward(self:Ptr, cmd:Ptr):Void {
+		var w = current;
+		if (w != null) w.press(0xFF08);
+	}
+
+	function typeText(text:String) {
+		if (text == "") return;
+		var e = event;
+		e.kind = TextInput;
+		e.window = owner;
+		e.text = text;
+		e.mods = 0;
+		dispatch(e);
+	}
+
+	// a key without a character: its KeyDown and KeyUp
+	function press(key:Int) {
+		var e = event;
+		for (kind in [KeyDown, KeyUp]) {
+			e.kind = kind;
+			e.window = owner;
+			e.key = key;
+			e.mods = 0;
+			e.text = "";
+			dispatch(e);
+		}
 	}
 
 	static function makeController():Ptr {

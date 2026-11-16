@@ -229,12 +229,12 @@ class Window {
 	// X11's input method keeps its own place;
 	// Android shows the soft keyboard, its input method through a hidden
 	// EditText (helder.os.android.TextInput, once enabled), compositions as
-	// TextEditing
+	// TextEditing; iOS its keyboard, the view's UIKeyInput (no compositions)
 	public function startTextInput(x:Int, y:Int, width:Int, height:Int) {
 		if (closed) return;
 		typing = true;
 		if (HEADLESS) helder.headless.Headless.run.textInputAt(x, y, width, height) else if (Platform.os() == 3) (cast native : CanvasWindow).textInput(true, x, y, width, height) else if (Platform.os() == 2)
-			(cast native : Win32Window).textInputArea(x, y, width, height) else if (Platform.apple() >= 1) {} else if (Platform.os() == 1) (cast native : CocoaWindow).textInput(true, x, y,
+			(cast native : Win32Window).textInputArea(x, y, width, height) else if (Platform.apple() >= 1) (cast native : UIKitWindow).textInput(true) else if (Platform.os() == 1) (cast native : CocoaWindow).textInput(true, x, y,
 				width, height) else if (Platform.target() >= 9) (cast native : AndroidWindow).textInput(true, x, y, width, height) else if (Std.isOfType(native, WaylandWindow))
 			(cast native : WaylandWindow).textInputOn(x, y, width, height);
 	}
@@ -255,7 +255,7 @@ class Window {
 	public function stopTextInput() {
 		typing = false;
 		if (closed || HEADLESS) return;
-		if (Platform.os() == 3) (cast native : CanvasWindow).textInput(false, 0, 0, 0, 0) else if (Platform.os() == 2) (cast native : Win32Window).stopTextInput() else if (Platform.apple() >= 1) {} else if (Platform.os() == 1)
+		if (Platform.os() == 3) (cast native : CanvasWindow).textInput(false, 0, 0, 0, 0) else if (Platform.os() == 2) (cast native : Win32Window).stopTextInput() else if (Platform.apple() >= 1) (cast native : UIKitWindow).textInput(false) else if (Platform.os() == 1)
 			(cast native : CocoaWindow).textInput(false, 0, 0, 0, 0) else if (Platform.target() >= 9) (cast native : AndroidWindow).textInput(false, 0, 0, 0, 0) else if (Std.isOfType(native, WaylandWindow))
 			(cast native : WaylandWindow).textInputOff();
 	}
