@@ -710,7 +710,7 @@ class Layout {
 	}
 
 	// absolute children, in the padding box of a container bw x bh
-	function absolutes(n:Node, absolute:Array<Node>, bw:Float, bh:Float, padL:Float, padT:Float, ?lines:{cols:Array<Float>, rows:Array<Float>, nCols:Int, nRows:Int}) {
+	function absolutes(n:Node, absolute:Array<Node>, bw:Float, bh:Float, padL:Float, padT:Float, ?lines:{cols:Array<Float>, rows:Array<Float>, nCols:Int, nRows:Int, colShift:Int, rowShift:Int}) {
 		var s = n.style;
 		var be = s.borderEdges, fullW = bw - be.left - be.right, fullH = bh - be.top - be.bottom;
 		var rtl = n.rtl();
@@ -721,12 +721,12 @@ class Layout {
 			var ox = 0.0, oy = 0.0, pbW = fullW, pbH = fullH;
 			if (lines != null) {
 				if (cs.gridColumn != Grid.GridPlacement.AUTO) {
-					var a = area(cs.gridColumn, lines.cols, lines.nCols, fullW, s.gridTemplateAreas, true);
+					var a = area(cs.gridColumn, lines.cols, lines.nCols, lines.colShift, fullW, s.gridTemplateAreas, true);
 					ox = rtl ? fullW - a.to : a.from;
 					pbW = a.to - a.from;
 				}
 				if (cs.gridRow != Grid.GridPlacement.AUTO) {
-					var a = area(cs.gridRow, lines.rows, lines.nRows, fullH, s.gridTemplateAreas, false);
+					var a = area(cs.gridRow, lines.rows, lines.nRows, lines.rowShift, fullH, s.gridTemplateAreas, false);
 					oy = a.from;
 					pbH = a.to - a.from;
 				}
@@ -815,9 +815,10 @@ class Layout {
 	// the explicit grid's, a span from the other line; a name not of an area the first line past the
 	// explicit grid (CSS's implicit lines all having it), the same line twice its end dropped, lines the
 	// grid has not, auto: the padding edges)
-	static function area(p:Grid.GridPlacement, lines:Array<Float>, explicit:Int, full:Float, areas:Null<Grid.GridAreas>, columns:Bool):{from:Float, to:Float} {
+	// (shift: the implicit tracks before the explicit grid's)
+	static function area(p:Grid.GridPlacement, lines:Array<Float>, explicit:Int, shift:Int, full:Float, areas:Null<Grid.GridAreas>, columns:Bool):{from:Float, to:Float} {
 		inline function index(k:Int):Int
-			return k > 0 ? k - 1 : k < 0 ? explicit + 1 + k : -1;
+			return k > 0 ? shift + k - 1 : k < 0 && shift + explicit + 1 + k >= 0 ? shift + explicit + 1 + k : -1;
 		function named(name:String, isEnd:Bool):Int {
 			var atEnd = isEnd;
 			var a = areas == null ? null : areas.areas.get(name);
@@ -827,8 +828,8 @@ class Layout {
 						a = areas.areas.get(name.substr(0, name.length - suffix.length));
 						atEnd = suffix == "-end";
 					}
-			if (a == null) return explicit + 1;
-			return columns ? (atEnd ? a.colEnd : a.col) : (atEnd ? a.rowEnd : a.row);
+			if (a == null) return shift + explicit + 1;
+			return shift + (columns ? (atEnd ? a.colEnd : a.col) : (atEnd ? a.rowEnd : a.row));
 		}
 		var a = p.startName != null ? named(p.startName, false) : index(p.start), b = p.endName != null ? named(p.endName, true) : index(p.end);
 		if (a >= 0 && b == a) b = -1;

@@ -20,6 +20,8 @@ class GridLayout {
 	static inline var LINES = 32767;
 	static inline var MAX_TRACKS = 65535;
 	static inline var LARGE = 64;
+	// (a placement's line auto, its start not given)
+	static inline var AUTO = -0x40000000;
 
 	static function grid(l:Layout, n:Node, w:Float, h:Float, availW:Float, availH:Float, minW:Float, maxW:Float, minH:Float, maxH:Float, padL:Float, padT:Float,
 			padH:Float, padV:Float, perform:Bool, least:Float, defH:Bool) {
@@ -41,14 +43,15 @@ class GridLayout {
 			items.push(new GridItem(c));
 		}
 		var colsTemplate = s.gridTemplateColumns, rowsTemplate = s.gridTemplateRows;
-		place(items, s);
-		var nCols = gridColumnCount(s), nRows = gridRowCount(s);
+		// (shift: the implicit tracks before the explicit grid's, of negative lines past its start)
+		var shift = place(items, s);
+		var nCols = gridColumnCount(s) + shift.cols, nRows = gridRowCount(s) + shift.rows;
 		for (it in items) {
 			if (it.col + it.colSpan > nCols) nCols = it.col + it.colSpan;
 			if (it.row + it.rowSpan > nRows) nRows = it.row + it.rowSpan;
 		}
-		var colTracks = [for (i in 0...nCols) i < colsTemplate.length ? colsTemplate[i] : s.gridAutoColumns];
-		var rowTracks = [for (i in 0...nRows) i < rowsTemplate.length ? rowsTemplate[i] : s.gridAutoRows];
+		var colTracks = [for (i in 0...nCols) i >= shift.cols && i - shift.cols < colsTemplate.length ? colsTemplate[i - shift.cols] : s.gridAutoColumns];
+		var rowTracks = [for (i in 0...nRows) i >= shift.rows && i - shift.rows < rowsTemplate.length ? rowsTemplate[i - shift.rows] : s.gridAutoRows];
 		var colGap = s.columnGap, rowGap = s.rowGap;
 
 		// the columns: at the content box's width, else at their max-content sizes (then the available width, when that is less)
@@ -195,7 +198,7 @@ class GridLayout {
 			// (no tracks: its first line still, at the content box's start)
 			var colLines = [for (k in 0...cols.length + 1) (rtl ? s.padding.right : s.padding.left) + (k < cols.length ? colPos[k] : k > 0 ? colPos[k - 1] + cols[k - 1] : 0)];
 			var rowLines = [for (k in 0...rows.length + 1) s.padding.top + (k < rows.length ? rowPos[k] : k > 0 ? rowPos[k - 1] + rows[k - 1] : 0)];
-			l.absolutes(n, absolute, bw, bh, padL, padT, {cols: colLines, rows: rowLines, nCols: gridColumnCount(s), nRows: gridRowCount(s)});
+			l.absolutes(n, absolute, bw, bh, padL, padT, {cols: colLines, rows: rowLines, nCols: gridColumnCount(s), nRows: gridRowCount(s), colShift: shift.cols, rowShift: shift.rows});
 		}
 		n.lw = bw;
 		n.lh = bh;
@@ -211,11 +214,11 @@ class GridLayout {
 	static function minContent(l:Layout, n:Node):Float {
 		var s = n.style;
 		var items = [for (c in n.inOrder()) if (c.style.display != None && c.style.position != Absolute) new GridItem(c)];
-		place(items, s);
-		var nCols = gridColumnCount(s);
+		var shift = place(items, s);
+		var nCols = gridColumnCount(s) + shift.cols;
 		for (it in items)
 			if (it.col + it.colSpan > nCols) nCols = it.col + it.colSpan;
-		var defs = [for (i in 0...nCols) i < s.gridTemplateColumns.length ? s.gridTemplateColumns[i] : s.gridAutoColumns];
+		var defs = [for (i in 0...nCols) i >= shift.cols && i - shift.cols < s.gridTemplateColumns.length ? s.gridTemplateColumns[i - shift.cols] : s.gridAutoColumns];
 		return sum(tracks(l, defs, items, true, 0, Math.NaN, s.columnGap, false, Math.NaN, Math.NaN, null), s.columnGap);
 	}
 
@@ -264,7 +267,8 @@ class GridLayout {
 	// the items' cells: those with both lines first, then those locked to a
 	// row (a column, flowing by columns), then the rest by the cursor
 	// (sparse; dense: the cursor back at the start for each)
-	static function place(items:Array<GridItem>, s:Style) {
+	// (returns the tracks before the explicit grid's on each axis, its implicit ones of negative lines)
+	static function place(items:Array<GridItem>, s:Style):{cols:Int, rows:Int} {
 		var explicitCols = gridColumnCount(s), explicitRows = gridRowCount(s), flow = s.gridAutoFlow;
 		var byColumn = flow == Column || flow == ColumnDense, dense = flow == RowDense || flow == ColumnDense;
 		var areas = s.gridTemplateAreas;
@@ -290,16 +294,16 @@ class GridLayout {
 				return columns ? (atEnd ? a.colEnd : a.col) : (atEnd ? a.rowEnd : a.row);
 			}
 			if (p.startName != null || p.endName != null) {
-				var a = p.startName != null ? named(p.startName, false) : p.start != 0 ? index(p.start) : -1;
-				var b = p.endName != null ? named(p.endName, true) : p.end != 0 ? index(p.end) : -1;
-				if (a >= 0 && b >= 0) {
+				var a = p.startName != null ? named(p.startName, false) : p.start != 0 ? index(p.start) : AUTO;
+				var b = p.endName != null ? named(p.endName, true) : p.end != 0 ? index(p.end) : AUTO;
+				if (a != AUTO && b != AUTO) {
 					// (the same line twice: the end dropped)
 					if (b == a) return {start: a, span: 1};
 					if (b < a) return {start: b, span: a - b};
 					return {start: a, span: b - a};
 				}
-				if (a >= 0) return {start: a, span: p.span};
-				return {start: Std.int(Math.max(0, b - p.span)), span: p.span};
+				if (a != AUTO) return {start: a, span: p.span};
+				return {start: b - p.span, span: p.span};
 			}
 			if (p.start != 0 && p.end != 0) {
 				var a = index(p.start), b = index(p.end);
@@ -308,20 +312,34 @@ class GridLayout {
 					a = b;
 					b = t;
 				}
-				return {start: Std.int(Math.max(0, a)), span: Std.int(Math.max(1, b - a))};
+				return {start: a, span: Std.int(Math.max(1, b - a))};
 			}
-			if (p.start != 0) return {start: Std.int(Math.max(0, index(p.start))), span: p.span};
-			if (p.end != 0) return {start: Std.int(Math.max(0, index(p.end) - p.span)), span: p.span};
-			return {start: -1, span: p.span};
+			if (p.start != 0) return {start: index(p.start), span: p.span};
+			if (p.end != 0) return {start: index(p.end) - p.span, span: p.span};
+			return {start: AUTO, span: p.span};
 		}
 		function resolve(p:Grid.GridPlacement, count:Int, columns:Bool):{start:Int, span:Int} {
 			var r = resolveLines(p, count, columns);
 			if (r.span > MAX_TRACKS) r.span = MAX_TRACKS;
-			if (r.start > MAX_TRACKS - r.span) r.start = MAX_TRACKS - r.span;
+			if (r.start != AUTO && r.start > MAX_TRACKS - r.span) r.start = MAX_TRACKS - r.span;
 			return r;
 		}
+		var res = [for (it in items) {
+			var c = resolve(it.node.style.gridColumn, explicitCols, true), r = resolve(it.node.style.gridRow, explicitRows, false);
+			byColumn ? {major: c, minor: r} : {major: r, minor: c};
+		}];
+		// (lines before the explicit grid's start: implicit tracks there, every index shifted past them, as CSS's)
+		var shiftMajor = 0, shiftMinor = 0;
+		for (r in res) {
+			if (r.major.start != AUTO && -r.major.start > shiftMajor) shiftMajor = -r.major.start;
+			if (r.minor.start != AUTO && -r.minor.start > shiftMinor) shiftMinor = -r.minor.start;
+		}
+		for (r in res) {
+			if (r.major.start != AUTO) r.major.start += shiftMajor;
+			if (r.minor.start != AUTO) r.minor.start += shiftMinor;
+		}
 		// (the flow's axes: major across, minor along a row of the flow)
-		var minorCount = byColumn ? explicitRows : explicitCols;
+		var minorCount = (byColumn ? explicitRows : explicitCols) + shiftMinor;
 		// (the cells taken: a small area's each in taken (by major, then minor), a large one's as its
 		// rectangle (major, minor, majorSpan, minorSpan) in large, each small one's in small too)
 		var taken = new Map<Int, Map<Int, Bool>>(), small:Array<Int> = [], large:Array<Int> = [];
@@ -369,10 +387,6 @@ class GridLayout {
 				it.colSpan = minorSpan;
 			}
 		}
-		var res = [for (it in items) {
-			var c = resolve(it.node.style.gridColumn, explicitCols, true), r = resolve(it.node.style.gridRow, explicitRows, false);
-			byColumn ? {major: c, minor: r} : {major: r, minor: c};
-		}];
 		for (k in 0...items.length) {
 			var minorEnd = res[k].minor.start + res[k].minor.span;
 			if (res[k].minor.start >= 0 && minorEnd > minorCount) minorCount = minorEnd;
@@ -429,6 +443,7 @@ class GridLayout {
 			take(items[k], curMajor, curMinor, a.span, b.span);
 			curMinor += b.span;
 		}
+		return byColumn ? {cols: shiftMajor, rows: shiftMinor} : {cols: shiftMinor, rows: shiftMajor};
 	}
 
 	// the sizes of one axis's tracks (room: the content box's size on it,
