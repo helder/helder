@@ -66,7 +66,7 @@ class MacPatternsTest {
 			switch step {
 				case 0:
 					els = all(view, []);
-					check("the fixture's elements", els.length == 30, '${els.length}');
+					check("the fixture's elements (the scroll view a group: its id)", els.length == 31, '${els.length}');
 					var grid = find("AXTable", "Mail");
 					if (!grid.isNull()) {
 						check("a table's rows and columns", Msg.i(grid, sel("accessibilityRowCount")).toInt() == 3 && Msg.i(grid, sel("accessibilityColumnCount")).toInt() == 2);
