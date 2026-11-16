@@ -94,16 +94,16 @@ light is evaluated at the vertices), a reflection probe two atlas reads
 and a box intersection, an area light two polygons' integrals (four or
 eight edges each) and two table reads. Per draw on the CPU: a probe
 grid's eight probes blended, and each reflection probe's box tested. On
-the GPU: the atlas (`(probes + 1) x size` by `(levels + 1) x size`
-RGBA16F texels: 9 x 64 by 7 x 64, 2 MB, by default), a capture's cube.
+the GPU: the probes' atlas (`probes x size` by `(levels + 1) x size / 2`
+RGBA16F texels: 8 x 64 by 7 x 32, 0.9 MB, by default), a capture's cube.
 
 What each adds to a program (`tests/3d/size/sizes.sh`, the renderer's
-level, Linux x86-64 and wasm32; unused, the whole phase adds 27 KB and 29
+level, Linux x86-64 and wasm32; unused, the whole phase adds 24 KB and 22
 KB):
 
 | | native | wasm32 |
 |---|---|---|
-| `Environment.prefilter` (Sh, the prefilter's pass and dispatch) | +144 KB | +145 KB |
-| `Probes` (with the prefilter, the captures, two variants) | +300 KB | +334 KB |
-| `AreaLights` (four variants, the 64 KB tables) | +295 KB | +355 KB |
-| `Lightmaps` (one variant) | +71 KB | +98 KB |
+| `Environment.prefilter` (Sh, the prefilter's pass and dispatch) | +144 KB | +143 KB |
+| `Probes` (with the prefilter, the captures, two variants) | +300 KB | +333 KB |
+| `AreaLights` (four variants, the 64 KB tables) | +295 KB | +352 KB |
+| `Lightmaps` (one variant) | +71 KB | +96 KB |

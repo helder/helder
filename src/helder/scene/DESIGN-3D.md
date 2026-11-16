@@ -1804,11 +1804,11 @@ capture, with the departures said where the design describes them (0, 2.3,
   blocks and functions (tests/typescript/definitions' pbr: the probes and
   area variants); `tests/typescript/helder/indirect.ts` without a device.
 - **Sizes** (`tests/3d/size/sizes.sh`, the renderer's level, Linux x86-64
-  and wasm32): unused, +27 KB and +29 KB against main (gfx's cubes and
-  arrays in the back ends, the renderer's hooks; measured before the
-  octahedral reads left the standard variants: less now); `Environment.prefilter` +144 and +145 KB,
-  `Probes` +300 and +334 KB (the prefilter's with it), `AreaLights` +295
-  and +355 KB (four variants, the tables), `Lightmaps` +71 and +98 KB.
+  and wasm32): unused, +24 KB and +22 KB against main (gfx's cubes and
+  arrays in the back ends, the renderer's hooks); `Environment.prefilter`
+  +144 and +143 KB, `Probes` +300 and +333 KB (the prefilter's with it),
+  `AreaLights` +295 and +352 KB (four variants, the tables), `Lightmaps`
+  +71 and +96 KB.
 - **Not measured:** the frame's milliseconds on a phone (`page.json`'s
   device slots, as phase 2's), the prefilter's time at load.
 - **Docs:** [Indirect light](/docs/scene/indirect.md), its examples
