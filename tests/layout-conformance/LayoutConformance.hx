@@ -252,7 +252,15 @@ class LayoutConformance {
 						case "none": None;
 						case _: Flex;
 					}
-				case "position": s.position = v == "absolute" ? Absolute : Relative;
+				case "position":
+					s.position = v == "absolute" ? Absolute : Relative;
+					// (static: relative but for its offsets and its absolute children's containing block)
+					if (v == "static") {
+						var ch:Array<Dynamic> = t.children ?? [];
+						if ([for (k in ["top", "right", "bottom", "left"]) if (style.exists(k)) k].length > 0
+							|| [for (c in ch) if ((c.style : DynamicAccess<String>).get("position") == "absolute") c].length > 0)
+							note("position: static");
+					}
 				case "flex-direction": s.direction = switch v {
 						case "column": Column;
 						case "row-reverse": RowReverse;

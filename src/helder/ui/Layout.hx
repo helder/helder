@@ -447,9 +447,9 @@ class Layout {
 					t += contribution(items[i], row, innerW, pctH) + items[i].mMainStart + items[i].mMainEnd + (i > first ? gapMain : 0);
 				content = t;
 			}
-			// (a wrapping row's max-content no less than its min-content, its widest item's, which an item's basis can
-			// make it, as Chromium keeps it)
-			if (row && multi && basisItems(n)) content = Math.max(content, minContentWidth(n, Math.NaN, false) - padH);
+			// (a wrapping row's max-content no less than its min-content, its widest item's (negative margins or an
+			// item's basis can make it less), as Chromium keeps it)
+			if (row && multi) content = Math.max(content, minContentWidth(n, Math.NaN, false) - padH);
 			// (a row shrinks to fit the room; a column's auto height is its content's, the room or not)
 			mainSize = known(room) && row ? Math.min(content, room) : content;
 			mainSize = clamp(mainSize, Math.max(0, minMain), maxMain);
@@ -673,7 +673,9 @@ class Layout {
 				c.ly = cy + (known(dy) ? dy : 0);
 				// (its height definite: stretched, a column's item when the column's is or its basis is
 				// in pixels, as Chromium has it, or its own)
-				looseH = row ? !(it.align == Stretch && !known(it.styleCross)) : !known(pctH) && !cs.basis.match(DimValue.Px(_));
+				// (a column's item's height through its aspect ratio from a definite width, its own or stretched: definite too)
+				looseH = row ? !(it.align == Stretch && !known(it.styleCross)) : !known(pctH) && !cs.basis.match(DimValue.Px(_))
+					&& !(cs.aspectRatio > 0 && (known(it.styleCross) || it.align == Stretch && known(innerCross)));
 				size(c, cwid, chei, innerW, pctH, cwid, chei, true);
 				c.lw = cwid;
 				c.lh = chei;
@@ -1014,13 +1016,6 @@ class Layout {
 	static function aspectItems(n:Node):Bool {
 		for (c in n.children)
 			if (c.style.aspectRatio > 0 && c.style.display != None && c.style.position != Absolute) return true;
-		return false;
-	}
-
-	// (whether a node's item has a basis of its own)
-	static function basisItems(n:Node):Bool {
-		for (c in n.children)
-			if (c.style.basis != DimValue.Auto && c.style.display != None && c.style.position != Absolute) return true;
 		return false;
 	}
 

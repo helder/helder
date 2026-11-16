@@ -53,6 +53,8 @@ function tree(n, keep) {
 	const style = {};
 	const own = keep.shift();
 	for (const [k, v] of Object.entries(n.attrs)) if ((!VARIANT_ATTRS.includes(k) || own.has(k)) && DEFAULTS[k] !== v) style[k] = v;
+	// (gentest writes no position for Taffy's default, static: the base sheet's relative overridden)
+	if (n.tag !== '#root' && n.attrs.position === undefined) style.position = 'static';
 	const out = { style };
 	if (n.tag !== 'div') out.tag = n.tag;
 	if (n.children.length) out.children = n.children.map((c) => tree(c, keep));
