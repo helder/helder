@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://helder.build/schema/layout-conformance/manifest-v1.json",
+  "title": "helder.ui layout conformance manifest",
+  "description": "The ordered coverage gate: every fixture is listed, decoded and validated; each listed variant of a case is required to pass unless pending, and a pending one is required to fail.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "taffy_revision", "variants", "cases"],
+  "properties": {
+    "schema": { "const": 1 },
+    "taffy_revision": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "variants": {
+      "description": "The variants laid out; the others are decoded and validated only (capabilities.json says why)",
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["border-box-ltr", "border-box-rtl", "content-box-ltr", "content-box-rtl"] }
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "fixture"],
+        "properties": {
+          "id": { "type": "string" },
+          "fixture": { "type": "string", "pattern": "^fixtures/[a-z]+/[A-Za-z0-9_]+\\.json$" },
+          "pending": {
+            "description": "A variant's reason it fails: unmapped (a property or value outside the subset) or differs (the first box that does)",
+            "type": "object",
+            "additionalProperties": { "type": "string", "minLength": 1 }
+          },
+          "skip": {
+            "description": "Not laid out (still decoded and validated), and why; every variant pending",
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

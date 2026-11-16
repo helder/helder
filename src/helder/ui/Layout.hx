@@ -40,6 +40,9 @@ class Layout {
 	// (known: the next size() measures its node's content's height, its aspect ratio left out, a wrapping
 	// column's lines broken at this height, the ratio's)
 	var noRatio = Math.NaN;
+	// (known: the next flex() measures a content height for its node's aspect ratio, this the ratio's
+	// height: a single line's stretched items stretched to it, as Chromium's)
+	var ratioH = Math.NaN;
 	// flex items and lines, kept from layout to layout: a container's are
 	// taken from the top and given back when it is done (its children's
 	// taken above them meanwhile)
@@ -130,8 +133,11 @@ class Layout {
 				h = clamp(w / ar, minH, maxH);
 				// (no less than its content's height, within its max-height, its height and min-height auto (not a percentage
 				// behaving as auto) and its overflow visible: CSS's automatic minimum size of a box with an aspect ratio; a
-				// flex base size not, flex's own minimum then)
-				if (!base && s.height == DimValue.Auto && s.minHeight == DimValue.Auto && s.overflow == Visible && (n.children.length > 0 || n.hasContent())) {
+				// flex base size not, flex's own minimum then; its own content in a single row, stretched (its anonymous item's,
+				// as Chromium's) not either)
+				var leaf = n.hasContent() && (n.children.length == 0 || n.contentOwnsChildren());
+				var stretched = leaf && (s.direction == Row || s.direction == RowReverse) && !s.wrap && (s.alignItems == Stretch || s.alignItems == Auto);
+				if (!base && !stretched && s.height == DimValue.Auto && s.minHeight == DimValue.Auto && s.overflow == Visible && (n.children.length > 0 || n.hasContent())) {
 					noRatio = h;
 					size(n, w, Math.NaN, parentW, parentH, availW, availH, false);
 					if (rh > h) h = Math.min(rh, maxH);
@@ -177,6 +183,7 @@ class Layout {
 		}
 		else {
 			breakH = nr ? nrBreak : bareBreak;
+			ratioH = nr ? nrBreak : Math.NaN;
 			flex(n, w, h, availW, availH, minW, maxW, minH, maxH, padL, padT, padH, padV, perform, defH);
 		}
 		if (!perform && cached) store(n, w, defH ? h : -1 - h, availW, availH, bare, rw, rh, parentW, parentH);
@@ -255,8 +262,8 @@ class Layout {
 	function flex(n:Node, w:Float, h:Float, availW:Float, availH:Float, minW:Float, maxW:Float, minH:Float, maxH:Float, padL:Float, padT:Float,
 			padH:Float, padV:Float, perform:Bool, defH:Bool) {
 		var s = n.style;
-		var bareBreak = breakH;
-		breakH = Math.NaN;
+		var bareBreak = breakH, ratio = ratioH;
+		breakH = ratioH = Math.NaN;
 		// (a block: a column, its items at their own sizes; a row its own
 		// direction made, a widget's, a flex row's)
 		var block = s.display == Block && s.direction == Column;
@@ -280,6 +287,8 @@ class Layout {
 		var minMain = (row ? minW : minH) - (row ? padH : padV), maxMain = (row ? maxW : maxH) - (row ? padH : padV);
 		var minCross = (row ? minH : minW) - (row ? padV : padH), maxCross = (row ? maxH : maxW) - (row ? padV : padH);
 		var multi = !block && s.wrap;
+		// (measured for its aspect ratio, a single line: as tall as the ratio's height for its stretched items)
+		var ratioCross = row && !multi && known(ratio) ? Math.max(0, ratio - padV) : Math.NaN;
 
 		// the items and their hypothetical main sizes
 		var first = itemTop, absolute:Null<Array<Node>> = null;
@@ -322,7 +331,8 @@ class Layout {
 			if (it.align == Stretch && (row ? cs.height : cs.width) != DimValue.Auto) it.align = Start;
 			it.styleCross = clamp(!row && cs.width.intrinsic() ? intrinsicWidth(c, cs.width, pctCross, roomC) : (row ? cs.height : cs.width).resolve(pctCross), it.minCross,
 				it.maxCross);
-			var b = cs.basis.resolve(pctMain);
+			// (min-content, max-content, fit-content: a row's that width; a column's its content's height)
+			var b = row && cs.basis.intrinsic() ? intrinsicWidth(c, cs.basis, pctMain, roomM) : cs.basis.resolve(pctMain);
 			// (a percentage basis of an indefinite size: content, the width or height left out)
 			if (!known(b) && cs.basis == DimValue.Auto) b = row && cs.width.intrinsic() ? intrinsicWidth(c, cs.width, pctMain, roomM) : (row ? cs.width : cs.height).resolve(pctMain);
 			var contentBasis = !known(b);
@@ -386,6 +396,14 @@ class Layout {
 				it.minMain = Math.max(Math.min(content, it.maxMain), row ? edgesH(cs) : edgesV(cs));
 			}
 			it.hypo = clamp(b, it.minMain, it.maxMain);
+			// (with an aspect ratio: its min and max across, through the ratio, clamp it too where its own along
+			// are auto, though not its flexed size, as Chromium (csswg-drafts#10997))
+			if (cs.aspectRatio > 0) {
+				var r = row ? cs.aspectRatio : 1 / cs.aspectRatio;
+				var tMin = (row ? cs.minWidth : cs.minHeight) == DimValue.Auto ? it.minCross * r : 0.0;
+				var tMax = (row ? cs.maxWidth : cs.maxHeight) == DimValue.Auto ? it.maxCross * r : Math.POSITIVE_INFINITY;
+				it.hypo = clamp(b, Math.max(it.minMain, tMin), Math.min(it.maxMain, tMax));
+			}
 		}
 
 		// lines: runs of the items
@@ -429,9 +447,9 @@ class Layout {
 					t += contribution(items[i], row, innerW, pctH) + items[i].mMainStart + items[i].mMainEnd + (i > first ? gapMain : 0);
 				content = t;
 			}
-			// (a wrapping row's max-content no less than its min-content, its widest item's, which an item's basis can
-			// make it, as Chromium keeps it)
-			if (row && multi && basisItems(n)) content = Math.max(content, minContentWidth(n, Math.NaN, false) - padH);
+			// (a wrapping row's max-content no less than its min-content, its widest item's (negative margins or an
+			// item's basis can make it less), as Chromium keeps it)
+			if (row && multi) content = Math.max(content, minContentWidth(n, Math.NaN, false) - padH);
 			// (a row shrinks to fit the room; a column's auto height is its content's, the room or not)
 			mainSize = known(room) && row ? Math.min(content, room) : content;
 			mainSize = clamp(mainSize, Math.max(0, minMain), maxMain);
@@ -458,7 +476,8 @@ class Layout {
 				if (known(it.styleCross)) it.cross = it.styleCross else {
 					var ac = known(innerCross) ? Math.max(0, innerCross - it.mCrossStart - it.mCrossEnd) : known(availCross) ? Math.max(0,
 						availCross - it.mCrossStart - it.mCrossEnd) : Math.NaN;
-					if (it.align == Stretch && !multi && known(innerCross)) it.cross = clamp(ac, it.minCross, it.maxCross) else {
+					if (it.align == Stretch && !multi && known(innerCross)) it.cross = clamp(ac, it.minCross, it.maxCross)
+					else if (it.align == Stretch && known(ratioCross)) it.cross = clamp(Math.max(0, ratioCross - it.mCrossStart - it.mCrossEnd), it.minCross, it.maxCross) else {
 						// (a column's item's flexed height: definite when the column's is)
 						if (row) size(it.node, it.main, Math.NaN, innerW, pctH, it.main, ac, false) else {
 							looseH = !known(pctH);
@@ -480,8 +499,9 @@ class Layout {
 				var oc = it.cross + it.mCrossStart + it.mCrossEnd;
 				if (oc > lc) lc = oc;
 				if (it.align == Baseline) {
-					// (a column's: each one's start edge, as Chromium synthesizes it across)
-					var b = 0.0;
+					// (a column's: each one's left edge, as Chromium synthesizes it across: its start edge, its far one
+					// right to left)
+					var b = row || !flipCross ? 0.0 : it.cross;
 					if (row) {
 						looseH = true;
 						size(it.node, it.main, it.cross, innerW, pctH, it.main, it.cross, true);
@@ -537,13 +557,14 @@ class Layout {
 			used += lines[k].cross + (k > firstLine ? gapCross : 0);
 		var free = crossSize - used, start = 0.0, between = 0.0;
 		if (multi) switch s.alignContent {
-			case Start | Normal:
+			case Start:
 			case End: start = free;
 			case Center: start = lu(free / 2);
-			case Stretch if (free > 0):
+			// (normal: stretch, as CSS's in a flex container)
+			case Stretch | Normal if (free > 0):
 				for (k in firstLine...lastLine)
 					lines[k].cross += free / count;
-			case Stretch:
+			case Stretch | Normal:
 			case SpaceBetween if (free > 0 && count > 1): between = lu(free / (count - 1));
 			case SpaceBetween:
 			case SpaceAround if (free > 0):
@@ -642,10 +663,9 @@ class Layout {
 				var c = it.node;
 				var cx = padL + (row ? mainPos : crossPos), cy = padT + (row ? crossPos : mainPos);
 				var cwid = row ? it.main : it.cross, chei = row ? it.cross : it.main;
-				// (Relative: shifted by its offsets)
+				// (Relative: shifted by its offsets; both left and right: right's in a right-to-left container)
 				var cs = c.style;
-				var dx = cs.left.resolve(innerW), dy = cs.top.resolve(pctH);
-				if (!known(dx)) dx = -cs.right.resolve(innerW);
+				var dx = relativeX(cs, innerW, rtl), dy = cs.top.resolve(pctH);
 				if (!known(dy)) dy = -cs.bottom.resolve(pctH);
 				// (Sticky: its offsets are where it sticks, not a shift)
 				if (cs.position == Sticky) dx = dy = Math.NaN;
@@ -653,7 +673,9 @@ class Layout {
 				c.ly = cy + (known(dy) ? dy : 0);
 				// (its height definite: stretched, a column's item when the column's is or its basis is
 				// in pixels, as Chromium has it, or its own)
-				looseH = row ? !(it.align == Stretch && !known(it.styleCross)) : !known(pctH) && !cs.basis.match(DimValue.Px(_));
+				// (a column's item's height through its aspect ratio from a definite width, its own or stretched: definite too)
+				looseH = row ? !(it.align == Stretch && !known(it.styleCross)) : !known(pctH) && !cs.basis.match(DimValue.Px(_))
+					&& !(cs.aspectRatio > 0 && (known(it.styleCross) || it.align == Stretch && known(innerCross)));
 				size(c, cwid, chei, innerW, pctH, cwid, chei, true);
 				c.lw = cwid;
 				c.lh = chei;
@@ -688,7 +710,7 @@ class Layout {
 	}
 
 	// absolute children, in the padding box of a container bw x bh
-	function absolutes(n:Node, absolute:Array<Node>, bw:Float, bh:Float, padL:Float, padT:Float, ?lines:{cols:Array<Float>, rows:Array<Float>, nCols:Int, nRows:Int}) {
+	function absolutes(n:Node, absolute:Array<Node>, bw:Float, bh:Float, padL:Float, padT:Float, ?lines:{cols:Array<Float>, rows:Array<Float>, nCols:Int, nRows:Int, colShift:Int, rowShift:Int}) {
 		var s = n.style;
 		var be = s.borderEdges, fullW = bw - be.left - be.right, fullH = bh - be.top - be.bottom;
 		var rtl = n.rtl();
@@ -699,12 +721,12 @@ class Layout {
 			var ox = 0.0, oy = 0.0, pbW = fullW, pbH = fullH;
 			if (lines != null) {
 				if (cs.gridColumn != Grid.GridPlacement.AUTO) {
-					var a = area(cs.gridColumn, lines.cols, lines.nCols, fullW);
+					var a = area(cs.gridColumn, lines.cols, lines.nCols, lines.colShift, fullW, s.gridTemplateAreas, true);
 					ox = rtl ? fullW - a.to : a.from;
 					pbW = a.to - a.from;
 				}
 				if (cs.gridRow != Grid.GridPlacement.AUTO) {
-					var a = area(cs.gridRow, lines.rows, lines.nRows, fullH);
+					var a = area(cs.gridRow, lines.rows, lines.nRows, lines.rowShift, fullH, s.gridTemplateAreas, false);
 					oy = a.from;
 					pbH = a.to - a.from;
 				}
@@ -713,18 +735,31 @@ class Layout {
 			// (what an auto or fit-content width fits in: the room its offsets and margins leave)
 			var room = Math.max(0, pbW - (known(l) ? l : 0) - (known(r) ? r : 0) - mz(m.left) - mz(m.right));
 			var aw = cs.width.intrinsic() ? intrinsicWidth(c, cs.width, pbW, room) : cs.width.resolve(pbW), ah = cs.height.resolve(pbH);
-			// (both offsets: the room between them, unless its self-alignment is set: fit-content then)
-			if (!known(aw) && known(l) && known(r) && (cs.justifySelf == Auto || cs.justifySelf == Stretch)) aw = Math.max(0, pbW - l - r - mz(m.left) - mz(m.right));
-			if (!known(ah) && known(t) && known(b) && (cs.alignSelf == Auto || cs.alignSelf == Stretch)) ah = Math.max(0, pbH - t - b - mz(m.top) - mz(m.bottom));
-			aw = clamp(aw, Math.max(minWidthOf(c, cs.minWidth, pbW, room), edgesH(cs)), maxWidthOf(c, cs.maxWidth, pbW, room));
-			ah = clamp(ah, Math.max(min(cs.minHeight, pbH), edgesV(cs)), max(cs.maxHeight, pbH));
+			var loW = Math.max(minWidthOf(c, cs.minWidth, pbW, room), edgesH(cs)), hiW = maxWidthOf(c, cs.maxWidth, pbW, room);
+			var loH = Math.max(min(cs.minHeight, pbH), edgesV(cs)), hiH = max(cs.maxHeight, pbH);
+			// (with an aspect ratio: the other axis's min and max through it too where its own are auto, as CSS's)
+			var ar = cs.aspectRatio;
+			if (ar > 0) {
+				if (cs.minWidth == DimValue.Auto) loW = Math.max(loW, min(cs.minHeight, pbH) * ar);
+				if (cs.maxWidth == DimValue.Auto) hiW = max(cs.maxHeight, pbH) * ar;
+				if (cs.minHeight == DimValue.Auto) loH = Math.max(loH, min(cs.minWidth, pbW) / ar);
+				if (cs.maxHeight == DimValue.Auto) hiH = max(cs.maxWidth, pbW) / ar;
+			}
+			aw = clamp(aw, loW, hiW);
+			ah = clamp(ah, loH, hiH);
+			// (both offsets: the room between them, unless its self-alignment is set: fit-content then; the width first, and
+			// with an aspect ratio an axis the other's size gives is not stretched: the ratio's (size's, its content's when more))
+			if (!known(aw) && !(ar > 0 && known(ah)) && known(l) && known(r) && (cs.justifySelf == Auto || cs.justifySelf == Stretch))
+				aw = clamp(Math.max(0, pbW - l - r - mz(m.left) - mz(m.right)), loW, hiW);
+			if (!known(ah) && !(ar > 0 && known(aw)) && known(t) && known(b) && (cs.alignSelf == Auto || cs.alignSelf == Stretch))
+				ah = clamp(Math.max(0, pbH - t - b - mz(m.top) - mz(m.bottom)), loH, hiH);
 			var heightGiven = known(ah);
 			if (!known(aw) || !known(ah)) {
 				// (an auto height: its content's, the block axis indefinite; an auto width shrinks to fit
 				// the room, not below its min-content width)
 				var fit = !known(aw), fixedH = known(ah);
 				size(c, aw, ah, pbW, pbH, known(aw) ? aw : room, known(ah) ? ah : Math.NaN, false);
-				aw = rw;
+				aw = ar > 0 && fit ? clamp(rw, loW, hiW) : rw;
 				ah = rh;
 				// (its height at the width it shrank to)
 				if (fit && !fixedH) {
@@ -777,13 +812,29 @@ class Layout {
 	}
 
 	// (an absolute grid child's area on an axis, from the start: its lines, lines counted from
-	// the explicit grid's, a span from the other line, else the padding edges)
-	static function area(p:Grid.GridPlacement, lines:Array<Float>, explicit:Int, full:Float):{from:Float, to:Float} {
+	// the explicit grid's, a span from the other line; a name not of an area the first line past the
+	// explicit grid (CSS's implicit lines all having it), the same line twice its end dropped, lines the
+	// grid has not, auto: the padding edges)
+	// (shift: the implicit tracks before the explicit grid's)
+	static function area(p:Grid.GridPlacement, lines:Array<Float>, explicit:Int, shift:Int, full:Float, areas:Null<Grid.GridAreas>, columns:Bool):{from:Float, to:Float} {
 		inline function index(k:Int):Int
-			return k > 0 ? k - 1 : k < 0 ? explicit + 1 + k : -1;
-		var a = p.startName == null ? index(p.start) : -1, b = p.endName == null ? index(p.end) : -1;
-		if (a >= 0 && b < 0 && p.end == 0 && p.span > 1) b = a + p.span;
-		if (b >= 0 && a < 0 && p.start == 0 && p.span > 1) a = b - p.span;
+			return k > 0 ? shift + k - 1 : k < 0 && shift + explicit + 1 + k >= 0 ? shift + explicit + 1 + k : -1;
+		function named(name:String, isEnd:Bool):Int {
+			var atEnd = isEnd;
+			var a = areas == null ? null : areas.areas.get(name);
+			if (a == null && areas != null)
+				for (suffix in ["-start", "-end"])
+					if (StringTools.endsWith(name, suffix)) {
+						a = areas.areas.get(name.substr(0, name.length - suffix.length));
+						atEnd = suffix == "-end";
+					}
+			if (a == null) return shift + explicit + 1;
+			return shift + (columns ? (atEnd ? a.colEnd : a.col) : (atEnd ? a.rowEnd : a.row));
+		}
+		var a = p.startName != null ? named(p.startName, false) : index(p.start), b = p.endName != null ? named(p.endName, true) : index(p.end);
+		if (a >= 0 && b == a) b = -1;
+		if (a >= 0 && b < 0 && p.end == 0 && p.endName == null && p.span > 1) b = a + p.span;
+		if (b >= 0 && a < 0 && p.start == 0 && p.startName == null && p.span > 1) a = b - p.span;
 		if (a >= 0 && b >= 0 && b < a) {
 			var t = a;
 			a = b;
@@ -858,8 +909,9 @@ class Layout {
 		if (contribution && known(w)) return Math.max(clamp(w, minW, maxW), edgesH(s));
 		// (an intrinsic width's min-content contribution: max-content's, the others' min-content)
 		if (contribution && s.width == DimValue.MaxContent) return Math.max(clamp(intrinsicWidth(n, s.width, parentW, Math.NaN), minW, maxW), edgesH(s));
+		// (cached: the content's, this node's min and max still its contribution's)
 		var cached = n.minContent;
-		if (known(cached)) return cached;
+		if (known(cached)) return contribution ? clamp(cached, minW, maxW) : cached;
 		var padH = s.padding.left + s.padding.right + s.borderEdges.left + s.borderEdges.right;
 		var inner = 0.0;
 		if (n.hasContent() && (n.children.length == 0 || n.contentOwnsChildren())) inner = n.minContentWidth(text) else if (s.display == Grid) inner = GridLayout.minContent(this, n) else {
@@ -910,7 +962,7 @@ class Layout {
 		}
 		var c = clamp(w, it.minMain, it.maxMain), b = it.basis;
 		// (a percentage basis of the container's indefinite width: its width's or content's, as auto's)
-		if (!known(cs.basis.resolve(innerW))) b = Math.max(w, it.edges);
+		if (!known(cs.basis.resolve(innerW)) && !cs.basis.intrinsic()) b = Math.max(w, it.edges);
 		var stays = c > b && cs.grow == 0 || c < b && cs.shrink == 0;
 		return clamp(stays ? b : c, it.minMain, it.maxMain);
 	}
@@ -981,13 +1033,6 @@ class Layout {
 	static function aspectItems(n:Node):Bool {
 		for (c in n.children)
 			if (c.style.aspectRatio > 0 && c.style.display != None && c.style.position != Absolute) return true;
-		return false;
-	}
-
-	// (whether a node's item has a basis of its own)
-	static function basisItems(n:Node):Bool {
-		for (c in n.children)
-			if (c.style.basis != DimValue.Auto && c.style.display != None && c.style.position != Absolute) return true;
 		return false;
 	}
 
@@ -1130,6 +1175,13 @@ class Layout {
 		c[at + 7] = pw;
 		c[at + 8] = ph;
 		c[0] = at + ENTRY - 1;
+	}
+
+	// (a relative box's shift across: its left, else minus its right; both: the
+	// container's direction's start, as CSS 2's 9.4.3; NaN: none)
+	@:allow(helder.ui) static function relativeX(cs:Style, w:Float, rtl:Bool):Float {
+		var l = cs.left.resolve(w), r = cs.right.resolve(w);
+		return known(l) && !(rtl && known(r)) ? l : -r;
 	}
 
 	// (whether a node's own size is relative to its parent's box: a percentage of it)

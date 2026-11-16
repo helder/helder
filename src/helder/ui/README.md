@@ -84,7 +84,10 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
     by rows or columns, sparse or dense), aligned by `justifyItems`,
     `justifySelf`, `alignItems`, `alignSelf`, the tracks by `justify` and
     `alignContent` (no other named lines, no subgrid). Checked against
-    Chromium on 143 cases, 39 of them grids, 8 right to left.
+    Chromium on 143 cases, 39 of them grids, 8 right to left. Taffy's fixtures make a
+    conformance suite of their own (Chrome's boxes, 1,308 of them, each left
+    to right and right to left: [tests/layout-conformance](../../../tests/layout-conformance/README.md),
+    its manifest the cases that pass and why the others do not yet).
   - Text properties inherit: `color`, `fontFamily`, `fontSize`,
     `fontWeight`, `italic`, `lineHeight` (a multiple of the font size;
     `lineHeightPx`: pixels, inherited as pixels), `letterSpacing`

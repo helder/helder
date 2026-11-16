@@ -32,7 +32,7 @@ class Run {
 	// next one's display is not the last one's still letting go)
 	static final XVFB = "sh " + FileSystem.fullPath("tests/xvfb-run.sh");
 
-	static final HEADLESS = ["view", "text", "image", "ui", "gfx-shader", "async", "header-check", "jobs", "test", "cli", "asset", "pack", "devtools", "typescript", "examples", "viewer", "canvas", "pdf", "syntax", "text-quality"];
+	static final HEADLESS = ["view", "text", "image", "ui", "layout-conformance", "gfx-shader", "async", "header-check", "jobs", "test", "cli", "asset", "pack", "devtools", "typescript", "examples", "viewer", "canvas", "pdf", "syntax", "text-quality"];
 
 	static final LANES:Array<{name:String, about:String, run:Void->Void}> = [
 		{name: "headless", about: "the lanes that need no GPU, display or browser: " + HEADLESS.join(", "), run: () -> for (l in HEADLESS) lane(l)},
@@ -42,6 +42,7 @@ class Run {
 		{name: "image-bench", about: "helder.image's speed (tests/bench/ImageBench.hx, natively): a JPEG decoded on one thread and four, at 1/8, a 256-pixel thumbnail, 50%, a large PNG; against vips, vipsthumbnail and Bun.Image where installed (tests/bench/image.mjs): bin/bench/image.md (IMAGE_BENCH_JPEG, IMAGE_BENCH_PNG)", run: imageBench},
 		{name: "image-fuzz", about: "helder.image's decoders under a time-boxed mutation fuzzer (tests/image/Fuzz.hx, natively): the test images mutated, each input a decode or an ImageError within its time, the peak memory within budget (FUZZ_SECONDS, FUZZ_SEED)", run: imageFuzz},
 		{name: "ui", about: "helder.ui on Eval: layout, events and focus, markup, the guide's examples", run: ui},
+		{name: "layout-conformance", about: "helder.ui's flexbox and grid against Taffy's fixtures, Chrome's boxes (tests/layout-conformance: manifest.json's required cases pass, its pending ones fail; BLESS=1 writes the manifest)", run: layoutConformance},
 		{name: "gfx-shader", about: "helder.gfx's shader definitions on Eval: shaders on the CPU, the emitted GLSL, WGSL, MSL and HLSL, the programs they reject", run: gfxShader},
 		{name: "async", about: "helder.async on Eval and natively (the loop, TCP, processes, the watcher, HTTP and WebSocket; its tasks and timers are the test lane's), as wasm32-wasi in the browser's loop (node), the async-dev example end to end, a benchmark", run: async},
 		{name: "header-check", about: "helder's typed C bindings (@:hxmc.safe with @:hxmc.header: helder.async.Fds) against the C headers of each POSIX target: hxmc writes them as assertions (-D hxmc.header-check), zig compiles those (zig's musl and macOS headers; skipped without zig)", run: headerCheck},
@@ -347,6 +348,9 @@ class Run {
 		interp(cp, "MarkupTest");
 		interp(cp, "GuideTest");
 	}
+
+	static function layoutConformance()
+		interp(cps(["src", "tests/ui", "tests/layout-conformance"]), "LayoutConformance");
 
 	static function gfxShader() {
 		interp(cps(["src", "tests/gfx"]).concat(cps(GFX_EXAMPLES)), "ShaderTest", [TOOL].concat(BLESS ? ["--bless"] : []));
