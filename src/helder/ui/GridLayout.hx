@@ -192,8 +192,9 @@ class GridLayout {
 		if (rtl) cw = width - Math.min(left, width - gridW);
 		// (its lines from the padding box's start, for its absolute children's areas)
 		if (absolute != null) {
-			var colLines = cols.length == 0 ? [] : [for (k in 0...cols.length + 1) (rtl ? s.padding.right : s.padding.left) + (k < cols.length ? colPos[k] : colPos[k - 1] + cols[k - 1])];
-			var rowLines = rows.length == 0 ? [] : [for (k in 0...rows.length + 1) s.padding.top + (k < rows.length ? rowPos[k] : rowPos[k - 1] + rows[k - 1])];
+			// (no tracks: its first line still, at the content box's start)
+			var colLines = [for (k in 0...cols.length + 1) (rtl ? s.padding.right : s.padding.left) + (k < cols.length ? colPos[k] : k > 0 ? colPos[k - 1] + cols[k - 1] : 0)];
+			var rowLines = [for (k in 0...rows.length + 1) s.padding.top + (k < rows.length ? rowPos[k] : k > 0 ? rowPos[k - 1] + rows[k - 1] : 0)];
 			l.absolutes(n, absolute, bw, bh, padL, padT, {cols: colLines, rows: rowLines, nCols: gridColumnCount(s), nRows: gridRowCount(s)});
 		}
 		n.lw = bw;

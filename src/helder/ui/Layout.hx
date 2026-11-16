@@ -721,12 +721,12 @@ class Layout {
 			var ox = 0.0, oy = 0.0, pbW = fullW, pbH = fullH;
 			if (lines != null) {
 				if (cs.gridColumn != Grid.GridPlacement.AUTO) {
-					var a = area(cs.gridColumn, lines.cols, lines.nCols, fullW);
+					var a = area(cs.gridColumn, lines.cols, lines.nCols, fullW, s.gridTemplateAreas, true);
 					ox = rtl ? fullW - a.to : a.from;
 					pbW = a.to - a.from;
 				}
 				if (cs.gridRow != Grid.GridPlacement.AUTO) {
-					var a = area(cs.gridRow, lines.rows, lines.nRows, fullH);
+					var a = area(cs.gridRow, lines.rows, lines.nRows, fullH, s.gridTemplateAreas, false);
 					oy = a.from;
 					pbH = a.to - a.from;
 				}
@@ -812,13 +812,28 @@ class Layout {
 	}
 
 	// (an absolute grid child's area on an axis, from the start: its lines, lines counted from
-	// the explicit grid's, a span from the other line, else the padding edges)
-	static function area(p:Grid.GridPlacement, lines:Array<Float>, explicit:Int, full:Float):{from:Float, to:Float} {
+	// the explicit grid's, a span from the other line; a name not of an area the first line past the
+	// explicit grid (CSS's implicit lines all having it), the same line twice its end dropped, lines the
+	// grid has not, auto: the padding edges)
+	static function area(p:Grid.GridPlacement, lines:Array<Float>, explicit:Int, full:Float, areas:Null<Grid.GridAreas>, columns:Bool):{from:Float, to:Float} {
 		inline function index(k:Int):Int
 			return k > 0 ? k - 1 : k < 0 ? explicit + 1 + k : -1;
-		var a = p.startName == null ? index(p.start) : -1, b = p.endName == null ? index(p.end) : -1;
-		if (a >= 0 && b < 0 && p.end == 0 && p.span > 1) b = a + p.span;
-		if (b >= 0 && a < 0 && p.start == 0 && p.span > 1) a = b - p.span;
+		function named(name:String, isEnd:Bool):Int {
+			var atEnd = isEnd;
+			var a = areas == null ? null : areas.areas.get(name);
+			if (a == null && areas != null)
+				for (suffix in ["-start", "-end"])
+					if (StringTools.endsWith(name, suffix)) {
+						a = areas.areas.get(name.substr(0, name.length - suffix.length));
+						atEnd = suffix == "-end";
+					}
+			if (a == null) return explicit + 1;
+			return columns ? (atEnd ? a.colEnd : a.col) : (atEnd ? a.rowEnd : a.row);
+		}
+		var a = p.startName != null ? named(p.startName, false) : index(p.start), b = p.endName != null ? named(p.endName, true) : index(p.end);
+		if (a >= 0 && b == a) b = -1;
+		if (a >= 0 && b < 0 && p.end == 0 && p.endName == null && p.span > 1) b = a + p.span;
+		if (b >= 0 && a < 0 && p.start == 0 && p.startName == null && p.span > 1) a = b - p.span;
 		if (a >= 0 && b >= 0 && b < a) {
 			var t = a;
 			a = b;
