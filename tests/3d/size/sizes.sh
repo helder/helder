@@ -1,5 +1,5 @@
 #!/bin/sh
-# packages/3d's cost per feature (Size.hx): each level built for Linux
+# helder.scene's cost per feature (Size.hx): each level built for Linux
 # x86-64 (the glibc mode) and wasm32-wasi; prints a table of the sizes and
 # what each level adds.
 #   sh tests/3d/size/sizes.sh <tool> <out dir> <class path args...>

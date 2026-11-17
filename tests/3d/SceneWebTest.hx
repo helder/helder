@@ -1,7 +1,7 @@
 import helder.gfx.*;
 import helder.os.*;
 
-// packages/3d's frames in a browser, on WebGPU or WebGL2 (web.mjs runs it
+// helder.scene's frames in a browser, on WebGPU or WebGL2 (web.mjs runs it
 // in headless Chromium and compares the pixels with <scene>.png, as
 // RenderTest does natively):
 //

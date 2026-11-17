@@ -1,7 +1,7 @@
 // A difference layout-fuzz.mjs found, reduced: the case's tree with one node
 // or one style property dropped at a time, each variant drawn by Chromium
 // (layout-ref.mjs) and laid out by LayoutFuzz, the first that still differs
-// kept, until none does (make ui-layout-reduce CASE='fuzz 41-87'). It prints
+// kept, until none does (node tests/ui/layout-reduce.mjs <cases.json> 'fuzz 41-87' <work dir>). It prints
 // the reduced tree and Chromium's boxes: a case for layout-cases.mjs once
 // what differs is understood (a variant may differ for another reason than
 // the case did: check it against the original).

@@ -3,7 +3,7 @@ import helder.view.Flow.*;
 import helder.view.graph.Graph.*;
 import helder.web.*;
 
-// The static renderer (npm test -- web), on Eval and natively:
+// The static renderer (bun run test web), on Eval and natively:
 //
 //   <tool> -cp src -cp tests/web --run StaticTest
 //

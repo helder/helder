@@ -2,7 +2,7 @@ import helder.gfx.*;
 import helder.gfx.shader.Vec3;
 import helder.os.*;
 
-// packages/3d's cost per feature (sizes.sh, make 3d-sizes): one program, a
+// helder.scene's cost per feature (sizes.sh, run by hand: no lane runs it): one program, a
 // window clearing its frame, with each level adding a feature on top of
 // the one before (-D size_level=<n>):
 //   0  gfx alone (a window, a device, a cleared frame)

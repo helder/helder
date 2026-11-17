@@ -1,4 +1,4 @@
-// The todo example in a browser (npm test -- ui-web): WebTodo.wasm in
+// The todo example in a browser (bun run test ui-web): WebTodo.wasm in
 // headless Chromium on WebGPU, then on WebGL2 (forced), its canvas driven
 // by real events (Playwright's mouse and keyboard: clicks, typing, Enter,
 // Shift+Left; Control+A, X and V through the page's clipboard), the same

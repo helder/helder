@@ -5,7 +5,7 @@ import helder.ui.*;
 import helder.ui.draw.*;
 import helder.image.*;
 
-// Boxes drawn by helder.ui.draw headless (npm test -- ui-draw): boxes.json's
+// Boxes drawn by helder.ui.draw headless (bun run test ui-draw): boxes.json's
 // (corners with their own radii, borders with their own sides' widths, a
 // clip to a padding box's rounded corners; box shadows, several, inset; outlines, offset; turned, scaled, skewed, about
 // other origins, nested) against boxes.png, Chromium drawing the same

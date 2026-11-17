@@ -4,10 +4,10 @@ import helder.dev.Hot;
 
 // A small store, written as a third-party state library would be (it knows
 // nothing of helder.view): a state, changed by functions, read by listeners.
-// It is reload-safe under `hxmc dev` with Hot's public calls only: the three
+// It is reload-safe under `helder dev` with Hot's public calls only: the three
 // lines in the constructor, and `create`, which keys a store by where it is
 // made and hashes its state's type, so that its users write nothing.
-// (docs/dev.md, "State libraries"; tested by tests/os/HotTest.hx)
+// (src/helder/os/README.md, "Fast refresh: `helder.dev.Hot`"; tested by tests/os/HotTest.hx)
 class Store<S> {
 	public var state(default, null):S;
 

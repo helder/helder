@@ -6,8 +6,8 @@ import helder.ui.draw.*;
 import helder.image.*;
 
 // Colour emoji drawn by helder.ui.draw headless (Noto Color Emoji's bitmaps:
-// a heart with VS16, a thumbs up with a skin tone, a flag; make
-// ui-draw-check) against emoji.png, Chromium drawing the same at the same
+// a heart with VS16, a thumbs up with a skin tone, a flag;
+// bun run test ui-draw) against emoji.png, Chromium drawing the same at the same
 // place (emoji-ref.mjs): a pixel matches within TOLERANCE, at most MAX_OFF
 // of them may not. Where the system has another colour emoji font instead
 // (Apple Color Emoji's sbix bitmaps on macOS, Segoe UI Emoji's COLR layers

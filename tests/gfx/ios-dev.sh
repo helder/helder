@@ -1,5 +1,5 @@
 #!/bin/sh
-# hxmc dev's host on an iPhone simulator (docs/dev.md, "No reloads"; CI's
+# helder dev's host on an iPhone simulator (src/helder/cli/README.md, "The dev loop"; CI's
 # ios-simulator job, after ios.sh): DevHostTest.app (DevHostTest.hx, -D
 # hxmc.dev-host) launched with HXMC_DEV_NEXT naming two dylibs of later
 # versions of it (-D hxmc.shared), which the running build hands over to in

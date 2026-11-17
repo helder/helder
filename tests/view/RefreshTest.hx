@@ -5,8 +5,8 @@ import helder.view.graph.Signal;
 import TestRenderer.TestNode;
 
 // helder.view's fast refresh (-D hxmc.dev, helder.view.Refresh) across a
-// reload, as HotTest does for helder.dev.Hot: the program runs twice (make
-// dev-check), once changing its state and writing the snapshot, then
+// reload, as HotTest does for helder.dev.Hot: the program runs twice
+// (bun run test dev), once changing its state and writing the snapshot, then
 // started from it (HXMC_DEV_SNAPSHOT):
 //   <tool> -cp src -cp tests/view -D hxmc.dev --run RefreshTest save|restore <file>
 // signals keyed by their variables, in each component instance's scope:

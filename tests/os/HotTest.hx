@@ -3,13 +3,13 @@ import helder.dev.Keep;
 import store.Store;
 
 // helder.dev.Hot's primitives across a reload, without the dev server: the
-// program runs twice (npm test -- dev), as two builds would under `hxmc dev`:
+// program runs twice (bun run test dev), as two builds would under `helder dev`:
 //   HotTest save <file>      changes its state, writes the snapshot (what
 //                            the dev server asks a build for) to file
 //   HotTest restore <file>   started with HXMC_DEV_SNAPSHOT=<file>: the state
 //                            is back, by key (built with -D hot_changed: the
 //                            value whose type changed is reset, logged)
-// The store (test/store/Store.hx) is a third-party library: Hot's public
+// The store (tests/os/store/Store.hx) is a third-party library: Hot's public
 // calls only.
 typedef Cart = {items:Array<String>, total:Float};
 

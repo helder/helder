@@ -1,4 +1,4 @@
-// The dev loop in the browser (npm test -- dev; docs/dev.md): `hxmc dev` on a
+// The dev loop in the browser (bun run test dev; src/helder/cli/README.md, "The dev loop"): `hxmc dev` on a
 // copy of helder.ui's Counter example (examples/counter/Counter.hx, with
 // a line printing its count), in headless Chromium:
 // - the counter clicked three times (its button in the canvas's ARIA mirror);

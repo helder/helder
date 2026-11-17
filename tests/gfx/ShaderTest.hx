@@ -10,7 +10,7 @@ import TriangleShader;
 import PaletteShader;
 import ComputeShaders;
 
-// The shader definition's tests, on Eval (npm test -- gfx-shader):
+// The shader definition's tests, on Eval (bun run test gfx-shader):
 //
 //   <tool> -cp src -cp examples -cp tests/gfx
 //     --run ShaderTest <tool> [--bless]

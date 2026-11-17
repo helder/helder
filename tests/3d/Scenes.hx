@@ -8,9 +8,9 @@ import helder.scene.render.*;
 import helder.scene.math.MathTools;
 import StageShaders;
 
-// packages/3d's test scenes (RenderTest natively, SceneWebTest in the
+// helder.scene's test scenes (RenderTest natively, SceneWebTest in the
 // browser), each a frame against tests/3d/<name>.png:
-//   gltf   the sample glTF scene (examples/sample.glb) from its camera,
+//   gltf   the sample glTF scene (examples/gltf-viewer/sample.glb) from its camera,
 //          lit by the renderer's sun and sky
 //   shadows the same with a shadow map (Shadows, 512x512)
 //   physics helder.physics' Falling example after STEPS steps
@@ -358,7 +358,7 @@ class Scenes {
 				eye.lookAt(new Vec3(0, 0.6, -0.3));
 				enc -> r.draw(enc, world, camera);
 			case "packedskin":
-				// the skinned sample packed (make 3d-programs writes bin/3d/skinned.hxm3d):
+				// the skinned sample packed (bun run test 3d writes bin/3d/skinned.hxm3d):
 				// its skin and clip from the packed file, skin.png's frame
 				var r = new Renderer(device).use(new Skinning(device)).use(new Shadows(device, 512));
 				renderer = r;
@@ -489,7 +489,7 @@ class Scenes {
 				eye.lookAt(new Vec3(0, 0.05, 0));
 				enc -> r.draw(enc, world, camera);
 			case "packed":
-				// the sample scene packed at build time (Pack: npm test -- 3d writes
+				// the sample scene packed at build time (Pack: bun run test 3d writes
 				// bin/3d/sample.hxm3d first), read without JSON: gltf.png's frame
 				var r = new Renderer(device);
 				renderer = r;

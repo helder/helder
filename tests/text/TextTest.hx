@@ -1,7 +1,7 @@
 import haxe.io.Bytes;
 import helder.text.*;
 
-// helder.text's tests, on Eval (npm test -- text; needs DejaVu Sans, as the
+// helder.text's tests, on Eval (bun run test text; needs DejaVu Sans, as the
 // Linux CI machines have, else the font-dependent checks are skipped):
 //
 //   <tool> -cp src -cp tests/text -cp tests/gfx --run TextTest [--bless]

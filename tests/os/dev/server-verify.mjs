@@ -1,7 +1,7 @@
-// A compilation server's builds of small programs are fresh builds (make
-// dev-check; the larger one is dev-verify.mjs): each case is a program a
+// A compilation server's builds of small programs are fresh builds
+// (bun run test dev; the larger one is dev-verify.mjs): each case is a program a
 // server of its own builds, then builds again after each edit, its typed
-// modules kept in memory (as `hxmc dev` asks) and then read back from HXB
+// modules kept in memory (as `helder dev` asks) and then read back from HXB
 // (the default); each build's output must be the bytes a one-shot build of
 // the same sources makes. What it checks is an edit that makes the program
 // use code it did not use before while hxmc's LowerCache replays the bodies
@@ -80,7 +80,7 @@ async function serve(run) {
 }
 
 let failures = 0;
-// (the server's typed modules kept in memory, as `hxmc dev` asks, and read back from HXB, its default)
+// (the server's typed modules kept in memory, as `helder dev` asks, and read back from HXB, its default)
 for (const hxb of [false, true])
 	for (const [name, steps] of Object.entries(cases)) {
 		const work = fs.mkdtempSync(path.join(os.tmpdir(), 'hxmc-server-verify-'));

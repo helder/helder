@@ -2,8 +2,8 @@ import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.os.*;
 
-// packages/3d's frames natively against golden images (npm test -- 3d), by
-// packages/gfx's rule (GfxTest.compareBytes: a pixel matches within 2 of
+// helder.scene's frames natively against golden images (bun run test 3d), by
+// helder.gfx's rule (GfxTest.compareBytes: a pixel matches within 2 of
 // each channel, at most 0.5% of them off), headless (Linux: an EGL pbuffer
 // on llvmpipe; macOS: Metal; Windows: D3D11):
 //

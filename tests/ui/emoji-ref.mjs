@@ -1,7 +1,7 @@
 // Writes tests/ui/emoji.png: Chromium drawing colour emoji (Noto
 // Color Emoji's bitmaps: a heart with VS16, a thumbs up with a skin tone,
 // a flag) at 32px, left at x 10 on the baseline y 41, on white: what
-// EmojiTest's renderer must draw (npm test -- ui-draw, where the font is).
+// EmojiTest's renderer must draw (bun run test ui-draw, where the font is).
 //   node tests/ui/emoji-ref.mjs   (needs Playwright, Noto Color Emoji)
 import fs from 'node:fs';
 import path from 'node:path';

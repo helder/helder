@@ -7,7 +7,7 @@ import helder.scene.math.*;
 
 using helder.scene.math.MathTools;
 
-// packages/3d's step 2 (npm test -- 3d: on Eval and natively): the glTF
+// helder.scene's step 2 (bun run test 3d: on Eval and natively): the glTF
 // reader on the sample scene (SampleModel.hx; examples/sample.glb checked
 // in, the same bytes as the generator's on Eval), both forms (.glb and
 // .gltf with a data: URI) read alike, its accessors against the generated

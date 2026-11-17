@@ -1,4 +1,4 @@
-// Native text editors in a browser (npm test -- ui-web): WebField.wasm in
+// Native text editors in a browser (bun run test ui-web): WebField.wasm in
 // headless Chromium, its field and text area the page's own input and
 // textarea over the canvas (Ui.platform: WebViews), driven by real events:
 // each editor placed over its node's box; typing edits the bound signal;

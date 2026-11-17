@@ -1,6 +1,6 @@
-// packages/3d's scenes (Scenes.hx; SCENES=a,b for some) on WebGPU, then on
-// WebGL2 (forced), in headless Chromium (npm test -- 3d-web), against
-// <scene>.png by packages/gfx's rule (its compare.mjs): SceneWebTest.wasm
+// helder.scene's scenes (Scenes.hx; SCENES=a,b for some) on WebGPU, then on
+// WebGL2 (forced), in headless Chromium (bun run test 3d-web), against
+// <scene>.png by helder.gfx's rule (its compare.mjs): SceneWebTest.wasm
 // headless, then in a 256x192 canvas drawn by the browser's loop.
 // Chromium renders with WebGPU on SwiftShader and WebGL2 on ANGLE's
 // SwiftShader, as in tests/gfx/web.mjs.

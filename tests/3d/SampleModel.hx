@@ -4,7 +4,7 @@ import helder.gfx.shader.Vec3;
 import helder.scene.math.MathTools;
 import helder.scene.math.Quat;
 
-// The sample glTF scene of packages/3d (examples/sample.glb, MIT as the
+// The sample glTF scene of helder.scene (examples/gltf-viewer/sample.glb, MIT as the
 // repository), generated here: a ground, a turned pedestal carrying a
 // golden ball, a moon on an orbit given as a matrix, a small tilted cube
 // and a camera, four materials of the metallic-roughness model. Its data

@@ -2,8 +2,8 @@
 // wrapping, alignment, grow, shrink, basis, sizes, min and max in pixels
 // or percentages, padding, margins, borders, gaps), their boxes read back
 // as layout-ref.mjs reads them, into OUT's layout-cases.json and
-// layout-expected.json, which LayoutFuzz lays out and compares (make
-// ui-layout-fuzz SEED=1 COUNT=200). A difference found: reduce it
+// layout-expected.json, which LayoutFuzz lays out and compares
+// (node tests/ui/layout-fuzz.mjs 1 200 <out>). A difference found: reduce it
 // (layout-reduce.mjs) to a case in layout-cases.mjs. With 'more' (FEATURES=more):
 // grids and their placement, absolute positions, auto margins, order,
 // aspect ratios, hidden overflow and display none too (the plain trees of a

@@ -1,7 +1,7 @@
 // The examples' scenes (Scene.hx: triangle, cube, instances, targets, mips,
 // formats, blend, palette, layers; SCENES=a,b for some) on WebGPU, then on WebGL2 (forced:
-// browser.mjs's option gfx: 'webgl2'), in headless Chromium (make
-// gfx-web-check), against <scene>.png with GfxTest's rule (compare.mjs): WebTest.wasm (WebTest.hx)
+// browser.mjs's option gfx: 'webgl2'), in headless Chromium
+// (bun run test gfx-web), against <scene>.png with GfxTest's rule (compare.mjs): WebTest.wasm (WebTest.hx)
 // headless (on WebGL2 also Device.readPixels, whose checksum must be the
 // harness's), then in a 256x192 canvas, whose frames come from the
 // browser's loop after main returned; then the canvas is resized (a Resize

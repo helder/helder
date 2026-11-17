@@ -5,7 +5,7 @@ import helder.web.*;
 import js.Browser.document;
 import js.html.*;
 
-// The DOM renderer in a browser (npm test -- web: tests/web/web.mjs
+// The DOM renderer in a browser (bun run test web: tests/web/web.mjs
 // runs it in Chromium): elements, texts and markers made, properties and
 // attributes, the style, listeners, SVG's namespace, keyed lists moved
 // rather than made, a region's content replaced, dispose; then hydration

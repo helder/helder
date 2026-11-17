@@ -1,4 +1,4 @@
-// helder.web in headless Chromium (npm test -- web): the DOM renderer's checks
+// helder.web in headless Chromium (bun run test web): the DOM renderer's checks
 // (DomTest.hx, domtest.js), then the demo page (examples:
 // DemoPage's index.html, DemoBundle's islands.js, Counter's counter.js,
 // lab.wasm, cube.wasm, counter-ui.wasm) served as a static site with src/helder/web/loader.js

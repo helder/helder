@@ -4,7 +4,7 @@ import helder.os.objc.*;
 import hxmc.Platform;
 import hxmc.unsafe.*;
 
-// helder.os's text input (npm test -- ui-draw under Xvfb; macOS in CI).
+// helder.os's text input (bun run test ui-draw under Xvfb; macOS in CI).
 // X11: key presses typed through the input method (Xutf8LookupString),
 // with the keyboard's last three keycodes given other symbols
 // (XChangeKeyboardMapping, which every client hears of: MappingNotify): a

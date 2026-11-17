@@ -6,7 +6,7 @@ import helder.ui.draw.*;
 
 // The sample UI (Sample.hx) drawn headless by helder.ui.draw and compared
 // with draw.png (GfxTest's rule: a pixel matches within TOLERANCE, at most
-// MAX_OFF of them may not), on the target's GPU API (npm test -- ui-draw;
+// MAX_OFF of them may not), on the target's GPU API (bun run test ui-draw;
 // Linux: Mesa's llvmpipe on an EGL pbuffer):
 //   UiDrawTest <golden.png> <out.png> [--bless | --dump | --window | --smoke]
 // (--dump prints the laid-out tree; --window draws it in a UiWindow, X11

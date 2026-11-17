@@ -1,4 +1,4 @@
-// The dev loop natively (npm test -- dev; docs/dev.md): `hxmc dev` on a copy
+// The dev loop natively (bun run test dev; src/helder/cli/README.md, "The dev loop"): `hxmc dev` on a copy
 // of helder.ui's Counter example as a native program in a window (run under
 // Xvfb on Linux), its count printed, set to 3 on a cold start (as a click
 // would; a reload must bring it back, not set it again):

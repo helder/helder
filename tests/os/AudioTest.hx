@@ -4,7 +4,7 @@ import hxmc.Platform;
 import hxmc.unsafe.*;
 
 // Audio output through each back end's real API, checked without speakers
-// (npm test -- audio, tests/os/audio.sh):
+// (bun run test audio, tests/os/audio.sh):
 //
 //   AudioTest <device> <frames> [--rate] [--expect <file>]
 //     opens the output (device: "default", "file:PATH", or an ALSA PCM

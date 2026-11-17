@@ -1,4 +1,4 @@
-// helder.os.audio on WebAudio, in headless Chromium (npm test -- audio):
+// helder.os.audio on WebAudio, in headless Chromium (bun run test audio):
 // AudioTest.wasm (AudioTest.hx) loaded by src/helder/os/browser.mjs with
 // src/helder/os/imports.mjs, twice:
 // - realtime: an AudioContext (Chromium without a sound card plays to a

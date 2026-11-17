@@ -5,7 +5,7 @@
 // clipping to the padding box's rounded corners; solid outlines, offset; CSS transforms about their
 // origins, nested ones inside their parents'; a text in DejaVu Sans with
 // its text shadows, blurred) on white: what BoxTest's
-// renderer must draw (npm test -- ui-draw).
+// renderer must draw (bun run test ui-draw).
 //   node tests/ui/box-ref.mjs   (needs Playwright)
 import fs from 'node:fs';
 import path from 'node:path';

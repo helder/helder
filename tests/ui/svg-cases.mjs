@@ -3,7 +3,7 @@
 // command; transforms; opacities; fill rules; colours; aspect ratios), each
 // with the pixels Chromium draws it in (<case>.png, RGBA: the document drawn
 // into a canvas at the case's size; cases.json: names and sizes), which
-// UiTest compares with Svg.render's (npm test -- ui).
+// UiTest compares with Svg.render's (bun run test ui).
 //   node tests/ui/svg-cases.mjs   (needs Playwright)
 import fs from 'node:fs';
 import path from 'node:path';

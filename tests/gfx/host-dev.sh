@@ -1,5 +1,5 @@
 #!/bin/sh
-# hxmc dev's host on a desktop (docs/dev.md, "No reloads"; CI: gfx-macos,
+# helder dev's host on a desktop (src/helder/cli/README.md, "The dev loop"; CI: gfx-macos,
 # gfx-windows): the dev host (helder.dev.DevHost) runs DevHost1.<ext>
 # (DevHostTest.hx, -D hxmc.shared -D hxmc.dev-host) with HXMC_DEV_NEXT
 # naming two later builds, which the running build hands over to in turn,

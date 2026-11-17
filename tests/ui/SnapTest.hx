@@ -6,7 +6,7 @@ import helder.ui.draw.*;
 
 // The renderer's pixel grid (Renderer.snap) at a phone's fractional scale,
 // 2.8125 device pixels a point: a bordered box and a line of text drawn
-// headless (npm test -- ui-draw), then
+// headless (bun run test ui-draw), then
 // - crisp: laid out without a transform, a row across the box has no
 //   blended pixels (its edges and its border whole pixels; without
 //   snapping its edges fall inside pixels);

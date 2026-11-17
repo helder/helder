@@ -11,7 +11,7 @@ import helder.view.Flow.*;
 import helder.view.graph.Graph.*;
 import helder.view.graph.Signal;
 
-// helder.scene.view (npm test -- 3d: natively): markup making a
+// helder.scene.view (bun run test 3d: natively): markup making a
 // world's nodes, lights and cameras; properties bound to signals following
 // them, struct values (Quat, Vec3, Vec4) inline through the typed setters,
 // set props written in place (DESIGN-MARKUP.md 10.1); Show adding and removing a

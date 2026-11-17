@@ -2,7 +2,7 @@
 // Chromium's flexbox (with the CSS that sets helder.ui's defaults: border-box,
 // column, position relative; align-content CSS's own, normal), its boxes read back, each
 // edge rounded as helder.ui.Layout rounds them, into layout-expected.json,
-// which UiTest compares with (npm test -- ui). Run it after changing the
+// which UiTest compares with (bun run test ui). Run it after changing the
 // cases (Playwright from npm, with Chromium):
 //   node tests/ui/layout-ref.mjs
 // (boxes: Chromium's boxes of any such cases, for layout-fuzz.mjs)

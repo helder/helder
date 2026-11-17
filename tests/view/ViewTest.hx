@@ -9,7 +9,7 @@ import TestRenderer.TestNode;
 import TestRenderer.TestEvent;
 import OtherRenderer.OtherNode;
 
-// helder.view's tests, on Eval and natively (npm test -- view), on
+// helder.view's tests, on Eval and natively (bun run test view), on
 // TestRenderer:
 //
 //   <tool> -cp src -cp tests/view --run ViewTest <tool>

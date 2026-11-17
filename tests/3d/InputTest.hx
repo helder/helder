@@ -1,7 +1,7 @@
 import helder.os.Event;
 import helder.scene.input.*;
 
-// packages/3d's step 4 so far (npm test -- 3d: natively and as wasm32-wasi;
+// helder.scene's step 4 so far (bun run test 3d: natively and as wasm32-wasi;
 // not on Eval: helder.os.Event names a Window):
 // InputMap from synthetic helder.os events: keys, mouse buttons, screen
 // regions, key axes, presses within a step, rebinding.

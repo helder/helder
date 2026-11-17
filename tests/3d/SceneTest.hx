@@ -8,7 +8,7 @@ import helder.scene.math.*;
 
 using helder.scene.math.MathTools;
 
-// packages/3d's step 1 (npm test -- 3d: on Eval and natively): the math
+// helder.scene's step 1 (bun run test 3d: on Eval and natively): the math
 // (Quat, MathTools on gfx's Mat4, Aabb) against gfx's own matrices and
 // against each other, the scene graph's matrices and their cache, the
 // camera and the fixed-step clock. Exits 1 on a failed check.

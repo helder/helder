@@ -1,4 +1,4 @@
-// The dev loop's times (docs/dev.md, "Times"): `hxmc dev` on a copy of one of
+// The dev loop's times (src/helder/cli/README.md, "The dev loop"): `hxmc dev` on a copy of one of
 // helder.ui's examples, a one-line edit of its main (a string) saved again
 // and again, each reload's time from the change seen to the new build's
 // first frame and its build's, then the medians. In headless Chromium

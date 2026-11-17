@@ -1,5 +1,5 @@
-// The dev loop's builds are fresh builds (npm test -- dev; docs/dev.md): a
-// compilation server built as `hxmc dev` asks it (-D hxmc.dev, its typed
+// The dev loop's builds are fresh builds (bun run test dev; src/helder/cli/README.md, "The dev loop"): a
+// compilation server built as `helder dev` asks it (-D hxmc.dev, its typed
 // modules kept in memory: -D disable-hxb-cache) through edits of a copy of
 // one of helder.ui's examples: its main's string, then a module it uses
 // whose API changes (a static's type, a function added, a structure's

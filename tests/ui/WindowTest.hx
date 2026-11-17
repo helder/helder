@@ -6,7 +6,7 @@ import hxmc.Platform;
 import hxmc.unsafe.*;
 
 // helder.os's windows given a title, a size and a minimum size, each read
-// back through the platform's own calls (npm test -- ui-draw under Xvfb: X11's
+// back through the platform's own calls (bun run test ui-draw under Xvfb: X11's
 // _NET_WM_NAME, WM_NAME, the window's geometry, WM_NORMAL_HINTS; CI:
 // Win32's window text, client rectangle and WM_GETMINMAXINFO's answer,
 // Cocoa's title and content sizes, its menu bar and Command-Q asking the

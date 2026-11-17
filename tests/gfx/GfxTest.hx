@@ -8,7 +8,7 @@ import BuiltinShader;
 import LitShader;
 import TexturedShader;
 
-// The examples' frames, checked against golden images (npm test -- gfx): the
+// The examples' frames, checked against golden images (bun run test gfx): the
 // triangle (Triangle.hx, triangle.png), the cube (Cube.hx, turned by
 // Scene.ANGLE: cube.png) and the instances (Instances.hx, at Scene.TIME:
 // instances.png)

@@ -1,7 +1,7 @@
 import helder.os.*;
 
-// helder.os.Clipboard between two windows of one process (make
-// ui-draw-check, X11 under Xvfb): the text one writes, the other reads
+// helder.os.Clipboard between two windows of one process
+// (bun run test ui-draw, X11 under Xvfb): the text one writes, the other reads
 // through the selection's protocol (SelectionRequest answered,
 // SelectionNotify read); the writer reads its own at once; ownership moves
 // with the next write (SelectionClear); a text over 256 KB goes in parts

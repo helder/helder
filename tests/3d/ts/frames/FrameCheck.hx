@@ -6,7 +6,7 @@ import helder.os.*;
 
 // helder/scene's frames drawn by TypeScript (tests/3d/ts/frames.ts), as
 // RenderTest draws Haxe's: headless, 256 x 192, against a golden image by
-// packages/gfx's rule (GfxTest.compareBytes; HXMC_3D_TOLERANCE as
+// helder.gfx's rule (GfxTest.compareBytes; HXMC_3D_TOLERANCE as
 // RenderTest's). Declared to the program by FramesTypeScript.
 //
 //   frames <scene> <golden.png> <out.png> [--bless]

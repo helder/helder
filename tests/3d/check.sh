@@ -1,5 +1,5 @@
 #!/bin/sh
-# packages/3d's frames (Scenes.hx) against <scene>.png, headless (RenderTest:
+# helder.scene's frames (Scenes.hx) against <scene>.png, headless (RenderTest:
 # Linux on Mesa's llvmpipe through an EGL pbuffer; macOS on Metal; Windows
 # (RenderTest.exe) on D3D11's WARP, or on Linux under Wine: wined3d over
 # llvmpipe, under Xvfb), as tests/gfx/check.sh.

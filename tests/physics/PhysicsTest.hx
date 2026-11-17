@@ -2,7 +2,7 @@ import helder.gfx.shader.Vec3;
 import helder.physics.*;
 import helder.scene.*;
 
-// helder.physics (npm test -- 3d: on Eval, natively and as wasm32-wasi): a
+// helder.physics (bun run test 3d: on Eval, natively and as wasm32-wasi): a
 // ball comes to rest on a plane and on a box, bounces by its restitution,
 // two balls trade momentum, raycasts, sleeping and waking, a body moving
 // its node; the same steps give the same numbers everywhere (a checksum
