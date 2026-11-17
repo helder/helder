@@ -36,14 +36,14 @@ class ImageJobs {
 	}
 
 	// an image file decoded off the loop's thread: a PNG as a job (PngCore),
-	// on iOS any other format the system reads by the system (SystemDecoder,
-	// a job's), elsewhere the rest by Image.decode; the pixels off the heap,
+	// on iOS and Android 11 and later any other format the system reads by
+	// the system (SystemDecoder, a job's), elsewhere the rest by Image.decode; the pixels off the heap,
 	// the image's (freed once uploaded: decoded again from the file if drawn
 	// again; on WebAssembly, which frees no native memory, kept for good as
 	// a Bytes: keep)
 	@:coroutine public static function decode(bytes:Bytes):Image {
-		#if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
-		if (!Image.isPng(bytes)) {
+		#if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64" || hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
+		if (!Image.isPng(bytes) && SystemDecoder.available()) {
 			var file = new Buffer(bytes.length);
 			file.blitFromBytes(0, bytes, 0, bytes.length);
 			var d = try Jobs.job(ImageJobs.system).run(file) catch (j:JobError) throw ImageError.corrupt(j.message);
@@ -51,9 +51,8 @@ class ImageJobs {
 			@:privateAccess image.source = {bytes: bytes, type: Image.typeOf(bytes)};
 			return image;
 		}
-		#else
-		if (!Image.isPng(bytes)) return Image.decode(bytes);
 		#end
+		if (!Image.isPng(bytes)) return Image.decode(bytes);
 		var file = new Buffer(bytes.length);
 		file.blitFromBytes(0, bytes, 0, bytes.length);
 		var p = try pixels(file) catch (j:JobError) throw PngCore.error(j.code, Bytes.alloc(PngCore.INFO));
@@ -62,7 +61,7 @@ class ImageJobs {
 		return image;
 	}
 
-	#if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
+	#if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64" || hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
 	// the system's decode as a job (a GC job: its decoding and drawing in a
 	// safe region, so collections never wait for it)
 	@:hxmc.unsafe(gc) static function system(file:Buffer):{width:Int, height:Int, pixels:Buffer} {

@@ -20,8 +20,8 @@ import haxe.io.Bytes;
 //
 // With hxmc its pixels may be off the collected heap (held: a job's
 // decode, ImageJobs), freed once uploaded or when the image is collected.
-// On iOS the system decodes all but PNGs (SystemDecoder, ImageIO): decode
-// reads the file's size only, its pixels decoded where they are first used (an
+// On iOS and Android 11 and later the system decodes all but PNGs
+// (SystemDecoder: ImageIO, AImageDecoder): decode reads the file's size only, its pixels decoded where they are first used (an
 // upload, premultiplied as the system draws them) and dropped after, so an
 // image's pixels are never on the heap unless read.
 class Image {
@@ -150,8 +150,8 @@ class Image {
 			return data = px;
 		}
 		#end
-		#if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
-		if (source != null && source.type != "png") {
+		#if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64" || hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
+		if (source != null && source.type != "png" && SystemDecoder.available()) {
 			var px:Null<Bytes> = null;
 			system(source.bytes, (w, h, pre) -> {
 				px = Bytes.alloc(w * h * 4);
@@ -256,8 +256,8 @@ class Image {
 	// are used (SystemDecoder), any format ImageIO reads
 	public static function decode(bytes:Bytes):Image {
 		var type = typeOf(bytes);
-		#if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
-		if (!isPng(bytes)) {
+		#if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64" || hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
+		if (!isPng(bytes) && SystemDecoder.available()) {
 			var s = size(bytes);
 			var img = if (s != null) sized(s.width, s.height) else {
 				var d = null;
@@ -268,6 +268,8 @@ class Image {
 			img.source = {bytes: bytes, type: type};
 			return img;
 		}
+		#end
+		#if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
 		var d = PngDecoder.decode(bytes);
 		#else
 		var d = switch type {
@@ -326,8 +328,8 @@ class Image {
 		#if (target.name == "hxmc")
 		if (held != null && heldPremultiplied) return use(@:privateAccess held.io.view());
 		#end
-		#if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
-		if (data == null && held == null && source != null && source.type != "png") {
+		#if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64" || hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
+		if (data == null && held == null && source != null && source.type != "png" && SystemDecoder.available()) {
 			var me = this;
 			return system(source.bytes, (w, h, pre) -> {
 				// (a file whose orientation the header did not say: the size the system decoded)
@@ -361,7 +363,7 @@ class Image {
 		#end
 	}
 
-	#if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
+	#if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64" || hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
 	// the file decoded by the system, its premultiplied pixels lent to use
 	// (a copy of the file in native memory first: the collector moves Bytes)
 	@:hxmc.unsafe(gc) static function system(file:Bytes, use:(Int, Int, Bytes) -> Void) {

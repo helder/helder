@@ -43,7 +43,7 @@ if [ "$suite" = full ]; then
 	build tests/pack/Screen.hx "$out/Screen.app"
 	build examples/planets/Planets.hx "$out/Planets.app"
 	build tests/ui/IosAccessCheck.hx "$out/IosAccessCheck.app"
-	build tests/image/IosImages.hx "$out/IosImages.app"
+	build tests/image/SystemImageCheck.hx "$out/SystemImageCheck.app"
 	build tests/text/SystemTextTest.hx "$out/SystemTextTest.app"
 fi
 [ -n "${IOS_BUILD_ONLY:-}" ] && exit $failed
@@ -169,10 +169,10 @@ check "access: UIAccessibility's elements" $?
 xcrun simctl terminate "$udid" $aid > /dev/null 2>&1
 kill $console > /dev/null 2>&1
 
-# helder.image on iOS (tests/image/IosImages.hx): helder's cases decoded by
+# helder.image on iOS (tests/image/SystemImageCheck.hx): helder's cases decoded by
 # ImageIO (SystemDecoder) and PNGs by helder, on the loop and as jobs; its
 # last line "images: N checks ok".
-"$helder" run tests/image/IosImages.hx --target ios -d "$udid" > "$out/images.txt" 2>&1
+"$helder" run tests/image/SystemImageCheck.hx --target ios -d "$udid" > "$out/images.txt" 2>&1
 tail -20 "$out/images.txt"
 grep -q "images: .* checks ok" "$out/images.txt"
 check "images: the system's decoders" $?
