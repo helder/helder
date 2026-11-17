@@ -37,6 +37,7 @@ class UIKitApp {
 		Runtime.class_addMethod(cls, ObjC.sel("applicationWillEnterForeground:"), Callback.addr(willEnterForeground), Mem.cstr("v@:@"));
 		Runtime.class_addMethod(cls, ObjC.sel("applicationWillResignActive:"), Callback.addr(willResignActive), Mem.cstr("v@:@"));
 		Runtime.class_addMethod(cls, ObjC.sel("applicationDidBecomeActive:"), Callback.addr(didBecomeActive), Mem.cstr("v@:@"));
+		Runtime.class_addMethod(cls, ObjC.sel("applicationDidReceiveMemoryWarning:"), Callback.addr(memoryWarning), Mem.cstr("v@:@"));
 		Runtime.objc_registerClassPair(cls);
 		UIKit.UIApplicationMain(Mem.getI32(Mem.sym("rt_argc"), 0), Mem.getPtr(Mem.sym("rt_argv"), 0), Ptr.nil(), Foundation.NSStringFromClass(cls));
 	}
@@ -81,11 +82,19 @@ class UIKitApp {
 		Runtime.class_replaceMethod(cls, ObjC.sel("applicationWillEnterForeground:"), Callback.addr(willEnterForeground), Mem.cstr("v@:@"));
 		Runtime.class_replaceMethod(cls, ObjC.sel("applicationWillResignActive:"), Callback.addr(willResignActive), Mem.cstr("v@:@"));
 		Runtime.class_replaceMethod(cls, ObjC.sel("applicationDidBecomeActive:"), Callback.addr(didBecomeActive), Mem.cstr("v@:@"));
+		Runtime.class_replaceMethod(cls, ObjC.sel("applicationDidReceiveMemoryWarning:"), Callback.addr(memoryWarning), Mem.cstr("v@:@"));
 	}
 	#end
 
-	@:hxmc.callback static function didEnterBackground(self:Ptr, cmd:Ptr, app:Ptr):Void
-		if (running) UIKitWindow.suspend(true);
+	@:hxmc.callback static function didEnterBackground(self:Ptr, cmd:Ptr, app:Ptr):Void {
+		if (!running) return;
+		UIKitWindow.suspend(true);
+		// (the system ends the largest background apps first)
+		helder.os.App.trim();
+	}
+
+	@:hxmc.callback static function memoryWarning(self:Ptr, cmd:Ptr, app:Ptr):Void
+		if (running) helder.os.App.lowMemory();
 
 	@:hxmc.callback static function willEnterForeground(self:Ptr, cmd:Ptr, app:Ptr):Void
 		if (running) UIKitWindow.suspend(false);

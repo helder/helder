@@ -1,9 +1,13 @@
 # hxmc.unsafe in helder.image, reviewed (tests/image/unsafe.mjs checks the code
 # against it in the image lane). Each line: the file, the line's code, then
 # after " # " why it stays (a line without its reason fails).
+src/helder/image/Image.hx: @:hxmc.unsafe(gc) function hold(pixels:hxmc.Buffer, premultiplied:Bool) {  # trusted: NativeGc.finalise (raw) frees the held Buffer of an image collected before its upload
 src/helder/image/Image.hx: @:hxmc.unsafe(gc) public function premultiplied(use:Bytes->Void) {  # trusted: its copy is an IoBuffer's view (a Bytes for use), which no safe buffer gives
 src/helder/image/Image.hx: var buf = hxmc.unsafe.IoBuffer.alloc(n * 4), pre = buf.view();  # premultiplied's upload copy off the GC heap (no garbage of an image's size), freed on every path, the throw's too
+src/helder/image/Image.hx: @:hxmc.unsafe(gc) static function system(file:Bytes, use:(Int, Int, Bytes) -> Void) {  # trusted: iOS's decode of a file on the loop's thread, its copy and pixels IoBuffers freed on every path, the pixels lent to use as a view
+src/helder/image/Image.hx: var copy = hxmc.unsafe.IoBuffer.alloc(file.length);  # the file in native memory for ImageIO (the collector moves Bytes), freed on every path
 src/helder/image/ImageJobs.hx: import hxmc.unsafe.UInt8;  # the spans' element type
+src/helder/image/ImageJobs.hx: @:hxmc.unsafe(gc) static function system(file:Buffer):{width:Int, height:Int, pixels:Buffer} {  # trusted: the job's file detached for ImageIO and freed on every path, the pixels adopted by a Buffer (moved, not copied)
 src/helder/image/ImageJobs.hx: @:hxmc.unsafe(gc) public static function keep(rgba:Buffer):Bytes  # trusted: an Image keeps the pixels for good as a Bytes over their memory (detached, no copy), which no safe buffer gives
 src/helder/image/ImageMemory.hx: final buffers:Array<hxmc.unsafe.IoBuffer> = [];  # a decode's buffers off the heap, each freed by free() or handed to the caller by take()
 src/helder/image/ImageMemory.hx: @:hxmc.unsafe(gc) public function bytes(n:Int):Bytes {  # trusted: the decoders' Bytes is an IoBuffer's view
@@ -11,4 +15,7 @@ src/helder/image/ImageMemory.hx: var b = hxmc.unsafe.IoBuffer.alloc(n), v = b.vi
 src/helder/image/ImageMemory.hx: @:hxmc.unsafe(gc) public function take(v:Bytes):hxmc.Buffer {  # trusted: the view's IoBuffer adopted by the caller's Buffer (moved, not copied)
 src/helder/image/ImageMemory.hx: @:hxmc.unsafe(gc) public function free() {  # trusted: the buffers under its views freed
 src/helder/image/PngCore.hx: import hxmc.unsafe.UInt8;  # the spans' element type
+src/helder/image/SystemDecoder.hx: import hxmc.unsafe.IoBuffer;  # the decoded pixels' memory, which CGBitmapContextCreate draws into
+src/helder/image/SystemDecoder.hx: import hxmc.unsafe.Ptr;  # the file's native memory, which NSData wraps without a copy
+src/helder/image/SystemDecoder.hx: @:hxmc.unsafe(gc) class SystemDecoder {  # trusted: ImageIO and Core Graphics over native memory: the file lent by the caller, the pixels an IoBuffer freed on a failure or handed to the caller
 src/helder/image/WebImages.hx: import hxmc.unsafe.UInt8;  # the spans' element type (the browser decoder's imports take a file as a span: wasm32 only)

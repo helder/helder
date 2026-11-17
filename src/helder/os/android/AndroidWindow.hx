@@ -308,6 +308,10 @@ class AndroidWindow {
 					}
 				}
 				dispatch(onEvent, Redraw);
+			case Activity.LOW_MEMORY:
+				log("command: low memory", window);
+				Activity.acknowledge();
+				App.lowMemory();
 			case _:
 				Activity.acknowledge();
 		}

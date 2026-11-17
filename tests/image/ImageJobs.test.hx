@@ -42,6 +42,30 @@ function tests() {
 			equals(image.pixels.toHex(), Image.decode(file).pixels.toHex());
 			equals(image.source.type, "png");
 		}));
+		test("decode: its pixels dropped once uploaded, decoded again from the file", async(() -> {
+			var file = sys.io.File.getBytes('$dir/${names[names.length - 1]}.png');
+			var image = ImageJobs.decode(file), want = Image.decode(file).pixels.toHex();
+			assert(image.hasPixels, "held");
+			image.premultiplied(_ -> {});
+			image.uploaded();
+			assert(!image.hasPixels, "dropped");
+			equals(image.pixels.toHex(), want);
+		}));
+		test("replace: another's held pixels moved into it", async(() -> {
+			var file = sys.io.File.getBytes('$dir/${names[names.length - 1]}.png');
+			var image = new Image(1, 1), other = ImageJobs.decode(file);
+			image.replace(other);
+			equals({w: image.width, h: image.height}, {w: 13, h: 11});
+			equals(image.pixels.toHex(), Image.decode(file).pixels.toHex());
+		}));
+		test("images never uploaded: their held pixels freed when collected", async(() -> {
+			var file = sys.io.File.getBytes('$dir/${names[names.length - 1]}.png');
+			for (i in 0...50)
+				assert(ImageJobs.decode(file).hasPixels);
+			hxmc.NativeGc.collect(true);
+			hxmc.NativeGc.runFinalisers();
+			equals(ImageJobs.decode(file).pixels.toHex(), Image.decode(file).pixels.toHex());
+		}));
 		test("a broken file: the job's error", async(() -> {
 			// (the image data's first bytes after zlib's header garbled)
 			var file = sys.io.File.getBytes('$dir/${names[0]}.png');

@@ -8,8 +8,9 @@
 # hello line; then the audio stream. IOS_SUITE=smoke stops there (CI's pull
 # requests); the full suite (the default; CI's pushes to main and its
 # nightly) goes on: the assets, the screen, the planets example,
-# UIAccessibility. IOS_BUILD_ONLY=1: the builds alone (CI's build step,
-# while the simulator boots), IOS_PREBUILT=1: a build there already kept.
+# UIAccessibility, the images, Core Text. IOS_BUILD_ONLY=1: the builds
+# alone (CI's build step, while the simulator boots), IOS_PREBUILT=1: a
+# build there already kept.
 # (The bundles' static checks, codesign --verify and plutil -lint, are the
 # pack lane's on a Mac: CI's ios-signing job.)
 #   sh tests/pack/ios.sh <helder> [out dir]
@@ -42,6 +43,8 @@ if [ "$suite" = full ]; then
 	build tests/pack/Screen.hx "$out/Screen.app"
 	build examples/planets/Planets.hx "$out/Planets.app"
 	build tests/ui/IosAccessCheck.hx "$out/IosAccessCheck.app"
+	build tests/image/IosImages.hx "$out/IosImages.app"
+	build tests/text/SystemTextTest.hx "$out/SystemTextTest.app"
 fi
 [ -n "${IOS_BUILD_ONLY:-}" ] && exit $failed
 
@@ -165,4 +168,19 @@ grep -q "access: .* checks, ok" "$out/access.txt"
 check "access: UIAccessibility's elements" $?
 xcrun simctl terminate "$udid" $aid > /dev/null 2>&1
 kill $console > /dev/null 2>&1
+
+# helder.image on iOS (tests/image/IosImages.hx): helder's cases decoded by
+# ImageIO (SystemDecoder) and PNGs by helder, on the loop and as jobs; its
+# last line "images: N checks ok".
+"$helder" run tests/image/IosImages.hx --target ios -d "$udid" > "$out/images.txt" 2>&1
+tail -20 "$out/images.txt"
+grep -q "images: .* checks ok" "$out/images.txt"
+check "images: the system's decoders" $?
+
+# helder.text on Core Text (tests/text/SystemTextTest.hx): each script's
+# fallback face, Indic scripts shaped by the system; "system-text: all passed".
+"$helder" run tests/text/SystemTextTest.hx --target ios -d "$udid" > "$out/text.txt" 2>&1
+tail -30 "$out/text.txt"
+grep -q "system-text: all passed" "$out/text.txt"
+check "system-text: Core Text behind helder.text" $?
 exit $failed

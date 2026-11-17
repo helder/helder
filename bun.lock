@@ -5,6 +5,7 @@
     "": {
       "name": "helder",
       "dependencies": {
+        "@hx-objc/apple-uikit": "github:hx-objc/apple-uikit#27.2.0",
         "@hxmc/cli": "0.1.0-nightly.20261114.9ea9e87",
       },
       "devDependencies": {
@@ -24,6 +25,12 @@
     "@hxmc/cli",
   ],
   "packages": {
+    "@hx-objc/apple-shared": ["@hx-objc/apple-shared@github:hx-objc/apple-shared#2cb1427", {}, "hx-objc-apple-shared-2cb1427", "sha512-3yu4dA8Jl5kWB6zpJ5K2+NOjHoXMkXnHYZwtBHOrONK2caWbdQ1eXyhhysQTcXHDsbIM2mLsp3ESArw+dxoRTw=="],
+
+    "@hx-objc/apple-shared-uikit": ["@hx-objc/apple-shared-uikit@github:hx-objc/apple-shared-uikit#aa75445", {}, "hx-objc-apple-shared-uikit-aa75445", "sha512-HSK1I+R2puPINuzZz1NTQzSrUVAoWLFaK3NQqTGRe9JuTUe2o2tJNce2DWMycAzNBtPOktViXAhLK5aGYOWh4w=="],
+
+    "@hx-objc/apple-uikit": ["@hx-objc/apple-uikit@github:hx-objc/apple-uikit#d18d871", { "dependencies": { "@hx-objc/apple-shared": "github:hx-objc/apple-shared#27.2.0", "@hx-objc/apple-shared-uikit": "github:hx-objc/apple-shared-uikit#27.2.0" } }, "hx-objc-apple-uikit-d18d871", "sha512-jBXxaxaxV4jAkiiOxLaCJaXsdYGwdEGjL70+4jfrTQaVsX+ycUer3nuMH4FUSzZPM0hLunB3ObARxGzfh6lHzg=="],
+
     "@hxmc/cli": ["@hxmc/cli@0.1.0-nightly.20261114.9ea9e87", "", { "optionalDependencies": { "@hxmc/darwin-arm64": "0.1.0-nightly.20261114.9ea9e87", "@hxmc/darwin-x64": "0.1.0-nightly.20261114.9ea9e87", "@hxmc/linux-arm64": "0.1.0-nightly.20261114.9ea9e87", "@hxmc/linux-x64": "0.1.0-nightly.20261114.9ea9e87", "@hxmc/win32-arm64": "0.1.0-nightly.20261114.9ea9e87", "@hxmc/win32-x64": "0.1.0-nightly.20261114.9ea9e87" }, "os": [ "linux", "win32", "darwin", ], "hasInstallScript": true, "bin": { "haxe": "hxmc/bootstrap/haxe", "hxmc": "hxmc/bootstrap/haxe" } }, "sha512-Hxg9StC84EhUDKk2rditOHZQrB/eZnQwOtWfbIYABeaA03q45Oh9G2ampILduZB/bXCxIjWM7izrg7cdhSTNTQ=="],
 
     "@hxmc/darwin-arm64": ["@hxmc/darwin-arm64@0.1.0-nightly.20261114.9ea9e87", "", { "os": "darwin", "cpu": "arm64" }, "sha512-O7ExvDoG9a4N2fGSHBIIlLDGrjBxUEjZj9Ssoc3WWAjyuxkiaaQitlApC4+bXXWe799GK6sn9IvWqQEu1lMk2w=="],

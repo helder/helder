@@ -4,11 +4,12 @@ import helder.text.Shaping;
 
 // The platform's text stack behind helder.text (the system-text lane,
 // natively: Linux's fontconfig, HarfBuzz and FreeType; Windows' DirectWrite;
-// macOS's Core Text): fallback faces for each script, a family found, the
+// macOS's and iOS's Core Text, iOS's in CI's ios-simulator job:
+// tests/pack/ios.sh): fallback faces for each script, a family found, the
 // complex scripts shaped (Devanagari's reordered vowel sign, Bengali's split
 // vowel, Tamil's), TextLayout through it, glyphs rasterised; a sample of
 // every script drawn through the atlas with the platform's engine and with
-// helder's own (bin/text/system-<os>.png).
+// helder's own (bin/text/system-<os>.png; not on iOS).
 class SystemTextTest {
 	static var failures = 0;
 	// (under Wine, from Linux: its DirectWrite falls back to its own few fonts and does not reorder Indic scripts; noted, not failed)
@@ -129,6 +130,10 @@ class SystemTextTest {
 				y += 34;
 			}
 		}
+		// (an app on iOS: nowhere to write it but its sandbox, which nothing reads back)
+		#if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
+		return;
+		#end
 		sys.FileSystem.createDirectory("bin/text");
 		var os = Sys.systemName().toLowerCase();
 		sys.io.File.saveBytes('bin/text/system-$os.png', helder.image.PngEncoder.encode(img, W, H));

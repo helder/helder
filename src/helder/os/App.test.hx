@@ -24,6 +24,18 @@ function tests() {
 			App.onForeground = null;
 		});
 	});
+	describe("App's low memory", () -> {
+		test("the app's caches dropped first, then helder's trims", () -> {
+			var said = [];
+			App.onLowMemory = () -> said.push("app");
+			var trim = () -> said.push("helder");
+			App.trims.push(trim);
+			App.lowMemory();
+			App.trims.remove(trim);
+			App.onLowMemory = null;
+			equals(said.join(","), "app,helder");
+		});
+	});
 	describe("App's back", () -> {
 		test("onBack's answer: taken, not, none set", () -> {
 			equals(App.back(), false);

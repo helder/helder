@@ -17,6 +17,13 @@ import haxe.io.Bytes;
 // read). Reading pixels after that decodes the file again, on the calling
 // thread; retain keeps them, for an image whose pixels are read back (a
 // hit test's alpha, a picker's colours).
+//
+// With hxmc its pixels may be off the collected heap (held: a job's
+// decode, ImageJobs), freed once uploaded or when the image is collected.
+// On iOS the system decodes all but PNGs (SystemDecoder, ImageIO): decode
+// reads the file's size only, its pixels decoded where they are first used (an
+// upload, premultiplied as the system draws them) and dropped after, so an
+// image's pixels are never on the heap unless read.
 class Image {
 	public var width(default, null):Int;
 	public var height(default, null):Int;
@@ -42,6 +49,11 @@ class Image {
 	// draws into it again to know the GPU is done with what it showed before)
 	@:noCompletion public var drawn = 0;
 	var data:Null<Bytes>;
+	#if (target.name == "hxmc")
+	// (pixels off the heap, premultiplied or not: a job's)
+	var held:Null<hxmc.Buffer> = null;
+	var heldPremultiplied = false;
+	#end
 	// unique per image (a renderer's texture cache key)
 	public final id:Int = nextId++;
 	// bumped by changed(): the pixels were written to
@@ -89,11 +101,66 @@ class Image {
 		return img;
 	}
 
+	// an image of pixels off the heap that it owns from now on (RGBA8,
+	// premultiplied or straight), freed once uploaded or collected
+	#if (target.name == "hxmc")
+	@:noCompletion public static function ofHeld(width:Int, height:Int, pixels:hxmc.Buffer, premultiplied:Bool):Image {
+		var img = sized(width, height);
+		img.hold(pixels, premultiplied);
+		return img;
+	}
+
+	@:hxmc.unsafe(gc) function hold(pixels:hxmc.Buffer, premultiplied:Bool) {
+		if (held == null) hxmc.NativeGc.finalise(drop, this);
+		held = pixels;
+		heldPremultiplied = premultiplied;
+	}
+
+	static function drop(img:Image)
+		img.free();
+
+	function free() {
+		var h = held;
+		held = null;
+		if (h != null) h.close();
+	}
+	#end
+
+	// (no pixels yet: sized only)
+	static function sized(width:Int, height:Int):Image {
+		var img = new Image(1, 1, Bytes.alloc(4));
+		img.width = width;
+		img.height = height;
+		img.data = null;
+		return img;
+	}
+
 	function get_hasPixels()
-		return data != null;
+		return data != null #if (target.name == "hxmc") || held != null #end;
 
 	function get_pixels():Bytes {
 		if (data != null) return data;
+		#if (target.name == "hxmc")
+		if (held != null) {
+			// (a copy on the heap, straight: what is read may be written, and outlives the upload)
+			var n = width * height * 4, px = Bytes.alloc(n);
+			held.blitToBytes(0, px, 0, n);
+			if (heldPremultiplied) unpremultiply(px);
+			free();
+			return data = px;
+		}
+		#end
+		#if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
+		if (source != null && source.type != "png") {
+			var px:Null<Bytes> = null;
+			system(source.bytes, (w, h, pre) -> {
+				px = Bytes.alloc(w * h * 4);
+				px.blit(0, pre, 0, w * h * 4);
+				unpremultiply(px);
+			});
+			return data = px;
+		}
+		#end
 		var file = source != null ? source.bytes : browserFile();
 		if (file == null && shared != null) throw "Image: a texture of another process's (shared), its pixels not here";
 		if (file == null) throw "Image: its pixels were dropped and it has no file to decode them from";
@@ -115,6 +182,9 @@ class Image {
 	// file kept)
 	public function uploaded() {
 		if (retain) return;
+		#if (target.name == "hxmc")
+		if (held != null && (source != null || browser != 0)) free();
+		#end
 		if (data != null && (source != null || browser != 0)) data = null;
 		if (browser != 0 && browserImages != null) browserImages.close(browser);
 	}
@@ -180,18 +250,42 @@ class Image {
 	static function cut():Int
 		throw ImageError.corrupt("cut short");
 
-	// a PNG, JPEG, GIF or WebP file's image (by its signature)
+	// a PNG, JPEG, GIF or WebP file's image (by its signature); on iOS any
+	// format but PNG (helder's, exact everywhere: iOS's ImageIO premultiplies
+	// an indexed PNG's alpha twice) its size only, decoded where its pixels
+	// are used (SystemDecoder), any format ImageIO reads
 	public static function decode(bytes:Bytes):Image {
 		var type = typeOf(bytes);
+		#if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
+		if (!isPng(bytes)) {
+			var s = size(bytes);
+			var img = if (s != null) sized(s.width, s.height) else {
+				var d = null;
+				system(bytes, (w, h, _) -> d = {width: w, height: h});
+				sized(d.width, d.height);
+			}
+			ImageLimits.check("Image", img.width, img.height, 4);
+			img.source = {bytes: bytes, type: type};
+			return img;
+		}
+		var d = PngDecoder.decode(bytes);
+		#else
 		var d = switch type {
 			case "jpeg": JpegDecoder.decode(bytes);
 			case "gif": GifDecoder.decode(bytes);
 			case "webp": WebpDecoder.decode(bytes);
 			case _: PngDecoder.decode(bytes);
 		}
+		#end
 		var img = new Image(d.width, d.height, d.rgba);
 		img.source = {bytes: bytes, type: type};
 		return img;
+	}
+
+	// (a PNG's signature)
+	public static function isPng(b:Bytes):Bool {
+		var r = new ByteReader(b);
+		return r.length >= 8 && r.u8(0) == 0x89 && r.u8(1) == 0x50 && r.u8(2) == 0x4E && r.u8(3) == 0x47;
 	}
 
 	// a file's type by its signature: "jpeg", "gif", "webp", else "png"
@@ -207,6 +301,14 @@ class Image {
 		width = other.width;
 		height = other.height;
 		data = other.data;
+		#if (target.name == "hxmc")
+		free();
+		if (other.held != null) {
+			hold(other.held, other.heldPremultiplied);
+			// (moved: the other image no longer frees it)
+			other.held = null;
+		}
+		#end
 		version++;
 		source = other.source;
 		drawing = other.drawing;
@@ -221,7 +323,21 @@ class Image {
 	// no garbage of its size (on WebAssembly the heap's memory, grown for
 	// it, is never given back)
 	@:hxmc.unsafe(gc) public function premultiplied(use:Bytes->Void) {
-		var px = pixels, n = width * height;
+		#if (target.name == "hxmc")
+		if (held != null && heldPremultiplied) return use(@:privateAccess held.io.view());
+		#end
+		#if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
+		if (data == null && held == null && source != null && source.type != "png") {
+			var me = this;
+			return system(source.bytes, (w, h, pre) -> {
+				// (a file whose orientation the header did not say: the size the system decoded)
+				me.width = w;
+				me.height = h;
+				use(pre);
+			});
+		}
+		#end
+		var px = #if (target.name == "hxmc") held != null ? @:privateAccess held.io.view() : #end pixels, n = width * height;
 		#if (target.name == "hxmc")
 		var buf = hxmc.unsafe.IoBuffer.alloc(n * 4), pre = buf.view();
 		#else
@@ -243,6 +359,35 @@ class Image {
 		#else
 		use(pre);
 		#end
+	}
+
+	#if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
+	// the file decoded by the system, its premultiplied pixels lent to use
+	// (a copy of the file in native memory first: the collector moves Bytes)
+	@:hxmc.unsafe(gc) static function system(file:Bytes, use:(Int, Int, Bytes) -> Void) {
+		var copy = hxmc.unsafe.IoBuffer.alloc(file.length);
+		copy.view().blit(0, file, 0, file.length);
+		var d = try SystemDecoder.decode(copy.ptr, file.length) catch (e:Dynamic) {
+			copy.free();
+			throw e;
+		}
+		copy.free();
+		try use(d.width, d.height, d.pixels.view()) catch (e:Dynamic) {
+			d.pixels.free();
+			throw e;
+		}
+		d.pixels.free();
+	}
+	#end
+
+	// straight alpha again: a premultiplied pixel's colour divided by its alpha
+	static function unpremultiply(px:Bytes) {
+		for (k in 0...px.length >> 2) {
+			var a = px.get(4 * k + 3);
+			if (a == 0 || a == 255) continue;
+			for (c in 0...3)
+				px.set(4 * k + c, Std.int(Math.min(255, (px.get(4 * k + c) * 255 + (a >> 1)) / a)));
+		}
 	}
 
 	// the pixels changed: renderers upload them again

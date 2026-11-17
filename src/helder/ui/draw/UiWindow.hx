@@ -122,6 +122,7 @@ class UiWindow {
 		if (Platform.target() >= 9) helder.os.android.TextInput.enable();
 		device = Device.create(window.surface, {antialias: antialias});
 		renderer = new Renderer(device);
+		if (open.length == 0 && helder.os.App.trims.indexOf(trimAll) < 0) helder.os.App.trims.push(trimAll);
 		renderer.groups = true;
 		renderer.steps = true;
 		ui = new Ui(text == null ? new DrawText() : text, width, height);
@@ -467,6 +468,11 @@ class UiWindow {
 		e.kind = Close;
 		return e;
 	}
+
+	// (the system wants memory back: every window's)
+	static function trimAll()
+		for (w in open)
+			w.renderer.trim();
 
 	// (once: a <Surface>'s owner closes it too)
 	@:typescript public function close() {
