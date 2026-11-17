@@ -315,9 +315,10 @@ class IosAccess {
 	@:hxmc.callback static function traitsNow(self:Ptr, cmd:Ptr):Int64 {
 		var o = owner(self), a = o.a;
 		if (a == null) return 0;
-		var t = a.traitsBy.get(o.id) ?? 0;
-		if ((t & traits.get("TextEntry")) != 0 && a.tree != null && a.tree.focus == o.id && Msg.b(a.view, ObjC.sel("isFirstResponder")))
-			t = t | traits.get("IsEditing");
+		var t:Int64 = a.traitsBy.get(o.id) ?? 0, none:Int64 = 0;
+		var entry:Int64 = traits.get("TextEntry") ?? 0, editing:Int64 = traits.get("IsEditing") ?? 0;
+		if ((t & entry) != none && a.tree != null && a.tree.focus == o.id && Msg.b(a.view, ObjC.sel("isFirstResponder")))
+			t = t | editing;
 		return t;
 	}
 

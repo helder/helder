@@ -626,36 +626,31 @@ class Interpreter {
 
 	// a Form XObject: its matrix, clipped to its box, its own resources, a transparency group apart
 	function form(d:PdfDict, v:PdfValue, res:Null<PdfDict>) {
-		switch v {
-			case _:
-				if (depth >= doc.limits.maxDepth) return;
-				var content = doc.stream(v);
-				var fm = Values.nums(doc.resolve(d.get("Matrix")));
-				var bbox = Values.nums(doc.resolve(d.get("BBox")));
-				var group = Values.dict(doc.resolve(d.get("Group")));
-				pushState();
-				if (fm != null && fm.length == 6) gs.ctm.transform(fm[0], fm[1], fm[2], fm[3], fm[4], fm[5]);
-				if (bbox != null && bbox.length == 4) {
-					var clip = new Path();
-					clip.rect(bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]);
-					device();
-					painter.clip(clip);
-				}
-				// (a transparency group at an opacity: drawn apart, composited once)
-				var layered = group != null && (gs.fillAlpha < 1 || gs.blend != null);
-				if (layered) {
-					painter.saveLayer(gs.fillAlpha, gs.blend);
-					gs.fillAlpha = 1;
-					gs.strokeAlpha = 1;
-					gs.blend = null;
-				}
-				var fr = Values.dict(doc.resolve(d.get("Resources"))) ?? res;
-				var saveBase = gs.baseCtm;
-				run(content, fr);
-				if (layered) painter.restore();
-				popState();
-			case _:
+		if (depth >= doc.limits.maxDepth) return;
+		var content = doc.stream(v);
+		var fm = Values.nums(doc.resolve(d.get("Matrix")));
+		var bbox = Values.nums(doc.resolve(d.get("BBox")));
+		var group = Values.dict(doc.resolve(d.get("Group")));
+		pushState();
+		if (fm != null && fm.length == 6) gs.ctm.transform(fm[0], fm[1], fm[2], fm[3], fm[4], fm[5]);
+		if (bbox != null && bbox.length == 4) {
+			var clip = new Path();
+			clip.rect(bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1]);
+			device();
+			painter.clip(clip);
 		}
+		// (a transparency group at an opacity: drawn apart, composited once)
+		var layered = group != null && (gs.fillAlpha < 1 || gs.blend != null);
+		if (layered) {
+			painter.saveLayer(gs.fillAlpha, gs.blend);
+			gs.fillAlpha = 1;
+			gs.strokeAlpha = 1;
+			gs.blend = null;
+		}
+		var fr = Values.dict(doc.resolve(d.get("Resources"))) ?? res;
+		run(content, fr);
+		if (layered) painter.restore();
+		popState();
 	}
 
 	static inline function withAlpha(c:Int, a:Float):Int
