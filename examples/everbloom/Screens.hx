@@ -567,7 +567,7 @@ class CartScreen implements Markup {
 			</Show>
 		</view>;
 
-	static function stepper(id:String, label:String, glyph:Svg, f:Void->Void):View
+	static function stepper(id:String, label:String, glyph:Theme.Icon, f:Void->Void):View
 		return <view:button id={id} role="button" label={label} focusable width={36} height={34} align-items="center" justify="center"
 			disabled={Everbloom.cartBusy()} onPress={() -> if (!Everbloom.cartBusy.peek()) f()}>{icon(glyph, 16, TEXT)}</view:button>;
 

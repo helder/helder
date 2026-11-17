@@ -103,7 +103,8 @@ of a pixel. A colour drawn source-over takes an integer path, four pixels
 at a time in 16-bit lanes, a run of whole coverage of an opaque colour
 stored as it is; shaders and blend modes compose in floats.
 
-**SVG** (`Svg.parse`, `render`: the static subset icon sets use, checked
+**SVG** (`Svg.parse`: a constant's read when compiled, `SvgBuild`, markup's
+`<svg>` too, else `Svg.read`; `render`: the static subset icon sets use, checked
 against Chromium in helder.ui's tests; helder.ui's `Svg` and the CLI's
 icons) draws through it: its groups' opacities as layers, its clip paths
 as clips, its gradients (spread included) as shaders, its strokes as

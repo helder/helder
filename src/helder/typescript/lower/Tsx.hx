@@ -977,5 +977,9 @@ class TsTarget implements Target<TsMarkup> {
 	public function factory(c:Component<TsMarkup>, props:Array<{name:String, value:TsMarkup, at:Int}>, content:Null<TsMarkup>, at:Int, agnostic:Bool):TsMarkup
 		return MFactory(c, props, content, agnostic, at);
 
+	// (TSX's <svg>: not yet; an icon's text through Icons.parse)
+	public function drawing(text:String, where:Where):TsMarkup
+		return error("markup: <svg> in TSX is not supported yet: Icons.parse(text) gives an Svg for <image src>", where);
+
 	public function view(v:Planned<TsMarkup>):TsMarkup return MView(v);
 }

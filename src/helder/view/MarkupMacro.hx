@@ -705,6 +705,10 @@ class HaxeTarget implements Target<Expr> {
 		return {expr: EFunction(FAnonymous, {args: [], ret: macro :Any, expr: SourceMap.factory({expr: EReturn(call), pos: p}, callee, file, base, at)}), pos: p};
 	}
 
+	// (read when compiled: Svg.parse of a constant)
+	public function drawing(text:String, where:Where):Expr
+		return macro @:pos(at(where)) helder.canvas.Svg.parse($v{text});
+
 	public function view(v:Planned<Expr>):Expr {
 		var holes = v.holes, body = v.body, renderer = v.renderer;
 		var parts = v.parts == null ? macro null : macro function():Array<Null<Any>> return ([$a{v.parts}] : Array<Null<Any>>);

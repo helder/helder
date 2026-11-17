@@ -214,7 +214,7 @@ class UiTest {
 		var img = icon.render(4, 4, 0xFF2563EB);
 		check("svg: currentColor painted render's colour", img.pixels.get(0) == 0x25 && img.pixels.get(1) == 0x63 && img.pixels.get(2) == 0xEB && img.pixels.get(3) == 255);
 		var none = 0;
-		try Svg.parse("<html/>") catch (_:Dynamic) none++;
+		try Svg.read("<html/>") catch (_:Dynamic) none++;
 		check("svg: no svg element throws", none == 1);
 		var nums = Svg.SvgParse.numbers("1,2 3-4.5.5e1 -.5");
 		check("svg: number lists as SVG splits them", nums.join(" ") == "1 2 3 -4.5 5 -0.5", nums.join(" "));

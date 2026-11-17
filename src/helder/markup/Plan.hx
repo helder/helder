@@ -156,6 +156,8 @@ class Plan<E> {
 	// an element: made, put in parent (top: before __b, pushed to __o), its
 	// attributes, its children; one its renderer does not list (@:elements) an error
 	function element(name:String, attrs:Array<PAttr>, children:Array<PNode>, at:Int, parent:E, top:Bool):Array<E> {
+		// (<svg>, ui's or any renderer's: an image of the drawing, its shapes fixed when compiled)
+		if (name == "svg" && (renderer == null || renderer == UI)) return svg(attrs, children, at, parent, top);
 		if (renderer != null) {
 			var els = target.elements(renderer);
 			if (els != null && els.indexOf(name) < 0)
@@ -170,6 +172,7 @@ class Plan<E> {
 				}
 		}
 		var v = fresh("e");
+		imageVar = v;
 		var e = target.ident(v);
 		var neutral = isNeutral(name);
 		var out = [
@@ -195,6 +198,63 @@ class Plan<E> {
 		out.push(target.declare(t, target.call(Host, "holdsText", [e], null), null));
 		return out.concat(this.children(kids, e, target.nil(), target.nil(), target.ident(t), true));
 	}
+
+	// ui's renderer
+	public static inline final UI = "helder.ui.view.NodeRenderer";
+
+	// an <svg>'s own attributes that are the drawing's (the rest the image's:
+	// its size, color for currentColor, layout, label, opacity, transform)
+	static final DRAWING = ["xmlns", "version", "viewBox", "preserveAspectRatio", "fill", "fill-opacity", "fill-rule", "stroke", "stroke-width",
+		"stroke-linecap", "stroke-linejoin", "stroke-miterlimit", "stroke-dasharray", "stroke-dashoffset", "stroke-opacity", "clip-rule"];
+
+	// <svg> as an image (ui's <image src>): its shapes and their attributes
+	// fixed, read as SVG when compiled (target.drawing), its own
+	// attributes the image's but the drawing's (DRAWING; width and height
+	// both's, its size as drawn when it has no viewBox)
+	function svg(attrs:Array<PAttr>, children:Array<PNode>, at:Int, parent:E, top:Bool):Array<E> {
+		var node = [], drawing = [];
+		for (a in attrs) {
+			if (DRAWING.indexOf(a.name) >= 0) drawing.push(a) else node.push(a);
+			if ((a.name == "width" || a.name == "height") && a.value.match(AStatic(_))) drawing.push(a);
+		}
+		var text = "<svg" + (Lambda.exists(drawing, a -> a.name == "xmlns") ? "" : ' xmlns="http://www.w3.org/2000/svg"');
+		text += svgAttrs("svg", drawing) + ">";
+		for (c in children)
+			text += svgText(c);
+		var out = element("image", node, [], at, parent, top);
+		var e = target.ident(imageVar);
+		out.push(target.call(Neutral, "property", [e, target.string("image"), target.string("src"), hole(target.drawing(text + "</svg>", {at: at, length: 3}))],
+			{at: at, length: 3}));
+		return out;
+	}
+
+	// (the last element made's local)
+	var imageVar = "";
+
+	function svgAttrs(tag:String, attrs:Array<PAttr>):String {
+		var s = "";
+		for (a in attrs) {
+			var v = switch a.value {
+				case AStatic(v): StringTools.htmlEscape(v, true);
+				case AFlag: "";
+				case _: target.error("markup: <" + tag + ">'s " + a.name + " is fixed when compiled, a drawing's: a string (a drawing made when the program runs: Svg.read)",
+						{at: a.at, length: a.name.length});
+			}
+			s += " " + a.name + '="' + v + '"';
+		}
+		return s;
+	}
+
+	function svgText(n:PNode):String
+		return switch n.kind {
+			case PElement(name, attrs, children, at):
+				var s = "<" + name + svgAttrs(name, attrs);
+				var inner = [for (c in children) svgText(c)].join("");
+				s + (inner == "" ? "/>" : ">" + inner + "</" + name + ">");
+			case PFragment(children): [for (c in children) svgText(c)].join("");
+			case PText(t): StringTools.trim(t) == "" ? "" : StringTools.htmlEscape(t);
+			case PExpr(_, at): target.error("markup: an <svg>'s shapes are fixed when compiled: no {...} in them (a drawing made when the program runs: Svg.read)", {at: at, length: 1});
+		}
 
 	// children into parent before before (pushed to out), runs of text and
 	// holes joined (span: in an element that holds text, as spans; end: the
@@ -571,6 +631,9 @@ interface Target<E> {
 	function factory(c:Component<E>, props:Array<{name:String, value:E, at:Int}>, content:Null<E>, at:Int, agnostic:Bool):E;
 	// the literal's value: its holes, then the View of its mount (or its parts)
 	function view(v:Planned<E>):E;
+	// a drawing (helder.canvas.Svg) of an <svg>'s text, fixed: read when
+	// compiled where the target can (Haxe's: Svg.parse), else when it runs
+	function drawing(text:String, where:Where):E;
 }
 
 enum Callee {

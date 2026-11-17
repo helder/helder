@@ -196,6 +196,9 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
     size, checked against Chromium's pixels on 30 cases. An `ImageNode`'s
     `svg` (markup: `src={svg}`) is drawn at the window's pixel size in the
     node's colour. Not drawn: text, images, patterns, masks, filters, markers.
+    Markup's `<svg>` is such an image, its drawing read when compiled (as
+    `Svg.parse` of a constant: `SvgBuild`), so the program links no parser;
+    `Svg.read` reads a string made when the program runs.
   - A `TextNode` that is `selectable` takes a selection from the pointer (a
     drag, a double click: a word, a triple: all), painted under its text
     (`Ui.textSelection`, `Ui.selectionColor`) and copied by Mod+C.

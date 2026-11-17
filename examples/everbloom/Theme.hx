@@ -8,6 +8,8 @@ import helder.view.graph.Read;
 // The design's tokens (design/screens/Tokens.dc.html), its four icons and
 // the stepper's and states' glyphs (its SVGs, drawn in a colour), and the
 // pieces the screens share: a product's card and price, the error state.
+typedef Icon = (size:Float, color:String) -> View;
+
 class Theme implements Markup {
 	public static inline var BACKGROUND = "#FFFFFF";
 	public static inline var SURFACE = "#F4F1EC";
@@ -18,18 +20,38 @@ class Theme implements Markup {
 	public static inline var BODY = "#3D3A35";
 	public static inline var SALE = "#B4361E";
 
-	static inline var OPEN = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">';
-	public static final HOME = Svg.parse(OPEN + '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>');
-	public static final SEARCH = Svg.parse(OPEN + '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>');
-	public static final CART = Svg.parse(OPEN + '<path d="M6 7h12l-1 13H7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>');
-	public static final BACK = Svg.parse(OPEN + '<path d="m15 5-7 7 7 7"/></svg>');
-	public static final MINUS = Svg.parse(OPEN.split('stroke-width="1.75"').join('stroke-width="2"') + '<path d="M5 12h14"/></svg>');
-	public static final PLUS = Svg.parse(OPEN.split('stroke-width="1.75"').join('stroke-width="2"') + '<path d="M12 5v14M5 12h14"/></svg>');
-	public static final ERROR = Svg.parse(OPEN.split('stroke-width="1.75"').join('stroke-width="1.25"')
-		+ '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5"/><path d="M12 16.5h.01"/></svg>');
+	// the icons (24 units, stroked in their color): markup's <svg>, drawn
+	// from shapes read when compiling
+	public static function HOME(size:Float, color:String):View
+		return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
+			width={size} height={size} color={color} hidden><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>;
 
-	public static function icon(svg:Svg, size:Float, color:String):View
-		return <image src={svg} width={size} height={size} color={color} hidden/>;
+	public static function SEARCH(size:Float, color:String):View
+		return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
+			width={size} height={size} color={color} hidden><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>;
+
+	public static function CART(size:Float, color:String):View
+		return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
+			width={size} height={size} color={color} hidden><path d="M6 7h12l-1 13H7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>;
+
+	public static function BACK(size:Float, color:String):View
+		return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"
+			width={size} height={size} color={color} hidden><path d="m15 5-7 7 7 7"/></svg>;
+
+	public static function MINUS(size:Float, color:String):View
+		return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+			width={size} height={size} color={color} hidden><path d="M5 12h14"/></svg>;
+
+	public static function PLUS(size:Float, color:String):View
+		return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+			width={size} height={size} color={color} hidden><path d="M12 5v14M5 12h14"/></svg>;
+
+	public static function ERROR(size:Float, color:String):View
+		return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"
+			width={size} height={size} color={color} hidden><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5"/><path d="M12 16.5h.01"/></svg>;
+
+	public static function icon(glyph:Icon, size:Float, color:String):View
+		return glyph(size, color);
 
 	// $45.00, in the sale colour with the compare-at price struck through when it is higher
 	public static function Price(props:{price:Money, ?compareAt:Money, ?size:Float}):View {

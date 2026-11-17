@@ -1,6 +1,8 @@
 package helder.canvas;
 
+#if !macro
 import helder.image.Image;
+#end
 
 // An SVG document for icons and drawings: parsed once (Svg.parse), drawn
 // into an Image at any size (the Image's drawing: this, for a writer's vectors; render: the viewBox fitted as
@@ -39,7 +41,14 @@ class Svg {
 		this.root = root;
 	}
 
-	public static function parse(text:String):Svg {
+	// an SVG document's text parsed; a constant's when the program is
+	// compiled (SvgBuild: the program gets the shapes it parsed to, no parser,
+	// XML reader or colour names in it), anything else's when it runs (read)
+	public static macro function parse(text:haxe.macro.Expr.ExprOf<String>):haxe.macro.Expr.ExprOf<Svg>
+		return SvgBuild.parse(text);
+
+	// an SVG document's text parsed when the program runs
+	public static function read(text:String):Svg {
 		var doc = Xml.parse(text);
 		var el:Xml = null;
 		for (e in doc.elements())
@@ -89,6 +98,7 @@ class Svg {
 		return Std.parseFloat(s);
 	}
 
+	#if !macro
 	// the drawing at width by height pixels (its intrinsic size by
 	// default), currentColor painted color (black)
 	public function render(?width:Int, ?height:Int, color:Int = 0xFF000000):Image {
@@ -110,6 +120,7 @@ class Svg {
 		img.drawing = {svg: this, color: color};
 		return img;
 	}
+	#end
 }
 
 enum SvgPaint {
@@ -140,6 +151,29 @@ class SvgGradient {
 	public final colors:Array<Int> = [];
 
 	public function new() {}
+
+	// (one Svg.parse made when compiled: SvgBuild; n x1 y1 x2 y2 cx cy r fx fy)
+	@:noCompletion public static function of(linear:Bool, n:Array<Float>, boundingBox:Bool, matrix:Matrix, spread:Int, offsets:Array<Float>, colors:Array<Int>):SvgGradient {
+		var g = new SvgGradient();
+		g.linear = linear;
+		g.x1 = n[0];
+		g.y1 = n[1];
+		g.x2 = n[2];
+		g.y2 = n[3];
+		g.cx = n[4];
+		g.cy = n[5];
+		g.r = n[6];
+		g.fx = n[7];
+		g.fy = n[8];
+		g.boundingBox = boundingBox;
+		g.matrix = matrix;
+		g.spread = spread;
+		for (o in offsets)
+			g.offsets.push(o);
+		for (c in colors)
+			g.colors.push(c);
+		return g;
+	}
 }
 
 // the painting properties, as inherited
@@ -165,6 +199,25 @@ class SvgStyle {
 
 	public static function initial():SvgStyle
 		return new SvgStyle();
+
+	// (one Svg.parse made when compiled: SvgBuild)
+	@:noCompletion public static function of(fill:SvgPaint, stroke:SvgPaint, fillOpacity:Float, strokeOpacity:Float, strokeWidth:Float, cap:Int, join:Int,
+			miterLimit:Float, evenOdd:Bool, dashes:Null<Array<Float>>, dashOffset:Float, color:Null<Int>):SvgStyle {
+		var s = new SvgStyle();
+		s.fill = fill;
+		s.stroke = stroke;
+		s.fillOpacity = fillOpacity;
+		s.strokeOpacity = strokeOpacity;
+		s.strokeWidth = strokeWidth;
+		s.cap = cap;
+		s.join = join;
+		s.miterLimit = miterLimit;
+		s.evenOdd = evenOdd;
+		s.dashes = dashes;
+		s.dashOffset = dashOffset;
+		s.color = color;
+		return s;
+	}
 
 	public function copy():SvgStyle {
 		var s = new SvgStyle();
@@ -195,6 +248,15 @@ class SvgGroup {
 	public function new(matrix, opacity) {
 		this.matrix = matrix;
 		this.opacity = opacity;
+	}
+
+	// (one Svg.parse made when compiled: SvgBuild)
+	@:noCompletion public static function of(matrix:Matrix, opacity:Float, children:Array<Any>, clip:Null<Array<{path:Array<Float>, matrix:Matrix, evenOdd:Bool}>>):SvgGroup {
+		var g = new SvgGroup(matrix, opacity);
+		for (c in children)
+			g.children.push(c);
+		g.clip = clip;
+		return g;
 	}
 
 	// a rectangle as a clip
@@ -753,6 +815,7 @@ class SvgParse {
 	}
 }
 
+#if !macro
 // A drawing's groups and shapes on helder.canvas (its CPU rasterizer:
 // analytic coverage, strokes as outlines, gradients, clips as masks, a
 // group's or a shape's opacity as a layer)
@@ -914,3 +977,4 @@ class SvgCanvas {
 	public function image():Image
 		return canvas.bitmap.toImage();
 }
+#end
