@@ -261,6 +261,16 @@ class Interpreter implements Target<Step> {
 			() -> placeholder(name, base + at - 1);
 		});
 
+	// (ui's alone: its own statements)
+	public function choose(renderer:String, then:Array<Step>, otherwise:Array<Step>):Array<Step>
+		return renderer == RENDERER ? then : otherwise;
+
+	// (an interpreted literal's drawing: read once, when first set)
+	public function drawing(text:String, where:Where):Step {
+		var svg:Null<helder.canvas.Svg> = null;
+		return new Step(_ -> svg != null ? svg : svg = helder.canvas.Svg.read(text));
+	}
+
 	public function view(v:Planned<Step>):Step
 		return new Step(s -> {
 			var scope = s.copy();

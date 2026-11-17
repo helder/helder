@@ -11,6 +11,28 @@ import helder.view.graph.Signal;
 // wheel's modifiers
 function tests() {
 	describe("Markup", () -> {
+		test("<svg>: an image of its drawing, read when compiled, one per text", () -> {
+			var ui = new Ui(null, 200, 200);
+			var size = Graph.signal(20.0);
+			var dispose = Render.render(Fixture.icon(size), ui.root);
+			ui.update();
+			var n:ImageNode = cast ui.root.find("glyph");
+			notEquals(n.svg, null);
+			equals({w: n.width, h: n.height}, {w: 20.0, h: 20.0});
+			// (its shapes: a red square in a viewBox of 10)
+			var px = n.svg.render(10, 10).pixels;
+			equals([px.get(4 * 55), px.get(4 * 55 + 3)], [255, 255]);
+			size(30.0);
+			Graph.flush();
+			ui.update();
+			equals(n.width, 30.0);
+			// (the same text: the same drawing)
+			var dispose2 = Render.render(Fixture.icon(size), ui.root);
+			ui.update();
+			equals(cast(ui.root.children[1].find("glyph"), ImageNode).svg, n.svg);
+			dispose2();
+			dispose();
+		});
 		test("a transform bound to a runtime string", () -> {
 			var ui = new Ui(null, 200, 200);
 			var x = Graph.signal(10.0);
@@ -84,6 +106,11 @@ function tag(n:Null<Node>):Null<String>
 	return n == null ? null : n.tag;
 
 private class Fixture implements helder.view.Markup {
+	public static function icon(size:Signal<Float>)
+		return <view>
+			<svg tag="glyph" viewBox="0 0 10 10" width={size()} height={size()}><rect width="10" height="10" fill="#ff0000"/></svg>
+		</view>;
+
 	public static function moved(x:Signal<Float>)
 		return <view>
 			<view tag="box" position="absolute" left={0} top={0} width={20} height={20} transform={'translate(${x()}px, 0px)'}/>

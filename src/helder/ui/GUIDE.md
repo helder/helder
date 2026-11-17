@@ -306,19 +306,30 @@ bound to a signal) once the node has been drawn:
 An `image` shows a `helder.image.Image` (`Image.decode`: PNG, JPEG, GIF, WebP), an
 `AnimatedImage`, or an `Svg`. An SVG is drawn at the size it is shown,
 sharp at any scale, in the node's text colour wherever it says
-`currentColor`, so icons follow the theme like text does:
+`currentColor`, so icons follow the theme like text does.
+
+Write an icon as `<svg>` in markup. It becomes an `image` of its drawing,
+and its shapes are read when the program is compiled: nothing is parsed
+when it runs, and an app whose drawings are all written so links no SVG
+parser. The drawing's attributes (`viewBox`, `fill`, `stroke` and the
+rest) and its shapes' are fixed strings; `width`, `height`, `color` and
+everything else on the `<svg>` are the image's, and may be bound:
 
 ```haxe
-static final SEARCH = Svg.parse('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-	stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>');
+static function Search(props:{size:Float}):View
+	return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+		width={props.size} height={props.size}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>;
 
 static function SearchButton(props:{onClick:Void->Void}):View
 	return <view tag="search" role="button" label="Search" focusable direction="row" column-gap={6} align-items="center"
 		color="#2563eb" onClick={_ -> props.onClick()}>
-		<image src={SEARCH} width={16} height={16}/>
+		<Search size={16}/>
 		<text>Search</text>
 	</view>;
 ```
+
+`Svg.parse` of a constant string is read when compiling too; a string made
+when the program runs (a file, a server's icon) is read then (`Svg.read`).
 
 ## Rich text
 
