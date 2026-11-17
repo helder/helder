@@ -199,7 +199,7 @@ class UiWindow {
 
 	// there is something new to draw
 	public function needsFrame():Bool
-		return redraw || ui.needsFrame || Clock.active || ScreenContext.main.nextTimer() <= helder.headless.Time.stamp() || capture != null || device.width != drawnW || device.height != drawnH || window.scale != drawnScale
+		return redraw || ui.needsFrame || Clock.active || ScreenContext.main.nextTimer() <= helder.headless.Time.stamp() || capture != null || window.width != drawnW || window.height != drawnH || window.scale != drawnScale
 			|| (Ui.accessEpoch != accessSent && accessListening()) || accessPending();
 
 	// draws a frame (the loop calls it when needsFrame): the clock ticked
@@ -207,9 +207,12 @@ class UiWindow {
 	// it, as the vsync's time App.frame.time may be)
 	public function frame() {
 		Clock.tick(helder.headless.Time.stamp());
-		var s = window.scale;
-		renderer.scale = device.width / Math.max(1, Math.round(device.width / s));
-		ui.resize(device.width / renderer.scale, device.height / renderer.scale);
+		// (laid out at the surface's size: the device's follows it only at
+		// beginFrame, so that a single resize, a maximise's, laid out at the
+		// last size would be drawn into the new one and stay so)
+		var s = window.scale, w = window.width, h = window.height;
+		renderer.scale = w / Math.max(1, Math.round(w / s));
+		ui.resize(w / renderer.scale, h / renderer.scale);
 		ui.scale = renderer.scale;
 		safeArea();
 		titlebarArea();
@@ -218,7 +221,7 @@ class UiWindow {
 		if (at != null && at.ui == ui) ui.window.placeControls(at.absX, at.absY);
 		// (the clock ticked, nothing changed: the last frame stands, as drawn;
 		// an animation off screen, a timer's wait)
-		if (!redraw && !ui.needsFrame && capture == null && device.width == drawnW && device.height == drawnH && s == drawnScale) {
+		if (!redraw && !ui.needsFrame && capture == null && w == drawnW && h == drawnH && s == drawnScale) {
 			updateTextInput();
 			// (what assistive technology reads changed, nothing drawn: a semantics' state)
 			if ((Ui.accessEpoch != accessSent && accessListening()) || accessPending()) sendAccess();
@@ -227,8 +230,8 @@ class UiWindow {
 		var enc = device.beginFrame();
 		if (enc == null) return;
 		redraw = false;
-		drawnW = device.width;
-		drawnH = device.height;
+		drawnW = w;
+		drawnH = h;
 		drawnScale = s;
 		var c = pass.colors[0].clear;
 		@:privateAccess {

@@ -9,12 +9,14 @@ import hxmc.unsafe.*;
 // made the language's ISpellChecker (its tag as BCP 47's: en-US), a word
 // checked by Check (no ISpellingError from its enumerator: right),
 // suggestions by Suggest (an IEnumString), a word added by Add (the user's
-// dictionary, which the checker reads again later) and Ignore (right at once). No factory (Wine, older systems) or no checker for the
+// dictionary, which the checker reads again later) and Ignore (right at once),
+// taken out again by ISpellChecker2's Remove (Windows 10). No factory (Wine, older systems) or no checker for the
 // language nor English: null.
 @:hxmc.unsafe(gc)
 class WinSpell implements SpellChecker {
 	static final CLSID_FACTORY = Com.guid(0x7AB36653, 0x1796, 0x484B, [0xBD, 0xFA, 0xE7, 0x4F, 0x1D, 0xB7, 0xC1, 0xDC]);
 	static final IID_FACTORY = Com.guid(0x8E018A9D, 0x2415, 0x4677, [0xBF, 0x08, 0x79, 0x4E, 0xA6, 0x1F, 0x94, 0xBB]);
+	static final IID_CHECKER2 = Com.guid(0xE7ED1C71, 0x87F7, 0x4378, [0xA8, 0x40, 0xC9, 0x20, 0x0D, 0xAC, 0xEE, 0x47]);
 
 	public var language(default, null):String;
 
@@ -92,6 +94,14 @@ class WinSpell implements SpellChecker {
 			ISpellChecker.Ignore(checker, w);
 		});
 
+	// (ISpellChecker2's Remove, Windows 10 and later: none before, nothing removed)
+	public function remove(word:String) {
+		var c2 = out(p -> IUnknown.QueryInterface(checker, IID_CHECKER2, p));
+		if (c2.isNull()) return;
+		Arena.scoped(a -> ISpellChecker2.Remove(c2, a.wstring(word)));
+		Com.release(c2);
+	}
+
 	static function wide(p:Ptr<UInt16>):String {
 		var b = new StringBuf(), i = 0;
 		while (p[i] != 0) {
@@ -135,6 +145,13 @@ class ISpellChecker {
 	@:slot(5) static function Suggest(self:Ptr, word:Ptr, out:Ptr<Ptr>):Int;
 	@:slot(6) static function Add(self:Ptr, word:Ptr):Int;
 	@:slot(7) static function Ignore(self:Ptr, word:Ptr):Int;
+}
+
+// (ISpellChecker's seventeen, then Remove)
+@:build(helder.os.win32.Com.build())
+@:hxmc.unsafe(gc)
+class ISpellChecker2 {
+	@:slot(17) static function Remove(self:Ptr, word:Ptr):Int;
 }
 
 @:build(helder.os.win32.Com.build())

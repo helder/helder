@@ -6,7 +6,7 @@ import hxmc.unsafe.*;
 // The platform's spellchecker (helder.text.Spell; the window lane, natively
 // on each desktop, Windows also under Wine): made for English, a right word
 // and a wrong one, suggestions for the wrong one (the right among them), a
-// word added to the user's dictionary right from then (Linux: Enchant's
+// word added to the user's dictionary right from then, and removed (Linux: Enchant's
 // personal dictionary in a directory of the test's, XDG_CONFIG_HOME;
 // Hunspell's for the run). Where the system has none (Linux without
 // Enchant or Hunspell's dictionaries, Wine): said, spellcheck off. On macOS
@@ -32,10 +32,14 @@ class SpellTest {
 		check('$name: a wrong word', !c.check("brwon") && !c.check("langauge"));
 		var s = c.suggest("langauge");
 		check('$name: suggestions for it, the right among them', s.indexOf("language") >= 0, s.join(", "));
+		// (the word out of the user's dictionary first, a run's that stopped
+		// half way: put there for the check, and taken out again after)
+		c.remove(w);
 		var before = c.check(w);
 		c.add(w);
 		var after = c.check(w);
 		check('$name: a word added: right from then', !before && after, 'before $before, after $after');
+		c.remove(w);
 		var m = Spell.misspelled(c, "The quick brwon fox");
 		check('$name: misspelled: the wrong word\'s place', m.join(",") == "10,15", m.join(","));
 	}

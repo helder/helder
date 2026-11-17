@@ -72,4 +72,10 @@ class MacSpell implements SpellChecker {
 		Msg.vPtr(checker, ObjC.sel("learnWord:"), s);
 		ObjC.release(s);
 	}
+
+	public function remove(word:String) {
+		var s = ObjC.str(word);
+		Msg.vPtr(checker, ObjC.sel("unlearnWord:"), s);
+		ObjC.release(s);
+	}
 }

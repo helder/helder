@@ -71,6 +71,9 @@ class EnchantChecker implements SpellChecker {
 
 	public function add(word:String)
 		Arena.scoped(a -> Enchant.enchant_dict_add(dict, a.cstring(word), -1));
+
+	public function remove(word:String)
+		Arena.scoped(a -> Enchant.enchant_dict_remove(dict, a.cstring(word), -1));
 }
 
 class HunspellChecker implements SpellChecker {
@@ -122,6 +125,9 @@ class HunspellChecker implements SpellChecker {
 
 	public function add(word:String)
 		Arena.scoped(a -> Hunspell.Hunspell_add(h, a.cstring(word)));
+
+	public function remove(word:String)
+		Arena.scoped(a -> Hunspell.Hunspell_remove(h, a.cstring(word)));
 }
 
 @:build(helder.os.Dl.build())
@@ -133,6 +139,7 @@ class Enchant {
 	static function enchant_dict_suggest(dict:Ptr, word:Ptr, len:Int64, n:Ptr):Ptr;
 	static function enchant_dict_free_string_list(dict:Ptr, list:Ptr):Void;
 	static function enchant_dict_add(dict:Ptr, word:Ptr, len:Int64):Void;
+	static function enchant_dict_remove(dict:Ptr, word:Ptr, len:Int64):Void;
 }
 
 @:build(helder.os.Dl.build())
@@ -142,4 +149,5 @@ class Hunspell {
 	static function Hunspell_suggest(h:Ptr, list:Ptr, word:Ptr):Int;
 	static function Hunspell_free_list(h:Ptr, list:Ptr, n:Int):Void;
 	static function Hunspell_add(h:Ptr, word:Ptr):Int;
+	static function Hunspell_remove(h:Ptr, word:Ptr):Int;
 }

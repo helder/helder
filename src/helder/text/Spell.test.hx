@@ -25,6 +25,9 @@ class FakeChecker implements SpellChecker {
 
 	public function add(word:String)
 		known.push(word.toLowerCase());
+
+	public function remove(word:String)
+		known.remove(word.toLowerCase());
 }
 
 function tests() {

@@ -10,4 +10,6 @@ interface SpellChecker {
 	function suggest(word:String):Array<String>;
 	// word added to the user's dictionary (correct from now on)
 	function add(word:String):Void;
+	// word taken out of the user's dictionary again (what add put there)
+	function remove(word:String):Void;
 }

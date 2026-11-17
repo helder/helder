@@ -76,10 +76,15 @@ class WindowButtons implements Markup {
 
 	static function buttons(linux:Bool):View {
 		var w = helder.os.TitleBar.TitleBars.button(linux), h = helder.os.TitleBar.TitleBars.HEIGHT;
-		return <view direction="row" height={h}>
+		var row:Null<Node> = null;
+		// (maximised: the restore glyph, as the system's; read again when the
+		// title bar's area changes, which a maximise or a restore resizes)
+		inline function maximized():Bool
+			return SafeArea.titlebar() != null && row != null && row.ui != null && row.ui.window != null && row.ui.window.maximized();
+		return <view direction="row" height={h} ref={(n:Node) -> row = n}>
 			{button("window-minimize", "Minimize", Minimize, w, h, linux, n -> n.ui.window.minimize(), <image src={minimize()} width={10} height={10}/>)}
 			{button("window-maximize", "Maximize", Maximize, w, h, linux, n -> n.ui.window.maximize(!n.ui.window.maximized()),
-				<image src={maximize(linux)} width={10} height={10}/>)}
+				<image src={maximized() ? restore(linux) : maximize(linux)} width={10} height={10}/>)}
 			{button("window-close", "Close", Close, w, h, linux, n -> n.ui.window.close(), <image src={close()} width={10} height={10}/>)}
 		</view>;
 	}
@@ -109,6 +114,16 @@ class WindowButtons implements Markup {
 		if (maximizeSvgs[i] == null)
 			maximizeSvgs[i] = helder.ui.Svg.parse('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1"><rect x="0.5" y="0.5" width="9" height="9" rx="${linux ? 1 : 0}"/></svg>');
 		return maximizeSvgs[i];
+	}
+
+	static var restoreSvgs:Array<Null<helder.ui.Svg>> = [null, null];
+
+	// (two squares: the window's size before, in front of the one behind it)
+	static function restore(linux:Bool):helder.ui.Svg {
+		var i = linux ? 1 : 0, r = linux ? 1 : 0;
+		if (restoreSvgs[i] == null)
+			restoreSvgs[i] = helder.ui.Svg.parse('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1"><rect x="0.5" y="2.5" width="7" height="7" rx="$r"/><path d="M2.5 2.5V0.5h7v7h-2"/></svg>');
+		return restoreSvgs[i];
 	}
 
 	static function button(tag:String, label:String, hit:TitleHit, w:Int, h:Int, linux:Bool, press:Node->Void, glyph:View):View {

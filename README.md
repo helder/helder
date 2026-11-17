@@ -228,9 +228,12 @@ until after it.
 
 ### 1. Cleanup
 
-- **Fix the references the restructure left behind** in `tests/`: comments
-  there still point to `docs/`, `packages/`, `make` and `npm test` (`src/`
-  is done).
+- *Landed*: **the references the restructure left behind** in `tests/`:
+  comments name `bun run test <lane>`, `src/helder/<x>` and the READMEs
+  that took `docs/dev.md`'s place (`src/` was done before). Left as they
+  are: the sample glTF's generator string (`hxmc packages/3d/...`, in
+  tests/3d/SampleModel.hx and the .glb files GltfTest checks), and `hxmc
+  dev` in tests/os/dev's scripts that still run @hxmc/cli's `dev.mjs`.
 
 ### 2. Async core, then the CLI on it (desktop and web)
 
@@ -571,8 +574,9 @@ collection only when it allocates or blocks.
     HTCAPTION and HTMAXBUTTON for snap layouts), Wayland's and X11's
     buttons in the app (xdg_toplevel move and resize, `_NET_WM_MOVERESIZE`);
     markup's `drag-region`, `env(titlebar-area-*)` and `<WindowControls/>`
-    (src/helder/os/README.md). Verified on macOS; Windows and Linux built
-    and their logic unit-tested, not yet tried on real machines.
+    (src/helder/os/README.md). Verified on macOS and on Windows 11 (a drag,
+    a double click, the maximise and restore buttons, the maximised frame);
+    Linux built and its logic unit-tested, not yet tried on a real machine.
   - **next: text's shaping and glyph rasterizing**, the spiky part of
     text (a cold atlas about 5 ms; a relayout of 10k nodes is 0.008 ms): a
     new paragraph shaped and its glyphs drawn into the atlas as GC-free
