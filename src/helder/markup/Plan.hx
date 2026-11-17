@@ -160,7 +160,8 @@ class Plan<E> {
 		// compiled; another renderer's (a page's DOM) SVG's elements; an
 		// agnostic literal's both, each renderer its own: target.choose)
 		if (name == "svg" && renderer == UI) return svg(attrs, children, at, parent, top);
-		if (name == "svg" && renderer == null) return target.choose(UI, svg(attrs, children, at, parent, top), made(name, attrs, children, at, parent, top));
+		if (name == "svg" && renderer == null && fixed(attrs.filter(a -> DRAWING.indexOf(a.name) >= 0), children))
+			return target.choose(UI, svg(attrs, children, at, parent, top), made(name, attrs, children, at, parent, top));
 		return made(name, attrs, children, at, parent, top);
 	}
 
@@ -233,6 +234,24 @@ class Plan<E> {
 		out.push(target.call(Neutral, "property", [e, target.string("image"), target.string("src"), hole(target.drawing(text + "</svg>", {at: at, length: 3}))],
 			{at: at, length: 3}));
 		return out;
+	}
+
+	// (an agnostic <svg> whose drawing is fixed: its own drawing attributes and every shape's
+	// strings, no {...}; another, drawn when it runs, stays SVG's elements, ui's none)
+	static function fixed(attrs:Array<PAttr>, children:Array<PNode>):Bool {
+		for (a in attrs)
+			if (!a.value.match(AStatic(_) | AFlag)) return false;
+		for (c in children)
+			switch c.kind {
+				case PElement(_, as, cs, _):
+					if (!fixed(as, cs)) return false;
+				case PFragment(cs):
+					if (!fixed([], cs)) return false;
+				case PExpr(_, _):
+					return false;
+				case PText(_):
+			}
+		return true;
 	}
 
 	// (the last element made's local)
