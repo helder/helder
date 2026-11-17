@@ -85,6 +85,12 @@ function tests() {
 		test("the same input, the same bytes", () -> {
 			equals(Apk.write(so, "android-x86_64", Glue.dex(), true, app, Apk.debugSigner({d: d, cert: cert})).compare(apk), 0);
 		});
+		test("cleartext: android:usesCleartextTraffic on the application, only when asked", () -> {
+			var open:ApkOptions = Reflect.copy(app);
+			open.cleartext = true;
+			assert(Axml.dump(Axml.encode(Apk.manifestOf(open, false, false))).indexOf("android:usesCleartextTraffic(0x010104ec)=true") > 0);
+			equals(Axml.dump(Axml.encode(Apk.manifestOf(app, false, false))).indexOf("usesCleartextTraffic"), -1);
+		});
 		test("the manifest, read back", () -> {
 			var xml = Axml.dump(Zip.entry(apk, "AndroidManifest.xml"));
 			var lines = [for (l in xml.split("\n")) l.trim()];
@@ -102,12 +108,13 @@ function tests() {
 				'<category android:name(0x01010003)="android.intent.category.LAUNCHER">'
 			]);
 		});
-		test("without views or listeners: NativeActivity, no code, the full-screen theme", () -> {
+		test("without views or listeners: NativeActivity, no code, the bars' theme", () -> {
 			var plain = Apk.write(so, "android-arm64", null, false, app, Apk.debugSigner({d: d, cert: cert}));
 			equals([for (e in Zip.read(plain)) e.name], ["AndroidManifest.xml", "lib/arm64-v8a/libmain.so"]);
 			var xml = Axml.dump(Zip.entry(plain, "AndroidManifest.xml"));
 			assert(xml.indexOf('android:name(0x01010003)="android.app.NativeActivity"') >= 0);
-			assert(xml.indexOf("android:theme(0x01010000)=@0x01030007") >= 0);
+			// (Theme.NoTitleBar: the system bars shown, the app behind them)
+			assert(xml.indexOf("android:theme(0x01010000)=@0x01030006") >= 0);
 			assert(xml.indexOf("android:hasCode(0x0101000c)=false") >= 0);
 		});
 		test("the orientation: screenOrientation portrait, sensorLandscape, none for any", () -> {

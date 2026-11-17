@@ -29,6 +29,8 @@ function tests() {
 		// (helder dev's host: its socket)
 		equals(App.android("Hello", null, true).permissions, ["INTERNET"]);
 		equals(App.android("Hello", {android: {permissions: ["INTERNET"]}}, true).permissions, ["INTERNET"]);
+		equals(App.android("Hello", {android: {cleartext: true}}).cleartext, true);
+		equals(App.android("Hello", {android: {}}).cleartext, null);
 	});
 	test("Android: package.json's", () -> {
 		var o = App.android("Hello", {
@@ -119,6 +121,7 @@ function tests() {
 		}));
 		var a = App.android("x", m), i = App.ios("x", m);
 		equals(a, {
+			fullscreen: true,
 			id: "org.example.game",
 			label: "Expansion",
 			versionCode: 7,
@@ -299,6 +302,23 @@ function tests() {
 		var flat = PngEncoder.encode(solid(1024, 0xFF060912), 1024, 1024);
 		equals(flat.length < 40000, true); // (of 4 MB: under 1%)
 		equals(PngDecoder.decode(flat).rgba.compare(solid(1024, 0xFF060912)), 0);
+	});
+	test("Android's theme: the system bars shown over the app, dark icons over a light one; hidden when fullscreen", () -> {
+		function theme(json:Dynamic):String {
+			var h = HelderJson.parse(haxe.Json.stringify(json));
+			var m = Manifest.parse(haxe.Json.stringify(h.manifest), HelderJson.FILE);
+			var r = Android.resources(m, ".", "org.example.bars", false, _ -> throw "no");
+			return Lambda.find(Arsc.dump(r.table.encode()).split("\n"), l -> l.indexOf("style/Theme.Helder") > 0);
+		}
+		// (Theme.NoTitleBar; windowLightStatusBar 0x010104e0, windowLightNavigationBar 0x0101056c)
+		var light = theme({name: "Bars", colors: {theme: "#FFFFFF", background: "#FFFFFF"}});
+		assert(light.indexOf("parent=@0x01030006") > 0, light);
+		assert(light.indexOf("0x010104e0=true") > 0 && light.indexOf("0x0101056c=true") > 0, light);
+		var dark = theme({name: "Bars", colors: {theme: "#060912", background: "#060912"}});
+		assert(dark.indexOf("parent=@0x01030006") > 0 && dark.indexOf("0x010104e0") < 0, dark);
+		var full = theme({name: "Bars", display: "fullscreen", colors: {background: "#FFFFFF"}});
+		assert(full.indexOf("parent=@0x01030007") > 0, full);
+		equals(App.android("Bars", {fullscreen: true}).fullscreen, true);
 	});
 	test("Arsc: Android's resource table, its ids and configurations", () -> {
 		var t = new Arsc("org.example.game");

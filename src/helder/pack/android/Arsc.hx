@@ -14,6 +14,7 @@ class Arsc {
 	public static inline var REFERENCE = 0x01;
 	public static inline var STRING = 0x03;
 	public static inline var COLOR = 0x1c;
+	public static inline var BOOLEAN = 0x12;
 
 	// a configuration's density (dpi) and night mode (uiMode's night: yes)
 	public static inline var XXXHDPI = 640;
@@ -184,6 +185,9 @@ class Arsc {
 			case Ref(id):
 				b.u8(REFERENCE);
 				b.u32(id);
+			case Bool(on):
+				b.u8(BOOLEAN);
+				b.u32(on ? -1 : 0);
 			case Style(_, _): throw "Arsc: a style's attribute is a value, not a style";
 		}
 	}
@@ -217,6 +221,7 @@ class Arsc {
 				case STRING: '"' + values[d] + '"';
 				case REFERENCE: "@" + hex(d);
 				case COLOR: "#" + StringTools.hex(d, 8).toLowerCase();
+				case BOOLEAN: d != 0 ? "true" : "false";
 				case _: 't$t:' + hex(d);
 			}
 		}
@@ -255,6 +260,8 @@ enum Value {
 	// 0xAARRGGBB
 	Argb(argb:Int);
 	Ref(id:Int);
+	// true or false (an attribute's: windowLightStatusBar)
+	Bool(on:Bool);
 	// a parent style's id, attributes' ids and values
 	Style(parent:Int, items:Array<{attr:Int, value:Value}>);
 }

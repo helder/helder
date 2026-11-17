@@ -17,7 +17,7 @@ using StringTools;
 //     "versionName": "1.2",           versionName, CFBundleShortVersionString (1.0)
 //     "orientation": "landscape",     portrait, landscape or any (any): screenOrientation, UISupportedInterfaceOrientations
 //     "fullscreen": true,             the system's bars hidden (false): Window.immersive from the start, UIStatusBarHidden
-//     "android": {"permissions": ["INTERNET"], "minSdk": 29, "targetSdk": 36, "key": "<file>"},
+//     "android": {"permissions": ["INTERNET"], "minSdk": 29, "targetSdk": 36, "key": "<file>", "cleartext": true},
 //     "ios": {"minVersion": "15.0", "entitlements": "<file>"}
 //   }
 //
@@ -37,7 +37,7 @@ class App {
 		if (dev && !permissions.contains("INTERNET") && !permissions.contains("android.permission.INTERNET")) permissions.push("INTERNET");
 		var minSdk = int(a?.minSdk, 29, "android.minSdk"), targetSdk = int(a?.targetSdk, 36, "android.targetSdk");
 		if (minSdk < 29) throw 'package.json\'s "helder": {"android": {"minSdk": $minSdk}}: 29 is the lowest (Android 10: Bionic\'s ELF TLS)';
-		return {
+		var o:ApkOptions = {
 			id: id,
 			label: field(config, "label") ?? name,
 			versionCode: int(config?.version, 1, "version"),
@@ -47,6 +47,9 @@ class App {
 			permissions: permissions,
 			orientation: orientation(config),
 		};
+		if (a?.cleartext == true) o.cleartext = true;
+		if (fullscreen(config)) o.fullscreen = true;
+		return o;
 	}
 
 	// the iOS bundle's: its id, label, versions, minimum version, entitlements' file (null: none)

@@ -241,7 +241,15 @@ class Android {
 			items.push({attr: STATUS_BAR_COLOR, value: Ref(c)});
 			items.push({attr: NAVIGATION_BAR_COLOR, value: Ref(c)});
 		}
-		if (items.length > 0) theme = t.add("style", "Theme.Helder", Style(views ? Apk.THEME_VIEWS : Apk.THEME, items));
+		// (the bars over a light app: dark icons, windowLightStatusBar and
+		// windowLightNavigationBar; light ones over a dark app, the default)
+		var under = m.theme ?? m.background ?? s?.background;
+		if (under != null && light(under)) {
+			items.push({attr: LIGHT_STATUS_BAR, value: Bool(true)});
+			items.push({attr: LIGHT_NAVIGATION_BAR, value: Bool(true)});
+		}
+		var parent = views ? Apk.THEME_VIEWS : m.fullscreen ? Apk.THEME_FULLSCREEN : Apk.THEME;
+		if (items.length > 0) theme = t.add("style", "Theme.Helder", Style(parent, items));
 		if (icon == null && theme == null) return null;
 		files.unshift({name: "resources.arsc", data: t.encode()});
 		return {files: files, icon: icon, theme: theme, table: t, xml: xml};
@@ -251,9 +259,20 @@ class Android {
 	static inline var WINDOW_BACKGROUND = 0x01010054;
 	static inline var SPLASH_BACKGROUND = 0x0101062c;
 	static inline var SPLASH_ICON = 0x0101062d;
-	// statusBarColor, navigationBarColor
+	// statusBarColor, navigationBarColor, windowLightStatusBar, windowLightNavigationBar
 	static inline var STATUS_BAR_COLOR = 0x01010451;
 	static inline var NAVIGATION_BAR_COLOR = 0x01010452;
+	static inline var LIGHT_STATUS_BAR = 0x010104e0;
+	static inline var LIGHT_NAVIGATION_BAR = 0x0101056c;
+
+	// (an ARGB colour light enough for dark icons over it: its relative luminance over half)
+	static function light(argb:Int):Bool {
+		inline function lin(c:Int):Float {
+			var v = c / 255;
+			return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+		}
+		return 0.2126 * lin((argb >> 16) & 255) + 0.7152 * lin((argb >> 8) & 255) + 0.0722 * lin(argb & 255) > 0.5;
+	}
 
 	// what the build's Classes wrote: classes.dex, org.hxmc.Activity
 	static function classes(apk:String):{dex:Bool, views:Bool} {
