@@ -5,8 +5,7 @@ import hxmc.Platform;
 
 // helder dev's host without a dev server (src/helder/cli/README.md, "The dev loop";
 // bun run test dev-host: tests/os/dev/dev-host.mjs, the builds shared libraries
-// run by helder.dev.DevHost; tests/gfx/ios-dev.sh and host-dev.sh, which no
-// lane or CI job runs now, on an iPhone simulator and a desktop): built as the app
+// run by helder.dev.DevHost): built as the app
 // (-D devhost_version=1, -D hxmc.dev-host) and as dylibs of later versions
 // (-D hxmc.shared, 2, 3), which the running build hands over to in turn
 // (HXMC_DEV_NEXT, a second after its first frame: Hot). Each build draws the
