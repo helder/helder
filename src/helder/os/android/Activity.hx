@@ -152,7 +152,16 @@ class Activity {
 			var t = Mem.stack(16);
 			Threads.pthread_create(t, Ptr.nil(), Callback.addr(logThread), Ptr.nil());
 			logThreadId = Mem.getI64(t, 0);
-			Threads.pthread_create(t, Ptr.nil(), Callback.addr(programThread), Ptr.nil());
+			// (the program on this thread's own stack, 64 MB: hxmc's main would
+			// switch to a stack of its own (RT_STACK_MB), where every call into
+			// Java (JNI: the system's callbacks too, the buffer queue's in
+			// eglSwapBuffers) is a StackOverflowError to ART, which checks the
+			// stack pointer against the thread's)
+			var attr = Mem.stack(128);
+			Threads.pthread_attr_init(attr);
+			Threads.pthread_attr_setstacksize(attr, 64 << 20);
+			Threads.setenv(Mem.cstr("RT_STACK_MB"), Mem.cstr("0"), 0);
+			Threads.pthread_create(t, attr, Callback.addr(programThread), Ptr.nil());
 			// (until its looper is ready: the commands below have a reader)
 			Threads.pthread_mutex_lock(lock);
 			while (running == 0)
@@ -469,6 +478,12 @@ class Activity {
 
 	// its first function: the looper, then the runtime and the program
 	@:hxmc.callback @:hxmc.noGc static function programThread(arg:Ptr):Ptr {
+		// (attached to the VM once, for good: the system's callbacks into
+		// Java on this thread (Android 15's buffer queue, waiting for a buffer
+		// in eglSwapBuffers) find it attached instead of attaching it each
+		// time)
+		var vm = Mem.getPtr(activity, 8), env = Mem.stack(8); // (ANativeActivity.vm)
+		if (!vm.isNull()) JniFast.call2(VTable.method(vm, 7), vm, env, Ptr.nil()); // (JavaVM's AttachCurrentThreadAsDaemon)
 		looper = Android.ALooper_prepare(1); // ALOOPER_PREPARE_ALLOW_NON_CALLBACKS
 		Android.ALooper_addFd(looper, commandRead, LOOPER_COMMANDS, 1, Ptr.nil(), Ptr.nil()); // ALOOPER_EVENT_INPUT
 		Threads.pthread_mutex_lock(lock);
