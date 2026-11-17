@@ -83,6 +83,32 @@ class App {
 		}, "event");
 	}
 
+	// the system wants memory back (iOS's memory warning, Android's
+	// onLowMemory): onLowMemory drops what the app keeps and can make again
+	// (its caches); then helder lets go of what was not drawn in the last
+	// frame (the windows' image textures: trims) and collects. On the app's
+	// thread between frames. An iOS app gone to the background lets go of
+	// the same (trims) without telling onLowMemory: the system ends the
+	// largest background apps first.
+	public static var onLowMemory:Null<Void->Void> = null;
+	@:noCompletion public static final trims:Array<Void->Void> = [];
+
+	@:allow(helder.os) static function lowMemory() {
+		helder.async.Errors.guard(() -> {
+			if (onLowMemory != null) onLowMemory();
+			helder.view.graph.Graph.flush();
+			trim();
+		}, "event");
+	}
+
+	@:allow(helder.os) static function trim() {
+		for (t in trims)
+			t();
+		#if (target.name == "hxmc")
+		hxmc.NativeGc.collect(true);
+		#end
+	}
+
 	// the system's back (Android's back button and gesture, the browser's
 	// history back while App.backDepth > 0): onBack goes a step up (a card
 	// closed, a menu left) and says it did (true); false, or none set, and

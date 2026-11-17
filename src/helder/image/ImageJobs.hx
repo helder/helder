@@ -35,19 +35,46 @@ class ImageJobs {
 		return 0;
 	}
 
-	// an image file decoded, a PNG as a job; its pixels the job's buffer kept
-	// for good as a Bytes (keep: no copy; no collector frees native memory on
-	// WebAssembly: pixels gives the buffer instead)
+	// an image file decoded off the loop's thread: a PNG as a job (PngCore),
+	// on iOS any other format the system reads by the system (SystemDecoder,
+	// a job's), elsewhere the rest by Image.decode; the pixels off the heap,
+	// the image's (freed once uploaded: decoded again from the file if drawn
+	// again; on WebAssembly, which frees no native memory, kept for good as
+	// a Bytes: keep)
 	@:coroutine public static function decode(bytes:Bytes):Image {
-		if (!(bytes.length >= 8 && bytes.get(0) == 0x89 && bytes.get(1) == 0x50 && bytes.get(2) == 0x4E && bytes.get(3) == 0x47))
-			return Image.decode(bytes);
+		#if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
+		if (!Image.isPng(bytes)) {
+			var file = new Buffer(bytes.length);
+			file.blitFromBytes(0, bytes, 0, bytes.length);
+			var d = try Jobs.job(ImageJobs.system).run(file) catch (j:JobError) throw ImageError.corrupt(j.message);
+			var image = Image.ofHeld(d.width, d.height, d.pixels, true);
+			@:privateAccess image.source = {bytes: bytes, type: Image.typeOf(bytes)};
+			return image;
+		}
+		#else
+		if (!Image.isPng(bytes)) return Image.decode(bytes);
+		#end
 		var file = new Buffer(bytes.length);
 		file.blitFromBytes(0, bytes, 0, bytes.length);
 		var p = try pixels(file) catch (j:JobError) throw PngCore.error(j.code, Bytes.alloc(PngCore.INFO));
-		var image = new Image(p.width, p.height, keep(p.rgba));
+		var image = #if (hxmc.target == "wasm32-wasi") new Image(p.width, p.height, keep(p.rgba)) #else Image.ofHeld(p.width, p.height, p.rgba, false) #end;
 		@:privateAccess image.source = {bytes: bytes, type: "png"};
 		return image;
 	}
+
+	#if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
+	// the system's decode as a job (a GC job: its decoding and drawing in a
+	// safe region, so collections never wait for it)
+	@:hxmc.unsafe(gc) static function system(file:Buffer):{width:Int, height:Int, pixels:Buffer} {
+		var io = file.detach();
+		var d = try SystemDecoder.decode(io.ptr, io.length) catch (e:Dynamic) {
+			io.free();
+			throw e;
+		}
+		io.free();
+		return {width: d.width, height: d.height, pixels: Buffer.adopt(d.pixels)};
+	}
+	#end
 
 	// a PNG file's pixels (the file moved into the job): RGBA8, rows top to
 	// bottom, straight alpha, in a Buffer the caller closes; its header's

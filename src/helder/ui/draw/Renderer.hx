@@ -231,31 +231,7 @@ class Renderer implements Canvas {
 		#if (target.name == "hxmc")
 		beganBytes = hxmc.GcStats.bytesAllocated();
 		#end
-		if (frames % 60 == 0) {
-			stale.resize(0);
-			for (id => e in textures)
-				if (frames - e.frame > EVICT) stale.push(id);
-			for (id in stale) {
-				release(textures.get(id));
-				textures.remove(id);
-			}
-			staleShared.resize(0);
-			for (h => o in opened)
-				if (frames - o.frame > EVICT) staleShared.push(h);
-			for (h in staleShared) {
-				var t = opened.get(h).texture;
-				if (t != blank) device.destroyTexture(t);
-				opened.remove(h);
-			}
-			// (a group's texture not drawn into for EVICT frames: freed, made again if it is)
-			for (g in groupPool)
-				if (g.texture != null && frames - g.frame > EVICT) g.free(device);
-			stalePaths.resize(0);
-			for (p => e in paths)
-				if (frames - e.frame > EVICT) stalePaths.push(p);
-			for (p in stalePaths)
-				paths.remove(p);
-		}
+		if (frames % 60 == 0) evict(EVICT);
 		atlas.begin();
 		// (the large glyphs the last frame did not draw: their textures freed)
 		if (large.iterator().hasNext()) {
@@ -401,6 +377,40 @@ class Renderer implements Canvas {
 			enc.endPass();
 		}
 		closedGroups.resize(0);
+	}
+
+	// what was not drawn in the last frame let go (the textures of images, of
+	// opacity groups, of shared images; the rasterized paths): the system
+	// asks for memory back (helder.os.App.lowMemory, an app gone to the
+	// background); made again when drawn
+	public function trim()
+		evict(0);
+
+	// (what no frame drew for more than `age` frames freed)
+	function evict(age:Int) {
+		stale.resize(0);
+		for (id => e in textures)
+			if (frames - e.frame > age) stale.push(id);
+		for (id in stale) {
+			release(textures.get(id));
+			textures.remove(id);
+		}
+		staleShared.resize(0);
+		for (h => o in opened)
+			if (frames - o.frame > age) staleShared.push(h);
+		for (h in staleShared) {
+			var t = opened.get(h).texture;
+			if (t != blank) device.destroyTexture(t);
+			opened.remove(h);
+		}
+		// (a group's texture not drawn into for `age` frames: freed, made again if it is)
+		for (g in groupPool)
+			if (g.texture != null && frames - g.frame > age) g.free(device);
+		stalePaths.resize(0);
+		for (p => e in paths)
+			if (frames - e.frame > age) stalePaths.push(p);
+		for (p in stalePaths)
+			paths.remove(p);
 	}
 
 	// frees the texture of an image drawn before
