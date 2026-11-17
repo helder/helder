@@ -283,8 +283,10 @@ class Image {
 	}
 
 	// (a PNG's signature)
-	public static function isPng(b:Bytes):Bool
-		return b.length >= 8 && b.get(0) == 0x89 && b.get(1) == 0x50 && b.get(2) == 0x4E && b.get(3) == 0x47;
+	public static function isPng(b:Bytes):Bool {
+		var r = new ByteReader(b);
+		return r.length >= 8 && r.u8(0) == 0x89 && r.u8(1) == 0x50 && r.u8(2) == 0x4E && r.u8(3) == 0x47;
+	}
 
 	// a file's type by its signature: "jpeg", "gif", "webp", else "png"
 	public static function typeOf(bytes:Bytes):String {

@@ -12,6 +12,8 @@ import helder.test.Test;
 // one drawn again is uploaded again
 function tests() {
 	describe("Renderer", () -> {
+		// (natively: a headless device; a browser's needs WebGPU or WebGL2)
+		#if (target.name == "hxmc" && hxmc.target != "wasm32-wasi")
 		test("trim: what the last frame did not draw let go", () -> {
 			var device = Device.create(Surface.headless(64, 64)), r = new Renderer(device);
 			// (larger than a page's images: a texture each)
@@ -37,5 +39,6 @@ function tests() {
 			equals(device.textureBytes, both);
 			device.dispose();
 		});
+		#end
 	});
 }

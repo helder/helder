@@ -26,8 +26,8 @@ import imageio.ImageIO;
 // the collector moves Bytes), decoded on a job's thread (ImageJobs.decode)
 // or the caller's (Image's pixels again once dropped). ImageLimits is
 // checked on the size the file says, before a pixel is decoded; the decode
-// and the drawing run in a safe region, so other threads' collections never
-// wait for them.
+// and the drawing run in a safe region (as every extern call not
+// @:hxmc.fast does), so other threads' collections never wait for them.
 @:hxmc.unsafe(gc) class SystemDecoder {
 	public static function decode(file:Ptr, length:Int):{width:Int, height:Int, pixels:IoBuffer} {
 		var out = null;
@@ -58,7 +58,7 @@ import imageio.ImageIO;
 			opts.setObject(NSNumber.numberWithBool(true), ImageIO.kCGImageSourceCreateThumbnailWithTransform);
 			opts.setObject(NSNumber.numberWithInteger(w > h ? w : h), ImageIO.kCGImageSourceThumbnailMaxPixelSize);
 		}
-		var img = o > 1 ? Slow.CGImageSourceCreateThumbnailAtIndex(src, 0, opts) : Slow.CGImageSourceCreateImageAtIndex(src, 0, opts);
+		var img = o > 1 ? ImageIO.CGImageSourceCreateThumbnailAtIndex(src, 0, opts) : ImageIO.CGImageSourceCreateImageAtIndex(src, 0, opts);
 		if (img == null) throw ImageError.corrupt("SystemDecoder: ImageIO cannot decode it");
 		var pw = CG.CGImageGetWidth(img).toInt(), ph = CG.CGImageGetHeight(img).toInt();
 		// (zeroed: an image with alpha is drawn over what the bitmap holds)
@@ -69,15 +69,9 @@ import imageio.ImageIO;
 			pixels.free();
 			throw ImageError.unsupported("SystemDecoder: no bitmap context");
 		}
-		Slow.CGContextDrawImage(ctx, new CGRect(new CGPoint(0, 0), new CGSize(pw, ph)), img);
+		CG.CGContextDrawImage(ctx, new CGRect(new CGPoint(0, 0), new CGSize(pw, ph)), img);
 		return {width: pw, height: ph, pixels: pixels};
 	}
 }
 
-// (the calls that decode: in a safe region)
-@:hxmc.c @:hxmc.framework("ImageIO") private extern class Slow {
-	@:hxmc.blocking @:hxmc.retained static function CGImageSourceCreateImageAtIndex(isrc:CGImageSource, index:I64, options:Null<NSMutableDictionary<Id, Id>>):Null<CGImage>;
-	@:hxmc.blocking @:hxmc.retained static function CGImageSourceCreateThumbnailAtIndex(isrc:CGImageSource, index:I64, options:Null<NSMutableDictionary<Id, Id>>):Null<CGImage>;
-	@:hxmc.blocking @:native("CGContextDrawImage") @:hxmc.framework("CoreGraphics") static function CGContextDrawImage(c:CGContext, rect:CGRect, image:CGImage):Void;
-}
 #end

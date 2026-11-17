@@ -63,6 +63,13 @@ export declare class Asset<T> {
 // read). Reading pixels after that decodes the file again, on the calling
 // thread; retain keeps them, for an image whose pixels are read back (a
 // hit test's alpha, a picker's colours).
+//
+// With hxmc its pixels may be off the collected heap (held: a job's
+// decode, ImageJobs), freed once uploaded or when the image is collected.
+// On iOS the system decodes all but PNGs (SystemDecoder, ImageIO): decode
+// reads the file's size only, its pixels decoded where they are first used (an
+// upload, premultiplied as the system draws them) and dropped after, so an
+// image's pixels are never on the heap unless read.
 export declare class Image {
 	private readonly image: never;
 }
