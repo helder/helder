@@ -11,6 +11,11 @@ import helder.text.Shaping;
 // split vowels) by HarfBuzz through TextLayout; with helder's engine chosen
 // (Shaping.HELDER, the tests' default) Devanagari stays its own.
 function tests() {
+	// (Linux's alone: a branch on the folded condition, so that elsewhere
+	// none of it, nor its libraries' dlopen, is linked)
+	#if (target.name == "hxmc")
+	if (hxmc.Platform.os() == 0 && hxmc.Platform.target() < 9)
+	#end
 	describe("HarfBuzz and fontconfig (Linux)", () -> {
 		#if (target.name == "hxmc" && hxmc.target != "wasm32-wasi")
 		var native = hxmc.Platform.os() == 0 && hxmc.Platform.target() < 9 && HarfBuzz.available() && Fontconfig.available();

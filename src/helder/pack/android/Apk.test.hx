@@ -11,9 +11,20 @@ using StringTools;
 // (Axml.dump), the debug key's certificate parsed back, the v2 signing
 // block found and its digest recomputed (the signature too: RFC 6979's is
 // deterministic, so the same bytes again), classes.dex's structure (Dex.check)
+// a UTC instant (month from 0, as Date's): the days from the civil date
+// (Howard Hinnant's), so that the tests are the same in every time zone
+function utc(y:Int, m:Int, d:Int, h:Int, min:Int, sec:Int):Date {
+	var yy = m < 2 ? y - 1 : y, mm = m + 1;
+	var era = Std.int(Math.floor(yy / 400)), yoe = yy - era * 400;
+	var doy = Std.int((153 * (mm > 2 ? mm - 3 : mm + 9) + 2) / 5) + d - 1;
+	var doe = yoe * 365 + Std.int(yoe / 4) - Std.int(yoe / 100) + doy;
+	var days = era * 146097 + doe - 719468;
+	return Date.fromTime(((days * 24.0 + h) * 60 + min) * 60000 + sec * 1000);
+}
+
 function tests() {
 	final d = Bytes.ofHex("c9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721");
-	final cert = Apk.certificate(d, Bytes.ofHex("0102030405060708"), new Date(2026, 0, 1, 0, 0, 0), 30);
+	final cert = Apk.certificate(d, Bytes.ofHex("0102030405060708"), utc(2026, 0, 1, 0, 0, 0), 30);
 	final app:ApkOptions = {
 		id: "org.example.hello",
 		label: "Hello",
@@ -56,8 +67,9 @@ function tests() {
 				P256.sign(d, cert.sub(parts[0].at, parts[0].end - parts[0].at)).toHex());
 		});
 		test("UTCTime before 2050, GeneralizedTime from then", () -> {
-			equals(Der.time(new Date(2049, 11, 31, 23, 59, 59)).toString().substr(2), "491231235959Z");
-			equals(Der.time(new Date(2050, 0, 1, 0, 0, 0)).toString().substr(2), "20500101000000Z");
+			// (UTC instants: the test the same in every time zone)
+			equals(Der.time(utc(2049, 11, 31, 23, 59, 59)).toString().substr(2), "491231235959Z");
+			equals(Der.time(utc(2050, 0, 1, 0, 0, 0)).toString().substr(2), "20500101000000Z");
 		});
 	});
 
