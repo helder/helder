@@ -251,13 +251,16 @@ private class Nothing implements Canvas {
 
 	public function pushOpacity(alpha:Float) {}
 
+	public function pushGroup(a:Float, x:Float, y:Float, w:Float, h:Float)
+		pushOpacity(a);
+
 	public function popOpacity() {}
 
 	public function pushTransform(a:Float, b:Float, c:Float, d:Float, e:Float, f:Float) {}
 
 	public function popTransform() {}
 
-	public function rect(x:Float, y:Float, w:Float, h:Float, radius:Float, fill:Color, borderWidth:Float, border:Color, ?corners:Corners, ?sides:Edges) {}
+	public function rect(x:Float, y:Float, w:Float, h:Float, radius:Float, fill:Color, borderWidth:Float, border:Color, ?corners:Corners, ?sides:Edges, style:BorderStyle = Solid) {}
 
 	public function shadow(x:Float, y:Float, w:Float, h:Float, radius:Float, color:Color, blur:Float, ?corners:Corners, ?offset:Array<Float>) {}
 

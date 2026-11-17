@@ -62,6 +62,7 @@ typedef StyleProps = {
 	?shadow:Shadow,
 	?transition:Transition,
 	?outlineStyle:OutlineStyle,
+	?borderStyle:BorderStyle,
 	?userSelect:UserSelect,
 	?fieldSizing:FieldSizing,
 	?scrollbarWidth:ScrollbarWidth,

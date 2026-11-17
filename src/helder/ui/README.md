@@ -122,7 +122,13 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
   - Paint: `background`, `borderColor`, `radius` (`corners`, or markup
     `radius="12 12 0 0"`: each corner's, as CSS's border-radius; `borders`,
     or `border-width="0 0 2 0"`: each side's width, laid out and drawn, the
-    inner corners quarter ellipses as Chromium draws them), `opacity`, `shadow`
+    inner corners quarter ellipses as Chromium draws them), `borderStyle`
+    (`border-style="dashed"`: `Solid`, `Dashed` or `Dotted`, each side's
+    dashes or dots fitted to it from a corner to the next, around rounded
+    corners too, the background in their gaps), `opacity` (of the node and
+    its subtree as one, as CSS's: a node with children, or content over its
+    box, drawn into a texture of its bounds and that faded, so that what
+    overlaps in it is not seen through; a lone box or text each quad's), `shadow`
     (CSS's box-shadow: `"0 2px 8px rgba(0, 0, 0, 0.25)"`, x, y, blur, spread,
     colour; `inset`; several, comma-separated; blurred by a Gaussian as
     Chromium blurs them, within a few levels of its pixels), `outlineWidth`,
@@ -130,8 +136,8 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
     solid line around the border box over the content, its corners the
     box's grown, as Chromium draws it; BoxTest compares them), `outlineStyle`
     (`Auto`, the default: the window's focus ring while focused by the
-    keyboard; `Solid`: only the outline; `None`: neither, as CSS's
-    `outline-style: none`), `ringWidth`, `ringColor`, `ringOffsetWidth`,
+    keyboard; `Solid`: only the outline; `Dashed`, `Dotted`: it drawn so;
+    `None`: neither, as CSS's `outline-style: none`), `ringWidth`, `ringColor`, `ringOffsetWidth`,
     `ringOffsetColor`, `ringInset` (Tailwind's ring: spread shadows of no
     blur over the node's own `shadow`, the offset over the ring, each from
     its own property or rule), `paddingTop`...`paddingLeft`, `marginTop`...

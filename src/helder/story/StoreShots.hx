@@ -137,6 +137,7 @@ class StoreShots implements Markup {
 			g = gpu = {device: d, renderer: new Renderer(d), text: new DrawText()};
 		}
 		final device = g.device, r = g.renderer, text = g.text;
+		r.groups = true;
 		var target = device.createTexture({width: width, height: height, renderTarget: true});
 		device.frameInto(target);
 		// (its own clock: the shot's frames, not the machine's)

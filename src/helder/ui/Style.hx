@@ -155,6 +155,9 @@ class Style {
 
 	public var borderColor(default, set):Color = Color.TRANSPARENT;
 
+	// how the border is drawn (BorderStyle: solid, dashed, dotted; null: Solid)
+	public var borderStyle(get, set):Null<BorderStyle>;
+
 	// the corners' radius
 	public var radius(default, set):Float = 0;
 
@@ -527,6 +530,16 @@ class Style {
 
 	inline function get_outlineStyle():Null<OutlineStyle>
 		return themed == null ? null : themed.outlineStyle;
+
+	inline function get_borderStyle():Null<BorderStyle>
+		return themed == null ? null : themed.borderStyle;
+
+	function set_borderStyle(v:Null<BorderStyle>):Null<BorderStyle> {
+		if (v == borderStyle) return v;
+		theming().borderStyle = v;
+		node.styleChanged(false);
+		return v;
+	}
 
 	inline function get_ringWidth():Float
 		return themed == null ? 0 : themed.ringWidth;
@@ -1616,6 +1629,7 @@ class Style {
 		if (p.dir != null) dir = p.dir;
 		if (p.visibility != null) visibility = p.visibility;
 		if (p.outlineStyle != null) outlineStyle = p.outlineStyle;
+		if (p.borderStyle != null) borderStyle = p.borderStyle;
 		if (p.userSelect != null) userSelect = p.userSelect;
 		if (p.fieldSizing != null) fieldSizing = p.fieldSizing;
 		if (p.scrollbarWidth != null) scrollbarWidth = p.scrollbarWidth;
@@ -1731,6 +1745,7 @@ private class StyleThemed {
 	public var outlineOffset:Float = 0;
 	public var outlineColor:Null<Color> = null;
 	public var outlineStyle:Null<OutlineStyle> = null;
+	public var borderStyle:Null<BorderStyle> = null;
 	public var ringWidth:Float = 0;
 	public var ringColor:Null<Color> = null;
 	public var ringOffsetWidth:Float = 0;

@@ -61,6 +61,7 @@ class Host {
 		text = new DrawText();
 		device = Device.create(runtime.surface, {antialias: false});
 		renderer = new Renderer(device);
+		renderer.groups = true;
 		for (s in stories)
 			if (s != null) screens.push(new HostScreen(this, s));
 		if (screens.length == 0) throw "helder.story.Host: no stories (a release build has none)";

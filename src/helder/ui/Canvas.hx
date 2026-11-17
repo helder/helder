@@ -13,14 +13,21 @@ interface Canvas {
 	// corners (given): each corner's radius, over radius (top left, top right, bottom right, bottom left)
 	function pushClip(x:Float, y:Float, w:Float, h:Float, radius:Float, ?corners:Corners):Void;
 	function popClip():Void;
+	// what is drawn until popOpacity at alpha: each thing's colour times it
 	function pushOpacity(alpha:Float):Void;
+	// the same drawn as one, then at alpha (CSS's opacity: what overlaps in
+	// it not seen through), x, y, w, h its bounds (a canvas without groups:
+	// pushOpacity's)
+	function pushGroup(alpha:Float, x:Float, y:Float, w:Float, h:Float):Void;
 	function popOpacity():Void;
 	// an affine transform, in the current coordinates: x' = a x + c y + e, y' = b x + d y + f
 	function pushTransform(a:Float, b:Float, c:Float, d:Float, e:Float, f:Float):Void;
 	function popTransform():Void;
 	// a rectangle with rounded corners, filled, with a border inside it;
-	// sides (given): each side's width, over borderWidth
-	function rect(x:Float, y:Float, w:Float, h:Float, radius:Float, fill:Color, borderWidth:Float, border:Color, ?corners:Corners, ?sides:Edges):Void;
+	// sides (given): each side's width, over borderWidth; style: the
+	// border's dashes or dots (BorderStyle), the fill in their gaps
+	function rect(x:Float, y:Float, w:Float, h:Float, radius:Float, fill:Color, borderWidth:Float, border:Color, ?corners:Corners, ?sides:Edges,
+		style:BorderStyle = Solid):Void;
 	// a rounded rectangle blurred (CSS's blur: a Gaussian whose standard
 	// deviation is half of it); offset (given): x, y and spread from the box
 	// that casts it, which it is not drawn under (CSS's outer box shadow)

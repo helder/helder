@@ -122,6 +122,7 @@ class UiWindow {
 		if (Platform.target() >= 9) helder.os.android.TextInput.enable();
 		device = Device.create(window.surface, {antialias: antialias});
 		renderer = new Renderer(device);
+		renderer.groups = true;
 		renderer.steps = true;
 		ui = new Ui(text == null ? new DrawText() : text, width, height);
 		ui.clipboard = new SystemClipboard(window);
@@ -131,12 +132,15 @@ class UiWindow {
 		ui.dark = dark.peek();
 		// (a touch drag the program's where it scrolls something: the page's otherwise)
 		window.scrollsAt = (x, y, dx, dy) -> ui.scrollsAt(x / renderer.scale, y / renderer.scale, dx / renderer.scale, dy / renderer.scale);
+		// (headless: no window to put a system's views over, its menus and fields drawn)
+		#if !helder.headless
 		// (the browser's own views: native text editors over the canvas)
 		if (Platform.os() == 3) ui.platform = WebMirror.views(window.surface.handle.toI64().toInt());
 		// (Windows': EDIT controls over the window)
 		else if (Platform.os() == 2) ui.platform = new WinViews(window.surface.handle, ui, () -> renderer.scale);
 		// (macOS': NSTextFields over the window; not iOS's, whose Platform.os() is macOS's too: no AppKit there)
 		else if (Platform.apple() >= 1) {} else if (Platform.os() == 1) ui.platform = new MacViews(window.surface.handle, ui);
+		#end
 		open.push(this);
 		#if helder.headless
 		// (a headless run: the ui's events and clock the run's virtual time, the first window's nodes its tree)

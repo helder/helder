@@ -480,12 +480,21 @@ class Ui {
 			cullX0 = cullY0 = -1e9;
 			cullX1 = cullY1 = 1e9;
 		}
-		if (opacity < 1) canvas.pushOpacity(opacity);
+		// (a group where more than one thing of it is drawn: its children, its
+		// content over its box; its ink's bounds, else the clip's)
+		if (opacity < 1) {
+			if (n.children.length > 0 || n.exits != null || n.hasContent() && (s.background.a > 0 || s.borderWidth > 0 || s.backgroundImage != null)) {
+				var e = focusRingOffset + focusRingWidth + shadowReach + 8 + Math.abs(nw - n.width) + Math.abs(nh - n.height);
+				if (n.inkAll || m != null) canvas.pushGroup(opacity, -1e6, -1e6, 2e6, 2e6);
+				else canvas.pushGroup(opacity, n.inkX0 - e, n.inkY0 - e, n.inkX1 - n.inkX0 + 2 * e, n.inkY1 - n.inkY0 + 2 * e);
+			} else canvas.pushOpacity(opacity);
+		}
 		var wasHidden = hidden;
 		if (s.visibility != null) hidden = s.visibility == Hidden;
 		// (each corner's radius and each side's border, when the style gives them)
 		var cs = s.corners != null ? s.cornerRadii() : null, sides = s.borders != null ? s.borderEdges : null;
 		var be = s.borderEdges, bordered = be.top + be.right + be.bottom + be.left > 0 && s.borderColor.a > 0;
+		var borderStyle:BorderStyle = s.borderStyle ?? Solid;
 		// (the padding box's corners: each less the wider side meeting there)
 		var padR = Math.max(0, s.radius - s.borderWidth), padC:Null<Corners> = null;
 		if (cs != null || sides != null) {
@@ -511,13 +520,13 @@ class Ui {
 			// (the colour, the gradient over it, then the border over both)
 			if (s.background.a > 0) canvas.rect(n.absX, n.absY, nw, nh, s.radius, s.background, 0, 0, cs);
 			canvas.image(n.backgroundImage(scale), n.absX, n.absY, nw, nh, 0, 0, 1, 1, s.radius, cs);
-			if (bordered) canvas.rect(n.absX, n.absY, nw, nh, s.radius, Color.TRANSPARENT, s.borderWidth, s.borderColor, cs, sides);
+			if (bordered) canvas.rect(n.absX, n.absY, nw, nh, s.radius, Color.TRANSPARENT, s.borderWidth, s.borderColor, cs, sides, borderStyle);
 		} else if (s.background.a > 0 && s.borderColor.a < 255 && be.top + be.right + be.bottom + be.left > 0) {
 			// (the background under the border too, as CSS's background-clip: border-box, seen through a translucent one)
 			canvas.rect(n.absX, n.absY, nw, nh, s.radius, s.background, 0, 0, cs);
-			if (bordered) canvas.rect(n.absX, n.absY, nw, nh, s.radius, Color.TRANSPARENT, s.borderWidth, s.borderColor, cs, sides);
+			if (bordered) canvas.rect(n.absX, n.absY, nw, nh, s.radius, Color.TRANSPARENT, s.borderWidth, s.borderColor, cs, sides, borderStyle);
 		} else if (s.background.a > 0 || bordered)
-			canvas.rect(n.absX, n.absY, nw, nh, s.radius, s.background, s.borderWidth, s.borderColor, cs, sides);
+			canvas.rect(n.absX, n.absY, nw, nh, s.radius, s.background, s.borderWidth, s.borderColor, cs, sides, borderStyle);
 		// (the shadows inside: in the padding box, over the background)
 		if (shadows != null)
 			for (sh in shadows)
@@ -623,7 +632,7 @@ class Ui {
 			canvas.rect(n.absX - o, n.absY - o, nw + 2 * o, nh + 2 * o, s.radius > 0 ? Math.max(0, s.radius + o) : 0, Color.TRANSPARENT,
 				s.outlineWidth, s.outlineColor ?? n.textColor(), cs == null ? null : new Corners(cs.topLeft > 0 ? Math.max(0, cs.topLeft + o) : 0,
 					cs.topRight > 0 ? Math.max(0, cs.topRight + o) : 0, cs.bottomRight > 0 ? Math.max(0, cs.bottomRight + o) : 0,
-					cs.bottomLeft > 0 ? Math.max(0, cs.bottomLeft + o) : 0));
+					cs.bottomLeft > 0 ? Math.max(0, cs.bottomLeft + o) : 0), null, s.outlineStyle == Dashed ? Dashed : s.outlineStyle == Dotted ? Dotted : Solid);
 		}
 		if (n == focus && focusVisible && focusRingWidth > 0 && !hidden && (s.outlineStyle == null || s.outlineStyle == Auto)) {
 			var o = focusRingOffset + focusRingWidth;

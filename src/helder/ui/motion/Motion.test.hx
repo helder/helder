@@ -463,6 +463,9 @@ private class Rec implements Canvas {
 	public function pushOpacity(a:Float)
 		alpha.push(alpha[alpha.length - 1] * a);
 
+	public function pushGroup(a:Float, x:Float, y:Float, w:Float, h:Float)
+		pushOpacity(a);
+
 	public function popOpacity()
 		alpha.pop();
 
@@ -470,7 +473,7 @@ private class Rec implements Canvas {
 
 	public function popTransform() {}
 
-	public function rect(x:Float, y:Float, w:Float, h:Float, radius:Float, fill:Color, borderWidth:Float, border:Color, ?corners:Corners, ?sides:Edges)
+	public function rect(x:Float, y:Float, w:Float, h:Float, radius:Float, fill:Color, borderWidth:Float, border:Color, ?corners:Corners, ?sides:Edges, style:BorderStyle = Solid)
 		seen.set(key(fill), alpha[alpha.length - 1]);
 
 	public function shadow(x:Float, y:Float, w:Float, h:Float, radius:Float, color:Color, blur:Float, ?corners:Corners, ?offset:Array<Float>) {}

@@ -31,7 +31,9 @@ import helder.gfx.shader.ShaderMath.*;
 // radii), from its own position (pixel), anti-aliased over a pixel: clips
 // need no scissor, nest on the CPU and never split the draw. Colours are
 // premultiplied (Blend.Premultiplied). Corners are top left, top right,
-// bottom right, bottom left; sides top, right, bottom, left.
+// bottom right, bottom left; sides top, right, bottom, left. A
+// rectangle's border is dashed or dotted by params.z (1, 2: BorderStyle's),
+// each side's dashes or dots fitted to it from its own width (dashes()).
 @:structInit @:publicFields class UiVertex {
 	var corner:Vec2; // the quad's corner: 0 or 1 across and down (the vertex buffer's)
 	// (the instance's, one buffer of them: Renderer's)
@@ -44,7 +46,7 @@ import helder.gfx.shader.ShaderMath.*;
 	var border:Vec4; // the border's colour (premultiplied)
 	var radii:Vec4; // the corners' radii
 	var widths:Vec4; // the border's sides
-	var params:Vec4; // x: mode, y: blur, z: the texture (mode 1: filtered, mode 2: its slot), w: a glyph's blend (1 + its contrast; its gamma's ratios: border)
+	var params:Vec4; // x: mode, y: blur, z: the texture (mode 1: filtered, mode 2: its slot; mode 0: the border's style), w: a glyph's blend (1 + its contrast; its gamma's ratios: border)
 	var clip:Vec4; // the clip: x0, y0, x1, y1 in target pixels
 	var clipRadii:Vec4; // its corners' radii
 }
@@ -84,6 +86,65 @@ function ellipseBox(p:Vec2, half:Vec2, rad:Vec2):Float {
 	}
 	var e = abs(p) - half;
 	return length(max(e, vec2(0, 0))) + min(max(e.x, e.y), 0);
+}
+
+// a dashed (style 1) or dotted (2) border's coverage at p (from the
+// centre), w the sides' widths, r the corners' radii: the side it is on the
+// one its distance to over that side's width is least (the corners split
+// on their diagonals); along its straight part (between its corners'
+// radii, where they are wider than it), an odd number of dashes and gaps
+// as long as each other, about three widths, the first and last at its
+// ends, a rounded corner's arc solid between them; or dots as wide as the
+// side, one at each end and spaced about a width apart, along a rounded
+// corner's arc too; anti-aliased over a pixel
+function dashes(p:Vec2, half:Vec2, w:Vec4, r:Vec4, style:Float):Float {
+	var dt = (p.y + half.y) / max(w.x, 0.001), dr = (half.x - p.x) / max(w.y, 0.001);
+	var db = (half.y - p.y) / max(w.z, 0.001), dl = (p.x + half.x) / max(w.w, 0.001);
+	var across = min(dt, db) < min(dl, dr);
+	var top = dt < db, left = dl < dr;
+	var t = across ? p.x + half.x : p.y + half.y;
+	var len = across ? 2 * half.x : 2 * half.y;
+	var width = across ? (top ? w.x : w.z) : (left ? w.w : w.y);
+	var depth = across ? (top ? p.y + half.y : half.y - p.y) : (left ? p.x + half.x : half.x - p.x);
+	// (the radii at its start and end: top left to right, bottom left to right, left and right top to bottom)
+	var rs = across ? (top ? r.x : r.w) : (left ? r.x : r.y);
+	var re = across ? (top ? r.y : r.z) : (left ? r.w : r.z);
+	rs = rs > width ? rs : 0.0;
+	re = re > width ? re : 0.0;
+	// (the corner it is in, mirrored to the top left's: its radius, its sides' widths)
+	var q = vec2(-abs(p.x), -abs(p.y));
+	var rc = p.x > 0 ? (p.y > 0 ? r.z : r.y) : (p.y > 0 ? r.w : r.x);
+	var wh = p.y > 0 ? w.z : w.x, wv = p.x > 0 ? w.y : w.w;
+	var cornered = rc > max(wh, wv) && q.x < rc - half.x && q.y < rc - half.y;
+	if (style > 1.5) {
+		if (cornered) {
+			// (dots spaced along the arc, from the side's last to the other's first)
+			var wc = (wh + wv) * 0.5, c = vec2(rc - half.x, rc - half.y), rr = rc - wc * 0.5;
+			var n = max(1, floor(1.5707963 * rr / (2 * wc) + 0.5)), da = 1.5707963 / n;
+			var a = clamp(atan2(c.y - q.y, c.x - q.x), 0, 1.5707963);
+			var at = floor(a / da + 0.5) * da;
+			var dot = c - vec2(cos(at), sin(at)) * rr;
+			return clamp(wc * 0.5 - length(q - dot) + 0.5, 0, 1);
+		}
+		var a0 = max(rs, width * 0.5), a1 = max(re, width * 0.5);
+		var span = max(len - a0 - a1, 0.001);
+		var gaps = max(1, floor(span / (2 * width) + 0.5));
+		var step = span / gaps;
+		var u = t - a0;
+		var along = u - floor(u / step + 0.5) * step;
+		return clamp(width * 0.5 - length(vec2(along, depth - width * 0.5)) + 0.5, 0, 1);
+	}
+	if (cornered || t < rs || t > len - re) return 1.0;
+	var straight = max(len - rs - re, 0.001);
+	var k = max(1, floor((straight / (3 * max(width, 1)) - 1) * 0.5 + 0.5) * 2 + 1);
+	var seg = straight / k;
+	var v = t - rs;
+	var g = v - floor(v / (2 * seg)) * 2 * seg;
+	var d = g < seg ? min(g, seg - g) : -min(g - seg, 2 * seg - g);
+	// (its first and last dash solid to its ends, where a corner goes on)
+	if (v < seg) d = seg - v;
+	if (v > straight - seg) d = v - (straight - seg);
+	return clamp(0.5 + d, 0, 1);
 }
 
 // erf, approximated (Abramowitz and Stegun 7.1.27), on two values
@@ -196,6 +257,7 @@ final UiShader = shader({
 		var rc = inP.x > 0 ? (inP.y > 0 ? r.z : r.y) : (inP.y > 0 ? r.w : r.x);
 		var rad = vec2(max(rc - (inP.x > 0 ? w.y : w.w), 0), max(rc - (inP.y > 0 ? w.z : w.x), 0));
 		var inBorder = w.x + w.y + w.z + w.w > 0 ? clamp(0.5 + ellipseBox(inP, inHalf, rad), 0, 1) : 0.0;
+		if (i.params.z > 0.5 && inBorder > 0) inBorder = inBorder * dashes(i.local, i.half, w, r, i.params.z);
 		return mix(i.color, i.border, inBorder) * edge * clipped;
 	}
 });

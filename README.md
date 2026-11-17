@@ -1246,8 +1246,11 @@ fix.
     instances in a ring of buffers written where they changed, nothing
     allocated in a steady frame; `--stats` counts passes, draw calls and
     the renderer's CPU (0.035 to 0.21 ms a frame without the driver's,
-    against Rune's 0.13 ms). Not yet: gradients and dashed borders as
-    kinds of the quad (gradients are rasterized images), opacity groups.
+    against Rune's 0.13 ms); dashed and dotted borders a kind of the
+    rectangle's border, an opacity group a pass of its own into a texture
+    of its bounds before the frame's (CSS's opacity: what overlaps in it
+    not seen through). Not yet: gradients as a kind of the quad (they are
+    rasterized images).
   - **Text as good as macOS's everywhere** (*landed*: helder.text's
     `GlyphPipeline`, src/helder/text/README.md's "CoreText's look", a port
     of Rune's): helder.text's own engine (tests,

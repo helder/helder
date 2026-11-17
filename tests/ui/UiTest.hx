@@ -10,7 +10,7 @@ import helder.ui.widgets.EditableText.SpellAction;
 import helder.image.Image;
 import helder.image.PngDecoder;
 
-// helder.ui's tests, on Eval (npm test -- ui):
+// helder.ui's tests, on Eval (bun run test ui):
 //
 //   <tool> -cp src -cp tests/ui --run UiTest
 //
@@ -42,6 +42,7 @@ class UiTest {
 		events();
 		dirty();
 		paint();
+		groups();
 		themes();
 		transitions();
 		images();
@@ -2086,6 +2087,37 @@ static function transitions() {
 
 	// --- paint ---
 
+	// opacity: a group where more than one thing of the node is drawn (its
+	// children, its content over its box), each quad's for a lone box; a
+	// border's style and an outline's to the canvas's rect
+	static function groups() {
+		var ui = new Ui(new MonoText(), 200, 100);
+		var parent = new Node(), lone = new Node(), child = new Node();
+		parent.style.set({width: 80, height: 40, background: Color.WHITE, opacity: 0.5});
+		child.style.set({width: 20, height: 20, background: Color.BLACK});
+		parent.append(child);
+		lone.style.set({width: 30, height: 30, borderWidth: 2, borderColor: Color.BLACK, opacity: 0.25});
+		lone.style.borderStyle = Dashed;
+		ui.root.append(parent);
+		ui.root.append(lone);
+		ui.update();
+		var c = new Recording();
+		ui.paint(c);
+		var calls = c.calls.join("|");
+		check("groups: a node with children a group", calls.indexOf("group 0.5 ") >= 0, calls);
+		check("groups: a lone box its quads' opacity", calls.indexOf("opacity 0.25") >= 0 && calls.indexOf("group 0.25") < 0, calls);
+		check("groups: a dashed border", calls.indexOf("ff000000 dashed") >= 0, calls);
+		helder.ui.view.StyleAttrs.apply(lone.style, "border-style", "dotted");
+		helder.ui.view.StyleAttrs.apply(lone.style, "outline", "1px solid black");
+		helder.ui.view.StyleAttrs.apply(lone.style, "outline-style", "dashed");
+		ui.update();
+		var d = new Recording();
+		ui.paint(d);
+		calls = d.calls.join("|");
+		check("groups: markup's border-style and outline-style", lone.style.borderStyle == Dotted && calls.indexOf("dotted") >= 0
+			&& calls.indexOf("1 ff000000 dashed") >= 0, calls);
+	}
+
 	static function paint() {
 		var ui = new Ui(new MonoText(), 200, 100);
 		var a = new Node();
@@ -2712,6 +2744,9 @@ class WordList implements helder.text.SpellChecker {
 
 	public function add(w:String)
 		words.push(w.toLowerCase());
+
+	public function remove(w:String)
+		words.remove(w.toLowerCase());
 }
 
 class Recording implements Canvas {
@@ -2737,6 +2772,9 @@ class Recording implements Canvas {
 	public function pushOpacity(a:Float)
 		calls.push('opacity $a');
 
+	public function pushGroup(a:Float, x:Float, y:Float, w:Float, h:Float)
+		calls.push('group $a $x $y $w $h');
+
 	public function popOpacity()
 		calls.push("popOpacity");
 
@@ -2746,9 +2784,10 @@ class Recording implements Canvas {
 	public function popTransform()
 		calls.push("popTransform");
 
-	public function rect(x:Float, y:Float, w:Float, h:Float, radius:Float, fill:Color, borderWidth:Float, border:Color, ?corners:Corners, ?sides:Edges)
+	public function rect(x:Float, y:Float, w:Float, h:Float, radius:Float, fill:Color, borderWidth:Float, border:Color, ?corners:Corners, ?sides:Edges, style:BorderStyle = Solid)
 		calls.push('rect $x $y $w $h $radius ${hex(fill)} $borderWidth ${hex(border)}' + cs(corners)
-			+ (sides == null ? "" : ' sides ${sides.top},${sides.right},${sides.bottom},${sides.left}'));
+			+ (sides == null ? "" : ' sides ${sides.top},${sides.right},${sides.bottom},${sides.left}')
+			+ (style == Dashed ? " dashed" : style == Dotted ? " dotted" : ""));
 
 	public function shadow(x:Float, y:Float, w:Float, h:Float, radius:Float, color:Color, blur:Float, ?corners:Corners, ?offset:Array<Float>)
 		calls.push('shadow $x $y $w $h $radius ${hex(color)} $blur' + cs(corners));

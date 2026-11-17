@@ -29,10 +29,14 @@ import helder.ui.draw.UiShader;
 // do not split the draw either. What has a texture of its own (a larger
 // image, a browser's, a <Scene>'s GPU texture) is bound in the image slot
 // in turn: a draw for each change of it, in the order drawn, painter's
-// order kept. Opacity multiplies each
-// quad's colour (no group of its own), transforms are each quad's, so
-// neither needs a pass; a <Scene>'s passes come before the frame's
-// (beforePass). The instance buffer is kept between frames: only the
+// order kept. Opacity multiplies each quad's colour (pushOpacity), or,
+// a group (pushGroup, where the caller records prepare's passes: groups),
+// its quads are drawn into a render target of their bounds' size in a pass
+// of their own before the frame's, inner groups first, and that drawn in
+// their place as an image at its opacity, as CSS's opacity is: a faded box's
+// children not seen through each other nor its background through them.
+// Transforms are each quad's, so they need no pass; a <Scene>'s passes come
+// before the frame's (beforePass). The instance buffer is kept between frames: only the
 // instances that changed since the last frame are written (QuadBatch), and
 // a steady frame allocates nothing. The UI's pixels are scaled
 // to the target's (scale: a Retina display's 2); glyphs are rasterized at the
@@ -79,8 +83,24 @@ class Renderer implements Canvas {
 	// the frame's quads, an instance each, in runs: a run's image texture bound (its index)
 	final quads = new QuadBatch(STRIDE, 1024, true);
 	// the runs' image textures (null: none drawn)
-	final runTextures:Array<Null<Texture>> = [];
+	final frameTextures:Array<Null<Texture>> = [];
+	// (the quads drawn into: the frame's, or an opacity group's; its runs' textures, its run)
+	var batch:QuadBatch;
+	var runTextures:Array<Null<Texture>>;
 	var run = 0;
+	// whether pushGroup draws a group into a texture of its own: the caller
+	// records prepare's passes before the frame's (else its opacity is each quad's)
+	public var groups = false;
+	// (the groups open, closed this frame (inner first), and kept for the
+	// next frames; what pushOpacity and pushGroup pushed: 1 a group, 0 not)
+	final openGroups:Array<Group> = [];
+	final closedGroups:Array<Group> = [];
+	final groupPool:Array<Group> = [];
+	final pushed:Array<Int> = [];
+	var groupPipeline:Null<Pipeline> = null;
+	// (where the quads' target pixels start in the target drawn into: a group's origin)
+	var ox = 0.0;
+	var oy = 0.0;
 	// (an image by its id: its texture and place; frame: the last one that drew it; one not drawn for EVICT frames is freed)
 	final textures = new Map<Int, ImageEntry>();
 	// the images' atlas pages
@@ -199,6 +219,8 @@ class Renderer implements Canvas {
 		linear = device.createSampler({filter: Linear, wrap: Clamp});
 		atlasSlot = UiShader.textures[0].binding;
 		imageSlot = UiShader.textures[1].binding;
+		batch = quads;
+		runTextures = frameTextures;
 	}
 
 	// starts a frame's drawing into a target of width x height pixels
@@ -225,6 +247,9 @@ class Renderer implements Canvas {
 				if (t != blank) device.destroyTexture(t);
 				opened.remove(h);
 			}
+			// (a group's texture not drawn into for EVICT frames: freed, made again if it is)
+			for (g in groupPool)
+				if (g.texture != null && frames - g.frame > EVICT) g.free(device);
 			stalePaths.resize(0);
 			for (p => e in paths)
 				if (frames - e.frame > EVICT) stalePaths.push(p);
@@ -253,9 +278,15 @@ class Renderer implements Canvas {
 			before.push(f);
 		next.resize(0);
 		quads.clear();
+		batch = quads;
+		runTextures = frameTextures;
 		run = 0;
 		runTextures.resize(0);
 		runTextures.push(null);
+		openGroups.resize(0);
+		closedGroups.resize(0);
+		pushed.resize(0);
+		ox = oy = 0;
 		tx = ty = 0;
 		alpha = 1;
 		alphas.resize(0);
@@ -274,6 +305,36 @@ class Renderer implements Canvas {
 	// is in: one draw, or one more for each change of the image texture bound
 	public function end(enc:Encoder) {
 		var ending = haxe.Timer.stamp();
+		uploadAtlas();
+		FrameCounts.quads += quads.count;
+		var uploaded = quads.upload(device), encoding = haxe.Timer.stamp();
+		FrameCounts.uploadMs += (encoding - ending) * 1000;
+		if (uploaded) {
+			enc.setPipeline(pipeline);
+			draw(enc, quads, frameTextures);
+			FrameCounts.uploaded += quads.uploaded;
+		}
+		var now = haxe.Timer.stamp();
+		FrameCounts.uiMs += (now - began) * 1000;
+		FrameCounts.encodeMs += (now - encoding) * 1000;
+		#if (target.name == "hxmc")
+		FrameCounts.uiBytes += hxmc.GcStats.bytesAllocated() - beganBytes;
+		#end
+	}
+
+	// (a batch's runs drawn, each with its image texture)
+	function draw(enc:Encoder, b:QuadBatch, textures:Array<Null<Texture>>) {
+		b.bind(enc);
+		enc.setTexture(atlasSlot, atlasTexture, linear);
+		for (r in 0...b.draws()) {
+			var t = textures[b.runs[r * 3]];
+			if (r == 0 || t != null) enc.setTexture(imageSlot, t == null ? blank : t, linear);
+			b.draw(enc, r);
+		}
+	}
+
+	// (the glyph atlas's texels changed since the last upload: uploaded)
+	function uploadAtlas() {
 		// (the atlas grown between frames: a texture of its size)
 		if (atlasW != atlas.width || atlasH != atlas.height) {
 			device.destroyTexture(atlasTexture);
@@ -292,26 +353,6 @@ class Renderer implements Canvas {
 			FrameCounts.glyphTexels += w * h;
 			atlas.clean();
 		}
-		FrameCounts.quads += quads.count;
-		var uploaded = quads.upload(device), encoding = haxe.Timer.stamp();
-		FrameCounts.uploadMs += (encoding - ending) * 1000;
-		if (uploaded) {
-			enc.setPipeline(pipeline);
-			quads.bind(enc);
-			enc.setTexture(atlasSlot, atlasTexture, linear);
-			for (r in 0...quads.draws()) {
-				var t = runTextures[quads.runs[r * 3]];
-				if (r == 0 || t != null) enc.setTexture(imageSlot, t == null ? blank : t, linear);
-				quads.draw(enc, r);
-			}
-			FrameCounts.uploaded += quads.uploaded;
-		}
-		var now = haxe.Timer.stamp();
-		FrameCounts.uiMs += (now - began) * 1000;
-		FrameCounts.encodeMs += (now - encoding) * 1000;
-		#if (target.name == "hxmc")
-		FrameCounts.uiBytes += hxmc.GcStats.bytesAllocated() - beganBytes;
-		#end
 	}
 
 	// (the image texture bound for a quad: the run's, else a new run's)
@@ -333,11 +374,33 @@ class Renderer implements Canvas {
 	public function nextPass(f:Encoder->Void)
 		next.push(f);
 
-	// records the passes asked for since begin, outside the frame's pass (UiWindow: after painting, before it)
+	// records the passes asked for since begin, outside the frame's pass
+	// (UiWindow: after painting, before it): a <Scene>'s, then the opacity
+	// groups', inner ones first (an outer group draws what they drew)
 	public function prepare(enc:Encoder) {
 		for (f in before)
 			f(enc);
 		before.resize(0);
+		if (closedGroups.length == 0) return;
+		uploadAtlas();
+		if (groupPipeline == null) {
+			var d = UiShader.pipeline({blend: Premultiplied});
+			d.layout = layout();
+			d.colorFormat = RGBA8;
+			groupPipeline = device.createPipeline(d);
+		}
+		for (g in closedGroups) {
+			FrameCounts.quads += g.batch.count;
+			g.pass.colors[0].texture = g.texture;
+			enc.beginPass(g.pass);
+			if (g.batch.upload(device)) {
+				enc.setPipeline(groupPipeline);
+				draw(enc, g.batch, g.textures);
+				FrameCounts.uploaded += g.batch.uploaded;
+			}
+			enc.endPass();
+		}
+		closedGroups.resize(0);
 	}
 
 	// frees the texture of an image drawn before
@@ -586,11 +649,106 @@ class Renderer implements Canvas {
 
 	public function pushOpacity(a:Float) {
 		alphas.push(alpha);
+		pushed.push(0);
 		alpha *= a;
 	}
 
-	public function popOpacity()
+	// what is drawn until popOpacity as one at opacity a (x, y, w, h: its
+	// bounds, the clip's part of them drawn): into a render target of its own
+	// where groups, else as pushOpacity
+	public function pushGroup(a:Float, x:Float, y:Float, w:Float, h:Float) {
+		if (!groups || a >= 1) {
+			pushOpacity(a);
+			return;
+		}
+		// (its bounds in the target's pixels: the transformed corners' bounds, within the clip and the target)
+		var s = scale;
+		var x0 = (x + tx) * s, y0 = (y + ty) * s, x1 = (x + w + tx) * s, y1 = (y + h + ty) * s;
+		if (!flat) {
+			var k = mk, ra = ma / k, rb = mb / k, rc = mc / k, rd = md / k;
+			x0 *= k;
+			y0 *= k;
+			x1 *= k;
+			y1 *= k;
+			var ax = ra * x0 + rc * y0, bx = ra * x1 + rc * y0, cx = ra * x0 + rc * y1, dx = ra * x1 + rc * y1;
+			var ay = rb * x0 + rd * y0, by = rb * x1 + rd * y0, cy = rb * x0 + rd * y1, dy = rb * x1 + rd * y1;
+			x0 = Math.min(Math.min(ax, bx), Math.min(cx, dx)) + me;
+			x1 = Math.max(Math.max(ax, bx), Math.max(cx, dx)) + me;
+			y0 = Math.min(Math.min(ay, by), Math.min(cy, dy)) + mf;
+			y1 = Math.max(Math.max(ay, by), Math.max(cy, dy)) + mf;
+		}
+		var gx0 = Math.floor(Math.max(Math.max(x0, clipX0), ox)), gy0 = Math.floor(Math.max(Math.max(y0, clipY0), oy));
+		var gx1 = Math.ceil(Math.min(Math.min(x1, clipX1), ox + targetW)), gy1 = Math.ceil(Math.min(Math.min(y1, clipY1), oy + targetH));
+		var gw = gx1 - gx0, gh = gy1 - gy0;
+		// (nothing of it seen, or too large for a texture: its opacity each quad's)
+		if (gw <= 0 || gh <= 0 || gw > device.maxTextureSize || gh > device.maxTextureSize) {
+			pushOpacity(a);
+			return;
+		}
+		var k = openGroups.length + closedGroups.length;
+		if (k == groupPool.length) groupPool.push(new Group());
+		var g = groupPool[k];
+		g.open(device, gw, gh);
+		g.x = gx0;
+		g.y = gy0;
+		g.alpha = alpha * a;
+		g.frame = frames;
+		// (the state it is drawn in, given back at popOpacity)
+		g.outer = batch;
+		g.outerTextures = runTextures;
+		g.outerRun = run;
+		g.outerX = ox;
+		g.outerY = oy;
+		g.outerW = targetW;
+		g.outerH = targetH;
+		openGroups.push(g);
+		alphas.push(alpha);
+		pushed.push(1);
+		batch = g.batch;
+		runTextures = g.textures;
+		run = 0;
+		ox = gx0;
+		oy = gy0;
+		// (clip space: the whole texture's, the part drawn its top left)
+		targetW = g.textureWidth;
+		targetH = g.textureHeight;
+		alpha = 1;
+	}
+
+	public function popOpacity() {
 		alpha = alphas.pop();
+		if (pushed.pop() == 0) return;
+		var g = openGroups.pop();
+		batch = g.outer;
+		runTextures = g.outerTextures;
+		run = g.outerRun;
+		ox = g.outerX;
+		oy = g.outerY;
+		targetW = g.outerW;
+		targetH = g.outerH;
+		g.outer = null;
+		g.outerTextures = null;
+		closedGroups.push(g);
+		// (its texture where it was, at its opacity: an image in the target's pixels, untransformed)
+		gpu.set(g.id, g.texture);
+		var sa = ma, sb = mb, sc = mc, sd = md, se = me, sf = mf, sk = mk, sflat = flat, salign = aligned, a = alpha;
+		ma = md = mk = 1;
+		mb = mc = me = mf = 0;
+		flat = aligned = true;
+		alpha = g.alpha;
+		qr0 = qr1 = qr2 = qr3 = qw0 = qw1 = qw2 = qw3 = 0;
+		quad(g.x, g.y, g.x + g.width, g.y + g.height, 0, 0, g.width / g.textureWidth, g.height / g.textureHeight, Color.WHITE, 0, 2, 0, 0, g.id);
+		ma = sa;
+		mb = sb;
+		mc = sc;
+		md = sd;
+		me = se;
+		mf = sf;
+		mk = sk;
+		flat = sflat;
+		aligned = salign;
+		alpha = a;
+	}
 
 	// (the next quad's corners: each corner's, else radius; sides: each side's, else width; in device pixels)
 	inline function corners(c:Null<Corners>, radius:Float) {
@@ -651,8 +809,10 @@ class Renderer implements Canvas {
 	var ex1 = 0.0;
 	var ey1 = 0.0;
 
-	public function rect(x:Float, y:Float, w:Float, h:Float, radius:Float, fill:Color, borderWidth:Float, border:Color, ?corners:Corners, ?sides:Edges) {
+	public function rect(x:Float, y:Float, w:Float, h:Float, radius:Float, fill:Color, borderWidth:Float, border:Color, ?corners:Corners, ?sides:Edges,
+			style:BorderStyle = Solid) {
 		if (w <= 0 || h <= 0) return;
+		dash = style;
 		var s = scale;
 		edges((x + tx) * s, (y + ty) * s, (x + w + tx) * s, (y + h + ty) * s);
 		var x0 = ex0, y0 = ey0, x1 = ex1, y1 = ey1;
@@ -666,6 +826,9 @@ class Renderer implements Canvas {
 		if (culled(x0 - 1, y0 - 1, x1 + 1, y1 + 1)) return;
 		quad(x0, y0, x1, y1, 0, 0, 0, 0, fill, border, 0, 0, 1, 0);
 	}
+
+	// (the next rectangle's border style: UiShader's params.z in mode 0)
+	var dash:BorderStyle = Solid;
 
 	public function shadow(x:Float, y:Float, w:Float, h:Float, radius:Float, color:Color, blur:Float, ?corners:Corners, ?offset:Array<Float>) {
 		if (w <= 0 || h <= 0 || color.a == 0) return;
@@ -1033,8 +1196,11 @@ class Renderer implements Canvas {
 			w1 = atlas.height;
 			w2 = w3 = 0;
 			filtered = aligned && !stretched ? 0 : 1;
+		} else if (mode == 0) {
+			filtered = (cast dash : Int);
+			dash = Solid;
 		}
-		var o = quads.add(run), b = quads.bytes;
+		var o = batch.add(run), b = batch.bytes;
 		var fa = fill.a / 255 * alpha, ba = border.a / 255 * alpha;
 		var hx = (x1 - x0) / 2, hy = (y1 - y0) / 2;
 		var mu = (u1 - u0) * m / (x1 - x0), mv = (v1 - v0) * m / (y1 - y0);
@@ -1042,7 +1208,7 @@ class Renderer implements Canvas {
 		// (the corners in target pixels and clip space: the transform less its scale, exact for none)
 		var k = mk, ra = flat ? 1 : ma / k, rb = flat ? 0 : mb / k, rc = flat ? 0 : mc / k, rd = flat ? 1 : md / k, te = flat ? 0 : me, tf = flat ? 0 : mf;
 		inline function corner(at:Int, px:Float, py:Float) {
-			var X = ra * px + rc * py + te, Y = rb * px + rd * py + tf;
+			var X = ra * px + rc * py + te - ox, Y = rb * px + rd * py + tf - oy;
 			b.setFloat(at, X / targetW * 2 - 1);
 			b.setFloat(at + 4, 1 - Y / targetH * 2);
 			b.setFloat(at + 8, X);
@@ -1088,14 +1254,66 @@ class Renderer implements Canvas {
 		b.setFloat(o + 148, blur);
 		b.setFloat(o + 152, filtered);
 		b.setFloat(o + 156, gb != null ? 1 + gb.contrast : 0);
-		b.setFloat(o + 160, clipX0);
-		b.setFloat(o + 164, clipY0);
-		b.setFloat(o + 168, clipX1);
-		b.setFloat(o + 172, clipY1);
+		b.setFloat(o + 160, clipX0 - ox);
+		b.setFloat(o + 164, clipY0 - oy);
+		b.setFloat(o + 168, clipX1 - ox);
+		b.setFloat(o + 172, clipY1 - oy);
 		b.setFloat(o + 176, clipR0);
 		b.setFloat(o + 180, clipR1);
 		b.setFloat(o + 184, clipR2);
 		b.setFloat(o + 188, clipR3);
+	}
+}
+
+// (an opacity group: its quads, its runs' textures, the render target they
+// are drawn into (grown, kept), the part of it drawn and where that is in
+// the target's pixels, its opacity; the state it was opened in)
+private class Group {
+	static var ids = 0;
+
+	// (its texture's id among the GPU textures drawn: Renderer.gpu's)
+	public final id = -(0x40000000 + ++ids);
+	public final batch = new QuadBatch(192, 64, true);
+	public final textures:Array<Null<Texture>> = [];
+	public final pass:PassDesc = {colors: [{load: Clear, clear: new helder.gfx.Color(0, 0, 0, 0)}]};
+	public var texture:Null<Texture> = null;
+	public var textureWidth = 0;
+	public var textureHeight = 0;
+	public var x = 0.0;
+	public var y = 0.0;
+	public var width = 0;
+	public var height = 0;
+	public var alpha = 1.0;
+	public var frame = 0;
+	public var outer:Null<QuadBatch> = null;
+	public var outerTextures:Null<Array<Null<Texture>>> = null;
+	public var outerRun = 0;
+	public var outerX = 0.0;
+	public var outerY = 0.0;
+	public var outerW = 0.0;
+	public var outerH = 0.0;
+
+	public function new() {}
+
+	// (begun for a part of w x h: its texture at least that, grown by 64s)
+	public function open(device:Device, w:Int, h:Int) {
+		width = w;
+		height = h;
+		if (texture == null || textureWidth < w || textureHeight < h) {
+			free(device);
+			textureWidth = Std.int(Math.min(device.maxTextureSize, Math.ceil(w / 64) * 64));
+			textureHeight = Std.int(Math.min(device.maxTextureSize, Math.ceil(h / 64) * 64));
+			texture = device.createTexture({width: textureWidth, height: textureHeight, format: RGBA8, renderTarget: true});
+		}
+		batch.clear();
+		textures.resize(0);
+		textures.push(null);
+	}
+
+	public function free(device:Device) {
+		if (texture != null) device.destroyTexture(texture);
+		texture = null;
+		textureWidth = textureHeight = 0;
 	}
 }
 
