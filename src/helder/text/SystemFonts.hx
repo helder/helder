@@ -82,6 +82,11 @@ class SystemFonts {
 		scan();
 		var names = GENERIC.exists(family.toLowerCase()) ? GENERIC.get(family.toLowerCase()) : [family].concat(GENERIC.get("sans-serif"));
 		var generic = GENERIC.exists(family.toLowerCase());
+		// (a generic family: the platform's own face for it first, with its engine: SF on Apple's, fontconfig's alias on Linux)
+		if (generic) {
+			var f = platformGeneric(family.toLowerCase(), weight, italic);
+			if (f != null) return f;
+		}
 		for (name in names) {
 			var f = best(name, weight, italic);
 			// (a family by name the directories did not have: the platform's)
@@ -183,6 +188,30 @@ class SystemFonts {
 	}
 
 	final platformFamilies = new Map<String, Null<FontFile>>();
+
+	// the platform's face for a generic family (TextBackend.generic), at the
+	// weight (a variable face's instance); only with the platform's engine
+	// (helder's own keeps SystemFonts' lists: the same faces everywhere)
+	function platformGeneric(name:String, weight:Int, italic:Bool):Null<FontFile> {
+		if (scannedNone() || Shaping.engine != Shaping.SYSTEM) return null;
+		var key = "generic:" + name + "@" + weight + (italic ? "i" : "");
+		if (platformFamilies.exists(key)) return platformFamilies.get(key);
+		var b = Shaping.backend(), f:Null<FontFile> = null;
+		var m = b == null ? null : b.generic(name, weight, italic);
+		if (m != null)
+			for (fi in FaceInfo.read(m.path))
+				if (fi.index == m.index) {
+					f = load(fi);
+					if (f != null && fi.maxWeight > fi.minWeight) {
+						var w = weight < fi.minWeight ? fi.minWeight : weight > fi.maxWeight ? fi.maxWeight : weight;
+						var k = fi.path + "#" + fi.index + "@" + w;
+						if (!loaded.exists(k)) loaded.set(k, f.instance(["wght" => w]));
+						f = loaded.get(k);
+					}
+				}
+		platformFamilies.set(key, f);
+		return f;
+	}
 
 	// (HELDER_NO_SYSTEM_FONTS: none of the system's, fontconfig's neither)
 	static function scannedNone():Bool {

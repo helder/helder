@@ -327,6 +327,10 @@ class DirectWrite implements TextBackend {
 		return r;
 	}
 
+	// (Windows' interface font is Segoe UI, monospace Consolas: SystemFonts' lists name them first)
+	public function generic(name:String, weight:Int, italic:Bool):Null<{path:String, index:Int}>
+		return null;
+
 	public function find(family:String, weight:Int, italic:Bool):Null<{path:String, index:Int}> {
 		if (collection.isNull()) {
 			var c = out(0);
