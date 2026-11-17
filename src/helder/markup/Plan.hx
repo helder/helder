@@ -156,8 +156,15 @@ class Plan<E> {
 	// an element: made, put in parent (top: before __b, pushed to __o), its
 	// attributes, its children; one its renderer does not list (@:elements) an error
 	function element(name:String, attrs:Array<PAttr>, children:Array<PNode>, at:Int, parent:E, top:Bool):Array<E> {
-		// (<svg>, ui's or any renderer's: an image of the drawing, its shapes fixed when compiled)
-		if (name == "svg" && (renderer == null || renderer == UI)) return svg(attrs, children, at, parent, top);
+		// (<svg>: ui's an image of the drawing, its shapes fixed when
+		// compiled; another renderer's (a page's DOM) SVG's elements; an
+		// agnostic literal's both, each renderer its own: target.choose)
+		if (name == "svg" && renderer == UI) return svg(attrs, children, at, parent, top);
+		if (name == "svg" && renderer == null) return target.choose(UI, svg(attrs, children, at, parent, top), made(name, attrs, children, at, parent, top));
+		return made(name, attrs, children, at, parent, top);
+	}
+
+	function made(name:String, attrs:Array<PAttr>, children:Array<PNode>, at:Int, parent:E, top:Bool):Array<E> {
 		if (renderer != null) {
 			var els = target.elements(renderer);
 			if (els != null && els.indexOf(name) < 0)
@@ -634,6 +641,10 @@ interface Target<E> {
 	// a drawing (helder.canvas.Svg) of an <svg>'s text, fixed: read when
 	// compiled where the target can (Haxe's: Svg.parse), else when it runs
 	function drawing(text:String, where:Where):E;
+	// an agnostic literal's statements for renderer (then) and for every
+	// other (otherwise), each renderer running its own (Haxe's: decided
+	// when the literal is made for it, the other not linked)
+	function choose(renderer:String, then:Array<E>, otherwise:Array<E>):Array<E>;
 }
 
 enum Callee {

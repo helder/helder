@@ -312,6 +312,8 @@ class MarkupMacro {
 				case ECall({expr: EField({expr: EConst(CIdent("__HOST__"))}, "createElement")}, [{expr: EConst(CString(tag, _))}]) if (i.creators.indexOf(tag) >= 0):
 					var f = "element_" + tag;
 					macro @:pos(e.pos) $p{host}.$f();
+				// (an agnostic literal's choice: this renderer's or not, Plan.choose)
+				case ECall({expr: EConst(CIdent("__RENDERER__"))}, [{expr: EConst(CString(r, _))}]): macro @:pos(e.pos) $v{r == path};
 				case EConst(CIdent("__HOST__")): macro @:pos(e.pos) $p{host};
 				case EConst(CIdent("__RT__")): macro @:pos(e.pos) $p{rt};
 				case ECall({expr: EField({expr: EConst(CIdent("__RT__"))}, "prop")}, [el, name = {expr: EConst(CString(s, _))}, v]) if (setter):
@@ -704,6 +706,10 @@ class HaxeTarget implements Target<Expr> {
 		var call = agnostic ? macro @:pos(p) helder.view.Pick.call($callee, $props) : {expr: ECall(callee, [props]), pos: p};
 		return {expr: EFunction(FAnonymous, {args: [], ret: macro :Any, expr: SourceMap.factory({expr: EReturn(call), pos: p}, callee, file, base, at)}), pos: p};
 	}
+
+	// (__RENDERER__: whether the literal is made for that renderer, forRenderer's constant)
+	public function choose(renderer:String, then:Array<Expr>, otherwise:Array<Expr>):Array<Expr>
+		return [macro @:pos(pos) if (__RENDERER__($v{renderer})) $b{then} else $b{otherwise}];
 
 	// (read when compiled: Svg.parse of a constant)
 	public function drawing(text:String, where:Where):Expr
