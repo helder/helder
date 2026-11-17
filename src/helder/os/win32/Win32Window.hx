@@ -377,7 +377,7 @@ class Win32Window {
 	// the clipboard's text: UTF-16 in movable global memory (CF_UNICODETEXT),
 	// which the clipboard owns once set
 	function writeClipboard(text:String) {
-		if (User32.OpenClipboard(hwnd) == 0) throw "helder.os: OpenClipboard failed (error " + Kernel32.GetLastError() + ")";
+		if (!openClipboard()) return;
 		User32.EmptyClipboard();
 		var n = text.length;
 		var mem = Kernel32.GlobalAlloc(2, (2 * n + 2 : Int64)); // GMEM_MOVEABLE
@@ -394,8 +394,18 @@ class Win32Window {
 		User32.CloseClipboard();
 	}
 
+	// (another program may hold it a moment, as Chromium finds: tried again
+	// five times 5 ms apart, then the copy or paste is not done, no error)
+	function openClipboard():Bool {
+		for (i in 0...5) {
+			if (User32.OpenClipboard(hwnd) != 0) return true;
+			Kernel32.Sleep(5);
+		}
+		return false;
+	}
+
 	function readClipboard():Null<String> {
-		if (User32.OpenClipboard(hwnd) == 0) return null;
+		if (!openClipboard()) return null;
 		var mem = User32.GetClipboardData(13);
 		var text:Null<String> = null;
 		if (!mem.isNull()) {

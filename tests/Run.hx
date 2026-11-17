@@ -1563,7 +1563,9 @@ class Run {
 		var b = 'bin/ui/$GFX_TARGET';
 		var bless = BLESS ? " --bless" : "";
 		var gpu = "LIBGL_ALWAYS_SOFTWARE=1 env -u DISPLAY";
-		var xvfb = '$XVFB -a -s "-screen 0 640x480x24"';
+		// (Linux: a window in Xvfb; elsewhere the desktop's own)
+		var linux = Sys.systemName() == "Linux";
+		var xvfb = linux ? '$XVFB -a -s "-screen 0 640x480x24"' : "";
 		shell('$gpu $b/UiDrawTest tests/ui/draw.png $b/draw.png$bless');
 		shell('LIBGL_ALWAYS_SOFTWARE=1 $xvfb $b/UiDrawTest tests/ui/draw.png $b/window.png --window');
 		shell('$gpu $b/TodoTest tests/ui/todo.png $b/todo.png$bless');
@@ -1571,9 +1573,12 @@ class Run {
 		shell('$gpu $b/EmojiTest tests/ui/emoji.png $b/emoji.png');
 		shell('$gpu $b/BoxTest tests/ui/boxes.png $b/boxes.png');
 		shell('$gpu $b/SnapTest');
+		shell('$xvfb $b/WindowTest');
+		// (the clipboard: Xvfb's own, not a desktop's in use; X11's text input
+		// and AT-SPI: Linux's; Windows' are the window lane's)
+		if (!linux) return;
 		shell('$xvfb $b/ClipboardTest');
 		shell('$xvfb $b/TextInputTest');
-		shell('$xvfb $b/WindowTest');
 		// (AT-SPI: the window's tree read by another process through libatspi,
 		// in a D-Bus session: the fixture's, acted on, then the examples' and
 		// the guide's, read whole)
@@ -2149,7 +2154,10 @@ class Run {
 		var abs = FileSystem.absolutePath(path);
 		var real = FileSystem.fullPath(abs);
 		var parent = FileSystem.fullPath(Path.directory(abs));
-		if (real != Path.join([parent, Path.withoutDirectory(abs)])) {
+		// (compared normalised: Windows' slashes and its drive letter's case may differ)
+		inline function same(a:String, b:String)
+			return Sys.systemName() == "Windows" ? Path.normalize(a).toLowerCase() == Path.normalize(b).toLowerCase() : a == b;
+		if (!same(real, Path.join([parent, Path.withoutDirectory(abs)]))) {
 			FileSystem.deleteFile(abs); // a link: the link alone
 			return;
 		}

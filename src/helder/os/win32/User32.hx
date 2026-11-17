@@ -85,6 +85,7 @@ import hxmc.unsafe.*;
 	static function GetProcAddress(module:Ptr, name:Ptr):Ptr;
 	#end
 	static function GetLastError():Int;
+	static function Sleep(ms:Int):Void;
 	// movable global memory (the clipboard's)
 	static function GlobalAlloc(flags:Int, bytes:Int64):Ptr;
 	static function GlobalLock(mem:Ptr):Ptr;
