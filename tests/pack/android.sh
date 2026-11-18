@@ -4,7 +4,8 @@
 # android` (the device's ABI, built, installed, started, its output from
 # logcat) prints the hello line; then the APK by adb alone, as hxmc's
 # android.sh did: uninstalled, installed, started, the line in logcat;
-# logcat kept in <out dir>/logcat.txt.
+# logcat kept in <out dir>/logcat.txt; then the other checks, the system's
+# image decoders last.
 #   sh tests/pack/android.sh <helder> [out dir]
 set -u
 helder=$1
@@ -187,4 +188,12 @@ check "access: no failed node or action" $?
 adb logcat -d > "$out/access-logcat.txt"
 grep -E "hxmc|helder|AndroidRuntime|DEBUG|libc|Fatal|crash|JNI" "$out/access-logcat.txt" | grep -v "CarrierSvc\|ImsResolver\|WindowManager" | tail -60
 adb shell am force-stop $aid
+
+# helder.image on Android (tests/image/SystemImageCheck.hx): helder's cases
+# decoded by AImageDecoder (SystemDecoder) and PNGs by helder, on the loop
+# and as jobs, a hundred photos through the pipeline; "images: N checks ok".
+"$helder" run tests/image/SystemImageCheck.hx --target android > "$out/images.txt" 2>&1
+tail -20 "$out/images.txt"
+grep -q "images: .* checks ok" "$out/images.txt"
+check "images: the system's decoders" $?
 exit $failed

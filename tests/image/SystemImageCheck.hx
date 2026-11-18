@@ -4,18 +4,20 @@ import helder.async.Async;
 import helder.image.Image;
 import helder.image.ImageJobs;
 
-// helder.image on iOS (SystemDecoder: ImageIO; CI's ios-simulator job,
-// tests/pack/ios.sh): helder's cases decoded by the system, on the loop's
-// thread (Image.decode, its pixels when read) and as a job
-// (ImageJobs.decode), against the pixels png-cases.mjs, jpeg-cases.mjs and
-// webp-cases.mjs wrote, compared premultiplied (what is uploaded): PNGs
-// (helder's decoder) and lossless WebP exactly but for a 16-bit channel's
-// rounding, JPEG and lossy WebP within a decoder's rounding on average
-// (ImageIO's chroma upsampling is not libjpeg's: a sharp colour edge of a
-// 4:2:0 file's differs most). Lines end with
-// "images: ... ok" or FAILED.
-//   helder run tests/image/IosImages.hx --target ios -d <simulator>
-class IosImages {
+// helder.image's system decoders (SystemDecoder: iOS's ImageIO, Android's
+// AImageDecoder; CI's ios-simulator and android jobs: tests/pack/ios.sh,
+// android.sh): helder's cases decoded on the loop's thread (Image.decode,
+// its pixels when read) and as a job (ImageJobs.decode), against the
+// pixels png-cases.mjs, jpeg-cases.mjs and webp-cases.mjs wrote, compared
+// premultiplied (what is uploaded): PNGs (helder's decoder) and lossless
+// WebP but for the premultiplication's rounding (Android's: a level), JPEG and lossy WebP within a decoder's rounding on average
+// (the system's chroma upsampling is not libjpeg's: a sharp colour edge of
+// a 4:2:0 file's differs most); then a hundred photos through the
+// pipeline, their pixels never on the collected heap nor kept. Lines end
+// with "images: ... ok" or FAILED.
+//   helder run tests/image/SystemImageCheck.hx --target ios -d <simulator>
+//   helder run tests/image/SystemImageCheck.hx --target android
+class SystemImageCheck {
 	static var failed = 0;
 	static var checks = 0;
 
@@ -106,7 +108,7 @@ class IosImages {
 		}
 		var px = (b:Bytes, k:Int) -> [for (c in 0...4) b.get(4 * k + c)].join(",");
 		var mean = sum / a.length;
-		check(what, lossy ? mean <= 2.5 : max == 0, 'off by $max (mean ${Math.round(mean * 100) / 100}), pixel ${at % w},${Std.int(at / w)}: ${px(a, at)}, not ${px(b, at)}');
+		check(what, lossy ? mean <= 2.5 : max <= 1, 'off by $max (mean ${Math.round(mean * 100) / 100}), pixel ${at % w},${Std.int(at / w)}: ${px(a, at)}, not ${px(b, at)}');
 	}
 
 	static function premultiply(px:Bytes):Bytes {
@@ -121,7 +123,9 @@ class IosImages {
 	}
 }
 
-// (the task's phys_footprint, what iOS ends an app for: rusage_info_v2's, after its uuid and seven counters)
+// (the process's memory as the system counts it: Apple's phys_footprint,
+// what iOS ends an app for, rusage_info_v2's after its uuid and seven
+// counters; Linux's and Android's resident set)
 @:hxmc.c private extern class Rusage {
 	static function getpid():Int;
 	static function proc_pid_rusage(pid:Int, flavor:Int, buffer:hxmc.unsafe.Ptr):Int;
@@ -129,10 +133,13 @@ class IosImages {
 
 private class Footprint {
 	@:hxmc.unsafe(gc) public static function now():Float {
-		var buf = hxmc.unsafe.IoBuffer.alloc(256);
-		Rusage.proc_pid_rusage(Rusage.getpid(), 2, buf.ptr);
-		var f:Float = cast hxmc.unsafe.Mem.getI64(buf.ptr, 72);
-		buf.free();
-		return f;
+		if (hxmc.Platform.os() == 1) {
+			var buf = hxmc.unsafe.IoBuffer.alloc(256);
+			Rusage.proc_pid_rusage(Rusage.getpid(), 2, buf.ptr);
+			var f:Float = cast hxmc.unsafe.Mem.getI64(buf.ptr, 72);
+			buf.free();
+			return f;
+		}
+		return Std.parseFloat(sys.io.File.getContent("/proc/self/statm").split(" ")[1]) * 4096;
 	}
 }

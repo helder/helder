@@ -67,6 +67,7 @@ import hxmc.unsafe.*;
 // (jni.h's slots, as Jni's JniEnv), by their arguments' shapes
 @:hxmc.c @:hxmc.fast extern class JniFast {
 	@:hxmc.indirect static function call1(f:Ptr, env:Ptr, a:Ptr):Ptr;
+	@:hxmc.indirect static function call2(f:Ptr, env:Ptr, a:Ptr, b:Ptr):Ptr;
 	@:hxmc.indirect static function call3(f:Ptr, env:Ptr, a:Ptr, b:Ptr, c:Ptr):Ptr;
 	@:hxmc.indirect static function callInt3(f:Ptr, env:Ptr, a:Ptr, b:Ptr, c:Ptr):Int;
 }
@@ -83,6 +84,9 @@ import hxmc.unsafe.*;
 
 @:hxmc.c @:hxmc.fast extern class Threads {
 	static function pthread_create(t:Ptr, attr:Ptr, entry:Ptr, arg:Ptr):Int;
+	static function pthread_attr_init(attr:Ptr):Int;
+	static function pthread_attr_setstacksize(attr:Ptr, size:Int64):Int;
+	static function setenv(name:Ptr, value:Ptr, overwrite:Int):Int;
 	static function pthread_join(t:Int64, ret:Ptr):Int;
 	static function pthread_mutex_init(m:Ptr, attr:Ptr):Int;
 	static function pthread_mutex_lock(m:Ptr):Int;

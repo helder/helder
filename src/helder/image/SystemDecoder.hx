@@ -29,6 +29,9 @@ import imageio.ImageIO;
 // and the drawing run in a safe region (as every extern call not
 // @:hxmc.fast does), so other threads' collections never wait for them.
 @:hxmc.unsafe(gc) class SystemDecoder {
+	public static inline function available():Bool
+		return true;
+
 	public static function decode(file:Ptr, length:Int):{width:Int, height:Int, pixels:IoBuffer} {
 		var out = null;
 		AutoreleasePool.run(() -> out = image(file, length));
@@ -73,5 +76,73 @@ import imageio.ImageIO;
 		return {width: pw, height: ph, pixels: pixels};
 	}
 }
+#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
+import hxmc.unsafe.Arena;
+import hxmc.unsafe.IoBuffer;
+import hxmc.unsafe.Ptr;
 
+// Android's image decoders (AImageDecoder, Android 11: libjnigraphics,
+// loaded when first asked, helder.os.Dl; Android 10 has none: available()
+// false, helder.image's decoders): JPEG, GIF's first frame, WebP, HEIF
+// (PNGs are helder's, Image.decode), upright (EXIF's orientation
+// applied), into premultiplied RGBA8 in sRGB off the collected heap, as
+// iOS's. ImageLimits is checked on the size the file says, before a pixel
+// is decoded; the decode runs in a safe region (Dl's calls).
+@:hxmc.unsafe(gc) class SystemDecoder {
+	static var ready = 0;
+
+	public static function available():Bool {
+		if (ready == 0) ready = AImageDecoder.load("libjnigraphics.so") == null ? 1 : -1;
+		return ready > 0;
+	}
+
+	public static function decode(file:Ptr, length:Int):{width:Int, height:Int, pixels:IoBuffer} {
+		if (!available()) throw ImageError.unsupported("SystemDecoder: no AImageDecoder (Android 11)");
+		var out:Ptr<Ptr> = Arena.scopedValue(a -> {
+			var p:Ptr<Ptr> = cast a.alloc(8);
+			p.value = Ptr.nil();
+			var r = AImageDecoder.AImageDecoder_createFromBuffer(file, length, cast p);
+			r == 0 ? p.value : Ptr.nil();
+		});
+		var d:Ptr = cast out;
+		if (d.isNull()) throw ImageError.unsupported("SystemDecoder: not an image AImageDecoder reads");
+		var info = AImageDecoder.AImageDecoder_getHeaderInfo(d);
+		var w = AImageDecoder.AImageDecoderHeaderInfo_getWidth(info), h = AImageDecoder.AImageDecoderHeaderInfo_getHeight(info);
+		try ImageLimits.check("SystemDecoder", w, h, 4) catch (e:ImageError) {
+			AImageDecoder.AImageDecoder_delete(d);
+			throw e;
+		}
+		// (RGBA_8888, premultiplied as decoded by default; in sRGB: ADATASPACE_SRGB)
+		AImageDecoder.AImageDecoder_setAndroidBitmapFormat(d, 1);
+		AImageDecoder.AImageDecoder_setDataSpace(d, 142671872);
+		var stride = AImageDecoder.AImageDecoder_getMinimumStride(d).toInt();
+		if (stride != w * 4) {
+			AImageDecoder.AImageDecoder_delete(d);
+			throw ImageError.unsupported("SystemDecoder: rows of " + stride + " bytes for " + w + " pixels");
+		}
+		var pixels = IoBuffer.alloc(w * h * 4);
+		// (INCOMPLETE, -1: a file cut short, what it had drawn, as browsers show it)
+		var r = AImageDecoder.AImageDecoder_decodeImage(d, pixels.ptr, (stride : hxmc.I64), ((w * h * 4) : hxmc.I64));
+		AImageDecoder.AImageDecoder_delete(d);
+		if (r != 0 && r != -1) {
+			pixels.free();
+			throw ImageError.corrupt("SystemDecoder: AImageDecoder cannot decode it (" + r + ")");
+		}
+		return {width: w, height: h, pixels: pixels};
+	}
+}
+
+@:build(helder.os.Dl.build())
+@:hxmc.unsafe(gc)
+private class AImageDecoder {
+	static function AImageDecoder_createFromBuffer(buffer:Ptr, length:hxmc.I64, out:Ptr):Int;
+	static function AImageDecoder_getHeaderInfo(d:Ptr):Ptr;
+	static function AImageDecoderHeaderInfo_getWidth(info:Ptr):Int;
+	static function AImageDecoderHeaderInfo_getHeight(info:Ptr):Int;
+	static function AImageDecoder_setAndroidBitmapFormat(d:Ptr, format:Int):Int;
+	static function AImageDecoder_setDataSpace(d:Ptr, space:Int):Int;
+	static function AImageDecoder_getMinimumStride(d:Ptr):hxmc.I64;
+	static function AImageDecoder_decodeImage(d:Ptr, pixels:Ptr, stride:hxmc.I64, size:hxmc.I64):Int;
+	static function AImageDecoder_delete(d:Ptr):Void;
+}
 #end

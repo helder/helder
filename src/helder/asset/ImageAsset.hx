@@ -21,8 +21,8 @@ class ImageAsset {
 		#end
 		#if (target.name == "hxmc")
 		var b = Files.readBuffer(key, file);
-		#if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
-		// (any format, by the system, as a job: its pixels dropped once uploaded)
+		#if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64" || hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
+		// (any format, by the system where it has a decoder, as a job: its pixels dropped once uploaded)
 		var bytes = b.getBytes(0, b.length);
 		b.close();
 		return helder.image.ImageJobs.decode(bytes);
