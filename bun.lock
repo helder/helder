@@ -39,6 +39,8 @@
 
     "@hxmc/linux-arm64": ["@hxmc/linux-arm64@0.1.0-nightly.20261118.3b37a74", "", { "os": "linux", "cpu": "arm64" }, "sha512-/iRN2pGkRNwkZqwNlIrDYHaDwZ1meQNACXUImC8HudGclaQS/wj/ztCzMKeiumhU8rQZoqSHnGuJiDRf+uYusQ=="],
 
+    "@hxmc/linux-x64": ["@hxmc/linux-x64@0.1.0-nightly.20261118.3b37a74", "", { "os": "linux", "cpu": "x64" }, "sha512-O5hDUwWcGh6IDf4pnxRMfVQnpWH5Urse3lskF9UZD1PTaLTgjrtTdMv7TG1Vb2d2//ymtxfC0+RS5KKa3RaGKQ=="],
+
     "@hxmc/source": ["@hxmc/source@0.1.0-nightly.20261118.3b37a74", "", { "peerDependencies": { "@hxmc/cli": "0.1.0-nightly.20261118.3b37a74" }, "bin": { "hxmc-rebuild": "hxmc/bootstrap/hxmc-rebuild" } }, "sha512-W/SxEaZ4L1/eKwcrHqBUZ3zwJppY0pvJ6//Bam2gF/LYYCGxQi6IVEylLWCTmbMB+K3F6vYqjghQsVgiMIGYVQ=="],
 
     "@hxmc/win32-arm64": ["@hxmc/win32-arm64@0.1.0-nightly.20261118.3b37a74", "", { "os": "win32", "cpu": "arm64" }, "sha512-QLfWBWeGlpUITdLu/BxALM222+da4Th0YclsBaWo4PwXYinPIYv14QhNIIyfutdMb2R7V9U/hLLSA6bSAt8eAQ=="],
