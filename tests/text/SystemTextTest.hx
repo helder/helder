@@ -41,6 +41,15 @@ class SystemTextTest {
 		var fonts = SystemFonts.get();
 		var sans = fonts.match("sans-serif", 400);
 		check("a sans-serif face", sans != null);
+		// (the generic families: the system's own interface faces, as its native apps draw)
+		var ui = sans == null ? "" : sans.family;
+		var expected = hxmc.Platform.os() == 1 ? ui.charAt(0) == "." || ui == "System Font" // (Apple's San Francisco: .SF NS, .SF UI...)
+			: hxmc.Platform.os() == 2 ? ui == "Segoe UI" || ui == "Segoe UI Variable" : true;
+		check("sans-serif: the system's interface font", expected, ui);
+		var bold = fonts.match("sans-serif", 700);
+		check("sans-serif bold: the same family, heavier", bold != null && bold.family == ui && bold != sans, bold == null ? "none" : bold.family);
+		var mono = fonts.match("monospace", 400);
+		check("monospace: a fixed pitch face", mono != null && mono.advance(mono.glyph("i".code)) == mono.advance(mono.glyph("W".code)), mono == null ? "none" : mono.family);
 		// fallback: a face for each script, the system's
 		var faces = new Map<String, FontFile>();
 		for (s in SCRIPTS) {
@@ -84,10 +93,12 @@ class SystemTextTest {
 			var ok = be.shape(t, "கொ", 0, 2, false, out);
 			check("Tamil: கொ split around its consonant", ok && out.count >= 3 && out.ids[1] == t.glyph(0xB95), [for (i in 0...out.count) out.ids[i]].join(" "), true);
 		}
-		// rasterising
-		if (sans != null) {
+		// rasterising, by the platform where it draws the face (a variable
+		// instance, San Francisco's: helder's, Shaping.backendFor)
+		var plain = sans != null && Shaping.backendFor(sans) != null ? sans : fonts.match("Helvetica", 400) ?? fonts.match("Arial", 400);
+		if (plain != null && Shaping.backendFor(plain) != null) {
 			var bm = new GlyphBitmap();
-			var ok = be.rasterize(sans, sans.glyph("S".code), 32, 0, bm), ink = 0;
+			var ok = be.rasterize(plain, plain.glyph("S".code), 32, 0, bm), ink = 0;
 			for (i in 0...bm.width * bm.height)
 				ink += bm.pixels.get(i);
 			check("an S rasterised at 32 px", ok && bm.width > 8 && bm.height > 16 && bm.top < 0 && ink > 255 * 40, '${bm.width}x${bm.height} at ${bm.left},${bm.top}');

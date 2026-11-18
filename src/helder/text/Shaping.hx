@@ -119,6 +119,10 @@ interface TextBackend {
 	function fallback(cp:Int, ?lang:String):Null<{path:String, index:Int}>;
 	// the system's face of a family closest to weight and italic; null: none
 	function find(family:String, weight:Int, italic:Bool):Null<{path:String, index:Int}>;
+	// the system's face for a generic family (sans-serif, system-ui, serif,
+	// monospace), as its own interface uses it; null: none (SystemFonts'
+	// lists decide)
+	function generic(name:String, weight:Int, italic:Bool):Null<{path:String, index:Int}>;
 	// how its rasters are blended where the system blends them otherwise
 	// than as plain coverage (Windows' grayscale text: its contrast and
 	// gamma, GlyphBlend); null: as they are

@@ -39,6 +39,18 @@ class Fontconfig {
 		return match(p, -1, name);
 	}
 
+	// a generic family's face as fontconfig's aliases resolve it (the
+	// desktop's sans-serif: Cantarell, Ubuntu, Noto Sans...); system-ui as
+	// sans-serif where fontconfig has no alias for it
+	public static function generic(name:String, weight:Int, italic:Bool):Null<{path:String, index:Int}> {
+		if (!available()) return null;
+		var p = Fc.FcPatternCreate();
+		Arena.scoped(a -> Fc.FcPatternAddString(p, Mem.cstr("family"), a.cstring(name == "system-ui" ? "sans-serif" : name)));
+		Fc.FcPatternAddInteger(p, Mem.cstr("weight"), Fc.FcWeightFromOpenType(weight));
+		Fc.FcPatternAddInteger(p, Mem.cstr("slant"), italic ? 100 : 0); // (FC_SLANT_ITALIC, FC_SLANT_ROMAN)
+		return match(p, -1, null);
+	}
+
 	// (the pattern matched, then destroyed; kept when the match has cp, or is of family)
 	static function match(p:Ptr, cp:Int, family:Null<String>):Null<{path:String, index:Int}> {
 		Fc.FcConfigSubstitute(Ptr.nil(), p, 0); // (FcMatchPattern)

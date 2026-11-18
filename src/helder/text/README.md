@@ -231,6 +231,27 @@ hinting, its own flattening).
 
 ## The platform's own stack
 
+What each platform uses by default (`Shaping.SYSTEM`: an app's engine;
+tests, stories and store screenshots run helder's own, `Shaping.HELDER`,
+so their pixels are the same everywhere):
+
+| | back end | sans-serif, system-ui | monospace | complex scripts | rasters |
+| --- | --- | --- | --- | --- | --- |
+| macOS, iOS | Core Text | the system font, San Francisco (`TextBackend.generic`: CTFontCreateUIFontForLanguage) | the user's fixed pitch font (Menlo, SF Mono) | Core Text | Core Text, but a variable face's instance (San Francisco's: helder's) |
+| Windows | DirectWrite | Segoe UI (the lists: Windows' interface font) | Consolas | DirectWrite | DirectWrite, blended as Direct2D does |
+| Linux | fontconfig, HarfBuzz, FreeType (loaded when present) | fontconfig's alias (the desktop's: Cantarell, Ubuntu, Noto Sans...) | fontconfig's | HarfBuzz | FreeType |
+| Android | none yet: helder's | the lists (Roboto among them) | the lists | not shaped (reordering, conjuncts: wrong) | helder's |
+| browser | none: helder's, the page's fonts (`WebFonts`) | the page's | the page's | not shaped | helder's |
+
+A generic family is the platform's own face first (`SystemFonts.match`:
+`platformGeneric`, with the platform's engine only), then
+`SystemFonts.GENERIC`'s list. A named family is the directories' face,
+then the platform's (`TextBackend.find`). The system-text lane
+(`tests/text/SystemTextTest.hx`, natively, and in CI's ios-simulator job
+on iOS) checks each platform's: its back end, sans-serif its interface
+font and bold of the same family, monospace a fixed pitch face, each
+script's fallback, Indic scripts shaped by the system.
+
 `Shaping` chooses the engine. The platform's (`Shaping.SYSTEM`, an app's
 default) shapes the scripts helder's own does not (`Shaping.complex`:
 Devanagari and the other Indic scripts, Sinhala, Tibetan, Myanmar, Khmer,

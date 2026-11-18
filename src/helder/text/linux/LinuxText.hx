@@ -28,4 +28,7 @@ class LinuxText implements TextBackend {
 
 	public function find(family:String, weight:Int, italic:Bool):Null<{path:String, index:Int}>
 		return Fontconfig.family(family, weight, italic);
+
+	public function generic(name:String, weight:Int, italic:Bool):Null<{path:String, index:Int}>
+		return Fontconfig.generic(name, weight, italic);
 }

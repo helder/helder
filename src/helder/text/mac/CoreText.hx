@@ -322,6 +322,31 @@ class CoreText implements TextBackend {
 		return result;
 	}
 
+	// sans-serif and system-ui: the system font (San Francisco, whose family
+	// names are the system's own: .SF NS, .SF UI...), monospace: the user's
+	// fixed pitch font; its italic where it has one (a weight: the variable
+	// face's instance, SystemFonts')
+	public function generic(name:String, weight:Int, italic:Bool):Null<{path:String, index:Int}> {
+		var type = switch name {
+			case "sans-serif" | "system-ui": 2; // (kCTFontUIFontSystem)
+			case "monospace": 1; // (kCTFontUIFontUserFixedPitch)
+			case _: return null;
+		}
+		var pool = helder.os.objc.Runtime.objc_autoreleasePoolPush();
+		var f = CT.CTFontCreateUIFontForLanguage(type, 13, Ptr.nil());
+		if (!f.isNull() && italic) {
+			var it = CT.CTFontCreateCopyWithSymbolicTraits(f, 13, Ptr.nil(), 1, 1); // (kCTFontItalicTrait)
+			if (!it.isNull()) {
+				CF.CFRelease(f);
+				f = it;
+			}
+		}
+		var m = f.isNull() ? null : fileOf(f, -1);
+		if (!f.isNull()) CF.CFRelease(f);
+		helder.os.objc.Runtime.objc_autoreleasePoolPop(pool);
+		return m == null || m.index < 0 ? null : m;
+	}
+
 	public function find(family:String, weight:Int, italic:Bool):Null<{path:String, index:Int}> {
 		var pool = helder.os.objc.Runtime.objc_autoreleasePoolPush();
 		var name = ObjC.str(family);
@@ -364,6 +389,7 @@ class CoreText implements TextBackend {
 	static function CTFontManagerCreateFontDescriptorsFromData(data:Ptr):Ptr;
 	static function CTFontCreateWithFontDescriptor(desc:Ptr, size:Float, matrix:Ptr):Ptr;
 	static function CTFontCreateUIFontForLanguage(type:Int, size:Float, lang:Ptr):Ptr;
+	static function CTFontCreateCopyWithSymbolicTraits(font:Ptr, size:Float, matrix:Ptr, value:Int, mask:Int):Ptr;
 	static function CTFontCopyDefaultCascadeListForLanguages(font:Ptr, langs:Ptr):Ptr;
 	static function CTFontCreateForString(font:Ptr, str:Ptr, range:CFRange):Ptr;
 	static function CTFontGetGlyphsForCharacters(font:Ptr, chars:Ptr, glyphs:Ptr, n:hxmc.I64):Bool;
