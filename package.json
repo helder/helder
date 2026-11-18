@@ -96,13 +96,13 @@
   },
   "dependencies": {
     "@hx-objc/apple-uikit": "github:hx-objc/apple-uikit#27.2.0",
-    "@hxmc/cli": "0.1.0-nightly.20261114.9ea9e87"
+    "@hxmc/cli": "0.1.0-nightly.20261118.32021f2"
   },
   "peerDependencies": {
     "typescript": ">=7.1.0-0"
   },
   "devDependencies": {
-    "@hxmc/source": "0.1.0-nightly.20261114.9ea9e87",
+    "@hxmc/source": "0.1.0-nightly.20261118.32021f2",
     "@typescript/typescript-wasip1-wasm": "7.1.0-dev.20261106.1",
     "typescript": "7.1.0-dev.20261106.1"
   },
