@@ -100,6 +100,8 @@ class Aab {
 			case FilePath(p): new Pb().msg(5, new Pb().str(1, p).int(2, StringTools.endsWith(p, ".xml") ? 3 : 1));
 			case Argb(c): new Pb().msg(7, new Pb().int(9, c, true));
 			case Ref(id): new Pb().msg(1, new Pb().int(2, id));
+			// (Primitive's boolean_value)
+			case Bool(on): new Pb().msg(7, new Pb().int(8, on ? 1 : 0, true));
 			case Style(_, _): throw "Aab: a style is not an item";
 		}
 

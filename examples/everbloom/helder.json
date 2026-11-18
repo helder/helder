@@ -7,7 +7,7 @@
   "orientation": "portrait",
   "colors": {"theme": "#FFFFFF", "background": "#FFFFFF"},
   "targets": {
-    "android": {"permissions": ["INTERNET"]},
+    "android": {"permissions": ["INTERNET"], "cleartext": true},
     "ios": {
       "infoPlist": {
         "UIDeviceFamily": [1],

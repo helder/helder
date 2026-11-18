@@ -157,6 +157,7 @@
             "minSdk": {"type": "integer", "minimum": 29},
             "targetSdk": {"type": "integer"},
             "permissions": {"type": "array", "items": {"type": "string"}},
+            "cleartext": {"description": "plain http:// allowed (android:usesCleartextTraffic: a local server's, a test's); Android blocks it otherwise", "type": "boolean"},
             "key": {"type": "string"},
             "signing": {"type": "object", "properties": {"certificate": {"type": "string"}, "key": {"type": "string"}}},
             "serviceAccount": {"type": "string"},

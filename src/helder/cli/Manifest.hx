@@ -53,7 +53,7 @@ class Manifest {
 	];
 	static final PURPOSE = ["any", "maskable", "monochrome"];
 	static final HELDER = ["version", "build", "id", "android", "ios", "splash"];
-	static final ANDROID = ["package", "minSdk", "targetSdk", "permissions", "key", "signing", "serviceAccount", "adaptiveIcon"];
+	static final ANDROID = ["package", "minSdk", "targetSdk", "permissions", "cleartext", "key", "signing", "serviceAccount", "adaptiveIcon"];
 	static final IOS = ["bundleId", "minVersion", "entitlements", "signing", "sdk", "nonExemptEncryption", "privacy", "infoPlist"];
 	static final SIGNING = ["certificate", "key", "profile"];
 	public static final SDK = ["version", "build", "xcode", "xcodeBuild", "machine"];
@@ -155,6 +155,7 @@ class Manifest {
 		if (minSdk != null && (minSdk : Int) < 29) throw '$where: "helder": {"android": {"minSdk": $minSdk}}: 29 is the lowest (Android 10: Bionic\'s ELF TLS)';
 		if (a.permissions != null && !(Std.isOfType(a.permissions, Array) && Lambda.foreach((a.permissions : Array<Dynamic>), p -> Std.isOfType(p, String))))
 			throw '$where: "helder": {"android": {"permissions"}}: an array of strings';
+		if (a.cleartext != null && !Std.isOfType(a.cleartext, Bool)) throw '$where: "helder": {"android": {"cleartext"}}: true or false, not ${haxe.Json.stringify(a.cleartext)}';
 		var min = str(i, "minVersion", '"helder": {"ios": {"minVersion"}}');
 		if (min != null && !~/^[0-9]+\.[0-9]+$/.match(min)) throw '$where: "helder": {"ios": {"minVersion": "$min"}}: a version, major.minor (15.0)';
 		var signing:Dynamic = i.signing, sdk:Dynamic = i.sdk, privacy:Dynamic = i.privacy, release:Dynamic = a.signing;
@@ -232,6 +233,7 @@ class Manifest {
 			android: {
 				id: pkg,
 				permissions: a.permissions,
+				cleartext: a.cleartext,
 				minSdk: minSdk,
 				targetSdk: targetSdk,
 				key: str(a, "key", '"helder": {"android": {"key"}}'),

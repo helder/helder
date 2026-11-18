@@ -35,8 +35,12 @@ class Apk {
 	// the APK's library, as hxmc names it (its soname) and NativeActivity loads it
 	public static inline var LIBRARY = "libmain.so";
 
-	// the activity's framework themes: @android:style/Theme.NoTitleBar.Fullscreen, Theme.DeviceDefault.DayNight (views)
-	public static inline var THEME = 0x01030007;
+	// the activity's framework themes: @android:style/Theme.NoTitleBar (the
+	// system bars shown, the app drawn behind them: edge to edge, their
+	// insets the safe area), Theme.NoTitleBar.Fullscreen (an app that asks
+	// for none: "fullscreen"), Theme.DeviceDefault.DayNight (views)
+	public static inline var THEME = 0x01030006;
+	public static inline var THEME_FULLSCREEN = 0x01030007;
 	public static inline var THEME_VIEWS = 0x010302e3;
 
 	// the ABI's directory in the APK
@@ -76,7 +80,7 @@ class Apk {
 	// the manifest of the app's options (an APK's, an App Bundle's)
 	public static function manifestOf(app:ApkOptions, code:Bool, views:Bool):Axml.Element
 		return manifestElement(app.id, app.label, app.versionCode, app.versionName, app.minSdk, app.targetSdk, code, views, app.permissions, app.orientation,
-			app.icon, app.theme, app.debuggable ?? true);
+			app.icon, app.theme, app.debuggable ?? true, app.cleartext ?? false, app.fullscreen ?? false);
 
 	// the debug key as a signer (ECDSA P-256)
 	public static function debugSigner(key:{d:Bytes, cert:Bytes}):Signer
@@ -105,7 +109,8 @@ class Apk {
 	// path kept, which targetSdk 36 would otherwise stop sending:
 	// helder.os.android's AKEYCODE_BACK to App.onBack)
 	public static function manifestElement(pkg:String, label:String, versionCode:Int, versionName:String, minSdk:Int, targetSdk:Int, code = false,
-			views = false, ?permissions:Array<String>, ?orientation:String, ?icon:Int, ?theme:Int, debuggable = true):Axml.Element {
+			views = false, ?permissions:Array<String>, ?orientation:String, ?icon:Int, ?theme:Int, debuggable = true, cleartext = false,
+			fullscreen = false):Axml.Element {
 		inline function s(n:String, v:String):Axml.Attr
 			return {android: true, name: n, type: Axml.STRING, string: v};
 		inline function i(n:String, v:Int, hex = false):Axml.Attr
@@ -127,7 +132,7 @@ class Apk {
 			i("configChanges", configChanges, true),
 			// @android:style/Theme.NoTitleBar.Fullscreen; with views
 			// Theme.DeviceDefault.DayNight (API 29: the system's look, light or dark)
-			{android: true, name: "theme", type: Axml.REFERENCE, value: theme ?? (views ? THEME_VIEWS : THEME)}
+			{android: true, name: "theme", type: Axml.REFERENCE, value: theme ?? (views ? THEME_VIEWS : fullscreen ? THEME_FULLSCREEN : THEME)}
 		];
 		if (orientation == "portrait") activity.push(i("screenOrientation", 1)) else if (orientation == "landscape") activity.push(i("screenOrientation", 6));
 		return el("manifest", [
@@ -145,7 +150,7 @@ class Apk {
 				b("debuggable", debuggable),
 				b("extractNativeLibs", false),
 				b("enableOnBackInvokedCallback", false)
-			].concat(icon == null ? [] : ([
+			].concat(cleartext ? [b("usesCleartextTraffic", true)] : []).concat(icon == null ? [] : ([
 				{android: true, name: "icon", type: Axml.REFERENCE, value: icon},
 				{android: true, name: "roundIcon", type: Axml.REFERENCE, value: icon}
 			] : Array<Axml.Attr>)), [
@@ -286,6 +291,11 @@ typedef ApkOptions = {
 	?theme:Int,
 	// android:debuggable (true: a debug key's build; false: release signing's)
 	?debuggable:Bool,
+	// android:usesCleartextTraffic: plain http:// allowed (a local server's,
+	// a test's; Android blocks it since targetSdk 28)
+	?cleartext:Bool,
+	// the system bars hidden from the start (the app's "fullscreen"): Theme.NoTitleBar.Fullscreen
+	?fullscreen:Bool,
 }
 
 // who signs: the certificate, its SubjectPublicKeyInfo, the v2 scheme's
