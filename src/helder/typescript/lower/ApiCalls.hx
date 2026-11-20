@@ -163,6 +163,9 @@ abstract class ApiCalls extends ClassValues {
 						var m = apiClass(c, n);
 						var member = apiMember(m, callee.name().text, false, n);
 						var obj = b.temp(any(expr(receiver)));
+						// (an instance's Read field called: read, as a static's is)
+						if (actual.length == 0 && member.kind == "var" && HTypes.bare(member.type).match(HRead(_)))
+							return bridge.call(bridge.interop("signalRead"), [any(bridge.getMember(m, member, obj, where()))]);
 						return bridge.callMethod(m, member, bridge.instance(m, obj, where()), apiArguments(actual, member.type), where());
 				}
 			case _:

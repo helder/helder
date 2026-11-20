@@ -89,7 +89,7 @@ class Run {
 		{name: "gfx-compute-web", about: "helder.gfx's compute tier in headless Chromium (tests/gfx/compute-web.mjs, ComputeTest as wasm32-wasi): on WebGPU the same checks, the buffers and pixels read back by the harness; on WebGL2 Device.has(Compute) false, createComputePipeline and a storage buffer refused", run: gfxComputeWeb},
 		{name: "audio", about: "helder.os's audio through each back end without speakers (tests/os/audio.sh)", run: audio},
 		{name: "audio-web", about: "helder.os's audio on WebAudio in headless Chromium", run: audioWeb},
-		{name: "touch-web", about: "helder.os's pointers in headless Chromium: two fingers, a pen, the mouse, samples, a cancel, a tap and a drag without mouse events or scrolls, a pointer event sent from JavaScript (tests/os/PointersWeb.hx); App.onBack and App.backDepth's history entry, history back, Escape as the back, haxe.Timer.delay in App.run (tests/os/BackWeb.hx); Pointers' own tests are the test lane's (src/helder/os/Pointers.test.hx)", run: touchWeb},
+		{name: "touch-web", about: "helder.os's pointers in headless Chromium: two fingers, a pen, the mouse, samples, a cancel, a tap and a drag without mouse events or scrolls, a pointer event sent from JavaScript (tests/os/PointersWeb.hx); App.onBack and App.backDepth's history entry, history back, Escape as the back, haxe.Timer.delay in App.run (tests/os/BackWeb.hx); helder.ui's Stack and the history: a push's URL, back, Escape, a reload (tests/ui/NavWeb.hx); Pointers' own tests are the test lane's (src/helder/os/Pointers.test.hx)", run: touchWeb},
 		{name: "web", about: "helder.web: the static renderer on Eval and natively, then the DOM renderer, the demo page, islands and wasm in headless Chromium", run: web},
 		{name: "compiler-web", about: "helder.compiler.web, helder's toolchain as wasm in a worker: its modules built (src/helder/compiler/web/build.mjs: bin/compiler-web), todo and ts-todo checked and built in node (tests/compiler-web/node.mjs: warm, a type error, a check writing nothing), then in headless Chromium the worker loaded (brotli), both built to wasm32 on the page and each run in a frame of its own (preview.mjs), a literal edit patched with no build and a structural one built and swapped in, each read back from the program's view (Ui.getTree), and the numbers printed (tests/compiler-web/browser.mjs)", run: compilerWeb},
 		{name: "ui-draw", about: "helder.ui's GPU renderer and its programs against golden images (Linux: Mesa, Xvfb, AT-SPI)", run: uiDraw},
@@ -1084,6 +1084,8 @@ class Run {
 		run(NODE, ["tests/os/pointers-web.mjs", "bin/os/PointersWeb.wasm"]);
 		wasm("bin/os/BackWeb.wasm", cps(["src", "tests/os"]).concat(["-main", "BackWeb"]));
 		run(NODE, ["tests/os/back-web.mjs", "bin/os/BackWeb.wasm"]);
+		wasm("bin/os/NavWeb.wasm", uiCp().concat(["-main", "NavWeb"]));
+		run(NODE, ["tests/ui/nav-web.mjs", "bin/os/NavWeb.wasm"]);
 	}
 
 	static final SCENE_EXAMPLES = [for (e in ["gltf-viewer", "orbits", "showroom", "falling", "walker", "chains", "glow"]) 'examples/$e'];
@@ -1278,6 +1280,12 @@ class Run {
 				.concat(["--tree", '$o/motion-end.json', "--at", "end"]));
 			run(h, ["run", "--headless", "examples/motion/Motion.hx", "--script", "tests/headless/motion.json", "--reduced-motion", "--trace", '$o/motion-reduced.jsonl']);
 			run(h, ["run", "--headless", "examples/motion/main.tsx", "--script", "tests/headless/motion.json", "--trace", '$o/motion-ts.jsonl']);
+			// (helder.ui's Stack: a push mid-transition and after, the edge swipe's drags)
+			run(h, [
+				"run", "--headless", "tests/headless/StackSlide.hx", "--script", "tests/headless/navigation.json", "--snap", '$o/nav-mid.png', "--tree",
+				'$o/nav-mid.json', "--at", "mark:mid", "--tree", '$o/nav-detail.json', "--at", "mark:detail", "--tree", '$o/nav-dragging.json', "--at",
+				"mark:dragging", "--tree", '$o/nav-kept.json', "--at", "mark:kept", "--snap", '$o/nav-end.png', "--tree", '$o/nav-end.json', "--at", "end"
+			]);
 			run(h, [
 				"run", "--headless", "apps/viewer", "--script", "tests/headless/viewer.json", "--size", "480x360", "--tree", '$o/viewer-menu.json', "--at", "mark:menu",
 				"--tree", '$o/viewer-end.json'

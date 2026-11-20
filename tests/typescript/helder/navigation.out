@@ -1,0 +1,78 @@
+-- start: / (0)
+root
+  stack
+    screen
+      home
+        text "Home"
+      view
+    text ""
+
+-- go: /product/3 (1)
+root
+  stack
+    screen
+      home
+        text "Home"
+      view
+    screen
+      product-3
+        text "Product 3"
+      view
+    text "Product 3"
+
+tab specs
+-- go: /shop/a/item/b (2)
+root
+  stack
+    screen
+      home
+        text "Home"
+      view
+    screen
+      product-3
+        text "Product 3"
+      view
+    screen
+      text "a/b"
+      view
+    text "a/b"
+
+-- replace: /nowhere (2)
+root
+  stack
+    screen
+      home
+        text "Home"
+      view
+    screen
+      product-3
+        text "Product 3"
+      view
+    screen
+      text "Missing /nowhere"
+      view
+    text "Missing /nowhere"
+
+back true true false
+-- back: / (0)
+root
+  stack
+    screen
+      home
+        text "Home"
+      view
+    text "Home"
+
+-- open: /product/7 (1)
+root
+  stack
+    screen
+      home
+        text "Home"
+      view
+    screen
+      product-7
+        text "Product 7"
+      view
+    text "Product 7"
+

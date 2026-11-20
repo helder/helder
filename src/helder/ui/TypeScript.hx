@@ -8,11 +8,11 @@ package helder.ui;
 // the program's too.
 @:typescript("helder/ui")
 @:typescript.classes(helder.ui.draw.UiWindow, helder.ui.Event, helder.ui.Key, helder.ui.VirtualScroll, helder.ui.Clock, helder.ui.platform.WebViewEvent, helder.ui.platform.WebContent, helder.ui.platform.WebResponse)
-@:typescript.classes(helder.ui.Node, helder.ui.TextNode, helder.ui.view.UiFlow, helder.ui.SafeArea)
+@:typescript.classes(helder.ui.Node, helder.ui.TextNode, helder.ui.view.UiFlow, helder.ui.SafeArea, helder.ui.nav.Router)
 @:typescript.packages(helder.ui.widgets, helder.ui.code)
 // (an icon or a drawing: made by Icons.parse and Icons.svg, given to <image src>)
-@:typescript.types(helder.canvas.Svg)
-@:typescript.functions(Surface = helder.ui.draw.UiWindow.Surface, VirtualList = helder.ui.view.UiFlow.VirtualList)
+@:typescript.types(helder.canvas.Svg, helder.ui.nav.Router.RouteParams, helder.ui.nav.Screens.StackTransition)
+@:typescript.functions(Surface = helder.ui.draw.UiWindow.Surface, VirtualList = helder.ui.view.UiFlow.VirtualList, Stack = helder.ui.nav.Screens.Stack)
 @:typescript.jsx(neutral)
 @:build(helder.typescript.api.Manifest.build())
 class TypeScript {}

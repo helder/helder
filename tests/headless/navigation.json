@@ -1,0 +1,10 @@
+{"events": [
+  {"t": 0.3, "type": "tap", "tag": "item-2"},
+  {"t": 0.4, "type": "mark", "name": "mid"},
+  {"t": 1.0, "type": "mark", "name": "detail"},
+  {"t": 1.0, "type": "drag", "x": 4, "y": 240, "dx": 100, "dy": 0, "dur": 0.3},
+  {"t": 1.25, "type": "mark", "name": "dragging"},
+  {"t": 2.0, "type": "mark", "name": "kept"},
+  {"t": 2.0, "type": "drag", "x": 4, "y": 240, "dx": 250, "dy": 0, "dur": 0.3},
+  {"t": 3.0, "type": "mark", "name": "end"}
+]}

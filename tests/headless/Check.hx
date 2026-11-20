@@ -53,6 +53,7 @@ class Check {
 		motion(one, bless);
 		codeEditor(dir, one, bless);
 		viewer(tree('$one/viewer-menu.json'), tree('$one/viewer-end.json'));
+		navigation(one);
 		var frames = [for (f in FileSystem.readDirectory('$one/frames')) f];
 		frames.sort(Reflect.compare);
 		check("--frames 6 --every 2: frames 0, 2 and 4", frames.join(",") == "frame_0000.png,frame_0002.png,frame_0004.png", frames.join(","));
@@ -247,6 +248,26 @@ class Check {
 
 	// the viewer: a file opened through the file dialog (the script's
 	// answer), its context menu open at the mark, an item picked from it
+	// helder.ui's Stack on iOS's slide (StackSlide.hx): the pushed screen on
+	// its way in over the list moving to -30%, both in place after; an edge
+	// drag following the finger, let go short (springing back) and past half
+	// (popped: the detail screen gone); a frame snapped mid-transition and after
+	static function navigation(one:String) {
+		function x(t:Array<Dynamic>, tag:String):Null<Float> {
+			var n = byTag(t, tag);
+			return n == null ? null : n.rect[0];
+		}
+		var mid = tree('$one/nav-mid.json'), detail = tree('$one/nav-detail.json'), drag = tree('$one/nav-dragging.json');
+		var kept = tree('$one/nav-kept.json'), end = tree('$one/nav-end.json');
+		check("navigation: mid-push, the detail on its way in", x(mid, "detail-2") > 0 && x(mid, "detail-2") < 320 && x(mid, "list") < 0, '${x(mid, "detail-2")}, ${x(mid, "list")}');
+		check("navigation: pushed, the list at -30%", x(detail, "detail-2") == 0 && Math.abs(x(detail, "list") + 96) <= 1, '${x(detail, "detail-2")}, ${x(detail, "list")}');
+		check("navigation: an edge drag followed", x(drag, "detail-2") > 0 && x(drag, "detail-2") < 160, '${x(drag, "detail-2")}');
+		check("navigation: let go short, sprung back", x(kept, "detail-2") == 0, '${x(kept, "detail-2")}');
+		check("navigation: past half, popped", byTag(end, "detail-2") == null && x(end, "list") == 0, '${x(end, "list")}');
+		for (f in ["nav-mid.png", "nav-end.png"])
+			check('navigation: $f written', FileSystem.exists('$one/$f'));
+	}
+
 	static function viewer(menu:Array<Dynamic>, end:Array<Dynamic>) {
 		var items = [for (n in menu) if (n.tag == "menu-item") n.label];
 		check("viewer: the context menu open, its items", items.length == 5 && items.contains("Fit") && items.contains("Actual Size"), items.join("|"));

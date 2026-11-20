@@ -453,6 +453,54 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
 - **Shortcuts**: the keymap's bindings to actions (below), run when the
   focused node does not take the key; menu items show them.
 
+## Navigation
+
+`Router` (helder.ui) holds screens by path as a stack, `Stack` shows it
+(examples/navigation):
+
+```haxe
+final nav = new Router();
+nav.route("/", _ -> <Home/>)
+	.route("/product/:id", p -> <Product id={p.id}/>)   // p:{id:String}
+	.fallback(path -> <NotFound path={path}/>);
+<Stack router={nav}/>                                  // transition={Slide | Fade | None}
+
+nav.go("/product/3");  nav.back();  nav.replace("/cart");  nav.reset("/");
+nav.open(url);         // myapp://host/product/3, https://..., a path: the root and the match
+nav.path(); nav.depth(); nav.query();                  // Reads of the top
+```
+
+- Routes match in order; `:name` takes one segment (decoded), its
+  params typed from the path literal (Haxe: `route` is a macro; TS: a
+  template-literal type, `RouteParams<P>`). No optional segments or
+  wildcards. A path none matches is the fallback's, else `go` throws.
+- Each entry is mounted once, when pushed, and kept below the top
+  (hidden once covered: its state and scroll kept); a popped one is
+  disposed after its exit. During a transition the entering and leaving
+  screens take no pointer input. After a push or pop the new top's first
+  focusable node takes the focus, and its first text is announced (a
+  polite live region).
+- The system's back: while `depth > 0` the Stack is `App.onBack` (a pop)
+  with `App.backDepth = depth`: Android's back, Escape on the desktop and
+  in the browser. At the root, and once unmounted, the app's own onBack
+  and backDepth are back.
+- In a browser the Stack owns the page's history (`helder.os.History`,
+  App.backDepth's single entry set aside): a push is an entry with its
+  path, the history's back pops, and at start the Stack opens
+  `location`'s path and query, so a reload or a shared URL shows that
+  screen over the root. Deep links are the app's to wire:
+  `App.onOpen = urls -> nav.open(urls[0])`.
+- Transitions, the platform's by default: iOS's and macOS's slide (the
+  new screen from the right edge over 350 ms, critically damped; the one
+  below to -30% and dimmed by 10%; a drag from within 20 points of the
+  left edge pops as it goes, done past half the width or 500 pt/s, else
+  springing back), Android's (a 10% slide and a fade in over 300 ms, the
+  one below to 90%), and elsewhere a fade (150 ms with an 8 px slide).
+  An explicit `Slide` is iOS's off Android. Reduced motion
+  (`Settings.reducedMotion`, `Clock.reducedMotion`): a 150 ms fade
+  for a slide or a fade (`None` stays none). Screens are see-through unless their content
+  has a background: give a screen's root one under a slide.
+
 ## Actions and keymaps
 
 `helder.ui.actions`, modelled on Zed's GPUI. An action is a value of an
