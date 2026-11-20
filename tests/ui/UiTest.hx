@@ -805,6 +805,11 @@ class UiTest {
 		var v = f.velocity(50);
 		check("android: a drag's speed fitted (1000 a second)", Math.abs(v.y - 1000) < 1 && v.x == 0, v.y + "");
 		check("android: none once it stood still 40 ms", f.velocity(100).y == 0);
+		var slow = new helder.os.AndroidFling();
+		slow.start(0);
+		for (i in 1...4)
+			slow.move(0, 120, i * 120.0);
+		check("android: moves further apart than the horizon still a speed (the last two)", Math.abs(slow.velocity(360).y - 1000) < 1, "" + slow.velocity(360).y);
 		check("android: a fling past 50 a second", f.release(50));
 		var sum = 0.0, steps = 0, last = 1e9, slowing = true;
 		var t = 50.0;
