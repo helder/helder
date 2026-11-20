@@ -29,6 +29,8 @@ export const VISUALS = [
   { id: 'web', page: 'docs/web/pages/', size: '1280x800' },
   { id: 'notes', entry: 'examples/notes', size: '1280x720', at: '1.5' },
   { id: 'mail', entry: 'examples/mail', size: '860x560' },
+  // (a fruit pressed: the detail screen sliding in over the list, mid-way)
+  { id: 'navigation', entry: 'examples/navigation', at: '0.4', script: [{ t: 0.3, type: 'tap', tag: 'fruit-2' }, { t: 1, type: 'mark', name: 'end' }] },
   { id: 'services', entry: 'docs/examples/services', script: [{ t: 0.3, type: 'tap', label: 'de-DE' }] },
   { id: 'todo', entry: 'examples/ts-todo', size: '480x560', at: 'end',
     script: [{ t: 0.2, type: 'tap', role: 'textbox' }, { t: 0.3, type: 'type', text: 'Ship the docs', every: 0.03 },

@@ -26,7 +26,7 @@ class Home implements Markup {
 			still: "canvas.webp", example: ""},
 		{title: "Web pages", pitch: "Static pages with live islands: a helder program inside your page.", href: "docs/web/pages/",
 			still: "web.webp", example: "ts-palette"},
-		{title: "Device services", pitch: "Settings, locale and formatting, links and storage, one API on every platform.", href: "docs/apps/services/",
+		{title: "Device services", pitch: "Network, sharing, permissions, notifications, photos and settings: one API on every platform.", href: "docs/apps/services/",
 			still: "services.webp", example: "services"}
 	];
 	static final TS = 'import { signal } from "helder/view";

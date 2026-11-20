@@ -29,7 +29,7 @@ actions.bind("moveX", Stick(move, 0));
 
 ## What else
 
-- **Gamepads:** up to four in the standard layout, in the browser, on Linux and on Windows; macOS, Android and iOS are coming.
+- **Gamepads:** up to four in the standard layout on every platform: macOS, Windows, Linux, iOS, Android and the browser.
 - **Pointers:** mice, fingers and pens with pressure, capture and cancellation, in apps and games alike.
 - **Keyboards:** physical keys and typed characters apart, keymaps and shortcuts in apps ([Text and input](../apps/text.md)).
 - **Touch that knows the UI:** a finger on a HUD button never reaches the game.
