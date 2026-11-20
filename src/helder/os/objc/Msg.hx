@@ -65,6 +65,7 @@ class Msg {
 	static function iPtr(self:Ptr, sel:Ptr, a:Ptr):Int64;
 	static function u16Int(self:Ptr, sel:Ptr, a:Int64):UInt16;
 	static function f(self:Ptr, sel:Ptr):Float;
+	static function fFloatPtr(self:Ptr, sel:Ptr, a:Float, b:Ptr):Float;
 	static function rect(self:Ptr, sel:Ptr):CGRect;
 	static function point(self:Ptr, sel:Ptr):CGPoint;
 	static function pointPointPtr(self:Ptr, sel:Ptr, p:CGPoint, view:Ptr):CGPoint;

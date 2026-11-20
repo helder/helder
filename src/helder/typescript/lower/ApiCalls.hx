@@ -152,6 +152,8 @@ abstract class ApiCalls extends ClassValues {
 					case FClass(c):
 						var m = apiClass(c, n);
 						var member = apiMember(m, callee.name().text, true, n);
+						if (actual.length == 0 && member.kind == "var" && HTypes.bare(member.type).match(HRead(_)))
+							return bridge.call(bridge.interop("signalRead"), [any(bridge.getMember(m, member, null, where()))]);
 						if (member.mount) return mount(n, member);
 						return bridge.callStatic(m, member, apiArguments(actual, member.type), where());
 					case FStatic(_, _): return null;

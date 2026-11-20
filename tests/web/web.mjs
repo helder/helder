@@ -86,6 +86,14 @@ function check(what, ok, detail) {
 	const surface = await p.waitForFunction(() => window.domSurface, null, { timeout: 5000 }).then((h) => h.jsonValue()).catch(() => null);
 	check('DomTest: a DOM <Surface> starts its module on its canvas', surface && surface.url.endsWith('/app.wasm') && surface.canvas && surface.fonts[0].endsWith('f.ttf')
 		&& surface.imports.includes('ui/imports.mjs'), surface);
+	await p.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce', contrast: 'more' });
+	await p.setViewportSize({ width: 320, height: 480 });
+	const settings = await p.waitForFunction(() => {
+		const s = window.domSettings;
+		return s?.dark && s.motion && s.contrast === 'more' && s.orientation === 'portrait';
+	}, null, { timeout: 5000 })
+		.then(() => true).catch(() => false);
+	check('DomTest: settings signals update when media preferences change', settings);
 	await p.close();
 }
 

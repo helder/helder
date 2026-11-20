@@ -276,6 +276,32 @@ leaves it still moves, and its release still comes. On Android and iOS
 the window sees the touches itself: no page to pan, every drag the
 program's.
 
+## Platform settings and clipboard
+
+`helder.os.Settings` exposes read-only `helder.view` signals. Read them in
+markup or an effect as `Settings.textScale()`, `Settings.reducedMotion()`,
+`Settings.contrast()`, `Settings.dark()`, and `Settings.orientation()`.
+In TypeScript, import `Settings` from `helder/os`.
+
+Text scale is a multiplier, defaulting to 1. Contrast is `normal`, `more`,
+`less`, or `custom` (a forced palette in the browser). Orientation is
+`portrait`, `landscape`, or null before a viewport is known. It follows the
+phone app, the browser viewport, or the first desktop window. The signals
+update while `App.run` runs, within a second of a change, or from media
+query events in JavaScript. Headless runs use the requested theme and
+motion preference. Apps decide how to use the values.
+
+iOS text scale is Dynamic Type at the body size. Android reads the font
+scale and animation setting, with contrast on API 34 and later. Windows
+reads the system text size, animation, and high-contrast settings.
+Linux reads GNOME's preferences where its GSettings schemas are installed.
+macOS exposes motion and contrast through AppKit. macOS and the web
+report 1 for text scale.
+
+`Clipboard.write(window, text)` and `Clipboard.read(window, callback)`
+use the system's text clipboard. On Android, the activity must have focus
+for reads. The callback receives null when Android supplies no text.
+
 ## Wayland
 
 `helder.os.wayland`: libwayland-client, libwayland-egl, libxkbcommon and

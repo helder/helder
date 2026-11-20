@@ -4,8 +4,13 @@
 //
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
+import type {Read} from "helder/view";
 
-declare const __haxe: {Store: "helder.os.Store", Sys: "Sys", __module: "helder.os.TypeScript"};
+declare const __haxe: {Store: "helder.os.Store", Settings: "helder.os.Settings", Sys: "Sys", __module: "helder.os.TypeScript"};
+
+export type Contrast = "normal" | "more" | "less" | "custom";
+
+export type Orientation = "portrait" | "landscape";
 
 // A small key-value store kept between runs: an app's settings, a game's
 // save. Strings by key, read into memory when opened, written through at
@@ -50,6 +55,14 @@ export declare class Store {
 	set(key: string, value: string): void;
 	remove(key: string): void;
 	clear(): void;
+}
+
+export declare class Settings {
+	static readonly textScale: Read<number>;
+	static readonly reducedMotion: Read<boolean>;
+	static readonly contrast: Read<Contrast>;
+	static readonly dark: Read<boolean>;
+	static readonly orientation: Read<Orientation | null>;
 }
 
 export declare class Sys {

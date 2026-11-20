@@ -39,6 +39,7 @@ class JniEnv {
 	@:slot(109) static function SetIntField(env:Ptr, o:Ptr, f:Ptr, v:Int):Void;
 	@:slot(113) static function GetStaticMethodID(env:Ptr, cls:Ptr, name:Ptr, sig:Ptr):Ptr;
 	@:slot(116) static function CallStaticObjectMethodA(env:Ptr, cls:Ptr, m:Ptr, args:Ptr):Ptr;
+	@:slot(119) static function CallStaticBooleanMethodA(env:Ptr, cls:Ptr, m:Ptr, args:Ptr):Int;
 	@:slot(131) static function CallStaticIntMethodA(env:Ptr, cls:Ptr, m:Ptr, args:Ptr):Int;
 	@:slot(143) static function CallStaticVoidMethodA(env:Ptr, cls:Ptr, m:Ptr, args:Ptr):Void;
 	@:slot(144) static function GetStaticFieldID(env:Ptr, cls:Ptr, name:Ptr, sig:Ptr):Ptr;
@@ -200,6 +201,20 @@ class Jni {
 		var r = JniEnv.CallStaticObjectMethodA(env, cls, m, set(a, b, c, d));
 		check();
 		return r;
+	}
+
+	public static function staticBool(cls:Ptr, m:Ptr):Bool {
+		var r = JniEnv.CallStaticBooleanMethodA(env, cls, m, set(0, 0, 0, 0)) & 0xff;
+		check();
+		return r != 0;
+	}
+
+	public static function service(name:String):Ptr {
+		var context = cls("android.content.Context");
+		var key = string(name);
+		var value = obj(activity, method(context, "getSystemService", "(Ljava/lang/String;)Ljava/lang/Object;"), key.toI64());
+		deleteLocal(key);
+		return value;
 	}
 
 	public static function staticInt(cls:Ptr, m:Ptr, a:Int64 = 0, b:Int64 = 0, c:Int64 = 0, d:Int64 = 0):Int {

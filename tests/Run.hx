@@ -644,6 +644,9 @@ class Run {
 		var exe = exePath('bin/os/$GFX_TARGET/WindowTest', GFX_TARGET);
 		var wine = GFX_TARGET.startsWith("windows-") && !HOST.startsWith("windows-") ? "wine " : "";
 		if (Sys.systemName() == "Linux") shell('$XVFB -a $wine$exe') else run(exe, []);
+		native('bin/os/$GFX_TARGET/SettingsCheck', cps(["src", "tests/os"]).concat(["-main", "SettingsCheck"]), GFX_TARGET);
+		var settings = exePath('bin/os/$GFX_TARGET/SettingsCheck', GFX_TARGET);
+		if (Sys.systemName() == "Linux") shell('$XVFB -a $wine$settings') else run(settings, []);
 		// (an inset title bar: tests/os/TitleBarTest.hx)
 		native('bin/os/$GFX_TARGET/TitleBarTest', cps(["src", "tests/os"]).concat(["-main", "TitleBarTest"]), GFX_TARGET);
 		var bar = exePath('bin/os/$GFX_TARGET/TitleBarTest', GFX_TARGET);
