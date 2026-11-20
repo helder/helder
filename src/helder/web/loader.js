@@ -114,7 +114,11 @@
 			o.observe(el);
 		},
 	};
-	const arm = (el) => (when[el.dataset.load] || ((el, go) => go()))(el, () => start(el).catch((e) => fail(el, e)));
+	// (a network error, a dropped connection's: once more after a moment before it counts)
+	const retry = (el) => (e) => e instanceof TypeError && /fetch/i.test(e.message) && !el.hxmcRetried
+		? new Promise((ok) => setTimeout(ok, 500)).then(() => ((el.hxmcRetried = true), start(el))).catch((e) => fail(el, e))
+		: fail(el, e);
+	const arm = (el) => (when[el.dataset.load] || ((el, go) => go()))(el, () => start(el).catch(retry(el)));
 	const go = () => {
 		for (const el of document.querySelectorAll('hxmc-island:not([data-hydrated])')) arm(el);
 	};
