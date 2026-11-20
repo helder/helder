@@ -222,7 +222,8 @@ class Scrolling {
 	static function scrollbarDown(ui:Ui, target:Node, px:Float, py:Float):Bool {
 		var n = target;
 		while (n != null) {
-			if (n.style.overflow == Scroll)
+			// (the platform's own scrollbars: theirs, not a thumb of ours)
+			if (n.style.overflow == Scroll && !(ui.nativeScroll && ui.nativeBars && ui.scrollKept.exists(n)))
 				for (x in [false, true]) {
 					var t = thumb(n, x);
 					if (t == null) continue;

@@ -679,7 +679,7 @@ class CocoaWindow {
 			var type = Msg.i(ev, ObjC.sel("type")).toInt();
 			// (a press on the title bar or an edge is AppKit's, a move or a resize:
 			// its loop takes the release too, which the app would never see)
-			if (w != null && (type == NS.LeftMouseDown || type == NS.RightMouseDown || type == NS.OtherMouseDown) && !w.inside(ev)) {
+			if (w != null && (type == NS.LeftMouseDown || type == NS.RightMouseDown || type == NS.OtherMouseDown) && (!w.inside(ev) || w.onScroller(ev))) {
 				Msg.vPtr(app, ObjC.sel("sendEvent:"), ev);
 				continue;
 			}
@@ -695,6 +695,16 @@ class CocoaWindow {
 		// (a composition changed outside a key: the input method's own window, a message)
 		for (w in open.copy())
 			w.composition();
+	}
+
+	// whether a press is on a scroller of AppKit's over the content (a
+	// program's own scroll view's: its knob dragged in AppKit's loop, which
+	// takes the release too)
+	function onScroller(ev:Ptr):Bool {
+		var content = Msg.id(window, ObjC.sel("contentView"));
+		var p = Msg.pointPointPtr(Msg.id(content, ObjC.sel("superview")), ObjC.sel("convertPoint:fromView:"), Msg.point(ev, ObjC.sel("locationInWindow")), Ptr.nil());
+		var hit = Msg.idPoint(content, ObjC.sel("hitTest:"), p);
+		return !hit.isNull() && Msg.bPtr(hit, ObjC.sel("isKindOfClass:"), ObjC.cls("NSScroller"));
 	}
 
 	// whether a press is on the content, not the window's frame

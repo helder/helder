@@ -36,9 +36,14 @@ class MacScroll {
 	final seen = new Map<Node, Bool>();
 	// the scroll view a gesture (and its momentum) goes to
 	var latched = Ptr.nil();
+	// (UiWindow's frame, drawn as a view moves: AppKit moves them on its own
+	// timers and in its own loops, a scroller's knob dragged, while the
+	// app's loop waits or is not running)
+	final draw:Void->Void;
 
-	public function new(window:helder.os.Window, ui:Ui) {
+	public function new(window:helder.os.Window, ui:Ui, draw:Void->Void) {
 		this.ui = ui;
+		this.draw = draw;
 		view = window.surface.handle;
 		content = Msg.id(Msg.id(view, ObjC.sel("window")), ObjC.sel("contentView"));
 		if (docClass.isNull()) classes();
@@ -225,5 +230,6 @@ class MacScroll {
 			last[8] = y;
 		}
 		s.ui.nativeScrolled(o.n, x, y);
+		s.draw();
 	}
 }

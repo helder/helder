@@ -241,7 +241,7 @@ class UiWindow {
 		} else if (Platform.os() == 1) {
 			if (macScroll == null) {
 				if (!ui.nativeScroll) return;
-				macScroll = new MacScroll(window, ui);
+				macScroll = new MacScroll(window, ui, () -> if (open.indexOf(this) >= 0 && needsFrame()) frame());
 			}
 			(cast macScroll : MacScroll).update();
 		}
