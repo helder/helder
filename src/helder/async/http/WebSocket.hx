@@ -11,6 +11,12 @@ import helder.async.http.AppleHttp.AppleWebSocket;
 #if (hxmc.target == "wasm32-wasi")
 import helder.async.http.WebHttp.WebWebSocket;
 #end
+#if (target.name == "hxmc" && (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64"))
+import helder.async.http.WinHttp.WinWebSocket;
+#end
+#if (target.name == "hxmc" && (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64"))
+import helder.async.http.AndroidHttp.AndroidSocket;
+#end
 
 // A WebSocket (RFC 6455) on a connection: a server's, from an HTTP request
 // (upgrade), or a client's (connect). Messages are text (binary ones come
@@ -81,8 +87,10 @@ class WebSocket {
 		return handshake(s, s, () -> s.close(), '$host:$port', path);
 	}
 
-	// a client's WebSocket to a ws or wss url; wss natively over mbedtls's
-	// TLS (TlsSocket: the system's roots, or ca's: PEM)
+	// a client's WebSocket to a ws or wss url: the system's stack where there
+	// is one (NSURLSession on macOS and iOS, WinHTTP on Windows, Java's
+	// sockets under these frames on Android); else, or with a ca (PEM), wss
+	// over mbedtls's TLS (TlsSocket: the system's roots, or ca's)
 	@:coroutine public static function open(url:String, ?ca:String):WebSocket {
 		#if (target.name == "hxmc" && (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64"))
 		// (macOS and iOS: NSURLSession's, the system's stack; a ca given: helder's own TLS)
@@ -98,9 +106,24 @@ class WebSocket {
 		ws.web = WebWebSocket.open(url);
 		return ws;
 		#end
+		// (Windows: WinHTTP's; a ca given: helder's own TLS)
+		#if (target.name == "hxmc" && (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64"))
+		if (ca == null) {
+			var ws = new WebSocket(null, () -> {}, null, true);
+			ws.win = WinWebSocket.open(url);
+			return ws;
+		}
+		#end
 		var u = Client.Url.parse(url);
-		var s = Socket.connect(u.host, u.port);
 		var host = u.host + (u.port == (u.secure ? 443 : 80) ? "" : ":" + u.port);
+		// (Android: Java's sockets, its TLS, under these frames; a ca given: helder's own TLS)
+		#if (target.name == "hxmc" && (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64"))
+		if (ca == null) {
+			var s = AndroidSocket.connect(u.host, u.port, u.secure);
+			return handshake(s, s, () -> s.close(), host, u.path);
+		}
+		#end
+		var s = Socket.connect(u.host, u.port);
 		if (!u.secure) return handshake(s, s, () -> s.close(), host, u.path);
 		#if (target.name == "hxmc" && hxmc.target != "wasm32-wasi")
 		var tls = try TlsSocket.client(s, u.host, ca == null ? null : sys.ssl.Certificate.fromString(ca)) catch (e:Exception) {
@@ -141,6 +164,10 @@ class WebSocket {
 	var web:Null<WebWebSocket> = null;
 	#end
 
+	#if (target.name == "hxmc" && (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64"))
+	var win:Null<WinWebSocket> = null;
+	#end
+
 	// the next message; null once closed
 	@:coroutine public function receive():Null<String> {
 		#if (hxmc.target == "wasm32-wasi")
@@ -153,6 +180,13 @@ class WebSocket {
 		#if (target.name == "hxmc" && (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64"))
 		if (apple != null) {
 			var m = apple.receive();
+			if (m == null) closed = true;
+			return m;
+		}
+		#end
+		#if (target.name == "hxmc" && (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64"))
+		if (win != null) {
+			var m = win.receive();
 			if (m == null) closed = true;
 			return m;
 		}
@@ -203,6 +237,9 @@ class WebSocket {
 		#if (hxmc.target == "wasm32-wasi")
 		if (web != null) return web.send(text);
 		#end
+		#if (target.name == "hxmc" && (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64"))
+		if (win != null) return win.send(text);
+		#end
 		frame(0x1, Bytes.ofString(text));
 	}
 
@@ -213,6 +250,10 @@ class WebSocket {
 		#if (hxmc.target == "wasm32-wasi")
 		// (the browser's WebSocket answers pings itself and sends none of its own)
 		if (web != null) return;
+		#end
+		// (WinHTTP sends its own pings, and no other)
+		#if (target.name == "hxmc" && (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64"))
+		if (win != null) return;
 		#end
 		frame(0x9, Bytes.alloc(0));
 	}
@@ -231,6 +272,13 @@ class WebSocket {
 		if (web != null) {
 			closed = true;
 			web.close(code);
+			return;
+		}
+		#end
+		#if (target.name == "hxmc" && (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64"))
+		if (win != null) {
+			closed = true;
+			win.close(code);
 			return;
 		}
 		#end

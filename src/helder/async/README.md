@@ -164,12 +164,16 @@ checks the server's certificate against the system's roots and its name
 and key (`TlsSocket.server(socket, cert, key)`). In the browser
 (`WebHttp`) every request is the page's `fetch` and every WebSocket the
 page's own (a url relative to the page; its http as ws). On Windows
-`Client.request` is WinHTTP's (`WinHttp`: http and https, Schannel's TLS,
-the system's certificates and proxies; its callbacks, on the system's
-threads, only note each step's end, which the loop polls). On Android it
-is `HttpURLConnection`'s (`AndroidHttp`: a thread per request, attached
-to the VM; the app's network security config applies, so plain http needs
-`"cleartext": true`). A `ca` given takes helder's own TLS on both.
+`Client.request` and `WebSocket.open` are WinHTTP's (`WinHttp`,
+`WinWebSocket`: Schannel's TLS, the system's certificates and proxies;
+its callbacks, on the system's threads, only note each step's end, which
+the loop polls). On Android a request is `HttpURLConnection`'s
+(`AndroidHttp`: a thread per request, attached to the VM; the app's
+network security config applies, so plain http needs `"cleartext":
+true`), and a WebSocket helder's own frames over a Java `Socket`
+(`AndroidSocket`: an `SSLSocket` for wss, the system's TLS and
+certificates; a reader and a writer thread attached to the VM). A `ca`
+given takes helder's own TLS on both.
 
 ## In the browser
 

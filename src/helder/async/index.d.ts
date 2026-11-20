@@ -112,8 +112,10 @@ export declare class WebSocket {
 	static accept(io: unknown, out: unknown, shut: () => void): Promise<WebSocket>;
 	// a client's WebSocket to host:port at path (ws)
 	static connect(host: string, port: number, path?: string): Promise<WebSocket>;
-	// a client's WebSocket to a ws or wss url; wss natively over mbedtls's
-	// TLS (TlsSocket: the system's roots, or ca's: PEM)
+	// a client's WebSocket to a ws or wss url: the system's stack where there
+	// is one (NSURLSession on macOS and iOS, WinHTTP on Windows, Java's
+	// sockets under these frames on Android); else, or with a ca (PEM), wss
+	// over mbedtls's TLS (TlsSocket: the system's roots, or ca's)
 	static open(url: string, ca?: string): Promise<WebSocket>;
 	readonly closed: boolean;
 	// the next message; null once closed
