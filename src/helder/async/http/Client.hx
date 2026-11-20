@@ -10,14 +10,18 @@ import helder.async.*;
 // redirects, no compression asked for. An https URL goes to the system's
 // stack where there is one: NSURLSession on macOS and iOS (AppleHttp: its
 // TLS, redirects, HTTP/2 and cache); elsewhere natively this client over
-// mbedtls's TLS (TlsSocket: the system's roots, or the ca given); none in
-// the browser yet (an exception).
+// mbedtls's TLS (TlsSocket: the system's roots, or the ca given); in the
+// browser the page's fetch for every url (WebHttp).
 //
 //   var res = Client.request("http://127.0.0.1:4983/", {method: "POST", body: '{"type":"init"}',
 //     headers: ["content-type" => "application/json"]});
 //   trace(res.status, res.text());
 class Client {
 	@:coroutine public static function request(url:String, ?options:RequestOptions):Reply {
+		// (the browser: its fetch, for every url: no sockets there)
+		#if (hxmc.target == "wasm32-wasi")
+		return WebHttp.request(url, options);
+		#end
 		// (https: the system's stack where there is one; macOS and iOS: AppleHttp)
 		if (StringTools.startsWith(url, "https://")) {
 			#if (target.name == "hxmc" && (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64"))

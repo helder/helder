@@ -8,13 +8,16 @@ import http from 'node:http';
 import path from 'node:path';
 import { run } from '../../src/helder/os/browser.mjs';
 import imports from '../../src/helder/async/imports.mjs';
+import { echo, echoSockets } from './echo.mjs';
 
 const dir = path.dirname(new URL(import.meta.url).pathname);
 const server = http.createServer((req, res) => {
+	if (echo(req, res)) return;
 	const f = path.join(dir, path.normalize(req.url).replace(/^\/+/, ''));
 	if (!fs.existsSync(f)) return res.writeHead(404).end();
 	res.writeHead(200).end(fs.readFileSync(f));
 });
+echoSockets(server);
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const base = `http://127.0.0.1:${server.address().port}/`;
 const { host } = await run(fs.readFileSync(process.argv[2]), { imports: [imports], base });

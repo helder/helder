@@ -8,6 +8,9 @@ import helder.async.http.Http;
 #if (target.name == "hxmc" && (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64"))
 import helder.async.http.AppleHttp.AppleWebSocket;
 #end
+#if (hxmc.target == "wasm32-wasi")
+import helder.async.http.WebHttp.WebWebSocket;
+#end
 
 // A WebSocket (RFC 6455) on a connection: a server's, from an HTTP request
 // (upgrade), or a client's (connect). Messages are text (binary ones come
@@ -89,6 +92,12 @@ class WebSocket {
 			return ws;
 		}
 		#end
+		// (the browser: the page's WebSocket)
+		#if (hxmc.target == "wasm32-wasi")
+		var ws = new WebSocket(null, () -> {}, null, true);
+		ws.web = WebWebSocket.open(url);
+		return ws;
+		#end
 		var u = Client.Url.parse(url);
 		var s = Socket.connect(u.host, u.port);
 		var host = u.host + (u.port == (u.secure ? 443 : 80) ? "" : ":" + u.port);
@@ -128,8 +137,19 @@ class WebSocket {
 	var apple:Null<AppleWebSocket> = null;
 	#end
 
+	#if (hxmc.target == "wasm32-wasi")
+	var web:Null<WebWebSocket> = null;
+	#end
+
 	// the next message; null once closed
 	@:coroutine public function receive():Null<String> {
+		#if (hxmc.target == "wasm32-wasi")
+		if (web != null) {
+			var m = web.receive();
+			if (m == null) closed = true;
+			return m;
+		}
+		#end
 		#if (target.name == "hxmc" && (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64"))
 		if (apple != null) {
 			var m = apple.receive();
@@ -180,12 +200,19 @@ class WebSocket {
 		#if (target.name == "hxmc" && (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64"))
 		if (apple != null) return apple.send(text);
 		#end
+		#if (hxmc.target == "wasm32-wasi")
+		if (web != null) return web.send(text);
+		#end
 		frame(0x1, Bytes.ofString(text));
 	}
 
 	@:coroutine public function ping():Void {
 		#if (target.name == "hxmc" && (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64"))
 		if (apple != null) return apple.ping();
+		#end
+		#if (hxmc.target == "wasm32-wasi")
+		// (the browser's WebSocket answers pings itself and sends none of its own)
+		if (web != null) return;
 		#end
 		frame(0x9, Bytes.alloc(0));
 	}
@@ -197,6 +224,13 @@ class WebSocket {
 		if (apple != null) {
 			closed = true;
 			apple.close(code);
+			return;
+		}
+		#end
+		#if (hxmc.target == "wasm32-wasi")
+		if (web != null) {
+			closed = true;
+			web.close(code);
 			return;
 		}
 		#end

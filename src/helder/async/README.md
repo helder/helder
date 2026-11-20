@@ -161,9 +161,10 @@ reads and writes are coroutines on the loop, like a `Socket`'s: mbedtls
 reads and writes two buffers of its own instead of the socket. A client
 checks the server's certificate against the system's roots and its name
 (`ca`, PEM, trusts others: a test's); a server presents its certificate
-and key (`TlsSocket.server(socket, cert, key)`). Windows' WinHTTP,
-Android's `HttpURLConnection` and the browser's `fetch` and `WebSocket` are
-to come, as Apple's is.
+and key (`TlsSocket.server(socket, cert, key)`). In the browser
+(`WebHttp`) every request is the page's `fetch` and every WebSocket the
+page's own (a url relative to the page; its http as ws). Windows' WinHTTP
+and Android's `HttpURLConnection` are to come, as Apple's is.
 
 ## In the browser
 
