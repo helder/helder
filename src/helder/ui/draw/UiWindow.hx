@@ -42,6 +42,11 @@ typedef SurfaceProps = {
 	// macOS draws by default) or "off" ("antialiased", as CSS's
 	// -webkit-font-smoothing); default the app's (helder.text.Shaping.smoothing)
 	?fontSmoothing:helder.view.graph.Read<String>,
+	// "native": the platform's own scrolling drives the scrollers where it
+	// has it (iOS's UIScrollView, the browser's: their physics, bounce,
+	// indicators; Android's fling, VelocityTracker and OverScroller);
+	// "helder": helder's own scrolling everywhere; default UiWindow.scrolling's
+	?scrolling:String,
 	?children:UiView
 };
 
@@ -110,6 +115,14 @@ class UiWindow {
 	var iosAccess:Any = null;
 	// Android's (an AndroidAccess)
 	var androidAccess:Any = null;
+	// iOS's scroll views (an IosScroll), the browser's (a WebScroll)
+	var iosScroll:Any = null;
+	var webScroll:Any = null;
+	// the platform's scroll views drive the scrollers of the windows made
+	// (Ui.nativeScroll, where the platform has them: iOS, the browser; Android's
+	// fling physics, AndroidGlide); false: helder's
+	// own scrolling (a Surface's scrolling prop sets a window's)
+	public static var scrolling = true;
 	// the text input area last given to the window ("": off)
 	var typing = "";
 	final pass:PassDesc = {colors: [{load: Clear, clear: new helder.gfx.Color(1, 1, 1)}]};
@@ -131,6 +144,7 @@ class UiWindow {
 		// (an inset title bar: a press's answer the ui's, its drag regions and window buttons)
 		if (titlebar == Inset) window.titlebarAt = (x, y) -> ui.titleHit(x / renderer.scale, y / renderer.scale);
 		ui.dark = dark.peek();
+		nativeScroll(scrolling);
 		// (a touch drag the program's where it scrolls something: the page's otherwise)
 		window.scrollsAt = (x, y, dx, dy) -> ui.scrollsAt(x / renderer.scale, y / renderer.scale, dx / renderer.scale, dy / renderer.scale);
 		// (headless: no window to put a system's views over, its menus and fields drawn)
@@ -185,6 +199,7 @@ class UiWindow {
 		handedOver = true;
 		if (Platform.apple() >= 1) {
 			if (iosAccess != null) (cast iosAccess : IosAccess).dispose();
+			if (iosScroll != null) (cast iosScroll : IosScroll).dispose();
 		} else if (Platform.os() == 1) {
 			if (macAccess != null) (cast macAccess : MacAccess).dispose();
 			if (ui.platform != null) (cast ui.platform : MacViews).dispose();
@@ -193,9 +208,36 @@ class UiWindow {
 			if (winAccess != null) (cast winAccess : WinAccess).dispose();
 			if (ui.platform != null) (cast ui.platform : WinViews).dispose();
 		}
-		macAccess = winAccess = iosAccess = null;
+		macAccess = winAccess = iosAccess = iosScroll = null;
 	}
 	#end
+
+	// the platform's scroll views on or off for this window (where it has them)
+	public function nativeScroll(on:Bool) {
+		#if !helder.headless
+		ui.nativeScroll = on && (Platform.apple() >= 1 || Platform.os() == 3);
+		// (Android: no scroll views under the tree; helder's drag, Android's fling: its VelocityTracker and OverScroller)
+		if (Platform.target() >= 9) @:privateAccess ui.touchScroll.g = on ? new helder.os.android.AndroidGlide() : new helder.os.Glide();
+		ui.requestFrame();
+		#end
+	}
+
+	// the scrollers' platform views kept in step (after a frame)
+	function syncScroll() {
+		if (Platform.os() == 3) {
+			if (webScroll == null) {
+				if (!ui.nativeScroll) return;
+				webScroll = new WebScroll(window.surface.handle.toI64().toInt(), ui);
+			}
+			(cast webScroll : WebScroll).update();
+		} else if (Platform.apple() >= 1) {
+			if (iosScroll == null) {
+				if (!ui.nativeScroll) return;
+				iosScroll = new IosScroll(window, ui);
+			}
+			(cast iosScroll : IosScroll).update();
+		}
+	}
 
 	public var root(get, never):Node;
 
@@ -260,6 +302,7 @@ class UiWindow {
 		device.endFrame();
 		updateTextInput();
 		sendAccess();
+		syncScroll();
 		if (onFrame != null) onFrame();
 	}
 
@@ -399,6 +442,7 @@ class UiWindow {
 	function pollAccess() {
 		if (Platform.os() == 3) {
 			if (access != null) WebMirror.poll(ui);
+			if (webScroll != null) (cast webScroll : WebScroll).poll();
 		} else if (Platform.os() == 0) {
 			if (Platform.target() < 9) {
 				if (linuxAccess != null) LinuxAccess.dispatch();
@@ -483,6 +527,7 @@ class UiWindow {
 		// (nested: only a constant condition drops the branch)
 		if (Platform.apple() >= 1) {
 			if (iosAccess != null) (cast iosAccess : IosAccess).dispose();
+			if (iosScroll != null) (cast iosScroll : IosScroll).dispose();
 		} else if (Platform.os() == 1) {
 			if (macAccess != null) (cast macAccess : MacAccess).dispose();
 		}
@@ -550,6 +595,7 @@ class UiWindow {
 			w.renderer.atlas.smoothing = helder.text.FontSmoothing.parse(v);
 			w.ui.requestFrame();
 		});
+		if (props.scrolling != null) w.nativeScroll(props.scrolling != "helder");
 		if (props.onClose != null) w.onClose = props.onClose;
 		if (props.onDrop != null) w.onDrop = props.onDrop;
 		// (in this owner: what is above the root, contexts, seen inside)

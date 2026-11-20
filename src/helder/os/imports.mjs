@@ -195,9 +195,25 @@ export default function (host) {
 	}
 
 	function listen(c, h) {
-		const pos = (e) => [Math.round(e.offsetX * c.width / Math.max(1, c.clientWidth)), Math.round(e.offsetY * c.height / Math.max(1, c.clientHeight))];
+		// (from the canvas's rectangle: an event may come from a layer over it)
+		const pos = (e) => {
+			const r = c.getBoundingClientRect();
+			return [Math.round((e.clientX - r.left - c.clientLeft) * c.width / Math.max(1, c.clientWidth)), Math.round((e.clientY - r.top - c.clientTop) * c.height / Math.max(1, c.clientHeight))];
+		};
 		const off = new AbortController();
-		const on = (type, f, o = {}) => c.addEventListener(type, f, { ...o, signal: off.signal });
+		// the pointer's listeners, also on a layer of the page's own scroll
+		// views over the canvas (helder.ui's: c.hxmcForward(layer)), whose
+		// events are the canvas's but where they are the browser's: a
+		// scrollbar's (its scroller the target), a scroll (a wheel without
+		// Control, a touch's pan the program does not take)
+		const FORWARD = new Set(['mousemove', 'mousedown', 'mouseup', 'pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'wheel', 'touchmove', 'contextmenu']);
+		const forwarded = [];
+		const on = (type, f, o = {}) => {
+			c.addEventListener(type, f, { ...o, signal: off.signal });
+			if (FORWARD.has(type)) forwarded.push([type, f, o]);
+		};
+		const over = (e) => e.currentTarget !== c;
+		const bar = (e) => over(e) && e.target.hxmcScroller === true;
 		// (a pointer no longer active, a synthetic event's: NotFoundError, and the press goes on uncaptured)
 		const capture = (e) => {
 			try {
@@ -261,8 +277,11 @@ export default function (host) {
 				for (const ch of e.data) push([h, TEXT_INPUT, ch.codePointAt(0), 0, 0, 0, 0]);
 			ta.value = '';
 		});
-		on('mousemove', (e) => push([h, MOUSE_MOVE, 0, ...pos(e), 0, mods(e)]));
+		on('mousemove', (e) => bar(e) || push([h, MOUSE_MOVE, 0, ...pos(e), 0, mods(e)]));
 		on('mousedown', (e) => {
+			if (bar(e)) return;
+			// (over a scroll view: no focus for the page's body, nor a selection)
+			if (over(e)) e.preventDefault();
 			// (typing: the focus stays the textarea's)
 			if (c.hxmcTyping) {
 				e.preventDefault();
@@ -270,16 +289,18 @@ export default function (host) {
 			} else c.focus();
 			push([h, MOUSE_DOWN, 0, ...pos(e), e.button + 1, mods(e)]);
 		});
-		on('mouseup', (e) => push([h, MOUSE_UP, 0, ...pos(e), e.button + 1, mods(e)]));
+		on('mouseup', (e) => bar(e) || push([h, MOUSE_UP, 0, ...pos(e), e.button + 1, mods(e)]));
 		// (a mouse's press captured: a drag that leaves the canvas still
 		// moves, and its release still comes, at positions outside it)
-		on('pointerdown', (e) => e.pointerType === 'mouse' && capture(e));
+		on('pointerdown', (e) => e.pointerType === 'mouse' && !bar(e) && capture(e));
 		// (the deltas in canvas pixels, in 1/256ths: in key and button; lines 40 pixels, pages the canvas)
 		// (not passive: a pinch, which Chrome and Firefox send as a wheel
 		// with Control, and Control with the wheel, are the program's, not
 		// the page's zoom; other wheels still scroll a page around the canvas)
 		let scale = 1, wheeled = false;
 		on('wheel', (e) => {
+			// (over a scroll view: its scroll, the browser's)
+			if (over(e) && !e.ctrlKey) return;
 			if (e.ctrlKey) {
 				e.preventDefault();
 				wheeled = true;
@@ -324,9 +345,10 @@ export default function (host) {
 		};
 		const pointer = (e) => e.pointerType === 'touch' || e.pointerType === 'pen';
 		on('pointerdown', (e) => {
-			if (!pointer(e)) return;
+			if (!pointer(e) || bar(e)) return;
 			e.preventDefault();
-			capture(e);
+			// (over a scroll view: uncaptured, the browser may pan it)
+			if (!over(e)) capture(e);
 			point(e, POINTER_DOWN, e.button + 1);
 		});
 		on('pointermove', (e) => {
@@ -360,7 +382,8 @@ export default function (host) {
 		const decide = (t, x, y) => {
 			if (t.taken === undefined) {
 				const dx = t.x - x, dy = t.y - y, vertical = Math.abs(dy) > Math.abs(dx);
-				const a = vertical ? panY : panX;
+				// (over a scroll view: it pans, unless the program takes the drag)
+				const a = t.over || (vertical ? panY : panX);
 				// (asked along the gesture's axis: a vertical one does not move a carousel)
 				t.taken = !a || (query !== 0 && host.call(query, h, t.x, t.y, vertical ? 0 : Math.round(dx), vertical ? Math.round(dy) : 0) === 1);
 			}
@@ -382,7 +405,7 @@ export default function (host) {
 		on('pointerdown', (e) => {
 			if (!pointer(e) || touch) return;
 			const [x, y] = pos(e);
-			touch = { id: e.pointerId, x, y, drag: false, taken: undefined };
+			touch = { id: e.pointerId, x, y, drag: false, taken: undefined, over: over(e) };
 		});
 		on('pointermove', (e) => {
 			if (!touch || e.pointerId !== touch.id || touch.drag) return;
@@ -407,6 +430,10 @@ export default function (host) {
 		on('pointerup', lift);
 		on('pointercancel', lift);
 		on('contextmenu', (e) => e.preventDefault());
+		c.hxmcForward = (l) => {
+			for (const [type, f, o] of forwarded) l.addEventListener(type, f, { ...o, signal: off.signal });
+		};
+		if (c.hxmcScrolls) c.hxmcForward(c.hxmcScrolls);
 		const paste = (e) => {
 			pasted = { text: e.clipboardData ? e.clipboardData.getData('text/plain') : '', at: performance.now() };
 			e.preventDefault();
@@ -701,7 +728,10 @@ export default function (host) {
 			}
 		},
 		set_cursor(h, c) {
-			host.handles.get(h).style.cursor = ['default', 'pointer', 'text', 'crosshair', 'move', 'not-allowed', 'ew-resize', 'ns-resize', 'grab', 'grabbing'][c] ?? 'default';
+			const el = host.handles.get(h), cursor = ['default', 'pointer', 'text', 'crosshair', 'move', 'not-allowed', 'ew-resize', 'ns-resize', 'grab', 'grabbing'][c] ?? 'default';
+			el.style.cursor = cursor;
+			// (the layer of scroll views over it: the same)
+			if (el.hxmcScrolls) el.hxmcScrolls.style.cursor = cursor;
 		},
 		next_event(p) {
 			const ev = queue.shift();

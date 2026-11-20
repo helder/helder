@@ -229,6 +229,24 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
     root's, the body's, nor a world drawn under the ui: `Node.ownsPointer`,
     a `<Scene>`'s box says no); `UiWindow` marks the pointer `owner = Ui`
     then, so that a game's touch controls leave it alone.
+  - Where the platform has scroll views of its own, they drive the
+    scrollers instead (`Ui.nativeScroll`; iOS: a clear `UIScrollView` per
+    scroller that overflows, its pan on the window's view, as WebKit
+    does; the browser: a clear `overflow: auto` element per scroller over
+    the canvas, nested as the scrollers are, the pointer's events still
+    the program's): their deceleration, bounce (`scrollX`/`scrollY` past
+    the ends meanwhile, as Safari's scrollTop), scrollbars or indicators,
+    the browser's wheel, trackpad and scroll chaining, iOS's status bar
+    tap. A finger's drag elsewhere is still helder's own. Android has no
+    scroll views under the tree: there helder's drag glides by Android's
+    own `VelocityTracker` and `OverScroller` (`AndroidGlide`). The
+    tree still decides whose drag it is (`Ui.nativeBegins`: none while a
+    recogniser of the tree holds a pointer or a node there follows the
+    pointer's moves; else the nearest scroller that can move that way,
+    as the wheel's) and draws at the offsets they report
+    (`Ui.nativeScrolled`); a touch stops one gliding without a click.
+    `<Surface scrolling="helder">`, or `UiWindow.scrolling = false` for
+    every window, keeps helder's own drag and glide.
   - Gestures (`helder.ui.gesture`): recognisers on nodes competing for
     each pointer in an arena (Flutter's model): at a press the recognisers
     from the node pressed up to the root join, the innermost first (the

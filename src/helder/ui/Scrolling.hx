@@ -248,6 +248,129 @@ class Scrolling {
 		return false;
 	}
 
+	// the scrollers a platform's scroll views drive (Ui.scrollViews): those
+	// that overflow and show (some of their box within what clips them), in
+	// paint order, the records kept by node
+	static function views(ui:Ui):Array<ScrollView> {
+		var out = ui.scrollList;
+		out.resize(0);
+		ui.scrollPass++;
+		var covered = ui.overlay.children.length > 0;
+		collect(ui, ui.root, 0, 0, 0, 0, ui.width, ui.height, false, covered, null, out);
+		for (c in ui.overlay.children)
+			collect(ui, c, 0, 0, 0, 0, ui.width, ui.height, true, false, null, out);
+		// (those gone from the tree or no longer scrolling: let go)
+		var gone = [for (n => v in ui.scrollKept) if (v.pass != ui.scrollPass) n];
+		for (n in gone)
+			ui.scrollKept.remove(n);
+		return out;
+	}
+
+	// (ox, oy: the scrolling of n's ancestors; x0 to y1: what clips it, on screen)
+	static function collect(ui:Ui, n:Node, ox:Float, oy:Float, x0:Float, y0:Float, x1:Float, y1:Float, layer:Bool, covered:Bool, parent:Null<ScrollView>,
+			out:Array<ScrollView>) {
+		var s = n.style;
+		if (s.display == None || n.present != null && n.present.away) return;
+		if (s.overflow != Visible) {
+			var be = s.borderEdges, bx = n.absX - ox + be.left, by = n.absY - oy + be.top;
+			var bw = n.width - be.horizontal, bh = n.height - be.vertical;
+			if (s.overflow == Scroll) {
+				var mx = s.overflowX == Scroll ? maxScroll(n, true) : 0, my = s.overflowY == Scroll ? maxScroll(n, false) : 0;
+				if ((mx > 0 || my > 0) && bx < x1 && by < y1 && bx + bw > x0 && by + bh > y0) {
+					var v = ui.scrollKept.get(n);
+					if (v == null) ui.scrollKept.set(n, v = new ScrollView(n));
+					v.x = bx;
+					v.y = by;
+					v.width = bw;
+					v.height = bh;
+					v.contentWidth = bw + mx;
+					v.contentHeight = bh + my;
+					v.offsetX = n.scrollX - scrollStart(n, true);
+					v.offsetY = n.scrollY;
+					v.scrollsX = mx > 0;
+					v.scrollsY = my > 0;
+					v.bars = barSize(n) > 0;
+					v.layer = layer;
+					v.covered = covered;
+					v.parent = parent;
+					v.pass = ui.scrollPass;
+					out.push(v);
+					parent = v;
+				}
+				ox += n.scrollX;
+				oy += n.scrollY;
+			}
+			x0 = Math.max(x0, bx);
+			y0 = Math.max(y0, by);
+			x1 = Math.min(x1, bx + bw);
+			y1 = Math.min(y1, by + bh);
+			if (x1 <= x0 || y1 <= y0) return;
+		}
+		var order = n.paintOrder();
+		if (order != null) {
+			for (c in order)
+				collect(ui, c, ox, oy, x0, y0, x1, y1, layer, covered, parent, out);
+			return;
+		}
+		for (c in n.children)
+			if (c.style.position == Relative) collect(ui, c, ox, oy, x0, y0, x1, y1, layer, covered, parent, out);
+		for (c in n.children)
+			if (c.style.position != Relative) collect(ui, c, ox, oy, x0, y0, x1, y1, layer, covered, parent, out);
+	}
+
+	// whether a platform's drag at x, y moving the content by dx, dy (the
+	// scroll's way) is n's to scroll (Ui.nativeBegins): none while a
+	// gesture of the tree has a pointer, or a node there follows the
+	// pointer's moves (a slider: as scrollsAt); else the nearest scroller
+	// around the point that can move that way, or, at the ends, the
+	// innermost that scrolls on that axis (its edge stretching)
+	static function begins(ui:Ui, n:Node, x:Float, y:Float, dx:Float, dy:Float):Bool {
+		if (ui.gestureHeld()) return false;
+		var t = ui.hit(x, y), p = t;
+		while (p != null) {
+			if (p.onPointerMove != null) return false;
+			p = p.parent;
+		}
+		var first:Null<Node> = null, alongX = Math.abs(dx) > Math.abs(dy);
+		p = t;
+		while (p != null) {
+			if (p.style.overflow == Scroll) {
+				if (canScroll(p, dx, true) || canScroll(p, dy, false)) return p == n;
+				var v = ui.scrollKept.get(p);
+				if (first == null && v != null && (alongX ? v.scrollsX : v.scrollsY)) first = p;
+			}
+			p = p.parent;
+		}
+		return first == n;
+	}
+
+	// whether a platform's scroll view takes drags at n: a scroller around
+	// it listed by the last Ui.scrollViews, not under a popup (elsewhere a
+	// finger's drag is TouchScroll's: its Wheel events, its glide)
+	static function nativeAt(ui:Ui, n:Null<Node>):Bool {
+		while (n != null) {
+			if (n.style.overflow == Scroll) {
+				var v = ui.scrollKept.get(n);
+				if (v != null && v.pass == ui.scrollPass && !v.covered) return true;
+			}
+			n = n.parent;
+		}
+		return false;
+	}
+
+	// a platform's scroll view moved n to its offsets x, y from its start
+	// (Ui.nativeScrolled: past the ends while its edge stretches, as Safari's
+	// scrollTop)
+	static function moved(ui:Ui, n:Node, x:Float, y:Float) {
+		ui.scrolls.remove(n);
+		x += scrollStart(n, true);
+		if (x == n.scrollX && y == n.scrollY) return;
+		n.scrollX = x;
+		n.scrollY = y;
+		if (n.onScroll != null) n.onScroll();
+		ui.requestFrame();
+	}
+
 	static function setScroll(ui:Ui, n:Node, x:Bool, v:Float) {
 		v = clampTo(n, x, v);
 		if (v == (x ? n.scrollX : n.scrollY)) return;

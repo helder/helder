@@ -130,7 +130,7 @@ jobs:
         # (helder test's host build links helder.gfx's libEGL.so.1 when a test
         # reaches the scene; nothing opens a display. llvmpipe: the pack
         # lane's store screenshots, rendered offscreen: STORE_SHOTS_REQUIRE)
-        run: sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core fonts-liberation libegl1 libegl-mesa0 libgl1-mesa-dri
+        run: sudo apt-get update -qq && sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core fonts-liberation libegl1 libegl-mesa0 libgl1-mesa-dri
       - name: Headless checks
         # (pack: the Android and iOS runtime objects fetched and required;
         # the SDK's build tools on the PATH: zipalign, aapt, apksigner;
@@ -164,7 +164,7 @@ jobs:
         uses: ./.github/actions/setup
         with: {cache: 'typescript-${{ matrix.part }}', node-version: 24}
       - name: Fonts and libEGL (the programs rendering headless)
-        run: sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core fonts-liberation libegl1 libegl-mesa0 libgl1-mesa-dri
+        run: sudo apt-get update -qq && sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core fonts-liberation libegl1 libegl-mesa0 libgl1-mesa-dri
       - name: The TypeScript frontend (tests/typescript/run.mjs, sharded)
         env:
           TS_JOBS: 4
@@ -184,7 +184,7 @@ jobs:
         uses: ./.github/actions/setup
         with: {cache: examples, node-version: 24}
       - name: Fonts (DejaVu Sans) and libEGL
-        run: sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core fonts-liberation libegl1 libegl-mesa0 libgl1-mesa-dri
+        run: sudo apt-get update -qq && sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core fonts-liberation libegl1 libegl-mesa0 libgl1-mesa-dri
       - name: Every example built, the READMEs against the docs (the web builds the site job makes too, there)
         env:
           EXAMPLES_WEB: site
@@ -214,7 +214,7 @@ jobs:
         uses: ./.github/actions/setup
         with: {cache: site, node-version: 24}
       - name: Fonts (DejaVu Sans, for the ui and text examples)
-        run: sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core
+        run: sudo apt-get update -qq && sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core
       - name: Build
         env:
           SITE_SKIP_DATA: 1
@@ -244,7 +244,7 @@ jobs:
         uses: ./.github/actions/setup
         with: {cache: site-check, node-version: 24, playwright: 1.56.1}
       - name: Fonts (DejaVu Sans), Mesa
-        run: sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core libegl1 libegl-mesa0
+        run: sudo apt-get update -qq && sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core libegl1 libegl-mesa0
       - uses: actions/download-artifact@v7
         with: {name: site-built, path: bin}
       - name: Check (the pages in Chromium)
@@ -316,7 +316,7 @@ jobs:
         uses: ./.github/actions/setup
         with: {cache: gfx-3d}
       - name: System packages
-        run: sudo apt-get install -qqy --no-install-recommends libegl1 libegl-mesa0 libgl1-mesa-dri libgles2 xvfb xauth fonts-dejavu-core fonts-inter libharfbuzz0b libfreetype6 fontconfig
+        run: sudo apt-get update -qq && sudo apt-get install -qqy --no-install-recommends libegl1 libegl-mesa0 libgl1-mesa-dri libgles2 xvfb xauth fonts-dejavu-core fonts-inter libharfbuzz0b libfreetype6 fontconfig
       - name: helder.scene and helder.physics (Mesa llvmpipe, Xvfb)
         # (3 builds at once: the runner's 4 cores)
         env:
@@ -385,7 +385,7 @@ jobs:
         uses: ./.github/actions/setup
         with: {cache: 'browser-${{ matrix.shard }}', playwright: 1.56.1}
       - name: Fonts, poppler, Mesa
-        run: sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core poppler-utils libegl1 libegl-mesa0
+        run: sudo apt-get update -qq && sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core poppler-utils libegl1 libegl-mesa0
       - name: gfx, 3d, audio, web and ui in Chromium
         env:
           # (a pull request's: every scene headless on both APIs, in the
@@ -417,7 +417,7 @@ jobs:
         # (bin/compiler-web kept: its brotli files, minutes at quality 11, reused for the same bytes)
         with: {cache: studio-web, playwright: 1.56.1, extra: bin/compiler-web}
       - name: Fonts, Mesa
-        run: sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core libegl1 libegl-mesa0
+        run: sudo apt-get update -qq && sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core libegl1 libegl-mesa0
       # (one job: compiler-web's toolchain is studio-web's too, built once in bin/compiler-web)
       - name: helder studio in the browser, helder's compiler in the browser
         run: bun run test -k studio-web compiler-web
