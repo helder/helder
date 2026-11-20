@@ -94,8 +94,30 @@ class TlsTest {
 			check("wss: a long message echoed", ws.receive() == "echo " + long);
 			ws.close();
 			server.close();
+
+			// (ws through WebSocket.open against helder's own server: the system's WebSocket where it has one, NSURLSession's)
+			var plain = Server.listen("127.0.0.1", 0);
+			task.async(_ -> helder.async.http.Http.serve(plain, req -> {
+				if (req.path != "/ws" || !helder.async.http.WebSocket.wants(req)) return helder.async.http.Http.Response.text("no", 404);
+				var w = helder.async.http.WebSocket.upgrade(req);
+				var m;
+				while ((m = w.receive()) != null)
+					w.send("echo " + m);
+				return null;
+			}));
+			var sys = helder.async.http.WebSocket.open('ws://127.0.0.1:${plain.port}/ws');
+			sys.send("two");
+			check("ws through WebSocket.open (the system's where it has one)", sys.receive() == "echo two");
+			sys.close();
+			var failed = try {
+				helder.async.http.WebSocket.open('ws://127.0.0.1:${plain.port}/nothing');
+				false;
+			} catch (_) true;
+			check("ws: a refused upgrade throws", failed);
+			plain.close();
+			task.cancelChildren();
 		});
 		Sys.println('TlsTest: $checks checks' + (failed == 0 ? ", ok" : ', $failed failed'));
-		Sys.exit(failed == 0 && checks >= 8 ? 0 : 1);
+		Sys.exit(failed == 0 && checks >= 10 ? 0 : 1);
 	}
 }

@@ -152,9 +152,10 @@ for `ws://` and `wss://`), and a server's over a connection of its own
 
 ### TLS
 
-A client's `https` (`Client.request`) and `wss` (`WebSocket.open`) use the
-system's stack where it has one: NSURLSession on macOS and iOS
-(`AppleHttp`). Elsewhere natively they run over `TlsSocket`: TLS by
+A client's `https` (`Client.request`) and its WebSockets
+(`WebSocket.open`, `ws` and `wss`) use the system's stack where it has one:
+NSURLSession on macOS and iOS (`AppleHttp`, `AppleWebSocket`: its
+`NSURLSessionWebSocketTask`, a ping telling whether it opened). Elsewhere natively they run over `TlsSocket`: TLS by
 mbedtls, which hxmc's runtime has on every native target. Its handshake,
 reads and writes are coroutines on the loop, like a `Socket`'s: mbedtls
 reads and writes two buffers of its own instead of the socket. A client

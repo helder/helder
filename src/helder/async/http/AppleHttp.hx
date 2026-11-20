@@ -76,11 +76,93 @@ class AppleHttp {
 		return new Reply(status, headers, b);
 	}
 
-	static inline function ns(s:String):NSString
+	@:allow(helder.async.http) static inline function ns(s:String):NSString
 		return cast Strings.toNSString(s);
 
-	static inline function str(s:Null<NSString>):Null<String>
+	@:allow(helder.async.http) static inline function str(s:Null<NSString>):Null<String>
 		return s == null ? null : Strings.ofNSString(cast s);
+}
+
+// WebSocket.open's ws and wss on macOS and iOS: NSURLSession's
+// NSURLSessionWebSocketTask (the system's TLS, proxies and App Transport
+// Security's rules, as AppleHttp's requests). A ping after it opens tells
+// whether it did (open throws when not); each message received, sent and
+// the close are completion handlers posted to the loop, as AppleHttp's.
+// Binary messages come as their bytes' string, as helder's own WebSocket's.
+@:hxmc.unsafe(gc)
+class AppleWebSocket {
+	final task:NSURLSessionWebSocketTask;
+	public var closed(default, null) = false;
+
+	function new(task)
+		this.task = task;
+
+	@:coroutine public static function open(url:String):AppleWebSocket {
+		var target = NSURL.URLWithString(AppleHttp.ns(url));
+		if (target == null) throw new Exception('not a url: $url');
+		var ws = new AppleWebSocket(NSURLSession.sharedSession().webSocketTaskWithURL(target));
+		ws.task.resume();
+		var error = ws.await((done:Null<String>->Void) -> ws.task.sendPingWithPongReceiveHandler(e -> done(e == null ? null : AppleHttp.str(e.localizedDescription()) ?? "failed")));
+		if (error != null) {
+			ws.task.cancel();
+			throw new Exception('WebSocket to $url: $error');
+		}
+		return ws;
+	}
+
+	// (a call whose completion handler gives a result: awaited on the loop)
+	@:coroutine function await<T>(start:(T->Void)->Void):T {
+		var loop = Loop.current();
+		return Async.suspendCancellable(cont -> {
+			var done = false;
+			loop.hold();
+			start(r -> loop.post(() -> {
+				loop.release();
+				if (done) return;
+				done = true;
+				cont.resume(r, null);
+			}));
+			return _ -> if (!done) {
+				done = true;
+				task.cancel();
+			};
+		});
+	}
+
+	// the next message; null once closed
+	@:coroutine public function receive():Null<String> {
+		if (closed) return null;
+		var got:{text:Null<String>, error:Bool} = await((done:{text:Null<String>, error:Bool}->Void) -> task.receiveMessageWithCompletionHandler((m, e) -> {
+			if (e != null || m == null) return done({text: null, error: true});
+			if (m.type() == 1) return done({text: AppleHttp.str(m.string()) ?? "", error: false});
+			var d = m.data(), n = d == null ? 0 : d.length().toInt(), b = Bytes.alloc(n);
+			if (n > 0) BytesPtr.copyIn(b, 0, d.bytes(), n);
+			done({text: b.toString(), error: false});
+		}));
+		if (got.error) {
+			closed = true;
+			return null;
+		}
+		return got.text;
+	}
+
+	@:coroutine public function send(text:String):Void {
+		if (closed) throw new Exception("WebSocket closed");
+		var m = NSURLSessionWebSocketMessage.alloc().initWithString(AppleHttp.ns(text));
+		var error = await((done:Null<String>->Void) -> task.sendMessage(m, e -> done(e == null ? null : AppleHttp.str(e.localizedDescription()) ?? "failed")));
+		if (error != null) throw new Exception('WebSocket: $error');
+	}
+
+	@:coroutine public function ping():Void {
+		var error = await((done:Null<String>->Void) -> task.sendPingWithPongReceiveHandler(e -> done(e == null ? null : "failed")));
+		if (error != null) throw new Exception('WebSocket: $error');
+	}
+
+	public function close(code = 1000):Void {
+		if (closed) return;
+		closed = true;
+		task.cancelWithCloseCode(code, null);
+	}
 }
 
 @:hxmc.objc @:hxmc.framework("Foundation") private extern class NSObject implements Id {}
@@ -135,5 +217,24 @@ class AppleHttp {
 @:hxmc.objc @:hxmc.framework("Foundation") private extern class NSURLSession extends NSObject {
 	static function sharedSession():NSURLSession;
 	function dataTaskWithRequest(r:NSURLRequest, completionHandler:(Null<NSData>, Null<NSURLResponse>, Null<NSError>) -> Void):NSURLSessionDataTask;
+	function webSocketTaskWithURL(url:NSURL):NSURLSessionWebSocketTask;
+}
+
+@:hxmc.objc @:hxmc.framework("Foundation") private extern class NSURLSessionWebSocketMessage extends NSObject {
+	static function alloc():NSURLSessionWebSocketMessage;
+	function initWithString(s:NSString):NSURLSessionWebSocketMessage;
+	// (NSURLSessionWebSocketMessageTypeData 0, String 1)
+	function type():Int64;
+	function string():Null<NSString>;
+	function data():Null<NSData>;
+}
+
+@:hxmc.objc @:hxmc.framework("Foundation") private extern class NSURLSessionWebSocketTask extends NSObject {
+	function resume():Void;
+	function cancel():Void;
+	function sendMessage(m:NSURLSessionWebSocketMessage, completionHandler:Null<NSError>->Void):Void;
+	function receiveMessageWithCompletionHandler(h:(Null<NSURLSessionWebSocketMessage>, Null<NSError>) -> Void):Void;
+	function sendPingWithPongReceiveHandler(h:Null<NSError>->Void):Void;
+	function cancelWithCloseCode(code:Int64, reason:Null<NSData>):Void;
 }
 #end
