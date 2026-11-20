@@ -5,6 +5,7 @@
 // constant or bound to what its value reads, For, Show, holes and
 // attributes that read bound; examples/ts-todo's shape.
 import { signal, memo, For, Show, Render, Signal, Read } from "helder/view";
+import { Settings } from "helder/os";
 import { CodeEditor, Event, Key, Node } from "helder/ui";
 import { UiProbe } from "./ui-probe";
 
@@ -109,3 +110,4 @@ code.complete = (text, caret) => {
 code.suggest(true);
 code.suggest(true);
 console.log(asked);
+console.log("platform settings", Settings.textScale() > 0, typeof Settings.dark());

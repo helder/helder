@@ -114,6 +114,21 @@ adb shell settings put system user_rotation 0
 node tests/pack/screen.mjs "$out/screen.txt" android
 check "the screen's lines (tests/pack/screen.mjs)" $?
 
+# Settings signals and the text clipboard in a focused activity.
+settings_id=org.helder.settingscheck
+"$helder" build tests/os/SettingsCheck.hx --target android-x86_64 -o "$out/SettingsCheck.apk"
+check "helder build tests/os/SettingsCheck.hx" $?
+adb install -r "$out/SettingsCheck.apk"
+check "adb install SettingsCheck.apk" $?
+adb logcat -c
+adb shell am start -W -n "$settings_id/android.app.NativeActivity"
+wait_for "settings: clipboard ok" 30
+adb shell settings put system user_rotation 1
+wait_for "settings: landscape" 20
+adb logcat -d -v raw -s hxmc:I > "$out/settings.txt"
+adb shell am force-stop "$settings_id"
+adb shell settings put system user_rotation 0
+
 # The planets example (examples/planets: ui's markup with a <Scene> in it):
 # built for the emulator, started, its first frames drawn (its line), a
 # screenshot kept in <out dir>/planets.png. (helder/little-skies, the game,

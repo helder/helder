@@ -1,3 +1,4 @@
+import helder.os.Settings;
 import helder.view.*;
 import helder.view.Flow.*;
 import helder.view.graph.Graph.*;
@@ -43,6 +44,14 @@ class DomTest implements Markup {
 		rendering();
 		hydration();
 		surface();
+		effect(() -> {
+			dark: Settings.dark(),
+			motion: Settings.reducedMotion(),
+			contrast: Settings.contrast(),
+			orientation: Settings.orientation()
+		},
+			v -> js.Syntax.code("window.domSettings = {0}", v));
+		flush();
 		js.Syntax.code("window.domTest = {0}", {checks: checks, failed: failed});
 	}
 

@@ -13,19 +13,18 @@ import hxmc.Platform;
 // round trip of events on X11; iOS: UIPasteboard (the CLIPBOARD selection's owner converts
 // it) and in the browser (the paste event of the key press that asked, or
 // navigator.clipboard.readText). The window is the one asking: on X11 it
-// owns the selection while its text is the clipboard's. Android: none yet
-// (the system's ClipboardManager is Java's: JNI, hxmc's docs/plans/targets.md),
-// write keeps nothing and read hands null.
+// owns the selection while its text is the clipboard's. Android reads the
+// focused activity's ClipboardManager.
 class Clipboard {
 	public static function write(window:Window, text:String) {
 		if (Platform.apple() >= 1) UIKitWindow.writeClipboard(text) else if (Platform.os() == 1) CocoaWindow.writeClipboard(text) else if (Platform.os() == 2) (cast @:privateAccess window.native : Win32Window).writeClipboard(text) else
-			if (Platform.os() == 3) CanvasWindow.writeClipboard(text) else if (Platform.target() >= 9) {} else if (Std.isOfType(@:privateAccess window.native, WaylandWindow))
+			if (Platform.os() == 3) CanvasWindow.writeClipboard(text) else if (Platform.target() >= 9) helder.os.android.AndroidClipboard.write(text) else if (Std.isOfType(@:privateAccess window.native, WaylandWindow))
 				(cast @:privateAccess window.native : WaylandWindow).writeClipboard(text) else (cast @:privateAccess window.native : X11Window).writeClipboard(text);
 	}
 
 	public static function read(window:Window, callback:Null<String>->Void) {
 		if (Platform.apple() >= 1) callback(UIKitWindow.readClipboard()) else if (Platform.os() == 1) callback(CocoaWindow.readClipboard()) else if (Platform.os() == 2) callback((cast @:privateAccess window.native : Win32Window).readClipboard()) else
-			if (Platform.os() == 3) CanvasWindow.readClipboard(callback) else if (Platform.target() >= 9) callback(null) else
+			if (Platform.os() == 3) CanvasWindow.readClipboard(callback) else if (Platform.target() >= 9) callback(helder.os.android.AndroidClipboard.read()) else
 			if (Std.isOfType(@:privateAccess window.native, WaylandWindow)) (cast @:privateAccess window.native : WaylandWindow).readClipboard(callback) else
 				(cast @:privateAccess window.native : X11Window).readClipboard(callback);
 	}

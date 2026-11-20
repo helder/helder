@@ -634,6 +634,10 @@ export default function (host) {
 		height: (h) => host.handles.get(h).height,
 		scale: () => pixelRatio(),
 		prefers_dark: () => (globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches ? 1 : 0),
+		settings: () => [
+			'(prefers-reduced-motion: reduce)', '(prefers-contrast: more)', '(prefers-contrast: less)',
+			'(prefers-contrast: custom)', '(prefers-color-scheme: dark)', '(orientation: portrait)', '(orientation: landscape)',
+		].reduce((bits, query, i) => bits | (globalThis.matchMedia?.(query).matches ? 1 << i : 0), 0),
 		apple: () => (/mac|iphone|ipad|ipod/i.test(navigator.userAgentData?.platform || navigator.platform || '') ? 1 : 0),
 		vibrate(ms) {
 			try {

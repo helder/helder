@@ -76,6 +76,7 @@ class App {
 	@:allow(helder.os) static function lifecycle(away:Bool) {
 		if (away == background) return;
 		background = away;
+		settingsAt = 0;
 		helder.async.Errors.guard(() -> {
 			var f = away ? onBackground : onForeground;
 			if (f != null) f();
@@ -256,7 +257,7 @@ class App {
 				// (a frame at the display's vsync; until it comes, a sleep in the looper, woken by it)
 				if (!AndroidWindow.drawable()) {
 					frame.pause();
-					AndroidWindow.wait(bounded(-1));
+					AndroidWindow.wait(bounded(settingsWait(-1)));
 				} else if (helder.os.android.Vsync.ready()) {
 					frame.tick(helder.os.android.Vsync.take(), true);
 					onFrame();
@@ -272,7 +273,7 @@ class App {
 				// (a frame at the display link's; until it comes, the run loop, which it stops)
 				if (!UIKitWindow.drawable()) {
 					frame.pause();
-					UIKitWindow.wait(bounded(-1));
+					UIKitWindow.wait(bounded(settingsWait(-1)));
 				} else if (UIKitWindow.vsynced()) {
 					frame.tick(UIKitWindow.takeVsync(), true);
 					onFrame();
@@ -303,11 +304,25 @@ class App {
 	static var eventNext:Null<Void->Float>;
 	@:ifFeature("haxe.Timer.new") static final events = HaxeLoop.install();
 
+	static var settingsRefresh:Null<Void->Void>;
+	static var settingsAt = 0.0;
+
+	// Sample settings in a sleeping app, too, once it asks for them.
+	static inline function settingsWait(seconds:Float):Float {
+		if (settingsRefresh == null || background) return seconds;
+		var next = Math.max(0, settingsAt - haxe.Timer.stamp());
+		return seconds < 0 ? next : Math.min(seconds, next);
+	}
+
 	// (helder.async's loop, if made: what is ready, due timers; haxe.EventLoop's)
 	static inline function loopTurn() {
 		var l = MainLoop.main;
 		if (l != null) l.turn(0);
 		if (eventTurn != null) eventTurn();
+		if (settingsRefresh != null && !background && haxe.Timer.stamp() >= settingsAt) {
+			settingsAt = haxe.Timer.stamp() + 1;
+			helder.async.Errors.guard(settingsRefresh, "settings");
+		}
 	}
 
 	// (seconds bounded by the loops' timers and what they wait for)
@@ -332,6 +347,7 @@ class App {
 		#end
 		// (iOS: the display link held while the app sleeps: no vsync wakes it; Android asks for none)
 		if (Platform.apple() >= 1) UIKitWindow.pauseVsync();
+		seconds = settingsWait(seconds);
 		if (Platform.apple() >= 1) UIKitWindow.wait(bounded(seconds)) else if (Platform.os() == 1) CocoaWindow.wait(bounded(seconds)) else if (Platform.os() == 2)
 			Win32Window.wait(bounded(seconds)) else if (Platform.os() == 3) {} else if (Platform.target() >= 9) AndroidWindow.wait(bounded(seconds)) else
 			if (WaylandWindow.chosen) WaylandWindow.waitFor(seconds) else X11Window.waitFor(seconds);
