@@ -679,6 +679,7 @@ export default function (host) {
 				globalThis.removeEventListener?.('languagechange', notify);
 				globalThis.document?.removeEventListener('visibilitychange', foreground);
 			});
+		},
 		network: () => (globalThis.navigator?.onLine === false ? 0 : 1 + ['wifi', 'cellular', 'ethernet'].indexOf(globalThis.navigator?.connection?.type) + 1),
 		permission_status: (p) => permissions.state[p],
 		permission_request(p, done, id) {
