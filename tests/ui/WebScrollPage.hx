@@ -40,6 +40,14 @@ class WebScrollPage {
 			w.ui.requestFrame();
 		}
 		w.root.append(page);
+		// (M opens a popup over the page, Escape closes it: the page's scroll view covered meanwhile)
+		var menu = new Popup("menu");
+		menu.style.set({width: 160, height: 120, background: Color.rgb(0xffffff)});
+		page.focusable = true;
+		page.onKeyDown = e -> {
+			if (e.key == "m".code && menu.parent == null) w.ui.open(menu) else if (e.key == Key.ESCAPE && menu.parent != null) w.ui.close(menu);
+			w.ui.requestFrame();
+		};
 		var last = "";
 		w.onFrame = () -> {
 			var s = 'scroll page=${page.scrollY} row=${row.scrollX} | clicks=$clicks | moves=$moves | wheels=$wheels';

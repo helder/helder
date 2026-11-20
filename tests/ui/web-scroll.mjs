@@ -112,6 +112,17 @@ try {
 		await p.keyboard.press('End');
 		s = await state(p);
 		check('the keys\' scroll moves the scroll view', s.page > before && Math.abs(s.views[0][0] - s.page) < 1, JSON.stringify(s));
+		// (a popup over the page: its scroll view takes no input and shows no scrollbar, the page drawing it over the canvas)
+		const bar = () => p.evaluate(() => {
+			const e = [...document.querySelector('canvas').hxmcScrolls.querySelectorAll('div')].find((d) => d.hxmcScroller);
+			return e.style.pointerEvents + ' ' + e.style.scrollbarWidth + ' ' + e.classList.contains('hxmc-nobar');
+		});
+		await p.keyboard.press('m');
+		await p.waitForTimeout(300);
+		check('under a popup: no input, no scrollbar', (await bar()) === 'none none true', await bar());
+		await p.keyboard.press('Escape');
+		await p.waitForTimeout(300);
+		check('the popup closed: input and the scrollbar back', (await bar()) === 'auto  false', await bar());
 		await ctx.close();
 	}
 	// a phone's swipes

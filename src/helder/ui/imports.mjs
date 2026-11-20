@@ -53,6 +53,12 @@ export default function (host) {
 	// events over it (helder.os's c.hxmcForward), its cursor the canvas's
 	function scrollLayer(c) {
 		if (c.hxmcScrolls) return c.hxmcScrolls;
+		if (!document.getElementById('hxmc-nobar')) {
+			const style = document.createElement('style');
+			style.id = 'hxmc-nobar';
+			style.textContent = '.hxmc-nobar::-webkit-scrollbar{display:none}';
+			document.head.appendChild(style);
+		}
 		const l = document.createElement('div');
 		l.style.cssText = 'position:absolute;overflow:hidden;pointer-events:none;z-index:1;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;';
 		document.body.appendChild(l);
@@ -320,7 +326,10 @@ export default function (host) {
 						'left:' + x * k + 'px;top:' + y * k + 'px;width:' + w * k + 'px;height:' + h * k + 'px;' +
 						'overflow-x:' + (axes & 1 ? 'auto' : 'hidden') + ';overflow-y:' + (axes & 2 ? 'auto' : 'hidden') + ';' +
 						'touch-action:' + (axes === 3 ? 'pan-x pan-y' : axes & 1 ? 'pan-x' : 'pan-y') + ';' +
-						'pointer-events:' + (covered ? 'none' : 'auto') + ';' + (bars ? '' : 'scrollbar-width:none;');
+						'pointer-events:' + (covered ? 'none' : 'auto') + ';' + (bars && !covered ? '' : 'scrollbar-width:none;');
+					// (under a popup its scrollbar hidden too: the page draws it over the canvas, over what the popup shows;
+					// Safari before 18.2 knows no scrollbar-width)
+					e.classList.toggle('hxmc-nobar', !bars || covered);
 					s.spacer.style.width = cw * k + 'px';
 					s.spacer.style.height = ch * k + 'px';
 					// (appended once, in paint order: a later one over an earlier; moved, a scroller would lose its offsets)
