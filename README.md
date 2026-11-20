@@ -222,9 +222,85 @@ bun run helder run --headless examples/todo --script tests/headless/todo.json --
 
 ## Roadmap
 
-In order: each phase leans on the one before it. Now: phase 4, a mobile 3D
-game; the editor integration (phase 3's VS Code extension) and sound wait
-until after it.
+Drawn from a comparison with two mature frameworks: Flutter's base (its
+widgets layer and everything under it, not Material or Cupertino) for
+apps, and Godot 4 for games. helder is at or past both in much of what
+they cover: reactivity, CSS layout, accessibility on every platform,
+keymaps, hot reload, headless tests, text, 3D rendering, shaders in Haxe
+on every GPU API, deterministic physics, asset bundling, and publishing to
+the stores. What follows is what they have and helder lacks, in order:
+each step is useful on its own.
+
+### 0. Open now
+
+- Scrolling: the Android and Linux part (#49); Windows' precision
+  touchpads (DirectManipulation, as Chromium and Firefox use it); on the
+  web, the frame the canvas trails the browser's scroll by, and Safari's
+  rubber band checked.
+
+### 1. Foundations, for apps and games alike
+
+- **HTTP and WebSocket over TLS everywhere** (M): https throws outside
+  macOS and iOS today; every backend, leaderboard, analytics call and
+  network image needs it.
+- **A native plugin model** (M): a convention for packaging and
+  registering native modules, then the first ones: in-app purchases
+  (StoreKit 2, Play Billing), Game Center and Play Games, the share sheet,
+  notifications.
+- **Localization** (S-M): the device's locale, string catalogues,
+  plurals, dates and numbers.
+- **The platform's settings as signals** (S): locale, text scale, reduced
+  motion, contrast; orientation and the status bar's style at run time;
+  the clipboard on Android, and images on it.
+
+### 2. The app framework (Flutter's base)
+
+- **Navigation and routing** (L): routes and their parameters, a stack
+  (push, pop, the system's back), transitions, nested routes, URLs on the
+  web, incoming deep links; one API for Haxe and TypeScript.
+- **Text input on phones** (M): iOS's UITextInput (composition: CJK,
+  autocorrect, dictation, selection handles), keyboard types and return
+  keys, the layout kept clear of the keyboard.
+- **Standard controls** (M): button, checkbox, switch, radio, select,
+  progress, tabs, dialog, toast; forms and validation.
+- **Effects on nodes** (M-L): blur, backdrop blur, colour filters, clip
+  paths and masks, a shader of one's own per node.
+- **Lazy layouts** (L): horizontal and grid virtual lists, collapsing
+  headers, nested scrolling, pull to refresh.
+- **Network images** (M): a decoded cache, decoding at the size shown,
+  placeholders.
+- Smaller: long press and double tap; state restored after the system
+  ends the app; an animation controller and keyframes; a selection across
+  nodes and widgets inline in text.
+
+### 3. The game engine (Godot's)
+
+- **Gamepads on Android, iOS and macOS**, and rumble (S-M).
+- **Physics** (M): triangle mesh, convex and heightfield colliders,
+  layers and masks, triggers, contact events; stable stacks (warm
+  starting, persistent contacts).
+- **Animation** (M): a state machine, layers and masks, events, root
+  motion; tweens for scene nodes and any value.
+- **Audio** (M): 3D positional sound, buses and effects, more voices.
+- **Particles** (M): emitter shapes, curves over a lifetime, flipbooks,
+  collisions.
+- **2D** (M-L): animated sprites, tilemaps, a 2D camera, 2D scene nodes,
+  then 2D physics.
+- **Navigation** (M-L): a navmesh and grid A*, agents.
+- **Saves** (S-M): typed, versioned, in the platforms' clouds.
+- **Textures** (M): ETC2 and KTX2/Basis, settings per target.
+- **Profiling** (M): GPU timers, a CPU timeline, the scene in devtools.
+
+### Later
+
+Decals, volumetric fog, a lightmap baker, soft bodies, UDP and
+multiplayer, MP3 and Opus.
+
+## Built so far
+
+The phases that brought helder here, as they were planned and done (what
+they call "not yet" may since have landed; the packages' READMEs are
+current).
 
 ### 1. Cleanup
 
@@ -1359,62 +1435,6 @@ fix.
   shown in a panel as a separate process sharing its frames as a GPU
   texture (as Makepad Studio: IOSurface, a DXGI shared handle, dmabuf), so a
   crash leaves the editor running.
-
-### 6. Editor, and helder studio
-
-Folded into phase 3: the VS Code extension is the devtools.
-
-**helder studio** (`apps/studio`, `helder studio` from the CLI): a
-creation app for apps, games, motion and video, itself a helder app on
-desktop, web and mobile. The source is the document: a canvas, an
-inspector, a timeline, a code editor and an agent all edit the same
-TSX/Haxe through its syntax tree; the compiler, the checker, the preview
-and the store builds run on the device (natively, or as wasm in a browser,
-phone or tablet). Its plan, and the hosted services beside it (prompt box,
-accounts, the web version's store relay, helder.run), are in the private
-benmerckx/helder.build. What it needs from helder first, after the headless
-agent runner: a node's source location in dev builds and syntax-tree edits
-that keep formatting; live literals (a literal's edit patched in without a
-rebuild); the compiler as a library (in process, and as wasm in a worker);
-motion as property tracks and a timeline definition; a code editor widget;
-video encoding; the editor's building blocks (an infinite canvas, handles,
-snapping, docked panels).
-
-**Design files** (planned, apps/studio/DESIGN.md): the canvas's own work
-as markup the studio renders at once, with no build (helder.markup.Plan's
-steps run directly), compiled into apps by the markup macro like any
-literal. A `<Frame>` holds design markup, a component, a story or the
-app at a route; flows and timelines are markup that builds keep
-(navigation, motion), positions and notes markup they drop. Named parts
-imported from code (`import {Logo} from './brand.helder'`), checked and
-typed, live both ways; "upgrade to code" moves a part into a `.hx` or
-`.tsx` component, its frame keeping the instance. First: tokens and
-themes, variants and slots, sample data, a fixed set of interactions,
-helder.ui's elements as data.
-
-### 7. Later
-
-- **Routing between screens**, as Flutter's Navigator and go_router or
-  React Router have it: a router with routes and their parameters, a
-  navigation stack (push, pop, back: the system's back button and gesture
-  on phones), nested routes, deep links, URLs on the web (the address bar
-  and history), and transitions between screens; in view's markup, with
-  signals for the current route. An app-framework feature, so helder's.
-- **Nested surfaces in one build**: a page that holds other programs'
-  surfaces, built by one `helder build`. Markup names what it embeds
-  (`<page>...<WasmCanvas entry="examples/cube"/>...</page>`, an island);
-  each such use leaves a marker, found after DCE as helder.asset's are, so
-  only what is rendered counts; the CLI builds the page (run once for its
-  HTML: the static renderer writes a canvas and the loader for each), each
-  embedded program as its own wasm, and the component islands as one bundle
-  whose main is generated (no `Islands.start` written by hand), in
-  parallel through the compilation server; `helder dev` rebuilds the part
-  that changed. The examples site (site/) starts with a build per example;
-  this replaces it. It pays again with **native webviews as a surface** (a
-  WKWebView, Android's WebView, WebView2 in a window; Apple's through
-  hxmc's Objective-C interop, as are native controls where they serve
-  better than drawn ones: text input, menus): web content in a
-  native app, and native or wasm surfaces inside that, nested the same way.
 
 ## License
 
