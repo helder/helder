@@ -18,7 +18,7 @@ class Scrolling {
 					scrollBy(ui, n, deltaX, deltaY, true);
 					return;
 				}
-				ui.scrolls.remove(n);
+				stopGlide(ui, n);
 				n.scrollX += deltaX;
 				n.scrollY += deltaY;
 				clamp(n);
@@ -69,33 +69,29 @@ class Scrolling {
 		return false;
 	}
 
-	// scrolls by dx, dy eased over Ui.scrollDuration (a scroll easing already: from where it is, to its end moved on)
+	// scrolls by dx, dy glided (ScrollGlide: a wheel's notch over its
+	// distance's time, as Chromium's; keys' over Ui.scrollDuration), on from
+	// where a glide is heading at its speed; at once where scrollDuration is 0
 	static function scrollBy(ui:Ui, n:Node, dx:Float, dy:Float, out = false) {
-		var a = ui.scrolls.get(n);
-		var tx = (a != null ? a[2] : n.scrollX) + dx, ty = (a != null ? a[3] : n.scrollY) + dy;
-		tx = clampTo(n, true, tx);
-		ty = clampTo(n, false, ty);
+		var g = ui.glides.get(n);
+		var gliding = g != null && g.gliding;
+		var tx = clampTo(n, true, (gliding ? g.toX : n.scrollX) + dx), ty = clampTo(n, false, (gliding ? g.toY : n.scrollY) + dy);
 		if (ui.scrollDuration <= 0) {
 			ui.scrollTo(n, tx, ty);
 			return;
 		}
-		// (a wheel's notch: ScrollGlide's curve, from rest or from its speed; keys': in and out)
-		// (its start the first tick's: Clock.now is the last tick's, long ago when the window was idle)
-		ui.scrolls.set(n, [n.scrollX, n.scrollY, tx, ty, -1, out ? (a == null ? 2 : 1) : 0]);
-		ui.requestFrame();
-		if (a != null) return;
-		Clock.addTo(ui.context, t -> {
-			var a = ui.scrolls.get(n);
-			if (a == null) return false;
-			if (a[4] < 0) a[4] = t;
-			var k = Math.min(1, Math.max(0, (t - a[4]) / (a[5] > 0 ? ScrollGlide.DURATION : ui.scrollDuration)));
-			var e = ScrollGlide.ease(k, a[5] != 1);
-			setScroll(ui, n, true, a[0] + (a[2] - a[0]) * e);
-			setScroll(ui, n, false, a[1] + (a[3] - a[1]) * e);
-			if (k < 1) return true;
-			ui.scrolls.remove(n);
-			return false;
-		});
+		if (g == null) ui.glides.set(n, g = new ScrollGlide(n, (x, y) -> {
+			setScroll(ui, n, true, x);
+			setScroll(ui, n, false, y);
+		}));
+		g.fixed = out ? 0 : ui.scrollDuration;
+		g.to(n.scrollX, n.scrollY, {x: tx, y: ty});
+	}
+
+	// (a scroll of another kind: n's glide stopped where it is)
+	static function stopGlide(ui:Ui, n:Node) {
+		var g = ui.glides.get(n);
+		if (g != null) g.stop();
 	}
 
 	static function canScroll(n:Node, d:Float, x:Bool):Bool {
@@ -394,7 +390,7 @@ class Scrolling {
 	// (Ui.nativeScrolled: past the ends while its edge stretches, as Safari's
 	// scrollTop)
 	static function moved(ui:Ui, n:Node, x:Float, y:Float) {
-		ui.scrolls.remove(n);
+		stopGlide(ui, n);
 		x += scrollStart(n, true);
 		if (x == n.scrollX && y == n.scrollY) return;
 		n.scrollX = x;

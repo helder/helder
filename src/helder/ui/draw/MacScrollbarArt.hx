@@ -12,12 +12,15 @@ import hxmc.unsafe.*;
 // appearance current: light, dark, Increase Contrast's, whatever this
 // macOS draws), kept as an Image for that size and appearance and drawn
 // where the Ui places the thumb; its sizes are the scroller's
-// (scrollerWidthForControlSize:scrollerStyle:, rectForPart:). Drawn again
-// only when a length or the appearance changes, not as it scrolls.
+// (scrollerWidthForControlSize:scrollerStyle:, rectForPart:). Each is drawn
+// once for its look and appearance, at a length of its own, and drawn at
+// any length in three slices (its ends as they are, its middle stretched),
+// so that nothing is drawn again as it scrolls, stretches or resizes.
 @:hxmc.unsafe(gc)
 class MacScrollbarArt implements helder.ui.ScrollbarArt {
 	static inline var KNOB = 2; // NSScrollerKnob
 	static inline var SLOT = 6; // NSScrollerKnobSlot
+	static inline var REST = 0.45;
 
 	// the scrollers: [vertical legacy, vertical overlay, horizontal legacy, horizontal overlay]
 	final scrollers:Array<Ptr> = [];
@@ -65,32 +68,66 @@ class MacScrollbarArt implements helder.ui.ScrollbarArt {
 		if (alpha <= 0) return;
 		if (alpha < 1) canvas.pushOpacity(alpha);
 		if (track != null) {
-			var img = slot(vertical, dark, scale, track[2], track[3]);
-			if (img != null) canvas.image(img, track[0], track[1], track[2], track[3], 0, 0, 1, 1, 0);
+			var img = slot(vertical, dark, scale, vertical ? track[2] : track[3]);
+			if (img != null) slices(canvas, img, vertical, track, 4, scale);
 		}
-		var img = knob(vertical, overlay, dark, scale, thumb[2], thumb[3]);
-		if (img != null) canvas.image(img, thumb[0], thumb[1], thumb[2], thumb[3], 0, 0, 1, 1, 0);
+		// (drawKnob draws the always-shown knob as under the pointer; at rest macOS's is lighter: 0x3A of its 0x80 black, as Chromium has it)
+		var across = vertical ? thumb[2] : thumb[3];
+		var img = knob(vertical, overlay, dark, scale, across), rest = !overlay && !pressed;
+		if (rest) canvas.pushOpacity(REST);
+		if (img != null) slices(canvas, img, vertical, thumb, across / 2, scale);
+		if (rest) canvas.popOpacity();
 		if (alpha < 1) canvas.popOpacity();
 	}
 
-	// the track, w by h points
-	function slot(vertical:Bool, dark:Bool, scale:Float, w:Float, h:Float):Null<Image> {
-		var key = 's$vertical$dark$scale ${Math.round(w)} ${Math.round(h)}';
+	// img drawn over r ([x, y, width, height]) in three slices along its
+	// axis: its ends (cap points long, as drawn) and its middle stretched
+	// (the slices meet on the screen's pixels, the ends cut at the image's
+	// whole pixels and the middle stretched from its centre column: no seam
+	// where two of them blend at a fraction of a pixel)
+	function slices(canvas:helder.ui.Canvas, img:Image, vertical:Bool, r:Array<Float>, cap:Float, scale:Float) {
+		inline function snap(v:Float):Float
+			return Math.round(v * scale) / scale;
+		var x = snap(r[0]), y = snap(r[1]), w = snap(r[0] + r[2]) - x, h = snap(r[1] + r[3]) - y;
+		var px = drawnAt.get(img.id) ?? 1.0, size = vertical ? img.height : img.width, len = vertical ? h : w;
+		var capPx = Math.min(Math.round(cap * px), Math.floor(size / 2)), c = Math.min(snap(capPx / px), snap(len / 2));
+		var u = capPx / size, m0 = (Math.floor(size / 2)) / size, m1 = (Math.floor(size / 2) + 1) / size;
+		if (vertical) {
+			canvas.image(img, x, y, w, c, 0, 0, 1, u, 0);
+			if (len > 2 * c) canvas.image(img, x, y + c, w, len - 2 * c, 0, m0, 1, m1, 0);
+			canvas.image(img, x, y + len - c, w, c, 0, 1 - u, 1, 1, 0);
+		} else {
+			canvas.image(img, x, y, c, h, 0, 0, u, 1, 0);
+			if (len > 2 * c) canvas.image(img, x + c, y, len - 2 * c, h, m0, 0, m1, 1, 0);
+			canvas.image(img, x + len - c, y, c, h, 1 - u, 0, 1, 1, 0);
+		}
+	}
+
+	// (each image's pixels a point, as it was drawn)
+	final drawnAt = new Map<Int, Float>();
+
+	// the track, across points thick, drawn at a length of its own
+	function slot(vertical:Bool, dark:Bool, scale:Float, across:Float):Null<Image> {
+		var key = 's$vertical$dark$scale ${Math.round(across)}', len = 64.0;
 		var img = cache.get(key);
 		if (img != null) return img;
-		var s = scroller(vertical, false);
-		frame(s, vertical, vertical ? w : h, vertical ? h : w);
+		var s = scroller(vertical, false), w = vertical ? across : len, h = vertical ? len : across;
+		frame(s, vertical, across, len);
 		img = draw(s, dark, scale, w, h, 0, 0, false);
-		if (img != null) keep(key, img);
+		if (img != null) {
+			drawnAt.set(img.id, scale);
+			keep(key, img);
+		}
 		return img;
 	}
 
-	// the knob, w by h points: a scroller long enough that its knob, all of its slot, is that long
-	function knob(vertical:Bool, overlay:Bool, dark:Bool, scale:Float, w:Float, h:Float):Null<Image> {
-		var key = 'k$vertical$overlay$dark$scale ${Math.round(w)} ${Math.round(h)}';
+	// the knob, across points thick, drawn four times as long: a scroller
+	// long enough that its knob, all of its slot, is that long
+	function knob(vertical:Bool, overlay:Bool, dark:Bool, scale:Float, across:Float):Null<Image> {
+		var key = 'k$vertical$overlay$dark$scale ${Math.round(across)}';
 		var img = cache.get(key);
 		if (img != null) return img;
-		var s = scroller(vertical, overlay), m = metrics(overlay), len = vertical ? h : w;
+		var s = scroller(vertical, overlay), m = metrics(overlay), len = across * 4;
 		frame(s, vertical, m[0], len + 8);
 		Msg.vFloat(s, ObjC.sel("setKnobProportion:"), 0.9999);
 		Msg.vFloat(s, ObjC.sel("setDoubleValue:"), 0);
@@ -98,7 +135,10 @@ class MacScrollbarArt implements helder.ui.ScrollbarArt {
 		frame(s, vertical, m[0], len + 8 + len - (vertical ? k.size.height : k.size.width));
 		k = Msg.rectInt(s, ObjC.sel("rectForPart:"), KNOB);
 		img = draw(s, dark, scale, k.size.width, k.size.height, k.origin.x, k.origin.y, true);
-		if (img != null) keep(key, img);
+		if (img != null) {
+			drawnAt.set(img.id, scale);
+			keep(key, img);
+		}
 		return img;
 	}
 

@@ -734,6 +734,26 @@ class UiTest {
 		wheel(0, 0, 3);
 		frames(1.5);
 		check("trackpad: a fling into the end bounces past it and back", past > 0 && page.scrollY == 240, past + " " + page.scrollY);
+		// (a mouse wheel turned on, a notch every frame: the glide moving on (no notch restarting it from rest), faster as notches come,
+		// as Chromium's; all of it in the end)
+		ui.elastic = false;
+		page.scrollY = 0;
+		time += 1;
+		Clock.tick(time);
+		var at = [];
+		for (i in 0...6) {
+			ui.wheel(50, 80, 0, 20, true);
+			time += 1 / 60;
+			Clock.tick(time);
+			at.push(page.scrollY);
+		}
+		var flows = true;
+		for (i in 1...at.length)
+			if (at[i] <= at[i - 1]) flows = false;
+		check("trackpad: a wheel turned on glides, faster as notches come (eased in from rest, as Chromium)", at[1] > 0 && flows && at[5] > 15 && at[5] - at[4] > at[2] - at[1], "" + at);
+		frames(0.5);
+		check("trackpad: the wheel's notches all scrolled in the end", page.scrollY == 120, "" + page.scrollY);
+		ui.elastic = true;
 		// (overlay scrollbars: shown as it moves, gone a while after)
 		ui.update();
 		ui.paint(new Recording());

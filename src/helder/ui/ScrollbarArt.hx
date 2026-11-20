@@ -9,7 +9,8 @@ interface ScrollbarArt {
 	// inset from the box's edge] (points), overlay or always shown
 	function metrics(overlay:Bool):Array<Float>;
 	// the track (null: none, overlay's) and the thumb ([x, y, width,
-	// height], window points), the thumb pressed or not, at alpha
+	// height], window points), the thumb active (pressed, or the pointer
+	// over its track) or not, at alpha
 	function paint(canvas:Canvas, vertical:Bool, overlay:Bool, dark:Bool, scale:Float, track:Null<Array<Float>>, thumb:Array<Float>, pressed:Bool,
 		alpha:Float):Void;
 }

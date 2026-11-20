@@ -16,7 +16,8 @@ import helder.os.ScrollPhase;
 // e^(-20 t / 1.6) (Chromium's, which _NSElasticDeltaForTimeDelta matches). The momentum is the system's (its
 // events' deltas), replayed at the frames' times, interpolated a frame
 // behind (the system sends it at 60 a second, whatever the display's
-// rate: applied as it comes it judders); one reaching an end bounces there
+// rate: applied as it comes it judders), from the gesture's last move on;
+// one reaching an end bounces there
 // (the rest of it dropped), as WebKit's and Chromium's.
 @:allow(helder.ui)
 @:access(helder.ui.Ui)
@@ -96,6 +97,8 @@ class Trackpad {
 			sumY.resize(0);
 			usedX = usedY = 0;
 			momentumEnded = false;
+			// (from the gesture's last move: the replay goes on from the fingers, no frame standing still between)
+			if (lastAt >= 0 && lastAt < time) sample(lastAt, 0, 0);
 			sample(time, dx, dy);
 			replay();
 			return true;

@@ -49,6 +49,9 @@ typedef SurfaceProps = {
 	// scrollbars);
 	// "helder": helder's own scrolling everywhere; default UiWindow.scrolling's
 	?scrolling:String,
+	// macOS's scrollbars: "system" (default: System Settings' Show scroll
+	// bars), "overlay" (shown while scrolling, over the content) or "always"
+	?scrollbars:String,
 	?children:UiView
 };
 
@@ -125,6 +128,12 @@ class UiWindow {
 	// fling physics, AndroidGlide); false: helder's
 	// own scrolling (a Surface's scrolling prop sets a window's)
 	public static var scrolling = true;
+	// macOS's scrollbars: "system" (System Settings' Show scroll bars:
+	// overlay ones that show while scrolling, unless set to always or, by
+	// default, while a mouse is connected), "overlay" or "always" (a Surface's
+	// scrollbars prop sets a window's)
+	public static var scrollbars = "system";
+	var bars = scrollbars;
 	// the text input area last given to the window ("": off)
 	var typing = "";
 	final pass:PassDesc = {colors: [{load: Clear, clear: new helder.gfx.Color(1, 1, 1)}]};
@@ -223,7 +232,7 @@ class UiWindow {
 		if (Platform.os() == 1) {
 			if (Platform.apple() < 1) {
 				ui.elastic = on;
-				ui.overlayBars = on && App.overlayScrollbars();
+				ui.overlayBars = on && (bars == "overlay" || bars == "system" && App.overlayScrollbars());
 				ui.scrollbarLook = !on ? Plain : ui.overlayBars ? MacOverlay : MacLegacy;
 				// (macOS's scrollers drawn by AppKit, for every appearance and macOS)
 				if (on && ui.scrollbarArt == null) ui.scrollbarArt = new MacScrollbarArt();
@@ -250,6 +259,12 @@ class UiWindow {
 			}
 			(cast iosScroll : IosScroll).update();
 		}
+	}
+
+	// macOS's scrollbars for this window: "system", "overlay" or "always" (UiWindow.scrollbars)
+	public function scrollbarStyle(style:String) {
+		bars = style;
+		nativeScroll(ui.nativeScroll || ui.elastic);
 	}
 
 	public var root(get, never):Node;
@@ -572,7 +587,7 @@ class UiWindow {
 				// (macOS's "Show scroll bars": overlay or always)
 				var overlay = App.overlayScrollbars();
 				for (w in open)
-					if (w.ui.elastic && w.ui.overlayBars != overlay) {
+					if (w.ui.elastic && w.bars == "system" && w.ui.overlayBars != overlay) {
 						w.ui.overlayBars = overlay;
 						w.ui.scrollbarLook = overlay ? MacOverlay : MacLegacy;
 						w.ui.requestFrame();
@@ -618,6 +633,7 @@ class UiWindow {
 			w.ui.requestFrame();
 		});
 		if (props.scrolling != null) w.nativeScroll(props.scrolling != "helder");
+		if (props.scrollbars != null) w.scrollbarStyle(props.scrollbars);
 		if (props.onClose != null) w.onClose = props.onClose;
 		if (props.onDrop != null) w.onDrop = props.onDrop;
 		// (in this owner: what is above the root, contexts, seen inside)
