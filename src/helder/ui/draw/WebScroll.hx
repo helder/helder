@@ -8,12 +8,15 @@ import hxmc.unsafe.*;
 // layer over the canvas, nested as the scrollers are (so the browser moves
 // the inner ones with the outer and chains a scroll at an end), made by
 // src/helder/ui/imports.mjs. Its touch pans, wheels, trackpad momentum,
-// overscroll and scrollbars are the browser's; its scrolls come back
-// (Ui.nativeScrolled), the program's scrolls go to it. The pointer's events
-// over them reach the canvas's listeners (helder.os's imports), and a
-// touch's drag the tree takes (a node following the pointer: Ui.scrollsAt)
-// is not panned. While a popup is open the tree's scroll views take no input
-// (the canvas's, helder's own wheel). Kept in step after each frame:
+// and overscroll are the browser's; its scrolls come back
+// (Ui.nativeScrolled), the program's scrolls go to it. Their scrollbars are
+// hidden and helder draws its own, so that they are in order with what the
+// tree draws (the page draws an element over the canvas, over everything);
+// the popups over one are cut out of it (ScrollView.covers: clip-path), so
+// that a wheel or a touch there is the popup's, and under a modal popup it
+// takes no input at all. The pointer's events over them reach the canvas's
+// listeners (helder.os's imports), and a touch's drag the tree takes (a
+// node following the pointer: Ui.scrollsAt) is not panned. Kept in step after each frame:
 // what changed sent as JSON, the scrolls polled.
 @:hxmc.unsafe(gc)
 class WebScroll {
@@ -22,12 +25,15 @@ class WebScroll {
 	// what each view was given: its parent, box, content, axes, bars, covered; its offsets
 	final sent = new Map<Int, Array<Float>>();
 	final views = new Map<Int, Node>();
+	// (the popups' rectangles each was given, as their JSON)
+	final sentCovers = new Map<Int, String>();
 	final seen = new Map<Int, Bool>();
 
 	public function new(canvas:Int, ui:Ui) {
 		this.ui = ui;
 		this.canvas = canvas;
-		ui.nativeBars = true;
+		// (the scrollbars helder's, drawn in order with what the tree draws: the page's would be over all of it)
+		ui.nativeBars = false;
 	}
 
 	// (UiWindow: after each frame)
@@ -46,11 +52,12 @@ class WebScroll {
 			var x = p == null ? s.x : s.x - p.x + p.offsetX, y = p == null ? s.y : s.y - p.y + p.offsetY;
 			var now:Array<Float> = [p == null ? 0 : p.id, x, y, s.width, s.height, s.contentWidth, s.contentHeight, (s.scrollsX ? 1 : 0) | (s.scrollsY ? 2 : 0),
 				s.bars ? 1 : 0, s.covered ? 1 : 0];
+			var covers = "[" + [for (c in s.covers) num(c)].join(",") + "]", coversChanged = sentCovers.get(s.id) != covers;
 			var fresh = last == null, moved = fresh || Math.abs(s.offsetX - last[10]) > 0.01 || Math.abs(s.offsetY - last[11]) > 0.01, changed = fresh;
 			if (!fresh)
 				for (i in 0...now.length)
 					if (now[i] != last[i]) changed = true;
-			if (!changed && !moved) continue;
+			if (!changed && !moved && !coversChanged) continue;
 			now.push(s.offsetX);
 			now.push(s.offsetY);
 			sent.set(s.id, now);
@@ -66,6 +73,11 @@ class WebScroll {
 				}
 				buf.add(']');
 			}
+			if (coversChanged) {
+				sentCovers.set(s.id, covers);
+				buf.add(',"c":');
+				buf.add(covers);
+			}
 			if (moved) {
 				buf.add(',"o":[');
 				buf.add(num(s.offsetX));
@@ -80,6 +92,7 @@ class WebScroll {
 		for (id in [for (id in sent.keys()) id])
 			if (!seen.exists(id)) {
 				sent.remove(id);
+				sentCovers.remove(id);
 				views.remove(id);
 				if (!first) buf.add(',');
 				first = false;
