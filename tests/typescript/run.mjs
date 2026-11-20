@@ -134,6 +134,14 @@ ok(run(process.execPath,['src/helder/typescript/api/declarations.mjs','--check',
 ok(run(process.execPath,['src/helder/typescript/api/declarations.mjs','--check','--cp',`${T}/platform`,'PlatformTypeScript']),'platform/win32.d.ts');
 console.log('PASS declarations');
 }
+// src/helder/ui/style.d.ts, written by hand: its StyleProps naming
+// helder.ui.StyleProps' properties, no more, no fewer
+if(mine()) {
+const hx=[...fs.readFileSync('src/helder/ui/StyleProps.hx','utf8').matchAll(/^\t\?(\w+):/gm)].map(m=>m[1]).sort().join(' ');
+const ts=[...fs.readFileSync('src/helder/ui/style.d.ts','utf8').split('export type StyleProps = {')[1].split('};')[0].matchAll(/^\t(\w+)\?:/gm)].map(m=>m[1]).sort().join(' ');
+assert.equal(ts,hx,'src/helder/ui/style.d.ts: its StyleProps are not helder.ui.StyleProps\' properties');
+console.log('PASS style.d.ts');
+}
 // Programs calling helder's Haxe API (and TSX), rendering headless with
 // tests/view's TestRenderer: their output checked against <name>.out
 for(const file of fs.readdirSync(`${T}/helder`).filter(f=>/\.tsx?$/.test(f)&&!f.endsWith('.d.ts')).sort())for(const target of targets) {

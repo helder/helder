@@ -5,7 +5,7 @@
 import type {Image} from "helder/asset";
 import type {Read, RootView, Signal, View} from "helder/view";
 
-declare const __haxe: {Svg: "helder.canvas.Svg", UiWindow: "helder.ui.draw.UiWindow", Event: "helder.ui.Event", Key: "helder.ui.Key", VirtualScroll: "helder.ui.VirtualScroll", Clock: "helder.ui.Clock", WebViewEvent: "helder.ui.platform.WebViewEvent", WebContent: "helder.ui.platform.WebContent", WebResponse: "helder.ui.platform.WebResponse", Node: "helder.ui.Node", TextNode: "helder.ui.TextNode", UiFlow: "helder.ui.view.UiFlow", SafeArea: "helder.ui.SafeArea", Router: "helder.ui.nav.Router", Controls: "helder.ui.widgets.Controls", DataGrid: "helder.ui.widgets.DataGrid", EditableText: "helder.ui.widgets.EditableText", GridColumn: "helder.ui.widgets.GridColumn", GridTheme: "helder.ui.widgets.GridTheme", Icons: "helder.ui.widgets.Icons", Pager: "helder.ui.widgets.Pager", TextArea: "helder.ui.widgets.TextArea", TextField: "helder.ui.widgets.TextField", Theme: "helder.ui.widgets.Theme", WindowButtons: "helder.ui.widgets.WindowButtons", CodeActions: "helder.ui.code.CodeAction.CodeActions", CodeCompletion: "helder.ui.code.CodeCompletion", CodeEditor: "helder.ui.code.CodeEditor", CodeLanguage: "helder.ui.code.CodeLanguage", SyntaxLanguage: "helder.ui.code.CodeLanguage.SyntaxLanguage", CodeLanguages: "helder.ui.code.CodeLanguage.CodeLanguages", Sel: "helder.ui.code.CodeModel.Sel", Decoration: "helder.ui.code.CodeModel.Decoration", CodeDiagnostic: "helder.ui.code.CodeModel.CodeDiagnostic", ShapedLine: "helder.ui.code.CodeModel.ShapedLine", CodeModel: "helder.ui.code.CodeModel", CodeTheme: "helder.ui.code.CodeTheme", CodeView: "helder.ui.code.CodeView", Rope: "helder.ui.code.Rope", SqlLanguage: "helder.ui.code.SqlLanguage", Screens: "helder.ui.nav.Screens", __module: "helder.ui.TypeScript"};
+declare const __haxe: {Svg: "helder.canvas.Svg", UiWindow: "helder.ui.draw.UiWindow", Event: "helder.ui.Event", Key: "helder.ui.Key", VirtualScroll: "helder.ui.VirtualScroll", Clock: "helder.ui.Clock", WebViewEvent: "helder.ui.platform.WebViewEvent", WebContent: "helder.ui.platform.WebContent", WebResponse: "helder.ui.platform.WebResponse", Node: "helder.ui.Node", TextNode: "helder.ui.TextNode", UiFlow: "helder.ui.view.UiFlow", SafeArea: "helder.ui.SafeArea", Router: "helder.ui.nav.Router", Controls: "helder.ui.widgets.Controls", DataGrid: "helder.ui.widgets.DataGrid", EditableText: "helder.ui.widgets.EditableText", GridColumn: "helder.ui.widgets.GridColumn", GridTheme: "helder.ui.widgets.GridTheme", Icons: "helder.ui.widgets.Icons", Pager: "helder.ui.widgets.Pager", TextArea: "helder.ui.widgets.TextArea", TextField: "helder.ui.widgets.TextField", Theme: "helder.ui.widgets.Theme", WindowButtons: "helder.ui.widgets.WindowButtons", Eased: "helder.ui.controls.Eased", Look: "helder.ui.controls.Look", Press: "helder.ui.controls.Press", Standard: "helder.ui.controls.Standard", Toggle: "helder.ui.controls.Toggle", CodeActions: "helder.ui.code.CodeAction.CodeActions", CodeCompletion: "helder.ui.code.CodeCompletion", CodeEditor: "helder.ui.code.CodeEditor", CodeLanguage: "helder.ui.code.CodeLanguage", SyntaxLanguage: "helder.ui.code.CodeLanguage.SyntaxLanguage", CodeLanguages: "helder.ui.code.CodeLanguage.CodeLanguages", Sel: "helder.ui.code.CodeModel.Sel", Decoration: "helder.ui.code.CodeModel.Decoration", CodeDiagnostic: "helder.ui.code.CodeModel.CodeDiagnostic", ShapedLine: "helder.ui.code.CodeModel.ShapedLine", CodeModel: "helder.ui.code.CodeModel", CodeTheme: "helder.ui.code.CodeTheme", CodeView: "helder.ui.code.CodeView", Rope: "helder.ui.code.Rope", SqlLanguage: "helder.ui.code.SqlLanguage", Screens: "helder.ui.nav.Screens", __module: "helder.ui.TypeScript"};
 
 // An SVG document for icons and drawings: parsed once (Svg.parse), drawn
 // into an Image at any size (the Image's drawing: this, for a writer's vectors; render: the viewBox fitted as
@@ -34,16 +34,24 @@ export type RouteParams<P> = P extends `${string}:${infer K}/${infer R}` ? {[k i
 // and a fade), a fade (the desktop's and the web's), or none
 export type StackTransition = "slide" | "fade" | "none";
 
+// the default look's variants
+export type BaseVariants = { button_variant: { primary: boolean; secondary: boolean; ghost: boolean; danger: boolean }; button_size: { sm: boolean; md: boolean; lg: boolean }; checkbox_variant: {}; checkbox_size: {}; switch_variant: {}; switch_size: {} };
+
+// The controls' props, V the look whose variants and sizes they take
+// (Look<V>: Look.base's for Standard's, a look's own for look.Button).
+// children: what a button shows (text, or views); label: its name for
+// assistive technology (an icon alone's), a checkbox's and a switch's
+// text beside it. checked with onChange: the caller's state; neither: the
+// control's own.
+export type ButtonProps<V> = { children?: unknown; label?: string; icon?: Svg; variant?: import('./style').Axis<V, 'button_variant'>; size?: import('./style').Axis<V, 'button_size'>; disabled?: Read<boolean>; onPress?: () => void; tag?: string };
+
+export type CheckboxProps<V> = { label: string; checked?: Read<boolean>; indeterminate?: Read<boolean>; onChange?: (arg0: boolean) => void; disabled?: Read<boolean>; variant?: import('./style').Axis<V, 'checkbox_variant'>; size?: import('./style').Axis<V, 'checkbox_size'>; tag?: string };
+
 // a suggestion: what it shows, a quieter detail (a kind, a type), what it puts in (else its label)
 export type Completion = { label: string; detail?: string; insert?: string };
 
 // suggestions for the word that starts at from and ends at the caret
 export type Completions = { from: number; items: Completion[] };
-
-// The pointer's shape over a node (Style.cursor): helder.os's, whose Auto
-// takes the parent's (the root's: Default); a window shows the hovered
-// node's (Ui.cursor).
-export type Cursor = number;
 
 // a menu of the menu bar; role Window: the window menu (macOS's: its own
 // items after Minimize, Zoom and Close)
@@ -58,6 +66,8 @@ export type Menu = { label: string; items: unknown[]; role?: "about" | "quit" | 
 // in its own place or gives its own behaviour (macOS).
 export type PlatformMenuItem = { id: number; label: string; shortcut?: string; keys?: unknown; disabled?: boolean; checked?: boolean; separator?: boolean; items?: PlatformMenuItem[]; role?: string };
 
+export type Refs = { canvas?: number; surface?: number; raised?: number; well?: number; hover?: number; press?: number; line?: number; edge?: number; edgeStrong?: number; fg?: number; fg2?: number; fg3?: number; accent?: number; accentStrong?: number; accentSoft?: number; accentFg?: number; accentInk?: number; focus?: number; danger?: number; dangerStrong?: number; dangerSoft?: number; dangerFg?: number; success?: number; warning?: number; info?: number; knob?: number; scrim?: number; shadow?: number; density?: "comfortable" | "compact"; font?: string; display?: string; mono?: string; size?: number; small?: number; large?: number; title?: number; medium?: number; radius?: number; radiusPanel?: number; radiusSurface?: number; controlSm?: number; control?: number; controlLg?: number; padSm?: number; pad?: number; padLg?: number; gap?: number; icon?: number; box?: number; track?: number; trackHeight?: number; thumb?: number; hoverTime?: number; toggleTime?: number; openTime?: number; floatTime?: number; dialogTime?: number; exitTime?: number; pressScale?: number; disabledOpacity?: number };
+
 // A theme's rule (StyleSheet): the style a node with this slot (Node.slot,
 // the name of the part it is: "button", "switch-thumb"), variant and size
 // (when given) takes while every state in when holds ("hover", "active",
@@ -68,11 +78,7 @@ export type PlatformMenuItem = { id: number; label: string; shortcut?: string; k
 // win, property by property, as CSS's source order; the node's own style
 // wins over all of them. Colours may be token references (Color.token,
 // "var(--primary)", "var(--ring)/50"), resolved with the sheet's colours.
-export type Rule = { slot: string; variant?: string; size?: string; when?: string[]; style: StyleProps };
-
-// Style's properties as an optional structure: Style.set({direction: Row,
-// padding: 8}) sets the given ones (typed, so that the enums' cases resolve).
-export type StyleProps = { display?: number; position?: number; direction?: number; wrap?: boolean; justify?: number; alignItems?: number; alignSelf?: number; alignContent?: number; grow?: number; shrink?: number; basis?: unknown; width?: unknown; height?: unknown; minWidth?: unknown; minHeight?: unknown; maxWidth?: unknown; maxHeight?: unknown; aspectRatio?: number; padding?: unknown; margin?: unknown; paddingTop?: number; paddingRight?: number; paddingBottom?: number; paddingLeft?: number; marginTop?: number; marginRight?: number; marginBottom?: number; marginLeft?: number; borderWidth?: number; borders?: unknown; rowGap?: number; columnGap?: number; left?: unknown; top?: unknown; right?: unknown; bottom?: unknown; overflow?: number; overflowX?: number; overflowY?: number; background?: number; letterSpacing?: number; letterSpacingEm?: number; wordSpacing?: number; textDecoration?: number; textShadow?: unknown; textDecorationColor?: number; textDecorationThickness?: unknown; textUnderlineOffset?: unknown; backgroundImage?: unknown; transform?: unknown; transformOrigin?: unknown[]; borderColor?: number; radius?: number; corners?: unknown; opacity?: number; cursor?: Cursor; shadow?: unknown; transition?: unknown; outlineStyle?: number; borderStyle?: number; userSelect?: number; fieldSizing?: number; scrollbarWidth?: number; breakBefore?: number; breakAfter?: number; breakInside?: number; page?: string; scrollbarColor?: number; scrollbarTrackColor?: number; ringWidth?: number; ringColor?: number; ringOffsetWidth?: number; ringOffsetColor?: number; ringInset?: boolean; outlineWidth?: number; outlineOffset?: number; outlineColor?: number; color?: number; fontFamily?: string; fontSize?: number; fontWeight?: number; italic?: boolean; lineHeight?: number; lineHeightPx?: number; textAlign?: number; dir?: number; visibility?: number; pointerEvents?: number; textWrap?: number; gap?: number; inset?: unknown; flex?: number; overflowWrap?: number; wordBreak?: number; fontFeatureSettings?: string; fontVariantNumeric?: string; textTransform?: number; textOverflow?: number; order?: number; zIndex?: number; maxLines?: number; gridTemplateColumns?: unknown[]; gridTemplateRows?: unknown[]; gridAutoColumns?: unknown; gridAutoRows?: unknown; gridAutoFlow?: number; gridColumn?: unknown; gridRow?: unknown; gridArea?: string; gridTemplateAreas?: unknown; justifyItems?: number; justifySelf?: number };
+export type Rule = { slot: string; variant?: string; size?: string; when?: string[]; style: import('./style').StyleProps };
 
 // A theme: its rules (Rule) and the colours their token references name,
 // light and dark (names without the dashes: "primary", "ring"). Installed
@@ -89,6 +95,19 @@ export type StyleSheet = { rules: Rule[]; light?: unknown; dark?: unknown; lengt
 
 // <Surface>'s props (UiWindow.Surface)
 export type SurfaceProps = { title?: Read<string>; width?: Read<number>; height?: Read<number>; theme?: Read<any>; background?: Read<any>; dark?: Read<boolean>; onClose?: () => void; onDrop?: (files: string[], x: number, y: number) => void; ref?: (arg0: UiWindow) => void; antialias?: boolean; titlebar?: string; fontSmoothing?: Read<string>; scrolling?: string; scrollbars?: string; children?: UiView };
+
+export type SwitchProps<V> = { label: string; checked?: Read<boolean>; onChange?: (arg0: boolean) => void; disabled?: Read<boolean>; variant?: import('./style').Axis<V, 'switch_variant'>; size?: import('./style').Axis<V, 'switch_size'>; tag?: string };
+
+// A look's tokens: its colours (each a Tone, light and dark) and its other
+// values. A recipe reads them as Refs: the colours as token references
+// (Color.token, resolved with the window's light or dark values), the rest
+// as they are. A look's patch gives some of them (Look.with: tokens).
+export type Tokens = { canvas?: Tone; surface?: Tone; raised?: Tone; well?: Tone; hover?: Tone; press?: Tone; line?: Tone; edge?: Tone; edgeStrong?: Tone; fg?: Tone; fg2?: Tone; fg3?: Tone; accent?: Tone; accentStrong?: Tone; accentSoft?: Tone; accentFg?: Tone; accentInk?: Tone; focus?: Tone; danger?: Tone; dangerStrong?: Tone; dangerSoft?: Tone; dangerFg?: Tone; success?: Tone; warning?: Tone; info?: Tone; knob?: Tone; scrim?: Tone; shadow?: Tone; density?: "comfortable" | "compact"; font?: string; display?: string; mono?: string; size?: number; small?: number; large?: number; title?: number; medium?: number; radius?: number; radiusPanel?: number; radiusSurface?: number; controlSm?: number; control?: number; controlLg?: number; padSm?: number; pad?: number; padLg?: number; gap?: number; icon?: number; box?: number; track?: number; trackHeight?: number; thumb?: number; hoverTime?: number; toggleTime?: number; openTime?: number; floatTime?: number; dialogTime?: number; exitTime?: number; pressScale?: number; disabledOpacity?: number };
+
+// A colour token's values in light and dark: Look.tone("oklch(0.56 0.19
+// 258)", "oklch(0.64 0.17 258)"), written as CSS writes a colour (one for
+// both). A structure, not a class: a TypeScript program's are its objects.
+export type Tone = { light: number; dark: number };
 
 // helder.ui's markup (helder.view.ViewOf): a component returning one is
 // pinned to ui, a children prop typed so makes its content ui's (a
@@ -1128,6 +1147,10 @@ export declare class TextField extends EditableText {
 	paintContent(canvas: unknown, x: number, y: number, width: number, height: number): void;
 }
 
+// Superseded by helder.ui.controls' looks (Look.base, look.with: the
+// standard controls' tokens and recipes, README.md's "Controls"); kept
+// while the studio, tables and the widgets move onto them, then gone.
+//
 // helder's default look for the widgets, the studio's (apps/studio's
 // Theme): near neutral darks with a hint of cool, the window's base the
 // darkest, panels a step up, fields and hovers above; text in three
@@ -1202,6 +1225,163 @@ export declare class WindowButtons {
 }
 
 export declare const WindowControls: typeof WindowButtons.WindowControls;
+
+// A control's states as amounts that ease between 0 and 1 (hover, pressed,
+// checked, focus: the keyboard's ring, open), each over its look's time
+// for it, on its window's clock; under reduced motion they jump. What a
+// recipe's states blend (colours, opacity, transforms, shadows, rings)
+// eases the same way, through the parts' transitions (Look); these are
+// for what draws itself: a part's shader (helder.ui.draw.PartShader), a
+// replaced rendering.
+export declare class Eased {
+	// times: each state's seconds (HOVER... OPEN)
+	constructor(times: number[]);
+	static readonly HOVER: number;
+	static readonly PRESSED: number;
+	static readonly CHECKED: number;
+	static readonly FOCUS: number;
+	static readonly OPEN: number;
+	readonly hover: number;
+	readonly pressed: number;
+	readonly checked: number;
+	readonly focus: number;
+	readonly open: number;
+	// called while they move (a shader's node asks for its frame)
+	onChange: (() => void) | null;
+	// the node whose window's clock they move on
+	node: Node | null;
+	// a state's amount (HOVER... OPEN)
+	get(state: number): number;
+	// where a state is going: 1 while it holds; at once without moving
+	// (a control's first state, reduced motion)
+	set(state: number, on: boolean, now?: boolean): void;
+}
+
+// What the controls look like: tokens, a recipe per control (a function
+// of the tokens giving each part's style, by state and by variant), the
+// renderings an app replaced, its own parts. Compiled once into a
+// StyleSheet (sheet: a rule per part and state, its colours the tokens'
+// light and dark values), which Rules runs: a control's states change
+// what holds, nothing is made a frame. Look.base is helder's (Base); an
+// app's is Look.base.with({...}) (LookOf.with: a patch's keys over the
+// look's, by part and state, property by property; its variants added to
+// the look's, which the controls' variant and size are checked against).
+// <Themed look={look}> installs one for a subtree; a control outside any
+// installs base for itself.
+//
+// Each state of a recipe is an amount that eases from 0 to 1 over the
+// look's time for it (hoverTime, toggleTime, openTime): what blends
+// (colours, opacity, transforms, shadows, rings) blends through the parts'
+// transitions, which compile gives them (unless a part gives its own), on
+// the quad every part already draws as; Eased has the amounts for what
+// draws itself. Under reduced motion, travel jumps and colours fade.
+export declare class Look<V> {
+	static readonly base: Look<BaseVariants>;
+	// the token references, as inline markup takes them (color={Look.ref.fg3}): resolved with the nearest sheet's colours
+	static readonly ref: Refs;
+	// the look of the subtree (Themed's)
+	static readonly context: unknown;
+	// a tone (a token's light and dark colours), as CSS writes them (one for both)
+	static tone(light: string, dark?: string): Tone;
+	readonly tokens: Tokens;
+	// this look with a patch over it (TypeScript's; Haxe's: LookOf.with, which checks the patch)
+	with: <P extends import('./style').LookPatch>(patch: P) => Look<V & import('./style').PatchVariants<P>>;
+	// the look's StyleSheet: its rules and colours, made once
+	sheet(): StyleSheet;
+	// what its recipes read: the colours as references, the rest as they are
+	refs(): Refs;
+	// the Button, Checkbox and Switch whose variant and size are this look's
+	// (the nearest look still draws them: Themed's); values, so that markup
+	// of either language takes them as components (<look.Button>)
+	readonly Button: ((arg0: ButtonProps<V>) => View);
+	readonly Checkbox: ((arg0: CheckboxProps<V>) => View);
+	readonly Switch: ((arg0: SwitchProps<V>) => View);
+}
+
+export declare const tone: typeof Look.tone;
+
+// The behaviour of what is pressed (WAI-ARIA's button): a click, Enter or
+// Space activates it (Ui's onActivate), none while it is disabled (then
+// not focusable either). Its states are signals (hovered: never by touch;
+// pressed: the pointer down on it and still over it, cancelled when it
+// leaves; focusVisible: focused from the keyboard) and eased amounts
+// (Eased). No look: root and part bind it to nodes, by ref, setting their
+// slots (the control's, "button"; its part's, "button-icon"), the root's
+// role, label, variant and size and its data-disabled, which a look's
+// recipes read.
+//
+//   final p = Press.of(props, "button");
+//   <view:button ref={p.root}><image ref={p.part("icon")} .../></view:button>
+export declare class Press {
+	constructor(slot: string, disabled?: Read<boolean>, onPress?: () => void);
+	// a press of props' (a replaced rendering's: Look's render) for a control named slot
+	static of(props: { label?: string; disabled?: Read<boolean>; onPress?: () => void }, slot: string): Press;
+	readonly hovered: Signal<boolean>;
+	readonly pressed: Signal<boolean>;
+	readonly focusVisible: Signal<boolean>;
+	readonly disabled: Read<boolean>;
+	readonly eased: Eased;
+	readonly slot: string;
+	// the look it was made under (Themed's, else Look.base): its states' times, its parts' draws
+	readonly look: Look<any>;
+	readonly node: Node | null;
+	// set before root binds: the root's name for assistive technology, variant, size
+	label: string | null;
+	variant: string | null;
+	size: string | null;
+	// activates it, as a press does (nothing while it is disabled)
+	press(): void;
+	// binds the control's root node
+	root(n: Node): void;
+	// binds a part: its slot, the control's followed by the part's name (a
+	// look's draw for it: its shader's node under its children)
+	part(name: string): ((arg0: Node) => void);
+}
+
+// helder's standard controls, drawn by the nearest look (Themed's, else
+// Look.base), their behaviour Press's and Toggle's: a Button, a Checkbox
+// (indeterminate too) and a Switch. A look that replaces one's rendering
+// (render: {switch: Lamp}) is drawn instead, there and inside other
+// widgets. A look's own variants: look.Button's (Look). A control under
+// no look takes Look.base's sheet as its own.
+//
+//   <Button variant="primary" onPress={save}>Save</Button>
+//   <Checkbox label="Remember me" checked={remember} onChange={v -> remember(v)}/>
+//   <Switch label="Dark mode" checked={dark} onChange={v -> dark(v)}/>
+// (pinned to ui's renderer, UiView: drawn controls, of no other renderer)
+export declare class Standard {
+	static Button(props: ButtonProps<BaseVariants>): View;
+	static Checkbox(props: CheckboxProps<BaseVariants>): View;
+	static Switch(props: SwitchProps<BaseVariants>): View;
+	// a look for what it holds: its sheet, and the look its controls draw with
+	static Themed(props: { look: Look<any>; children?: unknown }): View;
+}
+
+export declare const Button: typeof Standard.Button;
+export declare const Checkbox: typeof Standard.Checkbox;
+export declare const Switch: typeof Standard.Switch;
+export declare const Themed: typeof Standard.Themed;
+
+// The behaviour of what is on or off (WAI-ARIA's checkbox and switch): a
+// Press whose activation toggles it, Space and a click (a switch's Enter
+// too; a checkbox's not, as the pattern has it), mixed (a checkbox's
+// indeterminate) turning on. Its root is a checkbox or a switch to
+// assistive technology, checked or mixed, and data-state checked,
+// unchecked or mixed for a look's recipes. checked given with no onChange:
+// toggled by nothing but the caller; neither: its own state.
+//
+//   final sw = Toggle.of(props, "switch");
+//   <view ref={sw.root}><view ref={sw.part("knob")}/></view>
+export declare class Toggle extends Press {
+	constructor(slot: string, role: number, checked?: Read<boolean>, mixed?: Read<boolean>, onChange?: (arg0: boolean) => void, disabled?: Read<boolean>);
+	// a toggle of props' (a replaced rendering's: Look's render) for a control
+	// named slot: a switch ("switch") or a checkbox (any other)
+	static of(props: { label: string; checked?: Read<boolean>; indeterminate?: Read<boolean>; onChange?: (arg0: boolean) => void; disabled?: Read<boolean> }, slot: string): Toggle;
+	readonly checked: Read<boolean>;
+	readonly mixed: Read<boolean>;
+	// turns it over (mixed: on), as a press does
+	toggle(): void;
+}
 
 export declare class CodeActions {
 	// the actions declared and their default bindings added to the global keymap (once)

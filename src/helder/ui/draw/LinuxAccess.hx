@@ -162,6 +162,8 @@ class LinuxAccess {
 		if (b.valueNow != n.valueNow && n.valueNow != null) emit(n.id, "PropertyChange", "accessible-value", 0, 0, new Variant("d", n.valueNow));
 		if (b.checked != n.checked) stateChanged(n.id, "checked", n.checked == true);
 		if (b.mixed != n.mixed) stateChanged(n.id, "indeterminate", n.mixed);
+		if (b.invalid != n.invalid) stateChanged(n.id, "invalid-entry", n.invalid);
+		if (b.required != n.required) stateChanged(n.id, "required", n.required);
 		if (b.expanded != n.expanded && n.expanded != null) stateChanged(n.id, "expanded", n.expanded);
 		if (b.disabled != n.disabled) {
 			stateChanged(n.id, "enabled", !n.disabled);
@@ -356,6 +358,9 @@ class LinuxAccess {
 			if (n.selected) on(23); // SELECTED
 		}
 		if (n.multiselectable) on(18); // MULTISELECTABLE
+		if (n.modal) on(16); // MODAL
+		if (n.required) on(33); // REQUIRED
+		if (n.invalid) on(36); // INVALID_ENTRY
 		if (n.expanded != null) {
 			on(9); // EXPANDABLE
 			on(n.expanded ? 10 : 5); // EXPANDED, COLLAPSED

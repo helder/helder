@@ -143,6 +143,9 @@ export default function (host) {
 		set('aria-expanded', n.expanded);
 		set('aria-level', n.level);
 		set('aria-disabled', n.disabled ? 'true' : null);
+		set('aria-invalid', n.invalid ? 'true' : null);
+		set('aria-required', n.required ? 'true' : null);
+		set('aria-modal', n.modal ? 'true' : null);
 		set('aria-valuenow', n.valueNow);
 		set('aria-valuemin', n.valueMin);
 		set('aria-valuemax', n.valueMax);

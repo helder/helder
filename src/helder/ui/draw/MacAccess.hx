@@ -71,6 +71,8 @@ class MacAccess {
 		Runtime.class_replaceMethod(e, ObjC.sel("isAccessibilityFocused"), Callback.addr(isFocused), Mem.cstr("c@:"));
 		Runtime.class_replaceMethod(e, ObjC.sel("setAccessibilityFocused:"), Callback.addr(setFocused), Mem.cstr("v@:c"));
 		Runtime.class_replaceMethod(e, ObjC.sel("isAccessibilityExpanded"), Callback.addr(isExpanded), Mem.cstr("c@:"));
+		Runtime.class_replaceMethod(e, ObjC.sel("isAccessibilityRequired"), Callback.addr(isRequired), Mem.cstr("c@:"));
+		Runtime.class_replaceMethod(e, ObjC.sel("isAccessibilityModal"), Callback.addr(isModal), Mem.cstr("c@:"));
 		Runtime.class_replaceMethod(e, ObjC.sel("setAccessibilityExpanded:"), Callback.addr(setExpanded), Mem.cstr("v@:c"));
 		Runtime.class_replaceMethod(e, ObjC.sel("isAccessibilitySelected"), Callback.addr(isSelected), Mem.cstr("c@:"));
 		Runtime.class_replaceMethod(e, ObjC.sel("setAccessibilitySelected:"), Callback.addr(setSelected), Mem.cstr("v@:c"));
@@ -390,6 +392,16 @@ class MacAccess {
 	@:hxmc.callback static function isExpanded(self:Ptr, cmd:Ptr):Int {
 		var o = nodeOf(self);
 		return o != null && o.n.expanded == true ? 1 : 0;
+	}
+
+	@:hxmc.callback static function isRequired(self:Ptr, cmd:Ptr):Int {
+		var o = nodeOf(self);
+		return o != null && o.n.required ? 1 : 0;
+	}
+
+	@:hxmc.callback static function isModal(self:Ptr, cmd:Ptr):Int {
+		var o = nodeOf(self);
+		return o != null && o.n.modal ? 1 : 0;
 	}
 
 	@:hxmc.callback static function setExpanded(self:Ptr, cmd:Ptr, on:Int):Void {

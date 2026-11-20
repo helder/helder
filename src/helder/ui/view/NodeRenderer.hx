@@ -427,6 +427,15 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 	@:attribute static function disabled(n:Node, name:String, v:Dynamic)
 		semantics(n).disabled = v == true || v == "true";
 
+	@:attribute static function invalid(n:Node, name:String, v:Dynamic)
+		semantics(n).invalid = v == true || v == "true";
+
+	@:attribute static function required(n:Node, name:String, v:Dynamic)
+		semantics(n).required = v == true || v == "true";
+
+	@:attribute static function modal(n:Node, name:String, v:Dynamic)
+		semantics(n).modal = v == true || v == "true";
+
 	@:attribute static function valueNow(n:Node, name:String, v:Dynamic)
 		semantics(n).valueNow = number(v);
 

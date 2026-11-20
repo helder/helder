@@ -2,6 +2,9 @@ package helder.ui;
 
 // Style's properties as an optional structure: Style.set({direction: Row,
 // padding: 8}) sets the given ones (typed, so that the enums' cases resolve).
+// TypeScript's are style.d.ts's, written as markup writes them and given
+// untyped, parsed where helder takes them (Styles).
+@:typescript.type("import('./style').StyleProps") @:typescript.dynamic
 typedef StyleProps = {
 	?display:Display,
 	?position:Position,

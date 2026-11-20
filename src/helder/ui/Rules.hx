@@ -40,7 +40,11 @@ class Rules {
 	// the base rules: the widgets' unstyled looks, where no sheet applies (added once each: addBase)
 	static final base:Array<Rule> = [];
 	static final bases = new Map<String, Bool>();
-	static var baseIndex:Null<Map<String, Array<Indexed>>> = null;
+	static var baseIndex:Null<Map<String, Slot>> = null;
+
+	// what parses a style given untyped (a TypeScript program's: Styles.of,
+	// set by what TypeScript calls), a sheet's rules once when first used
+	public static var parse:Null<Dynamic->StyleProps> = null;
 
 	// adds base rules under a name (again: nothing)
 	public static function addBase(name:String, rules:Array<Rule>) {
@@ -71,21 +75,21 @@ class Rules {
 		if (ui == null) return;
 		var sheet = n.sheet();
 		var applied = @:privateAccess n.themedIds, appliedValues = @:privateAccess n.themedValues, kept = @:privateAccess n.keptIds;
+		if (@:privateAccess n.tokenColors != null) ownTokens(n, sheet, ui.dark);
 		if (n.slot == null && applied == null) {
 			@:privateAccess n.themePseudo(null, null);
 			return;
 		}
 		if (baseIndex == null) baseIndex = indexOf(base);
 		var ix = sheet != null ? index(sheet) : baseIndex;
-		var rules = n.slot == null ? null : ix.get(n.slot) ?? ix.get("*");
-		// (the rules that hold, by their place: what the merge is kept by)
-		var key = new StringBuf();
-		key.add(sheet == null ? 0 : sheetId(sheet));
-		key.add(ui.dark ? "d" : "l");
-		key.add(n.slot);
-		if (rules != null)
-			for (k in 0...rules.length) {
-				var r = rules[k];
+		var slot = n.slot == null ? null : ix.get(n.slot) ?? ix.get("*");
+		// (the rules that hold, by their place in the slot's: what the merge is
+		// kept by, a hash of them and dark, nothing allocated once it is made)
+		count = 0;
+		var hash = ui.dark ? 1 : 2;
+		if (slot != null)
+			for (k in 0...slot.rules.length) {
+				var r = slot.rules[k];
 				if (r.variant != null && r.variant != n.variant || r.size != null && r.size != n.size) continue;
 				var ok = true;
 				if (r.conds != null)
@@ -95,16 +99,17 @@ class Rules {
 							break;
 						}
 				if (ok) {
-					key.add(",");
-					key.add(k);
+					if (count < matched.length) matched[count] = k else matched.push(k);
+					count++;
+					hash = hash * 31 + k + 1;
 				}
 			}
-		var m = rules == null ? NONE : merged(key.toString(), rules, sheet, ui.dark);
+		var m = slot == null ? NONE : merged(slot, hash, sheet, ui.dark);
 		// (currentColor, when the merge uses it: the colour it gives the text, else the node's own, else its parent's)
 		var current = Color.BLACK;
 		if (m.current) {
-			var given = m.ids.indexOf(COLOR);
-			current = given >= 0 ? (m.values[given] : Color) : n.style.color != null && !(applied != null && applied.indexOf(COLOR) >= 0) ? n.style.color : n.parent != null ? n.parent.textColor() : Color.BLACK;
+			var given = place(m.ids, COLOR);
+			current = given >= 0 ? (m.values[given] : Color) : n.style.color != null && place(applied, COLOR) < 0 ? n.style.color : n.parent != null ? n.parent.textColor() : Color.BLACK;
 			if (current.isToken) current = Color.BLACK;
 		}
 		// (what it applied: the merge's own arrays while each property is
@@ -113,10 +118,9 @@ class Rules {
 		for (i in 0...m.ids.length) {
 			var id = m.ids[i], want:Dynamic = m.values[i];
 			if (m.current) want = withCurrentAt(id, want, current);
-			var cur = n.style.targetAt(id);
-			var k = applied == null ? -1 : applied.indexOf(id);
+			var k = place(applied, id);
 			// (the node's own value: left as it is)
-			if ((k >= 0 ? !same(cur, appliedValues[k]) : !same(cur, initialAt(id))) || kept != null && kept.indexOf(id) >= 0) {
+			if (!sameTarget(n, id, k >= 0 ? appliedValues[k] : initialAt(id)) || place(kept, id) >= 0) {
 				if (sharing) {
 					ids = m.ids.slice(0, i);
 					values = m.values.slice(0, i);
@@ -124,16 +128,15 @@ class Rules {
 				}
 				continue;
 			}
-			if (!same(cur, want)) StyleFields.setAt(n.style, id, want);
-			var v = n.style.targetAt(id);
-			if (sharing && !same(v, m.values[i])) {
+			if (!sameTarget(n, id, want)) StyleFields.setAt(n.style, id, want);
+			if (sharing && !sameTarget(n, id, m.values[i])) {
 				ids = m.ids.slice(0, i);
 				values = m.values.slice(0, i);
 				sharing = false;
 			}
 			if (!sharing) {
 				ids.push(id);
-				values.push(v);
+				values.push(n.style.targetAt(id));
 			}
 		}
 		if (sharing) {
@@ -148,7 +151,7 @@ class Rules {
 		if (applied != null)
 			for (k in 0...applied.length) {
 				var id = applied[k];
-				if ((ids == null || ids.indexOf(id) < 0) && same(n.style.targetAt(id), appliedValues[k]))
+				if (place(ids, id) < 0 && sameTarget(n, id, appliedValues[k]))
 					StyleFields.setAt(n.style, id, initialAt(id));
 			}
 		@:privateAccess n.themedIds = ids;
@@ -160,24 +163,21 @@ class Rules {
 	// (a merge: the properties it sets and their values, tokens resolved but
 	// currentColor, which a node resolves; its placeholder's colour, its
 	// selection's: the "placeholder" rules' color, the "selection" rules' background)
-	static final NONE = new Merge([], [], null, null, false);
-	static final merges = new Map<String, Merge>();
-	static final sheetIds = new haxe.ds.ObjectMap<{}, Int>();
+	static final NONE = new Merge([], [], null, null, false, false, []);
+	// (the rules of a restyle that hold, the first count of them: Rules.restyle's, reused)
+	static final matched:Array<Int> = [];
+	static var count = 0;
 
-	static function sheetId(sheet:StyleSheet):Int {
-		var id = sheetIds.get(sheet);
-		if (id == null) sheetIds.set(sheet, id = Lambda.count(sheetIds) + 1);
-		return id;
-	}
-
-	static function merged(key:String, rules:Array<Indexed>, sheet:Null<StyleSheet>, dark:Bool):Merge {
-		var m = merges.get(key);
+	static function merged(slot:Slot, hash:Int, sheet:Null<StyleSheet>, dark:Bool):Merge {
+		var m = slot.merges.get(hash);
+		while (m != null && !m.is(dark, matched, count))
+			m = m.next;
 		if (m != null) return m;
+		var rules = slot.rules;
 		var tokens = sheet == null ? null : dark && sheet.dark != null ? sheet.dark : sheet.light;
 		var scratch = new Node().style, placeholder:Null<Color> = null, selection:Null<Color> = null;
-		var parts = key.split(",");
-		for (k in 1...parts.length) {
-			var r = rules[Std.parseInt(parts[k])], style = r.rule.style;
+		for (j in 0...count) {
+			var r = rules[matched[j]], style = r.style;
 			if (r.rule.when != null && r.rule.when.indexOf("placeholder") >= 0) {
 				if (style.color != null) placeholder = style.color;
 			} else if (r.rule.when != null && r.rule.when.indexOf("selection") >= 0) {
@@ -204,6 +204,8 @@ class Rules {
 				Length.resolve(cr.bottomLeft, lengths));
 		var ids = [], values:Array<Dynamic> = [], current = false;
 		for (id in 0...StyleFields.NAMES.length) {
+			// (a padding's or margin's sides: views of its Edges, applied with it)
+			if (SIDES.indexOf(StyleFields.NAMES[id]) >= 0) continue;
 			var v = StyleFields.getAt(scratch, id);
 			if (same(v, initialAt(id))) continue;
 			ids.push(id);
@@ -218,8 +220,9 @@ class Rules {
 			selection = resolve(selection, tokens, CURRENT, dark);
 			if (selection.isToken) current = true;
 		}
-		m = new Merge(ids, values, placeholder, selection, current);
-		merges.set(key, m);
+		m = new Merge(ids, values, placeholder, selection, current, dark, matched.slice(0, count));
+		m.next = slot.merges.get(hash);
+		slot.merges.set(hash, m);
 		return m;
 	}
 
@@ -259,12 +262,16 @@ class Rules {
 			COLORS.indexOf(name) >= 0 ? 1 : name == "shadow" || name == "textShadow" ? 2 : 0
 	];
 	static final COLOR = StyleFields.NAMES.indexOf("color");
+	static final SIDES = [
+		"paddingTop", "paddingRight", "paddingBottom", "paddingLeft", "marginTop", "marginRight", "marginBottom", "marginLeft"
+	];
 
 	// (a value with currentColor, a token's alpha kept, as a node's colour)
 	static function withCurrentAt(id:Int, v:Dynamic, current:Color):Dynamic {
 		if (v == null) return v;
 		return switch KINDS[id] {
-			case 1: colorWithCurrent(v, current);
+			// (a colour that is no token as it is: not boxed again)
+			case 1: (v : Color).isToken ? colorWithCurrent(v, current) : v;
 			case 2 if (shadowUsesCurrent(v)): resolveShadow(v, null, current);
 			case _: v;
 		}
@@ -321,7 +328,14 @@ class Rules {
 						}
 					}
 				found;
-			case Cond.HAS_CHILD: Lambda.exists(n.children, k -> all(k, ui, c.all));
+			case Cond.HAS_CHILD:
+				var found = false;
+				for (k in n.children)
+					if (all(k, ui, c.all)) {
+						found = true;
+						break;
+					}
+				found;
 			case Cond.HAS: below(n, ui, c.all);
 			case Cond.SLOTTED: n.slot != null;
 			case Cond.SLOT: n.slot == c.value;
@@ -562,17 +576,36 @@ class Rules {
 	}
 
 	// (a fresh style's values: where a property the rules no longer set goes back)
-	static var fresh:Null<Style> = null;
+	static var initial:Null<Array<Dynamic>> = null;
 
 	static inline function initialAt(id:Int):Dynamic {
-		if (fresh == null) fresh = new Node().style;
-		return StyleFields.getAt(fresh, id);
+		if (initial == null) {
+			var fresh = new Node().style;
+			initial = [for (k in 0...StyleFields.NAMES.length) StyleFields.getAt(fresh, k)];
+		}
+		return initial[id];
+	}
+
+	// (where id is in a list of ids, -1: nowhere; not Array.indexOf, which boxes)
+	static function place(ids:Null<Array<Int>>, id:Int):Int {
+		if (ids != null)
+			for (k in 0...ids.length)
+				if (ids[k] == id) return k;
+		return -1;
+	}
+
+	// (whether n's property is v, or moving to it: compared unboxed while
+	// nothing moves, so that a restyle allocates nothing)
+	static function sameTarget(n:Node, id:Int, v:Dynamic):Bool {
+		var s = n.style, t = @:privateAccess s.themed;
+		if (n.present == null && (t == null || t.moving == null || t.moving.length == 0)) return StyleFields.sameAt(s, id, v);
+		return same(s.targetAt(id), v);
 	}
 
 	// (each sheet's rules by slot, in their order; made when a sheet is first used)
-	static final indexes = new haxe.ds.ObjectMap<{}, Map<String, Array<Indexed>>>();
+	static final indexes = new haxe.ds.ObjectMap<{}, Map<String, Slot>>();
 
-	static function index(sheet:StyleSheet):Map<String, Array<Indexed>> {
+	static function index(sheet:StyleSheet):Map<String, Slot> {
 		var m = indexes.get(sheet);
 		if (m != null) return m;
 		m = indexOf(sheet.rules);
@@ -580,7 +613,7 @@ class Rules {
 		return m;
 	}
 
-	static function indexOf(rules:Array<Rule>):Map<String, Array<Indexed>> {
+	static function indexOf(rules:Array<Rule>):Map<String, Slot> {
 		var m = new Map<String, Array<Indexed>>();
 		for (r in rules) {
 			if (r.when != null)
@@ -595,7 +628,42 @@ class Rules {
 		if (any != null)
 			for (k => l in m)
 				if (k != "*") for (r in any) l.push(r);
-		return m;
+		return [for (k => l in m) k => new Slot(l)];
+	}
+
+	// (a node's own colours that are tokens (Node.tokenColors: the property,
+	// the reference, what it last resolved to), resolved with its sheet's
+	// colours, light or dark; one it has since given another value no longer)
+	static function ownTokens(n:Node, sheet:Null<StyleSheet>, dark:Bool) {
+		var t = @:privateAccess n.tokenColors, tokens = sheet == null ? null : dark && sheet.dark != null ? sheet.dark : sheet.light;
+		var k = 0;
+		while (k < t.length) {
+			var id = t[k], ref:Color = t[k + 1], last:Color = t[k + 2], cur:Null<Color> = n.style.targetAt(id);
+			if (cur != ref && cur != last) {
+				t.splice(k, 3);
+				continue;
+			}
+			var v = resolve(ref, tokens, Color.BLACK, dark);
+			t[k + 2] = v;
+			if (cur != v) {
+				@:privateAccess n.style.resolving = true;
+				StyleFields.setAt(n.style, id, v);
+				@:privateAccess n.style.resolving = false;
+			}
+			k += 3;
+		}
+		if (t.length == 0) @:privateAccess n.tokenColors = null;
+	}
+}
+
+// (a sheet's rules of one slot, in order, and their merges by the hash of
+// those that hold: Rules.merged)
+private class Slot {
+	public final rules:Array<Indexed>;
+	public final merges = new haxe.ds.IntMap<Merge>();
+
+	public function new(rules) {
+		this.rules = rules;
 	}
 }
 
@@ -606,13 +674,26 @@ private class Merge {
 	public final placeholder:Null<Color>;
 	public final selection:Null<Color>;
 	public final current:Bool;
+	final dark:Bool;
+	final matched:Array<Int>;
+	// (another of the same hash)
+	public var next:Null<Merge> = null;
 
-	public function new(ids, values, placeholder, selection, current) {
+	public function new(ids, values, placeholder, selection, current, dark, matched) {
 		this.ids = ids;
 		this.values = values;
 		this.placeholder = placeholder;
 		this.selection = selection;
 		this.current = current;
+		this.dark = dark;
+		this.matched = matched;
+	}
+
+	public function is(dark:Bool, matched:Array<Int>, count:Int):Bool {
+		if (dark != this.dark || count != this.matched.length) return false;
+		for (k in 0...count)
+			if (matched[k] != this.matched[k]) return false;
+		return true;
 	}
 }
 
@@ -623,6 +704,7 @@ private class Indexed {
 	// (its states parsed, the pseudo-elements' left out: null, none)
 	public final conds:Null<Array<Cond>>;
 	public final rule:Rule;
+	public final style:StyleProps;
 
 	public function new(r:Rule) {
 		variant = r.variant;
@@ -630,6 +712,7 @@ private class Indexed {
 		var cs = r.when == null ? [] : [for (w in r.when) if (w != "placeholder" && w != "selection") Cond.of(w)];
 		conds = cs.length == 0 ? null : cs;
 		rule = r;
+		style = Rules.parse == null ? r.style : Rules.parse(r.style);
 	}
 }
 

@@ -2,7 +2,7 @@ package helder.ui.access;
 
 // What a node declares about itself for assistive technology (Node.semantics;
 // in markup, the attributes role, label, description, href, checked, selected,
-// expanded, level, disabled, value-now, value-min, value-max, value-text,
+// expanded, level, disabled, invalid, required, modal, value-now, value-min, value-max, value-text,
 // multiselectable, live, current, hidden, pos-in-set, set-size, id). Unset
 // fields say nothing: a TextNode is a Label of its text, an ImageNode an
 // Image, a focusable node a Group.
@@ -23,6 +23,12 @@ package helder.ui.access;
 	// a tree item's depth (from 1)
 	public var level(default, set):Null<Int> = null;
 	public var disabled(default, set):Bool = false;
+	// a field whose value is not accepted (ARIA's aria-invalid), one a form
+	// needs (aria-required), a dialog that keeps the rest of the window out
+	// of reach while it is open (aria-modal)
+	public var invalid(default, set):Bool = false;
+	public var required(default, set):Bool = false;
+	public var modal(default, set):Bool = false;
 	// a range's value (Slider, ProgressIndicator) and bounds, and its text
 	public var valueNow(default, set):Null<Float> = null;
 	public var valueMin(default, set):Null<Float> = null;
@@ -118,6 +124,21 @@ package helder.ui.access;
 	function set_disabled(v:Bool):Bool {
 		if (v != disabled) helder.ui.Ui.accessEpoch++;
 		return disabled = v;
+	}
+
+	function set_invalid(v:Bool):Bool {
+		if (v != invalid) helder.ui.Ui.accessEpoch++;
+		return invalid = v;
+	}
+
+	function set_required(v:Bool):Bool {
+		if (v != required) helder.ui.Ui.accessEpoch++;
+		return required = v;
+	}
+
+	function set_modal(v:Bool):Bool {
+		if (v != modal) helder.ui.Ui.accessEpoch++;
+		return modal = v;
 	}
 
 	function set_valueNow(v:Null<Float>):Null<Float> {

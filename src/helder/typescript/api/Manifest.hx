@@ -526,6 +526,8 @@ class Types {
 			case TMono(r): r.get() == null ? "Dynamic" : of(r.get());
 			case TLazy(f): of(f());
 			case TType(_.get() => {pack: [], name: "Null"}, [p]): {"null": of(p)};
+			// (a typedef TypeScript gives untyped, its values parsed where Haxe takes them: StyleProps')
+			case TType(d, _) if (d.get().meta.has(":typescript.dynamic")): "Dynamic";
 			case TType(d, ps): of(d.get().type.applyTypeParameters(d.get().params, ps));
 			case TAbstract(_.get() => a, ps):
 				switch [a.pack.join("."), a.name] {

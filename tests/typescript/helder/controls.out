@@ -1,0 +1,33 @@
+1 | button primary md | button secondary md
+#0059C9FF #FFFFFFFF
+#4495FFFF #16171AFF
+true true
+root
+  view
+    save button
+      text "Save"
+    cancel button
+      text "Cancel"
+    terms checkbox checked "Accept the terms"
+      view
+        image
+      text "Accept the terms"
+    dark switch checked "Dark mode"
+      view
+        view
+      text "Dark mode"
+
+#E11D48FF #E11D481F button soft md 0 20 0 20
+true
+root
+  view
+    view
+      go button
+        text "Go"
+      soft button
+        text "Soft"
+      lamp checkbox checked "Porch"
+        view
+        text "on: Porch"
+
+function
