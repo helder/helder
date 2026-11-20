@@ -36,6 +36,7 @@ if (icon.ready) draw(icon.peek());
 | `Asset.model(path)` | a `helder.scene.render.Model`, its names typed from the file (`model.nodes.LeftHand`), as `Model.of` types them |
 | `Asset.sound(path)` | the file's bytes (a WAV decoded by `helder.os.audio.Wav.decode`, for `Sfx`) |
 | `Asset.bytes(path)` | the file's bytes |
+| `Asset.strings(folder)` | a folder of [localized strings](../os/README.md#string-catalogues), with typed Haxe accessors |
 | `Asset.embed(path)` | the bytes built into the code itself, there at once (small files; not bundled, not reloaded) |
 
 Each returns a handle at once, its load started: one per kind and path

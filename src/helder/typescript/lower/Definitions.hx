@@ -115,7 +115,15 @@ class Definitions {
 			var a = new TsAdapter(src, defined, "Asset." + from.name);
 			if (args.length != 1) a.error("takes the file's path, a string literal", n);
 			var path = new AssetCheck(from.name).generate(a.node(args[0]), a);
-			return AssetCall(from.name, path, TsAssets.devFile(TsAssets.find(src, from.name, path, n, defined), defined));
+			var file = TsAssets.find(src, from.name, path, n, defined);
+			if (from.name == "strings") {
+				var project = TsAssets.catalogue(src, path, file, n, defined, true);
+				return AssetCall(from.name, path, haxe.Json.stringify({
+					fallback: project.fallback,
+					sources: [for (entry in project.files) {tag: entry.tag, key: entry.key, file: TsAssets.devFile(entry.file, defined)}]
+				}) + "\n" + [for (entry in project.files) TsAssets.marker(entry.key, true)].join("\n"));
+			}
+			return AssetCall(from.name, path, TsAssets.devFile(file, defined));
 		}
 		if (from.name == "job") {
 			var j = new TsJobAdapter(src, defined);

@@ -10,7 +10,7 @@
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 import type {Model} from "helder/scene/runtime";
 
-declare const __haxe: {Asset: "helder.asset.Asset", Image: "helder.image.Image", FontFile: "helder.text.FontFile", ScriptAssets: "helder.asset.ScriptAssets", __module: "helder.asset.TypeScript"};
+declare const __haxe: {Asset: "helder.asset.Asset", Image: "helder.image.Image", FontFile: "helder.text.FontFile", Strings: "helder.asset.Strings", ScriptAssets: "helder.asset.ScriptAssets", __module: "helder.asset.TypeScript"};
 
 // A file of the program, by its path (AssetPath): an image, a font, a model,
 // a sound or bytes. The path is checked when compiling (the file there, in
@@ -88,6 +88,11 @@ export declare class FontFile {
 	private readonly fontFile: never;
 }
 
+export declare class Strings {
+	// Read a message with named string and number arguments.
+	get(key: string, params?: any): string;
+}
+
 // helder.asset for TypeScript programs (helder/asset): image(path), font,
 // model, sound and bytes, definitions (as Haxe's Asset.image...: the same
 // check, AssetCheck), each a handle (Asset). Their calls are compiled: the
@@ -106,6 +111,8 @@ export declare class ScriptAssets {
 	static sound(path: string, file?: string): Asset<Uint8Array>;
 	// a file's bytes
 	static bytes(path: string, file?: string): Asset<Uint8Array>;
+	// Load a folder of locale JSON files. Use get(key, params) to read a message.
+	static strings: (path: string) => Strings;
 	// the asset's value once it is loaded (its AssetError if it failed): a promise
 	static loaded<T>(asset: Asset<T>): Promise<T>;
 	// whether it is loaded
@@ -119,3 +126,4 @@ export declare const sound: typeof ScriptAssets.sound;
 export declare const bytes: typeof ScriptAssets.bytes;
 export declare const loaded: typeof ScriptAssets.loaded;
 export declare const ready: typeof ScriptAssets.ready;
+export declare const strings: typeof ScriptAssets.strings;

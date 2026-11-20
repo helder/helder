@@ -195,6 +195,8 @@ class Haxe {
 				b.coerce(call(interop("reader"), [any(e)]), to);
 			case HBytes(_):
 				b.coerce(call(interop("bytes"), [any(e), EStr(where)]), to);
+			case HClass("Date", _):
+				b.coerce(call(interop("date"), [any(e), EStr(where)]), to);
 			case HClass(path, _):
 				var ci = classInfo(path);
 				if (ci == null) b.coerce(call(interop("toHaxe"), [any(e)]), to) else b.coerce(checked(ci, e, where), to);

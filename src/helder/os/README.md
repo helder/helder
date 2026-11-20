@@ -401,6 +401,78 @@ fling's flick, never a mouse event or a scroll from a touch) and
 `tests/os/android-touch.sh` (a drawn ui's fling: the box following the
 finger, gliding on).
 
+## Localization
+
+Read `Locale.current()` for the device's BCP 47 language tag and
+`Locale.preferred()` for its ordered list. The current tag is a read-only
+signal. Native apps refresh it with the other system settings, including
+after foregrounding. Browsers also follow `languagechange`. Linux reads
+`LANGUAGE` and the message locale from `LC_ALL`, `LC_MESSAGES` or `LANG`.
+An empty list falls back to `en-US`.
+
+`Format.number(value, options)` formats a decimal, a percentage of a
+ratio (`percent: true`), or an amount in an ISO currency code
+(`currency: "EUR"`). Set `decimals` to fix the number of fractional digits.
+`Format.date(date, options)` formats a local date, time or both. Set
+`date` and `time` to `Short`, `Medium`, `Long` or `Full` in Haxe,
+and to their lowercase strings in TypeScript. Omit both for a medium
+date. Both functions accept a `locale` override and otherwise use
+`Locale.current.peek()`. The Linux fallback uses decimal points,
+comma grouping and ISO-like dates and times. To track a formatted
+value in a view, pass `{locale: Locale.current()}`.
+
+`Plural.category(locale, n)` returns one of `zero`, `one`, `two`, `few`,
+`many` or `other` using the same [CLDR cardinal rules](https://unicode.org/reports/tr35/tr35-numbers.html#Language_Plural_Rules)
+on all targets. The built-in rules cover common languages, with `other`
+for languages outside the table. Counts are numbers, so `1.0` and `1`
+have the same category.
+
+### String catalogues
+
+Put one UTF-8 JSON file per tag in a folder such as `locales/`. Each
+file is a flat object of message IDs to strings. Dots in a key become
+fields in the Haxe accessor. For example, `locales/en.json` can contain:
+
+```json
+{
+  "title": "Messages",
+  "hello": "Hello, {name}!",
+  "cart.items": "{count, plural, =0 {Empty cart} one {# item} other {# items}}"
+}
+```
+
+```haxe
+import helder.asset.Asset;
+
+var t = Asset.strings("locales");
+t.title();
+t.hello({name: "Ada"});
+t.cart.items({count: 3});
+```
+
+```ts
+import { strings } from "helder/asset";
+
+const t = strings("locales");
+t.get("title");
+t.get("hello", {name: "Ada"});
+t.get("cart.items", {count: 3});
+```
+
+The first filename alphabetically defines the keys and parameter types.
+Set `"locale": "en"` in `helder.json` to choose the default explicitly.
+Missing translations emit a compile-time warning. Inconsistent
+placeholder names or types are errors. The supported syntax is
+`{name}` for strings and a cardinal plural with a numeric argument.
+Plural cases require `other`, can include exact integers such as `=0`,
+and replace `#` with the formatted count.
+
+A message looks for its key in the exact tag, then its language, then
+the default. When the locale changes, views that read a message update.
+The JSON files use [helder's asset bundling](../asset/README.md), with
+catalogues preloaded on the web and a message's readers updated on
+reload under `helder dev`. TypeScript uses `get` with named parameters.
+
 ## Fast refresh: `helder.dev.Hot`
 
 Under `helder dev` (`-D hxmc.dev`) a

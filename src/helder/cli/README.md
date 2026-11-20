@@ -233,6 +233,7 @@ for editors' completion):
   `background`, `dark`), `display`, `orientation`, `lang`, `dir`,
   `categories`, `fileHandlers`: the web manifest's members below, by
   other names.
+- **`locale`** sets the default language tag for [string catalogues](../os/README.md#string-catalogues).
 - **`run`**: helder.run's (below, "helder.run").
 - **`targets`**: `android` and `ios` take the web manifest's `"helder":
   {"android"}` and `{"ios"}` members below as they are; each target its

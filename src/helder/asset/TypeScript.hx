@@ -8,9 +8,10 @@ package helder.asset;
 // {type: "image"}`, the same definition).
 @:typescript("helder/asset")
 @:typescript.references("imports.d.ts")
+@:typescript.classes(helder.asset.Strings)
 @:typescript.types(helder.asset.Asset, helder.image.Image, helder.text.FontFile)
 @:typescript.functions(image = helder.asset.ScriptAssets.image, font = helder.asset.ScriptAssets.font, model = helder.asset.ScriptAssets.model,
 	sound = helder.asset.ScriptAssets.sound, bytes = helder.asset.ScriptAssets.bytes, loaded = helder.asset.ScriptAssets.loaded,
-	ready = helder.asset.ScriptAssets.ready)
+	ready = helder.asset.ScriptAssets.ready, strings = helder.asset.ScriptAssets.strings)
 @:build(helder.typescript.api.Manifest.build())
 class TypeScript {}

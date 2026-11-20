@@ -31,7 +31,11 @@ class Files {
 		if (file != null) return devBytes(key, file, true);
 		#end
 		#if (hxmc.target == "wasm32-wasi")
-		return try sys.io.File.getBytes(AssetPath.bundled(key)) catch (_:Dynamic) throw 'helder.asset: $key not fetched before main (browser.mjs\'s assets option: <module>.assets.json)';
+		var path = AssetPath.bundled(key);
+		return try sys.io.File.getBytes(path) catch (_:Dynamic) {
+			try sys.io.File.getBytes(haxe.io.Path.join([haxe.io.Path.directory(Sys.programPath()), path]))
+			catch (_:Dynamic) throw 'helder.asset: $key not fetched before main (browser.mjs\'s assets option: <module>.assets.json)';
+		};
 		#else
 		return bundleBytes(key);
 		#end

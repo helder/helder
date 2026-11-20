@@ -1,0 +1,5 @@
+{
+  "title": "Berichten",
+  "hello": "Hallo, {name}!",
+  "cart.items": "{count, plural, =0 {Lege winkelwagen} one {# artikel} other {# artikelen}}"
+}

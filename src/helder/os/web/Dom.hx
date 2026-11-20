@@ -20,6 +20,10 @@ import hxmc.unsafe.*;
 	// the page's prefers-color-scheme: dark (1) or not (0)
 	static function prefers_dark():Int;
 	static function settings():Int;
+	static function locale_languages():Int;
+	static function locale_number(value:Float, locale:Ptr, decimals:Int, percent:Int, currency:Ptr):Int;
+	static function locale_date(value:Float, locale:Ptr, date:Int, time:Int):Int;
+	static function locale_watch(changed:Ptr):Void;
 	// the page on an Apple system (1: macOS, iOS; navigator's platform), else 0
 	static function apple():Int;
 	// the next pending event into ev (twelve Int32: canvas, EventKind, key (a

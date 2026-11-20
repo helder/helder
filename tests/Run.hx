@@ -647,6 +647,9 @@ class Run {
 		native('bin/os/$GFX_TARGET/SettingsCheck', cps(["src", "tests/os"]).concat(["-main", "SettingsCheck"]), GFX_TARGET);
 		var settings = exePath('bin/os/$GFX_TARGET/SettingsCheck', GFX_TARGET);
 		if (Sys.systemName() == "Linux") shell('$XVFB -a $wine$settings') else run(settings, []);
+		native('bin/os/$GFX_TARGET/LocaleCheck', cps(["src", "tests/os"]).concat(["-main", "LocaleCheck"]), GFX_TARGET);
+		var locale = exePath('bin/os/$GFX_TARGET/LocaleCheck', GFX_TARGET);
+		if (wine != "") shell('$wine$locale') else run(locale, []);
 		// (an inset title bar: tests/os/TitleBarTest.hx)
 		native('bin/os/$GFX_TARGET/TitleBarTest', cps(["src", "tests/os"]).concat(["-main", "TitleBarTest"]), GFX_TARGET);
 		var bar = exePath('bin/os/$GFX_TARGET/TitleBarTest', GFX_TARGET);
@@ -1547,6 +1550,7 @@ class Run {
 		js("bin/web/domtest.js", cp.concat(["-main", "DomTest", "-debug"]));
 		js("bin/web/demo/islands.js", cp.concat(["-main", "DemoBundle", "-dce", "full", "-debug"]));
 		js("bin/web/demo/counter.js", cp.concat(["-main", "Counter", "-dce", "full", "-D", "js-es=6", "-D", "analyzer-optimize"]));
+		wasm("bin/web/demo/locale.wasm", cps(["src", "tests/os"]).concat(["-main", "LocaleCheck", "-D", "helder.asset.out=bin/web/demo/locale.wasm"]));
 		wasm("bin/web/demo/lab.wasm", cps(["src", "examples/web-demo"]).concat(["-main", "Lab"]));
 		wasm("bin/web/demo/cube.wasm", gfxCp().concat(["-main", "Cube"]));
 		// (ui's counter, its root a <Surface>: the page's <Surface>)

@@ -130,7 +130,7 @@ class AssetMacro {
 
 	// path's file (an error at the call when it is no asset's path, not
 	// there, or there in another case)
-	public static function find(path:String, kind:String):String {
+	public static function find(path:String, kind:String, directory = false):String {
 		var pos = Context.currentPos();
 		var what = 'Asset.$kind("$path")';
 		var e = AssetPath.error(path);
@@ -141,7 +141,7 @@ class AssetMacro {
 		var other = null;
 		var f = Bundle.locate(path, roots, d -> try FileSystem.readDirectory(d) catch (_:Dynamic) null, c -> if (other == null) other = c);
 		if (f != null) {
-			if (FileSystem.isDirectory(f)) Context.error('$what: a directory', pos);
+			if (FileSystem.isDirectory(f) != directory) Context.error(directory ? '$what: expected a directory' : '$what: a directory', pos);
 			// (relative to the working directory where it is under it: a module
 			// cache keeps a module whose dependency is named so, not by its full path)
 			return f.startsWith(cwd) ? f.substr(cwd.length) : f;

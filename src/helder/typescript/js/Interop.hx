@@ -87,6 +87,11 @@ class Interop {
 		return v;
 	}
 
+	public static function date(v:Dynamic, where:String):Date {
+		if (!Std.isOfType(v, Dates.JsDate)) Seed.diverge("a Date", v, where);
+		return Date.fromTime((v : Dates.JsDate).time);
+	}
+
 	// a typed array's, a DataView's or an ArrayBuffer's bytes, as Haxe's
 	// Bytes takes them (shared when the view is all its buffer: TypedArrays.bytesOf)
 	public static function bytes(v:Dynamic, where:String):haxe.io.Bytes {

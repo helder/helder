@@ -304,12 +304,15 @@ class App {
 	static var eventNext:Null<Void->Float>;
 	@:ifFeature("haxe.Timer.new") static final events = HaxeLoop.install();
 
-	static var settingsRefresh:Null<Void->Void>;
+	static var settingsRefresh:Array<Void->Void> = [];
 	static var settingsAt = 0.0;
+
+	static function watchSettings(refresh:Void->Void)
+		settingsRefresh.push(refresh);
 
 	// Sample settings in a sleeping app, too, once it asks for them.
 	static inline function settingsWait(seconds:Float):Float {
-		if (settingsRefresh == null || background) return seconds;
+		if (settingsRefresh.length == 0 || background) return seconds;
 		var next = Math.max(0, settingsAt - haxe.Timer.stamp());
 		return seconds < 0 ? next : Math.min(seconds, next);
 	}
@@ -319,9 +322,9 @@ class App {
 		var l = MainLoop.main;
 		if (l != null) l.turn(0);
 		if (eventTurn != null) eventTurn();
-		if (settingsRefresh != null && !background && haxe.Timer.stamp() >= settingsAt) {
+		if (settingsRefresh.length != 0 && !background && haxe.Timer.stamp() >= settingsAt) {
 			settingsAt = haxe.Timer.stamp() + 1;
-			helder.async.Errors.guard(settingsRefresh, "settings");
+			for (refresh in settingsRefresh) helder.async.Errors.guard(refresh, "settings");
 		}
 	}
 

@@ -25,6 +25,7 @@ class AssetDefinition implements Definition<HaxeAdapter, Expr> {
 		var path = new AssetCheck(kind).generate(arg, a);
 		return switch kind {
 			case "model": AssetMacro.model(path);
+			case "strings": StringsMacro.make(path);
 			case "embed": AssetMacro.embed(path);
 			case k: AssetMacro.handle(path, k);
 		}

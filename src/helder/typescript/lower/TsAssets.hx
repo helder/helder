@@ -21,7 +21,7 @@ import helder.typescript.lower.Definitions;
 // (not in dev builds, which read it from disk; not when helder's CLI keeps
 // it out, -D helder.asset.keep), for the web copied beside the module.
 class TsAssets {
-	public static final KINDS = ["image", "font", "model", "sound", "bytes"];
+	public static final KINDS = ["image", "font", "model", "sound", "bytes", "strings"];
 
 	// (an import's type attribute: the kind; the extensions each takes)
 	public static final EXTENSIONS = [
@@ -37,9 +37,9 @@ class TsAssets {
 		var roots = [Path.removeTrailingSlashes(Path.directory(FileSystem.fullPath(at.file.path))), root];
 		var other = null;
 		var f = Bundle.locate(path, roots, d -> try FileSystem.readDirectory(d) catch (_:Dynamic) null, c -> if (other == null) other = c);
-		if (f != null && !FileSystem.isDirectory(f)) return f;
+		if (f != null && FileSystem.isDirectory(f) == (kind == "strings")) return f;
 		if (quiet) return null;
-		if (f != null) return src.fail(at, '$what: a directory');
+		if (f != null) return src.fail(at, kind == "strings" ? '$what: expected a directory' : '$what: a directory');
 		if (other != null) return src.fail(at, '$what: "${other.part}" is "${other.actual}" on disk (paths are case-sensitive on Android and the web)');
 		return src.fail(at, '$what: no such file beside the program\'s file or in the project ($root)');
 	}
@@ -52,8 +52,8 @@ class TsAssets {
 	// the call's arguments: the key's marker (Bundle's: the output has it
 	// while the code naming it is there), the file where the program reads
 	// it from disk (a dev build)
-	public static function marker(path:String):String
-		return Bundle.MARK + "key:" + path + "\x01";
+	public static function marker(path:String, sync = false):String
+		return Bundle.MARK + (sync ? "now:" : "key:") + path + "\x01";
 
 	public static function devFile(file:String, defined:String->Null<String>):Null<String>
 		return defined("hxmc.dev") != null ? FileSystem.fullPath(file).split("\\").join("/") : null;
@@ -68,25 +68,43 @@ class TsAssets {
 		if (defined("hxmc.dev") != null) return;
 		var t = defined("hxmc.target") ?? "", keep = defined("helder.asset.keep");
 		var kept:Null<Array<String>> = keep == null || keep == "" ? null : try haxe.Json.parse(File.getContent(keep)) catch (_:Dynamic) null;
-		var seen = new Map<String, Bool>();
-		for (a in uses(src)) {
-			if (seen.exists(a.path)) continue;
-			var file = find(src, a.kind, a.path, a.at, defined, true);
-			if (file == null) continue;
-			seen.set(a.path, true);
+		var seen = new Map<String, Bool>(), early = [];
+		function add(key:String, file:String, sync:Bool) {
+			if (sync && !early.contains(key)) early.push(key);
+			if (seen.exists(key)) return;
+			seen.set(key, true);
 			if (t == "" || StringTools.startsWith(t, "linux-") || StringTools.startsWith(t, "macos-") || StringTools.startsWith(t, "windows-")) {
-				if (kept != null && !kept.contains(a.path)) continue;
-				var header = haxe.io.Bytes.ofString(Bundle.MARK + "res:" + a.path + "\x01"), data = File.getBytes(file);
+				if (kept != null && !kept.contains(key)) return;
+				var header = haxe.io.Bytes.ofString(Bundle.MARK + "res:" + key + "\x01"), data = File.getBytes(file);
 				var b = haxe.io.Bytes.alloc(header.length + data.length);
 				b.blit(0, header, 0, header.length);
 				b.blit(header.length, data, 0, data.length);
-				com.resources.replace(Bundle.PREFIX + a.path, b);
+				com.resources.replace(Bundle.PREFIX + key, b);
 			} else if (t == "wasm32-wasi" && keep == null && com.file != null && com.file != "") {
-				var dest = Path.join([Path.directory(com.file), AssetPath.bundled(a.path)]);
+				var dest = Path.join([Path.directory(com.file), AssetPath.bundled(key)]);
 				mkdirs(Path.directory(dest));
 				File.copy(file, dest);
 			}
 		}
+		for (a in uses(src)) {
+			var file = find(src, a.kind, a.path, a.at, defined, true);
+			if (file == null) continue;
+			if (a.kind == "strings") {
+				for (entry in catalogue(src, a.path, file, a.at, defined, false).files) add(entry.key, entry.file, true);
+			} else add(a.path, file, false);
+		}
+		if (t == "wasm32-wasi" && keep == null && early.length > 0 && com.file != null && com.file != "")
+			File.saveContent(com.file + ".assets.json", haxe.Json.stringify([for (key in early) AssetPath.bundled(key)]));
+	}
+
+	public static function catalogue(src:Project, path:String, folder:String, at:Node, defined:String->Null<String>, warn:Bool):helder.asset.StringFiles.StringProject {
+		var base = root(defined);
+		var prefix = Path.addTrailingSlash(FileSystem.fullPath(base)).split("\\").join("/");
+		var full = FileSystem.fullPath(folder).split("\\").join("/");
+		var key = StringTools.startsWith(full, prefix) ? full.substr(prefix.length) : path;
+		return try helder.asset.StringFiles.read(key, folder, base, message -> {
+			if (warn) Sys.stderr().writeString('Asset.strings("$path"): $message\n');
+		}) catch (error:Dynamic) src.fail(at, 'Asset.strings("$path"): $error');
 	}
 
 	static function mkdirs(d:String)
@@ -130,7 +148,7 @@ class TsAssets {
 			var r = ~/\bwith\s*\{\s*type\s*:\s*["']([a-z]+)["']\s*\}/;
 			if (r.match(text)) kind = r.matched(1);
 		}
-		if (kind == null || !KINDS.contains(kind)) return null;
+		if (kind == null || kind == "strings" || !KINDS.contains(kind)) return null;
 		return {kind: kind, path: StringTools.startsWith(spec, "./") ? spec.substr(2) : spec, at: s};
 	}
 }
