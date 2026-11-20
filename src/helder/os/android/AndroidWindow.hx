@@ -43,6 +43,9 @@ import hxmc.unsafe.*;
 @:hxmc.android @:allow(helder.os)
 @:hxmc.unsafe(gc)
 class AndroidWindow {
+	// what reads the activity's intent again when it is back (a notification's tap)
+	public static final resumed:Array<Void->Void> = [];
+
 	static var current:Null<AndroidWindow> = null;
 	static var queue:Ptr = Ptr.nil();
 	// (a motion event's record, copied out of Activity's)
@@ -286,6 +289,8 @@ class AndroidWindow {
 				// (a deep link it was started or brought back with: org.hxmc.Main's intent)
 				AndroidLinks.check();
 				#end
+				for (f in resumed)
+					f();
 			case Activity.GONE:
 				// (its window and input queue went before: commands of their own)
 				log("command: activity gone, not finishing", window);

@@ -64,12 +64,17 @@ import helder.pack.android.Dex;
 // - Files: a ContentProvider (<package>.hxmc.files) serving the files
 //   whose paths are in its static `allowed` (a share's: helder.os.Share),
 //   read only, as content://<authority><path>.
+// - Alarm: a BroadcastReceiver posting the notification its intent
+//   carries ("id", "title", "body": helder.os.Notifications), in the
+//   channel "default", the app's icon (else the system's), a tap opening
+//   the app's launch activity with the id as its "hxmc.notification";
+//   all Java, for the process may have ended since it was scheduled.
 class Glue {
 	public static inline var ACTIVITY = "org.hxmc.Activity";
 	public static inline var MAIN = "org.hxmc.Main";
 
 	// an app service's classes by name (@:helder.android.dex("<name>"))
-	public static final SERVICES = ["Main", "Request", "Files"];
+	public static final SERVICES = ["Main", "Request", "Files", "Alarm"];
 
 	// the manifest's permissions of one helder.os.Permissions asks for (photos:
 	// READ_MEDIA_IMAGES from Android 13, READ_EXTERNAL_STORAGE before it)
@@ -116,6 +121,7 @@ class Glue {
 				case "Main": main();
 				case "Request": request();
 				case "Files": files();
+				case "Alarm": alarm();
 				case _: throw 'no service class $s (${SERVICES.join(", ")})';
 			});
 		return Dex.write(classes);
@@ -391,6 +397,83 @@ class Glue {
 			]
 		};
 	}
+
+	static function alarm():DexClass {
+		var cls = "Lorg/hxmc/Alarm;", base = "Landroid/content/BroadcastReceiver;", context = "Landroid/content/Context;",
+			builder = "Landroid/app/Notification$Builder;", cs = "Ljava/lang/CharSequence;", pending = "Landroid/app/PendingIntent;",
+			pm = "Landroid/content/pm/PackageManager;", nm = "Landroid/app/NotificationManager;";
+		inline function set(r:Refs, name:String, param:String, reg:Int)
+			return invoke(INVOKE_VIRTUAL, r.method(builder, name, builder, [param]), [4, reg]);
+		return {
+			name: cls,
+			access: Dex.PUBLIC | Dex.FINAL,
+			superName: base,
+			interfaces: [],
+			fields: [],
+			methods: [
+				constructor(base),
+				{
+					// (v0 scratch, v1 the id, v2 the title, v3 the body, v4 the
+					// builder, v5-v7 the tap's; p0 v8, the context v9, the intent v10)
+					name: "onReceive",
+					ret: "V",
+					params: [context, INTENT],
+					access: Dex.PUBLIC,
+					code: {
+						registers: 11,
+						ins: 3,
+						outs: 4,
+						insns: r -> {
+							var extra = r.method(INTENT, "getStringExtra", STRING, [STRING]);
+							var c = [];
+							for (reg => k in ["id", "title", "body"])
+								c = c.concat(constString(0, r, k)).concat(invoke(INVOKE_VIRTUAL, extra, [10, 0])).concat([moveResultObject(reg + 1)]);
+							c.concat(typed(NEW_INSTANCE, 4, r.type(builder)))
+								.concat(constString(0, r, "default"))
+								.concat(invoke(INVOKE_DIRECT, r.method(builder, "<init>", "V", [context, STRING]), [4, 9, 0]))
+								.concat(set(r, "setContentTitle", cs, 2))
+								.concat(set(r, "setContentText", cs, 3))
+								.concat([const4(0, 1)])
+								.concat(set(r, "setAutoCancel", "Z", 0))
+								.concat(invoke(INVOKE_VIRTUAL, r.method(context, "getApplicationInfo", "Landroid/content/pm/ApplicationInfo;", []), [9]))
+								.concat([moveResultObject(0)])
+								.concat([op(0, 0, 0x52), r.field("Landroid/content/pm/ApplicationInfo;", "icon", "I")]) // iget v0, v0, icon
+								.concat(ifNez(0, 5))
+								.concat([(0 << 8) | 0x14, ICON & 0xffff, ICON >>> 16]) // const v0, @android:drawable/ic_dialog_info
+								.concat(set(r, "setSmallIcon", "I", 0))
+								.concat(invoke(INVOKE_VIRTUAL, r.method(context, "getPackageManager", pm, []), [9]))
+								.concat([moveResultObject(5)])
+								.concat(invoke(INVOKE_VIRTUAL, r.method(context, "getPackageName", STRING, []), [9]))
+								.concat([moveResultObject(6)])
+								.concat(invoke(INVOKE_VIRTUAL, r.method(pm, "getLaunchIntentForPackage", INTENT, [STRING]), [5, 6]))
+								.concat([moveResultObject(5)])
+								.concat(constString(0, r, "hxmc.notification"))
+								.concat(invoke(INVOKE_VIRTUAL, r.method(INTENT, "putExtra", INTENT, [STRING, STRING]), [5, 0, 1]))
+								.concat([(0 << 8) | 0x15, 0x2000]) // const/high16 v0, FLAG_ACTIVITY_SINGLE_TOP
+								.concat(invoke(INVOKE_VIRTUAL, r.method(INTENT, "addFlags", INTENT, ["I"]), [5, 0]))
+								.concat(invoke(INVOKE_VIRTUAL, r.method(STRING, "hashCode", "I", []), [1]))
+								.concat([moveResult(6)])
+								.concat([(7 << 8) | 0x15, 0x0c00]) // const/high16 v7, FLAG_UPDATE_CURRENT | FLAG_IMMUTABLE
+								.concat(invoke(INVOKE_STATIC, r.method(pending, "getActivity", pending, [context, "I", INTENT, "I"]), [9, 6, 5, 7]))
+								.concat([moveResultObject(5)])
+								.concat(set(r, "setContentIntent", pending, 5))
+								.concat(constString(0, r, "notification"))
+								.concat(invoke(INVOKE_VIRTUAL, r.method(context, "getSystemService", OBJECT, [STRING]), [9, 0]))
+								.concat([moveResultObject(5)])
+								.concat(typed(CHECK_CAST, 5, r.type(nm)))
+								.concat(invoke(INVOKE_VIRTUAL, r.method(builder, "build", "Landroid/app/Notification;", []), [4]))
+								.concat([moveResultObject(6), const4(0, 0)])
+								.concat(invoke(INVOKE_VIRTUAL, r.method(nm, "notify", "V", [STRING, "I", "Landroid/app/Notification;"]), [5, 1, 0, 6]))
+								.concat([RETURN_VOID]);
+						}
+					}
+				}
+			]
+		};
+	}
+
+	// @android:drawable/ic_dialog_info: a notification's icon when the app has none
+	static inline var ICON = 0x0108009b;
 
 	static function files():DexClass {
 		var cls = "Lorg/hxmc/Files;", base = "Landroid/content/ContentProvider;", file = "Ljava/io/File;", cursor = "Landroid/database/MatrixCursor;",

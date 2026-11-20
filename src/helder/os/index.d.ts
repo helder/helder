@@ -1,14 +1,14 @@
 // helder.os for TypeScript programs (helder.typescript): what an app keeps
 // between runs (Store), the platform's settings, locale and app services
-// (Settings, Locale, Format, Plural, Network, Share, Permissions), the
-// program's arguments and environment (args(), env(name): Sys's). Its
-// windows, events and App are helder/scene's.
+// (Settings, Locale, Format, Plural, Network, Share, Permissions,
+// Notifications, Photos), the program's arguments and environment (args(),
+// env(name): Sys's). Its windows, events and App are helder/scene's.
 //
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 import type {Read} from "helder/view";
 
-declare const __haxe: {Store: "helder.os.Store", Settings: "helder.os.Settings", Locale: "helder.os.Locale", Format: "helder.os.Format", Plural: "helder.os.Plural", Network: "helder.os.Network", Share: "helder.os.Share", Permissions: "helder.os.Permissions", Sys: "Sys", __module: "helder.os.TypeScript"};
+declare const __haxe: {Store: "helder.os.Store", Settings: "helder.os.Settings", Locale: "helder.os.Locale", Format: "helder.os.Format", Plural: "helder.os.Plural", Network: "helder.os.Network", Share: "helder.os.Share", Permissions: "helder.os.Permissions", Notifications: "helder.os.Notifications", Photos: "helder.os.Photos", Sys: "Sys", __module: "helder.os.TypeScript"};
 
 export type Contrast = "normal" | "more" | "less" | "custom";
 
@@ -117,6 +117,24 @@ export declare class Permissions {
 	// status. What is asked for is declared by the build (Android's
 	// manifest, iOS's usage strings: helder.json's ios.usage)
 	static request(p: Permission): Promise<PermissionStatus>;
+}
+
+// Local notifications: shown at a time (at), after some seconds (after),
+// or now; a tap opens the app and gives onOpen the notification's id,
+// those tapped before it was set given when it is. Asking to show them
+// is Permissions.request(Notify)'s.
+export declare class Notifications {
+	static onOpen: ((arg0: string) => void) | null;
+	// whether it was scheduled (false where the system has none for the app)
+	static schedule(n: { id: string; title: string; body?: string; at?: unknown; after?: number }): boolean;
+	static cancel(id: string): void;
+}
+
+// The system's photo picker: the images the user picks, each its file's
+// bytes as encoded (JPEG, PNG, HEIC...; helder.image decodes most), at
+// most max (1); none when cancelled. Picking needs no permission.
+export declare class Photos {
+	static pick(options?: { max?: number }): Promise<Uint8Array[]>;
 }
 
 export declare class Sys {

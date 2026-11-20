@@ -20,6 +20,8 @@ class Msg {
 	static function idPtrPtrPtr(self:Ptr, sel:Ptr, a:Ptr, b:Ptr, c:Ptr):Ptr;
 	static function idInt(self:Ptr, sel:Ptr, a:Int64):Ptr;
 	static function idFloat(self:Ptr, sel:Ptr, a:Float):Ptr;
+	static function idFloatBool(self:Ptr, sel:Ptr, a:Float, b:Bool):Ptr;
+	static function idIntPtr(self:Ptr, sel:Ptr, a:Int64, b:Ptr):Ptr;
 	static function idFloatPtrPtrPtrBool(self:Ptr, sel:Ptr, a:Float, b:Ptr, c:Ptr, d:Ptr, e:Bool):Ptr;
 	static function idIntInt(self:Ptr, sel:Ptr, a:Int64, b:Int64):Ptr;
 	static function idPtrIntInt(self:Ptr, sel:Ptr, a:Ptr, b:Int64, c:Int64):Ptr;
@@ -59,6 +61,7 @@ class Msg {
 	static function vIntInt(self:Ptr, sel:Ptr, a:Int64, b:Int64):Void;
 	static function vPtrIntIntIntInt(self:Ptr, sel:Ptr, a:Ptr, b:Int64, c:Int64, d:Int64, e:Int64):Void;
 	static function vIntPtr(self:Ptr, sel:Ptr, a:Int64, b:Ptr):Void;
+	static function vBoolPtr(self:Ptr, sel:Ptr, a:Bool, b:Ptr):Void;
 	static function vPtrPtrIntInt(self:Ptr, sel:Ptr, a:Ptr, b:Ptr, c:Int64, d:Int64):Void;
 	static function vRectPtrInt(self:Ptr, sel:Ptr, r:CGRect, a:Ptr, b:Int64):Void;
 	static function b(self:Ptr, sel:Ptr):Bool;
