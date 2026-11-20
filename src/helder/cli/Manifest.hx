@@ -34,7 +34,7 @@ using StringTools;
 //               "nonExemptEncryption": false,
 //               "privacy": {"NSPrivacyAccessedAPICategoryUserDefaults": ["CA92.1"]},
 //               "infoPlist": {"NSAppTransportSecurity": {"NSAllowsLocalNetworking": true}},   Info.plist's keys, over helder's
-//               "usage": {"camera": "Scans receipts."}},   why it asks (camera, microphone, photos, location): Info.plist's usage strings
+//               "usage": {"camera": "Scans receipts."}},   why it asks (camera, microphone, photos, location, faceid): Info.plist's usage strings
 //       "splash": {"background_color": "#060912", "image": "splash.png",
 //                  "dark": {"background_color": "#000000", "image": "splash-dark.png"}},
 //       "links": {"schemes": ["myapp"], "domains": ["example.com"]}   the deep links it opens (App.onOpen)
@@ -57,8 +57,8 @@ class Manifest {
 	static final HELDER = ["version", "build", "id", "android", "ios", "splash", "links"];
 	static final ANDROID = ["package", "minSdk", "targetSdk", "permissions", "cleartext", "key", "signing", "serviceAccount", "adaptiveIcon"];
 	static final IOS = ["bundleId", "minVersion", "entitlements", "signing", "sdk", "nonExemptEncryption", "privacy", "infoPlist", "usage"];
-	// helder.os.Permissions' permissions an iOS app explains (Info.plist's usage strings: Bundle.usageKey)
-	public static final USAGE = ["camera", "microphone", "photos", "location"];
+	// what an iOS app explains (Info.plist's usage strings: Bundle.usageKey): helder.os.Permissions', and Face ID (helder.os.Biometrics)
+	public static final USAGE = ["camera", "microphone", "photos", "location", "faceid"];
 	static final SIGNING = ["certificate", "key", "profile"];
 	public static final SDK = ["version", "build", "xcode", "xcodeBuild", "machine"];
 	static final SPLASH = ["background_color", "image", "dark"];

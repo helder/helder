@@ -30,9 +30,12 @@ class JniEnv {
 	@:slot(36) static function CallObjectMethodA(env:Ptr, o:Ptr, m:Ptr, args:Ptr):Ptr;
 	@:slot(39) static function CallBooleanMethodA(env:Ptr, o:Ptr, m:Ptr, args:Ptr):Int;
 	@:slot(51) static function CallIntMethodA(env:Ptr, o:Ptr, m:Ptr, args:Ptr):Int;
+	@:slot(54) static function CallLongMethodA(env:Ptr, o:Ptr, m:Ptr, args:Ptr):Int64;
 	@:slot(57) static function CallFloatMethodA(env:Ptr, o:Ptr, m:Ptr, args:Ptr):Float32;
+	@:slot(60) static function CallDoubleMethodA(env:Ptr, o:Ptr, m:Ptr, args:Ptr):Float;
 	@:slot(63) static function CallVoidMethodA(env:Ptr, o:Ptr, m:Ptr, args:Ptr):Void;
 	@:slot(94) static function GetFieldID(env:Ptr, cls:Ptr, name:Ptr, sig:Ptr):Ptr;
+	@:slot(95) static function GetObjectField(env:Ptr, o:Ptr, f:Ptr):Ptr;
 	@:slot(100) static function GetIntField(env:Ptr, o:Ptr, f:Ptr):Int;
 	@:slot(102) static function GetFloatField(env:Ptr, o:Ptr, f:Ptr):Float32;
 	@:slot(104) static function SetObjectField(env:Ptr, o:Ptr, f:Ptr, v:Ptr):Void;
@@ -45,10 +48,12 @@ class JniEnv {
 	@:slot(143) static function CallStaticVoidMethodA(env:Ptr, cls:Ptr, m:Ptr, args:Ptr):Void;
 	@:slot(144) static function GetStaticFieldID(env:Ptr, cls:Ptr, name:Ptr, sig:Ptr):Ptr;
 	@:slot(145) static function GetStaticObjectField(env:Ptr, cls:Ptr, f:Ptr):Ptr;
+	@:slot(150) static function GetStaticIntField(env:Ptr, cls:Ptr, f:Ptr):Int;
 	@:slot(163) static function NewString(env:Ptr, chars:Ptr, length:Int):Ptr;
 	@:slot(164) static function GetStringLength(env:Ptr, s:Ptr):Int;
 	@:slot(171) static function GetArrayLength(env:Ptr, a:Ptr):Int;
 	@:slot(172) static function NewObjectArray(env:Ptr, length:Int, cls:Ptr, init:Ptr):Ptr;
+	@:slot(173) static function GetObjectArrayElement(env:Ptr, a:Ptr, i:Int):Ptr;
 	@:slot(174) static function SetObjectArrayElement(env:Ptr, a:Ptr, i:Int, v:Ptr):Void;
 	@:slot(176) static function NewByteArray(env:Ptr, length:Int):Ptr;
 	@:slot(179) static function NewIntArray(env:Ptr, length:Int):Ptr;
@@ -183,6 +188,14 @@ class Jni {
 		check();
 	}
 
+	// (a call of five arguments: LocationManager.requestLocationUpdates')
+	public static function call5(o:Ptr, m:Ptr, a:Int64, b:Int64, c:Int64, d:Int64, e:Int64) {
+		var p = set(a, b, c, d);
+		Mem.setI64(p, 32, e);
+		JniEnv.CallVoidMethodA(env, o, m, p);
+		check();
+	}
+
 	public static function obj(o:Ptr, m:Ptr, a:Int64 = 0, b:Int64 = 0, c:Int64 = 0, d:Int64 = 0):Ptr {
 		var r = JniEnv.CallObjectMethodA(env, o, m, set(a, b, c, d));
 		check();
@@ -204,6 +217,27 @@ class Jni {
 	public static function float(o:Ptr, m:Ptr, a:Int64 = 0, b:Int64 = 0, c:Int64 = 0, d:Int64 = 0):Float {
 		var r:Float = JniEnv.CallFloatMethodA(env, o, m, set(a, b, c, d));
 		check();
+		return r;
+	}
+
+	public static function double(o:Ptr, m:Ptr, a:Int64 = 0, b:Int64 = 0, c:Int64 = 0, d:Int64 = 0):Float {
+		var r:Float = JniEnv.CallDoubleMethodA(env, o, m, set(a, b, c, d));
+		check();
+		return r;
+	}
+
+	public static function long(o:Ptr, m:Ptr, a:Int64 = 0, b:Int64 = 0, c:Int64 = 0, d:Int64 = 0):Int64 {
+		var r = JniEnv.CallLongMethodA(env, o, m, set(a, b, c, d));
+		check();
+		return r;
+	}
+
+	// a static String field's text (android.os.Build's)
+	public static function staticString(cls:Ptr, name:String):String {
+		var s = JniEnv.GetStaticObjectField(env, cls, staticField(cls, name, "Ljava/lang/String;"));
+		check();
+		var r = fromString(s);
+		deleteLocal(s);
 		return r;
 	}
 

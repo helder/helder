@@ -1,14 +1,15 @@
 // helder.os for TypeScript programs (helder.typescript): what an app keeps
 // between runs (Store), the platform's settings, locale and app services
 // (Settings, Locale, Format, Plural, Network, Share, Permissions,
-// Notifications, Photos), the program's arguments and environment (args(),
-// env(name): Sys's). Its windows, events and App are helder/scene's.
+// Notifications, Photos, Location, Biometrics, Paths, DeviceInfo,
+// StatusBar), the program's arguments and environment (args(), env(name):
+// Sys's). Its windows, events and App are helder/scene's.
 //
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 import type {Read} from "helder/view";
 
-declare const __haxe: {Store: "helder.os.Store", Settings: "helder.os.Settings", Locale: "helder.os.Locale", Format: "helder.os.Format", Plural: "helder.os.Plural", Network: "helder.os.Network", Share: "helder.os.Share", Permissions: "helder.os.Permissions", Notifications: "helder.os.Notifications", Photos: "helder.os.Photos", Sys: "Sys", __module: "helder.os.TypeScript"};
+declare const __haxe: {Store: "helder.os.Store", Settings: "helder.os.Settings", Locale: "helder.os.Locale", Format: "helder.os.Format", Plural: "helder.os.Plural", Network: "helder.os.Network", Share: "helder.os.Share", Permissions: "helder.os.Permissions", Notifications: "helder.os.Notifications", Photos: "helder.os.Photos", Location: "helder.os.Location", Biometrics: "helder.os.Biometrics", Paths: "helder.os.Paths", DeviceInfo: "helder.os.DeviceInfo", StatusBar: "helder.os.StatusBar", Sys: "Sys", __module: "helder.os.TypeScript"};
 
 export type Contrast = "normal" | "more" | "less" | "custom";
 
@@ -28,13 +29,23 @@ export type Permission = "camera" | "microphone" | "photos" | "location" | "noti
 
 export type PermissionStatus = "granted" | "denied" | "prompt" | "unsupported";
 
+export type GeoPosition = { latitude: number; longitude: number; accuracy: number; altitude?: number; heading?: number; speed?: number; time: number };
+
+export type BiometricKind = "none" | "face" | "fingerprint" | "other";
+
+export type DeviceKind = "phone" | "tablet" | "desktop" | "web";
+
+export type DeviceDetails = { model: string; manufacturer: string; os: string; osVersion: string; kind: DeviceKind };
+
+export type BarStyle = "light" | "dark" | "auto";
+
 // A small key-value store kept between runs: an app's settings, a game's
 // save. Strings by key, read into memory when opened, written through at
 // each change (set, remove, clear), where the platform keeps an app's data:
 //
 //   Linux     $XDG_DATA_HOME/<name>/store.json (~/.local/share/<name>/)
 //   macOS     ~/Library/Application Support/<name>/store.json
-//   Windows   %APPDATA%\<name>\store.json
+//   Windows   RoamingAppData\<name>\store.json (%APPDATA%)
 //   Android   the app's files directory (ANativeActivity's internalDataPath)/<name>.json
 //   iOS       the app's Library/Application Support/<name>.json ($HOME is its container)
 //   the web   localStorage, the item "helder.store/<name>" (an origin's: a
@@ -134,7 +145,69 @@ export declare class Notifications {
 // bytes as encoded (JPEG, PNG, HEIC...; helder.image decodes most), at
 // most max (1); none when cancelled. Picking needs no permission.
 export declare class Photos {
+	// the camera: a photo the user takes, as a JPEG (the web: the file the
+	// browser gives); null when cancelled or where there is no camera
+	// (front: the front camera, where the system lets the app choose). iOS
+	// asks to use the camera by itself, with helder.json's usage string
+	// "camera"; Android's camera app takes the photo, no permission needed.
+	static take(options?: { front?: boolean }): Promise<Uint8Array | null>;
 	static pick(options?: { max?: number }): Promise<Uint8Array[]>;
+}
+
+// Where the device is: one fix (current) or each new one until stopped
+// (watch), while the app is in use. The permission is Permissions'
+// Location, asked for by current and watch while it is Prompt; null (no
+// fix) when it is denied or there is none. Precise false asks for
+// coarse accuracy (Android's ACCESS_COARSE_LOCATION alone; a few
+// kilometres on Apple's), which may answer sooner.
+export declare class Location {
+	static current(options?: { precise?: boolean }): Promise<GeoPosition | null>;
+	// f with each fix, on the app's loop, until the function returned is called
+	static watch(f: (arg0: GeoPosition) => void, options?: { precise?: boolean }): (() => void);
+}
+
+// The device's biometrics: what verify would use (None where there is none
+// or none is enrolled), and whether the user is verified by it, the
+// system's prompt showing the reason. iOS's Face ID needs helder.json's
+// usage string "faceid"; Android's USE_BIOMETRIC is added to the manifest.
+export declare class Biometrics {
+	static kind(): BiometricKind;
+	static verify(reason: string): Promise<boolean>;
+}
+
+// The app's directories, absolute, each made when missing; null where
+// there are none (the web):
+// - data: persistent and the app's own;
+// - cache: kept while there is room, which the system may empty;
+// - temp: for a while;
+// - documents: the user's, where they see the app's files: the Files app
+//   on iOS (Info.plist's UIFileSharingEnabled and
+//   LSSupportsOpeningDocumentsInPlace, set by use), the app's folder of
+//   Android's shared storage, the desktop's Documents.
+// The desktop's data and cache are under the app's name (macOS: its bundle
+// id; else the executable's name).
+export declare class Paths {
+	static data(): string | null;
+	static cache(): string | null;
+	static temp(): string | null;
+	static documents(): string | null;
+}
+
+// What the app runs on: the model ("iPhone16,1", "Pixel 4a", "Mac14,2"),
+// its maker, the system ("iOS", "Android", "macOS", "Windows", "Linux"; the
+// web: the browser's platform) and its version (Linux: the distribution's
+// name and version), and the kind of device. "" where the system does
+// not tell.
+export declare class DeviceInfo {
+	static get(): DeviceDetails;
+}
+
+// A phone's status bar: its style and whether it shows (iOS's and
+// Android's; nothing elsewhere). Android's navigation bar takes the style
+// too. Window.immersive hides it as well.
+export declare class StatusBar {
+	static style(s: BarStyle): void;
+	static hidden(h: boolean): void;
 }
 
 export declare class Sys {

@@ -84,6 +84,8 @@ function tests() {
 		var cfg = Manifest.parse(haxe.Json.stringify(h.manifest), HelderJson.FILE);
 		equals(App.links(cfg), {schemes: ["myapp"], domains: ["example.com"]});
 		equals(App.ios("x", cfg).usage.camera, "Scans.");
+		var face = HelderJson.parse(haxe.Json.stringify({targets: {ios: {usage: {faceid: "Unlocks notes."}}}}));
+		equals(App.ios("x", Manifest.parse(haxe.Json.stringify(face.manifest), HelderJson.FILE)).usage.faceid, "Unlocks notes.");
 		equals(App.links({}), null);
 		equals(App.android("x", cfg).links, {schemes: ["myapp"], domains: ["example.com"]});
 	});

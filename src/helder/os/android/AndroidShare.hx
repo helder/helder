@@ -23,21 +23,9 @@ class AndroidShare {
 			var type = files.length == 0 ? "text/plain" : mime(files);
 			Jni.obj(i, Jni.method(intent, "setType", "(Ljava/lang/String;)Landroid/content/Intent;"), Jni.string(type).toI64());
 			if (files.length > 0) {
-				var provider = Jni.cls("org.hxmc.Files"), set = Jni.cls("java.util.Set");
-				var allowed = Jni.JniEnv.GetStaticObjectField(Jni.env, provider, Jni.staticField(provider, "allowed", "Ljava/util/Set;"));
-				Jni.call(allowed, Jni.method(set, "clear", "()V"));
-				var authority = Jni.fromString(Jni.obj(Jni.activity, Jni.method(Jni.cls("android.content.Context"), "getPackageName", "()Ljava/lang/String;")))
-					+ helder.pack.android.Apk.FILES;
-				var builder = Jni.cls("android.net.Uri$Builder"), clipCls = Jni.cls("android.content.ClipData");
-				var uris = [];
-				for (f in files) {
-					var path = sys.FileSystem.fullPath(f);
-					Jni.bool(allowed, Jni.method(set, "add", "(Ljava/lang/Object;)Z"), Jni.string(path).toI64());
-					var b = Jni.newObject(builder, Jni.method(builder, "<init>", "()V"));
-					for (part in [["scheme", "content"], ["authority", authority], ["path", path]])
-						Jni.obj(b, Jni.method(builder, part[0], "(Ljava/lang/String;)Landroid/net/Uri$Builder;"), Jni.string(part[1]).toI64());
-					uris.push(Jni.obj(b, Jni.method(builder, "build", "()Landroid/net/Uri;")));
-				}
+				Jni.call(allowed(), Jni.method(Jni.cls("java.util.Set"), "clear", "()V"));
+				var clipCls = Jni.cls("android.content.ClipData");
+				var uris = [for (f in files) serve(sys.FileSystem.fullPath(f), true)];
 				var stream = Jni.string("android.intent.extra.STREAM");
 				if (uris.length == 1)
 					Jni.obj(i, Jni.method(intent, "putExtra", "(Ljava/lang/String;Landroid/os/Parcelable;)Landroid/content/Intent;"), stream.toI64(), uris[0].toI64());
@@ -65,6 +53,26 @@ class AndroidShare {
 			shown = true;
 		});
 		return shown;
+	}
+
+	// (the main thread) org.hxmc.Files' allowed paths
+	static function allowed():Ptr {
+		var provider = Jni.cls("org.hxmc.Files");
+		return Jni.JniEnv.GetStaticObjectField(Jni.env, provider, Jni.staticField(provider, "allowed", "Ljava/util/Set;"));
+	}
+
+	// (the main thread) a file's content URI of org.hxmc.Files, served while allowed (else no longer)
+	@:allow(helder.os) static function serve(path:String, allow:Bool):Ptr {
+		var set = Jni.cls("java.util.Set");
+		Jni.bool(allowed(), Jni.method(set, allow ? "add" : "remove", "(Ljava/lang/Object;)Z"), Jni.string(path).toI64());
+		if (!allow) return Ptr.nil();
+		var authority = Jni.fromString(Jni.obj(Jni.activity, Jni.method(Jni.cls("android.content.Context"), "getPackageName", "()Ljava/lang/String;")))
+			+ helder.pack.android.Apk.FILES;
+		var builder = Jni.cls("android.net.Uri$Builder");
+		var b = Jni.newObject(builder, Jni.method(builder, "<init>", "()V"));
+		for (part in [["scheme", "content"], ["authority", authority], ["path", path]])
+			Jni.obj(b, Jni.method(builder, part[0], "(Ljava/lang/String;)Landroid/net/Uri$Builder;"), Jni.string(part[1]).toI64());
+		return Jni.obj(b, Jni.method(builder, "build", "()Landroid/net/Uri;"));
 	}
 
 	// the files' type: theirs when they share it, image/* for images, else */*

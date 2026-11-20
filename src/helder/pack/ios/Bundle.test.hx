@@ -85,6 +85,24 @@ function tests() {
 		equals(Std.string(keys.get("NSCameraUsageDescription")), Std.string(PString("Scans receipts.")));
 		equals(Plist.xml(PDict(["u" => keys.get("CFBundleURLTypes")])).toString().indexOf("<string>myapp</string>") > 0, true);
 		equals([for (k in Bundle.serviceKeys("a.b", null, []).keys()) k], []);
+		// (Face ID's: Biometrics.verify)
+		equals(Bundle.missingUsage(["faceid", "camera"], ["camera"]), ["faceid"]);
+		equals(Std.string(Bundle.serviceKeys("a.b", {faceid: "Unlocks notes."}, []).get("NSFaceIDUsageDescription")), Std.string(PString("Unlocks notes.")));
+	});
+	test("keys by use: set in a written Info.plist, CodeResources' hash of it", () -> {
+		var dir = sys.FileSystem.absolutePath("bin/test-bundle-keys");
+		if (!sys.FileSystem.exists(dir)) sys.FileSystem.createDirectory(dir);
+		sys.io.File.saveBytes('$dir/Info.plist', info);
+		sys.io.File.saveBytes('$dir/CodeResources', Bundle.codeResources(["Info.plist" => info]));
+		equals(Bundle.addKeys('$dir/Info.plist', '$dir/CodeResources', ["UIFileSharingEnabled", "LSSupportsOpeningDocumentsInPlace"]), true);
+		var written = sys.io.File.getBytes('$dir/Info.plist');
+		var d = dict(Plist.parse(written.toString()));
+		equals([d.get("UIFileSharingEnabled"), d.get("LSSupportsOpeningDocumentsInPlace")], [PBool(true), PBool(true)]);
+		equals(d.get("CFBundleIdentifier"), PString("org.example.hello"));
+		var res = dict(Plist.parse(sys.io.File.getContent('$dir/CodeResources')));
+		equals(dict(res.get("files")).get("Info.plist"), PData(haxe.crypto.Sha1.make(written)));
+		// (none new: the files left as they are)
+		equals(Bundle.addKeys('$dir/Info.plist', '$dir/CodeResources', ["UIFileSharingEnabled"]), false);
 	});
 	test("a bundle id: reverse DNS", () -> {
 		assert(Bundle.validId("org.example.hello-world"));

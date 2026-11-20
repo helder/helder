@@ -219,17 +219,21 @@ function tests() {
 		});
 		test("the services' classes alone, each Java's", () -> {
 			var methods = [];
-			equals(Dex.check(Glue.dex(false, ["Main", "Request", "Files", "Alarm"]), methods), []);
+			equals(Dex.check(Glue.dex(false, ["Main", "Request", "Files", "Alarm", "Locator", "Biometric"]), methods), []);
 			for (m in [
 				"Lorg/hxmc/Main; onNewIntent(Landroid/content/Intent;)V", "Lorg/hxmc/Activity; onNewIntent(Landroid/content/Intent;)V",
 				"Lorg/hxmc/Request; onCreate(Landroid/os/Bundle;)V", "Lorg/hxmc/Request; result(IILjava/lang/Object;)V",
 				"Lorg/hxmc/Request; onRequestPermissionsResult(I[Ljava/lang/String;[I)V", "Lorg/hxmc/Request; onActivityResult(IILandroid/content/Intent;)V",
 				"Lorg/hxmc/Alarm; onReceive(Landroid/content/Context;Landroid/content/Intent;)V", "Lorg/hxmc/Files; openFile(Landroid/net/Uri;Ljava/lang/String;)Landroid/os/ParcelFileDescriptor;",
-				"Lorg/hxmc/Files; query(Landroid/net/Uri;[Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;Ljava/lang/String;)Landroid/database/Cursor;"
+				"Lorg/hxmc/Files; query(Landroid/net/Uri;[Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;Ljava/lang/String;)Landroid/database/Cursor;",
+				"Lorg/hxmc/Locator; onLocationChanged(Landroid/location/Location;)V", "Lorg/hxmc/Locator; accept(Ljava/lang/Object;)V",
+				"Lorg/hxmc/Locator; onStatusChanged(Ljava/lang/String;ILandroid/os/Bundle;)V", "Lorg/hxmc/Locator; located(ILjava/lang/Object;)V",
+				"Lorg/hxmc/Biometric; onAuthenticationSucceeded(Landroid/hardware/biometrics/BiometricPrompt$AuthenticationResult;)V",
+				"Lorg/hxmc/Biometric; onAuthenticationError(ILjava/lang/CharSequence;)V", "Lorg/hxmc/Biometric; onClick(Landroid/content/DialogInterface;I)V"
 			])
 				assert(methods.contains(m) != (m.indexOf("org/hxmc/Activity") > 0), m);
 			equals(Glue.permissions("photos"), ["READ_MEDIA_IMAGES", "READ_EXTERNAL_STORAGE"]);
-			equals(Std.string(throws(() -> Glue.dex(false, ["Nope"]))), "no service class Nope (Main, Request, Files, Alarm)");
+			equals(Std.string(throws(() -> Glue.dex(false, ["Nope"]))), "no service class Nope (Main, Request, Files, Alarm, Locator, Biometric)");
 		});
 		test("a broken file is found out", () -> {
 			var b = Glue.dex();

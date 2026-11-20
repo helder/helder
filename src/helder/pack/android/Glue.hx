@@ -73,19 +73,28 @@ import helder.pack.android.Dex;
 //   permissions' grants (code 0) or the result's code and intent, then
 //   finished (helder.os.android.AndroidRequest).
 // - Files: a ContentProvider (<package>.hxmc.files) serving the files
-//   whose paths are in its static `allowed` (a share's: helder.os.Share),
-//   read only, as content://<authority><path>.
+//   whose paths are in its static `allowed` (a share's: helder.os.Share; a
+//   photo's to take: helder.os.Camera), in the mode asked
+//   (ParcelFileDescriptor.parseMode: what the intent granted, the system
+//   checks), as content://<authority><path>.
 // - Alarm: a BroadcastReceiver posting the notification its intent
 //   carries ("id", "title", "body": helder.os.Notifications), in the
 //   channel "default", the app's icon (else the system's), a tap opening
 //   the app's launch activity with the id as its "hxmc.notification";
 //   all Java, for the process may have ended since it was scheduled.
+// - Locator(int id): a LocationListener and a Consumer (getCurrentLocation's)
+//   whose onLocationChanged and accept call its static native
+//   located(id, location) (helder.os.Location).
+// - Biometric(int id): a BiometricPrompt.AuthenticationCallback and the
+//   prompt's cancel button's DialogInterface.OnClickListener, calling its
+//   static native done(id, 1) when the user is verified, done(id, 0) on an
+//   error or the cancel (helder.os.Biometrics).
 class Glue {
 	public static inline var ACTIVITY = "org.hxmc.Activity";
 	public static inline var MAIN = "org.hxmc.Main";
 
 	// an app service's classes by name (@:helder.android.dex("<name>"))
-	public static final SERVICES = ["Main", "Request", "Files", "Alarm"];
+	public static final SERVICES = ["Main", "Request", "Files", "Alarm", "Locator", "Biometric"];
 
 	// the manifest's permissions of one helder.os.Permissions asks for (photos:
 	// READ_MEDIA_IMAGES from Android 13, READ_EXTERNAL_STORAGE before it)
@@ -133,6 +142,8 @@ class Glue {
 				case "Request": request();
 				case "Files": files();
 				case "Alarm": alarm();
+				case "Locator": locator();
+				case "Biometric": biometric();
 				case _: throw 'no service class $s (${SERVICES.join(", ")})';
 			});
 		return Dex.write(classes);
@@ -627,10 +638,11 @@ class Glue {
 						ins: 3,
 						outs: 2,
 						insns: r -> allowedPath(r, 4)
-							.concat(ifEqz(1, 14))
+							.concat(ifEqz(1, 16))
 							.concat(typed(NEW_INSTANCE, 1, r.type(file)))
 							.concat(invoke(INVOKE_DIRECT, r.method(file, "<init>", "V", [STRING]), [1, 0]))
-							.concat([(2 << 8) | 0x15, 0x1000]) // const/high16 v2, MODE_READ_ONLY
+							.concat(invoke(INVOKE_STATIC, r.method(fd, "parseMode", "I", [STRING]), [5]))
+							.concat([moveResult(2)])
 							.concat(invoke(INVOKE_STATIC, r.method(fd, "open", fd, [file, "I"]), [1, 2]))
 							.concat([moveResultObject(1), returnObject(1)])
 							.concat(typed(NEW_INSTANCE, 1, r.type("Ljava/io/FileNotFoundException;")))
@@ -683,6 +695,72 @@ class Glue {
 				zero("update", "I", [URI, values, STRING, strings])
 			]
 		};
+	}
+
+	// a class of an id (its constructor's int) whose methods each call a
+	// static native with the id and an argument: a parameter's register, or
+	// a constant (v1; p0 this is v2)
+	static function idClass(name:String, base:String, interfaces:Array<String>, native:DexMethod, methods:Array<DexMethod>):DexClass
+		return {
+			name: name,
+			access: Dex.PUBLIC | Dex.FINAL,
+			superName: base,
+			interfaces: interfaces,
+			fields: [{name: "id", type: "I", access: Dex.PRIVATE | Dex.FINAL}],
+			methods: ([
+				{
+					name: "<init>",
+					ret: "V",
+					params: ["I"],
+					access: Dex.PUBLIC | Dex.CONSTRUCTOR,
+					code: {
+						registers: 2,
+						ins: 2,
+						outs: 1,
+						insns: (r:Refs) -> invoke(INVOKE_DIRECT, r.method(base, "<init>", "V", []), [0]).concat([op(1, 0, 0x59), r.field(name, "id", "I"), RETURN_VOID])
+					}
+				},
+				native
+			] : Array<DexMethod>).concat(methods)
+		};
+
+	// (iget v0, p0, id; then native(v0, v1 the constant, or the parameter p1: v3))
+	static function idCall(cls:String, method:String, params:Array<String>, native:DexMethod, ?constant:Int):DexMethod
+		return {
+			name: method,
+			ret: "V",
+			params: params,
+			access: Dex.PUBLIC,
+			code: {
+				registers: 3 + params.length,
+				ins: 1 + params.length,
+				outs: 2,
+				insns: r -> [op(0, 2, 0x52), r.field(cls, "id", "I")].concat(constant == null ? [] : [const4(1, constant)])
+					.concat(invoke(INVOKE_STATIC, r.method(cls, native.name, "V", native.params), [0, constant == null ? 3 : 1]))
+					.concat([RETURN_VOID])
+			}
+		};
+
+	static function locator():DexClass {
+		var cls = "Lorg/hxmc/Locator;";
+		var located:DexMethod = {name: "located", ret: "V", params: ["I", OBJECT], access: Dex.PUBLIC | Dex.STATIC | Dex.NATIVE};
+		return idClass(cls, OBJECT, ["Landroid/location/LocationListener;", "Ljava/util/function/Consumer;"], located, [
+			idCall(cls, "onLocationChanged", ["Landroid/location/Location;"], located),
+			idCall(cls, "accept", [OBJECT], located),
+			nothing("onProviderEnabled", [STRING]),
+			nothing("onProviderDisabled", [STRING]),
+			nothing("onStatusChanged", [STRING, "I", "Landroid/os/Bundle;"])
+		]);
+	}
+
+	static function biometric():DexClass {
+		var cls = "Lorg/hxmc/Biometric;", prompt = "Landroid/hardware/biometrics/BiometricPrompt";
+		var done:DexMethod = {name: "done", ret: "V", params: ["I", "I"], access: Dex.PUBLIC | Dex.STATIC | Dex.NATIVE};
+		return idClass(cls, prompt + "$AuthenticationCallback;", ["Landroid/content/DialogInterface$OnClickListener;"], done, [
+			idCall(cls, "onAuthenticationSucceeded", [prompt + "$AuthenticationResult;"], done, 1),
+			idCall(cls, "onAuthenticationError", ["I", "Ljava/lang/CharSequence;"], done, 0),
+			idCall(cls, "onClick", ["Landroid/content/DialogInterface;", "I"], done, 0)
+		]);
 	}
 
 	// a listener method calling event(id, kind, p1, a, b): v0 the id, v1 the

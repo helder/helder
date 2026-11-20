@@ -62,11 +62,14 @@ class Msg {
 	static function vIntInt(self:Ptr, sel:Ptr, a:Int64, b:Int64):Void;
 	static function vPtrIntIntIntInt(self:Ptr, sel:Ptr, a:Ptr, b:Int64, c:Int64, d:Int64, e:Int64):Void;
 	static function vIntPtr(self:Ptr, sel:Ptr, a:Int64, b:Ptr):Void;
+	static function vIntPtrPtr(self:Ptr, sel:Ptr, a:Int64, b:Ptr, c:Ptr):Void;
 	static function vBoolPtr(self:Ptr, sel:Ptr, a:Bool, b:Ptr):Void;
 	static function vPtrPtrIntInt(self:Ptr, sel:Ptr, a:Ptr, b:Ptr, c:Int64, d:Int64):Void;
 	static function vRectPtrInt(self:Ptr, sel:Ptr, r:CGRect, a:Ptr, b:Int64):Void;
 	static function b(self:Ptr, sel:Ptr):Bool;
 	static function bPtr(self:Ptr, sel:Ptr, a:Ptr):Bool;
+	static function bInt(self:Ptr, sel:Ptr, a:Int64):Bool;
+	static function bIntPtr(self:Ptr, sel:Ptr, a:Int64, b:Ptr):Bool;
 	static function i(self:Ptr, sel:Ptr):Int64;
 	static function iInt(self:Ptr, sel:Ptr, a:Int64):Int64;
 	static function iPtr(self:Ptr, sel:Ptr, a:Ptr):Int64;
