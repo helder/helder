@@ -3,7 +3,7 @@ import helder.gfx.shader.ShaderMath.*;
 
 // The evening behind the flock, drawn by a triangle over the whole frame:
 // the sky's gradient (haze: the birds' aerial perspective too), the sun
-// on the hills, a layer of cloud lit from below, three ridges of hills
+// on the hills, cloud lit from below, three ridges of hills
 // fading with distance, and still water reflecting it all, its ripples
 // glittering under the sun.
 @:structInit @:publicFields class SkyVertex {
@@ -74,19 +74,41 @@ function haze(d:Vec3, sun:Vec3):Vec3 {
 function ridge(a:Vec2, scale:Float, seed:Float, base:Float, height:Float):Float
 	return base + height * fbm(a * scale + vec2(seed, seed * 0.7));
 
-// the sky along d (above the horizon) with what stands on it: the hills
-// (their heights along d's bearing: far, middle, near), nearest last; cloud,
-// its density along d
-function land(d:Vec3, sun:Vec3, hills:Vec3, den:Float, mirrored:Bool):Vec3 {
+function cloudDensity(p:Vec2, detail:Float):Float {
+	var w = vec2(noise(p * 0.49), noise(p * 0.43 + vec2(4.6, 9.2))) - vec2(0.5);
+	var q = p + w * 2.8;
+	var r = vec2(q.x * 1.7 - q.y * 1.3, q.x * 1.3 + q.y * 1.7) + vec2(7.1, 3.5);
+	return noise(q) * 0.57 + noise(r) * 0.26 + noise(r * 2.13 + vec2(2.8, 7.5)) * 0.17 * detail + 0.085 * (1 - detail);
+}
+
+function cloudLight(density:Float, light:Float):Vec3 {
+	var thin = 1 - smoothstep(0.55, 0.77, density);
+	var rim = smoothstep(0.52, 0.55, density) * (1 - smoothstep(0.55, 0.59, density));
+	var cool = mix(vec3(0.052, 0.052, 0.092), vec3(0.15, 0.13, 0.21), thin);
+	var warm = mix(vec3(0.29, 0.11, 0.12), vec3(1.9, 0.71, 0.28), thin);
+	return mix(cool, warm, light) + vec3(1.8, 0.81, 0.42) * rim * light;
+}
+
+function clouds(d:Vec3, sun:Vec3, origin:Vec3, time:Float):Vec4 {
+	var fade = smoothstep(0.07, 0.23, d.y);
+	if (d.y <= 0.07) return vec4(0);
+	var ray = d.xz / d.y;
+	var high = (origin.xz + ray * (670 - origin.y)) / 360 + vec2(-time * 0.006, time * 0.003 + 31);
+	var low = (origin.xz + ray * (390 - origin.y)) / 220 + vec2(-time * 0.012, time * -0.004);
+	var a = cloudDensity(high, 0.7);
+	var b = cloudDensity(low, 1.0);
+	var back = smoothstep(0.52, 0.64, a) * fade * 0.58;
+	var front = smoothstep(0.51, 0.62, b) * fade * 0.94;
+	var light = pow(clamp(dot(d, sun) * 0.5 + 0.5, 0, 1), 5.0);
+	return vec4(cloudLight(a, light) * back * (1 - front) + cloudLight(b, light) * front, back * (1 - front) + front);
+}
+
+function land(d:Vec3, sun:Vec3, hills:Vec3, origin:Vec3, time:Float, mirrored:Bool):Vec3 {
 	var c = haze(d, sun);
-	var a = normalize(vec3(d.x, 0, d.z) + vec3(0.0001, 0, 0)).xz;
 	var flat = haze(normalize(vec3(d.x, 0.004, d.z)), sun);
-	// (cloud, a flat layer lit from below, thinning to the horizon)
-	var cover = smoothstep(0.52, 0.72, den) * smoothstep(0.02, 0.14, d.y);
-	var lit = pow(dot(a, normalize(sun.xz)) * 0.5 + 0.5, 3.0);
-	var under = mix(vec3(0.07, 0.05, 0.09), vec3(2.2, 0.75, 0.3), lit) * (0.35 + 0.65 * smoothstep(0.8, 0.5, den));
-	c = mix(c, under, cover * 0.92);
-	if (!mirrored) c += vec3(40, 22, 9) * smoothstep(0.999962, 0.999972, dot(d, sun)) * (1 - cover);
+	var cloud = clouds(d, sun, origin, time);
+	c = c * (1 - cloud.w) + cloud.xyz;
+	if (!mirrored) c += vec3(40, 22, 9) * smoothstep(0.999962, 0.999972, dot(d, sun)) * (1 - cloud.w);
 	if (d.y < hills.x) c = mix(flat, vec3(0.05, 0.04, 0.07), 0.35);
 	if (d.y < hills.y) c = mix(flat, vec3(0.02, 0.016, 0.03), 0.62);
 	if (d.y < hills.z) c = mix(flat, vec3(0.006, 0.005, 0.008), 0.9);
@@ -103,22 +125,15 @@ function hillsAt(t:Vec4, d:Vec3):Vec3 {
 function bearing(d:Vec3):Vec2
 	return vec2(atan2(d.z, d.x) / 6.2831853 + 0.5, 0.5);
 
-// where along d the cloud layer is, in the cloud texture's units (it drifts)
-function cloudAt(d:Vec3, time:Float):Vec2
-	return d.xz * (1800 / max(d.y, 0.02)) * vec2(0.00018, 0.00045) * 0.25 + vec2(time * 0.0005, 0);
-
 final SkyShader = shader({
 	vertex: function(v:SkyVertex, p:{view:SkyView}):SkyVaryings
 		return {pos: position(vec4(v.pos, 0, 1)), ray: p.view.forward.xyz + p.view.right.xyz * v.pos.x + p.view.up.xyz * v.pos.y},
-	fragment: function(i:SkyVaryings, p:{view:SkyView, hills:Texture2D, clouds:Texture2D}):Vec4 {
+	fragment: function(i:SkyVaryings, p:{view:SkyView, hills:Texture2D}):Vec4 {
 		var d = normalize(i.ray);
 		var sun = p.view.sun.xyz;
 		var time = p.view.eye.w;
-		if (d.y >= 0) {
-			var uv = cloudAt(d, time);
-			var den = sample(p.clouds, uv).x + 0.3 * sample(p.clouds, uv * 4.3 + vec2(0.31, 0.73)).x + 0.12 * sample(p.clouds, uv * 13.1 + vec2(0.7, 0.2)).x - 0.2;
-			return vec4(land(d, sun, hillsAt(sample(p.hills, bearing(d)), d), den, false), 1);
-		}
+		if (d.y >= 0)
+			return vec4(land(d, sun, hillsAt(sample(p.hills, bearing(d)), d), p.view.eye.xyz, time, false), 1);
 		// (the water: where the ray meets it, rippled; the sky in it by Fresnel)
 		var t = p.view.eye.y / max(-d.y, 0.00001);
 		var at = p.view.eye.xz + d.xz * t;
@@ -126,9 +141,7 @@ final SkyShader = shader({
 		var ripple = vec2(noise(w) - 0.5, noise(w * 1.7 + vec2(5.2, 1.3)) - 0.5) * 0.06 * (1 / (1 + t * 0.002));
 		var m = normalize(vec3(d.x + ripple.x * -d.y, -d.y, d.z + ripple.y * -d.y));
 		var fresnel = 0.02 + 0.98 * pow(1 - m.y, 5.0);
-		var uv = cloudAt(m, time);
-		var den = sample(p.clouds, uv).x + 0.3 * sample(p.clouds, uv * 4.3 + vec2(0.31, 0.73)).x - 0.15;
-		var c = land(m, sun, hillsAt(sample(p.hills, bearing(m)), m), den, true) * fresnel * 0.75 + vec3(0.004, 0.005, 0.009) * (1 - fresnel);
+		var c = land(m, sun, hillsAt(sample(p.hills, bearing(m)), m), vec3(at.x, 0, at.y), time, true) * fresnel * 0.75 + vec3(0.004, 0.005, 0.009) * (1 - fresnel);
 		var g = max(dot(normalize(vec3(d.x + ripple.x * 4, -d.y, d.z + ripple.y * 4)), sun), 0.0);
 		c += SUN * pow(g, 600.0) * 6;
 		var fog = 1 - exp(-t * FOG * 0.3);

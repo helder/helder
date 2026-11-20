@@ -34,7 +34,7 @@ class Flight {
 
 	public function new() {}
 
-	public function update(t:Float, dt:Float) {
+	public function update(t:Float) {
 		roost = at(t);
 		heading = (at(t + 0.5) - at(t - 0.5));
 		// (the roost's arms, back and ahead along its way: their lengths and
@@ -52,7 +52,10 @@ class Flight {
 		var side = new Vec3(-dir.z, 0, dir.x);
 		hawk = roost + (armA + armB) * 0.25 + dir * ((u - 0.5) * 400) + side * off + new Vec3(0, 6 * Math.sin(k * 2.3), 0);
 		hawkVel = dir * (400 / PASS);
-		reach = k < 1 ? 0 : 32 * (1 - smooth(0.25, 0.45, Math.abs(u - 0.5)));
+		reach = k < 1 ? 0 : 48 * (1 - smooth(0.25, 0.45, Math.abs(u - 0.5)));
+	}
+
+	public function camera(t:Float, dt:Float) {
 		// (the camera about where the flock is: the roost, slowly followed)
 		var c = centre == null ? roost : centre + (roost - centre) * Math.min(1, dt / 1.5);
 		centre = c;

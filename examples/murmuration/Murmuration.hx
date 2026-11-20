@@ -19,7 +19,7 @@ import SkyShader;
 //   helder run examples/murmuration
 //   helder build examples/murmuration --target web
 //
-// Each frame the flock takes a step on the GPU (Flock: a hashed grid built
+// The flock takes fixed steps on the GPU (Flock: a hashed grid built
 // by two dispatches, each bird steered by its neighbours in a third), then
 // one pass draws the sky over the frame and every bird as an instance read
 // straight from the flock's buffer, in linear light into a multisampled
@@ -28,6 +28,7 @@ import SkyShader;
 // steered on the CPU by the same functions.
 class Murmuration {
 	static inline var FOV = 0.95;
+	static inline var STEP = 1 / 60;
 
 	final device:Device;
 	final flock:Flock;
@@ -40,6 +41,7 @@ class Murmuration {
 	final corners:Buffer;
 	final shapeIndices:Int;
 	final hawk:Buffer;
+	final hawkShape:Buffer;
 	final hawkBytes = Bytes.alloc(48);
 	final skyBytes = Bytes.alloc(SkyShader.params.view.block.size);
 	final birdBytes = Bytes.alloc(BirdShader.params.view.block.size);
@@ -48,14 +50,13 @@ class Murmuration {
 	final pass:PassDesc = {colors: [{load: Clear, clear: new Color(0, 0, 0)}]};
 	final sun:Vec3;
 	final hills:Texture;
-	final clouds:Texture;
-	final tiled:Sampler;
 	final around:Sampler;
 	var color:Null<Texture>;
 	var resolved:Null<Texture>;
 	var width = 0;
 	var height = 0;
 	var time = 0.0;
+	var accumulated = 0.0;
 	final late:Array<Float> = [];
 	var paced = 0.0;
 	var slow = 0;
@@ -63,10 +64,11 @@ class Murmuration {
 
 	public function new(device:Device, all = false) {
 		this.device = device;
-		flight.update(0, 0);
+		flight.update(0);
 		flock = new Flock(device, flight.roost, flight.heading, all);
 		flight.scale = sizeOf(flock.live);
-		flight.update(0, 0);
+		flight.update(0);
+		flight.camera(0, 0);
 		post = new PostProcess(device, RGBA8, true);
 		post.bloom = 0.05;
 		post.radius = 1.2;
@@ -79,12 +81,12 @@ class Murmuration {
 		var el = 0.022, az = Flight.SUN;
 		sun = new Vec3(Math.cos(az) * Math.cos(el), Math.sin(el), Math.sin(az) * Math.cos(el));
 		hills = SkyTextures.hills(device);
-		clouds = SkyTextures.clouds(device);
-		tiled = device.createSampler({filter: Linear, mipFilter: Linear, wrap: Repeat});
 		around = device.createSampler({filter: Linear, wrap: Repeat});
 		triangle = device.createBuffer({size: 24, usage: Vertex, data: floats([-1, -1, 3, -1, -1, 3])});
-		var s = shapeOf();
+		var s = shapeOf(false);
 		shape = device.createBuffer({size: 4 * s.length, usage: Vertex, data: floats(s)});
+		s = shapeOf(true);
+		hawkShape = device.createBuffer({size: 4 * s.length, usage: Vertex, data: floats(s)});
 		var is = [0, 1, 3, 0, 2, 3, 4, 6, 7, 4, 7, 5, 8, 10, 11, 8, 11, 9];
 		shapeIndices = is.length;
 		var ib = Bytes.alloc(2 * is.length);
@@ -117,10 +119,13 @@ class Murmuration {
 	// a starling seen from above, a wingspan of 1: x, y, z, how much of the
 	// beat each corner takes; the body (nose, sides, tail), then each wing
 	// (its root's front and back, its elbow, its tip)
-	static function shapeOf():Array<Float> {
-		var out = [0, 0, 0.26, 0, -0.055, 0, 0.04, 0, 0.055, 0, 0.04, 0, 0, 0, -0.27, 0];
+	static function shapeOf(hawk:Bool):Array<Float> {
+		var out = hawk ? [0, 0, 0.24, 0, -0.068, 0, 0.04, 0, 0.068, 0, 0.04, 0, 0, 0, -0.31, 0]
+			: [0, 0, 0.26, 0, -0.055, 0, 0.04, 0, 0.055, 0, 0.04, 0, 0, 0, -0.27, 0];
+		var wing = hawk ? [[0.045, 0, 0.115, 0], [0.045, 0, -0.11, 0], [0.28, 0, 0.09, 0.5], [0.5, 0, -0.035, 1]]
+			: [[0.04, 0, 0.1, 0], [0.04, 0, -0.07, 0], [0.25, 0, 0.06, 0.55], [0.5, 0, -0.11, 1]];
 		for (side in [-1.0, 1.0])
-			for (c in [[0.04, 0, 0.1, 0], [0.04, 0, -0.07, 0], [0.25, 0, 0.06, 0.55], [0.5, 0, -0.11, 1]]) {
+			for (c in wing) {
 				out.push(c[0] * side);
 				for (k in 1...4)
 					out.push(c[k]);
@@ -167,14 +172,10 @@ class Murmuration {
 		device.endFrame();
 	}
 
-	public function draw(enc:Encoder, dt:Float) {
-		dt = Math.min(dt, 1 / 30);
-		time += dt;
-		resize(device.width, device.height);
-		flight.scale += (sizeOf(flock.live) - flight.scale) * Math.min(1, dt * 0.5);
-		flight.update(time, dt);
-		// (out of the dark at the start: while a fast GPU's flock grows to its whole)
-		post.exposure = 0.8 * smoothstep(0.0, 2.0, time);
+	function advance(enc:Encoder) {
+		time += STEP;
+		flight.scale += (sizeOf(flock.live) - flight.scale) * STEP * 0.5;
+		flight.update(time);
 		var st = flock.step;
 		st.roost = new Vec4(flight.roost.x, flight.roost.y, flight.roost.z, flight.radius);
 		st.heading = new Vec4(flight.heading.x, flight.heading.y, flight.heading.z, flight.flat);
@@ -182,8 +183,22 @@ class Murmuration {
 		st.armB = new Vec4(flight.armB.x, flight.armB.y, flight.armB.z, 0);
 		st.hawk = new Vec4(flight.hawk.x, flight.hawk.y, flight.hawk.z, flight.reach);
 		st.hawkVel = new Vec4(flight.hawkVel.x, flight.hawkVel.y, flight.hawkVel.z, 0);
-		flock.advance(enc, dt, time);
+		flock.advance(enc, STEP, time);
+	}
 
+	public function draw(enc:Encoder, dt:Float) {
+		accumulated += Math.min(dt, 3 * STEP);
+		var steps = 0;
+		while (steps < 3 && accumulated + 1e-9 >= STEP) {
+			accumulated = Math.max(0, accumulated - STEP);
+			advance(enc);
+			steps++;
+		}
+		if (steps > 0 && !flock.compute) flock.upload();
+		flight.camera(time, Math.min(dt, 3 * STEP));
+		resize(device.width, device.height);
+		// (out of the dark at the start: while a fast GPU's flock grows to its whole)
+		post.exposure = 0.8 * smoothstep(0.0, 2.0, time);
 		var aspect = width / Math.max(1, height);
 		var view = MathTools.lookAt(flight.eye, flight.target, new Vec3(0, 1, 0));
 		var proj = Mat4.perspective(FOV, aspect, 0.5, 8000);
@@ -209,18 +224,18 @@ class Murmuration {
 		// (a quarter of them in the water, twice the size: as dark, blurred by the ripples anyway)
 		bv.size = new Vec4(1.1, 2.4, -1, 0.55);
 		BirdShader.params.view.write(bv, mirrorView);
-		bv.size = new Vec4(0.95, 1.2, 1, 1);
+		bv.size = new Vec4(2.2, 1.2, 1, 1);
 		BirdShader.params.view.write(bv, hawkView);
 		// (the hawk an instance of its own: where, its wings' phase, its way, beating hard)
 		var at = flight.hawk, hv = flight.hawkVel;
 		hawkBytes.setFloat(0, at.x);
 		hawkBytes.setFloat(4, at.y);
 		hawkBytes.setFloat(8, at.z);
-		hawkBytes.setFloat(12, time * 9 % (Math.PI * 2));
+		hawkBytes.setFloat(12, time * 11 % (Math.PI * 2));
 		hawkBytes.setFloat(16, hv.x);
 		hawkBytes.setFloat(20, hv.y);
 		hawkBytes.setFloat(24, hv.z);
-		hawkBytes.setFloat(36, 0.8);
+		hawkBytes.setFloat(36, 1.35);
 		device.writeBuffer(hawk, 0, hawkBytes);
 
 		pass.colors[0].texture = color;
@@ -229,7 +244,6 @@ class Murmuration {
 		enc.setPipeline(sky);
 		enc.setUniforms(SkyShader.params.view.block.binding, skyBytes);
 		enc.setTexture(SkyShader.params.hills.binding, hills, around);
-		enc.setTexture(SkyShader.params.clouds.binding, clouds, tiled);
 		enc.setVertexBuffer(0, triangle);
 		enc.draw(3);
 		enc.setPipeline(birds);
@@ -242,6 +256,7 @@ class Murmuration {
 		enc.drawIndexed(shapeIndices, flock.live >> 2);
 		if (flight.reach > 0) {
 			enc.setUniforms(BirdShader.params.view.block.binding, hawkView);
+			enc.setVertexBuffer(0, hawkShape);
 			enc.setVertexBuffer(1, hawk);
 			enc.drawIndexed(shapeIndices, 1);
 		}
