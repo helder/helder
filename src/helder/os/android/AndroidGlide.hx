@@ -51,10 +51,19 @@ class AndroidGlide extends Glide {
 		super();
 		if (!ready) init();
 		if (!ok) return;
-		var vt = cls("android/view/VelocityTracker");
-		tracker = keep(JniEnv.CallStaticObjectMethodA(env, vt, JniEnv.GetStaticMethodID(env, vt, Mem.cstr("obtain"), Mem.cstr("()Landroid/view/VelocityTracker;")), args));
-		var os = cls("android/widget/OverScroller");
-		scroller = keep(JniEnv.NewObjectA(env, os, JniEnv.GetMethodID(env, os, Mem.cstr("<init>"), Mem.cstr("(Landroid/content/Context;)V")), set1(Jni.activity.toI64())));
+		var vt = cls("android/view/VelocityTracker"), os = cls("android/widget/OverScroller");
+		if (vt.isNull() || os.isNull()) {
+			ok = false;
+			return;
+		}
+		var obtain = JniEnv.GetStaticMethodID(env, vt, Mem.cstr("obtain"), Mem.cstr("()Landroid/view/VelocityTracker;"));
+		var make = failed() ? Ptr.nil() : JniEnv.GetMethodID(env, os, Mem.cstr("<init>"), Mem.cstr("(Landroid/content/Context;)V"));
+		if (failed() || obtain.isNull() || make.isNull()) {
+			ok = false;
+			return;
+		}
+		tracker = keep(JniEnv.CallStaticObjectMethodA(env, vt, obtain, args));
+		scroller = keep(JniEnv.NewObjectA(env, os, make, set1(Jni.activity.toI64())));
 		if (tracker.isNull() || scroller.isNull()) ok = false;
 	}
 
@@ -68,21 +77,34 @@ class AndroidGlide extends Glide {
 		args = LibC.malloc(128);
 		var ctx = Jni.activity;
 		// (the screen's density, ViewConfiguration's fling speeds: pixels a second)
-		var res = JniEnv.CallObjectMethodA(env, ctx, method("android/content/Context", "getResources", "()Landroid/content/res/Resources;"), args);
+		var getResources = method("android/content/Context", "getResources", "()Landroid/content/res/Resources;");
+		if (getResources.isNull()) return;
+		var res = JniEnv.CallObjectMethodA(env, ctx, getResources, args);
 		if (failed() || res.isNull()) return;
-		var dm = JniEnv.CallObjectMethodA(env, res, method("android/content/res/Resources", "getDisplayMetrics", "()Landroid/util/DisplayMetrics;"), args);
+		var getMetrics = method("android/content/res/Resources", "getDisplayMetrics", "()Landroid/util/DisplayMetrics;");
+		if (getMetrics.isNull()) return;
+		var dm = JniEnv.CallObjectMethodA(env, res, getMetrics, args);
 		if (failed() || dm.isNull()) return;
 		var dmc = cls("android/util/DisplayMetrics");
+		if (dmc.isNull()) return;
 		density = JniEnv.GetFloatField(env, dm, JniEnv.GetFieldID(env, dmc, Mem.cstr("density"), Mem.cstr("F")));
+		if (failed()) return;
 		if (density <= 0) density = 1;
 		var vcc = cls("android/view/ViewConfiguration");
-		var vc = JniEnv.CallStaticObjectMethodA(env, vcc, JniEnv.GetStaticMethodID(env, vcc, Mem.cstr("get"), Mem.cstr("(Landroid/content/Context;)Landroid/view/ViewConfiguration;")),
-			set1(ctx.toI64()));
+		if (vcc.isNull()) return;
+		var get = JniEnv.GetStaticMethodID(env, vcc, Mem.cstr("get"), Mem.cstr("(Landroid/content/Context;)Landroid/view/ViewConfiguration;"));
+		if (failed() || get.isNull()) return;
+		var vc = JniEnv.CallStaticObjectMethodA(env, vcc, get, set1(ctx.toI64()));
 		if (failed() || vc.isNull()) return;
-		minFling = JniEnv.CallIntMethodA(env, vc, method("android/view/ViewConfiguration", "getScaledMinimumFlingVelocity", "()I"), args);
-		maxFling = JniEnv.CallIntMethodA(env, vc, method("android/view/ViewConfiguration", "getScaledMaximumFlingVelocity", "()I"), args);
+		var least = method("android/view/ViewConfiguration", "getScaledMinimumFlingVelocity", "()I"), most = method("android/view/ViewConfiguration", "getScaledMaximumFlingVelocity", "()I");
+		if (least.isNull() || most.isNull()) return;
+		minFling = JniEnv.CallIntMethodA(env, vc, least, args);
+		maxFling = JniEnv.CallIntMethodA(env, vc, most, args);
+		if (failed()) return;
 		motionEvent = cls("android/view/MotionEvent");
+		if (motionEvent.isNull()) return;
 		obtainEvent = JniEnv.GetStaticMethodID(env, motionEvent, Mem.cstr("obtain"), Mem.cstr("(JJIFFI)Landroid/view/MotionEvent;"));
+		if (failed()) return;
 		recycle = method("android/view/MotionEvent", "recycle", "()V");
 		addMovement = method("android/view/VelocityTracker", "addMovement", "(Landroid/view/MotionEvent;)V");
 		clear = method("android/view/VelocityTracker", "clear", "()V");
@@ -94,20 +116,31 @@ class AndroidGlide extends Glide {
 		currX = method("android/widget/OverScroller", "getCurrX", "()I");
 		currY = method("android/widget/OverScroller", "getCurrY", "()I");
 		finish = method("android/widget/OverScroller", "forceFinished", "(Z)V");
+		// (set by the lookups: any of them missing, helder's own glide)
+		var all = [obtainEvent, recycle, addMovement, clear, computeVelocity, xVelocity, yVelocity, fling, compute, currX, currY, finish];
 		ok = !failed();
+		for (m in all)
+			if (m.isNull()) ok = false;
 	}
 
-	// (a framework class, a global reference)
+	// (a framework class, a global reference: found on the main thread, by
+	// the app's class loader, as Jni's; null where it is not)
 	static function cls(name:String):Ptr {
-		var c = Arena.scopedValue(a -> JniEnv.FindClass(env, a.cstring(name)));
-		if (failed() || c.isNull()) return Ptr.nil();
-		return JniEnv.NewGlobalRef(env, c);
+		var c = Ptr.nil();
+		try {
+			MainThread.run(() -> c = Jni.cls(StringTools.replace(name, "/", ".")));
+		} catch (_) {}
+		return c;
 	}
 
 	static function method(c:String, name:String, sig:String):Ptr {
 		var k = cls(c);
+		if (k.isNull()) {
+			ok = false;
+			return Ptr.nil();
+		}
 		var m = Arena.scopedValue(a -> JniEnv.GetMethodID(env, k, a.cstring(name), a.cstring(sig)));
-		failed();
+		if (failed() || m.isNull()) ok = false;
 		return m;
 	}
 
