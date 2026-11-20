@@ -2,8 +2,8 @@
 
 ## Docs
 
-The docs are a short guide under `docs/`, published with the landing and
-the examples' pages on [helder.build](https://helder.build/docs/)
+The docs are a short guide under `docs/`, published with the examples'
+pages on [helder.build](https://helder.build/docs/)
 (helder.build's deploy builds them from main, daily and on its own pushes).
 They show what helder can do; every function and detail lives in the
 packages' READMEs (`src/helder/<package>/README.md`), which the pages link
@@ -36,7 +36,7 @@ to and do not repeat.
 - **Moved pages**: `docs/docs.json`'s `moved` sends an old address on to
   its page, so links from elsewhere keep working.
 - **Building**: `node site/build.mjs` (`bun run site`) builds the examples
-  for the web, their pages, the docs and the landing into `bin/site`
+  for the web, their pages and the docs into `bin/site`
   (`SITE_SKIP_DATA=1`: without the examples that fetch tens of MB of
   models). Serve `bin/site` (any static server) and open it.
   `bun run site:check` (Playwright) opens every page, plays every live
@@ -45,8 +45,7 @@ to and do not repeat.
   An unknown example, region, picture, component, page or heading link
   fails the build.
 
-The pages are rendered by `site/docs/Docs.hx` and the landing by
-`site/docs/Home.hx`: helder.web's static renderer, helder.syntax's lexer
+The pages are rendered by `site/docs/Docs.hx`: helder.web's static renderer, helder.syntax's lexer
 for the highlighting (Markdown.hx is the parser), built natively and run
 by `site/build.mjs`. One sheet,
 `site/site.css`, styles them and the examples' pages, in helder.build's

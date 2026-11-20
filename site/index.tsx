@@ -290,10 +290,6 @@ for (const ex of examples) {
 	if (ex.page !== null) Static.write(site.dir + "/" + pageOf(ex) + "index.html", Static.document(<DemoPage ex={ex} />));
 }
 
-for (const ex of featured) {
-	Static.write(site.dir + "/static/featured-demo.html", Static.render(<Stage ex={ex} />));
-}
-
 const topics = [
 	{ id: "interface", title: "Interfaces and interaction", guide: "Build an interface", href: "docs/apps/views/" },
 	{ id: "measure", title: "Graphics and performance", guide: "Explore 3D scenes", href: "docs/graphics/3d/" },

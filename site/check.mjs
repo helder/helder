@@ -2,13 +2,13 @@
 // Chromium (Playwright): bin/site served, every example a card on
 // examples/, the top bar's links (Examples, Docs, GitHub) on an iPhone's
 // screen (Playwright's device: its viewport, scale and touch) on the
-// landing and the examples' pages, and behind the docs' menu there; then the
+// examples' pages, and behind the docs' menu there; then the
 // Play button of every demo pressed (or of the ids given): each started (data-hydrated, the
 // graphics API it draws with in data-gfx), its canvas drawn (it looks
 // different from before; a sound only started), no console errors. Then
 // the docs (bin/site/docs): every page, its sidebar, pictures, language
 // tabs and live example (started once in view), the old addresses sent
-// on, the search; and the landing (its tiles, a tile played). With a
+// on, the search. With a
 // directory, the page's screenshots at a phone's width and a desktop's are
 // written there.
 //
@@ -140,7 +140,6 @@ try {
 		await phone(page, shots, 'planets');
 	}
 	await checkDocs(page);
-	if (shard === 0) await checkHome(page);
 	if (shard === 0) await checkPhone(shots);
 	check(errors.length === 0, `no console errors${errors.length ? ': ' + errors.join('\n') : ''}`);
 } finally {
@@ -243,52 +242,6 @@ async function colourCount(page, png) {
 	}, png.toString('base64'));
 }
 
-// the landing: every tile and the hero with its picture, loaded; six
-// tiles; nothing over a picture until its demo was pressed ("Loading…"
-// only then); the sample's two languages. Where WebGPU is, a tile's demo
-// started by its button, its picture gone once it draws; without it (CI's
-// Chromium may have none) the flock and the tiles stay pictures with
-// their Play buttons. Only what is shown in both is scrolled to: the
-// tiles, their pictures and buttons, never a canvas or a hidden poster.
-async function checkHome(page) {
-	await page.goto(url);
-	const gpu = await page.evaluate(() => !!navigator.gpu);
-	check(await page.locator('.tile').count() === 6, `the landing's ${await page.locator('.tile').count()} tiles`);
-	for (const tile of await page.locator('.tile').all()) {
-		await tile.scrollIntoViewIfNeeded();
-		const img = tile.locator('.shot img');
-		check(await img.count() === 1 && await img.evaluate(i => i.complete && i.naturalWidth > 0) && await img.isVisible(),
-			`the landing: ${await tile.locator('h3').textContent()} shows its picture`);
-	}
-	const hero = page.locator('#play-murmuration'), poster = hero.locator('img.poster');
-	check(await poster.evaluate(i => i.complete && i.naturalWidth > 0), 'the landing: the hero has its picture');
-	const over = await hero.evaluate(el => getComputedStyle(el, '::after').content);
-	if (await hero.getAttribute('data-pressed') === null) check(['none', 'normal'].includes(over), `the landing: nothing over the hero's picture before Play (${over})`);
-	if (!gpu) check(await hero.getAttribute('data-loading') === null && await hero.getAttribute('data-hydrated') === null && await poster.isVisible()
-		&& await hero.locator('button.play').isVisible(), 'the landing: no WebGPU, the flock stays a picture with its Play button');
-	await page.locator('.sample').scrollIntoViewIfNeeded();
-	await page.locator('.sample .switch button[data-lang="haxe"]').click();
-	check(await page.locator('.sample pre[data-lang="haxe"]').isVisible(), 'the landing: the sample in Haxe');
-	await page.evaluate(() => localStorage.removeItem('helder.lang'));
-	const first = page.locator('.tile').filter({ has: page.locator('hxmc-island') }).first();
-	const island = first.locator('hxmc-island'), id = await island.getAttribute('id'), play = first.locator('button.play');
-	await first.scrollIntoViewIfNeeded();
-	check(await play.isVisible(), `the landing: ${id}'s Play button shown`);
-	if (!gpu) {
-		check(await island.getAttribute('data-loading') === null && await first.locator('img.poster').isVisible(), `the landing: no WebGPU, ${id} stays its picture until pressed`);
-	} else {
-		await play.click();
-		check(await island.getAttribute('data-pressed') !== null, `the landing: ${id} marked pressed by its button`);
-		await page.waitForFunction((id) => {
-			const el = document.getElementById(id);
-			return el.hasAttribute('data-hydrated') || el.hasAttribute('data-error');
-		}, id, { timeout: 60000 });
-		check(await island.getAttribute('data-error') === null, `the landing: ${id} started by its button`);
-		check(await first.locator('img.poster').isHidden(), `the landing: ${id}'s picture gives way once it draws`);
-	}
-	if (shots) await page.screenshot({ path: path.join(shots, 'home.png'), fullPage: true });
-}
-
 // on an iPhone (Playwright's iPhone 13: 390x844 at 3x, touch, its user
 // agent; a window's size alone lays the page out otherwise): the examples'
 // pages show the top bar's links; a docs page hides them, its menu (☰)
@@ -299,7 +252,7 @@ async function checkPhone(shots) {
 	const visible = (sel) => page.locator(sel).evaluateAll((els) => els.filter((e) => e.offsetParent !== null && e.getBoundingClientRect().right <= innerWidth + 1)
 		.map((e) => e.textContent.trim()));
 	const paged = listed.find((e) => e.page);
-	for (const [name, at] of [['home', ''], ['examples', 'examples/'], ...(paged ? [['example', `examples/${paged.id}/`]] : [])]) {
+	for (const [name, at] of [['examples', 'examples/'], ...(paged ? [['example', `examples/${paged.id}/`]] : [])]) {
 		await page.goto(url + at);
 		const links = await visible('.top nav a');
 		check(['Examples', 'Docs', 'GitHub'].every((l) => links.includes(l)), `phone, ${at}: the top bar's links (${links.join(', ')})`);
