@@ -13,6 +13,8 @@
 // written there.
 //
 //   node site/check.mjs [screenshots dir] [ids to play...]   (default: every demo)
+// SITE_NO_WEBGPU=1: the pages without navigator.gpu (WebGL2's path), as a
+// Chromium without WebGPU sees them.
 // SITE_SHARD=<i>/<n>: every n-th demo and docs page from the i-th (CI's
 // check jobs, a machine each: two SwiftShader browsers on one machine's
 // cores starved each other's frames); the index's and the search's
@@ -60,6 +62,8 @@ const check = (ok, what) => {
 };
 try {
 	const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+	// (SITE_NO_WEBGPU=1: navigator.gpu taken away, as a Chromium without WebGPU)
+	if (process.env.SITE_NO_WEBGPU) await page.addInitScript(() => delete Navigator.prototype.gpu);
 	const errors = [];
 	// (a failed fetch by its URL, not the console's line: the videos and numbers a build without site/reel.mjs or site/numbers.mjs has not)
 	const later = ['examples/media/', 'examples/numbers.json'].filter((f) => !fs.existsSync(path.join(dir, f)));
@@ -159,7 +163,8 @@ async function checkDocs(page) {
 		check(title === p.title, `${p.url}: its title, ${title}`);
 		const links = await page.locator('.sidebar ul a').count();
 		if (links !== pages.length) check(false, `${p.url}: ${links} pages in its sidebar, of ${pages.length}`);
-		for (const img of await page.locator('main img').all()) {
+		// (the pictures of <Image>: a live example's poster is hidden once it draws)
+		for (const img of await page.locator('main .still img').all()) {
 			await img.scrollIntoViewIfNeeded();
 			check(await img.evaluate(i => i.complete && i.naturalWidth > 0), `${p.url}: ${await img.getAttribute('src')} shown`);
 		}
@@ -238,30 +243,49 @@ async function colourCount(page, png) {
 	}, png.toString('base64'));
 }
 
-// the landing: its pictures loaded, six tiles, a tile's demo started by its
-// button, the sample's two languages; the flock left still in a browser
-// without WebGPU (CI's)
+// the landing: every tile and the hero with its picture, loaded; six
+// tiles; nothing over a picture until its demo was pressed ("Loading…"
+// only then); the sample's two languages. Where WebGPU is, a tile's demo
+// started by its button, its picture gone once it draws; without it (CI's
+// Chromium may have none) the flock and the tiles stay pictures with
+// their Play buttons. Only what is shown in both is scrolled to: the
+// tiles, their pictures and buttons, never a canvas or a hidden poster.
 async function checkHome(page) {
 	await page.goto(url);
+	const gpu = await page.evaluate(() => !!navigator.gpu);
 	check(await page.locator('.tile').count() === 6, `the landing's ${await page.locator('.tile').count()} tiles`);
-	for (const img of await page.locator('main img').all()) {
-		await img.scrollIntoViewIfNeeded();
-		check(await img.evaluate(i => i.complete && i.naturalWidth > 0), `the landing: ${await img.getAttribute('src')} shown`);
+	for (const tile of await page.locator('.tile').all()) {
+		await tile.scrollIntoViewIfNeeded();
+		const img = tile.locator('.shot img');
+		check(await img.count() === 1 && await img.evaluate(i => i.complete && i.naturalWidth > 0) && await img.isVisible(),
+			`the landing: ${await tile.locator('h3').textContent()} shows its picture`);
 	}
+	const hero = page.locator('#play-murmuration'), poster = hero.locator('img.poster');
+	check(await poster.evaluate(i => i.complete && i.naturalWidth > 0), 'the landing: the hero has its picture');
+	const over = await hero.evaluate(el => getComputedStyle(el, '::after').content);
+	if (await hero.getAttribute('data-pressed') === null) check(['none', 'normal'].includes(over), `the landing: nothing over the hero's picture before Play (${over})`);
+	if (!gpu) check(await hero.getAttribute('data-loading') === null && await hero.getAttribute('data-hydrated') === null && await poster.isVisible()
+		&& await hero.locator('button.play').isVisible(), 'the landing: no WebGPU, the flock stays a picture with its Play button');
+	await page.locator('.sample').scrollIntoViewIfNeeded();
 	await page.locator('.sample .switch button[data-lang="haxe"]').click();
 	check(await page.locator('.sample pre[data-lang="haxe"]').isVisible(), 'the landing: the sample in Haxe');
 	await page.evaluate(() => localStorage.removeItem('helder.lang'));
-	const tile = page.locator('.tile hxmc-island').first(), id = await tile.getAttribute('id');
-	await tile.scrollIntoViewIfNeeded();
-	await tile.locator('button.play').click();
-	await page.waitForFunction((id) => {
-		const el = document.getElementById(id);
-		return el.hasAttribute('data-hydrated') || el.hasAttribute('data-error');
-	}, id, { timeout: 60000 });
-	check(await tile.getAttribute('data-error') === null, `the landing: ${id} started by its button`);
-	const gpu = await page.evaluate(() => !!navigator.gpu);
-	if (!gpu) check(!(await page.locator('#play-murmuration').getAttribute('data-loading')) && !(await page.locator('#play-murmuration').getAttribute('data-hydrated')),
-		'the landing: no WebGPU, the flock stays a picture');
+	const first = page.locator('.tile').filter({ has: page.locator('hxmc-island') }).first();
+	const island = first.locator('hxmc-island'), id = await island.getAttribute('id'), play = first.locator('button.play');
+	await first.scrollIntoViewIfNeeded();
+	check(await play.isVisible(), `the landing: ${id}'s Play button shown`);
+	if (!gpu) {
+		check(await island.getAttribute('data-loading') === null && await first.locator('img.poster').isVisible(), `the landing: no WebGPU, ${id} stays its picture until pressed`);
+	} else {
+		await play.click();
+		check(await island.getAttribute('data-pressed') !== null, `the landing: ${id} marked pressed by its button`);
+		await page.waitForFunction((id) => {
+			const el = document.getElementById(id);
+			return el.hasAttribute('data-hydrated') || el.hasAttribute('data-error');
+		}, id, { timeout: 60000 });
+		check(await island.getAttribute('data-error') === null, `the landing: ${id} started by its button`);
+		check(await first.locator('img.poster').isHidden(), `the landing: ${id}'s picture gives way once it draws`);
+	}
 	if (shots) await page.screenshot({ path: path.join(shots, 'home.png'), fullPage: true });
 }
 

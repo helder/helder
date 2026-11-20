@@ -422,6 +422,9 @@ hxmc-island > .play { z-index: 1; }
 	.acts { flex-direction: column; }
 	.hero-stage .stage { border-radius: 12px; }
 }
-/* (the flock failed to start, a GPU lost or refused: its picture stays) */
-.hero-stage hxmc-island[data-error] canvas, .hero-stage hxmc-island[data-error]::after { visibility: hidden; }
-.hero-stage .stage:has(hxmc-island[data-error]) .full { display: none; }
+/* (the landing's demos: their pictures stay while one loads that the reader
+   did not start, and when one cannot run, without its Play button) */
+.home hxmc-island[data-loading]:not([data-pressed])::after, .home hxmc-island[data-error]::after { content: none; }
+.home hxmc-island[data-error] canvas { visibility: hidden; }
+.home hxmc-island[data-error] > img.poster { display: block; }
+.home .stage:has(hxmc-island[data-error]) .full { display: none; }

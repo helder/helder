@@ -13,6 +13,8 @@ using StringTools;
 typedef Tile = {title:String, pitch:String, href:String, still:String, example:String};
 
 class Home implements Markup {
+	// the hero's picture: the flock against the low sun (site/visuals.mjs)
+	static final FLOCK = "flock.webp";
 	static final TILES:Array<Tile> = [
 		{title: "Apps and UI", pitch: "Markup and signals, CSS layout, text input and accessibility, drawn on the GPU.", href: "docs/apps/views/",
 			still: "mail.webp", example: "mail"},
@@ -23,7 +25,7 @@ class Home implements Markup {
 		{title: "2D and canvas", pitch: "Paths, gradients, images and sprites, on the GPU or in a page.", href: "docs/graphics/2d/",
 			still: "canvas.webp", example: ""},
 		{title: "Web pages", pitch: "Static pages with live islands: a helder program inside your page.", href: "docs/web/pages/",
-			still: "palette.webp", example: "ts-palette"},
+			still: "web.webp", example: "ts-palette"},
 		{title: "Device services", pitch: "Settings, locale and formatting, links and storage, one API on every platform.", href: "docs/apps/services/",
 			still: "services.webp", example: "services"}
 	];
@@ -62,8 +64,9 @@ class Counter implements Markup {
 }';
 
 	public static function write(out:String, theme:Theme, examples:Map<String, Example>, repo:String) {
-		for (t in TILES)
-			if (!FileSystem.exists("site/visuals/" + t.still)) throw 'site/docs/Home.hx: no site/visuals/${t.still} (site/visuals.mjs)';
+		// (no tile and no hero without its picture: site/visuals.mjs takes them)
+		for (still in TILES.map(t -> t.still).concat([FLOCK]))
+			if (!FileSystem.exists("site/visuals/" + still)) throw 'site/docs/Home.hx: no site/visuals/$still (site/visuals.mjs)';
 		var flock = examples.get("murmuration");
 		Static.write(out + "/index.html", Static.document(<html lang="en">
 			<head>
@@ -134,7 +137,7 @@ class Counter implements Markup {
 		return <div class="stage" style={"--w:" + d.width + "px;--ratio:16/9"} data-width={"" + d.width} data-height={"" + d.height}>
 			<Island.Wasm src={e.wasm} id="play-murmuration" load={Click} runner="static/helder/os/browser.mjs" imports={e.imports} fonts={e.fonts}
 				assets={e.assets == "" ? null : e.assets} args={["--birds", "65536"]} stop={Offscreen} width={d.width} height={d.height}>
-				{e.poster == "" ? null : <img class="poster" src={e.poster} alt="Starlings wheeling over a marsh at dusk" fetchpriority="high"/>}
+				<img class="poster" src={"static/visuals/" + FLOCK} alt="A flock of starlings against the low sun over still water, its reflection below" fetchpriority="high"/>
 				<button class="play" type="button" aria-label="Play Murmuration">▶ Play</button>
 			</Island.Wasm>
 			<button class="full" type="button" aria-label="Murmuration full screen">Full screen</button>
@@ -147,11 +150,11 @@ class Counter implements Markup {
 		if (t.example != "" && (e == null || e.demo == null)) throw 'site/docs/Home.hx: ${t.example} is no example that runs in a browser';
 		var still = "static/visuals/" + t.still;
 		return <article class="tile">
-			{e == null ? <a class="shot" href={t.href}><img src={still} alt="" loading="lazy" decoding="async"/></a> : <div class="stage shot"
+			{e == null ? <a class="shot" href={t.href}><img src={still} alt="" decoding="async"/></a> : <div class="stage shot"
 				style={"--w:" + e.demo.width + "px;--ratio:" + e.demo.width + "/" + e.demo.height} data-width={"" + e.demo.width} data-height={"" + e.demo.height}>
 				<Island.Wasm src={e.wasm} id={"play-" + e.id} load={Click} runner="static/helder/os/browser.mjs" imports={e.imports} fonts={e.fonts}
 					assets={e.assets == "" ? null : e.assets} stop={Offscreen} width={e.demo.width} height={e.demo.height}>
-					<img class="poster" src={still} alt="" loading="lazy" decoding="async"/>
+					<img class="poster" src={still} alt="" decoding="async"/>
 					<button class="play" type="button" aria-label={"Play " + t.title}>▶</button>
 				</Island.Wasm>
 			</div>}
