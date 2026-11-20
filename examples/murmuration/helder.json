@@ -1,0 +1,9 @@
+{
+  "$schema": "https://helder.build/schema/helder.json",
+  "name": "Murmuration",
+  "description": "Half a million starlings wheeling over a marsh at dusk, steered on the GPU.",
+  "id": "build.helder.murmuration",
+  "entry": "Murmuration.hx",
+  "orientation": "landscape",
+  "colors": {"theme": "#1a1424", "background": "#0b0a12"}
+}
