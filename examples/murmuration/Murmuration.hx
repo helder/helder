@@ -50,6 +50,8 @@ class Murmuration {
 	final pass:PassDesc = {colors: [{load: Clear, clear: new Color(0, 0, 0)}]};
 	final sun:Vec3;
 	final hills:Texture;
+	final weather:Texture;
+	final repeatingMips:Sampler;
 	final around:Sampler;
 	var color:Null<Texture>;
 	var resolved:Null<Texture>;
@@ -81,6 +83,8 @@ class Murmuration {
 		var el = 0.022, az = Flight.SUN;
 		sun = new Vec3(Math.cos(az) * Math.cos(el), Math.sin(el), Math.sin(az) * Math.cos(el));
 		hills = SkyTextures.hills(device);
+		weather = SkyTextures.weather(device);
+		repeatingMips = device.createSampler({filter: Linear, mipFilter: Linear, wrap: Repeat});
 		around = device.createSampler({filter: Linear, wrap: Repeat});
 		triangle = device.createBuffer({size: 24, usage: Vertex, data: floats([-1, -1, 3, -1, -1, 3])});
 		var s = shapeOf(false);
@@ -208,7 +212,7 @@ class Murmuration {
 		var ty = Math.tan(FOV / 2), tx = ty * aspect;
 		SkyShader.params.view.write({
 			right: new Vec4(r.x * tx, r.y * tx, r.z * tx, 0),
-			up: new Vec4(u.x * ty, u.y * ty, u.z * ty, 0),
+			up: new Vec4(u.x * ty, u.y * ty, u.z * ty, 2 * ty / height),
 			forward: new Vec4(f.x, f.y, f.z, 0),
 			eye: new Vec4(flight.eye.x, flight.eye.y, flight.eye.z, time),
 			sun: new Vec4(sun.x, sun.y, sun.z, 0)
@@ -244,6 +248,7 @@ class Murmuration {
 		enc.setPipeline(sky);
 		enc.setUniforms(SkyShader.params.view.block.binding, skyBytes);
 		enc.setTexture(SkyShader.params.hills.binding, hills, around);
+		enc.setTexture(SkyShader.params.weather.binding, weather, repeatingMips);
 		enc.setVertexBuffer(0, triangle);
 		enc.draw(3);
 		enc.setPipeline(birds);

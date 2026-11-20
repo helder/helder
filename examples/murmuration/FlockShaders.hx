@@ -12,10 +12,10 @@ import helder.gfx.shader.ShaderMath.*;
 @:structInit @:publicFields class Bird {
 	var pos:Vec4; // w: the wings' phase
 	var vel:Vec4; // w: the bank, radians
-	var mood:Vec4; // alarm, flap, wave strength, signed wave age
+	var mood:Vec4; // alarm, flap, wave strength
 }
 
-// a bird as its cell keeps it: where (w: alarm), how fast (w: outgoing wave)
+// a bird as its cell keeps it: where (w: alarm), how fast
 @:structInit @:publicFields class Mate {
 	var pos:Vec4;
 	var vel:Vec4;
@@ -32,7 +32,7 @@ import helder.gfx.shader.ShaderMath.*;
 	var armB:Vec4;
 	var hawk:Vec4; // w: how near it scares
 	var hawkVel:Vec4;
-	var seed:Vec4;
+	var wave:Vec4; // inward, scaled by the extent; w: front along that axis
 }
 
 final CELL = 3.0;
@@ -41,11 +41,6 @@ final SEPARATION = 1.1;
 final REACH = 3.0;
 final CRUISE = 12.0;
 final DENSITY = 0.45;
-// A hop of about two metres in seven steps. The quiet period keeps the
-// front moving instead of having neighbours immediately echo it back.
-final WAVE_DELAY = 0.105;
-final WAVE_SEND = 0.20;
-final WAVE_REST = 1.6;
 
 function cell(x:Int, y:Int, z:Int, cells:Int):Int
 	return ((x * 73856093) ^ (y * 19349663) ^ (z * 83492791)) & (cells - 1);
@@ -83,33 +78,9 @@ final Insert = compute({
 		var c = cellOf(b.pos.xyz, p.step.cells);
 		var k = atomicAdd(p.counts, c, 1);
 		if (k < SLOTS) {
-			var age = abs(b.mood.w);
-			var signal = age >= WAVE_DELAY && age < WAVE_SEND ? b.mood.z : 0.0;
-			var m:Mate = {pos: vec4(b.pos.xyz, b.mood.x), vel: vec4(b.vel.xyz, signal)};
+			var m:Mate = {pos: vec4(b.pos.xyz, b.mood.x), vel: vec4(b.vel.xyz, 0)};
 			p.mates[c * SLOTS + k] = m;
 		}
-	}
-});
-
-final Seed = compute({
-	size: [1],
-	main: function(id:ComputeInput, p:{step:FlockStep, counts:Storage<Int>, birds:RWStorage<Bird>}) {
-		var best = -100000.0, index = 0;
-		var offset = Std.int(p.step.seed.w);
-		for (k in 0...128) {
-			var i = (offset + k * 4051) % p.step.count;
-			var b = p.birds[i];
-			var n:Float = p.counts[cellOf(b.pos.xyz, p.step.cells)];
-			var score = dot(b.pos.xyz - p.step.roost.xyz, p.step.seed.xyz) + min(n, 8.0) * 4 - max(0, 4 - n) * 12;
-			if (score > best) {
-				best = score;
-				index = i;
-			}
-		}
-		var b = p.birds[index];
-		var inward = dot(rightOf(normalize(b.vel.xyz)), -p.step.seed.xyz);
-		var seeded:Bird = {pos: b.pos, vel: b.vel, mood: vec4(b.mood.xy, 1, inward < 0 ? -p.step.dt : p.step.dt)};
-		p.birds[index] = seeded;
 	}
 });
 
@@ -139,10 +110,6 @@ final Steer = compute({
 		var gx = Std.int(g.x), gy = Std.int(g.y), gz = Std.int(g.z);
 		var sep = vec3(0), ali = vec3(0), coh = vec3(0);
 		var n = 0.0, alarm = 0.0;
-		var age = abs(b.mood.w);
-		var ready = age == 0 || age >= WAVE_REST;
-		var incoming = ready ? 0.10 : 1.0;
-		var away = vec3(0);
 		// (a cell keeps a few of its birds, but counts them all: what it kept
 		// stands for the rest in the push apart, and the crowd's lean says
 		// which way it is thicker)
@@ -168,10 +135,6 @@ final Steer = compute({
 					coh += d;
 					alarm += o.pos.w;
 					n += 1;
-					if (o.vel.w > incoming) {
-						incoming = o.vel.w;
-						away = -d;
-					}
 				}
 			}
 		}
@@ -213,19 +176,9 @@ final Steer = compute({
 		mood += (max(threat * 1.5, alarm * 0.985) - mood) * min(1, dt * 9);
 		mood = max(0, mood - dt * 0.25);
 		var right = rightOf(f);
-		var wave = b.mood.z * (age < WAVE_SEND ? 0.998 : 0.91);
-		var turn = b.mood.w < 0 ? -1.0 : 1.0;
-		if (incoming > 0.10 && ready) {
-			wave = max(wave, incoming * 0.97);
-			turn = dot(away, right) < 0 ? -1.0 : 1.0;
-			age = 0;
-		}
-		if (threat > 0.42 && ready) {
-			wave = 1;
-			turn = dot(aside, right) < 0 ? -1.0 : 1.0;
-			age = 0;
-		}
-		var roll = smoothstep(0.10, 0.25, wave);
+		var lag = p.step.wave.w - dot(q - c, p.step.wave.xyz);
+		var roll = smoothstep(0.0, 0.025, lag) * (1 - smoothstep(0.12, 0.25, lag));
+		var turn = dot(p.step.wave.xyz, right) < 0 ? -1.0 : 1.0;
 		acc += right * (turn * roll * 5.0);
 		acc += right * sin(t * 5 + dot(q, vec3(0.07, 0.05, 0.06))) * mood * 16;
 		acc += f * (CRUISE + mood * 7 - speed) * 1.5;
@@ -238,15 +191,14 @@ final Steer = compute({
 		// (banked into the turn: the lateral pull's angle against gravity)
 		var bank = b.vel.w;
 		var lean = clamp(atan2(dot(acc, right), 9.8), -1.2, 1.2);
-		bank += (mix(lean, turn * 1.16, roll) - bank) * min(1, dt * (6 + roll * 20));
+		bank += (mix(lean, turn * 1.29, roll) - bank) * min(1, dt * (6 + roll * 20));
 		// (harder up a climb, when slow or alarmed; a glide down)
 		var flap = b.mood.y;
 		var beat = clamp(0.45 + v.y * 0.12 + (CRUISE - speed) * 0.15 + mood, 0.1, 1);
 		flap += (mix(beat, 0.18, roll) - flap) * min(1, dt * (3 + roll * 12));
 		var phase = b.pos.w + dt * (11 + 4 * flap) * 6.2831853;
 		if (phase > 6.2831853) phase -= 6.2831853;
-		var clock = wave > 0.10 || age > 0 && age < WAVE_REST ? (age + dt) * turn : 0.0;
-		var moved:Bird = {pos: vec4(q + v * dt, phase), vel: vec4(v, bank), mood: vec4(mood, flap, wave, clock)};
+		var moved:Bird = {pos: vec4(q + v * dt, phase), vel: vec4(v, bank), mood: vec4(mood, flap, roll, 0)};
 		p.next[id.x] = moved;
 	}
 });
