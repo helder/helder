@@ -24,6 +24,10 @@ package helder.ui.access;
 	public var expanded:Null<Bool> = null;
 	public var level:Null<Int> = null;
 	public var disabled:Bool = false;
+	// not accepted, needed by its form, a modal dialog (Semantics')
+	public var invalid:Bool = false;
+	public var required:Bool = false;
+	public var modal:Bool = false;
 	public var focusable:Bool = false;
 	public var valueNow:Null<Float> = null;
 	public var valueMin:Null<Float> = null;
@@ -60,7 +64,7 @@ package helder.ui.access;
 	public function equals(o:AccessNode):Bool {
 		if (o.role != role || o.name != name || o.description != description || o.href != href || o.identifier != identifier || o.value != value || o.secret != secret || o.checked != checked || o.mixed != mixed || o.selected != selected
 			|| o.multiselectable != multiselectable || o.current != current || o.live != live || o.liveText != liveText
-			|| o.expanded != expanded || o.level != level || o.disabled != disabled || o.focusable != focusable || o.valueNow != valueNow || o.valueMin != valueMin
+			|| o.expanded != expanded || o.level != level || o.disabled != disabled || o.invalid != invalid || o.required != required || o.modal != modal || o.focusable != focusable || o.valueNow != valueNow || o.valueMin != valueMin
 			|| o.valueMax != valueMax || o.valueText != valueText || o.x != x || o.y != y || o.width != width || o.height != height
 			|| o.textStart != textStart || o.textEnd != textEnd || o.caret != caret || o.readOnly != readOnly || o.posInSet != posInSet
 			|| o.setSize != setSize || o.rowCount != rowCount || o.colCount != colCount || o.rowIndex != rowIndex || o.colIndex != colIndex
@@ -103,6 +107,9 @@ package helder.ui.access;
 		if (expanded != null) o.expanded = expanded;
 		if (level != null) o.level = level;
 		if (disabled) o.disabled = true;
+		if (invalid) o.invalid = true;
+		if (required) o.required = true;
+		if (modal) o.modal = true;
 		if (focusable) o.focusable = true;
 		if (valueNow != null) o.valueNow = valueNow;
 		if (valueMin != null) o.valueMin = valueMin;

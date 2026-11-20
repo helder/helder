@@ -230,6 +230,9 @@ class AccessTree {
 				a.expanded = sem.expanded;
 				a.level = sem.level;
 				a.disabled = sem.disabled;
+				a.invalid = sem.invalid;
+				a.required = sem.required;
+				a.modal = sem.modal;
 				a.valueNow = sem.valueNow;
 				a.valueMin = sem.valueMin;
 				a.valueMax = sem.valueMax;

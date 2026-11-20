@@ -29,7 +29,8 @@ class NeutralMacro {
 		"label" => "aria-label", "description" => "aria-description", "checked" => "aria-checked", "selected" => "aria-selected",
 		"expanded" => "aria-expanded", "pressed" => "aria-pressed", "hidden" => "aria-hidden", "level" => "aria-level",
 		"value-now" => "aria-valuenow", "value-min" => "aria-valuemin", "value-max" => "aria-valuemax", "value-text" => "aria-valuetext", "live" => "aria-live",
-		"multiselectable" => "aria-multiselectable", "current" => "aria-current"
+		"multiselectable" => "aria-multiselectable", "current" => "aria-current", "invalid" => "aria-invalid", "required" => "aria-required",
+		"modal" => "aria-modal"
 	];
 	static final PLAIN = ["role", "id", "href", "title"];
 	// (a field's (<field>: an <input>, <field:textarea>: a <textarea>) own attributes, as they are; its value

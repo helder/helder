@@ -166,10 +166,12 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	// (the properties whose own values it holds over the rules at any value, its defaults too: Rules.keep)
 	var keptIds:Null<Array<Int>> = null;
 	var restylePending = false;
+	// (its own colours that are tokens: the property's id, the reference, what it last resolved to; Rules.restyle)
+	var tokenColors:Null<Array<Int>> = null;
 
 	// (asks for its rules to be applied again, at the next update: several changes, one restyle)
 	function restyleLater() {
-		if (ui == null || restylePending || slot == null && themedIds == null) return;
+		if (ui == null || restylePending || slot == null && themedIds == null && tokenColors == null) return;
 		restylePending = true;
 		@:privateAccess ui.restyles.push(this);
 		ui.requestFrame();
@@ -1575,6 +1577,29 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	// (a theme's colours for its placeholder's text and its selection, null:
 	// none; EditableText's)
 	function themePseudo(placeholder:Null<Color>, selection:Null<Color>) {}
+
+	// (an own colour given, a token or not: Style's setters)
+	@:allow(helder.ui.Style) function ownColor(id:Int, v:Null<Color>) {
+		var t = tokenColors;
+		var k = 0;
+		if (t != null)
+			while (k < t.length && t[k] != id)
+				k += 3;
+		if (v == null || !v.isToken || v.tokenName() == "currentcolor") {
+			if (t != null && k < t.length) t.splice(k, 3);
+			return;
+		}
+		if (t == null) t = tokenColors = [];
+		if (k < t.length) {
+			t[k + 1] = v;
+			t[k + 2] = v;
+		} else {
+			t.push(id);
+			t.push(v);
+			t.push(v);
+		}
+		restyleLater();
+	}
 }
 
 // a node's event handlers (Node.onClick...)

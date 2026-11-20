@@ -323,6 +323,7 @@ class AndroidAccess {
 			flag(info, "setChecked", n.checked);
 		}
 		if (n.selected != null) flag(info, "setSelected", n.selected);
+		if (n.invalid) flag(info, "setContentInvalid", true);
 		if (n.editable()) {
 			flag(info, "setEditable", !n.readOnly);
 			flag(info, "setPassword", n.secret);

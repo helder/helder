@@ -25,7 +25,9 @@ export const VISUALS = [
   { id: 'todo', entry: 'examples/ts-todo', size: '480x560', at: 'end',
     script: [{ t: 0.2, type: 'tap', role: 'textbox' }, { t: 0.3, type: 'type', text: 'Ship the docs', every: 0.03 },
       { t: 1, type: 'key', name: 'Enter' }, { t: 1.3, type: 'mark', name: 'end' }] },
-  { id: 'canvas', entry: 'examples/canvas-window', at: '0.5' }
+  { id: 'canvas', entry: 'examples/canvas-window', at: '0.5' },
+  // (the controls' variants and sizes, Look.base: docs/apps/controls.md)
+  { id: 'controls', entry: 'docs/examples/controls', size: '560x300', at: '0.3' }
 ]
 
 // the commands of `helder help`, each its first clause: the CLI page's terminal

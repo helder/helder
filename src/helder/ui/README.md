@@ -385,13 +385,18 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
   and `<field:textarea/>`); `Icons`, lucide's icons by name (markup's
   `<icon/>`); `Theme`, the studio's look for any app (its sheet's
   parts by slot: panels, sections, buttons, fields, menus; light and dark
-  from the same tokens, `Theme.c` for a colour given inline); `Controls`,
+  from the same tokens, `Theme.c` for a colour given inline; superseded
+  by `helder.ui.controls`' looks, "Controls" below, and going once the
+  apps move); `Controls`,
   styled by it: `Slider` (a number as a field filled up to it, set by a
   press, a drag or the keys), `Segmented` (one of a few options, a radio
   group) and `Tip` (a tooltip: what a control does and its shortcut, under
-  it once the pointer rests there, for a button that shows only an icon). Other controls (buttons, checkboxes, menus)
-  are views with a role, `focusable` and `onPress`, as in the examples
-  and `GUIDE.md`. A
+  it once the pointer rests there, for a button that shows only an icon).
+- **`helder.ui.controls`**: the standard controls, `Button`, `Checkbox`
+  and `Switch` so far, their behaviour (`Press`, `Toggle`) and their
+  looks (`Look`): "Controls" below. Others (menus, tabs) are still views
+  with a role, `focusable` and `onPress`, as in the examples and
+  `GUIDE.md`. A
   `UiWindow`'s `Ui.dark` follows the system's appearance
   (`helder.os.App.prefersDark`: the browser's colour scheme, macOS's,
   Windows', GTK's settings).
@@ -751,6 +756,198 @@ parser only with a gradient, image nodes only with `image`). A name none of
 them has, a spread (`{...props}`) or `NodeRenderer.setAttribute` looks the
 name up at run time and links them all.
 
+## Controls
+
+`helder.ui.controls` holds the standard controls, drawn by helder in one
+look on every platform: `Button`, `Checkbox` (`indeterminate` too) and
+`Switch` so far; the rest of the set, and why it has these layers, are in
+[docs/design/controls.md](/docs/design/controls.md). Each control is its
+behaviour (`Press`, `Toggle`), its parts (nodes bound by `ref`), and a
+look's recipe for it (`Look`).
+
+```haxe
+import helder.ui.controls.Look;
+import helder.ui.controls.Standard;
+
+<Standard.Themed look={Look.base}>
+  <Standard.Button variant="primary" onPress={save}>Save</Standard.Button>
+  <Standard.Checkbox label="Remember me" checked={remember} onChange={v -> remember(v)}/>
+  <Standard.Switch label="Dark mode" checked={dark} onChange={v -> dark(v)}/>
+</Standard.Themed>
+```
+
+```tsx
+import { Button, Checkbox, Switch, Themed, Look } from "helder/ui";
+
+<Themed look={Look.base}>
+  <Button variant="primary" onPress={save}>Save</Button>
+  <Checkbox label="Remember me" checked={remember} onChange={remember}/>
+  <Switch label="Dark mode" checked={dark} onChange={dark}/>
+</Themed>
+```
+
+- **Props.** `Button`: `children` (text or views), `label` (its name for
+  assistive technology: an `icon` alone's), `icon` (an `Svg`; alone: a
+  square button), `variant`, `size`, `disabled` (a `Read<Bool>`),
+  `onPress`. `Checkbox` and `Switch`: `label`, `checked` (a
+  `Read<Bool>`), `onChange`, `disabled`, `variant`, `size`;
+  `indeterminate` (a checkbox's mixed). `checked` with no `onChange`: the
+  caller's alone; neither: the control's own state. Each takes `tag`.
+- **Keys and states** (WAI-ARIA's patterns, on helder's access tree):
+
+  | Control | Keys | To assistive technology | Attributes a recipe reads |
+  | --- | --- | --- | --- |
+  | Button | a click, Enter, Space | button, disabled | `data-disabled` |
+  | Checkbox | a click, Space (not Enter) | checkbox, checked or mixed | `data-state=checked\|unchecked\|mixed` |
+  | Switch | a click, Space, Enter | switch, checked | `data-state` |
+
+  Disabled: no press, not focusable. Pressed holds while the pointer is
+  down on it and over it (leaving cancels it); hover is never a touch's;
+  the focus ring is the keyboard's alone (`ui.focusVisible`).
+- **Behaviour without the look**: `Press.of(props, "button")` and
+  `Toggle.of(props, "switch")` (a checkbox for any other name) bind a
+  control's root and parts by `ref` (`p.root`, `p.part("knob")`: in
+  TypeScript `ref={n => p.root(n)}`): the root's slot (the name), role,
+  label, focus, keys, `data-*`, variant and size; a part's slot
+  (`switch-knob`). Their states are signals (`hovered`, `pressed`,
+  `focusVisible`, `checked`, `mixed`) and eased amounts (`eased`).
+  Neither sets a style. `invalid`, `required` and `modal` are in the
+  access tree too (markup's attributes; UI Automation's
+  IsDataValidForForm and IsRequiredForForm, AT-SPI's INVALID_ENTRY,
+  REQUIRED and MODAL, macOS's required and modal, Android's
+  contentInvalid, ARIA's).
+
+### Looks
+
+A look is tokens, a recipe per control, the renderings an app replaced
+and its own parts, compiled once into a `StyleSheet` that `Rules` runs:
+a control's states only change which rules hold. `Look.base` is helder's;
+`<Themed look={look}>` installs one for a subtree (its sheet, and the
+look its controls take); a control under none takes `Look.base` for
+itself.
+
+**Tokens.** Colours are tones (`Look.tone(light, dark)`, as CSS writes a
+colour: `oklch()`, `#hex`), the rest plain values; a recipe reads them
+as `Refs` (colours as token references, light or dark by the window,
+`Ui.dark`). `Look.ref` gives the references for inline markup
+(`color={Look.ref.fg3}`).
+
+| Group | Tokens |
+| --- | --- |
+| Surfaces | `canvas` (the window), `surface` (what rests on it), `raised` (what floats), `well` (fields, tracks), `hover`, `press` (washes), `line`, `edge`, `edgeStrong` |
+| Text | `fg`, `fg2`, `fg3` |
+| Accent | `accent`, `accentStrong`, `accentSoft`, `accentFg` (text on it), `accentInk` (accent text), `focus` (the ring) |
+| Status | `danger`, `dangerStrong`, `dangerSoft`, `dangerFg`, `success`, `warning`, `info` |
+| Other colours | `knob`, `scrim`, `shadow` |
+| Type | `font` (Inter), `display` (Inter Display), `mono` (Geist Mono), `size` 14, `small` 12, `large` 16, `title` 20, `medium` 500 |
+| Shape | `radius` 8, `radiusPanel` 12, `radiusSurface` 16; `controlSm` 28, `control` 36, `controlLg` 44; `padSm` 10, `pad` 14, `padLg` 18; `gap` 8, `icon` 16; `box` 18; `track` 36 by `trackHeight` 20, `thumb` 16 |
+| Motion | `hoverTime` 0.12, `toggleTime` 0.18, `openTime` 0.26, `floatTime` 0.22, `dialogTime` 0.3, `exitTime` 0.15 (seconds); `pressScale` 0.97; `disabledOpacity` 0.42 |
+
+`density: Compact` gives 13-point type, controls of 24, 28 and 36 and
+radii of 6, 10 and 14 (a 4-point grid either way); `accent` one of
+`Blue` (the default), `Violet`, `Teal`, `Green`, `Amber`, `Orange`,
+`Red`, `Pink`, `Graphite`, the same lightness and chroma in another hue.
+A token given alone, `accent`, brings its shade, tint, ink and ring. The
+fonts are named, not bundled: an app adds them (`Asset.font`), else the
+system's stand in.
+
+**Recipes.** A control's recipe is a function of the tokens giving each
+part's style; a style's keys may be states, nested (`checked: {hover:
+{...}}`), and a part's states are its control's:
+
+| Recipe key | While | | Recipe key | While |
+| --- | --- | --- | --- | --- |
+| `hover` | hovered | | `checked`, `mixed` | `data-state=checked`, `=mixed` |
+| `pressed` | pressed | | `selected`, `open` | `data-selected`, `data-state=open` |
+| `focus` | the keyboard's focus | | `invalid`, `readonly` | `data-invalid`, `data-readonly` |
+| `disabled` | `data-disabled` | | `dark` | the dark appearance |
+
+`variants: {variant: {...}, size: {...}}` gives each value's parts,
+`defaults: {variant, size}` what a control takes when its props give
+none. Parts: a button's `root`, `icon`, `label`; a checkbox's `root`,
+`box`, `mark`, `label`; a switch's `root`, `track`, `knob`, `label`.
+Slots are `button`, `button-icon`, ...: the rules a sheet gets are
+ordinary ones, a part's states its root's (`group/switch:hover`).
+TypeScript's styles are written as markup's attributes are (`'row'`,
+`'0 12'`, `'#e11d48'`, `'scale(0.97)'`: `StyleProps`, typed in
+`style.d.ts`), parsed once when the look compiles.
+
+**`look.with({...})`** gives a new look, the patch's keys over the
+look's by part and state, property by property:
+
+```haxe
+static final look = Look.base.with({
+  accent: Violet,
+  tokens: {radius: 6},
+  button: t -> {variants: {variant: {soft: {root: {background: t.accentSoft, color: t.accentInk}}}}},
+  "switch": t -> {knob: {radius: 3}},
+  render: {"switch": Lamp},
+  parts: {card: t -> {padding: 24, radius: t.radiusSurface, background: t.surface}}
+});
+```
+
+```ts
+const look = Look.base.with({
+  accent: "violet",
+  tokens: { radius: 6 },
+  button: t => ({ variants: { variant: { soft: { root: { background: t.accentSoft, color: t.accentInk } } } } }),
+  switch: () => ({ knob: { radius: 3 } }),
+  render: { switch: Lamp }
+});
+```
+
+- **Typed variants.** A look's type names its variants and sizes, the
+  patch's added (Haxe: `with`'s macro reads them from the recipe's
+  literal; TypeScript: `Look<V>`, inferred from the patch). `look.Button`
+  takes the look's: `<look.Button variant="soft">`; `Button` takes
+  `Look.base`'s, and `variant="soft"` there is a compile-time error, at
+  the attribute in Haxe (`"soft" is no button variant of this look`), the
+  TypeScript checker's in TypeScript. A variant is a literal.
+- **A rendering replaced** (`render`): every `Switch` under the look, those
+  inside other widgets too, is the app's component, given the switch's
+  props; it binds `Toggle.of(props, "switch")`, so its behaviour, keys
+  and accessibility stay the switch's, and the recipe still styles its
+  parts:
+
+  ```haxe
+  function Lamp(props:SwitchProps<Dynamic>):View {
+    final sw = Toggle.of(props, "switch");
+    return <view ref={sw.root} direction="row" column-gap={8}>
+      <image ref={sw.part("icon")} src={() -> sw.checked() ? lit : unlit} width={24} height={24}/>
+      <text>{props.label}</text>
+    </view>;
+  }
+  ```
+- **App parts** (`parts`, Haxe's for now): a slot each, styled as a
+  control's root (its states its own), so an app's panels and cards share
+  the look's tokens (`examples/signup`).
+
+**Animated states.** A recipe's states are amounts that ease from 0 to
+1 over the look's time for them (a hover's, a toggle's), and what they
+change blends: colours, opacity, transforms, shadows and rings, through
+the transition compile gives each part (unless the part gives its own),
+on the quad every part already draws as. A press gives 3%; a switch's
+knob travels with `checked` over the toggle's time, springing (a
+Bézier's overshoot); the keyboard's ring fades in. Under reduced motion
+travel jumps to its end and colours still fade. `Press.eased`
+(`Eased`: `hover`, `pressed`, `checked`, `focus`, `open`) has the amounts
+for what draws itself.
+
+**A part's shader** (the escape hatch): `draw:
+PartShader.of(shader)` (`helder.ui.draw.PartShader`, a helder.gfx
+shader taking `DrawParams`: the part's size, the look's accent, text and
+surface colours, the eased states) draws the part's content into a
+texture of its own, in a pass before the window's, shown under the
+part's children. Each such part costs a pass and splits the window's one
+draw (a texture bound between quads), so the default look has none: 500
+buttons draw in one pass, one pipeline and one draw, as 500 plain views
+do (`tests/ui/ControlsBench.hx`, the ui-draw lane, which checks both).
+
+The controls' gallery, every state in light and dark at both densities,
+is `tests/ui/ControlsGallery.hx` against `tests/ui/controls/`.
+`widgets.Theme` is the studio's look from before; it goes once the apps
+move onto looks.
+
 ## Themes
 
 A node's look is its style, or a theme's: a `StyleSheet` of `rules`, each
@@ -775,6 +972,13 @@ Lengths may be token references too: `Length.token("radius", -4)` is
 Colours may be token references, `Color.parse("var(--primary)")`,
 `"var(--ring)/50"`, resolved with the sheet's colours when applied;
 `oklch()` and `oklab()` parse as CSS converts them (Chromium's pixels).
+A TypeScript program's styles are written as markup's attributes are
+(`StyleProps` in `style.d.ts`) and parsed once: a look's when it is made,
+a sheet's own rules once a look has been made with `with` (a TypeScript
+program styles through looks; a sheet alone keeps its values as given).
+A node's own colour may be one too (`color={Look.ref.fg3}`,
+`background="var(--canvas)"`): resolved with its nearest sheet's colours,
+light or dark, whenever they change; one it is given since is its own.
 `ui.theme = sheet` installs one for a window, `node.theme` for a subtree,
 `ui.dark` picks the dark colours and the `dark` rules; every change of a
 state, attribute, variant, sheet or of dark applies them again, at the
@@ -988,7 +1192,8 @@ WM_COMMAND).
 model: roles, names, states, actions) from the nodes: each node's
 `semantics` (in markup: `role`, `label`, `description`, `checked`,
 `selected`, `expanded`, `disabled`, `value-now`, `value-min`,
-`value-max`, `value-text`, `multiselectable`, `live`, `current`), text as labels,
+`value-max`, `value-text`, `multiselectable`, `live`, `current`,
+`invalid`, `required`, `modal`), text as labels,
 focusable nodes as groups; the text fields declare theirs. An `id`
 (`Semantics.identifier`) is what UI tests find a node by, and puts it in
 the tree (a group when it has no role): iOS's and macOS's

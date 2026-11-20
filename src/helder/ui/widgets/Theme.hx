@@ -2,6 +2,10 @@ package helder.ui.widgets;
 
 import helder.ui.*;
 
+// Superseded by helder.ui.controls' looks (Look.base, look.with: the
+// standard controls' tokens and recipes, README.md's "Controls"); kept
+// while the studio, tables and the widgets move onto them, then gone.
+//
 // helder's default look for the widgets, the studio's (apps/studio's
 // Theme): near neutral darks with a hint of cool, the window's base the
 // darkest, panels a step up, fields and hovers above; text in three

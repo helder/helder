@@ -216,7 +216,8 @@ class StyleAttrs {
 		if (v == null) return null;
 		if (Std.isOfType(v, String)) return Color.parse(v);
 		var i:Int = v;
-		return (i >>> 24) == 0 ? Color.rgb(i) : i;
+		// (a token reference's alpha byte is 0: kept, not taken for 0xRRGGBB)
+		return (i >>> 24) == 0 && !(i : Color).isToken ? Color.rgb(i) : i;
 	}
 
 	static function edges(v:Dynamic):EdgesValue {

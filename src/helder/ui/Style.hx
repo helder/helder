@@ -18,6 +18,13 @@ class Style {
 	static final NO_TRACKS:Array<Grid.Track> = [];
 
 	final node:Node;
+	// (Rules writing a node's own token as what it resolves to: not the node's own value)
+	var resolving = false;
+	// (the colours a node may give as tokens, by StyleFields' ids: Node.ownColor)
+	static final BACKGROUND = StyleFields.NAMES.indexOf("background");
+	static final BORDER_COLOR = StyleFields.NAMES.indexOf("borderColor");
+	static final OUTLINE_COLOR = StyleFields.NAMES.indexOf("outlineColor");
+	static final COLOR = StyleFields.NAMES.indexOf("color");
 
 	@:allow(helder.ui.Node) function new(node:Node)
 		this.node = node;
@@ -1322,6 +1329,7 @@ class Style {
 	}
 
 	function set_background(v:Color):Color {
+		if (!resolving) @:privateAccess node.ownColor(BACKGROUND, v);
 		if (helder.ui.motion.Motions.on && helder.ui.motion.Motions.moveColor(node, helder.ui.motion.Motions.BACKGROUND, background, v)) return v;
 		if (themed != null && themed.transition != null && eases("background", background, v)) return v;
 		if (v == background) return v;
@@ -1357,6 +1365,7 @@ class Style {
 	}
 
 	function set_borderColor(v:Color):Color {
+		if (!resolving) @:privateAccess node.ownColor(BORDER_COLOR, v);
 		if (helder.ui.motion.Motions.on && helder.ui.motion.Motions.moveColor(node, helder.ui.motion.Motions.BORDER, borderColor, v)) return v;
 		if (themed != null && themed.transition != null && eases("borderColor", borderColor, v)) return v;
 		if (v == borderColor) return v;
@@ -1411,6 +1420,7 @@ class Style {
 	}
 
 	function set_outlineColor(v:Null<Color>):Null<Color> {
+		if (!resolving) @:privateAccess node.ownColor(OUTLINE_COLOR, v);
 		if (themed != null && themed.transition != null && eases("outlineColor", outlineColor, v)) return v;
 		if (v == outlineColor) return v;
 		theming().outlineColor = v;
@@ -1439,6 +1449,7 @@ class Style {
 	}
 
 	function set_color(v:Null<Color>):Null<Color> {
+		if (!resolving) @:privateAccess node.ownColor(COLOR, v);
 		if (helder.ui.motion.Motions.on && helder.ui.motion.Motions.moveTextColor(node, color, v)) return v;
 		if (themed != null && themed.transition != null && eases("color", color, v)) return v;
 		if (v == color) return v;

@@ -51,6 +51,28 @@ class UiProbe {
 		return [s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft].join(" ");
 	}
 
+	// the slot of the first node with tag, its variant and size (a look's part)
+	@:typescript public static function slot(tag:String):String {
+		ui.update();
+		var n = ui.root.find(tag);
+		return [n.slot, n.variant, n.size].join(" ");
+	}
+
+	// the background of the first node with tag, as #rrggbbaa (its transitions finished)
+	@:typescript public static function background(tag:String):String {
+		ui.update();
+		Clock.finish();
+		ui.update();
+		var c = ui.root.find(tag).style.background;
+		return "#" + StringTools.hex(c.r, 2) + StringTools.hex(c.g, 2) + StringTools.hex(c.b, 2) + StringTools.hex(c.a, 2);
+	}
+
+	// dark mode, as a window's appearance sets it (Ui.dark)
+	@:typescript public static function dark(on:Bool) {
+		ui.dark = on;
+		ui.update();
+	}
+
 	// the tree: a node a line, indented by its depth
 	@:typescript public static function dump():String {
 		ui.update();
@@ -60,7 +82,9 @@ class UiProbe {
 			out.add(StringTools.lpad("", " ", depth * 2) + n.tag);
 			if (Std.isOfType(n, TextNode)) out.add(' "' + (cast n : TextNode).text + '"');
 			var s = n.semantics;
-			if (s != null && s.checked != null) out.add(s.checked ? " checked" : " unchecked");
+			if (s != null && s.role != null && n.slot != null) out.add(" " + n.slot);
+			if (s != null && s.checked != null) out.add(s.mixed ? " mixed" : s.checked ? " checked" : " unchecked");
+			if (s != null && s.label != null && n.slot != null) out.add(' "' + s.label + '"');
 			out.add("\n");
 			for (c in n.children)
 				walk(c, depth + 1);
