@@ -46,6 +46,7 @@ class JniEnv {
 	@:slot(145) static function GetStaticObjectField(env:Ptr, cls:Ptr, f:Ptr):Ptr;
 	@:slot(163) static function NewString(env:Ptr, chars:Ptr, length:Int):Ptr;
 	@:slot(164) static function GetStringLength(env:Ptr, s:Ptr):Int;
+	@:slot(171) static function GetArrayLength(env:Ptr, a:Ptr):Int;
 	@:slot(176) static function NewByteArray(env:Ptr, length:Int):Ptr;
 	@:slot(179) static function NewIntArray(env:Ptr, length:Int):Ptr;
 	@:slot(200) static function GetByteArrayRegion(env:Ptr, a:Ptr, start:Int, length:Int, buf:Ptr):Void;

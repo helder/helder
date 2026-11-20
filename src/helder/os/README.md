@@ -401,6 +401,17 @@ fling's flick, never a mouse event or a scroll from a touch) and
 `tests/os/android-touch.sh` (a drawn ui's fling: the box following the
 finger, gliding on).
 
+## Gamepads
+
+`Gamepads` (polled once a step, after `enable()`: helder.scene's
+`InputMap` reads them) has up to four pads in the browser's standard
+layout. The back ends: the browser's Gamepad API, Linux's
+`/dev/input/js*`, XInput on Windows, GameController on macOS and iOS
+(loaded at the first poll; on macOS read while the window is not key
+too), and on Android the input queue's gamepad and joystick events, a
+slot for each device (a pad's keys are then no UI keys: B is not Back).
+`Gamepads.set` feeds a pad from the program (an on-screen stick).
+
 ## Localization
 
 Read `Locale.current()` for the device's BCP 47 language tag and

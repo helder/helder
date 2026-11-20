@@ -306,11 +306,11 @@ class Activity {
 	public static inline var INPUT_RECORD = 2048;
 	public static inline var INPUT_POINTERS = 10;
 	public static inline var INPUT_HISTORY = 16;
-	// (a record: 0 its type (AINPUT_EVENT_TYPE_KEY 1, _MOTION 2), 4 the
-	// action, 8 the flags, 12 the pointers, 16 the time (ns), 24 the
-	// history's samples, 32 a key's event, 40 its queue; from 48 each
-	// pointer's id, tool type, x, y, pressure (20 bytes); from 248 each
-	// sample's time (ns), then each pointer's x, y (88 bytes))
+	// (a record: 0 its type (AINPUT_EVENT_TYPE_KEY 1, _MOTION 2; 3 a pad's
+	// motion: copyPad), 4 the action, 8 the flags, 12 the pointers, 16 the
+	// time (ns), 24 the history's samples, 32 a key's event, 40 its queue;
+	// from 48 each pointer's id, tool type, x, y, pressure (20 bytes); from
+	// 248 each sample's time (ns), then each pointer's x, y (88 bytes))
 	public static inline var INPUT_POINTER = 48;
 	public static inline var INPUT_SAMPLE = 248;
 
@@ -341,7 +341,7 @@ class Activity {
 			Mem.setPtr(r, 32, ev);
 			Mem.setPtr(r, 40, q);
 			if (type == 2) {
-				copyMotion(ev, r);
+				if (pad(Android.AInputEvent_getSource(ev))) copyPad(ev, r) else copyMotion(ev, r);
 				Mem.setPtr(r, 32, Ptr.nil());
 				Android.AInputQueue_finishEvent(q, ev, 1);
 			}
@@ -388,6 +388,37 @@ class Activity {
 			h++;
 		}
 	}
+
+	// AINPUT_SOURCE_GAMEPAD or _JOYSTICK: Gamepads' (a source is a class's bit and its own)
+	@:hxmc.noGc public static inline function pad(source:Int):Bool
+		return source & 0x401 == 0x401 || source & 0x1000010 == 0x1000010;
+
+	// a pad's motion into record r (type 3: 4 its device, from 48 its axes:
+	// X, Y, Z, RZ, LTRIGGER, RTRIGGER, BRAKE, GAS, HAT_X, HAT_Y)
+	@:hxmc.noGc static function copyPad(ev:Ptr, r:Ptr) {
+		Mem.setI32(r, 0, 3);
+		Mem.setI32(r, 4, Android.AInputEvent_getDeviceId(ev));
+		var i = 0;
+		while (i < PAD_AXES) {
+			Mem.setF32(r, INPUT_POINTER + i * 4, Android.AMotionEvent_getAxisValue(ev, padAxis(i), 0));
+			i++;
+		}
+	}
+
+	public static inline var PAD_AXES = 10;
+
+	@:hxmc.noGc static inline function padAxis(i:Int):Int
+		return switch i {
+			case 2: 11;
+			case 3: 14;
+			case 4: 17;
+			case 5: 18;
+			case 6: 23;
+			case 7: 22;
+			case 8: 15;
+			case 9: 16;
+			case _: i;
+		}
 
 	// (the program's thread) the next event's record (nil: none), there until popInput
 	@:hxmc.noGc public static function peekInput():Ptr {

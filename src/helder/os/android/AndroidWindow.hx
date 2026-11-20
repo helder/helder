@@ -62,6 +62,10 @@ class AndroidWindow {
 	// what else hands the program's thread its events at each pump (a web
 	// view's, helder.ui.platform.AndroidWebView: woken by MainThread.wake)
 	public static final pumped:Array<Void->Void> = [];
+	// a pad's keys and motion (Gamepads, once enabled: AndroidGamepads); a
+	// key it takes is no UI key (true: handled)
+	static var padKey:Null<Ptr->Bool> = null;
+	static var padMotion:Null<Ptr->Void> = null;
 	// a new activity in the running process (Glue: the content moves to it)
 	@:allow(helder.os.android) static var recreated:Null<Void->Void> = null;
 
@@ -329,15 +333,19 @@ class AndroidWindow {
 		while (true) {
 			var r = Activity.peekInput();
 			if (r.isNull()) break;
-			if (Mem.getI32(r, 0) == 2) { // AINPUT_EVENT_TYPE_MOTION
+			var type = Mem.getI32(r, 0);
+			if (type == 2) { // AINPUT_EVENT_TYPE_MOTION
 				if (motionCopy.isNull()) motionCopy = LibC.malloc(Activity.INPUT_RECORD);
 				LibC.memcpy(motionCopy, r, Activity.INPUT_RECORD);
 				Activity.popInput();
 				motion(motionCopy, onEvent);
+			} else if (type == 3) {
+				if (padMotion != null) padMotion(r);
+				Activity.popInput();
 			} else {
 				var ev = Mem.getPtr(r, 32), q = Mem.getPtr(r, 40);
 				Activity.popInput();
-				Android.AInputQueue_finishEvent(q, ev, key(ev, onEvent));
+				Android.AInputQueue_finishEvent(q, ev, padKey != null && padKey(ev) ? 1 : key(ev, onEvent));
 			}
 		}
 	}
