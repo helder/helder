@@ -315,7 +315,27 @@ Network.online();                                  // a signal, like Settings'
 var s = Permissions.request(Camera);               // in a coroutine: Granted, Denied, Prompt, Unsupported
 Share.share({text: "A course", url: "https://example.com/c/3"});
 App.onOpen = urls -> route(urls[0]);               // a deep link (helder.json's "links"), or a file's path
+var photo = Photos.take();                         // the camera's JPEG, null when cancelled
+var here = Location.current({precise: false});     // null when denied or unknown
+if (Biometrics.kind() != None && Biometrics.verify("Unlock your notes")) open();
+var save = Paths.data() + "/save.json";            // the app's own directory, made
+StatusBar.style(Light);                            // light icons over a dark app
 ```
+
+| | iOS | Android | macOS | Windows | Linux | Web |
+| --- | --- | --- | --- | --- | --- | --- |
+| Network | yes | yes | yes | online only | yes | yes |
+| Share | yes | yes | yes | false | false | yes |
+| Permissions | yes | yes | yes | notifications | notifications | some |
+| Notifications | yes | yes | app bundles | false | false | while open |
+| Photos (pick) | yes | yes | open dialog | open dialog | none | file input |
+| Photos (take) | yes | yes | null | null | null | file input |
+| Location | yes | yes | app bundles | null | null | yes |
+| Biometrics | yes | yes | yes | none | none | none |
+| Paths | yes | yes | yes | yes | yes | null |
+| DeviceInfo | yes | yes | yes | yes | yes | the browser's |
+| StatusBar | yes | yes | nothing | nothing | nothing | nothing |
+| Deep links | yes | yes | yes | none | none | the page's URL |
 
 **Network**: `online` and `kind` (`none`, `wifi`, `cellular`, `wired`,
 `other`), signals sampled as Settings are (about once a second while
@@ -383,6 +403,81 @@ No permission is asked.
 | macOS, Windows | the open dialog (FileDialog) filtered to images: one |
 | Web | a hidden `<input type=file accept=image/*>` (multiple for more than one): call it from a user's gesture, or within a few seconds of one |
 | Linux | none |
+
+**Photos.take**, the camera: the coroutine `take(?{front})`, a photo the user takes as a
+JPEG, null when cancelled or where there is no camera. iOS needs
+helder.json's usage string `camera` (a build that calls it without one
+fails at the call); Android's camera app takes the photo and needs no
+permission (unless the manifest has CAMERA for another of the program's
+requests: then it is asked for first).
+
+| | |
+| --- | --- |
+| iOS | UIImagePickerController, its source the camera (front: the front camera where there is one), a delegate made at run time; UIImageJPEGRepresentation of the photo (0.9). The simulator has no camera: null at once |
+| Android | MediaStore's ACTION_IMAGE_CAPTURE through org.hxmc.Request, EXTRA_OUTPUT a file of the app's cache served by org.hxmc.Files (write-granted to the camera app while it takes it); read on a thread of its own, then deleted. Front: the extras camera apps read (no standard one) |
+| Web | the photo picker's file input with `capture` (`user` for front, else `environment`): a phone's camera, a desktop's file picker |
+| macOS, Windows, Linux | null |
+
+**Location**: the coroutine `current(?{precise})`, one fix, and
+`watch(f, ?{precise})`, each fix on the app's loop until the function it
+returns is called. A `GeoPosition` is `latitude`, `longitude`, `accuracy`
+(metres), `altitude`, `heading`, `speed` (null where unknown) and `time`
+(ms since 1970). The permission is `Permissions`' `Location`, asked for
+while it is `Prompt`; null when denied or there is no fix. `precise:
+false` asks for coarse accuracy.
+
+| | |
+| --- | --- |
+| iOS, macOS | CLLocationManager, a delegate made at run time: requestLocation, or startUpdatingLocation while a watch lasts; coarse: kCLLocationAccuracyThreeKilometers. macOS: an app bundle's (a bare executable's request is never answered: null) |
+| Android | LocationManager from the best provider enabled that the app may use (gps when precise and ACCESS_FINE_LOCATION is granted, else network): getCurrentLocation (API 30), else the last known fix under a minute old or requestSingleUpdate; a watch by requestLocationUpdates; their answers to org.hxmc.Locator. ACCESS_COARSE_LOCATION and ACCESS_FINE_LOCATION added to the manifest; coarse asks for COARSE alone |
+| Web | `navigator.geolocation` (getCurrentPosition, watchPosition), which asks by itself |
+| Windows, Linux | null |
+
+**Biometrics**: `kind()`, `None`, `Face`, `Fingerprint` or `Other` (none
+where nothing is enrolled), and the coroutine `verify(reason)`: whether
+the user is verified, the system's prompt showing the reason. iOS needs
+the usage string `faceid` (NSFaceIDUsageDescription).
+
+| | |
+| --- | --- |
+| iOS, macOS | LocalAuthentication's LAContext: canEvaluatePolicy and biometryType, evaluatePolicy (LAPolicyDeviceOwnerAuthenticationWithBiometrics) |
+| Android | the framework's BiometricPrompt (no androidx), the reason its title, the system's cancel; org.hxmc.Biometric its callback; BiometricManager.canAuthenticate (BIOMETRIC_WEAK from API 30) and the system's features for the kind. USE_BIOMETRIC added to the manifest |
+| Windows, Linux, Web | `None`, false |
+
+**Paths**: `data()` (persistent, the app's own), `cache()` (the system may
+empty it), `temp()` and `documents()` (the user's: where they see the
+app's files), each absolute and made when missing; null on the web. The
+desktop's data and cache are under the app's name: macOS's bundle id,
+else the executable's name. `Store` keeps its files under `data`'s place.
+
+| | |
+| --- | --- |
+| iOS | NSFileManager's Application Support, Caches, Documents and temporaryDirectory of the app's container; Documents in the Files app (Info.plist's UIFileSharingEnabled and LSSupportsOpeningDocumentsInPlace, set by a build that calls `documents()`) |
+| macOS | the same under ~/Library, data and cache in `<id>/`; ~/Documents |
+| Android | the files directory (ANativeActivity's internalDataPath), getCacheDir (temp too), getExternalFilesDir(DIRECTORY_DOCUMENTS) |
+| Windows | SHGetKnownFolderPath: `RoamingAppData\<name>`, `LocalAppData\<name>`, Documents; GetTempPathW |
+| Linux | `$XDG_DATA_HOME/<name>` (~/.local/share), `$XDG_CACHE_HOME/<name>` (~/.cache), `$TMPDIR` (/tmp), user-dirs.dirs' XDG_DOCUMENTS_DIR (~/Documents) |
+
+**DeviceInfo**: `get()`, `{model, manufacturer, os, osVersion, kind}`, kind
+`Phone`, `Tablet`, `Desktop` or `Web`; "" where the system does not tell.
+
+| | |
+| --- | --- |
+| iOS | hw.machine (the simulator's SIMULATOR_MODEL_IDENTIFIER), UIDevice's systemName, systemVersion and idiom |
+| macOS | hw.model, kern.osproductversion |
+| Android | android.os.Build's MODEL and MANUFACTURER, Build.VERSION.RELEASE; a tablet from a smallest width of 600 dp |
+| Windows | RtlGetVersion; the registry's BIOS SystemProductName and SystemManufacturer |
+| Linux | /sys/class/dmi/id's product_name and sys_vendor; /etc/os-release's NAME and VERSION_ID as the version |
+| Web | `navigator.userAgentData`'s brand and platform, else the userAgent's; the vendor |
+
+**StatusBar**: `style(s)`, `Light` (light icons, over a dark app), `Dark`
+or `Auto` (the system's appearance, `Settings.dark`), and `hidden(h)`.
+Nothing on the desktop and the web.
+
+| | |
+| --- | --- |
+| iOS | the root view controller's preferredStatusBarStyle and prefersStatusBarHidden (methods added to its class at run time), setNeedsStatusBarAppearanceUpdate |
+| Android | WindowInsetsController's APPEARANCE_LIGHT_STATUS_BARS and _NAVIGATION_BARS, statusBars() hidden or shown (API 30), else the decor view's SYSTEM_UI_FLAG_LIGHT_STATUS_BAR, _LIGHT_NAVIGATION_BAR and _FULLSCREEN; `Auto` follows `Settings.dark` |
 
 **Deep links**: helder.json's `"links": {"schemes", "domains"}`
 (helder.cli's README), each URL to `App.onOpen`, at launch too (kept until

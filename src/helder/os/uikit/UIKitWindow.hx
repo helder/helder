@@ -57,6 +57,9 @@ class UIKitWindow {
 	static var due = false;
 	static var vsyncAt = 0.0;
 	static var hidden = false;
+	// helder.os.StatusBar's: UIStatusBarStyle (default 0, lightContent 1, darkContent 3), hidden
+	static var barStyle = 0;
+	static var barHidden = false;
 	static final event = new Event();
 	// the App.run callback, for the view's and the delegate's events
 	static var onEvent:Null<Event->Void>;
@@ -136,16 +139,31 @@ class UIKitWindow {
 
 	static var controllerClass = Ptr.nil();
 
-	// the controller's class: its status bar and home indicator hidden while immersive
+	// the controller's class: its status bar and home indicator hidden while
+	// immersive, the status bar's style and hiding helder.os.StatusBar's
 	static function controllerMethods(cls:Ptr, replace:Bool) {
-		for (sel in [ObjC.sel("prefersStatusBarHidden"), ObjC.sel("prefersHomeIndicatorAutoHidden")]) {
-			if (replace) Runtime.class_replaceMethod(cls, sel, Callback.addr(prefersHidden), Mem.cstr("B@:")) else
-				Runtime.class_addMethod(cls, sel, Callback.addr(prefersHidden), Mem.cstr("B@:"));
-		}
+		function add(sel:Ptr, imp:Ptr, types:Ptr)
+			if (replace) Runtime.class_replaceMethod(cls, sel, imp, types) else Runtime.class_addMethod(cls, sel, imp, types);
+		add(ObjC.sel("prefersStatusBarHidden"), Callback.addr(prefersBarHidden), Mem.cstr("B@:"));
+		add(ObjC.sel("prefersHomeIndicatorAutoHidden"), Callback.addr(prefersHidden), Mem.cstr("B@:"));
+		add(ObjC.sel("preferredStatusBarStyle"), Callback.addr(preferredStyle), Mem.cstr("q@:"));
 	}
 
 	@:hxmc.callback static function prefersHidden(self:Ptr, cmd:Ptr):Int
 		return hidden ? 1 : 0;
+
+	@:hxmc.callback static function prefersBarHidden(self:Ptr, cmd:Ptr):Int
+		return hidden || barHidden ? 1 : 0;
+
+	@:hxmc.callback static function preferredStyle(self:Ptr, cmd:Ptr):Int64
+		return barStyle;
+
+	// helder.os.StatusBar: the style and hiding asked of the controller again
+	static function statusBar(style:Int, hide:Bool) {
+		barStyle = style;
+		barHidden = hide;
+		if (current != null) Msg.v(current.controller, ObjC.sel("setNeedsStatusBarAppearanceUpdate"));
+	}
 
 	// Window.immersive: the status bar and the home indicator hidden (the controller asked again)
 	function setImmersive(on:Bool) {

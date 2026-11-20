@@ -46,6 +46,14 @@ class WebServices {
 		return ask((id, done) -> Arena.scoped(a -> Services.share(a.cstring(t), a.cstring(u), done, id))) == 1;
 	}
 
+	// (navigator.userAgentData's, else the userAgent's: the browser, its maker, the system, its version; a line each)
+	public static function device():helder.os.DeviceInfo.DeviceDetails {
+		var h = Services.device_info();
+		var f = (h == 0 ? "" : @:privateAccess CanvasWindow.take(h)).split("\n");
+		while (f.length < 4) f.push("");
+		return {model: f[0], manufacturer: f[1], os: f[2], osVersion: f[3], kind: Web};
+	}
+
 	static function code(p:Permission):Int
 		return switch p {
 			case Camera: 0;
@@ -66,6 +74,8 @@ class WebServices {
 	public static function status(p:Permission):PermissionStatus
 		return Unsupported;
 
+	public static function device():helder.os.DeviceInfo.DeviceDetails
+		return null;
 	#end
 }
 
@@ -77,5 +87,7 @@ class WebServices {
 	// a file for the next share (navigator.share's files, where canShare takes them), then the share: done(id, 1 shared, 0 not)
 	@:hxmc.fast @:hxmc.len(data, n) static function share_file(name:CString, data:hxmc.ReadOnlySpan<UInt8>, n:Int, type:CString):Void;
 	static function share(text:CString, url:CString, done:Ptr, id:Int):Void;
+	// the device's lines (a string handle)
+	static function device_info():Int;
 }
 #end

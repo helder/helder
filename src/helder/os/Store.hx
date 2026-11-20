@@ -10,7 +10,7 @@ import hxmc.unsafe.*;
 //
 //   Linux     $XDG_DATA_HOME/<name>/store.json (~/.local/share/<name>/)
 //   macOS     ~/Library/Application Support/<name>/store.json
-//   Windows   %APPDATA%\<name>\store.json
+//   Windows   RoamingAppData\<name>\store.json (%APPDATA%)
 //   Android   the app's files directory (ANativeActivity's internalDataPath)/<name>.json
 //   iOS       the app's Library/Application Support/<name>.json ($HOME is its container)
 //   the web   localStorage, the item "helder.store/<name>" (an origin's: a
@@ -92,28 +92,13 @@ class Store {
 	}
 
 	// (the platform's file for the app's data, its directory made when missing)
+	// (Paths' data: the app's own on a phone, the desktop's under the store's name)
 	static function place(name:String):String {
-		var d:String, file = name + ".json";
-		if (Platform.os() == 3) d = "." else if (Platform.apple() >= 1) d = Sys.getEnv("HOME") + "/Library/Application Support" else if (Platform.target() >= 9)
-			d = #if (hxmc.target == "wasm32-wasi") "." #else androidFiles() #end else {
-			file = "store.json";
-			d = if (Platform.os() == 1) Sys.getEnv("HOME") + "/Library/Application Support/" + name else if (Platform.os() == 2)
-				(Sys.getEnv("APPDATA") ?? Sys.getEnv("USERPROFILE") + "\\AppData\\Roaming") + "\\" + name else
-				(Sys.getEnv("XDG_DATA_HOME") ?? Sys.getEnv("HOME") + "/.local/share") + "/" + name;
-		}
+		var phone = Platform.apple() >= 1 || Platform.target() >= 9;
+		var d = Platform.os() == 3 ? "." : @:privateAccess Paths.find(14, phone ? null : name) ?? ".";
 		try if (!sys.FileSystem.exists(d)) sys.FileSystem.createDirectory(d) catch (_:Dynamic) {}
-		return d + "/" + file;
+		return d + "/" + (phone ? name + ".json" : "store.json");
 	}
-
-	#if (hxmc.target != "wasm32-wasi")
-	// (Android: ANativeActivity.internalDataPath, the app's files directory)
-	static function androidFiles():String {
-		var a = helder.os.android.Activity.activity;
-		if (a.isNull()) return ".";
-		var p:CString = cast Mem.getPtr(a, 32);
-		return p.isNull() ? "." : p.toString();
-	}
-	#end
 
 	inline function item():String
 		return "helder.store/" + name;

@@ -85,19 +85,46 @@ class Bundle {
 		return Plist.xml(PDict(keys));
 	}
 
-	// the Info.plist key of why the app asks for a permission (helder.os.Permissions'; null: none needed)
+	// the Info.plist key of why the app asks for a permission (helder.os.Permissions', faceid Biometrics'; null: none needed)
 	public static function usageKey(permission:String):Null<String>
 		return switch permission {
 			case "camera": "NSCameraUsageDescription";
 			case "microphone": "NSMicrophoneUsageDescription";
 			case "photos": "NSPhotoLibraryUsageDescription";
 			case "location": "NSLocationWhenInUseUsageDescription";
+			case "faceid": "NSFaceIDUsageDescription";
 			case _: null;
 		}
 
 	// the permissions used whose usage strings are not given (an iOS app asking without one ends)
 	public static function missingUsage(used:Array<String>, given:Array<String>):Array<String>
 		return [for (p in used) if (usageKey(p) != null && !given.contains(p)) p];
+
+	// keys set true in a bundle's Info.plist written already, and its hash in
+	// CodeResources (a program's keys by use: Usage; false: none was new)
+	public static function addKeys(info:String, resources:Null<String>, keys:Array<String>):Bool {
+		var plist = Plist.parse(sys.io.File.getContent(info));
+		var d = switch plist {
+			case PDict(d): d;
+			case _: return false;
+		}
+		var fresh = [for (k in keys) if (d.get(k) == null) k];
+		if (fresh.length == 0) return false;
+		for (k in fresh) d.set(k, PBool(true));
+		var bytes = Plist.xml(plist);
+		sys.io.File.saveBytes(info, bytes);
+		if (resources != null && sys.FileSystem.exists(resources))
+			switch Plist.parse(sys.io.File.getContent(resources)) {
+				case PDict(r):
+					switch r.get("files") {
+						case PDict(files): files.set("Info.plist", PData(haxe.crypto.Sha1.make(bytes)));
+						case _:
+					}
+					sys.io.File.saveBytes(resources, Plist.xml(PDict(r)));
+				case _:
+			}
+		return true;
+	}
 
 	// Info.plist's keys of the app's usage strings and URL schemes
 	public static function serviceKeys(id:String, usage:Null<haxe.DynamicAccess<String>>, schemes:Array<String>):Map<String, PValue> {

@@ -246,7 +246,8 @@ for editors' completion):
   `apple-app-site-association`).
 - **`targets.ios.usage`**: why the app asks for each permission it
   requests (`helder.os.Permissions`: `camera`, `microphone`, `photos`,
-  `location`), Info.plist's usage strings. A build that requests one
+  `location`; `Camera.take` the camera, `Location` the location,
+  `Biometrics.verify` `faceid`), Info.plist's usage strings. A build that requests one
   without its string fails at the call, as iOS would end the app there.
   Android's manifest gets each requested permission's entry by itself.
 - **`run`**: helder.run's (below, "helder.run").

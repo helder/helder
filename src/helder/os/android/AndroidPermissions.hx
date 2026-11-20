@@ -22,7 +22,11 @@ class AndroidPermissions {
 	@:coroutine public static function request(p:Permission):PermissionStatus {
 		var s = status(p);
 		if (s != Prompt) return s;
-		var names = manifest(p, sdk());
+		return ask(manifest(p, sdk())) ? Granted : Denied;
+	}
+
+	// the system's dialog for these permissions (android.permission.*): whether one was granted
+	@:coroutine @:allow(helder.os) static function ask(names:Array<String>):Bool {
 		var grants:Array<Int> = Await.answer(done -> MainThread.post(() -> {
 			try {
 				AndroidRequest.start(i -> {
@@ -36,10 +40,10 @@ class AndroidPermissions {
 				done([]);
 			}
 		}));
-		return grants.contains(0) ? Granted : Denied;
+		return grants.contains(0);
 	}
 
-	static inline function sdk():Int
+	@:allow(helder.os) static inline function sdk():Int
 		return Mem.getI32(Activity.activity, 48);
 
 	// the manifest's permissions of p on this system (none: nothing to ask)
@@ -50,7 +54,7 @@ class AndroidPermissions {
 					"android.permission." + n
 		];
 
-	static function statusNow(p:Permission):PermissionStatus {
+	@:allow(helder.os) static function statusNow(p:Permission):PermissionStatus {
 		if (Activity.activity.isNull()) return Unsupported;
 		var names = manifest(p, sdk());
 		if (names.length == 0) {
@@ -71,6 +75,20 @@ class AndroidPermissions {
 		var before = Jni.bool(preferences(), Jni.method(Jni.cls("android.content.SharedPreferences"), "getBoolean", "(Ljava/lang/String;Z)Z"), s.toI64(), 0);
 		Jni.deleteLocal(s);
 		return before && !again ? Denied : Prompt;
+	}
+
+	// (the main thread) whether the app's manifest asks for that permission (android.permission.*)
+	@:allow(helder.os) static function declared(name:String):Bool {
+		var pm = Jni.obj(Jni.activity, Jni.method(Jni.cls("android.content.Context"), "getPackageManager", "()Landroid/content/pm/PackageManager;"));
+		var pkg = Jni.obj(Jni.activity, Jni.method(Jni.cls("android.content.Context"), "getPackageName", "()Ljava/lang/String;"));
+		// (PackageManager.GET_PERMISSIONS)
+		var info = Jni.obj(pm, Jni.method(Jni.cls("android.content.pm.PackageManager"), "getPackageInfo", "(Ljava/lang/String;I)Landroid/content/pm/PackageInfo;"),
+			pkg.toI64(), 4096);
+		var all = Jni.JniEnv.GetObjectField(Jni.env, info, Jni.field(Jni.cls("android.content.pm.PackageInfo"), "requestedPermissions", "[Ljava/lang/String;"));
+		if (all.isNull()) return false;
+		for (i in 0...Jni.JniEnv.GetArrayLength(Jni.env, all))
+			if (Jni.fromString(Jni.JniEnv.GetObjectArrayElement(Jni.env, all, i)) == name) return true;
+		return false;
 	}
 
 	static function preferences():Ptr {

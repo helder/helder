@@ -143,6 +143,10 @@ class Ios {
 			return copied.keys;
 		}
 		return BuildCommand.build(e, exe, mode, server, words.concat(extra ?? []), () -> {
+			// (the keys the program needs by use, set in the bundle's Info.plist by the build: helder.pack.ios.Usage)
+			info = File.getBytes('$app/Info.plist');
+			files.set("Info.plist", info);
+			resources = File.getBytes('$app/_CodeSignature/CodeResources');
 			if (sign != null) {
 				// (the APIs the program uses declared; then signed for distribution)
 				var bin = File.getBytes(exe);

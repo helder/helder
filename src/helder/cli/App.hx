@@ -146,7 +146,7 @@ typedef IosOptions = {
 	privacy:Null<Dynamic<Array<String>>>,
 	// Info.plist's keys over helder's (JSON's values: strings, booleans, integers, arrays, objects); null: none
 	infoPlist:Null<Dynamic>,
-	// why the app asks for each permission (camera, microphone, photos, location): Info.plist's usage strings; null: none given
+	// why the app asks for each permission (camera, microphone, photos, location, faceid): Info.plist's usage strings; null: none given
 	usage:Null<Dynamic<String>>,
 	// "portrait", "landscape" or "any"; the status bar hidden
 	orientation:String,

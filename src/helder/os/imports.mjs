@@ -139,8 +139,37 @@ export default function (host) {
 			s.onchange = () => (permissions.state[i] = permissions.of(s.state));
 		}, () => (permissions.state[i] = 3));
 	const shared = [];
-	// helder.os.Photos' files read, until taken
+	// helder.os.Photos' files read, until taken (and take's photo)
 	const photos = [];
+	const pick = (max, capture, done, id) => {
+		if (typeof document == 'undefined') return host.call(done, id, 0);
+		const input = document.createElement('input');
+		input.type = 'file';
+		input.accept = 'image/*';
+		input.multiple = max > 1;
+		if (capture) input.setAttribute('capture', capture);
+		input.style.display = 'none';
+		let answered = false;
+		const answer = async (files) => {
+			if (answered) return;
+			answered = true;
+			input.remove();
+			photos.length = 0;
+			for (const f of files.slice(0, max)) photos.push(new Uint8Array(await f.arrayBuffer()));
+			host.call(done, id, photos.length);
+		};
+		input.addEventListener('change', () => answer([...input.files]));
+		input.addEventListener('cancel', () => answer([]));
+		document.body.append(input);
+		input.click();
+	};
+	// helder.os.Location's last fix (latitude, longitude, accuracy, altitude,
+	// heading, speed, time: NaN where unknown) and the watches' ids
+	const located = new Float64Array(7), watches = new Map();
+	const fix = (p) => {
+		const c = p.coords;
+		located.set([c.latitude, c.longitude, c.accuracy, c.altitude ?? NaN, c.heading ?? NaN, c.speed ?? NaN, p.timestamp]);
+	};
 	// helder.os.Notifications': each key's timer, then its Notification
 	const notices = new Map();
 	let first = true, ratio = pixelRatio();
@@ -740,26 +769,39 @@ export default function (host) {
 			n?.shown?.close();
 			notices.delete(key);
 		},
-		photos_pick(max, done, id) {
-			if (typeof document == 'undefined') return host.call(done, id, 0);
-			const input = document.createElement('input');
-			input.type = 'file';
-			input.accept = 'image/*';
-			input.multiple = max > 1;
-			input.style.display = 'none';
-			let answered = false;
-			const answer = async (files) => {
-				if (answered) return;
-				answered = true;
-				input.remove();
-				photos.length = 0;
-				for (const f of files.slice(0, max)) photos.push(new Uint8Array(await f.arrayBuffer()));
-				host.call(done, id, photos.length);
-			};
-			input.addEventListener('change', () => answer([...input.files]));
-			input.addEventListener('cancel', () => answer([]));
-			document.body.append(input);
-			input.click();
+		photos_pick: (max, done, id) => pick(max, null, done, id),
+		camera_take: (front, done, id) => pick(1, front ? 'user' : 'environment', done, id),
+		location_current(precise, done, id) {
+			const geo = globalThis.navigator?.geolocation;
+			if (!geo) return host.call(done, id, 0);
+			geo.getCurrentPosition((p) => {
+				fix(p);
+				host.call(done, id, 1);
+			}, () => host.call(done, id, 0), { enableHighAccuracy: precise === 1, timeout: 30000 });
+		},
+		location_watch(precise, moved, id) {
+			const geo = globalThis.navigator?.geolocation;
+			if (!geo) return;
+			watches.set(id, geo.watchPosition((p) => {
+				fix(p);
+				host.call(moved, id, 1);
+			}, () => {}, { enableHighAccuracy: precise === 1 }));
+		},
+		location_stop(id) {
+			if (watches.has(id)) navigator.geolocation.clearWatch(watches.get(id));
+			watches.delete(id);
+		},
+		location_value: (k) => located[k],
+		// helder.os.DeviceInfo's lines: the browser, its vendor, the system, its version
+		device_info() {
+			const n = globalThis.navigator ?? {}, ua = n.userAgent ?? '', brands = n.userAgentData?.brands ?? [];
+			const brand = brands.find((b) => !/not.?a.?brand|chromium/i.test(b.brand)) ?? brands[0];
+			const named = /(Firefox|Edg|Chrome|Version)\/([\d.]+)/.exec(ua);
+			const browser = brand ? `${brand.brand} ${brand.version}` : named ? `${{ Edg: 'Edge', Version: 'Safari' }[named[1]] ?? named[1]} ${named[2]}` : '';
+			const os = n.userAgentData?.platform || (/Android/.test(ua) ? 'Android' : /iPhone|iPad|iPod/.test(ua) ? 'iOS' : /Mac/.test(ua) ? 'macOS' : /Windows/.test(ua) ? 'Windows' : /Linux|CrOS/.test(ua) ? 'Linux' : '');
+			const v = /Android ([\d.]+)|OS ([\d_]+) like Mac|Mac OS X ([\d_.]+)|Windows NT ([\d.]+)/.exec(ua);
+			const version = v ? (v[1] ?? v[2] ?? v[3] ?? v[4]).replace(/_/g, '.') : '';
+			return host.handles.add([browser, n.vendor ?? '', os, version].join('\n'));
 		},
 		photos_length: (i) => photos[i]?.length ?? 0,
 		photos_take(i, p, n) {

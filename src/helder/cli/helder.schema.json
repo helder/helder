@@ -208,9 +208,9 @@
             "infoPlist": {"type": "object", "description": "Info.plist's keys, over helder's (NSAppTransportSecurity, NSLocalNetworkUsageDescription...)"},
             "usage": {
               "type": "object",
-              "description": "Why the app asks for each permission it uses (helder.os.Permissions), Info.plist's usage strings: a build that asks for one without its string fails.",
+              "description": "Why the app asks for each permission it uses (helder.os.Permissions, Camera, Location; faceid: Biometrics), Info.plist's usage strings: a build that asks for one without its string fails.",
               "additionalProperties": false,
-              "properties": {"camera": {"type": "string"}, "microphone": {"type": "string"}, "photos": {"type": "string"}, "location": {"type": "string"}}
+              "properties": {"camera": {"type": "string"}, "microphone": {"type": "string"}, "photos": {"type": "string"}, "location": {"type": "string"}, "faceid": {"type": "string"}}
             },
             "publish": {"type": "array", "items": {"enum": ["testflight"]}},
             "store": {"$ref": "#/$defs/store"}

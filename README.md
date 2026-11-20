@@ -84,16 +84,16 @@ the node tree ([cli](src/helder/cli/README.md), "Headless runs").
 
 ## Roadmap
 
-**Lately**: [app services](src/helder/os/README.md): network status,
-permissions, the share sheet, local notifications, the photo picker and
-incoming deep links; [navigation](src/helder/ui/README.md#navigation);
+**Lately**: [app services](src/helder/os/README.md#app-services): network
+status, permissions, the share sheet, local notifications, the photo picker,
+the camera, location, biometrics, the app's directories, device info, the
+status bar's style and incoming deep links; [navigation](src/helder/ui/README.md#navigation);
 gamepads on every platform; http, https and WebSockets on each platform's
 own stack; [localization](src/helder/os/README.md#localization); the
 platform's settings as signals; new [docs](https://helder.build/docs/).
 
 **Now**: standard controls with a default look and forms; text input on
-phones; the camera, geolocation, biometrics, the app's directories, device
-info and the status bar's style.
+phones.
 
 **Packages**, for what needs a library or glue the system lacks: in-app
 purchases first (StoreKit from Objective-C, Play Billing vendored as dex,
