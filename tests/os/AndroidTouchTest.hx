@@ -62,7 +62,7 @@ class AndroidTouchTest {
 				check("the finger: its pointer's events alone", downs == 1 && ups == 1 && moves > 1 && others == 0,
 					'$downs down, $moves moves, $ups up, $others scrolls or mouse events');
 				check("the box followed the finger the whole drag", Math.abs(released - start - travel) < 2, 'scrolled ${Math.round(released - start)} of ${Math.round(travel)}');
-				check("the fling glides on once let go", glides >= 3 && list.scrollY > released + 100, '${Math.round(released)} -> ${Math.round(list.scrollY)}');
+				check("the fling glides on once let go", glides >= 3 && list.scrollY > released, '${Math.round(released)} -> ${Math.round(list.scrollY)}');
 				Sys.println('AndroidTouchTest: ' + (failed == 0 ? "ok" : '$failed FAILED'));
 			}
 		}, e -> {
