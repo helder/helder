@@ -6,6 +6,7 @@
 			"pages": [
 				"start",
 				"ui",
+				"typescript",
 				"settings",
 				"publishing",
 				"cli"

@@ -1,6 +1,13 @@
 # Publishing
 
-`helder publish` builds a release, signs it and uploads it: to helder.run for the web, to Google Play, to TestFlight, and to Apple's notary service.
+Choose a destination based on who needs the build. Test the web version first if you’re sending it to someone for feedback.
+
+| I want to… | Command | What it needs |
+|---|---|---|
+| Send someone a temporary browser link | `npx helder share` | A project that builds for the web. |
+| Give the app a permanent web address | `npx helder publish --run` | A `run.name` and GitHub sign-in or a trusted Actions workflow. |
+| Upload to a store | `npx helder publish --play` or `--testflight` | Store access, app setup and signing credentials. |
+| Notarize a desktop macOS release | `npx helder publish --notarize` | A Mac and Apple signing and notarization credentials. |
 
 ```sh
 npx helder publish               # every destination helder.json names
@@ -116,7 +123,7 @@ A project accepts publishes only from repositories it trusts. The first publish 
 
 ## The stores
 
-Helder builds, signs and uploads through each store's own API. It does not use fastlane, Transporter or Xcode. Every secret below is either a file's path or the file's text, so it can be a CI secret. None is printed.
+Helder builds, signs and uploads through each store’s API. Set up the app and its credentials before running the command. You can supply credentials through your CI environment.
 
 ### Google Play
 

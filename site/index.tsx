@@ -287,25 +287,31 @@ for (const ex of examples) {
 const starters = theme.starters;
 Static.write(site.dir + "/examples/index.html", Static.document(<html lang="en">
 	<Head title={"Examples · " + theme.brand} about="helder's examples: apps and games in TypeScript and Haxe, compiled to native code and WebAssembly, playing in your browser." base="../" numbers={false} />
-	<body>
+	<body class="examples-page">
 		{theme.notice !== "" ? <div class="notice">{theme.notice}</div> : null}
 		<Top current="examples" />
 		<main class="wrap">
-			<section class="intro">
+			<section class="intro examples-intro">
 				<h1>Examples</h1>
-				<p class="lede">{"Apps and games in TypeScript and Haxe, compiled to native code and WebAssembly. The " + playable.length + " with a Play button run here, in your browser."}</p>
+				<p class="lede">Run a demo in your browser, read the source, or start from a project you can edit.</p>
+				<nav class="example-jumps" aria-label="Browse examples">
+					{starters.items.length > 0 ? <a class="btn" href="examples/#studio-examples">Open in Studio</a> : null}
+					<a class="btn" href="examples/#browser-demos">Run demos</a>
+					<a class="btn" href="examples/#native-examples">Browse native examples</a>
+				</nav>
 			</section>
-			{starters.items.length > 0 ? <section class="band starters" aria-label={starters.title}>
+			{starters.items.length > 0 ? <section class="band starters" aria-label={starters.title} id="studio-examples">
 				<h2>{starters.title}</h2>
 				{starters.lede !== "" ? <p>{starters.lede}</p> : null}
 				<div class="grid">{starters.items.map(s => <a class="card" href={s.href}>
-					<div class="cover">{s.image !== "" ? <img src={s.image} width={"" + s.width} height={"" + s.height} alt={s.title} loading="lazy" decoding="async" /> : <span class="plus" aria-hidden="true"></span>}</div>
+					<div class="cover">{s.image !== "" ? <img src={s.image} width={"" + s.width} height={"" + s.height} alt="" loading="lazy" decoding="async" /> : <span class="plus" aria-hidden="true"></span>}</div>
 					<div class="row"><h3>{s.title}</h3>{s.kind !== "" ? <span class="kind">{s.kind}</span> : null}</div>
 					<p>{s.summary}</p>
 				</a>)}</div>
 			</section> : null}
-			<section class="band showcase" aria-label="Showcase">
-				<h2>Showcase</h2>
+			<section class="band showcase" aria-label="Graphics and performance">
+				<h2>Graphics and performance</h2>
+				<p>Play these demos and see measured download sizes, first-frame times and rendering numbers.</p>
 				<div class="grid">{showcase.map(ex => <a class="card" href={pageOf(ex)}><div class="cover"><b>{ex.title}</b><span>{ex.summary}</span></div></a>)}</div>
 			</section>
 			{reel.map(c => <section class="band" aria-label="Showreel">
@@ -321,13 +327,14 @@ Static.write(site.dir + "/examples/index.html", Static.document(<html lang="en">
 					<p>{c.summary}</p>
 				</div>)}</div>
 			</section> : null}
-			<section class="band" aria-label="In your browser">
-				<h2>In your browser</h2>
+			<section class="band" aria-label="Play in your browser" id="browser-demos">
+				<h2>Play in your browser</h2>
+				<p>Pick a demo to run its WebAssembly build. Every example links to its source.</p>
 				<div class="grid">{playable.map(ex => <Card ex={ex} />)}</div>
 			</section>
-			<section class="band" aria-label="On your desktop">
-				<h2>On your desktop and phone</h2>
-				<p>These run natively: <code>helder run</code> and the example's folder.</p>
+			<section class="band" aria-label="Native examples" id="native-examples">
+				<h2>Native examples</h2>
+				<p>From a Helder checkout, run <code>helder run</code> with the example’s folder or entry file.</p>
 				<div class="grid">{others.map(ex => <Card ex={ex} />)}</div>
 			</section>
 		</main>

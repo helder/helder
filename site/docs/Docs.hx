@@ -28,7 +28,8 @@ using StringTools;
 // TypeScript twin, docs/examples/<dir>/main.ts); region="name" shows the
 // lines between `// #region name` and `// #endregion` (or `// #endregion
 // name`) alone; <Sections/>,
-// every section's pages with their first paragraphs (the overview's). An
+// every section's pages with their first paragraphs, or one named section
+// with <Sections section="guide"/>. An
 // unknown example, region, component, page or heading link fails the
 // build: what a page shows is what builds.
 typedef Demo = {kind:String, width:Int, height:Int, onePixel:Bool};
@@ -105,6 +106,13 @@ class Page {
 			}
 		return [];
 	}
+
+	public function headings():Array<{id:String, level:Int, text:String}> {
+		return [for (b in blocks) switch b {
+			case Heading(level, id, c) if (level == 2 || level == 3): {id: id, level: level, text: Markdown.plain(c)};
+			case _: null;
+		}].filter(h -> h != null);
+	}
 }
 
 class Docs implements Markup {
@@ -138,22 +146,20 @@ class Docs implements Markup {
 			current = p;
 			Static.write(out + "/" + p.url + "index.html", Static.document(layout(p)));
 			search.push({url: p.url, title: p.title, section: p.section.title,
-				headings: [for (b in p.blocks) switch b {
-					case Heading(2 | 3, id, c): {id: id, text: Markdown.plain(c)};
-					case _: null;
-				}].filter(h -> h != null), text: Markdown.text(p.blocks)});
+				headings: p.headings(), text: Markdown.text(p.blocks)});
 		}
 		File.saveContent(out + "/docs/search.json", haxe.Json.stringify(search));
 		Sys.println('docs: ${pages.length} pages in $out/docs');
 	}
 
 	static function layout(p:Page):View {
+		var headings = p.headings();
 		return <html lang="en">
 			<head>
 				<meta charset="utf-8"/>
 				<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 				<base href={p.base}/>
-				<title>{(p.section.id == "" ? "Docs" : p.title + " · " + p.section.title) + " · " + theme.brand}</title>
+				<title>{(p.section.id == "" ? "Documentation" : p.title) + " · " + theme.brand}</title>
 				<meta name="description" content={Markdown.plain(p.lede())}/>
 				<link rel="stylesheet" href="static/site.css"/>
 				{theme.css.map(h -> <link rel="stylesheet" href={h}/>)}
@@ -163,14 +169,16 @@ class Docs implements Markup {
 				{theme.js.map(h -> <script src={h} defer></script>)}
 			</head>
 			<body class="docs-page">
+				<a class="skip" href={p.url + "#docs-main"}>Skip to content</a>
 				{theme.notice == "" ? null : <div class="notice">{theme.notice}</div>}
 				<header class="top"><div class="wrap">
-					<button class="menu" type="button" aria-label="Pages" aria-controls="sidebar" aria-expanded="false">☰</button>
+					<button class="menu" type="button" aria-label="Documentation menu" aria-controls="sidebar" aria-expanded="false">☰</button>
 					<a class="brand" href={theme.home}>{theme.brand}</a>
 					<nav aria-label="Site">{links()}</nav>
-					<input class="search" type="search" placeholder="Search the docs" aria-label="Search the docs" autocomplete="off"/>
+					<input class="search" type="search" placeholder="Search docs" aria-label="Search the docs" aria-controls="search-results" aria-keyshortcuts="/" autocomplete="off"/>
+					<ol class="results" id="search-results" aria-label="Search results" hidden=""></ol>
+					<span class="visually-hidden" id="search-status" role="status"></span>
 					{theme.action.label == "" ? null : <a class="btn" href={theme.action.href}>{theme.action.label}</a>}
-					<ol class="results" hidden=""></ol>
 				</div></header>
 				<div class="wrap docs">
 					<nav class="sidebar" id="sidebar" aria-label="Pages">
@@ -183,16 +191,25 @@ class Docs implements Markup {
 							</li>)}</ul>
 						</section>)}
 					</nav>
-					<main class="article">
+					<main class="article" id="docs-main" tabindex="-1">
 						{p.section.id == "" ? null : <p class="eyebrow">{p.section.title}</p>}
 						<h1>{p.title}</h1>
-						{p.blocks.map(block)}
+						{p.blocks.slice(0, 1).map(block)}
+						{headings.length < 2 ? null : <details class="page-outline mobile-outline">
+							<summary>On this page</summary>
+							{outline(p, headings)}
+						</details>}
+						{p.blocks.slice(1).map(block)}
 						<nav class="pager" aria-label="Previous and next">
 							{p.prev == null ? <span></span> : <a class="prev" href={p.prev.url}><small>Previous</small>{p.prev.title}</a>}
 							{p.next == null ? <span></span> : <a class="next" href={p.next.url}><small>Next</small>{p.next.title}</a>}
 						</nav>
 						<p class="edit"><a href={repo + "/edit/main/" + p.file}>{"Edit " + p.file + " on GitHub"}</a></p>
 					</main>
+					{headings.length < 2 ? null : <nav class="page-outline desktop-outline" aria-label="On this page">
+						<p>On this page</p>
+						{outline(p, headings)}
+					</nav>}
 				</div>
 				{theme.footer.length == 0 ? null : <footer class="foot"><div class="wrap">{theme.footer.map(l -> <a href={l.href}>{l.label}</a>)}</div></footer>}
 			</body>
@@ -202,6 +219,14 @@ class Docs implements Markup {
 	// the site's links (the top bar's; the sidebar's on a phone), Docs marked current
 	static function links():Array<View>
 		return theme.nav.map(l -> <a href={l.href} aria-current={l.id == "docs" ? "page" : null}>{l.label}</a>);
+
+	static function outline(p:Page, headings:Array<{id:String, level:Int, text:String}>):View
+		return <ul>{headings.map(h -> <li class={h.level == 3 ? "subheading" : null}>
+			<a href={p.url + "#" + h.id}>{h.text}</a>
+		</li>)}</ul>;
+
+	static function codeHeader(label:String):View
+		return <div class="name"><span>{label}</span><button type="button" class="copy-code" aria-label="Copy code" hidden="">Copy</button></div>;
 
 	static function block(b:Block):View {
 		return switch b {
@@ -215,7 +240,7 @@ class Docs implements Markup {
 				}
 			case Para(c): <p>{inlines(c)}</p>;
 			case Code(lang, title, text): <div class="code">
-				{title == "" ? null : <div class="name">{title}</div>}
+				{codeHeader(title == "" ? (lang == "sh" ? "Terminal" : lang) : title)}
 				<pre data-lang={lang == "" ? null : lang}><code>{highlight(text, lang == "" ? title : lang)}</code></pre>
 			</div>;
 			case List(true, items): <ol>{items.map(item)}</ol>;
@@ -223,15 +248,21 @@ class Docs implements Markup {
 			case Quote(bs): <blockquote>{bs.map(block)}</blockquote>;
 			case Rule: <hr/>;
 			case Table(head, rows): <div class="table"><table>
-				<thead><tr>{head.map(c -> <th>{inlines(c)}</th>)}</tr></thead>
+				<thead><tr>{head.map(c -> <th scope="col">{inlines(c)}</th>)}</tr></thead>
 				<tbody>{rows.map(r -> <tr>{r.map(c -> <td>{inlines(c)}</td>)}</tr>)}</tbody>
 			</table></div>;
 			case Component("Example", attrs): example(attrs);
-			case Component("Sections", _): <ul class="toc">{conf.sections.map(s -> pages.filter(q -> q.section.id == s.id).map(q -> <li>
-				<a href={q.url}>{q.title}</a><span>{Markdown.plain(q.lede())}</span>
-			</li>))}</ul>;
+			case Component("Sections", attrs): sections(attrs.get("section"));
 			case Component(name, _): throw '${current.file}: <$name> is no component (Example, Sections)';
 		}
+	}
+
+	static function sections(section:Null<String>):View {
+		var shown = section == null ? conf.sections : conf.sections.filter(s -> s.id == section);
+		if (shown.length == 0) throw '${current.file}: <Sections section="$section"/>: no such section';
+		return <ul class="toc">{shown.map(s -> pages.filter(q -> q.section.id == s.id).map(q -> <li>
+			<a href={q.url}>{q.title}</a><span>{Markdown.plain(q.lede())}</span>
+		</li>))}</ul>;
 	}
 
 	// a list item: a lone paragraph's text without the <p>
@@ -300,9 +331,12 @@ class Docs implements Markup {
 				<span class="run"><code>{run}</code> · <a href={e.source}>Source</a></span>
 			</figcaption>
 			<div class="sources">
-				<div class="tabs" role="tablist">{sources.map(s -> <button type="button" role="tab" aria-selected={s.file == files[0] ? "true" : "false"}
-					data-file={s.file}>{haxe.io.Path.withoutDirectory(s.file)}{s.file.endsWith(".ts") || s.file.endsWith(".tsx") ? " (TypeScript)" : " (Haxe)"}</button>)}</div>
-				{sources.map(s -> <div class="code" data-file={s.file} hidden={s.file != files[0]}><pre><code>{highlight(s.text, s.file)}</code></pre></div>)}
+				{sources.length == 1 ? null : <div class="tabs" role="tablist" aria-label="Example source">{sources.map(s -> <button type="button" role="tab" aria-selected={s.file == files[0] ? "true" : "false"}
+					data-file={s.file}>{haxe.io.Path.withoutDirectory(s.file)}{s.file.endsWith(".ts") || s.file.endsWith(".tsx") ? " (TypeScript)" : " (Haxe)"}</button>)}</div>}
+				{sources.map(s -> <div class="code" data-file={s.file} hidden={s.file != files[0]}>
+					{codeHeader(haxe.io.Path.withoutDirectory(s.file))}
+					<pre><code>{highlight(s.text, s.file)}</code></pre>
+				</div>)}
 			</div>
 		</figure>;
 	}

@@ -1,23 +1,27 @@
-# helder
+# Helder
 
-Games and apps in Haxe or TypeScript, for desktop, phones and the web, from
-one npm package. Built on [hxmc](https://github.com/benmerckx/hxmc), a Haxe
-compiler to native code and WebAssembly. **Unstable**: APIs still change.
+Build apps and games with TypeScript or Haxe. Helder compiles to native code for
+Windows, macOS, Linux, Android and iOS, and to WebAssembly for the web. The
+toolkit includes a GPU-rendered UI, signals, 2D and 3D graphics, and a CLI that
+builds, runs and packages your project. It uses [hxmc](https://github.com/benmerckx/hxmc)
+as its compiler backend.
 
-Docs: <https://helder.build/docs/> · Examples in your browser:
-<https://helder.build/examples/>
+[Quickstart](https://helder.build/docs/guide/start/) ·
+[Docs](https://helder.build/docs/) ·
+[Playable examples](https://helder.build/examples/) ·
+[Helder Studio](https://helder.build/studio/)
+
+**Early preview.** Expect APIs and CLI behavior to change between nightlies.
+
+## Try it locally
+
+In an npm project with Node.js 24, install Helder and the TypeScript checker:
 
 ```sh
-npm install helder@next           # the CLI and compiler, prebuilt for macOS, Linux and Windows
-npx helder dev                    # run it here, rebuilt on save with its state kept
-npx helder dev --target web       # as a page
-npx helder dev --target android   # on a device or emulator (also: ios, ios-sim)
-npx helder build                  # bin/<target>/<name>: an executable, a page, an APK, an app
-npx helder run --headless --snap out.png --tree tree.json   # no window: a frame and the node tree
+npm i -D helder@next typescript@next
 ```
 
-In TypeScript (TSX, checked by tsgo, compiled to the same native or wasm
-output; [helder.typescript](src/helder/typescript/README.md)):
+Save this counter as `src/main.tsx`:
 
 ```tsx
 import { signal } from "helder/view";
@@ -29,11 +33,22 @@ UiWindow.run(
 	<Surface title="Counter" width={320} height={200}>
 		<view grow={1} align-items="center" justify="center" row-gap={12}>
 			<text font-size={32}>{count}</text>
-			<view:button padding="8 16" onPress={() => count(c => c + 1)}>+1</view:button>
+			<view:button role="button" focusable padding="8 16" onPress={() => count(c => c + 1)}>+1</view:button>
 		</view>
 	</Surface>
 );
 ```
+
+```sh
+npx helder dev                          # desktop, with reload on save
+npx helder dev --target web             # browser preview
+npx helder build --target android       # package a debug-signed APK
+```
+
+See [TypeScript compatibility](https://helder.build/docs/guide/typescript/)
+for language features and project settings, and the
+[publishing guide](https://helder.build/docs/guide/publishing/) for previews,
+hosted web releases and store uploads.
 
 ## Packages
 
@@ -68,11 +83,6 @@ without a display: `helder run --headless` with a script, a snapshot and
 the node tree ([cli](src/helder/cli/README.md), "Headless runs").
 
 ## Roadmap
-
-From a comparison with Flutter's framework (for apps) and Godot 4 (for
-games). helder is already at or past them in reactivity, layout,
-accessibility, text, 3D rendering, shaders, deterministic physics, asset
-bundling and store publishing. What it lacks, in order:
 
 **Now**: https and wss on every platform's own stack (#51); Windows'
 touchpad scrolling; the web's scroll lag and Safari's rubber band.

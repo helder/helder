@@ -1,18 +1,16 @@
 # Building UI
 
-UI is written as TSX markup, bound to signals. This page covers the basics.
-
-The snippets come from the [ts-counter](/examples/ts-counter) and [ts-todo](/examples/ts-todo) examples.
+Build a Helder interface with TSX elements and signals. The [counter](start.md#try-the-counter) is the smallest runnable example, and the [todo app](/examples/ts-todo) puts these patterns together.
 
 ## Markup
 
-Markup looks like JSX, but it is not React and not HTML. There is no virtual DOM. Each tag is compiled to a direct call that makes a node, and a value in braces that reads a signal is bound to it: when the signal changes, only that text or attribute updates.
+Helder compiles each TSX tag into a call that creates a node. When an expression in braces reads a signal, Helder binds that text or attribute to the signal. Other nodes can stay as they are.
 
-Lowercase tags are elements. Capitalised tags are components: functions that return markup. A component function runs once, when it is mounted, not on every change.
+Lowercase tags are elements. Capitalised tags are components: functions that return markup. A component function runs when it mounts. Signal bindings then update the nodes it created.
 
 `UiWindow.run` opens a window and runs the app. The window is a `<Surface>`:
 
-```
+```tsx
 import { UiWindow, Surface } from "helder/ui";
 
 UiWindow.run(
@@ -41,7 +39,7 @@ Attributes are styles and event handlers. Style names follow CSS: `padding`, `ba
 
 Layout is CSS flexbox. A view is a column by default.
 
-```
+```tsx
 <view grow={1} padding={24} row-gap={14}>
   <text font-size={28} font-weight={700}>todos</text>
   <view direction="row" align-items="center" justify="space-between">
@@ -65,14 +63,14 @@ As in CSS, a scrolling list inside a column needs `min-height={0}` next to `grow
 
 ## Text
 
-```
+```tsx
 <text font-size={32}>{count}</text>
 <text color="#a1a1aa" text-decoration="line-through">Buy milk</text>
 ```
 
 Text styles are inherited, so you can set them once on a parent:
 
-```
+```tsx
 <view font-family="DejaVu Sans" font-size={14} color="#18181b">
   <text>Uses the view's font, size and colour.</text>
 </view>
@@ -84,7 +82,7 @@ Colours are CSS colours: hex, `rgb()`, `hsl()` and the named colours.
 
 A button is a `<view:button>` with an `onPress` handler. You style it yourself:
 
-```
+```tsx
 <view:button role="button" focusable padding="8 16" radius={6}
   background="#18181b" color="#fafafa" cursor="pointer"
   onPress={() => count(c => c + 1)}>+1</view:button>
@@ -96,7 +94,7 @@ A button is a `<view:button>` with an `onPress` handler. You style it yourself:
 
 State lives in signals. A signal is a function: call it to read, call it with a value to write, call it with a function to update.
 
-```
+```ts
 import { signal, memo } from "helder/view";
 
 const count = signal(0);
@@ -110,7 +108,7 @@ const double = memo(() => count() * 2);  // derived, recomputed when count chang
 
 In markup, put a signal or an expression that reads one in braces:
 
-```
+```tsx
 <text>{count}</text>
 <text>{double()} is twice {count()}</text>
 <view background={count() > 9 ? "#fee2e2" : "#ffffff"}/>
@@ -124,7 +122,7 @@ Under `helder dev`, a signal that holds plain data (numbers, strings, booleans, 
 
 A component is a function that takes props and returns markup. A prop typed `Read<T>` accepts a constant, a signal or an expression. The component reads it by calling it, and stays bound to it.
 
-```
+```tsx
 import { Read } from "helder/view";
 
 function Button(props: { label: string; onClick: () => void; outline?: Read<boolean> }) {
@@ -142,7 +140,7 @@ function Button(props: { label: string; onClick: () => void; outline?: Read<bool
 
 `<For>` keeps one row per item, matched by a key. `<Show>` mounts its content while a condition holds.
 
-```
+```tsx
 import { signal, For, Show } from "helder/view";
 
 type Item = { id: number; title: string; done: boolean };
@@ -162,7 +160,7 @@ Inside `<For>`, `item` is a function. Call it to read the current item.
 
 ## Text fields
 
-```
+```tsx
 import { signal } from "helder/view";
 import { Event, Key } from "helder/ui";
 

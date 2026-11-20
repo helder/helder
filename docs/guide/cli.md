@@ -7,7 +7,7 @@ helder <command> [entry] [options]
 helder <entry>                       # the same as: helder dev <entry>
 ```
 
-The entry is what to build: a `.ts` or `.tsx` file, a directory, or a project. The default is the current directory. Where it runs is always a flag, never the entry.
+The entry is a source file (TypeScript, TSX or Haxe) or a project directory. It defaults to the current directory. Use `--target` to choose where the result runs.
 
 `helder help` lists the commands, and `helder <command> --help` lists a command's flags. Installed in a project, run it as `npx helder`.
 
@@ -35,7 +35,7 @@ The entry is what to build: a `.ts` or `.tsx` file, a directory, or a project. T
 
 ## helder dev
 
-Builds, runs and reloads on every change. State is kept across a reload.
+Builds, runs and reloads on save. Signals that hold plain data keep their values across a reload.
 
 ```sh
 helder dev [entry] [options] [-- <args>]

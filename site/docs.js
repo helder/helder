@@ -14,6 +14,7 @@
 	}
 
 	const menu = document.querySelector('.menu'), sidebar = document.getElementById('sidebar');
+	const input = document.querySelector('.search'), list = document.querySelector('.results'), status = document.getElementById('search-status');
 	const show = (open) => {
 		// (under the top bar wherever it is: a host's notice above it scrolls)
 		if (open) sidebar.style.top = menu.closest('.top').getBoundingClientRect().bottom + 'px';
@@ -21,15 +22,58 @@
 		menu.setAttribute('aria-expanded', String(open));
 		document.documentElement.classList.toggle('menu-open', open);
 	};
-	menu?.addEventListener('click', () => show(!sidebar.classList.contains('open')));
+	menu?.addEventListener('click', () => {
+		const open = !sidebar.classList.contains('open');
+		show(open);
+		if (open) sidebar.querySelector('ul a[aria-current]')?.focus();
+	});
+	matchMedia('(max-width: 900px)').addEventListener('change', (e) => {
+		if (!e.matches) show(false);
+	});
 	// (a page or heading chosen, or Escape: the menu closed)
 	sidebar?.addEventListener('click', (e) => e.target.closest('a') && show(false));
-	document.addEventListener('keydown', (e) => e.key === 'Escape' && sidebar?.classList.contains('open') && show(false));
+	document.addEventListener('keydown', (e) => {
+		if (e.key !== 'Escape' || !sidebar?.classList.contains('open') || !list?.hidden) return;
+		show(false);
+		menu.focus();
+	});
 
-	const input = document.querySelector('.search'), list = document.querySelector('.results');
+	for (const button of document.querySelectorAll('.copy-code')) {
+		if (!navigator.clipboard?.writeText) continue;
+		const code = button.closest('.code').querySelector('pre code');
+		button.hidden = false;
+		let reset;
+		button.addEventListener('click', async () => {
+			try {
+				await navigator.clipboard.writeText(code.textContent);
+				button.textContent = 'Copied';
+				button.setAttribute('aria-label', 'Code copied');
+			} catch {
+				const range = document.createRange();
+				range.selectNodeContents(code);
+				const selection = window.getSelection();
+				selection.removeAllRanges();
+				selection.addRange(range);
+				button.textContent = 'Selected';
+				button.setAttribute('aria-label', 'Code selected for manual copy');
+			}
+			clearTimeout(reset);
+			reset = setTimeout(() => {
+				button.textContent = 'Copy';
+				button.setAttribute('aria-label', 'Copy code');
+			}, 2000);
+		});
+	}
+
 	if (!input || !list) return;
 	let index = null;
-	const load = () => (index ||= fetch('docs/search.json').then((r) => r.json()).catch(() => []));
+	const load = () => (index ??= fetch('docs/search.json').then((r) => {
+		if (!r.ok) throw new Error('Search index unavailable');
+		return r.json();
+	}).catch(() => {
+		index = null;
+		return null;
+	}));
 	input.addEventListener('focus', load);
 	const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 	// (a page's score: each word in its title counts most, then its headings, then its text; every word must be somewhere)
@@ -53,30 +97,73 @@
 		}
 		return hits.sort((a, b) => b.score - a.score).slice(0, 12);
 	}
-	input.addEventListener('input', async () => {
+	let request = 0;
+	const hide = () => {
+		request++;
+		list.hidden = true;
+		status.textContent = '';
+	};
+	async function update() {
 		const q = input.value.trim();
 		if (!q) {
-			list.hidden = true;
+			hide();
 			return;
 		}
-		const hits = search(await load(), q);
+		const id = ++request;
+		const pages = await load();
+		if (id !== request) return;
+		const hits = pages ? search(pages, q) : [];
+		const count = hits.length;
+		const message = pages ? (count ? `${count} ${count === 1 ? 'result' : 'results'}` : 'No results') : 'Search is unavailable. Try again.';
 		list.innerHTML = hits.length ? hits.map(({ p, heading }) => `<li><a href="${p.url}${heading ? '#' + heading.id : ''}">${esc(p.title)}${heading
-			? ' › ' + esc(heading.text) : ''}<small>${esc(p.section)}</small></a></li>`).join('') : '<li class="none">Nothing found</li>';
+			? ' › ' + esc(heading.text) : ''}<small>${esc(p.section)}</small></a></li>`).join('') : `<li class="none">${message}</li>`;
 		list.hidden = false;
+		status.textContent = message;
+	}
+	input.addEventListener('input', update);
+	input.addEventListener('keydown', async (e) => {
+		if (e.key !== 'ArrowDown' || !input.value.trim()) return;
+		e.preventDefault();
+		if (list.hidden) await update();
+		list.querySelector('a')?.focus();
 	});
 	input.addEventListener('keydown', (e) => {
-		if (e.key === 'Escape') {
-			input.value = '';
-			list.hidden = true;
+		if (e.key === 'Enter' && !list.hidden) list.querySelector('a')?.click();
+	});
+	list.addEventListener('keydown', (e) => {
+		if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+		const link = e.target.closest('li');
+		if (!link) return;
+		e.preventDefault();
+		if (e.key === 'ArrowDown') link.nextElementSibling?.querySelector('a')?.focus();
+		else (link.previousElementSibling?.querySelector('a') ?? input).focus();
+	});
+	list.addEventListener('click', (e) => {
+		if (e.target.closest('a')) {
+			hide();
+			if (sidebar.classList.contains('open')) show(false);
 		}
-		if (e.key === 'Enter') list.querySelector('a')?.click();
+	});
+	document.querySelector('.top').addEventListener('keydown', (e) => {
+		if (e.key !== 'Escape' || (e.target !== input && !list.contains(e.target))) return;
+		e.stopPropagation();
+		if (!list.hidden) {
+			hide();
+			input.focus();
+		} else if (sidebar.classList.contains('open')) {
+			show(false);
+			menu.focus();
+		}
 	});
 	document.addEventListener('click', (e) => {
-		if (!e.target.closest('.top')) list.hidden = true;
+		if (e.target !== input && !list.contains(e.target)) hide();
+	});
+	document.addEventListener('focusin', (e) => {
+		if (e.target !== input && !list.contains(e.target)) hide();
 	});
 	// (/ focuses the search)
 	document.addEventListener('keydown', (e) => {
-		if (e.key === '/' && document.activeElement !== input && !e.target.closest('input, textarea, canvas')) {
+		if (e.key === '/' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.target.closest('input, textarea, canvas, [contenteditable]')) {
 			e.preventDefault();
 			input.focus();
 		}

@@ -198,6 +198,21 @@ async function checkDocs(page) {
 	await page.waitForSelector('.results:not([hidden]) a', { timeout: 10000 });
 	const first = await page.locator('.results a').first().getAttribute('href');
 	check(first.startsWith('docs/'), `the search finds "bloom": ${first}`);
+	await page.locator('.search').press('ArrowDown');
+	check(await page.locator('.results a').first().evaluate(a => a === document.activeElement), 'ArrowDown focuses the first result');
+	await page.keyboard.press('Escape');
+	check(await page.locator('.results').isHidden() && await page.locator('.search').evaluate(input => input === document.activeElement),
+		'Escape closes results and returns focus to search');
+
+	await page.goto(url + 'docs/guide/start/');
+	const counter = page.locator('#example-ts-counter');
+	check(await counter.locator('#play-ts-counter').count() === 1, 'the quickstart embeds the compiled TypeScript counter');
+	await page.locator('.desktop-outline').getByRole('link', {name: 'Try the counter', exact: true}).click();
+	check(page.url().endsWith('#try-the-counter'), 'the desktop outline links to the runnable example');
+	await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+	await counter.getByRole('button', {name: 'Copy code'}).click();
+	const copied = await page.evaluate(() => navigator.clipboard.readText());
+	check(copied === await counter.locator('pre code').textContent(), 'copy uses the full highlighted example source');
 }
 
 // on an iPhone (Playwright's iPhone 13: 390x844 at 3x, touch, its user
@@ -222,6 +237,10 @@ async function checkPhone(shots) {
 	check((await visible('.top nav a')).length === 0, `phone, ${docs[1].url}: the top bar's links hidden`);
 	check(await page.locator('.menu').isVisible(), `phone, ${docs[1].url}: the menu shown`);
 	check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `phone, ${docs[1].url}: no sideways scroll`);
+	await page.locator('.mobile-outline summary').tap();
+	check(await page.locator('.mobile-outline').getByRole('link', {name: 'Try the counter', exact: true}).isVisible(),
+		'phone: the quickstart outline expands');
+	await page.locator('.mobile-outline summary').tap();
 	if (shots) await page.screenshot({ path: path.join(shots, 'phone-docs.png') });
 	await page.locator('.menu').tap();
 	const inMenu = await visible('.sidebar .links a');
