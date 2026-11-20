@@ -59,6 +59,9 @@ enum abstract EventKind(Int) {
 	// text, the caret after it (Windows' TSF, Wayland's
 	// delete_surrounding_text); an insertion at the caret comes as TextInput
 	var TextReplace;
+	// an input method's selection of that text: x...y (UTF-16; Android's
+	// InputConnection.setSelection, a cursor moved by the keyboard)
+	var TextSelect;
 }
 
 // Event.mods bits

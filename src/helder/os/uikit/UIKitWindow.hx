@@ -35,8 +35,13 @@ import hxmc.unsafe.*;
 // HxmcViewController (made at run time) whose status bar and home
 // indicator Window.immersive hides. Text input (Window.startTextInput) is
 // the view's UIKeyInput: first responder while it is on, the keyboard
-// shown; what it inserts a TextInput event (a newline: Enter's KeyDown and
-// KeyUp), deleteBackward Backspace's. No composition (UITextInput) yet.
+// shown (its traits Window.textKind's: UIKitTraits); what it inserts a
+// TextInput event (a newline: Enter's KeyDown and KeyUp), deleteBackward
+// Backspace's. No composition: helder.ui's fields are UIKit's own editors
+// on iOS (helder.ui.platform.IosViews), this is a drawn field's. The
+// keyboard's frame (UIKeyboardWillChangeFrameNotification) is
+// Window.keyboard: its overlap with the view, its animation's duration, a
+// Resize.
 @:allow(helder.os)
 @:hxmc.unsafe(gc)
 class UIKitWindow {
@@ -75,6 +80,8 @@ class UIKitWindow {
 	var typing = false;
 	var lastY = 0.0;
 	final size:Ptr<CGSize>;
+	// (a drawn field's traits: Window.textKind)
+	var kind = TextKind.PLAIN;
 
 	function new(owner:Window, title:String, width:Int, height:Int) {
 		if (current != null) throw "helder.os: an iOS app has one window";
@@ -111,6 +118,10 @@ class UIKitWindow {
 		surface = new Surface(Cocoa, layer, view, 1, 1);
 		current = this;
 		measure();
+		var name = UIKitTraits.constant("UIKeyboardWillChangeFrameNotification");
+		if (!name.isNull())
+			Msg.vPtrPtrPtrPtr(Msg.id(ObjC.cls("NSNotificationCenter"), ObjC.sel("defaultCenter")), ObjC.sel("addObserver:selector:name:object:"), view, ObjC.sel("hxmcKeyboard:"), name,
+				Ptr.nil());
 		Msg.v(window, ObjC.sel("makeKeyAndVisible"));
 		// (the display's frames: the link on the main run loop, held until a frame is asked for)
 		link = Runtime.objc_retain(Msg.idPtrPtr(ObjC.cls("CADisplayLink"), ObjC.sel("displayLinkWithTarget:selector:"), view, ObjC.sel("hxmcFrame:")));
@@ -190,6 +201,7 @@ class UIKitWindow {
 			Runtime.class_replaceMethod(made, ObjC.sel("touchesEnded:withEvent:"), Callback.addr(touchesEnded), Mem.cstr("v@:@@"));
 			Runtime.class_replaceMethod(made, ObjC.sel("touchesCancelled:withEvent:"), Callback.addr(touchesCancelled), Mem.cstr("v@:@@"));
 			Runtime.class_replaceMethod(made, ObjC.sel("hxmcFrame:"), Callback.addr(displayFrame), Mem.cstr("v@:@"));
+			Runtime.class_replaceMethod(made, ObjC.sel("hxmcKeyboard:"), Callback.addr(keyboardFrame), Mem.cstr("v@:@"));
 			keyInput(made, true);
 			var vc = Runtime.objc_getClass(Mem.cstr("HxmcViewController"));
 			if (vc.isNull()) controllerClass = makeController() else {
@@ -212,6 +224,7 @@ class UIKitWindow {
 		Runtime.class_addMethod(cls, ObjC.sel("touchesEnded:withEvent:"), Callback.addr(touchesEnded), Mem.cstr("v@:@@"));
 		Runtime.class_addMethod(cls, ObjC.sel("touchesCancelled:withEvent:"), Callback.addr(touchesCancelled), Mem.cstr("v@:@@"));
 		Runtime.class_addMethod(cls, ObjC.sel("hxmcFrame:"), Callback.addr(displayFrame), Mem.cstr("v@:@"));
+		Runtime.class_addMethod(cls, ObjC.sel("hxmcKeyboard:"), Callback.addr(keyboardFrame), Mem.cstr("v@:@"));
 		keyInput(cls, false);
 		Runtime.objc_registerClassPair(cls);
 		viewClass = cls;
@@ -227,6 +240,14 @@ class UIKitWindow {
 		add("hasText", Callback.addr(hasText), "B@:");
 		add("insertText:", Callback.addr(insertText), "v@:@");
 		add("deleteBackward", Callback.addr(deleteBackward), "v@:");
+		// (UITextInputTraits, which UIKeyInput adopts)
+		add("keyboardType", Callback.addr(keyboardType), "q@:");
+		add("returnKeyType", Callback.addr(returnKeyType), "q@:");
+		add("autocapitalizationType", Callback.addr(capitalization), "q@:");
+		add("autocorrectionType", Callback.addr(correction), "q@:");
+		add("spellCheckingType", Callback.addr(correction), "q@:");
+		add("isSecureTextEntry", Callback.addr(secure), "B@:");
+		add("textContentType", Callback.addr(contentType), "@@:");
 		var protocol = Runtime.objc_getProtocol(Mem.cstr("UIKeyInput"));
 		if (!protocol.isNull()) Runtime.class_addProtocol(cls, protocol);
 	}
@@ -236,6 +257,56 @@ class UIKitWindow {
 		typing = on;
 		var first = Msg.b(view, ObjC.sel("isFirstResponder"));
 		if (on && !first) Msg.b(view, ObjC.sel("becomeFirstResponder")) else if (!on && first) Msg.b(view, ObjC.sel("resignFirstResponder"));
+	}
+
+	// Window.textKind: the traits the view answers, the keyboard made again when it is up
+	function setKind(k:TextKind) {
+		kind = k;
+		if (Msg.b(view, ObjC.sel("isFirstResponder"))) Msg.v(view, ObjC.sel("reloadInputViews"));
+	}
+
+	static inline function kindNow():TextKind
+		return current == null ? TextKind.PLAIN : current.kind;
+
+	@:hxmc.callback static function keyboardType(self:Ptr, cmd:Ptr):Int64
+		return UIKitTraits.keyboardType(kindNow());
+
+	@:hxmc.callback static function returnKeyType(self:Ptr, cmd:Ptr):Int64
+		return UIKitTraits.returnKeyType(kindNow());
+
+	@:hxmc.callback static function capitalization(self:Ptr, cmd:Ptr):Int64
+		return UIKitTraits.capitalization(kindNow());
+
+	@:hxmc.callback static function correction(self:Ptr, cmd:Ptr):Int64
+		return UIKitTraits.correction(kindNow());
+
+	@:hxmc.callback static function secure(self:Ptr, cmd:Ptr):Int
+		return kindNow().secure ? 1 : 0;
+
+	@:hxmc.callback static function contentType(self:Ptr, cmd:Ptr):Ptr
+		return UIKitTraits.contentType(kindNow());
+
+	// the keyboard's frame to come (its end, the screen's points): its overlap
+	// with the view's bottom (none while it floats: an iPad's undocked one),
+	// over its animation's duration
+	@:hxmc.callback static function keyboardFrame(self:Ptr, cmd:Ptr, note:Ptr):Void {
+		var w = current;
+		if (w == null || w.view != self) return;
+		var info = Msg.id(note, ObjC.sel("userInfo"));
+		if (info.isNull()) return;
+		var end = Msg.idPtr(info, ObjC.sel("objectForKey:"), UIKitTraits.constant("UIKeyboardFrameEndUserInfoKey"));
+		var time = Msg.idPtr(info, ObjC.sel("objectForKey:"), UIKitTraits.constant("UIKeyboardAnimationDurationUserInfoKey"));
+		if (end.isNull()) return;
+		var r = Msg.rectRectPtr(self, ObjC.sel("convertRect:fromView:"), Msg.rect(end, ObjC.sel("CGRectValue")), Ptr.nil());
+		var h = Msg.rect(self, ObjC.sel("bounds")).size.height;
+		var over = r.origin.y + r.size.height < h - 1 ? 0.0 : Math.max(0, Math.min(h, h - r.origin.y));
+		w.owner.keyboardChanged(over, time.isNull() ? 0 : Msg.f(time, ObjC.sel("doubleValue")));
+		var e = event;
+		e.kind = Resize;
+		e.window = w.owner;
+		e.x = w.surface.width;
+		e.y = w.surface.height;
+		dispatch(e);
 	}
 
 	@:hxmc.callback static function canBecomeFirstResponder(self:Ptr, cmd:Ptr):Int
@@ -489,6 +560,7 @@ class UIKitWindow {
 
 	function destroy() {
 		current = null;
+		Msg.vPtr(Msg.id(ObjC.cls("NSNotificationCenter"), ObjC.sel("defaultCenter")), ObjC.sel("removeObserver:"), view);
 		// (the link's target is this build's view class's method: gone with it, also at a hand-over)
 		if (!link.isNull()) {
 			Msg.v(link, ObjC.sel("invalidate"));

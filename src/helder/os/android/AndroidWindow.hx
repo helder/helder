@@ -61,7 +61,9 @@ class AndroidWindow {
 	// text input (TextInput, in the programs that enable it): on or off, its
 	// events waiting for this thread
 	@:allow(helder.os.android) static var textInputHook:Null<(on:Bool, x:Int, y:Int, width:Int, height:Int) -> Void> = null;
-	@:allow(helder.os.android) static var textEvents:Null<((kind:EventKind, text:String, caret:Int) -> Void)->Void> = null;
+	@:allow(helder.os.android) static var textKindHook:Null<TextKind->Void> = null;
+	@:allow(helder.os.android) static var textContextHook:Null<(text:String, start:Int, end:Int) -> Void> = null;
+	@:allow(helder.os.android) static var textEvents:Null<((kind:EventKind, text:String, a:Int, b:Int) -> Void)->Void> = null;
 	// what else hands the program's thread its events at each pump (a web
 	// view's, helder.ui.platform.AndroidWebView: woken by MainThread.wake)
 	public static final pumped:Array<Void->Void> = [];
@@ -82,8 +84,9 @@ class AndroidWindow {
 	var safeBottom = 0;
 	var safeRight = 0;
 	var immersive = false;
-	// (Insets.take's: left, top, right, bottom)
-	final insets = [0, 0, 0, 0];
+	// (Insets.take's: left, top, right, bottom, the keyboard's height)
+	final insets = [0, 0, 0, 0, 0];
+	var keyboard = 0;
 
 	function new(owner:Window, title:String, width:Int, height:Int) {
 		// (a constant test: Type.createInstance and reflection lower a class's
@@ -128,11 +131,13 @@ class AndroidWindow {
 	static function takeInsets(w:AndroidWindow):Bool {
 		var insets = w.insets;
 		if (!Insets.take(insets)) return false;
-		var changed = insets[0] != w.safeLeft || insets[1] != w.safeTop || insets[2] != w.safeRight || insets[3] != w.safeBottom;
+		var changed = insets[0] != w.safeLeft || insets[1] != w.safeTop || insets[2] != w.safeRight || insets[3] != w.safeBottom || insets[4] != w.keyboard;
 		w.safeLeft = insets[0];
 		w.safeTop = insets[1];
 		w.safeRight = insets[2];
 		w.safeBottom = insets[3];
+		w.keyboard = insets[4];
+		w.owner.keyboardChanged(w.keyboard / w.scale, 0);
 		return changed;
 	}
 
@@ -199,7 +204,7 @@ class AndroidWindow {
 		}
 		// (the input the UI thread read: it wakes the looper)
 		input(onEvent);
-		if (textEvents != null) textEvents((kind, text, caret) -> dispatch(onEvent, kind, caret, 0, text));
+		if (textEvents != null) textEvents((kind, text, a, b) -> if (kind == KeyDown || kind == KeyUp) keyEvent(onEvent, kind, a, b) else dispatch(onEvent, kind, a, b, text));
 		for (f in pumped)
 			f();
 		// (a new window with a size: Resume; a size the system changed, or its safe area: Resize)
@@ -232,10 +237,30 @@ class AndroidWindow {
 		onEvent(e);
 	}
 
+	// a key the input method sent (TextInput: its KeySym, modifiers)
+	static function keyEvent(onEvent:Null<Event->Void>, kind:EventKind, key:Int, mods:Int) {
+		if (onEvent == null || current == null) return;
+		var e = event;
+		e.kind = kind;
+		e.window = current.owner;
+		e.key = key;
+		e.mods = mods;
+		e.text = "";
+		onEvent(e);
+	}
+
 	// Window.startTextInput, stopTextInput: the keyboard and the input method
 	// (TextInput, once enabled: otherwise only the input queue's keys)
 	function textInput(on:Bool, x:Int, y:Int, width:Int, height:Int)
 		if (textInputHook != null) textInputHook(on, x, y, width, height);
+
+	// Window.textKind: the input method's EditorInfo (TextInput)
+	function textKind(k:TextKind)
+		if (textKindHook != null) textKindHook(k);
+
+	// Window.textContext: the text the input method reads and edits (TextInput)
+	function textContext(text:String, start:Int, end:Int)
+		if (textContextHook != null) textContextHook(text, start, end);
 
 	// one command of the activity's callbacks (Activity), acknowledged once
 	// its state is taken
@@ -465,8 +490,7 @@ class AndroidWindow {
 		e.kind = down ? KeyDown : KeyUp;
 		e.window = current.owner;
 		e.key = sym;
-		e.mods = ((meta & 0x1) != 0 ? Mods.SHIFT : 0) | ((meta & 0x1000) != 0 ? Mods.CONTROL : 0) | ((meta & 0x2) != 0 ? Mods.ALT : 0)
-			| ((meta & 0x10000) != 0 ? Mods.META : 0);
+		e.mods = modsOf(meta);
 		e.text = "";
 		onEvent(e);
 		if (down && sym < 0x100 && e.mods & (Mods.CONTROL | Mods.ALT | Mods.META) == 0) {
@@ -478,6 +502,11 @@ class AndroidWindow {
 		// (Back: also the system's, which finishes the activity)
 		return code == 4 ? 0 : 1;
 	}
+
+	// a key event's meta state as Mods (META_SHIFT_ON 1, META_ALT_ON 2, META_CTRL_ON 0x1000, META_META_ON 0x10000)
+	static function modsOf(meta:Int):Int
+		return ((meta & 0x1) != 0 ? Mods.SHIFT : 0) | ((meta & 0x1000) != 0 ? Mods.CONTROL : 0) | ((meta & 0x2) != 0 ? Mods.ALT : 0)
+			| ((meta & 0x10000) != 0 ? Mods.META : 0);
 
 	// an Android key code as the X11 KeySym the other systems report (0: none)
 	static function keySym(code:Int):Int {

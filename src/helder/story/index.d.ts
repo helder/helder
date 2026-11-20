@@ -145,6 +145,7 @@ export interface NeutralAttributes {
 	onTextInput?: ((event: Event) => void) | null;
 	onComposition?: ((event: Event) => void) | null;
 	onInput?: ((event: Event) => void) | null;
+	onSubmit?: ((event: Event) => void) | null;
 	onFocus?: ((event: Event) => void) | null;
 	onBlur?: ((event: Event) => void) | null;
 	onFocusIn?: ((event: Event) => void) | null;

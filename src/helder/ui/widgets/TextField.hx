@@ -6,8 +6,10 @@ import helder.ui.*;
 // its text scrolls sideways to keep the caret in view, and while it fits
 // it is aligned as the style says (else the start side: right to left, on
 // the right); the placeholder shows while it is empty; a paste goes on one
-// line. onSubmit gets the text on Enter. A composition shows at the caret,
-// underlined. Its line is centred in a taller box, as a browser's input's.
+// line. onSubmit gets the text on Enter (the keyboard's Enter key, whatever
+// its label), then enterkey next moves the focus to the next field, done
+// lets go of the focus (the soft keyboard goes). A composition shows at the
+// caret, underlined. Its line is centred in a taller box, as a browser's input's.
 class TextField extends EditableText {
 	public var onSubmit:Null<String->Void>;
 
@@ -19,6 +21,8 @@ class TextField extends EditableText {
 	override function moreKeys(e:Event, shift:Bool, ctrl:Bool):Bool {
 		if (e.key != Key.ENTER) return false;
 		if (onSubmit != null) onSubmit(text);
+		if (ui == null || ui.focus != this) return true;
+		if (enterkey == helder.os.TextKind.EnterKey.Next) ui.moveFocus(1, n -> n is EditableText && !(cast n : EditableText).readOnly) else if (enterkey == helder.os.TextKind.EnterKey.Done) ui.setFocus(null);
 		return true;
 	}
 

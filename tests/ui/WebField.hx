@@ -12,7 +12,9 @@ import helder.view.graph.Signal;
 // a field drawn by its host).
 // After each frame whose state changed it prints the boxes of the nodes the
 // test clicks and the state: "field name=... | notes=... | submitted=... |
-// focus=<tag>".
+// focus=<tag> | keyboard=<the soft keyboard's height>". The name field's
+// keyboard an email's, its Enter key Go, not capitalised (its input's
+// inputmode, enterkeyhint, autocapitalize, autocorrect).
 class WebField implements Markup {
 	static function main() {
 		var w = new UiWindow("Fields", 420, 320);
@@ -23,7 +25,7 @@ class WebField implements Markup {
 				<view host="drawn" grow={1}><field tag="drawn" value={drawn} placeholder="Drawn" label="Drawn" onInput={e -> drawn(e.text)} padding="6 10"
 					border-width={1}/></view>
 			</view>
-			<field tag="name" value={name} placeholder="Your name" label="Name" onInput={e -> name(e.text)}
+			<field tag="name" value={name} placeholder="Your name" label="Name" keyboard="email" enterkey="go" autocapitalize="none" onInput={e -> name(e.text)}
 				onKeyDown={e -> if (e.key == Key.ENTER) submitted(name.peek())} padding="6 10" border-width={1}/>
 			<field:textarea tag="notes" value={notes} rows={3} placeholder="Notes" label="Notes" onInput={e -> notes(e.text)} padding="6 10" border-width={1}/>
 			<view:button tag="reset" role="button" focusable align-self="start" padding="6 12" border-width={1} onPress={_ -> name("Reset")}>Reset</view:button>
@@ -37,7 +39,7 @@ class WebField implements Markup {
 			}
 			var f = w.ui.focus;
 			var s = "boxes " + parts.join(" ") + " | name=" + name.peek() + " | notes=" + StringTools.replace(notes.peek(), "\n", "\\n") + " | submitted="
-				+ submitted.peek() + " | drawn=" + drawn.peek() + " | focus=" + (f == null ? "" : f.tag);
+				+ submitted.peek() + " | drawn=" + drawn.peek() + " | focus=" + (f == null ? "" : f.tag) + " | keyboard=" + w.ui.keyboard;
 			if (s != last) {
 				last = s;
 				Sys.println(s);

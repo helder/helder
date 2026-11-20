@@ -25,7 +25,9 @@ const built = spawnSync(process.execPath, [path.join(src, 'helder/compiler/build
 if (built.status !== 0) process.exit(1);
 const compiler = built.stdout.trim();
 const list = modules.length > 0 ? modules : MODULES;
-const call = `helder.typescript.api.Declarations.write([${list.map(m => `"${m}"`).join(', ')}]${check ? ', true' : ''})`;
+// (helder's modules always typed: what they declare named as in their own files)
+const strings = (l) => `[${l.map(m => `"${m}"`).join(', ')}]`;
+const call = `helder.typescript.api.Declarations.write(${strings(list)}, ${check}, ${strings(MODULES)})`;
 const r = spawnSync(compiler, ['-cp', src, ...cps, '--macro', call, '--no-output', '--custom-target', 'hxmc=' + path.join(src, '..', 'bin', 'declarations')],
 	{encoding: 'utf8', stdio: 'inherit'});
 process.exit(r.status ?? 1);

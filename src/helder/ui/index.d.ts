@@ -600,6 +600,9 @@ export declare class Node {
 	// the text around its caret, for an input method (Window.textContext:
 	// its text, the selection in UTF-16 indices, its kind); null: none to give
 	textContext(): { text: string; start: number; end: number; multiline: boolean; secret: boolean } | null;
+	// what it takes for the system's keyboard (helder.os.TextKind: its
+	// keys, Enter key, capitalisation); null: it takes no text
+	textKind(): unknown | null;
 	// an input method's edit of that text: start...end replaced by s, the
 	// caret after it (a node with no text context: s typed)
 	replaceText(start: number, end: number, s: string): void;
@@ -736,6 +739,10 @@ export declare class SafeArea {
 	static readonly insets: Signal<unknown>;
 	// (UiWindow) the insets now: the signal set when they changed
 	static set(top: number, right: number, bottom: number, left: number): void;
+	// the main window's soft keyboard over it, in UI pixels (0 while hidden;
+	// helder.os.Window.keyboard): the insets' bottom is at least this while it
+	// is up
+	static readonly keyboard: Signal<number>;
 	// an inset title bar's area (the current screen's; null: none)
 	static readonly titlebar: Signal<unknown | null>;
 	// (UiWindow) the title bar's area now: the signal set when it changed
@@ -949,6 +956,19 @@ export declare class EditableText extends TextNode {
 	checkSpelling(): void;
 	// the misspelled word around i (start and end; null: none)
 	misspelledAt(i: number): { start: number; end: number } | null;
+	// what the system's keyboard shows for it (helder.os.TextKind): its keys,
+	// its Enter key (a TextField's next moves the focus to the next field,
+	// done lets go of it and the keyboard), what is capitalised and whether
+	// words are corrected (null: sentences and corrected, but for an email,
+	// a URL and a password)
+	keyboard: "text" | "email" | "number" | "decimal" | "phone" | "url" | "search";
+	enterkey: "default" | "done" | "next" | "go" | "search" | "send";
+	autocapitalize: "none" | "words" | "sentences" | "characters" | null;
+	autocorrect: boolean | null;
+	// what AutoFill offers it (as an input's autocomplete; "new-password": a
+	// password suggested, on iOS)
+	autocomplete: string;
+	textKind(): unknown | null;
 	// read only: selected and copied, not edited (as an input's readonly)
 	readOnly: boolean;
 	// the most UTF-16 units it takes by typing or pasting (-1: any; as an input's maxlength)
@@ -985,6 +1005,7 @@ export declare class EditableText extends TextNode {
 	undo(): void;
 	redo(): void;
 	editorEdited(t: string, start: number, end: number): void;
+	editorSelected(start: number, end: number): void;
 	editorFocused(on: boolean): void;
 	editorKey(k: number, mods: number): void;
 }
@@ -1093,8 +1114,10 @@ export declare class TextArea extends EditableText {
 // its text scrolls sideways to keep the caret in view, and while it fits
 // it is aligned as the style says (else the start side: right to left, on
 // the right); the placeholder shows while it is empty; a paste goes on one
-// line. onSubmit gets the text on Enter. A composition shows at the caret,
-// underlined. Its line is centred in a taller box, as a browser's input's.
+// line. onSubmit gets the text on Enter (the keyboard's Enter key, whatever
+// its label), then enterkey next moves the focus to the next field, done
+// lets go of the focus (the soft keyboard goes). A composition shows at the
+// caret, underlined. Its line is centred in a taller box, as a browser's input's.
 export declare class TextField extends EditableText {
 	constructor(text?: string);
 	onSubmit: ((arg0: string) => void) | null;
@@ -1741,6 +1764,7 @@ export interface NeutralAttributes {
 	onTextInput?: ((event: Event) => void) | null;
 	onComposition?: ((event: Event) => void) | null;
 	onInput?: ((event: Event) => void) | null;
+	onSubmit?: ((event: Event) => void) | null;
 	onFocus?: ((event: Event) => void) | null;
 	onBlur?: ((event: Event) => void) | null;
 	onFocusIn?: ((event: Event) => void) | null;

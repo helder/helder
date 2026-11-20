@@ -46,6 +46,17 @@ import helder.pack.android.Dex;
 //   interface, its post(String) @JavascriptInterface calling the static
 //   native post(id, message), on the WebView's JavaBridge thread
 //   (helder.ui.platform.AndroidWebView).
+// - org.hxmc.Editor(Context): a View that is a text editor
+//   (onCheckIsTextEditor), never drawn, the input method's for a drawn field
+//   (helder.os.android.TextInput): its onCreateInputConnection (the field's
+//   EditorInfo, a Connection) and onApplyWindowInsets (the keyboard's
+//   insets) natives.
+// - org.hxmc.Connection(View, boolean): a BaseInputConnection whose edits
+//   and reads are natives (getSurroundingText, getExtractedText, commitText, setComposingText, setComposingRegion,
+//   finishComposingText, deleteSurroundingText and InCodePoints,
+//   sendKeyEvent, performEditorAction, setSelection, getTextBeforeCursor,
+//   getTextAfterCursor, getSelectedText, getCursorCapsMode): the field's
+//   text is the program's, mirrored on the main thread.
 // The classes keep hxmc's names (org.hxmc.*), which helder.os.android
 // looks up. Ported from hxmc (hxmc.android.Glue), MIT.
 //
@@ -115,7 +126,7 @@ class Glue {
 
 	// classes.dex: the views' and listeners' classes (base), and the services named
 	public static function dex(base = true, ?services:Array<String>):haxe.io.Bytes {
-		var classes = base ? [activity(), glue(), accessProvider(), accessDelegate(), webClient(), webChrome(), webBridge()] : [];
+		var classes = base ? [activity(), glue(), accessProvider(), accessDelegate(), webClient(), webChrome(), webBridge(), editor(), connection()] : [];
 		for (s in services ?? [])
 			classes.push(switch s {
 				case "Main": main();
@@ -125,6 +136,81 @@ class Glue {
 				case _: throw 'no service class $s (${SERVICES.join(", ")})';
 			});
 		return Dex.write(classes);
+	}
+
+	static inline var CHARS = "Ljava/lang/CharSequence;";
+	static inline var CONNECTION = "Landroid/view/inputmethod/BaseInputConnection;";
+
+	// org.hxmc.Editor: a View, a text editor, its natives the input method's
+	static function editor():DexClass {
+		var base = "Landroid/view/View;";
+		return {
+			name: "Lorg/hxmc/Editor;",
+			access: Dex.PUBLIC | Dex.FINAL,
+			superName: base,
+			interfaces: [],
+			fields: [],
+			methods: [
+				{
+					name: "<init>",
+					ret: "V",
+					params: ["Landroid/content/Context;"],
+					access: Dex.PUBLIC | Dex.CONSTRUCTOR,
+					code: {registers: 2, ins: 2, outs: 2, insns: r -> invoke(INVOKE_DIRECT, r.method(base, "<init>", "V", ["Landroid/content/Context;"]), [0, 1]).concat([RETURN_VOID])}
+				},
+				// (const/4 v0, 1; return v0)
+				{name: "onCheckIsTextEditor", ret: "Z", params: [], access: Dex.PUBLIC, code: {registers: 2, ins: 1, outs: 0, insns: r -> [const4(0, 1), (0 << 8) | 0x0f]}},
+				{
+					name: "onCreateInputConnection",
+					ret: "Landroid/view/inputmethod/InputConnection;",
+					params: ["Landroid/view/inputmethod/EditorInfo;"],
+					access: Dex.PUBLIC | Dex.NATIVE
+				},
+				{name: "onApplyWindowInsets", ret: "Landroid/view/WindowInsets;", params: ["Landroid/view/WindowInsets;"], access: Dex.PUBLIC | Dex.NATIVE}
+			]
+		};
+	}
+
+	// org.hxmc.Connection: a BaseInputConnection (not a full editor) whose methods are natives
+	static function connection():DexClass {
+		inline function native(name:String, ret:String, params:Array<String>):DexMethod
+			return {name: name, ret: ret, params: params, access: Dex.PUBLIC | Dex.NATIVE};
+		return {
+			name: "Lorg/hxmc/Connection;",
+			access: Dex.PUBLIC | Dex.FINAL,
+			superName: CONNECTION,
+			interfaces: [],
+			fields: [],
+			methods: [
+				{
+					name: "<init>",
+					ret: "V",
+					params: [VIEW, "Z"],
+					access: Dex.PUBLIC | Dex.CONSTRUCTOR,
+					code: {registers: 3, ins: 3, outs: 3, insns: r -> invoke(INVOKE_DIRECT, r.method(CONNECTION, "<init>", "V", [VIEW, "Z"]), [0, 1, 2]).concat([RETURN_VOID])}
+				},
+				// (true: an editor that takes batches, as an EditText's; an input method composes in one)
+				{name: "beginBatchEdit", ret: "Z", params: [], access: Dex.PUBLIC, code: {registers: 2, ins: 1, outs: 0, insns: r -> [const4(0, 1), (0 << 8) | 0x0f]}},
+				{name: "endBatchEdit", ret: "Z", params: [], access: Dex.PUBLIC, code: {registers: 2, ins: 1, outs: 0, insns: r -> [const4(0, 1), (0 << 8) | 0x0f]}},
+				// (null: no snapshot, rather than one of BaseInputConnection's empty Editable)
+				{name: "takeSnapshot", ret: "Landroid/view/inputmethod/TextSnapshot;", params: [], access: Dex.PUBLIC, code: {registers: 2, ins: 1, outs: 0, insns: r -> [const4(0, 0), (0 << 8) | 0x11]}},
+				native("getSurroundingText", "Landroid/view/inputmethod/SurroundingText;", ["I", "I", "I"]),
+				native("getExtractedText", "Landroid/view/inputmethod/ExtractedText;", ["Landroid/view/inputmethod/ExtractedTextRequest;", "I"]),
+				native("commitText", "Z", [CHARS, "I"]),
+				native("setComposingText", "Z", [CHARS, "I"]),
+				native("setComposingRegion", "Z", ["I", "I"]),
+				native("finishComposingText", "Z", []),
+				native("deleteSurroundingText", "Z", ["I", "I"]),
+				native("deleteSurroundingTextInCodePoints", "Z", ["I", "I"]),
+				native("sendKeyEvent", "Z", ["Landroid/view/KeyEvent;"]),
+				native("performEditorAction", "Z", ["I"]),
+				native("setSelection", "Z", ["I", "I"]),
+				native("getTextBeforeCursor", CHARS, ["I", "I"]),
+				native("getTextAfterCursor", CHARS, ["I", "I"]),
+				native("getSelectedText", CHARS, ["I"]),
+				native("getCursorCapsMode", "I", ["I"])
+			]
+		};
 	}
 
 	static inline var NODE_INFO = "Landroid/view/accessibility/AccessibilityNodeInfo;";

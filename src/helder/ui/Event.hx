@@ -33,6 +33,9 @@ enum abstract EventType(Int) {
 	// its laid-out size changed, or it was first laid out (Node.onResize:
 	// target's width and height, after the layout; not bubbling)
 	var Resize;
+	// a text field's Enter (its keyboard's Enter key: Done, Next, Go...;
+	// text: its text), as a form's submit
+	var Submit;
 }
 
 // An event as Ui dispatches it: to the target, then (unless stopped) to

@@ -30,6 +30,8 @@ typedef NodeEvents = {
 	onComposition:Event,
 	// a field's text changed by its user (text: its text now)
 	onInput:Event,
+	// a one-line field's Enter, its keyboard's Enter key (text: its text)
+	onSubmit:Event,
 	onFocus:Event,
 	onBlur:Event,
 	onFocusIn:Event,

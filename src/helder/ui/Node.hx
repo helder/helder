@@ -1234,6 +1234,11 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	public function textContext():Null<{text:String, start:Int, end:Int, multiline:Bool, secret:Bool}>
 		return null;
 
+	// what it takes for the system's keyboard (helder.os.TextKind: its
+	// keys, Enter key, capitalisation); null: it takes no text
+	public function textKind():Null<helder.os.TextKind>
+		return null;
+
 	// an input method's edit of that text: start...end replaced by s, the
 	// caret after it (a node with no text context: s typed)
 	public function replaceText(start:Int, end:Int, s:String)
