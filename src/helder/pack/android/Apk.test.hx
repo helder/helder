@@ -160,7 +160,7 @@ function tests() {
 		test("services and links: their components and filters, permissions once each", () -> {
 			var a:ApkOptions = Reflect.copy(app);
 			a.permissions = ["INTERNET", "ACCESS_NETWORK_STATE", "INTERNET"];
-			a.services = ["Main", "Request", "Files"];
+			a.services = ["Main", "Request", "Files", "Alarm"];
 			a.links = {schemes: ["myapp"], domains: ["example.com"]};
 			var xml = Axml.dump(Axml.encode(Apk.manifestOf(a, true, false)));
 			var lines = [for (l in xml.split("\n")) l.trim()];
@@ -173,6 +173,11 @@ function tests() {
 			assert(xml.indexOf('<activity android:theme(0x01010000)=@0x01030010 android:name(0x01010003)="org.hxmc.Request"') > 0);
 			assert(xml.indexOf('android:authorities(0x01010018)="org.example.hello.hxmc.files"') > 0);
 			assert(xml.indexOf("android:grantUriPermissions(0x0101001b)=true") > 0);
+			assert(xml.indexOf('<receiver android:name(0x01010003)="org.hxmc.Alarm" android:exported(0x01010010)=false>') > 0);
+			// (a notification's tap while running: Main, singleTop, without links too)
+			var tap:ApkOptions = Reflect.copy(app);
+			tap.services = ["Main", "Alarm"];
+			assert(Axml.dump(Axml.encode(Apk.manifestOf(tap, true, false))).indexOf("android:launchMode(0x0101001d)=1") > 0);
 			var plain = Axml.dump(Axml.encode(Apk.manifestOf(app, false, false)));
 			for (n in ["org.hxmc", "launchMode", "android.intent.action.VIEW"])
 				equals(plain.indexOf(n), -1);
@@ -210,17 +215,17 @@ function tests() {
 		});
 		test("the services' classes alone, each Java's", () -> {
 			var methods = [];
-			equals(Dex.check(Glue.dex(false, ["Main", "Request", "Files"]), methods), []);
+			equals(Dex.check(Glue.dex(false, ["Main", "Request", "Files", "Alarm"]), methods), []);
 			for (m in [
 				"Lorg/hxmc/Main; onNewIntent(Landroid/content/Intent;)V", "Lorg/hxmc/Activity; onNewIntent(Landroid/content/Intent;)V",
 				"Lorg/hxmc/Request; onCreate(Landroid/os/Bundle;)V", "Lorg/hxmc/Request; result(IILjava/lang/Object;)V",
 				"Lorg/hxmc/Request; onRequestPermissionsResult(I[Ljava/lang/String;[I)V", "Lorg/hxmc/Request; onActivityResult(IILandroid/content/Intent;)V",
-				"Lorg/hxmc/Files; openFile(Landroid/net/Uri;Ljava/lang/String;)Landroid/os/ParcelFileDescriptor;",
+				"Lorg/hxmc/Alarm; onReceive(Landroid/content/Context;Landroid/content/Intent;)V", "Lorg/hxmc/Files; openFile(Landroid/net/Uri;Ljava/lang/String;)Landroid/os/ParcelFileDescriptor;",
 				"Lorg/hxmc/Files; query(Landroid/net/Uri;[Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;Ljava/lang/String;)Landroid/database/Cursor;"
 			])
 				assert(methods.contains(m) != (m.indexOf("org/hxmc/Activity") > 0), m);
 			equals(Glue.permissions("photos"), ["READ_MEDIA_IMAGES", "READ_EXTERNAL_STORAGE"]);
-			equals(Std.string(throws(() -> Glue.dex(false, ["Nope"]))), "no service class Nope (Main, Request, Files)");
+			equals(Std.string(throws(() -> Glue.dex(false, ["Nope"]))), "no service class Nope (Main, Request, Files, Alarm)");
 		});
 		test("a broken file is found out", () -> {
 			var b = Glue.dex();

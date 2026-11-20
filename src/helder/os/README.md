@@ -357,6 +357,33 @@ one an error at the call.
 | Web | `navigator.permissions` and `Notification.permission` for the status; requests by `getUserMedia` (camera, microphone) and `Notification.requestPermission`, unsupported for the others; photos unsupported |
 | Windows, Linux | notifications granted, the others unsupported |
 
+**Notifications**, local: `schedule({id, title, ?body, ?at, ?after})`
+(at a `Date`, after seconds, or now; false where the system has none for
+the app), `cancel(id)`, and `onOpen`, the id of the one tapped (the app
+opened by it; queued until set, as `App.onOpen`). Asking to show them is
+`Permissions.request(Notify)`'s. TypeScript programs give `after`
+(seconds): `at`, a Haxe `Date`, has no TypeScript counterpart in the
+API's bridge yet.
+
+| | |
+| --- | --- |
+| iOS, macOS | UNUserNotificationCenter: a time interval's trigger (after), the calendar's (at); shown in front too (a delegate made at run time). macOS: an app bundle's only |
+| Android | AlarmManager (exact while idle where the app may, else inexact) aimed at org.hxmc.Alarm, a receiver of the app's own that posts it in the channel "default" with the app's icon (the system's when it has none), the process running or not; a tap opens the app (org.hxmc.Main, singleTop) with the id. POST_NOTIFICATIONS and SCHEDULE_EXACT_ALARM added to the manifest |
+| Web | the Notification API by a timer, while the page is open; a click focuses the page |
+| Windows, Linux | false: Windows' toasts need an AppUserModelID and an installer's shortcut, Linux's a desktop file and D-Bus' notifications service; neither is helder's yet |
+
+**Photos**: the coroutine `pick(?{max})`, the images picked as their
+files' bytes (JPEG, PNG, HEIC...), at most `max` (1); none when cancelled.
+No permission is asked.
+
+| | |
+| --- | --- |
+| iOS | PHPickerViewController, images only, each result's image data |
+| Android | MediaStore's ACTION_PICK_IMAGES (Android 13 on), else ACTION_GET_CONTENT of image/*, for a result through org.hxmc.Request; the content URIs read through the ContentResolver on a thread attached to the VM |
+| macOS, Windows | the open dialog (FileDialog) filtered to images: one |
+| Web | a hidden `<input type=file accept=image/*>` (multiple for more than one): call it from a user's gesture, or within a few seconds of one |
+| Linux | none |
+
 **Deep links**: helder.json's `"links": {"schemes", "domains"}`
 (helder.cli's README), each URL to `App.onOpen`, at launch too (kept until
 it is set). Android: the VIEW intent the activity was started or brought

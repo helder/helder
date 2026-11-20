@@ -145,9 +145,9 @@ class Apk {
 			{android: true, name: "theme", type: Axml.REFERENCE, value: theme ?? (views ? THEME_VIEWS : fullscreen ? THEME_FULLSCREEN : THEME)}
 		];
 		if (orientation == "portrait") activity.push(i("screenOrientation", 1)) else if (orientation == "landscape") activity.push(i("screenOrientation", 6));
-		// (a link while running comes to the activity there is: onNewIntent, singleTop)
+		// (a link or a notification's tap while running comes to the activity there is: onNewIntent, singleTop)
 		var linked = links != null && (links.schemes.length > 0 || links.domains.length > 0);
-		if (linked) activity.push(i("launchMode", 1));
+		if (linked || services.contains("Main")) activity.push(i("launchMode", 1));
 		var filters = [
 			el("intent-filter", [], [
 				el("action", [s("name", "android.intent.action.MAIN")]),
@@ -177,6 +177,7 @@ class Apk {
 				i("configChanges", configChanges, true),
 				{android: true, name: "theme", type: Axml.REFERENCE, value: THEME_TRANSLUCENT}
 			]));
+		if (services.contains("Alarm")) components.push(el("receiver", [s("name", "org.hxmc.Alarm"), b("exported", false)]));
 		if (services.contains("Files"))
 			components.push(el("provider", [
 				s("name", "org.hxmc.Files"),
@@ -341,7 +342,7 @@ typedef ApkOptions = {
 	?cleartext:Bool,
 	// the system bars hidden from the start (the app's "fullscreen"): Theme.NoTitleBar.Fullscreen
 	?fullscreen:Bool,
-	// the app services' classes of classes.dex (Glue.SERVICES), each declared: Request an activity, Files a provider
+	// the app services' classes of classes.dex (Glue.SERVICES), each declared: Request an activity, Files a provider, Alarm a receiver
 	?services:Array<String>,
 	// the deep links the activity takes: VIEW of each scheme, and https of each domain (verified)
 	?links:Links,

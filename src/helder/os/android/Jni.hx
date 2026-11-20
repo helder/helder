@@ -40,6 +40,7 @@ class JniEnv {
 	@:slot(113) static function GetStaticMethodID(env:Ptr, cls:Ptr, name:Ptr, sig:Ptr):Ptr;
 	@:slot(116) static function CallStaticObjectMethodA(env:Ptr, cls:Ptr, m:Ptr, args:Ptr):Ptr;
 	@:slot(119) static function CallStaticBooleanMethodA(env:Ptr, cls:Ptr, m:Ptr, args:Ptr):Int;
+	@:slot(134) static function CallStaticLongMethodA(env:Ptr, cls:Ptr, m:Ptr, args:Ptr):Int64;
 	@:slot(131) static function CallStaticIntMethodA(env:Ptr, cls:Ptr, m:Ptr, args:Ptr):Int;
 	@:slot(143) static function CallStaticVoidMethodA(env:Ptr, cls:Ptr, m:Ptr, args:Ptr):Void;
 	@:slot(144) static function GetStaticFieldID(env:Ptr, cls:Ptr, name:Ptr, sig:Ptr):Ptr;

@@ -139,6 +139,10 @@ export default function (host) {
 			s.onchange = () => (permissions.state[i] = permissions.of(s.state));
 		}, () => (permissions.state[i] = 3));
 	const shared = [];
+	// helder.os.Photos' files read, until taken
+	const photos = [];
+	// helder.os.Notifications': each key's timer, then its Notification
+	const notices = new Map();
 	let first = true, ratio = pixelRatio();
 	// the last paste event's text, and when
 	let pasted = null;
@@ -708,6 +712,56 @@ export default function (host) {
 			else if (p === 4 && globalThis.Notification?.requestPermission)
 				Notification.requestPermission().then((r) => answer(permissions.of(r)), () => answer(1));
 			else host.call(done, id, permissions.state[p] < 2 ? permissions.state[p] : 3);
+		},
+		notify_schedule(key, title, body, ms, clicked) {
+			if (!globalThis.Notification || Notification.permission !== 'granted') return 0;
+			clearTimeout(notices.get(key)?.timer);
+			const t = host.string(title), b = host.string(body);
+			const timer = setTimeout(() => {
+				const n = new Notification(t, b ? { body: b, tag: String(key) } : { tag: String(key) });
+				n.onclick = () => {
+					globalThis.focus?.();
+					n.close();
+					host.call(clicked, key);
+				};
+				notices.set(key, { shown: n });
+			}, ms);
+			notices.set(key, { timer });
+			return 1;
+		},
+		notify_cancel(key) {
+			const n = notices.get(key);
+			clearTimeout(n?.timer);
+			n?.shown?.close();
+			notices.delete(key);
+		},
+		photos_pick(max, done, id) {
+			if (typeof document == 'undefined') return host.call(done, id, 0);
+			const input = document.createElement('input');
+			input.type = 'file';
+			input.accept = 'image/*';
+			input.multiple = max > 1;
+			input.style.display = 'none';
+			let answered = false;
+			const answer = async (files) => {
+				if (answered) return;
+				answered = true;
+				input.remove();
+				photos.length = 0;
+				for (const f of files.slice(0, max)) photos.push(new Uint8Array(await f.arrayBuffer()));
+				host.call(done, id, photos.length);
+			};
+			input.addEventListener('change', () => answer([...input.files]));
+			input.addEventListener('cancel', () => answer([]));
+			document.body.append(input);
+			input.click();
+		},
+		photos_length: (i) => photos[i]?.length ?? 0,
+		photos_take(i, p, n) {
+			if (photos[i]) new Uint8Array(host.memory().buffer, p, Math.min(n, photos[i].length)).set(photos[i].subarray(0, n));
+		},
+		photos_clear() {
+			photos.length = 0;
 		},
 		share_file(name, p, n, type) {
 			shared.push(new File([new Uint8Array(host.memory().buffer, p, n).slice()], host.string(name), { type: host.string(type) }));

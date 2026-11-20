@@ -5,7 +5,7 @@
 // constant or bound to what its value reads, For, Show, holes and
 // attributes that read bound; examples/ts-todo's shape.
 import { signal, memo, For, Show, Render, Signal, Read } from "helder/view";
-import { Settings, Network, Permissions, Share } from "helder/os";
+import { Settings, Network, Permissions, Share, Notifications, Photos } from "helder/os";
 import { CodeEditor, Event, Key, Node } from "helder/ui";
 import { UiProbe } from "./ui-probe";
 
@@ -111,4 +111,4 @@ code.suggest(true);
 code.suggest(true);
 console.log(asked);
 console.log("platform settings", Settings.textScale() > 0, typeof Settings.dark());
-console.log("app services", typeof Network.online(), typeof Network.kind(), typeof Permissions.status("camera"), typeof Share.share, typeof Permissions.request);
+console.log("app services", typeof Network.online(), typeof Network.kind(), typeof Permissions.status("camera"), typeof Share.share, typeof Permissions.request, typeof Notifications.cancel, typeof Photos.pick);
