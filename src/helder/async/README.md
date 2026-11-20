@@ -166,8 +166,10 @@ and key (`TlsSocket.server(socket, cert, key)`). In the browser
 page's own (a url relative to the page; its http as ws). On Windows
 `Client.request` is WinHTTP's (`WinHttp`: http and https, Schannel's TLS,
 the system's certificates and proxies; its callbacks, on the system's
-threads, only note each step's end, which the loop polls). Android's
-`HttpURLConnection` is to come.
+threads, only note each step's end, which the loop polls). On Android it
+is `HttpURLConnection`'s (`AndroidHttp`: a thread per request, attached
+to the VM; the app's network security config applies, so plain http needs
+`"cleartext": true`). A `ca` given takes helder's own TLS on both.
 
 ## In the browser
 

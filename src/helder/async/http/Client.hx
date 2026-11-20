@@ -26,6 +26,10 @@ class Client {
 		#if (target.name == "hxmc" && (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64"))
 		if (options?.ca == null) return WinHttp.request(url, options);
 		#end
+		// (Android: HttpURLConnection, the app's network security config; a ca given: helder's own TLS)
+		#if (target.name == "hxmc" && (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64"))
+		if (options?.ca == null) return AndroidHttp.request(url, options);
+		#end
 		// (https: the system's stack where there is one; macOS and iOS: AppleHttp)
 		if (StringTools.startsWith(url, "https://")) {
 			#if (target.name == "hxmc" && (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64"))

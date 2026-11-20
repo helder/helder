@@ -127,6 +127,7 @@ class Android {
 			targetSdk: o.targetSdk,
 			permissions: o.permissions,
 			orientation: o.orientation,
+			cleartext: o.cleartext,
 			debuggable: debuggable
 		} : {
 			id: o.id,
@@ -140,6 +141,7 @@ class Android {
 			resources: r.files,
 			icon: r.icon,
 			theme: r.theme,
+			cleartext: o.cleartext,
 			debuggable: debuggable
 		};
 	}
