@@ -40,7 +40,7 @@ class Settings {
 		if (state == null) {
 			state = new SettingsState(values());
 			#if (target.name == "hxmc" && !helder.headless)
-			@:privateAccess App.settingsRefresh = refresh;
+			if (!musl()) @:privateAccess App.settingsRefresh = refresh;
 			#elseif js
 			for (query in queries) {
 				var media = mediaQuery(query);
@@ -86,7 +86,7 @@ class Settings {
 		if (Platform.os() == Platform.WASI) {
 			var m = helder.os.web.Dom.settings();
 			web(v, m);
-		} else {
+		} else if (!musl()) {
 			v.dark = App.prefersDark();
 			v.orientation = windowOrientation();
 			if (Platform.os() == Platform.MACOS) {
@@ -110,6 +110,10 @@ class Settings {
 	}
 
 	#if (target.name == "hxmc")
+	// (a static Linux executable, musl's: no window back end links there, so App stays out)
+	static inline function musl():Bool
+		return Platform.os() == Platform.LINUX && Platform.target() < 2;
+
 	static function windowOrientation():Null<Orientation> {
 		var w = App.windows[0];
 		return w == null || w.width <= 0 || w.height <= 0 ? null : w.width > w.height ? Landscape : Portrait;
