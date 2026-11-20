@@ -14,6 +14,7 @@ import helder.typescript.api.dts.TypeEmitter;
 //
 //   write(["helder.view.TypeScript", ...])        // the files written
 //   write([...], true)                            // checked: an error when one differs
+//   write(["frames.FramesTypeScript"], true, [...])  // helder's modules (known) naming what they declare
 //
 // A file declares the module's classes (`declare class`, each the Haxe class
 // `__haxe` names), its functions (`const f: typeof Class.f`), its
@@ -32,21 +33,26 @@ class Declarations {
 		"helder.scene.math.Quat" => "Quat"
 	];
 
-	public static function write(decls:Array<String>, check = false)
-		Context.onAfterInitMacros(() -> run(decls, check));
+	// (known: modules typed, not written, so that what they declare is named
+	// and imported as when they are written too: a few modules' files are
+	// then the same as all of helder's)
+	public static function write(decls:Array<String>, check = false, ?known:Array<String>)
+		Context.onAfterInitMacros(() -> run(decls, check, known ?? []));
 
-	static function run(decls:Array<String>, check:Bool) {
-		var api = Modules.of(decls);
+	static function run(decls:Array<String>, check:Bool, known:Array<String>) {
+		var api = Modules.of(known.concat([for (d in decls) if (known.indexOf(d) < 0) d]));
 		typedefs = new Map();
 		// (the typedefs of the modules' packages their declarations name:
 		// written until no new one turns up)
 		var found = -1;
 		while (found != Lambda.count(typedefs)) {
 			found = Lambda.count(typedefs);
-			for (m in api.modules) module(api, m);
+			for (m in api.modules)
+				if (decls.indexOf(m.decl) >= 0) module(api, m);
 		}
 		var stale = [];
 		for (m in api.modules) {
+			if (decls.indexOf(m.decl) < 0) continue;
 			var text = module(api, m);
 			var file = haxe.io.Path.join([m.dir, m.file]);
 			var old = sys.FileSystem.exists(file) ? sys.io.File.getContent(file) : null;
