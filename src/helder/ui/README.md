@@ -239,7 +239,10 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
     the browser's wheel, trackpad and scroll chaining, iOS's status bar
     tap. A finger's drag elsewhere is still helder's own. Android has no
     scroll views under the tree: there helder's drag glides by Android's
-    own `VelocityTracker` and `OverScroller` (`AndroidGlide`). On macOS
+    physics, ported as Chromium and Flutter port them (`AndroidFling`:
+    a least-squares speed, OverScroller's spline), and stretches past an
+    end as Android 12's (`Stretch`, `Ui.stretch`: Flutter's curve and
+    spring, a scale anchored at that end). On macOS
     (`Ui.elastic`, `Trackpad`) a trackpad's gesture goes to one scroller,
     stretches past its ends by AppKit's measured curve and springs back,
     its momentum the system's replayed at the frames' times; the

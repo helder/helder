@@ -125,7 +125,7 @@ class UiWindow {
 	var webScroll:Any = null;
 	// the platform's scroll views drive the scrollers of the windows made
 	// (Ui.nativeScroll, where the platform has them: iOS, the browser; Android's
-	// fling physics, AndroidGlide); false: helder's
+	// fling and stretch, AndroidFling and Stretch); false: helder's
 	// own scrolling (a Surface's scrolling prop sets a window's)
 	public static var scrolling = true;
 	// macOS's scrollbars: "system" (System Settings' Show scroll bars:
@@ -238,8 +238,11 @@ class UiWindow {
 				if (on && ui.scrollbarArt == null) ui.scrollbarArt = new MacScrollbarArt();
 			}
 		}
-		// (Android: no scroll views under the tree; helder's drag, Android's fling: its VelocityTracker and OverScroller)
-		if (Platform.target() >= 9) @:privateAccess ui.touchScroll.g = on ? new helder.os.android.AndroidGlide() : new helder.os.Glide();
+		// (Android: no scroll views under the tree; helder's drag, Android's fling and its stretch at the ends)
+		if (Platform.target() >= 9) {
+			@:privateAccess ui.touchScroll.g = on ? new helder.os.AndroidFling() : new helder.os.Glide();
+			ui.stretch = on;
+		}
 		ui.requestFrame();
 		#end
 	}

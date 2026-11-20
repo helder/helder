@@ -19,11 +19,29 @@ class Scrolling {
 					return;
 				}
 				stopGlide(ui, n);
+				var bx = n.scrollX, by = n.scrollY;
 				n.scrollX += deltaX;
 				n.scrollY += deltaY;
 				clamp(n);
+				// (what it could not scroll, past its end: Stretch's)
+				// (under half a point: none, what floating point leaves of a move that fit)
+				ui.overNode = n;
+				ui.overX = over(deltaX - (n.scrollX - bx));
+				ui.overY = over(deltaY - (n.scrollY - by));
 				if (n.onScroll != null) n.onScroll();
 				ui.requestFrame();
+				return;
+			}
+			n = n.parent;
+		}
+		// (none could: all of it past the end of the innermost that scrolls on the move's axis)
+		var alongX = Math.abs(deltaX) > Math.abs(deltaY);
+		n = target;
+		while (n != null) {
+			if (n.style.overflow == Scroll && (alongX ? n.style.overflowX : n.style.overflowY) == Scroll && maxScroll(n, alongX) > 0) {
+				ui.overNode = n;
+				ui.overX = deltaX;
+				ui.overY = deltaY;
 				return;
 			}
 			n = n.parent;
@@ -32,6 +50,9 @@ class Scrolling {
 
 	// whether a wheel on n by deltaX, deltaY would scroll something: a
 	// scroller at n or around it (the innermost first) not at its end that way
+	static inline function over(d:Float):Float
+		return Math.abs(d) < 0.5 ? 0 : d;
+
 	static function scrollsAt(ui:Ui, n:Null<Node>, deltaX:Float, deltaY:Float):Bool {
 		while (n != null) {
 			if (n.style.overflow == Scroll && (canScroll(n, deltaX, true) || canScroll(n, deltaY, false))) return true;

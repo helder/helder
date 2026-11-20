@@ -60,6 +60,7 @@ class UiTest {
 		rtlScroll();
 		nativeScrolls();
 		trackpad();
+		androidScroll();
 		noWrap();
 		textTransform();
 		culling();
@@ -760,6 +761,79 @@ class UiTest {
 		check("trackpad: the overlay bar shown after a scroll", @:privateAccess ui.barShown(page) > 0);
 		time += 1;
 		check("trackpad: the overlay bar faded a second later", @:privateAccess ui.barShown(page) == 0);
+		Ui.now = haxe.Timer.stamp;
+	}
+
+	// Android's fling (AndroidFling: a least-squares speed, OverScroller's
+	// spline) and its stretch past an end (Ui.stretch: Flutter's port of
+	// Android 12's)
+	static function androidScroll() {
+		var f = new helder.os.AndroidFling();
+		f.start(0);
+		for (i in 1...6)
+			f.move(0, 10, i * 10.0);
+		var v = f.velocity(50);
+		check("android: a drag's speed fitted (1000 a second)", Math.abs(v.y - 1000) < 1 && v.x == 0, v.y + "");
+		check("android: none once it stood still 40 ms", f.velocity(100).y == 0);
+		check("android: a fling past 50 a second", f.release(50));
+		var sum = 0.0, steps = 0, last = 1e9, slowing = true;
+		var t = 50.0;
+		while (f.step(t += 1000 / 60) || f.gliding) {
+			sum += f.dy;
+			if (f.dy > last + 1e-9) slowing = false;
+			last = f.dy;
+			if (++steps > 600) break;
+		}
+		// (OverScroller's distance for 1000 points a second: 0.015 * 0.84 * g * 39.37 * 160 * e^(2.358 / 1.358 * ln(0.35 * 1000 / (0.015 * that))))
+		var coeff = 0.015 * 9.80665 * 39.37 * 160 * 0.84, l = Math.log(0.35 * 1000 / coeff), d = coeff * Math.exp(2.3582018 / 1.3582018 * l);
+		check("android: the fling goes OverScroller's distance, slowing", Math.abs(sum - d) < 0.5 && slowing, sum + " " + d);
+		f.start(0);
+		f.move(0, 1, 100);
+		check("android: no fling under 50 a second", !f.release(100));
+
+		var time = 100.0;
+		Ui.now = () -> time;
+		var ui = new Ui(new MonoText(), 200, 100);
+		ui.stretch = true;
+		var page = new Node("page"), tall = new Node("tall");
+		page.style.set({width: 200, height: 100, overflow: Scroll});
+		tall.style.set({height: 300, shrink: 0});
+		page.append(tall);
+		ui.root.append(page);
+		ui.update();
+		var st = @:privateAccess ui.stretcher;
+		@:privateAccess st.drag(50, 50, 0, -50);
+		// (50 past the start of a 100-point view: 0.016 (0.5 + 1 - e^(-0.5 e / 0.33)))
+		var want = -0.016 * (0.5 + 1 - Math.exp(-0.5 * Math.exp(1) / 0.33));
+		check("android: a drag past the start stretches, Flutter's curve", page.scrollY == 0 && Math.abs(@:privateAccess st.amount - want) < 1e-9, @:privateAccess st.amount + " " + want);
+		@:privateAccess st.drag(50, 50, 0, 70);
+		check("android: pulled back, the stretch gives first, then it scrolls", @:privateAccess st.amount == 0 && page.scrollY == 20, @:privateAccess st.amount + " " + page.scrollY);
+		@:privateAccess st.drag(50, 50, 0, 400);
+		check("android: past the end, stretched the other way", page.scrollY == 200 && @:privateAccess st.amount > 0);
+		@:privateAccess st.release(0);
+		for (i in 0...120) {
+			time += 1 / 60;
+			Clock.tick(time);
+		}
+		check("android: let go, it springs back", @:privateAccess st.amount == 0 && @:privateAccess st.node == null, "" + @:privateAccess st.amount);
+		// (a finger's fling with the stretch on: it glides on, nothing left over mid-way taken for an end)
+		@:privateAccess ui.touchScroll.g = new helder.os.AndroidFling();
+		page.scrollY = 0;
+		tall.style.height = 5000;
+		page.style.height = 100;
+		ui.update();
+		var t0 = time;
+		ui.pointerDown(100, 90, 1, 1, Touch, 1, t0);
+		for (i in 1...11)
+			ui.pointerMove(100, 90 - 8 * i, 1, 1, t0 + i * 0.008);
+		ui.pointerUp(100, 10, 1, 1, t0 + 0.081);
+		var dragged = page.scrollY;
+		for (i in 0...60) {
+			time += 1 / 60;
+			ui.update();
+			Clock.tick(time);
+		}
+		check("android: a fling glides on past the drag (OverScroller's 194 for 1000 a second)", Math.abs(page.scrollY - dragged - 194) < 2, dragged + " " + page.scrollY);
 		Ui.now = haxe.Timer.stamp;
 	}
 

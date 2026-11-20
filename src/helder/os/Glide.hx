@@ -6,7 +6,7 @@ package helder.os;
 // unit a frame. The units are the caller's (gltf-viewer's pixels, ui's
 // TouchScroll's points); times in ms (any clock). It imports nothing (so
 // that ui takes it without the windows: helder.os.Event's). A platform's
-// own physics override it (helder.os.android.AndroidGlide).
+// own physics override it (AndroidFling).
 class Glide {
 	// a glide's frame (ms)
 	public static inline var FRAME = 1000 / 60;
