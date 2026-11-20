@@ -40,6 +40,8 @@
 // (cards above the examples). Links are relative to the site's root (each
 // page's <base>) or absolute.
 //
+// A demo can include a poster.webp beside its source for the idle Play surface.
+//
 // `// data: <folder>`: files the example fetches at run time, not bundled
 // (tens of MB of models): its fetch.mjs run first (downloading them into
 // examples/<dir>/<folder>), the folder copied beside its module and its
@@ -197,7 +199,7 @@ if (failed.length) {
 const site = [];
 for (const e of all) {
 	const item = { id: e.id, title: e.title, summary: e.summary, tags: e.tags, source: `${REPO}/tree/main/${e.root}/${e.dir}`,
-		demo: e.demo, wasm: '', imports: [], fonts: [], assets: '', apk: null, args: [], page: null, dataBytes: 0,
+		demo: e.demo, poster: '', wasm: '', imports: [], fonts: [], assets: '', apk: null, args: [], page: null, dataBytes: 0,
 		docs: e.docs, file: e.file, alt: e.alt, dir: `${e.root}/${e.dir}` };
 	if (e.page) item.page = { description: e.page.description ?? [], compare: e.page.compare ?? [], devices: (e.page.devices ?? []).map((d) => ({ fetchedGzMB: '–', ...d })), credits: e.page.credits ?? [],
 		numbers: e.page.numbers ?? [], seconds: e.page.seconds ?? 0 };
@@ -219,6 +221,11 @@ for (const e of all) {
 		fs.mkdirSync(dest, { recursive: true });
 		fs.copyFileSync(`${dir}/${e.main}.wasm`, `${dest}/${e.main}.wasm`);
 		item.wasm = `examples/${e.id}/${e.main}.wasm`;
+		const poster = `${e.root}/${e.dir}/poster.webp`;
+		if (fs.existsSync(poster)) {
+			fs.copyFileSync(poster, `${dest}/poster.webp`);
+			item.poster = `examples/${e.id}/poster.webp`;
+		}
 		if (e.data) {
 			// (only the data files: the fetch's metadata and references stay out,
 			// and a .glb packed into .hxm3d files, which the program reads instead)

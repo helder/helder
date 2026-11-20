@@ -90,11 +90,23 @@ h1 { font-size: 42px; line-height: 1.08; font-weight: 500; letter-spacing: -.035
 .plus { position: absolute; inset: 0; margin: auto; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg); }
 .plus::before, .plus::after { content: ""; position: absolute; inset: 0; margin: auto; width: 16px; height: 1.5px; background: var(--fg); }
 .plus::after { transform: rotate(90deg); }
-a.card:hover .cover::after, .showcase a:hover .cover::after { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fg) 22%, transparent); }
-.showcase .cover { display: flex; flex-direction: column; justify-content: flex-end; aspect-ratio: auto; min-height: 112px; padding: 16px; }
-.showcase .cover b { font-size: 17px; font-weight: 500; letter-spacing: -.02em; }
-.showcase .cover span { color: var(--dim); font-size: 13.5px; line-height: 1.4; margin-top: 4px; display: -webkit-box; -webkit-box-orient: vertical;
-	-webkit-line-clamp: 2; overflow: hidden; }
+a.card:hover .cover::after { box-shadow: inset 0 0 0 1px var(--dim); }
+.demo-topic { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 14px; margin-top: 36px; }
+.demo-topic h2 { font-size: 19px; font-weight: 500; }
+.demo-topic .grid { grid-column: 1 / -1; }
+.guide-link, .starter-action, .recording summary { font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
+.recording { margin-top: 8px; }
+.recording summary { cursor: pointer; }
+.recording:has(.missing) { display: none; }
+.recording .video { margin-top: 8px; }
+.first-demo .card { display: grid; align-items: center; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+.card .row { align-items: baseline; flex-wrap: wrap; }
+.card .row h3 { white-space: normal; }
+.card .tags { margin-left: 0; }
+.stage hxmc-island:not([data-loading], [data-hydrated], [data-error]) { background-image: var(--stage-poster, none); background-size: cover; background-position: center; }
+@media (max-width: 600px) {
+	.first-demo .card, .demo-topic { grid-template-columns: 1fr; gap: 8px; }
+}
 .video { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: var(--stage); }
 .video video { display: block; width: 100%; height: 100%; object-fit: cover; }
 .video.missing::before { content: "No recording in this build (site/reel.mjs makes them)"; position: absolute; left: 12px; bottom: 10px; z-index: 1;
@@ -103,12 +115,12 @@ a.card:hover .cover::after, .showcase a:hover .cover::after { box-shadow: inset 
 .apk { font-size: 13.5px; margin-top: 6px; color: var(--dim); }
 .apk a { color: var(--fg); font-weight: 500; }
 .examples-intro { padding-top: clamp(32px, 5vw, 70px); }
-.examples-intro h1 { font-size: clamp(40px, 6vw, 76px); font-weight: 600; letter-spacing: -.06em; }
+.examples-intro h1 { font-size: clamp(32px, 4.2vw, 44px); }
 .example-jumps { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 21px; }
 .examples-page .band { margin-top: 24px; padding-top: 26px; border-top: 1px solid var(--line); }
 .examples-page .band > h2 { font-weight: 600; }
 .examples-page .starters .cover { background: var(--well); }
-.examples-page .showcase .cover { border-left: 3px solid var(--blue); }
+
 
 /* an example's page */
 .page { max-width: 880px; }
@@ -183,7 +195,7 @@ html.playing, html.playing body, html.menu-open body { overflow: hidden; overscr
 .sidebar a:hover { color: var(--fg); }
 .sidebar a[aria-current] { background: var(--well); color: var(--blue); font-weight: 600; }
 .article { min-width: 0; max-width: 48rem; padding: 44px 0 8px; font-size: 16px; line-height: 1.65; overflow-wrap: break-word; }
-.article h1 { font-size: clamp(34px, 4.8vw, 57px); font-weight: 600; letter-spacing: -.055em; margin-top: 6px; text-wrap: balance; }
+.article h1 { font-size: clamp(32px, 4.2vw, 44px); letter-spacing: -.035em; margin-top: 6px; text-wrap: balance; }
 .article > h1 + p { color: var(--dim); font-size: 18px; line-height: 1.5; margin-top: 14px; }
 .article h2 { font-size: 26px; font-weight: 600; letter-spacing: -.031em; line-height: 1.2; margin-top: 44px; padding-top: 26px; border-top: 1px solid var(--line); }
 .article h3 { font-size: 16.5px; font-weight: 600; letter-spacing: -.01em; line-height: 1.3; margin-top: 32px; }
@@ -287,7 +299,7 @@ html.playing, html.playing body, html.menu-open body { overflow: hidden; overscr
 	.grid, .grid.two { grid-template-columns: minmax(0, 1fr); gap: 26px; }
 	.band > h2 { font-size: 21px; }
 	.article { font-size: 15px; }
-	.article h1 { font-size: clamp(33px, 9vw, 46px); }
+	.article h1 { font-size: 34px; }
 	.article h2 { font-size: 21px; margin-top: 40px; padding-top: 24px; }
 	.toc li { grid-template-columns: 1fr; }
 	.table thead { display: none; }

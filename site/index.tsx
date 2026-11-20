@@ -66,6 +66,7 @@ interface Example {
 	tags: string[];
 	source: string;
 	demo: Demo | null;
+	poster: string;
 	// (its build: the module, the browser modules it imports, fonts, its assets' list; "" and [] without a demo)
 	wasm: string;
 	imports: string[];
@@ -127,15 +128,12 @@ interface Theme {
 const theme = site.theme as Theme;
 const examples = (site.examples as Example[]).filter(e => !e.docs);
 const clips = site.clips as Clip[];
-const reel = clips.filter(c => c.id === "showreel");
-const demoClips = clips.filter(c => c.id !== "showreel");
 const playable = examples.filter(e => e.demo !== null);
 const others = examples.filter(e => e.demo === null);
-// the demos with a page of their own (page.json), linked from the top of the index
-// (the most striking first; any other after them, in the index's order)
-const SHOWCASE = ["sponza", "gltf-showcase", "planet", "particles", "instancing", "physics-stress", "bunnymark"];
-const rank = (e: Example) => SHOWCASE.indexOf(e.id) < 0 ? SHOWCASE.length : SHOWCASE.indexOf(e.id);
-const showcase = examples.filter(e => e.page !== null).sort((a, b) => rank(a) - rank(b));
+const featured = playable.filter(e => e.id === "ts-palette" && e.wasm !== "");
+const first = featured.length > 0 ? featured : playable.filter(e => e.id === "ts-counter");
+const catalog = playable.filter(e => first.length === 0 || e.id !== first[0].id);
+const topic = (e: Example) => e.page !== null ? "measure" : e.tags.indexOf("ui") >= 0 ? "interface" : "render";
 const RUNNER = "static/helder/os/browser.mjs";
 const pageOf = (e: Example) => "examples/" + e.id + "/";
 
@@ -177,7 +175,10 @@ function Stage(props: { ex: Example }) {
 	const ex = props.ex;
 	const demo = ex.demo as Demo;
 	const sound = demo.kind === "sound";
-	const style = sound ? "" : "--w:" + demo.width + "px;--ratio:" + demo.width + "/" + demo.height;
+	const recordings = clips.filter(c => c.example === ex.id);
+	const still = ex.poster !== "" ? ex.poster : recordings.length > 0 ? recordings[0].poster : "";
+	const poster = still !== "" ? ";--stage-poster:url('/" + still + "')" : "";
+	const style = sound ? "" : "--w:" + demo.width + "px;--ratio:" + demo.width + "/" + demo.height + poster;
 	const game = ex.tags.indexOf("game") >= 0;
 	return <div class={sound ? "stage sound" : "stage"} style={style} data-width={"" + demo.width} data-height={"" + demo.height} data-game={game ? "" : undefined} data-one-pixel={demo.onePixel ? "" : undefined}>
 		<Island.Wasm src={ex.wasm} id={"play-" + ex.id} load="click" runner={RUNNER} imports={ex.imports} fonts={ex.fonts} assets={ex.assets === "" ? undefined : ex.assets}
@@ -198,14 +199,19 @@ function Download(props: { apk: Apk }) {
 	return <p class="apk"><a href={a.file} download="">Download for Android (APK)</a>{" · " + mb + " MB, built from " + a.commit}</p>;
 }
 
-function Card(props: { ex: Example }) {
+function Card(props: { ex: Example, guided?: boolean }) {
 	const ex = props.ex;
 	return <article class="card" id={ex.id}>
 		{ex.demo !== null ? <Stage ex={ex} /> : null}
-		<div class="row"><h3>{ex.title}</h3><ul class="tags">{ex.tags.map(t => <li>{t}</li>)}</ul></div>
-		<p>{ex.summary}</p>
-		{ex.apk !== null ? <Download apk={ex.apk as Apk} /> : null}
-		<p class="links">{ex.page !== null ? <a href={pageOf(ex)}>Details and numbers</a> : null}<a href={ex.source}>Source</a></p>
+		<div class="card-copy">
+			<div class="row"><h3>{ex.title}</h3><ul class="tags">{ex.tags.map(t => <li>{t}</li>)}</ul></div>
+			<p>{props.guided && ex.id === "ts-palette" ? "Press Play and switch from Dusk to Clay. Watch the three swatches and their hex values change together." : ex.summary}</p>
+			{props.guided && ex.id === "ts-palette" ? <p>Open the source and find <code>selected</code>. Each button changes this signal, and <code>palette</code> looks up the colors for all three swatches.</p> : null}
+			{props.guided ? <p class="links"><a href="docs/guide/start/">Build your first TSX app →</a></p> : null}
+			{ex.apk !== null ? <Download apk={ex.apk as Apk} /> : null}
+			<p class="links">{ex.page !== null ? <a href={pageOf(ex)}>Read the measurements</a> : null}<a href={ex.source}>Read source</a></p>
+			{clips.filter(c => c.example === ex.id).map(c => <details class="recording"><summary>Watch recording · {Math.round(c.seconds)}s</summary><Video c={c} /></details>)}
+		</div>
 	</article>;
 }
 
@@ -268,7 +274,7 @@ function DemoPage(props: { ex: Example }) {
 				<h2>Credits</h2>
 				<ul>{page.credits.map(c => <li>{c}</li>)}</ul>
 				<ul class="tags">{ex.tags.map(t => <li>{t}</li>)}</ul>
-				<p class="links"><a href={ex.source}>Source</a></p>
+				<p class="links"><a href={ex.source}>Read source</a></p>
 			</article></main>
 			<Foot />
 		</body>
@@ -284,6 +290,15 @@ for (const ex of examples) {
 	if (ex.page !== null) Static.write(site.dir + "/" + pageOf(ex) + "index.html", Static.document(<DemoPage ex={ex} />));
 }
 
+for (const ex of featured) {
+	Static.write(site.dir + "/static/featured-demo.html", Static.render(<Stage ex={ex} />));
+}
+
+const topics = [
+	{ id: "interface", title: "Interfaces and interaction", guide: "Build an interface", href: "docs/guide/ui/" },
+	{ id: "measure", title: "Graphics and performance", guide: "Explore the scene guide", href: "docs/scene/" },
+	{ id: "render", title: "Rendering, physics and sound", guide: "Set up a scene", href: "docs/scene/world/" }
+];
 const starters = theme.starters;
 Static.write(site.dir + "/examples/index.html", Static.document(<html lang="en">
 	<Head title={"Examples · " + theme.brand} about="helder's examples: apps and games in TypeScript and Haxe, compiled to native code and WebAssembly, playing in your browser." base="../" numbers={false} />
@@ -293,44 +308,34 @@ Static.write(site.dir + "/examples/index.html", Static.document(<html lang="en">
 		<main class="wrap">
 			<section class="intro examples-intro">
 				<h1>Examples</h1>
-				<p class="lede">Run a demo in your browser, read the source, or start from a project you can edit.</p>
+				<p class="lede">Try a small TypeScript app, explore how a scene renders, or open a project to make your own.</p>
 				<nav class="example-jumps" aria-label="Browse examples">
 					{starters.items.length > 0 ? <a class="btn" href="examples/#studio-examples">Open in Studio</a> : null}
 					<a class="btn" href="examples/#browser-demos">Run demos</a>
 					<a class="btn" href="examples/#native-examples">Browse native examples</a>
 				</nav>
 			</section>
+			{first.map(ex => <section class="band first-demo">
+				<h2>Start with {ex.id === "ts-counter" ? "a counter" : "a palette"}</h2>
+				<Card ex={ex} guided={true} />
+			</section>)}
 			{starters.items.length > 0 ? <section class="band starters" aria-label={starters.title} id="studio-examples">
 				<h2>{starters.title}</h2>
 				{starters.lede !== "" ? <p>{starters.lede}</p> : null}
 				<div class="grid">{starters.items.map(s => <a class="card" href={s.href}>
 					<div class="cover">{s.image !== "" ? <img src={s.image} width={"" + s.width} height={"" + s.height} alt="" loading="lazy" decoding="async" /> : <span class="plus" aria-hidden="true"></span>}</div>
 					<div class="row"><h3>{s.title}</h3>{s.kind !== "" ? <span class="kind">{s.kind}</span> : null}</div>
-					<p>{s.summary}</p>
+					<p>{s.summary}</p><span class="starter-action">Open in Studio →</span>
 				</a>)}</div>
-			</section> : null}
-			<section class="band showcase" aria-label="Graphics and performance">
-				<h2>Graphics and performance</h2>
-				<p>Play these demos and see measured download sizes, first-frame times and rendering numbers.</p>
-				<div class="grid">{showcase.map(ex => <a class="card" href={pageOf(ex)}><div class="cover"><b>{ex.title}</b><span>{ex.summary}</span></div></a>)}</div>
-			</section>
-			{reel.map(c => <section class="band" aria-label="Showreel">
-				<h2>Showreel</h2>
-				<Video c={c} />
-				<p class="say">{c.summary + ". Recorded headless, frame-exact, from "}<a href={"examples/#" + c.example}>its example</a>{", which also runs here."}</p>
-			</section>)}
-			{demoClips.length > 0 ? <section class="band" aria-label="Demos">
-				<h2>Demos</h2>
-				<div class="grid">{demoClips.map(c => <div class="card">
-					<Video c={c} />
-					<div class="row"><h3><a href={"examples/#" + c.example}>{c.title}</a></h3></div>
-					<p>{c.summary}</p>
-				</div>)}</div>
 			</section> : null}
 			<section class="band" aria-label="Play in your browser" id="browser-demos">
 				<h2>Play in your browser</h2>
-				<p>Pick a demo to run its WebAssembly build. Every example links to its source.</p>
-				<div class="grid">{playable.map(ex => <Card ex={ex} />)}</div>
+				<nav class="example-jumps" aria-label="Demo topics">{topics.map(t => <a class="btn" href={"examples/#" + t.id}>{t.title}</a>)}</nav>
+				{topics.map(t => <section class="demo-topic" id={t.id}>
+					<h2>{t.title}</h2>
+					<a class="guide-link" href={t.href}>{t.guide} →</a>
+					<div class="grid">{catalog.filter(ex => topic(ex) === t.id).map(ex => <Card ex={ex} />)}</div>
+				</section>)}
 			</section>
 			<section class="band" aria-label="Native examples" id="native-examples">
 				<h2>Native examples</h2>

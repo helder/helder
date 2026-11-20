@@ -2,12 +2,15 @@
 
 Build apps and games with TypeScript or Haxe. Helder compiles to native code for desktop and mobile, and to WebAssembly for the browser.
 
-## Start building
+## Try the UI before installing
 
-- [Write your first app](guide/start.md). Run a counter here, then build the same code locally and see live reload in action.
-- [Open an example in Studio](https://helder.build/examples/#studio-examples). Make a copy of a project and edit it in your browser.
-- [Build an interface](guide/ui.md). Lay out views with TSX, connect them to signals and add keyboard-friendly controls.
-- [Share or publish an app](guide/publishing.md). Send a preview link, claim a permanent web address or upload a signed build.
+[Run the counter](guide/start.md#try-the-counter) and press **+1**. The source beneath the running app shows the signal that holds the count and the button that changes it. Follow the same page to run it locally and edit the button while the window is open.
+
+For a project you can edit entirely in the browser, [choose a Studio starter](https://helder.build/examples/#studio-examples). When you're ready to show someone your version, [share a preview link](guide/publishing.md).
+
+## Explore a working scene
+
+[Play Sponza](https://helder.build/examples/sponza/) to explore a textured architectural scene. Its example page includes the source and the cost of loading the first frame. To put a model in your own scene, follow [Loading models](scene/models.md).
 
 ## Look something up
 

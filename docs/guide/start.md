@@ -29,6 +29,8 @@ Create a `src` folder and save the counter source above as `src/main.tsx`. Helde
 - `<Surface>` defines the window. In the browser it fills the page.
 - `<view>` lays out its children. The `<text>` reads the signal, and the button’s `onPress` handler increments it.
 
+Try changing the counter to count by five. In the button handler, replace `c + 1` with `c + 5`, then change the button label to `+5`. Run the app below and press it twice to reach 10.
+
 ### tsconfig.json
 
 You can use Helder’s default settings for this app. If you create a `tsconfig.json` for your editor, start with this configuration:
@@ -58,7 +60,7 @@ Run these commands from the directory containing your `package.json`.
 npx helder dev
 ```
 
-Press **+1** a few times. Change the button’s `background` color in `src/main.tsx` and save. The running app updates and the count keeps its value. When a build fails, the terminal shows the error and the last successful build keeps running. Press **Ctrl+C** to stop the dev command.
+Press the counter button a few times. Change the button’s `background` color in `src/main.tsx` and save. The running app updates and the count keeps its value. When a build fails, the terminal shows the error and the last successful build keeps running. Press **Ctrl+C** to stop the dev command.
 
 ### In a browser
 
@@ -100,5 +102,6 @@ For desktop archives, simulator builds and cross-compilation, see [build options
 ## Next
 
 - [Building UI](ui.md) covers layout, reusable components and reactive lists.
+- [Palette study](https://helder.build/examples/#ts-palette) uses the same signal pattern to update a group of elements. Open the source and try adding a palette of your own.
 - [Settings](settings.md) shows how to give the app a name, icon and ID.
 - [Publishing](publishing.md) gives you a browser link you can send to someone.
