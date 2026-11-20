@@ -44,6 +44,10 @@ class Run {
 		{name: "ui", about: "helder.ui on Eval: layout, events and focus, markup, the guide's examples", run: ui},
 		{name: "layout-conformance", about: "helder.ui's flexbox and grid against Taffy's fixtures, Chrome's boxes (tests/layout-conformance: manifest.json's required cases pass, its pending ones fail; BLESS=1 writes the manifest)", run: layoutConformance},
 		{name: "gfx-shader", about: "helder.gfx's shader definitions on Eval: shaders on the CPU, the emitted GLSL, WGSL, MSL and HLSL, the programs they reject", run: gfxShader},
+		{name: "tls", about: "helder.async's https, wss and http natively (tests/async/TlsTest.hx; the async lane runs it too): TLS by mbedtls both ways in one process, https and wss over it, refusals; http by the system's stack where it has one (WinHTTP on Windows: CI's desktop-windows job)", run: () -> {
+			exe("bin/async/TlsTest", cps(["src", "tests/async"]).concat(["-main", "TlsTest"]));
+			run(exePath("bin/async/TlsTest", HOST), []);
+		}},
 		{name: "async", about: "helder.async on Eval and natively (the loop, TCP, processes, the watcher, HTTP and WebSocket; its tasks and timers are the test lane's), as wasm32-wasi in the browser's loop (node), the async-dev example end to end, a benchmark", run: async},
 		{name: "header-check", about: "helder's typed C bindings (@:hxmc.safe with @:hxmc.header: helder.async.Fds) against the C headers of each POSIX target: hxmc writes them as assertions (-D hxmc.header-check), zig compiles those (zig's musl and macOS headers; skipped without zig)", run: headerCheck},
 		{name: "jobs", about: "helder.jobs: the sendable check's rejections (tests/jobs/reject); the pool, cancellation, errors and channels are the test lane's (tests/jobs/Jobs.test.hx, natively and on wasm32-wasi with node's workers)", run: jobsLane},

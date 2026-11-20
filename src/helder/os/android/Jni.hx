@@ -47,6 +47,7 @@ class JniEnv {
 	@:slot(164) static function GetStringLength(env:Ptr, s:Ptr):Int;
 	@:slot(176) static function NewByteArray(env:Ptr, length:Int):Ptr;
 	@:slot(179) static function NewIntArray(env:Ptr, length:Int):Ptr;
+	@:slot(200) static function GetByteArrayRegion(env:Ptr, a:Ptr, start:Int, length:Int, buf:Ptr):Void;
 	@:slot(203) static function GetIntArrayRegion(env:Ptr, a:Ptr, start:Int, length:Int, buf:Ptr):Void;
 	@:slot(208) static function SetByteArrayRegion(env:Ptr, a:Ptr, start:Int, length:Int, buf:Ptr):Void;
 	@:slot(215) static function RegisterNatives(env:Ptr, cls:Ptr, methods:Ptr, count:Int):Int;

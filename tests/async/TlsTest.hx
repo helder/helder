@@ -105,6 +105,16 @@ class TlsTest {
 					w.send("echo " + m);
 				return null;
 			}));
+			// (http through Client.request: the system's stack where it has one, WinHTTP's on Windows)
+			task.async(_ -> {
+				var plainHttp = Server.listen("127.0.0.1", 0);
+				var port2 = plainHttp.port;
+				task.async(_ -> helder.async.http.Http.serve(plainHttp, req -> helder.async.http.Http.Response.text('${req.method} ${req.path} ${req.body.toString()}', 200)));
+				var r = helder.async.http.Client.request('http://127.0.0.1:$port2/echo?x=1', {method: "POST", text: "body", headers: ["x-test" => "yes"]});
+				check("http through Client.request (the system's stack where it has one)", r.status == 200 && r.text() == "POST /echo body" && r.header("content-type") != null, r.status + " " + r.text());
+				check("a DELETE answered", helder.async.http.Client.request('http://127.0.0.1:$port2/', {method: "DELETE"}).status == 200);
+				plainHttp.close();
+			}).await();
 			var sys = helder.async.http.WebSocket.open('ws://127.0.0.1:${plain.port}/ws');
 			sys.send("two");
 			check("ws through WebSocket.open (the system's where it has one)", sys.receive() == "echo two");
@@ -118,6 +128,6 @@ class TlsTest {
 			task.cancelChildren();
 		});
 		Sys.println('TlsTest: $checks checks' + (failed == 0 ? ", ok" : ', $failed failed'));
-		Sys.exit(failed == 0 && checks >= 10 ? 0 : 1);
+		Sys.exit(failed == 0 && checks >= 12 ? 0 : 1);
 	}
 }

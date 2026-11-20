@@ -163,8 +163,13 @@ checks the server's certificate against the system's roots and its name
 (`ca`, PEM, trusts others: a test's); a server presents its certificate
 and key (`TlsSocket.server(socket, cert, key)`). In the browser
 (`WebHttp`) every request is the page's `fetch` and every WebSocket the
-page's own (a url relative to the page; its http as ws). Windows' WinHTTP
-and Android's `HttpURLConnection` are to come, as Apple's is.
+page's own (a url relative to the page; its http as ws). On Windows
+`Client.request` is WinHTTP's (`WinHttp`: http and https, Schannel's TLS,
+the system's certificates and proxies; its callbacks, on the system's
+threads, only note each step's end, which the loop polls). On Android it
+is `HttpURLConnection`'s (`AndroidHttp`: a thread per request, attached
+to the VM; the app's network security config applies, so plain http needs
+`"cleartext": true`). A `ca` given takes helder's own TLS on both.
 
 ## In the browser
 
