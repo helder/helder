@@ -125,7 +125,8 @@ function check(what, ok, detail) {
 	const p = await browser.newPage({ viewport: { width: 800, height: 600 } });
 	const errors = [], warnings = [];
 	p.on('pageerror', (e) => errors.push(e.message));
-	p.on('console', (m) => (m.type() === 'error' ? errors : m.type() === 'warning' ? warnings : []).push(m.text()));
+	// (the cube's first fetch dropped below: the browser's own line for it is no error of the page's)
+	p.on('console', (m) => !m.text().includes('ERR_CONNECTION_RESET') && (m.type() === 'error' ? errors : m.type() === 'warning' ? warnings : []).push(m.text()));
 	// (the islands' nodes, before the loader runs: readystatechange to interactive comes before deferred scripts)
 	await p.addInitScript(() => {
 		document.addEventListener('readystatechange', () => {
@@ -181,12 +182,16 @@ function check(what, ok, detail) {
 	await p.waitForTimeout(500);
 	check('the cube is not fetched before it is in view', !requested.includes('/cube.wasm') && !requested.includes('/gfx/imports.mjs'),
 		requested.filter((r) => r.endsWith('.wasm')));
+	// (its first fetch dropped, as a busy server's connection: the loader tries once more)
+	let fetches = 0;
+	await p.route('**/cube.wasm', (r) => (fetches++ ? r.continue() : r.abort('connectionreset')));
 	await p.locator('#cube').scrollIntoViewIfNeeded();
 	await p.waitForSelector('#cube[data-hydrated]', { state: 'attached', timeout: 30000 }).catch(() => {});
 	const cube = await p.evaluate(async () => {
 		const r = await window.hxmcWasm.cube;
 		return { backend: r.host.gfx.backend, exit: r.host.exitCode };
 	}).catch((e) => ({ error: e.message }));
+	check('a dropped fetch is tried once more', fetches >= 2, fetches);
 	check('the cube runs once in view', requested.includes('/cube.wasm') && ['webgpu', 'webgl2'].includes(cube.backend) && cube.exit === null, cube);
 	// ui's <Surface> in the page: its program on the page's canvas, the canvas's size the page's styles, followed
 	await p.locator('#counter-ui').scrollIntoViewIfNeeded();
