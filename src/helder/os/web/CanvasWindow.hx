@@ -156,7 +156,10 @@ class CanvasWindow {
 				e.text = ev[2] == 0 ? "" : take(ev[2]);
 				e.key = 0;
 			}
-			if (e.kind == Resize) w.surface.resized(e.x, e.y);
+			if (e.kind == Resize) {
+				w.surface.resized(e.x, e.y);
+				w.owner.keyboardChanged(Dom.keyboard(), 0);
+			}
 			onEvent(e);
 		}
 	}

@@ -300,6 +300,11 @@ class WinEditor implements PlatformEditor {
 		W32.SendMessageW(hwnd, 0xB9, 0, 0);
 	}
 
+	// (the desktop's editor: its selection its own; no soft keyboard)
+	public function select(start:Int, end:Int) {}
+
+	public function setKind(kind:helder.os.TextKind) {}
+
 	public function place(x:Float, y:Float, width:Float, height:Float, shown:Bool) {
 		placed = [x, y, width, height];
 		this.shown = shown;

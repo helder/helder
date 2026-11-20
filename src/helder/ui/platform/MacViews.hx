@@ -458,6 +458,11 @@ class MacEditor implements PlatformEditor {
 		Msg.vBool(field, ObjC.sel("setHidden:"), !shown);
 	}
 
+	// (the desktop's editor: its selection its own, as before; no soft keyboard)
+	public function select(start:Int, end:Int) {}
+
+	public function setKind(kind:helder.os.TextKind) {}
+
 	public function setStyle(font:Font, color:Color, background:Color, placeholder:String, placeholderColor:Color, align:TextAlign, secret:Bool) {
 		if (secret != secure) remake(secret);
 		Msg.vPtr(field, ObjC.sel("setFont:"), MacViews.nsFont(font));

@@ -44,6 +44,7 @@ class MarkupTest implements Markup {
 		baselines();
 		shorthands();
 		password();
+		fieldKeyboard();
 		statesStyle();
 		fieldsetLegend();
 		balancedText();
@@ -201,6 +202,21 @@ class MarkupTest implements Markup {
 		var t2 = ui.accessTree();
 		check("live: what was added at its end; nothing when nothing changed", [for (s in t2.announcements(t1)) s.text].join("|") == "and synced"
 			&& ui.accessTree().announcements(t2).length == 0, [for (s in t2.announcements(t1)) s.text].join("|"));
+	}
+
+	// a field's keyboard in markup: keyboard, enterkey, autocapitalize,
+	// autocorrect, autocomplete; onSubmit's text
+	static function fieldKeyboard() {
+		var ui = new Ui(new MonoText(), 400, 300);
+		var sent = "";
+		Render.render(<view><field tag="f" value="me" keyboard="email" enterkey="send" autocapitalize="words" autocorrect={true} autocomplete="new-password" type="password"
+			onSubmit={e -> sent = e.text}/></view>, ui.root);
+		ui.update();
+		var f:TextField = cast ui.root.find("f"), k = f.textKind();
+		check("field keyboard: its kind", k.keyboard == Email && k.enter == Send && k.capitalize == Words && k.autocorrect && k.secure && k.newPassword);
+		ui.setFocus(f);
+		ui.keyDown(Key.ENTER, 0);
+		check("field keyboard: onSubmit's text", sent == "me" && ui.focus == f, sent);
 	}
 
 	static function password() {

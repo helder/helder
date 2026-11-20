@@ -36,6 +36,9 @@ class NeutralMacro {
 	// Neutral.value, the property; host and focusable ui's only: a page's field is the DOM's own)
 	static final FIELD = ["placeholder", "type", "inputmode", "autocomplete", "maxlength", "rows", "readonly"];
 
+	// (its keyboard's, as an input's type, inputmode, enterkeyhint, autocapitalize, autocorrect: Neutral.fieldKind)
+	static final KIND = ["keyboard", "enterkey", "autocapitalize", "autocorrect"];
+
 	static inline function isField(t:String):Bool
 		return t == "field" || t == "field:textarea";
 	// (StyleProps: the CSS property, and whether a number is in px)
@@ -149,6 +152,7 @@ class NeutralMacro {
 		if (StringTools.endsWith(tag, ":legend") && name == "role") return null;
 		if (isField(tag) && name == "value") return macro @:pos(pos) helder.web.Neutral.value;
 		if (isField(tag) && (name == "host" || name == "focusable")) return null;
+		if (isField(tag) && KIND.indexOf(name) >= 0) return macro @:pos(pos) helder.web.Neutral.fieldKind;
 		// (each kind one function, (el, name, v), name the DOM's (NeutralMacro.name): Neutral)
 		if (mapped(tag, name) != null) return macro @:pos(pos) helder.web.Neutral.attr;
 		if (CSS.exists(name)) return CSS[name].px ? macro @:pos(pos) helder.web.Neutral.cssPx : macro @:pos(pos) helder.web.Neutral.cssValue;
@@ -169,6 +173,7 @@ class NeutralMacro {
 		}
 		// (a field's text changed: the DOM's input, its text the value)
 		if (n == "onInput" && isField(t)) return macro @:pos(name.pos) helder.web.Neutral.input($el, $h);
+		if (n == "onSubmit" && isField(t)) return macro @:pos(name.pos) helder.web.Neutral.submit($el, $h);
 		if (!EVENTS.exists(n)) return Context.error('helder.web: <$t>\'s event $n has no DOM form (NeutralMacro)', name.pos);
 		var e = EVENTS[n], type = e.type;
 		if (e.dom == "keydown" || e.dom == "keyup") return macro @:pos(name.pos) helder.web.Neutral.onKey($el, $v{e.dom}, $h, helder.ui.Event.EventType.$type);

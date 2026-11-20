@@ -7,7 +7,11 @@
 // a newline typed in the text area; the program's own change shown in the
 // editor; an editor hidden while the select's list covers it, shown again
 // when it closes; Tab from a drawn field (its host drawn, typed in through
-// the window's text input) into a native one, which keeps the focus.
+// the window's text input) into a native one, which keeps the focus; the
+// field's keyboard as its input's inputmode, enterkeyhint, autocapitalize,
+// autocorrect and spellcheck; the soft keyboard (the visual viewport
+// shorter than the window, as a phone's keyboard leaves it: a stand-in,
+// headless Chromium shows none) as the window's keyboard.
 //   node tests/ui/web-field.mjs <WebField.wasm> [screenshot.png]
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -96,6 +100,11 @@ check('two editors', input && area, JSON.stringify({ input, area }));
 check('the field\'s editor inside its box', input && input.shown && input.x > m.name.x && input.x + input.w < m.name.x + m.name.w && input.y >= m.name.y && input.y + input.h <= m.name.y + m.name.h + 0.5,
 	JSON.stringify({ input, box: m.name }));
 check('in the field\'s font', input && input.font.includes('DejaVu Sans'), input && input.font);
+const kind = await p.evaluate(() => {
+	const e = document.querySelector('input[data-hxmc-editor]'), a = document.querySelector('textarea[data-hxmc-editor]');
+	return [e.type, e.inputMode, e.getAttribute('enterkeyhint'), e.getAttribute('autocapitalize'), e.getAttribute('autocorrect'), e.spellcheck, a.inputMode, a.getAttribute('enterkeyhint'), a.getAttribute('autocapitalize')].map(String).join(' ');
+});
+check('the field\'s keyboard: inputmode, enterkeyhint, autocapitalize, autocorrect', kind === 'text email go none off false text null sentences', kind);
 await p.mouse.click(input.x + 5, input.y + input.h / 2);
 await settle();
 await p.keyboard.type('Ada');
@@ -154,6 +163,15 @@ await settle();
 ({ s } = await state());
 input = await editor('input[data-hxmc-editor]');
 check('Tab from the drawn field to the native one: its editor keeps the page\'s focus', s.focus === 'name' && input.focused, JSON.stringify({ s, input }));
+// (the visual viewport 200 pixels short of the window: a soft keyboard's)
+await p.evaluate(() => Object.defineProperty(window, 'visualViewport', { value: { height: innerHeight - 200, offsetTop: 0 }, configurable: true }));
+await p.waitForTimeout(300);
+({ s } = await state());
+check('the visual viewport short of the window: the window\'s keyboard', s.keyboard === '200', JSON.stringify(s));
+await p.evaluate(() => Object.defineProperty(window, 'visualViewport', { value: { height: innerHeight, offsetTop: 0 }, configurable: true }));
+await p.waitForTimeout(300);
+({ s } = await state());
+check('and back: none', s.keyboard === '0', JSON.stringify(s));
 check('no errors', errors.length === 0, errors.join(' | '));
 const failed = results.filter((r) => !r.ok);
 for (const r of failed) console.log(`web-field.mjs: FAIL: ${r.what}: ${r.detail}`);

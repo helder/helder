@@ -8,6 +8,9 @@ import helder.os.win32.Win32Window;
 import helder.os.x11.X11Window;
 import helder.os.wayland.WaylandWindow;
 import helder.os.TitleBar;
+import helder.view.graph.Graph;
+import helder.view.graph.Read;
+import helder.view.graph.Signal;
 import hxmc.Platform;
 
 // A top-level window, its size in points (pixels on X11). Its Surface
@@ -91,8 +94,33 @@ class Window {
 	function get_safeLeft():Int
 		return HEADLESS ? 0 : Platform.apple() >= 1 ? (cast native : UIKitWindow).safeLeft : Platform.target() >= 9 ? (cast native : AndroidWindow).safeLeft : 0;
 
-	function get_safeBottom():Int
-		return HEADLESS ? 0 : Platform.apple() >= 1 ? (cast native : UIKitWindow).safeBottom : Platform.target() >= 9 ? (cast native : AndroidWindow).safeBottom : 0;
+	// (the keyboard up: the larger of the bottom inset and its height, so that
+	// a layout clear of the safe area is clear of the keyboard)
+	function get_safeBottom():Int {
+		var b = HEADLESS ? 0 : Platform.apple() >= 1 ? (cast native : UIKitWindow).safeBottom : Platform.target() >= 9 ? (cast native : AndroidWindow).safeBottom : 0;
+		return Std.int(Math.max(b, Math.round(keyboardHeight.peek() * scale)));
+	}
+
+	// the soft keyboard's height over the window in points, 0 while it is
+	// hidden (a signal): iOS's keyboard frame (UIKeyboardWillChangeFrame),
+	// Android's IME insets, the browser's visual viewport against the
+	// window; 0 on the desktop. A change comes with a Resize, the safe
+	// area's bottom following it; keyboardDuration is its animation's
+	// seconds where the system gives them (iOS's), else 0
+	@:typescript public var keyboard(get, never):Read<Float>;
+	public var keyboardDuration(default, null) = 0.0;
+
+	final keyboardHeight:Signal<Float> = Graph.signal(0.0);
+
+	function get_keyboard():Read<Float>
+		return keyboardHeight;
+
+	// (the platform's window: the keyboard's height now, in points)
+	@:allow(helder.os) function keyboardChanged(points:Float, duration:Float) {
+		if (points == keyboardHeight.peek()) return;
+		keyboardDuration = duration;
+		keyboardHeight(points);
+	}
 
 	function get_safeRight():Int
 		return HEADLESS ? 0 : Platform.apple() >= 1 ? (cast native : UIKitWindow).safeRight : Platform.target() >= 9 ? (cast native : AndroidWindow).safeRight : 0;
@@ -241,15 +269,26 @@ class Window {
 
 	// the text around where text is typed (a text field's text and its
 	// selection, UTF-16 indices), what an input method reads and edits:
-	// Windows' TSF document, Wayland's surrounding text (text-input-v3);
+	// Windows' TSF document, Wayland's surrounding text (text-input-v3),
+	// Android's InputConnection (helder.os.android.TextInput);
 	// multiline (a text area) and secret (a password: no text given, input
 	// methods told) its kind. Given after startTextInput, again whenever it
 	// changes; the input method's edits of it come as TextReplace (and
-	// TextInput, TextEditing). Nothing elsewhere
+	// TextInput, TextEditing, TextSelect). Nothing elsewhere
 	public function textContext(text:String, start:Int, end:Int, multiline = false, secret = false) {
 		if (closed || !typing || HEADLESS) return;
 		if (Platform.os() == 2) (cast native : Win32Window).textContext(secret ? "" : text, secret ? 0 : start, secret ? 0 : end) else if (Platform.os() == 0 && Platform.target() < 9 && Std.isOfType(native, WaylandWindow))
-			(cast native : WaylandWindow).textContext(text, start, end, multiline, secret);
+			(cast native : WaylandWindow).textContext(text, start, end, multiline, secret) else if (Platform.os() == 0 && Platform.target() >= 9)
+			(cast native : AndroidWindow).textContext(text, start, end);
+	}
+
+	// what the field typed into takes (TextKind: its keyboard, its Enter
+	// key, capitalisation, corrections), given before startTextInput and
+	// whenever it changes: iOS's keyboard (the view's UITextInputTraits) and
+	// Android's EditorInfo for a drawn field; nothing elsewhere
+	public function textKind(kind:TextKind) {
+		if (closed || HEADLESS) return;
+		if (Platform.apple() >= 1) (cast native : UIKitWindow).setKind(kind) else if (Platform.os() == 0 && Platform.target() >= 9) (cast native : AndroidWindow).textKind(kind);
 	}
 
 	public function stopTextInput() {

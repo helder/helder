@@ -13,6 +13,10 @@ import hxmc.unsafe.*;
 	// an editor over that canvas (multiline: a textarea), its handle
 	static function editor_create(canvas:Int, multiline:Int):Int;
 	static function editor_text(h:Int, text:CString, start:Int, end:Int):Void;
+	static function editor_select(h:Int, start:Int, end:Int):Void;
+	// what a phone's keyboard shows for it: its keyboard (the input's type
+	// and inputmode), enterkeyhint, autocapitalize, autocorrect (and spellcheck)
+	static function editor_kind(h:Int, keyboard:CString, enter:CString, capitalize:CString, autocorrect:Int):Void;
 	// its place in the canvas's CSS pixels; shown 0: hidden
 	static function editor_place(h:Int, x:Float, y:Float, width:Float, height:Float, shown:Int):Void;
 	// its CSS (font, colour, alignment, line height), placeholder and colour, whether a password's
@@ -101,6 +105,12 @@ class WebEditor implements PlatformEditor {
 
 	public function setText(text:String, start:Int, end:Int)
 		Arena.scoped(a -> WebEditors.editor_text(h, a.cstring(text), start, end));
+
+	public function select(start:Int, end:Int)
+		WebEditors.editor_select(h, start, end);
+
+	public function setKind(k:helder.os.TextKind)
+		Arena.scoped(a -> WebEditors.editor_kind(h, a.cstring(k.keyboard), a.cstring(k.enter), a.cstring(k.capitalize), k.autocorrect ? 1 : 0));
 
 	public function place(x:Float, y:Float, width:Float, height:Float, shown:Bool)
 		WebEditors.editor_place(h, x, y, width, height, shown ? 1 : 0);

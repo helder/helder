@@ -18,7 +18,8 @@ import helder.image.AnimatedImage;
 // "contain", "cover" or "none"; mirrored, flipped right to left), icon (an
 // image, its Svg), field and field:textarea (a text field, one line or
 // several: helder.ui.widgets' TextField and TextArea; value, placeholder,
-// type, rows, readonly, maxlength, spellcheck; onInput, its text changed by its
+// type, rows, readonly, maxlength, spellcheck, keyboard, enterkey,
+// autocapitalize, autocorrect, autocomplete; onSubmit, its Enter; onInput, its text changed by its
 // user); view:button,
 // view:label... and text:p, text:h2... (a view, a text: the element of that
 // name where a page's renderer realises them, helder.web's); elements registers more. Their
@@ -545,7 +546,21 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 		field(n, name);
 
 	@:attribute static function autocomplete(n:Node, name:String, v:Dynamic)
-		field(n, name);
+		field(n, name).autocomplete = v == null ? "" : Std.string(v);
+
+	// (the system's keyboard for it, helder.os.TextKind: keyboard="email",
+	// enterkey="next", autocapitalize="none", autocorrect={false})
+	@:attribute static function keyboard(n:Node, name:String, v:Dynamic)
+		field(n, name).keyboard = v == null ? Text : helder.os.TextKind.Keyboard.parse(v);
+
+	@:attribute static function enterkey(n:Node, name:String, v:Dynamic)
+		field(n, name).enterkey = v == null ? Default : helder.os.TextKind.EnterKey.parse(v);
+
+	@:attribute static function autocapitalize(n:Node, name:String, v:Dynamic)
+		field(n, name).autocapitalize = v == null ? null : helder.os.TextKind.Capitalize.parse(v);
+
+	@:attribute static function autocorrect(n:Node, name:String, v:Dynamic)
+		field(n, name).autocorrect = v == null ? null : v == true || v == "true" || v == "on" || v == "";
 
 	static function field(n:Node, name:String):helder.ui.widgets.EditableText {
 		if (!Std.isOfType(n, helder.ui.widgets.EditableText)) noAttribute(n, name);
@@ -600,6 +615,13 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 			case "onComposition": n.onComposition = own(h, n.onComposition);
 			case "onTextInput": n.onTextInput = own(h, n.onTextInput);
 			case "onInput": n.onInput = h;
+			case "onSubmit":
+				if (!Std.isOfType(n, helder.ui.widgets.TextField)) throw 'helder.ui: <${n.tag}> has no event onSubmit';
+				(cast n : helder.ui.widgets.TextField).onSubmit = h == null ? null : t -> {
+					var e = Event.of(Submit, n, 0, 0);
+					e.text = t;
+					h(e);
+				};
 			case "onFocus": n.onFocus = own(h, n.onFocus);
 			case "onBlur": n.onBlur = own(h, n.onBlur);
 			case "onFocusIn": n.onFocusIn = h;

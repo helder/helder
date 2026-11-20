@@ -25,6 +25,7 @@
 import type {Asset, FontFile, Image} from "helder/asset";
 import type {Mat4, Quat, Vec2, Vec3, Vec4} from "helder/gfx";
 import type {Node} from "helder/scene";
+import type {Read} from "helder/view";
 
 declare const __haxe: {Mesh: "helder.scene.render.Mesh", Encoder: "helder.gfx.Encoder", World: "helder.scene.World", Camera: "helder.scene.Camera", Light: "helder.scene.render.Light", Renderer: "helder.scene.render.Renderer", Shadows: "helder.scene.render.Shadows", Fog: "helder.scene.render.Fog", Material: "helder.scene.render.Material", UvTransform: "helder.scene.render.Material.UvTransform", Physical: "helder.scene.render.Physical", Transmission: "helder.scene.render.Transmission", MeshRenderer: "helder.scene.render.MeshRenderer", Shapes: "helder.scene.render.Shapes", Geometry: "helder.scene.render.Geometry", VertexData: "helder.scene.render.VertexData", Curve3: "helder.scene.math.Curve3", InstancedMesh: "helder.scene.render.InstancedMesh", Sprites: "helder.scene.render.Sprites", Model: "helder.scene.render.Model", MaterialShader: "helder.scene.render.MaterialShader", PostProcess: "helder.scene.render.PostProcess", Ssao: "helder.scene.render.Ssao", Dof: "helder.scene.render.Dof", Outline: "helder.scene.render.Outline", Lut: "helder.scene.render.Lut", ViewBuffers: "helder.scene.render.ViewBuffers", Ssr: "helder.scene.render.Ssr", MotionBlur: "helder.scene.render.MotionBlur", GodRays: "helder.scene.render.GodRays", Taa: "helder.scene.render.Taa", Smaa: "helder.scene.render.Smaa", Occlusion: "helder.scene.render.Occlusion", Lines: "helder.scene.render.Lines", LineRenderer: "helder.scene.render.LineRenderer", DebugDraw: "helder.scene.render.DebugDraw", Helper: "helder.scene.render.Helper", AxesHelper: "helder.scene.render.AxesHelper", GridHelper: "helder.scene.render.GridHelper", BoundsHelper: "helder.scene.render.BoundsHelper", LightHelper: "helder.scene.render.LightHelper", CameraHelper: "helder.scene.render.CameraHelper", SkeletonHelper: "helder.scene.render.SkeletonHelper", Hit: "helder.scene.render.Hit", HitList: "helder.scene.render.Hit.HitList", RaycastOptions: "helder.scene.render.Hit.RaycastOptions", Raycaster: "helder.scene.render.Raycaster", Bvh: "helder.scene.render.Bvh", Text3D: "helder.scene.render.Text3D", ClusteredLights: "helder.scene.render.ClusteredLights", Clusters: "helder.scene.render.Clusters", Lod: "helder.scene.render.Lod", InstanceCulling: "helder.scene.render.InstanceCulling", Environment: "helder.scene.render.Environment", Sh: "helder.scene.render.Sh", LightProbe: "helder.scene.render.LightProbe", ProbeGrid: "helder.scene.render.ProbeGrid", ReflectionProbe: "helder.scene.render.ReflectionProbe", Probes: "helder.scene.render.Probes", Lightmap: "helder.scene.render.Lightmap", Lightmaps: "helder.scene.render.Lightmaps", AreaLights: "helder.scene.render.AreaLights", InputMap: "helder.scene.input.InputMap", Bindings: "helder.scene.input.Bindings", FixedStep: "helder.scene.FixedStep", Device: "helder.gfx.Device", Surface: "helder.os.Surface", Window: "helder.os.Window", App: "helder.os.App", Event: "helder.os.Event", Script: "helder.scene.Script", __module: "helder.scene.TypeScript"};
 
@@ -2934,6 +2935,13 @@ export declare class Window {
 	// pixels per point (2 on a Retina display, the monitor's DPI / 96 on Windows,
 	// the browser's devicePixelRatio; 1 on X11; iOS: the screen's native scale)
 	readonly scale: number;
+	// the soft keyboard's height over the window in points, 0 while it is
+	// hidden (a signal): iOS's keyboard frame (UIKeyboardWillChangeFrame),
+	// Android's IME insets, the browser's visual viewport against the
+	// window; 0 on the desktop. A change comes with a Resize, the safe
+	// area's bottom following it; keyboardDuration is its animation's
+	// seconds where the system gives them (iOS's), else 0
+	readonly keyboard: Read<number>;
 	close(): void;
 }
 

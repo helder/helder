@@ -673,8 +673,14 @@ where `Ui.policy` says; a page's `<input>`, `<textarea>`): `value`,
 `maxlength`, `spellcheck` (the platform's checker on its words: a text
 area's by default, a field's asked; misspelled words underlined with a red
 wave, their corrections and Add to Dictionary in a right click's menu;
-`helder.text.Spell`, off in the deterministic modes), `inputmode` and `autocomplete` (a page's), `onInput` (its
-text changed by its user: `e.text`), its own editing after the markup's
+`helder.text.Spell`, off in the deterministic modes), its soft keyboard
+(`helder.os.TextKind`, Text input below): `keyboard` (`text`, `email`,
+`number`, `decimal`, `phone`, `url`, `search`), `enterkey` (`default`,
+`done`, `next`, `go`, `search`, `send`), `autocapitalize` (`none`,
+`words`, `sentences`, `characters`), `autocorrect`, `autocomplete`
+(`new-password`: iOS suggests one), `inputmode` (a page's), `onInput` (its
+text changed by its user: `e.text`), `onSubmit` (Enter, the keyboard's
+Enter key whatever its label: `e.text`), its own editing after the markup's
 `onKeyDown`... unless that prevented the default; a ref of theirs gets an `helder.ui.Part` (Node is one: `focus`,
 `rect`, `scrollIntoView`, `contains`, `attr`, `rtl`, `capture`: a press's
 moves and release to it (in a handler, that event's pointer: a finger's too); `select`: a field's selection).
@@ -804,11 +810,12 @@ the native menus (a context menu, the menu bar), the platform's text
 editors where `Ui.policy` or a node says native (on the desktop helder
 draws its own by default), the system's web view (`WebView`, below),
 and later other heavy views (video) when an app needs one. A window's `Ui.platform` is its
-`PlatformViews` (`MacViews` on macOS, `WinViews` on Windows, `WebViews`
-in a browser; none on Linux and Android, where everything is drawn); a
+`PlatformViews` (`MacViews` on macOS, `IosViews` on iOS, `WinViews` on
+Windows, `WebViews` in a browser; none on Linux and Android, where
+everything is drawn); a
 `PlatformEditor` is one text editor, `PlatformMenuItem` a menu's item as
 the platform takes it. The AppKit and Win32 calls they make beside
-helder.os's are theirs (`AkMsg`, `Win32`).
+helder.os's are theirs (`AkMsg`, `UkMsg`, `Win32`).
 
 ### The web view
 
@@ -959,8 +966,15 @@ controls, children of the window, coloured through WM_CTLCOLOREDIT with the
 background behind them (`WinViews`; `WinAccessTest`); on macOS
 NSTextFields over the window's content view (a password's an
 NSSecureTextField) in the field's font, colour and alignment, a text area an
-NSTextView in a borderless NSScrollView (`MacViews`; `MacAccessTest`). Linux (X11, no toolkit)
-and Android draw them still. The platform's menus are there for a
+NSTextView in a borderless NSScrollView (`MacViews`; `MacAccessTest`); on
+iOS UITextFields and UITextViews over the window's view, so that UIKit's
+own editing is the app's: marked text (Japanese, Chinese, Korean,
+dictation), the selection's handles and loupe, autocorrection; their text,
+selection and focus synced both ways, the node getting the text once
+marked text is committed, Return on one line the program's Enter (`IosViews`;
+`tests/platform/TextInputCheck.hx`). Linux (X11, no toolkit) and Android
+draw them still (Android's input method through an InputConnection of
+helder's own: Text input below). The platform's menus are there for a
 program's own (`helder.ui.menu` is the model over them, Menus below): `PlatformViews.menu` shows a context menu (its items,
 separators, checked and disabled ones, submenus and shortcuts' labels):
 Windows' popup menu, macOS's NSMenu; `PlatformViews.menuBar` a menu bar,
@@ -1089,8 +1103,39 @@ and caret's rectangle sent, the preedit drawn in the field, commits typed,
 `delete_surrounding_text` applied); X11's input method draws its
 composition itself. An input
 method's edit of the text around the caret (TSF's `SetText`, Wayland's
-`delete_surrounding_text`) comes as
-`TextReplace` (`Node.replaceText`).
+`delete_surrounding_text`, Android's `deleteSurroundingText`) comes as
+`TextReplace` (`Node.replaceText`), its selection as `TextSelect`.
+
+On phones and in a browser a field tells the soft keyboard what it takes
+(`EditableText.keyboard`, `enterkey`, `autocapitalize`, `autocorrect`; a
+`TextKind`, `Window.textKind`): on iOS its UITextField's traits
+(UIKeyboardType, UIReturnKeyType, autocapitalisation, autocorrection,
+secure entry, a textContentType for AutoFill: email, phone, URL, a password,
+a new one), on Android its EditorInfo (inputType's class, variation and
+flags, imeOptions' action), in a browser its input's `inputmode`,
+`enterkeyhint`, `autocapitalize`, `autocorrect` and `spellcheck`; the
+desktop has none of it but a password's. An email's, a URL's and a
+password's are neither capitalised nor corrected unless asked. Enter (or
+that key) fires `onSubmit`, then `next` moves the focus to the next field
+and `done` lets go of it, the keyboard with it. Android's fields stay drawn:
+the input method talks to an `org.hxmc.Editor` (classes.dex, only in a
+program that takes text) whose InputConnection is helder's
+(`helder.os.android.TextInput`): the field's text and selection mirrored
+on the main thread, so the keyboard reads what is around the caret
+(capitalisation, suggestions) and edits it; its composition shown in the
+field, underlined (Gboard's, a CJK keyboard's).
+
+The soft keyboard's height over the window is `Window.keyboard` (a
+signal, points; `SafeArea.keyboard` the main window's in UI pixels, both
+in TypeScript; `Ui.keyboard` each window's): iOS's keyboard frame
+(UIKeyboardWillChangeFrame, with its animation's duration), Android's IME
+insets (adjustResize; the visible frame below API 30), a browser's visual
+viewport against the window, 0 on the desktop. While it is up the safe
+area's bottom is at least its height, so a layout that keeps clear of the
+safe area (`padding-bottom="env(safe-area-inset-bottom)"`) moves above it,
+and the focused field is kept in its nearest scroller's view, 16 points
+clear of the keyboard (`Ui.KEYBOARD_MARGIN`), scrolled with the keyboard's
+animation where the system gives its duration.
 
 ## Performance
 

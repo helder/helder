@@ -33,6 +33,11 @@ class SafeArea {
 		s(new Edges(top, right, bottom, left));
 	}
 
+	// the main window's soft keyboard over it, in UI pixels (0 while hidden;
+	// helder.os.Window.keyboard): the insets' bottom is at least this while it
+	// is up
+	public static final keyboard:Signal<Float> = Graph.signal(0.0);
+
 	// an inset title bar's area (the current screen's; null: none)
 	public static var titlebar(get, never):Signal<Null<TitlebarArea>>;
 

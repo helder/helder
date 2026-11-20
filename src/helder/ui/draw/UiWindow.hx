@@ -164,8 +164,8 @@ class UiWindow {
 		if (Platform.os() == 3) ui.platform = WebMirror.views(window.surface.handle.toI64().toInt());
 		// (Windows': EDIT controls over the window)
 		else if (Platform.os() == 2) ui.platform = new WinViews(window.surface.handle, ui, () -> renderer.scale);
-		// (macOS': NSTextFields over the window; not iOS's, whose Platform.os() is macOS's too: no AppKit there)
-		else if (Platform.apple() >= 1) {} else if (Platform.os() == 1) ui.platform = new MacViews(window.surface.handle, ui);
+		// (iOS's: UITextFields and UITextViews over the view; macOS': NSTextFields over the window)
+		else if (Platform.apple() >= 1) ui.platform = new IosViews(window.surface.handle, ui) else if (Platform.os() == 1) ui.platform = new MacViews(window.surface.handle, ui);
 		#end
 		open.push(this);
 		#if helder.headless
@@ -211,6 +211,7 @@ class UiWindow {
 		if (Platform.apple() >= 1) {
 			if (iosAccess != null) (cast iosAccess : IosAccess).dispose();
 			if (iosScroll != null) (cast iosScroll : IosScroll).dispose();
+			if (ui.platform != null) (cast ui.platform : IosViews).dispose();
 		} else if (Platform.os() == 1) {
 			if (macAccess != null) (cast macAccess : MacAccess).dispose();
 			if (ui.platform != null) (cast ui.platform : MacViews).dispose();
@@ -296,6 +297,7 @@ class UiWindow {
 		renderer.scale = w / Math.max(1, Math.round(w / s));
 		ui.resize(w / renderer.scale, h / renderer.scale);
 		ui.scale = renderer.scale;
+		keyboard();
 		safeArea();
 		titlebarArea();
 		ui.update();
@@ -353,6 +355,16 @@ class UiWindow {
 		if (open[0] == this) helder.ui.SafeArea.set(t, r, b, l);
 	}
 
+	// the soft keyboard's height over the window in UI pixels, and its animation's seconds
+	function keyboard() {
+		var h = window.keyboard.peek() * window.scale / renderer.scale;
+		if (open[0] == this && helder.ui.SafeArea.keyboard.peek() != h) helder.ui.SafeArea.keyboard(h);
+		if (h == ui.keyboard) return;
+		ui.keyboard = h;
+		ui.keyboardDuration = window.keyboardDuration;
+		ui.requestFrame();
+	}
+
 	// an inset title bar's free area in UI pixels (env(titlebar-area-*), the first window's), when it changed
 	var titlebarShown:Null<helder.ui.TitlebarArea> = null;
 
@@ -384,6 +396,10 @@ class UiWindow {
 			sendTextContext();
 			return;
 		}
+		if (a != null) {
+			var k = ui.textKind() ?? helder.os.TextKind.PLAIN;
+			if (!k.equals(kind)) window.textKind(kind = k);
+		}
 		if (a == null) {
 			window.stopTextInput();
 			// (which takes the keyboard's focus back from a native editor that just took it)
@@ -394,6 +410,8 @@ class UiWindow {
 		sendTextContext();
 	}
 
+	// the text kind last given to the window
+	var kind:Null<helder.os.TextKind> = null;
 	// the text context last given to the window (null: none since text input began)
 	var contextText:Null<String> = null;
 	var contextStart = 0;
@@ -531,6 +549,8 @@ class UiWindow {
 				ui.composition(e.text, e.x);
 			case TextReplace:
 				ui.replaceText(e.x, e.y, e.text);
+			case TextSelect:
+				if (ui.focus != null) ui.focus.select(e.x, e.y);
 			case Resize | Redraw:
 				redraw = true;
 			case Drop:

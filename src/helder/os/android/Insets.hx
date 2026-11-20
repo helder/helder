@@ -10,7 +10,11 @@ import hxmc.unsafe.*;
 // on API 30 getInsets(systemBars | displayCutout), the bars that show and
 // the cutout; on API 29 the system window insets (the bars, the soft
 // keyboard when it resizes) and the cutout's safe insets, the larger of
-// each. The program's thread asks (ask: on its window's create, resize,
+// each. The soft keyboard's height (Window.keyboard, its overlap with the
+// window's bottom): on API 30 getInsets(ime()), on API 29 the visible
+// frame's bottom against the decor view's (getWindowVisibleDisplayFrame,
+// less the bars' stable inset), measured again when the keyboard's Editor
+// gets new insets (TextInput). The program's thread asks (ask: on its window's create, resize,
 // content rect and configuration changes), the main thread measures and
 // wakes it, and its loop takes the new ones (take) at its next turn, a
 // Resize then (AndroidWindow.pump). Immersive (Window.immersive): the
@@ -21,8 +25,8 @@ import hxmc.unsafe.*;
 @:hxmc.unsafe(gc)
 class Insets {
 	static final lock = new sys.thread.Mutex();
-	// left, top, right, bottom in pixels: the last measured (under the lock)
-	static final values = [0, 0, 0, 0];
+	// left, top, right, bottom, the keyboard's height in pixels: the last measured (under the lock)
+	static final values = [0, 0, 0, 0, 0];
 	static var fresh = false;
 	static var asked = false;
 
@@ -40,7 +44,7 @@ class Insets {
 	public static function take(out:Array<Int>):Bool {
 		if (!fresh) return false;
 		lock.acquire();
-		for (k in 0...4)
+		for (k in 0...5)
 			out[k] = values[k];
 		fresh = false;
 		lock.release();
@@ -70,8 +74,9 @@ class Insets {
 		asked = false;
 		lock.release();
 		if (Activity.activity.isNull()) return;
-		var r = [0, 0, 0, 0];
-		var wi = Jni.obj(decor(window()), Jni.method(Jni.cls("android.view.View"), "getRootWindowInsets", "()Landroid/view/WindowInsets;"));
+		var r = [0, 0, 0, 0, 0];
+		var dv = decor(window()), vc = Jni.cls("android.view.View");
+		var wi = Jni.obj(dv, Jni.method(vc, "getRootWindowInsets", "()Landroid/view/WindowInsets;"));
 		// (null: the decor view not attached yet; a content rect's change asks again)
 		if (!wi.isNull()) {
 			var cls = Jni.cls("android.view.WindowInsets");
@@ -81,6 +86,9 @@ class Insets {
 				var ic = Jni.cls("android.graphics.Insets");
 				for (k in 0...4)
 					r[k] = JniEnv.GetIntField(Jni.env, ins, Jni.field(ic, sides[k].toLowerCase(), "I"));
+				var t = Jni.cls("android.view.WindowInsets$Type");
+				var ime = Jni.obj(wi, Jni.method(cls, "getInsets", "(I)Landroid/graphics/Insets;"), Jni.staticInt(t, Jni.staticMethod(t, "ime", "()I")));
+				r[4] = JniEnv.GetIntField(Jni.env, ime, Jni.field(ic, "bottom", "I"));
 			} else {
 				for (k in 0...4)
 					r[k] = Jni.int(wi, Jni.method(cls, "getSystemWindowInset" + sides[k], "()I"));
@@ -92,10 +100,19 @@ class Insets {
 						if (c > r[k]) r[k] = c;
 					}
 				}
+				// (what the visible frame leaves below it, but the bars: the keyboard)
+				var rc = Jni.cls("android.graphics.Rect");
+				var rect = Jni.newObject(rc, Jni.method(rc, "<init>", "()V"));
+				Jni.call(dv, Jni.method(vc, "getWindowVisibleDisplayFrame", "(Landroid/graphics/Rect;)V"), rect.toI64());
+				var below = Jni.int(dv, Jni.method(vc, "getHeight", "()I")) - JniEnv.GetIntField(Jni.env, rect, Jni.field(rc, "bottom", "I"));
+				var bars = Jni.int(wi, Jni.method(cls, "getStableInsetBottom", "()I"));
+				r[4] = below - bars > 0 ? below - bars : 0;
+				// (adjustResize: the system window inset was the keyboard's too)
+				if (r[4] > 0 && r[3] > bars) r[3] = bars;
 			}
 		}
 		lock.acquire();
-		for (k in 0...4)
+		for (k in 0...5)
 			values[k] = r[k];
 		fresh = true;
 		lock.release();

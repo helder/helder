@@ -113,6 +113,17 @@ class Ui {
 	// 0 elsewhere). Markup's env(safe-area-inset-*) reads the main window's
 	// (SafeArea); a layout of its own reads this
 	public var safeArea:Edges = Edges.ZERO;
+	// the soft keyboard's height over the window, in UI pixels (UiWindow:
+	// helder.os.Window.keyboard; 0 while hidden, and on the desktop), and its
+	// animation's seconds (0: not given). While it is up the focused field
+	// is kept in view above it (KEYBOARD_MARGIN clear), its nearest scroller
+	// scrolled, with the keyboard's animation
+	public var keyboard = 0.0;
+	public var keyboardDuration = 0.0;
+	public static inline var KEYBOARD_MARGIN = 16.0;
+	// (the focus and the keyboard's height last kept in view)
+	var revealed:Null<Node> = null;
+	var revealedAt = 0.0;
 	// the platform's own views where a window has them (PlatformViews), and
 	// which kinds of widget are native where the tree leaves it Auto (Host):
 	// "text-field", "text-area", "context-menu", "menubar" (defaultPolicy:
@@ -326,6 +337,7 @@ class Ui {
 			if (!@:privateAccess trackpad.holds(n)) Scrolling.clamp(n);
 		rounded.resize(0);
 		changes.resize(0);
+		reveal();
 		for (n in natives.copy())
 			n.syncNative();
 		helder.ui.motion.Motions.updating = false;
@@ -333,6 +345,21 @@ class Ui {
 	}
 
 	var fontGeneration = 0;
+
+	// (the keyboard up: a field newly focused, or the keyboard's height
+	// changed, kept in view above it)
+	function reveal() {
+		var f = focus;
+		if (keyboard <= 0 || f == null || f.textKind() == null) {
+			revealed = null;
+			revealedAt = 0;
+			return;
+		}
+		if (f == revealed && keyboard == revealedAt) return;
+		revealed = f;
+		revealedAt = keyboard;
+		Scrolling.reveal(this, f, KEYBOARD_MARGIN, height - keyboard, keyboardDuration);
+	}
 
 	static function dirtyAll(n:Node) {
 		if (n is TextNode) (cast n : TextNode).forgetLayout();
@@ -1750,6 +1777,10 @@ class Ui {
 	public function textContext():Null<{text:String, start:Int, end:Int, multiline:Bool, secret:Bool}>
 		return focus == null ? null : focus.textContext();
 
+	// what the focus takes for the system's keyboard (null: it takes no text)
+	public function textKind():Null<helder.os.TextKind>
+		return focus == null ? null : focus.textKind();
+
 	// where text is typed now (the focused node's caret, window pixels): the
 	// input method's place; null: the focus takes no text
 	public function textInputArea():Null<{x:Float, y:Float, width:Float, height:Float}>
@@ -1806,11 +1837,12 @@ class Ui {
 	}
 
 	// the next (1) or previous (-1) focusable node in tree order, wrapping
-	public function moveFocus(dir:Int) {
+	// (only: of those, the ones it says)
+	public function moveFocus(dir:Int, ?only:Node->Bool) {
 		var all:Array<Node> = [];
 		function collect(n:Node) {
 			if (n.style.display == None) return;
-			if (n.focusable && n.visible()) all.push(n);
+			if (n.focusable && n.visible() && (only == null || n == focus || only(n))) all.push(n);
 			for (c in n.children)
 				collect(c);
 		}

@@ -9,7 +9,7 @@ import haxe.macro.Type;
 // writes {"dex", "views", "services", "permissions"} once the program is
 // generated (after dead code elimination, when the build has it):
 // - dex: a class marked @:helder.android.dex is in it (helder.os.android.Glue:
-//   Java's listeners; a text input's TextWatcher too);
+//   Java's listeners; helder.os.android.TextInput: the input method's Editor);
 // - views: the program makes an instance of a class marked
 //   @:helder.android.views (Android's views as the activity's content; none
 //   is now), which needs org.hxmc.Activity: its window draws views, not

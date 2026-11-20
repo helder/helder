@@ -72,9 +72,78 @@ class UiTest {
 		popups();
 		shortcuts();
 		natives();
+		keyboards();
 		noFont();
 		Sys.println('UiTest: $checks checks' + (failed == 0 ? ", ok" : ', $failed FAILED'));
 		Sys.exit(failed == 0 ? 0 : 1);
+	}
+
+	// a field's keyboard (TextKind): its defaults by kind, Enter's next and
+	// done after onSubmit, a native editor told its kind and selection, the
+	// focused field kept above the soft keyboard (Ui.keyboard)
+	static function keyboards() {
+		var k = new helder.os.TextKind(Email);
+		check("keyboards: an email's not capitalised nor corrected", k.capitalize == None && !k.autocorrect);
+		k = new helder.os.TextKind();
+		check("keyboards: text's sentences, corrected", k.capitalize == Sentences && k.autocorrect);
+		check("keyboards: a password's not corrected", !new helder.os.TextKind(Text, Default, null, null, true).autocorrect);
+		var ui = new Ui(new MonoText(), 300, 200);
+		var a = new TextField(""), b = new TextField(""), c = new TextField("");
+		var submitted = [];
+		for (f in [a, b, c]) {
+			f.style.set({width: 100, height: 20});
+			f.onSubmit = t -> submitted.push(f == a ? "a" : f == b ? "b" : "c");
+			ui.root.append(f);
+		}
+		a.enterkey = Next;
+		b.enterkey = Done;
+		c.keyboard = Number;
+		ui.update();
+		ui.setFocus(a);
+		check("keyboards: the focus's kind", ui.textKind().enter == Next && ui.textKind().keyboard == Text);
+		ui.keyDown(Key.ENTER, 0);
+		check("keyboards: next: submitted, the focus on the next field", ui.focus == b && submitted.join(",") == "a");
+		ui.keyDown(Key.ENTER, 0);
+		check("keyboards: done: submitted, no focus", ui.focus == null && submitted.join(",") == "a,b");
+		check("keyboards: no focus, no kind", ui.textKind() == null);
+		var views = new FakeViews();
+		ui.platform = views;
+		ui.update();
+		var ec = views.made[2];
+		check("keyboards: a native editor told its kind", ec.kind != null && ec.kind.keyboard == Number);
+		c.setText("12345");
+		ui.update();
+		c.select(1, 3);
+		ui.update();
+		check("keyboards: a native editor told the program's selection", ec.text == "12345" && ec.start == 1 && ec.end == 3, '${ec.start} ${ec.end}');
+		ec.listener.editorSelected(2, 4);
+		check("keyboards: the editor's selection the field's", c.selectionStart == 2 && c.selectionEnd == 4);
+		// (a scroller of a tall gap, a field and a footer; the keyboard up, the
+		// scroller's padding the safe area's bottom, as env() gives it)
+		var ui = new Ui(new MonoText(), 300, 200);
+		var s = new Node("s"), gap = new Node("gap"), f = new TextField(""), foot = new Node("foot");
+		s.style.set({width: 300, height: 200, overflow: Scroll});
+		gap.style.set({height: 300, shrink: 0});
+		f.style.set({width: 100, height: 20, shrink: 0});
+		foot.style.set({height: 50, shrink: 0});
+		s.append(gap);
+		s.append(f);
+		s.append(foot);
+		ui.root.append(s);
+		ui.update();
+		ui.setFocus(f, false);
+		ui.update();
+		check("keyboards: no keyboard, nothing kept in view", s.scrollY == 0);
+		ui.keyboard = 100;
+		s.style.set({paddingBottom: 100});
+		ui.update();
+		var r = f.windowBounds();
+		check("keyboards: the field kept above the keyboard, 16 clear", r.y + r.height == 200 - 100 - Ui.KEYBOARD_MARGIN, '${r.y + r.height}');
+		ui.keyboard = 0;
+		ui.update();
+		ui.setFocus(null);
+		ui.update();
+		check("keyboards: down, the scroll left alone", s.scrollY > 0);
 	}
 
 	// no font at all (a page whose build found none to ship): the error says
@@ -3162,8 +3231,22 @@ class FakeEditor implements PlatformEditor {
 	public function listen(l:PlatformEditorListener)
 		listener = l;
 
-	public function setText(text:String, start:Int, end:Int)
+	public var start = 0;
+	public var end = 0;
+	public var kind:Null<helder.os.TextKind> = null;
+
+	public function setText(text:String, start:Int, end:Int) {
 		this.text = text;
+		select(start, end);
+	}
+
+	public function select(start:Int, end:Int) {
+		this.start = start;
+		this.end = end;
+	}
+
+	public function setKind(kind:helder.os.TextKind)
+		this.kind = kind;
 
 	public function place(x:Float, y:Float, width:Float, height:Float, shown:Bool) {
 		this.x = x;

@@ -23,6 +23,9 @@
 // box is the theme's), in the field's font and colour. Edits, focus and the
 // keys it leaves to the program (Tab, Escape; Enter, Up and Down on one
 // line) are queued for the module.
+// (a keyboard's inputmode)
+const MODES = { number: 'numeric', phone: 'tel' };
+
 export default function (host) {
 	const editors = new Map();
 	const editorEvents = [];
@@ -242,6 +245,21 @@ export default function (host) {
 			const ed = editors.get(h);
 			ed.e.value = host.string(text);
 			if (document.activeElement === ed.e) ed.e.setSelectionRange(start, end);
+		},
+		editor_select(h, start, end) {
+			const ed = editors.get(h);
+			if (document.activeElement === ed.e && (ed.e.selectionStart !== start || ed.e.selectionEnd !== end)) ed.e.setSelectionRange(start, end);
+		},
+		// a phone's keyboard for it: inputmode (the input's type stays text:
+		// an email's or a number's has no selection to set)
+		editor_kind(h, keyboard, enter, capitalize, autocorrect) {
+			const ed = editors.get(h), e = ed.e, k = host.string(keyboard), enterkey = host.string(enter);
+			e.inputMode = MODES[k] ?? k;
+			if (enterkey === 'default') e.removeAttribute('enterkeyhint');
+			else e.setAttribute('enterkeyhint', enterkey);
+			e.setAttribute('autocapitalize', host.string(capitalize));
+			e.setAttribute('autocorrect', autocorrect ? 'on' : 'off');
+			e.spellcheck = !!autocorrect;
 		},
 		// its place: the window's pixels (the canvas's buffer over its pixel
 		// ratio: the device's, at most run's option maxPixelRatio, as os's),

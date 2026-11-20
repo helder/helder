@@ -7,6 +7,11 @@ interface PlatformEditor {
 	function listen(l:PlatformEditorListener):Void;
 	// its text and selection, from the program
 	function setText(text:String, start:Int, end:Int):Void;
+	// its selection alone, from the program (its text the same)
+	function select(start:Int, end:Int):Void;
+	// what the system's keyboard shows for it (a phone's, a browser's: its
+	// keys, Enter key, capitalisation, corrections; ignored on the desktop)
+	function setKind(kind:helder.os.TextKind):Void;
 	// its place in the window's coordinates (logical pixels); hidden: not shown (covered, or out of view)
 	function place(x:Float, y:Float, width:Float, height:Float, shown:Bool):Void;
 	// (background: what shows behind it, the nearest opaque background around

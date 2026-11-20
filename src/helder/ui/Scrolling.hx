@@ -175,6 +175,33 @@ class Scrolling {
 		}
 	}
 
+	// n brought into its nearest vertical scroller's view, margin clear of
+	// its edges and of bottom (window pixels: a keyboard's top), scrolled
+	// as little as that takes, glided over duration seconds (0: at once)
+	static function reveal(ui:Ui, n:Node, margin:Float, bottom:Float, duration:Float) {
+		var p = n.parent;
+		while (p != null && !(p.style.overflow == Scroll && p.style.overflowY == Scroll))
+			p = p.parent;
+		if (p == null) return;
+		var b = n.windowBounds(), v = p.windowBounds(), s = p.style;
+		var top = v.y + s.borderEdges.top + s.padding.top, end = Math.min(v.y + v.height - s.borderEdges.bottom - s.padding.bottom, bottom);
+		var d = 0.0;
+		if (b.y - margin < top) d = b.y - margin - top else if (b.y + b.height + margin > end) d = Math.min(b.y + b.height + margin - end, b.y - margin - top);
+		var y = clampTo(p, false, p.scrollY + d);
+		if (Math.abs(y - p.scrollY) < 0.5) return;
+		if (duration <= 0) {
+			ui.scrollTo(p, p.scrollX, y);
+			return;
+		}
+		var g = ui.glides.get(p);
+		if (g == null) ui.glides.set(p, g = new ScrollGlide(p, (x, y) -> {
+			setScroll(ui, p, true, x);
+			setScroll(ui, p, false, y);
+		}));
+		g.fixed = duration;
+		g.to(p.scrollX, p.scrollY, {x: p.scrollX, y: y});
+	}
+
 	static function viewSize(n:Node, x:Bool):Float {
 		var s = n.style;
 		return (x ? n.width : n.height) - (x ? s.borderEdges.horizontal + s.padding.horizontal : s.borderEdges.vertical + s.padding.vertical);

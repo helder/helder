@@ -99,6 +99,40 @@ class Neutral {
 		});
 	}
 
+	// (a field's Enter, not an input method's: onSubmit, its text)
+	public static function submit(el:Dynamic, h:Dynamic) {
+		if (h == null) return;
+		el.addEventListener("keydown", (e:js.html.KeyboardEvent) -> {
+			if (e.key != "Enter" || e.isComposing || el.tagName == "TEXTAREA") return;
+			var ev = new NeutralEvent(Submit, 0, 0, el);
+			ev.text = el.value;
+			(h : Dynamic->Void)(ev);
+			helder.view.graph.Graph.flush();
+		});
+	}
+
+	// a field's keyboard (helder.os.TextKind's names): keyboard as its type
+	// (an input's email, url, search, tel) and inputmode, enterkey as
+	// enterkeyhint, autocapitalize, autocorrect (and spellcheck)
+	public static function fieldKind(el:Dynamic, name:String, v:Dynamic) {
+		var s:Null<String> = v == null ? null : Std.string(v);
+		switch name {
+			case "keyboard":
+				var types = ["email" => "email", "url" => "url", "search" => "search", "phone" => "tel"];
+				if (el.tagName == "INPUT" && el.type != "password") el.type = s != null && types.exists(s) ? types[s] : "text";
+				var mode = s == "number" ? "numeric" : s == "phone" ? "tel" : s;
+				if (mode == null) el.removeAttribute("inputmode") else el.setAttribute("inputmode", mode);
+			case "enterkey":
+				if (s == null || s == "default") el.removeAttribute("enterkeyhint") else el.setAttribute("enterkeyhint", s);
+			case "autocapitalize":
+				if (s == null) el.removeAttribute("autocapitalize") else el.setAttribute("autocapitalize", s);
+			case "autocorrect":
+				var on = v == true || s == "true" || s == "on" || s == "";
+				if (v == null) el.removeAttribute("autocorrect") else el.setAttribute("autocorrect", on ? "on" : "off");
+				if (v != null) el.spellcheck = on;
+		}
+	}
+
 	// a handler of ui's Event for a DOM event
 	public static function on(el:Dynamic, dom:String, h:Dynamic, type:EventType) {
 		if (h == null) return;

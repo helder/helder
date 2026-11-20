@@ -209,7 +209,11 @@ function tests() {
 				"Lorg/hxmc/Glue; onKey(Landroid/view/View;ILandroid/view/KeyEvent;)Z", "Lorg/hxmc/AccessProvider; <init>()V",
 				"Lorg/hxmc/AccessProvider; createAccessibilityNodeInfo(I)Landroid/view/accessibility/AccessibilityNodeInfo;",
 				"Lorg/hxmc/AccessProvider; performAction(IILandroid/os/Bundle;)Z",
-				"Lorg/hxmc/AccessDelegate; getAccessibilityNodeProvider(Landroid/view/View;)Landroid/view/accessibility/AccessibilityNodeProvider;"
+				"Lorg/hxmc/AccessDelegate; getAccessibilityNodeProvider(Landroid/view/View;)Landroid/view/accessibility/AccessibilityNodeProvider;",
+				"Lorg/hxmc/Editor; <init>(Landroid/content/Context;)V", "Lorg/hxmc/Editor; onCheckIsTextEditor()Z",
+				"Lorg/hxmc/Editor; onCreateInputConnection(Landroid/view/inputmethod/EditorInfo;)Landroid/view/inputmethod/InputConnection;",
+				"Lorg/hxmc/Connection; <init>(Landroid/view/View;Z)V", "Lorg/hxmc/Connection; beginBatchEdit()Z",
+				"Lorg/hxmc/Connection; setComposingText(Ljava/lang/CharSequence;I)Z", "Lorg/hxmc/Connection; getTextBeforeCursor(II)Ljava/lang/CharSequence;"
 			])
 				assert(methods.contains(m), m);
 		});

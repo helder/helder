@@ -499,6 +499,7 @@ export default function (host) {
 	let query = 0;
 	// the next frame's requestAnimationFrame
 	let frameId = 0;
+	let keyboardAt = 0;
 	// App.backDepth's history entry (one of the page's own, state
 	// {helderBack: 1}, while want: the app deep): pushed, or on its way out
 	// (leaving: history.back() asked, its popstate not yet come)
@@ -663,6 +664,10 @@ export default function (host) {
 		width: (h) => host.handles.get(h).width,
 		height: (h) => host.handles.get(h).height,
 		scale: () => pixelRatio(),
+		// the soft keyboard over the page (CSS pixels): the layout viewport's
+		// height the visual viewport leaves below it (0 where the keyboard
+		// resizes the page instead, and on the desktop)
+		keyboard: () => keyboardAt,
 		prefers_dark: () => (globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches ? 1 : 0),
 		settings: () => [
 			'(prefers-reduced-motion: reduce)', '(prefers-contrast: more)', '(prefers-contrast: less)',
@@ -985,6 +990,11 @@ export default function (host) {
 					}
 				}
 				for (const h of windows) if (sync(h)) push([h, RESIZE, 0, host.handles.get(h).width, host.handles.get(h).height, 0, 0]);
+				const vv = globalThis.visualViewport, kb = vv ? Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop)) : 0;
+				if (kb !== keyboardAt) {
+					keyboardAt = kb;
+					for (const h of windows) push([h, RESIZE, 0, host.handles.get(h).width, host.handles.get(h).height, 0, 0]);
+				}
 				// (a frame that throws: no more frames, and the page told when it
 				// asked, run's option onError)
 				let more;

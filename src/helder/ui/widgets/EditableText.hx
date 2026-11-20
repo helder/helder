@@ -201,6 +201,22 @@ class EditableText extends TextNode implements PlatformEditorListener {
 		if (spellWaves.length > n) spellWaves.resize(n);
 	}
 
+	// what the system's keyboard shows for it (helder.os.TextKind): its keys,
+	// its Enter key (a TextField's next moves the focus to the next field,
+	// done lets go of it and the keyboard), what is capitalised and whether
+	// words are corrected (null: sentences and corrected, but for an email,
+	// a URL and a password)
+	public var keyboard:helder.os.TextKind.Keyboard = Text;
+	public var enterkey:helder.os.TextKind.EnterKey = Default;
+	public var autocapitalize:Null<helder.os.TextKind.Capitalize> = null;
+	public var autocorrect:Null<Bool> = null;
+	// what AutoFill offers it (as an input's autocomplete; "new-password": a
+	// password suggested, on iOS)
+	public var autocomplete = "";
+
+	override public function textKind():Null<helder.os.TextKind>
+		return new helder.os.TextKind(keyboard, enterkey, autocapitalize, autocorrect, secret, hostKind() == "text-area", autocomplete == "new-password");
+
 	// read only: selected and copied, not edited (as an input's readonly)
 	public var readOnly(default, set) = false;
 
@@ -668,7 +684,10 @@ class EditableText extends TextNode implements PlatformEditorListener {
 	var editorShown = false;
 	var editorHasFocus = false;
 	var editorText:Null<String> = null;
+	var editorStart = 0;
+	var editorEnd = 0;
 	var editorStyle = "";
+	var editorKind:Null<helder.os.TextKind> = null;
 
 	// (Ui.policy's name for it; a text area's "text-area")
 	function hostKind():String
@@ -703,11 +722,16 @@ class EditableText extends TextNode implements PlatformEditorListener {
 			editor.listen(this);
 			editorText = null;
 			editorStyle = "";
+			editorKind = null;
 		}
+		var k = textKind();
+		if (!k.equals(editorKind)) editor.setKind(editorKind = k);
 		if (text != editorText) {
 			editor.setText(text, selectionStart, selectionEnd);
 			editorText = text;
-		}
+		} else if (selectionStart != editorStart || selectionEnd != editorEnd) editor.select(selectionStart, selectionEnd);
+		editorStart = selectionStart;
+		editorEnd = selectionEnd;
 		var f = font(), c = textColor(), a = style.textAlign ?? (rtl() ? Right : Left), bg = behind();
 		var key = f.family + "|" + f.size + "|" + f.weight + "|" + f.italic + "|" + (c : Int) + "|" + (bg : Int) + "|" + placeholder + "|" + (placeholderColor : Int) + "|" + a + "|" + secret;
 		if (key != editorStyle) {
@@ -803,8 +827,18 @@ class EditableText extends TextNode implements PlatformEditorListener {
 		}
 		anchor = clampIndex(start);
 		caret = clampIndex(end);
+		editorStart = selectionStart;
+		editorEnd = selectionEnd;
 		changed();
 		if (t != was) edited(t) else if (onChange != null) onChange(t);
+	}
+
+	public function editorSelected(start:Int, end:Int) {
+		anchor = clampIndex(start);
+		caret = clampIndex(end);
+		editorStart = selectionStart;
+		editorEnd = selectionEnd;
+		changed();
 	}
 
 	public function editorFocused(on:Bool) {
