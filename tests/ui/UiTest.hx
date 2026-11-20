@@ -58,6 +58,7 @@ class UiTest {
 		visibility();
 		pointerEvents();
 		rtlScroll();
+		nativeScrolls();
 		noWrap();
 		textTransform();
 		culling();
@@ -580,6 +581,63 @@ class UiTest {
 		ui.pointerUp(50, 30, 1);
 		check("pointer events: through a None node to the one under it", ui.root.hitTest(50, 30) == under && clicked == 1, "" + ui.root.hitTest(50, 30));
 		check("pointer events: its Auto child still found", ui.root.hitTest(10, 10) == knob);
+	}
+
+	// the platform's scroll views (Ui.nativeScroll): the scrollers listed
+	// where they show, a drag given to the one that can move that way, their
+	// offsets taken (past the ends while bouncing), helder's drag off
+	static function nativeScrolls() {
+		var ui = new Ui(new MonoText(), 200, 100);
+		ui.nativeScroll = true;
+		var outer = new Node("outer"), row = new Node("row"), tall = new Node("tall");
+		outer.style.set({width: 200, height: 100, overflow: Scroll});
+		row.style.set({height: 40, shrink: 0, overflow: Scroll, direction: Row});
+		for (i in 0...3) {
+			var c = new Node("c" + i);
+			c.style.set({width: 100, height: 40, shrink: 0});
+			row.append(c);
+		}
+		tall.style.set({height: 300, shrink: 0});
+		outer.append(row);
+		outer.append(tall);
+		ui.root.append(outer);
+		ui.update();
+		var vs = ui.scrollViews();
+		check("native scroll: both scrollers, outer first", vs.length == 2 && vs[0].node == outer && vs[1].node == row, "" + vs.length);
+		check("native scroll: extents", vs[0].contentHeight == 340 && !vs[0].scrollsX && vs[0].scrollsY && vs[1].contentWidth == 300 && vs[1].scrollsX,
+			vs[0].contentHeight + " " + vs[1].contentWidth);
+		check("native scroll: a vertical drag on the row the outer's", ui.nativeBegins(outer, 50, 20, 0, 10) && !ui.nativeBegins(row, 50, 20, 0, 10));
+		check("native scroll: a sideways one the row's", ui.nativeBegins(row, 50, 20, 10, 0) && !ui.nativeBegins(outer, 50, 20, 10, 0));
+		check("native scroll: at the top, pulled down, the outer's (bouncing)", ui.nativeBegins(outer, 50, 20, 0, -10));
+		ui.nativeScrolled(outer, 0, 30);
+		ui.update();
+		vs = ui.scrollViews();
+		check("native scroll: its offset taken, the row moved up", outer.scrollY == 30 && vs.length == 2 && vs[1].y == -30, outer.scrollY + " " + vs[1].y);
+		ui.nativeScrolled(outer, 0, -12);
+		check("native scroll: past the start while bouncing", outer.scrollY == -12);
+		ui.nativeScrolled(outer, 0, 0);
+		ui.update();
+		var moved = false;
+		tall.onPointerMove = _ -> moved = true;
+		check("native scroll: none over a node following the pointer", !ui.nativeBegins(outer, 50, 80, 0, 10));
+		tall.onPointerMove = null;
+		ui.pointerDown(50, 80, 1, 1, Touch);
+		ui.pointerMove(50, 40, 1);
+		ui.pointerUp(50, 40, 1, 1);
+		ui.update();
+		check("native scroll: a finger's drag left to the platform", outer.scrollY == 0, "" + outer.scrollY);
+		var clicks = 0;
+		tall.onClick = _ -> clicks++;
+		ui.nativeHalt = () -> true;
+		ui.pointerDown(50, 80, 1, 1, Touch);
+		ui.pointerUp(50, 80, 1, 1);
+		check("native scroll: a touch stopping a glide clicks nothing", clicks == 0, "" + clicks);
+		ui.nativeHalt = null;
+		ui.nativeScroll = false;
+		ui.pointerDown(50, 80, 1, 1, Touch);
+		ui.pointerMove(50, 40, 1);
+		ui.pointerUp(50, 40, 1, 1);
+		check("native scroll: off, helder's own drag scrolls", outer.scrollY > 0, "" + outer.scrollY);
 	}
 
 	static function rtlScroll() {

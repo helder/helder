@@ -163,7 +163,7 @@ class HomeScreen implements Markup {
 	}
 
 	public function view():View
-		return <view grow={1}>
+		return <view grow={1} min-height={0}>
 			<Show when={!failed()} fallback={<view grow={1} padding-top="env(safe-area-inset-top)">{header()}<Failed onRetry={load}/></view>}>
 				<scroll id="home-scroll" grow={1} min-height={0} scrollbar-width="none">
 					<view padding-top="env(safe-area-inset-top)" padding-bottom={24}>

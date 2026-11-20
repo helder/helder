@@ -614,7 +614,7 @@ class Ui {
 		cullY0 = c1;
 		cullX1 = c2;
 		cullY1 = c3;
-		if (s.overflow == Scroll && !hidden) {
+		if (s.overflow == Scroll && !hidden && !(nativeScroll && nativeBars)) {
 			for (x in [false, true]) {
 				var t = Scrolling.thumb(n, x);
 				if (t == null) continue;
@@ -905,8 +905,9 @@ class Ui {
 		var primary = true;
 		for (i in 1...POINTERS)
 			if (pDown[i]) primary = false;
-		// (a new touch stops a glide)
+		// (a new touch stops a glide: the platform's too, and then clicks nothing)
 		@:privateAccess touchScroll.stop();
+		var halted = nativeScroll && nativeHalt != null && nativeHalt();
 		var target = hit(x, y);
 		Popups.dismissOutside(this, target);
 		if (focusVisible) {
@@ -939,7 +940,8 @@ class Ui {
 				f = f.parent;
 			setFocus(f, false);
 		}
-		if (pDown[id]) openArena(id, target, type, 1, x, y, primary && type != Mouse && !pCaptured[id]);
+		if (halted) pClick[id] = false;
+		if (pDown[id]) openArena(id, target, type, 1, x, y, primary && type != Mouse && !pCaptured[id] && !nativeScroll);
 		return owns(target);
 	}
 
@@ -1482,6 +1484,46 @@ class Ui {
 	final scrolls = new Map<Node, Array<Float>>();
 	// the scrollers rounded by the last layouts, clamped after them
 	final rounded:Array<Node> = [];
+
+	// the platform's own scroll views drive the scrollers (UiWindow: iOS's
+	// UIScrollView): their physics, edges and indicators; a finger's drag
+	// is theirs to take (nativeBegins), what they scroll to the
+	// scrollers' (nativeScrolled), and TouchScroll, helder's own, takes no
+	// touch. Off: helder's own everywhere (a Surface's scrolling="helder")
+	public var nativeScroll = false;
+	// (the platform draws the scrollbars: the thumbs not drawn)
+	public var nativeBars = false;
+	// (a touch going down: the platform's scroll views stopped where one
+	// glides, whether one did; the touch then clicks nothing, as on iOS)
+	public var nativeHalt:Null<Void->Bool> = null;
+	final scrollList:Array<ScrollView> = [];
+	final scrollKept = new Map<Node, ScrollView>();
+	var scrollPass = 0;
+
+	// the scrollers the platform's scroll views mirror, after update (Scrolling.views)
+	public function scrollViews():Array<ScrollView>
+		return Scrolling.views(this);
+
+	// whether a platform's drag at x, y moving the content's scroll by dx,
+	// dy is n's (Scrolling.begins)
+	public function nativeBegins(n:Node, x:Float, y:Float, dx:Float, dy:Float):Bool
+		return Scrolling.begins(this, n, x, y, dx, dy);
+
+	// a platform's scroll view moved n to its offsets x, y from its start
+	// (an event: the graph's writes in it land at its end)
+	public function nativeScrolled(n:Node, x:Float, y:Float) {
+		Scrolling.moved(this, n, x, y);
+		helder.view.graph.Graph.flush();
+	}
+
+	// (a pointer a recogniser of the tree won, but a Tap: its drag is the tree's)
+	function gestureHeld():Bool {
+		for (id in 0...POINTERS) {
+			var w = winners[id];
+			if (w != null && w != touchScroll && !Std.isOfType(w, Tap)) return true;
+		}
+		return false;
+	}
 
 	// the nodes changed since the last update, as far as layout goes (Node.markDirty;
 	// more than Layout.CHANGES: all laid out again from the root)
