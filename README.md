@@ -78,11 +78,22 @@ bundling and store publishing. What it lacks, in order:
 touchpad scrolling; the web's scroll lag and Safari's rubber band.
 
 **Foundations**
-- Native plugins: a convention for native modules, then in-app purchases,
-  Game Center and Play Games, the share sheet, notifications.
 - Localization: the device's locale, string catalogues, plurals, dates and numbers.
 - The platform's settings as signals (text scale, reduced motion,
   contrast, orientation); Android's clipboard.
+
+**App services**: one API each, the platform's implementation underneath
+(as Capacitor's and Flutter's plugins), unavailable where a platform has none.
+- In helder, on the system's own APIs: permissions, the share sheet, local
+  notifications, network status, incoming deep links, the photo picker and
+  camera, geolocation, biometrics, the app's directories, device info, the
+  status bar's style.
+- As packages, for what needs a library or glue the system lacks: in-app
+  purchases first (StoreKit 2's Swift, Play Billing), then push
+  notifications, Game Center and Play Games, Steam, ads and analytics. Such a
+  package carries prebuilt native pieces (a static library, Android's DEX, a
+  shared library) and what the build merges (entitlements, Info.plist,
+  manifests), so that its users need no Xcode or Android SDK.
 
 **Apps**
 - Navigation: routes, a stack with the system's back, transitions, URLs, deep links.
