@@ -57,6 +57,7 @@ class Android {
 		try FileSystem.deleteFile(classes) catch (_:Dynamic) {};
 		// (a Haxe string in the macro call: forward slashes)
 		var words = ["--macro", 'helder.pack.android.Classes.write("${FileSystem.fullPath(Path.directory(lib)).split("\\").join("/")}/classes.json")'].concat(App.defines(e.config));
+		if (App.links(e.config) != null) words = words.concat(["-D", "helder.links"]);
 		return BuildCommand.build(e, lib, mode, server, words.concat(extra ?? []), packed ? () -> {
 			pack(e, lib, apk, dev);
 			apk;
@@ -70,8 +71,8 @@ class Android {
 		var release = dev ? null : releaseSigner(e.config, e.root);
 		var key = release ?? Apk.debugSigner(debugKey(e));
 		var assets = dev ? [] : [for (a in AssetStep.assets(lib)) {name: helder.asset.AssetPath.bundled(a.key), data: File.getBytes(a.file)}];
-		var o = options(e, c.views, dev, release == null);
-		File.saveBytes(apk, Apk.write(File.getBytes(lib), e.target, c.dex ? Glue.dex() : null, c.views, o, key, assets));
+		var o = options(e, c, dev, release == null);
+		File.saveBytes(apk, Apk.write(File.getBytes(lib), e.target, dexOf(c, o), c.views, o, key, assets));
 	}
 
 	// the debug key (HELDER_ANDROID_KEY: the key's text, or its file's path)
@@ -113,10 +114,22 @@ class Android {
 		return Apk.releaseSigner(id);
 	}
 
-	// the manifest's options with its resources (debuggable: a debug key's build)
-	static function options(e:Entry, views:Bool, dev:Bool, debuggable:Bool):ApkOptions {
+	// classes.dex: the views' and listeners' classes, the services'; null: none
+	static function dexOf(c:Classes, o:ApkOptions):Null<haxe.io.Bytes>
+		return c.dex || o.services.length > 0 ? Glue.dex(c.dex, o.services) : null;
+
+	// the manifest's options with its resources (debuggable: a debug key's
+	// build); the services' classes and permissions the program uses, an
+	// app with links its org.hxmc.Main
+	static function options(e:Entry, c:Classes, dev:Bool, debuggable:Bool):ApkOptions {
 		var o = App.android(e.name, e.config, dev);
 		Manifest.warn(e);
+		var views = c.views;
+		for (p in c.permissions)
+			if (!o.permissions.contains(p) && !o.permissions.contains("android.permission." + p)) o.permissions.push(p);
+		var services = c.services.copy();
+		if (o.links != null && !views && !services.contains("Main")) services.push("Main");
+		o.services = services;
 		var r = resources(e.config, e.root, o.id, views);
 		return r == null ? {
 			id: o.id,
@@ -128,7 +141,9 @@ class Android {
 			permissions: o.permissions,
 			orientation: o.orientation,
 			cleartext: o.cleartext,
-			debuggable: debuggable
+			debuggable: debuggable,
+			services: o.services,
+			links: o.links
 		} : {
 			id: o.id,
 			label: o.label,
@@ -142,7 +157,9 @@ class Android {
 			icon: r.icon,
 			theme: r.theme,
 			cleartext: o.cleartext,
-			debuggable: debuggable
+			debuggable: debuggable,
+			services: o.services,
+			links: o.links
 		};
 	}
 
@@ -168,9 +185,10 @@ class Android {
 		}
 		var c = libs[0].classes;
 		var assets = [for (a in AssetStep.assets(libs[0].lib)) {name: helder.asset.AssetPath.bundled(a.key), data: File.getBytes(a.file)}];
-		var o = options(e, c.views, false, false);
+		var o = options(e, c, false, false);
 		var r = resources(e.config, e.root, o.id, c.views);
-		File.saveBytes(out, helder.pack.android.Aab.write([for (l in libs) {target: l.target, so: l.so}], c.dex ? Glue.dex() : null, Apk.manifestOf(o, c.dex, c.views),
+		var dex = dexOf(c, o);
+		File.saveBytes(out, helder.pack.android.Aab.write([for (l in libs) {target: l.target, so: l.so}], dex, Apk.manifestOf(o, dex != null, c.views),
 			r == null ? null : {table: r.table, files: r.files, xml: r.xml}, assets, key));
 		Term.out(helder.cli.Style.status("bundled", helder.cli.Style.Tone.Ok, helder.cli.Style.path(out) + helder.cli.Style.dim(helder.cli.Style.sep() + Math.round(FileSystem.stat(out).size / 1024) + " KB")));
 		return {ok: true, ms: ms, messages: last.messages};
@@ -276,17 +294,19 @@ class Android {
 		return 0.2126 * lin((argb >> 16) & 255) + 0.7152 * lin((argb >> 8) & 255) + 0.0722 * lin(argb & 255) > 0.5;
 	}
 
-	// what the build's Classes wrote: classes.dex, org.hxmc.Activity
-	static function classes(apk:String):{dex:Bool, views:Bool} {
+	// what the build's Classes wrote: classes.dex, org.hxmc.Activity, the services' classes and permissions
+	static function classes(apk:String):Classes {
 		var f = classesFile(apk);
 		if (!FileSystem.exists(f)) throw '$f: not written (helder.pack.android.Classes did not run)';
 		var j:Dynamic = haxe.Json.parse(File.getContent(f));
-		return {dex: j.dex == true, views: j.views == true};
+		return {dex: j.dex == true, views: j.views == true, services: (j.services : Null<Array<String>>) ?? [], permissions: (j.permissions : Null<Array<String>>) ?? []};
 	}
 
-	// the activity an APK starts: org.hxmc.Activity with views, else NativeActivity
-	public static function activity(apk:String):String
-		return classes(apk).views ? Glue.ACTIVITY : "android.app.NativeActivity";
+	// the activity an APK starts: org.hxmc.Activity with views, org.hxmc.Main with links, else NativeActivity
+	public static function activity(apk:String, config:Dynamic):String {
+		var c = classes(apk);
+		return Apk.activityOf(c.views, App.links(config) != null ? c.services.concat(["Main"]) : c.services);
+	}
 
 	// --- a device's tools
 
@@ -343,3 +363,5 @@ class Android {
 		return try new Process(Devices.adb(), ["-s", serial, "logcat", "-v", "raw", "-s", "hxmc:V"]) catch (_:haxe.Exception) null;
 	}
 }
+
+private typedef Classes = {dex:Bool, views:Bool, services:Array<String>, permissions:Array<String>};

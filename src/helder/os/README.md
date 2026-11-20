@@ -302,6 +302,69 @@ report 1 for text scale.
 use the system's text clipboard. On Android, the activity must have focus
 for reads. The callback receives null when Android supplies no text.
 
+## App services
+
+One API for each, the system's own underneath; where a system has none
+the call answers its "unsupported" value (false, `Unsupported`, nothing)
+and never throws. All of it is in TypeScript's `helder/os` too. Each is
+linked only when used: an APK gets the Java classes (helder.pack.android.Glue)
+and manifest entries a program's calls need, nothing else.
+
+```haxe
+Network.online();                                  // a signal, like Settings'
+var s = Permissions.request(Camera);               // in a coroutine: Granted, Denied, Prompt, Unsupported
+Share.share({text: "A course", url: "https://example.com/c/3"});
+App.onOpen = urls -> route(urls[0]);               // a deep link (helder.json's "links"), or a file's path
+```
+
+**Network**: `online` and `kind` (`none`, `wifi`, `cellular`, `wired`,
+`other`), signals sampled as Settings are (about once a second while
+`App.run` runs, and on coming back to the foreground).
+
+| | |
+| --- | --- |
+| iOS, macOS | Network.framework's path monitor (its first path waited for, half a second at most) |
+| Android | ConnectivityManager's active network and its capabilities (ACCESS_NETWORK_STATE and INTERNET added to the manifest) |
+| Windows | `GetNetworkConnectivityHint` (Windows 10 2004 on; online, `other`, before); no kind but `other` |
+| Linux | the default route (`/proc/net/route`, else IPv6's), Wi-Fi when its interface is wireless |
+| Web | `navigator.onLine`, `navigator.connection.type` where there is one |
+
+**Share**: `share({?text, ?url, ?files})`, a coroutine: whether the user
+shared where the system tells, else whether the sheet was shown.
+
+| | |
+| --- | --- |
+| iOS | UIActivityViewController over the window (an iPad's a popover at its centre); the user's answer. "Save Image" only with Info.plist's `NSPhotoLibraryAddUsageDescription` (`infoPlist`) |
+| macOS | NSSharingServicePicker at the first window's centre: whether a service was chosen |
+| Android | ACTION_SEND (SEND_MULTIPLE) in the chooser; files through org.hxmc.Files, a provider of the app's own (`<package>.hxmc.files`) serving this share's files alone, read-granted; true once shown |
+| Web | `navigator.share` (files where `canShare` takes them); false without it |
+| Windows, Linux | false (Windows' DataTransferManager is not used) |
+
+**Permissions**: `status(p)` and the coroutine `request(p)` of `camera`,
+`microphone`, `photos`, `location` (while in use), `notifications`:
+`granted`, `denied`, `prompt` (asking would show the system's dialog),
+`unsupported`. A request only asks where the status is `prompt`. What a
+program requests is declared by the build: Android's manifest entries,
+and iOS's usage strings from helder.json's `targets.ios.usage`, a missing
+one an error at the call.
+
+| | |
+| --- | --- |
+| iOS | AVCaptureDevice, PHPhotoLibrary (read and write; limited is granted), CLLocationManager (when in use), UNUserNotificationCenter |
+| macOS | the same; notifications only for an app bundle (unsupported for a bare executable) |
+| Android | checkSelfPermission; asked through org.hxmc.Request, a transparent activity of the app's own (NativeActivity gets no answers); denied once asked and the system would not ask again. Photos: READ_MEDIA_IMAGES from 13, READ_EXTERNAL_STORAGE before; notifications: POST_NOTIFICATIONS from 13, granted before (unless turned off) |
+| Web | `navigator.permissions` and `Notification.permission` for the status; requests by `getUserMedia` (camera, microphone) and `Notification.requestPermission`, unsupported for the others; photos unsupported |
+| Windows, Linux | notifications granted, the others unsupported |
+
+**Deep links**: helder.json's `"links": {"schemes", "domains"}`
+(helder.cli's README), each URL to `App.onOpen`, at launch too (kept until
+it is set). Android: the VIEW intent the activity was started or brought
+back with (org.hxmc.Main: NativeActivity, its onNewIntent the activity's
+intent, read on resume). iOS: `application:openURL:options:` and a
+universal link's `continueUserActivity`. macOS: the GetURL Apple event
+(an app bundle's `CFBundleURLTypes`). Windows and Linux: none (a URL
+handler is an installer's registration); the web: the page's own URL.
+
 ## Wayland
 
 `helder.os.wayland`: libwayland-client, libwayland-egl, libxkbcommon and

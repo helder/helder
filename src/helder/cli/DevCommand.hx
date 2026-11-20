@@ -710,7 +710,7 @@ class DevCommand {
 				var l = phoneLog;
 				if (l != null) task.async(_ -> output(l.stdout, false));
 			}
-			Android.start(device.id, id, Android.activity(out));
+			Android.start(device.id, id, Android.activity(out, e.config));
 			Term.done();
 			installed = true;
 			log(Style.status("started", Ok, '$id on ${device.name}' + Style.dim(Style.sep() + "its output: logcat's hxmc")));

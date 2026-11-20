@@ -221,8 +221,9 @@ for editors' completion):
   "targets": {
     "android": {"minSdk": 31, "adaptiveIcon": {"foreground": "brand/fg.svg", "background": "brand/bg.svg"},
                 "publish": [{"to": "play", "track": "internal"}], "store": "https://play.google.com/..."},
-    "ios": {"bundleId": "build.helder.littleskies", "publish": ["testflight"]}
-  }
+    "ios": {"bundleId": "build.helder.littleskies", "usage": {"camera": "Scans a course's card."}, "publish": ["testflight"]}
+  },
+  "links": {"schemes": ["littleskies"], "domains": ["littleskies.example.com"]}
 }
 ```
 
@@ -234,6 +235,20 @@ for editors' completion):
   `categories`, `fileHandlers`: the web manifest's members below, by
   other names.
 - **`locale`** sets the default language tag for [string catalogues](../os/README.md#string-catalogues).
+- **`links`**: the deep links the app opens, to `App.onOpen`:
+  `{"schemes": ["myapp"], "domains": ["example.com"]}`. Android: a VIEW
+  intent filter for each scheme and an https one for each domain
+  (`autoVerify`: the domain serves `/.well-known/assetlinks.json`), the
+  activity `singleTop` (org.hxmc.Main, which takes a link while running).
+  iOS and macOS: `CFBundleURLTypes`; iOS's domains are the signature's
+  `com.apple.developer.associated-domains` (`applinks:<domain>`, which the
+  provisioning profile must allow; the domain serves
+  `apple-app-site-association`).
+- **`targets.ios.usage`**: why the app asks for each permission it
+  requests (`helder.os.Permissions`: `camera`, `microphone`, `photos`,
+  `location`), Info.plist's usage strings. A build that requests one
+  without its string fails at the call, as iOS would end the app there.
+  Android's manifest gets each requested permission's entry by itself.
 - **`run`**: helder.run's (below, "helder.run").
 - **`targets`**: `android` and `ios` take the web manifest's `"helder":
   {"android"}` and `{"ios"}` members below as they are; each target its

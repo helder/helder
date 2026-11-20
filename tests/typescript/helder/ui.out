@@ -71,3 +71,4 @@ true
 undefined
 2
 platform settings true boolean
+app services boolean string string function function

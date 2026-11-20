@@ -48,8 +48,40 @@ import helder.pack.android.Dex;
 //   (helder.ui.platform.AndroidWebView).
 // The classes keep hxmc's names (org.hxmc.*), which helder.os.android
 // looks up. Ported from hxmc (hxmc.android.Glue), MIT.
+//
+// And the classes of an app service, each in the APK only when the
+// program uses it (a class marked @:helder.android.dex("<name>"):
+// Classes), with its manifest entry (Apk):
+// - Main: NativeActivity whose onNewIntent sets the activity's intent (a
+//   deep link while running: helder.os.android.AndroidLinks reads it on
+//   resume); the activity of an app with links (org.hxmc.Activity has it
+//   too).
+// - Request: a transparent activity asking for permissions (the intent's
+//   "permissions") or starting an activity for its result (its "intent"),
+//   its static native result(id, code, data) called with the
+//   permissions' grants (code 0) or the result's code and intent, then
+//   finished (helder.os.android.AndroidRequest).
+// - Files: a ContentProvider (<package>.hxmc.files) serving the files
+//   whose paths are in its static `allowed` (a share's: helder.os.Share),
+//   read only, as content://<authority><path>.
 class Glue {
 	public static inline var ACTIVITY = "org.hxmc.Activity";
+	public static inline var MAIN = "org.hxmc.Main";
+
+	// an app service's classes by name (@:helder.android.dex("<name>"))
+	public static final SERVICES = ["Main", "Request", "Files"];
+
+	// the manifest's permissions of one helder.os.Permissions asks for (photos:
+	// READ_MEDIA_IMAGES from Android 13, READ_EXTERNAL_STORAGE before it)
+	public static function permissions(p:String):Array<String>
+		return switch p {
+			case "camera": ["CAMERA"];
+			case "microphone": ["RECORD_AUDIO"];
+			case "photos": ["READ_MEDIA_IMAGES", "READ_EXTERNAL_STORAGE"];
+			case "location": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"];
+			case "notifications": ["POST_NOTIFICATIONS"];
+			case _: [];
+		}
 
 	public static inline var CLICK = 0;
 	public static inline var TEXT = 1;
@@ -76,8 +108,18 @@ class Glue {
 	static inline var VIEW = "Landroid/view/View;";
 	static inline var HOLDER = "Landroid/view/SurfaceHolder;";
 
-	public static function dex():haxe.io.Bytes
-		return Dex.write([activity(), glue(), accessProvider(), accessDelegate(), webClient(), webChrome(), webBridge()]);
+	// classes.dex: the views' and listeners' classes (base), and the services named
+	public static function dex(base = true, ?services:Array<String>):haxe.io.Bytes {
+		var classes = base ? [activity(), glue(), accessProvider(), accessDelegate(), webClient(), webChrome(), webBridge()] : [];
+		for (s in services ?? [])
+			classes.push(switch s {
+				case "Main": main();
+				case "Request": request();
+				case "Files": files();
+				case _: throw 'no service class $s (${SERVICES.join(", ")})';
+			});
+		return Dex.write(classes);
+	}
 
 	static inline var NODE_INFO = "Landroid/view/accessibility/AccessibilityNodeInfo;";
 	static inline var NODE_PROVIDER = "Landroid/view/accessibility/AccessibilityNodeProvider;";
@@ -187,7 +229,289 @@ class Glue {
 							.concat(invoke(INVOKE_VIRTUAL, r.method(window, "setFormat", "V", ["I"]), [0, 1]))
 							.concat([RETURN_VOID])
 					}
+				},
+				newIntent(base)
+			]
+		};
+	}
+
+	// onNewIntent: the activity's intent the new one (v0 this, v1 the intent)
+	static function newIntent(base:String):DexMethod
+		return {
+			name: "onNewIntent",
+			ret: "V",
+			params: [INTENT],
+			access: Dex.PROTECTED,
+			code: {
+				registers: 2,
+				ins: 2,
+				outs: 2,
+				insns: r -> invoke(INVOKE_SUPER, r.method(base, "onNewIntent", "V", [INTENT]), [0, 1])
+					.concat(invoke(INVOKE_VIRTUAL, r.method(ANDROID_ACTIVITY, "setIntent", "V", [INTENT]), [0, 1]))
+					.concat([RETURN_VOID])
+			}
+		};
+
+	static function main():DexClass {
+		var base = "Landroid/app/NativeActivity;";
+		return {
+			name: "Lorg/hxmc/Main;",
+			access: Dex.PUBLIC,
+			superName: base,
+			interfaces: [],
+			fields: [],
+			methods: [constructor(base), newIntent(base)]
+		};
+	}
+
+	static inline var INTENT = "Landroid/content/Intent;";
+	static inline var ANDROID_ACTIVITY = "Landroid/app/Activity;";
+	static inline var URI = "Landroid/net/Uri;";
+	static inline var SET = "Ljava/util/Set;";
+
+	// const-string vA, s; if-eqz / if-nez vA, +units; check-cast, new-instance vA, t;
+	// sget-object, sput-object vA, field; return-object, return, throw vA
+	static inline function constString(a:Int, r:Refs, s:String):Array<Int>
+		return [(a << 8) | 0x1a, r.string(s)];
+
+	static inline function ifEqz(a:Int, units:Int):Array<Int>
+		return [(a << 8) | 0x38, units];
+
+	static inline function ifNez(a:Int, units:Int):Array<Int>
+		return [(a << 8) | 0x39, units];
+
+	static inline function typed(op:Int, a:Int, index:Int):Array<Int>
+		return [(a << 8) | op, index];
+
+	static inline var CHECK_CAST = 0x1f;
+	static inline var NEW_INSTANCE = 0x22;
+	static inline var SGET_OBJECT = 0x62;
+	static inline var SPUT_OBJECT = 0x69;
+
+	static inline function newArray(a:Int, size:Int, t:Int):Array<Int>
+		return [(size << 12) | (a << 8) | 0x23, t];
+
+	// aput-object vA, vArray[vIndex]
+	static inline function aputObject(a:Int, array:Int, index:Int):Array<Int>
+		return [(a << 8) | 0x4d, (index << 8) | array];
+
+	static inline function moveResultObject(a:Int):Int
+		return (a << 8) | 0x0c;
+
+	static inline function returnObject(a:Int):Int
+		return (a << 8) | 0x11;
+
+	static inline function returnInt(a:Int):Int
+		return (a << 8) | 0x0f;
+
+	// a method returning 0 (or null)
+	static function zero(name:String, ret:String, params:Array<String>):DexMethod
+		return {
+			name: name,
+			ret: ret,
+			params: params,
+			access: Dex.PUBLIC,
+			code: {registers: 2 + params.length, ins: 1 + params.length, outs: 0, insns: r -> [const4(0, 0), ret == "I" ? returnInt(0) : returnObject(0)]}
+		};
+
+	static function request():DexClass {
+		var cls = "Lorg/hxmc/Request;", strings = "[Ljava/lang/String;";
+		var result = r -> r.method(cls, "result", "V", ["I", "I", OBJECT]);
+		return {
+			name: cls,
+			access: Dex.PUBLIC | Dex.FINAL,
+			superName: ANDROID_ACTIVITY,
+			interfaces: [],
+			fields: [],
+			methods: [
+				constructor(ANDROID_ACTIVITY),
+				{name: "result", ret: "V", params: ["I", "I", OBJECT], access: Dex.PUBLIC | Dex.STATIC | Dex.NATIVE},
+				{
+					// (v0 the intent, v1 a key, v2, v3 the id, p0 v4, the bundle v5: made again, the request was made)
+					name: "onCreate",
+					ret: "V",
+					params: ["Landroid/os/Bundle;"],
+					access: Dex.PROTECTED,
+					code: {
+						registers: 6,
+						ins: 2,
+						outs: 3,
+						insns: r -> invoke(INVOKE_SUPER, r.method(ANDROID_ACTIVITY, "onCreate", "V", ["Landroid/os/Bundle;"]), [4, 5])
+							.concat(ifNez(5, 36))
+							.concat(invoke(INVOKE_VIRTUAL, r.method(ANDROID_ACTIVITY, "getIntent", INTENT, []), [4]))
+							.concat([moveResultObject(0)])
+							.concat(constString(1, r, "id"))
+							.concat([const4(2, 0)])
+							.concat(invoke(INVOKE_VIRTUAL, r.method(INTENT, "getIntExtra", "I", [STRING, "I"]), [0, 1, 2]))
+							.concat([moveResult(3)])
+							.concat(constString(1, r, "permissions"))
+							.concat(invoke(INVOKE_VIRTUAL, r.method(INTENT, "getStringArrayExtra", strings, [STRING]), [0, 1]))
+							.concat([moveResultObject(2)])
+							.concat(ifEqz(2, 6))
+							.concat(invoke(INVOKE_VIRTUAL, r.method(ANDROID_ACTIVITY, "requestPermissions", "V", [strings, "I"]), [4, 2, 3]))
+							.concat([RETURN_VOID])
+							.concat(constString(1, r, "intent"))
+							.concat(invoke(INVOKE_VIRTUAL, r.method(INTENT, "getParcelableExtra", "Landroid/os/Parcelable;", [STRING]), [0, 1]))
+							.concat([moveResultObject(2)])
+							.concat(typed(CHECK_CAST, 2, r.type(INTENT)))
+							.concat(invoke(INVOKE_VIRTUAL, r.method(ANDROID_ACTIVITY, "startActivityForResult", "V", [INTENT, "I"]), [4, 2, 3]))
+							.concat([RETURN_VOID])
+					}
+				},
+				{
+					// (v0 0, p0 v1, the id v2, the permissions v3, the grants v4)
+					name: "onRequestPermissionsResult",
+					ret: "V",
+					params: ["I", strings, "[I"],
+					access: Dex.PUBLIC,
+					code: {
+						registers: 5,
+						ins: 4,
+						outs: 3,
+						insns: r -> [const4(0, 0)].concat(invoke(INVOKE_STATIC, result(r), [2, 0, 4]))
+							.concat(invoke(INVOKE_VIRTUAL, r.method(ANDROID_ACTIVITY, "finish", "V", []), [1]))
+							.concat([RETURN_VOID])
+					}
+				},
+				{
+					// (p0 v0, the id v1, the result's code v2, its intent v3)
+					name: "onActivityResult",
+					ret: "V",
+					params: ["I", "I", INTENT],
+					access: Dex.PROTECTED,
+					code: {
+						registers: 4,
+						ins: 4,
+						outs: 3,
+						insns: r -> invoke(INVOKE_STATIC, result(r), [1, 2, 3])
+							.concat(invoke(INVOKE_VIRTUAL, r.method(ANDROID_ACTIVITY, "finish", "V", []), [0]))
+							.concat([RETURN_VOID])
+					}
 				}
+			]
+		};
+	}
+
+	static function files():DexClass {
+		var cls = "Lorg/hxmc/Files;", base = "Landroid/content/ContentProvider;", file = "Ljava/io/File;", cursor = "Landroid/database/MatrixCursor;",
+			values = "Landroid/content/ContentValues;", strings = "[Ljava/lang/String;", fd = "Landroid/os/ParcelFileDescriptor;";
+		var allowed = r -> r.field(cls, "allowed", SET);
+		// (the uri's path into v0; v1 whether it is allowed)
+		var allowedPath = (r:Refs, uri:Int) -> invoke(INVOKE_VIRTUAL, r.method(URI, "getPath", STRING, []), [uri])
+			.concat([moveResultObject(0)])
+			.concat(typed(SGET_OBJECT, 1, allowed(r)))
+			.concat(invoke(INVOKE_INTERFACE, r.method(SET, "contains", "Z", [OBJECT]), [1, 0]))
+			.concat([moveResult(1)]);
+		return {
+			name: cls,
+			access: Dex.PUBLIC | Dex.FINAL,
+			superName: base,
+			interfaces: [],
+			fields: [{name: "allowed", type: SET, access: Dex.PUBLIC | Dex.STATIC}],
+			methods: [
+				{
+					name: "<clinit>",
+					ret: "V",
+					params: [],
+					access: Dex.STATIC | Dex.CONSTRUCTOR,
+					code: {
+						registers: 1,
+						ins: 0,
+						outs: 1,
+						insns: r -> typed(NEW_INSTANCE, 0, r.type("Ljava/util/HashSet;"))
+							.concat(invoke(INVOKE_DIRECT, r.method("Ljava/util/HashSet;", "<init>", "V", []), [0]))
+							.concat(typed(SPUT_OBJECT, 0, allowed(r)))
+							.concat([RETURN_VOID])
+					}
+				},
+				constructor(base),
+				{
+					name: "onCreate",
+					ret: "Z",
+					params: [],
+					access: Dex.PUBLIC,
+					code: {registers: 2, ins: 1, outs: 0, insns: r -> [const4(0, 1), returnInt(0)]}
+				},
+				{
+					name: "getType",
+					ret: STRING,
+					params: [URI],
+					access: Dex.PUBLIC,
+					code: {
+						registers: 3,
+						ins: 2,
+						outs: 1,
+						insns: r -> invoke(INVOKE_VIRTUAL, r.method(URI, "getPath", STRING, []), [2])
+							.concat([moveResultObject(0)])
+							.concat(invoke(INVOKE_STATIC, r.method("Ljava/net/URLConnection;", "guessContentTypeFromName", STRING, [STRING]), [0]))
+							.concat([moveResultObject(0), returnObject(0)])
+					}
+				},
+				{
+					// (v0 the path, v1, v2 the mode; p0 v3, the uri v4, its mode v5)
+					name: "openFile",
+					ret: fd,
+					params: [URI, STRING],
+					access: Dex.PUBLIC,
+					code: {
+						registers: 6,
+						ins: 3,
+						outs: 2,
+						insns: r -> allowedPath(r, 4)
+							.concat(ifEqz(1, 14))
+							.concat(typed(NEW_INSTANCE, 1, r.type(file)))
+							.concat(invoke(INVOKE_DIRECT, r.method(file, "<init>", "V", [STRING]), [1, 0]))
+							.concat([(2 << 8) | 0x15, 0x1000]) // const/high16 v2, MODE_READ_ONLY
+							.concat(invoke(INVOKE_STATIC, r.method(fd, "open", fd, [file, "I"]), [1, 2]))
+							.concat([moveResultObject(1), returnObject(1)])
+							.concat(typed(NEW_INSTANCE, 1, r.type("Ljava/io/FileNotFoundException;")))
+							.concat(invoke(INVOKE_DIRECT, r.method("Ljava/io/FileNotFoundException;", "<init>", "V", [STRING]), [1, 0]))
+							.concat([(1 << 8) | 0x27]) // throw v1
+					}
+				},
+				{
+					// (a row of the file's name and size; v0 the path, v1 the file, v2 an
+					// index, v3 an array, v4 a value, v5 the cursor, v6-v7 the size; p0 v8, the uri v9)
+					name: "query",
+					ret: "Landroid/database/Cursor;",
+					params: [URI, strings, STRING, strings, STRING],
+					access: Dex.PUBLIC,
+					code: {
+						registers: 14,
+						ins: 6,
+						outs: 2,
+						insns: r -> allowedPath(r, 9)
+							.concat(ifNez(1, 4))
+							.concat([const4(1, 0), returnObject(1)])
+							.concat(typed(NEW_INSTANCE, 1, r.type(file)))
+							.concat(invoke(INVOKE_DIRECT, r.method(file, "<init>", "V", [STRING]), [1, 0]))
+							.concat([const4(2, 2)])
+							.concat(newArray(3, 2, r.type(strings)))
+							.concat([const4(2, 0)])
+							.concat(constString(4, r, "_display_name"))
+							.concat(aputObject(4, 3, 2))
+							.concat([const4(2, 1)])
+							.concat(constString(4, r, "_size"))
+							.concat(aputObject(4, 3, 2))
+							.concat(typed(NEW_INSTANCE, 5, r.type(cursor)))
+							.concat(invoke(INVOKE_DIRECT, r.method(cursor, "<init>", "V", [strings]), [5, 3]))
+							.concat([const4(2, 2)])
+							.concat(newArray(3, 2, r.type("[Ljava/lang/Object;")))
+							.concat(invoke(INVOKE_VIRTUAL, r.method(file, "getName", STRING, []), [1]))
+							.concat([moveResultObject(4), const4(2, 0)])
+							.concat(aputObject(4, 3, 2))
+							.concat(invoke(INVOKE_VIRTUAL, r.method(file, "length", "J", []), [1]))
+							.concat([(6 << 8) | 0x0b]) // move-result-wide v6
+							.concat(invoke(INVOKE_STATIC, r.method("Ljava/lang/Long;", "valueOf", "Ljava/lang/Long;", ["J"]), [6, 7]))
+							.concat([moveResultObject(4), const4(2, 1)])
+							.concat(aputObject(4, 3, 2))
+							.concat(invoke(INVOKE_VIRTUAL, r.method(cursor, "addRow", "V", ["[Ljava/lang/Object;"]), [5, 3]))
+							.concat([returnObject(5)])
+					}
+				},
+				zero("insert", URI, [URI, values]),
+				zero("delete", "I", [URI, STRING, strings]),
+				zero("update", "I", [URI, values, STRING, strings])
 			]
 		};
 	}

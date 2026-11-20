@@ -896,7 +896,7 @@ class Run {
 				"bin/pack/Counter.apk@@surface", "bin/pack/Screen.apk@org.helder.screen@surface",
 				'bin/pack/Checksum.apk@org.helder.checksum@$ASSETS'
 			]);
-			for (c in [{apk: "Counter", want: '{"dex":true,"views":false}'}]) {
+			for (c in [{apk: "Counter", want: '{"dex":true,"permissions":[],"services":[],"views":false}'}]) {
 				var got = File.getContent('bin/pack/${c.apk}.lib/classes.json');
 				if (got != c.want) throw new Failed('bin/pack/${c.apk}.lib/classes.json: $got, not ${c.want}');
 			}

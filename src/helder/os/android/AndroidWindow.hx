@@ -282,6 +282,10 @@ class AndroidWindow {
 				Activity.acknowledge();
 				if (AppAudio.hold != null) AppAudio.hold(false);
 				App.lifecycle(false);
+				#if helder.links
+				// (a deep link it was started or brought back with: org.hxmc.Main's intent)
+				AndroidLinks.check();
+				#end
 			case Activity.GONE:
 				// (its window and input queue went before: commands of their own)
 				log("command: activity gone, not finishing", window);

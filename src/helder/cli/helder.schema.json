@@ -49,6 +49,15 @@
     "dir": {"enum": ["ltr", "rtl", "auto"]},
     "categories": {"type": "array", "items": {"type": "string"}},
     "fileHandlers": {"type": "array", "description": "The web manifest's file_handlers: the file types the app opens."},
+    "links": {
+      "type": "object",
+      "description": "The deep links the app opens (App.onOpen): its own URL schemes, and the https domains it is the app of (Android's verified App Links, iOS's universal links: the domain serves assetlinks.json and apple-app-site-association).",
+      "additionalProperties": false,
+      "properties": {
+        "schemes": {"type": "array", "items": {"type": "string", "pattern": "^[a-z][a-z0-9+.-]*$"}},
+        "domains": {"type": "array", "items": {"type": "string"}}
+      }
+    },
     "run": {
       "type": "object",
       "description": "helder.run: the app at <name>.helder.run (helder publish --run).",
@@ -197,6 +206,12 @@
             "nonExemptEncryption": {"type": "boolean"},
             "privacy": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "string"}}},
             "infoPlist": {"type": "object", "description": "Info.plist's keys, over helder's (NSAppTransportSecurity, NSLocalNetworkUsageDescription...)"},
+            "usage": {
+              "type": "object",
+              "description": "Why the app asks for each permission it uses (helder.os.Permissions), Info.plist's usage strings: a build that asks for one without its string fails.",
+              "additionalProperties": false,
+              "properties": {"camera": {"type": "string"}, "microphone": {"type": "string"}, "photos": {"type": "string"}, "location": {"type": "string"}}
+            },
             "publish": {"type": "array", "items": {"enum": ["testflight"]}},
             "store": {"$ref": "#/$defs/store"}
           }

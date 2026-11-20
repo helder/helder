@@ -4,6 +4,7 @@ import helder.async.Driven;
 import helder.os.android.AndroidWindow;
 import helder.os.cocoa.CocoaWindow;
 import helder.os.objc.Runtime;
+import helder.os.uikit.UIKitApp;
 import helder.os.uikit.UIKitWindow;
 import helder.os.web.CanvasWindow;
 import helder.os.win32.Win32Window;
@@ -122,16 +123,19 @@ class App {
 	// it as before. iOS has none.
 	public static var onBack:Null<Void->Bool> = null;
 
-	// files the system asks the app to open (macOS: Finder's "Open With",
-	// a document's double click, dropped on the Dock's icon:
-	// application:openURLs:, at launch too; elsewhere they are the command
-	// line's): their paths. Those that came before it was set are given to
-	// it when it is
+	// files and links the system asks the app to open: a file's path
+	// (macOS: Finder's "Open With", a document's double click, dropped on
+	// the Dock's icon: application:openURLs:, at launch too; elsewhere they
+	// are the command line's), a deep link's URL (the manifest's "links":
+	// its schemes' URLs, its domains' https ones; Android's VIEW intents,
+	// iOS's and macOS's URLs and universal links; at launch too). Those
+	// that came before it was set are given to it when it is
 	public static var onOpen(default, set):Null<Array<String>->Void> = null;
 
 	static final opened:Array<String> = [];
 
 	static function set_onOpen(f:Null<Array<String>->Void>) {
+		if (Platform.apple() >= 1) for (u in UIKitApp.early()) opened.push(u);
 		onOpen = f;
 		if (f != null && opened.length > 0) {
 			var paths = opened.copy();

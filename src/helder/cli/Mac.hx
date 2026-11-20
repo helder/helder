@@ -21,7 +21,8 @@ using StringTools;
 // (CFBundleDocumentTypes) from helder.webmanifest's file_handlers (the W3C
 // manifest's: {"accept": {"image/jpeg": [".jpg", ".jpeg"]}}): Finder's
 // "Open With", a document's double click, the Dock's icon (helder.os's
-// App.onOpen). Launched with `open bin/macos/<Label>.app`.
+// App.onOpen); its URL schemes (CFBundleURLTypes: the manifest's links,
+// App.onOpen's URLs) and usage strings. Launched with `open bin/macos/<Label>.app`.
 class Mac {
 	// (a MIME type's uniform type identifier, for LSItemContentTypes)
 	static final UTIS = [
@@ -49,7 +50,7 @@ class Mac {
 	}
 
 	public static function infoPlist(exe:String, id:String, label:String, version:String, versionName:String, types:Array<{mime:String, extensions:Array<String>}>,
-			icon:Bool):haxe.io.Bytes {
+			icon:Bool, ?extra:Map<String, PValue>):haxe.io.Bytes {
 		var keys = [
 			"CFBundleDevelopmentRegion" => PString("en"),
 			"CFBundleDisplayName" => PString(label),
@@ -75,6 +76,7 @@ class Mac {
 				"CFBundleTypeExtensions" => PArray([for (t in types) for (x in t.extensions) PString(x)])
 			])
 		]));
+		if (extra != null) for (k => v in extra) keys.set(k, v);
 		return Plist.xml(PDict(keys));
 	}
 
@@ -108,7 +110,8 @@ class Mac {
 				icon = true;
 			}
 		}
-		var info = infoPlist(e.name, o.id, o.label, o.version, o.versionName, fileTypes(e.config), icon);
+		var info = infoPlist(e.name, o.id, o.label, o.version, o.versionName, fileTypes(e.config), icon,
+			helder.pack.ios.Bundle.serviceKeys(o.id, o.usage, App.links(e.config)?.schemes ?? []));
 		File.saveBytes('$out/Contents/Info.plist', info);
 		// (sealed, then each slice signed binding Info.plist and the seal)
 		var seal = helder.pack.apple.MacBundle.codeResources(resources);

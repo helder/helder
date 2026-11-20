@@ -125,6 +125,20 @@ export default function (host) {
 	const pixelRatio = () => Math.min(devicePixelRatio, host.options.maxPixelRatio ?? Infinity);
 	const queue = [];
 	const windows = new Set();
+	// helder.os.Permissions' states (0 granted, 1 denied, 2 prompt, 3
+	// unsupported: camera, microphone, photos, location, notifications),
+	// queried now and kept as they change; Share's files for the next share
+	const permissions = {
+		state: [2, 2, 3, 2, 3],
+		of: (s) => (s === 'granted' ? 0 : s === 'denied' ? 1 : 2),
+	};
+	if (globalThis.Notification) permissions.state[4] = permissions.of(Notification.permission);
+	for (const [i, name] of [[0, 'camera'], [1, 'microphone'], [3, 'geolocation']])
+		globalThis.navigator?.permissions?.query({ name }).then((s) => {
+			permissions.state[i] = permissions.of(s.state);
+			s.onchange = () => (permissions.state[i] = permissions.of(s.state));
+		}, () => (permissions.state[i] = 3));
+	const shared = [];
 	let first = true, ratio = pixelRatio();
 	// the last paste event's text, and when
 	let pasted = null;
@@ -665,6 +679,33 @@ export default function (host) {
 				globalThis.removeEventListener?.('languagechange', notify);
 				globalThis.document?.removeEventListener('visibilitychange', foreground);
 			});
+		network: () => (globalThis.navigator?.onLine === false ? 0 : 1 + ['wifi', 'cellular', 'ethernet'].indexOf(globalThis.navigator?.connection?.type) + 1),
+		permission_status: (p) => permissions.state[p],
+		permission_request(p, done, id) {
+			const answer = (s) => {
+				permissions.state[p] = s;
+				host.call(done, id, s);
+			};
+			const media = [{ video: true }, { audio: true }][p];
+			if (media && navigator.mediaDevices?.getUserMedia)
+				navigator.mediaDevices.getUserMedia(media).then((stream) => {
+					for (const t of stream.getTracks()) t.stop();
+					answer(0);
+				}, (e) => answer(e?.name === 'NotAllowedError' ? 1 : 3));
+			else if (p === 4 && globalThis.Notification?.requestPermission)
+				Notification.requestPermission().then((r) => answer(permissions.of(r)), () => answer(1));
+			else host.call(done, id, permissions.state[p] < 2 ? permissions.state[p] : 3);
+		},
+		share_file(name, p, n, type) {
+			shared.push(new File([new Uint8Array(host.memory().buffer, p, n).slice()], host.string(name), { type: host.string(type) }));
+		},
+		share(text, url, done, id) {
+			const data = {}, t = host.string(text), u = host.string(url), files = shared.splice(0);
+			if (t) data.text = t;
+			if (u) data.url = u;
+			if (files.length && navigator.canShare?.({ files })) data.files = files;
+			if (!navigator.share) return host.call(done, id, 0);
+			navigator.share(data).then(() => host.call(done, id, 1), () => host.call(done, id, 0));
 		},
 		apple: () => (/mac|iphone|ipad|ipod/i.test(navigator.userAgentData?.platform || navigator.platform || '') ? 1 : 0),
 		vibrate(ms) {

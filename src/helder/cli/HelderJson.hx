@@ -20,6 +20,7 @@ using StringTools;
 //     "orientation": "landscape",          any, natural, portrait(-primary, -secondary), landscape(-primary, -secondary)
 //     "locale": "en",                   the default language of Asset.strings catalogues
 //     "lang": "en", "dir": "ltr", "categories": ["games"], "fileHandlers": [...] (the web manifest's file_handlers)
+//     "links": {"schemes": ["myapp"], "domains": ["example.com"]},   the deep links the app opens (App.onOpen)
 //     "run": {                             helder.run: <name>.helder.run (`helder publish`)
 //       "name": "little-skies",            the address (else name, made a slug)
 //       "listed": true,                    in helder.build/explore (false)
@@ -32,7 +33,7 @@ using StringTools;
 //     "targets": {
 //       "android": {"package", "minSdk", "targetSdk", "permissions", "cleartext", "key", "signing", "serviceAccount", "adaptiveIcon",
 //                   "publish": ["play"] or [{"to": "play", "track": "internal"}], "store": "<url>"},
-//       "ios": {"bundleId", "minVersion", "entitlements", "signing", "sdk", "nonExemptEncryption", "privacy", "infoPlist",
+//       "ios": {"bundleId", "minVersion", "entitlements", "signing", "sdk", "nonExemptEncryption", "privacy", "infoPlist", "usage",
 //               "publish": ["testflight"], "store": "<url>"},
 //       "macos": {"publish": ["notarize"], "store": "<url>"}, "windows": {"store": "<url>"}, "linux": {"store": "<url>"}
 //     }
@@ -50,7 +51,7 @@ class HelderJson {
 
 	static final TOP = [
 		"$schema", "name", "label", "description", "id", "version", "build", "entry", "icon", "colors", "splash", "display", "orientation", "lang", "dir",
-		"categories", "fileHandlers", "locale", "run", "targets", "listing"
+		"categories", "fileHandlers", "locale", "links", "run", "targets", "listing"
 	];
 	public static final RUN = ["name", "listed", "kind", "tags", "source", "screenshots"];
 	public static final KINDS = ["game", "app", "tool"];
@@ -100,6 +101,7 @@ class HelderJson {
 		copy(j, "id", h, "id");
 		copy(j, "version", h, "version");
 		copy(j, "build", h, "build");
+		copy(j, "links", h, "links");
 		var s:Dynamic = j.splash;
 		if (s != null) {
 			known(s, ["image", "background", "dark"], "splash");
@@ -254,6 +256,7 @@ class HelderJson {
 		}
 		for (k in ["display", "orientation", "lang", "dir", "categories"]) out.set(k, Reflect.field(m, k));
 		out.set("fileHandlers", m.file_handlers);
+		out.set("links", h.links);
 		if (m.screenshots != null) Term.err(Style.status("warning", Warn, '${Manifest.FILE}: its screenshots are the web\'s; helder.json\'s run.screenshots are helder.run\'s (not moved)'));
 		if (h.android != null || h.ios != null) {
 			var t = new Ordered();
@@ -270,6 +273,7 @@ class HelderJson {
 			['"helder": {"android": {', 'targets: {"android": {'], ['"helder": {"ios": {', 'targets: {"ios": {'],
 			['"helder": {"splash": {"dark": {"background_color"}}}', 'splash.dark.background'],
 			['"helder": {"splash": {"background_color"}}', 'splash.background'], ['"helder": {"splash"', 'splash'],
+			['"helder": {"links": {"schemes"}}', 'links.schemes'], ['"helder": {"links": {"domains"}}', 'links.domains'], ['"helder": {"links"}', 'links'],
 			['"helder": {"build"}', 'build'], ['"helder": {"version"}', 'version'], ['"helder": {"id"}', 'id'],
 			['background_color', 'colors.background'], ['theme_color', 'colors.theme'], ['icons[', 'icon['], ['short_name', 'label'],
 			['file_handlers', 'fileHandlers']

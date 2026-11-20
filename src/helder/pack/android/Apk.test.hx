@@ -157,6 +157,26 @@ function tests() {
 			var keyAt = 4 + rest.getInt32(0);
 			equals(rest.sub(keyAt + 4, rest.getInt32(keyAt)).toHex(), Apk.publicKeyInfo(d).toHex());
 		});
+		test("services and links: their components and filters, permissions once each", () -> {
+			var a:ApkOptions = Reflect.copy(app);
+			a.permissions = ["INTERNET", "ACCESS_NETWORK_STATE", "INTERNET"];
+			a.services = ["Main", "Request", "Files"];
+			a.links = {schemes: ["myapp"], domains: ["example.com"]};
+			var xml = Axml.dump(Axml.encode(Apk.manifestOf(a, true, false)));
+			var lines = [for (l in xml.split("\n")) l.trim()];
+			equals(lines.filter(l -> l.indexOf("android.permission.INTERNET") > 0).length, 1);
+			assert(xml.indexOf('android:name(0x01010003)="org.hxmc.Main"') > 0);
+			assert(xml.indexOf("android:launchMode(0x0101001d)=1") > 0);
+			assert(xml.indexOf('<data android:scheme(0x01010027)="myapp">') > 0);
+			assert(xml.indexOf('<intent-filter android:autoVerify(0x010104ee)=true>') > 0);
+			assert(xml.indexOf('<data android:scheme(0x01010027)="https" android:host(0x01010028)="example.com">') > 0);
+			assert(xml.indexOf('<activity android:theme(0x01010000)=@0x01030010 android:name(0x01010003)="org.hxmc.Request"') > 0);
+			assert(xml.indexOf('android:authorities(0x01010018)="org.example.hello.hxmc.files"') > 0);
+			assert(xml.indexOf("android:grantUriPermissions(0x0101001b)=true") > 0);
+			var plain = Axml.dump(Axml.encode(Apk.manifestOf(app, false, false)));
+			for (n in ["org.hxmc", "launchMode", "android.intent.action.VIEW"])
+				equals(plain.indexOf(n), -1);
+		});
 		test("an application id is checked", () -> {
 			var e = throws(() -> Apk.write(so, "android-arm64", null, false, {
 				id: "hello",
@@ -177,7 +197,7 @@ function tests() {
 			var methods = [];
 			equals(Dex.check(Glue.dex(), methods), []);
 			for (m in [
-				"Lorg/hxmc/Activity; onCreate(Landroid/os/Bundle;)V", "Lorg/hxmc/Glue; <init>(I)V", "Lorg/hxmc/Glue; event(IILjava/lang/Object;II)I",
+				"Lorg/hxmc/Activity; onCreate(Landroid/os/Bundle;)V", "Lorg/hxmc/Activity; onNewIntent(Landroid/content/Intent;)V", "Lorg/hxmc/Glue; <init>(I)V", "Lorg/hxmc/Glue; event(IILjava/lang/Object;II)I",
 				"Lorg/hxmc/Glue; onClick(Landroid/view/View;)V", "Lorg/hxmc/Glue; afterTextChanged(Landroid/text/Editable;)V",
 				"Lorg/hxmc/Glue; onCheckedChanged(Landroid/widget/CompoundButton;Z)V", "Lorg/hxmc/Glue; onProgressChanged(Landroid/widget/SeekBar;IZ)V",
 				"Lorg/hxmc/Glue; onLayoutChange(Landroid/view/View;IIIIIIII)V", "Lorg/hxmc/Glue; surfaceChanged(Landroid/view/SurfaceHolder;III)V",
@@ -187,6 +207,20 @@ function tests() {
 				"Lorg/hxmc/AccessDelegate; getAccessibilityNodeProvider(Landroid/view/View;)Landroid/view/accessibility/AccessibilityNodeProvider;"
 			])
 				assert(methods.contains(m), m);
+		});
+		test("the services' classes alone, each Java's", () -> {
+			var methods = [];
+			equals(Dex.check(Glue.dex(false, ["Main", "Request", "Files"]), methods), []);
+			for (m in [
+				"Lorg/hxmc/Main; onNewIntent(Landroid/content/Intent;)V", "Lorg/hxmc/Activity; onNewIntent(Landroid/content/Intent;)V",
+				"Lorg/hxmc/Request; onCreate(Landroid/os/Bundle;)V", "Lorg/hxmc/Request; result(IILjava/lang/Object;)V",
+				"Lorg/hxmc/Request; onRequestPermissionsResult(I[Ljava/lang/String;[I)V", "Lorg/hxmc/Request; onActivityResult(IILandroid/content/Intent;)V",
+				"Lorg/hxmc/Files; openFile(Landroid/net/Uri;Ljava/lang/String;)Landroid/os/ParcelFileDescriptor;",
+				"Lorg/hxmc/Files; query(Landroid/net/Uri;[Ljava/lang/String;Ljava/lang/String;[Ljava/lang/String;Ljava/lang/String;)Landroid/database/Cursor;"
+			])
+				assert(methods.contains(m) != (m.indexOf("org/hxmc/Activity") > 0), m);
+			equals(Glue.permissions("photos"), ["READ_MEDIA_IMAGES", "READ_EXTERNAL_STORAGE"]);
+			equals(Std.string(throws(() -> Glue.dex(false, ["Nope"]))), "no service class Nope (Main, Request, Files)");
 		});
 		test("a broken file is found out", () -> {
 			var b = Glue.dex();
