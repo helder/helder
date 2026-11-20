@@ -255,9 +255,10 @@ class Scrolling {
 		var out = ui.scrollList;
 		out.resize(0);
 		ui.scrollPass++;
-		collect(ui, ui.root, 0, 0, 0, 0, ui.width, ui.height, false, out);
+		var covered = ui.overlay.children.length > 0;
+		collect(ui, ui.root, 0, 0, 0, 0, ui.width, ui.height, false, covered, null, out);
 		for (c in ui.overlay.children)
-			collect(ui, c, 0, 0, 0, 0, ui.width, ui.height, true, out);
+			collect(ui, c, 0, 0, 0, 0, ui.width, ui.height, true, false, null, out);
 		// (those gone from the tree or no longer scrolling: let go)
 		var gone = [for (n => v in ui.scrollKept) if (v.pass != ui.scrollPass) n];
 		for (n in gone)
@@ -266,7 +267,8 @@ class Scrolling {
 	}
 
 	// (ox, oy: the scrolling of n's ancestors; x0 to y1: what clips it, on screen)
-	static function collect(ui:Ui, n:Node, ox:Float, oy:Float, x0:Float, y0:Float, x1:Float, y1:Float, layer:Bool, out:Array<ScrollView>) {
+	static function collect(ui:Ui, n:Node, ox:Float, oy:Float, x0:Float, y0:Float, x1:Float, y1:Float, layer:Bool, covered:Bool, parent:Null<ScrollView>,
+			out:Array<ScrollView>) {
 		var s = n.style;
 		if (s.display == None || n.present != null && n.present.away) return;
 		if (s.overflow != Visible) {
@@ -289,8 +291,11 @@ class Scrolling {
 					v.scrollsY = my > 0;
 					v.bars = barSize(n) > 0;
 					v.layer = layer;
+					v.covered = covered;
+					v.parent = parent;
 					v.pass = ui.scrollPass;
 					out.push(v);
+					parent = v;
 				}
 				ox += n.scrollX;
 				oy += n.scrollY;
@@ -304,13 +309,13 @@ class Scrolling {
 		var order = n.paintOrder();
 		if (order != null) {
 			for (c in order)
-				collect(ui, c, ox, oy, x0, y0, x1, y1, layer, out);
+				collect(ui, c, ox, oy, x0, y0, x1, y1, layer, covered, parent, out);
 			return;
 		}
 		for (c in n.children)
-			if (c.style.position == Relative) collect(ui, c, ox, oy, x0, y0, x1, y1, layer, out);
+			if (c.style.position == Relative) collect(ui, c, ox, oy, x0, y0, x1, y1, layer, covered, parent, out);
 		for (c in n.children)
-			if (c.style.position != Relative) collect(ui, c, ox, oy, x0, y0, x1, y1, layer, out);
+			if (c.style.position != Relative) collect(ui, c, ox, oy, x0, y0, x1, y1, layer, covered, parent, out);
 	}
 
 	// whether a platform's drag at x, y moving the content by dx, dy (the
@@ -337,6 +342,20 @@ class Scrolling {
 			p = p.parent;
 		}
 		return first == n;
+	}
+
+	// whether a platform's scroll view takes drags at n: a scroller around
+	// it listed by the last Ui.scrollViews, not under a popup (elsewhere a
+	// finger's drag is TouchScroll's: its Wheel events, its glide)
+	static function nativeAt(ui:Ui, n:Null<Node>):Bool {
+		while (n != null) {
+			if (n.style.overflow == Scroll) {
+				var v = ui.scrollKept.get(n);
+				if (v != null && v.pass == ui.scrollPass && !v.covered) return true;
+			}
+			n = n.parent;
+		}
+		return false;
 	}
 
 	// a platform's scroll view moved n to its offsets x, y from its start

@@ -941,7 +941,7 @@ class Ui {
 			setFocus(f, false);
 		}
 		if (halted) pClick[id] = false;
-		if (pDown[id]) openArena(id, target, type, 1, x, y, primary && type != Mouse && !pCaptured[id] && !nativeScroll);
+		if (pDown[id]) openArena(id, target, type, 1, x, y, primary && type != Mouse && !pCaptured[id] && !(nativeScroll && Scrolling.nativeAt(this, target)));
 		return owns(target);
 	}
 
@@ -1172,7 +1172,8 @@ class Ui {
 	// the page would take it from it otherwise (the pointer cancelled)
 	public function scrollsAt(x:Float, y:Float, deltaX:Float, deltaY:Float):Bool {
 		var n = hit(x, y);
-		if (Scrolling.scrollsAt(this, n, deltaX, deltaY)) return true;
+		// (the platform's scroll views scroll the scrollers: only a node following the pointer takes the drag)
+		if (!nativeScroll && Scrolling.scrollsAt(this, n, deltaX, deltaY)) return true;
 		while (n != null) {
 			if (n.onPointerMove != null) return true;
 			n = n.parent;
@@ -1486,10 +1487,11 @@ class Ui {
 	final rounded:Array<Node> = [];
 
 	// the platform's own scroll views drive the scrollers (UiWindow: iOS's
-	// UIScrollView): their physics, edges and indicators; a finger's drag
-	// is theirs to take (nativeBegins), what they scroll to the
-	// scrollers' (nativeScrolled), and TouchScroll, helder's own, takes no
-	// touch. Off: helder's own everywhere (a Surface's scrolling="helder")
+	// UIScrollView, the browser's elements): their physics, edges and
+	// indicators; a finger's drag over one is theirs to take (nativeBegins),
+	// what they scroll to the scrollers' (nativeScrolled), and TouchScroll,
+	// helder's own, takes only the touches elsewhere. Off: helder's own
+	// everywhere (a Surface's scrolling="helder")
 	public var nativeScroll = false;
 	// (the platform draws the scrollbars: the thumbs not drawn)
 	public var nativeBars = false;

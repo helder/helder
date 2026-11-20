@@ -33,7 +33,7 @@ export default function (host) {
 	function layer(c) {
 		if (c.hxmcEditors) return c.hxmcEditors;
 		const l = document.createElement('div');
-		l.style.cssText = 'position:absolute;overflow:hidden;pointer-events:none;z-index:1;';
+		l.style.cssText = 'position:absolute;overflow:hidden;pointer-events:none;z-index:2;';
 		document.body.appendChild(l);
 		const fit = () => {
 			const r = c.getBoundingClientRect();
@@ -48,6 +48,32 @@ export default function (host) {
 		c.hxmcEditors = l;
 		return l;
 	}
+	// a canvas's layer of scroll views (src/helder/ui/draw/WebScroll.hx): as
+	// the editors' but under them; the canvas's listeners take the pointer's
+	// events over it (helder.os's c.hxmcForward), its cursor the canvas's
+	function scrollLayer(c) {
+		if (c.hxmcScrolls) return c.hxmcScrolls;
+		const l = document.createElement('div');
+		l.style.cssText = 'position:absolute;overflow:hidden;pointer-events:none;z-index:1;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;';
+		document.body.appendChild(l);
+		const fit = () => {
+			const r = c.getBoundingClientRect();
+			l.style.left = r.left + window.scrollX + 'px';
+			l.style.top = r.top + window.scrollY + 'px';
+			l.style.width = r.width + 'px';
+			l.style.height = r.height + 'px';
+		};
+		fit();
+		new ResizeObserver(fit).observe(c);
+		l.fit = fit;
+		l.style.cursor = c.style.cursor;
+		c.hxmcScrolls = l;
+		c.hxmcForward?.(l);
+		return l;
+	}
+	// per canvas: its views by id ({e: the scroller, s: its spacer}); the scrolls they made, queued
+	const scrollers = new Map();
+	const scrolled = [];
 	// (an editor's event: queued, and a frame asked for, which polls it)
 	const queue = (ev) => {
 		editorEvents.push(ev);
@@ -257,6 +283,61 @@ export default function (host) {
 			const ev = editorEvents.shift();
 			if (!ev) return 0;
 			new Int32Array(host.memory().buffer, p, 5).set(ev);
+			return 1;
+		},
+		// the scrollers' changes (WebScroll's JSON: the ui's width; views by
+		// id, their geometry g (parent, box, content in ui points, axes,
+		// bars, covered) and offsets o when they changed; r: the ids gone)
+		scroll_update(canvas, json) {
+			const c = host.handles.get(canvas), u = JSON.parse(host.string(json)), l = scrollLayer(c);
+			let views = scrollers.get(canvas);
+			if (!views) scrollers.set(canvas, (views = new Map()));
+			l.fit();
+			const k = l.getBoundingClientRect().width / Math.max(1, u.w);
+			for (const id of u.r) {
+				views.get(id)?.e.remove();
+				views.delete(id);
+			}
+			for (const v of u.v) {
+				let s = views.get(v.i);
+				if (!s) {
+					const e = document.createElement('div'), spacer = document.createElement('div');
+					spacer.style.cssText = 'position:absolute;left:0;top:0;';
+					e.appendChild(spacer);
+					s = { e, spacer, id: v.i, k };
+					e.hxmcScroller = true;
+					e.addEventListener('scroll', () => {
+						// (its own scroll: the offsets in ui points, 1/256ths)
+						scrolled.push([s.id, Math.round(e.scrollLeft / s.k * 256), Math.round(e.scrollTop / s.k * 256)]);
+						host.os?.redraw();
+					}, { passive: true });
+					views.set(v.i, s);
+				}
+				if (v.g) {
+					const [parent, x, y, w, h, cw, ch, axes, bars, covered] = v.g, e = s.e;
+					s.k = k;
+					e.style.cssText = 'position:absolute;margin:0;padding:0;border:0;background:transparent;overscroll-behavior:auto;' +
+						'left:' + x * k + 'px;top:' + y * k + 'px;width:' + w * k + 'px;height:' + h * k + 'px;' +
+						'overflow-x:' + (axes & 1 ? 'auto' : 'hidden') + ';overflow-y:' + (axes & 2 ? 'auto' : 'hidden') + ';' +
+						'touch-action:' + (axes === 3 ? 'pan-x pan-y' : axes & 1 ? 'pan-x' : 'pan-y') + ';' +
+						'pointer-events:' + (covered ? 'none' : 'auto') + ';' + (bars ? '' : 'scrollbar-width:none;');
+					s.spacer.style.width = cw * k + 'px';
+					s.spacer.style.height = ch * k + 'px';
+					// (appended once, in paint order: a later one over an earlier; moved, a scroller would lose its offsets)
+					const into = parent ? views.get(parent)?.e ?? l : l;
+					if (e.parentNode !== into) into.appendChild(e);
+				}
+				if (v.o) {
+					s.e.scrollLeft = v.o[0] * k;
+					s.e.scrollTop = v.o[1] * k;
+				}
+			}
+		},
+		// the next scroll into p (three Int32: the view's id, its offsets in 1/256 ui points); 0: none
+		scroll_event(p) {
+			const ev = scrolled.shift();
+			if (!ev) return 0;
+			new Int32Array(host.memory().buffer, p, 3).set(ev);
 			return 1;
 		},
 		// the next action into p (two Int32: the node id, the AccessAction); 0: none

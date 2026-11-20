@@ -232,8 +232,12 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
   - Where the platform has scroll views of its own, they drive the
     scrollers instead (`Ui.nativeScroll`; iOS: a clear `UIScrollView` per
     scroller that overflows, its pan on the window's view, as WebKit
-    does): their deceleration, bounce (`scrollX`/`scrollY` past the ends
-    meanwhile, as Safari's scrollTop), indicators and status bar tap. The
+    does; the browser: a clear `overflow: auto` element per scroller over
+    the canvas, nested as the scrollers are, the pointer's events still
+    the program's): their deceleration, bounce (`scrollX`/`scrollY` past
+    the ends meanwhile, as Safari's scrollTop), scrollbars or indicators,
+    the browser's wheel, trackpad and scroll chaining, iOS's status bar
+    tap. A finger's drag elsewhere is still helder's own. The
     tree still decides whose drag it is (`Ui.nativeBegins`: none while a
     recogniser of the tree holds a pointer or a node there follows the
     pointer's moves; else the nearest scroller that can move that way,

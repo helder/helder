@@ -23,6 +23,14 @@ class ScrollView {
 	public var bars(default, null) = true;
 	// inside a popup (over the tree)
 	public var layer(default, null) = false;
+	// under a popup: the tree's while one is open (a platform's view then takes no input)
+	public var covered(default, null) = false;
+	// the nearest scroller listed around it (null: none)
+	public var parent(default, null):Null<ScrollView> = null;
+	// (a number of its own, for a platform's side)
+	public final id:Int = ++ids;
+
+	static var ids = 0;
 	// (the last Ui.scrollViews that listed it)
 	var pass = 0;
 

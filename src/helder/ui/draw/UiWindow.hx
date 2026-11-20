@@ -114,10 +114,11 @@ class UiWindow {
 	var iosAccess:Any = null;
 	// Android's (an AndroidAccess)
 	var androidAccess:Any = null;
-	// iOS's scroll views (an IosScroll)
+	// iOS's scroll views (an IosScroll), the browser's (a WebScroll)
 	var iosScroll:Any = null;
+	var webScroll:Any = null;
 	// the platform's scroll views drive the scrollers of the windows made
-	// (Ui.nativeScroll, where the platform has them: iOS); false: helder's
+	// (Ui.nativeScroll, where the platform has them: iOS, the browser); false: helder's
 	// own scrolling (a Surface's scrolling prop sets a window's)
 	public static var scrolling = true;
 	// the text input area last given to the window ("": off)
@@ -212,14 +213,20 @@ class UiWindow {
 	// the platform's scroll views on or off for this window (where it has them)
 	public function nativeScroll(on:Bool) {
 		#if !helder.headless
-		ui.nativeScroll = on && Platform.apple() >= 1;
+		ui.nativeScroll = on && (Platform.apple() >= 1 || Platform.os() == 3);
 		ui.requestFrame();
 		#end
 	}
 
 	// the scrollers' platform views kept in step (after a frame)
 	function syncScroll() {
-		if (Platform.apple() >= 1) {
+		if (Platform.os() == 3) {
+			if (webScroll == null) {
+				if (!ui.nativeScroll) return;
+				webScroll = new WebScroll(window.surface.handle.toI64().toInt(), ui);
+			}
+			(cast webScroll : WebScroll).update();
+		} else if (Platform.apple() >= 1) {
 			if (iosScroll == null) {
 				if (!ui.nativeScroll) return;
 				iosScroll = new IosScroll(window, ui);
@@ -431,6 +438,7 @@ class UiWindow {
 	function pollAccess() {
 		if (Platform.os() == 3) {
 			if (access != null) WebMirror.poll(ui);
+			if (webScroll != null) (cast webScroll : WebScroll).poll();
 		} else if (Platform.os() == 0) {
 			if (Platform.target() < 9) {
 				if (linuxAccess != null) LinuxAccess.dispatch();
