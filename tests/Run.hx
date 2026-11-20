@@ -365,6 +365,9 @@ class Run {
 		interp(cp, "AsyncTest");
 		exe("bin/async/AsyncTest", cp.concat(["-main", "AsyncTest"]));
 		run(exePath("bin/async/AsyncTest", HOST), []);
+		// (TLS by mbedtls: a server and a client in one process, https and wss over it)
+		exe("bin/async/TlsTest", cp.concat(["-main", "TlsTest"]));
+		run(exePath("bin/async/TlsTest", HOST), []);
 		wasm("bin/async/WebTest.wasm", cp.concat(["-main", "WebTest"]));
 		run(NODE, ["tests/async/web.mjs", "bin/async/WebTest.wasm"]);
 		var dev = cps(["src", "examples/async-dev"]).concat(["-main", "AsyncDev"]);

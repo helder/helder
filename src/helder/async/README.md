@@ -146,7 +146,23 @@ Http.serve(server, req -> {
 HTTP/1.1 kept alive, bodies by `content-length`, each connection a child
 task (an error in the handler is a 500, and the server goes on), `HEAD`.
 WebSocket: text messages, fragments joined, pings answered, close; a
-client too (`WebSocket.connect(host, port, path)`).
+client too (`WebSocket.connect(host, port, path)`, or `WebSocket.open(url)`
+for `ws://` and `wss://`), and a server's over a connection of its own
+(`WebSocket.accept(io, out, shut)`: TLS on an accepted socket).
+
+### TLS
+
+A client's `https` (`Client.request`) and `wss` (`WebSocket.open`) use the
+system's stack where it has one: NSURLSession on macOS and iOS
+(`AppleHttp`). Elsewhere natively they run over `TlsSocket`: TLS by
+mbedtls, which hxmc's runtime has on every native target. Its handshake,
+reads and writes are coroutines on the loop, like a `Socket`'s: mbedtls
+reads and writes two buffers of its own instead of the socket. A client
+checks the server's certificate against the system's roots and its name
+(`ca`, PEM, trusts others: a test's); a server presents its certificate
+and key (`TlsSocket.server(socket, cert, key)`). Windows' WinHTTP,
+Android's `HttpURLConnection` and the browser's `fetch` and `WebSocket` are
+to come, as Apple's is.
 
 ## In the browser
 
@@ -160,7 +176,7 @@ earliest) or when a fetch ends. No sockets or processes there.
 ## Not yet
 
 Supervisors, `chunked`
-bodies, TLS. A caught error is thrown again by the next coroutine call
+bodies, a server's https (TLS on `Http.serve`'s connections). A caught error is thrown again by the next coroutine call
 that returns without suspending (the coroutine transform's,
 tests/async/rep/CatchThenCall.hx); helder.async's own calls clear it.
 
@@ -168,7 +184,9 @@ Tests: `tests/async/Watcher.test.hx` (SampledWatcher; `WatchBench.hx` its
 cost a tick against PollWatcher's), `tests/async/Tasks.test.hx` (tasks, cancellation, errors, timers:
 helder.test's, `bun run helder test tests/async --target all`),
 `AsyncTest.hx` (the loop, TCP, processes, the watcher, HTTP and
-WebSocket: `bun run test async`, on Eval and natively), `WebTest.hx` (the
+WebSocket: `bun run test async`, on Eval and natively), `TlsTest.hx`
+(TLS both ways in one process with `tls/`'s certificate for localhost,
+https and wss over it, the system's roots refusing it, natively), `WebTest.hx` (the
 browser's loop: under node, and in Chromium with `bun run test
 async-web`), `examples/async-dev` end to end (`tests/async/dev.mjs`),
 `AsyncBench.hx`. Workers, jobs and channels between threads are
