@@ -18,6 +18,8 @@ import hxmc.unsafe.*;
 	static function AInputQueue_preDispatchEvent(queue:Ptr, event:Ptr):Int;
 	static function AInputQueue_finishEvent(queue:Ptr, event:Ptr, handled:Int):Void;
 	static function AInputEvent_getType(event:Ptr):Int;
+	static function AInputEvent_getSource(event:Ptr):Int;
+	static function AInputEvent_getDeviceId(event:Ptr):Int;
 	static function AMotionEvent_getAction(event:Ptr):Int;
 	static function AMotionEvent_getPointerCount(event:Ptr):Int64;
 	static function AMotionEvent_getX(event:Ptr, index:Int64):Float32;

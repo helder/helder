@@ -17,10 +17,12 @@ import hxmc.unsafe.*;
 // Back ends: the browser's Gamepad API (navigator.getGamepads, in that
 // layout already); Linux's joystick devices (/dev/input/js0 to js3, read
 // without waiting; the xpad driver's numbering, an Xbox pad's, mapped to
-// the standard one); XInput on Windows (xinput1_4.dll). Elsewhere (macOS,
-// Android, iOS) none yet:
-// count() is 0. set() feeds a pad from a program (an on-screen stick, a
-// test), which poll then leaves alone.
+// the standard one); XInput on Windows (xinput1_4.dll); GameController's
+// extended gamepads on macOS and iOS (GamepadsApple); the input queue's
+// gamepad and joystick events on Android (AndroidGamepads: no UI keys
+// then). set() feeds a pad from a program (an on-screen stick, a test),
+// which poll then leaves alone.
+@:allow(helder.os.GamepadsApple, helder.os.android.AndroidGamepads)
 @:hxmc.unsafe(gc)
 class Gamepads {
 	public static inline var MAX = 4;
@@ -71,14 +73,19 @@ class Gamepads {
 	static var devices:Null<Void->Void>;
 
 	// the devices read from now on (a program reading gamepads calls it once)
-	public static function enable()
+	public static function enable() {
 		devices = pollDevices;
+		#if (hxmc.target != "wasm32-wasi" && !eval)
+		if (Platform.target() >= 9) helder.os.android.AndroidGamepads.enable();
+		#end
+	}
 
 	static function pollDevices() {
 		#if (hxmc.target == "wasm32-wasi")
 		pollWeb();
 		#elseif !eval
-		if (Platform.os() == 0) pollLinux() else if (Platform.os() == 2) pollWindows();
+		if (Platform.os() == Platform.MACOS) GamepadsApple.poll() else if (Platform.target() >= 9) helder.os.android.AndroidGamepads.poll()
+		else if (Platform.os() == Platform.LINUX) pollLinux() else if (Platform.os() == Platform.WINDOWS) pollWindows();
 		#end
 	}
 
