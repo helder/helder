@@ -1,5 +1,3 @@
-<!-- Generated from docs/scene/markup.md by site/docs/readme.mjs: edit those, not this file. -->
-
 # helder.scene.view
 
 `helder.view`'s markup and signals on `helder.scene`'s scene graph (Haxe
@@ -30,7 +28,7 @@ A scene in ui's layout, all markup: a `<Scene>` beside a panel, the
 orbits' rotations signals the ui's clock turns, a planet picked by a
 click, its name over it with `<Ui>`:
 
-Example: [Planets](/examples/planets/Planets.hx) (`helder run examples/planets/Planets.hx`; it plays in the docs' page).
+Example: [Planets](/examples/planets/Planets.hx) (`helder run examples/planets/Planets.hx`).
 
 ## Elements
 
@@ -97,7 +95,7 @@ Example: [Planets](/examples/planets/Planets.hx) (`helder run examples/planets/P
   <TransformGizmo of={world.root.find(picked())} mode={mode} snap={0.25}/>
   ```
 - **`<Stick>`** (`SceneTags.Stick`): an on-screen stick
-  (`helder.scene.input.VirtualStick`, bound by `InputMap`: [Input](/docs/scene/input.md))
+  (`helder.scene.input.VirtualStick`, bound by `InputMap`: [Input](/src/helder/scene/README.md#input))
   drawn over the ui, at rest at `left`, `bottom`, under the thumb once it
   holds it; the pointer goes through it.
 - **`<Ui>`** (`SceneTags.Ui`): back to ui inside a scene, drei's `<Html>`:
@@ -109,9 +107,9 @@ Example: [Planets](/examples/planets/Planets.hx) (`helder run examples/planets/P
   HDR: bloom, the tone map, the grade), and in it the effects, each set on
   the chain while its tag is there (`<Ssao>`, `<Dof>`, `<Outline>`,
   `<Fxaa>`, `<Lut>`; a `<Show>` toggles one): typed components, their props
-  the effects' options ([Post effects](/docs/scene/effects.md)).
+  the effects' options ([Post effects](/src/helder/scene/README.md#post-effects-and-the-view-buffers)).
 - **`pick`**: `<Scene pick="triangles">` picks by the meshes' triangles
-  (`SceneEvent`'s `normal` and `uv` the triangle's: [Picking](/docs/scene/picking.md)),
+  (`SceneEvent`'s `normal` and `uv` the triangle's: [Picking](/src/helder/scene/README.md#picking)),
   `"bounds"` (the default) by their boxes; told when compiling, so a box
   picking by bounds links no raycaster.
 - **Errors**: `<view>` in a scene's markup is no element of
@@ -120,7 +118,7 @@ Example: [Planets](/examples/planets/Planets.hx) (`helder run examples/planets/P
 
 Elements: `node`, `mesh`, the geometry and material tags, the lights,
 `camera` (fov, near, far), `instances` (an `InstancedMesh`:
-[Instancing](/docs/scene/instancing.md)), `sprites`, `lines`, `text3d`, `lod` and the
+[Instancing](/src/helder/scene/README.md#instancing)), `sprites`, `lines`, `text3d`, `lod` and the
 helpers; `position`, `rotation`,
 `scale`, `name`, `visible` and `outline` (the node's selection group, 0
 none: `Outline.select`, drawn by `<Outline>`) on every node.
@@ -137,13 +135,13 @@ none: `Outline.select`, drawn by `<Outline>`) on every node.
 
   A mesh of markup is one upload per geometry, and one primitive per
   geometry and material, so the same ones are one instanced draw.
-- **The geometry tags** are `Geometry`'s generators ([Geometry](/docs/scene/geometry.md)),
+- **The geometry tags** are `Geometry`'s generators ([Geometry](/src/helder/scene/README.md#geometry)),
   their props its options: `boxGeometry`, `sphereGeometry`,
   `cylinderGeometry`, `coneGeometry`, `capsuleGeometry`, `torusGeometry`,
   `torusKnotGeometry`, `ringGeometry`, `circleGeometry`, `planeGeometry`,
   `latheGeometry` (points), `tubeGeometry` (curve). A prop's change makes
   the geometry again (structure, not motion).
-- **The material tags** are `Material`'s factories ([Materials](/docs/scene/materials.md)),
+- **The material tags** are `Material`'s factories ([Materials](/src/helder/scene/README.md#materials)),
   their props their options: `standardMaterial`, `lambertMaterial`,
   `phongMaterial`, `toonMaterial`, `unlitMaterial`, `matcapMaterial`,
   `normalMaterial`, `depthMaterial` (near, far).
@@ -162,26 +160,26 @@ none: `Outline.select`, drawn by `<Outline>`) on every node.
   directional light's by default), `shadowSize`, `shadowBias`,
   `shadowNormalBias`, `shadowRadius`, `shadowStrength` (`Light.shadow`'s
   fields), drawn by the box's `Shadows` (given in `setup`: [Lights and
-  shadows](/docs/scene/lights.md#shadows)):
+  shadows](/src/helder/scene/README.md#shadows)):
 
   ```haxe
   <spotLight color={warm} intensity={30} range={12} inner={0.3} outer={0.5} castShadows shadowSize={512}/>
   ```
 - **`lod`**: a node drawn at its levels of detail (`Lod`: [Levels of
-  detail](/docs/scene/lod.md)), `levels={[{mesh: hi, until: 0.15}, {mesh: lo}]}`,
+  detail](/src/helder/scene/README.md#levels-of-detail)), `levels={[{mesh: hi, until: 0.15}, {mesh: lo}]}`,
   `hysteresis`, and a visible range, `begin` and `end` metres from the
   camera; made by its own `element_lod`, so a program links `Lod` only when
   its markup names one.
 - **`sprites`**: a node drawing `Sprites` (`of={set}`, `mode` `spherical`,
   `axis` or `fixed`), as `instances` draws an `InstancedMesh`.
 - **`lines`**: a node drawing `Lines` (`of={path}`, made by the program,
-  its points its own; `width`, `dashOffset`): [Lines](/docs/scene/lines.md). Its box's
+  its points its own; `width`, `dashOffset`): [Lines](/src/helder/scene/README.md#lines). Its box's
   renderer is given a `LineRenderer`.
-- **`text3d`**: a node drawing a `Text3D` ([Text in the world](/docs/scene/text.md)):
+- **`text3d`**: a node drawing a `Text3D` ([Text in the world](/src/helder/scene/README.md#text-in-the-world)):
   `of={label}`, or made of `font`, `text`, `size`, `depth`, `bevelSize`,
   `align`, `color`, `lit`, `billboard` and `castShadows` once inserted
   (again when one it is made of changes; `text` and `billboard` set on it).
-- **The helpers** ([Debugging](/docs/scene/debugging.md)): `axesHelper` (size) and
+- **The helpers** ([Debugging](/src/helder/scene/README.md#debugging)): `axesHelper` (size) and
   `gridHelper` (size, divisions, fade, color, majorColor) at their own
   node; `boundsHelper`, `lightHelper`, `cameraHelper` (aspect) and
   `skeletonHelper` showing the node they are in (`<mesh><boundsHelper/></mesh>`);

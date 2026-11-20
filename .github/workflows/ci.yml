@@ -13,7 +13,7 @@
 # - typescript: the TypeScript frontend's checks (tests/typescript/run.mjs,
 #   in shards over two jobs' cores, TS_PART);
 # - examples: every example built (EXAMPLES_WEB=site: the web builds the
-#   site job makes too left to it), the READMEs against the docs' pages;
+#   site job makes too left to it);
 # - site: the examples' pages and the docs built (every web example's
 #   build, an unknown example, region, page or link a failure) and checked
 #   in headless Chromium (site-check: bun run site:check, its demos and
@@ -185,7 +185,7 @@ jobs:
         with: {cache: examples, node-version: 24}
       - name: Fonts (DejaVu Sans) and libEGL
         run: sudo apt-get update -qq && sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core fonts-liberation libegl1 libegl-mesa0 libgl1-mesa-dri
-      - name: Every example built, the READMEs against the docs (the web builds the site job makes too, there)
+      - name: Every example built (the web builds the site job makes too, there)
         env:
           EXAMPLES_WEB: site
         run: bun run test examples

@@ -77,7 +77,7 @@ class Run {
 		{name: "pdf-fuzz", about: "helder.pdf under a time-boxed mutation fuzzer (tests/pdf/Fuzz.hx, natively): the corpus mutated, each mutant opened and drawn under small limits, ending in pixels or a PdfError (FUZZ_SECONDS, FUZZ_SEED)", run: pdfFuzz},
 		{name: "typescript", about: "helder.typescript (TypeScript through tsgo straight to hxmc IR): the IR checks, then every program of tests/typescript compiled by tsc and run on node, and by helder's compiler (helder.compiler, with this frontend) natively and as wasm32-wasi, the outputs compared; the programs it must reject", run: () -> run(NODE, ["tests/typescript/run.mjs"])},
 		{name: "typescript-native", about: "helder/native's definitions where their systems are (tests/typescript/native.mjs; the typescript lane runs it too): native.c (libc and libm on Linux, natively, static and glibc; Core Foundation on a Mac), native.objc (Foundation's NSProcessInfo and NSString on a Mac), native.com (WIC's factory, a bitmap's size read back, on Windows; on Linux under Wine with Windows' runtime objects), each refused where its system is not; native.jni's on Android is the android job's (tests/typescript/native/android.sh)", run: () -> run(NODE, ["tests/typescript/native.mjs"])},
-		{name: "examples", about: "every example (Haxe, TypeScript) of examples/ and docs/examples/ (the docs' own) built by `helder build <file>` (--target web for the web) with no other flags, not run: for web (wasm32-wasi), and those on a canvas or playing a sound natively too; the READMEs made from the docs' pages (docs/docs.json's readmes) checked against them (site/docs/readme.mjs --check)", run: examples},
+		{name: "examples", about: "every example (Haxe, TypeScript) of examples/ and docs/examples/ (the docs' own) built by `helder build <file>` (--target web for the web) with no other flags, not run: for web (wasm32-wasi), and those on a canvas or playing a sound natively too", run: examples},
 		{name: "3d", about: "helder.scene and helder.physics: unit tests on Eval, natively and as wasm32-wasi, input actions, the renderer's frames against golden images (Mesa), helder/scene's from TypeScript (tests/3d/ts/frames.ts)", run: scene},
 		{name: "3d-web", about: "helder.scene's frames on WebGPU and WebGL2 in headless Chromium", run: sceneWeb},
 		{name: "gfx", about: "helder.gfx: the examples headless and in a window against golden images (tests/gfx/check.sh; Linux: Mesa, Xvfb)", run: gfx},
@@ -1691,11 +1691,8 @@ class Run {
 	// too, in parallel, into bin/examples (each one's log beside it), each by
 	// the CLI with no flags but the target and the output: `helder build
 	// <file> [--target web] -o <out>`. docs/examples' too (the docs' pages
-	// play them: site/docs/Docs.hx), their ids prefixed by docs-; first the
-	// READMEs the docs make, checked (site/docs/readme.mjs --check: a README
-	// edited by hand, or a page edited without making them again, fails).
+	// play them: site/docs/Docs.hx), their ids prefixed by docs-.
 	static function examples() {
-		run(NODE, ["site/docs/readme.mjs", "--check"]);
 		var h = helderCli();
 		var builds:Array<{id:String, target:String, out:String, args:Array<String>}> = [];
 		var dirs = [for (root in ["examples", "docs/examples"]) if (FileSystem.exists(root)) for (d in FileSystem.readDirectory(root)) '$root/$d'];

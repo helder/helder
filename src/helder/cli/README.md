@@ -435,6 +435,11 @@ helder logout
 - **The address**: `run.name` (3 to 40 lowercase letters, digits and
   hyphens), else the app's name made one; the first to publish an address
   owns it.
+- **Limits**: a file 25 MB at most, a release 100 MB, a share 25 MB. A
+  published app has no network access and no camera, microphone or
+  location; each runs on its own origin, apart from helder.build and every
+  other project. Its page lists what it can do (saving data, sound, game
+  controllers), read from the program when it is published.
 
 ## Publishing to the stores
 

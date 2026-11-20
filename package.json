@@ -92,7 +92,8 @@
     "site": "node site/build.mjs",
     "site:check": "node site/check.mjs",
     "site:numbers": "node site/numbers.mjs",
-    "site:reel": "node site/reel.mjs"
+    "site:reel": "node site/reel.mjs",
+    "site:visuals": "node site/visuals.mjs"
   },
   "dependencies": {
     "@hx-objc/apple-uikit": "github:hx-objc/apple-uikit#27.2.0",

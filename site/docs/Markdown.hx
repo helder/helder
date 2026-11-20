@@ -18,6 +18,8 @@ enum Block {
 	Quote(blocks:Array<Block>);
 	Rule;
 	Component(name:String, attrs:Map<String, String>);
+	// a sample in TypeScript and Haxe: two fences in a row, shown as tabs
+	Langs(codes:Array<Block>);
 }
 
 enum Inline {
@@ -39,7 +41,28 @@ class Markdown {
 	// a page's blocks; the headings' ids unique within it
 	public static function parse(text:String):Array<Block> {
 		var ids = new Map<String, Int>();
-		return blocks(text.replace("\r\n", "\n").split("\n"), ids);
+		return pair(blocks(text.replace("\r\n", "\n").split("\n"), ids));
+	}
+
+	// "ts" or "haxe" for a fence in either language, else null
+	public static function family(lang:String):Null<String> {
+		var l = lang.toLowerCase();
+		return l == "ts" || l == "tsx" || l == "typescript" ? "ts" : l == "haxe" || l == "hx" ? "haxe" : null;
+	}
+
+	static function pair(bs:Array<Block>):Array<Block> {
+		var out:Array<Block> = [];
+		var k = 0;
+		while (k < bs.length) {
+			switch [bs[k], k + 1 < bs.length ? bs[k + 1] : Rule] {
+				case [Code(a, _, _), Code(b, _, _)] if (family(a) != null && family(b) != null && family(a) != family(b)):
+					out.push(Langs([bs[k], bs[k + 1]]));
+					k += 2;
+				case _:
+					out.push(bs[k++]);
+			}
+		}
+		return out;
 	}
 
 	static function blocks(lines:Array<String>, ids:Map<String, Int>):Array<Block> {
@@ -327,7 +350,7 @@ class Markdown {
 				case Table(head, rows):
 					for (c in head) b.push(plain(c));
 					for (r in rows) for (c in r) b.push(plain(c));
-				case Code(_) | Rule | Component(_):
+				case Code(_) | Rule | Component(_) | Langs(_):
 			}
 		return b.join(" ");
 	}
