@@ -44,7 +44,9 @@ typedef SurfaceProps = {
 	?fontSmoothing:helder.view.graph.Read<String>,
 	// "native": the platform's own scrolling drives the scrollers where it
 	// has it (iOS's UIScrollView, the browser's: their physics, bounce,
-	// indicators; Android's fling, VelocityTracker and OverScroller);
+	// indicators; Android's fling, VelocityTracker and OverScroller; macOS's
+	// trackpad gestures and momentum, stretching at the ends, its overlay
+	// scrollbars);
 	// "helder": helder's own scrolling everywhere; default UiWindow.scrolling's
 	?scrolling:String,
 	?children:UiView
@@ -216,6 +218,17 @@ class UiWindow {
 	public function nativeScroll(on:Bool) {
 		#if !helder.headless
 		ui.nativeScroll = on && (Platform.apple() >= 1 || Platform.os() == 3);
+		// (macOS: no scroll views under the tree; its trackpad's gestures and momentum taken as its own views take them, Trackpad's, and its overlay scrollbars)
+		// (nested: only a constant condition drops the branch, its AppKit calls with it)
+		if (Platform.os() == 1) {
+			if (Platform.apple() < 1) {
+				ui.elastic = on;
+				ui.overlayBars = on && App.overlayScrollbars();
+				ui.scrollbarLook = !on ? Plain : ui.overlayBars ? MacOverlay : MacLegacy;
+				// (macOS's scrollers drawn by AppKit, for every appearance and macOS)
+				if (on && ui.scrollbarArt == null) ui.scrollbarArt = new MacScrollbarArt();
+			}
+		}
 		// (Android: no scroll views under the tree; helder's drag, Android's fling: its VelocityTracker and OverScroller)
 		if (Platform.target() >= 9) @:privateAccess ui.touchScroll.g = on ? new helder.os.android.AndroidGlide() : new helder.os.Glide();
 		ui.requestFrame();
@@ -469,7 +482,8 @@ class UiWindow {
 					dx = dy;
 					dy = 0;
 				}
-				ui.wheel(e.x / k, e.y / k, dx / k, dy / k, e.eased, e.mods);
+				var phased = e.phase != 0 || e.momentum != 0;
+				ui.wheel(e.x / k, e.y / k, dx / k, dy / k, e.eased, e.mods, e.phase, e.momentum, phased ? ui.eventTime(e.time) : -1);
 			case MouseDown:
 				ui.pointerDown(e.x / k, e.y / k, e.button);
 			case MouseUp:
@@ -555,6 +569,14 @@ class UiWindow {
 				// (the user's keymap file, read again when it changed: the menus' labels too)
 				if (helder.ui.actions.Keymap.global.poll()) for (w in open)
 					w.ui.requestFrame();
+				// (macOS's "Show scroll bars": overlay or always)
+				var overlay = App.overlayScrollbars();
+				for (w in open)
+					if (w.ui.elastic && w.ui.overlayBars != overlay) {
+						w.ui.overlayBars = overlay;
+						w.ui.scrollbarLook = overlay ? MacOverlay : MacLegacy;
+						w.ui.requestFrame();
+					}
 				var d = App.prefersDark();
 				if (d != dark.peek()) {
 					dark(d);

@@ -89,6 +89,12 @@ class Event {
 	// a mouse wheel's notches where the platform's own views glide them, on
 	// macOS and in a browser; not on Windows and Linux, whose own apps jump
 	public var eased = false;
+	// a trackpad's Scroll: its gesture's phase and its momentum's (ScrollPhase:
+	// 0 none, a wheel's; Began, Changed, Ended, Cancelled), and its time (ms,
+	// the system's clock: what the momentum is replayed by)
+	public var phase = 0;
+	public var momentum = 0;
+	public var time = 0.0;
 	// keys, mouse buttons and scrolls: the modifiers held (Mods: Shift, Control, Alt, Meta: the Windows or Command key)
 	@:typescript public var mods = 0;
 	// TextInput: the characters; TextEditing: the composition

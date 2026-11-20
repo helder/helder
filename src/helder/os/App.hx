@@ -345,6 +345,17 @@ class App {
 	// AppsUseLightTheme (0), GTK's settings on Linux (GTK_THEME ending in
 	// :dark, gtk-application-prefer-dark-theme or a dark theme's name in
 	// settings.ini); cheap enough to ask now and then
+	// whether the system shows scrollbars only while scrolling, over the
+	// content (macOS's overlay scrollers; elsewhere, and on macOS's "Always",
+	// false)
+	public static function overlayScrollbars():Bool {
+		#if helder.headless
+		return false;
+		#end
+		if (Platform.os() == 1 && Platform.apple() < 1) return @:privateAccess CocoaWindow.overlayScrollbars();
+		return false;
+	}
+
 	public static function prefersDark():Bool {
 		#if helder.headless
 		return helder.headless.Headless.run.dark;

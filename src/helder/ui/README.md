@@ -239,7 +239,13 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
     the browser's wheel, trackpad and scroll chaining, iOS's status bar
     tap. A finger's drag elsewhere is still helder's own. Android has no
     scroll views under the tree: there helder's drag glides by Android's
-    own `VelocityTracker` and `OverScroller` (`AndroidGlide`). The
+    own `VelocityTracker` and `OverScroller` (`AndroidGlide`). On macOS
+    (`Ui.elastic`, `Trackpad`) a trackpad's gesture goes to one scroller,
+    stretches past its ends by AppKit's measured curve and springs back,
+    its momentum the system's replayed at the frames' times; the
+    scrollbars are AppKit's own scrollers drawn into the tree
+    (`ScrollbarArt`: `MacScrollbarArt`), overlay ones fading as macOS's,
+    as the system's "Show scroll bars" says. The
     tree still decides whose drag it is (`Ui.nativeBegins`: none while a
     recogniser of the tree holds a pointer or a node there follows the
     pointer's moves; else the nearest scroller that can move that way,

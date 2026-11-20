@@ -162,20 +162,47 @@ class Scrolling {
 	// along the axis (absolute), its offset across it; right to left, the
 	// vertical one on the left, as Chromium has it
 	static function track(n:Node, x:Bool):Array<Float> {
-		var be = n.style.borderEdges, i = Ui.SCROLLBAR_INSET, rtl = n.rtl(), b = barSize(n);
-		// (the other axis's bar, if any, takes the corner)
-		var corner = maxScroll(n, !x) > 0 ? b + i : 0;
+		var be = n.style.borderEdges, i = barInset(n), rtl = n.rtl(), b = barSize(n);
+		// (the other axis's bar, if any, takes the corner: its track's width where it has one)
+		var corner = maxScroll(n, !x) > 0 ? (legacy(n) ? gutter(n) : b + i) : 0;
 		return x ? [n.absX + be.left + i + (rtl ? corner : 0), n.width - be.horizontal - 2 * i - corner, n.absY + n.height - be.bottom - i - b] : [
 			n.absY + be.top + i, n.height - be.vertical - 2 * i - corner, rtl ? n.absX + be.left + i : n.absX + n.width - be.right - i - b];
 	}
 
-	// (a scroller's scrollbar thickness: its style's, 0 for none)
-	static function barSize(n:Node):Float
+	// (a scroller's scrollbar thickness: its style's, 0 for none; its Ui's
+	// look's: helder's 6, macOS's overlay thumb 7, its always-shown thumb 8 in
+	// a 15-point track)
+	static function barSize(n:Node):Float {
+		var look = n.ui == null ? ScrollbarLook.Plain : n.ui.scrollbarLook, a = art(n);
+		var full = a != null ? a[1] : look == ScrollbarLook.MacLegacy ? 8.0 : look == ScrollbarLook.MacOverlay ? 7.0 : Ui.SCROLLBAR;
 		return switch n.style.scrollbarWidth {
 			case None: 0;
-			case Thin: Ui.SCROLLBAR * 2 / 3;
-			case _: Ui.SCROLLBAR;
+			case Thin: full * 2 / 3;
+			case _: full;
 		}
+	}
+
+	// (the thumb's inset from the box's edge and its track's ends: macOS's always-shown scrollers 3)
+	static function barInset(n:Node):Float {
+		var a = art(n);
+		return a != null ? a[2] : legacy(n) ? 3 : Ui.SCROLLBAR_INSET;
+	}
+
+	// (the platform's scrollbars' metrics, where its art draws them: null, helder's)
+	static function art(n:Node):Null<Array<Float>> {
+		var ui = n.ui;
+		if (ui == null || ui.scrollbarArt == null || ui.scrollbarLook == ScrollbarLook.Plain) return null;
+		return ui.scrollbarArt.metrics(ui.scrollbarLook == ScrollbarLook.MacOverlay);
+	}
+
+	static inline function legacy(n:Node):Bool
+		return n.ui != null && n.ui.scrollbarLook == ScrollbarLook.MacLegacy;
+
+	// (macOS's always-shown scroller's track, across: the thumb, its insets and a 1-point border)
+	static function gutter(n:Node):Float {
+		var a = art(n);
+		return a != null ? a[0] : barSize(n) + 2 * barInset(n) + 1;
+	}
 
 	// (the scrollbar colours n inherits: its track's or its thumb's; null: none given)
 	static function inheritedBar(n:Node, track:Bool):Null<Color> {
@@ -201,7 +228,10 @@ class Scrolling {
 		var t = track(n, x);
 		if (t[1] <= 0) return null;
 		var len = thumbLength(t[1], viewSize(n, x), x ? n.contentWidth : n.contentHeight);
-		var at = t[0] + (t[1] - len) * ((x ? n.scrollX : n.scrollY) - scrollStart(n, x)) / max;
+		// (past an end, stretching: the thumb shrinks against it, as AppKit's)
+		var f = ((x ? n.scrollX : n.scrollY) - scrollStart(n, x)) / max, over = f < 0 ? -f * max : f > 1 ? (f - 1) * max : 0.0;
+		if (over > 0) len = Math.max(Math.min(len, Ui.MIN_THUMB / 2), len * (1 - over / Math.max(1, viewSize(n, x))));
+		var at = t[0] + (t[1] - len) * Math.max(0, Math.min(1, f));
 		var b = barSize(n);
 		return x ? [at, t[2], len, b] : [t[2], at, b, len];
 	}
@@ -222,14 +252,16 @@ class Scrolling {
 	static function scrollbarDown(ui:Ui, target:Node, px:Float, py:Float):Bool {
 		var n = target;
 		while (n != null) {
-			if (n.style.overflow == Scroll)
+			// (overlay scrollbars: found only while shown)
+			if (n.style.overflow == Scroll && (!ui.overlayBars || ui.barShown(n) > 0))
 				for (x in [false, true]) {
 					var t = thumb(n, x);
 					if (t == null) continue;
 					var tr = track(n, x);
 					var lx = px + scrolled(n, true), ly = py + scrolled(n, false);
 					var along = x ? lx : ly, across = x ? ly : lx;
-					if (across < tr[2] - Ui.SCROLLBAR_INSET || across > tr[2] + barSize(n) + Ui.SCROLLBAR_INSET || along < tr[0] || along > tr[0] + tr[1]) continue;
+					var i = barInset(n);
+					if (across < tr[2] - i || across > tr[2] + barSize(n) + i || along < tr[0] || along > tr[0] + tr[1]) continue;
 					var start = x ? t[0] : t[1], len = x ? t[2] : t[3];
 					if (along >= start && along <= start + len) {
 						ui.drag = n;
