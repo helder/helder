@@ -5,31 +5,36 @@ import haxe.io.Bytes;
 import haxe.io.BytesBuffer;
 import helder.async.*;
 
-// An HTTP/1.1 client on helder.async's TCP, for talking to a local server
-// (plain http, one connection a request): the body read by Content-Length,
-// chunked or until the server closes. No redirects, no compression asked
-// for. An https URL goes to the system's stack instead: NSURLSession on
-// macOS and iOS (AppleHttp: its TLS, redirects, HTTP/2 and cache); none
-// elsewhere yet (an exception).
+// An HTTP/1.1 client on helder.async's TCP (one connection a request): the
+// body read by Content-Length, chunked or until the server closes. No
+// redirects, no compression asked for. An https URL goes to the system's
+// stack where there is one: NSURLSession on macOS and iOS (AppleHttp: its
+// TLS, redirects, HTTP/2 and cache); elsewhere natively this client over
+// mbedtls's TLS (TlsSocket: the system's roots, or the ca given); in the
+// browser the page's fetch for every url (WebHttp).
 //
 //   var res = Client.request("http://127.0.0.1:4983/", {method: "POST", body: '{"type":"init"}',
 //     headers: ["content-type" => "application/json"]});
 //   trace(res.status, res.text());
 class Client {
 	@:coroutine public static function request(url:String, ?options:RequestOptions):Reply {
+		// (the browser: its fetch, for every url: no sockets there)
+		#if (hxmc.target == "wasm32-wasi")
+		return WebHttp.request(url, options);
+		#end
 		// (https: the system's stack where there is one; macOS and iOS: AppleHttp)
 		if (StringTools.startsWith(url, "https://")) {
 			#if (target.name == "hxmc" && (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64"))
-			return AppleHttp.request(url, options);
-			#else
-			throw new Exception('https needs macOS or iOS here (NSURLSession): $url');
+			if (options?.ca == null) return AppleHttp.request(url, options);
+			#elseif (target.name != "hxmc" || hxmc.target == "wasm32-wasi")
+			throw new Exception('https needs a native target here: $url');
 			#end
 		}
 		var u = Url.parse(url);
 		var method = options?.method ?? "GET";
 		var body = options?.body ?? (options?.text != null ? Bytes.ofString(options.text) : Bytes.alloc(0));
 		var head = new StringBuf();
-		head.add('$method ${u.path} HTTP/1.1\r\nhost: ${u.host}:${u.port}\r\nconnection: close\r\n');
+		head.add('$method ${u.path} HTTP/1.1\r\nhost: ${u.host}${u.port == (u.secure ? 443 : 80) ? "" : ":" + u.port}\r\nconnection: close\r\n');
 		final given = options?.headers ?? new Map();
 		for (k => v in given)
 			head.add('$k: $v\r\n');
@@ -37,19 +42,44 @@ class Client {
 		if (body.length > 0 || method != "GET") head.add('content-length: ${body.length}\r\n');
 		head.add("\r\n");
 		var s = Socket.connect(u.host, u.port);
+		#if (target.name == "hxmc" && hxmc.target != "wasm32-wasi")
+		// (https: TLS on the connection, mbedtls's)
+		var tls:Null<TlsSocket> = null;
+		if (u.secure) {
+			try {
+				tls = TlsSocket.client(s, u.host, options?.ca == null ? null : sys.ssl.Certificate.fromString(options.ca));
+			} catch (e:Exception) {
+				s.close();
+				throw e;
+			}
+		}
+		var io:helder.async.Stream.Source = tls ?? s, out:helder.async.Stream.Sink = tls ?? s;
+		#else
+		var io:helder.async.Stream.Source = s, out:helder.async.Stream.Sink = s;
+		#end
 		try {
 			var h = Bytes.ofString(head.toString());
-			var out = Bytes.alloc(h.length + body.length);
-			out.blit(0, h, 0, h.length);
-			out.blit(h.length, body, 0, body.length);
-			s.write(out, 0, out.length);
-			var reply = read(new Reader(s), method == "HEAD");
-			s.close();
+			var all = Bytes.alloc(h.length + body.length);
+			all.blit(0, h, 0, h.length);
+			all.blit(h.length, body, 0, body.length);
+			out.write(all, 0, all.length);
+			var reply = read(new Reader(io), method == "HEAD");
+			close(s #if (target.name == "hxmc" && hxmc.target != "wasm32-wasi"), tls #end);
 			return reply;
 		} catch (e:Exception) {
-			s.close();
+			close(s #if (target.name == "hxmc" && hxmc.target != "wasm32-wasi"), tls #end);
 			throw e;
 		}
+	}
+
+	@:coroutine static function close(s:Socket #if (target.name == "hxmc" && hxmc.target != "wasm32-wasi"), tls:Null<TlsSocket> #end) {
+		#if (target.name == "hxmc" && hxmc.target != "wasm32-wasi")
+		if (tls != null) {
+			tls.close();
+			return;
+		}
+		#end
+		s.close();
 	}
 
 	@:coroutine static function read(r:Reader, head:Bool):Reply {
@@ -105,7 +135,10 @@ typedef RequestOptions = {
 	// the body as text (UTF-8), when body is not given
 	?text:String,
 	// its content-type header ("application/json")
-	?contentType:String
+	?contentType:String,
+	// https: the roots trusted instead of the system's (PEM): a test's own
+	// certificate; helder's own TLS then, also where the system has a stack
+	?ca:String
 }
 
 class Reply {
@@ -127,27 +160,35 @@ class Reply {
 		return body.toString();
 }
 
-private class Url {
+class Url {
 	public final host:String;
 	public final port:Int;
 	public final path:String;
+	public final secure:Bool;
 
-	function new(host, port, path) {
+	function new(host, port, path, secure) {
 		this.host = host;
 		this.port = port;
 		this.path = path;
+		this.secure = secure;
 	}
 
+	// an http, https, ws or wss url (ws: http's, wss: https's)
 	public static function parse(url:String):Url {
-		if (!StringTools.startsWith(url, "http://")) throw new Exception('only http urls: $url');
-		var rest = url.substr(7);
+		var scheme = url.indexOf("://");
+		var secure = switch scheme < 0 ? "" : url.substr(0, scheme).toLowerCase() {
+			case "http" | "ws": false;
+			case "https" | "wss": true;
+			case _: throw new Exception('only http, https, ws and wss urls: $url');
+		}
+		var rest = url.substr(scheme + 3);
 		var slash = rest.indexOf("/");
 		var authority = slash < 0 ? rest : rest.substr(0, slash);
 		var path = slash < 0 ? "/" : rest.substr(slash);
 		var colon = authority.lastIndexOf(":");
-		if (colon < 0) return new Url(authority, 80, path);
+		if (colon < 0) return new Url(authority, secure ? 443 : 80, path, secure);
 		var port = Std.parseInt(authority.substr(colon + 1));
 		if (port == null) throw new Exception('bad port: $url');
-		return new Url(authority.substr(0, colon), port, path);
+		return new Url(authority.substr(0, colon), port, path, secure);
 	}
 }

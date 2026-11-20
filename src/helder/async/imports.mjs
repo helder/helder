@@ -87,6 +87,74 @@ export default function (host) {
 				host.handles.get(h).abort.abort();
 				host.handles.remove(h);
 			},
+			// a request (Client.request): a fetch's handle, its status and headers kept;
+			// a status of an error a reply (the program reads it), only the network's errors a failure
+			http_start(url, method, headers, p, n) {
+				const f = { state: 0, body: null, loaded: 0, total: 0, abort: new AbortController(), status: 0, headers: '' };
+				const base = typeof document !== 'undefined' ? document.baseURI : host.options.base;
+				const h = new Headers();
+				for (const line of host.string(headers).split('\n')) {
+					const i = line.indexOf(':');
+					if (i > 0) h.append(line.slice(0, i).trim(), line.slice(i + 1).trim());
+				}
+				const m = host.string(method);
+				const body = n > 0 ? new Uint8Array(host.memory().buffer, p, n).slice() : undefined;
+				fetch(new URL(host.string(url), base), { method: m, headers: h, body: m === 'GET' || m === 'HEAD' ? undefined : body, signal: f.abort.signal })
+					.then(async (r) => {
+						f.status = r.status;
+						const lines = [];
+						r.headers.forEach((v, k) => lines.push(k + ': ' + v));
+						f.headers = new TextEncoder().encode(lines.join('\n'));
+						return new Uint8Array(await r.arrayBuffer());
+					}).then((b) => { f.body = b; f.loaded = b.length; f.state = 1; wake(0); }, () => { f.state = -1; wake(0); });
+				return host.handles.add(f);
+			},
+			http_status: (h) => host.handles.get(h).status,
+			http_headers_length: (h) => host.handles.get(h).headers.length,
+			http_headers(h, p, n) {
+				const f = host.handles.get(h);
+				new Uint8Array(host.memory().buffer, p, Math.min(n, f.headers.length)).set(f.headers.subarray(0, n));
+			},
+			// the page's WebSocket (WebSocket.open): its messages queued as UTF-8, a turn at each event
+			ws_open(url) {
+				const w = { state: 0, queue: [], ws: null };
+				const base = typeof document !== 'undefined' ? document.baseURI : host.options.base;
+				const u = new URL(host.string(url), base);
+				// (relative to the page: its http as ws, https as wss)
+				if (u.protocol === 'http:') u.protocol = 'ws:';
+				else if (u.protocol === 'https:') u.protocol = 'wss:';
+				try {
+					w.ws = new WebSocket(u);
+				} catch {
+					w.state = -1;
+					return host.handles.add(w);
+				}
+				w.ws.binaryType = 'arraybuffer';
+				w.ws.onopen = () => { w.state = 1; wake(0); };
+				w.ws.onmessage = (e) => {
+					w.queue.push(typeof e.data === 'string' ? new TextEncoder().encode(e.data) : new Uint8Array(e.data));
+					wake(0);
+				};
+				w.ws.onclose = () => { w.state = w.state === 0 ? -1 : 2; wake(0); };
+				w.ws.onerror = () => { if (w.state === 0) w.state = -1; wake(0); };
+				return host.handles.add(w);
+			},
+			ws_state: (h) => host.handles.get(h).state,
+			ws_next: (h) => { const q = host.handles.get(h).queue; return q.length ? q[0].length : -1; },
+			ws_take(h, p, n) {
+				const m = host.handles.get(h).queue.shift();
+				if (m) new Uint8Array(host.memory().buffer, p, Math.min(n, m.length)).set(m.subarray(0, n));
+			},
+			ws_send(h, text) {
+				const w = host.handles.get(h);
+				if (w.state === 1) w.ws.send(host.string(text));
+			},
+			ws_close(h, code) {
+				const w = host.handles.get(h);
+				if (!w) return;
+				try { w.ws?.close(code); } catch {}
+				host.handles.remove(h);
+			},
 		},
 	};
 }

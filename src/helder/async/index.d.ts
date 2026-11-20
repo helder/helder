@@ -8,16 +8,17 @@
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 
-declare const __haxe: {Client: "helder.async.http.Client", Reply: "helder.async.http.Client.Reply", Http: "helder.async.http.Http", Request: "helder.async.http.Http.Request", Response: "helder.async.http.Http.Response", WebSocket: "helder.async.http.WebSocket", Tasks: "helder.async.Tasks", __module: "helder.async.TypeScript"};
+declare const __haxe: {Client: "helder.async.http.Client", Reply: "helder.async.http.Client.Reply", Url: "helder.async.http.Client.Url", Http: "helder.async.http.Http", Request: "helder.async.http.Http.Request", Response: "helder.async.http.Http.Response", WebSocket: "helder.async.http.WebSocket", Tasks: "helder.async.Tasks", __module: "helder.async.TypeScript"};
 
-export type RequestOptions = { method?: string; headers?: unknown; body?: Uint8Array; text?: string; contentType?: string };
+export type RequestOptions = { method?: string; headers?: unknown; body?: Uint8Array; text?: string; contentType?: string; ca?: string };
 
-// An HTTP/1.1 client on helder.async's TCP, for talking to a local server
-// (plain http, one connection a request): the body read by Content-Length,
-// chunked or until the server closes. No redirects, no compression asked
-// for. An https URL goes to the system's stack instead: NSURLSession on
-// macOS and iOS (AppleHttp: its TLS, redirects, HTTP/2 and cache); none
-// elsewhere yet (an exception).
+// An HTTP/1.1 client on helder.async's TCP (one connection a request): the
+// body read by Content-Length, chunked or until the server closes. No
+// redirects, no compression asked for. An https URL goes to the system's
+// stack where there is one: NSURLSession on macOS and iOS (AppleHttp: its
+// TLS, redirects, HTTP/2 and cache); elsewhere natively this client over
+// mbedtls's TLS (TlsSocket: the system's roots, or the ca given); in the
+// browser the page's fetch for every url (WebHttp).
 //
 //   var res = Client.request("http://127.0.0.1:4983/", {method: "POST", body: '{"type":"init"}',
 //     headers: ["content-type" => "application/json"]});
@@ -34,6 +35,15 @@ export declare class Reply {
 	readonly body: Uint8Array;
 	header(name: string): string | null;
 	text(): string;
+}
+
+export declare class Url {
+	// an http, https, ws or wss url (ws: http's, wss: https's)
+	static parse(url: string): Url;
+	readonly host: string;
+	readonly port: number;
+	readonly path: string;
+	readonly secure: boolean;
 }
 
 // A minimal HTTP/1.1 server on helder.async's TCP: enough for a dev server.
@@ -97,7 +107,14 @@ export declare class WebSocket {
 	static wants(req: Request): boolean;
 	// the request's connection taken over (Http.serve's handler returns null after)
 	static upgrade(req: Request): Promise<WebSocket>;
+	// a server's WebSocket on a connection of its own (TLS on an accepted
+	// socket: TlsSocket.server): the upgrade request read from io, answered
+	static accept(io: unknown, out: unknown, shut: () => void): Promise<WebSocket>;
+	// a client's WebSocket to host:port at path (ws)
 	static connect(host: string, port: number, path?: string): Promise<WebSocket>;
+	// a client's WebSocket to a ws or wss url; wss natively over mbedtls's
+	// TLS (TlsSocket: the system's roots, or ca's: PEM)
+	static open(url: string, ca?: string): Promise<WebSocket>;
 	readonly closed: boolean;
 	// the next message; null once closed
 	receive(): Promise<string | null>;

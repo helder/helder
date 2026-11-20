@@ -8,6 +8,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { echo, echoSockets } from './echo.mjs';
 
 const require = createRequire(import.meta.url);
 const pw = require('playwright');
@@ -21,6 +22,7 @@ wait();
 </script>`;
 const types = { '.mjs': 'text/javascript', '.js': 'text/javascript', '.wasm': 'application/wasm', '.txt': 'text/plain' };
 const server = createServer(async (req, res) => {
+	if (echo(req, res)) return;
 	const url = new URL(req.url, 'http://x').pathname;
 	try {
 		const body = url === '/' ? page : await readFile(url === '/module.wasm' ? wasm : url === '/hello.txt' ? path.join(root, 'tests/async/hello.txt') : path.join(root, url));
@@ -29,6 +31,7 @@ const server = createServer(async (req, res) => {
 		res.writeHead(404).end();
 	}
 });
+echoSockets(server);
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const browser = await pw.chromium.launch();
 const p = await browser.newPage();

@@ -65,6 +65,18 @@ class WebTest {
 				7;
 			})]);
 			eq(both.join(","), "20,7", "a fetch and a timer at once");
+			// (Client.request and WebSocket.open: the page's fetch and WebSocket, against the harness's echo)
+			var reply = helder.async.http.Client.request("echo", {method: "POST", text: "hi"});
+			eq(reply.status + " " + reply.text() + " " + reply.header("x-echo"), "200 POST|hi yes", "a request by the page's fetch");
+			eq(helder.async.http.Client.request("missing.txt").status, 404, "an error status a reply");
+			var ws = helder.async.http.WebSocket.open("echo-ws");
+			ws.send("one");
+			eq(ws.receive(), "echo one", "the page's WebSocket");
+			ws.close();
+			eq(try {
+				helder.async.http.WebSocket.open("nowhere");
+				"opened";
+			} catch (e:Exception) "failed", "failed", "a WebSocket refused");
 			Sys.println(failures == 0 ? 'ok ($checks checks)' : '$failures of $checks checks failed');
 			Sys.exit(failures == 0 ? 0 : 1);
 		});
