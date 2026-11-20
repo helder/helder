@@ -7,7 +7,8 @@ import helder.async.*;
 // than a record), the end of the stream after the server's close; a client
 // trusting only the system's roots refused (the certificate is
 // self-signed); a name the certificate does not have refused; https through
-// Client.request and wss through WebSocket.open, trusting it.
+// Client.request and wss through WebSocket.open, trusting it; ws and http
+// by the system's stack where it has one.
 //   TlsTest
 class TlsTest {
 	static var failed = 0;
@@ -95,7 +96,7 @@ class TlsTest {
 			ws.close();
 			server.close();
 
-			// (ws through WebSocket.open against helder's own server: the system's WebSocket where it has one, NSURLSession's)
+			// (ws through WebSocket.open against helder's own server: the system's WebSocket where it has one, NSURLSession's or WinHTTP's)
 			var plain = Server.listen("127.0.0.1", 0);
 			task.async(_ -> helder.async.http.Http.serve(plain, req -> {
 				if (req.path != "/ws" || !helder.async.http.WebSocket.wants(req)) return helder.async.http.Http.Response.text("no", 404);
@@ -118,6 +119,8 @@ class TlsTest {
 			var sys = helder.async.http.WebSocket.open('ws://127.0.0.1:${plain.port}/ws');
 			sys.send("two");
 			check("ws through WebSocket.open (the system's where it has one)", sys.receive() == "echo two");
+			sys.send(long);
+			check("ws: a long message echoed (WinHTTP's fragments joined)", sys.receive() == "echo " + long);
 			sys.close();
 			var failed = try {
 				helder.async.http.WebSocket.open('ws://127.0.0.1:${plain.port}/nothing');
