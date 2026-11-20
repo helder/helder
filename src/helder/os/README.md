@@ -361,7 +361,9 @@ one an error at the call.
 (at a `Date`, after seconds, or now; false where the system has none for
 the app), `cancel(id)`, and `onOpen`, the id of the one tapped (the app
 opened by it; queued until set, as `App.onOpen`). Asking to show them is
-`Permissions.request(Notify)`'s.
+`Permissions.request(Notify)`'s. TypeScript programs give `after`
+(seconds): `at`, a Haxe `Date`, has no TypeScript counterpart in the
+API's bridge yet.
 
 | | |
 | --- | --- |
@@ -377,7 +379,7 @@ No permission is asked.
 | | |
 | --- | --- |
 | iOS | PHPickerViewController, images only, each result's image data |
-| Android | MediaStore's ACTION_PICK_IMAGES (Android 13 on), else ACTION_GET_CONTENT of image/*, for a result through org.hxmc.Request; the content URIs read through the ContentResolver |
+| Android | MediaStore's ACTION_PICK_IMAGES (Android 13 on), else ACTION_GET_CONTENT of image/*, for a result through org.hxmc.Request; the content URIs read through the ContentResolver on a thread attached to the VM |
 | macOS, Windows | the open dialog (FileDialog) filtered to images: one |
 | Web | a hidden `<input type=file accept=image/*>` (multiple for more than one): call it from a user's gesture, or within a few seconds of one |
 | Linux | none |

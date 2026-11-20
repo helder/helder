@@ -5,24 +5,34 @@ import hxmc.unsafe.*;
 
 // The photo picker (MediaStore.ACTION_PICK_IMAGES from Android 13, else
 // ACTION_GET_CONTENT of image/*), started for its result through
-// org.hxmc.Request; the content URIs it gives read through the
-// ContentResolver, on the main thread.
+// org.hxmc.Request; on the main thread only the result's content URIs
+// taken (global references), their bytes read through the ContentResolver
+// on a thread of their own, attached to the VM, then given to the loop.
 @:hxmc.android @:helder.android.dex("Request")
 @:hxmc.unsafe(gc)
 class AndroidPhotos {
-	@:coroutine public static function pick(max:Int):Array<Bytes>
-		return helder.os.Await.answer(done -> MainThread.post(() -> {
+	@:coroutine public static function pick(max:Int):Array<Bytes> {
+		var uris:Array<Ptr> = helder.os.Await.answer(done -> MainThread.post(() -> {
 			try {
 				AndroidRequest.start(i -> {
 					var key = Jni.string("intent");
 					Jni.obj(i, Jni.method(Jni.cls("android.content.Intent"), "putExtra", "(Ljava/lang/String;Landroid/os/Parcelable;)Landroid/content/Intent;"),
 						key.toI64(), picker(max).toI64());
-				}, (code, data) -> done(code == -1 ? read(data, max) : []));
+				}, (code, data) -> done(code == -1 ? taken(data, max) : []));
 			} catch (e:Dynamic) {
 				Sys.println("helder.os: Photos.pick: " + Std.string(e));
 				done([]);
 			}
 		}));
+		if (uris.length == 0) return [];
+		var resolver = Ptr.nil();
+		MainThread.run(() -> resolver = Jni.global(Jni.obj(Jni.activity, Jni.method(Jni.cls("android.content.Context"), "getContentResolver",
+			"()Landroid/content/ContentResolver;"))));
+		return helder.os.Await.answer(done -> sys.thread.Thread.create(() -> done(try attached(env -> read(env, resolver, uris)) catch (e:Dynamic) {
+			Sys.println("helder.os: Photos.pick: " + Std.string(e));
+			[];
+		})));
+	}
 
 	static function picker(max:Int):Ptr {
 		var cls = Jni.cls("android.content.Intent"), modern = Mem.getI32(Activity.activity, 48) >= 33;
@@ -44,8 +54,8 @@ class AndroidPhotos {
 		return i;
 	}
 
-	// (the result's URIs: its ClipData's, else its data)
-	static function read(data:Ptr, max:Int):Array<Bytes> {
+	// (the main thread: the result's URIs, its ClipData's, else its data; global references)
+	static function taken(data:Ptr, max:Int):Array<Ptr> {
 		if (data.isNull()) return [];
 		var cls = Jni.cls("android.content.Intent"), clipCls = Jni.cls("android.content.ClipData");
 		var uris = [];
@@ -53,35 +63,79 @@ class AndroidPhotos {
 		if (!clip.isNull()) {
 			var item = Jni.cls("android.content.ClipData$Item");
 			for (k in 0...Jni.int(clip, Jni.method(clipCls, "getItemCount", "()I")))
-				uris.push(Jni.obj(Jni.obj(clip, Jni.method(clipCls, "getItemAt", "(I)Landroid/content/ClipData$Item;"), k), Jni.method(item, "getUri",
-					"()Landroid/net/Uri;")));
+				if (uris.length < max)
+					uris.push(Jni.global(Jni.obj(Jni.obj(clip, Jni.method(clipCls, "getItemAt", "(I)Landroid/content/ClipData$Item;"), k), Jni.method(item, "getUri",
+						"()Landroid/net/Uri;"))));
 		} else {
 			var u = Jni.obj(data, Jni.method(cls, "getData", "()Landroid/net/Uri;"));
-			if (!u.isNull()) uris.push(u);
+			if (!u.isNull()) uris.push(Jni.global(u));
 		}
-		var resolver = Jni.obj(Jni.activity, Jni.method(Jni.cls("android.content.Context"), "getContentResolver", "()Landroid/content/ContentResolver;"));
-		var open = Jni.method(Jni.cls("android.content.ContentResolver"), "openInputStream", "(Landroid/net/Uri;)Ljava/io/InputStream;");
-		var stream = Jni.cls("java.io.InputStream"), readInto = Jni.method(stream, "read", "([B)I"), close = Jni.method(stream, "close", "()V");
-		var out = [];
-		for (u in uris.slice(0, max)) {
-			var input = try Jni.obj(resolver, open, u.toI64()) catch (_:Dynamic) continue;
-			var all = new haxe.io.BytesBuffer(), chunk = Jni.JniEnv.NewByteArray(Jni.env, 65536);
-			Arena.scoped(a -> {
-				var tmp = a.alloc(65536);
-				while (true) {
-					var got = Jni.int(input, readInto, chunk.toI64());
-					if (got <= 0) break;
-					Jni.JniEnv.GetByteArrayRegion(Jni.env, chunk, 0, got, tmp);
-					var b = Bytes.alloc(got);
-					BytesPtr.copyIn(b, 0, tmp, got);
-					all.add(b);
+		return uris;
+	}
+
+	// (the reading thread: each URI's bytes, its references let go; one that fails left out)
+	static function read(env:Ptr, resolver:Ptr, uris:Array<Ptr>):Array<Bytes> {
+		var args:Ptr = LibC.malloc(16), out = [];
+		function cls(name:String):Ptr
+			return Arena.scopedValue(a -> Jni.JniEnv.FindClass(env, a.cstring(name)));
+		function method(c:Ptr, name:String, sig:String):Ptr
+			return Arena.scopedValue(a -> Jni.JniEnv.GetMethodID(env, c, a.cstring(name), a.cstring(sig)));
+		function failed():Bool {
+			if (Jni.JniEnv.ExceptionCheck(env) & 0xff == 0) return false;
+			Jni.JniEnv.ExceptionClear(env);
+			return true;
+		}
+		var open = method(cls("android/content/ContentResolver"), "openInputStream", "(Landroid/net/Uri;)Ljava/io/InputStream;");
+		var stream = cls("java/io/InputStream"), readInto = method(stream, "read", "([B)I"), close = method(stream, "close", "()V");
+		var chunk = Jni.JniEnv.NewByteArray(env, 65536), tmp = LibC.malloc(65536);
+		for (u in uris) {
+			Mem.setPtr(args, 0, u);
+			var input = Jni.JniEnv.CallObjectMethodA(env, resolver, open, args);
+			if (failed() || input.isNull()) {
+				Jni.JniEnv.DeleteGlobalRef(env, u);
+				continue;
+			}
+			var all = new haxe.io.BytesBuffer(), ok = true;
+			while (true) {
+				Mem.setPtr(args, 0, chunk);
+				var got = Jni.JniEnv.CallIntMethodA(env, input, readInto, args);
+				if (failed()) {
+					ok = false;
+					break;
 				}
-			});
-			Jni.call(input, close);
-			Jni.deleteLocal(chunk);
-			Jni.deleteLocal(input);
-			out.push(all.getBytes());
+				if (got <= 0) break;
+				Jni.JniEnv.GetByteArrayRegion(env, chunk, 0, got, tmp);
+				var b = Bytes.alloc(got);
+				BytesPtr.copyIn(b, 0, tmp, got);
+				all.add(b);
+			}
+			Jni.JniEnv.CallVoidMethodA(env, input, close, args);
+			failed();
+			Jni.JniEnv.DeleteLocalRef(env, input);
+			Jni.JniEnv.DeleteGlobalRef(env, u);
+			if (ok) out.push(all.getBytes());
 		}
+		Jni.JniEnv.DeleteLocalRef(env, chunk);
+		Jni.JniEnv.DeleteGlobalRef(env, resolver);
+		LibC.free(tmp);
+		LibC.free(args);
 		return out;
+	}
+
+	// (f on this thread attached to the VM, detached after)
+	static function attached<T>(f:Ptr->T):T {
+		var vm = Mem.getPtr(Activity.activity, 8), out:Ptr<Ptr> = LibC.malloc(8);
+		var ok = Jni.JavaVm.AttachCurrentThread(vm, out, Ptr.nil()) == 0;
+		var env = out.value;
+		LibC.free(out);
+		if (!ok) throw "helder.os: Photos.pick: no VM for this thread";
+		try {
+			var r = f(env);
+			Jni.JavaVm.DetachCurrentThread(vm);
+			return r;
+		} catch (e:Dynamic) {
+			Jni.JavaVm.DetachCurrentThread(vm);
+			throw e;
+		}
 	}
 }
