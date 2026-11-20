@@ -171,8 +171,10 @@ class Docs implements Markup {
 				+ '<link rel="canonical" href="$depth${page[0].url}">\n<meta http-equiv="refresh" content="0; url=$depth${page[0].url}">\n'
 				+ '<a href="$depth${page[0].url}">${page[0].title}</a>\n');
 		}
-		Home.write(out, theme, examples, repo);
-		Sys.println('docs: ${pages.length} pages, ${moved.length} moved, in $out/docs; the landing, $out/index.html');
+		// (no homepage here: a host's site has its own, helder.build's; locally the root sends on to the docs)
+		File.saveContent(out + "/index.html", '<!doctype html>\n<meta charset="utf-8">\n<title>Documentation</title>\n'
+			+ '<meta http-equiv="refresh" content="0; url=docs/">\n<a href="docs/">Documentation</a>\n');
+		Sys.println('docs: ${pages.length} pages, ${moved.length} moved, in $out/docs');
 	}
 
 	static function layout(p:Page):View {

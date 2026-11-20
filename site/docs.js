@@ -1,5 +1,5 @@
-// The docs' pages and the landing in the browser (static/docs.js;
-// site/docs/Docs.hx and Home.hx write them): a sample's TypeScript and
+// The docs' pages in the browser (static/docs.js; site/docs/Docs.hx
+// writes them, and a host's pages may load it too): a sample's TypeScript and
 // Haxe tabs, the reader's language remembered across pages; Copy; the
 // sidebar on a phone (the top bar's menu: the pages and the site's links);
 // and the search: docs/search.json (every page's title, headings and text)

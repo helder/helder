@@ -301,7 +301,7 @@ class Murmuration {
 		if (b >= 0) return bench(Std.parseInt(args[b + 1] ?? "1920") ?? 1920, Std.parseInt(args[b + 2] ?? "1080") ?? 1080);
 		var window = new Window("Murmuration", 1280, 720);
 		var m = new Murmuration(Device.create(window.surface));
-		// (--birds n: at most n fly, as helder.build's landing asks)
+		// (--birds n: at most n fly, as helder.build's homepage asks)
 		var cap = args.indexOf("--birds");
 		if (cap >= 0) m.flock.limit = Std.parseInt(args[cap + 1] ?? "") ?? m.flock.limit;
 		while (m.flock.live > m.flock.limit && m.flock.shrink()) {}

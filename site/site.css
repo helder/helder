@@ -1,5 +1,5 @@
-/* The site's one sheet (static/site.css): the landing and the docs
-   (site/docs/Home.hx, Docs.hx) and the examples' pages (site/index.tsx).
+/* The site's one sheet (static/site.css): the docs (site/docs/Docs.hx)
+   and the examples' pages (site/index.tsx).
    One sans and one mono; colours as tokens, light and dark, named as
    helder.build's shared/site.css names them so its theme can sit over
    them (site/build.mjs, SITE_THEME). */
@@ -299,78 +299,13 @@ html.playing, html.playing body, html.menu-open body { overflow: hidden; overscr
 .article .edit a { color: var(--faint); text-decoration: none; }
 .article .edit a:hover { color: var(--fg); }
 
-/* --- the landing (site/docs/Home.hx): a screen an idea */
-.home .top .wrap { gap: 28px; }
-.hero { padding-top: clamp(48px, 9vw, 112px); text-align: center; }
-.hero h1 { max-width: 15em; margin: 0 auto; font-size: clamp(36px, 6vw, 64px); line-height: 1.04; letter-spacing: -.045em; text-wrap: balance; }
-.hero .lede { margin: 20px auto 0; max-width: 34rem; font-size: clamp(16px, 1.6vw, 19px); text-wrap: balance; }
-.acts { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 12px; margin-top: 30px; }
-.acts .btn { height: 44px; padding: 0 20px; border-radius: 11px; font-size: 15px; }
-.install { display: inline-flex; align-items: center; gap: 4px; height: 44px; padding: 0 6px 0 16px; border: 1px solid var(--line); border-radius: 11px;
-	background: var(--well); }
-.install code { font-size: 13.5px; }
-.install code::before { content: "$ "; color: var(--faint); }
-.copy-line { height: 30px; padding: 0 10px; border: 0; border-radius: 7px; background: none; color: var(--dim); font-size: 13px; cursor: pointer; }
-.copy-line:hover { background: var(--bg); color: var(--fg); }
-.hero-stage { margin: clamp(40px, 6vw, 64px) auto 0; max-width: 1060px; }
-.hero-stage .stage { aspect-ratio: 16 / 9; border-radius: 16px; box-shadow: 0 30px 80px -40px rgba(20, 10, 40, .55); }
-.hero-stage .stage hxmc-island { position: absolute; inset: 0; max-width: none; display: grid; place-items: center; }
-.hero-stage .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; aspect-ratio: auto; }
-/* (a live island's picture until it draws: the landing's) */
+/* (a live island's picture until it draws) */
 hxmc-island > img.poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 hxmc-island[data-hydrated] > img.poster { display: none; }
 hxmc-island > .play { z-index: 1; }
-.hero-stage figcaption { margin-top: 14px; color: var(--dim); font-size: 13.5px; }
-.hero-stage figcaption a { text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
-.home .band { padding: clamp(64px, 10vw, 128px) 32px 0; }
-.home .band > h2, .sample h2 { font-size: clamp(28px, 3.6vw, 40px); font-weight: 500; letter-spacing: -.035em; line-height: 1.1; margin: 0; }
-.home .say { margin-top: 12px; max-width: 34rem; color: var(--dim); font-size: 17px; }
-.home .platforms { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-top: 36px; padding: 0; list-style: none; }
-.home .platforms li { display: grid; justify-items: start; gap: 2px; padding: 18px 16px 16px; border: 1px solid var(--line); border-radius: 14px; }
-.home .platforms strong { margin-top: 14px; font-size: 15px; font-weight: 600; }
-.home .platforms li > span:last-child { color: var(--dim); font-size: 13px; line-height: 1.35; }
-.glyph { position: relative; display: block; height: 26px; color: var(--fg); }
-.glyph.desktop { width: 34px; border: 1.5px solid currentColor; border-radius: 4px; height: 22px; }
-.glyph.desktop::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -6px; height: 1.5px; background: currentColor; }
-.glyph.phone { width: 16px; border: 1.5px solid currentColor; border-radius: 4px; }
-.glyph.phone::after { content: ""; position: absolute; left: 5px; right: 5px; bottom: 2px; height: 1.5px; border-radius: 1px; background: currentColor; }
-.glyph.web { width: 26px; border: 1.5px solid currentColor; border-radius: 50%; }
-.glyph.web::before { content: ""; position: absolute; inset: -1.5px 7px; border: 1.5px solid currentColor; border-radius: 50%; }
-.glyph.web::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1.5px; margin-top: -.75px; background: currentColor; }
-.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px 24px; margin-top: 40px; }
-.tile .shot { position: relative; display: block; aspect-ratio: 16 / 10; border-radius: 14px; overflow: hidden; background: var(--well); }
-.tile .shot::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 1px var(--edge); pointer-events: none; }
-.tile a.shot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.tile .stage:not(:has(hxmc-island[data-loading], hxmc-island[data-hydrated], hxmc-island[data-error])) hxmc-island { position: absolute; inset: 0; max-width: none;
-	display: grid; place-items: end start; padding: 12px; }
-.tile .stage:not(:has(hxmc-island[data-loading], hxmc-island[data-hydrated], hxmc-island[data-error])) canvas { position: absolute; inset: 0; width: 100%;
-	height: 100%; aspect-ratio: auto; opacity: 0; }
-.tile .stage:has(hxmc-island[data-loading], hxmc-island[data-hydrated], hxmc-island[data-error]) { aspect-ratio: auto; }
-.tile .stage .play { position: relative; left: auto; top: auto; transform: none; width: 40px; height: 40px; padding: 0; justify-content: center; font-size: 13px; }
-.tile h3 { margin-top: 16px; font-size: 16px; font-weight: 600; letter-spacing: -.01em; }
-.tile h3 span { display: inline-block; color: var(--faint); transition: transform .15s; }
-.tile h3 a:hover span { transform: translateX(3px); color: var(--fg); }
-.tile p { margin-top: 4px; color: var(--dim); font-size: 14.5px; line-height: 1.5; }
-.sample { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(24px, 5vw, 64px); align-items: center; }
-.sample .code { margin: 0; }
-.go { display: inline-block; margin-top: 18px; font-weight: 500; }
-.go:hover { text-decoration: underline; text-underline-offset: 3px; }
-.next { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.next a { display: grid; gap: 4px; padding: 20px; border: 1px solid var(--line); border-radius: 14px; }
-.next a:hover { border-color: var(--dim); }
-.next strong { font-size: 17px; font-weight: 600; }
-.next span { color: var(--dim); font-size: 14px; }
-.home .foot { margin-top: clamp(64px, 10vw, 128px); }
-.home .foot .brand { margin-right: auto; color: var(--fg); font-size: 15px; }
 
-@media (max-width: 1000px) {
-	.home .platforms { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-	.tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-	.sample { grid-template-columns: minmax(0, 1fr); }
-}
 @media (max-width: 860px) {
 	.wrap { padding: 0 22px; }
-	.home .band { padding-left: 22px; padding-right: 22px; }
 	.top .wrap { gap: 20px; }
 	h1 { font-size: 34px; }
 	.lede { font-size: 16px; }
@@ -396,7 +331,6 @@ hxmc-island > .play { z-index: 1; }
 	.pager { grid-template-columns: 1fr; }
 	.pager .next { grid-column: 1; }
 	.wrap { padding: 0 16px; }
-	.home .band { padding-left: 16px; padding-right: 16px; }
 	.top .wrap { gap: 16px; }
 	.top nav { gap: 16px; }
 	.top .btn { display: none; }
@@ -415,14 +349,4 @@ hxmc-island > .play { z-index: 1; }
 	.results { right: 16px; }
 	.groups, .platforms ul { grid-template-columns: minmax(0, 1fr); }
 	.platforms ul { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-	.home .platforms { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-	.tiles, .next { grid-template-columns: minmax(0, 1fr); }
-	.acts { flex-direction: column; }
-	.hero-stage .stage { border-radius: 12px; }
 }
-/* (the landing's demos: their pictures stay while one loads that the reader
-   did not start, and when one cannot run, without its Play button) */
-.home hxmc-island[data-loading]:not([data-pressed])::after, .home hxmc-island[data-error]::after { content: none; }
-.home hxmc-island[data-error] canvas { visibility: hidden; }
-.home hxmc-island[data-error] > img.poster { display: block; }
-.home .stage:has(hxmc-island[data-error]) .full { display: none; }

@@ -21,7 +21,7 @@
 //   static/              the pages' sheet, scripts and fonts, the packages'
 //                        browser modules (all the builds' together), the
 //                        pictures site/visuals.mjs took (static/visuals/)
-//   index.html           the landing (site/docs/Home.hx, with the docs)
+//   index.html           sends on to docs/ (a host's site has its own homepage)
 //
 //   node site/build.mjs [out]      (default bin/site)
 //
@@ -260,7 +260,7 @@ for (const e of all) {
 // the pages' sheet, scripts and fonts (helder studio's type, as helder.build's)
 fs.mkdirSync(`${out}/static/fonts`, { recursive: true });
 fs.copyFileSync('src/helder/web/loader.js', `${out}/static/loader.js`);
-for (const f of ['site.css', 'stage.js', 'numbers.js', 'docs.js', 'home.js']) fs.copyFileSync(`site/${f}`, `${out}/static/${f}`);
+for (const f of ['site.css', 'stage.js', 'numbers.js', 'docs.js']) fs.copyFileSync(`site/${f}`, `${out}/static/${f}`);
 copyDir('site/visuals', `${out}/static/visuals`);
 for (const f of ['HankenGrotesk-Regular.ttf', 'HankenGrotesk-Medium.ttf', 'GeistMono-Regular.ttf']) fs.copyFileSync(`apps/studio/fonts/${f}`, `${out}/static/fonts/${f}`);
 // the videos site/reel.mjs records into <out>/examples/media after this (the showreel first): each clip's example
