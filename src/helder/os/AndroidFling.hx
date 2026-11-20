@@ -88,6 +88,8 @@ class AndroidFling extends Glide {
 		var t0 = times[n - 1], from = n - 1;
 		while (from > 0 && t0 - times[from - 1] <= HORIZON)
 			from--;
+		// (moves further apart than the horizon, a slow emulator's: the last two still, the finger moving)
+		if (from > n - 2) from = n - 2;
 		return {x: fit(xs, from, n, t0), y: fit(ys, from, n, t0)};
 	}
 
