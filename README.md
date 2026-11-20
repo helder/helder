@@ -84,43 +84,37 @@ the node tree ([cli](src/helder/cli/README.md), "Headless runs").
 
 ## Roadmap
 
-**Lately**: [navigation](src/helder/ui/README.md#navigation): routes, a
-stack with the system's back, transitions, URLs and deep links; http,
-https and WebSockets on each platform's own stack;
-[localization](src/helder/os/README.md#localization); the platform's
-settings as signals; Android's clipboard.
+**Lately**: [app services](src/helder/os/README.md): network status,
+permissions, the share sheet, local notifications, the photo picker and
+incoming deep links; [navigation](src/helder/ui/README.md#navigation);
+gamepads on every platform; http, https and WebSockets on each platform's
+own stack; [localization](src/helder/os/README.md#localization); the
+platform's settings as signals; new [docs](https://helder.build/docs/).
 
-**Now**: the app services below; Windows' touchpad scrolling; the web's
-scroll lag and Safari's rubber band.
+**Now**: standard controls with a default look and forms; text input on
+phones; the camera, geolocation, biometrics, the app's directories, device
+info and the status bar's style.
 
-**App services**: one API each, the platform's implementation underneath
-(as Capacitor's and Flutter's plugins), unavailable where a platform has none.
-- In helder, on the system's own APIs: permissions, the share sheet, local
-  notifications, network status, incoming deep links, the photo picker and
-  camera, geolocation, biometrics, the app's directories, device info, the
-  status bar's style.
-- As packages, for what needs a library or glue the system lacks: in-app
-  purchases first (StoreKit 2's Swift, Play Billing), then push
-  notifications, Game Center and Play Games, Steam, ads and analytics. Such a
-  package carries prebuilt native pieces (a static library, Android's DEX, a
-  shared library) and what the build merges (entitlements, Info.plist,
-  manifests), so that its users need no Xcode or Android SDK.
+**Packages**, for what needs a library or glue the system lacks: in-app
+purchases first (StoreKit from Objective-C, Play Billing vendored as dex,
+included by use), then push notifications, Game Center and Play Games,
+Steam, ads and analytics, built so that their users need no Xcode or
+Android SDK.
 
 **Apps**
-- Text input on phones: iOS composition, keyboard types, the keyboard's insets.
-- Standard controls (button, checkbox, select, tabs, dialog...) and forms.
 - Effects on nodes: blur, backdrop blur, filters, clip paths, shaders.
 - Lazy layouts: horizontal and grid lists, collapsing headers, pull to refresh.
 - Network images with a cache; long press and double tap; state restored
   after the system ends the app.
 
 **Games**
-- Gamepads on Android, iOS and macOS.
 - Physics: mesh and convex colliders, layers, triggers, contact events, stable stacks.
 - Animation state machines and layers; tweens for any value.
 - 3D audio, buses and effects; richer particles.
 - 2D: animated sprites, tilemaps, a 2D camera and physics.
 - Pathfinding, saves, ETC2 and KTX2 textures, a profiler.
+
+Also: Windows' touchpad scrolling, the web's scroll lag and Safari's rubber band.
 
 **Later**: decals, volumetric fog, a lightmap baker, soft bodies, multiplayer.
 
