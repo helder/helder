@@ -6,7 +6,7 @@ toolkit includes a GPU-rendered UI, signals, 2D and 3D graphics, and a CLI that
 builds, runs and packages your project. It uses [hxmc](https://github.com/benmerckx/hxmc)
 as its compiler backend.
 
-[Quickstart](https://helder.build/docs/guide/start/) ·
+[Quickstart](https://helder.build/docs/start/install/) ·
 [Docs](https://helder.build/docs/) ·
 [Playable examples](https://helder.build/examples/) ·
 [Helder Studio](https://helder.build/studio/)
@@ -45,9 +45,9 @@ npx helder dev --target web             # browser preview
 npx helder build --target android       # package a debug-signed APK
 ```
 
-See [TypeScript compatibility](https://helder.build/docs/guide/typescript/)
+See [TypeScript compatibility](https://helder.build/docs/start/typescript/)
 for language features and project settings, and the
-[publishing guide](https://helder.build/docs/guide/publishing/) for previews,
+[publishing guide](https://helder.build/docs/ship/publishing/) for previews,
 hosted web releases and store uploads.
 
 ## Packages
@@ -77,7 +77,7 @@ bun run helder test       # the *.test.hx files
 bun run helder examples/counter/Counter.hx   # an example, live
 ```
 
-`examples/` has a program per folder, `apps/` whole apps, `docs/` the docs'
+`examples/` has a program per folder, `apps/` whole apps, `docs/` the guide's
 pages and `site/` the examples' site. An agent can check its own work
 without a display: `helder run --headless` with a script, a snapshot and
 the node tree ([cli](src/helder/cli/README.md), "Headless runs").

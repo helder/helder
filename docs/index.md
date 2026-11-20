@@ -1,25 +1,24 @@
-# Helder documentation
+# Introduction
 
-Build apps and games with TypeScript or Haxe. Helder compiles to native code for desktop and mobile, and to WebAssembly for the browser.
+helder builds apps and games in TypeScript or Haxe from one codebase. It compiles your program to native code for macOS, Windows, Linux, iOS and Android, and to WebAssembly for the web, and draws everything itself on the GPU: the same pixels on every screen.
 
-## Try the UI before installing
+<Image src="notes.webp" alt="A notes app with folders, a list of notes and an editor, drawn by helder" caption="A notes app made with helder, captured headless by helder run --headless."/>
 
-[Run the counter](guide/start.md#try-the-counter) and press **+1**. The source beneath the running app shows the signal that holds the count and the button that changes it. Follow the same page to run it locally and edit the button while the window is open.
+## The platforms
 
-For a project you can edit entirely in the browser, [choose a Studio starter](https://helder.build/examples/#studio-examples). When you're ready to show someone your version, [share a preview link](guide/publishing.md).
+<Platforms/>
 
-## Explore a working scene
+## How it's built
 
-[Play Sponza](https://helder.build/examples/sponza/) to explore a textured architectural scene. Its example page includes the source and the cost of loading the first frame. To put a model in your own scene, follow [Loading models](scene/models.md).
+- **One renderer.** `helder.gfx` speaks Metal, Direct3D 11, OpenGL, WebGPU and WebGL2. The UI, 2D and 3D all draw through it.
+- **One UI.** Signals hold state and markup reads it. Layout is CSS flexbox, text is shaped by helder itself, and accessibility reaches the platform's screen readers.
+- **One toolchain.** The `helder` command builds, runs, reloads, tests and publishes. It makes APKs and iPhone apps without the Android SDK or Xcode.
+- **No runtime to ship.** Your program is compiled ahead of time with [hxmc](https://github.com/benmerckx/hxmc). A small app is a few megabytes natively and a few hundred kilobytes as WebAssembly.
 
-## Look something up
+helder is in early preview: its APIs and commands change between nightlies.
 
-<Sections section="guide"/>
+## The guide
 
-## 3D and graphics
+<Sections/>
 
-[Start with a scene](scene/index.md), bring in a [glTF model](scene/models.md), or add a [3D view to your UI](scene/markup.md). The scene guide has runnable examples and a page for [using it from TypeScript](scene/typescript.md).
-
-## Follow the project
-
-Helder is in early preview. Its APIs and CLI can change between nightlies. Browse the [source on GitHub](https://github.com/helder/helder), play [published projects](https://helder.build/explore), or [connect a coding agent](https://helder.build/agents) to Studio.
+Each page is a short tour. The complete reference for every package lives in its README on GitHub, linked at the end of each page.

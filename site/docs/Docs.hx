@@ -9,29 +9,34 @@ import sys.io.File;
 using StringTools;
 
 // The docs (docs/, `node site/build.mjs` builds them with the examples'
-// pages): docs/index.md the overview (<out>/docs/index.html), each section
-// of docs/docs.json a folder of Markdown pages (Markdown.hx), rendered here
-// with helder.web's static renderer into <out>/docs/<section>/<page>/index.html
-// (a section's index.md: <out>/docs/<section>/index.html):
-// the site's top bar (its theme: site/build.mjs), a sidebar of every
-// section's pages (on a phone, behind the top bar's menu, with the site's
-// links), the previous and next pages; <out>/docs/search.json for
-// static/docs.js' search. Built natively by site/build.mjs after the
-// examples (their builds and the theme: bin/site-build/examples.json), then run:
+// pages): docs/index.md the introduction (<out>/docs/index.html), then each
+// group of docs/docs.json a folder of Markdown pages (Markdown.hx) rendered
+// with helder.web's static renderer into <out>/docs/<group>/<page>/index.html.
+// A page id with a slash ("3d/models") is a sub-page, indented under its
+// parent in the sidebar. Around each page: the site's top bar (its theme:
+// site/build.mjs), the sidebar of the groups (on a phone behind the top
+// bar's menu, with the site's links), the previous and next pages;
+// <out>/docs/search.json for static/docs.js' search; docs.json's `moved`,
+// old addresses sent on to their pages. Built natively by site/build.mjs
+// after the examples (their builds and the theme: bin/site-build/examples.json):
 //
 //   <docs> <out>          (bin/site)
 //
-// A page's components: <Example id="..."/>, an example of examples/ or
-// docs/examples/ (its id as the examples' page names it) played in the
-// page, a WebAssembly island, with its source beside it, the file itself
-// (highlighted by helder.syntax's lexer; tabs for a Haxe example's
-// TypeScript twin, docs/examples/<dir>/main.ts); region="name" shows the
-// lines between `// #region name` and `// #endregion` (or `// #endregion
-// name`) alone; <Sections/>,
-// every section's pages with their first paragraphs, or one named section
-// with <Sections section="guide"/>. An
-// unknown example, region, component, page or heading link fails the
-// build: what a page shows is what builds.
+// Components, a line alone in a page:
+//   <Example id="..."/>          an example of examples/ or docs/examples/
+//                                live in the page (a WebAssembly island,
+//                                started once in view); region="a,b" shows
+//                                those lines of its source (`// #region a`
+//                                ... `// #endregion`), its TypeScript twin's
+//                                beside them
+//   <Image src="x.webp" alt=""/> a picture of site/visuals (site/visuals.mjs)
+//   <Terminal src="help.txt"/>   a command's output, of site/visuals
+//   <Platforms/>                 where an app runs and ships
+//   <Reference to="ui,view"/>    the packages' READMEs: every function
+//   <Sections/>                  every group and its pages
+// Two fences in a row, TypeScript and Haxe, are one sample in two tabs. An
+// unknown example, region, picture, component, page or heading link fails
+// the build: what a page shows is what builds.
 typedef Demo = {kind:String, width:Int, height:Int, onePixel:Bool};
 
 typedef Example = {
@@ -41,6 +46,7 @@ typedef Example = {
 	tags:Array<String>,
 	source:String,
 	demo:Null<Demo>,
+	poster:String,
 	wasm:String,
 	imports:Array<String>,
 	fonts:Array<String>,
@@ -55,7 +61,7 @@ typedef Link = {id:String, label:String, href:String};
 typedef Theme = {brand:String, home:String, nav:Array<Link>, action:Link, css:Array<String>, js:Array<String>, notice:String, footer:Array<Link>};
 typedef SiteJson = {repository:String, examples:Array<Example>, theme:Theme};
 typedef SectionJson = {id:String, title:String, pages:Array<String>};
-typedef DocsJson = {sections:Array<SectionJson>};
+typedef DocsJson = {sections:Array<SectionJson>, moved:Dynamic};
 
 class Page {
 	public final section:SectionJson;
@@ -69,13 +75,12 @@ class Page {
 	public var prev:Null<Page> = null;
 	public var next:Null<Page> = null;
 
-	// (section null: the overview, docs/index.md)
+	// (section null: the introduction, docs/index.md)
 	public function new(section:Null<SectionJson>, id:String) {
 		this.section = section ?? {id: "", title: "Docs", pages: []};
 		this.id = id;
 		file = section == null ? 'docs/index.md' : 'docs/${section.id}/$id.md';
-		// (a section's index.md its folder's page)
-		url = section == null ? 'docs/' : id == "index" ? 'docs/${section.id}/' : 'docs/${section.id}/$id/';
+		url = section == null ? 'docs/' : 'docs/${section.id}/$id/';
 		base = [for (_ in url.split("/").slice(1)) ".."].join("/") + "/";
 		var all = Markdown.parse(File.getContent(file));
 		switch all[0] {
@@ -87,7 +92,11 @@ class Page {
 		}
 	}
 
-	// its headings' ids, for links to them
+	public var sub(get, never):Bool;
+
+	function get_sub()
+		return id.indexOf("/") > 0;
+
 	public function has(id:String):Bool {
 		for (b in blocks)
 			switch b {
@@ -97,7 +106,7 @@ class Page {
 		return false;
 	}
 
-	// its first paragraph (the overview's line for it)
+	// its first paragraph: what and why
 	public function lede():Array<Inline> {
 		for (b in blocks)
 			switch b {
@@ -124,6 +133,7 @@ class Docs implements Markup {
 	static var current:Page;
 	static final RUNNER = "static/helder/os/browser.mjs";
 	static final HEADER = ~/^\/\/ *(title|summary|tags|demo|apk|data): /;
+	static final VISUALS = "site/visuals/";
 
 	static function main() {
 		var out = Sys.args()[0];
@@ -149,33 +159,46 @@ class Docs implements Markup {
 				headings: p.headings(), text: Markdown.text(p.blocks)});
 		}
 		File.saveContent(out + "/docs/search.json", haxe.Json.stringify(search));
-		Sys.println('docs: ${pages.length} pages in $out/docs');
+		// (the old addresses, linked from elsewhere: a page that sends on)
+		var moved = conf.moved == null ? [] : Reflect.fields(conf.moved);
+		for (from in moved) {
+			var to:String = Reflect.field(conf.moved, from);
+			var page = pages.filter(p -> p.url == 'docs/$to/' || (to == "" && p.url == "docs/"));
+			if (page.length == 0) throw 'docs/docs.json: moved $from to $to: no such page';
+			var depth = [for (_ in 'docs/$from/'.split("/").slice(1)) ".."].join("/") + "/";
+			FileSystem.createDirectory(out + '/docs/$from');
+			File.saveContent(out + '/docs/$from/index.html', '<!doctype html>\n<meta charset="utf-8">\n<title>${page[0].title}</title>\n'
+				+ '<link rel="canonical" href="$depth${page[0].url}">\n<meta http-equiv="refresh" content="0; url=$depth${page[0].url}">\n'
+				+ '<a href="$depth${page[0].url}">${page[0].title}</a>\n');
+		}
+		Home.write(out, theme, examples, repo);
+		Sys.println('docs: ${pages.length} pages, ${moved.length} moved, in $out/docs; the landing, $out/index.html');
 	}
 
 	static function layout(p:Page):View {
-		var headings = p.headings();
+		var intro = p == pages[0];
 		return <html lang="en">
 			<head>
 				<meta charset="utf-8"/>
 				<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 				<base href={p.base}/>
-				<title>{(p.section.id == "" ? "Documentation" : p.title) + " · " + theme.brand}</title>
+				<title>{(intro ? "Documentation" : p.title) + " · " + theme.brand}</title>
 				<meta name="description" content={Markdown.plain(p.lede())}/>
 				<link rel="stylesheet" href="static/site.css"/>
 				{theme.css.map(h -> <link rel="stylesheet" href={h}/>)}
+				<script src="static/docs.js" defer></script>
 				<script src="static/stage.js" defer></script>
 				<script src="static/loader.js" defer></script>
-				<script src="static/docs.js" defer></script>
 				{theme.js.map(h -> <script src={h} defer></script>)}
 			</head>
 			<body class="docs-page">
 				<a class="skip" href={p.url + "#docs-main"}>Skip to content</a>
 				{theme.notice == "" ? null : <div class="notice">{theme.notice}</div>}
 				<header class="top"><div class="wrap">
-					<button class="menu" type="button" aria-label="Documentation menu" aria-controls="sidebar" aria-expanded="false">☰</button>
+					<button class="menu" type="button" aria-label="Documentation menu" aria-controls="sidebar" aria-expanded="false"><span></span></button>
 					<a class="brand" href={theme.home}>{theme.brand}</a>
 					<nav aria-label="Site">{links()}</nav>
-					<input class="search" type="search" placeholder="Search docs" aria-label="Search the docs" aria-controls="search-results" aria-keyshortcuts="/" autocomplete="off"/>
+					<input class="search" type="search" placeholder="Search" aria-label="Search the docs" aria-controls="search-results" aria-keyshortcuts="/" autocomplete="off"/>
 					<ol class="results" id="search-results" aria-label="Search results" hidden=""></ol>
 					<span class="visually-hidden" id="search-status" role="status"></span>
 					{theme.action.label == "" ? null : <a class="btn" href={theme.action.href}>{theme.action.label}</a>}
@@ -183,33 +206,23 @@ class Docs implements Markup {
 				<div class="wrap docs">
 					<nav class="sidebar" id="sidebar" aria-label="Pages">
 						<div class="links">{links()}</div>
-						<ul><li><a href={pages[0].url} aria-current={p == pages[0] ? "page" : null}>Overview</a></li></ul>
 						{conf.sections.map(s -> <section>
 							<h2>{s.title}</h2>
-							<ul>{pages.filter(q -> q.section.id == s.id).map(q -> <li>
+							<ul>{(s == conf.sections[0] ? [pages[0]] : []).concat(pages.filter(q -> q.section.id == s.id)).map(q -> <li class={q.sub ? "sub" : null}>
 								<a href={q.url} aria-current={q == p ? "page" : null}>{q.title}</a>
 							</li>)}</ul>
 						</section>)}
 					</nav>
 					<main class="article" id="docs-main" tabindex="-1">
-						{p.section.id == "" ? null : <p class="eyebrow">{p.section.title}</p>}
+						<p class="eyebrow">{intro ? "Start" : p.section.title}</p>
 						<h1>{p.title}</h1>
-						{p.blocks.slice(0, 1).map(block)}
-						{headings.length < 2 ? null : <details class="page-outline mobile-outline">
-							<summary>On this page</summary>
-							{outline(p, headings)}
-						</details>}
-						{p.blocks.slice(1).map(block)}
+						{p.blocks.map(block)}
 						<nav class="pager" aria-label="Previous and next">
-							{p.prev == null ? <span></span> : <a class="prev" href={p.prev.url}><small>Previous</small>{p.prev.title}</a>}
-							{p.next == null ? <span></span> : <a class="next" href={p.next.url}><small>Next</small>{p.next.title}</a>}
+							{p.prev == null ? <span></span> : <a class="prev" href={p.prev.url}><small>← Previous</small>{p.prev.title}</a>}
+							{p.next == null ? <span></span> : <a class="next" href={p.next.url}><small>Next →</small>{p.next.title}</a>}
 						</nav>
-						<p class="edit"><a href={repo + "/edit/main/" + p.file}>{"Edit " + p.file + " on GitHub"}</a></p>
+						<p class="edit"><a href={repo + "/edit/main/" + p.file}>Edit this page</a></p>
 					</main>
-					{headings.length < 2 ? null : <nav class="page-outline desktop-outline" aria-label="On this page">
-						<p>On this page</p>
-						{outline(p, headings)}
-					</nav>}
 				</div>
 				{theme.footer.length == 0 ? null : <footer class="foot"><div class="wrap">{theme.footer.map(l -> <a href={l.href}>{l.label}</a>)}</div></footer>}
 			</body>
@@ -220,13 +233,12 @@ class Docs implements Markup {
 	static function links():Array<View>
 		return theme.nav.map(l -> <a href={l.href} aria-current={l.id == "docs" ? "page" : null}>{l.label}</a>);
 
-	static function outline(p:Page, headings:Array<{id:String, level:Int, text:String}>):View
-		return <ul>{headings.map(h -> <li class={h.level == 3 ? "subheading" : null}>
-			<a href={p.url + "#" + h.id}>{h.text}</a>
-		</li>)}</ul>;
+	// a sample in one language: which, for a reader of the other
+	static function label(lang:String):View
+		return <div class="switch"><span class="only">{Markdown.family(lang) == "ts" ? "TypeScript" : "Haxe"}</span></div>;
 
-	static function codeHeader(label:String):View
-		return <div class="name"><span>{label}</span><button type="button" class="copy-code" aria-label="Copy code" hidden="">Copy</button></div>;
+	static function copy():View
+		return <button type="button" class="copy-code" aria-label="Copy code" hidden="">Copy</button>;
 
 	static function block(b:Block):View {
 		return switch b {
@@ -240,9 +252,15 @@ class Docs implements Markup {
 				}
 			case Para(c): <p>{inlines(c)}</p>;
 			case Code(lang, title, text): <div class="code">
-				{codeHeader(title == "" ? (lang == "sh" ? "Terminal" : lang) : title)}
+				{title == "" && lang != "sh" && Markdown.family(lang) == null ? copy() : <div class="name">
+					{title == "" && lang != "sh" ? label(lang) : <span>{title == "" ? "Terminal" : title}</span>}{copy()}
+				</div>}
 				<pre data-lang={lang == "" ? null : lang}><code>{highlight(text, lang == "" ? title : lang)}</code></pre>
 			</div>;
+			case Langs(codes): langs([for (c in codes) switch c {
+				case Code(lang, title, text): {lang: lang, title: title, text: text};
+				case _: throw "unreachable";
+			}]);
 			case List(true, items): <ol>{items.map(item)}</ol>;
 			case List(false, items): <ul>{items.map(item)}</ul>;
 			case Quote(bs): <blockquote>{bs.map(block)}</blockquote>;
@@ -252,17 +270,75 @@ class Docs implements Markup {
 				<tbody>{rows.map(r -> <tr>{r.map(c -> <td>{inlines(c)}</td>)}</tr>)}</tbody>
 			</table></div>;
 			case Component("Example", attrs): example(attrs);
-			case Component("Sections", attrs): sections(attrs.get("section"));
-			case Component(name, _): throw '${current.file}: <$name> is no component (Example, Sections)';
+			case Component("Image", attrs): image(attrs);
+			case Component("Terminal", attrs): terminal(attrs);
+			case Component("Platforms", _): platforms();
+			case Component("Reference", attrs): reference(attrs.get("to"));
+			case Component("Sections", _): sections();
+			case Component(name, _): throw '${current.file}: <$name> is no component (Example, Image, Terminal, Platforms, Reference, Sections)';
 		}
 	}
 
-	static function sections(section:Null<String>):View {
-		var shown = section == null ? conf.sections : conf.sections.filter(s -> s.id == section);
-		if (shown.length == 0) throw '${current.file}: <Sections section="$section"/>: no such section';
-		return <ul class="toc">{shown.map(s -> pages.filter(q -> q.section.id == s.id).map(q -> <li>
-			<a href={q.url}>{q.title}</a><span>{Markdown.plain(q.lede())}</span>
-		</li>))}</ul>;
+	// one sample in TypeScript and Haxe: a tab each, the reader's choice
+	// remembered (static/docs.js), TypeScript first
+	public static function langs(codes:Array<{lang:String, title:String, text:String}>):View {
+		codes.sort((a, b) -> Markdown.family(a.lang) == "ts" ? -1 : 1);
+		return <div class="code langs">
+			<div class="name">
+				<div class="switch" role="tablist" aria-label="Language">{codes.map(c -> <button type="button" role="tab" data-lang={Markdown.family(c.lang)}
+					aria-selected={c == codes[0] ? "true" : "false"}>{Markdown.family(c.lang) == "ts" ? "TypeScript" : "Haxe"}</button>)}</div>
+				{copy()}
+			</div>
+			{codes.map(c -> <pre data-lang={Markdown.family(c.lang)} hidden={c != codes[0]}><code>{highlight(c.text, c.lang)}</code></pre>)}
+		</div>;
+	}
+
+	static function sections():View
+		return <div class="groups">{conf.sections.map(s -> <section>
+			<h3>{s.title}</h3>
+			<ul>{pages.filter(q -> q.section.id == s.id && !q.sub).map(q -> <li><a href={q.url}>{q.title}</a></li>)}</ul>
+		</section>)}</div>;
+
+	// where an app runs, and where it ships
+	static function platforms():View {
+		var where = [
+			{name: "macOS", note: "Metal"}, {name: "Windows", note: "Direct3D 11"}, {name: "Linux", note: "OpenGL, Wayland"},
+			{name: "iOS", note: "Metal"}, {name: "Android", note: "OpenGL ES"}, {name: "Web", note: "WebGPU, WebGL2"}
+		];
+		return <figure class="platforms">
+			<ul>{where.map(w -> <li><strong>{w.name}</strong><span>{w.note}</span></li>)}</ul>
+			<figcaption>One codebase, compiled to native code and WebAssembly. Ships to the App Store, Google Play, notarized macOS and the web.</figcaption>
+		</figure>;
+	}
+
+	static function reference(to:Null<String>):View {
+		if (to == null) throw '${current.file}: <Reference to="ui,view"/>';
+		var names = to.split(",").map(s -> s.trim());
+		for (n in names)
+			if (!FileSystem.exists('src/helder/$n/README.md')) throw '${current.file}: <Reference to="$to"/>: no src/helder/$n/README.md';
+		return <p class="reference"><span>Reference</span>{names.map(n -> <a href={repo + '/tree/main/src/helder/$n/README.md'}>{"helder." + n.replace("/", ".")}</a>)}</p>;
+	}
+
+	static function visual(src:Null<String>):String {
+		if (src == null || !FileSystem.exists(VISUALS + src)) throw '${current.file}: no $VISUALS$src (site/visuals.mjs makes them)';
+		return VISUALS + src;
+	}
+
+	static function image(attrs:Map<String, String>):View {
+		visual(attrs.get("src"));
+		var caption = attrs.get("caption");
+		return <figure class="visual still">
+			<img src={"static/visuals/" + attrs.get("src")} alt={attrs.get("alt") ?? ""} loading="lazy" decoding="async"/>
+			{caption == null ? null : <figcaption>{caption}</figcaption>}
+		</figure>;
+	}
+
+	static function terminal(attrs:Map<String, String>):View {
+		var text = File.getContent(visual(attrs.get("src"))).rtrim();
+		return <figure class="visual terminal">
+			<div class="dots" aria-hidden="true"><i></i><i></i><i></i></div>
+			<pre><code>{"$ " + attrs.get("command") + "\n" + text}</code></pre>
+		</figure>;
 	}
 
 	// a list item: a lone paragraph's text without the <p>
@@ -284,7 +360,7 @@ class Docs implements Markup {
 			case Link(href, c): <a href={link(href)}>{inlines(c)}</a>;
 		}
 
-	// a page's link: another page (world.md, ../scene/world.md#fog) as its
+	// a page's link: another page (views.md, ../graphics/3d.md#lights) as its
 	// URL, its heading checked; a heading of this page (#fog); a path in the
 	// repository (/src/helder/asset/README.md) on GitHub; a URL as it is
 	static function link(href:String):String {
@@ -317,32 +393,33 @@ class Docs implements Markup {
 		var id = attrs.get("id");
 		var e = examples.get(id);
 		if (e == null) throw '${current.file}: <Example id="$id"/>: no such example (examples/ or docs/examples/, with a header)';
+		if (e.demo == null) throw '${current.file}: <Example id="$id"/>: it does not run in a browser (no demo header)';
 		var region = attrs.get("region");
-		// (file: another of its directory's files shown, not its entry)
 		var shown = attrs.exists("file") ? e.dir + "/" + attrs.get("file") : e.file;
 		if (!FileSystem.exists(shown)) throw '${current.file}: <Example id="$id" file="${attrs.get("file")}"/>: no $shown';
-		var files = [shown].concat(e.alt == "" ? [] : [e.alt]);
-		var sources = [for (k in 0...files.length) {file: files[k], text: source(files[k], k == 0 ? region : null)}];
-		var run = "helder run " + e.file;
-		return <figure class="example" id={"example-" + e.id}>
-			{e.demo == null ? null : stage(e)}
-			<figcaption>
-				<strong>{e.title}</strong>{" " + e.summary}
-				<span class="run"><code>{run}</code> · <a href={e.source}>Source</a></span>
-			</figcaption>
-			<div class="sources">
-				{sources.length == 1 ? null : <div class="tabs" role="tablist" aria-label="Example source">{sources.map(s -> <button type="button" role="tab" aria-selected={s.file == files[0] ? "true" : "false"}
-					data-file={s.file}>{haxe.io.Path.withoutDirectory(s.file)}{s.file.endsWith(".ts") || s.file.endsWith(".tsx") ? " (TypeScript)" : " (Haxe)"}</button>)}</div>}
-				{sources.map(s -> <div class="code" data-file={s.file} hidden={s.file != files[0]}>
-					{codeHeader(haxe.io.Path.withoutDirectory(s.file))}
-					<pre><code>{highlight(s.text, s.file)}</code></pre>
-				</div>)}
-			</div>
-		</figure>;
+		var codes = [];
+		if (region != null) {
+			codes.push({lang: shown.endsWith(".hx") ? "haxe" : "ts", title: "", text: source(shown, region)});
+			if (e.alt != "" && hasRegion(e.alt, region)) codes.push({lang: "ts", title: "", text: source(e.alt, region)});
+		}
+		return <div class="example" id={"example-" + e.id}>
+			<figure class="visual">
+				{stage(e)}
+				<figcaption><span>{e.title}</span><span class="live">Live</span><a href={e.source}>Source</a></figcaption>
+			</figure>
+			{codes.length == 0 ? null : codes.length == 1 ? <div class="code"><div class="name">{label(codes[0].lang)}{copy()}</div><pre data-lang={codes[0].lang}><code>{highlight(codes[0].text, codes[0].lang)}</code></pre></div> : langs(codes)}
+		</div>;
 	}
 
-	// a file as a page shows it: without its header (the examples' page's
-	// title, summary, tags, demo) or the region markers; a region alone when named
+	static function hasRegion(file:String, region:String):Bool {
+		var text = File.getContent(file);
+		for (name in region.split(","))
+			if (text.indexOf("// #region " + name.trim()) < 0) return false;
+		return true;
+	}
+
+	// a file's lines: without its header (the examples' page's title,
+	// summary, tags, demo) or the region markers; a region alone when named
 	static function source(file:String, region:Null<String>):String {
 		var lines = File.getContent(file).replace("\r\n", "\n").split("\n");
 		var start = 0;
@@ -384,18 +461,20 @@ class Docs implements Markup {
 		return lines.join("\n");
 	}
 
-	// the example's canvas and Play button: a WebAssembly island loaded on
-	// the first click, stopped once scrolled out of view (site/stage.js: full screen)
+	// the example's canvas: a WebAssembly island started once it is in view
+	// (a sound on a click: browsers play audio only after one), stopped once
+	// scrolled out of it (site/stage.js: full screen)
 	static function stage(e:Example):View {
 		var d = e.demo;
 		var sound = d.kind == "sound";
 		return <div class={sound ? "stage sound" : "stage"} style={sound ? "" : "--w:" + d.width + "px;--ratio:" + d.width + "/" + d.height}
 			data-width={"" + d.width} data-height={"" + d.height} data-one-pixel={d.onePixel ? "" : null}>
-			<Island.Wasm src={e.wasm} id={"play-" + e.id} load={Click} runner={RUNNER} imports={e.imports} fonts={e.fonts}
+			<Island.Wasm src={e.wasm} id={"play-" + e.id} load={sound ? Click : Visible} runner={RUNNER} imports={e.imports} fonts={e.fonts}
 				assets={e.assets == "" ? null : e.assets} args={e.args.length > 0 ? e.args : null} stop={Offscreen} canvas={!sound} width={d.width} height={d.height}>
-				<button class="play" type="button" aria-label={"Play " + e.title}>{sound ? "▶ Play sound" : "▶ Play"}</button>
+				{e.poster == "" || sound ? null : <img class="poster" src={e.poster} alt="" loading="lazy" decoding="async"/>}
+				{sound ? <button class="play" type="button" aria-label={"Play " + e.title}>▶ Play sound</button> : null}
 			</Island.Wasm>
-			{sound ? null : <button class="full" type="button" aria-label={"Play " + e.title + " full screen"}>⛶ Full screen</button>}
+			{sound ? null : <button class="full" type="button" aria-label={"Play " + e.title + " full screen"}>Full screen</button>}
 			{sound ? null : <button class="exit" type="button" aria-label="Leave full screen">✕</button>}
 		</div>;
 	}
@@ -409,6 +488,8 @@ class Docs implements Markup {
 			else if (l == "ts" || l == "typescript" || l == "js" || l == "javascript" || l.endsWith(".ts") || l.endsWith(".mjs") || l.endsWith(".js")) Ts
 			else null;
 		if (language == null) return [text];
+		// (TSX in a TypeScript sample: its tags highlighted)
+		if (language == Ts && text.indexOf("</") >= 0) language = Tsx;
 		var lexer = new Lexer(language);
 		var state = lexer.start();
 		var out:Array<Any> = [];

@@ -1,0 +1,14 @@
+  dev      build, run and reload on every change
+  run      a release build for this machine, run
+  build    a release build
+  test     build and run the *.test.hx files
+  inspect  a running helder dev's program
+  publish  a release built, signed and uploaded
+  setup    a store's keys made through its API
+  share    the web build on helder.run for a week, without an account
+  login    sign in to helder.build with GitHub
+  logout   forget helder login's token
+  migrate  helder.webmanifest written as helder.json
+  studio   helder studio on a project
+  devices  where to run
+  help     this help, or a command's

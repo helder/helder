@@ -1567,7 +1567,7 @@ design describes it):
   the plane (its distance and the view's slant): gfx's shader frontend
   has no derivatives.
 - **Raycasting** (4.3): `world.raycast(origin, dir, hit, ?options)` and
-  `raycastAll(…, hits:HitList, ?options)`; the options a class
+  `raycastAll(ï¿½, hits:HitList, ?options)`; the options a class
   (`RaycastOptions`, kept by the program: a structure literal would be
   made a cast), with `instances` added. `Hit` has `barycentric` (a
   `Vec3`), `front` and `instance` beside the design's fields. A node's
@@ -1811,7 +1811,7 @@ capture, with the departures said where the design describes them (0, 2.3,
   +71 and +96 KB.
 - **Not measured:** the frame's milliseconds on a phone (`page.json`'s
   device slots, as phase 2's), the prefilter's time at load.
-- **Docs:** [Indirect light](/docs/scene/indirect.md), its examples
+- **Docs:** [Indirect light](/src/helder/scene/README.md#indirect-light), its examples
   `scene-environment` and `scene-probes`. examples/gltf-showcase's
   environments are prefiltered by helder at load from their atlases' first
   row (the panorama at roughness 0, 8-bit: its HDR sources are not in the
@@ -1956,7 +1956,7 @@ describes it):
   the frame without occlusion), blessed on llvmpipe, within the rule on
   WARP, WebGPU and WebGL2; each checks a frame allocates nothing.
 - **Measured** (`tests/3d/EffectBench.hx`, sizes `tests/3d/size/sizes.sh`):
-  the rows above; sizes in `docs/scene/effects.md`. The renderer's own
+  the rows above; sizes in the README's "What they cost". The renderer's own
   share of the phase is 23 KB natively, 16 KB as wasm.
 
 ## Sources

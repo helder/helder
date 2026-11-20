@@ -19,8 +19,9 @@
 //                        builds among the examples', not on the index:
 //                        CONTRIBUTING.md, "Docs")
 //   static/              the pages' sheet, scripts and fonts, the packages'
-//                        browser modules (all the builds' together)
-//   index.html           (to examples/, for a local server)
+//                        browser modules (all the builds' together), the
+//                        pictures site/visuals.mjs took (static/visuals/)
+//   index.html           the landing (site/docs/Home.hx, with the docs)
 //
 //   node site/build.mjs [out]      (default bin/site)
 //
@@ -65,7 +66,7 @@ const work = 'bin/site-build';
 const cli = ['src/helder/cli/run.mjs'];
 const REPO = 'https://github.com/helder/helder';
 const THEME = {
-	brand: 'helder', home: 'examples/',
+	brand: 'helder', home: './',
 	nav: [{ id: 'examples', label: 'Examples', href: 'examples/' }, { id: 'docs', label: 'Docs', href: 'docs/' }, { id: '', label: 'GitHub', href: REPO }],
 	action: { id: '', label: '', href: '' }, css: [], js: [], notice: '', footer: [], starters: { title: '', lede: '', items: [] }
 };
@@ -259,9 +260,9 @@ for (const e of all) {
 // the pages' sheet, scripts and fonts (helder studio's type, as helder.build's)
 fs.mkdirSync(`${out}/static/fonts`, { recursive: true });
 fs.copyFileSync('src/helder/web/loader.js', `${out}/static/loader.js`);
-for (const f of ['site.css', 'stage.js', 'numbers.js', 'docs.js']) fs.copyFileSync(`site/${f}`, `${out}/static/${f}`);
+for (const f of ['site.css', 'stage.js', 'numbers.js', 'docs.js', 'home.js']) fs.copyFileSync(`site/${f}`, `${out}/static/${f}`);
+copyDir('site/visuals', `${out}/static/visuals`);
 for (const f of ['HankenGrotesk-Regular.ttf', 'HankenGrotesk-Medium.ttf', 'GeistMono-Regular.ttf']) fs.copyFileSync(`apps/studio/fonts/${f}`, `${out}/static/fonts/${f}`);
-fs.writeFileSync(`${out}/index.html`, '<!doctype html>\n<meta charset="utf-8">\n<meta http-equiv="refresh" content="0; url=examples/">\n<title>helder</title>\n<a href="examples/">Examples</a>\n');
 // the videos site/reel.mjs records into <out>/examples/media after this (the showreel first): each clip's example
 const clips = CLIPS.map((c) => {
 	const e = site.find((x) => x.source.endsWith('/' + c.entry));

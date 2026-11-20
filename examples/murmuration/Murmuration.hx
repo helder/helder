@@ -17,6 +17,7 @@ import SkyShader;
 // camera, scroll to come closer):
 //
 //   helder run examples/murmuration
+//   helder run examples/murmuration -- --birds 65536
 //   helder build examples/murmuration --target web
 //
 // The flock takes fixed steps on the GPU (Flock: a hashed grid built
@@ -300,6 +301,10 @@ class Murmuration {
 		if (b >= 0) return bench(Std.parseInt(args[b + 1] ?? "1920") ?? 1920, Std.parseInt(args[b + 2] ?? "1080") ?? 1080);
 		var window = new Window("Murmuration", 1280, 720);
 		var m = new Murmuration(Device.create(window.surface));
+		// (--birds n: at most n fly, as helder.build's landing asks)
+		var cap = args.indexOf("--birds");
+		if (cap >= 0) m.flock.limit = Std.parseInt(args[cap + 1] ?? "") ?? m.flock.limit;
+		while (m.flock.live > m.flock.limit && m.flock.shrink()) {}
 		Sys.println('Murmuration: up to ${m.flock.count} birds, ' + (m.flock.compute ? "steered by a compute stage" : "steered on the CPU (no compute here)"));
 		var pressed = false, lastX = 0.0, lastY = 0.0, told = 0;
 		App.run(() -> {

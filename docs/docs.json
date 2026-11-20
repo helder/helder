@@ -1,75 +1,92 @@
 {
 	"sections": [
 		{
-			"id": "guide",
-			"title": "Guide",
+			"id": "start",
+			"title": "Start",
 			"pages": [
-				"start",
-				"ui",
-				"typescript",
-				"settings",
-				"publishing",
-				"cli"
+				"install",
+				"typescript"
 			]
 		},
 		{
-			"id": "scene",
-			"title": "3D: helder.scene",
+			"id": "apps",
+			"title": "Apps",
 			"pages": [
-				"index",
-				"world",
-				"models",
-				"geometry",
-				"materials",
-				"lights",
-				"indirect",
-				"fog",
-				"post",
-				"effects",
-				"instancing",
-				"lod",
-				"particles",
-				"lines",
+				"views",
+				"layout",
 				"text",
-				"picking",
-				"markup",
+				"lists",
+				"services"
+			]
+		},
+		{
+			"id": "graphics",
+			"title": "Graphics",
+			"pages": [
+				"2d",
+				"3d",
+				"3d/models",
+				"3d/lights",
+				"3d/effects",
+				"3d/particles",
+				"gpu"
+			]
+		},
+		{
+			"id": "games",
+			"title": "Games",
+			"pages": [
+				"physics",
 				"input",
-				"debugging",
-				"typescript"
-			],
-			"readmes": [
-				{
-					"path": "src/helder/scene/README.md",
-					"pages": [
-						"index",
-						"world",
-						"models",
-						"geometry",
-						"materials",
-						"lights",
-						"indirect",
-						"fog",
-						"post",
-						"effects",
-						"instancing",
-						"lod",
-						"particles",
-						"lines",
-						"text",
-						"picking",
-						"input",
-						"debugging",
-						"typescript"
-					]
-				},
-				{
-					"path": "src/helder/scene/view/README.md",
-					"title": "helder.scene.view",
-					"pages": [
-						"markup"
-					]
-				}
+				"sound"
+			]
+		},
+		{
+			"id": "web",
+			"title": "Web",
+			"pages": [
+				"pages",
+				"networking"
+			]
+		},
+		{
+			"id": "ship",
+			"title": "Ship",
+			"pages": [
+				"assets",
+				"testing",
+				"publishing",
+				"cli"
 			]
 		}
-	]
+	],
+	"moved": {
+		"guide": "start/install",
+		"guide/start": "start/install",
+		"guide/ui": "apps/views",
+		"guide/typescript": "start/typescript",
+		"guide/settings": "ship/publishing",
+		"guide/publishing": "ship/publishing",
+		"guide/cli": "ship/cli",
+		"scene": "graphics/3d",
+		"scene/world": "graphics/3d",
+		"scene/models": "graphics/3d/models",
+		"scene/geometry": "graphics/3d/models",
+		"scene/materials": "graphics/3d/models",
+		"scene/lights": "graphics/3d/lights",
+		"scene/indirect": "graphics/3d/lights",
+		"scene/fog": "graphics/3d/effects",
+		"scene/post": "graphics/3d/effects",
+		"scene/effects": "graphics/3d/effects",
+		"scene/instancing": "graphics/3d/particles",
+		"scene/lod": "graphics/3d/particles",
+		"scene/particles": "graphics/3d/particles",
+		"scene/lines": "graphics/3d",
+		"scene/text": "graphics/3d",
+		"scene/picking": "graphics/3d",
+		"scene/markup": "graphics/3d",
+		"scene/input": "games/input",
+		"scene/debugging": "graphics/3d",
+		"scene/typescript": "graphics/3d"
+	}
 }

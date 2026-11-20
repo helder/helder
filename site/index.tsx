@@ -207,7 +207,7 @@ function Card(props: { ex: Example, guided?: boolean }) {
 			<div class="row"><h3>{ex.title}</h3><ul class="tags">{ex.tags.map(t => <li>{t}</li>)}</ul></div>
 			<p>{props.guided && ex.id === "ts-palette" ? "Press Play and switch from Dusk to Clay. Watch the three swatches and their hex values change together." : ex.summary}</p>
 			{props.guided && ex.id === "ts-palette" ? <p>Open the source and find <code>selected</code>. Each button changes this signal, and <code>palette</code> looks up the colors for all three swatches.</p> : null}
-			{props.guided ? <p class="links"><a href="docs/guide/start/">Build your first TSX app →</a></p> : null}
+			{props.guided ? <p class="links"><a href="docs/start/install/">Build your first TSX app →</a></p> : null}
 			{ex.apk !== null ? <Download apk={ex.apk as Apk} /> : null}
 			<p class="links">{ex.page !== null ? <a href={pageOf(ex)}>Read the measurements</a> : null}<a href={ex.source}>Read source</a></p>
 			{clips.filter(c => c.example === ex.id).map(c => <details class="recording"><summary>Watch recording · {Math.round(c.seconds)}s</summary><Video c={c} /></details>)}
@@ -295,9 +295,9 @@ for (const ex of featured) {
 }
 
 const topics = [
-	{ id: "interface", title: "Interfaces and interaction", guide: "Build an interface", href: "docs/guide/ui/" },
-	{ id: "measure", title: "Graphics and performance", guide: "Explore the scene guide", href: "docs/scene/" },
-	{ id: "render", title: "Rendering, physics and sound", guide: "Set up a scene", href: "docs/scene/world/" }
+	{ id: "interface", title: "Interfaces and interaction", guide: "Build an interface", href: "docs/apps/views/" },
+	{ id: "measure", title: "Graphics and performance", guide: "Explore 3D scenes", href: "docs/graphics/3d/" },
+	{ id: "render", title: "Rendering, physics and sound", guide: "Add physics", href: "docs/games/physics/" }
 ];
 const starters = theme.starters;
 Static.write(site.dir + "/examples/index.html", Static.document(<html lang="en">

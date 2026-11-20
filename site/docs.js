@@ -1,19 +1,62 @@
-// The docs' pages in the browser (static/docs.js; site/docs/Docs.hx writes
-// them): an example's source tabs (Haxe, its TypeScript twin), the sidebar
-// on a phone (the top bar's menu: the pages and the site's links), and the search: docs/search.json (every page's title, headings and
-// text) fetched on the first focus, matched word by word as you type.
+// The docs' pages and the landing in the browser (static/docs.js;
+// site/docs/Docs.hx and Home.hx write them): a sample's TypeScript and
+// Haxe tabs, the reader's language remembered across pages; Copy; the
+// sidebar on a phone (the top bar's menu: the pages and the site's links);
+// and the search: docs/search.json (every page's title, headings and text)
+// fetched on the first focus, matched word by word as you type.
 (() => {
-	for (const tabs of document.querySelectorAll('.example .tabs')) {
-		const box = tabs.parentElement;
-		tabs.addEventListener('click', (e) => {
-			const b = e.target.closest('button[role=tab]');
-			if (!b) return;
-			for (const t of tabs.querySelectorAll('button')) t.setAttribute('aria-selected', String(t === b));
-			for (const p of box.querySelectorAll('.code')) p.hidden = p.dataset.file !== b.dataset.file;
+	const KEY = 'helder.lang';
+	const remembered = () => {
+		try { return localStorage.getItem(KEY); } catch { return null; }
+	};
+	const pick = (lang) => {
+		for (const box of document.querySelectorAll('.langs')) {
+			if (!box.querySelector(`pre[data-lang="${lang}"]`)) continue;
+			for (const b of box.querySelectorAll('.switch button')) b.setAttribute('aria-selected', String(b.dataset.lang === lang));
+			for (const pre of box.querySelectorAll('pre')) pre.hidden = pre.dataset.lang !== lang;
+		}
+	};
+	if (remembered()) pick(remembered());
+	document.addEventListener('click', (e) => {
+		const b = e.target.closest('.switch button');
+		if (!b) return;
+		// (the sample under the reader's eye stays where it was as the others change)
+		const top = b.getBoundingClientRect().top;
+		pick(b.dataset.lang);
+		window.scrollBy(0, b.getBoundingClientRect().top - top);
+		try { localStorage.setItem(KEY, b.dataset.lang); } catch {}
+	});
+
+	for (const button of document.querySelectorAll('.copy-code')) {
+		if (!navigator.clipboard?.writeText) continue;
+		const box = button.closest('.code');
+		button.hidden = false;
+		let reset;
+		button.addEventListener('click', async () => {
+			const code = box.querySelector('pre:not([hidden]) code');
+			try {
+				await navigator.clipboard.writeText(code.textContent);
+				button.textContent = 'Copied';
+				button.setAttribute('aria-label', 'Code copied');
+			} catch {
+				const range = document.createRange();
+				range.selectNodeContents(code);
+				const selection = window.getSelection();
+				selection.removeAllRanges();
+				selection.addRange(range);
+				button.textContent = 'Selected';
+				button.setAttribute('aria-label', 'Code selected for manual copy');
+			}
+			clearTimeout(reset);
+			reset = setTimeout(() => {
+				button.textContent = 'Copy';
+				button.setAttribute('aria-label', 'Copy code');
+			}, 2000);
 		});
 	}
 
 	const menu = document.querySelector('.menu'), sidebar = document.getElementById('sidebar');
+	if (!menu || !sidebar) return;
 	const input = document.querySelector('.search'), list = document.querySelector('.results'), status = document.getElementById('search-status');
 	const show = (open) => {
 		// (under the top bar wherever it is: a host's notice above it scrolls)
@@ -37,33 +80,6 @@
 		show(false);
 		menu.focus();
 	});
-
-	for (const button of document.querySelectorAll('.copy-code')) {
-		if (!navigator.clipboard?.writeText) continue;
-		const code = button.closest('.code').querySelector('pre code');
-		button.hidden = false;
-		let reset;
-		button.addEventListener('click', async () => {
-			try {
-				await navigator.clipboard.writeText(code.textContent);
-				button.textContent = 'Copied';
-				button.setAttribute('aria-label', 'Code copied');
-			} catch {
-				const range = document.createRange();
-				range.selectNodeContents(code);
-				const selection = window.getSelection();
-				selection.removeAllRanges();
-				selection.addRange(range);
-				button.textContent = 'Selected';
-				button.setAttribute('aria-label', 'Code selected for manual copy');
-			}
-			clearTimeout(reset);
-			reset = setTimeout(() => {
-				button.textContent = 'Copy';
-				button.setAttribute('aria-label', 'Copy code');
-			}, 2000);
-		});
-	}
 
 	if (!input || !list) return;
 	let index = null;

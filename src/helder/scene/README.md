@@ -1,5 +1,3 @@
-<!-- Generated from docs/scene/index.md, docs/scene/world.md, docs/scene/models.md, docs/scene/geometry.md, docs/scene/materials.md, docs/scene/lights.md, docs/scene/indirect.md, docs/scene/fog.md, docs/scene/post.md, docs/scene/effects.md, docs/scene/instancing.md, docs/scene/lod.md, docs/scene/particles.md, docs/scene/lines.md, docs/scene/text.md, docs/scene/picking.md, docs/scene/input.md, docs/scene/debugging.md, docs/scene/typescript.md by site/docs/readme.mjs: edit those, not this file. -->
-
 # helder.scene
 
 A scene layer for 3D games on `helder.gfx`, in pure Haxe (Haxe package
@@ -19,7 +17,7 @@ These pages go from the scene graph to what draws it:
 - [Lines](#lines), [Text in the world](#text-in-the-world) and
   [Picking](#picking): lines with a width, text as geometry, rays cast
   at triangles;
-- [`<Scene>` markup](/docs/scene/markup.md): the scene in helder.view's markup, inside a
+- [`<Scene>` markup](/src/helder/scene/view/README.md): the scene in helder.view's markup, inside a
   ui;
 - [Input](#input), [Debugging](#debugging) and
   [TypeScript](#typescript).
@@ -83,7 +81,7 @@ A node's transform is its parent's times its own: turn a pivot and
 everything under it turns. Here a planet's orbit is a pivot at the sun,
 its moon's a pivot under the planet, and the camera a node of its own:
 
-Example: [World and nodes](/docs/examples/scene-nodes/Nodes.hx) (`helder run docs/examples/scene-nodes/Nodes.hx`; it plays in the docs' page).
+Example: [World and nodes](/docs/examples/scene-nodes/Nodes.hx) (`helder run docs/examples/scene-nodes/Nodes.hx`).
 
 A node's `worldMatrix()` is cached until a transform above it changes.
 
@@ -154,7 +152,7 @@ Images.decode = Images.common;  // PNG, JPEG and WebP
 A model referenced with `Model.of`, its nodes and its animation typed from
 the file, under a sun with a shadow map:
 
-Example: [glTF scene](/examples/gltf-viewer/GltfViewer.hx) (`helder run examples/gltf-viewer/GltfViewer.hx`; it plays in the docs' page).
+Example: [glTF scene](/examples/gltf-viewer/GltfViewer.hx) (`helder run examples/gltf-viewer/GltfViewer.hx`).
 
 ### The asset step
 
@@ -245,12 +243,12 @@ A `VertexData` is read with `position(i)`, `normal(i)`, `uv(i)`,
 material)` uploads one; `Shapes.box`, `sphere`, `capsule` and `plane` are
 the common ones at their usual sizes (`Shapes.plane` is `Geometry.plane`
 turned to face up). In markup a geometry is a tag: `<cylinderGeometry
-radiusTop={0.2} height={1}/>` ([`<Scene>` markup](/docs/scene/markup.md)).
+radiusTop={0.2} height={1}/>` ([`<Scene>` markup](/src/helder/scene/view/README.md)).
 
 Each column here is a generator, each row a shading model
 ([Materials](#materials)):
 
-Example: [Primitives](/examples/primitives/Primitives.hx) (`helder run examples/primitives/Primitives.hx`; it plays in the docs' page).
+Example: [Primitives](/examples/primitives/Primitives.hx) (`helder run examples/primitives/Primitives.hx`).
 
 ### Curves
 
@@ -324,7 +322,7 @@ twice: what is behind multiplied by its colour, then its reflections over
 it). The rest of glTF's material extensions are the physical shaders',
 below.
 
-Example: [Materials](/docs/examples/scene-materials/Materials.hx) (`helder run docs/examples/scene-materials/Materials.hx`; it plays in the docs' page).
+Example: [Materials](/docs/examples/scene-materials/Materials.hx) (`helder run docs/examples/scene-materials/Materials.hx`).
 
 ### The glTF material extensions
 
@@ -366,7 +364,7 @@ renderer.use(new Physical());                 // materials whose fields use an e
 renderer.use(new Transmission(device));       // the opaque frame behind see-through ones
 ```
 
-Example: [glTF material extensions](/docs/examples/scene-physical/Extensions.hx) (`helder run docs/examples/scene-physical/Extensions.hx`; it plays in the docs' page).
+Example: [glTF material extensions](/docs/examples/scene-physical/Extensions.hx) (`helder run docs/examples/scene-physical/Extensions.hx`).
 
 `Transmission` copies the opaque frame (with its mips) once a frame that
 has a transmitting surface in view, after the opaque surfaces and the sky:
@@ -429,7 +427,7 @@ stages is linked); a slot's parameters beyond the standard ones are
 blocks of its own (`material.uniforms`, written by its `params`). Here the
 emissive and colour slots are replaced:
 
-Example: [Glow](/examples/glow/Glow.hx) (`helder run examples/glow/Glow.hx`; it plays in the docs' page).
+Example: [Glow](/examples/glow/Glow.hx) (`helder run examples/glow/Glow.hx`).
 
 ### Shading models
 
@@ -476,7 +474,7 @@ model, when used, costs its five variants' shader text, about 230 KB
 natively (HLSL) and 300 KB as wasm32 (GLSL and WGSL)
 (`tests/3d/size/sizes.sh`). Each row here is a model, each column a shape:
 
-Example: [Primitives](/examples/primitives/Primitives.hx) (`helder run examples/primitives/Primitives.hx`; it plays in the docs' page).
+Example: [Primitives](/examples/primitives/Primitives.hx) (`helder run examples/primitives/Primitives.hx`).
 
 Tests: `src/helder/scene/render/shading/Shading.test.hx` (the slots on the
 CPU), the 3d lane's `shading` (the seven in a row) and `toon` (soft
@@ -535,7 +533,7 @@ slices of depth growing away from the camera), lists the lights reaching
 each (at most `maxPerCell`, 32), and lights each pixel by its cell's,
 from up to `maxLights` (256) a frame:
 
-Example: [Many lights](/docs/examples/scene-clustered/ManyLights.hx) (`helder run docs/examples/scene-clustered/ManyLights.hx`; it plays in the docs' page).
+Example: [Many lights](/docs/examples/scene-clustered/ManyLights.hx) (`helder run docs/examples/scene-clustered/ManyLights.hx`).
 
 The lists are made by a compute pass where the device has one (WebGPU,
 Metal, D3D11, GL ES 3.1: an invocation a cell, every light tested), else
@@ -592,12 +590,12 @@ filter's keeps tilted surfaces from shadowing themselves, and low casters
 sun's map the whole atlas (tests/3d's `softshadows` frame; `shadows` and
 `cascades` keep the 3x3 filter).
 
-Example: [Lights and shadows](/docs/examples/scene-lights/Lights.hx) (`helder run docs/examples/scene-lights/Lights.hx`; it plays in the docs' page).
+Example: [Lights and shadows](/docs/examples/scene-lights/Lights.hx) (`helder run docs/examples/scene-lights/Lights.hx`).
 
 **Point and spot lights** cast when asked, `light.castShadows = true`
 (three.js's `castShadow`), each with its own `light.shadow`:
 
-Example: [Spot and point shadows](/docs/examples/scene-shadows/SpotAndPoint.hx) (`helder run docs/examples/scene-shadows/SpotAndPoint.hx`; it plays in the docs' page).
+Example: [Spot and point shadows](/docs/examples/scene-shadows/SpotAndPoint.hx) (`helder run docs/examples/scene-shadows/SpotAndPoint.hx`).
 
 The first local light to cast makes the atlas wider by a square of
 `atlas` texels (1024: `new Shadows(device, size, {atlas: 1024, maxLocal:
@@ -635,7 +633,7 @@ and reflections). The showroom puts the optional features together: an
 environment map, normal maps, two shadow cascades, a morphing surface and
 glass:
 
-Example: [Showroom](/examples/showroom/Showroom.hx) (`helder run examples/showroom/Showroom.hx`; it plays in the docs' page).
+Example: [Showroom](/examples/showroom/Showroom.hx) (`helder run examples/showroom/Showroom.hx`).
 
 #### Image-based light, prefiltered
 
@@ -654,7 +652,7 @@ models (DamagedHelmet, FlightHelmet, SciFiHelmet, the extensions' tests)
 under prefiltered HDR environments, compared with the sample viewer's
 renders in its README (tens of MB of models: fetched when it plays):
 
-Example: [glTF sample models](/examples/gltf-showcase/Showcase.hx) (`helder run examples/gltf-showcase/GltfShowcase.hx`; it plays in the docs' page).
+Example: [glTF sample models](/examples/gltf-showcase/Showcase.hx) (`helder run examples/gltf-showcase/GltfShowcase.hx`).
 
 ## Indirect light
 
@@ -677,7 +675,7 @@ Metal, D3D11, GL ES 3.1) the atlas is written by a dispatch, elsewhere
 `sh`). The image itself is drawn behind the scene.
 `Environment.prefilterImage(device, mime, bytes)` decodes one first.
 
-Example: [An environment prefiltered by helder](/docs/examples/scene-environment/Sky.hx) (`helder run docs/examples/scene-environment/Sky.hx`; it plays in the docs' page).
+Example: [An environment prefiltered by helder](/docs/examples/scene-environment/Sky.hx) (`helder run docs/examples/scene-environment/Sky.hx`).
 
 `Environment.prefiltered` (an atlas filtered ahead by a tool) and
 `Environment.fromImage` (a mip-mapped image read by roughness) still
@@ -706,7 +704,7 @@ blends its two probes by how much of it each box holds (the box's walls
 soft over `blend`), falling back to the environment. `probe.capture()`
 captures it again; nothing is captured every frame.
 
-Example: [Probes and area lights](/docs/examples/scene-probes/Room.hx) (`helder run docs/examples/scene-probes/Room.hx`; it plays in the docs' page).
+Example: [Probes and area lights](/docs/examples/scene-probes/Room.hx) (`helder run docs/examples/scene-probes/Room.hx`).
 
 The probes share one atlas (a column a probe, the environment's layout),
 read by the probes variants alone; the environment stays its own, the
@@ -792,7 +790,7 @@ Here the fog's floor rises and falls (`fog.height`), the sky covered with
 it; the sign at the end of the colonnade is a material the fog does not
 cover:
 
-Example: [Fog](/docs/examples/scene-fog/Fog.hx) (`helder run docs/examples/scene-fog/Fog.hx`; it plays in the docs' page).
+Example: [Fog](/docs/examples/scene-fog/Fog.hx) (`helder run docs/examples/scene-fog/Fog.hx`).
 
 ### In a shader of your own
 
@@ -827,7 +825,7 @@ chain into the frame itself (`renderer.drawInto`, then `post.run`). Tap
 the example, or press Space, to switch the tone mapping: ACES, AgX, and
 none (clipped at 1, what tone mapping saves):
 
-Example: [HDR and post-processing](/docs/examples/scene-post/Post.hx) (`helder run docs/examples/scene-post/Post.hx`; it plays in the docs' page).
+Example: [HDR and post-processing](/docs/examples/scene-post/Post.hx) (`helder run docs/examples/scene-post/Post.hx`).
 
 ### Bloom
 
@@ -1053,14 +1051,14 @@ or `<Taa blend={0.1}/>` in place of `<Fxaa/>`.
 The example toggles each effect, the outline following the shape
 clicked (drag to orbit):
 
-Example: [Post effects](/examples/postfx/Postfx.hx) (`helder run examples/postfx/Postfx.hx`; it plays in the docs' page).
+Example: [Post effects](/examples/postfx/Postfx.hx) (`helder run examples/postfx/Postfx.hx`).
 
 The high end's own: reflections on a polished floor and a mirror, god
 rays from a low sun behind a colonnade, TAA or SMAA or FXAA, the camera's
 motion blur as you orbit, and a transform gizmo on the shape clicked
-([Markup](/docs/scene/markup.md)):
+([Markup](/src/helder/scene/view/README.md)):
 
-Example: [High-end effects](/examples/highend/Highend.hx) (`helder run examples/highend/Highend.hx`; it plays in the docs' page).
+Example: [High-end effects](/examples/highend/Highend.hx) (`helder run examples/highend/Highend.hx`).
 
 ### What they cost
 
@@ -1178,7 +1176,7 @@ by one, as nodes batched by the renderer, and as one `InstancedMesh` of
 up to 200,000; the overlay counts the draws. Its InstancedMesh, made once
 and written each frame:
 
-Example: [Instancing stress](/examples/instancing/Instancing.hx) (`helder run examples/instancing/Instancing.hx`; it plays in the docs' page).
+Example: [Instancing stress](/examples/instancing/Instancing.hx) (`helder run examples/instancing/Instancing.hx`).
 
 Tests: `src/helder/scene/render/InstancedMesh.test.hx` (the layout, resize,
 nothing allocated), the 3d lane's `instancedmesh` frame (shadows, a set
@@ -1304,7 +1302,7 @@ through each one's matrix), and each kept one drawn at its level of the
 set's `levels` (Lod's thresholds), so a forest of thousands draws the few
 hundred in view, the far ones coarse:
 
-Example: [Levels of detail](/docs/examples/scene-lod/Levels.hx) (`helder run docs/examples/scene-lod/Levels.hx`; it plays in the docs' page).
+Example: [Levels of detail](/docs/examples/scene-lod/Levels.hx) (`helder run docs/examples/scene-lod/Levels.hx`).
 
 Where the device has compute and indirect draws (WebGPU, Metal, D3D11,
 GL ES 3.1) it runs on the GPU: a dispatch a set, each kept instance's
@@ -1354,7 +1352,7 @@ two runs of the ring) and draws the ring in one instanced draw at
 its ring holds draws less. For sparks, debris, exhaust trails, smoke and
 flashes. Tap the example for a burst:
 
-Example: [GPU particles](/docs/examples/scene-particles/Sparks.hx) (`helder run docs/examples/scene-particles/Sparks.hx`; it plays in the docs' page).
+Example: [GPU particles](/docs/examples/scene-particles/Sparks.hx) (`helder run docs/examples/scene-particles/Sparks.hx`).
 
 ### A million
 
@@ -1362,7 +1360,7 @@ The same feature at a million particles alive: a spiral galaxy flung from
 its core by a turning emitter, about 3,300 born a frame; on a GPU too slow
 for them fewer are born and drawn (`live` lowered with the rate):
 
-Example: [GPU particles](/examples/particles/Galaxy.hx) (`helder run examples/particles/Galaxy.hx`; it plays in the docs' page).
+Example: [GPU particles](/examples/particles/Galaxy.hx) (`helder run examples/particles/Galaxy.hx`).
 
 Fog fades them (light added, not turned to the fog's colour: [Fog](#fog)).
 
@@ -1409,13 +1407,13 @@ vertex stage from four views of one point buffer (the point before, the
 segment's two, the point after). A segment crossing the near plane is
 cut at it.
 
-Example: [Lines](/docs/examples/scene-lines/LinesDemo.hx) (`helder run docs/examples/scene-lines/LinesDemo.hx`; it plays in the docs' page).
+Example: [Lines](/docs/examples/scene-lines/LinesDemo.hx) (`helder run docs/examples/scene-lines/LinesDemo.hx`).
 
 A program drawing lines links the `LineRenderer` and its shader: 64 KB
 natively, 80 KB as wasm32 (`tests/3d/size/sizes.sh`); one that never
 makes one, nothing.
 
-In markup a line is `<lines of={path}/>` ([`<Scene>` markup](/docs/scene/markup.md):
+In markup a line is `<lines of={path}/>` ([`<Scene>` markup](/src/helder/scene/view/README.md):
 its box given a `LineRenderer`). Lines are what `DebugDraw` draws with
 ([Debugging](#debugging)).
 
@@ -1471,7 +1469,7 @@ to the camera each frame, its node's position and scale kept. Setting
 ([Picking](#picking)). `<Ui>` stays for text that is ui (layout,
 wrapping, input) over the scene.
 
-Example: [Text in the world](/docs/examples/scene-text/TextDemo.hx) (`helder run docs/examples/scene-text/TextDemo.hx`; it plays in the docs' page).
+Example: [Text in the world](/docs/examples/scene-text/TextDemo.hx) (`helder run docs/examples/scene-text/TextDemo.hx`).
 
 It costs what it links (`tests/3d/size/sizes.sh`): 647 KB natively, 701
 KB as wasm32, most of it helder.text's layout and font reading, canvas'
@@ -1479,7 +1477,7 @@ boolean ops and the unlit material's shaders; a program that already
 draws text or uses `Material.unlit` pays less.
 
 In markup: `<text3d font={face} text={score} size={0.3} billboard/>`, or
-`of={label}` for one made in code ([`<Scene>` markup](/docs/scene/markup.md)).
+`of={label}` for one made in code ([`<Scene>` markup](/src/helder/scene/view/README.md)).
 
 Tests: `src/helder/scene/render/Extrude.test.hx` (a square's and a ring's
 solids closed and facing out, a circle's caps' area, a bevel's inset
@@ -1547,7 +1545,7 @@ surface. `pick="bounds"` (the default) picks by the meshes' boxes. The
 choice is made when compiling, so a box picking by bounds links no
 raycaster.
 
-Example: [Picking](/examples/picking/Picking.hx) (`helder run examples/picking/Picking.hx`; it plays in the docs' page).
+Example: [Picking](/examples/picking/Picking.hx) (`helder run examples/picking/Picking.hx`).
 
 Tests: `src/helder/scene/render/Bvh.test.hx` (against brute force on
 random rays at a torus knot, a soup of crossing triangles and a flat grid:
@@ -1579,7 +1577,7 @@ Actions are named once and bound to keys, pads and the screen; gameplay
 reads the actions, not the devices. The walker's arrow keys, WASD, a
 gamepad's stick and the screen's lower right corner are its actions:
 
-Example: [Walker](/examples/walker/Walker.hx) (`helder run examples/walker/Walker.hx`; it plays in the docs' page).
+Example: [Walker](/examples/walker/Walker.hx) (`helder run examples/walker/Walker.hx`).
 
 ### On-screen controls
 
@@ -1673,14 +1671,14 @@ major line every tenth, the axes red and blue, fading out at `fade`).
 Unlike `Debug`'s calls they stay in a release: a program attaching one
 wants it. In markup: `<axesHelper size={1}/>`, `<gridHelper size={10}/>`,
 `<boundsHelper/>` in a mesh, `<lightHelper/>` in a light ([`<Scene>`
-markup](/docs/scene/markup.md)), their box given a `DebugDraw`.
+markup](/src/helder/scene/view/README.md)), their box given a `DebugDraw`.
 
 What it costs a program that uses it (`tests/3d/size/sizes.sh`):
 `DebugDraw` with its calls and the line helpers, 82 KB natively and 99 KB
 as wasm32 (the lines' renderer with it); `GridHelper` 21 KB more; `Debug`'s
 calls in a release, nothing.
 
-Example: [Debug drawing](/docs/examples/scene-debug/DebugDemo.hx) (`helder run docs/examples/scene-debug/DebugDemo.hx`; it plays in the docs' page).
+Example: [Debug drawing](/docs/examples/scene-debug/DebugDemo.hx) (`helder run docs/examples/scene-debug/DebugDemo.hx`).
 
 Tests: `src/helder/scene/render/DebugDraw.test.hx` (each call's segments,
 a colour as written, the ring's capacity, nothing allocated); the 3d
@@ -1725,7 +1723,7 @@ eye.lookAt(vec3(0, 0, 0));
 The examples with a TypeScript twin show both, a tab each: the scene
 graph's, node for node in either language:
 
-Example: [World and nodes](/docs/examples/scene-nodes/Nodes.hx) (`helder run docs/examples/scene-nodes/Nodes.hx`; it plays in the docs' page).
+Example: [World and nodes](/docs/examples/scene-nodes/Nodes.hx) (`helder run docs/examples/scene-nodes/Nodes.hx`).
 
 ### A material of its own
 
@@ -1783,4 +1781,4 @@ examples/glow's scene node for node, against Haxe's glow.png, and the
 showcase against tsscene.png, which its Haxe twin (tests/3d/TsScene.hx,
 Scenes' tsscene) draws too.
 
-Example: [TypeScript scene](/examples/ts-scene/scene.ts) (`helder run examples/ts-scene/main.ts`; it plays in the docs' page).
+Example: [TypeScript scene](/examples/ts-scene/scene.ts) (`helder run examples/ts-scene/main.ts`).

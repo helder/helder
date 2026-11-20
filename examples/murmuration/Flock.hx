@@ -20,6 +20,8 @@ class Flock {
 	public final compute:Bool;
 	public final step:FlockStep;
 	public var live(default, null):Int;
+	// (the most that fly: a page asks for fewer on a phone's GPU)
+	public var limit:Int;
 	final device:Device;
 	final birds:Array<Buffer> = [];
 	final stepBytes = Bytes.alloc(Steer.params.step.block.size);
@@ -50,6 +52,7 @@ class Flock {
 		compute = device.has(Compute);
 		count = compute ? GPU_BIRDS : CPU_BIRDS;
 		live = compute && !all ? count >> 3 : count;
+		limit = count;
 		var cells = compute ? GPU_CELLS : CPU_CELLS;
 		step = {dt: 0, time: 0, count: live, cells: cells, roost: new Vec4(roost.x, roost.y, roost.z, 40), heading: new Vec4(0, 0, 0, 1),
 			armA: new Vec4(0, 0, 0, 0), armB: new Vec4(0, 0, 0, 0), hawk: new Vec4(0, -1000, 0, 0), hawkVel: new Vec4(1, 0, 0, 0),
@@ -95,7 +98,7 @@ class Flock {
 
 	// twice as many birds from the next step (false: all of them already)
 	public function grow():Bool {
-		if (!compute || doubling || live >= count) return false;
+		if (!compute || doubling || live >= count || live * 2 > limit) return false;
 		doubling = true;
 		return true;
 	}
