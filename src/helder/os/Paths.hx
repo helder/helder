@@ -36,19 +36,21 @@ class Paths {
 	// (which: NSSearchPathDirectory's numbers, the other systems' mapped from
 	// them; app: the desktop's folder under data and cache, helder.os.Store's)
 	@:allow(helder.os) static function find(which:Int, ?app:String):Null<String> {
-		#if (target.name == "hxmc")
-		if (Platform.os() == Platform.WASI) return null;
-		if (Platform.os() == Platform.MACOS) {
-			var d = PathsApple.dir(which);
-			return d == null || Platform.apple() >= 1 || which == TEMP || which == DOCUMENTS ? d : d + "/" + (app ?? PathsApple.bundleId() ?? name());
-		}
-		if (Platform.os() == Platform.WINDOWS) return PathsDesktop.windows(which, app ?? name());
-		if (Platform.target() >= 9) return which == DATA ? helder.os.android.AndroidPaths.files() : helder.os.android.AndroidPaths.dir(which == DOCUMENTS ? "documents" : "cache");
+		// (each system's branch by its define, not Platform: a static Linux
+		// executable's must not link Android's activity or Apple's runtime)
+		#if (target.name != "hxmc" || hxmc.target == "wasm32-wasi")
+		return null;
+		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
+		return which == DATA ? helder.os.android.AndroidPaths.files() : helder.os.android.AndroidPaths.dir(which == DOCUMENTS ? "documents" : "cache");
+		#elseif (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
+		var d = PathsApple.dir(which);
+		return d == null || Platform.apple() >= 1 || which == TEMP || which == DOCUMENTS ? d : d + "/" + (app ?? PathsApple.bundleId() ?? name());
+		#elseif (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+		return PathsDesktop.windows(which, app ?? name());
+		#else
 		var home = Sys.getEnv("HOME") ?? "";
 		var dirs = which != DOCUMENTS ? null : try sys.io.File.getContent((Sys.getEnv("XDG_CONFIG_HOME") ?? home + "/.config") + "/user-dirs.dirs") catch (_:Dynamic) null;
 		return PathsDesktop.linux(which, Sys.getEnv, dirs, app ?? name());
-		#else
-		return null;
 		#end
 	}
 
