@@ -84,13 +84,12 @@ the node tree ([cli](src/helder/cli/README.md), "Headless runs").
 
 ## Roadmap
 
-**Now**: https and wss on every platform's own stack (#51); Windows'
-touchpad scrolling; the web's scroll lag and Safari's rubber band.
+**Lately**: http, https and WebSockets on each platform's own stack;
+[localization](src/helder/os/README.md#localization); the platform's
+settings as signals; Android's clipboard.
 
-**Foundations**
-- [Localization](src/helder/os/README.md#localization): the device's locales, string catalogues, plurals, dates and numbers.
-- The platform's settings as signals (text scale, reduced motion,
-  contrast, orientation); Android's clipboard.
+**Now**: the app services below; Windows' touchpad scrolling; the web's
+scroll lag and Safari's rubber band.
 
 **App services**: one API each, the platform's implementation underneath
 (as Capacitor's and Flutter's plugins), unavailable where a platform has none.
