@@ -858,6 +858,12 @@ class CocoaWindow {
 				e.deltaX = 0;
 				e.deltaY = -180 * Math.log(1 + m);
 			case NS.ScrollWheel:
+				// (one the program's own scroll views take, its ends without deltas too: theirs, not a Scroll)
+				if (owner.nativeScroll != null) {
+					var p = Msg.pointPointPtr(view, ObjC.sel("convertPoint:fromView:"), Msg.point(ev, ObjC.sel("locationInWindow")), Ptr.nil());
+					var b = Msg.rect(view, ObjC.sel("bounds"));
+					if (owner.nativeScroll(ev, Math.floor(p.x * scale), Math.floor((b.size.height - p.y) * scale))) return;
+				}
 				var dx = Msg.f(ev, ObjC.sel("scrollingDeltaX")), dy = Msg.f(ev, ObjC.sel("scrollingDeltaY"));
 				if (dx == 0 && dy == 0) return;
 				// (a trackpad's points, exact; a wheel's lines, 40 pixels each; the

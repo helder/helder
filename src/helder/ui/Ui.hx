@@ -1518,6 +1518,21 @@ class Ui {
 		helder.view.graph.Graph.flush();
 	}
 
+	// the innermost scroller a platform's scroll view drives under x, y
+	// (null: none, or under a popup): where a wheel or a trackpad's
+	// scroll goes to the platform (macOS: its own views chain it outwards)
+	public function scrollViewAt(x:Float, y:Float):Null<ScrollView> {
+		var n = hit(x, y);
+		while (n != null) {
+			if (n.style.overflow == Scroll) {
+				var v = scrollKept.get(n);
+				if (v != null && v.pass == scrollPass && !v.covered) return v;
+			}
+			n = n.parent;
+		}
+		return null;
+	}
+
 	// (a pointer a recogniser of the tree won, but a Tap: its drag is the tree's)
 	function gestureHeld():Bool {
 		for (id in 0...POINTERS) {

@@ -115,9 +115,10 @@ class UiWindow {
 	var iosAccess:Any = null;
 	// Android's (an AndroidAccess)
 	var androidAccess:Any = null;
-	// iOS's scroll views (an IosScroll), the browser's (a WebScroll)
+	// iOS's scroll views (an IosScroll), the browser's (a WebScroll), macOS's (a MacScroll)
 	var iosScroll:Any = null;
 	var webScroll:Any = null;
+	var macScroll:Any = null;
 	// the platform's scroll views drive the scrollers of the windows made
 	// (Ui.nativeScroll, where the platform has them: iOS, the browser; Android's
 	// fling physics, AndroidGlide); false: helder's
@@ -202,20 +203,21 @@ class UiWindow {
 			if (iosScroll != null) (cast iosScroll : IosScroll).dispose();
 		} else if (Platform.os() == 1) {
 			if (macAccess != null) (cast macAccess : MacAccess).dispose();
+			if (macScroll != null) (cast macScroll : MacScroll).dispose();
 			if (ui.platform != null) (cast ui.platform : MacViews).dispose();
 		}
 		if (Platform.os() == 2) {
 			if (winAccess != null) (cast winAccess : WinAccess).dispose();
 			if (ui.platform != null) (cast ui.platform : WinViews).dispose();
 		}
-		macAccess = winAccess = iosAccess = iosScroll = null;
+		macAccess = winAccess = iosAccess = iosScroll = macScroll = null;
 	}
 	#end
 
 	// the platform's scroll views on or off for this window (where it has them)
 	public function nativeScroll(on:Bool) {
 		#if !helder.headless
-		ui.nativeScroll = on && (Platform.apple() >= 1 || Platform.os() == 3);
+		ui.nativeScroll = on && (Platform.os() == 1 || Platform.os() == 3);
 		// (Android: no scroll views under the tree; helder's drag, Android's fling: its VelocityTracker and OverScroller)
 		if (Platform.target() >= 9) @:privateAccess ui.touchScroll.g = on ? new helder.os.android.AndroidGlide() : new helder.os.Glide();
 		ui.requestFrame();
@@ -236,6 +238,12 @@ class UiWindow {
 				iosScroll = new IosScroll(window, ui);
 			}
 			(cast iosScroll : IosScroll).update();
+		} else if (Platform.os() == 1) {
+			if (macScroll == null) {
+				if (!ui.nativeScroll) return;
+				macScroll = new MacScroll(window, ui);
+			}
+			(cast macScroll : MacScroll).update();
 		}
 	}
 
@@ -530,6 +538,7 @@ class UiWindow {
 			if (iosScroll != null) (cast iosScroll : IosScroll).dispose();
 		} else if (Platform.os() == 1) {
 			if (macAccess != null) (cast macAccess : MacAccess).dispose();
+			if (macScroll != null) (cast macScroll : MacScroll).dispose();
 		}
 		if (Platform.os() == 2) {
 			if (winAccess != null) (cast winAccess : WinAccess).dispose();

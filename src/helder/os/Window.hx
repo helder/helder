@@ -125,6 +125,11 @@ class Window {
 	// cancelled: PointerCancel). Elsewhere every drag is the program's
 	public var scrollsAt:Null<(x:Int, y:Int, dx:Float, dy:Float) -> Bool> = null;
 
+	// macOS: a scroll's NSEvent (a trackpad's, its momentum's, a wheel's, at
+	// x, y in pixels) offered first to the program's own scroll views
+	// (helder.ui's MacScroll): true, taken (no Scroll event of it)
+	public var nativeScroll:Null<(event:hxmc.unsafe.Ptr, x:Int, y:Int) -> Bool> = null;
+
 	// an inset title bar's answer for a press at x, y (pixels): a drag
 	// region, one of the app's window buttons, or the content's (null: the
 	// content's everywhere). Asked by the system's code at the press
