@@ -313,6 +313,9 @@ export default function (host) {
 					s = { e, spacer, id: v.i, k };
 					e.hxmcScroller = true;
 					e.addEventListener('scroll', () => {
+						// (the program's own scroll told back, a frame late: not a scroll of the page's, which would
+						// stop the program's glide where it was a frame ago)
+						if (s.setX !== undefined && Math.abs(e.scrollLeft - s.setX) <= 1 && Math.abs(e.scrollTop - s.setY) <= 1) return;
 						// (its own scroll: the offsets in ui points, 1/256ths)
 						scrolled.push([s.id, Math.round(e.scrollLeft / s.k * 256), Math.round(e.scrollTop / s.k * 256)]);
 						host.os?.redraw();
@@ -326,19 +329,33 @@ export default function (host) {
 						'left:' + x * k + 'px;top:' + y * k + 'px;width:' + w * k + 'px;height:' + h * k + 'px;' +
 						'overflow-x:' + (axes & 1 ? 'auto' : 'hidden') + ';overflow-y:' + (axes & 2 ? 'auto' : 'hidden') + ';' +
 						'touch-action:' + (axes === 3 ? 'pan-x pan-y' : axes & 1 ? 'pan-x' : 'pan-y') + ';' +
-						'pointer-events:' + (covered ? 'none' : 'auto') + ';' + (bars && !covered ? '' : 'scrollbar-width:none;');
-					// (under a popup its scrollbar hidden too: the page draws it over the canvas, over what the popup shows;
-					// Safari before 18.2 knows no scrollbar-width)
-					e.classList.toggle('hxmc-nobar', !bars || covered);
+						// (its scrollbars helder's, drawn in order with the tree; Safari before 18.2 knows no scrollbar-width)
+						'pointer-events:' + (covered ? 'none' : 'auto') + ';scrollbar-width:none;';
+					e.classList.add('hxmc-nobar');
+					e.style.clipPath = s.clip ?? '';
 					s.spacer.style.width = cw * k + 'px';
 					s.spacer.style.height = ch * k + 'px';
 					// (appended once, in paint order: a later one over an earlier; moved, a scroller would lose its offsets)
 					const into = parent ? views.get(parent)?.e ?? l : l;
 					if (e.parentNode !== into) into.appendChild(e);
 				}
+				// the popups over it left out of it (clip-path: neither drawn, its scrollbar with it, nor hit there):
+				// the page draws it over the canvas, and so over what the tree draws above it
+				if (v.c) {
+					// (its own outline far out: the holes are what count, whatever its size becomes)
+					const c = v.c;
+					let d = '';
+					for (let i = 0; i < c.length; i += 4)
+						d += ` M${c[i] * k} ${c[i + 1] * k}h${c[i + 2] * k}v${c[i + 3] * k}h${-c[i + 2] * k}Z`;
+					s.clip = d ? `path(evenodd, "M-100000 -100000H100000V100000H-100000Z${d}")` : '';
+					s.e.style.clipPath = s.clip;
+				}
 				if (v.o) {
 					s.e.scrollLeft = v.o[0] * k;
 					s.e.scrollTop = v.o[1] * k;
+					// (as the page rounded it: what its scroll event will say)
+					s.setX = s.e.scrollLeft;
+					s.setY = s.e.scrollTop;
 				}
 			}
 		},

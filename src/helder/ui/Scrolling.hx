@@ -309,10 +309,38 @@ class Scrolling {
 		var out = ui.scrollList;
 		out.resize(0);
 		ui.scrollPass++;
-		var covered = ui.overlay.children.length > 0;
-		collect(ui, ui.root, 0, 0, 0, 0, ui.width, ui.height, false, covered, null, out);
-		for (c in ui.overlay.children)
-			collect(ui, c, 0, 0, 0, 0, ui.width, ui.height, true, false, null, out);
+		var layers = ui.overlay.children;
+		// (a modal popup: what is under it takes no input at all)
+		inline function modalAbove(i:Int):Bool {
+			var any = false;
+			for (j in i + 1...layers.length)
+				if (Std.isOfType(layers[j], Popup) && (cast layers[j] : Popup).modal) any = true;
+			return any;
+		}
+		collect(ui, ui.root, 0, 0, 0, 0, ui.width, ui.height, false, modalAbove(-1), null, out);
+		var from = out.length;
+		for (v in out)
+			v.layerIndex = -1;
+		for (i in 0...layers.length) {
+			collect(ui, layers[i], 0, 0, 0, 0, ui.width, ui.height, true, modalAbove(i), null, out);
+			for (k in from...out.length)
+				out[k].layerIndex = i;
+			from = out.length;
+		}
+		// (the popups above each: their boxes over it, in its box)
+		for (v in out) {
+			var c = v.covers;
+			c.resize(0);
+			for (j in v.layerIndex + 1...layers.length) {
+				var p = layers[j];
+				var x0 = Math.max(p.absX, v.x), y0 = Math.max(p.absY, v.y), x1 = Math.min(p.absX + p.width, v.x + v.width), y1 = Math.min(p.absY + p.height, v.y + v.height);
+				if (x1 <= x0 || y1 <= y0) continue;
+				c.push(x0 - v.x);
+				c.push(y0 - v.y);
+				c.push(x1 - x0);
+				c.push(y1 - y0);
+			}
+		}
 		// (those gone from the tree or no longer scrolling: let go)
 		var gone = [for (n => v in ui.scrollKept) if (v.pass != ui.scrollPass) n];
 		for (n in gone)

@@ -23,8 +23,16 @@ class ScrollView {
 	public var bars(default, null) = true;
 	// inside a popup (over the tree)
 	public var layer(default, null) = false;
-	// under a popup: the tree's while one is open (a platform's view then takes no input)
+	// under a modal popup (outside it nothing takes input): a platform's view
+	// then takes none and shows nothing
 	public var covered(default, null) = false;
+	// the popups over it (menus, tooltips, dialogs), as rectangles [x, y,
+	// width, height, ...] in its box (points): a platform's view that would
+	// show or take input over what the tree draws there leaves them out (the
+	// browser's: clip-path)
+	public var covers(default, null):Array<Float> = [];
+	// (which layer it is in: -1 the tree, else its popup's index in the overlay)
+	var layerIndex = -1;
 	// the nearest scroller listed around it (null: none)
 	public var parent(default, null):Null<ScrollView> = null;
 	// (a number of its own, for a platform's side)

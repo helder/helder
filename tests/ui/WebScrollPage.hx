@@ -20,7 +20,7 @@ class WebScrollPage {
 			row.append(c);
 		}
 		page.append(row);
-		var clicks = 0, moves = 0, wheels = 0;
+		var clicks = 0, moves = 0, wheels = 0, popupWheels = 0;
 		for (i in 0...20) {
 			var r = new Node(i == 2 ? "slider" : i == 3 ? "button" : "item" + i);
 			r.style.set({height: 40, shrink: 0, background: Color.rgb(i % 2 == 0 ? 0xf4f4f5 : 0xe4e4e7)});
@@ -42,6 +42,10 @@ class WebScrollPage {
 		w.root.append(page);
 		// (M opens a popup over the page, Escape closes it: the page's scroll view covered meanwhile)
 		var menu = new Popup("menu");
+		menu.onWheel = _ -> {
+			popupWheels++;
+			w.ui.requestFrame();
+		};
 		menu.style.set({width: 160, height: 120, background: Color.rgb(0xffffff)});
 		page.focusable = true;
 		page.onKeyDown = e -> {
@@ -50,7 +54,7 @@ class WebScrollPage {
 		};
 		var last = "";
 		w.onFrame = () -> {
-			var s = 'scroll page=${page.scrollY} row=${row.scrollX} | clicks=$clicks | moves=$moves | wheels=$wheels';
+			var s = 'scroll page=${page.scrollY} row=${row.scrollX} | clicks=$clicks | moves=$moves | wheels=$wheels | popup=$popupWheels';
 			if (s != last) {
 				last = s;
 				Sys.println(s);

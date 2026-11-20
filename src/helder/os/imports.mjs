@@ -301,6 +301,16 @@ export default function (host) {
 		on('wheel', (e) => {
 			// (over a scroll view: its scroll, the browser's)
 			if (over(e) && !e.ctrlKey) return;
+			// (on the canvas over a scroll view's box, a popup's hole cut in it: the program's; the page would
+			// scroll the view under it, Chromium choosing what a wheel scrolls without the clip-path)
+			const l = c.hxmcScrolls;
+			if (!over(e) && l) for (const v of l.children) {
+				const r = v.getBoundingClientRect();
+				if (e.clientX >= r.left && e.clientX < r.right && e.clientY >= r.top && e.clientY < r.bottom) {
+					e.preventDefault();
+					break;
+				}
+			}
 			if (e.ctrlKey) {
 				e.preventDefault();
 				wheeled = true;

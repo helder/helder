@@ -112,17 +112,33 @@ try {
 		await p.keyboard.press('End');
 		s = await state(p);
 		check('the keys\' scroll moves the scroll view', s.page > before && Math.abs(s.views[0][0] - s.page) < 1, JSON.stringify(s));
-		// (a popup over the page: its scroll view takes no input and shows no scrollbar, the page drawing it over the canvas)
-		const bar = () => p.evaluate(() => {
+		// (a popup over the page, centred, 160 by 120 (120, 90 to 280, 210): the scroll view keeps its scrollbar, the popup's box
+		// cut out of it, where a wheel is the popup's, not the page's)
+		const view = () => p.evaluate(() => {
 			const e = [...document.querySelector('canvas').hxmcScrolls.querySelectorAll('div')].find((d) => d.hxmcScroller);
-			return e.style.pointerEvents + ' ' + e.style.scrollbarWidth + ' ' + e.classList.contains('hxmc-nobar');
+			return { events: e.style.pointerEvents, bar: e.classList.contains('hxmc-nobar'), clip: e.style.clipPath, top: e.scrollTop };
 		});
+		await p.keyboard.press('Home');
+		s = await state(p);
+		check('the keys\' glide not stopped by its own scroll told back (Home: at the top)', s.page === 0, JSON.stringify(s));
 		await p.keyboard.press('m');
 		await p.waitForTimeout(300);
-		check('under a popup: no input, no scrollbar', (await bar()) === 'none none true', await bar());
+		let v = await view();
+		check('under a popup: input kept, the popup cut out', v.events === 'auto' && v.clip.includes('path(evenodd'), JSON.stringify(v));
+		await p.waitForTimeout(300);
+		const at = (await state(p)).page;
+		await p.mouse.move(200, 150);
+		await p.mouse.wheel(0, 120);
+		s = await state(p);
+		check('a wheel over the popup is the popup\'s, nothing under it scrolled', s.page === at && s.popup >= 1, JSON.stringify(s));
+		await p.mouse.move(60, 250);
+		await p.mouse.wheel(0, 120);
+		s = await state(p);
+		check('beside it the page scrolls natively', s.page > at, JSON.stringify(s));
 		await p.keyboard.press('Escape');
 		await p.waitForTimeout(300);
-		check('the popup closed: input and the scrollbar back', (await bar()) === 'auto  false', await bar());
+		v = await view();
+		check('the popup closed: nothing cut out', v.clip === '' || v.clip === 'none', JSON.stringify(v));
 		await ctx.close();
 	}
 	// a phone's swipes
