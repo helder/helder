@@ -237,7 +237,9 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
     the program's): their deceleration, bounce (`scrollX`/`scrollY` past
     the ends meanwhile, as Safari's scrollTop), scrollbars or indicators,
     the browser's wheel, trackpad and scroll chaining, iOS's status bar
-    tap. A finger's drag elsewhere is still helder's own. The
+    tap. A finger's drag elsewhere is still helder's own. Android has no
+    scroll views under the tree: there helder's drag glides by Android's
+    own `VelocityTracker` and `OverScroller` (`AndroidGlide`). The
     tree still decides whose drag it is (`Ui.nativeBegins`: none while a
     recogniser of the tree holds a pointer or a node there follows the
     pointer's moves; else the nearest scroller that can move that way,

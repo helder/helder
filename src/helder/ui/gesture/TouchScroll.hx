@@ -15,8 +15,8 @@ class TouchScroll extends Gesture {
 	final ui:Ui;
 	var startX = 0.0;
 	var startY = 0.0;
-	// (the scroll's speed and its glide, points)
-	final g = new helder.os.Glide();
+	// (the scroll's speed and its glide, points: helder's, or the platform's physics, UiWindow's)
+	var g = new helder.os.Glide();
 
 	function new(ui:Ui) {
 		super();

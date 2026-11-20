@@ -42,8 +42,9 @@ typedef SurfaceProps = {
 	// macOS draws by default) or "off" ("antialiased", as CSS's
 	// -webkit-font-smoothing); default the app's (helder.text.Shaping.smoothing)
 	?fontSmoothing:helder.view.graph.Read<String>,
-	// "native": the platform's own scroll views drive the scrollers where
-	// it has them (iOS's UIScrollView: its physics, bounce, indicators);
+	// "native": the platform's own scrolling drives the scrollers where it
+	// has it (iOS's UIScrollView, the browser's: their physics, bounce,
+	// indicators; Android's fling, VelocityTracker and OverScroller);
 	// "helder": helder's own scrolling everywhere; default UiWindow.scrolling's
 	?scrolling:String,
 	?children:UiView
@@ -118,7 +119,8 @@ class UiWindow {
 	var iosScroll:Any = null;
 	var webScroll:Any = null;
 	// the platform's scroll views drive the scrollers of the windows made
-	// (Ui.nativeScroll, where the platform has them: iOS, the browser); false: helder's
+	// (Ui.nativeScroll, where the platform has them: iOS, the browser; Android's
+	// fling physics, AndroidGlide); false: helder's
 	// own scrolling (a Surface's scrolling prop sets a window's)
 	public static var scrolling = true;
 	// the text input area last given to the window ("": off)
@@ -214,6 +216,8 @@ class UiWindow {
 	public function nativeScroll(on:Bool) {
 		#if !helder.headless
 		ui.nativeScroll = on && (Platform.apple() >= 1 || Platform.os() == 3);
+		// (Android: no scroll views under the tree; helder's drag, Android's fling: its VelocityTracker and OverScroller)
+		if (Platform.target() >= 9) @:privateAccess ui.touchScroll.g = on ? new helder.os.android.AndroidGlide() : new helder.os.Glide();
 		ui.requestFrame();
 		#end
 	}

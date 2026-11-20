@@ -5,7 +5,8 @@ package helder.os;
 // glide at that speed, slowing 5% a frame (60 a second) until under half a
 // unit a frame. The units are the caller's (gltf-viewer's pixels, ui's
 // TouchScroll's points); times in ms (any clock). It imports nothing (so
-// that ui takes it without the windows: helder.os.Event's).
+// that ui takes it without the windows: helder.os.Event's). A platform's
+// own physics override it (helder.os.android.AndroidGlide).
 class Glide {
 	// a glide's frame (ms)
 	public static inline var FRAME = 1000 / 60;
@@ -26,7 +27,7 @@ class Glide {
 
 	public function new() {}
 
-	inline function get_gliding():Bool
+	function get_gliding():Bool
 		return gx != 0 || gy != 0;
 
 	// a drag starting at time (a glide stopped)
