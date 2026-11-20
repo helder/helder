@@ -31,6 +31,13 @@ class ScriptAssets {
 	public static function bytes(path:String, ?file:String):Asset<haxe.io.Bytes>
 		return BytesAsset.load(Assets.key(path), file);
 
+	// Load a folder of locale JSON files. Use get(key, params) to read a message.
+	@:definition @:typescript.type("(path: string) => Strings") public static function strings(path:String, ?compiled:String):Strings {
+		if (compiled == null) throw 'Asset.strings("$path") needs a literal path';
+		var project:{fallback:String, sources:Array<helder.asset.Strings.StringSource>} = haxe.Json.parse(compiled.substring(0, compiled.indexOf("\n")));
+		return new Strings(project.fallback, project.sources);
+	}
+
 	// the asset's value once it is loaded (its AssetError if it failed): a promise
 	public static function loaded<T>(asset:Asset<T>):Task<T>
 		return Async.launch(@:coroutine function(_) return asset.load());

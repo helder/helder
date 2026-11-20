@@ -88,7 +88,7 @@ the node tree ([cli](src/helder/cli/README.md), "Headless runs").
 touchpad scrolling; the web's scroll lag and Safari's rubber band.
 
 **Foundations**
-- Localization: the device's locale, string catalogues, plurals, dates and numbers.
+- [Localization](src/helder/os/README.md#localization): the device's locales, string catalogues, plurals, dates and numbers.
 - The platform's settings as signals (text scale, reduced motion,
   contrast, orientation); Android's clipboard.
 

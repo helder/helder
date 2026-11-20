@@ -638,6 +638,34 @@ export default function (host) {
 			'(prefers-reduced-motion: reduce)', '(prefers-contrast: more)', '(prefers-contrast: less)',
 			'(prefers-contrast: custom)', '(prefers-color-scheme: dark)', '(orientation: portrait)', '(orientation: landscape)',
 		].reduce((bits, query, i) => bits | (globalThis.matchMedia?.(query).matches ? 1 << i : 0), 0),
+		locale_languages: () => host.handles.add((globalThis.navigator?.languages ?? []).join(':')),
+		locale_number(value, locale, decimals, percent, currency) {
+			const opts = currency ? { style: 'currency', currency: host.string(currency) } : percent ? { style: 'percent' } : {};
+			if (decimals >= 0) opts.minimumFractionDigits = opts.maximumFractionDigits = decimals;
+			try {
+				return host.handles.add(new Intl.NumberFormat(host.string(locale), opts).format(value));
+			} catch {
+				return 0;
+			}
+		},
+		locale_date(value, locale, date, time) {
+			const styles = [undefined, 'short', 'medium', 'long', 'full'];
+			try {
+				return host.handles.add(new Intl.DateTimeFormat(host.string(locale), { dateStyle: styles[date], timeStyle: styles[time] }).format(value));
+			} catch {
+				return 0;
+			}
+		},
+		locale_watch(changed) {
+			const notify = () => host.call(changed);
+			const foreground = () => { if (!document.hidden) notify(); };
+			globalThis.addEventListener?.('languagechange', notify);
+			globalThis.document?.addEventListener('visibilitychange', foreground);
+			host.onDispose?.(() => {
+				globalThis.removeEventListener?.('languagechange', notify);
+				globalThis.document?.removeEventListener('visibilitychange', foreground);
+			});
+		},
 		apple: () => (/mac|iphone|ipad|ipod/i.test(navigator.userAgentData?.platform || navigator.platform || '') ? 1 : 0),
 		vibrate(ms) {
 			try {

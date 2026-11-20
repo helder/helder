@@ -45,6 +45,7 @@
     "display": {"enum": ["fullscreen", "standalone", "minimal-ui", "browser"]},
     "orientation": {"enum": ["any", "natural", "portrait", "portrait-primary", "portrait-secondary", "landscape", "landscape-primary", "landscape-secondary"]},
     "lang": {"type": "string"},
+    "locale": {"type": "string", "description": "The default language tag for Asset.strings catalogues."},
     "dir": {"enum": ["ltr", "rtl", "auto"]},
     "categories": {"type": "array", "items": {"type": "string"}},
     "fileHandlers": {"type": "array", "description": "The web manifest's file_handlers: the file types the app opens."},

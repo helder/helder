@@ -20,16 +20,17 @@ class Assets {
 
 	// the handle of key's asset of a kind, its load started when it is made
 	// (load: the value from the bundle, or from disk under helder dev)
-	@:noCompletion public static function handle<T>(kind:String, key:String, load:Body<T>, swap:(old:T, fresh:T) -> T):Asset<T> {
+	@:noCompletion public static function handle<T>(kind:String, key:String, load:Body<T>, swap:(old:T, fresh:T) -> T, ?initial:Void->T):Asset<T> {
 		var id = kind + ":" + key;
 		var h:Null<Asset<T>> = cast handles.get(id);
 		if (h != null) return h;
+		var first = initial == null ? null : initial();
 		var a = new Asset<T>(key);
 		handles.set(id, a);
 		var same = keyed.get(key);
 		if (same == null) keyed.set(key, same = []);
 		same.push(cast a);
-		start(a, load, null);
+		if (first == null) start(a, load, null) else a.resolve(first);
 		#if hxmc.dev
 		// (a change helder dev sends: loaded again, put behind the same handle)
 		var list = reloads.get(key);

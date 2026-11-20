@@ -40,7 +40,7 @@ class Settings {
 		if (state == null) {
 			state = new SettingsState(values());
 			#if (target.name == "hxmc" && !helder.headless)
-			if (!musl()) @:privateAccess App.settingsRefresh = refresh;
+			if (!musl()) @:privateAccess App.watchSettings(refresh);
 			#elseif js
 			for (query in queries) {
 				var media = mediaQuery(query);

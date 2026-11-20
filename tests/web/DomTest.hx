@@ -1,4 +1,6 @@
 import helder.os.Settings;
+import helder.os.Locale;
+import helder.os.Format;
 import helder.view.*;
 import helder.view.Flow.*;
 import helder.view.graph.Graph.*;
@@ -51,6 +53,8 @@ class DomTest implements Markup {
 			orientation: Settings.orientation()
 		},
 			v -> js.Syntax.code("window.domSettings = {0}", v));
+		effect(() -> Locale.current(), value -> js.Syntax.code("window.domLocale = {0}", value));
+		check("Locale uses Intl for numbers", Format.number(1234.5, {locale: "ar-EG-u-nu-arab"}) == js.Syntax.code("new Intl.NumberFormat('ar-EG-u-nu-arab').format(1234.5)"));
 		flush();
 		js.Syntax.code("window.domTest = {0}", {checks: checks, failed: failed});
 	}

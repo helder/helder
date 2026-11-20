@@ -43,6 +43,7 @@ const files = {
 	'/web/imports.mjs': pkg('web/imports.mjs'),
 	'/os/browser.mjs': pkg('os/browser.mjs'),
 	'/os/imports.mjs': pkg('os/imports.mjs'),
+	'/async/imports.mjs': pkg('async/imports.mjs'),
 	'/gfx/imports.mjs': pkg('gfx/imports.mjs'),
 	'/text/imports.mjs': pkg('text/imports.mjs'),
 	'/ui/imports.mjs': pkg('ui/imports.mjs'),
@@ -94,6 +95,28 @@ function check(what, ok, detail) {
 	}, null, { timeout: 5000 })
 		.then(() => true).catch(() => false);
 	check('DomTest: settings signals update when media preferences change', settings);
+	await p.evaluate(() => {
+		Object.defineProperty(navigator, 'languages', { value: ['fr-CA', 'en-US'], configurable: true });
+		window.dispatchEvent(new Event('languagechange'));
+	});
+	check('DomTest: locale follows languagechange', await p.evaluate(() => window.domLocale === 'fr-CA'));
+	const locale = await p.evaluate(async () => {
+		const { run } = await import('/os/browser.mjs');
+		const log = [];
+		const { host, exitCode } = await run('/locale.wasm', {
+			imports: ['/os/imports.mjs', '/async/imports.mjs'],
+			assets: '/locale.wasm.assets.json', stdout: line => log.push(line),
+		});
+		const date = 1735819200000;
+		const en = new Intl.DateTimeFormat('en-US', { dateStyle: 'short', timeStyle: 'short' }).format(date);
+		const de = new Intl.DateTimeFormat('de-DE', { dateStyle: 'full', timeStyle: 'medium' }).format(date);
+		Object.defineProperty(navigator, 'languages', { value: ['nl-BE', 'en-US'] });
+		window.dispatchEvent(new Event('languagechange'));
+		host.dispose();
+		return { exitCode, log, expected: `locale: fr-CA,en-US 1,234.50 / 1.234,50 / 25% / ¥200 / ${en} / ${de}` };
+	});
+	check('Wasm locale reads preferences, formats with Intl and bundles catalogues', locale.exitCode === 0 && locale.log.includes(locale.expected), locale);
+	check('Wasm catalogue readers update on languagechange', locale.log.includes('title: Messages') && locale.log.includes('title: Berichten'), locale);
 	await p.close();
 }
 

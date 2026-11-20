@@ -1,0 +1,5 @@
+{
+  "title": "Messages",
+  "hello": "Hello, {name}!",
+  "cart.items": "{count, plural, =0 {Empty cart} one {# item} other {# items}}"
+}

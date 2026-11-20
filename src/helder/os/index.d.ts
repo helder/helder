@@ -6,11 +6,19 @@
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 import type {Read} from "helder/view";
 
-declare const __haxe: {Store: "helder.os.Store", Settings: "helder.os.Settings", Sys: "Sys", __module: "helder.os.TypeScript"};
+declare const __haxe: {Store: "helder.os.Store", Settings: "helder.os.Settings", Locale: "helder.os.Locale", Format: "helder.os.Format", Plural: "helder.os.Plural", Sys: "Sys", __module: "helder.os.TypeScript"};
 
 export type Contrast = "normal" | "more" | "less" | "custom";
 
 export type Orientation = "portrait" | "landscape";
+
+export type Style = "short" | "medium" | "long" | "full";
+
+export type NumberOptions = { decimals?: number; percent?: boolean; currency?: string; locale?: string };
+
+export type DateOptions = { date?: Style; time?: Style; locale?: string };
+
+export type PluralCategory = "zero" | "one" | "two" | "few" | "many" | "other";
 
 // A small key-value store kept between runs: an app's settings, a game's
 // save. Strings by key, read into memory when opened, written through at
@@ -63,6 +71,22 @@ export declare class Settings {
 	static readonly contrast: Read<Contrast>;
 	static readonly dark: Read<boolean>;
 	static readonly orientation: Read<Orientation | null>;
+}
+
+// The device's preferred languages.
+export declare class Locale {
+	static readonly current: Read<string>;
+	// An ordered list of the user's preferred language tags.
+	static preferred(): string[];
+}
+
+export declare class Format {
+	static number(x: number, options?: NumberOptions): string;
+	static date(d: Date, options?: DateOptions): string;
+}
+
+export declare class Plural {
+	static category(locale: string, n: number): PluralCategory;
 }
 
 export declare class Sys {

@@ -194,6 +194,10 @@ class Asset<T> #if !macro implements helder.view.graph.Read.Reader<T> #end {
 	@:definition public static macro function bytes(path:Expr):Expr
 		return AssetDefinition.forward("bytes", path);
 
+	// A folder of locale JSON files with typed message accessors.
+	@:definition public static macro function strings(path:Expr):Expr
+		return AssetDefinition.forward("strings", path);
+
 	// the file's bytes built into the code itself (no bundle, nothing to
 	// load: PackedModel.read(Asset.embed("level.hxm3d"), device)); for small
 	// files, read when compiling and not reloaded

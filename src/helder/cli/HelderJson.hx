@@ -18,6 +18,7 @@ using StringTools;
 //     "splash": {"image": "splash.svg", "background": "#060912", "dark": {"image": "splash-dark.svg", "background": "#000"}},
 //     "display": "fullscreen",             fullscreen, standalone, minimal-ui, browser
 //     "orientation": "landscape",          any, natural, portrait(-primary, -secondary), landscape(-primary, -secondary)
+//     "locale": "en",                   the default language of Asset.strings catalogues
 //     "lang": "en", "dir": "ltr", "categories": ["games"], "fileHandlers": [...] (the web manifest's file_handlers)
 //     "run": {                             helder.run: <name>.helder.run (`helder publish`)
 //       "name": "little-skies",            the address (else name, made a slug)
@@ -49,7 +50,7 @@ class HelderJson {
 
 	static final TOP = [
 		"$schema", "name", "label", "description", "id", "version", "build", "entry", "icon", "colors", "splash", "display", "orientation", "lang", "dir",
-		"categories", "fileHandlers", "run", "targets", "listing"
+		"categories", "fileHandlers", "locale", "run", "targets", "listing"
 	];
 	public static final RUN = ["name", "listed", "kind", "tags", "source", "screenshots"];
 	public static final KINDS = ["game", "app", "tool"];
@@ -69,6 +70,7 @@ class HelderJson {
 		var j:Dynamic = try haxe.Json.parse(text) catch (e:Dynamic) throw '$FILE: not JSON ($e)';
 		if (!isObject(j)) throw '$FILE: not a JSON object';
 		known(j, TOP, "the top level");
+		if (j.locale != null && !Std.isOfType(j.locale, String)) throw '$FILE: locale must be a language tag';
 		var m:Dynamic = {};
 		for (k in ["name", "description", "lang", "dir", "categories", "display", "orientation"]) copy(j, k, m, k);
 		copy(j, "label", m, "short_name");
