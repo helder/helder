@@ -22,6 +22,10 @@ class Client {
 		#if (hxmc.target == "wasm32-wasi")
 		return WebHttp.request(url, options);
 		#end
+		// (Windows: WinHTTP, http and https, the system's proxies and certificates; a ca given: helder's own TLS)
+		#if (target.name == "hxmc" && (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64"))
+		if (options?.ca == null) return WinHttp.request(url, options);
+		#end
 		// (https: the system's stack where there is one; macOS and iOS: AppleHttp)
 		if (StringTools.startsWith(url, "https://")) {
 			#if (target.name == "hxmc" && (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64"))
