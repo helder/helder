@@ -5,7 +5,7 @@
 import type {Image} from "helder/asset";
 import type {Read, RootView, Signal, View} from "helder/view";
 
-declare const __haxe: {Svg: "helder.canvas.Svg", UiWindow: "helder.ui.draw.UiWindow", Event: "helder.ui.Event", Key: "helder.ui.Key", VirtualScroll: "helder.ui.VirtualScroll", Clock: "helder.ui.Clock", WebViewEvent: "helder.ui.platform.WebViewEvent", WebContent: "helder.ui.platform.WebContent", WebResponse: "helder.ui.platform.WebResponse", Node: "helder.ui.Node", TextNode: "helder.ui.TextNode", UiFlow: "helder.ui.view.UiFlow", SafeArea: "helder.ui.SafeArea", Controls: "helder.ui.widgets.Controls", DataGrid: "helder.ui.widgets.DataGrid", EditableText: "helder.ui.widgets.EditableText", GridColumn: "helder.ui.widgets.GridColumn", GridTheme: "helder.ui.widgets.GridTheme", Icons: "helder.ui.widgets.Icons", Pager: "helder.ui.widgets.Pager", TextArea: "helder.ui.widgets.TextArea", TextField: "helder.ui.widgets.TextField", Theme: "helder.ui.widgets.Theme", WindowButtons: "helder.ui.widgets.WindowButtons", CodeActions: "helder.ui.code.CodeAction.CodeActions", CodeCompletion: "helder.ui.code.CodeCompletion", CodeEditor: "helder.ui.code.CodeEditor", CodeLanguage: "helder.ui.code.CodeLanguage", SyntaxLanguage: "helder.ui.code.CodeLanguage.SyntaxLanguage", CodeLanguages: "helder.ui.code.CodeLanguage.CodeLanguages", Sel: "helder.ui.code.CodeModel.Sel", Decoration: "helder.ui.code.CodeModel.Decoration", CodeDiagnostic: "helder.ui.code.CodeModel.CodeDiagnostic", ShapedLine: "helder.ui.code.CodeModel.ShapedLine", CodeModel: "helder.ui.code.CodeModel", CodeTheme: "helder.ui.code.CodeTheme", CodeView: "helder.ui.code.CodeView", Rope: "helder.ui.code.Rope", SqlLanguage: "helder.ui.code.SqlLanguage", __module: "helder.ui.TypeScript"};
+declare const __haxe: {Svg: "helder.canvas.Svg", UiWindow: "helder.ui.draw.UiWindow", Event: "helder.ui.Event", Key: "helder.ui.Key", VirtualScroll: "helder.ui.VirtualScroll", Clock: "helder.ui.Clock", WebViewEvent: "helder.ui.platform.WebViewEvent", WebContent: "helder.ui.platform.WebContent", WebResponse: "helder.ui.platform.WebResponse", Node: "helder.ui.Node", TextNode: "helder.ui.TextNode", UiFlow: "helder.ui.view.UiFlow", SafeArea: "helder.ui.SafeArea", Router: "helder.ui.nav.Router", Controls: "helder.ui.widgets.Controls", DataGrid: "helder.ui.widgets.DataGrid", EditableText: "helder.ui.widgets.EditableText", GridColumn: "helder.ui.widgets.GridColumn", GridTheme: "helder.ui.widgets.GridTheme", Icons: "helder.ui.widgets.Icons", Pager: "helder.ui.widgets.Pager", TextArea: "helder.ui.widgets.TextArea", TextField: "helder.ui.widgets.TextField", Theme: "helder.ui.widgets.Theme", WindowButtons: "helder.ui.widgets.WindowButtons", CodeActions: "helder.ui.code.CodeAction.CodeActions", CodeCompletion: "helder.ui.code.CodeCompletion", CodeEditor: "helder.ui.code.CodeEditor", CodeLanguage: "helder.ui.code.CodeLanguage", SyntaxLanguage: "helder.ui.code.CodeLanguage.SyntaxLanguage", CodeLanguages: "helder.ui.code.CodeLanguage.CodeLanguages", Sel: "helder.ui.code.CodeModel.Sel", Decoration: "helder.ui.code.CodeModel.Decoration", CodeDiagnostic: "helder.ui.code.CodeModel.CodeDiagnostic", ShapedLine: "helder.ui.code.CodeModel.ShapedLine", CodeModel: "helder.ui.code.CodeModel", CodeTheme: "helder.ui.code.CodeTheme", CodeView: "helder.ui.code.CodeView", Rope: "helder.ui.code.Rope", SqlLanguage: "helder.ui.code.SqlLanguage", Screens: "helder.ui.nav.Screens", __module: "helder.ui.TypeScript"};
 
 // An SVG document for icons and drawings: parsed once (Svg.parse), drawn
 // into an Image at any size (the Image's drawing: this, for a writer's vectors; render: the viewBox fitted as
@@ -25,6 +25,14 @@ declare const __haxe: {Svg: "helder.canvas.Svg", UiWindow: "helder.ui.draw.UiWin
 export declare class Svg {
 	private readonly svg: never;
 }
+
+// (a route's params as its path names them: "/product/:id" gives {id: string})
+export type RouteParams<P> = P extends `${string}:${infer K}/${infer R}` ? {[k in K]: string} & RouteParams<`/${R}`> : P extends `${string}:${infer K}` ? {[k in K]: string} : {};
+
+// how a Stack's screens come and go: the platform's slide (iOS's and
+// macOS's from the right edge over the one below; Android's a short slide
+// and a fade), a fade (the desktop's and the web's), or none
+export type StackTransition = "slide" | "fade" | "none";
 
 // a suggestion: what it shows, a quieter detail (a kind, a type), what it puts in (else its label)
 export type Completion = { label: string; detail?: string; insert?: string };
@@ -738,6 +746,30 @@ export declare class SafeArea {
 	// value with each env() replaced by its pixels (of e, t), then calc(), max()
 	// and min() of pixels folded
 	static resolve(value: string, e: unknown, t?: unknown): string;
+}
+
+// Screens by path, kept as a stack (helder.ui.Stack shows it): routes are
+// matched in the order they were added, a segment ":name" taking any one
+// segment (its value given to the route, decoded), the fallback any path
+// none matched. go pushes, back pops (false at the root), replace swaps
+// the top, reset starts a new stack, open a link's (a full URL or a path):
+// the root and the matched route. Each entry's screen is made once, when
+// it is pushed. Haxe's helder.ui.Router types a route's params by its path.
+export declare class Router {
+	constructor();
+	// the top's path (without its query), how many entries are above the root, the top's query
+	readonly path: Read<string>;
+	readonly depth: Read<number>;
+	readonly query: Read<Record<string, string>>;
+	// a route: render given its params (an object of the path's names, each a string)
+	route: <P extends string>(path: P, render: (params: RouteParams<P>) => View) => Router;
+	// what a path no route matches shows (else go throws)
+	fallback(render: (path: string) => View): Router;
+	go(path: string): void;
+	back(): boolean;
+	replace(path: string): void;
+	reset(path: string): void;
+	open(url: string): void;
 }
 
 // Small controls with their look by slot (Theme's): a slider, a
@@ -1678,6 +1710,18 @@ export declare class SqlLanguage {
 	lineComment(): string | null;
 	tokenize(line: string, state: number, out: number[]): number;
 }
+
+// A router's stack on screen (helder.ui.Stack): each entry mounted once,
+// kept below the top (hidden once covered, its state and scroll as they
+// were), disposed after its exit. While deep it is the system's back
+// (App.onBack, App.backDepth: Android's back, Escape, the browser's
+// history: an entry a push); on iOS's slide a drag from the left edge
+// pops it as it goes.
+export declare class Screens {
+	static Stack(props: { router: Router; transition?: StackTransition }): View;
+}
+
+export declare const Stack: typeof Screens.Stack;
 
 // a neutral element's attributes: any, its handlers given ui's events (helder.ui.view.NodeEvents)
 export interface NeutralAttributes {

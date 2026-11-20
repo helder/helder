@@ -68,6 +68,16 @@ import hxmc.unsafe.*;
 	// history.back()): its popstate, the back button's, calls back (a
 	// @:hxmc.callback ():Int, 1 taken, 0 not: then the page's back)
 	static function back_depth(deep:Int, back:Ptr):Void;
+	// the page's history an app's own (helder.os.History; nil: no longer):
+	// its back and forward call popped (a @:hxmc.callback (steps):Int, how
+	// many entries back), back_depth's entry kept no more meanwhile; an
+	// entry pushed (push 1) or the current one replaced (0), url its path;
+	// n entries back (history.go), its popstate not the app's
+	static function history_own(popped:Ptr):Void;
+	static function history_push(url:CString, push:Int):Void;
+	static function history_go(n:Int):Void;
+	// the page's path and query (a string handle)
+	static function location():Int;
 	// requestAnimationFrame calls frame (a @:hxmc.callback ():Int) until it returns 0
 	static function start(frame:Ptr):Void;
 	// gamepad i's buttons (17 Float32: their values, 0 to 1) then axes (4

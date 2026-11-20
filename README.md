@@ -84,7 +84,9 @@ the node tree ([cli](src/helder/cli/README.md), "Headless runs").
 
 ## Roadmap
 
-**Lately**: http, https and WebSockets on each platform's own stack;
+**Lately**: [navigation](src/helder/ui/README.md#navigation): routes, a
+stack with the system's back, transitions, URLs and deep links; http,
+https and WebSockets on each platform's own stack;
 [localization](src/helder/os/README.md#localization); the platform's
 settings as signals; Android's clipboard.
 
@@ -105,7 +107,6 @@ scroll lag and Safari's rubber band.
   manifests), so that its users need no Xcode or Android SDK.
 
 **Apps**
-- Navigation: routes, a stack with the system's back, transitions, URLs, deep links.
 - Text input on phones: iOS composition, keyboard types, the keyboard's insets.
 - Standard controls (button, checkbox, select, tabs, dialog...) and forms.
 - Effects on nodes: blur, backdrop blur, filters, clip paths, shaders.

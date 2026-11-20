@@ -487,7 +487,7 @@ export default function (host) {
 	const back = {
 		f: 0, want: false, pushed: false, leaving: false, watching: false,
 		sync() {
-			if (back.leaving) return;
+			if (back.leaving || route.f) return;
 			if (back.want && !back.pushed) {
 				history.pushState({ helderBack: 1 }, '');
 				back.pushed = true;
@@ -497,6 +497,18 @@ export default function (host) {
 				history.back();
 			}
 		},
+	};
+
+	// helder.os.History's: the page's history an app's own (f its popped
+	// callback), its entries' states {helderRoute: index}; while waiting
+	// (history.go asked, its popstate not yet come) what is asked queues
+	const route = {
+		f: 0, index: 0, base: 0, waiting: false, watching: false, queue: [],
+		run(op) {
+			if (route.waiting) route.queue.push(op);
+			else op();
+		},
+		at: (state) => (state && typeof state.helderRoute === 'number' ? state.helderRoute : 0),
 	};
 
 	const hxmc_os = {
@@ -791,6 +803,49 @@ export default function (host) {
 			document.addEventListener('visibilitychange', told);
 			if (document.hidden) told();
 		},
+		history_own(f) {
+			route.f = f;
+			route.index = route.base = route.at(history.state);
+			route.queue = [];
+			route.waiting = false;
+			if (!f || route.watching) return;
+			route.watching = true;
+			addEventListener('popstate', (e) => {
+				if (!route.f) return;
+				if (route.waiting) {
+					route.waiting = false;
+					while (route.queue.length > 0 && !route.waiting) route.queue.shift()();
+					return;
+				}
+				const i = route.at(e.state);
+				// (forward: not the app's to redo)
+				if (i > route.index) {
+					route.run(() => {
+						route.waiting = true;
+						history.go(route.index - i);
+					});
+					return;
+				}
+				const steps = route.index - Math.max(i, route.base);
+				route.index = Math.max(i, route.base);
+				if (steps > 0) host.call(route.f, steps);
+			});
+		},
+		history_push(p, push) {
+			const url = host.string(p);
+			route.run(() => {
+				if (push) history.pushState({ helderRoute: ++route.index }, '', url);
+				else history.replaceState({ ...(history.state || {}), helderRoute: route.index }, '', url);
+			});
+		},
+		history_go(n) {
+			route.run(() => {
+				route.index += n;
+				route.waiting = true;
+				history.go(n);
+			});
+		},
+		location: () => host.handles.add(location.pathname + location.search),
 		back_depth(deep, f) {
 			back.f = f;
 			back.want = deep === 1;
