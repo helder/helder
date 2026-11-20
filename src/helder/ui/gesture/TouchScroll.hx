@@ -46,12 +46,22 @@ class TouchScroll extends Gesture {
 		var ddx = -pendX, ddy = -pendY;
 		pendX = pendY = 0;
 		g.move(ddx, ddy, time * 1000);
-		ui.wheel(startX, startY, ddx, ddy);
+		// (Android's: past an end it stretches)
+		if (ui.stretch) {
+			@:privateAccess ui.stretcher.drag(startX, startY, ddx, ddy);
+			helder.view.graph.Graph.flush();
+		} else ui.wheel(startX, startY, ddx, ddy);
 	}
 
 	override function lifted(cancelled:Bool) {
 		if (!active) return;
 		state = cancelled ? Cancelled : Ended;
+		// (a stretch held: it springs back at the drag's speed, no fling)
+		if (ui.stretch && @:privateAccess ui.stretcher.held()) {
+			var s = @:privateAccess ui.stretcher, v = Std.isOfType(g, helder.os.AndroidFling) ? (cast g : helder.os.AndroidFling).velocity(time * 1000) : {x: 0.0, y: 0.0};
+			@:privateAccess s.release(cancelled ? 0 : @:privateAccess s.alongX ? v.x : v.y);
+			return;
+		}
 		// (its frames: Ui.update steps it)
 		if (!cancelled && g.release(time * 1000)) ui.requestFrame();
 	}
@@ -61,7 +71,13 @@ class TouchScroll extends Gesture {
 
 	// the glide's scroll up to now (ms): whether it still glides
 	function glide(now:Float):Bool {
-		if (g.step(now)) ui.wheel(startX, startY, g.dx, g.dy);
+		if (!g.step(now)) return gliding;
+		// (Android's: a fling into an end stops there, its speed a stretch's)
+		if (ui.stretch && Std.isOfType(g, helder.os.AndroidFling)) {
+			var f:helder.os.AndroidFling = cast g;
+			if (!@:privateAccess ui.stretcher.glide(startX, startY, g.dx, g.dy, f.speedX, f.speedY)) g.stop();
+			helder.view.graph.Graph.flush();
+		} else ui.wheel(startX, startY, g.dx, g.dy);
 		return gliding;
 	}
 

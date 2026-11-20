@@ -56,6 +56,11 @@ class Trackpad {
 	var springVX = 0.0;
 	var springVY = 0.0;
 	var springing = false;
+	// (which end each axis springs back to: its sign)
+	var edgeX = 0.0;
+	var edgeY = 0.0;
+	var hitX = false;
+	var hitY = false;
 
 	function new(ui:Ui)
 		this.ui = ui;
@@ -63,7 +68,12 @@ class Trackpad {
 	// a Scroll of a trackpad's at x, y (its deltas: the scroll's way) in its
 	// phases, at time (Ui.now's clock): whether it was taken
 	function scroll(x:Float, y:Float, dx:Float, dy:Float, phase:Int, momentum:Int, time:Float):Bool {
+		// (fingers moving with no Began before: a gesture begins, as Wayland's touchpads give none)
+		if (phase == ScrollPhase.Changed && !inGesture) scroll(x, y, 0, 0, ScrollPhase.Began, 0, time);
 		if (phase == ScrollPhase.Began) {
+			inGesture = true;
+			history.resize(0);
+			stopKinetic();
 			stopMomentum();
 			// (a spring back caught: its stretch pushed on from where it is)
 			if (springing && node != null) {
@@ -87,7 +97,10 @@ class Trackpad {
 			return true;
 		}
 		if (phase == ScrollPhase.Ended || phase == ScrollPhase.Cancelled) {
+			inGesture = false;
 			if (node != null && (stretchX(node) != 0 || stretchY(node) != 0)) springBack(time);
+			// (no momentum of the system's: the glide ours, GTK's)
+			else if (node != null && ui.kinetic && phase == ScrollPhase.Ended) kinetic(time);
 			return node != null;
 		}
 		if (momentum == ScrollPhase.Began) {
@@ -130,8 +143,12 @@ class Trackpad {
 		return first;
 	}
 
-	// the speed (points a second) from the gesture's moves, smoothed
+	// the speed (points a second) from the gesture's moves, smoothed; their
+	// last 150 ms kept (GTK's kinetic glide's speed)
 	function track(dx:Float, dy:Float, time:Float) {
+		history.push(time);
+		history.push(dx);
+		history.push(dy);
 		if (lastAt >= 0) {
 			var dt = Math.max(0.001, time - lastAt);
 			vx = 0.8 * (dx / dt) + 0.2 * vx;
@@ -147,7 +164,7 @@ class Trackpad {
 		var alongY = Math.abs(dy) >= Math.abs(dx);
 		if (Scrolling.maxScroll(n, true) <= 0) dx = 0;
 		if (Scrolling.maxScroll(n, false) <= 0) dy = 0;
-		var x = axis(n, true, dx, !alongY), y = axis(n, false, dy, alongY);
+		var x = axis(n, true, dx, !alongY && ui.elastic), y = axis(n, false, dy, alongY && ui.elastic);
 		Scrolling.moved(ui, n, x - Scrolling.scrollStart(n, true), y);
 	}
 
@@ -284,13 +301,17 @@ class Trackpad {
 		var n = node;
 		if (n == null) return;
 		// (held still a while before letting go: no speed, as Chromium zeroes it after 100 ms)
-		if (!replaying && lastAt >= 0 && time - lastAt > 0.1) vx = vy = 0;
+		if (!replaying && !fromGlide && lastAt >= 0 && time - lastAt > 0.1) vx = vy = 0;
 		springAt = time;
 		springX = stretchX(n);
 		springY = stretchY(n);
 		// (its speed only on the stretched axes, outwards or back as it was)
-		springVX = springX != 0 ? vx : 0;
-		springVY = springY != 0 ? vy : 0;
+		// (a glide into an end: from that end, out at its speed, on the axes it hit)
+		springVX = springX != 0 || fromGlide && hitX ? vx : 0;
+		springVY = springY != 0 || fromGlide && hitY ? vy : 0;
+		edgeX = springX != 0 ? springX : springVX;
+		edgeY = springY != 0 ? springY : springVY;
+		fromGlide = false;
 		forceX = forceY = 0;
 		if (springing) return;
 		springing = true;
@@ -299,13 +320,19 @@ class Trackpad {
 			if (!springing || n == null) return springing = false;
 			var dt = Math.max(0, Ui.now() - springAt), damp = Math.exp(-dt * STIFFNESS / PERIOD);
 			var sx = (springX + springVX * dt * AMPLITUDE) * damp, sy = (springY + springVY * dt * AMPLITUDE) * damp;
+			// (GTK's overshoot where it is not AppKit's: critically damped, OVERSHOOT its friction)
+			if (!ui.elastic) {
+				var h = OVERSHOOT / 2, g = Math.exp(-h * dt);
+				sx = g * (springX + (springVX + h * springX) * dt);
+				sy = g * (springY + (springVY + h * springY) * dt);
+			}
 			if (Math.abs(sx) < 0.5) sx = 0;
 			if (Math.abs(sy) < 0.5) sy = 0;
 			var lo = Scrolling.scrollStart(n, true), maxX = Scrolling.maxScroll(n, true), maxY = Scrolling.maxScroll(n, false);
-			var x = springX < 0 ? lo + sx : springX > 0 ? lo + maxX + sx : n.scrollX;
-			var y = springY < 0 ? sy : springY > 0 ? maxY + sy : n.scrollY;
+			var x = edgeX < 0 ? lo + sx : edgeX > 0 ? lo + maxX + sx : n.scrollX;
+			var y = edgeY < 0 ? sy : edgeY > 0 ? maxY + sy : n.scrollY;
 			Scrolling.moved(ui, n, x - lo, y);
-			if (sx == 0 && sy == 0) return springing = false;
+			if (sx == 0 && sy == 0 && dt > 0) return springing = false;
 			return true;
 		});
 	}
@@ -314,8 +341,76 @@ class Trackpad {
 	function holds(n:Node):Bool
 		return n == node && (springing || forceX != 0 || forceY != 0);
 
+	// ---- the kinetic glide, ours where the system has no momentum (Linux:
+	// GTK's, gtkkineticscrolling.c: the speed of the last 150 ms of moves,
+	// x(t) = v / 4 (1 - e^(-4 t)), over under 1 point a second; an end
+	// reached bouncing past it, GTK's overshoot)
+
+	var inGesture = false;
+	// (a spring back from a glide into an end: its speed the glide's)
+	var fromGlide = false;
+	final history:Array<Float> = [];
+	var kineticAt = -1.0;
+	var kineticVX = 0.0;
+	var kineticVY = 0.0;
+	var kineticDoneX = 0.0;
+	var kineticDoneY = 0.0;
+	var gliding = false;
+
+	static inline var DECELERATION = 4.0;
+	static inline var OVERSHOOT = 20.0;
+
+	function kinetic(time:Float) {
+		var sx = 0.0, sy = 0.0, first = time;
+		var i = 0;
+		while (i < history.length) {
+			if (time - history[i] <= 0.15) {
+				first = Math.min(first, history[i]);
+				sx += history[i + 1];
+				sy += history[i + 2];
+			}
+			i += 3;
+		}
+		var span = Math.max(1 / 60, time - first);
+		kineticVX = sx / span;
+		kineticVY = sy / span;
+		if (Math.sqrt(kineticVX * kineticVX + kineticVY * kineticVY) < 1) return;
+		kineticAt = time;
+		kineticDoneX = kineticDoneY = 0;
+		if (gliding) return;
+		gliding = true;
+		Clock.addTo(ui.context, t -> {
+			var n = node;
+			if (!gliding || n == null) return gliding = false;
+			var dt = Math.max(0, Ui.now() - kineticAt), e = Math.exp(-DECELERATION * dt);
+			var ox = kineticVX / DECELERATION * (1 - e), oy = kineticVY / DECELERATION * (1 - e);
+			var dx = ox - kineticDoneX, dy = oy - kineticDoneY;
+			kineticDoneX = ox;
+			kineticDoneY = oy;
+			var bx = n.scrollX, by = n.scrollY;
+			push(n, dx, dy);
+			// (an end reached: GTK's overshoot, past it at the speed it came with and back)
+			hitX = Math.abs(n.scrollX - bx - dx) > 0.5;
+			hitY = Math.abs(n.scrollY - by - dy) > 0.5;
+			if (hitX || hitY) {
+				vx = kineticVX * e;
+				vy = kineticVY * e;
+				fromGlide = true;
+				gliding = false;
+				springBack(Ui.now());
+				return false;
+			}
+			if (Math.abs(kineticVX * e) < 1 && Math.abs(kineticVY * e) < 1) return gliding = false;
+			return true;
+		});
+	}
+
+	function stopKinetic()
+		gliding = false;
+
 	// (a node leaving the tree, the platform's own scrolling taking over: let go)
 	function reset() {
+		stopKinetic();
 		stopMomentum();
 		springing = false;
 		node = null;

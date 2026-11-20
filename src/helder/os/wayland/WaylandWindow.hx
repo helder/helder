@@ -90,6 +90,12 @@ class WaylandWindow {
 	static var scrollY = 0.0;
 	static var scroll120X = 0;
 	static var scroll120Y = 0;
+	// (the frame's scroll from a touchpad's fingers, axis_source 1; a gesture of them under way;
+	// its fingers lifted, axis_stop; its time)
+	static var scrollFinger = false;
+	static var fingering = false;
+	static var scrollStop = false;
+	static var scrollTime = 0.0;
 	// xkbcommon's context, keymap, state; the modifiers' indices
 	static var xkbContext = Ptr.nil();
 	static var xkbKeymap = Ptr.nil();
@@ -297,11 +303,21 @@ class WaylandWindow {
 				ev.y = Math.round(py * w.scale());
 				ev.mods = mods;
 			};
-			e.axis = (time, axis, value) -> if (axis == 0) scrollY += value else scrollX += value;
+			e.axis = (time, axis, value) -> {
+				scrollTime = time;
+				if (axis == 0) scrollY += value else scrollX += value;
+			};
+			e.axisSource = s -> scrollFinger = s == 1;
+			e.axisStop = (time, axis) -> {
+				scrollTime = time;
+				scrollStop = true;
+			};
 			e.axisValue120 = (axis, v) -> if (axis == 0) scroll120Y += v else scroll120X += v;
 			e.frame = () -> {
 				var w = pointerIn;
-				if (w != null && !pointerOnBar && (scrollX != 0 || scrollY != 0 || scroll120X != 0 || scroll120Y != 0)) {
+				var moved = scrollX != 0 || scrollY != 0 || scroll120X != 0 || scroll120Y != 0;
+				// (a touchpad's fingers: a gesture, Changed as they move, Ended at axis_stop, as macOS's phases: the kinetic glide after the program's)
+				if (w != null && !pointerOnBar && (moved || scrollStop && fingering)) {
 					var ev = take(w, Scroll);
 					var k = w.scale();
 					// (a wheel's notch is 40 pixels, as helder's elsewhere; a touchpad's motion as given)
@@ -310,9 +326,15 @@ class WaylandWindow {
 					ev.x = Math.round(px * k);
 					ev.y = Math.round(py * k);
 					ev.mods = mods;
+					ev.time = scrollTime;
+					if (scrollFinger || fingering) {
+						fingering = !scrollStop;
+						ev.phase = scrollStop ? ScrollPhase.Ended : ScrollPhase.Changed;
+					}
 				}
 				scrollX = scrollY = 0;
 				scroll120X = scroll120Y = 0;
+				scrollFinger = scrollStop = false;
 			};
 			pointer.listen(e);
 			if (!cursorShapes.isNull()) cursorDevice = cursorShapes.getPointer(pointer);
@@ -1057,6 +1079,8 @@ class WaylandWindow {
 		e.x = e.y = 0;
 		e.button = 0;
 		e.deltaX = e.deltaY = 0;
+		e.phase = e.momentum = 0;
+		e.time = 0;
 		e.mods = 0;
 		e.text = "";
 		e.pointer = null;
