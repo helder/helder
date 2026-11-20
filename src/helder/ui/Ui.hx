@@ -1258,7 +1258,16 @@ class Ui {
 	// system's momentum replayed at the frames' times): UiWindow's on macOS
 	// (false: each scroll as a wheel's)
 	public var elastic = false;
+	// a touchpad's scrolls as GTK's kinetic scrolling takes them (Trackpad:
+	// one scroller a gesture, our glide once the fingers lift, a bounce at an
+	// end): UiWindow's on Linux's Wayland, whose touchpads say when they lift
+	public var kinetic = false;
 	final trackpad:Trackpad;
+	// (the scroller a wheel latched to and its last scroll's time: Chromium's half a second)
+	var wheelLatch:Null<Node> = null;
+	var wheelAt = -1e9;
+	static inline var WHEEL_LATCH = 0.5;
+
 	// a touch's drag past a scroller's end stretches it, as Android 12's
 	// (Stretch: UiWindow's on Android)
 	public var stretch = false;
@@ -1271,7 +1280,7 @@ class Ui {
 	function wheelNow(x:Float, y:Float, deltaX:Float, deltaY:Float, eased:Bool, mods = -1, phase = 0, momentum = 0, time = 0.0) {
 		overNode = null;
 		overX = overY = 0;
-		var phased = elastic && (phase != 0 || momentum != 0) && (mods >= 0 ? mods : this.mods) & Key.MOD_CONTROL == 0;
+		var phased = (elastic || kinetic) && (phase != 0 || momentum != 0) && (mods >= 0 ? mods : this.mods) & Key.MOD_CONTROL == 0;
 		var target = hit(x, y);
 		if (phased) {
 			// (the tree hears the moves, the momentum's too, and may keep them: no scroll then)
@@ -1294,7 +1303,23 @@ class Ui {
 		e.eased = eased;
 		bubble(e);
 		if (e.defaultPrevented) return;
+		// (a wheel's scrolls latched to the scroller it moved until it rests half a second, as Chromium's: not
+		// into one it passes over, nor out of it at its end)
+		var latched = wheelLatch != null && now() - wheelAt < WHEEL_LATCH && contains(root, wheelLatch) ? wheelLatch : null;
+		wheelAt = now();
+		if (latched != null) {
+			if (Scrolling.canScroll(latched, deltaX, true) || Scrolling.canScroll(latched, deltaY, false))
+				Scrolling.wheel(this, latched, deltaX, deltaY, eased);
+			else {
+				// (at its end: all of it past that end, Stretch's)
+				overNode = latched;
+				overX = deltaX;
+				overY = deltaY;
+			}
+			return;
+		}
 		Scrolling.wheel(this, target, deltaX, deltaY, eased);
+		wheelLatch = Scrolling.wheelNode;
 	}
 
 	// whether a wheel at x, y by deltaX, deltaY would scroll something: a

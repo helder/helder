@@ -228,6 +228,10 @@ class UiWindow {
 		#if !helder.headless
 		ui.nativeScroll = on && (Platform.apple() >= 1 || Platform.os() == 3);
 		// (macOS: no scroll views under the tree; its trackpad's gestures and momentum taken as its own views take them, Trackpad's, and its overlay scrollbars)
+		// (Linux's touchpads, Wayland's: GTK's kinetic glide)
+		if (Platform.os() == 0) {
+			if (Platform.target() < 9) ui.kinetic = on;
+		}
 		// (nested: only a constant condition drops the branch, its AppKit calls with it)
 		if (Platform.os() == 1) {
 			if (Platform.apple() < 1) {

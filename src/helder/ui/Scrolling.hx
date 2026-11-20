@@ -9,10 +9,15 @@ package helder.ui;
 @:access(helder.ui.Ui)
 class Scrolling {
 	// the wheel's scroll from target: its nearest scroller that can move that way
+	// (the scroller the last wheel moved: Ui's latch)
+	static var wheelNode:Null<Node> = null;
+
 	static function wheel(ui:Ui, target:Node, deltaX:Float, deltaY:Float, eased = false) {
+		wheelNode = null;
 		var n = target;
 		while (n != null) {
 			if (n.style.overflow == Scroll && (canScroll(n, deltaX, true) || canScroll(n, deltaY, false))) {
+				wheelNode = n;
 				// (a mouse's notch: glided to, slowing, from where a glide is heading)
 				if (eased) {
 					scrollBy(ui, n, deltaX, deltaY, true);

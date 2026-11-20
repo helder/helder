@@ -242,7 +242,13 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
     physics, ported as Chromium and Flutter port them (`AndroidFling`:
     a least-squares speed, OverScroller's spline), and stretches past an
     end as Android 12's (`Stretch`, `Ui.stretch`: Flutter's curve and
-    spring, a scale anchored at that end). On macOS
+    spring, a scale anchored at that end). On Linux's Wayland a
+    touchpad's scrolls are a gesture (`Ui.kinetic`: `axis_source` finger,
+    `axis_stop` its end) gliding on once the fingers lift as GTK's
+    kinetic scrolling (its speed over the last 150 ms, `v / 4 (1 -
+    e^(-4t))`, a bounce at an end). A wheel's scrolls stay with the
+    scroller they moved until the wheel rests half a second (Chromium's
+    latching). On macOS
     (`Ui.elastic`, `Trackpad`) a trackpad's gesture goes to one scroller,
     stretches past its ends by AppKit's measured curve and springs back,
     its momentum the system's replayed at the frames' times; the

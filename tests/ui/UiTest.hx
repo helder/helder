@@ -755,6 +755,36 @@ class UiTest {
 		frames(0.5);
 		check("trackpad: the wheel's notches all scrolled in the end", page.scrollY == 120, "" + page.scrollY);
 		ui.elastic = true;
+		// (Linux's touchpads, GTK's kinetic glide: no Began, Changed moves, Ended at the fingers' lift; the glide v / 4 on,
+		// a glide into an end bouncing past it and back)
+		ui.elastic = false;
+		ui.kinetic = true;
+		page.scrollY = 0;
+		time += 1;
+		for (i in 0...5) {
+			wheel(10, 2);
+			time += 0.02;
+		}
+		wheel(0, 3);
+		var lifted = page.scrollY;
+		frames(3);
+		// (50 over the last 100 ms: 500 a second, 125 more)
+		check("trackpad: Linux's glide after the lift, GTK's", lifted == 50 && Math.abs(page.scrollY - 175) < 1.5, lifted + " " + page.scrollY);
+		time += 1;
+		for (i in 0...5) {
+			wheel(15, 2);
+			time += 0.01;
+		}
+		wheel(0, 3);
+		var top = 0.0;
+		for (i in 0...120) {
+			time += 1 / 120;
+			Clock.tick(time);
+			top = Math.max(top, page.scrollY);
+		}
+		check("trackpad: a glide into the end bounces past it, back at the end", top > 240 && page.scrollY == 240, top + " " + page.scrollY);
+		ui.kinetic = false;
+		ui.elastic = true;
 		// (overlay scrollbars: shown as it moves, gone a while after)
 		ui.update();
 		ui.paint(new Recording());
@@ -808,8 +838,11 @@ class UiTest {
 		check("android: a drag past the start stretches, Flutter's curve", page.scrollY == 0 && Math.abs(@:privateAccess st.amount - want) < 1e-9, @:privateAccess st.amount + " " + want);
 		@:privateAccess st.drag(50, 50, 0, 70);
 		check("android: pulled back, the stretch gives first, then it scrolls", @:privateAccess st.amount == 0 && page.scrollY == 20, @:privateAccess st.amount + " " + page.scrollY);
-		@:privateAccess st.drag(50, 50, 0, 400);
+		@:privateAccess st.drag(50, 50, 0, 200);
 		check("android: past the end, stretched the other way", page.scrollY == 200 && @:privateAccess st.amount > 0);
+		var before = @:privateAccess st.amount;
+		@:privateAccess st.drag(50, 50, 0, 30);
+		check("android: pushed on at the end (the drag latched to it), stretched further", @:privateAccess st.amount > before, before + " " + @:privateAccess st.amount);
 		@:privateAccess st.release(0);
 		for (i in 0...120) {
 			time += 1 / 60;
