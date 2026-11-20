@@ -24,11 +24,11 @@ class PermissionsApple {
 		var s = switch p {
 			case Camera | Microphone:
 				av(Msg.iPtr(load("AVFoundation", "AVCaptureDevice"), ObjC.sel("authorizationStatusForMediaType:"), media(p)));
-			case Photos:
+			case PhotoLibrary:
 				photos(Msg.iInt(load("Photos", "PHPhotoLibrary"), ObjC.sel("authorizationStatusForAccessLevel:"), 2));
 			case Location:
 				location();
-			case Notifications:
+			case Notify:
 				var center = notifications();
 				if (center.isNull()) Unsupported else {
 					var done = Dispatch.dispatch_semaphore_create(0), state = -1;
@@ -55,13 +55,13 @@ class PermissionsApple {
 				case Camera | Microphone:
 					var answer:Block<Bool->Void> = granted -> done(granted ? Granted : Denied);
 					Msg.vPtrPtr(load("AVFoundation", "AVCaptureDevice"), ObjC.sel("requestAccessForMediaType:completionHandler:"), media(p), cast answer);
-				case Photos:
+				case PhotoLibrary:
 					var answer:Block<haxe.Int64->Void> = state -> done(photos(state));
 					Msg.vIntPtr(load("Photos", "PHPhotoLibrary"), ObjC.sel("requestAuthorizationForAccessLevel:handler:"), 2, cast answer);
 				case Location:
 					located = done;
 					Msg.v(manager(), ObjC.sel("requestWhenInUseAuthorization"));
-				case Notifications:
+				case Notify:
 					var answer:Block<(Bool, Ptr) -> Void> = (granted, _) -> done(granted ? Granted : Denied);
 					Msg.vIntPtr(notifications(), ObjC.sel("requestAuthorizationWithOptions:completionHandler:"), 7, cast answer);
 			}

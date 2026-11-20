@@ -340,10 +340,11 @@ shared where the system tells, else whether the sheet was shown.
 | Web | `navigator.share` (files where `canShare` takes them); false without it |
 | Windows, Linux | false (Windows' DataTransferManager is not used) |
 
-**Permissions**: `status(p)` and the coroutine `request(p)` of `camera`,
-`microphone`, `photos`, `location` (while in use), `notifications`:
-`granted`, `denied`, `prompt` (asking would show the system's dialog),
-`unsupported`. A request only asks where the status is `prompt`. What a
+**Permissions**: `status(p)` and the coroutine `request(p)` of `Camera`,
+`Microphone`, `PhotoLibrary`, `Location` (while in use), `Notify` (their
+strings, TypeScript's: `camera`, `microphone`, `photos`, `location`,
+`notifications`): `granted`, `denied`, `prompt` (asking would show the
+system's dialog), `unsupported`. A request only asks where the status is `prompt`. What a
 program requests is declared by the build: Android's manifest entries,
 and iOS's usage strings from helder.json's `targets.ios.usage`, a missing
 one an error at the call.

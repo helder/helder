@@ -7,9 +7,9 @@ import hxmc.Platform;
 enum abstract Permission(String) to String {
 	var Camera = "camera";
 	var Microphone = "microphone";
-	var Photos = "photos";
+	var PhotoLibrary = "photos";
 	var Location = "location";
-	var Notifications = "notifications";
+	var Notify = "notifications";
 }
 
 enum abstract PermissionStatus(String) to String {
@@ -27,7 +27,7 @@ class Permissions {
 		if (Platform.os() == Platform.MACOS) return PermissionsApple.status(p);
 		if (Platform.target() >= 9) return helder.os.android.AndroidPermissions.status(p);
 		#end
-		return p == Notifications ? Granted : Unsupported;
+		return p == Notify ? Granted : Unsupported;
 	}
 
 	// the system's dialog where status is Prompt, its answer; otherwise the

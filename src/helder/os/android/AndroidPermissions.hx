@@ -54,7 +54,7 @@ class AndroidPermissions {
 		if (Activity.activity.isNull()) return Unsupported;
 		var names = manifest(p, sdk());
 		if (names.length == 0) {
-			if (p != Notifications) return Unsupported;
+			if (p != Notify) return Unsupported;
 			var manager = Jni.service("notification");
 			return manager.isNull() || Jni.bool(manager, Jni.method(Jni.cls("android.app.NotificationManager"), "areNotificationsEnabled", "()Z")) ? Granted : Denied;
 		}

@@ -50,9 +50,9 @@ class WebServices {
 		return switch p {
 			case Camera: 0;
 			case Microphone: 1;
-			case Photos: 2;
+			case PhotoLibrary: 2;
 			case Location: 3;
-			case Notifications: 4;
+			case Notify: 4;
 		}
 
 	static function of(v:Int):PermissionStatus
