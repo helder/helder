@@ -236,6 +236,7 @@ class Ui {
 		overlay.attach(this);
 		touchScroll = @:privateAccess new TouchScroll(this);
 		trackpad = @:privateAccess new Trackpad(this);
+		stretcher = @:privateAccess new Stretch(this);
 		// (Copy: the selected text, while there is some)
 		on(helder.ui.actions.Actions.StandardAction, a -> switch a {
 			case Copy if (selectedText() != ""):
@@ -602,6 +603,16 @@ class Ui {
 			cullX1 = Math.min(cullX1, n.absX + nw - be.right);
 			cullY1 = Math.min(cullY1, n.absY + nh - be.bottom);
 		}
+		// (stretched past an end, Android's: a scale along its axis, anchored at that end)
+		var stretched = s.overflow == Scroll && @:privateAccess stretcher.node == n ? @:privateAccess stretcher.amount : 0.0;
+		if (stretched != 0) {
+			var k = 1 + Math.abs(stretched), sx = @:privateAccess stretcher.alongX;
+			var anchor = sx ? (stretched < 0 ? n.absX + be.left : n.absX + nw - be.right) : (stretched < 0 ? n.absY + be.top : n.absY + nh - be.bottom);
+			if (sx) canvas.pushTransform(k, 0, 0, 1, anchor * (1 - k), 0) else canvas.pushTransform(1, 0, 0, k, 0, anchor * (1 - k));
+			// (scaled: what was out of sight may come in, everything drawn while it lasts)
+			cullX0 = cullY0 = -1e9;
+			cullX1 = cullY1 = 1e9;
+		}
 		var scroll = s.overflow == Scroll && (n.scrollX != 0 || n.scrollY != 0);
 		if (scroll) {
 			canvas.translate(-n.scrollX, -n.scrollY);
@@ -647,6 +658,7 @@ class Ui {
 			ptx += n.scrollX;
 			pty += n.scrollY;
 		}
+		if (stretched != 0) canvas.popTransform();
 		if (clip) canvas.popClip();
 		if (cover) {
 			canvas.popTransform();
@@ -1246,10 +1258,29 @@ class Ui {
 	// system's momentum replayed at the frames' times): UiWindow's on macOS
 	// (false: each scroll as a wheel's)
 	public var elastic = false;
+	// a touchpad's scrolls as GTK's kinetic scrolling takes them (Trackpad:
+	// one scroller a gesture, our glide once the fingers lift, a bounce at an
+	// end): UiWindow's on Linux's Wayland, whose touchpads say when they lift
+	public var kinetic = false;
 	final trackpad:Trackpad;
+	// (the scroller a wheel latched to and its last scroll's time: Chromium's half a second)
+	var wheelLatch:Null<Node> = null;
+	var wheelAt = -1e9;
+	static inline var WHEEL_LATCH = 0.5;
+
+	// a touch's drag past a scroller's end stretches it, as Android 12's
+	// (Stretch: UiWindow's on Android)
+	public var stretch = false;
+	final stretcher:Stretch;
+	// (the last wheel's scroller and what it could not scroll, past its end: Stretch's)
+	var overNode:Null<Node> = null;
+	var overX = 0.0;
+	var overY = 0.0;
 
 	function wheelNow(x:Float, y:Float, deltaX:Float, deltaY:Float, eased:Bool, mods = -1, phase = 0, momentum = 0, time = 0.0) {
-		var phased = elastic && (phase != 0 || momentum != 0) && (mods >= 0 ? mods : this.mods) & Key.MOD_CONTROL == 0;
+		overNode = null;
+		overX = overY = 0;
+		var phased = (elastic || kinetic) && (phase != 0 || momentum != 0) && (mods >= 0 ? mods : this.mods) & Key.MOD_CONTROL == 0;
 		var target = hit(x, y);
 		if (phased) {
 			// (the tree hears the moves, the momentum's too, and may keep them: no scroll then)
@@ -1272,7 +1303,23 @@ class Ui {
 		e.eased = eased;
 		bubble(e);
 		if (e.defaultPrevented) return;
+		// (a wheel's scrolls latched to the scroller it moved until it rests half a second, as Chromium's: not
+		// into one it passes over, nor out of it at its end)
+		var latched = wheelLatch != null && now() - wheelAt < WHEEL_LATCH && contains(root, wheelLatch) ? wheelLatch : null;
+		wheelAt = now();
+		if (latched != null) {
+			if (Scrolling.canScroll(latched, deltaX, true) || Scrolling.canScroll(latched, deltaY, false))
+				Scrolling.wheel(this, latched, deltaX, deltaY, eased);
+			else {
+				// (at its end: all of it past that end, Stretch's)
+				overNode = latched;
+				overX = deltaX;
+				overY = deltaY;
+			}
+			return;
+		}
 		Scrolling.wheel(this, target, deltaX, deltaY, eased);
+		wheelLatch = Scrolling.wheelNode;
 	}
 
 	// whether a wheel at x, y by deltaX, deltaY would scroll something: a
@@ -2056,6 +2103,7 @@ class Ui {
 		if (drag != null && contains(n, drag)) drag = null;
 		if (focus != null && contains(n, focus)) focus = null;
 		if (@:privateAccess trackpad.node != null && contains(n, @:privateAccess trackpad.node)) @:privateAccess trackpad.reset();
+		if (@:privateAccess stretcher.node != null && contains(n, @:privateAccess stretcher.node)) @:privateAccess stretcher.reset();
 		for (g in [for (k in glides.keys()) if (contains(n, k)) k])
 			glides.remove(g);
 	}
