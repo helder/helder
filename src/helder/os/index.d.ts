@@ -1,12 +1,14 @@
 // helder.os for TypeScript programs (helder.typescript): what an app keeps
-// between runs (Store), the program's arguments and environment (args(),
-// env(name): Sys's). Its windows, events and App are helder/scene's.
+// between runs (Store), the platform's settings, locale and app services
+// (Settings, Locale, Format, Plural, Network, Share, Permissions), the
+// program's arguments and environment (args(), env(name): Sys's). Its
+// windows, events and App are helder/scene's.
 //
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 import type {Read} from "helder/view";
 
-declare const __haxe: {Store: "helder.os.Store", Settings: "helder.os.Settings", Locale: "helder.os.Locale", Format: "helder.os.Format", Plural: "helder.os.Plural", Sys: "Sys", __module: "helder.os.TypeScript"};
+declare const __haxe: {Store: "helder.os.Store", Settings: "helder.os.Settings", Locale: "helder.os.Locale", Format: "helder.os.Format", Plural: "helder.os.Plural", Network: "helder.os.Network", Share: "helder.os.Share", Permissions: "helder.os.Permissions", Sys: "Sys", __module: "helder.os.TypeScript"};
 
 export type Contrast = "normal" | "more" | "less" | "custom";
 
@@ -19,6 +21,12 @@ export type NumberOptions = { decimals?: number; percent?: boolean; currency?: s
 export type DateOptions = { date?: Style; time?: Style; locale?: string };
 
 export type PluralCategory = "zero" | "one" | "two" | "few" | "many" | "other";
+
+export type NetworkKind = "none" | "wifi" | "cellular" | "wired" | "other";
+
+export type Permission = "camera" | "microphone" | "photos" | "location" | "notifications";
+
+export type PermissionStatus = "granted" | "denied" | "prompt" | "unsupported";
 
 // A small key-value store kept between runs: an app's settings, a game's
 // save. Strings by key, read into memory when opened, written through at
@@ -87,6 +95,28 @@ export declare class Format {
 
 export declare class Plural {
 	static category(locale: string, n: number): PluralCategory;
+}
+
+// whether the device is online, and through what, sampled about once a
+// second while the app runs and again when it comes back to the foreground
+export declare class Network {
+	static readonly online: Read<boolean>;
+	static readonly kind: Read<NetworkKind>;
+}
+
+export declare class Share {
+	// the system's share sheet of text, a URL and files (paths): whether the
+	// user shared, where the system tells, else whether it was shown
+	static share(item: { text?: string; url?: string; files?: string[] }): Promise<boolean>;
+}
+
+export declare class Permissions {
+	// whether the app may use p: Prompt when asking would show the system's dialog
+	static status(p: Permission): PermissionStatus;
+	// the system's dialog where status is Prompt, its answer; otherwise the
+	// status. What is asked for is declared by the build (Android's
+	// manifest, iOS's usage strings: helder.json's ios.usage)
+	static request(p: Permission): Promise<PermissionStatus>;
 }
 
 export declare class Sys {

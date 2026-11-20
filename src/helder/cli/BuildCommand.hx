@@ -125,7 +125,7 @@ class BuildCommand {
 				Android.install(d.id, apk);
 				Term.done();
 				var log = Android.logcat(d.id);
-				Android.start(d.id, id, Android.activity(apk));
+				Android.start(d.id, id, Android.activity(apk, e.config));
 				Term.out(Style.status("running", Info, '$id on ${d.name}' + Style.dim(Style.sep() + "its output: logcat's hxmc")));
 				Async.scope(task -> {
 					if (log != null) task.async(_ -> Lines.forward(log.stdout, false));

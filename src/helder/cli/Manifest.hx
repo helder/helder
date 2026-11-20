@@ -33,9 +33,11 @@ using StringTools;
 //               "sdk": {"version": "26.0", "build": "23A339", "xcode": "2600", "xcodeBuild": "17A324", "machine": "25A354"},
 //               "nonExemptEncryption": false,
 //               "privacy": {"NSPrivacyAccessedAPICategoryUserDefaults": ["CA92.1"]},
-//               "infoPlist": {"NSAppTransportSecurity": {"NSAllowsLocalNetworking": true}}},   Info.plist's keys, over helder's
+//               "infoPlist": {"NSAppTransportSecurity": {"NSAllowsLocalNetworking": true}},   Info.plist's keys, over helder's
+//               "usage": {"camera": "Scans receipts."}},   why it asks (camera, microphone, photos, location): Info.plist's usage strings
 //       "splash": {"background_color": "#060912", "image": "splash.png",
-//                  "dark": {"background_color": "#000000", "image": "splash-dark.png"}}
+//                  "dark": {"background_color": "#000000", "image": "splash-dark.png"}},
+//       "links": {"schemes": ["myapp"], "domains": ["example.com"]}   the deep links it opens (App.onOpen)
 //     }
 //   }
 //
@@ -52,9 +54,11 @@ class Manifest {
 		"any", "natural", "portrait", "portrait-primary", "portrait-secondary", "landscape", "landscape-primary", "landscape-secondary"
 	];
 	static final PURPOSE = ["any", "maskable", "monochrome"];
-	static final HELDER = ["version", "build", "id", "android", "ios", "splash"];
+	static final HELDER = ["version", "build", "id", "android", "ios", "splash", "links"];
 	static final ANDROID = ["package", "minSdk", "targetSdk", "permissions", "cleartext", "key", "signing", "serviceAccount", "adaptiveIcon"];
-	static final IOS = ["bundleId", "minVersion", "entitlements", "signing", "sdk", "nonExemptEncryption", "privacy", "infoPlist"];
+	static final IOS = ["bundleId", "minVersion", "entitlements", "signing", "sdk", "nonExemptEncryption", "privacy", "infoPlist", "usage"];
+	// helder.os.Permissions' permissions an iOS app explains (Info.plist's usage strings: Bundle.usageKey)
+	public static final USAGE = ["camera", "microphone", "photos", "location"];
 	static final SIGNING = ["certificate", "key", "profile"];
 	public static final SDK = ["version", "build", "xcode", "xcodeBuild", "machine"];
 	static final SPLASH = ["background_color", "image", "dark"];
@@ -190,6 +194,24 @@ class Manifest {
 		var plist:Dynamic = i.infoPlist;
 		if (plist != null && (!Reflect.isObject(plist) || Std.isOfType(plist, String) || Std.isOfType(plist, Array)))
 			throw '$where: "helder": {"ios": {"infoPlist"}}: an object of Info.plist keys';
+		var usage:Dynamic = i.usage;
+		if (usage != null) {
+			known(usage, USAGE, '"helder": {"ios": {"usage"}}');
+			for (k in USAGE)
+				if (str(usage, k, '"helder": {"ios": {"usage": {"$k"}}}')?.trim() == "") throw '$where: "helder": {"ios": {"usage": {"$k"}}}: why the app asks (a sentence)';
+		}
+		var links:Dynamic = h.links;
+		if (links != null) {
+			known(links, ["schemes", "domains"], '"helder": {"links"}');
+			for (k => pattern in ["schemes" => ~/^[a-z][a-z0-9+.-]*$/, "domains" => ~/^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/]) {
+				var v:Dynamic = Reflect.field(links, k);
+				if (v == null) continue;
+				if (!(Std.isOfType(v, Array) && Lambda.foreach((v : Array<Dynamic>), x -> Std.isOfType(x, String) && pattern.match(x))))
+					throw '$where: "helder": {"links": {"$k"}}: ' + (k == "schemes" ? 'an array of URL schemes ("myapp": lower case)' : 'an array of domains ("example.com")');
+				for (x in (v : Array<String>))
+					if (k == "schemes" && ["http", "https", "file"].contains(x)) throw '$where: "helder": {"links": {"schemes"}}: "$x" is the system\'s (domains: https links)';
+			}
+		}
 		var s:Dynamic = h.splash ?? {};
 		known(s, SPLASH, '"helder": {"splash"}');
 		var d:Dynamic = s.dark ?? {};
@@ -230,6 +252,7 @@ class Manifest {
 			icons: icons,
 			splash: splash,
 			file_handlers: handlers,
+			links: links,
 			android: {
 				id: pkg,
 				permissions: a.permissions,
@@ -249,7 +272,8 @@ class Manifest {
 				sdk: sdk,
 				nonExemptEncryption: encryption,
 				privacy: privacy,
-				infoPlist: plist
+				infoPlist: plist,
+				usage: usage
 			},
 		};
 	}
@@ -320,6 +344,8 @@ typedef AppConfig = {
 	// the W3C manifest's file_handlers: the types the app opens (a macOS
 	// bundle's CFBundleDocumentTypes; FileTypes.register's elsewhere)
 	?file_handlers:Array<{?action:String, accept:haxe.DynamicAccess<Array<String>>}>,
+	// the deep links the app opens: its URL schemes, the https domains it is the app of
+	?links:{?schemes:Array<String>, ?domains:Array<String>},
 	?android:Dynamic,
 	?ios:Dynamic,
 	// helder.json's: helder.run's block, `helder publish`'s destinations, the stores' pages; the web manifest it stands for

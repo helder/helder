@@ -85,6 +85,31 @@ class Bundle {
 		return Plist.xml(PDict(keys));
 	}
 
+	// the Info.plist key of why the app asks for a permission (helder.os.Permissions'; null: none needed)
+	public static function usageKey(permission:String):Null<String>
+		return switch permission {
+			case "camera": "NSCameraUsageDescription";
+			case "microphone": "NSMicrophoneUsageDescription";
+			case "photos": "NSPhotoLibraryUsageDescription";
+			case "location": "NSLocationWhenInUseUsageDescription";
+			case _: null;
+		}
+
+	// the permissions used whose usage strings are not given (an iOS app asking without one ends)
+	public static function missingUsage(used:Array<String>, given:Array<String>):Array<String>
+		return [for (p in used) if (usageKey(p) != null && !given.contains(p)) p];
+
+	// Info.plist's keys of the app's usage strings and URL schemes
+	public static function serviceKeys(id:String, usage:Null<haxe.DynamicAccess<String>>, schemes:Array<String>):Map<String, PValue> {
+		var keys = new Map<String, PValue>();
+		if (usage != null)
+			for (p => text in usage)
+				if (usageKey(p) != null) keys.set(usageKey(p), PString(text));
+		if (schemes.length > 0)
+			keys.set("CFBundleURLTypes", PArray([PDict(["CFBundleURLName" => PString(id), "CFBundleURLSchemes" => PArray([for (s in schemes) PString(s)])])]));
+		return keys;
+	}
+
 	// _CodeSignature/CodeResources: each file's SHA-1 (files: the first
 	// version's rules) and SHA-1 and SHA-256 (files2), the rules codesign
 	// writes for an iOS bundle (Info.plist is in files only: files2's rules

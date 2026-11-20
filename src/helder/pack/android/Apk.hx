@@ -42,6 +42,11 @@ class Apk {
 	public static inline var THEME = 0x01030006;
 	public static inline var THEME_FULLSCREEN = 0x01030007;
 	public static inline var THEME_VIEWS = 0x010302e3;
+	// @android:style/Theme.Translucent.NoTitleBar: org.hxmc.Request's, nothing of it seen
+	public static inline var THEME_TRANSLUCENT = 0x01030010;
+
+	// the authority of org.hxmc.Files, after the package
+	public static inline var FILES = ".hxmc.files";
 
 	// the ABI's directory in the APK
 	public static function abiDir(target:String):String
@@ -80,7 +85,7 @@ class Apk {
 	// the manifest of the app's options (an APK's, an App Bundle's)
 	public static function manifestOf(app:ApkOptions, code:Bool, views:Bool):Axml.Element
 		return manifestElement(app.id, app.label, app.versionCode, app.versionName, app.minSdk, app.targetSdk, code, views, app.permissions, app.orientation,
-			app.icon, app.theme, app.debuggable ?? true, app.cleartext ?? false, app.fullscreen ?? false);
+			app.icon, app.theme, app.debuggable ?? true, app.cleartext ?? false, app.fullscreen ?? false, app.services, app.links);
 
 	// the debug key as a signer (ECDSA P-256)
 	public static function debugSigner(key:{d:Bytes, cert:Bytes}):Signer
@@ -110,7 +115,7 @@ class Apk {
 	// helder.os.android's AKEYCODE_BACK to App.onBack)
 	public static function manifestElement(pkg:String, label:String, versionCode:Int, versionName:String, minSdk:Int, targetSdk:Int, code = false,
 			views = false, ?permissions:Array<String>, ?orientation:String, ?icon:Int, ?theme:Int, debuggable = true, cleartext = false,
-			fullscreen = false):Axml.Element {
+			fullscreen = false, ?services:Array<String>, ?links:Links):Axml.Element {
 		inline function s(n:String, v:String):Axml.Attr
 			return {android: true, name: n, type: Axml.STRING, string: v};
 		inline function i(n:String, v:Int, hex = false):Axml.Attr
@@ -121,12 +126,17 @@ class Apk {
 		// keyboardHidden, navigation, uiMode, density, layoutDirection: the
 		// activity stays (the program's thread keeps its window)
 		var configChanges = 0x80 | 0x400 | 0x100 | 0x800 | 0x10 | 0x20 | 0x40 | 0x200 | 0x1000 | 0x2000;
-		var uses = [];
+		var uses = [], seen = new Map<String, Bool>();
 		if (permissions != null)
-			for (n in permissions)
-				uses.push(el("uses-permission", [s("name", n.indexOf(".") < 0 ? "android.permission." + n : n)]));
+			for (n in permissions) {
+				var name = n.indexOf(".") < 0 ? "android.permission." + n : n;
+				if (seen.exists(name)) continue;
+				seen.set(name, true);
+				uses.push(el("uses-permission", [s("name", name)]));
+			}
+		services = services ?? [];
 		var activity:Array<Axml.Attr> = [
-			s("name", views ? Glue.ACTIVITY : "android.app.NativeActivity"),
+			s("name", activityOf(views, services)),
 			s("label", label),
 			b("exported", true),
 			i("configChanges", configChanges, true),
@@ -135,6 +145,45 @@ class Apk {
 			{android: true, name: "theme", type: Axml.REFERENCE, value: theme ?? (views ? THEME_VIEWS : fullscreen ? THEME_FULLSCREEN : THEME)}
 		];
 		if (orientation == "portrait") activity.push(i("screenOrientation", 1)) else if (orientation == "landscape") activity.push(i("screenOrientation", 6));
+		// (a link while running comes to the activity there is: onNewIntent, singleTop)
+		var linked = links != null && (links.schemes.length > 0 || links.domains.length > 0);
+		if (linked) activity.push(i("launchMode", 1));
+		var filters = [
+			el("intent-filter", [], [
+				el("action", [s("name", "android.intent.action.MAIN")]),
+				el("category", [s("name", "android.intent.category.LAUNCHER")])
+			])
+		];
+		if (linked) {
+			function view(data:Array<Axml.Attr>, verify:Bool)
+				return el("intent-filter", verify ? [b("autoVerify", true)] : [], [
+					el("action", [s("name", "android.intent.action.VIEW")]),
+					el("category", [s("name", "android.intent.category.DEFAULT")]),
+					el("category", [s("name", "android.intent.category.BROWSABLE")]),
+					el("data", data)
+				]);
+			for (scheme in links.schemes)
+				filters.push(view([s("scheme", scheme)], false));
+			for (host in links.domains)
+				filters.push(view([s("scheme", "https"), s("host", host)], true));
+		}
+		var components = [
+			el("activity", activity, [el("meta-data", [s("name", "android.app.lib_name"), s("value", LIB)])].concat(filters))
+		];
+		if (services.contains("Request"))
+			components.push(el("activity", [
+				s("name", "org.hxmc.Request"),
+				b("exported", false),
+				i("configChanges", configChanges, true),
+				{android: true, name: "theme", type: Axml.REFERENCE, value: THEME_TRANSLUCENT}
+			]));
+		if (services.contains("Files"))
+			components.push(el("provider", [
+				s("name", "org.hxmc.Files"),
+				s("authorities", pkg + FILES),
+				b("exported", false),
+				b("grantUriPermissions", true)
+			]));
 		return el("manifest", [
 			{android: false, name: "package", type: Axml.STRING, string: pkg},
 			i("versionCode", versionCode),
@@ -153,17 +202,13 @@ class Apk {
 			].concat(cleartext ? [b("usesCleartextTraffic", true)] : []).concat(icon == null ? [] : ([
 				{android: true, name: "icon", type: Axml.REFERENCE, value: icon},
 				{android: true, name: "roundIcon", type: Axml.REFERENCE, value: icon}
-			] : Array<Axml.Attr>)), [
-				el("activity", activity, [
-					el("meta-data", [s("name", "android.app.lib_name"), s("value", LIB)]),
-					el("intent-filter", [], [
-						el("action", [s("name", "android.intent.action.MAIN")]),
-						el("category", [s("name", "android.intent.category.LAUNCHER")])
-					])
-				])
-			])
+			] : Array<Axml.Attr>)), components)
 		]));
 	}
+
+	// the activity the launcher starts: org.hxmc.Activity with views, org.hxmc.Main with links, else NativeActivity
+	public static function activityOf(views:Bool, services:Array<String>):String
+		return views ? Glue.ACTIVITY : services.contains("Main") ? Glue.MAIN : "android.app.NativeActivity";
 
 	// ---- the signature (APK Signature Scheme v2)
 
@@ -296,7 +341,13 @@ typedef ApkOptions = {
 	?cleartext:Bool,
 	// the system bars hidden from the start (the app's "fullscreen"): Theme.NoTitleBar.Fullscreen
 	?fullscreen:Bool,
+	// the app services' classes of classes.dex (Glue.SERVICES), each declared: Request an activity, Files a provider
+	?services:Array<String>,
+	// the deep links the activity takes: VIEW of each scheme, and https of each domain (verified)
+	?links:Links,
 }
+
+typedef Links = {schemes:Array<String>, domains:Array<String>};
 
 // who signs: the certificate, its SubjectPublicKeyInfo, the v2 scheme's
 // algorithm id (0x0201 ECDSA, 0x0103 RSA PKCS#1, both SHA2-256), the

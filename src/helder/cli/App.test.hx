@@ -22,7 +22,9 @@ function tests() {
 			minSdk: 29,
 			targetSdk: 36,
 			permissions: [],
-			orientation: "any"
+			orientation: "any",
+			services: [],
+			links: null
 		});
 		equals(App.android("my-game", null).id, "org.helder.my_game");
 		equals(App.android("3d", null).id, "org.helder.app_3d");
@@ -48,7 +50,9 @@ function tests() {
 			minSdk: 31,
 			targetSdk: 34,
 			permissions: ["VIBRATE", "com.example.X"],
-			orientation: "any"
+			orientation: "any",
+			services: [],
+			links: null
 		});
 	});
 	test("Android: mistakes", () -> {
@@ -71,6 +75,7 @@ function tests() {
 			nonExemptEncryption: null,
 			privacy: null,
 			infoPlist: null,
+			usage: null,
 			orientation: "any",
 			fullscreen: false
 		});
@@ -129,7 +134,9 @@ function tests() {
 			minSdk: 31,
 			targetSdk: 36,
 			permissions: ["VIBRATE"],
-			orientation: "landscape"
+			orientation: "landscape",
+			services: [],
+			links: null
 		});
 		equals([i.id, i.label, i.version, i.versionName, i.minVersion, i.orientation, Std.string(i.fullscreen)],
 			["org.example.game-ios", "Expansion", "7", "1.2", "16.0", "landscape", "true"]);
@@ -168,7 +175,9 @@ function tests() {
 			minSdk: 29,
 			targetSdk: 36,
 			permissions: [],
-			orientation: "any"
+			orientation: "any",
+			services: [],
+			links: null
 		});
 		equals(App.defines(w), []);
 		equals(Manifest.files(haxe.Json.stringify({icons: [{src: "a.png"}, {src: "https://x/b.png"}, {src: "../c.png"}], helder: {splash: {image: "s.png"}}})),
@@ -187,7 +196,7 @@ function tests() {
 		equals(error({icons: [{src: "a.png", sizes: "48"}]}), "helder.webmanifest: icons[0].sizes: \"48\" is not a size (512x512, or any)");
 		equals(error({icons: [{src: "a.png", sizes: "48x32"}]}), "helder.webmanifest: icons[0].sizes: 48x32: an icon is square");
 		equals(error({icons: [{src: "a.png", purpose: "round"}]}), "helder.webmanifest: icons[0].purpose: \"round\": any, maskable or monochrome");
-		equals(error({helder: {versoin: "1"}}), "helder.webmanifest: \"helder\": no member \"versoin\" (version, build, id, android, ios, splash)");
+		equals(error({helder: {versoin: "1"}}), "helder.webmanifest: \"helder\": no member \"versoin\" (version, build, id, android, ios, splash, links)");
 		equals(error({helder: {build: "two"}}), "helder.webmanifest: \"helder\": {\"build\"}: a whole number from 1, not \"two\"");
 		equals(error('{"helder": {"android": {"package": "game"}}}'),
 			"helder.webmanifest: \"helder\": {\"android\": {\"package\": \"game\"}} is not an application id (a.b.c: letters, digits, _; each part starting with a letter)");

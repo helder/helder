@@ -47,6 +47,8 @@ class JniEnv {
 	@:slot(163) static function NewString(env:Ptr, chars:Ptr, length:Int):Ptr;
 	@:slot(164) static function GetStringLength(env:Ptr, s:Ptr):Int;
 	@:slot(171) static function GetArrayLength(env:Ptr, a:Ptr):Int;
+	@:slot(172) static function NewObjectArray(env:Ptr, length:Int, cls:Ptr, init:Ptr):Ptr;
+	@:slot(174) static function SetObjectArrayElement(env:Ptr, a:Ptr, i:Int, v:Ptr):Void;
 	@:slot(176) static function NewByteArray(env:Ptr, length:Int):Ptr;
 	@:slot(179) static function NewIntArray(env:Ptr, length:Int):Ptr;
 	@:slot(200) static function GetByteArrayRegion(env:Ptr, a:Ptr, start:Int, length:Int, buf:Ptr):Void;
@@ -123,6 +125,12 @@ class Jni {
 
 	public static function field(cls:Ptr, name:String, sig:String):Ptr {
 		var f = Arena.scopedValue(a -> JniEnv.GetFieldID(env, cls, a.cstring(name), a.cstring(sig)));
+		check();
+		return f;
+	}
+
+	public static function staticField(cls:Ptr, name:String, sig:String):Ptr {
+		var f = Arena.scopedValue(a -> JniEnv.GetStaticFieldID(env, cls, a.cstring(name), a.cstring(sig)));
 		check();
 		return f;
 	}
@@ -236,6 +244,29 @@ class Jni {
 	// a java.lang.String of s (a local reference)
 	public static function string(s:String):Ptr
 		return Arena.scopedValue(a -> JniEnv.NewString(env, a.wstring(s), s.length));
+
+	// a String[] of the strings (a local reference)
+	public static function strings(a:Array<String>):Ptr {
+		var r = JniEnv.NewObjectArray(env, a.length, cls("java.lang.String"), Ptr.nil());
+		check();
+		for (i in 0...a.length) {
+			var s = string(a[i]);
+			JniEnv.SetObjectArrayElement(env, r, i, s);
+			deleteLocal(s);
+		}
+		return r;
+	}
+
+	// an int[]'s values
+	public static function ints(a:Ptr):Array<Int> {
+		if (a.isNull()) return [];
+		var n = JniEnv.GetArrayLength(env, a);
+		return Arena.scopedValue(m -> {
+			var buf:Ptr<Int32> = m.alloc(4 * n + 4);
+			JniEnv.GetIntArrayRegion(env, a, 0, n, buf);
+			[for (i in 0...n) buf[i]];
+		});
+	}
 
 	// a CharSequence's text (toString first: an Editable is one)
 	public static function text(cs:Ptr):String {

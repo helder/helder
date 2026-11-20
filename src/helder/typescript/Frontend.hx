@@ -105,6 +105,11 @@ class Frontend implements helder.compiler.Plugin {
 			phase("lower runtime");
 			var frontend = new Lowering(ready.project, p, ready.api, dev, name -> core.Define.rawDefined(com.defines, name) ? core.Define.rawDefinedValueSafe(com.defines, name, "1") : null);
 			frontend.lower();
+			// (what the program links of helder's API: its package's classes and permissions)
+			Uses.record(com, [for (f in p.funcs) f.name], [
+				for (f in Project.read)
+					if (!f.endsWith(".d.ts") && f.indexOf("/node_modules/") < 0 && !f.startsWith(source())) sys.io.File.getContent(f)
+			]);
 			// (the manifest's keeps: their __init__s named what the lowering may call, they run no more)
 			if (ready.api != null && ready.api.manifest != null) {
 				var keeps = [for (k in ready.api.manifest.keep) k + "__init" => true];

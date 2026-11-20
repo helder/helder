@@ -72,6 +72,20 @@ function tests() {
 		equals(error({run: {tags: ["A"]}}), "helder.json: run.tags: at most 5 tags, each lowercase letters, digits and -");
 		equals(error({run: {screenshots: ["../x.png"]}}), "helder.json: run.screenshots: at most 8 image files beside helder.json");
 		equals(error({icon: {round: "a.png"}}).split(" (")[0], "helder.json: icon: no member \"round\"");
+		equals(error({links: {schemes: ["My App"]}}), "helder.json: links.schemes: an array of URL schemes (\"myapp\": lower case)");
+		equals(error({links: {schemes: ["https"]}}), "helder.json: links.schemes: \"https\" is the system's (domains: https links)");
+		equals(error({links: {domains: ["https://example.com"]}}), "helder.json: links.domains: an array of domains (\"example.com\")");
+		equals(error({links: {hosts: []}}).split(" (")[0], "helder.json: links: no member \"hosts\"");
+		equals(error({targets: {ios: {usage: {contacts: "x"}}}}).split(" (")[0], "helder.json: targets: {\"ios\": {\"usage\"}}: no member \"contacts\"");
+		equals(error({targets: {ios: {usage: {camera: " "}}}}), "helder.json: targets: {\"ios\": {\"usage\": {\"camera\"}}}: why the app asks (a sentence)");
+	});
+	test("helder.json: links and usage strings, as App reads them", () -> {
+		var h = HelderJson.parse(haxe.Json.stringify({links: {schemes: ["myapp"], domains: ["example.com"]}, targets: {ios: {usage: {camera: "Scans."}}}}));
+		var cfg = Manifest.parse(haxe.Json.stringify(h.manifest), HelderJson.FILE);
+		equals(App.links(cfg), {schemes: ["myapp"], domains: ["example.com"]});
+		equals(App.ios("x", cfg).usage.camera, "Scans.");
+		equals(App.links({}), null);
+		equals(App.android("x", cfg).links, {schemes: ["myapp"], domains: ["example.com"]});
 	});
 	test("helder migrate: a helder.webmanifest as helder.json, the same settings", () -> {
 		var old = haxe.Json.stringify({

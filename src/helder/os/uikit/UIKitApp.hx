@@ -38,6 +38,9 @@ class UIKitApp {
 		Runtime.class_addMethod(cls, ObjC.sel("applicationWillResignActive:"), Callback.addr(willResignActive), Mem.cstr("v@:@"));
 		Runtime.class_addMethod(cls, ObjC.sel("applicationDidBecomeActive:"), Callback.addr(didBecomeActive), Mem.cstr("v@:@"));
 		Runtime.class_addMethod(cls, ObjC.sel("applicationDidReceiveMemoryWarning:"), Callback.addr(memoryWarning), Mem.cstr("v@:@"));
+		Runtime.class_addMethod(cls, ObjC.sel("application:openURL:options:"), Callback.addr(openURL), Mem.cstr("B@:@@@"));
+		Runtime.class_addMethod(cls, ObjC.sel("application:continueUserActivity:restorationHandler:"), Callback.addr(continueActivity), Mem.cstr("B@:@@@"));
+		Runtime.class_addProtocol(cls, Runtime.objc_getProtocol(Mem.cstr("UIApplicationDelegate")));
 		Runtime.objc_registerClassPair(cls);
 		UIKit.UIApplicationMain(Mem.getI32(Mem.sym("rt_argc"), 0), Mem.getPtr(Mem.sym("rt_argv"), 0), Ptr.nil(), Foundation.NSStringFromClass(cls));
 	}
@@ -83,8 +86,64 @@ class UIKitApp {
 		Runtime.class_replaceMethod(cls, ObjC.sel("applicationWillResignActive:"), Callback.addr(willResignActive), Mem.cstr("v@:@"));
 		Runtime.class_replaceMethod(cls, ObjC.sel("applicationDidBecomeActive:"), Callback.addr(didBecomeActive), Mem.cstr("v@:@"));
 		Runtime.class_replaceMethod(cls, ObjC.sel("applicationDidReceiveMemoryWarning:"), Callback.addr(memoryWarning), Mem.cstr("v@:@"));
+		Runtime.class_replaceMethod(cls, ObjC.sel("application:openURL:options:"), Callback.addr(openURL), Mem.cstr("B@:@@@"));
+		Runtime.class_replaceMethod(cls, ObjC.sel("application:continueUserActivity:restorationHandler:"), Callback.addr(continueActivity), Mem.cstr("B@:@@@"));
 	}
 	#end
+
+	// ---- deep links: the app's schemes' URLs, universal links (a web
+	// page's activity), to App.onOpen; those of a launch, which come before
+	// the program runs, kept (retained, C's memory: no statics yet) until
+	// App.onOpen is set (early)
+
+	static var waiting:Ptr;
+	static var waitingCount:Int;
+
+	@:hxmc.callback static function openURL(self:Ptr, cmd:Ptr, app:Ptr, url:Ptr, options:Ptr):Int {
+		link(url, false);
+		return 1;
+	}
+
+	@:hxmc.callback static function continueActivity(self:Ptr, cmd:Ptr, app:Ptr, activity:Ptr, restoration:Ptr):Int {
+		link(activity, true);
+		return 1;
+	}
+
+	static function link(o:Ptr, activity:Bool) {
+		if (running) {
+			var url = urlOf(o, activity);
+			if (url != null) helder.os.App.open([url]);
+			return;
+		}
+		if (waitingCount >= 8) return;
+		if (waiting.isNull()) waiting = LibC.malloc(16 * 8);
+		Mem.setPtr(waiting, 16 * waitingCount, Runtime.objc_retain(o));
+		Mem.setI64(waiting, 16 * waitingCount + 8, activity ? 1 : 0);
+		waitingCount++;
+	}
+
+	// (an activity's: a web page's, NSUserActivityTypeBrowsingWeb)
+	static function urlOf(o:Ptr, activity:Bool):Null<String> {
+		if (activity) {
+			var web = Mem.getPtr(Posix.dlsym(Ptr.ofI64(-2), Mem.cstr("NSUserActivityTypeBrowsingWeb")), 0);
+			if (!Msg.bPtr(Msg.id(o, ObjC.sel("activityType")), ObjC.sel("isEqualToString:"), web)) return null;
+			o = Msg.id(o, ObjC.sel("webpageURL"));
+		}
+		return o.isNull() ? null : ObjC.string(Msg.id(o, ObjC.sel("absoluteString")));
+	}
+
+	// the links of the launch (once)
+	public static function early():Array<String> {
+		var out = [];
+		for (i in 0...waitingCount) {
+			var o = Mem.getPtr(waiting, 16 * i);
+			var url = urlOf(o, Mem.getI64(waiting, 16 * i + 8) == 1);
+			if (url != null) out.push(url);
+			ObjC.release(o);
+		}
+		waitingCount = 0;
+		return out;
+	}
 
 	@:hxmc.callback static function didEnterBackground(self:Ptr, cmd:Ptr, app:Ptr):Void {
 		if (!running) return;

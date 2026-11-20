@@ -194,6 +194,7 @@ class CocoaWindow {
 		Runtime.class_replaceMethod(made, ObjC.sel("prepareForDragOperation:"), Callback.addr(prepareDrag), Mem.cstr("c@:@"));
 		Runtime.class_replaceMethod(made, ObjC.sel("performDragOperation:"), Callback.addr(performDrag), Mem.cstr("c@:@"));
 			Runtime.class_replaceMethod(made, ObjC.sel("application:openURLs:"), Callback.addr(openURLs), Mem.cstr("v@:@@"));
+			Runtime.class_replaceMethod(made, ObjC.sel("getURL:withReply:"), Callback.addr(getURL), Mem.cstr("v@:@@"));
 			delegate = helder.dev.Hosted.get(helder.dev.Hosted.MAC_DELEGATE);
 			var t = Runtime.objc_getClass(Mem.cstr("HxmcTextView"));
 			Runtime.class_replaceMethod(t, ObjC.sel("insertText:replacementRange:"), Callback.addr(insertText), Mem.cstr("v@:@{_NSRange=QQ}"));
@@ -221,9 +222,14 @@ class CocoaWindow {
 		Runtime.class_addMethod(cls, ObjC.sel("prepareForDragOperation:"), Callback.addr(prepareDrag), Mem.cstr("c@:@"));
 		Runtime.class_addMethod(cls, ObjC.sel("performDragOperation:"), Callback.addr(performDrag), Mem.cstr("c@:@"));
 		Runtime.class_addMethod(cls, ObjC.sel("application:openURLs:"), Callback.addr(openURLs), Mem.cstr("v@:@@"));
+		Runtime.class_addMethod(cls, ObjC.sel("getURL:withReply:"), Callback.addr(getURL), Mem.cstr("v@:@@"));
 		Runtime.objc_registerClassPair(cls);
 		delegate = Msg.id(Msg.id(cls, ObjC.sel("alloc")), ObjC.sel("init"));
 		Msg.vPtr(app, ObjC.sel("setDelegate:"), delegate);
+		// (a URL of the app's schemes, kAEGetURL: NSApplication hands it to
+		// application:openURLs: only from its own run loop, which this is not)
+		Msg.vPtrPtrIntInt(Msg.id(ObjC.cls("NSAppleEventManager"), ObjC.sel("sharedAppleEventManager")), ObjC.sel("setEventHandler:andSelector:forEventClass:andEventID:"),
+			delegate, ObjC.sel("getURL:withReply:"), 0x4755524C, 0x4755524C);
 		#if hxmc.dev_host
 		if (helder.dev.Hosted.hosted()) helder.dev.Hosted.set(helder.dev.Hosted.MAC_DELEGATE, delegate);
 		#end
@@ -365,16 +371,22 @@ class CocoaWindow {
 		Msg.vBool(app, ObjC.sel("activateIgnoringOtherApps:"), true);
 	}
 
-	// the system asks the app to open files (NSApplicationDelegate): their paths to App.onOpen
+	// the system asks the app to open files or URLs (NSApplicationDelegate):
+	// the files' paths and the other URLs (the app's schemes) to App.onOpen
 	@:hxmc.callback static function openURLs(self:Ptr, cmd:Ptr, application:Ptr, urls:Ptr):Void {
 		var paths = [];
 		for (i in 0...Msg.i(urls, ObjC.sel("count")).toInt()) {
 			var url = Msg.idInt(urls, ObjC.sel("objectAtIndex:"), i);
-			if (!Msg.b(url, ObjC.sel("isFileURL"))) continue;
-			var p = ObjC.string(Msg.id(url, ObjC.sel("path")));
+			var p = ObjC.string(Msg.id(url, Msg.b(url, ObjC.sel("isFileURL")) ? ObjC.sel("path") : ObjC.sel("absoluteString")));
 			if (p != null) paths.push(p);
 		}
 		@:privateAccess App.open(paths);
+	}
+
+	// a URL the system asks the app to open (its direct object, keyDirectObject '----')
+	@:hxmc.callback static function getURL(self:Ptr, cmd:Ptr, event:Ptr, reply:Ptr):Void {
+		var url = ObjC.string(Msg.id(Msg.idInt(event, ObjC.sel("paramDescriptorForKeyword:"), 0x2D2D2D2D), ObjC.sel("stringValue")));
+		if (url != null) @:privateAccess App.open([url]);
 	}
 
 	// a drag over a window: a copy when it carries file URLs (NSDragOperationCopy), else none

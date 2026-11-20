@@ -76,6 +76,8 @@ class Ios {
 		var keys = art.keys;
 		if (device) for (k => v in dtKeys(o)) keys.set(k, v);
 		if (o.nonExemptEncryption != null) keys.set("ITSAppUsesNonExemptEncryption", PBool(o.nonExemptEncryption));
+		var links = App.links(e.config);
+		for (k => v in Bundle.serviceKeys(o.id, o.usage, links?.schemes ?? [])) keys.set(k, v);
 		if (o.infoPlist != null) for (k in Reflect.fields(o.infoPlist)) keys.set(k, plistOf(Reflect.field(o.infoPlist, k), 'infoPlist.$k'));
 		var info = Bundle.infoPlist(name, o.id, o.label, o.version, o.versionName, o.minVersion, !device, o.orientation, o.fullscreen, keys);
 		TestCommand.mkdirs(Path.directory(app) == "" ? "." : Path.directory(app));
@@ -84,6 +86,9 @@ class Ios {
 		// DTSDKName names: Xcode's always match)
 		var words = ["-D", 'hxmc.ios-min-version=${o.minVersion}', "-D", 'hxmc.ios-sdk-version=${sdkValues(o).version}', "-D", 'hxmc.codesign-id=${o.id}', "-D", 'hxmc.codesign-info-plist=$full/Info.plist', "-D",
 			'hxmc.codesign-resources=$full/_CodeSignature/CodeResources'].concat(App.defines(e.config));
+		// (a permission asked for without its usage string: an error at the call)
+		var given = o.usage == null ? [] : [for (k in Reflect.fields(o.usage)) k];
+		words = words.concat(["--macro", 'helder.pack.ios.Usage.check("${given.join(",")}")']);
 		// (a device's: its debug symbols, <exe>.dSYM, which crash reports are
 		// symbolicated with; moved out of the bundle below)
 		if (device) words = words.concat(["-D", "hxmc.dsym"]);
@@ -95,6 +100,11 @@ class Ios {
 				case PDict(d): d;
 				case _: throw '$ent: not a dictionary of entitlements';
 			}
+		}
+		// (the domains' universal links: applinks:<domain>, which the profile must allow)
+		if (links != null && links.domains.length > 0) {
+			appEntitlements = appEntitlements ?? new Map();
+			appEntitlements.set("com.apple.developer.associated-domains", PArray([for (d in links.domains) PString('applinks:$d')]));
 		}
 		var entitlements = sign == null ? null : CodeSign.entitlements(sign.profile, o.id, appEntitlements);
 		if (sign != null)

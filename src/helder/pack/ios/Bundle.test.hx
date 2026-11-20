@@ -77,6 +77,15 @@ function tests() {
 		equals([for (e in es) e.mode], [0x1ed, 0x1a4, 0x1a4]);
 		equals(es[1].data.compare(info), 0);
 	});
+	test("usage strings: the permissions asked for without one, Info.plist's keys", () -> {
+		equals(Bundle.missingUsage(["camera", "notifications", "photos"], ["camera"]), ["photos"]);
+		equals(Bundle.missingUsage(["notifications"], []), []);
+		var keys = Bundle.serviceKeys("org.example.app", {camera: "Scans receipts.", nothing: "x"}, ["myapp"]);
+		equals([for (k in keys.keys()) k].length, 2);
+		equals(Std.string(keys.get("NSCameraUsageDescription")), Std.string(PString("Scans receipts.")));
+		equals(Plist.xml(PDict(["u" => keys.get("CFBundleURLTypes")])).toString().indexOf("<string>myapp</string>") > 0, true);
+		equals([for (k in Bundle.serviceKeys("a.b", null, []).keys()) k], []);
+	});
 	test("a bundle id: reverse DNS", () -> {
 		assert(Bundle.validId("org.example.hello-world"));
 		assert(!Bundle.validId("hello"));

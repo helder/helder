@@ -46,6 +46,8 @@ class App {
 			targetSdk: targetSdk,
 			permissions: permissions,
 			orientation: orientation(config),
+			services: [],
+			links: links(config),
 		};
 		if (a?.cleartext == true) o.cleartext = true;
 		if (fullscreen(config)) o.fullscreen = true;
@@ -71,9 +73,17 @@ class App {
 			nonExemptEncryption: i?.nonExemptEncryption,
 			privacy: i?.privacy,
 			infoPlist: i?.infoPlist,
+			usage: i?.usage,
 			orientation: orientation(config),
 			fullscreen: fullscreen(config),
 		};
+	}
+
+	// the deep links (the manifest's "links"); null: none
+	public static function links(config:Dynamic):Null<helder.pack.android.Apk.Links> {
+		var l:Dynamic = config?.links;
+		var schemes:Array<String> = (l?.schemes : Null<Array<String>>) ?? [], domains:Array<String> = (l?.domains : Null<Array<String>>) ?? [];
+		return schemes.length == 0 && domains.length == 0 ? null : {schemes: schemes, domains: domains};
 	}
 
 	// the build's defines of the app's options: helder.fullscreen
@@ -136,6 +146,8 @@ typedef IosOptions = {
 	privacy:Null<Dynamic<Array<String>>>,
 	// Info.plist's keys over helder's (JSON's values: strings, booleans, integers, arrays, objects); null: none
 	infoPlist:Null<Dynamic>,
+	// why the app asks for each permission (camera, microphone, photos, location): Info.plist's usage strings; null: none given
+	usage:Null<Dynamic<String>>,
 	// "portrait", "landscape" or "any"; the status bar hidden
 	orientation:String,
 	fullscreen:Bool,
