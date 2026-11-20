@@ -44,9 +44,14 @@ typedef SurfaceProps = {
 	?fontSmoothing:helder.view.graph.Read<String>,
 	// "native": the platform's own scrolling drives the scrollers where it
 	// has it (iOS's UIScrollView, the browser's: their physics, bounce,
-	// indicators; Android's fling, VelocityTracker and OverScroller);
+	// indicators; Android's fling, VelocityTracker and OverScroller; macOS's
+	// trackpad gestures and momentum, stretching at the ends, its overlay
+	// scrollbars);
 	// "helder": helder's own scrolling everywhere; default UiWindow.scrolling's
 	?scrolling:String,
+	// macOS's scrollbars: "system" (default: System Settings' Show scroll
+	// bars), "overlay" (shown while scrolling, over the content) or "always"
+	?scrollbars:String,
 	?children:UiView
 };
 
@@ -123,6 +128,12 @@ class UiWindow {
 	// fling physics, AndroidGlide); false: helder's
 	// own scrolling (a Surface's scrolling prop sets a window's)
 	public static var scrolling = true;
+	// macOS's scrollbars: "system" (System Settings' Show scroll bars:
+	// overlay ones that show while scrolling, unless set to always or, by
+	// default, while a mouse is connected), "overlay" or "always" (a Surface's
+	// scrollbars prop sets a window's)
+	public static var scrollbars = "system";
+	var bars = scrollbars;
 	// the text input area last given to the window ("": off)
 	var typing = "";
 	final pass:PassDesc = {colors: [{load: Clear, clear: new helder.gfx.Color(1, 1, 1)}]};
@@ -216,6 +227,17 @@ class UiWindow {
 	public function nativeScroll(on:Bool) {
 		#if !helder.headless
 		ui.nativeScroll = on && (Platform.apple() >= 1 || Platform.os() == 3);
+		// (macOS: no scroll views under the tree; its trackpad's gestures and momentum taken as its own views take them, Trackpad's, and its overlay scrollbars)
+		// (nested: only a constant condition drops the branch, its AppKit calls with it)
+		if (Platform.os() == 1) {
+			if (Platform.apple() < 1) {
+				ui.elastic = on;
+				ui.overlayBars = on && (bars == "overlay" || bars == "system" && App.overlayScrollbars());
+				ui.scrollbarLook = !on ? Plain : ui.overlayBars ? MacOverlay : MacLegacy;
+				// (macOS's scrollers drawn by AppKit, for every appearance and macOS)
+				if (on && ui.scrollbarArt == null) ui.scrollbarArt = new MacScrollbarArt();
+			}
+		}
 		// (Android: no scroll views under the tree; helder's drag, Android's fling: its VelocityTracker and OverScroller)
 		if (Platform.target() >= 9) @:privateAccess ui.touchScroll.g = on ? new helder.os.android.AndroidGlide() : new helder.os.Glide();
 		ui.requestFrame();
@@ -237,6 +259,12 @@ class UiWindow {
 			}
 			(cast iosScroll : IosScroll).update();
 		}
+	}
+
+	// macOS's scrollbars for this window: "system", "overlay" or "always" (UiWindow.scrollbars)
+	public function scrollbarStyle(style:String) {
+		bars = style;
+		nativeScroll(ui.nativeScroll || ui.elastic);
 	}
 
 	public var root(get, never):Node;
@@ -469,7 +497,8 @@ class UiWindow {
 					dx = dy;
 					dy = 0;
 				}
-				ui.wheel(e.x / k, e.y / k, dx / k, dy / k, e.eased, e.mods);
+				var phased = e.phase != 0 || e.momentum != 0;
+				ui.wheel(e.x / k, e.y / k, dx / k, dy / k, e.eased, e.mods, e.phase, e.momentum, phased ? ui.eventTime(e.time) : -1);
 			case MouseDown:
 				ui.pointerDown(e.x / k, e.y / k, e.button);
 			case MouseUp:
@@ -555,6 +584,14 @@ class UiWindow {
 				// (the user's keymap file, read again when it changed: the menus' labels too)
 				if (helder.ui.actions.Keymap.global.poll()) for (w in open)
 					w.ui.requestFrame();
+				// (macOS's "Show scroll bars": overlay or always)
+				var overlay = App.overlayScrollbars();
+				for (w in open)
+					if (w.ui.elastic && w.bars == "system" && w.ui.overlayBars != overlay) {
+						w.ui.overlayBars = overlay;
+						w.ui.scrollbarLook = overlay ? MacOverlay : MacLegacy;
+						w.ui.requestFrame();
+					}
 				var d = App.prefersDark();
 				if (d != dark.peek()) {
 					dark(d);
@@ -596,6 +633,7 @@ class UiWindow {
 			w.ui.requestFrame();
 		});
 		if (props.scrolling != null) w.nativeScroll(props.scrolling != "helder");
+		if (props.scrollbars != null) w.scrollbarStyle(props.scrollbars);
 		if (props.onClose != null) w.onClose = props.onClose;
 		if (props.onDrop != null) w.onDrop = props.onDrop;
 		// (in this owner: what is above the root, contexts, seen inside)

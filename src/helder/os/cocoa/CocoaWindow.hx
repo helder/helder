@@ -807,6 +807,7 @@ class CocoaWindow {
 		var e = event;
 		e.kind = None;
 		e.window = owner;
+		e.phase = e.momentum = 0;
 		switch type {
 			case NS.KeyDown | NS.KeyUp:
 				e.kind = type == NS.KeyDown ? KeyDown : KeyUp;
@@ -859,7 +860,11 @@ class CocoaWindow {
 				e.deltaY = -180 * Math.log(1 + m);
 			case NS.ScrollWheel:
 				var dx = Msg.f(ev, ObjC.sel("scrollingDeltaX")), dy = Msg.f(ev, ObjC.sel("scrollingDeltaY"));
-				if (dx == 0 && dy == 0) return;
+				// (a trackpad's gesture and its momentum: their phases, its ends without deltas too)
+				e.phase = scrollPhase(Msg.i(ev, ObjC.sel("phase")).toInt());
+				e.momentum = scrollPhase(Msg.i(ev, ObjC.sel("momentumPhase")).toInt());
+				e.time = Msg.f(ev, ObjC.sel("timestamp")) * 1000;
+				if (dx == 0 && dy == 0 && e.phase == 0 && e.momentum == 0) return;
 				// (a trackpad's points, exact; a wheel's lines, 40 pixels each; the
 				// content follows the fingers, so the view scrolls the other way)
 				var precise = Msg.b(ev, ObjC.sel("hasPreciseScrollingDeltas"));
@@ -885,6 +890,18 @@ class CocoaWindow {
 		}
 		dispatch(e);
 	}
+
+	// NSEventPhase (Began 1, Stationary 2, Changed 4, Ended 8, Cancelled 16,
+	// MayBegin 32) as ScrollPhase's: MayBegin a Began (fingers down, still),
+	// Stationary a Changed
+	static function scrollPhase(p:Int):Int
+		return p & (1 | 32) != 0 ? ScrollPhase.Began : p & (2 | 4) != 0 ? ScrollPhase.Changed : p & 8 != 0 ? ScrollPhase.Ended : p & 16 != 0 ? ScrollPhase.Cancelled : 0;
+
+	// whether the system shows scrollbars over the content, while scrolling
+	// (NSScroller.preferredScrollerStyle: 1 overlay; System Settings'
+	// "Show scroll bars")
+	static function overlayScrollbars():Bool
+		return Msg.i(ObjC.cls("NSScroller"), ObjC.sel("preferredScrollerStyle")).toInt() == 1;
 
 	// NSEventModifierFlags: Shift 1 << 17, Control 1 << 18, Option 1 << 19, Command 1 << 20
 	static function mods(ev:Ptr):Int {

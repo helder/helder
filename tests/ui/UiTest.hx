@@ -59,6 +59,7 @@ class UiTest {
 		pointerEvents();
 		rtlScroll();
 		nativeScrolls();
+		trackpad();
 		noWrap();
 		textTransform();
 		culling();
@@ -638,6 +639,128 @@ class UiTest {
 		ui.pointerMove(50, 40, 1);
 		ui.pointerUp(50, 40, 1, 1);
 		check("native scroll: off, helder's own drag scrolls", outer.scrollY > 0, "" + outer.scrollY);
+	}
+
+	// a trackpad's gestures as macOS's views take them (Ui.elastic): latched
+	// to one scroller, stretching past an end and springing back, the
+	// momentum replayed at the frames' times and bouncing at an end; overlay
+	// scrollbars fading after the scroll
+	static function trackpad() {
+		var time = 100.0;
+		Ui.now = () -> time;
+		var ui = new Ui(new MonoText(), 200, 100);
+		ui.elastic = true;
+		ui.overlayBars = true;
+		var page = new Node("page"), row = new Node("row"), tall = new Node("tall");
+		page.style.set({width: 200, height: 100, overflow: Scroll});
+		row.style.set({height: 40, shrink: 0, overflow: Scroll, direction: Row});
+		for (i in 0...3) {
+			var c = new Node("c" + i);
+			c.style.set({width: 100, height: 40, shrink: 0});
+			row.append(c);
+		}
+		tall.style.set({height: 300, shrink: 0});
+		page.append(row);
+		page.append(tall);
+		ui.root.append(page);
+		ui.update();
+		ui.paint(new Recording());
+		check("trackpad: no overlay bar before a scroll", @:privateAccess ui.barShown(page) == 0);
+		inline function wheel(dy:Float, phase:Int, momentum = 0, dx = 0.0, y = 20.0)
+			ui.wheel(50, y, dx, dy, false, 0, phase, momentum, time);
+		function frames(seconds:Float) {
+			var end = time + seconds;
+			while (time < end) {
+				time += 1 / 120;
+				Clock.tick(time);
+			}
+		}
+		// (a vertical gesture over the row: the page's, the row cannot move that way)
+		wheel(0, 1);
+		wheel(30, 2);
+		check("trackpad: latched to the page over the row", page.scrollY == 30 && row.scrollX == 0, page.scrollY + " " + row.scrollX);
+		// (sideways in the same gesture: still the page's, which cannot: nothing)
+		wheel(0, 2, 0, 50);
+		check("trackpad: no handoff mid-gesture", row.scrollX == 0, "" + row.scrollX);
+		wheel(0, 3);
+		// (past the start: a stretch, less than the push, springing back once let go)
+		time += 1;
+		wheel(0, 1);
+		wheel(-100, 2);
+		var s = page.scrollY;
+		// (from 30, 100 up: 70 past the start of a 100-point view, AppKit's curve and trackpad coefficient: 4.99)
+		check("trackpad: past the start, stretched as AppKit's", Math.abs(s + 4.988) < 0.01, "" + s);
+		time += 0.2;
+		wheel(0, 3);
+		frames(0.1);
+		check("trackpad: springing back", page.scrollY > s && page.scrollY < 0, "" + page.scrollY);
+		frames(1);
+		check("trackpad: back at the start", page.scrollY == 0, "" + page.scrollY);
+		// (a vertical swipe drifting sideways: no sideways stretch where nothing scrolls that way; a small push past the
+		// end none either)
+		time += 1;
+		wheel(0, 1);
+		wheel(-6, 2, 0, -3);
+		check("trackpad: no stretch sideways, none under 10 points", page.scrollX == 0 && page.scrollY == 0, page.scrollX + " " + page.scrollY);
+		wheel(0, 3);
+		frames(1);
+		// (a fling: the momentum's deltas replayed between the frames, all of them in the end)
+		time += 1;
+		wheel(0, 1);
+		wheel(10, 2, 0, 0, 80);
+		time += 0.01;
+		wheel(10, 2, 0, 0, 80);
+		wheel(0, 3);
+		for (i in 0...6) {
+			wheel(8, 0, i == 0 ? 1 : 2, 0, 80);
+			frames(1 / 60);
+		}
+		wheel(0, 0, 3);
+		frames(0.2);
+		check("trackpad: the momentum replayed, all of it", Math.abs(page.scrollY - 68) < 0.01, "" + page.scrollY);
+		// (a fling into the end: a bounce past it, back at the end after)
+		time += 1;
+		wheel(0, 1);
+		wheel(60, 2, 0, 0, 80);
+		time += 0.01;
+		wheel(60, 2, 0, 0, 80);
+		wheel(0, 3);
+		var past = 0.0;
+		for (i in 0...10) {
+			wheel(40, 0, i == 0 ? 1 : 2, 0, 80);
+			frames(1 / 60);
+			past = Math.max(past, page.scrollY - 240);
+		}
+		wheel(0, 0, 3);
+		frames(1.5);
+		check("trackpad: a fling into the end bounces past it and back", past > 0 && page.scrollY == 240, past + " " + page.scrollY);
+		// (a mouse wheel turned on, a notch every frame: the glide moving on (no notch restarting it from rest), faster as notches come,
+		// as Chromium's; all of it in the end)
+		ui.elastic = false;
+		page.scrollY = 0;
+		time += 1;
+		Clock.tick(time);
+		var at = [];
+		for (i in 0...6) {
+			ui.wheel(50, 80, 0, 20, true);
+			time += 1 / 60;
+			Clock.tick(time);
+			at.push(page.scrollY);
+		}
+		var flows = true;
+		for (i in 1...at.length)
+			if (at[i] <= at[i - 1]) flows = false;
+		check("trackpad: a wheel turned on glides, faster as notches come (eased in from rest, as Chromium)", at[1] > 0 && flows && at[5] > 15 && at[5] - at[4] > at[2] - at[1], "" + at);
+		frames(0.5);
+		check("trackpad: the wheel's notches all scrolled in the end", page.scrollY == 120, "" + page.scrollY);
+		ui.elastic = true;
+		// (overlay scrollbars: shown as it moves, gone a while after)
+		ui.update();
+		ui.paint(new Recording());
+		check("trackpad: the overlay bar shown after a scroll", @:privateAccess ui.barShown(page) > 0);
+		time += 1;
+		check("trackpad: the overlay bar faded a second later", @:privateAccess ui.barShown(page) == 0);
+		Ui.now = haxe.Timer.stamp;
 	}
 
 	static function rtlScroll() {

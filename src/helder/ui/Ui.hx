@@ -130,6 +130,49 @@ class Ui {
 	// the ring's gap outside the node
 	public var focusRingOffset = 2.0;
 	public var scrollbarColor:Color = 0x59000000;
+	// the scrollbars shown only while their scroller moves, over the content
+	// (macOS's overlay scrollers: UiWindow follows the system's setting):
+	// shown as it moves, faded out half a second after it stops, over a
+	// quarter (AppKit's, as Chromium has them); a press finds them only while shown
+	public var overlayBars = false;
+	// how the scrollbars look (ScrollbarLook; UiWindow: macOS's on macOS)
+	public var scrollbarLook:ScrollbarLook = Plain;
+	// the platform's own scrollbars drawn for that look (null: helder's drawing of it)
+	public var scrollbarArt:Null<ScrollbarArt> = null;
+	// (each scroller's offsets at the last paint, and when they last changed)
+	final barMoved = new Map<Node, Array<Float>>();
+
+	static inline var BAR_SHOWN = 0.5;
+	static inline var BAR_FADE = 0.25;
+
+	var barHover:Null<Node> = null;
+
+	// whether the pointer is over n's scrollbar on axis x (its track's width, along its length)
+	function overBar(n:Node, x:Bool):Bool {
+		if (Scrolling.thumb(n, x) == null) return false;
+		var tr = Scrolling.track(n, x), g = Scrolling.gutter(n), px = pointerX + Scrolling.scrolled(n, true), py = pointerY + Scrolling.scrolled(n, false);
+		var along = x ? px : py, across = x ? py : px, edge = tr[2] + Scrolling.barSize(n) + Scrolling.barInset(n);
+		return along >= tr[0] && along <= tr[0] + tr[1] && across >= edge - g && across <= edge;
+	}
+
+	// how far n's overlay scrollbars show (0 to 1), its last moves noted; a frame asked for while they fade
+	function barShown(n:Node):Float {
+		var m = barMoved.get(n), t = now();
+		if (m == null) {
+			barMoved.set(n, [n.scrollX, n.scrollY, -1e9]);
+			return 0;
+		}
+		// (shown as it moves, while dragged, and while the pointer is over a bar of it)
+		if (m[0] != n.scrollX || m[1] != n.scrollY || drag == n || overBar(n, false) || overBar(n, true)) {
+			m[0] = n.scrollX;
+			m[1] = n.scrollY;
+			m[2] = t;
+		}
+		var age = t - m[2];
+		if (age >= BAR_SHOWN + BAR_FADE) return 0;
+		needsFrame = true;
+		return age <= BAR_SHOWN ? 1 : 1 - (age - BAR_SHOWN) / BAR_FADE;
+	}
 	public var scrollbarActiveColor:Color = 0x8C000000;
 
 	// --- the pointers other than the mouse (fingers, pens: helder.os's slots)
@@ -192,6 +235,7 @@ class Ui {
 		overlay = new Node("overlay");
 		overlay.attach(this);
 		touchScroll = @:privateAccess new TouchScroll(this);
+		trackpad = @:privateAccess new Trackpad(this);
 		// (Copy: the selected text, while there is some)
 		on(helder.ui.actions.Actions.StandardAction, a -> switch a {
 			case Copy if (selectedText() != ""):
@@ -278,7 +322,7 @@ class Ui {
 		tellResized();
 		// (the scrollers whose extents may have changed)
 		for (n in rounded)
-			Scrolling.clamp(n);
+			if (!@:privateAccess trackpad.holds(n)) Scrolling.clamp(n);
 		rounded.resize(0);
 		changes.resize(0);
 		for (n in natives.copy())
@@ -615,15 +659,47 @@ class Ui {
 		cullX1 = c2;
 		cullY1 = c3;
 		if (s.overflow == Scroll && !hidden && !(nativeScroll && nativeBars)) {
-			for (x in [false, true]) {
+			var shown = overlayBars ? barShown(n) : 1.0;
+			if (shown > 0) for (x in [false, true]) {
 				var t = Scrolling.thumb(n, x);
 				if (t == null) continue;
 				var b = Scrolling.barSize(n), track = Scrolling.inheritedBar(n, true), own = Scrolling.inheritedBar(n, false);
+				// (the platform's own, where it draws them and no colours are given)
+				if (scrollbarArt != null && scrollbarLook != ScrollbarLook.Plain && track == null && own == null) {
+					var g = Scrolling.gutter(n), be = s.borderEdges, rtl = n.rtl(), overlay = scrollbarLook == ScrollbarLook.MacOverlay;
+					var corner = Scrolling.maxScroll(n, !x) > 0 && !overlay ? g : 0;
+					var strip:Null<Array<Float>> = overlay ? null : x ? [n.absX + be.left + (rtl ? corner : 0), n.absY + nh - be.bottom - g, nw - be.horizontal - corner, g] : [
+						rtl ? n.absX + be.left : n.absX + nw - be.right - g, n.absY + be.top, g, nh - be.vertical - corner];
+					scrollbarArt.paint(canvas, !x, overlay, dark, scale, strip, t, drag == n && dragX == x || overBar(n, x), shown);
+					continue;
+				}
+				// (macOS's always-shown scroller: its track, a 1-point border on the content's side; the corner too)
+				if (scrollbarLook == ScrollbarLook.MacLegacy && track == null) {
+					var g = Scrolling.gutter(n), be = s.borderEdges, rtl = n.rtl(), bg:Color = dark ? 0xFF2C2C2C : 0xFFFAFAFA, line:Color = dark ? 0xFF3D3D3D : 0xFFE8E8E8;
+					var corner = Scrolling.maxScroll(n, !x) > 0 ? g : 0;
+					if (x) {
+						var tx = n.absX + be.left + (rtl ? corner : 0), ty = n.absY + nh - be.bottom - g, tw = nw - be.horizontal - corner;
+						canvas.rect(tx, ty, tw, g, 0, bg, 0, 0);
+						canvas.rect(tx, ty, tw, 1, 0, line, 0, 0);
+					} else {
+						var tx = rtl ? n.absX + be.left : n.absX + nw - be.right - g, ty = n.absY + be.top, th = nh - be.vertical - corner;
+						canvas.rect(tx, ty, g, th, 0, bg, 0, 0);
+						canvas.rect(rtl ? tx + g - 1 : tx, ty, 1, th, 0, line, 0, 0);
+						if (corner > 0) canvas.rect(tx, ty + th, g, g, 0, bg, 0, 0);
+					}
+				}
 				if (track != null && track.a > 0) {
 					var tr = Scrolling.track(n, x);
 					if (x) canvas.rect(tr[0], tr[2], tr[1], b, b / 2, track, 0, 0) else canvas.rect(tr[2], tr[0], b, tr[1], b / 2, track, 0, 0);
 				}
-				canvas.rect(t[0], t[1], t[2], t[3], b / 2, own != null ? own : drag == n && dragX == x ? scrollbarActiveColor : scrollbarColor, 0, 0);
+				var active = drag == n && dragX == x;
+				var c:Color = own != null ? own : switch scrollbarLook {
+					case MacOverlay: dark ? 0x80FFFFFF : 0x80000000;
+					case MacLegacy: active ? (dark ? 0xFF939393 : 0x80000000) : (dark ? 0xFF6B6B6B : 0x3A000000);
+					case _: active ? scrollbarActiveColor : scrollbarColor;
+				};
+				if (shown < 1) c = (Math.round(c.a * shown) << 24) | ((c : Int) & 0xFFFFFF);
+				canvas.rect(t[0], t[1], t[2], t[3], b / 2, c, 0, 0);
 			}
 		}
 		// (its outline over its content, the focus ring over that)
@@ -660,6 +736,18 @@ class Ui {
 		eventAt = at;
 		pointerMoveNow(x, y, id, pressure);
 		eventAt = -1;
+		// (the platform's scrollbars: a frame as the pointer goes over one or leaves it, which darkens or shows it)
+		if (id == 0 && scrollbarLook != ScrollbarLook.Plain) {
+			var over:Null<Node> = null, n = hit(x, y);
+			while (n != null && over == null) {
+				if (n.style.overflow == Scroll && (overBar(n, false) || overBar(n, true))) over = n;
+				n = n.parent;
+			}
+			if (over != barHover) {
+				barHover = over;
+				requestFrame();
+			}
+		}
 		helder.view.graph.Graph.flush();
 	}
 
@@ -1145,13 +1233,37 @@ class Ui {
 	// (eased: a mouse's notches, the scroll gliding to them)
 	// mods: the scroll's own modifiers (Key.MOD_*), else (-1) the keys' last
 	// (a trackpad's pinch is a wheel with Control that no key event carries)
-	public function wheel(x:Float, y:Float, deltaX:Float, deltaY:Float, eased = false, mods = -1) {
-		wheelNow(x, y, deltaX, deltaY, eased, mods);
+	// phase, momentum: a trackpad's gesture's and its momentum's
+	// (helder.os.ScrollPhase; 0: a wheel's), time its event's (Ui.now's
+	// clock): with elastic, Trackpad's
+	public function wheel(x:Float, y:Float, deltaX:Float, deltaY:Float, eased = false, mods = -1, phase = 0, momentum = 0, time = -1.0) {
+		wheelNow(x, y, deltaX, deltaY, eased, mods, phase, momentum, time < 0 ? now() : time);
 		helder.view.graph.Graph.flush();
 	}
 
-	function wheelNow(x:Float, y:Float, deltaX:Float, deltaY:Float, eased:Bool, mods = -1) {
+	// a trackpad's scrolls as macOS's own views take them (Trackpad: one
+	// scroller a gesture, stretching past its ends and springing back, the
+	// system's momentum replayed at the frames' times): UiWindow's on macOS
+	// (false: each scroll as a wheel's)
+	public var elastic = false;
+	final trackpad:Trackpad;
+
+	function wheelNow(x:Float, y:Float, deltaX:Float, deltaY:Float, eased:Bool, mods = -1, phase = 0, momentum = 0, time = 0.0) {
+		var phased = elastic && (phase != 0 || momentum != 0) && (mods >= 0 ? mods : this.mods) & Key.MOD_CONTROL == 0;
 		var target = hit(x, y);
+		if (phased) {
+			// (the tree hears the moves, the momentum's too, and may keep them: no scroll then)
+			if (target != null && (deltaX != 0 || deltaY != 0)) {
+				var e = Event.of(Wheel, target, x, y);
+				e.mods = mods >= 0 ? mods : this.mods;
+				e.deltaX = deltaX;
+				e.deltaY = deltaY;
+				bubble(e);
+				if (e.defaultPrevented) return;
+			}
+			@:privateAccess trackpad.scroll(x, y, deltaX, deltaY, phase, momentum, time);
+			return;
+		}
 		if (target == null) return;
 		var e = Event.of(Wheel, target, x, y);
 		e.mods = mods >= 0 ? mods : this.mods;
@@ -1481,8 +1593,8 @@ class Ui {
 
 	// how long a scroll by the keys eases (seconds; 0: at once)
 	public var scrollDuration = 0.15;
-	// (the scrolls easing: from x, y to x, y, since)
-	final scrolls = new Map<Node, Array<Float>>();
+	// (the scrollers' glides: a wheel's notches, the keys' scrolls)
+	final glides = new Map<Node, ScrollGlide>();
 	// the scrollers rounded by the last layouts, clamped after them
 	final rounded:Array<Node> = [];
 
@@ -1915,7 +2027,7 @@ class Ui {
 
 	// scrolls n (an overflow: scroll node) to x, y (clamped to what it can scroll)
 	public function scrollTo(n:Node, x:Float, y:Float) {
-		scrolls.remove(n);
+		Scrolling.stopGlide(this, n);
 		Scrolling.setScroll(this, n, true, x);
 		Scrolling.setScroll(this, n, false, y);
 	}
@@ -1943,5 +2055,8 @@ class Ui {
 		}
 		if (drag != null && contains(n, drag)) drag = null;
 		if (focus != null && contains(n, focus)) focus = null;
+		if (@:privateAccess trackpad.node != null && contains(n, @:privateAccess trackpad.node)) @:privateAccess trackpad.reset();
+		for (g in [for (k in glides.keys()) if (contains(n, k)) k])
+			glides.remove(g);
 	}
 }

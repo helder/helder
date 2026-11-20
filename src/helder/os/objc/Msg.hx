@@ -44,6 +44,10 @@ class Msg {
 	static function vSize(self:Ptr, sel:Ptr, a:CGSize):Void;
 	static function vRect(self:Ptr, sel:Ptr, a:CGRect):Void;
 	static function vPoint(self:Ptr, sel:Ptr, a:CGPoint):Void;
+	static function vRectBool(self:Ptr, sel:Ptr, a:CGRect, b:Bool):Void;
+	static function rectInt(self:Ptr, sel:Ptr, a:Int64):CGRect;
+	static function fIntInt(self:Ptr, sel:Ptr, a:Int64, b:Int64):Float;
+	static function idPtrBool(self:Ptr, sel:Ptr, a:Ptr, b:Bool):Ptr;
 	static function vPointBool(self:Ptr, sel:Ptr, a:CGPoint, b:Bool):Void;
 	static function vPtrBool(self:Ptr, sel:Ptr, a:Ptr, b:Bool):Void;
 	static function vPtrPtr(self:Ptr, sel:Ptr, a:Ptr, b:Ptr):Void;
