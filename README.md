@@ -114,9 +114,16 @@ Android SDK.
 - 2D: animated sprites, tilemaps, a 2D camera and physics.
 - Pathfinding, saves, ETC2 and KTX2 textures, a profiler.
 
+**Parallel**: one function over a range or buffers that compiles to both
+SIMD across jobs and a GPU compute pass, picked per call (as C++'s
+parallel algorithms, ISPC and Taichi do); workgroup memory and subgroups
+in `compute()`; GPU particles, cloth and soft bodies as its first users.
+
 Also: Windows' touchpad scrolling, the web's scroll lag and Safari's rubber band.
 
-**Later**: decals, volumetric fog, a lightmap baker, soft bodies, multiplayer.
+**Later**: decals, volumetric fog, a lightmap baker, soft bodies, multiplayer,
+a Vulkan back end (Android and Linux: async compute, timestamps, bindless),
+io_uring for files and sockets on Linux.
 
 ## License
 
