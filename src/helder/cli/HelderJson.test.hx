@@ -24,7 +24,7 @@ function tests() {
 			orientation: "landscape",
 			run: {name: "floating-greens", listed: true, kind: "game", tags: ["golf"], source: "https://github.com/helder/helder"},
 			targets: {
-				android: {minSdk: 31, publish: [{to: "play", track: "beta"}], store: "https://play.google.com/store/apps/details?id=build.helder.golf"},
+				android: {minSdk: 31, licenseKey: "MIIBIjAN", publish: [{to: "play", track: "beta"}], store: "https://play.google.com/store/apps/details?id=build.helder.golf"},
 				ios: {bundleId: "build.helder.golf-ios", publish: ["testflight"]},
 				windows: {store: "https://apps.microsoft.com/detail/9x"}
 			}
@@ -38,6 +38,7 @@ function tests() {
 		equals([for (c in m.icons) c.purpose[0] + " " + c.src], ["any icon.svg", "maskable maskable.png"]);
 		equals(m.icons[0].sizes, null);
 		equals(App.defines(m), ["-D", "helder.fullscreen"]);
+		equals(App.licenseKey(m), "MIIBIjAN");
 		equals([h.run.name, Std.string(h.run.listed), h.run.kind, h.run.tags.join(",")], ["floating-greens", "true", "game", "golf"]);
 		equals([for (d in h.destinations) '${d.target} ${d.to} ${d.track}'], ["android play beta", "ios testflight null"]);
 		equals([h.stores.get("android") != null, h.stores.get("windows") != null, h.stores.get("ios") == null], [true, true, true]);

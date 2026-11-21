@@ -1,6 +1,6 @@
 # In-app purchases
 
-Sell products inside the app: list what the store offers, buy one, and check what the user owns. On iOS and macOS this is StoreKit 2. helder puts its small framework into the app bundle when a program uses purchases, so you don't need Xcode.
+Sell products inside the app: list what the store offers, buy one, and check what the user owns. On iOS and macOS this is StoreKit 2, on Android Google Play Billing. helder puts what each needs into the app when a program uses purchases, so you don't need Xcode, Gradle or the Android SDK.
 
 ```ts
 import { Purchases } from "helder/store";
@@ -37,14 +37,22 @@ Finish each purchase once you've delivered it, and use `consume` for consumables
 
 | | iOS | macOS | Android | Windows | Linux | Web |
 |---|---|---|---|---|---|---|
-| Purchases | iOS 15+ | macOS 12+, app bundles | Coming | — | — | — |
+| Purchases | iOS 15+ | macOS 12+, app bundles | Play Billing 9 | — | — | — |
 
-`Purchases.available()` tells you whether this device can make purchases. Where it can't, every call fails with a short error.
+`Purchases.available()` tells you whether this device can make purchases. Where it can't, every call fails with a short error. On Android it can only say whether the Play Store is there until the first call connects: it turns false when Play answers that billing is unavailable.
 
 ## Real purchases
 
-You set up the products in App Store Connect, with the same ids the app asks for. To test them, sign in with a sandbox account on a device or in the simulator. helder never touches your accounts. Without any products set up, `products()` returns an empty list.
+You set up the products in App Store Connect or Play Console, with the same ids the app asks for. To test them, sign in with a sandbox account on an Apple device or simulator, or add a license tester in Play Console and put the app on a testing track. helder never touches your accounts. Without any products set up, `products()` returns an empty list.
 
-Every purchase carries `verified`, the store's signature checked on the device, and `signed`, the JWS your server can verify itself.
+Play doesn't know which products are consumable: a one-time product comes back as `nonConsumable`, and calling `consume` instead of `finish` is what lets it be bought again. Finish or consume each purchase within three days, or Play refunds it.
+
+Every purchase carries `verified`, the store's signature checked on the device, and `signed`, what your server verifies: the JWS on Apple, the purchase token on Play. On Android `verified` needs the license key from Play Console's Monetization setup:
+
+```json
+"targets": {"android": {"licenseKey": "MIIBIjANBgkq..."}}
+```
+
+Without it `verified` is false. Either way, a server checking the token with the Play Developer API is the check to trust.
 
 <Reference to="store"/>

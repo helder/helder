@@ -62,6 +62,8 @@ class Android {
 		// (a Haxe string in the macro call: forward slashes)
 		var words = ["--macro", 'helder.pack.android.Classes.write("${FileSystem.fullPath(Path.directory(lib)).split("\\").join("/")}/classes.json")'].concat(App.defines(e.config));
 		if (App.links(e.config) != null) words = words.concat(["-D", "helder.links"]);
+		var key = App.licenseKey(e.config);
+		if (key != null) words = words.concat(["-D", 'helder.play.license-key=$key']);
 		return BuildCommand.build(e, lib, mode, server, words.concat(extra ?? []), packed ? () -> {
 			pack(e, lib, apk, dev);
 			apk;

@@ -96,6 +96,12 @@ function tests() {
 			"package.json's \"helder\": {\"orientation\": \"sideways\"}: portrait, landscape or any");
 		equals(Std.string(throws(() -> App.ios("x", {fullscreen: "yes"}))), "package.json's \"helder\": {\"fullscreen\": yes}: true or false");
 	});
+	test("Play's license key: whitespace dropped, base64 only", () -> {
+		equals(App.licenseKey({android: {licenseKey: "MIIB\nIjAN+/="}}), "MIIBIjAN+/=");
+		equals(App.licenseKey({android: {}}), null);
+		equals(Std.string(throws(() -> App.licenseKey({android: {licenseKey: "a-key!"}}))),
+			"package.json's \"helder\": {\"android\": {\"licenseKey\"}}: Play Console's base64 key");
+	});
 	test("the debug key's file: HELDER_ANDROID_KEY, package.json's, the cache", () -> {
 		equals(App.androidKey(null, "app", "/c/helder", null), "/c/helder/android/debug-key");
 		equals(App.androidKey({android: {key: "keys/debug"}}, "app", "/c/helder", null), "app/keys/debug");

@@ -102,7 +102,7 @@ code that uses it), and helder.cli.Android hands it here.
   `java.lang.reflect.Proxy` (its native is called on the thread that
   called the listener: billing's own; Object's methods are Java's).
 
-Billing 9.1.0's tree (48 artifacts, 5,581 classes) becomes 1,078 classes,
+Billing 9.1.0's tree (48 artifacts, 5,581 classes) becomes 1,075 classes (helder.store's keep list),
 about 690 KB of dex, in under two seconds (R8 with the same keep rules:
 357 KB and 2,406 methods renamed and optimised; 625 KB without either).
 Not done: resources (an AAR's `res/` other than values), Java resources
@@ -119,9 +119,10 @@ interfaces, nests, locks, the stack's words, constants, Java 8's
 same bytes as a native build, no host runtime to need) and runs them on
 the emulator against a JVM's output,
 every class through dex2oat's verifier; `tests/pack/billing.sh` builds
-tests/pack/billing/BillingCheck.hx with billing, verifies every class
-ahead of time, connects (BILLING_UNAVAILABLE without the Play Store) and
-finds no VerifyError or missing class in logcat. The class files are
+tests/pack/billing/BillingCheck.hx (helder.store's Purchases) with
+billing, verifies every class ahead of time, connects (BILLING_UNAVAILABLE
+without the Play Store), reads the library's objects made from fixture
+JSON and finds no VerifyError or missing class in logcat. The class files are
 compiled once (`tests/pack/jvm/build.sh`, a JDK on that machine only).
 
 ## The asset catalog (a minimal actool)

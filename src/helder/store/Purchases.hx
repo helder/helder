@@ -1,5 +1,7 @@
 package helder.store;
 
+// (Play has no consumable kind: a one-time product is a nonConsumable, and
+// consume or finish decides)
 enum abstract ProductKind(String) to String {
 	var Consumable = "consumable";
 	var NonConsumable = "nonConsumable";
@@ -21,9 +23,10 @@ typedef Product = {
 }
 
 // A purchase the store has made: StoreKit's transaction, Play's purchase.
-// Times in ms since 1970; verified: the store's signature checked on the
-// device (StoreKit's JWS); signed: what a server verifies (the JWS; Play's
-// purchase token)
+// Times in ms since 1970 (expires, revoked: StoreKit's; Play gives neither
+// on the device); verified: the store's signature checked on the device
+// (StoreKit's JWS; Play's against the app's license key, false without
+// one); signed: what a server verifies (the JWS; Play's purchase token)
 typedef Purchase = {
 	id:String,
 	product:String,
@@ -48,7 +51,8 @@ typedef PurchaseResult = {state:PurchaseState, ?purchase:Purchase}
 // In-app purchases: the products the store sells the app, buying one, the
 // purchases the user owns. StoreKit 2 on iOS 15 and macOS 12 and later (a
 // framework of helder's, put into the app bundle when the program uses
-// this class); elsewhere none is available and each call fails. Deliver
+// this class), Google Play Billing on Android (its library put into the
+// APK the same way); elsewhere none is available and each call fails. Deliver
 // what was bought, then finish it (consume a consumable): an unfinished
 // purchase is given again, to onPurchase, at the next launch.
 //
@@ -59,15 +63,20 @@ typedef PurchaseResult = {state:PurchaseState, ?purchase:Purchase}
 class Purchases {
 	// purchases made outside purchase(): renewals, Ask to Buy, other
 	// devices, refunds, one left unfinished; those that came before it was
-	// set given when it is. Set it as the app starts: StoreKit is listened
+	// set given when it is. Set it as the app starts: the store is listened
 	// to from the first use of this class, and Apple asks for the launch
 	@:typescript public static var onPurchase(default, set):Null<Purchase->Void> = null;
 
 	static final early:Array<Purchase> = [];
 
+	// whether this device can buy: on Android, Play's billing service is
+	// there and has not answered BILLING_UNAVAILABLE (whether the account can
+	// pay is known only once connected: true at first, false after)
 	@:typescript public static function available():Bool {
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
 		return PurchasesApple.load();
+		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
+		return PurchasesAndroid.available();
 		#else
 		return false;
 		#end
@@ -76,6 +85,8 @@ class Purchases {
 	@:typescript @:coroutine public static function products(ids:Array<String>):Array<Product> {
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
 		return [for (p in PurchasesApple.products(ids.join("\n"))) product(p)];
+		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
+		return PurchasesAndroid.products(ids);
 		#else
 		throw none();
 		#end
@@ -87,6 +98,8 @@ class Purchases {
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
 		var r = PurchasesApple.purchase(id, account);
 		return r.code == 2 ? {state: Pending} : r.code == 3 ? {state: Cancelled} : {state: Purchased, purchase: of(haxe.Json.parse(r.text))};
+		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
+		return PurchasesAndroid.purchase(id, account);
 		#else
 		throw none();
 		#end
@@ -96,16 +109,20 @@ class Purchases {
 	@:typescript @:coroutine public static function owned():Array<Purchase> {
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
 		return [for (p in PurchasesApple.owned()) of(p)];
+		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
+		return PurchasesAndroid.owned();
 		#else
 		throw none();
 		#end
 	}
 
-	// after delivering it (Play: acknowledged)
+	// after delivering it (Play: acknowledged; Play refunds one left for 3 days)
 	@:typescript @:coroutine public static function finish(p:Purchase):Void {
 		var id = p.id;
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
 		PurchasesApple.finish(id);
+		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
+		PurchasesAndroid.finish(p);
 		#else
 		throw none();
 		#end
@@ -116,16 +133,21 @@ class Purchases {
 		var id = p.id;
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
 		PurchasesApple.finish(id);
+		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
+		PurchasesAndroid.consume(p);
 		#else
 		throw none();
 		#end
 	}
 
 	// the user's purchases fetched again from the store (StoreKit asks them
-	// to sign in): a Restore button's; owned() after it
+	// to sign in; Play's unfinished ones go to onPurchase): a Restore
+	// button's; owned() after it
 	@:typescript @:coroutine public static function restore():Void {
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
 		PurchasesApple.sync();
+		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
+		PurchasesAndroid.restore();
 		#else
 		throw none();
 		#end

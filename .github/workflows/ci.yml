@@ -39,8 +39,9 @@
 #   the whole screen), the JVM fixtures translated to dex
 #   (tests/pack/jvm.sh: their output against a JVM's, every class
 #   verified) and Play Billing through helder's Maven libraries
-#   (tests/pack/billing.sh: verified ahead of time, startConnection's
-#   callback; the libraries' downloads cached, bin/pack/cache/maven); the
+#   (tests/pack/billing.sh: helder.store's Purchases, verified ahead of
+#   time, a short error without the Play Store, the library's objects read
+#   from fixture JSON; the libraries' downloads cached, bin/pack/cache/maven); the
 #   APKs' own checks are the headless job's pack lane;
 # - ios-simulator: two shards, an iPhone simulator each (tests/pack/simulator.sh:
 #   made and booting once the CLI and helder's compiler are built, while
@@ -460,7 +461,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: bin/pack/cache/maven
-          key: maven-${{ hashFiles('src/helder/pack/android/Maven.hx', 'tests/pack/jvm/JvmFixture.hx', 'tests/pack/billing/BillingCheck.hx') }}
+          key: maven-${{ hashFiles('src/helder/pack/android/Maven.hx', 'tests/pack/jvm/JvmFixture.hx', 'src/helder/store/PurchasesAndroid.hx') }}
           restore-keys: maven-
       - name: The CLI, Android's runtime objects, the device tests' apps (tests/gfx/android, the cube and its touches; tests/os/AndroidTouchTest.hx, a drawn ui's fling)
         env:

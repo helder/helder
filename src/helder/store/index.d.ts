@@ -5,6 +5,8 @@
 
 declare const __haxe: {Purchases: "helder.store.Purchases", __module: "helder.store.TypeScript"};
 
+// (Play has no consumable kind: a one-time product is a nonConsumable, and
+// consume or finish decides)
 export type ProductKind = "consumable" | "nonConsumable" | "subscription" | "nonRenewing";
 
 // price: the store's own text ("€4,99"); amount: its number; currency: its
@@ -12,9 +14,10 @@ export type ProductKind = "consumable" | "nonConsumable" | "subscription" | "non
 export type Product = { id: string; kind: ProductKind; title: string; description: string; price: string; amount: number; currency: string; period?: string };
 
 // A purchase the store has made: StoreKit's transaction, Play's purchase.
-// Times in ms since 1970; verified: the store's signature checked on the
-// device (StoreKit's JWS); signed: what a server verifies (the JWS; Play's
-// purchase token)
+// Times in ms since 1970 (expires, revoked: StoreKit's; Play gives neither
+// on the device); verified: the store's signature checked on the device
+// (StoreKit's JWS; Play's against the app's license key, false without
+// one); signed: what a server verifies (the JWS; Play's purchase token)
 export type Purchase = { id: string; product: string; date: number; quantity: number; expires?: number; revoked?: number; verified: boolean; signed: string };
 
 export type PurchaseState = "purchased" | "pending" | "cancelled";
@@ -25,7 +28,8 @@ export type PurchaseResult = {state: "purchased"; purchase: Purchase} | {state: 
 // In-app purchases: the products the store sells the app, buying one, the
 // purchases the user owns. StoreKit 2 on iOS 15 and macOS 12 and later (a
 // framework of helder's, put into the app bundle when the program uses
-// this class); elsewhere none is available and each call fails. Deliver
+// this class), Google Play Billing on Android (its library put into the
+// APK the same way); elsewhere none is available and each call fails. Deliver
 // what was bought, then finish it (consume a consumable): an unfinished
 // purchase is given again, to onPurchase, at the next launch.
 //
@@ -35,20 +39,24 @@ export type PurchaseResult = {state: "purchased"; purchase: Purchase} | {state: 
 export declare class Purchases {
 	// purchases made outside purchase(): renewals, Ask to Buy, other
 	// devices, refunds, one left unfinished; those that came before it was
-	// set given when it is. Set it as the app starts: StoreKit is listened
+	// set given when it is. Set it as the app starts: the store is listened
 	// to from the first use of this class, and Apple asks for the launch
 	static onPurchase: ((arg0: Purchase) => void) | null;
+	// whether this device can buy: on Android, Play's billing service is
+	// there and has not answered BILLING_UNAVAILABLE (whether the account can
+	// pay is known only once connected: true at first, false after)
 	static available(): boolean;
 	static products(ids: string[]): Promise<Product[]>;
 	// account: who buys, a UUID of the app's (StoreKit's appAccountToken, Play's obfuscatedAccountId)
 	static purchase(id: string, options?: { account?: string }): Promise<{state: "purchased"; purchase: Purchase} | {state: "pending"} | {state: "cancelled"}>;
 	// what the user owns now: non-consumables, active subscriptions
 	static owned(): Promise<Purchase[]>;
-	// after delivering it (Play: acknowledged)
+	// after delivering it (Play: acknowledged; Play refunds one left for 3 days)
 	static finish(p: Purchase): Promise<unknown>;
 	// a consumable's, after delivering it: it can be bought again (StoreKit: finished; Play: consumed)
 	static consume(p: Purchase): Promise<unknown>;
 	// the user's purchases fetched again from the store (StoreKit asks them
-	// to sign in): a Restore button's; owned() after it
+	// to sign in; Play's unfinished ones go to onPurchase): a Restore
+	// button's; owned() after it
 	static restore(): Promise<unknown>;
 }
