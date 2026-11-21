@@ -112,10 +112,12 @@ none), `-if` rules, debug information (line numbers), jsr and ret (a
 method using them, or anything else untranslatable, throws when called:
 the build warns), backports of Java APIs newer than API 29.
 
-Verified (CI's android job): `tests/pack/jvm.sh` runs tests/pack/jvm's
+Verified (CI's android job): `tests/pack/jvm.sh` translates tests/pack/jvm's
 fixtures (lambdas, concatenation, exceptions, switches, numbers, arrays,
 interfaces, nests, locks, the stack's words, constants, Java 8's
-`access$`, kotlin-stdlib's code) on the emulator against a JVM's output,
+`access$`, kotlin-stdlib's code) on Haxe's interpreter (`haxe --run`: the
+same bytes as a native build, no host runtime to need) and runs them on
+the emulator against a JVM's output,
 every class through dex2oat's verifier; `tests/pack/billing.sh` builds
 tests/pack/billing/BillingCheck.hx with billing, verifies every class
 ahead of time, connects (BILLING_UNAVAILABLE without the Play Store) and

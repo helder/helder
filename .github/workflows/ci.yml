@@ -499,7 +499,7 @@ jobs:
             sh tests/os/android-touch.sh bin/pack/AndroidTouchTest.apk bin/pack/android-gfx
             sh tests/typescript/native/android.sh bin/cli/helder bin/pack/android-ts
             sh tests/platform/webview-android.sh bin/cli/helder bin/pack/android-webview
-            sh tests/pack/jvm.sh bin/cli/helder bin/pack/android-jvm
+            sh tests/pack/jvm.sh bin/pack/android-jvm
             sh tests/pack/billing.sh bin/cli/helder bin/pack/android-billing
       - uses: actions/upload-artifact@v7
         if: always()

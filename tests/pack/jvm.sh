@@ -1,15 +1,17 @@
 #!/bin/sh
 # The JVM fixtures (tests/pack/jvm: Java 11 and Java 8 classes calling
 # kotlin-stdlib's) on the Android device or emulator adb reaches (CI's
-# android job): translated to dex by tests/pack/jvm/JvmFixture.hx
-# (kotlin-stdlib from Maven, fetched once into helder's cache; shrunk from
-# fixture.Main.main), run by dalvikvm, its output against
+# android job): translated to dex by tests/pack/jvm/JvmFixture.hx on Haxe's
+# interpreter (haxe --run: no host program to build, nor the host's
+# runtime objects; kotlin-stdlib from Maven, fetched once into helder's
+# cache; shrunk from fixture.Main.main), run by dalvikvm, its output against
 # tests/pack/jvm/expected.txt (a JVM's); then every class verified
 # (dex2oat's verify filter): no stub, no check failure, no verifier error.
-#   sh tests/pack/jvm.sh <helder> [out dir]
+#   sh tests/pack/jvm.sh [out dir]
+# (HAXE: the compiler, else node_modules/.bin's, bun install's)
 set -u
-helder=$1
-out=$(mkdir -p "${2:-bin/pack/android-jvm}" && cd "${2:-bin/pack/android-jvm}" && pwd)
+haxe=${HAXE:-node_modules/.bin/haxe}
+out=$(mkdir -p "${1:-bin/pack/android-jvm}" && cd "${1:-bin/pack/android-jvm}" && pwd)
 failed=0
 
 check() {
@@ -19,13 +21,11 @@ check() {
 	fi
 }
 
-"$helder" build tests/pack/jvm/JvmFixture.hx -o "$out/JvmFixture"
-check "helder build tests/pack/jvm/JvmFixture.hx" $?
 rm -rf "$out/dex"
-"$out/JvmFixture" tests/pack/jvm/classes "$out/dex" > "$out/jvm.txt" 2>&1
-check "the fixtures translated" $?
+"$haxe" -cp src -cp tests/pack/jvm --run JvmFixture tests/pack/jvm/classes "$out/dex" > "$out/jvm.txt" 2>&1
+check "the fixtures translated (haxe --run JvmFixture)" $?
 cat "$out/jvm.txt"
-! grep -q "jvm: stub\|jvm: check" "$out/jvm.txt"
+grep -q "^jvm: .* classes" "$out/jvm.txt" && ! grep -q "jvm: stub\|jvm: check" "$out/jvm.txt"
 check "no stubs, the files checked" $?
 
 adb wait-for-device

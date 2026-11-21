@@ -1808,7 +1808,8 @@ private class Method {
 		function layout(copied:Bool):Array<Int> {
 			var regs = [for (_ in 0...n) 0], next = 0;
 			var order = [for (u in units) if (copied || u.at >= argWords) u];
-			if (!plain) order.sort((a, b) -> b.uses - a.uses);
+			// (ties by index: the same file from every Haxe target's sort)
+			if (!plain) order.sort((a, b) -> b.uses != a.uses ? b.uses - a.uses : a.at - b.at);
 			for (u in order) {
 				for (j in 0...u.size)
 					if (u.at + j < n) regs[u.at + j] = next + j;

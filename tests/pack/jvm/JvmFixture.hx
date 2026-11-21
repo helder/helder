@@ -6,7 +6,8 @@ import helder.pack.android.Maven;
 import sys.FileSystem;
 import sys.io.File;
 
-// The fixtures as an app's library would be (tests/pack/jvm.sh runs it):
+// The fixtures as an app's library would be (tests/pack/jvm.sh runs it on
+// Haxe's interpreter: haxe -cp src -cp tests/pack/jvm --run JvmFixture ...):
 // their class files with kotlin-stdlib (Maven: fetched once into helder's
 // cache, offline after), shrunk from fixture.Main.main, translated, written
 // as <out>/classes.dex (and classes2.dex... past 65,536 ids); its counts
