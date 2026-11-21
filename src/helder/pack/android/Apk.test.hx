@@ -219,7 +219,7 @@ function tests() {
 		});
 		test("the services' classes alone, each Java's", () -> {
 			var methods = [];
-			equals(Dex.check(Glue.dex(false, ["Main", "Request", "Files", "Alarm", "Locator", "Biometric"]), methods), []);
+			equals(Dex.check(Glue.dex(false, ["Main", "Request", "Files", "Alarm", "Locator", "Biometric", "Handler"]), methods), []);
 			for (m in [
 				"Lorg/hxmc/Main; onNewIntent(Landroid/content/Intent;)V", "Lorg/hxmc/Activity; onNewIntent(Landroid/content/Intent;)V",
 				"Lorg/hxmc/Request; onCreate(Landroid/os/Bundle;)V", "Lorg/hxmc/Request; result(IILjava/lang/Object;)V",
@@ -229,11 +229,13 @@ function tests() {
 				"Lorg/hxmc/Locator; onLocationChanged(Landroid/location/Location;)V", "Lorg/hxmc/Locator; accept(Ljava/lang/Object;)V",
 				"Lorg/hxmc/Locator; onStatusChanged(Ljava/lang/String;ILandroid/os/Bundle;)V", "Lorg/hxmc/Locator; located(ILjava/lang/Object;)V",
 				"Lorg/hxmc/Biometric; onAuthenticationSucceeded(Landroid/hardware/biometrics/BiometricPrompt$AuthenticationResult;)V",
-				"Lorg/hxmc/Biometric; onAuthenticationError(ILjava/lang/CharSequence;)V", "Lorg/hxmc/Biometric; onClick(Landroid/content/DialogInterface;I)V"
+				"Lorg/hxmc/Biometric; onAuthenticationError(ILjava/lang/CharSequence;)V", "Lorg/hxmc/Biometric; onClick(Landroid/content/DialogInterface;I)V",
+				"Lorg/hxmc/Handler; invoke(Ljava/lang/Object;Ljava/lang/reflect/Method;[Ljava/lang/Object;)Ljava/lang/Object;",
+				"Lorg/hxmc/Handler; call(ILjava/lang/String;[Ljava/lang/Object;)Ljava/lang/Object;"
 			])
 				assert(methods.contains(m) != (m.indexOf("org/hxmc/Activity") > 0), m);
 			equals(Glue.permissions("photos"), ["READ_MEDIA_IMAGES", "READ_EXTERNAL_STORAGE"]);
-			equals(Std.string(throws(() -> Glue.dex(false, ["Nope"]))), "no service class Nope (Main, Request, Files, Alarm, Locator, Biometric)");
+			equals(Std.string(throws(() -> Glue.dex(false, ["Nope"]))), "no service class Nope (Main, Request, Files, Alarm, Locator, Biometric, Handler)");
 		});
 		test("a broken file is found out", () -> {
 			var b = Glue.dex();

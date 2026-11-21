@@ -19,16 +19,32 @@ import haxe.macro.Type;
 // - services, permissions: the app services' classes and the manifest's
 //   permissions they need (helder.pack.Uses: a permission asked for,
 //   Glue.permissions of it).
+// - maven: the Maven libraries of the classes marked
+//   @:helder.android.maven("<group:name[:version]>", "<keep rule>", ...)
+//   (no version: Maven.VERSIONS'), each with the keep rules (ProGuard's
+//   -keep syntax) naming what the program calls: helder.cli.Android fetches,
+//   shrinks and translates them (Maven, Libraries).
 class Classes {
 	public static function write(file:String) {
 		haxe.macro.Compiler.define("helder.android.classes", file);
 		Context.onGenerate(types -> {
 			var dex = false, views = false;
 			var marked = new Map<String, Bool>();
+			var maven:Array<{id:String, keep:Array<String>}> = [];
 			for (t in types)
 				switch t {
 					case TInst(c, _):
 						var m = c.get().meta;
+						for (e in m.extract(":helder.android.maven")) {
+							var given = [for (p in e.params) switch p.expr {
+								case EConst(CString(s, _)): s;
+								case _: Context.error("@:helder.android.maven takes strings: the library, then keep rules", p.pos);
+							}];
+							if (given.length == 0) Context.error("@:helder.android.maven: which library (group:name[:version])", e.pos);
+							var id = Maven.versioned(given[0]);
+							if (id == null) Context.error('@:helder.android.maven: ${given[0]} has no version (and none in helder.pack.android.Maven.VERSIONS)', e.pos);
+							maven.push({id: id, keep: given.slice(1)});
+						}
 						if (Lambda.exists(m.extract(":helder.android.dex"), e -> e.params.length == 0)) dex = true;
 						if (m.has(":helder.android.views")) marked.set(c.toString(), true);
 					case _:
@@ -63,12 +79,15 @@ class Classes {
 			for (p in uses.permissions.keys())
 				for (a in Glue.permissions(p))
 					if (!permissions.contains(a)) permissions.push(a);
-			sys.io.File.saveContent(file, haxe.Json.stringify({
+			var out:Dynamic = {
 				dex: dex || views,
 				views: views,
 				services: uses.services,
 				permissions: permissions
-			}));
+			};
+			// (written when a class declares one)
+			if (maven.length > 0) out.maven = maven;
+			sys.io.File.saveContent(file, haxe.Json.stringify(out));
 		});
 	}
 }

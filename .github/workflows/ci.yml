@@ -36,7 +36,12 @@
 #   web view (tests/platform/webview-android.sh: a page through its scheme
 #   handler, cross-origin isolated, wasm, the bridge's round trip, a
 #   snapshot, examples/todo's web build in it; over a drawn window and on
-#   the whole screen); the APKs' own checks are the headless job's pack lane;
+#   the whole screen), the JVM fixtures translated to dex
+#   (tests/pack/jvm.sh: their output against a JVM's, every class
+#   verified) and Play Billing through helder's Maven libraries
+#   (tests/pack/billing.sh: verified ahead of time, startConnection's
+#   callback; the libraries' downloads cached, bin/pack/cache/maven); the
+#   APKs' own checks are the headless job's pack lane;
 # - ios-simulator: two shards, an iPhone simulator each (tests/pack/simulator.sh:
 #   made and booting once the CLI and helder's compiler are built, while
 #   the apps build; shared by a shard's scripts through HELDER_IOS_SIMULATOR;
@@ -449,6 +454,14 @@ jobs:
       - id: setup
         uses: ./.github/actions/setup
         with: {cache: android}
+      # (the Maven libraries billing.sh and jvm.sh fetch: billing's tree,
+      # kotlin-stdlib; keyed by what names their versions)
+      - name: Maven's libraries
+        uses: actions/cache@v6
+        with:
+          path: bin/pack/cache/maven
+          key: maven-${{ hashFiles('src/helder/pack/android/Maven.hx', 'tests/pack/jvm/JvmFixture.hx', 'tests/pack/billing/BillingCheck.hx') }}
+          restore-keys: maven-
       - name: The CLI, Android's runtime objects, the device tests' apps (tests/gfx/android, the cube and its touches; tests/os/AndroidTouchTest.hx, a drawn ui's fling)
         env:
           PACK_REQUIRE: 1
@@ -486,6 +499,8 @@ jobs:
             sh tests/os/android-touch.sh bin/pack/AndroidTouchTest.apk bin/pack/android-gfx
             sh tests/typescript/native/android.sh bin/cli/helder bin/pack/android-ts
             sh tests/platform/webview-android.sh bin/cli/helder bin/pack/android-webview
+            sh tests/pack/jvm.sh bin/pack/android-jvm
+            sh tests/pack/billing.sh bin/cli/helder bin/pack/android-billing
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -498,6 +513,8 @@ jobs:
             bin/pack/android-ts/*.txt
             bin/pack/android-webview/*.txt
             bin/pack/android-webview/*.png
+            bin/pack/android-jvm/*.txt
+            bin/pack/android-billing/*.txt
             bin/pack/*.apk
           retention-days: 7
           if-no-files-found: ignore

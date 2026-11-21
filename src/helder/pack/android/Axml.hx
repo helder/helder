@@ -29,6 +29,13 @@ class Axml {
 		"roundIcon" => 0x0101052c, "drawable" => 0x01010199, "enableOnBackInvokedCallback" => 0x0101066c, "usesCleartextTraffic" => 0x010104ec,
 		"authorities" => 0x01010018, "grantUriPermissions" => 0x0101001b, "launchMode" => 0x0101001d, "scheme" => 0x01010027,
 		"host" => 0x01010028, "maxSdkVersion" => 0x01010271, "autoVerify" => 0x010104ee,
+		// (and those of the libraries' manifests: Libraries)
+		"permission" => 0x01010006, "protectionLevel" => 0x01010009, "enabled" => 0x0101000e, "process" => 0x01010011, "multiprocess" => 0x01010013,
+		"excludeFromRecents" => 0x01010017, "priority" => 0x0101001c, "resource" => 0x01010025, "initOrder" => 0x0101001a,
+		"directBootAware" => 0x01010505, "stopWithTask" => 0x0101036a, "isolatedProcess" => 0x010103a9, "foregroundServiceType" => 0x01010599,
+		"targetActivity" => 0x01010202, "noHistory" => 0x0101022d, "visibleToInstantApps" => 0x01010531, "syncable" => 0x01010019,
+		"mimeType" => 0x01010026, "path" => 0x0101002a, "pathPrefix" => 0x0101002b, "port" => 0x01010029, "description" => 0x01010020,
+		"permissionGroup" => 0x0101000a,
 	];
 
 	// an element: its name, attributes (android: ones by name in IDS, others

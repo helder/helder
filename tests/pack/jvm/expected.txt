@@ -1,0 +1,83 @@
+lambdas: runnable
+lambdas: function 8 cap
+lambdas: this 20
+lambdas: private secret x10
+lambdas: ctor 10
+lambdas: sorted [a, b, c]
+lambdas: unbound 4
+lambdas: prims 7
+lambdas: wide 6
+lambdas: widen 7
+lambdas: boxed 9
+lambdas: serializable
+lambdas: marker true
+lambdas: forEach 6
+lambdas: negate false
+lambdas: array ctor 3
+concat: -3,1099511627776,q,2.5,1.25,true,7,-9,null,str
+concat: -31099511627776q
+concat:  and  str
+concat: é ünïcode str 😀
+concat: sb1
+concat: 6 0
+exceptions: finally 3
+exceptions: fin 2
+exceptions: multi state
+exceptions: multi arg
+exceptions: arith
+exceptions: none
+exceptions: close b
+exceptions: close a
+exceptions: caught body suppressed 1 close b
+exceptions: inner finally
+exceptions: rethrown inner
+exceptions: bounds
+exceptions: npe
+exceptions: loop 1
+exceptions: loop 2
+exceptions: loop 3
+exceptions: loop 4
+switches: other minus zero one two three other
+switches: low seven thousand big none
+switches: Aa BB hi ?
+switches: 103 1
+numbers: 2432902008176640000 304112751022080000 2 -304112751022080000 -9223372036854775808
+numbers: -9223372036854775808 0 -1 -3 1
+numbers: false false false 1 0.30000000000000004
+numbers: 3 -3 2147483647 -9223372036854775808 0
+numbers: 44 4464 A 65535 1.0995116E12
+numbers: -2147483648 1073741824 -1073741824 0 7fffffff 11
+numbers: 123456789abcdef 52719 81985529216486895 -81985529216486896 32
+numbers: div by zero
+numbers: Infinity Infinity 1.4142135623730951 1.5 true
+numbers: 0 1410065408 10000000000
+arrays: 3x4 9 5 y true
+arrays: truefalse -1 acc 300 1.5 2.25
+arrays: store
+arrays: [1, 2, 3] [[0, 0], [0, 0]]
+arrays: 11 2
+arrays: true [[Z
+interfaces: circle 3.0
+interfaces: 4.0
+interfaces: both 1.0+named
+interfaces: 42 true
+interfaces: cast
+interfaces: 5 true
+nests: 11 5 2
+nests: xlabel
+nests: anonymous 15
+sync: 4000 4000
+sync: held false
+sync: block true
+sync: released false
+stack: 77 0 2 2 5 6 2 3 5 4
+stack: 3.0 3.0
+statics: constant ünï -123456 1234567890123 -0.0025 0.1 Z true -5 1234 3 3
+statics: reflected 1234567890123
+old: 84 42
+old: 43
+kotlin: [1, 2, 3] [3-1-2]
+kotlin: niltok 007 [a, b, , c]
+kotlin: 10 [4, 5] null
+kotlin: [30, 10, 20]
+done

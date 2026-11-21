@@ -68,11 +68,13 @@ class Apk {
 	public static function write(so:Bytes, target:String, dex:Null<Bytes>, views:Bool, app:ApkOptions, key:Signer,
 			?assets:Array<{name:String, data:Bytes}>):Bytes {
 		if (!validId(app.id)) throw 'the application id ${app.id} is not one (a.b.c: letters, digits, _)';
-		var m = Axml.encode(manifestOf(app, dex != null, views));
+		var dexes = dexFiles(dex, app);
+		var m = Axml.encode(manifestOf(app, dexes.length > 0, views));
 		var entries:Array<helder.pack.Zip.ZipEntry> = [{name: "AndroidManifest.xml", data: m, align: 4}];
 		// (resources.arsc stored and 4-byte aligned: Android 11's rule for targetSdk 30)
 		if (app.resources != null) for (r in app.resources) entries.push({name: r.name, data: r.data, align: 4});
-		if (dex != null) entries.push({name: "classes.dex", data: dex, align: 4});
+		for (d in dexes)
+			entries.push({name: d.name, data: d.data, align: 4});
 		entries.push({name: "lib/" + abiDir(target) + "/" + LIBRARY, data: so, align: PAGE});
 		if (assets != null)
 			for (a in assets) {
@@ -82,10 +84,31 @@ class Apk {
 		return sign(helder.pack.Zip.stored(entries), key);
 	}
 
-	// the manifest of the app's options (an APK's, an App Bundle's)
-	public static function manifestOf(app:ApkOptions, code:Bool, views:Bool):Axml.Element
-		return manifestElement(app.id, app.label, app.versionCode, app.versionName, app.minSdk, app.targetSdk, code, views, app.permissions, app.orientation,
-			app.icon, app.theme, app.debuggable ?? true, app.cleartext ?? false, app.fullscreen ?? false, app.services, app.links);
+	// classes.dex (Glue's) and the libraries' after it: classes2.dex, ... (the
+	// libraries' first is classes.dex when the app has no Glue: native multidex)
+	public static function dexFiles(dex:Null<Bytes>, app:ApkOptions):Array<{name:String, data:Bytes}> {
+		var all = (dex == null ? [] : [dex]).concat(app.libraries?.dex ?? []);
+		return [for (k in 0...all.length) {name: "classes" + (k == 0 ? "" : Std.string(k + 1)) + ".dex", data: all[k]}];
+	}
+
+	// the manifest of the app's options (an APK's, an App Bundle's), the libraries' entries in it
+	public static function manifestOf(app:ApkOptions, code:Bool, views:Bool):Axml.Element {
+		var m = manifestElement(app.id, app.label, app.versionCode, app.versionName, app.minSdk, app.targetSdk, code || app.libraries != null, views,
+			app.permissions, app.orientation, app.icon, app.theme, app.debuggable ?? true, app.cleartext ?? false, app.fullscreen ?? false, app.services,
+			app.links);
+		var l = app.libraries;
+		if (l == null) return m;
+		// (their permissions after the app's, a name once; the application's components after its own)
+		var names = [for (e in m.children) if (e.name == "uses-permission") e.attrs[0].string];
+		var top = [for (e in l.manifest) if (e.name != "uses-permission" || names.indexOf(e.attrs[0].string) < 0) e];
+		var at = 0;
+		while (at < m.children.length && (m.children[at].name == "uses-sdk" || m.children[at].name == "uses-permission"))
+			at++;
+		var children = m.children.slice(0, at).concat(top).concat(m.children.slice(at));
+		for (c in children)
+			if (c.name == "application") c.children = c.children.concat(l.application);
+		return {name: m.name, attrs: m.attrs, children: children};
+	}
 
 	// the debug key as a signer (ECDSA P-256)
 	public static function debugSigner(key:{d:Bytes, cert:Bytes}):Signer
@@ -346,6 +369,8 @@ typedef ApkOptions = {
 	?services:Array<String>,
 	// the deep links the activity takes: VIEW of each scheme, and https of each domain (verified)
 	?links:Links,
+	// the Maven libraries' dex files and manifest entries (Libraries)
+	?libraries:{dex:Array<Bytes>, manifest:Array<Axml.Element>, application:Array<Axml.Element>},
 }
 
 typedef Links = {schemes:Array<String>, domains:Array<String>};

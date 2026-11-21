@@ -82,6 +82,19 @@ class Buf {
 		}
 	}
 
+	// signed LEB128
+	public function sleb(v:Int) {
+		while (true) {
+			var c = v & 0x7f;
+			v >>= 7;
+			if ((v == 0 && c & 0x40 == 0) || (v == -1 && c & 0x40 != 0)) {
+				u8(c);
+				return;
+			}
+			u8(c | 0x80);
+		}
+	}
+
 	public function zeros(n:Int) {
 		need(n);
 		b.fill(len, n, 0);

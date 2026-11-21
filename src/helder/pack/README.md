@@ -29,7 +29,9 @@ then grown here.
   RSA or P-256 from PEM); the App Bundle (`Aab`: the manifest and
   resource table in aapt2's protobuf forms, `Pb`, after aapt2's
   Resources.proto and bundletool's config.proto, Apache-2.0; JAR signing
-  with a PKCS#7 signature).
+  with a PKCS#7 signature); Maven libraries made part of the app
+  (`Maven`, `Libraries`, `Shrink`, `Keep`, `Jvm`, `Dalvik`, `ClassFile`:
+  below).
 - `ios`: the bundle (`Bundle`: Info.plist, `_CodeSignature/CodeResources`
   with codesign's rules, the .ipa), property lists (`Plist`), the app
   icon's asset catalog (`AssetCatalog`).
@@ -38,6 +40,89 @@ then grown here.
   `.icns` (`Icns`), a macOS bundle's seal and signature (`MacBundle`:
   CodeResources with codesign's macOS rules, each slice of the universal
   executable signed binding it, `Fat`).
+
+## Maven libraries on Android (a minimal Gradle, R8 and d8)
+
+A class of the program marked
+`@:helder.android.maven("<group:name[:version]>", "<keep rules>", ...)`
+brings that library and its runtime dependencies into the APK and the App
+Bundle, with no SDK, Gradle or JDK: `Classes` records it once the program
+is generated (dead code elimination first: a library comes only with the
+code that uses it), and helder.cli.Android hands it here.
+
+- **Resolved** (`Maven`) as Gradle does, from Google's Maven repository
+  and Maven Central: the POMs' compile and runtime dependencies (a
+  parent's properties and dependencyManagement), Gradle module metadata's
+  constraints, the highest version asked for, Kotlin's libraries at one
+  version. Each POM, `.module`, AAR and JAR is checked against its `.sha1`
+  and kept in `<helder's cache>/maven` in the repository's layout, so a
+  build is offline once its tree is there. A coordinate without a version
+  takes `Maven.VERSIONS`' (`com.android.billingclient:billing`:
+  `Maven.BILLING`, 9.1.0; Play accepts 8.0.0 and later).
+- **Shrunk** (`Shrink`, `Keep`) to what the app reaches: the keep rules
+  given (ProGuard's `-keep` syntax: the API the program calls through
+  JNI), each library's `proguard.txt` and `META-INF` rules, Android's
+  defaults (enums' `values`, `CREATOR`, `@Keep`). Calls, fields and
+  constants are followed; a virtual call keeps the overrides of the
+  classes instantiated below it; a class with a framework supertype keeps
+  the methods that could override the framework's (Runnable's and a few
+  dozen interfaces' by name, everything else whole: there is no
+  android.jar to say which); `Class.forName` of a constant and a class
+  constant with a member's name read by reflection are seeds. A manifest
+  component that code reaches is the framework's to make (its
+  constructor, its overrides), and so is a class its meta-data names;
+  one nothing reaches is left out with its entry (billing's tree:
+  androidx.startup's provider, profileinstaller's receiver).
+- **Translated** (`ClassFile`, `Jvm`, `Dalvik`) from JVM bytecode to
+  Dalvik's, for minSdk 29 (default and static interface methods stay,
+  in a version 037 file): the stack's words as registers, a load an alias
+  of its local until something writes it, a result stored straight into
+  its local, int constants as literals (`/lit8`, `/lit16`, the `-z`
+  branches), the locals numbered by use (v0-v15 are what 4-bit
+  instructions reach), types inferred over words (StackMapTable's frames
+  where there are some) for the moves, `aget-boolean` and handlers,
+  try ranges as try items, the switches, `synchronized` methods' locks
+  made explicit, upcasts the libraries' hierarchy proves dropped. Desugared
+  as d8 does: LambdaMetafactory's invokedynamic (metafactory and
+  altMetafactory: markers, bridges, Serializable) into
+  `<host>$$ExternalSyntheticLambda<n>` classes, adapting arguments;
+  StringConcatFactory into a StringBuilder; nest-based private access (a
+  private instance method made static with its receiver, other private
+  members package-private); `multianewarray` into `Array.newInstance`.
+  `Dex` writes the result (try items, static values, MUTF-8 strings,
+  `dalvik.annotation.InnerClass` and `EnclosingClass` for
+  `getSimpleName`) as `classes2.dex` and on (`Dex.split`: 65,536 ids per
+  file), native multidex.
+- **Merged** (`Libraries`): the used libraries' permissions, `<queries>`,
+  application meta-data and reached components into the app's manifest,
+  `${applicationId}` replaced, `@integer/`, `@string/` and `@bool/` values
+  from the AAR's `res/values`, the framework's styles by id.
+- `Glue`'s `org.hxmc.Handler(int id)`, an InvocationHandler, lets the
+  program implement a library's listener interfaces through
+  `java.lang.reflect.Proxy` (its native is called on the thread that
+  called the listener: billing's own; Object's methods are Java's).
+
+Billing 9.1.0's tree (48 artifacts, 5,581 classes) becomes 1,078 classes,
+about 690 KB of dex, in under two seconds (R8 with the same keep rules:
+357 KB and 2,406 methods renamed and optimised; 625 KB without either).
+Not done: resources (an AAR's `res/` other than values), Java resources
+(non-class files of a JAR), ServiceLoader's `META-INF/services`,
+annotations other than the inner-class ones (reflection on them finds
+none), `-if` rules, debug information (line numbers), jsr and ret (a
+method using them, or anything else untranslatable, throws when called:
+the build warns), backports of Java APIs newer than API 29.
+
+Verified (CI's android job): `tests/pack/jvm.sh` translates tests/pack/jvm's
+fixtures (lambdas, concatenation, exceptions, switches, numbers, arrays,
+interfaces, nests, locks, the stack's words, constants, Java 8's
+`access$`, kotlin-stdlib's code) on Haxe's interpreter (`haxe --run`: the
+same bytes as a native build, no host runtime to need) and runs them on
+the emulator against a JVM's output,
+every class through dex2oat's verifier; `tests/pack/billing.sh` builds
+tests/pack/billing/BillingCheck.hx with billing, verifies every class
+ahead of time, connects (BILLING_UNAVAILABLE without the Play Store) and
+finds no VerifyError or missing class in logcat. The class files are
+compiled once (`tests/pack/jvm/build.sh`, a JDK on that machine only).
 
 ## The asset catalog (a minimal actool)
 
