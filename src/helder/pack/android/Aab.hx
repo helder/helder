@@ -15,7 +15,8 @@ import helder.pack.android.Der.DerNode;
 //   base/manifest/AndroidManifest.xml   the manifest as an XmlNode
 //   base/resources.pb                   the resource table (Arsc's) as a ResourceTable
 //   base/res/...                        its files (XML ones as XmlNodes)
-//   base/dex/classes.dex                when the program needs Java
+//   base/dex/classes.dex                when the program needs Java (and
+//   base/dex/classes2.dex, ...          the Maven libraries': Libraries)
 //   base/lib/<abi>/libmain.so           one an ABI
 //   base/assets/...                     the program's assets
 // signed with JAR signing (v1: META-INF/MANIFEST.MF, HELDER.SF and the
@@ -27,7 +28,7 @@ class Aab {
 	// the bundle: libs an ABI's library each (target: android-arm64, ...),
 	// the manifest, the resources (null: none; xml: their XML files'
 	// elements by path), assets under assets/
-	public static function write(libs:Array<{target:String, so:Bytes}>, dex:Null<Bytes>, manifest:Element, resources:Null<{
+	public static function write(libs:Array<{target:String, so:Bytes}>, dex:Array<Bytes>, manifest:Element, resources:Null<{
 		table:Arsc,
 		files:Array<{name:String, data:Bytes}>,
 		xml:Map<String, Element>
@@ -45,7 +46,8 @@ class Aab {
 				entries.push({name: "base/" + f.name, data: x != null ? xml(x).toBytes() : f.data});
 			}
 		}
-		if (dex != null) entries.push({name: "base/dex/classes.dex", data: dex});
+		for (k in 0...dex.length)
+			entries.push({name: "base/dex/classes" + (k == 0 ? "" : Std.string(k + 1)) + ".dex", data: dex[k]});
 		for (l in libs)
 			entries.push({name: 'base/lib/${Apk.abiDir(l.target)}/${Apk.LIBRARY}', data: l.so});
 		for (a in assets)

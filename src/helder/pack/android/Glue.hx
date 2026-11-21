@@ -1,5 +1,6 @@
 package helder.pack.android;
 
+import helder.pack.android.Dalvik;
 import helder.pack.android.Dex;
 
 // The Java an app needs for views and listeners (classes.dex, written by
@@ -89,12 +90,18 @@ import helder.pack.android.Dex;
 //   prompt's cancel button's DialogInterface.OnClickListener, calling its
 //   static native done(id, 1) when the user is verified, done(id, 0) on an
 //   error or the cancel (helder.os.Biometrics).
+// - Handler(int id): a java.lang.reflect.InvocationHandler whose invoke
+//   calls its static native call(id, the method's name, the arguments) for
+//   the result, on the thread that called (Object's hashCode, equals and
+//   toString answered in Java: a library's own threads ask them): a
+//   java.lang.reflect.Proxy of it implements a library's listener
+//   interfaces (Maven's: Libraries).
 class Glue {
 	public static inline var ACTIVITY = "org.hxmc.Activity";
 	public static inline var MAIN = "org.hxmc.Main";
 
 	// an app service's classes by name (@:helder.android.dex("<name>"))
-	public static final SERVICES = ["Main", "Request", "Files", "Alarm", "Locator", "Biometric"];
+	public static final SERVICES = ["Main", "Request", "Files", "Alarm", "Locator", "Biometric", "Handler"];
 
 	// the manifest's permissions of one helder.os.Permissions asks for (photos:
 	// READ_MEDIA_IMAGES from Android 13, READ_EXTERNAL_STORAGE before it)
@@ -144,6 +151,7 @@ class Glue {
 				case "Alarm": alarm();
 				case "Locator": locator();
 				case "Biometric": biometric();
+				case "Handler": handler();
 				case _: throw 'no service class $s (${SERVICES.join(", ")})';
 			});
 		return Dex.write(classes);
@@ -761,6 +769,56 @@ class Glue {
 			idCall(cls, "onAuthenticationError", ["I", "Ljava/lang/CharSequence;"], done, 0),
 			idCall(cls, "onClick", ["Landroid/content/DialogInterface;", "I"], done, 0)
 		]);
+	}
+
+	// invoke(proxy, method, args): Object's methods answered here (identity's
+	// hashCode and equals, a name: any thread may ask, a collection's), the
+	// others call(id, method.getName(), args) (v0-v2 scratch; p0 this is v3,
+	// the proxy v4, the method v5, the arguments v6)
+	static function handler():DexClass {
+		var cls = "Lorg/hxmc/Handler;", args = "[Ljava/lang/Object;", method = "Ljava/lang/reflect/Method;", bool = "Ljava/lang/Boolean;";
+		var call:DexMethod = {name: "call", ret: OBJECT, params: ["I", STRING, args], access: Dex.PUBLIC | Dex.STATIC | Dex.NATIVE};
+		var a = new Dalvik(), native = a.label(), notHash = a.label(), notEquals = a.label(), same = a.label();
+		a.invoke(Dalvik.INVOKE_VIRTUAL, [5], RMethod(method, "getDeclaringClass", "Ljava/lang/Class;", []));
+		a.raw([0x0c]);
+		a.ref(0x1c, 1, RType(OBJECT));
+		a.branch(0x33, 0, 1, native);
+		a.invoke(Dalvik.INVOKE_VIRTUAL, [5], RMethod(method, "getName", STRING, []));
+		a.raw([0x0c]);
+		a.string(1, "hashCode");
+		a.invoke(Dalvik.INVOKE_VIRTUAL, [0, 1], RMethod(STRING, "equals", "Z", [OBJECT]));
+		a.raw([0x0a | 1 << 8]);
+		a.branch(0x38, 1, -1, notHash);
+		a.invoke(Dalvik.INVOKE_STATIC, [4], RMethod("Ljava/lang/System;", "identityHashCode", "I", [OBJECT]));
+		a.raw([0x0a]);
+		a.invoke(Dalvik.INVOKE_STATIC, [0], RMethod("Ljava/lang/Integer;", "valueOf", "Ljava/lang/Integer;", ["I"]));
+		a.raw([0x0c]);
+		a.raw([0x11]);
+		a.place(notHash);
+		a.string(1, "equals");
+		a.invoke(Dalvik.INVOKE_VIRTUAL, [0, 1], RMethod(STRING, "equals", "Z", [OBJECT]));
+		a.raw([0x0a | 1 << 8]);
+		a.branch(0x38, 1, -1, notEquals);
+		a.raw([0x12 | 2 << 8]);
+		a.raw([0x46 | 1 << 8, 6 | 2 << 8]);
+		a.branch(0x32, 4, 1, same);
+		a.ref(0x62, 0, RField(bool, "FALSE", bool));
+		a.raw([0x11]);
+		a.place(same);
+		a.ref(0x62, 0, RField(bool, "TRUE", bool));
+		a.raw([0x11]);
+		a.place(notEquals);
+		a.string(0, "org.hxmc.Handler");
+		a.raw([0x11]);
+		a.place(native);
+		a.ref(0x52, 0 | 3 << 4, RField(cls, "id", "I"));
+		a.invoke(Dalvik.INVOKE_VIRTUAL, [5], RMethod(method, "getName", STRING, []));
+		a.raw([0x0c | 1 << 8]);
+		a.invoke(Dalvik.INVOKE_STATIC, [0, 1, 6], RMethod(cls, "call", OBJECT, call.params));
+		a.raw([0x0c]);
+		a.raw([0x11]);
+		return idClass(cls, OBJECT, ["Ljava/lang/reflect/InvocationHandler;"], call,
+			[{name: "invoke", ret: OBJECT, params: [OBJECT, method, args], access: Dex.PUBLIC, code: a.code(7, 4, 3)}]);
 	}
 
 	// a listener method calling event(id, kind, p1, a, b): v0 the id, v1 the

@@ -26,7 +26,7 @@ function tests() {
 	t.add("style", "Theme.Helder", Style(Apk.THEME, [{attr: 0x01010054, value: Ref(bg)}]));
 	final icon = Axml.el("adaptive-icon", [], [Axml.el("background", [{android: true, name: "drawable", type: Axml.REFERENCE, value: bg}])]);
 	final long = "assets/" + StringTools.lpad("", "a", 90) + ".txt";
-	final aab = Aab.write([{target: "android-arm64", so: Bytes.ofString("so")}, {target: "android-x86_64", so: Bytes.ofString("so64")}], null,
+	final aab = Aab.write([{target: "android-arm64", so: Bytes.ofString("so")}, {target: "android-x86_64", so: Bytes.ofString("so64")}], [],
 		Apk.manifestOf(app, false, false), {
 			table: t,
 			files: [{name: "res/mipmap-anydpi-v26/ic_launcher.xml", data: Axml.encode(icon)}],

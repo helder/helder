@@ -31,7 +31,11 @@ using StringTools;
 // -r), started (am start, the launcher's activity), its output logcat's
 // (tag hxmc); helder dev's reverse port (adb reverse) for the dev server.
 // The program's assets (helder.asset: the files its code names and keeps,
-// the build's manifest) go in the APK's assets/, stored.
+// the build's manifest) go in the APK's assets/, stored. The Maven libraries
+// its classes declare (@:helder.android.maven: Classes) are resolved and
+// fetched once into <helder's cache>/maven (curl; Maven checks each file's
+// SHA-1), shrunk to what the keep rules reach and translated to Dalvik
+// (Libraries): classes2.dex and on, their manifests' entries merged.
 class Android {
 	// --target's hxmc target: android-arm64 or android-x86_64 as given; for
 	// android the device's ABI when one is known, else a phone's
@@ -72,6 +76,7 @@ class Android {
 		var key = release ?? Apk.debugSigner(debugKey(e));
 		var assets = dev ? [] : [for (a in AssetStep.assets(lib)) {name: helder.asset.AssetPath.bundled(a.key), data: File.getBytes(a.file)}];
 		var o = options(e, c, dev, release == null);
+		o.libraries = libraries(c, o.id);
 		File.saveBytes(apk, Apk.write(File.getBytes(lib), e.target, dexOf(c, o), c.views, o, key, assets));
 	}
 
@@ -186,9 +191,10 @@ class Android {
 		var c = libs[0].classes;
 		var assets = [for (a in AssetStep.assets(libs[0].lib)) {name: helder.asset.AssetPath.bundled(a.key), data: File.getBytes(a.file)}];
 		var o = options(e, c, false, false);
+		o.libraries = libraries(c, o.id);
 		var r = resources(e.config, e.root, o.id, c.views);
 		var dex = dexOf(c, o);
-		File.saveBytes(out, helder.pack.android.Aab.write([for (l in libs) {target: l.target, so: l.so}], dex, Apk.manifestOf(o, dex != null, c.views),
+		File.saveBytes(out, helder.pack.android.Aab.write([for (l in libs) {target: l.target, so: l.so}], [for (d in Apk.dexFiles(dex, o)) d.data], Apk.manifestOf(o, dex != null, c.views),
 			r == null ? null : {table: r.table, files: r.files, xml: r.xml}, assets, key));
 		Term.out(helder.cli.Style.status("bundled", helder.cli.Style.Tone.Ok, helder.cli.Style.path(out) + helder.cli.Style.dim(helder.cli.Style.sep() + Math.round(FileSystem.stat(out).size / 1024) + " KB")));
 		return {ok: true, ms: ms, messages: last.messages};
@@ -294,12 +300,65 @@ class Android {
 		return 0.2126 * lin((argb >> 16) & 255) + 0.7152 * lin((argb >> 8) & 255) + 0.0722 * lin(argb & 255) > 0.5;
 	}
 
-	// what the build's Classes wrote: classes.dex, org.hxmc.Activity, the services' classes and permissions
+	// what the build's Classes wrote: classes.dex, org.hxmc.Activity, the services' classes and permissions, the Maven libraries
 	static function classes(apk:String):Classes {
 		var f = classesFile(apk);
 		if (!FileSystem.exists(f)) throw '$f: not written (helder.pack.android.Classes did not run)';
 		var j:Dynamic = haxe.Json.parse(File.getContent(f));
-		return {dex: j.dex == true, views: j.views == true, services: (j.services : Null<Array<String>>) ?? [], permissions: (j.permissions : Null<Array<String>>) ?? []};
+		return {
+			dex: j.dex == true,
+			views: j.views == true,
+			services: (j.services : Null<Array<String>>) ?? [],
+			permissions: (j.permissions : Null<Array<String>>) ?? [],
+			maven: (j.maven : Null<Array<{id:String, keep:Array<String>}>>) ?? []
+		};
+	}
+
+	// the Maven libraries the program declares: resolved (each artifact at the
+	// highest version any asks for), fetched once, shrunk and translated; null: none
+	static function libraries(c:Classes, pkg:String):Null<helder.pack.android.Libraries.LibraryResult> {
+		if (c.maven.length == 0) return null;
+		var announced = false;
+		var maven = new helder.pack.android.Maven(DevCommand.cache() + "/maven", url -> {
+			if (!announced) {
+				announced = true;
+				Term.out(helder.cli.Style.status("fetching", helder.cli.Style.Tone.Info, 'Maven libraries, once ${helder.cli.Style.path("(" + DevCommand.cache() + "/maven)")}'));
+			}
+			fetch(url);
+		});
+		var chosen = new Map<String, helder.pack.android.Maven.MavenArtifact>();
+		for (m in c.maven)
+			for (a in maven.resolve(m.id)) {
+				var k = a.group + ":" + a.name, cur = chosen.get(k);
+				if (cur == null || helder.pack.android.Maven.compareVersions(a.version, cur.version) > 0) chosen.set(k, a);
+			}
+		var artifacts = [for (a in chosen) a];
+		artifacts.sort((a, b) -> a.file < b.file ? -1 : 1);
+		var keep = [for (m in c.maven) m.keep.join("\n")].join("\n");
+		var r = helder.pack.android.Libraries.build(artifacts, keep, pkg, File.getBytes);
+		var size = 0;
+		for (d in r.dex)
+			size += d.length;
+		Term.out(helder.cli.Style.status("libraries", helder.cli.Style.Tone.Ok, [for (m in c.maven) m.id].join(", ") + helder.cli.Style.dim(helder.cli.Style.sep() + '${artifacts.length} artifacts, ${r.classes} classes, ${Math.round(size / 1024)} KB of dex')));
+		for (s in r.stubs)
+			Term.out(helder.cli.Style.status("warning", helder.cli.Style.Tone.Warn, 'not translated (throws when called): $s'));
+		return r;
+	}
+
+	// a URL's bytes by curl (null: the repository has no such file)
+	static function fetch(url:String):Null<haxe.io.Bytes> {
+		var tmp = DevCommand.cache() + '/maven/.fetch.${Std.random(1 << 30)}';
+		TestCommand.mkdirs(Path.directory(tmp));
+		var p = new sys.io.Process("curl", ["-sSL", "--retry", "3", "-o", tmp, "-w", "%{http_code}", url]);
+		var code = p.stdout.readAll().toString().trim();
+		var err = p.stderr.readAll().toString().trim();
+		var exit = p.exitCode();
+		p.close();
+		var data = FileSystem.exists(tmp) ? File.getBytes(tmp) : null;
+		try FileSystem.deleteFile(tmp) catch (_:Dynamic) {};
+		if (code == "404" || code == "403") return null;
+		if (exit != 0 || code != "200" || data == null) throw '$url: not fetched (curl: exit code $exit, HTTP $code) $err'.trim();
+		return data;
 	}
 
 	// the activity an APK starts: org.hxmc.Activity with views, org.hxmc.Main with links, else NativeActivity
@@ -364,4 +423,4 @@ class Android {
 	}
 }
 
-private typedef Classes = {dex:Bool, views:Bool, services:Array<String>, permissions:Array<String>};
+private typedef Classes = {dex:Bool, views:Bool, services:Array<String>, permissions:Array<String>, maven:Array<{id:String, keep:Array<String>}>};
