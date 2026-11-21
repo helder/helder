@@ -60,7 +60,7 @@ class Standard implements Markup {
 			if (own) n.theme = look.sheet();
 		}}>
 			<view ref={t.part("box")}>
-				<image ref={t.part("mark")} src={() -> Icons.svg(t.mixed() ? "minus" : "check")}/>
+				<image ref={t.part("mark")} src={() -> mark(t.mixed())}/>
 			</view>
 			<text hidden ref={t.part("label")}>{props.label}</text>
 		</view>;
@@ -83,7 +83,15 @@ class Standard implements Markup {
 		</view>;
 	}
 
-	// a look for what it holds: its sheet, and the look its controls draw with
+	static var marks:Null<Array<helder.ui.Svg>> = null;
+
+	// (a checkbox's mark: bolder than an icon's stroke, about 2 px at its size)
+	static function mark(mixed:Bool):helder.ui.Svg {
+		if (marks == null) marks = [for (d in ["M20 6 9 17l-5-5", "M5 12h14"]) Icons.parse(Icons.OPEN.split('stroke-width="2"').join('stroke-width="3.5"') + '<path d="$d"/></svg>')];
+		return marks[mixed ? 1 : 0];
+	}
+
+		// a look for what it holds: its sheet, and the look its controls draw with
 	public static function Themed(props:{look:Look<Dynamic>, ?children:Any}):UiView {
 		Graph.setContext(Look.context, props.look);
 		return <view grow={1} ref={(n:Node) -> n.theme = props.look.sheet()}>{props.children}</view>;

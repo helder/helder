@@ -30,7 +30,7 @@ class Shaping implements Markup {
 		</view>;
 
 	public function view():View
-		return <view grow={1} padding={20} row-gap={10} background="#fafafa" font-family="DejaVu Sans" font-size={14} color="#18181b">
+		return <view grow={1} padding={20} row-gap={10} background="#fafafa" font-size={14} color="#18181b">
 			<text font-size={22} font-weight={700}>Text in pure Haxe</text>
 			<view row-gap={8} background="#ffffff" radius={8} border-width={1} border-color="#e4e4e7" padding={12}>
 				<Sample label="Kerning" text="AVATAR Tower WAVE"/>

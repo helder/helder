@@ -17,7 +17,7 @@ import helder.view.*;
 //   ControlsGallery <golden dir> <out dir> [--bless]
 class ControlsGallery implements Markup {
 	static inline var W = 760;
-	static inline var H = 600;
+	static inline var H = 660;
 	static final STATES = ["rest", "hover", "pressed", "focus", "disabled"];
 	static var failed = 0;
 	static var checks = 0;
@@ -32,7 +32,7 @@ class ControlsGallery implements Markup {
 
 	static function main() {
 		var args = Sys.args();
-		for (f in ["examples/notes/fonts/Inter.ttf", "examples/showreel/fonts/InterDisplay.ttf", "apps/studio/fonts/GeistMono-Regular.ttf"])
+		for (f in ["src/helder/text/fonts/Inter.ttf", "examples/showreel/fonts/InterDisplay.ttf", "apps/studio/fonts/GeistMono-Regular.ttf"])
 			helder.text.SystemFonts.get().add(sys.io.File.getBytes(f));
 		var device = Device.create(Surface.headless(W, H));
 		var ok = true;
@@ -141,6 +141,7 @@ class ControlsGallery implements Markup {
 	static final ROWS:Array<{tag:String, label:String}> = [
 		{tag: "primary", label: "primary"},
 		{tag: "secondary", label: "secondary"},
+		{tag: "outline", label: "outline"},
 		{tag: "ghost", label: "ghost"},
 		{tag: "danger", label: "danger"},
 		{tag: "unchecked", label: "checkbox"},
@@ -155,6 +156,7 @@ class ControlsGallery implements Markup {
 		return switch tag {
 			case "primary": <Standard.Button tag={id} variant="primary" disabled={off}>Save</Standard.Button>;
 			case "secondary": <Standard.Button tag={id} variant="secondary" disabled={off}>Cancel</Standard.Button>;
+			case "outline": <Standard.Button tag={id} variant="outline" disabled={off}>Share</Standard.Button>;
 			case "ghost": <Standard.Button tag={id} variant="ghost" disabled={off}>More</Standard.Button>;
 			case "danger": <Standard.Button tag={id} variant="danger" disabled={off}>Delete</Standard.Button>;
 			case "unchecked": <Standard.Checkbox tag={id} label="Remember" disabled={off}/>;

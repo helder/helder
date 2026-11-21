@@ -162,7 +162,7 @@ class Mail implements Markup {
 			text-wrap="nowrap" text-overflow="ellipsis">{text}</text>;
 
 	public function view():View
-		return <view slot="body" ref={n -> root = n} grow={1} font-family="DejaVu Sans" font-size={13} actions={[Actions.handle(MailAction, a -> {
+		return <view slot="body" ref={n -> root = n} grow={1} font-size={13} actions={[Actions.handle(MailAction, a -> {
 			switch a {
 				case Archive: moveTo("Archive");
 				case Delete: moveTo("Trash");

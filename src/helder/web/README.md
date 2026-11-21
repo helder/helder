@@ -143,7 +143,7 @@ telling the next frame). A page can hold several.
 
 ```haxe
 <main>
-	<Surface src="todo.wasm" fonts={["fonts/DejaVuSans.ttf"]} style="display:block;width:480px;height:560px">
+	<Surface src="todo.wasm" fonts={["fonts/Inter.ttf"]} style="display:block;width:480px;height:560px">
 		<p>Shown with the canvas, before it runs.</p>
 	</Surface>
 </main>

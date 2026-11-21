@@ -49,7 +49,7 @@ abstract SwitchSize<V>(String) to String {
 
 // the default look's variants
 typedef BaseVariants = {
-	button_variant:{primary:Bool, secondary:Bool, ghost:Bool, danger:Bool},
+	button_variant:{primary:Bool, secondary:Bool, outline:Bool, ghost:Bool, danger:Bool},
 	button_size:{sm:Bool, md:Bool, lg:Bool},
 	checkbox_variant:{},
 	checkbox_size:{},

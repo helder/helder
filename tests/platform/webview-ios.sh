@@ -25,14 +25,9 @@ check() {
 	fi
 }
 
-# (DejaVu Sans for the web build's text: a page has no system fonts, the Mac no DejaVu)
-if [ ! -f "$out/fonts/DejaVuSans.ttf" ]; then
-	mkdir -p "$out/fonts"
-	curl -sSfL --retry 3 https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.tar.bz2 | tar xjf - -C "$out/fonts" --strip-components 2 dejavu-fonts-ttf-2.37/ttf/DejaVuSans.ttf dejavu-fonts-ttf-2.37/ttf/DejaVuSans-Bold.ttf
-fi
 prebuilt() { [ "${IOS_PREBUILT:-}" = 1 ] && [ -e "$1" ]; }
 if ! prebuilt "$out/todo/Todo.wasm"; then
-	HELDER_FONT_DIRS="$out/fonts" "$helder" build examples/todo/Todo.hx --target web -o "$out/todo/Todo.wasm"
+	"$helder" build examples/todo/Todo.hx --target web -o "$out/todo/Todo.wasm"
 	check "helder build examples/todo --target web" $?
 	ls "$out/todo"
 fi

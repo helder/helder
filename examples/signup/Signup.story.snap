@@ -5,51 +5,51 @@ Node#root 0,0 390x844
   Node#view 0,0 390x844
     Node#view 0,0 390x844
       Node#view 0,0 390x844
-        Node#view 24,24 342x292
+        Node#view 24,24 342x296
           Node#view 49,49 292x42
             Node#view 49,49 252x42
               TextNode#text 49,49 252x20 "Create an account"
               TextNode#text 49,73 252x18 "Enter your email below"
             TextNode#text 301,49 40x19 "Beta"
-          Node#view 49,115 292x116
+          Node#view 49,115 292x120
             TextField#textfield 49,115 292x36 ""
-            Node#view 49,163 292x28
-              Node#view 49,168 18x18
-                ImageNode#image 52,171 12x12
-              TextNode#text 75,168 84x17 "Accept terms"
-            Node#view 49,203 292x28
-              Node#view 49,207 36x20
-                Node#view 51,209 16x16
-              TextNode#text 95,208 63x17 "Dark mode"
-          Node#view 49,255 292x36
-            Node#button 49,255 72x36
-              TextNode#text 64,264 42x17 "Cancel"
-            Node#button 129,255 79x36
-              TextNode#text 144,264 49x17 "Sign up"
+            Node#view 49,163 292x30
+              Node#view 49,169 18x18
+                ImageNode#image 51,171 14x14
+              TextNode#text 77,169 84x17 "Accept terms"
+            Node#view 49,205 292x30
+              Node#view 49,210 36x20
+                Node#view 51,212 16x16
+              TextNode#text 97,211 63x17 "Dark mode"
+          Node#view 49,259 292x36
+            Node#button 49,259 76x36
+              TextNode#text 66,268 42x17 "Cancel"
+            Node#button 133,259 83x36
+              TextNode#text 150,268 49x17 "Sign up"
 
 --- story Sign up/Light: Sign up/Light (25 lines)
 Node#root 0,0 390x844
   Node#view 0,0 390x844
     Node#view 0,0 390x844
       Node#view 0,0 390x844
-        Node#view 24,24 342x292
+        Node#view 24,24 342x296
           Node#view 49,49 292x42
             Node#view 49,49 252x42
               TextNode#text 49,49 252x20 "Create an account"
               TextNode#text 49,73 252x18 "Enter your email below"
             TextNode#text 301,49 40x19 "Beta"
-          Node#view 49,115 292x116
+          Node#view 49,115 292x120
             TextField#textfield 49,115 292x36 ""
-            Node#view 49,163 292x28
-              Node#view 49,168 18x18
-                ImageNode#image 52,171 12x12
-              TextNode#text 75,168 84x17 "Accept terms"
-            Node#view 49,203 292x28
-              Node#view 49,207 36x20
-                Node#view 51,209 16x16
-              TextNode#text 95,208 63x17 "Dark mode"
-          Node#view 49,255 292x36
-            Node#button 49,255 72x36
-              TextNode#text 64,264 42x17 "Cancel"
-            Node#button 129,255 79x36
-              TextNode#text 144,264 49x17 "Sign up"
+            Node#view 49,163 292x30
+              Node#view 49,169 18x18
+                ImageNode#image 51,171 14x14
+              TextNode#text 77,169 84x17 "Accept terms"
+            Node#view 49,205 292x30
+              Node#view 49,210 36x20
+                Node#view 51,212 16x16
+              TextNode#text 97,211 63x17 "Dark mode"
+          Node#view 49,259 292x36
+            Node#button 49,259 76x36
+              TextNode#text 66,268 42x17 "Cancel"
+            Node#button 133,259 83x36
+              TextNode#text 150,268 49x17 "Sign up"

@@ -27,7 +27,7 @@ class ControlsBench implements Markup {
 	}
 
 	static function main() {
-		helder.text.SystemFonts.get().add(sys.io.File.getBytes("examples/notes/fonts/Inter.ttf"));
+		helder.text.SystemFonts.get().add(sys.io.File.getBytes("src/helder/text/fonts/Inter.ttf"));
 		var device = Device.create(Surface.headless(W, H));
 		var plain = measure(device, <view direction="row" wrap padding={8} gap={4}>
 			{[for (i in 0...N) <view direction="row" align-items="center" height={28} padding="0 10" radius={6} border-width={1}

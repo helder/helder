@@ -7,7 +7,6 @@
 //   node tests/ui/nav-web.mjs <NavWeb.wasm>
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -17,8 +16,8 @@ let pw;
 try { pw = require('playwright'); } catch { pw = require(path.join(process.execPath, '../../lib/node_modules/playwright')); }
 const here = path.dirname(fileURLToPath(import.meta.url));
 const [wasm] = process.argv.slice(2);
-// (DejaVu Sans, CI's; elsewhere NAV_FONT names one)
-const font = process.env.NAV_FONT ?? '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf';
+// (helder's Inter, what a built page ships)
+const font = path.join(here, '../../src/helder/text/fonts/Inter.ttf');
 const files = {
 	'/nav.wasm': wasm,
 	'/os/browser.mjs': path.join(here, '../../src/helder/os/browser.mjs'),
@@ -50,7 +49,6 @@ const server = createServer(async (req, res) => {
 		res.end();
 	}
 }).listen(0);
-if (!fs.existsSync(font)) throw new Error(`nav-web.mjs: no font at ${font} (NAV_FONT)`);
 const browser = await pw.chromium.launch({ args: ['--use-angle=swiftshader'] });
 let failed = 0;
 const check = (what, ok, detail) => {

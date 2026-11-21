@@ -19,7 +19,6 @@ let pw;
 try { pw = require('playwright'); } catch { pw = require(path.join(process.execPath, '../../lib/node_modules/playwright')); }
 const here = path.dirname(fileURLToPath(import.meta.url));
 const [wasm] = process.argv.slice(2);
-const fonts = process.env.HELDER_FONT_DIR ?? '/usr/share/fonts/truetype/dejavu';
 const files = {
 	'/scroll.wasm': wasm,
 	'/os/browser.mjs': path.join(here, '../../src/helder/os/browser.mjs'),
@@ -27,7 +26,7 @@ const files = {
 	'/gfx/imports.mjs': path.join(here, '../../src/helder/gfx/imports.mjs'),
 	'/text/imports.mjs': path.join(here, '../../src/helder/text/imports.mjs'),
 	'/ui/imports.mjs': path.join(here, '../../src/helder/ui/imports.mjs'),
-	'/DejaVuSans.ttf': path.join(fonts, 'DejaVuSans.ttf'),
+	'/Inter.ttf': path.join(here, '../../src/helder/text/fonts/Inter.ttf'),
 };
 const types = { '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.ttf': 'font/ttf' };
 const page = `<!doctype html><title>Scroll</title><body style="margin:0">
@@ -37,7 +36,7 @@ import { run } from './os/browser.mjs';
 window.log = [];
 window.start = async () => {
 	window.r = run('scroll.wasm', { imports: ['os/imports.mjs', 'gfx/imports.mjs', 'text/imports.mjs', 'ui/imports.mjs'], canvas: 'c', gfx: 'webgl2',
-		fonts: ['DejaVuSans.ttf'], stdout: (s) => window.log.push(s), stderr: (s) => window.log.push('stderr: ' + s) });
+		fonts: ['Inter.ttf'], stdout: (s) => window.log.push(s), stderr: (s) => window.log.push('stderr: ' + s) });
 	window.result = await window.r;
 };
 </script>`;

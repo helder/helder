@@ -111,7 +111,7 @@ class GltfShowcase implements Markup {
 			true;
 		});
 		UiWindow.run(<Surface title="glTF sample models" width={960} height={600}>
-			<view grow={1} direction="row" background="#101014" color="#ececf1" font-family="DejaVu Sans">
+			<view grow={1} direction="row" background="#101014" color="#ececf1">
 				<view width={190} padding={14} row-gap={6} background="#18181d">
 					<text font-size={15} font-weight={700}>Model</text>
 					{[for (k in 0...Showcase.MODELS.length) <Pick label={Showcase.MODELS[k].name} on={() -> model() == k} onPress={() -> load(k)}/>]}

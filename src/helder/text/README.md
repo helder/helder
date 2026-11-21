@@ -123,8 +123,11 @@ layout.wrap(120); // the same glyphs in lines of 120 pixels, not shaped again
 
 In a browser (wasm32-wasi with `src/helder/os/browser.mjs`) there are no
 font files: give the page's fonts to `run` with this package's
-`imports.mjs` and the option `fonts: ['DejaVuSans.ttf', ...]` (URLs or
-ArrayBuffers); `SystemFonts` adds them.
+`imports.mjs` and the option `fonts: ['Inter.ttf', ...]` (URLs or
+ArrayBuffers); `SystemFonts` adds them. helder's own Inter
+(`fonts/Inter.ttf`: Inter 4's variable font, its weight axis, Latin,
+punctuation, currency and arrows; OFL, `fonts/Inter-OFL.txt`) is what a
+built page ships, and in a browser `sans-serif` is it.
 
 A program's own fonts by path: helder.asset's `Asset.font("fonts/x.ttf")`
 (added to `SystemFonts`; bundled with the build). Under `helder dev` a

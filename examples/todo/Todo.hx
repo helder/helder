@@ -87,7 +87,7 @@ class Todo implements Markup {
 
 	public function view():View {
 		var left = memo(() -> todos().filter(i -> !i.done()).length);
-		return <view grow={1} padding={24} row-gap={14} background="#fafafa" font-family="DejaVu Sans" font-size={14} color="#18181b">
+		return <view grow={1} padding={24} row-gap={14} background="#fafafa" font-size={14} color="#18181b">
 			<text font-size={28} font-weight={700} color="#3b82f6">todos</text>
 			<view direction="row" column-gap={8}>
 				<field tag="draft" slot="input" grow={1} value={draft} placeholder="What needs to be done?" label="What needs to be done?"

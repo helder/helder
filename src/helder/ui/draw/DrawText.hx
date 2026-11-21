@@ -20,7 +20,7 @@ class DrawText implements TextEngine {
 	// App.onError (helder.async.Errors) and, in a browser, the page's error
 	public static final NO_FONT = "helder.ui: no font to draw text with: none was found on this system and the program added none. "
 		+ "Add one with Asset.font (a font file in the project), or SystemFonts.add its bytes. "
-		+ "In a browser there are no system fonts: the page has the program's Asset.font fonts, and DejaVu Sans only when the machine that built it had it";
+		+ "In a browser there are no system fonts: the page has helder's Inter (a page helder built) and the program's Asset.font fonts";
 
 	public function new(?fonts:SystemFonts)
 		this.fonts = fonts == null ? SystemFonts.get() : fonts;

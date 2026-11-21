@@ -78,7 +78,7 @@ page does.
 
 ```js
 import { Preview } from 'helder/src/helder/compiler/web/preview.mjs';
-const preview = new Preview({ base: '/helder/src/helder/', fonts: [dejavu] });
+const preview = new Preview({ base: '/helder/src/helder/', fonts: [inter] });
 await preview.run(await c.build('/work/app'));
 c.running = (request) => preview.devtools(request);
 const e = await c.edit({ '/work/app/main.tsx': saved });

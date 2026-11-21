@@ -80,7 +80,7 @@ class Examples {
 		inline function title(d:Document)
 			return Lambda.find(d.elementsNamed("text"), e -> e.attr("color")?.valueText() == "#3b82f6");
 		inline function root(d:Document)
-			return Lambda.find(d.elementsNamed("view"), e -> e.attr("font-family")?.valueText() == "DejaVu Sans");
+			return Lambda.find(d.elementsNamed("view"), e -> e.attr("background")?.valueText() == "#fafafa");
 		edits(path, [
 			{
 				what: '$app: the title\'s colour set',

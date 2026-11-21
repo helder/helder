@@ -29,7 +29,7 @@ class TextDemo {
 		renderer.use(new Shadows(device, 2048));
 		var world = new World("text");
 		// #region text
-		var font = FontFile.parse(Asset.embed("examples/fx/fonts/Inter.ttf"));
+		var font = FontFile.parse(Asset.embed("helder/text/fonts/Inter.ttf"));
 		var word = world.node("word");
 		word.position = new Vec3(-0.6, 0.55, 0);
 		Text3D.attach(word, new Text3D(device, font, "helder", {size: 1.1, depth: 0.3, bevelSize: 0.025, lit: true, castShadows: true,

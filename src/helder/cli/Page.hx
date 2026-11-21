@@ -10,30 +10,14 @@ using StringTools;
 // The page a wasm32-wasi build runs in (page.html): helder.os's browser.mjs
 // and the browser modules (src/helder/<package>/imports.mjs) of the
 // packages the module imports (an imports.mjs naming one of its import
-// modules: hxmc_gfx, helder_async, ...), DejaVu Sans when it uses
-// helder.text and this machine has it, and the fonts among the program's
+// modules: hxmc_gfx, helder_async, ...), helder's Inter
+// (src/helder/text/fonts) when it uses helder.text, and the fonts among the program's
 // assets (Asset.font's: the page's fonts too, there from the first frame,
 // before the program's loads finish). `helder dev` serves it with the dev
 // client; `helder build web` writes it beside the module, with the modules
 // and fonts it names (the program's assets are beside it already:
 // helder.asset's Bundle).
 class Page {
-	// where DejaVu Sans is looked for (HELDER_FONT_DIRS, separated by the
-	// path separator, names others: the cli lane's machine without it)
-	static final FONT_DIRS = {
-		var env = Sys.getEnv("HELDER_FONT_DIRS");
-		env != null ? [for (d in env.split(Sys.systemName() == "Windows" ? ";" : ":")) if (d != "") d] : [
-			"/usr/share/fonts/truetype/dejavu", "/usr/share/fonts/TTF", "/usr/share/fonts/dejavu", "/Library/Fonts", (Sys.getEnv("HOME") ?? "") + "/Library/Fonts", "C:/Windows/Fonts"
-		];
-	};
-
-	// what a web build of a program with text but no font says: the cause, and the fixes
-	public static function noFontWarning():String
-		return "the page ships no font, so its text cannot be drawn (helder.ui: \"no font to draw text with\"): "
-			+ "no system font to bundle was found on this machine (DejaVu Sans, in " + (FONT_DIRS.length == 0 ? "no directory" : FONT_DIRS.join(", ")) + ")"
-			+ " and the program loads none with Asset.font. Add a font file to the project and load it with Asset.font(\"fonts/YourFont.ttf\")"
-			+ ", or install DejaVu Sans here";
-
 	// the packages whose imports.mjs the module needs (os, gfx, ...)
 	public static function packages(helder:String, wasm:String):Array<String> {
 		var names = importModules(File.getBytes(wasm));
@@ -49,17 +33,10 @@ class Page {
 		return out;
 	}
 
-	// the fonts the page gives the program (helder.text has no system fonts in a browser)
-	public static function fonts(packages:Array<String>):Array<String> {
-		if (!packages.contains("text")) return [];
-		var out = [];
-		for (f in ["DejaVuSans.ttf", "DejaVuSans-Bold.ttf"])
-			for (d in FONT_DIRS) if (FileSystem.exists('$d/$f')) {
-				out.push('$d/$f');
-				break;
-			}
-		return out;
-	}
+	// the fonts the page gives the program (helder.text has no system fonts
+	// in a browser): helder's own, so a page looks the same whatever built it
+	public static function fonts(helder:String, packages:Array<String>):Array<String>
+		return packages.contains("text") ? ['$helder/helder/text/fonts/Inter.ttf'] : [];
 
 	// the keys of the program's assets that are fonts (by their extension)
 	public static function assetFonts(wasm:String):Array<String> {
@@ -195,7 +172,7 @@ class Page {
 	public static function write(helder:String, wasm:String, title:String, ?app:{file:String, cfg:Manifest.AppConfig, root:String}):Array<String> {
 		var dir = haxe.io.Path.directory(wasm), name = haxe.io.Path.withoutExtension(haxe.io.Path.withoutDirectory(wasm));
 		if (dir == "") dir = ".";
-		var pkgs = packages(helder, wasm), fs = fonts(pkgs);
+		var pkgs = packages(helder, wasm), fs = fonts(helder, pkgs);
 		var files = ['$dir/$name.html'];
 		for (p in pkgs.concat(["os"])) {
 			TestCommand.mkdirs('$dir/helder/$p');
@@ -213,8 +190,6 @@ class Page {
 		}
 		for (k in assetFonts(wasm))
 			urls.push(AssetPath.url(AssetPath.bundled(k)));
-		if (pkgs.contains("text") && urls.length == 0)
-			Term.err(Style.status("warning", Warn, noFontWarning()));
 		// (the program's assets: helder.asset's Bundle put them in assets/ beside the module)
 		var listed = FileSystem.exists('$wasm.assets.json');
 		// (./: the page's module script imports browser.mjs from there, where helder/... is a bare specifier)

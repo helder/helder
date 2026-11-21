@@ -834,22 +834,29 @@ as `Refs` (colours as token references, light or dark by the window,
 
 | Group | Tokens |
 | --- | --- |
-| Surfaces | `canvas` (the window), `surface` (what rests on it), `raised` (what floats), `well` (fields, tracks), `hover`, `press` (washes), `line`, `edge`, `edgeStrong` |
+| Surfaces | `canvas` (the window), `surface` (what rests on it), `raised` (what floats), `well` (fields), `hover`, `press` (washes), `fill`, `fillHover`, `fillPress` (a filled control's gray), `rail`, `railHover` (a switch's track off), `line`, `edge`, `edgeStrong` |
 | Text | `fg`, `fg2`, `fg3` |
-| Accent | `accent`, `accentStrong`, `accentSoft`, `accentFg` (text on it), `accentInk` (accent text), `focus` (the ring) |
+| Accent | `accent`, `accentStrong` (its hover), `accentSoft`, `accentFg` (text on it), `accentInk` (accent text), `focus` (the ring: one blue for every accent) |
 | Status | `danger`, `dangerStrong`, `dangerSoft`, `dangerFg`, `success`, `warning`, `info` |
 | Other colours | `knob`, `scrim`, `shadow` |
 | Type | `font` (Inter), `display` (Inter Display), `mono` (Geist Mono), `size` 14, `small` 12, `large` 16, `title` 20, `medium` 500 |
-| Shape | `radius` 8, `radiusPanel` 12, `radiusSurface` 16; `controlSm` 28, `control` 36, `controlLg` 44; `padSm` 10, `pad` 14, `padLg` 18; `gap` 8, `icon` 16; `box` 18; `track` 36 by `trackHeight` 20, `thumb` 16 |
-| Motion | `hoverTime` 0.12, `toggleTime` 0.18, `openTime` 0.26, `floatTime` 0.22, `dialogTime` 0.3, `exitTime` 0.15 (seconds); `pressScale` 0.97; `disabledOpacity` 0.42 |
+| Shape | `radius` 10, `radiusPanel` 14, `radiusSurface` 18; `controlSm` 30, `control` 36, `controlLg` 44; `padSm` 12, `pad` 16, `padLg` 20; `gap` 8, `icon` 16; `box` 18; `track` 36 by `trackHeight` 20, `thumb` 16 |
+| Motion | `hoverTime` 0.12, `toggleTime` 0.18, `openTime` 0.26, `floatTime` 0.22, `dialogTime` 0.3, `exitTime` 0.15 (seconds); `pressScale` 0.98; `disabledOpacity` 0.42 |
 
-`density: Compact` gives 13-point type, controls of 24, 28 and 36 and
-radii of 6, 10 and 14 (a 4-point grid either way); `accent` one of
-`Blue` (the default), `Violet`, `Teal`, `Green`, `Amber`, `Orange`,
-`Red`, `Pink`, `Graphite`, the same lightness and chroma in another hue.
-A token given alone, `accent`, brings its shade, tint, ink and ring. The
-fonts are named, not bundled: an app adds them (`Asset.font`), else the
-system's stand in.
+The neutrals are pure grays (white in light, 0.18 to 0.26 in dark, as
+OKLCH's lightness). A button is a soft rectangle (radius 10, 8 small, 12
+large): `primary` the accent, `secondary` a filled gray (the default),
+`outline` the surface in a hairline edge, `ghost` a wash on hover,
+`danger` red; a solid one rests on a hairline of shadow, lightens under
+the pointer and settles back when pressed. `density: Compact` gives
+13-point type, controls of 26, 30 and 36 and radii of 8, 12 and 16;
+`accent` one of `Graphite` (the default: neutral, near black in light
+and near white in dark), `Blue`, `Violet`, `Teal`, `Green`, `Amber`,
+`Orange`, `Red`, `Pink` (after CUI's table). A token given alone,
+`accent`, brings its shade, tint and ink. `font` is helder's Inter
+(src/helder/text/fonts): a web page ships it, and on a system without
+one `Look.base` adds it when first used; the other fonts are named, not
+bundled: an app adds them (`Asset.font`), else the system's stand in.
 
 **Recipes.** A control's recipe is a function of the tokens giving each
 part's style; a style's keys may be states, nested (`checked: {hover:
@@ -926,7 +933,7 @@ const look = Look.base.with({
 1 over the look's time for them (a hover's, a toggle's), and what they
 change blends: colours, opacity, transforms, shadows and rings, through
 the transition compile gives each part (unless the part gives its own),
-on the quad every part already draws as. A press gives 3%; a switch's
+on the quad every part already draws as. A press gives 2%; a switch's
 knob travels with `checked` over the toggle's time, springing (a
 Bézier's overshoot); the keyboard's ring fades in. Under reduced motion
 travel jumps to its end and colours still fade. `Press.eased`

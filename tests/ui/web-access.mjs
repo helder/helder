@@ -27,8 +27,7 @@ const files = {
 	'/gfx/imports.mjs': path.join(here, '../../src/helder/gfx/imports.mjs'),
 	'/text/imports.mjs': path.join(here, '../../src/helder/text/imports.mjs'),
 	'/ui/imports.mjs': path.join(here, '../../src/helder/ui/imports.mjs'),
-	'/DejaVuSans.ttf': '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
-	'/DejaVuSans-Bold.ttf': '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+	'/Inter.ttf': path.join(here, '../../src/helder/text/fonts/Inter.ttf'),
 };
 const types = { '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.ttf': 'font/ttf' };
 const page = `<!doctype html><title>Access</title><body style="margin:0">
@@ -38,7 +37,7 @@ import { run } from './os/browser.mjs';
 window.log = [];
 window.start = async () => {
 	window.r = run('access.wasm', { imports: ['os/imports.mjs', 'gfx/imports.mjs', 'text/imports.mjs', 'ui/imports.mjs'], canvas: 'c', gfx: 'webgl2',
-		fonts: ['DejaVuSans.ttf', 'DejaVuSans-Bold.ttf'], stdout: (s) => window.log.push(s), stderr: (s) => window.log.push('stderr: ' + s) });
+		fonts: ['Inter.ttf'], stdout: (s) => window.log.push(s), stderr: (s) => window.log.push('stderr: ' + s) });
 	window.result = await window.r;
 };
 </script>`;

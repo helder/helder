@@ -19,7 +19,7 @@ class WebField implements Markup {
 	static function main() {
 		var w = new UiWindow("Fields", 420, 320);
 		var name = signal(""), notes = signal(""), submitted = signal(""), fruit = signal("Apple"), drawn = signal("");
-		Render.render(<view grow={1} padding={20} row-gap={12} align-items="stretch" font-family="DejaVu Sans" background="#ffffff">
+		Render.render(<view grow={1} padding={20} row-gap={12} align-items="stretch" font-family="Inter" background="#ffffff">
 			<view direction="row" column-gap={12}>
 				<Select tag="fruit" value={fruit} options={["Apple", "Pear", "Plum", "Fig"]} label="Fruit"/>
 				<view host="drawn" grow={1}><field tag="drawn" value={drawn} placeholder="Drawn" label="Drawn" onInput={e -> drawn(e.text)} padding="6 10"

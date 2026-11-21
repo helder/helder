@@ -611,7 +611,7 @@ const p = './node_modules/helder/src/helder/';
 run('app.wasm', {
 	imports: [p + 'os/imports.mjs', p + 'gfx/imports.mjs', p + 'text/imports.mjs', p + 'ui/imports.mjs'],
 	canvas: 'c',
-	fonts: ['DejaVuSans.ttf', 'DejaVuSans-Bold.ttf'],
+	fonts: ['Inter.ttf'],
 });
 </script>
 ```

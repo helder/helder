@@ -131,7 +131,7 @@ class Sponza implements Markup {
 			true;
 		});
 		UiWindow.run(<Surface title="Sponza" width={960} height={600}>
-			<view grow={1} background="#101014" color="#ececf1" font-family="DejaVu Sans">
+			<view grow={1} background="#101014" color="#ececf1">
 				<Scene grow={1} world={world} camera={camera} hdr animate setup={r -> renderer = r}/>
 				<view position="absolute" left={0} top={0} right={0} bottom={0} focusable cursor="grab" onPointerDown={e -> {
 					dragging = true;

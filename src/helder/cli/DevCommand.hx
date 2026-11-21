@@ -937,7 +937,7 @@ class DevCommand {
 		if (p == "/" || p == "/index.html") {
 			until(() -> built, 600);
 			var pkgs = Page.packages(e.helder, out);
-			var fonts = [for (f in Page.fonts(pkgs)) "/__hxmc/fonts/" + Path.withoutDirectory(f)]
+			var fonts = [for (f in Page.fonts(e.helder, pkgs)) "/__hxmc/fonts/" + Path.withoutDirectory(f)]
 				.concat([for (k in Page.assetFonts(out)) "/__hxmc/assets/" + AssetPath.url(k)]);
 			var assets = FileSystem.exists(out + ".assets.json") ? "/__hxmc/app.wasm.assets.json" : null;
 			// (the manifest and its files: the project's, served from its directory below)
@@ -965,7 +965,7 @@ class DevCommand {
 		if (p.startsWith("/__hxmc/pkg/helder/") && p.endsWith(".mjs"))
 			return nostore(Http.file(e.helder + "/helder", p.substr("/__hxmc/pkg/helder".length)));
 		if (p.startsWith("/__hxmc/fonts/")) {
-			var f = Lambda.find(Page.fonts(["text"]), f -> Path.withoutDirectory(f) == p.substr(14));
+			var f = Lambda.find(Page.fonts(e.helder, ["text"]), f -> Path.withoutDirectory(f) == p.substr(14));
 			if (f != null) return Http.file(Path.directory(f), "/" + Path.withoutDirectory(f));
 		}
 		// (the project's files: what the program fetches)

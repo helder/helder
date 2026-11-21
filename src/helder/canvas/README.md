@@ -303,14 +303,14 @@ these classes: `node src/helder/typescript/api/declarations.mjs`):
 ```ts
 import { Canvas, FontLibrary } from "helder/canvas";
 
-FontLibrary.use("DejaVu Sans", ["fonts/DejaVuSans.ttf"]);
+FontLibrary.use("Inter", ["fonts/Inter.ttf"]);
 const canvas = new Canvas(320, 200);
 const ctx = canvas.getContext("2d")!;
 ctx.fillStyle = "#2563eb";
 ctx.beginPath();
 ctx.roundRect(20, 20, 280, 160, [24]);
 ctx.fill();
-ctx.font = "24px 'DejaVu Sans'";
+ctx.font = "24px Inter";
 ctx.fillStyle = "white";
 ctx.fillText("Hello", 40, 110);
 canvas.saveAs("hello.png");

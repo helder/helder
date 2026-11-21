@@ -17,11 +17,7 @@ check() {
 	fi
 }
 
-if [ ! -f "$out/fonts/DejaVuSans.ttf" ]; then
-	mkdir -p "$out/fonts"
-	curl -sSfL --retry 3 https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.tar.bz2 | tar xjf - -C "$out/fonts" --strip-components 2 dejavu-fonts-ttf-2.37/ttf/DejaVuSans.ttf dejavu-fonts-ttf-2.37/ttf/DejaVuSans-Bold.ttf
-fi
-HELDER_FONT_DIRS="$out/fonts" "$helder" build examples/todo/Todo.hx --target web -o "$out/todo/Todo.wasm"
+"$helder" build examples/todo/Todo.hx --target web -o "$out/todo/Todo.wasm"
 check "helder build examples/todo --target web" $?
 "$helder" build tests/platform/WebViewCheck.hx -o "$out/WebViewCheck"
 check "helder build tests/platform/WebViewCheck.hx" $?

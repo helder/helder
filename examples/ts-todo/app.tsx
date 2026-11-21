@@ -56,7 +56,7 @@ function Checkbox(props: { checked: Read<boolean>; label: Read<string>; onToggle
 export function App(props: { store?: Store }) {
 	const s = props?.store ?? main, remaining = memo(() => left(s.todos()));
 	const visible = () => shown(s.todos(), s.filter());
-	return <view grow={1} padding={24} row-gap={14} background="#fafafa" font-family="DejaVu Sans" font-size={14} color="#18181b"
+	return <view grow={1} padding={24} row-gap={14} background="#fafafa" font-size={14} color="#18181b"
 		actions={handle(Todo, a => {
 			switch (a.type) {
 				case "show":

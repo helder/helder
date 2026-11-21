@@ -11,12 +11,14 @@ typedef Tokens = Palette<Tone> & Metrics;
 typedef Refs = Palette<Color> & Metrics;
 
 // the colours, by role: the window's base (canvas), what rests on it
-// (surface), what floats over it (raised), an inset well (fields,
-// tracks), the hover and press washes, hairlines (line), control edges
-// (edge, edgeStrong), text in three steps (fg, fg2, fg3), the accent and
-// its stronger shade, tint, text on it and accent-coloured text (accentInk),
-// the focus ring, danger with its shade, tint and text on it, status
-// colours, a switch's knob, a dialog's scrim, a floating layer's shadow
+// (surface), what floats over it (raised), an inset well (fields), the
+// hover and press washes, a filled control's gray and its hover and press
+// steps (fill), a switch's track when off (rail), hairlines (line), control
+// edges (edge, edgeStrong), text in three steps (fg, fg2, fg3), the accent
+// and its hover shade, tint, text on it and accent-coloured text
+// (accentInk), the focus ring, danger with its hover shade, tint and text
+// on it, status colours, a switch's knob, a dialog's scrim, a floating
+// layer's shadow
 typedef Palette<T> = {
 	?canvas:T,
 	?surface:T,
@@ -24,6 +26,11 @@ typedef Palette<T> = {
 	?well:T,
 	?hover:T,
 	?press:T,
+	?fill:T,
+	?fillHover:T,
+	?fillPress:T,
+	?rail:T,
+	?railHover:T,
 	?line:T,
 	?edge:T,
 	?edgeStrong:T,
@@ -94,8 +101,8 @@ enum abstract Density(String) to String {
 	var Compact = "compact";
 }
 
-// the accents a look can take (Look.with({accent: Violet})): one hue each,
-// at the same lightness and chroma, graphite near neutral
+// the accents a look can take (Look.with({accent: Violet})); graphite, the
+// default, is neutral
 enum abstract Accent(String) to String {
 	var Blue = "blue";
 	var Violet = "violet";
@@ -112,7 +119,7 @@ enum abstract Accent(String) to String {
 class TokenSet {
 	// the palette's names, as the sheet's colours are named
 	public static final COLORS = [
-		"canvas", "surface", "raised", "well", "hover", "press", "line", "edge", "edgeStrong", "fg", "fg2", "fg3", "accent", "accentStrong", "accentSoft",
+		"canvas", "surface", "raised", "well", "hover", "press", "fill", "fillHover", "fillPress", "rail", "railHover", "line", "edge", "edgeStrong", "fg", "fg2", "fg3", "accent", "accentStrong", "accentSoft",
 		"accentFg", "accentInk", "focus", "danger", "dangerStrong", "dangerSoft", "dangerFg", "success", "warning", "info", "knob", "scrim", "shadow"
 	];
 
@@ -120,58 +127,68 @@ class TokenSet {
 	// on a class's values, which a TypeScript build would convert)
 	public static function tones(t:Tokens):Array<Null<Tone>>
 		return [
-			t.canvas, t.surface, t.raised, t.well, t.hover, t.press, t.line, t.edge, t.edgeStrong, t.fg, t.fg2, t.fg3, t.accent, t.accentStrong, t.accentSoft,
+			t.canvas, t.surface, t.raised, t.well, t.hover, t.press, t.fill, t.fillHover, t.fillPress, t.rail, t.railHover, t.line, t.edge, t.edgeStrong, t.fg, t.fg2, t.fg3, t.accent, t.accentStrong, t.accentSoft,
 			t.accentFg, t.accentInk, t.focus, t.danger, t.dangerStrong, t.dangerSoft, t.dangerFg, t.success, t.warning, t.info, t.knob, t.scrim, t.shadow
 		];
 
-	// (each accent's hue and chroma, OKLCH's)
-	static final HUES = [
-		"blue" => [258, 0.19], "violet" => [292, 0.2], "teal" => [192, 0.12], "green" => [152, 0.15], "amber" => [70, 0.15], "orange" => [48, 0.17],
-		"red" => [26, 0.2], "pink" => [352, 0.18], "graphite" => [265, 0.012]
+	// (each accent's light and dark colour and text on them, after CUI's
+	// table; teal its own)
+	static final ACCENTS = [
+		"blue" => ["#0562ef", "#ffffff", "#6ba3ff", "#0b1526"], "violet" => ["#7747ff", "#ffffff", "#a78bff", "#15102b"],
+		"teal" => ["#00827a", "#ffffff", "#4fd1c5", "#0b1f1d"], "green" => ["#00864b", "#ffffff", "#53dca6", "#102016"],
+		"amber" => ["#f3ad20", "#20190d", "#ffcb62", "#20190d"], "orange" => ["#c25300", "#ffffff", "#ffad5e", "#17130f"],
+		"red" => ["#d1403a", "#ffffff", "#ff9386", "#21110f"], "pink" => ["#d23286", "#ffffff", "#ff8bc5", "#250f1b"]
 	];
 
 	// helder's tokens at a density, in an accent
 	public static function make(density:Density, accent:Accent):Tokens {
 		var t:Tokens = {
-			// (neutrals with a hint of cool, the window a step below what rests on it)
-			canvas: tone("0.975 0.003 265", "0.165 0.005 265"),
-			surface: tone("1 0 0", "0.205 0.006 265"),
-			raised: tone("1 0 0", "0.245 0.007 265"),
-			well: tone("0.955 0.004 265", "0.235 0.006 265"),
-			hover: tone("0.25 0.02 265 / 0.055", "1 0 0 / 0.065"),
-			press: tone("0.25 0.02 265 / 0.1", "1 0 0 / 0.11"),
-			line: tone("0.25 0.02 265 / 0.08", "1 0 0 / 0.07"),
-			edge: tone("0.25 0.02 265 / 0.15", "1 0 0 / 0.13"),
-			edgeStrong: tone("0.25 0.02 265 / 0.3", "1 0 0 / 0.26"),
-			fg: tone("0.22 0.01 265", "0.96 0.003 265"),
-			fg2: tone("0.44 0.012 265", "0.76 0.008 265"),
-			fg3: tone("0.6 0.01 265", "0.58 0.008 265"),
-			danger: tone("0.57 0.2 26", "0.65 0.19 26"),
-			dangerStrong: tone("0.51 0.2 26", "0.71 0.17 26"),
-			dangerSoft: tone("0.57 0.2 26 / 0.12", "0.65 0.19 26 / 0.2"),
-			dangerFg: tone("0.985 0 0", "0.99 0 0"),
-			success: tone("0.58 0.14 152", "0.72 0.15 152"),
-			warning: tone("0.68 0.15 70", "0.8 0.14 78"),
-			info: tone("0.58 0.13 232", "0.72 0.12 232"),
-			knob: tone("1 0 0", "0.98 0 0"),
-			scrim: tone("0.18 0.02 265 / 0.38", "0 0 0 / 0.58"),
-			shadow: tone("0.2 0.03 265 / 0.14", "0 0 0 / 0.5")
+			// (pure grays; light: white with a muted well, dark: the window a step below what rests on it)
+			canvas: gray(1, 0.18),
+			surface: gray(1, 0.21),
+			raised: gray(1, 0.24),
+			well: gray(0.975, 0.26),
+			hover: tone("0.15 0 0 / 0.05", "0.96 0 0 / 0.05"),
+			press: tone("0.15 0 0 / 0.075", "0.96 0 0 / 0.075"),
+			fill: gray(0.945, 0.26),
+			fillHover: gray(0.92, 0.29),
+			fillPress: gray(0.895, 0.32),
+			rail: gray(0.895, 0.33),
+			railHover: gray(0.86, 0.37),
+			line: gray(0.915, 0.29),
+			edge: gray(0.84, 0.29),
+			edgeStrong: gray(0.665, 0.515),
+			fg: gray(0.15, 0.96),
+			fg2: gray(0.46, 0.77),
+			fg3: gray(0.565, 0.64),
+			// (one blue for every accent, opaque)
+			focus: tone("0.58 0.15 250", "0.73 0.15 250"),
+			danger: tone("0.55 0.19 27", "0.7 0.16 24"),
+			dangerStrong: tone("0.6 0.17 27", "0.65 0.15 24"),
+			dangerSoft: tone("0.55 0.19 27 / 0.12", "0.7 0.16 24 / 0.2"),
+			dangerFg: Look.tone("#ffffff", "#1a0a0c"),
+			success: tone("0.5 0.12 162", "0.79 0.14 162"),
+			warning: tone("0.55 0.12 68", "0.83 0.12 78"),
+			info: tone("0.51 0.11 240", "0.79 0.095 236"),
+			knob: gray(1, 0.97),
+			scrim: tone("0.13 0 0 / 0.32", "0 0 0 / 0.55"),
+			shadow: tone("0 0 0 / 0.12", "0 0 0 / 0.4")
 		};
-		var hc = HUES.get(accent) ?? HUES.get("blue"), h = hc[0], c = hc[1];
-		if (accent == Graphite) {
-			t.accent = tone("0.27 0.012 265", "0.93 0.006 265");
-			t.accentStrong = tone("0.2 0.012 265", "0.99 0 0");
-			t.accentSoft = tone("0.27 0.012 265 / 0.08", "1 0 0 / 0.1");
-			t.accentFg = tone("0.985 0 0", "0.2 0.01 265");
-			t.accentInk = tone("0.27 0.012 265", "0.93 0.006 265");
-			t.focus = tone("0.45 0.02 265 / 0.55", "0.85 0.01 265 / 0.6");
+		var a = ACCENTS.get(accent);
+		if (a == null) {
+			// (neutral: hovering lightens it in light, darkens it in dark)
+			t.accent = gray(0.23, 0.93);
+			t.accentStrong = gray(0.3, 0.85);
+			t.accentSoft = tone("0.23 0 0 / 0.08", "0.93 0 0 / 0.12");
+			t.accentFg = gray(1, 0.19);
+			t.accentInk = gray(0.23, 0.93);
 		} else {
-			t.accent = tone('0.55 $c $h', '0.62 $c $h');
-			t.accentStrong = tone('0.49 $c $h', '0.68 $c $h');
-			t.accentSoft = tone('0.55 $c $h / 0.12', '0.62 $c $h / 0.2');
-			t.accentFg = tone("0.985 0 0", "0.99 0 0");
-			t.accentInk = tone('0.48 ${c * 0.9} $h', '0.79 ${c * 0.6} $h');
-			t.focus = tone('0.6 $c $h / 0.5', '0.7 $c $h / 0.55');
+			var light = Color.parse(a[0]), dark = Color.parse(a[2]);
+			t.accent = Look.tone(a[0], a[2]);
+			t.accentStrong = {light: Color.mix(light, Color.rgb(0xFFFFFF), 0.14), dark: Color.mix(dark, Color.parse("oklch(0.18 0 0)"), 0.14)};
+			t.accentSoft = {light: light.fade(0.12), dark: dark.fade(0.2)};
+			t.accentFg = Look.tone(a[1], a[3]);
+			t.accentInk = {light: Color.mix(light, Color.rgb(0), 0.15), dark: dark};
 		}
 		var compact = density == Compact;
 		t.density = density;
@@ -183,15 +200,15 @@ class TokenSet {
 		t.large = compact ? 14 : 16;
 		t.title = compact ? 17 : 20;
 		t.medium = 500;
-		t.radius = compact ? 6 : 8;
-		t.radiusPanel = compact ? 10 : 12;
-		t.radiusSurface = compact ? 14 : 16;
-		t.controlSm = compact ? 24 : 28;
-		t.control = compact ? 28 : 36;
+		t.radius = compact ? 8 : 10;
+		t.radiusPanel = compact ? 12 : 14;
+		t.radiusSurface = compact ? 16 : 18;
+		t.controlSm = compact ? 26 : 30;
+		t.control = compact ? 30 : 36;
 		t.controlLg = compact ? 36 : 44;
-		t.padSm = compact ? 8 : 10;
-		t.pad = compact ? 10 : 14;
-		t.padLg = compact ? 14 : 18;
+		t.padSm = compact ? 10 : 12;
+		t.pad = compact ? 12 : 16;
+		t.padLg = compact ? 16 : 20;
 		t.gap = compact ? 6 : 8;
 		t.icon = compact ? 14 : 16;
 		t.box = compact ? 16 : 18;
@@ -204,13 +221,16 @@ class TokenSet {
 		t.floatTime = 0.22;
 		t.dialogTime = 0.3;
 		t.exitTime = 0.15;
-		t.pressScale = 0.97;
+		t.pressScale = 0.98;
 		t.disabledOpacity = 0.42;
 		return t;
 	}
 
 	static function tone(light:String, dark:String):Tone
 		return Look.tone('oklch($light)', 'oklch($dark)');
+
+	static function gray(light:Float, dark:Float):Tone
+		return tone('$light 0 0', '$dark 0 0');
 
 	// tokens with a patch's over them
 	public static function merged(t:Tokens, patch:Dynamic):Tokens {
@@ -222,8 +242,8 @@ class TokenSet {
 		return out;
 	}
 
-	// tokens whose accent a patch gave alone: its shade, tint, text and ring
-	// from it (those the patch gives kept), as the default accents' are
+	// tokens whose accent a patch gave alone: its shade, tint and text from
+	// it (those the patch gives kept), as the default accents' are
 	public static function accented(t:Tokens, patch:Dynamic):Tokens {
 		var a:Null<Tone> = Reflect.field(patch, "accent");
 		if (a == null) return t;
@@ -231,10 +251,9 @@ class TokenSet {
 		var black = Color.rgb(0), white = Color.rgb(0xFFFFFF);
 		inline function derive(name:String, light:Color, dark:Color)
 			if (Reflect.field(patch, name) == null) Reflect.setField(out, name, ({light: light, dark: dark} : Tone));
-		derive("accentStrong", Color.mix(a.light, black, 0.12), Color.mix(a.dark, white, 0.12));
+		derive("accentStrong", Color.mix(a.light, white, 0.14), Color.mix(a.dark, black, 0.14));
 		derive("accentSoft", a.light.fade(0.12), a.dark.fade(0.2));
 		derive("accentInk", Color.mix(a.light, black, 0.08), Color.mix(a.dark, white, 0.35));
-		derive("focus", a.light.fade(0.5), a.dark.fade(0.55));
 		return out;
 	}
 

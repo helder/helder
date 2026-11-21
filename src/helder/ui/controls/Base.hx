@@ -1,18 +1,20 @@
 package helder.ui.controls;
 
 import helder.ui.Color;
+import helder.ui.Shadow;
 import helder.ui.Transform;
 import helder.ui.controls.Recipe;
 import helder.ui.controls.Tokens;
 import helder.ui.controls.Variant;
 
-// helder's default look (Look.base), after CUI's principles (MIT,
-// github.com/yappologistic/CUI: docs/design/controls.md): semantic OKLCH
-// colours in light and dark, one accent, a radius ladder on a 4-point grid
-// (controls, panels, surfaces), two densities; edges on what rests, shadows
-// only on what floats; a focus ring for the keyboard alone, fading in;
-// a press that gives a little, a toggle's travel that springs; disabled
-// controls faded, not recoloured. Its values are helder's own.
+// helder's default look (Look.base), after CUI's (MIT,
+// github.com/yappologistic/CUI: docs/design/controls.md): pure grays in
+// light and dark, a neutral accent (others to choose), soft rectangles on
+// a radius ladder (controls, panels, surfaces), two densities; solid
+// controls on a hairline of shadow; an opaque blue ring for the keyboard
+// alone, fading in; a press that darkens and barely gives, a toggle's
+// travel that springs; disabled controls faded, not recoloured. Its
+// values are helder's own.
 @:typescript.hide
 class Base {
 	public static function look():Look<BaseVariants>
@@ -20,12 +22,28 @@ class Base {
 
 	static final CLEAR = Color.TRANSPARENT;
 
-	// (the keyboard's ring: outside the edge, the canvas between; a small
-	// part's closer, clear of its label)
-	static function ring(t:Refs, offset = 2.0):PartStyle
-		return {ringWidth: 2, ringColor: t.focus, ringOffsetWidth: offset, ringOffsetColor: t.canvas};
+	// (the look's Inter where the system has none, so the controls look the
+	// same everywhere; a web page ships it already: Page)
+	public static function font() {
+		#if (target.name == "hxmc" && hxmc.target != "wasm32-wasi")
+		var fonts = helder.text.SystemFonts.get();
+		if (!fonts.families().contains("Inter")) fonts.add(helder.asset.Asset.embed("helder/text/fonts/Inter.ttf"));
+		#end
+	}
 
-	static function button(t:Refs):ButtonRecipe
+	// (the keyboard's ring: 2 px at a 2 px offset, the canvas between)
+	static function ring(t:Refs):PartStyle
+		return {ringWidth: 2, ringColor: t.focus, ringOffsetWidth: 2, ringOffsetColor: t.canvas};
+
+	// (what rests on the page casts a hairline of shadow; what floats more)
+	static function resting(alpha:Float):Shadow
+		return {y: 1, blur: 2, color: Color.rgba(0, alpha)};
+
+	static function lifted(alpha:Float):Shadow
+		return {y: 1, blur: 2, color: Color.rgba(0, alpha), next: ({y: 2, blur: 6, color: Color.rgba(0, alpha / 2)} : Shadow)};
+
+	static function button(t:Refs):ButtonRecipe {
+		var rest = resting(0.035), dark:PartStyle = {shadow: resting(0.18)};
 		return {
 			root: {
 				direction: Row,
@@ -53,32 +71,39 @@ class Base {
 			label: {maxLines: 1},
 			variants: {
 				variant: {
-					primary: {root: {background: t.accent, color: t.accentFg, hover: {background: t.accentStrong}}},
-					secondary: {root: {background: t.surface, borderColor: t.edge, hover: {background: t.well, borderColor: t.edgeStrong}}},
-					ghost: {root: {color: t.fg2, hover: {background: t.hover, color: t.fg}, pressed: {background: t.press}}},
-					danger: {root: {background: t.danger, color: t.dangerFg, hover: {background: t.dangerStrong}}}
+					// (a solid one lightens under the pointer and settles back when pressed)
+					primary: {root: {shadow: rest, dark: dark, background: t.accent, borderColor: t.accent, color: t.accentFg, hover: {background: t.accentStrong, borderColor: t.accentStrong},
+						pressed: {background: t.accent, borderColor: t.accent}}},
+					secondary: {root: {background: t.fill, borderColor: t.fill, hover: {background: t.fillHover, borderColor: t.fillHover},
+						pressed: {background: t.fillPress, borderColor: t.fillPress}}},
+					outline: {root: {shadow: rest, dark: dark, background: t.surface, borderColor: t.edge, hover: {background: t.hover, borderColor: t.edgeStrong},
+						pressed: {background: t.press}}},
+					ghost: {root: {hover: {background: t.hover}, pressed: {background: t.press}}},
+					danger: {root: {shadow: rest, dark: dark, background: t.danger, borderColor: t.danger, color: t.dangerFg, hover: {background: t.dangerStrong, borderColor: t.dangerStrong},
+						pressed: {background: t.danger, borderColor: t.danger}}}
 				},
 				size: {
 					sm: {
-						root: {height: t.controlSm, padding: [0, t.padSm], columnGap: t.gap - 2, fontSize: t.small, radius: t.radius - 2},
+						root: {height: t.controlSm, padding: [0, t.padSm], columnGap: t.gap - 2, fontSize: t.small + 1, radius: t.radius - 2},
 						icon: {width: t.icon - 2, height: t.icon - 2}
 					},
 					md: {},
 					lg: {
-						root: {height: t.controlLg, padding: [0, t.padLg], columnGap: t.gap + 2, fontSize: t.large, radius: t.radius + 2},
+						root: {height: t.controlLg, padding: [0, t.padLg], columnGap: t.gap + 2, fontSize: t.size + 1, radius: t.radius + 2},
 						icon: {width: t.icon + 2, height: t.icon + 2}
 					}
 				}
 			},
 			defaults: {variant: "secondary", size: "md"}
 		};
+	}
 
 	static function checkbox(t:Refs):CheckboxRecipe
 		return {
 			root: {
 				direction: Row,
 				alignItems: Center,
-				columnGap: t.gap,
+				columnGap: t.gap + 2,
 				minHeight: t.controlSm,
 				fontFamily: t.font,
 				fontSize: t.size,
@@ -93,21 +118,21 @@ class Base {
 				shrink: 0,
 				alignItems: Center,
 				justify: Center,
-				radius: Math.round(t.radius * 0.6),
+				radius: Math.round(t.box * 0.28),
 				borderWidth: 1.5,
 				borderColor: t.edgeStrong,
 				background: t.surface,
 				color: t.accentFg,
 				ringColor: CLEAR,
 				hover: {borderColor: t.fg3},
-				pressed: {transform: Transform.scale(0.92)},
+				pressed: {transform: Transform.scale(0.94)},
 				checked: {background: t.accent, borderColor: t.accent, hover: {background: t.accentStrong, borderColor: t.accentStrong}},
-				mixed: {background: t.accent, borderColor: t.accent},
-				focus: ring(t, 1)
+				mixed: {background: t.accent, borderColor: t.accent, hover: {background: t.accentStrong, borderColor: t.accentStrong}},
+				focus: ring(t)
 			},
 			mark: {
-				width: t.box - 6,
-				height: t.box - 6,
+				width: t.box - 4,
+				height: t.box - 4,
 				opacity: 0,
 				transform: Transform.scale(0.5),
 				checked: {opacity: 1, transform: Transform.scale(1)},
@@ -122,7 +147,7 @@ class Base {
 			root: {
 				direction: Row,
 				alignItems: Center,
-				columnGap: t.gap + 2,
+				columnGap: t.gap + 4,
 				minHeight: t.controlSm,
 				fontFamily: t.font,
 				fontSize: t.size,
@@ -139,20 +164,22 @@ class Base {
 				alignItems: Center,
 				padding: inset,
 				radius: t.trackHeight / 2,
-				background: t.edgeStrong,
+				background: t.rail,
 				ringColor: CLEAR,
-				hover: {background: t.fg3},
+				hover: {background: t.railHover},
 				checked: {background: t.accent, hover: {background: t.accentStrong}},
-				focus: ring(t, 1)
+				focus: ring(t)
 			},
 			knob: {
 				width: t.thumb,
 				height: t.thumb,
 				radius: t.thumb / 2,
 				background: t.knob,
+				shadow: lifted(0.14),
+				dark: {shadow: lifted(0.35)},
 				transform: Transform.translate(0, 0),
-				pressed: {transform: Transform.scale(0.92)},
-				checked: {transform: Transform.translate(travel, 0), pressed: {transform: Transform.translate(travel, 0)}}
+				pressed: {transform: Transform.scale(0.94)},
+				checked: {background: t.accentFg, transform: Transform.translate(travel, 0), pressed: {transform: Transform.translate(travel, 0)}}
 			}
 		};
 	}
