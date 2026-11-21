@@ -71,7 +71,7 @@ function hashTree(dir, h) {
 }
 
 // helder's compiler as wasm32-wasi (legacy exception handling: every browser since 2021)
-const key = ['helder/compiler', 'helder/typescript', 'helder/definition', 'helder/gfx/shader', 'helder/dev', 'helder/story', 'helder/jobs', 'helder/asset', 'helder/cli', 'helder/markup']
+const key = ['helder/compiler', 'helder/typescript', 'helder/definition', 'helder/gfx/shader', 'helder/dev', 'helder/story', 'helder/jobs', 'helder/asset', 'helder/pack', 'helder/cli', 'helder/markup']
 	.reduce((h, pkg) => fs.existsSync(path.join(src, pkg)) ? hashTree(path.join(src, pkg), h.update(pkg)) : h, crypto.createHash('sha256')).update(hxmcVersion).update(hxmc).update('web').digest('hex').slice(0, 16);
 const built = path.join(cache, 'compiler-web', key, 'helder-compiler.wasm');
 if (!fs.existsSync(built)) {

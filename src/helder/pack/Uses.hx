@@ -14,6 +14,9 @@ import haxe.macro.Type;
 //   the manifest's permissions;
 // - plist: a class marked @:helder.ios.plist("<key>", ...), Info.plist's
 //   keys set true (helder.os.Paths.documents: the Files app's);
+// - frameworks: a class marked @:helder.apple.framework("<name>"), the
+//   frameworks of helder's an Apple bundle carries (helder.pack.apple.
+//   Frameworks: helder.store.Purchases' HelderStore);
 // - permissions: what is asked of a function marked @:helder.permission
 //   (Permissions.status, request; TypeScript's wrapper of it), its first
 //   argument a constant ("camera"), with where; any other argument asks
@@ -27,9 +30,9 @@ class Uses {
 	public static final PERMISSIONS = ["camera", "microphone", "photos", "location", "notifications"];
 
 	#if macro
-	public static function of(types:Array<Type>):{services:Array<String>, android:Array<String>, plist:Array<String>, permissions:Map<String, Position>,
-		usage:Map<String, Position>} {
-		var services = [], android = [], plist = [], permissions = new Map<String, Position>(), usage = new Map<String, Position>();
+	public static function of(types:Array<Type>):{services:Array<String>, android:Array<String>, plist:Array<String>, frameworks:Array<String>,
+		permissions:Map<String, Position>, usage:Map<String, Position>} {
+		var services = [], android = [], plist = [], frameworks = [], permissions = new Map<String, Position>(), usage = new Map<String, Position>();
 		function add(to:Array<String>, meta:MetaAccess, name:String)
 			for (m in meta.extract(name))
 				for (p in m.params)
@@ -50,13 +53,14 @@ class Uses {
 					add(services, c.meta, ":helder.android.dex");
 					add(android, c.meta, ":helder.android.permission");
 					add(plist, c.meta, ":helder.ios.plist");
+					add(frameworks, c.meta, ":helder.apple.framework");
 					for (f in c.statics.get()) {
 						if (f.meta.has(":helder.permission")) marked.set(f.name, fixed(f.meta, ":helder.permission"));
 						if (f.meta.has(":helder.ios.usage")) usages.set(f.name, fixed(f.meta, ":helder.ios.usage"));
 					}
 				case _:
 			}
-		var out = {services: services, android: android, plist: plist, permissions: permissions, usage: usage};
+		var out = {services: services, android: android, plist: plist, frameworks: frameworks, permissions: permissions, usage: usage};
 		if (!marked.keys().hasNext() && !usages.keys().hasNext()) return out;
 		// (f marked, or TypeScript's wrapper of it: __co_<name>)
 		function mark(c:ClassType, f:ClassField, of:Map<String, String>):Null<String>

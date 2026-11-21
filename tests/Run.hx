@@ -58,6 +58,7 @@ class Run {
 		{name: "viewer", about: "helder's image viewer (apps/viewer): its tests (the folder model, the decode cache, the camera's maths, a scripted run of the shell headless, its stories) natively and on Eval; its build for this machine", run: viewerApp},
 		{name: "viewer-window", about: "the viewer in a real window on the GPU (GFX_TARGET's build: Linux under Xvfb, Windows under Wine from another host): a photo of the fixtures opened, decoded on helder.jobs and shown, closed after 3 s (--exit-after); again with no system font found (HELDER_NO_SYSTEM_FONTS=1: its own fallback font); a 9000x2000 PNG (apps/viewer/tests/bigpng.mjs) shown in tiles", run: viewerWindow},
 		{name: "viewer-app", about: "macOS: the viewer as a universal app bundle (helder build --target macos: arm64 and x86_64, Info.plist's CFBundleDocumentTypes from helder.webmanifest's file_handlers), plutil and lipo's checks, then `open -a` with a file: Launch Services' open request reaching App.onOpen", run: viewerBundle},
+		{name: "store", about: "macOS: helder.store in an app bundle (helder build --target macos of tests/store/StoreCheck.hx): HelderStore.dylib in Contents/Frameworks, the bundle through codesign --verify --deep --strict, then run, each slice (x86_64 under Rosetta where there is one): the library loaded, StoreKit's products of an id it does not sell an empty list, owned() answered; iOS's: tests/pack/ios.sh", run: store},
 		{name: "viewer-package", about: "the viewer's releases (helder build --package: helder.cli.Desktop, helder.pack): Linux's .tar.gz and Flatpak manifest (on Linux), Windows' zip signed by tests/pack/signing's throwaway identity, macOS's universal .app in a zip, ad hoc; checked on Eval (tests/pack/DesktopCheck.hx: the tarball's entries, the .desktop file, the icons, the metainfo; the .exe's GUI subsystem, resources, checksum and Authenticode digest; the bundle's seal and each slice's signature), then by osslsigncode verify, desktop-file-validate and appstreamcli where installed, codesign --verify on a Mac; the runtime objects of the other desktops fetched by tests/pack/runtime.mjs --desktop", run: viewerPackage},
 		{name: "system-text", about: "helder.text on the platform's own stack (tests/text/SystemTextTest.hx, natively: Linux's fontconfig, HarfBuzz and FreeType, Windows' DirectWrite, macOS's Core Text): each script's fallback face, a family found, Devanagari, Bengali and Tamil shaped (reordered and split vowels), TextLayout through it, glyphs rasterised; each script drawn with the platform's engine and helder's (bin/text/system-<os>.png; GFX_TARGET=windows-x86_64 from Linux: under Wine)", run: systemText},
 		{name: "text-quality", about: "helder.text's own engine against macOS's CoreText (tests/text/TextQuality.hx, natively): Inter Regular and Bold at seven sizes, DejaVu Sans at three and a paragraph, four inks on their pages, 1x and 2x, font smoothing on and off, the way the Renderer draws them, against CoreText's sheets of the same glyphs at the same pens (tests/text/coretext/sheets, drawn by the system-text lane on a Mac: CTFontDrawGlyphs through helder's Core Text back end): SSIM, the ink's weight, the pixels' differences, before (the rasterizer helder had) and now (bin/text-quality/report.md, heatmaps)", run: textQuality},
@@ -428,6 +429,22 @@ class Run {
 	}
 
 	// (the viewer's own tests from its directory, its project: helder test there)
+	static function store() {
+		if (Sys.systemName() != "Mac") throw new Failed("the store lane: on macOS only");
+		var app = "bin/store/StoreCheck.app";
+		run(helderCli(), ["build", "tests/store/StoreCheck.hx", "--target", "macos", "-o", app]);
+		if (!FileSystem.exists('$app/Contents/Frameworks/HelderStore.dylib')) throw new Failed('$app: no Contents/Frameworks/HelderStore.dylib');
+		shell('codesign --verify --deep --strict -v $app');
+		var archs = ["arm64"];
+		if (Sys.command("sh", ["-c", "arch -x86_64 /usr/bin/true 2> /dev/null"]) == 0) archs.push("x86_64");
+		for (a in archs) {
+			shell('arch -$a $app/Contents/MacOS/StoreCheck > bin/store/$a.txt');
+			var said = File.getContent('bin/store/$a.txt');
+			Sys.print(said);
+			if (said.indexOf("store: available true") < 0 || said.indexOf("store: ok") < 0) throw new Failed('StoreCheck ($a): $said');
+		}
+	}
+
 	static function viewerApp() {
 		var h = FileSystem.fullPath(helderCli());
 		var here = Sys.getCwd();

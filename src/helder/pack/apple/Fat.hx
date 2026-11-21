@@ -5,7 +5,8 @@ import haxe.io.Bytes;
 // A universal binary (lipo's "fat" Mach-O): the header (big-endian: the
 // magic, the slices' count), each slice's CPU type and subtype (read from
 // its own Mach-O header), offset, size and alignment, then the slices,
-// each at a multiple of its alignment (2^14: arm64's pages; x86-64's 2^12).
+// each at a multiple of its alignment (2^14: arm64's pages; x86-64's 2^12);
+// and taken apart again.
 class Fat {
 	public static function make(slices:Array<Bytes>):Bytes {
 		var n = slices.length, header = 8 + 20 * n;
@@ -35,6 +36,14 @@ class Fat {
 			out.blit(offsets[i], s, 0, s.length);
 		}
 		return out;
+	}
+
+	// a universal binary's slices (a thin one: itself)
+	public static function slices(b:Bytes):Array<Bytes> {
+		inline function be(p:Int):Int
+			return (b.get(p) << 24) | (b.get(p + 1) << 16) | (b.get(p + 2) << 8) | b.get(p + 3);
+		if (be(0) != 0xCAFEBABE) return [b];
+		return [for (i in 0...be(4)) b.sub(be(8 + 20 * i + 8), be(8 + 20 * i + 12))];
 	}
 
 	// (CPU_TYPE_ARM64 0x0100000C: 2^14; the others 2^12)

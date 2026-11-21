@@ -9,9 +9,27 @@ using StringTools;
 // requests, read of its own source (a literal's, else all of them).
 // Added to the APK's classes.json (-D helder.android.classes:
 // helder.pack.android.Classes), or checked against iOS's usage strings
-// (-D helder.ios.usage: helder.pack.ios.Usage).
+// (-D helder.ios.usage: helder.pack.ios.Usage); helder's libraries an
+// Apple bundle carries (helder.pack.apple.Frameworks).
 class Uses {
 	public static function record(com:context.Common.CommonContext, funcs:Array<String>, sources:Array<String>) {
+		// (helder's libraries an Apple bundle carries: helder.pack.apple.Frameworks)
+		var frameworks = [];
+		for (t in com.types)
+			switch t {
+				case TClassDecl(c) if (core.Meta.has(Custom(":helder.apple.framework"), c.clMeta)):
+					var prefix = hxmc.ir.Lower.nativeName(c) + "_";
+					if (!Lambda.exists(funcs, f -> f.startsWith(prefix))) continue;
+					for (m in c.clMeta)
+						if (core.ds.Key.asString(m.meta) == ":helder.apple.framework")
+							for (e in m.exprs)
+								switch e.expr {
+									case EConst(core.Ast.Constant.String(s, _)) if (!frameworks.contains(s)): frameworks.push(s);
+									case _:
+								}
+				case _:
+			}
+		helder.pack.apple.Frameworks.used(frameworks, n -> core.Define.rawDefined(com.defines, n) ? core.Define.rawDefinedValueSafe(com.defines, n, "") : null);
 		var classes = core.Define.rawDefinedValueSafe(com.defines, "helder.android.classes", "");
 		var usage = core.Define.rawDefined(com.defines, "helder.ios.usage") ? core.Define.rawDefinedValueSafe(com.defines, "helder.ios.usage", "") : null;
 		if (classes == "" && usage == null) return;

@@ -104,8 +104,8 @@ class CodeSign {
 		cd.u64(0); // codeLimit64
 		cd.u64(m.textOff);
 		cd.u64(m.textSize);
-		// (CS_EXECSEG_MAIN_BINARY; CS_EXECSEG_ALLOW_UNSIGNED with get-task-allow, as codesign)
-		cd.u64(1 | (get ? 0x10 : 0));
+		// (CS_EXECSEG_MAIN_BINARY but for a library; CS_EXECSEG_ALLOW_UNSIGNED with get-task-allow, as codesign)
+		cd.u64((m.dylib ? 0 : 1) | (get ? 0x10 : 0));
 		if (o.runtime != null) {
 			cd.u32(o.runtime);
 			cd.u32(0);
@@ -425,6 +425,8 @@ class MachO {
 	public var sigOff = 0;
 	public var textOff = 0;
 	public var textSize = 0;
+	// (MH_DYLIB: a framework's binary)
+	public var dylib = false;
 
 	var sigCmd = -1;
 	var linkedit = -1;
@@ -436,6 +438,7 @@ class MachO {
 	public static function parse(b:Bytes):MachO {
 		if (b.length < 32 || b.getInt32(0) != 0xfeedfacf) throw "not a 64-bit Mach-O (a fat or 32-bit one is not signed here)";
 		var m = new MachO(), at = 32;
+		m.dylib = b.getInt32(12) == 6;
 		for (_ in 0...b.getInt32(16)) {
 			var cmd = b.getInt32(at), size = b.getInt32(at + 4);
 			switch cmd {
