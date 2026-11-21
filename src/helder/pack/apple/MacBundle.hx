@@ -7,14 +7,17 @@ import helder.pack.ios.Plist;
 // _CodeSignature/CodeResources over the bundle's files with the rules
 // codesign writes for a macOS bundle (paths from Contents/: Resources/ in
 // files and files2, Info.plist omitted, MacOS/ nested code: the main
-// executable is bound by its own signature, not listed), and the universal
+// executable is bound by its own signature, not listed; other code there
+// by its cdhash, helder.pack.apple.Frameworks'), and the universal
 // executable signed slice by slice (CodeSign: ad hoc without an identity,
 // else Developer ID's with the hardened runtime and a timestamp, what
 // notarisation asks for), each slice binding the same Info.plist and
 // CodeResources.
 class MacBundle {
-	// files: their paths from Contents/ (Resources/AppIcon.icns...), not the executable's
-	public static function codeResources(files:Map<String, Bytes>):Bytes {
+	// files: their paths from Contents/ (Resources/AppIcon.icns...), not the
+	// executable's; nested: code signed on its own (Frameworks/<name>.dylib),
+	// its cdhash and a requirement it satisfies
+	public static function codeResources(files:Map<String, Bytes>, ?nested:Map<String, {cdhash:Bytes, requirement:String}>):Bytes {
 		function rule(?optional:Bool, ?omit:Bool, ?nested:Bool, weight:Int):PValue {
 			var d = ["weight" => PInt(weight)];
 			if (optional == true) d.set("optional", PBool(true));
@@ -28,6 +31,7 @@ class MacBundle {
 			if (StringTools.startsWith(path, "Resources/")) v1.set(path, PData(haxe.crypto.Sha1.make(data)));
 			v2.set(path, PDict(["hash" => PData(haxe.crypto.Sha1.make(data)), "hash2" => PData(haxe.crypto.Sha256.make(data))]));
 		}
+		if (nested != null) for (path => n in nested) v2.set(path, PDict(["cdhash" => PData(n.cdhash), "requirement" => PString(n.requirement)]));
 		return Plist.xml(PDict([
 			"files" => PDict(v1),
 			"files2" => PDict(v2),

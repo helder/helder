@@ -13,7 +13,9 @@ using StringTools;
 // (bin/macos/<Label>.app: Contents/Info.plist, MacOS/<name> both arm64's and
 // x86-64's slices; Resources/AppIcon.icns from the manifest's icons, the
 // "any" icon on Apple's grid, 824 of 1024, transparent around; then sealed,
-// _CodeSignature/CodeResources, and each slice signed binding it:
+// _CodeSignature/CodeResources, and each slice signed binding it (helder's
+// libraries the program uses signed alike beside it, Contents/Frameworks/:
+// helder.pack.apple.Frameworks):
 // helder.pack.apple.MacBundle, ad hoc, or with a Developer ID identity,
 // HELDER_MACOS_IDENTITY or HELDER_MACOS_CERTIFICATE and HELDER_MACOS_KEY,
 // with the hardened runtime and Apple's timestamp, as notarisation asks:
@@ -88,7 +90,8 @@ class Mac {
 		for (target in ["macos-arm64", "macos-x86_64"]) {
 			e.target = target;
 			var exe = Entry.clean('${e.root}/bin/$target/${e.name}');
-			var r = BuildCommand.build(e, exe, mode);
+			// (helder's libraries the program uses: their names in <exe>.frameworks)
+			var r = BuildCommand.build(e, exe, mode, null, ["-D", 'helder.apple.frameworks=${FileSystem.fullPath(e.root)}/bin/$target/${e.name}.frameworks', "--macro", "helder.pack.apple.Frameworks.check()"]);
 			messages += r.messages;
 			if (!r.ok) return {ok: false, ms: Math.round((haxe.Timer.stamp() - t0) * 1000), messages: messages};
 			slices.push(File.getBytes(exe));
@@ -110,14 +113,23 @@ class Mac {
 				icon = true;
 			}
 		}
+		var s = signing ?? Desktop.macSigning();
+		var nested = new Map<String, {cdhash:haxe.io.Bytes, requirement:String}>();
+		var list = Entry.clean('${e.root}/bin/macos-arm64/${e.name}.frameworks');
+		var used = FileSystem.exists(list) ? File.getContent(list).split("\n").filter(n -> n != "") : [];
+		for (n in used) {
+			var lib = helder.pack.apple.Frameworks.mac(n, helder.pack.apple.Frameworks.binary(e.helder, n, "macos"), s?.identity, s == null ? null : 0x0B0000, s?.timestamp);
+			TestCommand.mkdirs('$out/Contents/Frameworks');
+			File.saveBytes('$out/Contents/${lib.path}', lib.data);
+			nested.set(lib.path, {cdhash: lib.cdhash, requirement: lib.requirement});
+		}
 		var info = infoPlist(e.name, o.id, o.label, o.version, o.versionName, fileTypes(e.config), icon,
 			helder.pack.ios.Bundle.serviceKeys(o.id, o.usage, App.links(e.config)?.schemes ?? []));
 		File.saveBytes('$out/Contents/Info.plist', info);
 		// (sealed, then each slice signed binding Info.plist and the seal)
-		var seal = helder.pack.apple.MacBundle.codeResources(resources);
+		var seal = helder.pack.apple.MacBundle.codeResources(resources, nested);
 		TestCommand.mkdirs('$out/Contents/_CodeSignature');
 		File.saveBytes('$out/Contents/_CodeSignature/CodeResources', seal);
-		var s = signing ?? Desktop.macSigning();
 		File.saveBytes(exe, helder.pack.apple.MacBundle.sign(slices, {
 			identifier: o.id,
 			identity: s?.identity,

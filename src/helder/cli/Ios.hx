@@ -6,6 +6,7 @@ import helder.cli.BuildCommand.Mode;
 import helder.cli.Compiler.CompileServer;
 import helder.cli.Devices.Device;
 import helder.pack.apple.CodeSign;
+import helder.pack.apple.Frameworks;
 import helder.pack.apple.Identity;
 import helder.pack.ios.AssetCatalog;
 import helder.pack.ios.Bundle;
@@ -27,7 +28,9 @@ using StringTools;
 // (-D hxmc.codesign-id, -info-plist, -resources, -entitlements; -D
 // hxmc.ios-min-version the plist's MinimumOSVersion, -D
 // hxmc.ios-sdk-version its DTSDKName's version), as `codesign -s -`
-// signs a bundle: enough for the simulator. An .ipa zips the bundle under
+// signs a bundle: enough for the simulator (helder's libraries the
+// program uses put in by the build before: helder.pack.apple.Frameworks;
+// signed again with the app for distribution). An .ipa zips the bundle under
 // Payload/. Outputs: bin/ios/<name>.ipa (and its .app beside it),
 // bin/ios-sim/<name>.app. On a simulator (xcrun simctl): booted when it is
 // not, installed, launched with its output here (--console).
@@ -89,6 +92,8 @@ class Ios {
 		// (a permission asked for without its usage string: an error at the call)
 		var given = o.usage == null ? [] : [for (k in Reflect.fields(o.usage)) k];
 		words = words.concat(["--macro", 'helder.pack.ios.Usage.check("${given.join(",")}")']);
+		// (helder's libraries the program uses, put into the bundle: helder.pack.apple.Frameworks)
+		words = words.concat(["-D", 'helder.src=${e.helder}', "--macro", "helder.pack.apple.Frameworks.check()"]);
 		// (a device's: its debug symbols, <exe>.dSYM, which crash reports are
 		// symbolicated with; moved out of the bundle below)
 		if (device) words = words.concat(["-D", "hxmc.dsym"]);
@@ -147,12 +152,23 @@ class Ios {
 			info = File.getBytes('$app/Info.plist');
 			files.set("Info.plist", info);
 			resources = File.getBytes('$app/_CodeSignature/CodeResources');
+			// (and helder's libraries it uses, put in by the build: signed again
+			// by the identity, as Xcode signs an embedded framework)
+			var used = Frameworks.inIos(app);
+			for (n in used) {
+				var given = sign == null ? null : Frameworks.ios(n, Frameworks.binary(e.helder, n, e.target), e.target,
+					{identity: sign.identity, team: sign.profile.team}, dtKeys(o));
+				for (p in ['$n.framework/$n', '$n.framework/Info.plist', '$n.framework/_CodeSignature/CodeResources']) {
+					var path = 'Frameworks/$p';
+					put(path, given == null ? File.getBytes('$app/$path') : Lambda.find(given, f -> f.path == path).data);
+				}
+			}
 			if (sign != null) {
 				// (the APIs the program uses declared; then signed for distribution)
 				var bin = File.getBytes(exe);
 				var privacy = privacyInfo(o.privacy, bin);
-				if (privacy.compare(files.get(PRIVACY)) != 0) {
-					put(PRIVACY, privacy);
+				if (privacy.compare(files.get(PRIVACY)) != 0 || used.length > 0) {
+					if (privacy.compare(files.get(PRIVACY)) != 0) put(PRIVACY, privacy);
 					resources = Bundle.codeResources(files);
 					File.saveBytes('$app/_CodeSignature/CodeResources', resources);
 				}

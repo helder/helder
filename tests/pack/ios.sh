@@ -5,7 +5,7 @@
 # the newest iOS runtime and iPhone made, booted and deleted at the end)
 # `helder run --target ios -d <it>` (built, installed, launched, its output
 # followed from the files simctl writes it to until it ends) prints the
-# hello line; then the audio stream. IOS_SUITE=smoke stops there (CI's pull
+# hello line; then the audio stream, helder.store's StoreKit. IOS_SUITE=smoke stops there (CI's pull
 # requests); the full suite (the default; CI's pushes to main and its
 # nightly) goes on: the assets, the screen, the planets example,
 # UIAccessibility, the images, Core Text. IOS_BUILD_ONLY=1: the builds
@@ -38,6 +38,7 @@ build() {
 # (Hello's, Checksum's and AudioCheck's: helder run builds them again, warm)
 build tests/pack/Hello.hx "$out/Hello.app"
 build tests/pack/AudioCheck.hx "$out/AudioCheck.app"
+build tests/store/StoreCheck.hx "$out/StoreCheck.app"
 if [ "$suite" = full ]; then
 	build tests/asset/Checksum.hx "$out/Checksum.app"
 	build tests/pack/Screen.hx "$out/Screen.app"
@@ -73,6 +74,16 @@ if [ $code != 0 ] && grep -q "audio:" "$out/audio.txt"; then code=0; fi
 check "helder run tests/pack/AudioCheck.hx --target ios" $code
 grep -q "audio: started" "$out/audio.txt"
 check "audio: the stream started (RemoteIO's render callbacks)" $?
+
+# helder.store (tests/store/StoreCheck.hx): HelderStore.framework in the
+# bundle, loaded, StoreKit's products of an id it does not sell an empty
+# list, owned() answered: "store: ok".
+"$helder" run tests/store/StoreCheck.hx --target ios -d "$udid" > "$out/store.txt" 2>&1
+cat "$out/store.txt"
+grep -q "store: available true" "$out/store.txt"
+check "store: HelderStore.framework loaded" $?
+grep -q "store: ok" "$out/store.txt"
+check "store: products and owned answered (StoreKit 2)" $?
 
 [ "$suite" = full ] || exit $failed
 

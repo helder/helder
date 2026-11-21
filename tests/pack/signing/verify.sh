@@ -10,6 +10,7 @@
 #   codesign -d -r-                           the designated requirement
 #   xcrun assetutil --info Assets.car         the icon's asset catalog (AssetCatalog)
 #   plutil -lint                              Info.plist, PrivacyInfo.xcprivacy
+# and tests/store/StoreCheck.hx's app, HelderStore.framework signed inside it.
 # Usage: sh tests/pack/signing/verify.sh (from the repository's root, after
 # bun install). App Store Connect's own validation is a TestFlight upload
 # with the owner's account (src/helder/pack/README.md).
@@ -27,7 +28,13 @@ HXMC_RT_DIR="$PWD/bin/pack/rt" HELDER_CACHE="$PWD/bin/pack/cache" \
   HELDER_IOS_CERTIFICATE=tests/pack/signing/cert.pem HELDER_IOS_KEY=tests/pack/signing/key.pem \
   HELDER_IOS_PROFILE=tests/pack/signing/test.mobileprovision \
   bin/cli/helder build bin/pack/project --target ios --release -o "$out/Packed.ipa"
-(cd "$out" && unzip -q Packed.ipa)
+# (and an app with helder's HelderStore.framework, helder.store's: signed
+# by the same identity, nested)
+HXMC_RT_DIR="$PWD/bin/pack/rt" HELDER_CACHE="$PWD/bin/pack/cache" \
+  HELDER_IOS_CERTIFICATE=tests/pack/signing/cert.pem HELDER_IOS_KEY=tests/pack/signing/key.pem \
+  HELDER_IOS_PROFILE=tests/pack/signing/test.mobileprovision \
+  bin/cli/helder build tests/store/StoreCheck.hx --target ios --release -o "$out/Store/Store.ipa"
+(cd "$out" && unzip -q Packed.ipa && cd Store && unzip -q Store.ipa)
 app="$out/Payload/Packed.app"
 sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain tests/pack/signing/ca.pem
 status=0
@@ -43,4 +50,8 @@ step xcrun assetutil --info "$app/Assets.car"
 # (the App Store refuses an icon with alpha: every rendition opaque)
 if xcrun assetutil --info "$app/Assets.car" | grep -q '"Opaque" : false'; then echo "FAILED: a rendition not opaque"; status=1; fi
 step plutil -lint "$app/Info.plist" "$app/PrivacyInfo.xcprivacy"
+store="$out/Store/Payload/Store.app"
+step codesign --verify --deep --strict -vvvv "$store"
+step sh -c "codesign -dvvv '$store/Frameworks/HelderStore.framework' 2>&1 | grep -q 'TeamIdentifier=HLDRTEST01'"
+step plutil -lint "$store/Frameworks/HelderStore.framework/Info.plist"
 exit $status

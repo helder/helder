@@ -32,7 +32,13 @@ class Bundle {
 			{path: name, data: exe, exec: true},
 			{path: "Info.plist", data: info, exec: false},
 			{path: "_CodeSignature/CodeResources", data: resources, exec: false}
-		].concat([for (o in other ?? []) {path: o.path, data: o.data, exec: false}]);
+		].concat([for (o in other ?? []) {path: o.path, data: o.data, exec: isBinary(o.path)}]);
+
+	// (a framework's binary: Frameworks/<name>.framework/<name>)
+	static function isBinary(path:String):Bool {
+		var p = path.split("/");
+		return p.length == 3 && p[0] == "Frameworks" && p[1] == p[2] + ".framework";
+	}
 
 	// the .ipa: Payload/<name>.app/ in a stored zip, the executable 0755
 	public static function ipa(name:String, exe:Bytes, info:Bytes, resources:Bytes, ?other:Array<{path:String, data:Bytes}>):Bytes {
@@ -124,6 +130,24 @@ class Bundle {
 				case _:
 			}
 		return true;
+	}
+
+	// files put in a bundle written already, their hashes in its
+	// CodeResources (helder.pack.apple.Frameworks')
+	public static function addFiles(resources:String, files:Map<String, Bytes>) {
+		switch Plist.parse(sys.io.File.getContent(resources)) {
+			case PDict(r):
+				switch [r.get("files"), r.get("files2")] {
+					case [PDict(v1), PDict(v2)]:
+						for (path => data in files) {
+							v1.set(path, PData(haxe.crypto.Sha1.make(data)));
+							v2.set(path, PDict(["hash" => PData(haxe.crypto.Sha1.make(data)), "hash2" => PData(haxe.crypto.Sha256.make(data))]));
+						}
+					case _:
+				}
+				sys.io.File.saveBytes(resources, Plist.xml(PDict(r)));
+			case _:
+		}
 	}
 
 	// Info.plist's keys of the app's usage strings and URL schemes
