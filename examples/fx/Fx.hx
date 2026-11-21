@@ -247,7 +247,7 @@ class Fx implements Markup {
 
 	static function main() {
 		var f = helder.text.SystemFonts.get();
-		try f.add(helder.asset.Asset.embed("fonts/Inter.ttf")) catch (_:Dynamic) {}
+		try f.add(helder.asset.Asset.embed("helder/text/fonts/Inter.ttf")) catch (_:Dynamic) {}
 		var args = Sys.args(), touring = args.indexOf("--tour") >= 0;
 		var k = args.indexOf("--effect");
 		if (k >= 0 && k + 1 < args.length) for (i in 0...EFFECTS.length) if (EFFECTS[i].id == args[k + 1]) {

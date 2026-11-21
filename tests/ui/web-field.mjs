@@ -31,8 +31,7 @@ const files = {
 	'/gfx/imports.mjs': path.join(here, '../../src/helder/gfx/imports.mjs'),
 	'/text/imports.mjs': path.join(here, '../../src/helder/text/imports.mjs'),
 	'/ui/imports.mjs': path.join(here, '../../src/helder/ui/imports.mjs'),
-	'/DejaVuSans.ttf': '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
-	'/DejaVuSans-Bold.ttf': '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+	'/Inter.ttf': path.join(here, '../../src/helder/text/fonts/Inter.ttf'),
 };
 const types = { '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.ttf': 'font/ttf' };
 const page = `<!doctype html><title>Fields</title><body style="margin:0">
@@ -43,7 +42,7 @@ import { run } from './os/browser.mjs';
 window.log = [];
 window.start = async () => {
 	window.r = run('field.wasm', { imports: ['os/imports.mjs', 'gfx/imports.mjs', 'text/imports.mjs', 'ui/imports.mjs'], canvas: 'c', gfx: 'webgl2',
-		fonts: ['DejaVuSans.ttf', 'DejaVuSans-Bold.ttf'], stdout: (s) => window.log.push(s), stderr: (s) => window.log.push('stderr: ' + s) });
+		fonts: ['Inter.ttf'], stdout: (s) => window.log.push(s), stderr: (s) => window.log.push('stderr: ' + s) });
 	window.result = await window.r;
 };
 </script>`;
@@ -99,7 +98,7 @@ let input = await editor('input[data-hxmc-editor]'), area = await editor('textar
 check('two editors', input && area, JSON.stringify({ input, area }));
 check('the field\'s editor inside its box', input && input.shown && input.x > m.name.x && input.x + input.w < m.name.x + m.name.w && input.y >= m.name.y && input.y + input.h <= m.name.y + m.name.h + 0.5,
 	JSON.stringify({ input, box: m.name }));
-check('in the field\'s font', input && input.font.includes('DejaVu Sans'), input && input.font);
+check('in the field\'s font', input && input.font.includes('Inter'), input && input.font);
 const kind = await p.evaluate(() => {
 	const e = document.querySelector('input[data-hxmc-editor]'), a = document.querySelector('textarea[data-hxmc-editor]');
 	return [e.type, e.inputMode, e.getAttribute('enterkeyhint'), e.getAttribute('autocapitalize'), e.getAttribute('autocorrect'), e.spellcheck, a.inputMode, a.getAttribute('enterkeyhint'), a.getAttribute('autocapitalize')].map(String).join(' ');

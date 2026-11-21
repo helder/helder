@@ -9,7 +9,7 @@ import helder.web.Island.Load;
 //
 //   <main>
 //     <h1>Todo</h1>
-//     <Surface src="todo.wasm" fonts={["fonts/DejaVuSans.ttf"]} class="app"/>
+//     <Surface src="todo.wasm" fonts={["fonts/Inter.ttf"]} class="app"/>
 //   </main>
 //
 // <Surface> is a ui program on the page: a <canvas> the page's styles size

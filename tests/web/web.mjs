@@ -21,7 +21,6 @@
 // (Playwright from npm, with Chromium: npx playwright install chromium)
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -47,7 +46,7 @@ const files = {
 	'/gfx/imports.mjs': pkg('gfx/imports.mjs'),
 	'/text/imports.mjs': pkg('text/imports.mjs'),
 	'/ui/imports.mjs': pkg('ui/imports.mjs'),
-	'/fonts/DejaVuSans.ttf': ['/usr/share/fonts/truetype/dejavu', '/usr/share/fonts/TTF', '/usr/share/fonts/dejavu'].map((d) => path.join(d, 'DejaVuSans.ttf')).find((f) => existsSync(f)),
+	'/fonts/Inter.ttf': pkg('text/fonts/Inter.ttf'),
 	'/domtest.js': path.join(dir, 'domtest.js'),
 	'/domtest.html': null,
 };

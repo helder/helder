@@ -61,7 +61,10 @@ class Look<V> {
 	}
 
 	static function get_base():LookOf<BaseVariants> {
-		if (baseLook == null) baseLook = Base.look();
+		if (baseLook == null) {
+			Base.font();
+			baseLook = Base.look();
+		}
 		return cast baseLook;
 	}
 
@@ -82,7 +85,7 @@ class Look<V> {
 
 	// (the default look: Base's recipes)
 	@:noCompletion public static function make(recipes:Map<String, Array<Refs->Dynamic>>):Look<BaseVariants>
-		return new Look(Comfortable, Blue, {}, recipes, new Map(), new Map());
+		return new Look(Comfortable, Graphite, {}, recipes, new Map(), new Map());
 
 	// this look with a patch over it (TypeScript's; Haxe's: LookOf.with, which checks the patch)
 	@:typescript.type("<P extends import('./style').LookPatch>(patch: P) => Look<V & import('./style').PatchVariants<P>>")

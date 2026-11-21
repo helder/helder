@@ -145,8 +145,8 @@ function tests() {
 			equals(b.variant, "secondary");
 			equals(b.size, "md");
 			settle(m.ui);
-			equals(b.style.background, light("surface"));
-			equals(b.style.borderColor, light("edge"));
+			equals(b.style.background, light("fill"));
+			equals(b.style.borderColor, light("fill"));
 			m.dispose();
 		});
 		test("with: a token, a variant, a part", () -> {
@@ -169,7 +169,7 @@ function tests() {
 			equals(soft.style.background, look.sheet().light.get("accentSoft"));
 			equals(knob.slot, "switch-knob");
 			equals(knob.style.radius, 3.0);
-			equals(go.style.height, (28 : helder.ui.Dim));
+			equals(go.style.height, (30 : helder.ui.Dim));
 			m.dispose();
 		});
 		test("with: a rendering replaced, its behaviour and access kept", () -> {

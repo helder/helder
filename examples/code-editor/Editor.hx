@@ -35,7 +35,7 @@ class Editor implements Markup {
 		editor.view.onUpdate = () -> status.text = editor.status();
 		decorate(editor);
 		UiWindow.run(<Surface title="Code editor" width={900} height={640}>
-			<view grow={1} font-family="DejaVu Sans" font-size={12}>
+			<view grow={1} font-size={12}>
 				<view tag="toolbar" direction="row" padding="6 12" column-gap={12} background="#f6f8fa">
 					<text tag="file" font-weight={700}>{path}</text>
 					<text color="#57606a">{editor.model.lineCount + " lines"}</text>

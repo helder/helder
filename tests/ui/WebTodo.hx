@@ -4,7 +4,8 @@ import helder.view.Render;
 
 // The todo example in a browser (web.mjs: wasm32-wasi in headless Chromium,
 // on WebGPU and on WebGL2): a 420x480 window on the page's canvas, the
-// fonts the page gives (DejaVu Sans). After each frame whose layout
+// fonts the page gives (DejaVu Sans, as TodoTest's frame it is compared
+// with draws in: the machine's sans-serif). After each frame whose layout
 // changed it prints the boxes of the nodes the test clicks ("boxes
 // draft=x,y,w,h add=... "), so that the page can drive it with real
 // pointer and keyboard events, then the count, the items and the wheel's

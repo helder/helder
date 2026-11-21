@@ -8,7 +8,7 @@
 //   <out>/new/app.helder                  a new project (?new, the welcome's)
 //   <out>/studio.wasm, helder/...         the studio built for the web, its packages' browser modules
 //   <out>/helder/story/web/worker.mjs     the preview host's worker (helder.story.web.Preview)
-//   <out>/fonts/                          DejaVu Sans, the previews' text
+//   <out>/fonts/                          helder's Inter, the previews' text
 //   <out>/examples/index.json             the examples bundled, each examples/<name>/ (project.json,
 //                                         preview.wasm: `helder studio <project> -- --export-web`)
 //   <out>/examples/<name>/cover.png       with --covers: its cover (DESIGN.md §2), the studio run

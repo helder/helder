@@ -825,8 +825,8 @@ program (`helder.dev.Hot`, `helder.os.App`'s client, the page):
   build starts from it;
 - for `web` the page (`page.html`) runs the module with helder.os's
   `browser.mjs` and the browser modules of the packages it imports (an
-  `imports.mjs` naming one of its import modules), DejaVu Sans for
-  helder.text; the WebSocket is at `/__hxmc/ws`, the module at
+  `imports.mjs` naming one of its import modules), helder's Inter
+  (src/helder/text/fonts) for helder.text, the page's `sans-serif`; the WebSocket is at `/__hxmc/ws`, the module at
   `/__hxmc/app.wasm` (409 for a swap after a failed build), the project's
   files at `/`. A reload swaps the new build into the same page;
 - a change to an asset builds nothing (`asset <key> · sent, nothing
@@ -998,7 +998,7 @@ helder run --headless examples/glow --snap glow.png --at 0.5 --size 320x240
   the pool by then lands in that frame, `Loop.settle`, not whenever its
   thread ends: the viewer's decodes); Math.random and Std.random seeded (`--seed`, 1: hxmc's xoshiro256**
   state from it); text by helder's own engine (helder.text, the fonts
-  found on the machine: DejaVu Sans for the examples); Linux's GL forced
+  found on the machine, and helder's Inter for Look.base's controls); Linux's GL forced
   to llvmpipe (`LIBGL_ALWAYS_SOFTWARE`), no `DISPLAY`; `LC_ALL` and `LANG`
   C.UTF-8, `TZ` UTC. Across machines, Mesa's releases and the fonts
   installed move text's edges a little: compare with a tolerance.

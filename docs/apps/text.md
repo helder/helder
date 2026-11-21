@@ -9,7 +9,7 @@ Text styles inherit, so set them once on a parent. A `<field>` is a text field; 
 ```tsx
 const draft = signal("");
 
-<view font-family="DejaVu Sans" font-size={14} color="#18181b" row-gap={8}>
+<view font-size={14} color="#18181b" row-gap={8}>
   <text font-weight={700}>New task</text>
   <field value={draft} placeholder="What needs to be done?"
     padding="8 12" radius={6} onInput={e => draft(e.text)}
@@ -20,7 +20,7 @@ const draft = signal("");
 ```haxe
 var draft = signal("");
 
-<view font-family="DejaVu Sans" font-size={14} color="#18181b" row-gap={8}>
+<view font-size={14} color="#18181b" row-gap={8}>
   <text font-weight={700}>New task</text>
   <field value={draft} placeholder="What needs to be done?"
     padding="8 12" radius={6} onInput={e -> draft(e.text)}
@@ -41,7 +41,7 @@ On a phone a field tells the keyboard what it takes, and the layout keeps clear 
 
 ## What else
 
-- **Fonts:** OpenType and TrueType, variable fonts, colour emoji, and the system's fonts with fallback for every script.
+- **Fonts:** OpenType and TrueType, variable fonts, colour emoji, and the system's fonts with fallback for every script. In the browser a page ships helder's Inter, its `sans-serif`.
 - **Shaping:** kerning, ligatures, Arabic joining, right-to-left and mixed-direction text.
 - **Typography:** line height, letter spacing, alignment and justification, ellipsis and line clamps, decorations and text shadows, OpenType features.
 - **Input:** selection, the clipboard, undo, and input methods for Japanese, Chinese and Korean on every desktop, the web and phones.

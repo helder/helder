@@ -38,7 +38,7 @@ class DemoPage implements Markup {
 					<p>gfx's cube, drawn by a wasm32-wasi module once it scrolls into view.</p>
 				</Island.Wasm>
 				<Source path="examples/cube/Cube.hx"/>
-				<Surface src="counter-ui.wasm" id="counter-ui" fonts={["fonts/DejaVuSans.ttf"]} style="display:block;width:320px;height:200px" load={Visible}>
+				<Surface src="counter-ui.wasm" id="counter-ui" fonts={["fonts/Inter.ttf"]} style="display:block;width:320px;height:200px" load={Visible}>
 					<p>ui's counter, drawn by a wasm32-wasi module on a canvas the page sizes.</p>
 				</Surface>
 				<Source path="examples/counter/Counter.hx"/>

@@ -109,7 +109,7 @@ class Million implements Markup {
 	}
 
 	public function view():View {
-		return <view grow={1} background="#fafafa" font-family="DejaVu Sans" font-size={13} color="#18181b">
+		return <view grow={1} background="#fafafa" font-size={13} color="#18181b">
 			<view tag="toolbar" direction="row" align-items="center" column-gap={6} padding="8 12" background="#ffffff">
 				<text tag="title" grow={1} font-weight={700}>A million rows</text>
 				<Button tag="top" label="Top" onClick={() -> list.focusIndex(0)}/>

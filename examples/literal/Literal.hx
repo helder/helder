@@ -177,7 +177,7 @@ class Literal implements Markup {
 		</view>;
 
 	static function main() {
-		try helder.text.SystemFonts.get().add(helder.asset.Asset.embed("fonts/Inter.ttf")) catch (_:Dynamic) {}
+		try helder.text.SystemFonts.get().add(helder.asset.Asset.embed("helder/text/fonts/Inter.ttf")) catch (_:Dynamic) {}
 		UiWindow.run(<Surface title="Taken literally" width={1280} height={720} background="#7fb8ff">{view()}</Surface>);
 	}
 }

@@ -175,39 +175,42 @@ Haxe writes the same (`Look.base.with({...})`, `"switch": t -> ...`,
 
 ## 5. The default look
 
-`Look.base` is inspired by [CUI][cui] (MIT, a C99 immediate-mode drawn
-UI: its `docs/design.md` and `docs/theming.md`). Taken from it, as
-principles and proportions: semantic OKLCH colour tokens in light and
-dark with a set of accents; a radius ladder (controls, panels, surfaces)
-on a 4-point grid, and a density token; edges on what rests and shadows
-only on what floats; a focus ring for the keyboard alone, fading in;
-spring motion, a press scale and disabled controls faded, not recoloured.
-Not taken: its numbers, names and component styling. helder's values are
-its own, tuned by eye in the gallery's snapshots (tests/ui/controls), and
-no code or data of CUI's is in helder.
+`Look.base` follows [CUI][cui] (MIT, a C99 immediate-mode drawn UI: its
+`docs/design.md`, `docs/theming.md` and its controls). Taken from it:
+semantic OKLCH colour tokens in light and dark, pure grays, a neutral
+accent and a table of others (its values, under its MIT licence);
+soft rectangles on a radius ladder (controls, panels, surfaces) and a
+density token; a hairline of shadow under solid controls; an opaque blue
+focus ring for the keyboard alone, fading in; a press that darkens and
+barely gives; spring motion, and disabled controls faded, not
+recoloured. Not taken: its names, structure and code. helder's tokens
+and recipes are its own, tuned by eye in the gallery's snapshots
+(tests/ui/controls).
 
 | Tokens | comfortable (the default) | compact |
 | --- | --- | --- |
-| Neutrals, OKLCH (light / dark) | canvas 0.975 / 0.165, surface 1 / 0.205, raised 1 / 0.245, well 0.955 / 0.235, a hint of hue 265; washes, lines and edges translucent | the same |
-| Text | fg 0.22 / 0.96, fg2 0.44 / 0.76, fg3 0.6 / 0.58 | the same |
-| Accent | L 0.55 / 0.62 at the accent's chroma; blue (hue 258, the default), violet, teal, green, amber, orange, red, pink, graphite | the same |
+| Neutrals, OKLCH (light / dark) | canvas 1 / 0.18, surface 1 / 0.21, raised 1 / 0.24, well 0.975 / 0.26; fill 0.945 / 0.26 (hover, press a step each); a switch's rail 0.895 / 0.33; line 0.915 / 0.29, edge 0.84 / 0.29, edgeStrong 0.665 / 0.515; washes fg at 5% and 7.5%; chroma 0 | the same |
+| Text | fg 0.15 / 0.96, fg2 0.46 / 0.77, fg3 0.565 / 0.64 | the same |
+| Accent | graphite, the default: 0.23 / 0.93 (its hover 0.3 / 0.85, text on it white / 0.19); blue, violet, teal, green, amber, orange, red, pink after CUI's table; the focus ring one blue, 0.58 / 0.73 at chroma 0.15 | the same |
+| Danger | oklch(0.55 0.19 27) / oklch(0.7 0.16 24), white / dark text | the same |
 | Type | Inter 14 (12, 16, 20), Inter Display, Geist Mono; medium 500 | 13 (11, 14, 17) |
-| Radii | 8, 12, 16 | 6, 10, 14 |
-| Control heights, padding | 28, 36, 44; 10, 14, 18 | 24, 28, 36; 8, 10, 14 |
-| Checkbox, switch | box 18; track 36 by 20, thumb 16 | 16; 30 by 16, 12 |
-| Motion (s) | hover 0.12, toggle 0.18, disclosure 0.26, floating 0.22, dialog 0.3, exit 0.15; press scale 0.97 | the same |
+| Radii | 10, 14, 18 (a button 8, 10, 12 by size) | 8, 12, 16 (6, 8, 10) |
+| Control heights, padding | 30, 36, 44; 12, 16, 20 | 26, 30, 36; 10, 12, 16 |
+| Checkbox, switch | box 18 (radius 5, edge 1.5); track 36 by 20, thumb 16 | 16; 30 by 16, 12 |
+| Motion (s) | hover 0.12, toggle 0.18, disclosure 0.26, floating 0.22, dialog 0.3, exit 0.15; press scale 0.98 | the same |
 | Disabled | opacity 0.42 | the same |
 
-The fonts are those helder's examples and apps carry (Inter, Inter
-Display, Geist Mono), named, not bundled: an app adds them. The theme
-change blended in OKLab that CUI does is not taken yet.
+`font` is helder's Inter (src/helder/text/fonts: a web page ships it,
+and Look.base adds it where the system has none). Inter Display and
+Geist Mono are named, not bundled: an app adds them. The theme change
+blended in OKLab that CUI does is not taken yet.
 
 ## 6. Typed variants
 
 A look declares its variants by its recipes (`variants: {variant:
 {soft: ...}}`), and its type carries them: `Look<V>`, V naming each
-control's axis's values (`{button_variant: {primary, secondary, ghost,
-danger}, ...}`). In Haxe, `with` is a macro that reads the patch's
+control's axis's values (`{button_variant: {primary, secondary, outline,
+ghost, danger}, ...}`). In Haxe, `with` is a macro that reads the patch's
 recipe literals and returns the look typed with their variants added,
 and a variant prop's `@:from` macro checks a literal against the
 expected type's V (an unknown one: `"soft" is no button variant of this

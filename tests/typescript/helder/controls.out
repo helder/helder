@@ -1,6 +1,6 @@
 1 | button primary md | button secondary md
-#0059C9FF #FFFFFFFF
-#4495FFFF #16171AFF
+#2E2E2EFF #EDEDEDFF
+#CECECEFF #242424FF
 true true
 root
   view

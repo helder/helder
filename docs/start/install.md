@@ -59,7 +59,6 @@ npx helder build --target android   # an APK to install; ios: an IPA
 
 - `npx helder devices` lists the phones, emulators and simulators to run on.
 - A `tsconfig.json` is optional; helder uses the project's TypeScript 7.1 or later to check your code.
-- In the browser, text needs a font: if the CLI says the page ships none, install DejaVu Sans.
 - Want to try without installing? The [examples](https://helder.build/examples/) play in your browser.
 
 <Reference to="cli,ui"/>

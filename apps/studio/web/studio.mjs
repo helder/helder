@@ -333,7 +333,7 @@ function log(s) {
 // ---- the preview host's worker
 
 const preview = { worker: null, events: [] };
-const fontFiles = ['fonts/DejaVuSans.ttf', 'fonts/DejaVuSans-Bold.ttf'];
+const fontFiles = ['fonts/Inter.ttf'];
 const previewFonts = Promise.all(fontFiles.map((u) => fetch(u).then((r) => (r.ok ? r.arrayBuffer() : null), () => null))).then((l) => l.filter(Boolean));
 
 function startPreview(host) {

@@ -67,7 +67,7 @@ class Motion implements Markup {
 		</view>;
 
 	public static function view():View
-		return <view grow={1} padding={20} row-gap={16} font-family="DejaVu Sans" font-size={14} motion="default" motion-color="calm"
+		return <view grow={1} padding={20} row-gap={16} font-size={14} motion="default" motion-color="calm"
 			background={dark() ? "#09090b" : "#f4f4f5"} color={dark() ? "#fafafa" : "#18181b"}>
 			<view direction="row" column-gap={8} align-items="center">
 				<text font-size={22} font-weight={700} grow={1}>Motion</text>

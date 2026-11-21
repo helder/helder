@@ -116,7 +116,7 @@ class Reel {
 		loaded = true;
 		var f = helder.text.SystemFonts.get();
 		for (b in [
-			helder.asset.Asset.embed("fonts/Inter.ttf"),
+			helder.asset.Asset.embed("helder/text/fonts/Inter.ttf"),
 			helder.asset.Asset.embed("fonts/InterDisplay.ttf"),
 			helder.asset.Asset.embed("helder/ui/code/fonts/JetBrainsMono-Regular.ttf")
 		])

@@ -24,7 +24,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, '../..');
 const dir = path.resolve(process.argv[2] ?? path.join(repo, 'bin/compiler-web'));
 const manifest = JSON.parse(readFileSync(path.join(dir, 'manifest.json'), 'utf8'));
-const font = ['/usr/share/fonts/truetype/dejavu', '/usr/share/fonts/TTF', '/usr/share/fonts/dejavu'].map((d) => path.join(d, 'DejaVuSans.ttf')).find((f) => existsSync(f));
+const font = path.join(repo, 'src/helder/text/fonts/Inter.ttf');
 
 const HARNESS = `<!doctype html><meta charset="utf-8"><title>compiler-web</title><body><script type="module">
 import { CompilerClient } from '/src/helder/compiler/web/client.mjs';
@@ -34,7 +34,7 @@ window.ready = true;
 </script>`;
 const PREVIEW = `<!doctype html><meta charset="utf-8"><title>preview</title><style>body { margin: 0 }</style><body><script type="module">
 import { Preview } from '/src/helder/compiler/web/preview.mjs';
-const fonts = ${font ? "[await (await fetch('/fonts/DejaVuSans.ttf')).arrayBuffer()]" : '[]'};
+const fonts = [await (await fetch('/fonts/Inter.ttf')).arrayBuffer()];
 window.preview = new Preview({ base: '/src/helder/', fonts, stdout: (s) => console.log('[preview] ' + s), stderr: (s) => console.log('[preview] ' + s) });
 window.ready = true;
 </script>`;
@@ -47,7 +47,7 @@ const server = createServer(async (req, res) => {
 			res.writeHead(200, { 'content-type': 'text/html' });
 			return res.end(p === '/' ? HARNESS : PREVIEW);
 		}
-		let file = p === '/fonts/DejaVuSans.ttf' ? font
+		let file = p === '/fonts/Inter.ttf' ? font
 			: p.startsWith('/compiler-web/') ? path.join(dir, p.slice(14))
 			: p.startsWith('/src/') ? path.join(repo, p) : null;
 		if (!file || (file !== font && !path.resolve(file).startsWith(p.startsWith('/compiler-web/') ? dir : repo))) throw new Error('not served');

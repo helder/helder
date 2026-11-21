@@ -1,7 +1,7 @@
 // title: Controls
 // summary: helder's standard controls in Look.base: the button's variants and sizes, a checkbox on, off and mixed, a switch, light and dark
 // tags: ui, controls, docs
-// demo: canvas 560x300
+// demo: canvas 560x360
 import helder.ui.controls.Look;
 import helder.ui.controls.Standard;
 import helder.ui.draw.UiWindow;
@@ -16,10 +16,10 @@ import helder.view.graph.Graph.*;
 class Controls implements Markup {
 	static function main() {
 		var dark = signal(false);
-		UiWindow.run(<Surface title="Controls" width={560} height={300} dark={dark}>
+		UiWindow.run(<Surface title="Controls" width={560} height={360} dark={dark}>
 			<Standard.Themed look={Look.base}>
 				<view grow={1} padding={20} row-gap={12} background={Look.ref.canvas} color={Look.ref.fg} font-family="Inter" font-size={14}>
-					{[for (v in ["primary", "secondary", "ghost", "danger"]) <view direction="row" align-items="center" column-gap={10}>
+					{[for (v in ["primary", "secondary", "outline", "ghost", "danger"]) <view direction="row" align-items="center" column-gap={10}>
 						{button(v, "sm")}{button(v, "md")}{button(v, "lg")}{button(v, "md", true)}
 					</view>]}
 					<view direction="row" align-items="center" column-gap={20}>
@@ -42,6 +42,9 @@ class Controls implements Markup {
 			case ["secondary", "sm"]: <Standard.Button variant="secondary" size="sm" disabled={off}>Small</Standard.Button>;
 			case ["secondary", "lg"]: <Standard.Button variant="secondary" size="lg" disabled={off}>Large</Standard.Button>;
 			case ["secondary", _]: <Standard.Button variant="secondary" disabled={off}>{off ? "Disabled" : "Secondary"}</Standard.Button>;
+			case ["outline", "sm"]: <Standard.Button variant="outline" size="sm" disabled={off}>Small</Standard.Button>;
+			case ["outline", "lg"]: <Standard.Button variant="outline" size="lg" disabled={off}>Large</Standard.Button>;
+			case ["outline", _]: <Standard.Button variant="outline" disabled={off}>{off ? "Disabled" : "Outline"}</Standard.Button>;
 			case ["ghost", "sm"]: <Standard.Button variant="ghost" size="sm" disabled={off}>Small</Standard.Button>;
 			case ["ghost", "lg"]: <Standard.Button variant="ghost" size="lg" disabled={off}>Large</Standard.Button>;
 			case ["ghost", _]: <Standard.Button variant="ghost" disabled={off}>{off ? "Disabled" : "Ghost"}</Standard.Button>;

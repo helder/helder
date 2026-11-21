@@ -80,11 +80,11 @@ class SystemFonts {
 	// the face closest to the request, or null when there is no font at all
 	public function match(family:String, weight = 400, italic = false):Null<FontFile> {
 		scan();
-		var names = GENERIC.exists(family.toLowerCase()) ? GENERIC.get(family.toLowerCase()) : [family].concat(GENERIC.get("sans-serif"));
-		var generic = GENERIC.exists(family.toLowerCase());
+		var lower = family.toLowerCase(), generic = GENERIC.exists(lower);
+		var names = lower == "sans-serif" ? sans() : generic ? GENERIC.get(lower) : [family].concat(sans());
 		// (a generic family: the platform's own face for it first, with its engine: SF on Apple's, fontconfig's alias on Linux)
 		if (generic) {
-			var f = platformGeneric(family.toLowerCase(), weight, italic);
+			var f = platformGeneric(lower, weight, italic);
 			if (f != null) return f;
 		}
 		for (name in names) {
@@ -101,12 +101,25 @@ class SystemFonts {
 		return null;
 	}
 
+	// (in a browser the page's fonts are all there is: helder's Inter, which
+	// Page ships, is its sans-serif and its first fallback)
+	static function sans():Array<String>
+		return web() ? ["Inter"].concat(GENERIC.get("sans-serif")) : GENERIC.get("sans-serif");
+
+	static function web():Bool {
+		#if (target.name == "hxmc")
+		return hxmc.Platform.os() == 3;
+		#else
+		return false;
+		#end
+	}
+
 	// the fallback faces (regular) found on this system
 	public function fallbacks():Array<FontFile> {
 		if (fallbackList != null) return fallbackList;
 		scan();
-		var out = [];
-		for (name in FALLBACK) {
+		var out = [], names = web() ? ["Inter"].concat(FALLBACK) : FALLBACK;
+		for (name in names) {
 			var f = best(name, 400, false);
 			if (f != null && !out.contains(f)) out.push(f);
 		}

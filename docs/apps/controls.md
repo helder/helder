@@ -34,7 +34,7 @@ static final look = Look.base.with({
 </Standard.Themed>
 ```
 
-<Image src="controls.webp" alt="Buttons in four variants and three sizes, disabled, an icon button, checkboxes off, on and mixed, a switch" caption="docs/examples/controls: Look.base's variants and sizes."/>
+<Image src="controls.webp" alt="Buttons in five variants and three sizes, disabled, an icon button, checkboxes off, on and mixed, a switch" caption="docs/examples/controls: Look.base's variants and sizes."/>
 
 ## Keys
 
@@ -46,8 +46,8 @@ static final look = Look.base.with({
 
 ## What else
 
-- **Options:** a button's `variant` (`primary`, `secondary`, `ghost`, `danger`), `size` (`sm`, `md`, `lg`), `icon`, `disabled`, `onPress`; a checkbox's and a switch's `label`, `checked`, `onChange`, `disabled`, and a checkbox's `indeterminate`.
-- **Looks:** colours in light and dark, nine accents, a compact density, a type scale and motion, all tokens; restyle one part (`switch: t => ({knob: {radius: 3}})`) or any state of it.
+- **Options:** a button's `variant` (`primary`, `secondary`, `outline`, `ghost`, `danger`), `size` (`sm`, `md`, `lg`), `icon`, `disabled`, `onPress`; a checkbox's and a switch's `label`, `checked`, `onChange`, `disabled`, and a checkbox's `indeterminate`.
+- **Looks:** colours in light and dark, a neutral accent and eight others, a compact density, a type scale and motion, all tokens; restyle one part (`switch: t => ({knob: {radius: 3}})`) or any state of it.
 - **Your own rendering:** `render: {switch: Lamp}` draws every switch as your component, inside other widgets too; it keeps the switch's keys and accessibility.
 - **Motion:** hovers, presses and toggles ease, the focus ring fades in for the keyboard only, and reduced motion keeps the end states.
 - **Cost:** a screen of controls draws in one pass, as plain views do.

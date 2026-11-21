@@ -1,7 +1,7 @@
 // A control's variant is checked against its look's, at the attribute: the
 // look's own (with's "soft") on look.Button, none on Look.base's Button.
 // expect: ControlVariant.hx:12: characters
-// expect: "soft" is no button variant of this look: danger, ghost, primary, secondary
+// expect: "soft" is no button variant of this look: danger, ghost, outline, primary, secondary
 import helder.ui.controls.Look;
 import helder.ui.controls.Standard;
 
