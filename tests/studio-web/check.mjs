@@ -176,19 +176,6 @@ function png(b64) {
 	return b.toString('latin1', 1, 4) === 'PNG' ? { width: b.readUInt32BE(16), height: b.readUInt32BE(20) } : null;
 }
 
-// a pixel of the studio's canvas
-async function pixel(pg, x, y) {
-	return pg.evaluate(async ([x, y]) => {
-		const h = window.studioWeb.host;
-		const p = h.gfx.readPixels();
-		h.os.redraw();
-		const d = await p;
-		const i = (y * d.width + x) * 4;
-		return [d.data[i], d.data[i + 1], d.data[i + 2]];
-	}, [x, y]);
-}
-const red = (c) => c[0] > 200 && c[1] < 110 && c[2] < 110;
-
 // whether any pixel in a box of the page (CSS pixels) is red: a title's strokes wherever its glyphs fall
 async function redIn(pg, x0, y0, x1, y1) {
 	return pg.evaluate(async ([x0, y0, x1, y1]) => {
@@ -250,7 +237,8 @@ async function recolour(pg, x, y, tap) {
 	await pg.screenshot({ path: path.join(out, 'desktop-selected.png') });
 	const p = await recolour(pg, 1076, 226, false);
 	numbers.push(['desktop patch', p]);
-	check(red(await pixel(pg, 380, 124)), 'the title red in the studio\'s canvas (the preview\'s frame, composited)');
+	// (anywhere in the title's box: a single pixel can fall in a letter's counter)
+	check(await redIn(pg, 360, 104, 800, 136), 'the title red in the studio\'s canvas (the preview\'s frame, composited)');
 	await pg.screenshot({ path: path.join(out, 'desktop-colored.png') });
 	// (an agent's run.snap of a story's screen: the preview's frame as a PNG, made by the page)
 	const shot = await pg.evaluate(() => window.studioWeb.call('run.snap', { screen: 'Todo/Three items' }));

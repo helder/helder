@@ -102,20 +102,24 @@ class SystemFonts {
 	}
 
 	// (in a browser the page's fonts are all there is: helder's Inter, which
-	// Page ships, is its sans-serif)
-	static function sans():Array<String> {
+	// Page ships, is its sans-serif and its first fallback)
+	static function sans():Array<String>
+		return web() ? ["Inter"].concat(GENERIC.get("sans-serif")) : GENERIC.get("sans-serif");
+
+	static function web():Bool {
 		#if (target.name == "hxmc")
-		if (hxmc.Platform.os() == 3) return ["Inter"].concat(GENERIC.get("sans-serif"));
+		return hxmc.Platform.os() == 3;
+		#else
+		return false;
 		#end
-		return GENERIC.get("sans-serif");
 	}
 
 	// the fallback faces (regular) found on this system
 	public function fallbacks():Array<FontFile> {
 		if (fallbackList != null) return fallbackList;
 		scan();
-		var out = [];
-		for (name in FALLBACK) {
+		var out = [], names = web() ? ["Inter"].concat(FALLBACK) : FALLBACK;
+		for (name in names) {
 			var f = best(name, 400, false);
 			if (f != null && !out.contains(f)) out.push(f);
 		}
