@@ -119,19 +119,34 @@ SIMD across jobs and a GPU compute pass, picked per call (as C++'s
 parallel algorithms, ISPC and Taichi do); workgroup memory and subgroups
 in `compute()`; GPU particles, cloth and soft bodies as its first users.
 
-**Layers**: nodes drawn into compositor surfaces of their own (CALayer,
-SurfaceControl, DirectComposition, Wayland subsurfaces; one surface where
-there are none), redrawn only when they change; native views and video
-between drawn layers, committed in the same transaction as the frame, so
-they clip, stack and scroll with it; scrollers moved by offset, without a
-repaint. Then Liquid Glass: the system's own on iOS and macOS 26
-(UIGlassEffect, NSGlassEffectView) and a shader matching it elsewhere and
-in screenshots. Also damage rects, screen reader checks and a low-end
-Android phone among the benchmarks.
+**Layers**, divided as browsers divide rendering:
+- The program's thread runs signals and layout and records a display list
+  per layer, in flat buffers outside the collector's heap, a margin past
+  what is seen; a layer is drawn again only when it changes (damage rects).
+- A compositor thread owns the GPU: it composites the layers and applies
+  what needs no layout (scroll offsets, transforms, opacity, clips) and
+  the declared springs and tweens, from the latest input each vsync, so
+  scrolling and animations keep going while the program is busy. Scroll
+  physics move there; scroll-linked effects (sticky and collapsing headers)
+  are declared; a gesture that may claim a drag says so upfront.
+- The system's compositor where there is one (CALayer, SurfaceControl,
+  DirectComposition, Wayland subsurfaces): layers handed to it, native
+  views and video between drawn layers in the same transaction as the
+  frame, so they clip, stack and scroll with it.
+- Then Liquid Glass: the system's own on iOS and macOS 26 (UIGlassEffect,
+  NSGlassEffectView) and a shader matching it elsewhere and in screenshots.
+
+Also screen reader checks, and a low-end Android phone among the benchmarks.
 
 **helder.run**: share and run links that update live: `helder share
 --watch` sends each rebuild to the same address and open pages reload in
 place, as `helder dev` does locally; sharing a project again keeps its link.
+
+**120 Hz on the web**: iOS Safari holds requestAnimationFrame and touch
+events to 60 Hz on a 120 Hz screen; the compositor in a worker drawing to
+an OffscreenCanvas, the program in another, the page's thread only passing
+input on (an invisible scroller's offsets: Safari's own momentum, at 120
+Hz), the main thread's canvas where OffscreenCanvas is missing.
 
 Also: Windows' touchpad scrolling, the web's scroll lag and Safari's rubber band.
 
