@@ -139,6 +139,12 @@ in `compute()`; GPU particles, cloth and soft bodies as its first users.
 - Then Liquid Glass: the system's own on iOS and macOS 26 (UIGlassEffect,
   NSGlassEffectView) and a shader matching it elsewhere and in screenshots.
 
+Windows of any shape: a transparent background (premultiplied alpha:
+macOS and Wayland first, Windows through DirectComposition, X11 with a
+compositing manager), clicks passing through clear pixels, and the
+system's materials behind them (macOS vibrancy and glass, Windows 11 Mica
+and Acrylic, KDE's blur).
+
 Also screen reader checks, and a low-end Android phone among the benchmarks.
 
 **helder.run**: share and run links that update live: `helder share
