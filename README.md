@@ -95,11 +95,11 @@ platform's settings as signals; new [docs](https://helder.build/docs/).
 **Now**: standard controls with a default look and forms; text input on
 phones.
 
-**Packages**, for what needs a library or glue the system lacks: in-app
-purchases first (StoreKit from Objective-C, Play Billing vendored as dex,
-included by use), then push notifications, Game Center and Play Games,
-Steam, ads and analytics, built so that their users need no Xcode or
-Android SDK.
+**Packages**, for what needs a library or glue the system lacks, built so
+that their users need no Xcode or Android SDK: [in-app purchases](src/helder/store/README.md)
+are done (StoreKit 2 on iOS and macOS, Play Billing fetched from Maven and
+dexed by helder); next push notifications, Game Center and Play Games,
+Steam, ads and analytics.
 
 **Apps**
 - Effects on nodes: blur, backdrop blur, filters, clip paths, shaders.
