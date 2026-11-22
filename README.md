@@ -121,10 +121,12 @@ in `compute()`; GPU particles, cloth and soft bodies as its first users.
 
 **Layers**, divided as browsers divide rendering:
 - The program's thread runs signals and layout and records a display list
-  per layer, in flat buffers outside the collector's heap, a margin past
-  what is seen; a layer is drawn again only when it changes (damage rects).
+  per layer, in flat buffers outside the collector's heap; a layer is
+  rastered in tiles, those near the view first, and only what changed is
+  drawn again (damage rects).
 - A compositor thread owns the GPU: it composites the layers and applies
-  what needs no layout (scroll offsets, transforms, opacity, clips) and
+  what needs no layout (scroll offsets, sticky boxes, transforms, opacity,
+  filters, clips) and
   the declared springs and tweens, from the latest input each vsync, so
   scrolling and animations keep going while the program is busy. Scroll
   physics move there; scroll-linked effects (sticky and collapsing headers)
@@ -132,7 +134,8 @@ in `compute()`; GPU particles, cloth and soft bodies as its first users.
 - The system's compositor where there is one (CALayer, SurfaceControl,
   DirectComposition, Wayland subsurfaces): layers handed to it, native
   views and video between drawn layers in the same transaction as the
-  frame, so they clip, stack and scroll with it.
+  frame, so they clip, stack and scroll with it. Ladybird's Compositor
+  (LibCompositing, BSD-2-Clause) is this design, as a process of its own.
 - Then Liquid Glass: the system's own on iOS and macOS 26 (UIGlassEffect,
   NSGlassEffectView) and a shader matching it elsewhere and in screenshots.
 
