@@ -119,6 +119,16 @@ SIMD across jobs and a GPU compute pass, picked per call (as C++'s
 parallel algorithms, ISPC and Taichi do); workgroup memory and subgroups
 in `compute()`; GPU particles, cloth and soft bodies as its first users.
 
+**Layers**: nodes drawn into compositor surfaces of their own (CALayer,
+SurfaceControl, DirectComposition, Wayland subsurfaces; one surface where
+there are none), redrawn only when they change; native views and video
+between drawn layers, committed in the same transaction as the frame, so
+they clip, stack and scroll with it; scrollers moved by offset, without a
+repaint. Then Liquid Glass: the system's own on iOS and macOS 26
+(UIGlassEffect, NSGlassEffectView) and a shader matching it elsewhere and
+in screenshots. Also damage rects, screen reader checks and a low-end
+Android phone among the benchmarks.
+
 **helder.run**: share and run links that update live: `helder share
 --watch` sends each rebuild to the same address and open pages reload in
 place, as `helder dev` does locally; sharing a project again keeps its link.
