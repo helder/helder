@@ -119,6 +119,10 @@ SIMD across jobs and a GPU compute pass, picked per call (as C++'s
 parallel algorithms, ISPC and Taichi do); workgroup memory and subgroups
 in `compute()`; GPU particles, cloth and soft bodies as its first users.
 
+**helder.run**: share and run links that update live: `helder share
+--watch` sends each rebuild to the same address and open pages reload in
+place, as `helder dev` does locally; sharing a project again keeps its link.
+
 Also: Windows' touchpad scrolling, the web's scroll lag and Safari's rubber band.
 
 **Later**: decals, volumetric fog, a lightmap baker, soft bodies, multiplayer,
