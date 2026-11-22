@@ -126,9 +126,9 @@ in `compute()`; GPU particles, cloth and soft bodies as its first users.
   drawn again (damage rects).
 - A compositor thread owns the GPU: it composites the layers and applies
   what needs no layout (scroll offsets, sticky boxes, transforms, opacity,
-  filters, clips) and
-  the declared springs and tweens, from the latest input each vsync, so
-  scrolling and animations keep going while the program is busy. Scroll
+  filters, clips) and the declared springs and tweens, from the latest
+  input each vsync, so scrolling and animations keep going while the
+  program is busy. Scroll
   physics move there; scroll-linked effects (sticky and collapsing headers)
   are declared; a gesture that may claim a drag says so upfront.
 - The system's compositor where there is one (CALayer, SurfaceControl,

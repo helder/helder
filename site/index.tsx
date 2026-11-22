@@ -130,9 +130,8 @@ const examples = (site.examples as Example[]).filter(e => !e.docs);
 const clips = site.clips as Clip[];
 const playable = examples.filter(e => e.demo !== null);
 const others = examples.filter(e => e.demo === null);
-const featured = playable.filter(e => e.id === "ts-palette" && e.wasm !== "");
-const first = featured.length > 0 ? featured : playable.filter(e => e.id === "ts-counter");
-const catalog = playable.filter(e => first.length === 0 || e.id !== first[0].id);
+const featured = playable.filter(e => e.id === "hadal" && e.wasm !== "");
+const catalog = playable.filter(e => !featured.includes(e));
 const topic = (e: Example) => e.page !== null ? "measure" : e.tags.indexOf("ui") >= 0 ? "interface" : "render";
 const RUNNER = "static/helder/os/browser.mjs";
 const pageOf = (e: Example) => "examples/" + e.id + "/";
@@ -171,7 +170,7 @@ function Foot() {
 }
 
 // the canvas (or, for a sound, none) its Play button starts: a WebAssembly island loaded on the first click
-function Stage(props: { ex: Example }) {
+function Stage(props: { ex: Example, showcase?: boolean }) {
 	const ex = props.ex;
 	const demo = ex.demo as Demo;
 	const sound = demo.kind === "sound";
@@ -180,11 +179,11 @@ function Stage(props: { ex: Example }) {
 	const poster = still !== "" ? ";--stage-poster:url('/" + still + "')" : "";
 	const style = sound ? "" : "--w:" + demo.width + "px;--ratio:" + demo.width + "/" + demo.height + poster;
 	const game = ex.tags.indexOf("game") >= 0;
-	return <div class={sound ? "stage sound" : "stage"} style={style} data-width={"" + demo.width} data-height={"" + demo.height} data-game={game ? "" : undefined} data-one-pixel={demo.onePixel ? "" : undefined}>
+	return <div class={props.showcase ? "stage showcase-stage" : sound ? "stage sound" : "stage"} style={style} data-width={"" + demo.width} data-height={"" + demo.height} data-game={game ? "" : undefined} data-one-pixel={demo.onePixel ? "" : undefined}>
 		<Island.Wasm src={ex.wasm} id={"play-" + ex.id} load="click" runner={RUNNER} imports={ex.imports} fonts={ex.fonts} assets={ex.assets === "" ? undefined : ex.assets}
 			args={ex.args.length > 0 ? ex.args : undefined} stop={ex.args.length > 0 ? "offscreen" : undefined}
 			canvas={!sound} width={demo.width} height={demo.height}>
-			<button class="play" type="button" aria-label={"Play " + ex.title}>{sound ? "▶ Play sound" : "▶ Play"}</button>
+			<button class="play" type="button" aria-label={(props.showcase ? "Launch " : "Play ") + ex.title}>{props.showcase ? "Launch " + ex.title + " ↗" : sound ? "▶ Play sound" : "▶ Play"}</button>
 			<span class="size">{demo.width + "×" + demo.height}</span>
 		</Island.Wasm>
 		{sound ? null : <button class="full" type="button" aria-label={"Play " + ex.title + " full screen"}>⛶ Full screen</button>}
@@ -199,15 +198,13 @@ function Download(props: { apk: Apk }) {
 	return <p class="apk"><a href={a.file} download="">Download for Android (APK)</a>{" · " + mb + " MB, built from " + a.commit}</p>;
 }
 
-function Card(props: { ex: Example, guided?: boolean }) {
+function Card(props: { ex: Example }) {
 	const ex = props.ex;
 	return <article class="card" id={ex.id}>
 		{ex.demo !== null ? <Stage ex={ex} /> : null}
 		<div class="card-copy">
 			<div class="row"><h3>{ex.title}</h3><ul class="tags">{ex.tags.map(t => <li>{t}</li>)}</ul></div>
-			<p>{props.guided && ex.id === "ts-palette" ? "Press Play and switch from Dusk to Clay. Watch the three swatches and their hex values change together." : ex.summary}</p>
-			{props.guided && ex.id === "ts-palette" ? <p>Open the source and find <code>selected</code>. Each button changes this signal, and <code>palette</code> looks up the colors for all three swatches.</p> : null}
-			{props.guided ? <p class="links"><a href="docs/start/install/">Build your first TSX app →</a></p> : null}
+			<p>{ex.summary}</p>
 			{ex.apk !== null ? <Download apk={ex.apk as Apk} /> : null}
 			<p class="links">{ex.page !== null ? <a href={pageOf(ex)}>Read the measurements</a> : null}<a href={ex.source}>Read source</a></p>
 			{clips.filter(c => c.example === ex.id).map(c => <details class="recording"><summary>Watch recording · {Math.round(c.seconds)}s</summary><Video c={c} /></details>)}
@@ -304,16 +301,22 @@ Static.write(site.dir + "/examples/index.html", Static.document(<html lang="en">
 		<main class="wrap">
 			<section class="intro examples-intro">
 				<h1>Examples</h1>
-				<p class="lede">Try a small TypeScript app, explore how a scene renders, or open a project to make your own.</p>
+				<p class="lede">Explore an app built in Helder, run a graphics demo, or open a project to make your own.</p>
 				<nav class="example-jumps" aria-label="Browse examples">
 					{starters.items.length > 0 ? <a class="btn" href="examples/#studio-examples">Open in Studio</a> : null}
 					<a class="btn" href="examples/#browser-demos">Run demos</a>
 					<a class="btn" href="examples/#native-examples">Browse native examples</a>
 				</nav>
 			</section>
-			{first.map(ex => <section class="band first-demo">
-				<h2>Start with {ex.id === "ts-counter" ? "a counter" : "a palette"}</h2>
-				<Card ex={ex} guided={true} />
+			{featured.map(ex => <section class="band showcase" aria-labelledby="showcase-title">
+				<h2 class="eyebrow" id="showcase-title">Featured showcase</h2>
+				<article class="card" id={ex.id}>
+					<div class="showcase-copy">
+						<div><h3>{ex.title}</h3><p>{ex.summary}</p></div>
+						<a class="btn" href={ex.source}>Read source ↗</a>
+					</div>
+					<Stage ex={ex} showcase={true} />
+				</article>
 			</section>)}
 			{starters.items.length > 0 ? <section class="band starters" aria-label={starters.title} id="studio-examples">
 				<h2>{starters.title}</h2>
