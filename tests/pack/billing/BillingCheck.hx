@@ -1,135 +1,82 @@
+import helder.store.Purchases;
 #if (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
 import helder.os.android.Jni;
-import helder.os.android.MainThread;
-import helder.os.android.Native.JniFast;
-import hxmc.NativeThread;
-import hxmc.unsafe.*;
+import helder.store.PurchasesAndroid as P;
 #end
 
-// Google Play Billing through helder's Maven libraries (tests/pack/billing.sh,
-// CI's emulator): the library and its tree fetched, shrunk to this keep
-// list (the API an app calls) and translated by helder.pack.android
-// (Libraries, Jvm); here a BillingClient built (PendingPurchasesParams,
-// a PurchasesUpdatedListener), startConnection with a
-// BillingClientStateListener, its callback's response code printed. Both
-// listeners are java.lang.reflect.Proxy instances of Glue's org.hxmc.Handler,
-// called on billing's own thread (PlayBillingLibrary), a Haxe thread once
-// attached.
-// An emulator without the Play Store answers BILLING_UNAVAILABLE (3) or
-// SERVICE_UNAVAILABLE (-1)/disconnected; one with it, OK (0) or an error.
-@:helder.android.maven("com.android.billingclient:billing", "
-	-keep public class com.android.billingclient.api.BillingClient { public *; }
-	-keep public class com.android.billingclient.api.BillingClient$Builder { public *; }
-	-keep public class com.android.billingclient.api.BillingClient$ProductType { public *; }
-	-keep public class com.android.billingclient.api.BillingClient$BillingResponseCode { public *; }
-	-keep public interface com.android.billingclient.api.BillingClientStateListener { *; }
-	-keep public interface com.android.billingclient.api.PurchasesUpdatedListener { *; }
-	-keep public interface com.android.billingclient.api.ProductDetailsResponseListener { *; }
-	-keep public interface com.android.billingclient.api.PurchasesResponseListener { *; }
-	-keep public interface com.android.billingclient.api.AcknowledgePurchaseResponseListener { *; }
-	-keep public interface com.android.billingclient.api.ConsumeResponseListener { *; }
-	-keep public class com.android.billingclient.api.BillingResult { public *; }
-	-keep public class com.android.billingclient.api.ProductDetails { public *; }
-	-keep public class com.android.billingclient.api.ProductDetails$* { public *; }
-	-keep public class com.android.billingclient.api.QueryProductDetailsResult { public *; }
-	-keep public class com.android.billingclient.api.QueryProductDetailsParams { public *; }
-	-keep public class com.android.billingclient.api.QueryProductDetailsParams$* { public *; }
-	-keep public class com.android.billingclient.api.QueryPurchasesParams { public *; }
-	-keep public class com.android.billingclient.api.QueryPurchasesParams$* { public *; }
-	-keep public class com.android.billingclient.api.BillingFlowParams { public *; }
-	-keep public class com.android.billingclient.api.BillingFlowParams$* { public *; }
-	-keep public class com.android.billingclient.api.PendingPurchasesParams { public *; }
-	-keep public class com.android.billingclient.api.PendingPurchasesParams$* { public *; }
-	-keep public class com.android.billingclient.api.Purchase { public *; }
-	-keep public class com.android.billingclient.api.Purchase$* { public *; }
-	-keep public class com.android.billingclient.api.AcknowledgePurchaseParams { public *; }
-	-keep public class com.android.billingclient.api.AcknowledgePurchaseParams$* { public *; }
-	-keep public class com.android.billingclient.api.ConsumeParams { public *; }
-	-keep public class com.android.billingclient.api.ConsumeParams$* { public *; }
-")
-@:helder.android.dex("Handler")
-@:hxmc.unsafe(gc)
+// helder.store's Google Play Billing on a device or emulator
+// (tests/pack/billing.sh, CI's emulator): billing 9.1.0 and its tree put in
+// by use (PurchasesAndroid's keep list), the client built and connected,
+// products of an id no store sells, owned(), each line printed; available()
+// before and after. An emulator without the Play Store has no billing
+// service: available false, the calls a short error (BILLING_UNAVAILABLE,
+// SERVICE_UNAVAILABLE); one with it signed out, an error too; signed in, an
+// empty list. Then, with no store: the library's ProductDetails and
+// Purchase made from fixture JSON and read through PurchasesAndroid's
+// getters, the queries' and the billing flow's params built, a purchase's
+// signature checked against a key made for this test ("billing: fixtures
+// ok"). The program's thread turns its loop and the activity's commands in
+// turn (no App here).
 class BillingCheck {
-	static var done = false;
-
 	static function main() {
 		#if (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
 		helder.os.android.Activity.link();
 		Sys.println("billing: started");
-		MainThread.post(start);
-		var t0 = haxe.Timer.stamp();
-		while (!done && haxe.Timer.stamp() - t0 < 60)
-			MainThread.wait(0.5);
-		Sys.println(done ? "billing: done" : "billing: no callback in 60 s");
+		var finished = false;
+		helder.async.Async.launch(_ -> {
+			Sys.println('billing: available ${Purchases.available()}');
+			try Sys.println('billing: products ${Purchases.products(["x"]).length}') catch (e:Dynamic) Sys.println('billing: products failed $e');
+			try Sys.println('billing: owned ${Purchases.owned().length}') catch (e:Dynamic) Sys.println('billing: owned failed $e');
+			Sys.println('billing: available ${Purchases.available()}');
+			Sys.println('billing: fixtures ${fixtures()}');
+		}).onCompletion((_, e) -> {
+			if (e != null) Sys.println('billing: failed $e');
+			finished = true;
+		});
+		var loop = helder.async.Loop.current(), t0 = haxe.Timer.stamp();
+		while (!finished && haxe.Timer.stamp() - t0 < 60) {
+			loop.turn(0);
+			helder.os.android.MainThread.wait(0.05);
+		}
+		Sys.println(finished ? "billing: done" : "billing: no answer in 60 s");
 		#else
 		Sys.println("billing: Android only");
 		#end
 	}
 
 	#if (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
-	static inline var API = "com/android/billingclient/api/";
+	static final INAPP = '{"productId":"coins","type":"inapp","title":"Coins (Check)","name":"Coins","description":"100","skuDetailsToken":"t",'
+		+ '"oneTimePurchaseOfferDetails":{"priceAmountMicros":990000,"priceCurrencyCode":"EUR","formattedPrice":"0.99 EUR","offerIdToken":"o"}}';
+	static final SUBS = '{"productId":"plus","type":"subs","title":"Plus (Check)","name":"Plus","description":"","skuDetailsToken":"t","subscriptionOfferDetails":['
+		+ '{"offerIdToken":"intro-token","basePlanId":"monthly","offerId":"intro","offerTags":[],"pricingPhases":['
+		+ '{"priceAmountMicros":0,"priceCurrencyCode":"EUR","formattedPrice":"Free","billingPeriod":"P1W","recurrenceMode":2,"billingCycleCount":1},'
+		+ '{"priceAmountMicros":2990000,"priceCurrencyCode":"EUR","formattedPrice":"2.99 EUR","billingPeriod":"P1M","recurrenceMode":1}]},'
+		+ '{"offerIdToken":"base-token","basePlanId":"monthly","offerTags":[],"pricingPhases":['
+		+ '{"priceAmountMicros":2990000,"priceCurrencyCode":"EUR","formattedPrice":"2.99 EUR","billingPeriod":"P1M","recurrenceMode":1}]}]}';
+	static final KEY = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAowdv/CyGoaAh8g5y3GJWLn2boMyeA+eo1GXGLI4bGN3LiWS8/p4ZL/XPAmUJCbwCDmV2vzE+LRjdqzUXzFTu8RGfuTBH27D3KvUbrtjzS5G3TV6s3G811+YN4x9ONQdby7cnqA+GN6rwk9n+DUdfnGh6PMoS2R3zAmGA3eu5abzTg++5HgMpyf2Z0Q2L+7guggfx27eC5eA4R7VnC8wAF0JJ4pRUfLy48SQSmMigAZnhXuzQ3EpRpqcUORn2iXkVrS8FZChxFERgzH/k6ZyY/3RfLgaveDPpg3cV6+9i/uj993JCQkOyfNcRopZGhSY5/SGPkSiYG9fia9E4TSlg9wIDAQAB";
+	static final SIGNATURE = "Dw9tS4EohV6MbjYqZddSmnpQsjsL3SDd7ocH3OTrvZpTvJl0x0ZBUhT/8tPfZiy+ZGj8PUNGRJ70/Vg4BgGZPiobYDCToN8huZzq7/MyDQ2X3pFnDwJyp2pscAqlPA+y0HfwpQ2pu+o0k180iA8ca6W0fVKZ53zFHpcbOYRgYSC17PyoqE5b7zJNuz/aliK5AyVrpbwGzaE2AvXOBIns+M3ElnNZq/xGTgR8DJ8ap2wp1phFI1X7ul6tYnq+EjJhdJ/N69uTxjzhMHjII2zQ3ylGZKi6ZqmlpeE590zJcyOfrHcoQ/twXPoJ6OJ1iBVmTV2CJKGlVfFv/K9YZzmkgA==";
+	static final JSON = '{"orderId":"GPA.3312-5551-0623-12345","packageName":"org.helder.billingcheck","productId":"coins","purchaseTime":1763700000000,"purchaseState":0,"purchaseToken":"abcdefghijklmnop.AO-J1Oy","quantity":3,"acknowledged":false}';
 
-	static function start() {
-		var handler = Jni.cls("org.hxmc.Handler");
-		Jni.registerNatives(handler, [{name: "call", sig: "(ILjava/lang/String;[Ljava/lang/Object;)Ljava/lang/Object;", fn: Callback.addr(callEntry)}]);
-		var bc = Jni.cls("com.android.billingclient.api.BillingClient"), bb = Jni.cls("com.android.billingclient.api.BillingClient$Builder");
-		var builderSig = 'L${API}BillingClient$$Builder;';
-		var builder = Jni.staticObj(bc, Jni.staticMethod(bc, "newBuilder", '(Landroid/content/Context;)$builderSig'), Jni.activity.toI64());
-		Jni.obj(builder, Jni.method(bb, "setListener", '(L${API}PurchasesUpdatedListener;)$builderSig'), proxy("com.android.billingclient.api.PurchasesUpdatedListener", 1).toI64());
-		var pp = Jni.cls("com.android.billingclient.api.PendingPurchasesParams"), ppb = Jni.cls("com.android.billingclient.api.PendingPurchasesParams$Builder");
-		var ppSig = 'L${API}PendingPurchasesParams$$Builder;';
-		var p = Jni.staticObj(pp, Jni.staticMethod(pp, "newBuilder", '()$ppSig'));
-		Jni.obj(p, Jni.method(ppb, "enableOneTimeProducts", '()$ppSig'));
-		var params = Jni.obj(p, Jni.method(ppb, "build", '()L${API}PendingPurchasesParams;'));
-		Jni.obj(builder, Jni.method(bb, "enablePendingPurchases", '(L${API}PendingPurchasesParams;)$builderSig'), params.toI64());
-		var client = Jni.global(Jni.obj(builder, Jni.method(bb, "build", '()L${API}BillingClient;')));
-		Sys.println("billing: client built, ready " + Jni.bool(client, Jni.method(bc, "isReady", "()Z")));
-		Jni.call(client, Jni.method(bc, "startConnection", '(L${API}BillingClientStateListener;)V'), proxy("com.android.billingclient.api.BillingClientStateListener", 2).toI64());
-		Sys.println("billing: startConnection called");
-	}
-
-	// a Proxy of the interface, its calls to org.hxmc.Handler(id)
-	static function proxy(iface:String, id:Int):Ptr {
-		var i = Jni.cls(iface), classes = Jni.cls("java.lang.Class"), handler = Jni.cls("org.hxmc.Handler");
-		var h = Jni.newObject(handler, Jni.method(handler, "<init>", "(I)V"), id);
-		var loader = Jni.obj(i, Jni.method(classes, "getClassLoader", "()Ljava/lang/ClassLoader;"));
-		var list = JniEnv.NewObjectArray(Jni.env, 1, classes, i);
-		var proxies = Jni.cls("java.lang.reflect.Proxy");
-		return Jni.global(Jni.staticObj(proxies,
-			Jni.staticMethod(proxies, "newProxyInstance", "(Ljava/lang/ClassLoader;[Ljava/lang/Class;Ljava/lang/reflect/InvocationHandler;)Ljava/lang/Object;"),
-			loader.toI64(), list.toI64(), h.toI64()));
-	}
-
-	@:hxmc.callback @:hxmc.noGc static function callEntry(env:Ptr, c:Ptr, id:Int, name:Ptr, args:Ptr):Ptr {
-		NativeThread.attach();
-		return JniFast.call3(Callback.addr(call), env, Ptr.ofI64(id), name, args);
-	}
-
-	// (billing's thread: the call's name and arguments kept, then read on the
-	// main thread, whose JNIEnv Jni's helpers use; its listeners return nothing)
-	@:hxmc.callback static function call(env:Ptr, idp:Ptr, name:Ptr, args:Ptr):Ptr {
-		var id = idp.toI64().toInt();
-		var n = JniEnv.NewGlobalRef(env, name), a = args.isNull() ? Ptr.nil() : JniEnv.NewGlobalRef(env, args);
-		MainThread.post(() -> listener(id, Jni.fromString(n), a));
-		return Ptr.nil();
-	}
-
-	static function listener(id:Int, name:String, args:Ptr) {
-		switch name {
-			case "onBillingSetupFinished":
-				var r = JniEnv.GetObjectArrayElement(Jni.env, args, 0), br = Jni.cls("com.android.billingclient.api.BillingResult");
-				var code = Jni.int(r, Jni.method(br, "getResponseCode", "()I"));
-				var message = Jni.fromString(Jni.obj(r, Jni.method(br, "getDebugMessage", "()Ljava/lang/String;")));
-				Sys.println('billing: onBillingSetupFinished $code ($message)');
-				done = true;
-				MainThread.wake();
-			case "onBillingServiceDisconnected":
-				Sys.println("billing: onBillingServiceDisconnected");
-				done = true;
-				MainThread.wake();
-			case _:
-				Sys.println('billing: listener $id: $name');
-		}
+	// (on the main thread: what each read gave, "ok" when all agree)
+	@:access(helder.store.PurchasesAndroid) @:hxmc.unsafe(gc)
+	static function fixtures():String {
+		var said = [];
+		helder.os.android.MainThread.run(() -> try {
+			var pd = Jni.cls("com.android.billingclient.api.ProductDetails"), pc = Jni.cls("com.android.billingclient.api.Purchase");
+			var made = [for (json in [INAPP, SUBS]) Jni.newObject(pd, Jni.method(pd, "<init>", "(Ljava/lang/String;)V"), Jni.string(json).toI64())];
+			for (d in made) {
+				var p = P.product(P.details(d));
+				said.push('${p.product.id} ${p.product.kind} ${p.product.price} ${p.product.amount} ${p.product.period} ${p.offer}');
+			}
+			var b = P.read(Jni.newObject(pc, Jni.method(pc, "<init>", "(Ljava/lang/String;Ljava/lang/String;)V"), Jni.string(JSON).toI64(), Jni.string(SIGNATURE).toI64()));
+			said.push('${b.purchase.id} ${b.purchase.product} ${b.purchase.quantity} ${b.state} ${P.of(JSON, SIGNATURE, KEY).verified}');
+			P.params(["coins", "plus"], "inapp");
+			P.ofType("subs");
+			P.flow(made[1], "base-token", "00000000-0000-0000-0000-000000000000");
+			said.push("params");
+		} catch (e:Dynamic) said.push('failed $e'));
+		var want = ["coins nonConsumable 0.99 EUR 0.99 null null", "plus subscription 2.99 EUR 2.99 P1M base-token", "GPA.3312-5551-0623-12345 coins 3 1 true", "params"];
+		return said.join("; ") == want.join("; ") ? "ok" : 'wrong: ${said.join("; ")}';
 	}
 	#end
 }

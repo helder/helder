@@ -36,23 +36,32 @@ class Rsa {
 	}
 
 	public static function verify(n:Bytes, e:Bytes, message:Bytes, signature:Bytes):Bool {
-		var k = byteLength(n);
-		if (signature.length != k) return false;
-		var nn = fromBytes(n);
-		var s = fromBytes(signature);
-		if (cmp(s, nn) >= 0) return false;
-		return toBytes(new Mont(nn).pow(s, fromBytes(e)), k).compare(encode(message, k)) == 0;
+		var m = power(n, e, signature);
+		return m != null && m.compare(encode(message, m.length)) == 0;
 	}
 
-	// EM = 00 01 ff..ff 00 DigestInfo(SHA-256(message))
-	static function encode(message:Bytes, k:Int):Bytes {
-		var t = SHA256_INFO.length + 32;
+	// signature^e mod n as long as n; null: no signature of n's
+	public static function power(n:Bytes, e:Bytes, signature:Bytes):Null<Bytes> {
+		var k = byteLength(n);
+		if (signature.length != k) return null;
+		var nn = fromBytes(n);
+		var s = fromBytes(signature);
+		if (cmp(s, nn) >= 0) return null;
+		return toBytes(new Mont(nn).pow(s, fromBytes(e)), k);
+	}
+
+	static function encode(message:Bytes, k:Int):Bytes
+		return padding(SHA256_INFO, haxe.crypto.Sha256.make(message), k);
+
+	// EM = 00 01 ff..ff 00 DigestInfo (info, then the digest), k bytes
+	public static function padding(info:Bytes, digest:Bytes, k:Int):Bytes {
+		var t = info.length + digest.length;
 		if (k < t + 11) throw "RSA: the key is too short";
 		var em = Bytes.alloc(k);
 		em.set(1, 1);
 		em.fill(2, k - t - 3, 0xff);
-		em.blit(k - t, SHA256_INFO, 0, SHA256_INFO.length);
-		em.blit(k - 32, haxe.crypto.Sha256.make(message), 0, 32);
+		em.blit(k - t, info, 0, info.length);
+		em.blit(k - digest.length, digest, 0, digest.length);
 		return em;
 	}
 

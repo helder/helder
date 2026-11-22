@@ -103,6 +103,16 @@ class App {
 		return f == true;
 	}
 
+	// Play Console's license key (Monetization setup: base64 RSA), which
+	// helder.store verifies purchases with; null: none, never verified
+	public static function licenseKey(config:Dynamic):Null<String> {
+		var k:Dynamic = config?.android?.licenseKey;
+		if (k == null) return null;
+		var key = ~/\s/g.replace(Std.string(k), "");
+		if (!~/^[A-Za-z0-9+\/]+=*$/.match(key)) throw 'package.json\'s "helder": {"android": {"licenseKey"}}: Play Console\'s base64 key';
+		return key;
+	}
+
 	// the debug key's file: HELDER_ANDROID_KEY, else package.json's
 	// "android": {"key"} (from the project's directory), else in helder's cache
 	public static function androidKey(config:Dynamic, root:String, cache:String, env:Null<String>):String {

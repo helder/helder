@@ -55,7 +55,7 @@ class Manifest {
 	];
 	static final PURPOSE = ["any", "maskable", "monochrome"];
 	static final HELDER = ["version", "build", "id", "android", "ios", "splash", "links"];
-	static final ANDROID = ["package", "minSdk", "targetSdk", "permissions", "cleartext", "key", "signing", "serviceAccount", "adaptiveIcon"];
+	static final ANDROID = ["package", "minSdk", "targetSdk", "permissions", "cleartext", "key", "signing", "serviceAccount", "adaptiveIcon", "licenseKey"];
 	static final IOS = ["bundleId", "minVersion", "entitlements", "signing", "sdk", "nonExemptEncryption", "privacy", "infoPlist", "usage"];
 	// what an iOS app explains (Info.plist's usage strings: Bundle.usageKey): helder.os.Permissions', and Face ID (helder.os.Biometrics)
 	public static final USAGE = ["camera", "microphone", "photos", "location", "faceid"];
@@ -262,6 +262,7 @@ class Manifest {
 				key: str(a, "key", '"helder": {"android": {"key"}}'),
 				signing: release,
 				serviceAccount: str(a, "serviceAccount", '"helder": {"android": {"serviceAccount"}}'),
+				licenseKey: str(a, "licenseKey", '"helder": {"android": {"licenseKey"}}'),
 				adaptiveIcon: adaptive
 			},
 			ios: {

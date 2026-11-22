@@ -31,7 +31,7 @@ using StringTools;
 //     },
 //     "listing": {"subtitle", "summary", "description", "keywords", ...}   the stores' pages (Listing)
 //     "targets": {
-//       "android": {"package", "minSdk", "targetSdk", "permissions", "cleartext", "key", "signing", "serviceAccount", "adaptiveIcon",
+//       "android": {"package", "minSdk", "targetSdk", "permissions", "cleartext", "key", "signing", "serviceAccount", "adaptiveIcon", "licenseKey",
 //                   "publish": ["play"] or [{"to": "play", "track": "internal"}], "store": "<url>"},
 //       "ios": {"bundleId", "minVersion", "entitlements", "signing", "sdk", "nonExemptEncryption", "privacy", "infoPlist", "usage",
 //               "publish": ["testflight"], "store": "<url>"},
