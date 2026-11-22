@@ -145,11 +145,16 @@ Also screen reader checks, and a low-end Android phone among the benchmarks.
 --watch` sends each rebuild to the same address and open pages reload in
 place, as `helder dev` does locally; sharing a project again keeps its link.
 
-**120 Hz on the web**: iOS Safari holds requestAnimationFrame and touch
-events to 60 Hz on a 120 Hz screen; the compositor in a worker drawing to
-an OffscreenCanvas, the program in another, the page's thread only passing
-input on (an invisible scroller's offsets: Safari's own momentum, at 120
-Hz), the main thread's canvas where OffscreenCanvas is missing.
+**Layers on the web**: the browser as the system compositor: each layer
+a canvas in the page, drawn from a worker (OffscreenCanvas, WebGPU's one
+device for all of them, ImageBitmaps under WebGL2), tiled where it is
+long; scrollers the browser's own elements with their layers inside, so
+they scroll in step at the screen's rate (iOS Safari holds
+requestAnimationFrame and touch to 60 Hz, not its scrolling); the declared
+animations Web Animations, sticky and scroll-linked effects CSS's; inputs,
+video and iframes between the layers; the program in a worker, the page's
+thread passing input on (an invisible scroller's offsets for drags the
+program follows).
 
 Also: Windows' touchpad scrolling, the web's scroll lag and Safari's rubber band.
 
