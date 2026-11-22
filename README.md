@@ -143,7 +143,15 @@ Windows of any shape: a transparent background (premultiplied alpha:
 macOS and Wayland first, Windows through DirectComposition, X11 with a
 compositing manager), clicks passing through clear pixels, and the
 system's materials behind them (macOS vibrancy and glass, Windows 11 Mica
-and Acrylic, KDE's blur).
+and Acrylic, KDE's blur). Its first user, an example app: a time tracker
+drawn on the screen's right edge, nothing behind it, full height within
+the work area (menu bar, notch, dock and taskbar kept clear), scrolling
+into the days before and after: hairline hours, a stroke per project,
+switches and activity as ticks, ticks that grow and brighten near the
+pointer, snap and click as it scrolls, figures that roll; another edge or
+screen from its menu, an icon in the dock or taskbar. Under it a service
+in helder.os: the frontmost app and window, idle time and input counted
+(never what is typed), each with the system's permission where it asks.
 
 Also screen reader checks, and a low-end Android phone among the benchmarks.
 
