@@ -22,13 +22,6 @@ export type PbrVaryings = {
 	ambient?: Vec4, probeA?: Vec4, extentA?: Vec4, probeB?: Vec4, extentB?: Vec4, probeAtlas?: Vec4, lightmapUv?: Vec4,
 };
 
-// the frame's point and spot lights (PbrShader.hx's PbrLights): position
-// and range, colour and first shadow tile plus 1, cone; their shadow tiles
-export type PbrLights = {
-	position: UniformArray<Vec4, 32>, color: UniformArray<Vec4, 32>, cone: UniformArray<Vec4, 32>,
-	tileViewProj: UniformArray<Mat4, 12>, tileRect: UniformArray<Vec4, 12>, tileParams: UniformArray<Vec4, 12>,
-};
-
 // per frame: the camera and the lights (PbrShader.hx's PbrFrame)
 export type PbrFrame = {
 	viewProj: Mat4, eye: Vec4, lightDir: Vec4, lightColor: Vec4, sky: Vec4, ground: Vec4, exposure: Vec4, lightViewProj: Mat4, shadow: Vec4,
@@ -59,7 +52,7 @@ export type PbrLightmap = {rect: Vec4, params: Vec4};
 export type PbrVertexParams = {frame: PbrFrame, object?: PbrObject, probes?: PbrProbes, lightmap?: PbrLightmap, skin?: PbrSkinInfo, jointMatrices?: Texture2D};
 
 export type PbrFragmentParams = {
-	frame: PbrFrame, object?: PbrObject, material: PbrMaterial, lights: PbrLights, baseColorTexture: Texture2D, metallicRoughnessTexture: Texture2D,
+	frame: PbrFrame, object?: PbrObject, material: PbrMaterial, lights: Texture2D, baseColorTexture: Texture2D, metallicRoughnessTexture: Texture2D,
 	emissiveTexture: Texture2D, occlusionTexture: Texture2D, shadowMap: Texture2D, clusterMap: Texture2D, environmentMap: Texture2D, aoMap: Texture2D,
 	normalTexture?: Texture2D, ltcMap?: Texture2D, lightMap?: Texture2D, probesMap?: Texture2D, prepass?: PbrPrepass, layerMap0?: Texture2D, layerMap1?: Texture2D, transmissionMap?: Texture2D,
 };
@@ -233,6 +226,17 @@ function lightRow(t: Texture2D, x: number, k: number, clusterAxis: Vec4, cluster
 	const w = clusterDepth.z;
 	return vec4(sampleLevel(t, vec2((x + 0.5) / w, v), 0).x, sampleLevel(t, vec2((x + 1.5) / w, v), 0).x, sampleLevel(t, vec2((x + 2.5) / w, v), 0).x,
 		sampleLevel(t, vec2((x + 3.5) / w, v), 0).x);
+}
+
+// texel x of row y of the frame's lights and their shadow tiles (RGBA32F, 6 by 44: a row a light, its
+// position, colour and cone; from row 32 a row a tile, its view-projection's columns, rect and filter; PbrShader.hx's lightTexel)
+function lightTexel(t: Texture2D, x: number, y: number): Vec4 {
+	return sampleLevel(t, vec2((x + 0.5) / 6, (y + 0.5) / 44), 0);
+}
+
+// a tile's view-projection (lightTexel's row)
+function tileMatrix(t: Texture2D, row: number): Mat4 {
+	return mat4(lightTexel(t, 0, row), lightTexel(t, 1, row), lightTexel(t, 2, row), lightTexel(t, 3, row));
 }
 
 // a local light at a surface from its three vectors, its lit share (PbrShader.hx's localLight)
@@ -1213,19 +1217,20 @@ export const pbr = slots({
 						color = lightRow(p.clusterMap, 4, index, p.frame.clusterAxis, p.frame.clusterDepth);
 						cone = lightRow(p.clusterMap, 8, index, p.frame.clusterAxis, p.frame.clusterDepth);
 					} else {
-						pos = p.lights.position[index];
-						color = p.lights.color[index];
-						cone = p.lights.cone[index];
+						pos = lightTexel(p.lights, 0, index);
+						color = lightTexel(p.lights, 1, index);
+						cone = lightTexel(p.lights, 2, index);
 					}
 					let shadow = 1.0;
 					// (untiled: no local light casts this frame, no tile read)
 					if (!m.options.untiled) {
 						if (color.w > 0.5) {
-							const first = color.w - 1;
-							const params = p.lights.tileParams[first + 0.5];
+							// (its first tile's row: 32 on, colour's w 1 plus the tile)
+							const first = 31 + color.w;
+							const params = lightTexel(p.lights, 5, first);
 							const at = shadowPoint(lit.world, lit.normal, pos.xyz, params);
-							const tile = first + tileFace(at, pos.xyz, dot(cone.xyz, cone.xyz) < 0.0001) + 0.5;
-							shadow = tileShadow(p.shadowMap, p.lights.tileViewProj[tile], p.lights.tileRect[tile], params, p.frame.shadowAtlas, at);
+							const tile = first + tileFace(at, pos.xyz, dot(cone.xyz, cone.xyz) < 0.0001);
+							shadow = tileShadow(p.shadowMap, tileMatrix(p.lights, tile), lightTexel(p.lights, 4, tile), params, p.frame.shadowAtlas, at);
 						}
 					}
 					if (m.options.area && color.w < -0.25) direct = direct.add(areaLight(lit.world, lit.normal, lit.view, lit.roughness, lit.albedo, lit.metalness,

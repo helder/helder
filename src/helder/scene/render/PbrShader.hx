@@ -102,16 +102,16 @@ typedef PbrVertexParams = {
 	@:optional var jointMatrices:Texture2D;
 }
 
-// the fragment stage's: per frame (the shadow atlas' tiles in it), the
-// object (shadeAt's; the stages' read its light list from the
-// varyings), the material and its textures, the
-// frame's lights, the shadow atlas, ClusteredLights' map, the
-// environment's (normal mapped: the normal map)
+// the fragment stage's: per frame, the object (shadeAt's; the stages'
+// read its light list from the varyings), the material and its textures,
+// the frame's lights and their shadow tiles, the shadow atlas,
+// ClusteredLights' map, the environment's (normal mapped: the normal map)
 typedef PbrFragmentParams = {
 	var frame:PbrFrame;
 	@:optional var object:PbrObject;
 	var material:PbrMaterial;
-	var lights:PbrLights;
+	// the frame's lights and the local lights' shadow tiles (lightTexel's)
+	var lights:Texture2D;
 	var baseColorTexture:Texture2D;
 	var metallicRoughnessTexture:Texture2D;
 	var emissiveTexture:Texture2D;
@@ -121,7 +121,7 @@ typedef PbrFragmentParams = {
 	var shadowMap:Texture2D;
 	// ClusteredLights' (a 1x1 texel without): R32F, its cells' lists (a row
 	// a tile's row and slice, a cell its count then its lights' rows), then
-	// the frame's lights, a row each (12 texels: PbrLights' three vectors)
+	// the frame's lights, a row each (12 texels: a light's three vectors, lightTexel's)
 	var clusterMap:Texture2D;
 	var environmentMap:Texture2D;
 	// the screen's ambient occlusion (PostProcess.ao, Ssao: the view's
@@ -311,32 +311,6 @@ typedef Pbr = {
 	position:(PbrPoint, PbrVertexParams) -> Vec3
 }
 
-// the frame's point and spot lights (Renderer: up to MAX_LIGHTS, the
-// nearest the view's and the brightest), each three vectors: position (xyz;
-// w its range, 0: none), colour (rgb its colour times intensity; w 1 plus
-// its first tile in the tiles after, 0: unshadowed), cone (a spot's axis times
-// 1 / (cos inner - cos outer), w -cos outer times that: the cone's
-// smoothstep from one dot; a point light's 0, 0, 0, 1). Then their
-// shadows (Shadows: a spot light's tile, a point light's six, faces +x,
-// -x, +y, -y, +z, -z; the block's last bytes, Shadows.MAX_TILES of each),
-// each the light's view-projection of the tile, its place in the atlas
-// (tileRect: xy its corner, z and w its share of the atlas' width and
-// height) and its filter (tileParams: x strength, y the depth bias in
-// metres a metre from the light, z the normal offset likewise, w the disc
-// filter's radius in the tile's uv, 0: the 3x3 filter). (Here, not in
-// PbrFrame: the stages' functions take the frame by value, and Android's
-// emulator's GL, its host SwiftShader, crashed copying a frame of twelve
-// more matrices into each.)
-@:structInit @:publicFields class PbrLights {
-	@:length(32) var position:Array<Vec4>;
-	@:length(32) var color:Array<Vec4>;
-	@:length(32) var cone:Array<Vec4>;
-	@:length(12) var tileViewProj:Array<Mat4>;
-	@:length(12) var tileRect:Array<Vec4>;
-	@:length(12) var tileParams:Array<Vec4>;
-}
-
-
 // per frame: the camera and the lights
 @:structInit @:publicFields class PbrFrame {
 	var viewProj:Mat4;
@@ -394,7 +368,7 @@ typedef Pbr = {
 	var normalMatrix:Mat4;
 	var tint:Vec4; // rgb: the node's tint (MeshRenderer.tint); w: skinned, its joints' count (else 1)
 	// the draw's lights (Renderer: the eight that light its bounds most),
-	// rows of PbrLights, -1 after the last
+	// rows of the frame's lights (lightTexel's), -1 after the last
 	var lights0:Vec4;
 	var lights1:Vec4;
 }
@@ -519,7 +493,7 @@ function uvOf(material:PbrMaterial, uv:Vec2):Vec2
 // node's unit up and its tint, uv already the material's (uvOf), from the
 // material's own terms (the slots' defaults: CPU code, Material.test), as
 // pbr's fragment stage shades it
-function shadeAt(facing:Vec3, world:Vec3, uv:Vec2, up:Vec3, tint:Vec3, frame:PbrFrame, object:PbrObject, material:PbrMaterial, lights:PbrLights,
+function shadeAt(facing:Vec3, world:Vec3, uv:Vec2, up:Vec3, tint:Vec3, frame:PbrFrame, object:PbrObject, material:PbrMaterial, lights:Texture2D,
 		baseColorTexture:Texture2D, metallicRoughnessTexture:Texture2D, emissiveTexture:Texture2D, occlusionTexture:Texture2D, shadowMap:Texture2D,
 		clusterMap:Texture2D, environmentMap:Texture2D, aoMap:Texture2D):Vec4 {
 	var texel = sample(baseColorTexture, uv);
@@ -553,17 +527,17 @@ function shadeAt(facing:Vec3, world:Vec3, uv:Vec2, up:Vec3, tint:Vec3, frame:Pbr
 		color = lightRow(clusterMap, 4, index, frame.clusterAxis, frame.clusterDepth);
 		cone = lightRow(clusterMap, 8, index, frame.clusterAxis, frame.clusterDepth);
 	} else {
-		pos = lights.position[Std.int(index)];
-		color = lights.color[Std.int(index)];
-		cone = lights.cone[Std.int(index)];
+		pos = lightTexel(lights, 0, index);
+		color = lightTexel(lights, 1, index);
+		cone = lightTexel(lights, 2, index);
 	}
 	var shadow = 1.0;
 	if (color.w > 0.5) {
-		var first = color.w - 1;
-		var params = lights.tileParams[Std.int(first + 0.5)];
+		var first = 31 + color.w;
+		var params = lightTexel(lights, 5, first);
 		var at = shadowPoint(lit.world, lit.normal, pos.xyz, params);
-		var tile = first + tileFace(at, pos.xyz, dot(cone.xyz, cone.xyz) < 0.0001) + 0.5;
-		shadow = tileShadow(shadowMap, lights.tileViewProj[Std.int(tile)], lights.tileRect[Std.int(tile)], params, frame.shadowAtlas, at);
+		var tile = first + tileFace(at, pos.xyz, dot(cone.xyz, cone.xyz) < 0.0001);
+		shadow = tileShadow(shadowMap, tileMatrix(lights, tile), lightTexel(lights, 4, tile), params, frame.shadowAtlas, at);
 	}
 	direct += pbrDirect(lit, localLight(lit.world, lit.normal, pos, color, cone, shadow), p);
 		k += 1;
@@ -714,11 +688,37 @@ function lightRow(t:Texture2D, x:Float, k:Float, clusterAxis:Vec4, clusterDepth:
 		sampleLevel(t, vec2((x + 3.5) / w, v), 0).x);
 }
 
-// a local light at a surface (its three vectors: PbrLights' row or
+// the frame's point and spot lights and their shadow tiles: an RGBA32F
+// texture of FrameLights.COLUMNS by ROWS texels, 6 by 44 (the renderer's, written
+// once a frame), read by row (a texture, not a uniform block: on Metal a
+// block of 2.7 KB read at a computed row made little-skies' frame four
+// times as long on iOS's simulator, and it was copied at each pipeline's
+// bind). Rows 0 to 31 the lights
+// (Renderer: up to FrameLights.MAX_LIGHTS, the nearest the view's and the
+// brightest), each three texels: position (xyz; w its range, 0: none),
+// colour (rgb its colour times intensity; w 1 plus its first tile, 0:
+// unshadowed), cone (a spot's axis times 1 / (cos inner - cos outer), w
+// -cos outer times that: the cone's smoothstep from one dot; a point
+// light's 0, 0, 0, 1). Then the tiles from row 32 (Shadows: a spot
+// light's tile, a point light's six, faces +x, -x, +y, -y, +z, -z;
+// Shadows.MAX_TILES of them), each six texels: the light's
+// view-projection of the tile (its four columns), its place in the atlas
+// (xy its corner, z and w its share of the atlas' width and height) and its
+// filter (x strength, y the depth bias in metres a metre from the light, z
+// the normal offset likewise, w the disc filter's radius in the tile's uv,
+// 0: the 3x3 filter).
+function lightTexel(t:Texture2D, x:Float, y:Float):Vec4
+	return sampleLevel(t, vec2((x + 0.5) / 6, (y + 0.5) / 44), 0);
+
+// a tile's view-projection (lightTexel's row)
+function tileMatrix(t:Texture2D, row:Float):Mat4
+	return mat4(lightTexel(t, 0, row), lightTexel(t, 1, row), lightTexel(t, 2, row), lightTexel(t, 3, row));
+
+// a local light at a surface (its three vectors: the frame's lights' row or
 // ClusteredLights' map's; its lit share, 1 unshadowed: tileShadow's): the
 // inverse square falloff windowed to reach 0 at its range (glTF's
 // KHR_lights_punctual), a spot's cone (the smoothstep from its outer cone
-// to its inner, from one dot: PbrLights' cone). (The vectors, not the
+// to its inner, from one dot: its cone). (The vectors, not the
 // blocks nor the surface: a function's call copies what it is passed, and
 // Android's emulator's GL, its host SwiftShader, failed to compile a stage
 // that copied the lights' and the tiles' arrays, or the lit surface, into
@@ -741,7 +741,7 @@ function localLight(world:Vec3, normal:Vec3, pos:Vec4, color:Vec4, cone:Vec4, sh
 	};
 }
 
-// where a surface's point is looked up in a local light's tiles (PbrLights'
+// where a surface's point is looked up in a local light's tiles (lightTexel's
 // tiles: a spot light's own, a point light's the face the point is in,
 // from its first): moved towards the light (at light) by the bias and off
 // its surface by the normal offset, both scaled by its distance (params:
@@ -1029,7 +1029,7 @@ function probeAtlas(t:Texture2D, d:Vec3, rough:Float, column:Float, e:Vec4):Vec3
 	return pow(mix(lo, hi, at - r0), vec3(2.2));
 }
 
-// an area light at a surface (AreaLights: its row, PbrLights' or the
+// an area light at a surface (AreaLights: its row, the frame's lights' or the
 // cluster map's; ltc: the tables), linearly transformed cosines (Heitz et
 // al., three.js's fit): the light's polygon (a rectangle; a disc as an
 // octagon of its area) seen from the point, integrated against the cosine
@@ -1826,19 +1826,20 @@ final pbr = slots({
 						color = lightRow(p.clusterMap, 4, index, p.frame.clusterAxis, p.frame.clusterDepth);
 						cone = lightRow(p.clusterMap, 8, index, p.frame.clusterAxis, p.frame.clusterDepth);
 					} else {
-						pos = p.lights.position[Std.int(index)];
-						color = p.lights.color[Std.int(index)];
-						cone = p.lights.cone[Std.int(index)];
+						pos = lightTexel(p.lights, 0, index);
+						color = lightTexel(p.lights, 1, index);
+						cone = lightTexel(p.lights, 2, index);
 					}
 					var shadow = 1.0;
 					// (untiled: no local light casts this frame, no tile read)
 					if (!m.options.untiled) {
 						if (color.w > 0.5) {
-							var first = color.w - 1;
-							var params = p.lights.tileParams[Std.int(first + 0.5)];
+							// (its first tile's row: 32 on, colour's w 1 plus the tile)
+							var first = 31 + color.w;
+							var params = lightTexel(p.lights, 5, first);
 							var at = shadowPoint(lit.world, lit.normal, pos.xyz, params);
-							var tile = first + tileFace(at, pos.xyz, dot(cone.xyz, cone.xyz) < 0.0001) + 0.5;
-							shadow = tileShadow(p.shadowMap, p.lights.tileViewProj[Std.int(tile)], p.lights.tileRect[Std.int(tile)], params, p.frame.shadowAtlas, at);
+							var tile = first + tileFace(at, pos.xyz, dot(cone.xyz, cone.xyz) < 0.0001);
+							shadow = tileShadow(p.shadowMap, tileMatrix(p.lights, tile), lightTexel(p.lights, 4, tile), params, p.frame.shadowAtlas, at);
 						}
 					}
 					// (area: a rect or disc light (colour's w below 0) by LTC; else, and

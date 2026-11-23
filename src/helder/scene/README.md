@@ -515,9 +515,10 @@ planet's city lights).
 Each frame the renderer gathers the world's point and spot lights whose
 reach (a sphere of their `range`) meets the view, the most important
 first (the brightest over their distance past their range), at most 32:
-the frame's lights (`renderer.frameLights`, one uniform block, 1.5 KB:
-some GL ES 3.0 drivers, Android's emulator's, count a block's vectors
-among a fragment stage's 224 uniform vectors). Each
+the frame's lights (`renderer.frameLights`, rows of one small RGBA32F
+texture with the shadow tiles after them, written once a frame: indexing a
+uniform block by a light's row cost Metal four times the frame on iOS's
+simulator). Each
 draw is lit by the eight of them that reach its bounds most, listed by the
 renderer as it extracts the draw (Godot Mobile's and Unity's per-object
 lights): a lamp lights the objects it reaches, a far one costs them
@@ -1731,8 +1732,8 @@ A material of its own is `material(pbr.with({...}))`, as Haxe's
 MaterialShader.material: `pbr` is the standard material's slot object
 (src/helder/scene/pbr.ts: PbrShader.hx in TypeScript, keep the two in
 step; tests/typescript/definitions/pbr.ts checks their text is the same;
-its uniform blocks' arrays, PbrLights' and the frame's shadow tiles, are
-helder/gfx's `UniformArray<Vec4, 64>`, Haxe's `@:length(64)`),
+its uniform blocks' arrays, PbrProbes' harmonics, are helder/gfx's
+`UniformArray<Vec4, 7>`, Haxe's `@:length(7)`),
 and its value's `apply(material, {glow: bytes})` gives a material the
 shader and its blocks (`params.glow.write(value, bytes)`):
 

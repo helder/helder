@@ -367,7 +367,7 @@ class Shadows implements RenderFeature implements RenderFeature.ShadowSource {
 		return Mat4.orthographic(-radius, radius, -radius, radius, 0.01, back + radius + r) * MathTools.lookAt(snapped + toLight * back, snapped, up);
 	}
 
-	// the local lights' tiles a frame at most (PbrLights' tile arrays)
+	// the local lights' tiles a frame at most (the frame's lights' texture's tile rows)
 	public static inline var MAX_TILES = 12;
 
 	// whether a frustum (vp) meets a caster's bounds in the world (boxes: six numbers each)

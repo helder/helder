@@ -126,10 +126,10 @@ class MaterialShader {
 		// (nor with each map's own uvs, uvSets: the view buffers bind no second uvs)
 		if (extra != null && new haxe.macro.Printer().printExpr(extra).indexOf("uvSets: true") >= 0) replaced = false;
 		if (!replaced) kinds = kinds.slice(0, 5);
-		var standard = ["PbrFrame", "PbrObject", "PbrMaterial", "PbrSkinInfo", "PbrPrepass", "PbrLights"];
+		var standard = ["PbrFrame", "PbrObject", "PbrMaterial", "PbrSkinInfo", "PbrPrepass"];
 		var textures = [
 			"baseColorTexture", "metallicRoughnessTexture", "emissiveTexture", "occlusionTexture", "shadowMap", "clusterMap", "environmentMap", "normalTexture",
-			"jointMatrices", "aoMap", "layerMap0", "layerMap1", "transmissionMap"
+			"jointMatrices", "aoMap", "lights", "layerMap0", "layerMap1", "transmissionMap"
 		];
 		// (the options given to every variant)
 		var more:Array<{name:String, node:KNode}> = [];

@@ -544,7 +544,8 @@ about 0.1 ms for 100 lights (an estimate, measured in phase 4's
   whose range meets the view, ranked by brightness over their distance
   past their range, 32 kept (PbrLights' block: three vectors a light,
   position and range, colour and its first shadow tile, the spot's cone as
-  the smoothstep's scale and offset from one dot: 1.5 KB). Not 64: the
+  the smoothstep's scale and offset from one dot: 1.5 KB; since a
+  texture's rows, "The lights' texture" below). Not 64: the
   Android emulator's GL ES counts a block's members among the fragment
   stage's uniform vectors (261 there; GL ES 3.0 guarantees 224 of them),
   and the stage's blocks are about 221 vectors with these 32 lights and
@@ -1665,7 +1666,8 @@ its fallback; the departures said where the design describes them (2.1,
   unrolled into a constructor (`Filled`: 90 KB of Shadows' first cut).
 - **TypeScript**: helder/gfx's `UniformArray<T, N>` is a uniform block's
   array (Haxe's `@:length(N)`), indexed by a number's whole part, so
-  `pbr.ts` declares PbrLights and its tiles and prints the same
+  `pbr.ts` declared PbrLights and its tiles (since a texture, as
+  `PbrShader.hx`'s) and prints the same
   text as `PbrShader.hx` (tests/typescript/definitions). `Light.shadow`,
   `LodLevel` and the options are object literals; `tests/typescript/
   helder/lights.ts` uses the API without a device (the lane's static
@@ -1684,7 +1686,7 @@ its fallback; the departures said where the design describes them (2.1,
   repository: the frames' scenes are made in code.
 - **Unit tests**: `Clusters.test.hx` (the cells against brute force, a
   full cell, nothing allocated, 256 lights timed), `FrameLights.test.hx`
-  (the gathering, a draw's eight, PbrLights' bytes), `Lod.test.hx` (the
+  (the gathering, a draw's eight, the lights' rows), `Lod.test.hx` (the
   coverage, the bands, ranges).
 - **Sizes** (tests/3d/size/sizes.sh, Linux x86-64 and wasm32): `Shadows`
   115 and 117 KB over the renderer (80 and 81 before: the atlas, its
@@ -1734,9 +1736,34 @@ its fallback; the departures said where the design describes them (2.1,
   a tile is a loop of its taps (`grid`), the surface passed to the loop's
   functions as its point and normal. A scene of casting local lights still
   compiles the full stage: on that emulator it does not run (a follow-up).
+- **The lights' texture (a follow-up).** PbrLights' block, read at a row
+  the shader computes (a light's, a tile's), made Little Skies' title
+  screen 19 to 26 ms a frame on iOS's simulator (iPhone 16 Pro, Metal on
+  the host's GPU, 1206 x 2622) against 5.5 ms before phase 4; the same
+  shader reading constants instead, 7.5 ms; GPU-bound (most of the frame
+  in `nextDrawable`), and no help from shadows off, a constant loop bound
+  or the loop unrolled. The frame's lights and the local lights' tiles are
+  since the rows of an RGBA32F texture of 6 by 44 texels, the renderer's
+  (`FrameLights.writeTexels`, Shadows' tile rows after them;
+  `PbrShader.lightTexel`, `tileMatrix`): a light a row of three texels,
+  a tile a row of six (its matrix's columns, its place, its filter), read
+  through the nearest sampler as ClusteredLights' map is, so WebGL2 still
+  runs it (no storage buffers there). Little Skies: 5.56 ms. The same
+  frames on every golden. A pipeline's bind no longer copies the
+  block's 2,688 bytes (the vertex and fragment stages' both on Metal):
+  it binds a texture; the rows are written when they change, into one of
+  eight textures in turn (a write lands before what was recorded before
+  it on Metal and WebGPU: a cube's faces and frames in flight each keep
+  their own). Slots stay as they were (a block's for a texture's).
+  RenderTest on macOS is 216 KB smaller (the block's writers gone). A
+  material's own shader and the see-through standard materials still draw
+  the full loop: their `sunOnly` and `untiled` variants were tried, 83 KB
+  a material shader (four variants) and Little Skies' frame the same
+  (5.59 against 5.56 ms), so not made.
 - **The skin's joints' count is PbrObject's `tint.w`** for pbr's variants
   (`PbrSkinInfo` stays the shadow casters' and Unlit's): PbrLights' block
-  made a skinned physical variant's slots 17, past gfx's 16.
+  (since a texture, the same slot) made a skinned physical variant's slots
+  17, past gfx's 16.
 
 ### Phase 5: indirect light (built)
 

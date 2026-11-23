@@ -200,7 +200,7 @@ class ViewBuffers implements RenderFeature implements RenderFeature.ViewSource {
 					sl = own != null ? own.slots : slots[1];
 					ps = own != null ? own.prepass : prepassSlots[1];
 					enc.setUniforms(sl[0], r.frameBytes);
-					if (sl[18] >= 0) enc.setUniforms(sl[18], r.lightBytes);
+					if (sl[18] >= 0) enc.setTexture(sl[18], r.lightTexture, r.nearest);
 					writeGroup(enc, ps, 0);
 					bindMaterial(enc, sl, m, own != null ? 6 : -1);
 					enc.setVertexBuffer(0, p.vertices);
@@ -225,7 +225,7 @@ class ViewBuffers implements RenderFeature implements RenderFeature.ViewSource {
 					sl = own != null ? own.slots : skin != null ? skin.prepassSlots() : slots[many ? 1 : 0];
 					ps = own != null ? own.prepass : skin != null ? block(skin.prepassUniforms()) : prepassSlots[many ? 1 : 0];
 					enc.setUniforms(sl[0], r.frameBytes);
-					if (sl[18] >= 0) enc.setUniforms(sl[18], r.lightBytes);
+					if (sl[18] >= 0) enc.setTexture(sl[18], r.lightTexture, r.nearest);
 					current = want;
 					material = null;
 					node = Node.NONE;

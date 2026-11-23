@@ -194,10 +194,20 @@ class Renderer {
 	// (a twin capturing a cube's faces: its views mirrored, its faces' winding turned)
 	var mirrored = false;
 	final frameBytes = Bytes.alloc(PbrShader.uniforms[0].size);
-	// (PbrLights' block: three arrays of MAX_LIGHTS vectors, then the shadow
-	// tiles: Shadows.MAX_TILES' matrices and two vectors)
-	static inline var TILES = FrameLights.MAX_LIGHTS * 48;
-	final lightBytes = Bytes.alloc(TILES + Shadows.MAX_TILES * 96);
+	// (the frame's lights' texture's rows, PbrShader's lightTexel: a row a
+	// light, then the shadow tiles' rows)
+	static inline var TILES = FrameLights.MAX_LIGHTS * FrameLights.ROW;
+	final lightBytes = Bytes.alloc(FrameLights.ROWS * FrameLights.ROW);
+	// (the textures they are written into, in turn, each one's rows beside:
+	// a write lands before the GPU draws what was recorded before it on
+	// Metal and WebGPU, so one is written again only after the others; rows
+	// the same as one's, that one is bound, unwritten. Eight: a cube's six
+	// faces and a view between frames in flight)
+	static inline var LIGHT_TEXTURES = 8;
+	final lightTextures:Array<Texture> = [];
+	final lightRows:Array<Bytes> = [];
+	var lightNext = 0;
+	var lightTexture:Null<Texture> = null;
 	// (each batch's lights, each instanced set's: FrameLights.PER_DRAW rows of the frame's lights)
 	final batchLights:Array<Float> = [];
 	final setLights:Array<Float> = [];
@@ -270,7 +280,8 @@ class Renderer {
 		f.set(3, 255);
 		flatNormal = device.createTexture({width: 1, height: 1, data: f});
 		mipClamped = device.createSampler({filter: Linear, mipFilter: Linear, wrap: Clamp});
-		frameLights.writeBlock(lightBytes);
+		frameLights.writeTexels(lightBytes);
+		uploadLights();
 		pass = {colors: [{load: Clear, clear: clearColor}], depth: {load: Clear}};
 	}
 
@@ -418,7 +429,7 @@ class Renderer {
 		untiled = true;
 		for (k in 0...frameLights.count)
 			if (frameLights.tile(k) >= 0) untiled = false;
-		frameLights.writeBlock(lightBytes);
+		frameLights.writeTexels(lightBytes);
 		writeFrame(world, camera, viewProj, shadowed);
 		prepassDraws = 0;
 		if (views != null) {
@@ -648,7 +659,7 @@ class Renderer {
 					hemisphere = true;
 				}
 			} else if (light.local) {
-				// (FrameLights': PbrLights' block)
+				// (FrameLights': the lights' texture)
 			} else if (!sun) {
 				// (it shines down its node's -z: the light is towards +z)
 				l = MathTools.transformDir(node.worldMatrix(), new Vec3(0, 0, 1));
@@ -705,16 +716,40 @@ class Renderer {
 		// (the local lights' tiles, Shadows' bytes: the arrays as written are zeros, an Array<Mat4> would box what it holds)
 		var tiles = shadowed ? shadowSource.shadowFrame().tiles : null;
 		if (tiles != null) lightBytes.blit(TILES, tiles, 0, tiles.length);
+		uploadLights();
 		return l;
 	}
 
-	// a pipeline for the frame's pass, its frame's blocks bound (the frame,
-	// the lights, their shadows' tiles) when it is not the one bound
+	// (the frame's lights' rows into a texture of the turn's, or the one that has them)
+	function uploadLights() {
+		for (k in 0...lightTextures.length)
+			if (lightRows[k].compare(lightBytes) == 0) {
+				lightTexture = lightTextures[k];
+				return;
+			}
+		if (lightTextures.length < LIGHT_TEXTURES) {
+			lightTextures.push(lightTexture = device.createTexture({
+				width: FrameLights.COLUMNS,
+				height: FrameLights.ROWS,
+				format: RGBA32F,
+				data: lightBytes
+			}));
+			lightRows.push(lightBytes.sub(0, lightBytes.length));
+			return;
+		}
+		var k = lightNext;
+		lightNext = (k + 1) % LIGHT_TEXTURES;
+		device.writeTexture(lightTexture = lightTextures[k], lightBytes);
+		lightRows[k].blit(0, lightBytes, 0, lightBytes.length);
+	}
+
+	// a pipeline for the frame's pass, its frame's block and lights bound
+	// (the lights, their shadows' tiles) when it is not the one bound
 	function bindPipeline(enc:Encoder, p:Pipeline, slots:Array<Int>) {
 		if (p == bound) return;
 		enc.setPipeline(p);
 		enc.setUniforms(slots[0], frameBytes);
-		if (slots[18] >= 0) enc.setUniforms(slots[18], lightBytes);
+		if (slots[18] >= 0) enc.setTexture(slots[18], lightTexture, nearest);
 		bound = p;
 	}
 
@@ -1174,7 +1209,7 @@ class Renderer {
 		return [u("PbrFrame"), u("PbrObject"), u("PbrMaterial"), t("baseColorTexture"), t("shadowMap"), u("PbrSkinInfo"), t("jointMatrices"),
 			t("metallicRoughnessTexture"), t("emissiveTexture"), t("occlusionTexture"), t("normalTexture"), t("clusterMap"), t("environmentMap"), t("aoMap"),
 			layered(textures), t("layerMap0"), t("layerMap1"), t("transmissionMap"),
-			u("PbrLights"), u("PbrProbes"), t("probesMap"), t("ltcMap"), u("PbrLightmap"), t("lightMap")];
+			t("lights"), u("PbrProbes"), t("probesMap"), t("ltcMap"), u("PbrLightmap"), t("lightMap")];
 	}
 
 	// (a physical shader's variant: one reading a layer's map)
@@ -1215,6 +1250,8 @@ class Renderer {
 		device.destroyTexture(noShadow);
 		device.destroyTexture(black);
 		device.destroyTexture(flatNormal);
+		for (t in lightTextures)
+			device.destroyTexture(t);
 		if (instanceCapacity > 0) device.destroyBuffer(instanceBuffer);
 	}
 }

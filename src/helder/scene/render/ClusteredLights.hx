@@ -16,7 +16,7 @@ import helder.scene.render.ClusterShader;
 // to the view) go into one texture, the cluster map (R32F: each cell its
 // count then its lights' rows, then a row a light), read by pbr's light
 // loop where frame.clusters.x is on: no variant of any material more, no
-// uniform block past GL ES 3.0's 16 KB or Metal's 4 KB (PbrLights' 32 rows
+// uniform block past GL ES 3.0's 16 KB or Metal's 4 KB (the renderer's 32 rows
 // stay the draws'), one texture more (a pipeline's slots are 16), so it
 // runs on WebGL2.
 //

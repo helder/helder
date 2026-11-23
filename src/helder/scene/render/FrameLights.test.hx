@@ -10,7 +10,7 @@ import helder.test.Test;
 // The frame's local lights (FrameLights, no device): those whose reach
 // meets the view gathered, the most important to it first, at most its
 // capacity (the rest counted as dropped); a draw's eight, the lights that
-// reach its bounds most, listed by row; PbrLights' block as std140 lays it
+// reach its bounds most, listed by row; the frame's lights' texture's rows
 // out (its arrays one after the other), a spot's cone as the smoothstep's
 // scale and offset; gather and select allocating nothing. Each test's
 // worlds are disposed after it.
@@ -68,7 +68,7 @@ function tests() {
 			for (i in 0...8)
 				equals(out[i], -1.0);
 		});
-		test("PbrLights' block: positions, colours, cones; a spot's cone", () -> {
+		test("the texture's rows: positions, colours, cones; a spot's cone", () -> {
 			var w = new World();
 			worlds.push(w);
 			var n = w.node();
@@ -76,10 +76,10 @@ function tests() {
 			Light.attach(n, Light.spot(new Vec3(1, 0.5, 0.25), 2, 6, 0.3, 0.5));
 			var l = new FrameLights();
 			l.gather(w, EYE, VP);
-			var b = Bytes.alloc(FrameLights.MAX_LIGHTS * 48);
-			l.writeBlock(b);
-			// (the arrays one after the other: MAX_LIGHTS vectors each)
-			var colors = FrameLights.MAX_LIGHTS * 16, cones = 2 * colors;
+			var b = Bytes.alloc(FrameLights.MAX_LIGHTS * FrameLights.ROW);
+			l.writeTexels(b);
+			// (a row a light: its position, colour and cone, a texel each)
+			var colors = 16, cones = 32;
 			approx(b.getFloat(0), 1, 1e-6);
 			approx(b.getFloat(4), 2, 1e-6);
 			approx(b.getFloat(12), 6, 1e-6);

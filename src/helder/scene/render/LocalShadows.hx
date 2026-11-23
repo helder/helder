@@ -87,8 +87,8 @@ class LocalShadows implements RenderFeature.LocalShadowSource {
 	// (the lights asking, by their row: the tile size each gets)
 	final askLight:Array<Int> = Filled.ints(MAX_TILES, 0);
 	final askSize:Array<Int> = Filled.ints(MAX_TILES, 0);
-	// (PbrLights' tiles: Shadows.MAX_TILES' matrices and two vectors)
-	final tileBytes = Bytes.alloc(MAX_TILES * 96);
+	// (the frame's lights' texture's tile rows: Shadows.MAX_TILES of a matrix and two vectors)
+	final tileBytes = Bytes.alloc(MAX_TILES * FrameLights.ROW);
 
 	// options: atlas (the square's side, 1024), maxLocal (4), tileSize (512)
 	public function new(?options:LocalShadowsOptions) {
@@ -226,7 +226,7 @@ class LocalShadows implements RenderFeature.LocalShadowSource {
 	}
 
 	// (tile t's view-projection: a spot light's cone, a point light's face;
-	// its filter in PbrLights' tileParams)
+	// its filter in its tile row)
 	function frustumOf(sh:Shadows, t:Int, fl:FrameLights, k:Int) {
 		var light = fl.lights[k], node = fl.nodes[k], s = tileS[t];
 		var p = new Vec3(fl.x(k), fl.y(k), fl.z(k)), range = fl.range(k);
@@ -367,20 +367,21 @@ class LocalShadows implements RenderFeature.LocalShadowSource {
 		}
 	}
 
-	// (PbrLights' tiles: each tile's view-projection, its place in the atlas, its filter)
+	// (the tile rows: each tile's view-projection, its place in the atlas, its filter)
 	function writeTiles(sh:Shadows) {
 		var b = tileBytes;
 		for (t in 0...MAX_TILES) {
 			var on = t < tileCount;
 			var m = on ? tileViewProj[t] : Mat4.identity();
+			var o = t * FrameLights.ROW;
 			for (c in 0...4) {
 				var col = MathTools.col(m, c);
-				b.setFloat(t * 64 + c * 16, on ? col.x : 0);
-				b.setFloat(t * 64 + c * 16 + 4, on ? col.y : 0);
-				b.setFloat(t * 64 + c * 16 + 8, on ? col.z : 0);
-				b.setFloat(t * 64 + c * 16 + 12, on ? col.w : 0);
+				b.setFloat(o + c * 16, on ? col.x : 0);
+				b.setFloat(o + c * 16 + 4, on ? col.y : 0);
+				b.setFloat(o + c * 16 + 8, on ? col.z : 0);
+				b.setFloat(o + c * 16 + 12, on ? col.w : 0);
 			}
-			var r = MAX_TILES * 64 + t * 16, q = MAX_TILES * 80 + t * 16;
+			var r = o + 64, q = o + 80;
 			b.setFloat(r, on ? tileX[t] / sh.atlasWidth : 0);
 			b.setFloat(r + 4, on ? tileY[t] / sh.atlasHeight : 0);
 			b.setFloat(r + 8, on ? tileS[t] / sh.atlasWidth : 0);
