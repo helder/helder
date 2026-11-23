@@ -12,8 +12,8 @@ import helder.image.PngDecoder;
 import helder.image.Resize;
 import helder.ui.draw.UiShader;
 
-// helder.ui's Canvas on helder.gfx (Ui.paint replays its display list onto
-// it: DisplayList): a frame's rectangles, borders, shadows, glyphs and
+// helder.ui's Canvas on helder.gfx (Ui.paint walks its layers' display
+// lists onto it: Layer, DisplayList): a frame's rectangles, borders, shadows, glyphs and
 // images are instances of one quad (UiShader's, after Rune's
 // uber-quad: anomalyco/rune, MIT), each a kind of it, all in one instance
 // buffer (helder.gfx's QuadBatch, instanced; the batcher SpriteBatch is on
@@ -37,9 +37,11 @@ import helder.ui.draw.UiShader;
 // their place as an image at its opacity, as CSS's opacity is: a faded box's
 // children not seen through each other nor its background through them.
 // Transforms are each quad's, so they need no pass; a <Scene>'s passes come
-// before the frame's (beforePass). The instance buffer is kept between frames: only the
-// instances that changed since the last frame are written (QuadBatch), and
-// a steady frame allocates nothing. The UI's pixels are scaled
+// before the frame's (beforePass: recorded into the display list a node
+// found the renderer through, so that a list kept still runs them). A
+// layer (Layer) may be drawn from tiles of its own, render targets kept
+// from frame to frame (layerTiles). The instance buffer is kept between frames: only the
+// instances that changed since the last frame are written (QuadBatch). The UI's pixels are scaled
 // to the target's (scale: a Retina display's 2); glyphs are rasterized at the
 // scaled size into the GlyphAtlas, its coverage uploaded into a texture's
 // red channel where it changed. An image is
@@ -233,6 +235,8 @@ class Renderer implements TextureCanvas {
 		beganBytes = hxmc.GcStats.bytesAllocated();
 		#end
 		if (frames % 60 == 0) evict(EVICT);
+		recording = null;
+		if (tileBytes > tileBudget || frames % 60 == 0) evictTiles(false);
 		atlas.begin();
 		// (the large glyphs the last frame did not draw: their textures freed)
 		if (large.iterator().hasNext()) {
@@ -342,16 +346,226 @@ class Renderer implements TextureCanvas {
 		}
 	}
 
-	// the renderer a canvas draws onto: c, or what a display list is replayed onto (DisplayList.target)
+	// the renderer a canvas draws onto: c, or what a display list is
+	// replayed onto (DisplayList.target), its passes (beforePass) recorded
+	// into that list until another is found through it
 	public static function of(c:Null<Canvas>):Null<Renderer> {
 		var l = Std.downcast(c, DisplayList);
-		return l != null ? of(l.target) : Std.downcast(c, Renderer);
+		if (l != null) {
+			var r = of(l.target);
+			if (r != null) r.recording = l;
+			return r;
+		}
+		var r = Std.downcast(c, Renderer);
+		if (r != null) r.recording = null;
+		return r;
 	}
+
+	// (the list a node found this renderer through: its passes recorded
+	// there, run as it is replayed, so that a list kept still runs them in order)
+	var recording:Null<DisplayList> = null;
 
 	// f records a pass of its own before the frame's (prepare): what a
 	// texture drawn this frame shows, rendered first (a <Scene>'s)
-	public function beforePass(f:Encoder->Void)
-		before.push(f);
+	public function beforePass(f:Encoder->Void) {
+		if (recording != null) recording.pass(f) else before.push(f);
+	}
+
+	// a pass replayed from a display list (beforePass's)
+	public function pass(f:Any)
+		before.push(cast f);
+
+	// --- layers' tiles ---
+
+	// whether layers are drawn from tiles of their own (Layer.tiled): a
+	// window's; else, and for a layer whose texture would differ from
+	// drawing it again (under a transform it does not move by), replayed.
+	// Tiles are TILE device pixels square, drawn into where the layer is
+	// first drawn, kept while it paints the same at the same scale and
+	// moves by whole device pixels; drawn where they fall (snapped) while
+	// it moves by fractions of one, as browsers snap scroll offsets; drawn
+	// again where it comes to rest. Those in view are drawn the frame they
+	// come into it, PREFETCH of those around it a frame; past tileBudget,
+	// those longest unseen and farthest go first
+	public var tiles = false;
+	public var tileBudget = 96 << 20;
+	public var tileBytes(default, null) = 0;
+	// (the tiles drawn into so far)
+	public var rastered(default, null) = 0;
+	public static inline var TILE = 512;
+	static inline var PREFETCH = 2;
+	final tiled = new haxe.ds.ObjectMap<Layer, LayerTiles>();
+	final tileWalk = new Walk();
+	var rastering = false;
+
+	public function layerTiles(l:Layer):Bool {
+		if (!tiles || rastering) return false;
+		if (!flat && (l.scroll || !l.moving)) return false;
+		var t = tiled.get(l), s = scale;
+		if (t == null) tiled.set(l, t = new LayerTiles());
+		t.frame = frames;
+		if (t.content != l.content || t.scale != s) {
+			t.drop();
+			t.content = l.content;
+			t.scale = s;
+		}
+		// (moved by a fraction of a device pixel and at rest: drawn again where it is)
+		var fx = (tx - t.rx) * s, fy = (ty - t.ry) * s;
+		if (t.tiles.length == 0 || !l.moving && (fx != Math.fround(fx) || fy != Math.fround(fy))) {
+			t.drop();
+			t.rx = tx;
+			t.ry = ty;
+			fx = fy = 0;
+		}
+		// (what is seen, in the device pixels it was drawn at: the clip's, a moving node's all of it)
+		var vx0 = (l.x0 + t.rx) * s, vy0 = (l.y0 + t.ry) * s, vx1 = (l.x1 + t.rx) * s, vy1 = (l.y1 + t.ry) * s;
+		if (flat) {
+			vx0 = Math.max(vx0, Math.max(clipX0, ox) - fx);
+			vy0 = Math.max(vy0, Math.max(clipY0, oy) - fy);
+			vx1 = Math.min(vx1, Math.min(clipX1, ox + targetW) - fx);
+			vy1 = Math.min(vy1, Math.min(clipY1, oy + targetH) - fy);
+		}
+		if (!l.scroll) {
+			vx0 = Math.max(vx0, (l.bx0 + t.rx) * s);
+			vy0 = Math.max(vy0, (l.by0 + t.ry) * s);
+			vx1 = Math.min(vx1, (l.bx1 + t.rx) * s);
+			vy1 = Math.min(vy1, (l.by1 + t.ry) * s);
+		}
+		if (vx1 <= vx0 || vy1 <= vy0) return true;
+		var i0 = Math.floor(vx0 / TILE), j0 = Math.floor(vy0 / TILE), i1 = Math.ceil(vx1 / TILE), j1 = Math.ceil(vy1 / TILE);
+		if ((i1 - i0) * (j1 - j0) * TILE * TILE * 4 > tileBudget / 2) return false;
+		for (j in j0...j1)
+			for (i in i0...i1) {
+				var k = t.get(i, j);
+				if (k == null || !k.valid(l)) k = raster(l, t, i, j);
+				k.frame = frames;
+				gpuTexture(k.group.texture, k.group.id, i * TILE / s - t.rx, j * TILE / s - t.ry, TILE / s, TILE / s);
+			}
+		// (the ones around what is seen, within what it was recorded over, nearest first)
+		if (l.scroll) {
+			var budget = PREFETCH, ri0 = Math.floor((l.x0 + t.rx) * s / TILE), rj0 = Math.floor((l.y0 + t.ry) * s / TILE);
+			var ri1 = Math.ceil((l.x1 + t.rx) * s / TILE), rj1 = Math.ceil((l.y1 + t.ry) * s / TILE);
+			for (d in 1...3) {
+				for (j in Std.int(Math.max(j0 - d, rj0))...Std.int(Math.min(j1 + d, rj1)))
+					for (i in Std.int(Math.max(i0 - d, ri0))...Std.int(Math.min(i1 + d, ri1))) {
+						if (budget == 0 || i >= i0 && i < i1 && j >= j0 && j < j1) continue;
+						var k = t.get(i, j);
+						if (k != null && k.valid(l)) continue;
+						raster(l, t, i, j).frame = frames - 1;
+						budget--;
+					}
+			}
+		}
+		return true;
+	}
+
+	// (a tile of l drawn into, as l would be drawn in place: in the frame's
+	// device pixels at its translation then, its tile's part of them)
+	function raster(l:Layer, t:LayerTiles, i:Int, j:Int):LayerTile {
+		var k = t.get(i, j);
+		if (k == null) {
+			k = new LayerTile(i, j);
+			t.put(k);
+			tileBytes += TILE * TILE * 4;
+		}
+		var g = k.group;
+		g.open(device, TILE, TILE);
+		g.frame = frames;
+		var s = scale, x0 = i * TILE, y0 = j * TILE;
+		k.content = l.content;
+		k.stamp = l.stamp;
+		k.whole = l.covers(x0 / s - t.rx, y0 / s - t.ry, (x0 + TILE) / s - t.rx, (y0 + TILE) / s - t.ry);
+		var sBatch = batch, sTextures = runTextures, sRun = run, sOx = ox, sOy = oy, sW = targetW, sH = targetH;
+		var c0 = clipX0, c1 = clipY0, c2 = clipX1, c3 = clipY1, r0 = clipR0, r1 = clipR1, r2 = clipR2, r3 = clipR3;
+		var sTx = tx, sTy = ty, sAlpha = alpha, sa = ma, sb = mb, sc = mc, sd = md, se = me, sf = mf, sk = mk, sFlat = flat, sAligned = aligned, sGrid = grid;
+		batch = g.batch;
+		runTextures = g.textures;
+		run = 0;
+		ox = x0;
+		oy = y0;
+		targetW = g.textureWidth;
+		targetH = g.textureHeight;
+		clipX0 = x0;
+		clipY0 = y0;
+		clipX1 = x0 + TILE;
+		clipY1 = y0 + TILE;
+		clipR0 = clipR1 = clipR2 = clipR3 = 0;
+		tx = t.rx;
+		ty = t.ry;
+		alpha = 1;
+		ma = md = mk = 1;
+		mb = mc = me = mf = 0;
+		flat = aligned = true;
+		grid = snap;
+		var w = tileWalk;
+		w.set(x0 / s - t.rx, y0 / s - t.ry, (x0 + TILE) / s - t.rx, (y0 + TILE) / s - t.ry);
+		w.ptx = w.pty = 0;
+		w.mark = false;
+		w.draw = true;
+		w.host = null;
+		rastering = true;
+		l.list.replay(this, w);
+		rastering = false;
+		batch = sBatch;
+		runTextures = sTextures;
+		run = sRun;
+		ox = sOx;
+		oy = sOy;
+		targetW = sW;
+		targetH = sH;
+		clipX0 = c0;
+		clipY0 = c1;
+		clipX1 = c2;
+		clipY1 = c3;
+		clipR0 = r0;
+		clipR1 = r1;
+		clipR2 = r2;
+		clipR3 = r3;
+		tx = sTx;
+		ty = sTy;
+		alpha = sAlpha;
+		ma = sa;
+		mb = sb;
+		mc = sc;
+		md = sd;
+		me = se;
+		mf = sf;
+		mk = sk;
+		flat = sFlat;
+		aligned = sAligned;
+		grid = sGrid;
+		closedGroups.push(g);
+		rastered++;
+		return k;
+	}
+
+	// (past the budget: the tiles longest unseen first, of layers not drawn
+	// for EVICT frames all of them; none at all: trim)
+	function evictTiles(all:Bool) {
+		var gone:Array<Layer> = null;
+		for (l => t in tiled)
+			if (all || frames - t.frame > EVICT) {
+				tileBytes -= t.tiles.length * TILE * TILE * 4;
+				t.free(device);
+				if (gone == null) gone = [];
+				gone.push(l);
+			}
+		if (gone != null)
+			for (l in gone)
+				tiled.remove(l);
+		while (tileBytes > tileBudget) {
+			var worst:Null<LayerTile> = null, from:Null<LayerTiles> = null;
+			for (t in tiled)
+				for (k in t.tiles)
+					if (k.frame < frames && (worst == null || k.frame < worst.frame)) {
+						worst = k;
+						from = t;
+					}
+			if (worst == null) break;
+			from.remove(worst, device);
+			tileBytes -= TILE * TILE * 4;
+		}
+	}
 
 	// a pass recorded before the next frame's, asked outside a paint
 	public function nextPass(f:Encoder->Void)
@@ -390,8 +604,10 @@ class Renderer implements TextureCanvas {
 	// opacity groups, of shared images; the rasterized paths): the system
 	// asks for memory back (helder.os.App.lowMemory, an app gone to the
 	// background); made again when drawn
-	public function trim()
+	public function trim() {
 		evict(0);
+		evictTiles(true);
+	}
 
 	// (what no frame drew for more than `age` frames freed)
 	function evict(age:Int) {
@@ -1332,6 +1548,68 @@ private class Group {
 		texture = null;
 		textureWidth = textureHeight = 0;
 	}
+}
+
+// (a layer's tiles: by their place, drawn at its translation rx, ry, at a scale, of what it painted then)
+private class LayerTiles {
+	public final tiles:Array<LayerTile> = [];
+	final at = new haxe.ds.IntMap<LayerTile>();
+	public var rx = 0.0;
+	public var ry = 0.0;
+	public var scale = 0.0;
+	public var content = -1;
+	// (the frame it was last drawn in)
+	public var frame = 0;
+
+	public function new() {}
+
+	static inline function key(i:Int, j:Int):Int
+		return (i & 0xFFFF) << 16 | (j & 0xFFFF);
+
+	public inline function get(i:Int, j:Int):Null<LayerTile>
+		return at.get(key(i, j));
+
+	public function put(k:LayerTile) {
+		at.set(key(k.i, k.j), k);
+		tiles.push(k);
+	}
+
+	// (its tiles drawn again before they are drawn: kept, their textures too)
+	public function drop()
+		for (k in tiles)
+			k.content = -1;
+
+	public function remove(k:LayerTile, device:Device) {
+		at.remove(key(k.i, k.j));
+		tiles.remove(k);
+		k.group.free(device);
+	}
+
+	public function free(device:Device) {
+		for (k in tiles)
+			k.group.free(device);
+		tiles.resize(0);
+		at.clear();
+	}
+}
+
+private class LayerTile {
+	public final i:Int;
+	public final j:Int;
+	public final group = new Group();
+	// (what its layer painted, the layer's record, when drawn into; whether all of it was recorded then)
+	public var content = -1;
+	public var stamp = -1;
+	public var whole = false;
+	public var frame = 0;
+
+	public function new(i, j) {
+		this.i = i;
+		this.j = j;
+	}
+
+	public inline function valid(l:Layer):Bool
+		return content == l.content && (whole || stamp == l.stamp);
 }
 
 // (an image's texture: its own (page -1), or a page's, its place x, y in it)

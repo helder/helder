@@ -81,6 +81,8 @@ class Stretch {
 		var d = Math.min(1, Math.abs(p) / Math.max(1, view));
 		var s = INTENSITY * d + INTENSITY * (1 - Math.exp(-d * SCALAR));
 		amount = p < 0 ? -s : p > 0 ? s : 0;
+		// (its scale drawn where the scroller is, in its parent's layer)
+		n.layerChanged();
 		ui.requestFrame();
 	}
 
@@ -123,6 +125,7 @@ class Stretch {
 			if (!springing || node == null) return springing = false;
 			var w0 = FREQUENCY * TIME, z = DAMPING, wd = w0 * Math.sqrt(1 - z * z), dt = Ui.now() - springAt;
 			var a = Math.exp(-z * w0 * dt), s = a * (from * Math.cos(wd * dt) + (speed + z * w0 * from) / wd * Math.sin(wd * dt));
+			node.layerChanged();
 			ui.requestFrame();
 			if (dt > 0.05 && Math.abs(s) < 1e-4) {
 				amount = 0;

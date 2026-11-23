@@ -34,6 +34,11 @@ class TextNode extends Node {
 		return v;
 	}
 
+	// (drawn from its style, its text or image and the selection, which tell
+	// it changed; a subclass's own drawing not)
+	@:allow(helder.ui) override function paintsLive():Bool
+		return Type.getClass(this) != TextNode;
+
 	override public function hasContent():Bool
 		return true;
 

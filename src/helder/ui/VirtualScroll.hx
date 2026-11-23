@@ -536,4 +536,7 @@ private class Spacer extends Node {
 
 	override public function measureContent(text:TextEngine, knownWidth:Float, knownHeight:Float, availWidth:Float, availHeight:Float):Size
 		return new Size(0, extent);
+
+	@:allow(helder.ui) override function paintsLive():Bool
+		return false;
 }

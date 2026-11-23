@@ -6,20 +6,26 @@ import helder.ui.*;
 import helder.ui.Paint;
 import helder.ui.Stroke;
 
-// A frame's painting recorded (Ui.paint records the tree into one, then
-// replays it onto the window's Renderer): each Canvas call an opcode and
-// its numbers in flat arrays (ints: opcodes, colours, alignments, border
-// styles, textures, resources' indices; floats: the rest), what a call takes
-// by reference (paragraphs, images, paths, paints, strokes, corners, edges,
-// colour arrays) in a table of resources by index, each with its version
-// (an image's), so that what changed from one frame's to the next can be
-// told. Replayed (replay), a canvas is given the same calls in the same
-// order as painting into it directly; a GPU texture's only where it draws
-// them (TextureCanvas). A texture's pass is not one of its calls: it goes
-// to the renderer behind it (Renderer.of) as it is recorded, all of them
-// before the frame's, in the order painted, as they would painting
-// directly. The arrays are kept between frames (clear): a steady frame
-// records into them allocating nothing.
+// A layer's painting recorded (Ui.paint records each layer of the tree
+// into one: Layer): each Canvas call an opcode and its numbers in flat
+// arrays (ints: opcodes, colours, alignments, border styles, textures,
+// resources' indices; floats: the rest), what a call takes by reference
+// (paragraphs, images, paths, paints, strokes, corners, edges, colour
+// arrays) in a table of resources by index, each with its version (an
+// image's), so that an image changed since is told (stale). Replayed
+// (replay), a canvas is given the same calls in the same order as painting
+// into it directly; a GPU texture's only where it draws them
+// (TextureCanvas), and a texture's pass (pass, Renderer.beforePass while a
+// list records) in its place, so that a list kept from an earlier frame
+// still runs its passes, in order. Besides the calls, what a walk (Walk)
+// needs to give a canvas no more than a direct paint would from a list
+// recorded over more than is seen: each node's test against what is seen
+// and where its drawing ends (node), how what is seen changes (cull*), and
+// the entries its host draws live: the layers it holds (layer), a
+// scroller's scrollbars (bars), the matched elements flying (flight,
+// flights). Replayed without a walk, those are passed over. The arrays
+// are kept between frames (clear): a list recorded again records into
+// them allocating nothing.
 class DisplayList implements TextureCanvas {
 	// the canvas it is replayed onto (Ui.paint's: Renderer.of finds the renderer behind it)
 	public var target:Null<Canvas> = null;
@@ -36,14 +42,128 @@ class DisplayList implements TextureCanvas {
 
 	public function new() {}
 
-	// the calls recorded so far
+	// the calls recorded so far; of them, the layers held and what is
+	// drawn anew each frame (passes, GPU textures)
 	public var length(default, null) = 0;
+	public var layers(default, null) = 0;
+	public var live(default, null) = 0;
+	// (the images' resources: their versions told, stale)
+	final images:Array<Int> = [];
 
 	// forgets the calls and their resources, its arrays kept
 	public function clear() {
 		for (i in 0...nr)
 			resources[i] = null;
-		ni = nf = nr = length = 0;
+		ni = nf = nr = length = layers = live = 0;
+		images.resize(0);
+	}
+
+	// whether an image drawn changed since it was recorded (Image.version)
+	public function stale():Bool {
+		for (k in images) {
+			var img:Image = cast resources[k];
+			if (img.version != versions[k]) return true;
+		}
+		return false;
+	}
+
+	// a node's drawing begins (its first entry: flags FIRST, ENTERING);
+	// what is recorded until end(at) is its (at: the index it returns)
+	public function node(n:Node, flags:Int):Int {
+		var at = ni;
+		int(NODE);
+		int(res(n));
+		int(flags);
+		int(0);
+		int(0);
+		int(nf);
+		box(0, 0, 0, 0);
+		return at;
+	}
+
+	// the node's test: drawn only if its ink, widened, meets what is seen (Walk.culls)
+	public function test(at:Int, ax1:Float, ax0:Float, ay1:Float, ay0:Float) {
+		var f = ints[at + 5];
+		ints[at + 2] |= TEST;
+		floats[f] = ax1;
+		floats[f + 1] = ax0;
+		floats[f + 2] = ay1;
+		floats[f + 3] = ay0;
+	}
+
+	public inline function flag(at:Int, flags:Int)
+		ints[at + 2] |= flags;
+
+	public function end(at:Int) {
+		ints[at + 3] = ni;
+		ints[at + 4] = nf;
+	}
+
+	public function cullSave()
+		int(CULL_SAVE);
+
+	public function cullRestore()
+		int(CULL_RESTORE);
+
+	public function cullAll()
+		int(CULL_ALL);
+
+	// (what is seen moved back by dx, dy: a translation by them; ptx, pty moved by them)
+	public function cullShift(dx:Float, dy:Float) {
+		int(CULL_SHIFT);
+		float(dx);
+		float(dy);
+	}
+
+	// (ptx, pty alone moved)
+	public function shiftPoint(dx:Float, dy:Float) {
+		int(SHIFT_POINT);
+		float(dx);
+		float(dy);
+	}
+
+	public function cullClip(x0:Float, y0:Float, x1:Float, y1:Float) {
+		int(CULL_CLIP);
+		box(x0, y0, x1, y1);
+	}
+
+	// (what is seen and ptx, pty set: a flight's)
+	public function cullSet(x0:Float, y0:Float, x1:Float, y1:Float, px:Float, py:Float) {
+		int(CULL_SET);
+		box(x0, y0, x1, y1);
+		float(px);
+		float(py);
+	}
+
+	// a layer held, drawn where it is when walked (hidden: under visibility hidden where it was recorded)
+	public function layer(l:Layer, hidden:Bool) {
+		int(LAYER);
+		int(res(l));
+		int(hidden ? 1 : 0);
+		layers++;
+	}
+
+	public function bars(n:Node, nw:Float, nh:Float) {
+		int(BARS);
+		int(res(n));
+		float(nw);
+		float(nh);
+	}
+
+	public function flight(n:Node) {
+		int(FLIGHT);
+		int(res(n));
+	}
+
+	public function flights()
+		int(FLIGHTS);
+
+	// a pass recorded before the frame's (Renderer.beforePass: f an Encoder->Void,
+	// opaque here, as helder.gfx's encoder is not on every target this runs on)
+	public function pass(f:Any) {
+		op(PASS);
+		int(res(f));
+		live++;
 	}
 
 	public function translate(dx:Float, dy:Float) {
@@ -134,6 +254,7 @@ class DisplayList implements TextureCanvas {
 
 	public function image(img:Image, x:Float, y:Float, w:Float, h:Float, u0:Float, v0:Float, u1:Float, v1:Float, radius:Float, ?corners:Corners) {
 		op(IMAGE);
+		if (img != null) images.push(nr);
 		int(res(img, img == null ? 0 : img.version));
 		int(res(corners));
 		box(x, y, w, h);
@@ -168,6 +289,7 @@ class DisplayList implements TextureCanvas {
 	}
 
 	public function gpuTexture(t:Texture, id:Int, x:Float, y:Float, w:Float, h:Float, radius:Float = 0.0, ?corners:Corners) {
+		live++;
 		op(GPU_TEXTURE);
 		int(t.id());
 		int(id);
@@ -176,13 +298,82 @@ class DisplayList implements TextureCanvas {
 		float(radius);
 	}
 
+	// a canvas never draws a list's layers (Renderer.layer's tiles)
+	public function layerTiles(l:Layer):Bool
+		return false;
+
 	// gives c the calls recorded, in order (a GPU texture's only if it draws
-	// them: a TextureCanvas)
-	public function replay(c:Canvas) {
+	// them: a TextureCanvas); w: the walk it is in (what is seen, its host)
+	public function replay(c:Canvas, ?w:Walk) {
 		var g = Std.downcast(c, TextureCanvas);
 		var i = 0, f = 0, n = ints, v = floats;
 		while (i < ni) {
 			switch (n[i] : Op) {
+				case NODE:
+					if (w != null) {
+						var k = n[i + 2], node:Node = get(n[i + 1]);
+						if (k & FIRST != 0 && w.mark) w.host.first(node, k & ENTERING != 0);
+						if (k & NONE != 0 || k & TEST != 0 && w.culls(v[f], v[f + 1], v[f + 2], v[f + 3])) {
+							f = n[i + 4];
+							i = n[i + 3];
+							continue;
+						}
+						if (w.mark) @:privateAccess node.drawnAt = w.frame;
+					}
+					i += 6;
+					f += 4;
+				case CULL_SAVE:
+					if (w != null) w.save();
+					i += 1;
+				case CULL_RESTORE:
+					if (w != null) w.restore();
+					i += 1;
+				case CULL_ALL:
+					if (w != null) w.all();
+					i += 1;
+				case CULL_SHIFT:
+					if (w != null) w.shift(v[f], v[f + 1]);
+					i += 1;
+					f += 2;
+				case SHIFT_POINT:
+					if (w != null) {
+						w.ptx += v[f];
+						w.pty += v[f + 1];
+					}
+					i += 1;
+					f += 2;
+				case CULL_CLIP:
+					if (w != null) w.clip(v[f], v[f + 1], v[f + 2], v[f + 3]);
+					i += 1;
+					f += 4;
+				case CULL_SET:
+					if (w != null) {
+						w.set(v[f], v[f + 1], v[f + 2], v[f + 3]);
+						w.ptx = v[f + 4];
+						w.pty = v[f + 5];
+					}
+					i += 1;
+					f += 6;
+				case LAYER:
+					if (w != null) {
+						var l:Layer = get(n[i + 1]);
+						l.hiddenIn = n[i + 2] == 1;
+						w.host.layer(l, c, w);
+					}
+					i += 3;
+				case BARS:
+					if (w != null) w.host.bars(get(n[i + 1]), v[f], v[f + 1], c, w);
+					i += 2;
+					f += 2;
+				case FLIGHT:
+					if (w != null && w.mark) w.host.flight(get(n[i + 1]), w.ptx, w.pty);
+					i += 2;
+				case FLIGHTS:
+					if (w != null) w.host.flights(c, w);
+					i += 1;
+				case PASS:
+					if (g != null) g.pass(get(n[i + 1]));
+					i += 2;
 				case TRANSLATE:
 					c.translate(v[f], v[f + 1]);
 					i += 1;
@@ -249,6 +440,12 @@ class DisplayList implements TextureCanvas {
 		}
 	}
 
+	// (a node's entry: a test, the first paint's, nothing drawn)
+	public static inline var TEST = 1;
+	public static inline var FIRST = 2;
+	public static inline var ENTERING = 4;
+	public static inline var NONE = 8;
+
 	inline function op(code:Op) {
 		int(code);
 		length++;
@@ -305,4 +502,17 @@ private enum abstract Op(Int) from Int to Int {
 	var TEXT = 13;
 	var TEXT_SHADOW = 14;
 	var GPU_TEXTURE = 15;
+	var PASS = 16;
+	var NODE = 17;
+	var CULL_SAVE = 18;
+	var CULL_RESTORE = 19;
+	var CULL_ALL = 20;
+	var CULL_SHIFT = 21;
+	var SHIFT_POINT = 22;
+	var CULL_CLIP = 23;
+	var CULL_SET = 24;
+	var LAYER = 25;
+	var BARS = 26;
+	var FLIGHT = 27;
+	var FLIGHTS = 28;
 }

@@ -2,6 +2,9 @@ package helder.ui;
 
 import helder.ui.platform.*;
 import helder.ui.draw.DisplayList;
+import helder.ui.draw.Layer;
+import helder.ui.draw.TextureCanvas;
+import helder.ui.draw.Walk;
 import helder.os.PointerType;
 import helder.ui.Event;
 import helder.ui.gesture.Gesture;
@@ -68,8 +71,9 @@ class Ui {
 	function set_focusVisible(v:Bool):Bool {
 		if (v == focusVisible) return v;
 		focusVisible = v;
-		// (the focused node's rules for focus-visible)
+		// (the focused node's rules for focus-visible, its ring)
 		if (focus != null) {
+			focus.layerChanged();
 			@:privateAccess focus.restyleLater();
 			focus.statesChanged();
 		}
@@ -247,6 +251,7 @@ class Ui {
 		overlay = new Node("overlay");
 		overlay.attach(this);
 		touchScroll = @:privateAccess new TouchScroll(this);
+		walker = new UiWalk(this);
 		trackpad = @:privateAccess new Trackpad(this);
 		stretcher = @:privateAccess new Stretch(this);
 		// (Copy: the selected text, while there is some)
@@ -446,96 +451,357 @@ class Ui {
 	}
 
 	// draws the tree (after update): subtrees whose ink misses what can be
-	// seen (the window, the scrollers' padding boxes) left out; recorded
-	// into a display list, then replayed onto canvas
+	// seen (the window, the scrollers' padding boxes) left out. Painted into
+	// layers (Layer: the root, each scroller's content, a node whose
+	// transform or opacity moves), each a display list kept while nothing it
+	// paints changes, then walked onto canvas (Walk), each layer where it
+	// is now: the calls a direct paint gives canvas, in its order. The walk
+	// records the layers that changed as it reaches them and marks what is
+	// reached (Node.drawnAt, a first paint's, the matched elements flying);
+	// under motion one walk onto nothing does that first, again while a
+	// first paint changes what is painted (an entering motion), then one
+	// draws. A canvas that draws a layer from tiles of its own
+	// (TextureCanvas.layerTiles: a window's Renderer) is given those in its place
 	public function paint(canvas:Canvas) {
 		if (direct) return paintTree(canvas);
-		list.clear();
-		list.target = canvas;
-		paintTree(list);
-		list.replay(canvas);
-		list.target = null;
+		needsFrame = touchScroll.gliding;
+		paintFrame++;
+		painting = this;
+		walking = true;
+		target = canvas;
+		if (globalsChanged()) paintKey++;
+		prune();
+		// (under motion, a first paint may set off an entering motion, which
+		// changes what is painted: a walk onto nothing first, again until none does)
+		if (helder.ui.motion.Motions.on) {
+			var tries = 0;
+			do {
+				again = false;
+				flights.resize(0);
+				flightAt.resize(0);
+				walkRoot(nowhere, true, false);
+			} while (again && ++tries < 8);
+			walkRoot(canvas, false, true);
+		} else walkRoot(canvas, true, true);
+		flights.resize(0);
+		flightAt.resize(0);
+		walking = false;
+		target = null;
+		painting = null;
 	}
 
-	// whether paint draws straight onto its canvas, not through the display list (a test comparing the two)
+	// whether paint draws straight onto its canvas, not through the layers (a test comparing the two)
 	@:noCompletion public var direct = false;
-	final list = new DisplayList();
+	// the layers recorded so far (a test's: a frame that only scrolls records none)
+	@:noCompletion public var recorded(default, null) = 0;
+
+	// (the root's layer, the others; the walk's state, its host, nothing to draw onto: the first walk's canvas)
+	final rootLayer = new Layer(null, false);
+	final layers:Array<Layer> = [];
+	final walk = new Walk();
+	final walker:UiWalk;
+	static final nowhere = new Nowhere();
+	// (in a layered paint; the canvas it draws onto, every list's target: Renderer.of)
+	var walking = false;
+	var target:Null<Canvas> = null;
+	// (the list and layer being recorded: paintNode records its cull entries too)
+	var recording:Null<DisplayList> = null;
+	var recordingLayer:Null<Layer> = null;
+	// (whether the nodes reached are marked: the walk's; one's first paint changed what it paints)
+	var marking = true;
+	var again = false;
+	// (bumped as what every layer paints changes: the scale, the focus ring, the selection's colour)
+	var paintKey = 0;
+	final painted:Array<Float> = [for (_ in 0...7) Math.NaN];
+
+	function globalsChanged():Bool {
+		var p = painted;
+		inline function same(i:Int, v:Float):Bool {
+			var was = p[i];
+			p[i] = v;
+			return was == v;
+		}
+		// (each compared and kept, none skipped)
+		var a = same(0, scale), b = same(1, focusRingColor), c = same(2, focusRingWidth), d = same(3, focusRingOffset);
+		var e = same(4, shadowReach), f = same(5, selectionColor), g = same(6, dark ? 1 : 0);
+		return !(a && b && c && d && e && f && g);
+	}
+
+	// (the layers whose node left the tree or stopped scrolling let go; a node's that has not moved for IDLE paints given back to its parent's)
+	static inline var IDLE = 60;
+
+	function prune() {
+		var i = layers.length;
+		while (--i >= 0) {
+			var l = layers[i], n = l.node;
+			var gone = n.ui != this || (l.scroll ? n.style.overflow != Scroll || n.contentLayer != l : n.paintLayer != l || paintFrame - l.movedAt > IDLE);
+			if (!gone) continue;
+			layers.splice(i, 1);
+			if (l.scroll && n.contentLayer == l) n.contentLayer = null;
+			if (!l.scroll && n.paintLayer == l) {
+				n.paintLayer = null;
+				n.layerChanged();
+			}
+		}
+	}
+
+	function walkRoot(canvas:Canvas, mark:Bool, draw:Bool) {
+		var w = walk;
+		w.set(0, 0, width, height);
+		w.ptx = w.pty = 0;
+		w.mark = mark;
+		w.draw = draw;
+		w.frame = paintFrame;
+		w.host = walker;
+		marking = mark;
+		if (mark) ensure(rootLayer, 0, 0, width, height);
+		rootLayer.list.replay(canvas, w);
+		marking = true;
+	}
+
+	// (l recorded again if what it paints changed, over what is seen and a
+	// quarter of a viewport each way, as what changes may change again; or
+	// if it was recorded over less than what is seen (x0, y0, x1, y1), as
+	// it scrolls, and the first time, over a viewport each way)
+	function ensure(l:Layer, x0:Float, y0:Float, x1:Float, y1:Float) {
+		if (l.dirty || l.volatile || l.key != paintKey || l.hidden != l.hiddenIn || stuckMoved(l) || l.list.stale()) {
+			l.content++;
+			record(l, x0, y0, x1, y1, l.recordedAt < 0 ? 1 : 0.25);
+		} else if (!l.covers(x0, y0, x1, y1)) record(l, x0, y0, x1, y1, 1);
+	}
+
+	// (its sticky nodes' scrollers scrolled since it was recorded)
+	function stuckMoved(l:Layer):Bool {
+		for (i in 0...l.sticky.length) {
+			var sc = l.sticky[i];
+			if (sc.scrollX != l.stuck[2 * i] || sc.scrollY != l.stuck[2 * i + 1]) return true;
+		}
+		return false;
+	}
+
+	// (l's subtree painted into its list over x0, y0, x1, y1 and margin
+	// viewports each way, the paint's state put back after; what it paints
+	// asking for frames, it is recorded again each frame)
+	function record(l:Layer, x0:Float, y0:Float, x1:Float, y1:Float, margin:Float) {
+		if (l.node != null && x1 - x0 < 1e8 && y1 - y0 < 1e8) {
+			var mw = Math.max(0, x1 - x0) * margin, mh = Math.max(0, y1 - y0) * margin;
+			x0 -= mw;
+			x1 += mw;
+			y0 -= mh;
+			y1 += mh;
+		}
+		var w = walk, wx0 = w.x0, wy0 = w.y0, wx1 = w.x1, wy1 = w.y1, wpx = w.ptx, wpy = w.pty;
+		var wasList = recording, wasLayer = recordingLayer, wasHidden = hidden, wasFrame = needsFrame;
+		w.set(x0, y0, x1, y1);
+		l.list.clear();
+		l.list.target = target;
+		l.volatile = false;
+		l.sticky.resize(0);
+		l.stuck.resize(0);
+		recording = l.list;
+		recordingLayer = l;
+		hidden = l.hiddenIn;
+		needsFrame = false;
+		var n = l.node;
+		if (n == null) {
+			paintNode(root, l.list);
+			if (overlay.children.length > 0) paintNode(overlay, l.list);
+			l.list.flights();
+		} else if (l.scroll) paintScrolled(n, l.list);
+		else {
+			var p = n.present, nw = p == null ? n.width : p.width(), nh = p == null ? n.height : p.height();
+			var e = focusRingOffset + focusRingWidth + shadowReach + 8 + n.style.outlineOffset + n.style.outlineWidth;
+			l.bx0 = n.absX - e;
+			l.by0 = n.absY - e;
+			l.bx1 = n.absX + nw + e;
+			l.by1 = n.absY + nh + e;
+			if (n.style.overflow == Visible)
+				for (c in n.children) {
+					l.bx0 = Math.min(l.bx0, c.inkX0 - e);
+					l.by0 = Math.min(l.by0, c.inkY0 - e);
+					l.bx1 = Math.max(l.bx1, c.inkX1 + e);
+					l.by1 = Math.max(l.by1, c.inkY1 + e);
+				}
+			paintBody(n, l.list, p, nw, nh);
+		}
+		if (needsFrame) l.volatile = true;
+		needsFrame = wasFrame || needsFrame;
+		recording = wasList;
+		recordingLayer = wasLayer;
+		hidden = wasHidden;
+		w.set(wx0, wy0, wx1, wy1);
+		w.ptx = wpx;
+		w.pty = wpy;
+		l.x0 = x0;
+		l.y0 = y0;
+		l.x1 = x1;
+		l.y1 = y1;
+		l.key = paintKey;
+		l.hidden = l.hiddenIn;
+		l.dirty = false;
+		l.recordedAt = paintFrame;
+		l.bump();
+		recorded++;
+	}
+
+	// (a scroller's content walked: moved by its scroll as it is now)
+	function walkLayer(l:Layer, c:Canvas, w:Walk) {
+		if (!l.scroll) {
+			paintNode(l.node, c);
+			return;
+		}
+		var n = l.node, sx = n.scrollX, sy = n.scrollY, scroll = sx != 0 || sy != 0;
+		if (w.mark && (sx != l.lastX || sy != l.lastY)) {
+			l.lastX = sx;
+			l.lastY = sy;
+			l.movedAt = paintFrame;
+		}
+		if (scroll) {
+			c.translate(-sx, -sy);
+			w.shift(-sx, -sy);
+		}
+		if (w.mark) ensure(l, w.x0, w.y0, w.x1, w.y1);
+		drawLayer(l, c, w);
+		if (scroll) {
+			c.translate(sx, sy);
+			w.ptx += sx;
+			w.pty += sy;
+		}
+	}
+
+	// (a layer's list replayed, or its tiles drawn where the canvas has them:
+	// not in the paint that recorded it, as what changed may change again)
+	function drawLayer(l:Layer, c:Canvas, w:Walk) {
+		if (w.draw && l.recordedAt != paintFrame && l.tiled()) {
+			var g = Std.downcast(c, TextureCanvas);
+			if (g != null) {
+				l.moving = paintFrame - l.movedAt < 3;
+				// (what it holds marked as it is reached, then its tiles)
+				if (w.mark) l.list.replay(nowhere, w);
+				if (g.layerTiles(l)) return;
+				if (w.mark) {
+					w.mark = false;
+					l.list.replay(c, w);
+					w.mark = true;
+					return;
+				}
+			}
+		}
+		l.list.replay(c, w);
+	}
+
+	// (a node reached for the first time, in the walk that marks: what its first paint sets off)
+	function firstPaint(n:Node, entering:Bool) @:privateAccess {
+		var s = n.style;
+		if (s.drawn) return;
+		s.drawn = true;
+		if (s.starting) n.restyleLater();
+		if (entering && n.entering) {
+			helder.ui.motion.Motions.enter(n);
+			n.layerChanged(true);
+			again = true;
+		}
+	}
+
+	// (the scrollbars of a scroller recorded in a layer: drawn live, as they fade and follow the pointer)
+	function walkBars(n:Node, nw:Float, nh:Float, c:Canvas, w:Walk)
+		if (w.draw && !(nativeScroll && nativeBars)) paintBars(n, c, nw, nh);
+
+	function walkFlights(c:Canvas, w:Walk) {
+		if (!w.draw || flights.length == 0) return;
+		var was = marking;
+		marking = true;
+		paintFlights(c);
+		marking = was;
+	}
 
 	function paintTree(canvas:Canvas) {
 		// (a glide's next step: another frame)
 		needsFrame = touchScroll.gliding;
 		paintFrame++;
-		cullX0 = cullY0 = 0;
-		cullX1 = width;
-		cullY1 = height;
+		walk.set(0, 0, width, height);
 		painting = this;
-		ptx = pty = 0;
+		walk.ptx = walk.pty = 0;
 		paintNode(root, canvas);
 		if (overlay.children.length > 0) paintNode(overlay, canvas);
-		// (matched elements flying: over everything, outside their ancestors' opacity and clips)
-		if (flights.length > 0) {
-			flying = true;
-			for (i in 0...flights.length) {
-				var fx = flightAt[2 * i], fy = flightAt[2 * i + 1];
-				cullX0 = -fx;
-				cullY0 = -fy;
-				cullX1 = width - fx;
-				cullY1 = height - fy;
-				ptx = fx;
-				pty = fy;
-				canvas.translate(fx, fy);
-				paintNode(flights[i], canvas);
-				canvas.translate(-fx, -fy);
-			}
-			flying = false;
-			flights.resize(0);
-			flightAt.resize(0);
-		}
+		if (flights.length > 0) paintFlights(canvas);
 		painting = null;
+	}
+
+	// (matched elements flying: over everything, outside their ancestors' opacity and clips)
+	function paintFlights(canvas:Canvas) {
+		var w = walk;
+		flying = true;
+		for (i in 0...flights.length) {
+			var fx = flightAt[2 * i], fy = flightAt[2 * i + 1];
+			w.set(-fx, -fy, width - fx, height - fy);
+			w.ptx = fx;
+			w.pty = fy;
+			canvas.translate(fx, fy);
+			paintNode(flights[i], canvas);
+			canvas.translate(-fx, -fy);
+		}
+		flying = false;
+		flights.resize(0);
+		flightAt.resize(0);
 	}
 
 	// the Ui painting now (a leaving node's content drawn out of its tree: helder.ui.motion)
 	public static var painting(default, null):Null<Ui> = null;
-	// (the translation motion and scrolling put the node being drawn at, from the window's; the
-	// matched elements flying, drawn last, where they were met)
-	var ptx = 0.0;
-	var pty = 0.0;
+	// (the matched elements flying, drawn last, where they were met (Walk.ptx: the
+	// translation motion and scrolling put the node being drawn at, from the window's))
 	final flights:Array<Node> = [];
 	final flightAt:Array<Float> = [];
 	var flying = false;
+	// (inside a leaving node: no layers there)
+	var ghosts = 0;
 
 	// (the paints so far: a node drawn in the last one has its number, Node.drawnAt)
 	var paintFrame = 0;
 
 	// the farthest any shadow drawn reaches outside its box (Style.shadow)
 	public static var shadowReach = 0.0;
-	// (what can be seen, in the coordinates of the node being drawn)
-	var cullX0 = 0.0;
-	var cullY0 = 0.0;
-	var cullX1 = 0.0;
-	var cullY1 = 0.0;
 	// (the node being drawn is hidden: Style.visibility, inherited)
 	var hidden = false;
 
+	// (what is seen is the walk's: in the coordinates of the node being drawn.
+	// Recording a layer, what changes it is recorded too, and what a paint
+	// sets off (a first paint's, Node.drawnAt, a flight) left to the walk)
 	function paintNode(n:Node, canvas:Canvas) {
 		var s = n.style;
 		if (s.display == None || n.width <= 0 && n.height <= 0 && n.children.length == 0) return;
-		if (!@:privateAccess s.drawn) {
-			@:privateAccess s.drawn = true;
-			if (@:privateAccess s.starting) @:privateAccess n.restyleLater();
-			if (@:privateAccess n.entering) helder.ui.motion.Motions.enter(n);
+		var dl = recording, w = walk;
+		// (a moving node's own layer: drawn by the walk, with its transform and opacity then)
+		if (dl != null && n.paintLayer != null && !flying && ghosts == 0) {
+			n.paintLayer.parent = recordingLayer;
+			dl.layer(n.paintLayer, hidden);
+			return;
+		}
+		// (its entry: at once where its first paint sets something off, else once it is seen to be drawn)
+		var at = -1;
+		if (dl != null) {
+			if (!s.drawn) at = dl.node(n, DisplayList.FIRST | (@:privateAccess n.entering ? DisplayList.ENTERING : 0));
+		} else if (!s.drawn && marking) @:privateAccess {
+			s.drawn = true;
+			if (s.starting) n.restyleLater();
+			if (n.entering) helder.ui.motion.Motions.enter(n);
 		}
 		// (motion: where its tracks draw it, helder.ui.motion.Present)
 		var p = n.present;
-		if (p != null && p.away) return;
+		if (p != null && p.away) return none(dl, at);
 		if (p != null && p.flying && !flying) {
-			flights.push(n);
-			flightAt.push(ptx);
-			flightAt.push(pty);
+			if (dl != null) {
+				if (at >= 0) none(dl, at);
+				dl.flight(n);
+			} else if (marking) {
+				flights.push(n);
+				flightAt.push(w.ptx);
+				flightAt.push(w.pty);
+			}
 			return;
 		}
 		var opacity = p == null ? s.opacity : s.opacity * p.presenceOpacity();
-		if (opacity <= 0) return;
+		if (opacity <= 0) return none(dl, at);
 		var dx = 0.0, dy = 0.0, nw = n.width, nh = n.height;
 		if (p != null) {
 			dx = p.dx();
@@ -544,28 +810,36 @@ class Ui {
 			nh = p.height();
 		}
 		var m = n.transformMatrix();
+		if (dl != null && s.position == Sticky) stick(n);
 		// (its ink, widened by what rings, shadows and glyphs' overhang add, out of sight: left out)
 		if (!n.inkAll) {
 			var e = focusRingOffset + focusRingWidth + shadowReach + 8 + Math.abs(nw - n.width) + Math.abs(nh - n.height);
-			if (n.inkX1 + dx + e <= cullX0 || n.inkX0 + dx - e >= cullX1 || n.inkY1 + dy + e <= cullY0 || n.inkY0 + dy - e >= cullY1) return;
+			var ax1 = n.inkX1 + dx + e, ax0 = n.inkX0 + dx - e, ay1 = n.inkY1 + dy + e, ay0 = n.inkY0 + dy - e;
+			var culled = w.culls(ax1, ax0, ay1, ay0);
+			if (dl != null && (at >= 0 || !culled)) {
+				if (at < 0) at = dl.node(n, 0);
+				dl.test(at, ax1, ax0, ay1, ay0);
+			}
+			if (culled) {
+				if (at >= 0) dl.end(at);
+				return;
+			}
 		}
-		@:privateAccess n.drawnAt = paintFrame;
-		var c0 = cullX0, c1 = cullY0, c2 = cullX1, c3 = cullY1;
+		if (dl != null && at < 0) at = dl.node(n, 0);
+		if (dl == null && marking) @:privateAccess n.drawnAt = paintFrame;
+		var c0 = w.x0, c1 = w.y0, c2 = w.x1, c3 = w.y1;
+		if (dl != null) dl.cullSave();
 		var moved = dx != 0 || dy != 0;
 		if (moved) {
 			canvas.translate(dx, dy);
-			cullX0 -= dx;
-			cullX1 -= dx;
-			cullY0 -= dy;
-			cullY1 -= dy;
-			ptx += dx;
-			pty += dy;
+			w.shift(dx, dy);
+			if (dl != null) dl.cullShift(dx, dy);
 		}
 		if (m != null) {
 			canvas.pushTransform(m.a, m.b, m.c, m.d, m.e, m.f);
 			// (under a transform: everything drawn)
-			cullX0 = cullY0 = -1e9;
-			cullX1 = cullY1 = 1e9;
+			w.all();
+			if (dl != null) dl.cullAll();
 		}
 		// (a group where more than one thing of it is drawn: its children, its
 		// content over its box; its ink's bounds, else the clip's)
@@ -576,6 +850,49 @@ class Ui {
 				else canvas.pushGroup(opacity, n.inkX0 - e, n.inkY0 - e, n.inkX1 - n.inkX0 + 2 * e, n.inkY1 - n.inkY0 + 2 * e);
 			} else canvas.pushOpacity(opacity);
 		}
+		// (its own layer, walked: recorded where what it paints changed, drawn)
+		var l = n.paintLayer;
+		if (walking && dl == null && l != null && !flying && ghosts == 0) {
+			if (w.mark) ensure(l, w.x0, w.y0, w.x1, w.y1);
+			drawLayer(l, canvas, w);
+		} else paintBody(n, canvas, p, nw, nh);
+		w.set(c0, c1, c2, c3);
+		if (dl != null) dl.cullRestore();
+		if (opacity < 1) canvas.popOpacity();
+		if (m != null) canvas.popTransform();
+		if (moved) {
+			canvas.translate(-dx, -dy);
+			w.ptx -= dx;
+			w.pty -= dy;
+			if (dl != null) dl.shiftPoint(-dx, -dy);
+		}
+		if (dl != null) dl.end(at);
+	}
+
+	// (a node that draws nothing: its entry, if it has one, ended)
+	inline function none(dl:Null<DisplayList>, at:Int) {
+		if (dl == null || at < 0) return;
+		dl.flag(at, DisplayList.NONE);
+		dl.end(at);
+	}
+
+	// (a sticky node recorded: its layer recorded again as its scroller scrolls)
+	function stick(n:Node) {
+		var sc = n.parent;
+		while (sc != null && sc.style.overflow != Scroll)
+			sc = sc.parent;
+		var l = recordingLayer;
+		if (sc == null || l.sticky.indexOf(sc) >= 0) return;
+		l.sticky.push(sc);
+		l.stuck.push(sc.scrollX);
+		l.stuck.push(sc.scrollY);
+	}
+
+	// (what a node paints at its place, its transform and opacity pushed: its
+	// box, its content, its children clipped and scrolled, its scrollbars, its
+	// outline and focus ring)
+	function paintBody(n:Node, canvas:Canvas, p:Null<helder.ui.motion.Present>, nw:Float, nh:Float) {
+		var s = n.style, dl = recording, w = walk;
 		var wasHidden = hidden;
 		if (s.visibility != null) hidden = s.visibility == Hidden;
 		// (each corner's radius and each side's border, when the style gives them)
@@ -626,24 +943,25 @@ class Ui {
 			var k = Math.max(nw / n.width, nh / n.height);
 			canvas.pushClip(n.absX, n.absY, nw, nh, s.radius, cs);
 			canvas.pushTransform(k, 0, 0, k, n.absX + nw / 2 - k * (n.absX + n.width / 2), n.absY + nh / 2 - k * (n.absY + n.height / 2));
-			cullX0 = cullY0 = -1e9;
-			cullX1 = cullY1 = 1e9;
+			w.all();
+			if (dl != null) dl.cullAll();
 			nw = n.width;
 			nh = n.height;
 		}
 		var pad = s.padding;
-		// (its content as laid out: a size moving does not lay its text out again)
-		if (n.hasContent() && !hidden)
+		// (its content as laid out: a size moving does not lay its text out again;
+		// a node of its own drawing, recorded, recorded again each frame)
+		if (n.hasContent() && !hidden) {
+			if (dl != null && n.paintsLive()) recordingLayer.volatile = true;
 			n.paintContent(canvas, n.absX + be.left + pad.left, n.absY + be.top + pad.top, Math.max(0, n.width - be.left - be.right - pad.left - pad.right),
 				Math.max(0, n.height - be.top - be.bottom - pad.top - pad.bottom));
+		}
 		var clip = s.overflow != Visible;
 		// (the padding box: its corners' radii less the wider side meeting there)
 		if (clip) {
 			canvas.pushClip(n.absX + be.left, n.absY + be.top, nw - be.horizontal, nh - be.vertical, padR, padC);
-			cullX0 = Math.max(cullX0, n.absX + be.left);
-			cullY0 = Math.max(cullY0, n.absY + be.top);
-			cullX1 = Math.min(cullX1, n.absX + nw - be.right);
-			cullY1 = Math.min(cullY1, n.absY + nh - be.bottom);
+			w.clip(n.absX + be.left, n.absY + be.top, n.absX + nw - be.right, n.absY + nh - be.bottom);
+			if (dl != null) dl.cullClip(n.absX + be.left, n.absY + be.top, n.absX + nw - be.right, n.absY + nh - be.bottom);
 		}
 		// (stretched past an end, Android's: a scale along its axis, anchored at that end)
 		var stretched = s.overflow == Scroll && @:privateAccess stretcher.node == n ? @:privateAccess stretcher.amount : 0.0;
@@ -652,53 +970,35 @@ class Ui {
 			var anchor = sx ? (stretched < 0 ? n.absX + be.left : n.absX + nw - be.right) : (stretched < 0 ? n.absY + be.top : n.absY + nh - be.bottom);
 			if (sx) canvas.pushTransform(k, 0, 0, 1, anchor * (1 - k), 0) else canvas.pushTransform(1, 0, 0, k, 0, anchor * (1 - k));
 			// (scaled: what was out of sight may come in, everything drawn while it lasts)
-			cullX0 = cullY0 = -1e9;
-			cullX1 = cullY1 = 1e9;
-		}
-		var scroll = s.overflow == Scroll && (n.scrollX != 0 || n.scrollY != 0);
-		if (scroll) {
-			canvas.translate(-n.scrollX, -n.scrollY);
-			cullX0 += n.scrollX;
-			cullX1 += n.scrollX;
-			cullY0 += n.scrollY;
-			cullY1 += n.scrollY;
-			ptx -= n.scrollX;
-			pty -= n.scrollY;
-		}
-		// (absolute and sticky children over the others, in their order, as CSS paints positioned boxes)
-		var order = n.paintOrder();
-		if (order != null) for (c in order) paintNode(c, canvas) else {
-			var positioned = false;
-			for (c in n.children)
-				if (c.style.position != Relative) positioned = true else paintNode(c, canvas);
-			if (positioned)
-				for (c in n.children)
-					if (c.style.position != Relative) paintNode(c, canvas);
-		}
-		// (its children leaving: drawn where they were, over the others, until their exits settle)
-		if (n.exits != null)
-			for (g in n.exits) {
-				var gp = g.present, gdx = n.absX + gp.gx - g.absX, gdy = n.absY + gp.gy - g.absY;
-				canvas.translate(gdx, gdy);
-				cullX0 -= gdx;
-				cullX1 -= gdx;
-				cullY0 -= gdy;
-				cullY1 -= gdy;
-				ptx += gdx;
-				pty += gdy;
-				paintNode(g, canvas);
-				canvas.translate(-gdx, -gdy);
-				cullX0 += gdx;
-				cullX1 += gdx;
-				cullY0 += gdy;
-				cullY1 += gdy;
-				ptx -= gdx;
-				pty -= gdy;
+			w.all();
+			if (dl != null) {
+				dl.cullAll();
+				recordingLayer.volatile = true;
 			}
-		if (scroll) {
-			canvas.translate(n.scrollX, n.scrollY);
-			ptx += n.scrollX;
-			pty += n.scrollY;
+		}
+		// (a scroller's content: its own layer, recorded, moved by the scroll as it is walked)
+		if (s.overflow == Scroll && dl != null && !flying && ghosts == 0) {
+			var l = n.contentLayer;
+			if (l == null) {
+				l = n.contentLayer = new Layer(n, true);
+				layers.push(l);
+			}
+			l.parent = recordingLayer;
+			dl.layer(l, hidden);
+		} else {
+			var sx = n.scrollX, sy = n.scrollY, scroll = s.overflow == Scroll && (sx != 0 || sy != 0);
+			if (scroll) {
+				canvas.translate(-sx, -sy);
+				w.shift(-sx, -sy);
+				if (dl != null) dl.cullShift(-sx, -sy);
+			}
+			paintScrolled(n, canvas);
+			if (scroll) {
+				canvas.translate(sx, sy);
+				w.ptx += sx;
+				w.pty += sy;
+				if (dl != null) dl.shiftPoint(sx, sy);
+			}
 		}
 		if (stretched != 0) canvas.popTransform();
 		if (clip) canvas.popClip();
@@ -708,13 +1008,61 @@ class Ui {
 			nw = p.width();
 			nh = p.height();
 		}
-		cullX0 = c0;
-		cullY0 = c1;
-		cullX1 = c2;
-		cullY1 = c3;
-		if (s.overflow == Scroll && !hidden && !(nativeScroll && nativeBars)) {
-			var shown = overlayBars ? barShown(n) : 1.0;
-			if (shown > 0) for (x in [false, true]) {
+		if (s.overflow == Scroll && !hidden) {
+			if (dl != null) dl.bars(n, nw, nh) else if (!(nativeScroll && nativeBars)) paintBars(n, canvas, nw, nh);
+		}
+		// (its outline over its content, the focus ring over that)
+		if (s.outlineWidth > 0 && !hidden && s.outlineStyle != None) {
+			var o = s.outlineOffset + s.outlineWidth;
+			canvas.rect(n.absX - o, n.absY - o, nw + 2 * o, nh + 2 * o, s.radius > 0 ? Math.max(0, s.radius + o) : 0, Color.TRANSPARENT,
+				s.outlineWidth, s.outlineColor ?? n.textColor(), cs == null ? null : new Corners(cs.topLeft > 0 ? Math.max(0, cs.topLeft + o) : 0,
+					cs.topRight > 0 ? Math.max(0, cs.topRight + o) : 0, cs.bottomRight > 0 ? Math.max(0, cs.bottomRight + o) : 0,
+					cs.bottomLeft > 0 ? Math.max(0, cs.bottomLeft + o) : 0), null, s.outlineStyle == Dashed ? Dashed : s.outlineStyle == Dotted ? Dotted : Solid);
+		}
+		if (n == focus && focusVisible && focusRingWidth > 0 && !hidden && (s.outlineStyle == null || s.outlineStyle == Auto)) {
+			var o = focusRingOffset + focusRingWidth;
+			canvas.rect(n.absX - o, n.absY - o, nw + 2 * o, nh + 2 * o, s.radius > 0 ? s.radius + o : 0, Color.TRANSPARENT, focusRingWidth,
+				focusRingColor, cs == null ? null : new Corners(cs.topLeft > 0 ? cs.topLeft + o : 0, cs.topRight > 0 ? cs.topRight + o : 0,
+					cs.bottomRight > 0 ? cs.bottomRight + o : 0, cs.bottomLeft > 0 ? cs.bottomLeft + o : 0));
+		}
+		hidden = wasHidden;
+	}
+
+	// (a scroller's content, or any node's children: absolute and sticky ones
+	// over the others, in their order, as CSS paints positioned boxes; its
+	// children leaving drawn where they were, over the others, until their exits settle)
+	function paintScrolled(n:Node, canvas:Canvas) {
+		var dl = recording, w = walk;
+		var order = n.paintOrder();
+		if (order != null) for (c in order) paintNode(c, canvas) else {
+			var positioned = false;
+			for (c in n.children)
+				if (c.style.position != Relative) positioned = true else paintNode(c, canvas);
+			if (positioned)
+				for (c in n.children)
+					if (c.style.position != Relative) paintNode(c, canvas);
+		}
+		if (n.exits == null) return;
+		if (dl != null) recordingLayer.volatile = true;
+		for (g in n.exits) {
+			var gp = g.present, gdx = n.absX + gp.gx - g.absX, gdy = n.absY + gp.gy - g.absY;
+			canvas.translate(gdx, gdy);
+			w.shift(gdx, gdy);
+			if (dl != null) dl.cullShift(gdx, gdy);
+			ghosts++;
+			paintNode(g, canvas);
+			ghosts--;
+			canvas.translate(-gdx, -gdy);
+			w.shift(-gdx, -gdy);
+			if (dl != null) dl.cullShift(-gdx, -gdy);
+		}
+	}
+
+	// (a scroller's scrollbars, over its content)
+	function paintBars(n:Node, canvas:Canvas, nw:Float, nh:Float) {
+		var s = n.style;
+		var shown = overlayBars ? barShown(n) : 1.0;
+		if (shown > 0) for (x in [false, true]) {
 				var t = Scrolling.thumb(n, x);
 				if (t == null) continue;
 				var b = Scrolling.barSize(n), track = Scrolling.inheritedBar(n, true), own = Scrolling.inheritedBar(n, false);
@@ -755,29 +1103,6 @@ class Ui {
 				if (shown < 1) c = (Math.round(c.a * shown) << 24) | ((c : Int) & 0xFFFFFF);
 				canvas.rect(t[0], t[1], t[2], t[3], b / 2, c, 0, 0);
 			}
-		}
-		// (its outline over its content, the focus ring over that)
-		if (s.outlineWidth > 0 && !hidden && s.outlineStyle != None) {
-			var o = s.outlineOffset + s.outlineWidth;
-			canvas.rect(n.absX - o, n.absY - o, nw + 2 * o, nh + 2 * o, s.radius > 0 ? Math.max(0, s.radius + o) : 0, Color.TRANSPARENT,
-				s.outlineWidth, s.outlineColor ?? n.textColor(), cs == null ? null : new Corners(cs.topLeft > 0 ? Math.max(0, cs.topLeft + o) : 0,
-					cs.topRight > 0 ? Math.max(0, cs.topRight + o) : 0, cs.bottomRight > 0 ? Math.max(0, cs.bottomRight + o) : 0,
-					cs.bottomLeft > 0 ? Math.max(0, cs.bottomLeft + o) : 0), null, s.outlineStyle == Dashed ? Dashed : s.outlineStyle == Dotted ? Dotted : Solid);
-		}
-		if (n == focus && focusVisible && focusRingWidth > 0 && !hidden && (s.outlineStyle == null || s.outlineStyle == Auto)) {
-			var o = focusRingOffset + focusRingWidth;
-			canvas.rect(n.absX - o, n.absY - o, nw + 2 * o, nh + 2 * o, s.radius > 0 ? s.radius + o : 0, Color.TRANSPARENT, focusRingWidth,
-				focusRingColor, cs == null ? null : new Corners(cs.topLeft > 0 ? cs.topLeft + o : 0, cs.topRight > 0 ? cs.topRight + o : 0,
-					cs.bottomRight > 0 ? cs.bottomRight + o : 0, cs.bottomLeft > 0 ? cs.bottomLeft + o : 0));
-		}
-		hidden = wasHidden;
-		if (opacity < 1) canvas.popOpacity();
-		if (m != null) canvas.popTransform();
-		if (moved) {
-			canvas.translate(-dx, -dy);
-			ptx -= dx;
-			pty -= dy;
-		}
 	}
 
 	// --- pointer ---
@@ -813,6 +1138,7 @@ class Ui {
 			var c = textSelection.node.textIndexAt(x, y);
 			if (c != textSelection.caret) {
 				textSelection.caret = c;
+				textSelection.node.layerChanged();
 				requestFrame();
 			}
 		}
@@ -1445,6 +1771,7 @@ class Ui {
 			}
 			n = n.parent;
 		}
+		if (textSelection != null) textSelection.node.layerChanged();
 		if (t == null || button != 1) {
 			if (textSelection != null) {
 				textSelection = null;
@@ -1473,6 +1800,7 @@ class Ui {
 		} else if (selClicks >= 3 || t.userSelect() == All) textSelection = {node: t, anchor: 0, caret: text.length};
 		else textSelection = {node: t, anchor: i, caret: i};
 		selecting = selClicks == 1 && t.userSelect() != All;
+		t.layerChanged();
 		requestFrame();
 	}
 
@@ -1822,6 +2150,9 @@ class Ui {
 		if (scroll && n != null) scrollIntoView(n);
 		var old = focus;
 		focus = n;
+		// (the focus ring drawn around it)
+		if (old != null) old.layerChanged();
+		if (n != null) n.layerChanged();
 		if (old != null) {
 			@:privateAccess old.setState(old.hovered, old.pressed, false);
 			if (old.onBlur != null) old.onBlur(Event.of(Blur, old, pointerX, pointerY));
@@ -2154,4 +2485,75 @@ class Ui {
 		for (g in [for (k in glides.keys()) if (contains(n, k)) k])
 			glides.remove(g);
 	}
+}
+
+// (a Ui's walks' host: what a layer's list leaves to the Ui that recorded it)
+private class UiWalk implements helder.ui.draw.Walk.WalkHost {
+	final ui:Ui;
+
+	public function new(ui:Ui)
+		this.ui = ui;
+
+	public function layer(l:Layer, c:Canvas, w:Walk)
+		@:privateAccess ui.walkLayer(l, c, w);
+
+	public function bars(n:Node, nw:Float, nh:Float, c:Canvas, w:Walk)
+		@:privateAccess ui.walkBars(n, nw, nh, c, w);
+
+	public function first(n:Node, entering:Bool)
+		@:privateAccess ui.firstPaint(n, entering);
+
+	public function flight(n:Node, x:Float, y:Float) {
+		@:privateAccess ui.flights.push(n);
+		@:privateAccess ui.flightAt.push(x);
+		@:privateAccess ui.flightAt.push(y);
+	}
+
+	public function flights(c:Canvas, w:Walk)
+		@:privateAccess ui.walkFlights(c, w);
+}
+
+// (what the first walk draws onto: nothing)
+private class Nowhere implements TextureCanvas {
+	public function new() {}
+
+	public function translate(dx:Float, dy:Float) {}
+
+	public function pushClip(x:Float, y:Float, w:Float, h:Float, radius:Float, ?corners:Corners) {}
+
+	public function popClip() {}
+
+	public function pushOpacity(alpha:Float) {}
+
+	public function pushGroup(alpha:Float, x:Float, y:Float, w:Float, h:Float) {}
+
+	public function popOpacity() {}
+
+	public function pushTransform(a:Float, b:Float, c:Float, d:Float, e:Float, f:Float) {}
+
+	public function popTransform() {}
+
+	public function rect(x:Float, y:Float, w:Float, h:Float, radius:Float, fill:Color, borderWidth:Float, border:Color, ?corners:Corners, ?sides:Edges,
+		style:BorderStyle = Solid) {}
+
+	public function shadow(x:Float, y:Float, w:Float, h:Float, radius:Float, color:Color, blur:Float, ?corners:Corners, ?offset:Array<Float>) {}
+
+	public function insetShadow(x:Float, y:Float, w:Float, h:Float, radius:Float, color:Color, blur:Float, dx:Float, dy:Float, spread:Float,
+		?corners:Corners) {}
+
+	public function path(p:Path, fill:Null<Paint>, ?stroke:Stroke) {}
+
+	public function image(img:helder.image.Image, x:Float, y:Float, w:Float, h:Float, u0:Float, v0:Float, u1:Float, v1:Float, radius:Float,
+		?corners:Corners) {}
+
+	public function text(p:Paragraph, x:Float, y:Float, width:Float, align:TextAlign, color:Color, ?colors:Array<Color>) {}
+
+	public function textShadow(p:Paragraph, x:Float, y:Float, width:Float, align:TextAlign, color:Color, blur:Float, ?colors:Array<Color>) {}
+
+	public function gpuTexture(t:helder.gfx.Texture, id:Int, x:Float, y:Float, w:Float, h:Float, radius:Float = 0.0, ?corners:Corners) {}
+
+	public function pass(f:Any) {}
+
+	public function layerTiles(l:Layer):Bool
+		return false;
 }

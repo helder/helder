@@ -1361,13 +1361,36 @@ it against layouts from scratch of random trees changed at random). Paint and hi
 (their ink: the box, overflowing text, children unless clipped, widened
 by shadows and the focus ring) miss the window or their scrollers. The
 accessibility tree is built again only when something it reads changed.
-Paint records the tree into a display list (`helder.ui.draw.DisplayList`:
-each Canvas call an opcode and its numbers in flat arrays, what it takes
-by reference in a table of resources with their versions, the arrays kept
-between frames), then replays it onto the renderer: the same calls, in the
-same order, as painting it directly (UiTest checks it on random trees
-changed at random), recording allocating nothing. The renderer draws a quad
-as four vertices and six indices, batched by texture.
+Paint is split into layers (`helder.ui.draw.Layer`): the root, each
+scroller's content (below its clip, above its scroll translation) and each
+node whose transform or opacity changes in paints one after another (until
+it has been still for 60). Each records into a display list of its own
+(`DisplayList`: each Canvas call an opcode and its numbers in flat arrays,
+what it takes by reference in a table of resources with their versions),
+kept from frame to frame while nothing it paints changed. A change to a
+node's style, text, image, layout or children, to motion's tracks, the
+focus ring, the selection or the theme marks the layer it is painted in
+(what children inherit, the layers inside it too); a layer holding a node
+of its own drawing (a subclass's `paintContent`, unless it overrides
+`paintsLive`), anything that asks for frames as it paints, a leaving node
+or an overscroll's stretch is recorded again each frame. A scroller's
+content is recorded over what is seen and a viewport each way (a quarter
+after a change), again once a scroll leaves that or a sticky node in it
+moves. The layers are then walked onto the canvas, each where its scroller
+and transform put it now, culled to what is seen: the calls painting
+directly gives, in its order (UiTest checks it on random trees changed at
+random over frames: scrollers and sticky rows, transforms and opacity
+moving, motion's entering and leaving rows), and a frame that only scrolls
+or moves a transform records nothing. Passes (`beforePass`) are entries of
+the lists, run in their place. A window's renderer (`Renderer.tiles`: not
+headless, X11's or a browser's) draws a layer that holds no other and
+draws nothing anew from tiles of its own, textures of 512 device pixels
+kept while it paints the same and moves by whole device pixels (snapped
+while it moves by fractions of one, drawn again where it rests), not in
+the paint that recorded it (what changed may change again); screenshots,
+story renders and golden images replay every layer (`LayerTest` checks the
+two pixel for pixel). The renderer draws a quad as four vertices and six
+indices, batched by texture.
 
 Memory per node is kept small: leaves share one empty children array; event
 handlers and the rarely set style properties (grid, transforms, shadows,
@@ -1377,8 +1400,11 @@ offsets...) are allocated when first set; paragraphs share their font sets.
 first layout, of the frames after a change, a scroll and an append, and of
 a steady frame; `RT_STATS=1` adds the collector's figures and the RSS, and
 a build with `-D hxmc.census` run with `RT_CENSUS=1` lists the live heap by
-type. At 5000 rows (40000 nodes) a steady frame paints in about 1.5 ms and a
-change to one row is laid out in about 3.
+type. At 5000 rows (35000 nodes, an M-series Mac) a steady frame paints in
+about 0.02 ms and allocates about 300 bytes (the scrollbars'; 14 KB before
+layers, the text in view painted again), a frame of a scroll going on paints
+in 0.02 (0.1 before), and a change to one row is laid out in about 0.1 and
+painted in 0.13; the tiles take about 30 MB.
 The first layout of 1000 rows (8000 nodes) takes about 30 ms, 60% of it
 laying out text and nearly half of that the collector copying the
 paragraphs' glyphs, which all survive: a compact glyph store in

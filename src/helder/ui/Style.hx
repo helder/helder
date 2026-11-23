@@ -1351,16 +1351,14 @@ class Style {
 		if (v == transform) return v;
 		theming().transform = v;
 		Ui.accessEpoch++;
-		node.styleChanged(false);
-		@:privateAccess node.inkChanged();
+		@:privateAccess node.inkChanged(true);
 		return v;
 	}
 
 	function set_transformOrigin(v:Null<Array<Dim>>):Null<Array<Dim>> {
 		if (v == transformOrigin) return v;
 		more().transformOrigin = v;
-		node.styleChanged(false);
-		@:privateAccess node.inkChanged();
+		@:privateAccess node.inkChanged(true);
 		return v;
 	}
 
@@ -1388,7 +1386,7 @@ class Style {
 		if (v == opacity) return v;
 		if ((v <= 0) != (opacity <= 0)) Ui.accessEpoch++;
 		opacity = v;
-		node.styleChanged(false);
+		@:privateAccess node.compositeChanged();
 		return v;
 	}
 
