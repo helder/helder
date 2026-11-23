@@ -68,6 +68,22 @@ class OsThread {
 		call(f, toMain, mainWake, toProgram, programWake);
 	}
 
+	// f on the main thread soon, from any thread, nothing waited for (the
+	// compositor's, from the render thread: a native view moved with its
+	// frame); at once without a program's thread
+	public static function post(f:Void->Void) {
+		if (program == 0) {
+			f();
+			return;
+		}
+		mutex.acquire();
+		toMain.push(new Call(f, null));
+		var w = waiting;
+		mutex.release();
+		mainWake.release();
+		if (w && wakeMain != null) wakeMain();
+	}
+
 	// f's value, on the main thread (as run)
 	public static function get<T>(f:Void->T):T {
 		if (program == 0 || NativeThread.current() != program) return f();
@@ -197,14 +213,14 @@ class OsThread {
 			mutex.acquire();
 			c.done = true;
 			mutex.release();
-			c.wake.release();
+			if (c.wake != null) c.wake.release();
 		}
 	}
 }
 
 private class Call {
 	public final f:Void->Void;
-	public final wake:Lock;
+	public final wake:Null<Lock>;
 	public var done = false;
 	public var error:Null<haxe.Exception> = null;
 

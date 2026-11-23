@@ -19,8 +19,15 @@ import sys.thread.Mutex;
 // threads in turn, each for a short while: the mirror's step, an event
 // routed, the offsets drained, a frame's state adopted. Its own frames are
 // drawn whole (no damage told; the program's next frame tells all of it
-// changed). Off with HELDER_ASYNC_SCROLL=0, and where the program has no
-// thread of its own (helder.os.OsThread), headless and for screenshots.
+// changed). What moves on its own between the program's frames moves in
+// its frames too, sampled at the time each is drawn: a layer's transform
+// and opacity (helder.ui.Mover: a transition, a spring, a tween, the same
+// closed forms the program samples), sticky nodes by the mirror's offsets,
+// overlay scrollbars shown and faded as the program's are; the native
+// views over a scroller (a macOS field, a web view) moved on the main
+// thread as each frame is drawn (helder.os.OsThread.post). Off with
+// HELDER_ASYNC_SCROLL=0, and where the program has no thread of its own
+// (helder.os.OsThread), headless and for screenshots.
 @:hxmc.unsafe(gc)
 @:access(helder.ui.Ui)
 @:access(helder.ui.ScrollMirror)
@@ -52,6 +59,14 @@ class Compositor implements RenderIdle {
 	var drained = -1e9;
 	var stepped = -1e9;
 	var drew = -1e9;
+	// (the render thread's: the overlay bars' last moves and how far they
+	// show, per frame; the time its last frame was drawn at, Ui.now's)
+	final barAt:Array<Float> = [];
+	final barShown:Array<Float> = [];
+	var animAt = -1e9;
+	// (the native views over scrollers, from the program's last frame; the moves to post)
+	var spots:Array<Spot> = [];
+	final posts:Array<Spot> = [];
 	// (the last input it took; whether the program is in a turn, not asleep)
 	var routedAt = -1e9;
 	var turn = true;
@@ -152,8 +167,10 @@ class Compositor implements RenderIdle {
 		var f = frames[filling];
 		r.composite = null;
 		ScrollShot.take(ui, shot);
+		var made = shot.natives.length == 0 ? [] : Spot.of(shot);
 		lock.acquire();
 		mirror.adopt(shot);
+		spots = made;
 		lock.release();
 		drewSince = false;
 		if (!f.ready || !r.ended(f)) return;
@@ -189,13 +206,17 @@ class Compositor implements RenderIdle {
 		shownAt.resize(0);
 		for (v in f.offsets)
 			shownAt.push(v);
+		barAt.resize(0);
+		for (v in f.barAt)
+			barAt.push(v);
+		animAt = Ui.now();
 		lock.release();
 	}
 
 	public function due():Float {
 		lock.acquire();
 		var f = shown, d = -1.0;
-		if (f != null && (mirror.moving || moved(f))) {
+		if (f != null && (mirror.moving || moved(f) || f.moves(animAt) || fading(animAt))) {
 			// (the program's to draw while it keeps the pace: it drained this vsync)
 			// (asleep: it wakes for the input and draws it, unless it has not drained since)
 			d = Math.max(drew + period * 0.5, turn ? drained + period * 0.6 : drained > routedAt ? drained + period * 0.6 : routedAt + period * 0.6);
@@ -223,20 +244,29 @@ class Compositor implements RenderIdle {
 			lock.release();
 			return;
 		}
+		var at = Ui.now();
 		if (t - stepped > period / 2) {
-			mirror.step(Ui.now());
+			mirror.step(at);
 			stepped = t;
 		}
-		var changed = offsetsNow(f);
-		if (!changed) {
+		var changed = offsetsNow(f, at);
+		if (!changed && !f.moves(animAt) && !fading(animAt)) {
 			drew = t;
 			lock.release();
 			return;
 		}
 		for (i in 0...now.length)
 			shownAt[i] = now[i];
+		animAt = at;
+		natives();
 		lock.release();
-		draw(r, f, null);
+		// (the native views moved on the main thread as the frame is drawn)
+		for (p in posts) {
+			var n = p.node, x = p.x, y = p.y, w = p.w, h = p.h, on = p.on;
+			helder.os.OsThread.post(() -> @:privateAccess n.placeNative(x, y, w, h, on));
+		}
+		posts.resize(0);
+		draw(r, f, null, at);
 		var at = haxe.Timer.stamp(), d = at - drew;
 		if (d > 0.002 && d < period * 1.5) period = period * 0.9 + d * 0.1;
 		drew = at;
@@ -245,18 +275,44 @@ class Compositor implements RenderIdle {
 		if (onFrame != null) onFrame(drew);
 	}
 
-	// (the mirror's offsets of f's scrollers into now: whether they differ from those shown)
-	function offsetsNow(f:CompositeFrame):Bool {
+	// (the mirror's offsets of f's scrollers into now, at t: whether they
+	// differ from those shown; an overlay bar moved shown again, and how far
+	// each shows then, as Ui.barShown has it)
+	function offsetsNow(f:CompositeFrame, t:Float):Bool {
 		now.resize(0);
+		barShown.resize(0);
 		var changed = false;
 		for (i in 0...f.nodes.length) {
 			var o = mirror.offsets(f.nodes[i]);
 			var x = o == null ? f.offsets[2 * i] : o.x, y = o == null ? f.offsets[2 * i + 1] : o.y;
 			now.push(x);
 			now.push(y);
-			if (x != shownAt[2 * i] || y != shownAt[2 * i + 1]) changed = true;
+			if (x != shownAt[2 * i] || y != shownAt[2 * i + 1]) {
+				changed = true;
+				if (f.overlay) barAt[i] = t;
+			}
+			var age = t - barAt[i];
+			barShown.push(age >= SHOWN + FADE ? 0 : age <= SHOWN ? 1 : 1 - (age - SHOWN) / FADE);
 		}
 		return changed;
+	}
+
+	static inline var SHOWN = @:privateAccess Ui.BAR_SHOWN;
+	static inline var FADE = @:privateAccess Ui.BAR_FADE;
+
+	// (whether an overlay bar fades at t)
+	function fading(t:Float):Bool {
+		for (v in barAt)
+			if (v > -1e9 && t - v < SHOWN + FADE) return true;
+		return false;
+	}
+
+	// (the native views over the scrollers moved: where they fall at the
+	// mirror's offsets, shown while inside their scroller's view; those that
+	// moved since, into posts)
+	function natives() {
+		for (p in spots)
+			if (p.at(mirror)) posts.push(p);
 	}
 
 	// a frame drawn at the mirror's offsets now, from the program's last,
@@ -266,18 +322,22 @@ class Compositor implements RenderIdle {
 		device.inOrder(r -> {
 			var f = shown;
 			if (f == null) return;
-			offsetsNow(f);
-			draw(r, f, capture);
+			var t = Ui.now();
+			offsetsNow(f, t);
+			for (i in 0...now.length)
+				shownAt[i] = now[i];
+			animAt = t;
+			draw(r, f, capture, t);
 		});
 		device.settle();
 	}
 
-	// (f's quads at the offsets now, drawn whole and presented)
-	function draw(r:Replay, f:CompositeFrame, capture:Null<haxe.io.Bytes>) {
+	// (f's quads at the offsets now and time t, drawn whole and presented)
+	function draw(r:Replay, f:CompositeFrame, capture:Null<haxe.io.Bytes>, t:Float) {
 		if (f.buffers.length == 0 || r.impl.width != f.width || r.impl.height != f.height) return;
 		var need = f.quads() * CompositeFrame.STRIDE;
 		if (out.length < need) out = Bytes.alloc(need * 2);
-		var n = f.compose(now, out, runTextures, runs);
+		var n = f.compose(now, t, f.overlay ? barShown : null, out, runTextures, runs);
 		if (n * CompositeFrame.STRIDE > f.capacity) return;
 		var b = f.buffers[ring = (ring + 1) % f.buffers.length], c = commands, bg = f.background;
 		c.clear();
@@ -345,6 +405,86 @@ class Compositor implements RenderIdle {
 		if (n > 1) c.int(b);
 		if (n > 2) c.int(d);
 		c.end();
+	}
+}
+
+// (a native view over a scroller: its node, its scrollers (its own first)
+// and their offsets as the program placed it, its scroller's view (x0, y0,
+// x1, y1, in the coordinates of the content it is in), where it was placed;
+// where it was last moved to)
+private class Spot {
+	public final node:Node;
+	final chain:Array<Node> = [];
+	final offsets:Array<Float> = [];
+	final view:Array<Float> = [];
+	final placed:Array<Float> = [];
+	public var x = 0.0;
+	public var y = 0.0;
+	public var w = 0.0;
+	public var h = 0.0;
+	public var on = false;
+
+	function new(n:Node) {
+		node = n;
+	}
+
+	public static function of(shot:ScrollShot):Array<Spot> {
+		var out = [];
+		for (k in 0...shot.natives.length) {
+			var s = new Spot(shot.natives[k]), i = shot.nativeAt[k], e = shot.entries[i];
+			for (j in 0...5)
+				s.placed.push(shot.placed[5 * k + j]);
+			s.x = s.placed[0];
+			s.y = s.placed[1];
+			s.w = s.placed[2];
+			s.h = s.placed[3];
+			s.on = s.placed[4] == 1;
+			for (v in [e.vx, e.vy, e.vx + e.vw, e.vy + e.vh])
+				s.view.push(v);
+			while (i >= 0) {
+				var c = shot.entries[i];
+				s.chain.push(c.node);
+				s.offsets.push(c.scrollX);
+				s.offsets.push(c.scrollY);
+				i = c.up;
+			}
+			out.push(s);
+		}
+		return out;
+	}
+
+	// (where it falls at the mirror's offsets: whether it moved)
+	public function at(m:ScrollMirror):Bool {
+		var dx = 0.0, dy = 0.0, ox = 0.0, oy = 0.0;
+		for (i in 0...chain.length) {
+			var o = @:privateAccess m.offsets(chain[i]);
+			if (o == null) continue;
+			var ex = offsets[2 * i] - o.x, ey = offsets[2 * i + 1] - o.y;
+			dx += ex;
+			dy += ey;
+			// (its scroller's view moves with those around it)
+			if (i > 0) {
+				ox += ex;
+				oy += ey;
+			}
+		}
+		var p = placed, nx = p[0] + dx, ny = p[1] + dy;
+		// (the view in the window: its own scroller's offsets as placed taken off the coordinates of its content)
+		var sx = 0.0, sy = 0.0;
+		for (i in 1...chain.length) {
+			sx += offsets[2 * i];
+			sy += offsets[2 * i + 1];
+		}
+		var x0 = view[0] - sx + ox, y0 = view[1] - sy + oy, x1 = view[2] - sx + ox, y1 = view[3] - sy + oy;
+		var inside = nx >= x0 - 0.5 && ny >= y0 - 0.5 && nx + p[2] <= x1 + 0.5 && ny + p[3] <= y1 + 0.5;
+		var show = p[4] == 1 && inside;
+		if (nx == x && ny == y && show == on) return false;
+		x = nx;
+		y = ny;
+		w = p[2];
+		h = p[3];
+		on = show;
+		return true;
 	}
 }
 #end

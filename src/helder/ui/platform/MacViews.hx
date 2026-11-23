@@ -454,6 +454,8 @@ class MacEditor implements PlatformEditor {
 	var field:Ptr;
 	var secure = false;
 	var focusing = false;
+	// (disposed: the compositor's moves, on the main thread too, may come after)
+	var gone = false;
 
 	public var listener(default, null):Null<PlatformEditorListener> = null;
 
@@ -480,6 +482,7 @@ class MacEditor implements PlatformEditor {
 
 	public function place(x:Float, y:Float, width:Float, height:Float, shown:Bool) {
 		helder.os.OsThread.run(() -> {
+			if (gone) return;
 			var c = @:privateAccess views.content(), b = Msg.rect(c, ObjC.sel("bounds"));
 			Arena.scoped(a -> {
 				var r = a.make(CGRect);
@@ -549,6 +552,8 @@ class MacEditor implements PlatformEditor {
 
 	public function dispose() {
 		helder.os.OsThread.run(() -> {
+			if (gone) return;
+			gone = true;
 			@:privateAccess MacViews.editors.remove(this);
 			if (editing()) Msg.bPtr(Msg.id(field, ObjC.sel("window")), ObjC.sel("makeFirstResponder:"), Ptr.nil());
 			Msg.vPtr(field, ObjC.sel("setDelegate:"), Ptr.nil());
@@ -584,6 +589,7 @@ class MacAreaEditor extends MacEditor {
 
 	override public function place(x:Float, y:Float, width:Float, height:Float, shown:Bool) {
 		helder.os.OsThread.run(() -> {
+			if (gone) return;
 			var c = @:privateAccess views.content(), b = Msg.rect(c, ObjC.sel("bounds"));
 			Arena.scoped(a -> {
 				var r = a.make(CGRect);
@@ -609,6 +615,8 @@ class MacAreaEditor extends MacEditor {
 
 	override public function dispose() {
 		helder.os.OsThread.run(() -> {
+			if (gone) return;
+			gone = true;
 			@:privateAccess MacViews.editors.remove(this);
 			if (editing()) Msg.bPtr(Msg.id(scroll, ObjC.sel("window")), ObjC.sel("makeFirstResponder:"), Ptr.nil());
 			Msg.vPtr(field, ObjC.sel("setDelegate:"), Ptr.nil());

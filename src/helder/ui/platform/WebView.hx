@@ -130,7 +130,13 @@ class WebView extends Node implements WebViewListener {
 		if (u != null && @:privateAccess u.natives.indexOf(this) < 0) @:privateAccess u.natives.push(this);
 	}
 
+	override function placeNative(x:Float, y:Float, width:Float, height:Float, shown:Bool) {
+		var v = native;
+		if (v != null) v.place(x, y, width, height, shown);
+	}
+
 	function drop() {
+		placed = null;
 		if (native == null) return;
 		native.dispose();
 		native = null;
@@ -162,6 +168,7 @@ class WebView extends Node implements WebViewListener {
 		var b = windowBounds();
 		var on = visible() && w > 0 && h > 0;
 		native.place(b.x + be.left, b.y + be.top, w, h, on);
+		placed = [b.x + be.left, b.y + be.top, w, h, on ? 1 : 0];
 		native.poll();
 	}
 

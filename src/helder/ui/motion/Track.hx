@@ -48,6 +48,28 @@ class Track {
 	public inline function moving():Bool
 		return kind != REST;
 
+	// whether its segment begins when it is next sampled (its start not known yet)
+	public inline function pending():Bool
+		return kind != REST && t0 < 0;
+
+	// a copy, sampled apart from it (the compositor's: helder.ui.Mover)
+	public function copy():Track {
+		var c = new Track(value, eps);
+		c.target = target;
+		c.velocity = velocity;
+		c.kind = kind;
+		c.t0 = t0;
+		c.end = end;
+		c.c0 = c0;
+		c.c1 = c1;
+		c.c2 = c2;
+		c.c3 = c3;
+		c.c4 = c4;
+		c.c5 = c5;
+		c.easing = easing;
+		return c;
+	}
+
 	// at v at once, still
 	public function set(v:Float) {
 		target = value = v;
@@ -232,11 +254,12 @@ class Track {
 		return t;
 	}
 
-	// (the easing's slope at the last bezier's point: dy/dx)
-	static var slope = 0.0;
+	// (the easing's slope at the last bezier's point: dy/dx; the track's own,
+	// as the compositor samples its copies on another thread)
+	var slope = 0.0;
 
 	// a cubic Bézier's y where its x is u (0 to 1), its slope dy/dx left in slope
-	public static function bezier(e:Null<Array<Float>>, u:Float):Float {
+	function bezier(e:Null<Array<Float>>, u:Float):Float {
 		if (e == null) {
 			slope = 1;
 			return u;

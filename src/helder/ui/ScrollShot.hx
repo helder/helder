@@ -5,7 +5,8 @@ package helder.ui;
 // scrollbars; the nodes that may claim a drag or a wheel (a slider, a
 // canvas, a pointer, wheel or gesture handler: the gate) and those that
 // cover a scroller painted under them, in paint order, each with its clip;
-// what the keys would scroll. Taken on the program's thread (take) into
+// what the keys would scroll; the native views over scrollers, where
+// they were placed. Taken on the program's thread (take) into
 // entries kept from frame to frame; handed over whole, read by the
 // compositor only.
 @:allow(helder.ui)
@@ -38,6 +39,12 @@ class ScrollShot {
 	public var keys = 0;
 	// the frame it was taken in
 	public var frame = 0;
+	// the native views over scrollers (a macOS field, a web view): each its
+	// node, its scroller's entry, where the program placed it (x, y, w, h,
+	// shown: 1, else 0; in the window's points)
+	public final natives:Array<Node> = [];
+	public final nativeAt:Array<Int> = [];
+	public final placed:Array<Float> = [];
 
 	public function new() {}
 
@@ -92,6 +99,25 @@ class ScrollShot {
 			}
 		}
 		shot.keys = keyClaims(ui);
+		// (the native views in scrollers, where the program placed them)
+		shot.natives.resize(0);
+		shot.nativeAt.resize(0);
+		shot.placed.resize(0);
+		for (v in ui.natives) {
+			var r = v.placed;
+			if (r == null) continue;
+			var sc = v.parent, at = -1;
+			while (sc != null && sc.style.overflow != Scroll)
+				sc = sc.parent;
+			if (sc == null) continue;
+			for (i in 0...shot.count)
+				if (shot.entries[i].node == sc && shot.entries[i].kind == SCROLLER) at = i;
+			if (at < 0) continue;
+			shot.natives.push(v);
+			shot.nativeAt.push(at);
+			for (x in r)
+				shot.placed.push(x);
+		}
 	}
 
 	// the scroll keys, as bits
@@ -224,9 +250,6 @@ private class Taking {
 				e.scrollsY = s.overflowY == Scroll;
 				e.rtl = n.rtl();
 				e.own = ui.mirrorOwn(n);
-				// (the program's to scroll: sticky nodes in it, placed by the offset; a native view over it, the system's to move)
-				var l = n.contentLayer;
-				e.async = !(l != null && l.sticky.length > 0) && !natives(n);
 				bars(n, e);
 				var inner = covers.length;
 				walkChildren(n, i, i, -1e9, -1e9, 1e9, 1e9);
@@ -269,17 +292,6 @@ private class Taking {
 			if (c.style.position == Relative) walk(c, up, outer, x0, y0, x1, y1);
 		for (c in n.children)
 			if (c.style.position != Relative) walk(c, up, outer, x0, y0, x1, y1);
-	}
-
-	// (whether a native view of the platform's is over a node in n)
-	function natives(n:Node):Bool {
-		for (v in ui.natives) {
-			var p = v.parent;
-			while (p != null && p != n)
-				p = p.parent;
-			if (p == n) return true;
-		}
-		return false;
 	}
 
 	// (whether n is over a scroller painted before it that it is not in)

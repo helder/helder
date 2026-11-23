@@ -380,16 +380,29 @@ class WaylandWindow {
 		}
 		if (caps & 4 != 0 && touch.isNull()) {
 			touch = seat.getTouch();
+			// (read on the main thread with the pointer and the keyboard: its
+			// events routed to the compositor there, the shared slots
+			// (Pointers) written by the program's poll, as it takes them)
+			if (!inputQueue.isNull()) WaylandClient.wl_proxy_set_queue(touch, inputQueue);
 			var e = new WlTouchEvents();
 			e.down = (serial, time, s, id, x, y) -> {
 				inputSerial = serial;
 				var w = find(s);
 				if (w == null) return;
 				var k = w.scale();
+				if (onMain()) {
+					rawTouch(w, PointerDown, id, x * k, y * k, time);
+					return;
+				}
 				var p = Pointers.press(w.owner, id, helder.os.PointerType.Touch, x * k, y * k, 1, time);
 				if (p != null) Pointers.fill(take(w, PointerDown), PointerDown, p, 1, mods);
 			};
 			e.motion = (time, id, x, y) -> {
+				if (onMain()) {
+					var t = mainTouches.get(id);
+					if (t != null) rawTouch(t.window, PointerMove, id, x * t.window.scale(), y * t.window.scale(), time);
+					return;
+				}
 				var p = Pointers.find(id, helder.os.PointerType.Touch);
 				if (p == null) return;
 				var w = byWindow(p.window);
@@ -398,23 +411,99 @@ class WaylandWindow {
 				if (w != null) Pointers.fill(take(w, PointerMove), PointerMove, p, 0, mods);
 			};
 			e.up = (serial, time, id) -> {
+				if (onMain()) {
+					var t = mainTouches.get(id);
+					if (t != null) rawTouch(t.window, PointerUp, id, t.x, t.y, time);
+					return;
+				}
 				var p = Pointers.find(id, helder.os.PointerType.Touch);
 				if (p == null) return;
 				Pointers.lift(p, false, time);
 				var w = byWindow(p.window);
 				if (w != null) Pointers.fill(take(w, PointerUp), PointerUp, p, 1, mods);
 			};
-			e.cancel = () -> for (w in open) {
-				var t = haxe.Timer.stamp() * 1000;
-				for (i in 1...16) {
-					var p = Pointers.find(i, helder.os.PointerType.Touch);
-					if (p == null) continue;
-					Pointers.lift(p, true, t);
-					Pointers.fill(take(w, PointerCancel), PointerCancel, p, 0, mods);
+			e.cancel = () -> {
+				if (onMain()) {
+					var t = haxe.Timer.stamp() * 1000;
+					for (id in [for (k in mainTouches.keys()) k]) {
+						var k = mainTouches.get(id);
+						rawTouch(k.window, PointerCancel, id, k.x, k.y, t);
+					}
+					return;
+				}
+				for (w in open) {
+					var t = haxe.Timer.stamp() * 1000;
+					for (i in 1...16) {
+						var p = Pointers.find(i, helder.os.PointerType.Touch);
+						if (p == null) continue;
+						Pointers.lift(p, true, t);
+						Pointers.fill(take(w, PointerCancel), PointerCancel, p, 0, mods);
+					}
 				}
 			};
 			touch.listen(e);
 		}
+	}
+
+	// --- touch read on the main thread
+
+	// (the touches down as the main thread reads them: their window, where
+	// they are, their slot for the compositor's routing)
+	static final mainTouches = new Map<Int, MainTouch>();
+
+	static inline function onMain():Bool
+		return mainReads() && hxmc.NativeThread.current() == 1;
+
+	// (a touch's event made on the main thread: routed there with a pointer
+	// of its own (the slots are the program's), its raw values kept for the
+	// program's poll (touched))
+	static function rawTouch(w:WaylandWindow, kind:EventKind, id:Int, x:Float, y:Float, time:Float) {
+		var t = mainTouches.get(id);
+		if (kind == PointerDown) {
+			if (t != null) mainTouches.remove(id);
+			var slot = 1;
+			while ([for (k in mainTouches) k.slot].indexOf(slot) >= 0)
+				slot++;
+			if (slot >= Pointers.MAX) return;
+			mainTouches.set(id, t = new MainTouch(w, slot));
+		}
+		if (t == null) return;
+		t.x = x;
+		t.y = y;
+		var p = @:privateAccess new Pointer(t.slot);
+		@:privateAccess p.pressAt(w.owner, helder.os.PointerType.Touch, x, y, 1, 1, time, false, 0);
+		if (kind == PointerUp || kind == PointerCancel) mainTouches.remove(id);
+		var e = take(w, kind);
+		e.button = -1;
+		e.key = id;
+		e.deltaX = x;
+		e.deltaY = y;
+		e.time = time;
+		e.mods = mods;
+		e.pointer = p;
+	}
+
+	// (a touch's event from the main thread, as the program takes it: the slots written, its pointer the slot's; false: dropped)
+	static function touched(e:Event):Bool {
+		var id = e.key, x = e.deltaX, y = e.deltaY, time = e.time, kind = e.kind, mods = e.mods;
+		var w = byWindow(e.window);
+		if (w == null) return false;
+		var p = switch kind {
+			case PointerDown: Pointers.press(w.owner, id, helder.os.PointerType.Touch, x, y, 1, time);
+			case _: Pointers.find(id, helder.os.PointerType.Touch);
+		}
+		if (p == null) return false;
+		switch kind {
+			case PointerMove:
+				@:privateAccess p.moveTo(x, y, 1, time);
+			case PointerUp:
+				Pointers.lift(p, false, time);
+			case PointerCancel:
+				Pointers.lift(p, true, time);
+			case _:
+		}
+		Pointers.fill(e, kind, p, kind == PointerDown || kind == PointerUp ? 1 : 0, mods);
+		return true;
 	}
 
 	static inline function bit(mask:Int, index:Int):Bool
@@ -1127,8 +1216,9 @@ class WaylandWindow {
 		queue.resize(0);
 		inputLock.release();
 		for (e in events) {
-			if (e.routed < 0) Window.routed(e);
-			onEvent(e);
+			var keep = e.button != -1 || e.pointer == null || touched(e);
+			if (keep && e.routed < 0) Window.routed(e);
+			if (keep) onEvent(e);
 			inputLock.acquire();
 			pool.push(e);
 			inputLock.release();
@@ -1251,5 +1341,17 @@ class WaylandWindow {
 			return;
 		}
 		read(seconds < 0 ? -1 : Std.int(seconds * 1000));
+	}
+}
+
+private class MainTouch {
+	public final window:WaylandWindow;
+	public final slot:Int;
+	public var x = 0.0;
+	public var y = 0.0;
+
+	public function new(window, slot) {
+		this.window = window;
+		this.slot = slot;
 	}
 }

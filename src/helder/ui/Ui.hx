@@ -802,7 +802,8 @@ class Ui extends ScrollHost {
 			// (over what it was recorded over: the compositor moves it)
 			w.save();
 			w.set(l.x0, l.y0, l.x1, l.y1);
-			drawLayer(l, c, w);
+			// (sticky nodes in it painted live: the compositor moves them by its offsets, helder.ui.Mover)
+			if (l.sticky.length > 0) paintScrolled(n, c) else drawLayer(l, c, w);
 			w.restore();
 			g.leave();
 		} else
@@ -1000,7 +1001,16 @@ class Ui extends ScrollHost {
 			return;
 		}
 		var opacity = p == null ? s.opacity : s.opacity * p.presenceOpacity();
-		if (opacity <= 0) return none(dl, at);
+		var m = n.transformMatrix();
+		// (the compositor's walk: what moves on its own drawn at its opacity's 1, all of it, the compositor's to move;
+		// one unseen as its layer is stale: left out)
+		var mv = composing != null && dl == null && !flying && ghosts == 0 && (n.paintLayer != null || s.position == Sticky) ? Mover.of(n, m,
+			opacity) : null;
+		if (mv != null && opacity <= 0) {
+			var l = n.paintLayer;
+			if (l != null && (l.dirty || l.recordedAt < 0)) mv = null;
+		}
+		if (opacity <= 0 && mv == null) return none(dl, at);
 		var dx = 0.0, dy = 0.0, nw = n.width, nh = n.height;
 		if (p != null) {
 			dx = p.dx();
@@ -1008,10 +1018,9 @@ class Ui extends ScrollHost {
 			nw = p.width();
 			nh = p.height();
 		}
-		var m = n.transformMatrix();
 		if (dl != null && s.position == Sticky) stick(n);
 		// (its ink, widened by what rings, shadows and glyphs' overhang add, out of sight: left out)
-		if (!n.inkAll) {
+		if (!n.inkAll && mv == null) {
 			var e = focusRingOffset + focusRingWidth + shadowReach + 8 + Math.abs(nw - n.width) + Math.abs(nh - n.height);
 			var ax1 = n.inkX1 + dx + e, ax0 = n.inkX0 + dx - e, ay1 = n.inkY1 + dy + e, ay0 = n.inkY0 + dy - e;
 			var culled = w.culls(ax1, ax0, ay1, ay0);
@@ -1034,6 +1043,8 @@ class Ui extends ScrollHost {
 			w.shift(dx, dy);
 			if (dl != null) dl.cullShift(dx, dy);
 		}
+		var tagged = mv != null && composing.mover(mv);
+		if (tagged) w.all();
 		if (m != null) {
 			canvas.pushTransform(m.a, m.b, m.c, m.d, m.e, m.f);
 			// (under a transform: everything drawn)
@@ -1042,7 +1053,7 @@ class Ui extends ScrollHost {
 		}
 		// (a group where more than one thing of it is drawn: its children, its
 		// content over its box; its ink's bounds, else the clip's)
-		if (opacity < 1) {
+		if (opacity < 1 && !tagged) {
 			if (n.children.length > 0 || n.exits != null || n.hasContent() && (s.background.a > 0 || s.borderWidth > 0 || s.backgroundImage != null)) {
 				var e = focusRingOffset + focusRingWidth + shadowReach + 8 + Math.abs(nw - n.width) + Math.abs(nh - n.height);
 				if (n.inkAll || m != null) canvas.pushGroup(opacity, -1e6, -1e6, 2e6, 2e6);
@@ -1063,8 +1074,9 @@ class Ui extends ScrollHost {
 		} else paintBody(n, canvas, p, nw, nh);
 		w.set(c0, c1, c2, c3);
 		if (dl != null) dl.cullRestore();
-		if (opacity < 1) canvas.popOpacity();
+		if (opacity < 1 && !tagged) canvas.popOpacity();
 		if (m != null) canvas.popTransform();
+		if (tagged) composing.leave();
 		if (moved) {
 			canvas.translate(-dx, -dy);
 			w.ptx -= dx;
@@ -1202,7 +1214,15 @@ class Ui extends ScrollHost {
 				w.shift(-sx, -sy);
 				if (dl != null) dl.cullShift(-sx, -sy);
 			}
-			paintScrolled(n, canvas);
+			var g = s.overflow == Scroll && dl == null ? composing : null;
+			if (g != null && g.enter(n, 0)) {
+				w.save();
+				w.all();
+				paintScrolled(n, canvas);
+				w.restore();
+				g.leave();
+			} else
+				paintScrolled(n, canvas);
 			if (scroll) {
 				canvas.translate(sx, sy);
 				w.ptx += sx;
@@ -1274,7 +1294,8 @@ class Ui extends ScrollHost {
 	// (a scroller's scrollbars, over its content)
 	function paintBars(n:Node, canvas:Canvas, nw:Float, nh:Float) {
 		var s = n.style;
-		var shown = overlayBars ? barShown(n) : 1.0;
+		// (the compositor's walk: drawn shown, faded by the compositor as they would be here)
+		var shown = overlayBars ? composing != null ? 1.0 : barShown(n) : 1.0;
 		if (shown > 0) for (x in [false, true]) {
 				var t = Scrolling.thumb(n, x);
 				if (t == null) continue;
@@ -1285,7 +1306,7 @@ class Ui extends ScrollHost {
 					var corner = Scrolling.maxScroll(n, !x) > 0 && !overlay ? g : 0;
 					var strip:Null<Array<Float>> = overlay ? null : x ? [n.absX + be.left + (rtl ? corner : 0), n.absY + nh - be.bottom - g, nw - be.horizontal - corner, g] : [
 						rtl ? n.absX + be.left : n.absX + nw - be.right - g, n.absY + be.top, g, nh - be.vertical - corner];
-					var tag = strip == null && composing != null && composing.enter(n, x ? 1 : 2);
+					var tag = strip == null && composing != null && composing.enter(n, (x ? 1 : 2) | (overlayBars ? 256 << 2 : 0));
 					scrollbarArt.paint(canvas, !x, overlay, dark, scale, strip, t, drag == n && dragX == x || overBar(n, x), shown);
 					if (tag) composing.leave();
 					continue;
@@ -1315,8 +1336,8 @@ class Ui extends ScrollHost {
 					case MacLegacy: active ? (dark ? 0xFF939393 : 0x80000000) : (dark ? 0xFF6B6B6B : 0x3A000000);
 					case _: active ? scrollbarActiveColor : scrollbarColor;
 				};
+				var tag = composing != null && composing.enter(n, (x ? 1 : 2) | (overlayBars && c.a > 0 ? c.a << 2 : 0));
 				if (shown < 1) c = (Math.round(c.a * shown) << 24) | ((c : Int) & 0xFFFFFF);
-				var tag = composing != null && composing.enter(n, x ? 1 : 2);
 				canvas.rect(t[0], t[1], t[2], t[3], b / 2, c, 0, 0);
 				if (tag) composing.leave();
 			}
@@ -2901,6 +2922,9 @@ private class Nowhere implements TextureCanvas {
 		return false;
 
 	public function enter(n:Node, kind:Int):Bool
+		return false;
+
+	public function mover(m:helder.ui.Mover):Bool
 		return false;
 
 	public function leave() {}

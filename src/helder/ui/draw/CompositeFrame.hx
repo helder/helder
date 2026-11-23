@@ -10,12 +10,19 @@ import helder.ui.Node;
 // one's scroll and those around it), the one its clip is in, and a
 // scrollbar's thumb (moved along its track); a tiled scroller's tiles kept
 // as tiles, all of those drawn over what its layer was recorded over, cut
-// to its clip where they fall at the compositor's offsets. Filled on the
-// program's thread, then read by the compositor's only (two, in turn).
+// to its clip where they fall at the compositor's offsets. What moves on
+// its own (helder.ui.Mover: a layer's transform and opacity under a
+// transition, a spring or a tween; a sticky node) is drawn at its opacity's
+// 1 and tagged too: its quads turned by its transform's change, in the
+// target's pixels, and faded by its opacity, as sampled at the time drawn;
+// a scroller inside one leaves it as drawn. An overlay scrollbar's thumb is
+// drawn shown and faded as the program's would. Filled on the program's
+// thread, then read by the compositor's only (two, in turn).
 @:allow(helder.ui.draw)
 class CompositeFrame {
 	public static inline var STRIDE = 224;
 	static inline var GROUP = 16;
+	static inline var MOVER = 12;
 	// the quads, an instance each, their runs' textures (Renderer's QuadBatch, not uploaded)
 	final batch = new QuadBatch(STRIDE, 256, true);
 	final textures:Array<Null<Texture>> = [];
@@ -23,6 +30,25 @@ class CompositeFrame {
 	final content:Array<Int> = [];
 	final clip:Array<Int> = [];
 	final thumb:Array<Int> = [];
+	// per quad: the mover it is in, its clip's (-1: none), a thumb's fade
+	// (its colour's alpha as drawn shown, 256: an opacity of its own; 0: none)
+	final mover:Array<Int> = [];
+	final clipMover:Array<Int> = [];
+	final fade:Array<Int> = [];
+	// (a thumb's quads' edges before the grid: its quad, x0, y0, x1, y1, in device pixels)
+	final thumbEdges:Array<Float> = [];
+	// the movers: each its parent mover, its sticky scroller's frame (-1:
+	// none), whether a scroller inside it keeps it as drawn, the transform
+	// around it (the target's pixels from the scaled ones), the scale, the
+	// canvas's translation (MOVER floats); per mover sampled (compose's):
+	// the transform's change in the target's pixels and the opacity, from
+	// those around it too (7 floats)
+	final movers:Array<helder.ui.Mover> = [];
+	final moverData:Array<Float> = [];
+	final moved:Array<Float> = [];
+	// (each scroller frame's overlay bars: when it last moved (Ui.barMoved's), -1e9: none); whether its bars are overlay ones
+	final barAt:Array<Float> = [];
+	public var overlay(default, null) = false;
 	// the scrollers' frames: their nodes, the frame around each (-1: none),
 	// their offsets as drawn, their thumbs (per axis: track's start and
 	// length, thumb's length, range, start)
@@ -70,6 +96,14 @@ class CompositeFrame {
 		content.resize(0);
 		clip.resize(0);
 		thumb.resize(0);
+		mover.resize(0);
+		clipMover.resize(0);
+		fade.resize(0);
+		thumbEdges.resize(0);
+		movers.resize(0);
+		moverData.resize(0);
+		barAt.resize(0);
+		overlay = false;
 		nodes.resize(0);
 		parents.resize(0);
 		offsets.resize(0);
@@ -90,6 +124,9 @@ class CompositeFrame {
 		parents.push(parent);
 		offsets.push(n.scrollX);
 		offsets.push(n.scrollY);
+		var u = n.ui, m = u == null || !u.overlayBars ? null : @:privateAccess u.barMoved.get(n);
+		if (u != null && u.overlayBars) overlay = true;
+		barAt.push(m == null ? -1e9 : m[2]);
 		for (x in [true, false]) {
 			var t = @:privateAccess Scrolling.thumb(n, x);
 			if (t == null) {
@@ -105,6 +142,123 @@ class CompositeFrame {
 			bars.push(@:privateAccess Scrolling.scrollStart(n, x));
 		}
 		return nodes.length - 1;
+	}
+
+	// (mover m drawn inside mover parent, its sticky scroller's frame f, under the renderer's state then)
+	function addMover(m:helder.ui.Mover, parent:Int, f:Int, flat:Bool, a:Float, b:Float, c:Float, d:Float, e:Float, ff:Float, s:Float,
+			tx:Float, ty:Float):Int {
+		movers.push(m);
+		for (v in [parent, f, 0, flat ? 1 : a, flat ? 0 : b, flat ? 0 : c, flat ? 1 : d, flat ? 0 : e, flat ? 0 : ff, s, tx, ty])
+			moverData.push(v);
+		return movers.length - 1;
+	}
+
+	inline function moverParent(m:Int):Int
+		return Std.int(moverData[m * MOVER]);
+
+	inline function freeze(m:Int)
+		moverData[m * MOVER + 2] = 1;
+
+	// whether something in it moves on its own until after t (a mover, an overlay bar fading)
+	public function moves(t:Float):Bool {
+		for (i in 0...movers.length)
+			if (moverData[i * MOVER + 2] == 0 && movers[i].until > t) return true;
+		return false;
+	}
+
+	// whether a mover moves with a scroll
+	public function sticks():Bool {
+		for (i in 0...movers.length)
+			if (moverData[i * MOVER + 2] == 0 && moverData[i * MOVER + 1] >= 0) return true;
+		return false;
+	}
+
+	// (each mover sampled at t, the scrollers at now: into moved)
+	function sample(now:Array<Float>, t:Float) {
+		moved.resize(movers.length * 7);
+		var m1 = one, k = moverData;
+		for (j in 0...movers.length) {
+			var o = j * MOVER, q = j * 7, mv = movers[j];
+			var a = 1.0, b = 0.0, c = 0.0, d = 1.0, e = 0.0, f = 0.0, al = 1.0;
+			if (k[o + 2] != 0) al = mv.opacity else {
+				var fr = Std.int(k[o + 1]);
+				al = mv.sample(t, fr >= 0 ? now[2 * fr] : 0, fr >= 0 ? now[2 * fr + 1] : 0, m1);
+				var m0 = mv.drawn;
+				// (K = m1 m0⁻¹, in the UI's points; D = R A K A⁻¹ R⁻¹ in the target's
+				// pixels, A the scale after the canvas's translation, R the transform around it)
+				set(ta, m1.a, m1.b, m1.c, m1.d, m1.e, m1.f);
+				if (m0 != null) {
+					set(tb, m0.a, m0.b, m0.c, m0.d, m0.e, m0.f);
+					invert(tb);
+					mul(ta, ta, tb);
+				}
+				var s = k[o + 9];
+				set(tb, s, 0, 0, s, s * k[o + 10], s * k[o + 11]);
+				mul(tc, tb, ta);
+				invert(tb);
+				mul(tc, tc, tb);
+				set(tb, k[o + 3], k[o + 4], k[o + 5], k[o + 6], k[o + 7], k[o + 8]);
+				mul(tc, tb, tc);
+				invert(tb);
+				mul(tc, tc, tb);
+				a = tc[0];
+				b = tc[1];
+				c = tc[2];
+				d = tc[3];
+				e = tc[4];
+				f = tc[5];
+			}
+			var p = Std.int(k[o]);
+			if (p >= 0) {
+				// (the parent's after its own)
+				var r = p * 7, pa = moved[r], pb = moved[r + 1], pc = moved[r + 2], pd = moved[r + 3];
+				var na = pa * a + pc * b, nb = pb * a + pd * b, nc = pa * c + pc * d, nd = pb * c + pd * d;
+				var ne = pa * e + pc * f + moved[r + 4], nf = pb * e + pd * f + moved[r + 5];
+				a = na;
+				b = nb;
+				c = nc;
+				d = nd;
+				e = ne;
+				f = nf;
+				al *= moved[r + 6];
+			}
+			moved[q] = a;
+			moved[q + 1] = b;
+			moved[q + 2] = c;
+			moved[q + 3] = d;
+			moved[q + 4] = e;
+			moved[q + 5] = f;
+			moved[q + 6] = al;
+		}
+	}
+
+	final one = new helder.canvas.Matrix();
+	final ta:Array<Float> = [1, 0, 0, 1, 0, 0];
+	final tb:Array<Float> = [1, 0, 0, 1, 0, 0];
+	final tc:Array<Float> = [1, 0, 0, 1, 0, 0];
+
+	static inline function set(r:Array<Float>, a:Float, b:Float, c:Float, d:Float, e:Float, f:Float) {
+		r[0] = a;
+		r[1] = b;
+		r[2] = c;
+		r[3] = d;
+		r[4] = e;
+		r[5] = f;
+	}
+
+	// (r = x after y)
+	static function mul(r:Array<Float>, x:Array<Float>, y:Array<Float>) {
+		var a = x[0] * y[0] + x[2] * y[1], b = x[1] * y[0] + x[3] * y[1], c = x[0] * y[2] + x[2] * y[3], d = x[1] * y[2] + x[3] * y[3];
+		var e = x[0] * y[4] + x[2] * y[5] + x[4], f = x[1] * y[4] + x[3] * y[5] + x[5];
+		set(r, a, b, c, d, e, f);
+	}
+
+	static function invert(r:Array<Float>) {
+		var det = r[0] * r[3] - r[1] * r[2];
+		if (det == 0) return;
+		var a = r[3] / det, b = -r[1] / det, c = -r[2] / det, d = r[0] / det;
+		var e = -(a * r[4] + c * r[5]), f = -(b * r[4] + d * r[5]);
+		set(r, a, b, c, d, e, f);
 	}
 
 	// (the offset of scroller frame f at the compositor's, in points: its
@@ -129,17 +283,20 @@ class CompositeFrame {
 	public function quads():Int
 		return batch.count + Std.int(tiles.length / 2);
 
-	// the quads at the compositor's offsets (now: per frame, x then y) into
-	// out from 0, their runs into runTextures and runs (first quad, count):
-	// the quads' count
-	public function compose(now:Array<Float>, out:Bytes, runTextures:Array<Null<Texture>>, runs:Array<Int>):Int {
+	// the quads at the compositor's offsets (now: per frame, x then y) and
+	// time t into out from 0, their runs into runTextures and runs (first
+	// quad, count); shown: per frame, how far its overlay bars show (null:
+	// as drawn). The quads' count
+	public function compose(now:Array<Float>, t:Float, shown:Null<Array<Float>>, out:Bytes, runTextures:Array<Null<Texture>>, runs:Array<Int>):Int {
 		runTextures.resize(0);
 		runs.resize(0);
 		outTextures = runTextures;
 		outRuns = runs;
 		runTexture = null;
 		runFirst = k = 0;
-		var s = scale, n = batch.count, src = batch.bytes, g = 0;
+		if (movers.length > 0) sample(now, t);
+		var te = 0;
+		var s = scale, n = batch.count, src = batch.bytes, g = 0, mv = moved;
 		// (each quad's run texture, by the template's runs)
 		var r = 0, rEnd = batch.draws() > 0 ? batch.runs[1] + batch.runs[2] : 0;
 		for (i in 0...n + 1) {
@@ -151,25 +308,61 @@ class CompositeFrame {
 			if (i == n) break;
 			while (r < batch.draws() - 1 && i >= batch.runs[r * 3 + 1] + batch.runs[r * 3 + 2])
 				r++;
+			var f = content[i], c = clip[i], b = thumb[i], m = mover[i], o = k * STRIDE;
+			// (faded out: not drawn)
+			var alpha = m >= 0 ? mv[m * 7 + 6] : 1.0, fd = fade[i];
+			if (fd > 0 && b >= 0 && shown != null) {
+				var v = shown[b >> 1];
+				alpha *= fd == 256 ? v : (v < 1 ? Math.fround(fd * v) : fd) / fd;
+			}
+			if (alpha <= 0) continue;
 			run(textures[batch.runs[r * 3]]);
-			if (k * STRIDE + STRIDE > out.length) break;
-			out.blit(k * STRIDE, src, i * STRIDE, STRIDE);
-			var f = content[i], c = clip[i], b = thumb[i];
+			if (o + STRIDE > out.length) break;
+			out.blit(o, src, i * STRIDE, STRIDE);
+			if (alpha != 1) {
+				for (j in 0...4)
+					out.setFloat(o + 80 + j * 4, out.getFloat(o + 80 + j * 4) * alpha);
+				// (a glyph's are its blend's ratios, not a colour)
+				if (out.getFloat(o + 144) != 1) for (j in 0...4)
+					out.setFloat(o + 96 + j * 4, out.getFloat(o + 96 + j * 4) * alpha);
+			}
+			// (on the pixel grid as drawn, and moved only by scrolls: kept on it)
+			var grid = snap && src.getFloat(i * STRIDE + 192) != -1e9;
+			if (m >= 0) {
+				var q = m * 7;
+				if (mv[q] != 1 || mv[q + 1] != 0 || mv[q + 2] != 0 || mv[q + 3] != 1) {
+					turn(out, o, mv, q);
+					grid = false;
+				} else if (mv[q + 4] != 0 || mv[q + 5] != 0) {
+					move(out, o, mv[q + 4], mv[q + 5]);
+					grid = false;
+				}
+			}
+			var cm = clipMover[i];
+			if (cm >= 0) turnClip(out, o, mv, cm * 7);
 			var dx = f >= 0 ? shift(f, now, true) * s : 0.0, dy = f >= 0 ? shift(f, now, false) * s : 0.0;
 			if (b >= 0) {
 				var tf = b >> 1, tx = b & 1 == 0;
 				var d = (thumbAt(tf, tx, now[2 * tf + (tx ? 0 : 1)]) - thumbAt(tf, tx, offsets[2 * tf + (tx ? 0 : 1)])) * s;
 				if (tx) dx += d else dy += d;
 			}
-			if (snap) {
+			if (grid) {
+				// (a thumb's edges each on the grid where they fall, as the program's: its length may change by a pixel)
+				while (te < thumbEdges.length && thumbEdges[te] < i)
+					te += 5;
+				if (b >= 0 && te < thumbEdges.length && thumbEdges[te] == i) {
+					var tx = b & 1 == 0, d = tx ? dx : dy, e = thumbEdges;
+					along(out, o, tx, Math.fround(e[te + (tx ? 1 : 2)] + d), Math.fround(e[te + (tx ? 3 : 4)] + d));
+					if (tx) dx = 0 else dy = 0;
+				}
 				dx = Math.fround(dx);
 				dy = Math.fround(dy);
 			}
-			if (dx != 0 || dy != 0) move(out, k * STRIDE, dx, dy);
+			if (dx != 0 || dy != 0) move(out, o, dx, dy);
 			if (c >= 0) {
 				var cx = snap ? Math.fround(shift(c, now, true) * s) : shift(c, now, true) * s;
 				var cy = snap ? Math.fround(shift(c, now, false) * s) : shift(c, now, false) * s;
-				if (cx != 0 || cy != 0) moveClip(out, k * STRIDE, cx, cy);
+				if (cx != 0 || cy != 0) moveClip(out, o, cx, cy);
 			}
 			k++;
 		}
@@ -179,6 +372,60 @@ class CompositeFrame {
 			runs.push(k - runFirst);
 		}
 		return k;
+	}
+
+	// (an unturned quad's edges along x (else y) at e0, e1: its corners, half size and centre there)
+	function along(b:Bytes, o:Int, x:Bool, e0:Float, e1:Float) {
+		var m = 1.0, w = width, h = height, k = x ? 0 : 4;
+		var a = e0 - m, z = e1 + m;
+		for (c in 0...3) {
+			var p = o + c * 16, v = c == (x ? 1 : 2) ? z : a;
+			if (x) {
+				b.setFloat(p, v / w * 2 - 1);
+				b.setFloat(p + 8, v);
+			} else {
+				b.setFloat(p + 4, 1 - v / h * 2);
+				b.setFloat(p + 12, v);
+			}
+		}
+		var half = (e1 - e0) / 2, centre = (e0 + e1) / 2, i = Math.ffloor(centre);
+		b.setFloat(o + 64 + k, half);
+		b.setFloat(o + 72 + k, half + m);
+		b.setFloat(o + 192 + k, i);
+		b.setFloat(o + 200 + k, centre - i);
+	}
+
+	// (a quad's corners by the change d at q, in the target's pixels: no
+	// longer on the grid; a glyph read filtered, as under a turning transform)
+	function turn(b:Bytes, o:Int, d:Array<Float>, q:Int) {
+		var w = width, h = height, a = d[q], bb = d[q + 1], c = d[q + 2], dd = d[q + 3], e = d[q + 4], f = d[q + 5];
+		for (k in 0...3) {
+			var p = o + k * 16, x = b.getFloat(p + 8), y = b.getFloat(p + 12);
+			var X = a * x + c * y + e, Y = bb * x + dd * y + f;
+			b.setFloat(p, X / w * 2 - 1);
+			b.setFloat(p + 4, 1 - Y / h * 2);
+			b.setFloat(p + 8, X);
+			b.setFloat(p + 12, Y);
+		}
+		b.setFloat(o + 192, -1e9);
+		b.setFloat(o + 196, 0);
+		b.setFloat(o + 200, 0);
+		b.setFloat(o + 204, 0);
+		if (b.getFloat(o + 144) == 1) b.setFloat(o + 152, 1);
+	}
+
+	// (a clip pushed inside a mover: its corners' bounds after the change at q, as pushClip bounds a turned one)
+	function turnClip(b:Bytes, o:Int, d:Array<Float>, q:Int) {
+		var a = d[q], bb = d[q + 1], c = d[q + 2], dd = d[q + 3], e = d[q + 4], f = d[q + 5];
+		if (a == 1 && bb == 0 && c == 0 && dd == 1 && e == 0 && f == 0) return;
+		var x0 = b.getFloat(o + 160), y0 = b.getFloat(o + 164), x1 = b.getFloat(o + 168), y1 = b.getFloat(o + 172);
+		if (x0 < -1e8 || x1 > 1e8 || y0 < -1e8 || y1 > 1e8) return;
+		var ax = a * x0 + c * y0, bx = a * x1 + c * y0, cx = a * x0 + c * y1, dx = a * x1 + c * y1;
+		var ay = bb * x0 + dd * y0, by = bb * x1 + dd * y0, cy = bb * x0 + dd * y1, dy = bb * x1 + dd * y1;
+		b.setFloat(o + 160, Math.min(Math.min(ax, bx), Math.min(cx, dx)) + e);
+		b.setFloat(o + 164, Math.min(Math.min(ay, by), Math.min(cy, dy)) + f);
+		b.setFloat(o + 168, Math.max(Math.max(ax, bx), Math.max(cx, dx)) + e);
+		b.setFloat(o + 172, Math.max(Math.max(ay, by), Math.max(cy, dy)) + f);
 	}
 
 	// (compose's: the quads written, the run open, where the runs go)

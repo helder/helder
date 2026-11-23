@@ -727,6 +727,13 @@ class Renderer implements TextureCanvas {
 	var uncull = false;
 	final frameStack:Array<Int> = [];
 	final clipFrames:Array<Int> = [];
+	// (the mover the quads are in (-1: none), their clip's; a thumb's fade; what enter and mover entered)
+	var moverTag = -1;
+	var clipMover = -1;
+	var fadeTag = 0;
+	final moverStack:Array<Int> = [];
+	final clipMovers:Array<Int> = [];
+	final entered:Array<Int> = [];
 	// (the frame's state, put back after the walk)
 	var savedGroups = false;
 	var savedClip:Array<Float> = [];
@@ -737,24 +744,49 @@ class Renderer implements TextureCanvas {
 	public function enter(n:Node, kind:Int):Bool {
 		if (!templating) return false;
 		var f = composite.frameOf(n, contentFrame);
-		if (kind != 0) {
-			thumbTag = f << 1 | (kind == 2 ? 1 : 0);
+		if (kind & 3 != 0) {
+			thumbTag = f << 1 | (kind & 3 == 2 ? 1 : 0);
+			fadeTag = kind >> 2;
+			entered.push(1);
 			return true;
+		}
+		// (a scroller inside what moves: those the compositor leaves as drawn)
+		var m = moverTag;
+		while (m >= 0) {
+			composite.freeze(m);
+			m = composite.moverParent(m);
 		}
 		frameStack.push(contentFrame);
 		contentFrame = f;
 		uncull = true;
+		entered.push(0);
+		return true;
+	}
+
+	// what is drawn until leave is m's: moved by its transform and opacity
+	// as the compositor samples them (drawn here at its opacity's 1, under
+	// its transform as drawn)
+	public function mover(m:helder.ui.Mover):Bool {
+		if (!templating) return false;
+		var c = composite, sc = m.scroller, f = sc == null ? -1 : c.nodes.indexOf(sc);
+		moverStack.push(moverTag);
+		moverTag = c.addMover(m, moverTag, f, flat, ma, mb, mc, md, me, mf, scale, tx, ty);
+		entered.push(2);
 		return true;
 	}
 
 	public function leave() {
-		if (!templating) return;
-		if (thumbTag >= 0) {
-			thumbTag = -1;
-			return;
+		if (!templating || entered.length == 0) return;
+		switch entered.pop() {
+			case 1:
+				thumbTag = -1;
+				fadeTag = 0;
+			case 2:
+				moverTag = moverStack.pop();
+			case _:
+				contentFrame = frameStack.length > 0 ? frameStack.pop() : -1;
+				uncull = contentFrame >= 0;
 		}
-		contentFrame = frameStack.length > 0 ? frameStack.pop() : -1;
-		uncull = contentFrame >= 0;
 	}
 
 	function beginComposite() {
@@ -778,10 +810,14 @@ class Renderer implements TextureCanvas {
 		savedGroups = groups;
 		groups = false;
 		templating = true;
-		contentFrame = clipFrame = thumbTag = -1;
+		contentFrame = clipFrame = thumbTag = moverTag = clipMover = -1;
+		fadeTag = 0;
 		uncull = false;
 		frameStack.resize(0);
 		clipFrames.resize(0);
+		moverStack.resize(0);
+		clipMovers.resize(0);
+		entered.resize(0);
 		savedClip = [clipX0, clipY0, clipX1, clipY1, clipR0, clipR1, clipR2, clipR3];
 		clipX0 = clipY0 = clipR0 = clipR1 = clipR2 = clipR3 = 0;
 		clipX1 = frameW;
@@ -792,7 +828,8 @@ class Renderer implements TextureCanvas {
 		var c = composite;
 		if (c == null || !templating) return;
 		templating = uncull = false;
-		contentFrame = clipFrame = thumbTag = -1;
+		contentFrame = clipFrame = thumbTag = moverTag = clipMover = -1;
+		fadeTag = 0;
 		groups = savedGroups;
 		batch = quads;
 		runTextures = frameTextures;
@@ -1145,6 +1182,8 @@ class Renderer implements TextureCanvas {
 	public function pushClip(x:Float, y:Float, w:Float, h:Float, radius:Float, ?corners:Corners) {
 		clipFrames.push(clipFrame);
 		clipFrame = contentFrame;
+		clipMovers.push(clipMover);
+		clipMover = moverTag;
 		clips.push(clipX0);
 		clips.push(clipY0);
 		clips.push(clipX1);
@@ -1209,6 +1248,7 @@ class Renderer implements TextureCanvas {
 
 	public function popClip() {
 		clipFrame = clipFrames.length > 0 ? clipFrames.pop() : -1;
+		clipMover = clipMovers.length > 0 ? clipMovers.pop() : -1;
 		var n = clips.length - 8, c = clips;
 		clipX0 = c[n];
 		clipY0 = c[n + 1];
@@ -1442,6 +1482,9 @@ class Renderer implements TextureCanvas {
 		var s = scale;
 		edges((x + tx) * s, (y + ty) * s, (x + w + tx) * s, (y + h + ty) * s);
 		var x0 = ex0, y0 = ey0, x1 = ex1, y1 = ey1;
+		// (a thumb's edges before the grid: the compositor rounds them where they fall)
+		if (templating && thumbTag >= 0 && grid) for (v in [batch.count, (x + tx) * s, (y + ty) * s, (x + w + tx) * s, (y + h + ty) * s])
+			composite.thumbEdges.push(v);
 		this.corners(corners, radius);
 		fit(x1 - x0, y1 - y0);
 		this.sides(sides, borderWidth);
@@ -1613,8 +1656,8 @@ class Renderer implements TextureCanvas {
 			// (the line's origin on the grid: its glyphs placed from a whole pixel)
 			var lineX = (ox + lx) * s;
 			if (grid) lineX = Math.fround(lineX);
-			if (flat && (by - size * 1.5 - reach > clipY1 || by + size + reach < clipY0)) continue;
-			if (!flat && away(lineX - size, by - size * 1.5 - reach, lineX + l.width * s + size, by + size + reach)) continue;
+			if (flat && !uncull && (by - size * 1.5 - reach > clipY1 || by + size + reach < clipY0)) continue;
+			if (!flat && !uncull && away(lineX - size, by - size * 1.5 - reach, lineX + l.width * s + size, by + size + reach)) continue;
 			for (i in l.glyphStart...l.glyphEnd) {
 				var c = t.glyphChar(i);
 				if (c == 32 || c == 10 || c == 9 || t.glyphHidden(i)) continue;
@@ -1842,6 +1885,9 @@ class Renderer implements TextureCanvas {
 			c.content.push(contentFrame);
 			c.clip.push(clipFrame);
 			c.thumb.push(thumbTag);
+			c.mover.push(moverTag);
+			c.clipMover.push(clipMover);
+			c.fade.push(thumbTag >= 0 ? fadeTag : 0);
 		}
 		var fa = fill.a / 255 * alpha, ba = border.a / 255 * alpha;
 		var hx = (x1 - x0) / 2, hy = (y1 - y0) / 2;
