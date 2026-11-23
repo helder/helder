@@ -1624,6 +1624,7 @@ class Run {
 		shell('$gpu $b/AsyncScrollTest');
 		shell('LIBGL_ALWAYS_SOFTWARE=1 $xvfb $b/AsyncScrollWindow');
 		shell('LIBGL_ALWAYS_SOFTWARE=1 $xvfb $b/AsyncScrollWindow --anim');
+		if (!linux) shell('$b/AsyncScrollWindow --native');
 		// (the clipboard: Xvfb's own, not a desktop's in use; X11's text input
 		// and AT-SPI: Linux's; Windows' are the window lane's)
 		if (!linux) return;
