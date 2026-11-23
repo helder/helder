@@ -232,8 +232,13 @@ class MetalBackend {
 
 	// the next frame onto layer's next drawable (a CAMetalLayer of the
 	// window's: helder.ui.draw.CaLayers), kept for takePresents
-	public function planeFrame(layer:Ptr)
+	// (direct: presented at once, as a window's frame is, not kept)
+	public function planeFrame(layer:Ptr, direct = false) {
 		plane = layer;
+		planeDirect = direct;
+	}
+
+	var planeDirect = false;
 
 	// the drawables drawn by plane frames since, retained: presented by the
 	// caller in its transaction, then released
@@ -861,6 +866,19 @@ class MetalBackend {
 	}
 
 	public function endFrame() {
+		if (planing && planeDirect) {
+			planing = false;
+			Msg.vPtr(cmd, S.presentDrawable, drawable);
+			Msg.v(cmd, S.commit);
+			committed(cmd);
+			cmd = Ptr.nil();
+			drawable = Ptr.nil();
+			texture = Ptr.nil();
+			Runtime.objc_autoreleasePoolPop(pool);
+			pool = Ptr.nil();
+			shown = true;
+			return;
+		}
 		if (planing) {
 			// (presented with the transaction that places its layer: scheduled first, as presentsWithTransaction asks)
 			planing = false;

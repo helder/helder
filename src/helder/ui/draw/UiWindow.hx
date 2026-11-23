@@ -217,6 +217,9 @@ class UiWindow {
 			var c = new Compositor(device);
 			if (c.start()) {
 				compositor = c;
+				#if (!helder.os || helder.os == "macos" || helder.os == "ios")
+				ui.layered = c.layers != null && CaLayers.slots();
+				#end
 				window.route = c.route;
 				ui.onAnswer = c.answer;
 				if (helder.os.App.beforeEvents.indexOf(drainAll) < 0) helder.os.App.beforeEvents.push(drainAll);
@@ -430,7 +433,7 @@ class UiWindow {
 		if (renderer.keep) device.damaged(whole ? null : renderer.regions.length > 0 ? renderer.regions : [0, 0, 1, 1]);
 		device.endFrame();
 		#if (!helder.headless && hxmc.target != "wasm32-wasi")
-		if (planes) compositor.present();
+		if (compositor != null && capture == null) compositor.present(planes);
 		#end
 		updateTextInput();
 		sendAccess();

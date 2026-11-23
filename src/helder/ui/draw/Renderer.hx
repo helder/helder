@@ -808,6 +808,17 @@ class Renderer implements TextureCanvas {
 		}
 	}
 
+	public function slot(sl:helder.ui.LayerSlot, x:Float, y:Float, w:Float, h:Float) {
+		if (!templating || w <= 0 || h <= 0) return;
+		var c = composite, s = scale, x0 = (x + tx) * s, y0 = (y + ty) * s, x1 = (x + w + tx) * s, y1 = (y + h + ty) * s;
+		var ra = flat ? 1 : ma, rb = flat ? 0 : mb, rc = flat ? 0 : mc, rd = flat ? 1 : md, te = flat ? 0 : me, tf = flat ? 0 : mf;
+		c.slots.push(sl);
+		for (v in [batch.count, c.groups.length, contentFrame, clipFrame, moverTag, clipMover, ra * x0 + rc * y0 + te, rb * x0 + rd * y0 + tf,
+			ra * x1 + rc * y0 + te, rb * x1 + rd * y0 + tf, ra * x0 + rc * y1 + te, rb * x0 + rd * y1 + tf, clipX0, clipY0, clipX1, clipY1, clipR0, clipR1,
+			clipR2, clipR3])
+			c.slotData.push(v);
+	}
+
 	function beginComposite() {
 		var c = composite;
 		if (c == null) return;

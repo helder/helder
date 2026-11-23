@@ -90,6 +90,9 @@ class WebViews implements PlatformViews {
 
 @:hxmc.unsafe(gc)
 class WebEditor implements PlatformEditor {
+	public function slot():Null<helder.ui.LayerSlot>
+		return null;
+
 	final views:WebViews;
 	final h:Int;
 

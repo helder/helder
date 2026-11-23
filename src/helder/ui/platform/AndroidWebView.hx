@@ -37,6 +37,9 @@ import hxmc.unsafe.*;
 @:hxmc.android
 @:hxmc.unsafe(gc)
 class AndroidWebView implements PlatformWebView {
+	public function slot():Null<helder.ui.LayerSlot>
+		return null;
+
 	static final lock = new sys.thread.Mutex();
 	static final byId = new Map<Int, AndroidWebView>();
 	static var started = false;

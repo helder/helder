@@ -87,13 +87,15 @@ class MacViews implements PlatformViews {
 	public function editor(multiline:Bool):Null<PlatformEditor> {
 		return helder.os.OsThread.get(() -> {
 			if (multiline) {
-				var e:MacEditor = area();
-				editors.push(e);
-				return e;
+				var a = area();
+				a.hosted = home(a.scroll);
+				editors.push(a);
+				return (a : PlatformEditor);
 			}
-			var e = new MacEditor(this, field(false));
+			var f = field(false), e = new MacEditor(this, f);
+			e.hosted = home(f);
 			editors.push(e);
-			return e;
+			return (e : PlatformEditor);
 		});
 	}
 
@@ -130,7 +132,6 @@ class MacViews implements PlatformViews {
 		Msg.vPtr(tv, ObjC.sel("setDelegate:"), delegate);
 		Msg.vPtr(sv, ObjC.sel("setDocumentView:"), tv);
 		ObjC.release(tv);
-		Msg.vPtr(content(), ObjC.sel("addSubview:"), sv);
 		return new MacAreaEditor(this, sv, tv);
 	}
 
@@ -148,8 +149,21 @@ class MacViews implements PlatformViews {
 		Msg.vInt(f, ObjC.sel("setFocusRingType:"), 1); // NSFocusRingTypeNone
 		Msg.vBool(f, ObjC.sel("setHidden:"), true);
 		Msg.vPtr(f, ObjC.sel("setDelegate:"), delegate);
-		Msg.vPtr(content(), ObjC.sel("addSubview:"), f);
 		return f;
+	}
+
+	// (v in the content view; in the system's layer tree, in a host there: its slot)
+	function home(v:Ptr):Null<helder.ui.LayerSlot> {
+		if (!ui.layered) {
+			Msg.vPtr(content(), ObjC.sel("addSubview:"), v);
+			return null;
+		}
+		var h = helder.ui.draw.CaViews.host();
+		Msg.vPtr(h, ObjC.sel("addSubview:"), v);
+		Msg.vPtr(content(), ObjC.sel("addSubview:"), h);
+		var s = new helder.ui.LayerSlot(h, true);
+		s.inner = v;
+		return s;
 	}
 
 	@:allow(helder.ui.platform.MacEditor) function push(e:MacEditor, kind:Int, key = 0, mods = 0) {
@@ -458,6 +472,18 @@ class MacEditor implements PlatformEditor {
 	var gone = false;
 
 	public var listener(default, null):Null<PlatformEditorListener> = null;
+	// (in the system's layer tree: its host's slot)
+	@:allow(helder.ui.platform.MacViews) var hosted:Null<helder.ui.LayerSlot> = null;
+
+	public function slot():Null<helder.ui.LayerSlot>
+		return hosted;
+
+	// (the host gone with it)
+	function unhost() {
+		if (hosted == null) return;
+		Msg.v(hosted.handle, ObjC.sel("removeFromSuperview"));
+		ObjC.release(hosted.handle);
+	}
 
 	public function new(views:MacViews, field:Ptr) {
 		this.views = views;
@@ -482,7 +508,8 @@ class MacEditor implements PlatformEditor {
 
 	public function place(x:Float, y:Float, width:Float, height:Float, shown:Bool) {
 		helder.os.OsThread.run(() -> {
-			if (gone) return;
+			// (a layout gone wrong: AppKit throws at a NaN frame)
+			if (gone || !(Math.isFinite(x) && Math.isFinite(y) && Math.isFinite(width) && Math.isFinite(height))) return;
 			var c = @:privateAccess views.content(), b = Msg.rect(c, ObjC.sel("bounds"));
 			Arena.scoped(a -> {
 				var r = a.make(CGRect);
@@ -520,6 +547,8 @@ class MacEditor implements PlatformEditor {
 	function remake(secret:Bool) {
 		var old = field, had = editing(), w = Msg.id(old, ObjC.sel("window"));
 		var f = views.field(secret);
+		Msg.vPtr(Msg.id(old, ObjC.sel("superview")), ObjC.sel("addSubview:"), f);
+		if (hosted != null) hosted.inner = f;
 		Msg.vPtr(f, ObjC.sel("setStringValue:"), Msg.id(old, ObjC.sel("stringValue")));
 		Msg.vRect(f, ObjC.sel("setFrame:"), Msg.rect(old, ObjC.sel("frame")));
 		Msg.vBool(f, ObjC.sel("setHidden:"), Msg.b(old, ObjC.sel("isHidden")));
@@ -538,6 +567,11 @@ class MacEditor implements PlatformEditor {
 		helder.os.OsThread.run(() -> {
 			var w = Msg.id(field, ObjC.sel("window"));
 			if (w.isNull()) return;
+			// (hosted: shown for the focus, placed by the frame's layers)
+			if (on && hosted != null) {
+				Msg.vBool(hosted.handle, ObjC.sel("setHidden:"), false);
+				Msg.vBool(hosted.inner, ObjC.sel("setHidden:"), false);
+			}
 			focusing = true;
 			if (on) Msg.bPtr(w, ObjC.sel("makeFirstResponder:"), field) else if (editing()) Msg.bPtr(w, ObjC.sel("makeFirstResponder:"), Ptr.nil());
 			focusing = false;
@@ -559,6 +593,7 @@ class MacEditor implements PlatformEditor {
 			Msg.vPtr(field, ObjC.sel("setDelegate:"), Ptr.nil());
 			Msg.v(field, ObjC.sel("removeFromSuperview"));
 			ObjC.release(field);
+			unhost();
 			listener = null;
 		});
 	}
@@ -567,7 +602,7 @@ class MacEditor implements PlatformEditor {
 // (a text area's editor: its NSTextView the field, placed by its scroll view)
 @:hxmc.unsafe(gc)
 class MacAreaEditor extends MacEditor {
-	final scroll:Ptr;
+	public final scroll:Ptr;
 
 	public function new(views:MacViews, scroll:Ptr, textView:Ptr) {
 		super(views, textView);
@@ -589,7 +624,8 @@ class MacAreaEditor extends MacEditor {
 
 	override public function place(x:Float, y:Float, width:Float, height:Float, shown:Bool) {
 		helder.os.OsThread.run(() -> {
-			if (gone) return;
+			// (a layout gone wrong: AppKit throws at a NaN frame)
+			if (gone || !(Math.isFinite(x) && Math.isFinite(y) && Math.isFinite(width) && Math.isFinite(height))) return;
 			var c = @:privateAccess views.content(), b = Msg.rect(c, ObjC.sel("bounds"));
 			Arena.scoped(a -> {
 				var r = a.make(CGRect);
@@ -622,6 +658,7 @@ class MacAreaEditor extends MacEditor {
 			Msg.vPtr(field, ObjC.sel("setDelegate:"), Ptr.nil());
 			Msg.v(scroll, ObjC.sel("removeFromSuperview"));
 			ObjC.release(scroll);
+			unhost();
 			listener = null;
 		});
 	}

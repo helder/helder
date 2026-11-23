@@ -734,6 +734,9 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	// else 0), in the window's points; null: none placed)
 	@:allow(helder.ui) var placed:Null<Array<Float>> = null;
 
+	// (a system layer of its own between what is drawn: LayerSlot)
+	@:allow(helder) var systemLayer:Null<LayerSlot> = null;
+
 	// (its view placed again, at once, on the main thread: the compositor
 	// moving it with a scroll the program has not drawn yet)
 	@:allow(helder.ui) function placeNative(x:Float, y:Float, width:Float, height:Float, shown:Bool) {}

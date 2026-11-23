@@ -72,6 +72,8 @@ class DisplayList implements TextureCanvas {
 	public var length(default, null) = 0;
 	public var layers(default, null) = 0;
 	public var live(default, null) = 0;
+	// (the nodes' system layers in it: LayerSlot)
+	public var slots(default, null) = 0;
 	// (the images' resources: their versions told, stale)
 	final images:Array<Int> = [];
 
@@ -79,7 +81,7 @@ class DisplayList implements TextureCanvas {
 	public function clear() {
 		for (i in 0...nr)
 			resources[i] = null;
-		ni = nf = nr = length = layers = live = 0;
+		ni = nf = nr = length = layers = live = slots = 0;
 		images.resize(0);
 		done();
 		unturn();
@@ -98,7 +100,7 @@ class DisplayList implements TextureCanvas {
 		floats = f;
 		resources = r;
 		versions = v;
-		ni = nf = nr = length = layers = live = 0;
+		ni = nf = nr = length = layers = live = slots = 0;
 		images.resize(0);
 		unturn();
 	}
@@ -415,6 +417,13 @@ class DisplayList implements TextureCanvas {
 
 	public function leave() {}
 
+	public function slot(s:helder.ui.LayerSlot, x:Float, y:Float, w:Float, h:Float) {
+		op(SLOT);
+		int(res(s));
+		box(x, y, w, h);
+		slots++;
+	}
+
 	// gives c the calls recorded, in order (a GPU texture's only if it draws
 	// them: a TextureCanvas); w: the walk it is in (what is seen, its host)
 	public function replay(c:Canvas, ?w:Walk) {
@@ -487,6 +496,10 @@ class DisplayList implements TextureCanvas {
 				case PASS:
 					if (g != null) g.pass(get(n[i + 1]));
 					i += 2;
+				case SLOT:
+					if (g != null) g.slot(get(n[i + 1]), v[f], v[f + 1], v[f + 2], v[f + 3]);
+					i += 2;
+					f += 4;
 				case TRANSLATE:
 					c.translate(v[f], v[f + 1]);
 					i += 1;
@@ -604,6 +617,8 @@ class DisplayList implements TextureCanvas {
 					if (ints[base + 1] >= 0) images.push(ints[base + 1]);
 				case PASS | GPU_TEXTURE:
 					live++;
+				case SLOT:
+					slots++;
 				case _:
 			}
 			if ((op : Int) <= (PASS : Int)) length++;
@@ -796,7 +811,7 @@ class DisplayList implements TextureCanvas {
 			case TEXT | TEXT_SHADOW: 5;
 			case SHADOW | PATH | GPU_TEXTURE: 4;
 			case INSET_SHADOW | IMAGE | LAYER: 3;
-			case PUSH_CLIP | BARS | FLIGHT | PASS: 2;
+			case PUSH_CLIP | BARS | FLIGHT | PASS | SLOT: 2;
 			case _: 1;
 		}
 
@@ -806,7 +821,7 @@ class DisplayList implements TextureCanvas {
 			case INSET_SHADOW | IMAGE: 9;
 			case RECT | SHADOW | PUSH_TRANSFORM | CULL_SET: 6;
 			case PUSH_CLIP | PUSH_GROUP | GPU_TEXTURE: 5;
-			case TEXT_SHADOW | CULL_CLIP: 4;
+			case TEXT_SHADOW | CULL_CLIP | SLOT: 4;
 			case TEXT: 3;
 			case TRANSLATE | CULL_SHIFT | SHIFT_POINT | BARS: 2;
 			case PUSH_OPACITY: 1;
@@ -815,7 +830,7 @@ class DisplayList implements TextureCanvas {
 
 	static function refs(op:Op):Int
 		return switch op {
-			case NODE | LAYER | BARS | FLIGHT | PASS | PUSH_CLIP: 1 << 1;
+			case NODE | LAYER | BARS | FLIGHT | PASS | PUSH_CLIP | SLOT: 1 << 1;
 			case RECT: 1 << 3 | 1 << 4;
 			case SHADOW: 1 << 2 | 1 << 3;
 			case INSET_SHADOW: 1 << 2;
@@ -906,4 +921,5 @@ private enum abstract Op(Int) from Int to Int {
 	var BARS = 26;
 	var FLIGHT = 27;
 	var FLIGHTS = 28;
+	var SLOT = 29;
 }

@@ -704,6 +704,7 @@ class EditableText extends TextNode implements PlatformEditorListener {
 
 	function dropEditor() {
 		placed = null;
+		systemLayer = null;
 		if (editor == null) return;
 		editor.dispose();
 		editor = null;
@@ -742,11 +743,14 @@ class EditableText extends TextNode implements PlatformEditorListener {
 		var be = style.borderEdges, pad = style.padding;
 		var x = absX + be.left + pad.left, y = absY + be.top + pad.top;
 		var w = width - be.left - be.right - pad.left - pad.right, h = height - be.top - be.bottom - pad.top - pad.bottom;
-		var shown = visible() && w > 0 && h > 0 && !clippedOut(x, y, w, h) && !covered(x, y, w, h);
+		// (in the system's layer tree: clipped and covered there, placed with the frame's layers)
+		var sl = ui.layered ? editor.slot() : null;
+		var shown = visible() && w > 0 && h > 0 && (sl != null || !clippedOut(x, y, w, h) && !covered(x, y, w, h));
 		// (where it is drawn: its scrolling ancestors' offsets taken off, as
 		// windowBounds does; x, y above are the layout's, as the clip's)
 		var b = windowBounds();
-		editor.place(x + b.x - absX, y + b.y - absY, w, h, shown);
+		systemLayer = sl;
+		if (sl != null) sl.shown = shown else editor.place(x + b.x - absX, y + b.y - absY, w, h, shown);
 		placed = [x + b.x - absX, y + b.y - absY, w, h, shown ? 1 : 0];
 		if (shown != editorShown) {
 			editorShown = shown;
