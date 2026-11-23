@@ -173,76 +173,86 @@ class AppleWebView implements PlatformWebView {
 		listener = l;
 
 	public function place(x:Float, y:Float, width:Float, height:Float, shown:Bool) {
-		if (disposed || parent.isNull()) return;
-		if (shown != lastShown) {
-			lastShown = shown;
-			Msg.vBool(web, ObjC.sel("setHidden:"), !shown);
-		}
-		if (x == lastX && y == lastY && width == lastW && height == lastH) return;
-		lastX = x;
-		lastY = y;
-		lastW = width;
-		lastH = height;
-		Arena.scoped(a -> {
-			var r = a.make(CGRect);
-			r.value.origin.x = x;
-			// (macOS: the content view's y up)
-			r.value.origin.y = ios ? y : Msg.rect(parent, ObjC.sel("bounds")).size.height - y - height;
-			r.value.size.width = Math.max(1, width);
-			r.value.size.height = Math.max(1, height);
-			Msg.vRect(web, ObjC.sel("setFrame:"), r.value);
+		helder.os.OsThread.run(() -> {
+			if (disposed || parent.isNull()) return;
+			if (shown != lastShown) {
+				lastShown = shown;
+				Msg.vBool(web, ObjC.sel("setHidden:"), !shown);
+			}
+			if (x == lastX && y == lastY && width == lastW && height == lastH) return;
+			lastX = x;
+			lastY = y;
+			lastW = width;
+			lastH = height;
+			Arena.scoped(a -> {
+				var r = a.make(CGRect);
+				r.value.origin.x = x;
+				// (macOS: the content view's y up)
+				r.value.origin.y = ios ? y : Msg.rect(parent, ObjC.sel("bounds")).size.height - y - height;
+				r.value.size.width = Math.max(1, width);
+				r.value.size.height = Math.max(1, height);
+				Msg.vRect(web, ObjC.sel("setFrame:"), r.value);
+			});
 		});
 	}
 
 	public function load(url:String) {
-		if (disposed) return;
-		var pool = Runtime.objc_autoreleasePoolPush();
-		var u = nsUrl(url);
-		if (!u.isNull()) Msg.idPtr(web, ObjC.sel("loadRequest:"), Msg.idPtr(ObjC.cls("NSURLRequest"), ObjC.sel("requestWithURL:"), u));
-		else push(error(url, "not a URL", -1));
-		Runtime.objc_autoreleasePoolPop(pool);
+		helder.os.OsThread.run(() -> {
+			if (disposed) return;
+			var pool = Runtime.objc_autoreleasePoolPush();
+			var u = nsUrl(url);
+			if (!u.isNull()) Msg.idPtr(web, ObjC.sel("loadRequest:"), Msg.idPtr(ObjC.cls("NSURLRequest"), ObjC.sel("requestWithURL:"), u));
+			else push(error(url, "not a URL", -1));
+			Runtime.objc_autoreleasePoolPop(pool);
+		});
 	}
 
 	public function loadHtml(html:String, ?baseUrl:String) {
-		if (disposed) return;
-		var pool = Runtime.objc_autoreleasePoolPush();
-		var s = ObjC.str(html);
-		var base = baseUrl ?? (content != null ? content.url("") : null);
-		Msg.idPtrPtr(web, ObjC.sel("loadHTMLString:baseURL:"), s, base == null ? Ptr.nil() : nsUrl(base));
-		ObjC.release(s);
-		Runtime.objc_autoreleasePoolPop(pool);
+		helder.os.OsThread.run(() -> {
+			if (disposed) return;
+			var pool = Runtime.objc_autoreleasePoolPush();
+			var s = ObjC.str(html);
+			var base = baseUrl ?? (content != null ? content.url("") : null);
+			Msg.idPtrPtr(web, ObjC.sel("loadHTMLString:baseURL:"), s, base == null ? Ptr.nil() : nsUrl(base));
+			ObjC.release(s);
+			Runtime.objc_autoreleasePoolPop(pool);
+		});
 	}
 
 	public function eval(js:String) {
-		if (disposed) return;
-		var s = ObjC.str(js);
-		Msg.vPtrPtr(web, ObjC.sel("evaluateJavaScript:completionHandler:"), s, Ptr.nil());
-		ObjC.release(s);
+		helder.os.OsThread.run(() -> {
+			if (disposed) return;
+			var s = ObjC.str(js);
+			Msg.vPtrPtr(web, ObjC.sel("evaluateJavaScript:completionHandler:"), s, Ptr.nil());
+			ObjC.release(s);
+		});
 	}
 
 	public function goBack()
-		if (!disposed) Msg.id(web, ObjC.sel("goBack"));
+		helder.os.OsThread.run(() -> if (!disposed) Msg.id(web, ObjC.sel("goBack")));
 
 	public function goForward()
-		if (!disposed) Msg.id(web, ObjC.sel("goForward"));
+		helder.os.OsThread.run(() -> if (!disposed) Msg.id(web, ObjC.sel("goForward")));
 
 	public function reload()
-		if (!disposed) Msg.id(web, ObjC.sel("reload"));
+		helder.os.OsThread.run(() -> if (!disposed) Msg.id(web, ObjC.sel("reload")));
 
 	public function stop()
-		if (!disposed) Msg.v(web, ObjC.sel("stopLoading"));
+		helder.os.OsThread.run(() -> if (!disposed) Msg.v(web, ObjC.sel("stopLoading")));
 
 	public function canGoBack():Bool
-		return !disposed && Msg.b(web, ObjC.sel("canGoBack"));
+		return !disposed && helder.os.OsThread.get(() -> Msg.b(web, ObjC.sel("canGoBack")));
 
 	public function snapshot(done:Null<WebSnapshot>->Void) {
-		if (disposed) {
-			done(null);
-			return;
-		}
-		var id = nextSnapshot++;
-		snapshots.set(id, done);
-		Msg.vPtrPtr(web, ObjC.sel("takeSnapshotWithConfiguration:completionHandler:"), Ptr.nil(), block(Callback.addr(snapshotTaken), id));
+		helder.os.OsThread.run(() -> {
+			if (disposed) {
+				done(null);
+				return;
+			}
+			var id = nextSnapshot++;
+			snapshots.set(id, done);
+			Msg.vPtrPtr(web, ObjC.sel("takeSnapshotWithConfiguration:completionHandler:"), Ptr.nil(), block(Callback.addr(snapshotTaken), id));
+		});
 	}
 
 	public function poll() {
@@ -253,23 +263,25 @@ class AppleWebView implements PlatformWebView {
 	}
 
 	public function dispose() {
-		if (disposed) return;
-		disposed = true;
-		views.remove(this);
-		for (k in ["title", "estimatedProgress", "URL"]) {
-			var key = ObjC.str(k);
-			Msg.vPtrPtr(web, ObjC.sel("removeObserver:forKeyPath:"), delegate, key);
-			ObjC.release(key);
-		}
-		var ucc = Msg.id(Msg.id(web, ObjC.sel("configuration")), ObjC.sel("userContentController"));
-		var name = ObjC.str("helder");
-		Msg.vPtr(ucc, ObjC.sel("removeScriptMessageHandlerForName:"), name);
-		ObjC.release(name);
-		Msg.vPtr(web, ObjC.sel("setNavigationDelegate:"), Ptr.nil());
-		Msg.v(web, ObjC.sel("stopLoading"));
-		if (!parent.isNull()) Msg.v(web, ObjC.sel("removeFromSuperview"));
-		ObjC.release(web);
-		listener = null;
+		helder.os.OsThread.run(() -> {
+			if (disposed) return;
+			disposed = true;
+			views.remove(this);
+			for (k in ["title", "estimatedProgress", "URL"]) {
+				var key = ObjC.str(k);
+				Msg.vPtrPtr(web, ObjC.sel("removeObserver:forKeyPath:"), delegate, key);
+				ObjC.release(key);
+			}
+			var ucc = Msg.id(Msg.id(web, ObjC.sel("configuration")), ObjC.sel("userContentController"));
+			var name = ObjC.str("helder");
+			Msg.vPtr(ucc, ObjC.sel("removeScriptMessageHandlerForName:"), name);
+			ObjC.release(name);
+			Msg.vPtr(web, ObjC.sel("setNavigationDelegate:"), Ptr.nil());
+			Msg.v(web, ObjC.sel("stopLoading"));
+			if (!parent.isNull()) Msg.v(web, ObjC.sel("removeFromSuperview"));
+			ObjC.release(web);
+			listener = null;
+		});
 	}
 
 	// ---- the delegate's

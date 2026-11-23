@@ -37,7 +37,11 @@ class Links {
 		} catch (e:Dynamic) false;
 	}
 
-	static function apple(url:String, inApp:Bool):Bool {
+	// (AppKit's and UIKit's: the main thread's, OsThread)
+	static function apple(url:String, inApp:Bool):Bool
+		return OsThread.get(() -> appleNow(url, inApp));
+
+	static function appleNow(url:String, inApp:Bool):Bool {
 		var pool = Runtime.objc_autoreleasePoolPush();
 		var u = Msg.idPtr(ObjC.cls("NSURL"), ObjC.sel("URLWithString:"), Msg.id(ObjC.str(url), ObjC.sel("autorelease")));
 		var ok = !u.isNull();

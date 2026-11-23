@@ -59,6 +59,10 @@ class CocoaWindow {
 	final rect:Ptr<CGRect>;
 	final size:Ptr<CGSize>;
 
+	// (made on the main thread, as AppKit's windows must be: OsThread)
+	static function make(owner:Window, title:String, width:Int, height:Int):CocoaWindow
+		return OsThread.get(() -> new CocoaWindow(owner, title, width, height));
+
 	function new(owner:Window, title:String, width:Int, height:Int) {
 		this.owner = owner;
 		if (app.isNull()) start();
@@ -150,7 +154,11 @@ class CocoaWindow {
 
 	var shown = false;
 
-	function show() {
+	// (the device's, on the program's thread: OsThread)
+	function show()
+		OsThread.run(showNow);
+
+	function showNow() {
 		surface.onPresent = null;
 		if (shown || open.indexOf(this) < 0) return;
 		shown = true;
@@ -307,44 +315,50 @@ class CocoaWindow {
 	}
 
 	function destroy() {
-		open.remove(this);
-		#if hxmc.dev_host
-		// (handing over: the window, its views and layer left to the next build)
-		if (helder.dev.Hosted.handingOver && helder.dev.Hosted.get(helder.dev.Hosted.UI_WINDOW) == window) {
+		helder.os.OsThread.run(() -> {
+			open.remove(this);
+			#if hxmc.dev_host
+			// (handing over: the window, its views and layer left to the next build)
+			if (helder.dev.Hosted.handingOver && helder.dev.Hosted.get(helder.dev.Hosted.UI_WINDOW) == window) {
+				LibC.free(rect);
+				LibC.free(size);
+				return;
+			}
+			#end
+			Msg.vPtr(window, ObjC.sel("setDelegate:"), Ptr.nil());
+			Msg.v(window, ObjC.sel("close"));
+			Runtime.objc_release(window);
+			Runtime.objc_release(layer);
+			Runtime.objc_release(view);
+			Runtime.objc_release(textView);
 			LibC.free(rect);
 			LibC.free(size);
-			return;
-		}
-		#end
-		Msg.vPtr(window, ObjC.sel("setDelegate:"), Ptr.nil());
-		Msg.v(window, ObjC.sel("close"));
-		Runtime.objc_release(window);
-		Runtime.objc_release(layer);
-		Runtime.objc_release(view);
-		Runtime.objc_release(textView);
-		LibC.free(rect);
-		LibC.free(size);
+		});
 	}
 
 	function setTitle(t:String) {
-		var s = ObjC.str(t);
-		Msg.vPtr(window, ObjC.sel("setTitle:"), s);
-		ObjC.release(s);
+		helder.os.OsThread.run(() -> {
+			var s = ObjC.str(t);
+			Msg.vPtr(window, ObjC.sel("setTitle:"), s);
+			ObjC.release(s);
+		});
 	}
 
 	function resize(w:Int, h:Int) {
-		size.value.width = w;
-		size.value.height = h;
-		Msg.vSize(window, ObjC.sel("setContentSize:"), size.value);
-		if (measure()) resized();
+		helder.os.OsThread.run(() -> {
+			size.value.width = w;
+			size.value.height = h;
+			Msg.vSize(window, ObjC.sel("setContentSize:"), size.value);
+			if (measure()) resized();
+		});
 	}
 
 	// (NSWindowStyleMaskFullScreen; toggleFullScreen: animates into its space: the getter follows when it is there)
 	function isFullscreen():Bool
-		return Msg.i(window, ObjC.sel("styleMask")).toInt() & (1 << 14) != 0;
+		return OsThread.get(() -> Msg.i(window, ObjC.sel("styleMask")).toInt() & (1 << 14) != 0);
 
 	function setFullscreen(on:Bool)
-		if (isFullscreen() != on) Msg.vPtr(window, ObjC.sel("toggleFullScreen:"), Ptr.nil());
+		if (isFullscreen() != on) OsThread.run(() -> Msg.vPtr(window, ObjC.sel("toggleFullScreen:"), Ptr.nil()));
 
 	// (the main screen's height: AppKit's y goes up from its bottom)
 	static function screenHeight():Float {
@@ -352,23 +366,30 @@ class CocoaWindow {
 		return Msg.i(screens, ObjC.sel("count")) == 0 ? 0 : Msg.rect(Msg.idInt(screens, ObjC.sel("objectAtIndex:"), 0), ObjC.sel("frame")).size.height;
 	}
 
-	function position():{x:Int, y:Int} {
+	function position():{x:Int, y:Int}
+		return OsThread.get(positionNow);
+
+	function positionNow():{x:Int, y:Int} {
 		var f = Msg.rect(window, ObjC.sel("frame"));
 		var c = Msg.rectRect(window, ObjC.sel("contentRectForFrameRect:"), f);
 		return {x: Math.round(c.origin.x), y: Math.round(screenHeight() - (c.origin.y + c.size.height))};
 	}
 
 	function moveTo(x:Int, y:Int) {
-		var f = Msg.rect(window, ObjC.sel("frame"));
-		var c = Msg.rectRect(window, ObjC.sel("contentRectForFrameRect:"), f);
-		rect.value.origin.x = x - (c.origin.x - f.origin.x);
-		rect.value.origin.y = screenHeight() - y - c.size.height - (c.origin.y - f.origin.y);
-		Msg.vPoint(window, ObjC.sel("setFrameOrigin:"), rect.value.origin);
+		helder.os.OsThread.run(() -> {
+			var f = Msg.rect(window, ObjC.sel("frame"));
+			var c = Msg.rectRect(window, ObjC.sel("contentRectForFrameRect:"), f);
+			rect.value.origin.x = x - (c.origin.x - f.origin.x);
+			rect.value.origin.y = screenHeight() - y - c.size.height - (c.origin.y - f.origin.y);
+			Msg.vPoint(window, ObjC.sel("setFrameOrigin:"), rect.value.origin);
+		});
 	}
 
 	function raise() {
-		Msg.vPtr(window, ObjC.sel("makeKeyAndOrderFront:"), Ptr.nil());
-		Msg.vBool(app, ObjC.sel("activateIgnoringOtherApps:"), true);
+		helder.os.OsThread.run(() -> {
+			Msg.vPtr(window, ObjC.sel("makeKeyAndOrderFront:"), Ptr.nil());
+			Msg.vBool(app, ObjC.sel("activateIgnoringOtherApps:"), true);
+		});
 	}
 
 	// the system asks the app to open files or URLs (NSApplicationDelegate):
@@ -380,13 +401,13 @@ class CocoaWindow {
 			var p = ObjC.string(Msg.id(url, Msg.b(url, ObjC.sel("isFileURL")) ? ObjC.sel("path") : ObjC.sel("absoluteString")));
 			if (p != null) paths.push(p);
 		}
-		@:privateAccess App.open(paths);
+		OsThread.back(() -> @:privateAccess App.open(paths));
 	}
 
 	// a URL the system asks the app to open (its direct object, keyDirectObject '----')
 	@:hxmc.callback static function getURL(self:Ptr, cmd:Ptr, event:Ptr, reply:Ptr):Void {
 		var url = ObjC.string(Msg.id(Msg.idInt(event, ObjC.sel("paramDescriptorForKeyword:"), 0x2D2D2D2D), ObjC.sel("stringValue")));
-		if (url != null) @:privateAccess App.open([url]);
+		if (url != null) OsThread.back(() -> @:privateAccess App.open([url]));
 	}
 
 	// a drag over a window: a copy when it carries file URLs (NSDragOperationCopy), else none
@@ -431,10 +452,12 @@ class CocoaWindow {
 	}
 
 	function setMinSize(w:Int, h:Int) {
-		size.value.width = w;
-		size.value.height = h;
-		Msg.vSize(window, ObjC.sel("setContentMinSize:"), size.value);
-		if (measure()) resized();
+		helder.os.OsThread.run(() -> {
+			size.value.width = w;
+			size.value.height = h;
+			Msg.vSize(window, ObjC.sel("setContentMinSize:"), size.value);
+			if (measure()) resized();
+		});
 	}
 
 	// a resize told: as a Resize event, or at the next poll when there is
@@ -458,8 +481,10 @@ class CocoaWindow {
 	}
 
 	function setCursor(c:Cursor) {
-		cursor = c;
-		applyCursor();
+		helder.os.OsThread.run(() -> {
+			cursor = c;
+			applyCursor();
+		});
 	}
 
 	// the cursor at a move: the app's over the content (and while a button is
@@ -492,28 +517,30 @@ class CocoaWindow {
 	// text input on: the text view at that area (pixels from the top left)
 	// and the first responder; off: neither, its composition dropped
 	function textInput(on:Bool, x:Int, y:Int, width:Int, height:Int) {
-		if (!on) {
-			if (!typing) return;
-			typing = false;
-			if (marked != "") Msg.v(Msg.id(textView, ObjC.sel("inputContext")), ObjC.sel("discardMarkedText"));
-			marked = "";
-			clearText(textView);
-			Msg.bPtr(window, ObjC.sel("makeFirstResponder:"), Ptr.nil());
-			Msg.vBool(textView, ObjC.sel("setHidden:"), true);
-			return;
-		}
-		var b = Msg.rect(view, ObjC.sel("bounds"));
-		rect.value.origin.x = x / scale;
-		rect.value.origin.y = b.size.height - (y + height) / scale;
-		rect.value.size.width = Math.max(1, width / scale);
-		rect.value.size.height = Math.max(1, height / scale);
-		Msg.vRect(textView, ObjC.sel("setFrame:"), rect.value);
-		if (!typing) {
-			typing = true;
-			Msg.vBool(textView, ObjC.sel("setHidden:"), false);
-			Msg.bPtr(window, ObjC.sel("makeFirstResponder:"), textView);
-		}
-		Msg.v(Msg.id(textView, ObjC.sel("inputContext")), ObjC.sel("invalidateCharacterCoordinates"));
+		helder.os.OsThread.run(() -> {
+			if (!on) {
+				if (!typing) return;
+				typing = false;
+				if (marked != "") Msg.v(Msg.id(textView, ObjC.sel("inputContext")), ObjC.sel("discardMarkedText"));
+				marked = "";
+				clearText(textView);
+				Msg.bPtr(window, ObjC.sel("makeFirstResponder:"), Ptr.nil());
+				Msg.vBool(textView, ObjC.sel("setHidden:"), true);
+				return;
+			}
+			var b = Msg.rect(view, ObjC.sel("bounds"));
+			rect.value.origin.x = x / scale;
+			rect.value.origin.y = b.size.height - (y + height) / scale;
+			rect.value.size.width = Math.max(1, width / scale);
+			rect.value.size.height = Math.max(1, height / scale);
+			Msg.vRect(textView, ObjC.sel("setFrame:"), rect.value);
+			if (!typing) {
+				typing = true;
+				Msg.vBool(textView, ObjC.sel("setHidden:"), false);
+				Msg.bPtr(window, ObjC.sel("makeFirstResponder:"), textView);
+			}
+			Msg.v(Msg.id(textView, ObjC.sel("inputContext")), ObjC.sel("invalidateCharacterCoordinates"));
+		});
 	}
 
 	static function clearText(tv:Ptr) {
@@ -570,22 +597,26 @@ class CocoaWindow {
 
 	// the general pasteboard's string (NSPasteboardTypeString: public.utf8-plain-text)
 	static function writeClipboard(text:String) {
-		var pb = Msg.id(ObjC.cls("NSPasteboard"), ObjC.sel("generalPasteboard"));
-		Msg.i(pb, ObjC.sel("clearContents"));
-		var s = ObjC.str(text), type = ObjC.str("public.utf8-plain-text");
-		Msg.idPtrPtr(pb, ObjC.sel("setString:forType:"), s, type);
-		ObjC.release(s);
-		ObjC.release(type);
+		helder.os.OsThread.run(() -> {
+			var pb = Msg.id(ObjC.cls("NSPasteboard"), ObjC.sel("generalPasteboard"));
+			Msg.i(pb, ObjC.sel("clearContents"));
+			var s = ObjC.str(text), type = ObjC.str("public.utf8-plain-text");
+			Msg.idPtrPtr(pb, ObjC.sel("setString:forType:"), s, type);
+			ObjC.release(s);
+			ObjC.release(type);
+		});
 	}
 
 	static function readClipboard():Null<String> {
-		var pool = Runtime.objc_autoreleasePoolPush();
-		var pb = Msg.id(ObjC.cls("NSPasteboard"), ObjC.sel("generalPasteboard"));
-		var type = ObjC.str("public.utf8-plain-text");
-		var text = ObjC.string(Msg.idPtr(pb, ObjC.sel("stringForType:"), type));
-		ObjC.release(type);
-		Runtime.objc_autoreleasePoolPop(pool);
-		return text;
+		return helder.os.OsThread.get(() -> {
+			var pool = Runtime.objc_autoreleasePoolPush();
+			var pb = Msg.id(ObjC.cls("NSPasteboard"), ObjC.sel("generalPasteboard"));
+			var type = ObjC.str("public.utf8-plain-text");
+			var text = ObjC.string(Msg.idPtr(pb, ObjC.sel("stringForType:"), type));
+			ObjC.release(type);
+			Runtime.objc_autoreleasePoolPop(pool);
+			return text;
+		});
 	}
 
 	static function find(window:Ptr):Null<CocoaWindow> {
@@ -594,8 +625,11 @@ class CocoaWindow {
 		return null;
 	}
 
-	static function dispatch(e:Event)
-		if (onEvent != null) onEvent(e);
+	// (on the program's thread: OsThread)
+	static function dispatch(e:Event) {
+		var f = onEvent;
+		if (f != null) OsThread.back(() -> f(e));
+	}
 
 	@:hxmc.callback static function shouldClose(self:Ptr, cmd:Ptr, sender:Ptr):Int {
 		var w = find(sender);
@@ -640,7 +674,7 @@ class CocoaWindow {
 		w.resized();
 		// (a drag of the window's edge runs AppKit's own loop until the mouse is up, and
 		// App.run draws nothing: a frame at the new size from here, as Win32Window's timer)
-		if (onFrame != null && App.windows.length > 0 && Msg.b(w.window, ObjC.sel("inLiveResize"))) onFrame();
+		if (onFrame != null && App.windows.length > 0 && Msg.b(w.window, ObjC.sel("inLiveResize"))) OsThread.back(onFrame);
 	}
 
 	// while an edge is dragged, frames from a timer too: AppKit's loop runs
@@ -666,47 +700,51 @@ class CocoaWindow {
 	}
 
 	@:hxmc.callback static function liveFrame(self:Ptr, cmd:Ptr, t:Ptr):Void
-		if (onFrame != null && App.windows.length > 0) onFrame();
+		if (onFrame != null && App.windows.length > 0) OsThread.back(onFrame);
 
 	// waits for an event (left in the queue for poll), or seconds
 	static function wait(seconds:Float) {
-		if (app.isNull()) return;
-		var pool = Runtime.objc_autoreleasePoolPush();
-		var until = Msg.idFloat(ObjC.cls("NSDate"), ObjC.sel("dateWithTimeIntervalSinceNow:"), seconds);
-		Msg.idIntPtrPtrBool(app, ObjC.sel("nextEventMatchingMask:untilDate:inMode:dequeue:"), -1, until, mode, false);
-		Runtime.objc_autoreleasePoolPop(pool);
+		helder.os.OsThread.run(() -> {
+			if (app.isNull()) return;
+			var pool = Runtime.objc_autoreleasePoolPush();
+			var until = Msg.idFloat(ObjC.cls("NSDate"), ObjC.sel("dateWithTimeIntervalSinceNow:"), seconds);
+			Msg.idIntPtrPtrBool(app, ObjC.sel("nextEventMatchingMask:untilDate:inMode:dequeue:"), -1, until, mode, false);
+			Runtime.objc_autoreleasePoolPop(pool);
+		});
 	}
 
 	// dispatches the pending events
 	static function poll(onFrame:Void->Void, onEvent:Event->Void) {
-		CocoaWindow.onFrame = onFrame;
-		CocoaWindow.onEvent = onEvent;
-		for (w in open.copy())
-			if (w.pending) w.resized();
-		var past = Msg.id(ObjC.cls("NSDate"), ObjC.sel("distantPast"));
-		while (!app.isNull()) {
-			var ev = Msg.idIntPtrPtrBool(app, ObjC.sel("nextEventMatchingMask:untilDate:inMode:dequeue:"), -1, past, mode, true);
-			if (ev.isNull()) break;
-			var w = find(Msg.id(ev, ObjC.sel("window")));
-			var type = Msg.i(ev, ObjC.sel("type")).toInt();
-			// (a press on the title bar or an edge is AppKit's, a move or a resize:
-			// its loop takes the release too, which the app would never see)
-			if (w != null && (type == NS.LeftMouseDown || type == NS.RightMouseDown || type == NS.OtherMouseDown) && !w.inside(ev)) {
-				Msg.vPtr(app, ObjC.sel("sendEvent:"), ev);
-				continue;
+		helder.os.OsThread.run(() -> {
+			CocoaWindow.onFrame = onFrame;
+			CocoaWindow.onEvent = onEvent;
+			for (w in open.copy())
+				if (w.pending) w.resized();
+			var past = Msg.id(ObjC.cls("NSDate"), ObjC.sel("distantPast"));
+			while (!app.isNull()) {
+				var ev = Msg.idIntPtrPtrBool(app, ObjC.sel("nextEventMatchingMask:untilDate:inMode:dequeue:"), -1, past, mode, true);
+				if (ev.isNull()) break;
+				var w = find(Msg.id(ev, ObjC.sel("window")));
+				var type = Msg.i(ev, ObjC.sel("type")).toInt();
+				// (a press on the title bar or an edge is AppKit's, a move or a resize:
+				// its loop takes the release too, which the app would never see)
+				if (w != null && (type == NS.LeftMouseDown || type == NS.RightMouseDown || type == NS.OtherMouseDown) && !w.inside(ev)) {
+					Msg.vPtr(app, ObjC.sel("sendEvent:"), ev);
+					continue;
+				}
+				var key = type == NS.KeyDown || type == NS.KeyUp;
+				// (the menus' shortcuts first: Command and a key one of them has)
+				if (type == NS.KeyDown && Msg.i(ev, ObjC.sel("modifierFlags")).toInt() & (1 << 20) != 0
+					&& Msg.bPtr(Msg.id(app, ObjC.sel("mainMenu")), ObjC.sel("performKeyEquivalent:"), ev)) continue;
+				if (w != null) w.translate(ev, type);
+				if (w != null) w.composition();
+				// (keys stay ours: unhandled, AppKit would beep at each)
+				if (!key || w == null) Msg.vPtr(app, ObjC.sel("sendEvent:"), ev);
 			}
-			var key = type == NS.KeyDown || type == NS.KeyUp;
-			// (the menus' shortcuts first: Command and a key one of them has)
-			if (type == NS.KeyDown && Msg.i(ev, ObjC.sel("modifierFlags")).toInt() & (1 << 20) != 0
-				&& Msg.bPtr(Msg.id(app, ObjC.sel("mainMenu")), ObjC.sel("performKeyEquivalent:"), ev)) continue;
-			if (w != null) w.translate(ev, type);
-			if (w != null) w.composition();
-			// (keys stay ours: unhandled, AppKit would beep at each)
-			if (!key || w == null) Msg.vPtr(app, ObjC.sel("sendEvent:"), ev);
-		}
-		// (a composition changed outside a key: the input method's own window, a message)
-		for (w in open.copy())
-			w.composition();
+			// (a composition changed outside a key: the input method's own window, a message)
+			for (w in open.copy())
+				w.composition();
+		});
 	}
 
 	// whether a press is on the content, not the window's frame
@@ -728,7 +766,10 @@ class CocoaWindow {
 		return Msg.idInt(window, ObjC.sel("standardWindowButton:"), i);
 
 	// the three buttons' box in the content's pixels (null: none, full screen)
-	function controls():Null<{x:Int, y:Int, width:Int, height:Int}> {
+	function controls():Null<{x:Int, y:Int, width:Int, height:Int}>
+		return OsThread.get(controlsNow);
+
+	function controlsNow():Null<{x:Int, y:Int, width:Int, height:Int}> {
 		if (isFullscreen()) return null;
 		var close = systemButton(0), zoom = systemButton(2);
 		if (close.isNull() || zoom.isNull()) return null;
@@ -750,11 +791,13 @@ class CocoaWindow {
 	// (asked at each frame: placed again when the place changed, or when
 	// AppKit laid its title bar out again and put them back where it keeps them)
 	function placeControls(x:Int, y:Int) {
-		var px = x / scale, py = y / scale;
-		if (px == controlsX && py == controlsY && placed()) return;
-		controlsX = px;
-		controlsY = py;
-		layoutControls();
+		helder.os.OsThread.run(() -> {
+			var px = x / scale, py = y / scale;
+			if (px == controlsX && py == controlsY && placed()) return;
+			controlsX = px;
+			controlsY = py;
+			layoutControls();
+		});
 	}
 
 	// (the close button where layoutControls put it, in the window: AppKit moves
@@ -788,13 +831,13 @@ class CocoaWindow {
 	}
 
 	function minimize()
-		Msg.vPtr(window, ObjC.sel("performMiniaturize:"), Ptr.nil());
+		OsThread.run(() -> Msg.vPtr(window, ObjC.sel("performMiniaturize:"), Ptr.nil()));
 
 	function zoomed():Bool
-		return Msg.b(window, ObjC.sel("isZoomed"));
+		return OsThread.get(() -> Msg.b(window, ObjC.sel("isZoomed")));
 
 	function zoom()
-		Msg.vPtr(window, ObjC.sel("performZoom:"), Ptr.nil());
+		OsThread.run(() -> Msg.vPtr(window, ObjC.sel("performZoom:"), Ptr.nil()));
 
 	// a press on an inset title bar's drag region (the app's answer): the
 	// window dragged by AppKit; a double click what the user set for title
@@ -913,7 +956,7 @@ class CocoaWindow {
 	// (NSScroller.preferredScrollerStyle: 1 overlay; System Settings'
 	// "Show scroll bars")
 	static function overlayScrollbars():Bool
-		return Msg.i(ObjC.cls("NSScroller"), ObjC.sel("preferredScrollerStyle")).toInt() == 1;
+		return OsThread.get(() -> Msg.i(ObjC.cls("NSScroller"), ObjC.sel("preferredScrollerStyle")).toInt() == 1);
 
 	// NSEventModifierFlags: Shift 1 << 17, Control 1 << 18, Option 1 << 19, Command 1 << 20
 	static function mods(ev:Ptr):Int {

@@ -9,6 +9,10 @@ class HaxeLoop {
 	public static function install():Bool {
 		@:privateAccess App.eventTurn = () -> haxe.EventLoop.main.loopOnce(false);
 		@:privateAccess App.eventNext = () -> @:privateAccess haxe.EventLoop.main.getNextTick();
+		#if target.threaded
+		// (on the program's thread while it runs; an empty one at its end, which the thread's end runs)
+		@:privateAccess App.eventAdopt = on -> @:privateAccess haxe.EventLoop.eventsTls.value = on ? haxe.EventLoop.main : new haxe.EventLoop();
+		#end
 		return true;
 	}
 }

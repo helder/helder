@@ -181,6 +181,12 @@ class GLBackend {
 	inline function use()
 		if (current != this) makeCurrent();
 
+	// (a context is current on one thread: let go of where the program leaves, App.run's thread split)
+	static var handing = false;
+
+	static function letGo()
+		if (current != null) current.detach();
+
 	function makeCurrent() {
 		current = this;
 		if (Platform.os() == 3) WebGL.make_current(web) else if (Egl.eglMakeCurrent(display, eglSurface, eglSurface, context) == 0) fail("eglMakeCurrent");
@@ -195,6 +201,10 @@ class GLBackend {
 
 	public function new(surface:Surface, antialias:Bool) {
 		this.surface = surface;
+		if (!handing && Platform.os() != 3) {
+			handing = true;
+			helder.os.OsThread.leaving.push(letGo);
+		}
 		scratch = LibC.malloc((64 : Int64));
 		if (Platform.os() == 3) {
 			web = switch surface.kind {

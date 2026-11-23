@@ -53,7 +53,7 @@ class Window {
 			App.windows.push(this);
 			return;
 		}
-		native = Platform.apple() >= 1 ? new UIKitWindow(this, title, width, height) : Platform.os() == 1 ? new CocoaWindow(this, title, width, height) : Platform.os() == 2 ? new Win32Window(this, title, width,
+		native = Platform.apple() >= 1 ? new UIKitWindow(this, title, width, height) : Platform.os() == 1 ? CocoaWindow.make(this, title, width, height) : Platform.os() == 2 ? new Win32Window(this, title, width,
 			height) : Platform.os() == 3 ? new CanvasWindow(this, title, width, height) : Platform.target() >= 9 ? new AndroidWindow(this, title, width,
 				height) : WaylandWindow.active() ? new WaylandWindow(this, title, width, height) : new X11Window(this, title, width, height);
 		surface = Platform.apple() >= 1 ? (cast native : UIKitWindow).surface : Platform.os() == 1 ? (cast native : CocoaWindow).surface : Platform.os() == 2 ? (cast native : Win32Window).surface :
