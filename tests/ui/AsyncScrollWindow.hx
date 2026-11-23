@@ -11,6 +11,10 @@ import helder.ui.draw.*;
 // program sees the compositor's final offset afterwards.
 //   AsyncScrollWindow [--latency n [--work ms]]: input to present, n scrolls,
 //   the program's own work after each frame (ms)
+//   AsyncScrollWindow --anim [--pace s [--work ms]]: a layer's transition
+//   while the program blocks (Pacing), or its frames' pacing over s seconds
+//   AsyncScrollWindow --native: a native field over the list moved with
+//   the compositor's scroll (NativeCheck; macOS)
 class AsyncScrollWindow {
 	static var failed = 0;
 
@@ -20,7 +24,7 @@ class AsyncScrollWindow {
 	}
 
 	static function main() {
-		var a = Sys.args(), l = a.indexOf("--latency"), k = a.indexOf("--work");
+		var a = Sys.args(), l = a.indexOf("--latency"), k = a.indexOf("--work"), p = a.indexOf("--pace");
 		var w = new UiWindow("AsyncScrollWindow", 400, 300);
 		var list = new Node();
 		list.style.set({overflow: Scroll, height: 300, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
@@ -35,6 +39,11 @@ class AsyncScrollWindow {
 		}
 		w.root.append(list);
 		if (l >= 0) return Latency.run(w, list, Std.parseInt(a[l + 1]) ?? 60, k >= 0 ? Std.parseFloat(a[k + 1]) / 1000 : 0);
+		if (a.indexOf("--native") >= 0) return NativeCheck.run(w, list);
+		if (a.indexOf("--anim") >= 0) {
+			Pacing.run(w, p >= 0 ? Std.parseFloat(a[p + 1]) : 0, k >= 0 ? Std.parseFloat(a[k + 1]) / 1000 : 0);
+			return;
+		}
 		var c = w.compositor;
 		if (c == null) {
 			Sys.println("AsyncScrollWindow: no compositor here (HELDER_ASYNC_SCROLL=0, no render thread, or the program on the main thread): skipped");

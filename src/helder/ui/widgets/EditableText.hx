@@ -703,6 +703,7 @@ class EditableText extends TextNode implements PlatformEditorListener {
 	}
 
 	function dropEditor() {
+		placed = null;
 		if (editor == null) return;
 		editor.dispose();
 		editor = null;
@@ -746,6 +747,7 @@ class EditableText extends TextNode implements PlatformEditorListener {
 		// windowBounds does; x, y above are the layout's, as the clip's)
 		var b = windowBounds();
 		editor.place(x + b.x - absX, y + b.y - absY, w, h, shown);
+		placed = [x + b.x - absX, y + b.y - absY, w, h, shown ? 1 : 0];
 		if (shown != editorShown) {
 			editorShown = shown;
 			changed();
@@ -755,6 +757,11 @@ class EditableText extends TextNode implements PlatformEditorListener {
 			editor.focus(on);
 			editorHasFocus = on;
 		}
+	}
+
+	override function placeNative(x:Float, y:Float, width:Float, height:Float, shown:Bool) {
+		var e = editor;
+		if (e != null) e.place(x, y, width, height, shown);
 	}
 
 	override function refocusNative()

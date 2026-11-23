@@ -730,6 +730,14 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	// (Ui.update's, after the layout, for the nodes that joined Ui.natives: a platform's view kept in step)
 	@:allow(helder.ui.Ui) function syncNative() {}
 
+	// (where syncNative last placed its view: x, y, width, height, shown (1,
+	// else 0), in the window's points; null: none placed)
+	@:allow(helder.ui) var placed:Null<Array<Float>> = null;
+
+	// (its view placed again, at once, on the main thread: the compositor
+	// moving it with a scroll the program has not drawn yet)
+	@:allow(helder.ui) function placeNative(x:Float, y:Float, width:Float, height:Float, shown:Bool) {}
+
 	// (Ui.update's, after each layout, for the nodes that joined Ui.settlers (a
 	// VirtualScroll: its rows measured, its window moved): whether it changed
 	// the tree, laid out again then)

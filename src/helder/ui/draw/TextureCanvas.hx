@@ -25,9 +25,11 @@ interface TextureCanvas extends Canvas {
 	function redraw(i:Int):Void;
 	// whether Ui.paint walks the tree once more for the compositor's frame
 	// (Renderer.composite); in that walk, what is drawn until leave is
-	// scroller n's content (kind 0), its thumb along x (1) or y (2): false
-	// outside it
+	// scroller n's content (kind 0), its thumb along x (1) or y (2) (an
+	// overlay one's alpha as drawn shown in kind >> 2, 256: an opacity of its
+	// own), or what helder.ui.Mover m moves (mover): false outside it
 	function composites():Bool;
 	function enter(n:Node, kind:Int):Bool;
+	function mover(m:helder.ui.Mover):Bool;
 	function leave():Void;
 }

@@ -410,6 +410,9 @@ class DisplayList implements TextureCanvas {
 	public function enter(n:Node, kind:Int):Bool
 		return false;
 
+	public function mover(m:helder.ui.Mover):Bool
+		return false;
+
 	public function leave() {}
 
 	// gives c the calls recorded, in order (a GPU texture's only if it draws
