@@ -91,7 +91,7 @@ class Run {
 		{name: "gfx-compute", about: "helder.gfx's compute tier, headless (tests/gfx/ComputeTest.hx, GFX_TARGET's build: GL ES 3.1 on Mesa's llvmpipe, D3D11 on WARP, Metal; Windows' build from Linux under Wine): a prefix sum of ten dispatches read back, particles moved by a dispatch whose workgroups a buffer holds, the kept ones appended and counted (atomics) into an indirect draw that reads them as instances, a storage texture written and sampled, the frame's pixels checked, nothing allocated by the second frame; skipped without a Metal device", run: gfxCompute},
 		{name: "gfx-compute-web", about: "helder.gfx's compute tier in headless Chromium (tests/gfx/compute-web.mjs, ComputeTest as wasm32-wasi): on WebGPU the same checks, the buffers and pixels read back by the harness; on WebGL2 Device.has(Compute) false, createComputePipeline and a storage buffer refused", run: gfxComputeWeb},
 		{name: "audio", about: "helder.os's audio through each back end without speakers (tests/os/audio.sh)", run: audio},
-		{name: "audio-web", about: "helder.os's audio on WebAudio in headless Chromium", run: audioWeb},
+		{name: "audio-web", about: "helder.os's audio on WebAudio in headless Chromium; helder.media's WebSource there (tests/media/WebSourceTest.hx: Range requests, a Blob, OPFS; its demuxers are the test lane's, src/helder/media/*.test.hx)", run: audioWeb},
 		{name: "touch-web", about: "helder.os's pointers in headless Chromium: two fingers, a pen, the mouse, samples, a cancel, a tap and a drag without mouse events or scrolls, a pointer event sent from JavaScript (tests/os/PointersWeb.hx); App.onBack and App.backDepth's history entry, history back, Escape as the back, haxe.Timer.delay in App.run (tests/os/BackWeb.hx); helder.ui's Stack and the history: a push's URL, back, Escape, a reload (tests/ui/NavWeb.hx); Pointers' own tests are the test lane's (src/helder/os/Pointers.test.hx)", run: touchWeb},
 		{name: "web", about: "helder.web: the static renderer on Eval and natively, then the DOM renderer, the demo page, islands and wasm in headless Chromium", run: web},
 		{name: "compiler-web", about: "helder.compiler.web, helder's toolchain as wasm in a worker: its modules built (src/helder/compiler/web/build.mjs: bin/compiler-web), todo and ts-todo checked and built in node (tests/compiler-web/node.mjs: warm, a type error, a check writing nothing), then in headless Chromium the worker loaded (brotli), both built to wasm32 on the page and each run in a frame of its own (preview.mjs), a literal edit patched with no build and a structural one built and swapped in, each read back from the program's view (Ui.getTree), and the numbers printed (tests/compiler-web/browser.mjs)", run: compilerWeb},
@@ -1105,6 +1105,8 @@ class Run {
 	static function audioWeb() {
 		wasm("bin/audio/AudioTest.wasm", osCp().concat(["-main", "AudioTest"]));
 		run(NODE, ["tests/os/web.mjs", "bin/audio/AudioTest.wasm"]);
+		wasm("bin/media/WebSourceTest.wasm", cps(["src", "tests/media"]).concat(["-main", "WebSourceTest"]));
+		run(NODE, ["tests/media/browser.mjs", "bin/media/WebSourceTest.wasm"]);
 	}
 
 	static function touchWeb() {

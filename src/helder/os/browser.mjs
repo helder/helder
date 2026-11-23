@@ -35,7 +35,8 @@
 //                  section: "Called from studio.Board.view
 //                  (studio/Board.hx)", no lines yet), else JavaScript's;
 //                  message the runtime's report ("Uncaught exception:
-//                  Null Access"), or null)
+//                  Null Access"), or null; blobs: {name: Blob}, the
+//                  files helder.media's WebSource.blob reads)
 //   memory()       the module's memory; bytes(p, n), string(p) read it (a
 //                  view made anew each time: the memory may have grown)
 //   handles        the JavaScript objects the module refers to by integer
