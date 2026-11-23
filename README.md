@@ -99,7 +99,7 @@ phones.
 that their users need no Xcode or Android SDK: [in-app purchases](src/helder/store/README.md)
 are done (StoreKit 2 on iOS and macOS, Play Billing fetched from Maven and
 dexed by helder); next push notifications, Game Center and Play Games,
-Steam, ads and analytics.
+ads and analytics.
 
 **Apps**
 - Effects on nodes: blur, backdrop blur, filters, clip paths, shaders.
