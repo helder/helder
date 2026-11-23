@@ -75,10 +75,13 @@ system's input itself (`OsThread.waitMain`), so that a window's
 compositor (helder.ui's README, "Performance") gets each event as it
 comes, before the program: macOS's input events in the default run loop
 mode (a call handed to it posts an event that wakes it); X11's
-connection; Wayland's pointer and keyboard, on an event queue of their
-own (the rest, the windows' configures among them, the program's as
-before). Each event is routed then (`Window.route`, `Event.routed`) and
-kept for the program's next poll, in order. A system's callback into the
+connection; Wayland's pointer, keyboard and touch, on an event queue of
+their own (the rest, the windows' configures among them, the program's as
+before; a touch's shared slot, `Pointers`, written as the program takes
+its event). Each event is routed then (`Window.route`, `Event.routed`)
+and kept for the program's next poll, in order. `OsThread.post` hands
+the main thread a call from any thread without waiting (the compositor's
+native views moved with its frame). A system's callback into the
 program's state meanwhile (NSAccessibility, a native field's delegate,
 WKWebView's) is handed to the program's thread (`OsThread.hold`).
 Window calls stay where they were (macOS's on the main thread, X11's and

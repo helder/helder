@@ -621,7 +621,7 @@ class AsyncScrollTest {
 		now += 1;
 		frame(true);
 		frame(true);
-		for (y in [37.0, 150, 296]) {
+		for (y in [37.0, 150, 236]) {
 			now += 1 / 60;
 			mirror(y);
 			c.drawNow(mine);

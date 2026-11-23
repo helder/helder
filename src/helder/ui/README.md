@@ -1457,18 +1457,39 @@ text, a drag's data; a key the focus, its handlers or the keymap take)
 asks the program first (`Event.routed`: ASK; Ladybird's wheel listener
 gate) and waits; let through, the compositor runs it from its start and
 the rest never waits; kept, it is the program's. The program does with
-an event all but the scroll the compositor took. Not composited (the
-program's): scrollers with sticky nodes, or a native view (a macOS
-field) in them, which the system places. Overlay scrollbars hidden at
-the program's last frame stay hidden in the compositor's.
+an event all but the scroll the compositor took.
+
+What moves on its own moves in the compositor's frames too, sampled at
+the time each is drawn (`helder.ui.Mover`, taken with each program
+frame): a node with a layer of its own, its transform and opacity under
+a transition, a spring or a tween (the same closed forms the program
+samples: the transition's run, each Track's segment, copied; a part whose
+start is its next tick waits for it, as the program's does; one
+retargeted hands over its new segment with the next frame); sticky nodes,
+placed by the compositor's offsets as Layout places them; overlay
+scrollbars, drawn shown and faded as `Ui`'s are. Its quads are turned
+and faded in the target's pixels (a clip inside it bounded as a turned
+one is). Not the compositor's: a layout moving (edges' tracks), colours,
+a layer that holds a scroller (drawn as it was), a faded layer's group
+(each quad faded: what overlaps in it shows through). The native views
+over a scroller (a macOS field, a web view) are moved on the main thread
+as each of its frames is drawn (`OsThread.post`), hidden once they leave
+their scroller's view.
+
 `AsyncScrollTest` scripts the wheel, eased notches, a trackpad's gesture
 and momentum past an end, a finger's fling, the keys, a thumb and a
 nested chain through both paths with an injected clock, the program held
 for vsyncs: the same offsets at every vsync, the same end, and the
-compositor's frames pixel for pixel the program's at those offsets;
+compositor's frames pixel for pixel the program's at those offsets; then
+transitions of transform and opacity, a spring retargeted mid-flight, a
+tween and sticky headers in a scrolled list, the same values at every
+vsync, and frames of a layer turning and fading, sticky headers and
+overlay bars shown and fading against the program's (a turned layer's
+within a level: its corners rounded to 32-bit floats once more).
 `AsyncScrollWindow` blocks the program 300 ms in a window while input
-comes. `HELDER_ASYNC_SCROLL=0` turns it off; headless runs, screenshots
-and golden images are the program's alone.
+comes, `--anim` while a layer animates (`--anim --pace s [--work ms]`:
+its frames' pacing). `HELDER_ASYNC_SCROLL=0` turns it off; headless runs,
+screenshots and golden images are the program's alone.
 
 A window's GPU work runs on the render thread (helder.gfx's README,
 "Render thread"; macOS, iOS, Windows, Linux and Android): the frame is
