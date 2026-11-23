@@ -107,6 +107,10 @@ ads and analytics.
 - Lazy layouts: horizontal and grid lists, collapsing headers, pull to refresh.
 - Network images with a cache; long press and double tap; state restored
   after the system ends the app.
+- Files: a tree view, dragging files out to other apps, the system's file
+  icons and thumbnails, the trash, the system's places (volumes,
+  favourites); the viewer as a file browser on them (a sidebar tree, a
+  grid or list of a folder of any size, previews), in the system's font.
 
 **Video**: video and audio playback on the systems' own decoders, nothing
 bundled: MP4/MOV and WebM/Matroska read in Haxe, so a file plays the same
