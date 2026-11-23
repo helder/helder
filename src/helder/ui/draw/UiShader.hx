@@ -72,7 +72,10 @@ function box(p:Vec2, half:Vec2, r:Vec4):Float {
 	var rc = p.x > 0 ? (p.y > 0 ? r.z : r.y) : (p.y > 0 ? r.w : r.x);
 	var rr = min(rc, min(half.x, half.y));
 	var q = abs(p) - half + vec2(rr, rr);
-	return length(max(q, vec2(0, 0))) + min(max(q.x, q.y), 0) - rr;
+	// (off a corner's arc the nearer side's distance itself, not through
+	// length, which a GPU may round (Metal's): a side on whole pixels covers
+	// them wholly, the same for any clip the side is of)
+	return (q.x > 0 && q.y > 0 ? length(q) : max(q.x, q.y)) - rr;
 }
 
 // the same for a rectangle whose corners are quarter ellipses (rad: the

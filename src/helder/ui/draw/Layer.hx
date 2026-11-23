@@ -45,6 +45,9 @@ class Layer {
 	@:allow(helder.ui) var lastY = 0.0;
 	// (it moved in the last few paints: its tiles drawn where they fall, not drawn again)
 	@:allow(helder.ui) var moving = false;
+	// (a scroller's background under its content, opaque, where nothing
+	// else is (no image, no inset shadow; 0: not so): its tiles drawn over it)
+	@:allow(helder.ui) var backdrop = 0;
 	// (what an animated node's layer paints, before its transform: its tiles')
 	@:allow(helder.ui) var bx0 = 0.0;
 	@:allow(helder.ui) var by0 = 0.0;

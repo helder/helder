@@ -141,12 +141,17 @@ class StressTest implements Markup {
 		frame(true);
 		lap("frame after a short scroll");
 		check("scrolled on", list.scrollY > was);
-		// a scroll going on: 20 frames, 6 pixels each (a trackpad's); a row
-		// changed in each of 20 (one in view toggled): their means
+		// a scroll going on: 20 frames, 6 pixels each (a trackpad's), after 10
+		// that draw the tiles around the view; a row changed in each of 20
+		// (one in view toggled): their means
 		var row = 0;
 		for (what in ["scrolling", "changing"]) {
-			var su = 0.0, sp = 0.0, sg = 0.0;
-			for (i in 0...20) {
+			var su = 0.0, sp = 0.0, sg = 0.0, drawn = r.rastered;
+			for (i in 0...(what == "scrolling" ? 30 : 20)) {
+				if (what == "scrolling" && i == 10) {
+					su = sp = sg = 0;
+					drawn = r.rastered;
+				}
 				if (what == "scrolling") ui.wheel(400, 300, 0, 6) else {
 					var at = Std.int(list.scrollY / 30) + 2 + (row++ % 10);
 					app.rows[at].done(!app.rows[at].done());
@@ -169,7 +174,8 @@ class StressTest implements Markup {
 				sg += haxe.Timer.stamp() - c;
 			}
 			lap(what);
-			times[times.length - 1] = '$what frame: update ${Math.round(su / 20 * 100000) / 100}, paint ${Math.round(sp / 20 * 100000) / 100}, gpu ${Math.round(sg / 20 * 100000) / 100}';
+			if (what == "scrolling") check("a scroll going on draws no tile once those around the view are drawn", r.rastered == drawn);
+			times[times.length - 1] = '$what frame: update ${Math.round(su / 20 * 100000) / 100}, paint ${Math.round(sp / 20 * 100000) / 100}, gpu ${Math.round(sg / 20 * 100000) / 100}, tiles drawn ${r.rastered - drawn}';
 		}
 		// a row added at the end
 		app.list(app.list().concat([new Row(n)]));

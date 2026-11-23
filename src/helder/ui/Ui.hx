@@ -583,12 +583,23 @@ class Ui {
 	// viewports each way, the paint's state put back after; what it paints
 	// asking for frames, it is recorded again each frame)
 	function record(l:Layer, x0:Float, y0:Float, x1:Float, y1:Float, margin:Float) {
-		if (l.node != null && x1 - x0 < 1e8 && y1 - y0 < 1e8) {
+		var n = l.node;
+		if (n != null && x1 - x0 < 1e8 && y1 - y0 < 1e8) {
 			var mw = Math.max(0, x1 - x0) * margin, mh = Math.max(0, y1 - y0) * margin;
-			x0 -= mw;
-			x1 += mw;
-			y0 -= mh;
-			y1 += mh;
+			var rx0 = x0 - mw, rx1 = x1 + mw, ry0 = y0 - mh, ry1 = y1 + mh;
+			// (a scroller's: no farther than its scroll reaches, what is seen now kept)
+			if (l.scroll) {
+				var be = n.style.borderEdges;
+				var sx = Scrolling.scrollStart(n, true), sy = Scrolling.scrollStart(n, false);
+				rx0 = Math.max(rx0, Math.min(x0, n.absX + be.left + sx));
+				ry0 = Math.max(ry0, Math.min(y0, n.absY + be.top + sy));
+				rx1 = Math.min(rx1, Math.max(x1, n.absX + n.width - be.right + sx + Scrolling.maxScroll(n, true)));
+				ry1 = Math.min(ry1, Math.max(y1, n.absY + n.height - be.bottom + sy + Scrolling.maxScroll(n, false)));
+			}
+			x0 = rx0;
+			x1 = rx1;
+			y0 = ry0;
+			y1 = ry1;
 		}
 		var w = walk, wx0 = w.x0, wy0 = w.y0, wx1 = w.x1, wy1 = w.y1, wpx = w.ptx, wpy = w.pty;
 		var wasList = recording, wasLayer = recordingLayer, wasHidden = hidden, wasFrame = needsFrame;
@@ -602,12 +613,18 @@ class Ui {
 		recordingLayer = l;
 		hidden = l.hiddenIn;
 		needsFrame = false;
-		var n = l.node;
 		if (n == null) {
 			paintNode(root, l.list);
 			if (overlay.children.length > 0) paintNode(overlay, l.list);
 			l.list.flights();
-		} else if (l.scroll) paintScrolled(n, l.list);
+		} else if (l.scroll) {
+			var st = n.style, bg = st.background, inset = false, sh = st.paintedShadows();
+			if (sh != null)
+				for (x in sh)
+					if (x.inset) inset = true;
+			l.backdrop = bg.a == 255 && st.backgroundImage == null && !inset && !l.hiddenIn ? (bg : Int) : 0;
+			paintScrolled(n, l.list);
+		}
 		else {
 			var p = n.present, nw = p == null ? n.width : p.width(), nh = p == null ? n.height : p.height();
 			var e = focusRingOffset + focusRingWidth + shadowReach + 8 + n.style.outlineOffset + n.style.outlineWidth;

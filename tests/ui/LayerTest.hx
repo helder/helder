@@ -7,9 +7,9 @@ import helder.ui.draw.*;
 // Layers drawn from their tiles (Renderer.tiles, a window's) against the
 // same tree replayed (the reference every golden image is drawn by), pixel
 // for pixel, headless on the GPU (bun run test ui-draw): random trees of
-// scrollers (rows of text, boxes, borders, shadows, groups) and a node
-// moving, scrolled by whole pixels at scales 1 and 2 (exact), by fractions
-// of one and under a moving transform (the difference reported)
+// rounded scrollers (rows of text, boxes, borders, shadows, groups) and a
+// node moving, scrolled by whole pixels at scales 1 and 2 (exact), by
+// fractions of one and under a moving transform (the difference reported)
 //   LayerTest
 class LayerTest {
 	static inline var W = 320;
@@ -100,12 +100,13 @@ class LayerTest {
 		}
 		var ui = new Ui(new DrawText(), W, H), scrollers:Array<Node> = [], rows:Array<Node> = [];
 		var top = new Node();
-		top.style.set({direction: Row, grow: 1, padding: 8, columnGap: 8, background: 0xFFF4F4F5, fontSize: 13});
+		top.style.set({direction: Row, height: H, padding: 8, columnGap: 8, background: 0xFFF4F4F5, fontSize: 13});
 		var card = new Node();
 		card.style.set({width: 60, height: 40, background: 0xFF3B82F6, radius: 6, position: Absolute, left: 200, top: 150});
 		for (k in 0...1 + rnd(2)) {
 			var list = new Node();
-			list.style.set({overflow: Scroll, grow: 1, background: 0xFFFFFFFF, rowGap: 2, padding: 4, minHeight: 0});
+			list.style.set({overflow: Scroll, grow: 1, background: 0xFFFFFFFF, rowGap: 2, padding: 4, minHeight: 0, radius: [8, 6.5, 12][rnd(3)]});
+			if (rnd(2) == 0) list.style.set({borderWidth: 1, borderColor: 0xFFE4E4E7});
 			for (i in 0...30 + rnd(30)) {
 				var row = new Node();
 				row.style.set({direction: Row, padding: 3, columnGap: 6, background: rnd(3) == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});

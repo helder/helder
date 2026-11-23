@@ -385,7 +385,8 @@ class Renderer implements TextureCanvas {
 	// moves by whole device pixels; drawn where they fall (snapped) while
 	// it moves by fractions of one, as browsers snap scroll offsets; drawn
 	// again where it comes to rest. Those in view are drawn the frame they
-	// come into it, PREFETCH of those around it a frame; past tileBudget,
+	// come into it, those next to it after (PREFETCH a frame at rest, one
+	// moving); a rounded clip's corners replayed; past tileBudget,
 	// those longest unseen and farthest go first
 	public var tiles = false;
 	public var tileBudget = 96 << 20;
@@ -401,6 +402,10 @@ class Renderer implements TextureCanvas {
 	public function layerTiles(l:Layer):Bool {
 		if (!tiles || rastering) return false;
 		if (!flat && (l.scroll || !l.moving)) return false;
+		// (a scroller's tiles drawn over its background, as in place: what its
+		// content blends over the same, rounded the same at each step, the
+		// tiles opaque; one with none opaque under it replayed)
+		if (l.scroll && l.backdrop == 0) return false;
 		var t = tiled.get(l), s = scale;
 		if (t == null) tiled.set(l, t = new LayerTiles());
 		t.frame = frames;
@@ -434,29 +439,103 @@ class Renderer implements TextureCanvas {
 		if (vx1 <= vx0 || vy1 <= vy0) return true;
 		var i0 = Math.floor(vx0 / TILE), j0 = Math.floor(vy0 / TILE), i1 = Math.ceil(vx1 / TILE), j1 = Math.ceil(vy1 / TILE);
 		if ((i1 - i0) * (j1 - j0) * TILE * TILE * 4 > tileBudget / 2) return false;
+		// (a rounded clip: a tile's pixels at its corners would be blended once
+		// at the clip's coverage, where drawing in place blends each thing
+		// drawn there at it; so the corners' boxes, the list replayed into
+		// each under its corner, the tiles under the rest: whole pixels, as
+		// the clip's edges are, the shader's coverage there the same)
+		var a = 0.0;
+		if (flat && clipR0 + clipR1 + clipR2 + clipR3 > 0) {
+			if (clipX0 != Math.ffloor(clipX0) || clipY0 != Math.ffloor(clipY0) || clipX1 != Math.ffloor(clipX1) || clipY1 != Math.ffloor(clipY1))
+				return false;
+			a = 2 * Math.ceil(Math.max(Math.max(clipR0, clipR1), Math.max(clipR2, clipR3))) + 2;
+			if (2 * a > clipX1 - clipX0 || 2 * a > clipY1 - clipY0) return false;
+		}
 		for (j in j0...j1)
 			for (i in i0...i1) {
 				var k = t.get(i, j);
 				if (k == null || !k.valid(l)) k = raster(l, t, i, j);
 				k.frame = frames;
-				gpuTexture(k.group.texture, k.group.id, i * TILE / s - t.rx, j * TILE / s - t.ry, TILE / s, TILE / s);
 			}
-		// (the ones around what is seen, within what it was recorded over, nearest first)
+		if (a == 0) drawTiles(t, i0, j0, i1, j1) else {
+			var x0 = clipX0, y0 = clipY0, x1 = clipX1, y1 = clipY1, r0 = clipR0, r1 = clipR1, r2 = clipR2, r3 = clipR3;
+			clipR0 = clipR1 = clipR2 = clipR3 = 0;
+			for (band in 0...3) {
+				clipX0 = band == 1 ? x0 : x0 + a;
+				clipX1 = band == 1 ? x1 : x1 - a;
+				clipY0 = band == 0 ? y0 : band == 1 ? y0 + a : y1 - a;
+				clipY1 = band == 0 ? y0 + a : band == 1 ? y1 - a : y1;
+				drawTiles(t, i0, j0, i1, j1);
+			}
+			var w = tileWalk;
+			w.mark = false;
+			w.draw = true;
+			w.host = null;
+			rastering = true;
+			for (c in 0...4) {
+				var cx = c == 0 || c == 3 ? x0 : x1 - a, cy = c < 2 ? y0 : y1 - a;
+				clipX0 = cx;
+				clipY0 = cy;
+				clipX1 = cx + a;
+				clipY1 = cy + a;
+				clipR0 = c == 0 ? r0 : 0;
+				clipR1 = c == 1 ? r1 : 0;
+				clipR2 = c == 2 ? r2 : 0;
+				clipR3 = c == 3 ? r3 : 0;
+				w.set(cx / s - tx, cy / s - ty, (cx + a) / s - tx, (cy + a) / s - ty);
+				w.ptx = w.pty = 0;
+				l.list.replay(this, w);
+			}
+			rastering = false;
+			clipX0 = x0;
+			clipY0 = y0;
+			clipX1 = x1;
+			clipY1 = y1;
+			clipR0 = r0;
+			clipR1 = r1;
+			clipR2 = r2;
+			clipR3 = r3;
+		}
+		// (the ones around what is seen, within what it was recorded over: one
+		// a frame while it moves, two while it rests, none once they are drawn)
 		if (l.scroll) {
-			var budget = PREFETCH, ri0 = Math.floor((l.x0 + t.rx) * s / TILE), rj0 = Math.floor((l.y0 + t.ry) * s / TILE);
+			var budget = l.moving ? 1 : PREFETCH, ri0 = Math.floor((l.x0 + t.rx) * s / TILE), rj0 = Math.floor((l.y0 + t.ry) * s / TILE);
 			var ri1 = Math.ceil((l.x1 + t.rx) * s / TILE), rj1 = Math.ceil((l.y1 + t.ry) * s / TILE);
-			for (d in 1...3) {
-				for (j in Std.int(Math.max(j0 - d, rj0))...Std.int(Math.min(j1 + d, rj1)))
-					for (i in Std.int(Math.max(i0 - d, ri0))...Std.int(Math.min(i1 + d, ri1))) {
-						if (budget == 0 || i >= i0 && i < i1 && j >= j0 && j < j1) continue;
-						var k = t.get(i, j);
-						if (k != null && k.valid(l)) continue;
-						raster(l, t, i, j).frame = frames - 1;
-						budget--;
-					}
-			}
+			for (j in Std.int(Math.max(j0 - 1, rj0))...Std.int(Math.min(j1 + 1, rj1)))
+				for (i in Std.int(Math.max(i0 - 1, ri0))...Std.int(Math.min(i1 + 1, ri1))) {
+					if (budget == 0 || i >= i0 && i < i1 && j >= j0 && j < j1) continue;
+					var k = t.get(i, j);
+					if (k != null && k.valid(l)) continue;
+					raster(l, t, i, j).frame = frames - 1;
+					budget--;
+				}
 		}
 		return true;
+	}
+
+	// (the tiles i0...i1, j0...j1 drawn where their layer is now, under the
+	// clip; flat, each cut to it, so that no pixel outside is shaded)
+	function drawTiles(t:LayerTiles, i0:Int, j0:Int, i1:Int, j1:Int) {
+		var s = scale, fx = (tx - t.rx) * s, fy = (ty - t.ry) * s;
+		if (grid) {
+			fx = Math.fround(fx);
+			fy = Math.fround(fy);
+		}
+		var cx0 = Math.max(clipX0, ox), cy0 = Math.max(clipY0, oy), cx1 = Math.min(clipX1, ox + targetW), cy1 = Math.min(clipY1, oy + targetH);
+		for (j in j0...j1)
+			for (i in i0...i1) {
+				var k = t.get(i, j), g = k.group;
+				if (!flat) {
+					gpuTexture(g.texture, g.id, i * TILE / s - t.rx, j * TILE / s - t.ry, TILE / s, TILE / s);
+					continue;
+				}
+				var x0 = i * TILE + fx, y0 = j * TILE + fy;
+				var qx0 = Math.max(x0, cx0), qy0 = Math.max(y0, cy0), qx1 = Math.min(x0 + TILE, cx1), qy1 = Math.min(y0 + TILE, cy1);
+				if (qx1 <= qx0 || qy1 <= qy0) continue;
+				gpu.set(g.id, g.texture);
+				qr0 = qr1 = qr2 = qr3 = qw0 = qw1 = qw2 = qw3 = 0;
+				quad(qx0, qy0, qx1, qy1, (qx0 - x0) / TILE, (qy0 - y0) / TILE, (qx1 - x0) / TILE, (qy1 - y0) / TILE, Color.WHITE, 0, 2, 0, 1, g.id);
+			}
 	}
 
 	// (a tile of l drawn into, as l would be drawn in place: in the frame's
@@ -471,6 +550,13 @@ class Renderer implements TextureCanvas {
 		var g = k.group;
 		g.open(device, TILE, TILE);
 		g.frame = frames;
+		var c = g.pass.colors[0].clear, b:Color = l.scroll ? l.backdrop : 0;
+		@:privateAccess {
+			c.r = b.r / 255;
+			c.g = b.g / 255;
+			c.b = b.b / 255;
+			c.a = b.a / 255;
+		}
 		var s = scale, x0 = i * TILE, y0 = j * TILE;
 		k.content = l.content;
 		k.stamp = l.stamp;
