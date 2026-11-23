@@ -1482,6 +1482,47 @@ them (`Compositor.nativeScrolled`), so their deceleration and bounce are
 drawn at the display's pace while the program is busy; the program has
 them at its next turn.
 
+On macOS and iOS the frames go to the system's compositor
+(`helder.ui.draw.CaLayers`): each frame, the program's and the
+compositor's, is composed from the compositor's state and split in paint
+order into Core Animation layers: the window's CAMetalLayer at the
+bottom; a CAMetalLayer of their own for each top-level scroller's content
+(over what it recorded, under a CALayer masking to the scroller's clip:
+whole pixels, square; a rounded scroller stays drawn, Core Animation's
+corners not UiShader's) and each top-level layer that moves on its own
+(nothing nested moving, its clips its own); over each, a CAMetalLayer of
+what overlaps it, the rest staying below. A layer is drawn again only
+where its quads, size or what they sample changed (`CompositeFrame.fresh`:
+tiles rastered, groups, images, a scene); a scroll moves its content's
+layer and a mover's transform and opacity are its layer's, so neither
+draws (a scrollbar's thumb, a layer of its size, does). A frame is one
+transaction: its drawables presented with it (`presentsWithTransaction`),
+the layers placed, the native views over its scrollers moved, on the
+main thread where those move (UIKit's and AppKit's views are its), else
+on the render thread. On iOS a scroller's content layer follows its
+UIScrollView on the main thread as UIKit moves it. The program's frames
+draw only into targets (`MetalBackend.quiet`: tiles, groups) and commit
+at most once a display period. Pixels: the textured compositor's where
+the layers are opaque; a translucent layer (an edge, a fade) is blended by
+the window server in the display's colours, a few levels off UiShader's
+sRGB blending (10 at most on a P3 panel, in `SystemLayersWindow`). Memory:
+the layers' drawables beside the tiles (6.2 MB for a 240×300 list and a
+mover at scale 2, beside 6.3 MB of tiles). A steady scroll at scale 2 on an
+M-series Mac: 0.6 ms of GPU a frame against 4.4–4.9 for the textured
+compositor; WindowServer's CPU about the same (it composites more layers,
+the app none). `HELDER_SYSTEM_LAYERS=0` keeps one CAMetalLayer and the
+textured compositor (`=flat`: the same split, all on the window's layer);
+a frame read back (a window's capture) is drawn as before, the layers
+hidden for it. `SystemLayersWindow` (ui-draw, macOS) runs one scene on a
+clock of its own three ways (Core Animation's layers, `flat`, `0`) and
+compares window captures (`CGWindowListCreateImage`, a process's own
+windows): a list scrolled by the program, a rounded scroller, a layer
+moving and a card of overlapping children fading on their own, a native
+field and a web view in the list, then the compositor's frames while the
+program is blocked; `--time s [anim]` times a scroll or an animation both
+ways. Android's SurfaceControl, Windows' DirectComposition and Wayland's
+subsurfaces come later; X11 and headless stay on the textured compositor.
+
 `AsyncScrollTest` scripts the wheel, eased notches, a trackpad's gesture
 and momentum past an end, a finger's fling, the keys, a thumb and a
 nested chain through both paths with an injected clock, the program held

@@ -96,7 +96,10 @@ before; a touch's shared slot, `Pointers`, written as the program takes
 its event). Each event is routed then (`Window.route`, `Event.routed`)
 and kept for the program's next poll, in order. `OsThread.post` hands
 the main thread a call from any thread without waiting (the compositor's
-native views moved with its frame). A system's callback into the
+native views moved with its frame; on macOS and iOS, a frame's Core
+Animation transaction where a native view moves with it, an NSView's and
+a UIView's being the main thread's; one without commits on the render
+thread, flushed, as it has no run loop). A system's callback into the
 program's state meanwhile (NSAccessibility, a native field's delegate,
 WKWebView's) is handed to the program's thread (`OsThread.hold`).
 Window calls stay where they were (macOS's on the main thread, X11's and

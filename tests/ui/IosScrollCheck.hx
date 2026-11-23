@@ -67,8 +67,12 @@ class IosScrollCheck {
 					helder.os.objc.Msg.vPointBool(v, helder.os.objc.ObjC.sel("setContentOffset:animated:"), p.value, true);
 					hxmc.unsafe.LibC.free(cast p);
 				});
+				var l = c.layers, quads0 = l == null ? 0 : l.quadsTotal, frames0 = l == null ? 0 : l.frames;
 				from = Timer.stamp();
 				Sys.sleep(0.5);
+				// (Core Animation's: the list's content moved as a layer, at most a thumb drawn again)
+				if (l != null) check("on the system's layers: the list's layer moved, not drawn", l.frames > frames0 && l.quadsTotal - quads0 <= 8 * (l.frames - frames0),
+					'${l.frames - frames0} frames committed, ${Math.round((l.quadsTotal - quads0) / Math.max(1, l.frames - frames0) * 10) / 10} quads drawn a frame');
 				to = Timer.stamp();
 			}
 			if (step == 30 + 40) {

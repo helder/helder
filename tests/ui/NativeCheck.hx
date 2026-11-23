@@ -24,7 +24,14 @@ class NativeCheck {
 		field.text = "native";
 		field.style.set({height: 22, shrink: 0});
 		list.insert(field, 3);
-		var step = 0, failed = 0;
+		var step = 0, failed = 0, lock = new sys.thread.Mutex(), shownY = Math.NaN;
+		// (the offset of the compositor's last frame: with Core Animation's layers the field moves in its transaction, with it)
+		c.onFrame = _ -> {
+			var o = c.offsets(list);
+			lock.acquire();
+			shownY = o == null ? Math.NaN : o.y;
+			lock.release();
+		};
 		App.run(() -> {
 			step++;
 			if (step == 14) {
@@ -37,10 +44,14 @@ class NativeCheck {
 					if (!ok) failed++;
 					Sys.println('NativeCheck: ${ok ? "ok" : "FAIL"}: $what ($detail)');
 				}
+				lock.acquire();
+				var shown = shownY;
+				lock.release();
 				var moved = o == null ? 0.0 : o.y - from, expect = placed == null ? 0.0 : placed[1] - moved;
+				var drawn = placed == null || Math.isNaN(shown) ? expect : placed[1] - (shown - from);
 				check("the compositor scrolled while the program was blocked", moved > 0, from + " to " + (o == null ? null : o.y));
-				check("the field moved with it before the program's next frame", placed != null && y != null && Math.abs(y - expect) < SNAP
-					|| y == null && moved > 0, 'placed at ${placed == null ? null : placed[1]}, now at $y, expected $expect');
+				check("the field moved with it before the program's next frame", placed != null && y != null && (Math.abs(y - expect) < SNAP || Math.abs(y - drawn) < SNAP)
+					|| y == null && moved > 0, 'placed at ${placed == null ? null : placed[1]}, now at $y, expected $expect (its last frame: $drawn)');
 				w.close();
 				Sys.println("NativeCheck: " + (failed == 0 ? "ok" : '$failed FAILED'));
 				Sys.exit(failed == 0 ? 0 : 1);

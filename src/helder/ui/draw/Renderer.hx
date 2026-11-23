@@ -314,6 +314,15 @@ class Renderer implements TextureCanvas {
 		#end
 	}
 
+	// what end does but drawing onto the target (the system's layers draw
+	// the frame from the compositor's: CaLayers): the atlas uploaded, the
+	// quads once, for the buffers their copies share
+	public function upload() {
+		uploadAtlas();
+		if (quads.shared().corners == null) quads.upload(device);
+		FrameCounts.uiMs += (haxe.Timer.stamp() - began) * 1000;
+	}
+
 	// (a batch's runs drawn, each with its image texture)
 	function draw(enc:Encoder, b:QuadBatch, textures:Array<Null<Texture>>) {
 		b.bind(enc);
@@ -691,8 +700,10 @@ class Renderer implements TextureCanvas {
 			d.colorFormat = RGBA8;
 			groupPipeline = device.createPipeline(d);
 		}
-		for (g in closedGroups)
+		for (g in closedGroups) {
 			render(enc, g, g.pass);
+			if (composite != null) composite.fresh.push(cast g.texture);
+		}
 		closedGroups.resize(0);
 		if (regions.length > 0) paste(enc);
 	}
@@ -1109,6 +1120,7 @@ class Renderer implements TextureCanvas {
 			if (!browser && img.width <= PAGED && img.height <= PAGED && allocate(e)) {
 				var p = pages[e.page];
 				e.texture = p.texture;
+				if (composite != null) composite.fresh.push(p.texture);
 				img.premultiplied(pre -> device.writeTexture(p.texture, pre, e.x, e.y, e.width, e.height));
 				img.uploaded();
 			} else
@@ -1117,6 +1129,7 @@ class Renderer implements TextureCanvas {
 			textures.set(img.id, e);
 		} else {
 			var t = e.texture;
+			if (composite != null) composite.fresh.push(t);
 			// (a browser's image replaced by another, a frame of a worker's: uploaded from its bitmap)
 			if (e.page < 0 && img.browser != 0 && !img.hasPixels && device.decodesImages) device.writeTextureImage(t, img.browser);
 			else if (e.page >= 0) img.premultiplied(pre -> device.writeTexture(t, pre, e.x, e.y, e.width, e.height));
@@ -1631,6 +1644,7 @@ class Renderer implements TextureCanvas {
 	public function gpuTexture(t:Texture, id:Int, x:Float, y:Float, w:Float, h:Float, radius:Float = 0.0, ?corners:Corners) {
 		if (w <= 0 || h <= 0 || id >= 0) return;
 		gpu.set(id, t);
+		if (composite != null && composite.fresh.indexOf(t) < 0) composite.fresh.push(t);
 		var s = scale;
 		edges((x + tx) * s, (y + ty) * s, (x + w + tx) * s, (y + h + ty) * s);
 		var x0 = ex0, y0 = ey0, x1 = ex1, y1 = ey1;

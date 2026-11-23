@@ -349,11 +349,14 @@ class UiWindow {
 		#end
 	}
 
+	// (a test's clock, Ui.now's too: frames of the same steps the same in two runs)
+	@:noCompletion public static var clock:Null<Void->Float> = null;
+
 	// draws a frame (the loop calls it when needsFrame): the clock ticked
 	// first (now: what the frame's events started, Ui.now's, is not after
 	// it, as the vsync's time App.frame.time may be)
 	public function frame() {
-		Clock.tick(#if helder.headless helder.headless.Time.now #else haxe.Timer.stamp() #end);
+		Clock.tick(clock != null ? clock() : #if helder.headless helder.headless.Time.now #else haxe.Timer.stamp() #end);
 		// (laid out at the surface's size: the device's follows it only at
 		// beginFrame, so that a single resize, a maximise's, laid out at the
 		// last size would be drawn into the new one and stay so)
@@ -375,6 +378,14 @@ class UiWindow {
 			if ((Ui.accessEpoch != accessSent && accessListening()) || accessPending()) sendAccess();
 			return;
 		}
+		// (the system's layers drawn from the compositor's state after the frame, but for a frame read back)
+		var planes = false;
+		#if (!helder.headless && hxmc.target != "wasm32-wasi")
+		if (compositor != null) {
+			planes = compositor.planes() && capture == null;
+			compositor.quiet(planes);
+		}
+		#end
 		var enc = device.beginFrame();
 		if (enc == null) return;
 		redraw = false;
@@ -389,7 +400,7 @@ class UiWindow {
 		}
 		// (painted first: the passes a texture drawn needs, a <Scene>'s, recorded before the frame's)
 		renderer.tiles = tiled && capture == null;
-		renderer.keep = renderer.tiles && damage != "full";
+		renderer.keep = renderer.tiles && damage != "full" && !planes;
 		renderer.flash = damage == "flash";
 		renderer.background = background;
 		renderer.begin(device.width, device.height);
@@ -399,9 +410,11 @@ class UiWindow {
 		#end
 		ui.paint(renderer);
 		renderer.prepare(enc);
-		enc.beginPass(pass);
-		renderer.end(enc);
-		enc.endPass();
+		if (planes) renderer.upload() else {
+			enc.beginPass(pass);
+			renderer.end(enc);
+			enc.endPass();
+		}
 		// (glyphs drawn at a step's size while a scale moved: drawn at theirs next)
 		if (renderer.again) redraw = true;
 		if (capture != null) {
@@ -416,6 +429,9 @@ class UiWindow {
 		#end
 		if (renderer.keep) device.damaged(whole ? null : renderer.regions.length > 0 ? renderer.regions : [0, 0, 1, 1]);
 		device.endFrame();
+		#if (!helder.headless && hxmc.target != "wasm32-wasi")
+		if (planes) compositor.present();
+		#end
 		updateTextInput();
 		sendAccess();
 		syncScroll();

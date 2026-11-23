@@ -19,7 +19,10 @@ import helder.ui.Node;
 // frame's own, Renderer.pushGroup) whose one quad is faded; a scroller
 // inside one leaves it as drawn. An overlay scrollbar's thumb is
 // drawn shown and faded as the program's would. Filled on the program's
-// thread, then read by the compositor's only (two, in turn).
+// thread, then read by the compositor's only (two, in turn). Composed for
+// the system's layers (CaLayers), the scrollers and movers on layers of
+// their own are left as drawn, the system moving them, a scroller's
+// content not cut to its clip, which the system's layer is.
 @:allow(helder.ui.draw)
 class CompositeFrame {
 	public static inline var STRIDE = 224;
@@ -85,6 +88,22 @@ class CompositeFrame {
 	var sampler:Null<Sampler> = null;
 	// (whether it was filled: a frame drew it)
 	public var ready(default, null) = false;
+	// the textures a frame drew into or uploaded (tiles rastered, groups,
+	// images, a scene's): what samples them is drawn again by the system's layers
+	public final fresh:Array<Texture> = [];
+	// (CaLayers' compose: per quad written its source (a quad's index, -1 - g
+	// a tile of group g); the offsets the scrolls move by (null: now's); per
+	// scroller frame whether its content is on a layer of its own (not cut
+	// to its clip nor the frame); per mover whether it is held as drawn; all
+	// movers as drawn (the program's own frame))
+	public var sources:Null<Array<Int>> = null;
+	public var scrolled:Null<Array<Float>> = null;
+	public var free:Null<Array<Bool>> = null;
+	public var held:Null<Array<Bool>> = null;
+	public var asDrawn = false;
+	// (when the program painted it, Ui.now's)
+	public var paintedAt = 0.0;
+	public final heldMoved:Array<Float> = [];
 	// (the compositor's: the ring of instance buffers it is drawn from, their size)
 	var buffers:Array<Buffer> = [];
 	var capacity = 0;
@@ -115,6 +134,7 @@ class CompositeFrame {
 		tileAt.resize(0);
 		tiles.resize(0);
 		tileTextures.resize(0);
+		fresh.resize(0);
 		ready = false;
 	}
 
@@ -182,7 +202,7 @@ class CompositeFrame {
 		for (j in 0...movers.length) {
 			var o = j * MOVER, q = j * 7, mv = movers[j];
 			var a = 1.0, b = 0.0, c = 0.0, d = 1.0, e = 0.0, f = 0.0, al = 1.0;
-			if (k[o + 2] != 0) al = mv.opacity else {
+			if (k[o + 2] != 0 || asDrawn) al = mv.opacity else {
 				var fr = Std.int(k[o + 1]);
 				al = mv.sample(t, fr >= 0 ? now[2 * fr] : 0, fr >= 0 ? now[2 * fr + 1] : 0, m1);
 				var m0 = mv.drawn;
@@ -297,6 +317,17 @@ class CompositeFrame {
 		runTexture = null;
 		runFirst = k = 0;
 		if (movers.length > 0) sample(now, t);
+		// (held: drawn as drawn, at 1, what was sampled kept for the system's layer)
+		var hd = held;
+		if (hd != null) {
+			heldMoved.resize(moved.length);
+			for (j in 0...movers.length)
+				if (hd[j]) for (q in 0...7) {
+					heldMoved[j * 7 + q] = moved[j * 7 + q];
+					moved[j * 7 + q] = q == 0 || q == 3 || q == 6 ? 1 : 0;
+				}
+		}
+		var sh = scrolled == null ? now : scrolled, fr = free, srcs = sources;
 		var te = 0;
 		var s = scale, n = batch.count, src = batch.bytes, g = 0, mv = moved;
 		// (each quad's run texture, by the template's runs)
@@ -304,7 +335,7 @@ class CompositeFrame {
 		for (i in 0...n + 1) {
 			// (the tiles before quad i)
 			while (g < groups.length && groups[g] == i) {
-				tileGroup(g, now, out);
+				tileGroup(g, sh, out);
 				g++;
 			}
 			if (i == n) break;
@@ -342,7 +373,7 @@ class CompositeFrame {
 			}
 			var cm = clipMover[i];
 			if (cm >= 0) turnClip(out, o, mv, cm * 7);
-			var dx = f >= 0 ? shift(f, now, true) * s : 0.0, dy = f >= 0 ? shift(f, now, false) * s : 0.0;
+			var dx = f >= 0 ? shift(f, sh, true) * s : 0.0, dy = f >= 0 ? shift(f, sh, false) * s : 0.0;
 			if (b >= 0) {
 				var tf = b >> 1, tx = b & 1 == 0;
 				var d = (thumbAt(tf, tx, now[2 * tf + (tx ? 0 : 1)]) - thumbAt(tf, tx, offsets[2 * tf + (tx ? 0 : 1)])) * s;
@@ -362,10 +393,13 @@ class CompositeFrame {
 			}
 			if (dx != 0 || dy != 0) move(out, o, dx, dy);
 			if (c >= 0) {
-				var cx = snap ? Math.fround(shift(c, now, true) * s) : shift(c, now, true) * s;
-				var cy = snap ? Math.fround(shift(c, now, false) * s) : shift(c, now, false) * s;
+				var cx = snap ? Math.fround(shift(c, sh, true) * s) : shift(c, sh, true) * s;
+				var cy = snap ? Math.fround(shift(c, sh, false) * s) : shift(c, sh, false) * s;
 				if (cx != 0 || cy != 0) moveClip(out, o, cx, cy);
 			}
+			// (on a scroller's own layer, under the clip the layer is: none)
+			if (fr != null && f >= 0 && fr[f] && (c < 0 || !fr[c])) unclip(out, o);
+			if (srcs != null) srcs.push(i);
 			k++;
 		}
 		if (k > runFirst) {
@@ -468,12 +502,23 @@ class CompositeFrame {
 		b.setFloat(o + 204, cy - fy);
 	}
 
+	function unclip(b:Bytes, o:Int) {
+		for (j in 0...2) {
+			b.setFloat(o + 160 + j * 4, -1e9);
+			b.setFloat(o + 168 + j * 4, 1e9);
+		}
+		for (j in 0...4)
+			b.setFloat(o + 176 + j * 4, 0);
+	}
+
 	function moveClip(b:Bytes, o:Int, dx:Float, dy:Float) {
 		b.setFloat(o + 160, b.getFloat(o + 160) + dx);
 		b.setFloat(o + 164, b.getFloat(o + 164) + dy);
 		b.setFloat(o + 168, b.getFloat(o + 168) + dx);
 		b.setFloat(o + 172, b.getFloat(o + 172) + dy);
 	}
+
+	static final NONE = [0.0, 0.0, 0.0, 0.0];
 
 	// (group g's tiles where they fall now, cut to its clip and the frame, as Renderer.drawTiles cuts them)
 	function tileGroup(g:Int, now:Array<Float>, out:Bytes) {
@@ -485,6 +530,21 @@ class CompositeFrame {
 		}
 		var cx0 = Math.max(d[o + 2] + cdx, 0), cy0 = Math.max(d[o + 3] + cdy, 0);
 		var cx1 = Math.min(d[o + 4] + cdx, width), cy1 = Math.min(d[o + 5] + cdy, height);
+		// (on a layer of its own: its tiles whole, under its own clip only where that is inside the layer)
+		var fr = free, loose = fr != null && fr[f], radii = d, at = o + 6;
+		if (loose) {
+			if (c >= 0 && fr[c]) {
+				cx0 = d[o + 2] + cdx;
+				cy0 = d[o + 3] + cdy;
+				cx1 = d[o + 4] + cdx;
+				cy1 = d[o + 5] + cdy;
+			} else {
+				cx0 = cy0 = -1e9;
+				cx1 = cy1 = 1e9;
+				radii = NONE;
+				at = 0;
+			}
+		}
 		var rx = d[o + 10], ry = d[o + 11], tx = d[o + 12] + shift(f, now, true), ty = d[o + 13] + shift(f, now, false), alpha = d[o + 14];
 		var fx = (tx - rx) * s, fy = (ty - ry) * s;
 		if (snap) {
@@ -497,7 +557,8 @@ class CompositeFrame {
 			var qx0 = Math.max(x0, cx0), qy0 = Math.max(y0, cy0), qx1 = Math.min(x0 + T, cx1), qy1 = Math.min(y0 + T, cy1);
 			if (qx1 <= qx0 || qy1 <= qy0 || k * STRIDE + STRIDE > out.length) continue;
 			run(tileTextures[t]);
-			tile(out, k * STRIDE, qx0, qy0, qx1, qy1, (qx0 - x0) / T, (qy0 - y0) / T, (qx1 - x0) / T, (qy1 - y0) / T, alpha, cx0, cy0, cx1, cy1, d, o + 6);
+			tile(out, k * STRIDE, qx0, qy0, qx1, qy1, (qx0 - x0) / T, (qy0 - y0) / T, (qx1 - x0) / T, (qy1 - y0) / T, alpha, cx0, cy0, cx1, cy1, radii, at);
+			if (sources != null) sources.push(-1 - g);
 			k++;
 		}
 	}
