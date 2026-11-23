@@ -117,11 +117,14 @@ llvmpipe, with no GPU stack: the shaders are Haxe functions that already
 run on the CPU, compiled ahead of time, so nothing needs a JIT. First
 helder.ui's display list replayed through helder.canvas (headless runs and
 UI goldens without GL or Mesa), then a CPU back end beside Metal, D3D11,
-GL and WebGPU under the same Device and Encoder (rasterizing, depth and
-stencil, blending, sampling, compressed textures, MSAA), then speed:
-shaders on groups of pixels with SIMD and tiles in parallel over
-helder.jobs, the Parallel item's machinery. Goldens the same on every
-machine, static binaries that render, lighter CI.
+GL and WebGPU under the same Device and Encoder, SIMD from the start: the
+shader macro also emits each shader over hxmc.simd's 4 lanes, a 2x2 pixel
+quad per call (derivatives and mip levels as GPUs get them), the scalar
+functions kept as the reference; tiles in parallel over helder.jobs;
+rasterizing, depth and stencil, blending, sampling, compressed textures,
+MSAA. Wider lanes and the Parallel item's vectorizer later, on the same
+pieces. Goldens the same on every machine, static binaries that render,
+lighter CI.
 
 **Video**: video and audio playback on the systems' own decoders, nothing
 bundled: MP4/MOV and WebM/Matroska read in Haxe, so a file plays the same
