@@ -107,6 +107,14 @@ ads and analytics.
 - Network images with a cache; long press and double tap; state restored
   after the system ends the app.
 
+**Video**: video and audio playback on the systems' own decoders, nothing
+bundled: MP4/MOV and WebM/Matroska read in Haxe, so a file plays the same
+everywhere; decoded by VideoToolbox and AVFoundation, MediaCodec, Media
+Foundation, VAAPI and WebCodecs; frames as GPU textures without copies
+where the system allows, timed by the audio clock; a `<Video>` node with
+exact seeking and frame stepping, its controls the app's; the viewer
+playing video and audio beside images and PDFs.
+
 **Games**
 - Physics: mesh and convex colliders, layers, triggers, contact events, stable stacks.
 - Animation state machines and layers; tweens for any value.
