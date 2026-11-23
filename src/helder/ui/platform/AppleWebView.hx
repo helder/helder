@@ -150,6 +150,8 @@ class AppleWebView implements PlatformWebView {
 			this.parent = ios ? parent : Msg.id(Msg.id(parent, ObjC.sel("window")), ObjC.sel("contentView"));
 			Msg.vBool(web, ObjC.sel("setHidden:"), true);
 			// (in the system's layer tree: in a host, placed with the window's layers)
+			// (#if: CaViews is Apple's only, and this class is typed where WebView names it)
+			#if ((!helder.os || helder.os == "macos" || helder.os == "ios") && hxmc.target != "wasm32-wasi")
 			if (layered) {
 				var h = helder.ui.draw.CaViews.host();
 				Msg.vPtr(h, ObjC.sel("addSubview:"), web);
@@ -157,6 +159,7 @@ class AppleWebView implements PlatformWebView {
 				hosted = new helder.ui.LayerSlot(h, true);
 				hosted.inner = web;
 			} else
+			#end
 				Msg.vPtr(this.parent, ObjC.sel("addSubview:"), web);
 		}
 		Runtime.objc_autoreleasePoolPop(pool);
