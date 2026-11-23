@@ -49,7 +49,8 @@
 #   deleted at the end): pack-webview, tests/pack/Hello.hx (helder run,
 #   simctl), the audio stream and the web view (tests/platform/webview-ios.sh,
 #   as Android's); gfx, the cube's window and a tap (tests/gfx/ios.sh:
-#   SimTap's clicks). That is a pull request's
+#   SimTap's clicks) and text input (tests/platform/textinput-ios.sh).
+#   That is a pull request's
 #   (IOS_SUITE=smoke); pushes to main and the nightly run the full suite:
 #   the assets, the screen fixture, the planets example, UIAccessibility,
 #   the cube's drags, fling and background, the whole-screen web view;
@@ -532,7 +533,8 @@ jobs:
   # ios -d <it>: installed, launched, the hello line from the app's output;
   # the audio stream; full: the assets, tests/pack/Screen.hx checked by
   # tests/pack/screen.mjs, the planets example, UIAccessibility),
-  # tests/gfx/ios.sh, tests/platform/webview-ios.sh. IOS_SUITE: smoke on a
+  # tests/gfx/ios.sh, tests/platform/webview-ios.sh, textinput-ios.sh (gfx's
+  # shard: fields typed into, under the Main Thread Checker, 20 s). IOS_SUITE: smoke on a
   # pull request, full on main and nightly.
   # (two shards, a simulator each: its boot and first app, three and a half
   # minutes, the floor of both; pack-webview's builds take about that
@@ -583,8 +585,12 @@ jobs:
           else
             bin/cli/helder build tests/gfx/SimTap.hx -o bin/pack/SimTap &
             a=$!
+            IOS_BUILD_ONLY=1 sh tests/platform/textinput-ios.sh bin/cli/helder bin/pack/ios-textinput > "$RUNNER_TEMP/build-textinput.txt" 2>&1 &
+            b=$!
             bin/cli/helder build tests/gfx/ios --target ios-sim -o bin/pack/IosTest.app || status=1
             wait $a || status=1
+            wait $b || status=1
+            cat "$RUNNER_TEMP/build-textinput.txt"
           fi
           echo "IOS_PREBUILT=1" >> "$GITHUB_ENV"
           wait $s || status=1
@@ -599,6 +605,9 @@ jobs:
       - name: The cube and its touches on the simulator (tests/gfx/ios.sh, SimTap's clicks)
         if: ${{ !cancelled() && steps.setup.outcome == 'success' && matrix.shard == 'gfx' }}
         run: sh tests/gfx/ios.sh bin/pack/IosTest.app bin/pack/ios-gfx "$PWD/bin/pack/SimTap"
+      - name: Text input on the simulator, UIKit on its main thread (tests/platform/textinput-ios.sh)
+        if: ${{ !cancelled() && steps.setup.outcome == 'success' && matrix.shard == 'gfx' }}
+        run: sh tests/platform/textinput-ios.sh bin/cli/helder bin/pack/ios-textinput
       - name: The web view on the simulator (tests/platform/webview-ios.sh)
         # (also when Hello's step failed: their checks are their own)
         if: ${{ !cancelled() && steps.setup.outcome == 'success' && matrix.shard == 'pack-webview' }}
@@ -619,6 +628,8 @@ jobs:
             bin/pack/ios-gfx/*.png
             bin/pack/ios-webview/*.txt
             bin/pack/ios-webview/*.png
+            bin/pack/ios-textinput/*.txt
+            bin/pack/ios-textinput/*.png
           retention-days: 7
           if-no-files-found: ignore
       - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}

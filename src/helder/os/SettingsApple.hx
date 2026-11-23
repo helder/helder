@@ -15,7 +15,11 @@ class SettingsApple {
 		});
 	}
 
-	public static function ios(v:SettingsValues) {
+	// (UIKit's: the main thread's, OsThread)
+	public static function ios(v:SettingsValues)
+		helder.os.OsThread.run(() -> iosNow(v));
+
+	static function iosNow(v:SettingsValues) {
 		var pool = Runtime.objc_autoreleasePoolPush();
 		var controller = helder.os.uikit.UIKitWindow.controllerNow();
 		var traits = Msg.id(controller, ObjC.sel("traitCollection"));

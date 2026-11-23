@@ -87,6 +87,9 @@ class CaLayers {
 	var ring = 0;
 	// (main-thread commits not yet run: what follows waits its turn)
 	var pending = 0;
+	// (iOS: the stack put into the window's UIView's layer this frame. Its
+	// commit lays that view out, which UIKit allows on the main thread alone)
+	var rooted = false;
 	final lock = new Mutex();
 	// (iOS: the scrollers' content layers by node, for scrolled)
 	final contents = new Map<Node, Plane>();
@@ -309,6 +312,7 @@ class CaLayers {
 			if (!ios) Msg.vBool(st, ObjC.sel("setGeometryFlipped:"), true);
 			var r = root;
 			ops.push(() -> CaMsg.vPtrInt(r, ObjC.sel("insertSublayer:atIndex:"), st, 0));
+			rooted = ios;
 		}
 		ops.push(() -> {
 			CaLayers.setPoint(st, S.setPosition, 0, 0);
@@ -344,7 +348,8 @@ class CaLayers {
 			Runtime.objc_autoreleasePoolPop(pool);
 		}
 		lock.acquire();
-		var main = moves.length > 0 || pending > 0;
+		var main = moves.length > 0 || pending > 0 || rooted;
+		rooted = false;
 		if (main) pending++;
 		lock.release();
 		if (!main) {
@@ -425,10 +430,11 @@ class CaLayers {
 			CATransaction.commit();
 			Runtime.objc_autoreleasePoolPop(pool);
 		}
+		// (iOS: the stack taken out of the UIView's layer on the main thread, as rooted)
 		lock.acquire();
-		var busy = pending > 0;
+		var main = pending > 0 || ios && !st.isNull();
 		lock.release();
-		if (busy) helder.os.OsThread.post(apply) else apply();
+		if (main) helder.os.OsThread.post(apply) else apply();
 	}
 
 	// (f split into layers: the units, whole and in one run of paint order,

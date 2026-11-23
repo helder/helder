@@ -59,8 +59,11 @@ class PermissionsApple {
 					var answer:Block<haxe.Int64->Void> = state -> done(photos(state));
 					Msg.vIntPtr(load("Photos", "PHPhotoLibrary"), ObjC.sel("requestAuthorizationForAccessLevel:handler:"), 2, cast answer);
 				case Location:
-					located = done;
-					Msg.v(manager(), ObjC.sel("requestWhenInUseAuthorization"));
+					// (the manager's: the main thread's, whose run loop tells its delegate)
+					helder.os.OsThread.run(() -> {
+						located = done;
+						Msg.v(manager(), ObjC.sel("requestWhenInUseAuthorization"));
+					});
 				case Notify:
 					var answer:Block<(Bool, Ptr) -> Void> = (granted, _) -> done(granted ? Granted : Denied);
 					Msg.vIntPtr(notifications(), ObjC.sel("requestAuthorizationWithOptions:completionHandler:"), 7, cast answer);
