@@ -2990,6 +2990,9 @@ export declare class Window {
 // an idle app sleeps as elsewhere; the background, a window lost, pause
 // them (App.frame.pause: the next delta a period). Each turn begins a
 // frame of Pointers' (Pointers.step) before its events.
+// On macOS and Linux the loop runs on a thread of its own, the main
+// thread the system's (OsThread): so that Layers' compositor can read
+// input there while the program is busy.
 //
 // helder.async's loop (the main thread's, once something made it: a task
 // launched, a job run) runs on the app's: a turn of it in each turn of the
