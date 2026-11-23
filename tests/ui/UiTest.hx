@@ -65,6 +65,7 @@ class UiTest {
 		textTransform();
 		culling();
 		inPlace();
+		replayed();
 		restyled();
 		editing();
 		selection();
@@ -1130,6 +1131,93 @@ class UiTest {
 		list.children[2].style.height = 30;
 		var again = @:privateAccess Layout.run(ui.root, 200, 200, ui.text);
 		check("culling: a clean tree not laid out, a changed one laid out", !laid && again && list.children[3].y == 70, list.children[3].y + "");
+	}
+
+	// a tree painted through its display list (Ui.paint: recorded, then
+	// replayed) gives its canvas the calls painting it directly does, with
+	// the same objects: random trees changed at random over frames
+	static function replayed() {
+		var seed = 7, bad = 0, frames = 0, first = "";
+		function rnd(n:Int):Int {
+			seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+			return (seed >> 8) % n;
+		}
+		var words = ["a", "bb", "ccc dd", "eeee f gg", "hhhhhhh"], img = new Image(8, 6), line = new Path().moveTo(0, 0).lineTo(20, 10);
+		var nodes:Array<Node> = [];
+		function restyle(n:Node) {
+			var s = n.style;
+			switch rnd(16) {
+				case 0: s.width = [30, 60, 120][rnd(3)];
+				case 1: s.height = [20, 50, 300][rnd(3)];
+				case 2: s.background = Color.rgba(rnd(255), [0, 0.5, 1][rnd(3)]);
+				case 3:
+					s.borderWidth = rnd(3);
+					s.borderColor = Color.rgba(0x204060, [0.5, 1][rnd(2)]);
+				case 4: s.borders = [rnd(3), 0, rnd(4), 1];
+				case 5: s.radius = rnd(3) * 4;
+				case 6: s.corners = CornersValue.parse(["4px 0 8px 2px", "10px"][rnd(2)]);
+				case 7: s.borderStyle = [BorderStyle.Solid, BorderStyle.Dashed, BorderStyle.Dotted][rnd(3)];
+				case 8: s.opacity = [1, 0.5, 0][rnd(3)];
+				case 9: s.shadow = rnd(3) == 0 ? null : Shadow.parse(["0 4px 12px rgba(0,0,0,0.5)", "inset 2px 2px 4px #00000080", "0 0 0 2px #ff0000"][rnd(3)]);
+				case 10: s.transform = rnd(2) == 0 ? null : Transform.parse(["translate(30px, 10px)", "scale(1.5)", "rotate(10deg)"][rnd(3)]);
+				case 11: s.overflow = [Overflow.Visible, Overflow.Hidden, Overflow.Scroll][rnd(3)];
+				case 12: s.textShadow = rnd(2) == 0 ? null : Shadow.parse("1px 1px 2px #000000");
+				case 13: s.visibility = [null, Visibility.Hidden, Visibility.Visible][rnd(3)];
+				case 14: s.direction = [Direction.Row, Direction.Column][rnd(2)];
+				case _: s.padding = rnd(3) * 3;
+			}
+		}
+		function make(depth:Int):Node {
+			var n = switch rnd(depth == 3 ? 3 : 6) {
+				case 0: new TextNode(words[rnd(words.length)]);
+				case 1: new ImageNode(img);
+				case 2: new Stroked(line);
+				case _: new Node();
+			}
+			n.style.background = Color.rgb(0x101010 * (1 + nodes.length % 15));
+			nodes.push(n);
+			if (!n.hasContent())
+				for (i in 0...rnd(4))
+					n.append(make(depth + 1));
+			for (i in 0...rnd(4))
+				restyle(n);
+			return n;
+		}
+		for (tree in 0...30) {
+			var ui = new Ui(new MonoText(), 240, 200);
+			nodes.resize(0);
+			ui.root.append(make(0));
+			for (frame in 0...12) {
+				for (i in 0...rnd(4)) {
+					var n = nodes[rnd(nodes.length)];
+					if (n.ui == null) continue;
+					switch rnd(5) {
+						case 0 if (Std.isOfType(n, TextNode)): (cast n : TextNode).text = words[rnd(words.length)];
+						case 1 if (!n.hasContent()): n.append(make(2));
+						case 2 if (n.parent != null && n.parent != ui.root): n.parent.remove(n);
+						case 3 if (n.style.overflow == Scroll): ui.scrollTo(n, 0, rnd(40));
+						case _: restyle(n);
+					}
+				}
+				ui.update();
+				// (one paint, straight into a log and into a list replayed into another: the same
+				// objects; then Ui.paint's, through its own list, against a direct one's values)
+				var direct = new Calls(), replayed = new Calls(), list = new helder.ui.draw.DisplayList();
+				ui.direct = true;
+				ui.paint(new Tee(direct, list));
+				list.replay(replayed);
+				var want = new Recording(), got = new Recording();
+				ui.paint(want);
+				ui.direct = false;
+				ui.paint(got);
+				frames++;
+				if (!direct.same(replayed) || want.calls.join("|") != got.calls.join("|")) {
+					bad++;
+					if (first == "") first = 'tree $tree frame $frame: ${direct.log.length} against ${replayed.log.length}';
+				}
+			}
+		}
+		check("paint: replayed from the display list, as painted directly", bad == 0 && frames == 360, '$bad of $frames frames differ, first $first');
 	}
 
 	// a node laid out again in place (Layout.inPlace: its parent's measures of
@@ -3109,6 +3197,182 @@ class WordList implements helder.text.SpellChecker {
 
 	public function remove(w:String)
 		words.remove(w.toLowerCase());
+}
+
+// what a canvas is given, in order: each call's name, numbers and objects
+// (UiTest.replayed)
+class Calls implements Canvas {
+	public final log:Array<Dynamic> = [];
+
+	public function new() {}
+
+	// (numbers compared as written, objects by identity)
+	public function same(o:Calls):Bool {
+		if (log.length != o.log.length) return false;
+		for (i in 0...log.length) {
+			var a = log[i], b = o.log[i];
+			if (Std.isOfType(a, Float) || Std.isOfType(b, Float) ? Std.string(a) != Std.string(b) : a != b) return false;
+		}
+		return true;
+	}
+
+	function add(name:String, args:Array<Dynamic>) {
+		log.push(name);
+		for (a in args)
+			log.push(a);
+	}
+
+	public function translate(dx:Float, dy:Float)
+		add("translate", [dx, dy]);
+
+	public function pushClip(x:Float, y:Float, w:Float, h:Float, radius:Float, ?corners:Corners)
+		add("clip", [x, y, w, h, radius, corners]);
+
+	public function popClip()
+		add("popClip", []);
+
+	public function pushOpacity(a:Float)
+		add("opacity", [a]);
+
+	public function pushGroup(a:Float, x:Float, y:Float, w:Float, h:Float)
+		add("group", [a, x, y, w, h]);
+
+	public function popOpacity()
+		add("popOpacity", []);
+
+	public function pushTransform(a:Float, b:Float, c:Float, d:Float, e:Float, f:Float)
+		add("transform", [a, b, c, d, e, f]);
+
+	public function popTransform()
+		add("popTransform", []);
+
+	public function rect(x:Float, y:Float, w:Float, h:Float, radius:Float, fill:Color, borderWidth:Float, border:Color, ?corners:Corners, ?sides:Edges, style:BorderStyle = Solid)
+		add("rect", [x, y, w, h, radius, (fill : Int), borderWidth, (border : Int), corners, sides, (cast style : Int)]);
+
+	public function shadow(x:Float, y:Float, w:Float, h:Float, radius:Float, color:Color, blur:Float, ?corners:Corners, ?offset:Array<Float>)
+		add("shadow", [x, y, w, h, radius, (color : Int), blur, corners, offset]);
+
+	public function insetShadow(x:Float, y:Float, w:Float, h:Float, radius:Float, color:Color, blur:Float, dx:Float, dy:Float, spread:Float,
+			?corners:Corners)
+		add("inset", [x, y, w, h, radius, (color : Int), blur, dx, dy, spread, corners]);
+
+	public function text(p:Paragraph, x:Float, y:Float, width:Float, align:TextAlign, color:Color, ?colors:Array<Color>)
+		add("text", [p, x, y, width, (cast align : Int), (color : Int), colors]);
+
+	public function textShadow(p:Paragraph, x:Float, y:Float, width:Float, align:TextAlign, color:Color, blur:Float, ?colors:Array<Color>)
+		add("textShadow", [p, x, y, width, (cast align : Int), (color : Int), blur, colors]);
+
+	public function image(img:Image, x:Float, y:Float, w:Float, h:Float, u0:Float, v0:Float, u1:Float, v1:Float, radius:Float, ?corners:Corners)
+		add("image", [img, x, y, w, h, u0, v0, u1, v1, radius, corners]);
+
+	public function path(p:Path, fill:Null<Paint>, ?stroke:Stroke)
+		add("path", [p, fill, stroke]);
+}
+
+// a node that strokes a path (UiTest.replayed): a stroke made each paint
+class Stroked extends Node {
+	final line:Path;
+
+	public function new(line:Path) {
+		super();
+		this.line = line;
+	}
+
+	override public function hasContent():Bool
+		return true;
+
+	override public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {
+		canvas.translate(x, y);
+		canvas.path(line, width > 30 ? null : Color.BLACK, {width: 1.5, paint: Color.rgb(0x336699)});
+		canvas.translate(-x, -y);
+	}
+}
+
+// each call given to two canvases (UiTest.replayed)
+class Tee implements Canvas {
+	final a:Canvas;
+	final b:Canvas;
+
+	public function new(a, b) {
+		this.a = a;
+		this.b = b;
+	}
+
+	public function translate(dx:Float, dy:Float) {
+		a.translate(dx, dy);
+		b.translate(dx, dy);
+	}
+
+	public function pushClip(x:Float, y:Float, w:Float, h:Float, radius:Float, ?corners:Corners) {
+		a.pushClip(x, y, w, h, radius, corners);
+		b.pushClip(x, y, w, h, radius, corners);
+	}
+
+	public function popClip() {
+		a.popClip();
+		b.popClip();
+	}
+
+	public function pushOpacity(v:Float) {
+		a.pushOpacity(v);
+		b.pushOpacity(v);
+	}
+
+	public function pushGroup(v:Float, x:Float, y:Float, w:Float, h:Float) {
+		a.pushGroup(v, x, y, w, h);
+		b.pushGroup(v, x, y, w, h);
+	}
+
+	public function popOpacity() {
+		a.popOpacity();
+		b.popOpacity();
+	}
+
+	public function pushTransform(m0:Float, m1:Float, m2:Float, m3:Float, m4:Float, m5:Float) {
+		a.pushTransform(m0, m1, m2, m3, m4, m5);
+		b.pushTransform(m0, m1, m2, m3, m4, m5);
+	}
+
+	public function popTransform() {
+		a.popTransform();
+		b.popTransform();
+	}
+
+	public function rect(x:Float, y:Float, w:Float, h:Float, radius:Float, fill:Color, borderWidth:Float, border:Color, ?corners:Corners, ?sides:Edges, style:BorderStyle = Solid) {
+		a.rect(x, y, w, h, radius, fill, borderWidth, border, corners, sides, style);
+		b.rect(x, y, w, h, radius, fill, borderWidth, border, corners, sides, style);
+	}
+
+	public function shadow(x:Float, y:Float, w:Float, h:Float, radius:Float, color:Color, blur:Float, ?corners:Corners, ?offset:Array<Float>) {
+		a.shadow(x, y, w, h, radius, color, blur, corners, offset);
+		b.shadow(x, y, w, h, radius, color, blur, corners, offset);
+	}
+
+	public function insetShadow(x:Float, y:Float, w:Float, h:Float, radius:Float, color:Color, blur:Float, dx:Float, dy:Float, spread:Float,
+			?corners:Corners) {
+		a.insetShadow(x, y, w, h, radius, color, blur, dx, dy, spread, corners);
+		b.insetShadow(x, y, w, h, radius, color, blur, dx, dy, spread, corners);
+	}
+
+	public function text(p:Paragraph, x:Float, y:Float, width:Float, align:TextAlign, color:Color, ?colors:Array<Color>) {
+		a.text(p, x, y, width, align, color, colors);
+		b.text(p, x, y, width, align, color, colors);
+	}
+
+	public function textShadow(p:Paragraph, x:Float, y:Float, width:Float, align:TextAlign, color:Color, blur:Float, ?colors:Array<Color>) {
+		a.textShadow(p, x, y, width, align, color, blur, colors);
+		b.textShadow(p, x, y, width, align, color, blur, colors);
+	}
+
+	public function image(img:Image, x:Float, y:Float, w:Float, h:Float, u0:Float, v0:Float, u1:Float, v1:Float, radius:Float, ?corners:Corners) {
+		a.image(img, x, y, w, h, u0, v0, u1, v1, radius, corners);
+		b.image(img, x, y, w, h, u0, v0, u1, v1, radius, corners);
+	}
+
+	public function path(p:Path, fill:Null<Paint>, ?stroke:Stroke) {
+		a.path(p, fill, stroke);
+		b.path(p, fill, stroke);
+	}
 }
 
 class Recording implements Canvas {

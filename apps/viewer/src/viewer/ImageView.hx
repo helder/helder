@@ -132,7 +132,7 @@ class ImageView extends helder.ui.Node {
 
 
 	override public function paintContent(canvas:helder.ui.Canvas, x:Float, y:Float, width:Float, height:Float) {
-		var r = Std.downcast(canvas, helder.ui.draw.Renderer);
+		var r = helder.ui.draw.Renderer.of(canvas);
 		if (r == null) {
 			viewer.camera.setView(width, height);
 			return;
@@ -154,7 +154,7 @@ class ImageView extends helder.ui.Node {
 			queued = r.frames;
 			r.beforePass(record);
 		}
-		r.gpuTexture(target, id, x, y, width, height);
+		(cast canvas : helder.ui.draw.TextureCanvas).gpuTexture(target, id, x, y, width, height);
 	}
 
 	function setup(d:Device) {

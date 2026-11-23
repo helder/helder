@@ -77,8 +77,8 @@ import helder.ui.controls.Look;
 	}
 
 	override public function paintContent(canvas:helder.ui.Canvas, x:Float, y:Float, width:Float, height:Float) {
-		var r = Std.downcast(canvas, helder.ui.draw.Renderer);
-		if (r == null) return;
+		var g = Std.downcast(canvas, helder.ui.draw.TextureCanvas), r = helder.ui.draw.Renderer.of(canvas);
+		if (g == null || r == null) return;
 		if (pipeline == null) ready(r.device);
 		var pw = Std.int(Math.max(1, Math.round(width * r.scale))), ph = Std.int(Math.max(1, Math.round(height * r.scale)));
 		if (pw != tw || ph != th) {
@@ -109,7 +109,7 @@ import helder.ui.controls.Look;
 			r.beforePass(record);
 		}
 		painted++;
-		r.gpuTexture(color, id, x, y, width, height, parent == null ? 0 : parent.style.radius);
+		g.gpuTexture(color, id, x, y, width, height, parent == null ? 0 : parent.style.radius);
 	}
 
 	static function rgba(c:Color):Vec4

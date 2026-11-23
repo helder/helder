@@ -73,12 +73,15 @@ class CodeDiagnostic {
 
 // A line as a view laid it out (CodeView): its text as drawn (tabs as
 // spaces), the tokens it was coloured by, its paragraph and each span's
-// class; dropped when the line's text or tokens change
+// class, and their colours as last painted (its own: a display list
+// holds them until it is replayed); dropped when the line's text or tokens
+// change
 class ShapedLine {
 	public final text:String;
 	public final tokens:Array<Int>;
 	public final paragraph:Paragraph;
 	public final classes:Array<Int>;
+	public final colors:Array<Color> = [];
 
 	public function new(text, tokens, paragraph, classes) {
 		this.text = text;
