@@ -120,17 +120,15 @@ class Compositor implements RenderIdle {
 
 	// ---- the program's
 
-	// at the start of its turn: the mirror stepped if it has not been this
-	// vsync, its offsets given to ui (Ui.mirrored)
+	// at the start of its turn: the mirror stepped, its offsets given to ui (Ui.mirrored)
 	public function drain(ui:Ui) {
 		var t = haxe.Timer.stamp();
 		lock.acquire();
 		drained = t;
 		turn = true;
-		if (t - stepped > this.period / 2) {
-			mirror.step(Ui.now());
-			stepped = t;
-		}
+		// (each turn: its frame shows the motion as its own glide's would)
+		mirror.step(Ui.now());
+		stepped = t;
 		mirror.drain((n, x, y, held, moving) -> ui.mirrored(n, x, y, held, moving));
 		lock.release();
 	}

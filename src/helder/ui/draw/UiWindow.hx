@@ -316,7 +316,16 @@ class UiWindow {
 	// there is something new to draw
 	public function needsFrame():Bool
 		return redraw || ui.needsFrame || Clock.active || ScreenContext.main.nextTimer() <= helder.headless.Time.stamp() || capture != null || window.width != drawnW || window.height != drawnH || window.scale != drawnScale
-			|| (Ui.accessEpoch != accessSent && accessListening()) || accessPending();
+			|| (Ui.accessEpoch != accessSent && accessListening()) || accessPending() || mirrorMoves();
+
+	// (the compositor's glides and springs: the program's frames follow them, as they would its own)
+	inline function mirrorMoves():Bool {
+		#if (!helder.headless && hxmc.target != "wasm32-wasi")
+		return compositor != null && compositor.moving();
+		#else
+		return false;
+		#end
+	}
 
 	// draws a frame (the loop calls it when needsFrame): the clock ticked
 	// first (now: what the frame's events started, Ui.now's, is not after
