@@ -1146,7 +1146,42 @@ class GLBackend {
 			if (images.exists(frameTarget)) GL.glFinish();
 			return;
 		}
-		if (Platform.os() == 3) WebGL.swap(web) else if (surface.kind != Headless && !eglSurface.isNull()) Egl.eglSwapBuffers(display, eglSurface);
+		if (Platform.os() == 3) WebGL.swap(web) else if (surface.kind != Headless && !eglSurface.isNull()) swap();
+	}
+
+	// (the next swap's changed rectangles: Device.damaged; EGL's function
+	// that takes them, looked up once, nil where it has none)
+	var damage:Null<Array<Int>> = null;
+	var pSwapDamage = Ptr.nil();
+	var swapLooked = false;
+
+	public function damaged(rects:Null<Array<Int>>)
+		damage = rects;
+
+	function swap() {
+		var r = damage, n = r == null ? 0 : Std.int(r.length / 4);
+		damage = null;
+		if (n > 0 && !swapLooked) {
+			swapLooked = true;
+			var p = Egl.eglQueryString(display, EGL.EXTENSIONS);
+			var ext = p.isNull() ? "" : (cast p : CString).toString();
+			if (ext.indexOf("EGL_KHR_swap_buffers_with_damage") >= 0) pSwapDamage = Egl.eglGetProcAddress(Mem.cstr("eglSwapBuffersWithDamageKHR"));
+			else if (ext.indexOf("EGL_EXT_swap_buffers_with_damage") >= 0) pSwapDamage = Egl.eglGetProcAddress(Mem.cstr("eglSwapBuffersWithDamageEXT"));
+		}
+		if (n == 0 || pSwapDamage.isNull()) {
+			Egl.eglSwapBuffers(display, eglSurface);
+			return;
+		}
+		Arena.scoped(a -> {
+			var p:Ptr<Int32> = a.alloc(16 * n), h = height;
+			for (i in 0...n) {
+				p[4 * i] = r[4 * i];
+				p[4 * i + 1] = h - r[4 * i + 3];
+				p[4 * i + 2] = r[4 * i + 2] - r[4 * i];
+				p[4 * i + 3] = r[4 * i + 3] - r[4 * i + 1];
+			}
+			EglSwap.damaged(pSwapDamage, display, eglSurface, p, n);
+		});
 	}
 
 	public function readPixels(dst:haxe.io.Bytes) {

@@ -40,7 +40,8 @@ import helder.ui.draw.UiShader;
 // before the frame's (beforePass: recorded into the display list a node
 // found the renderer through, so that a list kept still runs them). A
 // layer (Layer) may be drawn from tiles of its own, render targets kept
-// from frame to frame (layerTiles). The instance buffer is kept between frames: only the
+// from frame to frame (layerTiles); a window's frame kept, only what changed
+// drawn into it (keep). The instance buffer is kept between frames: only the
 // instances that changed since the last frame are written (QuadBatch). The UI's pixels are scaled
 // to the target's (scale: a Retina display's 2); glyphs are rasterized at the
 // scaled size into the GlyphAtlas, its coverage uploaded into a texture's
@@ -192,7 +193,7 @@ class Renderer implements TextureCanvas {
 	// moved: the next frame draws them at theirs
 	public var again(default, null) = false;
 
-	static inline var STRIDE = 208; // UiVertex's instance: 52 floats
+	static inline var STRIDE = 224; // UiVertex's instance: 56 floats
 
 	// (UiShader's vertex: its corner from a buffer of four, the rest an instance's)
 	static function layout():Array<VertexBufferLayout> {
@@ -236,6 +237,10 @@ class Renderer implements TextureCanvas {
 		#end
 		if (frames % 60 == 0) evict(EVICT);
 		recording = null;
+		drawn = 0;
+		regions.resize(0);
+		whole = cutting = false;
+		if (!keep) keptValid = false;
 		if (tileBytes > tileBudget || frames % 60 == 0) evictTiles(false);
 		atlas.begin();
 		// (the large glyphs the last frame did not draw: their textures freed)
@@ -251,8 +256,8 @@ class Renderer implements TextureCanvas {
 			last.push(k);
 		scales.resize(0);
 		steady = true;
-		targetW = width;
-		targetH = height;
+		targetW = frameW = width;
+		targetH = frameH = height;
 		gpu.clear();
 		before.resize(0);
 		for (f in next)
@@ -286,6 +291,8 @@ class Renderer implements TextureCanvas {
 	// is in: one draw, or one more for each change of the image texture bound
 	public function end(enc:Encoder) {
 		var ending = haxe.Timer.stamp();
+		if (keptAt == frames) present();
+		else keptValid = false;
 		uploadAtlas();
 		FrameCounts.quads += quads.count;
 		var uploaded = quads.upload(device), encoding = haxe.Timer.stamp();
@@ -425,10 +432,12 @@ class Renderer implements TextureCanvas {
 		// (what is seen, in the device pixels it was drawn at: the clip's, a moving node's all of it)
 		var vx0 = (l.x0 + t.rx) * s, vy0 = (l.y0 + t.ry) * s, vx1 = (l.x1 + t.rx) * s, vy1 = (l.y1 + t.ry) * s;
 		if (flat) {
-			vx0 = Math.max(vx0, Math.max(clipX0, ox) - fx);
-			vy0 = Math.max(vy0, Math.max(clipY0, oy) - fy);
-			vx1 = Math.min(vx1, Math.min(clipX1, ox + targetW) - fx);
-			vy1 = Math.min(vy1, Math.min(clipY1, oy + targetH) - fy);
+			// (in a kept frame's rectangle: the tiles under it)
+			var cut = cutting && batch == kept.batch;
+			vx0 = Math.max(vx0, Math.max(clipX0, cut ? cutX0 : ox) - fx);
+			vy0 = Math.max(vy0, Math.max(clipY0, cut ? cutY0 : oy) - fy);
+			vx1 = Math.min(vx1, Math.min(clipX1, cut ? cutX1 : ox + targetW) - fx);
+			vy1 = Math.min(vy1, Math.min(clipY1, cut ? cutY1 : oy + targetH) - fy);
 		}
 		if (!l.scroll) {
 			vx0 = Math.max(vx0, (l.bx0 + t.rx) * s);
@@ -662,12 +671,13 @@ class Renderer implements TextureCanvas {
 
 	// records the passes asked for since begin, outside the frame's pass
 	// (UiWindow: after painting, before it): a <Scene>'s, then the opacity
-	// groups', inner ones first (an outer group draws what they drew)
+	// groups', inner ones first (an outer group draws what they drew); a
+	// kept frame's rectangles drawn, then into the frame kept
 	public function prepare(enc:Encoder) {
 		for (f in before)
 			f(enc);
 		before.resize(0);
-		if (closedGroups.length == 0) return;
+		if (closedGroups.length == 0 && regions.length == 0) return;
 		uploadAtlas();
 		if (groupPipeline == null) {
 			var d = UiShader.pipeline({blend: Premultiplied});
@@ -675,18 +685,157 @@ class Renderer implements TextureCanvas {
 			d.colorFormat = RGBA8;
 			groupPipeline = device.createPipeline(d);
 		}
-		for (g in closedGroups) {
-			FrameCounts.quads += g.batch.count;
-			g.pass.colors[0].texture = g.texture;
-			enc.beginPass(g.pass);
-			if (g.batch.upload(device)) {
-				enc.setPipeline(groupPipeline);
-				draw(enc, g.batch, g.textures);
-				FrameCounts.uploaded += g.batch.uploaded;
-			}
-			enc.endPass();
-		}
+		for (g in closedGroups)
+			render(enc, g, g.pass);
 		closedGroups.resize(0);
+		if (regions.length > 0) paste(enc);
+	}
+
+	// (a group's quads drawn into its texture in a pass of their own)
+	function render(enc:Encoder, g:Group, pass:PassDesc) {
+		FrameCounts.quads += g.batch.count;
+		pass.colors[0].texture = g.texture;
+		enc.beginPass(pass);
+		if (g.batch.upload(device)) {
+			enc.setPipeline(groupPipeline);
+			draw(enc, g.batch, g.textures);
+			FrameCounts.uploaded += g.batch.uploaded;
+		}
+		enc.endPass();
+	}
+
+	// --- a kept frame ---
+
+	// whether its frame is kept from frame to frame (a window's): Ui.paint
+	// draws only what changed into it (damage), each rectangle straight
+	// into the frame kept (a texture of the frame's size, so that what is
+	// drawn there is what drawing onto the target gives), its background
+	// first, what is drawn in it cut to it: an unturned quad's corners (its
+	// fragments the same, measured from their pixels' centres: UiShader), a
+	// turned one's fragments outside it nothing (UiShader's region); then
+	// the frame kept copied onto the target (end), as a swap chain does
+	// not keep its frames (Metal's drawables, a browser's canvas). Where
+	// most of it changed, the frame is drawn whole onto the target, kept
+	// again once less does. background: the frame's pass's colour (opaque);
+	// flash: the rectangles drawn shown over the frame (HELDER_DAMAGE=flash)
+	public var keep = false;
+	public var background:Color = Color.WHITE;
+	public var flash = false;
+	// the pixels drawn this frame (a frame drawn whole: all of them); the rectangles drawn into the frame kept (x0, y0, x1, y1)
+	public var drawn(default, null) = 0;
+	public final regions:Array<Int> = [];
+	// (the frame kept: its texture, its quads; whether it holds the last
+	// frame drawn, at what scale, the frame that drew into it; the
+	// rectangle drawn into it (cut), one the whole frame (then cleared))
+	final kept = new Group();
+	var keptValid = false;
+	var keptScale = 0.0;
+	var keptAt = -1;
+	var cutting = false;
+	var cutX0 = 0.0;
+	var cutY0 = 0.0;
+	var cutX1 = 0.0;
+	var cutY1 = 0.0;
+	var whole = false;
+	var damaged:Null<Damage> = null;
+	final keptPass:PassDesc = {colors: [{load: Load, clear: new helder.gfx.Color(1, 1, 1)}]};
+	var frameW = 1.0;
+	var frameH = 1.0;
+
+	static inline var MOST = 0.4;
+
+	public function keeps():Bool
+		return keep;
+
+	public function damage(d:Damage) {
+		if (!keep) return;
+		var w = Std.int(frameW), h = Std.int(frameH), s = scale, k = kept, t = k.texture;
+		// (single-sampled in a multisampled window too: UiShader grows each
+		// quad past its anti-aliased edge, so samples change no pixel the UI
+		// draws; DamageTest --window checks it)
+		k.open(device, w, h, true);
+		var gone = !keptValid || k.texture != t || keptScale != s;
+		d.round(s, w, h);
+		damaged = d;
+		// (most of it: drawn whole straight onto the target, as copying it
+		// in and out would draw more; kept again once less changes, the
+		// frame kept drawn whole then)
+		if (d.all || d.area() * s * s > MOST * w * h) {
+			d.everything();
+			d.round(s, w, h);
+			keptValid = false;
+			keptAt = -1;
+			drawn = w * h;
+			return;
+		}
+		if (gone) {
+			d.everything();
+			d.round(s, w, h);
+		}
+		keptValid = true;
+		keptScale = s;
+		keptAt = frames;
+	}
+
+	public function redraw(i:Int) {
+		if (keptAt != frames) return;
+		if (i < 0) {
+			cutting = false;
+			batch = quads;
+			runTextures = frameTextures;
+			run = 0;
+			return;
+		}
+		var d = damaged, s = scale, k = kept, w = k.width, h = k.height;
+		var x0 = Std.int(Math.max(0, Math.round(d.x0(i) * s))), y0 = Std.int(Math.max(0, Math.round(d.y0(i) * s)));
+		var x1 = Std.int(Math.min(w, Math.round(d.x1(i) * s))), y1 = Std.int(Math.min(h, Math.round(d.y1(i) * s)));
+		if (x0 == 0 && y0 == 0 && x1 == w && y1 == h) whole = true;
+		regions.push(x0);
+		regions.push(y0);
+		regions.push(x1);
+		regions.push(y1);
+		drawn += (x1 - x0) * (y1 - y0);
+		batch = k.batch;
+		runTextures = k.textures;
+		run = k.textures.length - 1;
+		cutting = true;
+		cutX0 = x0;
+		cutY0 = y0;
+		cutX1 = x1;
+		cutY1 = y1;
+		// (its background first, over what was there)
+		qr0 = qr1 = qr2 = qr3 = qw0 = qw1 = qw2 = qw3 = 0;
+		var sa = alpha;
+		alpha = 1;
+		quad(x0, y0, x1, y1, 0, 0, 0, 0, (background : Int) | 0xFF000000, 0, 0, 0, 1, 0);
+		alpha = sa;
+	}
+
+	// (the rectangles drawn into the frame kept, in a pass of their own)
+	function paste(enc:Encoder) {
+		var c = background, k = kept, p = keptPass.colors[0];
+		@:privateAccess {
+			p.clear.r = c.r / 255;
+			p.clear.g = c.g / 255;
+			p.clear.b = c.b / 255;
+			p.clear.a = 1;
+		}
+		p.load = whole ? Clear : Load;
+		render(enc, k, keptPass);
+	}
+
+	// (the frame kept onto the target, the rectangles drawn flashed over it)
+	function present() {
+		var k = kept, s = scale;
+		gpu.set(k.id, k.texture);
+		qr0 = qr1 = qr2 = qr3 = qw0 = qw1 = qw2 = qw3 = 0;
+		quad(0, 0, k.width, k.height, 0, 0, 1, 1, Color.WHITE, 0, 2, 0, 1, k.id);
+		if (!flash) return;
+		var i = 0, tint:Color = [0x5000FF00, 0x50FF00FF, 0x5000C0FF][frames % 3];
+		while (i < regions.length) {
+			rect(regions[i] / s, regions[i + 1] / s, (regions[i + 2] - regions[i]) / s, (regions[i + 3] - regions[i + 1]) / s, 0, tint, 0, 0);
+			i += 4;
+		}
 	}
 
 	// what was not drawn in the last frame let go (the textures of images, of
@@ -1007,8 +1156,10 @@ class Renderer implements TextureCanvas {
 			pushOpacity(a);
 			return;
 		}
+		// (the tiles drawn this frame are closed groups too, not the pool's)
 		var k = openGroups.length + closedGroups.length;
-		if (k == groupPool.length) groupPool.push(new Group());
+		while (k >= groupPool.length)
+			groupPool.push(new Group());
 		var g = groupPool[k];
 		g.open(device, gw, gh);
 		g.x = gx0;
@@ -1495,6 +1646,16 @@ class Renderer implements TextureCanvas {
 		// (an image: its texture bound, its place in a page and its texels'
 		// bounds there (read clamped to them); a glyph: read filtered where turned)
 		var w0 = qw0, w1 = qw1, w2 = qw2, w3 = qw3, filtered = 0;
+		var ax = x0 - m, ay = y0 - m, bx = x1 + m, by = y1 + m;
+		// (in a kept frame's rectangle: an unturned quad's corners cut to it)
+		var cut = cutting && batch == kept.batch;
+		if (cut && flat) {
+			ax = Math.max(ax, cutX0);
+			ay = Math.max(ay, cutY0);
+			bx = Math.min(bx, cutX1);
+			by = Math.min(by, cutY1);
+			if (ax >= bx || ay >= by) return;
+		}
 		if (mode == 2) {
 			var e = image < 0 ? null : textures.get(image);
 			if (e == null || e.page < 0) {
@@ -1526,7 +1687,6 @@ class Renderer implements TextureCanvas {
 		var fa = fill.a / 255 * alpha, ba = border.a / 255 * alpha;
 		var hx = (x1 - x0) / 2, hy = (y1 - y0) / 2;
 		var mu = (u1 - u0) * m / (x1 - x0), mv = (v1 - v0) * m / (y1 - y0);
-		var ax = x0 - m, ay = y0 - m, bx = x1 + m, by = y1 + m;
 		// (the corners in target pixels and clip space: the transform less its scale, exact for none)
 		var k = mk, ra = flat ? 1 : ma / k, rb = flat ? 0 : mb / k, rc = flat ? 0 : mc / k, rd = flat ? 1 : md / k, te = flat ? 0 : me, tf = flat ? 0 : mf;
 		inline function corner(at:Int, px:Float, py:Float) {
@@ -1597,6 +1757,11 @@ class Renderer implements TextureCanvas {
 			b.setFloat(o + 200, 0);
 			b.setFloat(o + 204, 0);
 		}
+		// (what it may change: the target, or a kept frame's rectangle)
+		b.setFloat(o + 208, cut ? cutX0 - ox : -1e9);
+		b.setFloat(o + 212, cut ? cutY0 - oy : -1e9);
+		b.setFloat(o + 216, cut ? cutX1 - ox : 1e9);
+		b.setFloat(o + 220, cut ? cutY1 - oy : 1e9);
 	}
 }
 
@@ -1630,14 +1795,14 @@ private class Group {
 
 	public function new() {}
 
-	// (begun for a part of w x h: its texture at least that, grown by 64s)
-	public function open(device:Device, w:Int, h:Int) {
+	// (begun for a part of w x h: its texture at least that, grown by 64s; exact: that)
+	public function open(device:Device, w:Int, h:Int, exact = false) {
 		width = w;
 		height = h;
-		if (texture == null || textureWidth < w || textureHeight < h) {
+		if (texture == null || textureWidth < w || textureHeight < h || exact && (textureWidth != w || textureHeight != h)) {
 			free(device);
-			textureWidth = Std.int(Math.min(device.maxTextureSize, Math.ceil(w / 64) * 64));
-			textureHeight = Std.int(Math.min(device.maxTextureSize, Math.ceil(h / 64) * 64));
+			textureWidth = Std.int(Math.min(device.maxTextureSize, exact ? w : Math.ceil(w / 64) * 64));
+			textureHeight = Std.int(Math.min(device.maxTextureSize, exact ? h : Math.ceil(h / 64) * 64));
 			texture = device.createTexture({width: textureWidth, height: textureHeight, format: RGBA8, renderTarget: true});
 		}
 		batch.clear();

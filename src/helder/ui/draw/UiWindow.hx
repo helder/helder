@@ -140,6 +140,8 @@ class UiWindow {
 	var buttons = 0;
 	// (whether its layers are drawn from tiles: Renderer.tiles, but for a frame read back)
 	var tiled = false;
+	// (HELDER_DAMAGE: "full" draws each frame whole, "flash" shows what each frame drew: Renderer.keep)
+	static final damage = Sys.getEnv("HELDER_DAMAGE") ?? "";
 
 	// (antialias: the device's frames multisampled, 4 samples a pixel, where the GPU has them)
 	public function new(title:String, width:Int, height:Int, ?text:TextEngine, antialias = true, titlebar:helder.os.TitleBar = Standard) {
@@ -334,6 +336,9 @@ class UiWindow {
 		}
 		// (painted first: the passes a texture drawn needs, a <Scene>'s, recorded before the frame's)
 		renderer.tiles = tiled && capture == null;
+		renderer.keep = renderer.tiles && damage != "full";
+		renderer.flash = damage == "flash";
+		renderer.background = background;
 		renderer.begin(device.width, device.height);
 		ui.paint(renderer);
 		renderer.prepare(enc);
@@ -346,6 +351,8 @@ class UiWindow {
 			device.readPixels(capture);
 			capture = null;
 		}
+		// (what the frame kept changed, told the system: none, a pixel's worth)
+		if (renderer.keep) device.damaged(renderer.drawn >= device.width * device.height ? null : renderer.regions.length > 0 ? renderer.regions : [0, 0, 1, 1]);
 		device.endFrame();
 		updateTextInput();
 		sendAccess();

@@ -143,6 +143,9 @@ abstract Impl(Any) {
 	public inline function endFrame()
 		Platform.os() == 1 ? mtl().endFrame() : Platform.os() == 2 ? d3d().endFrame() : Platform.os() != 3 ? gl().endFrame() : webgl() ? gl().endFrame() : wgpu().endFrame();
 
+	public inline function damaged(rects:Null<Array<Int>>)
+		if (Platform.os() == 2) d3d().damaged(rects) else if (Platform.os() != 1 && Platform.os() != 3) gl().damaged(rects);
+
 	public inline function readPixels(dst:haxe.io.Bytes)
 		Platform.os() == 1 ? mtl().readPixels(dst) : Platform.os() == 2 ? d3d().readPixels(dst) : Platform.os() != 3 ? gl().readPixels(dst) : webgl() ? gl().readPixels(dst) : wgpu().readPixels(dst);
 
