@@ -55,7 +55,7 @@ class Jobs {
 	// whether this runs in a job on a worker (natively a thread other than
 	// the main one, in a browser a worker's instance)
 	public static function onWorker():Bool
-		return #if (hxmc.target == "wasm32-wasi") WebJobs.inWorker() #else hxmc.NativeThread.current() != 1 #end;
+		return #if (hxmc.target == "wasm32-wasi") WebJobs.inWorker() #else hxmc.NativeThread.current() != 1 && hxmc.NativeThread.current() != helder.async.Driven.MainLoop.program #end;
 
 	// (a GC-free job's run: by its address, Sendable's)
 	@:coroutine public static function runFree(fn:I64, input:Null<Buffer>):Buffer

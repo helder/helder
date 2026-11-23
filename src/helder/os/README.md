@@ -53,6 +53,24 @@ draws while the app is active, a touch is as in the browser
 and on Android, `Suspend` and `Resume` come when
 the app goes to the background and back. No keys or text input there yet.
 
+### Threads
+
+On macOS and Linux (X11, Wayland) `App.run` runs the program's loop on a
+thread of its own, as on Android: the main thread is the system's,
+where AppKit has to be called, and the program's is free of it (Layers'
+compositor reads the input there while the program is busy: the
+README's roadmap). The main thread runs what the program hands it
+(`helder.os.OsThread.run`: windows, events polled, the clipboard,
+dialogs, menus, native views, accessibility) and waits otherwise; what
+the system calls back into the program comes back to its thread
+(`OsThread.back`: events, a live resize's frames, files opened). One of
+the two runs at a time, each serving the other while it waits, so the
+program sees what it saw on one thread, and code after `App.run`
+runs on the main thread again. Code of the app's own that calls AppKit
+from a frame or an event (`helder/native`, Objective-C) goes through
+`OsThread.run`. `HELDER_THREAD=0` keeps the program on the main thread;
+Windows, iOS, the browser and headless runs keep it there for now.
+
 ### Files dropped, full screen, a window's place
 
 ```haxe

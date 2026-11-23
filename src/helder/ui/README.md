@@ -1433,6 +1433,11 @@ multisampled window). Headless runs, screenshots,
 golden images and X11 draw every frame whole; `HELDER_DAMAGE=full` draws
 a window's so, `HELDER_DAMAGE=flash` shows each frame's rectangles.
 
+On macOS and Linux the program itself runs on a thread of its own, the
+main thread the system's (helder.os's README, "Threads"): nothing changes
+yet in what a frame sees; the main thread is where the compositor's
+scrolling will read input while the program is busy.
+
 A window's GPU work runs on the render thread (helder.gfx's README,
 "Render thread"; macOS, iOS, Windows, Linux and Android): the frame is
 recorded here and handed over at its passes' and its end, and the loop

@@ -16,16 +16,17 @@ import hxmc.Platform;
 // owns the selection while its text is the clipboard's. Android reads the
 // focused activity's ClipboardManager.
 class Clipboard {
-	public static function write(window:Window, text:String) {
-		if (Platform.apple() >= 1) UIKitWindow.writeClipboard(text) else if (Platform.os() == 1) CocoaWindow.writeClipboard(text) else if (Platform.os() == 2) (cast @:privateAccess window.native : Win32Window).writeClipboard(text) else
+	// (on the main thread, the answer back on the program's: OsThread)
+	public static function write(window:Window, text:String)
+		OsThread.run(() -> if (Platform.apple() >= 1) UIKitWindow.writeClipboard(text) else if (Platform.os() == 1) CocoaWindow.writeClipboard(text) else if (Platform.os() == 2) (cast @:privateAccess window.native : Win32Window).writeClipboard(text) else
 			if (Platform.os() == 3) CanvasWindow.writeClipboard(text) else if (Platform.target() >= 9) helder.os.android.AndroidClipboard.write(text) else if (Std.isOfType(@:privateAccess window.native, WaylandWindow))
-				(cast @:privateAccess window.native : WaylandWindow).writeClipboard(text) else (cast @:privateAccess window.native : X11Window).writeClipboard(text);
-	}
+				(cast @:privateAccess window.native : WaylandWindow).writeClipboard(text) else (cast @:privateAccess window.native : X11Window).writeClipboard(text));
 
-	public static function read(window:Window, callback:Null<String>->Void) {
-		if (Platform.apple() >= 1) callback(UIKitWindow.readClipboard()) else if (Platform.os() == 1) callback(CocoaWindow.readClipboard()) else if (Platform.os() == 2) callback((cast @:privateAccess window.native : Win32Window).readClipboard()) else
+	public static function read(window:Window, then:Null<String>->Void) {
+		var callback = (s:Null<String>) -> OsThread.back(() -> then(s));
+		OsThread.run(() -> if (Platform.apple() >= 1) callback(UIKitWindow.readClipboard()) else if (Platform.os() == 1) callback(CocoaWindow.readClipboard()) else if (Platform.os() == 2) callback((cast @:privateAccess window.native : Win32Window).readClipboard()) else
 			if (Platform.os() == 3) CanvasWindow.readClipboard(callback) else if (Platform.target() >= 9) callback(helder.os.android.AndroidClipboard.read()) else
 			if (Std.isOfType(@:privateAccess window.native, WaylandWindow)) (cast @:privateAccess window.native : WaylandWindow).readClipboard(callback) else
-				(cast @:privateAccess window.native : X11Window).readClipboard(callback);
+				(cast @:privateAccess window.native : X11Window).readClipboard(callback));
 	}
 }

@@ -31,15 +31,19 @@ class LocationApple {
 		return hxmc.Platform.apple() >= 1 || PathsApple.bundleId() != null;
 
 	public static function start(precise:Bool, f:GeoPosition->Void):Int {
-		var id = nextId++;
-		watches.set(id, f);
-		Msg.v(located(precise), ObjC.sel("startUpdatingLocation"));
-		return id;
+		return helder.os.OsThread.get(() -> {
+			var id = nextId++;
+			watches.set(id, f);
+			Msg.v(located(precise), ObjC.sel("startUpdatingLocation"));
+			return id;
+		});
 	}
 
 	public static function stop(id:Int) {
-		watches.remove(id);
-		if (!watches.keys().hasNext() && !manager.isNull()) Msg.v(manager, ObjC.sel("stopUpdatingLocation"));
+		helder.os.OsThread.run(() -> {
+			watches.remove(id);
+			if (!watches.keys().hasNext() && !manager.isNull()) Msg.v(manager, ObjC.sel("stopUpdatingLocation"));
+		});
 	}
 
 	static function located(precise:Bool):Ptr {

@@ -6,11 +6,13 @@ import helder.os.Settings.SettingsValues;
 @:hxmc.unsafe(gc)
 class SettingsApple {
 	public static function mac(v:SettingsValues) {
-		var pool = Runtime.objc_autoreleasePoolPush();
-		var w = Msg.id(ObjC.cls("NSWorkspace"), ObjC.sel("sharedWorkspace"));
-		v.reducedMotion = Msg.b(w, ObjC.sel("accessibilityDisplayShouldReduceMotion"));
-		v.contrast = Msg.b(w, ObjC.sel("accessibilityDisplayShouldIncreaseContrast")) ? More : Normal;
-		Runtime.objc_autoreleasePoolPop(pool);
+		helder.os.OsThread.run(() -> {
+			var pool = Runtime.objc_autoreleasePoolPush();
+			var w = Msg.id(ObjC.cls("NSWorkspace"), ObjC.sel("sharedWorkspace"));
+			v.reducedMotion = Msg.b(w, ObjC.sel("accessibilityDisplayShouldReduceMotion"));
+			v.contrast = Msg.b(w, ObjC.sel("accessibilityDisplayShouldIncreaseContrast")) ? More : Normal;
+			Runtime.objc_autoreleasePoolPop(pool);
+		});
 	}
 
 	public static function ios(v:SettingsValues) {

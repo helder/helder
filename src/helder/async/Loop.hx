@@ -79,12 +79,20 @@ class Loop extends Dispatcher implements IScheduler implements Driven {
 	public static function current():Loop {
 		#if target.threaded
 		var l = tls.value;
-		if (l == null) tls.value = l = new Loop();
+		if (l == null) tls.value = l = #if (target.name == "hxmc") shared() ?? #end new Loop();
 		return l;
 		#else
 		return only ??= new Loop();
 		#end
 	}
+
+	#if (target.threaded && target.name == "hxmc")
+	// (the main thread's loop on the program's thread too, and the other way round: helder.os.OsThread)
+	static function shared():Null<Loop> {
+		var m = Driven.MainLoop.main, id = hxmc.NativeThread.current();
+		return m != null && Driven.MainLoop.program != 0 && (id == 1 || id == Driven.MainLoop.program) ? cast m : null;
+	}
+	#end
 
 	// the context of a coroutine started on this loop
 	public function context():Context

@@ -27,4 +27,7 @@ interface Driven {
 class MainLoop {
 	// (the first Loop made: the main thread's, as nothing makes one on another thread first)
 	public static var main:Null<Driven>;
+	// the Haxe id of the thread the program's loop runs on besides the main
+	// one (helder.os.OsThread), whose loop is main's too; 0: none
+	public static var program = 0;
 }

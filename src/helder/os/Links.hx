@@ -25,7 +25,7 @@ class Links {
 
 	public static function open(url:String, inApp = true):Bool {
 		opened++;
-		if (Platform.os() == Platform.MACOS) return apple(url, inApp && Platform.apple() >= 1);
+		if (Platform.os() == Platform.MACOS) return OsThread.get(() -> apple(url, inApp && Platform.apple() >= 1));
 		if (Platform.os() == Platform.WASI) {
 			Arena.scoped(a -> Dom.open_url(a.cstring(url)));
 			return true;

@@ -13,7 +13,7 @@ class FileDialog {
 	public static function open(window:Window, title:String, filters:Array<{name:String, extensions:Array<String>}>):Null<String>
 		// (a headless run: the script's answer, helder.headless)
 		return #if helder.headless helder.headless.Headless.run.fileDialog(title) #else if (Platform.apple() >= 1 || Platform.os() == 3 || Platform.target() >= 9) null else if (Platform.os() == 2)
-			helder.os.win32.FileOpenDialog.open(window.surface.handle, title, filters) else if (Platform.os() == 1) helder.os.cocoa.OpenPanel.open(title, filters) else
+			helder.os.win32.FileOpenDialog.open(window.surface.handle, title, filters) else if (Platform.os() == 1) OsThread.get(() -> helder.os.cocoa.OpenPanel.open(title, filters)) else
 			portal(window, title, filters) #end;
 
 	// (POSIX's calls behind a constant condition: Platform.os(), the other branches not linked)

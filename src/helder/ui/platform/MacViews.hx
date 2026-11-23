@@ -85,14 +85,16 @@ class MacViews implements PlatformViews {
 		return Msg.id(Msg.id(view, ObjC.sel("window")), ObjC.sel("contentView"));
 
 	public function editor(multiline:Bool):Null<PlatformEditor> {
-		if (multiline) {
-			var e = area();
+		return helder.os.OsThread.get(() -> {
+			if (multiline) {
+				var e:MacEditor = area();
+				editors.push(e);
+				return e;
+			}
+			var e = new MacEditor(this, field(false));
 			editors.push(e);
 			return e;
-		}
-		var e = new MacEditor(this, field(false));
-		editors.push(e);
-		return e;
+		});
 	}
 
 	// (a text area: an NSTextView in an NSScrollView, hidden, in the content view)
@@ -165,89 +167,93 @@ class MacViews implements PlatformViews {
 	// (hxmc dev's host, at a hand-over: the editors and the menu bar's items
 	// gone with this build, whose code they call; the next build makes its own)
 	public function dispose() {
-		for (e in editors.copy())
-			if (@:privateAccess e.views == this) e.dispose();
-		pending = null;
-		menuBar([], _ -> {});
-		barChosen = null;
-		if (current == this) current = null;
+		helder.os.OsThread.run(() -> {
+			for (e in editors.copy())
+				if (@:privateAccess e.views == this) e.dispose();
+			pending = null;
+			menuBar([], _ -> {});
+			barChosen = null;
+			if (current == this) current = null;
+		});
 	}
 
 	public function menuBar(menus:Array<PlatformMenuItem>, chosen:Int->Void):Bool {
-		var app = Msg.id(ObjC.cls("NSApplication"), ObjC.sel("sharedApplication"));
-		var main = Msg.id(app, ObjC.sel("mainMenu"));
-		if (main.isNull()) return false;
-		for (it in barItems) {
-			Msg.vPtr(main, ObjC.sel("removeItem:"), it);
-			ObjC.release(it);
-		}
-		barItems = [];
-		// (the items put in the application's menu and the Window menu)
-		for (it in placed) {
-			var m = Msg.id(it, ObjC.sel("menu"));
-			if (!m.isNull()) Msg.vPtr(m, ObjC.sel("removeItem:"), it);
-			ObjC.release(it);
-		}
-		placed = [];
-		barChosen = chosen;
-		current = this;
-		var own = Msg.id(Msg.idInt(main, ObjC.sel("itemAtIndex:"), 0), ObjC.sel("submenu"));
-		var windows = Msg.id(app, ObjC.sel("windowsMenu"));
-		var k = 0;
-		for (m in menus) {
-			// (roles in their platform places: About at the top of the application's
-			// menu, Quit and Hide its own already; the window menu's items in Window)
-			var items = [];
-			for (it in m.items ?? []) {
-				if (it.role == "about" && !own.isNull()) {
-					var a = nsMenu([it], ObjC.sel("hxmcBarPick:"));
-					var item = Msg.idInt(a, ObjC.sel("itemAtIndex:"), 0);
-					Runtime.objc_retain(item);
-					Msg.vPtr(a, ObjC.sel("removeItem:"), item);
-					ObjC.release(a);
-					// (no handler of About: the standard panel)
-					if (it.disabled == true) {
-						Msg.vPtr(item, ObjC.sel("setAction:"), ObjC.sel("orderFrontStandardAboutPanel:"));
-						Msg.vPtr(item, ObjC.sel("setTarget:"), app);
-						Msg.vBool(item, ObjC.sel("setEnabled:"), true);
+		return helder.os.OsThread.get(() -> {
+			var app = Msg.id(ObjC.cls("NSApplication"), ObjC.sel("sharedApplication"));
+			var main = Msg.id(app, ObjC.sel("mainMenu"));
+			if (main.isNull()) return false;
+			for (it in barItems) {
+				Msg.vPtr(main, ObjC.sel("removeItem:"), it);
+				ObjC.release(it);
+			}
+			barItems = [];
+			// (the items put in the application's menu and the Window menu)
+			for (it in placed) {
+				var m = Msg.id(it, ObjC.sel("menu"));
+				if (!m.isNull()) Msg.vPtr(m, ObjC.sel("removeItem:"), it);
+				ObjC.release(it);
+			}
+			placed = [];
+			barChosen = chosen;
+			current = this;
+			var own = Msg.id(Msg.idInt(main, ObjC.sel("itemAtIndex:"), 0), ObjC.sel("submenu"));
+			var windows = Msg.id(app, ObjC.sel("windowsMenu"));
+			var k = 0;
+			for (m in menus) {
+				// (roles in their platform places: About at the top of the application's
+				// menu, Quit and Hide its own already; the window menu's items in Window)
+				var items = [];
+				for (it in m.items ?? []) {
+					if (it.role == "about" && !own.isNull()) {
+						var a = nsMenu([it], ObjC.sel("hxmcBarPick:"));
+						var item = Msg.idInt(a, ObjC.sel("itemAtIndex:"), 0);
+						Runtime.objc_retain(item);
+						Msg.vPtr(a, ObjC.sel("removeItem:"), item);
+						ObjC.release(a);
+						// (no handler of About: the standard panel)
+						if (it.disabled == true) {
+							Msg.vPtr(item, ObjC.sel("setAction:"), ObjC.sel("orderFrontStandardAboutPanel:"));
+							Msg.vPtr(item, ObjC.sel("setTarget:"), app);
+							Msg.vBool(item, ObjC.sel("setEnabled:"), true);
+						}
+						AkMsg.vPtrInt(own, ObjC.sel("insertItem:atIndex:"), item, 0);
+						placed.push(item);
+						var sep = Msg.id(ObjC.cls("NSMenuItem"), ObjC.sel("separatorItem"));
+						Runtime.objc_retain(sep);
+						AkMsg.vPtrInt(own, ObjC.sel("insertItem:atIndex:"), sep, 1);
+						placed.push(sep);
+						continue;
 					}
-					AkMsg.vPtrInt(own, ObjC.sel("insertItem:atIndex:"), item, 0);
-					placed.push(item);
-					var sep = Msg.id(ObjC.cls("NSMenuItem"), ObjC.sel("separatorItem"));
-					Runtime.objc_retain(sep);
-					AkMsg.vPtrInt(own, ObjC.sel("insertItem:atIndex:"), sep, 1);
-					placed.push(sep);
+					if (it.role == "quit" || it.role == "hide") continue;
+					if (m.role == "window" && (it.role == "minimize" || it.role == "zoom" || it.role == "close")) continue;
+					items.push(it);
+				}
+				while (items.length > 0 && items[0].separator == true)
+					items.shift();
+				while (items.length > 0 && items[items.length - 1].separator == true)
+					items.pop();
+				if (m.role == "window" && !windows.isNull()) {
+					var w = nsMenu(items, ObjC.sel("hxmcBarPick:"));
+					while (Msg.i(w, ObjC.sel("numberOfItems")) > 0) {
+						var item = Msg.idInt(w, ObjC.sel("itemAtIndex:"), 0);
+						Runtime.objc_retain(item);
+						Msg.vPtr(w, ObjC.sel("removeItem:"), item);
+						Msg.vPtr(windows, ObjC.sel("addItem:"), item);
+						placed.push(item);
+					}
+					ObjC.release(w);
 					continue;
 				}
-				if (it.role == "quit" || it.role == "hide") continue;
-				if (m.role == "window" && (it.role == "minimize" || it.role == "zoom" || it.role == "close")) continue;
-				items.push(it);
+				if (items.length == 0) continue;
+				var sub = nsMenu(items, ObjC.sel("hxmcBarPick:"), m.label);
+				var item = Msg.id(Msg.id(ObjC.cls("NSMenuItem"), ObjC.sel("alloc")), ObjC.sel("init"));
+				Msg.vPtr(item, ObjC.sel("setSubmenu:"), sub);
+				ObjC.release(sub);
+				AkMsg.vPtrInt(main, ObjC.sel("insertItem:atIndex:"), item, 1 + k++);
+				barItems.push(item);
 			}
-			while (items.length > 0 && items[0].separator == true)
-				items.shift();
-			while (items.length > 0 && items[items.length - 1].separator == true)
-				items.pop();
-			if (m.role == "window" && !windows.isNull()) {
-				var w = nsMenu(items, ObjC.sel("hxmcBarPick:"));
-				while (Msg.i(w, ObjC.sel("numberOfItems")) > 0) {
-					var item = Msg.idInt(w, ObjC.sel("itemAtIndex:"), 0);
-					Runtime.objc_retain(item);
-					Msg.vPtr(w, ObjC.sel("removeItem:"), item);
-					Msg.vPtr(windows, ObjC.sel("addItem:"), item);
-					placed.push(item);
-				}
-				ObjC.release(w);
-				continue;
-			}
-			if (items.length == 0) continue;
-			var sub = nsMenu(items, ObjC.sel("hxmcBarPick:"), m.label);
-			var item = Msg.id(Msg.id(ObjC.cls("NSMenuItem"), ObjC.sel("alloc")), ObjC.sel("init"));
-			Msg.vPtr(item, ObjC.sel("setSubmenu:"), sub);
-			ObjC.release(sub);
-			AkMsg.vPtrInt(main, ObjC.sel("insertItem:atIndex:"), item, 1 + k++);
-			barItems.push(item);
-		}
-		return true;
+			return true;
+		});
 	}
 
 	// (items placed in the application's own menus, removed when the bar is set again)
@@ -279,84 +285,88 @@ class MacViews implements PlatformViews {
 
 	// (an NSMenu of the items: enabled as given, checked as NSControlStateValueOn)
 	static function nsMenu(items:Array<PlatformMenuItem>, ?action:Ptr, title = ""):Ptr {
-		if (action == null) action = ObjC.sel("hxmcMenuPick:");
-		var t = ObjC.str(title);
-		var m = Msg.idPtr(Msg.id(ObjC.cls("NSMenu"), ObjC.sel("alloc")), ObjC.sel("initWithTitle:"), t);
-		Msg.vBool(m, ObjC.sel("setAutoenablesItems:"), false);
-		for (it in items) {
-			if (it.separator == true) {
-				Msg.vPtr(m, ObjC.sel("addItem:"), Msg.id(ObjC.cls("NSMenuItem"), ObjC.sel("separatorItem")));
-				continue;
+		return helder.os.OsThread.get(() -> {
+			if (action == null) action = ObjC.sel("hxmcMenuPick:");
+			var t = ObjC.str(title);
+			var m = Msg.idPtr(Msg.id(ObjC.cls("NSMenu"), ObjC.sel("alloc")), ObjC.sel("initWithTitle:"), t);
+			Msg.vBool(m, ObjC.sel("setAutoenablesItems:"), false);
+			for (it in items) {
+				if (it.separator == true) {
+					Msg.vPtr(m, ObjC.sel("addItem:"), Msg.id(ObjC.cls("NSMenuItem"), ObjC.sel("separatorItem")));
+					continue;
+				}
+				var k = it.keys, equivalent = k != null && k.key > 32 && k.key < 127 ? String.fromCharCode(k.key).toLowerCase() : "";
+				var title = ObjC.str(it.label), e = ObjC.str(equivalent);
+				var item = Msg.idPtrPtrPtr(Msg.id(ObjC.cls("NSMenuItem"), ObjC.sel("alloc")), ObjC.sel("initWithTitle:action:keyEquivalent:"), title,
+					it.items == null ? action : Ptr.nil(), e);
+				ObjC.release(title);
+				ObjC.release(e);
+				Msg.vPtr(item, ObjC.sel("setTarget:"), delegate);
+				Msg.vInt(item, ObjC.sel("setTag:"), it.id);
+				var es = editSelector(it.role);
+				if (es != null) roleSelectors.set(it.id, es);
+				Msg.vBool(item, ObjC.sel("setEnabled:"), it.disabled != true);
+				// (NSEventModifierFlagShift 1 << 17, Control 1 << 18, Option 1 << 19, Command 1 << 20)
+				if (equivalent != "")
+					Msg.vInt(item, ObjC.sel("setKeyEquivalentModifierMask:"), (k.mods & Key.MOD_META != 0 ? 1 << 20 : 0)
+						| (k.mods & Key.MOD_SHIFT != 0 ? 1 << 17 : 0) | (k.mods & Key.MOD_CONTROL != 0 ? 1 << 18 : 0) | (k.mods & Key.MOD_ALT != 0 ? 1 << 19 : 0));
+				if (it.checked == true) Msg.vInt(item, ObjC.sel("setState:"), 1);
+				if (it.items != null) {
+					var sub = nsMenu(it.items, action, it.label);
+					Msg.vPtr(item, ObjC.sel("setSubmenu:"), sub);
+					ObjC.release(sub);
+				}
+				Msg.vPtr(m, ObjC.sel("addItem:"), item);
+				ObjC.release(item);
 			}
-			var k = it.keys, equivalent = k != null && k.key > 32 && k.key < 127 ? String.fromCharCode(k.key).toLowerCase() : "";
-			var title = ObjC.str(it.label), e = ObjC.str(equivalent);
-			var item = Msg.idPtrPtrPtr(Msg.id(ObjC.cls("NSMenuItem"), ObjC.sel("alloc")), ObjC.sel("initWithTitle:action:keyEquivalent:"), title,
-				it.items == null ? action : Ptr.nil(), e);
-			ObjC.release(title);
-			ObjC.release(e);
-			Msg.vPtr(item, ObjC.sel("setTarget:"), delegate);
-			Msg.vInt(item, ObjC.sel("setTag:"), it.id);
-			var es = editSelector(it.role);
-			if (es != null) roleSelectors.set(it.id, es);
-			Msg.vBool(item, ObjC.sel("setEnabled:"), it.disabled != true);
-			// (NSEventModifierFlagShift 1 << 17, Control 1 << 18, Option 1 << 19, Command 1 << 20)
-			if (equivalent != "")
-				Msg.vInt(item, ObjC.sel("setKeyEquivalentModifierMask:"), (k.mods & Key.MOD_META != 0 ? 1 << 20 : 0)
-					| (k.mods & Key.MOD_SHIFT != 0 ? 1 << 17 : 0) | (k.mods & Key.MOD_CONTROL != 0 ? 1 << 18 : 0) | (k.mods & Key.MOD_ALT != 0 ? 1 << 19 : 0));
-			if (it.checked == true) Msg.vInt(item, ObjC.sel("setState:"), 1);
-			if (it.items != null) {
-				var sub = nsMenu(it.items, action, it.label);
-				Msg.vPtr(item, ObjC.sel("setSubmenu:"), sub);
-				ObjC.release(sub);
-			}
-			Msg.vPtr(m, ObjC.sel("addItem:"), item);
-			ObjC.release(item);
-		}
-		ObjC.release(t);
-		return m;
+			ObjC.release(t);
+			return m;
+		});
 	}
 
 	public function poll() {
-		var i = 0;
-		while (i < queue.length)
-			if (queue[i].kind == 5) {
-				var q = queue.splice(i, 1)[0];
-				if (barChosen != null) barChosen(q.key);
-			} else i++;
-		if (pending != null) {
-			var p = pending;
-			pending = null;
-			var m = nsMenu(p.items);
-			picked = -1;
-			// (the view's points, y up)
-			var b = Msg.rect(view, ObjC.sel("bounds")), flipped = Msg.b(view, ObjC.sel("isFlipped"));
-			Arena.scoped(a -> {
-				var pt = a.make(helder.os.objc.CGPoint);
-				pt.value.x = p.x;
-				pt.value.y = flipped ? p.y : b.size.height - p.y;
-				shown = m;
-				AkMsg.bPtrPointPtr(m, ObjC.sel("popUpMenuPositioningItem:atLocation:inView:"), Ptr.nil(), pt.value, view);
-				shown = Ptr.nil();
-			});
-			ObjC.release(m);
-			p.chosen(picked);
-		}
-		while (queue.length > 0) {
-			var q = queue.shift(), e = q.e, l = e.listener;
-			if (l == null) continue;
-			switch q.kind {
-				case 1:
-					var t = @:privateAccess e.text();
-					l.editorEdited(t, t.length, t.length);
-				case 2:
-					l.editorFocused(true);
-				case 3:
-					l.editorFocused(false);
-				case 4:
-					l.editorKey(q.key, q.mods);
-				case _:
+		helder.os.OsThread.run(() -> {
+			var i = 0;
+			while (i < queue.length)
+				if (queue[i].kind == 5) {
+					var q = queue.splice(i, 1)[0];
+					if (barChosen != null) barChosen(q.key);
+				} else i++;
+			if (pending != null) {
+				var p = pending;
+				pending = null;
+				var m = nsMenu(p.items);
+				picked = -1;
+				// (the view's points, y up)
+				var b = Msg.rect(view, ObjC.sel("bounds")), flipped = Msg.b(view, ObjC.sel("isFlipped"));
+				Arena.scoped(a -> {
+					var pt = a.make(helder.os.objc.CGPoint);
+					pt.value.x = p.x;
+					pt.value.y = flipped ? p.y : b.size.height - p.y;
+					shown = m;
+					AkMsg.bPtrPointPtr(m, ObjC.sel("popUpMenuPositioningItem:atLocation:inView:"), Ptr.nil(), pt.value, view);
+					shown = Ptr.nil();
+				});
+				ObjC.release(m);
+				p.chosen(picked);
 			}
-		}
+			while (queue.length > 0) {
+				var q = queue.shift(), e = q.e, l = e.listener;
+				if (l == null) continue;
+				switch q.kind {
+					case 1:
+						var t = @:privateAccess e.text();
+						l.editorEdited(t, t.length, t.length);
+					case 2:
+						l.editorFocused(true);
+					case 3:
+						l.editorFocused(false);
+					case 4:
+						l.editorKey(q.key, q.mods);
+					case _:
+				}
+			}
+		});
 	}
 
 	// (a notification's field: its editor)
@@ -440,22 +450,26 @@ class MacEditor implements PlatformEditor {
 	}
 
 	public function setText(text:String, start:Int, end:Int) {
-		var s = ObjC.str(text);
-		Msg.vPtr(field, ObjC.sel("setStringValue:"), s);
-		ObjC.release(s);
+		helder.os.OsThread.run(() -> {
+			var s = ObjC.str(text);
+			Msg.vPtr(field, ObjC.sel("setStringValue:"), s);
+			ObjC.release(s);
+		});
 	}
 
 	public function place(x:Float, y:Float, width:Float, height:Float, shown:Bool) {
-		var c = @:privateAccess views.content(), b = Msg.rect(c, ObjC.sel("bounds"));
-		Arena.scoped(a -> {
-			var r = a.make(CGRect);
-			r.value.origin.x = x;
-			r.value.origin.y = b.size.height - y - height;
-			r.value.size.width = width;
-			r.value.size.height = height;
-			Msg.vRect(field, ObjC.sel("setFrame:"), r.value);
+		helder.os.OsThread.run(() -> {
+			var c = @:privateAccess views.content(), b = Msg.rect(c, ObjC.sel("bounds"));
+			Arena.scoped(a -> {
+				var r = a.make(CGRect);
+				r.value.origin.x = x;
+				r.value.origin.y = b.size.height - y - height;
+				r.value.size.width = width;
+				r.value.size.height = height;
+				Msg.vRect(field, ObjC.sel("setFrame:"), r.value);
+			});
+			Msg.vBool(field, ObjC.sel("setHidden:"), !shown);
 		});
-		Msg.vBool(field, ObjC.sel("setHidden:"), !shown);
 	}
 
 	// (the desktop's editor: its selection its own, as before; no soft keyboard)
@@ -464,15 +478,17 @@ class MacEditor implements PlatformEditor {
 	public function setKind(kind:helder.os.TextKind) {}
 
 	public function setStyle(font:Font, color:Color, background:Color, placeholder:String, placeholderColor:Color, align:TextAlign, secret:Bool) {
-		if (secret != secure) remake(secret);
-		Msg.vPtr(field, ObjC.sel("setFont:"), MacViews.nsFont(font));
-		Msg.vPtr(field, ObjC.sel("setTextColor:"), AkMsg.idFloat4(ObjC.cls("NSColor"), ObjC.sel("colorWithSRGBRed:green:blue:alpha:"), color.r / 255,
-			color.g / 255, color.b / 255, color.a / 255));
-		// (NSTextAlignment: left 0, right 1, center 2, justified 3)
-		Msg.vInt(field, ObjC.sel("setAlignment:"), align == Center ? 2 : align == Right ? 1 : align == Justify ? 3 : 0);
-		var p = ObjC.str(placeholder);
-		Msg.vPtr(field, ObjC.sel("setPlaceholderString:"), p);
-		ObjC.release(p);
+		helder.os.OsThread.run(() -> {
+			if (secret != secure) remake(secret);
+			Msg.vPtr(field, ObjC.sel("setFont:"), MacViews.nsFont(font));
+			Msg.vPtr(field, ObjC.sel("setTextColor:"), AkMsg.idFloat4(ObjC.cls("NSColor"), ObjC.sel("colorWithSRGBRed:green:blue:alpha:"), color.r / 255,
+				color.g / 255, color.b / 255, color.a / 255));
+			// (NSTextAlignment: left 0, right 1, center 2, justified 3)
+			Msg.vInt(field, ObjC.sel("setAlignment:"), align == Center ? 2 : align == Right ? 1 : align == Justify ? 3 : 0);
+			var p = ObjC.str(placeholder);
+			Msg.vPtr(field, ObjC.sel("setPlaceholderString:"), p);
+			ObjC.release(p);
+		});
 	}
 
 	// (the field made again as a password's or not: its text, frame and
@@ -495,11 +511,13 @@ class MacEditor implements PlatformEditor {
 	}
 
 	public function focus(on:Bool) {
-		var w = Msg.id(field, ObjC.sel("window"));
-		if (w.isNull()) return;
-		focusing = true;
-		if (on) Msg.bPtr(w, ObjC.sel("makeFirstResponder:"), field) else if (editing()) Msg.bPtr(w, ObjC.sel("makeFirstResponder:"), Ptr.nil());
-		focusing = false;
+		helder.os.OsThread.run(() -> {
+			var w = Msg.id(field, ObjC.sel("window"));
+			if (w.isNull()) return;
+			focusing = true;
+			if (on) Msg.bPtr(w, ObjC.sel("makeFirstResponder:"), field) else if (editing()) Msg.bPtr(w, ObjC.sel("makeFirstResponder:"), Ptr.nil());
+			focusing = false;
+		});
 	}
 
 	// (the field editing: the window's first responder its field editor, whose delegate it is)
@@ -509,12 +527,14 @@ class MacEditor implements PlatformEditor {
 	}
 
 	public function dispose() {
-		@:privateAccess MacViews.editors.remove(this);
-		if (editing()) Msg.bPtr(Msg.id(field, ObjC.sel("window")), ObjC.sel("makeFirstResponder:"), Ptr.nil());
-		Msg.vPtr(field, ObjC.sel("setDelegate:"), Ptr.nil());
-		Msg.v(field, ObjC.sel("removeFromSuperview"));
-		ObjC.release(field);
-		listener = null;
+		helder.os.OsThread.run(() -> {
+			@:privateAccess MacViews.editors.remove(this);
+			if (editing()) Msg.bPtr(Msg.id(field, ObjC.sel("window")), ObjC.sel("makeFirstResponder:"), Ptr.nil());
+			Msg.vPtr(field, ObjC.sel("setDelegate:"), Ptr.nil());
+			Msg.v(field, ObjC.sel("removeFromSuperview"));
+			ObjC.release(field);
+			listener = null;
+		});
 	}
 }
 
@@ -534,38 +554,46 @@ class MacAreaEditor extends MacEditor {
 	}
 
 	override public function setText(text:String, start:Int, end:Int) {
-		var s = ObjC.str(text);
-		Msg.vPtr(field, ObjC.sel("setString:"), s);
-		ObjC.release(s);
+		helder.os.OsThread.run(() -> {
+			var s = ObjC.str(text);
+			Msg.vPtr(field, ObjC.sel("setString:"), s);
+			ObjC.release(s);
+		});
 	}
 
 	override public function place(x:Float, y:Float, width:Float, height:Float, shown:Bool) {
-		var c = @:privateAccess views.content(), b = Msg.rect(c, ObjC.sel("bounds"));
-		Arena.scoped(a -> {
-			var r = a.make(CGRect);
-			r.value.origin.x = x;
-			r.value.origin.y = b.size.height - y - height;
-			r.value.size.width = width;
-			r.value.size.height = height;
-			Msg.vRect(scroll, ObjC.sel("setFrame:"), r.value);
+		helder.os.OsThread.run(() -> {
+			var c = @:privateAccess views.content(), b = Msg.rect(c, ObjC.sel("bounds"));
+			Arena.scoped(a -> {
+				var r = a.make(CGRect);
+				r.value.origin.x = x;
+				r.value.origin.y = b.size.height - y - height;
+				r.value.size.width = width;
+				r.value.size.height = height;
+				Msg.vRect(scroll, ObjC.sel("setFrame:"), r.value);
+			});
+			Msg.vBool(scroll, ObjC.sel("setHidden:"), !shown);
 		});
-		Msg.vBool(scroll, ObjC.sel("setHidden:"), !shown);
 	}
 
 	// (no placeholder of its own: the drawn one shows while it is empty)
 	override public function setStyle(font:Font, color:Color, background:Color, placeholder:String, placeholderColor:Color, align:TextAlign, secret:Bool) {
-		Msg.vPtr(field, ObjC.sel("setFont:"), MacViews.nsFont(font));
-		Msg.vPtr(field, ObjC.sel("setTextColor:"), AkMsg.idFloat4(ObjC.cls("NSColor"), ObjC.sel("colorWithSRGBRed:green:blue:alpha:"), color.r / 255,
-			color.g / 255, color.b / 255, color.a / 255));
-		Msg.vInt(field, ObjC.sel("setAlignment:"), align == Center ? 2 : align == Right ? 1 : align == Justify ? 3 : 0);
+		helder.os.OsThread.run(() -> {
+			Msg.vPtr(field, ObjC.sel("setFont:"), MacViews.nsFont(font));
+			Msg.vPtr(field, ObjC.sel("setTextColor:"), AkMsg.idFloat4(ObjC.cls("NSColor"), ObjC.sel("colorWithSRGBRed:green:blue:alpha:"), color.r / 255,
+				color.g / 255, color.b / 255, color.a / 255));
+			Msg.vInt(field, ObjC.sel("setAlignment:"), align == Center ? 2 : align == Right ? 1 : align == Justify ? 3 : 0);
+		});
 	}
 
 	override public function dispose() {
-		@:privateAccess MacViews.editors.remove(this);
-		if (editing()) Msg.bPtr(Msg.id(scroll, ObjC.sel("window")), ObjC.sel("makeFirstResponder:"), Ptr.nil());
-		Msg.vPtr(field, ObjC.sel("setDelegate:"), Ptr.nil());
-		Msg.v(scroll, ObjC.sel("removeFromSuperview"));
-		ObjC.release(scroll);
-		listener = null;
+		helder.os.OsThread.run(() -> {
+			@:privateAccess MacViews.editors.remove(this);
+			if (editing()) Msg.bPtr(Msg.id(scroll, ObjC.sel("window")), ObjC.sel("makeFirstResponder:"), Ptr.nil());
+			Msg.vPtr(field, ObjC.sel("setDelegate:"), Ptr.nil());
+			Msg.v(scroll, ObjC.sel("removeFromSuperview"));
+			ObjC.release(scroll);
+			listener = null;
+		});
 	}
 }

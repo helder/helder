@@ -29,25 +29,27 @@ class MacScrollbarArt implements helder.ui.ScrollbarArt {
 	final sizes:Array<Array<Float>> = [];
 
 	public function new() {
-		for (vertical in [true, false])
+		helder.os.OsThread.run(() -> {
+			for (vertical in [true, false])
+				for (overlay in [false, true]) {
+					rect.value.origin.x = rect.value.origin.y = 0;
+					rect.value.size.width = vertical ? 15 : 100;
+					rect.value.size.height = vertical ? 100 : 15;
+					var s = Msg.idRect(Msg.id(ObjC.cls("NSScroller"), ObjC.sel("alloc")), ObjC.sel("initWithFrame:"), rect.value);
+					Msg.vInt(s, ObjC.sel("setScrollerStyle:"), overlay ? 1 : 0);
+					Msg.vBool(s, ObjC.sel("setEnabled:"), true);
+					scrollers.push(s);
+				}
+			// (the sizes: the scroller's width, its knob's, the knob's inset from the outer edge)
 			for (overlay in [false, true]) {
-				rect.value.origin.x = rect.value.origin.y = 0;
-				rect.value.size.width = vertical ? 15 : 100;
-				rect.value.size.height = vertical ? 100 : 15;
-				var s = Msg.idRect(Msg.id(ObjC.cls("NSScroller"), ObjC.sel("alloc")), ObjC.sel("initWithFrame:"), rect.value);
-				Msg.vInt(s, ObjC.sel("setScrollerStyle:"), overlay ? 1 : 0);
-				Msg.vBool(s, ObjC.sel("setEnabled:"), true);
-				scrollers.push(s);
+				var w = Msg.fIntInt(ObjC.cls("NSScroller"), ObjC.sel("scrollerWidthForControlSize:scrollerStyle:"), 0, overlay ? 1 : 0);
+				var s = scroller(true, overlay);
+				frame(s, true, w, 200);
+				Msg.vFloat(s, ObjC.sel("setKnobProportion:"), 0.3);
+				var k = Msg.rectInt(s, ObjC.sel("rectForPart:"), KNOB);
+				sizes.push([w, k.size.width, w - k.origin.x - k.size.width]);
 			}
-		// (the sizes: the scroller's width, its knob's, the knob's inset from the outer edge)
-		for (overlay in [false, true]) {
-			var w = Msg.fIntInt(ObjC.cls("NSScroller"), ObjC.sel("scrollerWidthForControlSize:scrollerStyle:"), 0, overlay ? 1 : 0);
-			var s = scroller(true, overlay);
-			frame(s, true, w, 200);
-			Msg.vFloat(s, ObjC.sel("setKnobProportion:"), 0.3);
-			var k = Msg.rectInt(s, ObjC.sel("rectForPart:"), KNOB);
-			sizes.push([w, k.size.width, w - k.origin.x - k.size.width]);
-		}
+		});
 	}
 
 	public function metrics(overlay:Bool):Array<Float>
@@ -153,49 +155,51 @@ class MacScrollbarArt implements helder.ui.ScrollbarArt {
 
 	// s's knob (else its slot) drawn into a w by h point bitmap, from x, y in s
 	function draw(s:Ptr, dark:Bool, scale:Float, w:Float, h:Float, x:Float, y:Float, isKnob:Bool):Null<Image> {
-		var pw = Math.ceil(w * scale), ph = Math.ceil(h * scale);
-		if (pw <= 0 || ph <= 0) return null;
-		var pool = Runtime.objc_autoreleasePoolPush();
-		var bytes = LibC.malloc(pw * ph * 4);
-		LibC.memset(bytes, 0, pw * ph * 4);
-		var space = CGBits.CGColorSpaceCreateDeviceRGB();
-		// (kCGImageAlphaPremultipliedLast: R G B A)
-		var ctx = CGBits.CGBitmapContextCreate(bytes, pw, ph, 8, pw * 4, space, 1);
-		CGBits.CGColorSpaceRelease(space);
-		if (ctx.isNull()) {
-			LibC.free(bytes);
+		return helder.os.OsThread.get(() -> {
+			var pw = Math.ceil(w * scale), ph = Math.ceil(h * scale);
+			if (pw <= 0 || ph <= 0) return null;
+			var pool = Runtime.objc_autoreleasePoolPush();
+			var bytes = LibC.malloc(pw * ph * 4);
+			LibC.memset(bytes, 0, pw * ph * 4);
+			var space = CGBits.CGColorSpaceCreateDeviceRGB();
+			// (kCGImageAlphaPremultipliedLast: R G B A)
+			var ctx = CGBits.CGBitmapContextCreate(bytes, pw, ph, 8, pw * 4, space, 1);
+			CGBits.CGColorSpaceRelease(space);
+			if (ctx.isNull()) {
+				LibC.free(bytes);
+				Runtime.objc_autoreleasePoolPop(pool);
+				return null;
+			}
+			CGBits.CGContextScaleCTM(ctx, scale, scale);
+			CGBits.CGContextTranslateCTM(ctx, -x, -y);
+			var g = Msg.idPtrBool(ObjC.cls("NSGraphicsContext"), ObjC.sel("graphicsContextWithCGContext:flipped:"), ctx, false);
+			var gc = ObjC.cls("NSGraphicsContext"), ac = ObjC.cls("NSAppearance");
+			Msg.v(gc, ObjC.sel("saveGraphicsState"));
+			Msg.vPtr(gc, ObjC.sel("setCurrentContext:"), g);
+			var was = Msg.id(ac, ObjC.sel("currentAppearance"));
+			var name = ObjC.str(dark ? "NSAppearanceNameDarkAqua" : "NSAppearanceNameAqua");
+			// (the system's appearance, its contrast and transparency settings with it, as light or dark)
+			var app = Msg.idPtr(ac, ObjC.sel("appearanceNamed:"), name);
+			ObjC.release(name);
+			Msg.vPtr(ac, ObjC.sel("setCurrentAppearance:"), app);
+			Msg.vPtr(s, ObjC.sel("setAppearance:"), app);
+			if (isKnob) Msg.v(s, ObjC.sel("drawKnob")) else Msg.vRectBool(s, ObjC.sel("drawKnobSlotInRect:highlight:"), Msg.rectInt(s, ObjC.sel("rectForPart:"), SLOT), false);
+			Msg.vPtr(ac, ObjC.sel("setCurrentAppearance:"), was);
+			Msg.v(gc, ObjC.sel("restoreGraphicsState"));
+			CGBits.CGContextRelease(ctx);
 			Runtime.objc_autoreleasePoolPop(pool);
-			return null;
-		}
-		CGBits.CGContextScaleCTM(ctx, scale, scale);
-		CGBits.CGContextTranslateCTM(ctx, -x, -y);
-		var g = Msg.idPtrBool(ObjC.cls("NSGraphicsContext"), ObjC.sel("graphicsContextWithCGContext:flipped:"), ctx, false);
-		var gc = ObjC.cls("NSGraphicsContext"), ac = ObjC.cls("NSAppearance");
-		Msg.v(gc, ObjC.sel("saveGraphicsState"));
-		Msg.vPtr(gc, ObjC.sel("setCurrentContext:"), g);
-		var was = Msg.id(ac, ObjC.sel("currentAppearance"));
-		var name = ObjC.str(dark ? "NSAppearanceNameDarkAqua" : "NSAppearanceNameAqua");
-		// (the system's appearance, its contrast and transparency settings with it, as light or dark)
-		var app = Msg.idPtr(ac, ObjC.sel("appearanceNamed:"), name);
-		ObjC.release(name);
-		Msg.vPtr(ac, ObjC.sel("setCurrentAppearance:"), app);
-		Msg.vPtr(s, ObjC.sel("setAppearance:"), app);
-		if (isKnob) Msg.v(s, ObjC.sel("drawKnob")) else Msg.vRectBool(s, ObjC.sel("drawKnobSlotInRect:highlight:"), Msg.rectInt(s, ObjC.sel("rectForPart:"), SLOT), false);
-		Msg.vPtr(ac, ObjC.sel("setCurrentAppearance:"), was);
-		Msg.v(gc, ObjC.sel("restoreGraphicsState"));
-		CGBits.CGContextRelease(ctx);
-		Runtime.objc_autoreleasePoolPop(pool);
-		// (premultiplied to straight alpha, as Image holds it; rows already top to bottom)
-		var out = Bytes.alloc(pw * ph * 4);
-		for (i in 0...pw * ph) {
-			var o = i * 4, a = Mem.getU8(bytes, o + 3);
-			if (a == 0) continue;
-			for (c in 0...3)
-				out.set(o + c, Std.int(Math.min(255, Mem.getU8(bytes, o + c) * 255 / a)));
-			out.set(o + 3, a);
-		}
-		LibC.free(bytes);
-		return new Image(pw, ph, out);
+			// (premultiplied to straight alpha, as Image holds it; rows already top to bottom)
+			var out = Bytes.alloc(pw * ph * 4);
+			for (i in 0...pw * ph) {
+				var o = i * 4, a = Mem.getU8(bytes, o + 3);
+				if (a == 0) continue;
+				for (c in 0...3)
+					out.set(o + c, Std.int(Math.min(255, Mem.getU8(bytes, o + c) * 255 / a)));
+				out.set(o + 3, a);
+			}
+			LibC.free(bytes);
+			return new Image(pw, ph, out);
+		});
 	}
 }
 

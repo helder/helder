@@ -150,7 +150,11 @@ class CocoaWindow {
 
 	var shown = false;
 
-	function show() {
+	// (the device's, on the program's thread: OsThread)
+	function show()
+		OsThread.run(showNow);
+
+	function showNow() {
 		surface.onPresent = null;
 		if (shown || open.indexOf(this) < 0) return;
 		shown = true;
@@ -380,13 +384,13 @@ class CocoaWindow {
 			var p = ObjC.string(Msg.id(url, Msg.b(url, ObjC.sel("isFileURL")) ? ObjC.sel("path") : ObjC.sel("absoluteString")));
 			if (p != null) paths.push(p);
 		}
-		@:privateAccess App.open(paths);
+		OsThread.back(() -> @:privateAccess App.open(paths));
 	}
 
 	// a URL the system asks the app to open (its direct object, keyDirectObject '----')
 	@:hxmc.callback static function getURL(self:Ptr, cmd:Ptr, event:Ptr, reply:Ptr):Void {
 		var url = ObjC.string(Msg.id(Msg.idInt(event, ObjC.sel("paramDescriptorForKeyword:"), 0x2D2D2D2D), ObjC.sel("stringValue")));
-		if (url != null) @:privateAccess App.open([url]);
+		if (url != null) OsThread.back(() -> @:privateAccess App.open([url]));
 	}
 
 	// a drag over a window: a copy when it carries file URLs (NSDragOperationCopy), else none
@@ -594,8 +598,11 @@ class CocoaWindow {
 		return null;
 	}
 
-	static function dispatch(e:Event)
-		if (onEvent != null) onEvent(e);
+	// (on the program's thread: OsThread)
+	static function dispatch(e:Event) {
+		var f = onEvent;
+		if (f != null) OsThread.back(() -> f(e));
+	}
 
 	@:hxmc.callback static function shouldClose(self:Ptr, cmd:Ptr, sender:Ptr):Int {
 		var w = find(sender);
@@ -640,7 +647,7 @@ class CocoaWindow {
 		w.resized();
 		// (a drag of the window's edge runs AppKit's own loop until the mouse is up, and
 		// App.run draws nothing: a frame at the new size from here, as Win32Window's timer)
-		if (onFrame != null && App.windows.length > 0 && Msg.b(w.window, ObjC.sel("inLiveResize"))) onFrame();
+		if (onFrame != null && App.windows.length > 0 && Msg.b(w.window, ObjC.sel("inLiveResize"))) OsThread.back(onFrame);
 	}
 
 	// while an edge is dragged, frames from a timer too: AppKit's loop runs
@@ -666,7 +673,7 @@ class CocoaWindow {
 	}
 
 	@:hxmc.callback static function liveFrame(self:Ptr, cmd:Ptr, t:Ptr):Void
-		if (onFrame != null && App.windows.length > 0) onFrame();
+		if (onFrame != null && App.windows.length > 0) OsThread.back(onFrame);
 
 	// waits for an event (left in the queue for poll), or seconds
 	static function wait(seconds:Float) {

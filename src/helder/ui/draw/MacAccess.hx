@@ -51,9 +51,11 @@ class MacAccess {
 	public function new(window:helder.os.Window, ui:Ui) {
 		this.ui = ui;
 		view = window.surface.handle;
-		nsWindow = Msg.id(view, ObjC.sel("window"));
-		if (elementClass.isNull()) classes();
-		Runtime.object_setClass(view, viewClass);
+		nsWindow = helder.os.OsThread.get(() -> Msg.id(view, ObjC.sel("window")));
+		helder.os.OsThread.run(() -> {
+			if (elementClass.isNull()) classes();
+			Runtime.object_setClass(view, viewClass);
+		});
 		all.push(this);
 	}
 
@@ -94,75 +96,79 @@ class MacAccess {
 		return active;
 
 	public function dispose() {
-		for (e in elements)
-			Runtime.objc_release(e);
-		elements.clear();
-		ids.clear();
-		if (!rootChildren.isNull()) Runtime.objc_release(rootChildren);
-		rootChildren = Ptr.nil();
-		// (the view a plain NSView again: its methods are this build's code, gone after a dev host's hand-over)
-		Runtime.object_setClass(view, ObjC.cls("NSView"));
-		all.remove(this);
+		helder.os.OsThread.run(() -> {
+			for (e in elements)
+				Runtime.objc_release(e);
+			elements.clear();
+			ids.clear();
+			if (!rootChildren.isNull()) Runtime.objc_release(rootChildren);
+			rootChildren = Ptr.nil();
+			// (the view a plain NSView again: its methods are this build's code, gone after a dev host's hand-over)
+			Runtime.object_setClass(view, ObjC.cls("NSView"));
+			all.remove(this);
+		});
 	}
 
 	// the tree after a frame: the elements of what changed made or set again
 	public function update() {
-		if (!active) return;
-		var t = ui.accessTree();
-		var wf = Msg.rect(nsWindow, ObjC.sel("frame"));
-		var moved = wf.origin.x != windowX || wf.origin.y != windowY;
-		windowX = wf.origin.x;
-		windowY = wf.origin.y;
-		var c = t.changes(moved ? null : tree);
-		var focusChanged = tree == null || tree.focus != t.focus;
-		if (c.nodes.length == 0 && c.removed.length == 0 && !focusChanged) {
+		helder.os.OsThread.run(() -> {
+			if (!active) return;
+			var t = ui.accessTree();
+			var wf = Msg.rect(nsWindow, ObjC.sel("frame"));
+			var moved = wf.origin.x != windowX || wf.origin.y != windowY;
+			windowX = wf.origin.x;
+			windowY = wf.origin.y;
+			var c = t.changes(moved ? null : tree);
+			var focusChanged = tree == null || tree.focus != t.focus;
+			if (c.nodes.length == 0 && c.removed.length == 0 && !focusChanged) {
+				tree = t;
+				return;
+			}
+			var pool = Runtime.objc_autoreleasePoolPush();
+			for (id in c.removed) {
+				var e = elements.get(id);
+				if (e != null) {
+					post(e, "AXUIElementDestroyed");
+					ids.remove(key(e));
+					Runtime.objc_release(e);
+					elements.remove(id);
+				}
+			}
+			var old = tree;
 			tree = t;
-			return;
-		}
-		var pool = Runtime.objc_autoreleasePoolPush();
-		for (id in c.removed) {
-			var e = elements.get(id);
-			if (e != null) {
-				post(e, "AXUIElementDestroyed");
-				ids.remove(key(e));
-				Runtime.objc_release(e);
-				elements.remove(id);
-			}
-		}
-		var old = tree;
-		tree = t;
-		for (n in c.nodes)
-			if (n.id != t.root) set(element(n.id), n);
-		if (old != null && !moved)
 			for (n in c.nodes)
-				notify(old, n);
-		// parents and children (of the nodes changed: their lists are theirs)
-		for (n in c.nodes) {
-			var kids = [for (k in n.children) element(k)];
-			var parent = n.id == t.root ? view : element(n.id);
-			for (k in kids)
-				Msg.vPtr(k, ObjC.sel("setAccessibilityParent:"), parent);
-			var list = array(kids);
-			if (n.id == t.root) {
-				if (!rootChildren.isNull()) Runtime.objc_release(rootChildren);
-				rootChildren = Msg.id(list, ObjC.sel("retain"));
+				if (n.id != t.root) set(element(n.id), n);
+			if (old != null && !moved)
+				for (n in c.nodes)
+					notify(old, n);
+			// parents and children (of the nodes changed: their lists are theirs)
+			for (n in c.nodes) {
+				var kids = [for (k in n.children) element(k)];
+				var parent = n.id == t.root ? view : element(n.id);
+				for (k in kids)
+					Msg.vPtr(k, ObjC.sel("setAccessibilityParent:"), parent);
+				var list = array(kids);
+				if (n.id == t.root) {
+					if (!rootChildren.isNull()) Runtime.objc_release(rootChildren);
+					rootChildren = Msg.id(list, ObjC.sel("retain"));
+				}
+				Msg.vPtr(parent, ObjC.sel("setAccessibilityChildren:"), list);
 			}
-			Msg.vPtr(parent, ObjC.sel("setAccessibilityChildren:"), list);
-		}
-		if (focusChanged) {
-			var f = t.focus != 0 ? elements.get(t.focus) : null;
-			// (isAccessibilityFocused reads the tree)
-			if (f != null) post(f, "AXFocusedUIElementChanged");
-		}
-		if (old != null) post(view, "AXLayoutChanged");
-		// (a live region's change: an announcement, high priority for an assertive one)
-		for (s in t.announcements(old)) {
-			var info = Msg.id(ObjC.cls("NSMutableDictionary"), ObjC.sel("dictionary"));
-			Msg.idPtrPtr(info, ObjC.sel("setObject:forKey:"), str(s.text), str("AXAnnouncementKey"));
-			Msg.idPtrPtr(info, ObjC.sel("setObject:forKey:"), number(s.live == Assertive ? 90 : 50), str("AXPriorityKey"));
-			AppKitAccess.NSAccessibilityPostNotificationWithUserInfo(view, str("AXAnnouncementRequested"), info);
-		}
-		Runtime.objc_autoreleasePoolPop(pool);
+			if (focusChanged) {
+				var f = t.focus != 0 ? elements.get(t.focus) : null;
+				// (isAccessibilityFocused reads the tree)
+				if (f != null) post(f, "AXFocusedUIElementChanged");
+			}
+			if (old != null) post(view, "AXLayoutChanged");
+			// (a live region's change: an announcement, high priority for an assertive one)
+			for (s in t.announcements(old)) {
+				var info = Msg.id(ObjC.cls("NSMutableDictionary"), ObjC.sel("dictionary"));
+				Msg.idPtrPtr(info, ObjC.sel("setObject:forKey:"), str(s.text), str("AXAnnouncementKey"));
+				Msg.idPtrPtr(info, ObjC.sel("setObject:forKey:"), number(s.live == Assertive ? 90 : 50), str("AXPriorityKey"));
+				AppKitAccess.NSAccessibilityPostNotificationWithUserInfo(view, str("AXAnnouncementRequested"), info);
+			}
+			Runtime.objc_autoreleasePoolPop(pool);
+		});
 	}
 
 	// a node's notifications: what differs from how it was (new: created)

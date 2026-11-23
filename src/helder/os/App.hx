@@ -38,6 +38,9 @@ import hxmc.unsafe.*;
 // an idle app sleeps as elsewhere; the background, a window lost, pause
 // them (App.frame.pause: the next delta a period). Each turn begins a
 // frame of Pointers' (Pointers.step) before its events.
+// On macOS and Linux the loop runs on a thread of its own, the main
+// thread the system's (OsThread): so that Layers' compositor can read
+// input there while the program is busy.
 //
 // helder.async's loop (the main thread's, once something made it: a task
 // launched, a job run) runs on the app's: a turn of it in each turn of the
@@ -210,6 +213,18 @@ class App {
 			CanvasWindow.start(onFrame, onEvent);
 			return;
 		}
+		// (macOS, Linux: the loop on a thread of its own, the main thread the system's: OsThread)
+		if (OsThread.wanted()) {
+			OsThread.start(() -> {
+				if (eventAdopt != null) eventAdopt(true);
+				try while (turn(onFrame, onEvent)) {} catch (e:haxe.Exception) {
+					if (eventAdopt != null) eventAdopt(false);
+					throw e;
+				}
+				if (eventAdopt != null) eventAdopt(false);
+			});
+			return;
+		}
 		while (turn(onFrame, onEvent)) {}
 	}
 
@@ -251,8 +266,10 @@ class App {
 		}
 		// (the pointers' motion and presses from this turn's events on)
 		Pointers.step();
-		// (macOS: what Cocoa autoreleases during a frame is freed after it)
+		// (macOS: what Cocoa autoreleases during a frame is freed after it; the
+		// main thread's too, where the program has a thread of its own)
 		var pool = Platform.os() == 1 ? Runtime.objc_autoreleasePoolPush() : Ptr.nil();
+		if (Platform.os() == 1 && Platform.apple() < 1 && OsThread.program != 0) OsThread.run(pushMain);
 		// (Android: a frame only with the window, otherwise a sleep in the looper)
 		if (Platform.target() >= 9) {
 			AndroidWindow.poll(onEvent);
@@ -287,8 +304,8 @@ class App {
 				}
 			}
 		} else {
-			if (Platform.os() == 1) CocoaWindow.poll(onFrame, onEvent) else if (Platform.os() == 2) Win32Window.poll(onFrame, onEvent) else if (Platform.os() == 3) CanvasWindow.poll(onEvent) else
-				if (WaylandWindow.chosen) WaylandWindow.poll(onEvent) else X11Window.poll(onEvent);
+			OsThread.run(() -> if (Platform.os() == 1) CocoaWindow.poll(onFrame, onEvent) else if (Platform.os() == 2) Win32Window.poll(onFrame, onEvent) else if (Platform.os() == 3)
+				CanvasWindow.poll(onEvent) else if (WaylandWindow.chosen) WaylandWindow.poll(onEvent) else X11Window.poll(onEvent));
 			loopTurn();
 			if (running && windows.length > 0) {
 				frame.tick(haxe.Timer.stamp(), false);
@@ -296,15 +313,28 @@ class App {
 			}
 		}
 		if (Platform.os() == 1) Runtime.objc_autoreleasePoolPop(pool);
+		if (Platform.os() == 1 && Platform.apple() < 1 && OsThread.program != 0) OsThread.run(popMain);
 		#if hxmc.dev
 		helder.dev.Hot.framed();
 		#end
 		return true;
 	}
 
+	static var mainPool = Ptr.nil();
+
+	static function pushMain()
+		mainPool = Runtime.objc_autoreleasePoolPush();
+
+	static function popMain() {
+		Runtime.objc_autoreleasePoolPop(mainPool);
+		mainPool = Ptr.nil();
+	}
+
 	// haxe.EventLoop's turn and the seconds to its next event (1e6: none,
-	// below 0: one is due), with a haxe.Timer (HaxeLoop)
+	// below 0: one is due), with a haxe.Timer (HaxeLoop); its loop the
+	// program's thread's too (eventAdopt)
 	static var eventTurn:Null<Void->Void>;
+	static var eventAdopt:Null<Bool->Void>;
 	static var eventNext:Null<Void->Float>;
 	@:ifFeature("haxe.Timer.new") static final events = HaxeLoop.install();
 
@@ -355,9 +385,11 @@ class App {
 		// (iOS: the display link held while the app sleeps: no vsync wakes it; Android asks for none)
 		if (Platform.apple() >= 1) UIKitWindow.pauseVsync();
 		seconds = settingsWait(seconds);
-		if (Platform.apple() >= 1) UIKitWindow.wait(bounded(seconds)) else if (Platform.os() == 1) CocoaWindow.wait(bounded(seconds)) else if (Platform.os() == 2)
-			Win32Window.wait(bounded(seconds)) else if (Platform.os() == 3) {} else if (Platform.target() >= 9) AndroidWindow.wait(bounded(seconds)) else
-			if (WaylandWindow.chosen) WaylandWindow.waitFor(seconds) else X11Window.waitFor(seconds);
+		if (Platform.apple() >= 1) UIKitWindow.wait(bounded(seconds)) else if (Platform.os() == 1) {
+			var s = bounded(seconds);
+			OsThread.run(() -> CocoaWindow.wait(s));
+		} else if (Platform.os() == 2) Win32Window.wait(bounded(seconds)) else if (Platform.os() == 3) {} else if (Platform.target() >= 9) AndroidWindow.wait(bounded(seconds)) else
+			if (WaylandWindow.chosen) OsThread.run(() -> WaylandWindow.waitFor(seconds)) else OsThread.run(() -> X11Window.waitFor(seconds));
 	}
 
 	public static function quit()
@@ -375,7 +407,7 @@ class App {
 		#if helder.headless
 		return false;
 		#end
-		if (Platform.os() == 1 && Platform.apple() < 1) return @:privateAccess CocoaWindow.overlayScrollbars();
+		if (Platform.os() == 1 && Platform.apple() < 1) return OsThread.get(() -> @:privateAccess CocoaWindow.overlayScrollbars());
 		return false;
 	}
 

@@ -74,28 +74,30 @@ class ShareApple {
 	static var chosen:Null<Bool->Void>;
 
 	static function mac(items:Ptr, done:Bool->Void) {
-		var w = App.windows[0];
-		if (w == null) return done(false);
-		var view = w.surface.handle;
-		if (delegate.isNull()) {
-			var cls = Runtime.objc_allocateClassPair(ObjC.cls("NSObject"), Mem.cstr("HxmcShareDelegate"), 0);
-			Runtime.class_addMethod(cls, ObjC.sel("sharingServicePicker:didChooseSharingService:"), Callback.addr(didChoose), Mem.cstr("v@:@@"));
-			Runtime.objc_registerClassPair(cls);
-			delegate = Msg.id(Msg.id(cls, ObjC.sel("alloc")), ObjC.sel("init"));
-		}
-		ObjC.release(picker);
-		picker = Msg.idPtr(Msg.id(ObjC.cls("NSSharingServicePicker"), ObjC.sel("alloc")), ObjC.sel("initWithItems:"), items);
-		Msg.vPtr(picker, ObjC.sel("setDelegate:"), delegate);
-		chosen = done;
-		var b = Msg.rect(view, ObjC.sel("bounds"));
-		Arena.scoped(a -> {
-			var r = a.make(CGRect);
-			r.value.origin.x = b.size.width / 2;
-			r.value.origin.y = b.size.height / 2;
-			r.value.size.width = 1;
-			r.value.size.height = 1;
-			// (NSRectEdgeMinY)
-			Msg.vRectPtrInt(picker, ObjC.sel("showRelativeToRect:ofView:preferredEdge:"), r.value, view, 1);
+		helder.os.OsThread.run(() -> {
+			var w = App.windows[0];
+			if (w == null) return done(false);
+			var view = w.surface.handle;
+			if (delegate.isNull()) {
+				var cls = Runtime.objc_allocateClassPair(ObjC.cls("NSObject"), Mem.cstr("HxmcShareDelegate"), 0);
+				Runtime.class_addMethod(cls, ObjC.sel("sharingServicePicker:didChooseSharingService:"), Callback.addr(didChoose), Mem.cstr("v@:@@"));
+				Runtime.objc_registerClassPair(cls);
+				delegate = Msg.id(Msg.id(cls, ObjC.sel("alloc")), ObjC.sel("init"));
+			}
+			ObjC.release(picker);
+			picker = Msg.idPtr(Msg.id(ObjC.cls("NSSharingServicePicker"), ObjC.sel("alloc")), ObjC.sel("initWithItems:"), items);
+			Msg.vPtr(picker, ObjC.sel("setDelegate:"), delegate);
+			chosen = done;
+			var b = Msg.rect(view, ObjC.sel("bounds"));
+			Arena.scoped(a -> {
+				var r = a.make(CGRect);
+				r.value.origin.x = b.size.width / 2;
+				r.value.origin.y = b.size.height / 2;
+				r.value.size.width = 1;
+				r.value.size.height = 1;
+				// (NSRectEdgeMinY)
+				Msg.vRectPtrInt(picker, ObjC.sel("showRelativeToRect:ofView:preferredEdge:"), r.value, view, 1);
+			});
 		});
 	}
 

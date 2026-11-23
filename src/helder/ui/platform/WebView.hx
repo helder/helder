@@ -203,7 +203,7 @@ class WebView extends Node implements WebViewListener {
 		#elseif (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64" || hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 		// (the window's view: its surface's)
 		for (w in @:privateAccess helder.ui.draw.UiWindow.open)
-			if (w.ui == ui) return new AppleWebView(w.window.surface.handle, o, queued);
+			if (w.ui == ui) return helder.os.OsThread.get(() -> new AppleWebView(w.window.surface.handle, o, queued));
 		return null;
 		#else
 		return null;

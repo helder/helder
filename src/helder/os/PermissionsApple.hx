@@ -110,9 +110,11 @@ class PermissionsApple {
 
 	// (CLAuthorizationStatus: notDetermined 0, restricted 1, denied 2, always 3, when in use 4; services off: denied)
 	static function location():PermissionStatus {
-		if (!Msg.b(load("CoreLocation", "CLLocationManager"), ObjC.sel("locationServicesEnabled"))) return Denied;
-		var s = Msg.i(manager(), ObjC.sel("authorizationStatus"));
-		return s == 0 ? Prompt : s >= 3 ? Granted : Denied;
+		return helder.os.OsThread.get(() -> {
+			if (!Msg.b(load("CoreLocation", "CLLocationManager"), ObjC.sel("locationServicesEnabled"))) return Denied;
+			var s = Msg.i(manager(), ObjC.sel("authorizationStatus"));
+			return s == 0 ? Prompt : s >= 3 ? Granted : Denied;
+		});
 	}
 
 	@:hxmc.callback static function changed(self:Ptr, cmd:Ptr, m:Ptr):Void {
