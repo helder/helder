@@ -4,7 +4,8 @@ import helder.test.Test;
 
 // OsThread: the program's loop on a thread of its own, calls handed to the
 // main thread and back, nested both ways, an error coming back to the
-// caller, helder.async's loop the same on both (natively: threads).
+// caller, a callback that came meanwhile run before the program's next
+// call (soon), helder.async's loop the same on both (natively: threads).
 function tests() {
 	#if (target.name == "hxmc" && hxmc.target != "wasm32-wasi")
 	describe("OsThread", () -> {
@@ -29,6 +30,25 @@ function tests() {
 			var caught = "";
 			OsThread.start(() -> try OsThread.run(() -> throw "no") catch (e:Dynamic) caught = Std.string(e));
 			equals(caught, "no");
+		});
+		test("what comes while the program runs on waits for its next call", () -> {
+			var seen = [], read = false;
+			OsThread.waitMain = () -> {
+				if (!read) {
+					read = true;
+					OsThread.soon(() -> seen.push("soon"));
+					seen.push("read");
+				}
+				false;
+			};
+			OsThread.start(() -> {
+				while (!read)
+					Sys.sleep(0.001);
+				OsThread.run(() -> seen.push("call"));
+				OsThread.soon(() -> seen.push("at once"));
+			});
+			OsThread.waitMain = null;
+			equals(seen, ["read", "soon", "call", "at once"]);
 		});
 		test("the main thread's loop is the program's", () -> {
 			var main = helder.async.Loop.current(), same = false;

@@ -55,9 +55,10 @@ the app goes to the background and back. No keys or text input there yet.
 
 ### Threads
 
-On macOS and Linux (X11, Wayland) `App.run` runs the program's loop on a
-thread of its own, as on Android: the main thread is the system's,
-where AppKit has to be called, and the program's is free of it (Layers'
+On macOS, iOS, Windows and Linux (X11, Wayland) `App.run` runs the
+program's loop on a thread of its own, as on Android: the main thread is
+the system's, where AppKit and UIKit have to be called and Win32's
+windows live (a window is its maker thread's), and the program's is free of it (Layers'
 compositor reads the input there while the program is busy: the
 README's roadmap). The main thread runs what the program hands it
 (`helder.os.OsThread.run`: windows, events polled, the clipboard,
@@ -86,8 +87,33 @@ program's state meanwhile (NSAccessibility, a native field's delegate,
 WKWebView's) is handed to the program's thread (`OsThread.hold`).
 Window calls stay where they were (macOS's on the main thread, X11's and
 Wayland's on the program's, their libraries locking).
-`HELDER_THREAD=0` keeps the program on the main thread; Windows, iOS,
-the browser and headless runs keep it there for now.
+
+Windows: the windows, TSF, the clipboard, the file dialog, the EDITs and
+menus and UI Automation are the main thread's, in its COM apartment.
+While the program runs on, the main thread takes only the input messages
+from its queue (`PM_QS_INPUT`: no sent or posted message, nor a COM call,
+is served behind the program's back), routes them, translates the keys
+and keeps them for the program's poll, which dispatches them first; a
+press on the frame or a system key stops the reading until then, so that
+the modal loop (moving, sizing, the menu) gets what follows. During that
+loop the window procedure hands the program its events and the sizing
+timer's frames, as before. A Win32 call of the app's own that may send
+its window a message goes through `OsThread.run`: the main thread does
+not serve one sent from elsewhere while it waits.
+
+iOS: the program's thread starts once UIKit has launched; while it runs
+on, the main thread turns the run loop (UIKit's touches, layout, scroll
+views and animations, the keyboard). What UIKit tells meanwhile that
+needs no answer (touches, read at once; the layout; text typed; a
+UIScrollView's offset; the foreground, a memory warning, a URL opened)
+waits for the program's next call to the main thread (`OsThread.soon`),
+so the main thread never waits for a busy program; what needs an answer
+(VoiceOver's actions, a pan's start over the tree, going to the
+background, after which no GPU work may come) waits for it
+(`OsThread.hold`).
+
+`HELDER_THREAD=0` keeps the program on the main thread; the browser and
+headless runs keep it there.
 
 `HELDER_BACKGROUND=1` keeps macOS's windows in the background (no Dock
 icon, never key nor active, shown on screen so that frames present): for

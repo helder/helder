@@ -329,7 +329,10 @@ class D3D11Backend {
 		Com.release(adapter);
 		check(hr, "IDXGIAdapter::GetParent(IDXGIFactory2)");
 		var factory = scratch.value;
-		hr = Arena.scopedValue(a -> {
+		// (made on the window's thread, the main one where the program has its
+		// own: DXGI may send the window messages as it hooks it, which a
+		// thread waiting for the program would not serve: helder.os.OsThread)
+		hr = helder.os.OsThread.get(() -> Arena.scopedValue(a -> {
 			var d = a.make(DXGI_SWAP_CHAIN_DESC1);
 			d.value.Width = width;
 			d.value.Height = height;
@@ -339,9 +342,10 @@ class D3D11Backend {
 			d.value.BufferCount = 2;
 			d.value.Scaling = D3D.SCALING_STRETCH;
 			d.value.SwapEffect = D3D.SWAP_EFFECT_FLIP_DISCARD;
-			IDXGIFactory2.CreateSwapChainForHwnd(factory, device, surface.handle, d, Ptr.nil(), Ptr.nil(), scratch);
-		});
-		if (hr >= 0) IDXGIFactory2.MakeWindowAssociation(factory, surface.handle, D3D.MWA_NO_ALT_ENTER);
+			var hr = IDXGIFactory2.CreateSwapChainForHwnd(factory, device, surface.handle, d, Ptr.nil(), Ptr.nil(), scratch);
+			if (hr >= 0) IDXGIFactory2.MakeWindowAssociation(factory, surface.handle, D3D.MWA_NO_ALT_ENTER);
+			hr;
+		}));
 		Com.release(factory);
 		check(hr, "CreateSwapChainForHwnd");
 		swapChain = scratch.value;

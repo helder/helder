@@ -19,7 +19,10 @@ import hxmc.unsafe.*;
 // (TrackPopupMenuEx: its own loop until chosen or dismissed), its command
 // an item's id plus one. The menu bar: the window's (CreateMenu, SetMenu),
 // its commands the window's WM_COMMAND, an item's id plus one again; the
-// client area the bar leaves, the window's resize.
+// client area the bar leaves, the window's resize. Where the program has a
+// thread of its own, the EDITs and menus are the main thread's, as their
+// window is (helder.os.OsThread): made, changed and tracked there, what
+// they tell queued and handed to the listeners on the program's thread.
 @:hxmc.c @:hxmc.lib("user32") extern class WinEdit {
 	static function SetWindowLongPtrW(hwnd:Ptr, index:Int, value:Ptr):Ptr;
 	static function GetWindowLongPtrW(hwnd:Ptr, index:Int):Int64;
@@ -60,7 +63,10 @@ class WinViews implements PlatformViews {
 		helder.os.win32.Win32Window.editColors = colors;
 	}
 
-	public function editor(multiline:Bool):Null<PlatformEditor> {
+	public function editor(multiline:Bool):Null<PlatformEditor>
+		return helder.os.OsThread.get(() -> editorNow(multiline));
+
+	function editorNow(multiline:Bool):Null<PlatformEditor> {
 		var h = create(multiline, 0);
 		if (h.isNull()) return null;
 		var e = new WinEditor(this, h, multiline);
@@ -85,7 +91,10 @@ class WinViews implements PlatformViews {
 	var bar = Ptr.nil();
 	var barChosen:Null<Int->Void> = null;
 
-	public function menuBar(menus:Array<PlatformMenuItem>, chosen:Int->Void):Bool {
+	public function menuBar(menus:Array<PlatformMenuItem>, chosen:Int->Void):Bool
+		return helder.os.OsThread.get(() -> menuBarNow(menus, chosen));
+
+	function menuBarNow(menus:Array<PlatformMenuItem>, chosen:Int->Void):Bool {
 		var old = bar;
 		bar = Ptr.nil();
 		barChosen = null;
@@ -116,9 +125,12 @@ class WinViews implements PlatformViews {
 
 	// (hxmc dev's host, at a hand-over: the editors, subclassed by this
 	// build's code, and the menu bar gone with it; the next build makes its own)
-	public function dispose() {
+	public function dispose()
+		helder.os.OsThread.run(disposeNow);
+
+	function disposeNow() {
 		for (e in editors.copy())
-			if (@:privateAccess e.views == this) e.dispose();
+			if (@:privateAccess e.views == this) @:privateAccess e.disposeNow();
 		pending = null;
 		if (!bar.isNull()) {
 			WinEdit.SetMenu(hwnd, Ptr.nil());
@@ -158,28 +170,36 @@ class WinViews implements PlatformViews {
 		if (pending != null) {
 			var p = pending;
 			pending = null;
-			var m = WinEdit.CreatePopupMenu();
-			fill(m, p.items);
 			var k = scale();
-			var at = Arena.scopedValue(a -> {
-				var pt = a.make(helder.os.win32.User32.POINT);
-				pt.value.x = Math.round(p.x * k);
-				pt.value.y = Math.round(p.y * k);
-				User32.ClientToScreen(hwnd, pt);
-				[pt.value.x, pt.value.y];
+			var r = helder.os.OsThread.get(() -> {
+				var m = WinEdit.CreatePopupMenu();
+				fill(m, p.items);
+				var at = Arena.scopedValue(a -> {
+					var pt = a.make(helder.os.win32.User32.POINT);
+					pt.value.x = Math.round(p.x * k);
+					pt.value.y = Math.round(p.y * k);
+					User32.ClientToScreen(hwnd, pt);
+					[pt.value.x, pt.value.y];
+				});
+				// TPM_RETURNCMD | TPM_RIGHTBUTTON
+				var r = WinEdit.TrackPopupMenuEx(m, 0x100 | 0x2, at[0], at[1], hwnd, Ptr.nil());
+				WinEdit.DestroyMenu(m);
+				r;
 			});
-			// TPM_RETURNCMD | TPM_RIGHTBUTTON
-			var r = WinEdit.TrackPopupMenuEx(m, 0x100 | 0x2, at[0], at[1], hwnd, Ptr.nil());
-			WinEdit.DestroyMenu(m);
 			p.chosen(r > 0 ? r - 1 : -1);
 		}
-		while (queue.length > 0) {
-			var q = queue.shift(), e = q.e, l = e.listener;
+		while (true) {
+			var q = helder.os.OsThread.get(() -> queue.shift());
+			if (q == null) break;
+			var e = q.e, l = e.listener;
 			if (l == null) continue;
 			switch q.kind {
 				case 1:
-					var sel:Int = W32.SendMessageW(@:privateAccess e.hwnd, 0xB0, 0, 0).toInt(); // EM_GETSEL
-					l.editorEdited(@:privateAccess e.text(), sel & 0xFFFF, (sel >>> 16) & 0xFFFF);
+					var t = helder.os.OsThread.get(() -> {
+						var sel:Int = W32.SendMessageW(@:privateAccess e.hwnd, 0xB0, 0, 0).toInt(); // EM_GETSEL
+						{text: @:privateAccess e.text(), sel: sel};
+					});
+					l.editorEdited(t.text, t.sel & 0xFFFF, (t.sel >>> 16) & 0xFFFF);
 				case 2:
 					l.editorFocused(true);
 				case 3:
@@ -294,18 +314,23 @@ class WinEditor implements PlatformEditor {
 	static function colorref(c:Color):Int
 		return c.r | (c.g << 8) | (c.b << 16);
 
-	public function setText(text:String, start:Int, end:Int) {
-		Arena.scoped(a -> W32.SetWindowTextW(hwnd, a.wstring(text)));
-		W32.SendMessageW(hwnd, 0xB1, start, end); // EM_SETSEL
-		W32.SendMessageW(hwnd, 0xB9, 0, 0);
-	}
+	public function setText(text:String, start:Int, end:Int)
+		helder.os.OsThread.run(() -> {
+			Arena.scoped(a -> W32.SetWindowTextW(hwnd, a.wstring(text)));
+			W32.SendMessageW(hwnd, 0xB1, start, end); // EM_SETSEL
+			W32.SendMessageW(hwnd, 0xB9, 0, 0);
+		});
 
 	// (the desktop's editor: its selection its own; no soft keyboard)
 	public function select(start:Int, end:Int) {}
 
 	public function setKind(kind:helder.os.TextKind) {}
 
-	public function place(x:Float, y:Float, width:Float, height:Float, shown:Bool) {
+	public function place(x:Float, y:Float, width:Float, height:Float, shown:Bool)
+		helder.os.OsThread.run(() -> placeNow(x, y, width, height, shown));
+
+	function placeNow(x:Float, y:Float, width:Float, height:Float, shown:Bool) {
+		if (hwnd.isNull()) return;
 		placed = [x, y, width, height];
 		this.shown = shown;
 		var k = @:privateAccess views.scale();
@@ -314,7 +339,10 @@ class WinEditor implements PlatformEditor {
 		W32.SetWindowPos(hwnd, Ptr.nil(), x0, y0, Math.round((x + width) * k) - x0, Math.round((y + height) * k) - y0, 0x4 | 0x10 | (shown ? 0x40 : 0x80));
 	}
 
-	public function setStyle(font:Font, color:Color, background:Color, placeholder:String, placeholderColor:Color, align:TextAlign, secret:Bool) {
+	public function setStyle(font:Font, color:Color, background:Color, placeholder:String, placeholderColor:Color, align:TextAlign, secret:Bool)
+		helder.os.OsThread.run(() -> styleNow(font, color, background, placeholder, align, secret));
+
+	function styleNow(font:Font, color:Color, background:Color, placeholder:String, align:TextAlign, secret:Bool) {
 		var al = align == Center ? 1 : align == Right ? 2 : 0;
 		if (al != this.align) remake(al);
 		var k = @:privateAccess views.scale();
@@ -350,20 +378,27 @@ class WinEditor implements PlatformEditor {
 		hwnd = h;
 		old = WinEdit.SetWindowLongPtrW(h, -4, Callback.addr(@:privateAccess WinViews.editProc));
 		this.align = align;
-		place(placed[0], placed[1], placed[2], placed[3], shown);
+		placeNow(placed[0], placed[1], placed[2], placed[3], shown);
 		focusing = false;
 	}
 
-	public function focus(on:Bool) {
-		focusing = true;
-		if (on) WinEdit.SetFocus(hwnd) else if (WinEdit.GetFocus() == hwnd) WinEdit.SetFocus(@:privateAccess views.hwnd);
-		focusing = false;
-	}
+	public function focus(on:Bool)
+		helder.os.OsThread.run(() -> {
+			focusing = true;
+			if (on) WinEdit.SetFocus(hwnd) else if (WinEdit.GetFocus() == hwnd) WinEdit.SetFocus(@:privateAccess views.hwnd);
+			focusing = false;
+		});
 
-	public function dispose() {
+	public function dispose()
+		helder.os.OsThread.run(disposeNow);
+
+	// (a move the compositor posted may come after: placeNow then does nothing)
+	function disposeNow() {
+		if (hwnd.isNull()) return;
 		@:privateAccess WinViews.editors.remove(this);
 		if (WinEdit.GetFocus() == hwnd) WinEdit.SetFocus(@:privateAccess views.hwnd);
 		User32.DestroyWindow(hwnd);
+		hwnd = Ptr.nil();
 		if (!font.isNull()) Gdi.DeleteObject(font);
 		if (!brush.isNull()) Gdi.DeleteObject(brush);
 		listener = null;

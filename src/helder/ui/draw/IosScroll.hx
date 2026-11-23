@@ -13,7 +13,12 @@ import hxmc.unsafe.*;
 // the program's scrolls go to it. So iOS's own deceleration, bounce,
 // indicators (but where scrollbar-width is none) and status bar tap (the
 // first scroller that scrolls down) are the app's. A touch stops one gliding
-// (Ui.nativeHalt). Kept in step after each frame.
+// (Ui.nativeHalt). Kept in step after each frame. The views are the main
+// thread's (helder.os.OsThread); their offsets go to the window's
+// compositor at once as they move, so that a glide and a bounce keep the
+// display's pace while the program is busy, and to the program at its
+// next call (OsThread.soon); a drag's start is asked of the program
+// (OsThread.hold).
 @:hxmc.unsafe(gc)
 class IosScroll {
 	static var viewClass = Ptr.nil();
@@ -30,11 +35,17 @@ class IosScroll {
 	// what each was given (its frame, content size, offset: UIKit's points) and whether it shows its bars, scrolls to top
 	final sent = new Map<Node, Array<Float>>();
 	final seen = new Map<Node, Bool>();
+	// (UIKit's points a UI pixel, as of the last update)
+	var k = 1.0;
+	#if (hxmc.target != "wasm32-wasi")
+	// the window's compositor (null: none), told the offsets as they move
+	public var compositor:Null<Compositor> = null;
+	#end
 
 	public function new(window:helder.os.Window, ui:Ui) {
 		this.ui = ui;
 		view = window.surface.handle;
-		if (viewClass.isNull()) classes();
+		if (viewClass.isNull()) helder.os.OsThread.run(classes);
 		ui.nativeBars = true;
 		ui.nativeHalt = halt;
 	}
@@ -67,19 +78,23 @@ class IosScroll {
 	}
 
 	// (UiWindow: after each frame)
-	public function update() {
+	public function update()
+		helder.os.OsThread.run(updateNow);
+
+	function updateNow() {
 		if (!ui.nativeScroll) {
 			clear();
 			return;
 		}
-		var list = ui.scrollViews(), k = points(), top = true;
+		var list = ui.scrollViews(), top = true;
+		k = points();
 		seen.clear();
 		for (s in list) {
 			var n = s.node, v = views.get(n), last = sent.get(n);
 			seen.set(n, true);
 			if (v == null) {
 				v = make(n);
-				last = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1];
+				last = [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0];
 				sent.set(n, last);
 			}
 			var x = s.x * k, y = s.y * k, w = s.width * k, h = s.height * k;
@@ -103,6 +118,8 @@ class IosScroll {
 				point.value.y = last[7] = oy;
 				Msg.vPointBool(v, ObjC.sel("setContentOffset:animated:"), point.value, false);
 			}
+			// (where its offsets start: Scrolling.moved's, a right-to-left one's negative)
+			last[10] = @:privateAccess Scrolling.scrollStart(n, true);
 			var bars = s.bars ? 1 : 0;
 			if (bars != last[8]) {
 				last[8] = bars;
@@ -154,7 +171,10 @@ class IosScroll {
 			drop(n);
 
 	// (Ui.nativeHalt: the views gliding stopped where they are)
-	function halt():Bool {
+	function halt():Bool
+		return helder.os.OsThread.get(haltNow);
+
+	function haltNow():Bool {
 		var any = false;
 		for (v in views)
 			if (Msg.b(v, ObjC.sel("isDecelerating"))) {
@@ -168,7 +188,7 @@ class IosScroll {
 	}
 
 	public function dispose() {
-		clear();
+		helder.os.OsThread.run(clear);
 		ui.nativeHalt = null;
 		ui.nativeBars = false;
 	}
@@ -182,20 +202,25 @@ class IosScroll {
 	@:hxmc.callback static function shouldBegin(self:Ptr, cmd:Ptr, g:Ptr):Int {
 		var o = owners.get(key(self));
 		if (o == null || g != Msg.id(self, ObjC.sel("panGestureRecognizer"))) return 1;
-		var s = o.s, k = s.points();
+		var s = o.s, k = s.k;
 		var at = Msg.pointPtr(g, ObjC.sel("locationInView:"), s.view), d = Msg.pointPtr(g, ObjC.sel("velocityInView:"), s.view);
 		if (d.x == 0 && d.y == 0) d = Msg.pointPtr(g, ObjC.sel("translationInView:"), s.view);
-		return s.ui.nativeBegins(o.n, at.x / k, at.y / k, -d.x, -d.y) ? 1 : 0;
+		var x = at.x / k, y = at.y / k, dx = -d.x, dy = -d.y;
+		return helder.os.OsThread.hold(() -> s.ui.nativeBegins(o.n, x, y, dx, dy)) ? 1 : 0;
 	}
 
 	@:hxmc.callback static function didScroll(self:Ptr, cmd:Ptr, v:Ptr):Void {
 		var o = owners.get(key(v));
 		if (o == null) return;
-		var s = o.s, k = s.points(), p = Msg.point(v, ObjC.sel("contentOffset")), last = s.sent.get(o.n);
+		var s = o.s, k = s.k, p = Msg.point(v, ObjC.sel("contentOffset")), last = s.sent.get(o.n), n = o.n;
 		if (last != null) {
 			last[6] = p.x;
 			last[7] = p.y;
 		}
-		s.ui.nativeScrolled(o.n, p.x / k, p.y / k);
+		var x = p.x / k, y = p.y / k;
+		#if (hxmc.target != "wasm32-wasi")
+		if (s.compositor != null && last != null) s.compositor.nativeScrolled(n, x + last[10], y);
+		#end
+		helder.os.OsThread.soon(() -> s.ui.nativeScrolled(n, x, y));
 	}
 }

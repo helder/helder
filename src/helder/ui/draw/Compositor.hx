@@ -25,7 +25,10 @@ import sys.thread.Mutex;
 // closed forms the program samples), sticky nodes by the mirror's offsets,
 // overlay scrollbars shown and faded as the program's are; the native
 // views over a scroller (a macOS field, a web view) moved on the main
-// thread as each frame is drawn (helder.os.OsThread.post). Off with
+// thread as each frame is drawn (helder.os.OsThread.post). Where the
+// platform's own scroll views drive the scrollers (iOS's UIScrollView:
+// IosScroll), their offsets come to it on the main thread as they move
+// (nativeScrolled), its frames drawn at them, the physics the system's. Off with
 // HELDER_ASYNC_SCROLL=0, and where the program has no thread of its own
 // (helder.os.OsThread), headless and for screenshots.
 @:hxmc.unsafe(gc)
@@ -125,6 +128,23 @@ class Compositor implements RenderIdle {
 		if (r == ScrollMirror.TAKEN) device.wake();
 	}
 
+	// a platform's scroll view moved the program's n to x, y (its scrollX
+	// and scrollY), as it moves (iOS's deceleration and bounce, the program busy)
+	public function nativeScrolled(n:Node, x:Float, y:Float) {
+		lock.acquire();
+		var o = native.get(n);
+		if (o == null) native.set(n, o = [0, 0]);
+		o[0] = x;
+		o[1] = y;
+		mirror.place(n, x, y);
+		routedAt = haxe.Timer.stamp();
+		lock.release();
+		device.wake();
+	}
+
+	// (the platform's offsets, the latest: kept over each program frame's, which may be older)
+	final native = new Map<Node, Array<Float>>();
+
 	// the program goes to sleep, nothing to draw (UiWindow.run, before App.wait):
 	// an input then wakes it, the compositor drawing only if it does not drain soon
 	public function rest() {
@@ -170,6 +190,10 @@ class Compositor implements RenderIdle {
 		var made = shot.natives.length == 0 ? [] : Spot.of(shot);
 		lock.acquire();
 		mirror.adopt(shot);
+		for (n in [for (n in native.keys()) n]) {
+			var o = native.get(n);
+			if (mirror.offsets(n) == null) native.remove(n) else mirror.place(n, o[0], o[1]);
+		}
 		spots = made;
 		lock.release();
 		drewSince = false;

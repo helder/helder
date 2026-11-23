@@ -17,7 +17,10 @@ import hxmc.unsafe.*;
 // with an initializer (Msg's, ObjC.str's): only C calls.
 // The delegate's lifecycle callbacks become Suspend (the app went to the
 // background: no GPU work there) and Resume (UIKitWindow); willResignActive
-// and didBecomeActive hold the frames and give them back.
+// and didBecomeActive hold the frames and give them back. Those the program
+// has to hear before the callback returns (the background: no GPU work
+// after it) wait for it (helder.os.OsThread.holdVoid); the others come at
+// its next call (OsThread.soon).
 // (kept, with its export, for iOS only: @:hxmc.ios leaves a class out of
 // other targets only in hxmc's own packages)
 @:hxmc.ios #if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64") @:keep #end
@@ -112,7 +115,7 @@ class UIKitApp {
 	static function link(o:Ptr, activity:Bool) {
 		if (running) {
 			var url = urlOf(o, activity);
-			if (url != null) helder.os.App.open([url]);
+			if (url != null) helder.os.OsThread.soon(() -> helder.os.App.open([url]));
 			return;
 		}
 		if (waitingCount >= 8) return;
@@ -147,16 +150,18 @@ class UIKitApp {
 
 	@:hxmc.callback static function didEnterBackground(self:Ptr, cmd:Ptr, app:Ptr):Void {
 		if (!running) return;
-		UIKitWindow.suspend(true);
-		// (the system ends the largest background apps first)
-		helder.os.App.trim();
+		helder.os.OsThread.holdVoid(() -> {
+			UIKitWindow.suspend(true);
+			// (the system ends the largest background apps first)
+			helder.os.App.trim();
+		});
 	}
 
 	@:hxmc.callback static function memoryWarning(self:Ptr, cmd:Ptr, app:Ptr):Void
-		if (running) helder.os.App.lowMemory();
+		if (running) helder.os.OsThread.soon(helder.os.App.lowMemory);
 
 	@:hxmc.callback static function willEnterForeground(self:Ptr, cmd:Ptr, app:Ptr):Void
-		if (running) UIKitWindow.suspend(false);
+		if (running) helder.os.OsThread.soon(() -> UIKitWindow.suspend(false));
 
 	@:hxmc.callback static function willResignActive(self:Ptr, cmd:Ptr, app:Ptr):Void
 		if (running) UIKitWindow.activate(false);
@@ -191,6 +196,7 @@ class UIKitApp {
 	static function CFRunLoopRunInMode(mode:Ptr, seconds:Float, returnAfterSourceHandled:Bool):Int;
 	// (the run loop's innermost run returns: 2, stopped)
 	static function CFRunLoopStop(loop:Ptr):Void;
+	static function CFRunLoopWakeUp(loop:Ptr):Void;
 }
 
 // Core Animation's clock (CADisplayLink's timestamps: seconds, mach_absolute_time's)

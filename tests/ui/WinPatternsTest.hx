@@ -100,7 +100,8 @@ class WinPatternsTest {
 			check('a node named $n', false);
 			return Ptr.nil();
 		}
-		w.onFrame = () -> {
+		// (on the window's thread, the main one, as UI Automation's client and an input method call: helder.os.OsThread)
+		w.onFrame = () -> helder.os.OsThread.run(() -> {
 			switch step {
 				case 0:
 					var a:WinAccess = cast @:privateAccess w.winAccess;
@@ -194,7 +195,7 @@ class WinPatternsTest {
 				case _:
 			}
 			w.ui.requestFrame();
-		};
+		});
 		UiWindow.run();
 		Sys.println('WinPatternsTest: $checks checks' + (failed == 0 ? ", ok" : ', $failed FAILED'));
 		Sys.exit(failed == 0 && checks >= 21 ? 0 : 1);

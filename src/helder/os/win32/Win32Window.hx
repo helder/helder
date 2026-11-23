@@ -27,6 +27,18 @@ import hxmc.unsafe.*;
 // Windows moves, snaps and maximises on a double click) and its maximise
 // button (HTMAXBUTTON: Windows 11's snap layouts over it, its presses
 // taken here); the app draws the buttons (helder.ui's WindowControls).
+// Where the program has a thread of its own (helder.os.OsThread), the
+// windows are the main thread's, as Win32 binds a window to the thread
+// that made it: every call into them, TSF and the clipboard runs there
+// (OsThread.run), and what the procedure tells comes back to the
+// program's thread (OsThread.back). While the program runs on, the main
+// thread takes the input messages from its queue (pump: PM_QS_INPUT, so
+// no sent or posted message, nor a COM call into its apartment, is served
+// behind the program's back), routes each to its window's compositor and
+// keeps it, translated, for the program's next poll, which dispatches them
+// first, in order. A press on the frame or a system key (a modal loop:
+// moving, sizing, the menu) stops the reading until then, so that the
+// loop gets the messages that follow it.
 @:allow(helder.os)
 @:hxmc.unsafe(gc)
 class Win32Window {
@@ -60,6 +72,10 @@ class Win32Window {
 	var scale = 1.0;
 	// the cursor over the client area (WM_SETCURSOR sets it)
 	var cursor = Ptr.nil();
+
+	// (made on the main thread, which then owns it: OsThread)
+	static function make(owner:Window, title:String, width:Int, height:Int):Win32Window
+		return OsThread.get(() -> new Win32Window(owner, title, width, height));
 
 	function new(owner:Window, title:String, width:Int, height:Int) {
 		this.owner = owner;
@@ -137,6 +153,10 @@ class Win32Window {
 
 	static function start() {
 		User32.SetProcessDpiAwarenessContext(Ptr.ofI64(WM.DPI_PER_MONITOR_AWARE_V2));
+		wakeHandle = LibC.malloc(8);
+		wakeHandle.value = Kernel32.CreateEventW(Ptr.nil(), 0, 0, Ptr.nil());
+		OsThread.waitMain = pump;
+		OsThread.wakeMain = () -> Kernel32.SetEvent(wakeHandle.value);
 		instance = Kernel32.GetModuleHandleW(Ptr.nil());
 		msg = LibC.malloc(48);
 		var name = "HxmcWindow", p:Ptr<UInt16> = LibC.malloc(2 * name.length + 2);
@@ -176,7 +196,10 @@ class Win32Window {
 		return changed;
 	}
 
-	function destroy() {
+	function destroy()
+		OsThread.run(destroyNow);
+
+	function destroyNow() {
 		open.remove(this);
 		if (Platform.os() == 2 && tsf != null) {
 			(cast tsf : Tsf).dispose();
@@ -190,7 +213,7 @@ class Win32Window {
 	}
 
 	function setTitle(t:String)
-		Arena.scoped(a -> User32.SetWindowTextW(hwnd, a.wstring(t)));
+		OsThread.run(() -> Arena.scoped(a -> User32.SetWindowTextW(hwnd, a.wstring(t))));
 
 	// (the outer size of a client area of w x h points)
 	function outer(w:Int, h:Int):{w:Int, h:Int}
@@ -205,10 +228,11 @@ class Win32Window {
 		});
 
 	// (SWP_NOMOVE, SWP_NOZORDER, SWP_NOACTIVATE)
-	function resize(w:Int, h:Int) {
-		var o = outer(w, h);
-		User32.SetWindowPos(hwnd, Ptr.nil(), 0, 0, o.w, o.h, 0x2 | 0x4 | 0x10);
-	}
+	function resize(w:Int, h:Int)
+		OsThread.run(() -> {
+			var o = outer(w, h);
+			User32.SetWindowPos(hwnd, Ptr.nil(), 0, 0, o.w, o.h, 0x2 | 0x4 | 0x10);
+		});
 
 	// on the whole monitor: borderless over it, its style and frame before kept
 	var fullscreen = false;
@@ -220,7 +244,7 @@ class Win32Window {
 	function setFullscreen(on:Bool) {
 		if (on == fullscreen) return;
 		fullscreen = on;
-		Arena.scoped(a -> {
+		OsThread.run(() -> Arena.scoped(a -> {
 			if (on) {
 				savedStyle = User32.GetWindowLongPtrW(hwnd, -16);
 				var r = a.make(RECT);
@@ -239,18 +263,18 @@ class Win32Window {
 				User32.SetWindowLongPtrW(hwnd, -16, savedStyle);
 				User32.SetWindowPos(hwnd, Ptr.nil(), saved[0], saved[1], saved[2] - saved[0], saved[3] - saved[1], 0x20 | 0x200 | 0x4 | 0x10);
 			}
-		});
+		}));
 	}
 
 	// (SW_MINIMIZE 6, SW_MAXIMIZE 3, SW_RESTORE 9)
 	function minimize()
-		User32.ShowWindow(hwnd, 6);
+		OsThread.run(() -> User32.ShowWindow(hwnd, 6));
 
 	function maximized():Bool
-		return User32.IsZoomed(hwnd) != 0;
+		return OsThread.get(() -> User32.IsZoomed(hwnd) != 0);
 
 	function maximize(on:Bool)
-		User32.ShowWindow(hwnd, on ? 3 : 9);
+		OsThread.run(() -> User32.ShowWindow(hwnd, on ? 3 : 9));
 
 	// the frame's thickness at the window's DPI (SM_CXFRAME 32, SM_CYFRAME 33, SM_CXPADDEDBORDER 92)
 	function frame(y:Bool):Int {
@@ -265,31 +289,34 @@ class Win32Window {
 			p.value.x = lParam.toInt() << 16 >> 16;
 			p.value.y = lParam.toInt() >> 16;
 			User32.ScreenToClient(hwnd, p);
-			var app = owner.titlebarAt == null ? Content : owner.titlebarAt(p.value.x, p.value.y);
+			// (the app's answer from its own thread: asked while the main thread reads input, OsThread.hold)
+			var at = owner.titlebarAt, x = p.value.x, y = p.value.y;
+			var app = at == null ? Content : OsThread.hold(() -> at(x, y));
 			TitleBars.hit(p.value.x, p.value.y, surface.width, surface.height, frame(true), !maximized() && !fullscreen, app);
 		});
 
-	function raise() {
-		User32.ShowWindow(hwnd, 9); // (SW_RESTORE)
-		User32.SetForegroundWindow(hwnd);
-	}
+	function raise()
+		OsThread.run(() -> {
+			User32.ShowWindow(hwnd, 9); // (SW_RESTORE)
+			User32.SetForegroundWindow(hwnd);
+		});
 
 	// the client area's top left on the screen, in points
 	function position():{x:Int, y:Int}
-		return Arena.scopedValue(a -> {
+		return OsThread.get(() -> Arena.scopedValue(a -> {
 			var p = a.make(POINT);
 			User32.ClientToScreen(hwnd, p);
 			{x: Math.round(p.value.x / scale), y: Math.round(p.value.y / scale)};
-		});
+		}));
 
 	// (the frame's offset from the client area: AdjustWindowRectEx's; SWP_NOSIZE 1)
 	function moveTo(x:Int, y:Int)
-		Arena.scoped(a -> {
+		OsThread.run(() -> Arena.scoped(a -> {
 			var r = a.make(RECT);
 			User32.AdjustWindowRectEx(r, STYLE, 0, 0);
 			if (owner.titlebar == Inset) r.value.top = 0;
 			User32.SetWindowPos(hwnd, Ptr.nil(), Math.round(x * scale) + r.value.left, Math.round(y * scale) + r.value.top, 0, 0, 0x1 | 0x4 | 0x10);
-		});
+		}));
 
 	// a Resize not told yet (before the loop)
 	var pending = false;
@@ -305,10 +332,11 @@ class Win32Window {
 
 	// (IDC_ARROW, IDC_HAND, IDC_IBEAM, IDC_CROSS, IDC_SIZEALL, IDC_NO, IDC_SIZEWE, IDC_SIZENS;
 	// no open or closed hand: IDC_HAND and IDC_SIZEALL)
-	function setCursor(c:Cursor) {
-		cursor = User32.LoadCursorW(Ptr.nil(), Ptr.ofI64([32512, 32649, 32513, 32515, 32646, 32648, 32644, 32645, 32649, 32646][(c : Int)]));
-		User32.SetCursor(cursor);
-	}
+	function setCursor(c:Cursor)
+		OsThread.run(() -> {
+			cursor = User32.LoadCursorW(Ptr.nil(), Ptr.ofI64([32512, 32649, 32513, 32515, 32646, 32648, 32644, 32645, 32649, 32646][(c : Int)]));
+			User32.SetCursor(cursor);
+		});
 
 	// text input through TSF (null: not made yet, or TSF not there)
 	// (a Tsf; Any, and each use under Platform.os() == 2: the other targets never
@@ -341,7 +369,10 @@ class Win32Window {
 	// text input on at the caret: TSF's document manager the window's focus,
 	// else (no TSF) the IME's composition at the caret, its candidates below
 	// it (CFS_POINT; CFS_EXCLUDE: not over the caret's area)
-	function textInputArea(x:Int, y:Int, width:Int, height:Int) {
+	function textInputArea(x:Int, y:Int, width:Int, height:Int)
+		OsThread.run(() -> textInputNow(x, y, width, height));
+
+	function textInputNow(x:Int, y:Int, width:Int, height:Int) {
 		if (textInputTsf(x, y, width, height)) return;
 		var imc = Imm32.ImmGetContext(hwnd);
 		if (imc.isNull()) return;
@@ -369,14 +400,17 @@ class Win32Window {
 	}
 
 	function stopTextInput()
-		if (Platform.os() == 2 && tsf != null) (cast tsf : Tsf).focus(false);
+		OsThread.run(() -> if (Platform.os() == 2 && tsf != null) (cast tsf : Tsf).focus(false));
 
 	function textContext(text:String, start:Int, end:Int)
-		if (Platform.os() == 2 && tsf != null) (cast tsf : Tsf).textContext(text, start, end);
+		OsThread.run(() -> if (Platform.os() == 2 && tsf != null) (cast tsf : Tsf).textContext(text, start, end));
 
 	// the clipboard's text: UTF-16 in movable global memory (CF_UNICODETEXT),
 	// which the clipboard owns once set
-	function writeClipboard(text:String) {
+	function writeClipboard(text:String)
+		OsThread.run(() -> writeClipboardNow(text));
+
+	function writeClipboardNow(text:String) {
 		if (!openClipboard()) return;
 		User32.EmptyClipboard();
 		var n = text.length;
@@ -404,7 +438,10 @@ class Win32Window {
 		return false;
 	}
 
-	function readClipboard():Null<String> {
+	function readClipboard():Null<String>
+		return OsThread.get(readClipboardNow);
+
+	function readClipboardNow():Null<String> {
 		if (!openClipboard()) return null;
 		var mem = User32.GetClipboardData(13);
 		var text:Null<String> = null;
@@ -431,7 +468,10 @@ class Win32Window {
 	}
 
 	// dispatches the pending events (through the window procedure)
-	static function poll(onFrame:Void->Void, onEvent:Event->Void) {
+	static function poll(onFrame:Void->Void, onEvent:Event->Void)
+		OsThread.run(() -> pollNow(onFrame, onEvent));
+
+	static function pollNow(onFrame:Void->Void, onEvent:Event->Void) {
 		Win32Window.onFrame = onFrame;
 		Win32Window.onEvent = onEvent;
 		// (the windows polled before the last frame: drawn by it, shown now)
@@ -452,21 +492,164 @@ class Win32Window {
 				e.y = w.surface.height;
 				dispatch(e);
 			}
+		// (what the main thread read while the program ran on first, translated then, as routed then)
+		var k = 0;
+		while (k < pumped.length) {
+			var m = pumped[k];
+			preRouted = pumpedRoutes[3 * k];
+			preGesture = pumpedRoutes[3 * k + 1];
+			preMods = pumpedRoutes[3 * k + 2];
+			k++;
+			User32.DispatchMessageW(m);
+			preRouted = preMods = -1;
+		}
+		for (m in pumped)
+			LibC.free(m);
+		pumped.resize(0);
+		pumpedRoutes.resize(0);
+		held = false;
 		while (User32.PeekMessageW(msg, Ptr.nil(), 0, 0, WM.PM_REMOVE) != 0) {
 			User32.TranslateMessage(msg);
 			User32.DispatchMessageW(msg);
 		}
 	}
 
-	// waits for a message in the thread's queue, or seconds
+	// waits for a message in the main thread's queue (or one it read), or seconds
 	static function wait(seconds:Float)
-		User32.MsgWaitForMultipleObjects(0, Ptr.nil(), 0, Std.int(seconds * 1000), WM.QS_ALLINPUT);
+		OsThread.run(() -> if (pumped.length == 0) User32.MsgWaitForMultipleObjects(0, Ptr.nil(), 0, Std.int(seconds * 1000), WM.QS_ALLINPUT));
+
+	// --- the input read while the program runs on (OsThread.waitMain: Layers' compositor)
+
+	// (the messages the main thread took and kept for the program's next poll; their routes, gestures and modifiers)
+	static final pumped:Array<Ptr<MSG>> = [];
+	static final pumpedRoutes:Array<Int> = [];
+	static var preRouted = -1;
+	static var preGesture = 0;
+	static var preMods = -1;
+	// (a modal loop's start read: no more until the program's poll has dispatched it)
+	static var held = false;
+	static var wakeHandle:Ptr<Ptr> = Ptr.nil();
+	static final peeked = new Event();
+	// (QS_KEY | QS_MOUSE | QS_RAWINPUT; as PeekMessage's PM_QS_INPUT; PM_QS_POSTMESSAGE)
+	static inline var QS_INPUT = 0x407;
+	static inline var PM_QS_INPUT = 0x04070000;
+	static inline var PM_QS_POSTMESSAGE = 0x00980000;
+
+	// (whether a window's compositor takes the input as it is read)
+	static function routing():Bool {
+		for (w in open)
+			if (w.owner.route != null) return true;
+		return false;
+	}
+
+	// the main thread's wait while the program runs on: the input messages
+	// taken from its queue, each routed to its window's compositor at once,
+	// translated (its characters kept after it) and kept for the program's
+	// poll; false where no window has a compositor, or a modal loop's start
+	// waits for the program
+	static function pump():Bool {
+		if (held || !routing()) return false;
+		User32.MsgWaitForMultipleObjects(1, wakeHandle, 0, 1000, QS_INPUT);
+		while (!held) {
+			var m:Ptr<MSG> = LibC.malloc(48);
+			if (User32.PeekMessageW(m, Ptr.nil(), 0, 0, WM.PM_REMOVE | PM_QS_INPUT) == 0) {
+				LibC.free(m);
+				break;
+			}
+			var k:Int = m.value.message;
+			keep(m, true);
+			if (k >= WM.KEYDOWN && k <= WM.SYSKEYUP) {
+				User32.TranslateMessage(m);
+				while (true) {
+					var c:Ptr<MSG> = LibC.malloc(48);
+					// (WM_CHAR to WM_UNICHAR, posted by TranslateMessage)
+					if (User32.PeekMessageW(c, Ptr.nil(), 0x102, 0x109, WM.PM_REMOVE | PM_QS_POSTMESSAGE) == 0) {
+						LibC.free(c);
+						break;
+					}
+					keep(c, false);
+				}
+			}
+			// (a press on the frame, a system key: moving, sizing or the menu's loop, which reads what follows)
+			if ((k >= 0xA1 && k <= 0xAD && k != 0xA2 && k != 0xA5 && k != 0xA8) || k == WM.SYSKEYDOWN || k == WM.SYSKEYUP) held = true;
+		}
+		return true;
+	}
+
+	static function keep(m:Ptr<MSG>, route:Bool) {
+		var r = 0, g = 0;
+		var w = route ? find(m.value.hwnd) : null;
+		if (w != null) {
+			var e = peeked;
+			e.kind = None;
+			e.window = w.owner;
+			if (w.input(e, m.value.message, m.value.wParam, m.value.lParam)) {
+				Window.routed(e);
+				r = e.routed;
+				g = e.gesture;
+			}
+		}
+		pumped.push(m);
+		pumpedRoutes.push(r);
+		pumpedRoutes.push(g);
+		pumpedRoutes.push(mods());
+	}
+
+	// a key, a mouse's move, press or wheel as e (false: none)
+	function input(e:Event, message:Int, wParam:Int64, lParam:Int64):Bool {
+		e.phase = e.momentum = 0;
+		e.eased = false;
+		switch message {
+			case WM.KEYDOWN | WM.KEYUP | WM.SYSKEYDOWN | WM.SYSKEYUP:
+				e.kind = message == WM.KEYDOWN || message == WM.SYSKEYDOWN ? KeyDown : KeyUp;
+				e.key = keySym(wParam.toInt());
+				e.mods = mods();
+			case WM.MOUSEMOVE | WM.LBUTTONDOWN | WM.LBUTTONUP | WM.RBUTTONDOWN | WM.RBUTTONUP | WM.MBUTTONDOWN | WM.MBUTTONUP:
+				e.kind = switch message {
+					case WM.MOUSEMOVE: MouseMove;
+					case WM.LBUTTONDOWN | WM.RBUTTONDOWN | WM.MBUTTONDOWN: MouseDown;
+					case _: MouseUp;
+				}
+				e.button = switch message {
+					case WM.LBUTTONDOWN | WM.LBUTTONUP: 1;
+					case WM.MBUTTONDOWN | WM.MBUTTONUP: 2;
+					case WM.RBUTTONDOWN | WM.RBUTTONUP: 3;
+					case _: 0;
+				}
+				e.mods = mods();
+				// (signed 16-bit client coordinates)
+				e.x = lParam.toInt() << 16 >> 16;
+				e.y = lParam.toInt() >> 16;
+			case WM.MOUSEWHEEL | WM.MOUSEHWHEEL:
+				// (WHEEL_DELTA, 120, a notch: 40 pixels, a precision touchpad's
+				// part of one in proportion; the position in screen coordinates)
+				var delta = wParam.toInt() >> 16;
+				if (delta == 0) return false;
+				Arena.scoped(a -> {
+					var p = a.make(POINT);
+					p.value.x = lParam.toInt() << 16 >> 16;
+					p.value.y = lParam.toInt() >> 16;
+					User32.ScreenToClient(hwnd, p);
+					e.x = p.value.x;
+					e.y = p.value.y;
+				});
+				e.kind = Scroll;
+				e.mods = mods();
+				var px = delta / 120 * 40 * scale;
+				// (the vertical wheel up is positive, the horizontal one right)
+				e.deltaX = message == WM.MOUSEHWHEEL ? px : 0;
+				e.deltaY = message == WM.MOUSEWHEEL ? -px : 0;
+			case _:
+				return false;
+		}
+		return true;
+	}
 
 	static var highSurrogate = 0;
 
 	// the modifiers held (VK_SHIFT, VK_CONTROL, VK_MENU: Alt, VK_LWIN, VK_RWIN)
 	static function mods():Int
-		return (User32.GetKeyState(0x10) < 0 ? Mods.SHIFT : 0) | (User32.GetKeyState(0x11) < 0 ? Mods.CONTROL : 0) | (User32.GetKeyState(0x12) < 0 ? Mods.ALT : 0)
+		return preMods >= 0 ? preMods : (User32.GetKeyState(0x10) < 0 ? Mods.SHIFT : 0) | (User32.GetKeyState(0x11) < 0 ? Mods.CONTROL : 0) | (User32.GetKeyState(0x12) < 0 ? Mods.ALT : 0)
 			| (User32.GetKeyState(0x5B) < 0 || User32.GetKeyState(0x5C) < 0 ? Mods.META : 0);
 
 	@:hxmc.callback static function wndProc(hwnd:Ptr, message:Int, wParam:Int64, lParam:Int64):Int64 {
@@ -477,13 +660,16 @@ class Win32Window {
 		e.window = w.owner;
 		switch message {
 			case WM.GETOBJECT if (getObject != null):
-				var r = getObject(hwnd, wParam, lParam);
+				var f = getObject;
+				var r = OsThread.hold(() -> f(hwnd, wParam, lParam));
 				var none:Int64 = 0;
 				if (r != none) return r;
 			case 0x0111 if (command != null && lParam.toInt() == 0 && (wParam.toInt() >>> 16) == 0): // WM_COMMAND, a menu's
-				if (command(hwnd, wParam.toInt() & 0xFFFF)) return 0;
+				var f = command, id = wParam.toInt() & 0xFFFF;
+				if (OsThread.hold(() -> f(hwnd, id))) return 0;
 			case 0x0133 if (editColors != null): // WM_CTLCOLOREDIT
-				var r = editColors(Ptr.ofI64(wParam), Ptr.ofI64(lParam));
+				var f = editColors;
+				var r = OsThread.hold(() -> f(Ptr.ofI64(wParam), Ptr.ofI64(lParam)));
 				var none:Int64 = 0;
 				if (r != none) return r;
 			case 0x0083 if (w.owner.titlebar == Inset && wParam.toInt() != 0 && !w.fullscreen): // WM_NCCALCSIZE
@@ -540,10 +726,13 @@ class Win32Window {
 						e.y = w.surface.height;
 					}
 				}
-			case WM.KEYDOWN | WM.KEYUP | WM.SYSKEYDOWN | WM.SYSKEYUP:
-				e.kind = message == WM.KEYDOWN || message == WM.SYSKEYDOWN ? KeyDown : KeyUp;
-				e.key = keySym(wParam.toInt());
-				e.mods = mods();
+			case WM.KEYDOWN | WM.KEYUP | WM.SYSKEYDOWN | WM.SYSKEYUP | WM.MOUSEMOVE | WM.LBUTTONDOWN | WM.LBUTTONUP | WM.RBUTTONDOWN | WM.RBUTTONUP | WM.MBUTTONDOWN | WM.MBUTTONUP:
+				w.input(e, message, wParam, lParam);
+			case WM.MOUSEWHEEL | WM.MOUSEHWHEEL:
+				if (w.input(e, message, wParam, lParam)) {
+					dispatch(e);
+					return 0;
+				}
 			case WM.CHAR:
 				// (UTF-16: a surrogate pair comes as two messages)
 				var c = wParam.toInt() & 0xFFFF;
@@ -560,44 +749,6 @@ class Win32Window {
 					dispatch(e);
 				}
 				return 0;
-			case WM.MOUSEMOVE | WM.LBUTTONDOWN | WM.LBUTTONUP | WM.RBUTTONDOWN | WM.RBUTTONUP | WM.MBUTTONDOWN | WM.MBUTTONUP:
-				e.kind = switch message {
-					case WM.MOUSEMOVE: MouseMove;
-					case WM.LBUTTONDOWN | WM.RBUTTONDOWN | WM.MBUTTONDOWN: MouseDown;
-					case _: MouseUp;
-				}
-				e.button = switch message {
-					case WM.LBUTTONDOWN | WM.LBUTTONUP: 1;
-					case WM.MBUTTONDOWN | WM.MBUTTONUP: 2;
-					case WM.RBUTTONDOWN | WM.RBUTTONUP: 3;
-					case _: 0;
-				}
-				e.mods = mods();
-				// (signed 16-bit client coordinates)
-				e.x = lParam.toInt() << 16 >> 16;
-				e.y = lParam.toInt() >> 16;
-			case WM.MOUSEWHEEL | WM.MOUSEHWHEEL:
-				// (WHEEL_DELTA, 120, a notch: 40 pixels, a precision touchpad's
-				// part of one in proportion; the position in screen coordinates)
-				var delta = wParam.toInt() >> 16;
-				if (delta != 0) {
-					Arena.scoped(a -> {
-						var p = a.make(POINT);
-						p.value.x = lParam.toInt() << 16 >> 16;
-						p.value.y = lParam.toInt() >> 16;
-						User32.ScreenToClient(hwnd, p);
-						e.x = p.value.x;
-						e.y = p.value.y;
-					});
-					e.kind = Scroll;
-					e.mods = mods();
-					var px = delta / 120 * 40 * w.scale;
-					// (the vertical wheel up is positive, the horizontal one right)
-					e.deltaX = message == WM.MOUSEHWHEEL ? px : 0;
-					e.deltaY = message == WM.MOUSEWHEEL ? -px : 0;
-					dispatch(e);
-					return 0;
-				}
 			case WM.DPICHANGED:
 				// (the new DPI, then the size Windows suggests for it: a Resize from WM_SIZE)
 				w.scale = (wParam.toInt() & 0xFFFF) / 96;
@@ -643,7 +794,7 @@ class Win32Window {
 				User32.KillTimer(hwnd, SIZING_TIMER);
 			case WM.TIMER if (wParam == SIZING_TIMER):
 				// (a frame inside Windows' loop of a drag)
-				if (onFrame != null && App.windows.length > 0) onFrame();
+				if (onFrame != null && App.windows.length > 0) OsThread.back(onFrame);
 				return 0;
 			case _:
 		}
@@ -651,8 +802,18 @@ class Win32Window {
 		return User32.DefWindowProcW(hwnd, message, wParam, lParam);
 	}
 
-	static function dispatch(e:Event)
-		if (onEvent != null) onEvent(e);
+	// (on the program's thread: OsThread; routed by the window's compositor
+	// first, unless it was as it was read: pumped)
+	static function dispatch(e:Event) {
+		if (preRouted >= 0) {
+			e.routed = preRouted;
+			e.gesture = preGesture;
+			preRouted = -1;
+		} else
+			Window.routed(e);
+		var f = onEvent;
+		if (f != null) OsThread.back(() -> f(e));
+	}
 
 	// a virtual-key code as an X11 KeySym (Event.key): letters lower case,
 	// digits and space as they are, the others by table

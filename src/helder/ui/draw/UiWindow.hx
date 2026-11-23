@@ -210,7 +210,8 @@ class UiWindow {
 		#end
 		#if (!helder.headless && hxmc.target != "wasm32-wasi")
 		// (the compositor: scrolling at the display's rate while the program is busy)
-		if (Compositor.wanted(device) && !ui.nativeScroll) {
+		// (iOS's own scroll views: their offsets to it as they move, IosScroll)
+		if (Compositor.wanted(device) && (!ui.nativeScroll || Platform.apple() >= 1)) {
 			var c = new Compositor(device);
 			if (c.start()) {
 				compositor = c;
@@ -297,6 +298,9 @@ class UiWindow {
 			if (iosScroll == null) {
 				if (!ui.nativeScroll) return;
 				iosScroll = new IosScroll(window, ui);
+				#if (!helder.headless && hxmc.target != "wasm32-wasi")
+				(cast iosScroll : IosScroll).compositor = compositor;
+				#end
 			}
 			(cast iosScroll : IosScroll).update();
 		}

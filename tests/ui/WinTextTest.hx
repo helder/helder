@@ -109,7 +109,8 @@ class WinTextTest implements Markup {
 		}
 		var field:EditableText = null;
 		check("drawn: the desktop's default", w.ui.hostOf(w.root, "text-field") == Drawn && w.ui.platform != null);
-		w.onFrame = () -> {
+		// (on the window's thread, the main one, as UI Automation's client and an input method call: helder.os.OsThread)
+		w.onFrame = () -> helder.os.OsThread.run(() -> {
 			switch step {
 				case 0:
 					field = cast w.root.find("name");
@@ -173,7 +174,7 @@ class WinTextTest implements Markup {
 				case _:
 			}
 			w.ui.requestFrame();
-		};
+		});
 		UiWindow.run();
 		Sys.println('WinTextTest: $checks checks' + (failed == 0 ? ", ok" : ', $failed FAILED'));
 		Sys.exit(failed == 0 && checks >= 12 ? 0 : 1);

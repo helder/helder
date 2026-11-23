@@ -1433,7 +1433,7 @@ multisampled window). Headless runs, screenshots,
 golden images and X11 draw every frame whole; `HELDER_DAMAGE=full` draws
 a window's so, `HELDER_DAMAGE=flash` shows each frame's rectangles.
 
-On macOS and Linux (X11, Wayland) a window has a compositor
+On macOS, iOS, Windows and Linux (X11, Wayland) a window has a compositor
 (`helder.ui.draw.Compositor`), so that scrolling keeps the display's pace
 while the program is busy. The main thread hands it each input event as
 it reads it (helder.os's README, "Threads"), before the program. Its
@@ -1474,9 +1474,13 @@ the compositor's frame's own (a render target, at 1) and that faded
 whole, as the program's group is. Not the compositor's: a layout moving
 (edges' tracks), colours, a layer that holds a scroller (drawn as it
 was). The native views
-over a scroller (a macOS field, a web view) are moved on the main thread
+over a scroller (a macOS or iOS field, a Windows EDIT, a web view) are moved on the main thread
 as each of its frames is drawn (`OsThread.post`), hidden once they leave
-their scroller's view.
+their scroller's view. On iOS the scrollers are UIScrollViews (IosScroll):
+their offsets come to the compositor on the main thread as UIKit moves
+them (`Compositor.nativeScrolled`), so their deceleration and bounce are
+drawn at the display's pace while the program is busy; the program has
+them at its next turn.
 
 `AsyncScrollTest` scripts the wheel, eased notches, a trackpad's gesture
 and momentum past an end, a finger's fling, the keys, a thumb and a
@@ -1491,7 +1495,11 @@ overlay bars shown and fading against the program's (a turned layer's
 within a level: its corners rounded to 32-bit floats once more).
 `AsyncScrollWindow` blocks the program 300 ms in a window while input
 comes, `--anim` while a layer animates (`--anim --pace s [--work ms]`:
-its frames' pacing). `HELDER_ASYNC_SCROLL=0` turns it off; headless runs,
+its frames' pacing; Windows: SendInput's wheel; the window lane there).
+On the iPhone simulator `IosTest scroll` (tests/gfx/ios.sh) has UIKit
+animate a UIScrollView while the program blocks 500 ms: the compositor's
+frames at its offsets meanwhile, the program at them after.
+`HELDER_ASYNC_SCROLL=0` turns it off; headless runs,
 screenshots and golden images are the program's alone.
 
 A window's GPU work runs on the render thread (helder.gfx's README,

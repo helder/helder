@@ -14,6 +14,11 @@ class DeviceApple {
 	public static function info():DeviceDetails {
 		if (Platform.apple() < 1) return {model: sysctl("hw.model") ?? "Mac", manufacturer: "Apple", os: "macOS", osVersion: sysctl("kern.osproductversion") ?? "",
 			kind: Desktop};
+		// (UIKit's: the main thread's, OsThread)
+		return OsThread.get(ios);
+	}
+
+	static function ios():DeviceDetails {
 		var pool = Runtime.objc_autoreleasePoolPush();
 		var device = Msg.id(ObjC.cls("UIDevice"), ObjC.sel("currentDevice"));
 		// (UIUserInterfaceIdiom: phone 0, pad 1, tv 2, carPlay 3, mac 5)

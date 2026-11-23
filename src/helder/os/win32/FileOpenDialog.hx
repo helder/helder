@@ -5,7 +5,9 @@ import hxmc.unsafe.*;
 // Windows' common file dialog (IFileOpenDialog, through COM's vtables):
 // the filters (COMDLG_FILTERSPEC), the title, Show over the owner window
 // (modal: Windows' own loop meanwhile), the result's file system path
-// (IShellItem.GetDisplayName). null: cancelled, or no dialog.
+// (IShellItem.GetDisplayName). null: cancelled, or no dialog. Shown from
+// the main thread, in its apartment, as its owner window is the main
+// thread's (helder.os.OsThread).
 @:hxmc.unsafe(gc)
 class FileOpenDialog {
 	static final CLSID = Com.guid(0xDC1C5A9C, 0xE88A, 0x4DDE, [0xA5, 0xA1, 0x60, 0xF8, 0x2A, 0x20, 0xAE, 0xF7]);
@@ -34,7 +36,10 @@ class FileOpenDialog {
 		return d;
 	}
 
-	public static function open(owner:Ptr, title:String, filters:Array<{name:String, extensions:Array<String>}>):Null<String> {
+	public static function open(owner:Ptr, title:String, filters:Array<{name:String, extensions:Array<String>}>):Null<String>
+		return helder.os.OsThread.get(() -> openNow(owner, title, filters));
+
+	static function openNow(owner:Ptr, title:String, filters:Array<{name:String, extensions:Array<String>}>):Null<String> {
 		var d = make(title, filters);
 		if (d.isNull()) return null;
 		var path:Null<String> = null;

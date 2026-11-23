@@ -38,11 +38,13 @@ import hxmc.unsafe.*;
 // an idle app sleeps as elsewhere; the background, a window lost, pause
 // them (App.frame.pause: the next delta a period). Each turn begins a
 // frame of Pointers' (Pointers.step) before its events.
-// On macOS and Linux the loop runs on a thread of its own, the main
-// thread the system's (OsThread), which reads the input while the
+// On macOS, iOS, Windows and Linux the loop runs on a thread of its own,
+// the main thread the system's (OsThread), which reads the input while the
 // program runs on: each event goes to its window's compositor first
 // (Window.route: scrolling while the program is busy), then to the
-// program's next poll. beforeEvents run at each turn's start.
+// program's next poll; on iOS it turns UIKit's run loop, its scroll views'
+// offsets the compositor's as they move. beforeEvents run at each turn's
+// start.
 //
 // helder.async's loop (the main thread's, once something made it: a task
 // launched, a job run) runs on the app's: a turn of it in each turn of the
@@ -275,8 +277,8 @@ class App {
 		// (macOS: what Cocoa autoreleases during a frame is freed after it; the
 		// main thread's too, where the program has a thread of its own)
 		var pool = Platform.os() == 1 ? Runtime.objc_autoreleasePoolPush() : Ptr.nil();
-		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
-		if (Platform.os() == 1 && Platform.apple() < 1 && OsThread.program != 0) OsThread.run(pushMain);
+		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
+		if (Platform.os() == 1 && OsThread.program != 0) OsThread.run(pushMain);
 		#end
 		// (Android: a frame only with the window, otherwise a sleep in the looper)
 		if (Platform.target() >= 9) {
@@ -321,8 +323,8 @@ class App {
 			}
 		}
 		if (Platform.os() == 1) Runtime.objc_autoreleasePoolPop(pool);
-		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
-		if (Platform.os() == 1 && Platform.apple() < 1 && OsThread.program != 0) OsThread.run(popMain);
+		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
+		if (Platform.os() == 1 && OsThread.program != 0) OsThread.run(popMain);
 		#end
 		#if hxmc.dev
 		helder.dev.Hot.framed();
@@ -330,8 +332,8 @@ class App {
 		return true;
 	}
 
-	// (a static function is linked whether called or not: AppKit's targets only)
-	#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
+	// (a static function is linked whether called or not: Apple's targets only)
+	#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
 	static var mainPool = Ptr.nil();
 
 	// (the main thread's pool of a turn, pushed and popped outside any
