@@ -3,6 +3,7 @@ package helder.ui.draw;
 import helder.gfx.Texture;
 import helder.ui.Canvas;
 import helder.ui.Corners;
+import helder.ui.Node;
 
 // A Canvas that draws GPU textures (a <Scene>'s box, a sprite box, a part's
 // shader): the Renderer, or a DisplayList replayed onto one
@@ -19,6 +20,14 @@ interface TextureCanvas extends Canvas {
 	// what changed (d, in the UI's pixels), taken: rounded out to its own
 	// pixels, all of it where what it kept is gone
 	function damage(d:Damage):Void;
-	// d's rectangle i drawn into next (Ui.paint walks it), -1: done
+	// d's rectangle i drawn into next (Ui.paint walks it), -1: done; -2
+	// the compositor's frame (composites), -3 its end
 	function redraw(i:Int):Void;
+	// whether Ui.paint walks the tree once more for the compositor's frame
+	// (Renderer.composite); in that walk, what is drawn until leave is
+	// scroller n's content (kind 0), its thumb along x (1) or y (2): false
+	// outside it
+	function composites():Bool;
+	function enter(n:Node, kind:Int):Bool;
+	function leave():Void;
 }

@@ -208,7 +208,29 @@ class UiWindow {
 		// (helder dev's host, at a hand-over: what the system keeps of this build's code given back)
 		helder.dev.Hot.onDispose(handOver);
 		#end
+		#if (!helder.headless && hxmc.target != "wasm32-wasi")
+		// (the compositor: scrolling at the display's rate while the program is busy)
+		if (Compositor.wanted(device) && !ui.nativeScroll) {
+			var c = new Compositor(device);
+			if (c.start()) {
+				compositor = c;
+				window.route = c.route;
+				ui.onAnswer = c.answer;
+				if (helder.os.App.beforeEvents.indexOf(drainAll) < 0) helder.os.App.beforeEvents.push(drainAll);
+			}
+		}
+		#end
 	}
+
+	#if (!helder.headless && hxmc.target != "wasm32-wasi")
+	// the window's compositor (null: none, scrolling the program's alone)
+	public var compositor(default, null):Null<Compositor> = null;
+
+	// (at each turn's start: what the compositors scrolled taken)
+	static function drainAll()
+		for (w in open)
+			if (w.compositor != null) w.compositor.drain(w.ui);
+	#end
 
 	#if hxmc.dev_host
 	// (handed over: the window the host's, not closed with its <Surface>'s owner after it)
@@ -340,6 +362,10 @@ class UiWindow {
 		renderer.flash = damage == "flash";
 		renderer.background = background;
 		renderer.begin(device.width, device.height);
+		#if (!helder.headless && hxmc.target != "wasm32-wasi")
+		var c = capture == null ? compositor : null;
+		if (c != null) c.begin(renderer);
+		#end
 		ui.paint(renderer);
 		renderer.prepare(enc);
 		enc.beginPass(pass);
@@ -351,8 +377,13 @@ class UiWindow {
 			device.readPixels(capture);
 			capture = null;
 		}
-		// (what the frame kept changed, told the system: none, a pixel's worth)
-		if (renderer.keep) device.damaged(renderer.drawn >= device.width * device.height ? null : renderer.regions.length > 0 ? renderer.regions : [0, 0, 1, 1]);
+		// (what the frame kept changed, told the system: none, a pixel's worth; all of it after the compositor's)
+		var whole = renderer.drawn >= device.width * device.height;
+		#if (!helder.headless && hxmc.target != "wasm32-wasi")
+		if (compositor != null && compositor.drewSince) whole = true;
+		if (c != null) c.end(ui, renderer);
+		#end
+		if (renderer.keep) device.damaged(whole ? null : renderer.regions.length > 0 ? renderer.regions : [0, 0, 1, 1]);
 		device.endFrame();
 		updateTextInput();
 		sendAccess();
@@ -536,44 +567,6 @@ class UiWindow {
 		switch e.kind {
 			case Close:
 				if (onClose != null) onClose() else close();
-			case MouseMove:
-				ui.pointerMove(e.x / k, e.y / k);
-			case Scroll:
-				// (Shift turns a vertical wheel sideways, as browsers do)
-				var dx = e.deltaX, dy = e.deltaY;
-				if (e.mods & helder.os.Event.Mods.SHIFT != 0 && dx == 0) {
-					dx = dy;
-					dy = 0;
-				}
-				var phased = e.phase != 0 || e.momentum != 0;
-				ui.wheel(e.x / k, e.y / k, dx / k, dy / k, e.eased, e.mods, e.phase, e.momentum, phased ? ui.eventTime(e.time) : -1);
-			case MouseDown:
-				ui.pointerDown(e.x / k, e.y / k, e.button);
-			case MouseUp:
-				ui.pointerUp(e.x / k, e.y / k, e.button);
-			// (fingers and pens: the mouse's are its Mouse* events above)
-			case PointerDown if (e.pointer.type != helder.os.PointerType.Mouse):
-				var p = e.pointer;
-				// (a press on the ui's own nodes is the ui's: a game's controls leave it alone)
-				if (ui.pointerDown(p.x / k, p.y / k, 1, p.id, p.type, p.pressure, ui.eventTime(p.time))) p.owner = helder.os.PointerOwner.Ui;
-			case PointerMove if (e.pointer.type != helder.os.PointerType.Mouse):
-				ui.pointerMove(e.pointer.x / k, e.pointer.y / k, e.pointer.id, e.pointer.pressure, ui.eventTime(e.pointer.time));
-			case PointerUp if (e.pointer.type != helder.os.PointerType.Mouse):
-				ui.pointerUp(e.pointer.x / k, e.pointer.y / k, 1, e.pointer.id, ui.eventTime(e.pointer.time));
-			case PointerCancel if (e.pointer.type != helder.os.PointerType.Mouse):
-				ui.pointerCancel(e.pointer.id);
-			case KeyDown:
-				ui.keyDown(e.key, e.mods);
-			case KeyUp:
-				ui.keyUp(e.key, e.mods);
-			case TextInput:
-				ui.textInput(e.text);
-			case TextEditing:
-				ui.composition(e.text, e.x);
-			case TextReplace:
-				ui.replaceText(e.x, e.y, e.text);
-			case TextSelect:
-				if (ui.focus != null) ui.focus.select(e.x, e.y);
 			case Resize | Redraw:
 				redraw = true;
 			case Drop:
@@ -582,6 +575,7 @@ class UiWindow {
 					Graph.flush();
 				}
 			case _:
+				UiEvents.deliver(ui, e, k);
 		}
 		updateCursor();
 	}
@@ -618,6 +612,10 @@ class UiWindow {
 				if (linuxAccess != null) (cast linuxAccess : LinuxAccess).dispose();
 			} else if (androidAccess != null) (cast androidAccess : AndroidAccess).dispose();
 		}
+		#if (!helder.headless && hxmc.target != "wasm32-wasi")
+		if (compositor != null) compositor.dispose();
+		compositor = null;
+		#end
 		// (the device drained first: the render thread done with the window's surface before it goes)
 		device.dispose();
 		window.close();

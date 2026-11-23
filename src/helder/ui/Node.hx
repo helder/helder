@@ -340,13 +340,14 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	// --- changes ---
 
 	// (what the accessibility tree reads: a change builds it again)
+	// (a detached node's, the compositor's copies' (ScrollMirror) on its thread: none)
 	function set_scrollX(v:Float):Float {
-		if (v != scrollX) Ui.accessEpoch++;
+		if (v != scrollX && ui != null) Ui.accessEpoch++;
 		return scrollX = v;
 	}
 
 	function set_scrollY(v:Float):Float {
-		if (v != scrollY) Ui.accessEpoch++;
+		if (v != scrollY && ui != null) Ui.accessEpoch++;
 		return scrollY = v;
 	}
 

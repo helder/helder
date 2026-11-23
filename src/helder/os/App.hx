@@ -97,6 +97,8 @@ class App {
 	// largest background apps first.
 	public static var onLowMemory:Null<Void->Void> = null;
 	@:noCompletion public static final trims:Array<Void->Void> = [];
+	// run at each turn's start, before its events (helder.ui's compositor: the offsets it took drained)
+	@:noCompletion public static final beforeEvents:Array<Void->Void> = [];
 
 	@:allow(helder.os) static function lowMemory() {
 		helder.async.Errors.guard(() -> {
@@ -266,6 +268,8 @@ class App {
 		}
 		// (the pointers' motion and presses from this turn's events on)
 		Pointers.step();
+		for (f in beforeEvents)
+			f();
 		// (macOS: what Cocoa autoreleases during a frame is freed after it; the
 		// main thread's too, where the program has a thread of its own)
 		var pool = Platform.os() == 1 ? Runtime.objc_autoreleasePoolPush() : Ptr.nil();

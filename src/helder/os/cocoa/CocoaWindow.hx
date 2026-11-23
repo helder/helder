@@ -627,6 +627,7 @@ class CocoaWindow {
 
 	// (on the program's thread: OsThread)
 	static function dispatch(e:Event) {
+		Window.routed(e);
 		var f = onEvent;
 		if (f != null) OsThread.back(() -> f(e));
 	}

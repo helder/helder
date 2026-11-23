@@ -1,0 +1,104 @@
+import haxe.Timer;
+import helder.os.*;
+import helder.ui.*;
+import helder.ui.draw.*;
+
+// The compositor's scrolling in a real window (helder.ui.draw.Compositor;
+// bun run test ui-draw; Linux: Xvfb, and weston for Wayland): a list of
+// 300 rows flung by a finger, then the program blocked for 300 ms, scroll
+// input injected meanwhile where the main thread reads it (Inject): the
+// frames keep coming at the display's pace, the offset advancing, and the
+// program sees the compositor's final offset afterwards.
+//   AsyncScrollWindow [--latency n [--work ms]]: input to present, n scrolls,
+//   the program's own work after each frame (ms)
+class AsyncScrollWindow {
+	static var failed = 0;
+
+	static function check(what:String, ok:Bool, ?detail:String) {
+		if (!ok) failed++;
+		Sys.println('AsyncScrollWindow: ${ok ? "ok" : "FAIL"}: $what' + (detail == null ? "" : ' ($detail)'));
+	}
+
+	static function main() {
+		var a = Sys.args(), l = a.indexOf("--latency"), k = a.indexOf("--work");
+		var w = new UiWindow("AsyncScrollWindow", 400, 300);
+		var list = new Node();
+		list.style.set({overflow: Scroll, height: 300, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
+		for (i in 0...300) {
+			var row = new Node();
+			row.style.set({direction: Row, padding: 3, columnGap: 6, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
+			var box = new Node();
+			box.style.set({width: 12, height: 12, background: 0xFF000000 | ((i * 40503) & 0xFFFFFF)});
+			row.append(box);
+			row.append(new TextNode("Row " + i));
+			list.append(row);
+		}
+		w.root.append(list);
+		var c = w.compositor;
+		if (c == null) {
+			Sys.println("AsyncScrollWindow: no compositor here (HELDER_ASYNC_SCROLL=0, no render thread, or the program on the main thread): skipped");
+			w.close();
+			return;
+		}
+		if (l >= 0) return Latency.run(w, list, Std.parseInt(a[l + 1]) ?? 60, k >= 0 ? Std.parseFloat(a[k + 1]) / 1000 : 0);
+		var step = 0, presents:Array<Float> = [], blockedFrom = 0.0, blockedTo = 0.0, offsets:Array<Float> = [];
+		c.onFrame = t -> {
+			presents.push(t);
+			var o = c.mirror.offsets(list);
+			offsets.push(o == null ? -1 : o.y);
+		};
+		App.run(() -> {
+			step++;
+			if (step == 10) {
+				// (a finger's fling: down, moves a frame apart, up; read as the main thread reads them)
+				var t = Timer.stamp() * 1000;
+				for (i in 0...8)
+					touch(w, i == 0 ? PointerDown : PointerMove, 200, 250 - i * 20, t + i * 16);
+				touch(w, PointerUp, 200, 250 - 7 * 20, t + 8 * 16);
+			}
+			if (step == 12) {
+				// (the program busy: scroll input injected meanwhile, where the system's comes in)
+				blockedFrom = Timer.stamp();
+				var inject = Inject.start(w.window, 300);
+				Sys.sleep(0.3);
+				blockedTo = Timer.stamp();
+				inject.join();
+			}
+			if (w.needsFrame()) w.frame();
+			w.device.settle();
+			// (its fling at rest, its last offsets taken)
+			if (step > 30 && c.moving()) step = 30;
+			if (step == 32) {
+				var during = [for (i in 0...presents.length) if (presents[i] > blockedFrom && presents[i] <= blockedTo) i];
+				var gaps = [for (i in 1...during.length) presents[during[i]] - presents[during[i - 1]]];
+				gaps.sort(Reflect.compare);
+				var median = gaps.length > 0 ? gaps[Std.int(gaps.length / 2)] : 1.0;
+				check("frames presented while the program was blocked for 300 ms", during.length >= 10, during.length + " frames");
+				check("at the display's pace", gaps.length > 0 && median < 0.03, "median gap " + Math.round(median * 10000) / 10 + " ms");
+				var advancing = during.length > 1 && offsets[during[during.length - 1]] > offsets[during[0]];
+				check("the offset advancing", advancing, during.length > 0 ? offsets[during[0]] + " to " + offsets[during[during.length - 1]] : "none");
+				var o = c.mirror.offsets(list);
+				check("the program has the compositor's offset", o != null && list.scrollY == o.y, list.scrollY + " " + (o == null ? null : o.y));
+				w.close();
+				Sys.println("AsyncScrollWindow: " + (failed == 0 ? "ok" : '$failed FAILED'));
+				Sys.exit(failed == 0 ? 0 : 1);
+			}
+		}, e -> w.handle(e));
+	}
+
+	static function touch(w:UiWindow, kind:helder.os.Event.EventKind, x:Float, y:Float, ms:Float) {
+		var e = new helder.os.Event(), p = @:privateAccess new Pointer(1), s = w.window.scale;
+		@:privateAccess {
+			p.type = Touch;
+			p.x = x * s;
+			p.y = y * s;
+			p.time = ms;
+			p.pressure = 1;
+		}
+		e.kind = kind;
+		e.window = w.window;
+		e.pointer = p;
+		helder.os.Window.routed(e);
+		w.handle(e);
+	}
+}

@@ -24,6 +24,8 @@ class ScrollGlide {
 
 	final node:Node;
 	final set:(x:Float, y:Float) -> Void;
+	// (what it runs on: its node's Ui's clock, else host's, the compositor's)
+	final host:Null<ScrollHost>;
 	var fromX = 0.0;
 	var fromY = 0.0;
 	// (its start, its length, its curve's slope at the start; the last tick's time)
@@ -32,9 +34,10 @@ class ScrollGlide {
 	var slope = 0.0;
 	var lastTick = -1.0;
 
-	public function new(node:Node, set:(x:Float, y:Float) -> Void) {
+	public function new(node:Node, set:(x:Float, y:Float) -> Void, ?host:ScrollHost) {
 		this.node = node;
 		this.set = set;
+		this.host = host;
 	}
 
 	// a glide's length for a distance (points): Chromium's 12 frames for 120 or less, 6 for 480 or more
@@ -76,11 +79,12 @@ class ScrollGlide {
 		toY = end.y;
 		// (gliding: on from the last frame's time, else from the first tick)
 		at = gliding ? lastTick : -1;
+		var h = host != null && node.ui == null ? host : null;
 		if (!gliding) {
 			gliding = true;
-			Clock.addFor(node, step);
+			if (h != null) @:privateAccess h.animate(step) else Clock.addFor(node, step);
 		}
-		if (node.ui != null) node.ui.requestFrame();
+		if (h != null) h.requestFrame() else if (node.ui != null) node.ui.requestFrame();
 		return true;
 	}
 

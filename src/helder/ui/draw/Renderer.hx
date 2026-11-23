@@ -277,6 +277,10 @@ class Renderer implements TextureCanvas {
 		alpha = 1;
 		alphas.resize(0);
 		clips.resize(0);
+		clipFrames.resize(0);
+		clipFrame = contentFrame = thumbTag = -1;
+		frameStack.resize(0);
+		uncull = templating = false;
 		transforms.resize(0);
 		ma = md = mk = 1;
 		mb = mc = me = mf = 0;
@@ -375,12 +379,13 @@ class Renderer implements TextureCanvas {
 	// f records a pass of its own before the frame's (prepare): what a
 	// texture drawn this frame shows, rendered first (a <Scene>'s)
 	public function beforePass(f:Encoder->Void) {
+		if (templating) return;
 		if (recording != null) recording.pass(f) else before.push(f);
 	}
 
 	// a pass replayed from a display list (beforePass's)
 	public function pass(f:Any)
-		before.push(cast f);
+		if (!templating) before.push(cast f);
 
 	// --- layers' tiles ---
 
@@ -408,6 +413,7 @@ class Renderer implements TextureCanvas {
 
 	public function layerTiles(l:Layer):Bool {
 		if (!tiles || rastering) return false;
+		if (templating) return tileGroup(l);
 		if (!flat && (l.scroll || !l.moving)) return false;
 		// (a scroller's tiles drawn over its background, as in place: what its
 		// content blends over the same, rounded the same at each step, the
@@ -704,6 +710,135 @@ class Renderer implements TextureCanvas {
 		enc.endPass();
 	}
 
+	// --- the compositor's frame (Layers' step 4b) ---
+
+	// what the compositor draws its frames from (UiWindow's, when it has
+	// one): each frame Ui.paint walks the tree whole once more into it
+	// (composites), the quads tagged with the scrollers they move with
+	// (enter, leave), what is under a scroller not culled to what is seen
+	// but walked over what its layer was recorded over, its tiles kept as
+	// tiles (tileGroup); nothing of it drawn by the frame
+	public var composite:Null<CompositeFrame> = null;
+	var templating = false;
+	// (the scroller frame the quads are in (-1: none), their clip's, a thumb's; under a frame nothing culled)
+	var contentFrame = -1;
+	var clipFrame = -1;
+	var thumbTag = -1;
+	var uncull = false;
+	final frameStack:Array<Int> = [];
+	final clipFrames:Array<Int> = [];
+	// (the frame's state, put back after the walk)
+	var savedGroups = false;
+	var savedClip:Array<Float> = [];
+
+	public function composites():Bool
+		return composite != null && !rastering && !templating;
+
+	public function enter(n:Node, kind:Int):Bool {
+		if (!templating) return false;
+		var f = composite.frameOf(n, contentFrame);
+		if (kind != 0) {
+			thumbTag = f << 1 | (kind == 2 ? 1 : 0);
+			return true;
+		}
+		frameStack.push(contentFrame);
+		contentFrame = f;
+		uncull = true;
+		return true;
+	}
+
+	public function leave() {
+		if (!templating) return;
+		if (thumbTag >= 0) {
+			thumbTag = -1;
+			return;
+		}
+		contentFrame = frameStack.length > 0 ? frameStack.pop() : -1;
+		uncull = contentFrame >= 0;
+	}
+
+	function beginComposite() {
+		var c = composite;
+		if (c == null) return;
+		c.clear();
+		c.width = Std.int(frameW);
+		c.height = Std.int(frameH);
+		c.scale = scale;
+		c.background = (background : Int);
+		c.snap = snap;
+		c.pipeline = pipeline;
+		c.atlasSlot = atlasSlot;
+		c.imageSlot = imageSlot;
+		c.blank = blank;
+		c.sampler = linear;
+		batch = c.batch;
+		runTextures = c.textures;
+		run = 0;
+		cutting = false;
+		savedGroups = groups;
+		groups = false;
+		templating = true;
+		contentFrame = clipFrame = thumbTag = -1;
+		uncull = false;
+		frameStack.resize(0);
+		clipFrames.resize(0);
+		savedClip = [clipX0, clipY0, clipX1, clipY1, clipR0, clipR1, clipR2, clipR3];
+		clipX0 = clipY0 = clipR0 = clipR1 = clipR2 = clipR3 = 0;
+		clipX1 = frameW;
+		clipY1 = frameH;
+	}
+
+	function endComposite() {
+		var c = composite;
+		if (c == null || !templating) return;
+		templating = uncull = false;
+		contentFrame = clipFrame = thumbTag = -1;
+		groups = savedGroups;
+		batch = quads;
+		runTextures = frameTextures;
+		run = 0;
+		var k = savedClip;
+		clipX0 = k[0];
+		clipY0 = k[1];
+		clipX1 = k[2];
+		clipY1 = k[3];
+		clipR0 = k[4];
+		clipR1 = k[5];
+		clipR2 = k[6];
+		clipR3 = k[7];
+		// (the atlas as it is at the frame's end: uploaded by end)
+		c.atlas = atlasTexture;
+		var sh = quads.shared();
+		c.corners = sh.corners;
+		c.indices = sh.indices;
+		c.ready = true;
+	}
+
+	// (a scroller's layer in the compositor's frame: its tiles over what it
+	// was recorded over, those drawn and still valid, where they are now;
+	// else replayed)
+	function tileGroup(l:Layer):Bool {
+		var c = composite;
+		if (!l.scroll || contentFrame < 0 || !flat || l.backdrop == 0) return false;
+		var t = tiled.get(l), s = scale;
+		if (t == null || t.content != l.content || t.scale != s || t.tiles.length == 0) return false;
+		c.groups.push(batch.count);
+		c.tileAt.push(Std.int(c.tiles.length / 2));
+		for (v in [contentFrame, clipFrame, clipX0, clipY0, clipX1, clipY1, clipR0, clipR1, clipR2, clipR3, t.rx, t.ry, tx, ty, alpha, 0])
+			c.groupData.push(v);
+		var ri0 = Math.floor((l.x0 + t.rx) * s / TILE), rj0 = Math.floor((l.y0 + t.ry) * s / TILE);
+		var ri1 = Math.ceil((l.x1 + t.rx) * s / TILE), rj1 = Math.ceil((l.y1 + t.ry) * s / TILE);
+		for (j in rj0...rj1)
+			for (i in ri0...ri1) {
+				var k = t.get(i, j);
+				if (k == null || !k.valid(l) || k.group.texture == null) continue;
+				c.tiles.push(i);
+				c.tiles.push(j);
+				c.tileTextures.push(cast k.group.texture);
+			}
+		return true;
+	}
+
 	// --- a kept frame ---
 
 	// whether its frame is kept from frame to frame (a window's): Ui.paint
@@ -778,6 +913,14 @@ class Renderer implements TextureCanvas {
 	}
 
 	public function redraw(i:Int) {
+		if (i == -2) {
+			beginComposite();
+			return;
+		}
+		if (i == -3) {
+			endComposite();
+			return;
+		}
 		if (keptAt != frames) return;
 		if (i < 0) {
 			cutting = false;
@@ -993,6 +1136,8 @@ class Renderer implements TextureCanvas {
 	// that cuts into its corners keeps only the inner one's corners), else
 	// the smaller of each
 	public function pushClip(x:Float, y:Float, w:Float, h:Float, radius:Float, ?corners:Corners) {
+		clipFrames.push(clipFrame);
+		clipFrame = contentFrame;
 		clips.push(clipX0);
 		clips.push(clipY0);
 		clips.push(clipX1);
@@ -1056,6 +1201,7 @@ class Renderer implements TextureCanvas {
 	}
 
 	public function popClip() {
+		clipFrame = clipFrames.length > 0 ? clipFrames.pop() : -1;
 		var n = clips.length - 8, c = clips;
 		clipX0 = c[n];
 		clipY0 = c[n + 1];
@@ -1603,7 +1749,7 @@ class Renderer implements TextureCanvas {
 	// --- vertices ---
 
 	inline function culled(x0:Float, y0:Float, x1:Float, y1:Float)
-		return x1 <= clipX0 || y1 <= clipY0 || x0 >= clipX1 || y0 >= clipY1 || clipX1 <= clipX0 || clipY1 <= clipY0;
+		return !uncull && (x1 <= clipX0 || y1 <= clipY0 || x0 >= clipX1 || y0 >= clipY1  || clipX1 <= clipX0 || clipY1 <= clipY0);
 
 	// (a box in the scaled pixels under the transform outside the clip: its turned corners' bounds)
 	function away(x0:Float, y0:Float, x1:Float, y1:Float):Bool {
@@ -1684,6 +1830,12 @@ class Renderer implements TextureCanvas {
 			dash = Solid;
 		}
 		var o = batch.add(run), b = batch.bytes;
+		if (templating) {
+			var c = composite;
+			c.content.push(contentFrame);
+			c.clip.push(clipFrame);
+			c.thumb.push(thumbTag);
+		}
 		var fa = fill.a / 255 * alpha, ba = border.a / 255 * alpha;
 		var hx = (x1 - x0) / 2, hy = (y1 - y0) / 2;
 		var mu = (u1 - u0) * m / (x1 - x0), mv = (v1 - v0) * m / (y1 - y0);

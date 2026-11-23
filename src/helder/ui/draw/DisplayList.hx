@@ -404,6 +404,14 @@ class DisplayList implements TextureCanvas {
 
 	public function redraw(i:Int) {}
 
+	public function composites():Bool
+		return false;
+
+	public function enter(n:Node, kind:Int):Bool
+		return false;
+
+	public function leave() {}
+
 	// gives c the calls recorded, in order (a GPU texture's only if it draws
 	// them: a TextureCanvas); w: the walk it is in (what is seen, its host)
 	public function replay(c:Canvas, ?w:Walk) {
