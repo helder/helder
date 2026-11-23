@@ -1586,7 +1586,7 @@ class Run {
 
 	static function uiPrograms() {
 		var t = GFX_TARGET;
-		var programs = ["UiDrawTest", "TodoTest", "StressTest", "LayerTest", "DamageTest", "ClipboardTest", "EmojiTest", "BoxTest", "SnapTest", "WindowTest", "ControlsGallery", "ControlsBench"];
+		var programs = ["UiDrawTest", "TodoTest", "StressTest", "LayerTest", "DamageTest", "ClipboardTest", "EmojiTest", "BoxTest", "SnapTest", "WindowTest", "ControlsGallery", "ControlsBench", "RenderThreadTest"];
 		if (t.startsWith("linux-")) programs = programs.concat(["TextInputTest", "LinuxAccessTest", "AtspiProbe", "AccessApp"]);
 		if (t.startsWith("windows-")) programs.push("WinAccessTest");
 		for (m in programs)
@@ -1617,6 +1617,8 @@ class Run {
 		shell('$xvfb $b/WindowTest');
 		// (damage in a window whose frame is multisampled, the frame kept single-sampled: the same pixels)
 		shell('LIBGL_ALWAYS_SOFTWARE=1 $xvfb $b/DamageTest --window');
+		// (the render thread's frames against the synchronous path's, in a window; resources hammered while frames are on their way)
+		shell('LIBGL_ALWAYS_SOFTWARE=1 $xvfb $b/RenderThreadTest');
 		// (the clipboard: Xvfb's own, not a desktop's in use; X11's text input
 		// and AT-SPI: Linux's; Windows' are the window lane's)
 		if (!linux) return;

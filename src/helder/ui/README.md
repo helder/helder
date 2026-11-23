@@ -1433,6 +1433,21 @@ multisampled window). Headless runs, screenshots,
 golden images and X11 draw every frame whole; `HELDER_DAMAGE=full` draws
 a window's so, `HELDER_DAMAGE=flash` shows each frame's rectangles.
 
+A window's GPU work runs on the render thread (helder.gfx's README,
+"Render thread"; macOS, iOS, Windows, Linux and Android): the frame is
+recorded here and handed over at its passes' and its end, and the loop
+waits for it to be presented before it takes the next events (`settle`),
+so a frame shows the input it was drawn for, as without the thread, while
+the driver's encoding overlaps the rest of the turn: the frame's
+accessibility tree, the text input, other windows' frames, the app's own
+work. `RenderThreadTest` (ui-draw) checks its frames against the
+synchronous path's, pixel for pixel, in a window; `--time n [--work ms]`
+times it. A list of 400 rows scrolled a pixel a frame with 4 ms of the
+program's work after each: 13.1 ms a frame synchronously, 10.8 on the
+thread (Mesa's llvmpipe in Docker, not paced by a display); at a 60 Hz
+display's pace (Metal) 16.7 either way, the start of a frame to its
+present the same. `HELDER_RENDER_THREAD=0` turns it off.
+
 Memory per node is kept small: leaves share one empty children array; event
 handlers and the rarely set style properties (grid, transforms, shadows,
 offsets...) are allocated when first set; paragraphs share their font sets.

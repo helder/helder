@@ -804,7 +804,17 @@ class MetalBackend {
 		texture = Ptr.nil();
 		Runtime.objc_autoreleasePoolPop(pool);
 		pool = Ptr.nil();
-		if (presented && surface.onPresent != null) surface.onPresent();
+		if (presented) shown = true;
+	}
+
+	// (a drawable presented since asked last: Device calls Surface.onPresent,
+	// on the program's thread, the render thread's present not being AppKit's)
+	var shown = false;
+
+	public function presented():Bool {
+		var p = shown;
+		shown = false;
+		return p;
 	}
 
 	// the frame's passes so far, then a copy of the target into a shared

@@ -202,6 +202,70 @@ faces clockwise, so that it reads alike); `readPixels` rows top to bottom. `Mat4
 `Mat4.orthographic` project into that clip space. The GLSL a shader definition
 emits makes GL match (its clip z and `gl_FragCoord.y` differ).
 
+## Render thread
+
+Every call after `Device.create` is recorded (`Commands`: flat words in
+memory outside the collector's heap, each command its op, its size and its
+arguments; uploads' bytes copied in, so a program reuses its arrays at
+once) and run in order on the back end (`Replay`). Handles are the
+device's own, given on the program's thread; the back end's objects are
+made where it runs, a table mapping one to the other. Synchronously (the
+default: headless surfaces, tests, goldens, games), it runs inline at each
+call that may throw and at each pass's end, so errors are thrown where
+they were and golden images exercise the recording.
+
+`Device.create(surface, {thread: true})` (helder.ui's windows and their
+`<Scene>`s) runs it on the render thread (`RenderThread`, one a process),
+which owns the context (Metal's queue and drawables, GL's EGL context made
+current there, D3D11's immediate context and swap chain) and presents:
+
+- the program hands over what it recorded at a pass's end (when the thread
+  is free and there are 16 KB of it) and at `endFrame`, and records the
+  next into a second buffer; one buffer runs at a time;
+- it waits for the thread at `beginFrame` (the last frame presented: one
+  frame at most on its way; the frame's size and drawable known), at calls
+  that answer (`readPixels`, `readBuffer`, `createShader`,
+  `createPipeline`, `createShared`: their errors thrown there; what threw
+  in a command without an answer is thrown at the next wait), at `settle`
+  and at `dispose` (drained, the context let go; the last device ends the
+  thread). `queryResult` answers from the set's answers taken at a frame's
+  first question;
+- `settle()` waits for the last frame's present. helder.ui's loop settles
+  before it takes the next events, so the thread adds no frame of latency:
+  a `<Scene>` or game covering the window is submitted and presented in the
+  turn it was drawn. A program that does not settle draws its next frame
+  while this one presents (more throughput, its input a frame older);
+- the thread is a GC thread: its waits (for work, nextDrawable, the swap,
+  `Present`, the GPU) are in safe regions (sys.thread's locks, EGL's and
+  objc's calls), so collections wait only for its stretches of encoding
+  between them, not for vsync;
+- Apple: autorelease pools of its own around what runs outside a frame;
+  Surface.onPresent (a macOS window shown at its first frame) called on
+  the program's thread; GL: the context let go by the creating thread
+  (X11's display opened with `XInitThreads`: Mesa's software path presents
+  through Xlib); Android: `Surface.lost` run on the thread, waited for.
+
+`HELDER_RENDER_THREAD=0` turns it off, `=1` on for every window's device.
+`tests/ui/RenderThreadTest.hx` (ui-draw) draws random trees on the thread
+and synchronously in one window and compares every frame pixel for pixel,
+and hammers creation, uploads, read-backs, destruction and resizes while
+frames are on their way (nothing left in the back end's tables), on Metal
+and Mesa. Frame times (`--time`, `tests/3d/OrbitsTime.hx` for
+examples/orbits), with 4 ms of the program's own work after each frame:
+
+| | synchronous | render thread |
+| --- | ---: | ---: |
+| 400 rows scrolled, llvmpipe (not paced) | 13.1 ms | 10.8 ms |
+| Orbits, llvmpipe (not paced) | 9.7 ms | 6.3 ms |
+
+Without such work they are the same, as is the time from a frame's start
+to its present. Paced by a 60 Hz display (Metal, five runs each way, with
+and without the work), frames and the start-to-present time are the same
+either way: 16.7 ms a frame, the present 16.6 ms after the start (12.6
+with the work, which then fits in the frame's wait for the drawable). Not yet: the web (step
+4b's worker), scrolling and animations on the thread, and the back ends'
+own code is GC code (a kernel's discipline would let collections skip it).
+
 ## Shaders
 
 Shaders are Haxe (`helder.gfx.shader`): a definition, `shader({vertex,

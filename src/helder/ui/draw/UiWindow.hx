@@ -88,7 +88,7 @@ class UiWindow {
 	public var onClose:Null<Void->Void>;
 	// files dropped on the window: their paths, where (points)
 	public var onDrop:Null<(files:Array<String>, x:Float, y:Float) -> Void>;
-	// after each frame is drawn
+	// after each frame is drawn and presented
 	public var onFrame:Null<Void->Void>;
 	// when set, the next frame's pixels are read into it before they are
 	// presented (RGBA8, rows top to bottom: tests and screenshots)
@@ -148,7 +148,7 @@ class UiWindow {
 		window = new helder.os.Window(title, width, height, titlebar);
 		// (Android: text fields get the soft keyboard and the input method)
 		if (Platform.target() >= 9) helder.os.android.TextInput.enable();
-		device = Device.create(window.surface, {antialias: antialias});
+		device = Device.create(window.surface, {antialias: antialias, thread: true});
 		renderer = new Renderer(device);
 		if (open.length == 0 && helder.os.App.trims.indexOf(trimAll) < 0) helder.os.App.trims.push(trimAll);
 		renderer.groups = true;
@@ -357,7 +357,13 @@ class UiWindow {
 		updateTextInput();
 		sendAccess();
 		syncScroll();
-		if (onFrame != null) onFrame();
+		// (presented first: what it asks of the window comes after the frame,
+		// as a Wayland compositor must see the commit of the size it
+		// configured before a fullscreen left)
+		if (onFrame != null) {
+			device.settle();
+			onFrame();
+		}
 	}
 
 	// the window's safe area in UI pixels: the Ui's, and markup's
@@ -612,9 +618,10 @@ class UiWindow {
 				if (linuxAccess != null) (cast linuxAccess : LinuxAccess).dispose();
 			} else if (androidAccess != null) (cast androidAccess : AndroidAccess).dispose();
 		}
+		// (the device drained first: the render thread done with the window's surface before it goes)
+		device.dispose();
 		window.close();
 		open.remove(this);
-		device.dispose();
 	}
 
 	// the app loop: every UiWindow's frames and events until the last closes
@@ -651,6 +658,11 @@ class UiWindow {
 					w.frame();
 					drew = true;
 				}
+			// (the frames presented before the next events are taken: their
+			// encoding, a window's and the next one's work overlapped, no frame
+			// more of latency)
+			for (w in open)
+				w.device.settle();
 			if (!drew) App.wait(idleWait);
 		}, e -> for (w in open.copy()) if (w.window == e.window) w.handle(e));
 	}

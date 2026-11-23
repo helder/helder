@@ -186,6 +186,13 @@ class GLBackend {
 		if (Platform.os() == 3) WebGL.make_current(web) else if (Egl.eglMakeCurrent(display, eglSurface, eglSurface, context) == 0) fail("eglMakeCurrent");
 	}
 
+	// (the context let go by this thread, made current by the render thread at its first call)
+	public function detach() {
+		if (Platform.os() == 3) return;
+		Egl.eglMakeCurrent(display, Ptr.nil(), Ptr.nil(), Ptr.nil());
+		current = null;
+	}
+
 	public function new(surface:Surface, antialias:Bool) {
 		this.surface = surface;
 		scratch = LibC.malloc((64 : Int64));

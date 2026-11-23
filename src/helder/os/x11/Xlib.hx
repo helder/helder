@@ -8,6 +8,7 @@ import hxmc.unsafe.*;
 // (XNextEvent blocks). Strings are Ptr: a CString or a Mem.cstr literal.
 @:hxmc.c @:hxmc.lib("libX11.so.6") extern class Xlib {
 	static function XOpenDisplay(name:Ptr):Ptr;
+	static function XInitThreads():Int;
 	static function XCloseDisplay(d:Ptr):Int;
 	static function XDefaultScreen(d:Ptr):Int;
 	static function XRootWindow(d:Ptr, screen:Int):Int64;
