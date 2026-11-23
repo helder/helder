@@ -266,12 +266,6 @@ final class Device {
 	@:typescript public function beginFrame():Null<Encoder>
 		return impl.beginFrame() ? encoder : null;
 
-	// the frame's samples a pixel: 4 where it is multisampled (antialias), else 1
-	public var samples(get, never):Int;
-
-	inline function get_samples():Int
-		return impl.samples();
-
 	// what the frame presented next changed: rectangles x0, y0, x1, y1 in
 	// its pixels, rows from the top (a window's kept frame: Renderer.regions;
 	// null: all of it), told the system where it takes them as it presents

@@ -708,9 +708,8 @@ class Renderer implements TextureCanvas {
 
 	// whether its frame is kept from frame to frame (a window's): Ui.paint
 	// draws only what changed into it (damage), each rectangle straight
-	// into the frame kept (a texture of the frame's size and samples, so
-	// that what is drawn there is what drawing onto the target gives; a
-	// multisampled one's samples kept, resolved into one read), its background
+	// into the frame kept (a texture of the frame's size, so that what is
+	// drawn there is what drawing onto the target gives), its background
 	// first, what is drawn in it cut to it: an unturned quad's corners (its
 	// fragments the same, measured from their pixels' centres: UiShader), a
 	// turned one's fragments outside it nothing (UiShader's region); then
@@ -729,8 +728,6 @@ class Renderer implements TextureCanvas {
 	// frame drawn, at what scale, the frame that drew into it; the
 	// rectangle drawn into it (cut), one the whole frame (then cleared))
 	final kept = new Group();
-	var keptSamples:Null<Texture> = null;
-	var keptPipeline:Null<Pipeline> = null;
 	var keptValid = false;
 	var keptScale = 0.0;
 	var keptAt = -1;
@@ -752,25 +749,12 @@ class Renderer implements TextureCanvas {
 
 	public function damage(d:Damage) {
 		if (!keep) return;
-		var w = Std.int(frameW), h = Std.int(frameH), s = scale, k = kept, t = k.texture, n = device.samples;
+		var w = Std.int(frameW), h = Std.int(frameH), s = scale, k = kept, t = k.texture;
+		// (single-sampled in a multisampled window too: UiShader grows each
+		// quad past its anti-aliased edge, so samples change no pixel the UI
+		// draws; DamageTest --window checks it)
 		k.open(device, w, h, true);
 		var gone = !keptValid || k.texture != t || keptScale != s;
-		// (the frame multisampled: the frame kept too, its samples drawn into)
-		if (keptSamples != null && (n == 1 || k.texture != t)) {
-			device.destroyTexture(keptSamples);
-			keptSamples = null;
-		}
-		if (n > 1 && keptSamples == null) {
-			keptSamples = device.createTexture({width: w, height: h, format: RGBA8, renderTarget: true, samples: n});
-			if (keptPipeline == null) {
-				var d = UiShader.pipeline({blend: Premultiplied});
-				d.layout = layout();
-				d.colorFormat = RGBA8;
-				d.samples = n;
-				keptPipeline = device.createPipeline(d);
-			}
-			gone = true;
-		}
 		d.round(s, w, h);
 		damaged = d;
 		// (most of it: drawn whole straight onto the target, as copying it
@@ -829,7 +813,7 @@ class Renderer implements TextureCanvas {
 
 	// (the rectangles drawn into the frame kept, in a pass of their own)
 	function paste(enc:Encoder) {
-		var c = background, k = kept, p = keptPass.colors[0], m = keptSamples;
+		var c = background, k = kept, p = keptPass.colors[0];
 		@:privateAccess {
 			p.clear.r = c.r / 255;
 			p.clear.g = c.g / 255;
@@ -837,17 +821,7 @@ class Renderer implements TextureCanvas {
 			p.clear.a = 1;
 		}
 		p.load = whole ? Clear : Load;
-		p.texture = m ?? k.texture;
-		p.resolve = m == null ? null : k.texture;
-		p.keep = m != null;
-		FrameCounts.quads += k.batch.count;
-		enc.beginPass(keptPass);
-		if (k.batch.upload(device)) {
-			enc.setPipeline(m == null ? groupPipeline : keptPipeline);
-			draw(enc, k.batch, k.textures);
-			FrameCounts.uploaded += k.batch.uploaded;
-		}
-		enc.endPass();
+		render(enc, k, keptPass);
 	}
 
 	// (the frame kept onto the target, the rectangles drawn flashed over it)

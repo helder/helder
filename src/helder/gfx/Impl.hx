@@ -143,9 +143,6 @@ abstract Impl(Any) {
 	public inline function endFrame()
 		Platform.os() == 1 ? mtl().endFrame() : Platform.os() == 2 ? d3d().endFrame() : Platform.os() != 3 ? gl().endFrame() : webgl() ? gl().endFrame() : wgpu().endFrame();
 
-	public inline function samples():Int
-		return Platform.os() == 1 ? mtl().samples : Platform.os() == 2 ? d3d().samples : Platform.os() != 3 ? gl().samples : 1;
-
 	public inline function damaged(rects:Null<Array<Int>>)
 		if (Platform.os() == 2) d3d().damaged(rects) else if (Platform.os() != 1 && Platform.os() != 3) gl().damaged(rects);
 

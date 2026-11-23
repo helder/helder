@@ -13,7 +13,7 @@ import helder.ui.widgets.TextField;
 // pixel scrolls; the card's transform and opacity moving; the popup opened
 // and closed; the caret moved, text typed), at scales 1 and 2, layers
 // replayed and from their tiles; with --window, in a window whose frame
-// is multisampled where it can be (the frame kept multisampled too). And
+// is multisampled where it can be (the frame kept is not). And
 // that a row toggled damages that row, the caret moved only the caret
 //   DamageTest [--window]
 class DamageTest {
@@ -64,7 +64,7 @@ class DamageTest {
 		var device = Device.create(win.surface, {antialias: true});
 		helder.os.App.run(() -> {
 			var scale = device.width / W;
-			Sys.println('DamageTest: a window of ${device.width}x${device.height}, ${device.samples} samples a pixel');
+			Sys.println('DamageTest: a window of ${device.width}x${device.height}, multisampled where the GPU has it');
 			for (tiles in [false, true])
 				for (tree in 0...2)
 					compare(device, scale, tree, tiles);

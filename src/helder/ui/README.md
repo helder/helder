@@ -1416,8 +1416,8 @@ its old and new bounds), a layer moved, scrolled, faded or come to rest
 a GPU texture each frame, popups (the overlay's entries), all of it at a
 scale or theme change or a match flying. Each rectangle is walked culled
 to it and drawn straight into the frame kept (a texture of the window's
-size and samples: a multisampled window's kept multisampled, resolved for
-the copy), its background first, every unturned quad cut to it and a turned
+size, single-sampled: each quad is grown past its anti-aliased edge, so a
+multisampled window's samples change none of its pixels), its background first, every unturned quad cut to it and a turned
 one's fragments outside it left as they were, then the frame is copied
 to the drawable (Metal's and a browser's are not kept), and the system
 told what changed (EGL's swap with damage on Wayland and Android, DXGI's
