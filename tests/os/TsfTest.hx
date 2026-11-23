@@ -38,7 +38,8 @@ class TsfTest {
 		App.run(() -> {
 			frames++;
 			if (frames == 3) {
-				run(window);
+				// (on the window's thread, the main one, as an input method runs: helder.os.OsThread)
+				helder.os.OsThread.run(() -> run(window));
 				App.quit();
 			}
 			App.wait(0.02);

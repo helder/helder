@@ -5,14 +5,15 @@ import helder.ui.draw.*;
 import helder.ui.widgets.TextField;
 
 // A native view over a scroller moved with the compositor's scroll
-// (AsyncScrollWindow --native; macOS: an NSTextField): the program blocked
+// (AsyncScrollWindow --native; macOS: an NSTextField, Windows: an EDIT): the program blocked
 // while wheel input comes, the field read on the main thread before the
 // program's next frame places it: where the compositor's offset puts it.
 // Elsewhere (no native fields) skipped.
+@:hxmc.unsafe(gc)
 class NativeCheck {
 	public static function run(w:UiWindow, list:Node) {
 		var c = w.compositor;
-		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
+		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
 		if (c == null || !Inject.supported) {
 			Sys.println("NativeCheck: no compositor or input to inject here: skipped");
 			w.close();
@@ -38,7 +39,7 @@ class NativeCheck {
 				}
 				var moved = o == null ? 0.0 : o.y - from, expect = placed == null ? 0.0 : placed[1] - moved;
 				check("the compositor scrolled while the program was blocked", moved > 0, from + " to " + (o == null ? null : o.y));
-				check("the field moved with it before the program's next frame", placed != null && y != null && Math.abs(y - expect) < 0.5
+				check("the field moved with it before the program's next frame", placed != null && y != null && Math.abs(y - expect) < SNAP
 					|| y == null && moved > 0, 'placed at ${placed == null ? null : placed[1]}, now at $y, expected $expect');
 				w.close();
 				Sys.println("NativeCheck: " + (failed == 0 ? "ok" : '$failed FAILED'));
@@ -53,7 +54,30 @@ class NativeCheck {
 		#end
 	}
 
+	#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+	// (an EDIT is placed on whole pixels)
+	static inline var SNAP = 1.0;
+
+	// (the field's top in the window's layout pixels; null: hidden)
+	static function frameTop(f:TextField):Null<Float> @:privateAccess {
+		var e:helder.ui.platform.WinViews.WinEditor = cast f.editor;
+		if (e == null) return null;
+		var k = e.views.scale();
+		return OsThread.get(() -> {
+			if (WinRect.IsWindowVisible(e.hwnd) == 0) return null;
+			var r:hxmc.unsafe.Ptr<hxmc.unsafe.Int32> = hxmc.unsafe.LibC.malloc(16);
+			WinRect.GetWindowRect(e.hwnd, cast r);
+			WinRect.ScreenToClient(e.views.hwnd, cast r);
+			var top:Null<Float> = r[1] / k;
+			hxmc.unsafe.LibC.free(cast r);
+			return top;
+		});
+	}
+	#end
+
 	#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
+	static inline var SNAP = 0.5;
+
 	// (the field's top in the window's points, y down; null: hidden)
 	static function frameTop(f:TextField):Null<Float> @:privateAccess {
 		var e:helder.ui.platform.MacViews.MacEditor = cast f.editor;
@@ -68,3 +92,11 @@ class NativeCheck {
 	}
 	#end
 }
+
+#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+@:hxmc.c @:hxmc.lib("user32") private extern class WinRect {
+	static function IsWindowVisible(hwnd:hxmc.unsafe.Ptr):Int;
+	static function GetWindowRect(hwnd:hxmc.unsafe.Ptr, r:hxmc.unsafe.Ptr):Int;
+	static function ScreenToClient(hwnd:hxmc.unsafe.Ptr, p:hxmc.unsafe.Ptr):Int;
+}
+#end

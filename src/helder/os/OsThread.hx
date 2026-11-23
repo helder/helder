@@ -55,7 +55,7 @@ class OsThread {
 		return false;
 		#else
 		if (Sys.getEnv("HELDER_THREAD") == "0") return false;
-		return (Platform.os() == 1 && Platform.apple() < 1) || (Platform.os() == 0 && Platform.target() < 9);
+		return (Platform.os() == 1 && Platform.apple() < 1) || Platform.os() == 2 || (Platform.os() == 0 && Platform.target() < 9);
 		#end
 	}
 

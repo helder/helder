@@ -87,6 +87,9 @@ import hxmc.unsafe.*;
 	#end
 	static function GetLastError():Int;
 	static function Sleep(ms:Int):Void;
+	// (an event that wakes the main thread's wait for input: Win32Window's pump)
+	static function CreateEventW(attributes:Ptr, manual:Int, initial:Int, name:Ptr):Ptr;
+	static function SetEvent(event:Ptr):Int;
 	// movable global memory (the clipboard's)
 	static function GlobalAlloc(flags:Int, bytes:Int64):Ptr;
 	static function GlobalLock(mem:Ptr):Ptr;

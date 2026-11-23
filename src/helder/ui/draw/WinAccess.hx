@@ -30,7 +30,11 @@ import hxmc.unsafe.*;
 // the focus event, StructureChanged (a node's children invalidated),
 // property changes (name, help text, toggle and expand states, selection,
 // values, enabled), ElementSelected, a text's TextChanged and
-// TextSelectionChanged, a live region's LiveRegionChanged.
+// TextSelectionChanged, a live region's LiveRegionChanged. Where the
+// program has a thread of its own, all of it is the main thread's, in its
+// apartment, as the window is (helder.os.OsThread): UI Automation's calls
+// come there while the program waits, at its poll (COM's, and
+// WM_GETOBJECT's at once from the window procedure, OsThread.hold).
 @:hxmc.unsafe(gc)
 class WinAccess {
 	static inline var SLOTS = 16;
@@ -84,9 +88,11 @@ class WinAccess {
 		this.window = window;
 		this.ui = ui;
 		hwnd = window.surface.handle;
-		if (!started) start();
-		all.push(this);
-		helder.os.win32.Win32Window.getObject = getObject;
+		helder.os.OsThread.run(() -> {
+			if (!started) start();
+			all.push(this);
+			helder.os.win32.Win32Window.getObject = getObject;
+		});
 	}
 
 	static function start() {
@@ -154,10 +160,13 @@ class WinAccess {
 	function activate() {
 		if (active) return;
 		active = true;
-		update();
+		updateNow();
 	}
 
-	public function dispose() {
+	public function dispose()
+		helder.os.OsThread.run(disposeNow);
+
+	function disposeNow() {
 		Uia.UiaReturnRawElementProvider(hwnd, 0, 0, Ptr.nil());
 		for (id in [for (k in blocks.keys()) k])
 			drop(id);
@@ -166,7 +175,10 @@ class WinAccess {
 
 	// the tree after a frame: blocks for the nodes new, released for the
 	// gone, the events of what changed
-	public function update() {
+	public function update()
+		if (active) helder.os.OsThread.run(updateNow);
+
+	function updateNow() {
 		if (!active) return;
 		var t = ui.accessTree();
 		var old = tree;
@@ -281,10 +293,11 @@ class WinAccess {
 	}
 
 	// the root's provider (IRawElementProviderSimple; tests)
-	public function rootProvider():Ptr {
-		activate();
-		return tree == null ? Ptr.nil() : block(tree.root);
-	}
+	public function rootProvider():Ptr
+		return helder.os.OsThread.get(() -> {
+			activate();
+			tree == null ? Ptr.nil() : block(tree.root);
+		});
 
 	// a node's block (its IRawElementProviderSimple), made when it has none
 	function block(id:Int):Ptr {

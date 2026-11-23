@@ -37,7 +37,8 @@ class TitleBarTest {
 			if (step == 0) {
 				step = 1;
 				if (Platform.os() == 1) mac(window);
-				if (Platform.os() == 2) windows(window);
+				// (the hit tests sent on the window's thread, the main one: helder.os.OsThread)
+				if (Platform.os() == 2) helder.os.OsThread.run(() -> windows(window));
 				if (Platform.os() == 0 && !Std.isOfType(@:privateAccess window.native, helder.os.wayland.WaylandWindow)) x11(window);
 				window.resize(500, 320);
 			} else if (step == 1 && frames > 12) {

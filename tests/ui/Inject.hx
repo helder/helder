@@ -5,7 +5,9 @@ import hxmc.unsafe.*;
 // 16 ms at the window's middle. macOS: NSEvents made from CGEvents, posted
 // to the application's queue, which the main thread reads (CocoaWindow's
 // pump); X11: wheel presses sent to the window by a connection of its
-// own; elsewhere (Inject.supported false) none yet.
+// own; Windows: a wheel's notches from SendInput, the cursor at the
+// window's middle (the window under it gets them); elsewhere
+// (Inject.supported false) none yet.
 @:hxmc.unsafe(gc)
 class Inject {
 	final done = new sys.thread.Lock();
@@ -20,6 +22,8 @@ class Inject {
 		return true;
 		#elseif (hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64")
 		return Sys.getEnv("WAYLAND_DISPLAY") == null;
+		#elseif (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+		return true;
 		#else
 		return false;
 		#end
@@ -88,6 +92,29 @@ class Inject {
 			if (!d.isNull()) helder.os.x11.Xlib.XCloseDisplay(d);
 			i.done.release();
 		});
+		#elseif (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+		var hwnd = w.surface.handle, cx = Std.int(w.width / 2), cy = Std.int(w.height / 2);
+		sys.thread.Thread.create(() -> {
+			var p:Ptr<Int32> = LibC.malloc(8);
+			p[0] = cx;
+			p[1] = cy;
+			helder.os.win32.User32.ClientToScreen(hwnd, cast p);
+			WinInput.SetCursorPos(p[0], p[1]);
+			LibC.free(cast p);
+			// (INPUT: INPUT_MOUSE, then MOUSEINPUT: dx, dy, mouseData, dwFlags MOUSEEVENTF_WHEEL, time, dwExtraInfo)
+			var input:Ptr<Int32> = LibC.malloc(40);
+			LibC.memset(cast input, 0, 40);
+			input[4] = -120;
+			input[5] = 0x0800;
+			var until = haxe.Timer.stamp() + ms / 1000;
+			while (haxe.Timer.stamp() < until) {
+				if (onSent != null) onSent(haxe.Timer.stamp());
+				if (WinInput.SendInput(1, cast input, 40) == 1) i.sent++;
+				Sys.sleep(every);
+			}
+			LibC.free(cast input);
+			i.done.release();
+		});
 		#else
 		i.done.release();
 		#end
@@ -112,5 +139,12 @@ class Inject {
 
 @:hxmc.c @:hxmc.lib("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation") private extern class CF {
 	static function CFRelease(p:Ptr):Void;
+}
+#end
+
+#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+@:hxmc.c @:hxmc.lib("user32") private extern class WinInput {
+	static function SetCursorPos(x:Int, y:Int):Int;
+	static function SendInput(count:Int, inputs:Ptr, size:Int):Int;
 }
 #end
