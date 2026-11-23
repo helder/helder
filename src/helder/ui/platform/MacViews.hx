@@ -377,14 +377,23 @@ class MacViews implements PlatformViews {
 	}
 
 	@:hxmc.callback static function pick(self:Ptr, cmd:Ptr, item:Ptr)
+		helder.os.OsThread.holdVoid(() -> pickNow(self, cmd, item));
+
+	static function pickNow(self:Ptr, cmd:Ptr, item:Ptr)
 		picked = nativeEdit(item) ? -1 : Msg.i(item, ObjC.sel("tag")).toInt();
 
 	// (a menu bar's item chosen: queued, a frame asked for; an editing role a native editor's first)
 	@:hxmc.callback static function barPick(self:Ptr, cmd:Ptr, item:Ptr)
+		helder.os.OsThread.holdVoid(() -> barPickNow(self, cmd, item));
+
+	static function barPickNow(self:Ptr, cmd:Ptr, item:Ptr)
 		if (current != null && !nativeEdit(item)) current.push(null, 5, Msg.i(item, ObjC.sel("tag")).toInt());
 
 	// (a text area's commands: Tab, Shift+Tab and Escape left to the program)
-	@:hxmc.callback static function areaCommand(self:Ptr, cmd:Ptr, textView:Ptr, sel:Ptr):Int {
+	@:hxmc.callback static function areaCommand(self:Ptr, cmd:Ptr, textView:Ptr, sel:Ptr):Int
+		return helder.os.OsThread.hold(() -> areaCommandNow(self, cmd, textView, sel));
+
+	static function areaCommandNow(self:Ptr, cmd:Ptr, textView:Ptr, sel:Ptr):Int {
 		var e = of(textView);
 		if (e == null) return 0;
 		var key = 0, mods = 0;
@@ -397,22 +406,34 @@ class MacViews implements PlatformViews {
 		return 1;
 	}
 
-	@:hxmc.callback static function changed(self:Ptr, cmd:Ptr, note:Ptr) {
+	@:hxmc.callback static function changed(self:Ptr, cmd:Ptr, note:Ptr)
+		helder.os.OsThread.holdVoid(() -> changedNow(self, cmd, note));
+
+	static function changedNow(self:Ptr, cmd:Ptr, note:Ptr) {
 		var e = of(Msg.id(note, ObjC.sel("object")));
 		if (e != null) @:privateAccess e.views.push(e, 1);
 	}
 
-	@:hxmc.callback static function began(self:Ptr, cmd:Ptr, note:Ptr) {
+	@:hxmc.callback static function began(self:Ptr, cmd:Ptr, note:Ptr)
+		helder.os.OsThread.holdVoid(() -> beganNow(self, cmd, note));
+
+	static function beganNow(self:Ptr, cmd:Ptr, note:Ptr) {
 		var e = of(Msg.id(note, ObjC.sel("object")));
 		if (e != null && !@:privateAccess e.focusing) @:privateAccess e.views.push(e, 2);
 	}
 
-	@:hxmc.callback static function ended(self:Ptr, cmd:Ptr, note:Ptr) {
+	@:hxmc.callback static function ended(self:Ptr, cmd:Ptr, note:Ptr)
+		helder.os.OsThread.holdVoid(() -> endedNow(self, cmd, note));
+
+	static function endedNow(self:Ptr, cmd:Ptr, note:Ptr) {
 		var e = of(Msg.id(note, ObjC.sel("object")));
 		if (e != null && !@:privateAccess e.focusing) @:privateAccess e.views.push(e, 3);
 	}
 
-	@:hxmc.callback static function command(self:Ptr, cmd:Ptr, control:Ptr, textView:Ptr, sel:Ptr):Int {
+	@:hxmc.callback static function command(self:Ptr, cmd:Ptr, control:Ptr, textView:Ptr, sel:Ptr):Int
+		return helder.os.OsThread.hold(() -> commandNow(self, cmd, control, textView, sel));
+
+	static function commandNow(self:Ptr, cmd:Ptr, control:Ptr, textView:Ptr, sel:Ptr):Int {
 		var e = of(control);
 		if (e == null) return 0;
 		var key = 0, mods = 0;

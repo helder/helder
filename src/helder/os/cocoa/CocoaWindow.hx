@@ -215,6 +215,8 @@ class CocoaWindow {
 		Msg.iInt(app, ObjC.sel("setActivationPolicy:"), 0); // regular: a Dock icon, key windows
 		Msg.v(app, ObjC.sel("finishLaunching"));
 		mode = ObjC.str("kCFRunLoopDefaultMode");
+		OsThread.waitMain = pump;
+		OsThread.wakeMain = wakeMain;
 		var cls = Runtime.objc_allocateClassPair(ObjC.cls("NSObject"), Mem.cstr("HxmcWindowDelegate"), 0);
 		Runtime.class_addMethod(cls, ObjC.sel("windowShouldClose:"), Callback.addr(shouldClose), Mem.cstr("c@:@"));
 		Runtime.class_addMethod(cls, ObjC.sel("windowDidResize:"), Callback.addr(didResize), Mem.cstr("v@:@"));
@@ -619,15 +621,43 @@ class CocoaWindow {
 		});
 	}
 
+	// (ev's window; a pointer's event with none (one posted to the process,
+	// not through the window server's hit test): the window under its place
+	// on the screen, as AppKit would send it)
+	static function owning(ev:Ptr):Null<CocoaWindow> {
+		var w = find(Msg.id(ev, ObjC.sel("window")));
+		if (w != null) return w;
+		var type = Msg.i(ev, ObjC.sel("type")).toInt();
+		if (type != NS.ScrollWheel && type != NS.MouseMoved && type != NS.LeftMouseDown && type != NS.LeftMouseUp && type != NS.LeftMouseDragged) return null;
+		var p = Msg.point(ev, ObjC.sel("locationInWindow"));
+		for (o in open) {
+			var r = Msg.rect(o.window, ObjC.sel("frame"));
+			if (p.x >= r.origin.x && p.y >= r.origin.y && p.x < r.origin.x + r.size.width && p.y < r.origin.y + r.size.height) return o;
+		}
+		return null;
+	}
+
+	// (ev's place in the window's coordinates: from the screen's where it has no window)
+	function location(ev:Ptr):CGPoint {
+		var p = Msg.point(ev, ObjC.sel("locationInWindow"));
+		return Msg.id(ev, ObjC.sel("window")).isNull() ? Msg.pointPoint(window, ObjC.sel("convertPointFromScreen:"), p) : p;
+	}
+
 	static function find(window:Ptr):Null<CocoaWindow> {
 		for (w in open)
 			if (w.window == window) return w;
 		return null;
 	}
 
-	// (on the program's thread: OsThread)
+	// (on the program's thread: OsThread; routed by the window's compositor
+	// first, unless it was as it was read: pumped)
 	static function dispatch(e:Event) {
-		Window.routed(e);
+		if (preRouted >= 0) {
+			e.routed = preRouted;
+			e.gesture = preGesture;
+			preRouted = -1;
+		} else
+			Window.routed(e);
 		var f = onEvent;
 		if (f != null) OsThread.back(() -> f(e));
 	}
@@ -706,7 +736,7 @@ class CocoaWindow {
 	// waits for an event (left in the queue for poll), or seconds
 	static function wait(seconds:Float) {
 		helder.os.OsThread.run(() -> {
-			if (app.isNull()) return;
+			if (app.isNull() || pumped.length > 0) return;
 			var pool = Runtime.objc_autoreleasePoolPush();
 			var until = Msg.idFloat(ObjC.cls("NSDate"), ObjC.sel("dateWithTimeIntervalSinceNow:"), seconds);
 			Msg.idIntPtrPtrBool(app, ObjC.sel("nextEventMatchingMask:untilDate:inMode:dequeue:"), -1, until, mode, false);
@@ -722,10 +752,30 @@ class CocoaWindow {
 			for (w in open.copy())
 				if (w.pending) w.resized();
 			var past = Msg.id(ObjC.cls("NSDate"), ObjC.sel("distantPast"));
+			var k = 0;
 			while (!app.isNull()) {
-				var ev = Msg.idIntPtrPtrBool(app, ObjC.sel("nextEventMatchingMask:untilDate:inMode:dequeue:"), -1, past, mode, true);
+				// (what the main thread read while the program ran on first, as routed then)
+				var ev = Ptr.nil();
+				if (k < pumped.length) {
+					ev = pumped[k];
+					preRouted = pumpedRoutes[2 * k];
+					preGesture = pumpedRoutes[2 * k + 1];
+					k++;
+				} else {
+					if (k > 0) {
+						for (p in pumped)
+							Runtime.objc_release(p);
+						pumped.resize(0);
+						pumpedRoutes.resize(0);
+						k = 0;
+					}
+					preRouted = -1;
+					ev = Msg.idIntPtrPtrBool(app, ObjC.sel("nextEventMatchingMask:untilDate:inMode:dequeue:"), -1, past, mode, true);
+				}
 				if (ev.isNull()) break;
-				var w = find(Msg.id(ev, ObjC.sel("window")));
+				// (a wake of the main thread's read: nothing)
+				if (Msg.i(ev, ObjC.sel("type")).toInt() == NS.ApplicationDefined) continue;
+				var w = owning(ev);
 				var type = Msg.i(ev, ObjC.sel("type")).toInt();
 				// (a press on the title bar or an edge is AppKit's, a move or a resize:
 				// its loop takes the release too, which the app would never see)
@@ -746,6 +796,114 @@ class CocoaWindow {
 			for (w in open.copy())
 				w.composition();
 		});
+	}
+
+	// --- the input read while the program runs on (OsThread.waitMain: Layers' compositor)
+
+	// (the events the main thread read and kept for the program's next poll, retained; their routes and gestures)
+	static final pumped:Array<Ptr> = [];
+	static final pumpedRoutes:Array<Int> = [];
+	static var preRouted = -1;
+	static var preGesture = 0;
+	// (a run loop mode of its own: only the window server's events come in it, not
+	// the accessibility's requests, timers or delegates, which would touch the program's state)
+	static var pumpMode = Ptr.nil();
+	static final peeked = new Event();
+	static final INPUT = (1 << NS.LeftMouseDown) | (1 << NS.LeftMouseUp) | (1 << NS.RightMouseDown) | (1 << NS.RightMouseUp) | (1 << NS.MouseMoved)
+		| (1 << NS.LeftMouseDragged) | (1 << NS.RightMouseDragged) | (1 << NS.KeyDown) | (1 << NS.KeyUp) | (1 << 12) | (1 << NS.ApplicationDefined)
+		| (1 << NS.ScrollWheel) | (1 << NS.OtherMouseDown) | (1 << NS.OtherMouseUp) | (1 << NS.OtherMouseDragged) | (1 << NS.Magnify);
+
+	// (whether a window's compositor takes the input as it is read)
+	static function routing():Bool {
+		for (w in open)
+			if (w.owner.route != null) return true;
+		return false;
+	}
+
+	// the main thread's wait while the program runs on: the next input
+	// event read, routed to its window's compositor at once, kept for the
+	// program's poll; false where no window has a compositor
+	static function pump():Bool {
+		if (app.isNull() || !routing()) return false;
+		var pool = Runtime.objc_autoreleasePoolPush();
+		if (pumpMode.isNull()) pumpMode = ObjC.str("kCFRunLoopDefaultMode");
+		var until = Msg.idFloat(ObjC.cls("NSDate"), ObjC.sel("dateWithTimeIntervalSinceNow:"), 1.0);
+		var ev = Msg.idIntPtrPtrBool(app, ObjC.sel("nextEventMatchingMask:untilDate:inMode:dequeue:"), INPUT, until, pumpMode, true);
+		if (!ev.isNull()) {
+			var type = Msg.i(ev, ObjC.sel("type")).toInt();
+			if (type != NS.ApplicationDefined) {
+				var w = owning(ev), r = 0, g = 0;
+				var e = w == null ? null : w.peek(ev, type);
+				if (e != null) {
+					Window.routed(e);
+					r = e.routed;
+					g = e.gesture;
+				}
+				pumped.push(Runtime.objc_retain(ev));
+				pumpedRoutes.push(r);
+				pumpedRoutes.push(g);
+			}
+		}
+		Runtime.objc_autoreleasePoolPop(pool);
+		return true;
+	}
+
+	// (from the program's thread: the main thread's read woken, a call handed to it)
+	static var origin:Ptr<CGPoint> = Ptr.nil();
+
+	static function wakeMain() {
+		var pool = Runtime.objc_autoreleasePoolPush();
+		if (origin.isNull()) {
+			origin = LibC.malloc(16);
+			origin.value.x = origin.value.y = 0;
+		}
+		var e = Msg.idIntPointIntFloatIntPtrIntIntInt(ObjC.cls("NSEvent"), ObjC.sel("otherEventWithType:location:modifierFlags:timestamp:windowNumber:context:subtype:data1:data2:"),
+			NS.ApplicationDefined, origin.value, 0, 0, 0, Ptr.nil(), 0, 0, 0);
+		if (!e.isNull()) Msg.vPtrBool(app, ObjC.sel("postEvent:atStart:"), e, false);
+		// (a post alone wakes no run loop waiting in a mode of its own)
+		CoreFoundation.CFRunLoopWakeUp(CoreFoundation.CFRunLoopGetMain());
+		Runtime.objc_autoreleasePoolPop(pool);
+	}
+
+	// (what translate would make of ev for the compositor, nothing else done: its scroll, a press, a move, a key)
+	function peek(ev:Ptr, type:Int):Null<Event> {
+		var e = peeked;
+		e.window = owner;
+		e.phase = e.momentum = 0;
+		e.mods = mods(ev);
+		switch type {
+			case NS.KeyDown:
+				e.kind = KeyDown;
+				e.key = keySym(ev);
+				return e;
+			case NS.LeftMouseDown | NS.RightMouseDown | NS.OtherMouseDown:
+				e.kind = MouseDown;
+				e.button = button(ev, type);
+			case NS.LeftMouseUp | NS.RightMouseUp | NS.OtherMouseUp:
+				e.kind = MouseUp;
+				e.button = button(ev, type);
+			case NS.MouseMoved | NS.LeftMouseDragged | NS.RightMouseDragged | NS.OtherMouseDragged:
+				e.kind = MouseMove;
+				e.button = 0;
+			case NS.ScrollWheel:
+				var dx = Msg.f(ev, ObjC.sel("scrollingDeltaX")), dy = Msg.f(ev, ObjC.sel("scrollingDeltaY"));
+				e.phase = scrollPhase(Msg.i(ev, ObjC.sel("phase")).toInt());
+				e.momentum = scrollPhase(Msg.i(ev, ObjC.sel("momentumPhase")).toInt());
+				e.time = Msg.f(ev, ObjC.sel("timestamp")) * 1000;
+				if (dx == 0 && dy == 0 && e.phase == 0 && e.momentum == 0) return null;
+				var k = Msg.b(ev, ObjC.sel("hasPreciseScrollingDeltas")) ? scale : 40 * scale;
+				e.kind = Scroll;
+				e.eased = Msg.i(ev, ObjC.sel("phase")).toInt() == 0 && Msg.i(ev, ObjC.sel("momentumPhase")).toInt() == 0;
+				e.deltaX = -dx * k;
+				e.deltaY = -dy * k;
+			case _:
+				return null;
+		}
+		var p = Msg.pointPointPtr(view, ObjC.sel("convertPoint:fromView:"), location(ev), Ptr.nil());
+		var b = Msg.rect(view, ObjC.sel("bounds"));
+		e.x = Math.floor(p.x * scale);
+		e.y = Math.floor((b.size.height - p.y) * scale);
+		return e;
 	}
 
 	// whether a press is on the content, not the window's frame
@@ -937,7 +1095,7 @@ class CocoaWindow {
 				return;
 		}
 		if (e.kind != KeyDown && e.kind != KeyUp) {
-			var p = Msg.pointPointPtr(view, ObjC.sel("convertPoint:fromView:"), Msg.point(ev, ObjC.sel("locationInWindow")), Ptr.nil());
+			var p = Msg.pointPointPtr(view, ObjC.sel("convertPoint:fromView:"), location(ev), Ptr.nil());
 			var b = Msg.rect(view, ObjC.sel("bounds"));
 			e.x = Math.floor(p.x * scale);
 			e.y = Math.floor((b.size.height - p.y) * scale);
@@ -1015,6 +1173,11 @@ class CocoaWindow {
 }
 
 // AppKit's C functions: one, to load the framework (CocoaWindow.start)
+@:hxmc.c @:hxmc.lib("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation") extern class CoreFoundation {
+	static function CFRunLoopGetMain():Ptr;
+	static function CFRunLoopWakeUp(l:Ptr):Void;
+}
+
 @:hxmc.c @:hxmc.lib("/System/Library/Frameworks/AppKit.framework/AppKit") extern class AppKit {
 	static function NSApplicationLoad():Bool;
 }
@@ -1035,4 +1198,5 @@ class NS {
 	public static inline var OtherMouseUp = 26;
 	public static inline var OtherMouseDragged = 27;
 	public static inline var Magnify = 30;
+	public static inline var ApplicationDefined = 15;
 }

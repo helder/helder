@@ -18,9 +18,11 @@ import sys.thread.Mutex;
 // The calls are handed over inside the macOS classes (CocoaWindow, MacViews,
 // ...), not around their run-time Platform branches: a closure there is
 // compiled on every target, and would link AppKit into Linux's and
-// Windows' builds. On Linux the main thread only waits for now (X11 and
-// Wayland are called from any thread). HELDER_THREAD=0 keeps the program
-// on the main thread.
+// Windows' builds. While the program runs on, the main thread may read the
+// system's input (waitMain: the compositor's, helder.ui.draw.Compositor),
+// woken by a call handed to it (wakeMain); the events are the program's
+// at its next poll, as before. HELDER_THREAD=0 keeps the program on the
+// main thread.
 @:hxmc.unsafe(gc)
 class OsThread {
 	// the program's thread's Haxe id; 0 while the program runs on the main thread
@@ -32,6 +34,15 @@ class OsThread {
 	static final mainWake = new Lock();
 	static final programWake = new Lock();
 	static var ended = false;
+	// (the main thread in waitMain: a call handed to it wakes it with wakeMain)
+	static var waiting = false;
+
+	// the main thread's wait while the program runs on (the platform's:
+	// CocoaWindow reads the input meanwhile, for the compositor; false: not
+	// now, it waits on its lock), and what wakes it from the program's
+	// thread when a call is handed over
+	@:noCompletion public static var waitMain:Null<Void->Bool> = null;
+	@:noCompletion public static var wakeMain:Null<Void->Void> = null;
 
 	// what a thread lets go of as the program leaves it (the main thread's
 	// before the program's starts, the program's at its end): what is bound
@@ -65,6 +76,30 @@ class OsThread {
 		return cast v;
 	}
 
+	// f where the program's state may be touched, from the main thread: at
+	// once while the program waits for it (a call of its own, as on one
+	// thread), on the program's thread while the main thread reads input on
+	// its own (waitMain): a system's callback (accessibility, a native
+	// view's delegate) reading or changing what the program has
+	public static function hold<T>(f:Void->T):T {
+		if (!reading()) return f();
+		var v:Null<T> = null;
+		back(() -> v = f());
+		return cast v;
+	}
+
+	public static function holdVoid(f:Void->Void)
+		if (reading()) back(f) else f();
+
+	// (the main thread reading input on its own, the program running on)
+	static function reading():Bool {
+		if (program == 0 || NativeThread.current() != 1) return false;
+		mutex.acquire();
+		var w = waiting;
+		mutex.release();
+		return w;
+	}
+
 	// f on the program's thread, from the main thread (at once from any other)
 	public static function back(f:Void->Void) {
 		if (program == 0 || NativeThread.current() != 1) {
@@ -90,16 +125,27 @@ class OsThread {
 				f();
 			mutex.acquire();
 			ended = true;
+			var w = waiting;
 			mutex.release();
 			mainWake.release();
+			if (w && wakeMain != null) wakeMain();
 		});
 		started.wait();
 		while (true) {
 			drain(toMain);
 			mutex.acquire();
-			var done = ended;
+			var done = ended, calls = toMain.length > 0, pump = !done && !calls && waitMain != null;
+			waiting = pump;
 			mutex.release();
 			if (done) break;
+			if (calls) continue;
+			if (pump) {
+				var read = waitMain();
+				mutex.acquire();
+				waiting = false;
+				mutex.release();
+				if (read) continue;
+			}
 			mainWake.wait();
 		}
 		program = 0;
@@ -111,8 +157,10 @@ class OsThread {
 		var c = new Call(f, myWake);
 		mutex.acquire();
 		to.push(c);
+		var w = to == toMain && waiting;
 		mutex.release();
 		wake.release();
+		if (w && wakeMain != null) wakeMain();
 		while (true) {
 			drain(mine);
 			mutex.acquire();

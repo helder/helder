@@ -47,6 +47,7 @@ class AsyncScrollWindow {
 			var o = c.mirror.offsets(list);
 			offsets.push(o == null ? -1 : o.y);
 		};
+		var blocked = false, flung = 0.0, injected = 0;
 		App.run(() -> {
 			step++;
 			if (step == 10) {
@@ -56,29 +57,41 @@ class AsyncScrollWindow {
 					touch(w, i == 0 ? PointerDown : PointerMove, 200, 250 - i * 20, t + i * 16);
 				touch(w, PointerUp, 200, 250 - 7 * 20, t + 8 * 16);
 			}
-			if (step == 12) {
-				// (the program busy: scroll input injected meanwhile, where the system's comes in)
+			if (step > 12 && !blocked && !c.moving()) {
+				// (the program busy, its fling at rest: scroll input injected meanwhile where
+				// the system's comes in, or a fling of its own where none can be yet)
+				blocked = true;
+				flung = list.scrollY;
+				if (!Inject.supported) {
+					var t = Timer.stamp() * 1000;
+					for (i in 0...8)
+						touch(w, i == 0 ? PointerDown : PointerMove, 200, 250 - i * 20, t + i * 16);
+					touch(w, PointerUp, 200, 250 - 7 * 20, t + 8 * 16);
+				}
 				blockedFrom = Timer.stamp();
 				var inject = Inject.start(w.window, 300);
 				Sys.sleep(0.3);
 				blockedTo = Timer.stamp();
 				inject.join();
+				injected = inject.sent;
+				step = 20;
 			}
 			if (w.needsFrame()) w.frame();
 			w.device.settle();
-			// (its fling at rest, its last offsets taken)
+			// (at rest again, its last offsets taken)
 			if (step > 30 && c.moving()) step = 30;
 			if (step == 32) {
 				var during = [for (i in 0...presents.length) if (presents[i] > blockedFrom && presents[i] <= blockedTo) i];
 				var gaps = [for (i in 1...during.length) presents[during[i]] - presents[during[i - 1]]];
 				gaps.sort(Reflect.compare);
 				var median = gaps.length > 0 ? gaps[Std.int(gaps.length / 2)] : 1.0;
+				if (Inject.supported) check("input injected meanwhile", injected > 10, injected + " events");
 				check("frames presented while the program was blocked for 300 ms", during.length >= 10, during.length + " frames");
 				check("at the display's pace", gaps.length > 0 && median < 0.03, "median gap " + Math.round(median * 10000) / 10 + " ms");
-				var advancing = during.length > 1 && offsets[during[during.length - 1]] > offsets[during[0]];
-				check("the offset advancing", advancing, during.length > 0 ? offsets[during[0]] + " to " + offsets[during[during.length - 1]] : "none");
+				var advancing = during.length > 1 && offsets[during[during.length - 1]] > offsets[during[0]] && offsets[during[0]] >= flung;
+				check("the offset advancing", advancing, during.length > 0 ? flung + ": " + offsets[during[0]] + " to " + offsets[during[during.length - 1]] : "none");
 				var o = c.mirror.offsets(list);
-				check("the program has the compositor's offset", o != null && list.scrollY == o.y, list.scrollY + " " + (o == null ? null : o.y));
+				check("the program has the compositor's offset", o != null && list.scrollY == o.y && list.scrollY > flung, flung + " to " + list.scrollY + " " + (o == null ? null : o.y));
 				w.close();
 				Sys.println("AsyncScrollWindow: " + (failed == 0 ? "ok" : '$failed FAILED'));
 				Sys.exit(failed == 0 ? 0 : 1);
