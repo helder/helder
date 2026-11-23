@@ -5,7 +5,7 @@ import hxmc.Platform;
 import sys.thread.Lock;
 import sys.thread.Mutex;
 
-// The main thread and the program's. App.run on macOS and Linux runs the
+// The main thread and the program's. App.run on macOS, iOS, Windows and Linux runs the
 // program's loop on a thread of its own, as on Android, so that the main
 // thread, where AppKit has to be called, can read the system's input while
 // the program is busy (the compositor's scrolling, Layers' step 4b). The
@@ -21,8 +21,10 @@ import sys.thread.Mutex;
 // Windows' builds. While the program runs on, the main thread may read the
 // system's input (waitMain: the compositor's, helder.ui.draw.Compositor),
 // woken by a call handed to it (wakeMain); the events are the program's
-// at its next poll, as before. HELDER_THREAD=0 keeps the program on the
-// main thread.
+// at its next poll, as before. A system's callback that comes meanwhile
+// and needs no answer (iOS's touches, a UIScrollView's offset) waits for
+// the program's next call (soon), so that the main thread never waits for
+// a busy program. HELDER_THREAD=0 keeps the program on the main thread.
 @:hxmc.unsafe(gc)
 class OsThread {
 	// the program's thread's Haxe id; 0 while the program runs on the main thread
@@ -55,7 +57,7 @@ class OsThread {
 		return false;
 		#else
 		if (Sys.getEnv("HELDER_THREAD") == "0") return false;
-		return (Platform.os() == 1 && Platform.apple() < 1) || Platform.os() == 2 || (Platform.os() == 0 && Platform.target() < 9);
+		return Platform.os() == 1 || Platform.os() == 2 || (Platform.os() == 0 && Platform.target() < 9);
 		#end
 	}
 
@@ -106,6 +108,21 @@ class OsThread {
 
 	public static function holdVoid(f:Void->Void)
 		if (reading()) back(f) else f();
+
+	// f where the program's state may be touched, from the main thread,
+	// nothing waited for: at once while the program waits for it, else on
+	// the main thread before the program's next call to it runs, in order
+	public static function soon(f:Void->Void) {
+		if (!reading()) {
+			f();
+			return;
+		}
+		mutex.acquire();
+		later.push(f);
+		mutex.release();
+	}
+
+	static final later:Array<Void->Void> = [];
 
 	// (the main thread reading input on its own, the program running on)
 	static function reading():Bool {
@@ -207,9 +224,17 @@ class OsThread {
 		while (true) {
 			mutex.acquire();
 			var c = inbox.shift();
+			// (the program waits for this call: what came for it meanwhile first)
+			var soon = c != null && c.wake != null && inbox == toMain && later.length > 0 ? later.splice(0, later.length) : null;
 			mutex.release();
 			if (c == null) return;
+			// (an error of one of those: the program's call's to throw)
+			var failed:Null<haxe.Exception> = null;
+			if (soon != null)
+				for (f in soon)
+					try f() catch (e:haxe.Exception) if (failed == null) failed = e;
 			try c.f() catch (e:haxe.Exception) c.error = e;
+			if (failed != null && c.error == null) c.error = failed;
 			mutex.acquire();
 			c.done = true;
 			mutex.release();

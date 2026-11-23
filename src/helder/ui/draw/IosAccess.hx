@@ -28,7 +28,9 @@ import hxmc.unsafe.*;
 // frame from what changed (AccessTree.changes), UIKit told
 // (UIAccessibilityLayoutChangedNotification, with the focused element: the
 // cursor moves there); a live region's change is an announcement
-// (UIAccessibilityAnnouncementNotification).
+// (UIAccessibilityAnnouncementNotification). All of it is the main
+// thread's (helder.os.OsThread); a question or action that needs the
+// program's tree waits for it (OsThread.hold).
 @:hxmc.unsafe(gc)
 class IosAccess {
 	static var elementClass = Ptr.nil();
@@ -53,8 +55,10 @@ class IosAccess {
 	public function new(window:helder.os.Window, ui:Ui) {
 		this.ui = ui;
 		view = window.surface.handle;
-		if (elementClass.isNull()) classes();
-		all.push(this);
+		helder.os.OsThread.run(() -> {
+			if (elementClass.isNull()) classes();
+			all.push(this);
+		});
 	}
 
 	// whether UIKit asked for the elements (their changes then sent)
@@ -96,7 +100,10 @@ class IosAccess {
 	var made = false;
 
 	// (UiWindow: after each frame)
-	public function update() {
+	public function update()
+		helder.os.OsThread.run(updateNow);
+
+	function updateNow() {
 		if (!made) {
 			made = true;
 			container();
@@ -182,7 +189,10 @@ class IosAccess {
 		return n.children.length == 0 || n.pressable() || n.editable() || n.valueNow != null || n.checked != null || n.role == Image || n.role == Heading
 			|| n.role == Link;
 
-	public function dispose() {
+	public function dispose()
+		helder.os.OsThread.run(disposeNow);
+
+	function disposeNow() {
 		for (e in elements)
 			Runtime.objc_release(e);
 		elements.clear();
@@ -300,13 +310,13 @@ class IosAccess {
 	}
 
 	@:hxmc.callback static function activate(self:Ptr, cmd:Ptr):Int
-		return act(self, Click) ? 1 : 0;
+		return helder.os.OsThread.hold(() -> act(self, Click)) ? 1 : 0;
 
 	@:hxmc.callback static function increment(self:Ptr, cmd:Ptr):Void
-		act(self, Increment);
+		helder.os.OsThread.holdVoid(() -> act(self, Increment));
 
 	@:hxmc.callback static function decrement(self:Ptr, cmd:Ptr):Void
-		act(self, Decrement);
+		helder.os.OsThread.holdVoid(() -> act(self, Decrement));
 
 	@:hxmc.callback static function notElement(self:Ptr, cmd:Ptr):Int
 		return 0;
@@ -328,7 +338,7 @@ class IosAccess {
 			if (m.view == self) {
 				if (!m.active) {
 					m.active = true;
-					m.update();
+					helder.os.OsThread.holdVoid(m.updateNow);
 				}
 				return m.list;
 			}

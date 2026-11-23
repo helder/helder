@@ -17,7 +17,11 @@ class CameraApple {
 	@:coroutine public static function take(front:Bool):Null<Bytes>
 		return Await.answer(done -> show(front, done));
 
-	static function show(front:Bool, done:Null<Bytes>->Void) {
+	// (UIKit's: the main thread's, OsThread; the answer from there too, which Await takes from any thread)
+	static function show(front:Bool, done:Null<Bytes>->Void)
+		OsThread.run(() -> showNow(front, done));
+
+	static function showNow(front:Bool, done:Null<Bytes>->Void) {
 		var host = helder.os.uikit.UIKitWindow.controllerNow(), picker = ObjC.cls("UIImagePickerController");
 		// (UIImagePickerControllerSourceTypeCamera 1; UIImagePickerControllerCameraDeviceFront 1)
 		if (host.isNull() || !Msg.bInt(picker, ObjC.sel("isSourceTypeAvailable:"), 1)) return done(null);

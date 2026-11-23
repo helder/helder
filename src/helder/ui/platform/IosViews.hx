@@ -24,6 +24,9 @@ import hxmc.unsafe.*;
 // selection are read; not while marked text is there (the node gets the
 // text once committed). The keyboard's focus taken back is let go of at
 // the next poll, so that moving it to another field keeps the keyboard up.
+// The views are the main thread's (helder.os.OsThread): made, changed and
+// read there; what the delegate hears while the program runs on is queued
+// at its next call (OsThread.soon).
 // No menus of its own: the drawn ones.
 @:allow(helder.ui.platform)
 @:hxmc.unsafe(gc)
@@ -40,27 +43,32 @@ class IosViews implements PlatformViews {
 	public function new(view:Ptr, ui:Ui) {
 		this.view = view;
 		this.ui = ui;
-		if (delegate.isNull()) {
-			// (hxmc dev's host: the class an earlier build made, its methods this build's)
-			var d = ObjC.cls("HxmcTextDelegate"), fresh = d.isNull();
-			if (fresh) d = Runtime.objc_allocateClassPair(ObjC.cls("NSObject"), Mem.cstr("HxmcTextDelegate"), 0);
-			inline function method(sel:String, imp:Ptr, types:String)
-				Runtime.class_replaceMethod(d, ObjC.sel(sel), imp, Mem.cstr(types));
-			method("hxmcChanged:", Callback.addr(changed), "v@:@");
-			method("textFieldDidBeginEditing:", Callback.addr(began), "v@:@");
-			method("textFieldDidEndEditing:", Callback.addr(ended), "v@:@");
-			method("textFieldDidChangeSelection:", Callback.addr(selected), "v@:@");
-			method("textFieldShouldReturn:", Callback.addr(returned), "B@:@");
-			method("textViewDidChange:", Callback.addr(changed), "v@:@");
-			method("textViewDidBeginEditing:", Callback.addr(began), "v@:@");
-			method("textViewDidEndEditing:", Callback.addr(ended), "v@:@");
-			method("textViewDidChangeSelection:", Callback.addr(selected), "v@:@");
-			if (fresh) Runtime.objc_registerClassPair(d);
-			delegate = Msg.id(Msg.id(d, ObjC.sel("alloc")), ObjC.sel("init"));
-		}
+		if (delegate.isNull()) helder.os.OsThread.run(classes);
 	}
 
-	public function editor(multiline:Bool):Null<PlatformEditor> {
+	static function classes() {
+		// (hxmc dev's host: the class an earlier build made, its methods this build's)
+		var d = ObjC.cls("HxmcTextDelegate"), fresh = d.isNull();
+		if (fresh) d = Runtime.objc_allocateClassPair(ObjC.cls("NSObject"), Mem.cstr("HxmcTextDelegate"), 0);
+		inline function method(sel:String, imp:Ptr, types:String)
+			Runtime.class_replaceMethod(d, ObjC.sel(sel), imp, Mem.cstr(types));
+		method("hxmcChanged:", Callback.addr(changed), "v@:@");
+		method("textFieldDidBeginEditing:", Callback.addr(began), "v@:@");
+		method("textFieldDidEndEditing:", Callback.addr(ended), "v@:@");
+		method("textFieldDidChangeSelection:", Callback.addr(selected), "v@:@");
+		method("textFieldShouldReturn:", Callback.addr(returned), "B@:@");
+		method("textViewDidChange:", Callback.addr(changed), "v@:@");
+		method("textViewDidBeginEditing:", Callback.addr(began), "v@:@");
+		method("textViewDidEndEditing:", Callback.addr(ended), "v@:@");
+		method("textViewDidChangeSelection:", Callback.addr(selected), "v@:@");
+		if (fresh) Runtime.objc_registerClassPair(d);
+		delegate = Msg.id(Msg.id(d, ObjC.sel("alloc")), ObjC.sel("init"));
+	}
+
+	public function editor(multiline:Bool):Null<PlatformEditor>
+		return helder.os.OsThread.get(() -> editorNow(multiline));
+
+	function editorNow(multiline:Bool):Null<PlatformEditor> {
 		var v = Arena.scopedValue(a -> {
 			var r = a.make(CGRect);
 			r.value.size.width = 10;
@@ -90,19 +98,24 @@ class IosViews implements PlatformViews {
 	public function menuBar(menus:Array<PlatformMenuItem>, chosen:Int->Void):Bool
 		return false;
 
-	function push(e:IosEditor, kind:Int) {
-		queue.push({e: e, kind: kind});
-		ui.requestFrame();
-	}
+	function push(e:IosEditor, kind:Int)
+		helder.os.OsThread.soon(() -> {
+			queue.push({e: e, kind: kind});
+			ui.requestFrame();
+		});
 
 	// (hxmc dev's host, at a hand-over: the editors gone with this build, whose code they call)
-	public function dispose() {
-		for (e in editors.copy())
-			if (@:privateAccess e.views == this) e.dispose();
-		queue.resize(0);
-	}
+	public function dispose()
+		helder.os.OsThread.run(() -> {
+			for (e in editors.copy())
+				if (@:privateAccess e.views == this) e.disposeNow();
+			queue.resize(0);
+		});
 
-	public function poll() {
+	public function poll()
+		helder.os.OsThread.run(pollNow);
+
+	function pollNow() {
 		var r = resigning;
 		resigning = null;
 		if (r != null && Msg.b(r.view, ObjC.sel("isFirstResponder"))) {
@@ -224,18 +237,24 @@ class IosEditor implements PlatformEditor {
 		return [s, e];
 	}
 
-	public function setText(text:String, start:Int, end:Int) {
+	public function setText(text:String, start:Int, end:Int)
+		helder.os.OsThread.run(() -> setTextNow(text, start, end));
+
+	function setTextNow(text:String, start:Int, end:Int) {
 		var s = ObjC.str(text);
 		setting = true;
 		Msg.vPtr(view, ObjC.sel("setText:"), s);
 		setting = false;
 		ObjC.release(s);
 		reported = text;
-		select(start, end);
+		selectNow(start, end);
 	}
 
-	public function select(start:Int, end:Int) {
-		if (composing()) return;
+	public function select(start:Int, end:Int)
+		helder.os.OsThread.run(() -> selectNow(start, end));
+
+	function selectNow(start:Int, end:Int) {
+		if (gone || composing()) return;
 		var b = Msg.id(view, ObjC.sel("beginningOfDocument")), sel = ObjC.sel("positionFromPosition:offset:");
 		var from = Msg.idPtrInt(view, sel, b, start), to = Msg.idPtrInt(view, sel, b, end);
 		if (from.isNull() || to.isNull()) return;
@@ -245,9 +264,14 @@ class IosEditor implements PlatformEditor {
 	}
 
 	public function setKind(kind:helder.os.TextKind)
-		UIKitTraits.apply(view, kind);
+		helder.os.OsThread.run(() -> if (!gone) UIKitTraits.apply(view, kind));
 
-	public function place(x:Float, y:Float, width:Float, height:Float, shown:Bool) {
+	public function place(x:Float, y:Float, width:Float, height:Float, shown:Bool)
+		helder.os.OsThread.run(() -> placeNow(x, y, width, height, shown));
+
+	// (a move the compositor posted may come after dispose: nothing then)
+	function placeNow(x:Float, y:Float, width:Float, height:Float, shown:Bool) {
+		if (gone) return;
 		Arena.scoped(a -> {
 			var r = a.make(CGRect);
 			r.value.origin.x = x;
@@ -260,7 +284,10 @@ class IosEditor implements PlatformEditor {
 	}
 
 	// (secret: the kind's secure entry, setKind)
-	public function setStyle(font:Font, color:Color, background:Color, placeholder:String, placeholderColor:Color, align:TextAlign, secret:Bool) {
+	public function setStyle(font:Font, color:Color, background:Color, placeholder:String, placeholderColor:Color, align:TextAlign, secret:Bool)
+		helder.os.OsThread.run(() -> if (!gone) styleNow(font, color, placeholder, placeholderColor, align));
+
+	function styleNow(font:Font, color:Color, placeholder:String, placeholderColor:Color, align:TextAlign) {
 		Msg.vPtr(view, ObjC.sel("setFont:"), IosViews.uiFont(font));
 		Msg.vPtr(view, ObjC.sel("setTextColor:"), IosViews.uiColor(color));
 		// (NSTextAlignment on iOS: left 0, center 1, right 2, justified 3)
@@ -274,7 +301,10 @@ class IosEditor implements PlatformEditor {
 		ObjC.release(p);
 	}
 
-	public function focus(on:Bool) {
+	public function focus(on:Bool)
+		helder.os.OsThread.run(() -> if (!gone) focusNow(on));
+
+	function focusNow(on:Bool) {
 		if (on) {
 			if (views.resigning == this) views.resigning = null;
 			focusing = true;
@@ -288,7 +318,14 @@ class IosEditor implements PlatformEditor {
 		}
 	}
 
-	public function dispose() {
+	public function dispose()
+		helder.os.OsThread.run(disposeNow);
+
+	var gone = false;
+
+	function disposeNow() {
+		if (gone) return;
+		gone = true;
 		IosViews.editors.remove(this);
 		if (views.resigning == this) views.resigning = null;
 		focusing = true;

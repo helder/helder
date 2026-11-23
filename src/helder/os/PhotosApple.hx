@@ -19,7 +19,11 @@ class PhotosApple {
 	@:coroutine public static function pick(max:Int):Array<Bytes>
 		return Await.answer(done -> Platform.apple() >= 1 ? ios(max, done) : done(Photos.dialog()));
 
-	static function ios(max:Int, done:Array<Bytes>->Void) {
+	// (UIKit's: the main thread's, OsThread; the answer from any thread, as its loads end)
+	static function ios(max:Int, done:Array<Bytes>->Void)
+		OsThread.run(() -> iosNow(max, done));
+
+	static function iosNow(max:Int, done:Array<Bytes>->Void) {
 		var host = helder.os.uikit.UIKitWindow.controllerNow();
 		if (host.isNull()) return done([]);
 		var pool = Runtime.objc_autoreleasePoolPush();

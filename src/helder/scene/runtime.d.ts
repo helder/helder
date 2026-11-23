@@ -2990,11 +2990,13 @@ export declare class Window {
 // an idle app sleeps as elsewhere; the background, a window lost, pause
 // them (App.frame.pause: the next delta a period). Each turn begins a
 // frame of Pointers' (Pointers.step) before its events.
-// On macOS and Linux the loop runs on a thread of its own, the main
-// thread the system's (OsThread), which reads the input while the
+// On macOS, iOS, Windows and Linux the loop runs on a thread of its own,
+// the main thread the system's (OsThread), which reads the input while the
 // program runs on: each event goes to its window's compositor first
 // (Window.route: scrolling while the program is busy), then to the
-// program's next poll. beforeEvents run at each turn's start.
+// program's next poll; on iOS it turns UIKit's run loop, its scroll views'
+// offsets the compositor's as they move. beforeEvents run at each turn's
+// start.
 //
 // helder.async's loop (the main thread's, once something made it: a task
 // launched, a job run) runs on the app's: a turn of it in each turn of the

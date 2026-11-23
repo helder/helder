@@ -57,7 +57,7 @@ class AudioSession {
 			var session = Msg.id(ObjC.cls("AVAudioSession"), ObjC.sel("sharedInstance"));
 			SessionMsg.bBoolPtr(session, ObjC.sel("setActive:error:"), true, Ptr.nil());
 		}
-		Audio.interrupted(began);
+		helder.os.OsThread.soon(() -> Audio.interrupted(began));
 	}
 }
 

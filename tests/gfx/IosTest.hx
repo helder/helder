@@ -22,11 +22,18 @@ import Cube.Spin;
 //   the app received it (its moves' times: a simulator delivers injected
 //   moves at its own pace, so the speed is the drag's, not the injector's).
 //   The app runs until the system ends it (simctl terminate).
+// - `IosTest scroll`: the program on its own thread instead, a UiWindow
+//   (tests/ui/IosScrollCheck.hx: UIScrollView's offsets to the compositor
+//   while the program is blocked, a native field typed into).
 class IosTest {
 	static inline var WIDTH = 256;
 	static inline var HEIGHT = 192;
 
 	static function main() {
+		if (Sys.args().indexOf("scroll") >= 0) {
+			IosScrollCheck.run();
+			return;
+		}
 		Sys.println("IosTest: start");
 		var device = Device.create(Surface.headless(WIDTH, HEIGHT));
 		var draw = Scene.make("cube", device);

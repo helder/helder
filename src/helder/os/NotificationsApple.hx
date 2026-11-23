@@ -74,7 +74,7 @@ class NotificationsApple {
 		var id = ObjC.string(Msg.id(Msg.id(Msg.id(r, ObjC.sel("notification")), ObjC.sel("request")), ObjC.sel("identifier")));
 		var f:Void->Void = (cast done : Block<Void->Void>);
 		f();
-		if (id != null) Notifications.open(id);
+		if (id != null) OsThread.soon(() -> Notifications.open(id));
 	}
 	#else
 	public static function schedule(id:String, title:String, body:String, seconds:Float, at:Null<Date>):Bool

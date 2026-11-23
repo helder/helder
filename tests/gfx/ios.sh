@@ -18,6 +18,10 @@
 #   - a screenshot (simctl io) to <out>/cube-ios.png;
 #   - (full) another app (Settings) sends it to the background (Suspend),
 #     launching it again brings it back (Resume) and frames go on;
+#   - launched again as `IosTest scroll` (tests/ui/IosScrollCheck.hx): a
+#     list's UIScrollView animated by UIKit while the program is blocked,
+#     the compositor's frames coming meanwhile at its offsets, the program
+#     at the view's offset after; text typed into a native field;
 #   - (full, or a failure) the system log of the app's process to
 #     <out>/log.txt; a simulator made here is deleted at the end.
 # (The bundle's static checks, codesign --verify and plutil -lint, are the
@@ -164,6 +168,19 @@ if [ "$suite" = full ]; then
 	wait_for "IosTest: frames $((frames + 60))" 60
 	check "frames after Resume" $?
 fi
+# (the program on its own thread: UIScrollView's offsets to the compositor while it is blocked)
+xcrun simctl terminate "$udid" $id > /dev/null 2>&1
+scroll="$out/scroll.txt"
+rm -f "$scroll" "$out/scroll-stderr.txt"
+xcrun simctl launch --terminate-running-process --stdout="$scroll" --stderr="$out/scroll-stderr.txt" "$udid" $id scroll
+i=0
+while [ $i -lt 60 ] && ! grep -q "IosScrollCheck: ok$\|IosScrollCheck: [0-9]* FAILED" "$scroll" 2>/dev/null; do
+	sleep 1
+	i=$((i + 1))
+done
+cat "$scroll"
+grep -q "IosScrollCheck: ok$" "$scroll"
+check "UIScrollView's offsets to the compositor while the program is blocked; a native field typed into (IosTest scroll)" $?
 # (the system log: a minute and more on a runner, so on a failure and in the full suite)
 if [ $failed != 0 ] || [ "$suite" = full ]; then
 	xcrun simctl spawn "$udid" log show --last 10m --style compact --predicate 'process == "IosTest"' > "$out/log.txt" 2>&1

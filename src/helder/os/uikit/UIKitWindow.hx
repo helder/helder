@@ -42,6 +42,13 @@ import hxmc.unsafe.*;
 // keyboard's frame (UIKeyboardWillChangeFrameNotification) is
 // Window.keyboard: its overlap with the view, its animation's duration, a
 // Resize.
+// The program runs on a thread of its own (helder.os.OsThread), UIKit on
+// the main one: every call into UIKit goes there (OsThread.run), and while
+// the program runs on, the main thread turns the run loop itself (pump),
+// so that UIKit's own scrolling (IosScroll), animations and the keyboard
+// keep the display's pace. What UIKit tells meanwhile (touches, read at
+// once; the layout; text typed) is the program's at its next call
+// (OsThread.soon), its events on its thread (OsThread.back).
 @:allow(helder.os)
 @:hxmc.unsafe(gc)
 class UIKitWindow {
@@ -85,6 +92,10 @@ class UIKitWindow {
 	final size:Ptr<CGSize>;
 	// (a drawn field's traits: Window.textKind)
 	var kind = TextKind.PLAIN;
+
+	// (made on the main thread, as UIKit's views must be: OsThread)
+	static function make(owner:Window, title:String, width:Int, height:Int):UIKitWindow
+		return OsThread.get(() -> new UIKitWindow(owner, title, width, height));
 
 	function new(owner:Window, title:String, width:Int, height:Int) {
 		if (current != null) throw "helder.os: an iOS app has one window";
@@ -159,19 +170,21 @@ class UIKitWindow {
 		return barStyle;
 
 	// helder.os.StatusBar: the style and hiding asked of the controller again
-	static function statusBar(style:Int, hide:Bool) {
-		barStyle = style;
-		barHidden = hide;
-		if (current != null) Msg.v(current.controller, ObjC.sel("setNeedsStatusBarAppearanceUpdate"));
-	}
+	static function statusBar(style:Int, hide:Bool)
+		OsThread.run(() -> {
+			barStyle = style;
+			barHidden = hide;
+			if (current != null) Msg.v(current.controller, ObjC.sel("setNeedsStatusBarAppearanceUpdate"));
+		});
 
 	// Window.immersive: the status bar and the home indicator hidden (the controller asked again)
-	function setImmersive(on:Bool) {
-		immersive = on;
-		hidden = on;
-		Msg.v(controller, ObjC.sel("setNeedsStatusBarAppearanceUpdate"));
-		Msg.v(controller, ObjC.sel("setNeedsUpdateOfHomeIndicatorAutoHidden"));
-	}
+	function setImmersive(on:Bool)
+		OsThread.run(() -> {
+			immersive = on;
+			hidden = on;
+			Msg.v(controller, ObjC.sel("setNeedsStatusBarAppearanceUpdate"));
+			Msg.v(controller, ObjC.sel("setNeedsUpdateOfHomeIndicatorAutoHidden"));
+		});
 
 	// ---- the display's frames (CADisplayLink)
 
@@ -182,31 +195,37 @@ class UIKitWindow {
 		CF.CFRunLoopStop(CF.CFRunLoopGetMain());
 	}
 
-	static inline function vsynced():Bool
-		return due;
+	// (the link's state the main thread's: OsThread)
+	static function vsynced():Bool
+		return OsThread.get(() -> due);
 
 	// the vsync's frame drawn now: its time
-	static function takeVsync():Float {
-		due = false;
-		return vsyncAt;
-	}
+	static function takeVsync():Float
+		return OsThread.get(() -> {
+			due = false;
+			vsyncAt;
+		});
 
 	// the link running: a callback at the next vsync
-	static function requestVsync() {
-		if (linked || link.isNull()) return;
-		linked = true;
-		Msg.vBool(link, ObjC.sel("setPaused:"), false);
-	}
+	static function requestVsync()
+		OsThread.run(() -> {
+			if (linked || link.isNull()) return;
+			linked = true;
+			Msg.vBool(link, ObjC.sel("setPaused:"), false);
+		});
 
 	// held: no callback until asked for again
-	static function pauseVsync() {
-		if (!linked) return;
-		linked = false;
-		Msg.vBool(link, ObjC.sel("setPaused:"), true);
-	}
+	static function pauseVsync()
+		OsThread.run(() -> {
+			if (!linked) return;
+			linked = false;
+			Msg.vBool(link, ObjC.sel("setPaused:"), true);
+		});
 
 	static function start() {
 		mode = ObjC.str("kCFRunLoopDefaultMode");
+		OsThread.waitMain = pump;
+		OsThread.wakeMain = wakeMain;
 		#if hxmc.dev_host
 		// (hxmc dev: the view's class and the app delegate's an earlier build made: their methods this build's)
 		var made = Runtime.objc_getClass(Mem.cstr("HxmcView"));
@@ -271,17 +290,19 @@ class UIKitWindow {
 	}
 
 	// Window.startTextInput and stopTextInput: the view first responder (the keyboard up) or not
-	function textInput(on:Bool) {
-		typing = on;
-		var first = Msg.b(view, ObjC.sel("isFirstResponder"));
-		if (on && !first) Msg.b(view, ObjC.sel("becomeFirstResponder")) else if (!on && first) Msg.b(view, ObjC.sel("resignFirstResponder"));
-	}
+	function textInput(on:Bool)
+		OsThread.run(() -> {
+			typing = on;
+			var first = Msg.b(view, ObjC.sel("isFirstResponder"));
+			if (on && !first) Msg.b(view, ObjC.sel("becomeFirstResponder")) else if (!on && first) Msg.b(view, ObjC.sel("resignFirstResponder"));
+		});
 
 	// Window.textKind: the traits the view answers, the keyboard made again when it is up
-	function setKind(k:TextKind) {
-		kind = k;
-		if (Msg.b(view, ObjC.sel("isFirstResponder"))) Msg.v(view, ObjC.sel("reloadInputViews"));
-	}
+	function setKind(k:TextKind)
+		OsThread.run(() -> {
+			kind = k;
+			if (Msg.b(view, ObjC.sel("isFirstResponder"))) Msg.v(view, ObjC.sel("reloadInputViews"));
+		});
 
 	static inline function kindNow():TextKind
 		return current == null ? TextKind.PLAIN : current.kind;
@@ -318,13 +339,16 @@ class UIKitWindow {
 		var r = Msg.rectRectPtr(self, ObjC.sel("convertRect:fromView:"), Msg.rect(end, ObjC.sel("CGRectValue")), Ptr.nil());
 		var h = Msg.rect(self, ObjC.sel("bounds")).size.height;
 		var over = r.origin.y + r.size.height < h - 1 ? 0.0 : Math.max(0, Math.min(h, h - r.origin.y));
-		w.owner.keyboardChanged(over, time.isNull() ? 0 : Msg.f(time, ObjC.sel("doubleValue")));
-		var e = event;
-		e.kind = Resize;
-		e.window = w.owner;
-		e.x = w.surface.width;
-		e.y = w.surface.height;
-		dispatch(e);
+		var seconds = time.isNull() ? 0 : Msg.f(time, ObjC.sel("doubleValue"));
+		OsThread.soon(() -> {
+			w.owner.keyboardChanged(over, seconds);
+			var e = event;
+			e.kind = Resize;
+			e.window = w.owner;
+			e.x = w.surface.width;
+			e.y = w.surface.height;
+			dispatch(e);
+		});
 	}
 
 	@:hxmc.callback static function canBecomeFirstResponder(self:Ptr, cmd:Ptr):Int
@@ -337,19 +361,23 @@ class UIKitWindow {
 	@:hxmc.callback static function insertText(self:Ptr, cmd:Ptr, text:Ptr):Void {
 		var w = current, s = ObjC.string(text);
 		if (w == null || s == null) return;
+		OsThread.soon(() -> w.insert(s));
+	}
+
+	function insert(s:String) {
 		var typed = new StringBuf();
 		for (cp in new haxe.iterators.StringIteratorUnicode(s))
 			if (cp == "\n".code || cp == "\r".code) {
-				w.typeText(typed.toString());
+				typeText(typed.toString());
 				typed = new StringBuf();
-				w.press(0xFF0D);
+				press(0xFF0D);
 			} else if (cp >= 0x20 && cp != 0x7F) typed.addChar(cp);
-		w.typeText(typed.toString());
+		typeText(typed.toString());
 	}
 
 	@:hxmc.callback static function deleteBackward(self:Ptr, cmd:Ptr):Void {
 		var w = current;
-		if (w != null) w.press(0xFF08);
+		if (w != null) OsThread.soon(() -> w.press(0xFF08));
 	}
 
 	function typeText(text:String) {
@@ -420,12 +448,17 @@ class UIKitWindow {
 
 	@:hxmc.callback static function layoutSubviews(self:Ptr, cmd:Ptr):Void {
 		var w = current;
-		if (w == null || w.view != self || !w.measure()) return;
+		if (w != null && w.view == self) OsThread.soon(w.laidOut);
+	}
+
+	// (on the main thread, the program waiting: its size and safe area measured, told)
+	function laidOut() {
+		if (!measure()) return;
 		var e = event;
 		e.kind = Resize;
-		e.window = w.owner;
-		e.x = w.surface.width;
-		e.y = w.surface.height;
+		e.window = owner;
+		e.x = surface.width;
+		e.y = surface.height;
 		dispatch(e);
 	}
 
@@ -435,41 +468,29 @@ class UIKitWindow {
 	@:hxmc.callback static function touchesBegan(self:Ptr, cmd:Ptr, touches:Ptr, ev:Ptr):Void {
 		var w = current;
 		if (w == null) return;
-		var all = Msg.id(touches, ObjC.sel("allObjects")), n = Msg.i(all, ObjC.sel("count"));
-		var i:Int64 = 0;
-		while (i < n) {
-			var t = Msg.idInt(all, ObjC.sel("objectAtIndex:"), i);
-			i++;
-			w.locate(t);
-			var p = Pointers.press(w.owner, key(t), type(t), w.lastX, w.lastY, force(t), time(t));
+		var all = w.read(touches, Ptr.nil());
+		OsThread.soon(() -> for (t in all) {
+			var p = Pointers.press(w.owner, t.key, t.type, t.x, t.y, t.force, t.time);
 			if (p != null) w.send(PointerDown, p, 1);
-		}
+		});
 	}
 
 	@:hxmc.callback static function touchesMoved(self:Ptr, cmd:Ptr, touches:Ptr, ev:Ptr):Void {
 		var w = current;
 		if (w == null) return;
-		var all = Msg.id(touches, ObjC.sel("allObjects")), n = Msg.i(all, ObjC.sel("count"));
-		var i:Int64 = 0;
-		while (i < n) {
-			var t = Msg.idInt(all, ObjC.sel("objectAtIndex:"), i);
-			i++;
-			var p = Pointers.find(key(t), type(t));
+		var all = w.read(touches, ev);
+		OsThread.soon(() -> for (t in all) {
+			var p = Pointers.find(t.key, t.type);
 			if (p == null) continue;
 			// (the touches the screen saw since the last: the latest is t)
-			var co = ev.isNull() ? Ptr.nil() : Msg.idPtr(ev, ObjC.sel("coalescedTouchesForTouch:"), t);
-			var cn = co.isNull() ? 0 : Msg.i(co, ObjC.sel("count"));
-			var j:Int64 = 0;
-			while (j < cn - 1) {
-				var c = Msg.idInt(co, ObjC.sel("objectAtIndex:"), j);
-				j++;
-				w.locate(c);
-				@:privateAccess p.sample(w.lastX, w.lastY, time(c));
+			var k = 0;
+			while (k < t.samples.length) {
+				@:privateAccess p.sample(t.samples[k], t.samples[k + 1], t.samples[k + 2]);
+				k += 3;
 			}
-			w.locate(t);
-			@:privateAccess p.moveTo(w.lastX, w.lastY, force(t), time(t));
+			@:privateAccess p.moveTo(t.x, t.y, t.force, t.time);
 			w.send(PointerMove, p, 0);
-		}
+		});
 	}
 
 	@:hxmc.callback static function touchesEnded(self:Ptr, cmd:Ptr, touches:Ptr, ev:Ptr):Void
@@ -481,19 +502,41 @@ class UIKitWindow {
 	static function lift(touches:Ptr, cancelled:Bool) {
 		var w = current;
 		if (w == null) return;
-		var all = Msg.id(touches, ObjC.sel("allObjects")), n = Msg.i(all, ObjC.sel("count"));
+		var all = w.read(touches, Ptr.nil());
+		OsThread.soon(() -> for (t in all) {
+			var p = Pointers.find(t.key, t.type);
+			if (p != null) {
+				@:privateAccess p.moveTo(t.x, t.y, p.pressure, t.time);
+				Pointers.lift(p, cancelled, t.time);
+				w.send(cancelled ? PointerCancel : PointerUp, p, cancelled ? 0 : 1);
+			}
+		});
+	}
+
+	// (the touches as they are now, read on the main thread: UIKit changes
+	// a UITouch as its finger moves, and its coalesced ones are the event's)
+	function read(touches:Ptr, ev:Ptr):Array<TouchAt> {
+		var all = Msg.id(touches, ObjC.sel("allObjects")), n = Msg.i(all, ObjC.sel("count")), out = [];
 		var i:Int64 = 0;
 		while (i < n) {
 			var t = Msg.idInt(all, ObjC.sel("objectAtIndex:"), i);
 			i++;
-			var p = Pointers.find(key(t), type(t));
-			if (p != null) {
-				w.locate(t);
-				@:privateAccess p.moveTo(w.lastX, w.lastY, p.pressure, time(t));
-				Pointers.lift(p, cancelled, time(t));
-				w.send(cancelled ? PointerCancel : PointerUp, p, cancelled ? 0 : 1);
+			var samples = [];
+			var co = ev.isNull() ? Ptr.nil() : Msg.idPtr(ev, ObjC.sel("coalescedTouchesForTouch:"), t);
+			var cn = co.isNull() ? 0 : Msg.i(co, ObjC.sel("count"));
+			var j:Int64 = 0;
+			while (j < cn - 1) {
+				var c = Msg.idInt(co, ObjC.sel("objectAtIndex:"), j);
+				j++;
+				locate(c);
+				samples.push(lastX);
+				samples.push(lastY);
+				samples.push(time(c));
 			}
+			locate(t);
+			out.push(new TouchAt(key(t), type(t), lastX, lastY, force(t), time(t), samples));
 		}
+		return out;
 	}
 
 	// a UITouch's key (Pointers: its address, folded)
@@ -537,6 +580,7 @@ class UIKitWindow {
 		if (!on) pauseVsync();
 	}
 
+	// (the program waiting, on the main thread: UIKitApp's)
 	static function suspend(on:Bool) {
 		if (on == suspended) return;
 		suspended = on;
@@ -555,28 +599,55 @@ class UIKitWindow {
 		dispatch(e);
 	}
 
-	static function dispatch(e:Event)
-		if (onEvent != null) onEvent(e);
+	// (on the program's thread: OsThread)
+	static function dispatch(e:Event) {
+		var f = onEvent;
+		if (f != null) OsThread.back(() -> f(e));
+	}
 
 	// whether a frame can be drawn now (active: not in the background, nor inactive)
 	static function drawable():Bool
-		return current != null && !suspended && !inactive;
+		return OsThread.get(() -> current != null && !suspended && !inactive);
 
 	// the run loop's pending sources, without waiting (the view's and the
-	// delegate's callbacks come from inside)
-	static function poll(onEvent:Event->Void) {
-		UIKitWindow.onEvent = onEvent;
-		if (mode.isNull()) return;
-		while (CF.CFRunLoopRunInMode(mode, 0, true) == 4) {}
-	}
+	// delegate's callbacks come from inside); served from inside a callout
+	// (a callback waiting for the program: OsThread.nested), what came
+	// meanwhile only, the run loop not run again inside UIKit's own call
+	static function poll(onEvent:Event->Void)
+		OsThread.run(() -> {
+			UIKitWindow.onEvent = onEvent;
+			if (mode.isNull() || OsThread.nested()) return;
+			while (CF.CFRunLoopRunInMode(mode, 0, true) == 4) {}
+		});
 
 	// waits for a source of the run loop, or seconds (< 0: no limit)
-	static function wait(seconds:Float) {
-		if (mode.isNull()) return;
-		CF.CFRunLoopRunInMode(mode, seconds < 0 ? 1e9 : seconds, true);
+	static function wait(seconds:Float)
+		OsThread.run(() -> {
+			if (mode.isNull() || OsThread.nested()) return;
+			CF.CFRunLoopRunInMode(mode, seconds < 0 ? 1e9 : seconds, true);
+		});
+
+	// the main thread's wait while the program runs on: the run loop turned
+	// (UIKit's touches, layout, scroll views and animations), until a
+	// source is handled or a call comes (wakeMain stops it)
+	static function pump():Bool {
+		if (mode.isNull()) return false;
+		var pool = Runtime.objc_autoreleasePoolPush();
+		CF.CFRunLoopRunInMode(mode, 1.0, true);
+		Runtime.objc_autoreleasePoolPop(pool);
+		return true;
 	}
 
-	function destroy() {
+	static function wakeMain() {
+		var main = CF.CFRunLoopGetMain();
+		CF.CFRunLoopStop(main);
+		CF.CFRunLoopWakeUp(main);
+	}
+
+	function destroy()
+		OsThread.run(destroyNow);
+
+	function destroyNow() {
 		current = null;
 		Msg.vPtr(Msg.id(ObjC.cls("NSNotificationCenter"), ObjC.sel("defaultCenter")), ObjC.sel("removeObserver:"), view);
 		// (the link's target is this build's view class's method: gone with it, also at a hand-over)
@@ -601,11 +672,12 @@ class UIKitWindow {
 	}
 
 	// the general pasteboard's text (UIPasteboard)
-	static function writeClipboard(text:String) {
-		var s = ObjC.str(text);
-		Msg.vPtr(Msg.id(ObjC.cls("UIPasteboard"), ObjC.sel("generalPasteboard")), ObjC.sel("setString:"), s);
-		ObjC.release(s);
-	}
+	static function writeClipboard(text:String)
+		OsThread.run(() -> {
+			var s = ObjC.str(text);
+			Msg.vPtr(Msg.id(ObjC.cls("UIPasteboard"), ObjC.sel("generalPasteboard")), ObjC.sel("setString:"), s);
+			ObjC.release(s);
+		});
 
 	// helder.os.Haptics: a selection's tick (UISelectionFeedbackGenerator),
 	// a medium impact (UIImpactFeedbackGenerator, style 1), each made and let go
@@ -613,7 +685,10 @@ class UIKitWindow {
 	static function controllerNow():Ptr
 		return current == null ? Ptr.nil() : current.controller;
 
-	static function haptic(strong:Bool) {
+	static function haptic(strong:Bool)
+		OsThread.run(() -> hapticNow(strong));
+
+	static function hapticNow(strong:Bool) {
 		var g = strong ? Msg.idInt(Msg.id(ObjC.cls("UIImpactFeedbackGenerator"), ObjC.sel("alloc")), ObjC.sel("initWithStyle:"), 1) : Msg.id(Msg.id(ObjC.cls("UISelectionFeedbackGenerator"),
 			ObjC.sel("alloc")), ObjC.sel("init"));
 		if (g.isNull()) return;
@@ -621,7 +696,10 @@ class UIKitWindow {
 		ObjC.release(g);
 	}
 
-	static function readClipboard():Null<String> {
+	static function readClipboard():Null<String>
+		return OsThread.get(readClipboardNow);
+
+	static function readClipboardNow():Null<String> {
 		var pool = Runtime.objc_autoreleasePoolPush();
 		var text = ObjC.string(Msg.id(Msg.id(ObjC.cls("UIPasteboard"), ObjC.sel("generalPasteboard")), ObjC.sel("string")));
 		Runtime.objc_autoreleasePoolPop(pool);
@@ -630,5 +708,27 @@ class UIKitWindow {
 
 	// the system's appearance (the trait collection's interface style: 2 dark)
 	static function dark():Bool
-		return Msg.i(Msg.id(ObjC.cls("UITraitCollection"), ObjC.sel("currentTraitCollection")), ObjC.sel("userInterfaceStyle")) == 2;
+		return OsThread.get(() -> Msg.i(Msg.id(ObjC.cls("UITraitCollection"), ObjC.sel("currentTraitCollection")), ObjC.sel("userInterfaceStyle")) == 2);
+}
+
+// (a touch as UIKit had it when it told: the program's at its next call)
+private class TouchAt {
+	public final key:Int;
+	public final type:PointerType;
+	public final x:Float;
+	public final y:Float;
+	public final force:Float;
+	public final time:Float;
+	// (its coalesced touches before it: x, y, time each)
+	public final samples:Array<Float>;
+
+	public function new(key, type, x, y, force, time, samples) {
+		this.key = key;
+		this.type = type;
+		this.x = x;
+		this.y = y;
+		this.force = force;
+		this.time = time;
+		this.samples = samples;
+	}
 }

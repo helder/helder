@@ -516,6 +516,15 @@ class ScrollMirror extends ScrollHost {
 		}
 	}
 
+	// n placed at x, y by the platform's own scroll view (iOS's: IosScroll),
+	// its physics not the mirror's: as if sent, the program told by the view
+	public function place(n:Node, x:Float, y:Float) {
+		var m = byNode.get(n);
+		if (m == null) return;
+		m.scrollX = m.sentX = x;
+		m.scrollY = m.sentY = y;
+	}
+
 	// the mirror's offsets of the program's node n (null: none)
 	public function offsets(n:Node):Null<{x:Float, y:Float}> {
 		var m = byNode.get(n);
