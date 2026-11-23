@@ -42,7 +42,7 @@ import helder.ui.gesture.TouchScroll;
 // the press (PointerCancel). A press released within the slop of where it
 // went down (or twice that, on the node it went down on) clicks. The mouse's presses feed the arena too, its
 // clicks as before.
-class Ui {
+class Ui extends ScrollHost {
 	public final root:Node;
 	// the layers above the tree (Popup nodes, the last on top)
 	public final overlay:Node;
@@ -232,6 +232,8 @@ class Ui {
 	var dragX = false;
 	var dragFrom = 0.0;
 	var dragScroll = 0.0;
+	// (the thumb's drag the compositor's: ScrollMirror moves it)
+	var dragMirrored = false;
 
 	// a scrollbar's thickness and its inset from the node's border
 	public static inline var SCROLLBAR = 6.0;
@@ -243,6 +245,7 @@ class Ui {
 	public final context:ScreenContext;
 
 	public function new(text:TextEngine, width:Float, height:Float) {
+		super();
 		context = ScreenContext.current;
 		this.text = text;
 		this.width = width;
@@ -253,8 +256,6 @@ class Ui {
 		overlay.attach(this);
 		touchScroll = @:privateAccess new TouchScroll(this);
 		walker = new UiWalk(this);
-		trackpad = @:privateAccess new Trackpad(this);
-		stretcher = @:privateAccess new Stretch(this);
 		// (Copy: the selected text, while there is some)
 		on(helder.ui.actions.Actions.StandardAction, a -> switch a {
 			case Copy if (selectedText() != ""):
@@ -295,7 +296,7 @@ class Ui {
 		return k;
 	}
 
-	public function requestFrame() {
+	override public function requestFrame() {
 		needsFrame = true;
 		requests++;
 	}
@@ -346,7 +347,7 @@ class Ui {
 		tellResized();
 		// (the scrollers whose extents may have changed)
 		for (n in rounded)
-			if (!@:privateAccess trackpad.holds(n)) Scrolling.clamp(n);
+			if (!@:privateAccess trackpad.holds(n) && !mirrorHeld.exists(n)) Scrolling.clamp(n);
 		rounded.resize(0);
 		changes.resize(0);
 		reveal();
@@ -514,6 +515,14 @@ class Ui {
 				g.redraw(-1);
 			} else walkRoot(canvas, false, true);
 		} else walkRoot(canvas, true, true);
+		// (the compositor's frame: the tree whole once more, the scrollers' content over what they were recorded over)
+		if (g != null && g.composites()) {
+			g.redraw(-2);
+			composing = g;
+			walkRoot(canvas, false, true);
+			composing = null;
+			g.redraw(-3);
+		}
 		flights.resize(0);
 		flightAt.resize(0);
 		walking = false;
@@ -537,6 +546,8 @@ class Ui {
 	static final nowhere = new Nowhere();
 	// (in a layered paint; the canvas it draws onto, every list's target: Renderer.of)
 	var walking = false;
+	// (the compositor's walk's canvas: TextureCanvas.composites)
+	var composing:Null<TextureCanvas> = null;
 	var target:Null<Canvas> = null;
 	// (the list and layer being recorded: paintNode records its cull entries too)
 	var recording:Null<DisplayList> = null;
@@ -786,7 +797,16 @@ class Ui {
 				layerMoved(l, w.x0, w.y0, w.x1, w.y1);
 			}
 		}
-		drawLayer(l, c, w);
+		var g = composing;
+		if (g != null && g.enter(n, 0)) {
+			// (over what it was recorded over: the compositor moves it)
+			w.save();
+			w.set(l.x0, l.y0, l.x1, l.y1);
+			drawLayer(l, c, w);
+			w.restore();
+			g.leave();
+		} else
+			drawLayer(l, c, w);
 		if (scroll) {
 			c.translate(sx, sy);
 			w.ptx += sx;
@@ -1265,7 +1285,9 @@ class Ui {
 					var corner = Scrolling.maxScroll(n, !x) > 0 && !overlay ? g : 0;
 					var strip:Null<Array<Float>> = overlay ? null : x ? [n.absX + be.left + (rtl ? corner : 0), n.absY + nh - be.bottom - g, nw - be.horizontal - corner, g] : [
 						rtl ? n.absX + be.left : n.absX + nw - be.right - g, n.absY + be.top, g, nh - be.vertical - corner];
+					var tag = strip == null && composing != null && composing.enter(n, x ? 1 : 2);
 					scrollbarArt.paint(canvas, !x, overlay, dark, scale, strip, t, drag == n && dragX == x || overBar(n, x), shown);
+					if (tag) composing.leave();
 					continue;
 				}
 				// (macOS's always-shown scroller: its track, a 1-point border on the content's side; the corner too)
@@ -1294,7 +1316,9 @@ class Ui {
 					case _: active ? scrollbarActiveColor : scrollbarColor;
 				};
 				if (shown < 1) c = (Math.round(c.a * shown) << 24) | ((c : Int) & 0xFFFFFF);
+				var tag = composing != null && composing.enter(n, x ? 1 : 2);
 				canvas.rect(t[0], t[1], t[2], t[3], b / 2, c, 0, 0);
+				if (tag) composing.leave();
 			}
 	}
 
@@ -1336,6 +1360,7 @@ class Ui {
 			}
 		}
 		if (drag != null) {
+			if (dragMirrored) return;
 			var n = drag, t = Scrolling.track(n, dragX), view = Scrolling.viewSize(n, dragX), content = dragX ? n.contentWidth : n.contentHeight;
 			var len = Scrolling.thumbLength(t[1], view, content), max = Scrolling.maxScroll(n, dragX);
 			var v = dragScroll + ((dragX ? x : y) - dragFrom) * (t[1] > len ? max / (t[1] - len) : 0);
@@ -1456,7 +1481,10 @@ class Ui {
 			setFocus(null);
 			return false;
 		}
-		if (Scrolling.scrollbarDown(this, target, x, y)) return true;
+		if (Scrolling.scrollbarDown(this, target, x, y)) {
+			dragMirrored = routed == ScrollMirror.TAKEN;
+			return true;
+		}
 		capture = target;
 		dragSource = target;
 		while (dragSource != null && dragSource.dragData == null)
@@ -1496,6 +1524,7 @@ class Ui {
 		selecting = false;
 		if (drag != null) {
 			drag = null;
+			dragMirrored = false;
 			requestFrame();
 			setHover(hit(x, y));
 			return;
@@ -1603,6 +1632,12 @@ class Ui {
 		}
 		if (halted) pClick[id] = false;
 		if (pDown[id]) openArena(id, target, type, 1, x, y, primary && type != Mouse && !pCaptured[id] && !(nativeScroll && Scrolling.nativeAt(this, target)));
+		// (the compositor's scroll, or its question: answered when the scroll would begin, or once it never will)
+		if (primary && routed != ScrollMirror.PROGRAM) {
+			var mine = @:privateAccess touchScroll.follows(id);
+			if (routed == ScrollMirror.TAKEN) @:privateAccess touchScroll.mirrored = mine;
+			else if (routed == ScrollMirror.ASK) if (mine) @:privateAccess touchScroll.asking = routedGesture else answer(routedGesture, false);
+		}
 		return owns(target);
 	}
 
@@ -1810,78 +1845,37 @@ class Ui {
 	// (helder.os.ScrollPhase; 0: a wheel's), time its event's (Ui.now's
 	// clock): with elastic, Trackpad's
 	public function wheel(x:Float, y:Float, deltaX:Float, deltaY:Float, eased = false, mods = -1, phase = 0, momentum = 0, time = -1.0) {
+		// (the compositor's scroll: it scrolled; its question: the tree hears it, the compositor scrolls if it was let through)
+		if (routed == ScrollMirror.TAKEN) return;
+		if (routed == ScrollMirror.ASK) {
+			var target = hit(x, y);
+			var kept = target != null && (deltaX != 0 || deltaY != 0) && heard(target, x, y, deltaX, deltaY, phase == 0 && momentum == 0 && eased, mods >= 0 ? mods : this.mods);
+			answer(routedGesture, !kept);
+			helder.view.graph.Graph.flush();
+			return;
+		}
 		wheelNow(x, y, deltaX, deltaY, eased, mods, phase, momentum, time < 0 ? now() : time);
 		helder.view.graph.Graph.flush();
 	}
 
-	// a trackpad's scrolls as macOS's own views take them (Trackpad: one
-	// scroller a gesture, stretching past its ends and springing back, the
-	// system's momentum replayed at the frames' times): UiWindow's on macOS
-	// (false: each scroll as a wheel's)
-	public var elastic = false;
-	// a touchpad's scrolls as GTK's kinetic scrolling takes them (Trackpad:
-	// one scroller a gesture, our glide once the fingers lift, a bounce at an
-	// end): UiWindow's on Linux's Wayland, whose touchpads say when they lift
-	public var kinetic = false;
-	final trackpad:Trackpad;
-	// (the scroller a wheel latched to and its last scroll's time: Chromium's half a second)
-	var wheelLatch:Null<Node> = null;
-	var wheelAt = -1e9;
-	static inline var WHEEL_LATCH = 0.5;
-
-	// a touch's drag past a scroller's end stretches it, as Android 12's
-	// (Stretch: UiWindow's on Android)
-	public var stretch = false;
-	final stretcher:Stretch;
-	// (the last wheel's scroller and what it could not scroll, past its end: Stretch's)
-	var overNode:Null<Node> = null;
-	var overX = 0.0;
-	var overY = 0.0;
-
-	function wheelNow(x:Float, y:Float, deltaX:Float, deltaY:Float, eased:Bool, mods = -1, phase = 0, momentum = 0, time = 0.0) {
-		overNode = null;
-		overX = overY = 0;
-		var phased = (elastic || kinetic) && (phase != 0 || momentum != 0) && (mods >= 0 ? mods : this.mods) & Key.MOD_CONTROL == 0;
-		var target = hit(x, y);
-		if (phased) {
-			// (the tree hears the moves, the momentum's too, and may keep them: no scroll then)
-			if (target != null && (deltaX != 0 || deltaY != 0)) {
-				var e = Event.of(Wheel, target, x, y);
-				e.mods = mods >= 0 ? mods : this.mods;
-				e.deltaX = deltaX;
-				e.deltaY = deltaY;
-				bubble(e);
-				if (e.defaultPrevented) return;
-			}
-			@:privateAccess trackpad.scroll(x, y, deltaX, deltaY, phase, momentum, time);
-			return;
-		}
-		if (target == null) return;
+	override function heard(target:Node, x:Float, y:Float, dx:Float, dy:Float, eased:Bool, mods:Int):Bool {
 		var e = Event.of(Wheel, target, x, y);
-		e.mods = mods >= 0 ? mods : this.mods;
-		e.deltaX = deltaX;
-		e.deltaY = deltaY;
+		e.mods = mods;
+		e.deltaX = dx;
+		e.deltaY = dy;
 		e.eased = eased;
 		bubble(e);
-		if (e.defaultPrevented) return;
-		// (a wheel's scrolls latched to the scroller it moved until it rests half a second, as Chromium's: not
-		// into one it passes over, nor out of it at its end)
-		var latched = wheelLatch != null && now() - wheelAt < WHEEL_LATCH && contains(root, wheelLatch) ? wheelLatch : null;
-		wheelAt = now();
-		if (latched != null) {
-			if (Scrolling.canScroll(latched, deltaX, true) || Scrolling.canScroll(latched, deltaY, false))
-				Scrolling.wheel(this, latched, deltaX, deltaY, eased);
-			else {
-				// (at its end: all of it past that end, Stretch's)
-				overNode = latched;
-				overX = deltaX;
-				overY = deltaY;
-			}
-			return;
-		}
-		Scrolling.wheel(this, target, deltaX, deltaY, eased);
-		wheelLatch = Scrolling.wheelNode;
+		return e.defaultPrevented;
 	}
+
+	override function animate(step:Float->Bool)
+		Clock.addTo(context, step);
+
+	override function held():Int
+		return mods;
+
+	override function has(n:Node):Bool
+		return contains(root, n);
 
 	// whether a wheel at x, y by deltaX, deltaY would scroll something: a
 	// scroller under the point (the innermost first) not at its end that
@@ -2186,7 +2180,7 @@ class Ui {
 			}
 		}
 		if (!e.defaultPrevented && !e.stopped && runKeymap(key, mods)) return;
-		if (!e.defaultPrevented && !e.stopped && Scrolling.keyScroll(this, key, mods)) return;
+		if (!e.defaultPrevented && !e.stopped && (routed == ScrollMirror.TAKEN || Scrolling.keyScroll(this, key, mods))) return;
 		// (Control or Command and C: the selected text copied, when the focus took no such key)
 		if (!e.defaultPrevented && !e.stopped && (key == "c".code || key == "C".code) && mods & (Key.MOD_CONTROL | Key.MOD_META) != 0 && selectedText() != "") {
 			clipboard.write(selectedText());
@@ -2201,10 +2195,6 @@ class Ui {
 		}
 	}
 
-	// how long a scroll by the keys eases (seconds; 0: at once)
-	public var scrollDuration = 0.15;
-	// (the scrollers' glides: a wheel's notches, the keys' scrolls)
-	final glides = new Map<Node, ScrollGlide>();
 	// the scrollers rounded by the last layouts, clamped after them
 	final rounded:Array<Node> = [];
 
@@ -2444,7 +2434,7 @@ class Ui {
 
 	// the topmost node under a point: in the popups (a modal one stops the
 	// search: what is under it is covered), then the tree
-	function hit(x:Float, y:Float):Null<Node> {
+	override function hit(x:Float, y:Float):Null<Node> {
 		var i = overlay.children.length;
 		while (--i >= 0) {
 			var c = overlay.children[i];
@@ -2562,6 +2552,54 @@ class Ui {
 	// bumped by every change an accessibility tree reads (layout, scrolling,
 	// the focus, semantics, focusability, transforms, opacity to 0 and back)
 	public static var accessEpoch = 0;
+
+	// --- the compositor's scrolling (helder.ui.ScrollMirror: UiWindow's)
+
+	// the route of the event being handled (ScrollMirror.PROGRAM, TAKEN:
+	// the compositor scrolls it, ASK: the tree hears it, the answer to the
+	// compositor) and its gesture
+	@:noCompletion public var routed = 0;
+	@:noCompletion public var routedGesture = 0;
+	// what answers the compositor's questions: gesture, let through
+	@:noCompletion public var onAnswer:Null<(gesture:Int, through:Bool) -> Void> = null;
+	// (the answers given, by gesture; the compositor's offsets as last taken; those it holds past their ends)
+	final answers = new Map<Int, Bool>();
+	final mirrorAt = new Map<Node, Array<Float>>();
+	final mirrorHeld = new Map<Node, Bool>();
+
+	function answer(gesture:Int, through:Bool) {
+		answers.set(gesture, through);
+		answers.remove(gesture - 64);
+		if (onAnswer != null) onAnswer(gesture, through);
+	}
+
+	// an event of a gesture waiting on a question: TAKEN once let through,
+	// PROGRAM once kept, -1 before the answer
+	@:noCompletion public function resolve(gesture:Int):Int {
+		var a = answers.get(gesture);
+		return a == null ? -1 : a ? ScrollMirror.TAKEN : ScrollMirror.PROGRAM;
+	}
+
+	// the compositor scrolled n to x, y (held: past its ends by a gesture,
+	// not clamped; moving: it goes on): its offsets taken, as the program's
+	// own scroll would have set them
+	@:noCompletion public function mirrored(n:Node, x:Float, y:Float, held:Bool, moving:Bool) {
+		mirrorAt.set(n, [x, y]);
+		if (held) mirrorHeld.set(n, true) else mirrorHeld.remove(n);
+		if (!moving) requestFrame();
+		if (x == n.scrollX && y == n.scrollY) return;
+		Scrolling.stopGlide(this, n);
+		n.scrollX = x;
+		n.scrollY = y;
+		if (n.onScroll != null) n.onScroll();
+		requestFrame();
+	}
+
+	// (whether n's offsets are the program's own: not as the compositor last gave them)
+	function mirrorOwn(n:Node):Bool {
+		var a = mirrorAt.get(n);
+		return a == null || a[0] != n.scrollX || a[1] != n.scrollY;
+	}
 	var accessBuilt = -1;
 
 	// assistive technology's request on a node of the last accessTree():
@@ -2644,12 +2682,6 @@ class Ui {
 	// --- scrollbars (Scrolling) ---
 
 	// scrolls n (an overflow: scroll node) to x, y (clamped to what it can scroll)
-	public function scrollTo(n:Node, x:Float, y:Float) {
-		Scrolling.stopGlide(this, n);
-		Scrolling.setScroll(this, n, true, x);
-		Scrolling.setScroll(this, n, false, y);
-	}
-
 	// a node left the tree: it no longer hovers, captures or has the focus
 	@:allow(helder.ui.Node) function setBody(n:Node) {
 		body = n;
@@ -2677,6 +2709,10 @@ class Ui {
 		if (@:privateAccess stretcher.node != null && contains(n, @:privateAccess stretcher.node)) @:privateAccess stretcher.reset();
 		for (g in [for (k in glides.keys()) if (contains(n, k)) k])
 			glides.remove(g);
+		for (g in [for (k in mirrorAt.keys()) if (contains(n, k)) k]) {
+			mirrorAt.remove(g);
+			mirrorHeld.remove(g);
+		}
 	}
 }
 
@@ -2860,4 +2896,12 @@ private class Nowhere implements TextureCanvas {
 	public function damage(d:Damage) {}
 
 	public function redraw(i:Int) {}
+
+	public function composites():Bool
+		return false;
+
+	public function enter(n:Node, kind:Int):Bool
+		return false;
+
+	public function leave() {}
 }

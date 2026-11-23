@@ -161,6 +161,17 @@ class Window {
 	// WM_NCHITTEST (HTCAPTION, HTMAXBUTTON for its snap layouts)
 	public var titlebarAt:Null<(x:Int, y:Int) -> TitleHit> = null;
 
+	// each input event as it is read, before the program gets it (helder.ui's
+	// compositor: Event.routed set; where the main thread reads input while
+	// the program is busy, on the main thread: OsThread)
+	@:noCompletion public var route:Null<Event->Void> = null;
+
+	// (e routed by its window's compositor, or the program's)
+	@:noCompletion public static function routed(e:Event) {
+		var w = e.window;
+		if (w != null && w.route != null) w.route(e) else e.routed = e.gesture = 0;
+	}
+
 	// an inset title bar's area free of the window's buttons, in pixels (the
 	// Window Controls Overlay's titlebar-area-*): macOS's right of its
 	// buttons, elsewhere the top bar but the drawn buttons' width at the

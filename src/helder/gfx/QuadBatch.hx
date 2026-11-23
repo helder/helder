@@ -179,6 +179,10 @@ class QuadBatch {
 		#end
 	}
 
+	// (instanced: the corners' buffer and the indices, made at the first upload)
+	@:noCompletion public function shared():{corners:Null<Buffer>, indices:Null<Buffer>}
+		return {corners: corners, indices: indices};
+
 	// both buffers bound (after upload and the pipeline)
 	public function bind(enc:Encoder) {
 		if (instanced) enc.setVertexBuffer(0, corners);

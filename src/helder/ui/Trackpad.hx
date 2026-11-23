@@ -21,6 +21,7 @@ import helder.os.ScrollPhase;
 // (the rest of it dropped), as WebKit's and Chromium's.
 @:allow(helder.ui)
 @:access(helder.ui.Ui)
+@:access(helder.ui.ScrollHost)
 class Trackpad {
 	static inline var C = 0.075;
 	// (a push past an end under this: kept, no stretch yet)
@@ -29,7 +30,7 @@ class Trackpad {
 	static inline var STIFFNESS = 20.0;
 	static inline var PERIOD = 1.6;
 
-	final ui:Ui;
+	final ui:ScrollHost;
 	// the scroller the gesture is latched to (null: none yet, or none there)
 	var node:Null<Node> = null;
 	var latching = false;
@@ -62,7 +63,7 @@ class Trackpad {
 	var hitX = false;
 	var hitY = false;
 
-	function new(ui:Ui)
+	function new(ui:ScrollHost)
 		this.ui = ui;
 
 	// a Scroll of a trackpad's at x, y (its deltas: the scroll's way) in its
@@ -249,9 +250,9 @@ class Trackpad {
 	function replay() {
 		if (replaying) return;
 		replaying = true;
-		Clock.addTo(ui.context, t -> {
+		ui.animate(t -> {
 			if (!replaying || node == null) return replaying = false;
-			var n = times.length, at = Ui.now() - 1 / 60;
+			var n = times.length, at = ui.clock() - 1 / 60;
 			var tx:Float, ty:Float;
 			if (n == 0 || at <= times[0]) {
 				tx = ty = 0;
@@ -279,7 +280,7 @@ class Trackpad {
 					vx = n > 1 ? (sumX[n - 1] - sumX[n - 2]) / dt : 0;
 					vy = n > 1 ? (sumY[n - 1] - sumY[n - 2]) / dt : 0;
 					replaying = false;
-					springBack(Ui.now());
+					springBack(ui.clock());
 					return false;
 				}
 			}
@@ -315,10 +316,10 @@ class Trackpad {
 		forceX = forceY = 0;
 		if (springing) return;
 		springing = true;
-		Clock.addTo(ui.context, t -> {
+		ui.animate(t -> {
 			var n = node;
 			if (!springing || n == null) return springing = false;
-			var dt = Math.max(0, Ui.now() - springAt), damp = Math.exp(-dt * STIFFNESS / PERIOD);
+			var dt = Math.max(0, ui.clock() - springAt), damp = Math.exp(-dt * STIFFNESS / PERIOD);
 			var sx = (springX + springVX * dt * AMPLITUDE) * damp, sy = (springY + springVY * dt * AMPLITUDE) * damp;
 			// (GTK's overshoot where it is not AppKit's: critically damped, OVERSHOOT its friction)
 			if (!ui.elastic) {
@@ -379,10 +380,10 @@ class Trackpad {
 		kineticDoneX = kineticDoneY = 0;
 		if (gliding) return;
 		gliding = true;
-		Clock.addTo(ui.context, t -> {
+		ui.animate(t -> {
 			var n = node;
 			if (!gliding || n == null) return gliding = false;
-			var dt = Math.max(0, Ui.now() - kineticAt), e = Math.exp(-DECELERATION * dt);
+			var dt = Math.max(0, ui.clock() - kineticAt), e = Math.exp(-DECELERATION * dt);
 			var ox = kineticVX / DECELERATION * (1 - e), oy = kineticVY / DECELERATION * (1 - e);
 			var dx = ox - kineticDoneX, dy = oy - kineticDoneY;
 			kineticDoneX = ox;
@@ -397,7 +398,7 @@ class Trackpad {
 				vy = kineticVY * e;
 				fromGlide = true;
 				gliding = false;
-				springBack(Ui.now());
+				springBack(ui.clock());
 				return false;
 			}
 			if (Math.abs(kineticVX * e) < 1 && Math.abs(kineticVY * e) < 1) return gliding = false;

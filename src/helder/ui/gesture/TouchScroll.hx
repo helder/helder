@@ -12,19 +12,24 @@ package helder.ui.gesture;
 // helder.os.Glide's.
 @:allow(helder.ui.Ui)
 class TouchScroll extends Gesture {
-	final ui:Ui;
+	final ui:ScrollHost;
 	var startX = 0.0;
 	var startY = 0.0;
 	// (the scroll's speed and its glide, points: helder's, or the platform's physics, UiWindow's)
 	var g = new helder.os.Glide();
 
-	function new(ui:Ui) {
+	// (the program's, its pointer's scroll the compositor's: helder.ui.ScrollMirror's own
+	// TouchScroll moves it; asking: the compositor waits for this one's answer, the gesture's id)
+	var mirrored = false;
+	var asking = 0;
+
+	function new(ui:ScrollHost) {
 		super();
 		this.ui = ui;
 	}
 
 	override function owner():Null<Ui>
-		return ui;
+		return Std.isOfType(ui, Ui) ? cast ui : null;
 
 	public var gliding(get, never):Bool;
 
@@ -46,14 +51,34 @@ class TouchScroll extends Gesture {
 		var ddx = -pendX, ddy = -pendY;
 		pendX = pendY = 0;
 		g.move(ddx, ddy, time * 1000);
+		// (the compositor's to scroll: let through, it scrolls from the start)
+		if (asking != 0) {
+			@:privateAccess (cast ui : Ui).answer(asking, true);
+			asking = 0;
+			mirrored = true;
+		}
+		if (mirrored) return;
 		// (Android's: past an end it stretches)
 		if (ui.stretch) {
 			@:privateAccess ui.stretcher.drag(startX, startY, ddx, ddy);
-			helder.view.graph.Graph.flush();
-		} else ui.wheel(startX, startY, ddx, ddy);
+			flush();
+		} else {
+			@:privateAccess ui.wheelNow(startX, startY, ddx, ddy, false, -1, 0, 0, @:privateAccess ui.clock());
+			flush();
+		}
 	}
 
 	override function lifted(cancelled:Bool) {
+		// (never let through: the program's, the compositor drops it)
+		if (asking != 0) {
+			@:privateAccess (cast ui : Ui).answer(asking, false);
+			asking = 0;
+		}
+		if (mirrored) {
+			mirrored = false;
+			if (active) state = cancelled ? Cancelled : Ended;
+			return;
+		}
 		if (!active) return;
 		state = cancelled ? Cancelled : Ended;
 		// (a stretch held: it springs back at the drag's speed, no fling)
@@ -66,8 +91,14 @@ class TouchScroll extends Gesture {
 		if (!cancelled && g.release(time * 1000)) ui.requestFrame();
 	}
 
-	override function lost()
+	override function lost() {
+		// (another recogniser won the touch: the program's)
+		if (asking != 0) {
+			@:privateAccess (cast ui : Ui).answer(asking, false);
+			asking = 0;
+		}
 		if (active && pointers == 0) state = Cancelled;
+	}
 
 	// the glide's scroll up to now (ms): whether it still glides
 	function glide(now:Float):Bool {
@@ -76,10 +107,17 @@ class TouchScroll extends Gesture {
 		if (ui.stretch && Std.isOfType(g, helder.os.AndroidFling)) {
 			var f:helder.os.AndroidFling = cast g;
 			if (!@:privateAccess ui.stretcher.glide(startX, startY, g.dx, g.dy, f.speedX, f.speedY)) g.stop();
-			helder.view.graph.Graph.flush();
-		} else ui.wheel(startX, startY, g.dx, g.dy);
+			flush();
+		} else {
+			@:privateAccess ui.wheelNow(startX, startY, g.dx, g.dy, false, -1, 0, 0, @:privateAccess ui.clock());
+			flush();
+		}
 		return gliding;
 	}
+
+	// (what the program's graph was written lands: a Ui's, not the compositor's)
+	inline function flush()
+		if (Std.isOfType(ui, Ui)) helder.view.graph.Graph.flush();
 
 	function stop()
 		g.stop();

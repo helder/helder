@@ -1433,10 +1433,42 @@ multisampled window). Headless runs, screenshots,
 golden images and X11 draw every frame whole; `HELDER_DAMAGE=full` draws
 a window's so, `HELDER_DAMAGE=flash` shows each frame's rectangles.
 
-On macOS and Linux the program itself runs on a thread of its own, the
-main thread the system's (helder.os's README, "Threads"): nothing changes
-yet in what a frame sees; the main thread is where the compositor's
-scrolling will read input while the program is busy.
+On macOS and Linux (X11, Wayland) a window has a compositor
+(`helder.ui.draw.Compositor`), so that scrolling keeps the display's pace
+while the program is busy. The main thread hands it each input event as
+it reads it (helder.os's README, "Threads"), before the program. Its
+mirror of the scrollers (`ScrollMirror`: each program frame's
+`ScrollShot`) runs the program's own physics (`ScrollHost`: the wheel and
+its latch, Trackpad's gestures, momentum and stretch, TouchScroll's drag
+and fling, ScrollGlide's eased notches and keys, a thumb dragged, nested
+scrollers chaining) on scrolls that are its own; on the render thread it
+draws a frame each vsync the program misses (it did not take the
+offsets within 0.6 of a period), from the program's last
+(`CompositeFrame`: the tree walked whole once more, each quad tagged with
+the scrollers it moves with, a tiled scroller's tiles kept as tiles over
+what its layer was recorded over, cut to its clip where they fall),
+drawn whole. Content past what was recorded shows the scroller's
+background until the program records it. The program takes the offsets
+at its next turn (`Ui.mirrored`: onScroll, scrollX and scrollY, its
+frame drawn from them; a stretch held past the ends not clamped), and an
+offset it set itself wins. A gesture whose first step lands under a node
+that may claim it (a pointer's, wheel or gesture handler, selectable
+text, a drag's data; a key the focus, its handlers or the keymap take)
+asks the program first (`Event.routed`: ASK; Ladybird's wheel listener
+gate) and waits; let through, the compositor runs it from its start and
+the rest never waits; kept, it is the program's. The program does with
+an event all but the scroll the compositor took. Not composited (the
+program's): scrollers with sticky nodes, or a native view (a macOS
+field) in them, which the system places. Overlay scrollbars hidden at
+the program's last frame stay hidden in the compositor's.
+`AsyncScrollTest` scripts the wheel, eased notches, a trackpad's gesture
+and momentum past an end, a finger's fling, the keys, a thumb and a
+nested chain through both paths with an injected clock, the program held
+for vsyncs: the same offsets at every vsync, the same end, and the
+compositor's frames pixel for pixel the program's at those offsets;
+`AsyncScrollWindow` blocks the program 300 ms in a window while input
+comes. `HELDER_ASYNC_SCROLL=0` turns it off; headless runs, screenshots
+and golden images are the program's alone.
 
 A window's GPU work runs on the render thread (helder.gfx's README,
 "Render thread"; macOS, iOS, Windows, Linux and Android): the frame is

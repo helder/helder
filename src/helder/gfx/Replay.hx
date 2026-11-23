@@ -18,8 +18,10 @@ final class Replay {
 	public final pipelines:Array<Int> = [0];
 	public final computes:Array<Int> = [0];
 	public final queries:Array<Int> = [0];
-	// the last beginFrame's answer
+	// the last beginFrame's answer; whether a frame of the device's is open
+	// (begun, not ended: the compositor's frames wait for its end)
 	public var began(default, null) = false;
+	public var framing(default, null) = false;
 	// (the render thread's: the first command that threw, rethrown to the program at its next wait)
 	public var error:Null<Dynamic> = null;
 	// after each frame's present returned, where it ran (latency measured:
@@ -110,9 +112,9 @@ final class Replay {
 			case CALL:
 				c.objects[c.next()](this);
 			case BEGIN_FRAME:
-				began = impl.beginFrame();
+				began = framing = impl.beginFrame();
 			case END_FRAME:
-				began = false;
+				began = framing = false;
 				impl.endFrame();
 				if (onEndFrame != null) onEndFrame();
 			case DAMAGED:

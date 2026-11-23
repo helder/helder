@@ -9,15 +9,13 @@ package helder.ui;
 @:access(helder.ui.Ui)
 class Scrolling {
 	// the wheel's scroll from target: its nearest scroller that can move that way
-	// (the scroller the last wheel moved: Ui's latch)
-	static var wheelNode:Null<Node> = null;
-
-	static function wheel(ui:Ui, target:Node, deltaX:Float, deltaY:Float, eased = false) {
-		wheelNode = null;
+	// (the scroller it moved: ui.wheelNode, the host's latch)
+	static function wheel(ui:ScrollHost, target:Node, deltaX:Float, deltaY:Float, eased = false) {
+		ui.wheelNode = null;
 		var n = target;
 		while (n != null) {
 			if (n.style.overflow == Scroll && (canScroll(n, deltaX, true) || canScroll(n, deltaY, false))) {
-				wheelNode = n;
+				ui.wheelNode = n;
 				// (a mouse's notch: glided to, slowing, from where a glide is heading)
 				if (eased) {
 					scrollBy(ui, n, deltaX, deltaY, true);
@@ -73,13 +71,17 @@ class Scrolling {
 	static inline var ARROW_STEP = 40;
 
 	static function keyScroll(ui:Ui, key:Int, mods:Int):Bool {
-		if (mods & (Key.MOD_CONTROL | Key.MOD_META | Key.MOD_ALT) != 0) return false;
 		if (ui.focus != null && ui.focus.takesText()) return false;
+		return keyScrollFrom(ui, ui.focus != null ? ui.focus : ui.hover, key, mods);
+	}
+
+	// (from n, the focus or the pointer's node)
+	static function keyScrollFrom(ui:ScrollHost, n:Null<Node>, key:Int, mods:Int):Bool {
+		if (mods & (Key.MOD_CONTROL | Key.MOD_META | Key.MOD_ALT) != 0) return false;
 		var x = key == Key.LEFT || key == Key.RIGHT;
 		var back = key == Key.UP || key == Key.LEFT || key == Key.PAGE_UP || key == Key.HOME || key == Key.SPACE && mods & Key.MOD_SHIFT != 0;
 		var page = key == Key.PAGE_UP || key == Key.PAGE_DOWN || key == Key.SPACE, edge = key == Key.HOME || key == Key.END;
 		if (!(x || page || edge || key == Key.UP || key == Key.DOWN)) return false;
-		var n = ui.focus != null ? ui.focus : ui.hover;
 		while (n != null) {
 			if (n.style.overflow == Scroll) {
 				var s = n.style, view = (x ? n.width : n.height) - (x ? s.borderEdges.horizontal + s.padding.horizontal : s.borderEdges.vertical + s.padding.vertical);
@@ -98,7 +100,7 @@ class Scrolling {
 	// scrolls by dx, dy glided (ScrollGlide: a wheel's notch over its
 	// distance's time, as Chromium's; keys' over Ui.scrollDuration), on from
 	// where a glide is heading at its speed; at once where scrollDuration is 0
-	static function scrollBy(ui:Ui, n:Node, dx:Float, dy:Float, out = false) {
+	static function scrollBy(ui:ScrollHost, n:Node, dx:Float, dy:Float, out = false) {
 		var g = ui.glides.get(n);
 		var gliding = g != null && g.gliding;
 		var tx = clampTo(n, true, (gliding ? g.toX : n.scrollX) + dx), ty = clampTo(n, false, (gliding ? g.toY : n.scrollY) + dy);
@@ -109,13 +111,13 @@ class Scrolling {
 		if (g == null) ui.glides.set(n, g = new ScrollGlide(n, (x, y) -> {
 			setScroll(ui, n, true, x);
 			setScroll(ui, n, false, y);
-		}));
+		}, ui));
 		g.fixed = out ? 0 : ui.scrollDuration;
 		g.to(n.scrollX, n.scrollY, {x: tx, y: ty});
 	}
 
 	// (a scroll of another kind: n's glide stopped where it is)
-	static function stopGlide(ui:Ui, n:Node) {
+	static function stopGlide(ui:ScrollHost, n:Node) {
 		var g = ui.glides.get(n);
 		if (g != null) g.stop();
 	}
@@ -197,7 +199,7 @@ class Scrolling {
 		if (g == null) ui.glides.set(p, g = new ScrollGlide(p, (x, y) -> {
 			setScroll(ui, p, true, x);
 			setScroll(ui, p, false, y);
-		}));
+		}, ui));
 		g.fixed = duration;
 		g.to(p.scrollX, p.scrollY, {x: p.scrollX, y: y});
 	}
@@ -318,7 +320,8 @@ class Scrolling {
 						ui.dragFrom = x ? px : py;
 						ui.dragScroll = x ? n.scrollX : n.scrollY;
 						ui.requestFrame();
-					} else {
+					} else if (ui.routed != ScrollMirror.TAKEN) {
+						// (the compositor's click: it pages)
 						var page = viewSize(n, x) * (along < start ? -1 : 1);
 						setScroll(ui, n, x, (x ? n.scrollX : n.scrollY) + page);
 					}
@@ -470,7 +473,7 @@ class Scrolling {
 	// a platform's scroll view moved n to its offsets x, y from its start
 	// (Ui.nativeScrolled: past the ends while its edge stretches, as Safari's
 	// scrollTop)
-	static function moved(ui:Ui, n:Node, x:Float, y:Float) {
+	static function moved(ui:ScrollHost, n:Node, x:Float, y:Float) {
 		stopGlide(ui, n);
 		x += scrollStart(n, true);
 		if (x == n.scrollX && y == n.scrollY) return;
@@ -480,7 +483,7 @@ class Scrolling {
 		ui.requestFrame();
 	}
 
-	static function setScroll(ui:Ui, n:Node, x:Bool, v:Float) {
+	static function setScroll(ui:ScrollHost, n:Node, x:Bool, v:Float) {
 		v = clampTo(n, x, v);
 		if (v == (x ? n.scrollX : n.scrollY)) return;
 		if (x) n.scrollX = v; else n.scrollY = v;

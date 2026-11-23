@@ -343,7 +343,10 @@ class AppleWebView implements PlatformWebView {
 		delegate = Msg.id(Msg.id(d, ObjC.sel("alloc")), ObjC.sel("init"));
 	}
 
-	@:hxmc.callback static function scriptMessage(self:Ptr, cmd:Ptr, ucc:Ptr, message:Ptr):Void {
+	@:hxmc.callback static function scriptMessage(self:Ptr, cmd:Ptr, ucc:Ptr, message:Ptr):Void
+		helder.os.OsThread.holdVoid(() -> scriptMessageNow(self, cmd, ucc, message));
+
+	static function scriptMessageNow(self:Ptr, cmd:Ptr, ucc:Ptr, message:Ptr):Void {
 		var v = of(Msg.id(message, ObjC.sel("webView")));
 		if (v == null) return;
 		var body = Msg.id(message, ObjC.sel("body"));
@@ -353,6 +356,9 @@ class AppleWebView implements PlatformWebView {
 
 	// (the main thread: the server's messages into each view's queue)
 	@:hxmc.callback static function postedOnMain(self:Ptr, cmd:Ptr, o:Ptr):Void
+		helder.os.OsThread.holdVoid(() -> postedOnMainNow(self, cmd, o));
+
+	static function postedOnMainNow(self:Ptr, cmd:Ptr, o:Ptr):Void
 		for (v in views) {
 			v.lock.acquire();
 			var ms = v.posted.splice(0, v.posted.length);
@@ -361,7 +367,10 @@ class AppleWebView implements PlatformWebView {
 				v.push(WebViewEvent.message(m));
 		}
 
-	@:hxmc.callback static function started(self:Ptr, cmd:Ptr, web:Ptr, nav:Ptr):Void {
+	@:hxmc.callback static function started(self:Ptr, cmd:Ptr, web:Ptr, nav:Ptr):Void
+		helder.os.OsThread.holdVoid(() -> startedNow(self, cmd, web, nav));
+
+	static function startedNow(self:Ptr, cmd:Ptr, web:Ptr, nav:Ptr):Void {
 		var v = of(web);
 		if (v == null) return;
 		var e = new WebViewEvent(Navigate);
@@ -369,9 +378,15 @@ class AppleWebView implements PlatformWebView {
 		v.push(e);
 	}
 
-	@:hxmc.callback static function committed(self:Ptr, cmd:Ptr, web:Ptr, nav:Ptr):Void {}
+	@:hxmc.callback static function committed(self:Ptr, cmd:Ptr, web:Ptr, nav:Ptr):Void
+		helder.os.OsThread.holdVoid(() -> committedNow(self, cmd, web, nav));
 
-	@:hxmc.callback static function finished(self:Ptr, cmd:Ptr, web:Ptr, nav:Ptr):Void {
+	static function committedNow(self:Ptr, cmd:Ptr, web:Ptr, nav:Ptr):Void {}
+
+	@:hxmc.callback static function finished(self:Ptr, cmd:Ptr, web:Ptr, nav:Ptr):Void
+		helder.os.OsThread.holdVoid(() -> finishedNow(self, cmd, web, nav));
+
+	static function finishedNow(self:Ptr, cmd:Ptr, web:Ptr, nav:Ptr):Void {
 		var v = of(web);
 		if (v == null) return;
 		var e = new WebViewEvent(Load);
@@ -379,7 +394,10 @@ class AppleWebView implements PlatformWebView {
 		v.push(e);
 	}
 
-	@:hxmc.callback static function failed(self:Ptr, cmd:Ptr, web:Ptr, nav:Ptr, err:Ptr):Void {
+	@:hxmc.callback static function failed(self:Ptr, cmd:Ptr, web:Ptr, nav:Ptr, err:Ptr):Void
+		helder.os.OsThread.holdVoid(() -> failedNow(self, cmd, web, nav, err));
+
+	static function failedNow(self:Ptr, cmd:Ptr, web:Ptr, nav:Ptr, err:Ptr):Void {
 		var v = of(web);
 		if (v == null) return;
 		var text = ObjC.string(Msg.id(err, ObjC.sel("localizedDescription"))) ?? "";
@@ -393,12 +411,18 @@ class AppleWebView implements PlatformWebView {
 		v.push(error(failing.isNull() ? urlOf(web) : ObjC.string(failing) ?? "", text, Msg.i(err, ObjC.sel("code")).toInt()));
 	}
 
-	@:hxmc.callback static function terminated(self:Ptr, cmd:Ptr, web:Ptr):Void {
+	@:hxmc.callback static function terminated(self:Ptr, cmd:Ptr, web:Ptr):Void
+		helder.os.OsThread.holdVoid(() -> terminatedNow(self, cmd, web));
+
+	static function terminatedNow(self:Ptr, cmd:Ptr, web:Ptr):Void {
 		var v = of(web);
 		if (v != null) v.push(new WebViewEvent(Crash));
 	}
 
-	@:hxmc.callback static function observed(self:Ptr, cmd:Ptr, keyPath:Ptr, object:Ptr, change:Ptr, context:Ptr):Void {
+	@:hxmc.callback static function observed(self:Ptr, cmd:Ptr, keyPath:Ptr, object:Ptr, change:Ptr, context:Ptr):Void
+		helder.os.OsThread.holdVoid(() -> observedNow(self, cmd, keyPath, object, change, context));
+
+	static function observedNow(self:Ptr, cmd:Ptr, keyPath:Ptr, object:Ptr, change:Ptr, context:Ptr):Void {
 		var v = of(object);
 		if (v == null) return;
 		switch ObjC.string(keyPath) {
@@ -420,7 +444,10 @@ class AppleWebView implements PlatformWebView {
 	}
 
 	// a request of the content's scheme, answered at once
-	@:hxmc.callback static function startTask(self:Ptr, cmd:Ptr, web:Ptr, task:Ptr):Void {
+	@:hxmc.callback static function startTask(self:Ptr, cmd:Ptr, web:Ptr, task:Ptr):Void
+		helder.os.OsThread.holdVoid(() -> startTaskNow(self, cmd, web, task));
+
+	static function startTaskNow(self:Ptr, cmd:Ptr, web:Ptr, task:Ptr):Void {
 		var v = of(web);
 		var pool = Runtime.objc_autoreleasePoolPush();
 		var url = Msg.id(Msg.id(task, ObjC.sel("request")), ObjC.sel("URL"));
@@ -452,7 +479,10 @@ class AppleWebView implements PlatformWebView {
 		Runtime.objc_autoreleasePoolPop(pool);
 	}
 
-	@:hxmc.callback static function stopTask(self:Ptr, cmd:Ptr, web:Ptr, task:Ptr):Void {}
+	@:hxmc.callback static function stopTask(self:Ptr, cmd:Ptr, web:Ptr, task:Ptr):Void
+		helder.os.OsThread.holdVoid(() -> stopTaskNow(self, cmd, web, task));
+
+	static function stopTaskNow(self:Ptr, cmd:Ptr, web:Ptr, task:Ptr):Void {}
 
 	// ---- blocks: a global one (Block_copy keeps it as it is), its invoke f, an int after its descriptor
 
@@ -473,7 +503,10 @@ class AppleWebView implements PlatformWebView {
 		return b;
 	}
 
-	@:hxmc.callback static function snapshotTaken(block:Ptr, image:Ptr, err:Ptr):Void {
+	@:hxmc.callback static function snapshotTaken(block:Ptr, image:Ptr, err:Ptr):Void
+		helder.os.OsThread.holdVoid(() -> snapshotTakenNow(block, image, err));
+
+	static function snapshotTakenNow(block:Ptr, image:Ptr, err:Ptr):Void {
 		var id = Mem.getI64(block, 32).toInt();
 		var done = snapshots.get(id);
 		snapshots.remove(id);

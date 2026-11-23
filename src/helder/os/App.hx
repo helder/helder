@@ -39,8 +39,10 @@ import hxmc.unsafe.*;
 // them (App.frame.pause: the next delta a period). Each turn begins a
 // frame of Pointers' (Pointers.step) before its events.
 // On macOS and Linux the loop runs on a thread of its own, the main
-// thread the system's (OsThread): so that Layers' compositor can read
-// input there while the program is busy.
+// thread the system's (OsThread), which reads the input while the
+// program runs on: each event goes to its window's compositor first
+// (Window.route: scrolling while the program is busy), then to the
+// program's next poll. beforeEvents run at each turn's start.
 //
 // helder.async's loop (the main thread's, once something made it: a task
 // launched, a job run) runs on the app's: a turn of it in each turn of the
@@ -97,6 +99,8 @@ class App {
 	// largest background apps first.
 	public static var onLowMemory:Null<Void->Void> = null;
 	@:noCompletion public static final trims:Array<Void->Void> = [];
+	// run at each turn's start, before its events (helder.ui's compositor: the offsets it took drained)
+	@:noCompletion public static final beforeEvents:Array<Void->Void> = [];
 
 	@:allow(helder.os) static function lowMemory() {
 		helder.async.Errors.guard(() -> {
@@ -266,6 +270,8 @@ class App {
 		}
 		// (the pointers' motion and presses from this turn's events on)
 		Pointers.step();
+		for (f in beforeEvents)
+			f();
 		// (macOS: what Cocoa autoreleases during a frame is freed after it; the
 		// main thread's too, where the program has a thread of its own)
 		var pool = Platform.os() == 1 ? Runtime.objc_autoreleasePoolPush() : Ptr.nil();
@@ -328,10 +334,19 @@ class App {
 	#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 	static var mainPool = Ptr.nil();
 
-	static function pushMain()
+	// (the main thread's pool of a turn, pushed and popped outside any
+	// callout: served from inside one (a WKWebView's run loop source while
+	// the main thread reads input, OsThread.nested), a pop would take the
+	// callout's own pool with it, so none is pushed there, and one pushed
+	// outside is popped at the next turn's push)
+	static function pushMain() {
+		if (OsThread.nested()) return;
+		if (!mainPool.isNull()) Runtime.objc_autoreleasePoolPop(mainPool);
 		mainPool = Runtime.objc_autoreleasePoolPush();
+	}
 
 	static function popMain() {
+		if (OsThread.nested() || mainPool.isNull()) return;
 		Runtime.objc_autoreleasePoolPop(mainPool);
 		mainPool = Ptr.nil();
 	}

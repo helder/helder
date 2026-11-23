@@ -14,7 +14,8 @@ import sys.thread.Thread;
 // sync points. A GC thread that waits in a safe region (Lock.wait) and
 // whose back ends wait for vsync and the GPU in theirs (present,
 // nextDrawable, swap), so that collections wait only for its stretches
-// of encoding between them.
+// of encoding between them. Between the buffers it runs the devices' idle
+// work (RenderIdle: helder.ui's compositor) when it is due or woken.
 @:noCompletion @:hxmc.unsafe(gc)
 final class RenderThread {
 	static var shared:Null<RenderThread> = null;
@@ -26,6 +27,12 @@ final class RenderThread {
 	var work:Null<Commands> = null;
 	var busy = false;
 	var stop = false;
+	// (buffers handed over, run: a wake without one runs only the idle work)
+	var submitted = 0;
+	var taken = 0;
+	final idles:Array<RenderIdle> = [];
+	final idleReplays:Array<Replay> = [];
+	final idleLock = new sys.thread.Mutex();
 	// (Apple: the autorelease pool around what runs outside a frame; a frame's own is the back end's)
 	var pool = Ptr.nil();
 
@@ -61,8 +68,11 @@ final class RenderThread {
 	// owner records into another meanwhile, and clears c once wait returned
 	public function submit(r:Replay, c:Commands) {
 		wait();
+		idleLock.acquire();
 		replay = r;
 		work = c;
+		submitted++;
+		idleLock.release();
 		busy = true;
 		ready.release();
 	}
@@ -86,23 +96,91 @@ final class RenderThread {
 		return true;
 	}
 
+	public function addIdle(i:RenderIdle, r:Replay) {
+		idleLock.acquire();
+		idles.push(i);
+		idleReplays.push(r);
+		idleLock.release();
+		ready.release();
+	}
+
+	public function removeIdle(i:RenderIdle) {
+		idleLock.acquire();
+		var k = idles.indexOf(i);
+		if (k >= 0) {
+			idles.splice(k, 1);
+			idleReplays.splice(k, 1);
+		}
+		idleLock.release();
+	}
+
+	// (from any thread)
+	public function wake()
+		ready.release();
+
 	function loop() {
 		while (true) {
-			ready.wait();
+			var due = nextDue();
+			if (due < 0) ready.wait() else ready.wait(Math.max(0, due - haxe.Timer.stamp()));
 			if (stop) {
 				drain();
 				done.release();
 				return;
 			}
-			var r = replay, c = work;
-			#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
-			if (pool.isNull()) pool = helder.os.objc.Runtime.objc_autoreleasePoolPush();
-			#end
-			r.run(c, false);
-			// (a pool popped outside a frame only: the frame's, the back end's, is inside it)
-			if (!r.began) drain();
-			done.release();
+			idleLock.acquire();
+			var r = taken != submitted ? replay : null, c = work;
+			taken = submitted;
+			idleLock.release();
+			if (r != null) runWork(r, c);
+			runIdles();
 		}
+	}
+
+	// (the idle work's earliest due time, -1: none)
+	function nextDue():Float {
+		var at = -1.0;
+		idleLock.acquire();
+		for (i in idles) {
+			var d = i.due();
+			if (d >= 0 && (at < 0 || d < at)) at = d;
+		}
+		idleLock.release();
+		return at;
+	}
+
+	function runIdles() {
+		idleLock.acquire();
+		var list = idles.copy(), replays = idleReplays.copy();
+		idleLock.release();
+		var now = haxe.Timer.stamp(), ran = false;
+		for (k in 0...list.length) {
+			var d = list[k].due();
+			if (d < 0 || d > now) continue;
+			pooled();
+			list[k].idle(replays[k]);
+			ran = true;
+		}
+		// (what it left in the pool let go, outside a frame)
+		if (!ran) return;
+		for (r in replays)
+			if (r.began) return;
+		drain();
+	}
+
+	// (the program's buffer run)
+	function runWork(r:Replay, c:Commands) {
+		pooled();
+		r.run(c, false);
+		// (a pool popped outside a frame only: the frame's, the back end's, is inside it)
+		if (!r.began) drain();
+		done.release();
+	}
+
+	// (Apple: the autorelease pool around what runs outside a frame)
+	inline function pooled() {
+		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
+		if (pool.isNull()) pool = helder.os.objc.Runtime.objc_autoreleasePoolPush();
+		#end
 	}
 
 	function drain() {

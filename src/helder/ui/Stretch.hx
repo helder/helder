@@ -11,6 +11,7 @@ package helder.ui;
 // through it.
 @:allow(helder.ui)
 @:access(helder.ui.Ui)
+@:access(helder.ui.ScrollHost)
 class Stretch {
 	static inline var INTENSITY = 0.016;
 	static final SCALAR = Math.exp(1) / 0.33;
@@ -22,7 +23,7 @@ class Stretch {
 	static inline var DAMPING = 0.98;
 	static inline var TIME = 0.8;
 
-	final ui:Ui;
+	final ui:ScrollHost;
 	// the scroller stretched, on which axis, the push past its end (points, the scroll's way), its stretch
 	var node:Null<Node> = null;
 	var alongX = false;
@@ -34,7 +35,7 @@ class Stretch {
 	var speed = 0.0;
 	var springing = false;
 
-	function new(ui:Ui)
+	function new(ui:ScrollHost)
 		this.ui = ui;
 
 	// how far n is stretched along axis x (signed: past its start negative)
@@ -118,12 +119,12 @@ class Stretch {
 		}
 		from = amount;
 		speed = v * TIME;
-		springAt = Ui.now();
+		springAt = ui.clock();
 		if (springing) return;
 		springing = true;
-		Clock.addTo(ui.context, t -> {
+		ui.animate(t -> {
 			if (!springing || node == null) return springing = false;
-			var w0 = FREQUENCY * TIME, z = DAMPING, wd = w0 * Math.sqrt(1 - z * z), dt = Ui.now() - springAt;
+			var w0 = FREQUENCY * TIME, z = DAMPING, wd = w0 * Math.sqrt(1 - z * z), dt = ui.clock() - springAt;
 			var a = Math.exp(-z * w0 * dt), s = a * (from * Math.cos(wd * dt) + (speed + z * w0 * from) / wd * Math.sin(wd * dt));
 			node.layerChanged();
 			ui.requestFrame();

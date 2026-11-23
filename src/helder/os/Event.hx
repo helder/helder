@@ -107,6 +107,10 @@ class Event {
 	public var pointer:Null<Pointer> = null;
 	// Drop: the files' paths (absolute, the system's separators)
 	public var files:Array<String> = [];
+	// what the compositor made of it (helder.ui.ScrollMirror: 0 the
+	// program's, 1 scrolled by it, 2 a question, 3 waiting on one) and its gesture
+	@:noCompletion public var routed = 0;
+	@:noCompletion public var gesture = 0;
 
 	public function new() {}
 }

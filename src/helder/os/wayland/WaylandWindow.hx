@@ -199,6 +199,17 @@ class WaylandWindow {
 		if (err != null) throw err;
 		display = WaylandClient.wl_display_connect(Ptr.nil());
 		if (display.isNull()) throw "cannot connect to " + Sys.getEnv("WAYLAND_DISPLAY");
+		// (the program on a thread of its own: the pointer's and the keyboard's
+		// events a queue of their own, which the main thread reads and
+		// dispatches while the program runs on (OsThread.waitMain); the rest,
+		// the windows' configures among them, the program's as before)
+		if (OsThread.wanted()) {
+			inputQueue = WaylandClient.wl_display_create_queue(display);
+			wakeMain = @:privateAccess helder.os.x11.X11Window.pipe();
+			wakeProgram = @:privateAccess helder.os.x11.X11Window.pipe();
+			OsThread.waitMain = pump;
+			OsThread.wakeMain = () -> @:privateAccess helder.os.x11.X11Window.pipeWrite(wakeMain >>> 16);
+		}
 		registry = (display : WlDisplay).getRegistry();
 		var r = new WlRegistryEvents();
 		r.global = global;
@@ -263,6 +274,7 @@ class WaylandWindow {
 	static function seatCapabilities(caps:Int) {
 		if (caps & 1 != 0 && pointer.isNull()) {
 			pointer = seat.getPointer();
+			if (!inputQueue.isNull()) WaylandClient.wl_proxy_set_queue(pointer, inputQueue);
 			var e = new WlPointerEvents();
 			e.enter = (serial, s, x, y) -> {
 				pointerSerial = serial;
@@ -341,6 +353,7 @@ class WaylandWindow {
 		}
 		if (caps & 2 != 0 && keyboard.isNull()) {
 			keyboard = seat.getKeyboard();
+			if (!inputQueue.isNull()) WaylandClient.wl_proxy_set_queue(keyboard, inputQueue);
 			var e = new WlKeyboardEvents();
 			e.keymap = keymap;
 			e.enter = (serial, s, keys) -> keyboardIn = find(s);
@@ -1070,9 +1083,15 @@ class WaylandWindow {
 		return null;
 	}
 
-	// an event of the queue's for w
+	// an event of the queue's for w (routed by its window's compositor
+	// where the main thread made it, at once after; else at poll)
 	static function take(w:WaylandWindow, kind:EventKind):Event {
+		inputLock.acquire();
 		var e = pool.length > 0 ? pool.pop() : new Event();
+		// (the main thread's: queued once routed)
+		if (OsThread.program != 0 && hxmc.NativeThread.current() == 1) fresh.push(e) else queue.push(e);
+		inputLock.release();
+		e.routed = -1;
 		e.kind = kind;
 		e.window = w.owner;
 		e.key = 0;
@@ -1085,7 +1104,6 @@ class WaylandWindow {
 		e.text = "";
 		e.pointer = null;
 		e.files = [];
-		queue.push(e);
 		return e;
 	}
 
@@ -1093,7 +1111,59 @@ class WaylandWindow {
 	static function poll(onEvent:Event->Void) {
 		if (display.isNull()) return;
 		read(0);
-		// (a key held: its repeats due)
+		var reads = mainReads();
+		if (reads) @:privateAccess helder.os.x11.X11Window.pipeDrain(wakeProgram & 0xFFFF);
+		// (a key held: its repeats due; the main thread's where it reads the keyboard)
+		if (!reads && repeatKey >= 0 && keyboardIn != null) {
+			var now = haxe.Timer.stamp();
+			while (repeatKey >= 0 && now >= repeatAt) {
+				keyEvent(repeatKey, true, true);
+				repeatAt += 1 / repeatRate;
+				if (now - repeatAt > 0.5) repeatAt = now + 1 / repeatRate;
+			}
+		}
+		inputLock.acquire();
+		var events = queue.copy();
+		queue.resize(0);
+		inputLock.release();
+		for (e in events) {
+			if (e.routed < 0) Window.routed(e);
+			onEvent(e);
+			inputLock.acquire();
+			pool.push(e);
+			inputLock.release();
+		}
+		WaylandClient.wl_display_flush(display);
+	}
+
+	// --- the pointer's and the keyboard's events read on the main thread while the program runs on
+
+	static var inputQueue = Ptr.nil();
+	static final inputLock = new sys.thread.Mutex();
+	// (the events the main thread made in its last dispatch, routed after it)
+	static final fresh:Array<Event> = [];
+	// (the pipes that wake the main thread, and the program's wait: read | write << 16)
+	static var wakeMain = -1;
+	static var wakeProgram = -1;
+
+	static inline function mainReads():Bool
+		return !inputQueue.isNull() && OsThread.program != 0;
+
+	// the main thread's wait: the socket read (at most 50 ms, a key's
+	// repeat sooner), the input queue dispatched, its events routed to their
+	// window's compositor at once; the program woken to take them, and
+	// what the read queued for it
+	static function pump():Bool {
+		if (display.isNull() || inputQueue.isNull()) return false;
+		while (WaylandClient.wl_display_prepare_read_queue(display, inputQueue) != 0)
+			dispatchInput();
+		WaylandClient.wl_display_flush(display);
+		var ms = 50;
+		if (repeatKey >= 0) ms = Std.int(Math.max(0, Math.min(ms, (repeatAt - haxe.Timer.stamp()) * 1000)));
+		var ready = readable2(WaylandClient.wl_display_get_fd(display), wakeMain & 0xFFFF, ms);
+		if (ready) WaylandClient.wl_display_read_events(display) else WaylandClient.wl_display_cancel_read(display);
+		@:privateAccess helder.os.x11.X11Window.pipeDrain(wakeMain & 0xFFFF);
+		dispatchInput();
 		if (repeatKey >= 0 && keyboardIn != null) {
 			var now = haxe.Timer.stamp();
 			while (repeatKey >= 0 && now >= repeatAt) {
@@ -1102,13 +1172,34 @@ class WaylandWindow {
 				if (now - repeatAt > 0.5) repeatAt = now + 1 / repeatRate;
 			}
 		}
-		while (queue.length > 0) {
-			var e = queue.shift();
-			onEvent(e);
-			pool.push(e);
-		}
-		WaylandClient.wl_display_flush(display);
+		var any = ready || fresh.length > 0;
+		for (e in fresh)
+			Window.routed(e);
+		inputLock.acquire();
+		for (e in fresh)
+			queue.push(e);
+		inputLock.release();
+		fresh.resize(0);
+		if (any) @:privateAccess helder.os.x11.X11Window.pipeWrite(wakeProgram >>> 16);
+		return true;
 	}
+
+	static inline function dispatchInput()
+		WaylandClient.wl_display_dispatch_queue_pending(display, inputQueue);
+
+	// (either descriptor readable within ms)
+	static function readable2(a:Int, b:Int, ms:Int):Bool
+		return Arena.scopedValue(m -> {
+			var pfd:Ptr<Int32> = cast m.alloc(16);
+			pfd[0] = a;
+			pfd[1] = 1;
+			pfd[2] = b;
+			pfd[3] = 1;
+			var ts:Ptr<Int64> = cast m.alloc(16);
+			ts[0] = Std.int(ms / 1000);
+			ts[1] = (ms % 1000) * 1000000;
+			WlLibc.ppoll(pfd, 2, ts, Ptr.nil()) > 0 && (pfd[1] >> 16) & 1 != 0;
+		});
 
 	// the socket read (waiting up to ms; 0: what is there) and dispatched
 	static function read(ms:Int) {
@@ -1118,6 +1209,8 @@ class WaylandWindow {
 		var ready = readable(WaylandClient.wl_display_get_fd(display), ms);
 		if (ready) WaylandClient.wl_display_read_events(display) else WaylandClient.wl_display_cancel_read(display);
 		WaylandClient.wl_display_dispatch_pending(display);
+		// (what it read for the input queue: the main thread's to dispatch)
+		if (ready && mainReads()) @:privateAccess helder.os.x11.X11Window.pipeWrite(wakeMain >>> 16);
 		if (WaylandClient.wl_display_get_error(display) != 0 && open.length > 0) {
 			// (the connection broke: every window asked to close)
 			for (w in open)
@@ -1141,7 +1234,16 @@ class WaylandWindow {
 	static function waitFor(seconds:Float) {
 		if (display.isNull()) return;
 		WaylandClient.wl_display_flush(display);
-		if (queue.length > 0) return;
+		inputLock.acquire();
+		var any = queue.length > 0;
+		inputLock.release();
+		if (any) return;
+		// (the main thread reads the socket: woken by its pipe once it read or made events)
+		if (mainReads()) {
+			var loop = helder.async.Driven.MainLoop.main;
+			if (loop != null) loop.wait(seconds, wakeProgram & 0xFFFF) else readable(wakeProgram & 0xFFFF, seconds < 0 ? -1 : Std.int(seconds * 1000));
+			return;
+		}
 		if (repeatKey >= 0) seconds = Math.min(seconds < 0 ? 1e6 : seconds, Math.max(0, repeatAt - haxe.Timer.stamp()));
 		var loop = helder.async.Driven.MainLoop.main;
 		if (loop != null) {

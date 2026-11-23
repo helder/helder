@@ -337,12 +337,21 @@ class MacAccess {
 	}
 
 	@:hxmc.callback static function press(self:Ptr, cmd:Ptr):Int
+		return helder.os.OsThread.hold(() -> pressNow(self, cmd));
+
+	static function pressNow(self:Ptr, cmd:Ptr):Int
 		return act(self, Click);
 
 	@:hxmc.callback static function increment(self:Ptr, cmd:Ptr):Int
+		return helder.os.OsThread.hold(() -> incrementNow(self, cmd));
+
+	static function incrementNow(self:Ptr, cmd:Ptr):Int
 		return act(self, Increment);
 
 	@:hxmc.callback static function decrement(self:Ptr, cmd:Ptr):Int
+		return helder.os.OsThread.hold(() -> decrementNow(self, cmd));
+
+	static function decrementNow(self:Ptr, cmd:Ptr):Int
 		return act(self, Decrement);
 
 	// a UTF-16 index's line (from 0)
@@ -363,7 +372,10 @@ class MacAccess {
 
 	// (accessibilityValue: a label's text, a text input's, a toggle's state,
 	// a range's value, a tab's or radio's selection, a heading's level)
-	@:hxmc.callback static function value(self:Ptr, cmd:Ptr):Ptr {
+	@:hxmc.callback static function value(self:Ptr, cmd:Ptr):Ptr
+		return helder.os.OsThread.hold(() -> valueNow(self, cmd));
+
+	static function valueNow(self:Ptr, cmd:Ptr):Ptr {
 		var o = nodeOf(self);
 		if (o == null) return Ptr.nil();
 		var n = o.n;
@@ -377,7 +389,10 @@ class MacAccess {
 	}
 
 	// (a text input's text set, a range's value: stepped there)
-	@:hxmc.callback static function setValue(self:Ptr, cmd:Ptr, v:Ptr):Void {
+	@:hxmc.callback static function setValue(self:Ptr, cmd:Ptr, v:Ptr):Void
+		helder.os.OsThread.holdVoid(() -> setValueNow(self, cmd, v));
+
+	static function setValueNow(self:Ptr, cmd:Ptr, v:Ptr):Void {
 		var o = nodeOf(self);
 		if (o == null || v.isNull()) return;
 		var n = o.n;
@@ -385,48 +400,75 @@ class MacAccess {
 		else if (n.valueNow != null) o.a.ui.accessAction(n.id, SetValue, Std.string(Msg.f(v, ObjC.sel("doubleValue"))));
 	}
 
-	@:hxmc.callback static function isFocused(self:Ptr, cmd:Ptr):Int {
+	@:hxmc.callback static function isFocused(self:Ptr, cmd:Ptr):Int
+		return helder.os.OsThread.hold(() -> isFocusedNow(self, cmd));
+
+	static function isFocusedNow(self:Ptr, cmd:Ptr):Int {
 		var o = nodeOf(self);
 		return o != null && o.a.tree.focus == o.n.id ? 1 : 0;
 	}
 
-	@:hxmc.callback static function setFocused(self:Ptr, cmd:Ptr, on:Int):Void {
+	@:hxmc.callback static function setFocused(self:Ptr, cmd:Ptr, on:Int):Void
+		helder.os.OsThread.holdVoid(() -> setFocusedNow(self, cmd, on));
+
+	static function setFocusedNow(self:Ptr, cmd:Ptr, on:Int):Void {
 		var o = nodeOf(self);
 		if (o != null && on & 255 != 0) o.a.ui.accessAction(o.n.id, Focus);
 	}
 
-	@:hxmc.callback static function isExpanded(self:Ptr, cmd:Ptr):Int {
+	@:hxmc.callback static function isExpanded(self:Ptr, cmd:Ptr):Int
+		return helder.os.OsThread.hold(() -> isExpandedNow(self, cmd));
+
+	static function isExpandedNow(self:Ptr, cmd:Ptr):Int {
 		var o = nodeOf(self);
 		return o != null && o.n.expanded == true ? 1 : 0;
 	}
 
-	@:hxmc.callback static function isRequired(self:Ptr, cmd:Ptr):Int {
+	@:hxmc.callback static function isRequired(self:Ptr, cmd:Ptr):Int
+		return helder.os.OsThread.hold(() -> isRequiredNow(self, cmd));
+
+	static function isRequiredNow(self:Ptr, cmd:Ptr):Int {
 		var o = nodeOf(self);
 		return o != null && o.n.required ? 1 : 0;
 	}
 
-	@:hxmc.callback static function isModal(self:Ptr, cmd:Ptr):Int {
+	@:hxmc.callback static function isModal(self:Ptr, cmd:Ptr):Int
+		return helder.os.OsThread.hold(() -> isModalNow(self, cmd));
+
+	static function isModalNow(self:Ptr, cmd:Ptr):Int {
 		var o = nodeOf(self);
 		return o != null && o.n.modal ? 1 : 0;
 	}
 
-	@:hxmc.callback static function setExpanded(self:Ptr, cmd:Ptr, on:Int):Void {
+	@:hxmc.callback static function setExpanded(self:Ptr, cmd:Ptr, on:Int):Void
+		helder.os.OsThread.holdVoid(() -> setExpandedNow(self, cmd, on));
+
+	static function setExpandedNow(self:Ptr, cmd:Ptr, on:Int):Void {
 		var o = nodeOf(self);
 		if (o != null) o.a.ui.accessAction(o.n.id, on & 255 != 0 ? Expand : Collapse);
 	}
 
-	@:hxmc.callback static function isSelected(self:Ptr, cmd:Ptr):Int {
+	@:hxmc.callback static function isSelected(self:Ptr, cmd:Ptr):Int
+		return helder.os.OsThread.hold(() -> isSelectedNow(self, cmd));
+
+	static function isSelectedNow(self:Ptr, cmd:Ptr):Int {
 		var o = nodeOf(self);
 		return o != null && o.n.selected == true ? 1 : 0;
 	}
 
-	@:hxmc.callback static function setSelected(self:Ptr, cmd:Ptr, on:Int):Void {
+	@:hxmc.callback static function setSelected(self:Ptr, cmd:Ptr, on:Int):Void
+		helder.os.OsThread.holdVoid(() -> setSelectedNow(self, cmd, on));
+
+	static function setSelectedNow(self:Ptr, cmd:Ptr, on:Int):Void {
 		var o = nodeOf(self);
 		if (o != null && on & 255 != 0) o.a.ui.accessAction(o.n.id, Select);
 	}
 
 	// (the range: an NSRange by value, its location and length)
-	@:hxmc.callback static function stringForRange(self:Ptr, cmd:Ptr, at:Int64, length:Int64):Ptr {
+	@:hxmc.callback static function stringForRange(self:Ptr, cmd:Ptr, at:Int64, length:Int64):Ptr
+		return helder.os.OsThread.hold(() -> stringForRangeNow(self, cmd, at, length));
+
+	static function stringForRangeNow(self:Ptr, cmd:Ptr, at:Int64, length:Int64):Ptr {
 		var o = nodeOf(self);
 		if (o == null) return Ptr.nil();
 		var s = o.n.value ?? o.n.name, from = at.toInt(), to = from + length.toInt();
@@ -434,7 +476,10 @@ class MacAccess {
 		return str(s.substring(from, to));
 	}
 
-	@:hxmc.callback static function lineForIndex(self:Ptr, cmd:Ptr, i:Int64):Int64 {
+	@:hxmc.callback static function lineForIndex(self:Ptr, cmd:Ptr, i:Int64):Int64
+		return helder.os.OsThread.hold(() -> lineForIndexNow(self, cmd, i));
+
+	static function lineForIndexNow(self:Ptr, cmd:Ptr, i:Int64):Int64 {
 		var o = nodeOf(self);
 		return o == null ? 0 : lineOf(o.n.value ?? o.n.name, i.toInt());
 	}
@@ -452,14 +497,20 @@ class MacAccess {
 		update();
 	}
 
-	@:hxmc.callback static function children(self:Ptr, cmd:Ptr):Ptr {
+	@:hxmc.callback static function children(self:Ptr, cmd:Ptr):Ptr
+		return helder.os.OsThread.hold(() -> childrenNow(self, cmd));
+
+	static function childrenNow(self:Ptr, cmd:Ptr):Ptr {
 		var m = of(self);
 		if (m == null) return Ptr.nil();
 		m.activate();
 		return m.rootChildren;
 	}
 
-	@:hxmc.callback static function focused(self:Ptr, cmd:Ptr):Ptr {
+	@:hxmc.callback static function focused(self:Ptr, cmd:Ptr):Ptr
+		return helder.os.OsThread.hold(() -> focusedNow(self, cmd));
+
+	static function focusedNow(self:Ptr, cmd:Ptr):Ptr {
 		var m = of(self);
 		if (m != null) m.activate();
 		if (m == null || m.tree == null || m.tree.focus == 0) return self;
@@ -468,7 +519,10 @@ class MacAccess {
 	}
 
 	// the deepest element whose frame holds the point (screen points), else the view
-	@:hxmc.callback static function hitTest(self:Ptr, cmd:Ptr, x:Float, y:Float):Ptr {
+	@:hxmc.callback static function hitTest(self:Ptr, cmd:Ptr, x:Float, y:Float):Ptr
+		return helder.os.OsThread.hold(() -> hitTestNow(self, cmd, x, y));
+
+	static function hitTestNow(self:Ptr, cmd:Ptr, x:Float, y:Float):Ptr {
 		var m = of(self);
 		if (m != null) m.activate();
 		if (m == null || m.tree == null) return self;

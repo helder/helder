@@ -171,6 +171,39 @@ final class Device {
 	@:typescript public function settle()
 		if (threaded) sync();
 
+	// f run where the back end is, in order with what was recorded, not
+	// waited for (helder.ui's compositor: its frame handed over with the program's)
+	@:noCompletion public function inOrder(f:Replay->Void) {
+		commands.call(f);
+		ran();
+	}
+
+	// work the render thread does between what the devices hand it (the
+	// compositor's frames: helder.ui.draw.Compositor), with this device's
+	// back end; false where there is no render thread (synchronous)
+	@:noCompletion public function addIdle(i:RenderIdle):Bool {
+		#if (hxmc.target != "wasm32-wasi")
+		if (thread != null) {
+			thread.addIdle(i, replay);
+			return true;
+		}
+		#end
+		return false;
+	}
+
+	@:noCompletion public function removeIdle(i:RenderIdle) {
+		#if (hxmc.target != "wasm32-wasi")
+		if (thread != null) thread.removeIdle(i);
+		#end
+	}
+
+	// the render thread woken to ask its idle work when it is due (any thread)
+	@:noCompletion public function wake() {
+		#if (hxmc.target != "wasm32-wasi")
+		if (thread != null) thread.wake();
+		#end
+	}
+
 	// f run where the back end is, after what was recorded, waited for
 	function answer(f:Replay->Void) {
 		commands.call(f);

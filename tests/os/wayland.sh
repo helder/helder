@@ -4,9 +4,10 @@
 # on Wayland (a photo shown, --exit-after) with a screenshot of the
 # compositor's output (weston-screenshooter: the viewer's drawn menu bar,
 # helder's decorations).
-#   wayland.sh <WaylandTest> <viewer> <out dir>
+# Then, given, the compositor's scrolling in a window (AsyncScrollWindow).
+#   wayland.sh <WaylandTest> <viewer> <out dir> [AsyncScrollWindow]
 set -e
-test=$1; viewer=$2; out=$3
+test=$1; viewer=$2; out=$3; async=$4
 mkdir -p "$out"
 export XDG_RUNTIME_DIR=$(mktemp -d)
 export LIBGL_ALWAYS_SOFTWARE=1
@@ -18,6 +19,7 @@ for scale in 1 2; do
 	i=0
 	while [ ! -S "$XDG_RUNTIME_DIR/$sock" ] && [ $i -lt 50 ]; do sleep 0.1; i=$((i + 1)); done
 	WAYLAND_DISPLAY=$sock "$test" $scale || status=1
+	if [ -n "$async" ] && [ $scale = 1 ]; then WAYLAND_DISPLAY=$sock "$async" || status=1; fi
 	if [ $scale = 1 ]; then
 		HOME=$(mktemp -d) WAYLAND_DISPLAY=$sock "$viewer" --new --exit-after 5 "apps/viewer/tests/fixtures/folder/photo 2.jpg" > "$out/wayland-viewer.txt" 2>&1 &
 		v=$!
