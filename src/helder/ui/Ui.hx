@@ -1,6 +1,7 @@
 package helder.ui;
 
 import helder.ui.platform.*;
+import helder.ui.draw.DisplayList;
 import helder.os.PointerType;
 import helder.ui.Event;
 import helder.ui.gesture.Gesture;
@@ -445,8 +446,22 @@ class Ui {
 	}
 
 	// draws the tree (after update): subtrees whose ink misses what can be
-	// seen (the window, the scrollers' padding boxes) left out
+	// seen (the window, the scrollers' padding boxes) left out; recorded
+	// into a display list, then replayed onto canvas
 	public function paint(canvas:Canvas) {
+		if (direct) return paintTree(canvas);
+		list.clear();
+		list.target = canvas;
+		paintTree(list);
+		list.replay(canvas);
+		list.target = null;
+	}
+
+	// whether paint draws straight onto its canvas, not through the display list (a test comparing the two)
+	@:noCompletion public var direct = false;
+	final list = new DisplayList();
+
+	function paintTree(canvas:Canvas) {
 		// (a glide's next step: another frame)
 		needsFrame = touchScroll.gliding;
 		paintFrame++;

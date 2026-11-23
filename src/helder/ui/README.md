@@ -1361,8 +1361,13 @@ it against layouts from scratch of random trees changed at random). Paint and hi
 (their ink: the box, overflowing text, children unless clipped, widened
 by shadows and the focus ring) miss the window or their scrollers. The
 accessibility tree is built again only when something it reads changed.
-The renderer draws a quad as four vertices and six indices, batched by
-texture.
+Paint records the tree into a display list (`helder.ui.draw.DisplayList`:
+each Canvas call an opcode and its numbers in flat arrays, what it takes
+by reference in a table of resources with their versions, the arrays kept
+between frames), then replays it onto the renderer: the same calls, in the
+same order, as painting it directly (UiTest checks it on random trees
+changed at random), recording allocating nothing. The renderer draws a quad
+as four vertices and six indices, batched by texture.
 
 Memory per node is kept small: leaves share one empty children array; event
 handlers and the rarely set style properties (grid, transforms, shadows,

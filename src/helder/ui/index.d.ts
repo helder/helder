@@ -1563,13 +1563,16 @@ export declare class CodeDiagnostic {
 
 // A line as a view laid it out (CodeView): its text as drawn (tabs as
 // spaces), the tokens it was coloured by, its paragraph and each span's
-// class; dropped when the line's text or tokens change
+// class, and their colours as last painted (its own: a display list
+// holds them until it is replayed); dropped when the line's text or tokens
+// change
 export declare class ShapedLine {
 	constructor(text: string, tokens: number[], paragraph: unknown, classes: number[]);
 	readonly text: string;
 	readonly tokens: number[];
 	readonly paragraph: unknown;
 	readonly classes: number[];
+	readonly colors: number[];
 }
 
 // A code editor's document (CodeEditor's, usable without one): its text

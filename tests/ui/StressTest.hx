@@ -126,15 +126,17 @@ class StressTest implements Markup {
 		lap("frame after append");
 		check("the row added", count(ui.root) > nodes);
 		// frames with nothing changed: the update, the paint (vertices) and the GPU's part
-		var tu = 0.0, tp = 0.0, tg = 0.0;
+		var tu = 0.0, tp = 0.0, tg = 0.0, bytes = 0.0;
 		for (i in 0...20) {
 			var a = haxe.Timer.stamp();
 			ui.update();
 			var b = haxe.Timer.stamp();
 			var enc = device.beginFrame();
 			enc.beginPass(pass);
+			var before = hxmc.GcStats.threadBytesAllocated();
 			r.begin(W, H);
 			ui.paint(r);
+			bytes += hxmc.GcStats.threadBytesAllocated() - before;
 			var c = haxe.Timer.stamp();
 			r.end(enc);
 			enc.endPass();
@@ -147,7 +149,7 @@ class StressTest implements Markup {
 		}
 		inline function ms(v:Float)
 			return Math.round(v / 20 * 10000) / 10;
-		times.push('steady frame: update ${ms(tu)}, paint ${ms(tp)}, gpu ${ms(tg)}');
+		times.push('steady frame: update ${ms(tu)}, paint ${ms(tp)}, gpu ${ms(tg)}, paint bytes ${Math.round(bytes / 20)}');
 		// the accessibility tree a window builds each frame for assistive technology, and its changes
 		var ta = 0.0, prev = ui.accessTree();
 		for (i in 0...20) {

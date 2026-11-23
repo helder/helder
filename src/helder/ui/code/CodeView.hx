@@ -67,7 +67,6 @@ class CodeView extends Node {
 	final spanPool = new Map<Int, TextSpan>();
 	var spanFont:Null<Font> = null;
 	final spansScratch:Array<TextSpan> = [];
-	final colorScratch:Array<Color> = [];
 	final numbers:Array<String> = [];
 
 	var ticking = false;
@@ -447,11 +446,11 @@ class CodeView extends Node {
 		// (the lines)
 		for (i in first...last + 1) {
 			var sh = shape(engine, i);
-			var cl = sh.classes;
-			colorScratch.resize(cl.length);
+			var cl = sh.classes, colors = sh.colors;
+			colors.resize(cl.length);
 			for (k in 0...cl.length)
-				colorScratch[k] = codeTheme.token(cl[k]);
-			canvas.text(sh.paragraph, tx, ty + i * lh, sh.paragraph.width + 1, Left, c[CodeTheme.FOREGROUND], cl.length > 0 ? colorScratch : null);
+				colors[k] = codeTheme.token(cl[k]);
+			canvas.text(sh.paragraph, tx, ty + i * lh, sh.paragraph.width + 1, Left, c[CodeTheme.FOREGROUND], cl.length > 0 ? colors : null);
 		}
 		paintWhitespace(canvas, tx, ty, first, last);
 		paintDecorations(canvas, tx, ty, left, width - gutterW, first, last, false);

@@ -12,8 +12,9 @@ import helder.image.PngDecoder;
 import helder.image.Resize;
 import helder.ui.draw.UiShader;
 
-// helder.ui's Canvas on helder.gfx: a frame's rectangles, borders, shadows,
-// glyphs and images are instances of one quad (UiShader's, after Rune's
+// helder.ui's Canvas on helder.gfx (Ui.paint replays its display list onto
+// it: DisplayList): a frame's rectangles, borders, shadows, glyphs and
+// images are instances of one quad (UiShader's, after Rune's
 // uber-quad: anomalyco/rune, MIT), each a kind of it, all in one instance
 // buffer (helder.gfx's QuadBatch, instanced; the batcher SpriteBatch is on
 // too), in the order drawn, and drawn as one instanced draw: a frame is one
@@ -64,7 +65,7 @@ import helder.ui.draw.UiShader;
 // What is under a transform is never snapped: a transform is how things
 // move (a mark following the camera, a spring, a tween), and a moving thing
 // placed at whole pixels steps from one to the next instead of gliding.
-class Renderer implements Canvas {
+class Renderer implements TextureCanvas {
 	public final device:Device;
 	public var scale = 1.0;
 	// whether unturned, unscaled drawing is put on the pixel grid
@@ -339,6 +340,12 @@ class Renderer implements Canvas {
 			run++;
 			runTextures.push(t);
 		}
+	}
+
+	// the renderer a canvas draws onto: c, or what a display list is replayed onto (DisplayList.target)
+	public static function of(c:Null<Canvas>):Null<Renderer> {
+		var l = Std.downcast(c, DisplayList);
+		return l != null ? of(l.target) : Std.downcast(c, Renderer);
 	}
 
 	// f records a pass of its own before the frame's (prepare): what a
@@ -947,7 +954,7 @@ class Renderer implements Canvas {
 	}
 
 	// a GPU texture (a render target, rows top to bottom: a <Scene>'s) at x, y, w x h; id names it, negative, one per texture
-	public function gpuTexture(t:Texture, id:Int, x:Float, y:Float, w:Float, h:Float, radius = 0.0, ?corners:Corners) {
+	public function gpuTexture(t:Texture, id:Int, x:Float, y:Float, w:Float, h:Float, radius:Float = 0.0, ?corners:Corners) {
 		if (w <= 0 || h <= 0 || id >= 0) return;
 		gpu.set(id, t);
 		var s = scale;
