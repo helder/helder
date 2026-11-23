@@ -142,7 +142,10 @@ in `compute()`; GPU particles, cloth and soft bodies as its first users.
 - The system's compositor where there is one (CALayer, SurfaceControl,
   DirectComposition, Wayland subsurfaces): layers handed to it, native
   views and video between drawn layers in the same transaction as the
-  frame, so they clip, stack and scroll with it. Ladybird's Compositor
+  frame, so they clip, stack and scroll with it. macOS and iOS hand their
+  scrollers' content and moving layers to Core Animation, native views
+  moved in the frame's transaction; next, those views inside the layer
+  tree (clipped and stacked by it) and video's layers, then the others. Ladybird's Compositor
   (LibCompositing, BSD-2-Clause) is this design, as a process of its own.
 - Then Liquid Glass: the system's own on iOS and macOS 26 (UIGlassEffect,
   NSGlassEffectView) and a shader matching it elsewhere and in screenshots.

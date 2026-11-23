@@ -32,6 +32,13 @@ import hxmc.unsafe.*;
 // theirs; a dispatch gives the workgroup's size (ShaderCode.workgroupSize).
 // readBuffer commits the frame's work so far and waits for it (as
 // readPixels), then copies from the buffer's shared memory.
+// The system's layers (helder.ui.draw.CaLayers): a frame may be drawn onto
+// another CAMetalLayer of the window (planeFrame), single-sampled, the
+// frame's pipelines made again for it without depth, its drawable kept to
+// be presented with the Core Animation transaction that places the layer
+// (takePresents); the window's own frames then take no drawable (quiet),
+// only rendering into targets (tiles, groups), as the layers are drawn
+// from what they rendered.
 @:hxmc.unsafe(gc)
 class MetalBackend {
 	public final backend = Backend.Metal;
@@ -101,6 +108,16 @@ class MetalBackend {
 	var targetWidth = 0;
 	var targetHeight = 0;
 	final shared = new Map<Int, Bool>();
+
+	// (the system's layers: the window's frames drawing onto no drawable;
+	// planeFrame's layer, the next frame onto it; whether this one is; the
+	// drawables drawn, presented with the transaction)
+	public var quiet = false;
+	// (the GPU's time on the command buffers that completed before the next was committed: a bench's)
+	@:noCompletion public var gpuSeconds = 0.0;
+	var plane = Ptr.nil();
+	var planing = false;
+	final presents:Array<Ptr> = [];
 
 	static inline var VERTEX_BUFFERS = 16;
 	static inline var MAX_SLOTS = 8;
@@ -213,6 +230,26 @@ class MetalBackend {
 	public function frameInto(id:Int)
 		frameTarget = id;
 
+	// the next frame onto layer's next drawable (a CAMetalLayer of the
+	// window's: helder.ui.draw.CaLayers), kept for takePresents
+	public function planeFrame(layer:Ptr)
+		plane = layer;
+
+	// the drawables drawn by plane frames since, retained: presented by the
+	// caller in its transaction, then released
+	public function takePresents():Array<Ptr> {
+		var p = presents.copy();
+		presents.resize(0);
+		if (p.length > 0) shown = true;
+		return p;
+	}
+
+	// (a plane frame's pipeline: one sample, no depth)
+	function planePipeline(p:MtlPipeline):MtlPipeline {
+		if (p.plane == null) p.plane = build(p.desc, true);
+		return p.plane;
+	}
+
 	// the depth texture (and the multisampled colour one), when the
 	// target's size is not theirs
 	function sizeDepth() {
@@ -276,6 +313,8 @@ class MetalBackend {
 
 	// (a command buffer committed: the one writes into GPU-written buffers wait for)
 	function committed(c:Ptr) {
+		if (!inFlight.isNull() && Msg.i(inFlight, ObjC.sel("status")) == 4)
+			gpuSeconds += Msg.f(inFlight, ObjC.sel("GPUEndTime")) - Msg.f(inFlight, ObjC.sel("GPUStartTime"));
 		if (!inFlight.isNull()) Runtime.objc_release(inFlight);
 		inFlight = Runtime.objc_retain(c);
 	}
@@ -520,14 +559,21 @@ class MetalBackend {
 	}
 
 	public function createPipeline(d:PipelineDesc):Int {
+		pipelines.push(build(d, false));
+		return pipelines.length;
+	}
+
+	// (plane: the frame's format, one sample and no depth, for planeFrame's)
+	function build(d:PipelineDesc, plane:Bool):MtlPipeline {
 		if (d.layout.length > MAX_SLOTS) throw "helder.gfx: more than " + MAX_SLOTS + " vertex buffers";
+		var frame = d.colorFormat == null;
 		var pool = Runtime.objc_autoreleasePoolPush();
 		var desc = make("MTLRenderPipelineDescriptor");
 		Msg.vPtr(desc, ObjC.sel("setVertexFunction:"), shaders[d.vertex.id() - 1]);
 		Msg.vPtr(desc, ObjC.sel("setFragmentFunction:"), shaders[d.fragment.id() - 1]);
 		var color = Msg.idInt(Msg.id(desc, ObjC.sel("colorAttachments")), ObjC.sel("objectAtIndexedSubscript:"), 0);
 		Msg.vInt(color, ObjC.sel("setPixelFormat:"), d.colorFormat == null ? MTL.PixelFormatBGRA8Unorm : pixelFormat(d.colorFormat));
-		Msg.vInt(desc, ObjC.sel("setRasterSampleCount:"), d.colorFormat == null ? samples : d.samples == null ? 1 : d.samples);
+		Msg.vInt(desc, ObjC.sel("setRasterSampleCount:"), frame ? (plane ? 1 : samples) : d.samples == null ? 1 : d.samples);
 		var blend:Blend = d.blend == null ? Opaque : d.blend;
 		if (blend != Opaque) {
 			Msg.vBool(color, ObjC.sel("setBlendingEnabled:"), true);
@@ -539,7 +585,7 @@ class MetalBackend {
 			Msg.vInt(color, ObjC.sel("setDestinationAlphaBlendFactor:"), blend == Additive || multiply ? MTL.BlendFactorOne : MTL.BlendFactorOneMinusSourceAlpha);
 			Msg.vInt(color, ObjC.sel("setAlphaBlendOperation:"), MTL.BlendOperationAdd);
 		}
-		Msg.vInt(desc, ObjC.sel("setDepthAttachmentPixelFormat:"), d.depthFormat != null ? pixelFormat(d.depthFormat) : d.colorFormat == null ? MTL.PixelFormatDepth32Float : MTL.PixelFormatInvalid);
+		Msg.vInt(desc, ObjC.sel("setDepthAttachmentPixelFormat:"), d.depthFormat != null ? pixelFormat(d.depthFormat) : frame && !plane ? MTL.PixelFormatDepth32Float : MTL.PixelFormatInvalid);
 		var vd = make("MTLVertexDescriptor");
 		var attributes = Msg.id(vd, ObjC.sel("attributes")), layouts = Msg.id(vd, ObjC.sel("layouts"));
 		for (slot in 0...d.layout.length) {
@@ -574,13 +620,26 @@ class MetalBackend {
 		Msg.vBool(ds, ObjC.sel("setDepthWriteEnabled:"), d.depthWrite == true);
 		var depthState = Msg.idPtr(device, ObjC.sel("newDepthStencilStateWithDescriptor:"), ds);
 		Runtime.objc_release(ds);
-		pipelines.push(new MtlPipeline(state, depthState, d));
-		return pipelines.length;
+		return new MtlPipeline(state, depthState, d);
 	}
 
 	// false: no drawable this frame (the window is hidden)
 	public function beginFrame():Bool {
 		pool = Runtime.objc_autoreleasePoolPush();
+		if (!plane.isNull()) {
+			drawable = Msg.id(plane, S.nextDrawable);
+			plane = Ptr.nil();
+			if (drawable.isNull()) {
+				Runtime.objc_autoreleasePoolPop(pool);
+				return false;
+			}
+			texture = Msg.id(drawable, S.texture);
+			width = Msg.i(texture, S.width).toInt();
+			height = Msg.i(texture, S.height).toInt();
+			planing = true;
+			cmd = Msg.id(queue, S.commandBuffer);
+			return true;
+		}
 		if (frameTarget != 0) {
 			texture = textures[frameTarget - 1];
 			width = infos[frameTarget - 1].width;
@@ -589,6 +648,14 @@ class MetalBackend {
 			texture = target;
 			width = targetWidth;
 			height = targetHeight;
+		} else if (quiet) {
+			// (no drawable: the system's layers are drawn from what this frame renders into targets)
+			var sz = MtlMsg.size(layer, S.drawableSize);
+			texture = Ptr.nil();
+			width = Std.int(sz.width);
+			height = Std.int(sz.height);
+			cmd = Msg.id(queue, S.commandBuffer);
+			return true;
 		} else {
 			drawable = Msg.id(layer, S.nextDrawable);
 			if (drawable.isNull()) {
@@ -606,7 +673,7 @@ class MetalBackend {
 
 	public function beginPass(p:PassDesc) {
 		var c = p.colors[0], d = p.depth, w = width, h = height;
-		var depthTexture = depth;
+		var depthTexture = planing ? Ptr.nil() : depth;
 		if (c.texture != null) {
 			// (a render target, its depth texture or none)
 			var info = infos[c.texture.id() - 1];
@@ -617,7 +684,7 @@ class MetalBackend {
 			if (info.samples > 1 || c.resolve != null)
 				info.checkSamples(d == null ? null : infos[d.texture.id() - 1], c.resolve == null ? null : infos[c.resolve.id() - 1]);
 		}
-		var resolve = c.texture == null && samples > 1, into = c.texture != null && c.resolve != null;
+		var resolve = c.texture == null && samples > 1 && !planing, into = c.texture != null && c.resolve != null;
 		Msg.vPtr(attachment, S.setTexture, c.texture != null ? textures[c.texture.id() - 1] : resolve ? msaa : texture);
 		Msg.vPtr(attachment, S.setResolveTexture, resolve ? texture : into ? textures[c.resolve.id() - 1] : Ptr.nil());
 		// (a cube's face, a 2D array's layer)
@@ -658,6 +725,7 @@ class MetalBackend {
 
 	public function setPipeline(id:Int) {
 		var p = pipelines[id - 1];
+		if (planing && p.desc.colorFormat == null) p = planePipeline(p);
 		if (p == pipeline) return;
 		pipeline = p;
 		Msg.vPtr(enc, S.setRenderPipelineState, p.state);
@@ -793,6 +861,20 @@ class MetalBackend {
 	}
 
 	public function endFrame() {
+		if (planing) {
+			// (presented with the transaction that places its layer: scheduled first, as presentsWithTransaction asks)
+			planing = false;
+			Msg.v(cmd, S.commit);
+			committed(cmd);
+			Msg.v(cmd, ObjC.sel("waitUntilScheduled"));
+			presents.push(Runtime.objc_retain(drawable));
+			cmd = Ptr.nil();
+			drawable = Ptr.nil();
+			texture = Ptr.nil();
+			Runtime.objc_autoreleasePoolPop(pool);
+			pool = Ptr.nil();
+			return;
+		}
 		var presented = !drawable.isNull() && frameTarget == 0;
 		if (presented) Msg.vPtr(cmd, S.presentDrawable, drawable);
 		Msg.v(cmd, S.commit);
@@ -853,9 +935,16 @@ class MetalBackend {
 
 	public function dispose() {
 		if (!inFlight.isNull()) Runtime.objc_release(inFlight);
+		for (d in presents)
+			Runtime.objc_release(d);
+		presents.resize(0);
 		for (p in pipelines) {
 			Runtime.objc_release(p.state);
 			Runtime.objc_release(p.depth);
+			if (p.plane != null) {
+				Runtime.objc_release(p.plane.state);
+				Runtime.objc_release(p.plane.depth);
+			}
 		}
 		for (c in computes)
 			Runtime.objc_release(c.state);
@@ -905,10 +994,14 @@ private class MtlPipeline {
 	public final depth:Ptr; // MTLDepthStencilState
 	public final topology:Int;
 	public final cull:Int;
+	public final desc:PipelineDesc;
+	// (its plane frames' variant, made at first use)
+	public var plane:Null<MtlPipeline> = null;
 
 	public function new(state:Ptr, depth:Ptr, d:PipelineDesc) {
 		this.state = state;
 		this.depth = depth;
+		desc = d;
 		topology = switch d.topology {
 			case null | Triangles: MTL.PrimitiveTypeTriangle;
 			case TriangleStrip: MTL.PrimitiveTypeTriangleStrip;
@@ -927,6 +1020,7 @@ private class MtlPipeline {
 @:hxmc.unsafe(gc)
 private class S {
 	public static final nextDrawable = ObjC.sel("nextDrawable");
+	public static final drawableSize = ObjC.sel("drawableSize");
 	public static final texture = ObjC.sel("texture");
 	public static final width = ObjC.sel("width");
 	public static final height = ObjC.sel("height");

@@ -1,6 +1,7 @@
 package helder.gfx.metal;
 
 import helder.gfx.metal.Metal;
+import helder.os.objc.CGSize;
 import hxmc.unsafe.*;
 
 // Metal's shapes of objc_msgSend (helder.os.objc.Sender; the names as in
@@ -8,6 +9,7 @@ import hxmc.unsafe.*;
 @:build(helder.os.objc.Sender.build())
 @:hxmc.unsafe(gc)
 class MtlMsg {
+	static function size(self:Ptr, sel:Ptr):CGSize;
 	static function idPtrPtrInt(self:Ptr, sel:Ptr, a:Ptr, b:Ptr, c:Int64):Ptr;
 	static function vClear(self:Ptr, sel:Ptr, c:MTLClearColor):Void;
 	static function vViewport(self:Ptr, sel:Ptr, v:MTLViewport):Void;
