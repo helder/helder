@@ -25,7 +25,7 @@ for(const file of fs.readdirSync(`${T}/bench`).filter(f=>f.endsWith('.ts')).sort
     run(compiler,[`${T}/bench/${file}`,'-o',`${dir}/${name}`]);
     const oracle=run(process.execPath,[`${dir}/js/${name}.js`]);
     const hx=name.split('-').map(w=>w[0].toUpperCase()+w.slice(1)).join('');
-    run(compiler,['-cp',`${T}/bench`,'-main',hx,'--custom-target',`hxmc=${dir}/${hx}`]);
+    run(compiler,['-D','hxmc.markup-braces','-cp',`${T}/bench`,'-main',hx,'--custom-target',`hxmc=${dir}/${hx}`]);
     const node=time(process.execPath,[`${dir}/js/${name}.js`],oracle),native=time(`${dir}/${name}`,[],oracle),haxe=time(`${dir}/${hx}`,[],oracle);
     console.log(`${name.padEnd(14)} ${node.toFixed(0).padStart(9)}  ${native.toFixed(0).padStart(11)}  ${(native/node).toFixed(2).padStart(5)}  ${haxe.toFixed(0).padStart(9)}  ${(native/haxe).toFixed(2).padStart(7)}`);
 }

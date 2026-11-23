@@ -72,7 +72,7 @@ if (out || !fs.existsSync(exe)) {
 	const launcher = path.join(path.dirname(cli), 'hxmc/bootstrap/haxe.mjs');
 	const linux = target ? target.startsWith('linux') : process.platform === 'linux';
 	const args = ['-cp', src, '-cp', path.join(hxmc, 'haxe/src'), '-cp', path.join(hxmc, 'hxmc/src'), '-main', 'helder.compiler.Compiler',
-		'-D', 'disable-parallelism', '-D', 'hih_no_generators', ...(linux ? ['-D', 'hxmc.libc=glibc'] : []), ...(target ? ['-D', `hxmc.target=${target}`] : []), '--custom-target', `hxmc=${tmp}`];
+		'-D', 'disable-parallelism', '-D', 'hih_no_generators', '-D', 'hxmc.markup-braces', ...(linux ? ['-D', 'hxmc.libc=glibc'] : []), ...(target ? ['-D', `hxmc.target=${target}`] : []), '--custom-target', `hxmc=${tmp}`];
 	log(`building helder's compiler (hxmc ${version}${target ? `, ${target}` : ''})`);
 	const b = spawnSync(process.execPath, [launcher, ...args], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']});
 	if (b.status !== 0) {

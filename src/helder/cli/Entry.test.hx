@@ -42,6 +42,17 @@ function tests() {
 		var e = Entry.resolve(d);
 		equals([e.main, e.name], ["Main", "plain"]);
 	});
+
+	test("markup's braces read as code, unless helder.markup-stock", () -> {
+		var main = "class Main {\n\tstatic function main() {}\n}\n";
+		var on = Entry.resolve(fixture("bin/test-entry/braces", ["package.json" => '{"name": "braces"}', "src/Main.hx" => main]));
+		equals(on.args().contains("hxmc.markup-braces"), true);
+		var off = Entry.resolve(fixture("bin/test-entry/stock", [
+			"package.json" => '{"name": "stock", "helder": {"defines": {"helder.markup-stock": 1}}}',
+			"src/Main.hx" => main
+		]));
+		equals(off.args().contains("hxmc.markup-braces"), false);
+	});
 }
 
 // a directory of files (written fresh)

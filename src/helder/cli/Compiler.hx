@@ -21,6 +21,11 @@ using StringTools;
 class Compiler {
 	static var found:Null<String> = null;
 
+	// markup's braces read as code, as JSX (hxmc.markup-braces: <x y={a < b} />),
+	// in every build but one given -D helder.markup-stock (Haxe's own reading)
+	public static function markup(defines:Array<String>):Array<String>
+		return Lambda.exists(defines, d -> d == "helder.markup-stock" || d.startsWith("helder.markup-stock=")) ? [] : ["-D", "hxmc.markup-braces"];
+
 	public static function tool():String {
 		if (found == null) found = find();
 		return found;

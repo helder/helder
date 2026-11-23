@@ -28,6 +28,6 @@ const list = modules.length > 0 ? modules : MODULES;
 // (helder's modules always typed: what they declare named as in their own files)
 const strings = (l) => `[${l.map(m => `"${m}"`).join(', ')}]`;
 const call = `helder.typescript.api.Declarations.write(${strings(list)}, ${check}, ${strings(MODULES)})`;
-const r = spawnSync(compiler, ['-cp', src, ...cps, '--macro', call, '--no-output', '--custom-target', 'hxmc=' + path.join(src, '..', 'bin', 'declarations')],
+const r = spawnSync(compiler, ['-D', 'hxmc.markup-braces', '-cp', src, ...cps, '--macro', call, '--no-output', '--custom-target', 'hxmc=' + path.join(src, '..', 'bin', 'declarations')],
 	{encoding: 'utf8', stdio: 'inherit'});
 process.exit(r.status ?? 1);

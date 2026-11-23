@@ -154,6 +154,8 @@ class Frontend implements helder.compiler.Plugin {
 		}
 		if (!FileSystem.exists(entry)) throw '$entry: TSHX002: input file not found';
 		var result = ["-cp", source(), "-main", "helder.typescript.js.Seed", "--custom-target", "hxmc=" + out].concat(defines);
+		// (markup's braces read as code, as helder's CLI builds: helder.cli.Compiler.markup)
+		if (!Lambda.exists(defines, d -> d.startsWith("helder.markup-stock"))) result = result.concat(["-D", "hxmc.markup-braces"]);
 		if (target != null) result = result.concat(["-D", "hxmc.target=" + target]);
 		return result;
 	}

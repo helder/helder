@@ -48,12 +48,12 @@ const haxe = (args) => {
 	if (r.status !== 0) throw new Error('the build failed: ' + args.join(' ') + '\n' + (r.stdout + r.stderr).slice(-3000));
 };
 const host = path.join(work, 'host' + (win ? '.exe' : ''));
-haxe(['-cp', 'src', '-main', 'helder.dev.DevHost', '--custom-target', 'hxmc=' + host]);
+haxe(['-D', 'hxmc.markup-braces', '-cp', 'src', '-main', 'helder.dev.DevHost', '--custom-target', 'hxmc=' + host]);
 check('the host builds', fs.existsSync(host));
 // (Windows: each DLL at a base of its own, as helder dev gives them)
 const libs = [1, 2, 3].map((v) => {
 	const lib = path.join(work, `DevHost${v}${ext}`);
-	haxe(['-cp', 'src', '-cp', 'tests/gfx', ...['triangle', 'cube', 'instances', 'mips', 'formats'].flatMap((e) => ['-cp', 'examples/' + e]), '-main', 'DevHostTest', '-D', 'devhost_version=' + v, '-D', 'hxmc.dev',
+	haxe(['-D', 'hxmc.markup-braces', '-cp', 'src', '-cp', 'tests/gfx', ...['triangle', 'cube', 'instances', 'mips', 'formats'].flatMap((e) => ['-cp', 'examples/' + e]), '-main', 'DevHostTest', '-D', 'devhost_version=' + v, '-D', 'hxmc.dev',
 		'-D', 'hxmc.shared', '-D', 'hxmc.dev-host', '-D', 'hxmc.exports=hxmc_dev_run,hxmc_dev_state',
 		...(win ? ['-D', 'hxmc.dll-base=0x' + (0x10000000 + (v % 3) * 0x20000000).toString(16)] : []),
 		'helder.dev.Hosted', '--custom-target', 'hxmc=' + lib]);

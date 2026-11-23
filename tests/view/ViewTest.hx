@@ -199,6 +199,8 @@ class ViewTest implements Markup {
 			}}/></div>) == "<div><ul><li>zero</li><li>one</li></ul><ul><li>0</li></ul></div>");
 		var count = 1;
 		check("a root closed by its closing tag", html(<Rows count={2} render={i -> i < count ? <Card>{i}</Card> : <Card/>}></Rows>) == "<ul><li>0</li><li></li></ul>");
+		// (hxmc.markup-braces: a "<" in braces is code, so the root's own "/>" ends it)
+		check("a root closed by its />", html(<Rows count={2} render={i -> i < count ? <Card>{i}</Card> : <Card/>}/>) == "<ul><li>0</li><li></li></ul>");
 		// events and refs
 		var clicked = 0, got:Null<TestNode> = null;
 		var root2 = new TestNode(Element, "root");
@@ -692,7 +694,7 @@ class ViewTest implements Markup {
 			];
 			// (// target: js, a program compiled as JavaScript: the DOM's types)
 			var js = content.indexOf("\n// target: js") >= 0 || StringTools.startsWith(content, "// target: js");
-			var args = ["-cp", "src", "-cp", dir, "-main", f.substr(0, f.length - 3)].concat(js ? ["-js", "bin/view/reject.js"] : ["--interp"]).concat(["--no-output"]);
+			var args = ["-D", "hxmc.markup-braces", "-cp", "src", "-cp", dir, "-main", f.substr(0, f.length - 3)].concat(js ? ["-js", "bin/view/reject.js"] : ["--interp"]).concat(["--no-output"]);
 			args = args.concat(["-cp", "tests/view"]);
 			var p = new sys.io.Process(tool, args);
 			var out = p.stdout.readAll().toString() + p.stderr.readAll().toString();

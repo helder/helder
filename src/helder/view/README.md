@@ -104,11 +104,12 @@ it makes its nodes, each time it is mounted.
   component uses it); a prop of another type is evaluated once. Text
   follows JSX's whitespace rule; a run of text and text holes is one text
   node.
-- Haxe's lexer ends a literal at its root's `/>` only while it is in the
-  root's opening tag, which any `<` in an attribute leaves (`i < n`,
-  `render={i -> <Card/>}`): such a root is closed by its closing tag,
-  `<Rows render={i -> <Card/>}></Rows>`. Inside the root, markup and
-  comparisons nest freely.
+- helder's builds read the code in a literal's braces as code, as JSX does
+  (`-D hxmc.markup-braces`, the CLI's default): `<Rows when={i < n}
+  render={i -> <Card/>}/>`; a `{` in text is written `&lbrace;`. Without
+  it (plain `haxe`, `-D helder.markup-stock`) Haxe's lexer ends a literal
+  at its root's `/>` only while it is in the root's opening tag, which any
+  `<` in an attribute leaves: such a root is closed by its closing tag.
 - Control flow (`helder.view.Flow`, Solid 2's): `For` (its row a child
   function given the item as a Read: keyed by the item, rows kept and
   moved; `keyed={false}`, a row per index, its Read what is there),

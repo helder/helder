@@ -51,7 +51,7 @@ function differing(cases, expected, shown = false) {
 	fs.writeFileSync(path.join(dir, 'layout-expected.json'), JSON.stringify(expected));
 	let out;
 	try {
-		out = execFileSync('bash', ['-c', `npx haxe -cp src -cp tests/ui --run LayoutFuzz ${dir}`],
+		out = execFileSync('bash', ['-c', `npx haxe -D hxmc.markup-braces -cp src -cp tests/ui --run LayoutFuzz ${dir}`],
 			{ cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 	} catch (e) {
 		out = e.stdout;

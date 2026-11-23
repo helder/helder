@@ -51,7 +51,7 @@ const v1 = original.replace('var count = signal(0);', 'var count = signal(0);\n\
 if (v1 === original) throw new Error('Counter.hx changed: its signal line is not found');
 fs.writeFileSync(counter, v1);
 const cp = [`-cp ${path.join(repo, 'src')}`];
-fs.writeFileSync(path.join(work, 'build.hxml'), ['-cp app', ...cp, '-main Counter',
+fs.writeFileSync(path.join(work, 'build.hxml'), ['-cp app', '-D hxmc.markup-braces', ...cp, '-main Counter',
 	'-D hxmc.target=wasm32-wasi', '--custom-target hxmc=out/counter.wasm'].join('\n') + '\n');
 // (written beside and renamed over: the watcher never reads a half-written file)
 const edit = (f) => { fs.writeFileSync(counter + '.tmp', f(fs.readFileSync(counter, 'utf8'))); fs.renameSync(counter + '.tmp', counter); };
