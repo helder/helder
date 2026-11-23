@@ -347,8 +347,10 @@ async function recolour(pg, x, y, tap) {
 	});
 	check((await saved()).includes('Hi there'), 'the patch saved in OPFS');
 	check(await press(pg, 'Undo'), 'the patch undone (the header\'s Undo)');
-	await pg.waitForTimeout(300);
-	check((await saved()).includes('>Hello<'), 'the undo saved');
+	// (the save follows the undo on its own clock: waited for, not a fixed 300 ms, which a busy runner missed)
+	let undone = false;
+	for (let i = 0; i < 50 && !(undone = (await saved()).includes('>Hello<')); i++) await pg.waitForTimeout(100);
+	check(undone, 'the undo saved');
 	const list = JSON.parse((await run('project.list', {})).content[0].text);
 	check(list.open === 'agent' && list.projects.includes('agent'), 'project.list: ' + JSON.stringify(list));
 	const z = 'z.' + deflateRawSync(JSON.stringify({ name: 'agent', files: { 'app.helder': design.replace('Hello', 'Deflated') } })).toString('base64url');
