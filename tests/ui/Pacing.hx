@@ -85,12 +85,12 @@ class Pacing {
 				var sum = 0.0, late = 0;
 				for (g in gaps) {
 					sum += g;
-					if (g > 1.5 / 60) late++;
+					if (g > 0.025) late++;
 				}
 				Sys.println('Pacing: ${c == null ? "synchronous" : "compositor"}, the program ${work > 0 ? "busy " + Math.round(work * 1000) + " ms a frame" : "idle"}: '
 					+ '${all.length} frames in ${ms(to - from)} ms (${Math.round(all.length / (to - from))} a second), gap mean ${ms(sum / gaps.length)} ms, '
 					+ 'p50 ${ms(sorted[Std.int(sorted.length / 2)])}, p95 ${ms(sorted[Std.int(sorted.length * 0.95)])}, max ${ms(sorted[sorted.length - 1])}, '
-					+ '$late over 1.5 periods' + (c == null ? "" : ' (${mine.length} of them the compositor\'s)'));
+					+ '$late over 25 ms' + (c == null ? "" : ' (${mine.length} of them the compositor\'s)'));
 				w.close();
 				Sys.exit(0);
 			}

@@ -717,7 +717,9 @@ class Renderer implements TextureCanvas {
 	// (composites), the quads tagged with the scrollers they move with
 	// (enter, leave), what is under a scroller not culled to what is seen
 	// but walked over what its layer was recorded over, its tiles kept as
-	// tiles (tileGroup); nothing of it drawn by the frame
+	// tiles (tileGroup), what moves on its own tagged too (mover: drawn at
+	// its opacity's 1, the compositor turns and fades it); nothing of it
+	// drawn by the frame
 	public var composite:Null<CompositeFrame> = null;
 	var templating = false;
 	// (the scroller frame the quads are in (-1: none), their clip's, a thumb's; under a frame nothing culled)
