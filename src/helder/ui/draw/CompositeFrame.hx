@@ -15,7 +15,9 @@ import helder.ui.Node;
 // transition, a spring or a tween; a sticky node) is drawn at its opacity's
 // 1 and tagged too: its quads turned by its transform's change, in the
 // target's pixels, and faded by its opacity, as sampled at the time drawn;
-// a scroller inside one leaves it as drawn. An overlay scrollbar's thumb is
+// a fading one of more than one thing is a group (a render target of the
+// frame's own, Renderer.pushGroup) whose one quad is faded; a scroller
+// inside one leaves it as drawn. An overlay scrollbar's thumb is
 // drawn shown and faded as the program's would. Filled on the program's
 // thread, then read by the compositor's only (two, in turn).
 @:allow(helder.ui.draw)

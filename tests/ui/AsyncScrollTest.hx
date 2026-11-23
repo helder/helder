@@ -554,8 +554,19 @@ class AsyncScrollTest {
 		spin.style.set({position: Absolute, left: 200, top: 60, width: 70, height: 50, radius: 8, background: 0xFF2A7AE2});
 		spin.style.transform = Transform.parse("translate(0px, 0px) rotate(0deg)");
 		spin.style.transition = Transition.parse("transform 0.5s ease-in-out, opacity 0.5s linear");
+		// (a card whose children overlap: faded whole, as CSS's opacity and the program's group fade it)
+		var card = new Node();
+		card.style.set({position: Absolute, left: 150, top: 150, width: 130, height: 70, radius: 10, padding: 8, background: 0xFFFFE08A});
+		card.style.transition = Transition.parse("opacity 0.6s linear");
+		for (i in 0...3) {
+			var b = new Node();
+			b.style.set({position: Absolute, left: 10 + i * 30, top: 10 + i * 8, width: 50, height: 40, radius: 6, background: [0xFFE2462A, 0xFF2AA84A, 0xFF2A62E2][i]});
+			card.append(b);
+		}
+		card.append(new TextNode("overlapping"));
 		ui.root.append(list);
 		ui.root.append(spin);
+		ui.root.append(card);
 		var c = new helder.ui.draw.Compositor(device), mine = haxe.io.Bytes.alloc(w * h * 4), theirs = haxe.io.Bytes.alloc(w * h * 4);
 		function frame(composite:Bool, ?pixels:haxe.io.Bytes) {
 			Clock.tick(now);
@@ -616,6 +627,22 @@ class AsyncScrollTest {
 			compare('the compositor\'s at ${d} s after the program\'s last, a layer turning and fading: the program\'s then (within a level)', 1);
 			now += 1 / 60;
 			frame(true);
+		}
+		// (a fade of the card, the program held: the compositor's frames at
+		// vsyncs from its last against the program's then, the card a group)
+		now += 1;
+		frame(true);
+		card.style.opacity = 0.2;
+		for (_ in 0...3) {
+			now += 1 / 60;
+			frame(true);
+		}
+		var held = now;
+		for (k in [4, 12, 24]) {
+			now = held + k / 60;
+			c.drawNow(mine);
+			frame(false, theirs);
+			compare('the compositor\'s $k vsyncs after the program\'s last, a card with overlapping children fading whole: the program\'s then (within a level)', 1);
 		}
 		// (the transition done; sticky headers and overlay bars: scrolled by the mirror)
 		now += 1;

@@ -1043,6 +1043,8 @@ class Ui extends ScrollHost {
 			w.shift(dx, dy);
 			if (dl != null) dl.cullShift(dx, dy);
 		}
+		var grouped = n.children.length > 0 || n.exits != null || n.hasContent() && (s.background.a > 0 || s.borderWidth > 0 || s.backgroundImage != null);
+		if (mv != null) mv.grouped = grouped && mv.fades();
 		var tagged = mv != null && composing.mover(mv);
 		if (tagged) w.all();
 		if (m != null) {
@@ -1052,12 +1054,14 @@ class Ui extends ScrollHost {
 			if (dl != null) dl.cullAll();
 		}
 		// (a group where more than one thing of it is drawn: its children, its
-		// content over its box; its ink's bounds, else the clip's)
-		if (opacity < 1 && !tagged) {
-			if (n.children.length > 0 || n.exits != null || n.hasContent() && (s.background.a > 0 || s.borderWidth > 0 || s.backgroundImage != null)) {
-				var e = focusRingOffset + focusRingWidth + shadowReach + 8 + Math.abs(nw - n.width) + Math.abs(nh - n.height);
-				if (n.inkAll || m != null) canvas.pushGroup(opacity, -1e6, -1e6, 2e6, 2e6);
-				else canvas.pushGroup(opacity, n.inkX0 - e, n.inkY0 - e, n.inkX1 - n.inkX0 + 2 * e, n.inkY1 - n.inkY0 + 2 * e);
+		// content over its box; its ink's bounds, else the clip's. A fading
+		// mover's in the compositor's walk at 1: the compositor fades the group whole)
+		var faded = tagged ? mv.grouped : opacity < 1;
+		if (faded) {
+			if (grouped) {
+				var a = tagged ? 1.0 : opacity, e = focusRingOffset + focusRingWidth + shadowReach + 8 + Math.abs(nw - n.width) + Math.abs(nh - n.height);
+				if (n.inkAll || m != null) canvas.pushGroup(a, -1e6, -1e6, 2e6, 2e6);
+				else canvas.pushGroup(a, n.inkX0 - e, n.inkY0 - e, n.inkX1 - n.inkX0 + 2 * e, n.inkY1 - n.inkY0 + 2 * e);
 			} else canvas.pushOpacity(opacity);
 		}
 		// (its own layer, walked: recorded where what it paints changed, drawn)
@@ -1074,7 +1078,7 @@ class Ui extends ScrollHost {
 		} else paintBody(n, canvas, p, nw, nh);
 		w.set(c0, c1, c2, c3);
 		if (dl != null) dl.cullRestore();
-		if (opacity < 1 && !tagged) canvas.popOpacity();
+		if (faded) canvas.popOpacity();
 		if (m != null) canvas.popTransform();
 		if (tagged) composing.leave();
 		if (moved) {

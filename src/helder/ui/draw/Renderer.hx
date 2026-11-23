@@ -736,6 +736,11 @@ class Renderer implements TextureCanvas {
 	final moverStack:Array<Int> = [];
 	final clipMovers:Array<Int> = [];
 	final entered:Array<Int> = [];
+	// (the next pushGroup a mover's; the compositor's frames' groups, those
+	// of the one being filled taken so far)
+	var groupNext = false;
+	final composedGroups = new haxe.ds.ObjectMap<CompositeFrame, Array<Group>>();
+	var composed = 0;
 	// (the frame's state, put back after the walk)
 	var savedGroups = false;
 	var savedClip:Array<Float> = [];
@@ -770,6 +775,7 @@ class Renderer implements TextureCanvas {
 	// its transform as drawn)
 	public function mover(m:helder.ui.Mover):Bool {
 		if (!templating) return false;
+		groupNext = m.grouped;
 		var c = composite, sc = m.scroller, f = sc == null ? -1 : c.nodes.indexOf(sc);
 		moverStack.push(moverTag);
 		moverTag = c.addMover(m, moverTag, f, flat, ma, mb, mc, md, me, mf, scale, tx, ty);
@@ -814,6 +820,8 @@ class Renderer implements TextureCanvas {
 		templating = true;
 		contentFrame = clipFrame = thumbTag = moverTag = clipMover = -1;
 		fadeTag = 0;
+		groupNext = false;
+		composed = 0;
 		uncull = false;
 		frameStack.resize(0);
 		clipFrames.resize(0);
@@ -1056,6 +1064,9 @@ class Renderer implements TextureCanvas {
 		// (a group's texture not drawn into for `age` frames: freed, made again if it is)
 		for (g in groupPool)
 			if (g.texture != null && frames - g.frame > age) g.free(device);
+		for (pool in composedGroups)
+			for (g in pool)
+				if (g.texture != null && frames - g.frame > age) g.free(device);
 		stalePaths.resize(0);
 		for (p => e in paths)
 			if (frames - e.frame > age) stalePaths.push(p);
@@ -1323,7 +1334,10 @@ class Renderer implements TextureCanvas {
 	// bounds, the clip's part of them drawn): into a render target of its own
 	// where groups, else as pushOpacity
 	public function pushGroup(a:Float, x:Float, y:Float, w:Float, h:Float) {
-		if (!groups || a >= 1) {
+		// (a mover's in the compositor's frame: a group of its own at 1, the compositor fading it whole)
+		var mine = templating && groupNext;
+		groupNext = false;
+		if (!mine && (!groups || a >= 1)) {
 			pushOpacity(a);
 			return;
 		}
@@ -1351,11 +1365,17 @@ class Renderer implements TextureCanvas {
 			pushOpacity(a);
 			return;
 		}
-		// (the tiles drawn this frame are closed groups too, not the pool's)
-		var k = openGroups.length + closedGroups.length;
-		while (k >= groupPool.length)
-			groupPool.push(new Group());
-		var g = groupPool[k];
+		// (the tiles drawn this frame are closed groups too, not the pool's; the
+		// compositor's frame's its own, kept while it draws from them)
+		var pool = groupPool, k = openGroups.length + closedGroups.length;
+		if (mine) {
+			pool = composedGroups.get(composite);
+			if (pool == null) composedGroups.set(composite, pool = []);
+			k = composed++;
+		}
+		while (k >= pool.length)
+			pool.push(new Group());
+		var g = pool[k];
 		g.open(device, gw, gh);
 		g.x = gx0;
 		g.y = gy0;
@@ -1485,7 +1505,7 @@ class Renderer implements TextureCanvas {
 		edges((x + tx) * s, (y + ty) * s, (x + w + tx) * s, (y + h + ty) * s);
 		var x0 = ex0, y0 = ey0, x1 = ex1, y1 = ey1;
 		// (a thumb's edges before the grid: the compositor rounds them where they fall)
-		if (templating && thumbTag >= 0 && grid) for (v in [batch.count, (x + tx) * s, (y + ty) * s, (x + w + tx) * s, (y + h + ty) * s])
+		if (templating && thumbTag >= 0 && grid && batch == composite.batch) for (v in [batch.count, (x + tx) * s, (y + ty) * s, (x + w + tx) * s, (y + h + ty) * s])
 			composite.thumbEdges.push(v);
 		this.corners(corners, radius);
 		fit(x1 - x0, y1 - y0);
@@ -1882,7 +1902,8 @@ class Renderer implements TextureCanvas {
 			dash = Solid;
 		}
 		var o = batch.add(run), b = batch.bytes;
-		if (templating) {
+		// (the compositor's frame's own quads: not those drawn into a mover's group)
+		if (templating && batch == composite.batch) {
 			var c = composite;
 			c.content.push(contentFrame);
 			c.clip.push(clipFrame);

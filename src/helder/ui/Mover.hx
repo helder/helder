@@ -50,6 +50,9 @@ class Mover {
 	public final sticky:Bool;
 	public final scroller:Null<Node>;
 	final stick:Array<Float> = [];
+	// whether its opacity is a group's (more than one thing of it drawn: Ui's
+	// paint), the compositor fading it whole
+	public var grouped = false;
 	// when it moves no more on its own (seconds, Ui.now's clock): its runs and tracks ended
 	public var until(default, null) = -1e9;
 
@@ -120,6 +123,10 @@ class Mover {
 			return null;
 		return new Mover(n, m, opacity);
 	}
+
+	// whether its opacity may be other than 1 (faded, or moving)
+	public function fades():Bool
+		return opacity < 1 || aRun.length > 0 || aTrack != null || presence != null;
 
 	// whether it moves with the time or a scroll at all
 	public function moves():Bool

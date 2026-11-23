@@ -1469,9 +1469,11 @@ retargeted hands over its new segment with the next frame); sticky nodes,
 placed by the compositor's offsets as Layout places them; overlay
 scrollbars, drawn shown and faded as `Ui`'s are. Its quads are turned
 and faded in the target's pixels (a clip inside it bounded as a turned
-one is). Not the compositor's: a layout moving (edges' tracks), colours,
-a layer that holds a scroller (drawn as it was), a faded layer's group
-(each quad faded: what overlaps in it shows through). The native views
+one is); a fading layer of more than one thing is drawn into a group of
+the compositor's frame's own (a render target, at 1) and that faded
+whole, as the program's group is. Not the compositor's: a layout moving
+(edges' tracks), colours, a layer that holds a scroller (drawn as it
+was). The native views
 over a scroller (a macOS field, a web view) are moved on the main thread
 as each of its frames is drawn (`OsThread.post`), hidden once they leave
 their scroller's view.
@@ -1483,7 +1485,8 @@ for vsyncs: the same offsets at every vsync, the same end, and the
 compositor's frames pixel for pixel the program's at those offsets; then
 transitions of transform and opacity, a spring retargeted mid-flight, a
 tween and sticky headers in a scrolled list, the same values at every
-vsync, and frames of a layer turning and fading, sticky headers and
+vsync, and frames of a layer turning and fading, a card with overlapping
+children fading while the program is held, sticky headers and
 overlay bars shown and fading against the program's (a turned layer's
 within a level: its corners rounded to 32-bit floats once more).
 `AsyncScrollWindow` blocks the program 300 ms in a window while input
