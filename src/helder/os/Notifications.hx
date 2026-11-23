@@ -18,18 +18,18 @@ class Notifications {
 		var seconds = n.at != null ? (n.at.getTime() - Date.now().getTime()) / 1000 : n.after ?? 0;
 		if (seconds < 0) seconds = 0;
 		#if (target.name == "hxmc" && !helder.headless)
-		if (Platform.os() == Platform.WASI) return helder.os.web.WebNotifications.schedule(n.id, n.title, n.body ?? "", seconds);
-		if (Platform.os() == Platform.MACOS) return NotificationsApple.schedule(n.id, n.title, n.body ?? "", seconds, n.at);
-		if (Platform.target() >= 9) return helder.os.android.AndroidNotifications.schedule(n.id, n.title, n.body ?? "", seconds);
+		#if (!helder.os || helder.os == "web") if (Platform.os() == Platform.WASI) return helder.os.web.WebNotifications.schedule(n.id, n.title, n.body ?? "", seconds); #end
+		#if (!helder.os || helder.os == "macos" || helder.os == "ios") if (Platform.os() == Platform.MACOS) return NotificationsApple.schedule(n.id, n.title, n.body ?? "", seconds, n.at); #end
+		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) return helder.os.android.AndroidNotifications.schedule(n.id, n.title, n.body ?? "", seconds); #end
 		#end
 		return false;
 	}
 
 	@:typescript public static function cancel(id:String) {
 		#if (target.name == "hxmc" && !helder.headless)
-		if (Platform.os() == Platform.WASI) helder.os.web.WebNotifications.cancel(id);
-		else if (Platform.os() == Platform.MACOS) NotificationsApple.cancel(id);
-		else if (Platform.target() >= 9) helder.os.android.AndroidNotifications.cancel(id);
+		#if (!helder.os || helder.os == "web") if (Platform.os() == Platform.WASI) helder.os.web.WebNotifications.cancel(id); #end
+		#if (!helder.os || helder.os == "macos" || helder.os == "ios") if (Platform.os() == Platform.MACOS) NotificationsApple.cancel(id); #end
+		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) helder.os.android.AndroidNotifications.cancel(id); #end
 		#end
 	}
 
@@ -37,8 +37,8 @@ class Notifications {
 		onOpen = f;
 		#if (target.name == "hxmc" && !helder.headless)
 		// (a tap that started the app: told once something listens)
-		if (Platform.os() == Platform.MACOS && f != null) NotificationsApple.listen();
-		if (Platform.target() >= 9 && f != null) helder.os.android.AndroidNotifications.listen();
+		#if (!helder.os || helder.os == "macos" || helder.os == "ios") if (Platform.os() == Platform.MACOS && f != null) NotificationsApple.listen(); #end
+		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9 && f != null) helder.os.android.AndroidNotifications.listen(); #end
 		#end
 		if (f != null && opened.length > 0) {
 			var ids = opened.copy();

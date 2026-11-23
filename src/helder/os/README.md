@@ -7,6 +7,20 @@ WASAPI, WebAudio) and a
 portable layer over them. No C of its own: the system's C APIs through
 externs, COM vtables, `objc_msgSend` and `dlopen`.
 
+## One system's code per build
+
+A build names its system, `-D helder.os=<linux|android|macos|ios|windows|web>`
+(helder's compiler derives it from `hxmc.target`, or the host's; the CLI and
+the tests pass it: `helder.compiler.Os`), and the shared classes keep each
+system's branch under `#if (!helder.os || helder.os == "windows")` around
+its `Platform` test. hxmc folds those tests only while lowering, after Haxe
+has typed every branch and loaded the modules they name; under `#if` a
+build loads, types and links its own system's code only. A type check without it
+(`--no-output`, the declarations) types every system's. A branch that
+names only shared types keeps its plain `Platform` test. (hxmc's own
+`hxmc.os`, since hxmc #205, does not tell Android from Linux or iOS from
+macOS, nor is it set for a build that names no target: helder keeps its own.)
+
 ## Windows and the loop
 
 ```haxe

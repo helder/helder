@@ -1,8 +1,14 @@
 package helder.os;
 
+#if (!helder.os || helder.os == "android")
 import helder.os.android.Haptic;
+#end
+#if (!helder.os || helder.os == "ios")
 import helder.os.uikit.UIKitWindow;
+#end
+#if (!helder.os || helder.os == "web")
 import helder.os.web.Dom;
+#end
 import hxmc.Platform;
 import hxmc.unsafe.*;
 
@@ -39,7 +45,9 @@ class Haptics {
 	static function play(strong:Bool) {
 		if (!enabled) return;
 		if (strong) impacts++ else taps++;
-		if (Platform.apple() >= 1) UIKitWindow.haptic(strong) else if (Platform.os() == 3) Dom.vibrate(vibration(strong)) else if (Platform.target() >= 9)
-			Haptic.perform(strong);
+		#if (!helder.os || helder.os == "ios") if (Platform.apple() >= 1) UIKitWindow.haptic(strong) else #end
+		#if (!helder.os || helder.os == "web") if (Platform.os() == 3) Dom.vibrate(vibration(strong)) else #end
+		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) Haptic.perform(strong) else #end
+		{};
 	}
 }

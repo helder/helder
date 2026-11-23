@@ -1,11 +1,51 @@
 package helder.gfx;
 
+import helder.os.Surface;
+#if (helder.os && helder.os != "web")
+#if (helder.os == "macos" || helder.os == "ios")
+import helder.gfx.metal.MetalBackend as Native;
+#elseif (helder.os == "windows")
+import helder.gfx.d3d11.D3D11Backend as Native;
+#else
+import helder.gfx.gl.GLBackend as Native;
+#end
+
+// The back end of this target: Metal on macOS and iOS, D3D11 on Windows, GL
+// elsewhere. A build for one system (helder.os: helder.compiler.Os) has
+// its own only, its methods forwarded; the browser's two, and a build that
+// names no system (every back end typed), are told apart below.
+@:forward(backend, width, height, createBuffer, writeBuffer, createTexture, writeTexture, supports, generateMips, destroyBuffer, destroyTexture,
+	createSampler, createShader, createPipeline, beginFrame, beginPass, setPipeline, setVertexBuffer, setIndexBuffer, setUniforms, setTexture, draw,
+	drawIndexed, endPass, createQueries, destroyQueries, queryResult, resetQuery, beginQuery, endQuery, endFrame, readPixels, has, createComputePipeline,
+	readBuffer, beginCompute, setComputePipeline, setStorage, setStorageTexture, dispatch, dispatchIndirect, endCompute, drawIndirect, drawIndexedIndirect,
+	sharing, createShared, openShared, frameInto, dispose)
+abstract Impl(Native) {
+	public inline function new(surface:Surface, antialias:Bool)
+		this = new Native(surface, antialias);
+
+	public inline function writeTextureImage(id:Int, image:Int, release:Bool)
+		throw "helder.gfx: writeTextureImage: in a browser only";
+
+	public inline function maxTextureSize():Int
+		return #if (helder.os == "linux" || helder.os == "android") this.maxTextureSize() #else 16384 #end;
+
+	public inline function damaged(rects:Null<Array<Int>>)
+		#if (helder.os != "macos" && helder.os != "ios") this.damaged(rects) #else {} #end;
+
+	// (the back end's context let go by this thread, used by the render thread from now on: GL's)
+	public inline function detach()
+		#if (helder.os == "linux" || helder.os == "android") this.detach() #else {} #end;
+
+	// (whether a frame was presented since asked last: Metal's, which a macOS window shows itself at)
+	public inline function presented():Bool
+		return #if (helder.os == "macos" || helder.os == "ios") this.presented() #else false #end;
+}
+#else
 import helder.gfx.d3d11.D3D11Backend;
 import helder.gfx.gl.GLBackend;
 import helder.gfx.metal.MetalBackend;
 import helder.gfx.webgpu.WebGPU;
 import helder.gfx.webgpu.WebGPUBackend;
-import helder.os.Surface;
 import hxmc.Platform;
 
 // The back end of this target: Metal on macOS, D3D11 on Windows, GL
@@ -213,3 +253,4 @@ abstract Impl(Any) {
 	public inline function dispose()
 		Platform.os() == 1 ? mtl().dispose() : Platform.os() == 2 ? d3d().dispose() : Platform.os() != 3 ? gl().dispose() : webgl() ? gl().dispose() : wgpu().dispose();
 }
+#end

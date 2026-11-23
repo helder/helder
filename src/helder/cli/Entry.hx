@@ -1,5 +1,6 @@
 package helder.cli;
 
+import helder.compiler.Os;
 import haxe.io.Path;
 import sys.FileSystem;
 import sys.io.File;
@@ -260,7 +261,8 @@ class Entry {
 	public function args():Array<String> {
 		var out = [];
 		for (c in classPaths) out = out.concat(["-cp", c]);
-		out = out.concat(["-main", main, "-D", "hxmc.target=" + (target == "web" ? "wasm32-wasi" : target)]);
+		var t = target == "web" ? "wasm32-wasi" : target;
+		out = out.concat(["-main", main, "-D", 'hxmc.target=$t']).concat(Os.define(t));
 		if (target.startsWith("linux-")) out = out.concat(["-D", "hxmc.libc=glibc"]);
 		// (iOS's frameworks, typed: hx-objc's externs, helder's dependency)
 		if (target.startsWith("ios-")) for (c in externs("apple-uikit")) out = out.concat(["-cp", c]);

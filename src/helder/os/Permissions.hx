@@ -23,9 +23,9 @@ class Permissions {
 	// whether the app may use p: Prompt when asking would show the system's dialog
 	@:typescript public static function status(p:Permission):PermissionStatus {
 		#if (target.name == "hxmc" && !helder.headless)
-		if (Platform.os() == Platform.WASI) return helder.os.web.WebServices.status(p);
-		if (Platform.os() == Platform.MACOS) return PermissionsApple.status(p);
-		if (Platform.target() >= 9) return helder.os.android.AndroidPermissions.status(p);
+		#if (!helder.os || helder.os == "web") if (Platform.os() == Platform.WASI) return helder.os.web.WebServices.status(p); #end
+		#if (!helder.os || helder.os == "macos" || helder.os == "ios") if (Platform.os() == Platform.MACOS) return PermissionsApple.status(p); #end
+		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) return helder.os.android.AndroidPermissions.status(p); #end
 		#end
 		return p == Notify ? Granted : Unsupported;
 	}

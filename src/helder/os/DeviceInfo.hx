@@ -27,11 +27,11 @@ typedef DeviceDetails = {
 class DeviceInfo {
 	@:typescript public static function get():DeviceDetails {
 		#if (target.name == "hxmc")
-		if (Platform.os() == Platform.WASI) return helder.os.web.WebServices.device();
-		if (Platform.os() == Platform.MACOS) return DeviceApple.info();
-		if (Platform.os() == Platform.WINDOWS) return DeviceDesktop.windows();
-		if (Platform.target() >= 9) return helder.os.android.AndroidDevice.info();
-		return DeviceDesktop.linux();
+		#if (!helder.os || helder.os == "web") if (Platform.os() == Platform.WASI) return helder.os.web.WebServices.device(); #end
+		#if (!helder.os || helder.os == "macos" || helder.os == "ios") if (Platform.os() == Platform.MACOS) return DeviceApple.info(); #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == Platform.WINDOWS) return DeviceDesktop.windows(); #end
+		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) return helder.os.android.AndroidDevice.info(); #end
+		#if (!helder.os || helder.os == "linux") return DeviceDesktop.linux(); #else throw "unreachable"; #end
 		#else
 		return {model: "", manufacturer: "", os: "", osVersion: "", kind: Web};
 		#end

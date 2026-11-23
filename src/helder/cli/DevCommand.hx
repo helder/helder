@@ -1,5 +1,6 @@
 package helder.cli;
 
+import helder.compiler.Os;
 import helder.cli.ExitPolicy;
 import helder.cli.Style.Tone;
 import haxe.io.Path;
@@ -839,7 +840,7 @@ class DevCommand {
 			// (a cache not writable: the build fails, the program runs without the host)
 			try TestCommand.mkdirs(dir) catch (_:Dynamic) {};
 			var tmp = Path.withoutExtension(exe) + "." + Std.random(1 << 30) + (win ? ".exe" : "");
-			var p = new Process(tool, ["-cp", e.helder, "-main", "helder.dev.DevHost"].concat(Compiler.markup(e.defines)).concat(e.target.startsWith("linux-") ? ["-D", "hxmc.libc=glibc"] : [])
+			var p = new Process(tool, ["-cp", e.helder, "-main", "helder.dev.DevHost"].concat(Compiler.markup(e.defines)).concat(Os.define(Compiler.hostTarget())).concat(e.target.startsWith("linux-") ? ["-D", "hxmc.libc=glibc"] : [])
 				.concat(["--custom-target", 'hxmc=$tmp']));
 			p.closeStdin();
 			var lines = [];

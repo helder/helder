@@ -55,9 +55,13 @@ class Surface {
 	// a canvas of the page, by its element id (WebAssembly; a GPU view in
 	// a page: not a Window, so no events, and its size is the one it has now)
 	public static function canvas(id:String):Surface {
+		#if (!helder.os || helder.os == "web")
 		var c = Arena.scopedValue(a -> helder.os.web.Dom.canvas(a.cstring(id)));
 		if (c == 0) throw "helder.os: no canvas #" + id;
 		return new Surface(Canvas, Ptr.nil(), Ptr.ofI64(c), helder.os.web.Dom.width(c), helder.os.web.Dom.height(c));
+		#else
+		throw "helder.os: a canvas in a browser only";
+		#end
 	}
 
 	@:allow(helder.os) function resized(w:Int, h:Int) {

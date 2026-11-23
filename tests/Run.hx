@@ -804,6 +804,8 @@ class Run {
 		}
 		run(h, ["build", "examples/counter/Counter.hx"]);
 		run(h, ["build", "--target", "web", "examples/counter"]);
+		// (its imports the browser's and WASI's only: no other system's library reached, #83)
+		run(NODE, ["tests/cli/imports.mjs", "bin/web/Counter.wasm"]);
 		for (f in ["Counter.html", "Counter.wasm", "helder/os/browser.mjs", "helder/ui/imports.mjs"])
 			if (!FileSystem.exists('bin/web/$f')) throw new Failed('helder build --target web: no bin/web/$f');
 		// (helder.text's page ships helder's Inter, whatever machine built it)
@@ -2048,6 +2050,15 @@ class Run {
 	static function targetArgs(target:String):Array<String>
 		return ["-D", 'hxmc.target=$target'].concat(target.startsWith("linux-") ? ["-D", "hxmc.libc=glibc"] : []);
 
+	// helder.os, as the CLI gives it (helder.compiler.Os): the build's
+	// target's system, its shared code typed for that one only
+	static function os(args:Array<String>):Array<String> {
+		if (Lambda.exists(args, a -> a.startsWith("helder.os="))) return [];
+		var t = Lambda.find(args, a -> a.startsWith("hxmc.target="));
+		t = t == null ? HOST : t.substr("hxmc.target=".length);
+		return ["-D", "helder.os=" + (t.startsWith("macos-catalyst-") ? "ios" : t.startsWith("wasm32-") ? "web" : t.split("-")[0])];
+	}
+
 	static function exePath(out:String, target:String):String
 		return target.startsWith("windows-") ? '$out.exe' : out;
 
@@ -2064,7 +2075,7 @@ class Run {
 		builtLock.release();
 		if (done && FileSystem.exists(out)) return;
 		mkdirs(Path.directory(out));
-		var r = build(args.concat(["--custom-target", 'hxmc=$out']), '$out.log');
+		var r = build(args.concat(os(args)).concat(["--custom-target", 'hxmc=$out']), '$out.log');
 		if (r.code != 0) {
 			Sys.println(r.log);
 			throw new Failed('$out: the build failed');

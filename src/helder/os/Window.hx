@@ -1,12 +1,24 @@
 package helder.os;
 
+#if (!helder.os || helder.os == "android")
 import helder.os.android.AndroidWindow;
+#end
+#if (!helder.os || helder.os == "macos")
 import helder.os.cocoa.CocoaWindow;
+#end
+#if (!helder.os || helder.os == "ios")
 import helder.os.uikit.UIKitWindow;
+#end
+#if (!helder.os || helder.os == "web")
 import helder.os.web.CanvasWindow;
+#end
+#if (!helder.os || helder.os == "windows")
 import helder.os.win32.Win32Window;
+#end
+#if (!helder.os || helder.os == "linux")
 import helder.os.x11.X11Window;
 import helder.os.wayland.WaylandWindow;
+#end
 import helder.os.TitleBar;
 import helder.view.graph.Graph;
 import helder.view.graph.Read;
@@ -30,15 +42,31 @@ class Window {
 	@:typescript public var closed(default, null) = false;
 
 	// the native window, the target's (Platform.os() is known when compiling: the
-	// other's code is never reached, as long as no field or method has its type)
+	// other's code is never reached, as long as no field or method has its type;
+	// a build for one system, helder.os, types only its own: helder.compiler.Os)
 	final native:Any;
 
 	// (a build for a headless run, -D helder.headless: every window a
 	// helder.os.headless.HeadlessWindow, the others' code not linked)
 	static inline final HEADLESS = #if helder.headless true #else false #end;
 
+	#if (!helder.os || helder.headless)
 	inline function headless():helder.os.headless.HeadlessWindow
 		return cast native;
+	#end
+
+	#if (!helder.os || helder.os == "ios") inline function ios():UIKitWindow return cast native; #end
+	#if (!helder.os || helder.os == "macos") inline function mac():CocoaWindow return cast native; #end
+	#if (!helder.os || helder.os == "windows") inline function win():Win32Window return cast native; #end
+	#if (!helder.os || helder.os == "web") inline function web():CanvasWindow return cast native; #end
+	#if (!helder.os || helder.os == "android") inline function android():AndroidWindow return cast native; #end
+	#if (!helder.os || helder.os == "linux")
+	inline function wayland():WaylandWindow
+		return cast native;
+
+	inline function x11():X11Window
+		return cast native;
+	#end
 
 	// the system's title bar, or the content under it (TitleBar: "inset",
 	// the window's buttons in the app's layout); given when it is made
@@ -47,17 +75,28 @@ class Window {
 	@:typescript public function new(title:String, width:Int, height:Int, titlebar:TitleBar = Standard) {
 		this.title = title;
 		this.titlebar = titlebar;
+		#if (!helder.os || helder.headless)
 		if (HEADLESS) {
 			native = new helder.os.headless.HeadlessWindow(this, width, height);
 			surface = headless().surface;
 			App.windows.push(this);
 			return;
 		}
-		native = Platform.apple() >= 1 ? UIKitWindow.make(this, title, width, height) : Platform.os() == 1 ? CocoaWindow.make(this, title, width, height) : Platform.os() == 2 ? Win32Window.make(this, title, width,
-			height) : Platform.os() == 3 ? new CanvasWindow(this, title, width, height) : Platform.target() >= 9 ? new AndroidWindow(this, title, width,
-				height) : WaylandWindow.active() ? new WaylandWindow(this, title, width, height) : new X11Window(this, title, width, height);
-		surface = Platform.apple() >= 1 ? (cast native : UIKitWindow).surface : Platform.os() == 1 ? (cast native : CocoaWindow).surface : Platform.os() == 2 ? (cast native : Win32Window).surface :
-			Platform.os() == 3 ? (cast native : CanvasWindow).surface : Platform.target() >= 9 ? (cast native : AndroidWindow).surface : (Std.isOfType(native, WaylandWindow) ? (cast native : WaylandWindow).surface : (cast native : X11Window).surface);
+		#end
+		native =
+			#if (!helder.os || helder.os == "ios") Platform.apple() >= 1 ? UIKitWindow.make(this, title, width, height) : #end
+			#if (!helder.os || helder.os == "macos") Platform.os() == 1 ? CocoaWindow.make(this, title, width, height) : #end
+			#if (!helder.os || helder.os == "windows") Platform.os() == 2 ? Win32Window.make(this, title, width, height) : #end
+			#if (!helder.os || helder.os == "web") Platform.os() == 3 ? new CanvasWindow(this, title, width, height) : #end
+			#if (!helder.os || helder.os == "android") Platform.target() >= 9 ? new AndroidWindow(this, title, width, height) : #end
+			#if (!helder.os || helder.os == "linux") WaylandWindow.active() ? new WaylandWindow(this, title, width, height) : new X11Window(this, title, width, height) #else throw "unreachable" #end;
+		surface =
+			#if (!helder.os || helder.os == "ios") Platform.apple() >= 1 ? ios().surface : #end
+			#if (!helder.os || helder.os == "macos") Platform.os() == 1 ? mac().surface : #end
+			#if (!helder.os || helder.os == "windows") Platform.os() == 2 ? win().surface : #end
+			#if (!helder.os || helder.os == "web") Platform.os() == 3 ? web().surface : #end
+			#if (!helder.os || helder.os == "android") Platform.target() >= 9 ? android().surface : #end
+			#if (!helder.os || helder.os == "linux") (Std.isOfType(native, WaylandWindow) ? wayland().surface : x11().surface) #else throw "unreachable" #end;
 		App.windows.push(this);
 	}
 
@@ -76,7 +115,14 @@ class Window {
 	@:typescript public var scale(get, never):Float;
 
 	function get_scale():Float
-		return HEADLESS ? headless().scale : Platform.apple() >= 1 ? (cast native : UIKitWindow).scale : Platform.os() == 1 ? (cast native : CocoaWindow).scale : Platform.os() == 2 ? (cast native : Win32Window).scale : Platform.os() == 3 ? (cast native : CanvasWindow).scale : Platform.target() >= 9 ? (cast native : AndroidWindow).scale : Std.isOfType(native, WaylandWindow) ? (cast native : WaylandWindow).scale() : 1;
+		return
+			#if (!helder.os || helder.headless) HEADLESS ? headless().scale : #end
+			#if (!helder.os || helder.os == "ios") Platform.apple() >= 1 ? ios().scale : #end
+			#if (!helder.os || helder.os == "macos") Platform.os() == 1 ? mac().scale : #end
+			#if (!helder.os || helder.os == "windows") Platform.os() == 2 ? win().scale : #end
+			#if (!helder.os || helder.os == "web") Platform.os() == 3 ? web().scale : #end
+			#if (!helder.os || helder.os == "android") Platform.target() >= 9 ? android().scale : #end
+			#if (!helder.os || helder.os == "linux") Std.isOfType(native, WaylandWindow) ? wayland().scale() : 1 #else 1 #end;
 
 	// the safe area: the insets from each edge, in pixels, that the system's
 	// bars, a notch, a display cutout or rounded corners leave clear, as
@@ -89,15 +135,27 @@ class Window {
 	public var safeRight(get, never):Int;
 
 	function get_safeTop():Int
-		return HEADLESS ? 0 : Platform.apple() >= 1 ? (cast native : UIKitWindow).safeTop : Platform.target() >= 9 ? (cast native : AndroidWindow).safeTop : 0;
+		return
+			HEADLESS ? 0 :
+			#if (!helder.os || helder.os == "ios") Platform.apple() >= 1 ? ios().safeTop : #end
+			#if (!helder.os || helder.os == "android") Platform.target() >= 9 ? android().safeTop : #end
+			0;
 
 	function get_safeLeft():Int
-		return HEADLESS ? 0 : Platform.apple() >= 1 ? (cast native : UIKitWindow).safeLeft : Platform.target() >= 9 ? (cast native : AndroidWindow).safeLeft : 0;
+		return
+			HEADLESS ? 0 :
+			#if (!helder.os || helder.os == "ios") Platform.apple() >= 1 ? ios().safeLeft : #end
+			#if (!helder.os || helder.os == "android") Platform.target() >= 9 ? android().safeLeft : #end
+			0;
 
 	// (the keyboard up: the larger of the bottom inset and its height, so that
 	// a layout clear of the safe area is clear of the keyboard)
 	function get_safeBottom():Int {
-		var b = HEADLESS ? 0 : Platform.apple() >= 1 ? (cast native : UIKitWindow).safeBottom : Platform.target() >= 9 ? (cast native : AndroidWindow).safeBottom : 0;
+		var b =
+			HEADLESS ? 0 :
+			#if (!helder.os || helder.os == "ios") Platform.apple() >= 1 ? ios().safeBottom : #end
+			#if (!helder.os || helder.os == "android") Platform.target() >= 9 ? android().safeBottom : #end
+			0;
 		return Std.int(Math.max(b, Math.round(keyboardHeight.peek() * scale)));
 	}
 
@@ -123,7 +181,11 @@ class Window {
 	}
 
 	function get_safeRight():Int
-		return HEADLESS ? 0 : Platform.apple() >= 1 ? (cast native : UIKitWindow).safeRight : Platform.target() >= 9 ? (cast native : AndroidWindow).safeRight : 0;
+		return
+			HEADLESS ? 0 :
+			#if (!helder.os || helder.os == "ios") Platform.apple() >= 1 ? ios().safeRight : #end
+			#if (!helder.os || helder.os == "android") Platform.target() >= 9 ? android().safeRight : #end
+			0;
 
 	// the system's bars hidden, the app on the whole screen (a game's): on
 	// Android immersive (the status and navigation bars hidden, a swipe
@@ -135,11 +197,17 @@ class Window {
 	public var immersive(get, set):Bool;
 
 	function get_immersive():Bool
-		return HEADLESS ? false : Platform.apple() >= 1 ? (cast native : UIKitWindow).immersive : Platform.target() >= 9 ? (cast native : AndroidWindow).immersive : false;
+		return
+			HEADLESS ? false :
+			#if (!helder.os || helder.os == "ios") Platform.apple() >= 1 ? ios().immersive : #end
+			#if (!helder.os || helder.os == "android") Platform.target() >= 9 ? android().immersive : #end
+			false;
 
 	function set_immersive(on:Bool):Bool {
 		if (closed || on == immersive || HEADLESS) return on;
-		if (Platform.apple() >= 1) (cast native : UIKitWindow).setImmersive(on) else if (Platform.target() >= 9) AndroidWindow.setImmersive(cast native, on);
+		#if (!helder.os || helder.os == "ios") if (Platform.apple() >= 1) ios().setImmersive(on) else #end
+		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) AndroidWindow.setImmersive(cast native, on) else #end
+		{};
 		return on;
 	}
 
@@ -198,11 +266,13 @@ class Window {
 		// (nested: only a constant condition drops the other targets' code)
 		if (Platform.os() == 1) {
 			if (Platform.apple() >= 1) return null;
+			#if (!helder.os || helder.headless)
 			if (HEADLESS) {
 				var k = headless().scale;
 				return {x: Math.round(headless().controlsX * k), y: Math.round(headless().controlsY * k), width: Math.round(54 * k), height: Math.round(16 * k)};
 			}
-			return (cast native : CocoaWindow).controls();
+			#end
+			#if (!helder.os || helder.os == "macos") return mac().controls(); #end
 		}
 		return null;
 	}
@@ -212,30 +282,49 @@ class Window {
 	public function placeControls(x:Int, y:Int) {
 		if (titlebar != Inset || closed) return;
 		if (Platform.os() == 1) {
-			if (Platform.apple() >= 1) {} else if (HEADLESS) {
+			if (Platform.apple() >= 1) {} else
+			#if (!helder.os || helder.headless)
+			if (HEADLESS) {
 				headless().controlsX = x / headless().scale;
 				headless().controlsY = y / headless().scale;
-			} else (cast native : CocoaWindow).placeControls(x, y);
+			} else
+			#end
+			#if (!helder.os || helder.os == "macos") mac().placeControls(x, y); #else {} #end
 		}
 	}
 
 	// minimised to the Dock or the task bar (Wayland: asked of the compositor)
 	public function minimize() {
 		if (closed || HEADLESS) return;
-		if (Platform.apple() >= 1) {} else if (Platform.os() == 1) (cast native : CocoaWindow).minimize() else if (Platform.os() == 2) (cast native : Win32Window).minimize() else if (Platform.os() == 3) {} else if (Platform.target() >= 9) {} else
-			(Std.isOfType(native, WaylandWindow) ? (cast native : WaylandWindow).minimize() : (cast native : X11Window).minimize());
+		if (Platform.apple() >= 1) {} else
+		#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) mac().minimize() else #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) win().minimize() else #end
+		if (Platform.os() == 3) {} else
+		if (Platform.target() >= 9) {} else
+		#if (!helder.os || helder.os == "linux") (Std.isOfType(native, WaylandWindow) ? wayland().minimize() : x11().minimize()); #else {} #end
 	}
 
 	// maximised (macOS: zoomed), or back
 	public var maximized(get, set):Bool;
 
 	function get_maximized():Bool
-		return closed || HEADLESS ? false : Platform.apple() >= 1 ? false : Platform.os() == 1 ? (cast native : CocoaWindow).zoomed() : Platform.os() == 2 ? (cast native : Win32Window).maximized() : Platform.os() == 3 ? false : Platform.target() >= 9 ? false : (Std.isOfType(native, WaylandWindow) ? (cast native : WaylandWindow).maximized : (cast native : X11Window).maximized);
+		return
+			closed || HEADLESS ? false :
+			Platform.apple() >= 1 ? false :
+			#if (!helder.os || helder.os == "macos") Platform.os() == 1 ? mac().zoomed() : #end
+			#if (!helder.os || helder.os == "windows") Platform.os() == 2 ? win().maximized() : #end
+			Platform.os() == 3 ? false :
+			Platform.target() >= 9 ? false :
+			#if (!helder.os || helder.os == "linux") (Std.isOfType(native, WaylandWindow) ? wayland().maximized : x11().maximized) #else false #end;
 
 	function set_maximized(on:Bool):Bool {
 		if (closed || HEADLESS || on == maximized) return on;
-		if (Platform.apple() >= 1) {} else if (Platform.os() == 1) (cast native : CocoaWindow).zoom() else if (Platform.os() == 2) (cast native : Win32Window).maximize(on) else if (Platform.os() == 3) {} else if (Platform.target() >= 9) {} else
-			(Std.isOfType(native, WaylandWindow) ? (cast native : WaylandWindow).maximize(on) : (cast native : X11Window).maximize(on));
+		if (Platform.apple() >= 1) {} else
+		#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) mac().zoom() else #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) win().maximize(on) else #end
+		if (Platform.os() == 3) {} else
+		if (Platform.target() >= 9) {} else
+		#if (!helder.os || helder.os == "linux") (Std.isOfType(native, WaylandWindow) ? wayland().maximize(on) : x11().maximize(on)); #else {} #end
 		return on;
 	}
 
@@ -246,8 +335,13 @@ class Window {
 		if (c == Auto) c = Default;
 		if (c == cursor || closed) return c;
 		cursor = c;
-		if (HEADLESS) {} else if (Platform.apple() >= 1) {} else if (Platform.os() == 1) (cast native : CocoaWindow).setCursor(c) else if (Platform.os() == 2) (cast native : Win32Window).setCursor(c) else if (Platform.os() == 3)
-			(cast native : CanvasWindow).setCursor(c) else if (Platform.target() >= 9) {} else (Std.isOfType(native, WaylandWindow) ? (cast native : WaylandWindow).setCursor(c) : (cast native : X11Window).setCursor(c));
+		if (HEADLESS) {} else
+		if (Platform.apple() >= 1) {} else
+		#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) mac().setCursor(c) else #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) win().setCursor(c) else #end
+		#if (!helder.os || helder.os == "web") if (Platform.os() == 3) web().setCursor(c) else #end
+		if (Platform.target() >= 9) {} else
+		#if (!helder.os || helder.os == "linux") (Std.isOfType(native, WaylandWindow) ? wayland().setCursor(c) : x11().setCursor(c)); #else {} #end
 		return c;
 	}
 
@@ -272,10 +366,13 @@ class Window {
 	public function startTextInput(x:Int, y:Int, width:Int, height:Int) {
 		if (closed) return;
 		typing = true;
-		if (HEADLESS) helder.headless.Headless.run.textInputAt(x, y, width, height) else if (Platform.os() == 3) (cast native : CanvasWindow).textInput(true, x, y, width, height) else if (Platform.os() == 2)
-			(cast native : Win32Window).textInputArea(x, y, width, height) else if (Platform.apple() >= 1) (cast native : UIKitWindow).textInput(true) else if (Platform.os() == 1) (cast native : CocoaWindow).textInput(true, x, y,
-				width, height) else if (Platform.target() >= 9) (cast native : AndroidWindow).textInput(true, x, y, width, height) else if (Std.isOfType(native, WaylandWindow))
-			(cast native : WaylandWindow).textInputOn(x, y, width, height);
+		#if (!helder.os || helder.headless) if (HEADLESS) helder.headless.Headless.run.textInputAt(x, y, width, height) else #end
+		#if (!helder.os || helder.os == "web") if (Platform.os() == 3) web().textInput(true, x, y, width, height) else #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) win().textInputArea(x, y, width, height) else #end
+		#if (!helder.os || helder.os == "ios") if (Platform.apple() >= 1) ios().textInput(true) else #end
+		#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) mac().textInput(true, x, y, width, height) else #end
+		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) android().textInput(true, x, y, width, height) else #end
+		#if (!helder.os || helder.os == "linux") if (Std.isOfType(native, WaylandWindow)) wayland().textInputOn(x, y, width, height); #else {} #end
 	}
 
 	// the text around where text is typed (a text field's text and its
@@ -288,9 +385,10 @@ class Window {
 	// TextInput, TextEditing, TextSelect). Nothing elsewhere
 	public function textContext(text:String, start:Int, end:Int, multiline = false, secret = false) {
 		if (closed || !typing || HEADLESS) return;
-		if (Platform.os() == 2) (cast native : Win32Window).textContext(secret ? "" : text, secret ? 0 : start, secret ? 0 : end) else if (Platform.os() == 0 && Platform.target() < 9 && Std.isOfType(native, WaylandWindow))
-			(cast native : WaylandWindow).textContext(text, start, end, multiline, secret) else if (Platform.os() == 0 && Platform.target() >= 9)
-			(cast native : AndroidWindow).textContext(text, start, end);
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) win().textContext(secret ? "" : text, secret ? 0 : start, secret ? 0 : end) else #end
+		#if (!helder.os || helder.os == "linux") if (Platform.os() == 0 && Platform.target() < 9 && Std.isOfType(native, WaylandWindow)) wayland().textContext(text, start, end, multiline, secret) else #end
+		#if (!helder.os || helder.os == "android") if (Platform.os() == 0 && Platform.target() >= 9) android().textContext(text, start, end) else #end
+		{};
 	}
 
 	// what the field typed into takes (TextKind: its keyboard, its Enter
@@ -299,23 +397,32 @@ class Window {
 	// Android's EditorInfo for a drawn field; nothing elsewhere
 	public function textKind(kind:TextKind) {
 		if (closed || HEADLESS) return;
-		if (Platform.apple() >= 1) (cast native : UIKitWindow).setKind(kind) else if (Platform.os() == 0 && Platform.target() >= 9) (cast native : AndroidWindow).textKind(kind);
+		#if (!helder.os || helder.os == "ios") if (Platform.apple() >= 1) ios().setKind(kind) else #end
+		#if (!helder.os || helder.os == "android") if (Platform.os() == 0 && Platform.target() >= 9) android().textKind(kind) else #end
+		{};
 	}
 
 	public function stopTextInput() {
 		typing = false;
 		if (closed || HEADLESS) return;
-		if (Platform.os() == 3) (cast native : CanvasWindow).textInput(false, 0, 0, 0, 0) else if (Platform.os() == 2) (cast native : Win32Window).stopTextInput() else if (Platform.apple() >= 1) (cast native : UIKitWindow).textInput(false) else if (Platform.os() == 1)
-			(cast native : CocoaWindow).textInput(false, 0, 0, 0, 0) else if (Platform.target() >= 9) (cast native : AndroidWindow).textInput(false, 0, 0, 0, 0) else if (Std.isOfType(native, WaylandWindow))
-			(cast native : WaylandWindow).textInputOff();
+		#if (!helder.os || helder.os == "web") if (Platform.os() == 3) web().textInput(false, 0, 0, 0, 0) else #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) win().stopTextInput() else #end
+		#if (!helder.os || helder.os == "ios") if (Platform.apple() >= 1) ios().textInput(false) else #end
+		#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) mac().textInput(false, 0, 0, 0, 0) else #end
+		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) android().textInput(false, 0, 0, 0, 0) else #end
+		#if (!helder.os || helder.os == "linux") if (Std.isOfType(native, WaylandWindow)) wayland().textInputOff(); #else {} #end
 	}
 
 	function set_title(v:String):String {
 		if (v == title) return v;
 		title = v;
 		if (native == null || closed || HEADLESS) return v;
-		if (Platform.apple() >= 1) {} else if (Platform.os() == 1) (cast native : CocoaWindow).setTitle(v) else if (Platform.os() == 2) (cast native : Win32Window).setTitle(v) else if (Platform.os() == 3)
-			(cast native : CanvasWindow).setTitle(v) else if (Platform.target() >= 9) {} else (Std.isOfType(native, WaylandWindow) ? (cast native : WaylandWindow).setTitle(v) : (cast native : X11Window).setTitle(v));
+		if (Platform.apple() >= 1) {} else
+		#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) mac().setTitle(v) else #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) win().setTitle(v) else #end
+		#if (!helder.os || helder.os == "web") if (Platform.os() == 3) web().setTitle(v) else #end
+		if (Platform.target() >= 9) {} else
+		#if (!helder.os || helder.os == "linux") (Std.isOfType(native, WaylandWindow) ? wayland().setTitle(v) : x11().setTitle(v)); #else {} #end
 		return v;
 	}
 
@@ -323,17 +430,24 @@ class Window {
 	// canvas's CSS size); a Resize event follows
 	public function resize(width:Int, height:Int) {
 		if (closed) return;
-		if (HEADLESS) headless().resize(width, height) else if (Platform.apple() >= 1) {} else if (Platform.os() == 1) (cast native : CocoaWindow).resize(width, height) else if (Platform.os() == 2) (cast native : Win32Window).resize(width,
-			height) else if (Platform.os() == 3) (cast native : CanvasWindow).resize(width, height) else if (Platform.target() >= 9) {} else
-			(Std.isOfType(native, WaylandWindow) ? (cast native : WaylandWindow).resize(width, height) : (cast native : X11Window).resize(width, height));
+		#if (!helder.os || helder.headless) if (HEADLESS) headless().resize(width, height) else #end
+		if (Platform.apple() >= 1) {} else
+		#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) mac().resize(width, height) else #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) win().resize(width, height) else #end
+		#if (!helder.os || helder.os == "web") if (Platform.os() == 3) web().resize(width, height) else #end
+		if (Platform.target() >= 9) {} else
+		#if (!helder.os || helder.os == "linux") (Std.isOfType(native, WaylandWindow) ? wayland().resize(width, height) : x11().resize(width, height)); #else {} #end
 	}
 
 	// the smallest content the user may resize it to, in points (the browser: the canvas's CSS minimum)
 	public function setMinSize(width:Int, height:Int) {
 		if (closed || HEADLESS) return;
-		if (Platform.apple() >= 1) {} else if (Platform.os() == 1) (cast native : CocoaWindow).setMinSize(width, height) else if (Platform.os() == 2) (cast native : Win32Window).setMinSize(width,
-			height) else if (Platform.os() == 3) (cast native : CanvasWindow).setMinSize(width, height) else if (Platform.target() >= 9) {} else
-			(Std.isOfType(native, WaylandWindow) ? (cast native : WaylandWindow).setMinSize(width, height) : (cast native : X11Window).setMinSize(width, height));
+		if (Platform.apple() >= 1) {} else
+		#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) mac().setMinSize(width, height) else #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) win().setMinSize(width, height) else #end
+		#if (!helder.os || helder.os == "web") if (Platform.os() == 3) web().setMinSize(width, height) else #end
+		if (Platform.target() >= 9) {} else
+		#if (!helder.os || helder.os == "linux") (Std.isOfType(native, WaylandWindow) ? wayland().setMinSize(width, height) : x11().setMinSize(width, height)); #else {} #end
 	}
 
 	// the window on the whole screen, without its frame: X11's
@@ -344,12 +458,25 @@ class Window {
 	public var fullscreen(get, set):Bool;
 
 	function get_fullscreen():Bool
-		return closed ? false : HEADLESS ? headless().fullscreen : Platform.apple() >= 1 ? false : Platform.os() == 1 ? (cast native : CocoaWindow).isFullscreen() : Platform.os() == 2 ? (cast native : Win32Window).fullscreen : Platform.os() == 3 ? false : Platform.target() >= 9 ? false : (Std.isOfType(native, WaylandWindow) ? (cast native : WaylandWindow).fullscreen : (cast native : X11Window).fullscreen);
+		return
+			closed ? false :
+			#if (!helder.os || helder.headless) HEADLESS ? headless().fullscreen : #end
+			Platform.apple() >= 1 ? false :
+			#if (!helder.os || helder.os == "macos") Platform.os() == 1 ? mac().isFullscreen() : #end
+			#if (!helder.os || helder.os == "windows") Platform.os() == 2 ? win().fullscreen : #end
+			Platform.os() == 3 ? false :
+			Platform.target() >= 9 ? false :
+			#if (!helder.os || helder.os == "linux") (Std.isOfType(native, WaylandWindow) ? wayland().fullscreen : x11().fullscreen) #else false #end;
 
 	function set_fullscreen(on:Bool):Bool {
 		if (closed || on == fullscreen) return on;
-		if (HEADLESS) headless().fullscreen = on else if (Platform.apple() >= 1) {} else if (Platform.os() == 1) (cast native : CocoaWindow).setFullscreen(on) else if (Platform.os() == 2) (cast native : Win32Window).setFullscreen(on) else if (Platform.os() == 3) {} else if (Platform.target() >= 9) {} else
-			(Std.isOfType(native, WaylandWindow) ? (cast native : WaylandWindow).setFullscreen(on) : (cast native : X11Window).setFullscreen(on));
+		#if (!helder.os || helder.headless) if (HEADLESS) headless().fullscreen = on else #end
+		if (Platform.apple() >= 1) {} else
+		#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) mac().setFullscreen(on) else #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) win().setFullscreen(on) else #end
+		if (Platform.os() == 3) {} else
+		if (Platform.target() >= 9) {} else
+		#if (!helder.os || helder.os == "linux") (Std.isOfType(native, WaylandWindow) ? wayland().setFullscreen(on) : x11().setFullscreen(on)); #else {} #end
 		return on;
 	}
 
@@ -357,17 +484,32 @@ class Window {
 	// screen's top left (pixels on X11; macOS: the main screen's); null where
 	// a window has no place of its own (the browser, phones)
 	public function position():Null<{x:Int, y:Int}>
-		return closed ? null : HEADLESS ? {x: headless().x, y: headless().y} : Platform.apple() >= 1 ? null : Platform.os() == 1 ? (cast native : CocoaWindow).position() : Platform.os() == 2 ? (cast native : Win32Window).position() : Platform.os() == 3 ? null : Platform.target() >= 9 ? null : (Std.isOfType(native, WaylandWindow) ? (cast native : WaylandWindow).position() : (cast native : X11Window).position());
+		return
+			closed ? null :
+			#if (!helder.os || helder.headless) HEADLESS ? {x: headless().x, y: headless().y} : #end
+			Platform.apple() >= 1 ? null :
+			#if (!helder.os || helder.os == "macos") Platform.os() == 1 ? mac().position() : #end
+			#if (!helder.os || helder.os == "windows") Platform.os() == 2 ? win().position() : #end
+			Platform.os() == 3 ? null :
+			Platform.target() >= 9 ? null :
+			#if (!helder.os || helder.os == "linux") (Std.isOfType(native, WaylandWindow) ? wayland().position() : x11().position()) #else null #end;
 
 	// its content's top left moved to x, y (as position: a place it had, kept
 	// across runs)
 	public function moveTo(x:Int, y:Int) {
 		if (closed) return;
+		#if (!helder.os || helder.headless)
 		if (HEADLESS) {
 			headless().x = x;
 			headless().y = y;
-		} else if (Platform.apple() >= 1) {} else if (Platform.os() == 1) (cast native : CocoaWindow).moveTo(x, y) else if (Platform.os() == 2) (cast native : Win32Window).moveTo(x, y) else if (Platform.os() == 3) {} else if (Platform.target() >= 9) {} else
-			(Std.isOfType(native, WaylandWindow) ? (cast native : WaylandWindow).moveTo(x, y) : (cast native : X11Window).moveTo(x, y));
+		} else
+		#end
+		if (Platform.apple() >= 1) {} else
+		#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) mac().moveTo(x, y) else #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) win().moveTo(x, y) else #end
+		if (Platform.os() == 3) {} else
+		if (Platform.target() >= 9) {} else
+		#if (!helder.os || helder.os == "linux") (Std.isOfType(native, WaylandWindow) ? wayland().moveTo(x, y) : x11().moveTo(x, y)); #else {} #end
 	}
 
 	// brought to the front and given the focus (a second launch handing its
@@ -375,15 +517,24 @@ class Window {
 	// SetForegroundWindow, macOS's makeKeyAndOrderFront: and the app activated
 	public function raise() {
 		if (closed || HEADLESS) return;
-		if (Platform.apple() >= 1) {} else if (Platform.os() == 1) (cast native : CocoaWindow).raise() else if (Platform.os() == 2) (cast native : Win32Window).raise() else if (Platform.os() == 3) {} else if (Platform.target() >= 9) {} else
-			(Std.isOfType(native, WaylandWindow) ? (cast native : WaylandWindow).raise() : (cast native : X11Window).raise());
+		if (Platform.apple() >= 1) {} else
+		#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) mac().raise() else #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) win().raise() else #end
+		if (Platform.os() == 3) {} else
+		if (Platform.target() >= 9) {} else
+		#if (!helder.os || helder.os == "linux") (Std.isOfType(native, WaylandWindow) ? wayland().raise() : x11().raise()); #else {} #end
 	}
 
 	@:typescript public function close() {
 		if (closed) return;
 		closed = true;
-		if (HEADLESS) {} else if (Platform.apple() >= 1) (cast native : UIKitWindow).destroy() else if (Platform.os() == 1) (cast native : CocoaWindow).destroy() else if (Platform.os() == 2) (cast native : Win32Window).destroy() else if (Platform.os() == 3)
-			(cast native : CanvasWindow).destroy() else if (Platform.target() >= 9) (cast native : AndroidWindow).destroy() else (Std.isOfType(native, WaylandWindow) ? (cast native : WaylandWindow).destroy() : (cast native : X11Window).destroy());
+		if (HEADLESS) {} else
+		#if (!helder.os || helder.os == "ios") if (Platform.apple() >= 1) ios().destroy() else #end
+		#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) mac().destroy() else #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) win().destroy() else #end
+		#if (!helder.os || helder.os == "web") if (Platform.os() == 3) web().destroy() else #end
+		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) android().destroy() else #end
+		#if (!helder.os || helder.os == "linux") (Std.isOfType(native, WaylandWindow) ? wayland().destroy() : x11().destroy()); #else {} #end
 		App.windows.remove(this);
 	}
 }

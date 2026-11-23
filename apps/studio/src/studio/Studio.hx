@@ -493,7 +493,7 @@ class Studio {
 	// selects its node; on nothing, nothing selected (add: shift held, a
 	// design's node added to the selection or taken from it)
 	public function clickStage(px:Float, py:Float, add = false) {
-		var now = helder.headless.Time.stamp();
+		var now = #if helder.headless helder.headless.Time.now #else haxe.Timer.stamp() #end;
 		var double = now - lastClick.t < 0.4 && Math.abs(px - lastClick.x) < 6 && Math.abs(py - lastClick.y) < 6;
 		lastClick = {t: double ? -1.0 : now, x: px, y: py};
 		var wx = camera.wx(px), wy = camera.wy(py);

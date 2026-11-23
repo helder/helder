@@ -1,8 +1,14 @@
 package helder.os;
 
+#if (!helder.os || helder.os == "android")
 import helder.os.android.Jni;
+#end
+#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 import helder.os.objc.*;
+#end
+#if (!helder.os || helder.os == "web")
 import helder.os.web.Dom;
+#end
 import hxmc.Platform;
 import hxmc.unsafe.*;
 
@@ -25,18 +31,21 @@ class Links {
 
 	public static function open(url:String, inApp = true):Bool {
 		opened++;
-		if (Platform.os() == Platform.MACOS) return apple(url, inApp && Platform.apple() >= 1);
+		#if (!helder.os || helder.os == "macos" || helder.os == "ios") if (Platform.os() == Platform.MACOS) return apple(url, inApp && Platform.apple() >= 1); #end
+		#if (!helder.os || helder.os == "web")
 		if (Platform.os() == Platform.WASI) {
 			Arena.scoped(a -> Dom.open_url(a.cstring(url)));
 			return true;
 		}
-		if (Platform.target() >= 9) return android(url);
+		#end
+		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) return android(url); #end
 		return try {
 			if (Platform.os() == Platform.WINDOWS) new sys.io.Process("rundll32", ["url.dll,FileProtocolHandler", url]) else new sys.io.Process("xdg-open", [url]);
 			true;
 		} catch (e:Dynamic) false;
 	}
 
+	#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 	// (AppKit's and UIKit's: the main thread's, OsThread)
 	static function apple(url:String, inApp:Bool):Bool
 		return OsThread.get(() -> appleNow(url, inApp));
@@ -47,6 +56,7 @@ class Links {
 		var ok = !u.isNull();
 		if (ok) {
 			if (Platform.apple() == 0) ok = Msg.bPtr(Msg.id(ObjC.cls("NSWorkspace"), ObjC.sel("sharedWorkspace")), ObjC.sel("openURL:"), u);
+			#if (!helder.os || helder.os == "ios")
 			else {
 				var host = helder.os.uikit.UIKitWindow.controllerNow();
 				var safari = inApp && !host.isNull() ? safariClass() : Ptr.nil();
@@ -66,6 +76,7 @@ class Links {
 					Msg.vPtrPtrPtr(Msg.id(ObjC.cls("UIApplication"), ObjC.sel("sharedApplication")), ObjC.sel("openURL:options:completionHandler:"), u,
 						Msg.id(ObjC.cls("NSDictionary"), ObjC.sel("dictionary")), Ptr.nil());
 			}
+			#end
 		}
 		Runtime.objc_autoreleasePoolPop(pool);
 		return ok;
@@ -82,6 +93,9 @@ class Links {
 		return ObjC.cls("SFSafariViewController");
 	}
 
+	#end
+
+	#if (!helder.os || helder.os == "android")
 	// (the activity's startActivity of an ACTION_VIEW intent, on Java's main thread)
 	static function android(url:String):Bool {
 		helder.os.android.MainThread.post(() -> {
@@ -95,4 +109,5 @@ class Links {
 		});
 		return true;
 	}
+	#end
 }

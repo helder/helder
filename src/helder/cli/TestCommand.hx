@@ -1,5 +1,6 @@
 package helder.cli;
 
+import helder.compiler.Os;
 import helder.cli.Style.Tone;
 import haxe.io.Path;
 import helder.async.*;
@@ -179,7 +180,7 @@ class TestCommand {
 				return {target: t, label: t, exe: null, wasm: false, output: out, seconds: haxe.Timer.stamp() - t0, held: hold};
 			case "wasm":
 				var exe = "bin/test/test.wasm";
-				var words = connect.concat(cp).concat(AssetStep.define(exe)).concat(["-main", "HelderTestMain", "-D", "hxmc.target=wasm32-wasi", "--custom-target", 'hxmc=$exe']);
+				var words = connect.concat(cp).concat(AssetStep.define(exe)).concat(["-main", "HelderTestMain", "-D", "hxmc.target=wasm32-wasi", "--custom-target", 'hxmc=$exe']).concat(Os.define("wasm32-wasi"));
 				var what = "building the tests for wasm";
 				var b = assets(words, exe, "wasm32-wasi", map, what, Output.of(Compiler.tool(), words, map, what, hold), hold);
 				return {target: t, label: "wasm", exe: exe, wasm: true, output: b, seconds: haxe.Timer.stamp() - t0, held: hold};
@@ -187,7 +188,7 @@ class TestCommand {
 				var exe = Sys.systemName() == "Windows" ? "bin/test/host.exe" : "bin/test/host";
 				// (Linux: the dynamic glibc mode, as helder build's: tests of helder.os link the system's libraries)
 				var mode = Sys.systemName() == "Linux" ? ["-D", "hxmc.libc=glibc"] : [];
-				var words = connect.concat(cp).concat(AssetStep.define(exe)).concat(["-main", "HelderTestMain", "--custom-target", 'hxmc=$exe']).concat(mode);
+				var words = connect.concat(cp).concat(AssetStep.define(exe)).concat(["-main", "HelderTestMain", "--custom-target", 'hxmc=$exe']).concat(mode).concat(Os.define(Compiler.hostTarget()));
 				var what = "building the tests for host";
 				var b = assets(words, exe, Compiler.hostTarget(), map, what, Output.of(Compiler.tool(), words, map, what, hold), hold);
 				return {target: t, label: "host", exe: exe, wasm: false, output: b, seconds: haxe.Timer.stamp() - t0, held: hold};
@@ -205,7 +206,7 @@ class TestCommand {
 		var connect = (server == null ? [] : ["--connect", Std.string(server)]).concat(["-D", "helder.text.engine=helder"]);
 		var wasm = t == "wasm";
 		var exe = wasm ? "bin/test/ts.wasm" : Sys.systemName() == "Windows" ? "bin/test/ts-host.exe" : "bin/test/ts-host";
-		var target = wasm ? ["-D", "hxmc.target=wasm32-wasi"] : Sys.systemName() == "Linux" ? ["-D", "hxmc.libc=glibc"] : [];
+		var target = (wasm ? ["-D", "hxmc.target=wasm32-wasi"] : Sys.systemName() == "Linux" ? ["-D", "hxmc.libc=glibc"] : []).concat(Os.define(wasm ? "wasm32-wasi" : Compiler.hostTarget()));
 		var words = connect.concat(Compiler.markup(p.defines)).concat(["-cp", p.helder]).concat(AssetStep.define(exe)).concat([
 			"-main", "helder.typescript.js.Seed", "-D", "helder.typescript=" + FileSystem.fullPath(TS_MAIN), "-D", "helder.root=" + FileSystem.fullPath(".").split("\\").join("/"),
 			"--custom-target", 'hxmc=$exe'

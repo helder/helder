@@ -1131,6 +1131,10 @@ own left alone.
 
 ## hxmc
 
+Each build is given `-D helder.os` (its target's system: `helder.compiler.Os`,
+src/helder/os/README.md, "One system's code per build"); helder's compiler
+derives it where a build names none, hxmc's own does not.
+
 No workarounds left:
 
 - The platform package's compiler finds its runtime objects beside itself

@@ -428,7 +428,7 @@ private class LoopHost implements Promises.EventHost {
 
 	public function timer(ms:Float, f:Void->Void):Void->Void {
 		// (the loop's clock: a headless run's is its frames')
-		var t = loop.at(helder.headless.Time.stamp() + ms / 1000, new TimerCall(loop.context(), f));
+		var t = loop.at(#if helder.headless helder.headless.Time.now #else haxe.Timer.stamp() #end + ms / 1000, new TimerCall(loop.context(), f));
 		return () -> t.close();
 	}
 
