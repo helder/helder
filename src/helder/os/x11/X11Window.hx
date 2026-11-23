@@ -902,6 +902,8 @@ class X11Window {
 		return ends;
 	}
 
+	// (POSIX's, none in WebAssembly)
+	#if (hxmc.target != "wasm32-wasi")
 	@:hxmc.kernel static function pipeEnds():Int {
 		var fds:hxmc.Span<Int> = hxmc.Span.stack(2);
 		return helder.async.Fds.pipe(fds) != 0 ? -1 : fds[0] | (fds[1] << 16);
@@ -917,6 +919,14 @@ class X11Window {
 		var b:hxmc.Span<UInt8> = hxmc.Span.stack(64);
 		while (helder.async.Fds.read(fd, b) > 0) {}
 	}
+	#else
+	static function pipeEnds():Int
+		return -1;
+
+	static function pipeWrite(fd:Int) {}
+
+	static function pipeDrain(fd:Int) {}
+	#end
 
 	// (until either descriptor has data (b < 0: a alone), or seconds; ppoll, as Wayland waits)
 	static function waitTwo(a:Int, b:Int, seconds:Float) {
