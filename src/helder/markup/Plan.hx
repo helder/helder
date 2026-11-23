@@ -380,7 +380,7 @@ class Plan<E> {
 					case AStatic(s): target.string(s);
 					case _: target.bool(true);
 				}
-				var live = event ? null : liveAttr(name, v, LAttr(a.at, name));
+				var live = event || envValue(a.value) ? null : liveAttr(name, v, LAttr(a.at, name));
 				if (live != null) return target.call(Runtime, "prop", [e, target.string(name, ap), live], ap);
 				if (event) target.call(Host, "listen", [e, target.string(name, ap), v], ap);
 				else switch name {
@@ -429,7 +429,7 @@ class Plan<E> {
 					case AStatic(s): target.string(s, ap);
 					case _: target.bool(true, ap);
 				}
-				var live = liveAttr0(value, LAttr(a.at, name), name);
+				var live = envValue(a.value) ? null : liveAttr0(value, LAttr(a.at, name), name);
 				if (live != null) {
 					value = live;
 					reads = true;
@@ -454,6 +454,13 @@ class Plan<E> {
 		return target.typedSet(renderer, element, name, e, h, reads, ap);
 	}
 
+	// (a static value naming env(): never live, Live.env)
+	static function envValue(v:PValue):Bool
+		return switch v {
+			case AStatic(s): Live.env(s);
+			case _: false;
+		}
+
 	// (a literal's read of its slot, not yet a hole: null when not live)
 	function liveAttr0(value:E, at:LiveAt, name:String):Null<E>
 		return !target.liveOn() || Live.fixed(name) ? null : target.live(value, at);
@@ -468,7 +475,7 @@ class Plan<E> {
 					case AStatic(s): target.string(s);
 					case _: target.bool(true);
 				}
-				var live = event ? null : liveAttr(name, v, LAttr(a.at, name));
+				var live = event || envValue(a.value) ? null : liveAttr(name, v, LAttr(a.at, name));
 				if (live != null) return target.call(Neutral, "prop", [e, target.string(tag), target.string(name, ap), live], ap);
 				event ? target.call(Neutral, "listen", [e, target.string(tag), target.string(name, ap), v],
 					ap) : target.call(Neutral, "property", [e, target.string(tag), target.string(name, ap), v], ap);

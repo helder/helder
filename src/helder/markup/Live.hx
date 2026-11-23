@@ -17,6 +17,13 @@ class Live {
 	public static function fixed(attr:String):Bool
 		return FIXED.indexOf(attr) >= 0 || (StringTools.startsWith(attr, "on") && attr.length > 2);
 
+	// a value naming env() (env(safe-area-inset-top), calc(env(...) + 8px)):
+	// never live, so that the renderer binds it to the safe area as a
+	// release build does (ui's SafeArea); its slot's read would be set as is,
+	// a padding of "calc(env(...) + 8px)" a NaN
+	public static function env(value:String):Bool
+		return value.indexOf("env(") >= 0;
+
 	// a string's kind: a CSS colour, a length (or lengths: "4 6", 50%), else a string
 	public static function stringKind(s:String):String {
 		var t = StringTools.trim(s);
