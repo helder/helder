@@ -1175,7 +1175,10 @@ class GLBackend {
 	public function damaged(rects:Null<Array<Int>>)
 		damage = rects;
 
+	// (#if, not the caller's Platform test: hxmc lowers every method of a
+	// class it meets, so a browser build linked libEGL through this one)
 	function swap() {
+		#if (hxmc.target != "wasm32-wasi")
 		var r = damage, n = r == null ? 0 : Std.int(r.length / 4);
 		damage = null;
 		if (n > 0 && !swapLooked) {
@@ -1199,6 +1202,7 @@ class GLBackend {
 			}
 			EglSwap.damaged(pSwapDamage, display, eglSurface, p, n);
 		});
+		#end
 	}
 
 	public function readPixels(dst:haxe.io.Bytes) {
