@@ -136,12 +136,16 @@ class X11Window {
 		}
 		Xlib.XFlush(display);
 		surface = new Surface(X11, display, Ptr.ofI64(id), width, height);
+		queueLock.acquire();
 		open.push(this);
+		queueLock.release();
 		#if hxmc.dev_host
 		// (handing over: the input context closed, the window left to the next build; another window closed)
 		if (helder.dev.Hosted.hosted()) helder.dev.Hot.onDispose(() -> if (open.indexOf(this) >= 0) {
 			if (helder.dev.Hosted.get(helder.dev.Hosted.X11_WINDOW).toI64() == id) {
+				queueLock.acquire();
 				open.remove(this);
+				queueLock.release();
 				if (!ic.isNull()) Xlib.XDestroyIC(ic);
 				ic = Ptr.nil();
 				if (open.length == 0) handOver();
@@ -210,6 +214,14 @@ class X11Window {
 		NET_FRAME_EXTENTS = Xlib.XInternAtom(display, Mem.cstr("_NET_FRAME_EXTENTS"), 0);
 		xev = LibC.malloc((X.EVENT_SIZE : Int64));
 		openInputMethod();
+		// (the main thread reads the connection while the program runs on its own: OsThread)
+		if (OsThread.wanted()) {
+			mainXev = LibC.malloc((X.EVENT_SIZE : Int64));
+			wakeMain = pipe();
+			wakeProgram = pipe();
+			OsThread.waitMain = pump;
+			OsThread.wakeMain = () -> pipeWrite(wakeMain >>> 16);
+		}
 	}
 
 	// the input method in a UTF-8 locale (the environment's, else C.UTF-8);
@@ -231,7 +243,9 @@ class X11Window {
 		// (the host's window: left to the next build when handing over, else gone with the host's state)
 		if (helder.dev.Hosted.hosted() && helder.dev.Hosted.get(helder.dev.Hosted.X11_WINDOW).toI64() == id) {
 			if (helder.dev.Hosted.handingOver) {
+				queueLock.acquire();
 				open.remove(this);
+				queueLock.release();
 				if (!ic.isNull()) Xlib.XDestroyIC(ic);
 				ic = Ptr.nil();
 				if (open.length == 0) handOver();
@@ -241,7 +255,9 @@ class X11Window {
 			if (open.length == 1) helder.dev.Hosted.set(helder.dev.Hosted.X11_DISPLAY, Ptr.nil());
 		}
 		#end
+		queueLock.acquire();
 		open.remove(this);
+		queueLock.release();
 		if (!ic.isNull()) Xlib.XDestroyIC(ic);
 		ic = Ptr.nil();
 		Xlib.XDestroyWindow(display, id);
@@ -255,9 +271,12 @@ class X11Window {
 			// (the cursors and the selection go with the connection)
 			cursors.resize(0);
 			clipboardText = null;
+			// (not while the main thread reads it)
+			readLock.acquire();
 			Xlib.XCloseDisplay(display);
 			LibC.free(xev);
 			display = Ptr.nil();
+			readLock.release();
 		}
 	}
 
@@ -658,17 +677,42 @@ class X11Window {
 		return null;
 	}
 
-	// dispatches the pending events
+	// dispatches the pending events: those the main thread read, where it
+	// reads them (routed as it read them), else the connection's
 	static function poll(onEvent:Event->Void) {
+		if (OsThread.program != 0 && wakeMain >= 0) {
+			pipeDrain(wakeProgram & 0xFFFF);
+			queueLock.acquire();
+			var events = queued.copy(), routes = queuedRoutes.copy();
+			queued.resize(0);
+			queuedRoutes.resize(0);
+			queueLock.release();
+			for (i in 0...events.length) {
+				LibC.memcpy(xev, BytesPtr.of(events[i], 0, X.EVENT_SIZE), (X.EVENT_SIZE : Int64));
+				free.push(events[i]);
+				preRouted = routes[2 * i];
+				preGesture = routes[2 * i + 1];
+				handle(onEvent);
+			}
+			preRouted = -1;
+			return;
+		}
 		while (!display.isNull() && Xlib.XPending(display) > 0) {
 			Xlib.XNextEvent(display, xev);
+			handle(onEvent);
+		}
+	}
+
+	// (the XEvent in xev dispatched)
+	static function handle(onEvent:Event->Void) {
+		{
 			// (what the input method takes: a dead key, a compose sequence's keys)
-			if (!im.isNull() && Xlib.XFilterEvent(xev, 0) != 0) continue;
+			if (!im.isNull() && Xlib.XFilterEvent(xev, 0) != 0) return;
 			var any:Ptr<XAnyEvent> = xev;
 			// (the keyboard mapping changed: another layout; it has no window)
 			if (any.value.type == X.MappingNotify) {
 				Xlib.XRefreshKeyboardMapping(xev);
-				continue;
+				return;
 			}
 			// (a requestor deleted a part this process sent: the next)
 			if (any.value.type == X.PropertyNotify) {
@@ -676,10 +720,10 @@ class X11Window {
 				if (pe.value.state == X.PropertyDelete) nextPart(pe.value.window, pe.value.atom);
 				var pw = find(pe.value.window);
 				if (pe.value.state == X.PropertyNewValue && pw != null && pw.incoming != null && pe.value.atom == HXMC_CLIPBOARD) pw.partArrived(pe.value.atom);
-				continue;
+				return;
 			}
 			var w = find(any.value.window);
-			if (w == null) continue;
+			if (w == null) return;
 			var e = event;
 			e.kind = None;
 			e.window = w.owner;
@@ -717,10 +761,10 @@ class X11Window {
 					e.key = Xlib.XLookupKeysym(xev, 0).toInt();
 					e.mods = mods(k.value.state);
 					if (t == X.KeyPress) {
-						onEvent(e);
+						dispatch(e, onEvent);
 						// then its characters
 						var s = w.typed(k);
-						if (s == "" || e.mods & (Mods.CONTROL | Mods.ALT) != 0) continue;
+						if (s == "" || e.mods & (Mods.CONTROL | Mods.ALT) != 0) return;
 						e.kind = TextInput;
 						e.text = s;
 					}
@@ -732,18 +776,159 @@ class X11Window {
 					e.mods = mods(b.value.state);
 					if (button >= 4 && button <= 7) {
 						// (the wheel: buttons 4 and 5 up and down, 6 and 7 left and right; a notch on the press)
-						if (t != X.ButtonPress) continue;
+						if (t != X.ButtonPress) return;
 						e.kind = Scroll;
 						e.deltaX = button == 6 ? -40 : button == 7 ? 40 : 0;
 						e.deltaY = button == 4 ? -40 : button == 5 ? 40 : 0;
 					} else {
-						if (t == X.ButtonPress && button == 1 && w.titlePress(b.value.x, b.value.y, b.value.x_root, b.value.y_root)) continue;
+						if (t == X.ButtonPress && button == 1 && w.titlePress(b.value.x, b.value.y, b.value.x_root, b.value.y_root)) return;
 						e.kind = t == X.ButtonPress ? MouseDown : t == X.ButtonRelease ? MouseUp : MouseMove;
 						e.button = button;
 					}
 			}
-			if (e.kind != None) onEvent(e);
+			if (e.kind != None) dispatch(e, onEvent);
 		}
+	}
+
+	// (e to the program, routed by its window's compositor: as the main thread read it, else now)
+	static function dispatch(e:Event, onEvent:Event->Void) {
+		if (preRouted >= 0) {
+			e.routed = preRouted;
+			e.gesture = preGesture;
+			preRouted = -1;
+		} else
+			Window.routed(e);
+		onEvent(e);
+	}
+
+	// --- the input read on the main thread while the program runs on (OsThread.waitMain)
+
+	// (the events read, each an XEvent's bytes, their routes and gestures; spare buffers; the main thread's XEvent)
+	static final queued:Array<haxe.io.Bytes> = [];
+	static final queuedRoutes:Array<Int> = [];
+	static final free:Array<haxe.io.Bytes> = [];
+	static final queueLock = new sys.thread.Mutex();
+	// (held while the main thread reads the connection: closed only outside it)
+	static final readLock = new sys.thread.Mutex();
+	static var mainXev:Ptr = Ptr.nil();
+	static var preRouted = -1;
+	static var preGesture = 0;
+	// (the pipes that wake the main thread, a call handed to it, and the program's wait, events read: read | write << 16)
+	static var wakeMain = -1;
+	static var wakeProgram = -1;
+	static final peeked = new Event();
+
+	// the main thread's wait: the connection read (at most 50 ms: what a
+	// reply's read on the program's thread queued is taken then), each input
+	// event routed to its window's compositor at once, queued for the
+	// program's poll, which is woken
+	static function pump():Bool {
+		readLock.acquire();
+		var d = display;
+		var fd = d.isNull() ? -1 : Xlib.XConnectionNumber(d), pending = d.isNull() ? 0 : Xlib.XPending(d);
+		readLock.release();
+		if (fd < 0) return false;
+		if (pending == 0) waitTwo(fd, wakeMain & 0xFFFF, 0.05);
+		pipeDrain(wakeMain & 0xFFFF);
+		var any = false;
+		readLock.acquire();
+		while (!display.isNull() && Xlib.XPending(display) > 0) {
+			Xlib.XNextEvent(display, mainXev);
+			queueLock.acquire();
+			var b = free.length > 0 ? free.pop() : haxe.io.Bytes.alloc(X.EVENT_SIZE);
+			queueLock.release();
+			BytesPtr.copyIn(b, 0, mainXev, X.EVENT_SIZE);
+			var e = peek(mainXev), r = 0, g = 0;
+			if (e != null) {
+				Window.routed(e);
+				r = e.routed;
+				g = e.gesture;
+			}
+			queueLock.acquire();
+			queued.push(b);
+			queuedRoutes.push(r);
+			queuedRoutes.push(g);
+			queueLock.release();
+			any = true;
+		}
+		readLock.release();
+		if (any) pipeWrite(wakeProgram >>> 16);
+		return true;
+	}
+
+	// (what handle would make of an input event for the compositor, nothing else done)
+	static function peek(x:Ptr):Null<Event> {
+		var any:Ptr<XAnyEvent> = x, e = peeked;
+		queueLock.acquire();
+		var w = find(any.value.window);
+		queueLock.release();
+		if (w == null) return null;
+		e.window = w.owner;
+		e.phase = e.momentum = 0;
+		e.eased = false;
+		switch any.value.type {
+			case X.KeyPress:
+				var k:Ptr<XKeyEvent> = x;
+				e.kind = KeyDown;
+				e.key = Xlib.XLookupKeysym(x, 0).toInt();
+				e.mods = mods(k.value.state);
+			case t = X.ButtonPress | X.ButtonRelease | X.MotionNotify:
+				var b:Ptr<XKeyEvent> = x;
+				var button = t == X.MotionNotify ? 0 : (b.value.keycode : Int);
+				e.x = b.value.x;
+				e.y = b.value.y;
+				e.mods = mods(b.value.state);
+				if (button >= 4 && button <= 7) {
+					if (t != X.ButtonPress) return null;
+					e.kind = Scroll;
+					e.deltaX = button == 6 ? -40 : button == 7 ? 40 : 0;
+					e.deltaY = button == 4 ? -40 : button == 5 ? 40 : 0;
+				} else {
+					e.kind = t == X.ButtonPress ? MouseDown : t == X.ButtonRelease ? MouseUp : MouseMove;
+					e.button = button;
+				}
+			case _:
+				return null;
+		}
+		return e;
+	}
+
+	// (a pipe: read | write << 16, non-blocking; -1 none)
+	static function pipe():Int {
+		var ends = pipeEnds();
+		if (ends < 0) return -1;
+		Posix.fcntl(ends & 0xFFFF, 4, 0x800);
+		Posix.fcntl(ends >>> 16, 4, 0x800);
+		return ends;
+	}
+
+	@:hxmc.kernel static function pipeEnds():Int {
+		var fds:hxmc.Span<Int> = hxmc.Span.stack(2);
+		return helder.async.Fds.pipe(fds) != 0 ? -1 : fds[0] | (fds[1] << 16);
+	}
+
+	@:hxmc.kernel static function pipeWrite(fd:Int) {
+		var b:hxmc.Span<UInt8> = hxmc.Span.stack(1);
+		b[0] = 1;
+		helder.async.Fds.write(fd, b);
+	}
+
+	@:hxmc.kernel static function pipeDrain(fd:Int) {
+		var b:hxmc.Span<UInt8> = hxmc.Span.stack(64);
+		while (helder.async.Fds.read(fd, b) > 0) {}
+	}
+
+	// (until either descriptor has data, or seconds)
+	static function waitTwo(a:Int, b:Int, seconds:Float) {
+		Arena.scoped(m -> {
+			var set:Ptr<Int64> = m.alloc(128);
+			set[a >> 6] = set[a >> 6] | ((1 : Int64) << (a & 63));
+			if (b >= 0) set[b >> 6] = set[b >> 6] | ((1 : Int64) << (b & 63));
+			var tv:Ptr<Int64> = m.alloc(16);
+			tv[0] = Std.int(seconds);
+			tv[1] = Std.int((seconds - Std.int(seconds)) * 1e6);
+			Select.select((a > b ? a : b) + 1, set, Ptr.nil(), Ptr.nil(), tv);
+		});
 	}
 
 	// waits for the connection's socket to have data, or seconds
@@ -751,11 +936,26 @@ class X11Window {
 	static function waitFor(seconds:Float) {
 		var loop = helder.async.Driven.MainLoop.main;
 		if (loop == null) return wait(seconds);
+		// (the main thread reads the connection: woken by its pipe once it queued events)
+		if (OsThread.program != 0 && wakeProgram >= 0) {
+			queueLock.acquire();
+			var any = queued.length > 0;
+			queueLock.release();
+			if (!any) loop.wait(seconds, wakeProgram & 0xFFFF);
+			return;
+		}
 		if (!display.isNull() && Xlib.XPending(display) > 0) return;
 		loop.wait(seconds, display.isNull() ? -1 : Xlib.XConnectionNumber(display));
 	}
 
 	static function wait(seconds:Float) {
+		if (OsThread.program != 0 && wakeProgram >= 0) {
+			queueLock.acquire();
+			var any = queued.length > 0;
+			queueLock.release();
+			if (!any) waitTwo(wakeProgram & 0xFFFF, -1, seconds);
+			return;
+		}
 		if (display.isNull() || Xlib.XPending(display) > 0) return;
 		var fd = Xlib.XConnectionNumber(display);
 		Arena.scoped(a -> {
