@@ -19,6 +19,10 @@ class WaylandClient {
 	static function wl_display_read_events(d:Ptr):Int;
 	static function wl_display_cancel_read(d:Ptr):Void;
 	static function wl_display_get_error(d:Ptr):Int;
+	static function wl_display_create_queue(d:Ptr):Ptr;
+	static function wl_proxy_set_queue(p:Ptr, q:Ptr):Void;
+	static function wl_display_prepare_read_queue(d:Ptr, q:Ptr):Int;
+	static function wl_display_dispatch_queue_pending(d:Ptr, q:Ptr):Int;
 	static function wl_proxy_marshal_array_flags(p:Ptr, opcode:Int, iface:Ptr, version:Int, flags:Int, args:Ptr<Int64>):Ptr;
 	static function wl_proxy_add_dispatcher(p:Ptr, f:Ptr, data:Ptr, user:Ptr):Int;
 	static function wl_proxy_get_version(p:Ptr):Int;
