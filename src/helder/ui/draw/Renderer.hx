@@ -192,7 +192,7 @@ class Renderer implements TextureCanvas {
 	// moved: the next frame draws them at theirs
 	public var again(default, null) = false;
 
-	static inline var STRIDE = 192; // UiVertex's instance: 48 floats
+	static inline var STRIDE = 208; // UiVertex's instance: 52 floats
 
 	// (UiShader's vertex: its corner from a buffer of four, the rest an instance's)
 	static function layout():Array<VertexBufferLayout> {
@@ -460,13 +460,16 @@ class Renderer implements TextureCanvas {
 		if (a == 0) drawTiles(t, i0, j0, i1, j1) else {
 			var x0 = clipX0, y0 = clipY0, x1 = clipX1, y1 = clipY1, r0 = clipR0, r1 = clipR1, r2 = clipR2, r3 = clipR3;
 			clipR0 = clipR1 = clipR2 = clipR3 = 0;
-			for (band in 0...3) {
-				clipX0 = band == 1 ? x0 : x0 + a;
-				clipX1 = band == 1 ? x1 : x1 - a;
-				clipY0 = band == 0 ? y0 : band == 1 ? y0 + a : y1 - a;
-				clipY1 = band == 0 ? y0 + a : band == 1 ? y1 - a : y1;
-				drawTiles(t, i0, j0, i1, j1);
-			}
+			// (each tile in the bands it meets, one after another: its texture bound once)
+			for (j in j0...j1)
+				for (i in i0...i1)
+					for (band in 0...3) {
+						clipX0 = band == 1 ? x0 : x0 + a;
+						clipX1 = band == 1 ? x1 : x1 - a;
+						clipY0 = band == 0 ? y0 : band == 1 ? y0 + a : y1 - a;
+						clipY1 = band == 0 ? y0 + a : band == 1 ? y1 - a : y1;
+						drawTiles(t, i, j, i + 1, j + 1);
+					}
 			var w = tileWalk;
 			w.mark = false;
 			w.draw = true;
@@ -1581,6 +1584,19 @@ class Renderer implements TextureCanvas {
 		b.setFloat(o + 180, clipR1);
 		b.setFloat(o + 184, clipR2);
 		b.setFloat(o + 188, clipR3);
+		// (an unturned quad's centre, whole and fraction: its fragments' positions from it, Uishader)
+		if (flat) {
+			var cx = (x0 + x1) / 2 - ox, cy = (y0 + y1) / 2 - oy, ix = Math.ffloor(cx), iy = Math.ffloor(cy);
+			b.setFloat(o + 192, ix);
+			b.setFloat(o + 196, iy);
+			b.setFloat(o + 200, cx - ix);
+			b.setFloat(o + 204, cy - iy);
+		} else {
+			b.setFloat(o + 192, -1e9);
+			b.setFloat(o + 196, 0);
+			b.setFloat(o + 200, 0);
+			b.setFloat(o + 204, 0);
+		}
 	}
 }
 
@@ -1592,7 +1608,7 @@ private class Group {
 
 	// (its texture's id among the GPU textures drawn: Renderer.gpu's)
 	public final id = -(0x40000000 + ++ids);
-	public final batch = new QuadBatch(192, 64, true);
+	public final batch = new QuadBatch(@:privateAccess Renderer.STRIDE, 64, true);
 	public final textures:Array<Null<Texture>> = [];
 	public final pass:PassDesc = {colors: [{load: Clear, clear: new helder.gfx.Color(0, 0, 0, 0)}]};
 	public var texture:Null<Texture> = null;

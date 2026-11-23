@@ -148,7 +148,8 @@ class StressTest implements Markup {
 		for (what in ["scrolling", "changing"]) {
 			var su = 0.0, sp = 0.0, sg = 0.0, drawn = r.rastered;
 			for (i in 0...(what == "scrolling" ? 30 : 20)) {
-				if (what == "scrolling" && i == 10) {
+				if (i == (what == "scrolling" ? 10 : 0)) {
+					FrameCounts.reset();
 					su = sp = sg = 0;
 					drawn = r.rastered;
 				}
@@ -175,7 +176,7 @@ class StressTest implements Markup {
 			}
 			lap(what);
 			if (what == "scrolling") check("a scroll going on draws no tile once those around the view are drawn", r.rastered == drawn);
-			times[times.length - 1] = '$what frame: update ${Math.round(su / 20 * 100000) / 100}, paint ${Math.round(sp / 20 * 100000) / 100}, gpu ${Math.round(sg / 20 * 100000) / 100}, tiles drawn ${r.rastered - drawn}';
+			times[times.length - 1] = '$what frame: update ${Math.round(su / 20 * 100000) / 100}, paint ${Math.round(sp / 20 * 100000) / 100}, gpu ${Math.round(sg / 20 * 100000) / 100}, tiles drawn ${r.rastered - drawn}, per frame ${Math.round(FrameCounts.draws / 20)} draws, ${Math.round(FrameCounts.quads / 20)} quads, ${Math.round(FrameCounts.uploaded / 20)} written';
 		}
 		// a row added at the end
 		app.list(app.list().concat([new Row(n)]));

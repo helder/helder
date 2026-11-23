@@ -1387,10 +1387,19 @@ headless, X11's or a browser's) draws a layer that holds no other and
 draws nothing anew from tiles of its own, textures of 512 device pixels
 kept while it paints the same and moves by whole device pixels (snapped
 while it moves by fractions of one, drawn again where it rests), not in
-the paint that recorded it (what changed may change again); screenshots,
-story renders and golden images replay every layer (`LayerTest` checks the
-two pixel for pixel). The renderer draws a quad as four vertices and six
-indices, batched by texture.
+the paint that recorded it (what changed may change again). A scroller's
+tiles are drawn over its opaque background (one without is replayed), so
+that its content blends over what it does in place; under a rounded clip
+the tiles fill all but the corners, the list replayed into each corner's
+box; and UiShader measures each fragment from its pixel's centre (an
+unturned quad's from its own centre's whole part and fraction), not an
+interpolated position a rasterizer places a little apart in a target of
+another size. So the tiles give the pixels replaying gives, at whole
+pixels, on Metal and Mesa alike. A scroll draws no new tile once those
+around the view are drawn. Screenshots, story renders and golden images
+replay every layer (`LayerTest` checks the two pixel for pixel, on
+rounded scrollers at scales 1 and 2). The renderer draws a quad as four
+vertices and six indices, batched by texture.
 
 Memory per node is kept small: leaves share one empty children array; event
 handlers and the rarely set style properties (grid, transforms, shadows,
@@ -1403,8 +1412,8 @@ a build with `-D hxmc.census` run with `RT_CENSUS=1` lists the live heap by
 type. At 5000 rows (35000 nodes, an M-series Mac) a steady frame paints in
 about 0.02 ms and allocates about 300 bytes (the scrollbars'; 14 KB before
 layers, the text in view painted again), a frame of a scroll going on paints
-in 0.02 (0.1 before), and a change to one row is laid out in about 0.1 and
-painted in 0.13; the tiles take about 30 MB.
+in 0.01 (0.1 before) and draws 26 quads (509), and a change to one row is
+laid out in about 0.1 and painted in 0.13; the tiles take about 14 MB.
 The first layout of 1000 rows (8000 nodes) takes about 30 ms, 60% of it
 laying out text and nearly half of that the collector copying the
 paragraphs' glyphs, which all survive: a compact glyph store in

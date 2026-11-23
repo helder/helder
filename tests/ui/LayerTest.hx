@@ -39,7 +39,7 @@ class LayerTest {
 		}
 		rs[1].tiles = true;
 		var pass:PassDesc = {colors: [{load: Clear, clear: new helder.gfx.Color(1, 1, 1)}]};
-		var pixels = [Bytes.alloc(w * h * 4), Bytes.alloc(w * h * 4)];
+		var pixels = [Bytes.alloc(w * h * 4), Bytes.alloc(w * h * 4)], whole = true;
 		function frame() {
 			for (k in 0...2) {
 				uis[k].update();
@@ -55,7 +55,9 @@ class LayerTest {
 			}
 			var off = 0;
 			for (i in 0...w * h)
-				if (pixels[0].getInt32(i * 4) != pixels[1].getInt32(i * 4)) off++;
+				if (pixels[0].getInt32(i * 4) != pixels[1].getInt32(i * 4)) {
+					if (off++ < 4 && whole) where(made[1], scale, i % w, Std.int(i / w), pixels[0].getInt32(i * 4), pixels[1].getInt32(i * 4));
+				}
 			return off;
 		}
 		function scroll(by:Float) {
@@ -75,6 +77,7 @@ class LayerTest {
 			(cast m.rows[3] : TextNode).text = "changed, row three";
 		exact += frame();
 		var fraction = 0, moving = 0;
+		whole = false;
 		for (by in [10.5, 0.25]) {
 			scroll(by);
 			fraction += frame();
@@ -89,6 +92,21 @@ class LayerTest {
 		if (!ok) failed++;
 		Sys.println('LayerTest: scale $scale tree $tree: ${ok ? "ok" : "FAIL"}: $exact pixels differ at whole pixels ($frames scrolls); '
 			+ '$fraction at fractions, $moving under a moving transform; $drawn tiles drawn, ${Math.round(tiles / 1024)} KB of them');
+	}
+
+	// (a pixel differing at whole pixels: where it is from the nearest
+	// scroller's clip corner and in its tile, as a failure names it)
+	static function where(m:{scrollers:Array<Node>}, scale:Int, x:Int, y:Int, want:Int, got:Int) {
+		var near = "";
+		for (sc in m.scrollers) {
+			var be = sc.style.borderEdges, x0 = (sc.absX + be.left) * scale, y0 = (sc.absY + be.top) * scale;
+			var x1 = (sc.absX + sc.width - be.right) * scale, y1 = (sc.absY + sc.height - be.bottom) * scale;
+			if (x < x0 || x >= x1 || y < y0 || y >= y1) continue;
+			var dx = x - x0 < x1 - 1 - x ? x - x0 : x - x1, dy = y - y0 < y1 - 1 - y ? y - y0 : y - y1;
+			var ty = Std.int(y + sc.scrollY * scale - y0) % Renderer.TILE;
+			near = ' in the clip ${x0},${y0} ${x1},${y1} (r ${sc.style.radius * scale}), $dx, $dy from its nearest corner, row $ty of its tile';
+		}
+		Sys.println('LayerTest:   $x,$y: ${StringTools.hex(want, 8)} drawn, ${StringTools.hex(got, 8)} from tiles$near');
 	}
 
 	// (a tree: a header, a moving card, scrollers of rows, the same for the same seed)

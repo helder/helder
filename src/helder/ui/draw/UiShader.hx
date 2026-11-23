@@ -10,7 +10,10 @@ import helder.gfx.shader.ShaderMath.*;
 // rectangle with rounded corners (each its own radius: radii) given by its
 // half size and corners grown by a margin (rect, extent: its anti-aliased
 // pixel, a shadow's blur), each fragment's position relative to its centre
-// (local), so that its edge is anti-aliased by the signed distance to it
+// (local: an unturned quad's from its pixel's centre and the quad's centre,
+// origin's whole part and fraction, not interpolated, so that a quad drawn
+// into a layer's tile gives the pixels it gives in the frame; a turned
+// one's interpolated), so that its edge is anti-aliased by the signed distance to it
 // and a border drawn inside it, each side its own width (widths), the
 // inner edge a rectangle with rounded corners too (mode 0); or a glyph, the
 // atlas's coverage of the colour, read filtered (params.z: where a
@@ -28,7 +31,7 @@ import helder.gfx.shader.ShaderMath.*;
 // in clip space and the target's pixels (three of them: a parallelogram,
 // the rectangle turned by a transform), as the CPU placed them. Every fragment is also clipped by a
 // rectangle with rounded corners (clip, in target pixels, and its corners'
-// radii), from its own position (pixel), anti-aliased over a pixel: clips
+// radii), from its pixel's centre (pixel), anti-aliased over a pixel: clips
 // need no scissor, nest on the CPU and never split the draw. Colours are
 // premultiplied (Blend.Premultiplied). Corners are top left, top right,
 // bottom right, bottom left; sides top, right, bottom, left. A
@@ -49,13 +52,16 @@ import helder.gfx.shader.ShaderMath.*;
 	var params:Vec4; // x: mode, y: blur, z: the texture (mode 1: filtered, mode 2: its slot; mode 0: the border's style), w: a glyph's blend (1 + its contrast; its gamma's ratios: border)
 	var clip:Vec4; // the clip: x0, y0, x1, y1 in target pixels
 	var clipRadii:Vec4; // its corners' radii
+	var origin:Vec4; // an unturned quad's centre in target pixels: its whole part, its fraction (x: -1e9 where turned)
 }
 
 @:structInit @:publicFields class UiVaryings {
 	var pos:Vec4;
 	var local:Vec2;
 	var half:Vec2;
-	var uv:Vec2;
+	var ext:Vec2;
+	var uvs:Vec4;
+	var origin:Vec4;
 	var color:Vec4;
 	var border:Vec4;
 	var radii:Vec4;
@@ -196,7 +202,9 @@ final UiShader = shader({
 			pos: position(vec4(q.x, q.y, 0, 1)),
 			local: vec2(c.x > 0.5 ? e.z : -e.z, c.y > 0.5 ? e.w : -e.w),
 			half: e.xy,
-			uv: vec2(c.x > 0.5 ? v.uv.z : v.uv.x, c.y > 0.5 ? v.uv.w : v.uv.y),
+			ext: e.zw,
+			uvs: v.uv,
+			origin: v.origin,
 			color: v.color,
 			border: v.border,
 			radii: v.radii,
@@ -210,34 +218,41 @@ final UiShader = shader({
 	fragment: function(i:UiVaryings, p:{atlas:Texture2D, image:Texture2D}):Vec4 {
 		// (the textures read only by the modes that draw them, filtered: a
 		// glyph at its texels' centres where not, an image clamped to its texels)
+		// (from the pixel's centre, not its interpolated position, which the
+		// rasterizer places a little apart in a target of another size: an
+		// unturned quad's fragment the same in a layer's tile as in the frame;
+		// its position from its centre's whole part first, then the fraction)
+		var pixel = floor(i.pixel) + vec2(0.5, 0.5);
+		var local = i.origin.x > -1e8 ? pixel - i.origin.xy - i.origin.zw : i.local;
+		var uv = i.uvs.xy + (i.uvs.zw - i.uvs.xy) * ((local + i.ext) / (i.ext * 2));
 		var ch = (i.clip.zw - i.clip.xy) * 0.5;
-		var clipped = clamp(0.5 - box(i.pixel - i.clip.xy - ch, ch, i.clipRadii), 0, 1);
+		var clipped = clamp(0.5 - box(pixel - i.clip.xy - ch, ch, i.clipRadii), 0, 1);
 		var mode = i.params.x;
 		if (mode > 3.5) {
 			// (the padding box less the blurred inner rectangle)
 			var o = i.widths;
 			var inner = max(i.half - vec2(o.z, o.z), vec2(0, 0));
 			var ir = max(i.radii - vec4(o.z, o.z, o.z, o.z), vec4(0, 0, 0, 0));
-			var q = i.local - o.xy;
+			var q = local - o.xy;
 			var lit = i.params.y > 0.01 ? blurred(q, inner, ir, i.params.y) : clamp(0.5 - box(q, inner, ir), 0, 1);
-			return i.color * (1 - lit) * clamp(0.5 - box(i.local, i.half, i.radii), 0, 1) * clipped;
+			return i.color * (1 - lit) * clamp(0.5 - box(local, i.half, i.radii), 0, 1) * clipped;
 		}
 		if (mode > 2.5) {
-			var a = i.params.y > 0.01 ? blurred(i.local, i.half, i.radii, i.params.y) : clamp(0.5 - box(i.local, i.half, i.radii), 0, 1);
+			var a = i.params.y > 0.01 ? blurred(local, i.half, i.radii, i.params.y) : clamp(0.5 - box(local, i.half, i.radii), 0, 1);
 			var o = i.widths;
 			var caster = max(i.half - vec2(o.z, o.z), vec2(0, 0));
 			var cr = max(i.radii - vec4(o.z, o.z, o.z, o.z), vec4(0, 0, 0, 0));
-			var under = o.w > 0 ? clamp(0.5 - box(i.local + o.xy, caster, cr), 0, 1) : 0.0;
+			var under = o.w > 0 ? clamp(0.5 - box(local + o.xy, caster, cr), 0, 1) : 0.0;
 			return i.color * a * (1 - under) * clipped;
 		}
 		if (mode > 1.5) {
-			var uv = clamp(i.uv, i.widths.xy, i.widths.zw);
-			return sample(p.image, uv) * i.color.w * clamp(0.5 - box(i.local, i.half, i.radii), 0, 1) * clipped;
+			var st = clamp(uv, i.widths.xy, i.widths.zw);
+			return sample(p.image, st) * i.color.w * clamp(0.5 - box(local, i.half, i.radii), 0, 1) * clipped;
 		}
 		if (mode > 0.5) {
 			var size = i.widths.xy;
-			var uv = i.params.z > 0.5 ? i.uv : (floor(i.uv * size) + vec2(0.5, 0.5)) / size;
-			var a = sample(p.atlas, uv).x;
+			var st = i.params.z > 0.5 ? uv : (floor(uv * size) + vec2(0.5, 0.5)) / size;
+			var a = sample(p.atlas, st).x;
 			if (i.params.w > 0.5) {
 				// (the platform's blend, Shaping.GlyphBlend: its contrast, less for light text, then its gamma's correction for the colour)
 				var fg = i.color.xyz / max(i.color.w, 0.0001);
@@ -249,18 +264,18 @@ final UiShader = shader({
 			}
 			return i.color * a * clipped;
 		}
-		var d = box(i.local, i.half, i.radii);
+		var d = box(local, i.half, i.radii);
 		var edge = clamp(0.5 - d, 0, 1);
 		// (the inner edge, as CSS has it: the rectangle less each side's width,
 		// each corner a quarter ellipse, its radius less the side's width across
 		// and the top's or bottom's down)
 		var w = i.widths, r = i.radii;
 		var inHalf = max(i.half - vec2((w.w + w.y) * 0.5, (w.x + w.z) * 0.5), vec2(0, 0));
-		var inP = i.local - vec2((w.w - w.y) * 0.5, (w.x - w.z) * 0.5);
+		var inP = local - vec2((w.w - w.y) * 0.5, (w.x - w.z) * 0.5);
 		var rc = inP.x > 0 ? (inP.y > 0 ? r.z : r.y) : (inP.y > 0 ? r.w : r.x);
 		var rad = vec2(max(rc - (inP.x > 0 ? w.y : w.w), 0), max(rc - (inP.y > 0 ? w.z : w.x), 0));
 		var inBorder = w.x + w.y + w.z + w.w > 0 ? clamp(0.5 + ellipseBox(inP, inHalf, rad), 0, 1) : 0.0;
-		if (i.params.z > 0.5 && inBorder > 0) inBorder = inBorder * dashes(i.local, i.half, w, r, i.params.z);
+		if (i.params.z > 0.5 && inBorder > 0) inBorder = inBorder * dashes(local, i.half, w, r, i.params.z);
 		return mix(i.color, i.border, inBorder) * edge * clipped;
 	}
 });
