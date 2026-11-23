@@ -75,6 +75,9 @@ class UiTest {
 		natives();
 		keyboards();
 		noFont();
+		// (last: it turns motion on, for good)
+		layered();
+		layerRecords();
 		Sys.println('UiTest: $checks checks' + (failed == 0 ? ", ok" : ', $failed FAILED'));
 		Sys.exit(failed == 0 ? 0 : 1);
 	}
@@ -1218,6 +1221,210 @@ class UiTest {
 			}
 		}
 		check("paint: replayed from the display list, as painted directly", bad == 0 && frames == 360, '$bad of $frames frames differ, first $first');
+	}
+
+	// layered painting (Ui.paint: each layer's list kept while nothing it
+	// paints changes, walked onto the canvas) gives a canvas the calls a
+	// direct paint gives it: two copies of random trees (scrollers and their
+	// sticky rows, nodes whose transform and opacity move every frame,
+	// motion's entering and leaving rows), changed at random over frames, one
+	// painted directly, the other through its layers
+	static function layered() {
+		var bad = 0, frames = 0, first = "", records = 0;
+		var words = ["a", "bb", "ccc dd", "eeee f gg"], img = new Image(8, 6), line = new Path().moveTo(0, 0).lineTo(20, 10);
+		inline function next(seed:Int):Int
+			return (seed * 1103515245 + 12345) & 0x7fffffff;
+		function restyle(n:Node, r:Int->Int) {
+			var s = n.style;
+			switch r(15) {
+				case 13: s.display = r(4) == 0 ? Display.None : Display.Flex;
+				case 0: s.width = [30, 60, 120][r(3)];
+				case 1: s.height = [20, 50, 300][r(3)];
+				case 2: s.background = Color.rgba(r(255), [0, 0.5, 1][r(3)]);
+				case 3:
+					s.borderWidth = r(3);
+					s.borderColor = Color.rgba(0x204060, [0.5, 1][r(2)]);
+				case 4: s.radius = r(3) * 4;
+				case 5: s.opacity = [1, 0.5, 0][r(3)];
+				case 6: s.shadow = r(3) == 0 ? null : Shadow.parse(["0 4px 12px rgba(0,0,0,0.5)", "inset 2px 2px 4px #00000080"][r(2)]);
+				case 7: s.transform = r(2) == 0 ? null : Transform.parse(["translate(30px, 10px)", "scale(1.5)", "rotate(10deg)"][r(3)]);
+				case 8: s.overflow = [Overflow.Visible, Overflow.Hidden, Overflow.Scroll][r(3)];
+				case 9: s.visibility = [null, Visibility.Hidden, Visibility.Visible][r(3)];
+				case 10: s.color = Color.rgb(r(0xffffff));
+				case 11: s.position = r(3) == 0 ? Position.Sticky : Position.Relative;
+				case 12: s.top = r(2) * 4;
+				case _: s.padding = r(3) * 3;
+			}
+		}
+		// (a tree, the same for the same seed: its nodes in the order made)
+		function build(seed:Int, nodes:Array<Node>, moving:Array<Node>):Node {
+			function r(n:Int):Int {
+				seed = next(seed);
+				return (seed >> 8) % n;
+			}
+			function make(depth:Int):Node {
+				var k = r(depth >= 3 ? 3 : 8);
+				var n = switch k {
+					case 0: new TextNode(words[r(words.length)]);
+					case 1: new ImageNode(img);
+					case 2: new Stroked(line);
+					case _: new Node();
+				}
+				n.style.background = Color.rgb(0x101010 * (1 + nodes.length % 15));
+				nodes.push(n);
+				// (a scroller of rows, a sticky one among them; a list under motion; a node moving every frame)
+				if (k == 3) {
+					n.style.overflow = Scroll;
+					n.style.height = [60, 120][r(2)];
+					for (i in 0...6 + r(10)) {
+						var row = make(depth + 2);
+						row.style.height = 18;
+						if (r(6) == 0) {
+							row.style.position = Sticky;
+							row.style.top = 0;
+						}
+						n.append(row);
+					}
+				} else if (k == 4) n.motion = helder.ui.motion.MotionSpec.DEFAULT;
+				else if (k == 5) moving.push(n);
+				if (!n.hasContent() && k != 3)
+					for (i in 0...r(4))
+						n.append(make(depth + 1));
+				for (i in 0...r(3))
+					restyle(n, r);
+				return n;
+			}
+			return make(0);
+		}
+		var t = Clock.now + 10;
+		for (tree in 0...24) {
+			var direct = new Ui(new MonoText(), 240, 200), layers = new Ui(new MonoText(), 240, 200);
+			direct.direct = true;
+			var uis = [direct, layers], all = [[], []], moving = [[], []];
+			for (k in 0...2)
+				uis[k].root.append(build(tree * 7919 + 3, all[k], moving[k]));
+			var seed = tree * 104729 + 11, was = layers.recorded;
+			function r(n:Int):Int {
+				seed = next(seed);
+				return (seed >> 8) % n;
+			}
+			for (frame in 0...30) {
+				// (the moving nodes' transform and opacity, every frame)
+				for (k in 0...2)
+					for (i in 0...moving[k].length) {
+						var n = moving[k][i], a = frame + i;
+						n.style.transform = Transform.parse('translate(${a % 7}px, ${(a * 3) % 5}px)');
+						n.style.opacity = 0.4 + (a % 5) / 10;
+					}
+				for (c in 0...r(3)) {
+					var i = r(all[0].length), op = r(6), sub = r(1000000);
+					for (k in 0...2) {
+						var n = all[k][i], s = sub;
+						function rs(m:Int):Int {
+							s = next(s);
+							return (s >> 8) % m;
+						}
+						if (n.ui == null) continue;
+						switch op {
+							case 0 if (Std.isOfType(n, TextNode)): (cast n : TextNode).text = words[rs(words.length)];
+							case 1 if (!n.hasContent()):
+								var c = new Node();
+								c.style.set({width: 20 + rs(40), height: 10 + rs(20), background: Color.rgb(rs(0xffffff))});
+								all[k].push(c);
+								n.insert(c, rs(n.children.length + 1));
+							case 2 if (n.parent != null && n.parent.parent != null): n.parent.remove(n);
+							case 3 | 4 if (n.style.overflow == Scroll): uis[k].scrollTo(n, 0, rs(60));
+							case 5 if (n.children.length > 0): n.remove(n.children[n.children.length - 1]);
+							case _: restyle(n, rs);
+						}
+					}
+				}
+				t += 0.016;
+				Clock.tick(t);
+				var want = new Recording(), got = new Recording();
+				direct.update();
+				layers.update();
+				direct.paint(want);
+				layers.paint(got);
+				frames++;
+				if (want.calls.join("|") != got.calls.join("|")) {
+					bad++;
+					if (first == "") {
+						var i = 0;
+						while (i < want.calls.length && want.calls[i] == got.calls[i])
+							i++;
+						first = 'tree $tree frame $frame, call $i: ${want.calls[i]} against ${got.calls[i]}';
+					}
+				}
+			}
+			records += layers.recorded - was;
+		}
+		check("layers: painted through them, as painted directly", bad == 0 && frames == 720, '$bad of $frames frames differ, first $first');
+		check("layers: lists kept from frame to frame", records < frames * 3, '$records recorded in $frames frames');
+	}
+
+	// a frame that only scrolls a scroller recorded before, or only moves a
+	// node's transform, records no layer: the scroller's content drawn at
+	// its new offset, the node at its new transform
+	static function layerRecords() {
+		var ui = new Ui(new MonoText(), 200, 200), list = new Node(), card = new Node();
+		list.style.set({overflow: Scroll, height: 150});
+		for (i in 0...50) {
+			var row = new TextNode("row " + i);
+			row.style.height = 20;
+			list.append(row);
+		}
+		card.style.set({width: 40, height: 20, background: 0xFF3366CC, position: Absolute, left: 100, top: 160});
+		ui.root.append(card);
+		ui.root.append(list);
+		function frame():Int {
+			var was = ui.recorded;
+			ui.update();
+			ui.paint(new Recording());
+			return ui.recorded - was;
+		}
+		frame();
+		check("layers: the first frame records the root and the scroller's content", ui.recorded == 2, ui.recorded + "");
+		ui.scrollTo(list, 0, 30);
+		check("layers: a scroll records nothing", frame() == 0);
+		ui.scrollTo(list, 0, 140);
+		check("layers: nor one within a viewport", frame() == 0);
+		for (i in 0...3) {
+			card.style.transform = Transform.parse('translate(${i * 4}px, 0)');
+			frame();
+		}
+		card.style.transform = Transform.parse('translate(20px, 0)');
+		check("layers: a moving transform records nothing", frame() == 0);
+		card.style.opacity = 0.5;
+		check("layers: nor its opacity", frame() == 0);
+		// (hidden and shown again: its parent draws its layer again)
+		card.style.display = None;
+		ui.root.style.background = 0xFFF4F4F5;
+		frame();
+		card.style.display = Flex;
+		ui.update();
+		var want = new Recording(), got = new Recording();
+		ui.direct = true;
+		ui.paint(want);
+		ui.direct = false;
+		ui.paint(got);
+		check("layers: a moving node shown again, drawn", want.calls.join("|") == got.calls.join("|"));
+		(cast list.children[3] : TextNode).text = "changed";
+		check("layers: a change in the scroller records its content alone", frame() == 1);
+		// (its last row taken out: no other row moves, its content changed still)
+		ui.scrollTo(list, 0, 0);
+		while (list.children.length > 3)
+			list.remove(list.children[3]);
+		frame();
+		list.remove(list.children[2]);
+		ui.update();
+		want = new Recording();
+		got = new Recording();
+		ui.direct = true;
+		ui.paint(want);
+		ui.direct = false;
+		ui.paint(got);
+		check("layers: a scroller's child taken out, its content recorded again", want.calls.join("|") == got.calls.join("|"));
 	}
 
 	// a node laid out again in place (Layout.inPlace: its parent's measures of

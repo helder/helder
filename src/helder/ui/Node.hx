@@ -756,6 +756,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		if (ui != null) {
 			ui.changed(this);
 			ui.requestFrame();
+			layerChanged();
 		}
 	}
 
@@ -776,6 +777,58 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 
 	// (the paint it was drawn in last: Ui.paintFrame then)
 	var drawnAt = -1;
+	// (its own layer, while its transform or opacity moves; its content's, a scroller's: Ui.paint)
+	@:allow(helder.ui) var paintLayer:Null<helder.ui.draw.Layer> = null;
+	@:allow(helder.ui) var contentLayer:Null<helder.ui.draw.Layer> = null;
+	// (the paint after which its transform or opacity last changed)
+	var compositeAt = -10;
+
+	// (what it paints changed: the layer it is painted in recorded again, and
+	// its own and its content's, a scroller's (a child added or taken out, a
+	// style its children inherit), and its parent's, which draws its own or
+	// not (displayed or not); deep: the layers inside it too, as what they
+	// inherit from it changed)
+	@:allow(helder.ui) function layerChanged(deep = false) {
+		var u = ui;
+		if (u == null) return;
+		if (contentLayer != null) contentLayer.dirty = true;
+		if (paintLayer != null) paintLayer.dirty = true;
+		var l:Null<helder.ui.draw.Layer> = null, n = parent;
+		while (l == null && n != null) {
+			l = n.contentLayer ?? n.paintLayer;
+			n = n.parent;
+		}
+		if (l == null) l = @:privateAccess u.rootLayer;
+		l.dirty = true;
+		if (!deep) return;
+		for (k in @:privateAccess u.layers)
+			if (!k.dirty && @:privateAccess Ui.contains(this, k.node)) k.dirty = true;
+	}
+
+	// (its transform or opacity changed: only where its own layer is drawn,
+	// once it has one; it gets one as they change in paints one after another)
+	@:allow(helder.ui) function compositeChanged() {
+		var u = ui;
+		if (u == null) return;
+		var f = @:privateAccess u.paintFrame;
+		if (paintLayer != null) paintLayer.movedAt = f;
+		else {
+			layerChanged(true);
+			if (f - compositeAt <= 1) {
+				paintLayer = new helder.ui.draw.Layer(this, false);
+				paintLayer.movedAt = f;
+				@:privateAccess u.layers.push(paintLayer);
+			}
+			compositeAt = f;
+		}
+		if (drawnAt == f || shows()) u.requestFrame();
+	}
+
+	// whether its content (paintContent) is drawn anew each frame: what it
+	// draws read from more than its style and what tells it changed (a
+	// subclass's own drawing, unless it says otherwise): a layer holding it is recorded again each frame
+	@:allow(helder.ui) function paintsLive():Bool
+		return hasContent();
 
 	// what it paints changed (a colour, its opacity, its transform): a frame
 	// asked for when that shows, or showed in the last frame; one hidden
@@ -784,6 +837,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	// into view (a scroll or a layout asks for that frame)
 	@:allow(helder.ui) function paintChanged() {
 		if (ui == null) return;
+		layerChanged(true);
 		if (drawnAt == @:privateAccess ui.paintFrame || shows()) ui.requestFrame();
 	}
 
@@ -1380,7 +1434,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		// child is not, and its bounds would stay as they were)
 		for (k in children)
 			if (k.inkStale) k.measureInk();
-		var s = style;
+		var s = style, was0 = inkX0, was1 = inkY0, was2 = inkX1, was3 = inkY1, wasAll = inkAll;
 		inkAll = s.position == Sticky;
 		inkX0 = absX;
 		inkY0 = absY;
@@ -1421,16 +1475,20 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 			}
 		}
 		inkStale = false;
+		// (its bounds tested where it is recorded: that layer recorded again; a
+		// layer's own node is tested as it is walked)
+		if (paintLayer == null && (was0 != inkX0 || was1 != inkY0 || was2 != inkX1 || was3 != inkY1 || wasAll != inkAll)) layerChanged();
 	}
 
-	// (a transform or sticking changed: its bounds and its ancestors' measured again at the next update)
-	@:allow(helder.ui) function inkChanged() {
+	// (a transform or sticking changed: its bounds and its ancestors' measured
+	// again at the next update; composite: only how it is drawn, its transform)
+	@:allow(helder.ui) function inkChanged(composite = false) {
 		var n = this;
 		while (n != null && !n.inkStale) {
 			n.inkStale = true;
 			n = n.parent;
 		}
-		paintChanged();
+		if (composite) compositeChanged() else paintChanged();
 	}
 
 	// what its content draws, from its content box's top left, when it may reach past the box (a text's paragraph)
@@ -1480,6 +1538,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 			@:privateAccess ui.resized.push(this);
 		// (under motion: its edges move from where they are drawn, Motions)
 		if (helder.ui.motion.Motions.on && (x != this.x || y != this.y || w != width || h != height)) helder.ui.motion.Motions.relaid(this, x, y, w, h);
+		if (x != this.x || y != this.y || w != width || h != height || ax != absX || ay != absY || cw != contentWidth || ch != contentHeight) layerChanged();
 		this.x = x;
 		this.y = y;
 		width = w;

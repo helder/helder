@@ -11,9 +11,10 @@ import Plain.*;
 
 // A list of ROWS rows in markup (a checkbox, a label, a number and a button
 // each, Plain's, in a scroll view), drawn headless: the time of each step of a UI's
-// life (mounting, the first layout and frame, a change to one row, a scroll,
-// an added row, frames with nothing changed), and checks that a change lays
-// out again only what it touched (bun run test ui-draw):
+// life (mounting, the first layout and frame, a change to one row, a scroll
+// half way and one by a wheel's notch, an added row, frames with nothing
+// changed), drawn as a window draws (its layers from their tiles), and
+// checks that a change lays out again only what it touched (bun run test ui-draw):
 //   StressTest [rows]
 class StressTest implements Markup {
 	static inline var W = 800;
@@ -70,21 +71,36 @@ class StressTest implements Markup {
 		var pixels = Bytes.alloc(W * H * 4);
 		var times:Array<String> = [];
 		var t = haxe.Timer.stamp();
+		// (a frame's parts, ms: its update, its paint (recording, tiles' vertices), the GPU's)
+		var parts = "", recorded = 0, rastered = 0;
 		function lap(what:String) {
 			var now = haxe.Timer.stamp();
-			times.push('$what ${Math.round((now - t) * 10000) / 10}');
+			times.push('$what ${Math.round((now - t) * 10000) / 10}' + (what.indexOf("frame") >= 0 ? parts : ""));
+			parts = "";
 			t = now;
 		}
+		// (as a window draws: its layers from their tiles, the groups' and tiles' passes before the frame's)
+		r.tiles = true;
+		r.groups = true;
 		function frame(?read:Bool) {
+			var a = haxe.Timer.stamp();
 			ui.update();
+			var b = haxe.Timer.stamp();
 			var enc = device.beginFrame();
-			enc.beginPass(pass);
 			r.begin(W, H);
 			ui.paint(r);
+			var c = haxe.Timer.stamp();
+			r.prepare(enc);
+			enc.beginPass(pass);
 			r.end(enc);
 			enc.endPass();
 			if (read) device.readPixels(pixels);
 			device.endFrame();
+			inline function ms(v:Float)
+				return Math.round(v * 10000) / 10;
+			parts = ' (update ${ms(b - a)}, paint ${ms(c - b)}, gpu ${ms(haxe.Timer.stamp() - c)}, layers recorded ${ui.recorded - recorded}, tiles ${r.rastered - rastered})';
+			recorded = ui.recorded;
+			rastered = r.rastered;
 		}
 		var app = new StressTest(n);
 		lap("start");
@@ -119,6 +135,49 @@ class StressTest implements Markup {
 		frame(true);
 		lap("scrolled frame");
 		check("scrolled", list.scrollY > 0);
+		// scrolled on by a little, as a wheel's notch, within what its layer recorded
+		var was = list.scrollY;
+		ui.wheel(400, 300, 0, 40);
+		frame(true);
+		lap("frame after a short scroll");
+		check("scrolled on", list.scrollY > was);
+		// a scroll going on: 20 frames, 6 pixels each (a trackpad's), after 10
+		// that draw the tiles around the view; a row changed in each of 20
+		// (one in view toggled): their means
+		var row = 0;
+		for (what in ["scrolling", "changing"]) {
+			var su = 0.0, sp = 0.0, sg = 0.0, drawn = r.rastered;
+			for (i in 0...(what == "scrolling" ? 30 : 20)) {
+				if (i == (what == "scrolling" ? 10 : 0)) {
+					FrameCounts.reset();
+					su = sp = sg = 0;
+					drawn = r.rastered;
+				}
+				if (what == "scrolling") ui.wheel(400, 300, 0, 6) else {
+					var at = Std.int(list.scrollY / 30) + 2 + (row++ % 10);
+					app.rows[at].done(!app.rows[at].done());
+				}
+				var a = haxe.Timer.stamp();
+				ui.update();
+				var b = haxe.Timer.stamp();
+				var enc = device.beginFrame();
+				r.begin(W, H);
+				ui.paint(r);
+				var c = haxe.Timer.stamp();
+				r.prepare(enc);
+				enc.beginPass(pass);
+				r.end(enc);
+				enc.endPass();
+				device.readPixels(pixels);
+				device.endFrame();
+				su += b - a;
+				sp += c - b;
+				sg += haxe.Timer.stamp() - c;
+			}
+			lap(what);
+			if (what == "scrolling") check("a scroll going on draws no tile once those around the view are drawn", r.rastered == drawn);
+			times[times.length - 1] = '$what frame: update ${Math.round(su / 20 * 100000) / 100}, paint ${Math.round(sp / 20 * 100000) / 100}, gpu ${Math.round(sg / 20 * 100000) / 100}, tiles drawn ${r.rastered - drawn}, per frame ${Math.round(FrameCounts.draws / 20)} draws, ${Math.round(FrameCounts.quads / 20)} quads, ${Math.round(FrameCounts.uploaded / 20)} written';
+		}
 		// a row added at the end
 		app.list(app.list().concat([new Row(n)]));
 		lap("append");
@@ -132,12 +191,13 @@ class StressTest implements Markup {
 			ui.update();
 			var b = haxe.Timer.stamp();
 			var enc = device.beginFrame();
-			enc.beginPass(pass);
 			var before = hxmc.GcStats.threadBytesAllocated();
 			r.begin(W, H);
 			ui.paint(r);
 			bytes += hxmc.GcStats.threadBytesAllocated() - before;
 			var c = haxe.Timer.stamp();
+			r.prepare(enc);
+			enc.beginPass(pass);
 			r.end(enc);
 			enc.endPass();
 			device.endFrame();
@@ -148,8 +208,9 @@ class StressTest implements Markup {
 			tg += d - c;
 		}
 		inline function ms(v:Float)
-			return Math.round(v / 20 * 10000) / 10;
+			return Math.round(v / 20 * 100000) / 100;
 		times.push('steady frame: update ${ms(tu)}, paint ${ms(tp)}, gpu ${ms(tg)}, paint bytes ${Math.round(bytes / 20)}');
+		times.push('layers recorded ${ui.recorded}, tiles drawn ${r.rastered}, ${Math.round(r.tileBytes / 1024)} KB of them');
 		// the accessibility tree a window builds each frame for assistive technology, and its changes
 		var ta = 0.0, prev = ui.accessTree();
 		for (i in 0...20) {

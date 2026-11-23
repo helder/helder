@@ -92,7 +92,10 @@ class ImageNode extends Node {
 	function set_image(v:Null<Image>):Null<Image> {
 		if (v == image && (v == null || v.width == laidWidth && v.height == laidHeight)) {
 			// (set again after a change: drawn again)
-			if (v != null && v.version != setVersion && ui != null) ui.requestFrame();
+			if (v != null && v.version != setVersion && ui != null) {
+				layerChanged();
+				ui.requestFrame();
+			}
 			if (v != null) setVersion = v.version;
 			return v;
 		}
@@ -101,7 +104,10 @@ class ImageNode extends Node {
 		image = v;
 		laidWidth = v == null ? 0 : v.width;
 		laidHeight = v == null ? 0 : v.height;
-		if (resized) markDirty() else if (ui != null) ui.requestFrame();
+		if (resized) markDirty() else if (ui != null) {
+			layerChanged();
+			ui.requestFrame();
+		}
 		return v;
 	}
 
@@ -121,27 +127,42 @@ class ImageNode extends Node {
 		return svg != null ? svg.height : image.height;
 
 	function set_mirrored(v:Bool):Bool {
-		if (v != mirrored && ui != null) ui.requestFrame();
+		if (v != mirrored && ui != null) {
+			layerChanged();
+			ui.requestFrame();
+		}
 		return mirrored = v;
 	}
 
 	function set_positionX(v:Float):Float {
-		if (v != positionX && ui != null) ui.requestFrame();
+		if (v != positionX && ui != null) {
+			layerChanged();
+			ui.requestFrame();
+		}
 		return positionX = v;
 	}
 
 	function set_positionY(v:Float):Float {
-		if (v != positionY && ui != null) ui.requestFrame();
+		if (v != positionY && ui != null) {
+			layerChanged();
+			ui.requestFrame();
+		}
 		return positionY = v;
 	}
 
 	function set_offsetX(v:Float):Float {
-		if (v != offsetX && ui != null) ui.requestFrame();
+		if (v != offsetX && ui != null) {
+			layerChanged();
+			ui.requestFrame();
+		}
 		return offsetX = v;
 	}
 
 	function set_offsetY(v:Float):Float {
-		if (v != offsetY && ui != null) ui.requestFrame();
+		if (v != offsetY && ui != null) {
+			layerChanged();
+			ui.requestFrame();
+		}
 		return offsetY = v;
 	}
 
@@ -208,9 +229,17 @@ class ImageNode extends Node {
 	function set_fit(v:ImageFit):ImageFit {
 		if (v == fit) return v;
 		fit = v;
-		if (ui != null) ui.requestFrame();
+		if (ui != null) {
+			layerChanged();
+			ui.requestFrame();
+		}
 		return v;
 	}
+
+	// (drawn from its style, its text or image and the selection, which tell
+	// it changed; a subclass's own drawing not)
+	@:allow(helder.ui) override function paintsLive():Bool
+		return Type.getClass(this) != ImageNode;
 
 	override public function hasContent():Bool
 		return true;

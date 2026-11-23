@@ -9,4 +9,8 @@ import helder.ui.Corners;
 interface TextureCanvas extends Canvas {
 	// a GPU texture at x, y, w x h (Renderer.gpuTexture)
 	function gpuTexture(t:Texture, id:Int, x:Float, y:Float, w:Float, h:Float, radius:Float = 0.0, ?corners:Corners):Void;
+	// a pass recorded before the frame's (Renderer.beforePass's f, an Encoder->Void)
+	function pass(f:Any):Void;
+	// a layer drawn here from its tiles, where it can be (Renderer's); false: replay it
+	function layerTiles(l:Layer):Bool;
 }

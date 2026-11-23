@@ -116,6 +116,8 @@ class Motions {
 			p.active = true;
 			c.motions.push(p);
 		}
+		// (what it paints: its layer's, recorded again)
+		@:privateAccess p.node.layerChanged(true);
 		if (!c.motionTicking) {
 			c.motionTicking = true;
 			Clock.addTo(c, t -> step(c, t));
@@ -198,6 +200,7 @@ class Motions {
 		var par = n.parent;
 		src.consumed = true;
 		present(src.node).away = true;
+		@:privateAccess src.node.layerChanged(true);
 		var p = present(n);
 		p.rideX = p.rideY = false;
 		// (its start in its parent's space: where the source was seen, less where the parent is drawn)
@@ -350,6 +353,7 @@ class Motions {
 		@:privateAccess n.leftFrom = null;
 		p.exiting = false;
 		ghosts--;
+		if (from != null) @:privateAccess from.layerChanged(true);
 		var u = from == null ? null : uiOf(from);
 		if (u != null) u.requestFrame();
 	}
@@ -501,6 +505,9 @@ class Motions {
 
 	static function sampleAll(p:Present, now:Float) {
 		var n = p.node, s = n.style;
+		// (its edges moving: what it and its children riding them paint; its
+		// presence and transform's lanes: only how it is drawn)
+		if (p.l != null && (p.l.moving() || p.t.moving() || p.r.moving() || p.b.moving())) @:privateAccess n.layerChanged(true);
 		if (p.l != null) {
 			p.l.sample(now);
 			p.t.sample(now);
@@ -539,10 +546,11 @@ class Motions {
 			p.sy.sample(now);
 			p.rot.sample(now);
 			if (!p.tx.moving() && !p.ty.moving() && !p.sx.moving() && !p.sy.moving() && !p.rot.moving()) p.tx = p.ty = p.sx = p.sy = p.rot = null;
-			@:privateAccess n.inkChanged();
+			@:privateAccess n.inkChanged(true);
 		}
 		if (p.presence != null && p.presence.moving()) {
 			p.presence.sample(now);
+			@:privateAccess n.compositeChanged();
 			if (!p.presence.moving() && p.exiting && p.presence.target <= 0) finishExit(p);
 		}
 	}

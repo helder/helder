@@ -138,6 +138,8 @@ class UiWindow {
 	var typing = "";
 	final pass:PassDesc = {colors: [{load: Clear, clear: new helder.gfx.Color(1, 1, 1)}]};
 	var buttons = 0;
+	// (whether its layers are drawn from tiles: Renderer.tiles, but for a frame read back)
+	var tiled = false;
 
 	// (antialias: the device's frames multisampled, 4 samples a pixel, where the GPU has them)
 	public function new(title:String, width:Int, height:Int, ?text:TextEngine, antialias = true, titlebar:helder.os.TitleBar = Standard) {
@@ -149,6 +151,13 @@ class UiWindow {
 		if (open.length == 0 && helder.os.App.trims.indexOf(trimAll) < 0) helder.os.App.trims.push(trimAll);
 		renderer.groups = true;
 		renderer.steps = true;
+		// (its layers from their tiles where it is a window of its own: not
+		// headless, nor X11's, nor a browser's canvas, whose frames are
+		// screenshots and golden images, drawn as the reference draws them)
+		#if !helder.headless
+		var k = window.surface.kind;
+		tiled = k != helder.os.Surface.SurfaceKind.Headless && k != helder.os.Surface.SurfaceKind.X11 && k != helder.os.Surface.SurfaceKind.Canvas;
+		#end
 		ui = new Ui(text == null ? new DrawText() : text, width, height);
 		ui.clipboard = new SystemClipboard(window);
 		ui.window = new OsWindow(this);
@@ -324,6 +333,7 @@ class UiWindow {
 			c.b = background.b / 255;
 		}
 		// (painted first: the passes a texture drawn needs, a <Scene>'s, recorded before the frame's)
+		renderer.tiles = tiled && capture == null;
 		renderer.begin(device.width, device.height);
 		ui.paint(renderer);
 		renderer.prepare(enc);
