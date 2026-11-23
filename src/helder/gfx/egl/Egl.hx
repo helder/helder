@@ -42,6 +42,12 @@ import hxmc.unsafe.*;
 	@:hxmc.indirect static function target(f:Ptr, target:Int, image:Ptr):Void;
 }
 
+// eglSwapBuffersWithDamageKHR or EXT(display, surface, rects: x, y from
+// the bottom, width, height each, count), called through eglGetProcAddress's pointer
+@:hxmc.c extern class EglSwap {
+	@:hxmc.indirect static function damaged(f:Ptr, d:Ptr, s:Ptr, rects:Ptr<Int32>, n:Int):Int;
+}
+
 // Linux's syscall with three arguments (pidfd_open, pidfd_getfd)
 @:hxmc.c @:hxmc.fast extern class LinuxCall {
 	@:hxmc.varargs(1) static function syscall(n:hxmc.I64, a:hxmc.I64, b:hxmc.I64, c:hxmc.I64):hxmc.I64;

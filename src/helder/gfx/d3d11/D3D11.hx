@@ -153,6 +153,8 @@ class IDXGISwapChain1 {
 	@:slot(8) static function Present(self:Ptr, interval:Int, flags:Int):Int;
 	@:slot(9) static function GetBuffer(self:Ptr, index:Int, iid:Ptr, out:Ptr<Ptr>):Int;
 	@:slot(13) static function ResizeBuffers(self:Ptr, count:Int, width:Int, height:Int, format:Int, flags:Int):Int;
+	// (params: a DXGI_PRESENT_PARAMETERS, its dirty rectangles)
+	@:slot(22) static function Present1(self:Ptr, interval:Int, flags:Int, params:Ptr):Int;
 }
 
 class D3D {

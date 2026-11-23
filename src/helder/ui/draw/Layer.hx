@@ -53,6 +53,13 @@ class Layer {
 	@:allow(helder.ui) var by0 = 0.0;
 	@:allow(helder.ui) var bx1 = 0.0;
 	@:allow(helder.ui) var by1 = 0.0;
+	// (the record it was last recorded in: Ui.ticks then, what its nodes' entries are of)
+	@:allow(helder.ui) var tick = -1;
+	// (where it was last drawn, for a window kept between frames (Ui.paint's
+	// damage): its matrix to the window, its opacity, the window's pixels it
+	// covered; a scroller's scrollbars as drawn then)
+	@:allow(helder.ui) final drawn:Array<Float> = [];
+	@:allow(helder.ui) var bars:Null<DisplayList> = null;
 
 	public function new(node:Null<Node>, scroll:Bool) {
 		this.node = node;

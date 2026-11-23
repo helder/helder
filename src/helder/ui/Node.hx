@@ -326,6 +326,8 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		if (ui == u) return;
 		if (ui != null) ui.detached(this);
 		ui = u;
+		// (what it recorded before not copied: it may have changed while out)
+		paintedAt = -1;
 		if (u != null && slot == "body") u.setBody(this);
 		if (u != null && autofocus) u.setFocus(this, false);
 		// (out of a window: drawn anew when back, its starting rules again)
@@ -780,6 +782,14 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	// (its own layer, while its transform or opacity moves; its content's, a scroller's: Ui.paint)
 	@:allow(helder.ui) var paintLayer:Null<helder.ui.draw.Layer> = null;
 	@:allow(helder.ui) var contentLayer:Null<helder.ui.draw.Layer> = null;
+	// (the record (Ui.ticks) it was last painted into and its entry there
+	// (-1: none), copied from while nothing changed since: the ticks it,
+	// something inside it, and what it passes down last changed in)
+	@:allow(helder.ui) var paintedAt = -1;
+	@:allow(helder.ui) var entry = -1;
+	@:allow(helder.ui) var changedAt = 0;
+	@:allow(helder.ui) var innerAt = 0;
+	@:allow(helder.ui) var deepAt = 0;
 	// (the paint after which its transform or opacity last changed)
 	var compositeAt = -10;
 
@@ -791,6 +801,13 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	@:allow(helder.ui) function layerChanged(deep = false) {
 		var u = ui;
 		if (u == null) return;
+		var t = @:privateAccess u.ticks, p = parent;
+		changedAt = t;
+		if (deep) deepAt = t;
+		while (p != null && p.innerAt != t) {
+			p.innerAt = t;
+			p = p.parent;
+		}
 		if (contentLayer != null) contentLayer.dirty = true;
 		if (paintLayer != null) paintLayer.dirty = true;
 		var l:Null<helder.ui.draw.Layer> = null, n = parent;

@@ -13,7 +13,8 @@ import Plain.*;
 // each, Plain's, in a scroll view), drawn headless: the time of each step of a UI's
 // life (mounting, the first layout and frame, a change to one row, a scroll
 // half way and one by a wheel's notch, an added row, frames with nothing
-// changed), drawn as a window draws (its layers from their tiles), and
+// changed), drawn as a window draws (its layers from their tiles, its
+// frame kept and drawn where it changed: the pixels drawn), and
 // checks that a change lays out again only what it touched (bun run test ui-draw):
 //   StressTest [rows]
 class StressTest implements Markup {
@@ -72,16 +73,17 @@ class StressTest implements Markup {
 		var times:Array<String> = [];
 		var t = haxe.Timer.stamp();
 		// (a frame's parts, ms: its update, its paint (recording, tiles' vertices), the GPU's)
-		var parts = "", recorded = 0, rastered = 0;
+		var parts = "", recorded = 0, rastered = 0, copied = 0;
 		function lap(what:String) {
 			var now = haxe.Timer.stamp();
 			times.push('$what ${Math.round((now - t) * 10000) / 10}' + (what.indexOf("frame") >= 0 ? parts : ""));
 			parts = "";
 			t = now;
 		}
-		// (as a window draws: its layers from their tiles, the groups' and tiles' passes before the frame's)
+		// (as a window draws: its layers from their tiles, the groups' and tiles' passes before the frame's, its frame kept)
 		r.tiles = true;
 		r.groups = true;
+		r.keep = true;
 		function frame(?read:Bool) {
 			var a = haxe.Timer.stamp();
 			ui.update();
@@ -98,7 +100,8 @@ class StressTest implements Markup {
 			device.endFrame();
 			inline function ms(v:Float)
 				return Math.round(v * 10000) / 10;
-			parts = ' (update ${ms(b - a)}, paint ${ms(c - b)}, gpu ${ms(haxe.Timer.stamp() - c)}, layers recorded ${ui.recorded - recorded}, tiles ${r.rastered - rastered})';
+			parts = ' (update ${ms(b - a)}, paint ${ms(c - b)}, gpu ${ms(haxe.Timer.stamp() - c)}, layers recorded ${ui.recorded - recorded}, nodes copied ${ui.copied - copied}, tiles ${r.rastered - rastered}, pixels drawn ${r.drawn})';
+			copied = ui.copied;
 			recorded = ui.recorded;
 			rastered = r.rastered;
 		}

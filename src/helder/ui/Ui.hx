@@ -1,6 +1,7 @@
 package helder.ui;
 
 import helder.ui.platform.*;
+import helder.ui.draw.Damage;
 import helder.ui.draw.DisplayList;
 import helder.ui.draw.Layer;
 import helder.ui.draw.TextureCanvas;
@@ -294,8 +295,13 @@ class Ui {
 		return k;
 	}
 
-	public function requestFrame()
+	public function requestFrame() {
 		needsFrame = true;
+		requests++;
+	}
+
+	// (the frames asked for so far: one asked for while a node records is what it reads changing)
+	var requests = 0;
 
 	// lays the tree out if it changed (a tree that did not: nothing done);
 	// the platform's views' events first, their nodes kept in step after
@@ -456,12 +462,18 @@ class Ui {
 	// transform or opacity moves), each a display list kept while nothing it
 	// paints changes, then walked onto canvas (Walk), each layer where it
 	// is now: the calls a direct paint gives canvas, in its order. The walk
-	// records the layers that changed as it reaches them and marks what is
-	// reached (Node.drawnAt, a first paint's, the matched elements flying);
-	// under motion one walk onto nothing does that first, again while a
-	// first paint changes what is painted (an entering motion), then one
-	// draws. A canvas that draws a layer from tiles of its own
-	// (TextureCanvas.layerTiles: a window's Renderer) is given those in its place
+	// records the layers that changed as it reaches them (what did not
+	// change in them copied from their last recording: paintNode) and
+	// marks what is reached (Node.drawnAt, a first paint's, the matched
+	// elements flying); under motion one walk onto nothing does that first,
+	// again while a first paint changes what is painted (an entering
+	// motion), then one draws. A canvas that draws a layer from tiles of its
+	// own (TextureCanvas.layerTiles: a window's Renderer) is given those in
+	// its place. One that keeps its frame (TextureCanvas.keeps: a window's)
+	// is drawn only what changed (damage: what each layer recorded again
+	// changed, where layers and scrollbars moved, GPU textures; all of it
+	// past what can be told), the walk onto nothing finding it, then one
+	// walk for each of its rectangles, culled to it
 	public function paint(canvas:Canvas) {
 		if (direct) return paintTree(canvas);
 		needsFrame = touchScroll.gliding;
@@ -469,19 +481,38 @@ class Ui {
 		painting = this;
 		walking = true;
 		target = canvas;
-		if (globalsChanged()) paintKey++;
+		var global = globalsChanged();
+		if (global) paintKey++;
 		prune();
+		var g = Std.downcast(canvas, TextureCanvas), keep = g != null && g.keeps();
+		if (keep) {
+			damage.clear();
+			if (global) damage.everything();
+			tracking = true;
+		}
 		// (under motion, a first paint may set off an entering motion, which
 		// changes what is painted: a walk onto nothing first, again until none does)
-		if (helder.ui.motion.Motions.on) {
+		if (helder.ui.motion.Motions.on || keep) {
 			var tries = 0;
 			do {
 				again = false;
 				flights.resize(0);
 				flightAt.resize(0);
 				walkRoot(nowhere, true, false);
-			} while (again && ++tries < 8);
-			walkRoot(canvas, false, true);
+			} while (again && helder.ui.motion.Motions.on && ++tries < 8);
+			if (keep) {
+				tracking = false;
+				nowhere.found = null;
+				// (matched elements flying: drawn live over everything)
+				if (flights.length > 0 || flown) damage.everything();
+				flown = flights.length > 0;
+				g.damage(damage);
+				for (i in 0...damage.count) {
+					g.redraw(i);
+					walkRoot(canvas, false, true, damage.x0(i), damage.y0(i), damage.x1(i), damage.y1(i));
+				}
+				g.redraw(-1);
+			} else walkRoot(canvas, false, true);
 		} else walkRoot(canvas, true, true);
 		flights.resize(0);
 		flightAt.resize(0);
@@ -492,8 +523,11 @@ class Ui {
 
 	// whether paint draws straight onto its canvas, not through the layers (a test comparing the two)
 	@:noCompletion public var direct = false;
-	// the layers recorded so far (a test's: a frame that only scrolls records none)
+	// the layers recorded so far (a test's: a frame that only scrolls records none); the nodes copied as they were
 	@:noCompletion public var recorded(default, null) = 0;
+	@:noCompletion public var copied(default, null) = 0;
+	// what the last paint onto a canvas keeping its frame found changed (a test's)
+	@:noCompletion public final damage = new Damage();
 
 	// (the root's layer, the others; the walk's state, its host, nothing to draw onto: the first walk's canvas)
 	final rootLayer = new Layer(null, false);
@@ -512,6 +546,25 @@ class Ui {
 	var again = false;
 	// (bumped as what every layer paints changes: the scale, the focus ring, the selection's colour)
 	var paintKey = 0;
+	// (bumped as each layer is recorded: Node.layerChanged stamps a node and
+	// its ancestors with it; the layer's last record, its nodes' entries
+	// compared with (diffing) and copied from (-1: none); inside a node
+	// whose change its descendants inherit, none copied (fresh); what nodes
+	// did as they recorded beyond their canvas (effects: their entries not copied))
+	var ticks = 1;
+	var lastTick = -1;
+	var copyFrom = -1;
+	var fresh = 0;
+	var effects = 0;
+	var diffing = false;
+	// (a paint finding damage; what a layer's record changed, in its
+	// coordinates; whether the last paint drew matched elements flying)
+	var tracking = false;
+	final local = new Damage();
+	var flown = false;
+	// (the scrollbars painted as the damage is found, against those drawn last; their bounds)
+	var barsList = new DisplayList();
+	final extent:Array<Float> = [0, 0, 0, 0];
 	final painted:Array<Float> = [for (_ in 0...7) Math.NaN];
 
 	function globalsChanged():Bool {
@@ -545,29 +598,65 @@ class Ui {
 		}
 	}
 
-	function walkRoot(canvas:Canvas, mark:Bool, draw:Bool) {
+	// (what is seen: the window, or a rectangle of it, a damaged one's)
+	function walkRoot(canvas:Canvas, mark:Bool, draw:Bool, x0 = 0.0, y0 = 0.0, x1 = -1.0, y1 = -1.0) {
 		var w = walk;
-		w.set(0, 0, width, height);
+		w.set(x0, y0, x1 < 0 ? width : x1, y1 < 0 ? height : y1);
 		w.ptx = w.pty = 0;
 		w.mark = mark;
 		w.draw = draw;
 		w.frame = paintFrame;
 		w.host = walker;
 		marking = mark;
-		if (mark) ensure(rootLayer, 0, 0, width, height);
+		if (canvas == nowhere) nowhere.reset(width, height, tracking ? damage : null);
+		if (mark) {
+			ensure(rootLayer, 0, 0, width, height);
+			if (tracking) damaged(0, 0, width, height);
+		}
 		rootLayer.list.replay(canvas, w);
 		marking = true;
 	}
 
-	// (l recorded again if what it paints changed, over what is seen and a
-	// quarter of a viewport each way, as what changes may change again; or
-	// if it was recorded over less than what is seen (x0, y0, x1, y1), as
+	// (l recorded again if what it paints changed, over what it was recorded
+	// over while that covers what is seen (x0, y0, x1, y1), so that the
+	// entries of what did not change are copied (paintNode), else over
+	// what is seen and a quarter of a viewport each way, as what changes may
+	// change again; or if it was recorded over less than what is seen, as
 	// it scrolls, and the first time, over a viewport each way)
 	function ensure(l:Layer, x0:Float, y0:Float, x1:Float, y1:Float) {
-		if (l.dirty || l.volatile || l.key != paintKey || l.hidden != l.hiddenIn || stuckMoved(l) || l.list.stale()) {
+		var stale = l.list.stale();
+		if (l.dirty || l.volatile || l.key != paintKey || l.hidden != l.hiddenIn || stuckMoved(l) || stale) {
 			l.content++;
-			record(l, x0, y0, x1, y1, l.recordedAt < 0 ? 1 : 0.25);
-		} else if (!l.covers(x0, y0, x1, y1)) record(l, x0, y0, x1, y1, 1);
+			if (l.recordedAt >= 0 && l.covers(x0, y0, x1, y1)) record(l, l.x0, l.y0, l.x1, l.y1, 0, true, !stale);
+			else record(l, x0, y0, x1, y1, l.recordedAt < 0 ? 1 : 0.25, true, !stale);
+		} else if (!l.covers(x0, y0, x1, y1)) record(l, x0, y0, x1, y1, 1, false, true);
+	}
+
+	// (what recording a layer changed (local, in its coordinates; all: x0,
+	// y0, x1, y1, what is seen of it) where it is drawn now: the walk's
+	// canvas, nowhere's)
+	function damaged(x0:Float, y0:Float, x1:Float, y1:Float) {
+		var d = local;
+		if (d.all) nowhere.add(x0, y0, x1, y1) else for (i in 0...d.count)
+			nowhere.add(d.x0(i), d.y0(i), d.x1(i), d.y1(i));
+		d.clear();
+	}
+
+	// (where l is drawn now (nowhere's: the walk's canvas), its box x0, y0,
+	// x1, y1 there, against where it was: both damaged where they differ;
+	// and as it comes to rest, its tiles drawn where they fall while it
+	// moved replaced by its list's drawing: Renderer.layerTiles)
+	function layerMoved(l:Layer, x0:Float, y0:Float, x1:Float, y1:Float) {
+		var o = nowhere, d = l.drawn, moving = paintFrame - l.movedAt < 3 ? 1 : 0;
+		o.bound(x0, y0, x1, y1);
+		if (d.length == 12 && d[0] == o.a && d[1] == o.b && d[2] == o.c && d[3] == o.d && d[4] == o.e && d[5] == o.f && d[6] == o.alpha && d[7] == o.bx0
+			&& d[8] == o.by0 && d[9] == o.bx1 && d[10] == o.by1 && d[11] == moving)
+			return;
+		if (d.length == 12) damage.add(d[7], d[8], d[9], d[10]);
+		damage.add(o.bx0, o.by0, o.bx1, o.by1);
+		d.resize(0);
+		for (v in [o.a, o.b, o.c, o.d, o.e, o.f, o.alpha, o.bx0, o.by0, o.bx1, o.by1, moving])
+			d.push(v);
 	}
 
 	// (its sticky nodes' scrollers scrolled since it was recorded)
@@ -581,8 +670,10 @@ class Ui {
 
 	// (l's subtree painted into its list over x0, y0, x1, y1 and margin
 	// viewports each way, the paint's state put back after; what it paints
-	// asking for frames, it is recorded again each frame)
-	function record(l:Layer, x0:Float, y0:Float, x1:Float, y1:Float, margin:Float) {
+	// asking for frames, it is recorded again each frame. Changed: what it
+	// paints, not only what it is recorded over (then what changed found,
+	// local); copies: what did not change copied from its last record)
+	function record(l:Layer, x0:Float, y0:Float, x1:Float, y1:Float, margin:Float, changed:Bool, copies:Bool) {
 		var n = l.node;
 		if (n != null && x1 - x0 < 1e8 && y1 - y0 < 1e8) {
 			var mw = Math.max(0, x1 - x0) * margin, mh = Math.max(0, y1 - y0) * margin;
@@ -604,7 +695,13 @@ class Ui {
 		var w = walk, wx0 = w.x0, wy0 = w.y0, wx1 = w.x1, wy1 = w.y1, wpx = w.ptx, wpy = w.pty;
 		var wasList = recording, wasLayer = recordingLayer, wasHidden = hidden, wasFrame = needsFrame;
 		w.set(x0, y0, x1, y1);
-		l.list.clear();
+		var tick = ++ticks, first = l.tick < 0;
+		lastTick = l.tick;
+		copyFrom = copies && !first && l.key == paintKey ? l.tick : -1;
+		diffing = tracking && changed && !first && l.hidden == l.hiddenIn;
+		local.clear();
+		if (tracking && changed && !diffing) local.everything();
+		l.list.begin();
 		l.list.target = target;
 		l.volatile = false;
 		l.sticky.resize(0);
@@ -641,6 +738,11 @@ class Ui {
 				}
 			paintBody(n, l.list, p, nw, nh);
 		}
+		if (diffing) l.list.diff(-1, -1, local, tick, false);
+		l.list.done();
+		l.tick = tick;
+		copyFrom = lastTick = -1;
+		diffing = false;
 		if (needsFrame) l.volatile = true;
 		needsFrame = wasFrame || needsFrame;
 		recording = wasList;
@@ -677,7 +779,13 @@ class Ui {
 			c.translate(-sx, -sy);
 			w.shift(-sx, -sy);
 		}
-		if (w.mark) ensure(l, w.x0, w.y0, w.x1, w.y1);
+		if (w.mark) {
+			ensure(l, w.x0, w.y0, w.x1, w.y1);
+			if (tracking) {
+				damaged(w.x0, w.y0, w.x1, w.y1);
+				layerMoved(l, w.x0, w.y0, w.x1, w.y1);
+			}
+		}
 		drawLayer(l, c, w);
 		if (scroll) {
 			c.translate(sx, sy);
@@ -721,8 +829,27 @@ class Ui {
 	}
 
 	// (the scrollbars of a scroller recorded in a layer: drawn live, as they fade and follow the pointer)
-	function walkBars(n:Node, nw:Float, nh:Float, c:Canvas, w:Walk)
+	function walkBars(n:Node, nw:Float, nh:Float, c:Canvas, w:Walk) {
 		if (w.draw && !(nativeScroll && nativeBars)) paintBars(n, c, nw, nh);
+		else if (tracking && w.mark) barsMoved(n, nw, nh);
+	}
+
+	// (a scroller's scrollbars painted as they would be drawn, against those
+	// drawn last (its layer's): where they differ, damaged)
+	function barsMoved(n:Node, nw:Float, nh:Float) {
+		var now = barsList, l = n.contentLayer, was = l == null ? null : l.bars;
+		now.clear();
+		if (!(nativeScroll && nativeBars)) paintBars(n, now, nw, nh);
+		if (was != null && was.same(now)) return;
+		for (list in [now, was])
+			if (list != null) {
+				if (list.extent(extent)) nowhere.add(extent[0], extent[1], extent[2], extent[3]);
+				else nowhere.add(n.absX, n.absY, n.absX + nw, n.absY + nh);
+			}
+		if (l == null) return;
+		l.bars = now;
+		barsList = was ?? new DisplayList();
+	}
 
 	function walkFlights(c:Canvas, w:Walk) {
 		if (!w.draw || flights.length == 0) return;
@@ -781,10 +908,42 @@ class Ui {
 	// (the node being drawn is hidden: Style.visibility, inherited)
 	var hidden = false;
 
+	// (a node painted. Recording a layer, what it recorded the last time
+	// copied where nothing in it changed since (Node.changedAt, innerAt),
+	// nothing it inherits did (deepAt), it was recorded under the same rect
+	// seen and visibility, and what it did then was only to record
+	// (effects: it set the layer recorded each frame, a sticky node, a
+	// frame asked for, a pass or a GPU texture: NOCOPY); else painted, its
+	// entry compared with its last (diffing: what changed, local))
+	function paintNode(n:Node, canvas:Canvas) {
+		var dl = recording;
+		if (dl == null) return drawNode(n, canvas);
+		var w = walk, last = lastTick, old = last >= 0 && n.paintedAt == last ? n.entry : -1, from = copyFrom;
+		if (old >= 0 && from >= 0 && fresh == 0 && !flying && ghosts == 0 && n.changedAt < from && n.innerAt < from && n.paintLayer == null
+			&& dl.copy(old, w.x0, w.y0, w.x1, w.y1, hidden, ticks, recordingLayer)) {
+			copied++;
+			return;
+		}
+		var deep = from >= 0 && n.deepAt >= from, start = dl.mark(), e = effects + requests + dl.live;
+		if (deep) fresh++;
+		drawNode(n, canvas);
+		if (deep) fresh--;
+		var at = dl.entry(start, n);
+		if (at < 0) {
+			n.paintedAt = -1;
+			return;
+		}
+		if (effects + requests + dl.live != e) dl.flag(at, DisplayList.NOCOPY);
+		if (n.style.position == Sticky) dl.flag(at, DisplayList.LOOSE);
+		n.paintedAt = ticks;
+		n.entry = at;
+		if (diffing) dl.diff(at, old, local, ticks, n.paintsLive());
+	}
+
 	// (what is seen is the walk's: in the coordinates of the node being drawn.
 	// Recording a layer, what changes it is recorded too, and what a paint
 	// sets off (a first paint's, Node.drawnAt, a flight) left to the walk)
-	function paintNode(n:Node, canvas:Canvas) {
+	function drawNode(n:Node, canvas:Canvas) {
 		var s = n.style;
 		if (s.display == None || n.width <= 0 && n.height <= 0 && n.children.length == 0) return;
 		var dl = recording, w = walk;
@@ -797,7 +956,9 @@ class Ui {
 		// (its entry: at once where its first paint sets something off, else once it is seen to be drawn)
 		var at = -1;
 		if (dl != null) {
-			if (!s.drawn) at = dl.node(n, DisplayList.FIRST | (@:privateAccess n.entering ? DisplayList.ENTERING : 0));
+			if (!s.drawn)
+				at = dl.node(n, DisplayList.FIRST | (@:privateAccess n.entering ? DisplayList.ENTERING : 0) | (hidden ? DisplayList.HIDDEN : 0), w.x0, w.y0, w.x1,
+					w.y1);
 		} else if (!s.drawn && marking) @:privateAccess {
 			s.drawn = true;
 			if (s.starting) n.restyleLater();
@@ -810,6 +971,7 @@ class Ui {
 			if (dl != null) {
 				if (at >= 0) none(dl, at);
 				dl.flight(n);
+				effects++;
 			} else if (marking) {
 				flights.push(n);
 				flightAt.push(w.ptx);
@@ -834,7 +996,7 @@ class Ui {
 			var ax1 = n.inkX1 + dx + e, ax0 = n.inkX0 + dx - e, ay1 = n.inkY1 + dy + e, ay0 = n.inkY0 + dy - e;
 			var culled = w.culls(ax1, ax0, ay1, ay0);
 			if (dl != null && (at >= 0 || !culled)) {
-				if (at < 0) at = dl.node(n, 0);
+				if (at < 0) at = dl.node(n, hidden ? DisplayList.HIDDEN : 0, w.x0, w.y0, w.x1, w.y1);
 				dl.test(at, ax1, ax0, ay1, ay0);
 			}
 			if (culled) {
@@ -842,7 +1004,7 @@ class Ui {
 				return;
 			}
 		}
-		if (dl != null && at < 0) at = dl.node(n, 0);
+		if (dl != null && at < 0) at = dl.node(n, hidden ? DisplayList.HIDDEN : 0, w.x0, w.y0, w.x1, w.y1);
 		if (dl == null && marking) @:privateAccess n.drawnAt = paintFrame;
 		var c0 = w.x0, c1 = w.y0, c2 = w.x1, c3 = w.y1;
 		if (dl != null) dl.cullSave();
@@ -870,7 +1032,13 @@ class Ui {
 		// (its own layer, walked: recorded where what it paints changed, drawn)
 		var l = n.paintLayer;
 		if (walking && dl == null && l != null && !flying && ghosts == 0) {
-			if (w.mark) ensure(l, w.x0, w.y0, w.x1, w.y1);
+			if (w.mark) {
+				ensure(l, w.x0, w.y0, w.x1, w.y1);
+				if (tracking) {
+					damaged(Math.max(w.x0, l.bx0), Math.max(w.y0, l.by0), Math.min(w.x1, l.bx1), Math.min(w.y1, l.by1));
+					layerMoved(l, l.bx0, l.by0, l.bx1, l.by1);
+				}
+			}
 			drawLayer(l, canvas, w);
 		} else paintBody(n, canvas, p, nw, nh);
 		w.set(c0, c1, c2, c3);
@@ -899,6 +1067,7 @@ class Ui {
 		while (sc != null && sc.style.overflow != Scroll)
 			sc = sc.parent;
 		var l = recordingLayer;
+		effects++;
 		if (sc == null || l.sticky.indexOf(sc) >= 0) return;
 		l.sticky.push(sc);
 		l.stuck.push(sc.scrollX);
@@ -969,7 +1138,10 @@ class Ui {
 		// (its content as laid out: a size moving does not lay its text out again;
 		// a node of its own drawing, recorded, recorded again each frame)
 		if (n.hasContent() && !hidden) {
-			if (dl != null && n.paintsLive()) recordingLayer.volatile = true;
+			if (dl != null && n.paintsLive()) {
+				recordingLayer.volatile = true;
+				effects++;
+			}
 			n.paintContent(canvas, n.absX + be.left + pad.left, n.absY + be.top + pad.top, Math.max(0, n.width - be.left - be.right - pad.left - pad.right),
 				Math.max(0, n.height - be.top - be.bottom - pad.top - pad.bottom));
 		}
@@ -991,6 +1163,7 @@ class Ui {
 			if (dl != null) {
 				dl.cullAll();
 				recordingLayer.volatile = true;
+				effects++;
 			}
 		}
 		// (a scroller's content: its own layer, recorded, moved by the scroll as it is walked)
@@ -1060,7 +1233,10 @@ class Ui {
 					if (c.style.position != Relative) paintNode(c, canvas);
 		}
 		if (n.exits == null) return;
-		if (dl != null) recordingLayer.volatile = true;
+		if (dl != null) {
+			recordingLayer.volatile = true;
+			effects++;
+		}
 		for (g in n.exits) {
 			var gp = g.present, gdx = n.absX + gp.gx - g.absX, gdy = n.absY + gp.gy - g.absY;
 			canvas.translate(gdx, gdy);
@@ -2530,25 +2706,127 @@ private class UiWalk implements helder.ui.draw.Walk.WalkHost {
 		@:privateAccess ui.walkFlights(c, w);
 }
 
-// (what the first walk draws onto: nothing)
+// (what the first walk draws onto: nothing; where what it would draw
+// lands in the window followed (its translations and transforms, the
+// bounds of its clips, its opacity), so that the damage a window keeping
+// its frame draws is found there: what it is told (add), GPU textures)
 private class Nowhere implements TextureCanvas {
+	public var a = 1.0;
+	public var b = 0.0;
+	public var c = 0.0;
+	public var d = 1.0;
+	public var e = 0.0;
+	public var f = 0.0;
+	public var alpha = 1.0;
+	public var found:Null<Damage> = null;
+	// (the last bounds found: bound)
+	public var bx0 = 0.0;
+	public var by0 = 0.0;
+	public var bx1 = 0.0;
+	public var by1 = 0.0;
+	var cx0 = 0.0;
+	var cy0 = 0.0;
+	var cx1 = 0.0;
+	var cy1 = 0.0;
+	final matrices:Array<Float> = [];
+	final clips:Array<Float> = [];
+	final alphas:Array<Float> = [];
+
 	public function new() {}
 
-	public function translate(dx:Float, dy:Float) {}
+	public function reset(w:Float, h:Float, damage:Null<Damage>) {
+		a = d = alpha = 1;
+		b = c = e = f = cx0 = cy0 = 0;
+		cx1 = w;
+		cy1 = h;
+		matrices.resize(0);
+		clips.resize(0);
+		alphas.resize(0);
+		found = damage;
+	}
 
-	public function pushClip(x:Float, y:Float, w:Float, h:Float, radius:Float, ?corners:Corners) {}
+	// (a box's bounds in the window, within the clip: bx0, by0, bx1, by1)
+	public function bound(x0:Float, y0:Float, x1:Float, y1:Float) {
+		var ax = a * x0 + c * y0, bx = a * x1 + c * y0, cx = a * x0 + c * y1, dx = a * x1 + c * y1;
+		var ay = b * x0 + d * y0, by = b * x1 + d * y0, cy = b * x0 + d * y1, dy = b * x1 + d * y1;
+		bx0 = Math.max(cx0, Math.min(Math.min(ax, bx), Math.min(cx, dx)) + e);
+		by0 = Math.max(cy0, Math.min(Math.min(ay, by), Math.min(cy, dy)) + f);
+		bx1 = Math.min(cx1, Math.max(Math.max(ax, bx), Math.max(cx, dx)) + e);
+		by1 = Math.min(cy1, Math.max(Math.max(ay, by), Math.max(cy, dy)) + f);
+	}
 
-	public function popClip() {}
+	public function add(x0:Float, y0:Float, x1:Float, y1:Float) {
+		if (found == null) return;
+		bound(x0, y0, x1, y1);
+		found.add(bx0, by0, bx1, by1);
+	}
 
-	public function pushOpacity(alpha:Float) {}
+	public function translate(dx:Float, dy:Float) {
+		e += a * dx + c * dy;
+		f += b * dx + d * dy;
+	}
 
-	public function pushGroup(alpha:Float, x:Float, y:Float, w:Float, h:Float) {}
+	public function pushClip(x:Float, y:Float, w:Float, h:Float, radius:Float, ?corners:Corners) {
+		clips.push(cx0);
+		clips.push(cy0);
+		clips.push(cx1);
+		clips.push(cy1);
+		bound(x, y, x + w, y + h);
+		cx0 = bx0;
+		cy0 = by0;
+		cx1 = bx1;
+		cy1 = by1;
+	}
 
-	public function popOpacity() {}
+	public function popClip() {
+		var k = clips.length - 4;
+		if (k < 0) return;
+		cx0 = clips[k];
+		cy0 = clips[k + 1];
+		cx1 = clips[k + 2];
+		cy1 = clips[k + 3];
+		clips.resize(k);
+	}
 
-	public function pushTransform(a:Float, b:Float, c:Float, d:Float, e:Float, f:Float) {}
+	public function pushOpacity(alpha:Float) {
+		alphas.push(this.alpha);
+		this.alpha *= alpha;
+	}
 
-	public function popTransform() {}
+	public function pushGroup(alpha:Float, x:Float, y:Float, w:Float, h:Float)
+		pushOpacity(alpha);
+
+	public function popOpacity()
+		if (alphas.length > 0) alpha = alphas.pop();
+
+	public function pushTransform(a:Float, b:Float, c:Float, d:Float, e:Float, f:Float) {
+		var m = matrices;
+		m.push(this.a);
+		m.push(this.b);
+		m.push(this.c);
+		m.push(this.d);
+		m.push(this.e);
+		m.push(this.f);
+		var na = this.a * a + this.c * b, nb = this.b * a + this.d * b, nc = this.a * c + this.c * d, nd = this.b * c + this.d * d;
+		this.e += this.a * e + this.c * f;
+		this.f += this.b * e + this.d * f;
+		this.a = na;
+		this.b = nb;
+		this.c = nc;
+		this.d = nd;
+	}
+
+	public function popTransform() {
+		var m = matrices, k = m.length - 6;
+		if (k < 0) return;
+		a = m[k];
+		b = m[k + 1];
+		c = m[k + 2];
+		d = m[k + 3];
+		e = m[k + 4];
+		f = m[k + 5];
+		m.resize(k);
+	}
 
 	public function rect(x:Float, y:Float, w:Float, h:Float, radius:Float, fill:Color, borderWidth:Float, border:Color, ?corners:Corners, ?sides:Edges,
 		style:BorderStyle = Solid) {}
@@ -2567,10 +2845,19 @@ private class Nowhere implements TextureCanvas {
 
 	public function textShadow(p:Paragraph, x:Float, y:Float, width:Float, align:TextAlign, color:Color, blur:Float, ?colors:Array<Color>) {}
 
-	public function gpuTexture(t:helder.gfx.Texture, id:Int, x:Float, y:Float, w:Float, h:Float, radius:Float = 0.0, ?corners:Corners) {}
+	// (drawn anew each frame: a <Scene>'s, a sprite box's)
+	public function gpuTexture(t:helder.gfx.Texture, id:Int, x:Float, y:Float, w:Float, h:Float, radius:Float = 0.0, ?corners:Corners)
+		add(x, y, x + w, y + h);
 
 	public function pass(f:Any) {}
 
 	public function layerTiles(l:Layer):Bool
 		return false;
+
+	public function keeps():Bool
+		return false;
+
+	public function damage(d:Damage) {}
+
+	public function redraw(i:Int) {}
 }

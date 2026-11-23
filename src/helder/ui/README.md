@@ -1370,7 +1370,12 @@ what it takes by reference in a table of resources with their versions),
 kept from frame to frame while nothing it paints changed. A change to a
 node's style, text, image, layout or children, to motion's tracks, the
 focus ring, the selection or the theme marks the layer it is painted in
-(what children inherit, the layers inside it too); a layer holding a node
+(what children inherit, the layers inside it too) and stamps the node and
+its ancestors: recorded again, a layer copies the entries of the nodes
+whose subtree did not change (their calls, resources and cull tests, as
+recorded under the same rect seen) and walks only the others, so a row
+toggled among 5000 records that row; what reads more than its nodes as
+it records (asks for frames, sticky, a pass, a GPU texture) is walked. A layer holding a node
 of its own drawing (a subclass's `paintContent`, unless it overrides
 `paintsLive`), anything that asks for frames as it paints, a leaving node
 or an overscroll's stretch is recorded again each frame. A scroller's
@@ -1401,6 +1406,31 @@ replay every layer (`LayerTest` checks the two pixel for pixel, on
 rounded scrollers at scales 1 and 2). The renderer draws a quad as four
 vertices and six indices, batched by texture.
 
+A window keeps its frame (`Renderer.keep`) and draws only what changed:
+the walk that marks finds the damage (at most 8 rectangles, merged where
+they meet): where a layer recorded again differs from its last record,
+each node compared with its old entry (only the boxes of the calls that
+differ where only their numbers do: a caret moved damages the caret; else
+its old and new bounds), a layer moved, scrolled, faded or come to rest
+(its old and new place, within its clip), scrollbars that draw otherwise,
+a GPU texture each frame, popups (the overlay's entries), all of it at a
+scale or theme change or a match flying. Each rectangle is walked culled
+to it and drawn straight into the frame kept (a texture of the window's
+size), its background first, every unturned quad cut to it and a turned
+one's fragments outside it left as they were, then the frame is copied
+to the drawable (Metal's and a browser's are not kept), and the system
+told what changed (EGL's swap with damage on Wayland and Android, DXGI's
+Present1). Where 40% or more of it changed (a scroll of a scroller filling
+the window), the frame is drawn whole straight to the drawable, as copying
+it in and out would draw more. UiShader measures every fragment from its
+pixel's centre, a turned quad's solved from its corners, so what is drawn
+into the frame kept is what drawing whole gives, on GL too, which draws
+textures the other way up (`DamageTest`: random trees changed at random
+over 80 frames, pixel for pixel against drawing whole, at scales 1 and 2,
+replayed and from tiles, on Metal and Mesa). Headless runs, screenshots,
+golden images and X11 draw every frame whole; `HELDER_DAMAGE=full` draws
+a window's so, `HELDER_DAMAGE=flash` shows each frame's rectangles.
+
 Memory per node is kept small: leaves share one empty children array; event
 handlers and the rarely set style properties (grid, transforms, shadows,
 offsets...) are allocated when first set; paragraphs share their font sets.
@@ -1413,7 +1443,9 @@ type. At 5000 rows (35000 nodes, an M-series Mac) a steady frame paints in
 about 0.02 ms and allocates about 300 bytes (the scrollbars'; 14 KB before
 layers, the text in view painted again), a frame of a scroll going on paints
 in 0.01 (0.1 before) and draws 26 quads (509), and a change to one row is
-laid out in about 0.1 and painted in 0.13; the tiles take about 14 MB.
+laid out in about 0.1 and painted in 0.13, drawing that row's 24,500 of
+the frame's 480,000 pixels (its GPU part 0.8 ms, 1.5 before, readPixels
+included); a caret moved draws about 190; the tiles take about 14 MB.
 The first layout of 1000 rows (8000 nodes) takes about 30 ms, 60% of it
 laying out text and nearly half of that the collector copying the
 paragraphs' glyphs, which all survive: a compact glyph store in

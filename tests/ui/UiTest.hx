@@ -1230,7 +1230,7 @@ class UiTest {
 	// motion's entering and leaving rows), changed at random over frames, one
 	// painted directly, the other through its layers
 	static function layered() {
-		var bad = 0, frames = 0, first = "", records = 0;
+		var bad = 0, frames = 0, first = "", records = 0, copies = 0;
 		var words = ["a", "bb", "ccc dd", "eeee f gg"], img = new Image(8, 6), line = new Path().moveTo(0, 0).lineTo(20, 10);
 		inline function next(seed:Int):Int
 			return (seed * 1103515245 + 12345) & 0x7fffffff;
@@ -1358,9 +1358,11 @@ class UiTest {
 				}
 			}
 			records += layers.recorded - was;
+			copies += layers.copied;
 		}
 		check("layers: painted through them, as painted directly", bad == 0 && frames == 720, '$bad of $frames frames differ, first $first');
 		check("layers: lists kept from frame to frame", records < frames * 3, '$records recorded in $frames frames');
+		check("layers: what did not change in a layer recorded again copied from its last record", copies > frames, '$copies nodes copied in $frames frames');
 	}
 
 	// a frame that only scrolls a scroller recorded before, or only moves a

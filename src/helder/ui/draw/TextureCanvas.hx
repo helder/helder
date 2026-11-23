@@ -13,4 +13,12 @@ interface TextureCanvas extends Canvas {
 	function pass(f:Any):Void;
 	// a layer drawn here from its tiles, where it can be (Renderer's); false: replay it
 	function layerTiles(l:Layer):Bool;
+	// whether it keeps its frame from frame to frame, drawn into only where
+	// it changed (a window's Renderer: Renderer.keep; Ui.paint's damage)
+	function keeps():Bool;
+	// what changed (d, in the UI's pixels), taken: rounded out to its own
+	// pixels, all of it where what it kept is gone
+	function damage(d:Damage):Void;
+	// d's rectangle i drawn into next (Ui.paint walks it), -1: done
+	function redraw(i:Int):Void;
 }

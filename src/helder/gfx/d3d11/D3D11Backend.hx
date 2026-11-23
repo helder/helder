@@ -1203,6 +1203,12 @@ class D3D11Backend {
 		}
 	}
 
+	// (the next Present's changed rectangles: Device.damaged)
+	var damage:Null<Array<Int>> = null;
+
+	public function damaged(rects:Null<Array<Int>>)
+		damage = rects;
+
 	public function endFrame() {
 		if (swapChain.isNull() || frameTarget != 0) {
 			// (the shared textures let go: ReleaseSync flushes)
@@ -1212,8 +1218,20 @@ class D3D11Backend {
 		}
 		letGo();
 		resolve();
-		// (vsync; a lost device is not recovered yet)
-		var hr = IDXGISwapChain1.Present(swapChain, 1, 0);
+		// (vsync; a lost device is not recovered yet; what changed told DXGI: Device.damaged)
+		var r = damage, n = r == null ? 0 : Std.int(r.length / 4);
+		damage = null;
+		var hr = n == 0 ? IDXGISwapChain1.Present(swapChain, 1, 0) : Arena.scopedValue(a -> {
+			// (DXGI_PRESENT_PARAMETERS: the count, its padding, then the rectangles', a scroll's pointers)
+			var rects:Ptr<Int32> = a.alloc(16 * n), params:Ptr<Ptr> = a.alloc(32);
+			for (i in 0...4 * n)
+				rects[i] = r[i];
+			params[1] = rects;
+			params[2] = Ptr.nil();
+			params[3] = Ptr.nil();
+			params[0] = Ptr.ofI64(n);
+			IDXGISwapChain1.Present1(swapChain, 1, 0, params);
+		});
 		if (hr == D3D.DXGI_ERROR_DEVICE_REMOVED || hr == D3D.DXGI_ERROR_DEVICE_RESET)
 			check(ID3D11Device.GetDeviceRemovedReason(device), "Present: the device was removed");
 	}

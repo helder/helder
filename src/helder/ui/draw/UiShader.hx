@@ -11,9 +11,10 @@ import helder.gfx.shader.ShaderMath.*;
 // half size and corners grown by a margin (rect, extent: its anti-aliased
 // pixel, a shadow's blur), each fragment's position relative to its centre
 // (local: an unturned quad's from its pixel's centre and the quad's centre,
-// origin's whole part and fraction, not interpolated, so that a quad drawn
-// into a layer's tile gives the pixels it gives in the frame; a turned
-// one's interpolated), so that its edge is anti-aliased by the signed distance to it
+// origin's whole part and fraction; a turned one's solved from its corners
+// at its pixel's centre: never interpolated, so that a quad drawn into a
+// layer's tile or a window's kept frame gives the pixels it gives in the
+// frame, on GL too, which draws a texture the other way up), so that its edge is anti-aliased by the signed distance to it
 // and a border drawn inside it, each side its own width (widths), the
 // inner edge a rectangle with rounded corners too (mode 0); or a glyph, the
 // atlas's coverage of the colour, read filtered (params.z: where a
@@ -32,7 +33,8 @@ import helder.gfx.shader.ShaderMath.*;
 // the rectangle turned by a transform), as the CPU placed them. Every fragment is also clipped by a
 // rectangle with rounded corners (clip, in target pixels, and its corners'
 // radii), from its pixel's centre (pixel), anti-aliased over a pixel: clips
-// need no scissor, nest on the CPU and never split the draw. Colours are
+// need no scissor, nest on the CPU and never split the draw; and nothing
+// outside region (a window's kept frame's rectangle drawn: Renderer.keep). Colours are
 // premultiplied (Blend.Premultiplied). Corners are top left, top right,
 // bottom right, bottom left; sides top, right, bottom, left. A
 // rectangle's border is dashed or dotted by params.z (1, 2: BorderStyle's),
@@ -53,11 +55,13 @@ import helder.gfx.shader.ShaderMath.*;
 	var clip:Vec4; // the clip: x0, y0, x1, y1 in target pixels
 	var clipRadii:Vec4; // its corners' radii
 	var origin:Vec4; // an unturned quad's centre in target pixels: its whole part, its fraction (x: -1e9 where turned)
+	var region:Vec4; // what it may change, in target pixels: x0, y0, x1, y1 (a kept frame's rectangle: Renderer.keep)
 }
 
 @:structInit @:publicFields class UiVaryings {
 	var pos:Vec4;
 	var local:Vec2;
+	var frame:Vec4;
 	var half:Vec2;
 	var ext:Vec2;
 	var uvs:Vec4;
@@ -70,6 +74,7 @@ import helder.gfx.shader.ShaderMath.*;
 	var pixel:Vec2;
 	var clip:Vec4;
 	var clipRadii:Vec4;
+	var region:Vec4;
 }
 
 // the signed distance from p (relative to the centre) to a rectangle
@@ -192,6 +197,17 @@ function blurred(p:Vec2, half:Vec2, r:Vec4, sigma:Float):Float {
 	return a * dy;
 }
 
+// (where p is in a turned quad (its corners a, b, c in target pixels),
+// from its centre in its own pixels: from the pixel's centre, not
+// interpolated, so the same in any target, a texture's or a frame's (GL
+// draws them each way up))
+function turned(p:Vec2, a:Vec2, b:Vec2, c:Vec2, ext:Vec2):Vec2 {
+	var e1 = b - a, e2 = c - a, d = p - a;
+	var det = e1.x * e2.y - e1.y * e2.x;
+	var u = (d.x * e2.y - d.y * e2.x) / det, v = (e1.x * d.y - e1.y * d.x) / det;
+	return vec2((u * 2 - 1) * ext.x, (v * 2 - 1) * ext.y);
+}
+
 final UiShader = shader({
 	vertex: function(v:UiVertex):UiVaryings {
 		// (the bottom right corner from the others: exactly theirs where the quad is not turned)
@@ -200,7 +216,9 @@ final UiShader = shader({
 		var q = c.x > 0.5 ? (c.y > 0.5 ? d : b) : (c.y > 0.5 ? l : a);
 		return {
 			pos: position(vec4(q.x, q.y, 0, 1)),
-			local: vec2(c.x > 0.5 ? e.z : -e.z, c.y > 0.5 ? e.w : -e.w),
+			// (a turned quad's corners in target pixels, the same at each vertex)
+			local: l.zw,
+			frame: vec4(a.z, a.w, b.z, b.w),
 			half: e.xy,
 			ext: e.zw,
 			uvs: v.uv,
@@ -212,7 +230,8 @@ final UiShader = shader({
 			params: v.params,
 			pixel: q.zw,
 			clip: v.clip,
-			clipRadii: v.clipRadii
+			clipRadii: v.clipRadii,
+			region: v.region
 		};
 	},
 	fragment: function(i:UiVaryings, p:{atlas:Texture2D, image:Texture2D}):Vec4 {
@@ -223,10 +242,11 @@ final UiShader = shader({
 		// unturned quad's fragment the same in a layer's tile as in the frame;
 		// its position from its centre's whole part first, then the fraction)
 		var pixel = floor(i.pixel) + vec2(0.5, 0.5);
-		var local = i.origin.x > -1e8 ? pixel - i.origin.xy - i.origin.zw : i.local;
+		var local = i.origin.x > -1e8 ? pixel - i.origin.xy - i.origin.zw : turned(pixel, i.frame.xy, i.frame.zw, i.local, i.ext);
 		var uv = i.uvs.xy + (i.uvs.zw - i.uvs.xy) * ((local + i.ext) / (i.ext * 2));
 		var ch = (i.clip.zw - i.clip.xy) * 0.5;
-		var clipped = clamp(0.5 - box(pixel - i.clip.xy - ch, ch, i.clipRadii), 0, 1);
+		var r = i.region;
+		var clipped = clamp(0.5 - box(pixel - i.clip.xy - ch, ch, i.clipRadii), 0, 1) * (pixel.x > r.x && pixel.y > r.y && pixel.x < r.z && pixel.y < r.w ? 1.0 : 0.0);
 		var mode = i.params.x;
 		if (mode > 3.5) {
 			// (the padding box less the blurred inner rectangle)

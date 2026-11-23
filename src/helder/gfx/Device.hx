@@ -266,6 +266,15 @@ final class Device {
 	@:typescript public function beginFrame():Null<Encoder>
 		return impl.beginFrame() ? encoder : null;
 
+	// what the frame presented next changed: rectangles x0, y0, x1, y1 in
+	// its pixels, rows from the top (a window's kept frame: Renderer.regions;
+	// null: all of it), told the system where it takes them as it presents
+	// (EGL_KHR/EXT_swap_buffers_with_damage: Wayland's damage_buffer,
+	// Android's; DXGI's Present1 dirty rectangles), so that it composites
+	// only those; its frame drawn whole still
+	public function damaged(rects:Null<Array<Int>>)
+		impl.damaged(rects);
+
 	// submits the frame and presents it
 	@:typescript public function endFrame() {
 		#if helder.headless
