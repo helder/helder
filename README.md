@@ -63,6 +63,7 @@ hosted web releases and store uploads.
 | [web](src/helder/web/README.md) | view in the browser's DOM: rendering, hydration, islands |
 | [text](src/helder/text/README.md) | fonts, shaping, bidi and layout in Haxe; the platform's text where asked |
 | [image](src/helder/image/README.md), [canvas](src/helder/canvas/README.md), [pdf](src/helder/pdf/README.md) | image codecs, 2D drawing, PDF rendering |
+| [media](src/helder/media/README.md) | MP4 and Matroska read in Haxe, exact seeking, the playback clock |
 | [scene](src/helder/scene/README.md), [physics](src/helder/physics/README.md), [sprite](src/helder/sprite/README.md) | 3D (glTF, PBR, shadows, post effects), rigid bodies, 2D sprites |
 | [asset](src/helder/asset/README.md) | files checked at compile time, bundled by use, hot reloaded |
 | [async](src/helder/async/README.md), [jobs](src/helder/jobs/README.md) | coroutines, sockets, HTTP and WebSocket; work on other threads |
