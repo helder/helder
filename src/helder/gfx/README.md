@@ -255,13 +255,14 @@ examples/orbits), with 4 ms of the program's own work after each frame:
 
 | | synchronous | render thread |
 | --- | ---: | ---: |
-| 400 rows scrolled, Metal 120 Hz | 12.6 ms | 8.3 ms |
-| Orbits, Metal 120 Hz | 18.3 ms | 11.9 ms |
-| 400 rows scrolled, llvmpipe | 13.1 ms | 10.8 ms |
-| Orbits, llvmpipe | 9.7 ms | 6.3 ms |
+| 400 rows scrolled, llvmpipe (not paced) | 13.1 ms | 10.8 ms |
+| Orbits, llvmpipe (not paced) | 9.7 ms | 6.3 ms |
 
-Without such work they are the same (vsync's, or llvmpipe's own), as is
-the time from a frame's start to its present. Not yet: the web (step
+Without such work they are the same, as is the time from a frame's start
+to its present. Paced by a 60 Hz display (Metal, five runs each way, with
+and without the work), frames and the start-to-present time are the same
+either way: 16.7 ms a frame, the present 16.6 ms after the start (12.6
+with the work, which then fits in the frame's wait for the drawable). Not yet: the web (step
 4b's worker), scrolling and animations on the thread, and the back ends'
 own code is GC code (a kernel's discipline would let collections skip it).
 

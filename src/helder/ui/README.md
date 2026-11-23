@@ -1443,10 +1443,10 @@ accessibility tree, the text input, other windows' frames, the app's own
 work. `RenderThreadTest` (ui-draw) checks its frames against the
 synchronous path's, pixel for pixel, in a window; `--time n [--work ms]`
 times it. A list of 400 rows scrolled a pixel a frame with 4 ms of the
-program's work after each: 12.6 ms a frame synchronously, 8.3 on the
-thread (Metal at 120 Hz, an M-series Mac); 13.1 and 10.8 (Mesa's
-llvmpipe in Docker), the start of a frame to its present the same either
-way. `HELDER_RENDER_THREAD=0` turns it off.
+program's work after each: 13.1 ms a frame synchronously, 10.8 on the
+thread (Mesa's llvmpipe in Docker, not paced by a display); at a 60 Hz
+display's pace (Metal) 16.7 either way, the start of a frame to its
+present the same. `HELDER_RENDER_THREAD=0` turns it off.
 
 Memory per node is kept small: leaves share one empty children array; event
 handlers and the rarely set style properties (grid, transforms, shadows,
