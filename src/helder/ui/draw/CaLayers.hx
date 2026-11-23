@@ -40,8 +40,14 @@ import sys.thread.Mutex;
 @:access(helder.ui.draw.CompositeFrame)
 @:access(helder.ui.Node)
 class CaLayers {
-	public static function wanted(device:Device):Bool
-		return Sys.getEnv("HELDER_SYSTEM_LAYERS") != "0" && device.backend == Metal && device.surface.kind == Cocoa;
+	// (opt-in on iOS for now, HELDER_SYSTEM_LAYERS=1: a game's full-window
+	// scene there, little-skies on the simulator, went from 5.6 to 18 ms a
+	// frame with them; on by default on macOS)
+	public static function wanted(device:Device):Bool {
+		var env = Sys.getEnv("HELDER_SYSTEM_LAYERS");
+		if (env == "0" || hxmc.Platform.apple() >= 1 && env != "1" && env != "flat") return false;
+		return device.backend == Metal && device.surface.kind == Cocoa;
+	}
 
 	final root:Ptr; // the window's CAMetalLayer
 	var stack = Ptr.nil(); // over its contents, the layers in order

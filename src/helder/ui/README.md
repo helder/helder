@@ -1510,7 +1510,9 @@ the layers' drawables beside the tiles (6.2 MB for a 240×300 list and a
 mover at scale 2, beside 6.3 MB of tiles). A steady scroll at scale 2 on an
 M-series Mac: 0.6 ms of GPU a frame against 4.4–4.9 for the textured
 compositor; WindowServer's CPU about the same (it composites more layers,
-the app none). `HELDER_SYSTEM_LAYERS=0` keeps one CAMetalLayer and the
+the app none). On iOS they're opt-in for now (`HELDER_SYSTEM_LAYERS=1`):
+a game's full-window scene there ran at a third of the frame rate with
+them. `HELDER_SYSTEM_LAYERS=0` keeps one CAMetalLayer and the
 textured compositor (`=flat`: the same split, all on the window's layer);
 a frame read back (a window's capture) is drawn as before, the layers
 hidden for it. `SystemLayersWindow` (ui-draw, macOS) runs one scene on a
