@@ -86,8 +86,16 @@ class IosViews implements PlatformViews {
 			// (UIControlEventEditingChanged)
 			UkMsg.vPtrPtrInt(v, ObjC.sel("addTarget:action:forControlEvents:"), delegate, ObjC.sel("hxmcChanged:"), 1 << 17);
 		}
-		Msg.vPtr(view, ObjC.sel("addSubview:"), v);
 		var e = new IosEditor(this, v, multiline);
+		// (in the system's layer tree: in a host, placed with the window's layers)
+		if (ui.layered) {
+			var h = helder.ui.draw.CaViews.host();
+			Msg.vPtr(h, ObjC.sel("addSubview:"), v);
+			Msg.vPtr(view, ObjC.sel("addSubview:"), h);
+			e.hosted = new helder.ui.LayerSlot(h, true);
+			e.hosted.inner = v;
+		} else
+			Msg.vPtr(view, ObjC.sel("addSubview:"), v);
 		editors.push(e);
 		return e;
 	}
@@ -209,6 +217,10 @@ class IosEditor implements PlatformEditor {
 	var reported = "";
 
 	public var listener(default, null):Null<PlatformEditorListener> = null;
+	var hosted:Null<helder.ui.LayerSlot> = null;
+
+	public function slot():Null<helder.ui.LayerSlot>
+		return hosted;
 
 	public function new(views:IosViews, view:Ptr, multiline:Bool) {
 		this.views = views;
@@ -271,7 +283,8 @@ class IosEditor implements PlatformEditor {
 
 	// (a move the compositor posted may come after dispose: nothing then)
 	function placeNow(x:Float, y:Float, width:Float, height:Float, shown:Bool) {
-		if (gone) return;
+		// (a layout gone wrong: UIKit throws at a NaN frame)
+		if (gone || !(Math.isFinite(x) && Math.isFinite(y) && Math.isFinite(width) && Math.isFinite(height))) return;
 		Arena.scoped(a -> {
 			var r = a.make(CGRect);
 			r.value.origin.x = x;
@@ -306,6 +319,10 @@ class IosEditor implements PlatformEditor {
 
 	function focusNow(on:Bool) {
 		if (on) {
+			if (hosted != null) {
+				Msg.vBool(hosted.handle, ObjC.sel("setHidden:"), false);
+				Msg.vBool(view, ObjC.sel("setHidden:"), false);
+			}
 			if (views.resigning == this) views.resigning = null;
 			focusing = true;
 			if (!Msg.b(view, ObjC.sel("isFirstResponder"))) Msg.b(view, ObjC.sel("becomeFirstResponder"));
@@ -333,6 +350,10 @@ class IosEditor implements PlatformEditor {
 		Msg.vPtr(view, ObjC.sel("setDelegate:"), Ptr.nil());
 		Msg.v(view, ObjC.sel("removeFromSuperview"));
 		ObjC.release(view);
+		if (hosted != null) {
+			Msg.v(hosted.handle, ObjC.sel("removeFromSuperview"));
+			ObjC.release(hosted.handle);
+		}
 		listener = null;
 	}
 }

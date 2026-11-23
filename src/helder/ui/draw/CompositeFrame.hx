@@ -28,6 +28,7 @@ class CompositeFrame {
 	public static inline var STRIDE = 224;
 	static inline var GROUP = 16;
 	static inline var MOVER = 12;
+	static inline var SLOT = 20;
 	// the quads, an instance each, their runs' textures (Renderer's QuadBatch, not uploaded)
 	final batch = new QuadBatch(STRIDE, 256, true);
 	final textures:Array<Null<Texture>> = [];
@@ -70,6 +71,13 @@ class CompositeFrame {
 	final tileAt:Array<Int> = [];
 	final tiles:Array<Int> = [];
 	final tileTextures:Array<Texture> = [];
+	// the nodes' system layers (LayerSlot), in paint order: each its place
+	// (the quad before which, the groups before it), its frame, its clip's,
+	// its mover, its clip's, its box's corners as drawn (top left, top right,
+	// bottom left: x, y in target pixels), its clip (x0, y0, x1, y1, its
+	// corners' radii) (SLOT floats)
+	final slots:Array<helder.ui.LayerSlot> = [];
+	final slotData:Array<Float> = [];
 	// the frame's size (device pixels), scale, background; whether it snaps
 	public var width(default, null) = 0;
 	public var height(default, null) = 0;
@@ -134,6 +142,8 @@ class CompositeFrame {
 		tileAt.resize(0);
 		tiles.resize(0);
 		tileTextures.resize(0);
+		slots.resize(0);
+		slotData.resize(0);
 		fresh.resize(0);
 		ready = false;
 	}

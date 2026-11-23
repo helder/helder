@@ -25,7 +25,8 @@ class NativeCheck {
 		field.style.set({height: 22, shrink: 0});
 		list.insert(field, 3);
 		var step = 0, failed = 0, lock = new sys.thread.Mutex(), shownY = Math.NaN;
-		// (the offset of the compositor's last frame: with Core Animation's layers the field moves in its transaction, with it)
+		// (the offset of the compositor's last frame: with Core Animation's
+		// layers the field is in their tree and moves in its transaction, at it)
 		c.onFrame = _ -> {
 			var o = c.offsets(list);
 			lock.acquire();
@@ -50,8 +51,9 @@ class NativeCheck {
 				var moved = o == null ? 0.0 : o.y - from, expect = placed == null ? 0.0 : placed[1] - moved;
 				var drawn = placed == null || Math.isNaN(shown) ? expect : placed[1] - (shown - from);
 				check("the compositor scrolled while the program was blocked", moved > 0, from + " to " + (o == null ? null : o.y));
-				check("the field moved with it before the program's next frame", placed != null && y != null && (Math.abs(y - expect) < SNAP || Math.abs(y - drawn) < SNAP)
-					|| y == null && moved > 0, 'placed at ${placed == null ? null : placed[1]}, now at $y, expected $expect (its last frame: $drawn)');
+				var at = @:privateAccess w.ui.layered ? drawn : expect;
+				check("the field moved with it before the program's next frame", placed != null && y != null && Math.abs(y - at) < SNAP || y == null && moved > 0,
+					'placed at ${placed == null ? null : placed[1]}, now at $y, expected $at');
 				w.close();
 				Sys.println("NativeCheck: " + (failed == 0 ? "ok" : '$failed FAILED'));
 				Sys.exit(failed == 0 ? 0 : 1);
@@ -96,7 +98,9 @@ class NativeCheck {
 		return OsThread.get(() -> {
 			var v = e.field, c = e.views.content();
 			if (helder.os.objc.Msg.b(v, helder.os.objc.ObjC.sel("isHidden"))) return null;
-			var r = helder.os.objc.Msg.rect(v, helder.os.objc.ObjC.sel("frame")), b = helder.os.objc.Msg.rect(c, helder.os.objc.ObjC.sel("bounds"));
+			// (in the window's content view, through a host where it is in the system's layer tree)
+			var r = helder.os.objc.Msg.rectRectPtr(v, helder.os.objc.ObjC.sel("convertRect:toView:"), helder.os.objc.Msg.rect(v, helder.os.objc.ObjC.sel("bounds")), c);
+			var b = helder.os.objc.Msg.rect(c, helder.os.objc.ObjC.sel("bounds"));
 			var top:Null<Float> = b.size.height - r.origin.y - r.size.height;
 			return top;
 		});

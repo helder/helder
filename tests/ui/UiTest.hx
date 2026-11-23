@@ -3686,6 +3686,9 @@ class FakeViews implements PlatformViews {
 }
 
 class FakeEditor implements PlatformEditor {
+	public function slot():Null<LayerSlot>
+		return null;
+
 	public final multiline:Bool;
 	public var listener:Null<PlatformEditorListener> = null;
 	public var text = "";

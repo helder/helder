@@ -31,7 +31,8 @@ class SystemLayersWindow {
 		var a = Sys.args(), r = a.indexOf("--run"), t = a.indexOf("--time");
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 		if (r >= 0) return scene(a[r + 1], -1);
-		if (t >= 0) return scene(null, Std.parseFloat(a[t + 1]), a.indexOf("anim") >= 0);
+		if (a.indexOf("--nan") >= 0) return lost();
+		if (t >= 0) return scene(null, Std.parseFloat(a[t + 1]), a.indexOf("anim") >= 0, a.indexOf("round") >= 0);
 		var dir = Sys.getEnv("TMPDIR") + "/system-layers-" + Std.random(1 << 30);
 		var self = Sys.programPath(), failed = 0;
 		for (mode in ["1", "flat", "0"]) {
@@ -45,25 +46,76 @@ class SystemLayersWindow {
 				Sys.exit(1);
 			}
 		}
+		// (a layout gone wrong: NaN everywhere, the window's frames on Core Animation's layers all the same)
+		var p = new sys.io.Process(self, ["--nan"]), out = p.stdout.readAll().toString(), code = p.exitCode();
+		p.close();
+		Sys.print(out);
+		if (code != 0) {
+			Sys.println('SystemLayersWindow: FAIL: a layout of NaN ended with $code');
+			failed++;
+		}
 		if (!sys.FileSystem.exists('$dir/1/first.raw')) {
 			Sys.println("SystemLayersWindow: no window capture here: skipped");
 			return;
 		}
-		for (c in checkpoints) {
-			var on = File.getBytes('$dir/1/$c.raw'), flat = File.getBytes('$dir/flat/$c.raw'), off = File.getBytes('$dir/0/$c.raw');
+		// (the field and the system layer at offset 0, the list, the rounded scroller, the popup: the capture's pixels)
+		var boxes = [for (l in File.getContent('$dir/1/boxes.txt').split("\n")) [for (v in l.split(" ")) Std.parseInt(v)]];
+		var field = boxes[0], slot = boxes[1], list = boxes[2], round = boxes[3], popup = boxes[4], web = boxes[5], k = width / 400;
+		var card = [for (v in File.getContent('$dir/1/card.txt').split(" ")) Std.parseInt(v)];
+		// (the list's offset at each checkpoint, in points: the compositor's while the program is busy)
+		var offsets = [0, 150, 150, 90];
+		inline function check(ok:Bool, what:String) {
+			if (!ok) failed++;
+			Sys.println('SystemLayersWindow: ${ok ? "ok" : "FAIL"}: $what');
+		}
+		for (j => c in checkpoints) {
+			var on = File.getBytes('$dir/1/$c.raw'), flat = File.getBytes('$dir/flat/$c.raw'), off = File.getBytes('$dir/0/$c.raw'), n = off.length / 4;
 			// (the compositor's state split and drawn as layers, all on the window's: the textured compositor's
 			// pixels; at a rounded clip's corners, the program's first frames replay where the compositor draws tiles)
-			var d = diff(flat, off), n = off.length / 4;
-			var ok = flat.length == off.length && d.max <= 5 && d.over1 < 0.001 * n;
-			if (!ok) failed++;
-			Sys.println('SystemLayersWindow: ${ok ? "ok" : "FAIL"}: $c: the layers drawn onto the window\'s against the textured compositor: ${d.count} pixels differ, ${d.over1} by more than 1 level, at most ${d.max}');
+			// (and at "first" a rounded scroller's corners: the textured compositor's first frames are the program's, replayed, not its tiles)
+			var m = Math.ceil(14 * k), corner = (r:Array<Int>, x:Int, y:Int) -> inBox(r, x, y) && (x < r[0] + m || x >= r[2] - m) && (y < r[1] + m || y >= r[3] - m);
+			var d = diff(flat, off, (x, y) -> j > 0 || !corner(round, x, y) && !corner(list, x, y));
+			check(flat.length == off.length && d.max <= 5 && d.over1 < 0.001 * n,
+				'$c: the layers drawn onto the window\'s against the textured compositor: ${d.count} pixels differ, ${d.over1} by more than 1 level, at most ${d.max}');
 			// (Core Animation's: opaque layers to the level; a translucent layer's pixels (an edge, a fade)
-			// blended by the window server in the display's colours, a few levels off UiShader's blending in sRGB)
-			var box = [for (v in File.getContent('$dir/1/card.txt').split(" ")) Std.parseInt(v)];
-			var e = diff(on, flat, box), f = diff(on, flat, box, true);
-			ok = on.length == flat.length && e.max <= 16 && e.over1 < 0.002 * n && f.max <= 16;
-			if (!ok) failed++;
-			Sys.println('SystemLayersWindow: ${ok ? "ok" : "FAIL"}: $c: Core Animation\'s layers against the same on the window\'s: ${e.count} pixels differ, ${e.over1} by more than 1 level, at most ${e.max}; in the fading card ${f.count}, at most ${f.max}');
+			// blended by the window server in the display's colours, a few levels off UiShader's blending in
+			// sRGB. Left out: the field (its focus is AppKit's: hidden on the window's when scrolled out,
+			// which resigns it; in the tree it keeps it) and the system layer (the window's has none),
+			// but where the popup is over them; the web view (on the window's, a view over all of it)
+			var dy = Math.round(offsets[j] * k), at = (b:Array<Int>) -> [b[0], b[1] - dy, b[2], b[3] - dy];
+			var f = at(field), sl = at(slot), wv = at(web);
+			var e = diff(on, flat, (x, y) -> !inBox(card, x, y) && !inBox(wv, x, y) && (inBox(popup, x, y) || !inBox(f, x, y) && !inBox(sl, x, y)));
+			var g = diff(on, flat, (x, y) -> inBox(card, x, y));
+			check(on.length == flat.length && e.max <= 16 && e.over1 < 0.002 * n && g.max <= 16,
+				'$c: Core Animation\'s layers against the same on the window\'s: ${e.count} pixels differ, ${e.over1} by more than 1 level, at most ${e.max}; in the fading card ${g.count}, at most ${g.max}');
+			// (the rounded scrollers' corners: their clip's coverage, the content's pixels exact elsewhere)
+			for (r in [round, list]) {
+				var inner = diff(on, flat, (x, y) -> inBox(r, x, y) && !corner(r, x, y) && !inBox(popup, x, y) && !inBox(f, x, y) && !inBox(sl, x, y) && !inBox(wv, x, y));
+				var corners = diff(on, flat, (x, y) -> corner(r, x, y) && !inBox(sl, x, y) && !inBox(wv, x, y) && !inBox(f, x, y));
+				check(inner.max <= 1 && corners.max <= 16, '$c: a rounded scroller ${r == round ? "of its own" : "with native views"}: ${inner.count} pixels differ inside, at most ${inner.max}; at its corners ${corners.count}, at most ${corners.max}');
+			}
+			// (the system layer: shown in the list as it scrolls, under the popup, cut by the list's rounded corner)
+			// (the web view: under the popup, cut by the list's rounded corner)
+			if (c == "first") {
+				// (its bottom right pixel, outside the list's corner: the window's background)
+				var cut = pixel(on, wv[2] - 1, list[3] - 1), bg = pixel(off, list[2] + 4, list[3] - 2);
+				check(wv[3] >= list[3] && same(cut, bg), 'first: the web view cut by the list\'s rounded corner ($cut against $bg)');
+			}
+			if (c == "scrolled") {
+				var over = pixel(on, popup[0] + 10, (wv[1] + wv[3]) >> 1), plain = pixel(flat, popup[0] + 10, popup[1] + 10);
+				check(wv[1] < popup[3] && same(over, plain), 'scrolled: the popup over the web view ($over against $plain)');
+			}
+			if (c == "first") {
+				var mid = pixel(on, sl[0] + 10, (sl[1] + sl[3]) >> 1), under = pixel(on, popup[0] + 10, (sl[1] + sl[3]) >> 1);
+				var popupFlat = pixel(flat, popup[0] + 10, (sl[1] + sl[3]) >> 1);
+				check(mid[2] > 180 && mid[0] < 120 && same(under, popupFlat), 'first: the system layer shown ($mid), the popup over it (${under} against $popupFlat)');
+			}
+			if (c == "busy") {
+				var inside = pixel(on, list[0] + Math.round(60 * k), list[1] + Math.round(3 * k));
+				var cut = pixel(on, list[0] + Math.round(4 * k) + 1, list[1] + 1), cutFlat = pixel(flat, list[0] + Math.round(4 * k) + 1, list[1] + 1);
+				check(sl[1] < list[1] && inside[2] > 180 && inside[0] < 120 && same(cut, cutFlat),
+					'busy: the system layer moved with the list ($inside at its top), cut by its rounded corner (${cut} against $cutFlat)');
+			}
 		}
 		Sys.println("SystemLayersWindow: " + (failed == 0 ? "ok" : '$failed FAILED'));
 		Sys.exit(failed == 0 ? 0 : 1);
@@ -72,14 +124,23 @@ class SystemLayersWindow {
 		#end
 	}
 
-	// (box: x0, y0, x1, y1 in the capture's pixels, left out, or alone: inside)
-	static function diff(x:haxe.io.Bytes, y:haxe.io.Bytes, ?box:Array<Int>, inside = false):{count:Int, over1:Int, max:Int} {
+	static inline function inBox(b:Array<Int>, x:Int, y:Int):Bool
+		return x >= b[0] && x < b[2] && y >= b[1] && y < b[3];
+
+	// (a pixel's red, green, blue)
+	static function pixel(b:haxe.io.Bytes, x:Int, y:Int):Array<Int> {
+		var i = 4 * (y * width + x);
+		return [b.get(i + 2), b.get(i + 1), b.get(i)];
+	}
+
+	static function same(a:Array<Int>, b:Array<Int>):Bool
+		return Math.abs(a[0] - b[0]) <= 1 && Math.abs(a[1] - b[1]) <= 1 && Math.abs(a[2] - b[2]) <= 1;
+
+	// (the pixels where counted says so: how many differ, by more than a level, by how much at most)
+	static function diff(x:haxe.io.Bytes, y:haxe.io.Bytes, counted:(Int, Int) -> Bool):{count:Int, over1:Int, max:Int} {
 		var count = 0, over1 = 0, max = 0, n = Std.int(Math.min(x.length, y.length) / 4), W = width;
 		for (i in 0...n) {
-			if (box != null) {
-				var px = i % W, py = Std.int(i / W), in_ = px >= box[0] && px < box[2] && py >= box[1] && py < box[3];
-				if (in_ != inside) continue;
-			}
+			if (!counted(i % W, Std.int(i / W))) continue;
 			var m = 0;
 			for (k in 0...3)
 				m = Std.int(Math.max(m, Math.abs(x.get(4 * i + k) - y.get(4 * i + k))));
@@ -92,7 +153,7 @@ class SystemLayersWindow {
 
 	#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 	// (dir: the captures' (null: timing for seconds))
-	static function scene(dir:Null<String>, seconds:Float, anim = false) {
+	static function scene(dir:Null<String>, seconds:Float, anim = false, rounded = true) {
 		var frame = 0;
 		var clock = () -> 1000 + frame / 60;
 		if (dir != null) {
@@ -102,7 +163,8 @@ class SystemLayersWindow {
 		var w = new UiWindow("SystemLayersWindow", 400, 300);
 		w.root.style.set({direction: Row, background: 0xFFF4F4F4});
 		var list = new Node();
-		list.style.set({overflow: Scroll, width: 240, height: 300, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
+		list.style.set({overflow: Scroll, width: 240, height: 300, rowGap: 2, padding: 4, background: 0xFFFFFFFF, radius: rounded ? 10 : 0});
+		var field:Null<TextField> = null, slotted:Null<Node> = null, web:Null<WebView> = null;
 		for (i in 0...200) {
 			var row = new Node();
 			row.style.set({direction: Row, padding: 3, columnGap: 6, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
@@ -111,15 +173,22 @@ class SystemLayersWindow {
 			row.append(box);
 			row.append(new TextNode("Row " + i));
 			list.append(row);
+			if (i == 2) {
+				// (a system layer of its own: a CALayer of one colour, the Video series' kind)
+				slotted = new Node();
+				slotted.style.set({height: 30, shrink: 0});
+				@:privateAccess slotted.systemLayer = new LayerSlot(solidLayer(0.2, 0.75, 0.9));
+				list.append(slotted);
+			}
 			if (i == 4) {
-				var field = new TextField();
+				field = new TextField();
 				field.host = Native;
 				field.text = "native";
 				field.style.set({height: 22, shrink: 0});
 				list.append(field);
 			}
 			if (i == 7) {
-				var web = new WebView();
+				web = new WebView();
 				web.html = "<body style='margin:0;background:#3a8a5a'></body>";
 				web.style.set({height: 40, shrink: 0});
 				list.append(web);
@@ -127,11 +196,15 @@ class SystemLayersWindow {
 		}
 		var side = new Node();
 		side.style.set({grow: 1, padding: 8, rowGap: 8});
-		// (a rounded scroller: Core Animation's corners would not be UiShader's, so it stays drawn)
+		// (a rounded scroller, its content opaque to its corners: masked by its clip's coverage)
 		var round = new Node();
 		round.style.set({overflow: Scroll, height: 80, radius: 12, background: 0xFFFFF4E0});
-		for (i in 0...20)
-			round.append(new TextNode("Item " + i));
+		for (i in 0...20) {
+			var item = new Node();
+			item.style.set({background: i % 2 == 0 ? 0xFFFFD8A0 : 0xFF90C8F0, padding: 2});
+			item.append(new TextNode("Item " + i));
+			round.append(item);
+		}
 		var mover = new Node();
 		mover.style.set({width: 60, height: 40, radius: 8, background: 0xFF2A7AE2});
 		mover.style.transform = Transform.parse("translate(0px, 0px)");
@@ -149,6 +222,10 @@ class SystemLayersWindow {
 		side.append(card);
 		w.root.append(list);
 		w.root.append(side);
+		// (a popup over the list: over the field and the system layer, drawn over them)
+		var popup = new Node();
+		popup.style.set({position: Absolute, left: 150, top: 60, width: 80, height: 90, background: 0xFF6A3AB0, radius: 6});
+		if (dir != null) w.ui.overlay.append(popup);
 		var c = w.compositor, step = 0;
 		// (the capture's width: the window's)
 		width = Std.int(w.window.width);
@@ -158,12 +235,16 @@ class SystemLayersWindow {
 			switch step {
 				case 12:
 					var k = w.window.width / 400;
-					File.saveContent('$dir/card.txt', [card.absX, card.absY, card.absX + card.width, card.absY + card.height].map(v -> Std.string(Math.round(v * k)))
-						.join(" "));
+					inline function box(n:Node, dy = 0.0)
+						return [n.absX, n.absY + dy, n.absX + n.width, n.absY + n.height + dy].map(v -> Std.string(Math.round(v * k))).join(" ");
+					File.saveContent('$dir/card.txt', box(card));
+					// (the field and the system layer in the list's content at offset 0; the list's box, the rounded scroller's, the popup's)
+					File.saveContent('$dir/boxes.txt', [box(field, list.scrollY), box(slotted, list.scrollY), box(list), box(round), box(popup), box(web, list.scrollY)].join("\n"));
 					capture(w, dir, "first");
 				case 14:
 					list.scrollY = 150;
 					round.scrollY = 30;
+					w.ui.requestFrame();
 				case 18:
 					capture(w, dir, "scrolled");
 				case 20:
@@ -210,6 +291,63 @@ class SystemLayersWindow {
 		walk(w.root);
 		Sys.sleep(0.05);
 		return found;
+	}
+
+	// (a padding of NaN, as a markup value read wrong once gave (Little
+	// Skies, PR #86): a popup laid out at NaN over a list on a layer of its
+	// own, a scroller, a native field and a system layer in it; frames
+	// drawn for a second, Core Animation handed none of its NaN)
+	static function lost() {
+		var w = new UiWindow("SystemLayersWindow NaN", 300, 200);
+		w.root.style.set({background: 0xFFF4F4F4});
+		var fine = new Node();
+		fine.style.set({overflow: Scroll, height: 150, background: 0xFFFFFFFF});
+		for (i in 0...30)
+			fine.append(new TextNode("Fine " + i));
+		w.root.append(fine);
+		var popup = new Node();
+		popup.style.set({position: Absolute, left: 20, top: 20, width: 200, height: 120, padding: Math.NaN, background: 0xFF6A3AB0});
+		// (fading: a layer that moves on its own, its quads NaN)
+		popup.style.transition = Transition.parse("opacity 2s linear");
+		w.ui.overlay.append(popup);
+		var list = new Node();
+		list.style.set({overflow: Scroll, height: 100, radius: 8, background: 0xFFFFFFFF});
+		for (i in 0...30)
+			list.append(new TextNode("Lost " + i));
+		var field = new TextField();
+		field.host = Native;
+		field.text = "lost";
+		list.append(field);
+		var slotted = new Node();
+		slotted.style.set({height: 20});
+		@:privateAccess slotted.systemLayer = new LayerSlot(solidLayer(1, 0, 0));
+		list.append(slotted);
+		var mover = new Node();
+		mover.style.set({width: 40, height: 20, background: 0xFF2A7AE2});
+		mover.style.transition = Transition.parse("transform 2s linear");
+		popup.append(list);
+		popup.append(mover);
+		var t0 = haxe.Timer.stamp(), step = 0;
+		App.run(() -> {
+			step++;
+			if (step == 3) {
+				mover.style.transform = Transform.parse("translate(100px, 0px)");
+				popup.style.opacity = 0.5;
+			}
+			if (step > 3) {
+				list.scrollY = step * 3;
+				fine.scrollY = step * 2;
+			}
+			if (haxe.Timer.stamp() - t0 > 1) {
+				var l = w.compositor == null ? null : w.compositor.layers;
+				Sys.println('SystemLayersWindow: ok: a layout of NaN: ${l == null ? 0 : l.frames} frames on the system\'s layers, no exception');
+				w.close();
+				return;
+			}
+			w.ui.requestFrame();
+			w.frame();
+			w.device.settle();
+		}, e -> w.handle(e));
 	}
 
 	// (s seconds of a steady scroll, or of a layer moving on its own (anim):
@@ -259,6 +397,18 @@ class SystemLayersWindow {
 		for (x in parts)
 			v = v * 60 + x;
 		return v;
+	}
+
+	// (a CALayer of one colour, sRGB)
+	static function solidLayer(r:Float, g:Float, b:Float):hxmc.unsafe.Ptr {
+		var l = OsThread.get(() -> {
+			var l = helder.os.objc.Runtime.objc_retain(helder.os.objc.Msg.id(helder.os.objc.ObjC.cls("CALayer"), helder.os.objc.ObjC.sel("layer")));
+			var c = CG.CGColorCreateSRGB(r, g, b, 1);
+			helder.os.objc.Msg.vPtr(l, helder.os.objc.ObjC.sel("setBackgroundColor:"), c);
+			CG.CGColorRelease(c);
+			l;
+		});
+		return l;
 	}
 
 	// (the window's content, its pixels as the display shows them, into dir/name.raw)
@@ -321,6 +471,8 @@ class Capture {
 	static function CGImageGetDataProvider(i:hxmc.unsafe.Ptr):hxmc.unsafe.Ptr;
 	static function CGDataProviderCopyData(p:hxmc.unsafe.Ptr):hxmc.unsafe.Ptr;
 	static function CGImageRelease(i:hxmc.unsafe.Ptr):Void;
+	static function CGColorCreateSRGB(r:Float, g:Float, b:Float, a:Float):hxmc.unsafe.Ptr;
+	static function CGColorRelease(c:hxmc.unsafe.Ptr):Void;
 }
 
 // (the process's CPU time, user and system: getrusage)

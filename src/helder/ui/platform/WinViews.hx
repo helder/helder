@@ -229,6 +229,9 @@ class WinViews implements PlatformViews {
 
 @:hxmc.unsafe(gc)
 class WinEditor implements PlatformEditor {
+	public function slot():Null<helder.ui.LayerSlot>
+		return null;
+
 	final views:WinViews;
 	var hwnd:Ptr;
 	final multiline:Bool;

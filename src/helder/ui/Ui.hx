@@ -383,6 +383,8 @@ class Ui extends ScrollHost {
 
 	// the nodes that may be native (EditableText: they join while in the tree)
 	var natives:Array<Node> = [];
+	// (the window's layers the system's, the nodes' views in its tree: LayerSlot)
+	@:allow(helder) var layered = false;
 
 	// the nodes settled after each layout (VirtualScroll: they join while in
 	// the tree), the tree laid out again while one changes it, SETTLES times at most
@@ -824,7 +826,11 @@ class Ui extends ScrollHost {
 				l.moving = paintFrame - l.movedAt < 3;
 				// (what it holds marked as it is reached, then its tiles)
 				if (w.mark) l.list.replay(nowhere, w);
-				if (g.layerTiles(l)) return;
+				if (g.layerTiles(l)) {
+					// (its nodes' system layers placed where the compositor's frame has them)
+					if (composing == g && l.list.slots > 0) l.list.replay(new SlotsOnly(g), w);
+					return;
+				}
 				if (w.mark) {
 					w.mark = false;
 					l.list.replay(c, w);
@@ -1180,6 +1186,13 @@ class Ui extends ScrollHost {
 			}
 			n.paintContent(canvas, n.absX + be.left + pad.left, n.absY + be.top + pad.top, Math.max(0, n.width - be.left - be.right - pad.left - pad.right),
 				Math.max(0, n.height - be.top - be.bottom - pad.top - pad.bottom));
+		}
+		// (a system layer of its own: its place among what is drawn, in the compositor's walk)
+		var sl = n.systemLayer, tc:Null<TextureCanvas> = dl != null ? dl : composing;
+		if (sl != null && tc != null && !hidden) {
+			var x = n.absX + be.left, y = n.absY + be.top, sw = n.width - be.horizontal, sh = n.height - be.vertical;
+			if (sl.content) tc.slot(sl, x + pad.left, y + pad.top, sw - pad.left - pad.right, sh - pad.top - pad.bottom)
+			else tc.slot(sl, x, y, sw, sh);
 		}
 		var clip = s.overflow != Visible;
 		// (the padding box: its corners' radii less the wider side meeting there)
@@ -2932,4 +2945,45 @@ private class Nowhere implements TextureCanvas {
 		return false;
 
 	public function leave() {}
+
+	public function slot(s:LayerSlot, x:Float, y:Float, w:Float, h:Float) {}
+}
+
+// (a layer drawn from its tiles in the compositor's frame: its list walked
+// for its nodes' system layers alone, where they fall)
+private class SlotsOnly extends Nowhere {
+	final into:TextureCanvas;
+
+	public function new(into:TextureCanvas) {
+		super();
+		this.into = into;
+	}
+
+	override public function translate(dx:Float, dy:Float) {
+		super.translate(dx, dy);
+		into.translate(dx, dy);
+	}
+
+	override public function pushClip(x:Float, y:Float, w:Float, h:Float, radius:Float, ?corners:Corners) {
+		super.pushClip(x, y, w, h, radius, corners);
+		into.pushClip(x, y, w, h, radius, corners);
+	}
+
+	override public function popClip() {
+		super.popClip();
+		into.popClip();
+	}
+
+	override public function pushTransform(a:Float, b:Float, c:Float, d:Float, e:Float, f:Float) {
+		super.pushTransform(a, b, c, d, e, f);
+		into.pushTransform(a, b, c, d, e, f);
+	}
+
+	override public function popTransform() {
+		super.popTransform();
+		into.popTransform();
+	}
+
+	override public function slot(s:LayerSlot, x:Float, y:Float, w:Float, h:Float)
+		into.slot(s, x, y, w, h);
 }

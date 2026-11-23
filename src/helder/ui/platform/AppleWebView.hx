@@ -56,10 +56,14 @@ class AppleWebView implements PlatformWebView {
 	var lastW = -1.0;
 	var lastH = -1.0;
 	var lastShown = false;
+	var hosted:Null<helder.ui.LayerSlot> = null;
+
+	public function slot():Null<helder.ui.LayerSlot>
+		return hosted;
 
 	// a web view in parent (iOS: the window's UIView; macOS: its NSView,
 	// whose window's content view takes it); queued: an event waits for poll
-	public function new(parent:Ptr, options:WebViewOptions, queued:Void->Void, fullScreen = false) {
+	public function new(parent:Ptr, options:WebViewOptions, queued:Void->Void, fullScreen = false, layered = false) {
 		this.ios = Platform.apple() >= 1;
 		this.options = options;
 		this.content = options.content;
@@ -145,7 +149,15 @@ class AppleWebView implements PlatformWebView {
 		} else {
 			this.parent = ios ? parent : Msg.id(Msg.id(parent, ObjC.sel("window")), ObjC.sel("contentView"));
 			Msg.vBool(web, ObjC.sel("setHidden:"), true);
-			Msg.vPtr(this.parent, ObjC.sel("addSubview:"), web);
+			// (in the system's layer tree: in a host, placed with the window's layers)
+			if (layered) {
+				var h = helder.ui.draw.CaViews.host();
+				Msg.vPtr(h, ObjC.sel("addSubview:"), web);
+				Msg.vPtr(this.parent, ObjC.sel("addSubview:"), h);
+				hosted = new helder.ui.LayerSlot(h, true);
+				hosted.inner = web;
+			} else
+				Msg.vPtr(this.parent, ObjC.sel("addSubview:"), web);
 		}
 		Runtime.objc_autoreleasePoolPop(pool);
 		views.push(this);
@@ -174,7 +186,8 @@ class AppleWebView implements PlatformWebView {
 
 	public function place(x:Float, y:Float, width:Float, height:Float, shown:Bool) {
 		helder.os.OsThread.run(() -> {
-			if (disposed || parent.isNull()) return;
+			// (a layout gone wrong: AppKit and UIKit throw at a NaN frame)
+			if (disposed || parent.isNull() || !(Math.isFinite(x) && Math.isFinite(y) && Math.isFinite(width) && Math.isFinite(height))) return;
 			if (shown != lastShown) {
 				lastShown = shown;
 				Msg.vBool(web, ObjC.sel("setHidden:"), !shown);
@@ -279,6 +292,10 @@ class AppleWebView implements PlatformWebView {
 			Msg.vPtr(web, ObjC.sel("setNavigationDelegate:"), Ptr.nil());
 			Msg.v(web, ObjC.sel("stopLoading"));
 			if (!parent.isNull()) Msg.v(web, ObjC.sel("removeFromSuperview"));
+			if (hosted != null) {
+				Msg.v(hosted.handle, ObjC.sel("removeFromSuperview"));
+				ObjC.release(hosted.handle);
+			}
 			ObjC.release(web);
 			listener = null;
 		});
