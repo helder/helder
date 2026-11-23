@@ -61,97 +61,98 @@ class MacAccessTest implements Markup {
 		}
 		w.onFrame = () -> {
 			frames++;
-			switch step {
-				case 0:
-					var ma:Null<helder.ui.draw.MacAccess> = cast @:privateAccess w.macAccess;
-					check("no tree before a question", ma != null && @:privateAccess ma.tree == null);
-					elements = children(view);
-					var shape = [for (e in elements) str(e, "accessibilityRole") + ":" + (str(e, "accessibilityRole") == "AXStaticText" ? str(e, "accessibilityValue") : str(e, "accessibilityLabel"))];
-					check("the view's children: roles and names", shape.join(",") == "AXStaticText:Settings,AXButton:Save,AXCheckBox:Remember,AXSlider:Volume,AXTextField:Name", shape.join(","));
-					if (elements.length == 5) {
-						check("a checkbox's value", str(elements[2], "accessibilityValue") == "0", str(elements[2], "accessibilityValue"));
-						check("a slider's value and range", str(elements[3], "accessibilityValue") == "0.5" && str(elements[3], "accessibilityMaxValue") == "1",
-							str(elements[3], "accessibilityValue") + " " + str(elements[3], "accessibilityMaxValue"));
-						var f = Msg.rect(elements[1], ObjC.sel("accessibilityFrame"));
-						check("a frame in screen points", f.size.width > 20 && f.size.height > 10, '${f.size.width}x${f.size.height}');
-						check("its parent the view", Msg.id(elements[1], ObjC.sel("accessibilityParent")) == view);
-						// a hit test at the button's centre
-						pt.value.origin.x = f.origin.x + f.size.width / 2;
-						pt.value.origin.y = f.origin.y + f.size.height / 2;
-						var hit = @:privateAccess Msg.c_idPoint(Msg.send, view, ObjC.sel("accessibilityHitTest:"), pt.value.origin);
-						check("a hit test finds the button", hit == elements[1]);
-						// actions
-						check("press", Msg.i(elements[1], ObjC.sel("accessibilityPerformPress")).toInt() & 255 == 1 && saved == 1, '$saved');
-						Msg.i(elements[2], ObjC.sel("accessibilityPerformPress"));
-						Msg.i(elements[3], ObjC.sel("accessibilityPerformIncrement"));
-					}
-					step = 1;
-				case 1:
-					if (elements.length == 5) {
-						check("the checkbox pressed", checked() && str(elements[2], "accessibilityValue") == "1", str(elements[2], "accessibilityValue"));
-						check("the slider incremented", Math.abs(volume() - 0.6) < 1e-9 && Math.abs(Std.parseFloat(str(elements[3], "accessibilityValue")) - 0.6) < 1e-6,
-							'${volume()} ' + str(elements[3], "accessibilityValue"));
-						check("the focused element", Msg.id(view, ObjC.sel("accessibilityFocusedUIElement")) == elements[3]);
-					}
-					var eds:Array<helder.ui.platform.MacViews.MacEditor> = @:privateAccess helder.ui.platform.MacViews.editors;
-					check("the field native: one NSTextField", eds.length == 1, "" + eds.length);
-					name("Ada");
-					flush();
-					step = 2;
-				case 2:
-					var eds:Array<helder.ui.platform.MacViews.MacEditor> = @:privateAccess helder.ui.platform.MacViews.editors;
-					if (eds.length == 1) {
-						var field = @:privateAccess eds[0].field;
-						check("the program's text in the NSTextField", @:privateAccess eds[0].text() == "Ada", @:privateAccess eds[0].text());
-						var t = ObjC.str("Adax");
-						Msg.vPtr(field, ObjC.sel("setStringValue:"), t);
-						var note = Msg.idPtrPtr(ObjC.cls("NSNotification"), ObjC.sel("notificationWithName:object:"), t, field);
-						Msg.vPtr(@:privateAccess helder.ui.platform.MacViews.delegate, ObjC.sel("controlTextDidChange:"), note);
-						w.ui.setFocus(w.root.find("name"));
-					}
-					step = 3;
-				case 3:
-					check("an edit in the NSTextField, the field's signal follows", name() == "Adax", name());
-					var eds:Array<helder.ui.platform.MacViews.MacEditor> = @:privateAccess helder.ui.platform.MacViews.editors;
-					if (eds.length == 1)
-						Msg.idPtrPtrPtr(@:privateAccess helder.ui.platform.MacViews.delegate, ObjC.sel("control:textView:doCommandBySelector:"), @:privateAccess eds[0].field,
-							Ptr.nil(), ObjC.sel("insertTab:"));
-					step = 4;
-				case 4:
-					check("Tab left to the window: its focus on", w.ui.focus != null && w.ui.focus.tag == "save", w.ui.focus == null ? "none" : w.ui.focus.tag);
-					(cast w.root.find("name") : helder.ui.widgets.EditableText).secret = true;
-					step = 5;
-				case 5:
-					var eds:Array<helder.ui.platform.MacViews.MacEditor> = @:privateAccess helder.ui.platform.MacViews.editors;
-					if (eds.length == 1) {
-						var field = @:privateAccess eds[0].field;
-						check("a password: an NSSecureTextField", str(field, "class") == "NSSecureTextField", str(field, "class"));
-						check("a password: the text kept", @:privateAccess eds[0].text() == "Adax", @:privateAccess eds[0].text());
-					}
-					areaOn(true);
-					flush();
-					notes("Line");
-					flush();
-					step = 6;
-				case 6:
-					var areas = [for (e in (@:privateAccess helder.ui.platform.MacViews.editors : Array<helder.ui.platform.MacViews.MacEditor>)) if (Std.isOfType(e, helder.ui.platform.MacViews.MacAreaEditor)) e];
-					check("the text area native: an NSTextView", areas.length == 1 && str(@:privateAccess areas[0].field, "class") == "NSTextView",
-						"" + areas.length);
-					if (areas.length == 1) {
-						var tv = @:privateAccess areas[0].field;
-						check("the program's text in the NSTextView", @:privateAccess areas[0].text() == "Line", @:privateAccess areas[0].text());
-						var t = ObjC.str("Line\nTwo");
-						Msg.vPtr(tv, ObjC.sel("setString:"), t);
-						var note = Msg.idPtrPtr(ObjC.cls("NSNotification"), ObjC.sel("notificationWithName:object:"), t, tv);
-						Msg.vPtr(@:privateAccess helder.ui.platform.MacViews.delegate, ObjC.sel("textDidChange:"), note);
-					}
-					step = 7;
-				case 7:
-					check("an edit in the NSTextView, the area's signal follows", notes() == "Line\nTwo", notes());
-					step = 8;
-					w.close();
-				case _:
-			}
+			// (assistive technology and the fields asking AppKit as the system does: on the main thread)
+			helder.os.OsThread.run(() -> switch step {
+					case 0:
+						var ma:Null<helder.ui.draw.MacAccess> = cast @:privateAccess w.macAccess;
+						check("no tree before a question", ma != null && @:privateAccess ma.tree == null);
+						elements = children(view);
+						var shape = [for (e in elements) str(e, "accessibilityRole") + ":" + (str(e, "accessibilityRole") == "AXStaticText" ? str(e, "accessibilityValue") : str(e, "accessibilityLabel"))];
+						check("the view's children: roles and names", shape.join(",") == "AXStaticText:Settings,AXButton:Save,AXCheckBox:Remember,AXSlider:Volume,AXTextField:Name", shape.join(","));
+						if (elements.length == 5) {
+							check("a checkbox's value", str(elements[2], "accessibilityValue") == "0", str(elements[2], "accessibilityValue"));
+							check("a slider's value and range", str(elements[3], "accessibilityValue") == "0.5" && str(elements[3], "accessibilityMaxValue") == "1",
+								str(elements[3], "accessibilityValue") + " " + str(elements[3], "accessibilityMaxValue"));
+							var f = Msg.rect(elements[1], ObjC.sel("accessibilityFrame"));
+							check("a frame in screen points", f.size.width > 20 && f.size.height > 10, '${f.size.width}x${f.size.height}');
+							check("its parent the view", Msg.id(elements[1], ObjC.sel("accessibilityParent")) == view);
+							// a hit test at the button's centre
+							pt.value.origin.x = f.origin.x + f.size.width / 2;
+							pt.value.origin.y = f.origin.y + f.size.height / 2;
+							var hit = @:privateAccess Msg.c_idPoint(Msg.send, view, ObjC.sel("accessibilityHitTest:"), pt.value.origin);
+							check("a hit test finds the button", hit == elements[1]);
+							// actions
+							check("press", Msg.i(elements[1], ObjC.sel("accessibilityPerformPress")).toInt() & 255 == 1 && saved == 1, '$saved');
+							Msg.i(elements[2], ObjC.sel("accessibilityPerformPress"));
+							Msg.i(elements[3], ObjC.sel("accessibilityPerformIncrement"));
+						}
+						step = 1;
+					case 1:
+						if (elements.length == 5) {
+							check("the checkbox pressed", checked() && str(elements[2], "accessibilityValue") == "1", str(elements[2], "accessibilityValue"));
+							check("the slider incremented", Math.abs(volume() - 0.6) < 1e-9 && Math.abs(Std.parseFloat(str(elements[3], "accessibilityValue")) - 0.6) < 1e-6,
+								'${volume()} ' + str(elements[3], "accessibilityValue"));
+							check("the focused element", Msg.id(view, ObjC.sel("accessibilityFocusedUIElement")) == elements[3]);
+						}
+						var eds:Array<helder.ui.platform.MacViews.MacEditor> = @:privateAccess helder.ui.platform.MacViews.editors;
+						check("the field native: one NSTextField", eds.length == 1, "" + eds.length);
+						name("Ada");
+						flush();
+						step = 2;
+					case 2:
+						var eds:Array<helder.ui.platform.MacViews.MacEditor> = @:privateAccess helder.ui.platform.MacViews.editors;
+						if (eds.length == 1) {
+							var field = @:privateAccess eds[0].field;
+							check("the program's text in the NSTextField", @:privateAccess eds[0].text() == "Ada", @:privateAccess eds[0].text());
+							var t = ObjC.str("Adax");
+							Msg.vPtr(field, ObjC.sel("setStringValue:"), t);
+							var note = Msg.idPtrPtr(ObjC.cls("NSNotification"), ObjC.sel("notificationWithName:object:"), t, field);
+							Msg.vPtr(@:privateAccess helder.ui.platform.MacViews.delegate, ObjC.sel("controlTextDidChange:"), note);
+							w.ui.setFocus(w.root.find("name"));
+						}
+						step = 3;
+					case 3:
+						check("an edit in the NSTextField, the field's signal follows", name() == "Adax", name());
+						var eds:Array<helder.ui.platform.MacViews.MacEditor> = @:privateAccess helder.ui.platform.MacViews.editors;
+						if (eds.length == 1)
+							Msg.idPtrPtrPtr(@:privateAccess helder.ui.platform.MacViews.delegate, ObjC.sel("control:textView:doCommandBySelector:"), @:privateAccess eds[0].field,
+								Ptr.nil(), ObjC.sel("insertTab:"));
+						step = 4;
+					case 4:
+						check("Tab left to the window: its focus on", w.ui.focus != null && w.ui.focus.tag == "save", w.ui.focus == null ? "none" : w.ui.focus.tag);
+						(cast w.root.find("name") : helder.ui.widgets.EditableText).secret = true;
+						step = 5;
+					case 5:
+						var eds:Array<helder.ui.platform.MacViews.MacEditor> = @:privateAccess helder.ui.platform.MacViews.editors;
+						if (eds.length == 1) {
+							var field = @:privateAccess eds[0].field;
+							check("a password: an NSSecureTextField", str(field, "class") == "NSSecureTextField", str(field, "class"));
+							check("a password: the text kept", @:privateAccess eds[0].text() == "Adax", @:privateAccess eds[0].text());
+						}
+						areaOn(true);
+						flush();
+						notes("Line");
+						flush();
+						step = 6;
+					case 6:
+						var areas = [for (e in (@:privateAccess helder.ui.platform.MacViews.editors : Array<helder.ui.platform.MacViews.MacEditor>)) if (Std.isOfType(e, helder.ui.platform.MacViews.MacAreaEditor)) e];
+						check("the text area native: an NSTextView", areas.length == 1 && str(@:privateAccess areas[0].field, "class") == "NSTextView",
+							"" + areas.length);
+						if (areas.length == 1) {
+							var tv = @:privateAccess areas[0].field;
+							check("the program's text in the NSTextView", @:privateAccess areas[0].text() == "Line", @:privateAccess areas[0].text());
+							var t = ObjC.str("Line\nTwo");
+							Msg.vPtr(tv, ObjC.sel("setString:"), t);
+							var note = Msg.idPtrPtr(ObjC.cls("NSNotification"), ObjC.sel("notificationWithName:object:"), t, tv);
+							Msg.vPtr(@:privateAccess helder.ui.platform.MacViews.delegate, ObjC.sel("textDidChange:"), note);
+						}
+						step = 7;
+					case 7:
+						check("an edit in the NSTextView, the area's signal follows", notes() == "Line\nTwo", notes());
+						step = 8;
+						w.close();
+					case _:
+			});
 			// (a frame again: the next step)
 			w.ui.requestFrame();
 		};

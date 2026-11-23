@@ -15,7 +15,12 @@ import sys.thread.Mutex;
 // waits for the other runs what the other hands it meanwhile, so calls nest
 // both ways without a deadlock and only one of the two runs at a time: the
 // program's state and the system's objects are touched as on one thread.
-// HELDER_THREAD=0 keeps the program on the main thread.
+// The calls are handed over inside the macOS classes (CocoaWindow, MacViews,
+// ...), not around their run-time Platform branches: a closure there is
+// compiled on every target, and would link AppKit into Linux's and
+// Windows' builds. On Linux the main thread only waits for now (X11 and
+// Wayland are called from any thread). HELDER_THREAD=0 keeps the program
+// on the main thread.
 @:hxmc.unsafe(gc)
 class OsThread {
 	// the program's thread's Haxe id; 0 while the program runs on the main thread

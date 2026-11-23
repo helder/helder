@@ -68,7 +68,9 @@ the two runs at a time, each serving the other while it waits, so the
 program sees what it saw on one thread, and code after `App.run`
 runs on the main thread again. Code of the app's own that calls AppKit
 from a frame or an event (`helder/native`, Objective-C) goes through
-`OsThread.run`. `HELDER_THREAD=0` keeps the program on the main thread;
+`OsThread.run`. On Linux the main thread only waits for now: X11 and
+Wayland have no thread of their own, and the program's thread calls them
+as before. `HELDER_THREAD=0` keeps the program on the main thread;
 Windows, iOS, the browser and headless runs keep it there for now.
 
 ### Files dropped, full screen, a window's place
