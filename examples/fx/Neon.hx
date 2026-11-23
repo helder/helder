@@ -93,7 +93,7 @@ class Neon extends helder.ui.Node {
 	}
 
 	override public function paintContent(g:helder.ui.Canvas, x:Float, y:Float, width:Float, height:Float) {
-		var r = Std.downcast(g, helder.ui.draw.Renderer);
+		var r = helder.ui.draw.Renderer.of(g);
 		var scale = r == null ? 1.0 : r.scale;
 		var w = Std.int(Math.max(8, Math.round(width * scale))), h = Std.int(Math.max(8, Math.round(height * scale)));
 		var on = lit(time);

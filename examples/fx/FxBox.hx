@@ -79,7 +79,7 @@ class FxBox extends helder.ui.Node {
 	}
 
 	override public function paintContent(canvas:helder.ui.Canvas, x:Float, y:Float, width:Float, height:Float) {
-		var r = Std.downcast(canvas, helder.ui.draw.Renderer);
+		var r = helder.ui.draw.Renderer.of(canvas);
 		if (r == null) return;
 		if (pipeline == null) ready(r.device);
 		var k = density > 0 ? Math.min(1, density / r.scale) : 1;
@@ -103,7 +103,7 @@ class FxBox extends helder.ui.Node {
 			r.beforePass(record);
 		}
 		var radius = style.radius;
-		r.gpuTexture(color, id, x, y, width, height, radius);
+		(cast canvas : helder.ui.draw.TextureCanvas).gpuTexture(color, id, x, y, width, height, radius);
 	}
 
 	function record(enc:Encoder) {
