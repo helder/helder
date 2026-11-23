@@ -39,8 +39,9 @@ export declare class Mesh {
 	private readonly mesh: never;
 }
 
-// Records a frame's passes: one per device, reused (no allocation per frame).
-// What it records is counted in FrameCounts.
+// Records a frame's passes: one per device, reused (no allocation per frame),
+// into the device's commands, run at each pass's end (Device). What it
+// records is counted in FrameCounts.
 export declare class Encoder {
 	private readonly encoder: never;
 }
@@ -2875,13 +2876,30 @@ export declare class FixedStep {
 // a frame is beginFrame, passes recorded through the Encoder, endFrame
 // (present). Main thread only. Under hxmc dev a device is disposed with the
 // build (helder.dev.Hot.onDispose) when the next one is swapped in.
+// Every call is recorded (Commands) and run in order (Replay): here, at
+// each call that may throw and each pass's end (synchronous: headless
+// surfaces, tests, games by default), or on the render thread (the thread
+// option: helder.ui's windows), which owns the context and presents. A
+// thread's device hands over what it recorded at pass and frame ends while
+// the thread is free, and waits for it at beginFrame (one frame on its way
+// at most), at calls that answer (readPixels, createShader: their errors
+// thrown there), at settle and at dispose.
 export declare class Device {
 	// antialias: a window's frames multisampled, 4 samples a pixel (in the
 	// browser the page's run option antialias decides when it is set);
 	// headless surfaces stay single-sampled, readPixels reads the frame
 	// resolved; render targets are multisampled by their own samples
-	// (TextureDesc.samples, resolved through ColorTarget.resolve)
-	static create(surface: Surface, options?: { antialias?: boolean }): Device;
+	// (TextureDesc.samples, resolved through ColorTarget.resolve). thread:
+	// executed and presented on the render thread (a window's, natively;
+	// helder.ui's windows ask for it); HELDER_RENDER_THREAD=0 turns it off,
+	// =1 on for every window
+	static create(surface: Surface, options?: { antialias?: boolean; thread?: boolean }): Device;
+	// until what was handed to the render thread has run: the last frame
+	// presented (synchronous: at once). helder.ui's loop waits so before it
+	// takes the next events, so that a frame shows the input it was drawn
+	// for, as without the thread; a program that does not, overlaps its next
+	// frame with this one's present (a frame more on its way, its input older)
+	settle(): void;
 	// whether it has a feature of the compute tier (Feature: Compute,
 	// StorageTextures, Indirect): WebGPU, Metal, D3D11 at feature level
 	// 11_0 and a GL ES 3.1 context do; WebGL2 and GL ES 3.0 do not (their
@@ -2900,6 +2918,8 @@ export declare class Device {
 	readonly width: number;
 	// the size of the colour target in pixels
 	readonly height: number;
+	// what was recorded run (on the render thread: drained), then everything
+	// let go, the context too
 	dispose(): void;
 }
 

@@ -148,7 +148,7 @@ class UiWindow {
 		window = new helder.os.Window(title, width, height, titlebar);
 		// (Android: text fields get the soft keyboard and the input method)
 		if (Platform.target() >= 9) helder.os.android.TextInput.enable();
-		device = Device.create(window.surface, {antialias: antialias});
+		device = Device.create(window.surface, {antialias: antialias, thread: true});
 		renderer = new Renderer(device);
 		if (open.length == 0 && helder.os.App.trims.indexOf(trimAll) < 0) helder.os.App.trims.push(trimAll);
 		renderer.groups = true;
@@ -612,9 +612,10 @@ class UiWindow {
 				if (linuxAccess != null) (cast linuxAccess : LinuxAccess).dispose();
 			} else if (androidAccess != null) (cast androidAccess : AndroidAccess).dispose();
 		}
+		// (the device drained first: the render thread done with the window's surface before it goes)
+		device.dispose();
 		window.close();
 		open.remove(this);
-		device.dispose();
 	}
 
 	// the app loop: every UiWindow's frames and events until the last closes
@@ -651,6 +652,11 @@ class UiWindow {
 					w.frame();
 					drew = true;
 				}
+			// (the frames presented before the next events are taken: their
+			// encoding, a window's and the next one's work overlapped, no frame
+			// more of latency)
+			for (w in open)
+				w.device.settle();
 			if (!drew) App.wait(idleWait);
 		}, e -> for (w in open.copy()) if (w.window == e.window) w.handle(e));
 	}

@@ -164,6 +164,9 @@ class X11Window {
 	#end
 
 	static function connect() {
+		// (before any other call: the render thread's EGL presents through the
+		// same display, Mesa's software path by Xlib's own calls)
+		Xlib.XInitThreads();
 		#if hxmc.dev_host
 		display = helder.dev.Hosted.hosted() ? helder.dev.Hosted.get(helder.dev.Hosted.X11_DISPLAY) : Ptr.nil();
 		if (display.isNull()) {

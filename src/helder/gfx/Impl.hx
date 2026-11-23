@@ -202,6 +202,14 @@ abstract Impl(Any) {
 	public inline function frameInto(id:Int)
 		Platform.os() == 1 ? mtl().frameInto(id) : Platform.os() == 2 ? d3d().frameInto(id) : Platform.os() != 3 ? gl().frameInto(id) : if (id != 0) throw "helder.gfx: frameInto: not in a browser";
 
+	// (the back end's context let go by this thread, used by the render thread from now on: GL's)
+	public inline function detach()
+		if (Platform.os() != 1 && Platform.os() != 2 && Platform.os() != 3) gl().detach();
+
+	// (whether a frame was presented since asked last: Metal's, which a macOS window shows itself at)
+	public inline function presented():Bool
+		return Platform.os() == 1 ? mtl().presented() : false;
+
 	public inline function dispose()
 		Platform.os() == 1 ? mtl().dispose() : Platform.os() == 2 ? d3d().dispose() : Platform.os() != 3 ? gl().dispose() : webgl() ? gl().dispose() : wgpu().dispose();
 }
