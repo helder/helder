@@ -49,7 +49,7 @@ class MetalBackend {
 	var depth = Ptr.nil(); // the depth texture, of depthWidth x depthHeight
 	var depthWidth = 0;
 	var depthHeight = 0;
-	final samples:Int; // the frame's samples a pixel
+	public final samples:Int; // the frame's samples a pixel
 	var msaa = Ptr.nil(); // multisampled: the frame's colour texture, of the depth's size
 	// native memory: an out-parameter, the structs passed by value
 	final scratch:Ptr<Ptr>;
@@ -627,7 +627,8 @@ class MetalBackend {
 			case Load: MTL.LoadActionLoad;
 			case DontCare: MTL.LoadActionDontCare;
 		});
-		Msg.vInt(attachment, S.setStoreAction, resolve ? MTL.StoreActionStoreAndMultisampleResolve : into ? MTL.StoreActionMultisampleResolve : MTL.StoreActionStore);
+		Msg.vInt(attachment, S.setStoreAction,
+			resolve || into && c.keep == true ? MTL.StoreActionStoreAndMultisampleResolve : into ? MTL.StoreActionMultisampleResolve : MTL.StoreActionStore);
 		if (c.load == Clear) {
 			var k = c.clear;
 			clear.value.red = k == null ? 0 : k.r;

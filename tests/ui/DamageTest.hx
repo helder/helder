@@ -12,9 +12,10 @@ import helder.ui.widgets.TextField;
 // changed at random over frames (rows restyled, relabelled, hidden; whole
 // pixel scrolls; the card's transform and opacity moving; the popup opened
 // and closed; the caret moved, text typed), at scales 1 and 2, layers
-// replayed and from their tiles. And that a row toggled damages that row,
-// the caret moved only the caret
-//   DamageTest
+// replayed and from their tiles; with --window, in a window whose frame
+// is multisampled where it can be (the frame kept multisampled too). And
+// that a row toggled damages that row, the caret moved only the caret
+//   DamageTest [--window]
 class DamageTest {
 	static inline var W = 320;
 	static inline var H = 240;
@@ -27,6 +28,7 @@ class DamageTest {
 	}
 
 	static function main() {
+		if (Sys.args().indexOf("--window") >= 0) return window();
 		for (scale in [1, 2]) {
 			var device = Device.create(Surface.headless(W * scale, H * scale));
 			for (tiles in [false, true])
@@ -55,8 +57,25 @@ class DamageTest {
 		device.endFrame();
 	}
 
-	static function compare(device:Device, scale:Int, tree:Int, tiles:Bool) {
-		var w = W * scale, h = H * scale;
+	// (a window's frame, multisampled where the GPU has it: drawn with damage
+	// against drawn whole, both into its frame, read back resolved)
+	static function window() {
+		var win = new helder.os.Window("DamageTest", W, H);
+		var device = Device.create(win.surface, {antialias: true});
+		helder.os.App.run(() -> {
+			var scale = device.width / W;
+			Sys.println('DamageTest: a window of ${device.width}x${device.height}, ${device.samples} samples a pixel');
+			for (tiles in [false, true])
+				for (tree in 0...2)
+					compare(device, scale, tree, tiles);
+			Sys.println("DamageTest: " + (failed == 0 ? "ok" : '$failed FAILED'));
+			device.dispose();
+			Sys.exit(failed == 0 ? 0 : 1);
+		}, e -> {});
+	}
+
+	static function compare(device:Device, scale:Float, tree:Int, tiles:Bool) {
+		var w = device.width, h = device.height;
 		var made = [build(tree), build(tree)], rs = [for (k in 0...2) new Renderer(device)];
 		for (k in 0...2) {
 			rs[k].scale = scale;
@@ -66,7 +85,7 @@ class DamageTest {
 		}
 		rs[1].keep = true;
 		var pixels = [Bytes.alloc(w * h * 4), Bytes.alloc(w * h * 4)];
-		var seed = tree * 7919 + scale * 104729 + (tiles ? 13 : 0) + 1;
+		var seed = tree * 7919 + Math.round(scale * 104729) + (tiles ? 13 : 0) + 1;
 		function rnd(n:Int):Int {
 			seed = (seed * 1103515245 + 12345) & 0x7fffffff;
 			return (seed >> 8) % n;
@@ -189,6 +208,8 @@ class DamageTest {
 		top.append(lists);
 		var card = new Node();
 		card.style.set({width: 60, height: 40, background: 0xFF3B82F6, radius: 6, position: Absolute, left: 230, top: 12});
+		// (a blurred shadow turned with it: the one quad whose edge is not wholly clear)
+		card.style.shadow = Shadow.parse("0 6px 6px rgba(0,0,0,0.9)");
 		for (k in 0...1 + rnd(2)) {
 			var list = new Node();
 			list.style.set({overflow: Scroll, grow: 1, background: 0xFFFFFFFF, rowGap: 2, padding: 4, minHeight: 0, radius: [8, 6.5, 12][rnd(3)]});

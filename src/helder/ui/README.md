@@ -1416,7 +1416,8 @@ its old and new bounds), a layer moved, scrolled, faded or come to rest
 a GPU texture each frame, popups (the overlay's entries), all of it at a
 scale or theme change or a match flying. Each rectangle is walked culled
 to it and drawn straight into the frame kept (a texture of the window's
-size), its background first, every unturned quad cut to it and a turned
+size and samples: a multisampled window's kept multisampled, resolved for
+the copy), its background first, every unturned quad cut to it and a turned
 one's fragments outside it left as they were, then the frame is copied
 to the drawable (Metal's and a browser's are not kept), and the system
 told what changed (EGL's swap with damage on Wayland and Android, DXGI's
@@ -1427,7 +1428,8 @@ pixel's centre, a turned quad's solved from its corners, so what is drawn
 into the frame kept is what drawing whole gives, on GL too, which draws
 textures the other way up (`DamageTest`: random trees changed at random
 over 80 frames, pixel for pixel against drawing whole, at scales 1 and 2,
-replayed and from tiles, on Metal and Mesa). Headless runs, screenshots,
+replayed and from tiles, on Metal and Mesa; `DamageTest --window` in a
+multisampled window). Headless runs, screenshots,
 golden images and X11 draw every frame whole; `HELDER_DAMAGE=full` draws
 a window's so, `HELDER_DAMAGE=flash` shows each frame's rectangles.
 

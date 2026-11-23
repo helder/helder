@@ -1615,6 +1615,8 @@ class Run {
 		shell('$gpu $b/ControlsGallery tests/ui/controls $b/controls$bless');
 		shell('$gpu $b/ControlsBench');
 		shell('$xvfb $b/WindowTest');
+		// (a window's frame multisampled: the frame kept so too)
+		shell('LIBGL_ALWAYS_SOFTWARE=1 $xvfb $b/DamageTest --window');
 		// (the clipboard: Xvfb's own, not a desktop's in use; X11's text input
 		// and AT-SPI: Linux's; Windows' are the window lane's)
 		if (!linux) return;

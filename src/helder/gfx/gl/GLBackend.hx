@@ -244,6 +244,7 @@ class GLBackend {
 			if (!multi && (Egl.eglChooseConfig(display, ints(a, attribs), configs, 1, scratch) == 0 || scratch.value == 0))
 				fail("no EGL config for GLES 3 with RGBA8 and a 24-bit depth buffer");
 			config = configs.value;
+			samples = multi ? 4 : 1;
 			if (headless) {
 				eglSurface = Egl.eglCreatePbufferSurface(display, config, ints(a, [EGL.WIDTH, surface.width, EGL.HEIGHT, surface.height, EGL.NONE]));
 				if (eglSurface.isNull()) fail("cannot create the EGL surface");
@@ -1157,6 +1158,9 @@ class GLBackend {
 
 	public function damaged(rects:Null<Array<Int>>)
 		damage = rects;
+
+	// the frame's samples a pixel (a browser's canvas: its own, told as 1)
+	public var samples(default, null) = 1;
 
 	function swap() {
 		var r = damage, n = r == null ? 0 : Std.int(r.length / 4);

@@ -53,7 +53,7 @@ class D3D11Backend {
 	var view = Ptr.nil(); // its ID3D11RenderTargetView
 	var depth = Ptr.nil(); // the depth buffer (ID3D11Texture2D) and its ID3D11DepthStencilView
 	var depthView = Ptr.nil();
-	var samples = 1; // the frame's samples a pixel
+	public var samples(default, null) = 1; // the frame's samples a pixel
 	var msaa = Ptr.nil(); // multisampled: the frame's colour texture, view's
 	var upload = Ptr.nil(); // writeBuffer's copy of the data, of uploadSize bytes
 	var uploadSize = 0;
