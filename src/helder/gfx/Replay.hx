@@ -41,6 +41,21 @@ final class Replay {
 	public static inline function at(t:Array<Int>, id:Int):Int
 		return id <= 0 || id >= t.length ? 0 : t[id];
 
+	// the back end's id of what was made last with no id of the device's
+	// (synchronous: the device's handles are the back end's own, as the
+	// browser's page reads buffers and textures by them)
+	public var made(default, null) = 0;
+
+	// v, made for the device's id (0: none, v its own)
+	public function make(t:Array<Int>, id:Int, v:Int):Int {
+		if (id == 0) {
+			made = v;
+			put(t, v, v);
+		} else
+			put(t, id, v);
+		return v;
+	}
+
 	public static function put(t:Array<Int>, id:Int, v:Int) {
 		while (t.length <= id)
 			t.push(0);
@@ -191,7 +206,7 @@ final class Replay {
 			case CREATE_BUFFER:
 				var id = c.next(), size = c.next(), usage:BufferUsage = cast c.next();
 				var data = c.next() != 0 ? owned(c) : null;
-				put(buffers, id, impl.createBuffer({size: size, usage: usage, data: data}));
+				make(buffers, id, impl.createBuffer({size: size, usage: usage, data: data}));
 			case WRITE_BUFFER:
 				var b = c.next(), offset = c.next(), n = bytes(c);
 				impl.writeBuffer(at(buffers, b), offset, scratch, 0, n);
@@ -211,7 +226,7 @@ final class Replay {
 					cube: flags & 4 != 0,
 					data: data
 				};
-				put(textures, id, impl.createTexture(d));
+				make(textures, id, impl.createTexture(d));
 			case WRITE_TEXTURE:
 				var t = c.next(), x = c.next(), y = c.next(), w = c.next(), h = c.next(), level = c.next(), layer = c.next(), n = bytes(c);
 				impl.writeTexture(at(textures, t), scratch, x, y, w, h, 0, level, layer);
@@ -230,14 +245,14 @@ final class Replay {
 				put(textures, id, 0);
 			case CREATE_SAMPLER:
 				var id = c.next(), f = c.next(), m = c.next(), w = c.next();
-				put(samplers, id, impl.createSampler({
+				make(samplers, id, impl.createSampler({
 					filter: f == NONE ? null : cast f,
 					mipFilter: m == NONE ? null : cast m,
 					wrap: w == NONE ? null : cast w
 				}));
 			case CREATE_QUERIES:
 				var id = c.next();
-				put(queries, id, impl.createQueries(c.next()));
+				make(queries, id, impl.createQueries(c.next()));
 			case DESTROY_QUERIES:
 				var id = c.next();
 				impl.destroyQueries(at(queries, id));

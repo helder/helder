@@ -180,7 +180,7 @@ final class Device {
 	public function createBuffer(d:BufferDesc):Buffer {
 		var data = d.data;
 		if (data != null && data.length < d.size) throw "helder.gfx: createBuffer: data has fewer than size bytes";
-		var id = ++bufferIds, c = commands;
+		var id = threaded ? ++bufferIds : 0, c = commands;
 		c.begin(Replay.CREATE_BUFFER);
 		c.int(id);
 		c.int(d.size);
@@ -189,7 +189,7 @@ final class Device {
 		if (data != null) c.bytes(data, 0, d.size);
 		c.end();
 		ran();
-		return new Buffer(id);
+		return new Buffer(id == 0 ? replay.made : id);
 	}
 
 	// size bytes of data from dataOffset (default: the rest) into the buffer
@@ -218,8 +218,7 @@ final class Device {
 
 	// (checked by the back end: TextureInfo.of)
 	public function createTexture(d:TextureDesc):Texture {
-		var info = TextureInfo.of(d), id = ++textureIds, c = commands, data = d.data;
-		infos.set(id, info);
+		var info = TextureInfo.of(d), id = threaded ? ++textureIds : 0, c = commands, data = d.data;
 		c.begin(Replay.CREATE_TEXTURE);
 		c.int(id);
 		c.int(d.width);
@@ -233,6 +232,8 @@ final class Device {
 		if (data != null) c.bytes(data, 0, Std.int(Math.min(data.length, info.format.levelBytes(info.width, info.height) * info.layers)));
 		c.end();
 		ran();
+		if (id == 0) id = replay.made;
+		infos.set(id, info);
 		var t = new Texture(id);
 		var format:TextureFormat = d.format == null ? RGBA8 : d.format;
 		var levels = d.mipLevels == null ? 1 : d.mipLevels, bytes = 0.0, l = 0;
@@ -384,14 +385,15 @@ final class Device {
 	// process (null: this device cannot share). The texture's format is the
 	// frame's (Metal: BGRA8, sampled as RGBA); destroyed by destroyTexture.
 	public function createShared(width:Int, height:Int):Null<{texture:Texture, handle:String}> {
-		var id = ++textureIds, handle:Null<String> = null;
+		var id = threaded ? ++textureIds : 0, handle:Null<String> = null;
 		answer(r -> {
 			var made = r.impl.createShared(width, height);
 			if (made == null) return;
-			Replay.put(r.textures, id, made.id);
+			r.make(r.textures, id, made.id);
 			handle = made.handle;
 		});
 		if (handle == null) return null;
+		if (id == 0) id = replay.made;
 		textureSizes.set(id, width * height * 4.0);
 		textureBytes += width * height * 4.0;
 		return {texture: new Texture(id), handle: handle};
@@ -407,9 +409,9 @@ final class Device {
 	// endFrame waits for the GPU) and on the producer not drawing into a
 	// texture this one samples (helder.story's buffers)
 	public function openShared(handle:String, width:Int, height:Int):Null<Texture> {
-		var id = ++textureIds, opened = 0;
-		answer(r -> Replay.put(r.textures, id, opened = r.impl.openShared(handle, width, height)));
-		return opened == 0 ? null : new Texture(id);
+		var id = threaded ? ++textureIds : 0, opened = 0;
+		answer(r -> r.make(r.textures, id, opened = r.impl.openShared(handle, width, height)));
+		return opened == 0 ? null : new Texture(id == 0 ? opened : id);
 	}
 
 	// the next frames drawn into t (a shared texture, or a render target of
@@ -440,7 +442,7 @@ final class Device {
 	}
 
 	public function createSampler(d:SamplerDesc):Sampler {
-		var id = ++samplerIds, c = commands;
+		var id = threaded ? ++samplerIds : 0, c = commands;
 		c.begin(Replay.CREATE_SAMPLER);
 		c.int(id);
 		c.int(d.filter == null ? Replay.NONE : cast d.filter);
@@ -448,14 +450,14 @@ final class Device {
 		c.int(d.wrap == null ? Replay.NONE : cast d.wrap);
 		c.end();
 		ran();
-		return new Sampler(id);
+		return new Sampler(id == 0 ? replay.made : id);
 	}
 
 	// throws the compiler's log when the source does not compile
 	public function createShader(d:ShaderDesc):Shader {
-		var id = ++shaderIds;
-		answer(r -> Replay.put(r.shaders, id, r.impl.createShader(d)));
-		return new Shader(id);
+		var id = threaded ? ++shaderIds : 0;
+		answer(r -> r.make(r.shaders, id, r.impl.createShader(d)));
+		return new Shader(id == 0 ? replay.made : id);
 	}
 
 	// a compute stage's pipeline (a ComputeShader's pipeline(); d.program: its
@@ -463,9 +465,9 @@ final class Device {
 	// (has(Compute))
 	public function createComputePipeline(d:ComputePipelineDesc):ComputePipeline {
 		if (!has(Compute)) throw "helder.gfx: createComputePipeline: this device has no compute stages (" + backend + ")";
-		var s = (d.shader != null ? d.shader : createShader({stage: Compute, code: d.program})).id(), id = ++computeIds;
-		answer(r -> Replay.put(r.computes, id, r.impl.createComputePipeline(Replay.at(r.shaders, s))));
-		return new ComputePipeline(id);
+		var s = (d.shader != null ? d.shader : createShader({stage: Compute, code: d.program})).id(), id = threaded ? ++computeIds : 0;
+		answer(r -> r.make(r.computes, id, r.impl.createComputePipeline(Replay.at(r.shaders, s))));
+		return new ComputePipeline(id == 0 ? replay.made : id);
 	}
 
 	// size bytes (default: the rest of dst from dstOffset) of a buffer at
@@ -490,14 +492,14 @@ final class Device {
 	// or more later by queryResult, never waited for
 	public function createQueries(count:Int):QuerySet {
 		if (count <= 0) throw "helder.gfx: createQueries: count must be positive";
-		var id = ++queryIds, c = commands;
+		var id = threaded ? ++queryIds : 0, c = commands;
 		c.begin(Replay.CREATE_QUERIES);
 		c.int(id);
 		c.int(count);
 		c.end();
 		ran();
 		if (threaded) answers.set(id, [for (_ in 0...count) -1]);
-		return new QuerySet(id);
+		return new QuerySet(id == 0 ? replay.made : id);
 	}
 
 	public function destroyQueries(q:QuerySet) {
@@ -562,10 +564,10 @@ final class Device {
 				depthFormat: d.depthFormat,
 				samples: d.samples
 			};
-		var vs = d.vertex == null ? 0 : d.vertex.id(), fs = d.fragment == null ? 0 : d.fragment.id(), id = ++pipelineIds;
+		var vs = d.vertex == null ? 0 : d.vertex.id(), fs = d.fragment == null ? 0 : d.fragment.id(), id = threaded ? ++pipelineIds : 0;
 		var layout = d.layout, topology = d.topology, cull = d.cull, blend = d.blend, depthCompare = d.depthCompare, depthWrite = d.depthWrite,
 			colorFormat = d.colorFormat, depthFormat = d.depthFormat, samples = d.samples;
-		answer(r -> Replay.put(r.pipelines, id, r.impl.createPipeline({
+		answer(r -> r.make(r.pipelines, id, r.impl.createPipeline({
 			vertex: vs == 0 ? null : new Shader(Replay.at(r.shaders, vs)),
 			fragment: fs == 0 ? null : new Shader(Replay.at(r.shaders, fs)),
 			layout: layout,
@@ -578,7 +580,7 @@ final class Device {
 			depthFormat: depthFormat,
 			samples: samples
 		})));
-		return new Pipeline(id);
+		return new Pipeline(id == 0 ? replay.made : id);
 	}
 
 	// the frame's encoder (the same object each frame); null: no frame now

@@ -88,7 +88,7 @@ class UiWindow {
 	public var onClose:Null<Void->Void>;
 	// files dropped on the window: their paths, where (points)
 	public var onDrop:Null<(files:Array<String>, x:Float, y:Float) -> Void>;
-	// after each frame is drawn
+	// after each frame is drawn and presented
 	public var onFrame:Null<Void->Void>;
 	// when set, the next frame's pixels are read into it before they are
 	// presented (RGBA8, rows top to bottom: tests and screenshots)
@@ -357,7 +357,13 @@ class UiWindow {
 		updateTextInput();
 		sendAccess();
 		syncScroll();
-		if (onFrame != null) onFrame();
+		// (presented first: what it asks of the window comes after the frame,
+		// as a Wayland compositor must see the commit of the size it
+		// configured before a fullscreen left)
+		if (onFrame != null) {
+			device.settle();
+			onFrame();
+		}
 	}
 
 	// the window's safe area in UI pixels: the Ui's, and markup's
