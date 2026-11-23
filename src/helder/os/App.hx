@@ -334,10 +334,19 @@ class App {
 	#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 	static var mainPool = Ptr.nil();
 
-	static function pushMain()
+	// (the main thread's pool of a turn, pushed and popped outside any
+	// callout: served from inside one (a WKWebView's run loop source while
+	// the main thread reads input, OsThread.nested), a pop would take the
+	// callout's own pool with it, so none is pushed there, and one pushed
+	// outside is popped at the next turn's push)
+	static function pushMain() {
+		if (OsThread.nested()) return;
+		if (!mainPool.isNull()) Runtime.objc_autoreleasePoolPop(mainPool);
 		mainPool = Runtime.objc_autoreleasePoolPush();
+	}
 
 	static function popMain() {
+		if (OsThread.nested() || mainPool.isNull()) return;
 		Runtime.objc_autoreleasePoolPop(mainPool);
 		mainPool = Ptr.nil();
 	}

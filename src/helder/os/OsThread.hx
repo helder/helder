@@ -106,8 +106,23 @@ class OsThread {
 			f();
 			return;
 		}
-		call(f, toProgram, programWake, toMain, mainWake);
+		nest++;
+		try
+			call(f, toProgram, programWake, toMain, mainWake)
+		catch (e:haxe.Exception) {
+			nest--;
+			throw e;
+		}
+		nest--;
 	}
+
+	// whether the main thread serves the program from inside a call of its
+	// own to it (back: a system's callout, a run loop source's, under it):
+	// an autorelease pool pushed outside that callout is not popped there
+	@:noCompletion public static function nested():Bool
+		return nest > 0;
+
+	static var nest = 0;
 
 	// loop on a thread of its own while the main thread serves it, until it returns
 	public static function start(loop:Void->Void) {
