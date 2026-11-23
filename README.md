@@ -112,6 +112,17 @@ ads and analytics.
   favourites); the viewer as a file browser on them (a sidebar tree, a
   grid or list of a folder of any size, previews), in the system's font.
 
+**Software rendering**: helder.gfx on the CPU, faster than Mesa's
+llvmpipe, with no GPU stack: the shaders are Haxe functions that already
+run on the CPU, compiled ahead of time, so nothing needs a JIT. First
+helder.ui's display list replayed through helder.canvas (headless runs and
+UI goldens without GL or Mesa), then a CPU back end beside Metal, D3D11,
+GL and WebGPU under the same Device and Encoder (rasterizing, depth and
+stencil, blending, sampling, compressed textures, MSAA), then speed:
+shaders on groups of pixels with SIMD and tiles in parallel over
+helder.jobs, the Parallel item's machinery. Goldens the same on every
+machine, static binaries that render, lighter CI.
+
 **Video**: video and audio playback on the systems' own decoders, nothing
 bundled: MP4/MOV and WebM/Matroska read in Haxe, so a file plays the same
 everywhere; decoded by VideoToolbox and AVFoundation, MediaCodec, Media
