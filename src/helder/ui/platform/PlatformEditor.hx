@@ -20,4 +20,6 @@ interface PlatformEditor {
 	// the keyboard's focus given (true) or taken back for the drawn tree (false)
 	function focus(on:Bool):Void;
 	function dispose():Void;
+	// (its view in the system's layer tree, where the window's layers are the system's (null: placed by place))
+	function slot():Null<helder.ui.LayerSlot>;
 }

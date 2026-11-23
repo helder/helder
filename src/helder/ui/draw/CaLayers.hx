@@ -13,43 +13,43 @@ import sys.thread.Mutex;
 // compositor's alike, is composed from the compositor's state
 // (CompositeFrame) and split into layers in paint order: the window's
 // CAMetalLayer at the bottom; a CAMetalLayer of its own for each top-level
-// scroller's content, under a CALayer masking to the scroller's clip (whole
-// pixels, square: a rounded clip's corners are UiShader's, which Core
-// Animation's would not match, so that scroller stays drawn), and for each
-// top-level layer that moves on its own (helder.ui.Mover: of no scroller,
-// nothing nested moving, its clips its own); over each of those, a
-// CAMetalLayer of what is drawn over it (only what overlaps it, or what
-// overlaps that: the rest stays below, so a scrollbar is the layer over its
-// list, not the window's whole). A layer is drawn again only where its
-// quads, its size or what it samples (CompositeFrame.fresh) changed: a
-// scroll moves its content's layer and a mover's transform and opacity are
-// its layer's, so neither draws. Each frame is one transaction: what it
-// drew presented with it (presentsWithTransaction), the layers placed, the
-// native views over its scrollers moved (where they move, on the main
-// thread, an NSView's and a UIView's; on the render thread otherwise, the
-// layers being ours), in order. A layer is drawn as the compositor draws
-// (UiShader, its quads moved to the layer's pixels by whole pixels: the
-// same pixels), single-sampled, onto a clear target, and blended by the
-// system over what is under it, so the pixels are the textured
-// compositor's within a level where translucent things meet. On iOS the
-// content's layer follows its UIScrollView on the main thread as UIKit
-// moves it (scrolled). HELDER_SYSTEM_LAYERS=0 keeps the window's one
-// CAMetalLayer and the textured compositor; frames read back (a window's
-// capture, headless runs, screenshots, golden images) never use these.
+// scroller's content, under a CALayer clipping to the scroller's clip
+// (whole pixels; a rounded one masked by its coverage, drawn by UiShader:
+// mask), and for each top-level layer that moves on its own
+// (helder.ui.Mover: of no scroller, nothing nested moving, its clips its
+// own); each node's system layer (LayerSlot: a CALayer, or a native view
+// in its host, CaViews) at its place, in its scroller's clip or one of its
+// own; over each of those, a CAMetalLayer of what is drawn over it (only
+// what overlaps it, or what overlaps that: the rest stays below, so a
+// scrollbar is the layer over its list, not the window's whole). A layer
+// is drawn again only where its quads, its size or what it samples
+// (CompositeFrame.fresh) changed: a scroll moves its content's layer and a
+// mover's transform and opacity are its layer's, so neither draws. A frame
+// that changes the tree is one transaction: what it drew presented with it
+// (presentsWithTransaction), the layers and views placed, on the main
+// thread where views are in it (an NSView's, a UIView's), else on the
+// render thread; one that only draws presents at once, waiting for no
+// transaction, and one split into the window's layer alone (a scene over
+// the window) is the textured compositor's (single), as costly as it is.
+// A layer is drawn as the compositor draws (UiShader, its quads moved to
+// the layer's pixels by whole pixels: the same pixels), single-sampled,
+// onto a clear target, and blended by the system over what is under it, so
+// the pixels are the textured compositor's within a level where
+// translucent things meet. Nothing NaN or infinite reaches Core Animation,
+// which throws at it (fine). On iOS the content's layer and what is in it
+// follow its UIScrollView on the main thread as UIKit moves it (scrolled).
+// HELDER_SYSTEM_LAYERS=0 keeps the window's one CAMetalLayer and the
+// textured compositor; frames read back (a window's capture, headless
+// runs, screenshots, golden images) never use these.
 @:hxmc.unsafe(gc)
 @:access(helder.ui.draw.CompositeFrame)
 @:access(helder.ui.Node)
 class CaLayers {
-	// (opt-in on iOS for now, HELDER_SYSTEM_LAYERS=1: a game's full-window
-	// scene there, little-skies on the simulator, went from 5.6 to 18 ms a
-	// frame with them; on by default on macOS)
-	public static function wanted(device:Device):Bool {
-		var env = Sys.getEnv("HELDER_SYSTEM_LAYERS");
-		if (env == "0" || hxmc.Platform.apple() >= 1 && env != "1" && env != "flat") return false;
-		return device.backend == Metal && device.surface.kind == Cocoa;
-	}
+	public static function wanted(device:Device):Bool
+		return Sys.getEnv("HELDER_SYSTEM_LAYERS") != "0" && device.backend == Metal && device.surface.kind == Cocoa;
 
 	final root:Ptr; // the window's CAMetalLayer
+	final view:Ptr; // its view
 	var stack = Ptr.nil(); // over its contents, the layers in order
 	final ios:Bool;
 	// (the display's period: commits no closer)
@@ -103,6 +103,7 @@ class CaLayers {
 
 	public function new(device:Device) {
 		root = device.surface.display;
+		view = device.surface.handle;
 		ios = hxmc.Platform.apple() >= 1;
 		var fps = helder.os.OsThread.get(() -> {
 			var v = device.surface.handle, s = ios ? Msg.id(ObjC.cls("UIScreen"), ObjC.sel("mainScreen")) : Msg.id(Msg.id(v, ObjC.sel("window")), ObjC.sel("screen"));
@@ -111,6 +112,22 @@ class CaLayers {
 		period = 1 / (fps > 0 ? fps : 60);
 		base = new Plane(BASE, null);
 		base.layer = root;
+	}
+
+	// whether the nodes' system layers and views go in the tree (not flat's)
+	public static function slots():Bool
+		return !flat;
+
+	// whether the last frame split into the window's layer alone: the
+	// frames are then drawn and presented as the textured compositor's, a
+	// scene covering the window costing what it costs there (nothing to
+	// compose again, no other drawable, no transaction)
+	public var single(default, null) = false;
+
+	// (a frame drawn onto the window's layer: split, whether the next is single)
+	public function check(f:CompositeFrame) {
+		if (f.buffers.length == 0 || f.pipeline == null) return;
+		if (split != adopted || splitFrame != f) splitUp(f);
 	}
 
 	// (a new frame of the program's: split again)
@@ -178,10 +195,20 @@ class CaLayers {
 		var fresh = consumed != adopted ? f.fresh : null;
 		consumed = adopted;
 		var cs = Msg.f(root, S.contentsScale), ops:Array<Void->Void> = [];
-		var b = f.buffers[ring = (ring + 1) % f.buffers.length], at = 0;
+		var b = f.buffers[ring = (ring + 1) % f.buffers.length], at = 0, toDraw:Array<Plane> = [];
 		CATransaction.begin();
 		for (p in order) {
 			if (p == null) continue;
+			// (a system layer: its clip and its mask; placed by geometry)
+			if (p.kind == SLOT) {
+				p.makeSlot(cs, ops);
+				if (at + CompositeFrame.STRIDE <= f.capacity && mask(r, mb, f, p, b, at, ops)) at += CompositeFrame.STRIDE;
+				continue;
+			}
+			for (sp in p.slots) {
+				sp.makeSlot(cs, ops);
+				if (at + CompositeFrame.STRIDE <= f.capacity && mask(r, mb, f, sp, b, at, ops)) at += CompositeFrame.STRIDE;
+			}
 			if (p.kind == BASE) p.place(0, 0, f.width, f.height) else p.fit();
 			if (p.quads.length == 0 && p.kind != BASE) {
 				p.show(false, ops);
@@ -189,33 +216,107 @@ class CaLayers {
 			}
 			p.show(true, ops);
 			p.make(root, cs, ops);
-			if (!p.local(out, quadTextures, fresh)) continue;
-			if (at + p.len <= f.capacity && draw(r, mb, f, p, b, at)) {
+			if (p.kind == SCROLL && at + CompositeFrame.STRIDE <= f.capacity && mask(r, mb, f, p, b, at, ops)) at += CompositeFrame.STRIDE;
+			if (p.local(out, quadTextures, fresh)) toDraw.push(p);
+		}
+		var views = geometry(f, now, cs, ops);
+		for (g in gone)
+			ops.push(g);
+		gone.resize(0);
+		// (nothing of the tree changes: what is drawn presented at once, as
+		// the window's frames are, waiting for no transaction)
+		lock.acquire();
+		var direct = ops.length == 0 && moves.length == 0 && !views && pending == 0;
+		lock.release();
+		for (p in toDraw) {
+			p.presenting(!direct);
+			if (at + p.len <= f.capacity && draw(r, mb, f, p.layer, p.bytes, p.len, p.runs, p.runTextures, p.kind == BASE, b, at, direct)) {
 				at += p.len;
 				drawnTotal++;
 				quadsTotal += p.quads.length;
 			} else
 				p.invalidate();
 		}
-		geometry(f, now, cs, ops);
-		for (g in gone)
-			ops.push(g);
-		gone.resize(0);
 		CATransaction.commit();
 		var presents = mb.takePresents();
-		// (one commit a period: the display's pace where nothing waited for a drawable)
+		// (one commit a period where nothing waited for a drawable: the display's pace)
 		var wait = committed + period * 0.9 - haxe.Timer.stamp();
-		if (wait > 0) Sys.sleep(wait);
-		commit(ops, presents, moves);
+		if (wait > 0 && toDraw.length == 0) Sys.sleep(wait);
+		if (ops.length > 0 || presents.length > 0 || moves.length > 0) commit(ops, presents, moves, views);
 		committed = haxe.Timer.stamp();
 		frames++;
 		Runtime.objc_autoreleasePoolPop(pool);
+		// (the window's layer alone from now: the next frames drawn onto it as the textured compositor draws)
+		if (single) suspend();
 	}
 
-	// (p's quads drawn onto its layer's next drawable, at buffer b's offset at)
-	function draw(r:Replay, mb:MetalBackend, f:CompositeFrame, p:Plane, b:Buffer, at:Int):Bool {
+	// (a rounded scroller's mask: its clip's coverage, as UiShader clips the
+	// content the layer has whole, drawn by UiShader (a white quad under that
+	// clip) so that the corners are its own; only its corners and a pixel
+	// between them, the middle stretched (contentsCenter, nearest): its
+	// edges and middle are whole pixels of 1. Drawn again when its size,
+	// radii or scale change)
+	function mask(r:Replay, mb:MetalBackend, f:CompositeFrame, p:Plane, b:Buffer, at:Int, ops:Array<Void->Void>):Bool {
+		var rr = p.radii, big = Math.max(Math.max(rr[0], rr[1]), Math.max(rr[2], rr[3]));
+		if (big <= 1e-3 || p.kind == SLOT && !p.slot.view && p.attached >= 0) {
+			p.unmask(ops);
+			return false;
+		}
+		// (the corners' radii are capped by the clip's half sizes: a stretched
+		// axis keeps a half over every radius, so the coverage there is the same)
+		var w = p.cx1 - p.cx0, h = p.cy1 - p.cy0, m = Math.ceil(big) + 1, sw = Math.min(w, 2 * m + 1), sh = Math.min(h, 2 * m + 1);
+		if (!p.masking(root, sw, sh, w, h, m, ops)) return false;
+		var q = maskQuad;
+		writeMask(q, sw, sh, rr);
+		maskRuns[0] = 0;
+		maskRuns[1] = 1;
+		if (draw(r, mb, f, p.maskLayer, q, CompositeFrame.STRIDE, maskRuns, maskTextures, false, b, at)) return true;
+		p.maskStale = true;
+		return false;
+	}
+
+	final maskQuad = Bytes.alloc(CompositeFrame.STRIDE);
+	final maskRuns = [0, 1];
+	final maskTextures:Array<Null<Texture>> = [null];
+
+	// (UiShader's quad of white over w x h pixels, clipped to them with corners' radii r)
+	static function writeMask(b:Bytes, w:Float, h:Float, r:Array<Float>) {
+		b.fill(0, b.length, 0);
+		inline function corner(at:Int, x:Float, y:Float) {
+			b.setFloat(at, x / w * 2 - 1);
+			b.setFloat(at + 4, 1 - y / h * 2);
+			b.setFloat(at + 8, x);
+			b.setFloat(at + 12, y);
+		}
+		corner(0, -1, -1);
+		corner(16, w + 1, -1);
+		corner(32, -1, h + 1);
+		b.setFloat(64, w / 2);
+		b.setFloat(68, h / 2);
+		b.setFloat(72, w / 2 + 1);
+		b.setFloat(76, h / 2 + 1);
+		for (i in 0...4)
+			b.setFloat(80 + i * 4, 1);
+		b.setFloat(168, w);
+		b.setFloat(172, h);
+		for (i in 0...4)
+			b.setFloat(176 + i * 4, r[i]);
+		var cx = w / 2, cy = h / 2, ix = Math.ffloor(cx), iy = Math.ffloor(cy);
+		b.setFloat(192, ix);
+		b.setFloat(196, iy);
+		b.setFloat(200, cx - ix);
+		b.setFloat(204, cy - iy);
+		b.setFloat(208, -1e9);
+		b.setFloat(212, -1e9);
+		b.setFloat(216, 1e9);
+		b.setFloat(220, 1e9);
+	}
+
+	// (quads drawn onto a layer's next drawable, at buffer b's offset at)
+	function draw(r:Replay, mb:MetalBackend, f:CompositeFrame, layer:Ptr, bytes:Bytes, len:Int, runs:Array<Int>, runTextures:Array<Null<Texture>>,
+			opaque:Bool, b:Buffer, at:Int, direct = false):Bool {
 		var c = commands;
-		mb.planeFrame(p.layer);
+		mb.planeFrame(layer, direct);
 		c.clear();
 		c.begin(Replay.BEGIN_FRAME);
 		c.end();
@@ -225,9 +326,9 @@ class CaLayers {
 		c.begin(Replay.WRITE_BUFFER);
 		c.int(b.id());
 		c.int(at);
-		c.bytes(p.bytes, 0, p.len);
+		c.bytes(bytes, 0, len);
 		c.end();
-		var bg = f.background, opaque = p.kind == BASE;
+		var bg = f.background;
 		c.begin(Replay.BEGIN_PASS);
 		c.int(1);
 		c.int(cast LoadOp.Clear);
@@ -245,13 +346,13 @@ class CaLayers {
 		three(Replay.SET_INDEX_BUFFER, f.indices.id(), cast IndexFormat.UInt32, 0, 3);
 		three(Replay.SET_TEXTURE, f.atlasSlot, f.atlas.id(), f.sampler.id(), 3);
 		var k = 0;
-		while (k < p.runs.length) {
-			var t = p.runTextures[k >> 1];
+		while (k < runs.length) {
+			var t = runTextures[k >> 1];
 			three(Replay.SET_TEXTURE, f.imageSlot, (t == null ? f.blank : t).id(), f.sampler.id(), 3);
-			three(Replay.SET_VERTEX_BUFFER, 1, b.id(), at + p.runs[k] * CompositeFrame.STRIDE, 3);
+			three(Replay.SET_VERTEX_BUFFER, 1, b.id(), at + runs[k] * CompositeFrame.STRIDE, 3);
 			c.begin(Replay.DRAW_INDEXED);
 			c.int(6);
-			c.int(p.runs[k + 1]);
+			c.int(runs[k + 1]);
 			c.int(0);
 			c.int(0);
 			c.end();
@@ -276,15 +377,25 @@ class CaLayers {
 	}
 
 	// (where the layers go now: a scroller's content by its offset, a
-	// mover's by its transform and opacity sampled; the layers' order)
-	function geometry(f:CompositeFrame, now:Array<Float>, cs:Float, ops:Array<Void->Void>) {
+	// mover's by its transform and opacity sampled, a system layer by its
+	// scroller's and its mover's; the layers' order, a view's host between
+	// those under it and those over it (CaViews): whether a view is in it)
+	function geometry(f:CompositeFrame, now:Array<Float>, cs:Float, ops:Array<Void->Void>):Bool {
 		var s = f.scale;
+		var sb = Msg.rect(root, S.bounds), sw = sb.size.width, sh = sb.size.height;
 		for (u in units) {
+			if (u.kind == SLOT) {
+				slotAt(f, u, null, now, cs, sh, ops);
+				continue;
+			}
 			if (u.quads.length == 0) continue;
 			if (u.kind == SCROLL) {
 				var k = u.index, dx = (f.offsets[2 * k] - now[2 * k]) * s, dy = (f.offsets[2 * k + 1] - now[2 * k + 1]) * s;
 				u.clipTo(u.cx0 / cs, u.cy0 / cs, (u.cx1 - u.cx0) / cs, (u.cy1 - u.cy0) / cs, ops);
-				u.move((u.ox - u.cx0 + dx) / cs, (u.oy - u.cy0 + dy) / cs, 1, 0, 0, 1, 1, cs, ops);
+				u.move(u.geomX = (u.ox - u.cx0 + dx) / cs, u.geomY = (u.oy - u.cy0 + dy) / cs, 1, 0, 0, 1, 1, cs, ops);
+				for (sp in u.slots)
+					slotAt(f, sp, u, now, cs, sh, ops);
+				u.inClip(ops);
 			} else {
 				var m = f.heldMoved, q = u.index * 7, a = m[q], b = m[q + 1], c = m[q + 2], d = m[q + 3];
 				var px = u.ox / cs, py = u.oy / cs;
@@ -293,11 +404,31 @@ class CaLayers {
 		}
 		for (p in order)
 			if (p != null && p.kind == OVER && p.quads.length > 0) p.move(p.ox / cs, p.oy / cs, 1, 0, 0, 1, 1, cs, ops);
-		var list = [for (i in 1...order.length) if (order[i] != null && order[i].made()) order[i].top()];
-		var same = list.length == shownOrder.length;
+		// (in order, split at each view: the layers under it, then those over it, up to the next)
+		var segments:Array<Array<Ptr>> = [[]], hosts:Array<Ptr> = [], hits:Array<Array<Float>> = [];
+		for (i in 1...order.length) {
+			var p = order[i];
+			if (p == null) continue;
+			if (p.kind == SLOT && p.slot.view) {
+				hosts.push(p.slot.handle);
+				segments.push([]);
+				hits.push([]);
+				continue;
+			}
+			if (!p.made()) continue;
+			segments[segments.length - 1].push(p.top());
+			if (hits.length > 0) p.hits(hits[hits.length - 1], cs);
+			for (sp in p.slots)
+				if (sp.slot.view) {
+					hosts.push(sp.slot.handle);
+					segments.push([]);
+					hits.push([]);
+				}
+		}
+		var list = [for (g in segments) for (l in g) l].concat(hosts), same = list.length == shownOrder.length && segments.length == shownSegments;
 		if (same) for (i in 0...list.length)
 			if (list[i] != shownOrder[i]) same = false;
-		var sb = Msg.rect(root, S.bounds), sw = sb.size.width, sh = sb.size.height, st = stack;
+		var st = stack;
 		if (hiddenStack && !st.isNull()) {
 			hiddenStack = false;
 			ops.push(() -> Msg.vBool(st, ObjC.sel("setHidden:"), false));
@@ -310,25 +441,103 @@ class CaLayers {
 			var r = root;
 			ops.push(() -> CaMsg.vPtrInt(r, ObjC.sel("insertSublayer:atIndex:"), st, 0));
 		}
-		ops.push(() -> {
-			CaLayers.setPoint(st, S.setPosition, 0, 0);
-			CaLayers.setRect(st, S.setBounds, 0, 0, sw, sh);
-		});
-		if (!same) {
-			shownOrder = list;
+		if (sw != stackW || sh != stackH) {
+			stackW = sw;
+			stackH = sh;
 			ops.push(() -> {
-				var a = Msg.id(ObjC.cls("NSMutableArray"), ObjC.sel("array"));
-				for (l in list)
-					Msg.vPtr(a, ObjC.sel("addObject:"), l);
-				Msg.vPtr(st, ObjC.sel("setSublayers:"), a);
+				CaLayers.setPoint(st, S.setPosition, 0, 0);
+				CaLayers.setRect(st, S.setBounds, 0, 0, sw, sh);
 			});
 		}
+		// (the views: an over view for each host, sized, what it takes presses on; main thread)
+		var views = hosts.length > 0 || overViews > 0, n = hosts.length;
+		if (views) {
+			overViews = n;
+			ops.push(() -> {
+				var v = cocoaViews();
+				v.ensure(n);
+				v.size(sw, sh);
+				for (i in 0...n)
+					v.hitsOf(i, hits[i]);
+			});
+		}
+		if (!same) {
+			shownOrder = list;
+			shownSegments = segments.length;
+			ops.push(() -> {
+				var v = views ? cocoaViews() : null;
+				for (i in 0...segments.length) {
+					var a = Msg.id(ObjC.cls("NSMutableArray"), ObjC.sel("array"));
+					for (l in segments[i])
+						Msg.vPtr(a, ObjC.sel("addObject:"), l);
+					Msg.vPtr(i == 0 ? st : v.stacks[i - 1], ObjC.sel("setSublayers:"), a);
+				}
+				if (v != null) v.arrange(hosts);
+			});
+		}
+		return views;
 	}
 
+	var shownSegments = 1;
+	var overViews = 0;
+	// (the main thread's)
+	var caViews:Null<CaViews> = null;
+
+	function cocoaViews():CaViews {
+		if (caViews == null) caViews = new CaViews(view);
+		return caViews;
+	}
+
+	// (system layer p where it is now: at its box as drawn, moved by its
+	// scroller's offsets and its mover's change as sampled, under its clip
+	// (its scroller's, in: the unit it is in, its clip that one's), points)
+	function slotAt(f:CompositeFrame, p:Plane, in_:Null<Plane>, now:Array<Float>, cs:Float, sh:Float, ops:Array<Void->Void>) {
+		var d = f.slotData, o = p.index * CompositeFrame.SLOT, s = f.scale;
+		var fr = Std.int(d[o + 2]), c = Std.int(d[o + 3]), m = Std.int(d[o + 4]);
+		var ax = d[o + 6], ay = d[o + 7], bx = d[o + 8], by = d[o + 9], qx = d[o + 10], qy = d[o + 11], alpha = 1.0;
+		if (m >= 0) {
+			var mv = f.moved, k = m * 7;
+			inline function tx(x:Float, y:Float):Float
+				return mv[k] * x + mv[k + 2] * y + mv[k + 4];
+			inline function ty(x:Float, y:Float):Float
+				return mv[k + 1] * x + mv[k + 3] * y + mv[k + 5];
+			var nax = tx(ax, ay), nay = ty(ax, ay), nbx = tx(bx, by), nby = ty(bx, by), nqx = tx(qx, qy), nqy = ty(qx, qy);
+			ax = nax;
+			ay = nay;
+			bx = nbx;
+			by = nby;
+			qx = nqx;
+			qy = nqy;
+			alpha = mv[k + 6];
+		}
+		inline function snapped(v:Float):Float
+			return f.snap ? Math.fround(v) : v;
+		var dx = fr >= 0 ? snapped(f.shift(fr, now, true) * s) : 0.0, dy = fr >= 0 ? snapped(f.shift(fr, now, false) * s) : 0.0;
+		var cx0 = p.cx0, cy0 = p.cy0, cx1 = p.cx1, cy1 = p.cy1;
+		if (in_ == null && c >= 0) {
+			var ex = snapped(f.shift(c, now, true) * s), ey = snapped(f.shift(c, now, false) * s);
+			cx0 += ex;
+			cy0 += ey;
+			cx1 += ex;
+			cy1 += ey;
+		}
+		// (a window's clip: the window)
+		cx0 = Math.max(cx0, -1e6);
+		cy0 = Math.max(cy0, -1e6);
+		cx1 = Math.min(cx1, 1e6);
+		cy1 = Math.min(cy1, 1e6);
+		var w = Math.sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay)), h = Math.sqrt((qx - ax) * (qx - ax) + (qy - ay) * (qy - ay));
+		if (!(w > 0) || !(h > 0) || !fine(w) || !fine(h)) return;
+		var a = (bx - ax) / w, b = (by - ay) / w, cc = (qx - ax) / h, dd = (qy - ay) / h;
+		var x = (ax + dx - cx0) / cs, y = (ay + dy - cy0) / cs;
+		var hw = (cx1 - cx0) / cs, hh = (cy1 - cy0) / cs;
+		if (in_ == null && !p.slot.view) p.clipTo(cx0 / cs, cy0 / cs, hw, hh, ops);
+		p.placeSlot(x, y, w / cs, h / cs, a, b, cc, dd, alpha, cx0 / cs, ios ? cy0 / cs : sh - cy1 / cs, hw, hh, ops);
+	}
 	// (the frame's changes in one transaction: here, the layers being ours,
 	// or on the main thread where a native view moves with them, and after
 	// it while one runs there)
-	function commit(ops:Array<Void->Void>, presents:Array<Ptr>, moves:Array<Void->Void>) {
+	function commit(ops:Array<Void->Void>, presents:Array<Ptr>, moves:Array<Void->Void>, views:Bool) {
 		function apply() {
 			var pool = Runtime.objc_autoreleasePoolPush();
 			CATransaction.begin();
@@ -344,7 +553,7 @@ class CaLayers {
 			Runtime.objc_autoreleasePoolPop(pool);
 		}
 		lock.acquire();
-		var main = moves.length > 0 || pending > 0;
+		var main = moves.length > 0 || views || pending > 0;
 		if (main) pending++;
 		lock.release();
 		if (!main) {
@@ -365,11 +574,17 @@ class CaLayers {
 	public function scrolled(n:Node, x:Float, y:Float) {
 		if (!ios) return;
 		lock.acquire();
-		var p = contents.get(n), busy = pending > 0;
+		var p = contents.get(n), busy = pending > 0, follow = p == null ? [] : p.follow;
 		lock.release();
 		if (p == null || busy || p.layer.isNull()) return;
 		var dx = (p.drawnX - x) * p.scale, dy = (p.drawnY - y) * p.scale;
-		p.move((p.ox - p.cx0 + dx) / p.cs, (p.oy - p.cy0 + dy) / p.cs, 1, 0, 0, 1, 1, p.cs, null);
+		var nx = (p.ox - p.cx0 + dx) / p.cs, ny = (p.oy - p.cy0 + dy) / p.cs;
+		p.move(nx, ny, 1, 0, 0, 1, 1, p.cs, null);
+		if (follow.length == 0) return;
+		CATransaction.begin();
+		for (sp in follow)
+			sp.shiftSlot(nx - p.geomX, ny - p.geomY);
+		CATransaction.commit(false);
 	}
 
 	// the window's own frames drawn onto its layer for now (a frame read
@@ -399,6 +614,8 @@ class CaLayers {
 	}
 
 	var hiddenStack = false;
+	var stackW = -1.0;
+	var stackH = -1.0;
 
 	// the layers gone, the window's own frames shown as before (on the
 	// render thread, in order; after the main thread's commits still to run)
@@ -452,23 +669,23 @@ class CaLayers {
 		var cands = nf + nm, first = [for (_ in 0...cands) -1], last = [for (_ in 0...cands) -1], count = [for (_ in 0...cands) 0];
 		var ok = [for (c in 0...cands) c < nf ? f.parents[c] < 0 : f.moverParent(c - nf) < 0 && f.moverData[(c - nf) * CompositeFrame.MOVER + 2] == 0
 			&& f.moverData[(c - nf) * CompositeFrame.MOVER + 1] < 0];
-		// (a scroller's clip: x0, y0, x1, y1, set once seen)
-		var clips = [for (_ in 0...cands * 4) 0.0], clipped = [for (_ in 0...cands) false], why = [for (_ in 0...cands) ""];
+		// (a scroller's clip: x0, y0, x1, y1, its corners' radii, set once seen)
+		var clips = [for (_ in 0...cands * 8) 0.0], clipped = [for (_ in 0...cands) false], why = [for (_ in 0...cands) ""];
 		inline function clipOf(c:Int, x0:Float, y0:Float, x1:Float, y1:Float, r0:Float, r1:Float, r2:Float, r3:Float) {
-			if (r0 > 1e-3 || r1 > 1e-3 || r2 > 1e-3 || r3 > 1e-3 || !whole(x0) || !whole(y0) || !whole(x1) || !whole(y1) || x1 <= x0 || y1 <= y0) {
-				if (ok[c]) why[c] = 'clip $x0 $y0 $x1 $y1 radii $r0 $r1 $r2 $r3';
+			var k = 8 * c;
+			if (!whole(x0) || !whole(y0) || !whole(x1) || !whole(y1) || x1 <= x0 || y1 <= y0) {
+				if (ok[c]) why[c] = 'clip $x0 $y0 $x1 $y1';
 				ok[c] = false;
-			}
-			else if (!clipped[c]) {
+			} else if (!clipped[c]) {
 				clipped[c] = true;
-				clips[4 * c] = x0;
-				clips[4 * c + 1] = y0;
-				clips[4 * c + 2] = x1;
-				clips[4 * c + 3] = y1;
-			} else if (Math.abs(clips[4 * c] - x0) > 1e-3 || Math.abs(clips[4 * c + 1] - y0) > 1e-3 || Math.abs(clips[4 * c + 2] - x1) > 1e-3
-				|| Math.abs(clips[4 * c + 3] - y1) > 1e-3) {
-				if (ok[c]) why[c] = 'clips ${clips.slice(4 * c, 4 * c + 4)} and $x0 $y0 $x1 $y1';
-				ok[c] = false;
+				for (j => v in [x0, y0, x1, y1, r0, r1, r2, r3])
+					clips[k + j] = v;
+			} else {
+				var same = true;
+				for (j => v in [x0, y0, x1, y1, r0, r1, r2, r3])
+					if (Math.abs(clips[k + j] - v) > 1e-3) same = false;
+				if (!same && ok[c]) why[c] = 'clips ${clips.slice(k, k + 8)} and $x0 $y0 $x1 $y1 $r0 $r1 $r2 $r3';
+				if (!same) ok[c] = false;
 			}
 		}
 		var quadCand = [for (_ in 0...n) -1], groupCand = [for (_ in 0...f.groups.length) -1];
@@ -478,8 +695,24 @@ class CaLayers {
 			last[c] = item;
 			count[c]++;
 		}
+		// (the nodes' system layers: the item each is before, its scroller's
+		// candidate; one in a mover moves as sampled, so that one is drawn)
+		var ns = f.slots.length, sd = f.slotData, SD = CompositeFrame.SLOT, si = 0;
+		var slotItem = [for (_ in 0...ns) 0], slotCand = [for (_ in 0...ns) -1];
+		function slotsTo(i:Int, g:Int)
+			while (si < ns && (sd[si * SD] < i || sd[si * SD] == i && sd[si * SD + 1] <= g)) {
+				var o = si * SD, fr = Std.int(sd[o + 2]), m = Std.int(sd[o + 4]);
+				slotItem[si] = item;
+				if (m >= 0) {
+					var k = nf + topMover(m);
+					if (ok[k]) why[k] = "a system layer";
+					ok[k] = false;
+				} else if (fr >= 0) slotCand[si] = top[fr];
+				si++;
+			}
 		for (i in 0...n + 1) {
 			while (g < f.groups.length && f.groups[g] == i) {
+				slotsTo(i, g);
 				var o = g * CompositeFrame.GROUP, fr = Std.int(f.groupData[o]), c = Std.int(f.groupData[o + 1]);
 				var k = top[fr];
 				groupCand[g] = k;
@@ -491,6 +724,7 @@ class CaLayers {
 				item++;
 				g++;
 			}
+			slotsTo(i, g);
 			if (i == n) break;
 			var fr = f.content[i], m = f.mover[i], c = f.clip[i], q = i * S;
 			if (fr >= 0) {
@@ -518,9 +752,26 @@ class CaLayers {
 				ok[c] = false;
 			}
 		reasons = [for (c in 0...nf) if (!ok[c] && f.parents[c] < 0) why[c]];
-		// (the units in paint order, their layers kept by their keys)
+		// (the units in paint order, their layers kept by their keys: the
+		// scrollers' and movers' on layers of their own, the system layers
+		// in none of theirs; one before an item before it)
 		var ids = [for (c in 0...cands) if (ok[c] && !flat) c];
-		ids.sort((a, b) -> first[a] - first[b]);
+		// (a system layer in a scroller of a layer of its own, under its clip: in that one's)
+		var attachedTo = [for (s in 0...ns) {
+			var k = slotCand[s], o = s * SD, c = Std.int(sd[o + 3]), at = -1;
+			if (!flat && k >= 0 && ok[k] && (c < 0 || top[c] != k)) {
+				at = k;
+				for (j in 0...8)
+					if (Math.abs(sd[o + 12 + j] - clips[8 * k + j]) > 1e-3) at = -1;
+			}
+			at;
+		}];
+		var entries = ids.copy();
+		if (!flat) for (s in 0...ns)
+			if (attachedTo[s] < 0) entries.push(-1 - s);
+		inline function startOf(e:Int):Float
+			return e >= 0 ? first[e] : slotItem[-1 - e] - 0.5;
+		entries.sort((a, b) -> startOf(a) < startOf(b) ? -1 : startOf(a) > startOf(b) ? 1 : 0);
 		units.resize(0);
 		free.resize(nf);
 		for (k in 0...nf)
@@ -533,17 +784,42 @@ class CaLayers {
 		contents.clear();
 		lock.release();
 		var keep = new haxe.ds.ObjectMap<Dynamic, Bool>();
-		for (c in ids) {
+		function slotPlane(s:Int):Plane {
+			var sl = f.slots[s], p = kept.get(sl);
+			if (p == null) kept.set(sl, p = new Plane(SLOT, sl));
+			keep.set(sl, true);
+			p.slot = sl;
+			p.index = s;
+			p.attached = -1;
+			p.scale = f.scale;
+			return p;
+		}
+		for (e in entries) {
+			if (e < 0) {
+				var p = slotPlane(-1 - e), o = (-1 - e) * SD;
+				p.cx0 = sd[o + 12];
+				p.cy0 = sd[o + 13];
+				p.cx1 = sd[o + 14];
+				p.cy1 = sd[o + 15];
+				for (j in 0...4)
+					p.radii[j] = sd[o + 16 + j];
+				units.push(p);
+				continue;
+			}
+			var c = e;
 			var key:Dynamic = c < nf ? f.nodes[c] : f.movers[c - nf];
 			var p = kept.get(key);
 			if (p == null) kept.set(key, p = new Plane(c < nf ? SCROLL : MOVER, key));
 			keep.set(key, true);
 			p.index = c < nf ? c : c - nf;
+			p.slots.resize(0);
 			if (c < nf) {
-				p.cx0 = clips[4 * c];
-				p.cy0 = clips[4 * c + 1];
-				p.cx1 = clips[4 * c + 2];
-				p.cy1 = clips[4 * c + 3];
+				p.cx0 = clips[8 * c];
+				p.cy0 = clips[8 * c + 1];
+				p.cx1 = clips[8 * c + 2];
+				p.cy1 = clips[8 * c + 3];
+				for (j in 0...4)
+					p.radii[j] = clips[8 * c + 4 + j];
 				p.drawnX = f.offsets[2 * c];
 				p.drawnY = f.offsets[2 * c + 1];
 				p.scale = f.scale;
@@ -555,6 +831,23 @@ class CaLayers {
 			unitOf[c] = units.length;
 			units.push(p);
 		}
+		for (s in 0...ns)
+			if (attachedTo[s] >= 0) {
+				var p = slotPlane(s), u = units[unitOf[attachedTo[s]]];
+				p.attached = unitOf[attachedTo[s]];
+				p.cx0 = u.cx0;
+				p.cy0 = u.cy0;
+				p.cx1 = u.cx1;
+				p.cy1 = u.cy1;
+				for (j in 0...4)
+					p.radii[j] = u.radii[j];
+				u.slots.push(p);
+			}
+		lock.acquire();
+		for (u in units)
+			u.follow = u.slots.copy();
+		lock.release();
+		single = units.length == 0 && !flat;
 		for (k in 0...nf)
 			free[k] = unitOf[top[k]] >= 0;
 		for (key in [for (k in kept.keys()) k])
@@ -580,10 +873,19 @@ class CaLayers {
 		// display's colours, not quite as UiShader does. What moves (a
 		// thumb, a scroller's content or a mover's that is not a unit's)
 		// is bounded by its clip where that stays, else overlaps everything)
-		var unitStart = [for (u in 0...units.length) first[ids[u]]];
+		var unitStart = [for (u in 0...units.length) startOf(entries[u])];
 		var unitBox = [for (u in 0...units.length) {
-			var c = ids[u];
-			c < nf ? [clips[4 * c], clips[4 * c + 1], clips[4 * c + 2], clips[4 * c + 3]] : [-1e9, -1e9, 1e9, 1e9];
+			var c = entries[u];
+			if (c >= 0) c < nf ? [clips[8 * c], clips[8 * c + 1], clips[8 * c + 2], clips[8 * c + 3]] : [-1e9, -1e9, 1e9, 1e9] else {
+				// (a system layer's: its box in its clip, the clip where it scrolls, everywhere where it moves)
+				var o = (-1 - c) * SD;
+				if (sd[o + 4] >= 0) [-1e9, -1e9, 1e9, 1e9] else if (sd[o + 2] >= 0) [sd[o + 12], sd[o + 13], sd[o + 14], sd[o + 15]] else [
+					Math.max(sd[o + 12], Math.min(Math.min(sd[o + 6], sd[o + 8]), sd[o + 10])),
+					Math.max(sd[o + 13], Math.min(Math.min(sd[o + 7], sd[o + 9]), sd[o + 11])),
+					Math.min(sd[o + 14], Math.max(Math.max(sd[o + 6], sd[o + 8]), sd[o + 10] + sd[o + 8] - sd[o + 6])),
+					Math.min(sd[o + 15], Math.max(Math.max(sd[o + 7], sd[o + 9]), sd[o + 11] + sd[o + 9] - sd[o + 7]))
+				];
+			}
 		}];
 		var boxes = [for (_ in 0...order.length * 4) 0.0], filled = [for (_ in 0...order.length) false];
 		quadPlace.resize(n);
@@ -636,8 +938,8 @@ class CaLayers {
 				var k = b >= 0 && f.mover[i] < 0 && f.content[i] < 0 ? top[b >> 1] : -1;
 				if (k >= 0 && unitOf[k] >= 0) {
 					var ax = src.getFloat(q + 8), ay = src.getFloat(q + 12), bx = src.getFloat(q + 24), cy = src.getFloat(q + 44);
-					quadPlace[i] = place(Math.min(ax + 1, clips[4 * k]), Math.min(ay + 1, clips[4 * k + 1]), Math.max(bx - 1, clips[4 * k + 2]),
-						Math.max(cy - 1, clips[4 * k + 3]));
+					quadPlace[i] = place(Math.min(ax + 1, clips[8 * k]), Math.min(ay + 1, clips[8 * k + 1]), Math.max(bx - 1, clips[8 * k + 2]),
+						Math.max(cy - 1, clips[8 * k + 3]));
 				} else if (!fixed && (f.thumb[i] >= 0 || f.mover[i] >= 0 || f.content[i] >= 0)) quadPlace[i] = place(-1e9, -1e9, 1e9, 1e9)
 				else if (f.thumb[i] >= 0 || f.mover[i] >= 0 || f.content[i] >= 0)
 					quadPlace[i] = place(src.getFloat(q + 160), src.getFloat(q + 164), src.getFloat(q + 168), src.getFloat(q + 172))
@@ -678,9 +980,15 @@ class CaLayers {
 	static inline function meets(b:Array<Float>, x0:Float, y0:Float, x1:Float, y1:Float):Bool
 		return x0 < b[2] && x1 > b[0] && y0 < b[3] && y1 > b[1];
 
-	// (a point, a rect, a size, an affine transform set on l by value)
+	// (whether v is a number Core Animation takes: a NaN or an infinity in a
+	// layer's geometry is an exception it throws, out of a layout gone wrong)
+	static inline function fine(v:Float):Bool
+		return v == v && v > -1e15 && v < 1e15;
+
+	// (a point, a rect, a size, an affine transform set on l by value: left
+	// as it was for the frame where one is not fine)
 	static function setPoint(l:Ptr, sel:Ptr, x:Float, y:Float)
-		Arena.scoped(a -> {
+		if (fine(x) && fine(y)) Arena.scoped(a -> {
 			var p = a.make(CGPoint);
 			p.value.x = x;
 			p.value.y = y;
@@ -688,7 +996,7 @@ class CaLayers {
 		});
 
 	static function setRect(l:Ptr, sel:Ptr, x:Float, y:Float, w:Float, h:Float)
-		Arena.scoped(a -> {
+		if (fine(x) && fine(y) && fine(w) && fine(h) && w >= 0 && h >= 0) Arena.scoped(a -> {
 			var r = a.make(CGRect);
 			r.value.origin.x = x;
 			r.value.origin.y = y;
@@ -698,7 +1006,7 @@ class CaLayers {
 		});
 
 	static function setSize(l:Ptr, sel:Ptr, w:Float, h:Float)
-		Arena.scoped(a -> {
+		if (fine(w) && fine(h) && w >= 0 && h >= 0) Arena.scoped(a -> {
 			var z = a.make(CGSize);
 			z.value.width = w;
 			z.value.height = h;
@@ -706,7 +1014,7 @@ class CaLayers {
 		});
 
 	static function setAffine(l:Ptr, a0:Float, b:Float, c:Float, d:Float)
-		Arena.scoped(a -> {
+		if (fine(a0) && fine(b) && fine(c) && fine(d)) Arena.scoped(a -> {
 			var t = a.make(CGAffineTransform);
 			t.value.a = a0;
 			t.value.b = b;
@@ -721,6 +1029,7 @@ class CaLayers {
 	static inline var OVER = 1;
 	static inline var SCROLL = 2;
 	static inline var MOVER = 3;
+	static inline var SLOT = 4;
 }
 
 // (a layer: what it is (the window's, what is over a unit, a scroller's
@@ -744,7 +1053,21 @@ private class Plane {
 	public var drawnY = 0.0;
 	public var scale = 1.0;
 	public var cs = 1.0;
+	// (a system layer's: its slot, the unit it is in (-1: one of its own); a scroller's: those in it)
+	public var slot:Null<helder.ui.LayerSlot> = null;
+	public var attached = -1;
+	public final slots:Array<Plane> = [];
+	public var follow:Array<Plane> = [];
+	// (a scroller's clip's corners' radii, its mask's layer and what it was drawn for)
+	public final radii = [0.0, 0.0, 0.0, 0.0];
+	public var maskLayer = Ptr.nil();
+	final maskSet:Array<Float> = [for (_ in 0...6) -1];
 	public final quads:Array<Int> = [];
+	// (what its quads cover, in the frame's pixels: x0, y0, x1, y1 each)
+	final rects:Array<Float> = [];
+	// (a scroller's content's place as geometry set it, points)
+	public var geomX = 0.0;
+	public var geomY = 0.0;
 	var x0 = 0.0;
 	var y0 = 0.0;
 	var x1 = 0.0;
@@ -773,14 +1096,113 @@ private class Plane {
 	}
 
 	public function made():Bool
-		return !layer.isNull();
+		return !layer.isNull() || !clip.isNull();
 
-	// (what goes in the stack: a scroller's clip, else the layer)
+	// (what goes in the stack: a scroller's clip, a system layer's, else the layer)
 	public function top():Ptr
 		return clip.isNull() ? layer : clip;
 
+	// (what it draws, where a press on it is not a view's under it: points, into r)
+	public function hits(r:Array<Float>, cs:Float) {
+		if (hidden) return;
+		if (kind == CaLayers.OVER) {
+			for (i in 0...rects.length)
+				r.push(rects[i] / cs);
+			return;
+		}
+		if (kind == CaLayers.SCROLL || kind == CaLayers.SLOT) {
+			for (i in 0...4)
+				r.push(i < 2 ? set[8 + i] : set[6 + i] + set[8 + i]);
+			return;
+		}
+		if (kind == CaLayers.MOVER && quads.length > 0)
+			for (v in [set[0], set[1], set[0] + pw / cs, set[1] + ph / cs])
+				r.push(v);
+	}
+
+	// (a scroller's clip's layers: its content's, the system layers in it)
+	public function inClip(ops:Array<Void->Void>) {
+		var list = [layer].concat([for (sp in slots) if (!sp.slot.view) sp.slot.handle]), same = list.length == inside.length;
+		if (same) for (i in 0...list.length)
+			if (list[i] != inside[i]) same = false;
+		if (same) return;
+		inside = list;
+		var c = clip;
+		ops.push(() -> {
+			var a = Msg.id(ObjC.cls("NSMutableArray"), ObjC.sel("array"));
+			for (l in list)
+				Msg.vPtr(a, ObjC.sel("addObject:"), l);
+			Msg.vPtr(c, ObjC.sel("setSublayers:"), a);
+		});
+	}
+
+	var inside:Array<Ptr> = [];
+
+	// (a system layer's own clip, made the first time, its layer in it)
+	public function makeSlot(cs:Float, ops:Array<Void->Void>) {
+		this.cs = cs;
+		if (slot.view || attached >= 0 || !clip.isNull()) return;
+		clip = Runtime.objc_retain(Msg.id(ObjC.cls("CALayer"), S.layer));
+		CaLayers.setPoint(clip, S.setAnchorPoint, 0, 0);
+		Msg.vBool(clip, ObjC.sel("setMasksToBounds:"), true);
+		var c = clip, l = slot.handle;
+		ops.push(() -> Msg.vPtr(c, ObjC.sel("addSublayer:"), l));
+	}
+
+	// (what its mask masks: its clip, or a view's host)
+	function masked():Ptr
+		return slot != null && slot.view ? Msg.id(slot.handle, S.layer) : clip;
+
+	// (a system layer at x, y points from its clip's, w x h, under a, b, c, d
+	// and opacity alpha; a view at x, y, its host at its clip, hy: the host's
+	// top from below (macOS' y up), or -1)
+	public function placeSlot(x:Float, y:Float, w:Float, h:Float, a:Float, b:Float, c:Float, d:Float, alpha:Float, hx:Float, hy:Float, hw:Float,
+			hh:Float, ops:Array<Void->Void>) {
+		var sl = slot, on = sl.shown;
+		var key = [x, y, w, h, a, b, c, d, alpha, hx, hy, hw, hh, on ? 1 : 0], same = true;
+		for (i in 0...key.length)
+			if (slotSet[i] != key[i]) same = false;
+		if (same) return;
+		for (i in 0...key.length)
+			slotSet[i] = key[i];
+		if (sl.view) {
+			var host = sl.handle;
+			ops.push(() -> {
+				var v = sl.inner;
+				CaLayers.setRect(host, S.setFrame, hx, hy, hw, hh);
+				if (!v.isNull()) {
+					CaLayers.setRect(v, S.setFrame, x, y, w, h);
+					Msg.vBool(v, S.setHidden, !on);
+				}
+				Msg.vBool(host, S.setHidden, !on);
+			});
+			return;
+		}
+		var l = sl.handle;
+		ops.push(() -> {
+			CaLayers.setPoint(l, S.setAnchorPoint, 0, 0);
+			CaLayers.setPoint(l, S.setPosition, x, y);
+			CaLayers.setRect(l, S.setBounds, 0, 0, w, h);
+			CaLayers.setAffine(l, a, b, c, d);
+			if (CaLayers.fine(alpha)) CaMsg.vFloat32(l, ObjC.sel("setOpacity:"), alpha);
+			Msg.vBool(l, S.setHidden, !on);
+		});
+	}
+
+	final slotSet:Array<Float> = [for (_ in 0...14) -1e300];
+
+	// (a system layer's view or layer, at where it was placed, moved by dx, dy points: a UIScrollView's, at once)
+	public function shiftSlot(dx:Float, dy:Float) {
+		var x = slotSet[0] + dx, y = slotSet[1] + dy, sl = slot;
+		if (sl.view) {
+			if (!sl.inner.isNull()) CaLayers.setRect(sl.inner, S.setFrame, x, y, slotSet[2], slotSet[3]);
+		} else
+			CaLayers.setPoint(sl.handle, S.setPosition, x, y);
+	}
+
 	public function begin() {
 		quads.resize(0);
+		rects.resize(0);
 		x0 = y0 = 1e300;
 		x1 = y1 = -1e300;
 	}
@@ -790,6 +1212,15 @@ private class Plane {
 		var q = w * CompositeFrame.STRIDE;
 		var ax = out.getFloat(q + 8), ay = out.getFloat(q + 12), bx = out.getFloat(q + 24), by = out.getFloat(q + 28);
 		var cx = out.getFloat(q + 40), cy = out.getFloat(q + 44), dx = bx + cx - ax, dy = by + cy - ay;
+		// (a quad of a layout gone wrong: drawn as the GPU draws it, nothing, bounding nothing)
+		if (!CaLayers.fine(ax) || !CaLayers.fine(ay) || !CaLayers.fine(bx) || !CaLayers.fine(by) || !CaLayers.fine(cx) || !CaLayers.fine(cy)) return;
+		if (kind == CaLayers.OVER || kind == CaLayers.BASE) {
+			// (less the pixel each is grown by, inside its clip)
+			rects.push(Math.max(Math.min(Math.min(ax, bx), Math.min(cx, dx)) + 1, out.getFloat(q + 160)));
+			rects.push(Math.max(Math.min(Math.min(ay, by), Math.min(cy, dy)) + 1, out.getFloat(q + 164)));
+			rects.push(Math.min(Math.max(Math.max(ax, bx), Math.max(cx, dx)) - 1, out.getFloat(q + 168)));
+			rects.push(Math.min(Math.max(Math.max(ay, by), Math.max(cy, dy)) - 1, out.getFloat(q + 172)));
+		}
 		x0 = Math.min(x0, Math.min(Math.min(ax, bx), Math.min(cx, dx)));
 		y0 = Math.min(y0, Math.min(Math.min(ay, by), Math.min(cy, dy)));
 		x1 = Math.max(x1, Math.max(Math.max(ax, bx), Math.max(cx, dx)));
@@ -806,7 +1237,7 @@ private class Plane {
 	// (its drawable around its quads, on whole pixels: grown by 64 at a
 	// time, kept while they fit in half of it, so that it is seldom made again)
 	public function fit() {
-		if (quads.length == 0) return;
+		if (quads.length == 0 || x1 < x0 || y1 < y0) return;
 		var nx = Math.ffloor(x0), ny = Math.ffloor(y0);
 		var w = Std.int(Math.min(8192, Math.fceil(x1) - nx)), h = Std.int(Math.min(8192, Math.fceil(y1) - ny));
 		inline function grown(v:Int):Int
@@ -825,7 +1256,6 @@ private class Plane {
 			Msg.vPtr(layer, ObjC.sel("setDevice:"), Msg.id(root, ObjC.sel("device")));
 			Msg.vInt(layer, ObjC.sel("setPixelFormat:"), 80); // (BGRA8Unorm)
 			Msg.vBool(layer, ObjC.sel("setOpaque:"), false);
-			Msg.vBool(layer, S.setPresentsWithTransaction, true);
 			CaLayers.setPoint(layer, S.setAnchorPoint, 0, 0);
 			if (kind == CaLayers.SCROLL) {
 				clip = Runtime.objc_retain(Msg.id(ObjC.cls("CALayer"), S.layer));
@@ -835,13 +1265,7 @@ private class Plane {
 				ops.push(() -> Msg.vPtr(c, ObjC.sel("addSublayer:"), l));
 			}
 		}
-		if (kind == CaLayers.BASE) {
-			if (set[15] != 1) {
-				set[15] = 1;
-				Msg.vBool(layer, S.setPresentsWithTransaction, true);
-			}
-			return;
-		}
+		if (kind == CaLayers.BASE) return;
 		if (set[14] != cs) {
 			set[14] = cs;
 			Msg.vFloat(layer, ObjC.sel("setContentsScale:"), cs);
@@ -854,6 +1278,15 @@ private class Plane {
 			ops.push(() -> CaLayers.setRect(l, S.setBounds, 0, 0, w, h));
 		}
 	}
+
+	// (its drawables presented in the frame's transaction, else at once)
+	public function presenting(on:Bool) {
+		if (withTransaction == on) return;
+		withTransaction = on;
+		Msg.vBool(layer, S.setPresentsWithTransaction, on);
+	}
+
+	var withTransaction = false;
 
 	public function show(on:Bool, ops:Array<Void->Void>) {
 		if (kind == CaLayers.BASE || hidden == !on || layer.isNull()) {
@@ -935,7 +1368,57 @@ private class Plane {
 	// (the window's: drawn onto by the textured compositor meanwhile)
 	public function reset() {
 		lastLen = -1;
-		set[15] = -1;
+		withTransaction = false;
+	}
+
+	// (its mask's drawable sw x sh pixels for its clip of w x h, its corners
+	// m pixels: whether to draw it, made or resized)
+	public function masking(root:Ptr, sw:Float, sh:Float, w:Float, h:Float, m:Float, ops:Array<Void->Void>):Bool {
+		var key = [sw, sh, w, h, m, cs], same = !maskLayer.isNull();
+		for (i in 0...6)
+			if (maskSet[i] != key[i]) same = false;
+		if (same && !maskStale) return false;
+		maskStale = false;
+		if (maskLayer.isNull()) {
+			var l = maskLayer = Runtime.objc_retain(Msg.id(ObjC.cls("CAMetalLayer"), S.layer));
+			Msg.vPtr(l, ObjC.sel("setDevice:"), Msg.id(root, ObjC.sel("device")));
+			Msg.vInt(l, ObjC.sel("setPixelFormat:"), 80);
+			Msg.vBool(l, ObjC.sel("setOpaque:"), false);
+			Msg.vBool(l, S.setPresentsWithTransaction, true);
+			CaLayers.setPoint(l, S.setAnchorPoint, 0, 0);
+			var nearest = ObjC.str("nearest");
+			Msg.vPtr(l, ObjC.sel("setMagnificationFilter:"), nearest);
+			Msg.vPtr(l, ObjC.sel("setMinificationFilter:"), nearest);
+			ObjC.release(nearest);
+			ops.push(() -> Msg.vPtr(masked(), ObjC.sel("setMask:"), l));
+		}
+		for (i in 0...6)
+			maskSet[i] = key[i];
+		var l = maskLayer, k = cs;
+		Msg.vFloat(l, ObjC.sel("setContentsScale:"), k);
+		CaLayers.setSize(l, ObjC.sel("setDrawableSize:"), sw, sh);
+		// (the middle: a pixel's column and row, else the axis whole)
+		var cx = sw < w ? m / sw : 0, cw = sw < w ? 1 / sw : 1, cy = sh < h ? m / sh : 0, ch = sh < h ? 1 / sh : 1;
+		ops.push(() -> {
+			CaLayers.setRect(l, ObjC.sel("setContentsCenter:"), cx, cy, cw, ch);
+			CaLayers.setPoint(l, S.setPosition, 0, 0);
+			CaLayers.setRect(l, S.setBounds, 0, 0, w / k, h / k);
+		});
+		return true;
+	}
+
+	public var maskStale = false;
+
+	// (square again: no mask)
+	public function unmask(ops:Array<Void->Void>) {
+		if (maskLayer.isNull()) return;
+		var l = maskLayer;
+		maskLayer = Ptr.nil();
+		maskSet[0] = -1;
+		ops.push(() -> {
+			Msg.vPtr(masked(), ObjC.sel("setMask:"), Ptr.nil());
+			Runtime.objc_release(l);
+		});
 	}
 
 	// (a scroller's clip at x, y, w x h points)
@@ -978,16 +1461,26 @@ private class Plane {
 		if (set[6] != alpha) {
 			set[6] = alpha;
 			var v = alpha;
-			ops.push(() -> CaMsg.vFloat32(l, ObjC.sel("setOpacity:"), v));
+			if (CaLayers.fine(v)) ops.push(() -> CaMsg.vFloat32(l, ObjC.sel("setOpacity:"), v));
 		}
 	}
 
 	// (its layers let go: what removes and releases them, run in a
 	// transaction after any that still names them)
 	public function free():Void->Void {
-		var c = clip, l = kind == CaLayers.BASE ? Ptr.nil() : layer;
-		layer = clip = Ptr.nil();
+		var c = clip, l = kind == CaLayers.BASE ? Ptr.nil() : layer, m = maskLayer, sl = slot;
+		layer = clip = maskLayer = Ptr.nil();
+		for (i in 0...slotSet.length)
+			slotSet[i] = -1e300;
 		return () -> {
+			var host = sl != null && sl.view ? Msg.id(sl.handle, S.layer) : c;
+			if (!m.isNull()) {
+				Msg.vPtr(host, ObjC.sel("setMask:"), Ptr.nil());
+				Runtime.objc_release(m);
+			}
+			// (a node's layer out of ours, if still in it; a view's host hidden, its platform's)
+			if (sl != null && sl.view) Msg.vBool(sl.handle, S.setHidden, true);
+			else if (sl != null && (c.isNull() || Msg.id(sl.handle, ObjC.sel("superlayer")) == c)) Msg.v(sl.handle, ObjC.sel("removeFromSuperlayer"));
 			if (!c.isNull()) {
 				Msg.v(c, ObjC.sel("removeFromSuperlayer"));
 				Runtime.objc_release(c);
@@ -1024,6 +1517,8 @@ private class S {
 	public static final setPosition = ObjC.sel("setPosition:");
 	public static final setAnchorPoint = ObjC.sel("setAnchorPoint:");
 	public static final setPresentsWithTransaction = ObjC.sel("setPresentsWithTransaction:");
+	public static final setFrame = ObjC.sel("setFrame:");
+	public static final setHidden = ObjC.sel("setHidden:");
 }
 
 // (the message shapes beside Msg's: helder.os.objc.Sender)

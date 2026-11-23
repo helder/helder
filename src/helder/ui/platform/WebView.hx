@@ -137,6 +137,7 @@ class WebView extends Node implements WebViewListener {
 
 	function drop() {
 		placed = null;
+		systemLayer = null;
 		if (native == null) return;
 		native.dispose();
 		native = null;
@@ -167,7 +168,13 @@ class WebView extends Node implements WebViewListener {
 		var w = width - be.left - be.right, h = height - be.top - be.bottom;
 		var b = windowBounds();
 		var on = visible() && w > 0 && h > 0;
-		native.place(b.x + be.left, b.y + be.top, w, h, on);
+		// (in the system's layer tree: placed with the frame's layers, at its padding box)
+		var sl = ui.layered ? native.slot() : null;
+		systemLayer = sl;
+		if (sl != null) {
+			sl.content = false;
+			sl.shown = on;
+		} else native.place(b.x + be.left, b.y + be.top, w, h, on);
 		placed = [b.x + be.left, b.y + be.top, w, h, on ? 1 : 0];
 		native.poll();
 	}
@@ -210,7 +217,7 @@ class WebView extends Node implements WebViewListener {
 		#elseif (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64" || hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 		// (the window's view: its surface's)
 		for (w in @:privateAccess helder.ui.draw.UiWindow.open)
-			if (w.ui == ui) return helder.os.OsThread.get(() -> new AppleWebView(w.window.surface.handle, o, queued));
+			if (w.ui == ui) return helder.os.OsThread.get(() -> new AppleWebView(w.window.surface.handle, o, queued, false, ui.layered));
 		return null;
 		#else
 		return null;

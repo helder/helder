@@ -32,4 +32,6 @@ interface TextureCanvas extends Canvas {
 	function enter(n:Node, kind:Int):Bool;
 	function mover(m:helder.ui.Mover):Bool;
 	function leave():Void;
+	// (in that walk: node's system layer s at x, y, w x h, its place among what is drawn)
+	function slot(s:helder.ui.LayerSlot, x:Float, y:Float, w:Float, h:Float):Void;
 }

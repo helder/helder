@@ -23,6 +23,8 @@ interface PlatformWebView {
 	// the events since the last poll, handed to the listener
 	function poll():Void;
 	function dispose():Void;
+	// (its view in the system's layer tree, where the window's layers are the system's (null: placed by place))
+	function slot():Null<helder.ui.LayerSlot>;
 }
 
 // What a web view is made with (WebView's, WebShell's)

@@ -99,7 +99,7 @@ class Compositor implements RenderIdle {
 	// whether the program's frames go to the system's layers
 	public function planes():Bool {
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
-		return layers != null;
+		return layers != null && !layers.single;
 		#else
 		return false;
 		#end
@@ -120,14 +120,19 @@ class Compositor implements RenderIdle {
 		#end
 	}
 
-	// (after the program's frame ended: it shown on the system's layers, as drawn)
-	public function present() {
+	// (after the program's frame ended: it shown on the system's layers, as
+	// drawn; drawn onto the window's layer (planes false), split only, for the next)
+	public function present(planes:Bool) {
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		var l = layers;
 		if (l == null) return;
 		device.inOrder(r -> {
 			var f = shown;
 			if (f == null) return;
+			if (!planes) {
+				l.check(f);
+				return;
+			}
 			// (its overlay bars as the program faded them when it painted)
 			var t = f.paintedAt, bars = f.overlay ? [for (v in f.barAt) {
 				var age = t - v;
@@ -250,7 +255,8 @@ class Compositor implements RenderIdle {
 		var f = frames[filling];
 		r.composite = null;
 		ScrollShot.take(ui, shot);
-		var made = shot.natives.length == 0 ? [] : Spot.of(shot);
+		// (a native view in the system's layer tree: moved with its layers, in their transaction)
+		var made = shot.natives.length == 0 ? [] : [for (s in Spot.of(shot)) if (s.node.systemLayer == null) s];
 		lock.acquire();
 		mirror.adopt(shot);
 		for (n in [for (n in native.keys()) n]) {
@@ -364,9 +370,13 @@ class Compositor implements RenderIdle {
 		}];
 		posts.resize(0);
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
-		if (layers != null) layers.show(r, f, now, at, f.overlay ? barShown : null, false, moves) else
+		if (layers != null && !layers.single) layers.show(r, f, now, at, f.overlay ? barShown : null, false, moves) else
 		#end
 		{
+			// (the window's layer alone since the program's last frame: drawn onto it, taking its drawable)
+			#if (!helder.os || helder.os == "macos" || helder.os == "ios")
+			if (layers != null) (cast r.impl : helder.gfx.metal.MetalBackend).quiet = false;
+			#end
 			for (m in moves)
 				helder.os.OsThread.post(m);
 			draw(r, f, null, at);
