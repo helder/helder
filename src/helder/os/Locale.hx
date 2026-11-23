@@ -31,13 +31,16 @@ class Locale {
 		languages = preferences();
 		tag = Graph.signal(languages[0]);
 		#if (target.name == "hxmc")
+		#if (!helder.os || helder.os == "web")
 		if (Platform.os() == Platform.WASI) {
 			LocaleWeb.watch(refresh);
-		} #if !helder.headless
-		else if (!(Platform.os() == Platform.LINUX && Platform.target() < 2)) {
+		} else
+		#end
+		#if !helder.headless
+		if (!(Platform.os() == Platform.LINUX && Platform.target() < 2)) {
 			@:privateAccess App.watchSettings(refresh);
 		}
-		#end
+		#else {} #end
 		#elseif js
 		js.Syntax.code("globalThis.addEventListener?.('languagechange', {0})", refresh);
 		js.Syntax.code("globalThis.document?.addEventListener('visibilitychange', () => { if (!document.hidden) {0}(); })", refresh);
@@ -55,15 +58,15 @@ class Locale {
 		var tags = [];
 		#if (target.name == "hxmc")
 		if (Platform.os() == Platform.WASI) {
-			tags = LocaleWeb.preferred();
+			#if (!helder.os || helder.os == "web") tags = LocaleWeb.preferred(); #end
 		} else if (Platform.os() == Platform.WINDOWS) {
-			tags = WindowsLocale.preferred();
+			#if (!helder.os || helder.os == "windows") tags = WindowsLocale.preferred(); #end
 		} else if (Platform.os() == Platform.MACOS) {
 			#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
 			tags = AppleLocale.preferred();
 			#end
 		} else if (Platform.target() >= 9) {
-			tags = helder.os.android.AndroidLocale.preferred();
+			#if (!helder.os || helder.os == "android") tags = helder.os.android.AndroidLocale.preferred(); #end
 		} else {
 			tags = LocaleFallback.preferred(Sys.getEnv);
 		}

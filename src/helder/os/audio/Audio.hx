@@ -85,16 +85,23 @@ class Audio {
 		frames = config.frames != null ? config.frames : 512;
 		session = config.session;
 		if (sampleRate <= 0 || channels <= 0 || frames <= 0) throw "helder.os.audio: bad config";
-		native = Platform.target() >= 9 ? new AAudioOutput(this, config.device) : Platform.os() == 1 ? new CoreAudioOutput(this, config.device) : Platform.os() == 2 ? new WasapiOutput(this,
-			config.device) : Platform.os() == 3 ? new WebAudioOutput(this, config.device) : new AlsaOutput(this, config.device);
+		native =
+			#if (!helder.os || helder.os == "android") Platform.target() >= 9 ? new AAudioOutput(this, config.device) : #end
+			#if (!helder.os || helder.os == "macos" || helder.os == "ios") Platform.os() == 1 ? new CoreAudioOutput(this, config.device) : #end
+			#if (!helder.os || helder.os == "windows") Platform.os() == 2 ? new WasapiOutput(this, config.device) : #end
+			#if (!helder.os || helder.os == "web") Platform.os() == 3 ? new WebAudioOutput(this, config.device) : #end
+			#if (!helder.os || helder.os == "linux") new AlsaOutput(this, config.device) #else throw "unreachable" #end;
 		track();
 	}
 
 	public function start() {
 		if (running || closed) return;
 		running = true;
-		if (Platform.target() >= 9) (cast native : AAudioOutput).start() else if (Platform.os() == 1) (cast native : CoreAudioOutput).start() else if (Platform.os() == 2) (cast native : WasapiOutput).start() else if (Platform.os() == 3)
-			(cast native : WebAudioOutput).start() else (cast native : AlsaOutput).start();
+		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) (cast native : AAudioOutput).start() else #end
+		#if (!helder.os || helder.os == "macos" || helder.os == "ios") if (Platform.os() == 1) (cast native : CoreAudioOutput).start() else #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) (cast native : WasapiOutput).start() else #end
+		#if (!helder.os || helder.os == "web") if (Platform.os() == 3) (cast native : WebAudioOutput).start() else #end
+		#if (!helder.os || helder.os == "linux") (cast native : AlsaOutput).start(); #else {} #end
 	}
 
 	// stops the output (what the system has queued is dropped); start plays again
@@ -102,8 +109,11 @@ class Audio {
 		held = false;
 		if (!running) return;
 		running = false;
-		if (Platform.target() >= 9) (cast native : AAudioOutput).stop() else if (Platform.os() == 1) (cast native : CoreAudioOutput).stop() else if (Platform.os() == 2) (cast native : WasapiOutput).stop() else if (Platform.os() == 3)
-			(cast native : WebAudioOutput).stop() else (cast native : AlsaOutput).stop();
+		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) (cast native : AAudioOutput).stop() else #end
+		#if (!helder.os || helder.os == "macos" || helder.os == "ios") if (Platform.os() == 1) (cast native : CoreAudioOutput).stop() else #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) (cast native : WasapiOutput).stop() else #end
+		#if (!helder.os || helder.os == "web") if (Platform.os() == 3) (cast native : WebAudioOutput).stop() else #end
+		#if (!helder.os || helder.os == "linux") (cast native : AlsaOutput).stop(); #else {} #end
 	}
 
 	public function close() {
@@ -111,14 +121,17 @@ class Audio {
 		stop();
 		closed = true;
 		if (outputs != null) outputs.remove(this);
-		if (Platform.target() >= 9) (cast native : AAudioOutput).close() else if (Platform.os() == 1) (cast native : CoreAudioOutput).close() else if (Platform.os() == 2) (cast native : WasapiOutput).close() else if (Platform.os() == 3)
-			(cast native : WebAudioOutput).close() else (cast native : AlsaOutput).close();
+		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) (cast native : AAudioOutput).close() else #end
+		#if (!helder.os || helder.os == "macos" || helder.os == "ios") if (Platform.os() == 1) (cast native : CoreAudioOutput).close() else #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) (cast native : WasapiOutput).close() else #end
+		#if (!helder.os || helder.os == "web") if (Platform.os() == 3) (cast native : WebAudioOutput).close() else #end
+		#if (!helder.os || helder.os == "linux") (cast native : AlsaOutput).close(); #else {} #end
 	}
 
 	// the data callbacks the system made so far, where the back end counts
 	// them (Android; elsewhere -1): tests, the stream started
 	public function systemCalls():Int
-		return Platform.target() >= 9 ? (cast native : AAudioOutput).calls() : -1;
+		return #if (!helder.os || helder.os == "android") Platform.target() >= 9 ? (cast native : AAudioOutput).calls() : #end -1;
 
 	function track() {
 		if (outputs == null) outputs = [];

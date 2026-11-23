@@ -64,6 +64,7 @@ class Compiler {
 		compiler.Compiler.beforeTypingHook = function(com, actx) {
 			Phases.begin(com);
 			noOutput = actx.noOutput;
+			os(com, actx);
 			dev(com);
 			nullSafety(actx);
 			views(com, actx);
@@ -177,6 +178,15 @@ class Compiler {
 		if (!core.Define.rawDefined(com.defines, "hxmc.dev")) return;
 		core.Define.rawDefine(com.defines, "hxmc.stacks");
 		if (core.Define.rawDefinedValueSafe(com.defines, "hxmc.target") == "wasm32-wasi") core.Define.rawDefine(com.defines, "hxmc.symbols");
+	}
+
+	// helder.os (Os), unless given: the target's, or the host's for a build
+	// with output (hxmc's default target); a type check naming no target has
+	// none, every platform's code typed
+	static function os(com:context.Common.CommonContext, actx:compiler.ParsedArg.ArgContext) {
+		if (core.Define.rawDefined(com.defines, "helder.os") || !com.platform.match(CustomTarget("hxmc"))) return;
+		var target = core.Define.rawDefined(com.defines, "hxmc.target") ? core.Define.rawDefinedValue(com.defines, "hxmc.target") : actx.noOutput ? null : @:privateAccess hxmc.HaxeMain.hostTarget();
+		if (target != null) core.Define.rawDefineValue(com.defines, "helder.os", Os.of(target));
 	}
 
 	// Haxe's null safety for helder's packages that keep it (NullSafety's,

@@ -1,15 +1,29 @@
 package helder.os;
 
 import helder.async.Driven;
+#if (!helder.os || helder.os == "android")
 import helder.os.android.AndroidWindow;
+#end
+#if (!helder.os || helder.os == "macos")
 import helder.os.cocoa.CocoaWindow;
+#end
+#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 import helder.os.objc.Runtime;
+#end
+#if (!helder.os || helder.os == "ios")
 import helder.os.uikit.UIKitApp;
 import helder.os.uikit.UIKitWindow;
+#end
+#if (!helder.os || helder.os == "web")
 import helder.os.web.CanvasWindow;
+#end
+#if (!helder.os || helder.os == "windows")
 import helder.os.win32.Win32Window;
+#end
+#if (!helder.os || helder.os == "linux")
 import helder.os.x11.X11Window;
 import helder.os.wayland.WaylandWindow;
+#end
 import hxmc.Platform;
 import hxmc.unsafe.*;
 
@@ -144,7 +158,7 @@ class App {
 	static final opened:Array<String> = [];
 
 	static function set_onOpen(f:Null<Array<String>->Void>) {
-		if (Platform.apple() >= 1) for (u in UIKitApp.early()) opened.push(u);
+		#if (!helder.os || helder.os == "ios") if (Platform.apple() >= 1) for (u in UIKitApp.early()) opened.push(u); #end
 		onOpen = f;
 		if (f != null && opened.length > 0) {
 			var paths = opened.copy();
@@ -215,10 +229,12 @@ class App {
 		onEvent = e -> if (!escapeBack(e)) inner(e);
 		// (the mouse's pointer events after its own: Pointers)
 		onEvent = Pointers.relay(onEvent);
+		#if (!helder.os || helder.os == "web")
 		if (Platform.os() == 3) {
 			CanvasWindow.start(onFrame, onEvent);
 			return;
 		}
+		#end
 		// (macOS, Linux: the loop on a thread of its own, the main thread the system's: OsThread)
 		if (OsThread.wanted()) {
 			OsThread.start(() -> {
@@ -267,7 +283,7 @@ class App {
 		if (!running || windows.length == 0) {
 			running = false;
 			// (Android: the vsync asked for comes first, its callback this build's code)
-			if (Platform.target() >= 9) helder.os.android.Vsync.drain();
+			#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) helder.os.android.Vsync.drain(); #end
 			return false;
 		}
 		// (the pointers' motion and presses from this turn's events on)
@@ -276,11 +292,12 @@ class App {
 			f();
 		// (macOS: what Cocoa autoreleases during a frame is freed after it; the
 		// main thread's too, where the program has a thread of its own)
-		var pool = Platform.os() == 1 ? Runtime.objc_autoreleasePoolPush() : Ptr.nil();
+		var pool = #if (!helder.os || helder.os == "macos" || helder.os == "ios") Platform.os() == 1 ? Runtime.objc_autoreleasePoolPush() : #end Ptr.nil();
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
 		if (Platform.os() == 1 && OsThread.program != 0) OsThread.run(pushMain);
 		#end
 		// (Android: a frame only with the window, otherwise a sleep in the looper)
+		#if (!helder.os || helder.os == "android")
 		if (Platform.target() >= 9) {
 			AndroidWindow.poll(onEvent);
 			loopTurn();
@@ -297,7 +314,10 @@ class App {
 					AndroidWindow.wait(bounded(-1));
 				}
 			}
-		} else if (Platform.apple() >= 1) {
+		} else
+		#end
+		#if (!helder.os || helder.os == "ios")
+		if (Platform.apple() >= 1) {
 			UIKitWindow.poll(onEvent);
 			loopTurn();
 			if (running && windows.length > 0) {
@@ -313,16 +333,20 @@ class App {
 					UIKitWindow.wait(bounded(-1));
 				}
 			}
-		} else {
-			if (Platform.os() == 1) CocoaWindow.poll(onFrame, onEvent) else if (Platform.os() == 2) Win32Window.poll(onFrame, onEvent) else if (Platform.os() == 3) CanvasWindow.poll(onEvent) else
-				if (WaylandWindow.chosen) WaylandWindow.poll(onEvent) else X11Window.poll(onEvent);
+		} else
+		#end
+		{
+			#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) CocoaWindow.poll(onFrame, onEvent) else #end
+			#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) Win32Window.poll(onFrame, onEvent) else #end
+			#if (!helder.os || helder.os == "web") if (Platform.os() == 3) CanvasWindow.poll(onEvent) else #end
+			#if (!helder.os || helder.os == "linux") if (WaylandWindow.chosen) WaylandWindow.poll(onEvent) else X11Window.poll(onEvent); #else {} #end
 			loopTurn();
 			if (running && windows.length > 0) {
 				frame.tick(haxe.Timer.stamp(), false);
 				onFrame();
 			}
 		}
-		if (Platform.os() == 1) Runtime.objc_autoreleasePoolPop(pool);
+		#if (!helder.os || helder.os == "macos" || helder.os == "ios") if (Platform.os() == 1) Runtime.objc_autoreleasePoolPop(pool); #end
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
 		if (Platform.os() == 1 && OsThread.program != 0) OsThread.run(popMain);
 		#end
@@ -407,11 +431,14 @@ class App {
 		if (seconds < 0 || seconds > 0.01) seconds = 0.01;
 		#end
 		// (iOS: the display link held while the app sleeps: no vsync wakes it; Android asks for none)
-		if (Platform.apple() >= 1) UIKitWindow.pauseVsync();
+		#if (!helder.os || helder.os == "ios") if (Platform.apple() >= 1) UIKitWindow.pauseVsync(); #end
 		seconds = settingsWait(seconds);
-		if (Platform.apple() >= 1) UIKitWindow.wait(bounded(seconds)) else if (Platform.os() == 1) CocoaWindow.wait(bounded(seconds)) else if (Platform.os() == 2)
-			Win32Window.wait(bounded(seconds)) else if (Platform.os() == 3) {} else if (Platform.target() >= 9) AndroidWindow.wait(bounded(seconds)) else
-			if (WaylandWindow.chosen) WaylandWindow.waitFor(seconds) else X11Window.waitFor(seconds);
+		#if (!helder.os || helder.os == "ios") if (Platform.apple() >= 1) UIKitWindow.wait(bounded(seconds)) else #end
+		#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) CocoaWindow.wait(bounded(seconds)) else #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) Win32Window.wait(bounded(seconds)) else #end
+		if (Platform.os() == 3) {} else
+		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) AndroidWindow.wait(bounded(seconds)) else #end
+		#if (!helder.os || helder.os == "linux") if (WaylandWindow.chosen) WaylandWindow.waitFor(seconds) else X11Window.waitFor(seconds); #else {} #end
 	}
 
 	public static function quit()
@@ -429,7 +456,7 @@ class App {
 		#if helder.headless
 		return false;
 		#end
-		if (Platform.os() == 1 && Platform.apple() < 1) return @:privateAccess CocoaWindow.overlayScrollbars();
+		#if (!helder.os || helder.os == "macos") if (Platform.os() == 1 && Platform.apple() < 1) return @:privateAccess CocoaWindow.overlayScrollbars(); #end
 		return false;
 	}
 
@@ -437,8 +464,9 @@ class App {
 		#if helder.headless
 		return helder.headless.Headless.run.dark;
 		#end
-		if (Platform.os() == 3) return helder.os.web.Dom.prefers_dark() == 1;
-		if (Platform.apple() >= 1) return UIKitWindow.dark();
+		#if (!helder.os || helder.os == "web") if (Platform.os() == 3) return helder.os.web.Dom.prefers_dark() == 1; #end
+		#if (!helder.os || helder.os == "ios") if (Platform.apple() >= 1) return UIKitWindow.dark(); #end
+		#if (!helder.os || helder.os == "macos")
 		if (Platform.os() == 1) {
 			var key = helder.os.objc.ObjC.str("AppleInterfaceStyle");
 			var v = helder.os.objc.Msg.idPtr(helder.os.objc.Msg.id(helder.os.objc.ObjC.cls("NSUserDefaults"), helder.os.objc.ObjC.sel("standardUserDefaults")),
@@ -447,6 +475,8 @@ class App {
 			var s = v.isNull() ? null : helder.os.objc.ObjC.string(v);
 			return s != null && s.toLowerCase() == "dark";
 		}
+		#end
+		#if (!helder.os || helder.os == "windows")
 		if (Platform.os() == 2) return Arena.scopedValue(a -> {
 			var data:Ptr<Int32> = a.alloc(4), size:Ptr<Int32> = a.alloc(4);
 			size.value = 4;
@@ -456,7 +486,8 @@ class App {
 				a.wstring("AppsUseLightTheme"), 0x10, Ptr.nil(), data, size);
 			r == 0 && data.value == 0;
 		});
-		if (Platform.target() >= 9) return AndroidWindow.night();
+		#end
+		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) return AndroidWindow.night(); #end
 		var gtk = Sys.getEnv("GTK_THEME");
 		if (gtk != null) return StringTools.endsWith(gtk.toLowerCase(), ":dark") || gtk.toLowerCase().indexOf("dark") >= 0;
 		var home = Sys.getEnv("HOME");

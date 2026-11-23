@@ -76,7 +76,7 @@ class Gamepads {
 	public static function enable() {
 		devices = pollDevices;
 		#if (hxmc.target != "wasm32-wasi" && !eval)
-		if (Platform.target() >= 9) helder.os.android.AndroidGamepads.enable();
+		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) helder.os.android.AndroidGamepads.enable(); #end
 		#end
 	}
 
@@ -84,8 +84,11 @@ class Gamepads {
 		#if (hxmc.target == "wasm32-wasi")
 		pollWeb();
 		#elseif !eval
-		if (Platform.os() == Platform.MACOS) GamepadsApple.poll() else if (Platform.target() >= 9) helder.os.android.AndroidGamepads.poll()
-		else if (Platform.os() == Platform.LINUX) pollLinux() else if (Platform.os() == Platform.WINDOWS) pollWindows();
+		#if (!helder.os || helder.os == "macos" || helder.os == "ios") if (Platform.os() == Platform.MACOS) GamepadsApple.poll() else #end
+		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) helder.os.android.AndroidGamepads.poll() else #end
+		if (Platform.os() == Platform.LINUX) pollLinux() else
+		if (Platform.os() == Platform.WINDOWS) pollWindows() else
+		{};
 		#end
 	}
 

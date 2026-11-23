@@ -1,6 +1,8 @@
 package helder.os;
 
+#if (!helder.os || helder.os == "web")
 import helder.os.web.Dom;
+#end
 import hxmc.Platform;
 import hxmc.unsafe.*;
 
@@ -17,30 +19,32 @@ class History {
 	// the page's path and query (location's)
 	public static function location():Null<String> {
 		if (Platform.os() == Platform.WASI) {
+			#if (!helder.os || helder.os == "web")
 			var h = Dom.location();
 			if (h != 0) return @:privateAccess helder.os.web.CanvasWindow.take(h);
+			#end
 		}
 		return null;
 	}
 
 	public static function own(popped:Int->Void) {
 		onPop = popped;
-		if (Platform.os() == Platform.WASI) Dom.history_own(Callback.addr(pop));
+		#if (!helder.os || helder.os == "web") if (Platform.os() == Platform.WASI) Dom.history_own(Callback.addr(pop)); #end
 	}
 
 	public static function release() {
 		onPop = null;
-		if (Platform.os() == Platform.WASI) Dom.history_own(Ptr.nil());
+		#if (!helder.os || helder.os == "web") if (Platform.os() == Platform.WASI) Dom.history_own(Ptr.nil()); #end
 	}
 
 	public static function push(url:String)
-		if (Platform.os() == Platform.WASI) Arena.scoped(a -> Dom.history_push(a.cstring(url), 1));
+		#if (!helder.os || helder.os == "web") if (Platform.os() == Platform.WASI) Arena.scoped(a -> Dom.history_push(a.cstring(url), 1)); #else {} #end
 
 	public static function replace(url:String)
-		if (Platform.os() == Platform.WASI) Arena.scoped(a -> Dom.history_push(a.cstring(url), 0));
+		#if (!helder.os || helder.os == "web") if (Platform.os() == Platform.WASI) Arena.scoped(a -> Dom.history_push(a.cstring(url), 0)); #else {} #end
 
 	public static function go(n:Int)
-		if (Platform.os() == Platform.WASI) Dom.history_go(n);
+		#if (!helder.os || helder.os == "web") if (Platform.os() == Platform.WASI) Dom.history_go(n); #else {} #end
 
 	@:hxmc.callback static function pop(steps:Int):Int {
 		var f = onPop;

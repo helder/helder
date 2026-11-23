@@ -147,7 +147,7 @@ class UiWindow {
 	public function new(title:String, width:Int, height:Int, ?text:TextEngine, antialias = true, titlebar:helder.os.TitleBar = Standard) {
 		window = new helder.os.Window(title, width, height, titlebar);
 		// (Android: text fields get the soft keyboard and the input method)
-		if (Platform.target() >= 9) helder.os.android.TextInput.enable();
+		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) helder.os.android.TextInput.enable(); #end
 		device = Device.create(window.surface, {antialias: antialias, thread: true});
 		renderer = new Renderer(device);
 		if (open.length == 0 && helder.os.App.trims.indexOf(trimAll) < 0) helder.os.App.trims.push(trimAll);
@@ -171,12 +171,14 @@ class UiWindow {
 		window.scrollsAt = (x, y, dx, dy) -> ui.scrollsAt(x / renderer.scale, y / renderer.scale, dx / renderer.scale, dy / renderer.scale);
 		// (headless: no window to put a system's views over, its menus and fields drawn)
 		#if !helder.headless
-		// (the browser's own views: native text editors over the canvas)
-		if (Platform.os() == 3) ui.platform = WebMirror.views(window.surface.handle.toI64().toInt());
-		// (Windows': EDIT controls over the window)
-		else if (Platform.os() == 2) ui.platform = new WinViews(window.surface.handle, ui, () -> renderer.scale);
-		// (iOS's: UITextFields and UITextViews over the view; macOS': NSTextFields over the window)
-		else if (Platform.apple() >= 1) ui.platform = new IosViews(window.surface.handle, ui) else if (Platform.os() == 1) ui.platform = new MacViews(window.surface.handle, ui);
+		// (the browser's own views: native text editors over the canvas; Windows':
+		// EDIT controls over the window; iOS's: UITextFields and UITextViews over
+		// the view; macOS': NSTextFields over the window)
+		#if (!helder.os || helder.os == "web") if (Platform.os() == 3) ui.platform = WebMirror.views(window.surface.handle.toI64().toInt()) else #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) ui.platform = new WinViews(window.surface.handle, ui, () -> renderer.scale) else #end
+		#if (!helder.os || helder.os == "ios") if (Platform.apple() >= 1) ui.platform = new IosViews(window.surface.handle, ui) else #end
+		#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) ui.platform = new MacViews(window.surface.handle, ui) else #end
+		{};
 		#end
 		open.push(this);
 		#if helder.headless
@@ -242,18 +244,25 @@ class UiWindow {
 	// code, which the host unloads; the next build makes its own
 	function handOver() {
 		handedOver = true;
+		#if (!helder.os || helder.os == "ios")
 		if (Platform.apple() >= 1) {
 			if (iosAccess != null) (cast iosAccess : IosAccess).dispose();
 			if (iosScroll != null) (cast iosScroll : IosScroll).dispose();
 			if (ui.platform != null) (cast ui.platform : IosViews).dispose();
-		} else if (Platform.os() == 1) {
+		}
+		#end
+		#if (!helder.os || helder.os == "macos")
+		if (Platform.os() == 1 && Platform.apple() < 1) {
 			if (macAccess != null) (cast macAccess : MacAccess).dispose();
 			if (ui.platform != null) (cast ui.platform : MacViews).dispose();
 		}
+		#end
+		#if (!helder.os || helder.os == "windows")
 		if (Platform.os() == 2) {
 			if (winAccess != null) (cast winAccess : WinAccess).dispose();
 			if (ui.platform != null) (cast ui.platform : WinViews).dispose();
 		}
+		#end
 		macAccess = winAccess = iosAccess = iosScroll = null;
 	}
 	#end
@@ -268,6 +277,7 @@ class UiWindow {
 			if (Platform.target() < 9) ui.kinetic = on;
 		}
 		// (nested: only a constant condition drops the branch, its AppKit calls with it)
+		#if (!helder.os || helder.os == "macos")
 		if (Platform.os() == 1) {
 			if (Platform.apple() < 1) {
 				ui.elastic = on;
@@ -277,24 +287,31 @@ class UiWindow {
 				if (on && ui.scrollbarArt == null) ui.scrollbarArt = new MacScrollbarArt();
 			}
 		}
+		#end
 		// (Android: no scroll views under the tree; helder's drag, Android's fling and its stretch at the ends)
+		#if (!helder.os || helder.os == "android")
 		if (Platform.target() >= 9) {
 			@:privateAccess ui.touchScroll.g = on ? new helder.os.AndroidFling() : new helder.os.Glide();
 			ui.stretch = on;
 		}
+		#end
 		ui.requestFrame();
 		#end
 	}
 
 	// the scrollers' platform views kept in step (after a frame)
 	function syncScroll() {
+		#if (!helder.os || helder.os == "web")
 		if (Platform.os() == 3) {
 			if (webScroll == null) {
 				if (!ui.nativeScroll) return;
 				webScroll = new WebScroll(window.surface.handle.toI64().toInt(), ui);
 			}
 			(cast webScroll : WebScroll).update();
-		} else if (Platform.apple() >= 1) {
+		}
+		#end
+		#if (!helder.os || helder.os == "ios")
+		if (Platform.apple() >= 1) {
 			if (iosScroll == null) {
 				if (!ui.nativeScroll) return;
 				iosScroll = new IosScroll(window, ui);
@@ -304,6 +321,7 @@ class UiWindow {
 			}
 			(cast iosScroll : IosScroll).update();
 		}
+		#end
 	}
 
 	// macOS's scrollbars for this window: "system", "overlay" or "always" (UiWindow.scrollbars)
@@ -319,7 +337,7 @@ class UiWindow {
 
 	// there is something new to draw
 	public function needsFrame():Bool
-		return redraw || ui.needsFrame || Clock.active || ScreenContext.main.nextTimer() <= helder.headless.Time.stamp() || capture != null || window.width != drawnW || window.height != drawnH || window.scale != drawnScale
+		return redraw || ui.needsFrame || Clock.active || ScreenContext.main.nextTimer() <= #if helder.headless helder.headless.Time.now #else haxe.Timer.stamp() #end || capture != null || window.width != drawnW || window.height != drawnH || window.scale != drawnScale
 			|| (Ui.accessEpoch != accessSent && accessListening()) || accessPending() || mirrorMoves();
 
 	// (the compositor's glides and springs: the program's frames follow them, as they would its own)
@@ -335,7 +353,7 @@ class UiWindow {
 	// first (now: what the frame's events started, Ui.now's, is not after
 	// it, as the vsync's time App.frame.time may be)
 	public function frame() {
-		Clock.tick(helder.headless.Time.stamp());
+		Clock.tick(#if helder.headless helder.headless.Time.now #else haxe.Timer.stamp() #end);
 		// (laid out at the surface's size: the device's follows it only at
 		// beginFrame, so that a single resize, a maximise's, laid out at the
 		// last size would be drawn into the new one and stay so)
@@ -505,25 +523,18 @@ class UiWindow {
 	// whether an adapter has a client: what it reads changing is then worth a frame
 	function accessListening():Bool {
 		if (Platform.os() == 3) return access != null;
-		else if (Platform.apple() >= 1) {
-			return iosAccess != null && (cast iosAccess : IosAccess).listening();
-		} else if (Platform.os() == 1) {
-			return macAccess != null && (cast macAccess : MacAccess).listening();
-		} else if (Platform.os() == 2) {
-			return winAccess != null && (cast winAccess : WinAccess).listening();
-		} else if (Platform.os() == 0) {
-			if (Platform.target() < 9) return linuxAccess != null && LinuxAccess.listening() else return androidAccess != null
-				&& (cast androidAccess : AndroidAccess).listening();
-		}
+		#if (!helder.os || helder.os == "ios") if (Platform.apple() >= 1) return iosAccess != null && (cast iosAccess : IosAccess).listening(); #end
+		#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) return macAccess != null && (cast macAccess : MacAccess).listening(); #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) return winAccess != null && (cast winAccess : WinAccess).listening(); #end
+		#if (!helder.os || helder.os == "linux") if (Platform.os() == 0 && Platform.target() < 9) return linuxAccess != null && LinuxAccess.listening(); #end
+		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) return androidAccess != null && (cast androidAccess : AndroidAccess).listening(); #end
 		return false;
 	}
 
 	// whether an adapter was asked for a tree it has not had (Android's: its
 	// provider answers on another thread, from what the last frame published)
 	function accessPending():Bool {
-		if (Platform.os() == 0) {
-			if (Platform.target() >= 9) return androidAccess != null && AndroidAccess.pending;
-		}
+		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) return androidAccess != null && AndroidAccess.pending; #end
 		return false;
 	}
 
@@ -532,42 +543,57 @@ class UiWindow {
 	// imports must stay out of the other targets)
 	function sendAccess() {
 		accessSent = Ui.accessEpoch;
+		#if (!helder.os || helder.os == "web")
 		if (Platform.os() == 3) {
 			var t = ui.accessTree();
 			var json = t.changesJson(access);
 			access = t;
 			if (json != null) WebMirror.send(window.surface.handle.toI64().toInt(), json);
-		} else if (Platform.apple() >= 1) {
+		}
+		#end
+		#if (!helder.os || helder.os == "ios")
+		if (Platform.apple() >= 1) {
 			if (iosAccess == null) iosAccess = new IosAccess(window, ui);
 			(cast iosAccess : IosAccess).update();
-		} else if (Platform.os() == 1) {
+		}
+		#end
+		#if (!helder.os || helder.os == "macos")
+		if (Platform.os() == 1 && Platform.apple() < 1) {
 			if (macAccess == null) macAccess = new MacAccess(window, ui);
 			(cast macAccess : MacAccess).update();
-		} else if (Platform.os() == 2) {
+		}
+		#end
+		#if (!helder.os || helder.os == "windows")
+		if (Platform.os() == 2) {
 			if (winAccess == null) winAccess = new WinAccess(window, ui);
 			(cast winAccess : WinAccess).update();
-		} else if (Platform.os() == 0) {
-			// (not Android's: AT-SPI is the Linux desktop's)
-			if (Platform.target() < 9) {
-				if (linuxAccess == null) linuxAccess = new LinuxAccess(window, ui);
-				(cast linuxAccess : LinuxAccess).update();
-			} else {
-				if (androidAccess == null) androidAccess = new AndroidAccess(window, ui);
-				(cast androidAccess : AndroidAccess).update();
-			}
 		}
+		#end
+		// (not Android's: AT-SPI is the Linux desktop's)
+		#if (!helder.os || helder.os == "linux")
+		if (Platform.os() == 0 && Platform.target() < 9) {
+			if (linuxAccess == null) linuxAccess = new LinuxAccess(window, ui);
+			(cast linuxAccess : LinuxAccess).update();
+		}
+		#end
+		#if (!helder.os || helder.os == "android")
+		if (Platform.target() >= 9) {
+			if (androidAccess == null) androidAccess = new AndroidAccess(window, ui);
+			(cast androidAccess : AndroidAccess).update();
+		}
+		#end
 	}
 
 	// the actions assistive technology asked for (the browser's), done
 	function pollAccess() {
+		#if (!helder.os || helder.os == "web")
 		if (Platform.os() == 3) {
 			if (access != null) WebMirror.poll(ui);
 			if (webScroll != null) (cast webScroll : WebScroll).poll();
-		} else if (Platform.os() == 0) {
-			if (Platform.target() < 9) {
-				if (linuxAccess != null) LinuxAccess.dispatch();
-			} else if (androidAccess != null) AndroidAccess.dispatch();
 		}
+		#end
+		#if (!helder.os || helder.os == "linux") if (Platform.os() == 0 && Platform.target() < 9 && linuxAccess != null) LinuxAccess.dispatch(); #end
+		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9 && androidAccess != null) AndroidAccess.dispatch(); #end
 	}
 
 	// the window's cursor: the Ui's
@@ -611,20 +637,16 @@ class UiWindow {
 		if (handedOver) return;
 		#end
 		// (nested: only a constant condition drops the branch)
+		#if (!helder.os || helder.os == "ios")
 		if (Platform.apple() >= 1) {
 			if (iosAccess != null) (cast iosAccess : IosAccess).dispose();
 			if (iosScroll != null) (cast iosScroll : IosScroll).dispose();
-		} else if (Platform.os() == 1) {
-			if (macAccess != null) (cast macAccess : MacAccess).dispose();
 		}
-		if (Platform.os() == 2) {
-			if (winAccess != null) (cast winAccess : WinAccess).dispose();
-		}
-		if (Platform.os() == 0) {
-			if (Platform.target() < 9) {
-				if (linuxAccess != null) (cast linuxAccess : LinuxAccess).dispose();
-			} else if (androidAccess != null) (cast androidAccess : AndroidAccess).dispose();
-		}
+		#end
+		#if (!helder.os || helder.os == "macos") if (Platform.os() == 1 && Platform.apple() < 1 && macAccess != null) (cast macAccess : MacAccess).dispose(); #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2 && winAccess != null) (cast winAccess : WinAccess).dispose(); #end
+		#if (!helder.os || helder.os == "linux") if (Platform.os() == 0 && Platform.target() < 9 && linuxAccess != null) (cast linuxAccess : LinuxAccess).dispose(); #end
+		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9 && androidAccess != null) (cast androidAccess : AndroidAccess).dispose(); #end
 		#if (!helder.headless && hxmc.target != "wasm32-wasi")
 		if (compositor != null) compositor.dispose();
 		compositor = null;
@@ -640,7 +662,7 @@ class UiWindow {
 	@:typescript public static function run(?content:RootView) {
 		if (content != null) Render.open(content);
 		App.run(() -> {
-			var now = helder.headless.Time.stamp();
+			var now = #if helder.headless helder.headless.Time.now #else haxe.Timer.stamp() #end;
 			if (now - darkAsked > 1) {
 				darkAsked = now;
 				// (the user's keymap file, read again when it changed: the menus' labels too)
@@ -788,6 +810,7 @@ class SystemClipboard implements ClipboardHost {
 
 // the browser's accessibility mirror (WebAccess), apart: its imports are
 // reached only from the browser's branches
+#if (!helder.os || helder.os == "web")
 @:hxmc.unsafe(gc)
 class WebMirror {
 	public static function views(canvas:Int):PlatformViews
@@ -803,3 +826,4 @@ class WebMirror {
 				ui.accessAction(p[0], p[1]);
 		});
 }
+#end

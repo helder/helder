@@ -34,15 +34,15 @@ class Format {
 		var result:Null<String> = null;
 		#if (target.name == "hxmc")
 		if (Platform.os() == Platform.WASI) {
-			result = LocaleWeb.number(x, tag, decimals, percent, currency);
+			#if (!helder.os || helder.os == "web") result = LocaleWeb.number(x, tag, decimals, percent, currency); #end
 		} else if (Platform.os() == Platform.WINDOWS) {
-			result = WindowsLocale.number(x, tag, decimals, percent, currency);
+			#if (!helder.os || helder.os == "windows") result = WindowsLocale.number(x, tag, decimals, percent, currency); #end
 		} else if (Platform.os() == Platform.MACOS) {
 			#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
 			result = AppleLocale.number(x, tag, decimals, percent, currency);
 			#end
 		} else if (Platform.target() >= 9) {
-			result = helder.os.android.AndroidLocale.number(x, tag, decimals, percent, currency);
+			#if (!helder.os || helder.os == "android") result = helder.os.android.AndroidLocale.number(x, tag, decimals, percent, currency); #end
 		}
 		#elseif js
 		var opts:Dynamic = currency != null ? {style: "currency", currency: currency} : percent ? {style: "percent"} : {};
@@ -61,15 +61,15 @@ class Format {
 		#if (target.name == "hxmc")
 		var ds = style(date), ts = style(time);
 		if (Platform.os() == Platform.WASI) {
-			result = LocaleWeb.date(milliseconds, tag, ds, ts);
+			#if (!helder.os || helder.os == "web") result = LocaleWeb.date(milliseconds, tag, ds, ts); #end
 		} else if (Platform.os() == Platform.WINDOWS) {
-			result = WindowsLocale.date(milliseconds, tag, ds, ts);
+			#if (!helder.os || helder.os == "windows") result = WindowsLocale.date(milliseconds, tag, ds, ts); #end
 		} else if (Platform.os() == Platform.MACOS) {
 			#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
 			result = AppleLocale.date(milliseconds, tag, ds, ts);
 			#end
 		} else if (Platform.target() >= 9) {
-			result = helder.os.android.AndroidLocale.date(milliseconds, tag, ds, ts);
+			#if (!helder.os || helder.os == "android") result = helder.os.android.AndroidLocale.date(milliseconds, tag, ds, ts); #end
 		}
 		#elseif js
 		var opts:Dynamic = {};

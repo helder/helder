@@ -36,6 +36,7 @@ class Spell {
 		#if (target.name == "hxmc" && hxmc.target != "wasm32-wasi")
 		// (constant conditions: no other system's links)
 		if (hxmc.Platform.apple() == 0) {
+			#if (!helder.os || helder.os == "linux")
 			if (hxmc.Platform.os() == 0 && hxmc.Platform.target() < 9) {
 				// (Enchant and Hunspell loaded at run time: the dynamic glibc mode; a static musl build links no dlopen)
 				#if (hxmc.libc == "glibc")
@@ -44,8 +45,9 @@ class Spell {
 				return null;
 				#end
 			}
-			else if (hxmc.Platform.os() == 2) return helder.text.windows.WinSpell.create(lang);
-			else if (hxmc.Platform.os() == 1) return helder.text.mac.MacSpell.create(lang);
+			#end
+			#if (!helder.os || helder.os == "windows") if (hxmc.Platform.os() == 2) return helder.text.windows.WinSpell.create(lang); #end
+			#if (!helder.os || helder.os == "macos") if (hxmc.Platform.os() == 1) return helder.text.mac.MacSpell.create(lang); #end
 		}
 		#end
 		return null;

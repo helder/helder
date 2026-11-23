@@ -29,20 +29,24 @@ class SystemImages {
 		return Platform.apple() == 0 && Platform.os() == 0 && Platform.target() < 9;
 
 	public static function available():Bool
-		return Platform.apple() == 0 && (Platform.os() == 1 || Platform.os() == 2) || linux() && helder.os.linux.LinuxImages.any();
+		return Platform.apple() == 0 && (Platform.os() == 1 || Platform.os() == 2) #if (!helder.os || helder.os == "linux") || linux() && helder.os.linux.LinuxImages.any() #end;
 
 	public static function supports(path:String):Bool {
 		var dot = path.lastIndexOf("."), ext = dot > 0 ? path.substr(dot + 1).toLowerCase() : "";
 		if (!EXTENSIONS.contains(ext)) return false;
-		return if (linux()) helder.os.linux.LinuxImages.supports(ext) else available();
+		return #if (!helder.os || helder.os == "linux") if (linux()) helder.os.linux.LinuxImages.supports(ext) else #end available();
 	}
 
 	// the file decoded (side > 0: at most that a side, where the system scales
 	// as it decodes); an ImageError when it cannot be
 	public static function decode(path:String, side = 0):{width:Int, height:Int, pixelsWidth:Int, pixelsHeight:Int, rgba:Bytes}
-		return if (Platform.apple() != 0) throw ImageError.unsupported("SystemImages: none here") else if (Platform.os() == 2) wic(path) else if (Platform.os() == 1)
-			imageIO(path, side) else if (linux()) linuxLibraries(path) else throw ImageError.unsupported("SystemImages: none on this system");
+		return if (Platform.apple() != 0) throw ImageError.unsupported("SystemImages: none here") else
+			#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) wic(path) else #end
+			#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) imageIO(path, side) else #end
+			#if (!helder.os || helder.os == "linux") if (linux()) linuxLibraries(path) else #end
+			throw ImageError.unsupported("SystemImages: none on this system");
 
+	#if (!helder.os || helder.os == "linux")
 	// --- Linux: libtiff, libheif, libavif, libraw where they are (helder.os.linux.LinuxImages)
 
 	static function linuxLibraries(path:String):{width:Int, height:Int, pixelsWidth:Int, pixelsHeight:Int, rgba:Bytes} {
@@ -53,6 +57,9 @@ class SystemImages {
 		return {width: d.width, height: d.height, pixelsWidth: d.width, pixelsHeight: d.height, rgba: d.rgba};
 	}
 
+	#end
+
+	#if (!helder.os || helder.os == "windows")
 	// --- Windows: WIC
 
 	static var factory = Ptr.nil();
@@ -158,6 +165,9 @@ class SystemImages {
 		return o;
 	}
 
+	#end
+
+	#if (!helder.os || helder.os == "macos")
 	// --- macOS: ImageIO
 
 	static function imageIO(path:String, side:Int):{width:Int, height:Int, pixelsWidth:Int, pixelsHeight:Int, rgba:Bytes} {
@@ -231,6 +241,8 @@ class SystemImages {
 		}
 	}
 
+	#end
+
 	static function unpremultiply(b:Bytes)
 		for (i in 0...b.length >> 2) {
 			var a = b.get(4 * i + 3);
@@ -240,6 +252,7 @@ class SystemImages {
 		}
 }
 
+#if (!helder.os || helder.os == "windows")
 // (WIC's interfaces: IUnknown 0-2, then each's own, in the headers' order)
 @:build(helder.os.win32.Com.build())
 @:hxmc.unsafe(gc)
@@ -279,6 +292,9 @@ class IWICFormatConverter {
 	@:slot(8) static function Initialize(self:Ptr, source:Ptr, format:Ptr, dither:Int, palette:Ptr, alpha:Float, paletteType:Int):Int;
 }
 
+#end
+
+#if (!helder.os || helder.os == "macos")
 // (each function from the framework that has it: they are bound as the program loads)
 @:hxmc.c @:hxmc.lib("/System/Library/Frameworks/ImageIO.framework/ImageIO") extern class ImageIO {
 	static function CGImageSourceCreateWithURL(url:Ptr, options:Ptr):Ptr;
@@ -303,3 +319,4 @@ class IWICFormatConverter {
 @:hxmc.c @:hxmc.lib("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation") extern class CFs {
 	static function CFRelease(o:Ptr):Void;
 }
+#end
