@@ -48,15 +48,8 @@ function tests() {
 		}
 		function material(m:Material):PbrMaterial
 			return materialOf(m);
-		// (no local lights: the draw's list empty, the frame's lights and tiles zeros)
-		final lights:PbrLights = {
-			position: [for (_ in 0...32) new Vec4(0, 0, 0, 0)],
-			color: [for (_ in 0...32) new Vec4(0, 0, 0, 0)],
-			cone: [for (_ in 0...32) new Vec4(0, 0, 0, 1)],
-			tileViewProj: [for (_ in 0...12) Mat4.identity()],
-			tileRect: [for (_ in 0...12) new Vec4(0, 0, 0, 0)],
-			tileParams: [for (_ in 0...12) new Vec4(0, 0, 0, 0)]
-		};
+		// (no local lights: the draw's list empty, the frame's lights' texture unread)
+		final lights = white;
 		// the colour at the origin, its normal n, the node's up, tinted
 		function shade(m:Material, n:Vec3, up:Vec3, l:Vec3, eye:Vec3, ?tint:Vec3, ?fog:Fog):Vec4
 			return shadeAt(n, new Vec3(0, 0, 0), new Vec2(0, 0), up, tint ?? new Vec3(1, 1, 1), frame(l, eye, fog), noLights(), material(m), lights, white, white, white,

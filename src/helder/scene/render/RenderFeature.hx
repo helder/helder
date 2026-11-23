@@ -128,7 +128,7 @@ class ShadowFrame {
 	public var soft:helder.gfx.shader.Vec4 = new helder.gfx.shader.Vec4(0, 0, 0, 0);
 	// a texel of the atlas (x, y)
 	public var atlas:helder.gfx.shader.Vec4 = new helder.gfx.shader.Vec4(1, 1, 0, 0);
-	// PbrLights' tiles: the local lights'
+	// the local lights' tiles: the rows after the frame's lights (FrameLights.ROW bytes each)
 	public var tiles:Null<haxe.io.Bytes> = null;
 	// the last frame's draws into the atlas, every tile's
 	public var draws = 0;
@@ -148,7 +148,7 @@ interface LocalShadowSource {
 	function layout(shadows:Shadows, at:Int):Int;
 	// its tiles not kept drawn, the atlas' pass begun (clear: some kept)
 	function draw(enc:helder.gfx.Encoder, shadows:Shadows, world:helder.scene.World, skins:Null<SkinSource>, clear:Bool):Void;
-	// the tiles it kept this frame; PbrLights' tiles' bytes
+	// the tiles it kept this frame; the tiles' rows' bytes
 	function kept():Int;
 	function tiles():haxe.io.Bytes;
 	// the atlas made again: nothing kept

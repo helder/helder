@@ -168,10 +168,10 @@ class Definitions {
 	function material(e:Node, n:Node):String {
 		var kinds = [[], ["normalMap"], ["skinned"], ["instanced"], ["instanced", "normalMap"]];
 		if (new TsAdapter(src, defined, "material").replacesPrepass(e)) kinds = kinds.concat([["prepass"], ["prepass", "instanced"]]);
-		var standard = ["PbrFrame", "PbrObject", "PbrMaterial", "PbrSkinInfo", "PbrPrepass", "PbrLights"];
+		var standard = ["PbrFrame", "PbrObject", "PbrMaterial", "PbrSkinInfo", "PbrPrepass"];
 		var textures = [
 			"baseColorTexture", "metallicRoughnessTexture", "emissiveTexture", "occlusionTexture", "shadowMap", "clusterMap", "environmentMap", "normalTexture",
-			"jointMatrices", "aoMap"
+			"jointMatrices", "aoMap", "lights"
 		];
 		var variants = [], blocks = new Map<String, Array<Int>>(), order = [];
 		for (k in 0...kinds.length) {

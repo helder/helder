@@ -15,15 +15,22 @@ import helder.scene.math.MathTools;
 // 32: a fragment stage's uniforms are 224 vectors in all on GL ES 3.0
 // drivers that count blocks' members among them, Android's emulator's;
 // or ClusteredLights' maxLights). As numbers, twelve a light (data):
-// PbrLights' three vectors (its position and range, its colour times
-// intensity and its first shadow tile plus 1, its cone), which the
-// renderer writes into PbrLights' block (writeBlock) and ClusteredLights
-// into its light data's rows (writeRows); Shadows sets the tiles (tile).
+// three vectors (its position and range, its colour times intensity and
+// its first shadow tile plus 1, its cone), which the renderer writes into
+// the frame's lights' texture (writeTexels: PbrShader's lightTexel) and
+// ClusteredLights into its light data's rows (writeRows); Shadows sets the
+// tiles (tile).
 // A draw's list is the eight that reach its bounds most (select: by the
 // same ranking, from its bounds' sphere). Nothing is allocated a frame.
 class FrameLights {
-	// PbrLights' rows
+	// the frame's lights' rows
 	public static inline var MAX_LIGHTS = 32;
+	// the frame's lights' texture (RGBA32F, PbrShader's lightTexel): a row a
+	// light, then a row a shadow tile (Shadows.MAX_TILES), six texels a row
+	public static inline var COLUMNS = 6;
+	public static inline var ROWS = 44;
+	// the bytes of a row
+	public static inline var ROW = COLUMNS * 16;
 	// a draw's list (PbrObject's lights0 and lights1)
 	public static inline var PER_DRAW = 8;
 	// floats a light in data
@@ -40,7 +47,7 @@ class FrameLights {
 	// the lights, their nodes, in order
 	public final lights:Array<Light> = [];
 	public final nodes:Array<Node> = [];
-	// FLOATS a light: x, y, z, range; r, g, b, tile + 1; the cone (PbrLights')
+	// FLOATS a light: x, y, z, range; r, g, b, tile + 1; the cone
 	public final data:Array<Float> = [];
 	// how much each matters to the view (gather's ranking)
 	public final score:Array<Float> = [];
@@ -168,7 +175,7 @@ class FrameLights {
 			data[to * FLOATS + f] = data[from * FLOATS + f];
 	}
 
-	// light k's first shadow tile in PbrLights' tiles (-1: unshadowed)
+	// light k's first shadow tile (-1: unshadowed)
 	public inline function setTile(k:Int, tile:Int)
 		data[k * FLOATS + 7] = tile + 1;
 
@@ -238,13 +245,12 @@ class FrameLights {
 
 	final picked:Array<Float> = Filled.floats(PER_DRAW, 0.0);
 
-	// PbrLights' block (std140: its three arrays of MAX_LIGHTS vectors one
-	// after the other), the first MAX_LIGHTS lights, zeros after
-	public function writeBlock(bytes:Bytes) {
+	// the frame's lights' texture's first MAX_LIGHTS rows (RGBA32F, ROW bytes
+	// a row): the first MAX_LIGHTS lights, three texels each, zeros after
+	public function writeTexels(bytes:Bytes) {
 		for (k in 0...MAX_LIGHTS)
-			for (v in 0...3)
-				for (c in 0...4)
-					bytes.setFloat((v * MAX_LIGHTS + k) * 16 + c * 4, k < count ? data[k * FLOATS + v * 4 + c] : 0);
+			for (f in 0...FLOATS)
+				bytes.setFloat(k * ROW + f * 4, k < count ? data[k * FLOATS + f] : 0);
 	}
 
 	// the light data's rows (ClusteredLights: FLOATS R32F texels a row), the
