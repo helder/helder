@@ -2991,8 +2991,10 @@ export declare class Window {
 // them (App.frame.pause: the next delta a period). Each turn begins a
 // frame of Pointers' (Pointers.step) before its events.
 // On macOS and Linux the loop runs on a thread of its own, the main
-// thread the system's (OsThread): so that Layers' compositor can read
-// input there while the program is busy.
+// thread the system's (OsThread), which reads the input while the
+// program runs on: each event goes to its window's compositor first
+// (Window.route: scrolling while the program is busy), then to the
+// program's next poll. beforeEvents run at each turn's start.
 //
 // helder.async's loop (the main thread's, once something made it: a task
 // launched, a job run) runs on the app's: a turn of it in each turn of the

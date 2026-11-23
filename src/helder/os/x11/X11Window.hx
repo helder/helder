@@ -918,16 +918,18 @@ class X11Window {
 		while (helder.async.Fds.read(fd, b) > 0) {}
 	}
 
-	// (until either descriptor has data, or seconds)
+	// (until either descriptor has data (b < 0: a alone), or seconds; ppoll, as Wayland waits)
 	static function waitTwo(a:Int, b:Int, seconds:Float) {
 		Arena.scoped(m -> {
-			var set:Ptr<Int64> = m.alloc(128);
-			set[a >> 6] = set[a >> 6] | ((1 : Int64) << (a & 63));
-			if (b >= 0) set[b >> 6] = set[b >> 6] | ((1 : Int64) << (b & 63));
-			var tv:Ptr<Int64> = m.alloc(16);
-			tv[0] = Std.int(seconds);
-			tv[1] = Std.int((seconds - Std.int(seconds)) * 1e6);
-			Select.select((a > b ? a : b) + 1, set, Ptr.nil(), Ptr.nil(), tv);
+			var pfd:Ptr<Int32> = cast m.alloc(16);
+			pfd[0] = a;
+			pfd[1] = 1;
+			pfd[2] = b;
+			pfd[3] = 1;
+			var ts:Ptr<Int64> = cast m.alloc(16);
+			ts[0] = Std.int(seconds);
+			ts[1] = Std.int((seconds - Std.int(seconds)) * 1e9);
+			helder.os.wayland.WaylandClient.WlLibc.ppoll(pfd, b < 0 ? 1 : 2, ts, Ptr.nil());
 		});
 	}
 

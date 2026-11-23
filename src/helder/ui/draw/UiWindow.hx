@@ -661,7 +661,13 @@ class UiWindow {
 			// more of latency)
 			for (w in open)
 				w.device.settle();
-			if (!drew) App.wait(idleWait);
+			if (!drew) {
+				#if (!helder.headless && hxmc.target != "wasm32-wasi")
+				for (w in open)
+					if (w.compositor != null) w.compositor.rest();
+				#end
+				App.wait(idleWait);
+			}
 		}, e -> for (w in open.copy()) if (w.window == e.window) w.handle(e));
 	}
 

@@ -806,12 +806,19 @@ class Renderer implements TextureCanvas {
 		clipR1 = k[5];
 		clipR2 = k[6];
 		clipR3 = k[7];
-		// (the atlas as it is at the frame's end: uploaded by end)
-		c.atlas = atlasTexture;
+		c.ready = true;
+	}
+
+	// (the composite's state once the frame ended: the atlas as end uploaded
+	// it, grown maybe; the quads' corners and indices, made at their first
+	// upload; false: none yet)
+	@:allow(helder.ui.draw.Compositor) function ended(c:CompositeFrame):Bool {
 		var sh = quads.shared();
+		if (sh.corners == null || sh.indices == null) return false;
+		c.atlas = atlasTexture;
 		c.corners = sh.corners;
 		c.indices = sh.indices;
-		c.ready = true;
+		return true;
 	}
 
 	// (a scroller's layer in the compositor's frame: its tiles over what it

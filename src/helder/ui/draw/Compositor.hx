@@ -52,7 +52,9 @@ class Compositor implements RenderIdle {
 	var drained = -1e9;
 	var stepped = -1e9;
 	var drew = -1e9;
-	var wakeups = 0;
+	// (the last input it took; whether the program is in a turn, not asleep)
+	var routedAt = -1e9;
+	var turn = true;
 	// whether it drew a frame since the program's last (that one tells all of it changed)
 	public var drewSince(default, null) = false;
 	// frames drawn, and the time of each one's input to its present (tests, the latency's numbers)
@@ -80,6 +82,14 @@ class Compositor implements RenderIdle {
 		return m;
 	}
 
+	// the mirror's offsets of the program's node n (null: none), from any thread
+	public function offsets(n:Node):Null<{x:Float, y:Float}> {
+		lock.acquire();
+		var o = mirror.offsets(n);
+		lock.release();
+		return o;
+	}
+
 	public function start():Bool
 		return device.addIdle(this);
 
@@ -95,8 +105,17 @@ class Compositor implements RenderIdle {
 			lock.release();
 			throw x;
 		}
+		if (r == ScrollMirror.TAKEN) routedAt = haxe.Timer.stamp();
 		lock.release();
 		if (r == ScrollMirror.TAKEN) device.wake();
+	}
+
+	// the program goes to sleep, nothing to draw (UiWindow.run, before App.wait):
+	// an input then wakes it, the compositor drawing only if it does not drain soon
+	public function rest() {
+		lock.acquire();
+		turn = false;
+		lock.release();
 	}
 
 	// ---- the program's
@@ -107,6 +126,7 @@ class Compositor implements RenderIdle {
 		var t = haxe.Timer.stamp();
 		lock.acquire();
 		drained = t;
+		turn = true;
 		if (t - stepped > this.period / 2) {
 			mirror.step(Ui.now());
 			stepped = t;
@@ -138,7 +158,7 @@ class Compositor implements RenderIdle {
 		mirror.adopt(shot);
 		lock.release();
 		drewSince = false;
-		if (!f.ready) return;
+		if (!f.ready || !r.ended(f)) return;
 		// (room for every quad it may draw, in each buffer of the ring)
 		var need = (f.quads() + 64) * CompositeFrame.STRIDE;
 		if (need > capacity) {
@@ -179,7 +199,8 @@ class Compositor implements RenderIdle {
 		var f = shown, d = -1.0;
 		if (f != null && (mirror.moving || moved(f))) {
 			// (the program's to draw while it keeps the pace: it drained this vsync)
-			d = Math.max(drew + period * 0.5, drained + period * 0.6);
+			// (asleep: it wakes for the input and draws it, unless it has not drained since)
+			d = Math.max(drew + period * 0.5, turn ? drained + period * 0.6 : drained > routedAt ? drained + period * 0.6 : routedAt + period * 0.6);
 		}
 		lock.release();
 		return d;
@@ -200,7 +221,7 @@ class Compositor implements RenderIdle {
 		var t = haxe.Timer.stamp();
 		lock.acquire();
 		var f = shown;
-		if (f == null || t - drained < period * 0.6) {
+		if (f == null || t - drained < period * 0.6 || !turn && drained > routedAt && t - routedAt < period * 0.6) {
 			lock.release();
 			return;
 		}

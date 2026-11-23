@@ -25,7 +25,8 @@ class Inject {
 		#end
 	}
 
-	public static function start(w:helder.os.Window, ms:Int):Inject {
+	// every `every` seconds for ms, each sent's time (haxe.Timer.stamp) to sent
+	public static function start(w:helder.os.Window, ms:Int, every = 0.016, ?onSent:Float->Void):Inject {
 		var i = new Inject();
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 		var view = w.surface.handle;
@@ -49,11 +50,12 @@ class Inject {
 				LibC.free(p);
 				CG.CGEventSetIntegerValueField(cg, 91, Std.int(at[0]));
 				CG.CGEventSetIntegerValueField(cg, 92, Std.int(at[0]));
+				if (onSent != null) onSent(haxe.Timer.stamp());
 				CG.CGEventPostToPid(Libc.getpid(), cg);
 				i.sent++;
 				CF.CFRelease(cg);
 				helder.os.objc.Runtime.objc_autoreleasePoolPop(pool);
-				Sys.sleep(0.016);
+				Sys.sleep(every);
 			}
 			i.done.release();
 		});
@@ -65,6 +67,7 @@ class Inject {
 			var until = haxe.Timer.stamp() + ms / 1000;
 			var raw:Ptr = LibC.malloc(192);
 			while (!d.isNull() && haxe.Timer.stamp() < until) {
+				if (onSent != null) onSent(haxe.Timer.stamp());
 				for (press in [true, false]) {
 					LibC.memset(raw, 0, 192);
 					var b:Ptr<helder.os.x11.Xlib.XKeyEvent> = raw;
@@ -79,7 +82,7 @@ class Inject {
 				}
 				helder.os.x11.Xlib.XFlush(d);
 				i.sent++;
-				Sys.sleep(0.016);
+				Sys.sleep(every);
 			}
 			LibC.free(raw);
 			if (!d.isNull()) helder.os.x11.Xlib.XCloseDisplay(d);

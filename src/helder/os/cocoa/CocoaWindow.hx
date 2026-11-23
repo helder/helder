@@ -212,7 +212,8 @@ class CocoaWindow {
 			return;
 		}
 		#end
-		Msg.iInt(app, ObjC.sel("setActivationPolicy:"), 0); // regular: a Dock icon, key windows
+		// (regular: a Dock icon, key windows; HELDER_BACKGROUND=1 accessory: none, never active)
+		Msg.iInt(app, ObjC.sel("setActivationPolicy:"), background ? 1 : 0);
 		Msg.v(app, ObjC.sel("finishLaunching"));
 		mode = ObjC.str("kCFRunLoopDefaultMode");
 		OsThread.waitMain = pump;
@@ -389,10 +390,18 @@ class CocoaWindow {
 
 	function raise() {
 		helder.os.OsThread.run(() -> {
+			// (in the background: on screen, so that its frames present, but never key nor the app active)
+			if (background) {
+				Msg.v(window, ObjC.sel("orderFrontRegardless"));
+				return;
+			}
 			Msg.vPtr(window, ObjC.sel("makeKeyAndOrderFront:"), Ptr.nil());
 			Msg.vBool(app, ObjC.sel("activateIgnoringOtherApps:"), true);
 		});
 	}
+
+	// whether the windows stay in the background (HELDER_BACKGROUND=1: tests run while the machine is in use)
+	public static final background = Sys.getEnv("HELDER_BACKGROUND") == "1";
 
 	// the system asks the app to open files or URLs (NSApplicationDelegate):
 	// the files' paths and the other URLs (the app's schemes) to App.onOpen

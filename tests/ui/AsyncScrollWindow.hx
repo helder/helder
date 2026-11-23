@@ -34,17 +34,17 @@ class AsyncScrollWindow {
 			list.append(row);
 		}
 		w.root.append(list);
+		if (l >= 0) return Latency.run(w, list, Std.parseInt(a[l + 1]) ?? 60, k >= 0 ? Std.parseFloat(a[k + 1]) / 1000 : 0);
 		var c = w.compositor;
 		if (c == null) {
 			Sys.println("AsyncScrollWindow: no compositor here (HELDER_ASYNC_SCROLL=0, no render thread, or the program on the main thread): skipped");
 			w.close();
 			return;
 		}
-		if (l >= 0) return Latency.run(w, list, Std.parseInt(a[l + 1]) ?? 60, k >= 0 ? Std.parseFloat(a[k + 1]) / 1000 : 0);
 		var step = 0, presents:Array<Float> = [], blockedFrom = 0.0, blockedTo = 0.0, offsets:Array<Float> = [];
 		c.onFrame = t -> {
 			presents.push(t);
-			var o = c.mirror.offsets(list);
+			var o = c.offsets(list);
 			offsets.push(o == null ? -1 : o.y);
 		};
 		var blocked = false, flung = 0.0, injected = 0;
@@ -90,7 +90,7 @@ class AsyncScrollWindow {
 				check("at the display's pace", gaps.length > 0 && median < 0.03, "median gap " + Math.round(median * 10000) / 10 + " ms");
 				var advancing = during.length > 1 && offsets[during[during.length - 1]] > offsets[during[0]] && offsets[during[0]] >= flung;
 				check("the offset advancing", advancing, during.length > 0 ? flung + ": " + offsets[during[0]] + " to " + offsets[during[during.length - 1]] : "none");
-				var o = c.mirror.offsets(list);
+				var o = c.offsets(list);
 				check("the program has the compositor's offset", o != null && list.scrollY == o.y && list.scrollY > flung, flung + " to " + list.scrollY + " " + (o == null ? null : o.y));
 				w.close();
 				Sys.println("AsyncScrollWindow: " + (failed == 0 ? "ok" : '$failed FAILED'));

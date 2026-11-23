@@ -224,6 +224,9 @@ private class Taking {
 				e.scrollsY = s.overflowY == Scroll;
 				e.rtl = n.rtl();
 				e.own = ui.mirrorOwn(n);
+				// (the program's to scroll: sticky nodes in it, placed by the offset; a native view over it, the system's to move)
+				var l = n.contentLayer;
+				e.async = !(l != null && l.sticky.length > 0) && !natives(n);
 				bars(n, e);
 				var inner = covers.length;
 				walkChildren(n, i, i, -1e9, -1e9, 1e9, 1e9);
@@ -266,6 +269,17 @@ private class Taking {
 			if (c.style.position == Relative) walk(c, up, outer, x0, y0, x1, y1);
 		for (c in n.children)
 			if (c.style.position != Relative) walk(c, up, outer, x0, y0, x1, y1);
+	}
+
+	// (whether a native view of the platform's is over a node in n)
+	function natives(n:Node):Bool {
+		for (v in ui.natives) {
+			var p = v.parent;
+			while (p != null && p != n)
+				p = p.parent;
+			if (p == n) return true;
+		}
+		return false;
 	}
 
 	// (whether n is over a scroller painted before it that it is not in)

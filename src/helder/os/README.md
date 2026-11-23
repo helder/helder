@@ -68,10 +68,27 @@ the two runs at a time, each serving the other while it waits, so the
 program sees what it saw on one thread, and code after `App.run`
 runs on the main thread again. Code of the app's own that calls AppKit
 from a frame or an event (`helder/native`, Objective-C) goes through
-`OsThread.run`. On Linux the main thread only waits for now: X11 and
-Wayland have no thread of their own, and the program's thread calls them
-as before. `HELDER_THREAD=0` keeps the program on the main thread;
-Windows, iOS, the browser and headless runs keep it there for now.
+`OsThread.run`.
+
+While the program runs on and calls nothing, the main thread reads the
+system's input itself (`OsThread.waitMain`), so that a window's
+compositor (helder.ui's README, "Performance") gets each event as it
+comes, before the program: macOS's input events in the default run loop
+mode (a call handed to it posts an event that wakes it); X11's
+connection; Wayland's pointer and keyboard, on an event queue of their
+own (the rest, the windows' configures among them, the program's as
+before). Each event is routed then (`Window.route`, `Event.routed`) and
+kept for the program's next poll, in order. A system's callback into the
+program's state meanwhile (NSAccessibility, a native field's delegate,
+WKWebView's) is handed to the program's thread (`OsThread.hold`).
+Window calls stay where they were (macOS's on the main thread, X11's and
+Wayland's on the program's, their libraries locking).
+`HELDER_THREAD=0` keeps the program on the main thread; Windows, iOS,
+the browser and headless runs keep it there for now.
+
+`HELDER_BACKGROUND=1` keeps macOS's windows in the background (no Dock
+icon, never key nor active, shown on screen so that frames present): for
+window tests run while someone uses the machine.
 
 ### Files dropped, full screen, a window's place
 
