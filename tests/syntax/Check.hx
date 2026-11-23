@@ -15,7 +15,7 @@ using StringTools;
 //   printed back: the same bytes (the tree's leaves cover the file, no gap);
 //   random edits of its elements read again and undone, byte for byte;
 //   each read structurally (its brackets and markup) but the ones listed
-//   in FLAT, which do not balance (Haxe's #if branches);
+//   in FLAT, which do not balance (a reject's unbalanced "{");
 // - each Haxe markup literal read as helder.markup.Syntax's parser (the
 //   macro's) reads it: the same elements, names and attributes, in order;
 // - the time a read takes, a file of 2000 lines and more (a few ms natively).
@@ -24,8 +24,8 @@ class Check {
 	static var failed = 0;
 	static var checks = 0;
 
-	// (files that read flat: brackets that do not balance across #if branches)
-	static final FLAT:Array<String> = [];
+	// (files that read flat: brackets that do not balance)
+	static final FLAT:Array<String> = ["tests/view/reject/MarkupBrace.hx"];
 
 	static function check(what:String, ok:Bool, ?detail:String) {
 		checks++;

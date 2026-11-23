@@ -99,7 +99,7 @@ class TestCommand {
 		generate(files, regex);
 		writeTypescriptMain(ts);
 		var map = new Mapper(files);
-		var cp = [];
+		var cp = Compiler.markup(p.defines);
 		for (c in p.classPaths(files).concat([GEN])) cp = cp.concat(["-cp", c]);
 		// (each target's build then its run, its TypeScript program's first)
 		var steps:Array<Step> = [];
@@ -206,7 +206,7 @@ class TestCommand {
 		var wasm = t == "wasm";
 		var exe = wasm ? "bin/test/ts.wasm" : Sys.systemName() == "Windows" ? "bin/test/ts-host.exe" : "bin/test/ts-host";
 		var target = wasm ? ["-D", "hxmc.target=wasm32-wasi"] : Sys.systemName() == "Linux" ? ["-D", "hxmc.libc=glibc"] : [];
-		var words = connect.concat(["-cp", p.helder]).concat(AssetStep.define(exe)).concat([
+		var words = connect.concat(Compiler.markup(p.defines)).concat(["-cp", p.helder]).concat(AssetStep.define(exe)).concat([
 			"-main", "helder.typescript.js.Seed", "-D", "helder.typescript=" + FileSystem.fullPath(TS_MAIN), "-D", "helder.root=" + FileSystem.fullPath(".").split("\\").join("/"),
 			"--custom-target", 'hxmc=$exe'
 		]).concat(target);
@@ -370,16 +370,21 @@ class Project {
 	public final classPath:Array<String>;
 	public final roots:Array<String>;
 	public final helder:String;
+	// package.json's "helder": {"defines"} as -D words
+	public final defines:Array<String>;
 
 	// (named: a directory under no root searched too, its own root)
 	public function new(?named:Array<String>) {
-		var cps = [];
+		var cps = [], words = [];
 		try {
-			var cfg:Dynamic = haxe.Json.parse(File.getContent("package.json")).haxe;
-			var c:Dynamic = cfg?.classPath;
+			var json:Dynamic = haxe.Json.parse(File.getContent("package.json"));
+			var c:Dynamic = json.haxe?.classPath;
+			var d:Dynamic = json.helder?.defines;
+			if (d != null) for (k in Reflect.fields(d)) words = words.concat(["-D", '$k=${Reflect.field(d, k)}']);
 			if (c is String) cps.push(c) else if (c is Array) cps = cps.concat(c);
 		} catch (_:Dynamic) {}
 		if (cps.length == 0) cps.push("src");
+		defines = words;
 		classPath = [for (c in cps) clean(c)];
 		roots = [];
 		for (r in classPath.concat(["src", "tests"]))

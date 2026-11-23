@@ -23,6 +23,8 @@ using StringTools;
 // Xvfb on Linux.
 class Run {
 	static final TOOL = Sys.getEnv("HAXE") ?? (Sys.systemName() == "Windows" ? "haxe.cmd" : "haxe");
+	// (markup's braces read as code, as every helder build does: helder.cli.Compiler.markup)
+	static final MARKUP = ["-D", "hxmc.markup-braces"];
 	static final NODE = Sys.getEnv("NODE") ?? "node";
 	static final HOST = hostTarget();
 	static final GFX_TARGET = Sys.getEnv("GFX_TARGET") ?? HOST;
@@ -637,7 +639,7 @@ class Run {
 		if ([for (x in WAYLAND_XML) if (!FileSystem.exists(x)) x].length == 0) {
 			if (FileSystem.exists("bin/wayland/protocol")) rmrf("bin/wayland/protocol");
 			mkdirs("bin/wayland/protocol");
-			run(TOOL, ["-cp", "src", "--run", "helder.os.wayland.Scanner", "bin/wayland/protocol"].concat(WAYLAND_XML));
+			run(TOOL, MARKUP.concat(["-cp", "src", "--run", "helder.os.wayland.Scanner", "bin/wayland/protocol"].concat(WAYLAND_XML)));
 			for (f in FileSystem.readDirectory("bin/wayland/protocol"))
 				if (File.getContent('bin/wayland/protocol/$f') != File.getContent('src/helder/os/wayland/protocol/$f'))
 					throw new Failed('src/helder/os/wayland/protocol/$f differs from what the scanner makes of the system\'s XML (bin/wayland/protocol/$f)');
@@ -2015,11 +2017,11 @@ class Run {
 
 	// the compiler on Eval: `--run main args`
 	static function interp(cp:Array<String>, main:String, ?args:Array<String>, ?env:Map<String, String>)
-		run(TOOL, cp.concat(["--run", main]).concat(args ?? []), env);
+		run(TOOL, MARKUP.concat(cp).concat(["--run", main]).concat(args ?? []), env);
 
 	static function js(out:String, args:Array<String>) {
 		mkdirs(Path.directory(out));
-		run(TOOL, args.concat(["-js", out]));
+		run(TOOL, MARKUP.concat(args).concat(["-js", out]));
 	}
 
 	// a program for this machine, for wasm32-wasi, for a target (Linux: the
@@ -2074,7 +2076,7 @@ class Run {
 
 	static function build(args:Array<String>, log:String, ?tool:String):{code:Int, log:String, seconds:Float} {
 		var t0 = Sys.time();
-		var p = new Process(tool ?? TOOL, args);
+		var p = new Process(tool ?? TOOL, tool == null ? MARKUP.concat(args) : args);
 		var r = drain(p), out = r.out, err = r.err;
 		var code = p.exitCode();
 		p.close();

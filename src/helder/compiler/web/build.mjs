@@ -80,7 +80,7 @@ if (!fs.existsSync(built)) {
 	const tmp = `${built}.${process.pid}`;
 	log(`building helder's compiler for wasm32-wasi (hxmc ${hxmcVersion})`);
 	const b = spawnSync(process.execPath, [path.join(cli, 'hxmc/bootstrap/haxe.mjs'), '-cp', src, '-cp', path.join(hxmc, 'haxe/src'), '-cp', path.join(hxmc, 'hxmc/src'),
-		'-main', 'helder.compiler.web.WebMain', '-D', 'disable-parallelism', '-D', 'hih_no_generators', '-D', 'hxmc.target=wasm32-wasi', '-D', 'hxmc.wasm-eh=legacy',
+		'-main', 'helder.compiler.web.WebMain', '-D', 'disable-parallelism', '-D', 'hih_no_generators', '-D', 'hxmc.markup-braces', '-D', 'hxmc.target=wasm32-wasi', '-D', 'hxmc.wasm-eh=legacy',
 		'--custom-target', `hxmc=${tmp}`], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']});
 	if (b.status !== 0) {
 		process.stderr.write(b.stdout + b.stderr);

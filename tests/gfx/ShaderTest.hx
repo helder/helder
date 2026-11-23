@@ -289,7 +289,7 @@ class ShaderTest {
 				for (l in sys.io.File.getContent('$dir/$f').split("\n"))
 					if (StringTools.startsWith(l, "// expect: ")) StringTools.trim(l.substr(11))
 			];
-			var p = new sys.io.Process(tool, ["-cp", src, "-cp", dir, "-main", f.substr(0, f.length - 3), "--interp", "--no-output"]);
+			var p = new sys.io.Process(tool, ["-D", "hxmc.markup-braces", "-cp", src, "-cp", dir, "-main", f.substr(0, f.length - 3), "--interp", "--no-output"]);
 			var out = p.stdout.readAll().toString() + p.stderr.readAll().toString();
 			var code = p.exitCode();
 			p.close();

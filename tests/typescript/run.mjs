@@ -42,7 +42,7 @@ const compiler=built.stdout.trim();
 const hxmc=spawnSync(process.execPath,['src/helder/compiler/build.mjs','--sources','--quiet'],{encoding:'utf8'}).stdout.trim();
 const launcher='node_modules/@hxmc/cli/hxmc/bootstrap/haxe.mjs';
 if(mine()) {
-ok(run(process.execPath,[launcher,'-cp','src','-cp',T,'-cp',`${hxmc}/haxe/src`,'-cp',`${hxmc}/hxmc/src`,'-main','IrTests','-D','hih_no_generators','-D','disable-parallelism','--custom-target',`hxmc=${dir}/ir-tests`]),'IR checks build');
+ok(run(process.execPath,[launcher,'-D','hxmc.markup-braces','-cp','src','-cp',T,'-cp',`${hxmc}/haxe/src`,'-cp',`${hxmc}/hxmc/src`,'-main','IrTests','-D','hih_no_generators','-D','disable-parallelism','--custom-target',`hxmc=${dir}/ir-tests`]),'IR checks build');
 const ir=run(`${dir}/ir-tests`,process.env.BLESS?['--write-golden']:[]);ok(ir,'IR checks');process.stdout.write(ir.stdout);
 }
 const tsc=['node_modules/typescript/bin/tsc','--target','esnext','--strict','--skipLibCheck'];
@@ -163,7 +163,7 @@ if(mine()) {
         const glibc=target==='linux-x86_64'?['-D','hxmc.libc=glibc']:[];
         const ts=`${dir}/platform-ts${target!=='linux-x86_64'?'.wasm':''}`,hx=`${dir}/platform-hx${target!=='linux-x86_64'?'.wasm':''}`;
         ok(run(compiler,[`${P}/main.ts`,'--cp',P,'--target',target,...glibc,'-o',ts]),`platform/main.ts compile ${target}`);
-        ok(run(compiler,['-cp',P,'-main','Main','-D',`hxmc.target=${target}`,...glibc,'--custom-target',`hxmc=${hx}`]),`platform/Main.hx compile ${target}`);
+        ok(run(compiler,['-D','hxmc.markup-braces','-cp',P,'-main','Main','-D',`hxmc.target=${target}`,...glibc,'--custom-target',`hxmc=${hx}`]),`platform/Main.hx compile ${target}`);
         const os=target==='linux-x86_64'?'linux':'wasi';
         const exec=f=>target==='linux-x86_64'?run(f,[]):run(process.execPath,[`${T}/run-wasi.cjs`,f]);
         const a=exec(ts);ok(a,`platform/main.ts ${target}`);
@@ -231,7 +231,7 @@ for(const file of fs.readdirSync(D).filter(f=>/\.tsx?$/.test(f)&&f!=='print.ts')
     if(only&&!only.includes(target))continue;
     const ts=`${dir}/def-${stem}${wasm?'.wasm':''}`,hx=`${dir}/def-${main}${wasm?'.wasm':''}`;
     ok(run(compiler,[`${D}/${file}`,'-D','helder.gfx.shaders=all','--target',target,'-o',ts]),`${file} compile ${target}`);
-    ok(run(compiler,['-cp','src','-cp',D,'-main',main,'-D','helder.gfx.shaders=all','-D',`hxmc.target=${target}`,'--custom-target',`hxmc=${hx}`]),`${main}.hx compile ${target}`);
+    ok(run(compiler,['-D','hxmc.markup-braces','-cp','src','-cp',D,'-main',main,'-D','helder.gfx.shaders=all','-D',`hxmc.target=${target}`,'--custom-target',`hxmc=${hx}`]),`${main}.hx compile ${target}`);
     const exec=f=>wasm?run(process.execPath,[`${T}/run-wasi.cjs`,f]):run(f,[]);
     const a=exec(ts),b=exec(hx);ok(a,`${file} ${target}`);ok(b,`${main}.hx ${target}`);
     assert.ok(a.stdout.length>0,`${file} printed nothing`);
@@ -249,7 +249,7 @@ for(const file of fs.readdirSync(`${D}/reject`).filter(f=>/\.tsx?$/.test(f)).sor
     assert.notEqual(a.status,0,`${file} should be rejected`);
     assert.ok(a.stderr.includes(want),`${file} should report ${want}, got ${a.stderr}`);
     // (typed for hxmc: a job's checks are its)
-    const b=run(compiler,['-cp','src','-cp',`${D}/reject`,'-main',main,'--custom-target',`hxmc=${out}-hx`]);
+    const b=run(compiler,['-D','hxmc.markup-braces','-cp','src','-cp',`${D}/reject`,'-main',main,'--custom-target',`hxmc=${out}-hx`]);
     assert.notEqual(b.status,0,`${main}.hx should be rejected`);
     assert.ok((b.stdout+b.stderr).includes(want),`${main}.hx should report ${want}, got ${b.stdout}${b.stderr}`);
     console.log(`PASS definition rejected: ${file}, ${main}.hx`);

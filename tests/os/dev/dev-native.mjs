@@ -43,7 +43,7 @@ if (v1 === original) throw new Error('Counter.hx changed: its signal line is not
 fs.writeFileSync(counter, v1);
 const cp = [`-cp ${path.join(repo, 'src')}`];
 const glibc = process.platform === 'linux' ? ['-D hxmc.libc=glibc'] : [];
-fs.writeFileSync(path.join(work, 'build.hxml'), ['-cp app', ...cp, '-main Counter', ...glibc,
+fs.writeFileSync(path.join(work, 'build.hxml'), ['-cp app', '-D hxmc.markup-braces', ...cp, '-main Counter', ...glibc,
 	`--custom-target hxmc=out/counter${process.platform === 'win32' ? '.exe' : ''}`].join('\n') + '\n');
 // (written beside and renamed over: the watcher never reads a half-written file)
 const edit = (f) => { fs.writeFileSync(counter + '.tmp', f(fs.readFileSync(counter, 'utf8'))); fs.renameSync(counter + '.tmp', counter); };

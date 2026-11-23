@@ -77,7 +77,7 @@ for (const p of platforms) {
 	fs.mkdirSync(bin, { recursive: true });
 	const env = { HXMC_RT_DIR: rt };
 	const launcher = path.join(root, 'node_modules/@hxmc/cli/hxmc/bootstrap/haxe.mjs');
-	run(`${p}/bin/helder`, process.execPath, [launcher, '-cp', 'src', '-main', 'helder.cli.Cli', '-D', `hxmc.target=${target}`, '--custom-target', `hxmc=${path.join(bin, 'helder' + ext)}`], env);
+	run(`${p}/bin/helder`, process.execPath, [launcher, '-D', 'hxmc.markup-braces', '-cp', 'src', '-main', 'helder.cli.Cli', '-D', `hxmc.target=${target}`, '--custom-target', `hxmc=${path.join(bin, 'helder' + ext)}`], env);
 	run(`${p}/bin/helder-compiler`, process.execPath, [path.join(root, 'src/helder/compiler/build.mjs'), '--quiet', '--target', target, '-o', path.join(bin, 'helder-compiler' + ext)], env);
 	const [os, cpu] = p.split('-');
 	fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({

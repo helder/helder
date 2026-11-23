@@ -266,7 +266,7 @@ class Entry {
 		if (target.startsWith("ios-")) for (c in externs("apple-uikit")) out = out.concat(["-cp", c]);
 		// (legacy exception handling: every browser with WebGPU has it, those with WebGL2 since 2021)
 		if (target == "web") out = out.concat(["-D", "hxmc.wasm-eh=legacy"]);
-		out = out.concat(defines);
+		out = out.concat(defines).concat(Compiler.markup(defines));
 		// (assets named by path: found under the class paths, else the project)
 		out = out.concat(["-D", "helder.root=" + FileSystem.fullPath(root).split("\\").join("/")]);
 		if (hxml != null) out.push(hxml);

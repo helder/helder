@@ -191,7 +191,10 @@ booted.
 - **Outputs**: `bin/<target>/<name>` under the project (the name is
   package.json's, else the main module's; `-o` names another); dev builds
   under `bin/dev/`. `build` is a release build (`-dce full`), `dev` adds
-  `-D hxmc.dev`. Phones: `bin/android/<name>.apk` (its library, and what
+  `-D hxmc.dev`. Every build (`build`, `run`, `dev`, `test`, the studio's)
+  reads markup's braces as code, as JSX (`-D hxmc.markup-braces`:
+  `<x y={a < b}/>`); `"defines": {"helder.markup-stock": 1}` keeps Haxe's
+  own reading. Phones: `bin/android/<name>.apk` (its library, and what
   the build needs of Java, beside it in `<name>.lib/`),
   `bin/ios/<name>.ipa` (and its `.app`), `bin/ios-sim/<name>.app`.
 

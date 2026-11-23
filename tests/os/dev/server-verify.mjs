@@ -45,7 +45,7 @@ const cases = {
 
 const out = web ? 'out/app.wasm' : process.platform === 'win32' ? 'out/app.exe' : 'out/app';
 const ref = 'ref/' + path.basename(out);
-const args = (o) => ['-cp', 'src', '-main', 'Main', ...(web ? ['-D', 'hxmc.target=wasm32-wasi'] : process.platform === 'linux' ? ['-D', 'hxmc.libc=glibc'] : []),
+const args = (o) => ['-D', 'hxmc.markup-braces', '-cp', 'src', '-main', 'Main', ...(web ? ['-D', 'hxmc.target=wasm32-wasi'] : process.platform === 'linux' ? ['-D', 'hxmc.libc=glibc'] : []),
 	'--custom-target', 'hxmc=' + o, ...(fs.existsSync(path.join(path.dirname(compiler), 'std')) ? ['-cp', path.join(path.dirname(compiler), 'std')] : [])];
 const env = { ...process.env, HXMC_MODULE_CACHE: '0' };
 
