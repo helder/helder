@@ -30,7 +30,11 @@ class ShareApple {
 		return shared;
 	}
 
-	static function ios(items:Ptr, done:Bool->Void) {
+	// (UIKit's: the main thread's, OsThread; the answer from there too, which Await takes from any thread)
+	static function ios(items:Ptr, done:Bool->Void)
+		helder.os.OsThread.run(() -> iosNow(items, done));
+
+	static function iosNow(items:Ptr, done:Bool->Void) {
 		var host = helder.os.uikit.UIKitWindow.controllerNow();
 		if (host.isNull()) return done(false);
 		var pool = Runtime.objc_autoreleasePoolPush();

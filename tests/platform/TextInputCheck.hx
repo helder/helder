@@ -136,8 +136,8 @@ class TextInputCheck implements Markup {
 		var k = field(tag).textKind();
 		#if (hxmc.target == "ios-sim-arm64" || hxmc.target == "ios-arm64")
 		var v = native(tag);
-		check('$tag: its UITextField first responder', helder.os.objc.Msg.b(v, helder.os.objc.ObjC.sel("isFirstResponder")));
-		var kt = helder.os.objc.Msg.i(v, helder.os.objc.ObjC.sel("keyboardType")).toInt(), rt = helder.os.objc.Msg.i(v, helder.os.objc.ObjC.sel("returnKeyType")).toInt();
+		check('$tag: its UITextField first responder', onMain(() -> helder.os.objc.Msg.b(v, helder.os.objc.ObjC.sel("isFirstResponder"))));
+		var kt = onMain(() -> helder.os.objc.Msg.i(v, helder.os.objc.ObjC.sel("keyboardType")).toInt()), rt = onMain(() -> helder.os.objc.Msg.i(v, helder.os.objc.ObjC.sel("returnKeyType")).toInt());
 		check('$tag: UIKeyboardType $keyboard, UIReturnKeyType $ret', kt == keyboard && rt == ret, 'keyboardType $kt, returnKeyType $rt');
 		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
 		var t = helder.os.android.TextInput.inputType(k), o = helder.os.android.TextInput.imeOptions(k);
@@ -151,12 +151,17 @@ class TextInputCheck implements Markup {
 
 	static function str(s:String):hxmc.unsafe.Ptr
 		return helder.os.objc.ObjC.str(s);
+
+	// (UIKit's, on the main thread, as the keyboard calls it: the program has a thread of its own)
+	static function onMain<T>(f:Void->T):T
+		return helder.os.OsThread.get(f);
 	#end
 
 	// text typed into the focused field (iOS: UITextField's insertText:; Android: the Connection's commitText)
 	static function typeText(s:String) {
 		#if (hxmc.target == "ios-sim-arm64" || hxmc.target == "ios-arm64")
-		helder.os.objc.Msg.vPtr(native(focused()), helder.os.objc.ObjC.sel("insertText:"), str(s));
+		var v = native(focused());
+		helder.os.OsThread.run(() -> helder.os.objc.Msg.vPtr(v, helder.os.objc.ObjC.sel("insertText:"), str(s)));
 		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
 		connection("commitText", s);
 		#end
@@ -167,7 +172,8 @@ class TextInputCheck implements Markup {
 	// a composition it did not make)
 	static function compose(s:String) {
 		#if (hxmc.target == "ios-sim-arm64" || hxmc.target == "ios-arm64")
-		helder.os.objc.Msg.vPtrIntInt(native(focused()), helder.os.objc.ObjC.sel("setMarkedText:selectedRange:"), str(s), s.length, 0);
+		var v = native(focused());
+		helder.os.OsThread.run(() -> helder.os.objc.Msg.vPtrIntInt(v, helder.os.objc.ObjC.sel("setMarkedText:selectedRange:"), str(s), s.length, 0));
 		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
 		helder.os.android.MainThread.post(() -> {
 			call("setComposingText", s);
@@ -180,8 +186,10 @@ class TextInputCheck implements Markup {
 	static function commit(s:String) {
 		#if (hxmc.target == "ios-sim-arm64" || hxmc.target == "ios-arm64")
 		var v = native(focused());
-		helder.os.objc.Msg.vPtrIntInt(v, helder.os.objc.ObjC.sel("setMarkedText:selectedRange:"), str(s), s.length, 0);
-		helder.os.objc.Msg.v(v, helder.os.objc.ObjC.sel("unmarkText"));
+		helder.os.OsThread.run(() -> {
+			helder.os.objc.Msg.vPtrIntInt(v, helder.os.objc.ObjC.sel("setMarkedText:selectedRange:"), str(s), s.length, 0);
+			helder.os.objc.Msg.v(v, helder.os.objc.ObjC.sel("unmarkText"));
+		});
 		#end
 	}
 
@@ -189,7 +197,7 @@ class TextInputCheck implements Markup {
 	static function enter(action:Int) {
 		#if (hxmc.target == "ios-sim-arm64" || hxmc.target == "ios-arm64")
 		var v = native(focused());
-		helder.os.objc.Msg.bPtr(helder.os.objc.Msg.id(v, helder.os.objc.ObjC.sel("delegate")), helder.os.objc.ObjC.sel("textFieldShouldReturn:"), v);
+		helder.os.OsThread.run(() -> helder.os.objc.Msg.bPtr(helder.os.objc.Msg.id(v, helder.os.objc.ObjC.sel("delegate")), helder.os.objc.ObjC.sel("textFieldShouldReturn:"), v));
 		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
 		connection("performEditorAction", null, action);
 		#end
