@@ -55,7 +55,7 @@ function tests() {
 			equals(s.volumeOf("/Users/ben").name, "Disk");
 			equals(s.placeOf("/Users/ben/Pictures/Trips").name, "Pictures");
 			// (a place chosen: its own level)
-			var x = new Explorer(files, (_, _, _) -> {}, s.places, s.volumes, Preview.now);
+			var x = new Explorer(files, (_, _, _) -> {}, s.places.value, s.volumes, Preview.now);
 			x.choose("/Users/ben/Pictures");
 			equals(x.sidebar.level.value, "/Users/ben/Pictures");
 			x.browser.go("/Users/ben/Pictures/Trips/Iceland");

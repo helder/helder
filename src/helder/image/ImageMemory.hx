@@ -40,20 +40,22 @@ class ImageMemory {
 		return Bytes.alloc(n);
 	}
 
-	#if (target.name == "hxmc" && hxmc.target != "wasm32-wasi")
+	#if (target.name == "hxmc")
 	// bytes as a Buffer the caller closes: the memory under the view when
 	// bytes() gave it (no longer this memory's, not copied), else a copy
 	@:hxmc.unsafe(gc) public function take(v:Bytes):hxmc.Buffer {
+		#if (hxmc.target != "wasm32-wasi")
 		var i = views.indexOf(v);
-		if (i < 0) {
-			var r = new hxmc.Buffer(v.length);
-			r.blitFromBytes(0, v, 0, v.length);
-			return r;
+		if (i >= 0) {
+			var b = buffers[i];
+			buffers.splice(i, 1);
+			views.splice(i, 1);
+			return hxmc.Buffer.adopt(b);
 		}
-		var b = buffers[i];
-		buffers.splice(i, 1);
-		views.splice(i, 1);
-		return hxmc.Buffer.adopt(b);
+		#end
+		var r = new hxmc.Buffer(v.length);
+		r.blitFromBytes(0, v, 0, v.length);
+		return r;
 	}
 	#end
 

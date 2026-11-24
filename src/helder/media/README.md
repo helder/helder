@@ -37,7 +37,7 @@ never assume the whole file in memory, and skip what they do not need
 | `FileSource(path)` | a local file, natively (and on wasm32-wasi where the runtime has files: node's WASI); offsets past 2 GiB |
 | `MemorySource(bytes)` | bytes in memory |
 | `WebSource.url(url)` | the browser: fetch with HTTP Range requests, a part at a time (its size from the first's `Content-Range`); a server that ignores Range sends the file once, kept as a Blob; `WebSource.of(url)` at once, opened by its first read (`<Video src>`'s in a browser) |
-| `WebSource.blob(name)` | a Blob's slices: one the page gave (`browser.mjs`'s option `blobs`, `{name: Blob}`, or `host.blob(name, blob)` from the page or another module: a file picked or dropped) |
+| `WebSource.blob(name)` | a Blob's slices: one the page gave (`browser.mjs`'s option `blobs`, `{name: Blob}`, or `host.blob(name, blob)` from the page or another module: a file picked or dropped, helder.os's `WebFolders`); `WebSource.ofBlob(name)` at once, opened by its first read |
 | `WebSource.opfs(path)` | a file of the origin's private file system |
 
 `WebSource` is the browser's (`imports.mjs`, module `helder_media`). A

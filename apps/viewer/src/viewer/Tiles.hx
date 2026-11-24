@@ -33,7 +33,7 @@ class Tiles implements Markup {
 	// a file's thumbnail, as it comes (none asked for: no Thumbnails, or a kind it has none of)
 	public static function thumbnail(x:Explorer, e:Entry):Signal<Thumb> {
 		var path = x.browser.path(e.name), key = path + "\x00" + e.size + "\x00" + e.modified;
-		var have = kept.get(key), t = x.thumbnails, local = x.files.localPath(path);
+		var have = kept.get(key), t = x.thumbnails, local = t == null ? null : t.of(x.files, path);
 		var s = Graph.signalOf(({image: have, waiting: have == null && t != null && local != null && Kinds.viewable(e)} : Thumb), {ownedWrite: true});
 		if (!s.peek().waiting) return s;
 		var ticket = t.request(local, e.size, e.modified, Thumbnails.SIDE, -(++serial), img -> {

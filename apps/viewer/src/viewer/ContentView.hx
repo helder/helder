@@ -53,6 +53,10 @@ class ContentView implements Markup {
 				<image src={Glyphs.get("down")} width={14} height={14} shrink={0} color={Look.ref.fg3}/>
 			</view:button>
 			<view grow={1}/>
+			<Show when={x.openFolder != null}>
+				<Standard.Button tag="open-folder" variant="ghost" size="sm" icon={Glyphs.get("folder")} label="Open folder"
+					onPress={() -> if (x.openFolder != null) x.openFolder()}>Open folder</Standard.Button>
+			</Show>
 			<Show when={!b.searching()}>
 				<Standard.Button tag="search" variant="ghost" size="sm" icon={Glyphs.get("search")} label="Search" onPress={() -> b.searching(true)}/>
 			</Show>
@@ -262,7 +266,7 @@ class ContentView implements Markup {
 		var s = x.sidebar;
 		for (v in s.volumes)
 			if (Browser.normalize(v.path) == path) return Glyphs.get(Glyphs.volume(v));
-		for (p in s.places)
+		for (p in s.places.value)
 			if (Browser.normalize(p.path) == path) return Glyphs.get(Glyphs.place(p.kind));
 		return null;
 	}
