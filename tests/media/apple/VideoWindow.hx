@@ -6,21 +6,22 @@ import helder.ui.draw.*;
 import sys.io.File;
 
 // A <Video> in a real window (the window lane, macOS): in a scroller, a
-// popup over part of it, shown both ways (VideoNode: drawn by helder, and
-// the system's AVSampleBufferDisplayLayer in a slot), each run its own
-// process: seeked to a frame, played (its time moving), paused (its
-// picture still), the scroller moved. Drawn: helder's frames read back
-// (UiWindow.capture): the frame shown, the popup over it, another frame
-// once played, the same while paused, moved and cut by the scroller. The
-// system's layer: rendering, no error, placed at the node's box in the
-// window and moved with the scroller, inside the scroller's clip. Where
-// the window server's captures have pixels (CGWindowListCreateImage; a
-// background run on macOS 27 gets none), both ways are compared there,
-// on quads.mp4's flat colours (testsrc's edges are where the system's
-// scaling and chroma's filters differ from helder's), beside controls of
-// a known sRGB colour.
-//   VideoWindow: both runs, compared
-//   VideoWindow --run drawn|layer dir: one run, its captures into dir
+// popup over part of it, shown three ways (VideoNode: drawn by helder; the
+// system's AVSampleBufferDisplayLayer in a slot, of the frames' Y'CbCr and
+// of BGRA VideoToolbox converted), each run its own process: seeked to a
+// frame, played (its time moving), paused (its picture still), the
+// scroller moved. Drawn: helder's frames read back (UiWindow.capture): the
+// frame shown, the popup over it, another frame once played, the same
+// while paused, moved and cut by the scroller. The system's layer:
+// rendering, no error, placed at the node's box in the window and moved
+// with the scroller, inside the scroller's clip. Where the window server's
+// captures have pixels (CGWindowListCreateImage; a background run on macOS
+// 27 gets none), the ways are compared there, at the capture's own pixels
+// a point: quads.mp4's flat quadrants' centres in the picture as fitted
+// (testsrc's edges are where the system's scaling and chroma's filters
+// differ from helder's), beside controls of a known sRGB colour.
+//   VideoWindow: the runs, compared
+//   VideoWindow --run drawn|layer|layer-rgb dir: one run, its captures into dir
 @:hxmc.unsafe(gc)
 class VideoWindow {
 	static var width = 400;
@@ -38,7 +39,7 @@ class VideoWindow {
 			Sys.exit(failed > 0 ? 1 : 0);
 		}
 		var dir = Sys.getEnv("TMPDIR") + "/video-window-" + Std.random(1 << 30), self = Sys.programPath();
-		for (mode in ["drawn", "layer"]) {
+		for (mode in MODES) {
 			sys.FileSystem.createDirectory('$dir/$mode');
 			var p = new sys.io.Process(self, ["--run", mode, '$dir/$mode']);
 			var out = p.stdout.readAll().toString(), code = p.exitCode();
@@ -46,53 +47,67 @@ class VideoWindow {
 			Sys.print(out);
 			check('the $mode run', code == 0, 'exit $code');
 		}
-		// (the window server's pixels, where captures have them: both ways the same picture)
-		var a = '$dir/drawn/seeked.raw', b = '$dir/layer/seeked.raw';
-		if (sys.FileSystem.exists(a) && sys.FileSystem.exists(b) && !blank(File.getBytes(a))) {
-			var box = [for (v in File.getContent('$dir/drawn/boxes.txt').split(" ")) Std.parseInt(v)];
-			width = box[8];
-			var da = File.getBytes(a), db = File.getBytes(b), video = box.slice(0, 4), popup = box.slice(4, 8);
-			compare(da, db, video, popup, box.slice(9, 13), box.slice(13, 17));
+		// (the window server's pixels, where captures have them: each way the same picture)
+		var shots = [for (m in MODES) m => shot('$dir/$m')];
+		if (!Lambda.exists(shots, s -> s == null)) {
+			var points = [for (v in File.getContent('$dir/drawn/points.txt').split(" ")) Std.parseFloat(v)];
+			for (m in MODES) {
+				var c = shots[m];
+				Sys.println('VideoWindow: $m: the capture ${c.width}x${c.height} pixels with its title bar, ${c.scale} a point (the window\'s scale ${c.window})');
+				var q = quadrants(c, points), controls = [for (k in [8, 12]) at(c, (points[k] + points[k + 2]) / 2, (points[k + 1] + points[k + 3]) / 2)];
+				Sys.println('VideoWindow: $m: red, green, blue, grey at ${[for (p in q.at) p.join(",")].join(" ")} (pixels): ${q.colours.join(" ")}; '
+					+ 'controls (51,153,230): drawn ${controls[0].colour}, a CALayer ${controls[1].colour}');
+			}
+			var drawn = quadrants(shots["drawn"], points).colours, off = 0;
+			for (i in 0...4) for (c in 0...3) off = Std.int(Math.max(off, Math.abs(drawn[i][c] - SOURCE[i][c])));
+			check('drawn: the quadrants\' colours (the window server\'s pixels)', off <= 3, 'at most $off levels off the source ${SOURCE.join(" ")}');
+			for (m in ["layer", "layer-rgb"]) {
+				var l = quadrants(shots[m], points).colours, worst = 0;
+				for (i in 0...4) for (c in 0...3) worst = Std.int(Math.max(worst, Math.abs(drawn[i][c] - l[i][c])));
+				check('$m: the system\'s layer shows what helder draws (the window server\'s pixels)', worst <= 4, 'at most $worst levels apart');
+			}
+			for (m in [601, 709])
+				for (full in [false, true])
+					Sys.println('VideoWindow: BT.601 video range read as $m ${full ? "full" : "video"} range: ${[for (c in SOURCE) reread(c, m, full)].join(" ")}');
 		} else
-			Sys.println("VideoWindow: no window server's capture here: the two ways not compared");
+			Sys.println("VideoWindow: no window server's capture here: the ways not compared");
 		Sys.println("VideoWindow: " + (failed == 0 ? "ok" : '$failed FAILED'));
 		Sys.exit(failed == 0 ? 0 : 1);
 	}
 
-	// (the window server's pixels both ways, BGRA: quads.mp4's flat
-	// quadrants, red, green, blue and grey, where scaling and chroma's
-	// filters do not reach; the controls, sRGB's (51, 153, 230) drawn by
-	// helder and as a CALayer of its own, tell a colour management of the
-	// window server's own from a conversion of the video's; on a difference
-	// what each reading of the source's Y'CbCr would show, BT.601's
-	// encoding read as 601 or 709, video or full range)
-	static final SOURCE = [[254, 0, 0], [0, 255, 1], [0, 0, 255], [128, 128, 128]];
+	// the ways: drawn by helder, the system's layer of the frames' Y'CbCr,
+	// and of BGRA VideoToolbox converted (SampleLayer.rgb)
+	static final MODES = ["drawn", "layer", "layer-rgb"];
 
-	static function compare(a:haxe.io.Bytes, b:haxe.io.Bytes, video:Array<Int>, popup:Array<Int>, drawnSwatch:Array<Int>, layerSwatch:Array<Int>) {
-		inline function rgb(x:haxe.io.Bytes, px:Int, py:Int):Array<Int> {
-			var i = 4 * (py * width + px);
-			return [x.get(i + 2), x.get(i + 1), x.get(i)];
-		}
-		var w = video[2] - video[0], h = video[3] - video[1];
-		var at = [for (f in [[0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]]) [video[0] + Std.int(f[0] * w), video[1] + Std.int(f[1] * h)]];
-		var drawn = [for (p in at) rgb(a, p[0], p[1])], layer = [for (p in at) rgb(b, p[0], p[1])];
-		var mid = (x:haxe.io.Bytes, s:Array<Int>) -> rgb(x, (s[0] + s[2]) >> 1, (s[1] + s[3]) >> 1);
-		var worst = 0, off = 0;
-		for (i in 0...4)
-			for (c in 0...3) {
-				worst = Std.int(Math.max(worst, Math.abs(drawn[i][c] - layer[i][c])));
-				off = Std.int(Math.max(off, Math.abs(drawn[i][c] - SOURCE[i][c])));
-			}
-		var controls = [mid(a, drawnSwatch), mid(a, layerSwatch), mid(b, drawnSwatch), mid(b, layerSwatch)];
-		Sys.println('VideoWindow: red, green, blue, grey: the source ${SOURCE.join(" ")}; drawn ${drawn.join(" ")}; the system\'s layer ${layer.join(" ")}; '
-			+ 'controls (51,153,230): ${controls.join(" ")}');
-		check('drawn: the quadrants\' colours (the window server\'s pixels)', off <= 3, 'at most $off levels off');
-		check('the system\'s layer shows what helder draws (the window server\'s pixels)', worst <= 4, 'at most $worst levels apart');
-		if (worst > 4)
-			for (m in [601, 709])
-				for (full in [false, true])
-					Sys.println('VideoWindow: BT.601 video range read as $m ${full ? "full" : "video"} range: ${[for (c in SOURCE) reread(c, m, full)].join(" ")}');
+	// (a run's seeked capture, BGRA, and its pixels a point; null: none)
+	static function shot(dir:String):Null<{bytes:haxe.io.Bytes, width:Int, scale:Float, height:Int, window:Float}> {
+		if (!sys.FileSystem.exists('$dir/seeked.raw')) return null;
+		var b = File.getBytes('$dir/seeked.raw'), size = File.getContent('$dir/seeked.size').split(" ");
+		return blank(b) ? null : {bytes: b, width: Std.parseInt(size[0]), scale: Std.parseFloat(size[1]), height: Std.parseInt(size[2]), window: Std.parseFloat(size[3])};
 	}
+
+	// (the capture's pixel at x, y points)
+	static function at(c:{bytes:haxe.io.Bytes, width:Int, scale:Float, height:Int, window:Float}, x:Float, y:Float):{at:Array<Int>, colour:Array<Int>} {
+		var px = Std.int(x * c.scale), py = Std.int(y * c.scale), i = 4 * (py * c.width + px);
+		return {at: [px, py], colour: [c.bytes.get(i + 2), c.bytes.get(i + 1), c.bytes.get(i)]};
+	}
+
+	// (quads.mp4's quadrants' centres in the picture fitted to the node's
+	// box (contained, 64 by 48), away from the square moving through its
+	// middle)
+	static function quadrants(c:{bytes:haxe.io.Bytes, width:Int, scale:Float, height:Int, window:Float}, points:Array<Float>):{at:Array<Array<Int>>, colours:Array<Array<Int>>} {
+		var w = points[2] - points[0], h = points[3] - points[1], k = Math.min(w / 64, h / 48);
+		var x0 = points[0] + (w - 64 * k) / 2, y0 = points[1] + (h - 48 * k) / 2;
+		var found = [for (q in [[16, 12], [48, 12], [16, 36], [48, 36]]) at(c, x0 + (q[0] + 0.5) * k, y0 + (q[1] + 0.5) * k)];
+		return {at: [for (f in found) f.at], colours: [for (f in found) f.colour]};
+	}
+
+	// (quads.mp4's colours as ffmpeg decodes them; the controls, sRGB's
+	// (51, 153, 230) drawn by helder and as a CALayer of its own, tell a
+	// colour management of the window server's from a conversion of the
+	// video's; what each reading of the source's Y'CbCr would show printed,
+	// BT.601's encoding read as 601 or 709, video or full range)
+	static final SOURCE = [[254, 0, 0], [0, 255, 1], [0, 0, 255], [128, 128, 128]];
 
 	// (an sRGB colour encoded as BT.601 video range, decoded as m and range says)
 	static function reread(c:Array<Int>, m:Int, full:Bool):Array<Int> {
@@ -153,7 +168,8 @@ class VideoWindow {
 		var list = new Node();
 		list.style.set({overflow: Scroll, width: 240, height: 240, rowGap: 2, background: 0xFFFFFFFF});
 		var video = new VideoNode();
-		video.layer = mode == "layer";
+		video.layer = mode != "drawn";
+		helder.media.ui.SampleLayer.rgb = mode == "layer-rgb";
 		video.style.set({width: 192, height: 144, shrink: 0});
 		for (i in 0...30) {
 			var row = new Node();
@@ -198,11 +214,13 @@ class VideoWindow {
 					vbox = box(video);
 					pbox = box(popup);
 					lbox = box(list);
-					File.saveContent('$dir/boxes.txt', vbox.concat(pbox).concat([width]).concat(box(swatch)).concat(box(layered)).join(" "));
 					var f = p.shown;
 					check('$mode: seeked to the frame at 0.4', f != null && f.time == 0.4, f == null ? "none" : '${f.time}');
-					check('$mode: ${mode == "layer" ? "the system\'s layer" : "drawn"}', (@:privateAccess video.systemLayer != null) == (mode == "layer"));
-					if (mode == "layer") placed = layer(video);
+					check('$mode: ${mode != "drawn" ? "the system\'s layer" : "drawn"}', (@:privateAccess video.systemLayer != null) == (mode != "drawn"));
+					if (mode != "drawn") placed = layer(video);
+					inline function points(n:Node):Array<Float>
+						return [n.absX, n.absY, n.absX + n.width, n.absY + n.height];
+					File.saveContent('$dir/points.txt', points(video).concat(points(popup)).concat(points(swatch)).concat(points(layered)).join(" "));
 					shoot("seeked");
 				case 32:
 					video.play();
@@ -223,7 +241,7 @@ class VideoWindow {
 					w.ui.requestFrame();
 				case 60:
 					shoot("scrolled");
-					if (mode == "layer") {
+					if (mode != "drawn") {
 						var moved = layer(video), dy = Math.abs(moved[1] - placed[1]);
 						check('layer: moved with the scroller', Math.abs(dy - 110) < 1.5 && moved[0] == placed[0], '$placed to $moved');
 						// (macOS's y up: the clip the scroller's box, the layer past its top)
@@ -281,9 +299,12 @@ class VideoWindow {
 		var id = OsThread.get(() -> helder.os.objc.Msg.i(helder.os.objc.Msg.id(view, helder.os.objc.ObjC.sel("window")), helder.os.objc.ObjC.sel("windowNumber")).toInt());
 		var img = Capture.window(id);
 		if (img == null) return;
-		var h = Std.int(w.window.height), row = img.width * 4, top = img.height - h;
+		// (the content at the capture's own scale: its pixels a point, the window 400 by 300 points; the title bar above cut)
+		var scale = img.width / 400, h = Math.round(300 * scale), row = img.width * 4, top = img.height - h;
+		if (top < 0) return;
 		var out = haxe.io.Bytes.alloc(row * h);
 		out.blit(0, img.pixels, top * row, row * h);
 		File.saveBytes('$dir/$name.raw', out);
+		File.saveContent('$dir/$name.size', '${img.width} $scale ${img.height} ${w.window.scale}');
 	}
 }
