@@ -62,6 +62,8 @@ class CompositeFrame {
 	final parents:Array<Int> = [];
 	final offsets:Array<Float> = [];
 	final bars:Array<Float> = [];
+	// (and their ranges: per axis its least offset and how far it scrolls)
+	final ranges:Array<Float> = [];
 	// the tiles: per group, where its quads go (the quad before which),
 	// its frame and its clip's, its clip (x0, y0, x1, y1, its corners'
 	// radii), its tiles' raster origin and translation as drawn (rx, ry,
@@ -84,9 +86,11 @@ class CompositeFrame {
 	public var scale(default, null) = 1.0;
 	public var background(default, null) = 0;
 	var snap = true;
-	// the renderer's: pipeline, its slots, the corners and indices, the
-	// atlas, a blank texture, the sampler
+	// the renderer's: pipeline (and one that writes without blending: a
+	// system layer's damaged rectangles cleared), its slots, the corners and
+	// indices, the atlas, a blank texture, the sampler
 	var pipeline:Null<Pipeline> = null;
+	var clearPipeline:Null<Pipeline> = null;
 	var atlasSlot = 0;
 	var imageSlot = 0;
 	var corners:Null<Buffer> = null;
@@ -136,6 +140,7 @@ class CompositeFrame {
 		nodes.resize(0);
 		parents.resize(0);
 		offsets.resize(0);
+		ranges.resize(0);
 		bars.resize(0);
 		groups.resize(0);
 		groupData.resize(0);
@@ -159,6 +164,10 @@ class CompositeFrame {
 		var u = n.ui, m = u == null || !u.overlayBars ? null : @:privateAccess u.barMoved.get(n);
 		if (u != null && u.overlayBars) overlay = true;
 		barAt.push(m == null ? -1e9 : m[2]);
+		for (x in [true, false]) {
+			ranges.push(@:privateAccess Scrolling.scrollStart(n, x));
+			ranges.push(@:privateAccess Scrolling.maxScroll(n, x));
+		}
 		for (x in [true, false]) {
 			var t = @:privateAccess Scrolling.thumb(n, x);
 			if (t == null) {

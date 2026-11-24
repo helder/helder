@@ -6,8 +6,10 @@
 # to the textured compositor while running) and with the textured
 # compositor (=0); its lines from logcat (tag hxmc): the compositor's
 # frames while the program is blocked (a fling, an animation, this
-# script's swipe), the layers moved, not drawn; screencaps of its two
-# stills compared with the textured compositor's (android-layers.mjs).
+# script's swipe), the layers moved, not drawn; screencaps of its three
+# stills (the last after the header's label changed each frame, drawn
+# only where it changed) compared with the textured compositor's
+# (android-layers.mjs).
 #   sh tests/ui/android-layers.sh <AndroidLayersTest.apk> [out dir]
 set -u
 apk=$1
@@ -48,6 +50,7 @@ for mode in layers stall 0; do
 	adb shell input swipe $((W / 2)) $((H * 80 / 100)) $((W / 2)) $((H * 30 / 100)) 120
 	wait_for "AndroidLayersTest: still 1" 120 && adb exec-out screencap -p > "$out/still1-$mode.png"
 	wait_for "AndroidLayersTest: still 2" 120 && adb exec-out screencap -p > "$out/still2-$mode.png"
+	wait_for "AndroidLayersTest: still 3" 120 && adb exec-out screencap -p > "$out/still3-$mode.png"
 	wait_for "AndroidLayersTest: done" 120
 	adb logcat -d -s hxmc:I > "$log"
 	grep "AndroidLayersTest" "$log" | sed 's/^.*AndroidLayersTest/AndroidLayersTest/'
@@ -69,6 +72,8 @@ box=$(grep -o "box at [0-9]* [0-9]* [0-9A-F]*" "$out/layers-layers.txt" | head -
 node tests/ui/android-layers.mjs "$out/still1-layers.png" "$out/still1-0.png" still1 "$slot,22c060" "$box" || failed=1
 node tests/ui/android-layers.mjs "$out/still1-0.png" "$out/still1-layers.png" "still1, textured" "$box" || failed=1
 node tests/ui/android-layers.mjs "$out/still2-layers.png" "$out/still2-0.png" still2 || failed=1
+# (the header's label changed 120 times, the window's layer drawn only where it changed)
+node tests/ui/android-layers.mjs "$out/still3-layers.png" "$out/still3-0.png" still3 || failed=1
 # (fallen back: the textured compositor's pixels)
 node tests/ui/android-layers.mjs "$out/still1-stall.png" "$out/still1-0.png" "still1, stalled" "$box" || failed=1
 exit $failed
