@@ -33,30 +33,23 @@ class UiDrawTest {
 		var args = Sys.args();
 		var golden = args[0], out = args[1], bless = args[2] == "--bless";
 		if (args[2] == "--smoke") smoke = true;
+		#if !helder.soft
 		if (args[2] == "--window") {
 			window(golden, out);
 			return;
 		}
-		var device = Device.create(Surface.headless(W, H));
+		#end
 		var ui = new Ui(new DrawText(), W, H);
 		Sample.build(ui.root);
-		var r = new Renderer(device);
-		var pass:PassDesc = {colors: [{load: Clear, clear: new helder.gfx.Color(1, 1, 1)}]};
 		var pixels = Bytes.alloc(W * H * 4);
 		var t0 = haxe.Timer.stamp();
 		ui.update();
 		var t1 = haxe.Timer.stamp();
 		if (args[2] == "--dump") dump(ui.root, "");
-		var enc = device.beginFrame();
-		enc.beginPass(pass);
-		r.begin(W, H);
-		ui.paint(r);
-		r.end(enc);
-		enc.endPass();
-		device.readPixels(pixels);
-		device.endFrame();
-		Sys.println('UiDrawTest: layout ${Math.round((t1 - t0) * 1000)} ms, frame ${Math.round((haxe.Timer.stamp() - t1) * 1000)} ms');
-		device.dispose();
+		var f = new DrawFrame(W, H);
+		f.draw(ui, pixels);
+		f.dispose();
+		Sys.println('UiDrawTest ($f): layout ${Math.round((t1 - t0) * 1000)} ms, frame ${Math.round((haxe.Timer.stamp() - t1) * 1000)} ms');
 		sys.io.File.saveBytes(out, Png.encode(pixels, W, H));
 		if (bless) {
 			sys.io.File.saveBytes(golden, Png.encode(pixels, W, H));
@@ -93,6 +86,7 @@ class UiDrawTest {
 		return ok;
 	}
 
+	#if !helder.soft
 	static function window(golden:String, out:String) {
 		var w = new UiWindow("UiDrawTest", W, H);
 		Sample.build(w.root);
@@ -122,6 +116,7 @@ class UiDrawTest {
 		Sys.println('UiDrawTest: window: $frames frames, then $idle turns idle, scale ${w.renderer.scale}' + (slept ? "" : " (FAIL: 3 frames and the loop asleep expected)"));
 		Sys.exit(compare(pixels, golden) && slept ? 0 : 1);
 	}
+	#end
 
 	static function compare(pixels:Bytes, golden:String):Bool {
 		var g = Png.decode(sys.io.File.getBytes(golden));

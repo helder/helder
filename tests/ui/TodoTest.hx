@@ -26,7 +26,7 @@ class TodoTest {
 
 	static function main() {
 		var args = Sys.args();
-		var device = Device.create(Surface.headless(W, H));
+		var frame = new DrawFrame(W, H);
 		var ui = new Ui(new DrawText(), W, H);
 		ui.theme = Todo.sheet;
 		var app = new Todo();
@@ -80,19 +80,9 @@ class TodoTest {
 		Sys.println('TodoTest: $checks checks' + (failed == 0 ? ", ok" : ', $failed FAILED'));
 		// the frame (its transitions finished)
 		Clock.finish();
-		var r = new Renderer(device);
-		var pass:PassDesc = {colors: [{load: Clear, clear: new helder.gfx.Color(1, 1, 1)}]};
-		var pixels = Bytes.alloc(W * H * 4);
 		ui.update();
-		var enc = device.beginFrame();
-		enc.beginPass(pass);
-		r.begin(W, H);
-		ui.paint(r);
-		r.end(enc);
-		enc.endPass();
-		device.readPixels(pixels);
-		device.endFrame();
-		device.dispose();
+		var pixels = frame.draw(ui);
+		frame.dispose();
 		sys.io.File.saveBytes(args[1], Png.encode(pixels, W, H));
 		if (args[2] == "--bless") {
 			sys.io.File.saveBytes(args[0], Png.encode(pixels, W, H));

@@ -58,6 +58,7 @@ class Options {
 		{key: "reduced-motion", names: ["--reduced-motion"], about: "the system asks for reduced motion: transitions jump"},
 		{key: "seed", names: ["--seed"], value: "<n>", number: true, about: "Math.random's seed (1)"},
 		{key: "dev", names: ["--dev"], about: "a dev build (-D hxmc.dev): its live literals, which the script's literal steps patch"},
+		{key: "soft", names: ["--soft"], about: "drawn on the CPU (-D helder.soft: no GPU linked; the same pixels on every machine; GPU textures grey)"},
 	];
 
 	static final COMMON:Array<Opt> = [
@@ -95,7 +96,8 @@ class Options {
 			common: ["target", "device", "out", "args"],
 			own: HEADLESS,
 			notes: [
-				"--headless: the real renderer offscreen (Linux: Mesa's llvmpipe), a frame every 1/fps s of a",
+				"--headless: the real renderer offscreen (Linux: Mesa's llvmpipe; --soft, HELDER_SOFT=1 or no GPU:",
+				"the CPU's canvas), a frame every 1/fps s of a",
 				"virtual clock, Math.random seeded: the same script gives the same bytes; -o/--out is then",
 				"--frames' directory (the build: bin/headless/<name>). Times (--at, --start): seconds, end",
 				"(the script's end mark, else a second after its last step), mark:<name>, mark:<name>+0.5",

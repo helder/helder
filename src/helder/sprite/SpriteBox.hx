@@ -59,7 +59,7 @@ class SpriteBox extends helder.ui.Node {
 
 	override public function paintContent(canvas:helder.ui.Canvas, x:Float, y:Float, width:Float, height:Float) {
 		var g = Std.downcast(canvas, helder.ui.draw.TextureCanvas), r = helder.ui.draw.Renderer.of(canvas);
-		if (g == null || r == null) return;
+		if (g == null || r == null) return helder.ui.draw.GpuPlaceholder.draw(canvas, x, y, width, height);
 		if (animate && ui != null) ui.requestFrame();
 		var k = density > 0 ? Math.min(1, density / r.scale) : 1;
 		var pw = Std.int(Math.max(1, Math.round(width * r.scale * k))), ph = Std.int(Math.max(1, Math.round(height * r.scale * k)));

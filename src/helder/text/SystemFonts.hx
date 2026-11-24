@@ -226,10 +226,19 @@ class SystemFonts {
 		return f;
 	}
 
-	// (HELDER_NO_SYSTEM_FONTS: none of the system's, fontconfig's neither)
+	// (HELDER_NO_SYSTEM_FONTS: none of the system's, fontconfig's neither;
+	// HELDER_FONT_DIRS: those directories' alone)
 	static function scannedNone():Bool {
 		var none = Sys.getEnv("HELDER_NO_SYSTEM_FONTS");
-		return none != null && none != "" && none != "0";
+		return none != null && none != "" && none != "0" || only() != null;
+	}
+
+	// (HELDER_FONT_DIRS: the directories looked in instead of the system's,
+	// the platform's lookups off: the same faces on every machine, for
+	// golden images)
+	static function only():Null<Array<String>> {
+		var d = Sys.getEnv("HELDER_FONT_DIRS");
+		return d == null || d == "" ? null : d.split(Sys.systemName() == "Windows" ? ";" : ":");
 	}
 
 	var moreFaces:Null<Array<FaceInfo>> = null;
@@ -313,6 +322,8 @@ class SystemFonts {
 	// --- discovery ---
 
 	public static function directories():Array<String> {
+		var dirs = only();
+		if (dirs != null) return dirs;
 		var home = Sys.getEnv("HOME");
 		return switch Sys.systemName() {
 			case "Windows":
