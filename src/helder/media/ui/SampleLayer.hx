@@ -17,7 +17,7 @@ import hxmc.unsafe.*;
 // main thread (OsThread: posted, the sample buffers made on the program's). Fit is
 // the layer's video gravity, the layer clipping to its bounds. On Android
 // a SurfaceLayer (MediaCodec onto a SurfaceControl in the slot), on Windows
-// a WinLayer (a swap chain in the slot's visual). make: null where the
+// a WinLayer (a DirectComposition surface in the slot's visual). make: null where the
 // system has none.
 @:hxmc.unsafe(gc)
 class SampleLayer {

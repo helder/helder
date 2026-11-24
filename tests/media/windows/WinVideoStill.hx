@@ -104,11 +104,15 @@ class WinVideoStill implements Markup {
 		var px = capture(w.window, width, height);
 		var how = onLayer ? "on the system layer" : "drawn by helder";
 		if (layer && !onLayer) say('note: the system layer did not show it (layered ${@:privateAccess n.ui.layered}): drawn by helder');
+		if (layer) layers(n, w);
 		if (px == null) {
 			say("FAIL: no capture");
 			Sys.exit(1);
 		}
 		if (dir != null) sys.io.File.saveBytes('$dir/still-${layer ? "layer" : "drawn"}.rgba', px);
+		// (the window's own background beside the box: whether the capture has the window at all)
+		var bg = (20 * width + 20) * 4;
+		say('the background at 20,20: ${px.get(bg)} ${px.get(bg + 1)} ${px.get(bg + 2)} (the window\'s 51 51 51)');
 		var x = n.absX * k, y = n.absY * k, bw = n.width * k, bh = n.height * k;
 		var s = Math.min(bw / 64, bh / 48), x0 = x + (bw - 64 * s) / 2, y0 = y + (bh - 48 * s) / 2, worst = 0, got = [];
 		for (i => q in [[16, 12], [48, 12], [16, 36], [48, 36]]) {
@@ -120,6 +124,25 @@ class WinVideoStill implements Markup {
 		var ok = worst <= LEVELS && time == 0.2;
 		say('${ok ? "ok" : "FAIL"}: ${layer ? "layer" : "drawn"}: the frame at $time $how, the quadrants ${got.join(", ")}, at most $worst levels off the source ($LEVELS)');
 		Sys.exit(ok ? 0 : 1);
+	}
+
+	// (the layer run's diagnostics: WinLayer's calls and state, DcLayers'
+	// state, the slot's plane as the split placed it)
+	static function layers(n:VideoNode, w:UiWindow) {
+		w.device.settle();
+		for (l in helder.media.ui.WinLayer.log) say('layer: $l');
+		var s = @:privateAccess n.sample, wl = s == null ? null : @:privateAccess s.windows;
+		say('layer: ${wl == null ? "no WinLayer" : wl.state()}');
+		var c = w.compositor, d = c == null ? null : Std.downcast(c.layers, helder.ui.draw.DcLayers);
+		if (d == null) {
+			say("layer: no DcLayers");
+			return;
+		}
+		say('layer: DcLayers frames ${d.frames}, single ${d.single}, fell ${d.fell}, stack shown ${@:privateAccess d.stackShown}, hidden ${@:privateAccess d.hide}, broken ${@:privateAccess d.broken}');
+		for (p in @:privateAccess d.kept)
+			if (p.kind == helder.ui.draw.LayerPlane.SLOT)
+				say('layer: a slot plane, ours ${wl != null && p.slot == wl.slot}, shown ${p.slot != null && p.slot.shown}, attached ${p.attached}, index ${p.index}, clip ${p.cx0},${p.cy0}..${p.cx1},${p.cy1}');
+		say('layer: the node at ${n.absX},${n.absY} ${n.width}x${n.height}, its box ${@:privateAccess n.box}');
 	}
 
 	// (the client area's pixels as RGBA, on the main thread: PrintWindow,

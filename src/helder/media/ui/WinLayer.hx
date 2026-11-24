@@ -43,6 +43,17 @@ class WinLayer {
 	var height = 0;
 	var last:Null<VideoFrame>;
 	final placed = [-1.0, -1.0, -1.0, -1.0];
+	var presents = 0;
+
+	// (tests: what the layer did on the render thread, its calls' HRESULTs,
+	// the first frames' centre read back; WinVideoStill says them)
+	@:noCompletion public static final log:Array<String> = [];
+
+	static function note(s:String)
+		if (log.length < 40) log.push(s);
+
+	static function hr(v:Int):String
+		return "0x" + StringTools.hex(v, 8);
 
 	public static function make(owner:VideoNode):Null<WinLayer> {
 		var p = owner.player, ui = owner.ui;
@@ -88,6 +99,8 @@ class WinLayer {
 			if (!surface.isNull()) Arena.scoped(a -> {
 				var out:Ptr<Ptr> = a.alloc(8), at:Ptr<Int32> = a.alloc(8), box:Ptr<Int32> = a.alloc(24);
 				var hr = IDCompositionSurface.BeginDraw(surface, Ptr.nil(), IID.ID3D11Texture2D, out, at);
+				var n = ++presents;
+				if (n <= 3) note('present $n: BeginDraw ${WinLayer.hr(hr)} at ${at[0]},${at[1]}, the frame ${w}x$h, its centre ${rgba[(h >> 1) * w * 4 + (w >> 1) * 4]} ${rgba[(h >> 1) * w * 4 + (w >> 1) * 4 + 1]} ${rgba[(h >> 1) * w * 4 + (w >> 1) * 4 + 2]} ${rgba[(h >> 1) * w * 4 + (w >> 1) * 4 + 3]}');
 				if (hr < 0) {
 					if (!failed) Sys.println('helder.media: the video\'s layer not drawn (BeginDraw 0x${StringTools.hex(hr, 8)})');
 					failed = true;
@@ -100,10 +113,12 @@ class WinLayer {
 				box[3] = at[0] + w;
 				box[4] = at[1] + h;
 				box[5] = 1;
-				ID3D11DeviceContext.UpdateSubresource(@:privateAccess d3d.context, out.value, 0, cast box, rgba, w * 4, 0);
+				var ctx = @:privateAccess d3d.context, dev = @:privateAccess d3d.device;
+				ID3D11DeviceContext.UpdateSubresource(ctx, out.value, 0, cast box, rgba, w * 4, 0);
+				if (n <= 3) note('present $n: the texture at the frame\'s centre ${readBack(dev, ctx, out.value, at[0] + (w >> 1), at[1] + (h >> 1))}');
 				Com.release(out.value);
-				IDCompositionSurface.EndDraw(surface);
-				IDCompositionDevice.Commit(dc);
+				var e = IDCompositionSurface.EndDraw(surface), c = IDCompositionDevice.Commit(dc);
+				if (n <= 3) note('present $n: EndDraw ${WinLayer.hr(e)}, Commit ${WinLayer.hr(c)}');
 			});
 			LibC.free(rgba);
 		});
@@ -116,20 +131,62 @@ class WinLayer {
 		Arena.scoped(a -> {
 			var out:Ptr<Ptr> = a.alloc(8);
 			var hr = IDCompositionDevice.CreateSurface(dc, w, h, D3D.FORMAT_R8G8B8A8_UNORM, D3D.ALPHA_MODE_IGNORE, out);
+			note('made: CreateSurface ${w}x$h RGBA8, alpha ignored: ${WinLayer.hr(hr)}');
 			if (hr < 0) {
 				Sys.println('helder.media: no surface for the video\'s layer (CreateSurface 0x${StringTools.hex(hr, 8)})');
 				return;
 			}
 			surface = out.value;
-			if (IDCompositionDevice.CreateVisual(dc, out) < 0) return;
+			var v = IDCompositionDevice.CreateVisual(dc, out);
+			if (v < 0) {
+				note('made: CreateVisual ${WinLayer.hr(v)}');
+				return;
+			}
 			inner = out.value;
-			IDCompositionVisual.SetContent(inner, surface);
-			IDCompositionVisual.AddVisual(visual, inner, 1, Ptr.nil());
+			var c = IDCompositionVisual.SetContent(inner, surface), a = IDCompositionVisual.AddVisual(visual, inner, 1, Ptr.nil());
+			note('made: SetContent ${WinLayer.hr(c)}, AddVisual to the slot\'s ${WinLayer.hr(a)}');
 			width = w;
 			height = h;
 			placed[0] = -1;
 		});
 	}
+
+	// (tests: one pixel of tex read back through a staging texture, "r g b a")
+	static function readBack(dev:Ptr, ctx:Ptr, tex:Ptr, x:Int, y:Int):String
+		return Arena.scopedValue(a -> {
+			var d = a.make(D3D11_TEXTURE2D_DESC), out:Ptr<Ptr> = a.alloc(8), box:Ptr<Int32> = a.alloc(24);
+			d.value.Width = 1;
+			d.value.Height = 1;
+			d.value.MipLevels = 1;
+			d.value.ArraySize = 1;
+			d.value.Format = D3D.FORMAT_R8G8B8A8_UNORM;
+			d.value.SampleCount = 1;
+			d.value.Usage = D3D.USAGE_STAGING;
+			d.value.CPUAccessFlags = D3D.CPU_ACCESS_READ;
+			var hr = ID3D11Device.CreateTexture2D(dev, d, Ptr.nil(), out);
+			if (hr < 0) return 'no staging (${WinLayer.hr(hr)})';
+			var st = out.value;
+			box[0] = x;
+			box[1] = y;
+			box[2] = 0;
+			box[3] = x + 1;
+			box[4] = y + 1;
+			box[5] = 1;
+			ID3D11DeviceContext.CopySubresourceRegion(ctx, st, 0, 0, 0, 0, tex, 0, cast box);
+			var m = a.make(D3D11_MAPPED_SUBRESOURCE);
+			hr = ID3D11DeviceContext.Map(ctx, st, 0, D3D.MAP_READ, 0, m);
+			var s = hr < 0 ? 'not mapped (${WinLayer.hr(hr)})' : {
+				var p:Ptr<UInt8> = m.value.pData;
+				'${p[0]} ${p[1]} ${p[2]} ${p[3]}';
+			};
+			if (hr >= 0) ID3D11DeviceContext.Unmap(ctx, st, 0);
+			Com.release(st);
+			s;
+		});
+
+	// (tests: its state now, said by WinVideoStill)
+	@:noCompletion public function state():String
+		return 'inner ${!inner.isNull()}, surface ${!surface.isNull()}, ${width}x$height, placed ${placed.join(",")}, presents $presents, showing $showing';
 
 	// (the render thread's: the visual and the surface let go)
 	function drop(visual:Ptr, dc:Ptr) {
@@ -198,7 +255,8 @@ class WinLayer {
 				m[3] = ky;
 				m[4] = x;
 				m[5] = y;
-				IDCompositionVisual.SetTransform(inner, m);
+				var t = IDCompositionVisual.SetTransform(inner, m);
+				note('placed: scale $kx, $ky at $x, $y: SetTransform ${WinLayer.hr(t)}');
 			});
 			IDCompositionDevice.Commit(dc);
 		});
