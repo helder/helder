@@ -18,9 +18,10 @@ Render.render(
 );
 UiProbe.click("file-0");
 UiProbe.key(Key.DOWN, Key.MOD_SHIFT);
-console.log(mounted()?.columns, mounted()?.selection.keys().join(","));
+const made = mounted()!;
+console.log(made.columns, made.selection.keys().join(","));
 UiProbe.key(Key.ENTER);
-mounted()?.focusIndex(2);
+made.focusIndex(2);
 console.log(selection.focus, selection.focusIndex());
 UiProbe.type("f");
 console.log(selection.keys().join(","));
