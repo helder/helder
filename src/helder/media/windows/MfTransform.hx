@@ -27,9 +27,15 @@ class MfTransform {
 	final info:Ptr<Int32>;
 	var size = 0;
 	var align = 0;
-	// what the last open found (tests, diagnostics): the transforms
-	// enumerated, MFTEnumEx's HRESULT
+	// what the last open found and each step's HRESULT (a decoder's error
+	// says it): the transforms enumerated, activated, the types set
 	public static var found(default, null) = "";
+
+	public static function note(s:String)
+		found += "; " + s;
+
+	public static function hex(hr:Int):String
+		return "0x" + StringTools.hex(hr, 8);
 	// (asked again after a format change: the output type set; false, failed)
 	public var changed:Ptr->Bool = _ -> true;
 
@@ -37,6 +43,8 @@ class MfTransform {
 	// the first setup accepts (its types set: true); null where none does
 	public static function open(category:Ptr, major:Ptr, sub:Ptr, setup:Ptr->Bool):Null<MfTransform> {
 		if (!Mf.loaded()) return null;
+		// (COM on this thread, which may not be the one that loaded Media Foundation)
+		var co = helder.os.audio.Wasapi.Ole32.CoInitializeEx(Ptr.nil(), 0);
 		var made = Ptr.nil();
 		Arena.scoped(a -> {
 			var type:Ptr<Ptr> = a.alloc(32), list:Ptr<Ptr> = a.alloc(8), n:Ptr<Int32> = a.alloc(4), out:Ptr<Ptr> = a.alloc(8);
@@ -46,14 +54,17 @@ class MfTransform {
 			n.value = 0;
 			list.value = Ptr.nil();
 			var hr = Mf.MFTEnumEx(cat.value, Mf.ENUM, type, Ptr.nil(), list, n);
-			found = '${n.value} transforms (MFTEnumEx 0x${StringTools.hex(hr, 8)})';
+			found = '${n.value} transforms (MFTEnumEx ${hex(hr)}, CoInitializeEx ${hex(co)})';
 			if (hr < 0) return;
 			var all:Ptr<Ptr> = list.value;
 			for (i in 0...n.value) {
 				var act = all[i];
-				if (made.isNull() && IMFActivate.ActivateObject(act, MfId.IMFTransform, out) >= 0) {
-					var t = out.value;
-					if (setup(t)) made = t else Com.release(t);
+				if (made.isNull()) {
+					var hr = IMFActivate.ActivateObject(act, MfId.IMFTransform, out);
+					if (hr < 0) note('ActivateObject ${hex(hr)}') else {
+						var t = out.value;
+						if (setup(t)) made = t else Com.release(t);
+					}
 				}
 				Com.release(act);
 			}
@@ -117,14 +128,25 @@ class MfTransform {
 
 	// the output types t offers, the first pick takes set (true); false where none
 	public static function choose(t:Ptr, pick:Ptr->Bool):Bool {
-		var i = 0;
+		var i = 0, offered = [];
 		while (true) {
+			var hr = 0;
 			var o = Arena.scopedValue(a -> {
 				var out:Ptr<Ptr> = a.alloc(8);
-				IMFTransform.GetOutputAvailableType(t, 0, i, out) >= 0 ? out.value : Ptr.nil();
+				hr = IMFTransform.GetOutputAvailableType(t, 0, i, out);
+				hr >= 0 ? out.value : Ptr.nil();
 			});
-			if (o.isNull()) return false;
-			var ok = pick(o) && IMFTransform.SetOutputType(t, 0, o, 0) >= 0;
+			if (o.isNull()) {
+				note('GetOutputAvailableType ${hex(hr)} after ${i} offered (${offered.join(" ")}), none taken');
+				return false;
+			}
+			offered.push(StringTools.hex(subtypeOf(o), 8));
+			var ok = false;
+			if (pick(o)) {
+				hr = IMFTransform.SetOutputType(t, 0, o, 0);
+				ok = hr >= 0;
+				if (!ok) note('SetOutputType ${hex(hr)}');
+			}
 			Com.release(o);
 			if (ok) return true;
 			i++;

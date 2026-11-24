@@ -49,7 +49,7 @@ class MfAudio implements AudioDecoder {
 		if (!supports(track.codec)) throw new MediaError('no decoder for ${track.codec}');
 		rate = track.codec == Opus ? 48000 : track.sampleRate;
 		var sub = Mf.subtype(tag(track.codec)), ch = track.channels > 0 ? track.channels : 2;
-		var made:Null<MfTransform> = null;
+		var made:Null<MfTransform> = null, tried = "";
 		for (data in forms(track)) {
 			made = MfTransform.open(MfId.AUDIO_DECODER, MfId.AUDIO, sub, t -> {
 				var input = MfTransform.type(i -> {
@@ -63,14 +63,16 @@ class MfAudio implements AudioDecoder {
 					}
 					if (data != null) MfTransform.blob(i, MfId.USER_DATA, data);
 				});
-				var ok = IMFTransform.SetInputType(t, 0, input, 0) >= 0;
+				var hr = IMFTransform.SetInputType(t, 0, input, 0);
 				Com.release(input);
-				ok && output(t);
+				if (hr < 0) MfTransform.note('SetInputType ${MfTransform.hex(hr)} (config ${data == null ? "none" : data.length + " bytes"})');
+				hr >= 0 && output(t);
 			});
 			if (made != null) break;
+			tried += (tried == "" ? "" : " | ") + MfTransform.found;
 		}
 		LibC.free(sub);
-		if (made == null) throw new MediaError('the system does not decode this ${track.codec}');
+		if (made == null) throw new MediaError('the system does not decode this ${track.codec} ($tried)');
 		mft = made;
 		mft.changed = t -> {
 			var ok = output(t);

@@ -97,7 +97,7 @@ class MfVideo implements VideoDecoder {
 			types(t, sub);
 		});
 		LibC.free(sub);
-		if (mft == null) throw new MediaError('the system does not decode this ${track.codec}');
+		if (mft == null) throw new MediaError('the system does not decode this ${track.codec} (${MfTransform.found})');
 		mft.changed = t -> {
 			codedWidth = 0;
 			output(t);
@@ -144,10 +144,13 @@ class MfVideo implements VideoDecoder {
 			MfTransform.guid(i, MfId.MAJOR_TYPE, MfId.VIDEO);
 			MfTransform.guid(i, MfId.SUBTYPE, sub);
 			if (w > 0 && h > 0) IMFAttributes.SetUINT64(i, MfId.FRAME_SIZE, (cast haxe.Int64.make(w, h) : Int64));
+			// (MFVideoInterlace_Progressive)
+			MfTransform.int(i, MfId.INTERLACE_MODE, 2);
 		});
-		var ok = IMFTransform.SetInputType(t, 0, input, 0) >= 0;
+		var hr = IMFTransform.SetInputType(t, 0, input, 0);
 		Com.release(input);
-		return ok && output(t);
+		if (hr < 0) MfTransform.note('SetInputType ${MfTransform.hex(hr)}');
+		return hr >= 0 && output(t);
 	}
 
 	// (NV12, P010 at 10 bits: the decoder's own layout, nothing converted)
