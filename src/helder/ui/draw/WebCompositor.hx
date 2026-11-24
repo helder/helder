@@ -107,6 +107,12 @@ class WebCompositor {
 
 	public function dispose() {
 		var l = layers;
+		// (helder dev's swap disposes the device first: the page's layers let go of alone, nothing more queued on it)
+		if (@:privateAccess device.disposed) {
+			l.dispose();
+			buffers.resize(0);
+			return;
+		}
 		device.inOrder(_ -> l.dispose());
 		for (b in buffers)
 			device.destroyBuffer(b);
