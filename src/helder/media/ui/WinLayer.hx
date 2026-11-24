@@ -1,6 +1,6 @@
 package helder.media.ui;
 
-#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi")
+#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi" && !helder.soft)
 import helder.gfx.d3d11.D3D11;
 import helder.gfx.d3d11.D3D11Backend;
 import helder.gfx.d3d11.DComp;

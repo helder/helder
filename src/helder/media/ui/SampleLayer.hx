@@ -31,7 +31,7 @@ class SampleLayer {
 	#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
 	var android:Null<SurfaceLayer>;
 	#end
-	#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi")
+	#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi" && !helder.soft)
 	var windows:Null<WinLayer>;
 	#end
 
@@ -48,7 +48,7 @@ class SampleLayer {
 			return l;
 		}
 		#end
-		#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi")
+		#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi" && !helder.soft)
 		if (Platform.os() == 2) {
 			var w = WinLayer.make(owner);
 			if (w == null) return null;
@@ -91,7 +91,7 @@ class SampleLayer {
 		#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
 		if (android != null) android.fit = f;
 		#end
-		#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi")
+		#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi" && !helder.soft)
 		if (windows != null) windows.fit = f;
 		#end
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
@@ -116,7 +116,7 @@ class SampleLayer {
 		#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
 		if (android != null) return android.showing;
 		#end
-		#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi")
+		#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi" && !helder.soft)
 		if (windows != null) return windows.showing;
 		#end
 		return true;
@@ -127,7 +127,7 @@ class SampleLayer {
 		#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
 		if (android != null) return android.feed(p);
 		#end
-		#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi")
+		#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi" && !helder.soft)
 		if (windows != null) return windows.feed(p);
 		#end
 		var f = p.update();
@@ -234,7 +234,7 @@ class SampleLayer {
 			return;
 		}
 		#end
-		#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi")
+		#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi" && !helder.soft)
 		if (windows != null) {
 			windows.dispose();
 			return;

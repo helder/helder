@@ -4,7 +4,9 @@ package helder.media.windows;
 import haxe.io.Bytes;
 import helder.media.windows.Mf;
 import helder.os.win32.Com;
+#if !helder.soft
 import helder.gfx.d3d11.D3D11;
+#end
 import hxmc.unsafe.*;
 
 // helder.media's VideoDecoder on Windows: Media Foundation's decoder of the
@@ -89,7 +91,8 @@ class MfVideo implements VideoDecoder {
 
 	function open() {
 		var sub = Mf.subtype(Mf.fourcc(subtype(track.codec)));
-		var device = software ? Ptr.nil() : helder.gfx.d3d11.D3D11Backend.decoding;
+		// (a build drawn on the CPU (helder.soft) links no Direct3D: decoded in memory)
+		var device = #if helder.soft Ptr.nil() #else software ? Ptr.nil() : helder.gfx.d3d11.D3D11Backend.decoding #end;
 		mft = MfTransform.open(MfId.VIDEO_DECODER, MfId.VIDEO, sub, t -> {
 			// (on the GPU where it is D3D11-aware and takes the device and the types; else in software)
 			why = device.isNull() ? software ? "asked for software" : "no hardware device" : !aware(t) ? "the decoder is not D3D11-aware" : "";
@@ -266,6 +269,7 @@ class MfVideo implements VideoDecoder {
 			var b:Ptr<Ptr> = a.alloc(8), q:Ptr<Ptr> = a.alloc(8), n:Ptr<Int32> = a.alloc(4);
 			if (IMFSample.GetBufferByIndex(s, 0, b) < 0) return false;
 			Mem.setPtr(r, 8, b.value);
+			#if !helder.soft
 			if (IUnknown.QueryInterface(b.value, MfId.IMFDXGIBuffer, q) >= 0) {
 				var tex:Ptr<Ptr> = a.alloc(8);
 				var got = IMFDXGIBuffer.GetResource(q.value, IID.ID3D11Texture2D, tex) >= 0;
@@ -286,6 +290,7 @@ class MfVideo implements VideoDecoder {
 					return true;
 				}
 			}
+			#end
 			return lock(r);
 		});
 		if (!ok) {
@@ -318,6 +323,7 @@ class MfVideo implements VideoDecoder {
 			true;
 		});
 
+#if !helder.soft
 	// (src's slice into a texture of ours of the picture's size, its format,
 	// sampled: helder.gfx's views of its planes; nil where it fails)
 	function copyOut(src:Ptr, slice:Int):Ptr
@@ -398,7 +404,10 @@ class MfVideo implements VideoDecoder {
 			true;
 		});
 
+#end
+
 	function unlock(r:Ptr) {
+		#if !helder.soft
 		var st = Mem.getPtr(r, 64);
 		if (!st.isNull()) {
 			var dev = device(st);
@@ -414,6 +423,7 @@ class MfVideo implements VideoDecoder {
 			Mem.setPtr(r, 16, Ptr.nil());
 			return;
 		}
+		#end
 		if (Mem.getPtr(r, 16).isNull()) return;
 		var q = Mem.getPtr(r, 56);
 		if (!q.isNull()) {
@@ -467,7 +477,7 @@ class MfVideo implements VideoDecoder {
 	public function mapped(f:VideoFrame):Null<{at:Ptr, pitch:Int, rows:Int}> {
 		var r = f.image;
 		if (r.isNull()) return null;
-		if (Mem.getPtr(r, 16).isNull() && !(Mem.getPtr(r, 32).isNull() ? lock(r) : readBack(r))) return null;
+		if (Mem.getPtr(r, 16).isNull() && !(Mem.getPtr(r, 32).isNull() ? lock(r) : #if helder.soft false #else readBack(r) #end)) return null;
 		return {at: Mem.getPtr(r, 16), pitch: Mem.getI32(r, 24), rows: Mem.getI32(r, 28)};
 	}
 
