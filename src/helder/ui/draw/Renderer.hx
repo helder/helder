@@ -252,6 +252,8 @@ class Renderer implements TextureCanvas {
 			}
 		}
 		again = false;
+		backdropsLast = backdrops;
+		backdrops = 0;
 		last.resize(0);
 		for (k in scales)
 			last.push(k);
@@ -393,9 +395,118 @@ class Renderer implements TextureCanvas {
 		if (recording != null) recording.pass(f) else before.push(f);
 	}
 
-	// a pass replayed from a display list (beforePass's)
-	public function pass(f:Any)
+	// a pass replayed from a display list (beforePass's), or a backdrop to capture
+	public function pass(f:Any) {
+		if (Std.isOfType(f, Backdrop)) {
+			if (templating) composite.backdrops++ else capture(cast f);
+			return;
+		}
 		if (!templating) before.push(cast f);
+	}
+
+	// --- backdrops (helder.ui.Glass's: Backdrop) ---
+
+	// the backdrops captured this frame; a frame with one is drawn whole
+	// (damage), as is the next one where it was drawn only in part
+	public var backdrops(default, null) = 0;
+	var backdropsLast = 0;
+	var wholeNext = false;
+
+	// (what was drawn so far under b's rectangle (into the target drawn into:
+	// the frame, a group), its quads that meet it, drawn into a target of its
+	// own in a pass before the frame's, over the frame's background; under a
+	// transform its bounds)
+	function capture(b:Backdrop) {
+		backdrops++;
+		if (keptAt == frames) {
+			wholeNext = true;
+			again = true;
+		}
+		var s = scale, x0 = (b.x + tx) * s, y0 = (b.y + ty) * s, x1 = (b.x + b.width + tx) * s, y1 = (b.y + b.height + ty) * s;
+		if (!flat) {
+			var ax = ma * x0 + mc * y0 + me, bx = ma * x1 + mc * y0 + me, cx = ma * x0 + mc * y1 + me, dx = ma * x1 + mc * y1 + me;
+			var ay = mb * x0 + md * y0 + mf, by = mb * x1 + md * y0 + mf, cy = mb * x0 + md * y1 + mf, dy = mb * x1 + md * y1 + mf;
+			x0 = Math.min(Math.min(ax, bx), Math.min(cx, dx));
+			x1 = Math.max(Math.max(ax, bx), Math.max(cx, dx));
+			y0 = Math.min(Math.min(ay, by), Math.min(cy, dy));
+			y1 = Math.max(Math.max(ay, by), Math.max(cy, dy));
+		}
+		b.scale = s;
+		b.fx = x0;
+		b.fy = y0;
+		var gx0 = Math.floor(Math.max(x0, ox)), gy0 = Math.floor(Math.max(y0, oy));
+		var gx1 = Math.ceil(Math.min(x1, ox + targetW)), gy1 = Math.ceil(Math.min(y1, oy + targetH));
+		var gw = Std.int(gx1 - gx0), gh = Std.int(gy1 - gy0);
+		if (gw <= 0 || gh <= 0 || gw > device.maxTextureSize || gh > device.maxTextureSize) {
+			b.texture = null;
+			return;
+		}
+		var g:Null<Group> = b.held;
+		if (g == null) b.held = g = new Group();
+		g.open(device, gw, gh);
+		b.texture = g.texture;
+		b.px = Std.int(gx0);
+		b.py = Std.int(gy0);
+		b.pw = gw;
+		b.ph = gh;
+		b.tw = g.textureWidth;
+		b.th = g.textureHeight;
+		// (the quads in the target's pixels from its origin, moved to the backdrop's)
+		var src = batch.bytes, dst = g.batch, n = batch.count, lx0 = gx0 - ox, ly0 = gy0 - oy, lx1 = gx1 - ox, ly1 = gy1 - oy;
+		var tw = g.textureWidth, th = g.textureHeight, r = 0, runs = batch.runs, last:Null<Texture> = null, key = -1;
+		for (i in 0...n) {
+			while (r < batch.draws() - 1 && i >= runs[r * 3 + 1] + runs[r * 3 + 2])
+				r++;
+			var o = i * STRIDE;
+			var ax = src.getFloat(o + 8), ay = src.getFloat(o + 12), bx = src.getFloat(o + 24), by = src.getFloat(o + 28), cx = src.getFloat(o + 40),
+				cy = src.getFloat(o + 44);
+			var dx = bx + cx - ax, dy = by + cy - ay;
+			var qx0 = Math.min(Math.min(ax, bx), Math.min(cx, dx)), qx1 = Math.max(Math.max(ax, bx), Math.max(cx, dx));
+			var qy0 = Math.min(Math.min(ay, by), Math.min(cy, dy)), qy1 = Math.max(Math.max(ay, by), Math.max(cy, dy));
+			if (qx1 <= lx0 || qx0 >= lx1 || qy1 <= ly0 || qy0 >= ly1) continue;
+			var t = runTextures[runs[r * 3]];
+			if (key < 0 || t != last) {
+				if (key >= 0 || g.textures[0] != null) g.textures.push(t) else g.textures[0] = t;
+				key = g.textures.length - 1;
+				last = t;
+			}
+			var at = dst.add(key), out = dst.bytes;
+			out.blit(at, src, o, STRIDE);
+			for (c in 0...3) {
+				var p = at + c * 16, X = out.getFloat(p + 8) - lx0, Y = out.getFloat(p + 12) - ly0;
+				out.setFloat(p, X / tw * 2 - 1);
+				out.setFloat(p + 4, 1 - Y / th * 2);
+				out.setFloat(p + 8, X);
+				out.setFloat(p + 12, Y);
+			}
+			for (j in 0...2) {
+				out.setFloat(at + 160 + j * 8, out.getFloat(at + 160 + j * 8) - lx0);
+				out.setFloat(at + 164 + j * 8, out.getFloat(at + 164 + j * 8) - ly0);
+				out.setFloat(at + 208 + j * 8, out.getFloat(at + 208 + j * 8) - lx0);
+				out.setFloat(at + 212 + j * 8, out.getFloat(at + 212 + j * 8) - ly0);
+			}
+			if (out.getFloat(at + 192) != -1e9) {
+				out.setFloat(at + 192, out.getFloat(at + 192) - lx0);
+				out.setFloat(at + 196, out.getFloat(at + 196) - ly0);
+			}
+		}
+		// (over the frame's background; in a group, over nothing)
+		var c = g.pass.colors[0].clear, bg = batch == quads || batch == kept.batch ? background : Color.TRANSPARENT;
+		@:privateAccess {
+			c.r = bg.r / 255;
+			c.g = bg.g / 255;
+			c.b = bg.b / 255;
+			c.a = bg.a / 255;
+		}
+		if (groupPipeline == null) {
+			var d = UiShader.pipeline({blend: Premultiplied});
+			d.layout = layout();
+			d.colorFormat = RGBA8;
+			groupPipeline = device.createPipeline(d);
+		}
+		uploadAtlas();
+		before.push(enc -> render(enc, g, g.pass));
+	}
 
 	// --- layers' tiles ---
 
@@ -977,8 +1088,10 @@ class Renderer implements TextureCanvas {
 		damaged = d;
 		// (most of it: drawn whole straight onto the target, as copying it
 		// in and out would draw more; kept again once less changes, the
-		// frame kept drawn whole then)
-		if (d.all || d.area() * s * s > MOST * w * h) {
+		// frame kept drawn whole then; a backdrop's frame whole: what it reads reaches past what changed)
+		var glass = backdropsLast > 0 || wholeNext;
+		wholeNext = false;
+		if (d.all || glass || d.area() * s * s > MOST * w * h) {
 			d.everything();
 			d.round(s, w, h);
 			keptValid = false;

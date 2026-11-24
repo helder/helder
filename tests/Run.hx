@@ -707,6 +707,11 @@ class Run {
 			native('bin/media/$GFX_TARGET/WinVideoStill', cps(["src", "tests/media/windows"]).concat(["-main", "WinVideoStill"]), GFX_TARGET);
 			for (mode in ["drawn", "layer-unit", "layer"]) run(exePath('bin/media/$GFX_TARGET/WinVideoStill', GFX_TARGET), [mode, "bin/media"]);
 		}
+		// (Windows: Liquid Glass drawn on D3D11, its shaders as HLSL: tests/ui/GlassTest.hx)
+		if (GFX_TARGET.startsWith("windows-") && HOST.startsWith("windows-")) {
+			native('bin/ui/$GFX_TARGET/GlassTest', uiCp().concat(["-main", "GlassTest"]), GFX_TARGET);
+			run(exePath('bin/ui/$GFX_TARGET/GlassTest', GFX_TARGET), ["--smoke"]);
+		}
 		// (an inset title bar: tests/os/TitleBarTest.hx)
 		native('bin/os/$GFX_TARGET/TitleBarTest', cps(["src", "tests/os"]).concat(["-main", "TitleBarTest"]), GFX_TARGET);
 		var bar = exePath('bin/os/$GFX_TARGET/TitleBarTest', GFX_TARGET);
@@ -1683,7 +1688,7 @@ class Run {
 
 	static function uiPrograms() {
 		var t = GFX_TARGET;
-		var programs = ["UiDrawTest", "TodoTest", "StressTest", "LayerTest", "DamageTest", "ClipboardTest", "EmojiTest", "BoxTest", "SnapTest", "WindowTest", "ControlsGallery", "ControlsBench", "RenderThreadTest", "AsyncScrollTest", "AsyncScrollWindow"];
+		var programs = ["UiDrawTest", "TodoTest", "StressTest", "LayerTest", "DamageTest", "ClipboardTest", "EmojiTest", "BoxTest", "SnapTest", "WindowTest", "ControlsGallery", "ControlsBench", "RenderThreadTest", "AsyncScrollTest", "AsyncScrollWindow", "GlassTest"];
 		if (t.startsWith("macos-")) programs = programs.concat(["SystemLayersWindow", "GlassWindow"]);
 		if (t.startsWith("linux-")) programs = programs.concat(["TextInputTest", "LinuxAccessTest", "AtspiProbe", "AccessApp"]);
 		if (t.startsWith("windows-")) programs.push("WinAccessTest");
@@ -1713,7 +1718,7 @@ class Run {
 	// (the image tests drawn on the CPU: their goldens; on Linux static, so nothing of a GPU's can be loaded)
 	static function uiSoft() {
 		var b = 'bin/ui-soft/$HOST', bless = BLESS ? " --bless" : "";
-		var programs = ["UiDrawTest", "TodoTest", "BoxTest", "EmojiTest", "ControlsGallery", "SnapTest"];
+		var programs = ["UiDrawTest", "TodoTest", "BoxTest", "EmojiTest", "ControlsGallery", "SnapTest", "GlassTest"];
 		prebuild([for (m in programs) {out: exePath('$b/$m', HOST), args: uiCp().concat(["-main", m, "-D", "helder.soft", "-D", 'hxmc.target=$HOST'])}]);
 		for (m in programs)
 			hxmc(exePath('$b/$m', HOST), uiCp().concat(["-main", m, "-D", "helder.soft", "-D", 'hxmc.target=$HOST']));
@@ -1722,6 +1727,7 @@ class Run {
 		shell('$b/BoxTest tests/ui/boxes.png $b/boxes.png');
 		shell('$b/EmojiTest tests/ui/emoji.png $b/emoji.png');
 		shell('$b/SnapTest');
+		shell('$b/GlassTest tests/ui/glass.png $b/glass.png$bless');
 		mkdirs('$b/controls');
 		shell('$b/ControlsGallery tests/ui/controls $b/controls$bless');
 	}
@@ -1744,6 +1750,8 @@ class Run {
 		shell('$gpu $b/EmojiTest tests/ui/emoji.png $b/emoji.png');
 		shell('$gpu $b/BoxTest tests/ui/boxes.png $b/boxes.png');
 		shell('$gpu $b/SnapTest');
+		// (Liquid Glass drawn: its backdrop, blur and lens against the CPU's)
+		shell('$gpu $b/GlassTest tests/ui/glass.png $b/glass.png');
 		// (the controls: their gallery against tests/ui/controls' images, their cost)
 		mkdirs('$b/controls');
 		shell('$gpu $b/ControlsGallery tests/ui/controls $b/controls$bless');
@@ -1796,6 +1804,9 @@ class Run {
 		// (the browser's scroll views driving the scrollers: wheels, clicks, keys and swipes)
 		wasm('$b/WebScrollPage.wasm', uiCp().concat(["-main", "WebScrollPage"]));
 		run(NODE, ["tests/ui/web-scroll.mjs", '$b/WebScrollPage.wasm']);
+		// (Liquid Glass drawn on WebGPU and WebGL2 against the CPU's golden)
+		wasm('$b/WebGlass.wasm', uiCp().concat(["-main", "WebGlass"]));
+		run(NODE, ["tests/ui/web-glass.mjs", '$b/WebGlass.wasm']);
 	}
 
 	// (each program run twice, the second from the first's snapshot)
