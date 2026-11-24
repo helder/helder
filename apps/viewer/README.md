@@ -225,8 +225,9 @@ size and place, and the status line, are kept between runs (helder.os's
   index in memory saved every 5 s and rebuilt from the segments when it is
   missing, damaged or stale, the oldest segment deleted past 512 MB (a hit
   in the oldest quarter copied forward). One process owns it (`thumbs/lock`,
-  held with flock or an exclusive handle); another reads only. Files under
-  64 KB are decoded every time. The folder grid will use this queue.
+  held with flock or an exclusive handle); another reads only. A JPEG, PNG,
+  GIF or WebP under 64 KB is decoded every time (as fast as a cache read);
+  every other kind is cached at any size. The folder grid will use this queue.
 - **PdfPages** (`PdfPages.hx`): a PDF's pages, each a decode of its own
   (`Decode.key`: the path, the page after a newline), so they go through
   the cache, the tiles and the zoom an image's do: its 100% two pixels a
