@@ -13,6 +13,9 @@ class Packet {
 	public final duration:Float;
 	// decoding can start here
 	public final key:Bool;
+	// seconds of its decoded audio not played at its end (Matroska's
+	// DiscardPadding: an Opus stream's last packet's)
+	public final trim:Float;
 
 	// seconds: when it shows, when it is decoded, when it ends
 	public var time(get, never):Float;
@@ -20,7 +23,7 @@ class Packet {
 	public var end(get, never):Float;
 
 	@:allow(helder.media)
-	function new(track, offset, size, dts, pts, duration, key) {
+	function new(track, offset, size, dts, pts, duration, key, trim = 0.0) {
 		this.track = track;
 		this.offset = offset;
 		this.size = size;
@@ -28,6 +31,7 @@ class Packet {
 		this.pts = pts;
 		this.duration = duration;
 		this.key = key;
+		this.trim = trim;
 	}
 
 	function get_time()

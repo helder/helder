@@ -27,11 +27,9 @@ class Chunks {
 		used += n;
 		if (at.isNull() || at.add(n).toI64() > end.toI64()) {
 			if (n > CHUNK) {
-				// (a large one of its own, after the current chunk)
+				// (a large one of its own, let go at the reset)
 				var big:Ptr = LibC.malloc((n : I64));
 				if (big.isNull()) throw "helder.gfx: out of memory";
-				chunks.insert(current, big);
-				current++;
 				large.push(big);
 				return big;
 			}
@@ -52,10 +50,8 @@ class Chunks {
 
 	// everything cut let go (the chunks kept, but the large ones)
 	public function reset() {
-		for (b in large) {
-			chunks.remove(b);
+		for (b in large)
 			LibC.free(b);
-		}
 		large.resize(0);
 		current = 0;
 		at = end = Ptr.nil();
@@ -65,6 +61,8 @@ class Chunks {
 	public function free() {
 		for (c in chunks)
 			LibC.free(c);
+		for (b in large)
+			LibC.free(b);
 		chunks.resize(0);
 		large.resize(0);
 		current = 0;

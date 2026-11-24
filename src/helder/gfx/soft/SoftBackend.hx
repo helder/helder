@@ -15,7 +15,7 @@ import hxmc.unsafe.Ptr;
 // call, clips its triangles in clip space (near and far, and a guard band
 // that keeps their fixed point exact), sets them up (fixed point, 8 bits
 // under the pixel; the planes of their depth, 1/w and varyings) and bins
-// them into the pass's 64x64 tiles; the pass's end shades its tiles in
+// them into the pass's 32x32 tiles; the pass's end shades its tiles in
 // parallel (helder.jobs.Parallel: HELDER_SOFT_THREADS caps the threads,
 // 1 none beside the caller's), each in the order its triangles came
 // (Raster), then resolves a multisampled target. Uniform blocks are copied

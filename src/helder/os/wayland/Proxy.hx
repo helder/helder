@@ -14,6 +14,8 @@ class Proxy {
 	public static var recorder:Null<(proxy:Ptr, opcode:Int, iface:Ptr, version:Int, flags:Int, args:Ptr<Int64>, count:Int) -> Ptr> = null;
 	static final dispatchers:Array<Null<Dispatcher>> = [null];
 	static final free:Array<Int> = [];
+	// (proxies listened to on more than one thread: the render thread's queue, helder.ui.draw.WlLayers)
+	static final lock = new sys.thread.Mutex();
 
 	public static function marshal(proxy:Ptr, opcode:Int, iface:Ptr, version:Int, flags:Int, args:Ptr<Int64>, count:Int):Ptr {
 		if (recorder != null) return recorder(proxy, opcode, iface, version, flags, args, count);
@@ -24,16 +26,21 @@ class Proxy {
 
 	// a proxy's events to d (its slot freed when the proxy is destroyed: forget)
 	public static function listen(proxy:Ptr, d:Dispatcher):Int {
+		lock.acquire();
 		var i = free.length > 0 ? free.pop() : dispatchers.length;
 		if (i == dispatchers.length) dispatchers.push(d) else dispatchers[i] = d;
+		lock.release();
 		if (recorder == null) WaylandClient.wl_proxy_add_dispatcher(proxy, Callback.addr(dispatch), Ptr.ofI64(i), Ptr.nil());
 		return i;
 	}
 
 	public static function forget(i:Int) {
-		if (i <= 0 || i >= dispatchers.length || dispatchers[i] == null) return;
-		dispatchers[i] = null;
-		free.push(i);
+		lock.acquire();
+		if (i > 0 && i < dispatchers.length && dispatchers[i] != null) {
+			dispatchers[i] = null;
+			free.push(i);
+		}
+		lock.release();
 	}
 
 	// (tests: the dispatcher at i given an event as libwayland would)
@@ -44,7 +51,9 @@ class Proxy {
 
 	@:hxmc.callback static function dispatch(data:Ptr, target:Ptr, opcode:Int, message:Ptr, args:Ptr<Int64>):Int {
 		var i = data.toI64().toInt();
+		lock.acquire();
 		var d = i > 0 && i < dispatchers.length ? dispatchers[i] : null;
+		lock.release();
 		if (d != null) d.dispatch(opcode, args);
 		return 0;
 	}

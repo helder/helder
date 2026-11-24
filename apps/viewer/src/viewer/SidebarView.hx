@@ -18,9 +18,9 @@ class SidebarView implements Markup {
 
 	public static function make(x:Explorer):View {
 		var s = x.sidebar, b = x.browser;
-		return <view tag="sidebar" width={WIDTH} shrink={0} padding="0 10 10 10" row-gap={12} overflow="hidden"
-			padding-top={WindowButtons.side() == "start" ? 0 : 10}>
-			<Show when={WindowButtons.side() == "start"}><view height={52} shrink={0} drag-region/></Show>
+		return <view tag="sidebar" width={WIDTH} shrink={0} padding="0 10" row-gap={6} overflow="hidden"
+			padding-top={WindowButtons.side() == "start" ? 0 : 8}>
+			<Show when={WindowButtons.side() == "start"}><view height={Shell.BAR} shrink={0} drag-region/></Show>
 			<Show when={s.level() == ""}>{overview(x)}</Show>
 			<Show when={s.level() != ""}>{level(x)}</Show>
 		</view>;
@@ -28,7 +28,7 @@ class SidebarView implements Markup {
 
 	static function overview(x:Explorer):View {
 		var s = x.sidebar, b = x.browser;
-		return <scroll tag="overview" grow={1} min-height={0} row-gap={12}>
+		return <scroll tag="overview" grow={1} min-height={0} row-gap={12} padding-bottom={10}>
 			<view row-gap={1}>
 				<text slot="side-head">Locations</text>
 				{[for (p in s.places) row(p.name, Glyphs.place(p.kind), () -> b.dir() == Browser.normalize(p.path),
@@ -97,7 +97,8 @@ class SidebarView implements Markup {
 		function vol():Null<Volume>
 			return s.level() == "" ? null : s.volumeOf(s.level());
 		return <Show when={vol() != null && vol().total > 0}>
-			<view tag="capacity" padding="10 8 2 8" row-gap={6} borders="1 0 0 0" border-color={Look.ref.line} font-size={12} color={Look.ref.fg2}>
+			<view tag="capacity" height={ContentView.FOOT} shrink={0} margin="0 -10" padding="0 18" justify="center" row-gap={4} borders="1 0 0 0"
+				border-color={Look.ref.line} font-size={12} color={Look.ref.fg2}>
 				<view direction="row" align-items="center" column-gap={8}>
 					<image src={Glyphs.get(vol() == null ? "disk" : Glyphs.volume(vol()))} width={14} height={14} color={Look.ref.fg3}/>
 					<text grow={1} shrink={1} max-lines={1} text-overflow="ellipsis">{() -> vol() == null ? "" : vol().name}</text>
