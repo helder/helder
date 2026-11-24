@@ -265,6 +265,7 @@ class D3D {
 	public static inline var TOPOLOGY_TRIANGLESTRIP = 5;
 	// DXGI_USAGE, DXGI_SWAP_EFFECT, DXGI_SCALING, DXGI_MWA
 	public static inline var USAGE_RENDER_TARGET_OUTPUT = 0x20;
+	public static inline var SWAP_EFFECT_FLIP_SEQUENTIAL = 3;
 	public static inline var SWAP_EFFECT_FLIP_DISCARD = 4;
 	public static inline var SCALING_STRETCH = 0;
 	public static inline var MWA_NO_ALT_ENTER = 2;

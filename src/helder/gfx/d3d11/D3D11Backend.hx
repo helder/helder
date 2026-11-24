@@ -9,7 +9,7 @@ import helder.os.Surface;
 import hxmc.unsafe.*;
 
 // The Direct3D 11 back end (Windows): a device and its immediate context,
-// rendering to a window's flip-model swap chain (DXGI_SWAP_EFFECT_FLIP_DISCARD,
+// rendering to a window's flip-model swap chain (DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL,
 // two RGBA8 buffers, resized with the window) or, headless, to an offscreen
 // texture. The swap chain queues one frame at most: a window's frame waits
 // for its frame latency object before it is drawn (waitFrame: the program's
@@ -388,8 +388,10 @@ class D3D11Backend {
 			d.value.BufferUsage = D3D.USAGE_RENDER_TARGET_OUTPUT;
 			d.value.BufferCount = 2;
 			d.value.Scaling = D3D.SCALING_STRETCH;
-			d.value.SwapEffect = (Sys.getEnv("HELDER_D3D_PROBE") ?? "").indexOf("sequential") >= 0 ? 3 : D3D.SWAP_EFFECT_FLIP_DISCARD; // TEMP probe
-			d.value.Flags = (Sys.getEnv("HELDER_D3D_PROBE") ?? "").indexOf("nolatency") >= 0 ? 0 : D3D.SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT; // TEMP probe
+			// (sequential: DXGI takes Present1's dirty rectangles only from it; under
+			// discard, DWM kept a glyph of an earlier frame outside them, #98)
+			d.value.SwapEffect = D3D.SWAP_EFFECT_FLIP_SEQUENTIAL;
+			d.value.Flags = D3D.SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 			var root = composed ? DcRoot.make(dxgi, surface.handle) : null;
 			if (root != null) {
 				d.value.AlphaMode = D3D.ALPHA_MODE_IGNORE;
@@ -1366,7 +1368,7 @@ class D3D11Backend {
 		}
 		resolve();
 		// (vsync; a lost device is not recovered yet; what changed told DXGI: Device.damaged)
-		var r = damage, n = r == null || (Sys.getEnv("HELDER_D3D_PROBE") ?? "").indexOf("nodirty") >= 0 ? 0 : Std.int(r.length / 4); // TEMP probe
+		var r = damage, n = r == null ? 0 : Std.int(r.length / 4);
 		damage = null;
 		var hr = n == 0 ? IDXGISwapChain1.Present(swapChain, 1, 0) : Arena.scopedValue(a -> {
 			// (DXGI_PRESENT_PARAMETERS: the count, its padding, then the rectangles', a scroll's pointers)
