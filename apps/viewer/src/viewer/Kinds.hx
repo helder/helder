@@ -22,7 +22,8 @@ class Kinds {
 		"dng" => "DNG RAW image", "cr2" => "Canon RAW image", "cr3" => "Canon RAW image", "nef" => "Nikon RAW image", "arw" => "Sony RAW image",
 		"raf" => "Fujifilm RAW image", "orf" => "Olympus RAW image", "rw2" => "Panasonic RAW image", "pdf" => "PDF document", "mp4" => "MPEG-4 movie",
 		"m4v" => "MPEG-4 movie", "mov" => "QuickTime movie", "webm" => "WebM movie", "mkv" => "Matroska movie", "m4a" => "MPEG-4 audio",
-		"mp3" => "MP3 audio", "flac" => "FLAC audio", "mka" => "Matroska audio", "wav" => "WAVE audio", "txt" => "Plain text", "md" => "Markdown text",
+		"mp3" => "MP3 audio", "flac" => "FLAC audio", "mka" => "Matroska audio", "wav" => "WAVE audio", "txt" => "Plain text", "md" => "Markdown document", "markdown" => "Markdown document",
+		"mdown" => "Markdown document",
 		"json" => "JSON", "zip" => "ZIP archive", "svg" => "SVG image", "html" => "HTML page"
 	];
 
@@ -49,7 +50,7 @@ class Kinds {
 
 	// what the full-size viewer shows
 	public static function viewable(e:Entry):Bool
-		return e.kind != Folder && (FolderModel.isImage(e.name) || FolderModel.isMedia(e.name));
+		return e.kind != Folder && (FolderModel.isImage(e.name) || FolderModel.isMedia(e.name) || FolderModel.isMarkdown(e.name));
 
 	public static function hidden(name:String):Bool
 		return name.startsWith(".");
@@ -93,6 +94,7 @@ class Kinds {
 			case "zip" | "gz" | "tar" | "7z": "#8a5a2b";
 			case "gpx" | "kml": "#0f7f79";
 			case "html" | "js" | "ts" | "hx" | "json": "#7e5bef";
+			case "md" | "markdown" | "mdown": "#2b6cb0";
 			case _: "#6b6b6b";
 		}
 }

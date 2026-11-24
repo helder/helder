@@ -2,11 +2,12 @@
 // test ui-web): its page served as helder build --target web wrote it, the
 // browser at Samples (the page's title, the count its accessibility mirror
 // says: as many as the samples beside the page),
-// then the PDF opened (type-ahead, Enter) and its first page shown; files
+// then the PDF opened (type-ahead, Enter) and its first page shown, the
+// Markdown sample opened and its text there; files
 // dropped on the page (a folder "Dropped" of them, a photo opened); Open
 // folder on a tree of handles of the page's own (showDirectoryPicker's
 // stand-in), its subfolder entered; no error on the page or in the console.
-// Screenshots: <out>/web-samples.png, web-pdf.png, web-folder.png.
+// Screenshots: <out>/web-samples.png, web-pdf.png, web-markdown.png, web-folder.png.
 //   node tests/web.mjs <bin/web> <out dir>
 import { createServer } from 'node:http';
 import { readFile, readdir, mkdir } from 'node:fs/promises';
@@ -18,7 +19,7 @@ let pw;
 try { pw = require('playwright'); } catch { pw = require(path.join(process.execPath, '../../lib/node_modules/playwright')); }
 const [dir, out] = process.argv.slice(2);
 const types = { '.html': 'text/html', '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.json': 'application/json', '.png': 'image/png',
-	'.ttf': 'font/ttf', '.jpg': 'image/jpeg', '.pdf': 'application/pdf', '.mp4': 'video/mp4', '.m4a': 'audio/mp4' };
+	'.ttf': 'font/ttf', '.jpg': 'image/jpeg', '.pdf': 'application/pdf', '.mp4': 'video/mp4', '.m4a': 'audio/mp4', '.md': 'text/markdown' };
 const server = createServer(async (req, res) => {
 	let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
 	if (p === '/') p = '/viewer.html';
@@ -64,6 +65,19 @@ try {
 	await page.screenshot({ path: path.join(out, 'web-pdf.png') });
 	const pdf = await page.title();
 	await page.keyboard.press('Escape');
+	// (the Markdown sample: its column, its text and its picture read from beside the page)
+	await page.waitForFunction(() => document.title === 'Samples', null, { timeout: 30000 }).catch(async () => fail('not back at Samples: ' + (await page.title())));
+	await page.mouse.click(600, 400);
+	await page.keyboard.type('Welcome');
+	await page.keyboard.press('Enter');
+	await page.waitForFunction(() => /^Welcome\.md · /.test(document.title) && /This page is a Markdown file/.test(document.querySelector('canvas')?.textContent ?? ''), null,
+		{ timeout: 30000 }).catch(async () => {
+			await page.screenshot({ path: path.join(out, 'web-markdown.png') });
+			fail('the Markdown document not shown: ' + (await page.title()) + ': ' + (await said()).slice(0, 300));
+		});
+	await page.waitForTimeout(3000);
+	await page.screenshot({ path: path.join(out, 'web-markdown.png') });
+	await page.keyboard.press('Escape');
 	// (files dropped on the page: a folder "Dropped" of them, a photo of it opened)
 	await page.evaluate(async () => {
 		const dt = new DataTransfer();
@@ -99,7 +113,7 @@ try {
 	await page.waitForTimeout(3000);
 	await page.screenshot({ path: path.join(out, 'web-folder.png') });
 	if (errors.length > 0) fail(errors.join('\n'));
-	console.log(`viewer (web): at Samples, the PDF shown (${pdf}), a drop and a folder opened`);
+	console.log(`viewer (web): at Samples, the PDF shown (${pdf}), the Markdown sample, a drop and a folder opened`);
 } finally {
 	await browser.close();
 	server.close();

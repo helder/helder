@@ -6,8 +6,9 @@ import helder.image.Image;
 import helder.image.Resize;
 
 // what the inspector shows of a file: its picture (null: none, a glyph
-// instead), and what was learnt opening it (0: not known)
-typedef Shown = {image:Null<Image>, width:Int, height:Int, pages:Int, duration:Float, format:String, error:Null<String>};
+// instead), and what was learnt opening it (0: not known); a Markdown
+// document's parsed (Explorer's preview of one)
+typedef Shown = {image:Null<Image>, width:Int, height:Int, pages:Int, duration:Float, format:String, error:Null<String>, ?markdown:MarkdownDoc};
 
 // The inspector's preview of the selected file: an image or a PDF's
 // first page decoded through Decode's path at SIDE pixels, then halved to
