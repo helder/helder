@@ -21,6 +21,7 @@ class Preview {
 	// (the box is 272 by 220 points: twice that in pixels at most)
 	static inline var FIT = 640;
 
+	#if (hxmc.target != "wasm32-wasi")
 	// done(shown) on the loop; the function returned stops it
 	public static function request(path:String, done:Shown->Void):Void->Void {
 		var stopped = false;
@@ -32,6 +33,7 @@ class Preview {
 		Async.launch(_ -> helder.jobs.Jobs.job(decode).run(path)).onCompletion((r, _) -> if (!stopped && r != null) done(shown(r)));
 		return () -> stopped = true;
 	}
+	#end
 
 	#if (hxmc.target == "wasm32-wasi")
 	// the web's: the file read through the browser's files, decoded on a worker
@@ -49,6 +51,7 @@ class Preview {
 	}
 	#end
 
+	#if (hxmc.target != "wasm32-wasi")
 	// at once, on this thread (tests and stories)
 	public static function now(path:String, done:Shown->Void):Void->Void {
 		done(shown(decode(path)));
@@ -59,6 +62,7 @@ class Preview {
 	static function decode(path:String):{width:Int, height:Int, pw:Int, ph:Int, rgba:Null<Bytes>, pages:Int, format:String, error:Null<String>} {
 		return try fitted(Decode.file({path: path, side: SIDE})) catch (e:Dynamic) failed(e);
 	}
+	#end
 
 	// (the web's: the bytes read already)
 	static function decodeBytes(req:{path:String, bytes:Bytes}):{width:Int, height:Int, pw:Int, ph:Int, rgba:Null<Bytes>, pages:Int, format:String, error:Null<String>} {

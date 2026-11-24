@@ -28,7 +28,8 @@ class Samples {
 	// the folder holding samples/ on the disk it was compiled on (the tests')
 	public static macro function home():Expr {
 		var dir = haxe.io.Path.directory(Context.getPosInfos(Context.currentPos()).file);
-		return macro $v{sys.FileSystem.fullPath(haxe.io.Path.join([dir, "..", ".."]))};
+		if (!haxe.io.Path.isAbsolute(dir)) dir = haxe.io.Path.join([Sys.getCwd(), dir]);
+		return macro $v{haxe.io.Path.normalize(haxe.io.Path.join([dir, "..", ".."]))};
 	}
 
 	static macro function list():Expr {

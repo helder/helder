@@ -166,9 +166,10 @@ class PdfPages {
 		return doc;
 	}
 
+	// (none on the web: its files do not change)
 	static function stamp(p:String):String
-		return try {
+		return #if (hxmc.target == "wasm32-wasi") "" #else try {
 			var s = sys.FileSystem.stat(p);
 			s.size + ":" + s.mtime.getTime();
-		} catch (_:Dynamic) "";
+		} catch (_:Dynamic) "" #end;
 }

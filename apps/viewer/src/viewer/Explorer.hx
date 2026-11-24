@@ -39,7 +39,7 @@ class Explorer {
 	public function new(files:Files, decode:(path:String, side:Int, done:Decoded->Void) -> Void, ?places:Array<Place>, ?volumes:Array<Volume>,
 			?preview:(path:String, done:Preview.Shown->Void)->(Void->Void), ?pdfSizes:(path:String, done:PdfPages.PdfSizes->Void)->Void) {
 		this.files = files;
-		this.preview = preview ?? Preview.request;
+		this.preview = preview ?? #if (hxmc.target == "wasm32-wasi") (_, _) -> () -> {} #else Preview.request #end;
 		browser = new Browser(files);
 		sidebar = new Sidebar(files, places ?? [], volumes ?? []);
 		viewer = new Viewer(decode, null, pdfSizes);
