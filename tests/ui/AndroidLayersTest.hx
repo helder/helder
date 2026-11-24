@@ -183,6 +183,15 @@ class AndroidLayersTest {
 			}
 			return {frames: during.length, median: median, from: from, to: to};
 		}
+		// (the list's last paint drew its tiles where it rests: a scroller
+		// draws them where they fall for 3 paints after it moved, its rows
+		// then a pixel off where those tiles were drawn at another offset's
+		// fraction; a slow device's program may paint fewer than that
+		// before a still, CI's emulator at a frame a second)
+		function rested():Bool @:privateAccess {
+			var l = list.contentLayer, p = w.ui.paintFrame;
+			return l == null || p - l.movedAt >= 3 && l.recordedAt != p;
+		}
 		function cpu():Float {
 			var s = sys.io.File.getContent("/proc/self/stat");
 			var f = s.substr(s.lastIndexOf(")") + 2).split(" ");
@@ -265,13 +274,12 @@ class AndroidLayersTest {
 					mover.style.opacity = 0.6;
 					phase = 5;
 					at = now;
-					timed = 0;
-				case 5 if (now - at > 2 && timed == 0):
-					// (before each still, a frame of the program's once the list's
-					// tiles are drawn: the list drawn from them in every mode, not
+				case 5 if (now - at > 2 && !rested()):
+					// (before each still, the program's frames until the list's
+					// last was drawn from its tiles at rest: in every mode, not
 					// replayed as recorded, which the emulator's GL draws a few
-					// levels off at glyphs' edges: up to 17)
-					timed = 1;
+					// levels off at glyphs' edges (up to 17), nor its tiles where
+					// they fell, a pixel off at some rows)
 					w.ui.requestFrame();
 				case 5 if (now - at > 5):
 					say('slot at ${Math.round((slotted.absX + 32) * k)} ${Math.round((slotted.absY + 8 - list.scrollY) * k)}');
@@ -324,9 +332,7 @@ class AndroidLayersTest {
 				case 9 if (now - at > 3):
 					phase = 13;
 					at = now;
-					timed = 0;
-				case 13 if (now - at > 0.5 && timed == 0):
-					timed = 1;
+				case 13 if (now - at > 0.5 && !rested()):
 					w.ui.requestFrame();
 				case 13 if (now - at > 1.5):
 					say("still 2");
@@ -354,10 +360,8 @@ class AndroidLayersTest {
 						else say('timed: header: $n changes in ${Math.round((now - t0) * 10) / 10} s, CPU ${Math.round(ms * 100) / 100} ms a change');
 						phase = 17;
 						at = now;
-						timed = 0;
 					}
-				case 17 if (now - at > 0.5 && timed == 0):
-					timed = 1;
+				case 17 if (now - at > 0.5 && !rested()):
 					w.ui.requestFrame();
 				case 17 if (now - at > 1.5):
 					// (the window's layer after 120 frames drawn only where they changed: as drawn whole)
