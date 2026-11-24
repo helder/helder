@@ -671,12 +671,13 @@ class Run {
 		}
 		native('bin/os/$GFX_TARGET/WaylandTest', cps(["src", "tests/os"]).concat(["-main", "WaylandTest"]), GFX_TARGET);
 		native('bin/ui/$GFX_TARGET/AsyncScrollWindow', uiCp().concat(["-main", "AsyncScrollWindow"]), GFX_TARGET);
+		native('bin/os/$GFX_TARGET/SoftWaylandTest', cps(["src", "tests/os", "tests/gfx"]).concat(["-main", "SoftWaylandTest", "-D", "helder.soft"]), GFX_TARGET);
 		run(helderCli(), ["build", "apps/viewer"]);
 		if (Sys.systemName() != "Linux" || Sys.command("sh", ["-c", "command -v weston > /dev/null"]) != 0) {
 			Sys.println("wayland: no weston here: built, not run");
 			return;
 		}
-		shell('sh tests/os/wayland.sh bin/os/$GFX_TARGET/WaylandTest apps/viewer/bin/$GFX_TARGET/viewer bin/os bin/ui/$GFX_TARGET/AsyncScrollWindow');
+		shell('sh tests/os/wayland.sh bin/os/$GFX_TARGET/WaylandTest apps/viewer/bin/$GFX_TARGET/viewer bin/os bin/ui/$GFX_TARGET/AsyncScrollWindow bin/os/$GFX_TARGET/SoftWaylandTest');
 	}
 
 	static function window() {
@@ -687,6 +688,24 @@ class Run {
 		native('bin/os/$GFX_TARGET/SettingsCheck', cps(["src", "tests/os"]).concat(["-main", "SettingsCheck"]), GFX_TARGET);
 		var settings = exePath('bin/os/$GFX_TARGET/SettingsCheck', GFX_TARGET);
 		if (Sys.systemName() == "Linux") shell('$XVFB -a $wine$settings') else run(settings, []);
+		// (a window drawn on the CPU, -D helder.soft: its frames shown by
+		// helder.os.Blit, read back from the window: GfxTest's window mode;
+		// macOS: in a GUI session, the program on the main thread)
+		native('bin/os/$GFX_TARGET/GfxTestSoft', gfxCp().concat(["-main", "GfxTest", "-D", "helder.soft"]), GFX_TARGET);
+		var soft = exePath('bin/os/$GFX_TARGET/GfxTestSoft', GFX_TARGET);
+		var gui = !GFX_TARGET.startsWith("macos-") || StringTools.trim(output("launchctl", ["managername"], true) ?? "") == "Aqua";
+		for (s in ["triangle", "cube"]) {
+			var args = ["window", s, 'tests/gfx/$s.png', 'bin/os/soft-$s.png', "5"];
+			if (Sys.systemName() == "Linux") shell('$XVFB -a -s "-screen 0 640x480x24" $wine$soft ' + args.join(" "))
+			else if (gui) run(soft, args, ["HELDER_THREAD" => "0", "HELDER_BACKGROUND" => "1"])
+			else Sys.println("window: not a GUI session: the soft window not run");
+		}
+		// (a UI in a window drawn on the CPU: its kept frame shown where it
+		// changed; not macOS: a Retina window's frame is larger than the test's)
+		native('bin/os/$GFX_TARGET/UiDrawTestSoft', uiCp().concat(["-main", "UiDrawTest", "-D", "helder.soft"]), GFX_TARGET);
+		var ui = exePath('bin/os/$GFX_TARGET/UiDrawTestSoft', GFX_TARGET);
+		if (Sys.systemName() == "Linux") shell('$XVFB -a $wine$ui tests/ui/draw.png bin/os/soft-draw.png --window')
+		else if (!GFX_TARGET.startsWith("macos-")) run(ui, ["tests/ui/draw.png", "bin/os/soft-draw.png", "--window"]);
 		native('bin/os/$GFX_TARGET/LocaleCheck', cps(["src", "tests/os"]).concat(["-main", "LocaleCheck"]), GFX_TARGET);
 		var locale = exePath('bin/os/$GFX_TARGET/LocaleCheck', GFX_TARGET);
 		if (wine != "") shell('$wine$locale') else run(locale, []);
@@ -1691,7 +1710,7 @@ class Run {
 		pack();
 		var builds = [
 			{out: exePath('$b/SoftShaderTest', HOST), args: cps(["src", "tests/gfx"]).concat(["-main", "SoftShaderTest", "-D", "helder.soft.exact", "-D", "helder.soft.reference"]).concat(soft)},
-			{out: exePath('$b/GfxTest', HOST), args: gfxCp().concat(["-main", "GfxTest"]).concat(soft)},
+			{out: exePath('$b/GfxTest', HOST), args: gfxCp().concat(["-main", "GfxTest", "-D", "helder.headless"]).concat(soft)},
 			{out: exePath('$b/RenderTest', HOST), args: sceneCp().concat(["-main", "RenderTest"]).concat(soft)}
 		];
 		prebuild(builds);
@@ -1707,9 +1726,11 @@ class Run {
 	static function uiSoft() {
 		var b = 'bin/ui-soft/$HOST', bless = BLESS ? " --bless" : "";
 		var programs = ["UiDrawTest", "TodoTest", "BoxTest", "EmojiTest", "ControlsGallery", "SnapTest"];
-		prebuild([for (m in programs) {out: exePath('$b/$m', HOST), args: uiCp().concat(["-main", m, "-D", "helder.soft", "-D", 'hxmc.target=$HOST'])}]);
+		// (-D helder.headless: no window code, static on Linux)
+		var soft = ["-D", "helder.soft", "-D", "helder.headless", "-D", 'hxmc.target=$HOST'];
+		prebuild([for (m in programs) {out: exePath('$b/$m', HOST), args: uiCp().concat(["-main", m]).concat(soft)}]);
 		for (m in programs)
-			hxmc(exePath('$b/$m', HOST), uiCp().concat(["-main", m, "-D", "helder.soft", "-D", 'hxmc.target=$HOST']));
+			hxmc(exePath('$b/$m', HOST), uiCp().concat(["-main", m]).concat(soft));
 		shell('$b/UiDrawTest tests/ui/draw.png $b/draw.png$bless');
 		shell('$b/TodoTest tests/ui/todo.png $b/todo.png$bless');
 		shell('$b/BoxTest tests/ui/boxes.png $b/boxes.png');

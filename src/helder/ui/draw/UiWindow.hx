@@ -88,10 +88,10 @@ class UiWindow {
 	public var device(default, null):Device;
 	public var renderer(default, null):Renderer;
 	#end
-	#if helder.headless
-	// the CPU's canvas where it draws a headless run (helder.ui.draw.soft:
-	// -D helder.soft, which links no GPU; HELDER_SOFT=1; or no GPU device to
-	// be made), else null
+	#if (helder.headless || helder.soft)
+	// the CPU's canvas where it draws a headless run or a -D helder.soft
+	// window (helder.ui.draw.soft: no GPU linked; HELDER_SOFT=1; or no GPU
+	// device to be made), else null
 	public var soft(default, null):Null<helder.ui.draw.soft.SoftCanvas> = null;
 	#end
 	// its pixels a point (the renderer's scale), from its first frame
@@ -161,14 +161,15 @@ class UiWindow {
 		window = new helder.os.Window(title, width, height, titlebar);
 		// (Android: text fields get the soft keyboard and the input method)
 		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) helder.os.android.TextInput.enable(); #end
-		#if (helder.soft && !helder.headless)
-		throw "UiWindow: -D helder.soft draws a headless build's (-D helder.headless)";
-		#end
-		#if helder.headless
+		#if (helder.headless || helder.soft)
 		if (helder.ui.draw.soft.SoftCanvas.wanted() #if !helder.soft || (device = gpu(window.surface, antialias)) == null #end) {
 			soft = new helder.ui.draw.soft.SoftCanvas();
 			soft.groups = true;
 			soft.steps = true;
+			// (a window's frame kept, what changed drawn and shown: helder.os.Blit)
+			#if !helder.headless
+			soft.keep = true;
+			#end
 		} else
 		#end
 		{
@@ -427,7 +428,7 @@ class UiWindow {
 			return;
 		}
 		// (the system's layers drawn from the compositor's state after the frame, but for a frame read back)
-		#if helder.headless
+		#if (helder.headless || helder.soft)
 		if (soft != null) return softFrame(w, h, s);
 		#end
 		#if !helder.soft
@@ -500,7 +501,7 @@ class UiWindow {
 
 	// (the glyph atlas it draws with: the renderer's, the CPU's canvas')
 	function atlas():helder.text.GlyphAtlas {
-		#if helder.headless
+		#if (helder.headless || helder.soft)
 		if (soft != null) return soft.atlas;
 		#end
 		#if helder.soft
@@ -510,7 +511,7 @@ class UiWindow {
 		#end
 	}
 
-	#if helder.headless
+	#if (helder.headless || helder.soft)
 	// (a device, where one can be made: none, the CPU's canvas draws)
 	#if !helder.soft
 	static function gpu(surface:helder.os.Surface, antialias:Bool):Null<Device>
@@ -535,7 +536,11 @@ class UiWindow {
 			c.readPixels(capture);
 			capture = null;
 		}
+		#if helder.headless
 		helder.headless.Headless.run.present(window.surface, w, h, c.readPixels);
+		#else
+		c.present(window.surface);
+		#end
 		updateTextInput();
 		sendAccess();
 		syncScroll();

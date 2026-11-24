@@ -1,6 +1,7 @@
 package helder.gfx.soft;
 
 import haxe.io.Bytes;
+import helder.os.Blit;
 import helder.os.Surface;
 import hxmc.I64;
 import hxmc.unsafe.BytesPtr;
@@ -20,8 +21,8 @@ import hxmc.unsafe.Ptr;
 // 1 none beside the caller's), each in the order its triangles came
 // (Raster), then resolves a multisampled target. Uniform blocks are copied
 // when set and textures bound by their records, so later changes do not
-// reach draws already made. Headless surfaces; a window's frame is drawn
-// but not shown. No compute tier (Device.has: none; programs take the
+// reach draws already made. A window's frame is shown by the system's own
+// path (helder.os.Blit), where it changed. No compute tier (Device.has: none; programs take the
 // render stages' path, as on WebGL2), no shared textures.
 @:hxmc.unsafe(gc)
 class SoftBackend {
@@ -44,6 +45,7 @@ class SoftBackend {
 	var frameColor = Ptr.nil();
 	var frameDepth = Ptr.nil();
 	var frameTarget = 0;
+	var damage:Null<Array<Int>> = null;
 	// what is bound
 	var pipeline:Null<SoftPipeline> = null;
 	final vertexBuffers:Array<Ptr> = [for (_ in 0...8) Ptr.nil()];
@@ -76,9 +78,9 @@ class SoftBackend {
 		var env = Sys.getEnv("HELDER_SOFT_THREADS"), n = env == null ? -1 : Std.parseInt(env);
 		threads = n == null ? -1 : n - 1;
 		bound = LibC.malloc(256);
-		Mem.zero(bound, 256);
+		LibC.memset(bound, 0, 256);
 		pass = LibC.malloc(Raster.PASS);
-		Mem.zero(pass, Raster.PASS);
+		LibC.memset(pass, 0, Raster.PASS);
 		vin = LibC.malloc(16 * 64);
 		vout = LibC.malloc(64 + 16 * Abi.MAX_VARYINGS);
 		clip = LibC.malloc(2 * 16 * 4 * (4 + Abi.MAX_VARYINGS) + 3 * 4 * (4 + Abi.MAX_VARYINGS));
@@ -113,7 +115,7 @@ class SoftBackend {
 		var size = d.size, data = d.data;
 		var p:Ptr = LibC.malloc(((size > 0 ? size : 16) : I64));
 		if (p.isNull()) throw "helder.gfx: out of memory for a buffer of " + size + " bytes";
-		Mem.zero(p, (size : I64));
+		LibC.memset(p, 0, (size : I64));
 		if (data != null) copy(p, data, 0, size);
 		var id = putPtr(buffers, p);
 		while (bufferSizes.length < id)
@@ -306,7 +308,7 @@ class SoftBackend {
 			bins = LibC.malloc(n);
 			binsSize = n;
 		}
-		Mem.zero(bins, n);
+		LibC.memset(bins, 0, n);
 		Mem.setPtr(pass, Raster.BINS, bins);
 		rebase();
 		resolveFrom = samples > 1 && c.resolve != null ? target : Ptr.nil();
@@ -704,7 +706,7 @@ class SoftBackend {
 	function flush() {
 		var n = Mem.getI32(pass, Raster.TILES_X) * Mem.getI32(pass, Raster.TILES_Y);
 		helder.jobs.Parallel.run(TileCall.address(), pass, n, threads);
-		Mem.zero(bins, n * Raster.BIN);
+		LibC.memset(bins, 0, n * Raster.BIN);
 		Mem.setI32(pass, Raster.CLEAR, 0);
 		rebase();
 	}
@@ -790,9 +792,16 @@ class SoftBackend {
 
 	public function endFrame() {
 		if (inPass) endPass();
+		#if !helder.headless
+		// (a window's frame shown by the system's own path: helder.os.Blit)
+		if (frameTarget == 0 && surface.kind != Headless) Blit.present(surface, SoftTexture.at(frameColor, 0, 0), width, height, damage);
+		#end
+		damage = null;
 	}
 
-	public function damaged(rects:Null<Array<Int>>) {}
+	// the frame's rectangles that changed (x0, y0, x1, y1 each), the ones shown; null: all of it
+	public function damaged(rects:Null<Array<Int>>)
+		damage = rects == null ? null : rects.copy();
 
 	public function readPixels(dst:Bytes) {
 		var r = frameTarget != 0 ? texture(frameTarget) : frameColor;

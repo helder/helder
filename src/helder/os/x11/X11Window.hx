@@ -278,6 +278,9 @@ class X11Window {
 		queueLock.release();
 		if (!ic.isNull()) Xlib.XDestroyIC(ic);
 		ic = Ptr.nil();
+		#if helder.soft
+		Blit.forget(surface);
+		#end
 		Xlib.XDestroyWindow(display, id);
 		Xlib.XFlush(display);
 		for (r in clipboardReads.copy())

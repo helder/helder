@@ -23,6 +23,12 @@ class Quads {
 	public var th = 1;
 	public var ox = 0;
 	public var oy = 0;
+	// the frame's rectangle drawn into (x0, y0, x1, y1: a window's kept
+	// frame, its damage drawn a rectangle at a time; else all of it)
+	public var cutX0 = -0x3FFFFFFF;
+	public var cutY0 = -0x3FFFFFFF;
+	public var cutX1 = 0x3FFFFFFF;
+	public var cutY1 = 0x3FFFFFFF;
 	// what was drawn into it, in the frame's pixels (x0, y0, x1, y1: a group's, composited alone)
 	public var drawnX0 = 0;
 	public var drawnY0 = 0;
@@ -131,6 +137,10 @@ class Quads {
 		var py0 = Std.int(Math.max(Math.max(Math.ceil(y0 - 0.5), Math.floor(cy0)), oy));
 		var px1 = Std.int(Math.min(Math.min(Math.ceil(x1 - 0.5), Math.ceil(cx1)), ox + tw));
 		var py1 = Std.int(Math.min(Math.min(Math.ceil(y1 - 0.5), Math.ceil(cy1)), oy + th));
+		if (px0 < cutX0) px0 = cutX0;
+		if (py0 < cutY0) py0 = cutY0;
+		if (px1 > cutX1) px1 = cutX1;
+		if (py1 > cutY1) py1 = cutY1;
 		if (px1 <= px0 || py1 <= py0) return;
 		if (px0 < drawnX0) drawnX0 = px0;
 		if (py0 < drawnY0) drawnY0 = py0;
@@ -149,6 +159,10 @@ class Quads {
 	public function group(b:Ptr, bw:Int, gx:Int, gy:Int, alpha:Float, x0:Int, y0:Int, x1:Int, y1:Int) {
 		var px0 = Std.int(Math.max(Math.max(x0, Math.floor(cx0)), ox)), py0 = Std.int(Math.max(Math.max(y0, Math.floor(cy0)), oy));
 		var px1 = Std.int(Math.min(Math.min(x1, Math.ceil(cx1)), ox + tw)), py1 = Std.int(Math.min(Math.min(y1, Math.ceil(cy1)), oy + th));
+		if (px0 < cutX0) px0 = cutX0;
+		if (py0 < cutY0) py0 = cutY0;
+		if (px1 > cutX1) px1 = cutX1;
+		if (py1 > cutY1) py1 = cutY1;
 		if (px1 <= px0 || py1 <= py0 || alpha <= 0) return;
 		if (px0 < drawnX0) drawnX0 = px0;
 		if (py0 < drawnY0) drawnY0 = py0;
@@ -187,6 +201,14 @@ class Quads {
 		r.py0 = y0;
 		r.px1 = x1;
 		r.py1 = y1;
+	}
+
+	// draws cut to the frame's rectangle x0, y0 to x1, y1 (none: all of it)
+	public function cut(x0 = -0x3FFFFFFF, y0 = -0x3FFFFFFF, x1 = 0x3FFFFFFF, y1 = 0x3FFFFFFF) {
+		cutX0 = x0;
+		cutY0 = y0;
+		cutX1 = x1;
+		cutY1 = y1;
 	}
 
 	// what was recorded painted, the records let go

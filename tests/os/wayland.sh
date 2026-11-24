@@ -5,10 +5,11 @@
 # compositor's output (weston-screenshooter: the viewer's drawn menu bar,
 # helder's decorations).
 # Then, given, the compositor's scrolling in a window (AsyncScrollWindow),
-# and a layer's animation while the program blocks (its --anim).
-#   wayland.sh <WaylandTest> <viewer> <out dir> [AsyncScrollWindow]
+# and a layer's animation while the program blocks (its --anim); a window
+# drawn on the CPU (SoftWaylandTest: wl_shm frames, the screenshot's pixels).
+#   wayland.sh <WaylandTest> <viewer> <out dir> [AsyncScrollWindow] [SoftWaylandTest]
 set -e
-test=$1; viewer=$2; out=$3; async=$4
+test=$1; viewer=$2; out=$3; async=$4; soft=$5
 mkdir -p "$out"
 export XDG_RUNTIME_DIR=$(mktemp -d)
 export LIBGL_ALWAYS_SOFTWARE=1
@@ -20,6 +21,9 @@ for scale in 1 2; do
 	i=0
 	while [ ! -S "$XDG_RUNTIME_DIR/$sock" ] && [ $i -lt 50 ]; do sleep 0.1; i=$((i + 1)); done
 	WAYLAND_DISPLAY=$sock "$test" $scale || status=1
+	if [ -n "$soft" ]; then
+		WAYLAND_DISPLAY=$sock "$soft" || status=1
+	fi
 	if [ -n "$async" ] && [ $scale = 1 ]; then
 		WAYLAND_DISPLAY=$sock "$async" || status=1
 		WAYLAND_DISPLAY=$sock "$async" --anim || status=1
