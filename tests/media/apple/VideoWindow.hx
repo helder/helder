@@ -48,12 +48,40 @@ class VideoWindow {
 		if (sys.FileSystem.exists(a) && sys.FileSystem.exists(b) && !blank(File.getBytes(a))) {
 			var box = [for (v in File.getContent('$dir/drawn/boxes.txt').split(" ")) Std.parseInt(v)];
 			width = box[8];
-			var d = mean(File.getBytes(a), File.getBytes(b), box.slice(0, 4), box.slice(4, 8));
+			var da = File.getBytes(a), db = File.getBytes(b), video = box.slice(0, 4), popup = box.slice(4, 8);
+			var d = mean(da, db, video, popup);
+			diagnose(da, db, video, popup, box.slice(9, 13), box.slice(13, 17));
 			check('the system\'s layer shows what helder draws (the window server\'s pixels)', d < 12, 'a mean difference of ${Math.round(d * 10) / 10} levels');
 		} else
 			Sys.println("VideoWindow: no window server's capture here: the two ways not compared");
 		Sys.println("VideoWindow: " + (failed == 0 ? "ok" : '$failed FAILED'));
 		Sys.exit(failed == 0 ? 0 : 1);
+	}
+
+	// (what the window server shows each way, to tell a colour management
+	// of its own, which the controls show, from a conversion of the video's:
+	// per channel means over the video, flat parts of the frame (its bars),
+	// and the controls, a colour sRGB's (51, 153, 230) drawn by helder and
+	// as a CALayer of its own; the captures BGRA)
+	static function diagnose(a:haxe.io.Bytes, b:haxe.io.Bytes, video:Array<Int>, popup:Array<Int>, drawnSwatch:Array<Int>, layerSwatch:Array<Int>) {
+		inline function rgb(x:haxe.io.Bytes, px:Int, py:Int):Array<Int> {
+			var i = 4 * (py * width + px);
+			return [x.get(i + 2), x.get(i + 1), x.get(i)];
+		}
+		for (n => x in ["drawn" => a, "layer" => b]) {
+			var sum = [0.0, 0.0, 0.0], count = 0;
+			each(video, popup, (px, py) -> {
+				var c = rgb(x, px, py);
+				for (i in 0...3) sum[i] += c[i];
+				count++;
+			});
+			var means = [for (v in sum) Math.round(v / Math.max(1, count) * 10) / 10];
+			var w = video[2] - video[0], h = video[3] - video[1];
+			var samples = [for (f in [[0.15, 0.3], [0.3, 0.3], [0.45, 0.3], [0.6, 0.3], [0.75, 0.3], [0.9, 0.3], [0.5, 0.8]])
+				rgb(x, video[0] + Std.int(f[0] * w), video[1] + Std.int(f[1] * h)).join(",")];
+			var mid = (s:Array<Int>) -> rgb(x, (s[0] + s[2]) >> 1, (s[1] + s[3]) >> 1).join(",");
+			Sys.println('VideoWindow: $n: the video\'s means $means; samples ${samples.join(" ")}; controls (51,153,230 sRGB): drawn ${mid(drawnSwatch)}, a CALayer ${mid(layerSwatch)}');
+		}
 	}
 
 	static function blank(b:haxe.io.Bytes):Bool {
@@ -126,6 +154,13 @@ class VideoWindow {
 		var popup = new Node();
 		popup.style.set({position: Absolute, left: 150, top: 120, width: 60, height: 40, background: 0xFF6A3AB0});
 		w.ui.overlay.append(popup);
+		// (the controls: sRGB's (51, 153, 230) drawn by helder, and a CALayer of it in a slot)
+		var swatch = new Node(), layered = new Node();
+		swatch.style.set({position: Absolute, left: 290, top: 40, width: 40, height: 40, background: 0xFF3399E6});
+		layered.style.set({position: Absolute, left: 340, top: 40, width: 40, height: 40});
+		@:privateAccess layered.systemLayer = new LayerSlot(@:privateAccess SystemLayersWindow.solidLayer(0.2, 0.6, 0.9));
+		w.root.append(swatch);
+		w.root.append(layered);
 		video.open("tests/media/h264-aac.mp4");
 		video.muted = true;
 		var step = 0, start = 0.0, k = 1.0, shots = new Map<String, haxe.io.Bytes>(), placed:Array<Float> = [];
@@ -152,7 +187,7 @@ class VideoWindow {
 					vbox = box(video);
 					pbox = box(popup);
 					lbox = box(list);
-					File.saveContent('$dir/boxes.txt', vbox.concat(pbox).concat([width]).join(" "));
+					File.saveContent('$dir/boxes.txt', vbox.concat(pbox).concat([width]).concat(box(swatch)).concat(box(layered)).join(" "));
 					var f = p.shown;
 					check('$mode: seeked to the frame at 0.4', f != null && f.time == 0.4, f == null ? "none" : '${f.time}');
 					check('$mode: ${mode == "layer" ? "the system\'s layer" : "drawn"}', (@:privateAccess video.systemLayer != null) == (mode == "layer"));
