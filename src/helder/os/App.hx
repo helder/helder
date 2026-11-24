@@ -339,7 +339,7 @@ class App {
 			#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) CocoaWindow.poll(onFrame, onEvent) else #end
 			#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) Win32Window.poll(onFrame, onEvent) else #end
 			#if (!helder.os || helder.os == "web") if (Platform.os() == 3) CanvasWindow.poll(onEvent) else #end
-			#if (!helder.os || helder.os == "linux") if (WaylandWindow.chosen) WaylandWindow.poll(onEvent) else X11Window.poll(onEvent); #else {} #end
+			#if ((!helder.os || helder.os == "linux") && !helder.headless) if (WaylandWindow.chosen) WaylandWindow.poll(onEvent) else X11Window.poll(onEvent); #else {} #end
 			loopTurn();
 			if (running && windows.length > 0) {
 				frame.tick(haxe.Timer.stamp(), false);
@@ -438,7 +438,7 @@ class App {
 		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) Win32Window.wait(bounded(seconds)) else #end
 		if (Platform.os() == 3) {} else
 		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) AndroidWindow.wait(bounded(seconds)) else #end
-		#if (!helder.os || helder.os == "linux") if (WaylandWindow.chosen) WaylandWindow.waitFor(seconds) else X11Window.waitFor(seconds); #else {} #end
+		#if ((!helder.os || helder.os == "linux") && !helder.headless) if (WaylandWindow.chosen) WaylandWindow.waitFor(seconds) else X11Window.waitFor(seconds); #else {} #end
 	}
 
 	public static function quit()

@@ -34,7 +34,7 @@ class Run {
 	// next one's display is not the last one's still letting go)
 	static final XVFB = "sh " + FileSystem.fullPath("tests/xvfb-run.sh");
 
-	static final HEADLESS = ["view", "text", "image", "ui", "layout-conformance", "gfx-shader", "async", "header-check", "jobs", "test", "cli", "asset", "pack", "devtools", "typescript", "examples", "viewer", "canvas", "pdf", "syntax", "text-quality"];
+	static final HEADLESS = ["view", "text", "image", "ui", "layout-conformance", "gfx-shader", "async", "header-check", "jobs", "test", "cli", "asset", "pack", "devtools", "typescript", "examples", "viewer", "canvas", "pdf", "syntax", "text-quality", "ui-soft"];
 
 	static final LANES:Array<{name:String, about:String, run:Void->Void}> = [
 		{name: "headless", about: "the lanes that need no GPU, display or browser: " + HEADLESS.join(", "), run: () -> for (l in HEADLESS) lane(l)},
@@ -95,7 +95,8 @@ class Run {
 		{name: "touch-web", about: "helder.os's pointers in headless Chromium: two fingers, a pen, the mouse, samples, a cancel, a tap and a drag without mouse events or scrolls, a pointer event sent from JavaScript (tests/os/PointersWeb.hx); App.onBack and App.backDepth's history entry, history back, Escape as the back, haxe.Timer.delay in App.run (tests/os/BackWeb.hx); helder.ui's Stack and the history: a push's URL, back, Escape, a reload (tests/ui/NavWeb.hx); Pointers' own tests are the test lane's (src/helder/os/Pointers.test.hx)", run: touchWeb},
 		{name: "web", about: "helder.web: the static renderer on Eval and natively, then the DOM renderer, the demo page, islands and wasm in headless Chromium", run: web},
 		{name: "compiler-web", about: "helder.compiler.web, helder's toolchain as wasm in a worker: its modules built (src/helder/compiler/web/build.mjs: bin/compiler-web), todo and ts-todo checked and built in node (tests/compiler-web/node.mjs: warm, a type error, a check writing nothing), then in headless Chromium the worker loaded (brotli), both built to wasm32 on the page and each run in a frame of its own (preview.mjs), a literal edit patched with no build and a structural one built and swapped in, each read back from the program's view (Ui.getTree), and the numbers printed (tests/compiler-web/browser.mjs)", run: compilerWeb},
-		{name: "ui-draw", about: "helder.ui's GPU renderer and its programs against golden images (Linux: Mesa, Xvfb, AT-SPI); layers drawn from their tiles against the same replayed (LayerTest); a window's frame kept and drawn only where it changed against the same drawn whole (DamageTest); the controls' gallery (tests/ui/controls) and cost (ControlsBench); the compositor's scrolling and what moves on its own (layers' transitions, springs and tweens, sticky nodes, overlay scrollbars) against the program's, its values each vsync and its frames pixel for pixel (AsyncScrollTest), and in a window with the program blocked while scroll input comes or a layer animates (AsyncScrollWindow); macOS's Core Animation layers against the textured compositor, window captures compared (SystemLayersWindow)", run: uiDraw},
+		{name: "ui-soft", about: "helder.ui drawn on the CPU (helder.ui.draw.soft), no GPU linked: the image tests (tests/ui) built -D helder.soft (static on Linux: musl, no libEGL to load) against their golden images, which these write (BLESS=1: the same bytes on every machine with the same fonts) and ui-draw's GPU frames are compared with", run: uiSoft},
+		{name: "ui-draw", about: "helder.ui's GPU renderer and its programs against golden images (ui-soft's, the CPU's canvas's: within the tests' tolerance) (Linux: Mesa, Xvfb, AT-SPI); layers drawn from their tiles against the same replayed (LayerTest); a window's frame kept and drawn only where it changed against the same drawn whole (DamageTest); the controls' gallery (tests/ui/controls) and cost (ControlsBench); the compositor's scrolling and what moves on its own (layers' transitions, springs and tweens, sticky nodes, overlay scrollbars) against the program's, its values each vsync and its frames pixel for pixel (AsyncScrollTest), and in a window with the program blocked while scroll input comes or a layer animates (AsyncScrollWindow); macOS's Core Animation layers against the textured compositor, window captures compared (SystemLayersWindow)", run: uiDraw},
 		{name: "syntax", about: "helder.syntax, the syntax trees the studio edits (src/helder/syntax; its edits' tests are the test lane's, Syntax.test.hx): every .ts and .tsx file, and every .hx file with markup, of the repository read and printed back byte for byte, read structurally, each Haxe markup literal read as the macro's parser reads it (tests/syntax/Check.hx, on Eval and natively: the read of the largest file timed)", run: syntaxLane},
 		{name: "syntax-run", about: "helder.syntax's edits on the examples (tests/syntax/Examples.hx; Linux: Mesa's llvmpipe, no display): todo, ts-todo, mail, the guide's screen and the viewer's shell and shader copied into bin/syntax/run and edited (attributes set, added and removed, literals, children inserted, elements moved, deleted, wrapped, unwrapped and renamed, a component renamed, a definition's field), each edit's change only in its span and undone by its inverse; each built and run headless (helder run --headless), its --tree showing each change; ts-todo's story renamed and its tests run (helder test)", run: syntaxRun},
 		{name: "studio", about: "helder studio (apps/studio; Linux: Mesa's llvmpipe, no display) run headless on copies of examples/todo and examples/ts-todo by tests/studio/edit.json: every screen shown (the stories in one dev build's process, helder.story.NativeHost: its frames shared GPU textures, else shared memory, llvmpipe's), one zoomed into, its title clicked and selected, its colour changed in the inspector (the value's span alone, a live literal patched, the program's frame showing it within 3 frames), a padding added and undone (built twice), tag=\"title\" typed into the code view (built, the node tagged), the prompt bar's /tree; the files at the end and every edit's span checked, the overview, zoomed and selected frames against tests/studio's goldens, the times printed (tests/studio/Check.hx); then examples/design, design files alone, by tests/studio/design.json: its frames interpreted in the studio (nothing built), a frame moved by its caption (snapped), the title clicked and selected, its colour changed in the inspector (drawn again within 3 frames), undone and redone, resized by its handle (snapped to the frame's centre), a node shift-clicked into the selection and out, its layer dragged below the next, both undone (the resize one entry), every edit's span and the file checked; the free canvas by tests/studio/free.json on examples/todo (a click selects a frame, the camera where it was; a story moved by its caption, its place written into canvas.helder; a double click enters a frame and selects a node; Escape leaves, then selects nothing; Play: the story live, a tap in it its program's, Escape stops); a phone's sheets by tests/studio/phone.json (opened from the bar, a frame picked lowering the files' to peek, the handle dragged up to full and flung away, the code's at half); the sidebar's file browser by tests/studio/files.json (folders opened, an image, a font and code each in its view, the image dragged onto a frame, a file dropped from the system on a folder); `helder studio --help`", run: studioLane},
@@ -1279,6 +1280,7 @@ class Run {
 		interp(cp, "Examples", ["check", o]);
 	}
 
+	// (drawn on the CPU, --soft: the same pixels on every machine; ui-draw is the GPU's)
 	static function headlessRun() {
 		var h = helderCli(), b = "bin/headless-run";
 		rmrf(b);
@@ -1289,29 +1291,29 @@ class Run {
 			var o = '$b/$pass';
 			// (helder.ui.code: examples/code-editor on it, scripted)
 			run(h, [
-				"run", "--headless", "examples/code-editor", "--script", "tests/headless/code-editor.json", "--size", "900x640", "--tree", '$o/code-multi.json',
+				"run", "--headless", "--soft", "examples/code-editor", "--script", "tests/headless/code-editor.json", "--size", "900x640", "--tree", '$o/code-multi.json',
 				"--at", "mark:multi", "--tree", '$o/code-undone.json', "--at", "mark:undone", "--tree", '$o/code-find.json', "--at", "mark:find", "--snap",
 				'$o/code-end.png', "--tree", '$o/code-end.json', "--", '$b/code.tsx'
 			]);
 			for (app in ["todo", "ts-todo"])
 				run(h, [
-					"run", "--headless", 'examples/$app', "--script", "tests/headless/todo.json", "--snap", '$o/$app-toggled.png', "--tree", '$o/$app-toggled.json',
+					"run", "--headless", "--soft", 'examples/$app', "--script", "tests/headless/todo.json", "--snap", '$o/$app-toggled.png', "--tree", '$o/$app-toggled.json',
 					"--at", "mark:toggled", "--tree", '$o/$app-end.json', "--trace", '$o/$app.jsonl'
 				]);
 			run(h, [
-				"run", "--headless", "examples/todo", "--script", "tests/headless/todo.json", "--frames", "6", "--every", "2", "--start", "0.3", "-o", '$o/frames', "--keys",
+				"run", "--headless", "--soft", "examples/todo", "--script", "tests/headless/todo.json", "--frames", "6", "--every", "2", "--start", "0.3", "-o", '$o/frames', "--keys",
 				"--pointer"
 			]);
 			// (live literals: a dev build's title colour and text patched by the script, the next frame showing them)
 			for (app in ["todo", "ts-todo"])
 				run(h, [
-					"run", "--headless", "--dev", 'examples/$app', "--script", "tests/headless/literals.json", "--snap", '$o/$app-literal-before.png', "--at", "mark:before",
+					"run", "--headless", "--soft", "--dev", 'examples/$app', "--script", "tests/headless/literals.json", "--snap", '$o/$app-literal-before.png', "--at", "mark:before",
 					"--snap", '$o/$app-literal-after.png', "--tree", '$o/$app-literal.json', "--at", "mark:patched"
 				]);
-			run(h, ["run", "--headless", "examples/glow", "--size", "320x240", "--snap", '$o/glow.png', "--at", "0.5"]);
+			run(h, ["run", "--headless", "--soft", "examples/glow", "--size", "320x240", "--snap", '$o/glow.png', "--at", "0.5"]);
 			// (a million rows: tests/headless/million.json's marks)
 			for (app in ["million", "ts-million"]) {
-				var args = ["run", "--headless", 'examples/$app', "--script", "tests/headless/million.json", "--size", "480x640"];
+				var args = ["run", "--headless", "--soft", 'examples/$app', "--script", "tests/headless/million.json", "--size", "480x640"];
 				for (m in ["start", "down", "up", "end", "keys", "kept", "before", "inserted"])
 					args = args.concat(["--tree", '$o/$app-$m.json', "--at", 'mark:$m']);
 				run(h, args.concat(["--snap", '$o/$app-last.png', "--at", "mark:last"]));
@@ -1325,18 +1327,18 @@ class Run {
 			])
 				for (k => t in strip.at)
 					shots = shots.concat(["--snap", '$o/motion-${strip.name}-$k.png', "--at", '$t']);
-			run(h, ["run", "--headless", "examples/motion/Motion.hx", "--script", "tests/headless/motion.json", "--trace", '$o/motion.jsonl'].concat(shots)
+			run(h, ["run", "--headless", "--soft", "examples/motion/Motion.hx", "--script", "tests/headless/motion.json", "--trace", '$o/motion.jsonl'].concat(shots)
 				.concat(["--tree", '$o/motion-end.json', "--at", "end"]));
-			run(h, ["run", "--headless", "examples/motion/Motion.hx", "--script", "tests/headless/motion.json", "--reduced-motion", "--trace", '$o/motion-reduced.jsonl']);
-			run(h, ["run", "--headless", "examples/motion/main.tsx", "--script", "tests/headless/motion.json", "--trace", '$o/motion-ts.jsonl']);
+			run(h, ["run", "--headless", "--soft", "examples/motion/Motion.hx", "--script", "tests/headless/motion.json", "--reduced-motion", "--trace", '$o/motion-reduced.jsonl']);
+			run(h, ["run", "--headless", "--soft", "examples/motion/main.tsx", "--script", "tests/headless/motion.json", "--trace", '$o/motion-ts.jsonl']);
 			// (helder.ui's Stack: a push mid-transition and after, the edge swipe's drags)
 			run(h, [
-				"run", "--headless", "tests/headless/StackSlide.hx", "--script", "tests/headless/navigation.json", "--snap", '$o/nav-mid.png', "--tree",
+				"run", "--headless", "--soft", "tests/headless/StackSlide.hx", "--script", "tests/headless/navigation.json", "--snap", '$o/nav-mid.png', "--tree",
 				'$o/nav-mid.json', "--at", "mark:mid", "--tree", '$o/nav-detail.json', "--at", "mark:detail", "--tree", '$o/nav-dragging.json', "--at",
 				"mark:dragging", "--tree", '$o/nav-kept.json', "--at", "mark:kept", "--snap", '$o/nav-end.png', "--tree", '$o/nav-end.json', "--at", "end"
 			]);
 			run(h, [
-				"run", "--headless", "apps/viewer", "--script", "tests/headless/viewer.json", "--size", "480x360", "--tree", '$o/viewer-menu.json', "--at", "mark:menu",
+				"run", "--headless", "--soft", "apps/viewer", "--script", "tests/headless/viewer.json", "--size", "480x360", "--tree", '$o/viewer-menu.json', "--at", "mark:menu",
 				"--tree", '$o/viewer-end.json'
 			]);
 		}
@@ -1344,7 +1346,7 @@ class Run {
 		run(exePath('$b/Check', HOST), [b].concat(BLESS ? ["--bless"] : []));
 		// (a video: where ffmpeg is installed)
 		if (Sys.command("sh", ["-c", "command -v ffmpeg >/dev/null"]) == 0) {
-			run(h, ["run", "--headless", "examples/todo", "--script", "tests/headless/todo.json", "--video", '$b/todo.mp4', "--keys", "--pointer"]);
+			run(h, ["run", "--headless", "--soft", "examples/todo", "--script", "tests/headless/todo.json", "--video", '$b/todo.mp4', "--keys", "--pointer"]);
 			if (!FileSystem.exists('$b/todo.mp4') || FileSystem.exists('$b/todo.frames')) throw new Failed('$b/todo.mp4: not written, or its frames left');
 		} else Sys.println("headless-run: no ffmpeg: --video not checked");
 	}
@@ -1424,7 +1426,9 @@ class Run {
 		rmrf(b);
 		mkdirs(b);
 		for (d in DEMO_SHOTS) {
-			var args = ["run", "--headless", d.entry, "--scale", "0.5"].concat(d.flags);
+			// (on the CPU but what draws with shaders of its own: fx's, the material's)
+			var args = ["run", "--headless"].concat(d.name.startsWith("fx") || d.name == "showreel-material" ? [] : ["--soft"]).concat([d.entry, "--scale", "0.5"])
+				.concat(d.flags);
 			if (d.script != "") args = args.concat(["--script", d.script]);
 			for (t in d.at)
 				args = args.concat(["--snap", '$b/${d.name}-${t.replace("mark:", "")}.png', "--at", t]);
@@ -1630,10 +1634,27 @@ class Run {
 			native('bin/ui/$t/$m', uiCp().concat(["-main", m]), t);
 	}
 
+	// (the image tests drawn on the CPU: their goldens; on Linux static, so nothing of a GPU's can be loaded)
+	static function uiSoft() {
+		var b = 'bin/ui-soft/$HOST', bless = BLESS ? " --bless" : "";
+		var programs = ["UiDrawTest", "TodoTest", "BoxTest", "EmojiTest", "ControlsGallery", "SnapTest"];
+		prebuild([for (m in programs) {out: exePath('$b/$m', HOST), args: uiCp().concat(["-main", m, "-D", "helder.soft", "-D", 'hxmc.target=$HOST'])}]);
+		for (m in programs)
+			hxmc(exePath('$b/$m', HOST), uiCp().concat(["-main", m, "-D", "helder.soft", "-D", 'hxmc.target=$HOST']));
+		shell('$b/UiDrawTest tests/ui/draw.png $b/draw.png$bless');
+		shell('$b/TodoTest tests/ui/todo.png $b/todo.png$bless');
+		shell('$b/BoxTest tests/ui/boxes.png $b/boxes.png');
+		shell('$b/EmojiTest tests/ui/emoji.png $b/emoji.png');
+		shell('$b/SnapTest');
+		mkdirs('$b/controls');
+		shell('$b/ControlsGallery tests/ui/controls $b/controls$bless');
+	}
+
 	static function uiDraw() {
 		uiPrograms();
 		var b = 'bin/ui/$GFX_TARGET';
-		var bless = BLESS ? " --bless" : "";
+		// (the goldens are the CPU's: ui-soft blesses them)
+		var bless = "";
 		var gpu = "LIBGL_ALWAYS_SOFTWARE=1 env -u DISPLAY";
 		// (Linux: a window in Xvfb; elsewhere the desktop's own)
 		var linux = Sys.systemName() == "Linux";

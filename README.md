@@ -116,7 +116,8 @@ ads and analytics.
 llvmpipe, with no GPU stack: the shaders are Haxe functions that already
 run on the CPU, compiled ahead of time, so nothing needs a JIT. First
 helder.ui's display list replayed through helder.canvas (headless runs and
-UI goldens without GL or Mesa), then a CPU back end beside Metal, D3D11,
+UI goldens without GL or Mesa: done, helder.ui's [On the
+CPU](src/helder/ui/README.md#on-the-cpu)), then a CPU back end beside Metal, D3D11,
 GL and WebGPU under the same Device and Encoder, SIMD from the start: the
 shader macro also emits each shader over hxmc.simd's 4 lanes, a 2x2 pixel
 quad per call (derivatives and mip levels as GPUs get them), the scalar

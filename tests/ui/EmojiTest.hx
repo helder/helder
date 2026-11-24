@@ -32,21 +32,11 @@ class EmojiTest {
 			Sys.println("EmojiTest: no colour emoji font, skipped");
 			return;
 		}
-		var device = Device.create(Surface.headless(W, H));
-		var r = new Renderer(device);
+		var f = new DrawFrame(W, H);
 		var p = text.layout("❤️\u{1F44D}\u{1F3FD}\u{1F1E7}\u{1F1EA}", new Font(family, 32, 400, false, 1.25), Math.NaN);
-		var pixels = Bytes.alloc(W * H * 4);
-		var enc = device.beginFrame();
-		var pass:PassDesc = {colors: [{load: Clear, clear: new helder.gfx.Color(1, 1, 1)}]};
-		enc.beginPass(pass);
-		r.begin(W, H);
 		// (the first line's top at 10: its baseline at 41)
-		r.text(p, 10, 10, W, Left, Color.BLACK);
-		r.end(enc);
-		enc.endPass();
-		device.readPixels(pixels);
-		device.endFrame();
-		device.dispose();
+		var pixels = f.paint(c -> c.text(p, 10, 10, W, Left, Color.BLACK));
+		f.dispose();
 		sys.io.File.saveBytes(args[1], Png.encode(pixels, W, H));
 		var golden = family == "Noto Color Emoji";
 		var want = golden ? PngDecoder.decode(sys.io.File.getBytes(args[0])) : {width: W, height: H, rgba: pixels};
