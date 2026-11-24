@@ -1,7 +1,7 @@
 {
   "$schema": "https://helder.build/schema/helder.json",
   "name": "Viewer",
-  "description": "A file browser and image viewer: browse a folder of photos, PDFs and videos, and open any of them full size.",
+  "description": "A file browser and image viewer",
   "id": "org.helder.viewer",
   "version": "0.2.0",
   "build": 2,
