@@ -145,6 +145,8 @@ class IDXGIFactory2 {
 	@:slot(8) static function MakeWindowAssociation(self:Ptr, hwnd:Ptr, flags:Int):Int;
 	@:slot(15) static function CreateSwapChainForHwnd(self:Ptr, device:Ptr, hwnd:Ptr, desc:Ptr<DXGI_SWAP_CHAIN_DESC1>, fullscreen:Ptr, output:Ptr,
 		out:Ptr<Ptr>):Int;
+	// (a swap chain of no window: a DirectComposition visual's content)
+	@:slot(24) static function CreateSwapChainForComposition(self:Ptr, device:Ptr, desc:Ptr<DXGI_SWAP_CHAIN_DESC1>, output:Ptr, out:Ptr<Ptr>):Int;
 }
 
 @:build(helder.os.win32.Com.build())
@@ -257,6 +259,10 @@ class D3D {
 	public static inline var SWAP_EFFECT_FLIP_DISCARD = 4;
 	public static inline var SCALING_STRETCH = 0;
 	public static inline var MWA_NO_ALT_ENTER = 2;
+	// DXGI_ALPHA_MODE; D3D11_CREATE_DEVICE_BGRA_SUPPORT (DirectComposition's surfaces)
+	public static inline var ALPHA_MODE_PREMULTIPLIED = 1;
+	public static inline var ALPHA_MODE_IGNORE = 3;
+	public static inline var CREATE_DEVICE_BGRA_SUPPORT = 0x20;
 	// HRESULTs
 	public static inline var DXGI_ERROR_DEVICE_REMOVED = 0x887A0005;
 	public static inline var DXGI_ERROR_DEVICE_RESET = 0x887A0007;

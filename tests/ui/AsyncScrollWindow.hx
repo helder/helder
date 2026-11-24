@@ -79,7 +79,7 @@ class AsyncScrollWindow {
 						touch(w, i == 0 ? PointerDown : PointerMove, 200, 250 - i * 20, t + i * 16);
 					touch(w, PointerUp, 200, 250 - 7 * 20, t + 8 * 16);
 				}
-				#if (!helder.os || helder.os == "macos" || helder.os == "ios")
+				#if (!helder.os || helder.os == "macos" || helder.os == "ios" || helder.os == "windows")
 				var l = c.layers;
 				if (l != null) {
 					layerFrames = l.frames;
@@ -90,7 +90,7 @@ class AsyncScrollWindow {
 				var inject = Inject.start(w.window, 300);
 				Sys.sleep(0.3);
 				blockedTo = Timer.stamp();
-				#if (!helder.os || helder.os == "macos" || helder.os == "ios")
+				#if (!helder.os || helder.os == "macos" || helder.os == "ios" || helder.os == "windows")
 				if (l != null) {
 					layerFrames = l.frames - layerFrames;
 					layerQuads = l.quadsTotal - layerQuads;
@@ -114,7 +114,7 @@ class AsyncScrollWindow {
 				check("at the display's pace", gaps.length > 0 && median < 0.03, "median gap " + Math.round(median * 10000) / 10 + " ms");
 				var advancing = during.length > 1 && offsets[during[during.length - 1]] > offsets[during[0]] && offsets[during[0]] >= flung;
 				check("the offset advancing", advancing, during.length > 0 ? flung + ": " + offsets[during[0]] + " to " + offsets[during[during.length - 1]] : "none");
-				// (Core Animation's: the list's content moved as a layer, only its scrollbar drawn again)
+				// (Core Animation's, DirectComposition's: the list's content moved as a layer, only its scrollbar drawn again)
 				if (layerFrames >= 0) check("on the system's layers: the list's layer moved, not drawn", layerFrames > 0 && layerQuads <= 8 * layerFrames,
 					'$layerFrames frames committed, ${Math.round(layerQuads / Math.max(1, layerFrames) * 10) / 10} quads drawn a frame');
 				var o = c.offsets(list);

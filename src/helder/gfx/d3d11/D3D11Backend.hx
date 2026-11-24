@@ -2,6 +2,7 @@ package helder.gfx.d3d11;
 
 import helder.gfx.*;
 import helder.gfx.d3d11.D3D11;
+import helder.gfx.d3d11.DComp;
 import helder.os.win32.Com;
 import helder.os.win32.Com.IUnknown;
 import helder.os.Surface;
@@ -38,6 +39,13 @@ import hxmc.unsafe.*;
 // binds them at each dispatch that follows a change and unbinds them at
 // endCompute (so that draws may read them: Direct3D 11 orders the rest);
 // readBuffer copies a range into a staging buffer and maps it.
+// The system's layers (helder.ui.draw.DcLayers): a window asked to be
+// composed (compose) has its swap chain made for composition, the content
+// of a visual of a DirectComposition target on the window (DcRoot), the
+// layers' visuals over it; a frame may be drawn into a surface of theirs
+// (frameOnto: BeginDraw's texture, at its offset, never cleared whole: it
+// may be an atlas of the system's), and the window's own frames then go
+// unpresented (quiet).
 @:hxmc.unsafe(gc)
 class D3D11Backend {
 	public final backend = Backend.D3D11;
@@ -123,6 +131,28 @@ class D3D11Backend {
 	var depthWidth = 0;
 	var depthHeight = 0;
 	final held:Array<D3DTexture> = [];
+	// (the swap chain's back buffer, its view and size: a frame onto
+	// another target leaves them as they are)
+	var chainTarget = Ptr.nil();
+	var chainView = Ptr.nil();
+	var chainWidth = 0;
+	var chainHeight = 0;
+	// (frameOnto's: the texture, its view, where in it)
+	var onto = Ptr.nil();
+	var ontoView = Ptr.nil();
+	var ontoX = 0;
+	var ontoY = 0;
+	var ontoWidth = 0;
+	var ontoHeight = 0;
+
+	// the next window's swap chain for DirectComposition, where it has it
+	// (helder.ui's windows of system layers; read and cleared by the next
+	// back end made); the window's composition (null: a swap chain of its own)
+	public static var compose = false;
+
+	public var composition(default, null):Null<DcRoot> = null;
+	// the window's own frames left unpresented: the system's layers are drawn from what they render into targets
+	public var quiet = false;
 
 	static inline var MAX_SLOTS = 8;
 
@@ -144,7 +174,11 @@ class D3D11Backend {
 		nils = LibC.malloc(8 * 16);
 		LibC.memset(nils, 0, 8 * 16);
 		var level:Ptr<Int32> = scratch.offset(2).raw();
+		var composed = compose && surface.kind == Win32;
+		compose = false;
 		#if hxmc.dev_host
+		// (the host keeps the swap chain, not a composition of this build's)
+		if (helder.dev.Hosted.hosted()) composed = false;
 		// (hxmc dev's host: the device, its context and the window's swap chain as the last build left them)
 		var keptDevice = surface.kind == Win32 && helder.dev.Hosted.hosted() ? helder.dev.Hosted.get(helder.dev.Hosted.D3D_DEVICE) : Ptr.nil();
 		if (!keptDevice.isNull()) {
@@ -160,8 +194,9 @@ class D3D11Backend {
 			return;
 		}
 		#end
-		var hr = Sys.getEnv("HXMC_GFX_SOFTWARE") == "1" ? -1 : createDevice(D3D.DRIVER_TYPE_HARDWARE, level);
-		if (hr < 0) hr = createDevice(D3D.DRIVER_TYPE_WARP, level);
+		var flags = composed ? D3D.CREATE_DEVICE_BGRA_SUPPORT : 0;
+		var hr = Sys.getEnv("HXMC_GFX_SOFTWARE") == "1" ? -1 : createDevice(D3D.DRIVER_TYPE_HARDWARE, level, flags);
+		if (hr < 0) hr = createDevice(D3D.DRIVER_TYPE_WARP, level, flags);
 		check(hr, "D3D11CreateDevice");
 		device = scratch.value;
 		context = scratch.offset(1).value;
@@ -171,7 +206,7 @@ class D3D11Backend {
 		height = surface.height;
 		samples = sampling(antialias);
 		if (surface.kind == Win32) {
-			createSwapChain();
+			createSwapChain(composed);
 			#if hxmc.dev_host
 			if (helder.dev.Hosted.hosted()) {
 				helder.dev.Hosted.set(helder.dev.Hosted.D3D_DEVICE, device);
@@ -311,18 +346,18 @@ class D3D11Backend {
 	}
 
 	// the device and its context into scratch[0] and [1]
-	function createDevice(driver:Int, level:Ptr<Int32>):Int
-		return D3D11.D3D11CreateDevice(Ptr.nil(), driver, Ptr.nil(), 0, Ptr.nil(), 0, D3D.SDK_VERSION, scratch, level, scratch.offset(1));
+	function createDevice(driver:Int, level:Ptr<Int32>, flags:Int):Int
+		return D3D11.D3D11CreateDevice(Ptr.nil(), driver, Ptr.nil(), flags, Ptr.nil(), 0, D3D.SDK_VERSION, scratch, level, scratch.offset(1));
 
 	function check(hr:Int, what:String)
 		if (hr < 0) throw "helder.gfx: " + what + " failed (HRESULT 0x" + StringTools.hex(hr, 8) + ")";
 
-	// the window's swap chain, from the factory of the device's adapter
-	function createSwapChain() {
+	// the window's swap chain, from the factory of the device's adapter;
+	// composed: for a DirectComposition visual on the window, where it can
+	function createSwapChain(composed:Bool) {
 		check(IUnknown.QueryInterface(device, IID.IDXGIDevice, scratch), "QueryInterface(IDXGIDevice)");
 		var dxgi = scratch.value;
 		var hr = IDXGIDevice.GetAdapter(dxgi, scratch);
-		Com.release(dxgi);
 		check(hr, "IDXGIDevice::GetAdapter");
 		var adapter = scratch.value;
 		hr = IDXGIAdapter.GetParent(adapter, IID.IDXGIFactory2, scratch);
@@ -342,10 +377,24 @@ class D3D11Backend {
 			d.value.BufferCount = 2;
 			d.value.Scaling = D3D.SCALING_STRETCH;
 			d.value.SwapEffect = D3D.SWAP_EFFECT_FLIP_DISCARD;
+			var root = composed ? DcRoot.make(dxgi, surface.handle) : null;
+			if (root != null) {
+				d.value.AlphaMode = D3D.ALPHA_MODE_IGNORE;
+				var hr = IDXGIFactory2.CreateSwapChainForComposition(factory, device, d, Ptr.nil(), scratch);
+				if (hr >= 0 && IDCompositionVisual.SetContent(root.window, scratch.value) >= 0 && IDCompositionDevice.Commit(root.device) >= 0) {
+					composition = root;
+					return hr;
+				}
+				Sys.println("helder.gfx: no swap chain for DirectComposition (HRESULT 0x" + StringTools.hex(hr, 8) + "): the window's own");
+				if (hr >= 0) Com.release(scratch.value);
+				root.dispose();
+				d.value.AlphaMode = 0;
+			}
 			var hr = IDXGIFactory2.CreateSwapChainForHwnd(factory, device, surface.handle, d, Ptr.nil(), Ptr.nil(), scratch);
 			if (hr >= 0) IDXGIFactory2.MakeWindowAssociation(factory, surface.handle, D3D.MWA_NO_ALT_ENTER);
 			hr;
 		}));
+		Com.release(dxgi);
 		Com.release(factory);
 		check(hr, "CreateSwapChainForHwnd");
 		swapChain = scratch.value;
@@ -358,6 +407,36 @@ class D3D11Backend {
 		if (samples > 1) createMsaa();
 		createView();
 		createDepth();
+		chainTarget = target;
+		chainView = view;
+		chainWidth = width;
+		chainHeight = height;
+	}
+
+	// (one texel of tex at x, y, 0xAABBGGRR: a system layer of one colour, a test's)
+	public function writeTexel(tex:Ptr, x:Int, y:Int, abgr:Int) {
+		var b = box;
+		b.value.left = x;
+		b.value.top = y;
+		b.value.front = 0;
+		b.value.right = x + 1;
+		b.value.bottom = y + 1;
+		b.value.back = 1;
+		Arena.scoped(a -> {
+			var px:Ptr<Int32> = a.alloc(4);
+			px[0] = abgr;
+			ID3D11DeviceContext.UpdateSubresource(context, tex, 0, b, px, 4, 4);
+		});
+	}
+
+	// the next frame into tex (a texture of the system's: a DirectComposition
+	// surface's), its w x h pixels at x, y in it; nil: the window's again
+	public function frameOnto(tex:Ptr, x:Int, y:Int, w:Int, h:Int) {
+		onto = tex;
+		ontoX = x;
+		ontoY = y;
+		ontoWidth = w;
+		ontoHeight = h;
 	}
 
 	function createView() {
@@ -938,6 +1017,16 @@ class D3D11Backend {
 
 	public function beginFrame():Bool {
 		cursor = 0;
+		if (!onto.isNull()) {
+			// (no depth: the texture may be larger than the frame, an atlas)
+			if (ID3D11Device.CreateRenderTargetView(device, onto, Ptr.nil(), scratch) < 0) return false;
+			ontoView = scratch.value;
+			target = onto;
+			view = ontoView;
+			width = ontoWidth;
+			height = ontoHeight;
+			return true;
+		}
 		if (frameTarget != 0) {
 			// (into a texture: its view the frame's, the depth buffer of its size; a shared one's mutex held to endFrame)
 			var t = textures[frameTarget - 1];
@@ -957,6 +1046,11 @@ class D3D11Backend {
 			if (depthWidth != width || depthHeight != height) createDepth();
 			return true;
 		}
+		target = chainTarget;
+		view = chainView;
+		width = chainWidth;
+		height = chainHeight;
+		if (depthWidth != width || depthHeight != height) createDepth();
 		if (surface.width == width && surface.height == height) return true;
 		// the window was resized: the swap chain's buffers follow
 		ID3D11DeviceContext.OMSetRenderTargets(context, 0, Ptr.nil(), Ptr.nil());
@@ -974,7 +1068,7 @@ class D3D11Backend {
 	public function beginPass(p:PassDesc) {
 		passQueries = p.queries == null ? 0 : p.queries.id();
 		// (a flip-model swap chain unbinds its buffer at each Present)
-		var c = p.colors[0], d = p.depth, rtv = view, dsv = depthView, w = width, h = height;
+		var c = p.colors[0], d = p.depth, rtv = view, dsv = onto.isNull() ? depthView : Ptr.nil(), w = width, h = height;
 		offscreen = c.texture != null;
 		if (offscreen) {
 			var t = textures[c.texture.id() - 1];
@@ -991,14 +1085,14 @@ class D3D11Backend {
 		}
 		scratch.value = rtv;
 		ID3D11DeviceContext.OMSetRenderTargets(context, 1, scratch, dsv);
-		viewport.value.TopLeftX = 0;
-		viewport.value.TopLeftY = 0;
+		viewport.value.TopLeftX = offscreen ? 0 : ontoX;
+		viewport.value.TopLeftY = offscreen ? 0 : ontoY;
 		viewport.value.Width = w;
 		viewport.value.Height = h;
 		viewport.value.MinDepth = 0;
 		viewport.value.MaxDepth = 1;
 		ID3D11DeviceContext.RSSetViewports(context, 1, viewport);
-		if (c.load != Load) {
+		if (c.load != Load && (offscreen || onto.isNull())) {
 			var k = c.clear;
 			clear[0] = k == null ? 0 : k.r;
 			clear[1] = k == null ? 0 : k.g;
@@ -1214,6 +1308,14 @@ class D3D11Backend {
 		damage = rects;
 
 	public function endFrame() {
+		if (!onto.isNull()) {
+			letGo();
+			ID3D11DeviceContext.OMSetRenderTargets(context, 0, Ptr.nil(), Ptr.nil());
+			Com.release(ontoView);
+			ontoView = onto = Ptr.nil();
+			ontoX = ontoY = 0;
+			return;
+		}
 		if (swapChain.isNull() || frameTarget != 0) {
 			// (the shared textures let go: ReleaseSync flushes)
 			letGo();
@@ -1221,6 +1323,10 @@ class D3D11Backend {
 			return;
 		}
 		letGo();
+		if (quiet) {
+			damage = null;
+			return;
+		}
 		resolve();
 		// (vsync; a lost device is not recovered yet; what changed told DXGI: Device.damaged)
 		var r = damage, n = r == null ? 0 : Std.int(r.length / 4);
@@ -1301,10 +1407,13 @@ class D3D11Backend {
 		Com.release(staging);
 		Com.release(depthView);
 		Com.release(depth);
-		// (headless: its own target, not a frameInto texture's)
+		// (headless: its own target, not a frameInto texture's; a window: its back buffer's)
 		if (swapChain.isNull()) {
 			view = targetView;
 			target = targetTexture;
+		} else {
+			view = chainView;
+			target = chainTarget;
 		}
 		Com.release(view);
 		Com.release(msaa);
@@ -1313,11 +1422,13 @@ class D3D11Backend {
 		// (handing over: the swap chain, the context and the device left to the next build)
 		var keep = helder.dev.Hosted.handingOver && helder.dev.Hosted.get(helder.dev.Hosted.D3D_DEVICE) == device;
 		if (!keep) {
+			if (composition != null) composition.dispose();
 			Com.release(swapChain);
 			Com.release(context);
 			Com.release(device);
 		}
 		#else
+		if (composition != null) composition.dispose();
 		Com.release(swapChain);
 		Com.release(context);
 		Com.release(device);

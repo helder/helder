@@ -172,6 +172,10 @@ class UiWindow {
 		#end
 		{
 			#if !helder.soft
+			// (Windows: the swap chain made for DirectComposition where the window's layers will be the system's)
+			#if ((!helder.os || helder.os == "windows") && !helder.headless && hxmc.target != "wasm32-wasi")
+			if (Platform.os() == 2) helder.gfx.d3d11.D3D11Backend.compose = DcLayers.asked();
+			#end
 			#if !helder.headless device = Device.create(window.surface, {antialias: antialias, thread: true}); #end
 			renderer = new Renderer(device);
 			renderer.groups = true;

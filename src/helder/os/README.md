@@ -118,7 +118,10 @@ the modal loop (moving, sizing, the menu) gets what follows. During that
 loop the window procedure hands the program its events and the sizing
 timer's frames, as before. A Win32 call of the app's own that may send
 its window a message goes through `OsThread.run`: the main thread does
-not serve one sent from elsewhere while it waits.
+not serve one sent from elsewhere while it waits. A window of system
+layers (helder.ui.draw.DcLayers) has its DirectComposition target made
+there with its swap chain; its visuals are the render thread's, which
+commits them.
 
 iOS: the program's thread starts once UIKit has launched; while it runs
 on, the main thread turns the run loop (UIKit's touches, layout, scroll
