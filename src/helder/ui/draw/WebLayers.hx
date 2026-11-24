@@ -14,7 +14,8 @@ import hxmc.unsafe.*;
 // busy; what is over it in the layer of scroll views over the canvas,
 // stacked in paint order (a layer that moves on its own stays drawn:
 // unfit). A frame the page reads back (host.gfx.readPixels) is drawn
-// whole onto the canvas (priming), the page's layers left. Each is drawn
+// whole onto the canvas (priming), the page's layers left; a scroller
+// with a sticky node in it stays drawn (fits). Each is drawn
 // by the window's own device into the window's canvas, in tiles of the
 // canvas's size at most (a long scroller's content: several), only those
 // its changes meet, each read back as an ImageBitmap (createImageBitmap:
@@ -53,6 +54,17 @@ class WebLayers extends LayerSplit {
 		this.device = device;
 		canvas = device.surface.handle.toI64().toInt();
 		rounds = false;
+	}
+
+	// (a scroller with a sticky node in it stays drawn: the browser would scroll the node away with its content)
+	override function fits(f:CompositeFrame, c:Int):Bool {
+		for (m in 0...f.movers.length) {
+			var fr = Std.int(f.moverData[m * CompositeFrame.MOVER + 1]);
+			while (fr >= 0 && f.parents[fr] >= 0)
+				fr = f.parents[fr];
+			if (fr == c) return false;
+		}
+		return true;
 	}
 
 	override function plane(kind:Int, key:Dynamic):LayerPlane {
