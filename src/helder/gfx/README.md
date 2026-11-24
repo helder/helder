@@ -540,6 +540,17 @@ ASTC quad grey, the CPU decodes it). helder.ui's GPU nodes draw on it in a
 showreel's material within a level; fx's effects that hash with `sin`
 (`fract(sin(x) * 43758.5)`) differ, as GPUs differ between themselves there.
 
+What keeps it fast: a stage's small helpers are emitted inline (straight
+code of a few dozen nodes, with the inlined ones it calls), so their
+struct values stay in registers; constants and uniform blocks' fields
+reach the lanes as their float32 bits (hxmc builds a Float's splat as a
+double, converted at each use); `sampleLevel(t, uv, 0)` and a texture of
+one level read their level directly (no level of detail found), a float
+texture's four texels blended whole per lane, then turned into lanes once,
+sRGB and float texels gathered as bits; on x86-64, whole texel coordinates
+converted by 2^23's bits (hxmc's saturating conversion is 7 instructions
+there). Each change leaves the frames as they were, byte for byte.
+
 Speed: tests/3d/FrameBench.hx (each scene's first frame, made, drawn and
 read back, then the least of 10), the 76 scenes summed, Linux x86-64 in
 Docker (`helder-llvmpipe-dejavu`, emulated on an M4, 10 threads, scenes
@@ -547,19 +558,20 @@ alternating between the two so that the machine's load weighs on both):
 
 | | steady | first frames |
 | --- | ---: | ---: |
-| llvmpipe, 256x192 | 1309 ms | 238 s |
-| CPU, 256x192 | 1024 ms | 20.8 s |
-| llvmpipe, 1024x768 | 5374 ms | 149 s |
-| CPU, 1024x768 | 9855 ms | 31.9 s |
-| llvmpipe, one thread, 256x192 | 2091 ms | 76.6 s |
-| CPU, one thread, 256x192 | 2860 ms | 8.6 s |
+| llvmpipe, 256x192 | 563 ms | 128 s |
+| CPU, 256x192 | 429 ms | 8.9 s |
+| llvmpipe, 1024x768 | 2286 ms | 97 s |
+| CPU, 1024x768 | 3178 ms | 10.1 s |
+| llvmpipe, one thread, 256x192 | 1263 ms | 93 s |
+| CPU, one thread, 256x192 | 1278 ms | 4.2 s |
 
-On a quiet machine, 256x192: 390 ms against llvmpipe's 599. First frames
-are 5 to 12 times faster (llvmpipe compiles each shader when first drawn);
-steady frames are faster at the tests' size, slower at 1024x768 and on
-one thread, where the per-pixel work (texture gathers, the fragment
-stage's calls) is what is left to make faster. On the M4 natively: 0.27 s
-for the 76 scenes at 256x192, Metal 0.04 s.
+First frames are 10 to 20 times faster (llvmpipe compiles each shader when
+first drawn); steady frames are faster at the tests' size, level on one
+thread, slower at 1024x768: one thread there is about as fast as
+llvmpipe's, but llvmpipe gains more from 10 threads in Docker. What is
+left is the generated code itself (hxmc keeps few vectors in registers
+across a call) and texture gathers. On the M4 natively: 0.26 s for the 76
+scenes at 256x192.
 
 Size: a `--soft` headless build with a `<Scene>` (examples/glow) 2.1 MB →
 3.2 MB (the back end and its shaders' SIMD forms; the grey box before),

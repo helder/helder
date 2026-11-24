@@ -48,12 +48,28 @@ class Sample {
 	public static function flat(b:Ptr, uv:Lane2):Lane4 {
 		var t = Mem.getPtr(b, TEXTURE);
 		if (t.isNull()) return Lane4.zero();
+		#if !helder.soft.exact
+		// (one level to read: no level of detail to find)
+		if (Mem.getI32(b, MIP) < 0 || Mem.getI32(t, SoftTexture.LEVELS) == 1)
+			return level(t, 0, 0, uv.x.f32(), uv.y.f32(), Mem.getI32(b, FILTER) != 0, Mem.getI32(b, WRAP));
+		#end
 		var lod = quadLod(uv.x, uv.y, Mem.getI32(t, SoftTexture.WIDTH), Mem.getI32(t, SoftTexture.HEIGHT)), wrap = Mem.getI32(b, WRAP);
 		#if !helder.soft.exact
 		return quad(b, t, 0, uv.x, uv.y, lod, wrap);
 		#end
 		return lanes(at(b, 0, uv.x.get(0), uv.y.get(0), lod, wrap), at(b, 0, uv.x.get(1), uv.y.get(1), lod, wrap), at(b, 0, uv.x.get(2), uv.y.get(2), lod, wrap),
 			at(b, 0, uv.x.get(3), uv.y.get(3), lod, wrap));
+	}
+
+	// (sampleLevel(t, uv, 0), and the vertex stage's sample: the first level)
+	public static function flatFirst(b:Ptr, uv:Lane2):Lane4 {
+		var wrap = Mem.getI32(b, WRAP);
+		#if !helder.soft.exact
+		var t = Mem.getPtr(b, TEXTURE);
+		return t.isNull() ? Lane4.zero() : level(t, 0, 0, uv.x.f32(), uv.y.f32(), Mem.getI32(b, FILTER) != 0, wrap);
+		#end
+		return lanes(at(b, 0, uv.x.get(0), uv.y.get(0), 0, wrap), at(b, 0, uv.x.get(1), uv.y.get(1), 0, wrap), at(b, 0, uv.x.get(2), uv.y.get(2), 0, wrap),
+			at(b, 0, uv.x.get(3), uv.y.get(3), 0, wrap));
 	}
 
 	public static function flatLevel(b:Ptr, uv:Lane2, level:Lane):Lane4 {
@@ -126,15 +142,31 @@ class Sample {
 		return a + (c - a) * Lane4.fill(Lane.splat(f));
 	}
 
-	static function level(t:Ptr, level:Int, layer:Int, u:F32x4, v:F32x4, linear:Bool, wrap:Int):Lane4 {
+	static inline function level(t:Ptr, level:Int, layer:Int, u:F32x4, v:F32x4, linear:Bool, wrap:Int):Lane4 {
 		var w = SoftTexture.width(t, level), h = SoftTexture.height(t, level), base = SoftTexture.at(t, level, layer);
 		var fw = F32x4.splat(w), fh = F32x4.splat(h);
 		var kind = Mem.getI32(t, SoftTexture.KIND);
-		if (!linear) return fetch(t, kind, base, wraps((u * fw).floor(), w, wrap) + wraps((v * fh).floor(), h, wrap) * I32x4.splat(w));
+		if (!linear) return fetch(t, kind, base, wraps((u * fw).floor(), w, wrap) + wraps((v * fh).floor(), h, wrap) * I32x4.splat(w), true);
 		var x = u * fw - F32x4.splat(0.5), y = v * fh - F32x4.splat(0.5);
 		var x0 = x.floor(), y0 = y.floor(), fx = Lane.ofF32(x - x0), fy = Lane.ofF32(y - y0);
 		var one = F32x4.splat(1), xa = wraps(x0, w, wrap), xb = wraps(x0 + one, w, wrap), ya = wraps(y0, h, wrap) * I32x4.splat(w), yb = wraps(y0 + one, h, wrap) * I32x4.splat(w);
-		var a = fetch(t, kind, base, xa + ya), bb = fetch(t, kind, base, xb + ya), c = fetch(t, kind, base, xa + yb), d = fetch(t, kind, base, xb + yb);
+		if (kind == SoftTexture.F4) {
+			// (each lane's four texels blended whole, its channels together, then turned into lanes once)
+			var ia = xa + ya, ib = xb + ya, ic = xa + yb, id = xb + yb, gx = x - x0, gy = y - y0;
+			inline function blend(k:Int):F32x4 {
+				var a = F32x4.loadPtr(base, 16 * ia.get(k)), b = F32x4.loadPtr(base, 16 * ib.get(k)), c = F32x4.loadPtr(base, 16 * ic.get(k)),
+					d = F32x4.loadPtr(base, 16 * id.get(k));
+				var sx = gx.swizzle(k, k, k, k), sy = gy.swizzle(k, k, k, k);
+				var top = a + (b - a) * sx, bottom = c + (d - c) * sx;
+				return top + (bottom - top) * sy;
+			}
+			var p0 = blend(0), p1 = blend(1), p2 = blend(2), p3 = blend(3);
+			var t0 = p0.shuffle(p1, 0, 4, 1, 5), t1 = p0.shuffle(p1, 2, 6, 3, 7), t2 = p2.shuffle(p3, 0, 4, 1, 5), t3 = p2.shuffle(p3, 2, 6, 3, 7);
+			return new Lane4(Lane.ofF32(t0.shuffle(t2, 0, 1, 4, 5)), Lane.ofF32(t0.shuffle(t2, 2, 3, 6, 7)), Lane.ofF32(t1.shuffle(t3, 0, 1, 4, 5)),
+				Lane.ofF32(t1.shuffle(t3, 2, 3, 6, 7)));
+		}
+		var a = fetch(t, kind, base, xa + ya, false), bb = fetch(t, kind, base, xb + ya, false), c = fetch(t, kind, base, xa + yb, false),
+			d = fetch(t, kind, base, xb + yb, false);
 		var top = a + (bb - a) * Lane4.fill(fx), bottom = c + (d - c) * Lane4.fill(fx);
 		return top + (bottom - top) * Lane4.fill(fy);
 	}
@@ -143,23 +175,34 @@ class Sample {
 	static inline function wraps(i:F32x4, n:Int, wrap:Int):I32x4 {
 		var fn = F32x4.splat(n);
 		return switch wrap {
-			case 1: i.clamp(F32x4.zero(), F32x4.splat(n - 1)).toI32x4();
+			case 1: whole(i, n);
 			case 2:
 				var p = F32x4.splat(2 * n), k = i - (i / p).floor() * p;
-				F32x4.select(k.lt(fn), k, p - F32x4.splat(1) - k).toI32x4();
+				whole(F32x4.select(k.lt(fn), k, p - F32x4.splat(1) - k), n);
 			case _:
 				// (i less its multiple of n, by n's reciprocal: one step back or on where that rounded)
 				var k = i - (i * F32x4.splat(1 / n)).floor() * fn;
-				k = F32x4.select(k.ge(fn), k - fn, F32x4.select(k.lt(F32x4.zero()), k + fn, k));
-				k.toI32x4();
+				whole(F32x4.select(k.ge(fn), k - fn, F32x4.select(k.lt(F32x4.zero()), k + fn, k)), n);
 		}
 	}
 
+	// whole floats as Ints, held in 0...n (NaN 0, as the conversion makes it).
+	// On x86-64 hxmc's conversion saturates in 7 instructions: whole numbers
+	// below 2^23 are 2^23's bits less 2^23's added to them
+	static inline function whole(k:F32x4, n:Int):I32x4 {
+		var held = F32x4.splat(n - 1).pmin(F32x4.zero().pmax(k));
+		#if (hxmc.target == "linux-x86_64" || hxmc.target == "windows-x86_64" || hxmc.target == "macos-x86_64" || hxmc.target == "android-x86_64")
+		return (held + F32x4.splat(8388608)).asI32x4() - I32x4.splat(0x4B000000);
+		#else
+		return held.toI32x4();
+		#end
+	}
+
 	// the texels at indices i of a level's layer, as channels
-	static inline function fetch(t:Ptr, kind:Int, base:Ptr, i:I32x4):Lane4 {
+	static inline function fetch(t:Ptr, kind:Int, base:Ptr, i:I32x4, shared:Bool):Lane4 {
 		var i0 = i.get(0), i1 = i.get(1), i2 = i.get(2), i3 = i.get(3);
 		// (one texel for all four: a data texture's lookups by an index every lane shares)
-		var one = i0 == i1 && i0 == i2 && i0 == i3;
+		var one = shared && i0 == i1 && i0 == i2 && i0 == i3;
 		if (kind == SoftTexture.U8) {
 			var p = one ? I32x4.splat(Mem.getI32(base, 4 * i0)) : I32x4.make(Mem.getI32(base, 4 * i0), Mem.getI32(base, 4 * i1), Mem.getI32(base, 4 * i2),
 				Mem.getI32(base, 4 * i3));
@@ -167,9 +210,10 @@ class Sample {
 			var a = Lane.ofF32(F32x4.fromI32x4((p >>> 24) & m) * k);
 			if (Mem.getI32(t, SoftTexture.SRGB) != 0) {
 				var s = Mem.getPtr(t, SoftTexture.TABLE);
+				// (the table's floats gathered as their bits)
 				inline function ch(sh:Int):Lane
-					return Lane.make(Mem.getF32(s, 4 * ((p.get(0) >> sh) & 255)), Mem.getF32(s, 4 * ((p.get(1) >> sh) & 255)), Mem.getF32(s, 4 * ((p.get(2) >> sh) & 255)),
-						Mem.getF32(s, 4 * ((p.get(3) >> sh) & 255)));
+					return Lane.ofF32(I32x4.make(Mem.getI32(s, 4 * ((p.get(0) >> sh) & 255)), Mem.getI32(s, 4 * ((p.get(1) >> sh) & 255)),
+						Mem.getI32(s, 4 * ((p.get(2) >> sh) & 255)), Mem.getI32(s, 4 * ((p.get(3) >> sh) & 255))).asF32x4());
 				return new Lane4(ch(0), ch(8), ch(16), a);
 			}
 			return new Lane4(Lane.ofF32(F32x4.fromI32x4(p & m) * k), Lane.ofF32(F32x4.fromI32x4((p >> 8) & m) * k), Lane.ofF32(F32x4.fromI32x4((p >> 16) & m) * k), a);
@@ -184,8 +228,8 @@ class Sample {
 			return new Lane4(Lane.ofF32(t0.shuffle(t2, 0, 1, 4, 5)), Lane.ofF32(t0.shuffle(t2, 2, 3, 6, 7)), Lane.ofF32(t1.shuffle(t3, 0, 1, 4, 5)),
 				Lane.ofF32(t1.shuffle(t3, 2, 3, 6, 7)));
 		}
-		return new Lane4(Lane.make(Mem.getF32(base, 4 * i0), Mem.getF32(base, 4 * i1), Mem.getF32(base, 4 * i2), Mem.getF32(base, 4 * i3)), Lane.zero(), Lane.zero(),
-			Lane.splat(1));
+		return new Lane4(Lane.ofF32(I32x4.make(Mem.getI32(base, 4 * i0), Mem.getI32(base, 4 * i1), Mem.getI32(base, 4 * i2), Mem.getI32(base, 4 * i3)).asF32x4()),
+			Lane.zero(), Lane.zero(), Lane.splat(1));
 	}
 	#end
 

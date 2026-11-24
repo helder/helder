@@ -59,7 +59,7 @@ class Parallel {
 		if (count <= 0) return;
 		if (run_.isNull()) {
 			run_ = LibC.malloc(SLEEPS + 4 * MAX);
-			Mem.zero(run_, SLEEPS + 4 * MAX);
+			LibC.memset(run_, 0, SLEEPS + 4 * MAX);
 		}
 		var r = run_;
 		var helpers = threads(most);
