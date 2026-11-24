@@ -248,6 +248,15 @@ class ScLayers extends LayerSplit {
 	// (what surface() made: hidden with the layers when they turn off)
 	final surfaces:Array<Ptr> = [];
 
+	// a surface() its node no longer has let go (once no transaction of
+	// ours names it: a frame after the node lost it)
+	public function letGo(l:Ptr) {
+		lock.acquire();
+		var had = surfaces.remove(l);
+		lock.release();
+		if (had) Sc.release(l);
+	}
+
 	// (a surface() of one colour, 0xRRGGBB: tests)
 	@:noCompletion public function solid(rgb:Int):Ptr {
 		var l = surface();

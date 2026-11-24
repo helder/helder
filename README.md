@@ -134,7 +134,8 @@ where the system allows, timed by the audio clock; a `<Video>` node with
 exact seeking and frame stepping, its controls the app's; the viewer
 playing video and audio beside images and PDFs. Done on macOS and iOS
 ([helder.media](src/helder/media/README.md): VideoToolbox, AudioToolbox,
-the viewer's videos); the other systems' decoders next.
+the viewer's videos), in browsers (WebCodecs) and on Android (MediaCodec);
+Media Foundation and VAAPI next.
 
 **Games**
 - Physics: mesh and convex colliders, layers, triggers, contact events, stable stacks.

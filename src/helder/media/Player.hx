@@ -387,7 +387,9 @@ class Player {
 		if (video == null && audio == null) throw new MediaError("nothing this system decodes");
 		duration = m.duration > 0 ? m.duration : Math.max(video != null ? video.duration : 0, audio != null ? audio.duration : 0);
 		if (adec != null) {
-			ring = new AudioRing(Std.int(adec.rate * 2));
+			// (two seconds, and room for a packet's 16384 frames over the
+			// first that decodes asks for: a low rate's, 8 kHz's, too)
+			ring = new AudioRing(Std.int(Math.max(adec.rate * 2, 65536)));
 			out = options.silent == true ? null : output(adec.rate);
 		}
 	}

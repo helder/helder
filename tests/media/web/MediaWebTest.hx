@@ -199,7 +199,7 @@ class MediaWebTest {
 			r: new helder.gfx.shader.Vec4(1, 0, 0, 0),
 			g: new helder.gfx.shader.Vec4(0, 1, 0, 0),
 			b: new helder.gfx.shader.Vec4(0, 0, 1, 0),
-			turn: new helder.gfx.shader.Vec4(0, 0, 1, 0)
+			turn: new helder.gfx.shader.Vec4(0, 1, 1, 1)
 		}, u);
 		enc.beginPass({colors: [{load: Clear}]});
 		enc.setPipeline(blit);

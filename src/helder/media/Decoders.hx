@@ -4,13 +4,17 @@ import hxmc.Platform;
 
 // The system's decoder of a track, where it has one (null: none here):
 // Apple's VideoToolbox and AudioToolbox (helder.media.apple), the
-// browser's WebCodecs (helder.media.web), helder's own Vorbis everywhere.
-// The other systems' come with the roadmap's next parts.
+// browser's WebCodecs (helder.media.web), Android's MediaCodec
+// (helder.media.android), helder's own Vorbis everywhere. The other
+// systems' come with the roadmap's next parts.
 class Decoders {
 	// whether this system has video decoders (an app's file types: the viewer's)
 	public static function available():Bool {
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		if (Platform.os() == 1) return true;
+		#end
+		#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
+		if (Platform.target() >= 9) return helder.media.android.MediaNdk.loaded();
 		#end
 		return #if (hxmc.target == "wasm32-wasi") true #else false #end;
 	}
@@ -44,6 +48,9 @@ class Decoders {
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		if (Platform.os() == 1 && helder.media.apple.VtDecoder.supports(t.codec)) return new helder.media.apple.VtDecoder(t);
 		#end
+		#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
+		if (Platform.target() >= 9 && helder.media.android.McVideo.supports(t.codec)) return new helder.media.android.McVideo(t);
+		#end
 		#if (hxmc.target == "wasm32-wasi")
 		if (helder.media.web.WebCodec.name(t) != null) return new helder.media.web.WebVideoDecoder(t);
 		#end
@@ -54,6 +61,9 @@ class Decoders {
 		if (t.codec == Vorbis) return new VorbisDecoder(t);
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		if (Platform.os() == 1 && helder.media.apple.AtDecoder.supports(t.codec)) return new helder.media.apple.AtDecoder(t);
+		#end
+		#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
+		if (Platform.target() >= 9 && helder.media.android.McAudio.supports(t.codec)) return new helder.media.android.McAudio(t);
 		#end
 		#if (hxmc.target == "wasm32-wasi")
 		if (helder.media.web.WebCodec.name(t) != null) return new helder.media.web.WebAudioDecoder(t);

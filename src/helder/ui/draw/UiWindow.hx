@@ -217,7 +217,7 @@ class UiWindow {
 			var c = new Compositor(device);
 			if (c.start()) {
 				compositor = c;
-				#if (!helder.os || helder.os == "macos" || helder.os == "ios")
+				#if (!helder.os || helder.os == "macos" || helder.os == "ios" || helder.os == "android")
 				ui.layered = c.layers != null && LayerSplit.slots();
 				#end
 				window.route = c.route;

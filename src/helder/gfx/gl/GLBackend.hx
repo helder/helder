@@ -543,6 +543,9 @@ class GLBackend {
 		if (frameTarget == id) frameTarget = 0;
 		var img = images.get(id);
 		fenced.remove(id);
+		#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
+		externals.remove(id);
+		#end
 		if (img != null) {
 			images.remove(id);
 			if (Platform.os() != 3) {
@@ -837,6 +840,9 @@ class GLBackend {
 	}
 
 	public function openShared(handle:String, w:Int, h:Int):Int {
+		#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
+		if (Platform.target() >= 9 && StringTools.startsWith(handle, "ahb:")) return hardwareBuffer(handle, w, h);
+		#end
 		if (Platform.os() == 3 || Platform.target() >= 9 || !StringTools.startsWith(handle, "dmabuf:") || sharing() == null) return 0;
 		var f = [for (x in handle.substr(7).split(":")) Std.parseInt(x) ?? 0];
 		if (f.length < 7) return 0;
@@ -872,6 +878,57 @@ class GLBackend {
 
 	public function frameInto(id:Int)
 		frameTarget = id;
+
+	#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
+	// (textures on an EGLImage of an AHardwareBuffer of another's, sampled
+	// as GL_TEXTURE_EXTERNAL_OES: a shader's samplerExternalOES)
+	final externals = new Map<Int, Bool>();
+	var pClientBuffer = Ptr.nil();
+
+	// "ahb:ADDRESS:..." (an AHardwareBuffer of this process's: a video
+	// decoder's, helder.media.android.McVideo) as an external texture, no
+	// copy: its YUV the driver's to convert as the buffer is tagged; the
+	// EGLImage holds the buffer while the texture lives
+	function hardwareBuffer(handle:String, w:Int, h:Int):Int {
+		var hex = handle.split(":")[1];
+		if (hex == null || hex.length != 16) return 0;
+		var at = Ptr.ofI64((cast haxe.Int64.make(word(hex, 0), word(hex, 8)) : Int64));
+		use();
+		if (pClientBuffer.isNull()) pClientBuffer = proc("eglGetNativeClientBufferANDROID");
+		if (pCreateImage.isNull()) pCreateImage = proc("eglCreateImageKHR");
+		if (pDestroyImage.isNull()) pDestroyImage = proc("eglDestroyImageKHR");
+		if (pImageTarget.isNull()) pImageTarget = proc("glEGLImageTargetTexture2DOES");
+		if (pClientBuffer.isNull() || pCreateImage.isNull() || pDestroyImage.isNull() || pImageTarget.isNull()) return 0;
+		var client = EglSync.clientBuffer(pClientBuffer, at);
+		if (client.isNull()) return 0;
+		var image = Arena.scopedValue(a -> EglImage.create(pCreateImage, display, Ptr.nil(), EGL.NATIVE_BUFFER_ANDROID, client, ints(a, [EGL.IMAGE_PRESERVED_KHR, 1, EGL.NONE])));
+		if (image.isNull()) return 0;
+		GL.glGenTextures(1, scratch);
+		var t = scratch.value;
+		textures.push(t);
+		infos.push(TextureInfo.of({width: w, height: h}));
+		var id = textures.length;
+		GL.glActiveTexture(GL.TEXTURE0);
+		GL.glBindTexture(EXTERNAL, t);
+		EglImage.target(pImageTarget, EXTERNAL, image);
+		GL.glBindTexture(EXTERNAL, 0);
+		images.set(id, {image: image, fd: -1});
+		externals.set(id, true);
+		return id;
+	}
+
+	// (8 hex digits at i: 32 bits)
+	static function word(hex:String, i:Int):Int {
+		var v = 0;
+		for (k in i...i + 8) {
+			var c = hex.charCodeAt(k);
+			v = v << 4 | (c <= 57 ? c - 48 : (c | 32) - 87);
+		}
+		return v;
+	}
+
+	static inline var EXTERNAL = 0x8D65; // GL_TEXTURE_EXTERNAL_OES
+	#end
 
 	// ---- a buffer of the system's as a render target (Android's
 	// AHardwareBuffer through EGL_ANDROID_get_native_client_buffer:
@@ -1097,6 +1154,13 @@ class GLBackend {
 	public function setTexture(slot:Int, texture:Int, sampler:Int) {
 		GL.glActiveTexture(GL.TEXTURE0 + slot);
 		var info = infos[texture - 1];
+		#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
+		if (externals.exists(texture)) {
+			GL.glBindTexture(EXTERNAL, textures[texture - 1]);
+			GL.glBindSampler(slot, samplers[sampler - 1]);
+			return;
+		}
+		#end
 		if (info.cube) GL.glBindTexture(GL.TEXTURE_CUBE_MAP, unitsCube[slot] = textures[texture - 1]);
 		else if (info.array) GL.glBindTexture(GL.TEXTURE_2D_ARRAY, unitsArray[slot] = textures[texture - 1]);
 		else GL.glBindTexture(GL.TEXTURE_2D, units[slot] = textures[texture - 1]);
