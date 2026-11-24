@@ -3,7 +3,17 @@ package helder.os.linux;
 import haxe.io.Bytes;
 import helder.image.ImageError;
 import helder.image.ImageLimits;
+import helder.image.JpegDecoder;
 import hxmc.unsafe.*;
+
+private typedef LinuxImage = {
+	width:Int,
+	height:Int,
+	rgba:Bytes,
+	// The primary image's upright size when the pixels are from a preview.
+	?sourceWidth:Int,
+	?sourceHeight:Int
+}
 
 // Linux's image libraries behind SystemImages, each loaded at run time when
 // first needed (helder.os.Dl; one absent: the formats it reads are not
@@ -19,7 +29,21 @@ import hxmc.unsafe.*;
 class LinuxImages {
 	static final state = new Map<String, Int>(); // (1: loaded, -1: absent)
 
+	static final loading = new sys.thread.Mutex();
+
 	static function loaded(lib:String):Bool {
+		loading.acquire();
+		try {
+			var ok = loadOnce(lib);
+			loading.release();
+			return ok;
+		} catch (e:Dynamic) {
+			loading.release();
+			throw e;
+		}
+	}
+
+	static function loadOnce(lib:String):Bool {
 		if (!state.exists(lib)) {
 			var ok = switch lib {
 				case "tiff": Tiff.load("libtiff.so.6") == null || Tiff.load("libtiff.so.5") == null;
@@ -55,20 +79,24 @@ class LinuxImages {
 	public static function supports(ext:String):Bool
 		return libFor(ext) != null;
 
-	public static function decode(path:String, ext:String):{width:Int, height:Int, rgba:Bytes} {
-		var lib = libFor(ext);
+	public static function decode(path:String, ext:String, side:Int, thumbnail:Bool):LinuxImage {
+		var lib = libFor(ext), reduced = thumbnail && side > 0 ? side : 0;
+		if (lib == "avif" && reduced > 0 && loaded("heif") && Heif.heif_have_decoder_for_format(4) != 0) {
+			var preview = try heif(path, reduced, true) catch (_:ImageError) null;
+			if (preview != null) return preview;
+		}
 		return switch lib {
 			case "tiff": tiff(path);
-			case "heif": heif(path);
+			case "heif": heif(path, reduced, false);
 			case "avif": avif(path);
-			case "raw": raw(path);
+			case "raw": raw(path, reduced);
 			case _: throw ImageError.unsupported("SystemImages: no library on this system for " + path);
 		}
 	}
 
 	// --- libtiff
 
-	static function tiff(path:String):{width:Int, height:Int, rgba:Bytes} {
+	static function tiff(path:String):LinuxImage {
 		var t = Arena.scopedValue(a -> Tiff.TIFFOpen(a.cstring(path), a.cstring("r")));
 		if (t.isNull()) throw ImageError.corrupt("SystemImages: libtiff cannot open it");
 		var v:Ptr<Int32> = LibC.malloc(16);
@@ -92,12 +120,13 @@ class LinuxImages {
 		LibC.free(buf);
 		if (!ok) throw ImageError.corrupt("SystemImages: libtiff cannot decode it");
 		// (TIFFRGBAImage's pixels are premultiplied where the file's alpha is associated: straight here)
-		return helder.image.Exif.apply(rgba, w, h, o);
+		var d = helder.image.Exif.apply(rgba, w, h, o);
+		return {width: d.width, height: d.height, rgba: d.rgba};
 	}
 
 	// --- libheif
 
-	static function heif(path:String):{width:Int, height:Int, rgba:Bytes} {
+	static function heif(path:String, side:Int, previewOnly:Bool):Null<LinuxImage> {
 		ispeLimits(path);
 		var ctx = Heif.heif_context_alloc();
 		var out:Ptr<Ptr> = LibC.malloc(16);
@@ -116,22 +145,74 @@ class LinuxImages {
 			Heif.heif_image_handle_release(handle);
 			fail(e);
 		}
-		out.value = Ptr.nil();
-		// (heif_colorspace_RGB, heif_chroma_interleaved_RGBA; the default options: its transformations applied)
-		var hr = Heif.heif_decode_image(handle, out, 1, 11, Ptr.nil()).toInt();
+		var result:Null<LinuxImage> = null, thumb = Ptr.nil();
+		try {
+			if (side > 0) thumb = heifPreview(handle, out, side);
+			if (!thumb.isNull()) {
+				var d = try heifPixels(thumb, out) catch (_:ImageError) null;
+				if (d != null) result = {width: d.width, height: d.height, rgba: d.rgba, sourceWidth: w, sourceHeight: h};
+			}
+			if (result == null && !previewOnly) result = heifPixels(handle, out);
+		} catch (e:Dynamic) {
+			if (!thumb.isNull()) Heif.heif_image_handle_release(thumb);
+			Heif.heif_image_handle_release(handle);
+			LibC.free(cast out);
+			Heif.heif_context_free(ctx);
+			throw e;
+		}
+		if (!thumb.isNull()) Heif.heif_image_handle_release(thumb);
 		Heif.heif_image_handle_release(handle);
-		if (hr != 0 || out.value.isNull()) fail(ImageError.unsupported("SystemImages: libheif cannot decode it (no decoder for its codec?)"));
-		var img = out.value, stride:Ptr<Int32> = cast out.add(8);
-		var pw = Heif.heif_image_get_width(img, 10), ph = Heif.heif_image_get_height(img, 10); // (heif_channel_interleaved)
-		var plane:Ptr<UInt8> = cast Heif.heif_image_get_plane_readonly(img, 10, cast stride);
-		var rgba = Bytes.alloc(pw * ph * 4), s = stride[0];
-		if (!plane.isNull()) for (y in 0...ph)
-			BytesPtr.copyIn(rgba, y * pw * 4, plane.add(y * s), pw * 4);
-		Heif.heif_image_release(img);
 		LibC.free(cast out);
 		Heif.heif_context_free(ctx);
-		if (plane.isNull()) throw ImageError.corrupt("SystemImages: libheif gave no pixels");
-		return {width: pw, height: ph, rgba: rgba};
+		return result;
+	}
+
+	static function heifPreview(primary:Ptr, out:Ptr<Ptr>, side:Int):Ptr {
+		var n = Heif.heif_image_handle_get_number_of_thumbnails(primary);
+		if (n <= 0 || n > 65536) return Ptr.nil();
+		var ids:Ptr<Int32> = LibC.malloc(n * 4), best = Ptr.nil(), bestLong = 0.0;
+		if (ids.isNull()) return best;
+		var count = Heif.heif_image_handle_get_list_of_thumbnail_IDs(primary, cast ids, n);
+		for (i in 0...Std.int(Math.min(n, count))) {
+			out.value = Ptr.nil();
+			if (Heif.heif_image_handle_get_thumbnail(primary, ids[i], cast out).toInt() != 0 || out.value.isNull()) continue;
+			var thumb = out.value, w = Heif.heif_image_handle_get_width(thumb), h = Heif.heif_image_handle_get_height(thumb);
+			var long = Math.max(w, h);
+			// (prefer the smallest that covers side; otherwise the largest
+			// that's at least half the requested size)
+			var nearer = bestLong < side ? long > bestLong : long >= side && long < bestLong;
+			if (w > 0 && h > 0 && long >= side / 2 && nearer) {
+				if (!best.isNull()) Heif.heif_image_handle_release(best);
+				best = thumb;
+				bestLong = long;
+			} else Heif.heif_image_handle_release(thumb);
+		}
+		LibC.free(cast ids);
+		return best;
+	}
+
+	static function heifPixels(handle:Ptr, out:Ptr<Ptr>):LinuxImage {
+		ImageLimits.check("SystemImages", Heif.heif_image_handle_get_width(handle), Heif.heif_image_handle_get_height(handle), 4);
+		out.value = Ptr.nil();
+		// (heif_colorspace_RGB, heif_chroma_interleaved_RGBA; its transformations applied)
+		var hr = Heif.heif_decode_image(handle, out, 1, 11, Ptr.nil()).toInt();
+		if (hr != 0 || out.value.isNull()) throw ImageError.unsupported("SystemImages: libheif cannot decode it (no decoder for its codec?)");
+		var img = out.value, stride:Ptr<Int32> = cast out.add(8);
+		stride[0] = 0;
+		var pw = Heif.heif_image_get_width(img, 10), ph = Heif.heif_image_get_height(img, 10); // (heif_channel_interleaved)
+		try {
+			ImageLimits.check("SystemImages", pw, ph, 4);
+			var plane = Heif.heif_image_get_plane_readonly(img, 10, cast stride), s = stride[0];
+			if (plane.isNull() || s < pw * 4) throw ImageError.corrupt("SystemImages: libheif gave no pixels");
+			var rgba = Bytes.alloc(pw * ph * 4);
+			for (y in 0...ph)
+				BytesPtr.copyIn(rgba, y * pw * 4, plane.add(y * s), pw * 4);
+			Heif.heif_image_release(img);
+			return {width: pw, height: ph, rgba: rgba};
+		} catch (e:Dynamic) {
+			Heif.heif_image_release(img);
+			throw e;
+		}
 	}
 
 	// (HEIF's and AVIF's sizes from their ispe boxes, the largest, before any library reads the file)
@@ -158,7 +239,7 @@ class LinuxImages {
 
 	// --- libavif
 
-	static function avif(path:String):{width:Int, height:Int, rgba:Bytes} {
+	static function avif(path:String):LinuxImage {
 		ispeLimits(path);
 		var dec = Avif.avifDecoderCreate(), img = Avif.avifImageCreateEmpty();
 		var r = Arena.scopedValue(a -> Avif.avifDecoderReadFile(dec, img, a.cstring(path)));
@@ -203,7 +284,7 @@ class LinuxImages {
 
 	// --- libraw
 
-	static function raw(path:String):{width:Int, height:Int, rgba:Bytes} {
+	static function raw(path:String, side:Int):LinuxImage {
 		var lr = Raw.libraw_init(0);
 		if (lr.isNull()) throw ImageError.unsupported("SystemImages: libraw");
 		function fail(e:ImageError):Dynamic {
@@ -213,6 +294,16 @@ class LinuxImages {
 		if (Arena.scopedValue(a -> Raw.libraw_open_file(lr, a.cstring(path))) != 0) fail(ImageError.unsupported("SystemImages: libraw cannot read it"));
 		var w = Raw.libraw_get_iwidth(lr), h = Raw.libraw_get_iheight(lr);
 		try ImageLimits.check("SystemImages", w, h, 4) catch (e:ImageError) fail(e);
+		if (side > 0) {
+			var preview = try rawPreview(path, lr, side, w, h) catch (_:ImageError) null catch (e:Dynamic) {
+				Raw.libraw_close(lr);
+				throw e;
+			};
+			if (preview != null) {
+				Raw.libraw_close(lr);
+				return preview;
+			}
+		}
 		if (Raw.libraw_unpack(lr) != 0 || Raw.libraw_dcraw_process(lr) != 0) fail(ImageError.corrupt("SystemImages: libraw cannot decode it"));
 		var err:Ptr<Int32> = LibC.malloc(8);
 		var im:Ptr<UInt8> = cast Raw.libraw_dcraw_make_mem_image(lr, cast err);
@@ -236,6 +327,49 @@ class LinuxImages {
 		Raw.libraw_close(lr);
 		if (!ok) throw ImageError.unsupported("SystemImages: libraw's image is not 8-bit RGB");
 		return {width: pw, height: ph, rgba: rgba};
+	}
+
+	static function rawPreview(path:String, lr:Ptr, side:Int, w:Int, h:Int):Null<LinuxImage> {
+		if (Raw.libraw_unpack_thumb(lr) != 0) return null;
+		var img = Raw.libraw_dcraw_make_mem_thumb(lr, Ptr.nil());
+		if (img.isNull()) return null;
+		var fields:Ptr<Int32> = cast img;
+		var n = fields[3], bytes = null;
+		try {
+			// (LIBRAW_IMAGE_JPEG; JPEG data after the fixed header, with EXIF)
+			if (fields[0] == 1 && n > 0) {
+				ImageLimits.memory("SystemImages", n);
+				bytes = Bytes.alloc(n);
+				BytesPtr.copyIn(bytes, 0, img.add(16), n);
+			}
+		} catch (e:Dynamic) {
+			Raw.libraw_dcraw_clear_mem(img);
+			throw e;
+		}
+		Raw.libraw_dcraw_clear_mem(img);
+		if (bytes == null) return null;
+		var size = JpegDecoder.size(bytes);
+		if (size == null) return null;
+		var long = Std.int(Math.max(size.width, size.height));
+		if (long < side / 2) return null;
+		var d = JpegDecoder.decode(bytes, null, JpegDecoder.scaleFor(long, long, side, side));
+		// (a preview without EXIF of its own: the RAW's IFD0 orientation, as
+		// libraw's whole decode applies it)
+		var o = helder.image.Exif.orientation(bytes), up = {width: d.width, height: d.height, rgba: d.rgba};
+		if (o == 1) up = helder.image.Exif.apply(d.rgba, d.width, d.height, o = helder.image.Exif.orientation(head(path, 64 << 10)));
+		var turn = helder.image.Exif.swaps(o);
+		return {width: up.width, height: up.height, rgba: up.rgba, sourceWidth: turn ? h : w, sourceHeight: turn ? w : h};
+	}
+
+	// (the file's first max bytes, fewer when it is shorter)
+	static function head(path:String, max:Int):Bytes {
+		var f = sys.io.File.read(path, true), b = Bytes.alloc(max), n = 0;
+		try while (n < max) n += f.readBytes(b, n, max - n) catch (_:haxe.io.Eof) {} catch (e:Dynamic) {
+			f.close();
+			throw e;
+		}
+		f.close();
+		return b.sub(0, n);
 	}
 }
 
@@ -263,6 +397,9 @@ class Heif {
 	static function heif_context_get_primary_image_handle(ctx:Ptr, out:Ptr):hxmc.I64;
 	static function heif_image_handle_get_width(h:Ptr):Int;
 	static function heif_image_handle_get_height(h:Ptr):Int;
+	static function heif_image_handle_get_number_of_thumbnails(h:Ptr):Int;
+	static function heif_image_handle_get_list_of_thumbnail_IDs(h:Ptr, ids:Ptr, n:Int):Int;
+	static function heif_image_handle_get_thumbnail(h:Ptr, id:Int, out:Ptr):hxmc.I64;
 	static function heif_image_handle_release(h:Ptr):Void;
 	static function heif_decode_image(h:Ptr, out:Ptr, colorspace:Int, chroma:Int, options:Ptr):hxmc.I64;
 	static function heif_image_get_width(img:Ptr, channel:Int):Int;
@@ -293,6 +430,8 @@ class Raw {
 	static function libraw_get_iwidth(lr:Ptr):Int;
 	static function libraw_get_iheight(lr:Ptr):Int;
 	static function libraw_unpack(lr:Ptr):Int;
+	static function libraw_unpack_thumb(lr:Ptr):Int;
+	static function libraw_dcraw_make_mem_thumb(lr:Ptr, err:Ptr):Ptr;
 	static function libraw_dcraw_process(lr:Ptr):Int;
 	static function libraw_dcraw_make_mem_image(lr:Ptr, err:Ptr):Ptr;
 	static function libraw_dcraw_clear_mem(img:Ptr):Void;

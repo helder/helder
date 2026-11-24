@@ -5,6 +5,9 @@
   "license": "MIT",
   "author": "Ben Merckx",
   "homepage": "https://github.com/helder/helder/tree/main/apps/viewer",
+  "haxe": {
+    "classPath": ["src"]
+  },
   "helder": {
     "main": "Main"
   }
