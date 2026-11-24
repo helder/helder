@@ -24,6 +24,8 @@ typedef SurfaceProps = {
 	?width:helder.view.graph.Read<Int>,
 	?height:helder.view.graph.Read<Int>,
 	?theme:helder.view.graph.Read<Dynamic>,
+	// (a first value not opaque, "transparent" or a colour's alpha: a
+	// transparent window, what is behind it seen through: Window's)
 	?background:helder.view.graph.Read<Dynamic>,
 	// dark or light (default: the system's appearance, UiWindow.dark)
 	?dark:helder.view.graph.Read<Bool>,
@@ -156,9 +158,12 @@ class UiWindow {
 	// (HELDER_DAMAGE: "full" draws each frame whole, "flash" shows what each frame drew: Renderer.keep)
 	static final damage = Sys.getEnv("HELDER_DAMAGE") ?? "";
 
-	// (antialias: the device's frames multisampled, 4 samples a pixel, where the GPU has them)
-	public function new(title:String, width:Int, height:Int, ?text:TextEngine, antialias = true, titlebar:helder.os.TitleBar = Standard) {
-		window = new helder.os.Window(title, width, height, titlebar);
+	// (antialias: the device's frames multisampled, 4 samples a pixel, where
+	// the GPU has them; transparent: helder.os's, the background's alpha
+	// showing what is behind the window)
+	public function new(title:String, width:Int, height:Int, ?text:TextEngine, antialias = true, titlebar:helder.os.TitleBar = Standard,
+			transparent = false) {
+		window = new helder.os.Window(title, width, height, titlebar, transparent);
 		// (Android: text fields get the soft keyboard and the input method)
 		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) helder.os.android.TextInput.enable(); #end
 		#if (helder.headless || helder.soft)
@@ -445,17 +450,22 @@ class UiWindow {
 		drawnW = w;
 		drawnH = h;
 		drawnScale = s;
-		var c = pass.colors[0].clear;
+		// (premultiplied, as every pixel drawn; opaque where the window is)
+		var c = pass.colors[0].clear, bg = shown();
 		@:privateAccess {
-			c.r = background.r / 255;
-			c.g = background.g / 255;
-			c.b = background.b / 255;
+			var a = bg.a / 255;
+			c.r = bg.r / 255 * a;
+			c.g = bg.g / 255 * a;
+			c.b = bg.b / 255 * a;
+			c.a = a;
 		}
 		// (painted first: the passes a texture drawn needs, a <Scene>'s, recorded before the frame's)
 		renderer.tiles = tiled && capture == null;
-		renderer.keep = renderer.tiles && damage != "full" && !planes;
+		// (a see-through background drawn whole each frame: a damaged
+		// rectangle is cleared by its background drawn over what was there)
+		renderer.keep = renderer.tiles && damage != "full" && !planes && bg.a == 255;
 		renderer.flash = damage == "flash";
-		renderer.background = background;
+		renderer.background = bg;
 		renderer.begin(device.width, device.height);
 		#if (!helder.headless && !helder.soft && hxmc.target != "wasm32-wasi")
 		var c = capture == null ? compositor : null;
@@ -499,6 +509,10 @@ class UiWindow {
 		#end
 	}
 
+	// (the background drawn: its alpha where the window is transparent)
+	function shown():Color
+		return window.transparent ? background : Color.rgb((background : Int) & 0xFFFFFF);
+
 	// (the glyph atlas it draws with: the renderer's, the CPU's canvas')
 	function atlas():helder.text.GlyphAtlas {
 		#if (helder.headless || helder.soft)
@@ -529,7 +543,7 @@ class UiWindow {
 		drawnScale = s;
 		var c = soft;
 		c.scale = scale;
-		c.begin(w, h, background);
+		c.begin(w, h, shown());
 		ui.paint(c);
 		if (c.again) redraw = true;
 		if (capture != null) {
@@ -842,8 +856,9 @@ class UiWindow {
 		var web = Platform.os() == 3;
 		var width:Null<Int> = Render.read(props.width), height:Null<Int> = Render.read(props.height);
 		var title:Null<String> = Render.read(props.title);
+		var bg:Dynamic = Render.read(props.background);
 		var w = new UiWindow(title ?? "helder", width ?? (web ? 0 : 800), height ?? (web ? 0 : 600), null, props.antialias != false,
-			props.titlebar == "inset" ? Inset : Standard);
+			props.titlebar == "inset" ? Inset : Standard, bg != null && colour(bg).a < 255);
 		// (each reactive prop followed after its first value)
 		follow(props.title, (v:String) -> w.window.title = v);
 		follow(props.width, (_:Int) -> resize(w, props));

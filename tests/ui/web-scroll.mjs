@@ -23,6 +23,8 @@ const files = {
 	'/scroll.wasm': wasm,
 	'/os/browser.mjs': path.join(here, '../../src/helder/os/browser.mjs'),
 	'/os/imports.mjs': path.join(here, '../../src/helder/os/imports.mjs'),
+	'/os/thread.mjs': path.join(here, '../../src/helder/os/thread.mjs'),
+	'/os/worker.mjs': path.join(here, '../../src/helder/os/worker.mjs'),
 	'/gfx/imports.mjs': path.join(here, '../../src/helder/gfx/imports.mjs'),
 	'/text/imports.mjs': path.join(here, '../../src/helder/text/imports.mjs'),
 	'/ui/imports.mjs': path.join(here, '../../src/helder/ui/imports.mjs'),
@@ -34,8 +36,8 @@ const page = `<!doctype html><title>Scroll</title><body style="margin:0">
 <script type="module">
 import { run } from './os/browser.mjs';
 window.log = [];
-window.start = async () => {
-	window.r = run('scroll.wasm', { imports: ['os/imports.mjs', 'gfx/imports.mjs', 'text/imports.mjs', 'ui/imports.mjs'], canvas: 'c', gfx: 'webgl2',
+window.start = async (worker) => {
+	window.r = run('scroll.wasm', { imports: ['os/imports.mjs', 'gfx/imports.mjs', 'text/imports.mjs', 'ui/imports.mjs'], canvas: 'c', gfx: 'webgl2', worker,
 		fonts: ['Inter.ttf'], stdout: (s) => window.log.push(s), stderr: (s) => window.log.push('stderr: ' + s) });
 	window.result = await window.r;
 };
@@ -53,11 +55,11 @@ const server = createServer(async (req, res) => {
 }).listen(0);
 const url = `http://localhost:${server.address().port}/`;
 const browser = await pw.chromium.launch({ args: ['--use-angle=swiftshader'] });
-let failed = 0;
+let failed = 0, worker = false;
 const check = (what, ok, detail = '') => {
 	if (!ok) {
 		failed++;
-		console.log('web-scroll: FAIL: ' + what + (detail ? ': ' + detail : ''));
+		console.log('web-scroll: FAIL' + (worker ? ' (in a worker)' : '') + ': ' + what + (detail ? ': ' + detail : ''));
 	}
 };
 
@@ -66,7 +68,7 @@ async function open(options) {
 	const p = await ctx.newPage();
 	p.on('pageerror', (e) => check('no page error', false, e.message));
 	await p.goto(url);
-	await p.evaluate(() => window.start());
+	await p.evaluate((w) => window.start(w), worker);
 	await p.waitForFunction(() => window.log.some((l) => l.startsWith('scroll ')) && document.querySelector('canvas').hxmcScrolls, null, { timeout: 15000 });
 	await p.waitForTimeout(200);
 	return { ctx, p };
@@ -83,7 +85,8 @@ async function state(p) {
 	return { ...s, views };
 }
 
-try {
+// (the page's thread, then the program in a worker)
+try { for (worker of [false, true]) {
 	// a desktop's wheel, clicks and keys
 	{
 		const { ctx, p } = await open({ viewport: { width: 400, height: 300 } });
@@ -162,7 +165,7 @@ try {
 		check('a swipe pans the page natively, the program following', s.page > 0 && Math.abs(s.views[0][0] - s.page) < 1, JSON.stringify(s));
 		await ctx.close();
 	}
-} finally {
+} } finally {
 	await browser.close();
 	server.close();
 }

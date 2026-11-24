@@ -109,7 +109,8 @@ class X11Window {
 			}
 		}
 		#else
-		id = Xlib.XCreateSimpleWindow(display, Xlib.XRootWindow(display, screen), 0, 0, width, height, 0, black, black);
+		id = owner.clear ? clearWindow(screen, width, height) : 0;
+		if (id == 0) id = Xlib.XCreateSimpleWindow(display, Xlib.XRootWindow(display, screen), 0, 0, width, height, 0, black, black);
 		#end
 		Arena.scoped(a -> {
 			Xlib.XStoreName(display, id, a.cstring(title));
@@ -143,6 +144,7 @@ class X11Window {
 		}
 		Xlib.XFlush(display);
 		surface = new Surface(X11, display, Ptr.ofI64(id), width, height);
+		if (visual != 0) surface.see(true, visual);
 		queueLock.acquire();
 		open.push(this);
 		queueLock.release();
@@ -300,6 +302,31 @@ class X11Window {
 			readLock.release();
 		}
 	}
+
+	// (a transparent window's visual, 0: opaque)
+	var visual = 0;
+
+	// (a window of a 32-bit ARGB visual where a compositing manager runs
+	// (_NET_WM_CM_S0 owned): its alpha composed; 0: none, opaque then)
+	function clearWindow(screen:Int, width:Int, height:Int):Int64
+		return Arena.scopedValue(a -> {
+			if (Xlib.XGetSelectionOwner(display, Xlib.XInternAtom(display, a.cstring("_NET_WM_CM_S" + screen), 0)) == 0) {
+				Sys.println("helder.os: no compositing manager on X11: the window opaque");
+				return (0 : Int64);
+			}
+			var info:Ptr<Int64> = a.alloc(64);
+			// (TrueColor 4)
+			if (Xlib.XMatchVisualInfo(display, screen, 32, 4, info) == 0) {
+				Sys.println("helder.os: no 32-bit visual on X11: the window opaque");
+				return (0 : Int64);
+			}
+			var v = Ptr.ofI64(info[0]), root = Xlib.XRootWindow(display, screen), at:Ptr<Int64> = a.alloc(112);
+			LibC.memset(at, 0, 112);
+			at[12] = Xlib.XCreateColormap(display, root, v, 0);
+			visual = haxe.Int64.toInt(info[1]);
+			// (CWBackPixel, CWBorderPixel, CWColormap; InputOutput 1)
+			return Xlib.XCreateWindow(display, root, 0, 0, width, height, 0, 32, 1, v, (1 << 1) | (1 << 3) | (1 << 13), at);
+		});
 
 	// the title: WM_NAME (Latin-1 for old window managers) and _NET_WM_NAME (UTF-8)
 	function setTitle(t:String)

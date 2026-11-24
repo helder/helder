@@ -113,12 +113,15 @@ class Win32Window {
 			User32.AdjustWindowRectEx(r, STYLE, 0, 0);
 			// (inset: no caption above the client area)
 			if (owner.titlebar == Inset) r.value.top = 0;
-			User32.CreateWindowExW(0, className, a.wstring(title), STYLE, WM.CW_USEDEFAULT, WM.CW_USEDEFAULT, r.value.right - r.value.left,
+			// (transparent: no redirection surface, its pixels DirectComposition's alone)
+			User32.CreateWindowExW(owner.clear ? 0x00200000 : 0, className, a.wstring(title), STYLE, WM.CW_USEDEFAULT, WM.CW_USEDEFAULT, r.value.right - r.value.left,
 				r.value.bottom - r.value.top, Ptr.nil(), Ptr.nil(), instance, Ptr.nil());
 		});
 		if (hwnd.isNull()) throw "helder.os: CreateWindowExW failed (error " + Kernel32.GetLastError() + ")";
 		Shell32.DragAcceptFiles(hwnd, 1);
 		surface = new Surface(Win32, instance, hwnd, w, h);
+		// (its swap chain one for composition, premultiplied: D3D11Backend)
+		surface.see(owner.clear);
 		open.push(this);
 		// (the frame computed again, without the caption: SWP_FRAMECHANGED, NOMOVE, NOSIZE, NOZORDER, NOACTIVATE; once the
 		// window is open's, so that the procedure's WM_NCCALCSIZE is ours: CreateWindowExW's went to DefWindowProc, a caption)
@@ -309,6 +312,19 @@ class Win32Window {
 				User32.SetWindowLongPtrW(hwnd, -16, savedStyle);
 				User32.SetWindowPos(hwnd, Ptr.nil(), saved[0], saved[1], saved[2] - saved[0], saved[3] - saved[1], 0x20 | 0x200 | 0x4 | 0x10);
 			}
+		}));
+	}
+
+	// the frame's shadow (DWMWA_NCRENDERING_POLICY: DWMNCRP_DISABLED 1, its frame not drawn by DWM: no shadow; DWMNCRP_ENABLED 2)
+	var shadow = true;
+
+	function setShadow(on:Bool) {
+		if (on == shadow) return;
+		shadow = on;
+		OsThread.run(() -> Arena.scoped(a -> {
+			var v:Ptr<Int32> = a.alloc(4);
+			v.value = on ? 2 : 1;
+			Dwmapi.DwmSetWindowAttribute(hwnd, 2, v, 4);
 		}));
 	}
 

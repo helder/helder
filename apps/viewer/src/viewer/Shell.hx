@@ -57,6 +57,37 @@ class Shell implements Markup {
 		}
 	});
 
+	// the types it opens (helder.json's fileHandlers too: a macOS bundle's)
+	public static final TYPES = [
+		{mime: "image/jpeg", extensions: ["jpg", "jpeg", "jfif"]},
+		{mime: "image/png", extensions: ["png", "apng"]},
+		{mime: "image/gif", extensions: ["gif"]},
+		{mime: "image/webp", extensions: ["webp"]},
+		{mime: "application/pdf", extensions: ["pdf"]},
+		// (the system's decoders': WIC, ImageIO, Linux's libtiff, libheif and libavif where installed)
+		{mime: "image/tiff", extensions: ["tif", "tiff"]},
+		{mime: "image/heic", extensions: ["heic", "heif"]},
+		{mime: "image/avif", extensions: ["avif"]}
+	].concat(helder.media.Decoders.available() ? [
+		// (helder.media's, where the system decodes them: FolderModel.MEDIA)
+		{mime: "video/mp4", extensions: ["mp4", "m4v"]},
+		{mime: "video/quicktime", extensions: ["mov"]},
+		{mime: "video/webm", extensions: ["webm"]},
+		{mime: "video/x-matroska", extensions: ["mkv"]},
+		{mime: "audio/mp4", extensions: ["m4a"]},
+		{mime: "audio/mpeg", extensions: ["mp3"]},
+		{mime: "audio/flac", extensions: ["flac"]}
+	] : []);
+
+	// the viewer's own font (DejaVu Sans, a subset: fonts/README.md), added
+	// only when the system has none it finds (a bare Wine prefix, a minimal
+	// container): never stopped for lack of one
+	public static function fallbackFont() {
+		var fonts = helder.text.SystemFonts.get();
+		if (fonts.match("sans-serif") == null) fonts.add(helder.asset.Asset.embed("fonts/DejaVuSans-viewer.ttf"));
+	}
+
+	#if (hxmc.target != "wasm32-wasi")
 	public static function main(args:Array<String>) {
 		var mac = hxmc.Platform.os() == 1;
 		var store = try helder.os.Store.open("helder-viewer") catch (_:Dynamic) null;
@@ -131,7 +162,7 @@ class Shell implements Markup {
 		// (File's Open Recent: the last eight files opened, kept in the store)
 		var recent = store == null || store.get("recent") == null ? [] : [for (r in store.get("recent").split("\n")) if (r != "") r];
 		var bar:Null<helder.ui.menu.Menus.MenuBar> = null;
-		var places = [for (p in x.sidebar.places) {name: p.name, path: p.path}];
+		var places = [for (p in x.sidebar.places.value) {name: p.name, path: p.path}];
 		viewer.onOpened = p -> {
 			recent.remove(p);
 			recent.unshift(p);
@@ -205,36 +236,6 @@ class Shell implements Markup {
 		</Surface>);
 	}
 
-	// the types it opens (helder.webmanifest's file_handlers too: a macOS bundle's)
-	public static final TYPES = [
-		{mime: "image/jpeg", extensions: ["jpg", "jpeg", "jfif"]},
-		{mime: "image/png", extensions: ["png", "apng"]},
-		{mime: "image/gif", extensions: ["gif"]},
-		{mime: "image/webp", extensions: ["webp"]},
-		{mime: "application/pdf", extensions: ["pdf"]},
-		// (the system's decoders': WIC, ImageIO, Linux's libtiff, libheif and libavif where installed)
-		{mime: "image/tiff", extensions: ["tif", "tiff"]},
-		{mime: "image/heic", extensions: ["heic", "heif"]},
-		{mime: "image/avif", extensions: ["avif"]}
-	].concat(helder.media.Decoders.available() ? [
-		// (helder.media's, where the system decodes them: FolderModel.MEDIA)
-		{mime: "video/mp4", extensions: ["mp4", "m4v"]},
-		{mime: "video/quicktime", extensions: ["mov"]},
-		{mime: "video/webm", extensions: ["webm"]},
-		{mime: "video/x-matroska", extensions: ["mkv"]},
-		{mime: "audio/mp4", extensions: ["m4a"]},
-		{mime: "audio/mpeg", extensions: ["mp3"]},
-		{mime: "audio/flac", extensions: ["flac"]}
-	] : []);
-
-	// the viewer's own font (DejaVu Sans, a subset: fonts/README.md), added
-	// only when the system has none it finds (a bare Wine prefix, a minimal
-	// container): never stopped for lack of one
-	public static function fallbackFont() {
-		var fonts = helder.text.SystemFonts.get();
-		if (fonts.match("sans-serif") == null) fonts.add(helder.asset.Asset.embed("fonts/DejaVuSans-viewer.ttf"));
-	}
-
 	// (a PDF's pages' sizes on a pool's thread: the document opened there, kept for its pages)
 	static function jobSizes(path:String, done:PdfPages.PdfSizes->Void)
 		Async.launch(_ -> helder.jobs.Jobs.job(PdfPages.sizesOf).run(path)).onCompletion((r, _) ->
@@ -297,10 +298,12 @@ class Shell implements Markup {
 		var last = store == null ? null : store.get("dir");
 		if (last != null && x.files.stat(last)?.kind == Folder) return last;
 		for (kind in [helder.os.Places.PlaceKind.Pictures, helder.os.Places.PlaceKind.Home])
-			for (p in x.sidebar.places)
+			for (p in x.sidebar.places.value)
 				if (p.kind == kind) return p.path;
 		return Sys.getCwd();
 	}
+
+	#end
 
 	// the actions on the root (its key context "Viewer", with browser or
 	// full, fullscreen, pdf, media, goto and about while they are;
@@ -337,6 +340,7 @@ class Shell implements Markup {
 		}, a -> a == About ? Enabled : Unhandled);
 	}
 
+	#if (hxmc.target != "wasm32-wasi")
 	// (the system's file manager at the file: Finder, Explorer, the FileManager1 portal's caller, else the folder opened)
 	static function reveal(path:String) {
 		var os = Sys.systemName();
@@ -361,6 +365,8 @@ class Shell implements Markup {
 			} catch (_:Dynamic) -1;
 			if (code != 0 && otherwise != null) otherwise();
 		});
+
+	#end
 
 	// the window's content: the browser, or a file full size over it (to
 	// assistive technology the one shown alone)

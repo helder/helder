@@ -11,8 +11,9 @@
 // field's keyboard as its input's inputmode, enterkeyhint, autocapitalize,
 // autocorrect and spellcheck; the soft keyboard (the visual viewport
 // shorter than the window, as a phone's keyboard leaves it: a stand-in,
-// headless Chromium shows none) as the window's keyboard.
-//   node tests/ui/web-field.mjs <WebField.wasm> [screenshot.png]
+// headless Chromium shows none) as the window's keyboard. With worker, the
+// same with the program in a worker (browser.mjs's option worker).
+//   node tests/ui/web-field.mjs <WebField.wasm> [screenshot.png] [worker]
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -23,11 +24,15 @@ const require = createRequire(import.meta.url);
 let pw;
 try { pw = require('playwright'); } catch { pw = require(path.join(process.execPath, '../../lib/node_modules/playwright')); }
 const here = path.dirname(fileURLToPath(import.meta.url));
-const [wasm, shot] = process.argv.slice(2);
+// (worker: the program in a worker, the page passing input on)
+const args = process.argv.slice(2), worker = args.includes('worker');
+const [wasm, shot] = args.filter((a) => a !== 'worker');
 const files = {
 	'/field.wasm': wasm,
 	'/os/browser.mjs': path.join(here, '../../src/helder/os/browser.mjs'),
 	'/os/imports.mjs': path.join(here, '../../src/helder/os/imports.mjs'),
+	'/os/thread.mjs': path.join(here, '../../src/helder/os/thread.mjs'),
+	'/os/worker.mjs': path.join(here, '../../src/helder/os/worker.mjs'),
 	'/gfx/imports.mjs': path.join(here, '../../src/helder/gfx/imports.mjs'),
 	'/text/imports.mjs': path.join(here, '../../src/helder/text/imports.mjs'),
 	'/ui/imports.mjs': path.join(here, '../../src/helder/ui/imports.mjs'),
@@ -40,8 +45,8 @@ const page = `<!doctype html><title>Fields</title><body style="margin:0">
 <script type="module">
 import { run } from './os/browser.mjs';
 window.log = [];
-window.start = async () => {
-	window.r = run('field.wasm', { imports: ['os/imports.mjs', 'gfx/imports.mjs', 'text/imports.mjs', 'ui/imports.mjs'], canvas: 'c', gfx: 'webgl2',
+window.start = async (worker) => {
+	window.r = run('field.wasm', { imports: ['os/imports.mjs', 'gfx/imports.mjs', 'text/imports.mjs', 'ui/imports.mjs'], canvas: 'c', gfx: 'webgl2', worker,
 		fonts: ['Inter.ttf'], stdout: (s) => window.log.push(s), stderr: (s) => window.log.push('stderr: ' + s) });
 	window.result = await window.r;
 };
@@ -64,9 +69,17 @@ const errors = [];
 p.on('pageerror', (e) => errors.push(e.message));
 p.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 await p.goto(url);
-await p.evaluate(() => window.start());
+await p.evaluate((w) => window.start(w), worker);
 await p.waitForFunction(() => window.log.some((l) => l.startsWith('boxes ')), null, { timeout: 15000 });
-const settle = () => p.waitForTimeout(150);
+// (then a frame drawn: headless Chromium holds the page's frames back a few hundred ms at times, as a text field takes the focus)
+const settle = async () => {
+	await p.waitForTimeout(150);
+	await p.evaluate(() => {
+		const r = window.result.host.gfx.readPixels();
+		window.result.host.os.redraw();
+		return r.then(() => 0);
+	});
+};
 await settle();
 // the latest line: the boxes (centres, in the page) and the state
 const state = async () => {
@@ -173,8 +186,9 @@ await p.waitForTimeout(300);
 check('and back: none', s.keyboard === '0', JSON.stringify(s));
 check('no errors', errors.length === 0, errors.join(' | '));
 const failed = results.filter((r) => !r.ok);
-for (const r of failed) console.log(`web-field.mjs: FAIL: ${r.what}: ${r.detail}`);
-console.log(`web-field.mjs: ${results.length} checks` + (failed.length ? `, ${failed.length} FAILED` : ', ok'));
+const mode = worker ? ' (in a worker)' : '';
+for (const r of failed) console.log(`web-field.mjs${mode}: FAIL: ${r.what}: ${r.detail}`);
+console.log(`web-field.mjs${mode}: ${results.length} checks` + (failed.length ? `, ${failed.length} FAILED` : ', ok'));
 await browser.close();
 server.close();
 process.exit(failed.length ? 1 : 0);

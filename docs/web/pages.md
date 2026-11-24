@@ -38,6 +38,7 @@ class Site implements Markup {
 - **Hydration:** the browser takes over the HTML the build wrote, claiming each node instead of making it again.
 - **JavaScript islands:** components compiled to small JavaScript bundles, hydrated when visible, idle or clicked.
 - **WebAssembly islands:** a UI or a GPU canvas in a page, stopped when scrolled away to give its memory back.
+- **Off the page's thread:** a program runs in a Web Worker on its canvas, so the page's own scripts never hold its frames back.
 - **JavaScript calling WebAssembly:** typed exports between a page's scripts and your module.
 - **A whole app on the web:** `helder build --target web` makes a page that fills the window with your `<Surface>`.
 

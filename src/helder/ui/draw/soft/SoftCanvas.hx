@@ -9,6 +9,7 @@ import helder.image.Resize;
 import helder.text.GlyphAtlas;
 import helder.ui.*;
 import helder.ui.draw.DrawText;
+import helder.ui.draw.Backdrop;
 
 // helder.ui's Canvas on the CPU, no GPU: what the Renderer draws, into a
 // helder.canvas Bitmap (RGBA8, premultiplied) through Quads, UiShader's
@@ -297,9 +298,52 @@ class SoftCanvas implements TextureCanvas implements GpuPlaceholder.Gpuless {
 		quad(x0, y0, x1, y1, 0, 0, 1, 1, Color.WHITE, 0, 2, 0, 1);
 	}
 
-	// (a pass recorded into a display list, replayed: run now, before the texture it fills is drawn)
-	public function pass(f:Any)
-		if (softGpu != null) softGpu.run(cast f);
+	// (a pass recorded into a display list, replayed: run now, before the texture it fills is drawn;
+	// a backdrop: captured now)
+	public function pass(f:Any) {
+		if (Std.isOfType(f, Backdrop)) capture(cast f) else if (softGpu != null) softGpu.run(cast f);
+	}
+
+	// (what is drawn so far under b's rectangle, in the target drawn into
+	// (the frame, a group), painted first (the bands drawn up to here): its
+	// pixels into a texture on the CPU's device; under a transform its bounds)
+	@:hxmc.unsafe(gc) function capture(b:Backdrop) {
+		var s = scale, x0 = (b.x + tx) * s, y0 = (b.y + ty) * s, x1 = (b.x + b.width + tx) * s, y1 = (b.y + b.height + ty) * s;
+		if (!flat) {
+			var ax = ma * x0 + mc * y0 + me, bx = ma * x1 + mc * y0 + me, cx = ma * x0 + mc * y1 + me, dx = ma * x1 + mc * y1 + me;
+			var ay = mb * x0 + md * y0 + mf, by = mb * x1 + md * y0 + mf, cy = mb * x0 + md * y1 + mf, dy = mb * x1 + md * y1 + mf;
+			x0 = Math.min(Math.min(ax, bx), Math.min(cx, dx));
+			x1 = Math.max(Math.max(ax, bx), Math.max(cx, dx));
+			y0 = Math.min(Math.min(ay, by), Math.min(cy, dy));
+			y1 = Math.max(Math.max(ay, by), Math.max(cy, dy));
+		}
+		b.scale = s;
+		b.fx = x0;
+		b.fy = y0;
+		paint();
+		var q = quads, t = q.target;
+		var gx0 = Std.int(Math.max(Math.floor(x0), q.ox)), gy0 = Std.int(Math.max(Math.floor(y0), q.oy));
+		var gx1 = Std.int(Math.min(Math.ceil(x1), q.ox + q.tw)), gy1 = Std.int(Math.min(Math.ceil(y1), q.oy + q.th));
+		var w = gx1 - gx0, h = gy1 - gy0;
+		if (w <= 0 || h <= 0) {
+			b.texture = null;
+			return;
+		}
+		var d = gpu().device, tex:Null<helder.gfx.Texture> = b.held;
+		if (tex == null || b.tw != w || b.th != h) {
+			if (tex != null) d.destroyTexture(tex);
+			b.held = tex = d.createTexture({width: w, height: h});
+		}
+		var px = Bytes.alloc(w * h * 4);
+		for (r in 0...h)
+			hxmc.unsafe.BytesPtr.copyIn(px, r * w * 4, t.add(((gy0 - q.oy + r) * q.tw + gx0 - q.ox) * 4), w * 4);
+		d.writeTexture(tex, px);
+		b.texture = tex;
+		b.px = gx0;
+		b.py = gy0;
+		b.pw = b.tw = w;
+		b.ph = b.th = h;
+	}
 	#else
 	public function gpuTexture(t:Texture, id:Int, x:Float, y:Float, w:Float, h:Float, radius:Float = 0.0, ?corners:Corners)
 		rect(x, y, w, h, radius, GpuPlaceholder.COLOR, 0, 0, corners);

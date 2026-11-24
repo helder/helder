@@ -352,7 +352,8 @@ class Compositor implements RenderIdle {
 		lock.acquire();
 		var f = shown, s = device.surface;
 		// (one of another size than the window's now: a live resize's frame is the program's)
-		if (f == null || f.width != s.width || f.height != s.height || t - drained < period * 0.6
+		// (one with a backdrop: the program's, which draws what it reads at the offsets it drains)
+		if (f == null || f.backdrops > 0 || f.width != s.width || f.height != s.height || t - drained < period * 0.6
 			|| !turn && drained > routedAt && t - routedAt < period * 0.6) {
 			lock.release();
 			return;
@@ -496,10 +497,7 @@ class Compositor implements RenderIdle {
 		c.begin(Replay.BEGIN_PASS);
 		c.int(1);
 		c.int(cast LoadOp.Clear);
-		c.float((bg >> 16 & 0xFF) / 255);
-		c.float((bg >> 8 & 0xFF) / 255);
-		c.float((bg & 0xFF) / 255);
-		c.float(1);
+		CompositeFrame.clearTo(c, bg);
 		c.int(0);
 		c.int(0);
 		c.int(Replay.NONE);

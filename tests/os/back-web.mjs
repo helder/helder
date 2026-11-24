@@ -15,11 +15,14 @@ const require = createRequire(import.meta.url);
 let pw;
 try { pw = require('playwright'); } catch { pw = require(path.join(process.execPath, '../../lib/node_modules/playwright')); }
 const here = path.dirname(fileURLToPath(import.meta.url));
-const [wasm] = process.argv.slice(2);
+// (worker: the program in a worker, browser.mjs's option worker)
+const [wasm, thread] = process.argv.slice(2), worker = thread === 'worker', mode = worker ? ' (in a worker)' : '';
 const files = {
 	'/test.wasm': wasm,
 	'/os/browser.mjs': path.join(here, '../../src/helder/os/browser.mjs'),
 	'/os/imports.mjs': path.join(here, '../../src/helder/os/imports.mjs'),
+	'/os/thread.mjs': path.join(here, '../../src/helder/os/thread.mjs'),
+	'/os/worker.mjs': path.join(here, '../../src/helder/os/worker.mjs'),
 };
 const types = { '.mjs': 'text/javascript', '.wasm': 'application/wasm' };
 const page = `<!doctype html><title>BackWeb</title><body style="margin:0">
@@ -27,7 +30,7 @@ const page = `<!doctype html><title>BackWeb</title><body style="margin:0">
 <script type="module">
 import { run } from './os/browser.mjs';
 window.log = [];
-window.started = run('test.wasm', { imports: ['os/imports.mjs'], canvas: 'c', stdout: (s) => window.log.push(s), stderr: (s) => window.log.push('stderr: ' + s) });
+window.started = run('test.wasm', { imports: ['os/imports.mjs'], canvas: 'c', worker: ${worker}, stdout: (s) => window.log.push(s), stderr: (s) => window.log.push('stderr: ' + s) });
 </script>`;
 const server = createServer(async (req, res) => {
 	const p = new URL(req.url, 'http://x').pathname;
@@ -44,7 +47,7 @@ const browser = await pw.chromium.launch();
 let failed = 0;
 const check = (what, ok, detail) => {
 	if (!ok) failed++;
-	console.log(`back-web.mjs: ${ok ? 'ok' : 'FAIL'}: ${what}${ok ? '' : ': ' + detail}`);
+	console.log(`back-web.mjs${mode}: ${ok ? 'ok' : 'FAIL'}: ${what}${ok ? '' : ': ' + detail}`);
 };
 try {
 	const ctx = await browser.newContext();
@@ -135,7 +138,7 @@ try {
 	server.close();
 }
 if (failed > 0) {
-	console.log(`back-web.mjs: ${failed} FAILED`);
+	console.log(`back-web.mjs${mode}: ${failed} FAILED`);
 	process.exit(1);
 }
-console.log('back-web.mjs: ok');
+console.log(`back-web.mjs${mode}: ok`);

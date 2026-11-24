@@ -834,6 +834,8 @@ class WaylandWindow {
 		egl = WaylandEgl.wl_egl_window_create(wlSurface, bw, bh);
 		surface = new Surface(Wayland, display, egl, bw, bh);
 		#end
+		// (EGL's buffers are ARGB8888, premultiplied, as Blit's wl_shm ones, and no opaque region is set: the compositor blends them)
+		surface.see(owner.clear);
 		applyScale();
 		drawBar();
 		WaylandClient.wl_display_flush(display);

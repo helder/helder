@@ -15,6 +15,12 @@ import hxmc.unsafe.*;
 	static function XBlackPixel(d:Ptr, screen:Int):Int64;
 	static function XCreateSimpleWindow(d:Ptr, parent:Int64, x:Int, y:Int, width:Int, height:Int, borderWidth:Int, border:Int64,
 		background:Int64):Int64;
+	// (a transparent window's: a 32-bit TrueColor visual, its colormap; XVisualInfo's visual at 0, visualid at 8;
+	// XSetWindowAttributes' background_pixel at 8, border_pixel at 24, colormap at 96, 112 bytes)
+	static function XMatchVisualInfo(d:Ptr, screen:Int, depth:Int, cls:Int, info:Ptr):Int;
+	static function XCreateColormap(d:Ptr, w:Int64, visual:Ptr, alloc:Int):Int64;
+	static function XCreateWindow(d:Ptr, parent:Int64, x:Int, y:Int, width:Int, height:Int, borderWidth:Int, depth:Int, cls:Int, visual:Ptr,
+		mask:Int64, attributes:Ptr):Int64;
 	static function XDestroyWindow(d:Ptr, w:Int64):Int;
 	static function XStoreName(d:Ptr, w:Int64, name:Ptr):Int;
 	static function XResizeWindow(d:Ptr, w:Int64, width:Int, height:Int):Int;
