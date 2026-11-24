@@ -212,9 +212,10 @@ ImageBitmaps read from the window's canvas, WebGPU and WebGL2 alike);
 sticky and scroll-linked effects CSS's, iframes between the layers, an
 invisible scroller's offsets for drags the program follows.
 
-Also: Windows' touchpad scrolling (done on the web: a top-level scroller's
-content and, where they overlay, its scrollbars the browser's, in step
-with its scroll and Safari's rubber band).
+Also: Windows' touchpad scrolling; the web's scroll lag and Safari's
+rubber band (done: a top-level scroller's content and, where they
+overlay, its scrollbars the browser's, in step with its scroll and its
+rubber band).
 
 **Later**: decals, volumetric fog, a lightmap baker, soft bodies, multiplayer,
 a Vulkan back end (Android and Linux: async compute, timestamps, bindless),
