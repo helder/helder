@@ -1427,8 +1427,9 @@ class Run {
 		rmrf(b);
 		mkdirs(b);
 		for (d in DEMO_SHOTS) {
-			// (on the CPU but what draws with shaders of its own: fx's, the material's)
-			var args = ["run", "--headless"].concat(d.name.startsWith("fx") || d.name == "showreel-material" ? [] : ["--soft"]).concat([d.entry, "--scale", "0.5"])
+			// (on the CPU but fx's: its effects hash noise with sin, which every
+			// implementation computes apart, so its goldens are the GPU's)
+			var args = ["run", "--headless"].concat(d.name.startsWith("fx") ? [] : ["--soft"]).concat([d.entry, "--scale", "0.5"])
 				.concat(d.flags);
 			if (d.script != "") args = args.concat(["--script", d.script]);
 			for (t in d.at)
