@@ -148,6 +148,10 @@ class UiWindow {
 		window = new helder.os.Window(title, width, height, titlebar);
 		// (Android: text fields get the soft keyboard and the input method)
 		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) helder.os.android.TextInput.enable(); #end
+		// (Windows: the swap chain made for DirectComposition where the window's layers will be the system's)
+		#if ((!helder.os || helder.os == "windows") && !helder.headless && hxmc.target != "wasm32-wasi")
+		if (Platform.os() == 2) helder.gfx.d3d11.D3D11Backend.compose = DcLayers.asked();
+		#end
 		device = Device.create(window.surface, {antialias: antialias, thread: true});
 		renderer = new Renderer(device);
 		if (open.length == 0 && helder.os.App.trims.indexOf(trimAll) < 0) helder.os.App.trims.push(trimAll);

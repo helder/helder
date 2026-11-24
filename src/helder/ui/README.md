@@ -1620,8 +1620,34 @@ draws its next frame onto the window (`LayerSplit.fell`).
 three ways: system layers, the textured compositor, and the layers
 stalled (`HELDER_SYSTEM_LAYERS=stall`: no presentation reported), which
 must fall back while running (pixel for pixel the textured compositor's
-after). Windows' DirectComposition and Wayland's
-subsurfaces come later; X11 and headless stay on the textured compositor.
+after).
+
+On Windows the frames go to DirectComposition
+(`helder.ui.draw.DcLayers`): the window's swap chain is made for
+composition, a visual of a target on the window (under its child
+windows: an EDIT stays over what is drawn and moves as before; the web
+view too), the same split as visuals over it, each layer's pixels an
+`IDCompositionSurface` drawn by Direct3D 11 into BeginDraw's texture at
+its offset (never cleared whole: it may be an atlas). A scroll is a
+visual's offset, on whole pixels, a mover's 2D transform its visual's
+(turns too) and its opacity an effect group's; a rounded scroller's clip
+is a rectangle clip's corners. A surface keeps what it showed and its
+update lands with the commit, so a layer drawn again is drawn in one
+rectangle around what changed since its last draw (`LayerPlane.cut`). A
+frame that changes anything is one commit, after DirectComposition
+processed the last (its frame statistics: the display's pace); one that
+changes nothing commits nothing; one split into the window's layer alone
+is drawn onto the swap chain and presented as before, the stack taken out
+of the tree once that frame is queued. A node's `LayerSlot` is a visual
+(`DcLayers.visualFor`), cut to its box in its clip. No commit processed
+for 1.5 s, a call that fails or a lost device turn the layers off for
+good, the next frame the window's own; `HELDER_SYSTEM_LAYERS=0`, or no
+DirectComposition, keeps a swap chain of the window's own.
+`WinLayersWindow` (the window lane, CI's desktop-windows job) runs a list
+with a system layer, a rounded scroller and a moving box three ways
+(layers, `0`, `stall`).
+Wayland's subsurfaces come later; X11 and headless stay on the textured
+compositor.
 
 `AsyncScrollTest` scripts the wheel, eased notches, a trackpad's gesture
 and momentum past an end, a finger's fling, the keys, a thumb and a

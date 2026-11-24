@@ -10,9 +10,9 @@ import helder.gfx.Texture;
 // and their bounds; its buffer's size and where it is in the frame's
 // pixels; what it drew last (its quads in its pixels and their runs), what
 // changed since (damage, a history of its draws: what a buffer drawn some
-// draws ago misses, its quads cut to that: cut, ScLayers'; Core Animation
-// keeps no drawable's contents, so CaLayers draws a changed layer whole).
-// The system's layers extend it (CaLayers', ScLayers').
+// draws ago misses, its quads cut to that: cut, ScLayers' and DcLayers';
+// Core Animation keeps no drawable's contents, so CaLayers draws a changed
+// layer whole). The system's layers extend it (CaLayers', ScLayers', DcLayers').
 @:hxmc.unsafe(gc)
 class LayerPlane {
 	public static inline var BASE = 0;
@@ -278,8 +278,9 @@ class LayerPlane {
 
 	// what a buffer drawn at draw `at` (-1: never) misses of what it should
 	// show now, its quads cut to it (cutBytes...: background is the colour
-	// its rectangles are cleared to, 0xAARRGGBB); false: draw it whole
-	public function cut(at:Int, background:Int):Bool {
+	// its rectangles are cleared to, 0xAARRGGBB); one: a rectangle around
+	// it all (a DirectComposition surface's update is one); false: draw it whole
+	public function cut(at:Int, background:Int, one = false):Bool {
 		var k = serial - at, d = since;
 		if (at < 0 || k > history.length || whole()) return false;
 		d.clear();
@@ -290,6 +291,17 @@ class LayerPlane {
 				d.add(e[i], e[i + 1], e[i + 2], e[i + 3]);
 				i += 4;
 			}
+		}
+		if (one && d.count > 1) {
+			var x0 = d.x0(0), y0 = d.y0(0), x1 = d.x1(0), y1 = d.y1(0);
+			for (i in 1...d.count) {
+				x0 = Math.min(x0, d.x0(i));
+				y0 = Math.min(y0, d.y0(i));
+				x1 = Math.max(x1, d.x1(i));
+				y1 = Math.max(y1, d.y1(i));
+			}
+			d.clear();
+			d.add(x0, y0, x1, y1);
 		}
 		if (d.area() > 0.4 * pw * ph) return false;
 		var S = CompositeFrame.STRIDE, nq = quads.length, room = (d.count * (nq + 1)) * S;
