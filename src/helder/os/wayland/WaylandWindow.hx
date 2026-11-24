@@ -10,6 +10,9 @@ import helder.os.wayland.protocol.ViewporterProtocol;
 import helder.os.wayland.protocol.FractionalScaleV1Protocol;
 import helder.os.wayland.protocol.CursorShapeV1Protocol;
 import helder.os.wayland.protocol.TextInputUnstableV3Protocol;
+import helder.os.wayland.protocol.PresentationTimeProtocol;
+import helder.os.wayland.protocol.SinglePixelBufferV1Protocol;
+import helder.os.wayland.protocol.LinuxDmabufV1Protocol;
 import hxmc.unsafe.*;
 
 // helder.os.Window on Wayland (Linux with WAYLAND_DISPLAY set and
@@ -61,6 +64,13 @@ class WaylandWindow {
 	static var cursorShapes:WpCursorShapeManagerV1 = Ptr.nil();
 	static var cursorDevice:WpCursorShapeDeviceV1 = Ptr.nil();
 	static var textInputs:ZwpTextInputManagerV3 = Ptr.nil();
+	// (the system's layers': helder.ui.draw.WlLayers; the formats wl_shm and
+	// linux-dmabuf take, a dma-buf's as fourcc:modifier)
+	static var presentation:WpPresentation = Ptr.nil();
+	static var singlePixel:WpSinglePixelBufferManagerV1 = Ptr.nil();
+	static var dmabuf:ZwpLinuxDmabufV1 = Ptr.nil();
+	static final shmFormats:Array<Int> = [];
+	static final dmabufFormats:Array<String> = [];
 	// the seat's text input (text-input-unstable-v3; null: the compositor has none)
 	static var textInput:Null<WaylandTextInput> = null;
 	static var compositorVersion = 0;
@@ -237,7 +247,11 @@ class WaylandWindow {
 				compositorVersion = version < 6 ? version : 6;
 				compositor = bind(name, WlCompositor.iface, version, 6);
 			case "wl_subcompositor": subcompositor = bind(name, WlSubcompositor.iface, version, 1);
-			case "wl_shm": shm = bind(name, WlShm.iface, version, 1);
+			case "wl_shm":
+				shm = bind(name, WlShm.iface, version, 1);
+				var e = new WlShmEvents();
+				e.format = f -> shmFormats.push(f);
+				shm.listen(e);
 			case "xdg_wm_base":
 				wmBase = bind(name, XdgWmBase.iface, version, 5);
 				var e = new XdgWmBaseEvents();
@@ -262,6 +276,16 @@ class WaylandWindow {
 			case "wp_fractional_scale_manager_v1": fractional = bind(name, WpFractionalScaleManagerV1.iface, version, 1);
 			case "wp_cursor_shape_manager_v1": cursorShapes = bind(name, WpCursorShapeManagerV1.iface, version, 1);
 			case "zwp_text_input_manager_v3": textInputs = bind(name, ZwpTextInputManagerV3.iface, version, 1);
+			case "wp_presentation": presentation = bind(name, WpPresentation.iface, version, 1);
+			case "wp_single_pixel_buffer_manager_v1": singlePixel = bind(name, WpSinglePixelBufferManagerV1.iface, version, 1);
+			case "zwp_linux_dmabuf_v1":
+				// (3: its formats and modifiers as events, not a feedback's table)
+				if (version >= 3) {
+					dmabuf = bind(name, ZwpLinuxDmabufV1.iface, version, 3);
+					var e = new ZwpLinuxDmabufV1Events();
+					e.modifier = (f, hi, lo) -> dmabufFormats.push('$f:$hi:$lo');
+					dmabuf.listen(e);
+				}
 			case _:
 		}
 		if (!seat.isNull() && !textInputs.isNull() && textInput == null) textInput = new WaylandTextInput(textInputs.getTextInput(seat), textEvent);
@@ -1180,6 +1204,13 @@ class WaylandWindow {
 	static function barOf(s:Ptr):Null<WaylandWindow> {
 		for (w in open)
 			if (!w.bar.isNull() && (w.bar : Ptr) == s) return w;
+		return null;
+	}
+
+	// (the window of a Surface: the system's layers', helder.ui.draw.WlLayers)
+	static function of(s:Surface):Null<WaylandWindow> {
+		for (w in open)
+			if (w.surface == s) return w;
 		return null;
 	}
 

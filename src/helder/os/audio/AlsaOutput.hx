@@ -12,8 +12,9 @@ import sys.thread.Thread;
 // audio thread is ours: a loop that pulls a period from the callback and
 // writes it, recovering from underruns. The buffer is four periods.
 // "file:PATH" is ALSA's file plugin over its null device (what the stream
-// is given, written to PATH as it is: raw floats); neither paces: writes
-// return at once.
+// is given, written to PATH as it is: raw floats), paced here at the
+// clock as CoreAudio's file renderer is (a player's clock is the audio
+// heard); a "null" device is not: its writes return at once.
 @:allow(helder.os.audio)
 @:hxmc.unsafe(gc)
 class AlsaOutput {
@@ -23,11 +24,13 @@ class AlsaOutput {
 	var pcm = Ptr.nil();
 	final buffer:Ptr<Float32>;
 	var quit = false;
+	final paced:Bool;
 	final done = new Lock();
 	var error:Null<String>;
 
 	function new(owner:Audio, device:Null<String>) {
 		this.owner = owner;
+		paced = device != null && StringTools.startsWith(device, "file:");
 		if (loaded == null) {
 			var e = Alsa.load("libasound.so.2");
 			loaded = e == null ? "" : e;
@@ -64,9 +67,14 @@ class AlsaOutput {
 
 	// the audio thread
 	function run() {
-		var n = owner.frames, bytes = owner.channels * 4;
+		var n = owner.frames, bytes = owner.channels * 4, t0 = Sys.time(), given = 0.0;
 		try {
 			while (!quit) {
+				// (the file: a period's time after the one before, once its buffer is full)
+				if (paced && (given += n) > n * 4) {
+					var wait = t0 + (given - n * 4) / owner.sampleRate - Sys.time();
+					if (wait > 0) Sys.sleep(wait);
+				}
 				owner.pull(buffer, n);
 				var done = 0;
 				while (done < n && !quit) {

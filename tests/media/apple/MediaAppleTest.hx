@@ -136,9 +136,8 @@ class MediaAppleTest {
 		}
 		for (i in 0...samples.length)
 			if (i * 97 < left.length) worst = Math.max(worst, Math.abs(left[i * 97] - samples[i]));
-		// (Opus: libopus's from an Ogg copy ends where its last page says, ours at the track's duration)
-		var frames:Int = e.frames, slack = t.codec == Opus ? 960 : 0;
-		check('$key ${t.codec}: ${left.length} frames at ${d.rate}, its samples as ffmpeg\'s', d.rate == e.rate && Math.abs(left.length - frames) <= slack
+		var frames:Int = e.frames;
+		check('$key ${t.codec}: ${left.length} frames at ${d.rate}, its samples as ffmpeg\'s', d.rate == e.rate && left.length == frames
 			&& worst <= tolerance, 'ffmpeg ${frames}, the largest difference $worst');
 		d.close();
 		buf.free();

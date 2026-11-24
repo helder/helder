@@ -68,7 +68,17 @@
         "kind": {"enum": ["game", "app", "tool"]},
         "tags": {"type": "array", "maxItems": 5, "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,23}$"}},
         "source": {"type": "string", "pattern": "^https://", "description": "Where its source is (a GitHub repository's: the page's verified mark)."},
-        "screenshots": {"type": "array", "maxItems": 8, "items": {"type": "string"}, "description": "Images beside helder.json, an override (else the stories with store: true are rendered at a window's size, else one is taken of the program)."}
+        "screenshots": {"type": "array", "maxItems": 8, "items": {"type": "string"}, "description": "Images beside helder.json, an override (else the stories with store: true are rendered at a window's size, else one is taken of the program)."},
+        "downloads": {
+          "type": "object",
+          "description": "The desktops' packages on the project's page: a GitHub release's URL for each (helder.build links only to GitHub releases).",
+          "additionalProperties": false,
+          "properties": {
+            "macos": {"$ref": "#/$defs/release"},
+            "windows": {"$ref": "#/$defs/release"},
+            "linux": {"$ref": "#/$defs/release"}
+          }
+        }
       }
     },
     "listing": {
@@ -221,6 +231,7 @@
     }
   },
   "$defs": {
+    "release": {"type": "string", "maxLength": 300, "pattern": "^https://github\\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/releases(/[^\\s]*)?$", "description": "A GitHub release's page or one of its files."},
     "storeAttributes": {"type": "object", "additionalProperties": true, "description": "The store's own attributes, by its API's names, sent as they are (a field the store adds later works too). A string ${NAME} is the environment's NAME."},
     "store": {"type": "string", "pattern": "^https://", "description": "The app's page in this target's store (helder.run's page links it)."},
     "target": {"type": "object", "additionalProperties": false, "properties": {"publish": {"type": "array", "maxItems": 0}, "store": {"$ref": "#/$defs/store"}}}

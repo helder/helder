@@ -136,9 +136,10 @@ where the system allows, timed by the audio clock; a `<Video>` node with
 exact seeking and frame stepping, its controls the app's; the viewer
 playing video and audio beside images and PDFs. Done on macOS and iOS
 ([helder.media](src/helder/media/README.md): VideoToolbox, AudioToolbox,
-the viewer's videos), in browsers (WebCodecs), on Android (MediaCodec)
-and on Windows (Media Foundation, DXVA); Linux next (VAAPI, else the
-system's libavcodec).
+the viewer's videos), in browsers (WebCodecs), on Android (MediaCodec),
+on Windows (Media Foundation, DXVA) and on Linux (the system's
+libavcodec, VAAPI through it where a driver decodes, its frames as
+DMA-BUFs).
 
 **Games**
 - Physics: mesh and convex colliders, layers, triggers, contact events, stable stacks.
@@ -170,7 +171,8 @@ in `compute()`; GPU particles, cloth and soft bodies as its first users.
   frame, so they clip, stack and scroll with it. macOS and iOS hand their
   scrollers' content and moving layers to Core Animation, native views
   inside the layer tree; Android to SurfaceControl (API 33); Windows to
-  DirectComposition; video's layers on each; next Wayland. Ladybird's Compositor
+  DirectComposition; Wayland to subsurfaces (X11 keeps one layer); video's
+  layers on Apple, Android and Windows. Ladybird's Compositor
   (LibCompositing, BSD-2-Clause) is this design, as a process of its own.
 - Then Liquid Glass: `<glass>` is the system's own on iOS and macOS 26
   (UIGlassEffect, NSGlassEffectView, in the layer tree); next a shader

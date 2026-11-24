@@ -1,7 +1,7 @@
 #!/bin/sh
 # AudioTest (AudioTest.hx) through each back end's real API, without
 # speakers. Linux: ALSA's null device, then its file plugin (the samples
-# ALSA was given, checked exactly). macOS: the "file:" device (CoreAudio's
+# ALSA was given, checked exactly; paced at the clock by helder). macOS: the "file:" device (CoreAudio's
 # generic output unit, rendered at the clock's pace), then the default
 # output when the machine has one (exit 3: none). Windows (AudioTest.exe):
 # WASAPI on the default endpoint when the machine has one (exit 3: none);
@@ -9,8 +9,8 @@
 # plays through winealsa to an ALSA default made the file plugin: what
 # reaches ALSA is checked (Wine's mixer adds silence before it). The rate
 # of the callbacks (--rate) is checked where something paces them: a device,
-# CoreAudio's renderer; not ALSA's null and file sinks, which take samples
-# as fast as they come, nor Wine's mixer over them.
+# CoreAudio's renderer, helder's ALSA file output; not ALSA's null sink,
+# which takes samples as fast as they come, nor Wine's mixer over ALSA's.
 #   sh tests/os/audio.sh <dir with AudioTest> [out dir]
 set -e
 bin=$1
@@ -59,5 +59,5 @@ if [ "$(uname -s)" = Darwin ]; then
 	exit 0
 fi
 "$bin/AudioTest" null $frames
-"$bin/AudioTest" "file:$out/alsa.raw" $frames --expect "$out/alsa.raw"
+"$bin/AudioTest" "file:$out/alsa.raw" $frames --rate --expect "$out/alsa.raw"
 rm -f "$out/alsa.raw"

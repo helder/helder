@@ -228,7 +228,9 @@ class Scanner {
 		var args = elements(r, "arg");
 		var params = [], packs = [], slot = 0, ret = "Void", newIface = "Ptr.nil()", generic = false;
 		for (a in args) {
+			// (not the names of the request's own locals: its arena, its result)
 			var an = lowerCamel(a.get("name"));
+			if (an == "a" || an == "r" || an == "args") an += "_";
 			switch a.get("type") {
 				case "new_id":
 					if (a.get("interface") == null) {

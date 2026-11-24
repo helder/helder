@@ -36,6 +36,6 @@ npx helder publish --dry-run      # what would change, nothing uploaded
 - **Store listings:** the store page's text and screenshots, rendered from your app's stories at each store's sizes.
 - **Splash screens, orientation, permissions** and each platform's settings, in `helder.json`.
 - **CI:** keys from environment variables, and GitHub Actions publishing to helder.run with no secret at all.
-- **Desktop releases:** a universal macOS app, notarized; a Windows `.exe`; a Linux archive and Flatpak manifest.
+- **Desktop releases:** a universal macOS app, notarized; a Windows `.exe`; a Linux archive and Flatpak manifest. Attach them to a GitHub release and link them from the project's page with `run.downloads` (`{"macos": "https://github.com/<owner>/<repo>/releases/..."}`): helder.build links only to GitHub releases.
 
 <Reference to="cli,pack"/>
