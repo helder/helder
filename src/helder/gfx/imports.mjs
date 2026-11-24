@@ -484,7 +484,9 @@ export default async function (host) {
 			const t = handles.get(h);
 			fill(image, release, (bitmap) => {
 				if (handles.get(h) !== t) return;
-				device.queue.copyExternalImageToTexture({ source: bitmap }, { texture: t.texture, premultipliedAlpha: images.get(image).premultiply }, [bitmap.width, bitmap.height]);
+				// (the image's size: helder.media's VideoFrame and <video> have no width and height of their own)
+				const im = images.get(image);
+				device.queue.copyExternalImageToTexture({ source: bitmap }, { texture: t.texture, premultipliedAlpha: im.premultiply }, [im.width, im.height]);
 				if (t.texture.mipLevelCount > 1) hxmc_gfx.generate_mips(h);
 			});
 		},

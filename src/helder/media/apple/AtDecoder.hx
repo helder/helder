@@ -23,6 +23,7 @@ class AtDecoder implements AudioDecoder {
 	static inline var MORE = 0x6d6f7265; // 'more': the input's "none for now"
 
 	public final rate:Int;
+	public var decoded(default, null):Null<Packet>;
 
 	final converter:Ptr;
 	final state:Ptr;
@@ -150,7 +151,9 @@ class AtDecoder implements AudioDecoder {
 		return 0;
 	}
 
-	public function decode(p:Packet, bytes:Bytes, samples:AudioBuffer):Int {
+	public function decode(p:Null<Packet>, bytes:Null<Bytes>, samples:AudioBuffer):Int {
+		decoded = p;
+		if (p == null || bytes == null) return 0;
 		var n = bytes.length;
 		if (n > inputSize) {
 			if (!input.isNull()) LibC.free(input);
