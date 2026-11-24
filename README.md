@@ -122,10 +122,12 @@ GL and WebGPU under the same Device and Encoder, SIMD from the start: the
 shader macro also emits each shader over hxmc.simd's 4 lanes, a 2x2 pixel
 quad per call (derivatives and mip levels as GPUs get them), the scalar
 functions kept as the reference; tiles in parallel over helder.jobs;
-rasterizing, depth and stencil, blending, sampling, compressed textures,
-MSAA. Wider lanes and the Parallel item's vectorizer later, on the same
-pieces. Goldens the same on every machine, static binaries that render,
-lighter CI.
+rasterizing, depth, blending, sampling, compressed textures, MSAA (done:
+helder.gfx's [On the CPU](src/helder/gfx/README.md#on-the-cpu): tests/3d
+and the UI's scenes with no GPU, the same bytes on every machine, faster
+than llvmpipe at the tests' size). Next: per-pixel speed at large sizes,
+compute on the CPU, then wider lanes and the Parallel item's vectorizer on
+the same pieces.
 
 **Video**: video and audio playback on the systems' own decoders, nothing
 bundled: MP4/MOV and WebM/Matroska read in Haxe, so a file plays the same

@@ -564,4 +564,5 @@ for the 76 scenes at 256x192, Metal 0.04 s.
 Size: a `--soft` headless build with a `<Scene>` (examples/glow) 2.1 MB →
 3.2 MB (the back end and its shaders' SIMD forms; the grey box before),
 todo 3.88 → 4.01 MB (its controls' part shaders now drawn); GPU builds
-are unchanged (counter on macOS and Windows the same bytes' count).
+are unchanged (counter: the same size on macOS and Windows, 16 bytes more on
+Linux).
