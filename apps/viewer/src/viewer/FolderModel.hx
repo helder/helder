@@ -9,8 +9,9 @@ using StringTools;
 // by name (gone: the one now at its place). Natural order ("img2" before
 // "img10", letters without case) is compare's.
 class FolderModel {
-	// (helder.image's, and the system's where it has decoders: helder.os.SystemImages)
-	public static final EXTENSIONS = ["png", "apng", "jpg", "jpeg", "jfif", "gif", "webp", "pdf"].concat(helder.os.SystemImages.available() ? helder.os.SystemImages.EXTENSIONS : []);
+	// (helder.image's, and the system's where it has decoders: helder.os.SystemImages; none on the web)
+	public static final SYSTEM = #if (hxmc.target == "wasm32-wasi") false #else helder.os.SystemImages.available() #end;
+	public static final EXTENSIONS = ["png", "apng", "jpg", "jpeg", "jfif", "gif", "webp", "pdf"].concat(#if (hxmc.target == "wasm32-wasi") [] #else SYSTEM ? helder.os.SystemImages.EXTENSIONS : [] #end);
 	// (video and audio, where the system decodes them: helder.media)
 	public static final MEDIA = helder.media.Decoders.available() ? ["mp4", "mov", "m4v", "webm", "mkv", "m4a", "mp3", "flac", "mka"] : [];
 

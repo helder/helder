@@ -190,19 +190,23 @@ class ViewerActions {
 			Separator, Item("Ascending", Ascending), Item("Folders First", FoldersFirst), Item("Show Hidden Files", ShowHidden)
 		]);
 
+	// whether the files are on a disk: their paths, the system's file
+	// manager and apps, the trash (the web's are the browser's: none of it shown)
+	public static inline var LOCAL = #if (hxmc.target == "wasm32-wasi") false #else true #end;
+
 	// a file's context menu in the browser, and the inspector's More
-	public static final entry:Array<MenuItem> = [
+	public static final entry:Array<MenuItem> = LOCAL ? [
 		Item("Open", OpenSelected), Item(reveal(), ShowInFolder), Item("Open with Default App", OpenWithDefault), Separator, Item("Copy Path", CopyPath),
 		Separator, Item(trashLabel(), Trash)
-	];
+	] : [Item("Open", OpenSelected)];
 
-	public static final more:Array<MenuItem> = [Item("Copy Path", CopyPath), Item("Open with Default App", OpenWithDefault)];
+	public static final more:Array<MenuItem> = LOCAL ? [Item("Copy Path", CopyPath), Item("Open with Default App", OpenWithDefault)] : [];
 
 	// the image's context menu
-	public static final context:Array<MenuItem> = [
+	public static final context:Array<MenuItem> = LOCAL ? [
 		Item("Copy Path", CopyPath), Item(reveal(), ShowInFolder), Item("Open with Default App", OpenWithDefault), Separator, Item("Fit", Fit),
 		Item("Actual Size", ActualSize), Separator, Item(trashLabel(), Trash)
-	];
+	] : [Item("Fit", Fit), Item("Actual Size", ActualSize)];
 
 	public static function reveal():String
 		return Sys.systemName() == "Mac" ? "Show in Finder" : Sys.systemName() == "Windows" ? "Show in Explorer" : "Show in Folder";
