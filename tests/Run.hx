@@ -698,7 +698,7 @@ class Run {
 		// (Windows: a <Video> drawn and on its system layer, a still read: tests/media/windows/WinVideoStill.hx)
 		if (GFX_TARGET.startsWith("windows-") && HOST.startsWith("windows-")) {
 			native('bin/media/$GFX_TARGET/WinVideoStill', cps(["src", "tests/media/windows"]).concat(["-main", "WinVideoStill"]), GFX_TARGET);
-			for (mode in ["drawn", "layer"]) run(exePath('bin/media/$GFX_TARGET/WinVideoStill', GFX_TARGET), [mode, "bin/media"]);
+			for (mode in ["drawn", "layer-unit", "layer"]) run(exePath('bin/media/$GFX_TARGET/WinVideoStill', GFX_TARGET), [mode, "bin/media"]);
 		}
 		// (an inset title bar: tests/os/TitleBarTest.hx)
 		native('bin/os/$GFX_TARGET/TitleBarTest', cps(["src", "tests/os"]).concat(["-main", "TitleBarTest"]), GFX_TARGET);

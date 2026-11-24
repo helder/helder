@@ -34,7 +34,10 @@ class WinVideoStill implements Markup {
 		Sys.println("WinVideoStill: " + s);
 
 	static function main() {
-		var args = Sys.args(), layer = args[0] == "layer", dir = args.length > 1 ? args[1] : null;
+		// (layer-unit: the scroller drawing a background of its own, a unit
+		// of the layers, the video's slot in it; layer: the scroller drawing
+		// nothing, the slot a unit of its own)
+		var args = Sys.args(), unit = args[0] == "layer-unit", layer = args[0] == "layer" || unit, dir = args.length > 1 ? args[1] : null;
 		var node:Null<VideoNode> = null, shown = 0, last = -1.0, phase = 0, at = 0.0, ticks = 0, start = haxe.Timer.stamp();
 		function onLayer(n:VideoNode):Bool {
 			var s = @:privateAccess n.sample;
@@ -79,7 +82,7 @@ class WinVideoStill implements Markup {
 					if (f != null && f.time == 0.2 && (!wants(n) || onLayer(n) || now - at > 10)) ticks++ else ticks = 0;
 					if (ticks >= 10 || now - at > 30) {
 						phase = 3;
-						Clock.after(0.3, () -> done(n, f == null ? -1 : f.time, onLayer(n), layer, dir));
+						Clock.after(0.3, () -> done(n, f == null ? -1 : f.time, onLayer(n), layer, dir, unit));
 					}
 				case _:
 			}
@@ -87,7 +90,7 @@ class WinVideoStill implements Markup {
 			return true;
 		}
 		UiWindow.run(<Surface title="WinVideoStill" width={400} height={360} background="#333333">
-			<view grow={1} padding-top={40} padding-left={40} overflow="scroll">
+			<view grow={1} padding-top={40} padding-left={40} overflow="scroll" background={unit ? "#222222" : null}>
 				<Video src={new MemorySource(Asset.embed("tests/media/apple/quads.mp4"))} width={320} height={240} layer={layer} muted={true} loop={true}
 					onError={e -> say('error $e')} ref={v -> {
 						node = v;
@@ -100,7 +103,7 @@ class WinVideoStill implements Markup {
 
 	// (the still read: the box in pixels, the quadrants' centres of the
 	// picture contained in it (64 x 48))
-	static function done(n:VideoNode, time:Float, onLayer:Bool, layer:Bool, dir:Null<String>) {
+	static function done(n:VideoNode, time:Float, onLayer:Bool, layer:Bool, dir:Null<String>, unit:Bool) {
 		var w = @:privateAccess UiWindow.open[0], k = n.ui.scale;
 		var width = w.device.width, height = w.device.height;
 		var px = capture(w.window, width, height);
@@ -125,7 +128,7 @@ class WinVideoStill implements Markup {
 		}
 		var ok = worst <= LEVELS && time == 0.2;
 		if (layer && onLayer && !ok) probes(n, w, x, y, x0, y0, s, width, height);
-		say('${ok ? "ok" : "FAIL"}: ${layer ? "layer" : "drawn"}: the frame at $time $how, the quadrants ${got.join(", ")}, at most $worst levels off the source ($LEVELS)');
+		say('${ok ? "ok" : "FAIL"}: ${unit ? "layer in a scroller of its own" : layer ? "layer" : "drawn"}: the frame at $time $how, the quadrants ${got.join(", ")}, at most $worst levels off the source ($LEVELS)');
 		Sys.exit(ok ? 0 : 1);
 	}
 
