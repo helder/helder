@@ -701,7 +701,7 @@ jobs:
           cp -R node_modules/@hxmc/darwin-arm64/macos-arm64 "$RUNNER_TEMP/rt/package/"
           echo "HXMC_RT_DIR=$RUNNER_TEMP/rt/package" >> "$GITHUB_ENV"
       - name: window, the viewer (its tests, its builds, a real window, its app bundle, its release packages), helder/native from TypeScript (Core Foundation, Objective-C), helder.store's bundle (StoreKit 2), shared textures (IOSurface, helder.gfx's and the story host's)
-        run: bun run test -k window viewer viewer-window viewer-app viewer-package store system-images system-text typescript-native gfx-shared story-shared gfx-compute
+        run: bun run test -k os window viewer viewer-window viewer-app viewer-package store system-images system-text typescript-native gfx-shared story-shared gfx-compute
       - name: The web view (tests/platform/webview-macos.sh, WKWebView in a drawn window)
         if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
         run: |
@@ -737,7 +737,7 @@ jobs:
         uses: ./.github/actions/setup
         with: {cache: desktop-windows}
       - name: window, the viewer (its tests, its builds, a real window), the system's decoders, helder/native from TypeScript (COM), shared textures (DXGI, helder.gfx's and the story host's)
-        run: bun run test -k window viewer viewer-window system-images system-text typescript-native gfx-shared story-shared gfx-compute tls
+        run: bun run test -k os window viewer viewer-window system-images system-text typescript-native gfx-shared story-shared gfx-compute tls
       - uses: actions/upload-artifact@v7
         if: always()
         with: {name: text-windows, path: "bin/text/*.png", retention-days: 7, if-no-files-found: ignore}

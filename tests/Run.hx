@@ -34,7 +34,7 @@ class Run {
 	// next one's display is not the last one's still letting go)
 	static final XVFB = "sh " + FileSystem.fullPath("tests/xvfb-run.sh");
 
-	static final HEADLESS = ["view", "text", "image", "ui", "layout-conformance", "gfx-shader", "async", "header-check", "jobs", "test", "cli", "asset", "pack", "devtools", "typescript", "examples", "viewer", "canvas", "pdf", "syntax", "text-quality", "ui-soft"];
+	static final HEADLESS = ["view", "text", "image", "ui", "layout-conformance", "gfx-shader", "async", "header-check", "jobs", "test", "os", "cli", "asset", "pack", "devtools", "typescript", "examples", "viewer", "canvas", "pdf", "syntax", "text-quality", "ui-soft"];
 
 	static final LANES:Array<{name:String, about:String, run:Void->Void}> = [
 		{name: "headless", about: "the lanes that need no GPU, display or browser: " + HEADLESS.join(", "), run: () -> for (l in HEADLESS) lane(l)},
@@ -64,6 +64,7 @@ class Run {
 		{name: "viewer-package", about: "the viewer's releases (helder build --package: helder.cli.Desktop, helder.pack): Linux's .tar.gz and Flatpak manifest (on Linux), Windows' zip signed by tests/pack/signing's throwaway identity, macOS's universal .app in a zip, ad hoc; checked on Eval (tests/pack/DesktopCheck.hx: the tarball's entries, the .desktop file, the icons, the metainfo; the .exe's GUI subsystem, resources, checksum and Authenticode digest; the bundle's seal and each slice's signature), then by osslsigncode verify, desktop-file-validate and appstreamcli where installed, codesign --verify on a Mac; the runtime objects of the other desktops fetched by tests/pack/runtime.mjs --desktop", run: viewerPackage},
 		{name: "system-text", about: "helder.text on the platform's own stack (tests/text/SystemTextTest.hx, natively: Linux's fontconfig, HarfBuzz and FreeType, Windows' DirectWrite, macOS's Core Text): each script's fallback face, a family found, Devanagari, Bengali and Tamil shaped (reordered and split vowels), TextLayout through it, glyphs rasterised; each script drawn with the platform's engine and helder's (bin/text/system-<os>.png; GFX_TARGET=windows-x86_64 from Linux: under Wine)", run: systemText},
 		{name: "text-quality", about: "helder.text's own engine against macOS's CoreText (tests/text/TextQuality.hx, natively): Inter Regular and Bold at seven sizes, DejaVu Sans at three and a paragraph, four inks on their pages, 1x and 2x, font smoothing on and off, the way the Renderer draws them, against CoreText's sheets of the same glyphs at the same pens (tests/text/coretext/sheets, drawn by the system-text lane on a Mac: CTFontDrawGlyphs through helder's Core Text back end): SSIM, the ink's weight, the pixels' differences, before (the rasterizer helder had) and now (bin/text-quality/report.md, heatmaps)", run: textQuality},
+		{name: "os", about: "helder.os Places and Trash (tests/os/PlacesTrashTest.hx): existing user folders, the system volume, a file and folder trashed; Linux's trashinfo and name clashes; headless and web have neither", run: placesTrash},
 		{name: "system-images", about: "helder.os's system decoders (tests/os/SystemImagesTest.hx: Windows' WIC, macOS's ImageIO): a TIFF of a known gradient, plain and LZW, its pixels and straight alpha; macOS: a HEIC made by sips, whole and at a side; ImageLimits before any pixel; a file that is no image (GFX_TARGET=windows-x86_64 from Linux: under Wine); macOS: helder.media's decoders (tests/media/apple/MediaAppleTest.hx: VideoToolbox's frames and AudioToolbox's samples against ffmpeg's, exact seeks and steps, a clip played through CoreAudio's file output, frames to RGB on Metal)", run: systemImages},
 		{name: "dbus", about: "helder.os's D-Bus client against a real dbus-daemon (Linux: dbus-run-session): Hello, ListNames, a service's half, then xdg-desktop-portal's FileChooser OpenFile against a stand-in portal (its arguments, its Response's URI as the path picked; tests/os/DBusTest.hx)", run: dbus},
 		{name: "async-web", about: "helder.async's browser loop (wasm32-wasi) in headless Chromium: timers, tasks, cancellation, fetches", run: asyncWeb},
@@ -1117,6 +1118,22 @@ class Run {
 	static function gfxComputeWeb() {
 		wasm("bin/gfx-compute/ComputeTest.wasm", cps(["src", "tests/gfx"]).concat(["-main", "ComputeTest"]));
 		run(NODE, ["tests/gfx/compute-web.mjs", "bin/gfx-compute/ComputeTest.wasm"]);
+	}
+
+	static function placesTrash() {
+		var args = osCp().concat(["-main", "PlacesTrashTest"]);
+		var target = Sys.getEnv("OS_TARGET") ?? HOST;
+		var out = exePath("bin/os/PlacesTrashTest", target);
+		// (on Linux, link this without glibc or any desktop libraries)
+		hxmc(out, args.concat(["-D", 'hxmc.target=$target']));
+		run(target.startsWith("windows-") && target != HOST ? "wine" : out,
+			target.startsWith("windows-") && target != HOST ? [out] : []);
+		exe("bin/os/PlacesTrashHeadless", args.concat(["-D", "helder.headless"]));
+		run(exePath("bin/os/PlacesTrashHeadless", HOST), []);
+		var module = "bin/os/PlacesTrashTest.wasm";
+		wasm(module, args);
+		wasi(module);
+		run(NODE, ["-e", "const m = new WebAssembly.Module(require('fs').readFileSync(process.argv[1])); if (WebAssembly.Module.imports(m).some(i => i.module !== 'wasi_snapshot_preview1')) throw new Error('desktop imports in the web build')", module]);
 	}
 
 	static function osCp()
