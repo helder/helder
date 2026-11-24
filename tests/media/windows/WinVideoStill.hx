@@ -167,6 +167,8 @@ class WinVideoStill implements Markup {
 		}
 		say('layer: DcLayers frames ${d.frames}, single ${d.single}, fell ${d.fell}, stack shown ${@:privateAccess d.stackShown}, hidden ${@:privateAccess d.hide}, broken ${@:privateAccess d.broken}');
 		say('layer: the units ${[for (u in @:privateAccess d.units) u.kind].join(",")} (4: a system layer), the scrollers not units of their own: ${d.reasons.join("; ")}');
+		// (the stack bottom to top: each plane's kind (0 the window's, 1 what is over a unit, 2 a scroller, 3 a mover, 4 a system layer), its quads, its place)
+		say('layer: the order ${[for (p in @:privateAccess d.order) p == null ? "-" : '${p.kind}:${p.quads.length}q@${Math.round(p.ox)},${Math.round(p.oy)} ${p.pw}x${p.ph}'].join(" | ")}');
 		for (p in @:privateAccess d.kept)
 			if (p.kind == helder.ui.draw.LayerPlane.SLOT)
 				say('layer: a slot plane, ours ${wl != null && p.slot == wl.slot}, shown ${p.slot != null && p.slot.shown}, attached ${p.attached}, index ${p.index}, clip ${p.cx0},${p.cy0}..${p.cx1},${p.cy1}');
