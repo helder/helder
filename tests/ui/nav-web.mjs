@@ -15,13 +15,16 @@ const require = createRequire(import.meta.url);
 let pw;
 try { pw = require('playwright'); } catch { pw = require(path.join(process.execPath, '../../lib/node_modules/playwright')); }
 const here = path.dirname(fileURLToPath(import.meta.url));
-const [wasm] = process.argv.slice(2);
+// (worker: the program in a worker, browser.mjs's option worker)
+const [wasm, thread] = process.argv.slice(2), worker = thread === 'worker', mode = worker ? ' (in a worker)' : '';
 // (helder's Inter, what a built page ships)
 const font = path.join(here, '../../src/helder/text/fonts/Inter.ttf');
 const files = {
 	'/nav.wasm': wasm,
 	'/os/browser.mjs': path.join(here, '../../src/helder/os/browser.mjs'),
 	'/os/imports.mjs': path.join(here, '../../src/helder/os/imports.mjs'),
+	'/os/thread.mjs': path.join(here, '../../src/helder/os/thread.mjs'),
+	'/os/worker.mjs': path.join(here, '../../src/helder/os/worker.mjs'),
 	'/gfx/imports.mjs': path.join(here, '../../src/helder/gfx/imports.mjs'),
 	'/text/imports.mjs': path.join(here, '../../src/helder/text/imports.mjs'),
 	'/ui/imports.mjs': path.join(here, '../../src/helder/ui/imports.mjs'),
@@ -34,7 +37,7 @@ const page = `<!doctype html><title>NavWeb</title><body style="margin:0">
 <script type="module">
 import { run } from '/os/browser.mjs';
 window.log = [];
-window.started = run('/nav.wasm', { imports: ['/os/imports.mjs', '/gfx/imports.mjs', '/text/imports.mjs', '/ui/imports.mjs'], canvas: 'c', gfx: 'webgl2',
+window.started = run('/nav.wasm', { imports: ['/os/imports.mjs', '/gfx/imports.mjs', '/text/imports.mjs', '/ui/imports.mjs'], canvas: 'c', worker: ${worker}, gfx: 'webgl2',
 	fonts: ['/font.ttf'], stdout: (s) => window.log.push(s), stderr: (s) => window.log.push('stderr: ' + s) });
 </script>`;
 const server = createServer(async (req, res) => {
@@ -53,7 +56,7 @@ const browser = await pw.chromium.launch({ args: ['--use-angle=swiftshader'] });
 let failed = 0;
 const check = (what, ok, detail) => {
 	if (!ok) failed++;
-	console.log(`nav-web.mjs: ${ok ? 'ok' : 'FAIL'}: ${what}${ok ? '' : ': ' + detail}`);
+	console.log(`nav-web.mjs${mode}: ${ok ? 'ok' : 'FAIL'}: ${what}${ok ? '' : ': ' + detail}`);
 };
 try {
 	const ctx = await browser.newContext();
@@ -101,7 +104,7 @@ try {
 	server.close();
 }
 if (failed > 0) {
-	console.log(`nav-web.mjs: ${failed} FAILED`);
+	console.log(`nav-web.mjs${mode}: ${failed} FAILED`);
 	process.exit(1);
 }
-console.log('nav-web.mjs: ok');
+console.log(`nav-web.mjs${mode}: ok`);
