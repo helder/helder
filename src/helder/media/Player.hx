@@ -80,6 +80,8 @@ class Player {
 	var ringTime = 0.0;
 	var eof = false;
 	var flushed = false;
+	// (the audio shorter than the video: once it is over, silence and the clock going on)
+	var pads = false;
 	var closed = false;
 	// (the audio thread's: whether it gives the ring's frames, and their gain)
 	var sounding = false;
@@ -237,7 +239,12 @@ class Player {
 		}
 		// (the end once heard: the clock at the audio's last frame, or the
 		// video's end where it is longer; the output's queue played out)
-		if (playing && eof && flushed && frames.length == 0 && (vdec == null || vdec.pending == 0) && (ring == null || ring.available() == 0)) {
+		// (all the audio decoded: whether it ends before the video)
+		var a = adec, r = ring, v = video;
+		if (eof && flushed && a != null && a.pending == 0 && r != null && v != null)
+			pads = ringTime + r.written / a.rate < (v.duration > 0 ? v.duration : duration) - 1e-3;
+		if (playing && eof && flushed && frames.length == 0 && (vdec == null || vdec.pending == 0) && (adec == null || adec.pending == 0)
+			&& (ring == null || ring.available() == 0)) {
 			var end = ring != null && adec != null ? ringTime + ring.written / adec.rate : 0.0;
 			if (video != null) end = Math.max(end, Math.max(duration, last));
 			if (t >= end - 1e-3) finish();
@@ -404,7 +411,7 @@ class Player {
 		var g = muted ? 0.0 : volume;
 		var k = r.take(buffer, n, g);
 		// (the audio over and the video on: silence, the clock going on with it)
-		if (k < n && eof && video != null) {
+		if (k < n && pads) {
 			for (i in k * 2...n * 2) Mem.setF32(buffer, i * 4, 0);
 			k = n;
 		}
@@ -424,6 +431,7 @@ class Player {
 		if (ring != null) ring.clear();
 		eof = false;
 		flushed = false;
+		pads = false;
 	}
 
 	// (the media seeked to time: the frame to show first, the audio to hear
@@ -500,6 +508,7 @@ class Player {
 		if (eof) {
 			if (!flushed) {
 				if (v != null) v.flush();
+				if (a != null && r != null) tail(a, r, a.flush(pcm));
 				flushed = true;
 			}
 			return false;
@@ -527,6 +536,13 @@ class Player {
 		// (the ring's first frame: its time)
 		if (k.count > 0 && r.written == 0) ringTime = k.time;
 		r.write(pcm, k.first, k.count);
+	}
+
+	// (the stream's end: the n frames a decoder held after the last packet's, up to the track's end)
+	function tail(a:AudioDecoder, r:AudioRing, n:Int) {
+		var e = end(audio);
+		if (e > 0) n = Std.int(Math.max(0, Math.min(n, Math.round((e - ringTime) * a.rate) - r.written)));
+		r.write(pcm, 0, n);
 	}
 
 	// what of a packet's n decoded frames plays: from the time `from`, to

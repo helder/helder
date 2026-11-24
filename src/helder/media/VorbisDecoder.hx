@@ -9,6 +9,14 @@ import helder.os.audio.Vorbis;
 class VorbisDecoder implements AudioDecoder {
 	public final rate:Int;
 	public var decoded(default, null):Null<Packet>;
+	public var pending(get, never):Int;
+
+	function get_pending():Int
+		return 0;
+
+	// (nothing held: a packet's frames come with it)
+	public function flush(samples:AudioBuffer):Int
+		return 0;
 
 	var vorbis:Vorbis;
 	final config:Bytes;

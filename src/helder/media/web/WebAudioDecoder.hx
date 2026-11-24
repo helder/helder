@@ -13,6 +13,7 @@ import haxe.io.Bytes;
 class WebAudioDecoder implements AudioDecoder {
 	public final rate:Int;
 	public var decoded(default, null):Null<Packet>;
+	public var pending(get, never):Int;
 
 	final track:MediaTrack;
 	final h:Int;
@@ -44,6 +45,15 @@ class WebAudioDecoder implements AudioDecoder {
 		samples.room(n);
 		Glue.audio_take(h, samples.data);
 		return n;
+	}
+
+	function get_pending():Int
+		return sent.length;
+
+	// (the stream's end: WebCodecs' flush; what it held comes by decode, as all else)
+	public function flush(samples:AudioBuffer):Int {
+		Glue.flush(h);
+		return 0;
 	}
 
 	static function us(t:Float):Float

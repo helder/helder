@@ -12,6 +12,11 @@ interface AudioDecoder {
 	final rate:Int;
 	var decoded(default, null):Null<Packet>;
 	function decode(p:Null<Packet>, bytes:Null<Bytes>, samples:AudioBuffer):Int;
+	// (the stream's end) what it holds put out: the frames after the last
+	// packet's into samples, their number (WebCodecs': later, by decode)
+	function flush(samples:AudioBuffer):Int;
+	// packets given whose frames have not come yet (WebCodecs')
+	var pending(get, never):Int;
 	// (a seek: what it holds of the packets before dropped)
 	function reset():Void;
 	function close():Void;

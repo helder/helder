@@ -194,7 +194,10 @@ packet, its times whole milliseconds, starts at CodecDelay; it ends at the
 track's duration less CodecDelay. Paused, the output plays out what it
 holds; playing again starts the clock where the ring is. Ended once heard:
 the clock at the audio's last frame, or the video's end where it is longer
-(the output then plays silence, the clock going on). A decoder that holds
+(the output then plays silence, the clock going on; only then, so that a
+clip's last samples are heard before it ends). At the stream's end the
+decoders are drained (`flush`: AudioConverter's input over, WebCodecs'
+flush; their last frames into the ring up to the track's end). A decoder that holds
 frames back (WebKit's, Firefox's) is fed on until one settles (at most 24);
 a step waits for a flushed decoder's last frames. An audio decoder that
 fails (WebKit's Opus, said to decode) is dropped, the video playing on the
