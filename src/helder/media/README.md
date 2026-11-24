@@ -4,9 +4,10 @@ Video and audio files read in Haxe, the same on every system: MP4 and
 QuickTime, Matroska and WebM demuxed into tracks and packets from any byte
 source, an index for exact seeking, and the clock a player keeps. Decoded
 by the systems' own decoders, nothing bundled: Apple's VideoToolbox and
-AudioToolbox now (`helder.media.apple`), helder's own Vorbis everywhere;
-the roadmap's **Video** brings MediaCodec, Media Foundation, VAAPI and
-WebCodecs. A `Player` plays a file, a `<Video>` shows it in helder.ui.
+AudioToolbox (`helder.media.apple`), the browser's WebCodecs
+(`helder.media.web`), helder's own Vorbis everywhere; the roadmap's
+**Video** brings MediaCodec, Media Foundation and VAAPI. A `Player` plays a
+file, a `<Video>` shows it in helder.ui.
 
 ```haxe
 var media = Media.open(new FileSource("clip.mp4"));   // a coroutine (helder.async)
@@ -34,14 +35,16 @@ never assume the whole file in memory, and skip what they do not need
 | --- | --- |
 | `FileSource(path)` | a local file, natively (and on wasm32-wasi where the runtime has files: node's WASI); offsets past 2 GiB |
 | `MemorySource(bytes)` | bytes in memory |
-| `WebSource.url(url)` | the browser: fetch with HTTP Range requests, a part at a time (its size from the first's `Content-Range`); a server that ignores Range sends the file once, kept as a Blob |
+| `WebSource.url(url)` | the browser: fetch with HTTP Range requests, a part at a time (its size from the first's `Content-Range`); a server that ignores Range sends the file once, kept as a Blob; `WebSource.of(url)` at once, opened by its first read (`<Video src>`'s in a browser) |
 | `WebSource.blob(name)` | a Blob's slices: one the page gave (`browser.mjs`'s option `blobs`, `{name: Blob}`, or `host.blob(name, blob)` from the page or another module: a file picked or dropped) |
 | `WebSource.opfs(path)` | a file of the origin's private file system |
 
-`WebSource` is the browser's (`imports.mjs`, module `helder_media`, 3 KB).
-helder.run's apps have no network: their URLs are their bundled assets,
-their Blobs the user's files. A cross-origin URL needs CORS and Range in
-`Access-Control-Allow-Headers`.
+`WebSource` is the browser's (`imports.mjs`, module `helder_media`). A
+request asks for 64 KB at least (`WebSource.block`), the last four reads of
+up to a megabyte kept: a cluster read whole, then its packets, are one
+request, not one a packet. helder.run's apps have no network: their URLs
+are their bundled assets, their Blobs the user's files. A cross-origin URL
+needs CORS and Range in `Access-Control-Allow-Headers`.
 
 ## Containers
 
@@ -118,11 +121,13 @@ shows now; `wait(t)`: seconds until one is due.
 
 `Decoders.video(track)` and `Decoders.audio(track)`: the system's decoder
 of a track, null where there is none (`Decoders.available()`: video
-decoders here). Packets go in in decode order; a `VideoFrame` comes out
-(its time, size, matrix: 601, 709 or 2020, range, 8 or 10 bits, the
-system's image held until `release()`), audio as interleaved 32-bit
-floats, two channels (mono doubled, more: the first two), at the track's
-rate.
+decoders here; `Decoders.supported(track)`, awaited: the browser's
+answer). Packets go in in decode order; a `VideoFrame` comes out (its
+time, size, matrix: 601, 709 or 2020, range, 8 or 10 bits, the system's
+image held until `release()`), audio as interleaved 32-bit floats, two
+channels (mono doubled, more: the first two), at the track's rate; a
+decoder that gives a packet's audio later says which packet it was
+(`decoded`).
 
 **VideoToolbox** (`apple.VtDecoder`): H.264, HEVC, VP9 and AV1, the
 hardware's decoder where `VTIsHardwareDecodeSupported`, else the system's
@@ -139,6 +144,26 @@ nothing may collect: it retains the buffer into a ring in native memory,
 `take()` reads it on ours. Frames before an exact seek's target are
 decoded without output (`kVTDecodeFrame_DoNotOutputFrame`). Every frame of
 tests/media's files is ffmpeg's, plane for plane.
+
+**WebCodecs** (`web.WebVideoDecoder`, `web.WebAudioDecoder`, the glue in
+`imports.mjs`): a `VideoDecoder` or `AudioDecoder` of the page's,
+configured with the track's codec string (`web.WebCodec`: avcC's, hvcC's,
+vpcC's or a WebM's VP9 keyframe's, av1C's profile and level; AAC's object
+type; mp3, opus, vorbis, flac, pcm-s16/24/32 and pcm-f32) and description
+(the config; MP4's FLAC STREAMINFO made `fLaC` and its block), what plays
+decided by `isConfigSupported` (else that track is not played; a clean
+`MediaError` when nothing is). Packets go in as Encoded*Chunks timed in
+microseconds, configured at the first (a keyframe). A frame stays the
+page's `VideoFrame`, never in the module's memory: a handle (`pixels()`
+empty: the browser test reads planes in its own glue); frames before
+an exact seek's target are closed as they come, the others when the player
+lets them go (a decoder's pool is small). Audio comes as `AudioData`,
+copied as floats into the player's ring, in order, one for each packet
+(Chromium times them anew from 0: a priming packet's at -1024 is given 0).
+Colours a stream does not name (H.264's SPS, VP9's vpcC or keyframe, AV1's
+sequence header) are configured as BT.601's, as ffmpeg and Apple read them
+(a browser's guess is BT.709's). Decoders run in a worker too: nothing but
+the `<video>` fallback needs a document.
 
 **AudioToolbox** (`apple.AtDecoder`): AAC, MP3, ALAC, FLAC and Opus
 through an AudioConverter, the track's config its magic cookie (FLAC's
@@ -168,7 +193,31 @@ packet that decodes to fewer frames than it lasts lost them at its start
 packet, its times whole milliseconds, starts at CodecDelay; it ends at the
 track's duration less CodecDelay. Paused, the output plays out what it
 holds; playing again starts the clock where the ring is. Ended once heard:
-the clock at the audio's last frame.
+the clock at the audio's last frame, or the video's end where it is longer
+(the output then plays silence, the clock going on; only then, so that a
+clip's last samples are heard before it ends). At the stream's end the
+decoders are drained (`flush`: AudioConverter's input over, WebCodecs'
+flush; their last frames into the ring up to the track's end). A decoder that holds
+frames back (WebKit's, Firefox's) is fed on until one settles (at most 24);
+a step waits for a flushed decoder's last frames. An audio decoder that
+fails (WebKit's Opus, said to decode) is dropped, the video playing on the
+monotonic clock. A seek asked for before it loaded is where it starts.
+
+In a browser sound needs a gesture first (autoplay): until one, an
+AudioContext gives nothing. Playing muted, the player then lets its
+output go after 0.3 s and plays on the monotonic clock, opening it again
+when unmuted (a muted video autoplays); with sound the clock waits at the
+first frame until the gesture (helder.os's WebAudio resumes on the first
+pointer or key). In a worker there is no AudioContext: the pictures play
+on the monotonic clock.
+
+Where WebCodecs does not decode the video (older Safari's audio, HEVC,
+some of Firefox's), a `WebSource`'s file is played by the page's `<video>`
+element (`web.WebElement`): the browser's decoding, sound and clock, its
+frame (`requestVideoFrameCallback`'s) drawn as a decoder's is. Weaker: a
+seek lands where the browser puts it, a step is a seek by a frame's
+duration, nothing decoded ahead, muted until a gesture allows sound, and
+the main thread only. A file the demuxers do not read (Ogg) is not tried.
 
 ## Showing
 
@@ -197,6 +246,14 @@ plays the animation clock ticks it. Two ways to show it:
   VideoToolbox), to be measured on hardware; a window's capture of
   helder's frame leaves it out, as it does native views.
 
+In a browser (`VideoTexture`): the page's frame copied into an RGBA
+texture on the GPU (Device.writeTextureImage: WebGPU's
+`copyExternalImageToTexture`, WebGL2's `texImage2D`; the browser converts
+its colours), then turned upright by the same pass (`VideoShader`'s
+`turn.z`: RGB already). Later: WebGPU's `importExternalTexture`, no copy,
+once the shaders have a binding type for external textures (its texture
+lasts a task only: bound in the frame that samples it).
+
 Audio alone is a Player without a box. TypeScript: `helder/media`'s
 `Video`, `VideoNode`, `Player`, `FileSource`, `MemorySource`.
 
@@ -212,7 +269,12 @@ end trimmed to the segment's duration), reading an MP4's fragments lazily
 through `sidx` (all are read at open), Matroska's ContentEncodings
 (header stripping, encryption) and MP4's encrypted entries (`encv`,
 `enca`: their `tag` the original's, the codec other), open GOPs' leading
-frames, an MP4 writer.
+frames, an MP4 writer. In browsers: HEVC where the system has no decoder
+(Chromium's on Linux, Firefox), H.264 and AAC in Playwright's Linux
+Chromium (no proprietary codecs), ALAC, HDR (PQ is the browser's mapping
+to SDR), `importExternalTexture` (a copy on the GPU for now); Firefox's software decoders give RGB frames (BGRX, BT.709 for
+unnamed colours), WebKit's are full range (its AV1's display width is
+wrong).
 
 Tests: `src/helder/media/Media.test.hx` (the test lane, natively and as
 wasm32-wasi): tests/media's files (`fixtures.sh`: ffmpeg's H.264 and AAC,
@@ -249,4 +311,18 @@ crf 18 or less is not ffmpeg's (its right half's Cr 255, not the source's;
 an M4 and CI's virtual Mac alike; AVAssetReader, Apple's demuxer and
 decoder without helder, gives the same bytes as helder): the fixture is
 crf 23's, which every decoder decodes alike, and the decoding test checks
-it.
+it. `bun run test audio-web` (`tests/media/web/MediaWebTest.hx`,
+`browser.mjs`, about 9 s in Chromium): decoded.json's videos through
+WebCodecs, every frame's time and planes' CRC-32 as ffmpeg's (where the
+browser gives planes as decoded); the audio tracks' frames and samples;
+frames in RGB on WebGPU and WebGL2 against ffmpeg's where flat
+(decoded.json's and `rgb.json`'s VP9 and AV1, `expect.mjs`: within 8
+levels, a mean under one; Chromium's exact); exact seeks and steps; a clip
+played through the AudioWorklet (each frame once, within a frame of the
+clock, ended, its audio's frames); a clip by URL (`long.webm`,
+`fixtures.sh`: 4 s, a second a cluster) all by Range, less than the file
+sent before its first frame showed, and sought before it loaded; a page
+with no gesture (muted plays, with sound waits); the `<video>` fallback
+played, sought, drawn. Firefox and WebKit too where Playwright has them
+(CI: Chromium only), their own conversions printed, not failed;
+`WebCodec.test.hx`: the codec strings and unnamed colours natively.

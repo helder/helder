@@ -22,6 +22,8 @@ class WebSourceTest {
 	}
 
 	static function main() {
+		// (each read a request of its own: the demuxer's own reads counted)
+		WebSource.block = 1;
 		Async.main(task -> {
 			// (open and one packet: the moov and a frame, not the file; browser.mjs checks the bytes sent)
 			var m = Media.open(WebSource.url("tests/media/h264-aac.mp4"));

@@ -12,8 +12,9 @@ import helder.view.graph.Graph.*;
 
 // A clip (embedded: its bytes in the program) shown by <Video> as an image
 // is, contained; it loops, muted, and a tap plays or pauses it. The
-// controls are the program's: here its time and a button. (macOS and iOS
-// for now: VideoToolbox and AudioToolbox; elsewhere the error is shown.)
+// controls are the program's: here its time and a button. (macOS and iOS:
+// VideoToolbox and AudioToolbox; the browser: WebCodecs, muted so that it
+// autoplays before a gesture; elsewhere the error is shown.)
 class Clip implements Markup {
 	static function main() {
 		var node:Null<VideoNode> = null, time = signal("0.0 s"), error = signal("");

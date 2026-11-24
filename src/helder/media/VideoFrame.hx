@@ -45,6 +45,12 @@ class VideoFrame {
 	public function pixels():haxe.io.Bytes
 		return owner.pixels(this);
 
+	#if (hxmc.target == "wasm32-wasi")
+	// (the browser's frame: its handle, helder.gfx's writeTextureImage's image)
+	public function handle():Int
+		return image.toI64().toInt();
+	#end
+
 	public function release() {
 		#if (target.name == "hxmc")
 		if (image.isNull()) return;

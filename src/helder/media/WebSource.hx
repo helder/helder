@@ -15,12 +15,35 @@ import hxmc.unsafe.*;
 //   var media = Media.open(WebSource.url("clips/intro.webm"));
 //   var mine = Media.open(WebSource.blob("drop/1"));   // host.blob("drop/1", file), the page's
 class WebSource implements ByteSource {
+	// bytes a request asks for at least, the read's block and what follows:
+	// a demuxer's small reads (a box header, a packet) then come from the
+	// last few kept (each read a request over a network is slow)
+	public static var block = 65536;
+	// (reads kept: the last few, of a megabyte at most each: a cluster read whole, then its packets)
+	static inline var KEPT = 4;
+	static inline var KEEP = 1 << 20;
+
 	public var size(get, never):Float;
 
 	final h:Int;
+	// (opened: of() starts it, the first read waits for it)
+	var ready:Bool;
+	final what:String;
+	final starts:Array<Float> = [];
+	final kept:Array<Bytes> = [];
+	// (whether a kept block ends at the file's end)
+	final last:Array<Bool> = [];
 
-	function new(h)
+	function new(h, what, ready = true) {
 		this.h = h;
+		this.what = what;
+		this.ready = ready;
+	}
+
+	// a URL, its first request started, at once: opened by the first read
+	// (<Video src="clip.mp4">, in a browser)
+	public static function of(url:String):WebSource
+		return new WebSource(WebMedia.url(url), url, false);
 
 	@:coroutine public static function url(url:String):WebSource
 		return opened(WebMedia.url(url), url);
@@ -36,15 +59,45 @@ class WebSource implements ByteSource {
 			WebMedia.free(h);
 			throw new MediaError('cannot open $what');
 		}
-		return new WebSource(h);
+		return new WebSource(h, what);
 	}
 
 	function get_size():Float
-		return WebMedia.size(h);
+		return ready ? WebMedia.size(h) : -1;
 
 	@:coroutine public function read(offset:Float, b:Bytes, pos:Int, len:Int):Int {
 		if (offset < 0 || pos < 0 || len < 0 || pos + len > b.length) throw new MediaError("read out of range");
 		if (len == 0) return 0;
+		if (!ready) {
+			if (!done(h)) throw new MediaError('cannot open $what');
+			ready = true;
+		}
+		for (i in 0...kept.length) {
+			var k = kept[i], at = offset - starts[i];
+			if (at >= 0 && (at + len <= k.length || last[i] && at <= k.length)) {
+				var n = Std.int(Math.min(len, k.length - at));
+				b.blit(pos, k, Std.int(at), n);
+				return n;
+			}
+		}
+		var start = Math.ffloor(offset / block) * block, n = Std.int(Math.max(block, offset + len - start));
+		if (n > KEEP) return fetch(offset, b, pos, len);
+		var k = Bytes.alloc(n), got = fetch(start, k, 0, n);
+		if (got < n) k = k.sub(0, got);
+		starts.push(start);
+		kept.push(k);
+		last.push(got < n);
+		if (kept.length > KEPT) {
+			starts.shift();
+			kept.shift();
+			last.shift();
+		}
+		var m = Std.int(Math.max(0, Math.min(len, k.length - (offset - start))));
+		if (m > 0) b.blit(pos, k, Std.int(offset - start), m);
+		return m;
+	}
+
+	@:coroutine function fetch(offset:Float, b:Bytes, pos:Int, len:Int):Int {
 		var r = WebMedia.read(h, offset, len);
 		if (!done(r)) {
 			WebMedia.free(r);

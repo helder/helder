@@ -8,6 +8,15 @@ import helder.os.audio.Vorbis;
 @:hxmc.unsafe(gc)
 class VorbisDecoder implements AudioDecoder {
 	public final rate:Int;
+	public var decoded(default, null):Null<Packet>;
+	public var pending(get, never):Int;
+
+	function get_pending():Int
+		return 0;
+
+	// (nothing held: a packet's frames come with it)
+	public function flush(samples:AudioBuffer):Int
+		return 0;
 
 	var vorbis:Vorbis;
 	final config:Bytes;
@@ -22,7 +31,9 @@ class VorbisDecoder implements AudioDecoder {
 	static function open(config:Bytes):Vorbis
 		return try Vorbis.headers(config) catch (e:String) throw new MediaError(e);
 
-	public function decode(p:Packet, bytes:Bytes, samples:AudioBuffer):Int {
+	public function decode(p:Null<Packet>, bytes:Null<Bytes>, samples:AudioBuffer):Int {
+		decoded = p;
+		if (p == null || bytes == null) return 0;
 		var v = vorbis, n = v.feed(bytes);
 		samples.room(n);
 		var l = v.out[0], r = v.out[v.channels > 1 ? 1 : 0];

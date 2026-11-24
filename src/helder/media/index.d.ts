@@ -93,7 +93,7 @@ export declare class VideoNode extends Node {
 	onError: ((arg0: string) => void) | null;
 	// each frame it plays, and after a seek or a step: the time
 	onTime: ((arg0: number) => void) | null;
-	// what it plays: a path or a ByteSource (a file's bytes: a MemorySource; null: nothing)
+	// what it plays: a path (in a browser: a URL) or a ByteSource (a file's bytes: a MemorySource; null: nothing)
 	open(src: any | null): void;
 	play(): void;
 	pause(): void;

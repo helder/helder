@@ -19,10 +19,16 @@ class AtDecoder implements AudioDecoder {
 	static inline var GIVEN = 12;
 	static inline var CHANNELS = 16;
 	static inline var DESC = 24; // AudioStreamPacketDescription: start (8), frames (4), size (4)
-	static inline var STATE = 40;
+	static inline var ENDED = 40; // the input is over: what the converter holds put out
+	static inline var STATE = 48;
 	static inline var MORE = 0x6d6f7265; // 'more': the input's "none for now"
 
 	public final rate:Int;
+	public var decoded(default, null):Null<Packet>;
+	public var pending(get, never):Int;
+
+	function get_pending():Int
+		return 0;
 
 	final converter:Ptr;
 	final state:Ptr;
@@ -132,7 +138,8 @@ class AtDecoder implements AudioDecoder {
 	@:hxmc.callback @:hxmc.noGc static function give(converter:Ptr, packets:Ptr, list:Ptr, descs:Ptr, state:Ptr):Int {
 		if (Mem.getI32(state, GIVEN) != 0) {
 			Mem.setI32(packets, 0, 0);
-			return MORE;
+			// (no packets and no error: the end, the converter's last frames out)
+			return Mem.getI32(state, ENDED) != 0 ? 0 : MORE;
 		}
 		Mem.setI32(state, GIVEN, 1);
 		Mem.setI32(packets, 0, 1);
@@ -150,7 +157,9 @@ class AtDecoder implements AudioDecoder {
 		return 0;
 	}
 
-	public function decode(p:Packet, bytes:Bytes, samples:AudioBuffer):Int {
+	public function decode(p:Null<Packet>, bytes:Null<Bytes>, samples:AudioBuffer):Int {
+		decoded = p;
+		if (p == null || bytes == null) return 0;
 		var n = bytes.length;
 		if (n > inputSize) {
 			if (!input.isNull()) LibC.free(input);
@@ -160,6 +169,22 @@ class AtDecoder implements AudioDecoder {
 		Mem.setPtr(state, DATA, input);
 		Mem.setI32(state, SIZE, n);
 		Mem.setI32(state, GIVEN, 0);
+		return convert(samples);
+	}
+
+	// the stream's end: what the converter holds, its input over (none for
+	// AAC, MP3, FLAC, ALAC; a resampling converter's tail)
+	public function flush(samples:AudioBuffer):Int {
+		decoded = null;
+		Mem.setI32(state, GIVEN, 1);
+		Mem.setI32(state, ENDED, 1);
+		var n = try convert(samples) catch (_:MediaError) 0;
+		Mem.setI32(state, ENDED, 0);
+		return n;
+	}
+
+	// (the converter's frames for the input it has, until it gives fewer than asked)
+	function convert(samples:AudioBuffer):Int {
 		var total = 0;
 		// (a packet may give more frames than one call takes: until it is used up)
 		while (true) {
@@ -181,8 +206,10 @@ class AtDecoder implements AudioDecoder {
 		return total;
 	}
 
-	public function reset()
+	public function reset() {
+		Mem.setI32(state, ENDED, 0);
 		Converter.AudioConverterReset(converter);
+	}
 
 	public function close() {
 		Converter.AudioConverterDispose(converter);

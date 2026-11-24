@@ -157,6 +157,16 @@ another renderer's markup it is an error (ui's own is `UiWindow.Surface`).
 `<Dom>`/`<Html>` tags are not needed: a page's markup is the DOM's or
 static HTML's by where it is mounted.
 
+## Video and audio
+
+A `<Video>` (helder.media) in a ui program on the page decodes with the
+browser's WebCodecs, its frames copied into textures on the GPU, its audio
+through helder.os's AudioWorklet, a URL read by Range requests
+(`WebSource`), a picked or dropped file as a Blob; where WebCodecs does not
+decode, the page's `<video>` element. Sound waits for a gesture, a muted
+video autoplays; a cross-origin URL needs CORS
+([helder.media](../media/README.md)).
+
 ## JavaScript calling WebAssembly
 
 A class that implements `helder.web.Exports` declares a module's functions

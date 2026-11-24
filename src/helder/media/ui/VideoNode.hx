@@ -57,11 +57,12 @@ class VideoNode extends Node {
 		super("video");
 	}
 
-	// what it plays: a path or a ByteSource (a file's bytes: a MemorySource; null: nothing)
+	// what it plays: a path (in a browser: a URL) or a ByteSource (a file's bytes: a MemorySource; null: nothing)
 	public function open(src:Null<Dynamic>) {
 		close();
 		if (src == null) return;
-		var source:ByteSource = Std.isOfType(src, String) ? new FileSource(src) : src;
+		// (a path: in a browser a URL, read by Range requests)
+		var source:ByteSource = Std.isOfType(src, String) ? #if (hxmc.target == "wasm32-wasi") WebSource.of(src) #else new FileSource(src) #end : src;
 		var p = player = Player.open(source);
 		p.loop = loop;
 		p.muted = muted;

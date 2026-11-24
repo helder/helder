@@ -16,7 +16,8 @@ import helder.media.ui.VideoShader;
 // converted from its planes in a pass of its own (VideoShader): the planes
 // are the decoder's surfaces opened as textures (Device.openShared: Apple's
 // IOSurfaces, no copy), kept by their handle while the decoder's pool
-// reuses them (at most KEEP; one not used for long let go)
+// reuses them (at most KEEP; one not used for long let go); in a browser
+// the frame copied into an RGBA texture on the GPU first
 class VideoTexture {
 	static inline var KEEP = 24;
 
@@ -56,6 +57,9 @@ class VideoTexture {
 			width = w;
 			height = h;
 		}
+		#if (hxmc.target == "wasm32-wasi")
+		return browser(f, rotation);
+		#else
 		luma = open(f.plane(0), f.width, f.height);
 		chroma = open(f.plane(1), (f.width + 1) >> 1, (f.height + 1) >> 1);
 		if (luma == null || chroma == null) return false;
@@ -67,7 +71,38 @@ class VideoTexture {
 			turn: new Vec4(Std.int(rotation / 90) & 3, 0.25 / ((f.width + 1) >> 1), 0, 0)
 		}, bytes);
 		return true;
+		#end
 	}
+
+	#if (hxmc.target == "wasm32-wasi")
+	var rgb:Null<Texture>;
+	var rgbWidth = 0;
+	var rgbHeight = 0;
+
+	// (the browser's frame, a VideoFrame or <video>, copied into an RGBA
+	// texture on the GPU (Device.writeTextureImage: copyExternalImageToTexture,
+	// texImage2D; the browser converts its colours), then turned as planes
+	// are; WebGPU's importExternalTexture would save the copy, but its
+	// texture lasts a task only and needs a binding of its own)
+	function browser(f:VideoFrame, rotation:Int):Bool {
+		var t = rgb;
+		if (t == null || rgbWidth != f.width || rgbHeight != f.height) {
+			if (t != null) retired.push(t);
+			t = rgb = device.createTexture({width: f.width, height: f.height});
+			rgbWidth = f.width;
+			rgbHeight = f.height;
+		}
+		device.writeTextureImage(t, f.handle());
+		luma = chroma = t;
+		VideoShader.params.video.write({
+			r: new Vec4(1, 0, 0, 0),
+			g: new Vec4(0, 1, 0, 0),
+			b: new Vec4(0, 0, 1, 0),
+			turn: new Vec4(Std.int(rotation / 90) & 3, 0, 1, 0)
+		}, bytes);
+		return true;
+	}
+	#end
 
 	// (a plane's texture, opened the first time its surface comes)
 	function open(handle:Null<String>, w:Int, h:Int):Null<Texture> {
@@ -130,6 +165,10 @@ class VideoTexture {
 	}
 
 	public function dispose() {
+		#if (hxmc.target == "wasm32-wasi")
+		if (rgb != null) device.destroyTexture(rgb);
+		rgb = null;
+		#end
 		for (t in planes) device.destroyTexture(t);
 		planes.clear();
 		for (t in retired) device.destroyTexture(t);
