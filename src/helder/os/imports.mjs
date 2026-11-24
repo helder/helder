@@ -48,6 +48,14 @@
 // context, gives another context: an OfflineAudioContext (tests), whose
 // whole length start fills at once; its promise hxmcReady resolves once the
 // node is connected and has those chunks (then startRendering).
+//
+// The program in a worker (thread.mjs, worker.mjs): there host.page, and
+// the calls in PAGE are forwarded to this module's page half (export
+// page: the same, given the page's host, host.program), which owns the
+// canvas's element and its listeners, posts the events, the buffer's size
+// and what the program reads at once (state) as they change, and a marker
+// after each of the page's frames; a touch's question (scrolls_at) is
+// asked at the press, each way.
 
 // EventKind (src/helder/os/Event.hx)
 const RESIZE = 2, KEY_DOWN = 3, KEY_UP = 4, MOUSE_MOVE = 5, MOUSE_DOWN = 6, MOUSE_UP = 7, TEXT_INPUT = 8, REDRAW = 9, TEXT_EDITING = 10, SCROLL = 11,
@@ -118,11 +126,16 @@ registerProcessor('hxmc-output', HxmcOutput);
 `;
 let processorUrl = null;
 
-export default function (host) {
+export default function os(host) {
+	// (the program in a worker: host.page, its channel to the page; this
+	// module's page half there: host.program, its channel to the worker)
+	const { page, program } = host;
 	// the canvases' device pixels per CSS pixel: the screen's, at most
 	// run's option maxPixelRatio (a phone's 3: fewer pixels to fill each
 	// frame, at 2 text stays sharp)
-	const pixelRatio = () => Math.min(devicePixelRatio, host.options.maxPixelRatio ?? Infinity);
+	const pixelRatio = () => (page ? page.state.ratio : Math.min(devicePixelRatio, host.options.maxPixelRatio ?? Infinity));
+	// (a canvas's drawing buffer: its own, or what the page half knows of a worker's)
+	const buf = (c) => c.hxmcBuf ?? c;
 	const queue = [];
 	const windows = new Set();
 	// helder.os.Permissions' states (0 granted, 1 denied, 2 prompt, 3
@@ -131,13 +144,17 @@ export default function (host) {
 	const permissions = {
 		state: [2, 2, 3, 2, 3],
 		of: (s) => (s === 'granted' ? 0 : s === 'denied' ? 1 : 2),
+		set(i, s) {
+			permissions.state[i] = s;
+			program?.post({ type: 'state', state: { permissions: permissions.state } });
+		},
 	};
 	if (globalThis.Notification) permissions.state[4] = permissions.of(Notification.permission);
-	for (const [i, name] of [[0, 'camera'], [1, 'microphone'], [3, 'geolocation']])
+	if (!page) for (const [i, name] of [[0, 'camera'], [1, 'microphone'], [3, 'geolocation']])
 		globalThis.navigator?.permissions?.query({ name }).then((s) => {
-			permissions.state[i] = permissions.of(s.state);
-			s.onchange = () => (permissions.state[i] = permissions.of(s.state));
-		}, () => (permissions.state[i] = 3));
+			permissions.set(i, permissions.of(s.state));
+			s.onchange = () => permissions.set(i, permissions.of(s.state));
+		}, () => permissions.set(i, 3));
 	const shared = [];
 	// helder.os.Photos' files read, until taken (and take's photo)
 	const photos = [];
@@ -156,6 +173,7 @@ export default function (host) {
 			input.remove();
 			photos.length = 0;
 			for (const f of files.slice(0, max)) photos.push(new Uint8Array(await f.arrayBuffer()));
+			program?.post({ type: 'state', state: { photos } });
 			host.call(done, id, photos.length);
 		};
 		input.addEventListener('change', () => answer([...input.files]));
@@ -190,6 +208,7 @@ export default function (host) {
 	const fix = (p) => {
 		const c = p.coords;
 		located.set([c.latitude, c.longitude, c.accuracy, c.altitude ?? NaN, c.heading ?? NaN, c.speed ?? NaN, p.timestamp]);
+		program?.post({ type: 'state', state: { located: [...located] } });
 	};
 	// helder.os.Notifications': each key's timer, then its Notification
 	const notices = new Map();
@@ -218,16 +237,23 @@ export default function (host) {
 			stopped = true;
 			for (const h of windows) {
 				const c = host.handles.get(h);
-				c.hxmcOff.abort();
-				c.hxmcSeen.disconnect();
-				c.hxmcInput.remove();
+				c.hxmcOff?.abort();
+				c.hxmcSeen?.disconnect();
+				c.hxmcInput?.remove();
 			}
 			windows.clear();
 			queue.length = 0;
 		},
 	};
 
+	// (run's option timing: when each input came, frames' times)
+	const timing = host.options.timing;
+	let input = 0;
+	// an event for the program (a composition's or the clipboard's text a string: a handle here)
 	function push(ev) {
+		if (timing && ev[1] !== REDRAW && !ev[12]) ev[12] = performance.timeOrigin + performance.now();
+		if (program) return program.post({ type: 'event', ev });
+		if (typeof ev[2] === 'string') ev[2] = host.handles.add(ev[2]);
 		// (moves between two frames, compositions: the last one)
 		const last = queue[queue.length - 1];
 		// (a pointer's moves between two frames: one, the others its samples)
@@ -248,10 +274,11 @@ export default function (host) {
 		const c = host.handles.get(h);
 		if (!c.hxmcResized) return false;
 		c.hxmcResized = false;
-		const w = Math.round(c.clientWidth * pixelRatio()), hh = Math.round(c.clientHeight * pixelRatio());
-		if (w > 0 && hh > 0 && (w !== c.width || hh !== c.height)) {
-			c.width = w;
-			c.height = hh;
+		const w = Math.round(c.clientWidth * pixelRatio()), hh = Math.round(c.clientHeight * pixelRatio()), b = buf(c);
+		if (w > 0 && hh > 0 && (w !== b.width || hh !== b.height)) {
+			b.width = w;
+			b.height = hh;
+			program?.post({ type: 'size', h, w, hh });
 			return true;
 		}
 		return false;
@@ -266,7 +293,7 @@ export default function (host) {
 		// (from the canvas's rectangle: an event may come from a layer over it)
 		const pos = (e) => {
 			const r = c.getBoundingClientRect();
-			return [Math.round((e.clientX - r.left - c.clientLeft) * c.width / Math.max(1, c.clientWidth)), Math.round((e.clientY - r.top - c.clientTop) * c.height / Math.max(1, c.clientHeight))];
+			return [Math.round((e.clientX - r.left - c.clientLeft) * buf(c).width / Math.max(1, c.clientWidth)), Math.round((e.clientY - r.top - c.clientTop) * buf(c).height / Math.max(1, c.clientHeight))];
 		};
 		const off = new AbortController();
 		// the pointer's listeners, also on a layer of the page's own scroll
@@ -321,7 +348,7 @@ export default function (host) {
 		// the composition: the textarea's text from where it started to what
 		// followed it then, the caret in it
 		let composing = false, start = 0, tail = 0;
-		const editing = (t, caret) => push([h, TEXT_EDITING, t ? host.handles.add(t) : 0, Math.max(0, Math.min(t.length, caret)), 0, 0, 0]);
+		const editing = (t, caret) => push([h, TEXT_EDITING, t || 0, Math.max(0, Math.min(t.length, caret)), 0, 0, 0]);
 		onInput('compositionstart', () => {
 			composing = true;
 			start = ta.selectionStart;
@@ -407,7 +434,7 @@ export default function (host) {
 			const dy = pinch(scale, e.scale);
 			if (!dy) return;
 			scale = e.scale;
-			const r = c.getBoundingClientRect(), x = Math.round((e.clientX - r.left) * c.width / Math.max(1, c.clientWidth)), y = Math.round((e.clientY - r.top) * c.height / Math.max(1, c.clientHeight));
+			const r = c.getBoundingClientRect(), x = Math.round((e.clientX - r.left) * buf(c).width / Math.max(1, c.clientWidth)), y = Math.round((e.clientY - r.top) * buf(c).height / Math.max(1, c.clientHeight));
 			push([h, SCROLL, 0, x, y, Math.round(dy * pixelRatio() * 256), mods(e) | 2]);
 		});
 		on('gestureend', (e) => e.preventDefault());
@@ -416,7 +443,7 @@ export default function (host) {
 		// buttons, pressure in 1/65536ths, the time in 1/16 ms, tilt), each
 		// captured by the canvas, without the browser's mouse events
 		const point = (e, kind, button) => {
-			const r = c.getBoundingClientRect(), kx = c.width / Math.max(1, c.clientWidth), ky = c.height / Math.max(1, c.clientHeight);
+			const r = c.getBoundingClientRect(), kx = buf(c).width / Math.max(1, c.clientWidth), ky = buf(c).height / Math.max(1, c.clientHeight);
 			const x = Math.round((e.clientX - r.left - c.clientLeft) * kx * 256), y = Math.round((e.clientY - r.top - c.clientTop) * ky * 256);
 			push([h, kind, e.pointerId, x, y, button, mods(e), (POINTER_TYPES[e.pointerType] ?? 1) | (e.buttons << 4) | (e.isPrimary ? 4096 : 0),
 				Math.round((e.pressure ?? 0) * 65536), Math.round(e.timeStamp * 16) | 0, Math.round(e.tiltX ?? 0), Math.round(e.tiltY ?? 0)]);
@@ -463,7 +490,9 @@ export default function (host) {
 				// (over a scroll view: it pans, unless the program takes the drag)
 				const a = t.over || (vertical ? panY : panX);
 				// (asked along the gesture's axis: a vertical one does not move a carousel)
-				t.taken = !a || (query !== 0 && host.call(query, h, t.x, t.y, vertical ? 0 : Math.round(dx), vertical ? Math.round(dy) : 0) === 1);
+				// (the program in a worker: its answers asked for at the press, each way; none yet, no)
+				t.taken = !a || (query !== 0 && (program ? t.ways?.[vertical ? (dy > 0 ? 0 : 1) : dx > 0 ? 2 : 3] === 1
+					: host.call(query, h, t.x, t.y, vertical ? 0 : Math.round(dx), vertical ? Math.round(dy) : 0) === 1));
 			}
 			return t.taken;
 		};
@@ -472,8 +501,8 @@ export default function (host) {
 			if (!t || !e.cancelable) return;
 			if (t.taken === undefined) {
 				const p = e.changedTouches[0], r = c.getBoundingClientRect();
-				const x = Math.round((p.clientX - r.left - c.clientLeft) * c.width / Math.max(1, c.clientWidth));
-				const y = Math.round((p.clientY - r.top - c.clientTop) * c.height / Math.max(1, c.clientHeight));
+				const x = Math.round((p.clientX - r.left - c.clientLeft) * buf(c).width / Math.max(1, c.clientWidth));
+				const y = Math.round((p.clientY - r.top - c.clientTop) * buf(c).height / Math.max(1, c.clientHeight));
 				// (within a few pixels: no direction yet, nor a pan of the browser's)
 				if (Math.hypot(x - t.x, y - t.y) < 4 * pixelRatio()) return;
 				decide(t, x, y);
@@ -483,7 +512,9 @@ export default function (host) {
 		on('pointerdown', (e) => {
 			if (!pointer(e) || touch) return;
 			const [x, y] = pos(e);
-			touch = { id: e.pointerId, x, y, drag: false, taken: undefined, over: over(e) };
+			const t = (touch = { id: e.pointerId, x, y, drag: false, taken: undefined, over: over(e), ways: null });
+			const k = 8 * pixelRatio();
+			if (program && query !== 0) Promise.all([[0, k], [0, -k], [k, 0], [-k, 0]].map(([dx, dy]) => host.call(query, h, x, y, dx, dy))).then((w) => (t.ways = w));
 		});
 		on('pointermove', (e) => {
 			if (!touch || e.pointerId !== touch.id || touch.drag) return;
@@ -580,6 +611,171 @@ export default function (host) {
 		at: (state) => (state && typeof state.helderRoute === 'number' ? state.helderRoute : 0),
 	};
 
+	// the soft keyboard's height (keyboard)
+	const viewportKeyboard = () => {
+		const vv = globalThis.visualViewport;
+		return vv ? Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop)) : 0;
+	};
+	// (whether the page's styles leave a canvas's displayed size its buffer's: told before its control went to a worker)
+	function unsized(c) {
+		if (c.hxmcUnsized !== undefined) return c.hxmcUnsized;
+		const w0 = c.clientWidth;
+		c.width += 1;
+		return c.clientWidth !== w0;
+	}
+	// what the program reads at once of the page (in a worker: told as it changes)
+	const MEDIA = ['(prefers-reduced-motion: reduce)', '(prefers-contrast: more)', '(prefers-contrast: less)', '(prefers-contrast: custom)',
+		'(prefers-color-scheme: dark)', '(orientation: portrait)', '(orientation: landscape)'];
+	const settings = () => MEDIA.reduce((bits, query, i) => bits | (globalThis.matchMedia?.(query).matches ? 1 << i : 0), 0);
+	const dark = () => (globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches ? 1 : 0);
+	function store() {
+		try {
+			return Object.fromEntries(Object.keys(localStorage).map((k) => [k, localStorage.getItem(k)]));
+		} catch {
+			return null;
+		}
+	}
+	const pageState = () => ({ ratio: pixelRatio(), keyboard: viewportKeyboard(), dark: dark(), settings: settings(), permissions: permissions.state,
+		location: location.pathname + location.search, store: store(), shown: {}, gamepads: [] });
+
+	// the page half, the program in a worker: the first window's canvas
+	// (run's option canvas, else one made), its control given to the worker,
+	// and what the program reads at once
+	host.os.transfer = () => {
+		let c = typeof host.options.canvas === 'string' ? document.getElementById(host.options.canvas) : host.options.canvas;
+		if (!c) {
+			c = document.createElement('canvas');
+			c.style.cssText = 'display:block;position:fixed;inset:0;width:100%;height:100%';
+			document.body.appendChild(c);
+			c.hxmcPrepared = 'made';
+		}
+		c.hxmcUnsized = c.hxmcPrepared === 'made' ? false : unsized(c);
+		c.hxmcBuf = { width: c.width, height: c.height };
+		host.options.canvas = c;
+		const state = pageState();
+		state.view = { made: c.hxmcPrepared === 'made', width: c.clientWidth, height: c.clientHeight };
+		return { canvas: c.transferControlToOffscreen(), state };
+	};
+	// (the page half: what the worker's program reads at once, told as it changes)
+	let watching = false;
+	function watch() {
+		if (watching) return;
+		watching = true;
+		const tell = (state) => program.post({ type: 'state', state });
+		// (the pixel ratio and the soft keyboard, checked each of the page's frames as the program would)
+		const check = () => {
+			if (stopped) return;
+			requestAnimationFrame(check);
+			program.post({ type: 'frame' });
+			if (pixelRatio() !== ratio) {
+				tell({ ratio: (ratio = pixelRatio()) });
+				for (const h of windows) {
+					host.handles.get(h).hxmcResized = true;
+					sync(h);
+				}
+			}
+			const kb = viewportKeyboard();
+			if (kb !== keyboardAt) tell({ keyboard: (keyboardAt = kb) });
+		};
+		requestAnimationFrame(check);
+		for (const q of MEDIA) matchMedia(q).addEventListener('change', () => tell({ settings: settings(), dark: dark() }));
+		addEventListener('storage', () => tell({ store: store() }));
+		// (the gamepads' states, each frame while one is connected)
+		let pads = 0;
+		const poll = () => {
+			const list = [...navigator.getGamepads()].map((pad) => (pad?.connected ? [...pad.buttons.slice(0, 17).map((b) => b.value || (b.pressed ? 1 : 0)), ...pad.axes.slice(0, 4)] : null));
+			tell({ gamepads: list });
+			if (pads > 0) requestAnimationFrame(poll);
+		};
+		addEventListener('gamepadconnected', () => pads++ || requestAnimationFrame(poll));
+		addEventListener('gamepaddisconnected', () => pads--);
+	}
+
+	// the program's half in a worker: the page's calls forwarded (WORKER),
+	// what it reads at once from what the page told, its events posted
+	function worker() {
+		const s = page.state;
+		for (const [k, sig] of Object.entries(PAGE)) hxmc_os[k] = page.forward('hxmc_os', k, sig);
+		page.on('event', (m) => push(m.ev));
+		page.on('size', (m) => {
+			const c = host.handles.get(m.h);
+			if (!c || (c.width === m.w && c.height === m.hh)) return;
+			c.width = m.w;
+			c.height = m.hh;
+			push([m.h, RESIZE, 0, m.w, m.hh, 0, 0]);
+		});
+		page.on('state', (m) => {
+			const t = m.state;
+			if (t.shown) Object.assign(s.shown, t.shown);
+			if (t.photos) photos.splice(0, photos.length, ...t.photos);
+			if (t.located) located.set(t.located);
+			if (t.permissions) permissions.state = t.permissions;
+			for (const k of ['ratio', 'keyboard', 'dark', 'settings', 'store', 'gamepads', 'location']) if (k in t) s[k] = t[k];
+			if ('ratio' in t) for (const h of windows) push([h, SCALE_CHANGE, 0, 0, 0, 0, 0]);
+			if ('keyboard' in t) for (const h of windows) push([h, RESIZE, 0, host.handles.get(h).width, host.handles.get(h).height, 0, 0]);
+		});
+		permissions.state = s.permissions;
+		const forward = (k) => page.forward('hxmc_os', k, PAGE[k] ?? '');
+		const open = forward('window_open'), store = forward('store_set'), pushed = forward('history_push'), scrolls = forward('scrolls_at');
+		Object.assign(hxmc_os, {
+			// (one window: the canvas the page gave the worker)
+			window_open(title, width, height) {
+				const v = s.view, c = page.canvas;
+				if (!c || windows.size > 0) return 0;
+				const fill = v.made || (width === 0 && height === 0), r = pixelRatio();
+				c.width = Math.max(1, Math.round((fill ? v.width : width) * r));
+				c.height = Math.max(1, Math.round((fill ? v.height : height) * r));
+				const h = host.handles.add(c);
+				open(title, width, height, h);
+				windows.add(h);
+				return h;
+			},
+			window_close(h) {
+				forward('window_close')(h);
+				windows.delete(h);
+			},
+			canvas: () => 0,
+			keyboard: () => s.keyboard,
+			prefers_dark: () => s.dark,
+			settings: () => s.settings,
+			notify_schedule(...a) {
+				if (permissions.state[4] !== 0) return 0;
+				forward('notify_schedule')(...a);
+				return 1;
+			},
+			gamepad_state(i, p) {
+				const pad = s.gamepads[i];
+				if (!pad) return 0;
+				new Float32Array(host.memory().buffer, p, 21).set(pad);
+				return 1;
+			},
+			store_available: () => (s.store ? 1 : 0),
+			store_get(k) {
+				const v = s.store?.[host.string(k)];
+				return v == null ? 0 : host.handles.add(v);
+			},
+			store_set(k, v) {
+				if (s.store) {
+					if (v) s.store[host.string(k)] = host.string(v);
+					else delete s.store[host.string(k)];
+				}
+				store(k, v);
+			},
+			// (where the page is: as the program last moved it)
+			location: () => host.handles.add(s.location),
+			history_push(p, push) {
+				const u = new URL(host.string(p), 'http://x' + s.location);
+				s.location = u.pathname + u.search;
+				pushed(p, push);
+			},
+			scrolls_at(f) {
+				query = f;
+				scrolls(f);
+			},
+		});
+	}
+	// (the page moved in its history: the program in a worker told first)
+	const told = () => program?.post({ type: 'state', state: { location: location.pathname + location.search } });
 	const hxmc_os = {
 		audio_open(rate, channels, frames, buffer, fill) {
 			if (typeof AudioWorkletNode === 'undefined') return 0;
@@ -642,16 +838,18 @@ export default function (host) {
 			host.handles.remove(h);
 		},
 
-		window_open(title, width, height) {
+		// (hw: the program's handle for it, the program in a worker)
+		window_open(title, width, height, hw) {
 			const given = first && host.options.canvas;
 			first = false;
 			let c = typeof given === 'string' ? document.getElementById(given) : given;
-			const made = !c;
-			if (made) {
+			// (made by transfer: already the page's, its control the worker's)
+			const made = !c || c.hxmcPrepared === 'made';
+			if (!c) {
 				c = document.createElement('canvas');
-				c.setAttribute('aria-label', host.string(title));
 				document.body.appendChild(c);
 			}
+			if (made) c.setAttribute('aria-label', host.string(title));
 			// (a canvas the page does not size, whose displayed size is its
 			// buffer's: it would grow with the buffer; one an earlier instance
 			// sized, kept by hxmc dev: as it is, its pixels too, when its size
@@ -663,15 +861,9 @@ export default function (host) {
 			const fill = made || (width === 0 && height === 0);
 			if (fill) {
 				if (made) c.style.cssText = 'display:block;position:fixed;inset:0;width:100%;height:100%';
-				else {
-					const w0 = c.clientWidth;
-					c.width += 1;
-					if (c.clientWidth !== w0) c.style.cssText += ';display:block;width:100%;height:100%';
-				}
+				else if (unsized(c)) c.style.cssText += ';display:block;width:100%;height:100%';
 			} else if (!kept) {
-				const w0 = c.clientWidth;
-				c.width += 1;
-				if (made || c.clientWidth !== w0) {
+				if (made || unsized(c)) {
 					c.style.width = width + 'px';
 					c.style.height = height + 'px';
 					c.hxmcKeepStyled = true;
@@ -681,20 +873,31 @@ export default function (host) {
 				c.style.height = height + 'px';
 			}
 			const bw = Math.max(1, Math.round((fill ? c.clientWidth : width) * pixelRatio())), bh = Math.max(1, Math.round((fill ? c.clientHeight : height) * pixelRatio()));
-			if (c.width !== bw) c.width = bw;
-			if (c.height !== bh) c.height = bh;
+			const b = buf(c);
+			if (b.width !== bw) b.width = bw;
+			if (b.height !== bh) b.height = bh;
 			if (c.tabIndex < 0) c.tabIndex = 0;
-			const h = host.handles.add(c);
-			// (its displayed size followed: the page's styles, a ResizeObserver telling the next frame)
+			const h = hw ?? host.handles.add(c);
+			if (hw) host.handles.set(hw, c);
+			program?.post({ type: 'size', h, w: bw, hh: bh });
+			// (its displayed size followed: the page's styles, a ResizeObserver
+			// telling the next frame, or at once the worker)
 			c.hxmcResized = true;
-			c.hxmcSize = new ResizeObserver(() => (c.hxmcResized = true));
+			c.hxmcSize = new ResizeObserver(() => {
+				c.hxmcResized = true;
+				if (program) sync(h);
+			});
 			c.hxmcSize.observe(c);
 			sync(h);
 			c.hxmcOff = listen(c, h);
-			c.hxmcSeen = new IntersectionObserver(([e]) => (c.hxmcShown = e.isIntersecting));
+			c.hxmcSeen = new IntersectionObserver(([e]) => {
+				c.hxmcShown = e.isIntersecting;
+				program?.post({ type: 'state', state: { shown: { [h]: e.isIntersecting } } });
+			});
 			c.hxmcSeen.observe(c);
 			c.hxmcMade = made;
 			windows.add(h);
+			if (program) watch();
 			return h;
 		},
 		window_close(h) {
@@ -755,7 +958,7 @@ export default function (host) {
 		permission_status: (p) => permissions.state[p],
 		permission_request(p, done, id) {
 			const answer = (s) => {
-				permissions.state[p] = s;
+				permissions.set(p, s);
 				host.call(done, id, s);
 			};
 			const media = [{ video: true }, { audio: true }][p];
@@ -887,7 +1090,7 @@ export default function (host) {
 			photos.length = 0;
 		},
 		share_file(name, p, n, type) {
-			shared.push(new File([new Uint8Array(host.memory().buffer, p, n).slice()], host.string(name), { type: host.string(type) }));
+			shared.push(new File([host.bytes(p, n).slice()], host.string(name), { type: host.string(type) }));
 		},
 		share(text, url, done, id) {
 			const data = {}, t = host.string(text), u = host.string(url), files = shared.splice(0);
@@ -911,7 +1114,7 @@ export default function (host) {
 		},
 		download(name, p, n, type) {
 			if (typeof document == 'undefined') return;
-			const url = URL.createObjectURL(new Blob([new Uint8Array(host.memory().buffer, p, n).slice()], { type: host.string(type) }));
+			const url = URL.createObjectURL(new Blob([host.bytes(p, n).slice()], { type: host.string(type) }));
 			const a = document.createElement('a');
 			a.href = url;
 			a.download = host.string(name);
@@ -923,7 +1126,7 @@ export default function (host) {
 			navigator.clipboard?.writeText(s).catch(() => {});
 		},
 		clipboard_read() {
-			const deliver = (s) => queue.push([0, CLIPBOARD, s == null ? 0 : host.handles.add(String(s)), 0, 0, 0, 0]);
+			const deliver = (s) => push([0, CLIPBOARD, s == null ? 0 : String(s), 0, 0, 0, 0]);
 			if (pasted && performance.now() - pasted.at < 1000) {
 				const t = pasted.text;
 				pasted = null;
@@ -978,7 +1181,7 @@ export default function (host) {
 			const a = document.activeElement;
 			if (on) {
 				const r = c.getBoundingClientRect();
-				const kx = c.clientWidth / Math.max(1, c.width), ky = c.clientHeight / Math.max(1, c.height);
+				const kx = c.clientWidth / Math.max(1, buf(c).width), ky = c.clientHeight / Math.max(1, buf(c).height);
 				const s = ta.style;
 				s.left = r.left + c.clientLeft + x * kx + 'px';
 				s.top = r.top + c.clientTop + y * ky + 'px';
@@ -1012,6 +1215,7 @@ export default function (host) {
 			const a = new Int32Array(host.memory().buffer, p, 12);
 			a.fill(0);
 			a.set(ev.slice(0, 12));
+			if (ev[12]) input = ev[12];
 			return 1;
 		},
 		scrolls_at(f) {
@@ -1030,6 +1234,7 @@ export default function (host) {
 			if (!f || route.watching) return;
 			route.watching = true;
 			addEventListener('popstate', (e) => {
+				told();
 				if (!route.f) return;
 				if (route.waiting) {
 					route.waiting = false;
@@ -1071,6 +1276,7 @@ export default function (host) {
 			if (!back.watching) {
 				back.watching = true;
 				addEventListener('popstate', (e) => {
+					told();
 					// (our entry taken away: what was asked meanwhile)
 					if (back.leaving) {
 						back.leaving = false;
@@ -1089,35 +1295,63 @@ export default function (host) {
 					// (the page's own navigation: not ours)
 					if (!back.pushed) return;
 					back.pushed = false;
-					if (host.call(back.f) === 1) back.sync();
-					else history.back();
+					// (the program in a worker: its answer comes later)
+					const r = host.call(back.f), answer = (r) => (r === 1 ? back.sync() : history.back());
+					if (r instanceof Promise) r.then(answer);
+					else answer(r);
 				});
 			}
 			back.sync();
 		},
 		start(frame) {
+			// (in a worker: its animation frames, a timer's without; each frame
+			// once the page's frame told its input (its marker came: Chromium and
+			// Firefox give the page its input at the start of its frames), or 4
+			// ms after: a busy page holds no frame back)
+			const later = globalThis.requestAnimationFrame ?? ((f) => setTimeout(() => f(performance.now()), 16));
+			let due = null, marked = -1e9, timer = 0;
+			const go = () => {
+				const f = due;
+				due = null;
+				clearTimeout(timer);
+				f?.();
+			};
+			if (page) page.on('frame', () => {
+				marked = performance.now();
+				if (due) go();
+			});
+			const raf = !page ? requestAnimationFrame : (f) => later(() => {
+				due = f;
+				if (performance.now() - marked < 8) go();
+				else timer = setTimeout(go, 4);
+			});
+			const shown = (h) => (page ? page.state.shown[h] : host.handles.get(h).hxmcShown);
 			const tick = () => {
 				frameId = 0;
 				if (stopped) return;
-				if (windows.size > 0 && [...windows].every((h) => host.handles.get(h).hxmcShown === false)) return (frameId = requestAnimationFrame(tick));
-				if (pixelRatio() !== ratio) {
+				if (windows.size > 0 && [...windows].every((h) => shown(h) === false)) return (frameId = raf(tick));
+				// (in a worker the page tells these as they change)
+				if (!page && pixelRatio() !== ratio) {
 					ratio = pixelRatio();
 					for (const h of windows) {
 						host.handles.get(h).hxmcResized = true;
 						push([h, SCALE_CHANGE, 0, 0, 0, 0, 0]);
 					}
 				}
-				for (const h of windows) if (sync(h)) push([h, RESIZE, 0, host.handles.get(h).width, host.handles.get(h).height, 0, 0]);
-				const vv = globalThis.visualViewport, kb = vv ? Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop)) : 0;
+				if (!page) for (const h of windows) if (sync(h)) push([h, RESIZE, 0, buf(host.handles.get(h)).width, buf(host.handles.get(h)).height, 0, 0]);
+				const kb = page ? keyboardAt : viewportKeyboard();
 				if (kb !== keyboardAt) {
 					keyboardAt = kb;
-					for (const h of windows) push([h, RESIZE, 0, host.handles.get(h).width, host.handles.get(h).height, 0, 0]);
+					for (const h of windows) push([h, RESIZE, 0, buf(host.handles.get(h)).width, buf(host.handles.get(h)).height, 0, 0]);
 				}
 				// (a frame that throws: no more frames, and the page told when it
 				// asked, run's option onError)
 				let more;
+				const t0 = timing && performance.now();
 				try {
 					more = host.call(frame);
+					// (run's option timing: each frame's start, length and newest input, in the page's time)
+					if (timing) timing.push([performance.timeOrigin + t0, performance.now() - t0, input]);
 				} catch (e) {
 					stopped = true;
 					if (!host.options.onError) throw e;
@@ -1125,10 +1359,23 @@ export default function (host) {
 					return;
 				}
 				if (host.exitCode && host.options.onError) host.options.onError(new Error('the program exited with code ' + host.exitCode));
-				if (more) frameId = requestAnimationFrame(tick);
+				if (more) frameId = raf(tick);
 			};
-			frameId = requestAnimationFrame(tick);
+			frameId = raf(tick);
 		},
 	};
+	if (page) worker();
 	return { hxmc_os };
 }
+
+// the calls the page runs for a program in a worker, and their arguments
+// (s a string, b bytes: a pointer, then their length; else a number)
+const PAGE = {
+	window_open: 's', window_close: '', locale_watch: '', permission_request: '', notify_schedule: 'nssn', notify_cancel: '', photos_pick: '',
+	camera_take: '', location_current: '', location_watch: '', location_stop: '', share_file: 'sbns', share: 'ss', vibrate: '', open_url: 's',
+	download: 'sbns', clipboard_write: 's', clipboard_read: '', store_set: 'ss', text_input: '', set_title: 's', set_size: '', set_cursor: '',
+	scrolls_at: '', visibility: '', history_own: '', history_push: 's', history_go: '', back_depth: '',
+};
+
+// the page half of a program in a worker (os/thread.mjs): the same imports, given the page's host
+export { os as page };
