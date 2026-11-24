@@ -1,6 +1,10 @@
 package helder.ui.draw;
 
 import helder.os.DragOperation;
+#if (hxmc.target == "wasm32-wasi")
+// (the browser's: the program's frames on the page's layers alone)
+import helder.ui.draw.WebCompositor as Compositor;
+#end
 import helder.ui.platform.*;
 import helder.gfx.*;
 import helder.os.App;
