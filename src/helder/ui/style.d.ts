@@ -143,6 +143,7 @@ export type Recipe<P extends string> = Parts<P> & {
 export type ButtonRecipe = Recipe<'root' | 'icon' | 'label'>;
 export type CheckboxRecipe = Recipe<'root' | 'box' | 'mark' | 'label'>;
 export type SwitchRecipe = Recipe<'root' | 'track' | 'knob' | 'label'>;
+export type PathBarRecipe = Recipe<'root' | 'segment' | 'segmentIcon' | 'separator' | 'overflow' | 'current' | 'field'>;
 
 export type Accent = 'blue' | 'violet' | 'teal' | 'green' | 'amber' | 'orange' | 'red' | 'pink' | 'graphite';
 
@@ -156,6 +157,7 @@ export type LookPatch = {
 	button?: (t: Refs) => ButtonRecipe;
 	checkbox?: (t: Refs) => CheckboxRecipe;
 	switch?: (t: Refs) => SwitchRecipe;
+	pathbar?: (t: Refs) => PathBarRecipe;
 	render?: {button?: (props: ButtonProps<any>) => View; checkbox?: (props: CheckboxProps<any>) => View; switch?: (props: SwitchProps<any>) => View};
 	parts?: Record<string, (t: Refs) => PartStyle>;
 };

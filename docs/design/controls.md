@@ -250,7 +250,7 @@ attributes:
 
 | Control | APG pattern | Keys (in the behaviour) | helder semantics |
 | --- | --- | --- | --- |
-| Button, toggle button | button | Enter and Space activate | `button`, `checked` when it toggles |
+| Button, toggle button (`selected`) | button | Enter and Space activate | `button`, pressed via `checked` when it toggles |
 | Checkbox | checkbox | Space toggles; mixed is allowed | `checkbox`, checked / mixed |
 | Switch | switch | Space (and Enter) toggles; never mixed | `switch`, checked |
 | Radio group, segmented | radio group | Tab goes to the checked one; arrows move and check, wrapping | `radiogroup` / `radio`, place in its set |
@@ -394,7 +394,7 @@ interpreter.
 ## 11. The set and the plan
 
 A lean set, not CUI's 175 or so: Button, IconButton, Checkbox, Switch,
-Radios, Segmented, Slider, Field (wrapping TextField), Select and
+PathBar, Radios, Segmented, Slider, Field (wrapping TextField), Select and
 Combobox, Tabs, Menu, Popover and Tooltip, Dialog, Sheet, Toast,
 Progress, Spinner, Badge, Card, Alert. DataGrid stays as it is for now.
 

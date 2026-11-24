@@ -43,7 +43,7 @@ export type BaseVariants = { button_variant: { primary: boolean; secondary: bool
 // assistive technology (an icon alone's), a checkbox's and a switch's
 // text beside it. checked with onChange: the caller's state; neither: the
 // control's own.
-export type ButtonProps<V> = { children?: unknown; label?: string; icon?: Svg; variant?: import('./style').Axis<V, 'button_variant'>; size?: import('./style').Axis<V, 'button_size'>; disabled?: Read<boolean>; onPress?: () => void; tag?: string };
+export type ButtonProps<V> = { children?: unknown; label?: string; icon?: Svg; variant?: import('./style').Axis<V, 'button_variant'>; size?: import('./style').Axis<V, 'button_size'>; disabled?: Read<boolean>; selected?: Read<boolean>; onPress?: () => void; tag?: string };
 
 export type CheckboxProps<V> = { label: string; checked?: Read<boolean>; indeterminate?: Read<boolean>; onChange?: (arg0: boolean) => void; disabled?: Read<boolean>; variant?: import('./style').Axis<V, 'checkbox_variant'>; size?: import('./style').Axis<V, 'checkbox_size'>; tag?: string };
 
@@ -56,6 +56,10 @@ export type Completions = { from: number; items: Completion[] };
 // a menu of the menu bar; role Window: the window menu (macOS's: its own
 // items after Minimize, Zoom and Close)
 export type Menu = { label: string; items: unknown[]; role?: "about" | "quit" | "hide" | "undo" | "redo" | "cut" | "copy" | "paste" | "select-all" | "minimize" | "zoom" | "fullscreen" | "close" | "window" };
+
+export type PathBarProps = { segments: Read<PathSegment[]>; onNavigate: (arg0: number) => void; onSubmit: (arg0: string) => void; onSeparator?: (index: number, anchor: Node) => void; editable?: boolean; text?: Read<string>; editing?: Signal<boolean>; size?: 'sm' | 'md'; tag?: string; label?: string };
+
+export type PathSegment = { label: string; icon?: Svg };
 
 // An item of a native menu (PlatformViews.menu): its label, its shortcut
 // as shown ("Ctrl+C", "⌘C") and as keys (a menu that takes its keys
@@ -1315,7 +1319,7 @@ export declare const tone: typeof Look.tone;
 export declare class Press {
 	constructor(slot: string, disabled?: Read<boolean>, onPress?: () => void);
 	// a press of props' (a replaced rendering's: Look's render) for a control named slot
-	static of(props: { label?: string; disabled?: Read<boolean>; onPress?: () => void }, slot: string): Press;
+	static of(props: { label?: string; disabled?: Read<boolean>; selected?: Read<boolean>; onPress?: () => void }, slot: string): Press;
 	readonly hovered: Signal<boolean>;
 	readonly pressed: Signal<boolean>;
 	readonly focusVisible: Signal<boolean>;
@@ -1351,6 +1355,7 @@ export declare class Press {
 // (pinned to ui's renderer, UiView: drawn controls, of no other renderer)
 export declare class Standard {
 	static Button(props: ButtonProps<BaseVariants>): View;
+	static PathBar(props: PathBarProps): View;
 	static Checkbox(props: CheckboxProps<BaseVariants>): View;
 	static Switch(props: SwitchProps<BaseVariants>): View;
 	// a look for what it holds: its sheet, and the look its controls draw with
@@ -1358,6 +1363,7 @@ export declare class Standard {
 }
 
 export declare const Button: typeof Standard.Button;
+export declare const PathBar: typeof Standard.PathBar;
 export declare const Checkbox: typeof Standard.Checkbox;
 export declare const Switch: typeof Standard.Switch;
 export declare const Themed: typeof Standard.Themed;

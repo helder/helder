@@ -6,6 +6,18 @@ import haxe.macro.Expr;
 import haxe.macro.Type;
 #end
 
+@:typescript.type("'sm' | 'md'")
+enum abstract PathBarSize(String) to String {
+	var Small = "sm";
+	var Medium = "md";
+
+	@:from public static macro function of(e:Expr):Expr
+		return switch e.expr {
+			case EConst(CString("sm" | "md", _)): macro (cast $e : helder.ui.controls.Variant.PathBarSize);
+			case _: haxe.macro.Context.error('PathBar size is "sm" or "md"', e.pos);
+		};
+}
+
 // A control's variant and size, checked where they are written against the
 // values its look declares: V is the look's (Look<V>: a structure naming,
 // by control and axis, each value: {button_variant: {primary: Bool, ...},

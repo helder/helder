@@ -18,7 +18,7 @@ import helder.ui.controls.Variant;
 @:typescript.hide
 class Base {
 	public static function look():Look<BaseVariants>
-		return Look.make(["button" => [t -> button(t)], "checkbox" => [t -> checkbox(t)], "switch" => [t -> toggle(t)]]);
+		return Look.make(["button" => [t -> button(t)], "checkbox" => [t -> checkbox(t)], "switch" => [t -> toggle(t)], "pathbar" => [t -> pathBar(t)]]);
 
 	static final CLEAR = Color.TRANSPARENT;
 
@@ -75,10 +75,12 @@ class Base {
 					primary: {root: {shadow: rest, dark: dark, background: t.accent, borderColor: t.accent, color: t.accentFg, hover: {background: t.accentStrong, borderColor: t.accentStrong},
 						pressed: {background: t.accent, borderColor: t.accent}}},
 					secondary: {root: {background: t.fill, borderColor: t.fill, hover: {background: t.fillHover, borderColor: t.fillHover},
-						pressed: {background: t.fillPress, borderColor: t.fillPress}}},
+						pressed: {background: t.fillPress, borderColor: t.fillPress},
+						selected: {background: t.accentSoft, hover: {background: t.fillHover}, pressed: {background: t.fillPress}}}},
 					outline: {root: {shadow: rest, dark: dark, background: t.surface, borderColor: t.edge, hover: {background: t.hover, borderColor: t.edgeStrong},
-						pressed: {background: t.press}}},
-					ghost: {root: {hover: {background: t.hover}, pressed: {background: t.press}}},
+						pressed: {background: t.press}, selected: {background: t.accentSoft, hover: {background: t.hover}, pressed: {background: t.press}}}},
+					ghost: {root: {hover: {background: t.hover}, pressed: {background: t.press},
+						selected: {background: t.accentSoft, color: t.fg, hover: {background: t.hover}, pressed: {background: t.press}}}},
 					danger: {root: {shadow: rest, dark: dark, background: t.danger, borderColor: t.danger, color: t.dangerFg, hover: {background: t.dangerStrong, borderColor: t.dangerStrong},
 						pressed: {background: t.danger, borderColor: t.danger}}}
 				},
@@ -95,6 +97,28 @@ class Base {
 				}
 			},
 			defaults: {variant: "secondary", size: "md"}
+		};
+	}
+
+	static function pathBar(t:Refs):PathBarRecipe {
+		var segment:PartStyle = {
+			direction: Row, alignItems: Center, height: 24, shrink: 0, padding: [0, 6], columnGap: 4, radius: 6,
+			color: t.fg2, cursor: Pointer, ringColor: CLEAR, hover: {background: t.hover, color: t.fg}, focus: ring(t)
+		};
+		return {
+			root: {height: 32, minWidth: 0, shrink: 0, direction: Row, alignItems: Center, padding: [0, 6],
+				background: CLEAR, fontFamily: t.font, fontSize: t.small, userSelect: None, overflow: Hidden},
+			segment: segment,
+			segmentIcon: {width: 14, height: 14, shrink: 0},
+			separator: {width: 11, height: 24, alignItems: Center, justify: Center, shrink: 0, radius: 6,
+				color: t.fg3, ringColor: CLEAR, focus: ring(t)},
+			overflow: segment,
+			current: {direction: Row, alignItems: Center, height: 24, minWidth: 0, padding: [0, 6], columnGap: 4, radius: 6,
+				color: t.fg, fontWeight: t.medium, overflow: Hidden},
+			field: {grow: 1, minWidth: 0, height: 26, padding: [0, 6], radius: 6, color: t.fg, background: t.well,
+				borderWidth: 1, borderColor: t.focus, userSelect: Text},
+			variants: {size: {md: {root: {height: 36}, segment: {height: 28}, separator: {height: 28},
+				overflow: {height: 28}, current: {height: 28}, field: {height: 30}}}}
 		};
 	}
 
