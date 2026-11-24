@@ -371,6 +371,17 @@ class Ui extends ScrollHost {
 			if (overlay.inkStale) refreshInk(overlay);
 		}
 		tellResized();
+		// (what an onResize changed in the layout (a bar's height a scroller's
+		// inset): laid out again before the frame, as a ResizeObserver's loop,
+		// SETTLES times at most)
+		var again = 0;
+		while (@:privateAccess root.dirty && again++ < SETTLES) {
+			helder.view.graph.Graph.flush();
+			flushRestyles();
+			Layout.run(root, width, height, text, rounded);
+			if (root.inkStale) refreshInk(root);
+			tellResized();
+		}
 		// (the scrollers whose extents may have changed)
 		for (n in rounded)
 			if (!@:privateAccess trackpad.holds(n) && !mirrorHeld.exists(n)) Scrolling.clamp(n);

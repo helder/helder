@@ -107,6 +107,17 @@ class VirtualScroll extends Node {
 		return v;
 	}
 
+	// the room left before the first row and after the last (bars over its
+	// ends: a NavScreen's), its rows placed again
+	public function insets(top:Float, bottom:Float) {
+		if (top == insetTop && bottom == insetBottom) return;
+		insetTop = top;
+		insetBottom = bottom;
+		place();
+		markDirty();
+		if (ui != null) ui.requestFrame();
+	}
+
 	// --- the list's rows
 
 	// n rows, none made or measured (a new list)

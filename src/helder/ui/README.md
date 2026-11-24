@@ -602,7 +602,9 @@ an icon or a label, 44 points at least), a `header` under the large title
 `bars={false}` to fade them out (a photo's tap). The content scrolls in a
 scroller of the screen's, its top and bottom left for the bars and the
 safe area; content with its own (a `VirtualGrid`) says `scrolls={false}`
-and hands its scroller over, `use(Bar.here).scroller(grid)`:
+and hands its scroller over, `use(Bar.here).scroller(grid)` (a
+`VirtualScroll`'s `insets(top, bottom)`: the room before its first row and
+after its last):
 
 ```haxe
 nav.route("/", _ -> <NavScreen title="Photos" large subtitle="120 items" header={<Search/>}
