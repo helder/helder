@@ -997,7 +997,8 @@ class Ui extends ScrollHost {
 	// sets off (a first paint's, Node.drawnAt, a flight) left to the walk)
 	function drawNode(n:Node, canvas:Canvas) {
 		var s = n.style;
-		if (s.display == None || n.width <= 0 && n.height <= 0 && n.children.length == 0) return;
+		// (a span with spans of its own: drawn by its text, as the others)
+		if (s.display == None || n.width <= 0 && n.height <= 0 && (n.children.length == 0 || n.parent is TextNode)) return;
 		var dl = recording, w = walk;
 		// (a moving node's own layer: drawn by the walk, with its transform and opacity then)
 		if (dl != null && n.paintLayer != null && !flying && ghosts == 0) {

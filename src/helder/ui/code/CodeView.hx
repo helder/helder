@@ -33,6 +33,9 @@ class CodeView extends Node {
 	public var ligatures(default, set) = false;
 	public var lineNumbers = true;
 	public var indentGuides = true;
+	// the caret's line marked; its background and gutter's drawn (false: what is behind shows, a document's code block)
+	public var currentLine = true;
+	public var background = true;
 
 	// the scroll offsets (pixels)
 	public var scrollTop(default, null) = 0.0;
@@ -428,12 +431,12 @@ class CodeView extends Node {
 		model.highlight(last);
 		if (!model.highlighted()) startTicking();
 		canvas.pushClip(x, y, width, height, 0);
-		canvas.rect(x, y, width, height, 0, c[CodeTheme.BACKGROUND], 0, 0);
+		if (background) canvas.rect(x, y, width, height, 0, c[CodeTheme.BACKGROUND], 0, 0);
 		var left = x + gutterW, tx = left + PAD - scrollLeft, ty = y - scrollTop;
 		canvas.pushClip(left, y, width - gutterW, height, 0);
 		var sels = model.sels;
 		// (the current lines: the carets' with no selection)
-		for (k in 0...sels.length) {
+		if (currentLine) for (k in 0...sels.length) {
 			var s = sels[k];
 			if (!s.empty()) continue;
 			var l = model.lineOf(s.head);
@@ -654,7 +657,7 @@ class CodeView extends Node {
 	// (the gutter: its background, the lines' numbers, diagnostics' markers)
 	function paintGutter(canvas:Canvas, engine:TextEngine, x:Float, y:Float, ty:Float, first:Int, last:Int) {
 		var c = codeTheme.colors, lh = lineHeight;
-		canvas.rect(x, y, gutterW, viewH, 0, c[CodeTheme.GUTTER], 0, 0);
+		if (background) canvas.rect(x, y, gutterW, viewH, 0, c[CodeTheme.GUTTER], 0, 0);
 		var active = model.lineOf(model.primary.head);
 		if (lineNumbers)
 			for (l in first...last + 1) {

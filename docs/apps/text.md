@@ -48,5 +48,6 @@ On a phone a field tells the keyboard what it takes, and the layout keeps clear 
 - **Keymaps and actions:** named commands bound to keys in a JSON keymap, shown in menus, dispatched up from the focused view.
 - **Accessibility:** roles and labels reach VoiceOver, TalkBack, Narrator and Orca.
 - **A code editor:** highlighting, multiple cursors, find and replace ([Code editor](https://helder.build/examples/#code-editor)).
+- **Markdown:** CommonMark and GitHub's tables, task lists and strikethrough, parsed into a tree and shown as nodes your look styles, long documents virtualized ([Markdown](https://helder.build/examples/#markdown)).
 
-<Reference to="text,ui"/>
+<Reference to="text,ui,markdown"/>

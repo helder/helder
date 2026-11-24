@@ -49,6 +49,9 @@
     "./media": {
       "types": "./src/helder/media/index.d.ts"
     },
+    "./markdown": {
+      "types": "./src/helder/markdown/index.d.ts"
+    },
     "./gfx": {
       "types": "./src/helder/gfx/index.ts"
     },
