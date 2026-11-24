@@ -6,9 +6,9 @@ source, an index for exact seeking, and the clock a player keeps. Decoded
 by the systems' own decoders, nothing bundled: Apple's VideoToolbox and
 AudioToolbox (`helder.media.apple`), the browser's WebCodecs
 (`helder.media.web`), Android's MediaCodec (`helder.media.android`),
-helder's own Vorbis everywhere; the roadmap's **Video** brings Media
-Foundation and VAAPI. A `Player` plays a
-file, a `<Video>` shows it in helder.ui.
+Windows' Media Foundation (`helder.media.windows`), helder's own Vorbis
+where an app links it; the roadmap's **Video** brings VAAPI. A `Player`
+plays a file, a `<Video>` shows it in helder.ui.
 
 ```haxe
 var media = Media.open(new FileSource("clip.mp4"));   // a coroutine (helder.async)
@@ -186,12 +186,37 @@ for, 16 bits where a codec gives those; its outputs come later than their
 packets (`decoded`), the end drained (`flush`, `pending`). H.264, HEVC,
 VP9 and AV1; AAC, MP3, Opus and FLAC (no ALAC: Android has none).
 
+**Media Foundation** (`windows.MfVideo`, `windows.MfAudio`,
+`windows.MfTransform`; mfplat.dll loaded at run time: Windows' N editions
+and Server without the feature have none): the system's decoder MFTs
+(MFTEnumEx: synchronous, local, its ranking; Store extensions too: HEVC,
+VP9, AV1 where installed), driven directly on the program's thread (no
+callbacks; COM in the multithreaded apartment or the one it is in).
+Packets go in as samples timed in 100 ns units; avcC's and hvcC's NAL
+lengths become start codes and their parameter sets go before each
+keyframe (av1C's OBUs before AV1's). With a hardware device of
+helder.gfx's (`D3D11Backend.decoding`: made with video support) a
+D3D11-aware decoder is given an `IMFDXGIDeviceManager` on it (DXVA; the
+device's context made safe across threads), its frames NV12 or P010
+textures in the decoder's array; else (WARP, `MfVideo.software`) it
+decodes into samples of ours in memory, locked while a frame is held.
+Colours as the output type names them, else BT.601's video range. Audio:
+AAC (HEAACWAVEINFO's tail and the AudioSpecificConfig), MP3, FLAC
+(STREAMINFO, forms tried in turn), ALAC (its cookie), Opus where the
+system has a decoder, floats where it gives them, else 16 bits; outputs
+by time (`decoded`), the end drained. Not Vorbis (helder's).
+
 **AudioToolbox** (`apple.AtDecoder`): AAC, MP3, ALAC, FLAC and Opus
 through an AudioConverter, the track's config its magic cookie (FLAC's
 STREAMINFO's body, its depth a format flag; a packet's frames asked for a
 call: its FLAC decoder gives nothing when asked for more). **Vorbis**
 (`VorbisDecoder`): helder's own (`helder.os.audio.Vorbis`), its three
-headers from Matroska's config, its packets fed one at a time (`feed`).
+headers from Matroska's config, its packets fed one at a time (`feed`),
+linked where an app asks: `VorbisDecoder.link()` before it plays (apps/
+viewer does; 77 KB of examples/video on Windows x86-64, 50 KB on macOS
+arm64). Without it a Vorbis track is not heard (`player.unheard`: the
+track; a browser's WebCodecs decodes it where it can), the video plays
+on the monotonic clock. Games' `Sfx` keeps its own.
 
 ## Playing
 
@@ -281,6 +306,22 @@ its colours), then turned upright by the same pass (`VideoShader`'s
 once the shaders have a binding type for external textures (its texture
 lasts a task only: bound in the frame that samples it).
 
+On Windows (`VideoTexture`): the planes opened by D3D11Backend.openShared
+as the frame has them: a DXVA frame's NV12 or P010 texture (`d3d11:`,
+its slice copied on the GPU out of the decoder's array into a texture of
+the picture's size, each plane sampled by its view's format: r8 and rg8,
+r16 and rg16), a software decoder's rows (`mem:`, uploaded as the
+texture is made); each frame its own handle (the decoder's pool reuses
+its textures and memory), the same pass as Apple's. `layer={true}`
+(`ui.WinLayer`, in a window of DcLayers): a swap chain for composition
+of the picture's size, the content of a visual in the node's slot
+(`DcLayers.visualFor`), scaled and centred as fit says; each frame
+presented as it falls due on the player's clock, so DWM shows it at its
+next composition and helder draws nothing for it. The frame is turned to
+RGB on the CPU as VideoShader turns it (a DXVA frame read back by Media
+Foundation: the GPU's video processor would save that, later); until a
+frame was presented the node draws them.
+
 On Android (`VideoTexture`): the frame's `AHardwareBuffer` imported into
 GLES as an EGLImage (`Device.openShared` of `ahb:`, GLBackend: an external
 texture, no copy), kept while the reader's pool reuses it; the same pass
@@ -308,7 +349,7 @@ Audio alone is a Player without a box. TypeScript: `helder/media`'s
 A box, element or cluster read whole is at most 256 MB; a track at most 50
 million samples; malformed or cut input ends in a `MediaError`, never
 another error, a hang, or an allocation of what a header claims. Not yet:
-the other systems' decoders (the roadmap's next parts), Ogg's container
+Linux's decoders (the roadmap's next part), Ogg's container
 (Opus and Vorbis in .ogg or .opus files), HDR's transfers (PQ and HLG
 shown as SDR), a rate that keeps the pitch, WebM's DiscardPadding (Opus's
 end trimmed to the segment's duration), reading an MP4's fragments lazily
@@ -394,3 +435,23 @@ start), played until six frames were shown, sought and paused, the frame
 at 0.2 shown for ten frames; `still.mjs` reads the screencap's quadrants
 against the source as the still was shown (said by VideoStill): drawn
 within 8 levels (the emulator's 1), the layer within 16 (the emulator's 13).
+
+On Windows (CI's desktop-windows job: no GPU, Media Foundation's
+software decoders and WARP): the system-images lane's
+`tests/media/windows/MediaWindowsTest.hx`, decoded.json's videos through
+Media Foundation, count, each frame's time and planes' CRC-32 as
+ffmpeg's; the audio tracks' frames and samples (#93's tolerances);
+frames in RGB by helder's pass on Direct3D 11 and by WinLayer's
+conversion against ffmpeg's where flat (a mean under 1 level, at most 8);
+exact seeks and steps; a clip played (WASAPI's clock, the monotonic
+clock where the machine has no output, said: CI's runner), each frame
+once within a frame of it. HEVC, VP9 and AV1 (Store extensions), Opus
+and what else the system lacks are skipped with a line, H.264 and AAC
+never. The window lane's `WinVideoStill.hx`: a `<Video>` of `quads.mp4`
+in a scroller, drawn and on its layer, played until six frames were
+shown, sought and paused, the window's pixels (PrintWindow) read at the
+quadrants' centres: within 8 levels of the source both ways. Limits on
+Windows: hardware's decoder untested by CI (no GPU there), the
+asynchronous hardware MFTs not used (Microsoft's synchronous ones use
+DXVA), the layer's conversion on the CPU, ALAC and FLAC as the system's
+decoders take their configs.

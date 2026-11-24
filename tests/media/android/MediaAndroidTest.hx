@@ -42,6 +42,7 @@ class MediaAndroidTest {
 
 	static function main() {
 		helder.os.android.Activity.link();
+		helder.media.VorbisDecoder.link();
 		var expected:Dynamic = haxe.Json.parse(Asset.embed("tests/media/apple/decoded.json").toString());
 		var t0 = haxe.Timer.stamp();
 		Async.run(_ -> {

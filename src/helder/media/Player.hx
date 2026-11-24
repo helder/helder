@@ -35,6 +35,9 @@ class Player {
 	public var media(default, null):Null<Media>;
 	public var video(default, null):Null<MediaTrack>;
 	public var audio(default, null):Null<MediaTrack>;
+	// an audio track this system does not decode, played without it (Vorbis
+	// where helder's decoder is not linked: VorbisDecoder.link; null: none)
+	public var unheard(default, null):Null<MediaTrack>;
 	// seconds (0 until loaded)
 	public var duration(default, null) = 0.0;
 	public var loaded(default, null) = false;
@@ -332,7 +335,10 @@ class Player {
 			// (the browser's answer awaited: isConfigSupported; elsewhere the decoders tell)
 			#if (hxmc.target == "wasm32-wasi")
 			if (v != null && !Decoders.supported(v)) v = null;
-			if (a != null && !Decoders.supported(a)) a = null;
+			if (a != null && !Decoders.supported(a)) {
+				unheard = a;
+				a = null;
+			}
 			var all = Lambda.find(m.tracks, t -> t.kind == Video);
 			if (all != null && (v == null || helder.media.web.WebElement.forced) && fallback(m, all)) return;
 			#end
@@ -400,7 +406,10 @@ class Player {
 		}
 		if (audio != null) {
 			adec = try Decoders.audio(audio) catch (e:MediaError) null;
-			if (adec == null) audio = null;
+			if (adec == null) {
+				unheard = audio;
+				audio = null;
+			}
 		}
 		if (video == null && audio == null) throw new MediaError("nothing this system decodes");
 		duration = m.duration > 0 ? m.duration : Math.max(video != null ? video.duration : 0, audio != null ? audio.duration : 0);

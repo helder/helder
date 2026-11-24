@@ -112,6 +112,12 @@ class ID3DBlob {
 	@:slot(4) static function GetBufferSize(self:Ptr):Int64;
 }
 
+@:build(helder.os.win32.Com.build())
+@:hxmc.unsafe(gc)
+class ID3D11Texture2D {
+	@:slot(10) static function GetDesc(self:Ptr, desc:Ptr<D3D11_TEXTURE2D_DESC>):Void;
+}
+
 // (shared textures: a texture's legacy shared handle, its keyed mutex)
 @:build(helder.os.win32.Com.build())
 @:hxmc.unsafe(gc)
@@ -275,6 +281,8 @@ class D3D {
 	public static inline var ALPHA_MODE_PREMULTIPLIED = 1;
 	public static inline var ALPHA_MODE_IGNORE = 3;
 	public static inline var CREATE_DEVICE_BGRA_SUPPORT = 0x20;
+	public static inline var CREATE_DEVICE_VIDEO_SUPPORT = 0x800;
+	public static inline var FORMAT_R16G16_UNORM = 35;
 	// HRESULTs
 	public static inline var DXGI_ERROR_DEVICE_REMOVED = 0x887A0005;
 	public static inline var DXGI_ERROR_DEVICE_RESET = 0x887A0007;

@@ -31,6 +31,7 @@ class MediaAppleTest {
 	}
 
 	static function main() {
+		helder.media.VorbisDecoder.link();
 		if (Sys.args().length > 0) out = Sys.args()[0];
 		var expected:Dynamic = haxe.Json.parse(File.getContent("tests/media/apple/decoded.json"));
 		var t0 = haxe.Timer.stamp();

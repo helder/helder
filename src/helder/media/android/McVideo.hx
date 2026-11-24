@@ -59,7 +59,7 @@ class McVideo implements VideoDecoder {
 
 	function open() {
 		var w = track.width, h = track.height, c = track.config;
-		bits = depth(c);
+		bits = CodecConfig.depth(track);
 		var st = Arena.scopedValue(a -> {
 			var out:Ptr<Ptr> = a.alloc(8);
 			// (AIMAGE_FORMAT_PRIVATE, the codec's own layout; where read
@@ -73,7 +73,7 @@ class McVideo implements VideoDecoder {
 			s;
 		});
 		if (st != 0) throw new MediaError('no images for the decoder (media_status_t $st)');
-		var sets = parameterSets(c);
+		var sets = CodecConfig.sets(track);
 		codec = McCodec.open(track, f -> {
 			McCodec.int(f, "width", w);
 			McCodec.int(f, "height", h);
@@ -82,62 +82,7 @@ class McVideo implements VideoDecoder {
 				if (sets[1].length > 0) McCodec.buffer(f, "csd-1", sets[1]);
 			} else if (track.codec == Av1 && c != null)
 				McCodec.buffer(f, "csd-0", c);
-		}, layer.isNull() ? window : layer, lengths(c));
-	}
-
-	// (bits a sample: hvcC's, vpcC's, av1C's; H.264 High 10's)
-	function depth(c:Null<Bytes>):Int {
-		if (c == null) return 8;
-		return switch track.codec {
-			case Hevc if (c.length > 17): (c.get(17) & 7) + 8;
-			case Vp9 if (c.length > 6): c.get(6) >> 4;
-			case Av1 if (c.length > 2): c.get(2) & 0x40 != 0 ? 10 : 8;
-			case H264 if (c.length > 1): c.get(1) == 110 ? 10 : 8;
-			case _: 8;
-		}
-	}
-
-	// (avcC's NAL length size, hvcC's; 0: none, the packets as they are)
-	function lengths(c:Null<Bytes>):Int
-		return c == null ? 0 : switch track.codec {
-			case H264 if (c.length > 4): (c.get(4) & 3) + 1;
-			case Hevc if (c.length > 21): (c.get(21) & 3) + 1;
-			case _: 0;
-		}
-
-	// (avcC's SPS and PPS, hvcC's VPS, SPS and PPS all in the first: each after a start code)
-	function parameterSets(c:Null<Bytes>):Null<Array<Bytes>> {
-		if (c == null || (track.codec != H264 && track.codec != Hevc)) return null;
-		var lists = [new haxe.io.BytesBuffer(), new haxe.io.BytesBuffer()];
-		function add(to:haxe.io.BytesBuffer, at:Int, size:Int) {
-			for (b in [0, 0, 0, 1]) to.addByte(b);
-			to.addBytes(c, at, size);
-		}
-		try {
-			if (track.codec == H264) {
-				var at = 5;
-				for (kind in 0...2) {
-					var n = c.get(at++) & (kind == 0 ? 31 : 255);
-					for (_ in 0...n) {
-						var size = c.get(at) << 8 | c.get(at + 1);
-						add(lists[kind], at + 2, size);
-						at += 2 + size;
-					}
-				}
-			} else {
-				var at = 23;
-				for (_ in 0...c.get(22)) {
-					var n = c.get(at + 1) << 8 | c.get(at + 2);
-					at += 3;
-					for (_ in 0...n) {
-						var size = c.get(at) << 8 | c.get(at + 1);
-						add(lists[0], at + 2, size);
-						at += 2 + size;
-					}
-				}
-			}
-		} catch (_:Dynamic) return null;
-		return [lists[0].getBytes(), lists[1].getBytes()];
+		}, layer.isNull() ? window : layer, CodecConfig.lengths(track));
 	}
 
 	public function decode(p:Packet, bytes:Bytes, show:Bool) {

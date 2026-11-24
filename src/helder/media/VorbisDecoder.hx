@@ -4,9 +4,13 @@ import haxe.io.Bytes;
 import helder.os.audio.Vorbis;
 
 // Vorbis by helder's own decoder (helder.os.audio.Vorbis: its headers
-// from the track's config), on every system
+// from the track's config), on every system, once an app links it
+// (link(), before it plays: 38 KB a program that does not is spared)
 @:hxmc.unsafe(gc)
 class VorbisDecoder implements AudioDecoder {
+	public static function link()
+		Decoders.vorbis = t -> new VorbisDecoder(t);
+
 	public final rate:Int;
 	public var decoded(default, null):Null<Packet>;
 	public var pending(get, never):Int;
