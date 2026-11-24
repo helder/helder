@@ -86,3 +86,8 @@ class Win32Blit {
 		LibC.free(info);
 	}
 }
+
+// (the compositor's next frame waited for: a present paced as a swap chain's)
+@:hxmc.c @:hxmc.lib("dwmapi") extern class Dwm {
+	static function DwmFlush():Int;
+}

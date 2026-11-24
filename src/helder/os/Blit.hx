@@ -46,7 +46,22 @@ class Blit {
 		#elseif (helder.os == "web")
 		if (s.kind == Canvas) helder.os.web.Dom.put_pixels(s.handle.toI64().toInt(), px, w, h);
 		#end
+		pace();
 		if (s.onPresent != null) s.onPresent();
+	}
+
+	// (paced as a swap chain paces its presents: Windows the compositor's
+	// next frame, DwmFlush; elsewhere a 60 Hz display's interval at most)
+	static var last = 0.0;
+
+	static function pace() {
+		#if (helder.os == "windows")
+		helder.os.win32.Win32Blit.Dwm.DwmFlush();
+		#elseif (helder.os != "web")
+		var now = haxe.Timer.stamp(), wait = last + 1 / 60 - now;
+		if (wait > 0 && wait < 1 / 60) Sys.sleep(wait);
+		last = haxe.Timer.stamp();
+		#end
 	}
 
 	// the last frame shown again where the system lost it (X11: an Expose;
