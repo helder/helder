@@ -244,10 +244,20 @@ class MetalBackend {
 	// the next frame onto layer's next drawable (a CAMetalLayer of the
 	// window's: helder.ui.draw.CaLayers), kept for takePresents
 	// (direct: presented at once, as a window's frame is, not kept)
-	public function planeFrame(layer:Ptr, direct = false) {
+	public function planeFrame(layer:Ptr, direct = false, ?from:Ptr) {
 		plane = layer;
 		planeDirect = direct;
+		planeFrom = from == null ? Ptr.nil() : from;
 	}
+
+	// (a plane frame's drawable begun with from's pixels, a texture of its
+	// size (a drawable's of the frames before: Core Animation keeps none of
+	// a drawable's contents), copied first: whether they were, so that its
+	// pass loads them and draws only what changed (helder.ui.draw.CaLayers);
+	// the drawable's texture drawn last, the caller's to retain)
+	var planeFrom = Ptr.nil();
+	public var planeCopied(default, null) = false;
+	public var planeTexture(default, null) = Ptr.nil();
 
 	var planeDirect = false;
 
@@ -654,6 +664,15 @@ class MetalBackend {
 			height = Msg.i(texture, S.height).toInt();
 			planing = true;
 			cmd = Msg.id(queue, S.commandBuffer);
+			var from = planeFrom;
+			planeFrom = Ptr.nil();
+			planeTexture = texture;
+			planeCopied = !from.isNull() && Msg.i(from, S.width).toInt() == width && Msg.i(from, S.height).toInt() == height;
+			if (planeCopied) {
+				var blit = Msg.id(cmd, ObjC.sel("blitCommandEncoder"));
+				Msg.vPtrPtr(blit, ObjC.sel("copyFromTexture:toTexture:"), from, texture);
+				Msg.v(blit, ObjC.sel("endEncoding"));
+			}
 			return true;
 		}
 		if (frameTarget != 0) {

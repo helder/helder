@@ -370,6 +370,8 @@ class LayerSplit {
 					p.radii[j] = clips[8 * c + 4 + j];
 				p.drawnX = f.offsets[2 * c];
 				p.drawnY = f.offsets[2 * c + 1];
+				for (j in 0...4)
+					p.ranges[j] = f.ranges[4 * c + j];
 				p.scale = f.scale;
 				lock.acquire();
 				contents.set(f.nodes[c], p);

@@ -38,6 +38,7 @@ class DamageTest {
 			for (tiles in [false, true])
 				see(device, scale, tiles);
 			device.dispose();
+			planes(scale);
 		}
 		Sys.println("DamageTest: " + (failed == 0 ? "ok" : '$failed FAILED'));
 		Sys.exit(failed == 0 ? 0 : 1);
@@ -193,6 +194,44 @@ class DamageTest {
 			[for (v in got) StringTools.hex(v & 0xFFFFFF, 6)].join(" ") + ' (ABGR), at most $off levels off');
 	}
 
+	// (the system layers' buffers drawn only where they changed (LayerPlane:
+	// cut, as CaLayers and ScLayers draw them) against drawn whole: two
+	// stacks given the same changes, the window's layer of each drawn from
+	// its compositor's frame onto its frame, one whole each frame, the other
+	// its last frame loaded and only the rectangles that changed drawn over
+	// it; a header's label, a badge in it, its colour, the list below
+	// scrolled, a row toggled)
+	static function planes(scale:Int) {
+		var stacks = [for (_ in 0...2) new PlaneStack(W * scale, H * scale, scale)];
+		var seed = 5 + scale, off = 0, first = "", cut = 0, drawn = 0, area = 0.0, frames = 60;
+		function rnd(n:Int):Int {
+			seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+			return (seed >> 8) % n;
+		}
+		for (f in 0...frames) {
+			var op = rnd(6), j = rnd(1000);
+			for (st in stacks)
+				st.change(op, j, f);
+			var a = stacks[0].frame(false), b = stacks[1].frame(true);
+			if (b >= 0) {
+				drawn++;
+				if (b < stacks[1].w * stacks[1].h) cut++;
+				area += b;
+			}
+			var n = 0, pa = stacks[0].pixels, pb = stacks[1].pixels;
+			for (p in 0...Std.int(pa.length / 4))
+				if (pa.getInt32(p * 4) != pb.getInt32(p * 4)) {
+					if (n++ == 0 && first == "")
+						first = 'frame $f (op $op) at ${p % stacks[0].w},${Std.int(p / stacks[0].w)}: ${StringTools.hex(pa.getInt32(p * 4), 8)} whole, ${StringTools.hex(pb.getInt32(p * 4), 8)} cut';
+				}
+			off += n;
+		}
+		for (st in stacks)
+			st.dispose();
+		check('scale $scale: the window\'s system layer drawn where it changed as drawn whole', off == 0 && cut > drawn / 2,
+			'$off pixels differ${first == "" ? "" : ", first " + first}; $cut of $drawn draws in part, ${Math.round(area / Math.max(1, drawn))} pixels a draw');
+	}
+
 	// a row toggled damages that row's bounds; the caret moved, only the caret
 	static function damages(device:Device) {
 		var m = build(0), ui = m.ui, r = new Renderer(device), pixels = Bytes.alloc(W * H * 4);
@@ -289,3 +328,160 @@ class DamageTest {
 }
 
 typedef Made = {ui:Ui, scrollers:Array<Node>, rows:Array<Node>, card:Node, field:TextField, popup:Popup};
+
+// (a window's stack as the system layers see it: its program's frames
+// composed (Compositor), split (LayerSplit), the window's layer drawn
+// onto the frame from them, whole or only where it changed)
+@:access(helder.ui.draw.LayerSplit)
+@:access(helder.ui.draw.LayerPlane)
+@:access(helder.ui.draw.CompositeFrame)
+@:access(helder.ui.draw.Compositor)
+@:access(helder.ui.draw.Renderer)
+class PlaneStack {
+	public final w:Int;
+	public final h:Int;
+	public final pixels:Bytes;
+	final device:Device;
+	final r:Renderer;
+	final c:Compositor;
+	final ui:Ui;
+	final split = new PlaneSplit();
+	final title = new TextNode("Header");
+	final badge = new Node();
+	final head = new Node();
+	final list = new Node();
+	final rows:Array<Node> = [];
+	var buffer:Null<Buffer> = null;
+	var room = 0;
+	var drawnAt = -1;
+	var t = 20.0;
+
+	public function new(w:Int, h:Int, scale:Int) {
+		this.w = w;
+		this.h = h;
+		pixels = Bytes.alloc(w * h * 4);
+		device = Device.create(Surface.headless(w, h));
+		r = new Renderer(device);
+		r.scale = scale;
+		r.groups = true;
+		r.tiles = true;
+		ui = new Ui(new DrawText(), w / scale, h / scale);
+		ui.scale = scale;
+		ui.root.style.set({direction: Column, background: 0xFFFFFFFF});
+		head.style.set({direction: Row, height: 40, shrink: 0, padding: 10, columnGap: 8, alignItems: Center, background: 0xFF18181B});
+		title.style.set({color: 0xFFFFFFFF, fontSize: 15});
+		badge.style.set({width: 18, height: 18, radius: 9, background: 0xFFE2462A});
+		head.append(title);
+		ui.root.append(head);
+		list.style.set({grow: 1, minHeight: 0, overflow: Scroll, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
+		for (i in 0...80) {
+			var row = new Node();
+			row.style.set({direction: Row, padding: 4, columnGap: 6, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
+			row.append(new TextNode("Row " + i));
+			rows.push(row);
+			list.append(row);
+		}
+		ui.root.append(list);
+		c = new Compositor(device);
+	}
+
+	public function change(op:Int, j:Int, f:Int) {
+		switch op {
+			case 0 | 1:
+				title.text = "Header " + j;
+			case 2:
+				if (badge.parent == null) head.append(badge) else head.remove(badge);
+			case 3:
+				head.style.background = [0xFF18181B, 0xFF1E3A8A, 0xFF18181B][j % 3];
+			case 4:
+				ui.scrollTo(list, 0, Math.max(0, list.scrollY + [7, -5, 23][j % 3]));
+			case _:
+				var row = rows[j % rows.length];
+				row.style.background = row.style.background == 0xFFFDE68A ? 0xFFFFFFFF : 0xFFFDE68A;
+		}
+	}
+
+	// (a frame: the program's, composed, its window's layer drawn; the
+	// pixels drawn (-1: not drawn, its last as it was), read back)
+	public function frame(cut:Bool):Float {
+		t += 0.016;
+		Clock.tick(t);
+		ui.update();
+		var enc = device.beginFrame();
+		r.begin(w, h);
+		c.begin(r);
+		ui.paint(r);
+		r.prepare(enc);
+		r.upload();
+		c.end(ui, r);
+		device.endFrame();
+		var fr = c.frames[1 - c.filling];
+		split.adopt();
+		split.compose(fr, fr.offsets, Ui.now(), null, true);
+		var p = split.base;
+		p.place(0, 0, fr.width, fr.height);
+		var changed = p.local(split.out, split.quadTextures, split.fresh);
+		var drawn = -1.0;
+		if (changed || drawnAt < 0) {
+			var parts = cut && p.cut(drawnAt, fr.background | 0xFF000000);
+			draw(fr, p, parts);
+			drawnAt = p.serial;
+			drawn = parts ? p.cutArea() : w * h;
+		}
+		var e = device.beginFrame();
+		e.beginPass({colors: [{load: Load}]});
+		e.endPass();
+		device.readPixels(pixels);
+		device.endFrame();
+		return drawn;
+	}
+
+	// (its quads onto the frame, as ScLayers draws them into a buffer)
+	function draw(f:CompositeFrame, p:LayerPlane, parts:Bool) {
+		var bytes = parts ? p.cutBytes : p.bytes, len = parts ? p.cutLen : p.len;
+		if (buffer == null || room < len) {
+			if (buffer != null) device.destroyBuffer(buffer);
+			room = len * 2 + CompositeFrame.STRIDE;
+			buffer = device.createBuffer({size: room, usage: Vertex});
+		}
+		device.writeBuffer(buffer, 0, bytes, 0, len);
+		var bg:Int = f.background, enc = device.beginFrame();
+		enc.beginPass({colors: [{load: parts ? Load : Clear, clear: new helder.gfx.Color((bg >> 16 & 0xFF) / 255, (bg >> 8 & 0xFF) / 255, (bg & 0xFF) / 255)}]});
+		enc.setVertexBuffer(0, f.corners);
+		enc.setIndexBuffer(f.indices, UInt32);
+		enc.setTexture(f.atlasSlot, f.atlas, f.sampler);
+		var from = 0;
+		if (parts) {
+			enc.setPipeline(f.clearPipeline);
+			enc.setTexture(f.imageSlot, f.blank, f.sampler);
+			enc.setVertexBuffer(1, buffer, 0);
+			enc.drawIndexed(6, p.clears);
+			from = p.clears * CompositeFrame.STRIDE;
+		}
+		enc.setPipeline(f.pipeline);
+		var runs = parts ? p.cutRuns : p.runs, textures = parts ? p.cutTextures : p.runTextures, k = 0;
+		while (k < runs.length) {
+			var t = textures[k >> 1];
+			enc.setTexture(f.imageSlot, t == null ? f.blank : t, f.sampler);
+			enc.setVertexBuffer(1, buffer, from + runs[k] * CompositeFrame.STRIDE);
+			enc.drawIndexed(6, runs[k + 1]);
+			k += 2;
+		}
+		enc.endPass();
+		device.endFrame();
+	}
+
+	public function dispose() {
+		c.dispose();
+		device.dispose();
+	}
+}
+
+// (the split alone: its layers LayerPlane's own, nothing of a system's)
+private class PlaneSplit extends LayerSplit {
+	public function new()
+		super(new LayerPlane(LayerPlane.BASE, null));
+
+	override function plane(kind:Int, key:Dynamic):LayerPlane
+		return new LayerPlane(kind, key);
+}

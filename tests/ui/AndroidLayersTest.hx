@@ -50,8 +50,12 @@ class AndroidLayersTest {
 		var root = w.root;
 		root.style.set({direction: Column, background: 0xFFFFFFFF});
 		var header = new Node();
-		header.style.set({height: 120, shrink: 0, background: 0xFF18181B});
+		header.style.set({height: 120, shrink: 0, background: 0xFF18181B, padding: 12});
 		root.append(header);
+		// (a label in the header, changed each frame for a while: what the window's layer draws of it)
+		var title = new TextNode("Header");
+		title.style.set({color: 0xFFFFFFFF, fontSize: 18});
+		header.append(title);
 		var list = new Node();
 		list.style.set({grow: 1, minHeight: 0, overflow: Scroll, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
 		var rows = [];
@@ -184,7 +188,7 @@ class AndroidLayersTest {
 			var f = s.substr(s.lastIndexOf(")") + 2).split(" ");
 			return (Std.parseFloat(f[11]) + Std.parseFloat(f[12])) * 10;
 		}
-		var step = 0, phase = 0, at = 0.0, k = w.window.scale, flung = 0.0, timed = 0, cpu0 = 0.0, t0 = 0.0, q0 = 0;
+		var step = 0, phase = 0, at = 0.0, k = w.window.scale, flung = 0.0, timed = 0, cpu0 = 0.0, t0 = 0.0, q0 = 0, header0:Array<Float> = [];
 		App.run(() -> {
 			step++;
 			var now = Timer.stamp();
@@ -261,6 +265,14 @@ class AndroidLayersTest {
 					mover.style.opacity = 0.6;
 					phase = 5;
 					at = now;
+					timed = 0;
+				case 5 if (now - at > 2 && timed == 0):
+					// (before each still, a frame of the program's once the list's
+					// tiles are drawn: the list drawn from them in every mode, not
+					// replayed as recorded, which the emulator's GL draws a few
+					// levels off at glyphs' edges: up to 17)
+					timed = 1;
+					w.ui.requestFrame();
 				case 5 if (now - at > 5):
 					say('slot at ${Math.round((slotted.absX + 32) * k)} ${Math.round((slotted.absY + 8 - list.scrollY) * k)}');
 					// (the box at 0.6 over the header: its colour then, in every mode)
@@ -312,8 +324,44 @@ class AndroidLayersTest {
 				case 9 if (now - at > 3):
 					phase = 13;
 					at = now;
-				case 13 if (now - at > 1):
+					timed = 0;
+				case 13 if (now - at > 0.5 && timed == 0):
+					timed = 1;
+					w.ui.requestFrame();
+				case 13 if (now - at > 1.5):
 					say("still 2");
+					phase = 16;
+					at = now;
+					timed = 0;
+				case 16 if (now - at > 2 && timed == 0):
+					// (the header's label changed each frame: the window's layer
+					// drawn where it changed, the list's not at all)
+					timed = 1;
+					t0 = now;
+					cpu0 = cpu();
+					q0 = layers == null ? 0 : layers.quadsTotal;
+					var sc = layers == null ? null : Std.downcast(layers, ScLayers);
+					header0 = layers == null ? [0, 0, 0.0, 0] : [layers.frames, sc == null ? 0 : sc.cutTotal, sc == null ? 0 : sc.pixelsTotal, sc == null ? 0 : sc.timing[1]];
+				case 16 if (timed > 0):
+					title.text = "Header " + timed;
+					timed++;
+					if (timed > 120) {
+						var sc = layers == null ? null : Std.downcast(layers, ScLayers), n = timed - 1;
+						var f = layers == null ? 0 : layers.frames - Std.int(header0[0]);
+						var ms = (cpu() - cpu0) / n;
+						if (sc != null)
+							say('timed: header: $n changes in ${Math.round((now - t0) * 10) / 10} s, $f frames, ${sc.cutTotal - Std.int(header0[1])} layers drawn in part, ${Math.round((sc.pixelsTotal - header0[2]) / Math.max(1, f))} pixels a frame of ${w.device.width * w.device.height}, drawing ${Math.round((sc.timing[1] - header0[3]) / Math.max(1, f) * 10000) / 10} ms a frame on the render thread, CPU ${Math.round(ms * 100) / 100} ms a change, ${Math.round((layers.quadsTotal - q0) / Math.max(1, f) * 10) / 10} quads drawn a frame')
+						else say('timed: header: $n changes in ${Math.round((now - t0) * 10) / 10} s, CPU ${Math.round(ms * 100) / 100} ms a change');
+						phase = 17;
+						at = now;
+						timed = 0;
+					}
+				case 17 if (now - at > 0.5 && timed == 0):
+					timed = 1;
+					w.ui.requestFrame();
+				case 17 if (now - at > 1.5):
+					// (the window's layer after 120 frames drawn only where they changed: as drawn whole)
+					say("still 3");
 					phase = 10;
 					at = now;
 				case 10 if (now - at > 4):

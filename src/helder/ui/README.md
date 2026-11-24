@@ -1507,7 +1507,24 @@ only where its quads, size or what they sample changed
 (`CompositeFrame.fresh`: tiles rastered, groups, images, a scene); a
 scroll moves its content's layer and a mover's transform and opacity are
 its layer's, so neither draws (a scrollbar's thumb, a layer of its size,
-does).
+does). A layer drawn again is drawn only where it changed (`LayerPlane`:
+its quads against those it drew last, the same from the start and from
+the end, the rest's old and new bounds, and those sampling what was drawn
+into since; past 40% of it, drawn whole): its buffer's rectangles that
+changed since that buffer was drawn (a history of the last draws: buffer
+age) cleared without blending, then each quad that meets one, cut to it by
+UiShader's region, over the rest as it was (`DamageTest`: two stacks, a
+header's label, a badge, its colour, the list scrolled and rows toggled
+over 60 frames, the window's layer drawn in part against drawn whole, 0
+pixels differ at scales 1 and 2). Core Animation keeps none of a
+drawable's contents, so on Apple the last drawable is copied forward (a
+blit, `MetalBackend.planeFrame`'s `from`) where drawing the layer whole
+covers its pixels more than four times: a header's label changed each
+frame over a list filling a 400×600 window (`SystemLayersWindow --time 6
+header`, an M-series Mac) drew 4,000 pixels a frame against 962,000 copied
+forward, but the window's layer covers its pixels about twice and the
+copy took 0.09–0.13 ms of GPU a frame against 0.04–0.09 drawn whole, so
+that one is drawn whole.
 
 A node can own a system layer between what is drawn (`LayerSlot`, Node's
 `systemLayer`: a CALayer, helder.media's `<Video>`'s
@@ -1537,7 +1554,8 @@ compositor's where the layers are opaque; a translucent layer (an edge, a
 fade) is blended by the window server in the display's colours, a few
 levels off UiShader's sRGB blending (12 at most on a P3 panel, in
 `SystemLayersWindow`). Memory: the layers' drawables beside the tiles
-(6.2 MB for a 240×300 list and a mover at scale 2, beside 6.3 MB of
+(7.4 MB for `SystemLayersWindow`'s scene at scale 2, 11.1 before a
+scroller's layer was bounded to what its clip shows, beside 6.3 MB of
 tiles). A steady scroll at scale 2 on an M-series Mac: 0.05–0.07 ms of
 GPU a frame, a rounded list as a square one (drawn, before: 0.8–1.1).
 `HELDER_SYSTEM_LAYERS=0` keeps one CAMetalLayer and the textured
@@ -1583,9 +1601,21 @@ against `HELDER_SYSTEM_LAYERS=0`: within 6 levels (glyphs' edges in the
 list's layer) but for a moving box's anti-aliased edge (0.03% of the
 pixels, as the compositor composes a mover against the program's own
 paint); the box, at 0.6 over the header, is that blend within a level in
-every mode. A full-window scroller's layer covers what it recorded, its
-tiles' columns too (1600×5700 for a 1080×2400 list: about 70 MB in two
-buffers). Below 33, or where a call or a buffer fails, the textured
+every mode. A layer drawn again is drawn only where it changed, into the
+buffer's rectangles it misses since it was drawn (as on Apple; its buffers
+are its own, so nothing is copied), and the transaction tells
+SurfaceFlinger which (`setDamageRegion`, API 29); a buffer not let go in
+time leaves its layer drawn the next frame, what it missed kept. A header's
+label changed each frame over a full-window list (`AndroidLayersTest`,
+API 33 emulator): 1,260–23,000 pixels a frame drawn against 2,243,000
+drawn whole, 120 changes in 6 s against 9.5, 25–27 ms of CPU a change
+against 52. A scroller's content layer covers what its clip shows at an
+offset in its range, not all its quads do (its tiles' 512-pixel columns:
+a 1080×2400 list's layer was 1600 wide): the test's layers take 77 MB,
+103 before; recording half a view each way rather than one made it 64 MB,
+but its stills then differed from the textured compositor's at glyphs'
+edges past the tolerance (a frame replayed where the textured one drew
+its tiles), so the recorded range is as before. Below 33, or where a call or a buffer fails, the textured
 compositor; and while running, where the system misbehaves (no
 transaction reported presented for 1.5 s, a layer kept 1.5 s from a
 buffer: one not let go of within a display period is drawn the next

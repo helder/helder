@@ -102,6 +102,7 @@ class Renderer implements TextureCanvas {
 	final groupPool:Array<Group> = [];
 	final pushed:Array<Int> = [];
 	var groupPipeline:Null<Pipeline> = null;
+	var clearPipeline:Null<Pipeline> = null;
 	// (where the quads' target pixels start in the target drawn into: a group's origin)
 	var ox = 0.0;
 	var oy = 0.0;
@@ -829,6 +830,12 @@ class Renderer implements TextureCanvas {
 		c.background = (background : Int);
 		c.snap = snap;
 		c.pipeline = pipeline;
+		if (clearPipeline == null) {
+			var d = UiShader.pipeline({blend: Opaque});
+			d.layout = layout();
+			clearPipeline = device.createPipeline(d);
+		}
+		c.clearPipeline = clearPipeline;
 		c.atlasSlot = atlasSlot;
 		c.imageSlot = imageSlot;
 		c.blank = blank;

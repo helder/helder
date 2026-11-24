@@ -22,7 +22,9 @@ import hxmc.unsafe.*;
 // system layer (LayerSlot: a SurfaceControl, reparented into its clip),
 // what is over each. Each has buffers of its own (AHardwareBuffers, two,
 // three for a small one, drawn by GLES through an EGLImage and fenced, not finished),
-// drawn again only where its quads, its size or what they sample changed:
+// drawn again only where its quads, its size or what they sample changed,
+// and then only its rectangles that changed since that buffer was drawn
+// (LayerPlane.cut: buffer age; told the system, setDamageRegion):
 // a scroll moves its content's layer and a mover's translation, scale and
 // opacity are its layer's (setPosition, setScale, setBufferAlpha), so
 // neither draws. A frame that changes anything is one transaction, its
@@ -156,15 +158,26 @@ class ScLayers extends LayerSplit {
 		gone.resize(0);
 		for (p in toDraw) {
 			var buf = p.next(), t0 = haxe.Timer.stamp();
-			if (buf == null || at + p.len > f.capacity || !draw(r, f, buf.texture, p, b, at)) {
+			// (only what it misses of what changed since it was drawn: its buffer age)
+			var cut = buf != null && p.cut(buf.at, p.kind == LayerPlane.BASE ? f.background | 0xFF000000 : 0);
+			var len = cut ? p.cutLen : p.len;
+			// (no buffer let go in time: drawn next frame, what it missed in its history still)
+			if (buf == null && p.allocated) {
+				p.retry();
+				continue;
+			}
+			if (buf == null || at + len > f.capacity || !draw(r, f, buf.texture, p, b, at, cut)) {
 				p.invalidate();
 				if (!p.allocated) fail("no buffer");
 				continue;
 			}
 			timing[1] += haxe.Timer.stamp() - t0;
-			at += p.len;
+			at += len;
 			drawnTotal++;
-			quadsTotal += p.quads.length;
+			quadsTotal += cut ? Std.int(p.cutLen / CompositeFrame.STRIDE) - p.clears : p.quads.length;
+			if (cut) cutTotal++;
+			pixelsTotal += cut ? p.cutArea() : p.pw * p.ph;
+			buf.at = p.serial;
 			p.queue(buf, gl.fence(), sent + 1);
 			changes++;
 		}
@@ -423,8 +436,14 @@ class ScLayers extends LayerSplit {
 		return n + p.placeSlot(x, y, w, h, alpha);
 	}
 
-	// (quads drawn into texture, a layer's buffer, at buffer b's offset at)
-	function draw(r:Replay, f:CompositeFrame, texture:Int, p:ScPlane, b:Buffer, at:Int):Bool {
+	// layers drawn in part, and the pixels drawn in all (tests)
+	@:noCompletion public var cutTotal(default, null) = 0;
+	@:noCompletion public var pixelsTotal(default, null) = 0.0;
+
+	// (quads drawn into texture, a layer's buffer, at buffer b's offset at:
+	// all of them over it cleared; cut, only its rectangles that changed,
+	// cleared without blending, then what meets them, the rest as it was)
+	function draw(r:Replay, f:CompositeFrame, texture:Int, p:ScPlane, b:Buffer, at:Int, cut:Bool):Bool {
 		var c = commands, gl = this.gl;
 		gl.frameInto(texture);
 		c.clear();
@@ -439,12 +458,12 @@ class ScLayers extends LayerSplit {
 		c.begin(Replay.WRITE_BUFFER);
 		c.int(b.id());
 		c.int(at);
-		c.bytes(p.bytes, 0, p.len);
+		if (cut) c.bytes(p.cutBytes, 0, p.cutLen) else c.bytes(p.bytes, 0, p.len);
 		c.end();
 		var bg = f.background, opaque = p.kind == LayerPlane.BASE;
 		c.begin(Replay.BEGIN_PASS);
 		c.int(1);
-		c.int(cast LoadOp.Clear);
+		c.int(cast(cut ? LoadOp.Load : LoadOp.Clear));
 		c.float(opaque ? (bg >> 16 & 0xFF) / 255 : 0);
 		c.float(opaque ? (bg >> 8 & 0xFF) / 255 : 0);
 		c.float(opaque ? (bg & 0xFF) / 255 : 0);
@@ -454,15 +473,27 @@ class ScLayers extends LayerSplit {
 		c.int(Replay.NONE);
 		c.int(0);
 		c.end();
-		three(Replay.SET_PIPELINE, f.pipeline.id(), -1, -1, 1);
 		three(Replay.SET_VERTEX_BUFFER, 0, f.corners.id(), 0, 3);
 		three(Replay.SET_INDEX_BUFFER, f.indices.id(), cast IndexFormat.UInt32, 0, 3);
 		three(Replay.SET_TEXTURE, f.atlasSlot, f.atlas.id(), f.sampler.id(), 3);
-		var k = 0, runs = p.runs;
+		var k = 0, runs = cut ? p.cutRuns : p.runs, textures = cut ? p.cutTextures : p.runTextures, from = at;
+		if (cut) {
+			three(Replay.SET_PIPELINE, f.clearPipeline.id(), -1, -1, 1);
+			three(Replay.SET_TEXTURE, f.imageSlot, f.blank.id(), f.sampler.id(), 3);
+			three(Replay.SET_VERTEX_BUFFER, 1, b.id(), at, 3);
+			c.begin(Replay.DRAW_INDEXED);
+			c.int(6);
+			c.int(p.clears);
+			c.int(0);
+			c.int(0);
+			c.end();
+			from += p.clears * CompositeFrame.STRIDE;
+		}
+		three(Replay.SET_PIPELINE, f.pipeline.id(), -1, -1, 1);
 		while (k < runs.length) {
-			var t = p.runTextures[k >> 1];
+			var t = textures[k >> 1];
 			three(Replay.SET_TEXTURE, f.imageSlot, (t == null ? f.blank : t).id(), f.sampler.id(), 3);
-			three(Replay.SET_VERTEX_BUFFER, 1, b.id(), at + runs[k] * CompositeFrame.STRIDE, 3);
+			three(Replay.SET_VERTEX_BUFFER, 1, b.id(), from + runs[k] * CompositeFrame.STRIDE, 3);
 			c.begin(Replay.DRAW_INDEXED);
 			c.int(6);
 			c.int(runs[k + 1]);
@@ -774,6 +805,8 @@ private class ScPlane extends LayerPlane {
 	public function queue(b:ScBuffer, fence:Int, seq:Int) {
 		b.busy = true;
 		Sc.buffer(owner.tx, sc, b.handle, fence);
+		// (what changed from the buffer shown before, where the system takes it: API 29's)
+		if (!damage.all && damage.count > 0) Sc.damage(owner.tx, sc, owner.scratch, damage);
 		queued.push({seq: seq, was: shownBuffer});
 		shownBuffer = b;
 	}
@@ -850,6 +883,8 @@ private class ScBuffer {
 	public final handle:Ptr;
 	public final texture:Int;
 	public var busy = false;
+	// (the draw of its layer it holds: LayerPlane.serial, -1 none)
+	public var at = -1;
 	var fence = -1;
 
 	function new(handle:Ptr, texture:Int) {
@@ -933,6 +968,7 @@ private class Sc {
 	static var fPreviousFence = Ptr.nil();
 	static var fAllocate = Ptr.nil();
 	static var fUnref = Ptr.nil();
+	static var fDamage = Ptr.nil();
 	// (EGL's, on the render thread)
 	static var fClientBuffer = Ptr.nil();
 	static var fCreateImage = Ptr.nil();
@@ -979,6 +1015,8 @@ private class Sc {
 		fPreviousFence = f("ASurfaceTransactionStats_getPreviousReleaseFenceFd");
 		fAllocate = f("AHardwareBuffer_allocate");
 		fUnref = f("AHardwareBuffer_release");
+		// (optional: without it, the whole buffer is the damage)
+		fDamage = f("ASurfaceTransaction_setDamageRegion");
 		for (p in [
 			fFromWindow, fCreate, fRelease, fTxCreate, fTxDelete, fTxApply, fOnComplete, fBuffer, fVisibility, fZOrder, fTransparency, fAlpha, fColor, fReparent,
 			fPosition, fCrop, fScale, fControls, fReleaseControls, fPreviousFence, fAllocate, fUnref
@@ -1048,6 +1086,28 @@ private class Sc {
 		Mem.setI32(scratch, 8, x + w);
 		Mem.setI32(scratch, 12, y + h);
 		ScCall.ppp(fCrop, t, sc, scratch);
+	}
+
+	// (d's rectangles as ARects in scratch (64 bytes: four at most, else
+	// their bounds), the damage of sc's buffer in t)
+	public static function damage(t:Ptr, sc:Ptr, scratch:Ptr, d:Damage) {
+		if (fDamage.isNull()) return;
+		var n = d.count <= 4 ? d.count : 1;
+		for (i in 0...n) {
+			var o = i * 16;
+			var x0 = d.x0(i), y0 = d.y0(i), x1 = d.x1(i), y1 = d.y1(i);
+			if (n == 1 && d.count > 1) for (k in 1...d.count) {
+				x0 = Math.min(x0, d.x0(k));
+				y0 = Math.min(y0, d.y0(k));
+				x1 = Math.max(x1, d.x1(k));
+				y1 = Math.max(y1, d.y1(k));
+			}
+			Mem.setI32(scratch, o, Std.int(x0));
+			Mem.setI32(scratch, o + 4, Std.int(y0));
+			Mem.setI32(scratch, o + 8, Std.int(x1));
+			Mem.setI32(scratch, o + 12, Std.int(y1));
+		}
+		ScCall.pppi(fDamage, t, sc, scratch, n);
 	}
 
 	// (an AHardwareBuffer of the AHardwareBuffer_Desc at d; out: its pointer's room)
