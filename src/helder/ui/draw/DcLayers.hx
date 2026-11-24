@@ -28,13 +28,14 @@ import hxmc.unsafe.*;
 // mover's transform and opacity are its visual's, so neither draws. A
 // rounded scroller stays drawn (rounds false): a rectangle clip's corners
 // are not UiShader's coverage (up to 119 levels off at 54 corner pixels on
-// CI's runner). A frame that changes anything is one commit, after
-// DirectComposition processed the last one (GetFrameStatistics); then,
-// as a swap chain's present would, the render thread waits for DWM's next
-// composition (DwmFlush; else the next one its statistics estimate, a
-// period at most): nothing else paces the frames, the program's (which
-// present nothing) or the compositor's, which ran unpaced at 700 a second
-// without it. One that changes nothing commits nothing. A frame
+// CI's runner). A frame that changes anything is one commit. Nothing
+// paces it as a swap chain's present would (the program's frames present
+// nothing: 700 a second on CI's runner), so each frame is shown on its own
+// composition: one that comes before the composition showing the last
+// waits until then, once (its statistics' next estimate at the last frame;
+// a high-resolution timer, Sleep's tick being 15.6 ms; DwmFlush without
+// one), and one that comes after waits for nothing. One that changes
+// nothing commits nothing. A frame
 // split into the window's layer alone (a scene over the window: single) is
 // drawn onto the window's swap chain and presented as before, the stack
 // taken out of the tree once that frame is queued. Off where the window
@@ -184,6 +185,9 @@ class DcLayers extends LayerSplit {
 			changes++;
 		}
 		if (broken) return;
+		// (the program's frames too: they present nothing that would wait)
+		var turn = changes > 0 || drawn;
+		if (turn) pace();
 		if (changes > 0) {
 			// (one in flight: the last one processed first, or long enough)
 			var t0 = haxe.Timer.stamp(), until = t0 + period * 2;
@@ -200,8 +204,7 @@ class DcLayers extends LayerSplit {
 			commits++;
 			committedAt = clock();
 		}
-		// (the program's frames too: they present nothing that would wait)
-		if (changes > 0 || drawn) pace();
+		if (turn) turned();
 		frames++;
 		timing[0] += haxe.Timer.stamp() - began;
 		if (single) suspend();
@@ -229,17 +232,39 @@ class DcLayers extends LayerSplit {
 		return freq > 0 ? big(4) / freq : haxe.Timer.stamp();
 	}
 
-	// (until DWM's next composition, as a swap chain's present waits: its
-	// flush, else its next frame as its statistics estimate it, a period at most)
+	// (the composition that shows the last frame, DirectComposition's clock;
+	// the timer that waits for it)
+	var turnAt = -1.0;
+	var timer = Ptr.nil();
+	var timed = false;
+
+	// (a frame before the composition that shows the last: waited until then,
+	// once; after it, none)
 	function pace() {
-		var t0 = haxe.Timer.stamp();
-		if (Dwm.DwmFlush() < 0) {
-			var next = clock(), freq = big(6), at = freq > 0 ? big(8) / freq : -1.0;
-			var until = at > next && at - next < period ? t0 + (at - next) : t0 + period;
-			while (haxe.Timer.stamp() < until)
-				Sys.sleep(0.0005);
+		if (turnAt < 0) return;
+		var t0 = haxe.Timer.stamp(), wait = turnAt - clock();
+		if (wait <= 0.0002) return;
+		// (an estimate gone wrong: a period at most)
+		if (wait > period * 1.5) wait = period;
+		if (!timed) {
+			timed = true;
+			// (CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS)
+			timer = WaitTimer.CreateWaitableTimerExW(Ptr.nil(), Ptr.nil(), 2, 0x1F0003);
+		}
+		var due = ints.offset(6);
+		due[0] = -Math.round(wait * 1e7);
+		due[1] = -1;
+		if (timer.isNull() || WaitTimer.SetWaitableTimer(timer, due, 0, Ptr.nil(), Ptr.nil(), 0) == 0 || WaitTimer.WaitForSingleObjectEx(timer, 100, 0) != 0) {
+			// (DWM's next composition: the one showing the last frame, it being still to come)
+			if (Dwm.DwmFlush() < 0) Sys.sleep(wait);
 		}
 		timing[3] += haxe.Timer.stamp() - t0;
+	}
+
+	// (a frame shown: the next not before the composition that shows it, the next its statistics estimate, else a period from now)
+	function turned() {
+		var now = clock(), freq = big(6), next = freq > 0 ? big(8) / freq : -1.0;
+		turnAt = next > now && next - now <= period * 1.5 ? next : now + period;
 	}
 
 	function processed():Bool {
@@ -567,6 +592,8 @@ class DcLayers extends LayerSplit {
 			Com.release(stack);
 		}
 		stack = Ptr.nil();
+		if (!timer.isNull()) hxmc.unsafe.Win32.CloseHandle(timer);
+		timer = Ptr.nil();
 		LibC.free(got);
 		LibC.free(floats);
 		LibC.free(ints);

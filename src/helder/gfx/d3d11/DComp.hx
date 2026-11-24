@@ -17,6 +17,15 @@ import hxmc.unsafe.*;
 	static function DwmFlush():Int;
 }
 
+// (a wait to a fraction of a millisecond: Sleep's is the system's tick, 15.6 ms
+// by default; a high-resolution waitable timer, Windows 10 1803 on)
+@:hxmc.c @:hxmc.lib("kernel32") extern class WaitTimer {
+	static function CreateWaitableTimerExW(attributes:Ptr, name:Ptr, flags:Int, access:Int):Ptr;
+	static function SetWaitableTimer(timer:Ptr, due:Ptr<Int32>, period:Int, routine:Ptr, arg:Ptr, resume:Int):Int;
+	// (the Ex one: hxmc.unsafe.Win32 has WaitForSingleObject as a fast call, this wait blocks)
+	static function WaitForSingleObjectEx(handle:Ptr, ms:Int, alertable:Int):Int;
+}
+
 @:build(helder.os.win32.Com.build())
 @:hxmc.unsafe(gc)
 class IDCompositionDevice {

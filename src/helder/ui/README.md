@@ -1635,12 +1635,14 @@ drawn: a rectangle clip's corners are not UiShader's coverage (54 corner
 pixels over 8 levels, up to 119, on CI's runner). A surface keeps what it showed and its
 update lands with the commit, so a layer drawn again is drawn in one
 rectangle around what changed since its last draw (`LayerPlane.cut`). A
-frame that changes anything is one commit, after DirectComposition
-processed the last (its frame statistics), and then waits for DWM's next
-composition (`DwmFlush`), as a swap chain's present would: nothing else
-paces them, the program's frames presenting nothing (without it, 700
-frames a second on CI's runner); one that changes nothing commits
-nothing; one split into the window's layer alone
+frame that changes anything is one commit, each frame on its own
+composition: one that comes before the composition showing the last
+waits until then, once (the frame statistics' next estimate, a
+high-resolution timer: `Sleep`'s tick is 15.6 ms), as a swap chain's
+present would; nothing else paces them, the program's frames presenting
+nothing (700 frames a second on CI's runner without it, 32 ms apart
+when every frame waited for DWM's next composition after it); one that
+changes nothing commits nothing; one split into the window's layer alone
 is drawn onto the swap chain and presented as before, the stack taken out
 of the tree once that frame is queued. A node's `LayerSlot` is a visual
 (`DcLayers.visualFor`), cut to its box in its clip. No commit processed
