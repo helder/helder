@@ -189,18 +189,21 @@ class WinLayer {
 	// (tests: where a black still comes from, the render thread's: 1 the
 	// surface also on a visual at the top of the window's root, at the box;
 	// 2 the slot's visual unscaled; 3 a colour of DcLayers' own (solid) in
-	// the slot's visual; 0 each undone)
+	// the slot's visual; 4 the surface on top of the stack; 5 and 6 the
+	// colour in the slot's clip visual, in its box; 0 each undone)
 	var probed = Ptr.nil();
+	var probedIn = Ptr.nil();
 
 	@:noCompletion public function probe(mode:Int, x:Float, y:Float) {
-		var dc = layers.dev, root = layers.dc.root, visual = slot.handle, k = placed[2], solid = mode == 3 ? layers.solid(0x00FF00) : Ptr.nil();
+		var dc = layers.dev, root = layers.dc.root, visual = slot.handle, k = placed[2], solid = mode == 3 || mode >= 5 ? layers.solid(0x00FF00) : Ptr.nil();
+		var levels = layers.visualsOf(slot);
 		device.inOrder(_ -> Arena.scoped(a -> {
 			var out:Ptr<Ptr> = a.alloc(8), m:Ptr<Float32> = a.alloc(24);
 			if (!probed.isNull()) {
-				IDCompositionVisual.RemoveVisual(root, probed);
+				IDCompositionVisual.RemoveVisual(probedIn.isNull() ? root : probedIn, probed);
 				IDCompositionVisual.RemoveVisual(visual, probed);
 				Com.release(probed);
-				probed = Ptr.nil();
+				probed = probedIn = Ptr.nil();
 			}
 			m[1] = m[2] = 0;
 			m[0] = m[3] = mode == 2 ? 1 : k;
@@ -214,6 +217,21 @@ class WinLayer {
 				m[5] = y;
 				IDCompositionVisual.SetTransform(probed, m);
 				note('probe: on the root ${hr(IDCompositionVisual.AddVisual(root, probed, 0, Ptr.nil()))}');
+			}
+			if (mode == 4 && levels.length == 3 && IDCompositionDevice.CreateVisual(dc, out) >= 0) {
+				probed = out.value;
+				probedIn = levels[2];
+				IDCompositionVisual.SetContent(probed, surface);
+				m[0] = m[3] = k;
+				m[4] = x;
+				m[5] = y;
+				IDCompositionVisual.SetTransform(probed, m);
+				note('probe: on top of the stack ${hr(IDCompositionVisual.AddVisual(probedIn, probed, 0, Ptr.nil()))}');
+			}
+			if (mode >= 5 && levels.length == 3 && !solid.isNull()) {
+				probed = solid;
+				probedIn = levels[mode == 5 ? 0 : 1];
+				note('probe: a solid colour in the slot\'s ${mode == 5 ? "clip" : "box"} (${!probedIn.isNull()}) ${probedIn.isNull() ? "" : hr(IDCompositionVisual.AddVisual(probedIn, solid, 0, Ptr.nil()))}');
 			}
 			if (mode == 3 && !solid.isNull()) {
 				probed = solid;

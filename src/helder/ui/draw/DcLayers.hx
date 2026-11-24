@@ -512,6 +512,17 @@ class DcLayers extends LayerSplit {
 		return v;
 	}
 
+	// (tests: a slot's visuals, outermost first: its clip's (nil: its
+	// scroller's), its box, the stack they are in)
+	@:noCompletion public function visualsOf(slot:helder.ui.LayerSlot):Array<Ptr> {
+		for (p in kept)
+			if (p.kind == LayerPlane.SLOT && p.slot == slot) {
+				var d:DcPlane = cast p;
+				return [@:privateAccess d.clip, @:privateAccess d.box, stack];
+			}
+		return [];
+	}
+
 	// (a visualFor() of one colour, 0xRRGGBB, of any size: a pixel's surface stretched: tests)
 	@:noCompletion public function solid(rgb:Int):Ptr {
 		var v = Ptr.nil();
