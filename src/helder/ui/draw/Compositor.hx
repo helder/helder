@@ -29,7 +29,8 @@ import sys.thread.Mutex;
 // platform's own scroll views drive the scrollers (iOS's UIScrollView:
 // IosScroll), their offsets come to it on the main thread as they move
 // (nativeScrolled), its frames drawn at them, the physics the system's.
-// Where the system composites layers (macOS and iOS: CaLayers), every
+// Where the system composites layers (macOS and iOS: CaLayers; Android:
+// ScLayers; LayerSplit), every
 // frame, the program's too, is handed to it from the same state, a
 // scroller's content and a mover on layers the system moves. Off with
 // HELDER_ASYNC_SCROLL=0, and where the program has no thread of its own
@@ -87,43 +88,39 @@ class Compositor implements RenderIdle {
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		if (hxmc.Platform.os() == 1 && CaLayers.wanted(device)) layers = new CaLayers(device);
 		#end
+		#if (!helder.os || helder.os == "android")
+		if (hxmc.Platform.target() >= 9 && ScLayers.wanted(device)) layers = ScLayers.make(device);
+		#end
 	}
 
-	#if (!helder.os || helder.os == "macos" || helder.os == "ios")
-	// the system's layers (Core Animation's), where its frames go (null: drawn onto the window's one layer)
-	public var layers(default, null):Null<CaLayers> = null;
-	#end
+	// the system's layers (Core Animation's, SurfaceControl's), where its
+	// frames go (null: drawn onto the window's one layer)
+	public var layers(default, null):Null<LayerSplit> = null;
 	// (the window's frames drawn onto its layer last, as the textured compositor draws: not quiet)
 	var loud = true;
 
 	// whether the program's frames go to the system's layers
 	public function planes():Bool {
-		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
-		return layers != null && !layers.single;
-		#else
-		return false;
-		#end
+		if (layers != null) layers.prepare();
+		return layers != null && !layers.single && !layers.priming;
 	}
 
 	// (before the program's frame: whether it draws onto the window's layer
 	// (a frame read back) or only into targets, the system's layers drawn
 	// from it after (present))
 	public function quiet(on:Bool) {
-		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		var l = layers;
 		if (l == null || loud == !on) return;
 		loud = !on;
 		device.inOrder(r -> {
-			(cast r.impl : helder.gfx.metal.MetalBackend).quiet = on;
+			l.quiet(r, on);
 			if (!on) l.suspend();
 		});
-		#end
 	}
 
 	// (after the program's frame ended: it shown on the system's layers, as
 	// drawn; drawn onto the window's layer (planes false), split only, for the next)
 	public function present(planes:Bool) {
-		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		var l = layers;
 		if (l == null) return;
 		device.inOrder(r -> {
@@ -131,6 +128,7 @@ class Compositor implements RenderIdle {
 			if (f == null) return;
 			if (!planes) {
 				l.check(f);
+				l.windowShown();
 				return;
 			}
 			// (its overlay bars as the program faded them when it painted)
@@ -144,15 +142,20 @@ class Compositor implements RenderIdle {
 			drained = drew = haxe.Timer.stamp();
 			lock.release();
 		});
-		#end
+		// (handed over now: recorded after the frame's end, it would wait for
+		// the next frame where the loop does not settle, a still window's last never shown)
+		if (planes) @:privateAccess device.flush();
 	}
 
-	// whether the compositor runs here: a window's GPU on the render thread, the program on its own thread
+	// whether the compositor runs here: a window's GPU on the render thread,
+	// the program on its own thread (Android's always is: the activity's
+	// glue, its input routed on the UI thread as it is read)
 	public static function wanted(device:Device):Bool {
 		#if (helder.headless || hxmc.target == "wasm32-wasi")
 		return false;
 		#else
-		return device.threaded && helder.os.OsThread.wanted() && Sys.getEnv("HELDER_ASYNC_SCROLL") != "0";
+		var own = helder.os.OsThread.wanted() || hxmc.Platform.target() >= 9 && device.surface.kind == Android;
+		return device.threaded && own && Sys.getEnv("HELDER_ASYNC_SCROLL") != "0";
 		#end
 	}
 
@@ -161,7 +164,7 @@ class Compositor implements RenderIdle {
 		lock.acquire();
 		var m = mirror.moving;
 		lock.release();
-		return m;
+		return m || layers != null && layers.redraw;
 	}
 
 	// the mirror's offsets of the program's node n (null: none), from any thread
@@ -204,9 +207,7 @@ class Compositor implements RenderIdle {
 		routedAt = haxe.Timer.stamp();
 		lock.release();
 		// (the system's layers: its content's layer follows in UIKit's own transaction)
-		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		if (layers != null) layers.scrolled(n, x, y);
-		#end
 		device.wake();
 	}
 
@@ -285,11 +286,9 @@ class Compositor implements RenderIdle {
 	}
 
 	public function dispose() {
-		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		var l = layers;
 		if (l != null) device.inOrder(_ -> l.dispose());
 		layers = null;
-		#end
 		stop();
 		for (b in buffers)
 			device.destroyBuffer(b);
@@ -310,9 +309,7 @@ class Compositor implements RenderIdle {
 			barAt.push(v);
 		animAt = Ui.now();
 		lock.release();
-		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		if (layers != null) layers.adopt();
-		#end
 	}
 
 	public function due():Float {
@@ -369,17 +366,13 @@ class Compositor implements RenderIdle {
 			() -> @:privateAccess n.placeNative(x, y, w, h, on);
 		}];
 		posts.resize(0);
-		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
-		if (layers != null && !layers.single) layers.show(r, f, now, at, f.overlay ? barShown : null, false, moves) else
-		#end
-		{
+		if (layers != null && !layers.single) layers.show(r, f, now, at, f.overlay ? barShown : null, false, moves) else {
 			// (the window's layer alone since the program's last frame: drawn onto it, taking its drawable)
-			#if (!helder.os || helder.os == "macos" || helder.os == "ios")
-			if (layers != null) (cast r.impl : helder.gfx.metal.MetalBackend).quiet = false;
-			#end
+			if (layers != null) layers.quiet(r, false);
 			for (m in moves)
 				helder.os.OsThread.post(m);
 			draw(r, f, null, at);
+			if (layers != null) layers.windowShown();
 		}
 		var at = haxe.Timer.stamp(), d = at - drew;
 		if (d > 0.002 && d < period * 1.5) period = period * 0.9 + d * 0.1;

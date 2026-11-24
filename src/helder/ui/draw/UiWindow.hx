@@ -218,7 +218,7 @@ class UiWindow {
 			if (c.start()) {
 				compositor = c;
 				#if (!helder.os || helder.os == "macos" || helder.os == "ios")
-				ui.layered = c.layers != null && CaLayers.slots();
+				ui.layered = c.layers != null && LayerSplit.slots();
 				#end
 				window.route = c.route;
 				ui.onAnswer = c.answer;
@@ -373,6 +373,10 @@ class UiWindow {
 		ui.update();
 		var at = ui.controlsAt;
 		if (at != null && at.ui == ui) ui.window.placeControls(at.absX, at.absY);
+		// (the system's layers turned off: the window's own frame, now)
+		#if (!helder.headless && hxmc.target != "wasm32-wasi")
+		if (compositor != null && compositor.layers != null && compositor.layers.redraw) redraw = true;
+		#end
 		// (the clock ticked, nothing changed: the last frame stands, as drawn;
 		// an animation off screen, a timer's wait)
 		if (!redraw && !ui.needsFrame && capture == null && w == drawnW && h == drawnH && s == drawnScale) {

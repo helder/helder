@@ -123,6 +123,11 @@ class GLBackend {
 	// openShared's, imported): destroyed with them
 	var frameTarget = 0;
 	var framed = false;
+	// the window's frames render only into targets, nothing to swap (the
+	// system's layers are drawn from them after: helder.ui.draw.ScLayers)
+	public var quiet = false;
+	// (imageTexture's: textures on a buffer of the system's, fenced, not finished)
+	final fenced = new Map<Int, Bool>();
 	final images = new Map<Int, {image:Ptr, fd:Int}>();
 	var dmabuf:Null<Bool> = null;
 	var modifiers = false;
@@ -537,6 +542,7 @@ class GLBackend {
 		textures[id - 1] = 0;
 		if (frameTarget == id) frameTarget = 0;
 		var img = images.get(id);
+		fenced.remove(id);
 		if (img != null) {
 			images.remove(id);
 			if (Platform.os() != 3) {
@@ -867,6 +873,77 @@ class GLBackend {
 	public function frameInto(id:Int)
 		frameTarget = id;
 
+	// ---- a buffer of the system's as a render target (Android's
+	// AHardwareBuffer through EGL_ANDROID_get_native_client_buffer:
+	// helder.ui.draw.ScLayers), its frames fenced, not finished
+
+	#if (hxmc.target != "wasm32-wasi")
+	// the EGL display, and an extension's function (nil: none)
+	public function egl():Ptr
+		return display;
+
+	public function proc(name:String):Ptr
+		return Arena.scopedValue(a -> Egl.eglGetProcAddress(a.cstring(name)));
+
+	// a texture of image (an EGLImage, now the texture's: destroyed with
+	// it) of w x h, to frame into (frameInto); 0 where GL cannot
+	public function imageTexture(image:Ptr, w:Int, h:Int):Int {
+		use();
+		if (pImageTarget.isNull()) pImageTarget = proc("glEGLImageTargetTexture2DOES");
+		if (pDestroyImage.isNull()) pDestroyImage = proc("eglDestroyImageKHR");
+		if (pImageTarget.isNull() || pDestroyImage.isNull()) return 0;
+		// (no storage of its own: the image is it)
+		GL.glGenTextures(1, scratch);
+		var t = scratch.value;
+		textures.push(t);
+		infos.push(TextureInfo.of({width: w, height: h, renderTarget: true}));
+		var id = textures.length;
+		GL.glActiveTexture(GL.TEXTURE0);
+		GL.glBindTexture(GL.TEXTURE_2D, t);
+		EglImage.target(pImageTarget, GL.TEXTURE_2D, image);
+		GL.glBindTexture(GL.TEXTURE_2D, units[0]);
+		images.set(id, {image: image, fd: -1});
+		fenced.set(id, true);
+		return id;
+	}
+
+	// the GPU's work so far flushed, a native fence of its end (its
+	// descriptor, the caller's to close; -1 where EGL has none: finished then)
+	public function fence():Int {
+		use();
+		if (!fenceLooked) {
+			fenceLooked = true;
+			var p = Egl.eglQueryString(display, EGL.EXTENSIONS);
+			var ext = p.isNull() ? "" : (cast p : CString).toString();
+			if (ext.indexOf("EGL_ANDROID_native_fence_sync") >= 0) {
+				pCreateSync = proc("eglCreateSyncKHR");
+				pDestroySync = proc("eglDestroySyncKHR");
+				pDupFence = proc("eglDupNativeFenceFDANDROID");
+			}
+		}
+		if (pCreateSync.isNull() || pDestroySync.isNull() || pDupFence.isNull()) {
+			GL.glFinish();
+			return -1;
+		}
+		var sync = Arena.scopedValue(a -> EglSync.create(pCreateSync, display, EGL.SYNC_NATIVE_FENCE_ANDROID, ints(a, [EGL.NONE])));
+		if (sync.isNull()) {
+			GL.glFinish();
+			return -1;
+		}
+		// (the fence's descriptor exists once the commands are flushed)
+		GL.glFlush();
+		var fd = EglSync.dup(pDupFence, display, sync);
+		EglSync.destroy(pDestroySync, display, sync);
+		if (fd < 0) GL.glFinish();
+		return fd;
+	}
+
+	var fenceLooked = false;
+	var pCreateSync = Ptr.nil();
+	var pDestroySync = Ptr.nil();
+	var pDupFence = Ptr.nil();
+	#end
+
 	// (a pass without a colour texture while frameInto's is set: into it)
 	inline function framePass(p:PassDesc):PassDesc {
 		var c = p.colors[0];
@@ -1160,9 +1237,10 @@ class GLBackend {
 	public function endFrame() {
 		// (into a shared texture: complete before the other process is told)
 		if (frameTarget != 0) {
-			if (images.exists(frameTarget)) GL.glFinish();
+			if (images.exists(frameTarget) && !fenced.exists(frameTarget)) GL.glFinish();
 			return;
 		}
+		if (quiet) return;
 		if (Platform.os() == 3) WebGL.swap(web) else if (surface.kind != Headless && !eglSurface.isNull()) swap();
 	}
 

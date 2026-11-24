@@ -3,6 +3,7 @@ package helder.os.android;
 import helder.os.android.Native;
 import hxmc.unsafe.*;
 import helder.os.VTable;
+import hxmc.NativeThread;
 
 // The NativeActivity glue (what the NDK's android_native_app_glue does in
 // C, in no-GC Haxe): Android loads the app's lib<name>.so and calls its
@@ -313,12 +314,18 @@ class Activity {
 	// 248 each sample's time (ns), then each pointer's x, y (88 bytes))
 	public static inline var INPUT_POINTER = 48;
 	public static inline var INPUT_SAMPLE = 248;
+	// (1656: 1 once routed on this thread (router), then each pointer's
+	// Event.routed and Event.gesture, 8 bytes)
+	public static inline var INPUT_ROUTED = 1656;
 
 	public static var inputQueue:Ptr;
 	static var inputLock:Ptr;
 	static var inputRing:Ptr;
 	static var inputHead:Int;
 	static var inputCount:Int;
+	// (what routes a motion record to the window's compositor on this thread
+	// as it is copied, before the program has it: AndroidWindow's; nil: none)
+	public static var router:Ptr;
 
 	// (the UI thread's looper: the queue has events)
 	@:hxmc.callback @:hxmc.noGc static function onInput(fd:Int, events:Int, data:Ptr):Int {
@@ -344,6 +351,13 @@ class Activity {
 				if (pad(Android.AInputEvent_getSource(ev))) copyPad(ev, r) else copyMotion(ev, r);
 				Mem.setPtr(r, 32, Ptr.nil());
 				Android.AInputQueue_finishEvent(q, ev, 1);
+				// (the compositor scrolls while the program is busy: routed now, its answers in the record)
+				Mem.setI32(r, INPUT_ROUTED, 0);
+				var route = router;
+				if (Mem.getI32(r, 0) == 2 && !route.isNull()) {
+					NativeThread.attach();
+					Indirect.call1(route, r);
+				}
 			}
 			Threads.pthread_mutex_lock(inputLock);
 			inputCount++;

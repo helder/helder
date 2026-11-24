@@ -32,6 +32,7 @@
 #   display's frames, a rotation, the background), helder dev's loop there
 #   (tests/os/dev/dev-android.mjs), the cube's window and touches
 #   (tests/gfx/android.sh), a drawn ui's touch fling (tests/os/android-touch.sh),
+#   SurfaceControl's layers against the textured compositor (tests/ui/android-layers.sh),
 #   native.jni from TypeScript (tests/typescript/native/android.sh), the
 #   web view (tests/platform/webview-android.sh: a page through its scheme
 #   handler, cross-origin isolated, wasm, the bridge's round trip, a
@@ -475,6 +476,7 @@ jobs:
           mkdir -p bin/pack/cache
           bin/cli/helder build tests/gfx/android --target android-x86_64 -o bin/pack/AndroidTest.apk
           bin/cli/helder build tests/os/AndroidTouchTest.hx --target android-x86_64 -o bin/pack/AndroidTouchTest.apk
+          bin/cli/helder build tests/ui/AndroidLayersTest.hx --target android-x86_64 -o bin/pack/AndroidLayersTest.apk
       - name: KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -499,6 +501,7 @@ jobs:
             node tests/os/dev/dev-android.mjs bin/cli/helder bin/pack/dev-emulator
             sh tests/gfx/android.sh bin/pack/AndroidTest.apk bin/pack/android-gfx
             sh tests/os/android-touch.sh bin/pack/AndroidTouchTest.apk bin/pack/android-gfx
+            sh tests/ui/android-layers.sh bin/pack/AndroidLayersTest.apk bin/pack/android-layers
             sh tests/typescript/native/android.sh bin/cli/helder bin/pack/android-ts
             sh tests/platform/webview-android.sh bin/cli/helder bin/pack/android-webview
             sh tests/pack/jvm.sh bin/pack/android-jvm
@@ -512,6 +515,8 @@ jobs:
             bin/pack/android/*.png
             bin/pack/android-gfx/*.txt
             bin/pack/android-gfx/*.png
+            bin/pack/android-layers/*.txt
+            bin/pack/android-layers/*.png
             bin/pack/android-ts/*.txt
             bin/pack/android-webview/*.txt
             bin/pack/android-webview/*.png

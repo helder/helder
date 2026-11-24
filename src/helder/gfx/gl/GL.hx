@@ -204,6 +204,7 @@ class GL {
 	@:optional static function glDrawElementsIndirect(mode:Int, type:Int, indirect:Ptr):Void;
 	@:wait static function glReadPixels(x:Int, y:Int, width:Int, height:Int, format:Int, type:Int, pixels:Ptr):Void;
 	@:wait static function glFinish():Void;
+	static function glFlush():Void;
 	// occlusion queries (GL ES 3.0's, WebGL2's: ANY_SAMPLES_PASSED)
 	static function glGenQueries(n:Int, ids:Ptr<Int32>):Void;
 	static function glDeleteQueries(n:Int, ids:Ptr<Int32>):Void;

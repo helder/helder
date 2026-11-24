@@ -1027,6 +1027,7 @@ export default async function (host) {
 		// (pixels: the memory from p on, which WebGL fills as far as it needs)
 		glReadPixels: (x, y, w, h, format, type, p) => gl.readPixels(x, y, w, h, format, type, new Uint8Array(host.memory().buffer, p)),
 		glFinish: () => gl.finish(),
+		glFlush: () => gl.flush(),
 		// (occlusion queries: a result is not available in the task that ended it, WebGL2's rule)
 		glGenQueries: (n, p) => gen(n, p, () => gl.createQuery()),
 		glDeleteQueries: (n, p) => del(n, p, (q) => gl.deleteQuery(q)),

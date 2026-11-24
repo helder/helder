@@ -10,7 +10,10 @@ import helder.ui.draw.UiWindow;
 // Scroll, no mouse event: a touch is its pointer's alone); ui's own drag
 // (helder.ui.gesture.TouchScroll) scrolls the box at where it started, so
 // it follows the finger the whole way (scrolled by the finger's travel
-// when let go), then glides on. Checked once it settled; Back closes.
+// when let go), then glides on. Where the compositor took the drag
+// (helder.ui.draw.Compositor: routed as the UI thread read it), the
+// program's offset at the release is the compositor's, its glide begun:
+// at least the travel. Checked once it settled; Back closes.
 //   helder build tests/os/AndroidTouchTest.hx --target android-x86_64 -o AndroidTouchTest.apk
 //   (the app org.helder.androidtouchtest)
 class AndroidTouchTest {
@@ -41,7 +44,7 @@ class AndroidTouchTest {
 		// (pixels); the box when it went down and when let go, the frames it
 		// moved after, its last change; what else came: scrolls, mouse events)
 		var downs = 0, ups = 0, moves = 0, downY = 0.0, upY = 0.0, start = 0.0, released = -1.0, glides = 0, changed = 0.0, last = 0.0;
-		var others = 0, ready = false, done = false;
+		var others = 0, ready = false, done = false, taken = false;
 		App.run(() -> {
 			if (w.needsFrame()) w.frame() else App.wait(0.05);
 			var now = haxe.Timer.stamp();
@@ -61,7 +64,9 @@ class AndroidTouchTest {
 				Sys.println('AndroidTouchTest: settled at ${Math.round(list.scrollY)}, let go at ${Math.round(released)}, $glides glide frames');
 				check("the finger: its pointer's events alone", downs == 1 && ups == 1 && moves > 1 && others == 0,
 					'$downs down, $moves moves, $ups up, $others scrolls or mouse events');
-				check("the box followed the finger the whole drag", Math.abs(released - start - travel) < 2, 'scrolled ${Math.round(released - start)} of ${Math.round(travel)}');
+				var d = released - start - travel;
+				check("the box followed the finger the whole drag", Math.abs(d) < 2 || taken && d > 0,
+					'scrolled ${Math.round(released - start)} of ${Math.round(travel)}' + (taken ? ", the compositor's" : ""));
 				check("the fling glides on once let go", glides >= 3 && list.scrollY > released, '${Math.round(released)} -> ${Math.round(list.scrollY)}');
 				Sys.println('AndroidTouchTest: ' + (failed == 0 ? "ok" : '$failed FAILED'));
 			}
@@ -73,6 +78,7 @@ class AndroidTouchTest {
 					start = list.scrollY;
 				case PointerMove if (e.pointer.type == Touch):
 					moves++;
+					if (e.routed == helder.ui.ScrollMirror.TAKEN) taken = true;
 				case PointerUp if (e.pointer.type == Touch):
 					ups++;
 					upY = e.pointer.y;

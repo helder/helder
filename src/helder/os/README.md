@@ -93,7 +93,9 @@ mode (a call handed to it posts an event that wakes it); X11's
 connection; Wayland's pointer, keyboard and touch, on an event queue of
 their own (the rest, the windows' configures among them, the program's as
 before; a touch's shared slot, `Pointers`, written as the program takes
-its event). Each event is routed then (`Window.route`, `Event.routed`)
+its event). Android's UI thread routes each motion event as it copies it
+(`Activity.router`: pointers of its own by the system's ids, the answers
+kept in the event's record for the program's; not under a dev host). Each event is routed then (`Window.route`, `Event.routed`)
 and kept for the program's next poll, in order. `OsThread.post` hands
 the main thread a call from any thread without waiting (the compositor's
 native views moved with its frame; on macOS and iOS, a frame's Core
