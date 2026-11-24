@@ -102,6 +102,7 @@ function tests() {
 			x.open("anim.gif");
 			frame(ui);
 			equals(x.full.value, true);
+			Tiles.forget();
 		});
 	});
 }

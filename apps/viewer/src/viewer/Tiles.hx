@@ -48,6 +48,12 @@ class Tiles implements Markup {
 	public static function cached(x:Explorer, e:Entry):Null<Image>
 		return kept.get(x.browser.path(e.name) + "\x00" + e.size + "\x00" + e.modified);
 
+	// the thumbnails kept let go (tests)
+	public static function forget() {
+		kept.clear();
+		order.resize(0);
+	}
+
 	// a thumbnail made for an entry, kept (the queue's; tests)
 	public static function remember(x:Explorer, e:Entry, img:Image)
 		keep(x.browser.path(e.name) + "\x00" + e.size + "\x00" + e.modified, img);
