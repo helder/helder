@@ -1,26 +1,55 @@
 package viewer;
 
 import helder.async.Async;
-import helder.ui.Clock;
 import helder.ui.Node;
+import helder.ui.controls.Look;
+import helder.ui.controls.Standard;
 import helder.ui.draw.UiWindow;
 import helder.ui.draw.UiWindow.Surface;
+import helder.ui.widgets.WindowButtons;
+import helder.ui.widgets.WindowButtons.WindowControls;
 import helder.view.*;
 import helder.view.Flow.*;
 import helder.view.graph.Graph.*;
-import helder.ui.view.UiFlow.VirtualList;
 import helder.ui.view.UiFlow.MenuBarView;
 import viewer.Decode.Decoded;
 import viewer.ViewerActions;
 
-// The viewer's window: the image view filling it on the dark background,
-// a message in place of the image (none open, loading, an error), the
-// status line (I), the picker (Mod+O: a folder's listing in a card), the
-// title "name · 3 / 128 · W×H"; files dropped on it opened; fullscreen
-// (F11, Enter; Escape leaves); its size and place kept between runs
-// (helder.os.Store "helder-viewer"); decodes as helder.jobs' jobs, the
-// folder watched every second.
+// The viewer's window: the browser (the sidebar, the folder with its
+// toolbar and path bar, the inspector) and a file full size in its place
+// (ViewerView), the title bar inset (the window's buttons over the
+// sidebar's top on macOS, at the top right elsewhere); files dropped on it
+// opened; its size and place, the folder, the layout, the order and the
+// inspector kept between runs (helder.os.Store "helder-viewer"); decodes
+// and listings as helder.jobs' jobs.
 class Shell implements Markup {
+	// helder's controls' look in the system's font, the browser's parts in its tokens
+	public static final look = Look.base.with({
+		tokens: {font: "system-ui"},
+		button: t -> {
+			variants: {
+				variant: {ghost: {root: {color: t.fg2, hover: {background: t.hover, color: t.fg}}}},
+				size: {sm: {icon: {width: 16, height: 16}}}
+			}
+		},
+		parts: {
+			panel: t -> {background: t.surface, radius: 12, borderWidth: 1, borderColor: t.line},
+			"side-head": t -> {padding: [6, 8, 4, 8], fontSize: 11, fontWeight: 600, color: t.fg3},
+			"side-row": t -> {direction: Row, alignItems: Center, columnGap: 8, height: 28, shrink: 0, padding: [0, 8], radius: 8, color: t.fg2,
+				hover: {background: t.hover, color: t.fg}, selected: {background: t.accentSoft, color: t.fg, fontWeight: 500},
+				open: {color: t.fg, fontWeight: 500}},
+			"side-back": t -> {direction: Row, alignItems: Center, columnGap: 2, height: 26, shrink: 1, minWidth: 0, padding: [0, 8, 0, 2], radius: 7,
+				color: t.fg3, fontSize: 12, hover: {background: t.hover, color: t.fg}},
+			"title-button": t -> {direction: Row, alignItems: Center, columnGap: 4, height: 30, shrink: 1, minWidth: 0, padding: [0, 6, 0, 8],
+				radius: 8, fontSize: 14, fontWeight: 600, color: t.fg, hover: {background: t.hover}},
+			tool: t -> {direction: Row, alignItems: Center, columnGap: 2, height: 30, shrink: 0, padding: [0, 4, 0, 7], radius: 8, color: t.fg2,
+				hover: {background: t.hover, color: t.fg}},
+			"head-cell": t -> {direction: Row, alignItems: Center, columnGap: 4, height: 30, color: t.fg3, hover: {color: t.fg}, selected: {color: t.fg}},
+			"list-row": t -> {direction: Row, alignItems: Center, columnGap: 12, height: 30, margin: [0, 6], padding: [0, 14, 0, 10], radius: 7,
+				color: t.fg2, hover: {background: t.hover}, selected: {background: t.accent, color: t.accentFg, hover: {background: t.accent}}}
+		}
+	});
+
 	public static function main(args:Array<String>) {
 		var mac = hxmc.Platform.os() == 1;
 		var store = try helder.os.Store.open("helder-viewer") catch (_:Dynamic) null;
@@ -31,8 +60,11 @@ class Shell implements Markup {
 		fallbackFont();
 		// (a decode's IDCT, upsampling and colours over two threads: the pool decodes two files at once)
 		helder.image.JpegDecoder.threads = 2;
-		var viewer = new Viewer(jobDecode);
+		var x = new Explorer(new NativeFiles(), jobDecode, helder.os.Places.user(), helder.os.Places.volumes());
+		var viewer = x.viewer;
 		viewer.mod = mac ? "Cmd" : "Ctrl";
+		x.reveal = reveal;
+		x.openDefault = openDefault;
 		// (the keymap: secondary as this platform's; the user's file over the defaults, beside the store)
 		helder.ui.actions.Keymap.mac = mac;
 		helder.ui.menu.Menus.appName = "Viewer";
@@ -42,18 +74,17 @@ class Shell implements Markup {
 		// (File's Open Recent: the last eight files opened, kept in the store)
 		var recent = store == null || store.get("recent") == null ? [] : [for (r in store.get("recent").split("\n")) if (r != "") r];
 		var bar:Null<helder.ui.menu.Menus.MenuBar> = null;
+		var places = [for (p in x.sidebar.places) {name: p.name, path: p.path}];
 		viewer.onOpened = p -> {
-			var full = try sys.FileSystem.fullPath(p) catch (_:Dynamic) p;
-			if (sys.FileSystem.isDirectory(full)) return;
-			recent.remove(full);
-			recent.unshift(full);
+			recent.remove(p);
+			recent.unshift(p);
 			if (recent.length > 8) recent.resize(8);
 			if (store != null) store.set("recent", recent.join("\n"));
-			if (bar != null) bar.setMenus(ViewerActions.menus(recent));
+			if (bar != null) bar.setMenus(ViewerActions.menus(recent, places));
 		};
-		viewer.statusOn(num("status", 0) == 1);
-		// (--exit-after s: the window closed after s seconds, the title and
-		// state printed: a smoke run of the real window and GPU, CI's)
+		restore(store, x);
+		// (--exit-after s: the window closed after s seconds, what it shows
+		// printed: a smoke run of the real window and GPU, CI's)
 		// (--report file: that line written there too, for a launch whose output is the system's: open -a)
 		var valued = ["--exit-after", "--report"];
 		inline function arg(name:String):Null<String>
@@ -81,56 +112,60 @@ class Shell implements Markup {
 			}
 		}
 		if (!args.contains("--new")) Instance.serve(p -> {
-			viewer.open(p);
+			x.start(p);
 			helder.view.graph.Graph.flush();
 			for (w in helder.os.App.windows) w.raise();
 		});
 		// (macOS's: Finder's "Open With", the Dock's icon)
 		helder.os.App.onOpen = paths -> {
-			viewer.open(paths[0]);
+			x.start(paths[0]);
 			helder.view.graph.Graph.flush();
 		};
-		// (Ctrl+O: the system's dialog where there is one, else the picker)
+		// (Ctrl+O: the system's dialog, the file picked opened in its folder)
 		viewer.openDialog = () -> {
-			if (!helder.os.FileDialog.available() || helder.os.App.windows.length == 0) return false;
+			if (!helder.os.FileDialog.available() || helder.os.App.windows.length == 0) return;
 			var picked = helder.os.FileDialog.open(helder.os.App.windows[0], "Open an image", [{name: "Images", extensions: [for (t in TYPES) for (x in t.extensions) x]}]);
-			if (picked != null) viewer.open(picked);
-			return true;
+			if (picked != null) x.start(picked);
 		};
-		if (path != null) viewer.open(path) else @:privateAccess viewer.empty();
+		if (path != null) x.start(try sys.FileSystem.fullPath(path) catch (_:Dynamic) path) else {
+			var dir = home(store, x);
+			x.browser.go(dir, store != null && store.get("dir") == dir ? store.get("selected") : null);
+		}
 		var window:Null<UiWindow> = null;
-		UiWindow.run(<Surface title={viewer.title} width={num("width", 1100)} height={num("height", 760)} background="#161618" dark={true}
-			onDrop={(files, x, y) -> if (files.length > 0) viewer.open(files[0])}
+		UiWindow.run(<Surface title={() -> x.full() ? viewer.title() : x.sidebar.title(x.browser.dir())} width={num("width", 1180)} height={num("height", 780)}
+			titlebar="inset" background={() -> x.full() ? ViewerView.BACKGROUND : UiWindow.dark() ? "#121212" : "#f3f3f3"}
+			onDrop={(files, _, _) -> if (files.length > 0) x.start(files[0])}
 			onClose={() -> {
-				save(store, window, viewer);
+				save(store, window, x);
 				if (!args.contains("--new")) Instance.leave();
 				window.close();
 			}}
 			ref={w -> {
 				window = w;
-				w.window.setMinSize(320, 240);
+				w.window.setMinSize(640, 400);
 				var placed = store != null && store.exists("x") && store.exists("y");
 				if (placed) w.window.moveTo(num("x", 0), num("y", 0));
-				asked = {x: placed ? num("x", 0) : null, y: placed ? num("y", 0) : null, width: num("width", 1100), height: num("height", 760)};
-				attach(w.ui.root, viewer);
+				asked = {x: placed ? num("x", 0) : null, y: placed ? num("y", 0) : null, width: num("width", 1180), height: num("height", 780)};
+				attach(w.ui.root, x);
 				effect(() -> viewer.fullscreen(), on -> w.window.fullscreen = on);
 				// (the window's size and place kept as they change, not only at its close: macOS's Quit, a crash, a logout)
 				Async.launch(_ -> while (!w.window.closed) {
 					Async.delay(1);
-					if (!w.window.closed) save(store, w, viewer);
+					if (!w.window.closed) save(store, w, x);
 				});
 				if (exitAfter >= 0) Async.launch(_ -> {
 					Async.delay(exitAfter);
-					var line = 'viewer: ${viewer.title.peek()} (${viewer.state.peek()}${viewer.message.peek() == "" ? "" : ": " + viewer.message.peek()}, ${viewer.camera.percent()}%, ${w.window.width}x${w.window.height})';
+					var line = x.full.value ? 'viewer: ${viewer.title.peek()} (${viewer.state.peek()}${viewer.message.peek() == "" ? "" : ": " + viewer.message.peek()}, ${viewer.camera.percent()}%, ${w.window.width}x${w.window.height})'
+						: 'viewer: ${x.sidebar.title(x.browser.dir.value)} (browsing, ${ContentView.count(x)}, ${w.window.width}x${w.window.height})';
 					Sys.println(line);
 					if (report != null) try sys.io.File.saveContent(report, line + "\n") catch (_:Dynamic) {}
-					save(store, w, viewer);
+					save(store, w, x);
 					if (!args.contains("--new")) Instance.leave();
 					w.close();
 				});
 			}}>
-			<MenuBarView menus={ViewerActions.menus(recent)} ref={b -> bar = b}/>
-			{view(viewer)}
+			<MenuBarView menus={ViewerActions.menus(recent, places)} ref={b -> bar = b}/>
+			{view(x)}
 		</Surface>);
 	}
 
@@ -174,10 +209,17 @@ class Shell implements Markup {
 	static var asked:Null<{x:Null<Int>, y:Null<Int>, width:Int, height:Int}> = null;
 	static var offset:Null<{x:Int, y:Int, width:Int, height:Int}> = null;
 
-	static function save(store:Null<helder.os.Store>, w:Null<UiWindow>, viewer:Viewer) {
-		if (store == null || w == null) return;
-		store.set("status", viewer.statusOn.peek() ? "1" : "0");
-		if (viewer.fullscreen.peek()) return;
+	static function save(store:Null<helder.os.Store>, w:Null<UiWindow>, x:Explorer) {
+		if (store == null) return;
+		var b = x.browser, o = b.order.value;
+		store.set("status", x.viewer.statusOn.peek() ? "1" : "0");
+		if (b.dir.value != "") store.set("dir", b.dir.value);
+		store.set("selected", x.full.value ? x.viewer.folder.name : b.selected.value);
+		store.set("layout", b.layout.value);
+		store.set("sort", o.key + (o.ascending ? " up" : " down") + (o.foldersFirst ? " folders" : ""));
+		store.set("hidden", b.hidden.value ? "1" : "0");
+		store.set("inspector", b.inspector.value ? "1" : "0");
+		if (w == null || x.viewer.fullscreen.peek()) return;
 		var k = w.window.scale > 0 ? w.window.scale : 1;
 		var p = w.window.position();
 		var width = Math.round(w.window.width / k), height = Math.round(w.window.height / k);
@@ -196,24 +238,41 @@ class Shell implements Markup {
 		store.set("height", Std.string(height - o.height));
 	}
 
-	// the viewer's actions on the root (its key context "Viewer", with
-	// picker and fullscreen while they are; ViewerActions' default keymap in
-	// the app's), the folder watched
-	public static function attach(root:Node, viewer:Viewer, watch = true) {
+	// (what the store kept: the layout, the order, hidden files, the inspector)
+	static function restore(store:Null<helder.os.Store>, x:Explorer) {
+		if (store == null) return;
+		var b = x.browser;
+		if (store.get("layout") == "grid") b.layout(Grid);
+		var sort = (store.get("sort") ?? "").split(" ");
+		if (["name", "kind", "modified", "size"].contains(sort[0]))
+			b.setOrder({key: cast sort[0], ascending: sort[1] != "down", foldersFirst: sort.contains("folders")});
+		b.hidden(store.get("hidden") == "1");
+		b.inspector(store.get("inspector") != "0");
+		x.viewer.statusOn(store.get("status") == "1");
+	}
+
+	// (where a start without a path opens: the last folder (its selection kept), else Pictures, else home)
+	static function home(store:Null<helder.os.Store>, x:Explorer):String {
+		var last = store == null ? null : store.get("dir");
+		if (last != null && x.files.stat(last)?.kind == Folder) return last;
+		for (kind in [helder.os.Places.PlaceKind.Pictures, helder.os.Places.PlaceKind.Home])
+			for (p in x.sidebar.places)
+				if (p.kind == kind) return p.path;
+		return Sys.getCwd();
+	}
+
+	// the actions on the root (its key context "Viewer", with browser or
+	// full, fullscreen, pdf, media, goto and about while they are;
+	// ViewerActions' default keymap in the app's)
+	public static function attach(root:Node, x:Explorer) {
 		ViewerActions.defaults(helder.ui.actions.Keymap.global);
-		renderEffect(() -> "Viewer" + (viewer.pickerOpen() ? " picker" : "") + (viewer.fullscreen() ? " fullscreen" : "") + (viewer.pagesSignal() > 1 ? " pdf" : "") + (viewer.media() != "" ? " media" : "")
-			+ (viewer.gotoOpen() ? " goto" : "") + (viewer.aboutOpen() ? " about" : ""),
+		var viewer = x.viewer;
+		renderEffect(() -> "Viewer" + (x.full() ? " full" : " browser") + (viewer.fullscreen() ? " fullscreen" : "")
+			+ (x.full() && viewer.pagesSignal() > 1 ? " pdf" : "") + (x.full() && viewer.media() != "" ? " media" : "") + (viewer.gotoOpen() ? " goto" : "")
+			+ (viewer.aboutOpen() ? " about" : ""),
 			c -> root.keyContext = helder.ui.actions.KeyContext.parse(c));
+		x.copy = p -> if (root.ui != null) root.ui.clipboard.write(p);
 		root.on(ViewerAction, a -> switch a {
-			case CopyPath:
-				if (root.ui != null && viewer.folder.current != null) root.ui.clipboard.write(viewer.folder.current);
-				true;
-			case ShowInFolder:
-				if (viewer.folder.current != null) reveal(viewer.folder.current);
-				true;
-			case OpenWithDefault:
-				if (viewer.folder.current != null) openDefault(viewer.folder.current);
-				true;
 			case PlayPause:
 				MediaView.toggle();
 				true;
@@ -226,8 +285,8 @@ class Shell implements Markup {
 			case ToggleMute:
 				MediaView.toggleMute();
 				true;
-			case _: viewer.perform(a);
-		}, viewer.actionState);
+			case _: x.perform(a);
+		}, x.actionState);
 		// (Help's About, macOS's application menu's: the about card)
 		root.on(helder.ui.actions.Actions.StandardAction, a -> switch a {
 			case About:
@@ -235,10 +294,6 @@ class Shell implements Markup {
 				true;
 			case _: false;
 		}, a -> a == About ? Enabled : Unhandled);
-		if (watch) Async.launch(_ -> while (true) {
-			Async.delay(1);
-			viewer.watch();
-		});
 	}
 
 	// (the system's file manager at the file: Finder, Explorer, the FileManager1 portal's caller, else the folder opened)
@@ -266,110 +321,42 @@ class Shell implements Markup {
 			if (code != 0 && otherwise != null) otherwise();
 		});
 
-	// the window's content
-	public static function view(viewer:Viewer):View {
-		var image = new ImageView(viewer);
-		image.onContextMenu = (x, y) -> if (image.ui != null) helder.ui.menu.Menus.popup(image.ui, ViewerActions.context, x, y, image);
-		image.style.position = Absolute;
-		image.style.left = image.style.top = image.style.right = image.style.bottom = 0;
-		// (to assistive technology an image, named as the window is: the file, its place, its size)
-		image.semantics = {role: helder.ui.access.Role.Image, label: viewer.title.peek()};
-		renderEffect(() -> viewer.title(), t -> image.semantics.label = t);
-		// (a change drawn; an animation or a glide ticked on the clock while it lasts)
-		var ticking = false, last = -1.0;
-		renderEffect(() -> viewer.version(), _ -> {
-			image.redraw();
-			if (ticking) return;
-			ticking = true;
-			last = -1;
-			Clock.add(t -> {
-				var dt = last < 0 ? 0 : Math.min(0.1, t - last);
-				last = t;
-				var more = viewer.tick(t, dt);
-				image.redraw();
-				if (!more) ticking = false;
-				return more;
-			});
-		});
-		// (Loading… only once a decode takes a moment: no flash on the first frame, nor on a flip to one about to land)
-		var slow = signal(false), waitFrom = -1.0;
-		renderEffect(() -> viewer.state() == Loading, loading -> {
-			slow(false);
-			if (!loading || waitFrom >= 0) return;
-			waitFrom = 0;
-			Clock.add(t -> {
-				if (waitFrom == 0) waitFrom = t;
-				if (viewer.state.peek() != Loading) {
-					waitFrom = -1;
-					return false;
-				}
-				if (t - waitFrom < 0.25) return true;
-				waitFrom = -1;
-				slow(true);
-				return false;
-			});
-		});
-		return <view tag="viewer" grow={1} background="#161618" color="#e4e4e7" font-size={13}>
-			{image}
-			<Show when={viewer.media() != ""}>{MediaView.make(viewer)}</Show>
-			<Show when={viewer.state() != Shown && (viewer.state() != Loading || slow())}>
-				<view tag="message" position="absolute" inset={0} align-items="center" justify="center" row-gap={8} padding={24} pointer-events="none">
-					<text tag="title" font-size={17} color={viewer.state() == Failed ? "#fca5a5" : "#e4e4e7"} text-align="center">{viewer.message}</text>
-					<text tag="detail" color="#a1a1aa" text-align="center">{viewer.detail}</text>
-				</view>
-			</Show>
-			<Show when={viewer.statusOn() && viewer.status() != ""}>
-				<view tag="status" position="absolute" left={0} right={0} bottom={0} padding="6 12" background="#000000b3" direction="row">
-					<text color="#d4d4d8">{viewer.status}</text>
-				</view>
-			</Show>
-			<Show when={viewer.pickerOpen()}>
-				<view tag="picker-backdrop" position="absolute" inset={0} background="#00000099" align-items="center" justify="center"
-					onClick={_ -> viewer.pickerOpen(false)}>
-					<view tag="picker" width={420} padding={12} row-gap={8} radius={10} background="#232326" border-width={1} border-color="#3f3f46"
-						shadow="0 8px 30px rgba(0, 0, 0, 0.5)" onClick={e -> e.stop()}>
-						<text tag="picker-dir" color="#a1a1aa" text-overflow="ellipsis" max-lines={1}>{viewer.pickerDir}</text>
-						<VirtualList each={viewer.pickerEntries} itemHeight={28} height={360}>{(entry, i) ->
-							<view:button tag={"entry-" + i} role="button" focusable height={28} padding="0 8" justify="center" radius={6}
-								background={i % 2 == 0 ? "#26262a" : "#232326"} onPress={() -> viewer.pick(entry())}>
-								<text color={StringTools.endsWith(entry(), "/") ? "#93c5fd" : "#e4e4e7"} max-lines={1} dir={helder.ui.Dir.Ltr}>{entry()}</text>
-							</view:button>
-						}</VirtualList>
+	// the window's content: the browser, or a file full size in its place
+	public static function view(x:Explorer):View {
+		var b = x.browser;
+		// (a large folder, not watched: read again when the pointer comes back to the window)
+		function back()
+			if (!x.full.value && b.total.value >= Browser.WATCH_BELOW && !b.reading.value) b.refresh();
+		return <Standard.Themed look={look}>
+			<view tag="window" grow={1} background={Look.ref.canvas} color={Look.ref.fg} font-family="system-ui" font-size={13} onPointerEnter={back}>
+				<view tag="browser" grow={1} direction="row" display={x.full() ? "none" : "flex"}>
+					{SidebarView.make(x)}
+					<view grow={1} min-width={0} direction="row" padding-top={WindowButtons.side() == "end" ? 32 : 0}>
+						{ContentView.make(x)}
+						<Show when={b.inspector()}>{InspectorView.make(x)}</Show>
 					</view>
 				</view>
-			</Show>
-			<Show when={viewer.aboutOpen()}>
-				<view tag="about-backdrop" position="absolute" inset={0} background="#00000099" align-items="center" justify="center"
-					onClick={_ -> viewer.aboutOpen(false)}>
-					<view tag="about" width={340} padding={20} row-gap={6} radius={12} background="#232326" border-width={1} border-color="#3f3f46"
-						align-items="center" shadow="0 8px 30px rgba(0, 0, 0, 0.5)">
-						<image src={helder.image.Image.decode(helder.asset.Asset.embed("about-icon.png"))} width={72} height={72}/>
-						<text tag="about-name" font-size={18} color="#f4f4f5">Viewer</text>
-						<text tag="about-version" color="#a1a1aa">{"Version " + Version.NAME}</text>
-						<text color="#d4d4d8" text-align="center">helder's image viewer: PNG, JPEG, GIF, WebP, PDF and the system's formats</text>
-						<text color="#71717a" text-align="center">MIT License · github.com/helder/helder</text>
-					</view>
-				</view>
-			</Show>
-			<Show when={viewer.gotoOpen()}>
-				<view tag="goto-backdrop" position="absolute" inset={0} background="#00000066" align-items="center" justify="center"
-					onClick={_ -> viewer.gotoOpen(false)}>
-					<view tag="goto" width={260} padding={12} row-gap={8} radius={10} background="#232326" border-width={1} border-color="#3f3f46"
-						shadow="0 8px 30px rgba(0, 0, 0, 0.5)" onClick={e -> e.stop()}>
-						<text color="#a1a1aa">{"Go to page (1–" + viewer.pagesSignal() + ")"}</text>
-						<field tag="goto-field" value={viewer.gotoText} placeholder={Std.string(viewer.pageSignal() + 1)} label="Page number" height={28} padding="0 8"
-							radius={6} background="#18181b" border-width={1} border-color="#52525b" onInput={e -> viewer.gotoText(e.text)}
-							onKeyDown={e -> if (e.key == helder.ui.Key.ENTER) {
-								viewer.goToTyped((cast e.current : helder.ui.widgets.TextField).text);
-								e.stop();
-							}}
-							ref={n -> helder.ui.Clock.add(_ -> {
-								n.focus();
-								false;
-							})}/>
-					</view>
-				</view>
-			</Show>
-		</view>;
+				{ViewerView.make(x)}
+				<Show when={WindowButtons.side() == "end"}>
+					<view position="absolute" top={0} left={SidebarView.WIDTH} right={0} height={40} drag-region display={x.full() ? "none" : "flex"}/>
+				</Show>
+				<view tag="window-start" position="absolute" top={0} left={18} height={52} direction="row" align-items="center"><WindowControls side="start"/></view>
+				<view tag="window-end" position="absolute" top={0} right={0} direction="row"><WindowControls side="end"/></view>
+				<Show when={x.viewer.aboutOpen()}>{about(x.viewer)}</Show>
+			</view>
+		</Standard.Themed>;
 	}
+
+	static function about(viewer:Viewer):View
+		return <view tag="about-backdrop" position="absolute" inset={0} background="#00000099" align-items="center" justify="center"
+			onClick={_ -> viewer.aboutOpen(false)}>
+			<view tag="about" width={340} padding={20} row-gap={6} radius={12} background="#232326" border-width={1} border-color="#3f3f46"
+				align-items="center" shadow="0 8px 30px rgba(0, 0, 0, 0.5)">
+				<image src={helder.image.Image.decode(helder.asset.Asset.embed("about-icon.png"))} width={72} height={72}/>
+				<text tag="about-name" font-size={18} color="#f4f4f5">Viewer</text>
+				<text tag="about-version" color="#a1a1aa">{"Version " + Version.NAME}</text>
+				<text color="#d4d4d8" text-align="center">helder's image viewer and file browser: PNG, JPEG, GIF, WebP, PDF and the system's formats</text>
+				<text color="#71717a" text-align="center">MIT License · github.com/helder/helder</text>
+			</view>
+		</view>;
 }

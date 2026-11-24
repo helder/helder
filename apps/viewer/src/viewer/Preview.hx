@@ -1,0 +1,92 @@
+package viewer;
+
+import haxe.io.Bytes;
+import helder.async.Async;
+import helder.image.Image;
+import helder.image.Resize;
+
+// what the inspector shows of a file: its picture (null: none, a glyph
+// instead), and what was learnt opening it (0: not known)
+typedef Shown = {image:Null<Image>, width:Int, height:Int, pages:Int, duration:Float, format:String, error:Null<String>};
+
+// The inspector's preview of the selected file: an image or a PDF's
+// first page decoded through Decode's path at SIDE pixels, then halved to
+// fit the preview's box twice over (on helder.jobs' pool, so the window
+// never waits); a video's keyframe at a tenth of it (Thumbs) and its
+// duration; an audio file's duration. One request at a time: the next
+// selection's stops the last. (The thumbnails' pipeline takes this over
+// once it lands: request is where it plugs in.)
+class Preview {
+	public static inline var SIDE = 512;
+	// (the box is 272 by 220 points: twice that in pixels at most)
+	static inline var FIT = 640;
+
+	// done(shown) on the loop; the function returned stops it
+	public static function request(path:String, done:Shown->Void):Void->Void {
+		var stopped = false;
+		if (FolderModel.isMedia(path)) {
+			media(path, s -> if (!stopped) done(s));
+			return () -> stopped = true;
+		}
+		Async.launch(_ -> {
+			var r = helder.jobs.Jobs.job(decode).run(path);
+			if (!stopped) done(shown(r));
+		});
+		return () -> stopped = true;
+	}
+
+	// at once, on this thread (tests and stories)
+	public static function now(path:String, done:Shown->Void):Void->Void {
+		done(shown(decode(path)));
+		return () -> {};
+	}
+
+	// (on the pool: the decode, its pixels copied out, fitted)
+	static function decode(path:String):{width:Int, height:Int, pw:Int, ph:Int, rgba:Null<Bytes>, pages:Int, format:String, error:Null<String>} {
+		var d = Decode.file({path: path, side: SIDE});
+		if (d.error != null || d.frames.length == 0) {
+			Decode.release(d);
+			return {width: d.width, height: d.height, pw: 0, ph: 0, rgba: null, pages: d.pages, format: d.format, error: d.error};
+		}
+		var px = d.frames[0].pixels, rgba = Bytes.alloc(d.pixelsWidth * d.pixelsHeight * 4);
+		px.blitToBytes(0, rgba, 0, rgba.length);
+		Decode.release(d);
+		var fit = Resize.toFit(rgba, d.pixelsWidth, d.pixelsHeight, FIT, FIT);
+		return {width: d.width, height: d.height, pw: fit.width, ph: fit.height, rgba: fit.rgba, pages: d.pages, format: d.format, error: null};
+	}
+
+	static function shown(r:{width:Int, height:Int, pw:Int, ph:Int, rgba:Null<Bytes>, pages:Int, format:String, error:Null<String>}):Shown
+		return {
+			image: r.rgba == null ? null : new Image(r.pw, r.ph, r.rgba),
+			width: r.width,
+			height: r.height,
+			pages: r.pages,
+			duration: 0,
+			format: r.format,
+			error: r.error
+		};
+
+	// (a video's or an audio file's: its duration and size from its header, a video's keyframe)
+	static function media(path:String, done:Shown->Void) {
+		Async.launch(_ -> {
+			var m = try helder.media.Media.open(new helder.media.FileSource(path)) catch (_:Dynamic) null;
+			if (m == null) {
+				done({image: null, width: 0, height: 0, pages: 0, duration: 0, format: "", error: "Not a video or audio file this viewer reads"});
+				return;
+			}
+			var v = Lambda.find(m.tracks, t -> t.kind == Video), duration = m.duration;
+			m.close();
+			var s:Shown = {image: null, width: v == null ? 0 : v.width, height: v == null ? 0 : v.height, pages: 0, duration: duration, format: "", error: null};
+			if (v == null) {
+				done(s);
+				return;
+			}
+			var thumbs = new Thumbs(path);
+			thumbs.at(Math.min(2, duration * 0.1), img -> {
+				thumbs.close();
+				s.image = img;
+				done(s);
+			});
+		});
+	}
+}

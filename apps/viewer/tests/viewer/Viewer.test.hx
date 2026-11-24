@@ -8,10 +8,11 @@ import helder.ui.Ui;
 import helder.view.Render;
 
 // A scripted run, headless: the shell's tree in a Ui without a window or
-// a GPU, the fixture folder opened (tests/fixtures/folder: a PNG, an
+// a GPU, the fixture folder browsed (tests/fixtures/folder: a PNG, an
 // animated GIF, a JPEG cut short, a WebP, a photo and a JPEG turned by
-// EXIF, a text file), then flipped through with the keys and the wheel,
-// zoomed, the status line and the picker shown, as a user would
+// EXIF, a text file), a file opened full size, flipped through with the
+// keys and the wheel, zoomed, the status line shown, back to the folder,
+// as a user would
 function tests() {
 	describe("Viewer, scripted", () -> {
 		// (the keys as pressed off a Mac: secondary is Control, whichever host runs it)
@@ -25,18 +26,25 @@ function tests() {
 				if (Std.isOfType(c, TextNode)) return (cast c : TextNode).text;
 			return "";
 		}
-		test("open, flip, zoom, the status line, the picker", () -> {
-			var viewer = new Viewer((path, side, done) -> done(Decode.file({path: path, side: side})));
-			var ui = new Ui(new StoryText(), 800, 600);
-			Render.render(Shell.view(viewer), ui.root);
-			Shell.attach(ui.root, viewer, false);
+		test("browse, open, flip, zoom, the status line, back", () -> {
+			var x = Fixtures.explorer(), viewer = x.viewer;
+			var ui = new Ui(new StoryText(), 1100, 700);
+			Render.render(Shell.view(x), ui.root);
+			Shell.attach(ui.root, x);
 			viewer.camera.setView(800, 600);
-			ui.update();
-			equals(viewer.state.peek(), Empty);
-			equals(text(ui, "title"), "No image open");
-			assert(viewer.open(dir));
+			x.start(dir);
 			helder.view.graph.Graph.flush();
 			ui.update();
+			equals(viewer.state.peek(), Empty);
+			equals(ContentView.count(x), "7 items");
+			assert(ui.root.find("rows") != null, "the list");
+			// (Enter on the first: the viewer, its list the folder's images in the browser's order)
+			x.browser.select("alpha.png");
+			helder.view.graph.Graph.flush();
+			ui.keyDown(Key.ENTER, 0);
+			helder.view.graph.Graph.flush();
+			ui.update();
+			equals(x.full.value, true);
 			equals(viewer.title.peek(), "alpha.png · 1 / 6 · 13×11");
 			// (the next: an animated GIF, its frames played)
 			ui.keyDown(Key.RIGHT, 0);
@@ -87,17 +95,13 @@ function tests() {
 			equals(viewer.folder.name, "photo 10.jpg");
 			ui.keyDown(Key.HOME, 0);
 			equals(viewer.folder.name, "alpha.png");
-			// (the picker: Mod+O, its listing, Escape)
-			ui.keyDown("o".code, Key.MOD_CONTROL);
-			ui.update();
-			equals(viewer.pickerOpen.peek(), true);
-			equals(viewer.pickerEntries.peek(), ["../", "alpha.png", "anim.gif", "broken.jpg", "lossy.webp", "photo 2.jpg", "photo 10.jpg"]);
-			assert(ui.root.find("picker") != null, "the picker's card");
-			viewer.pick("photo 2.jpg");
+			// (Escape: back to the folder, the file viewed last selected)
+			ui.keyDown(Key.ESCAPE, 0);
 			helder.view.graph.Graph.flush();
-			ui.update();
-			equals(viewer.pickerOpen.peek(), false);
-			equals(viewer.folder.name, "photo 2.jpg");
+			equals(x.full.value, false);
+			equals(x.browser.selected.value, "alpha.png");
+			x.open("photo 2.jpg");
+			helder.view.graph.Graph.flush();
 			// (fullscreen: F11 and Enter, Escape leaves)
 			ui.keyDown(Key.F1 + 10, 0);
 			equals(viewer.fullscreen.peek(), true);
@@ -106,16 +110,28 @@ function tests() {
 			// (decoded at the size shown: a small view, the photo at 1/4; at 100% decoded again whole)
 			viewer.camera.setView(300, 200);
 			viewer.cache.clear();
-			viewer.open(dir + "/photo 2.jpg");
+			x.start(dir + "/photo 2.jpg");
 			helder.view.graph.Graph.flush();
 			equals([viewer.shown.width, viewer.shown.pixelsWidth], [1242, 311]);
 			viewer.actual();
 			equals([viewer.shown.width, viewer.shown.pixelsWidth], [1242, 1242]);
 			viewer.camera.setView(800, 600);
-			// (a file that is not there: its message, nothing else)
-			equals(viewer.open(dir + "/missing.png"), false);
+			// (Mod+Up: the folder again)
+			ui.keyDown(Key.UP, Key.MOD_CONTROL);
 			helder.view.graph.Graph.flush();
-			equals(viewer.state.peek(), Failed);
+			equals(x.full.value, false);
+			equals(x.browser.selected.value, "photo 2.jpg");
+			// (the browser's keys: Mod+2 the list, Mod+I the inspector, Mod+F search)
+			ui.keyDown("i".code, Key.MOD_CONTROL);
+			helder.view.graph.Graph.flush();
+			equals(x.browser.inspector.value, false);
+			ui.keyDown("f".code, Key.MOD_CONTROL);
+			helder.view.graph.Graph.flush();
+			equals(x.browser.searching.value, true);
+			x.browser.search("photo");
+			equals([for (e in x.browser.items.value) e.name], ["photo 2.jpg", "photo 10.jpg"]);
+			ui.keyDown(Key.ESCAPE, 0);
+			equals(x.browser.query.value, "");
 		});
 		test("what a broken file says", () -> {
 			equals(Decode.decode(haxe.io.Bytes.alloc(0)).error, "The file is empty");
@@ -126,15 +142,15 @@ function tests() {
 		});
 		test("a PDF's pages: the keys, the wheel, go to page, the next page decoded ahead", () -> {
 			var asked = [];
-			var viewer = new Viewer((path, side, done) -> {
+			var x = new Explorer(Fixtures.files(["tests/fixtures/pdf"]), (path, side, done) -> {
 				asked.push(Decode.parseKey(path).page);
 				done(Decode.file({path: path, side: side}));
-			});
+			}, [], [], Preview.now), viewer = x.viewer;
 			var ui = new Ui(new StoryText(), 800, 600);
-			Render.render(Shell.view(viewer), ui.root);
-			Shell.attach(ui.root, viewer, false);
+			Render.render(Shell.view(x), ui.root);
+			Shell.attach(ui.root, x);
 			viewer.camera.setView(800, 600);
-			assert(viewer.open("tests/fixtures/pdf/pages.pdf"));
+			x.start("tests/fixtures/pdf/pages.pdf");
 			helder.view.graph.Graph.flush();
 			ui.update();
 			equals(viewer.state.peek(), Shown);
@@ -188,7 +204,8 @@ function tests() {
 			// (zoomed in: page 1 drawn again larger, as a JPEG's refine)
 			viewer.camera.setView(300, 200);
 			viewer.cache.clear();
-			viewer.open("tests/fixtures/pdf/pages.pdf");
+			x.close();
+			x.start("tests/fixtures/pdf/pages.pdf");
 			helder.view.graph.Graph.flush();
 			equals([viewer.shown.width, viewer.shown.pixelsHeight], [600, 300]);
 			viewer.actual();

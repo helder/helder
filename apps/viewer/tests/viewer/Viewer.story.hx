@@ -1,53 +1,106 @@
 package viewer;
 
 import helder.story.Story;
+import helder.ui.Node;
+import helder.view.*;
 
-// The viewer's states, in a phone's size: empty, an error in place of the
-// image, a photo fitted, at 100%, the status line on (their trees in
-// Viewer.story.snap)
-final empty = story({name: "Viewer/empty", render: c -> Shell.view(viewer())});
+// The browser and the viewer, at a laptop's size: the folder as a list,
+// dark and light; the inspector of a photo and of a PDF; a photo full size
+// with its back pill, an error in its place, the status line; an empty
+// folder, one that cannot be read, a search with no results (their trees
+// in Viewer.story.snap)
+final listDark = story({name: "Browser/list, dark", width: 1100, height: 700, render: c -> themed(browse(), true)});
 
-final error = story({
-	name: "Viewer/error",
+final listLight = story({name: "Browser/list, light", width: 1100, height: 700, render: c -> themed(browse(), false)});
+
+final inspectorImage = story({
+	name: "Browser/inspector, photo",
+	width: 1100,
+	height: 700,
 	render: c -> {
-		var v = viewer();
-		v.open("tests/fixtures/folder/broken.jpg");
-		Shell.view(v);
+		var x = browse();
+		x.browser.select("photo 2.jpg");
+		themed(x, true);
 	}
 });
 
-final fit = story({
-	name: "Viewer/fit",
+final inspectorPdf = story({
+	name: "Browser/inspector, PDF",
+	width: 1100,
+	height: 700,
 	render: c -> {
-		var v = viewer();
-		v.open("tests/fixtures/folder/photo 2.jpg");
-		Shell.view(v);
+		var x = Fixtures.explorer(["tests/fixtures/pdf"]);
+		x.start("tests/fixtures/pdf");
+		x.browser.select("pages.pdf");
+		themed(x, true);
 	}
 });
 
-final actual = story({
-	name: "Viewer/100%",
+final empty = story({
+	name: "Browser/empty",
+	width: 1100,
+	height: 700,
 	render: c -> {
-		var v = viewer();
-		v.open("tests/fixtures/folder/photo 2.jpg");
-		v.actual();
-		Shell.view(v);
+		var x = new Explorer(new MemoryFiles().add("/empty/"), (_, _, _) -> {}, [], [], Preview.now);
+		x.start("/empty");
+		themed(x, true);
 	}
 });
+
+final unreadable = story({
+	name: "Browser/missing folder",
+	width: 1100,
+	height: 700,
+	render: c -> {
+		var x = new Explorer(new MemoryFiles().add("/here/"), (_, _, _) -> {}, [], [], Preview.now);
+		x.start("/here/gone");
+		themed(x, true);
+	}
+});
+
+final noResults = story({
+	name: "Browser/no results",
+	width: 1100,
+	height: 700,
+	render: c -> {
+		var x = browse();
+		x.browser.searching(true);
+		x.browser.search("puffin");
+		themed(x, true);
+	}
+});
+
+final fit = story({name: "Viewer/fit", width: 1100, height: 700, render: c -> themed(viewing("photo 2.jpg"), true)});
+
+final error = story({name: "Viewer/error", width: 1100, height: 700, render: c -> themed(viewing("broken.jpg"), true)});
 
 final status = story({
 	name: "Viewer/status line",
+	width: 1100,
+	height: 700,
 	render: c -> {
-		var v = viewer();
-		v.open("tests/fixtures/folder/photo 2.jpg");
-		v.statusOn(true);
-		Shell.view(v);
+		var x = viewing("photo 2.jpg");
+		x.viewer.statusOn(true);
+		themed(x, true);
 	}
 });
 
-// (decoded at once; the phone's view in device pixels)
-private function viewer():Viewer {
-	var v = new Viewer((path, side, done) -> done(Decode.file({path: path, side: side})));
-	v.camera.setView(390, 844);
-	return v;
+// (the fixture folder browsed, decoded at once)
+private function browse():Explorer {
+	var x = Fixtures.explorer();
+	x.start("tests/fixtures/folder");
+	return x;
 }
+
+// (a file of it full size; the view's size in device pixels)
+private function viewing(name:String):Explorer {
+	var x = browse();
+	x.viewer.camera.setView(1100, 648);
+	x.open(name);
+	return x;
+}
+
+// (the window's content, dark or light, at a laptop's size: the trees are
+// taken in a phone's whatever the story's width, Stories.tree)
+private function themed(x:Explorer, dark:Bool):View
+	return <view width={1100} height={700} shrink={0} ref={(n:Node) -> if (n.ui != null) n.ui.dark = dark}>{Shell.view(x)}</view>;

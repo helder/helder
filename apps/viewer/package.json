@@ -1,7 +1,7 @@
 {
   "name": "viewer",
   "private": true,
-  "description": "helder's image viewer: a file or a folder, its images in natural order",
+  "description": "helder's image viewer and file browser: a folder browsed, a file full size",
   "license": "MIT",
   "author": "Ben Merckx",
   "homepage": "https://github.com/helder/helder/tree/main/apps/viewer",
