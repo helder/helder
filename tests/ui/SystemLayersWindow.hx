@@ -435,7 +435,6 @@ class SystemLayersWindow {
 		App.run(() -> {
 			// (a live resize's frame, the main thread waiting in its call)
 			if (scripting) {
-				if (busy > 0) Sys.sleep(busy);
 				w.frame();
 				w.device.settle();
 				return;
@@ -461,7 +460,7 @@ class SystemLayersWindow {
 						c.value.origin.y = old.origin.y + old.size.height - f.size.height;
 						c.value.size.width = f.size.width;
 						c.value.size.height = f.size.height;
-						// (the last step: the program busy past the wait from its frame on, the window's last frame shown at its top left)
+						// (the last step: the program busy past the wait from its Resize on, its frame later still, the window's last frame shown at its top left)
 						if (i == steps) busy = 0.3;
 						var t0 = haxe.Timer.stamp();
 						helder.os.objc.Msg.vRectBool(nsw, helder.os.objc.ObjC.sel("setFrame:display:"), c.value, true);
@@ -506,7 +505,13 @@ class SystemLayersWindow {
 			}
 			w.frame();
 			w.device.settle();
-		}, e -> w.handle(e));
+		}, e -> {
+			if (scripting && e.kind == Resize && busy > 0) {
+				Sys.sleep(busy);
+				busy = 0;
+			}
+			w.handle(e);
+		});
 	}
 
 	static function loaded(w:UiWindow):Bool {
