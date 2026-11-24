@@ -282,6 +282,12 @@ window.shadow = false;  // no system shadow (macOS, Windows)
 
 ```tsx
 <Surface background="transparent">…</Surface>  // or any colour with alpha: a transparent window
+<view pointer-events="none">…</view>           // drawn, its clicks passing through
+```
+
+```haxe
+window.input([x, y, width, height]);  // where it takes the pointer (pixels); elsewhere what is behind it does
+window.input(null);                   // everywhere (the default)
 ```
 
 A transparent window's pixels are premultiplied, its clear pixels show
@@ -298,10 +304,29 @@ else the window is opaque and says so. The browser: the canvas's alpha
 (WebGPU's `alphaMode: 'premultiplied'`, WebGL's `alpha`). helder.ui
 clears the frame to its background premultiplied (a transparent window's
 frames drawn whole: no damage rectangles) and an opaque window's
-background keeps alpha 1. Tests: `tests/ui/ShapeWindow.hx` (the frame
+background keeps alpha 1.
+
+Clicks pass through what a transparent window doesn't draw: helder.ui
+gives the window (`input`) the boxes of the nodes that draw something (a
+background, a border, a shadow, text, an image, a control) and that the
+pointer finds (`pointer-events` not `none`), again when they change
+(`UiWindow.clickThrough`, `<Surface clickThrough={false}>` to take them
+everywhere). macOS: `ignoresMouseEvents`, set by where the pointer is at
+each poll (an ignored window gets no move to say so). Windows:
+WM_NCHITTEST's `HTTRANSPARENT` passes a press to this thread's windows;
+for other apps' the window is `WS_EX_LAYERED | WS_EX_TRANSPARENT` while
+the pointer is outside them. Wayland: the surface's input region. X11:
+the input shape (`XShapeCombineRectangles`, libXext loaded when wanted).
+Not yet: the boxes are unturned (a transform is not followed) and not cut
+by a scroller's clip; macOS and Windows follow the pointer at the program's
+polls, so while it sleeps (0.1 s at most) the window keeps its last answer.
+Tests: `tests/ui/ShapeWindow.hx` (the frame
 read back; macOS's capture of the window, Windows' screen over an opaque
 window behind, X11's 32-bit pixels and the composed screen, weston's
-screenshot over its background; `tests/ui/shape.sh` on Linux).
+screenshot over its background; the input rectangles, and clicks sent
+at a clear point and on the box (macOS: CGEventPost, Windows: SendInput,
+in CI or with SHAPE_INPUT=1; X11: XTest), the window behind getting the
+first; `tests/ui/shape.sh` on Linux).
 
 ### Dialogs, file types, the files the system opens
 

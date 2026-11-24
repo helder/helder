@@ -419,6 +419,30 @@ class CocoaWindow {
 		});
 	}
 
+	// where it takes the pointer (Window.input: x, y, width, height in
+	// pixels; null: everywhere): ignoresMouseEvents set by where the pointer
+	// is at each poll (ignored, no event of its comes to say it moved)
+	var input:Null<Array<Int>> = null;
+
+	function setInput(rects:Null<Array<Int>>)
+		OsThread.run(() -> {
+			input = rects;
+			if (rects == null) Msg.vBool(window, ObjC.sel("setIgnoresMouseEvents:"), false) else track();
+		});
+
+	function track() {
+		var r = input;
+		if (r == null) return;
+		var p = Msg.pointPointPtr(view, ObjC.sel("convertPoint:fromView:"), Msg.point(window, ObjC.sel("mouseLocationOutsideOfEventStream")), Ptr.nil());
+		var b = Msg.rect(view, ObjC.sel("bounds"));
+		var x = p.x * scale, y = (b.size.height - p.y) * scale, on = false, i = 0;
+		while (!on && i + 3 < r.length) {
+			on = x >= r[i] && y >= r[i + 1] && x < r[i] + r[i + 2] && y < r[i + 1] + r[i + 3];
+			i += 4;
+		}
+		if (on == Msg.b(window, ObjC.sel("ignoresMouseEvents"))) Msg.vBool(window, ObjC.sel("setIgnoresMouseEvents:"), !on);
+	}
+
 	// (the system's shadow: a transparent window's follows its pixels, made again as they change shape: invalidate)
 	function shadow():Bool
 		return OsThread.get(() -> Msg.b(window, ObjC.sel("hasShadow")));
@@ -806,8 +830,10 @@ class CocoaWindow {
 		helder.os.OsThread.run(() -> {
 			CocoaWindow.onFrame = onFrame;
 			CocoaWindow.onEvent = onEvent;
-			for (w in open.copy())
+			for (w in open.copy()) {
 				if (w.pending) w.resized();
+				w.track();
+			}
 			var past = Msg.id(ObjC.cls("NSDate"), ObjC.sel("distantPast"));
 			var k = 0;
 			while (!app.isNull()) {

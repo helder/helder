@@ -839,6 +839,24 @@ class WaylandWindow {
 		return p == "" ? "helder" : haxe.io.Path.withoutExtension(p);
 	}
 
+	// where it takes the pointer (Window.input: x, y, width, height in
+	// pixels; null: everywhere): the surface's input region, in points,
+	// from the next commit (the next frame's)
+	function setInput(rects:Null<Array<Int>>) {
+		if (rects == null) {
+			wlSurface.setInputRegion(Ptr.nil());
+			return;
+		}
+		var r = compositor.createRegion(), k = scale(), i = 0;
+		while (i + 3 < rects.length) {
+			var x0 = Math.floor(rects[i] / k), y0 = Math.floor(rects[i + 1] / k);
+			r.add(x0, y0, Math.ceil((rects[i] + rects[i + 2]) / k) - x0, Math.ceil((rects[i + 1] + rects[i + 3]) / k) - y0);
+			i += 4;
+		}
+		wlSurface.setInputRegion(r);
+		r.destroy();
+	}
+
 	inline function scale():Float
 		return scale120 / 120;
 

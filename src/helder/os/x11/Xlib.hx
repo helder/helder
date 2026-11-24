@@ -279,3 +279,15 @@ class X {
 	var bytes_per_line:Int32;
 	var bits_per_pixel:Int32;
 }
+
+// libXext's shape extension (loaded when first wanted: a window's input
+// region, Window.input): ShapeInput 2, ShapeSet 0, rectangles of shorts
+// (x, y, width, height), Unsorted 0
+@:build(helder.os.Dl.build())
+@:hxmc.unsafe(gc)
+class XShape {
+	static function XShapeCombineRectangles(d:Ptr, w:Int64, kind:Int, x:Int, y:Int, rects:Ptr, n:Int, op:Int, ordering:Int):Void;
+	static function XShapeCombineMask(d:Ptr, w:Int64, kind:Int, x:Int, y:Int, mask:Int64, op:Int):Void;
+
+	public static final ok = load("libXext.so.6") == null;
+}

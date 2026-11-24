@@ -364,6 +364,28 @@ class Window {
 		return on;
 	}
 
+	// where it takes the pointer and clicks: rectangles in pixels (x, y,
+	// width, height each); elsewhere they go to what is behind it (another
+	// window, another app's). Null (the default): everywhere; [] nowhere.
+	// helder.ui gives a transparent window's from what it draws. macOS:
+	// ignoresMouseEvents, by where the pointer is at each poll; Windows:
+	// WM_NCHITTEST's HTTRANSPARENT and, while the pointer is outside them,
+	// WS_EX_TRANSPARENT; Wayland: the input region; X11: the input shape;
+	// nothing elsewhere
+	public var inputRects(default, null):Null<Array<Int>> = null;
+
+	public function input(rects:Null<Array<Int>>) {
+		if (closed) return;
+		inputRects = rects == null ? null : rects.copy();
+		if (HEADLESS) return;
+		if (Platform.apple() >= 1) {} else
+		#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) mac().setInput(inputRects) else #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) win().setInput(inputRects) else #end
+		if (Platform.os() == 3) {} else
+		if (Platform.target() >= 9) {} else
+		#if ((!helder.os || helder.os == "linux") && !helder.headless) (Std.isOfType(native, WaylandWindow) ? wayland().setInput(inputRects) : x11().setInput(inputRects)); #else {} #end
+	}
+
 	// the pointer's shape over the window (Auto: Default)
 	public var cursor(default, set):Cursor = Default;
 

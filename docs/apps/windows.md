@@ -14,4 +14,18 @@ A background that isn't opaque makes the window transparent: what is behind it s
 
 Works on macOS, Windows (through DirectComposition), Wayland, X11 with a compositing manager, and in the browser (the canvas's alpha). Where the system can't do it, the window stays opaque. From Haxe, `new Window(title, width, height, Standard, true)` asks for one, `window.transparent` tells whether it is, and `window.shadow = false` takes the system's shadow away (macOS, Windows).
 
+## Clicks through
+
+A transparent window takes clicks only where it draws something; elsewhere they go to whatever is behind it. Mark drawn content as click-through with `pointer-events="none"`, or keep every click with `<Surface clickThrough={false}>`.
+
+```tsx
+<Surface background="transparent">
+  <view width={200} height={40} background="#18181bcc" pointer-events="none">
+    <text color="#ffffff">A label the pointer goes through</text>
+  </view>
+</Surface>
+```
+
+From Haxe, `window.input(rects)` sets where the window takes the pointer, in pixels.
+
 <Reference to="os,ui"/>

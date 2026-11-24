@@ -27,6 +27,10 @@ typedef SurfaceProps = {
 	// (a first value not opaque, "transparent" or a colour's alpha: a
 	// transparent window, what is behind it seen through: Window's)
 	?background:helder.view.graph.Read<Dynamic>,
+	// a transparent window's clicks passing through what it doesn't draw
+	// (default true: UiWindow.clickThrough; pointer-events="none" on a
+	// node lets them through it too); false: it takes them everywhere
+	?clickThrough:Bool,
 	// dark or light (default: the system's appearance, UiWindow.dark)
 	?dark:helder.view.graph.Read<Bool>,
 	// the window closed by its user (default: closed)
@@ -471,6 +475,7 @@ class UiWindow {
 		if (c != null) c.begin(renderer);
 		#end
 		ui.paint(renderer);
+		if (window.transparent && clickThrough) inputs();
 		renderer.prepare(enc);
 		if (planes) renderer.upload() else {
 			enc.beginPass(pass);
@@ -506,6 +511,60 @@ class UiWindow {
 			onFrame();
 		}
 		#end
+	}
+
+	// a transparent window's clicks pass through what it doesn't draw: it
+	// takes the pointer over the nodes that draw something (a background,
+	// a border, a shadow, text, an image, a control) and that the pointer
+	// finds (pointer-events not none), elsewhere what is behind it gets
+	// them (helder.os's Window.input, given when they change); false: the
+	// window's input left as it is
+	public var clickThrough = true;
+	var taken = "";
+
+	function inputs() {
+		var out:Array<Int> = [];
+		boxes(ui.root, 0, 0, out);
+		boxes(ui.overlay, 0, 0, out);
+		// (many: one box around them all)
+		if (out.length > 4 * 128) {
+			var x0 = 1 << 30, y0 = 1 << 30, x1 = -x0, y1 = -y0, i = 0;
+			while (i < out.length) {
+				x0 = Std.int(Math.min(x0, out[i]));
+				y0 = Std.int(Math.min(y0, out[i + 1]));
+				x1 = Std.int(Math.max(x1, out[i] + out[i + 2]));
+				y1 = Std.int(Math.max(y1, out[i + 1] + out[i + 3]));
+				i += 4;
+			}
+			out = [x0, y0, x1 - x0, y1 - y0];
+		}
+		var key = out.join(" ");
+		if (key == taken) return;
+		taken = key;
+		window.input(out);
+	}
+
+	// (n's box where it draws and the pointer finds it, else its children's;
+	// dx, dy: the scrolls it is under, in points)
+	function boxes(n:Node, dx:Float, dy:Float, out:Array<Int>) {
+		if (n.style.display == None || !n.visible()) return;
+		var st = n.style;
+		var draws = Type.getClass(n) != Node || st.background.a > 0 || st.background.isToken || st.borderWidth > 0 || st.backgroundImage != null
+			|| st.shadow != null;
+		if (draws && n.hittable()) {
+			var k = scale, x0 = Math.floor((n.absX - dx) * k), y0 = Math.floor((n.absY - dy) * k);
+			out.push(x0);
+			out.push(y0);
+			out.push(Math.ceil((n.absX - dx + n.width) * k) - x0);
+			out.push(Math.ceil((n.absY - dy + n.height) * k) - y0);
+			return;
+		}
+		if (st.overflow == Scroll) {
+			dx += n.scrollX;
+			dy += n.scrollY;
+		}
+		for (c in n.children)
+			boxes(c, dx, dy, out);
 	}
 
 	// (the background drawn: its alpha where the window is transparent)
@@ -544,6 +603,7 @@ class UiWindow {
 		c.scale = scale;
 		c.begin(w, h, shown());
 		ui.paint(c);
+		if (window.transparent && clickThrough) inputs();
 		if (c.again) redraw = true;
 		if (capture != null) {
 			c.readPixels(capture);
@@ -870,6 +930,7 @@ class UiWindow {
 		});
 		if (props.scrolling != null) w.nativeScroll(props.scrolling != "helder");
 		if (props.scrollbars != null) w.scrollbarStyle(props.scrollbars);
+		if (props.clickThrough == false) w.clickThrough = false;
 		if (props.onClose != null) w.onClose = props.onClose;
 		if (props.onDrop != null) w.onDrop = props.onDrop;
 		// (in this owner: what is above the root, contexts, seen inside)
