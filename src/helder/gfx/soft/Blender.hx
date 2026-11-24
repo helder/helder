@@ -29,11 +29,12 @@ class Blender {
 				var v = I32x4.make(p0, p1, p2, p3), k = F32x4.splat(1 / 255), mask = I32x4.splat(255);
 				var dr, dg, db;
 				if (srgb) {
-					inline function lin(p:Int, s:Int):Float
-						return Mem.getF32(table, 4 * ((p >> s) & 255));
-					dr = F32x4.make(lin(p0, 0), lin(p1, 0), lin(p2, 0), lin(p3, 0));
-					dg = F32x4.make(lin(p0, 8), lin(p1, 8), lin(p2, 8), lin(p3, 8));
-					db = F32x4.make(lin(p0, 16), lin(p1, 16), lin(p2, 16), lin(p3, 16));
+					// (the table's floats gathered as their bits)
+					inline function lin(p:Int, s:Int):Int
+						return Mem.getI32(table, 4 * ((p >> s) & 255));
+					dr = I32x4.make(lin(p0, 0), lin(p1, 0), lin(p2, 0), lin(p3, 0)).asF32x4();
+					dg = I32x4.make(lin(p0, 8), lin(p1, 8), lin(p2, 8), lin(p3, 8)).asF32x4();
+					db = I32x4.make(lin(p0, 16), lin(p1, 16), lin(p2, 16), lin(p3, 16)).asF32x4();
 				} else {
 					dr = F32x4.fromI32x4(v & mask) * k;
 					dg = F32x4.fromI32x4((v >> 8) & mask) * k;
@@ -96,8 +97,8 @@ class Blender {
 		}
 		if (kind == SoftTexture.F1) {
 			if (blend != 0) {
-				var d = F32x4.make(Mem.getF32(color, 4 * i0), m & 2 != 0 ? Mem.getF32(color, 4 * i1) : 0, m & 4 != 0 ? Mem.getF32(color, 4 * i2) : 0,
-					m & 8 != 0 ? Mem.getF32(color, 4 * i3) : 0);
+				var d = I32x4.make(Mem.getI32(color, 4 * i0), m & 2 != 0 ? Mem.getI32(color, 4 * i1) : 0, m & 4 != 0 ? Mem.getI32(color, 4 * i2) : 0,
+					m & 8 != 0 ? Mem.getI32(color, 4 * i3) : 0).asF32x4();
 				sr = switch blend {
 					case 1: sr * sa + d * (one - sa);
 					case 2: sr + d;
@@ -105,10 +106,11 @@ class Blender {
 					case _: d * sr;
 				}
 			}
-			if (m & 1 != 0) Mem.setF32(color, 4 * i0, sr.get(0));
-			if (m & 2 != 0) Mem.setF32(color, 4 * i1, sr.get(1));
-			if (m & 4 != 0) Mem.setF32(color, 4 * i2, sr.get(2));
-			if (m & 8 != 0) Mem.setF32(color, 4 * i3, sr.get(3));
+			var bits = sr.asI32x4();
+			if (m & 1 != 0) Mem.setI32(color, 4 * i0, bits.get(0));
+			if (m & 2 != 0) Mem.setI32(color, 4 * i1, bits.get(1));
+			if (m & 4 != 0) Mem.setI32(color, 4 * i2, bits.get(2));
+			if (m & 8 != 0) Mem.setI32(color, 4 * i3, bits.get(3));
 			return;
 		}
 		// (4 floats a pixel: the quad's pixels transposed to their channels and back)

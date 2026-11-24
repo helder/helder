@@ -32,6 +32,12 @@ abstract Lane(LaneData) {
 	public static inline function make(a:Float, b:Float, c:Float, d:Float):Lane
 		return of(F64x2.make(a, b), F64x2.make(c, d));
 
+	public static inline function constant(bits:Int, x:Float):Lane
+		return splat(x);
+
+	@:hxmc.unsafe(gc) public static inline function loadSplat(p:Ptr, off:Int):Lane
+		return splat(hxmc.unsafe.Mem.getF32(p, off));
+
 	public static inline function zero():Lane
 		return splat(0);
 
@@ -162,6 +168,14 @@ abstract Lane(F32x4) {
 
 	public static inline function make(a:Float, b:Float, c:Float, d:Float):Lane
 		return new Lane(F32x4.make(a, b, c, d));
+
+	// (a constant by its float32 bits)
+	public static inline function constant(bits:Int, x:Float):Lane
+		return new Lane(I32x4.splat(bits).asF32x4());
+
+	// (the float32 at p + off in every lane, moved as its bits)
+	@:hxmc.unsafe(gc) public static inline function loadSplat(p:Ptr, off:Int):Lane
+		return new Lane(I32x4.splat(hxmc.unsafe.Mem.getI32(p, off)).asF32x4());
 
 	public static inline function zero():Lane
 		return new Lane(F32x4.zero());

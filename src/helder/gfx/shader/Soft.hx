@@ -253,6 +253,31 @@ class Soft {
 			case t: Context.error('soft: no splat of ${Names.typeName(t)}', pos);
 		}
 
+	// a constant's lanes from its float32 bits, else null
+	function constant(e:SExpr):Null<Expr> {
+		function x(e:SExpr):Null<Float>
+			return switch e.e {
+				case EFloat(v): v;
+				case EInt(v) if (e.t == TFloat): v;
+				case EUnop(Neg, a): var v = x(a); v == null ? null : -v;
+				case _: null;
+			}
+		// (hxmc builds a Float's splat as a double converted at each use: 7
+		// instructions; an integer's in 2 or 3. Round to nearest, ties to even, as at run time)
+		inline function one(v:Float):Expr
+			return macro helder.gfx.soft.Lane.constant($v{haxe.io.FPHelper.floatToI32(v)}, $v{v});
+		return switch [e.t, e.e] {
+			case [TFloat, _]:
+				var v = x(e);
+				v == null ? null : one(v);
+			case [TVec(n), ENew(args)] if (Lambda.foreach(args, a -> a.t == TFloat && x(a) != null)):
+				var cs = [for (a in args) one(x(a))];
+				if (cs.length == 1) cs = [for (_ in 0...n) cs[0]];
+				cs.length != n ? null : {expr: haxe.macro.Expr.ExprDef.ENew({pack: SOFT, name: 'Lane$n'}, cs), pos: pos};
+			case _: null;
+		}
+	}
+
 	function zero(t:SType):Expr
 		return switch t {
 			case TFloat: macro helder.gfx.soft.Lane.zero();
@@ -438,6 +463,63 @@ class Soft {
 
 	// ---- functions
 
+	// whether a function is emitted inline: straight-line (declarations, then
+	// one return) and small with the inlined functions it calls, so that a
+	// helper's struct values stay in registers rather than going through
+	// memory at each call, while code size stays bounded
+	final costs = new Map<SFunction, Int>();
+
+	static inline var INLINE = 48;
+
+	function inlined(f:SFunction):Bool
+		return cost(f) <= INLINE;
+
+	function cost(f:SFunction):Int {
+		var k = costs.get(f);
+		if (k != null) return k;
+		costs.set(f, INLINE + 1);
+		var n = 0, straight = f.body.length > 0 && f.body[f.body.length - 1].match(SReturn(_));
+		function ex(e:SExpr)
+			switch e.e {
+				case ECall(g, args):
+					n += inlined(g) ? cost(g) : 1;
+					for (a in args)
+						ex(a);
+				case EField(x, _) | ESwizzle(x, _) | EColumn(x, _) | EUnop(_, x) | EConvert(x):
+					n++;
+					ex(x);
+				case EIndex(x, i):
+					n++;
+					ex(x);
+					ex(i);
+				case EBinop(_, a, b):
+					n++;
+					ex(a);
+					ex(b);
+				case ECond(c, a, b):
+					n++;
+					ex(c);
+					ex(a);
+					ex(b);
+				case ENew(args) | EBuiltin(_, args):
+					n++;
+					for (a in args)
+						ex(a);
+				case _:
+			}
+		for (st in f.body)
+			switch st {
+				case SDecl(_, x):
+					n++;
+					if (x != null) ex(x);
+				case SReturn(x) if (x != null): ex(x);
+				case _: straight = false;
+			}
+		if (!straight || mayDiscard(f)) n = INLINE + 1;
+		costs.set(f, n);
+		return n;
+	}
+
 	// a function's lane form (or, scalar, its scalar form) for a stage: its name
 	function func(f:SFunction, fragment:Bool, scalar:Bool):String {
 		var name = (scalar ? "s_" : "l_") + (fragment ? "f_" : "v_") + f.name;
@@ -567,6 +649,28 @@ class Soft {
 		return readAt(s.fields[i].type, p, macro $v{u.offsets[i]});
 	}
 
+	// a block's field (or a vector field's components) in every lane, read
+	// from its float32 bits (a Float's splat converts it to a double and back)
+	public function blockLanes(s:SStruct, p:Expr, n:String, comps:Null<String>):Null<Expr> {
+		var u = blocks.get(s);
+		var i = Lambda.findIndex(s.fields, f -> f.name == n);
+		var t = s.fields[i].type, off = u.offsets[i];
+		inline function one(o:Int):Expr
+			return macro helder.gfx.soft.Lane.loadSplat($p, $v{o});
+		function vec(o:Int, cs:String):Expr
+			return cs.length == 1 ? one(o + 4 * "xyzw".indexOf(cs)) : {
+				expr: haxe.macro.Expr.ExprDef.ENew({pack: SOFT, name: 'Lane${cs.length}'}, [for (k in 0...cs.length) one(o + 4 * "xyzw".indexOf(cs.charAt(k)))]),
+				pos: pos
+			};
+		return switch [t, comps] {
+			case [TFloat, null]: one(off);
+			case [TVec(k), null]: vec(off, "xyzw".substr(0, k));
+			case [TVec(_), cs]: vec(off, cs);
+			case [TMat4, null]: macro new helder.gfx.soft.LaneMat($a{[for (c in 0...4) vec(off + 16 * c, "xyzw")]});
+			case _: null;
+		}
+	}
+
 	public function blockArray(s:SStruct, p:Expr, n:String, index:Expr, lanes:Bool):Expr {
 		var u = blocks.get(s);
 		var i = Lambda.findIndex(s.fields, f -> f.name == n);
@@ -608,6 +712,9 @@ class Soft {
 	@:allow(helder.gfx.shader.Fn) function uniformExpr(e:SExpr, isUniform:SVar->Bool):Bool
 		return exprUniform(e, isUniform);
 
+	@:allow(helder.gfx.shader.Fn) function inlines(f:SFunction):Bool
+		return inlined(f);
+
 	@:allow(helder.gfx.shader.Fn) function discardsIn(f:SFunction):Bool
 		return mayDiscard(f);
 
@@ -625,6 +732,12 @@ class Soft {
 
 	@:allow(helder.gfx.shader.Fn) function splatOf(t:SType, e:Expr):Expr
 		return splat(t, e);
+
+	@:allow(helder.gfx.shader.Fn) function blockLanesOf(s:SStruct, p:Expr, n:String, comps:Null<String>):Null<Expr>
+		return blockLanes(s, p, n, comps);
+
+	@:allow(helder.gfx.shader.Fn) function constantOf(e:SExpr):Null<Expr>
+		return constant(e);
 
 	@:allow(helder.gfx.shader.Fn) function zeroOf(t:SType):Expr
 		return zero(t);
@@ -700,7 +813,7 @@ class Fn {
 		if (ret != TVoid && !single) body.push(macro return r);
 		return {
 			name: fname,
-			access: [APublic, AStatic],
+			access: soft.inlines(f) ? [APublic, AStatic, AInline] : [APublic, AStatic],
 			meta: [{name: ":hxmc.unsafe", params: [macro gc], pos: pos}],
 			kind: FFun({args: args, ret: scalar ? soft.scalarOf(ret) : soft.lanesOf(ret), expr: macro $b{body}}),
 			pos: pos
@@ -958,6 +1071,9 @@ class Fn {
 		}
 		var lv = level ? xs[xs.length - 1] : null;
 		var quad = !level && fragment;
+		// (level 0 named, or the vertex stage's: the first level read directly)
+		var first = (!level && !fragment) || (level && args[args.length - 1].e.match(EFloat(0) | EInt(0)));
+		if (first && kind == "flat") return macro helder.gfx.soft.Sample.flatFirst(${xs[0]}, ${xs[1]});
 		return switch kind {
 			case "cube": lv != null ? macro helder.gfx.soft.Sample.cubeLevel(${xs[0]}, ${xs[1]}, $lv) : quad ? macro helder.gfx.soft.Sample.cube(${xs[0]}, ${xs[1]}) : macro helder.gfx.soft.Sample.cubeLevel(${xs[0]},
 					${xs[1]}, helder.gfx.soft.Lane.zero());
@@ -972,10 +1088,28 @@ class Fn {
 
 	// e's lanes: its own, or its scalar splatted
 	function lane(e:SExpr):Expr
-		return uni(e) ? soft.splatOf(e.t, sx(e)) : lx(e);
+		return uni(e) ? splat(e) : lx(e);
+
+	function splat(e:SExpr):Expr {
+		if (scalar) return soft.splatOf(e.t, sx(e));
+		var k = soft.constantOf(e);
+		if (k == null)
+			k = switch e.e {
+				case EField(x, n) if (soft.blockType(x.t)): blockLane(x, n, null);
+				case ESwizzle({e: EField(x, n)}, cs) if (soft.blockType(x.t)): blockLane(x, n, cs);
+				case _: null;
+			}
+		return k != null ? k : soft.splatOf(e.t, sx(e));
+	}
+
+	function blockLane(x:SExpr, n:String, cs:Null<String>):Null<Expr>
+		return switch x.t {
+			case TStruct(s): soft.blockLanesOf(s, sx(x), n, cs);
+			case _: null;
+		}
 
 	function lx(e:SExpr):Expr {
-		if (uni(e)) return soft.splatOf(e.t, sx(e));
+		if (uni(e)) return splat(e);
 		return switch e.e {
 			case ELocal(v): macro $i{name(v)};
 			case EField(x, n): Soft.dot(lx(x), "f_" + n);

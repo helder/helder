@@ -1379,23 +1379,28 @@ the glyph ids and each glyph's source text. `breakBefore`, `breakAfter`,
 ### On the CPU
 
 `helder.ui.draw.soft.SoftCanvas` is the GPU renderer's Canvas with no GPU:
-it draws into a helder.canvas `Bitmap` (RGBA8, premultiplied) what the
-Renderer draws, placed by the same rules (its snapping to the pixel grid,
-clips' radii, transforms' scale and turn, a glyph's pen and phase), each
-quad shaded by UiShader's own functions (`UiShapes`: the rounded box, the
-border's inner ellipse, dashes and dots, the Gaussian shadow) and blended
-as a GPU blends into RGBA8; glyphs from the same `GlyphAtlas`, paths and
-SVGs rasterized by helder.canvas (`Path.render`, as the Renderer's), images
-read bilinearly, opacity groups into buffers of their own. Unturned
-rectangles, borders and shadows are shaded four pixels at a time
-(hxmc.simd), only near their edges: a run a rectangle covers whole is its
-fill, an outer shadow under its box is skipped, a blur's terms that hold
-along a row are kept. What draws with the GPU (a part's shader, a
-`<Scene>`, a sprite box, fx's boxes) draws in a `-D helder.soft` build on
-helder.gfx's CPU back end (`SoftGpu`, behind `GpuHost`: the Renderer itself
-in a GPU build), its pass run where the Renderer would run it and its
-texture composited as an image; elsewhere (a GPU build that found no
-device) it is a grey box (`GpuPlaceholder`).
+it draws what the Renderer draws (RGBA8, premultiplied; `frame` and
+`readPixels` give it), placed by the same rules (its snapping to the pixel
+grid, clips' radii, transforms' scale and turn, a glyph's pen and phase),
+each quad shaded by UiShader's own functions (`UiShapes`: the rounded box,
+the border's inner ellipse, dashes and dots, the Gaussian shadow) and
+blended as a GPU blends into RGBA8; glyphs from the same `GlyphAtlas`,
+paths and SVGs rasterized by helder.canvas (`Path.render`, as the
+Renderer's), images read bilinearly, opacity groups into buffers of their
+own. Unturned rectangles, borders and shadows are shaded four pixels at a
+time (hxmc.simd), only near their edges: a run a rectangle covers whole is
+its fill, an outer shadow under its box is skipped, a blur's terms that
+hold along a row are kept. A frame's draws are recorded outside the
+collector's heap (`Quads`: each quad's fields, a group's clear and
+composite) and painted when the frame is read, in bands of 16 rows at once
+(`helder.jobs.Parallel`, GC-free, as helder.gfx's CPU back end shades its
+tiles; `HELDER_SOFT_THREADS=n` caps the threads), each band its records in
+the order drawn: the same pixels as one thread. What draws with the GPU (a
+part's shader, a `<Scene>`, a sprite box, fx's boxes) draws in a `-D
+helder.soft` build on helder.gfx's CPU back end (`SoftGpu`, behind
+`GpuHost`: the Renderer itself in a GPU build), its pass run where the
+Renderer would run it and its texture composited as an image; elsewhere (a
+GPU build that found no device) it is a grey box (`GpuPlaceholder`).
 
 Headless runs draw on it with `--soft` (`-D helder.soft`: no GPU code
 linked, a static executable on Linux), `HELDER_SOFT=1`, or where no GPU
@@ -1408,19 +1413,19 @@ so the image tests' goldens are its (`bun run test ui-soft`).
 Against the GPU (tests/ui/SoftBench.hx: a frame painted and read back, the
 least of 20; first frame in brackets; ms):
 
-| scene | Metal (M4) | CPU (M4) | llvmpipe, Docker | CPU, Docker |
-|---|---|---|---|---|
-| sample 480x320 | 0.5 (6) | 2.0 (3.5) | 3.3 (357) | 6.2 (28) |
-| todo 480x560 | 0.6 (5) | 0.8 (1.1) | 3.0 (21) | 2.0 (4.4) |
-| controls 760x660 | 1.6 (6) | 3.7 (4.8) | 25.1 (147) | 9.5 (20) |
-| controls 1520x1320 | 4.1 (9) | 14.0 (15.5) | 88.4 (227) | 32.6 (41) |
-| 5,000 rows 800x600 | 1.0 (6) | 3.0 (4.2) | 10.1 (30) | 8.4 (13) |
+| scene | Metal (M4) | CPU (M4) | llvmpipe, Docker | CPU, Docker | CPU, Docker, one thread |
+|---|---|---|---|---|---|
+| sample 480x320 | 0.5 (6) | 0.4 (14) | 3.2 (324) | 0.9 (26) | 4.7 (20) |
+| todo 480x560 | 0.6 (5) | 0.1 (0.7) | 3.2 (22) | 0.3 (2.5) | 1.3 (2.8) |
+| controls 760x660 | 1.6 (6) | 0.8 (2.3) | 24.7 (553) | 2.0 (12) | 7.6 (16) |
+| controls 1520x1320 | 4.1 (9) | 3.1 (5.4) | 110 (187) | 6.5 (9.5) | 25.5 (29) |
+| 5,000 rows 800x600 | 1.0 (6) | 0.7 (2.5) | 10.0 (34) | 1.5 (4.0) | 5.8 (8.8) |
 
 (Docker: helder-llvmpipe-dejavu, linux-x86_64 emulated on the same M4;
-llvmpipe on 10 threads, the CPU canvas on one.) It beats llvmpipe on
-every scene but the shadow-heavy sample, and its first frame by 10 to 40
-times (llvmpipe compiles its shaders). Not yet: bands in parallel (its
-buffers are the collector's), glyphs and images in SIMD.
+llvmpipe and the CPU canvas on 10 threads.) It beats llvmpipe on every
+scene, on one thread too but for the shadow-heavy sample, and its first
+frame by 10 to 40 times (llvmpipe compiles its shaders). Not yet: glyphs
+and images in SIMD.
 
 ## Text input
 

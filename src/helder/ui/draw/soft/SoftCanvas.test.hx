@@ -46,6 +46,33 @@ function tests() {
 			assert(v >= 127 && v <= 128, 'grey $v');
 			equals(pixel(c, 12, 12), 0xFFFFFFFF);
 		});
+
+		test("bands: a shape across them, painted in order", () -> {
+			var c = new SoftCanvas();
+			c.snap = false;
+			c.begin(64, 100, Color.WHITE);
+			c.rect(4, 10, 40, 80, 8, Color.BLACK, 0, 0);
+			c.rect(20, 14, 30, 30, 0, Color.rgb(0xFF0000), 0, 0);
+			equals(pixel(c, 24, 18), 0xFF0000FF);
+			equals(pixel(c, 10, 60), 0xFF000000);
+			equals(pixel(c, 60, 60), 0xFFFFFFFF);
+			// (a rounded corner: outside it white)
+			equals(pixel(c, 4, 10), 0xFFFFFFFF);
+		});
+
+		test("a group past a megabyte, frame after frame", () -> {
+			var c = new SoftCanvas();
+			c.groups = true;
+			for (_ in 0...3) {
+				c.begin(700, 500, Color.WHITE);
+				c.pushGroup(0.5, 0, 0, 700, 500);
+				c.rect(0, 0, 700, 500, 0, Color.BLACK, 0, 0);
+				c.rect(0, 0, 700, 500, 0, Color.BLACK, 0, 0);
+				c.popOpacity();
+				var v = pixel(c, 350, 499) & 0xFF;
+				assert(v >= 127 && v <= 128, 'grey $v');
+			}
+		});
 		#end
 	});
 }

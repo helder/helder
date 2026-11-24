@@ -7,7 +7,7 @@ import hxmc.unsafe.LibC;
 import hxmc.unsafe.Mem;
 import hxmc.unsafe.Ptr;
 
-// A pass's tiles shaded (tile: a GC-free callback, Parallel's): each 64x64
+// A pass's tiles shaded (tile: a GC-free callback, Parallel's): each 32x32
 // tile its triangles in the order they were drawn, a 2x2 quad at a time.
 // A pixel is covered when its centre is inside the triangle's three edges
 // (fixed point with 8 bits under the pixel, the edge functions exact in
@@ -171,24 +171,27 @@ class Raster {
 		// quad past it is skipped, one well inside it not tested; the quads
 		// at its ends tested exactly)
 		var lo = 0, hi = 0;
+		// (the edges' reciprocals, once a triangle: off by an ulp at most,
+		// which the spans' margins of a pixel take)
+		var i0 = a0 == 0 ? 0.0 : -1 / a0, i1 = a1 == 0 ? 0.0 : -1 / a1, i2 = a2 == 0 ? 0.0 : -1 / a2;
 		inline function span(Y:Float) {
 			lo = -0x3FFFFFFF;
 			hi = 0x3FFFFFFF;
-			inline function edge(a:Float, b:Float, c:Float) {
+			inline function edge(a:Float, b:Float, c:Float, ia:Float) {
 				var r = b * Y + c;
 				if (a > 0) {
-					var x = Math.ceil((-r / a - 128) / 256);
+					var x = Math.ceil((r * ia - 128) * (1 / 256));
 					if (x > lo) lo = x;
 				} else if (a < 0) {
-					var x = Math.floor((-r / a - 128) / 256);
+					var x = Math.floor((r * ia - 128) * (1 / 256));
 					if (x < hi) hi = x;
 				} else if (r < 0) {
 					lo = 0x3FFFFFFF;
 				}
 			}
-			edge(a0, b0, c0);
-			edge(a1, b1, c1);
-			edge(a2, b2, c2);
+			edge(a0, b0, c0, i0);
+			edge(a1, b1, c1, i1);
+			edge(a2, b2, c2, i2);
 		}
 		var qy = qy0 & ~1;
 		while (qy < qy1) {
@@ -224,8 +227,9 @@ class Raster {
 				var at = qy * w + qx;
 				var old = F32x4.zero();
 				if (tested) {
-					old = F32x4.make(Mem.getF32(depth, 4 * at), m & 2 != 0 ? Mem.getF32(depth, 4 * at + 4) : 0, m & 4 != 0 ? Mem.getF32(depth, 4 * (at + w)) : 0,
-						m & 8 != 0 ? Mem.getF32(depth, 4 * (at + w) + 4) : 0);
+					// (floats moved as their bits: no conversions through doubles)
+					old = I32x4.make(Mem.getI32(depth, 4 * at), m & 2 != 0 ? Mem.getI32(depth, 4 * at + 4) : 0, m & 4 != 0 ? Mem.getI32(depth, 4 * (at + w)) : 0,
+						m & 8 != 0 ? Mem.getI32(depth, 4 * (at + w) + 4) : 0).asF32x4();
 					m &= passes(compare, z, old);
 					if (m == 0) {
 						qx += 2;
@@ -239,8 +243,10 @@ class Raster {
 				iw.storePtr(input, 48);
 				var v = t.add(T_V);
 				for (k in 0...n) {
-					var p = v.add(12 * k);
-					((F32x4.splat(Mem.getF32(p, 8)) + F32x4.splat(Mem.getF32(p, 0)) * lx + F32x4.splat(Mem.getF32(p, 4)) * ly) * r).storePtr(input, 64 + 16 * k);
+					// (each coefficient loaded into the lanes as its bits: no conversion through a double)
+					inline function at(o:Int):F32x4
+						return I32x4.splat(Mem.getI32(v, 12 * k + o)).asF32x4();
+					((at(8) + at(0) * lx + at(4) * ly) * r).storePtr(input, 64 + 16 * k);
 				}
 				Mem.setI32(c, Abi.MASK, m);
 				m &= Fragment.call(fs, c);
@@ -250,11 +256,11 @@ class Raster {
 				}
 				if (!query.isNull()) Atomic.store32(query, 1);
 				if (tested && write) {
-					var zs = F32x4.select(I32x4.make(-(m & 1), -((m >> 1) & 1), -((m >> 2) & 1), -((m >> 3) & 1)), z, old);
-					Mem.setF32(depth, 4 * at, zs.get(0));
-					if (m & 2 != 0) Mem.setF32(depth, 4 * at + 4, zs.get(1));
-					if (m & 4 != 0) Mem.setF32(depth, 4 * (at + w), zs.get(2));
-					if (m & 8 != 0) Mem.setF32(depth, 4 * (at + w) + 4, zs.get(3));
+					var zs = F32x4.select(I32x4.make(-(m & 1), -((m >> 1) & 1), -((m >> 2) & 1), -((m >> 3) & 1)), z, old).asI32x4();
+					Mem.setI32(depth, 4 * at, zs.get(0));
+					if (m & 2 != 0) Mem.setI32(depth, 4 * at + 4, zs.get(1));
+					if (m & 4 != 0) Mem.setI32(depth, 4 * (at + w), zs.get(2));
+					if (m & 8 != 0) Mem.setI32(depth, 4 * (at + w) + 4, zs.get(3));
 				}
 				Blender.quad(pass, color, at, w, m, blend, output);
 				qx += 2;
@@ -357,8 +363,10 @@ class Raster {
 				iw.storePtr(input, 48);
 				var v = t.add(T_V);
 				for (k in 0...n) {
-					var p = v.add(12 * k);
-					((F32x4.splat(Mem.getF32(p, 8)) + F32x4.splat(Mem.getF32(p, 0)) * lx + F32x4.splat(Mem.getF32(p, 4)) * ly) * r).storePtr(input, 64 + 16 * k);
+					// (each coefficient loaded into the lanes as its bits: no conversion through a double)
+					inline function at(o:Int):F32x4
+						return I32x4.splat(Mem.getI32(v, 12 * k + o)).asF32x4();
+					((at(8) + at(0) * lx + at(4) * ly) * r).storePtr(input, 64 + 16 * k);
 				}
 				Mem.setI32(c, Abi.MASK, pix);
 				pix &= Fragment.call(fs, c);

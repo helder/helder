@@ -58,8 +58,8 @@ class LaneBuild {
 		function lanes(f:String, args:Array<String>):String
 			return "Lane.make(" + [for (i in 0...4) 'Math.$f(' + [for (a in args) '$a.get($i)'].join(", ") + ")"].join(", ") + ")";
 		for (f in [
-			["abs", "x.abs()"], ["sign", "Lane.select(x.gt(Lane.zero()), Lane.splat(1), Lane.select(x.lt(Lane.zero()), Lane.splat(-1), Lane.zero()))"],
-			["floor", "x.floor()"], ["ceil", "x.ceil()"], ["fract", "x - x.floor()"], ["sqrt", "x.sqrt()"], ["inversesqrt", "Lane.splat(1) / x.sqrt()"]
+			["abs", "x.abs()"], ["sign", "Lane.select(x.gt(Lane.zero()), Lane.constant(0x3F800000, 1), Lane.select(x.lt(Lane.zero()), Lane.constant(0xBF800000, -1), Lane.zero()))"],
+			["floor", "x.floor()"], ["ceil", "x.ceil()"], ["fract", "x - x.floor()"], ["sqrt", "x.sqrt()"], ["inversesqrt", "Lane.constant(0x3F800000, 1) / x.sqrt()"]
 		])
 			generic(f[0], ["x"], f[1]);
 		for (f in ["sin", "cos", "exp", "log"])
@@ -70,11 +70,11 @@ class LaneBuild {
 		generic("max", ["x", "y"], "x.max(y)");
 		generic("pow", ["x", "y"], "x.pow(y)");
 		generic("atan2", ["y", "x"], lanes("atan2", ["y", "x"]));
-		generic("step", ["edge", "x"], "Lane.select(x.lt(edge), Lane.zero(), Lane.splat(1))");
+		generic("step", ["edge", "x"], "Lane.select(x.lt(edge), Lane.zero(), Lane.constant(0x3F800000, 1))");
 		generic("mix", ["x", "y", "a"], "x + (y - x) * a");
 		generic("clamp", ["x", "lo", "hi"], "x.max(lo).min(hi)");
 		generic("smoothstep", ["e0", "e1", "x"],
-			"{var t = clamp((x - e0) / (e1 - e0), Lane.zero(), Lane.splat(1)); t * t * (Lane.splat(3) - Lane.splat(2) * t);}");
+			"{var t = clamp((x - e0) / (e1 - e0), Lane.zero(), Lane.constant(0x3F800000, 1)); t * t * (Lane.constant(0x40400000, 3) - Lane.constant(0x40000000, 2) * t);}");
 		for (n in 2...5) {
 			var t = 'Lane$n', comps = XYZW.slice(0, n);
 			var dot = [for (k in comps) 'a.$k * b.$k'].join(" + ");
@@ -82,7 +82,7 @@ class LaneBuild {
 			add("length", [["a", t]], "Lane", '(' + dot.split("b.").join("a.") + ').sqrt()');
 			add("distance", [["a", t], ["b", t]], "Lane", "length(a - b)");
 			add("normalize", [["a", t]], t, "a / " + t + ".fill(length(a))");
-			add("reflect", [["i", t], ["n", t]], t, 'i - n * $t.fill(Lane.splat(2) * dot(n, i))');
+			add("reflect", [["i", t], ["n", t]], t, 'i - n * $t.fill(Lane.constant(0x40000000, 2) * dot(n, i))');
 		}
 		add("cross", [["a", "Lane3"], ["b", "Lane3"]], "Lane3", "new Lane3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x)");
 		add("mulVec", [["m", "LaneMat"], ["v", "Lane4"]], "Lane4", "m.c0 * Lane4.fill(v.x) + m.c1 * Lane4.fill(v.y) + m.c2 * Lane4.fill(v.z) + m.c3 * Lane4.fill(v.w)");
