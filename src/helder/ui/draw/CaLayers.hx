@@ -23,9 +23,7 @@ import hxmc.unsafe.*;
 // scrollbar is the layer over its list, not the window's whole). A layer
 // is drawn again only where its quads, its size or what it samples
 // (CompositeFrame.fresh) changed: a scroll moves its content's layer and a
-// mover's transform and opacity are its layer's, so neither draws; one of
-// many quads only where it changed, its last drawable copied forward
-// (Core Animation keeps none of a drawable's contents). A frame
+// mover's transform and opacity are its layer's, so neither draws. A frame
 // that changes the tree is one transaction: what it drew presented with it
 // (presentsWithTransaction), the layers and views placed, on the main
 // thread where views are in it (an NSView's, a UIView's), else on the
@@ -72,8 +70,6 @@ class CaLayers extends LayerSplit {
 		ios = hxmc.Platform.apple() >= 1;
 		var fps = helder.os.OsThread.get(() -> {
 			var v = device.surface.handle, s = ios ? Msg.id(ObjC.cls("UIScreen"), ObjC.sel("mainScreen")) : Msg.id(Msg.id(v, ObjC.sel("window")), ObjC.sel("screen"));
-			// (the window's drawables copied forward too: drawn only where they change)
-			Msg.vBool(device.surface.display, ObjC.sel("setFramebufferOnly:"), false);
 			s.isNull() ? 60 : Msg.i(s, ObjC.sel("maximumFramesPerSecond")).toInt();
 		});
 		period = 1 / (fps > 0 ? fps : 60);
@@ -142,27 +138,12 @@ class CaLayers extends LayerSplit {
 		lock.release();
 		for (p in toDraw) {
 			p.presenting(!direct);
-			// (only what changed: the last drawable's pixels copied forward, its
-			// rectangles drawn over them; where drawing it whole covers its pixels
-			// more than four times, as the copy reads and writes each of them: on
-			// an M-series GPU a header's label over a list, the window's layer
-			// covering its pixels about twice, took 0.09–0.13 ms a frame copied,
-			// 0.04–0.09 drawn whole)
-			var cut = !p.drawnLast.isNull() && p.cover > DENSE * p.pw * p.ph && p.cut(p.drawnAt, p.kind == LayerPlane.BASE ? f.background | 0xFF000000 : 0);
-			var len = cut ? p.cutLen : p.len;
-			if (at + len <= f.capacity && draw(r, mb, f, p.layer, p.bytes, p.len, p.runs, p.runTextures, p.kind == LayerPlane.BASE, b, at, direct, cut ? p : null)) {
-				cut = cut && mb.planeCopied;
-				at += cut ? p.cutLen : p.len;
+			if (at + p.len <= f.capacity && draw(r, mb, f, p.layer, p.bytes, p.len, p.runs, p.runTextures, p.kind == LayerPlane.BASE, b, at, direct)) {
+				at += p.len;
 				drawnTotal++;
-				quadsTotal += cut ? Std.int(p.cutLen / CompositeFrame.STRIDE) - p.clears : p.quads.length;
-				if (cut) cutTotal++;
-				pixelsTotal += cut ? p.cutArea() : p.pw * p.ph;
-				// (kept only where the next may be copied forward: a drawable's texture held keeps it from the layer's pool)
-				p.keepDrawn(p.cover > DENSE * p.pw * p.ph ? mb.planeTexture : Ptr.nil());
-			} else {
+				quadsTotal += p.quads.length;
+			} else
 				p.invalidate();
-				p.keepDrawn(Ptr.nil());
-			}
 		}
 		CATransaction.commit();
 		var presents = mb.takePresents();
@@ -239,33 +220,17 @@ class CaLayers extends LayerSplit {
 		b.setFloat(220, 1e9);
 	}
 
-	// (how many times over a layer's quads cover its pixels for it to be copied forward, drawn in part)
-	static inline var DENSE = 4;
-
-	// layers drawn in part, and the pixels drawn in all (tests)
-	@:noCompletion public var cutTotal(default, null) = 0;
-	@:noCompletion public var pixelsTotal(default, null) = 0.0;
-
-	// (quads drawn onto a layer's next drawable, at buffer b's offset at;
-	// cut: only its rectangles that changed (cut's quads), over the last
-	// drawable's pixels copied, else all of them as here, where none were)
+	// (quads drawn onto a layer's next drawable, at buffer b's offset at)
 	function draw(r:Replay, mb:MetalBackend, f:CompositeFrame, layer:Ptr, bytes:Bytes, len:Int, runs:Array<Int>, runTextures:Array<Null<Texture>>,
-			opaque:Bool, b:Buffer, at:Int, direct = false, ?cut:Plane):Bool {
+			opaque:Bool, b:Buffer, at:Int, direct = false):Bool {
 		var c = commands;
-		mb.planeFrame(layer, direct, cut == null ? null : cut.drawnLast);
+		mb.planeFrame(layer, direct);
 		c.clear();
 		c.begin(Replay.BEGIN_FRAME);
 		c.end();
 		r.run(c, false);
 		c.clear();
 		if (!r.began) return false;
-		if (cut != null && !mb.planeCopied) cut = null;
-		if (cut != null) {
-			bytes = cut.cutBytes;
-			len = cut.cutLen;
-			runs = cut.cutRuns;
-			runTextures = cut.cutTextures;
-		}
 		c.begin(Replay.WRITE_BUFFER);
 		c.int(b.id());
 		c.int(at);
@@ -274,7 +239,7 @@ class CaLayers extends LayerSplit {
 		var bg = f.background;
 		c.begin(Replay.BEGIN_PASS);
 		c.int(1);
-		c.int(cast(cut != null ? LoadOp.Load : LoadOp.Clear));
+		c.int(cast LoadOp.Clear);
 		c.float(opaque ? (bg >> 16 & 0xFF) / 255 : 0);
 		c.float(opaque ? (bg >> 8 & 0xFF) / 255 : 0);
 		c.float(opaque ? (bg & 0xFF) / 255 : 0);
@@ -284,28 +249,15 @@ class CaLayers extends LayerSplit {
 		c.int(Replay.NONE);
 		c.int(0);
 		c.end();
+		three(Replay.SET_PIPELINE, f.pipeline.id(), -1, -1, 1);
 		three(Replay.SET_VERTEX_BUFFER, 0, f.corners.id(), 0, 3);
 		three(Replay.SET_INDEX_BUFFER, f.indices.id(), cast IndexFormat.UInt32, 0, 3);
 		three(Replay.SET_TEXTURE, f.atlasSlot, f.atlas.id(), f.sampler.id(), 3);
-		var k = 0, from = at;
-		if (cut != null) {
-			// (its rectangles cleared, without blending)
-			three(Replay.SET_PIPELINE, f.clearPipeline.id(), -1, -1, 1);
-			three(Replay.SET_TEXTURE, f.imageSlot, f.blank.id(), f.sampler.id(), 3);
-			three(Replay.SET_VERTEX_BUFFER, 1, b.id(), at, 3);
-			c.begin(Replay.DRAW_INDEXED);
-			c.int(6);
-			c.int(cut.clears);
-			c.int(0);
-			c.int(0);
-			c.end();
-			from += cut.clears * CompositeFrame.STRIDE;
-		}
-		three(Replay.SET_PIPELINE, f.pipeline.id(), -1, -1, 1);
+		var k = 0;
 		while (k < runs.length) {
 			var t = runTextures[k >> 1];
 			three(Replay.SET_TEXTURE, f.imageSlot, (t == null ? f.blank : t).id(), f.sampler.id(), 3);
-			three(Replay.SET_VERTEX_BUFFER, 1, b.id(), from + runs[k] * CompositeFrame.STRIDE, 3);
+			three(Replay.SET_VERTEX_BUFFER, 1, b.id(), at + runs[k] * CompositeFrame.STRIDE, 3);
 			c.begin(Replay.DRAW_INDEXED);
 			c.int(6);
 			c.int(runs[k + 1]);
@@ -653,16 +605,6 @@ class CaLayers extends LayerSplit {
 @:access(helder.ui.draw.CaLayers)
 private class Plane extends LayerPlane {
 	public var layer = Ptr.nil();
-	// (its last drawable's texture, retained, and the draw it holds: copied forward)
-	public var drawnLast(default, null) = Ptr.nil();
-	public var drawnAt(default, null) = -1;
-
-	public function keepDrawn(t:Ptr) {
-		if (!drawnLast.isNull()) Runtime.objc_release(drawnLast);
-		drawnLast = t.isNull() ? t : Runtime.objc_retain(t);
-		drawnAt = t.isNull() ? -1 : serial;
-	}
-
 	public var clip = Ptr.nil();
 	// (a scroller's clip's mask's layer and what it was drawn for)
 	public var maskLayer = Ptr.nil();
@@ -789,8 +731,6 @@ private class Plane extends LayerPlane {
 			layer = Runtime.objc_retain(Msg.id(ObjC.cls("CAMetalLayer"), S.layer));
 			Msg.vPtr(layer, ObjC.sel("setDevice:"), Msg.id(root, ObjC.sel("device")));
 			Msg.vInt(layer, ObjC.sel("setPixelFormat:"), 80); // (BGRA8Unorm)
-			// (its drawables copied forward: drawn only where they change)
-			Msg.vBool(layer, ObjC.sel("setFramebufferOnly:"), false);
 			Msg.vBool(layer, ObjC.sel("setOpaque:"), false);
 			CaLayers.setPoint(layer, S.setAnchorPoint, 0, 0);
 			if (kind == LayerPlane.SCROLL) {
@@ -931,7 +871,6 @@ private class Plane extends LayerPlane {
 	// (its layers let go: what removes and releases them, run in a
 	// transaction after any that still names them)
 	override public function free():Void->Void {
-		keepDrawn(Ptr.nil());
 		var c = clip, l = kind == LayerPlane.BASE ? Ptr.nil() : layer, m = maskLayer, sl = slot;
 		layer = clip = maskLayer = Ptr.nil();
 		for (i in 0...slotSet.length)

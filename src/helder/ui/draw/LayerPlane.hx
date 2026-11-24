@@ -10,8 +10,9 @@ import helder.gfx.Texture;
 // and their bounds; its buffer's size and where it is in the frame's
 // pixels; what it drew last (its quads in its pixels and their runs), what
 // changed since (damage, a history of its draws: what a buffer drawn some
-// draws ago misses, its quads cut to that: cut). The system's layers
-// extend it (CaLayers', ScLayers').
+// draws ago misses, its quads cut to that: cut, ScLayers'; Core Animation
+// keeps no drawable's contents, so CaLayers draws a changed layer whole).
+// The system's layers extend it (CaLayers', ScLayers').
 @:hxmc.unsafe(gc)
 class LayerPlane {
 	public static inline var BASE = 0;
@@ -71,8 +72,6 @@ class LayerPlane {
 	// what of its pixels changed since it was last drawn (local), all of it
 	// where it was not drawn before, changed size or most of it changed
 	public final damage = new Damage();
-	// (the pixels its quads cover in all, overlaps counted: what drawing it whole costs)
-	public var cover(default, null) = 0.0;
 	// (per draw, newest last, its rectangles (null: all of it), so that a
 	// buffer drawn some draws ago is brought up to date: buffer age)
 	final history:Array<Null<Array<Float>>> = [];
@@ -166,7 +165,6 @@ class LayerPlane {
 		runs.resize(0);
 		runTextures.resize(0);
 		var w = pw, h = ph, k = 0;
-		cover = 0;
 		for (j in 0...quads.length) {
 			var q = quads[j], o = j * S, t = textures[q];
 			bytes.blit(o, out, q * S, S);
@@ -186,10 +184,6 @@ class LayerPlane {
 				bytes.setFloat(o + 196, bytes.getFloat(o + 196) - oy);
 			}
 			quadTextures[j] = t;
-			var ex = bytes.getFloat(o + 24) - bytes.getFloat(o + 8), ey = bytes.getFloat(o + 28) - bytes.getFloat(o + 12);
-			var fx = bytes.getFloat(o + 40) - bytes.getFloat(o + 8), fy = bytes.getFloat(o + 44) - bytes.getFloat(o + 12);
-			var a = Math.abs(ex * fy - ey * fx);
-			if (fine(a)) cover += Math.min(a, w * h);
 			if (runs.length == 0 || runTextures[runTextures.length - 1] != t) {
 				runs.push(j);
 				runs.push(1);

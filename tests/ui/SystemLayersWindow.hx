@@ -22,9 +22,6 @@ import sys.io.File;
 //   SystemLayersWindow --time s [anim]: a steady scroll for s seconds (or
 //   a layer moving on its own), the process's CPU and GPU time and
 //   WindowServer's CPU time (HELDER_SYSTEM_LAYERS=0: the textured compositor's)
-//   SystemLayersWindow --time s header: a header's label changed each
-//   frame over a list filling the window: those, and the pixels the
-//   layers drew a frame (HELDER_DAMAGE=full: each drawn whole)
 @:hxmc.unsafe(gc)
 class SystemLayersWindow {
 	static final checkpoints = ["first", "scrolled", "moving", "busy"];
@@ -35,7 +32,6 @@ class SystemLayersWindow {
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 		if (r >= 0) return scene(a[r + 1], -1);
 		if (a.indexOf("--nan") >= 0) return lost();
-		if (t >= 0 && a.indexOf("header") >= 0) return header(Std.parseFloat(a[t + 1]));
 		if (t >= 0) return scene(null, Std.parseFloat(a[t + 1]), a.indexOf("anim") >= 0, a.indexOf("round") >= 0);
 		var dir = Sys.getEnv("TMPDIR") + "/system-layers-" + Std.random(1 << 30);
 		var self = Sys.programPath(), failed = 0;
@@ -384,64 +380,6 @@ class SystemLayersWindow {
 					return Math.round(v / wall * 1000) / 10;
 				var l = w.compositor != null && w.compositor.layers != null;
 				Sys.println('SystemLayersWindow: ${anim ? "a layer moving" : "a steady scroll"}, ${l ? "system layers" : "textured"}: $frames frames in ${Math.round(wall * 100) / 100} s; CPU ${pc(cpu)}% of a core, GPU ${pc(gpu)}% (${Math.round(gpu / frames * 1e5) / 100} ms a frame), WindowServer CPU ${pc(ws)}%');
-				w.close();
-				return;
-			}
-			w.frame();
-			w.device.settle();
-		}, e -> w.handle(e));
-	}
-
-	// (a header's label changed each frame over a list filling the window)
-	static function header(s:Float) {
-		var w = new UiWindow("SystemLayersWindow", 400, 600);
-		var root = w.root;
-		root.style.set({direction: Column, background: 0xFFFFFFFF});
-		var head = new Node(), title = new TextNode("Header");
-		head.style.set({height: 56, shrink: 0, padding: 14, background: 0xFF18181B});
-		title.style.set({color: 0xFFFFFFFF, fontSize: 18});
-		head.append(title);
-		root.append(head);
-		var list = new Node();
-		list.style.set({grow: 1, minHeight: 0, overflow: Scroll, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
-		for (i in 0...300) {
-			var row = new Node();
-			row.style.set({direction: Row, padding: 6, columnGap: 8, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
-			var box = new Node();
-			box.style.set({width: 16, height: 16, radius: 4, background: 0xFF000000 | ((i * 40503) & 0xFFFFFF)});
-			row.append(box);
-			row.append(new TextNode("Row " + i));
-			list.append(row);
-		}
-		root.append(list);
-		var t0 = 0.0, cpu0 = 0.0, gpu0 = 0.0, frames = 0, step = 0, px0 = 0.0, cut0 = 0;
-		var mb = () -> {
-			var v = 0.0;
-			w.device.inOrder(r -> v = (cast r.impl : helder.gfx.metal.MetalBackend).gpuSeconds);
-			w.device.settle();
-			v;
-		};
-		var ca = () -> w.compositor == null ? null : Std.downcast(w.compositor.layers, helder.ui.draw.CaLayers);
-		App.run(() -> {
-			step++;
-			if (step == 30) {
-				t0 = haxe.Timer.stamp();
-				cpu0 = Cpu.seconds();
-				gpu0 = mb();
-				var c = ca();
-				if (c != null) {
-					px0 = c.pixelsTotal;
-					cut0 = c.cutTotal;
-				}
-			}
-			if (step > 30) {
-				title.text = "Header " + step;
-				frames++;
-			}
-			if (step > 30 && haxe.Timer.stamp() - t0 > s) {
-				var wall = haxe.Timer.stamp() - t0, cpu = Cpu.seconds() - cpu0, gpu = mb() - gpu0, c = ca();
-				var drawn = c == null ? "" : ', ${c.cutTotal - cut0} layers drawn in part, ${Math.round((c.pixelsTotal - px0) / frames)} pixels a frame of ${w.device.width * w.device.height}';
-				Sys.println('SystemLayersWindow: a header changed, ${c != null ? "system layers" : "textured"}${Sys.getEnv("HELDER_DAMAGE") == "full" ? " drawn whole" : ""}: $frames frames in ${Math.round(wall * 100) / 100} s; CPU ${Math.round(cpu / wall * 1000) / 10}% of a core, GPU ${Math.round(gpu / frames * 1e5) / 100} ms a frame$drawn');
 				w.close();
 				return;
 			}
