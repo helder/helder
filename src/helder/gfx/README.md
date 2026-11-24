@@ -526,9 +526,22 @@ filtered within a face (not across its edge), no anisotropy (helder's
 samplers have none). MSAA: 4 samples at the standard positions, the pixel
 shaded once, resolved at the pass's end. Not here: the compute tier
 (`has` is false: helder.scene's fallbacks, as WebGL2's), shared textures,
-showing a window's frame, shaders without a CPU form (TypeScript's
-`shader(...)` and materials: JSON, no Haxe to emit; they draw nothing);
-lines and points are a pixel-wide quad.
+shaders without a CPU form (TypeScript's `shader(...)` and materials:
+JSON, no Haxe to emit; they draw nothing); lines and points are a
+pixel-wide quad.
+
+A window's frame is shown by the system's own path, no GPU API
+(`helder.os.Blit`, at `endFrame`, where `damaged` said it changed): X11 an
+XImage, through MIT-SHM where the server is this machine's (else
+XPutImage); Wayland two wl_shm buffers on the window's wl_surface (no
+wl_egl_window in a `-D helder.soft` build); macOS a CGImage as the
+contents of the view's layer (a plain CALayer, in the screen's colour
+space: shown unconverted, as an untagged Metal layer's); Windows
+StretchDIBits into the window's DC; the web putImageData into the canvas's
+2D context. Built without `helder.headless`, a `-D helder.soft` program
+opens windows as any (on Linux glibc then, not static), smaller than its
+GPU build (counter: macOS 3.88 MB against 4.11, Linux 3.67 against 4.35,
+Windows 3.46 against 3.97), and the web's imports no GL or GPU module.
 
 Against the GPUs, tests/3d's 76 scenes and tests/gfx's 10 frames (`bun
 run test gfx-soft`, GfxTest's rule): all within it of their goldens

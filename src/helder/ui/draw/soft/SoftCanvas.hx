@@ -37,6 +37,11 @@ class SoftCanvas implements TextureCanvas implements GpuPlaceholder.Gpuless {
 	// whether glyphs under a scale that moves are drawn at steps (Renderer.steps)
 	public var steps = false;
 	public var again(default, null) = false;
+	// a window's: the frame kept from one to the next, only what the UI
+	// damaged drawn into it (keeps, damage, redraw: as the Renderer's kept
+	// frame); regions: what the last frame drew (x0, y0, x1, y1 each; null all of it)
+	public var keep = false;
+	public var regions(default, null):Null<Array<Int>> = null;
 	public final atlas:GlyphAtlas;
 	// the frame drawn (begin's size), painted when read
 	@:isVar public var frame(get, null):Bitmap;
@@ -52,6 +57,9 @@ class SoftCanvas implements TextureCanvas implements GpuPlaceholder.Gpuless {
 	var atlasW = 0;
 	var atlasH = 0;
 	final retired:Array<SoftImage> = [];
+	var damaged:Null<Damage> = null;
+	var fresh = true;
+	var backgroundWord = 0;
 	var frames = 0;
 	// (the images' premultiplied pixels, by id; the paths' images; the large and colour glyphs)
 	final images = new Map<Int, SoftImage>();
@@ -140,6 +148,7 @@ class SoftCanvas implements TextureCanvas implements GpuPlaceholder.Gpuless {
 		frames++;
 		if (frames % 60 == 0) evict(EVICT);
 		if (this.width != width || this.height != height || pixels.isNull()) {
+			fresh = true;
 			hxmc.unsafe.LibC.free(pixels);
 			var n = 4 * (width > 0 ? width : 1) * (height > 0 ? height : 1);
 			pixels = hxmc.unsafe.LibC.malloc((n : hxmc.I64));
@@ -148,13 +157,18 @@ class SoftCanvas implements TextureCanvas implements GpuPlaceholder.Gpuless {
 		}
 		var a = background.a / 255;
 		var word = Math.round(background.r * a) | Math.round(background.g * a) << 8 | Math.round(background.b * a) << 16 | background.a << 24;
+		if (word != backgroundWord) fresh = true;
+		backgroundWord = word;
 		var q = quads;
 		q.frame(height);
 		q.target = pixels;
 		q.tw = width;
 		q.th = height;
 		q.ox = q.oy = 0;
-		q.fill(0, 0, width, height, word);
+		q.cut();
+		regions = null;
+		// (kept: the background where the UI's damage is, redraw)
+		if (!keep) q.fill(0, 0, width, height, word);
 		q.drawnX0 = q.drawnY0 = 0;
 		q.drawnX1 = width;
 		q.drawnY1 = height;
@@ -209,8 +223,17 @@ class SoftCanvas implements TextureCanvas implements GpuPlaceholder.Gpuless {
 		return frame;
 	}
 
+	#if (helder.soft && !helder.headless)
+	// the frame shown in a window, where it changed (helder.os.Blit)
+	@:hxmc.unsafe(gc) public function present(s:helder.os.Surface) {
+		paint();
+		helder.os.Blit.present(s, pixels, width, height, regions);
+	}
+	#end
+
 	// the frame's pixels as RGBA8, rows top to bottom (as Device.readPixels gives a frame)
 	@:hxmc.unsafe(gc) public function readPixels(dst:Bytes) {
+		if (dst.length < width * height * 4) throw "SoftCanvas: readPixels: " + width * height * 4 + " bytes needed";
 		paint();
 		hxmc.unsafe.BytesPtr.copyIn(dst, 0, pixels, width * height * 4);
 	}
@@ -332,11 +355,33 @@ class SoftCanvas implements TextureCanvas implements GpuPlaceholder.Gpuless {
 		return false;
 
 	public function keeps():Bool
-		return false;
+		return keep;
 
-	public function damage(d:Damage) {}
+	public function damage(d:Damage) {
+		if (!keep) return;
+		// (a new frame's buffer, or another background: all of it)
+		if (fresh) d.everything();
+		fresh = false;
+		d.round(scale, width, height);
+		damaged = d;
+		regions = d.all ? null : [];
+	}
 
-	public function redraw(i:Int) {}
+	public function redraw(i:Int) {
+		var d = damaged, q = quads;
+		if (d == null || i < -1) return;
+		if (i < 0) {
+			q.cut();
+			return;
+		}
+		var s = scale;
+		var x0 = Std.int(Math.max(0, Math.round(d.x0(i) * s))), y0 = Std.int(Math.max(0, Math.round(d.y0(i) * s)));
+		var x1 = Std.int(Math.min(width, Math.round(d.x1(i) * s))), y1 = Std.int(Math.min(height, Math.round(d.y1(i) * s)));
+		if (regions != null) for (v in [x0, y0, x1, y1])
+			regions.push(v);
+		q.cut(x0, y0, x1, y1);
+		q.fill(x0, y0, x1, y1, backgroundWord);
+	}
 
 	public function composites():Bool
 		return false;

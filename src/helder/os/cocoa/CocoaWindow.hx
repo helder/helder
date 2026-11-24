@@ -128,7 +128,8 @@ class CocoaWindow {
 		Msg.vInt(view, ObjC.sel("setAutoresizingMask:"), 18); // (width and height sizable)
 		Msg.vPtr(content, ObjC.sel("addSubview:"), view);
 		// a layer-hosting view: the layer first, then wantsLayer
-		layer = Runtime.objc_retain(Msg.id(ObjC.cls("CAMetalLayer"), ObjC.sel("layer")));
+		// (-D helder.soft: a plain layer, the CPU's frames its contents: helder.os.Blit)
+		layer = Runtime.objc_retain(Msg.id(ObjC.cls(#if helder.soft "CALayer" #else "CAMetalLayer" #end), ObjC.sel("layer")));
 		// (a drawable of another size than the view's, between a resize and its
 		// frame: shown as it is, not stretched)
 		var gravity = ObjC.str("topLeft");
@@ -326,7 +327,9 @@ class CocoaWindow {
 		Msg.vFloat(layer, ObjC.sel("setContentsScale:"), scale);
 		size.value.width = w;
 		size.value.height = h;
+		#if !helder.soft
 		Msg.vSize(layer, ObjC.sel("setDrawableSize:"), size.value);
+		#end
 		if (w == surface.width && h == surface.height) return false;
 		surface.resized(w, h);
 		return true;
@@ -357,6 +360,9 @@ class CocoaWindow {
 				LibC.free(size);
 				return;
 			}
+			#end
+			#if helder.soft
+			Blit.forget(surface);
 			#end
 			Msg.vPtr(window, ObjC.sel("setDelegate:"), Ptr.nil());
 			Msg.v(window, ObjC.sel("close"));

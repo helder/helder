@@ -1474,7 +1474,13 @@ GPU build that found no device) it is a grey box (`GpuPlaceholder`).
 
 Headless runs draw on it with `--soft` (`-D helder.soft`: no GPU code
 linked, a static executable on Linux), `HELDER_SOFT=1`, or where no GPU
-device can be made; a build without `helder.headless` links none of it.
+device can be made; a GPU build without `helder.headless` links none of
+it. A `-D helder.soft` build without `helder.headless` draws its windows on
+it: the frame kept from one to the next (`keep`), only what the UI damaged
+drawn (`damage`, `redraw`: each rectangle's background, then what is in
+it, as the Renderer's kept frame), and those rectangles shown by the
+system's own path (`helder.os.Blit`: XImage or MIT-SHM, wl_shm, a layer's
+CGImage, StretchDIBits, putImageData), the system's layers off.
 Its frames are the GPU's within a level (Metal's and llvmpipe's, every
 golden scene, below) and the same bytes on every machine given the same
 fonts (`HELDER_FONT_DIRS`: those directories alone, e.g. DejaVu on a Mac),
