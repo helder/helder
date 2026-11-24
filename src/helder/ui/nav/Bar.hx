@@ -145,9 +145,8 @@ class NavState {
 		inset = () -> {
 			var top = top0 + heights[0] + (inner ? 0 : heights[1]), bottom = bottom0 + heights[2];
 			if (v != null) {
-				if (@:privateAccess v.insetTop == top && @:privateAccess v.insetBottom == bottom) return;
-				@:privateAccess v.insetTop = top;
-				@:privateAccess v.insetBottom = bottom;
+				v.insets(top, bottom);
+				return;
 			} else {
 				if (n.style.paddingTop == top && n.style.paddingBottom == bottom) return;
 				n.style.paddingTop = top;

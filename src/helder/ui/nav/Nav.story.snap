@@ -247,7 +247,7 @@ Node#root 0,0 390x844
           Node#view 12,592 119x140
             Node#view 16,596 111x111
             TextNode#text 52,711 39x17 "Quince"
-      Spacer#after 0,726 390x12
+      Spacer#after 0,726 390x68
     Node#view 0,0 390x44
       Node#view 0,0 390x44
       Node#view 0,0 390x44
