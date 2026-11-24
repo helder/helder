@@ -243,8 +243,11 @@ app's own layout (helder.ui's `<WindowControls/>`, `drag-region` and
 screen). macOS: a full-size content view (`NSWindowStyleMaskFullSizeContentView`),
 the bar transparent, no title; the system's buttons kept and placed where
 the app asks (Electron's way: the title bar's container made as tall as
-the buttons and twice the top margin, each button's origin set in it,
-again after each resize); a press on the bar but the buttons is the app's,
+the buttons and twice the top margin, each button's origin set in it;
+AppKit lays its title bar out again after a title is set, a resize and a
+change of key status, so in those the layout is done at once and the
+buttons moved again in the same turn of the main thread, before the
+window is drawn: never seen at AppKit's place for a frame); a press on the bar but the buttons is the app's,
 a drag region's `performWindowDragWithEvent:` (a double click what the
 user set: `AppleActionOnDoubleClick`, zoom by default). Windows:
 WM_NCCALCSIZE takes the caption off (the sides and bottom kept: their

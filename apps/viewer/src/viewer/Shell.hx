@@ -150,7 +150,7 @@ class Shell implements Markup {
 		}
 		var window:Null<UiWindow> = null;
 		UiWindow.run(<Surface title={() -> x.full() ? viewer.title() : x.sidebar.title(x.browser.dir())} width={num("width", 1180)} height={num("height", 780)}
-			titlebar="inset" background={() -> x.full() ? ViewerView.BACKGROUND : UiWindow.dark() ? "#121212" : "#f3f3f3"}
+			titlebar="inset" background={() -> "#" + StringTools.hex(ViewerView.canvas(UiWindow.dark()), 6)}
 			onDrop={(files, _, _) -> if (files.length > 0) x.start(files[0])}
 			onClose={() -> {
 				save(store, window, x);
@@ -348,7 +348,7 @@ class Shell implements Markup {
 			if (!x.full.value && b.total.value >= Browser.WATCH_BELOW && !b.reading.value) b.refresh();
 		return <Standard.Themed look={look}>
 			<view tag="window" grow={1} background={Look.ref.canvas} color={Look.ref.fg} font-family="system-ui" font-size={13} onPointerEnter={back}>
-				<view tag="browser" grow={1} direction="row" display={x.full() ? "none" : "flex"}>
+				<view tag="browser" grow={1} direction="row">
 					{SidebarView.make(x)}
 					<view grow={1} min-width={0} direction="row" padding-top={WindowButtons.side() == "end" ? 32 : 0}>
 						{ContentView.make(x)}
@@ -367,15 +367,15 @@ class Shell implements Markup {
 	}
 
 	static function about(viewer:Viewer):View
-		return <view tag="about-backdrop" position="absolute" inset={0} background="#00000099" align-items="center" justify="center"
+		return <view tag="about-backdrop" position="absolute" inset={0} background={Look.ref.scrim} align-items="center" justify="center"
 			onClick={_ -> viewer.aboutOpen(false)}>
-			<view tag="about" width={340} padding={20} row-gap={6} radius={12} background="#232326" border-width={1} border-color="#3f3f46"
-				align-items="center" shadow="0 8px 30px rgba(0, 0, 0, 0.5)">
+			<view tag="about" width={340} padding={20} row-gap={6} radius={12} background={Look.ref.raised} border-width={1} border-color={Look.ref.edge}
+				align-items="center" shadow="0 8px 30px rgba(0, 0, 0, 0.25)">
 				<image src={helder.image.Image.decode(helder.asset.Asset.embed("about-icon.png"))} width={72} height={72}/>
-				<text tag="about-name" font-size={18} color="#f4f4f5">Viewer</text>
-				<text tag="about-version" color="#a1a1aa">{"Version " + Version.NAME}</text>
-				<text color="#d4d4d8" text-align="center">helder's image viewer and file browser: PNG, JPEG, GIF, WebP, PDF and the system's formats</text>
-				<text color="#71717a" text-align="center">MIT License · github.com/helder/helder</text>
+				<text tag="about-name" font-size={18} color={Look.ref.fg}>Viewer</text>
+				<text tag="about-version" color={Look.ref.fg3}>{"Version " + Version.NAME}</text>
+				<text color={Look.ref.fg2} text-align="center">helder's image viewer and file browser: PNG, JPEG, GIF, WebP, PDF and the system's formats</text>
+				<text color={Look.ref.fg3} text-align="center">MIT License · github.com/helder/helder</text>
 			</view>
 		</view>;
 }

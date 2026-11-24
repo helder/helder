@@ -60,6 +60,8 @@ class Viewer {
 	// the system's open dialog (Mod+O; the shell's: helder.os.FileDialog)
 	public var openDialog:Null<Void->Void> = null;
 
+	// (back in the browser: decodes landing show nothing)
+	var closed = true;
 	var frameAt = 0.0;
 	var played = 0;
 	var wheelAcc = 0.0;
@@ -73,6 +75,7 @@ class Viewer {
 
 	// a file of a folder shown, the folder's files those (the browser's, in its order)
 	public function view(dir:String, names:Array<String>, name:String) {
+		closed = false;
 		gotoOpen(false);
 		setPage(0);
 		setPages(1);
@@ -87,7 +90,7 @@ class Viewer {
 		var shown = folder.name;
 		if (!folder.relist(names)) return;
 		if (folder.index < 0) {
-			close();
+			release();
 			return;
 		}
 		if (folder.name != shown) {
@@ -104,13 +107,21 @@ class Viewer {
 		if (folder.current != null && paths.contains(folder.current)) refresh();
 	}
 
-	// nothing shown (back in the browser): the decodes let go
+	// back in the browser: the player stopped, nothing more shown, the
+	// picture kept for the view's fade (release lets it go)
 	public function close() {
+		closed = true;
+		media("");
+		gotoOpen(false);
+	}
+
+	// the decodes let go (the browser left the folder)
+	public function release() {
+		closed = true;
 		cache.clear();
 		shown = null;
 		shownPath = "";
 		media("");
-		gotoOpen(false);
 		empty();
 		updateTitle();
 	}
@@ -199,6 +210,7 @@ class Viewer {
 	}
 
 	function show() {
+		if (closed) return;
 		var path = key();
 		if (path == null) return;
 		// (a video or an audio file: the shell's player shows it, nothing decoded here)

@@ -41,7 +41,11 @@ class Explorer {
 		browser = new Browser(files);
 		sidebar = new Sidebar(files, places ?? [], volumes ?? []);
 		viewer = new Viewer(decode);
-		browser.onDir = d -> if (!choosing) sidebar.follow(d);
+		browser.onDir = d -> {
+			if (!choosing) sidebar.follow(d);
+			// (another folder: the decodes of the last let go)
+			if (!full.value) viewer.release();
+		};
 		browser.onItems = () -> if (full.value) viewer.relist(browser.viewable());
 		browser.onModified = paths -> viewer.modified(paths);
 	}
