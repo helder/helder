@@ -64,9 +64,10 @@ class ShapeWindow {
 				if (w.window.transparent) inputs(w);
 				if (w.window.transparent && (desk != null || behindPlain()) && !helderBehind && Click.can()) end = 70;
 			}
-			// (a click where it is clear: the window behind's; on the box: its own)
-			for (i => at in [[10.0, 10.0], [80.0, 70.0]]) {
-				var s0 = 41 + i * 14;
+			// (a click on the box: its own; then where it is clear: the window
+			// behind's, which it activates and raises, so it comes last)
+			for (i => at in [[80.0, 70.0], [10.0, 10.0]]) {
+				var s0 = 41 + i * 14, through = i == 1;
 				if (step == s0) Click.move(w.window, at[0], at[1]);
 				if (step == s0 + 4) {
 					downs = [0, 0];
@@ -80,9 +81,8 @@ class ShapeWindow {
 					#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
 					downs[0] += Plain.downs;
 					#end
-					var want = i == 0 ? [1, 0] : [0, 1];
-					check(downs[0] >= want[0] && downs[1] >= want[1] && (i == 0 ? downs[1] == 0 : downs[0] == 0),
-						'a click ${i == 0 ? "where it is clear: the window behind's" : "on the box: its own"} (presses: behind ${downs[0]}, it ${downs[1]})');
+					check(through ? downs[0] >= 1 && downs[1] == 0 : downs[1] >= 1 && downs[0] == 0,
+						'a click ${through ? "where it is clear: the window behind's" : "on the box: its own"} (presses: behind ${downs[0]}, it ${downs[1]})');
 				}
 			}
 			if (step == end) {
