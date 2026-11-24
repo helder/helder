@@ -15,7 +15,9 @@ import helder.ui.widgets.TextField;
 // and closed; the caret moved, text typed), at scales 1 and 2, layers
 // replayed and from their tiles; with --window, in a window whose frame
 // is multisampled where it can be (the frame kept is not). And
-// that a row toggled damages that row, the caret moved only the caret
+// that a row toggled damages that row, the caret moved only the caret;
+// under Liquid Glass (helder.ui.Glass: what it reads reaches past what
+// changed) every frame drawn whole, as the tree drawn whole
 //   DamageTest [--window]
 class DamageTest {
 	static inline var W = 320;
@@ -35,6 +37,8 @@ class DamageTest {
 			for (tiles in [false, true])
 				for (tree in 0...3)
 					compare(device, scale, tree, tiles);
+			for (tiles in [false, true])
+				compare(device, scale, 0, tiles, true);
 			if (scale == 1) damages(device);
 			for (tiles in [false, true])
 				see(device, scale, tiles);
@@ -87,9 +91,15 @@ class DamageTest {
 		}, e -> {});
 	}
 
-	static function compare(device:Device, scale:Float, tree:Int, tiles:Bool) {
+	// (glass: a Liquid Glass capsule over the tree, its backdrop read each frame: drawn whole)
+	static function compare(device:Device, scale:Float, tree:Int, tiles:Bool, glass = false) {
 		var w = device.width, h = device.height;
 		var made = [build(tree), build(tree)], rs = [for (k in 0...2) new Renderer(device)];
+		if (glass) for (m in made) {
+			var g = new Glass();
+			g.style.set({position: Absolute, left: 60, top: 40, width: 180, height: 50});
+			m.ui.root.append(g);
+		}
 		for (k in 0...2) {
 			rs[k].scale = scale;
 			rs[k].groups = true;
@@ -122,7 +132,7 @@ class DamageTest {
 			if (rs[1].drawn < w * h) kept++;
 			area += rs[1].drawn;
 		}
-		check('scale $scale tree $tree${tiles ? " from tiles" : ""}: drawn where it changed as drawn whole', off == 0 && kept > frames / 3,
+		check('scale $scale tree $tree${tiles ? " from tiles" : ""}${glass ? " under glass" : ""}: drawn where it changed as drawn whole', off == 0 && (glass || kept > frames / 3),
 			'$off pixels differ${first == "" ? "" : ", first " + first}; $kept of $frames frames drawn in part, ${Math.round(area / frames / (w * h) * 100)}% a frame drawn');
 	}
 

@@ -9,8 +9,8 @@ class GlassScene {
 	public static inline var H = 300;
 	public static final backgrounds = ["stripes", "gradient", "text", "photo"];
 
-	// the scene of background bg into root; its glass
-	public static function build(root:Node, bg:String):Array<Glass> {
+	// the scene of background bg into root (glass: with its glass, labels: their labels); its glass
+	public static function build(root:Node, bg:String, glass = true, labels = true):Array<Glass> {
 		root.style.set({width: W, height: H, background: 0xFFFFFFFF, fontFamily: "DejaVu Sans"});
 		var back = new Node();
 		back.style.set({position: Absolute, left: 0, top: 0, width: W, height: H, overflow: Hidden});
@@ -38,11 +38,12 @@ class GlassScene {
 				back.append(img);
 		}
 		root.append(back);
+		if (!glass) return [];
 		var capsule = new Glass();
 		capsule.style.set({position: Absolute, left: 100, top: 40, width: 200, height: 56, alignItems: Align.Center, justify: Justify.Center});
 		var label = new TextNode("Glass");
 		label.style.set({fontSize: 18, fontWeight: 600, color: 0xFF111111});
-		capsule.append(label);
+		if (labels) capsule.append(label);
 		var clear = new Glass();
 		clear.variant = "clear";
 		clear.style.set({position: Absolute, left: 40, top: 140, width: 140, height: 120, radius: 24});
@@ -52,6 +53,13 @@ class GlassScene {
 		for (g in [capsule, clear, tinted])
 			root.append(g);
 		return [capsule, clear, tinted];
+	}
+
+	// the glass as the reference tool takes it (tests/ui/glass-reference.swift): x,y,w,h,radius,style,tint
+	public static function spec(g:Glass):String {
+		var t = g.tint;
+		return [g.absX, g.absY, g.width, g.height, g.radius(), g.clear ? 1 : 0].join(",") + ","
+			+ (t == null ? "-" : "#" + StringTools.hex(t & 0xFFFFFF, 6) + StringTools.hex(t.a, 2));
 	}
 
 	// a glass's box in pixels at scale k: x0, y0, x1, y1

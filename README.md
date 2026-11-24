@@ -172,9 +172,10 @@ in `compute()`; GPU particles, cloth and soft bodies as its first users.
   inside the layer tree; Android to SurfaceControl (API 33); Windows to
   DirectComposition; video's layers on each; next Wayland. Ladybird's Compositor
   (LibCompositing, BSD-2-Clause) is this design, as a process of its own.
-- Then Liquid Glass: `<glass>` is the system's own on iOS and macOS 26
-  (UIGlassEffect, NSGlassEffectView, in the layer tree); next a shader
-  matching it elsewhere and in screenshots.
+- Liquid Glass: `<glass>` is the system's own on iOS and macOS 26
+  (UIGlassEffect, NSGlassEffectView, in the layer tree) and a shader
+  tuned against it elsewhere and in screenshots, on every back end; next
+  its frames on the compositor's thread and the system's layers.
 
 Windows of any shape: a transparent background (premultiplied alpha:
 macOS and Wayland first, Windows through DirectComposition, X11 with a
