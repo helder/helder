@@ -62,11 +62,13 @@ class LaneBuild {
 			["floor", "x.floor()"], ["ceil", "x.ceil()"], ["fract", "x - x.floor()"], ["sqrt", "x.sqrt()"], ["inversesqrt", "Lane.splat(1) / x.sqrt()"]
 		])
 			generic(f[0], ["x"], f[1]);
-		for (f in ["sin", "cos", "tan", "asin", "acos", "atan", "exp", "log"])
+		for (f in ["sin", "cos", "exp", "log"])
+			generic(f, ["x"], 'x.$f()');
+		for (f in ["tan", "asin", "acos", "atan"])
 			generic(f, ["x"], lanes(f, ["x"]));
 		generic("min", ["x", "y"], "x.min(y)");
 		generic("max", ["x", "y"], "x.max(y)");
-		generic("pow", ["x", "y"], lanes("pow", ["x", "y"]));
+		generic("pow", ["x", "y"], "x.pow(y)");
 		generic("atan2", ["y", "x"], lanes("atan2", ["y", "x"]));
 		generic("step", ["edge", "x"], "Lane.select(x.lt(edge), Lane.zero(), Lane.splat(1))");
 		generic("mix", ["x", "y", "a"], "x + (y - x) * a");

@@ -68,12 +68,12 @@ abstract Lane(LaneData) {
 	@:op(-A) inline function neg():Lane
 		return of(-this.lo, -this.hi);
 
-	// (Math.min and max: x < y ? x : y, y < x ? x : y on hxmc)
+	// (Math.min and max: WebAssembly's on hxmc, NaN where either is, -0 below +0)
 	public inline function min(b:Lane):Lane
-		return of(b.lo().pmin(this.lo), b.hi().pmin(this.hi));
+		return of(this.lo.min(b.lo()), this.hi.min(b.hi()));
 
 	public inline function max(b:Lane):Lane
-		return of(b.lo().pmax(this.lo), b.hi().pmax(this.hi));
+		return of(this.lo.max(b.lo()), this.hi.max(b.hi()));
 
 	public inline function abs():Lane
 		return of(this.lo.abs(), this.hi.abs());
@@ -119,6 +119,22 @@ abstract Lane(LaneData) {
 	// truncated, as Std.int
 	public inline function toInt():LaneInt
 		return LaneInt.make(Std.int(get(0)), Std.int(get(1)), Std.int(get(2)), Std.int(get(3)));
+
+	// (lane by lane, Math's: the scalar code's own)
+	public inline function exp():Lane
+		return make(Math.exp(get(0)), Math.exp(get(1)), Math.exp(get(2)), Math.exp(get(3)));
+
+	public inline function log():Lane
+		return make(Math.log(get(0)), Math.log(get(1)), Math.log(get(2)), Math.log(get(3)));
+
+	public inline function sin():Lane
+		return make(Math.sin(get(0)), Math.sin(get(1)), Math.sin(get(2)), Math.sin(get(3)));
+
+	public inline function cos():Lane
+		return make(Math.cos(get(0)), Math.cos(get(1)), Math.cos(get(2)), Math.cos(get(3)));
+
+	public inline function pow(y:Lane):Lane
+		return make(Math.pow(get(0), y.get(0)), Math.pow(get(1), y.get(1)), Math.pow(get(2), y.get(2)), Math.pow(get(3), y.get(3)));
 }
 
 @:hxmc.struct @:noCompletion final class LaneData {
@@ -174,12 +190,12 @@ abstract Lane(F32x4) {
 	@:op(-A) inline function neg():Lane
 		return new Lane(-this);
 
-	// (Math.min and max: x < y ? x : y, y < x ? x : y on hxmc)
+	// (Math.min and max: WebAssembly's on hxmc, NaN where either is, -0 below +0)
 	public inline function min(b:Lane):Lane
-		return new Lane(b.f32().pmin(this));
+		return new Lane(this.min(b.f32()));
 
 	public inline function max(b:Lane):Lane
-		return new Lane(b.f32().pmax(this));
+		return new Lane(this.max(b.f32()));
 
 	public inline function abs():Lane
 		return new Lane(this.abs());
@@ -220,5 +236,94 @@ abstract Lane(F32x4) {
 	// truncated, as Std.int
 	public inline function toInt():LaneInt
 		return LaneInt.of(this.toI32x4());
+
+	// exp, log, pow, sin and cos over the lanes: Cephes' single-precision
+	// polynomials (within 2 ulps of the true value over the range shading
+	// takes them in, as GPUs' are approximations too), SIMD and without
+	// fused multiply-adds, so that every machine computes the same bits
+	public inline function exp():Lane {
+		var x = this.clamp(F32x4.splat(-87.3), F32x4.splat(88.3));
+		var n = (x * F32x4.splat(1.44269504088896341) + F32x4.splat(0.5)).floor();
+		x = x - n * F32x4.splat(0.693359375) - n * F32x4.splat(-2.12194440e-4);
+		var z = x * x;
+		var y = F32x4.splat(1.9875691500E-4) * x + F32x4.splat(1.3981999507E-3);
+		y = y * x + F32x4.splat(8.3334519073E-3);
+		y = y * x + F32x4.splat(4.1665795894E-2);
+		y = y * x + F32x4.splat(1.6666665459E-1);
+		y = y * x + F32x4.splat(5.0000001201E-1);
+		y = y * z + x + F32x4.splat(1);
+		var scale = ((n.toI32x4() + I32x4.splat(127)) << 23).asF32x4();
+		return new Lane(y * scale);
+	}
+
+	public inline function log():Lane {
+		var bits = this.asI32x4();
+		var e = F32x4.fromI32x4((bits >>> 23) - I32x4.splat(126));
+		var m = ((bits & I32x4.splat(0x007FFFFF)) | I32x4.splat(0x3F000000)).asF32x4();
+		var small = m.lt(F32x4.splat(0.707106781186547524));
+		e = F32x4.select(small, e - F32x4.splat(1), e);
+		m = F32x4.select(small, m + m, m) - F32x4.splat(1);
+		var z = m * m;
+		var y = F32x4.splat(7.0376836292E-2) * m - F32x4.splat(1.1514610310E-1);
+		y = y * m + F32x4.splat(1.1676998740E-1);
+		y = y * m - F32x4.splat(1.2420140846E-1);
+		y = y * m + F32x4.splat(1.4249322787E-1);
+		y = y * m - F32x4.splat(1.6668057665E-1);
+		y = y * m + F32x4.splat(2.0000714765E-1);
+		y = y * m - F32x4.splat(2.4999993993E-1);
+		y = y * m + F32x4.splat(3.3333331174E-1);
+		y = y * m * z;
+		y = y + e * F32x4.splat(-2.12194440e-4);
+		y = y - z * F32x4.splat(0.5);
+		var r = m + y + e * F32x4.splat(0.693359375);
+		// (0: -infinity; below it, or NaN: NaN; infinity itself)
+		var zero = F32x4.zero();
+		r = F32x4.select(this.eq(zero), F32x4.splat(Math.NEGATIVE_INFINITY), r);
+		r = F32x4.select(this.ge(zero), r, F32x4.splat(Math.NaN));
+		return new Lane(F32x4.select(this.eq(F32x4.splat(Math.POSITIVE_INFINITY)), this, r));
+	}
+
+	// (x^y as e^(y log x); 0^y 0, x^0 1, as Math.pow)
+	public inline function pow(y:Lane):Lane {
+		var r = (y * log()).exp().f32(), zero = F32x4.zero();
+		r = F32x4.select(this.eq(zero), F32x4.select(y.f32().lt(zero), F32x4.splat(Math.POSITIVE_INFINITY), zero), r);
+		return new Lane(F32x4.select(y.f32().eq(zero), F32x4.splat(1), r));
+	}
+
+	// (x's even octant: x over pi/4, rounded up to even; x less it times pi/4, in three parts)
+	static inline function octant(x:F32x4):I32x4
+		return ((x * F32x4.splat(1.27323954473516)).toI32x4() + I32x4.splat(1)) & I32x4.splat(~1);
+
+	static inline function reduced(x:F32x4, j:I32x4):F32x4 {
+		var y = F32x4.fromI32x4(j);
+		return ((x - y * F32x4.splat(0.78515625)) - y * F32x4.splat(2.4187564849853515625e-4)) - y * F32x4.splat(3.77489497744594108e-8);
+	}
+
+	static inline function sinPoly(x:F32x4, z:F32x4):F32x4 {
+		var y = F32x4.splat(-1.9515295891E-4) * z + F32x4.splat(8.3321608736E-3);
+		y = y * z - F32x4.splat(1.6666654611E-1);
+		return y * z * x + x;
+	}
+
+	static inline function cosPoly(z:F32x4):F32x4 {
+		var y = F32x4.splat(2.443315711809948E-005) * z - F32x4.splat(1.388731625493765E-003);
+		y = y * z + F32x4.splat(4.166664568298827E-002);
+		return y * z * z - z * F32x4.splat(0.5) + F32x4.splat(1);
+	}
+
+	public inline function sin():Lane {
+		var a = this.abs(), j = octant(a), r = reduced(a, j), z = r * r;
+		var poly = F32x4.select((j & I32x4.splat(2)).ne(I32x4.zero()), cosPoly(z), sinPoly(r, z));
+		var negative = this.lt(F32x4.zero()) ^ (j & I32x4.splat(4)).ne(I32x4.zero());
+		return new Lane(F32x4.select(negative, -poly, poly));
+	}
+
+	public inline function cos():Lane {
+		var a = this.abs(), k = octant(a), r = reduced(a, k), z = r * r;
+		var j = k - I32x4.splat(2);
+		var poly = F32x4.select((j & I32x4.splat(2)).ne(I32x4.zero()), cosPoly(z), sinPoly(r, z));
+		var negative = (j & I32x4.splat(4)).eq(I32x4.zero());
+		return new Lane(F32x4.select(negative, -poly, poly));
+	}
 }
 #end

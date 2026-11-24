@@ -24,7 +24,8 @@ import hxmc.unsafe.Ptr;
 // records, the targets, the textures, the uniform blocks' copies).
 @:hxmc.unsafe(gc)
 class Raster {
-	public static inline var TILE = 64;
+	public static inline var TILE = 32;
+	public static inline var SHIFT = 5;
 
 	// the pass
 	public static inline var COLOR = 0;
@@ -127,18 +128,53 @@ class Raster {
 		var input = c.add(C_IN), output = c.add(C_OUT);
 		var dx = F32x4.make(0, 1, 0, 1), dy = F32x4.make(0, 0, 1, 1);
 		var px = F32x4.make(0.5, 1.5, 0.5, 1.5), py = F32x4.make(0.5, 0.5, 1.5, 1.5);
+		// (each pixel row's span inside the edges, from their solutions: a
+		// quad past it is skipped, one well inside it not tested; the quads
+		// at its ends tested exactly)
+		var lo = 0, hi = 0;
+		inline function span(Y:Float) {
+			lo = -0x3FFFFFFF;
+			hi = 0x3FFFFFFF;
+			inline function edge(a:Float, b:Float, c:Float) {
+				var r = b * Y + c;
+				if (a > 0) {
+					var x = Math.ceil((-r / a - 128) / 256);
+					if (x > lo) lo = x;
+				} else if (a < 0) {
+					var x = Math.floor((-r / a - 128) / 256);
+					if (x < hi) hi = x;
+				} else if (r < 0) {
+					lo = 0x3FFFFFFF;
+				}
+			}
+			edge(a0, b0, c0);
+			edge(a1, b1, c1);
+			edge(a2, b2, c2);
+		}
 		var qy = qy0 & ~1;
 		while (qy < qy1) {
 			var Y = 256.0 * qy + 128;
 			var rows = qy + 1 < h ? 15 : 3;
+			span(Y);
+			var lo0 = lo, hi0 = hi;
+			span(Y + 256);
+			var outLo = (lo0 < lo ? lo0 : lo) - 1, outHi = (hi0 > hi ? hi0 : hi) + 1;
+			var inLo = (lo0 > lo ? lo0 : lo) + 1, inHi = (hi0 < hi ? hi0 : hi) - 1;
+			if (rows == 3) {
+				outLo = lo0 - 1;
+				outHi = hi0 + 1;
+				inLo = lo0 + 1;
+				inHi = hi0 - 1;
+			}
 			var qx = qx0 & ~1;
-			var e0 = a0 * (256.0 * qx + 128) + b0 * Y + c0, e1 = a1 * (256.0 * qx + 128) + b1 * Y + c1, e2 = a2 * (256.0 * qx + 128) + b2 * Y + c2;
-			while (qx < qx1) {
+			if (outLo > qx) qx = outLo & ~1;
+			var qend = outHi + 1 < qx1 ? outHi + 1 : qx1;
+			while (qx < qend) {
 				var m = (qx + 1 < w ? 15 : 5) & rows;
-				m &= cover(e0, a0, b0) & cover(e1, a1, b1) & cover(e2, a2, b2);
-				e0 += 512 * a0;
-				e1 += 512 * a1;
-				e2 += 512 * a2;
+				if (qx < inLo || qx + 1 > inHi) {
+					var X = 256.0 * qx + 128;
+					m &= cover(a0 * X + b0 * Y + c0, a0, b0) & cover(a1 * X + b1 * Y + c1, a1, b1) & cover(a2 * X + b2 * Y + c2, a2, b2);
+				}
 				if (m == 0) {
 					qx += 2;
 					continue;

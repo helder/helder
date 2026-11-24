@@ -72,6 +72,7 @@ class Soft {
 		if (Context.defined("helder.soft.reference")) {
 			entry(prog.vertex, true);
 			entry(prog.fragment, true);
+			check();
 		}
 		flush();
 		var n = varyingComponents();
@@ -79,6 +80,38 @@ class Soft {
 			vertex: macro {entry: $i{vs}(), varyings: $v{n}},
 			fragment: macro {entry: $i{fs}(), varyings: $v{n}}
 		};
+	}
+
+	// (-D helder.soft.reference) the shader's check against its scalar
+	// reference (helder.gfx.soft.Check), registered when the program starts
+	function check() {
+		var body:Array<Expr> = [macro var k = new helder.gfx.soft.Check(seed)];
+		for (u in prog.uniforms) {
+			var kinds = [for (_ in 0...u.size >> 2) 0];
+			for (i in 0...u.struct.fields.length)
+				if (u.struct.fields[i].type == TInt || u.struct.fields[i].type == TBool) kinds[u.offsets[i] >> 2] = 1;
+			body.push(macro k.block($v{u.binding}, $v{kinds}));
+		}
+		for (t in prog.textures)
+			body.push(macro k.texture($v{t.slot}, $v{t.dimension}));
+		var n = varyingComponents(), name = prefix;
+		body.push(macro var e = k.stage($v{name + " vertex"}, soft_vs_addr(), soft_vs_ref_addr(), $v{64 * prog.vertex.input.fields.length}, $v{64 + 16 * n}, false));
+		body.push(macro if (e == null) e = k.stage($v{name + " fragment"}, soft_fs_addr(), soft_fs_ref_addr(), $v{64 + 16 * n}, 64, true));
+		body.push(macro k.free());
+		body.push(macro return e);
+		fields.push({
+			name: "soft_check",
+			access: [APublic, AStatic],
+			meta: [{name: ":hxmc.unsafe", params: [macro gc], pos: pos}],
+			kind: FFun({args: [{name: "seed", type: macro :Int}], ret: macro :Null<String>, expr: macro $b{body}}),
+			pos: pos
+		});
+		fields.push({
+			name: "softCheck",
+			access: [APublic, AOverride],
+			kind: FFun({args: [{name: "seed", type: macro :Int}], ret: macro :Null<String>, expr: macro return soft_check(seed)}),
+			pos: pos
+		});
 	}
 
 	function flush()
@@ -660,9 +693,11 @@ class Fn {
 			declared.set(p, 0);
 		var body:Array<Expr> = [];
 		var ret = f.ret;
-		if (ret != TVoid) body.push(macro var r = ${scalar ? soft.scalarZeroOf(ret) : soft.zeroOf(ret)});
+		// (one return, the last statement: no result kept for lanes)
+		var single = ret != TVoid && !discards && returns(f.body) == 1 && f.body.length > 0 && f.body[f.body.length - 1].match(SReturn(_));
+		if (ret != TVoid && !single) body.push(macro var r = ${scalar ? soft.scalarZeroOf(ret) : soft.zeroOf(ret)});
 		body = body.concat(block(f.body));
-		if (ret != TVoid) body.push(macro return r);
+		if (ret != TVoid && !single) body.push(macro return r);
 		return {
 			name: fname,
 			access: [APublic, AStatic],
@@ -670,6 +705,18 @@ class Fn {
 			kind: FFun({args: args, ret: scalar ? soft.scalarOf(ret) : soft.lanesOf(ret), expr: macro $b{body}}),
 			pos: pos
 		};
+	}
+
+	static function returns(ss:Array<SStmt>):Int {
+		var n = 0;
+		for (s in ss)
+			switch s {
+				case SReturn(_): n++;
+				case SIf(_, a, b): n += returns(a) + (b == null ? 0 : returns(b));
+				case SWhile(_, b): n += returns(b);
+				case _:
+			}
+		return n;
 	}
 
 	function block(ss:Array<SStmt>):Array<Expr>

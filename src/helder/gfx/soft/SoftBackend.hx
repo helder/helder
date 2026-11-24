@@ -292,7 +292,7 @@ class SoftBackend {
 		Mem.setPtr(pass, Raster.DEPTH, depth.isNull() ? Ptr.nil() : SoftTexture.at(depth, 0, 0));
 		Mem.setI32(pass, Raster.W, w);
 		Mem.setI32(pass, Raster.H, h);
-		var tx = (w + Raster.TILE - 1) >> 6, ty = (h + Raster.TILE - 1) >> 6;
+		var tx = (w + Raster.TILE - 1) >> Raster.SHIFT, ty = (h + Raster.TILE - 1) >> Raster.SHIFT;
 		Mem.setI32(pass, Raster.TILES_X, tx);
 		Mem.setI32(pass, Raster.TILES_Y, ty);
 		Mem.setI32(pass, Raster.KIND, Mem.getI32(target, SoftTexture.KIND));
@@ -683,8 +683,8 @@ class SoftBackend {
 			plane(Raster.T_V + 12 * k, (Mem.getF32(a, 16 + 4 * k) : Float) * wa, (Mem.getF32(b, 16 + 4 * k) : Float) * wb, (Mem.getF32(c, 16 + 4 * k) : Float) * wc);
 		// into the tiles its pixels' bounds meet
 		var tx = Mem.getI32(pass, Raster.TILES_X);
-		for (ty in (py0 >> 6)...((py1 - 1) >> 6) + 1)
-			for (tx0 in (px0 >> 6)...((px1 - 1) >> 6) + 1)
+		for (ty in (py0 >> Raster.SHIFT)...((py1 - 1) >> Raster.SHIFT) + 1)
+			for (tx0 in (px0 >> Raster.SHIFT)...((px1 - 1) >> Raster.SHIFT) + 1)
 				bin(bins.add(Raster.BIN * (ty * tx + tx0)), t);
 	}
 
