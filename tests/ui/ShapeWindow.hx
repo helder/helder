@@ -99,7 +99,8 @@ class ShapeWindow {
 	static function behind():Null<UiWindow> {
 		#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64" || hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64")
 		if (Sys.systemName() == "Linux" && Sys.getEnv("WAYLAND_DISPLAY") != null && Sys.getEnv("HELDER_X11") != "1") return null;
-		var d = new UiWindow("ShapeWindow desk", W, H, null, false);
+		// (larger than the transparent one: wholly under it, DXGI would take it as occluded, nothing presented)
+		var d = new UiWindow("ShapeWindow desk", W * 2, H * 2, null, false);
 		d.background = Color.rgb(0x00FF00);
 		d.window.moveTo(200, 200);
 		return d;
