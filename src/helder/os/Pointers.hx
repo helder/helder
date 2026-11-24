@@ -181,6 +181,12 @@ class Pointers {
 		return true;
 	}
 
+	// The system takes the mouse's release for a file drag.
+	@:allow(helder.os) static function releaseForDrag(window:Window) {
+		var mouse = slots[0];
+		if (mouse.window == window) lift(mouse, true, mouse.time);
+	}
+
 	// every pointer of window let go (its touches cancelled: the app went to
 	// the background, the window closed); their PointerCancels sent
 	@:allow(helder.os) static function cancelAll(window:Null<Window>, e:Event, onEvent:Null<Event->Void>) {

@@ -1,5 +1,6 @@
 package helder.os.win32;
 
+import helder.os.DragOperation;
 import helder.os.Event;
 import helder.os.TitleBar;
 import helder.os.win32.User32;
@@ -62,6 +63,12 @@ class Win32Window {
 	public static var command:Null<(hwnd:Ptr, id:Int) -> Bool> = null;
 	static var onFrame:Null<Void->Void>;
 	static inline var SIZING_TIMER = 1;
+	#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+	static inline var FILE_DRAG_TIMER = 2;
+	static inline var START_FILE_DRAG = 0x8001; // WM_APP + 1
+	static var fileDrag:Null<WinFileDrag>;
+	var leftDown = false;
+	#end
 
 	// (the child windows clipped out of its painting: native editors over it)
 	static inline var STYLE = WM.WS_OVERLAPPEDWINDOW | 0x02000000;
@@ -201,6 +208,10 @@ class Win32Window {
 
 	function destroyNow() {
 		open.remove(this);
+		#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+		var cancelled = fileDrag != null && fileDrag.hwnd == hwnd && !fileDrag.cancel() ? fileDrag : null;
+		if (cancelled != null) fileDrag = null;
+		#end
 		if (Platform.os() == 2 && tsf != null) {
 			(cast tsf : Tsf).dispose();
 			tsf = null;
@@ -210,7 +221,42 @@ class Win32Window {
 		if (helder.dev.Hosted.handingOver && helder.dev.Hosted.get(helder.dev.Hosted.UI_WINDOW) == hwnd) return;
 		#end
 		User32.DestroyWindow(hwnd);
+		#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+		if (cancelled != null) OsThread.back(() -> cancelled.done(DragOperation.None));
+		#end
 	}
+
+	#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+	function dragFiles(paths:Array<String>, image:Null<helder.image.Image>, x:Float, y:Float, allowed:Array<DragOperation>,
+		done:DragOperation->Void):Bool
+		return OsThread.get(() -> {
+			if (!leftDown || User32.GetAsyncKeyState(1) >= 0 || fileDrag != null) return false;
+			var drag = WinFileDrag.prepare(hwnd, paths, image, scale, x, y, allowed, done);
+			if (drag == null) return false;
+			// Start from the message loop, after this pointer handler returns
+			// and the program has let go of its press.
+			if (User32.PostMessageW(hwnd, START_FILE_DRAG, 0, 0) == 0) {
+				drag.cancel();
+				return false;
+			}
+			fileDrag = drag;
+			leftDown = false;
+			return true;
+		});
+
+	function runFileDrag() {
+		var drag = fileDrag;
+		if (drag == null || drag.hwnd != hwnd) return;
+		var operation:DragOperation = None;
+		if (User32.GetAsyncKeyState(1) < 0) {
+			User32.SetTimer(hwnd, FILE_DRAG_TIMER, 10, Ptr.nil());
+			operation = drag.run();
+			User32.KillTimer(hwnd, FILE_DRAG_TIMER);
+		} else drag.cancel();
+		fileDrag = null;
+		OsThread.back(() -> drag.done(operation));
+	}
+	#end
 
 	function setTitle(t:String)
 		OsThread.run(() -> Arena.scoped(a -> User32.SetWindowTextW(hwnd, a.wstring(t))));
@@ -659,6 +705,14 @@ class Win32Window {
 		e.kind = None;
 		e.window = w.owner;
 		switch message {
+			#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+			case START_FILE_DRAG:
+				w.runFileDrag();
+				return 0;
+			case WM.TIMER if (wParam == FILE_DRAG_TIMER):
+				if (onFrame != null && App.windows.length > 0) OsThread.back(onFrame);
+				return 0;
+			#end
 			case WM.GETOBJECT if (getObject != null):
 				var f = getObject;
 				var r = OsThread.hold(() -> f(hwnd, wParam, lParam));
@@ -727,6 +781,10 @@ class Win32Window {
 					}
 				}
 			case WM.KEYDOWN | WM.KEYUP | WM.SYSKEYDOWN | WM.SYSKEYUP | WM.MOUSEMOVE | WM.LBUTTONDOWN | WM.LBUTTONUP | WM.RBUTTONDOWN | WM.RBUTTONUP | WM.MBUTTONDOWN | WM.MBUTTONUP:
+				#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+				if (message == WM.LBUTTONDOWN) w.leftDown = true;
+				if (message == WM.LBUTTONUP) w.leftDown = false;
+				#end
 				w.input(e, message, wParam, lParam);
 			case WM.MOUSEWHEEL | WM.MOUSEHWHEEL:
 				if (w.input(e, message, wParam, lParam)) {

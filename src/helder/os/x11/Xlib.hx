@@ -35,6 +35,16 @@ import hxmc.unsafe.*;
 	static function XLookupString(event:Ptr<XKeyEvent>, buffer:Ptr, bytes:Int, keysym:Ptr<Int64>, status:Ptr):Int;
 	static function XKeysymToKeycode(d:Ptr, keysym:Int64):Int;
 	static function XFlush(d:Ptr):Int;
+	static function XGrabPointer(d:Ptr, w:Int64, ownerEvents:Int, mask:Int, pointerMode:Int, keyboardMode:Int, confineTo:Int64, cursor:Int64, time:Int64):Int;
+	static function XGrabKeyboard(d:Ptr, w:Int64, ownerEvents:Int, pointerMode:Int, keyboardMode:Int, time:Int64):Int;
+	static function XUngrabKeyboard(d:Ptr, time:Int64):Int;
+	static function XFreeCursor(d:Ptr, cursor:Int64):Int;
+	static function XQueryPointer(d:Ptr, w:Int64, root:Ptr<Int64>, child:Ptr<Int64>, rootX:Ptr<Int32>, rootY:Ptr<Int32>, x:Ptr<Int32>,
+		y:Ptr<Int32>, mask:Ptr<UInt32>):Int;
+	static function XLockDisplay(d:Ptr):Void;
+	static function XUnlockDisplay(d:Ptr):Void;
+	static function XNextRequest(d:Ptr):Int64;
+	static function XSetErrorHandler(handler:Ptr):Ptr;
 	static function XUngrabPointer(d:Ptr, time:Int64):Int;
 	static function XIconifyWindow(d:Ptr, w:Int64, screen:Int):Int;
 	// the connection's socket (to wait on with select)
@@ -105,6 +115,7 @@ class X {
 	public static inline var AnyPropertyType = 0;
 	public static inline var XA_ATOM = 4;
 	public static inline var XA_STRING = 31;
+	public static inline var XA_WINDOW = 33;
 	public static inline var ConfigureNotify = 22;
 	public static inline var ClientMessage = 33;
 	public static inline var MappingNotify = 34;
@@ -120,6 +131,14 @@ class X {
 	public static inline var SubstructureNotifyMask = 1 << 19;
 	public static inline var SubstructureRedirectMask = 1 << 20;
 	public static inline var ZPixmap = 2;
+}
+
+@:hxmc.struct @:publicFields class XErrorEvent {
+	var type:Int32;
+	var display:Ptr;
+	var resourceid:Int64;
+	var serial:Int64;
+	var error_code:UInt8;
 }
 
 @:hxmc.struct @:publicFields class XAnyEvent {
@@ -177,7 +196,16 @@ class X {
 	var time:Int64;
 }
 
-// SelectionNotify: the selection converted (property 0: refused)
+@:hxmc.struct @:publicFields class XSelectionClearEvent {
+	var type:Int32;
+	var serial:Int64;
+	var send_event:Int32;
+	var display:Ptr;
+	var window:Int64;
+	var selection:Int64;
+	var time:Int64;
+}
+
 // PropertyNotify: a property of a window changed (state: NewValue) or was deleted
 @:hxmc.struct @:publicFields class XPropertyEvent {
 	var type:Int32;
@@ -190,6 +218,7 @@ class X {
 	var state:Int32;
 }
 
+// SelectionNotify: the selection converted (property 0: refused)
 @:hxmc.struct @:publicFields class XSelectionEvent {
 	var type:Int32;
 	var serial:Int64;

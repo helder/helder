@@ -13,6 +13,12 @@ import helder.test.Test;
 			equals(UriList.paths("file://laptop/home/a/b%20c.jpg"), ["/home/a/b c.jpg"]);
 			equals(UriList.paths("file:///tmp/caf%C3%A9.webp"), ["/tmp/café.webp"]);
 		});
+		test("absolute paths round-trip through percent-encoded file URIs", () -> {
+			var files = ["/tmp/a b#%.jpg", "/tmp/café?\n.webp"];
+			var text = UriList.encode(files);
+			equals(text, "file:///tmp/a%20b%23%25.jpg\r\nfile:///tmp/caf%C3%A9%3F%0A.webp\r\n");
+			equals(UriList.paths(text), files);
+		});
 		test("broken escapes and empty paths left out", () -> {
 			equals(UriList.paths("file:///tmp/a%2\nfile:///tmp/a%zz\nfile://host\n\n"), []);
 		});

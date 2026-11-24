@@ -756,6 +756,10 @@ moves and release to it (in a handler, that event's pointer: a finger's too); `s
 - drag and drop: `drag-data={value}` makes a node draggable; `onDragStart`,
   `onDragEnd` (`e.dropped`) on the source, `onDragOver` (`e.preventDefault()`
   accepts), `onDragLeave` and `onDrop` (`e.data`) on targets; Escape cancels.
+  Out of the app: `ui.dragFiles(paths, image, offsetX, offsetY, [Copy], done)`
+  from an `onDragStart` or a pressed `onPointerMove` starts the system's drag
+  of files (helder.os's `Window.dragFiles`), the press and ui's own drag let
+  go; false without a window (headless, the web).
 
 A phone's safe area (the insets its bars, notch, island, cutout or home
 indicator leave clear) is CSS's `env()`: a literal attribute naming

@@ -22,6 +22,28 @@ class UriList {
 		return out;
 	}
 
+	// The absolute paths as local file URIs. Keep path separators and
+	// percent-encode each other byte outside the URI's unreserved set.
+	public static function encode(paths:Array<String>):String {
+		var out = new StringBuf();
+		for (path in paths) {
+			out.add("file://");
+			var bytes = haxe.io.Bytes.ofString(path);
+			for (i in 0...bytes.length) {
+				var c = bytes.get(i);
+				if ((c >= 65 && c <= 90) || (c >= 97 && c <= 122) || (c >= 48 && c <= 57) || c == "/".code ||
+					c == "-".code || c == ".".code || c == "_".code || c == "~".code) {
+					out.addChar(c);
+				} else {
+					out.add("%");
+					out.add(StringTools.hex(c, 2));
+				}
+			}
+			out.add("\r\n");
+		}
+		return out.toString();
+	}
+
 	// (%XX as bytes, then the bytes as UTF-8; a broken escape: null)
 	static function decode(s:String):Null<String> {
 		var b = new haxe.io.BytesBuffer(), raw = haxe.io.Bytes.ofString(s), i = 0;
