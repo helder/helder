@@ -825,6 +825,12 @@ class UiWindow {
 		}, e -> for (w in open.copy()) if (w.window == e.window) w.handle(e));
 	}
 
+	// (a background as Surface takes it: a Color, or a string Color.parse
+	// reads, markup's background="#333333", which taken as the Int it is not
+	// was 0: transparent black)
+	@:allow(helder.ui) static function colour(v:Dynamic):Color
+		return Std.isOfType(v, String) ? Color.parse((v : String)) : (cast v : Color);
+
 	// <Surface>: a window (a canvas on the web), its children rendered into its ui's root; closed with its owner
 	@:typescript public static function Surface(props:SurfaceProps):RootView {
 		var web = Platform.os() == 3;
@@ -837,8 +843,8 @@ class UiWindow {
 		follow(props.width, (_:Int) -> resize(w, props));
 		follow(props.height, (_:Int) -> resize(w, props));
 		if (props.theme != null) Graph.renderEffect(() -> Render.read(props.theme), v -> w.ui.theme = v);
-		if (props.background != null) Graph.renderEffect(() -> Render.read(props.background), v -> {
-			w.background = v;
+		if (props.background != null) Graph.renderEffect(() -> Render.read(props.background), (v:Dynamic) -> {
+			w.background = colour(v);
 			w.ui.requestFrame();
 		});
 		if (props.dark != null) Graph.renderEffect(() -> Render.read(props.dark), v -> w.ui.dark = v);
