@@ -74,32 +74,6 @@ class Shell implements Markup {
 			} catch (_:Dynamic) {}
 			true;
 		};
-		// (a decode's IDCT, upsampling and colours over two threads: the pool decodes two files at once)
-		helder.image.JpegDecoder.threads = 2;
-		var x = new Explorer(new NativeFiles(), jobDecode, helder.os.Places.user(), helder.os.Places.volumes());
-		var viewer = x.viewer;
-		viewer.mod = mac ? "Cmd" : "Ctrl";
-		x.reveal = reveal;
-		x.thumbnails = try new Thumbnails() catch (_:Dynamic) null;
-		x.openDefault = openDefault;
-		// (the keymap: secondary as this platform's; the user's file over the defaults, beside the store)
-		helder.ui.actions.Keymap.mac = mac;
-		helder.ui.menu.Menus.appName = "Viewer";
-		ViewerActions.defaults(helder.ui.actions.Keymap.global);
-		if (store != null) helder.ui.actions.Keymap.global.loadUser(haxe.io.Path.join([haxe.io.Path.directory(store.path), "helder-viewer-keymap.json"]));
-		if (helder.ui.actions.Keymap.global.error != null) Sys.println("viewer: " + helder.ui.actions.Keymap.global.error);
-		// (File's Open Recent: the last eight files opened, kept in the store)
-		var recent = store == null || store.get("recent") == null ? [] : [for (r in store.get("recent").split("\n")) if (r != "") r];
-		var bar:Null<helder.ui.menu.Menus.MenuBar> = null;
-		var places = [for (p in x.sidebar.places) {name: p.name, path: p.path}];
-		viewer.onOpened = p -> {
-			recent.remove(p);
-			recent.unshift(p);
-			if (recent.length > 8) recent.resize(8);
-			if (store != null) store.set("recent", recent.join("\n"));
-			if (bar != null) bar.setMenus(ViewerActions.menus(recent, places));
-		};
-		restore(store, x);
 		// (--exit-after s: the window closed after s seconds, what it shows
 		// printed: a smoke run of the real window and GPU, CI's)
 		// (--report file: that line written there too, for a launch whose output is the system's: open -a)
@@ -128,11 +102,36 @@ class Shell implements Markup {
 				return;
 			}
 		}
-		if (!args.contains("--new")) Instance.serve(p -> {
-			x.start(p);
-			helder.view.graph.Graph.flush();
-			for (w in helder.os.App.windows) w.raise();
-		});
+		// (served before anything slower is made (the places, the thumbnails'
+		// cache): a launch right after this one finds it)
+		var handed:Array<String> = [], opener:Null<String->Void> = null;
+		if (!args.contains("--new")) Instance.serve(p -> if (opener == null) handed.push(p) else opener(p));
+		// (a decode's IDCT, upsampling and colours over two threads: the pool decodes two files at once)
+		helder.image.JpegDecoder.threads = 2;
+		var x = new Explorer(new NativeFiles(), jobDecode, helder.os.Places.user(), helder.os.Places.volumes());
+		var viewer = x.viewer;
+		viewer.mod = mac ? "Cmd" : "Ctrl";
+		x.reveal = reveal;
+		x.thumbnails = try new Thumbnails() catch (_:Dynamic) null;
+		x.openDefault = openDefault;
+		// (the keymap: secondary as this platform's; the user's file over the defaults, beside the store)
+		helder.ui.actions.Keymap.mac = mac;
+		helder.ui.menu.Menus.appName = "Viewer";
+		ViewerActions.defaults(helder.ui.actions.Keymap.global);
+		if (store != null) helder.ui.actions.Keymap.global.loadUser(haxe.io.Path.join([haxe.io.Path.directory(store.path), "helder-viewer-keymap.json"]));
+		if (helder.ui.actions.Keymap.global.error != null) Sys.println("viewer: " + helder.ui.actions.Keymap.global.error);
+		// (File's Open Recent: the last eight files opened, kept in the store)
+		var recent = store == null || store.get("recent") == null ? [] : [for (r in store.get("recent").split("\n")) if (r != "") r];
+		var bar:Null<helder.ui.menu.Menus.MenuBar> = null;
+		var places = [for (p in x.sidebar.places) {name: p.name, path: p.path}];
+		viewer.onOpened = p -> {
+			recent.remove(p);
+			recent.unshift(p);
+			if (recent.length > 8) recent.resize(8);
+			if (store != null) store.set("recent", recent.join("\n"));
+			if (bar != null) bar.setMenus(ViewerActions.menus(recent, places));
+		};
+		restore(store, x);
 		// (macOS's: Finder's "Open With", the Dock's icon)
 		helder.os.App.onOpen = paths -> {
 			x.start(paths[0]);
@@ -147,6 +146,16 @@ class Shell implements Markup {
 		if (path != null) x.start(try sys.FileSystem.fullPath(path) catch (_:Dynamic) path) else {
 			var dir = home(store, x);
 			x.browser.go(dir, store != null && store.get("dir") == dir ? store.get("selected") : null);
+		}
+		// (files handed over while this one started: opened after its own)
+		if (!args.contains("--new")) {
+			opener = p -> {
+				x.start(p);
+				helder.view.graph.Graph.flush();
+				for (w in helder.os.App.windows) w.raise();
+			};
+			for (p in handed.splice(0, handed.length))
+				opener(p);
 		}
 		var window:Null<UiWindow> = null;
 		UiWindow.run(<Surface title={() -> x.full() ? viewer.title() : x.sidebar.title(x.browser.dir())} width={num("width", 1180)} height={num("height", 780)}
