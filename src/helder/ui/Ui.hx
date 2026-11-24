@@ -526,6 +526,12 @@ class Ui extends ScrollHost {
 			composing = null;
 			g.redraw(-3);
 		}
+		// (tiles drawn snapped: paints until they are drawn at rest, as nothing
+		// else may ask for one, a program's scroll the last change)
+		for (l in layers)
+			if (l.snapped) {
+				if (paintFrame - l.movedAt < 3) needsFrame = true else l.snapped = false;
+			}
 		flights.resize(0);
 		flightAt.resize(0);
 		walking = false;
@@ -828,6 +834,7 @@ class Ui extends ScrollHost {
 				// (what it holds marked as it is reached, then its tiles)
 				if (w.mark) l.list.replay(nowhere, w);
 				if (g.layerTiles(l)) {
+					if (l.moving) l.snapped = true;
 					// (its nodes' system layers placed where the compositor's frame has them)
 					if (composing == g && l.list.slots > 0) l.list.replay(new SlotsOnly(g), w);
 					return;
@@ -2634,10 +2641,15 @@ class Ui extends ScrollHost {
 		requestFrame();
 	}
 
-	// (whether n's offsets are the program's own: not as the compositor last gave them)
+	// (whether n's offsets are the program's own: not as the compositor last
+	// gave them; those forgotten once it moved off them, so that the program
+	// coming back to them later is its own too, #98's list at a wheel's end)
 	function mirrorOwn(n:Node):Bool {
 		var a = mirrorAt.get(n);
-		return a == null || a[0] != n.scrollX || a[1] != n.scrollY;
+		if (a == null) return true;
+		if (a[0] == n.scrollX && a[1] == n.scrollY) return false;
+		mirrorAt.remove(n);
+		return true;
 	}
 	var accessBuilt = -1;
 

@@ -22,9 +22,11 @@ import helder.ui.draw.DrawText;
 // popOpacity. Glyphs come from a GlyphAtlas (the GPU's coverage, read as
 // UiShader reads its texture), paths and SVGs are helder.canvas's
 // rasterizations (Path.render), images are premultiplied once and read
-// bilinearly. What needs a GPU (a part's shader, a <Scene>, a sprite box:
-// they find no Renderer behind it) is a grey box (GpuPlaceholder), and so
-// is a GPU texture given to it (gpuTexture) and another process's image.
+// bilinearly. What needs a GPU (a part's shader, a <Scene>, a sprite box)
+// draws on the CPU's device in a -D helder.soft build (SoftGpu: helder.gfx's
+// soft back end), its texture composited as an image; elsewhere (a GPU
+// build's fallback) it is a grey box (GpuPlaceholder), and so is another
+// process's image.
 class SoftCanvas implements TextureCanvas implements GpuPlaceholder.Gpuless {
 	public var scale = 1.0;
 	// whether unturned, unscaled drawing is put on the pixel grid (Renderer.snap)
@@ -173,10 +175,53 @@ class SoftCanvas implements TextureCanvas implements GpuPlaceholder.Gpuless {
 
 	// --- TextureCanvas: no GPU, no layers' tiles, no kept frame or compositor
 
+	#if helder.soft
+	// (-D helder.soft: the nodes drawn on a GPU draw on the CPU's, GpuHost)
+	var softGpu:Null<SoftGpu> = null;
+
+	public function gpu():SoftGpu {
+		if (softGpu == null) softGpu = new SoftGpu(this);
+		return softGpu;
+	}
+
+	// (its texels as they are now, composited as the Renderer composites a
+	// GPU texture: an image's quad of premultiplied pixels)
+	@:hxmc.unsafe(gc) public function gpuTexture(t:Texture, id:Int, x:Float, y:Float, w:Float, h:Float, radius:Float = 0.0, ?corners:Corners) {
+		var g = softGpu;
+		var r = g == null ? hxmc.unsafe.Ptr.nil() : @:privateAccess g.device.impl.textureRecord(t.id());
+		if (r.isNull()) return rect(x, y, w, h, radius, GpuPlaceholder.COLOR, 0, 0, corners);
+		if (w <= 0 || h <= 0) return;
+		var pw = helder.gfx.soft.SoftTexture.width(r, 0), ph = helder.gfx.soft.SoftTexture.height(r, 0);
+		var e = images.get(id);
+		if (e == null || e.width != pw || e.height != ph) {
+			e = new SoftImage(0, pw, ph, Bytes.alloc(pw * ph * 4));
+			images.set(id, e);
+		}
+		helder.gfx.soft.SoftTexture.read(r, 0, 0, e.pixels, 0);
+		e.frame = frames;
+		var s = scale;
+		var x0 = (x + tx) * s, y0 = (y + ty) * s, x1 = (x + w + tx) * s, y1 = (y + h + ty) * s;
+		this.corners(corners, radius);
+		fit(x1 - x0, y1 - y0);
+		sides(null, 0);
+		var q = quads;
+		q.tex = e.pixels;
+		q.texW = pw;
+		q.texH = ph;
+		if (!flat) return shape(x0, y0, x1, y1, 0, 0, 1, 1, Color.WHITE, 0, 2, 0, 0);
+		if (culled(x0 - 1, y0 - 1, x1 + 1, y1 + 1)) return;
+		quad(x0, y0, x1, y1, 0, 0, 1, 1, Color.WHITE, 0, 2, 0, 1);
+	}
+
+	// (a pass recorded into a display list, replayed: run now, before the texture it fills is drawn)
+	public function pass(f:Any)
+		if (softGpu != null) softGpu.run(cast f);
+	#else
 	public function gpuTexture(t:Texture, id:Int, x:Float, y:Float, w:Float, h:Float, radius:Float = 0.0, ?corners:Corners)
 		rect(x, y, w, h, radius, GpuPlaceholder.COLOR, 0, 0, corners);
 
 	public function pass(f:Any) {}
+	#end
 
 	public function layerTiles(l:Layer):Bool
 		return false;

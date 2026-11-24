@@ -34,7 +34,7 @@ class Run {
 	// next one's display is not the last one's still letting go)
 	static final XVFB = "sh " + FileSystem.fullPath("tests/xvfb-run.sh");
 
-	static final HEADLESS = ["view", "text", "image", "ui", "layout-conformance", "gfx-shader", "async", "header-check", "jobs", "test", "cli", "asset", "pack", "devtools", "typescript", "examples", "viewer", "canvas", "pdf", "syntax", "text-quality", "ui-soft"];
+	static final HEADLESS = ["view", "text", "image", "ui", "layout-conformance", "gfx-shader", "async", "header-check", "jobs", "test", "cli", "asset", "pack", "devtools", "typescript", "examples", "viewer", "canvas", "pdf", "syntax", "text-quality", "ui-soft", "gfx-soft"];
 
 	static final LANES:Array<{name:String, about:String, run:Void->Void}> = [
 		{name: "headless", about: "the lanes that need no GPU, display or browser: " + HEADLESS.join(", "), run: () -> for (l in HEADLESS) lane(l)},
@@ -95,6 +95,7 @@ class Run {
 		{name: "touch-web", about: "helder.os's pointers in headless Chromium: two fingers, a pen, the mouse, samples, a cancel, a tap and a drag without mouse events or scrolls, a pointer event sent from JavaScript (tests/os/PointersWeb.hx); App.onBack and App.backDepth's history entry, history back, Escape as the back, haxe.Timer.delay in App.run (tests/os/BackWeb.hx); helder.ui's Stack and the history: a push's URL, back, Escape, a reload (tests/ui/NavWeb.hx); Pointers' own tests are the test lane's (src/helder/os/Pointers.test.hx)", run: touchWeb},
 		{name: "web", about: "helder.web: the static renderer on Eval and natively, then the DOM renderer, the demo page, islands and wasm in headless Chromium", run: web},
 		{name: "compiler-web", about: "helder.compiler.web, helder's toolchain as wasm in a worker: its modules built (src/helder/compiler/web/build.mjs: bin/compiler-web), todo and ts-todo checked and built in node (tests/compiler-web/node.mjs: warm, a type error, a check writing nothing), then in headless Chromium the worker loaded (brotli), both built to wasm32 on the page and each run in a frame of its own (preview.mjs), a literal edit patched with no build and a structural one built and swapped in, each read back from the program's view (Ui.getTree), and the numbers printed (tests/compiler-web/browser.mjs)", run: compilerWeb},
+		{name: "gfx-soft", about: "helder.gfx on the CPU (helder.gfx.soft), no GPU linked: every shader of src/helder in its SIMD form against its scalar code bit for bit (tests/gfx/SoftShaderTest.hx), gfx's frames (GfxTest) and 3d's scenes (tests/3d/check.sh, SOFT=1) built -D helder.soft (static on Linux: musl, no libEGL to load) against their golden images", run: gfxSoft},
 		{name: "ui-soft", about: "helder.ui drawn on the CPU (helder.ui.draw.soft), no GPU linked: the image tests (tests/ui) built -D helder.soft (static on Linux: musl, no libEGL to load) against their golden images, which these write (BLESS=1: the same bytes on every machine with the same fonts) and ui-draw's GPU frames are compared with", run: uiSoft},
 		{name: "ui-draw", about: "helder.ui's GPU renderer and its programs against golden images (ui-soft's, the CPU's canvas's: within the tests' tolerance) (Linux: Mesa, Xvfb, AT-SPI); layers drawn from their tiles against the same replayed (LayerTest); a window's frame kept and drawn only where it changed against the same drawn whole (DamageTest); the controls' gallery (tests/ui/controls) and cost (ControlsBench); the compositor's scrolling and what moves on its own (layers' transitions, springs and tweens, sticky nodes, overlay scrollbars) against the program's, its values each vsync and its frames pixel for pixel (AsyncScrollTest), and in a window with the program blocked while scroll input comes or a layer animates (AsyncScrollWindow); macOS's Core Animation layers against the textured compositor, window captures compared (SystemLayersWindow)", run: uiDraw},
 		{name: "syntax", about: "helder.syntax, the syntax trees the studio edits (src/helder/syntax; its edits' tests are the test lane's, Syntax.test.hx): every .ts and .tsx file, and every .hx file with markup, of the repository read and printed back byte for byte, read structurally, each Haxe markup literal read as the macro's parser reads it (tests/syntax/Check.hx, on Eval and natively: the read of the largest file timed)", run: syntaxLane},
@@ -1434,8 +1435,9 @@ class Run {
 		rmrf(b);
 		mkdirs(b);
 		for (d in DEMO_SHOTS) {
-			// (on the CPU but what draws with shaders of its own: fx's, the material's)
-			var args = ["run", "--headless"].concat(d.name.startsWith("fx") || d.name == "showreel-material" ? [] : ["--soft"]).concat([d.entry, "--scale", "0.5"])
+			// (on the CPU but fx's: its effects hash noise with sin, which every
+			// implementation computes apart, so its goldens are the GPU's)
+			var args = ["run", "--headless"].concat(d.name.startsWith("fx") ? [] : ["--soft"]).concat([d.entry, "--scale", "0.5"])
 				.concat(d.flags);
 			if (d.script != "") args = args.concat(["--script", d.script]);
 			for (t in d.at)
@@ -1640,6 +1642,25 @@ class Run {
 		if (t.startsWith("windows-")) programs.push("WinAccessTest");
 		for (m in programs)
 			native('bin/ui/$t/$m', uiCp().concat(["-main", m]), t);
+	}
+
+	// (helder.gfx's frames and helder.scene's drawn on the CPU against the GPUs'
+	// goldens; on Linux static, so nothing of a GPU's can be loaded)
+	static function gfxSoft() {
+		var b = 'bin/gfx-soft/$HOST', soft = ["-D", "helder.soft", "-D", 'hxmc.target=$HOST'];
+		pack();
+		var builds = [
+			{out: exePath('$b/SoftShaderTest', HOST), args: cps(["src", "tests/gfx"]).concat(["-main", "SoftShaderTest", "-D", "helder.soft.exact", "-D", "helder.soft.reference"]).concat(soft)},
+			{out: exePath('$b/GfxTest', HOST), args: gfxCp().concat(["-main", "GfxTest"]).concat(soft)},
+			{out: exePath('$b/RenderTest', HOST), args: sceneCp().concat(["-main", "RenderTest"]).concat(soft)}
+		];
+		prebuild(builds);
+		for (p in builds)
+			hxmc(p.out, p.args);
+		run(exePath('$b/SoftShaderTest', HOST), []);
+		for (s in ["triangle", "cube", "instances", "targets", "msaa", "mips", "formats", "blend", "palette", "layers"])
+			run(exePath('$b/GfxTest', HOST), ["headless", s, 'tests/gfx/$s.png', '$b/$s.png']);
+		run("sh", ["tests/3d/check.sh", b], ["SOFT" => "1"]);
 	}
 
 	// (the image tests drawn on the CPU: their goldens; on Linux static, so nothing of a GPU's can be loaded)

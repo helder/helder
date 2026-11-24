@@ -159,6 +159,15 @@ class IDXGISwapChain1 {
 	@:slot(22) static function Present1(self:Ptr, interval:Int, flags:Int, params:Ptr):Int;
 }
 
+// (made with FRAME_LATENCY_WAITABLE_OBJECT: the frames it queues at most, and
+// the object signalled as each leaves the queue for the screen)
+@:build(helder.os.win32.Com.build())
+@:hxmc.unsafe(gc)
+class IDXGISwapChain2 {
+	@:slot(31) static function SetMaximumFrameLatency(self:Ptr, frames:Int):Int;
+	@:slot(33) static function GetFrameLatencyWaitableObject(self:Ptr):Ptr;
+}
+
 class D3D {
 	public static inline var SDK_VERSION = 7;
 	// D3D_DRIVER_TYPE
@@ -256,9 +265,12 @@ class D3D {
 	public static inline var TOPOLOGY_TRIANGLESTRIP = 5;
 	// DXGI_USAGE, DXGI_SWAP_EFFECT, DXGI_SCALING, DXGI_MWA
 	public static inline var USAGE_RENDER_TARGET_OUTPUT = 0x20;
+	public static inline var SWAP_EFFECT_FLIP_SEQUENTIAL = 3;
 	public static inline var SWAP_EFFECT_FLIP_DISCARD = 4;
 	public static inline var SCALING_STRETCH = 0;
 	public static inline var MWA_NO_ALT_ENTER = 2;
+	// DXGI_SWAP_CHAIN_FLAG
+	public static inline var SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT = 0x40;
 	// DXGI_ALPHA_MODE; D3D11_CREATE_DEVICE_BGRA_SUPPORT (DirectComposition's surfaces)
 	public static inline var ALPHA_MODE_PREMULTIPLIED = 1;
 	public static inline var ALPHA_MODE_IGNORE = 3;
@@ -276,6 +288,7 @@ class IID {
 	public static final IDXGIFactory2 = guid(0x50c83a1c, 0xe072, 0x4c48, [0x87, 0xb0, 0x36, 0x30, 0xfa, 0x36, 0xa6, 0xd0]);
 	public static final IDXGIResource = guid(0x035f3ab4, 0x482e, 0x4e50, [0xb4, 0x1f, 0x8a, 0x7f, 0x8b, 0xd8, 0x96, 0x0b]);
 	public static final IDXGIKeyedMutex = guid(0x9d8e1289, 0xd7b3, 0x465f, [0x81, 0x26, 0x25, 0x0e, 0x34, 0x9a, 0xf8, 0x5d]);
+	public static final IDXGISwapChain2 = guid(0xa8be2ac4, 0x199f, 0x4946, [0xb3, 0x31, 0x79, 0x59, 0x9f, 0xb9, 0x8d, 0xe7]);
 	public static final ID3D11DeviceContext1 = guid(0xbb2c6faa, 0xb5fb, 0x4082, [0x8e, 0x6b, 0x38, 0x8b, 0x8c, 0xfa, 0x90, 0xe1]);
 
 	// a GUID in native memory, kept for the process

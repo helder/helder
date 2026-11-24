@@ -295,7 +295,11 @@ and `Shapes` ([Geometry](#geometry)).
 A frame records, in order: the shadow maps, the view buffers' prepass
 (when an effect or the program asks for them: [Post effects](#post-effects-and-the-view-buffers)),
 the screen's ambient occlusion (`post.ao`), the main pass, the
-`AfterPass` hooks; then post. Nothing is allocated per frame: the blocks
+`AfterPass` hooks; then post. With no GPU (`-D helder.soft`, `helder run
+--headless --soft`) all of it draws on helder.gfx's CPU back end, compute
+paths on their fallbacks: tests/3d's scenes are the GPUs' goldens within
+their tolerance (two within 6 levels: helder.gfx's README, On the CPU), the
+same bytes on every machine. Nothing is allocated per frame: the blocks
 the renderer writes are kept and their fields set (a struct literal per
 write would allocate on hxmc), and each uniform block's writer is a class
 of its own (helder.gfx's `UniformWriter`: no closure).
