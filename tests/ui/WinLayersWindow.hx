@@ -106,9 +106,12 @@ class WinLayersWindow {
 		function live():Bool
 			return layers != null && layers.fell == null;
 		// (frames n in s seconds no faster than the display's (the compositor's period, learnt from its frames), a third over it at most)
+		// (the window's own swap chain's (textured, stall after its fallback): reported only, its Present(1) queueing up to DXGI's frame latency)
 		function paced(what:String, n:Int, s:Float) {
-			var rate = n / s, hz = c == null ? 60.0 : 1 / @:privateAccess c.period;
+			var rate = n / s, hz = c == null ? 60.0 : 1 / @:privateAccess c.period, was = strict;
+			strict = was && live();
 			check('$what: paced to the display', rate <= hz * 1.33, '${Math.round(rate)} frames a second, the display ${Math.round(hz)}');
+			strict = was;
 		}
 		// (a phase blocking the program: frames presented meanwhile, their gaps, the layers' frames and quads)
 		function blocked(what:String, before:Void->Void):Array<Float> {
@@ -283,11 +286,12 @@ class WinLayersWindow {
 						t0 = now;
 						q0 = layers == null ? 0 : layers.quadsTotal;
 						f0 = c == null ? 0 : c.count;
-						n0 = 0;
+						// (the program's frames drawn, not the loop's turns: an idle turn waits 4 ms)
+						n0 = @:privateAccess w.device.frames;
 					}
 				case 7:
-					n0++;
 					if (now - at > 3.2) {
+						n0 = @:privateAccess w.device.frames - n0;
 						var f = (c == null ? 0 : c.count - f0) + n0, q = layers == null ? 0 : layers.quadsTotal - q0;
 						say('timed: animation: $f frames ($n0 the program\'s) in ${Math.round((now - t0) * 10) / 10} s (${Math.round(f / (now - t0))} a second), CPU ${Math.round((cpu() - cpu0) / Math.max(1, f) * 100) / 100} ms a frame, ${Math.round(q / Math.max(1, f) * 10) / 10} quads drawn a frame');
 						paced("timed: animation", f, now - t0);
