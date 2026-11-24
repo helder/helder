@@ -779,6 +779,33 @@ Downloads folder under a name not taken yet ("Font 2.ttf"); it answers
 the path (the name in a browser), null on phones or when it could not be
 written. A save dialog is for later.
 
+## Places
+
+`Places.user()`: the user's existing Home, Desktop, Documents, Downloads,
+Pictures, Movies (Videos on Windows) and Music folders, in that order.
+Each has a `kind`, a display `name` and its `path`. macOS and Windows ask
+the system for localized names. Linux reads XDG's `user-dirs.dirs` and
+uses the folder's name.
+
+`Places.volumes()`: the mounted volumes a user can browse, with `name`,
+`path`, `total` and `free` in bytes (zero when unknown), and `removable`,
+`network` and `root` flags. The system volume comes first. macOS uses
+Finder's browsable volumes, Windows its logical drives, and Linux the
+root filesystem and mounts under `/media`, `/run/media` or `/mnt`, plus
+network mounts under `/home`.
+
+## Trash
+
+`Trash.available()` is true on macOS, Windows and Linux. `Trash.move(path)`
+moves a file or folder to the system trash and throws if the move fails.
+It returns the item's new path on macOS and Linux. Windows' Recycle Bin
+answers null. Linux uses the freedesktop trash, keeping the original path
+and local deletion time in a `.trashinfo` file and renaming the item on
+its own filesystem.
+
+On the web, phones and headless runs, Places gives empty arrays and Trash
+is unavailable. Both APIs are also exported from `helder/os` in TypeScript.
+
 ## Store
 
 `Store.open(name)`: a small key-value store of strings kept between runs

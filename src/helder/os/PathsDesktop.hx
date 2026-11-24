@@ -62,8 +62,8 @@ class PathsDesktop {
 	}
 
 	#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
-	// (KF_FLAG_CREATE: made when missing; the path CoTaskMemFree's)
-	static function known(guid:String):Null<String>
+	// (KF_FLAG_CREATE by default; the path CoTaskMemFree's)
+	@:allow(helder.os.win32.WinPlaces) static function known(guid:String, flags = 0x8000):Null<String>
 		return Arena.scopedValue(a -> {
 			var id = a.alloc(16, 4), hex = StringTools.replace(guid, "-", "");
 			inline function byte(k:Int):Int
@@ -73,14 +73,14 @@ class PathsDesktop {
 				Mem.setI8(id, k, byte(k < 4 ? 3 - k : k < 6 ? 9 - k : k < 8 ? 13 - k : k));
 			var out:Ptr<Ptr> = a.alloc(8);
 			out.value = Ptr.nil();
-			if (Shell.SHGetKnownFolderPath(id, 0x8000, Ptr.nil(), out) != 0 || out.value.isNull()) null else {
+			if (Shell.SHGetKnownFolderPath(id, flags, Ptr.nil(), out) != 0 || out.value.isNull()) null else {
 				var s = wide(out.value);
 				Ole.CoTaskMemFree(out.value);
 				s;
 			}
 		});
 
-	static function wide(p:Ptr):String {
+	@:allow(helder.os.win32.WinPlaces) static function wide(p:Ptr):String {
 		var w:Ptr<UInt16> = cast p, b = new StringBuf(), k = 0;
 		while (w[k] != 0) {
 			var c:Int = w[k++];

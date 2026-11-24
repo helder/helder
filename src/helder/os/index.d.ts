@@ -1,7 +1,7 @@
 // helder.os for TypeScript programs (helder.typescript): what an app keeps
 // between runs (Store), the platform's settings, locale and app services
 // (Settings, Locale, Format, Plural, Network, Share, Permissions,
-// Notifications, Photos, Location, Biometrics, Paths, DeviceInfo,
+// Notifications, Photos, Location, Biometrics, Paths, Places, Trash, DeviceInfo,
 // StatusBar), the program's arguments and environment (args(), env(name):
 // Sys's). Its windows, events and App are helder/scene's.
 //
@@ -9,7 +9,7 @@
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 import type {Read} from "helder/view";
 
-declare const __haxe: {Store: "helder.os.Store", Settings: "helder.os.Settings", Locale: "helder.os.Locale", Format: "helder.os.Format", Plural: "helder.os.Plural", Network: "helder.os.Network", Share: "helder.os.Share", Permissions: "helder.os.Permissions", Notifications: "helder.os.Notifications", Photos: "helder.os.Photos", Location: "helder.os.Location", Biometrics: "helder.os.Biometrics", Paths: "helder.os.Paths", DeviceInfo: "helder.os.DeviceInfo", StatusBar: "helder.os.StatusBar", Sys: "Sys", __module: "helder.os.TypeScript"};
+declare const __haxe: {Store: "helder.os.Store", Settings: "helder.os.Settings", Locale: "helder.os.Locale", Format: "helder.os.Format", Plural: "helder.os.Plural", Network: "helder.os.Network", Share: "helder.os.Share", Permissions: "helder.os.Permissions", Notifications: "helder.os.Notifications", Photos: "helder.os.Photos", Location: "helder.os.Location", Biometrics: "helder.os.Biometrics", Paths: "helder.os.Paths", Places: "helder.os.Places", Trash: "helder.os.Trash", DeviceInfo: "helder.os.DeviceInfo", StatusBar: "helder.os.StatusBar", Sys: "Sys", __module: "helder.os.TypeScript"};
 
 export type Contrast = "normal" | "more" | "less" | "custom";
 
@@ -38,6 +38,12 @@ export type DeviceKind = "phone" | "tablet" | "desktop" | "web";
 export type DeviceDetails = { model: string; manufacturer: string; os: string; osVersion: string; kind: DeviceKind };
 
 export type BarStyle = "light" | "dark" | "auto";
+
+export type PlaceKind = "Home" | "Desktop" | "Documents" | "Downloads" | "Pictures" | "Movies" | "Music";
+
+export type Place = { kind: PlaceKind; name: string; path: string };
+
+export type Volume = { name: string; path: string; total: number; free: number; removable: boolean; network: boolean; root: boolean };
 
 // A small key-value store kept between runs: an app's settings, a game's
 // save. Strings by key, read into memory when opened, written through at
@@ -191,6 +197,20 @@ export declare class Paths {
 	static cache(): string | null;
 	static temp(): string | null;
 	static documents(): string | null;
+}
+
+// Existing user folders, and mounted volumes a file browser can show.
+export declare class Places {
+	static user(): Place[];
+	// The system volume first; capacities in bytes (zero when unknown).
+	static volumes(): Volume[];
+}
+
+// The system's trash (desktop only).
+export declare class Trash {
+	static available(): boolean;
+	// Answers the item's new path where the system gives it. Throws on failure.
+	static move(path: string): string | null;
 }
 
 // What the app runs on: the model ("iPhone16,1", "Pixel 4a", "Mac14,2"),
