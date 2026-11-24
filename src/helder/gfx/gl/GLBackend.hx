@@ -844,9 +844,15 @@ class GLBackend {
 		if (Platform.target() >= 9 && StringTools.startsWith(handle, "ahb:")) return hardwareBuffer(handle, w, h);
 		#end
 		if (Platform.os() == 3 || Platform.target() >= 9) return 0;
+		// (a browser's build compiles every method it meets: EGL's, a video's planes' not there)
+		#if (hxmc.target != "wasm32-wasi")
 		if (StringTools.startsWith(handle, "mem:")) return memory(handle, w, h);
 		var own = StringTools.startsWith(handle, "dmabuf:0:");
-		if (!StringTools.startsWith(handle, "dmabuf:") || (own ? !imports() : sharing() == null)) return 0;
+		if (own && !imports()) return 0;
+		#else
+		var own = false;
+		#end
+		if (!StringTools.startsWith(handle, "dmabuf:") || !own && sharing() == null) return 0;
 		var f = [for (x in handle.substr(7).split(":")) Std.parseInt(x) ?? 0];
 		if (f.length < 7) return 0;
 		use();
@@ -883,6 +889,7 @@ class GLBackend {
 		return textures.length;
 	}
 
+	#if (hxmc.target != "wasm32-wasi")
 	var importing:Null<Bool> = null;
 	var norm16:Null<Bool> = null;
 
@@ -941,6 +948,7 @@ class GLBackend {
 	}
 
 	static inline var UNPACK_ROW_LENGTH = 0x0CF2;
+	#end
 
 	// (8 hex digits at i: 32 bits)
 	static function word(hex:String, i:Int):Int {
