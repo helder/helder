@@ -435,6 +435,46 @@ export default function ui(host) {
 	let snaps = [], updates = Promise.resolve();
 	hxmc_ui.layers_alpha = (canvas) => (host.handles.get(canvas).hxmcAlpha = true);
 	hxmc_ui.layers_reading = () => (host.gfx?.reading?.() ? 1 : 0);
+	// a node's system layer (WebSample's): a canvas of the page, by number;
+	// a frame shown on it read into an ImageBitmap here (the browser's
+	// VideoFrame, or a <video>'s), shown on the page
+	let slotIds = 0;
+	const page = (name) => (host.page ? host.page.forward('hxmc_ui', name, '') : hxmc_ui[name]);
+	hxmc_ui.layers_slot = (canvas) => {
+		const id = ++slotIds;
+		page('layers_slot_make')(canvas, id);
+		return id;
+	};
+	hxmc_ui.layers_slot_fit = (canvas, id, fit) => page('layers_slot_set')(canvas, id, fit, []);
+	hxmc_ui.layers_slot_free = (canvas, id) => page('layers_slot_set')(canvas, id, -1, []);
+	hxmc_ui.layers_slot_frame = (canvas, id, h) => {
+		const o = h ? host.handles.get(h) : null;
+		if (!o) return page('layers_slot_set')(canvas, id, -2, []);
+		updates = updates.then(() => createImageBitmap(o.bitmap)).then((b) => page('layers_slot_set')(canvas, id, -3, [b]), () => {});
+	};
+	// (the page half's: each slot's canvas, by number)
+	const slotted = new Map();
+	hxmc_ui.layers_slot_make = (canvas, id) => {
+		const e = document.createElement('canvas');
+		e.style.cssText = 'position:absolute;pointer-events:none;object-fit:contain;display:none;';
+		e.hxmcContext = e.getContext('bitmaprenderer');
+		slotted.set(id, e);
+	};
+	// (fit: ImageFit (Fill, Contain, Cover, None); -1 gone, -2 nothing shown, -3 the bitmap shown)
+	hxmc_ui.layers_slot_set = (canvas, id, fit, bitmaps) => {
+		const e = slotted.get(id);
+		if (!e) return;
+		if (fit === -1) {
+			e.remove();
+			slotted.delete(id);
+		} else if (fit === -2) {
+			e.hxmcContext.transferFromImageBitmap(null);
+		} else if (fit === -3) {
+			e.width = bitmaps[0].width;
+			e.height = bitmaps[0].height;
+			e.hxmcContext.transferFromImageBitmap(bitmaps[0]);
+		} else e.style.objectFit = ['fill', 'contain', 'cover', 'none'][fit] ?? 'contain';
+	};
 	hxmc_ui.layers_snap = (canvas, w, h) => snaps.push(createImageBitmap(host.handles.get(canvas), 0, 0, w, h)) - 1;
 	hxmc_ui.layers_update = (canvas, json) => {
 		// (when: its moving layers' animations start from this moment, the page's time)
@@ -454,12 +494,28 @@ export default function ui(host) {
 		// (CSS pixels a point)
 		const k = (c.getBoundingClientRect().width / Math.max(1, (c.hxmcBuf ?? c).width)) * u.s, px = k / u.s;
 		for (const id of u.r) {
-			all.get(id)?.e.remove();
+			if (!all.get(id)?.slot) all.get(id)?.e.remove();
 			all.delete(id);
 		}
 		const seen = new Set();
 		for (const v of u.l) {
 			seen.add(v.i);
+			// (a node's system layer: its canvas at its box, cut by its clip, in its scroll view's content where its scroller's is a layer)
+			if (v.s) {
+				const e = slotted.get(v.s), s = v.v ? views?.get(v.v) : null, into = s ? s.spacer : l;
+				if (!e) continue;
+				if (e.parentNode !== into) into.appendChild(e);
+				const st = e.style, [x0, y0, x1, y1] = v.c;
+				st.display = v.on ? '' : 'none';
+				st.left = v.x * k + 'px';
+				st.top = v.y * k + 'px';
+				st.width = v.w * k + 'px';
+				st.height = v.h * k + 'px';
+				st.zIndex = s ? 1 : v.z;
+				st.clipPath = `inset(${(y0 - v.y) * k}px ${(v.x + v.w - x1) * k}px ${(v.y + v.h - y1) * k}px ${(x0 - v.x) * k}px)`;
+				all.set(v.i, { e, tiles: [], view: null, slot: true });
+				continue;
+			}
 			let a = all.get(v.i);
 			if (!a) {
 				const e = document.createElement('div');
@@ -524,6 +580,7 @@ export default function ui(host) {
 			for (const t of a.tiles.splice(v.n)) t?.remove();
 		}
 		for (const [id, a] of all) if (!seen.has(id)) a.e.style.display = 'none';
+		for (const [id, a] of all) if (a.slot && !seen.has(id)) all.delete(id);
 	};
 	// the program in a worker: the page's calls forwarded, the page half's events queued here
 	if (host.page) {

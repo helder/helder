@@ -14,7 +14,9 @@ import hxmc.unsafe.*;
 // busy; what is over it, and a layer that moves on its own (Mover) in
 // the layer of scroll views over the canvas, stacked in paint order, its
 // transform and opacity a Web Animation sampled from the program's
-// (animate). A frame the page reads back (host.gfx.readPixels) is drawn
+// (animate); a node's system layer (LayerSlot: a video's canvas of the
+// page, helder.media's WebSample) at its box among them, cut by its clip.
+// A frame the page reads back (host.gfx.readPixels) is drawn
 // whole onto the canvas (priming), the page's layers left; a scroller
 // with a sticky node in it stays drawn (fits). Each is drawn
 // by the window's own device into the window's canvas, in tiles of the
@@ -84,9 +86,15 @@ class WebLayers extends LayerSplit {
 		buf.add(',"l":[');
 		var first = true, z = 0, waiting = false;
 		for (q in order) {
-			if (q == null || q.kind == LayerPlane.SLOT || q.kind == LayerPlane.BASE) continue;
+			if (q == null || q.kind == LayerPlane.BASE) continue;
 			var p:WebPlane = cast q;
 			z++;
+			if (p.kind == LayerPlane.SLOT) {
+				if (!first) buf.add(',');
+				first = false;
+				slotOf(f, p, null, null, z, buf);
+				continue;
+			}
 			p.fit();
 			if (p.quads.length == 0) continue;
 			var redraw = p.local(out, quadTextures, fresh);
@@ -135,6 +143,11 @@ class WebLayers extends LayerSplit {
 				snaps++;
 			}
 			buf.add(']}');
+			// (its system layers, over its content in its scroll view)
+			for (sp in p.slots) {
+				buf.add(',');
+				slotOf(f, cast sp, p, v, z, buf);
+			}
 		}
 		buf.add('],"r":[');
 		for (g in gone)
@@ -169,6 +182,21 @@ class WebLayers extends LayerSplit {
 	}
 
 	var sent = "";
+
+	// (a node's system layer: its box and its clip as drawn, points: the
+	// window's, or in the content of in (a scroller's layer, its view v))
+	function slotOf(f:CompositeFrame, p:WebPlane, in_:Null<WebPlane>, v:Null<ScrollView>, z:Int, buf:StringBuf) {
+		var d = f.slotData, o = p.index * CompositeFrame.SLOT, s = f.scale;
+		var dx = 0.0, dy = 0.0;
+		if (in_ != null && v != null) {
+			dx = in_.drawnX - v.x;
+			dy = in_.drawnY - v.y;
+		}
+		var x = d[o + 6] / s + dx, y = d[o + 7] / s + dy, w = (d[o + 8] - d[o + 6]) / s, h = (d[o + 11] - d[o + 7]) / s;
+		buf.add('{"i":${p.id},"z":$z,"s":${p.slot.handle.toI64().toInt()},"v":${v == null ? 0 : v.id},"on":${p.slot.shown ? 1 : 0},');
+		buf.add('"x":${num(x)},"y":${num(y)},"w":${num(w)},"h":${num(h)},');
+		buf.add('"c":[${num(p.cx0 / s + dx)},${num(p.cy0 / s + dy)},${num(p.cx1 / s + dx)},${num(p.cy1 / s + dy)}]}');
+	}
 
 	// (a layer that moves on its own: its transform (the frame's pixels) and
 	// opacity from now as the program samples them, a frame's worth apart
@@ -348,4 +376,11 @@ class WebPlane extends LayerPlane {
 	static function layers_snap(canvas:Int, w:Int, h:Int):Int;
 	// the layers' places and tiles (JSON), the bitmaps read since the last
 	static function layers_update(canvas:Int, json:CString):Void;
+	// a node's system layer: a canvas of the page, its number (LayerSlot's handle)
+	static function layers_slot(canvas:Int):Int;
+	// a frame (the browser's: a VideoFrame's handle; 0: none) shown on it
+	static function layers_slot_frame(canvas:Int, slot:Int, frame:Int):Void;
+	// how its frames fill it (helder.ui.ImageFit)
+	static function layers_slot_fit(canvas:Int, slot:Int, fit:Int):Void;
+	static function layers_slot_free(canvas:Int, slot:Int):Void;
 }

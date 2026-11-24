@@ -1835,6 +1835,9 @@ class Run {
 		// (the browser as the compositor: the window's layers canvases of the page, against the flat window; scrolled while the program is busy)
 		wasm('$b/WebLayersPage.wasm', uiCp().concat(["-main", "WebLayersPage"]));
 		run(NODE, ["tests/ui/web-layers.mjs", '$b/WebLayersPage.wasm']);
+		// (a video's frames on its system layer, a canvas of the page, between the window's and the layer over it)
+		wasm('$b/WebVideoLayers.wasm', uiCp().concat(["-main", "WebVideoLayers"]));
+		run(NODE, ["tests/ui/web-video-layers.mjs", '$b/WebVideoLayers.wasm']);
 	}
 
 	// (each program run twice, the second from the first's snapshot)
