@@ -119,6 +119,7 @@ class Run {
 				icon: icon == null ? null : "_helder/icon.png",
 				screenshots: shots,
 				stores: cfg.stores ?? {},
+				downloads: anonymous ? {} : run?.downloads ?? {},
 				page: page,
 				helder: helderVersion(e)
 			};

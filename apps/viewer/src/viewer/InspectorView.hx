@@ -50,7 +50,8 @@ class InspectorView implements Markup {
 			var picked = b.picked();
 			return picked.length > 1 ? [for (n in picked) b.entry(n)] : [];
 		}
-		return <view tag="inspector" slot="panel" width={WIDTH} shrink={0} margin="8 8 8 0" overflow="hidden">
+		return <view tag="inspector" slot="panel" width={WIDTH} shrink={0} overflow="hidden" borders="0 0 0 1"
+			border-color={Look.ref.line}>
 			<Show when={several().length > 1}>{() -> {
 				var all = several();
 				all.length > 1 ? many(x, all) : null;

@@ -171,7 +171,8 @@ in `compute()`; GPU particles, cloth and soft bodies as its first users.
   frame, so they clip, stack and scroll with it. macOS and iOS hand their
   scrollers' content and moving layers to Core Animation, native views
   inside the layer tree; Android to SurfaceControl (API 33); Windows to
-  DirectComposition; video's layers on each; next Wayland. Ladybird's Compositor
+  DirectComposition; Wayland to subsurfaces (X11 keeps one layer); video's
+  layers on Apple, Android and Windows. Ladybird's Compositor
   (LibCompositing, BSD-2-Clause) is this design, as a process of its own.
 - Then Liquid Glass: `<glass>` is the system's own on iOS and macOS 26
   (UIGlassEffect, NSGlassEffectView, in the layer tree); next a shader

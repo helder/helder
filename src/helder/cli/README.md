@@ -430,6 +430,12 @@ helder logout
   hashes from helder's main), so only helder's runtime runs there; a
   runtime changed locally is refused. Files are content-addressed: what
   helder.run has (a font, the runtime) is not sent again.
+- **Downloads**: `run.downloads` links the desktops' packages from the
+  page, `{"macos": ..., "windows": ..., "linux": ...}`, each a GitHub
+  release's page or file (`https://github.com/<owner>/<repo>/releases/...`):
+  helder.build serves no binaries and links only to GitHub's releases, which
+  GitHub scans and serves (a share has none). The viewer's:
+  `apps/viewer/helder.json`, its packages from `.github/workflows/release.yml`.
 - **Who may publish**: `helder login`'s account (`HELDER_TOKEN` gives a
   token instead); in GitHub Actions the workflow's OIDC token (`permissions:
   id-token: write`, no secret), whose repository the project trusts: its

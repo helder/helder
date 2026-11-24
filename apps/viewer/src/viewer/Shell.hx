@@ -23,6 +23,9 @@ import viewer.ViewerActions;
 // inspector kept between runs (helder.os.Store "helder-viewer"); decodes
 // and listings as helder.jobs' jobs.
 class Shell implements Markup {
+	// the toolbar's height, the window's buttons' row (macOS: the sidebar's top)
+	public static inline var BAR = 40;
+
 	// helder's controls' look in the system's font, the browser's parts in its tokens
 	public static final look = Look.base.with({
 		tokens: {font: "system-ui"},
@@ -33,7 +36,7 @@ class Shell implements Markup {
 			}
 		},
 		parts: {
-			panel: t -> {background: t.surface, radius: 12, borderWidth: 1, borderColor: t.line},
+			panel: t -> {background: t.surface},
 			"side-head": t -> {padding: [6, 8, 4, 8], fontSize: 11, fontWeight: 600, color: t.fg3},
 			"side-row": t -> {direction: Row, alignItems: Center, columnGap: 8, height: 28, shrink: 0, padding: [0, 8], radius: 8, color: t.fg2,
 				hover: {background: t.hover, color: t.fg}, selected: {background: t.accentSoft, color: t.fg, fontWeight: 500},
@@ -383,9 +386,9 @@ class Shell implements Markup {
 				</view>
 				{ViewerView.make(x)}
 				<Show when={WindowButtons.side() == "end"}>
-					<view position="absolute" top={0} left={SidebarView.WIDTH} right={0} height={40} drag-region display={x.full() ? "none" : "flex"}/>
+					<view position="absolute" top={0} left={SidebarView.WIDTH} right={0} height={Shell.BAR} drag-region display={x.full() ? "none" : "flex"}/>
 				</Show>
-				<view tag="window-start" position="absolute" top={0} left={18} height={52} direction="row" align-items="center"><WindowControls side="start"/></view>
+				<view tag="window-start" position="absolute" top={0} left={16} height={Shell.BAR} direction="row" align-items="center"><WindowControls side="start"/></view>
 				<view tag="window-end" position="absolute" top={0} right={0} direction="row"><WindowControls side="end"/></view>
 				<Show when={x.viewer.aboutOpen()}>{about(x.viewer)}</Show>
 			</view>
