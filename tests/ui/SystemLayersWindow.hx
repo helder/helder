@@ -19,6 +19,10 @@ import sys.io.File;
 // through the same colour matching, so they compare level for level.
 //   SystemLayersWindow: both runs, compared
 //   SystemLayersWindow --run dir: one run, its captures into dir
+//   SystemLayersWindow --swap: a sidebar switched between two views, each
+//   capture against the frame read back (#111)
+//   SystemLayersWindow --resize: a live resize scripted, each frame presented
+//   against the window's size
 //   SystemLayersWindow --time s [anim]: a steady scroll for s seconds (or
 //   a layer moving on its own), the process's CPU and GPU time and
 //   WindowServer's CPU time (HELDER_SYSTEM_LAYERS=0: the textured compositor's)
