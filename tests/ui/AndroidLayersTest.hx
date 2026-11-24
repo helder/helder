@@ -282,9 +282,12 @@ class AndroidLayersTest {
 				case 7:
 					list.scrollY += 4;
 					timed++;
-					if (timed == 240) {
+					// (240 frames, or 8 s on a device too slow for them: the stills' script waits)
+					if (timed == 240 || now - t0 > 8) {
 						var ms = (cpu() - cpu0) / timed, q = layers == null ? 0 : layers.quadsTotal - q0;
 						say('timed: steady scroll: $timed frames in ${Math.round((now - t0) * 10) / 10} s, CPU ${Math.round(ms * 100) / 100} ms a frame, ${Math.round(q / timed * 10) / 10} quads drawn a frame');
+						// (where 240 frames take it, however many there were: the same in every mode for the stills)
+						list.scrollY = 304 + 4 * 240;
 						mover.style.transition = Transition.parse("transform 4s linear, opacity 4s linear");
 						mover.style.transform = Transform.parse("translate(240px, 300px)");
 						mover.style.opacity = 1;
