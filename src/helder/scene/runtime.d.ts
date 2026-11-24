@@ -2942,12 +2942,19 @@ export declare class Surface {
 // same); on Linux with WAYLAND_DISPLAY set, Wayland's
 // (helder.os.wayland.WaylandWindow; X11 where it cannot connect, or HELDER_X11=1).
 export declare class Window {
-	constructor(title: string, width: number, height: number, titlebar?: "standard" | "inset");
+	// (transparent: its pixels' alpha shows what is behind it, premultiplied;
+	// where the system cannot, opaque: see transparent)
+	constructor(title: string, width: number, height: number, titlebar?: "standard" | "inset", transparent?: boolean);
 	readonly surface: Surface;
 	// its title bar's text (the browser: the page's title)
 	title: string;
 	// its title bar's text (the browser: the page's title)
 	readonly closed: boolean;
+	// whether what is behind it shows through its clear pixels: asked for
+	// when made, and the system composes it so (macOS, Windows through
+	// DirectComposition, Wayland, X11 with a compositing manager, the
+	// browser's canvas); false where it was not asked for or cannot be
+	readonly transparent: boolean;
 	// the surface's size in pixels
 	readonly width: number;
 	// the surface's size in pixels

@@ -679,12 +679,15 @@ class Run {
 		native('bin/os/$GFX_TARGET/WaylandTest', cps(["src", "tests/os"]).concat(["-main", "WaylandTest"]), GFX_TARGET);
 		native('bin/ui/$GFX_TARGET/AsyncScrollWindow', uiCp().concat(["-main", "AsyncScrollWindow"]), GFX_TARGET);
 		native('bin/ui/$GFX_TARGET/WaylandLayersWindow', uiCp().concat(["-main", "WaylandLayersWindow"]), GFX_TARGET);
+		native('bin/ui/$GFX_TARGET/ShapeWindow', uiCp().concat(["-main", "ShapeWindow"]), GFX_TARGET);
 		run(helderCli(), ["build", "apps/viewer"]);
 		if (Sys.systemName() != "Linux" || Sys.command("sh", ["-c", "command -v weston > /dev/null"]) != 0) {
 			Sys.println("wayland: no weston here: built, not run");
 			return;
 		}
 		shell('sh tests/os/wayland.sh bin/os/$GFX_TARGET/WaylandTest apps/viewer/bin/$GFX_TARGET/viewer bin/os bin/ui/$GFX_TARGET/AsyncScrollWindow bin/ui/$GFX_TARGET/WaylandLayersWindow');
+		// (a transparent window: X11's, with a compositing manager and without, and Wayland's)
+		shell('sh tests/ui/shape.sh bin/ui/$GFX_TARGET/ShapeWindow');
 	}
 
 	static function window() {
@@ -760,6 +763,14 @@ class Run {
 				run('$b/WinLayersWindow.exe', ['$b/winlayers', "stall"], ["HELDER_SYSTEM_LAYERS" => "stall"]);
 				run('$b/WinLayersWindow.exe', ['$b/winlayers', "layers"]);
 			}
+		}
+		// (a transparent window: its frame read back, and the system's view of it: tests/ui/ShapeWindow.hx; Linux's in the wayland lane)
+		if ((GFX_TARGET.startsWith("macos-") && Sys.systemName() == "Mac") || (GFX_TARGET.startsWith("windows-") && HOST.startsWith("windows-"))) {
+			var s = 'bin/ui/$GFX_TARGET/ShapeWindow';
+			native(s, uiCp().concat(["-main", "ShapeWindow"]), GFX_TARGET);
+			// (Windows: first over a helder window, its state and the screen told, not checked)
+			if (GFX_TARGET.startsWith("windows-")) run(exePath(s, GFX_TARGET), ["--behind", "helder"], ["HELDER_BACKGROUND" => "1"]);
+			run(exePath(s, GFX_TARGET), [], ["HELDER_BACKGROUND" => "1"]);
 		}
 		// (Core Animation's layers: a sidebar switched (#111), a live resize on
 		// them and on the window's layer alone (#113), in the background)

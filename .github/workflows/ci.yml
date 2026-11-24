@@ -303,11 +303,11 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -qqy --no-install-recommends libegl1 libegl-mesa0 libgl1-mesa-dri libgles2 xvfb xauth libasound2t64 fonts-dejavu-core fonts-inter libgtk-3-0t64 dbus at-spi2-core fonts-noto-color-emoji fonts-freefont-ttf libharfbuzz0b libfreetype6 fontconfig libtiff6 libheif1 libheif-plugin-aomdec libraw23t64 osslsigncode desktop-file-utils appstream libenchant-2-2 hunspell-en-us libavcodec60
-      # (a headless weston for the wayland lane, the protocols' XML; without them the lane only builds)
+      # (a headless weston for the wayland lane, the protocols' XML, xcompmgr for X11's transparent window; without them the lane only builds)
       - name: Wayland's packages
         timeout-minutes: 6
         continue-on-error: true
-        run: sudo apt-get install -qqy --no-install-recommends weston wayland-protocols libwayland-dev libwayland-egl1 libxkbcommon0
+        run: sudo apt-get install -qqy --no-install-recommends weston wayland-protocols libwayland-dev libwayland-egl1 libxkbcommon0 xcompmgr
       - name: gfx, audio, ui, helder run --headless, the shared textures and the story host across processes, Wayland (a headless weston), the platform's text, images and media decoders (Mesa llvmpipe, Xvfb; libavcodec, no VAAPI driver)
         # (two at once: headless-run alone was 171 s of the step's 235)
         run: bun run test -k -j 2 headless-run gfx gfx-compute gfx-shared story-shared audio ui-draw wayland dbus system-text system-images canvas-gpu

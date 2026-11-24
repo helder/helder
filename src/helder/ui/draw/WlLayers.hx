@@ -82,6 +82,8 @@ class WlLayers extends LayerSplit {
 	var dmabufs = false;
 	// (the window's scale: pixels a point, the grid in pixels; the scale its own surface's buffer has)
 	var k = 1.0;
+	// (the window's background opaque: the base layer's opaque region)
+	var opaque = true;
 	var scale120 = 0;
 	var primedAt = 0;
 	var primedW = 0;
@@ -186,6 +188,7 @@ class WlLayers extends LayerSplit {
 		}
 		compose(f, now, t, shown, drawn);
 		if (unfitted(f)) compose(f, now, t, shown, drawn);
+		opaque = f.background >>> 24 == 255;
 		dispatch(0);
 		var changes = 0, b = f.buffers[ring = (ring + 1) % f.buffers.length], at = 0, toDraw:Array<WlPlane> = [];
 		for (q in order) {
@@ -213,7 +216,7 @@ class WlLayers extends LayerSplit {
 				continue;
 			}
 			var shmBuf = buf.texture == 0;
-			var cut = p.cut(shmBuf ? Std.int(Math.min(buf.at, p.texAt)) : buf.at, p.kind == LayerPlane.BASE ? f.background | 0xFF000000 : 0, shmBuf);
+			var cut = p.cut(shmBuf ? Std.int(Math.min(buf.at, p.texAt)) : buf.at, p.kind == LayerPlane.BASE ? f.background : 0, shmBuf);
 			var len = cut ? p.cutLen : p.len;
 			if (at + len > f.capacity || !draw(r, f, shmBuf ? p.texture : buf.texture, p, b, at, cut, shmBuf ? buf : null)) {
 				p.invalidate();
@@ -493,10 +496,7 @@ class WlLayers extends LayerSplit {
 		c.begin(Replay.BEGIN_PASS);
 		c.int(1);
 		c.int(cast(cut ? LoadOp.Load : LoadOp.Clear));
-		c.float(opaque ? (bg >> 16 & 0xFF) / 255 : 0);
-		c.float(opaque ? (bg >> 8 & 0xFF) / 255 : 0);
-		c.float(opaque ? (bg & 0xFF) / 255 : 0);
-		c.float(opaque ? 1 : 0);
+		CompositeFrame.clearTo(c, opaque ? bg : 0);
 		c.int(0);
 		c.int(0);
 		c.int(Replay.NONE);
@@ -880,7 +880,7 @@ private class WlPlane extends LayerPlane {
 			set[8] = dw;
 			set[9] = dh;
 			var r = owner.compositor.createRegion();
-			r.add(0, 0, dw, dh);
+			if (owner.opaque) r.add(0, 0, dw, dh);
 			surface.setOpaqueRegion(r);
 			r.destroy();
 			dirty = true;

@@ -292,6 +292,37 @@ X11: Motif's hints). Not yet: the edges' cursors on Wayland and X11 (the
 compositor's or the window manager's), the maximised state followed on X11
 (the window's own requests only).
 
+### Windows of any shape
+
+```haxe
+var window = new Window("Clock", 320, 320, Standard, true);  // transparent: what is behind shows through
+window.transparent;   // composed so here (false where the system can't)
+window.shadow = false;  // no system shadow (macOS, Windows)
+```
+
+```tsx
+<Surface background="transparent">…</Surface>  // or any colour with alpha: a transparent window
+```
+
+A transparent window's pixels are premultiplied, its clear pixels show
+what is behind it. macOS: the NSWindow not opaque, its background clear,
+the CAMetalLayer not opaque; its shadow follows the window's pixels, made
+again after its first frame. Windows: `WS_EX_NOREDIRECTIONBITMAP` and a
+swap chain for composition, `DXGI_ALPHA_MODE_PREMULTIPLIED`, the content
+of a DirectComposition visual (not a layered window); `shadow = false`
+turns DWM's frame off (`DWMWA_NCRENDERING_POLICY`). Wayland: EGL's
+ARGB8888 buffers, no opaque region (the system layers' base layer sets
+none either). X11: a 32-bit TrueColor visual and its colormap, the EGL
+config of that visual, where a compositing manager owns `_NET_WM_CM_S0`;
+else the window is opaque and says so. The browser: the canvas's alpha
+(WebGPU's `alphaMode: 'premultiplied'`, WebGL's `alpha`). helder.ui
+clears the frame to its background premultiplied (a transparent window's
+frames drawn whole: no damage rectangles) and an opaque window's
+background keeps alpha 1. Tests: `tests/ui/ShapeWindow.hx` (the frame
+read back; macOS's capture of the window, Windows' screen over an opaque
+window behind, X11's 32-bit pixels and the composed screen, weston's
+screenshot over its background; `tests/ui/shape.sh` on Linux).
+
 ### Dialogs, file types, the files the system opens
 
 ```haxe
