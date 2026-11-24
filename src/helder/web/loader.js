@@ -116,8 +116,9 @@
 			o.observe(el);
 		},
 	};
-	// (a network error, a dropped connection's: once more after a moment before it counts)
-	const retry = (el) => (e) => e instanceof TypeError && /fetch/i.test(e.message) && !el.hxmcRetried
+	// (a network error, a dropped connection's: once more after a moment before it counts; a
+	// module compiled as it streams says so as "Network error")
+	const retry = (el) => (e) => e instanceof TypeError && /fetch|network/i.test(e.message) && !el.hxmcRetried
 		? new Promise((ok) => setTimeout(ok, 500)).then(() => ((el.hxmcRetried = true), start(el))).catch((e) => fail(el, e))
 		: fail(el, e);
 	const arm = (el) => (when[el.dataset.load] || ((el, go) => go()))(el, () => start(el).catch(retry(el)));
