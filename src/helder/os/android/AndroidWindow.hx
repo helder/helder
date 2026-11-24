@@ -11,7 +11,9 @@ import hxmc.unsafe.*;
 // native window when the Window is made (one with a size), then App.run
 // polls the looper: the commands of the activity's callbacks (Activity)
 // and the input the UI thread read from the input queue (Activity.onInput:
-// finished there at once, so the system's input never waits for a frame).
+// finished there at once, so the system's input never waits for a frame;
+// routed there to the window's compositor too, routeRecord, so that it
+// scrolls while the program is busy).
 // Every finger and pen is a pointer (Pointers: Pointer* events, their
 // history as samples, their times the events', a cancel when the system
 // takes them), and nothing else: no mouse events or scrolls are made of
@@ -108,6 +110,10 @@ class AndroidWindow {
 			MainThread.run(Insets.measure);
 			takeInsets(this);
 			current = this;
+			#if !hxmc.dev_host
+			// (not a dev host's: a build gone would leave the UI thread calling into its library)
+			Activity.router = Callback.addr(routeRecord);
+			#end
 			#if helder.fullscreen
 			setImmersive(this, true);
 			#end
@@ -161,6 +167,7 @@ class AndroidWindow {
 
 	function destroy() {
 		current = null;
+		Activity.router = Ptr.nil();
 		#if hxmc.dev_host
 		// (handing over to the next build: the activity goes on)
 		if (helder.dev.Hosted.handingOver) return;
@@ -234,6 +241,7 @@ class AndroidWindow {
 		e.button = 0;
 		e.mods = 0;
 		e.text = text;
+		e.routed = e.gesture = 0;
 		onEvent(e);
 	}
 
@@ -246,6 +254,7 @@ class AndroidWindow {
 		e.key = key;
 		e.mods = mods;
 		e.text = "";
+		Window.routed(e);
 		onEvent(e);
 	}
 
@@ -396,7 +405,7 @@ class AndroidWindow {
 		switch action {
 			case 0 | 5 if (index < count): // AMOTION_EVENT_ACTION_DOWN, _POINTER_DOWN: the pointer at index
 				var p = Pointers.press(w.owner, pointerId(r, index), tool(r, index), pointerX(r, index), pointerY(r, index), pressure(r, index), time);
-				if (p != null) send(onEvent, PointerDown, p, 1);
+				if (p != null) send(onEvent, PointerDown, p, 1, r, index);
 			case 2: // AMOTION_EVENT_ACTION_MOVE: every pointer, its history first
 				var history = Mem.getI32(r, 24);
 				for (i in 0...count) {
@@ -409,7 +418,7 @@ class AndroidWindow {
 								@:privateAccess p.sample(Mem.getF32(s, 8 + i * 8), Mem.getF32(s, 12 + i * 8), ms(Mem.getI64(s, 0)));
 							}
 							@:privateAccess p.moveTo(x, y, pressure(r, i), time);
-							send(onEvent, PointerMove, p, 0);
+							send(onEvent, PointerMove, p, 0, r, i);
 						}
 					}
 				}
@@ -419,10 +428,13 @@ class AndroidWindow {
 					var cancelled = Mem.getI32(r, 8) & 0x20 != 0;
 					@:privateAccess p.moveTo(pointerX(r, index), pointerY(r, index), p.pressure, time);
 					Pointers.lift(p, cancelled, time);
-					send(onEvent, cancelled ? PointerCancel : PointerUp, p, cancelled ? 0 : 1);
+					send(onEvent, cancelled ? PointerCancel : PointerUp, p, cancelled ? 0 : 1, r, index);
 				}
-			case 3: // AMOTION_EVENT_ACTION_CANCEL: every one
-				Pointers.cancelAll(w.owner, e, onEvent);
+			case 3: // AMOTION_EVENT_ACTION_CANCEL: every one (the compositor's own told: routed)
+				Pointers.cancelAll(w.owner, e, onEvent == null ? null : c -> {
+					if (Mem.getI32(r, Activity.INPUT_ROUTED) == 1) c.routed = c.gesture = 0 else Window.routed(c);
+					onEvent(c);
+				});
 			case _:
 		}
 	}
@@ -437,12 +449,73 @@ class AndroidWindow {
 	static inline function pointerY(r:Ptr, i:Int):Float
 		return Mem.getF32(r, Activity.INPUT_POINTER + i * 20 + 12);
 
-	// a pointer's event (Pointers)
-	static function send(onEvent:Null<Event->Void>, kind:EventKind, p:Pointer, button:Int) {
+	// a pointer's event (Pointers), pointer i of record r: as the UI thread
+	// routed it (routeRecord), else routed now
+	static function send(onEvent:Null<Event->Void>, kind:EventKind, p:Pointer, button:Int, r:Ptr, i:Int) {
 		if (onEvent == null) return;
-		Pointers.fill(event, kind, p, button);
-		onEvent(event);
+		var e = event;
+		Pointers.fill(e, kind, p, button);
+		if (Mem.getI32(r, Activity.INPUT_ROUTED) == 1) {
+			e.routed = Mem.getI32(r, Activity.INPUT_ROUTED + 4 + i * 8);
+			e.gesture = Mem.getI32(r, Activity.INPUT_ROUTED + 8 + i * 8);
+		} else
+			Window.routed(e);
+		onEvent(e);
 	}
+
+	// (the UI thread's, as Activity.onInput copied record r: its pointers
+	// routed to the window's compositor at once, so that scrolling goes on
+	// while the program is busy (helder.ui.draw.Compositor), the answers
+	// kept in the record for the program's events of it (send). Pointers of
+	// its own, by the system's ids: Pointers' slots are the program's,
+	// filled as it takes each record)
+	@:hxmc.callback static function routeRecord(r:Ptr):Void {
+		var w = current;
+		if (w == null || w.owner.route == null) return;
+		var route = w.owner.route, e = routing, raw = Mem.getI32(r, 4), count = Mem.getI32(r, 12);
+		var action = raw & 0xff, index = (raw >> 8) & 0xff;
+		e.window = w.owner;
+		inline function one(i:Int, kind:EventKind, x:Float, y:Float, ns:Int64) {
+			var id = pointerId(r, i), p = routePointers.get(id);
+			if (p == null) routePointers.set(id, p = @:privateAccess new Pointer(id + 1));
+			@:privateAccess {
+				p.type = tool(r, i);
+				p.window = w.owner;
+				p.x = x;
+				p.y = y;
+				p.time = ms(ns);
+			}
+			Pointers.fill(e, kind, p);
+			route(e);
+			Mem.setI32(r, Activity.INPUT_ROUTED + 4 + i * 8, e.routed);
+			Mem.setI32(r, Activity.INPUT_ROUTED + 8 + i * 8, e.gesture);
+		}
+		var time = Mem.getI64(r, 16);
+		switch action {
+			case 0 | 5 if (index < count):
+				one(index, PointerDown, pointerX(r, index), pointerY(r, index), time);
+			case 2:
+				// (its history first, each sample a move: a fling's speed)
+				var history = Mem.getI32(r, 24);
+				for (i in 0...count) {
+					for (h in 0...history) {
+						var s = r.add(Activity.INPUT_SAMPLE + h * 88);
+						one(i, PointerMove, Mem.getF32(s, 8 + i * 8), Mem.getF32(s, 12 + i * 8), Mem.getI64(s, 0));
+					}
+					one(i, PointerMove, pointerX(r, i), pointerY(r, i), time);
+				}
+			case 1 | 6 if (index < count):
+				one(index, Mem.getI32(r, 8) & 0x20 != 0 ? PointerCancel : PointerUp, pointerX(r, index), pointerY(r, index), time);
+			case 3:
+				for (i in 0...count)
+					one(i, PointerCancel, pointerX(r, i), pointerY(r, i), time);
+			case _:
+		}
+		Mem.setI32(r, Activity.INPUT_ROUTED, 1);
+	}
+
+	static final routing = new Event();
+	static final routePointers = new Map<Int, Pointer>();
 
 	// AMOTION_EVENT_TOOL_TYPE_STYLUS, _ERASER: a pen; _MOUSE the mouse; else a finger
 	static function tool(r:Ptr, i:Int):PointerType
@@ -492,7 +565,9 @@ class AndroidWindow {
 		e.key = sym;
 		e.mods = modsOf(meta);
 		e.text = "";
+		Window.routed(e);
 		onEvent(e);
+		e.routed = e.gesture = 0;
 		if (down && sym < 0x100 && e.mods & (Mods.CONTROL | Mods.ALT | Mods.META) == 0) {
 			var c = (e.mods & Mods.SHIFT) != 0 && sym >= "a".code && sym <= "z".code ? sym - 32 : sym;
 			e.kind = TextInput;

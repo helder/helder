@@ -1433,7 +1433,7 @@ multisampled window). Headless runs, screenshots,
 golden images and X11 draw every frame whole; `HELDER_DAMAGE=full` draws
 a window's so, `HELDER_DAMAGE=flash` shows each frame's rectangles.
 
-On macOS, iOS, Windows and Linux (X11, Wayland) a window has a compositor
+On macOS, iOS, Windows, Linux (X11, Wayland) and Android a window has a compositor
 (`helder.ui.draw.Compositor`), so that scrolling keeps the display's pace
 while the program is busy. The main thread hands it each input event as
 it reads it (helder.os's README, "Threads"), before the program. Its
@@ -1542,9 +1542,43 @@ scrolled by the program with a native field, a web view and a system
 layer in it and a popup over them, a rounded scroller, a layer moving
 and a card of overlapping children fading on their own, then the
 compositor's frames while the program is blocked; then a layout of NaN;
-`--time s [anim] [round]` times a scroll or an animation. Android's
-SurfaceControl, Windows' DirectComposition and Wayland's subsurfaces come
-later; X11 and headless stay on the textured compositor.
+`--time s [anim] [round]` times a scroll or an animation. The split
+itself is shared (`LayerSplit`); keyed by node, a moving layer is made
+once, not again with each program frame (on Apple a layer moving had
+gone unpaced: 5,600 frames in 4 s at 110% of a core on an M-series Mac,
+now the display's 119 a second at 21–28%).
+
+On Android (API 33 on) the frames go to SurfaceFlinger
+(`helder.ui.draw.ScLayers`): the same split as SurfaceControls, under one
+of Java's put under the window (a view's root surface has no handle for
+the NDK's `ASurfaceControl_createFromWindow`), each with buffers of its
+own (AHardwareBuffers drawn by GLES through an EGLImage, fenced, two a
+layer, three for a small one), a scroll and a mover's translation, scale
+and opacity set in the frame's one transaction, which waits until the
+last one was presented (`setOnComplete`: the display's pace, the release
+fences); none where nothing changed. A frame split into the window's
+layer alone is drawn onto the window as before, the stack hidden once
+that frame is queued; a new window's first frame is drawn onto it too
+(Android routes no input to a window whose surface never had a buffer).
+SurfaceControl has no rounded clip, turn or fraction of a pixel: rounded
+scrollers and movers that turn, skew or flip stay drawn, and layers sit
+on whole pixels. A node's `LayerSlot` is a SurfaceControl (`surface()`:
+one under ours), placed, cropped and stacked in the transaction, square
+under a rounded clip. On the API 33 emulator, with the program blocked:
+a fling 18 frames in 300 ms, an animation 17, a swipe read on the UI
+thread 98 in 3 s, all at 16–17 ms, the list's layer moved and not drawn
+(1 quad a frame: the thumb); the textured compositor there keeps 4 in
+300 ms and 27 in 3 s, 62–85 ms apart. An animation timed: 102 frames in
+3.9 s, 9.7 ms of CPU a frame, against 28 frames at 18 ms. Screencaps
+against `HELDER_SYSTEM_LAYERS=0`: within 6 levels (glyphs' edges in the
+list's layer) but for a moving box's anti-aliased edge (0.03% of the
+pixels, as the compositor composes a mover against the program's own
+paint). A full-window scroller's layer covers what it recorded, its
+tiles' columns too (1600×5700 for a 1080×2400 list: about 70 MB in two
+buffers). Below 33, or where a call or a buffer fails, the textured
+compositor. `tests/ui/android-layers.sh` (CI's android job) runs
+`AndroidLayersTest` both ways. Windows' DirectComposition and Wayland's
+subsurfaces come later; X11 and headless stay on the textured compositor.
 
 `AsyncScrollTest` scripts the wheel, eased notches, a trackpad's gesture
 and momentum past an end, a finger's fling, the keys, a thumb and a

@@ -218,7 +218,7 @@ class UiWindow {
 			if (c.start()) {
 				compositor = c;
 				#if (!helder.os || helder.os == "macos" || helder.os == "ios")
-				ui.layered = c.layers != null && CaLayers.slots();
+				ui.layered = c.layers != null && LayerSplit.slots();
 				#end
 				window.route = c.route;
 				ui.onAnswer = c.answer;

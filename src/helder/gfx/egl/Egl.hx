@@ -48,6 +48,16 @@ import hxmc.unsafe.*;
 	@:hxmc.indirect static function damaged(f:Ptr, d:Ptr, s:Ptr, rects:Ptr<Int32>, n:Int):Int;
 }
 
+// EGL_KHR_fence_sync's and EGL_ANDROID_native_fence_sync's functions
+// (eglCreateSyncKHR, eglDestroySyncKHR, eglDupNativeFenceFDANDROID), and
+// eglGetNativeClientBufferANDROID, through eglGetProcAddress's pointers
+@:hxmc.c extern class EglSync {
+	@:hxmc.indirect static function create(f:Ptr, d:Ptr, type:Int, attribs:Ptr<Int32>):Ptr;
+	@:hxmc.indirect static function destroy(f:Ptr, d:Ptr, sync:Ptr):Int;
+	@:hxmc.indirect static function dup(f:Ptr, d:Ptr, sync:Ptr):Int;
+	@:hxmc.indirect static function clientBuffer(f:Ptr, buffer:Ptr):Ptr;
+}
+
 // Linux's syscall with three arguments (pidfd_open, pidfd_getfd)
 @:hxmc.c @:hxmc.fast extern class LinuxCall {
 	@:hxmc.varargs(1) static function syscall(n:hxmc.I64, a:hxmc.I64, b:hxmc.I64, c:hxmc.I64):hxmc.I64;
@@ -86,4 +96,6 @@ class EGL {
 	public static inline var DMA_BUF_PLANE0_MODIFIER_LO_EXT = 0x3443;
 	public static inline var DMA_BUF_PLANE0_MODIFIER_HI_EXT = 0x3444;
 	public static inline var IMAGE_PRESERVED_KHR = 0x30D2;
+	public static inline var NATIVE_BUFFER_ANDROID = 0x3140;
+	public static inline var SYNC_NATIVE_FENCE_ANDROID = 0x3144;
 }

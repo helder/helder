@@ -62,6 +62,7 @@ import hxmc.unsafe.*;
 // @:hxmc.callback, whose wrapper leaves the thread's safe region)
 @:hxmc.c @:hxmc.fast extern class Indirect {
 	@:hxmc.indirect static function call0(f:Ptr):Void;
+	@:hxmc.indirect static function call1(f:Ptr, a:Ptr):Void;
 }
 
 // JNI from the activity's callbacks (Activity: no-GC code on the main
