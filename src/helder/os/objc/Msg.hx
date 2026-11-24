@@ -72,8 +72,16 @@ class Msg {
 	static function vBoolPtr(self:Ptr, sel:Ptr, a:Bool, b:Ptr):Void;
 	static function vPtrPtrIntInt(self:Ptr, sel:Ptr, a:Ptr, b:Ptr, c:Int64, d:Int64):Void;
 	static function vRectPtrInt(self:Ptr, sel:Ptr, r:CGRect, a:Ptr, b:Int64):Void;
+	// (NSFileCoordinator's coordinate…ItemAtURL:options:error:byAccessor:)
+	static function vPtrIntPtrPtr(self:Ptr, sel:Ptr, a:Ptr, b:Int64, c:Ptr, d:Ptr):Void;
+	// (NSURL's bookmarks, NSFileManager's listing: helder.os.FoldersApple)
+	static function idIntPtrPtrPtr(self:Ptr, sel:Ptr, a:Int64, b:Ptr, c:Ptr, d:Ptr):Ptr;
+	static function idPtrIntPtrPtrPtr(self:Ptr, sel:Ptr, a:Ptr, b:Int64, c:Ptr, d:Ptr, e:Ptr):Ptr;
+	static function idPtrPtrIntPtr(self:Ptr, sel:Ptr, a:Ptr, b:Ptr, c:Int64, d:Ptr):Ptr;
 	static function b(self:Ptr, sel:Ptr):Bool;
 	static function bPtr(self:Ptr, sel:Ptr, a:Ptr):Bool;
+	static function bPtrPtr(self:Ptr, sel:Ptr, a:Ptr, b:Ptr):Bool;
+	static function bPtrPtrPtr(self:Ptr, sel:Ptr, a:Ptr, b:Ptr, c:Ptr):Bool;
 	static function bInt(self:Ptr, sel:Ptr, a:Int64):Bool;
 	static function bIntPtr(self:Ptr, sel:Ptr, a:Int64, b:Ptr):Bool;
 	static function i(self:Ptr, sel:Ptr):Int64;

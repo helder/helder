@@ -319,17 +319,8 @@ helder.webmanifest's `file_handlers`). Tests: the window lane
 dbus lane (tests/os/DBusTest.hx: a real dbus-daemon, the portal's
 OpenFile against a stand-in portal).
 
-In a browser there are no paths: `helder.os.web.WebFolders` gives a page
-the user's folders instead, read only. `pick()` (a coroutine) shows the
-File System Access API's `showDirectoryPicker` where the browser has one
-(`available()`: Chromium's), `onDrop(f)` hands over what is dropped on the
-page (a folder's handle; its entry where there are no handles; files, as a
-folder "Dropped" of them). A folder is a handle; `list(folder, batch)`
-reads its entries 500 at a time (a file's size and date from its `File`),
-each subfolder a handle of its own, each file's `File` given to
-helder.media under a name (`host.blob`: `WebSource.blob`, `ofBlob`). The
-viewer's web build (apps/viewer: `WebFiles`) is its user and its test
-(`apps/viewer/tests/web.mjs`: a drop, a tree of handles the page makes).
+In a browser and on a phone there are no paths to browse: the user gives
+the app folders instead (Folders, below).
 
 ### The system's image decoders
 
@@ -881,6 +872,70 @@ its own filesystem.
 
 On the web, phones and headless runs, Places gives empty arrays and Trash
 is unavailable. Both APIs are also exported from `helder/os` in TypeScript.
+
+## Folders
+
+Where an app has no paths of its own to browse, the user gives it folders
+in the system's folder picker, and the app keeps them:
+
+```haxe
+if (Folders.available()) {
+	var g = Folders.pick();                      // a coroutine: {id, name}, null when cancelled
+	Folders.list(g.id, "Trips", (entries, done) -> show(entries));
+	var bytes = Folders.open(g.id, "Trips/sea.jpg"); // a helder.media ByteSource
+}
+for (g in Folders.granted()) place(g);           // the next launch: the same ids
+```
+
+A grant's id stays across launches until `forget(id)`; inside it a path
+is relative (`""` the folder itself). `list` calls its batch on the
+caller's loop as entries are read (`{name, folder, size, modified}`, the
+last batch `done`) and answers whether the folder could be read.
+`file(grant, path)` is the item's path on disk where it has one (iOS),
+for code that reads paths (the system's image decoders). `delete` answers
+true when the item went to a trash it can be put back from, false when it
+is gone, and throws when it was not deleted. Also in `helder/os` for
+TypeScript (all but `list` and `open`).
+
+- iOS: `UIDocumentPickerViewController` of folders (On My iPhone, iCloud
+  Drive, an external drive, a server: any Files provider). The URL's
+  bookmark is kept in the store "helder-folders" (iOS bookmarks carry the
+  picker's security scope), resolved at the next launch and made again
+  when stale; its access is started once and held while the app runs.
+  Listings are `NSFileCoordinator`'s (metadata only: nothing downloaded)
+  with FileManager's resource keys, on a thread of their own; a file's
+  first read is coordinated too (an iCloud file downloaded); a delete is
+  `trashItemAtURL` where the provider has a trash, else a removal.
+- Android: the Storage Access Framework's `ACTION_OPEN_DOCUMENT_TREE`
+  (through org.hxmc.Request, the photo picker's), its permission taken
+  persistable and the tree's URI kept in the store "helder-folders".
+  Never `MANAGE_EXTERNAL_STORAGE`, and no classes or manifest entries of
+  its own. `DocumentsContract` child queries (id, name, type, size, date),
+  500 rows a turn of the main thread; a file's bytes are its detached
+  descriptor's, read on any thread; `deleteDocument` deletes for good.
+- The web (`helder.os.web.WebFolders`, src/helder/os/imports.mjs, read
+  only): the File System Access API's `showDirectoryPicker` where the
+  browser has one (`available()`: Chromium's), the grants the page's
+  while it is open. A folder is a handle, listed 500 entries at a time, its
+  subfolders' handles and files' `File`s kept by path (a path not listed
+  yet: its folders listed down to it), a file's bytes helder.media's
+  (`WebSource.ofBlob`). Its own extra, `WebFolders.onDrop(f)`: what is
+  dropped on the page as a grant (a folder's handle; its entry where there
+  are no handles; files, as a folder "Dropped" of them).
+- Desktops: `available()` is false. Their programs read paths (Places,
+  FileDialog, drops); a wrapper over a folder dialog would only rename
+  paths. A sandboxed Mac app's security-scoped bookmarks would belong
+  here, and are not here yet.
+
+The viewer (apps/viewer: `GrantFiles`, its folders as places, Add Folder)
+is its user. Tests: `tests/os/FoldersCheck.hx` on the iPhone simulator
+(tests/pack/ios.sh: a folder in the app's Documents kept as a bookmark,
+resolved again, listed, read, a file deleted; the picker itself cannot be
+answered unattended), on the Android emulator (tests/os/folders-android.sh:
+the picker answered by taps, the tree listed, read, a file deleted, the
+grant kept to the next launch); the viewer's web build
+(apps/viewer/tests/web.mjs: a drop, Open folder on a tree of handles the
+page makes); `GrantFiles.test.hx` over a stand-in.
 
 ## Store
 

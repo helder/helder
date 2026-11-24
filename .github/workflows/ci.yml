@@ -35,7 +35,9 @@
 #   (tests/gfx/android.sh), a drawn ui's touch fling (tests/os/android-touch.sh),
 #   SurfaceControl's layers against the textured compositor (tests/ui/android-layers.sh),
 #   MediaCodec's decoding and <Video> both ways (tests/media/android/android.sh),
-#   native.jni from TypeScript (tests/typescript/native/android.sh), the
+#   native.jni from TypeScript (tests/typescript/native/android.sh),
+#   helder.os.Folders' document tree through the system's picker, answered
+#   by taps, kept to the next launch (tests/os/folders-android.sh), the
 #   web view (tests/platform/webview-android.sh: a page through its scheme
 #   handler, cross-origin isolated, wasm, the bridge's round trip, a
 #   snapshot, examples/todo's web build in it; over a drawn window and on
@@ -484,6 +486,7 @@ jobs:
           bin/cli/helder build tests/ui/AndroidLayersTest.hx --target android-x86_64 -o bin/pack/AndroidLayersTest.apk
           bin/cli/helder build tests/media/android/MediaAndroidTest.hx --target android-x86_64 -o bin/pack/MediaAndroidTest.apk
           bin/cli/helder build tests/media/android/VideoStill.hx --target android-x86_64 -o bin/pack/VideoStill.apk
+          bin/cli/helder build tests/os/FoldersCheck.hx --target android-x86_64 -o bin/pack/FoldersCheck.apk
       - name: KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -511,6 +514,7 @@ jobs:
             sh tests/ui/android-layers.sh bin/pack/AndroidLayersTest.apk bin/pack/android-layers
             sh tests/media/android/android.sh bin/pack/MediaAndroidTest.apk bin/pack/VideoStill.apk bin/pack/android-media
             sh tests/typescript/native/android.sh bin/cli/helder bin/pack/android-ts
+            sh tests/os/folders-android.sh bin/pack/FoldersCheck.apk bin/pack/android-folders
             sh tests/platform/webview-android.sh bin/cli/helder bin/pack/android-webview
             sh tests/pack/jvm.sh bin/pack/android-jvm
             sh tests/pack/billing.sh bin/cli/helder bin/pack/android-billing
@@ -528,6 +532,8 @@ jobs:
             bin/pack/android-media/*.txt
             bin/pack/android-media/*.png
             bin/pack/android-ts/*.txt
+            bin/pack/android-folders/*.txt
+            bin/pack/android-folders/*.png
             bin/pack/android-webview/*.txt
             bin/pack/android-webview/*.png
             bin/pack/android-jvm/*.txt
