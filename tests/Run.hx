@@ -658,7 +658,9 @@ class Run {
 		"/usr/share/wayland-protocols/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml", "/usr/share/wayland-protocols/stable/viewporter/viewporter.xml",
 		"/usr/share/wayland-protocols/staging/fractional-scale/fractional-scale-v1.xml", "/usr/share/wayland-protocols/staging/cursor-shape/cursor-shape-v1.xml",
 		"/usr/share/wayland-protocols/unstable/text-input/text-input-unstable-v3.xml", "/usr/share/wayland-protocols/stable/presentation-time/presentation-time.xml",
-		"/usr/share/wayland-protocols/staging/single-pixel-buffer/single-pixel-buffer-v1.xml", "/usr/share/wayland-protocols/stable/linux-dmabuf/linux-dmabuf-v1.xml"
+		"/usr/share/wayland-protocols/staging/single-pixel-buffer/single-pixel-buffer-v1.xml", "/usr/share/wayland-protocols/stable/linux-dmabuf/linux-dmabuf-v1.xml",
+		// (KDE's blur behind a window: plasma-wayland-protocols)
+		"/usr/share/plasma-wayland-protocols/blur.xml"
 	];
 
 	static function wayland() {

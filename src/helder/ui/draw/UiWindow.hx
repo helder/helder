@@ -27,6 +27,10 @@ typedef SurfaceProps = {
 	// (a first value not opaque, "transparent" or a colour's alpha: a
 	// transparent window, what is behind it seen through: Window's)
 	?background:helder.view.graph.Read<Dynamic>,
+	// the system's material behind the window ("blur", "mica", "glass":
+	// helder.os's Backdrop, where the system has it), seen through a clear or
+	// half-clear background; one makes the window transparent
+	?backdrop:helder.view.graph.Read<String>,
 	// a transparent window's clicks passing through what it doesn't draw
 	// (default true: UiWindow.clickThrough; pointer-events="none" on a
 	// node lets them through it too); false: it takes them everywhere
@@ -911,9 +915,12 @@ class UiWindow {
 		var web = Platform.os() == 3;
 		var width:Null<Int> = Render.read(props.width), height:Null<Int> = Render.read(props.height);
 		var title:Null<String> = Render.read(props.title);
-		var bg:Dynamic = Render.read(props.background);
+		var bg:Dynamic = Render.read(props.background), backdrop:Null<String> = Render.read(props.backdrop);
 		var w = new UiWindow(title ?? "helder", width ?? (web ? 0 : 800), height ?? (web ? 0 : 600), null, props.antialias != false,
-			props.titlebar == "inset" ? Inset : Standard, bg != null && colour(bg).a < 255);
+			props.titlebar == "inset" ? Inset : Standard, (bg != null && colour(bg).a < 255) || (backdrop != null && backdrop != "none"));
+		// (a backdrop seen through a clear background, unless one is given)
+		if (bg == null && backdrop != null && backdrop != "none") w.background = Color.TRANSPARENT;
+		if (props.backdrop != null) Graph.renderEffect(() -> (Render.read(props.backdrop) : String), v -> w.window.backdrop = cast v);
 		// (each reactive prop followed after its first value)
 		follow(props.title, (v:String) -> w.window.title = v);
 		follow(props.width, (_:Int) -> resize(w, props));

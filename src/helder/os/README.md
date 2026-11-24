@@ -285,7 +285,12 @@ window.shadow = false;  // no system shadow (macOS, Windows)
 <view pointer-events="none">…</view>           // drawn, its clicks passing through
 ```
 
+```tsx
+<Surface backdrop="blur">…</Surface>  // the system's material behind: "blur", "mica", "glass"
+```
+
 ```haxe
+window.backdrop = Blur;  // helder.os.Backdrop; None after where the system has none
 window.input([x, y, width, height]);  // where it takes the pointer (pixels); elsewhere what is behind it does
 window.input(null);                   // everywhere (the default)
 ```
@@ -320,13 +325,29 @@ the input shape (`XShapeCombineRectangles`, libXext loaded when wanted).
 Not yet: the boxes are unturned (a transform is not followed) and not cut
 by a scroller's clip; macOS and Windows follow the pointer at the program's
 polls, so while it sleeps (0.1 s at most) the window keeps its last answer.
+The system's material behind a transparent window (`backdrop`): macOS's
+NSVisualEffectView under the layer's view (behind the window, active;
+blur its hudWindow material, mica underWindowBackground) or, macOS 26,
+an NSGlassEffectView filling it (glass); Windows 11 (22H2 on):
+`DWMWA_SYSTEMBACKDROP_TYPE` (blur Acrylic, mica Mica), the frame extended
+over the client area; KDE's blur for both: `org_kde_kwin_blur` on Wayland
+(plasma-wayland-protocols' XML, generated as the others), on X11
+`_KDE_NET_WM_BLUR_BEHIND_REGION` where its atom exists (KWin makes it).
+Elsewhere, on an opaque window, and for one the system lacks it reads
+`None` (and the last one is taken away). `<Surface backdrop>` makes the
+window transparent, its background clear unless given. #115's
+`AppleGlass` is glass in the layer tree; a window's backdrop is a view of
+its own under it all, so it doesn't use it.
+
 Tests: `tests/ui/ShapeWindow.hx` (the frame
 read back; macOS's capture of the window, Windows' screen over an opaque
 window behind, X11's 32-bit pixels and the composed screen, weston's
 screenshot over its background; the input rectangles, and clicks sent
 at a clear point and on the box (macOS: CGEventPost, Windows: SendInput,
 in CI or with SHAPE_INPUT=1; X11: XTest), the window behind getting the
-first; `tests/ui/shape.sh` on Linux).
+first; each backdrop as the system reads it (macOS's view under the
+layer's, Windows' `DwmGetWindowAttribute`, X11's property once the atom is
+made as KWin does; none where it has none); `tests/ui/shape.sh` on Linux).
 
 ### Dialogs, file types, the files the system opens
 
