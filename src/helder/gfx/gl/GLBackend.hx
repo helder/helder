@@ -995,6 +995,18 @@ class GLBackend {
 		return fd;
 	}
 
+	// frameInto's texture's x, y, w x h read into dst (rows of stride
+	// bytes, top to bottom, at their place): a buffer of the system's in
+	// memory (helder.ui.draw.WlLayers' wl_shm)
+	public function readInto(x:Int, y:Int, w:Int, h:Int, dst:Ptr, stride:Int) {
+		use();
+		beginPass({colors: [{load: Load}]});
+		GL.glPixelStorei(GL.PACK_ALIGNMENT, 4);
+		GL.glPixelStorei(GL.PACK_ROW_LENGTH, stride >> 2);
+		GL.glReadPixels(x, y, w, h, GL.RGBA, GL.UNSIGNED_BYTE, dst.add(y * stride + x * 4));
+		GL.glPixelStorei(GL.PACK_ROW_LENGTH, 0);
+	}
+
 	var fenceLooked = false;
 	var pCreateSync = Ptr.nil();
 	var pDestroySync = Ptr.nil();

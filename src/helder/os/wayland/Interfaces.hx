@@ -30,6 +30,9 @@ class Interfaces {
 		register(helder.os.wayland.protocol.FractionalScaleV1Protocol.interfaces);
 		register(helder.os.wayland.protocol.CursorShapeV1Protocol.interfaces);
 		register(helder.os.wayland.protocol.TextInputUnstableV3Protocol.interfaces);
+		register(helder.os.wayland.protocol.PresentationTimeProtocol.interfaces);
+		register(helder.os.wayland.protocol.SinglePixelBufferV1Protocol.interfaces);
+		register(helder.os.wayland.protocol.LinuxDmabufV1Protocol.interfaces);
 	}
 
 	// the wl_interface of that name (nil: none known)

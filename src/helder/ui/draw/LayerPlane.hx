@@ -10,9 +10,10 @@ import helder.gfx.Texture;
 // and their bounds; its buffer's size and where it is in the frame's
 // pixels; what it drew last (its quads in its pixels and their runs), what
 // changed since (damage, a history of its draws: what a buffer drawn some
-// draws ago misses, its quads cut to that: cut, ScLayers' and DcLayers';
-// Core Animation keeps no drawable's contents, so CaLayers draws a changed
-// layer whole). The system's layers extend it (CaLayers', ScLayers', DcLayers').
+// draws ago misses, its quads cut to that: cut, ScLayers', DcLayers' and
+// WlLayers'; Core Animation keeps no drawable's contents, so CaLayers draws
+// a changed layer whole). The system's layers extend it (CaLayers',
+// ScLayers', DcLayers', WlLayers').
 @:hxmc.unsafe(gc)
 class LayerPlane {
 	public static inline var BASE = 0;
@@ -35,6 +36,8 @@ class LayerPlane {
 	public final ranges = [0.0, 0.0, 0.0, 0.0];
 	public var scale = 1.0;
 	public var cs = 1.0;
+	// (the pixels its buffer's place and size are a multiple of: whole points on Wayland)
+	public var grid = 1;
 	// (a system layer's: its slot, the unit it is in (-1: one of its own); a scroller's: those in it)
 	public var slot:Null<helder.ui.LayerSlot> = null;
 	public var attached = -1;
@@ -148,10 +151,10 @@ class LayerPlane {
 			y1 = Math.min(y1, cy1 + (r[2] + r[3] - drawnY) * s + 1);
 			if (x1 <= x0 || y1 <= y0) return;
 		}
-		var nx = Math.ffloor(x0), ny = Math.ffloor(y0);
+		var g = grid, nx = Math.ffloor(x0 / g) * g, ny = Math.ffloor(y0 / g) * g;
 		var w = Std.int(Math.min(8192, Math.fceil(x1) - nx)), h = Std.int(Math.min(8192, Math.fceil(y1) - ny));
 		inline function grown(v:Int):Int
-			return Std.int(Math.min(8192, Math.ceil(v / 64) * 64));
+			return Std.int(Math.min(8192, Math.ceil(v / (64 * g)) * 64 * g));
 		if (w > pw || w * 2 < pw) pw = grown(w);
 		if (h > ph || h * 2 < ph) ph = grown(h);
 		ox = nx;
