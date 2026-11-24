@@ -734,6 +734,9 @@ class Run {
 				run('$b/WinLayersWindow.exe', ['$b/winlayers', "textured"], ["HELDER_SYSTEM_LAYERS" => "0"]);
 				run('$b/WinLayersWindow.exe', ['$b/winlayers', "stall"], ["HELDER_SYSTEM_LAYERS" => "stall"]);
 				run('$b/WinLayersWindow.exe', ['$b/winlayers', "layers"]);
+				// TEMP probe: main's pacing, with and without dirty rectangles
+				for (p in ["nolatency", "nolatency nodirty"])
+					try run('$b/WinLayersWindow.exe', ['$b/winlayers-probe', "textured"], ["HELDER_SYSTEM_LAYERS" => "0", "HELDER_D3D_PROBE" => p]) catch (_:Failed) Sys.println('probe $p: failed');
 			}
 		}
 		// (helder.ui's NSAccessibility, in process: tests/ui/MacAccessTest.hx, MacPatternsTest.hx)

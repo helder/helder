@@ -45,6 +45,8 @@ class Layer {
 	@:allow(helder.ui) var lastY = 0.0;
 	// (it moved in the last few paints: its tiles drawn where they fall, not drawn again)
 	@:allow(helder.ui) var moving = false;
+	// (its tiles drawn so since it last rested: paints asked for until it rests, which draws them again)
+	@:allow(helder.ui) var snapped = false;
 	// (a scroller's background under its content, opaque, where nothing
 	// else is (no image, no inset shadow; 0: not so): its tiles drawn over it)
 	@:allow(helder.ui) var backdrop = 0;

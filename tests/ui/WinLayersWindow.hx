@@ -106,10 +106,10 @@ class WinLayersWindow {
 		function live():Bool
 			return layers != null && layers.fell == null;
 		// (frames n in s seconds no faster than the display's (the compositor's period, learnt from its frames), a third over it at most)
-		// (the window's own swap chain's (textured, stall after its fallback): reported only, its Present(1) queueing up to DXGI's frame latency)
+		// (the window's own swap chain's too: one frame queued at most, the program's and the compositor's each waiting for it)
 		function paced(what:String, n:Int, s:Float) {
 			var rate = n / s, hz = c == null ? 60.0 : 1 / @:privateAccess c.period, was = strict;
-			strict = was && live();
+			strict = was && (mode == "textured" || live());
 			check('$what: paced to the display', rate <= hz * 1.33, '${Math.round(rate)} frames a second, the display ${Math.round(hz)}');
 			strict = was;
 		}
@@ -223,10 +223,8 @@ class WinLayersWindow {
 			strict = true;
 			check('still $n: against the textured compositor\'s, at most ${SHARE * 100}% of the pixels over $LEVELS levels', over <= SHARE * W * H,
 				'$over over $LEVELS${over > 0 ? ' in $x0,$y0..$x1,$y1' : ""}, $some over 2, at most $most, of ${W * H}');
-			// (the header, its label changed each frame before still 3: drawn in part, as the textured compositor draws it whole)
-			// (still 3's: against the textured compositor's drawn whole, below; this one reported)
+			// (the header, its label changed each frame before still 3: drawn in part, as the textured compositor's)
 			var h = band(b, px, W, Math.round(40 * k));
-			strict = n < 3;
 			check('still $n: the header as the textured compositor\'s, none over $LEVELS levels', h.over == 0, '${h.over} over $LEVELS${h.over > 0 ? ": " + h.samples : ""}');
 			strict = was;
 		}
@@ -337,6 +335,7 @@ class WinLayersWindow {
 					}
 					timed++;
 					title.text = "Header " + timed;
+					if (timed >= 58) say('header: "${title.text}", the frame before drew ${@:privateAccess w.renderer.regions} (${@:privateAccess w.renderer.drawn} pixels), the compositor\'s frames ${c == null ? 0 : c.count}');
 					if (timed == 60) {
 						var f = layers == null ? 0 : layers.frames - f0;
 						say('timed: header: $timed changes in ${Math.round((now - t0) * 10) / 10} s, CPU ${Math.round((cpu() - cpu0) / timed * 100) / 100} ms a change, ${dc == null ? 0 : dc.cutTotal - n0} layers drawn in part over $f frames');
@@ -371,8 +370,8 @@ class WinLayersWindow {
 						sys.io.File.saveBytes('bin/text/winlayers-still3w-$mode.png', helder.image.PngEncoder.encode(px, W, w.device.height, true));
 						var h = band(cut, px, W, rows), was = strict;
 						if (mode == "textured") {
-							// (main's own: its frame kept, drawn where it changed and presented with those rectangles)
-							strict = false;
+							// (its frame kept, drawn where it changed and presented with those rectangles)
+							strict = true;
 							check("still 3: the textured compositor's header drawn in part as drawn whole", h.over == 0, '${h.over} over $LEVELS (in part>whole)${h.over != 0 ? ": " + h.samples : ""}');
 						} else {
 							strict = true;

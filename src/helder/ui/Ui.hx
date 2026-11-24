@@ -526,6 +526,12 @@ class Ui extends ScrollHost {
 			composing = null;
 			g.redraw(-3);
 		}
+		// (tiles drawn snapped: paints until they are drawn at rest, as nothing
+		// else may ask for one, a program's scroll the last change)
+		for (l in layers)
+			if (l.snapped) {
+				if (paintFrame - l.movedAt < 3) needsFrame = true else l.snapped = false;
+			}
 		flights.resize(0);
 		flightAt.resize(0);
 		walking = false;
@@ -828,6 +834,7 @@ class Ui extends ScrollHost {
 				// (what it holds marked as it is reached, then its tiles)
 				if (w.mark) l.list.replay(nowhere, w);
 				if (g.layerTiles(l)) {
+					if (l.moving) l.snapped = true;
 					// (its nodes' system layers placed where the compositor's frame has them)
 					if (composing == g && l.list.slots > 0) l.list.replay(new SlotsOnly(g), w);
 					return;
