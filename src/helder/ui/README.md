@@ -1909,7 +1909,15 @@ top-level scroller's content goes in its scroll view (the clear
 `overflow: auto` element it already has), so the browser scrolls it at
 the screen's rate while the program draws nothing or is busy (in a
 worker, on the page's own thread too); what is over it is a layer over
-it, stacked in paint order. Each layer is drawn by the window's own
+it, stacked in paint order. A layer that moves on its own (`Mover`) is a
+Web Animation of the program's samples a frame apart, until it rests (2 s
+at most, the program's next frames sending what follows), so it moves
+while the program is busy. A node's `LayerSlot` is an element of the page
+at its box among the layers, cut by its clip, in its scroll view where its
+scroller's content is a layer: a `<Video layer>`'s canvas (helder.media's
+`WebSample`, each frame read from the browser's VideoFrame) and the text
+editors' inputs and textareas (`WebEditor.slot`), so a popup's layer
+covers them. Each layer is drawn by the window's own
 device (WebGPU or WebGL2, one context) into the window's canvas, in tiles
 of the canvas's size at most and only the tiles its changes meet, each
 read back as an ImageBitmap, then the window's own layer last, which the
@@ -1919,7 +1927,7 @@ popup over a scroll view holding a layer leaves the view whole (a
 clip-path would cut its content) and takes the input there through a
 clear element. A frame the page reads back (`host.gfx.readPixels`) is
 drawn whole onto the canvas, as the reference draws it. Rounded scrollers
-and layers that move on their own stay drawn for now. Off with
+and scrollers with a sticky node in them stay drawn for now. Off with
 `HELDER_SYSTEM_LAYERS=0`, the flat split with `=flat` (run's option
 `env`). `tests/ui/web-layers.mjs` (the ui-web lane) runs a list taller
 than the window on WebGPU and WebGL2, on the page's thread and in a
