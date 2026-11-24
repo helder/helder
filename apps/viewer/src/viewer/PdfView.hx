@@ -9,7 +9,7 @@ import helder.view.graph.Graph.*;
 
 // A PDF's pages in one scrolling column (PdfDoc, PdfLayout): a scroller
 // as large as the layout, the pages near the view made alone (each a
-// white sheet with a soft shadow, its drawing over it as it lands), the
+// white sheet with a hairline and a soft shadow, on the light canvas too, its drawing over it as it lands), the
 // wheel and a trackpad scrolling it, Control (or Command) with the wheel
 // and a pinch zooming about the pointer; the page the view is on in a
 // small tag at its top right ("3 / 12").
@@ -53,7 +53,7 @@ class PdfView implements Markup {
 	}
 
 	static function page(doc:PdfDoc, i:Int):View
-		return <view tag="page" position="absolute" background="#ffffff" shadow="0 1px 4px rgba(0,0,0,0.28)" left={() -> {
+		return <view tag="page" position="absolute" background="#ffffff" border-width={1} border-color="rgba(0,0,0,0.08)" shadow="0 1px 4px rgba(0,0,0,0.28)" left={() -> {
 			doc.zoom();
 			doc.layout.left(i);
 		}} top={() -> {

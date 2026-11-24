@@ -1479,11 +1479,11 @@ Node#root 0,0 390x844
               Node#pdf-scroll 0,52 1100x648
                 Node#pdf-pages 0,52 1100x2993
                   Node#page 150,68 801x1068
-                    ImageNode#page-image 150,68 801x1068
+                    ImageNode#page-image 151,69 799x1066
                   Node#page 16,1148 1068x801
-                    ImageNode#page-image 16,1148 1068x801
+                    ImageNode#page-image 17,1149 1066x799
                   Node#page 150,1961 801x1068
-                    ImageNode#page-image 150,1961 801x1068
+                    ImageNode#page-image 151,1962 799x1066
               TextNode#page-indicator 1034,64 50x23 "2 / 3"
         Node#window-start 18,0 0x52
         Node#window-end 1100,0 0x0
