@@ -30,6 +30,8 @@ class MfAudio implements AudioDecoder {
 	final given:Array<Packet> = [];
 	var channels = 2;
 	var floats = true;
+	// (the first output since a start or a seek: its excess over its packet dropped)
+	var lead = true;
 
 	public static function supports(c:Codec):Bool
 		return switch c {
@@ -167,6 +169,15 @@ class MfAudio implements AudioDecoder {
 		}
 		decoded = given[at];
 		given.splice(0, at + 1);
+		// (a first output longer than its packet starts with the decoder's own
+		// lead: Media Foundation's MP3 decoder gives 624 frames for the first
+		// 576, 48 of its own before them; the packet's frames are its last)
+		var d = Math.round(decoded.duration / track.timescale * rate);
+		if (lead && d > 0 && n > d) {
+			for (i in 0...d * 2) samples.set(i, samples.get(i + (n - d) * 2));
+			n = d;
+		}
+		lead = false;
 		return n;
 	}
 
@@ -199,6 +210,7 @@ class MfAudio implements AudioDecoder {
 	}
 
 	public function reset() {
+		lead = true;
 		mft.flush();
 		given.resize(0);
 		decoded = null;

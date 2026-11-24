@@ -204,7 +204,10 @@ Colours as the output type names them, else BT.601's video range. Audio:
 AAC (HEAACWAVEINFO's tail and the AudioSpecificConfig), MP3, FLAC
 (STREAMINFO, forms tried in turn), ALAC (its cookie), Opus where the
 system has a decoder, floats where it gives them, else 16 bits; outputs
-by time (`decoded`), the end drained. Not Vorbis (helder's).
+by time (`decoded`), the end drained. A first output longer than its
+packet (after a start or a seek) starts with the decoder's own lead,
+dropped: the MP3 decoder's 624 frames for the first 576. OpusHead goes in
+with its pre-skip 0: the player trims the priming by the packets' times. Not Vorbis (helder's).
 
 **AudioToolbox** (`apple.AtDecoder`): AAC, MP3, ALAC, FLAC and Opus
 through an AudioConverter, the track's config its magic cookie (FLAC's
@@ -244,7 +247,8 @@ track's duration less CodecDelay. Paused, the output plays out what it
 holds; playing again starts the clock where the ring is. Ended once heard:
 the clock at the audio's last frame, or the video's end where it is longer
 (the output then plays silence, the clock going on; only then, so that a
-clip's last samples are heard before it ends). At the stream's end the
+clip's last samples are heard before it ends; with no output, the
+monotonic clock's end, the ring drained by none). At the stream's end the
 decoders are drained (`flush`: AudioConverter's input over, WebCodecs'
 flush, MediaCodec's end of stream; their last frames into the ring up to
 the track's end). The ring holds two seconds and at least 65536 frames:
@@ -313,11 +317,12 @@ the picture's size, each plane sampled by its view's format: r8 and rg8,
 r16 and rg16), a software decoder's rows (`mem:`, uploaded as the
 texture is made); each frame its own handle (the decoder's pool reuses
 its textures and memory), the same pass as Apple's. `layer={true}`
-(`ui.WinLayer`, in a window of DcLayers): a swap chain for composition
-of the picture's size, the content of a visual in the node's slot
-(`DcLayers.visualFor`), scaled and centred as fit says; each frame
-presented as it falls due on the player's clock, so DWM shows it at its
-next composition and helder draws nothing for it. The frame is turned to
+(`ui.WinLayer`, in a window of DcLayers): a DirectComposition surface of
+the picture's size (as DcLayers' layers are: a swap chain for composition
+showed black in CI's window captures), the content of a visual in the
+node's slot (`DcLayers.visualFor`), scaled and centred as fit says; each
+frame drawn into it and committed as it falls due on the player's clock,
+so DWM shows it at its next composition and helder draws nothing for it. The frame is turned to
 RGB on the CPU as VideoShader turns it (a DXVA frame read back by Media
 Foundation: the GPU's video processor would save that, later); until a
 frame was presented the node draws them.

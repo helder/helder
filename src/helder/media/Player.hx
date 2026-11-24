@@ -257,7 +257,8 @@ class Player {
 		if (eof && flushed && a != null && a.pending == 0 && r != null && v != null)
 			pads = ringTime + r.written / a.rate < (v.duration > 0 ? v.duration : duration) - 1e-3;
 		if (playing && eof && flushed && frames.length == 0 && (vdec == null || vdec.pending == 0) && (adec == null || adec.pending == 0)
-			&& (ring == null || ring.available() == 0)) {
+			// (no output (none on the machine, a muted page's let go): the ring is drained by none, the monotonic clock ends it)
+			&& (ring == null || out == null || ring.available() == 0)) {
 			var end = ring != null && adec != null ? ringTime + ring.written / adec.rate : 0.0;
 			if (video != null) end = Math.max(end, Math.max(duration, last));
 			if (t >= end - 1e-3) finish();

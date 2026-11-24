@@ -12,12 +12,13 @@ import helder.ui.draw.UiWindow;
 import hxmc.unsafe.*;
 
 // A video shown by Windows' compositor (SampleLayer's on Windows, in a
-// window of system layers: helder.ui.draw.DcLayers): a swap chain for
-// composition of the picture's size, the content of a visual under the
-// node's slot (DcLayers.visualFor), scaled and centred as fit says, cut by
-// the slot's clip. Each frame is presented to it as it falls due on the
-// player's clock, so DWM shows it at its next composition and helder draws
-// nothing for it. The frame is turned to RGB on the CPU (as VideoShader
+// window of system layers: helder.ui.draw.DcLayers): a DirectComposition
+// surface of the picture's size (as DcLayers' own layers are: a swap
+// chain's flip presents were black in the window's captures, CI's), the
+// content of a visual under the node's slot (DcLayers.visualFor), scaled
+// and centred as fit says, cut by the slot's clip. Each frame is drawn into
+// it and committed as it falls due on the player's clock, so DWM shows it
+// at its next composition and helder draws nothing for it. The frame is turned to RGB on the CPU (as VideoShader
 // turns it: its matrix, range and depth) from its planes, Media
 // Foundation's in memory (a DXVA frame's read back: the GPU's video
 // processor would save that, later). Until a frame was presented the node
@@ -34,9 +35,10 @@ class WinLayer {
 	final owner:VideoNode;
 	final layers:DcLayers;
 	final device:helder.gfx.Device;
-	// (the render thread's: the visual in the slot's, its swap chain, its size)
+	// (the render thread's: the visual in the slot's, its surface, its size)
 	var inner = Ptr.nil();
-	var chain = Ptr.nil();
+	var surface = Ptr.nil();
+	var failed = false;
 	var width = 0;
 	var height = 0;
 	var last:Null<VideoFrame>;
@@ -72,8 +74,8 @@ class WinLayer {
 		return f;
 	}
 
-	// (f in RGBA, presented on the render thread: the swap chain made, or
-	// made again at its size, the first time)
+	// (f in RGBA onto the surface on the render thread, committed: the
+	// surface (made, or made again at its size, the first time) drawn whole)
 	function present(f:VideoFrame):Bool {
 		var px = f.pixels(), w = f.width, h = f.height;
 		if (px.length == 0 || w <= 0 || h <= 0) return false;
@@ -82,56 +84,46 @@ class WinLayer {
 		var visual = slot.handle, dc = layers.dev;
 		device.inOrder(r -> {
 			var d3d:D3D11Backend = cast r.impl;
-			if (chain.isNull() || w != width || h != height) made(d3d, dc, visual, w, h);
-			if (!chain.isNull()) Arena.scoped(a -> {
-				var out:Ptr<Ptr> = a.alloc(8);
-				if (IDXGISwapChain1.GetBuffer(chain, 0, IID.ID3D11Texture2D, out) >= 0) {
-					ID3D11DeviceContext.UpdateSubresource(@:privateAccess d3d.context, out.value, 0, Ptr.nil(), rgba, w * 4, 0);
-					Com.release(out.value);
-					IDXGISwapChain1.Present(chain, 1, 0);
+			if (surface.isNull() || w != width || h != height) made(dc, visual, w, h);
+			if (!surface.isNull()) Arena.scoped(a -> {
+				var out:Ptr<Ptr> = a.alloc(8), at:Ptr<Int32> = a.alloc(8), box:Ptr<Int32> = a.alloc(24);
+				var hr = IDCompositionSurface.BeginDraw(surface, Ptr.nil(), IID.ID3D11Texture2D, out, at);
+				if (hr < 0) {
+					if (!failed) Sys.println('helder.media: the video\'s layer not drawn (BeginDraw 0x${StringTools.hex(hr, 8)})');
+					failed = true;
+					return;
 				}
+				// (D3D11_BOX: where the update is in the surface's texture, which may be an atlas)
+				box[0] = at[0];
+				box[1] = at[1];
+				box[2] = 0;
+				box[3] = at[0] + w;
+				box[4] = at[1] + h;
+				box[5] = 1;
+				ID3D11DeviceContext.UpdateSubresource(@:privateAccess d3d.context, out.value, 0, cast box, rgba, w * 4, 0);
+				Com.release(out.value);
+				IDCompositionSurface.EndDraw(surface);
+				IDCompositionDevice.Commit(dc);
 			});
 			LibC.free(rgba);
 		});
 		return true;
 	}
 
-	// (the swap chain of w x h for composition, its visual in the slot's)
-	function made(d3d:D3D11Backend, dc:Ptr, visual:Ptr, w:Int, h:Int) {
+	// (the surface of w x h, opaque, the content of a visual in the slot's)
+	function made(dc:Ptr, visual:Ptr, w:Int, h:Int) {
 		drop(visual, dc);
-		var dev = @:privateAccess d3d.device;
 		Arena.scoped(a -> {
 			var out:Ptr<Ptr> = a.alloc(8);
-			if (IUnknown.QueryInterface(dev, IID.IDXGIDevice, out) < 0) return;
-			var dxgi = out.value;
-			var hr = IDXGIDevice.GetAdapter(dxgi, out);
-			Com.release(dxgi);
-			if (hr < 0) return;
-			var adapter = out.value;
-			hr = IDXGIAdapter.GetParent(adapter, IID.IDXGIFactory2, out);
-			Com.release(adapter);
-			if (hr < 0) return;
-			var factory = out.value;
-			var d = a.make(DXGI_SWAP_CHAIN_DESC1);
-			d.value.Width = w;
-			d.value.Height = h;
-			d.value.Format = D3D.FORMAT_R8G8B8A8_UNORM;
-			d.value.SampleCount = 1;
-			d.value.BufferUsage = D3D.USAGE_RENDER_TARGET_OUTPUT;
-			d.value.BufferCount = 2;
-			d.value.Scaling = D3D.SCALING_STRETCH;
-			d.value.SwapEffect = D3D.SWAP_EFFECT_FLIP_DISCARD;
-			d.value.AlphaMode = D3D.ALPHA_MODE_IGNORE;
-			hr = IDXGIFactory2.CreateSwapChainForComposition(factory, dev, d, Ptr.nil(), out);
-			Com.release(factory);
+			var hr = IDCompositionDevice.CreateSurface(dc, w, h, D3D.FORMAT_R8G8B8A8_UNORM, D3D.ALPHA_MODE_IGNORE, out);
 			if (hr < 0) {
-				Sys.println('helder.media: no swap chain for the video\'s layer (HRESULT 0x${StringTools.hex(hr, 8)})');
+				Sys.println('helder.media: no surface for the video\'s layer (CreateSurface 0x${StringTools.hex(hr, 8)})');
 				return;
 			}
-			chain = out.value;
+			surface = out.value;
 			if (IDCompositionDevice.CreateVisual(dc, out) < 0) return;
 			inner = out.value;
-			IDCompositionVisual.SetContent(inner, chain);
+			IDCompositionVisual.SetContent(inner, surface);
 			IDCompositionVisual.AddVisual(visual, inner, 1, Ptr.nil());
 			width = w;
 			height = h;
@@ -139,12 +131,12 @@ class WinLayer {
 		});
 	}
 
-	// (the render thread's: the visual and the swap chain let go)
+	// (the render thread's: the visual and the surface let go)
 	function drop(visual:Ptr, dc:Ptr) {
 		if (!inner.isNull()) IDCompositionVisual.RemoveVisual(visual, inner);
 		Com.release(inner);
-		Com.release(chain);
-		inner = chain = Ptr.nil();
+		Com.release(surface);
+		inner = surface = Ptr.nil();
 		IDCompositionDevice.Commit(dc);
 	}
 
@@ -212,7 +204,7 @@ class WinLayer {
 		});
 	}
 
-	// (the visual out of the slot's and the swap chain let go; the slot's
+	// (the visual out of the slot's and the surface let go; the slot's
 	// visual a second later, once DcLayers' commit no longer names it)
 	public function dispose() {
 		var visual = slot.handle, dc = layers.dev, d = device;
