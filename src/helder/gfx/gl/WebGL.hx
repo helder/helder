@@ -8,7 +8,7 @@ package helder.gfx.gl;
 	// a WebGL2 context on a canvas (its handle: helder.os.Surface's) or, canvas
 	// 0, on an offscreen one of width x height; 0: no WebGL2 here; antialias
 	// 1: a canvas's frames multisampled (the page's run option antialias, when set, decides)
-	static function context(canvas:Int, width:Int, height:Int, antialias:Int):Int;
+	static function context(canvas:Int, width:Int, height:Int, antialias:Int, alpha:Int):Int;
 	// the context the GL functions draw with (eglMakeCurrent)
 	static function make_current(context:Int):Void;
 	// the end of a frame (the browser presents a canvas when the task ends)

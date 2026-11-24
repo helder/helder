@@ -34,6 +34,8 @@ class CanvasWindow {
 		canvas = Arena.scopedValue(a -> Dom.window_open(a.cstring(title), width, height));
 		if (canvas == 0) throw "helder.os: no canvas for the window (not in a browser?)";
 		surface = new Surface(Canvas, Ptr.nil(), Ptr.ofI64(canvas), Dom.width(canvas), Dom.height(canvas));
+		// (the canvas's alpha: the page through it, premultiplied)
+		surface.see(owner.clear);
 		if (open.length == 0) Dom.scrolls_at(Callback.addr(scrollsAt));
 		if (!watching) {
 			watching = true;

@@ -39,7 +39,7 @@ class WebGPUBackend {
 		this.surface = surface;
 		if (WebGPU.ready() == 0) throw "helder.gfx: no WebGPU device";
 		target = switch surface.kind {
-			case Canvas: WebGPU.target_canvas(surface.handle.toI64().toInt(), antialias ? 1 : 0);
+			case Canvas: WebGPU.target_canvas(surface.handle.toI64().toInt(), antialias ? 1 : 0, surface.transparent ? 1 : 0);
 			case Headless: WebGPU.target_texture(surface.width, surface.height);
 			case k: throw "helder.gfx: WebGPU renders to a canvas or headless, not to a surface of kind " + k;
 		}

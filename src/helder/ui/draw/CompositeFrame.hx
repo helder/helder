@@ -640,4 +640,13 @@ class CompositeFrame {
 		b.setFloat(o + 216, 1e9);
 		b.setFloat(o + 220, 1e9);
 	}
+
+	// (a pass's clear colour: argb premultiplied, as every pixel drawn)
+	@:hxmc.unsafe(gc) public static function clearTo(c:Commands, argb:Int) {
+		var a = (argb >>> 24) / 255;
+		c.float((argb >> 16 & 0xFF) / 255 * a);
+		c.float((argb >> 8 & 0xFF) / 255 * a);
+		c.float((argb & 0xFF) / 255 * a);
+		c.float(a);
+	}
 }
