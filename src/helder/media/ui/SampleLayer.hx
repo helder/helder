@@ -100,6 +100,7 @@ class SampleLayer {
 	function enqueue(f:VideoFrame) {
 		var image = f.image;
 		if (image.isNull()) return;
+		tag(f);
 		var sample = Arena.scopedValue(a -> {
 			var fd:Ptr<Ptr> = a.alloc(8), out:Ptr<Ptr> = a.alloc(8);
 			if (CoreMedia.CMVideoFormatDescriptionCreateForImageBuffer(Ptr.nil(), image, fd) != 0) return Ptr.nil();
@@ -119,6 +120,30 @@ class SampleLayer {
 			Msg.vPtr(l, ObjC.sel("enqueueSampleBuffer:"), sample);
 			CF.CFRelease(sample);
 		});
+	}
+	#end
+
+	#if (!helder.os || helder.os == "macos" || helder.os == "ios")
+	// (the colours the system converts the frame with, as helder's pass
+	// does: the frame's matrix, its values shown as sRGB's, so BT.709's
+	// primaries and sRGB's transfer, no gamut or HDR conversion; VideoToolbox
+	// tags what the stream says, often nothing, and the system's own guess
+	// was 16 levels off helder's over a frame, CI's window captures)
+	function tag(f:VideoFrame) {
+		var b = f.image;
+		var matrix = f.matrix == "709" ? "ITU_R_709_2" : f.matrix == "2020" ? "ITU_R_2020" : "ITU_R_601_4";
+		for (kv in [["CVImageBufferYCbCrMatrix", matrix], ["CVImageBufferColorPrimaries", "ITU_R_709_2"], ["CVImageBufferTransferFunction", "IEC_sRGB"]]) {
+			var k = ObjC.str(kv[0]), v = ObjC.str(kv[1]);
+			// (kCVAttachmentMode_ShouldPropagate)
+			CoreVideo.CVBufferSetAttachment(b, k, v, 1);
+			ObjC.release(k);
+			ObjC.release(v);
+		}
+		for (key in ["CVImageBufferGammaLevel", "CVImageBufferICCProfile"]) {
+			var k = ObjC.str(key);
+			CoreVideo.CVBufferRemoveAttachment(b, k);
+			ObjC.release(k);
+		}
 	}
 	#end
 

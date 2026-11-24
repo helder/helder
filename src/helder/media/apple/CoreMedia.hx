@@ -49,6 +49,8 @@ import hxmc.unsafe.*;
 	static function CVPixelBufferGetHeightOfPlane(b:Ptr, plane:Int64):Int64;
 	static function CVPixelBufferGetWidthOfPlane(b:Ptr, plane:Int64):Int64;
 	static function CVBufferCopyAttachment(b:Ptr, key:Ptr, mode:Ptr):Ptr;
+	static function CVBufferSetAttachment(b:Ptr, key:Ptr, value:Ptr, mode:Int):Void;
+	static function CVBufferRemoveAttachment(b:Ptr, key:Ptr):Void;
 }
 
 @:hxmc.c @:hxmc.lib("/System/Library/Frameworks/IOSurface.framework/IOSurface") extern class Surfaces {

@@ -15,8 +15,9 @@ import sys.io.File;
 // trims them; exact seeks and frame steps landing on the frame by its
 // time and pixels; a clip played through CoreAudio's "file:" output, each
 // frame shown within a frame of the clock, the audio's frames in the
-// file. AV1 and VP9 where the system decodes them (VP9: the hardware's,
-// from 128 pixels; AV1: Apple's M3 and later), skipped elsewhere.
+// file. AV1, VP9 and 10-bit HEVC where the machine decodes them (VP9 and
+// AV1: the hardware's; CI's virtual Macs have neither), each skip printed;
+// H.264, 8-bit HEVC and AAC never skipped.
 //
 //   MediaAppleTest out-dir
 @:hxmc.unsafe(gc)
@@ -54,16 +55,36 @@ class MediaAppleTest {
 	static function crc(f:VideoFrame):Int
 		return Crc32.make(f.pixels());
 
-	// (whether the system decodes it: VP9 and AV1 are the hardware's)
-	static function decodes(t:MediaTrack):Bool
-		return t.codec == H264 || t.codec == Hevc || VtDecoder.hardware(t.codec);
+	// (whether this machine decodes f's video: its first packet through a
+	// session of its own; H.264 and 8-bit HEVC every Mac decodes, a skip
+	// never: VP9 and AV1 are the hardware's, 10 bits not every VM's)
+	@:coroutine static function decodes(f:String):Bool {
+		var m = open(f), t = Lambda.find(m.tracks, t -> t.kind == Video);
+		var p = m.next();
+		while (p != null && p.track != t) p = m.next();
+		var bytes = m.read(p);
+		m.close();
+		var required = t.codec == H264 || t.codec == Hevc && f != "apple/hevc10.mp4";
+		var why = tryDecode(t, p, bytes);
+		if (why == null || required) return true;
+		Sys.println('MediaAppleTest: skipped: $f (${t.codec}: $why)');
+		return false;
+	}
+
+	static function tryDecode(t:MediaTrack, p:Packet, bytes:haxe.io.Bytes):Null<String> {
+		var d = new VtDecoder(t);
+		var why = try {
+			d.decode(p, bytes, true);
+			d.flush();
+			null;
+		} catch (e:MediaError) e.message;
+		d.close();
+		return why;
+	}
 
 	@:coroutine static function video(f:String, e:Dynamic) {
+		if (!decodes(f)) return;
 		var m = open(f), t = Lambda.find(m.tracks, t -> t.kind == Video);
-		if (!decodes(t)) {
-			Sys.println('MediaAppleTest: skipped: $f (no ${t.codec} decoder here)');
-			return;
-		}
 		var d = new VtDecoder(t), frames = [], pts = [];
 		var p;
 		while ((p = m.next()) != null)
@@ -92,7 +113,13 @@ class MediaAppleTest {
 	@:coroutine static function audio(key:String, e:Dynamic) {
 		var f = key.split(":")[0], n = Std.parseInt(key.split(":")[1]);
 		var m = open(f), t = [for (t in m.tracks) if (t.kind == Audio) t][n];
-		var d = Decoders.audio(t), buf = new AudioBuffer(), left = [];
+		// (AAC every Mac decodes; the others where the system has them)
+		var d = try Decoders.audio(t) catch (x:MediaError) {
+			if (t.codec == Aac) throw x;
+			Sys.println('MediaAppleTest: skipped: $key (${t.codec}: ${x.message})');
+			m.close();
+			return;
+		}, buf = new AudioBuffer(), left = [];
 		var p;
 		while ((p = m.next()) != null)
 			if (p.track == t) {
@@ -124,6 +151,7 @@ class MediaAppleTest {
 		var device = helder.gfx.Device.create(helder.os.Surface.headless(64, 64));
 		var vt = new VideoTexture(device);
 		for (f => e in rgbs) {
+			if (!decodes(f)) continue;
 			var m = open(f), t = Lambda.find(m.tracks, t -> t.kind == Video);
 			var d = new VtDecoder(t), frames = [];
 			var p;
