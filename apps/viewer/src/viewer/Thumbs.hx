@@ -57,28 +57,69 @@ class Thumbs {
 	}
 
 	function decoded(key:String, p:Packet, bytes:haxe.io.Bytes):Null<Image> {
-		var d = decoder, frames = [];
+		var img = frameImage(decoder, p, bytes, track.rotation, 0);
+		if (img != null) cache.set(key, img);
+		return img;
+	}
+
+	// The folder thumbnail, on the calling job's thread: the same keyframe
+	// seek and decode as the scrub bar, with a reader of its own.
+	@:allow(viewer.Thumbnails) static function poster(path:String, side:Int):Null<Image> {
+		var source = new FileSource(path);
+		var sample = try Async.run(_ -> posterPacket(source)) catch (_:Dynamic) null;
+		source.close();
+		if (sample == null) return null;
+		var d = Decoders.video(sample.packet.track);
+		if (d == null) return null;
+		try {
+			var img = frameImage(d, sample.packet, sample.bytes, sample.packet.track.rotation, side);
+			d.close();
+			return img;
+		} catch (e:Dynamic) {
+			d.close();
+			throw e;
+		}
+	}
+
+	@:coroutine static function posterPacket(source:FileSource):Null<{packet:Packet, bytes:haxe.io.Bytes}> {
+		var m = Media.open(source);
+		var track = Lambda.find(m.tracks, t -> t.kind == Video);
+		if (track == null) return null;
+		var seeks = m.seek(Math.min(2, Math.max(0, m.duration * 0.1)));
+		var s = Lambda.find(seeks, s -> s.track == track);
+		return s == null || s.packet == null ? null : {packet: s.packet, bytes: m.read(s.packet)};
+	}
+
+	static function frameImage(d:VideoDecoder, p:Packet, bytes:haxe.io.Bytes, rotation:Int, side:Int):Null<Image> {
+		var frames = [];
 		d.decode(p, bytes, true);
 		d.flush();
 		d.take(frames);
 		if (frames.length == 0) return null;
-		var img = image(frames[0], track.rotation);
-		for (f in frames) f.release();
-		cache.set(key, img);
-		return img;
+		try {
+			var img = image(frames[0], rotation, side);
+			for (f in frames) f.release();
+			return img;
+		} catch (e:Dynamic) {
+			for (f in frames) f.release();
+			throw e;
+		}
 	}
 
 	// (the frame's planes to RGBA: its matrix, range and depth; turned upright)
-	static function image(f:VideoFrame, rotation:Int):Image {
+	static function image(f:VideoFrame, rotation:Int, side:Int):Image {
 		var px = f.pixels(), w = f.width, h = f.height, deep = f.bits > 8;
-		var step = Math.ceil(w / WIDTH), tw = Std.int(w / step), th = Std.int(h / step);
+		// (side > 0: every few pixels' sample still at least side on the long side, for a Resize after)
+		var step = side > 0 ? Std.int(Math.max(1, Math.max(w, h) / side)) : Math.ceil(w / WIDTH);
+		var tw = Std.int(w / step), th = Std.int(h / step);
 		var m = helder.media.ui.VideoTexture.matrix(f);
 		var cw = (w + 1) >> 1, chroma = w * h * (deep ? 2 : 1);
 		inline function sample(at:Int):Float
 			return deep ? (px.get(at) | px.get(at + 1) << 8) / 65535 : px.get(at) / 255;
 		var turned = rotation == 90 || rotation == 270, ow = turned ? th : tw, oh = turned ? tw : th;
 		var out = haxe.io.Bytes.alloc(ow * oh * 4);
-		for (y in 0...th)
+		for (y in 0...th) {
+			helder.image.GcPoint.poll();
 			for (x in 0...tw) {
 				var sx = x * step, sy = y * step, k = deep ? 2 : 1;
 				var yy = sample((sy * w + sx) * k), c = chroma + ((sy >> 1) * cw + (sx >> 1)) * 2 * k;
@@ -103,6 +144,7 @@ class Thumbs {
 				}
 				out.set(o + 3, 255);
 			}
+		}
 		return new Image(ow, oh, out);
 	}
 

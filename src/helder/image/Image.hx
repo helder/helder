@@ -221,28 +221,8 @@ class Image {
 			return null;
 		}
 		if (n >= 4 && u8(0) == 0xFF && u8(1) == 0xD8) {
-			// (the markers up to a frame's: SOF0 to SOF15 but DHT, JPG and DAC;
-			// EXIF's orientation 5 to 8 turns it a quarter, as decode does)
-			var i = 2, turned = false;
-			while (i + 9 < n) {
-				if (u8(i) != 0xFF) return null;
-				var m = u8(i + 1);
-				if (m == 0xFF) {
-					i++;
-					continue;
-				}
-				if (m >= 0xC0 && m <= 0xCF && m != 0xC4 && m != 0xC8 && m != 0xCC) {
-					var w = be16(i + 7), h = be16(i + 5);
-					return w > 0 && h > 0 ? (turned ? {width: h, height: w} : {width: w, height: h}) : null;
-				}
-				if (m == 0xD8 || (m >= 0xD0 && m <= 0xD7) || m == 0x01) {
-					i += 2;
-					continue;
-				}
-				if (m == 0xE1 && i + 18 < n && r.string(o + i + 4, 4) == "Exif" && !turned)
-					turned = Exif.swaps(Exif.tiff(b, o + i + 10, o + Std.int(Math.min(n, i + 2 + be16(i + 2)))));
-				i += 2 + be16(i + 2);
-			}
+			var size = JpegDecoder.size(b, o, n);
+			return size == null || !Exif.swaps(Exif.jpegOrientation(b, o, n)) ? size : {width: size.height, height: size.width};
 		}
 		return null;
 	}
