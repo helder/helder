@@ -282,9 +282,9 @@ class SoftCanvas implements TextureCanvas implements GpuPlaceholder.Gpuless {
 	}
 
 	// (what is drawn so far under b's rectangle, in the target drawn into
-	// (the frame, a group): its pixels into a texture on the CPU's device;
-	// under a transform its bounds)
-	function capture(b:Backdrop) {
+	// (the frame, a group), painted first (the bands drawn up to here): its
+	// pixels into a texture on the CPU's device; under a transform its bounds)
+	@:hxmc.unsafe(gc) function capture(b:Backdrop) {
 		var s = scale, x0 = (b.x + tx) * s, y0 = (b.y + ty) * s, x1 = (b.x + b.width + tx) * s, y1 = (b.y + b.height + ty) * s;
 		if (!flat) {
 			var ax = ma * x0 + mc * y0 + me, bx = ma * x1 + mc * y0 + me, cx = ma * x0 + mc * y1 + me, dx = ma * x1 + mc * y1 + me;
@@ -297,9 +297,10 @@ class SoftCanvas implements TextureCanvas implements GpuPlaceholder.Gpuless {
 		b.scale = s;
 		b.fx = x0;
 		b.fy = y0;
+		paint();
 		var q = quads, t = q.target;
 		var gx0 = Std.int(Math.max(Math.floor(x0), q.ox)), gy0 = Std.int(Math.max(Math.floor(y0), q.oy));
-		var gx1 = Std.int(Math.min(Math.ceil(x1), q.ox + t.width)), gy1 = Std.int(Math.min(Math.ceil(y1), q.oy + t.height));
+		var gx1 = Std.int(Math.min(Math.ceil(x1), q.ox + q.tw)), gy1 = Std.int(Math.min(Math.ceil(y1), q.oy + q.th));
 		var w = gx1 - gx0, h = gy1 - gy0;
 		if (w <= 0 || h <= 0) {
 			b.texture = null;
@@ -312,7 +313,7 @@ class SoftCanvas implements TextureCanvas implements GpuPlaceholder.Gpuless {
 		}
 		var px = Bytes.alloc(w * h * 4);
 		for (r in 0...h)
-			px.blit(r * w * 4, t.pixels, ((gy0 - q.oy + r) * t.width + gx0 - q.ox) * 4, w * 4);
+			hxmc.unsafe.BytesPtr.copyIn(px, r * w * 4, t.add(((gy0 - q.oy + r) * q.tw + gx0 - q.ox) * 4), w * 4);
 		d.writeTexture(tex, px);
 		b.texture = tex;
 		b.px = gx0;
