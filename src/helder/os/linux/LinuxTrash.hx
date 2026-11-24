@@ -178,6 +178,9 @@ class LinuxTrash {
 		return (dir.endsWith("/") ? dir : dir + "/") + name;
 }
 
+#if (hxmc.libc == "glibc")
+@:hxmc.lib("libc.so.6")
+#end
 @:hxmc.c private extern class TrashFs {
 	static function lstat(path:Ptr, st:Ptr):Int;
 	static function geteuid():Int;

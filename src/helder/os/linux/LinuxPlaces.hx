@@ -81,6 +81,9 @@ class LinuxPlaces {
 	}
 }
 
+#if (hxmc.libc == "glibc")
+@:hxmc.lib("libc.so.6")
+#end
 @:hxmc.c private extern class LinuxVolumes {
 	static function statvfs(path:Ptr, stats:Ptr):Int;
 }

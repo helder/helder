@@ -1128,6 +1128,11 @@ class Run {
 		hxmc(out, args.concat(["-D", 'hxmc.target=$target']));
 		run(target.startsWith("windows-") && target != HOST ? "wine" : out,
 			target.startsWith("windows-") && target != HOST ? [out] : []);
+		if (target == HOST && target.startsWith("linux-")) {
+			var desktop = "bin/os/PlacesTrashGlibc";
+			native(desktop, args, target);
+			run(desktop, []);
+		}
 		exe("bin/os/PlacesTrashHeadless", args.concat(["-D", "helder.headless"]));
 		run(exePath("bin/os/PlacesTrashHeadless", HOST), []);
 		var module = "bin/os/PlacesTrashTest.wasm";
