@@ -30,8 +30,8 @@ class DragOut {
 				var small = Resize.toFit(image.pixels, image.width, image.height, 96, 96);
 				image = new helder.image.Image(small.width, small.height, small.rgba);
 			}
-			var r = n.rect();
-			n.ui.dragFiles(paths, image, image == null ? 0 : Math.min(image.width, e.x - r.x), image == null ? 0 : Math.min(image.height, e.y - r.y), [Copy, Move],
+			// (the picture held at its middle, as Finder holds an icon)
+			n.ui.dragFiles(paths, image, image == null ? 0 : image.width / 2, image == null ? 0 : image.height / 2, [Copy, Move],
 				op -> if (op == Move) b.refresh());
 		};
 	}
