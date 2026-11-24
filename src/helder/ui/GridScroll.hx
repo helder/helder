@@ -17,6 +17,8 @@ class GridScroll extends VirtualScroll {
 	public final cellHeight:Float;
 	public final gap:Float;
 	public final padding:Float;
+	// select mode (a phone's Select): a press toggles its item, a drag sideways selects a run
+	@:typescript public var selectMode(get, set):Bool;
 	// a cell's node filled for item index (what the source keeps returned), a cell let go
 	public var onMakeCell:Null<(Int, Node)->Dynamic>;
 	public var onDropCell:Null<(Node, Dynamic)->Void>;
@@ -106,6 +108,12 @@ class GridScroll extends VirtualScroll {
 			key(e);
 		};
 	}
+
+	inline function get_selectMode():Bool
+		return input.selectMode;
+
+	inline function set_selectMode(v:Bool):Bool
+		return input.selectMode = v;
 
 	// the source's items changed: rows added or taken off the end, the rows
 	// made whose keys changed made again, update given the others' cells

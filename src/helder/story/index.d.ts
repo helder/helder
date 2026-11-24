@@ -157,6 +157,7 @@ export interface NeutralAttributes {
 	onDragEnd?: ((event: Event) => void) | null;
 	onResize?: ((event: Event) => void) | null;
 	onTap?: ((event: unknown) => void) | null;
+	onLongPress?: ((event: unknown) => void) | null;
 	onPan?: ((event: unknown) => void) | null;
 	onPinch?: ((event: unknown) => void) | null;
 	onScale?: ((event: unknown) => void) | null;

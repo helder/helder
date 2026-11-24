@@ -11,7 +11,7 @@ import helder.view.graph.Read;
 //     .route("/", _ -> <Home/>)
 //     .route("/product/:id", p -> <Product id={p.id}/>)
 //     .fallback(path -> <NotFound path={path}/>);
-@:forward(go, back, replace, reset, open, path, depth)
+@:forward(go, back, backTo, replace, reset, open, path, depth)
 abstract Router(helder.ui.nav.Router) from helder.ui.nav.Router to helder.ui.nav.Router {
 	public inline function new()
 		this = new helder.ui.nav.Router();

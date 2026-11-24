@@ -84,8 +84,8 @@ class Look<V> {
 		return (helder.view.graph.Owner.current == null ? null : Graph.use(context)) ?? cast base;
 
 	// (the default look: Base's recipes)
-	@:noCompletion public static function make(recipes:Map<String, Array<Refs->Dynamic>>):Look<BaseVariants>
-		return new Look(Comfortable, Graphite, {}, recipes, new Map(), new Map());
+	@:noCompletion public static function make(recipes:Map<String, Array<Refs->Dynamic>>, ?parts:Map<String, Array<Refs->Dynamic>>):Look<BaseVariants>
+		return new Look(Comfortable, Graphite, {}, recipes, new Map(), parts ?? new Map());
 
 	// this look with a patch over it (TypeScript's; Haxe's: LookOf.with, which checks the patch)
 	@:typescript.type("<P extends import('./style').LookPatch>(patch: P) => Look<V & import('./style').PatchVariants<P>>")

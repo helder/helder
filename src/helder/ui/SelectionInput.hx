@@ -3,9 +3,13 @@ package helder.ui;
 import helder.ui.actions.Keymap;
 
 // The input shared by a VirtualGrid and a VirtualList with a Selection.
+// In select mode (a phone's Select) a press toggles its item and nothing
+// is activated; a drag sideways from an item selects the run to the item
+// under the finger (Photos' and Files'), a vertical one still scrolls.
 @:noCompletion
 class SelectionInput {
 	public var onActivate:Null<Array<Int>->Void>;
+	public var selectMode(default, set) = false;
 	public var onContextMenu:Null<(Int, Float, Float)->Void>;
 	public var textOf:Null<Int->String>;
 	public var onEmptyClick:Null<Void->Void>;
@@ -30,6 +34,11 @@ class SelectionInput {
 	var clickMods = 0;
 	var typed = "";
 	var typedAt = -1e9;
+	// (the run's pan: the item it began on, whether it selects, the keys before it)
+	final run = new helder.ui.gesture.Pan(X);
+	var runFrom = -1;
+	var runOn = true;
+	var runBase:Array<String> = [];
 
 	public function new(view:VirtualScroll, selection:Selection, count:Void->Int, itemAt:Node->Int, nodeAt:Int->Null<Node>, move:(Int, Int)->Null<Int>) {
 		this.view = view;
@@ -53,6 +62,52 @@ class SelectionInput {
 			if (i >= 0) selection.moveFocus(i);
 		};
 		view.onFocusOut = _ -> if (!view.focusWithin()) typed = "";
+		run.enabled = false;
+		run.onGesture = pan;
+		view.addGesture(run);
+	}
+
+	function set_selectMode(v:Bool):Bool {
+		run.enabled = v;
+		return selectMode = v;
+	}
+
+	// (a run: from the item it began on to the one under the pointer, all
+	// selected or all not as the first was not)
+	function pan(g:helder.ui.gesture.Gesture) {
+		// (its focus in the window: the view's box and its local point)
+		var b = view.windowBounds(), x = b.x + g.x, y = b.y + g.y;
+		var i = at(x, y);
+		switch g.state {
+			case Began:
+				runFrom = at(x - g.tx, y - g.ty);
+				if (runFrom < 0) runFrom = i;
+				if (runFrom < 0) return;
+				runOn = !selection.has(selection.keyOf(runFrom));
+				runBase = selection.keys();
+				mark(runFrom);
+			case Changed if (runFrom >= 0 && i >= 0):
+				mark(i);
+			case Ended | Cancelled:
+				runFrom = -1;
+			case _:
+		}
+	}
+
+	function mark(to:Int) {
+		var lo = Std.int(Math.min(runFrom, to)), hi = Std.int(Math.max(runFrom, to));
+		var span = [for (k in lo...hi + 1) selection.keyOf(k)];
+		var keys = runOn ? runBase.concat(span.filter(k -> runBase.indexOf(k) < 0)) : runBase.filter(k -> span.indexOf(k) < 0);
+		selection.setKeys(keys);
+		selection.moveFocus(to);
+	}
+
+	// (the item under a point of the window)
+	function at(x:Float, y:Float):Int {
+		var u = view.ui;
+		if (u == null) return -1;
+		var n = @:privateAccess u.hit(x, y);
+		return n == null ? -1 : itemAt(n);
 	}
 
 	public static function secondary(mods:Int):Bool
@@ -78,7 +133,7 @@ class SelectionInput {
 		pressedY = e.y;
 		moved = false;
 		held = i >= 0 && selection.has(selection.keyOf(i)) && e.mods & Key.MOD_SHIFT == 0 && !secondary(e.mods);
-		if (i >= 0 && !held) choose(i, e.mods);
+		if (i >= 0 && !held && !selectMode) choose(i, e.mods);
 	}
 
 	function choose(i:Int, mods:Int) {
@@ -105,6 +160,10 @@ class SelectionInput {
 		if (i < 0) {
 			lastClick = null;
 			if (onEmptyClick != null) onEmptyClick();
+			return;
+		}
+		if (selectMode) {
+			selection.toggle(i);
 			return;
 		}
 		var k = selection.keyOf(i), t = Ui.now();
