@@ -35,6 +35,8 @@ final class RenderThread {
 	final idleLock = new sys.thread.Mutex();
 	// (Apple: the autorelease pool around what runs outside a frame; a frame's own is the back end's)
 	var pool = Ptr.nil();
+	// (Windows: the system's timer at 1 ms while idle work is due)
+	var fine = false;
 
 	function new() {}
 
@@ -121,8 +123,10 @@ final class RenderThread {
 	function loop() {
 		while (true) {
 			var due = nextDue();
+			tick(due >= 0);
 			if (due < 0) ready.wait() else ready.wait(Math.max(0, due - haxe.Timer.stamp()));
 			if (stop) {
+				tick(false);
 				drain();
 				done.release();
 				return;
@@ -176,6 +180,19 @@ final class RenderThread {
 		done.release();
 	}
 
+	// (Windows: a timed wait ends on the system's tick, 15.6 ms; the
+	// compositor's waits of part of a period (the program's turn after
+	// input, the layers' next composition) then end a vblank late, its
+	// frames locked at half the display's rate. 1 ms while something moves
+	// only, for the power it costs)
+	function tick(on:Bool) {
+		#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+		if (on == fine) return;
+		fine = on;
+		if (on) Winmm.timeBeginPeriod(1) else Winmm.timeEndPeriod(1);
+		#end
+	}
+
 	// (Apple: the autorelease pool around what runs outside a frame)
 	inline function pooled() {
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
@@ -192,4 +209,11 @@ final class RenderThread {
 		#end
 	}
 }
+
+#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+@:hxmc.c @:hxmc.lib("winmm") extern class Winmm {
+	static function timeBeginPeriod(ms:Int):Int;
+	static function timeEndPeriod(ms:Int):Int;
+}
+#end
 #end
