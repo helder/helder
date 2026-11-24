@@ -412,7 +412,7 @@ class Player {
 				audio = null;
 			}
 		}
-		if (video == null && audio == null) throw new MediaError("nothing this system decodes");
+		if (video == null && audio == null) throw new MediaError(Decoders.missing() ?? "nothing this system decodes");
 		duration = m.duration > 0 ? m.duration : Math.max(video != null ? video.duration : 0, audio != null ? audio.duration : 0);
 		if (adec != null) {
 			// (two seconds, and room for a packet's 16384 frames over the
@@ -584,7 +584,8 @@ class Player {
 	// lasts lost them at its start (Apple's Opus decoder's first, 120 of
 	// 960), so its end is where they meet; one that decoded to more ends at
 	// its duration (Matroska's last BlockDuration: a WebM's track has no
-	// duration to end it)
+	// duration to end it), or earlier by its trim (DiscardPadding: exact,
+	// where BlockDuration is whole milliseconds)
 	static function keep(p:Packet, n:Int, rate:Int, from:Float, end:Float):{first:Int, count:Int, time:Float} {
 		var d = p.duration / p.track.timescale, at = p.time, delay = p.track.delay;
 		// (Matroska's times are whole milliseconds: the first packet's -7 ms is CodecDelay's -6.5)
@@ -595,6 +596,8 @@ class Player {
 		count = n - first;
 		var last = d > 0 ? Math.round((at + d - t0) * rate) - first : count;
 		if (n > Math.round(d * rate) + 1 && last < count) count = Std.int(Math.max(0, last));
+		// (its end's padding, said: DiscardPadding's)
+		if (p.trim > 0) count = Std.int(Math.max(0, Math.min(count, n - Math.round(p.trim * rate) - first)));
 		if (end > 0) while (count > 0 && t0 + (first + count - 1) / rate >= end - EPS) count--;
 		return {first: first, count: count, time: t0 + first / rate};
 	}

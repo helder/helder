@@ -843,16 +843,29 @@ class GLBackend {
 		#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
 		if (Platform.target() >= 9 && StringTools.startsWith(handle, "ahb:")) return hardwareBuffer(handle, w, h);
 		#end
-		if (Platform.os() == 3 || Platform.target() >= 9 || !StringTools.startsWith(handle, "dmabuf:") || sharing() == null) return 0;
+		if (Platform.os() == 3 || Platform.target() >= 9) return 0;
+		// (a browser's build compiles every method it meets: EGL's, a video's planes' not there)
+		#if (hxmc.target != "wasm32-wasi")
+		if (StringTools.startsWith(handle, "mem:")) return memory(handle, w, h);
+		var own = StringTools.startsWith(handle, "dmabuf:0:");
+		if (own && !imports()) return 0;
+		#else
+		var own = false;
+		#end
+		if (!StringTools.startsWith(handle, "dmabuf:") || !own && sharing() == null) return 0;
 		var f = [for (x in handle.substr(7).split(":")) Std.parseInt(x) ?? 0];
 		if (f.length < 7) return 0;
 		use();
-		// (the producer's descriptor, ours now: pidfd_open 434, pidfd_getfd 438)
-		var pidfd = LinuxCall.syscall(434, f[0], 0, 0).toInt();
-		if (pidfd < 0) return 0;
-		var fd = LinuxCall.syscall(438, pidfd, f[1], 0).toInt();
-		Posix.close(pidfd);
-		if (fd < 0) return 0;
+		// (the producer's descriptor, ours now: pidfd_open 434, pidfd_getfd 438;
+		// this process's (pid 0: a video decoder's) as it is)
+		var fd = f[1];
+		if (!own) {
+			var pidfd = LinuxCall.syscall(434, f[0], 0, 0).toInt();
+			if (pidfd < 0) return 0;
+			fd = LinuxCall.syscall(438, pidfd, f[1], 0).toInt();
+			Posix.close(pidfd);
+			if (fd < 0) return 0;
+		}
 		var attribs = [
 			EGL.WIDTH, w, EGL.HEIGHT, h, EGL.LINUX_DRM_FOURCC_EXT, f[2], EGL.DMA_BUF_PLANE0_FD_EXT, fd, EGL.DMA_BUF_PLANE0_OFFSET_EXT, f[4],
 			EGL.DMA_BUF_PLANE0_PITCH_EXT, f[3]
@@ -862,7 +875,7 @@ class GLBackend {
 		attribs.push(EGL.NONE);
 		var image = Arena.scopedValue(a -> EglImage.create(pCreateImage, display, Ptr.nil(), EGL.LINUX_DMA_BUF_EXT, Ptr.nil(), ints(a, attribs)));
 		// (EGL keeps its own reference to the buffer)
-		Posix.close(fd);
+		if (!own) Posix.close(fd);
 		if (image.isNull()) return 0;
 		GL.glGenTextures(1, scratch);
 		var t = scratch.value;
@@ -874,6 +887,77 @@ class GLBackend {
 		GL.glBindTexture(GL.TEXTURE_2D, units[0]);
 		images.set(textures.length, {image: image, fd: -1});
 		return textures.length;
+	}
+
+	#if (hxmc.target != "wasm32-wasi")
+	var importing:Null<Bool> = null;
+	var norm16:Null<Bool> = null;
+
+	// whether EGL imports dma-bufs (EGL_EXT_image_dma_buf_import: a video
+	// decoder's planes, helder.media.linux.AvVideo's), without exporting any
+	function imports():Bool {
+		if (importing == null) {
+			use();
+			var p = Egl.eglQueryString(display, EGL.EXTENSIONS);
+			var ext = p.isNull() ? "" : (cast p : CString).toString();
+			if (pCreateImage.isNull()) pCreateImage = Egl.eglGetProcAddress(Mem.cstr("eglCreateImageKHR"));
+			if (pDestroyImage.isNull()) pDestroyImage = Egl.eglGetProcAddress(Mem.cstr("eglDestroyImageKHR"));
+			if (pImageTarget.isNull()) pImageTarget = Egl.eglGetProcAddress(Mem.cstr("glEGLImageTargetTexture2DOES"));
+			importing = Sys.getEnv("HELDER_NO_DMABUF") != "1" && ext.indexOf("EGL_EXT_image_dma_buf_import") >= 0 && !pCreateImage.isNull()
+				&& !pDestroyImage.isNull() && !pImageTarget.isNull();
+			modifiers = ext.indexOf("EGL_EXT_image_dma_buf_import_modifiers") >= 0;
+		}
+		return importing;
+	}
+
+	// (a video frame's plane in memory, helder.media's: "mem:ADDRESS:PITCH:
+	// FORMAT:N", its rows copied into a texture of w x h as it is made: r8,
+	// rg8; r16 and rg16 where GL has EXT_texture_norm16)
+	function memory(handle:String, w:Int, h:Int):Int {
+		var at = handle.split(":");
+		if (at.length < 4 || at[1].length != 16) return 0;
+		use();
+		if (norm16 == null) {
+			var p = GL.glGetString(GL.EXTENSIONS);
+			norm16 = !p.isNull() && (cast p : CString).toString().indexOf("GL_EXT_texture_norm16") >= 0;
+		}
+		// (R16_EXT, RG16_EXT: 16 bits read as 0..1)
+		var f = switch at[3] {
+			case "r8": [GL.R8, GL.RED, GL.UNSIGNED_BYTE, 1];
+			case "rg8": [GL.RG8, GL.RG, GL.UNSIGNED_BYTE, 2];
+			case "r16" if (norm16): [0x822A, GL.RED, GL.UNSIGNED_SHORT, 2];
+			case "rg16" if (norm16): [0x822C, GL.RG, GL.UNSIGNED_SHORT, 4];
+			case _: null;
+		}
+		var pitch = Std.parseInt(at[2]) ?? 0;
+		if (f == null || pitch <= 0 || pitch % f[3] != 0) return 0;
+		var src = Ptr.ofI64((cast haxe.Int64.make(word(at[1], 0), word(at[1], 8)) : Int64));
+		GL.glGenTextures(1, scratch);
+		var t = scratch.value;
+		textures.push(t);
+		infos.push(TextureInfo.of({width: w, height: h, format: at[3] == "r8" ? R8 : RG8}));
+		GL.glActiveTexture(GL.TEXTURE0);
+		GL.glBindTexture(GL.TEXTURE_2D, t);
+		GL.glTexStorage2D(GL.TEXTURE_2D, 1, f[0], w, h);
+		GL.glPixelStorei(GL.UNPACK_ALIGNMENT, 1);
+		GL.glPixelStorei(UNPACK_ROW_LENGTH, Std.int(pitch / f[3]));
+		GL.glTexSubImage2D(GL.TEXTURE_2D, 0, 0, 0, w, h, f[1], f[2], src);
+		GL.glPixelStorei(UNPACK_ROW_LENGTH, 0);
+		GL.glBindTexture(GL.TEXTURE_2D, units[0]);
+		return textures.length;
+	}
+
+	static inline var UNPACK_ROW_LENGTH = 0x0CF2;
+	#end
+
+	// (8 hex digits at i: 32 bits)
+	static function word(hex:String, i:Int):Int {
+		var v = 0;
+		for (k in i...i + 8) {
+			var c = hex.charCodeAt(k);
+			v = v << 4 | (c <= 57 ? c - 48 : (c | 32) - 87);
+		}
+		return v;
 	}
 
 	public function frameInto(id:Int)
@@ -915,16 +999,6 @@ class GLBackend {
 		images.set(id, {image: image, fd: -1});
 		externals.set(id, true);
 		return id;
-	}
-
-	// (8 hex digits at i: 32 bits)
-	static function word(hex:String, i:Int):Int {
-		var v = 0;
-		for (k in i...i + 8) {
-			var c = hex.charCodeAt(k);
-			v = v << 4 | (c <= 57 ? c - 48 : (c | 32) - 87);
-		}
-		return v;
 	}
 
 	static inline var EXTERNAL = 0x8D65; // GL_TEXTURE_EXTERNAL_OES
