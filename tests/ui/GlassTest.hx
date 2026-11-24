@@ -5,23 +5,21 @@ import sys.io.File;
 
 // Liquid Glass drawn (helder.ui.draw.GlassPass, GlassShader) over
 // GlassScene's backgrounds, headless (bun run test ui-soft: the golden,
-// the CPU's; ui-draw: the GPU's against it), the four scenes side by side;
+// the CPU's; ui-draw: the GPU's against it), stripes over text;
 // and against the system's (macOS 26's NSGlassEffectView over the same
 // backgrounds, tests/ui/glass-reference/: glass-reference.swift's), how
 // near it comes: the mean difference over the glass and its rim, and the
 // two side by side.
 //   GlassTest <golden.png> <out.png> [--bless]
-//   GlassTest --smoke: no golden (Windows' D3D11: no DejaVu Sans), the
+//   GlassTest --smoke: no golden (Windows' D3D11, run where nothing else checks it), the
 //   stripes blurred under the capsule, their contrast well under theirs beside it
 //   GlassTest --backgrounds dir [scale]: the backgrounds alone, dir/<bg>.png
 //   GlassTest --compare refdir outdir [scale]: against refdir/<bg>.png,
 //   outdir/<bg>.png the two side by side, the numbers printed
 class GlassTest {
-	// (llvmpipe filters with weights of a few bits: where the lens magnifies
-	// a sharp edge its pixels land further from the CPU's than other GPUs')
 	static inline var TOLERANCE = 6;
-	static inline var MAX_FAR = 0.02;
-	static inline var MEAN = 1.0;
+	static inline var MAX_FAR = 0.002;
+	static inline var MEAN = 0.5;
 
 	static function main() {
 		var a = Sys.args();
@@ -33,31 +31,33 @@ class GlassTest {
 	}
 
 	// (scene bg drawn at scale k: its pixels, its glass)
-	static function draw(f:DrawFrame, bg:String, k:Float, glass = true, labels = true):{pixels:Bytes, glass:Array<Glass>} {
+	static function draw(f:DrawFrame, bg:String, k:Float, glass = true, labels = true, group = false):{pixels:Bytes, glass:Array<Glass>} {
 		var ui = new Ui(new DrawText(), Std.int(GlassScene.W), Std.int(GlassScene.H));
-		var gs = GlassScene.build(ui.root, bg, glass, labels);
+		var gs = GlassScene.build(ui.root, bg, glass, labels, group);
 		f.scale = k;
 		ui.update();
 		return {pixels: f.draw(ui), glass: gs};
 	}
 
+	// (the golden: stripes over text, a group among the stripes' glass; the
+	// photo and the gradient, which compress poorly, only compared with the system's)
+	static final GOLDEN = ["stripes", "text"];
+
 	static function golden(golden:String, out:String, bless:Bool) {
-		var W = GlassScene.W, H = GlassScene.H, f = new DrawFrame(W, H), all = Bytes.alloc(W * H * 16);
-		for (i => bg in GlassScene.backgrounds) {
-			var px = draw(f, bg, 1).pixels, ox = (i % 2) * W, oy = Std.int(i / 2) * H;
-			for (y in 0...H)
-				all.blit(((oy + y) * W * 2 + ox) * 4, px, y * W * 4, W * 4);
-		}
+		var W = GlassScene.W, H = GlassScene.H, f = new DrawFrame(W, H), all = Bytes.alloc(W * H * 4 * GOLDEN.length);
+		for (i => bg in GOLDEN)
+			all.blit(i * W * H * 4, draw(f, bg, 1, true, true, true).pixels, 0, W * H * 4);
 		Sys.println('GlassTest ($f)');
 		f.dispose();
-		File.saveBytes(out, Png.encode(all, W * 2, H * 2));
+		File.saveBytes(out, Png.encode(all, W, H * GOLDEN.length));
 		if (bless) {
-			File.saveBytes(golden, Png.encode(all, W * 2, H * 2));
+			// (compressed, RGB: the golden in the repository small)
+			File.saveBytes(golden, helder.image.PngEncoder.encode(all, W, H * GOLDEN.length, true));
 			Sys.println('GlassTest: blessed $golden');
 			return;
 		}
 		var want = helder.image.PngDecoder.decode(File.getBytes(golden));
-		var d = ImageDiff.of(all, want.rgba, W * 2, H * 2, TOLERANCE), ok = d.within(MAX_FAR, MEAN);
+		var d = ImageDiff.of(all, want.rgba, W, H * GOLDEN.length, TOLERANCE), ok = d.within(MAX_FAR, MEAN);
 		Sys.println('GlassTest: ${ok ? "ok" : "FAILED"} ($d)');
 		Sys.exit(ok ? 0 : 1);
 	}

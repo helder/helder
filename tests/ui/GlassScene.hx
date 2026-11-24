@@ -3,15 +3,21 @@ import helder.ui.*;
 // Glass over the backgrounds Liquid Glass is compared on (GlassWindow: the
 // system's, GlassTest: drawn): stripes, a gradient, text, a photo; on each
 // a regular capsule with a label, clear glass with rounded corners, and a
-// tinted regular circle. 400 x 300 points.
+// tinted regular circle; with group, two glass merging in a <glass-group>.
+// Its text in helder's own Inter (embedded): the same glyphs on every
+// machine, whatever fonts it has. 400 x 300 points.
 class GlassScene {
 	public static inline var W = 400;
 	public static inline var H = 300;
 	public static final backgrounds = ["stripes", "gradient", "text", "photo"];
 
-	// the scene of background bg into root (glass: with its glass, labels: their labels); its glass
-	public static function build(root:Node, bg:String, glass = true, labels = true):Array<Glass> {
-		root.style.set({width: W, height: H, background: 0xFFFFFFFF, fontFamily: "DejaVu Sans"});
+	// the scene of background bg into root (glass: with its glass, labels:
+	// their labels, group: a group of two); its glass, not the group's
+	public static function build(root:Node, bg:String, glass = true, labels = true, group = false):Array<Glass> {
+		// (added whatever the system has: an added face is found before a system's
+		// Inter (fonts-inter's), its every weight (a variable one); added once)
+		helder.text.SystemFonts.get().add(helder.asset.Asset.embed("helder/text/fonts/Inter.ttf"));
+		root.style.set({width: W, height: H, background: 0xFFFFFFFF, fontFamily: "Inter"});
 		var back = new Node();
 		back.style.set({position: Absolute, left: 0, top: 0, width: W, height: H, overflow: Hidden});
 		switch bg {
@@ -52,6 +58,17 @@ class GlassScene {
 		tinted.style.set({position: Absolute, left: 250, top: 160, width: 80, height: 80});
 		for (g in [capsule, clear, tinted])
 			root.append(g);
+		if (group) {
+			var gg = new GlassGroup();
+			gg.spacing = 12;
+			gg.style.set({position: Absolute, left: 210, top: 252, direction: Row, columnGap: 6});
+			for (_ in 0...2) {
+				var c = new Glass();
+				c.style.set({width: 36, height: 36});
+				gg.append(c);
+			}
+			root.append(gg);
+		}
 		return [capsule, clear, tinted];
 	}
 

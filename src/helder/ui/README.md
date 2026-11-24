@@ -1293,10 +1293,11 @@ Where it differs: the system's specular highlights at a capsule's ends
 (a reflection the lens makes bright), its continuous corners (a rounded
 rectangle's here), Apple's dimming of clear glass by what is behind it;
 a group draws all its glass in its first glass's variant and tint. The
-golden (`tests/ui/glass.png`) is the CPU's, the GPUs' within it (Metal
-within 2 levels; llvmpipe's few-bit filtering lands up to 60 apart where
-the lens magnifies an edge); `tests/ui/web-glass.mjs` checks WebGPU and
-WebGL2, `GlassTest --smoke` D3D11.
+golden (`tests/ui/glass.png`: stripes over text, a group among the
+glass; its text in helder's embedded Inter, so the same on every
+machine) is the CPU's, made on Linux by ui-soft; Metal, llvmpipe, WebGPU
+and WebGL2 land within 8 levels of it, one pixel over 6
+(`tests/ui/web-glass.mjs` checks the browsers', `GlassTest --smoke` D3D11).
 
 ### Native or drawn, per widget
 

@@ -1,8 +1,9 @@
 // Liquid Glass in a browser (bun run test ui-web): WebGlass.wasm in headless
 // Chromium on WebGPU, then on WebGL2 (forced), its frame against the
-// stripes quarter of glass.png (GlassTest's golden, the CPU's), within
+// stripes, the top half of glass.png (GlassTest's golden, the CPU's), within
 // GlassTest's tolerance: the backdrop captured, blurred and lensed by the
-// glass's shaders as WGSL and GLSL ES.
+// glass's shaders as WGSL and GLSL ES (helder.async's imports: the
+// scene's Inter, an embedded asset).
 //   node tests/ui/web-glass.mjs <WebGlass.wasm>
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -15,19 +16,17 @@ let pw;
 try { pw = require('playwright'); } catch { pw = require(path.join(process.execPath, '../../lib/node_modules/playwright')); }
 const here = path.dirname(fileURLToPath(import.meta.url));
 const [wasm] = process.argv.slice(2);
-const fonts = process.env.DEJAVU_DIR ?? '/usr/share/fonts/truetype/dejavu';
 const CHROMIUM_ARGS = ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-vulkan=swiftshader', '--use-angle=swiftshader'];
 const files = {
 	'/glass.wasm': wasm,
 	'/os/browser.mjs': path.join(here, '../../src/helder/os/browser.mjs'),
 	'/os/imports.mjs': path.join(here, '../../src/helder/os/imports.mjs'),
+	'/async/imports.mjs': path.join(here, '../../src/helder/async/imports.mjs'),
 	'/gfx/imports.mjs': path.join(here, '../../src/helder/gfx/imports.mjs'),
 	'/text/imports.mjs': path.join(here, '../../src/helder/text/imports.mjs'),
 	'/ui/imports.mjs': path.join(here, '../../src/helder/ui/imports.mjs'),
 	'/compare.mjs': path.join(here, '../gfx/compare.mjs'),
 	'/glass.png': path.join(here, 'glass.png'),
-	'/DejaVuSans.ttf': path.join(fonts, 'DejaVuSans.ttf'),
-	'/DejaVuSans-Bold.ttf': path.join(fonts, 'DejaVuSans-Bold.ttf'),
 };
 const types = { '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.png': 'image/png', '.ttf': 'font/ttf' };
 // (GlassTest's: TOLERANCE, MAX_FAR, MEAN)
@@ -38,8 +37,7 @@ import { run } from './os/browser.mjs';
 import { decode } from './compare.mjs';
 window.log = [];
 window.start = async (gfx) => {
-	window.r = run('glass.wasm', { imports: ['os/imports.mjs', 'gfx/imports.mjs', 'text/imports.mjs', 'ui/imports.mjs'], canvas: 'c', gfx,
-		fonts: ['DejaVuSans.ttf', 'DejaVuSans-Bold.ttf'], stdout: (s) => window.log.push(s), stderr: (s) => window.log.push('stderr: ' + s) });
+	window.r = run('glass.wasm', { imports: ['os/imports.mjs', 'async/imports.mjs', 'gfx/imports.mjs', 'text/imports.mjs', 'ui/imports.mjs'], canvas: 'c', gfx, stdout: (s) => window.log.push(s), stderr: (s) => window.log.push('stderr: ' + s) });
 	window.result = await window.r;
 	return window.result.host.gfx.backend;
 };
@@ -57,7 +55,7 @@ window.check = async () => {
 			if (d > 6) far++;
 			max = Math.max(max, d);
 		}
-	const mean = sum / 120000, ok = px.width === 400 && far <= 0.02 * 120000 && mean < 1;
+	const mean = sum / 120000, ok = px.width === 400 && far <= 0.002 * 120000 && mean < 0.5;
 	return { ok, text: (ok ? 'ok' : 'FAIL') + ' (' + far + ' pixels more than 6 apart, at most ' + max + ', mean ' + mean.toFixed(2) + ')' };
 };
 </script>`;
