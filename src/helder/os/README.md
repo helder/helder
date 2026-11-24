@@ -185,6 +185,45 @@ Windows an HDROP posted as `WM_DROPFILES`, under Wine too
 own class given to the window's dragging destination; then moveTo and
 position, fullscreen asked); `src/helder/os/UriList.test.hx`.
 
+### Dragging files out
+
+```haxe
+// from a pointer move with the button down: the system's drag from here
+window.dragFiles(paths, thumb, 16, 16, [Copy, Move], op -> if (op == Move) refresh());
+ui.dragFiles(paths, thumb, 16, 16, [Copy], op -> {});  // helder.ui: through its window
+```
+
+`dragFiles` hands the press to the system as a drag of files (absolute
+paths) to other apps: file managers, mail, chat, a browser's upload. The
+image (straight RGBA, a pixel a point) has its top left at the pointer
+less the offsets; `done` comes once with the target's operation (`None`:
+cancelled with Escape, dropped where nothing took it). The press is the
+system's from then on: no release follows (helder.ui lets its pressed node,
+its capture and a drag of its own go). macOS: a dragging session
+(`beginDraggingSessionWithItems:event:source:`) from the last mouse-down
+or -dragged event, an `NSDraggingItem` per file URL, the source a class
+made at run time (its operation mask from `allowed`, its
+`draggingSession:endedAtPoint:operation:` the completion); events keep
+flowing. Windows: OLE's modal `DoDragDrop` (`OleInitialize` on the
+windows' thread; frames drawn from a timer meanwhile, as while sizing),
+the Shell's data object (`CF_HDROP`, the Shell IDList Array: a shell item
+array's `BHID_DataObject` handler, else the parent folder's
+`GetUIObjectOf`, which is what Wine has), a native `IDropSource` (Escape
+cancels, the button's release drops) and the image through
+`IDragSourceHelper::InitializeFromBitmap`; the left button only. X11: an
+XDND 5 source: the pointer and keyboard grabbed, the `XdndAware` window
+under the pointer found (an `XdndProxy` followed), `XdndEnter` with
+`text/uri-list`, `XdndPosition` (the action from `allowed` and the
+modifiers: Shift move, Control and Shift link) and its `XdndStatus`,
+`XdndLeave` on leaving it, `XdndDrop` on the release when accepted, the
+`XdndSelection` answered with the paths as percent-encoded `file://` URIs
+(`UriList.encode`), then `XdndFinished` (or 5 s); no image, the drag's
+cursor instead. False on Wayland, in the browser, on Android and iOS.
+Tests: `bun run test window` (on X11 a second connection's window is the
+target, answering and converting the selection; on Windows the Shell's
+data object read back as `CF_HDROP`; on macOS the dragging items and the
+source's mask and end), `src/helder/ui/DragFiles.test.hx`.
+
 ### An inset title bar
 
 ```haxe

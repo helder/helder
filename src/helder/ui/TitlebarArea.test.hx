@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.DragOperation;
 import helder.os.TitleBar.TitleHit;
 import helder.test.Test;
 import helder.view.Render;
@@ -124,6 +125,10 @@ private class Host implements WindowHost {
 	public function maximize(on:Bool) {}
 
 	public function close() {}
+
+	public function dragFiles(paths:Array<String>, image:Null<helder.image.Image>, offsetX:Float, offsetY:Float, allowed:Array<DragOperation>,
+		done:DragOperation->Void):Bool
+		return false;
 }
 
 private class Fixture implements helder.view.Markup {

@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.DragOperation;
 import helder.ui.platform.*;
 import helder.ui.draw.Damage;
 import helder.ui.draw.DisplayList;
@@ -139,6 +140,22 @@ class Ui extends ScrollHost {
 	public var clipboard:ClipboardHost = new ClipboardHost.MemoryClipboard();
 	// the window it is drawn in (UiWindow's: WindowControls' buttons; null: none)
 	public var window:Null<WindowHost> = null;
+	// a system drag of files from the press being moved (a DragStart's, a
+	// PointerMove's), to other apps: the press, and a drag of ui's own, end
+	// here (false: no window, or the system can't; done never called)
+	public function dragFiles(paths:Array<String>, image:Null<helder.image.Image>, offsetX:Float, offsetY:Float,
+		allowed:Array<DragOperation>, done:DragOperation->Void):Bool {
+		var id = dispatching < 0 ? 0 : dispatching;
+		if (window == null || !window.dragFiles(paths, image, offsetX, offsetY, allowed, done)) return false;
+		if (id == 0) {
+			selecting = false;
+			dragSource = null;
+			if (dragging != null) endDrag(false, pointerX, pointerY);
+		}
+		pointerCancel(id);
+		return true;
+	}
+
 	// where the system's window buttons go (WindowControls' box: UiWindow
 	// places them at its top left after each layout; null: where they are)
 	public var controlsAt:Null<Node> = null;
@@ -1413,7 +1430,7 @@ class Ui extends ScrollHost {
 			var e = Event.of(DragStart, s, x, y);
 			e.data = s.dragData;
 			bubble(e);
-			if (!e.defaultPrevented) {
+			if (!e.defaultPrevented && capture != null) {
 				setPressed(capture, false);
 				capture = null;
 				closeArena(0, true);
