@@ -9,7 +9,7 @@
 // slide (a layer that moves on its own: a Web Animation) going on while
 // the program is busy, where the flat window's would not; a frame read
 // back (host.gfx.readPixels) drawn whole, as the flat window's.
-//   node tests/ui/web-layers.mjs <WebLayersPage.wasm>
+//   node tests/ui/web-layers.mjs <WebLayersPage.wasm>   (ENGINE=firefox, webkit: those)
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -83,7 +83,9 @@ const server = createServer(async (req, res) => {
 	}
 }).listen(0);
 const url = `http://localhost:${server.address().port}/`;
-const browser = await pw.chromium.launch({ args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-vulkan=swiftshader', '--use-angle=swiftshader'] });
+// (ENGINE=firefox or webkit: that one, on WebGL2 alone; not in CI)
+const engine = process.env.ENGINE ?? 'chromium';
+const browser = await pw[engine].launch(engine === 'chromium' ? { args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-vulkan=swiftshader', '--use-angle=swiftshader'] } : {});
 let failed = 0;
 const check = (what, ok, detail = '') => {
 	if (!ok) failed++;
@@ -105,7 +107,7 @@ const state = async (p) => (await p.evaluate(() => window.log)).filter((l) => l.
 const LIST = [0, 40, 380, 300];
 
 try {
-	for (const gfx of ['webgpu', 'webgl2'])
+	for (const gfx of engine === 'chromium' ? ['webgpu', 'webgl2'] : ['webgl2'])
 		for (const worker of [false, true]) {
 			const mode = `${gfx}${worker ? ' in a worker' : ''}`;
 			const { p, backend } = await open(gfx, worker, false);
