@@ -500,12 +500,24 @@ private class WinDragOut {
 		// (the shell item array's, then the parent folder's: Wine's; on the
 		// windows' thread, OLE's. TEMP may be a short name, the Shell's long)
 		for (items in [true, false]) {
-			var got = OsThread.get(() -> hdrop(@:privateAccess helder.os.win32.WinFileDrag.dataObject(files, items)));
+			var how = items ? "items" : "folder";
+			var got = OsThread.get(() -> {
+				step('the data object ($how)');
+				var data = @:privateAccess helder.os.win32.WinFileDrag.dataObject(files, items);
+				step(data.isNull() ? "none" : "its CF_HDROP");
+				hdrop(data);
+			});
 			var names = [for (g in got) haxe.io.Path.withoutDirectory(g)].join("|");
-			check('drag out: the Shell\'s data object as CF_HDROP (${items ? "items" : "folder"})', names == "drag a.txt|drag b.txt", got.join("|"));
+			check('drag out: the Shell\'s data object as CF_HDROP ($how)', names == "drag a.txt|drag b.txt", got.join("|"));
 		}
 		for (f in files)
 			sys.FileSystem.deleteFile(f);
+	}
+
+	// (printed at once: a crash in the Shell shows the step it was in)
+	static function step(what:String) {
+		Sys.println('WindowTest: drag out: $what');
+		Sys.stdout().flush();
 	}
 
 	static function hdrop(data:Ptr):Array<String> {
@@ -517,6 +529,7 @@ private class WinDragOut {
 			f[5] = -1;
 			f[6] = 1;
 			if (DataObject.GetData(data, format, medium) < 0) return [];
+			step("DragQueryFileW");
 			var drop = medium[1], buf:Ptr<UInt16> = a.alloc(1024), out = [];
 			for (i in 0...Shell32.DragQueryFileW(drop, -1, Ptr.nil(), 0)) {
 				var n = Shell32.DragQueryFileW(drop, i, buf, 512), b = new StringBuf();
@@ -524,9 +537,11 @@ private class WinDragOut {
 					b.addChar(buf[k]);
 				out.push(b.toString());
 			}
+			step("ReleaseStgMedium");
 			@:privateAccess helder.os.win32.WinFileDrag.DragOle32.ReleaseStgMedium(medium);
 			return out;
 		});
+		step("released");
 		helder.os.win32.Com.release(data);
 		return got;
 	}

@@ -67,7 +67,7 @@ class WinFileDrag {
 		return Arena.scopedValue(a -> {
 			var ids:Ptr<Ptr> = a.alloc(paths.length * 8), count = 0;
 			for (path in paths) {
-				if (DragShell32.SHParseDisplayName(a.wstring(StringTools.replace(path, "/", "\\")), Ptr.nil(), ids.add(count), 0, Ptr.nil()) < 0) break;
+				if (DragShell32.SHParseDisplayName(a.wstring(StringTools.replace(path, "/", "\\")), Ptr.nil(), ids.offset(count), 0, Ptr.nil()) < 0) break;
 				count++;
 			}
 			var data = count < paths.length ? Ptr.nil() : items ? fromItems(a, ids, count) : Ptr.nil();
@@ -90,7 +90,7 @@ class WinFileDrag {
 	// same bytes before it)
 	static function fromFolder(a:Arena, ids:Ptr<Ptr>, count:Int):Ptr {
 		var folders:Ptr<Ptr> = a.alloc(count * 8), children:Ptr<Ptr> = a.alloc(count * 8), out:Ptr<Ptr> = a.alloc(8), bound = 0, same = true;
-		while (bound < count && DragShell32.SHBindToParent(ids[bound], SHELL_FOLDER, folders.add(bound), children.add(bound)) >= 0)
+		while (bound < count && DragShell32.SHBindToParent(ids[bound], SHELL_FOLDER, folders.offset(bound), children.offset(bound)) >= 0)
 			bound++;
 		var parent = children[0].toI64() - ids[0].toI64();
 		for (i in 1...bound)
