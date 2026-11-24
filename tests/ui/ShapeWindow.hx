@@ -37,10 +37,8 @@ class ShapeWindow {
 		half.style.set({position: Absolute, left: 130, top: 40, width: 40, height: 60, background: 0x800000FF});
 		w.root.append(box);
 		w.root.append(half);
-		if (desk != null) {
-			var p = desk.window.position();
-			w.window.moveTo(p.x, p.y);
-		}
+		// (both at one place: the window behind's own move not yet done)
+		if (desk != null) w.window.moveTo(200, 200);
 		var step = 0, all = desk == null ? [w] : [desk, w];
 		App.run(() -> {
 			if (++step == 12) {
@@ -138,7 +136,8 @@ class ShapeWindow {
 		desk.device.settle();
 		w.device.settle();
 		Sys.sleep(0.3);
-		var p = w.window.position(), k = w.window.scale;
+		var p = w.window.position(), k = w.window.scale, q = desk.window.position();
+		if (p.x != q.x || p.y != q.y) Sys.println('ShapeWindow: the windows at ${p.x}, ${p.y} and ${q.x}, ${q.y} (behind)');
 		function at(x:Float, y:Float):Array<Int> {
 			var c = Screen.pixel(Math.round(p.x * k + x * k), Math.round(p.y * k + y * k));
 			return [c & 0xFF, c >> 8 & 0xFF, c >> 16 & 0xFF];
