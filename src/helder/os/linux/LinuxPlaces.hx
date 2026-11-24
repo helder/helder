@@ -17,7 +17,6 @@ class LinuxPlaces {
 	static final NETWORK = ["nfs", "nfs4", "cifs", "smb3", "fuse.sshfs"];
 	static final PSEUDO = ["autofs", "bpf", "cgroup", "cgroup2", "configfs", "debugfs", "devpts", "devtmpfs", "efivarfs",
 		"fusectl", "hugetlbfs", "mqueue", "nsfs", "proc", "pstore", "ramfs", "rpc_pipefs", "securityfs", "sysfs", "tmpfs", "tracefs"];
-	static final ESCAPE = ~/\\([0-7])([0-7])([0-7])/g;
 
 	public static function user():Array<Place> {
 		var home = Sys.getEnv("HOME") ?? "";
@@ -61,11 +60,12 @@ class LinuxPlaces {
 
 	@:allow(helder.os.linux.LinuxTrash) static function mounts():Array<{path:String, fs:String}> {
 		var text = try File.getContent("/proc/self/mountinfo") catch (_:Dynamic) "";
+		var escape = ~/\\([0-7])([0-7])([0-7])/g;
 		var result = [];
 		for (line in text.split("\n")) {
 			var fields = line.split(" "), sep = fields.indexOf("-", 6);
 			if (sep < 0 || sep + 1 >= fields.length) continue;
-			var path = ESCAPE.map(fields[4], r -> String.fromCharCode(64 * Std.parseInt(r.matched(1)) + 8 * Std.parseInt(r.matched(2)) + Std.parseInt(r.matched(3))));
+			var path = escape.map(fields[4], r -> String.fromCharCode(64 * Std.parseInt(r.matched(1)) + 8 * Std.parseInt(r.matched(2)) + Std.parseInt(r.matched(3))));
 			result.push({path: path, fs: fields[sep + 1]});
 		}
 		return result;
