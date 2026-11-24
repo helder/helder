@@ -163,6 +163,7 @@ class D3D11Backend {
 	// (the swap chain's frame latency object (nil: none), and whether the next present waited for it)
 	var latency = Ptr.nil();
 	var waited = false;
+	var occluded = false;
 
 	static inline var MAX_SLOTS = 8;
 
@@ -529,6 +530,11 @@ class D3D11Backend {
 		waited = true;
 		WaitTimer.WaitForSingleObjectEx(latency, 100, 1);
 	}
+
+	// (whether the next frame's wait is the swap chain's: a frame was just
+	// presented and shown, its latency object signalled at the next vblank)
+	public function paces():Bool
+		return !latency.isNull() && !waited && !occluded;
 
 	function backBuffer() {
 		check(IDXGISwapChain1.GetBuffer(swapChain, 0, IID.ID3D11Texture2D, scratch), "IDXGISwapChain1::GetBuffer");
@@ -1474,6 +1480,7 @@ class D3D11Backend {
 			IDXGISwapChain1.Present1(swapChain, 1, 0, params);
 		});
 		waited = false;
+		occluded = hr == D3D.DXGI_STATUS_OCCLUDED;
 		if (hr == D3D.DXGI_ERROR_DEVICE_REMOVED || hr == D3D.DXGI_ERROR_DEVICE_RESET)
 			check(ID3D11Device.GetDeviceRemovedReason(device), "Present: the device was removed");
 	}

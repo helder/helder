@@ -287,6 +287,7 @@ class D3D {
 	public static inline var FORMAT_R16G16_UNORM = 35;
 	// HRESULTs
 	public static inline var DXGI_ERROR_DEVICE_REMOVED = 0x887A0005;
+	public static inline var DXGI_STATUS_OCCLUDED = 0x087A0001;
 	public static inline var DXGI_ERROR_DEVICE_RESET = 0x887A0007;
 }
 

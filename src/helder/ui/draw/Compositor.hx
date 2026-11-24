@@ -66,6 +66,12 @@ class Compositor implements RenderIdle {
 	var drained = -1e9;
 	var stepped = -1e9;
 	var drew = -1e9;
+	// (whether the last frame was presented to a swap chain whose latency
+	// object paces the next (Direct3D 11's): due as soon as it is drawn.
+	// Half a period after the draw, the render thread's timed wait, is
+	// Windows' 15.6 ms tick, or two of them after a slow draw (WARP's): the
+	// next vblank missed, the frames locked at half the display's rate)
+	var paced = false;
 	// (the render thread's: the overlay bars' last moves and how far they
 	// show, per frame; the time its last frame was drawn at, Ui.now's)
 	final barAt:Array<Float> = [];
@@ -321,7 +327,7 @@ class Compositor implements RenderIdle {
 		if (f != null && (mirror.moving || moved(f) || f.moves(animAt) || fading(animAt))) {
 			// (the program's to draw while it keeps the pace: it drained this vsync)
 			// (asleep: it wakes for the input and draws it, unless it has not drained since)
-			d = Math.max(drew + period * 0.5, turn ? drained + period * 0.6 : drained > routedAt ? drained + period * 0.6 : routedAt + period * 0.6);
+			d = Math.max(paced ? drew : drew + period * 0.5, turn ? drained + period * 0.6 : drained > routedAt ? drained + period * 0.6 : routedAt + period * 0.6);
 		}
 		lock.release();
 		return d;
@@ -387,12 +393,16 @@ class Compositor implements RenderIdle {
 			() -> @:privateAccess n.placeNative(x, y, w, h, on);
 		}];
 		posts.resize(0);
-		if (layers != null && !layers.single) layers.show(r, f, now, at, f.overlay ? barShown : null, false, moves) else {
+		if (layers != null && !layers.single) {
+			paced = false;
+			layers.show(r, f, now, at, f.overlay ? barShown : null, false, moves);
+		} else {
 			// (the window's layer alone since the program's last frame: drawn onto it, taking its drawable)
 			if (layers != null) layers.quiet(r, false);
 			for (m in moves)
 				helder.os.OsThread.post(m);
 			draw(r, f, null, at);
+			paced = r.impl.paces();
 			if (layers != null) layers.windowShown();
 		}
 		var at = haxe.Timer.stamp(), d = at - drew;
