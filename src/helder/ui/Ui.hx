@@ -539,6 +539,7 @@ class Ui extends ScrollHost {
 		painting = null;
 	}
 
+	static final probeMirror = Sys.getEnv("HELDER_PROBE") != null && Sys.getEnv("HELDER_PROBE").indexOf("mirror") >= 0; // TEMP probe
 	static final probeNoSnap = Sys.getEnv("HELDER_PROBE") != null && Sys.getEnv("HELDER_PROBE").indexOf("nosnap") >= 0; // TEMP probe
 
 	// whether paint draws straight onto its canvas, not through the layers (a test comparing the two)
@@ -2632,6 +2633,7 @@ class Ui extends ScrollHost {
 	// not clamped; moving: it goes on): its offsets taken, as the program's
 	// own scroll would have set them
 	@:noCompletion public function mirrored(n:Node, x:Float, y:Float, held:Bool, moving:Bool) {
+		if (probeMirror) Sys.println('probe mirrored: $x, $y held $held moving $moving, the program at ${n.scrollX}, ${n.scrollY}, paint $paintFrame'); // TEMP probe
 		mirrorAt.set(n, [x, y]);
 		if (held) mirrorHeld.set(n, true) else mirrorHeld.remove(n);
 		if (!moving) requestFrame();
