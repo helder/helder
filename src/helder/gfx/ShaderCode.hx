@@ -33,4 +33,9 @@ typedef ShaderCode = {
 	?bindings:Array<ShaderBinding>,
 	// (a compute stage's) its workgroup's size: x, y, z
 	?workgroupSize:Array<Int>
+	#if helder.soft
+	// (the CPU back end's: -D helder.soft builds alone, where the shader
+	// definitions emit it)
+	, ?soft:SoftCode
+	#end
 }

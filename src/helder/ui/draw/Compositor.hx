@@ -357,6 +357,22 @@ class Compositor implements RenderIdle {
 			lock.release();
 			return;
 		}
+		// (onto the window's swap chain: until it takes the frame without
+		// queueing it (Device.waitFrame), then sampled; the program's, if it
+		// drained meanwhile)
+		if (layers == null || layers.single) {
+			lock.release();
+			r.impl.waitFrame();
+			lock.acquire();
+			if (haxe.Timer.stamp() - drained < period * 0.6) {
+				lock.release();
+				return;
+			}
+			at = Ui.now();
+			mirror.step(at);
+			stepped = haxe.Timer.stamp();
+			offsetsNow(f, at);
+		}
 		for (i in 0...now.length)
 			shownAt[i] = now[i];
 		animAt = at;

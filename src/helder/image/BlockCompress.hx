@@ -301,7 +301,7 @@ private class Encoder {
 }
 
 // (the blocks read back, the subset the encoder writes for ASTC)
-private class Decoder {
+@:noCompletion class Decoder {
 	// the weights' values (of 64) by index: 3 bits, 2 bits
 	public static final W3 = [0, 9, 18, 27, 37, 46, 55, 64];
 	public static final W2 = [0, 21, 43, 64];

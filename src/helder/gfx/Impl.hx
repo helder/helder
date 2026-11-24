@@ -1,8 +1,10 @@
 package helder.gfx;
 
 import helder.os.Surface;
-#if (helder.os && helder.os != "web")
-#if (helder.os == "macos" || helder.os == "ios")
+#if (helder.soft || (helder.os && helder.os != "web"))
+#if helder.soft
+import helder.gfx.soft.SoftBackend as Native;
+#elseif (helder.os == "macos" || helder.os == "ios")
 import helder.gfx.metal.MetalBackend as Native;
 #elseif (helder.os == "windows")
 import helder.gfx.d3d11.D3D11Backend as Native;
@@ -11,9 +13,10 @@ import helder.gfx.gl.GLBackend as Native;
 #end
 
 // The back end of this target: Metal on macOS and iOS, D3D11 on Windows, GL
-// elsewhere. A build for one system (helder.os: helder.compiler.Os) has
-// its own only, its methods forwarded; the browser's two, and a build that
-// names no system (every back end typed), are told apart below.
+// elsewhere; the CPU's (helder.gfx.soft) with -D helder.soft, on any. A
+// build for one system (helder.os: helder.compiler.Os) has its own only,
+// its methods forwarded; the browser's two, and a build that names no
+// system (every back end typed), are told apart below.
 @:forward(backend, width, height, createBuffer, writeBuffer, createTexture, writeTexture, supports, generateMips, destroyBuffer, destroyTexture,
 	createSampler, createShader, createPipeline, beginFrame, beginPass, setPipeline, setVertexBuffer, setIndexBuffer, setUniforms, setTexture, draw,
 	drawIndexed, endPass, createQueries, destroyQueries, queryResult, resetQuery, beginQuery, endQuery, endFrame, readPixels, has, createComputePipeline,
@@ -23,6 +26,12 @@ abstract Impl(Native) {
 	public inline function new(surface:Surface, antialias:Bool)
 		this = new Native(surface, antialias);
 
+	#if helder.soft
+	// (a texture's record: the soft canvas reads a <Scene>'s pixels where they are)
+	public inline function textureRecord(id:Int):hxmc.unsafe.Ptr
+		return this.textureRecord(id);
+	#end
+
 	public inline function writeTextureImage(id:Int, image:Int, release:Bool)
 		throw "helder.gfx: writeTextureImage: in a browser only";
 
@@ -31,6 +40,10 @@ abstract Impl(Native) {
 
 	public inline function damaged(rects:Null<Array<Int>>)
 		#if (helder.os != "macos" && helder.os != "ios") this.damaged(rects) #else {} #end;
+
+	// (until the window's swap chain takes a frame without queueing it: Direct3D 11's)
+	public inline function waitFrame()
+		#if (helder.os == "windows") this.waitFrame() #else {} #end;
 
 	// (the back end's context let go by this thread, used by the render thread from now on: GL's)
 	public inline function detach()
@@ -185,6 +198,9 @@ abstract Impl(Any) {
 
 	public inline function damaged(rects:Null<Array<Int>>)
 		if (Platform.os() == 2) d3d().damaged(rects) else if (Platform.os() != 1 && Platform.os() != 3) gl().damaged(rects);
+
+	public inline function waitFrame()
+		if (Platform.os() == 2) d3d().waitFrame();
 
 	public inline function readPixels(dst:haxe.io.Bytes)
 		Platform.os() == 1 ? mtl().readPixels(dst) : Platform.os() == 2 ? d3d().readPixels(dst) : Platform.os() != 3 ? gl().readPixels(dst) : webgl() ? gl().readPixels(dst) : wgpu().readPixels(dst);

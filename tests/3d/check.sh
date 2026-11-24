@@ -33,7 +33,14 @@ for s in gltf orbits shadows physics instances skin overlay textured packed spot
 	[ $s = packednormals ] && g=normals
 	[ $s = packedmorph ] && g=morph
 	code=0
-	run $s "$here/$g.png" "$out/$s.png" || code=$?
+	# (SOFT=1, the CPU's back end: these two scenes' specular lobes and
+	# clear coat sparkles land up to 9 levels from llvmpipe's goldens, as
+	# Metal's do (151 at a sparkle): within 6 levels taken as equal)
+	if [ -n "$SOFT" ] && { [ $s = khrclearcoat ] || [ $s = khrspecular ]; }; then
+		(export HXMC_3D_TOLERANCE=6; run $s "$here/$g.png" "$out/$s.png") || code=$?
+	else
+		run $s "$here/$g.png" "$out/$s.png" || code=$?
+	fi
 	# (macOS without a Metal device: GfxTest's 3, skipped)
 	[ $code = 3 ] && exit 0
 	[ $code = 0 ] || exit $code
