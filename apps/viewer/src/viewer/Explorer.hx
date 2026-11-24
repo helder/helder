@@ -25,6 +25,8 @@ class Explorer {
 	public var reveal:Null<String->Void> = null;
 	public var openDefault:Null<String->Void> = null;
 	public var copy:Null<String->Void> = null;
+	// the thumbnails' queue (the shell's; none: glyphs alone)
+	public var thumbnails:Null<Thumbnails> = null;
 	// the list's focus on its selection (the shell's, once the list is made)
 	public var focusList:Null<Void->Void> = null;
 	// the inspector's preview of a file (Preview.request; tests: Preview.now)
@@ -111,8 +113,7 @@ class Explorer {
 			if (n > 0 && viewer.folder.files.length == 0) close();
 			return n;
 		}
-		var e = browser.current();
-		return e == null ? 0 : browser.trash([e.name]);
+		return browser.trash(browser.picked());
 	}
 
 	// --- actions (the keymap's and the menus'): true when taken
@@ -146,9 +147,9 @@ class Explorer {
 			case UndoTrash: return browser.undo();
 			case Close: close();
 			case CopyPath:
-				var t = target();
-				if (t == null || copy == null) return false;
-				copy(files.localPath(t) ?? t);
+				var all = full.value ? [viewer.folder.current] : [for (n in browser.picked()) browser.path(n)];
+				if (all.length == 0 || all[0] == null || copy == null) return false;
+				copy([for (p in all) files.localPath(p) ?? p].join("\n"));
 			case ShowInFolder:
 				var t = target(), local = t == null ? null : files.localPath(t);
 				if (local == null || reveal == null) return false;

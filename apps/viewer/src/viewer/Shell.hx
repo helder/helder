@@ -45,6 +45,10 @@ class Shell implements Markup {
 			tool: t -> {direction: Row, alignItems: Center, columnGap: 2, height: 30, shrink: 0, padding: [0, 4, 0, 7], radius: 8, color: t.fg2,
 				hover: {background: t.hover, color: t.fg}},
 			"head-cell": t -> {direction: Row, alignItems: Center, columnGap: 4, height: 30, color: t.fg3, hover: {color: t.fg}, selected: {color: t.fg}},
+			"grid-tile": t -> {radius: 10, hover: {background: t.hover}},
+			"thumb-box": t -> {radius: 10, selected: {background: t.accentSoft}},
+			photo: t -> {radius: 8, background: t.fill, selected: {ringWidth: 2.5, ringColor: t.accent, ringOffsetWidth: 2, ringOffsetColor: t.surface}},
+			"name-pill": t -> {fontSize: 12.5, padding: [1, 6, 1, 6], radius: 5, color: t.fg, selected: {background: t.accent, color: t.accentFg, fontWeight: 500}},
 			"list-row": t -> {direction: Row, alignItems: Center, columnGap: 12, height: 30, margin: [0, 6], padding: [0, 14, 0, 10], radius: 7,
 				color: t.fg2, hover: {background: t.hover}, selected: {background: t.accent, color: t.accentFg, hover: {background: t.accent}}}
 		}
@@ -64,6 +68,7 @@ class Shell implements Markup {
 		var viewer = x.viewer;
 		viewer.mod = mac ? "Cmd" : "Ctrl";
 		x.reveal = reveal;
+		x.thumbnails = try new Thumbnails() catch (_:Dynamic) null;
 		x.openDefault = openDefault;
 		// (the keymap: secondary as this platform's; the user's file over the defaults, beside the store)
 		helder.ui.actions.Keymap.mac = mac;
@@ -137,6 +142,7 @@ class Shell implements Markup {
 			onDrop={(files, _, _) -> if (files.length > 0) x.start(files[0])}
 			onClose={() -> {
 				save(store, window, x);
+				if (x.thumbnails != null) x.thumbnails.close();
 				if (!args.contains("--new")) Instance.leave();
 				window.close();
 			}}
@@ -160,6 +166,7 @@ class Shell implements Markup {
 					Sys.println(line);
 					if (report != null) try sys.io.File.saveContent(report, line + "\n") catch (_:Dynamic) {}
 					save(store, w, x);
+					if (x.thumbnails != null) x.thumbnails.close();
 					if (!args.contains("--new")) Instance.leave();
 					w.close();
 				});
@@ -242,7 +249,7 @@ class Shell implements Markup {
 	static function restore(store:Null<helder.os.Store>, x:Explorer) {
 		if (store == null) return;
 		var b = x.browser;
-		if (store.get("layout") == "grid") b.layout(Grid);
+		if (store.get("layout") == "list") b.layout(List);
 		var sort = (store.get("sort") ?? "").split(" ");
 		if (["name", "kind", "modified", "size"].contains(sort[0]))
 			b.setOrder({key: cast sort[0], ascending: sort[1] != "down", foldersFirst: sort.contains("folders")});

@@ -9,6 +9,7 @@ import helder.ui.controls.Standard;
 import helder.ui.menu.Menu.MenuItem;
 import helder.ui.menu.Menus;
 import helder.ui.view.UiFlow.VirtualList;
+import helder.ui.view.UiFlow.VirtualGrid;
 import helder.view.*;
 import helder.view.Flow.*;
 import helder.view.graph.Graph.*;
@@ -17,8 +18,8 @@ import viewer.ViewerActions;
 
 // The browser's middle panel: the toolbar (back, forward, the folder's name
 // and its enclosing folders, search, the View menu, the inspector), the
-// folder (the list: name, date modified, size, kind; a grid once the
-// virtual grid lands) or why it shows nothing (empty, still reading after
+// folder (the grid of thumbnails, or the list: name, date modified,
+// size, kind) or why it shows nothing (empty, still reading after
 // 300 ms, unreadable, no results), and the path bar with the count.
 class ContentView implements Markup {
 	public static inline var ROW = 30;
@@ -121,7 +122,7 @@ class ContentView implements Markup {
 				return false;
 			});
 		});
-		return <view tag="content" grow={1} min-height={0} onTextInput={e -> if (b.typeAhead(e.text, haxe.Timer.stamp())) e.stop()}>
+		return <view tag="content" grow={1} min-height={0}>
 			{list(x)}
 			<Show when={b.error() != ""}>{States.error(x)}</Show>
 			<Show when={b.error() == "" && !b.reading() && b.total() == 0}>{States.empty(x)}</Show>
@@ -130,48 +131,50 @@ class ContentView implements Markup {
 		</view>;
 	}
 
-	// (the list: a header to sort by, a row a file; the selection by name, kept as the list changes)
+	// (the list or the grid, sharing the browser's selection: their own
+	// keys, presses, marquee and type-ahead; the selected kept in view)
 	static function list(x:Explorer):View {
 		var b = x.browser, scroller:Null<VirtualScroll> = null;
-		// (a String's signal: a Dynamic value would be taken for a derived one's function)
-		var picked:helder.view.graph.Signal<Dynamic> = cast signal(b.selected.value);
-		effect(() -> picked(), (v:Dynamic) -> if (v != null && v != b.selected.value) b.select(v));
+		effect(() -> b.selection.version(), _ -> b.selectionChanged());
 		effect(() -> b.selected(), v -> {
-			picked(v);
 			var s = scroller, i = b.indexOf(v);
 			if (s != null && i >= 0) s.scrollToIndex(i);
 		});
-		// (pressed twice within 0.4 s: opened)
-		var last = "", lastAt = -1.0;
-		function press(e:Entry, ev:helder.ui.Event) {
-			var now = haxe.Timer.stamp();
-			if (ev.button == 3) {
-				b.select(e.name);
-				if (ev.current.ui != null) Menus.popup(ev.current.ui, ViewerActions.entry, ev.x, ev.y, ev.current);
-				return;
-			}
-			if (last == e.name && now - lastAt < 0.4) {
-				lastAt = -1;
-				x.open(e.name);
-				return;
-			}
-			last = e.name;
-			lastAt = now;
-			b.select(e.name);
+		function made(v:VirtualScroll) {
+			scroller = v;
+			// (on the next frame: the list shown again first)
+			x.focusList = () -> Clock.add(_ -> {
+				var i = b.indexOf(b.selected.value);
+				if (v.count > 0) v.focusIndex(i < 0 ? 0 : i);
+				if (i >= 0) v.scrollToIndex(i, "center");
+				false;
+			});
+			var i = b.indexOf(b.selected.value);
+			if (i >= 0) Clock.add(_ -> {
+				v.scrollToIndex(i, "center");
+				false;
+			});
+		}
+		function activate(picked:Array<Int>) {
+			var i = b.indexOf(b.selected.value);
+			x.open(b.items.value[i >= 0 ? i : picked.length > 0 ? picked[0] : 0]?.name);
+		}
+		function menu(i:Int, px:Float, py:Float) {
+			var s = scroller;
+			if (s != null && s.ui != null) Menus.popup(s.ui, ViewerActions.entry, px, py, s);
 		}
 		return <view tag="list" grow={1} min-height={0} display={b.error() != "" ? "none" : "flex"}>
-			{header(x)}
-			<VirtualList tag="rows" each={() -> b.items()} by={(e:Entry) -> e.name} itemHeight={ROW} selected={picked} label="Files"
-				onActivate={(e:Entry) -> x.open(e.name)} ref={v -> {
-					scroller = v;
-					// (on the next frame: the list shown again first)
-					x.focusList = () -> Clock.add(_ -> {
-						var i = b.indexOf(b.selected.value);
-						if (v.count > 0) v.focusIndex(i < 0 ? 0 : i);
-						if (i >= 0) v.scrollToIndex(i, "center");
-						false;
-					});
-				}}>{(e, i) -> row(x, e, press)}</VirtualList>
+			<Show when={b.layout() == List}>
+				{header(x)}
+				<VirtualList tag="rows" each={() -> b.items()} by={(e:Entry) -> e.name} itemHeight={ROW} selection={b.selection} label="Files"
+					textOf={(e:Entry) -> e.name} onActivate={(picked:Array<Int>) -> activate(picked)} onContextMenu={menu}
+					ref={v -> made(v)}>{(e, i) -> row(x, e)}</VirtualList>
+			</Show>
+			<Show when={b.layout() == Grid}>
+				<VirtualGrid tag="grid" each={() -> b.items()} by={(e:Entry) -> e.name} cellWidth={Tiles.CELL_WIDTH} cellHeight={Tiles.CELL_HEIGHT}
+					gap={4} padding={12} selection={b.selection} label="Files" textOf={(e:Entry) -> e.name} onActivate={activate} onContextMenu={menu}
+					ref={v -> made(v)}>{(e, i) -> Tiles.cell(x, e)}</VirtualGrid>
+			</Show>
 		</view>;
 	}
 
@@ -194,11 +197,13 @@ class ContentView implements Markup {
 		</view>;
 	}
 
-	static function row(x:Explorer, e:helder.view.graph.Read<Entry>, press:(Entry, helder.ui.Event)->Void):View {
+	static function row(x:Explorer, e:helder.view.graph.Read<Entry>):View {
 		var b = x.browser;
-		function on():Bool
-			return b.selected() == e().name;
-		return <view slot="list-row" data-selected={on()} onPointerDown={ev -> press(e(), ev)}>
+		function on():Bool {
+			b.selection.version();
+			return b.selection.has(e().name);
+		}
+		return <view slot="list-row" data-selected={on()} ref={(n:Node) -> DragOut.from(x, n, () -> e().name)}>
 			<view direction="row" align-items="center" column-gap={8} grow={1} min-width={0}>
 				{Tiles.mini(x, e)}
 				<text tag="name" grow={1} shrink={1} min-width={0} max-lines={1} text-overflow="ellipsis" color={on() ? Look.ref.accentFg : Look.ref.fg}
@@ -239,11 +244,14 @@ class ContentView implements Markup {
 		</view>;
 	}
 
-	// "28 items", "1 of 28 selected", "Reading… 31,402"
+	// "28 items", "3 of 28 selected", "Reading… 31,402"
 	public static function count(x:Explorer):String {
 		var b = x.browser, n = b.items().length;
 		if (b.reading()) return "Reading… " + Kinds.count(b.total());
-		return b.selected() != "" && b.indexOf(b.selected()) >= 0 ? '1 of ${Kinds.count(n)} selected' : Kinds.items(n);
+		b.selected();
+		b.selection.version();
+		var k = b.picked().length;
+		return k > 0 ? '${Kinds.count(k)} of ${Kinds.count(n)} selected' : Kinds.items(n);
 	}
 
 	// (a segment's icon: a volume's, the home folder's, a known place's)

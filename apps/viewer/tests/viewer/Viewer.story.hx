@@ -4,14 +4,31 @@ import helder.story.Story;
 import helder.ui.Node;
 import helder.view.*;
 
-// The browser and the viewer, at a laptop's size: the folder as a list,
-// dark and light; the inspector of a photo and of a PDF; a photo full size
+// The browser and the viewer, at a laptop's size: the folder as a grid
+// and as a list, dark and light; several selected; the inspector of a photo and of a PDF; a photo full size
 // with its back pill, an error in its place, the status line; an empty
 // folder, one that cannot be read, a search with no results (their trees
 // in Viewer.story.snap)
-final listDark = story({name: "Browser/list, dark", width: 1100, height: 700, render: c -> themed(browse(), true)});
+final gridDark = story({name: "Browser/grid, dark", width: 1100, height: 700, render: c -> themed(browse(), true)});
 
-final listLight = story({name: "Browser/list, light", width: 1100, height: 700, render: c -> themed(browse(), false)});
+final gridLight = story({name: "Browser/grid, light", width: 1100, height: 700, render: c -> themed(browse(), false)});
+
+final listDark = story({name: "Browser/list, dark", width: 1100, height: 700, render: c -> themed(listed(), true)});
+
+final listLight = story({name: "Browser/list, light", width: 1100, height: 700, render: c -> themed(listed(), false)});
+
+final several = story({
+	name: "Browser/several selected",
+	width: 1100,
+	height: 700,
+	render: c -> {
+		var x = browse();
+		x.browser.select("alpha.png");
+		x.browser.selection.extend(x.browser.indexOf("lossy.webp"));
+		x.browser.selectionChanged();
+		themed(x, true);
+	}
+});
 
 final inspectorImage = story({
 	name: "Browser/inspector, photo",
@@ -89,6 +106,12 @@ final status = story({
 private function browse():Explorer {
 	var x = Fixtures.explorer();
 	x.start("tests/fixtures/folder");
+	return x;
+}
+
+private function listed():Explorer {
+	var x = browse();
+	x.browser.layout(List);
 	return x;
 }
 

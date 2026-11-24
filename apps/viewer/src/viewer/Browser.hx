@@ -27,9 +27,11 @@ class Browser {
 	public final reading = new Cell(false);
 	// why the folder cannot be read ("missing", "notfolder", "denied"; "" read)
 	public final error = new Cell("");
-	// the selected entry's name ("" none)
+	// the selection (by name: kept through sorts, batches and the watch) and
+	// its focus, the entry the inspector and Open act on ("" none)
+	public final selection:helder.ui.Selection;
 	public final selected = new Cell("");
-	public final layout = new Cell(List);
+	public final layout = new Cell(Grid);
 	public final order:Cell<Order> = new Cell(({key: Name, ascending: true, foldersFirst: true} : Order));
 	public final hidden = new Cell(false);
 	public final query = new Cell("");
@@ -51,11 +53,11 @@ class Browser {
 	final back:Array<{dir:String, selected:String}> = [];
 	final forward:Array<{dir:String, selected:String}> = [];
 	final undone:Array<Array<{from:String, to:String}>> = [];
-	var typed = "";
-	var typedAt = -10.0;
 
-	public function new(files:Files)
+	public function new(files:Files) {
 		this.files = files;
+		selection = new helder.ui.Selection(i -> items.value[i].name, () -> items.value.length);
+	}
 
 	// --- where it is
 
@@ -116,6 +118,7 @@ class Browser {
 		all = [];
 		keep = select;
 		items([]);
+		selection.clear();
 		total(0);
 		error("");
 		selected(select);
@@ -141,7 +144,7 @@ class Browser {
 		total(all.length);
 		items(Listing.merge(items.value, b.entries, order.value, hidden.value, query.value));
 		if (keep != "" && entry(keep) != null) {
-			selected(keep);
+			select(keep);
 			keep = "";
 		}
 		if (b.done) {
@@ -170,9 +173,10 @@ class Browser {
 		all = entries;
 		total(all.length);
 		reshow();
+		selection.prune();
 		if (selected.value != "" && entry(selected.value) == null) {
 			var shown = items.value;
-			selected(shown.length == 0 ? "" : shown[Std.int(Math.min(Math.max(at, 0), shown.length - 1))].name);
+			select(shown.length == 0 ? "" : shown[Std.int(Math.min(Math.max(at, 0), shown.length - 1))].name);
 		}
 		if (modified.length > 0 && onModified != null) onModified(modified);
 		if (onItems != null) onItems();
@@ -200,7 +204,8 @@ class Browser {
 		query(q);
 		reshow();
 		var shown = items.value;
-		if (shown.length > 0 && indexOf(selected.value) < 0) selected(shown[0].name);
+		selection.prune();
+		if (shown.length > 0 && indexOf(selected.value) < 0) select(shown[0].name);
 	}
 
 	public function closeSearch() {
@@ -215,8 +220,24 @@ class Browser {
 
 	// --- the selection
 
-	public function select(name:String)
+	public function select(name:String) {
 		selected(name);
+		var i = indexOf(name);
+		if (i >= 0) selection.select(i) else selection.clear();
+	}
+
+	// the selection changed by the list's or the grid's own input: its focus the selected
+	public function selectionChanged() {
+		var f = selection.focus;
+		var name = f != null && selection.has(f) ? f : selection.size() > 0 ? selection.keys()[0] : "";
+		selected(name);
+	}
+
+	// what is selected, in the order shown (none: the focus alone, if any)
+	public function picked():Array<String> {
+		if (selection.size() > 0) return selection.keys();
+		return selected.value != "" && indexOf(selected.value) >= 0 ? [selected.value] : [];
+	}
 
 	public function entry(name:String):Null<Entry> {
 		for (e in items.value)
@@ -240,26 +261,6 @@ class Browser {
 	// the viewer's list: what it opens, in the order shown
 	public function viewable():Array<String>
 		return [for (e in items.value) if (Kinds.viewable(e)) e.name];
-
-	// type-ahead: the letters typed within a second, the first entry from
-	// the selection on whose name starts with them (wrapping)
-	public function typeAhead(text:String, now:Float):Bool {
-		typed = now - typedAt > 1 ? text : typed + text;
-		typedAt = now;
-		var shown = items.value, n = shown.length;
-		if (n == 0) return false;
-		var from = Std.int(Math.max(0, indexOf(selected.value))), t = typed.toLowerCase();
-		// (a new search starts after the selection; a longer one may stay on it)
-		var start = typed.length == text.length ? from + 1 : from;
-		for (k in 0...n) {
-			var e = shown[(start + k) % n];
-			if (e.name.toLowerCase().startsWith(t)) {
-				selected(e.name);
-				return true;
-			}
-		}
-		return false;
-	}
 
 	// --- the trash
 
@@ -301,7 +302,8 @@ class Browser {
 			var names = [for (p in back) name(p) => true];
 			var put = [for (p in back) files.stat(p)].filter(e -> e != null);
 			rescan([for (x in all) if (!names.exists(x.name)) x].concat(put));
-			selected(name(back[0]));
+			select(name(back[0]));
+			if (back.length > 1) selection.setKeys([for (p in back) name(p)]);
 		} else if (d != null) go(d, name(back[0]));
 		return true;
 	}

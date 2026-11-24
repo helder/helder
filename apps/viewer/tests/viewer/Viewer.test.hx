@@ -37,7 +37,14 @@ function tests() {
 			ui.update();
 			equals(viewer.state.peek(), Empty);
 			equals(ContentView.count(x), "7 items");
-			assert(ui.root.find("rows") != null, "the list");
+			assert(ui.root.find("grid") != null, "the grid");
+			// (Mod+2 the list, Mod+1 the grid again)
+			ui.keyDown("2".code, Key.MOD_CONTROL);
+			ui.update();
+			assert(ui.root.find("rows") != null && ui.root.find("grid") == null, "the list");
+			ui.keyDown("1".code, Key.MOD_CONTROL);
+			ui.update();
+			assert(ui.root.find("grid") != null, "the grid again");
 			// (Enter on the first: the viewer, its list the folder's images in the browser's order)
 			x.browser.select("alpha.png");
 			helder.view.graph.Graph.flush();

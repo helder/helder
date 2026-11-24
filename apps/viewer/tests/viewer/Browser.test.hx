@@ -7,7 +7,7 @@ import viewer.Files;
 // The browser without a window, on MemoryFiles: navigation and its
 // history, the sidebar's level for a folder, the order, the filter and
 // folders first, listings in batches with the selection kept, a file
-// opened full size and back, the trash and its undo, type-ahead
+// opened full size and back, the trash and its undo, several selected
 function tests() {
 	describe("Browser", () -> {
 		test("navigation and history", () -> {
@@ -153,17 +153,22 @@ function tests() {
 			equals(files.stat("/Users/ben/Pictures/a.jpg") != null, true);
 			equals(b.canUndo.value, false);
 		});
-		test("type-ahead: the letters of a second", () -> {
-			var b = new Browser(tree());
+		test("several selected: kept by name through a sort, trashed together, put back together", () -> {
+			var files = tree();
+			var b = new Browser(files);
 			b.go("/Users/ben/Pictures");
-			assert(b.typeAhead("n", 1));
-			equals(b.selected.value, "notes.txt");
-			assert(b.typeAhead("b", 3));
-			equals(b.selected.value, "b.png");
-			b.typeAhead("t", 5);
-			b.typeAhead("r", 5.5);
-			equals(b.selected.value, "Trips");
-			equals(b.typeAhead("z", 8), false);
+			b.select("a.jpg");
+			b.selection.extend(b.indexOf("b.png"));
+			b.selectionChanged();
+			equals(b.picked(), ["a.jpg", "b.png"]);
+			b.sortBy(Name);
+			equals(b.picked(), ["b.png", "a.jpg"]);
+			b.sortBy(Name);
+			equals(b.trash(b.picked()), 2);
+			equals(names(b), ["Trips", "notes.txt"]);
+			assert(b.undo());
+			equals(names(b), ["Trips", "a.jpg", "b.png", "notes.txt"]);
+			equals(b.picked(), ["a.jpg", "b.png"]);
 		});
 	});
 }

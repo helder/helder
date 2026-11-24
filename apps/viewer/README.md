@@ -14,12 +14,18 @@ and no runtime to install.
   search, the View menu (the order, folders first, hidden files) and the
   inspector; the path along the bottom, each folder a button and each
   separator a menu of that folder's subfolders.
+- **A grid of thumbnails, or a list** (name, date, size, kind; sorted by
+  its header). Thumbnails come from the viewer's own cache, the nearest
+  first. Select several with Shift and Ctrl (Cmd), Ctrl+A, or a marquee
+  drawn from empty space, and drag them out to other apps: a file
+  manager, mail, chat, a browser's upload.
 - **Large folders.** A folder is read off the window's thread, 2,000
   entries at a time; the first show at once, the rest are merged in sorted
   without moving what you look at or losing the selection. Sorted the way
   people count (`img2` before `img10`), or by kind, date or size. Watched:
   files added, removed or changed show up.
-- **The inspector**: the selected file's preview, its kind and size,
+- **The inspector**: the selected file's preview (several: a stack of
+  them, their kinds and total size), its kind and size,
   Open, Show in Finder (Explorer, the file manager), Move to Trash (put
   back with Undo) and its details: dimensions, pages, duration, dates.
 - **Opens** PNG and APNG, JPEG, GIF, WebP and PDF on every system, and
@@ -89,7 +95,9 @@ Ctrl is Cmd on macOS.
 
 | In the browser | |
 | --- | --- |
-| Move, select | the arrows, Home, End, Page Up and Down; type a name's first letters |
+| Move, select | the arrows (in the grid across and down), Home, End, Page Up and Down; type a name's first letters |
+| Select several | Shift with a click or the arrows; Ctrl with a click (Cmd on macOS); Ctrl+A; a drag from empty space |
+| Drag out to another app | drag the selected files |
 | Open (a folder: go in; a file: full size) | Enter, a double click; Cmd+Down on macOS |
 | Back, forward | Ctrl+[ and Ctrl+], Alt+Left and Alt+Right |
 | The enclosing folder | Ctrl+Up |
@@ -244,6 +252,11 @@ hidden files, the inspector and the status line are kept between runs
   › when it has its own (its listing stopped at the first). The level
   follows the folder shown: its parent, so the folder is among its
   siblings (a drive's top: itself); a place chosen shows its own.
+- The selection is helder.ui's `Selection` (by name), the grid its
+  `VirtualGrid` and the list its `VirtualList`, both with that selection's
+  keys, presses, marquee and type-ahead; a drag of an entry (4 points)
+  starts the system's drag of the selected files (`DragOut.hx`:
+  `Ui.dragFiles`, the entry's thumbnail its picture).
 - **Explorer** (`Explorer.hx`) is the browser and the viewer without a
   window: a file opened full size from the browser (the viewer's list
   the browser's viewable files in its order, again when it changes), back
@@ -290,7 +303,7 @@ hidden files, the inspector and the status line are kept between runs
   in the oldest quarter copied forward). One process owns it (`thumbs/lock`,
   held with flock or an exclusive handle); another reads only. A JPEG, PNG,
   GIF or WebP under 64 KB is decoded every time (as fast as a cache read);
-  every other kind is cached at any size. The folder grid will use this queue.
+  every other kind is cached at any size. The browser's grid and list ask it (`Tiles.thumbnail`).
 - **PdfPages** (`PdfPages.hx`): a PDF's pages, each a decode of its own
   (`Decode.key`: the path, the page after a newline), so they go through
   the cache, the tiles and the zoom an image's do: its 100% two pixels a
@@ -329,8 +342,10 @@ hidden files, the inspector and the status line are kept between runs
 - **Preview** (`Preview.hx`): the inspector's picture of the selected
   file, an image or a PDF's first page decoded through Decode's path at
   512 pixels and halved to fit on the pool, a video's keyframe (Thumbs)
-  and its duration. The list's and grid's pictures come from one place,
-  `Tiles.thumbnail` (glyphs until the thumbnails' cache lands).
+  and its duration; the thumbnail meanwhile. The list's and grid's
+  pictures come from one place, `Tiles.thumbnail`: Thumbnails' queue, the
+  newest asked for first, cancelled when its cell goes, the last 300 kept
+  in memory; a file with none, or a kind none is made of, its glyph.
 - **Shell** (`Shell.hx`) the window (`UiWindow`, `<Surface>` with its
   title bar inset and `onDrop`), its look (helder's controls' `Look.base`
   in the system's font, the browser's parts in its tokens, light or dark
@@ -347,7 +362,7 @@ web): `tests/viewer/Browser.test.hx` (on MemoryFiles: navigation
 and history, the sidebar's level for a folder, the orders, folders first,
 hidden files and the filter, batches merged with the selection kept, the
 watch, a file opened full size and back, the trash and its undo,
-type-ahead), `FolderModel.test.hx` (natural order, wrapping, the
+several selected), `FolderModel.test.hx` (natural order, wrapping, the
 browser's list given again), `DecodeCache.test.hx` (the order, two at a time, eviction by
 distance, a budget too small for every neighbour, a changed file),
 `ViewCamera.test.hx` (the fit, zooms about the cursor and their stops,
@@ -356,9 +371,10 @@ scripted run of the shell's tree in a headless Ui: the fixture folder
 browsed, a file opened with Enter, flipped through with the keys and the
 wheel, an animation's frames, a damaged file's message, zoomed with `+`,
 `1`, Ctrl and the wheel, `0`, the status line, EXIF's orientation, back
-with Escape and Ctrl+Up, fullscreen's keys, the browser's keys),
-`Viewer.story.hx` (the list dark and light, the inspector of a photo and
-of a PDF, an empty folder, a missing one, no results, a file full size,
+with Escape and Ctrl+Up, fullscreen's keys, the browser's keys: grid
+and list, the inspector, search),
+`Viewer.story.hx` (the grid and the list dark and light, several
+selected, the inspector of a photo and of a PDF, an empty folder, a missing one, no results, a file full size,
 an error in its place, the status line; their trees in
 `Viewer.story.snap`). EXIF's reader is
 helder.image's (`src/helder/image/Exif.test.hx`), the drops helder.os's
@@ -426,9 +442,8 @@ them).
 
 ### Not yet
 
-The grid of thumbnails (the list's glyphs stand in), selecting several
-files, dragging files out to other apps, renaming, tabs, a date
-scrubber, EXIF's camera details. On Linux, libraw's and HEVC's paths (HEIC needs libheif's libde265 plugin)
+Renaming, dropping files into a folder (a drop opens it), tabs, a date
+scrubber, EXIF's camera details, a thumbnail size. On Linux, libraw's and HEVC's paths (HEIC needs libheif's libde265 plugin)
 have no fixture in the tests; colour management; a PDF's password
 (no prompt), its text selection and search; the window's maximised state
 (helder.os has no call for it); an X11 window's class (WM_CLASS: helder.os

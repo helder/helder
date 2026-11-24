@@ -41,14 +41,22 @@ class InspectorView implements Markup {
 		function entry():Null<Entry> {
 			b.selected();
 			b.items();
-			return b.current();
+			b.selection.version();
+			return b.picked().length > 1 ? null : b.current();
+		}
+		function several():Array<Entry> {
+			b.items();
+			b.selection.version();
+			var picked = b.picked();
+			return picked.length > 1 ? [for (n in picked) b.entry(n)] : [];
 		}
 		return <view tag="inspector" slot="panel" width={WIDTH} shrink={0} margin="8 8 8 0" overflow="hidden">
+			<Show when={several().length > 1}>{() -> many(x, several())}</Show>
 			<Show when={entry() != null}>{() -> {
 				var e = entry();
 				e == null ? null : file(x, e, shown);
 			}}</Show>
-			<Show when={entry() == null}>{() -> folder(x)}</Show>
+			<Show when={entry() == null && several().length < 2}>{() -> folder(x)}</Show>
 		</view>;
 	}
 
@@ -57,7 +65,7 @@ class InspectorView implements Markup {
 		return <view grow={1} min-height={0}>
 			<view tag="preview" height={BOX} shrink={0} margin="14 14 0 14" radius={10} background={Look.ref.well} align-items="center" justify="center"
 				overflow="hidden">
-				{() -> picture(e, shown())}
+				{() -> picture(x, e, shown())}
 			</view>
 			<view padding="12 16 0 16" align-items="center" row-gap={2}>
 				<text tag="inspector-name" font-size={14} font-weight={600} max-lines={1} text-overflow="ellipsis" text-align="center">{e.name}</text>
@@ -89,6 +97,65 @@ class InspectorView implements Markup {
 		</view>;
 	}
 
+	// (several selected: a fanned stack of the first three, how many, their
+	// kinds and total size; actions on all of them)
+	static function many(x:Explorer, all:Array<Entry>):View {
+		var size = 0.0, kinds = new Map<String, Int>();
+		for (e in all) {
+			size += e.size;
+			var k = Kinds.kind(e);
+			kinds.set(k, (kinds.get(k) ?? 0) + 1);
+		}
+		var kindText = [for (k => n in kinds) '$n ${n == 1 ? k : plural(k)}'];
+		kindText.sort(Reflect.compare);
+		var fan = [
+			{e: all[1], t: "translate(-62px, 4px) rotate(-8deg)", side: 132},
+			{e: all.length > 2 ? all[2] : null, t: "translate(62px, 4px) rotate(8deg)", side: 132},
+			{e: all[0], t: "none", side: 140}
+		];
+		return <view grow={1} min-height={0}>
+			<view tag="preview" height={BOX} shrink={0} margin="14 14 0 14" radius={10} background={Look.ref.well} align-items="center" justify="center"
+				overflow="hidden">
+				{[for (f in fan) if (f.e != null) card(x, f.e, f.side, f.t)]}
+			</view>
+			<view padding="12 16 0 16" align-items="center" row-gap={2}>
+				<text tag="inspector-name" font-size={14} font-weight={600}>{Kinds.items(all.length)}</text>
+				<text tag="inspector-kind" font-size={12} color={Look.ref.fg3} max-lines={1}>{(Lambda.count(kinds) == 1 ? Kinds.kind(all[0]) + " · " : "") + Kinds.size(size)}</text>
+			</view>
+			<view direction="row" justify="center" column-gap={6} padding="12 16 14 16">
+				<Standard.Button tag="open" variant="primary" size="sm" onPress={() -> x.open()}>{"Open " + all.length}</Standard.Button>
+				<Standard.Button tag="reveal" size="sm" icon={Glyphs.get("folder")} label={ViewerActions.reveal()} onPress={() -> x.perform(ShowInFolder)}/>
+				<Show when={x.files.trash != null}>
+					<Standard.Button tag="trash" size="sm" icon={Glyphs.get("trash")} label={ViewerActions.trashLabel()} onPress={() -> x.perform(Trash)}/>
+				</Show>
+			</view>
+			<view tag="details" padding="10 16 6 16" borders="1 0 0 0" border-color={Look.ref.line}>
+				<view direction="row" align-items="center" column-gap={6} height={24}>
+					<image src={Glyphs.get("info")} width={14} height={14} color={Look.ref.fg3}/>
+					<text font-size={11} font-weight={600} color={Look.ref.fg3}>SELECTION</text>
+				</view>
+				{[for (kv in [{k: "Total size", v: Kinds.size(size)}, {k: "Kinds", v: kindText.join(", ")}])
+					<view direction="row" justify="space-between" column-gap={12} height={24} align-items="center" font-size={12.5}>
+						<text color={Look.ref.fg3} shrink={0}>{kv.k}</text>
+						<text max-lines={1} text-overflow="ellipsis" text-align="right" shrink={1}>{kv.v}</text>
+					</view>]}
+			</view>
+		</view>;
+	}
+
+	// (a card of the stack: the thumbnail, else the glyph, on a white mat)
+	static function card(x:Explorer, e:Entry, side:Float, transform:String):View {
+		var t = Tiles.thumbnail(x, e);
+		return <view position="absolute" width={side} height={side} radius={8} padding={3} background="#ffffff" transform={transform}
+			shadow="0 4px 14px rgba(0,0,0,0.22)" align-items="center" justify="center" overflow="hidden">
+			<Show when={t().image != null}><image src={t().image} width={side - 6} height={side - 6} fit="cover" radius={6}/></Show>
+			<Show when={t().image == null}>{Tiles.large(e)}</Show>
+		</view>;
+	}
+
+	static function plural(kind:String):String
+		return StringTools.endsWith(kind, "s") ? kind : kind + "s";
+
 	// (nothing selected: the folder's picture, its name, how many items)
 	static function folder(x:Explorer):View {
 		var b = x.browser;
@@ -104,16 +171,18 @@ class InspectorView implements Markup {
 	}
 
 	// (the box's content: the picture fitted, a PDF's count, a video's duration; else the glyph)
-	static function picture(e:Entry, s:Null<Shown>):View {
-		if (s == null || s.image == null) return Tiles.large(e);
-		var img = s.image, k = Math.min(252 / img.width, 188 / img.height);
+	static function picture(x:Explorer, e:Entry, s:Null<Shown>):View {
+		var img = s == null ? null : s.image;
+		if (img == null) img = Tiles.cached(x, e);
+		if (img == null) return Tiles.large(e);
+		var k = Math.min(252 / img.width, 188 / img.height);
 		var w = Math.round(img.width * k), h = Math.round(img.height * k);
 		return <view align-items="center" justify="center" width="100%" height="100%">
 			<image tag="preview-image" src={img} width={w} height={h} radius={4} shadow="0 4px 16px rgba(0,0,0,0.4)"/>
-			<Show when={s.pages > 1}>
+			<Show when={s != null && s.pages > 1}>
 				<text tag="pages" position="absolute" bottom={8} padding="2 8" radius={9} background="rgba(10,10,10,0.6)" color="#ffffff" font-size={11.5}>{'1 / ${s.pages}'}</text>
 			</Show>
-			<Show when={s.duration > 0}>
+			<Show when={s != null && s.duration > 0}>
 				<text tag="duration" position="absolute" right={10} bottom={10} padding="0 5" radius={4} background="rgba(0,0,0,0.62)" color="#ffffff"
 					font-size={10.5} font-weight={600}>{clock(s.duration)}</text>
 			</Show>
