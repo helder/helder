@@ -224,11 +224,13 @@ class MacAccess {
 
 	// an element's properties from its node
 	function set(e:Ptr, n:AccessNode) {
-		// (a combobox typed in: AppKit's combo box)
-		var role = n.role == ComboBox && n.value != null ? "AXComboBox" : macRole(n.role);
+		// (a combobox typed in: AppKit's combo box; a toggle button: its check box, AXToggle)
+		var toggle = n.role == Button && n.checked != null;
+		var role = n.role == ComboBox && n.value != null ? "AXComboBox" : toggle ? "AXCheckBox" : macRole(n.role);
 		Msg.vPtr(e, ObjC.sel("setAccessibilityRole:"), str(role));
 		var sub = switch n.role {
 			case Switch: "AXSwitch";
+			case Button if (toggle): "AXToggle";
 			case Tab: "AXTabButton";
 			case Dialog | AlertDialog: "AXApplicationDialog";
 			case Navigation: "AXLandmarkNavigation";

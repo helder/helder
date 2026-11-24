@@ -64,12 +64,12 @@ function tests() {
 				equals(icon.height, height);
 			}
 			var b = m.ui.root.find("icon-1");
-			equals(b.attr("data-selected"), "false");
+			equals(b.attr("data-selected"), null);
 			equals(access(AccessTree.build(m.ui), b).checked, false);
 			click(m.ui, b);
 			m.ui.pointerMove(300, 180);
 			settle(m.ui);
-			equals(b.attr("data-selected"), "true");
+			equals(b.attr("data-selected"), "");
 			equals(access(AccessTree.build(m.ui), b).checked, true);
 			equals(b.style.background, light("accentSoft"));
 			m.ui.pointerMove(b.absX + 4, b.absY + 4);

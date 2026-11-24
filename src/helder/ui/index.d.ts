@@ -1311,8 +1311,8 @@ export declare const tone: typeof Look.tone;
 // leaves; focusVisible: focused from the keyboard) and eased amounts
 // (Eased). No look: root and part bind it to nodes, by ref, setting their
 // slots (the control's, "button"; its part's, "button-icon"), the root's
-// role, label, variant and size and its data-disabled, which a look's
-// recipes read.
+// role, label, variant and size and its data-disabled (and a toggle's
+// data-selected), which a look's recipes read.
 //
 //   final p = Press.of(props, "button");
 //   <view:button ref={p.root}><image ref={p.part("icon")} .../></view:button>

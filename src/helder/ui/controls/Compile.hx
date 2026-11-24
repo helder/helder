@@ -12,7 +12,8 @@ import helder.ui.controls.Tokens;
 // rule for each part and state. A part's slot is its control's ("button")
 // and its name ("button-icon"); the root's states are its own, a part's its
 // root's (group/button:hover: the root a group of its slot, the sheet's
-// markers), as are a variant's and a size's. Each control's parts ease what
+// markers; a path bar's parts, each pressed alone: their own), as are a
+// variant's and a size's. Each control's parts ease what
 // their states change over the look's times (a transition each, unless a
 // part gives its own): a hover's for a button, a toggle's for the others,
 // a toggle's travel (its knob's) springing.
@@ -27,8 +28,18 @@ import helder.ui.controls.Tokens;
 	// (a toggle's travel: a spring's overshoot, as a cubic Bézier)
 	static final SPRING = [0.3, 1.35, 0.55, 1.0];
 
-	static function slotOf(control:String, part:String):String
-		return part == "root" ? control : control + "-" + (control == "pathbar" && part == "segmentIcon" ? "segment-icon" : part);
+	static final COMPOSITE = ["pathbar"];
+
+	// (a part's slot: segmentIcon's "pathbar-segment-icon")
+	static function slotOf(control:String, part:String):String {
+		if (part == "root") return control;
+		var slot = control + "-";
+		for (i in 0...part.length) {
+			var ch = part.charAt(i), lower = ch.toLowerCase();
+			slot += ch == lower ? ch : "-" + lower;
+		}
+		return slot;
+	}
 
 	public static function look(tokens:Tokens, refs:Refs, recipes:Map<String, Array<Refs->Dynamic>>, parts:Map<String, Array<Refs->Dynamic>>):Look.Compiled {
 		var rules:Array<Rule> = [], markers = new Map<String, String>(), defaults = new Map<String, Dynamic>(), draws = new Map<String, Recipe.PartDraw>();
@@ -40,14 +51,14 @@ import helder.ui.controls.Tokens;
 				r.add(call(f, refs));
 			markers.set(c, "group/" + c);
 			defaults.set(c, r.defaults);
-			var toggle = c == "checkbox" || c == "switch";
+			var toggle = c == "checkbox" || c == "switch", group = COMPOSITE.indexOf(c) < 0 ? c : null;
 			var time = toggle ? tokens.toggleTime : tokens.hoverTime;
 			var eases = new Transition(Transition.EASED, [for (p in Transition.EASED) p == "ringWidth" || p == "ringColor" ? tokens.hoverTime : time], null,
 				[for (p in Transition.EASED) p == "transform" && toggle ? SPRING : Transition.EASE_OUT]);
 			for (name => part in r.parts) {
 				var slot = slotOf(c, name);
 				if (part.draw != null) draws.set(slot, part.draw);
-				emit(rules, slot, part, [], name == "root" || c == "pathbar" ? null : c, null, null, eases);
+				emit(rules, slot, part, [], name == "root" ? null : group, null, null, eases);
 			}
 			for (axis in AXES)
 				for (value => byPart in r.variants.get(axis))
@@ -55,7 +66,7 @@ import helder.ui.controls.Tokens;
 						var root = name == "root";
 						var slot = slotOf(c, name);
 						if (root) emit(rules, slot, part, [], null, axis == "variant" ? value : null, axis == "size" ? value : null, null)
-						else emit(rules, slot, part, ['group/$c:$axis=$value'], c == "pathbar" ? null : c, null, null, null);
+						else emit(rules, slot, part, ['group/$c:$axis=$value'], group, null, null, null);
 					}
 		}
 		for (name => list in parts) {
@@ -99,8 +110,7 @@ import helder.ui.controls.Tokens;
 		for (k in 0...STATES.length) {
 			var s = part.states.get(STATES[k]);
 			if (s == null) continue;
-			var condition = STATES[k] == "selected" && (slot == "button" || group == "button") ? "data-selected=true" : CONDS[k];
-			var cond = group == null || STATES[k] == "dark" ? condition : 'group/$group:$condition';
+			var cond = group == null || STATES[k] == "dark" ? CONDS[k] : 'group/$group:${CONDS[k]}';
 			emit(rules, slot, s, when.concat([cond]), group, variant, size, null);
 		}
 	}
