@@ -22,6 +22,14 @@ function tests() {
 			equals([for (t in m.tracks) t.codec], [Vp9, Opus]);
 			equals(count(m), 61);
 		}));
+		test("DiscardPadding: the last frame's trim, where ffprobe has it", async(() -> {
+			for (f => want in ["vp9-opus.webm" => [[1.0, 994, 648]], "laced.mkv" => [[0.0, 896, 192], [1.0, 992, 192]]]) {
+				var m = open(f), got:Array<Array<Float>> = [], p;
+				while ((p = m.next()) != null) if (p.trim > 0) got.push([p.track.index, p.pts, Math.round(p.trim * p.track.sampleRate)]);
+				m.close();
+				equals(got, want, f);
+			}
+		}));
 		test("the SPS's colours: HEVC Main 10's BT.2020, H.264's BT.709 full range", async(() -> {
 			function said(c:Null<{matrix:String, full:Bool}>)
 				return c == null ? "none" : c.matrix + (c.full ? " full" : "");

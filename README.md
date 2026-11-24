@@ -136,9 +136,10 @@ where the system allows, timed by the audio clock; a `<Video>` node with
 exact seeking and frame stepping, its controls the app's; the viewer
 playing video and audio beside images and PDFs. Done on macOS and iOS
 ([helder.media](src/helder/media/README.md): VideoToolbox, AudioToolbox,
-the viewer's videos), in browsers (WebCodecs), on Android (MediaCodec)
-and on Windows (Media Foundation, DXVA); Linux next (VAAPI, else the
-system's libavcodec).
+the viewer's videos), in browsers (WebCodecs), on Android (MediaCodec),
+on Windows (Media Foundation, DXVA) and on Linux (the system's
+libavcodec, VAAPI through it where a driver decodes, its frames as
+DMA-BUFs).
 
 **Games**
 - Physics: mesh and convex colliders, layers, triggers, contact events, stable stacks.

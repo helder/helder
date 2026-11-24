@@ -9,7 +9,8 @@ import haxe.io.Bytes;
 // the first (live WebM, no Cues). SimpleBlocks and BlockGroups, Xiph, EBML
 // and fixed lacing, clusters and a Segment of unknown size. Matroska keeps
 // presentation times only: a packet's dts is its pts. CodecDelay is taken
-// off every pts, as ffmpeg does (Opus's first packet before 0).
+// off every pts, as ffmpeg does (Opus's first packet before 0); a
+// BlockGroup's DiscardPadding is its last frame's trim (Opus's end).
 class Matroska implements Demuxer {
 	public var tracks(default, null):Array<MediaTrack> = [];
 	public var duration(default, null) = -1.0;
@@ -400,7 +401,7 @@ class Matroska implements Demuxer {
 				case 0xA3:
 					block(run, e, base, time, -1, true, true);
 				case 0xA0:
-					var b:Null<Data> = null, length = -1.0, key = true;
+					var b:Null<Data> = null, length = -1.0, key = true, trim = 0.0;
 					elements(e, (id, v) -> switch id {
 						case 0xA1:
 							b = v;
@@ -408,9 +409,11 @@ class Matroska implements Demuxer {
 							length = v.uint(v.left);
 						case 0xFB:
 							key = false;
+						case 0x75A2:
+							trim = v.sint(v.left) / 1e9;
 						case _:
 					});
-					if (b != null) block(run, b, base, time, length, key, false);
+					if (b != null) block(run, b, base, time, length, key, false, trim);
 				case _:
 			}
 		}
@@ -429,7 +432,7 @@ class Matroska implements Demuxer {
 		return ok;
 	}
 
-	function block(run:Run, d:Data, base:Float, cluster:Float, length:Float, key:Bool, simple:Bool) {
+	function block(run:Run, d:Data, base:Float, cluster:Float, length:Float, key:Bool, simple:Bool, trim = 0.0) {
 		var number = Std.int(d.vsize()), rel = d.i16(), flags = d.u8();
 		var track = numbers.indexOf(number);
 		if (track < 0) return;
@@ -470,7 +473,7 @@ class Matroska implements Demuxer {
 		var at = base + d.pos, s = run.samples[track];
 		for (i in 0...frames) {
 			var t = pts + i * defaults[track];
-			s.add(at, sizes[i], t, t, each, key);
+			s.add(at, sizes[i], t, t, each, key, i == frames - 1 ? trim : 0);
 			at += sizes[i];
 		}
 	}

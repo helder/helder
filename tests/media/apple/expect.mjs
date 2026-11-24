@@ -3,8 +3,11 @@
 // order, the CRC-32 of their planes as the system's decoder gives them
 // (NV12 or P010, rows packed; edit lists ignored: every frame decoded);
 // each audio track's frames, its first channel sampled every 97 frames.
-// Opus is libopus's (from an Ogg copy: ffmpeg 9's own decoder and its MP4
-// pre-skip in the track's timescale are both off).
+// Opus is libopus's (ffmpeg 9's own decoder is off): a WebM's as ffmpeg
+// trims it (CodecDelay, DiscardPadding); an MP4's decoded whole
+// (skip_manual: ffmpeg skips its pre-skip as the edit list has it, in the
+// track's timescale, as if 48 kHz samples), then trimmed by OpusHead's
+// pre-skip (an Ogg copy's) and to the edit's duration.
 //   node tests/media/apple/expect.mjs   (from the repository's root, or fixtures.sh)
 import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
@@ -35,15 +38,17 @@ function video(file) {
 }
 
 function audio(file, n, codec) {
-	let args = ['-v', 'error', '-i', file, '-map', `0:a:${n}`];
-	if (codec === 'opus') {
+	const mp4 = /\.mp4$/.test(file), opus = codec === 'opus';
+	const args = ['-v', 'quiet', ...(opus ? [`-c:a:${n}`, 'libopus'] : []), ...(opus && mp4 ? [`-flags2:a:${n}`, '+skip_manual'] : []), '-i', file, '-map', `0:a:${n}`];
+	const s = probe(file, ['-select_streams', `a:${n}`, '-show_entries', 'stream=channels,sample_rate,duration']).streams[0];
+	const raw = run('ffmpeg', [...args, '-f', 'f32le', '-']);
+	let all = new Float32Array(raw.buffer, raw.byteOffset, raw.length / 4);
+	if (opus && mp4) {
 		const ogg = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'helder-opus-')), 'a.opus');
 		run('ffmpeg', ['-v', 'error', '-y', '-i', file, '-map', `0:a:${n}`, '-c', 'copy', ogg]);
-		args = ['-v', 'error', '-c:a', 'libopus', '-i', ogg];
+		const skip = +probe(ogg, ['-show_entries', 'stream=initial_padding']).streams[0].initial_padding;
+		all = all.subarray(skip * s.channels, (skip + Math.round(s.duration * 48000)) * s.channels);
 	}
-	const s = probe(file, ['-select_streams', `a:${n}`, '-show_entries', 'stream=channels,sample_rate']).streams[0];
-	const raw = run('ffmpeg', [...args, '-f', 'f32le', '-']);
-	const all = new Float32Array(raw.buffer, raw.byteOffset, raw.length / 4);
 	const samples = [];
 	for (let i = 0; i * s.channels < all.length; i += 97) samples.push(Math.round(all[i * s.channels] * 1e6) / 1e6);
 	return {codec, rate: +s.sample_rate, frames: all.length / s.channels, samples};
