@@ -106,6 +106,11 @@ class Shell implements Markup {
 		// cache): a launch right after this one finds it)
 		var handed:Array<String> = [], opener:Null<String->Void> = null;
 		if (!args.contains("--new")) Instance.serve(p -> if (opener == null) handed.push(p) else opener(p));
+		#if helder.headless
+		// (a headless run (helder run --headless) the same each time: the listings,
+		// decodes and thumbnails on the loop, in order, not on the pool's threads)
+		helder.jobs.Jobs.workers = 0;
+		#end
 		// (a decode's IDCT, upsampling and colours over two threads: the pool decodes two files at once)
 		helder.image.JpegDecoder.threads = 2;
 		var x = new Explorer(new NativeFiles(), jobDecode, helder.os.Places.user(), helder.os.Places.volumes());
