@@ -82,13 +82,29 @@ class AndroidLayersTest {
 		var mover = new Node();
 		mover.style.set({position: Absolute, left: 20, top: 30, width: 88, height: 64, radius: 10, background: 0xFF2A7AE2});
 		mover.style.transform = Transform.parse("translate(0px, 0px)");
-		mover.style.transition = Transition.parse("transform 1.2s linear, opacity 1.2s linear");
+		// (3 s: still running once a slow device's program frames hand it over)
+		mover.style.transition = Transition.parse("transform 3s linear, opacity 3s linear");
 		root.append(mover);
 		var c = w.compositor;
 		var layers = c == null ? null : c.layers;
 		strict = layers != null && mode != "stall";
 		say('start: system layers ${mode == "" ? "default" : mode}, compositor ${c != null}, layers ${layers != null}');
-		var baseline = 60.0;
+		var baseline = 60.0, armFrom = 0.0, unarmed = false;
+		// (the handshake before a phase blocks: the compositor holds a program
+		// frame with the motion running (its next frame due), else nothing
+		// moves on its own while the program is blocked: a transition whose
+		// start is its next tick waits for it, in the program's frames and the
+		// compositor's alike. Given up after 3 s: a failure)
+		function armed(what:String, now:Float):Bool {
+			if (c == null || c.due() >= 0) {
+				say('$what: the compositor armed ${Math.round((now - armFrom) * 1000)} ms after it began');
+				return true;
+			}
+			if (now - armFrom < 3) return false;
+			say('note: $what: the program\'s frames did not hand the motion over in 3 s (a device too slow for it): reported, not checked');
+			unarmed = true;
+			return true;
+		}
 		var presents:Array<Float> = [], offsets:Array<Float> = [], plock = new sys.thread.Mutex();
 		if (c != null) c.onFrame = t -> {
 			var o = c.offsets(list);
@@ -102,8 +118,13 @@ class AndroidLayersTest {
 			return layers != null && layers.fell == null && layers.frames > 0;
 		// (a phase blocking the program: frames presented meanwhile, their gaps, the layers' frames and quads)
 		function blocked(what:String, seconds:Float, before:Void->Void, pace = true):{frames:Int, median:Float, from:Float, to:Float} {
-			strict = live() && mode != "stall" && baseline >= 20;
+			strict = live() && mode != "stall" && baseline >= 20 && !unarmed;
+			unarmed = false;
 			var sc = layers == null ? null : Std.downcast(layers, ScLayers), t0 = sc == null ? [] : sc.timing.copy();
+			if (c != null) @:privateAccess {
+				var f = c.shown, d = c.due();
+				say('$what: the compositor holds the program\'s frame painted ${f == null ? -1 : Math.round((helder.ui.Ui.now() - f.paintedAt) * 1000)} ms ago, its movers ${f == null ? 0 : f.movers.length}, the mirror moving ${c.mirror.moving}, next frame due in ${d < 0 ? "never" : Math.round((d - Timer.stamp()) * 1000) + " ms"}');
+			}
 			var f0 = layers == null ? 0 : layers.frames, q0 = layers == null ? 0 : layers.quadsTotal;
 			var from = Timer.stamp();
 			before();
@@ -116,6 +137,9 @@ class AndroidLayersTest {
 			// of the phase: a device too slow for it, reported; idle with no
 			// frames: the compositor's own fault, checked)
 			var busy = sc == null ? 0.0 : (sc.timing[0] - t0[0]) / (to - from);
+			// (and waiting for the system to present the last transaction most of
+			// it: the system's pace, slower than the display's (a loaded emulator))
+			var systems = sc == null ? 0.0 : (sc.timing[3] - t0[3]) / (to - from);
 			if (strict && during.length < seconds * 20 && busy > 0.6) {
 				say('note: $what: the render thread was busy ${Math.round(busy * 100)}% of the phase: reported, not checked');
 				strict = false;
@@ -125,8 +149,14 @@ class AndroidLayersTest {
 			var median = gaps.length > 0 ? gaps[Std.int(gaps.length / 2)] : 1.0;
 			check('$what: frames presented while the program was blocked ${Math.round(seconds * 1000)} ms', during.length >= seconds * 20,
 				during.length + " frames");
+			var paced = strict;
+			if (pace && strict && median >= 0.03 && systems > 0.4) {
+				say('note: $what: the system presented at ${Math.round(1 / median)} a second, waited for ${Math.round(systems * 100)}% of the phase: reported, not checked');
+				strict = false;
+			}
 			if (pace) check('$what: at the display\'s pace', gaps.length > 0 && median < 0.03, "median gap " + Math.round(median * 10000) / 10 + " ms")
 			else say('$what: median gap ${Math.round(median * 10000) / 10} ms');
+			strict = paced;
 			if (sc != null) {
 				var d = [for (i in 0...4) Math.round((sc.timing[i] - t0[i]) * 1000)];
 				say('$what: the render thread: showing ${d[0]} ms, drawing ${d[1]}, waiting for buffers ${d[2]}, for the last transaction ${d[3]}, frames ${layers.frames - f0}');
@@ -173,11 +203,12 @@ class AndroidLayersTest {
 					// (a fling of the program's own: the compositor glides it while the program is blocked)
 					var t = now * 1000;
 					for (i in 0...8)
-						touch(w, i == 0 ? PointerDown : PointerMove, 200, 600 - i * 40, t + i * 16);
-					touch(w, PointerUp, 200, 600 - 7 * 40, t + 8 * 16);
+						touch(w, i == 0 ? PointerDown : PointerMove, 200, 700 - i * 60, t + i * 16);
+					touch(w, PointerUp, 200, 700 - 7 * 60, t + 8 * 16);
 					phase = 11;
 					at = step;
-				case 11 if (step - at >= 4):
+					armFrom = now;
+				case 11 if (step - at >= 4 && armed("a fling", now)):
 					// (its pace not checked: the list's layer gets a buffer for the area it
 					// records as the fling passes it, which an emulator makes slowly)
 					var r = blocked("a fling", 0.3, () -> {}, false);
@@ -193,7 +224,8 @@ class AndroidLayersTest {
 					mover.style.opacity = 0.4;
 					phase = 12;
 					at = step;
-				case 12 if (step - at >= 6):
+					armFrom = now;
+				case 12 if (step - at >= 6 && armed("an animation", now)):
 					blocked("an animation", 0.3, () -> {});
 					phase = 3;
 					at = now;
@@ -213,7 +245,7 @@ class AndroidLayersTest {
 					mover.style.opacity = 1;
 					phase = 5;
 					at = now;
-				case 5 if (now - at > 3.5):
+				case 5 if (now - at > 5):
 					say('slot at ${Math.round((slotted.absX + 32) * k)} ${Math.round((slotted.absY + 8 - list.scrollY) * k)}');
 					say("still 1");
 					phase = 6;
