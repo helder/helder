@@ -92,6 +92,17 @@ class SampleLayer {
 		#end
 	}
 
+	// whether it shows the frames (Android's once one was rendered onto it;
+	// until then the node draws them)
+	public var showing(get, never):Bool;
+
+	function get_showing():Bool {
+		#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
+		if (android != null) return android.showing;
+		#end
+		return true;
+	}
+
 	// (each tick: the frame due enqueued once, the timebase at the clock)
 	public function feed(p:Player):Null<VideoFrame> {
 		#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")

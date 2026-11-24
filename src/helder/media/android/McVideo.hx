@@ -295,11 +295,13 @@ class McVideo implements VideoDecoder {
 			MediaNdk.AImage_delete(f.image);
 	}
 
-	// f onto the layer's surface at ns (System.nanoTime's clock), let go
-	public function render(f:VideoFrame, ns:Float) {
-		if (!buffered(f) || codec == null) return;
-		MediaNdk.AMediaCodec_releaseOutputBufferAtTime(codec.codec, f.image.toI64().toInt() >> 1, (cast haxe.Int64.fromFloat(ns) : Int64));
+	// f onto the layer's surface at ns (System.nanoTime's clock), let go;
+	// false where it is not the codec's buffer (an image of before the switch)
+	public function render(f:VideoFrame, ns:Float):Bool {
+		if (!buffered(f) || codec == null) return false;
+		var ok = MediaNdk.AMediaCodec_releaseOutputBufferAtTime(codec.codec, f.image.toI64().toInt() >> 1, (cast haxe.Int64.fromFloat(ns) : Int64)) == 0;
 		@:privateAccess f.image = Ptr.nil();
+		return ok;
 	}
 
 	// the frames from now onto a layer's surface (an ANativeWindow), or the

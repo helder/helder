@@ -2,8 +2,9 @@
 # helder.media on the Android device or emulator adb reaches (CI's android
 # job): MediaAndroidTest.apk (MediaCodec's decoding against ffmpeg's, the
 # player, A/V sync; its lines from logcat, tag hxmc), then VideoStill.apk
-# twice, drawn by helder and on its system layer (setprop
-# debug.helder.video layer), each still's screencap checked by still.mjs.
+# three times, drawn by helder, on its system layer (setprop
+# debug.helder.video layer) and with that layer asked for once paused
+# (late), each still's screencap checked by still.mjs as it was shown.
 #   sh tests/media/android/android.sh <MediaAndroidTest.apk> <VideoStill.apk> [out dir]
 set -u
 out=${3:-.}
@@ -37,7 +38,7 @@ grep -q "MediaAndroidTest: passed" "$out/decode.txt" || failed=1
 adb shell am force-stop org.helder.mediaandroidtest
 
 adb install -r -t "$2" > /dev/null || exit 1
-for mode in drawn layer; do
+for mode in drawn layer late; do
 	adb shell setprop debug.helder.video $mode
 	adb logcat -c
 	adb shell am start -W -n org.helder.videostill/android.app.NativeActivity > /dev/null
@@ -46,12 +47,16 @@ for mode in drawn layer; do
 	adb exec-out screencap -p > "$out/still-$mode.png"
 	grep "VideoStill" "$log" | sed 's/^.*VideoStill/VideoStill/'
 	box=$(grep -o "box at [0-9]* [0-9]* [0-9]* [0-9]*" "$log" | head -1 | awk '{print $3","$4","$5","$6}')
-	node tests/media/android/still.mjs "$out/still-$mode.png" "$box" "$mode" "$([ $mode = layer ] && echo 16 || echo 8)" || failed=1
-	# (the layer's run on it, where the system layers run; else drawn, said)
-	if [ $mode = layer ] && ! grep -q "on the system layer true" "$log"; then
-		echo "android.sh: note: no system layer here (Android before 14, or its layers off): drawn"
+	# (which way the still was shown, said at it: the layer's check where
+	# the system layer showed it, else helder's drawing, the fallback's)
+	if grep "box at" "$log" | grep -q "on the system layer true"; then
+		node tests/media/android/still.mjs "$out/still-$mode.png" "$box" "$mode, on the system layer" 16 || failed=1
+	else
+		[ $mode != drawn ] && echo "android.sh: note: no system layer showed it here (Android before 14, its layers off or not split): drawn, checked so"
+		node tests/media/android/still.mjs "$out/still-$mode.png" "$box" "$mode, drawn" 8 || failed=1
 	fi
 	adb shell am force-stop org.helder.videostill
 done
-adb shell setprop debug.helder.video "''"
+# (quoted for the device's shell: an empty value)
+adb shell "setprop debug.helder.video ''"
 exit $failed

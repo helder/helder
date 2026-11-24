@@ -19,13 +19,17 @@ import hxmc.unsafe.*;
 // and centred as fit says, cut by the slot's crop. Each frame is released
 // to it as it falls due on the player's clock (releaseOutputBufferAtTime:
 // System.nanoTime's), so the compositor shows it at the next refresh;
-// frames decoded before (images, drawn) are not shown there. null where
+// frames decoded before (images) are not: until it shows one the node
+// draws them (showing), and a layer made while paused seeks to where the
+// player is, the frame due decoded again onto it. null where
 // the window has no system layers, before they showed a frame, or where
 // Android is older.
 @:hxmc.unsafe(gc)
 class SurfaceLayer {
 	public final slot:LayerSlot;
 	public var fit:ImageFit = Contain;
+	// whether a frame was rendered onto it (until then the node draws)
+	public var showing(default, null) = false;
 
 	final owner:VideoNode;
 	final layers:ScLayers;
@@ -95,12 +99,17 @@ class SurfaceLayer {
 	public function feed(p:Player):Null<VideoFrame> {
 		if (decoder == null) {
 			decoder = Std.downcast(@:privateAccess p.vdec, McVideo);
-			if (decoder != null) decoder.output(window);
+			if (decoder != null) {
+				decoder.output(window);
+				// (paused: no frame would come onto it; the one due decoded
+				// again, at the player's time: a seek asked for is kept)
+				if (!p.playing && p.shown != null) p.seek(p.time);
+			}
 		}
 		var f = p.update();
 		if (f != null && f != last) {
 			last = f;
-			if (decoder != null) decoder.render(f, now());
+			if (decoder != null && decoder.render(f, now())) showing = true;
 		}
 		place(p);
 		return f;

@@ -286,9 +286,11 @@ MediaCodec renders straight onto the Surface of a SurfaceControl of its
 own (Java's: the NDK has no Surface of an ASurfaceControl), its native
 handle (`ASurfaceControl_fromJava`) under the node's slot (ScLayers),
 scaled as fit says; each frame released to it as it falls due on the
-player's clock (`releaseOutputBufferAtTime`). Where the window's frames
-are not split onto layers (no scroller: ScLayers' single), and until the
-layers showed a frame, it is drawn by helder. SurfaceFlinger converts the
+player's clock (`releaseOutputBufferAtTime`). Until a frame was rendered
+onto it the node draws them (`showing`), and one made while paused seeks
+to where the player is, the frame due decoded again onto it. Where the
+window's frames are not split onto layers (no scroller: ScLayers'
+single), and until the layers showed a frame, it is drawn by helder. SurfaceFlinger converts the
 frame as the codec tagged it: SMPTE 170M's transfer onto the sRGB display
 (the emulator's grey 128 shows as 141), which MediaCodec sets on each
 buffer, so it cannot be tagged sRGB's as Apple's are.
@@ -381,7 +383,9 @@ at most 8; where the system tags them otherwise than ffmpeg reads them,
 said); exact seeks and steps; a clip played through AAudio (each frame
 once, within a frame of the clock, its 8000 frames). Codecs the device
 lacks are skipped with a line, H.264 and AAC never. `VideoStill.hx`: a
-`<Video>` of `quads.mp4` in a scroller, drawn and on its system layer,
-played, sought and paused; `still.mjs` reads the screencap's quadrants
-against the source (drawn within 8 levels, the emulator's within 1; the
-layer within 16, the emulator's 13).
+`<Video>` of `quads.mp4` in a scroller, drawn, on its system layer, and
+with the layer asked for once paused (`late`, as a slow device's layers
+start), played until six frames were shown, sought and paused, the frame
+at 0.2 shown for ten frames; `still.mjs` reads the screencap's quadrants
+against the source as the still was shown (said by VideoStill): drawn
+within 8 levels (the emulator's 1), the layer within 16 (the emulator's 13).

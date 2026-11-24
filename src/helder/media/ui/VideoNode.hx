@@ -51,6 +51,7 @@ class VideoNode extends Node {
 	var drawn:Null<VideoFrame>;
 	var queued = -1;
 	var placing = false;
+	var drawing = true;
 	final id = -(++ids) - 4000000;
 
 	static var ids = 0;
@@ -130,7 +131,9 @@ class VideoNode extends Node {
 			var p = player;
 			if (p == null || ui == null) return ticking = false;
 			advance(p);
-			var going = p.playing || p.shown == null && p.error == null || p.shown != null && Math.abs(p.shown.time - p.time) > 1e-6 && p.time < p.duration;
+			// (on too while its system layer shows nothing yet: its first frame to render)
+			var going = p.playing || p.shown == null && p.error == null || p.shown != null && Math.abs(p.shown.time - p.time) > 1e-6 && p.time < p.duration
+				|| sample != null && !sample.showing && p.error == null;
 			if (!going) ticking = false;
 			return going;
 		});
@@ -150,15 +153,15 @@ class VideoNode extends Node {
 			if (onTime != null) onTime(t);
 		}
 		if (playing.peek() != p.playing) playing(p.playing);
-		if (f != drawn) {
-			drawn = f;
-			// (the system's layer shows it: nothing of helder's drawn again;
-			// else a frame asked for: a clock's step alone paints none)
-			if (sample == null) {
-				layerChanged();
-				ui.requestFrame();
-			}
+		// (the system's layer shows it: nothing of helder's drawn again,
+		// once it does; else a frame asked for: a clock's step alone paints none)
+		var own = sample == null || !sample.showing;
+		if (own && f != drawn || own != drawing) {
+			layerChanged();
+			ui.requestFrame();
 		}
+		drawn = f;
+		drawing = own;
 	}
 
 	function set_fit(v:ImageFit):ImageFit {
@@ -251,7 +254,7 @@ class VideoNode extends Node {
 		box[0] = width;
 		box[1] = height;
 		var p = player;
-		if (sample != null || p == null || width <= 0 || height <= 0) return;
+		if (sample != null && sample.showing || p == null || width <= 0 || height <= 0) return;
 		var f = p.shown;
 		var g = Std.downcast(canvas, TextureCanvas), r = Renderer.of(canvas);
 		if (f == null || g == null || r == null) return;
