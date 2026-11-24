@@ -270,7 +270,8 @@ class Check {
 
 	static function viewer(menu:Array<Dynamic>, end:Array<Dynamic>) {
 		var items = [for (n in menu) if (n.tag == "menu-item") n.label];
-		check("viewer: the context menu open, its items", items.length == 5 && items.contains("Fit") && items.contains("Actual Size"), items.join("|"));
+		check("viewer: the context menu open, its items", items.length == 6 && items.contains("Fit") && items.contains("Actual Size")
+			&& items.contains(Sys.systemName() == "Windows" ? "Delete" : "Move to Trash"), items.join("|"));
 		var photo = byTag(menu, "photo");
 		check("viewer: the file dialog's answer opened", photo != null && photo.label != null && (photo.label : String).startsWith("alpha.png"), photo?.label);
 		check("viewer: the menu closed by the item picked", byTag(end, "menu") == null);

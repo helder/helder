@@ -75,7 +75,7 @@ class ViewerView implements Markup {
 			});
 		});
 		return <view tag="viewer" position="absolute" inset={0} background={Look.ref.canvas} color={Look.ref.fg} font-size={13}
-			opacity={x.full() ? 1 : 0} motion-opacity={'$FADE 0'} pointer-events={x.full() ? "auto" : "none"}>
+			opacity={x.full() ? 1 : 0} motion-opacity={'$FADE 0'} pointer-events={x.full() ? "auto" : "none"} hidden={!x.full()}>
 			<view tag="viewer-bar" direction="row" align-items="center" column-gap={8} height={BAR} shrink={0} drag-region
 				padding-left={WindowButtons.side() == "start" ? 86 : 14} padding-right={WindowButtons.side() == "end" ? 152 : 14}
 				display={viewer.fullscreen() ? "none" : "flex"}>

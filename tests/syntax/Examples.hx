@@ -72,7 +72,7 @@ class Examples {
 		]);
 		mail('$out/mail/Mail.hx');
 		guide('$out/guide/GuideTest.hx');
-		viewer('$out/viewer/src/viewer/Shell.hx', '$out/viewer/src/viewer/PhotoShader.hx');
+		viewer('$out/viewer/src/viewer/ViewerView.hx', '$out/viewer/src/viewer/PhotoShader.hx');
 	}
 
 	// the todos, Haxe's and TypeScript's: the same edits

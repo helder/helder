@@ -349,7 +349,8 @@ class Shell implements Markup {
 			if (code != 0 && otherwise != null) otherwise();
 		});
 
-	// the window's content: the browser, or a file full size in its place
+	// the window's content: the browser, or a file full size over it (to
+	// assistive technology the one shown alone)
 	public static function view(x:Explorer):View {
 		var b = x.browser;
 		// (a large folder, not watched: read again when the pointer comes back to the window)
@@ -357,7 +358,7 @@ class Shell implements Markup {
 			if (!x.full.value && b.total.value >= Browser.WATCH_BELOW && !b.reading.value) b.refresh();
 		return <Standard.Themed look={look}>
 			<view tag="window" grow={1} background={Look.ref.canvas} color={Look.ref.fg} font-family="system-ui" font-size={13} onPointerEnter={back}>
-				<view tag="browser" grow={1} direction="row">
+				<view tag="browser" grow={1} direction="row" hidden={x.full()}>
 					{SidebarView.make(x)}
 					<view grow={1} min-width={0} direction="row" padding-top={WindowButtons.side() == "end" ? 32 : 0}>
 						{ContentView.make(x)}

@@ -123,7 +123,6 @@ private function viewing(name:String):Explorer {
 	return x;
 }
 
-// (the window's content, dark or light, at a laptop's size: the trees are
-// taken in a phone's whatever the story's width, Stories.tree)
+// (the window's content, dark or light, at a laptop's size)
 private function themed(x:Explorer, dark:Bool):View
-	return <view width={1100} height={700} shrink={0} ref={(n:Node) -> if (n.ui != null) n.ui.dark = dark}>{Shell.view(x)}</view>;
+	return Fixtures.themed(x, dark);
