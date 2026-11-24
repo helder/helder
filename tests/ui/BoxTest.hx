@@ -1,6 +1,4 @@
 import haxe.io.Bytes;
-import helder.gfx.*;
-import helder.os.*;
 import helder.ui.*;
 import helder.ui.draw.*;
 import helder.image.*;
@@ -56,19 +54,9 @@ class BoxTest {
 		return n;
 	}
 
-	static function draw(device:Device, r:Renderer, ui:Ui):Bytes {
+	static function draw(f:DrawFrame, ui:Ui):Bytes {
 		ui.update();
-		var pixels = Bytes.alloc(W * H * 4);
-		var enc = device.beginFrame();
-		var pass:PassDesc = {colors: [{load: Clear, clear: new helder.gfx.Color(1, 1, 1)}]};
-		enc.beginPass(pass);
-		r.begin(W, H);
-		ui.paint(r);
-		r.end(enc);
-		enc.endPass();
-		device.readPixels(pixels);
-		device.endFrame();
-		return pixels;
+		return f.draw(ui);
 	}
 
 	// a text at (10.25, 10.5): at a size, under a transform about its top left
@@ -91,14 +79,13 @@ class BoxTest {
 		var ui = new Ui(new DrawText(), W, H);
 		for (b in boxes)
 			ui.root.append(box(b));
-		var device = Device.create(Surface.headless(W, H));
-		var r = new Renderer(device);
-		var pixels = draw(device, r, ui);
+		var f = new DrawFrame(W, H);
+		var pixels = draw(f, ui);
 		sys.io.File.saveBytes(args[1], Png.encode(pixels, W, H));
 		// (the texts: scaled against the larger size, turned)
-		var scaled = draw(device, r, text(12, "scale(2)")), large = draw(device, r, text(24));
-		var turned = draw(device, r, text(16, "translate(30px, 0) rotate(90deg)"));
-		device.dispose();
+		var scaled = draw(f, text(12, "scale(2)")), large = draw(f, text(24));
+		var turned = draw(f, text(16, "translate(30px, 0) rotate(90deg)"));
+		f.dispose();
 		if (args.length > 2) sys.io.File.saveBytes(args[2], Png.encode(turned, W, H));
 		var apart = 0, inked = 0, turnedInk = 0, outside = 0;
 		for (i in 0...W * H) {

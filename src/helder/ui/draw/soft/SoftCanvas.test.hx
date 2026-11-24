@@ -1,0 +1,51 @@
+package helder.ui.draw.soft;
+
+import helder.test.Test;
+import helder.ui.Color;
+
+// The CPU's canvas: a rectangle's pixels, its edge's coverage, a rounded
+// clip, an opacity group drawn as one, nothing outside what is drawn
+function tests() {
+	describe("SoftCanvas", () -> {
+		#if (target.name == "hxmc")
+		function pixel(c:SoftCanvas, x:Int, y:Int):Int
+			return c.frame.pixels.getInt32((y * c.frame.width + x) * 4);
+
+		test("a rectangle: its fill, its half-covered edge", () -> {
+			var c = new SoftCanvas();
+			c.snap = false;
+			c.begin(16, 16, Color.WHITE);
+			c.rect(2, 2, 8.5, 8, 0, Color.BLACK, 0, 0);
+			equals(pixel(c, 5, 5), 0xFF000000);
+			equals(pixel(c, 12, 5), 0xFFFFFFFF);
+			// (column 10: half of it, grey)
+			var v = pixel(c, 10, 5) & 0xFF;
+			assert(v > 120 && v < 136, 'edge $v');
+		});
+
+		test("a rounded clip cuts the corner", () -> {
+			var c = new SoftCanvas();
+			c.begin(16, 16, Color.WHITE);
+			c.pushClip(0, 0, 16, 16, 8);
+			c.rect(0, 0, 16, 16, 0, Color.BLACK, 0, 0);
+			c.popClip();
+			equals(pixel(c, 0, 0), 0xFFFFFFFF);
+			equals(pixel(c, 8, 8), 0xFF000000);
+		});
+
+		test("an opacity group: what overlaps in it not seen through", () -> {
+			var c = new SoftCanvas();
+			c.groups = true;
+			c.begin(16, 16, Color.WHITE);
+			c.pushGroup(0.5, 0, 0, 16, 16);
+			c.rect(0, 0, 8, 8, 0, Color.BLACK, 0, 0);
+			c.rect(0, 0, 8, 8, 0, Color.BLACK, 0, 0);
+			c.popOpacity();
+			// (black at half over white, once: 128, where each at half would give 64)
+			var v = pixel(c, 4, 4) & 0xFF;
+			assert(v >= 127 && v <= 128, 'grey $v');
+			equals(pixel(c, 12, 12), 0xFFFFFFFF);
+		});
+		#end
+	});
+}

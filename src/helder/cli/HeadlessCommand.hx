@@ -13,7 +13,8 @@ using StringTools;
 // surfaces, its loop a virtual clock, its events a script's) into
 // bin/headless/<name>, then run with its options in HELDER_HEADLESS (JSON:
 // what Headless reads), its output here. Determinism: Linux's GL forced to
-// Mesa's llvmpipe (LIBGL_ALWAYS_SOFTWARE), no display, a fixed locale and
+// Mesa's llvmpipe (LIBGL_ALWAYS_SOFTWARE), or with --soft no GPU at all
+// (-D helder.soft: the CPU's canvas, helder.ui.draw.soft), no display, a fixed locale and
 // time zone (C.UTF-8, UTC), Math.random seeded (--seed). A video is the
 // run's frames as PNGs (a directory beside it), encoded by ffmpeg after,
 // the frames removed. (The options: Options.HEADLESS.)
@@ -30,9 +31,11 @@ class HeadlessCommand {
 			return 2;
 		}
 		Term.out(Style.header("run", ["headless", e.label()]));
-		var exe = e.out("headless");
+		// (--soft: drawn on the CPU, no GPU linked: helder.ui.draw.soft; a build of its own)
+		var soft = o.has("soft"), exe = e.out(soft ? "headless-soft" : "headless");
 		// (--dev: a dev build, -D hxmc.dev: its live literals, which a script's literal step patches)
-		var r = BuildCommand.build(e, exe, o.has("dev") ? Dev : Release, null, ["-D", "helder.headless"]);
+		var defines = ["-D", "helder.headless"].concat(soft ? ["-D", "helder.soft"] : []);
+		var r = BuildCommand.build(e, exe, o.has("dev") ? Dev : Release, null, defines);
 		if (!r.ok) return 1;
 		var frames = video == null ? null : Path.withoutExtension(video) + ".frames";
 		var cfg = config(o, frames);

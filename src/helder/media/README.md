@@ -5,8 +5,9 @@ QuickTime, Matroska and WebM demuxed into tracks and packets from any byte
 source, an index for exact seeking, and the clock a player keeps. Decoded
 by the systems' own decoders, nothing bundled: Apple's VideoToolbox and
 AudioToolbox (`helder.media.apple`), the browser's WebCodecs
-(`helder.media.web`), helder's own Vorbis everywhere; the roadmap's
-**Video** brings MediaCodec, Media Foundation and VAAPI. A `Player` plays a
+(`helder.media.web`), Android's MediaCodec (`helder.media.android`),
+helder's own Vorbis everywhere; the roadmap's **Video** brings Media
+Foundation and VAAPI. A `Player` plays a
 file, a `<Video>` shows it in helder.ui.
 
 ```haxe
@@ -165,6 +166,24 @@ sequence header) are configured as BT.601's, as ffmpeg and Apple read them
 (a browser's guess is BT.709's). Decoders run in a worker too: nothing but
 the `<video>` fallback needs a document.
 
+**MediaCodec** (`android.McVideo`, `android.McAudio`, `android.McCodec`;
+libmediandk loaded at run time): an `AMediaCodec` by MIME type, the
+system's choice (a device's hardware decoder), else the software one it
+ships (`c2.android.*`), in synchronous mode on the program's thread: no
+callbacks, so no codec thread touches the heap. Packets wait in a queue
+while it has no input buffer free; avcC's and hvcC's NAL lengths become
+start codes as they are copied in (csd-0 and csd-1 their parameter sets,
+av1C as csd-0; AAC's AudioSpecificConfig, OpusHead with its pre-skip and
+preroll, FLAC's `fLaC` header). Video is decoded onto an `AImageReader`'s
+surface (`AIMAGE_FORMAT_PRIVATE`, `GPU_SAMPLED_IMAGE`): each frame an
+`AImage` on an `AHardwareBuffer`, one rendered to the reader at a time
+(its queue keeps the last one queued), found by its time (microseconds);
+its colours the dataspace the codec tagged (an H.264 with BT.709's matrix
+but no primaries is BT.601's to Android). Audio comes as PCM, floats asked
+for, 16 bits where a codec gives those; its outputs come later than their
+packets (`decoded`), the end drained (`flush`, `pending`). H.264, HEVC,
+VP9 and AV1; AAC, MP3, Opus and FLAC (no ALAC: Android has none).
+
 **AudioToolbox** (`apple.AtDecoder`): AAC, MP3, ALAC, FLAC and Opus
 through an AudioConverter, the track's config its magic cookie (FLAC's
 STREAMINFO's body, its depth a format flag; a packet's frames asked for a
@@ -197,7 +216,10 @@ the clock at the audio's last frame, or the video's end where it is longer
 (the output then plays silence, the clock going on; only then, so that a
 clip's last samples are heard before it ends). At the stream's end the
 decoders are drained (`flush`: AudioConverter's input over, WebCodecs'
-flush; their last frames into the ring up to the track's end). A decoder that holds
+flush, MediaCodec's end of stream; their last frames into the ring up to
+the track's end). The ring holds two seconds and at least 65536 frames:
+a decoder that gives its frames later is asked for them while a packet's
+16384 fit (an 8 kHz track's two seconds would not). A decoder that holds
 frames back (WebKit's, Firefox's) is fed on until one settles (at most 24);
 a step waits for a flushed decoder's last frames. An audio decoder that
 fails (WebKit's Opus, said to decode) is dropped, the video playing on the
@@ -254,6 +276,25 @@ its colours), then turned upright by the same pass (`VideoShader`'s
 once the shaders have a binding type for external textures (its texture
 lasts a task only: bound in the frame that samples it).
 
+On Android (`VideoTexture`): the frame's `AHardwareBuffer` imported into
+GLES as an EGLImage (`Device.openShared` of `ahb:`, GLBackend: an external
+texture, no copy), kept while the reader's pool reuses it; the same pass
+samples it (`samplerExternalOES`, the GLSL patched), the driver converting
+its YUV as the buffer is tagged, the picture its crop's share of the
+buffer (`turn.y`, `turn.w`). `layer={true}` (`ui.SurfaceLayer`, API 34):
+MediaCodec renders straight onto the Surface of a SurfaceControl of its
+own (Java's: the NDK has no Surface of an ASurfaceControl), its native
+handle (`ASurfaceControl_fromJava`) under the node's slot (ScLayers),
+scaled as fit says; each frame released to it as it falls due on the
+player's clock (`releaseOutputBufferAtTime`). Until a frame was rendered
+onto it the node draws them (`showing`), and one made while paused seeks
+to where the player is, the frame due decoded again onto it. Where the
+window's frames are not split onto layers (no scroller: ScLayers'
+single), and until the layers showed a frame, it is drawn by helder. SurfaceFlinger converts the
+frame as the codec tagged it: SMPTE 170M's transfer onto the sRGB display
+(the emulator's grey 128 shows as 141), which MediaCodec sets on each
+buffer, so it cannot be tagged sRGB's as Apple's are.
+
 Audio alone is a Player without a box. TypeScript: `helder/media`'s
 `Video`, `VideoNode`, `Player`, `FileSource`, `MemorySource`.
 
@@ -274,7 +315,11 @@ frames, an MP4 writer. In browsers: HEVC where the system has no decoder
 Chromium (no proprietary codecs), ALAC, HDR (PQ is the browser's mapping
 to SDR), `importExternalTexture` (a copy on the GPU for now); Firefox's software decoders give RGB frames (BGRX, BT.709 for
 unnamed colours), WebKit's are full range (its AV1's display width is
-wrong).
+wrong). On Android: ALAC; 10-bit video on the emulator's software HEVC
+decoder (its Codec2 configuration fails); the system's layer before API 34
+(drawn there) and its colours as SurfaceFlinger converts them; the
+emulator's host decoders (`c2.goldfish.*`, the system's choice there) make
+full range video range.
 
 Tests: `src/helder/media/Media.test.hx` (the test lane, natively and as
 wasm32-wasi): tests/media's files (`fixtures.sh`: ffmpeg's H.264 and AAC,
@@ -326,3 +371,21 @@ with no gesture (muted plays, with sound waits); the `<video>` fallback
 played, sought, drawn. Firefox and WebKit too where Playwright has them
 (CI: Chromium only), their own conversions printed, not failed;
 `WebCodec.test.hx`: the codec strings and unnamed colours natively.
+
+The android job (`tests/media/android/android.sh`, about 20 s on the
+emulator): `MediaAndroidTest.hx`, decoded.json's videos through
+MediaCodec read as YUV_420_888 (`McVideo.readable`): count, each frame's
+time, planes' CRC-32 as ffmpeg's, where the system's decoder differs (the
+emulator's goldfish ones) said and c2.android's checked; the audio tracks'
+frames and samples (#93's tolerances); frames in RGB through the
+AHardwareBuffer's EGLImage against ffmpeg's where flat (a mean under 1.5,
+at most 8; where the system tags them otherwise than ffmpeg reads them,
+said); exact seeks and steps; a clip played through AAudio (each frame
+once, within a frame of the clock, its 8000 frames). Codecs the device
+lacks are skipped with a line, H.264 and AAC never. `VideoStill.hx`: a
+`<Video>` of `quads.mp4` in a scroller, drawn, on its system layer, and
+with the layer asked for once paused (`late`, as a slow device's layers
+start), played until six frames were shown, sought and paused, the frame
+at 0.2 shown for ten frames; `still.mjs` reads the screencap's quadrants
+against the source as the still was shown (said by VideoStill): drawn
+within 8 levels (the emulator's 1), the layer within 16 (the emulator's 13).

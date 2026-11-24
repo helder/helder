@@ -34,7 +34,7 @@ class ControlsGallery implements Markup {
 		var args = Sys.args();
 		for (f in ["src/helder/text/fonts/Inter.ttf", "examples/showreel/fonts/InterDisplay.ttf", "apps/studio/fonts/GeistMono-Regular.ttf"])
 			helder.text.SystemFonts.get().add(sys.io.File.getBytes(f));
-		var device = Device.create(Surface.headless(W, H));
+		var device = new DrawFrame(W, H);
 		var ok = true;
 		for (density in [Tokens.Density.Comfortable, Tokens.Density.Compact])
 			for (dark in [false, true]) {
@@ -55,13 +55,12 @@ class ControlsGallery implements Markup {
 	}
 
 	// (a gallery's frame: mounted, drawn once, its states forced, its transitions finished, checked, drawn)
-	static function frame(device:Device, look:Look<Dynamic>, dark:Bool, density:Tokens.Density):Bytes {
+	static function frame(device:DrawFrame, look:Look<Dynamic>, dark:Bool, density:Tokens.Density):Bytes {
 		var ui = new Ui(new DrawText(), W, H);
 		ui.dark = dark;
 		var dispose = Render.render(gallery(look), ui.root);
 		ui.update();
-		var r = new Renderer(device);
-		paint(device, r, ui);
+		paint(device, ui);
 		ui.focusVisible = true;
 		var t = look.tokens;
 		for (row in ROWS)
@@ -106,23 +105,14 @@ class ControlsGallery implements Markup {
 		check('$at: a switch on, its knob across', knob.slot == "switch-knob" && knob.style.transform != null
 			&& Math.abs(@:privateAccess knob.style.transform.args[0][0] - travel) < 1e-6, Std.string(knob.style.transform));
 		check('$at: its track the accent', sw.children[0].style.background == colors.get("accent"));
-		var pixels = paint(device, r, ui);
+		var pixels = paint(device, ui);
 		dispose();
 		return pixels;
 	}
 
-	static function paint(device:Device, r:Renderer, ui:Ui):Bytes {
-		var pixels = Bytes.alloc(W * H * 4);
+	static function paint(f:DrawFrame, ui:Ui):Bytes {
 		ui.update();
-		var enc = device.beginFrame();
-		enc.beginPass({colors: [{load: Clear, clear: new helder.gfx.Color(1, 1, 1)}]});
-		r.begin(W, H);
-		ui.paint(r);
-		r.end(enc);
-		enc.endPass();
-		device.readPixels(pixels);
-		device.endFrame();
-		return pixels;
+		return f.draw(ui);
 	}
 
 	static function compare(name:String, pixels:Bytes, golden:String):Bool {

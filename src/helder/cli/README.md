@@ -878,6 +878,7 @@ helder run --headless examples/todo --script demo.json --frames 30 --every 3 --s
 helder run --headless examples/todo --script demo.json --video demo.mp4 [--fps 60] [--duration 3|auto] --keys [--keys-at top-right] --pointer
 helder run --headless examples/todo --script demo.json --trace run.jsonl
 helder run --headless examples/glow --snap glow.png --at 0.5 --size 320x240
+helder run --headless --soft examples/todo --snap out.png   # drawn on the CPU, no GPU linked
 ```
 
 - **The build**: `-D helder.headless` into `bin/headless/<name>` (a
@@ -891,7 +892,13 @@ helder run --headless examples/glow --snap glow.png --at 0.5 --size 320x240
   times `--scale` (1), which the real renderer draws into offscreen
   (helder.gfx: Linux's GL on an EGL pbuffer of Mesa's surfaceless
   platform, Metal's and D3D11's offscreen targets); `Device.endFrame` reads
-  the first window's frame back for the outputs. `App.prefersDark` is
+  the first window's frame back for the outputs. Where no GPU device can
+  be made (no EGL driver), or with `HELDER_SOFT=1`, a UI is drawn on the
+  CPU instead (helder.ui.draw.soft: the GPU's pixels within a level).
+  `--soft` builds it so (`-D helder.soft` into `bin/headless-soft`): no
+  GPU code linked (on Linux a static executable, nothing to load), the
+  same bytes on every machine with the same fonts; what draws with a
+  shader of its own (a part's, a `<Scene>`, a sprite box) is a grey box. `App.prefersDark` is
   `--theme`'s (light by default); `--reduced-motion` sets helder.ui's
   `Clock.reducedMotion` (Style's transitions of transform and shadow, and
   Motion's transition and spring, jump; fades and colours still ease).

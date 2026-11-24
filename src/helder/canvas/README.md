@@ -113,6 +113,10 @@ and the DOM facade read too). helder.ui's `Path.render` draws on it; its CSS gra
 (`Gradient.render`) are this one's shaders (`premultiplied`: stops mixed
 as CSS mixes them), their rows shaded without a canvas.
 
+helder.ui draws on it without a GPU too (helder.ui.draw.soft): its paths
+and SVGs rasterized here, its rectangles, borders, shadows, glyphs and
+images shaded by UiShader's own functions, into a `Bitmap`.
+
 ## Extras (phase 4)
 
 - **Documents** (`helder.canvas.doc`): `Recorder`, a Painter that keeps

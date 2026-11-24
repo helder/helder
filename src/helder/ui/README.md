@@ -1009,7 +1009,9 @@ its body do (`ui.body`).
 Text is shaped and rasterized by `helder.text` with the system's fonts
 (`sans-serif` by default). `HELDER_NO_SYSTEM_FONTS=1` makes
 `helder.text.SystemFonts` look for none (only the fonts added: a
-program's fallback tested as on a bare system). Colour emoji come from the system's emoji font,
+program's fallback tested as on a bare system); `HELDER_FONT_DIRS`
+(directories, `:`-separated) looks in those alone, the platform's lookups
+off: the same faces on every machine. Colour emoji come from the system's emoji font,
 drawn from its bitmaps (scaled down as a browser does) or colour layers. In a browser, give the page's fonts to `run`
 (`fonts: [...]` with `src/helder/text/imports.mjs`).
 
@@ -1293,6 +1295,48 @@ width, caps, joins, miter and dashes), and text as paragraphs whose
 `runs(width, align)` give the glyphs as placed: the face's file, the size,
 the glyph ids and each glyph's source text. `breakBefore`, `breakAfter`,
 `breakInside` and `page` are kept for a paged layout; a window has none.
+
+### On the CPU
+
+`helder.ui.draw.soft.SoftCanvas` is the GPU renderer's Canvas with no GPU:
+it draws into a helder.canvas `Bitmap` (RGBA8, premultiplied) what the
+Renderer draws, placed by the same rules (its snapping to the pixel grid,
+clips' radii, transforms' scale and turn, a glyph's pen and phase), each
+quad shaded by UiShader's own functions (`UiShapes`: the rounded box, the
+border's inner ellipse, dashes and dots, the Gaussian shadow) and blended
+as a GPU blends into RGBA8; glyphs from the same `GlyphAtlas`, paths and
+SVGs rasterized by helder.canvas (`Path.render`, as the Renderer's), images
+read bilinearly, opacity groups into buffers of their own. Unturned
+rectangles, borders and shadows are shaded four pixels at a time
+(hxmc.simd), only near their edges: a run a rectangle covers whole is its
+fill, an outer shadow under its box is skipped, a blur's terms that hold
+along a row are kept. What draws with the GPU (a part's shader, a
+`<Scene>`, a sprite box, a GPU texture) is a grey box (`GpuPlaceholder`).
+
+Headless runs draw on it with `--soft` (`-D helder.soft`: no GPU code
+linked, a static executable on Linux), `HELDER_SOFT=1`, or where no GPU
+device can be made; a build without `helder.headless` links none of it.
+Its frames are the GPU's within a level (Metal's and llvmpipe's, every
+golden scene, below) and the same bytes on every machine given the same
+fonts (`HELDER_FONT_DIRS`: those directories alone, e.g. DejaVu on a Mac),
+so the image tests' goldens are its (`bun run test ui-soft`).
+
+Against the GPU (tests/ui/SoftBench.hx: a frame painted and read back, the
+least of 20; first frame in brackets; ms):
+
+| scene | Metal (M4) | CPU (M4) | llvmpipe, Docker | CPU, Docker |
+|---|---|---|---|---|
+| sample 480x320 | 0.5 (6) | 2.0 (3.5) | 3.3 (357) | 6.2 (28) |
+| todo 480x560 | 0.6 (5) | 0.8 (1.1) | 3.0 (21) | 2.0 (4.4) |
+| controls 760x660 | 1.6 (6) | 3.7 (4.8) | 25.1 (147) | 9.5 (20) |
+| controls 1520x1320 | 4.1 (9) | 14.0 (15.5) | 88.4 (227) | 32.6 (41) |
+| 5,000 rows 800x600 | 1.0 (6) | 3.0 (4.2) | 10.1 (30) | 8.4 (13) |
+
+(Docker: helder-llvmpipe-dejavu, linux-x86_64 emulated on the same M4;
+llvmpipe on 10 threads, the CPU canvas on one.) It beats llvmpipe on
+every scene but the shadow-heavy sample, and its first frame by 10 to 40
+times (llvmpipe compiles its shaders). Not yet: bands in parallel (its
+buffers are the collector's), glyphs and images in SIMD.
 
 ## Text input
 
@@ -1714,7 +1758,9 @@ paragraphs' glyphs, which all survive: a compact glyph store in
 ## Tests
 
 `bun run test ui` (Eval: layout against Chromium, events, markup rendered into nodes, the guide),
-`bun run test ui-draw` (natively, golden images), `bun run test ui-web`
+`bun run test ui-draw` (natively, golden images), `bun run test ui-soft` (the
+image tests on the CPU, no GPU linked: the goldens' reference, BLESS=1),
+`bun run test ui-web`
 (Chromium, WebGPU and WebGL2, real input events), from tests/ui (`bun run test help`: every lane).
 The `*.test.hx` beside the sources run natively and as wasm32-wasi (the
 test lane): pointers, gestures, and the safe area (`SafeArea.test.hx`:

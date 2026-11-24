@@ -116,7 +116,8 @@ ads and analytics.
 llvmpipe, with no GPU stack: the shaders are Haxe functions that already
 run on the CPU, compiled ahead of time, so nothing needs a JIT. First
 helder.ui's display list replayed through helder.canvas (headless runs and
-UI goldens without GL or Mesa), then a CPU back end beside Metal, D3D11,
+UI goldens without GL or Mesa: done, helder.ui's [On the
+CPU](src/helder/ui/README.md#on-the-cpu)), then a CPU back end beside Metal, D3D11,
 GL and WebGPU under the same Device and Encoder, SIMD from the start: the
 shader macro also emits each shader over hxmc.simd's 4 lanes, a 2x2 pixel
 quad per call (derivatives and mip levels as GPUs get them), the scalar
@@ -134,7 +135,8 @@ where the system allows, timed by the audio clock; a `<Video>` node with
 exact seeking and frame stepping, its controls the app's; the viewer
 playing video and audio beside images and PDFs. Done on macOS and iOS
 ([helder.media](src/helder/media/README.md): VideoToolbox, AudioToolbox,
-the viewer's videos); the other systems' decoders next.
+the viewer's videos), in browsers (WebCodecs) and on Android (MediaCodec);
+Media Foundation and VAAPI next.
 
 **Games**
 - Physics: mesh and convex colliders, layers, triggers, contact events, stable stacks.

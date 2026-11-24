@@ -21,12 +21,12 @@ class SnapTest {
 	static final PW = Std.int(W * SCALE);
 	static final PH = Std.int(H * SCALE);
 
-	static var device:Device;
+	static var device:DrawFrame;
 	static var ui:Ui;
 	static var group:Node;
 
 	static function main() {
-		device = Device.create(Surface.headless(PW, PH));
+		device = new DrawFrame(PW, PH);
 		ui = new Ui(new DrawText(), W, H);
 		ui.scale = SCALE;
 		ui.root.style.background = Color.WHITE;
@@ -67,21 +67,10 @@ class SnapTest {
 
 	static function draw(dx:Float, dy:Float, snap:Bool):Bytes {
 		group.style.transform = Transform.translate(dx, dy);
-		var r = new Renderer(device);
-		r.scale = SCALE;
-		r.snap = snap;
-		var pass:PassDesc = {colors: [{load: Clear, clear: new helder.gfx.Color(1, 1, 1)}]};
-		var pixels = Bytes.alloc(PW * PH * 4);
+		device.scale = SCALE;
+		device.snap = snap;
 		ui.update();
-		var enc = device.beginFrame();
-		enc.beginPass(pass);
-		r.begin(PW, PH);
-		ui.paint(r);
-		r.end(enc);
-		enc.endPass();
-		device.readPixels(pixels);
-		device.endFrame();
-		return pixels;
+		return device.draw(ui);
 	}
 
 	static inline function rgb(p:Bytes, x:Int, y:Int):Int {
