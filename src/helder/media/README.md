@@ -244,7 +244,9 @@ in a scroller under a popup both ways, seeked, played, paused, scrolled
 system's layer: rendering, placed and moved with the scroller, cut by its
 clip); where the window server's captures have pixels, the drawn colours
 there checked and the layer's printed, the captures kept as PNGs (CI's
-artifact `video-window-macos`). VideoToolbox's decoding of `quads.mp4`
-made at crf 18 or less is not ffmpeg's (its right half's Cr 255, an M4 and
-CI's virtual Mac alike): the fixture is crf 23's, and the decoding test
-checks it.
+artifact `video-window-macos`). Apple's decoding of `quads.mp4` made at
+crf 18 or less is not ffmpeg's (its right half's Cr 255, not the source's;
+an M4 and CI's virtual Mac alike; AVAssetReader, Apple's demuxer and
+decoder without helder, gives the same bytes as helder): the fixture is
+crf 23's, which every decoder decodes alike, and the decoding test checks
+it.

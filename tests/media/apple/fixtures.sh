@@ -16,8 +16,10 @@ f -f lavfi -i testsrc=size=64x48:rate=10:duration=0.5 -c:v libx265 -x265-params 
 # H.264, full range, BT.709
 f -f lavfi -i testsrc=size=64x48:rate=10:duration=0.5 -c:v libx264 -preset veryfast -bf 2 -pix_fmt yuvj420p -colorspace bt709 -color_range pc $plain h264-full.mp4
 # flat quadrants (red, green, blue, grey) and a square moving: VideoWindow's
-# colours, away from edges (at crf 18 or less VideoToolbox's decoding of it
-# is not ffmpeg's: the right half's Cr 255, on an M4 and CI's virtual Mac)
+# colours, away from edges (at crf 18 or less Apple's decoding of it is not
+# ffmpeg's: the right half's Cr 255, not the source's 34 and 128, on an M4
+# and CI's virtual Mac; AVAssetReader's the same byte for byte, so the
+# system's decoder's, not helder's feeding of it)
 sq="between(X,N*5,N*5+5)*between(Y,20,27)"
 f -f lavfi -i "nullsrc=s=64x48:r=10:d=1,format=rgb24,geq=r='if($sq,255,if(lt(Y,24),if(lt(X,32),255,0),if(lt(X,32),0,128)))':g='if($sq,255,if(lt(Y,24),if(lt(X,32),0,255),if(lt(X,32),0,128)))':b='if($sq,255,if(lt(Y,24),0,if(lt(X,32),255,128)))'" -c:v libx264 -preset veryslow -crf 23 -g 10 -pix_fmt yuv420p $plain quads.mp4
 # the chirp in AAC, MP3, FLAC, ALAC and Opus (MP4), Vorbis (Matroska)
