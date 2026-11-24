@@ -353,6 +353,8 @@ class Win32Window {
 		var ex = User32.GetWindowLongPtrW(hwnd, -20).toI64();
 		User32.SetWindowLongPtrW(hwnd, -20, Ptr.ofI64(pass ? ex | 0x80020 : ex & ~(0x80020 : Int64)));
 		if (pass) User32.SetLayeredWindowAttributes(hwnd, 0, 255, 2);
+		// (the styles' cache let go: SWP_FRAMECHANGED, NOMOVE, NOSIZE, NOZORDER, NOACTIVATE)
+		User32.SetWindowPos(hwnd, Ptr.nil(), 0, 0, 0, 0, 0x20 | 0x2 | 0x1 | 0x4 | 0x10);
 	}
 
 	// the frame's shadow (DWMWA_NCRENDERING_POLICY: DWMNCRP_DISABLED 1, its frame not drawn by DWM: no shadow; DWMNCRP_ENABLED 2)

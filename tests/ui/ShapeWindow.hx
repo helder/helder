@@ -72,6 +72,7 @@ class ShapeWindow {
 					downs = [0, 0];
 					#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
 					Plain.downs = 0;
+					Plain.styles(w.window.surface.handle);
 					#end
 					Click.press(w.window, at[0], at[1]);
 				}
@@ -388,6 +389,18 @@ class Plain {
 		return helder.os.win32.User32.User32.DefWindowProcW(hwnd, message, wParam, lParam);
 	}
 
+	// (the transparent window's extended styles and the cursor at a press: WS_EX_LAYERED and TRANSPARENT while it passes)
+	public static function styles(top:hxmc.unsafe.Ptr)
+		OsThread.get(() -> hxmc.unsafe.Arena.scopedValue(a -> {
+			var p = a.make(helder.os.win32.User32.POINT);
+			ScreenDc.GetCursorPos(p);
+			var c = {x: p.value.x, y: p.value.y};
+			helder.os.win32.User32.User32.ScreenToClient(top, p);
+			var ex = ScreenDc.GetWindowLongPtrW(top, -20).toI64();
+			Sys.println('ShapeWindow: at the press the cursor at ${c.x}, ${c.y} (in it ${p.value.x}, ${p.value.y}), its extended style 0x${StringTools.hex(ex.toInt())}');
+			0;
+		}));
+
 	public static function state(under:hxmc.unsafe.Ptr, top:hxmc.unsafe.Ptr, occluded:Null<Bool>)
 		OsThread.get(() -> hxmc.unsafe.Arena.scopedValue(a -> {
 			// (GW_HWNDNEXT 2: the windows under top, in order)
@@ -431,6 +444,8 @@ class Screen {
 	static function GetDC(hwnd:hxmc.unsafe.Ptr):hxmc.unsafe.Ptr;
 	static function ReleaseDC(hwnd:hxmc.unsafe.Ptr, dc:hxmc.unsafe.Ptr):Int;
 	static function SetCursorPos(x:Int, y:Int):Int;
+	static function GetCursorPos(p:hxmc.unsafe.Ptr<helder.os.win32.User32.POINT>):Int;
+	static function GetWindowLongPtrW(hwnd:hxmc.unsafe.Ptr, index:Int):hxmc.unsafe.Ptr;
 	static function SendInput(count:Int, inputs:hxmc.unsafe.Ptr, size:Int):Int;
 	static function GetWindow(hwnd:hxmc.unsafe.Ptr, cmd:Int):hxmc.unsafe.Ptr;
 	static function IsWindowVisible(hwnd:hxmc.unsafe.Ptr):Int;
