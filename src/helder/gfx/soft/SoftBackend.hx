@@ -792,8 +792,9 @@ class SoftBackend {
 
 	public function endFrame() {
 		if (inPass) endPass();
-		#if !helder.headless
-		// (a window's frame shown by the system's own path: helder.os.Blit)
+		// (a window's frame shown by the system's own path: helder.os.Blit;
+		// none headless, nor in a static Linux build, which has no windows)
+		#if !(helder.headless || (helder.os == "linux" && hxmc.libc != "glibc"))
 		if (frameTarget == 0 && surface.kind != Headless) Blit.present(surface, SoftTexture.at(frameColor, 0, 0), width, height, damage);
 		#end
 		damage = null;

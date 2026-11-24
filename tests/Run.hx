@@ -701,11 +701,10 @@ class Run {
 			else Sys.println("window: not a GUI session: the soft window not run");
 		}
 		// (a UI in a window drawn on the CPU: its kept frame shown where it
-		// changed; not macOS: a Retina window's frame is larger than the test's)
-		native('bin/os/$GFX_TARGET/UiDrawTestSoft', uiCp().concat(["-main", "UiDrawTest", "-D", "helder.soft"]), GFX_TARGET);
+		// changed; Linux's: the golden's fonts, a window of scale 1)
+		if (GFX_TARGET.startsWith("linux-")) native('bin/os/$GFX_TARGET/UiDrawTestSoft', uiCp().concat(["-main", "UiDrawTest", "-D", "helder.soft"]), GFX_TARGET);
 		var ui = exePath('bin/os/$GFX_TARGET/UiDrawTestSoft', GFX_TARGET);
-		if (Sys.systemName() == "Linux") shell('$XVFB -a $wine$ui tests/ui/draw.png bin/os/soft-draw.png --window')
-		else if (!GFX_TARGET.startsWith("macos-")) run(ui, ["tests/ui/draw.png", "bin/os/soft-draw.png", "--window"]);
+		if (GFX_TARGET.startsWith("linux-")) shell('$XVFB -a $ui tests/ui/draw.png bin/os/soft-draw.png --window');
 		native('bin/os/$GFX_TARGET/LocaleCheck', cps(["src", "tests/os"]).concat(["-main", "LocaleCheck"]), GFX_TARGET);
 		var locale = exePath('bin/os/$GFX_TARGET/LocaleCheck', GFX_TARGET);
 		if (wine != "") shell('$wine$locale') else run(locale, []);
