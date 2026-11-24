@@ -1502,7 +1502,8 @@ its layer's, so neither draws (a scrollbar's thumb, a layer of its size,
 does).
 
 A node can own a system layer between what is drawn (`LayerSlot`, Node's
-`systemLayer`: a CALayer, the Video series' kind): it goes in the tree at
+`systemLayer`: a CALayer, helder.media's `<Video>`'s
+AVSampleBufferDisplayLayer): it goes in the tree at
 its paint position, placed at its box, clipped by its scrollers (rounded
 too), under what is drawn over it, moved with its scroller and its
 transform. Native views (the text fields, the web view) are slots too:
