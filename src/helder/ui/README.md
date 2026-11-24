@@ -1375,7 +1375,11 @@ rectangles, borders and shadows are shaded four pixels at a time
 (hxmc.simd), only near their edges: a run a rectangle covers whole is its
 fill, an outer shadow under its box is skipped, a blur's terms that hold
 along a row are kept. What draws with the GPU (a part's shader, a
-`<Scene>`, a sprite box, a GPU texture) is a grey box (`GpuPlaceholder`).
+`<Scene>`, a sprite box, fx's boxes) draws in a `-D helder.soft` build on
+helder.gfx's CPU back end (`SoftGpu`, behind `GpuHost`: the Renderer itself
+in a GPU build), its pass run where the Renderer would run it and its
+texture composited as an image; elsewhere (a GPU build that found no
+device) it is a grey box (`GpuPlaceholder`).
 
 Headless runs draw on it with `--soft` (`-D helder.soft`: no GPU code
 linked, a static executable on Linux), `HELDER_SOFT=1`, or where no GPU

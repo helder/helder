@@ -105,6 +105,12 @@ class Shader<V, P> {
 	// the slot of the block of the uniform(...)s the stages read (-1: none)
 	public var uniformBinding(default, null) = -1;
 
+	#if (helder.soft.reference && !macro)
+	// (its CPU form against its scalar code: helder.gfx.soft.Check; null: equal)
+	public function softCheck(seed:Int):Null<String>
+		return "no CPU form";
+	#end
+
 	// that block with the uniforms' values now (null: none; a shader that
 	// reads them binds it with bind(encoder) on a GPU's target)
 	public function uniformBytes():Null<Bytes>
