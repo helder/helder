@@ -1934,7 +1934,9 @@ than the window on WebGPU and WebGL2, on the page's thread and in a
 worker: its content in its scroll view in tiles, the page's screenshot
 against the flat split's at rest and scrolled, a frame read back, and the
 list scrolled by the wheel while the program is busy, shown at once as
-the program then draws it.
+the program then draws it, and a box's slide going on while the program
+is busy; `tests/ui/web-video-layers.mjs` a video playing on its slot
+between the window's canvas and the layer over it.
 
 `AsyncScrollTest` scripts the wheel, eased notches, a trackpad's gesture
 and momentum past an end, a finger's fling, the keys, a thumb and a
