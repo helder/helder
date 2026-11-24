@@ -765,6 +765,10 @@ class X11Window {
 					if (s.value.selection == XdndSelection) w.dropArrived(s, e) else w.selectionArrived(xev);
 				case X.Expose:
 					var x:Ptr<XExposeEvent> = xev;
+					// (a frame drawn on the CPU: the server keeps none, the last one put again)
+					#if helder.soft
+					if (x.value.count == 0) Blit.repaint(w.surface, Ptr.nil());
+					#end
 					if (x.value.count == 0) e.kind = Redraw;
 				case X.ConfigureNotify:
 					var c:Ptr<XConfigureEvent> = xev;

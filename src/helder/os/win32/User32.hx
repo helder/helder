@@ -60,6 +60,9 @@ import hxmc.unsafe.*;
 	static function GetSystemMetricsForDpi(index:Int, dpi:Int):Int;
 	static function IsZoomed(hwnd:Ptr):Int;
 	static function GetDC(hwnd:Ptr):Ptr;
+	// (a CPU-drawn frame painted again: helder.os.win32.Win32Blit; PAINTSTRUCT, 72 bytes, its DC first)
+	static function BeginPaint(hwnd:Ptr, ps:Ptr):Ptr;
+	static function EndPaint(hwnd:Ptr, ps:Ptr):Int;
 	static function ReleaseDC(hwnd:Ptr, dc:Ptr):Int;
 	static function PrintWindow(hwnd:Ptr, dc:Ptr, flags:Int):Int;
 }

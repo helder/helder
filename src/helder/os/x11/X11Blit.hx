@@ -97,6 +97,14 @@ class X11Blit {
 		Xlib.XSync(display, 0);
 	}
 
+	// the last frame put again whole (its image holds it)
+	public function repaint() {
+		if (image.isNull()) return;
+		if (shared) Xext.XShmPutImage(display, window, gc, image, 0, 0, 0, 0, width, height, 0)
+		else Xlib.XPutImage(display, window, gc, image, 0, 0, 0, 0, width, height);
+		Xlib.XSync(display, 0);
+	}
+
 	public function dispose() {
 		free();
 		Xlib.XFreeGC(display, gc);

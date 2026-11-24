@@ -49,6 +49,21 @@ class Blit {
 		if (s.onPresent != null) s.onPresent();
 	}
 
+	// the last frame shown again where the system lost it (X11: an Expose;
+	// Windows: WM_PAINT, WM_PRINTCLIENT into their DC): neither keeps a
+	// window's pixels as a GPU's swap chain does
+	public static function repaint(s:Surface, dc:Ptr) {
+		#if (helder.os == "linux")
+		made();
+		var b = x11.get(s);
+		if (b != null) b.repaint();
+		#elseif (helder.os == "windows")
+		made();
+		var b = win32.get(s);
+		if (b != null) b.paint(dc);
+		#end
+	}
+
 	static function made() {
 		#if (helder.os == "linux")
 		if (x11 == null) x11 = new haxe.ds.ObjectMap();

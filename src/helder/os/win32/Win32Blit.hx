@@ -3,15 +3,19 @@ package helder.os.win32;
 import helder.os.win32.User32;
 import hxmc.unsafe.*;
 
-// A frame's pixels into a window (Blit): each rectangle that changed
-// turned to BGRA rows of its own (a top-down DIB) and drawn into the
-// window's DC by StretchDIBits at its size (GDI's blit, no GPU API)
+// A frame's pixels into a window (Blit): the frame kept as BGRA (a
+// top-down DIB, turned where it changed), each changed rectangle copied out
+// and drawn into the window's DC by StretchDIBits; the whole kept frame
+// drawn again when Windows asks (paint: GDI keeps no window's pixels)
 @:hxmc.unsafe(gc)
 class Win32Blit {
 	final hwnd:Ptr;
 	final info:Ptr<BITMAPINFOHEADER>;
 	var rows = Ptr.nil();
 	var capacity = 0;
+	var frame = Ptr.nil();
+	var width = 0;
+	var height = 0;
 
 	public function new(s:Surface) {
 		hwnd = s.handle;
@@ -20,6 +24,13 @@ class Win32Blit {
 	}
 
 	public function present(px:Ptr, w:Int, h:Int, rects:Null<Array<Int>>) {
+		if (w != width || h != height || frame.isNull()) {
+			LibC.free(frame);
+			frame = LibC.malloc((4 * w * h : hxmc.I64));
+			width = w;
+			height = h;
+			rects = null;
+		}
 		var dc = User32.GetDC(hwnd);
 		if (dc.isNull()) return;
 		inline function put(x0:Int, y0:Int, x1:Int, y1:Int) {
@@ -34,8 +45,10 @@ class Win32Blit {
 					capacity = 4 * rw * rh;
 					rows = LibC.malloc((capacity : hxmc.I64));
 				}
-				for (y in 0...rh)
-					helder.os.Swizzle.bgra(rows.add(4 * rw * y), px.add(4 * ((y0 + y) * w + x0)), rw);
+				for (y in 0...rh) {
+					helder.os.Swizzle.bgra(frame.add(4 * ((y0 + y) * w + x0)), px.add(4 * ((y0 + y) * w + x0)), rw);
+					LibC.memcpy(rows.add(4 * rw * y), frame.add(4 * ((y0 + y) * w + x0)), (4 * rw : hxmc.I64));
+				}
 				info.value.biSize = 40;
 				info.value.biWidth = rw;
 				info.value.biHeight = -rh;
@@ -56,7 +69,19 @@ class Win32Blit {
 		User32.ReleaseDC(hwnd, dc);
 	}
 
+	// the kept frame into a DC whole
+	public function paint(dc:Ptr) {
+		if (frame.isNull() || dc.isNull()) return;
+		info.value.biSize = 40;
+		info.value.biWidth = width;
+		info.value.biHeight = -height;
+		info.value.biPlanes = 1;
+		info.value.biBitCount = 32;
+		Gdi32.StretchDIBits(dc, 0, 0, width, height, 0, 0, width, height, frame, info, 0, 0x00CC0020);
+	}
+
 	public function dispose() {
+		LibC.free(frame);
 		LibC.free(rows);
 		LibC.free(info);
 	}
