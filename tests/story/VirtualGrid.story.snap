@@ -2,7 +2,7 @@
 
 --- story VirtualGrid/selection: VirtualGrid/selection (22 lines)
 Node#root 0,0 390x844
-  VirtualGrid#virtual-grid 0,0 390x844
+  GridScroll#virtual-grid 0,0 390x844
     Spacer#before 0,0 390x12
     Node#row 0,12 390x40
       Node#cell 12,12 89x36
