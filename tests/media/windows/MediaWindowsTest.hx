@@ -58,8 +58,12 @@ class MediaWindowsTest {
 				var audios:DynamicAccess<Dynamic> = expected.audio;
 				for (k => e in audios) audio(k, e);
 				var rgbs:DynamicAccess<Dynamic> = expected.rgb;
+				// (each part said first: a crash's place in the log)
+				say("colours");
 				colours(rgbs);
+				say("seeks");
 				seeks(videos);
+				say("played");
 				played();
 			} catch (e:Dynamic) {
 				check('no error', false, Std.string(e) + haxe.CallStack.toString(haxe.CallStack.exceptionStack()));
@@ -142,9 +146,11 @@ class MediaWindowsTest {
 			m.close();
 			return;
 		}
-		var buf = new AudioBuffer(), left = [];
+		var buf = new AudioBuffer(), left = [], outs = [];
 		function hear(k:Int) {
 			var q = d.decoded;
+			var mf = Std.downcast(d, helder.media.windows.MfAudio);
+			if (k > 0 || q != null) outs.push('${q == null ? "-" : Std.string(q.pts) + "+" + q.duration} n=$k${mf == null ? "" : " at " + Math.round(mf.stamped * t.timescale)}');
 			if (q == null) return;
 			var keep = @:privateAccess Player.keep(q, k, d.rate, 0, @:privateAccess Player.end(t));
 			for (i in keep.first...keep.first + keep.count) left.push(buf.get(i * 2));
@@ -175,8 +181,30 @@ class MediaWindowsTest {
 		for (i in 0...samples.length)
 			if (i * 97 < left.length) worst = Math.max(worst, Math.abs(left[i * 97] - samples[i]));
 		var frames:Int = e.frames, slack = t.codec == Opus ? 960 : 0;
-		check('$key ${t.codec}: ${left.length} frames at ${d.rate}, its samples as ffmpeg\'s',
-			d.rate == e.rate && Math.abs(left.length - frames) <= slack && worst <= tolerance, 'ffmpeg ${frames}, the largest difference $worst');
+		var ok = d.rate == e.rate && Math.abs(left.length - frames) <= slack && worst <= tolerance;
+		check('$key ${t.codec}: ${left.length} frames at ${d.rate}, its samples as ffmpeg\'s', ok, 'ffmpeg ${frames}, the largest difference $worst');
+		if (!ok) {
+			// (what the decoder gave: each output's packet (pts+duration, the
+			// track's ticks), frames, the decoder's own time; and the shift of
+			// ours that fits ffmpeg's best)
+			var n = outs.length;
+			say('$key: outputs ${n}: ${outs.slice(0, 4).join(", ")} ... ${outs.slice(Std.int(Math.max(4, n - 3))).join(", ")}');
+			var best = 0, bestErr = 1e9;
+			for (s in -1600...1601) {
+				var w = 0.0, used = 0;
+				for (i in 0...samples.length) {
+					var j = i * 97 + s;
+					if (j < 0 || j >= left.length) continue;
+					used++;
+					w = Math.max(w, Math.abs(left[j] - samples[i]));
+				}
+				if (used > samples.length / 2 && w < bestErr) {
+					bestErr = w;
+					best = s;
+				}
+			}
+			say('$key: ours fit ffmpeg\'s best shifted by $best frames (the largest difference then $bestErr)');
+		}
 		d.close();
 		buf.free();
 		m.close();

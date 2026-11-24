@@ -22,6 +22,8 @@ class MfAudio implements AudioDecoder {
 	public final rate:Int;
 	public var decoded(default, null):Null<Packet>;
 	public var pending(get, never):Int;
+	// (tests) the last output's time as the decoder stamped it, seconds (NaN: none)
+	public var stamped(default, null) = Math.NaN;
 
 	final track:MediaTrack;
 	final mft:MfTransform;
@@ -103,6 +105,13 @@ class MfAudio implements AudioDecoder {
 				whole.blit(8, info, 0, Std.int(Math.min(34, info.length)));
 				[info, whole, null];
 			case Mp3: [null];
+			// (OpusHead, its pre-skip 0: the player trims the priming by the
+			// packets' times, as elsewhere, not the decoder too)
+			case Opus if (c.length >= 12):
+				var h = c.sub(0, c.length);
+				h.set(10, 0);
+				h.set(11, 0);
+				[h, c, null];
 			case _: [c, null];
 		}
 	}
@@ -149,6 +158,7 @@ class MfAudio implements AudioDecoder {
 		});
 		var n = copy(s, samples);
 		Com.release(s);
+		stamped = k < 0 ? Math.NaN : k / 1e7 - BASE;
 		if (given.length == 0) return n;
 		var at = 0;
 		for (i in 0...given.length) if (Math.abs(key(given[i].time) - k) < 1) {

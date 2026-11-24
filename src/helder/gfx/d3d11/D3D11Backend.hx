@@ -1503,6 +1503,8 @@ class D3D11Backend {
 	}
 
 	public function dispose() {
+		// (no decoder opened later on a device let go)
+		if (decoding == device) decoding = Ptr.nil();
 		ID3D11DeviceContext.ClearState(context);
 		ID3D11DeviceContext.Flush(context);
 		for (p in pipelines) {
