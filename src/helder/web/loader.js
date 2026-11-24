@@ -13,7 +13,8 @@
 // is hxmcWasm[id] (by the element's id), for JavaScript islands that call
 // the module; hxmcWasmOptions[id], when a page or a test sets it before,
 // adds to run's options (args, gfx, antialias: by default true, a
-// canvas multisampled). Once it runs, the element gets
+// canvas multisampled; worker: by default 'auto', the program in a Web
+// Worker where it fits). Once it runs, the element gets
 // data-gfx, the graphics API it draws with, if any. While an island starts,
 // its element has data-loading; once it has started, data-hydrated and an
 // hxmc:hydrated event; if it fails (main exits with an error code, or later:
@@ -57,7 +58,7 @@
 			const oom = (e) => e instanceof RangeError && /memory|alloc/i.test(e.message) && !/call stack/i.test(e.message);
 			const failed = (e) => new Error(e && e.outOfMemory ? e.message : oom(e) ? 'out of memory: ' + e.message : last || (e && e.message) || String(e));
 			const started = import(new URL(d.runner, base).href).then((m) => m.run(new URL(d.wasm, base).href, {
-				imports: json(d.imports, []), args: json(d.args, []), fonts: json(d.fonts, []), canvas, touchAction: 'pan-y', antialias: true,
+				imports: json(d.imports, []), args: json(d.args, []), fonts: json(d.fonts, []), canvas, touchAction: 'pan-y', antialias: true, worker: 'auto',
 				assets: d.assets ? new URL(d.assets, base).href : undefined,
 				stderr: (l) => console.error((last = l)), onError: (e) => run === el.hxmcRun && fail(el, failed(e)), ...extra,
 			}));
@@ -83,6 +84,7 @@
 			el.hxmcRun++;
 			if (r.host.os && r.host.os.stop) r.host.os.stop();
 			if (r.host.gfx && r.host.gfx.release) r.host.gfx.release();
+			if (r.host.worker) r.host.dispose();
 			const c = el.querySelector('canvas');
 			if (c && el.hxmcCanvas) c.replaceWith(el.hxmcCanvas.cloneNode(false));
 			if (el.id) delete wasm[el.id];
@@ -114,8 +116,9 @@
 			o.observe(el);
 		},
 	};
-	// (a network error, a dropped connection's: once more after a moment before it counts)
-	const retry = (el) => (e) => e instanceof TypeError && /fetch/i.test(e.message) && !el.hxmcRetried
+	// (a network error, a dropped connection's: once more after a moment before it counts; a
+	// module compiled as it streams says so as "Network error")
+	const retry = (el) => (e) => e instanceof TypeError && /fetch|network/i.test(e.message) && !el.hxmcRetried
 		? new Promise((ok) => setTimeout(ok, 500)).then(() => ((el.hxmcRetried = true), start(el))).catch((e) => fail(el, e))
 		: fail(el, e);
 	const arm = (el) => (when[el.dataset.load] || ((el, go) => go()))(el, () => start(el).catch(retry(el)));

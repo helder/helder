@@ -36,7 +36,12 @@
 //                  (studio/Board.hx)", no lines yet), else JavaScript's;
 //                  message the runtime's report ("Uncaught exception:
 //                  Null Access"), or null; blobs: {name: Blob}, the
-//                  files helder.media's WebSource.blob reads)
+//                  files helder.media's WebSource.blob reads; worker:
+//                  true, the program in a Web Worker on the canvas, the
+//                  page passing input on (thread.mjs), 'auto' where it
+//                  fits, by default false; timing: an array, each frame's
+//                  [start, ms, newest input] in the page's time, for
+//                  benchmarks)
 //   memory()       the module's memory; bytes(p, n), string(p) read it (a
 //                  view made anew each time: the memory may have grown)
 //   handles        the JavaScript objects the module refers to by integer
@@ -202,6 +207,12 @@ export function demangle(sym) {
 }
 
 export async function run(wasm, options = {}) {
+	// (the program in a worker, the page passing input on: thread.mjs)
+	if (options.worker && !options.page) {
+		const thread = await import('./thread.mjs');
+		wasm = await thread.module(wasm);
+		if (options.worker === true || thread.fits(wasm, options)) return thread.run(wasm, options);
+	}
 	// (the files, fetched while the module loads)
 	const files = fetchFiles(options);
 	let served = null;
@@ -242,6 +253,8 @@ export async function run(wasm, options = {}) {
 	}
 	const host = {
 		options, handles, bytes, string, exitCode: null, disposed: false,
+		// (in a worker: its channel to the page, worker.mjs's)
+		page: options.page ?? null,
 		// (true while the page swaps in a new build: the packages keep what the next instance takes over)
 		swapping: false,
 		memory: () => memory,
@@ -290,6 +303,8 @@ export async function run(wasm, options = {}) {
 			}
 		},
 	};
+
+	if (options.page) options.page.host = host;
 
 	// stdout and stderr, by lines
 	const sinks = {
@@ -451,7 +466,7 @@ export async function run(wasm, options = {}) {
 	let nextFd = 4;
 	const imports = { wasi_snapshot_preview1: new Proxy(wasi, { get: (o, k) => o[k] ?? (() => 52) }) }; // ENOSYS
 	for (const m of options.imports ?? []) {
-		const f = typeof m === 'string' ? (await import(new URL(m, document.baseURI).href)).default : m;
+		const f = typeof m === 'string' ? (await import(new URL(m, base()).href)).default : m;
 		Object.assign(imports, await f(host));
 	}
 	// (wasm: a URL, a Response, a compiled WebAssembly.Module or the bytes, or a
@@ -481,12 +496,14 @@ export async function run(wasm, options = {}) {
 	return { host, instance, exitCode: host.exitCode ?? 0 };
 }
 
+const base = () => globalThis.document?.baseURI ?? location.href;
+
 // the files run serves (options.files, options.assets' list), fetched at
 // once: a Map of path to bytes, or null without any
 async function fetchFiles(options) {
 	const urls = Object.entries(options.files ?? {});
 	if (options.assets) {
-		const base = new URL(options.assets, document.baseURI);
+		const base = new URL(options.assets, globalThis.document?.baseURI ?? options.base);
 		const list = await (await fetch(base)).json();
 		for (const p of list) urls.push([p, new URL(p, base).href]);
 	}

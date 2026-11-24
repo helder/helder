@@ -8,7 +8,8 @@
 // give); then the mirror's
 // elements clicked as a screen reader clicks them (a disclosure expanded, a
 // row selected, the Save button), the program's state and the tree after.
-//   node tests/ui/web-access.mjs <WebAccessPage.wasm>
+// With worker, the program in a worker (browser.mjs's option worker).
+//   node tests/ui/web-access.mjs <WebAccessPage.wasm> [worker]
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -19,11 +20,13 @@ const require = createRequire(import.meta.url);
 let pw;
 try { pw = require('playwright'); } catch { pw = require(path.join(process.execPath, '../../lib/node_modules/playwright')); }
 const here = path.dirname(fileURLToPath(import.meta.url));
-const [wasm] = process.argv.slice(2);
+const [wasm, thread] = process.argv.slice(2), worker = thread === 'worker', mode = worker ? ' (in a worker)' : '';
 const files = {
 	'/access.wasm': wasm,
 	'/os/browser.mjs': path.join(here, '../../src/helder/os/browser.mjs'),
 	'/os/imports.mjs': path.join(here, '../../src/helder/os/imports.mjs'),
+	'/os/thread.mjs': path.join(here, '../../src/helder/os/thread.mjs'),
+	'/os/worker.mjs': path.join(here, '../../src/helder/os/worker.mjs'),
 	'/gfx/imports.mjs': path.join(here, '../../src/helder/gfx/imports.mjs'),
 	'/text/imports.mjs': path.join(here, '../../src/helder/text/imports.mjs'),
 	'/ui/imports.mjs': path.join(here, '../../src/helder/ui/imports.mjs'),
@@ -35,8 +38,8 @@ const page = `<!doctype html><title>Access</title><body style="margin:0">
 <script type="module">
 import { run } from './os/browser.mjs';
 window.log = [];
-window.start = async () => {
-	window.r = run('access.wasm', { imports: ['os/imports.mjs', 'gfx/imports.mjs', 'text/imports.mjs', 'ui/imports.mjs'], canvas: 'c', gfx: 'webgl2',
+window.start = async (worker) => {
+	window.r = run('access.wasm', { imports: ['os/imports.mjs', 'gfx/imports.mjs', 'text/imports.mjs', 'ui/imports.mjs'], canvas: 'c', gfx: 'webgl2', worker,
 		fonts: ['Inter.ttf'], stdout: (s) => window.log.push(s), stderr: (s) => window.log.push('stderr: ' + s) });
 	window.result = await window.r;
 };
@@ -63,12 +66,12 @@ const check = (what, ok, detail) => {
 	checks++;
 	if (!ok) {
 		failed++;
-		console.log(`web-access.mjs: FAIL: ${what}${detail === undefined ? '' : ': ' + detail}`);
+		console.log(`web-access.mjs${mode}: FAIL: ${what}${detail === undefined ? '' : ': ' + detail}`);
 	}
 };
 try {
 	await p.goto(url);
-	await p.evaluate(() => window.start());
+	await p.evaluate((w) => window.start(w), worker);
 	await p.waitForFunction(() => window.log.some((l) => l.startsWith('state ')), null, { timeout: 20000 });
 	await p.waitForTimeout(300);
 	const state = async () => (await p.evaluate(() => window.log)).filter((l) => l.startsWith('state ')).pop();
@@ -120,7 +123,7 @@ try {
 	failed++;
 	console.log('web-access.mjs: FAIL: ' + e.message);
 }
-console.log(`web-access.mjs: ${checks} checks` + (failed ? `, ${failed} FAILED` : ', ok'));
+console.log(`web-access.mjs${mode}: ${checks} checks` + (failed ? `, ${failed} FAILED` : ', ok'));
 await browser.close();
 server.close();
 process.exit(failed ? 1 : 0);

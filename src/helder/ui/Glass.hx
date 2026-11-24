@@ -22,6 +22,8 @@ class Glass extends Node {
 	public var interactive(default, set) = false;
 
 	var native:Null<GlassNative> = null;
+	// (its drawing's, helder.ui.draw.GlassPass: a GPU's, natively)
+	@:allow(helder.ui.GlassDraw) var pass:Any = null;
 
 	public function new() {
 		super("glass");
@@ -69,7 +71,7 @@ class Glass extends Node {
 
 	override public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {
 		if (systemLayer != null || native != null && native.grouped || group() != null) return;
-		GlassDraw.draw(canvas, this, absX, absY, this.width, this.height);
+		GlassDraw.draw(canvas, this);
 	}
 
 	override function attach(u:Null<Ui>) {

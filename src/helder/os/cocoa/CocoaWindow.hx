@@ -138,6 +138,13 @@ class CocoaWindow {
 		Msg.vPtr(view, ObjC.sel("setLayer:"), layer);
 		Msg.vBool(view, ObjC.sel("setWantsLayer:"), true);
 		surface = new Surface(Cocoa, layer, view, width, height);
+		// (transparent: the window and its layer not opaque, nothing drawn behind the layer's pixels)
+		if (owner.clear) {
+			Msg.vBool(window, ObjC.sel("setOpaque:"), false);
+			Msg.vPtr(window, ObjC.sel("setBackgroundColor:"), Msg.id(ObjC.cls("NSColor"), ObjC.sel("clearColor")));
+			Msg.vBool(layer, ObjC.sel("setOpaque:"), false);
+			surface.see(true);
+		}
 		open.push(this);
 		#if hxmc.dev_host
 		if (helder.dev.Hosted.hosted() && open.length == 1) {
@@ -166,6 +173,8 @@ class CocoaWindow {
 		if (shown || open.indexOf(this) < 0) return;
 		shown = true;
 		raise();
+		// (a transparent window's shadow made from its first frame, not the empty window)
+		if (surface.transparent) Msg.v(window, ObjC.sel("invalidateShadow"));
 		// (shown, AppKit lays its title bar out again: the buttons back where the app placed them)
 		layoutControls();
 	}
@@ -415,6 +424,13 @@ class CocoaWindow {
 			Msg.vPoint(window, ObjC.sel("setFrameOrigin:"), rect.value.origin);
 		});
 	}
+
+	// (the system's shadow: a transparent window's follows its pixels, made again as they change shape: invalidate)
+	function shadow():Bool
+		return OsThread.get(() -> Msg.b(window, ObjC.sel("hasShadow")));
+
+	function setShadow(on:Bool)
+		OsThread.run(() -> Msg.vBool(window, ObjC.sel("setHasShadow:"), on));
 
 	function raise() {
 		helder.os.OsThread.run(() -> {

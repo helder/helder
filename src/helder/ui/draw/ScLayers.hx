@@ -159,7 +159,7 @@ class ScLayers extends LayerSplit {
 		for (p in toDraw) {
 			var buf = p.next(), t0 = haxe.Timer.stamp();
 			// (only what it misses of what changed since it was drawn: its buffer age)
-			var cut = buf != null && p.cut(buf.at, p.kind == LayerPlane.BASE ? f.background | 0xFF000000 : 0);
+			var cut = buf != null && p.cut(buf.at, p.kind == LayerPlane.BASE ? f.background : 0);
 			var len = cut ? p.cutLen : p.len;
 			// (no buffer let go in time: drawn next frame, what it missed in its history still)
 			if (buf == null && p.allocated) {
@@ -473,10 +473,7 @@ class ScLayers extends LayerSplit {
 		c.begin(Replay.BEGIN_PASS);
 		c.int(1);
 		c.int(cast(cut ? LoadOp.Load : LoadOp.Clear));
-		c.float(opaque ? (bg >> 16 & 0xFF) / 255 : 0);
-		c.float(opaque ? (bg >> 8 & 0xFF) / 255 : 0);
-		c.float(opaque ? (bg & 0xFF) / 255 : 0);
-		c.float(opaque ? 1 : 0);
+		CompositeFrame.clearTo(c, opaque ? bg : 0);
 		c.int(0);
 		c.int(0);
 		c.int(Replay.NONE);

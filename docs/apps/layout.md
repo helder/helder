@@ -34,6 +34,23 @@ static final sheet:StyleSheet = {
 <view:button slot="button" variant="outline" onPress={save}>Save</view:button>
 ```
 
+## Liquid Glass
+
+`<glass>` is Apple's Liquid Glass: a surface that blurs and lenses what is behind it, its children on top. On iOS and macOS 26 it is the system's own glass, in place in helder's layers; everywhere else, and in screenshots, helder draws it with a shader tuned against the system's.
+
+<Example id="glass"/>
+
+```tsx
+<glass direction="row" padding="0 18" height={44} align-items="center" column-gap={8} interactive>
+  <icon name="search"/><text>Search</text>
+</glass>
+<glass-group spacing={12} direction="row" column-gap={6}>
+  <glass width={44} height={44}/><glass width={44} height={44}/>
+</glass-group>
+```
+
+It is a capsule unless given a `radius`; `variant="clear"` is the clearer glass, `tint` a colour it leans to, and a `<glass-group>` merges glass that comes near.
+
 ## What else
 
 - **Grid:** `display="grid"` with template columns and rows, areas, spans and auto placement.

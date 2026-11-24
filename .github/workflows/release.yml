@@ -1,8 +1,8 @@
 # The viewer's release (apps/viewer/README.md, "Releasing"): a tag
-# viewer-v<version> (the version apps/viewer/helder.webmanifest's
-# "helder": {"version"}) builds the three desktops' packages with
-# `helder build --package` (helder.cli.Desktop, helder.pack) and attaches
-# them to a draft GitHub Release; viewer-v<version>-dry runs all of it and
+# viewer-v<version> (the version apps/viewer/helder.json's "version")
+# builds the three desktops' packages with `helder build --package`
+# (helder.cli.Desktop, helder.pack) and attaches them to a draft GitHub
+# Release; viewer-v<version>-dry runs all of it and
 # publishes nothing (the packages are the run's artifacts). Nobody but the
 # owner pushes the tags.
 # - linux-windows (Ubuntu): Linux's .tar.gz and Flatpak manifest, Windows'
@@ -60,8 +60,8 @@ jobs:
           v="${tag#viewer-v}"
           dry=false
           case "$v" in *-dry) v="${v%-dry}"; dry=true ;; esac
-          m=$(node -p "JSON.parse(require('fs').readFileSync('$APP/helder.webmanifest', 'utf8')).helder.version")
-          if [ "$v" != "$m" ]; then echo "::error::the tag says $v, $APP/helder.webmanifest's \"helder\": {\"version\"} says $m"; exit 1; fi
+          m=$(node -p "JSON.parse(require('fs').readFileSync('$APP/helder.json', 'utf8')).version")
+          if [ "$v" != "$m" ]; then echo "::error::the tag says $v, $APP/helder.json's \"version\" says $m"; exit 1; fi
           echo "version=$v" >> "$GITHUB_OUTPUT"
           echo "dry=$dry" >> "$GITHUB_OUTPUT"
           echo "viewer $v (dry run: $dry)"
@@ -227,7 +227,9 @@ jobs:
           sha256sum * > SHA256SUMS.txt
           cat SHA256SUMS.txt
           {
-            echo "Viewer $VERSION, helder's image viewer: PNG, JPEG, GIF, WebP, PDF, and TIFF, HEIC, AVIF, RAW where the system decodes them."
+            echo "Viewer $VERSION, helder's file browser and image viewer: a folder's photos, PDFs and videos as thumbnails or a list, any of them full size: PNG, JPEG, GIF, WebP, PDF, and TIFF, HEIC, AVIF, RAW where the system decodes them; video and audio on macOS."
+            echo
+            echo "In a browser: https://viewer.helder.run (a sample folder; Open folder in Chromium-based browsers)."
             echo
             echo "- macOS 11 or later (Apple silicon and Intel): unzip, move Viewer.app to Applications."
             echo "- Windows 10 or later (x86-64): unzip, run viewer.exe; \`viewer.exe --register\` adds it to Open with."

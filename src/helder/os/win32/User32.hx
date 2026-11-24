@@ -68,6 +68,11 @@ import hxmc.unsafe.*;
 }
 
 // files dropped on a window (WM_DROPFILES, once DragAcceptFiles)
+// (the window's frame as the desktop window manager draws it: its shadow, its backdrop)
+@:hxmc.c @:hxmc.lib("dwmapi") extern class Dwmapi {
+	static function DwmSetWindowAttribute(hwnd:Ptr, attribute:Int, value:Ptr, size:Int):Int;
+}
+
 @:hxmc.c @:hxmc.lib("shell32") extern class Shell32 {
 	static function DragAcceptFiles(hwnd:Ptr, accept:Int):Void;
 	static function DragQueryFileW(drop:Ptr, index:Int, file:Ptr, size:Int):Int;

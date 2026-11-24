@@ -213,8 +213,8 @@ class GLBackend {
 		scratch = LibC.malloc((64 : Int64));
 		if (Platform.os() == 3) {
 			web = switch surface.kind {
-				case Canvas: WebGL.context(surface.handle.toI64().toInt(), 0, 0, antialias ? 1 : 0);
-				case Headless: WebGL.context(0, surface.width, surface.height, 0);
+				case Canvas: WebGL.context(surface.handle.toI64().toInt(), 0, 0, antialias ? 1 : 0, surface.transparent ? 1 : 0);
+				case Headless: WebGL.context(0, surface.width, surface.height, 0, 0);
 				case k: throw "helder.gfx: WebGL2 renders to a canvas or headless, not to a surface of kind " + k;
 			}
 			if (web == 0) throw "helder.gfx: neither WebGPU nor WebGL2 is available";
@@ -259,12 +259,29 @@ class GLBackend {
 				EGL.SURFACE_TYPE, headless ? EGL.PBUFFER_BIT : EGL.WINDOW_BIT, EGL.RENDERABLE_TYPE, EGL.OPENGL_ES3_BIT, EGL.RED_SIZE, 8, EGL.GREEN_SIZE, 8,
 				EGL.BLUE_SIZE, 8, EGL.ALPHA_SIZE, 8, EGL.DEPTH_SIZE, 24, EGL.NONE
 			];
-			var configs:Ptr<Ptr> = a.alloc(8);
+			// (X11's transparent window: the config of its 32-bit visual, of the first 64)
+			var visual = surface.kind == X11 ? surface.visual : 0, room = visual != 0 ? 64 : 1;
+			var configs:Ptr<Ptr> = a.alloc(8 * room);
+			function choose(list:Array<Int>):Bool {
+				if (Egl.eglChooseConfig(display, ints(a, list), configs, room, scratch) == 0 || scratch.value == 0) return false;
+				if (visual == 0) return true;
+				var v:Ptr<Int32> = a.alloc(4);
+				for (i in 0...scratch.value)
+					if (Egl.eglGetConfigAttrib(display, configs[i], EGL.NATIVE_VISUAL_ID, v) != 0 && v.value == visual) {
+						configs.value = configs[i];
+						return true;
+					}
+				return false;
+			}
 			var multi = antialias && !headless;
-			if (multi && (Egl.eglChooseConfig(display, ints(a, [EGL.SAMPLE_BUFFERS, 1, EGL.SAMPLES, 4].concat(attribs)), configs, 1, scratch) == 0 || scratch.value == 0))
-				multi = false;
-			if (!multi && (Egl.eglChooseConfig(display, ints(a, attribs), configs, 1, scratch) == 0 || scratch.value == 0))
-				fail("no EGL config for GLES 3 with RGBA8 and a 24-bit depth buffer");
+			if (multi && !choose([EGL.SAMPLE_BUFFERS, 1, EGL.SAMPLES, 4].concat(attribs))) multi = false;
+			if (!multi && !choose(attribs)) {
+				if (visual == 0) fail("no EGL config for GLES 3 with RGBA8 and a 24-bit depth buffer");
+				Sys.println("helder.gfx: no EGL config for the window's 32-bit visual: drawn opaque");
+				visual = 0;
+				surface.see(false);
+				if (!choose(attribs)) fail("no EGL config for GLES 3 with RGBA8 and a 24-bit depth buffer");
+			}
 			config = configs.value;
 			if (headless) {
 				eglSurface = Egl.eglCreatePbufferSurface(display, config, ints(a, [EGL.WIDTH, surface.width, EGL.HEIGHT, surface.height, EGL.NONE]));
