@@ -11,7 +11,8 @@ import helder.os.x11.Xlib;
 // Its frame read back keeps its alpha, premultiplied; then what the system
 // shows, where a test can see it: macOS's capture of the window (its own:
 // no permission, though a machine may give empty ones), Windows' screen
-// over an opaque green window behind it, X11's 32-bit pixels and the
+// over an opaque green window behind it (a plain one of GDI's; --behind
+// helder: a helder window, its state told, not checked), X11's 32-bit pixels and the
 // screen composed over a green window (where a compositing manager runs;
 // else opaque, said so), weston's screenshot over its green background.
 //   ShapeWindow [--transparent no]: the system can't (X11 without a
@@ -39,6 +40,9 @@ class ShapeWindow {
 		w.root.append(half);
 		// (both at one place: the window behind's own move not yet done)
 		if (desk != null) w.window.moveTo(200, 200);
+		#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+		if (desk == null) w.window.moveTo(200, 200);
+		#end
 		var step = 0, all = desk == null ? [w] : [desk, w];
 		App.run(() -> {
 			if (++step == 12) {
@@ -95,11 +99,20 @@ class ShapeWindow {
 		check(near(half.slice(0, 3).concat([0]), [0, 127, 128, 0]), '$what: the half box blended over it ($half)');
 	}
 
-	// (Windows, X11: an opaque window of a known colour, under the transparent one)
+	// (X11, and Windows' --behind helder: an opaque helder window of a known
+	// colour, under the transparent one; Windows' otherwise a plain window
+	// of GDI's: Plain)
+	static final helderBehind = Sys.args().indexOf("--behind") >= 0 && Sys.args()[Sys.args().indexOf("--behind") + 1] == "helder";
+
 	static function behind():Null<UiWindow> {
 		#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64" || hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64")
 		if (Sys.systemName() == "Linux" && Sys.getEnv("WAYLAND_DISPLAY") != null && Sys.getEnv("HELDER_X11") != "1") return null;
-		// (larger than the transparent one: wholly under it, DXGI would take it as occluded, nothing presented)
+		#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+		if (!helderBehind) {
+			Plain.open(200, 200, W * 2, H * 2);
+			return null;
+		}
+		#end
 		var d = new UiWindow("ShapeWindow desk", W * 2, H * 2, null, false);
 		d.background = Color.rgb(0x00FF00);
 		d.window.moveTo(200, 200);
@@ -134,14 +147,20 @@ class ShapeWindow {
 		check(clear[3] == 0, 'the window server: clear where nothing is drawn ($clear)');
 		check(red[3] == 255 && red[0] > 200 && red[1] < 60, 'the window server: the box opaque ($red)');
 		#elseif (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
-		desk.device.settle();
+		if (desk != null) desk.device.settle();
 		w.device.settle();
 		Sys.sleep(0.3);
-		var p = w.window.position(), k = w.window.scale, q = desk.window.position();
-		if (p.x != q.x || p.y != q.y) Sys.println('ShapeWindow: the windows at ${p.x}, ${p.y} and ${q.x}, ${q.y} (behind)');
+		var p = w.window.position(), k = w.window.scale;
+		var under = desk != null ? desk.window.surface.handle : Plain.hwnd;
+		Plain.state(under, w.window.surface.handle, desk == null ? null : @:privateAccess (cast desk.device.impl : helder.gfx.d3d11.D3D11Backend).occluded);
 		function at(x:Float, y:Float):Array<Int> {
 			var c = Screen.pixel(Math.round(p.x * k + x * k), Math.round(p.y * k + y * k));
 			return [c & 0xFF, c >> 8 & 0xFF, c >> 16 & 0xFF];
+		}
+		// (a helder window behind: its state told, the screen's pixels told, not checked)
+		if (helderBehind) {
+			Sys.println('ShapeWindow: behind a helder window, the screen: ${at(10, 10)} ${at(80, 70)} ${at(150, 70)} (told, not checked)');
+			return;
 		}
 		screen("the screen", at);
 		#elseif (hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64")
@@ -208,6 +227,62 @@ class ShapeWindow {
 }
 
 #if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+// (a plain window behind the transparent one: no swap chain, its class's
+// brush green (0x00BBGGRR) painting it; made on the main thread, whose loop
+// reads its messages; its state told before the screen is read: shown,
+// minimised, where it is in the z-order under the transparent one, its
+// own pixels through PrintWindow, a helder window's last present)
+@:hxmc.unsafe(gc)
+class Plain {
+	public static var hwnd = hxmc.unsafe.Ptr.nil();
+
+	public static function open(x:Int, y:Int, w:Int, h:Int)
+		hwnd = OsThread.get(() -> hxmc.unsafe.Arena.scopedValue(a -> {
+			var name = a.wstring("ShapeWindowBehind"), instance = helder.os.win32.User32.Kernel32.GetModuleHandleW(hxmc.unsafe.Ptr.nil());
+			var wc = a.make(helder.os.win32.User32.WNDCLASSEXW);
+			wc.value.cbSize = 80;
+			wc.value.lpfnWndProc = hxmc.unsafe.Callback.addr(proc);
+			wc.value.hInstance = instance;
+			wc.value.hbrBackground = ScreenPixel.CreateSolidBrush(0x0000FF00);
+			wc.value.lpszClassName = name;
+			helder.os.win32.User32.User32.RegisterClassExW(wc);
+			// (WS_POPUP | WS_VISIBLE; scaled as helder's windows place theirs: points times the system's DPI)
+			var k = helder.os.win32.User32.User32.GetDpiForSystem() / 96;
+			helder.os.win32.User32.User32.CreateWindowExW(0, name, name, (0x80000000 : Int) | 0x10000000, Math.round(x * k), Math.round(y * k), Math.round(w * k), Math.round(h * k),
+				hxmc.unsafe.Ptr.nil(), hxmc.unsafe.Ptr.nil(), instance, hxmc.unsafe.Ptr.nil());
+		}));
+
+	@:hxmc.callback static function proc(hwnd:hxmc.unsafe.Ptr, message:Int, wParam:haxe.Int64, lParam:haxe.Int64):haxe.Int64
+		return helder.os.win32.User32.User32.DefWindowProcW(hwnd, message, wParam, lParam);
+
+	public static function state(under:hxmc.unsafe.Ptr, top:hxmc.unsafe.Ptr, occluded:Null<Bool>)
+		OsThread.get(() -> hxmc.unsafe.Arena.scopedValue(a -> {
+			// (GW_HWNDNEXT 2: the windows under top, in order)
+			var n = 0, at = -1, next = ScreenDc.GetWindow(top, 2);
+			while (!next.isNull() && n < 200 && at < 0) {
+				if (next == under) at = n;
+				next = ScreenDc.GetWindow(next, 2);
+				n++;
+			}
+			var r = a.make(helder.os.win32.User32.RECT), q = a.make(helder.os.win32.User32.RECT);
+			helder.os.win32.User32.User32.GetWindowRect(under, r);
+			helder.os.win32.User32.User32.GetWindowRect(top, q);
+			// (its own pixels: PrintWindow, PW_RENDERFULLCONTENT 2, into a bitmap of its size, the middle read)
+			var w = r.value.right - r.value.left, h = r.value.bottom - r.value.top, screen = ScreenDc.GetDC(hxmc.unsafe.Ptr.nil());
+			var dc = helder.os.win32.User32.Gdi32.CreateCompatibleDC(screen), bmp = ScreenPixel.CreateCompatibleBitmap(screen, w, h);
+			var old = helder.os.win32.User32.Gdi32.SelectObject(dc, bmp), printed = ScreenDc.PrintWindow(under, dc, 2), c = ScreenPixel.GetPixel(dc, w >> 1, h >> 1);
+			helder.os.win32.User32.Gdi32.SelectObject(dc, old);
+			helder.os.win32.User32.Gdi32.DeleteObject(bmp);
+			helder.os.win32.User32.Gdi32.DeleteDC(dc);
+			ScreenDc.ReleaseDC(hxmc.unsafe.Ptr.nil(), screen);
+			Sys.println('ShapeWindow: behind it: visible ${ScreenDc.IsWindowVisible(under)}, minimised ${ScreenDc.IsIconic(under)}, '
+				+ (at < 0 ? "not under it in the z-order" : 'under it, ${at} windows between') + ', at ${r.value.left}, ${r.value.top} to ${r.value.right}, ${r.value.bottom}'
+				+ ' (the transparent one ${q.value.left}, ${q.value.top} to ${q.value.right}, ${q.value.bottom}), PrintWindow ${printed} its middle 0x${StringTools.hex(c, 6)}'
+				+ (occluded == null ? "" : ', its last present ${occluded ? "DXGI_STATUS_OCCLUDED" : "shown"}'));
+			0;
+		}));
+}
+
 // (the screen's pixel, GDI's: the composed desktop, 0x00BBGGRR)
 @:hxmc.unsafe(gc)
 class Screen {
@@ -222,9 +297,15 @@ class Screen {
 @:hxmc.c @:hxmc.lib("user32") extern class ScreenDc {
 	static function GetDC(hwnd:hxmc.unsafe.Ptr):hxmc.unsafe.Ptr;
 	static function ReleaseDC(hwnd:hxmc.unsafe.Ptr, dc:hxmc.unsafe.Ptr):Int;
+	static function GetWindow(hwnd:hxmc.unsafe.Ptr, cmd:Int):hxmc.unsafe.Ptr;
+	static function IsWindowVisible(hwnd:hxmc.unsafe.Ptr):Int;
+	static function IsIconic(hwnd:hxmc.unsafe.Ptr):Int;
+	static function PrintWindow(hwnd:hxmc.unsafe.Ptr, dc:hxmc.unsafe.Ptr, flags:Int):Int;
 }
 
 @:hxmc.c @:hxmc.lib("gdi32") extern class ScreenPixel {
 	static function GetPixel(dc:hxmc.unsafe.Ptr, x:Int, y:Int):Int;
+	static function CreateSolidBrush(color:Int):hxmc.unsafe.Ptr;
+	static function CreateCompatibleBitmap(dc:hxmc.unsafe.Ptr, w:Int, h:Int):hxmc.unsafe.Ptr;
 }
 #end

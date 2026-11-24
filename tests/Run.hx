@@ -762,6 +762,8 @@ class Run {
 		if ((GFX_TARGET.startsWith("macos-") && Sys.systemName() == "Mac") || (GFX_TARGET.startsWith("windows-") && HOST.startsWith("windows-"))) {
 			var s = 'bin/ui/$GFX_TARGET/ShapeWindow';
 			native(s, uiCp().concat(["-main", "ShapeWindow"]), GFX_TARGET);
+			// (Windows: first over a helder window, its state and the screen told, not checked)
+			if (GFX_TARGET.startsWith("windows-")) run(exePath(s, GFX_TARGET), ["--behind", "helder"], ["HELDER_BACKGROUND" => "1"]);
 			run(exePath(s, GFX_TARGET), [], ["HELDER_BACKGROUND" => "1"]);
 		}
 		// (Core Animation's layers: a sidebar switched (#111), a live resize on
