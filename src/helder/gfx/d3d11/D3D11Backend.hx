@@ -160,6 +160,10 @@ class D3D11Backend {
 	// (the swap chain's frame latency object (nil: none), and whether the next present waited for it)
 	var latency = Ptr.nil();
 	var waited = false;
+	public static var probeWaits = 0; // TEMP probe
+	public static var probeTimeouts = 0;
+	public static var probeMs = 0.0;
+	public static var probePresents = 0;
 
 	static inline var MAX_SLOTS = 8;
 
@@ -426,7 +430,10 @@ class D3D11Backend {
 	public function waitFrame() {
 		if (latency.isNull() || waited) return;
 		waited = true;
-		WaitTimer.WaitForSingleObjectEx(latency, 100, 1);
+		var t0 = haxe.Timer.stamp(); // TEMP probe
+		if (WaitTimer.WaitForSingleObjectEx(latency, 100, 1) != 0) probeTimeouts++;
+		probeWaits++;
+		probeMs += (haxe.Timer.stamp() - t0) * 1000;
 	}
 
 	function backBuffer() {
@@ -1373,6 +1380,7 @@ class D3D11Backend {
 			IDXGISwapChain1.Present1(swapChain, 1, 0, params);
 		});
 		waited = false;
+		probePresents++;
 		if (hr == D3D.DXGI_ERROR_DEVICE_REMOVED || hr == D3D.DXGI_ERROR_DEVICE_RESET)
 			check(ID3D11Device.GetDeviceRemovedReason(device), "Present: the device was removed");
 	}

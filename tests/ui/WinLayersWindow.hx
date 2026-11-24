@@ -31,7 +31,7 @@ class WinLayersWindow {
 	}
 
 	static function say(s:String)
-		Sys.println("WinLayersWindow: " + s);
+		Sys.println("WinLayersWindow: " + s + ' [probe: waits ${helder.gfx.d3d11.D3D11Backend.probeWaits}, timeouts ${helder.gfx.d3d11.D3D11Backend.probeTimeouts}, ${Math.round(helder.gfx.d3d11.D3D11Backend.probeMs)} ms, presents ${helder.gfx.d3d11.D3D11Backend.probePresents}]');
 
 	// (pixels over this many levels, at most this share of them: the
 	// layers blended by DirectComposition, not UiShader, at translucent edges)
@@ -347,6 +347,7 @@ class WinLayersWindow {
 					timed = 1;
 					w.ui.requestFrame();
 				case 10 if (now - at > 1.5):
+					say('still 3: the compositor\'s frames ${c == null ? 0 : c.count}');
 					still(3);
 					if (dc != null) say('still 3: "${title.text}", the window\'s layer drawn ${@:privateAccess layers.base.serial} times, last in part over ${dc.lastCut}, the label at ${Math.round(title.absX * k)},${Math.round(title.absY * k)} ${Math.round(title.width * k)}x${Math.round(title.height * k)}');
 					phase = live() || mode == "textured" ? 12 : 11;

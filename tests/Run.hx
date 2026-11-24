@@ -731,12 +731,15 @@ class Run {
 			// then the stalled layers' and the layers' against them; Wine has none)
 			if (HOST.startsWith("windows-")) {
 				native('$b/WinLayersWindow', uiCp().concat(["-main", "WinLayersWindow"]), GFX_TARGET);
-				run('$b/WinLayersWindow.exe', ['$b/winlayers', "textured"], ["HELDER_SYSTEM_LAYERS" => "0"]);
-				run('$b/WinLayersWindow.exe', ['$b/winlayers', "stall"], ["HELDER_SYSTEM_LAYERS" => "stall"]);
-				run('$b/WinLayersWindow.exe', ['$b/winlayers', "layers"]);
-				// TEMP probe: main's pacing, with and without dirty rectangles
-				for (p in ["nolatency", "nolatency nodirty"])
-					try run('$b/WinLayersWindow.exe', ['$b/winlayers-probe', "textured"], ["HELDER_SYSTEM_LAYERS" => "0", "HELDER_D3D_PROBE" => p]) catch (_:Failed) Sys.println('probe $p: failed');
+				// TEMP probe: each run, failing or not; main's pacing, no dirty rectangles, no compositor
+				var bad = 0;
+				for (r in [["textured", "HELDER_SYSTEM_LAYERS", "0"], ["stall", "HELDER_SYSTEM_LAYERS", "stall"], ["layers", "HELDER_SYSTEM_LAYERS", "1"]])
+					try run('$b/WinLayersWindow.exe', ['$b/winlayers', r[0]], [r[1] => r[2]]) catch (_:Failed) bad++;
+				for (p in [["HELDER_D3D_PROBE", "nolatency"], ["HELDER_D3D_PROBE", "nodirty"], ["HELDER_ASYNC_SCROLL", "0"]]) {
+					Sys.println('probe ${p.join("=")}');
+					try run('$b/WinLayersWindow.exe', ['$b/winlayers-probe', "textured"], ["HELDER_SYSTEM_LAYERS" => "0", p[0] => p[1]]) catch (_:Failed) Sys.println('probe ${p.join("=")}: failed');
+				}
+				if (bad > 0) throw new Failed('WinLayersWindow: $bad runs failed');
 			}
 		}
 		// (helder.ui's NSAccessibility, in process: tests/ui/MacAccessTest.hx, MacPatternsTest.hx)
