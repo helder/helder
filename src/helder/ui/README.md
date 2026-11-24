@@ -1229,6 +1229,36 @@ build run in the same web view). Not yet: Windows' WebView2 and Linux's
 WebKitGTK (nothing is drawn there), the web view in a browser (an
 iframe), ArrayBuffers from the page without base64.
 
+### Liquid Glass
+
+`<glass>` (`helder.ui.Glass`, a node) is Liquid Glass: a surface that
+lenses and blurs what is behind it, its children drawn over it. Its shape
+is its box with its corners' radius, a capsule unless it is given one
+(`radius={12}`); `variant="clear"` is the system's clear glass (else
+regular), `tint` the colour it leans to (its alpha how far), `interactive`
+makes it answer a press. `<glass-group spacing={16}>` (`GlassGroup`, as
+SwiftUI's GlassEffectContainer) draws the glass inside it together, glass
+nearer each other than `spacing` points merging.
+
+```haxe
+<glass direction="row" padding={12} column-gap={8} tint="#3478f640" interactive>
+  <icon name="play"/><text>Play</text>
+</glass>
+```
+
+On iOS and macOS 26 it is the system's own (`helder.ui.platform.AppleGlass`:
+NSGlassEffectView, a UIVisualEffectView of a UIGlassEffect; a group's
+NSGlassEffectContainerView or UIGlassContainerEffect, its glass views in
+its content view) where the window's layers are the system's
+(CaLayers): a view in the layer tree (LayerSlot) in a host that takes no
+press, so that it clips, stacks and scrolls with the layers, samples what
+is behind it as the system does, and leaves the input to helder's view.
+The system's interactive response is its own (macOS 27's
+`effectIsInteractive`). Elsewhere, on older systems and in frames read
+back (screenshots, goldens) it is drawn. `tests/ui/GlassWindow.hx` (the
+ui-draw lane, macOS) checks the views in the tree: each glass at its box
+and radius, a group's in its container.
+
 ### Native or drawn, per widget
 
 In a drawn window a widget can also be the platform's own control:

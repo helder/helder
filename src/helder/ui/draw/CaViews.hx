@@ -18,6 +18,7 @@ import hxmc.unsafe.*;
 class CaViews {
 	static var hostClass = Ptr.nil();
 	static var overClass = Ptr.nil();
+	static var passiveClass = Ptr.nil();
 	// (each over view's: what is drawn over a host, x0, y0, x1, y1 in its points top down; by its address)
 	static final hits = new Map<Int, Array<Float>>();
 	// (the subviews' ranks while they are sorted: their keys, in order)
@@ -35,14 +36,15 @@ class CaViews {
 		parent = ios ? view : Msg.id(view, ObjC.sel("superview"));
 	}
 
-	// a host for a native view, hidden: its clip's, clipping it (main thread)
-	public static function host():Ptr {
+	// a host for a native view, hidden: its clip's, clipping it (main thread);
+	// passive: taking no press, the view only shown (glass)
+	public static function host(passive = false):Ptr {
 		classes();
 		var h = Arena.scopedValue(a -> {
 			var r = a.make(CGRect);
 			r.value.size.width = 10;
 			r.value.size.height = 10;
-			Msg.idRect(Msg.id(hostClass, ObjC.sel("alloc")), ObjC.sel("initWithFrame:"), r.value);
+			Msg.idRect(Msg.id(passive ? passiveClass : hostClass, ObjC.sel("alloc")), ObjC.sel("initWithFrame:"), r.value);
 		});
 		if (ios) Msg.vBool(h, ObjC.sel("setClipsToBounds:"), true) else {
 			Msg.vBool(h, ObjC.sel("setWantsLayer:"), true);
@@ -61,6 +63,14 @@ class CaViews {
 		if (hostFresh) h = Runtime.objc_allocateClassPair(base, Mem.cstr("HxmcHostView"), 0);
 		var o = ObjC.cls("HxmcOverView"), overFresh = o.isNull();
 		if (overFresh) o = Runtime.objc_allocateClassPair(base, Mem.cstr("HxmcOverView"), 0);
+		var p = ObjC.cls("HxmcPassiveView"), passiveFresh = p.isNull();
+		if (passiveFresh) p = Runtime.objc_allocateClassPair(base, Mem.cstr("HxmcPassiveView"), 0);
+		if (ios) Runtime.class_replaceMethod(p, ObjC.sel("hitTest:withEvent:"), Callback.addr(noHitIos), Mem.cstr("@@:dd@")) else {
+			Runtime.class_replaceMethod(p, ObjC.sel("isFlipped"), Callback.addr(flipped), Mem.cstr("c@:"));
+			Runtime.class_replaceMethod(p, ObjC.sel("hitTest:"), Callback.addr(noHit), Mem.cstr("@@:dd"));
+		}
+		if (passiveFresh) Runtime.objc_registerClassPair(p);
+		passiveClass = p;
 		if (ios) {
 			Runtime.class_replaceMethod(h, ObjC.sel("hitTest:withEvent:"), Callback.addr(hostHitIos), Mem.cstr("@@:dd@"));
 			Runtime.class_replaceMethod(o, ObjC.sel("hitTest:withEvent:"), Callback.addr(overHitIos), Mem.cstr("@@:dd@"));
@@ -79,6 +89,12 @@ class CaViews {
 	// that are no collection's point (a window's release))
 	@:hxmc.callback @:hxmc.unsafe static function flipped(self:Ptr, cmd:Ptr):Int
 		return 1;
+
+	@:hxmc.callback @:hxmc.unsafe static function noHit(self:Ptr, cmd:Ptr, x:Float, y:Float):Ptr
+		return Ptr.nil();
+
+	@:hxmc.callback @:hxmc.unsafe static function noHitIos(self:Ptr, cmd:Ptr, x:Float, y:Float, e:Ptr):Ptr
+		return Ptr.nil();
 
 	// (a CGPoint by value: two doubles, as the ABI passes them)
 	@:hxmc.callback static function hostHit(self:Ptr, cmd:Ptr, x:Float, y:Float):Ptr {
