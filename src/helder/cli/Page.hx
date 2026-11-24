@@ -58,7 +58,7 @@ class Page {
 			.replace("{{head}}", app?.head ?? "")
 			.replace("{{style}}", app?.style ?? "")
 			.replace("{{splash}}", app?.splash ?? "")
-			.replace("{{preload}}", [for (u in imports.concat([browser])) '<link rel="modulepreload" href="$u">'].join("\n"))
+			.replace("{{preload}}", [for (u in imports.concat([browser, '${base}os/thread.mjs'])) '<link rel="modulepreload" href="$u">'].join("\n"))
 			.replace("{{page}}", pageData(wasm, browser, fonts, imports, dev, assets));
 	}
 
@@ -176,7 +176,7 @@ class Page {
 		var files = ['$dir/$name.html'];
 		for (p in pkgs.concat(["os"])) {
 			TestCommand.mkdirs('$dir/helder/$p');
-			for (f in (p == "os" ? ["browser.mjs", "imports.mjs"] : p == "jobs" ? ["imports.mjs", "worker.mjs"] : ["imports.mjs"])) {
+			for (f in (p == "os" ? ["browser.mjs", "imports.mjs", "thread.mjs", "worker.mjs"] : p == "jobs" ? ["imports.mjs", "worker.mjs"] : ["imports.mjs"])) {
 				File.copy('$helder/helder/$p/$f', '$dir/helder/$p/$f');
 				files.push('$dir/helder/$p/$f');
 			}

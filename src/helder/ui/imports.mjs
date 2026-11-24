@@ -23,10 +23,13 @@
 // box is the theme's), in the field's font and colour. Edits, focus and the
 // keys it leaves to the program (Tab, Escape; Enter, Up and Down on one
 // line) are queued for the module.
+// The program in a worker (src/helder/os/thread.mjs): the calls in PAGE
+// are made by this module's page half (export page), its events posted
+// to the worker's queues.
 // (a keyboard's inputmode)
 const MODES = { number: 'numeric', phone: 'tel' };
 
-export default function (host) {
+export default function ui(host) {
 	const editors = new Map();
 	const editorEvents = [];
 	let nextEditor = 1;
@@ -83,15 +86,20 @@ export default function (host) {
 	// per canvas: its views by id ({e: the scroller, s: its spacer}); the scrolls they made, queued
 	const scrollers = new Map();
 	const scrolled = [];
-	// (an editor's event: queued, and a frame asked for, which polls it)
-	const queue = (ev) => {
-		editorEvents.push(ev);
-		host.os?.redraw();
+	// an event for the program (a string: a handle there), the page half's
+	// posted to it in its worker; an editor's or a scroll's asks for a
+	// frame, which polls it
+	const lists = { editor: editorEvents, scrolled, actions: null };
+	const send = (name, ev) => {
+		if (host.program) host.program.post({ type: 'queue', mod: 'hxmc_ui', name, ev });
+		else lists[name].push(ev.map((x) => (typeof x === 'string' ? host.handles.add(x) : x)));
+		if (name !== 'actions') host.os?.redraw();
 	};
+	const queue = (ev) => send('editor', ev);
 	const EDITOR_KEYS = { Tab: 0xff09, Escape: 0xff1b, Enter: 0xff0d, ArrowUp: 0xff52, ArrowDown: 0xff54 };
 	// per canvas: the mirror's root, its elements by node id
 	const mirrors = new Map();
-	const actions = [];
+	const actions = (lists.actions = []);
 	// (focus() of ours: not an action)
 	let focusing = false;
 
@@ -112,11 +120,11 @@ export default function (host) {
 			e = document.createElement('div');
 			e.id = 'hxmc-access-' + id;
 			e.addEventListener('click', (ev) => {
-				actions.push([id, 0]);
+				send('actions', [id, 0]);
 				ev.stopPropagation();
 			});
 			e.addEventListener('focus', () => {
-				if (!focusing) actions.push([id, 1]);
+				if (!focusing) send('actions', [id, 1]);
 			});
 			m.elements.set(id, e);
 		}
@@ -220,10 +228,11 @@ export default function (host) {
 			}
 		},
 		// a native text editor over the canvas: its handle
-		editor_create(canvas, multiline) {
+		// (given: its handle, the program's in a worker)
+		editor_create(canvas, multiline, given) {
 			const c = host.handles.get(canvas);
 			const e = document.createElement(multiline ? 'textarea' : 'input');
-			const h = nextEditor++;
+			const h = given ?? nextEditor++;
 			if (!multiline) e.type = 'text';
 			e.id = 'hxmc-editor-' + h;
 			e.setAttribute('data-hxmc-editor', '');
@@ -234,7 +243,7 @@ export default function (host) {
 			const ed = { e, c, style, multiline, focusing: false };
 			editors.set(h, ed);
 			const mods = (ev) => (ev.shiftKey ? 1 : 0) | (ev.ctrlKey ? 2 : 0) | (ev.altKey ? 4 : 0) | (ev.metaKey ? 8 : 0);
-			e.addEventListener('input', () => queue([h, 1, e.selectionStart ?? 0, e.selectionEnd ?? 0, host.handles.add(e.value)]));
+			e.addEventListener('input', () => queue([h, 1, e.selectionStart ?? 0, e.selectionEnd ?? 0, e.value]));
 			e.addEventListener('focus', () => ed.focusing || queue([h, 2, 0, 0, 0]));
 			e.addEventListener('blur', () => ed.focusing || queue([h, 3, 0, 0, 0]));
 			e.addEventListener('keydown', (ev) => {
@@ -272,7 +281,7 @@ export default function (host) {
 		editor_place(h, x, y, w, hh, shown) {
 			const ed = editors.get(h), r = ed.c.getBoundingClientRect();
 			const ratio = Math.min(devicePixelRatio, host.options.maxPixelRatio ?? Infinity);
-			const k = r.width / Math.max(1, Math.round(ed.c.width / ratio));
+			const k = r.width / Math.max(1, Math.round((ed.c.hxmcBuf ?? ed.c).width / ratio));
 			const s = ed.e.style;
 			layer(ed.c).fit();
 			s.display = shown ? '' : 'none';
@@ -339,8 +348,7 @@ export default function (host) {
 						// stop the program's glide where it was a frame ago)
 						if (s.setX !== undefined && Math.abs(e.scrollLeft - s.setX) <= 1 && Math.abs(e.scrollTop - s.setY) <= 1) return;
 						// (its own scroll: the offsets in ui points, 1/256ths)
-						scrolled.push([s.id, Math.round(e.scrollLeft / s.k * 256), Math.round(e.scrollTop / s.k * 256)]);
-						host.os?.redraw();
+						send('scrolled', [s.id, Math.round(e.scrollLeft / s.k * 256), Math.round(e.scrollTop / s.k * 256)]);
 					}, { passive: true });
 					views.set(v.i, s);
 				}
@@ -396,5 +404,22 @@ export default function (host) {
 			return 1;
 		},
 	};
+	// the program in a worker: the page's calls forwarded, the page half's events queued here
+	if (host.page) {
+		for (const [k, sig] of Object.entries(PAGE)) hxmc_ui[k] = host.page.forward('hxmc_ui', k, sig);
+		const create = hxmc_ui.editor_create;
+		hxmc_ui.editor_create = (canvas, multiline) => {
+			const h = nextEditor++;
+			create(canvas, multiline, h);
+			return h;
+		};
+		host.page.on('queue', (m) => m.mod === 'hxmc_ui' && lists[m.name].push(m.ev.map((x) => (typeof x === 'string' ? host.handles.add(x) : x))));
+	}
 	return { hxmc_ui };
 }
+
+// the calls the page runs for a program in a worker (os/imports.mjs's PAGE)
+const PAGE = { access_update: 'ns', editor_create: '', editor_text: 'ns', editor_select: '', editor_kind: 'nsss', editor_place: '', editor_style: 'nsss',
+	editor_focus: '', editor_dispose: '', scroll_update: 'ns' };
+
+export { ui as page };
