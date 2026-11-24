@@ -1,0 +1,6 @@
+3 Alpha,Beta,Cedar,Delta
+grid activate 0,1,2,3
+Cedar 2
+Fir
+list activate 1,2
+legacy activate CEDAR

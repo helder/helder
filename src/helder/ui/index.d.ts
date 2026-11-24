@@ -5,7 +5,7 @@
 import type {Image} from "helder/asset";
 import type {Read, RootView, Signal, View} from "helder/view";
 
-declare const __haxe: {Svg: "helder.canvas.Svg", UiWindow: "helder.ui.draw.UiWindow", Event: "helder.ui.Event", Key: "helder.ui.Key", VirtualScroll: "helder.ui.VirtualScroll", Clock: "helder.ui.Clock", WebViewEvent: "helder.ui.platform.WebViewEvent", WebContent: "helder.ui.platform.WebContent", WebResponse: "helder.ui.platform.WebResponse", Node: "helder.ui.Node", TextNode: "helder.ui.TextNode", UiFlow: "helder.ui.view.UiFlow", SafeArea: "helder.ui.SafeArea", Router: "helder.ui.nav.Router", Controls: "helder.ui.widgets.Controls", DataGrid: "helder.ui.widgets.DataGrid", EditableText: "helder.ui.widgets.EditableText", GridColumn: "helder.ui.widgets.GridColumn", GridTheme: "helder.ui.widgets.GridTheme", Icons: "helder.ui.widgets.Icons", Pager: "helder.ui.widgets.Pager", TextArea: "helder.ui.widgets.TextArea", TextField: "helder.ui.widgets.TextField", Theme: "helder.ui.widgets.Theme", WindowButtons: "helder.ui.widgets.WindowButtons", Eased: "helder.ui.controls.Eased", Look: "helder.ui.controls.Look", Press: "helder.ui.controls.Press", Standard: "helder.ui.controls.Standard", Toggle: "helder.ui.controls.Toggle", CodeActions: "helder.ui.code.CodeAction.CodeActions", CodeCompletion: "helder.ui.code.CodeCompletion", CodeEditor: "helder.ui.code.CodeEditor", CodeLanguage: "helder.ui.code.CodeLanguage", SyntaxLanguage: "helder.ui.code.CodeLanguage.SyntaxLanguage", CodeLanguages: "helder.ui.code.CodeLanguage.CodeLanguages", Sel: "helder.ui.code.CodeModel.Sel", Decoration: "helder.ui.code.CodeModel.Decoration", CodeDiagnostic: "helder.ui.code.CodeModel.CodeDiagnostic", ShapedLine: "helder.ui.code.CodeModel.ShapedLine", CodeModel: "helder.ui.code.CodeModel", CodeTheme: "helder.ui.code.CodeTheme", CodeView: "helder.ui.code.CodeView", Rope: "helder.ui.code.Rope", SqlLanguage: "helder.ui.code.SqlLanguage", Screens: "helder.ui.nav.Screens", __module: "helder.ui.TypeScript"};
+declare const __haxe: {Svg: "helder.canvas.Svg", UiWindow: "helder.ui.draw.UiWindow", Event: "helder.ui.Event", Key: "helder.ui.Key", VirtualScroll: "helder.ui.VirtualScroll", Selection: "helder.ui.Selection", GridScroll: "helder.ui.GridScroll", Clock: "helder.ui.Clock", WebViewEvent: "helder.ui.platform.WebViewEvent", WebContent: "helder.ui.platform.WebContent", WebResponse: "helder.ui.platform.WebResponse", Node: "helder.ui.Node", TextNode: "helder.ui.TextNode", UiFlow: "helder.ui.view.UiFlow", SafeArea: "helder.ui.SafeArea", Router: "helder.ui.nav.Router", Controls: "helder.ui.widgets.Controls", DataGrid: "helder.ui.widgets.DataGrid", EditableText: "helder.ui.widgets.EditableText", GridColumn: "helder.ui.widgets.GridColumn", GridTheme: "helder.ui.widgets.GridTheme", Icons: "helder.ui.widgets.Icons", Pager: "helder.ui.widgets.Pager", TextArea: "helder.ui.widgets.TextArea", TextField: "helder.ui.widgets.TextField", Theme: "helder.ui.widgets.Theme", WindowButtons: "helder.ui.widgets.WindowButtons", Eased: "helder.ui.controls.Eased", Look: "helder.ui.controls.Look", Press: "helder.ui.controls.Press", Standard: "helder.ui.controls.Standard", Toggle: "helder.ui.controls.Toggle", CodeActions: "helder.ui.code.CodeAction.CodeActions", CodeCompletion: "helder.ui.code.CodeCompletion", CodeEditor: "helder.ui.code.CodeEditor", CodeLanguage: "helder.ui.code.CodeLanguage", SyntaxLanguage: "helder.ui.code.CodeLanguage.SyntaxLanguage", CodeLanguages: "helder.ui.code.CodeLanguage.CodeLanguages", Sel: "helder.ui.code.CodeModel.Sel", Decoration: "helder.ui.code.CodeModel.Decoration", CodeDiagnostic: "helder.ui.code.CodeModel.CodeDiagnostic", ShapedLine: "helder.ui.code.CodeModel.ShapedLine", CodeModel: "helder.ui.code.CodeModel", CodeTheme: "helder.ui.code.CodeTheme", CodeView: "helder.ui.code.CodeView", Rope: "helder.ui.code.Rope", SqlLanguage: "helder.ui.code.SqlLanguage", Screens: "helder.ui.nav.Screens", __module: "helder.ui.TypeScript"};
 
 // An SVG document for icons and drawings: parsed once (Svg.parse), drawn
 // into an Image at any size (the Image's drawing: this, for a writer's vectors; render: the viewBox fitted as
@@ -25,6 +25,8 @@ declare const __haxe: {Svg: "helder.canvas.Svg", UiWindow: "helder.ui.draw.UiWin
 export declare class Svg {
 	private readonly svg: never;
 }
+
+export type VirtualListProps<T> = { each: Read<T[]>; children: (arg0: Read<T>, arg1: number) => unknown; by?: (arg0: T) => any; keyed?: boolean; estimate?: number; itemHeight?: number; height?: number; overscan?: number; keep?: number; selected?: Signal<any>; onActivate?: ((arg0: T) => void) | ((arg0: number[]) => void); label?: string; ref?: (arg0: VirtualScroll) => void; tag?: string; selection?: Selection; onContextMenu?: (arg0: number, arg1: number, arg2: number) => void; textOf?: (arg0: T) => string };
 
 // (a route's params as its path names them: "/product/:id" gives {id: string})
 export type RouteParams<P> = P extends `${string}:${infer K}/${infer R}` ? {[k in K]: string} & RouteParams<`/${R}`> : P extends `${string}:${infer K}` ? {[k in K]: string} : {};
@@ -113,6 +115,8 @@ export type Tone = { light: number; dark: number };
 // pinned to ui, a children prop typed so makes its content ui's (a
 // boundary's: <Surface>, <Ui> in a scene)
 export type UiView = unknown;
+
+export type VirtualGridProps<T> = { each: Read<T[]>; children: (arg0: Read<T>, arg1: number) => unknown; by: (arg0: T) => string; cellWidth: number; cellHeight: number; gap?: number; padding?: number; selection?: Selection; textOf?: (arg0: T) => string; onActivate?: (arg0: number[]) => void; onContextMenu?: (index: number, x: number, y: number) => void; label?: string; ref?: (arg0: GridScroll) => void; tag?: string };
 
 // A window showing a UI tree drawn with the GPU: an helder.os Window, its
 // gfx Device, a Renderer and the Ui (root: the tree's root node, in the
@@ -267,6 +271,42 @@ export declare class VirtualScroll extends Node {
 	// shows it), made or not, held there while the rows are measured
 	scrollToIndex(index: number, align?: string): void;
 	// focuses row index (made, scrolled into view first), the focus ring shown
+	focusIndex(index: number): void;
+}
+
+// A list's selection by key. The range of a Shift gesture is replaced
+// as it grows or shrinks, over the selection made before that gesture.
+export declare class Selection {
+	constructor(keyOf: (arg0: number) => string, count: () => number);
+	readonly anchor: string | null;
+	readonly focus: string | null;
+	readonly version: Signal<number>;
+	has(key: string): boolean;
+	size(): number;
+	// The keys present in the list, in its current order.
+	keys(): string[];
+	focusIndex(): number;
+	select(i: number): void;
+	toggle(i: number): void;
+	extend(i: number): void;
+	selectAll(): void;
+	clear(): void;
+	setKeys(keys: string[], additive?: boolean): void;
+	prune(): void;
+}
+
+// A VirtualScroll over rows of fixed-size cells (UiFlow.VirtualGrid's): as
+// many columns of at least cellWidth as fit, widened to fill the row, each
+// grid row one of the scroller's. Items are indices into the source (keyOf,
+// count); a reflow keeps the first item in view where it was, a refresh
+// remakes only the rows whose keys changed. The selection and the focus
+// are held by key.
+export declare class GridScroll extends VirtualScroll {
+	readonly selection: Selection;
+	readonly columns: number;
+	// scrolls to item index ("start", "center", "end"; "auto": as little as shows it)
+	scrollToIndex(index: number, align?: string): void;
+	// focuses item index, scrolled into view, the focus ring shown
 	focusIndex(index: number): void;
 }
 
@@ -729,11 +769,21 @@ export declare class UiFlow {
 	// of the row selected: written as the focus moves, a row pressed) and
 	// onActivate (Enter, Space) given its item. Its child function gets a
 	// row's item (a Read) and its index when made; ref the VirtualScroll
-	// (scrollToIndex, focusIndex, the window).
-	static VirtualList<T>(props: { each: Read<T[]>; children: (arg0: Read<T>, arg1: number) => unknown; by?: (arg0: T) => any; keyed?: boolean; estimate?: number; itemHeight?: number; height?: number; overscan?: number; keep?: number; selected?: Signal<any>; onActivate?: (arg0: T) => void; label?: string; ref?: (arg0: VirtualScroll) => void; tag?: string }): unknown;
+	// (scrollToIndex, focusIndex, the window). With a Selection the callback
+	// takes the selected indices (Enter or double click); by still keys rows.
+	static VirtualList: <T, S extends Selection | undefined = undefined>(props: Omit<VirtualListProps<T>, "selection" | "onActivate"> & {selection?: S; onActivate?: (value: S extends Selection ? number[] : T) => void}) => unknown;
+	// VirtualGrid: each's items in cells cellWidth (at least) by cellHeight,
+	// gap apart and padding in (4, 12), in a GridScroll: only the rows in
+	// view made, a cell made again when its row's keys (by) change, else
+	// its item written. A Selection (its own unless given; ref: the
+	// GridScroll's) with the keyboard, presses and a marquee from empty
+	// space; onActivate given the selected indices (Enter, double click),
+	// onContextMenu an item and where; textOf: type-ahead.
+	static VirtualGrid<T>(props: VirtualGridProps<T>): unknown;
 }
 
 export declare const VirtualList: typeof UiFlow.VirtualList;
+export declare const VirtualGrid: typeof UiFlow.VirtualGrid;
 export declare const Popover: typeof UiFlow.Popover;
 export declare const MenuBarView: typeof UiFlow.MenuBarView;
 

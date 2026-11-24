@@ -2,6 +2,7 @@ package helder.ui.view;
 
 import helder.ui.*;
 import helder.view.*;
+import haxe.extern.EitherType;
 import helder.view.Flow.Mountable;
 import helder.view.graph.Graph;
 import helder.view.graph.Read;
@@ -46,11 +47,101 @@ class UiFlow {
 	// of the row selected: written as the focus moves, a row pressed) and
 	// onActivate (Enter, Space) given its item. Its child function gets a
 	// row's item (a Read) and its index when made; ref the VirtualScroll
-	// (scrollToIndex, focusIndex, the window).
-	public static function VirtualList<T>(props:{each:Read<Array<T>>, children:(Read<T>, Int)->Any, ?by:T->Dynamic, ?keyed:Bool, ?estimate:Float,
-			?itemHeight:Float, ?height:Float, ?overscan:Int, ?keep:Int, ?selected:Signal<Dynamic>, ?onActivate:T->Void, ?label:String,
-			?ref:VirtualScroll->Void, ?tag:String}):Any
+	// (scrollToIndex, focusIndex, the window). With a Selection the callback
+	// takes the selected indices (Enter or double click); by still keys rows.
+	@:typescript.type('<T, S extends Selection | undefined = undefined>(props: Omit<VirtualListProps<T>, "selection" | "onActivate"> & {selection?: S; onActivate?: (value: S extends Selection ? number[] : T) => void}) => unknown')
+	public static function VirtualList<T>(props:VirtualListProps<T>):Any
 		return new VirtualRows<T>(props);
+
+	// VirtualGrid: each's items in cells cellWidth (at least) by cellHeight,
+	// gap apart and padding in (4, 12), in a GridScroll: only the rows in
+	// view made, a cell made again when its row's keys (by) change, else
+	// its item written. A Selection (its own unless given; ref: the
+	// GridScroll's) with the keyboard, presses and a marquee from empty
+	// space; onActivate given the selected indices (Enter, double click),
+	// onContextMenu an item and where; textOf: type-ahead.
+	public static function VirtualGrid<T>(props:VirtualGridProps<T>):Any
+		return new VirtualCells<T>(props);
+
+}
+
+typedef VirtualListProps<T> = {
+	each:Read<Array<T>>,
+	children:(Read<T>, Int)->Any,
+	?by:T->Dynamic,
+	?keyed:Bool,
+	?estimate:Float,
+	?itemHeight:Float,
+	?height:Float,
+	?overscan:Int,
+	?keep:Int,
+	?selected:Signal<Dynamic>,
+	?onActivate:EitherType<T->Void, Array<Int>->Void>,
+	?label:String,
+	?ref:VirtualScroll->Void,
+	?tag:String,
+	?selection:Selection,
+	?onContextMenu:(Int, Float, Float)->Void,
+	?textOf:T->String
+}
+
+typedef VirtualGridProps<T> = {
+	each:Read<Array<T>>,
+	children:(Read<T>, Int)->Any,
+	by:T->String,
+	cellWidth:Float,
+	cellHeight:Float,
+	?gap:Float,
+	?padding:Float,
+	?selection:Selection,
+	?textOf:T->String,
+	?onActivate:Array<Int>->Void,
+	?onContextMenu:(index:Int, x:Float, y:Float)->Void,
+	?label:String,
+	?ref:GridScroll->Void,
+	?tag:String
+}
+
+@:renderer(helder.ui.view.NodeRenderer)
+private class VirtualCells<T> implements Mountable<Node> {
+	final props:VirtualGridProps<T>;
+
+	public function new(props)
+		this.props = props;
+
+	public function mount(parent:Node, before:Null<Node>):Array<Node> {
+		var p = props, home = Graph.getOwner();
+		var items:Array<T> = [];
+		var grid = new GridScroll(i -> p.by(items[i]), () -> items.length, p.cellWidth, p.cellHeight, p.gap, p.padding, p.selection, p.tag);
+		grid.input.onActivate = p.onActivate;
+		grid.input.onContextMenu = p.onContextMenu;
+		if (p.textOf != null) grid.input.textOf = i -> p.textOf(items[i]);
+		if (p.label != null) grid.semantics.label = p.label;
+		grid.onMakeCell = (i, node) -> {
+			var o = new Owner(home);
+			var cell = helder.view.graph.Node.signal(items[i], {ownedWrite: true});
+			Graph.runWithOwner(o, () -> Render.insert(p.children(cell, i), node, null));
+			return new RowCell<T>(o, cell, items[i]);
+		};
+		grid.onDropCell = (_, c) -> (c : RowCell<T>).owner.dispose();
+		var each:Read<Array<T>> = Read.of(p.each);
+		Graph.renderEffect(() -> each(), (next:Array<T>) -> {
+			items = next ?? [];
+			// (a cell kept: its key's item now)
+			grid.refresh((i, d) -> {
+				var c:RowCell<T> = d;
+				if (c.item != items[i]) c.cell.write(c.item = items[i]);
+			});
+		});
+		var i = before == null ? parent.children.length : parent.indexOf(before);
+		parent.insert(grid, i < 0 ? parent.children.length : i);
+		if (p.ref != null) p.ref(grid);
+		Graph.onCleanup(() -> {
+			grid.reset(0);
+			if (grid.parent == parent) parent.remove(grid);
+		});
+		return [grid];
+	}
 }
 
 // Popover: a hidden marker where the markup puts it; the popup opened in
@@ -119,8 +210,7 @@ function anchorAt(parent:Node, before:Null<Node>, tag:String):Node {
 // into the scroller's splices, its rows' items written
 @:renderer(helder.ui.view.NodeRenderer)
 class VirtualRows<T> implements Mountable<Node> {
-	final props:{each:Read<Array<T>>, children:(Read<T>, Int)->Any, ?by:T->Dynamic, ?keyed:Bool, ?estimate:Float, ?itemHeight:Float, ?height:Float,
-		?overscan:Int, ?keep:Int, ?selected:Signal<Dynamic>, ?onActivate:T->Void, ?label:String, ?ref:VirtualScroll->Void, ?tag:String};
+	final props:VirtualListProps<T>;
 
 	public function new(props)
 		this.props = props;
@@ -139,24 +229,51 @@ class VirtualRows<T> implements Mountable<Node> {
 		if (p.keep != null) v.keep = p.keep;
 		if (p.label != null) v.semantics.label = p.label;
 		var each:Read<Array<T>> = Read.of(p.each), key = p.by, keyed = p.keyed != false || p.by != null;
-		var selected = p.selected, render = p.children;
+		var selected = p.selected, selection = p.selection, render = p.children;
 		var items:Array<T> = [], started = false;
 		var home = Graph.getOwner();
 		function keyOf(i:Int):Dynamic
 			return !keyed ? i : key != null ? key(items[i]) : items[i];
+		if (selection != null) {
+			v.semantics.multiselectable = true;
+			var input = new SelectionInput(v, selection, () -> items.length, node -> {
+				var row = v.rowOf(node);
+				return row == null ? -1 : row.index;
+			}, i -> {
+				var row = v.rowAt(i);
+				return row == null ? null : row.node;
+			}, (i, key) -> switch key {
+				case Key.UP: i < 0 ? 0 : i - 1;
+				case Key.DOWN: i < 0 ? 0 : i + 1;
+				case Key.HOME: 0;
+				case Key.END: v.count - 1;
+				case Key.PAGE_UP: i < 0 ? 0 : v.rowAtOffset(v.rowOffset(i) - v.viewHeight());
+				case Key.PAGE_DOWN: i < 0 ? 0 : v.rowAtOffset(v.rowOffset(i) + v.viewHeight());
+				case _: null;
+			});
+			input.onActivate = cast p.onActivate;
+			input.onContextMenu = p.onContextMenu;
+			if (p.textOf != null) input.textOf = i -> p.textOf(items[i]);
+		} else {
+			v.onRowActive = i -> if (selected != null) selected(keyOf(i));
+			var activate:T->Void = cast p.onActivate;
+			v.onRowActivate = i -> if (activate != null) activate(items[i]);
+		}
 		v.onMakeRow = (i, row) -> {
 			var o = new Owner(home), k:Dynamic = keyOf(i);
 			var cell = helder.view.graph.Node.signal(items[i], {ownedWrite: true});
 			Graph.runWithOwner(o, () -> {
 				Render.insert(render(cell, i), row, null);
 				// (selected: its row's key's)
-				if (selected != null) Graph.renderEffect(() -> selected() == k, (on:Bool) -> row.semantics.selected = on);
+				if (selection != null) Graph.renderEffect(() -> selection.version(), _ -> {
+					var r = v.rowOf(row);
+					if (r != null) SelectionInput.decorate(row, selection, @:privateAccess selection.keyOf(r.index));
+				});
+				else if (selected != null) Graph.renderEffect(() -> selected() == k, (on:Bool) -> row.semantics.selected = on);
 			});
 			return new RowCell<T>(o, cell, items[i]);
 		};
 		v.onDropRow = (row, d) -> (d : RowCell<T>).owner.dispose();
-		v.onRowActive = i -> if (selected != null) selected(keyOf(i));
-		v.onRowActivate = i -> if (p.onActivate != null) p.onActivate(items[i]);
 		function same(a:T, b:T):Bool
 			return a == b || key != null && key(a) == key(b);
 		Graph.renderEffect(() -> {
@@ -207,6 +324,7 @@ class VirtualRows<T> implements Mountable<Node> {
 					c.cell.write(c.item);
 					v.remeasure(r.index);
 				}
+				if (selection != null) SelectionInput.decorate(r.node, selection, @:privateAccess selection.keyOf(r.index));
 			}
 		});
 		var i = before == null ? parent.children.length : parent.indexOf(before);

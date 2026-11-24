@@ -1,0 +1,25 @@
+// helder.test snapshots: `helder test -u` rewrites them
+
+--- story VirtualGrid/selection: VirtualGrid/selection (22 lines)
+Node#root 0,0 390x844
+  VirtualGrid#virtual-grid 0,0 390x844
+    Spacer#before 0,0 390x12
+    Node#row 0,12 390x40
+      Node#cell 12,12 89x36
+        TextNode#text 12,12 89x30 "Alpha"
+      Node#cell 105,12 88x36
+        TextNode#text 105,12 88x30 "Beta ✓"
+      Node#cell 197,12 89x36
+        TextNode#text 197,12 89x30 "Cedar ✓"
+      Node#cell 290,12 88x36
+        TextNode#text 290,12 88x30 "Delta ✓"
+    Node#row 0,52 390x40
+      Node#cell 12,52 89x36
+        TextNode#text 12,52 89x30 "Elm"
+      Node#cell 105,52 88x36
+        TextNode#text 105,52 88x30 "Fir"
+      Node#cell 197,52 89x36
+        TextNode#text 197,52 89x30 "Ginkgo"
+      Node#cell 290,52 88x36
+        TextNode#text 290,52 88x30 "Hazel"
+    Spacer#after 0,92 390x12
