@@ -26,7 +26,7 @@ class WebAudioDecoder implements AudioDecoder {
 		// (Opus decodes at 48 kHz, whatever rate the file names: its input's)
 		rate = track.codec == Opus ? 48000 : track.sampleRate;
 		var r = rate, c = track.channels;
-		h = Glue.decoder(1, name, r, c, 0, 0, hxmc.Span.ofBytes(d));
+		h = Glue.decoder(1, name, r, c, 0, hxmc.Span.ofBytes(d));
 		if (Glue.failed(h) == 1) throw new MediaError('the browser does not decode $name');
 	}
 

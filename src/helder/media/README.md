@@ -154,7 +154,8 @@ type; mp3, opus, vorbis, flac, pcm-s16/24/32 and pcm-f32) and description
 decided by `isConfigSupported` (else that track is not played; a clean
 `MediaError` when nothing is). Packets go in as Encoded*Chunks timed in
 microseconds, configured at the first (a keyframe). A frame stays the
-page's `VideoFrame`, never in the module's memory: a handle; frames before
+page's `VideoFrame`, never in the module's memory: a handle (`pixels()`
+empty: the browser test reads planes in its own glue); frames before
 an exact seek's target are closed as they come, the others when the player
 lets them go (a decoder's pool is small). Audio comes as `AudioData`,
 copied as floats into the player's ring, in order, one for each packet
@@ -246,8 +247,9 @@ In a browser (`VideoTexture`): the page's frame copied into an RGBA
 texture on the GPU (Device.writeTextureImage: WebGPU's
 `copyExternalImageToTexture`, WebGL2's `texImage2D`; the browser converts
 its colours), then turned upright by the same pass (`VideoShader`'s
-`turn.z`: RGB already). `importExternalTexture` would save the copy, but
-its texture lasts a task only and needs a binding the shaders do not have.
+`turn.z`: RGB already). Later: WebGPU's `importExternalTexture`, no copy,
+once the shaders have a binding type for external textures (its texture
+lasts a task only: bound in the frame that samples it).
 
 Audio alone is a Player without a box. TypeScript: `helder/media`'s
 `Video`, `VideoNode`, `Player`, `FileSource`, `MemorySource`.
@@ -267,7 +269,7 @@ through `sidx` (all are read at open), Matroska's ContentEncodings
 frames, an MP4 writer. In browsers: HEVC where the system has no decoder
 (Chromium's on Linux, Firefox), H.264 and AAC in Playwright's Linux
 Chromium (no proprietary codecs), ALAC, HDR (PQ is the browser's mapping
-to SDR); Firefox's software decoders give RGB frames (BGRX, BT.709 for
+to SDR), `importExternalTexture` (a copy on the GPU for now); Firefox's software decoders give RGB frames (BGRX, BT.709 for
 unnamed colours), WebKit's are full range (its AV1's display width is
 wrong).
 

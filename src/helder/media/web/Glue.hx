@@ -11,7 +11,7 @@ import hxmc.unsafe.*;
 	// kind 0: video (a, b: its coded size), 1: audio (its rate, channels);
 	// space: colours the stream does not name (WebCodec.untagged)
 	@:hxmc.fast @:hxmc.safe static function supported(kind:Int, codec:String, a:Int, b:Int, config:hxmc.Span<UInt8>):Int;
-	@:hxmc.fast @:hxmc.safe static function decoder(kind:Int, codec:String, a:Int, b:Int, copy:Int, space:Int, config:hxmc.Span<UInt8>):Int;
+	@:hxmc.fast @:hxmc.safe static function decoder(kind:Int, codec:String, a:Int, b:Int, space:Int, config:hxmc.Span<UInt8>):Int;
 	@:hxmc.fast @:hxmc.safe static function decode(h:Int, key:Int, time:Float, duration:Float, show:Int, bytes:hxmc.Span<UInt8>):Int;
 	static function state(h:Int):Int;
 	static function free(h:Int):Void;
@@ -22,8 +22,6 @@ import hxmc.unsafe.*;
 	static function close(h:Int):Void;
 	static function frame(h:Int):Int;
 	static function info(h:Int, what:Int):Float;
-	static function pixels_length(h:Int):Int;
-	@:hxmc.fast @:hxmc.safe static function pixels(h:Int, into:hxmc.Span<UInt8>):Void;
 	static function release(h:Int):Void;
 	static function audio_frames(h:Int):Int;
 	static function audio_take(h:Int, into:Ptr<Float32>):Void;

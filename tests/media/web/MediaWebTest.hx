@@ -66,7 +66,14 @@ class MediaWebTest {
 		return Media.open(WebSource.url("tests/media/" + f));
 
 	static function crc(f:VideoFrame):Int
-		return Crc32.make(f.pixels());
+		return Crc32.make(planes(f));
+
+	// (its planes, as check.mjs read them before the decoder gave it out; empty: RGB)
+	static function planes(f:VideoFrame):haxe.io.Bytes {
+		var b = haxe.io.Bytes.alloc(Check.pixels_length(f.handle()));
+		Check.pixels(f.handle(), hxmc.Span.ofBytes(b));
+		return b;
+	}
 
 	@:coroutine static function first(m:Media, kind:MediaKind):Null<MediaTrack> {
 		var t = Lambda.find(m.tracks, t -> t.kind == kind);
@@ -77,9 +84,7 @@ class MediaWebTest {
 
 	// (every frame of a video's track: decoded with its planes read, sorted)
 	@:coroutine static function decodeAll(m:Media, t:MediaTrack, keep:Bool):{frames:Array<VideoFrame>, pts:Array<Float>, crcs:Array<Int>} {
-		WebVideoDecoder.copy = true;
 		var d = new WebVideoDecoder(t), frames = [], got = [], pts = [], crcs = [];
-		WebVideoDecoder.copy = false;
 		function take() {
 			got.resize(0);
 			d.take(got);
@@ -113,19 +118,19 @@ class MediaWebTest {
 	// (planes the browser gives as decoded: not RGB (Firefox's software
 	// decoders' BGRX), not turned to full range (WebKit's))
 	static function decoded(f:String, fr:VideoFrame):Bool
-		return fr.pixels().length > 0 && !(fr.full && f != "apple/h264-full.mp4");
+		return planes(fr).length > 0 && !(fr.full && f != "apple/h264-full.mp4");
 
 	@:coroutine static function video(f:String, e:Dynamic) {
 		var m = open(f), t = first(m, Video);
 		if (t == null) return m.close();
 		var r = decodeAll(m, t, true), crcs:Array<Int> = e.crcs, bad = [];
-		var one = r.frames[0], planes = one != null && decoded(f, one);
-		if (one != null && !planes) Sys.println('$f: the browser gives its frames ${one.pixels().length == 0 ? "in RGB" : "in full range"}: their planes not compared');
+		var one = r.frames[0], asDecoded = one != null && decoded(f, one);
+		if (one != null && !asDecoded) Sys.println('$f: the browser gives its frames ${planes(one).length == 0 ? "in RGB" : "in full range"}: their planes not compared');
 		for (i in 0...r.frames.length)
-			if (i >= crcs.length || planes && r.crcs[i] != crcs[i] || r.frames[i].time != r.pts[i]) bad.push(i);
+			if (i >= crcs.length || asDecoded && r.crcs[i] != crcs[i] || r.frames[i].time != r.pts[i]) bad.push(i);
 		var times = [for (i in 0...r.frames.length) if (r.frames[i].time != r.pts[i]) i];
 		check('$f: ${r.frames.length} frames, each packet\'s time', one != null && r.frames.length == crcs.length && times.length == 0, times.length > 0 ? 'differing: $times' : "");
-		if (one != null) given('$f: planes as ffmpeg decodes them, its size', bad.length == 0 && one.width == e.width && one.height == e.height && (!planes || one.bits == e.bits),
+		if (one != null) given('$f: planes as ffmpeg decodes them, its size', bad.length == 0 && one.width == e.width && one.height == e.height && (!asDecoded || one.bits == e.bits),
 			one == null ? "none" : '${r.frames.length} of ${crcs.length}, ${one.width}x${one.height} ${one.bits} bits ${one.matrix}${one.full ? " full" : ""}${bad.length > 0 ? ", differing: " + bad : ""}');
 		for (fr in r.frames) fr.release();
 		m.close();
@@ -280,9 +285,7 @@ class MediaWebTest {
 		}
 		m.close();
 		pts.sort((a, b) -> a < b ? -1 : 1);
-		WebVideoDecoder.copy = true;
 		var pl = Player.open(WebSource.of("tests/media/" + f), {silent: true}), crcs:Array<Int> = videos[f].crcs, n = pts.length;
-		WebVideoDecoder.copy = false;
 		function at(what:String, fr:Null<VideoFrame>, i:Int)
 			check('$f: $what: the frame at ${pts[i]}', fr != null && fr.time == pts[i] && (!decoded(f, fr) || crc(fr) == crcs[i]), fr == null ? "none" : '${fr.time}');
 		at("opened", shown(pl, pts[0]), 0);
@@ -434,6 +437,8 @@ class MediaWebTest {
 @:hxmc.c @:hxmc.lib("helder_media_check") extern class Check {
 	static function read():Int;
 	@:hxmc.fast @:hxmc.safe static function take(h:Int, into:hxmc.Span<UInt8>):Void;
+	static function pixels_length(frame:Int):Int;
+	@:hxmc.fast @:hxmc.safe static function pixels(frame:Int, into:hxmc.Span<UInt8>):Void;
 }
 
 // (a pipeline of VideoShader's onto the surface: readBack's)

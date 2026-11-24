@@ -14,13 +14,9 @@ import hxmc.unsafe.*;
 // AV1's colours may be only there.
 @:hxmc.unsafe(gc)
 class WebVideoDecoder implements VideoDecoder {
-	// (a test's: each frame's planes read too, for pixels())
-	public static var copy = false;
-
 	public var pending(get, never):Int;
 
 	final track:MediaTrack;
-	final copies = copy;
 	var h = 0;
 	// (the packets' times by their microseconds: a frame's exact time)
 	final micros:Array<Float> = [];
@@ -33,8 +29,8 @@ class WebVideoDecoder implements VideoDecoder {
 		var name = WebCodec.name(track, first);
 		if (name == null) throw new MediaError('no decoder for ${track.codec}');
 		var d = WebCodec.description(track) ?? Bytes.alloc(0);
-		var w = track.width, ht = track.height, c = copies ? 1 : 0, space = WebCodec.untagged(track, first);
-		h = Glue.decoder(0, name, w, ht, c, space, hxmc.Span.ofBytes(d));
+		var w = track.width, ht = track.height, space = WebCodec.untagged(track, first);
+		h = Glue.decoder(0, name, w, ht, space, hxmc.Span.ofBytes(d));
 		if (Glue.failed(h) == 1) throw new MediaError('the browser does not decode $name');
 	}
 
@@ -93,11 +89,9 @@ class WebVideoDecoder implements VideoDecoder {
 	public function plane(f:VideoFrame, plane:Int):Null<String>
 		return null;
 
-	public function pixels(f:VideoFrame):Bytes {
-		var i = f.handle(), b = Bytes.alloc(Glue.pixels_length(i));
-		Glue.pixels(i, hxmc.Span.ofBytes(b));
-		return b;
-	}
+	// (none: the planes stay the page's; the browser test reads them in its own glue)
+	public function pixels(f:VideoFrame):Bytes
+		return Bytes.alloc(0);
 
 	public function close() {
 		if (h != 0) Glue.close(h);

@@ -32,33 +32,10 @@ export default function (host) {
 		return c;
 	};
 	const MATRIX = { bt709: 709, 'bt2020-ncl': 2020 };
-	// (a frame's planes, rows packed, as NV12 or P010: a test's, for its checksums)
-	async function planes(f) {
-		const rect = f.visibleRect, w = rect.width, h = rect.height, cw = (w + 1) >> 1, ch = (h + 1) >> 1;
-		// (RGB already: Firefox's software decoders' BGRX)
-		if (!/^(I4|NV)/.test(f.format ?? '')) return null;
-		const buf = new Uint8Array(f.allocationSize({ rect })), lay = await f.copyTo(buf, { rect });
-		const deep = f.format.includes('P10'), px = deep ? 2 : 1, out = new Uint8Array((w * h + cw * ch * 2) * px);
-		const nv = f.format.startsWith('NV12');
-		let at = 0;
-		const put = (v) => {
-			if (deep) { v <<= 6; out[at++] = v & 255; out[at++] = v >> 8; } else out[at++] = v;
-		};
-		const get = (p, x, y) => {
-			const o = lay[p].offset + y * lay[p].stride + x * px;
-			return deep ? buf[o] | (buf[o + 1] << 8) : buf[o];
-		};
-		for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) put(get(0, x, y));
-		for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
-			put(nv ? get(1, x * 2, y) : get(1, x, y));
-			put(nv ? get(1, x * 2 + 1, y) : get(2, x, y));
-		}
-		return out;
-	}
 	function frame(f, w, h) {
 		const s = f.colorSpace ?? {};
 		return { bitmap: f, premultiply: false, state: 1, width: w, height: h, time: f.timestamp ?? 0, matrix: MATRIX[s.matrix] ?? 601, full: s.fullRange ? 1 : 0,
-			bits: f.format?.includes('P10') ? 10 : 8, pixels: null };
+			bits: f.format?.includes('P10') ? 10 : 8 };
 	}
 	return {
 		helder_media: {
@@ -126,10 +103,11 @@ export default function (host) {
 				else C.isConfigSupported(config(kind, codec, d, n, a, b)).then((r) => settle(s, r.supported), () => settle(s, false));
 				return host.handles.add(s);
 			},
-			// a decoder: frames (or AudioData) kept in out as they come; copy:
-			// each frame's planes read first (a test's); gen: a reset's, what
-			// was in flight before it dropped
-			decoder(kind, codec, a, b, copy, space, d, n) {
+			// a decoder: frames (or AudioData) kept in out as they come (each
+			// first given to host.mediaFrame where a page set it: a test's,
+			// tests/media/web/check.mjs); gen: a reset's, what was in flight
+			// before it dropped
+			decoder(kind, codec, a, b, space, d, n) {
 				const v = { kind, config: config(kind, codec, d, n, a, b), out: [], hidden: new Set(), pending: 0, failed: false, gen: 0, dec: null };
 				const C = globalThis[kind ? 'AudioDecoder' : 'VideoDecoder'];
 				// (colours the stream does not name: BT.601's matrix, as ffmpeg and
@@ -141,7 +119,8 @@ export default function (host) {
 					if (v.hidden.delete(f.timestamp)) return f.close();
 					const o = frame(f, f.displayWidth, f.displayHeight), g = v.gen;
 					const done = () => { if (g !== v.gen) return f.close(); v.pending--; v.out.push(o); wake(); };
-					if (copy) planes(f).then((p) => { o.pixels = p; done(); }, done);
+					const seen = host.mediaFrame?.(o);
+					if (seen) seen.then(done, done);
 					else done();
 				};
 				try {
@@ -187,8 +166,6 @@ export default function (host) {
 			frame: (h) => { const o = get(h).out.shift(); return o ? host.handles.add(o) : 0; },
 			// its time (microseconds), size, matrix (601, 709, 2020), range (1: full), bits
 			info: (h, what) => { const o = get(h); return [o.time, o.width, o.height, o.matrix, o.full, o.bits][what]; },
-			pixels_length: (h) => get(h).pixels?.length ?? 0,
-			pixels(h, p, n) { const b = get(h).pixels; if (b) host.bytes(p, Math.min(n, b.length)).set(b.subarray(0, n)); },
 			release(h) {
 				get(h).bitmap.close?.();
 				host.handles.remove(h);
