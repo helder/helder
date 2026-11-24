@@ -76,16 +76,20 @@ class InspectorView implements Markup {
 			</view>
 			<view direction="row" justify="center" column-gap={6} padding="12 16 14 16">
 				<Standard.Button tag="open" variant="primary" size="sm" onPress={() -> x.open(e.name)}>Open</Standard.Button>
-				<Standard.Button tag="reveal" size="sm" icon={Glyphs.get("folder")} label={ViewerActions.reveal()} onPress={() -> x.perform(ShowInFolder)}/>
+				<Show when={ViewerActions.LOCAL}>
+					<Standard.Button tag="reveal" size="sm" icon={Glyphs.get("folder")} label={ViewerActions.reveal()} onPress={() -> x.perform(ShowInFolder)}/>
+				</Show>
 				<Show when={x.files.trash != null}>
 					<Standard.Button tag="trash" size="sm" icon={Glyphs.get("trash")} label={ViewerActions.trashLabel()} onPress={() -> x.perform(Trash)}/>
 				</Show>
-				<view ref={(n:Node) -> more = n}>
-					<Standard.Button tag="more" size="sm" icon={Glyphs.get("more")} label="More" onPress={() -> if (more != null && more.ui != null) {
-						var r = more.rect();
-						Menus.popup(more.ui, ViewerActions.more, r.x, r.y + r.height + 4, more);
-					}}/>
-				</view>
+				<Show when={ViewerActions.LOCAL}>
+					<view ref={(n:Node) -> more = n}>
+						<Standard.Button tag="more" size="sm" icon={Glyphs.get("more")} label="More" onPress={() -> if (more != null && more.ui != null) {
+							var r = more.rect();
+							Menus.popup(more.ui, ViewerActions.more, r.x, r.y + r.height + 4, more);
+						}}/>
+					</view>
+				</Show>
 			</view>
 			<view tag="details" padding="10 16 6 16" borders="1 0 0 0" border-color={Look.ref.line}>
 				<view direction="row" align-items="center" column-gap={6} height={24}>
@@ -127,7 +131,9 @@ class InspectorView implements Markup {
 			</view>
 			<view direction="row" justify="center" column-gap={6} padding="12 16 14 16">
 				<Standard.Button tag="open" variant="primary" size="sm" onPress={() -> x.open()}>{"Open " + all.length}</Standard.Button>
-				<Standard.Button tag="reveal" size="sm" icon={Glyphs.get("folder")} label={ViewerActions.reveal()} onPress={() -> x.perform(ShowInFolder)}/>
+				<Show when={ViewerActions.LOCAL}>
+					<Standard.Button tag="reveal" size="sm" icon={Glyphs.get("folder")} label={ViewerActions.reveal()} onPress={() -> x.perform(ShowInFolder)}/>
+				</Show>
 				<Show when={x.files.trash != null}>
 					<Standard.Button tag="trash" size="sm" icon={Glyphs.get("trash")} label={ViewerActions.trashLabel()} onPress={() -> x.perform(Trash)}/>
 				</Show>

@@ -25,6 +25,8 @@ class Explorer {
 	public var reveal:Null<String->Void> = null;
 	public var openDefault:Null<String->Void> = null;
 	public var copy:Null<String->Void> = null;
+	// the web's: a folder of the user's picked and shown (none: no button for it)
+	public var openFolder:Null<Void->Void> = null;
 	// the thumbnails' queue (the shell's; none: glyphs alone)
 	public var thumbnails:Null<Thumbnails> = null;
 	// the list's focus on its selection (the shell's, once the list is made)

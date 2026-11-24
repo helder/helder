@@ -81,10 +81,10 @@ class PdfPages {
 	}
 
 	// each page's size in points, as it is shown (turned), the file's size: the document opened and kept
-	public static function sizes(path:String):{sizes:Array<{width:Float, height:Float}>, fileSize:Int} {
+	public static function sizes(path:String, ?bytes:Bytes):{sizes:Array<{width:Float, height:Float}>, fileSize:Int} {
 		lock.acquire();
 		try {
-			var doc = document(path, null);
+			var doc = document(path, bytes);
 			var out = {sizes: [for (p in doc.pages) {width: p.width, height: p.height}], fileSize: doc.data.length};
 			lock.release();
 			return out;
@@ -95,9 +95,13 @@ class PdfPages {
 	}
 
 	// (the job's: an error said, not thrown)
-	public static function sizesOf(path:String):PdfSizes {
+	public static function sizesOf(path:String):PdfSizes
+		return sizesIn({path: path, bytes: null});
+
+	// (the web's job: the file's bytes read already, through its Files)
+	public static function sizesIn(req:{path:String, bytes:Null<Bytes>}):PdfSizes {
 		return try {
-			var s = sizes(path);
+			var s = sizes(req.path, req.bytes);
 			{sizes: s.sizes, fileSize: s.fileSize, error: null};
 		} catch (e:helder.pdf.PdfError) {
 			{sizes: [], fileSize: 0, error: e.kind == Encrypted ? "This PDF is protected by a password" : "A damaged PDF: " + e.message};
@@ -105,6 +109,15 @@ class PdfPages {
 			{sizes: [], fileSize: 0, error: "A damaged PDF: " + Std.string(e)};
 		}
 	}
+
+	#if (hxmc.target == "wasm32-wasi")
+	// the web's: the file's bytes read through the browser's files, its sizes
+	// on the page (Decode.onPage)
+	@:coroutine public static function read(files:WebFiles, path:String):PdfSizes {
+		var b = try files.bytes(path) catch (_:Dynamic) null;
+		return b == null ? {sizes: [], fileSize: 0, error: "The PDF could not be read"} : sizesIn({path: path, bytes: b});
+	}
+	#end
 
 	// how many pages the document at path has, when it is open (-1: not)
 	public static function pagesOf(path:String):Int {

@@ -25,13 +25,29 @@ class Preview {
 	public static function request(path:String, done:Shown->Void):Void->Void {
 		var stopped = false;
 		if (FolderModel.isMedia(path)) {
-			media(path, s -> if (!stopped) done(s));
+			media(() -> new helder.media.FileSource(path), s -> if (!stopped) done(s));
 			return () -> stopped = true;
 		}
 		// (a job that could not run: no preview, the glyph stays)
 		Async.launch(_ -> helder.jobs.Jobs.job(decode).run(path)).onCompletion((r, _) -> if (!stopped && r != null) done(shown(r)));
 		return () -> stopped = true;
 	}
+
+	#if (hxmc.target == "wasm32-wasi")
+	// the web's: the file read through the browser's files, decoded on a worker
+	public static function read(files:WebFiles, path:String, done:Shown->Void):Void->Void {
+		var stopped = false;
+		if (FolderModel.isMedia(path)) {
+			media(() -> files.open(path), s -> if (!stopped) done(s));
+			return () -> stopped = true;
+		}
+		Async.launch(_ -> {
+			var b = try files.bytes(path) catch (_:Dynamic) null;
+			b == null ? null : Decode.onPage(b) ? decodeBytes({path: path, bytes: b}) : helder.jobs.Jobs.job(decodeBytes).run({path: path, bytes: b});
+		}).onCompletion((r, _) -> if (!stopped && r != null) done(shown(r)));
+		return () -> stopped = true;
+	}
+	#end
 
 	// at once, on this thread (tests and stories)
 	public static function now(path:String, done:Shown->Void):Void->Void {
@@ -41,11 +57,18 @@ class Preview {
 
 	// (on the pool: the decode, its pixels copied out, fitted)
 	static function decode(path:String):{width:Int, height:Int, pw:Int, ph:Int, rgba:Null<Bytes>, pages:Int, format:String, error:Null<String>} {
-		return try decoded(path) catch (e:Dynamic) {width: 0, height: 0, pw: 0, ph: 0, rgba: null, pages: 0, format: "", error: "The preview failed: " + Std.string(e)};
+		return try fitted(Decode.file({path: path, side: SIDE})) catch (e:Dynamic) failed(e);
 	}
 
-	static function decoded(path:String):{width:Int, height:Int, pw:Int, ph:Int, rgba:Null<Bytes>, pages:Int, format:String, error:Null<String>} {
-		var d = Decode.file({path: path, side: SIDE});
+	// (the web's: the bytes read already)
+	static function decodeBytes(req:{path:String, bytes:Bytes}):{width:Int, height:Int, pw:Int, ph:Int, rgba:Null<Bytes>, pages:Int, format:String, error:Null<String>} {
+		return try fitted(Decode.of({path: req.path, bytes: req.bytes, side: SIDE})) catch (e:Dynamic) failed(e);
+	}
+
+	static function failed(e:Dynamic):{width:Int, height:Int, pw:Int, ph:Int, rgba:Null<Bytes>, pages:Int, format:String, error:Null<String>}
+		return {width: 0, height: 0, pw: 0, ph: 0, rgba: null, pages: 0, format: "", error: "The preview failed: " + Std.string(e)};
+
+	static function fitted(d:Decode.Decoded):{width:Int, height:Int, pw:Int, ph:Int, rgba:Null<Bytes>, pages:Int, format:String, error:Null<String>} {
 		if (d.error != null || d.frames.length == 0) {
 			Decode.release(d);
 			return {width: d.width, height: d.height, pw: 0, ph: 0, rgba: null, pages: d.pages, format: d.format, error: d.error};
@@ -69,9 +92,9 @@ class Preview {
 		};
 
 	// (a video's or an audio file's: its duration and size from its header, a video's keyframe)
-	static function media(path:String, done:Shown->Void) {
+	static function media(open:Void->helder.media.ByteSource, done:Shown->Void) {
 		Async.launch(_ -> {
-			var m = try helder.media.Media.open(new helder.media.FileSource(path)) catch (_:Dynamic) null;
+			var m = try helder.media.Media.open(open()) catch (_:Dynamic) null;
 			if (m == null) {
 				done({image: null, width: 0, height: 0, pages: 0, duration: 0, format: "", error: "Not a video or audio file this viewer reads"});
 				return;
@@ -83,7 +106,7 @@ class Preview {
 				done(s);
 				return;
 			}
-			var thumbs = new Thumbs(path);
+			var thumbs = new Thumbs(open);
 			thumbs.at(Math.min(2, duration * 0.1), img -> {
 				thumbs.close();
 				s.image = img;

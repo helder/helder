@@ -160,6 +160,31 @@ class Decode {
 		return try helder.jobs.Jobs.job(file).run({path: path, side: side}) catch (e:Dynamic) failed("corrupt", "The decode failed: " + Std.string(e), bytes.length, formatOf(bytes));
 	}
 
+	// a file's bytes read already (the web's, through its Files), as a job: a
+	// PDF's page from the document kept open in this thread by its path
+	public static function of(req:{path:String, bytes:Bytes, side:Int}):Decoded {
+		var k = parseKey(req.path);
+		return formatOf(req.bytes) == "PDF" ? pdf(k.path, req.bytes, k.page, req.side, req.bytes.length) : decode(req.bytes, req.side);
+	}
+
+	#if (hxmc.target == "wasm32-wasi")
+	// the web's decode: the bytes read through the browser's files, decoded on
+	// a worker (helder.jobs' Web Workers), a PDF on the page (onPage); never throws
+	@:coroutine public static function read(files:WebFiles, key:String, side:Int):Decoded {
+		var b = try files.bytes(parseKey(key).path) catch (_:Dynamic) null;
+		if (b == null) return failed("unreadable", "The file cannot be read", 0, "");
+		var req = {path: key, bytes: b, side: side};
+		return try onPage(b) ? of(req) : helder.jobs.Jobs.job(of).run(req) catch (e:Dynamic) failed("corrupt", "The decode failed: " + Std.string(e), b.length,
+			formatOf(b));
+	}
+
+	// (a PDF is drawn on the page itself: a Web Worker's instance of the
+	// program runs only the static initializers ordered before helder.jobs'
+	// (WebJobs'), and helder.pdf's tables come after them)
+	public static function onPage(b:Bytes):Bool
+		return formatOf(b) == "PDF";
+	#end
+
 	public static function decode(bytes:Bytes, side = 0):Decoded {
 		var format = formatOf(bytes);
 		if (bytes.length == 0) return failed("corrupt", "The file is empty", 0, "");
