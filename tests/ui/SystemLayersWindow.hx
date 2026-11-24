@@ -32,6 +32,8 @@ class SystemLayersWindow {
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 		if (r >= 0) return scene(a[r + 1], -1);
 		if (a.indexOf("--nan") >= 0) return lost();
+		if (a.indexOf("--swap") >= 0) return swap();
+		if (a.indexOf("--resize") >= 0) return resize();
 		if (t >= 0) return scene(null, Std.parseFloat(a[t + 1]), a.indexOf("anim") >= 0, a.indexOf("round") >= 0);
 		var dir = Sys.getEnv("TMPDIR") + "/system-layers-" + Std.random(1 << 30);
 		var self = Sys.programPath(), failed = 0;
@@ -45,6 +47,19 @@ class SystemLayersWindow {
 				Sys.println('SystemLayersWindow: FAIL: the run with HELDER_SYSTEM_LAYERS=$mode ended with $code');
 				Sys.exit(1);
 			}
+		}
+		// (#111: a sidebar switched between two views, each switch right after a
+		// frame that changed a box under it alone: the window's capture against its frame read back)
+		var p = new sys.io.Process(self, ["--swap"]), out = p.stdout.readAll().toString(), code = p.exitCode();
+		p.close();
+		Sys.print(out);
+		if (code != 0) failed++;
+		// (a live resize, on Core Animation's layers and on the window's alone: each frame presented against the window's size)
+		for (mode in ["1", "0"]) {
+			var p = new sys.io.Process("/usr/bin/env", ["HELDER_SYSTEM_LAYERS=" + mode, self, "--resize"]), out = p.stdout.readAll().toString(), code = p.exitCode();
+			p.close();
+			Sys.print(out);
+			if (code != 0) failed++;
 		}
 		// (a layout gone wrong: NaN everywhere, the window's frames on Core Animation's layers all the same)
 		var p = new sys.io.Process(self, ["--nan"]), out = p.stdout.readAll().toString(), code = p.exitCode();
@@ -274,6 +289,218 @@ class SystemLayersWindow {
 				w.frame();
 				frame++;
 			}
+			w.device.settle();
+		}, e -> w.handle(e));
+	}
+
+	// (#111: a sidebar with no background of its own switched between an
+	// overview (a scroller of rows) and a folder's level (a back row, a title
+	// and a scroller of a few rows), beside a pane that scrolls: each switch
+	// the frame after one that changed a box under it alone, which Core
+	// Animation's layers present at once, the switch in a transaction; once
+	// still, the window captured and its frame read back, which must match)
+	static function swap() {
+		var w = new UiWindow("SystemLayersWindow swap", 400, 300);
+		w.root.style.set({direction: Row, background: 0xFFF4F4F5, fontSize: 13});
+		var side = new Node(), box = new Node();
+		side.style.set({width: 160, shrink: 0, padding: 8, rowGap: 10, overflow: Hidden});
+		box.style.set({width: 40, height: 40, radius: 6, background: 0xFF52525B});
+		var pane = new Node();
+		pane.style.set({grow: 1, overflow: Scroll, background: 0xFFFFFFFF, radius: 10, margin: 8, padding: 8, rowGap: 4});
+		for (i in 0...40) {
+			var t = new Node();
+			t.style.set({height: 30, shrink: 0, radius: 6, background: i % 2 == 0 ? 0xFFE0ECFF : 0xFFFFE8D0});
+			pane.append(t);
+		}
+		w.root.append(side);
+		w.root.append(pane);
+		width = Std.int(w.window.width);
+		var view:Null<Node> = null;
+		function text(s:String, size = 13.0, weight = 400):TextNode {
+			var t = new TextNode(s);
+			t.style.set({fontSize: size, fontWeight: weight});
+			return t;
+		}
+		function show(level:Bool, k:Int) {
+			if (view != null) side.remove(view);
+			var v = view = new Node(), s = new Node();
+			v.style.set({height: 190, shrink: 0, rowGap: 6});
+			s.style.set({overflow: Scroll, grow: 1, minHeight: 0, rowGap: 1});
+			if (level) {
+				v.append(text("< " + ["ben", "Documents", "Pictures"][k % 3]));
+				v.append(text(["Documents", "CyFun", "Holiday"][k % 3], 17, 700));
+			} else
+				s.append(text("Locations", 11, 600));
+			for (i in 0...(level ? 1 + k % 3 : 10))
+				s.append(text((level ? "Folder " : "Place ") + i));
+			v.append(s);
+			side.insert(v, 0);
+		}
+		show(false, 0);
+		side.append(box);
+		var swaps = 40, k = 0, step = 0, at = 0, worst = 0, first = "", stale = 0, H = 0;
+		var back:Null<haxe.io.Bytes> = null, shot:Null<{width:Int, height:Int, pixels:haxe.io.Bytes}> = null;
+		App.run(() -> {
+			step++;
+			// (after a second: the window opened, its animation done)
+			if (step > 60) switch (step - 60) % 12 {
+				case 0:
+					// (a frame first, after the last one read back: the layers shown again)
+					box.style.radius = 6 + k % 2;
+				case 1:
+					// (two frames at once: the box's, then the switch's)
+					box.style.background = k % 2 == 0 ? 0xFF52525B : 0xFFE2462A;
+					w.frame();
+					show(k % 2 == 0, k);
+				case 9:
+					var view = w.window.surface.handle;
+					var id = OsThread.get(() -> helder.os.objc.Msg.i(helder.os.objc.Msg.id(view, helder.os.objc.ObjC.sel("window")), helder.os.objc.ObjC.sel("windowNumber")).toInt());
+					Sys.sleep(0.1);
+					shot = Capture.window(id);
+					H = Std.int(w.window.height);
+					w.capture = back = haxe.io.Bytes.alloc(width * H * 4);
+					w.ui.requestFrame();
+				case 10 if (shot != null && shot.width >= width && shot.height >= H):
+					// (the capture's content: its bottom rows; read back RGBA, captured BGRA)
+					var top = shot.height - H, left = (shot.width - width) >> 1, n = 0;
+					for (y in 0...H)
+						for (x in 0...width) {
+							// (the window's rounded corners: the desktop behind)
+							if ((y < 48 || y >= H - 48) && (x < 48 || x >= width - 48)) continue;
+							var a = ((top + y) * shot.width + left + x) * 4, b = (y * width + x) * 4, m = 0;
+							for (c in 0...3)
+								m = Std.int(Math.max(m, Math.abs(shot.pixels.get(a + 2 - c) - back.get(b + c))));
+							if (m > 48) n++;
+						}
+					// (the first: the window may still settle on its place)
+					if (n > 50 && k > 0) stale++;
+					if (n > worst && k > 0) {
+						worst = n;
+						first = 'switch $k';
+					}
+					k++;
+				case 10:
+					// (no capture of the window's size: counted, not compared)
+					k++;
+				case 11 if (k == swaps):
+					Sys.println('SystemLayersWindow: ${stale == 0 ? "ok" : "FAIL"}: a sidebar switched $swaps times, each the frame after a box under it changed alone: '
+						+ '$stale captures not the frame read back${worst > 0 ? ', at most $worst pixels off ($first)' : ""}');
+					w.close();
+					Sys.exit(stale == 0 ? 0 : 1);
+				case _:
+			}
+			w.frame();
+			w.device.settle();
+		}, e -> w.handle(e));
+	}
+
+	// (a live resize as AppKit runs one, scripted: the window told it starts,
+	// its frame set 24 times from the main thread (windowDidResize: each
+	// time, inside the call, as a drag of its edge does), told it ends; each
+	// drawable of the window's own layer presented logged against the
+	// window's size then: none of another size, each step's frame presented
+	// on the main thread, in the transaction that gives the window its size;
+	// then the program busy past the wait for a step, the window's content
+	// kept at its top left meanwhile)
+	static function resize() {
+		var w = new UiWindow("SystemLayersWindow resize", 400, 300);
+		w.root.style.set({direction: Row, background: 0xFFF4F4F5});
+		var list = new Node(), side = new Node(), mark = new Node();
+		list.style.set({overflow: Scroll, width: 160, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
+		for (i in 0...60)
+			list.append(new TextNode("Row " + i));
+		mark.style.set({position: Absolute, left: 0, top: 0, width: 40, height: 40, background: 0xFFE2462A});
+		side.style.set({grow: 1, background: 0xFF2A7AE2, margin: 8, radius: 8});
+		w.root.append(list);
+		w.root.append(side);
+		w.ui.overlay.append(mark);
+		var lock = new sys.thread.Mutex(), log:Array<Array<Int>> = [], step = -1;
+		helder.gfx.metal.MetalBackend.onPresent = (pw, ph, sw, sh, main) -> {
+			lock.acquire();
+			log.push([step, pw, ph, sw, sh, main ? 1 : 0]);
+			lock.release();
+		};
+		var handle = w.window.surface.handle, nsw = OsThread.get(() -> helder.os.objc.Msg.id(handle, helder.os.objc.ObjC.sel("window")));
+		function tell(name:String)
+			OsThread.run(() -> {
+				var s = helder.os.objc.ObjC.str(name), c = helder.os.objc.Msg.id(helder.os.objc.ObjC.cls("NSNotificationCenter"), helder.os.objc.ObjC.sel("defaultCenter"));
+				helder.os.objc.Msg.vPtrPtr(c, helder.os.objc.ObjC.sel("postNotificationName:object:"), s, nsw);
+				helder.os.objc.ObjC.release(s);
+			});
+		var steps = 24, frames = 0, scripting = false, busy = 0.0, stale = 0, synced = 0, shifted = -1, held = 0.0;
+		App.run(() -> {
+			// (a live resize's frame, the main thread waiting in its call)
+			if (scripting) {
+				if (busy > 0) Sys.sleep(busy);
+				w.frame();
+				w.device.settle();
+				return;
+			}
+			frames++;
+			if (frames == 20) {
+				scripting = true;
+				tell("NSWindowWillStartLiveResizeNotification");
+				for (i in 0...steps + 1) {
+					lock.acquire();
+					step = i;
+					lock.release();
+					var ww = 400 + 9 * (i + 1), hh = 300 + 7 * (i + 1);
+					OsThread.run(() -> hxmc.unsafe.Arena.scoped(a -> {
+						var old = helder.os.objc.Msg.rect(nsw, helder.os.objc.ObjC.sel("frame")), c = a.make(helder.os.objc.CGRect);
+						c.value.origin.x = 0;
+						c.value.origin.y = 0;
+						c.value.size.width = ww;
+						c.value.size.height = hh;
+						var f = helder.os.objc.Msg.rectRect(nsw, helder.os.objc.ObjC.sel("frameRectForContentRect:"), c.value);
+						// (its top left kept, as a drag of its bottom right edge does; y up)
+						c.value.origin.x = old.origin.x;
+						c.value.origin.y = old.origin.y + old.size.height - f.size.height;
+						c.value.size.width = f.size.width;
+						c.value.size.height = f.size.height;
+						// (the last step: the program busy past the wait from its frame on, the window's last frame shown at its top left)
+						if (i == steps) busy = 0.3;
+						var t0 = haxe.Timer.stamp();
+						helder.os.objc.Msg.vRectBool(nsw, helder.os.objc.ObjC.sel("setFrame:display:"), c.value, true);
+						held = Math.max(held, haxe.Timer.stamp() - t0);
+						// (committed, as the run loop does between a drag's events; the frame given up on: what the screen shows meanwhile)
+						helder.os.objc.Msg.v(helder.os.objc.ObjC.cls("CATransaction"), helder.os.objc.ObjC.sel("flush"));
+						if (i < steps) return;
+						Sys.sleep(0.12);
+						var id = helder.os.objc.Msg.i(nsw, helder.os.objc.ObjC.sel("windowNumber")).toInt(), img = Capture.window(id);
+						if (img == null) return;
+						// (the content's top left, 2 points in: the mark's red, unless the layers moved off the window's top)
+						var k = Std.int(w.window.width / ww), top = img.height - Std.int(w.window.height), o = ((top + 2 * k) * img.width + (img.width - Std.int(w.window.width)) / 2 + 2 * k) * 4;
+						var px = [img.pixels.get(Std.int(o) + 2), img.pixels.get(Std.int(o) + 1), img.pixels.get(Std.int(o))];
+						shifted = px[0] > 180 && px[1] < 120 && px[2] < 100 ? 0 : 1;
+						Sys.println('SystemLayersWindow: resize: the content\'s top left while the frame is late: $px');
+					}));
+				}
+				tell("NSWindowDidEndLiveResizeNotification");
+				scripting = false;
+				busy = 0;
+				lock.acquire();
+				for (e in log) {
+					if (e[0] < 0) continue;
+					if (e[1] != e[3] || e[2] != e[4]) stale++;
+				}
+				for (i in 0...steps) {
+					var ok = false;
+					for (e in log)
+						if (e[0] == i && e[5] == 1 && e[1] == e[3] && e[2] == e[4]) ok = true;
+					if (ok) synced++;
+				}
+				var n = log.length;
+				lock.release();
+				var mode = w.compositor != null && w.compositor.layers != null ? "Core Animation's layers" : "the window's layer";
+				// (the main thread held by the busy program no longer than CocoaWindow's wait, a frame's time over it)
+				var ok = stale == 0 && synced == steps && shifted <= 0 && held < 0.2;
+				Sys.println('SystemLayersWindow: ${ok ? "ok" : "FAIL"}: a live resize of $steps steps on $mode: $n frames presented, $stale at a size not the window\'s, '
+					+ '$synced of $steps steps\' frames presented on the main thread at the new size${shifted < 0 ? "" : shifted == 0 ? ", kept at the top left while late" : ", moved off the top left while late"}, '
+					+ 'the main thread held ${Math.round(held * 1000)} ms at most by a program busy 300 ms');
+				w.close();
+				Sys.exit(ok ? 0 : 1);
+			}
+			w.frame();
 			w.device.settle();
 		}, e -> w.handle(e));
 	}

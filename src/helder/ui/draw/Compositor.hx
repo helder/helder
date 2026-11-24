@@ -341,8 +341,10 @@ class Compositor implements RenderIdle {
 		if (r.framing) return;
 		var t = haxe.Timer.stamp();
 		lock.acquire();
-		var f = shown;
-		if (f == null || t - drained < period * 0.6 || !turn && drained > routedAt && t - routedAt < period * 0.6) {
+		var f = shown, s = device.surface;
+		// (one of another size than the window's now: a live resize's frame is the program's)
+		if (f == null || f.width != s.width || f.height != s.height || t - drained < period * 0.6
+			|| !turn && drained > routedAt && t - routedAt < period * 0.6) {
 			lock.release();
 			return;
 		}

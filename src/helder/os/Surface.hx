@@ -37,6 +37,9 @@ class Surface {
 	// a frame was handed to the screen (Metal: its drawable presented): a
 	// macOS window shows itself at its first, not empty before it
 	public var onPresent:Null<Void->Void> = null;
+	// a live resize (macOS: the window's edge dragged): its frames presented
+	// on the main thread, in the transaction that gives the window its size
+	@:noCompletion public var resizing = false;
 	// the size in pixels
 	@:typescript public var width(default, null):Int;
 	@:typescript public var height(default, null):Int;

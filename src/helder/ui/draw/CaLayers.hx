@@ -27,9 +27,12 @@ import hxmc.unsafe.*;
 // that changes the tree is one transaction: what it drew presented with it
 // (presentsWithTransaction), the layers and views placed, on the main
 // thread where views are in it (an NSView's, a UIView's), else on the
-// render thread; one that only draws presents at once, waiting for no
-// transaction, and one split into the window's layer alone (a scene over
-// the window) is the textured compositor's (single), as costly as it is.
+// render thread at once; one split into the window's layer alone (a scene
+// over the window) is the textured compositor's (single), as costly as it
+// is. Every drawable of the layers, the window's own frames' too, is
+// presented in a transaction: one presented at once beside them reaches
+// the screen by another way, in no order with them, an older frame over a
+// newer one (#111).
 // A layer is drawn as the compositor draws (UiShader, its quads moved to
 // the layer's pixels by whole pixels: the same pixels), single-sampled,
 // onto a clear target, and blended by the system over what is under it, so
@@ -49,6 +52,7 @@ class CaLayers extends LayerSplit {
 
 	final root:Ptr; // the window's CAMetalLayer
 	final view:Ptr; // its view
+	final surface:helder.os.Surface;
 	var stack = Ptr.nil(); // over its contents, the layers in order
 	final ios:Bool;
 	// (the display's period: commits no closer)
@@ -65,6 +69,7 @@ class CaLayers extends LayerSplit {
 
 	public function new(device:Device) {
 		super(new Plane(LayerPlane.BASE, null));
+		surface = device.surface;
 		root = device.surface.display;
 		view = device.surface.handle;
 		ios = hxmc.Platform.apple() >= 1;
@@ -74,6 +79,7 @@ class CaLayers extends LayerSplit {
 		});
 		period = 1 / (fps > 0 ? fps : 60);
 		(cast base : Plane).layer = root;
+		(cast base : Plane).presenting();
 	}
 
 	override function plane(kind:Int, key:Dynamic):LayerPlane
@@ -131,14 +137,9 @@ class CaLayers extends LayerSplit {
 		for (g in gone)
 			ops.push(g);
 		gone.resize(0);
-		// (nothing of the tree changes: what is drawn presented at once, as
-		// the window's frames are, waiting for no transaction)
-		lock.acquire();
-		var direct = ops.length == 0 && moves.length == 0 && !views && pending == 0;
-		lock.release();
 		for (p in toDraw) {
-			p.presenting(!direct);
-			if (at + p.len <= f.capacity && draw(r, mb, f, p.layer, p.bytes, p.len, p.runs, p.runTextures, p.kind == LayerPlane.BASE, b, at, direct)) {
+			p.presenting();
+			if (at + p.len <= f.capacity && draw(r, mb, f, p.layer, p.bytes, p.len, p.runs, p.runTextures, p.kind == LayerPlane.BASE, b, at)) {
 				at += p.len;
 				drawnTotal++;
 				quadsTotal += p.quads.length;
@@ -222,9 +223,9 @@ class CaLayers extends LayerSplit {
 
 	// (quads drawn onto a layer's next drawable, at buffer b's offset at)
 	function draw(r:Replay, mb:MetalBackend, f:CompositeFrame, layer:Ptr, bytes:Bytes, len:Int, runs:Array<Int>, runTextures:Array<Null<Texture>>,
-			opaque:Bool, b:Buffer, at:Int, direct = false):Bool {
+			opaque:Bool, b:Buffer, at:Int):Bool {
 		var c = commands;
-		mb.planeFrame(layer, direct);
+		mb.planeFrame(layer);
 		c.clear();
 		c.begin(Replay.BEGIN_FRAME);
 		c.end();
@@ -345,8 +346,14 @@ class CaLayers extends LayerSplit {
 		if (st.isNull()) {
 			st = stack = Runtime.objc_retain(Msg.id(ObjC.cls("CALayer"), S.layer));
 			CaLayers.setPoint(st, S.setAnchorPoint, 0, 0);
-			// (macOS: the hosting view's layer is y up; the layers are placed top down)
-			if (!ios) Msg.vBool(st, ObjC.sel("setGeometryFlipped:"), true);
+			// (macOS: the hosting view's layer is y up; the layers are placed top
+			// down, kept at its top as it resizes (kCALayerMinYMargin) until a
+			// frame of the new size places them: as the window's own frame is
+			// (CocoaWindow's contentsGravity))
+			if (!ios) {
+				Msg.vBool(st, ObjC.sel("setGeometryFlipped:"), true);
+				Msg.vInt(st, ObjC.sel("setAutoresizingMask:"), 8);
+			}
 			var r = root;
 			ops.push(() -> CaMsg.vPtrInt(r, ObjC.sel("insertSublayer:atIndex:"), st, 0));
 			rooted = ios;
@@ -445,9 +452,11 @@ class CaLayers extends LayerSplit {
 		p.placeSlot(x, y, w / cs, h / cs, a, b, cc, dd, alpha, cx0 / cs, ios ? cy0 / cs : sh - cy1 / cs, hw, hh, ops);
 	}
 	// (the frame's changes in one transaction: here, the layers being ours,
-	// or on the main thread where a native view moves with them, and after
-	// it while one runs there)
+	// or on the main thread where a native view moves with them or the
+	// window's edge is dragged (with the window's new size), and after it
+	// while one runs there)
 	function commit(ops:Array<Void->Void>, presents:Array<Ptr>, moves:Array<Void->Void>, views:Bool) {
+		var live = surface.resizing;
 		function apply() {
 			var pool = Runtime.objc_autoreleasePoolPush();
 			CATransaction.begin();
@@ -455,15 +464,18 @@ class CaLayers extends LayerSplit {
 				o();
 			for (m in moves)
 				m();
-			for (d in presents)
+			for (d in presents) {
+				MetalBackend.told(d, surface);
 				Msg.v(d, ObjC.sel("present"));
-			CATransaction.commit();
+			}
+			// (a live resize's: in AppKit's transaction, which gives the window its size)
+			CATransaction.commit(!live);
 			for (d in presents)
 				Runtime.objc_release(d);
 			Runtime.objc_autoreleasePoolPop(pool);
 		}
 		lock.acquire();
-		var main = moves.length > 0 || views || pending > 0 || rooted;
+		var main = moves.length > 0 || views || pending > 0 || rooted || live;
 		rooted = false;
 		if (main) pending++;
 		lock.release();
@@ -505,9 +517,6 @@ class CaLayers extends LayerSplit {
 		lock.acquire();
 		var busy = pending > 0;
 		lock.release();
-		CATransaction.begin();
-		Msg.vBool(root, S.setPresentsWithTransaction, false);
-		CATransaction.commit();
 		var st = stack;
 		if (!st.isNull()) {
 			var hide = () -> {
@@ -718,12 +727,6 @@ private class Plane extends LayerPlane {
 			CaLayers.setPoint(sl.handle, S.setPosition, x, y);
 	}
 
-	// (the window's: drawn onto by the textured compositor meanwhile)
-	override public function reset() {
-		super.reset();
-		withTransaction = false;
-	}
-
 	// (its CAMetalLayer, and a scroller's clip, made the first time; its drawable's size)
 	public function make(root:Ptr, scale:Float, ops:Array<Void->Void>) {
 		cs = scale;
@@ -755,11 +758,12 @@ private class Plane extends LayerPlane {
 		}
 	}
 
-	// (its drawables presented in the frame's transaction, else at once)
-	public function presenting(on:Bool) {
-		if (withTransaction == on) return;
-		withTransaction = on;
-		Msg.vBool(layer, S.setPresentsWithTransaction, on);
+	// (its drawables presented in a transaction, for good: the window's
+	// own frames too, MetalBackend's, as its layer then asks)
+	public function presenting() {
+		if (withTransaction) return;
+		withTransaction = true;
+		Msg.vBool(layer, S.setPresentsWithTransaction, true);
 	}
 
 	var withTransaction = false;

@@ -243,13 +243,8 @@ class MetalBackend {
 
 	// the next frame onto layer's next drawable (a CAMetalLayer of the
 	// window's: helder.ui.draw.CaLayers), kept for takePresents
-	// (direct: presented at once, as a window's frame is, not kept)
-	public function planeFrame(layer:Ptr, direct = false) {
+	public function planeFrame(layer:Ptr)
 		plane = layer;
-		planeDirect = direct;
-	}
-
-	var planeDirect = false;
 
 	// the drawables drawn by plane frames since, retained: presented by the
 	// caller in its transaction, then released
@@ -876,20 +871,48 @@ class MetalBackend {
 		activeQuery = -1;
 	}
 
-	public function endFrame() {
-		if (planing && planeDirect) {
-			planing = false;
-			Msg.vPtr(cmd, S.presentDrawable, drawable);
-			Msg.v(cmd, S.commit);
-			committed(cmd);
-			cmd = Ptr.nil();
-			drawable = Ptr.nil();
-			texture = Ptr.nil();
-			Runtime.objc_autoreleasePoolPop(pool);
-			pool = Ptr.nil();
-			shown = true;
-			return;
+	// (a drawable presented in a transaction: here at once, flushed (a
+	// thread with no run loop); on the main thread during a live resize, in
+	// the transaction that gives the window its size, and after those still
+	// to run there)
+	function present(d:Ptr) {
+		postLock.acquire();
+		var main = surface.resizing || posted > 0;
+		if (main) posted++;
+		postLock.release();
+		function run(flush:Bool) {
+			var t = ObjC.cls("CATransaction");
+			Msg.v(t, ObjC.sel("begin"));
+			told(d, surface);
+			Msg.v(d, ObjC.sel("present"));
+			Msg.v(t, ObjC.sel("commit"));
+			if (flush) Msg.v(t, ObjC.sel("flush"));
+			Runtime.objc_release(d);
 		}
+		if (!main) return run(true);
+		helder.os.OsThread.post(() -> {
+			run(false);
+			postLock.acquire();
+			posted--;
+			postLock.release();
+		});
+	}
+
+	final postLock = new sys.thread.Mutex();
+	var posted = 0;
+
+	// (a test's: each drawable of a window's own layer as it is presented in a
+	// transaction: its size, the window's then, whether on the main thread)
+	@:noCompletion public static var onPresent:Null<(w:Int, h:Int, sw:Int, sh:Int, main:Bool) -> Void> = null;
+
+	@:noCompletion public static function told(d:Ptr, s:Surface) {
+		var f = onPresent;
+		if (f == null || Msg.id(d, ObjC.sel("layer")) != s.display) return;
+		var t = Msg.id(d, S.texture);
+		f(Msg.i(t, S.width).toInt(), Msg.i(t, S.height).toInt(), s.width, s.height, hxmc.NativeThread.current() == 1);
+	}
+
+	public function endFrame() {
 		if (planing) {
 			// (presented with the transaction that places its layer: scheduled first, as presentsWithTransaction asks)
 			planing = false;
@@ -905,9 +928,24 @@ class MetalBackend {
 			return;
 		}
 		var presented = !drawable.isNull() && frameTarget == 0;
-		if (presented) Msg.vPtr(cmd, S.presentDrawable, drawable);
+		// (a live resize's frames presented in the transaction that gives the
+		// window its size: in transactions from then on, never presented at
+		// once again, as by two ways they would reach the screen in no order;
+		// the last made first, as one made after would wait for a transaction)
+		if (presented && surface.resizing && !Msg.b(layer, S.presentsWithTransaction)) {
+			if (!inFlight.isNull()) Msg.v(inFlight, ObjC.sel("waitUntilCompleted"));
+			Msg.vBool(layer, ObjC.sel("setPresentsWithTransaction:"), true);
+		}
+		// (a layer whose drawables Core Animation's layers present in their
+		// transactions (CaLayers): in one too, once scheduled, as they are)
+		var transacted = presented && Msg.b(layer, S.presentsWithTransaction);
+		if (presented && !transacted) Msg.vPtr(cmd, S.presentDrawable, drawable);
 		Msg.v(cmd, S.commit);
 		committed(cmd);
+		if (transacted) {
+			Msg.v(cmd, ObjC.sel("waitUntilScheduled"));
+			present(Runtime.objc_retain(drawable));
+		}
 		// (a frame into a shared texture: complete before the other process is told)
 		if (frameTarget != 0 && shared.exists(frameTarget)) Msg.v(cmd, ObjC.sel("waitUntilCompleted"));
 		cmd = Ptr.nil();
@@ -1089,5 +1127,6 @@ private class S {
 	public static final drawPrimitives = ObjC.sel("drawPrimitives:vertexStart:vertexCount:instanceCount:");
 	public static final endEncoding = ObjC.sel("endEncoding");
 	public static final presentDrawable = ObjC.sel("presentDrawable:");
+	public static final presentsWithTransaction = ObjC.sel("presentsWithTransaction");
 	public static final commit = ObjC.sel("commit");
 }
