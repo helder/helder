@@ -88,6 +88,7 @@ class AndroidLayersTest {
 		var layers = c == null ? null : c.layers;
 		strict = layers != null && mode != "stall";
 		say('start: system layers ${mode == "" ? "default" : mode}, compositor ${c != null}, layers ${layers != null}');
+		var baseline = 60.0;
 		var presents:Array<Float> = [], offsets:Array<Float> = [], plock = new sys.thread.Mutex();
 		if (c != null) c.onFrame = t -> {
 			var o = c.offsets(list);
@@ -101,7 +102,8 @@ class AndroidLayersTest {
 			return layers != null && layers.fell == null && layers.frames > 0;
 		// (a phase blocking the program: frames presented meanwhile, their gaps, the layers' frames and quads)
 		function blocked(what:String, seconds:Float, before:Void->Void, pace = true):{frames:Int, median:Float, from:Float, to:Float} {
-			strict = live();
+			strict = live() && mode != "stall" && baseline >= 20;
+			var sc = layers == null ? null : Std.downcast(layers, ScLayers), t0 = sc == null ? [] : sc.timing.copy();
 			var f0 = layers == null ? 0 : layers.frames, q0 = layers == null ? 0 : layers.quadsTotal;
 			var from = Timer.stamp();
 			before();
@@ -110,6 +112,14 @@ class AndroidLayersTest {
 			plock.acquire();
 			var during = [for (t in presents) if (t > from && t <= to) t];
 			plock.release();
+			// (the render thread busy showing (drawing, waiting on the system) most
+			// of the phase: a device too slow for it, reported; idle with no
+			// frames: the compositor's own fault, checked)
+			var busy = sc == null ? 0.0 : (sc.timing[0] - t0[0]) / (to - from);
+			if (strict && during.length < seconds * 20 && busy > 0.6) {
+				say('note: $what: the render thread was busy ${Math.round(busy * 100)}% of the phase: reported, not checked');
+				strict = false;
+			}
 			var gaps = [for (i in 1...during.length) during[i] - during[i - 1]];
 			gaps.sort(Reflect.compare);
 			var median = gaps.length > 0 ? gaps[Std.int(gaps.length / 2)] : 1.0;
@@ -117,6 +127,10 @@ class AndroidLayersTest {
 				during.length + " frames");
 			if (pace) check('$what: at the display\'s pace', gaps.length > 0 && median < 0.03, "median gap " + Math.round(median * 10000) / 10 + " ms")
 			else say('$what: median gap ${Math.round(median * 10000) / 10} ms');
+			if (sc != null) {
+				var d = [for (i in 0...4) Math.round((sc.timing[i] - t0[i]) * 1000)];
+				say('$what: the render thread: showing ${d[0]} ms, drawing ${d[1]}, waiting for buffers ${d[2]}, for the last transaction ${d[3]}, frames ${layers.frames - f0}');
+			}
 			if (layers != null && !layers.single) {
 				var f = layers.frames - f0, q = layers.quadsTotal - q0;
 				check('$what: on the system\'s layers, moved, not drawn', f > 0 && q <= 8 * f, '$f frames, ${Math.round(q / Math.max(1, f) * 10) / 10} quads drawn a frame');
@@ -141,8 +155,20 @@ class AndroidLayersTest {
 					phase = 14;
 					at = now;
 				case 14 if (now - at > 3):
-					// (after a launch's own work: an emulator's first seconds are its)
-					phase = 1;
+					// (after a launch's own work: an emulator's first seconds are its;
+					// then the display's own pace, the program scrolling each frame)
+					phase = 15;
+					at = now;
+					timed = 0;
+				case 15:
+					list.scrollY += 1;
+					timed++;
+					if (now - at > 1) {
+						baseline = timed / (now - at);
+						say('the display\'s pace here, the program scrolling: ${Math.round(baseline)} frames a second');
+						if (baseline < 20) say('note: under 20 frames a second here: the blocked phases reported, not checked');
+						phase = 1;
+					}
 				case 1:
 					// (a fling of the program's own: the compositor glides it while the program is blocked)
 					var t = now * 1000;

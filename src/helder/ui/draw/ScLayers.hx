@@ -72,10 +72,9 @@ class ScLayers extends LayerSplit {
 	final commands = new Commands();
 	var ring = 0;
 	// (the display's period: how long a transaction may take to be presented)
-	var period = 1 / 60;
+	@:allow(helder.ui.draw.ScPlane) var period = 1 / 60;
 	// (off for good: a buffer or a call failed; buffers taken back unreleased in a row)
 	var broken = false;
-	@:allow(helder.ui.draw.ScPlane) var stolen = 0;
 	@:allow(helder.ui.draw.ScPlane) var gl:Null<GLBackend> = null;
 
 	function new(device:Device) {
@@ -115,6 +114,7 @@ class ScLayers extends LayerSplit {
 
 	override public function show(r:Replay, f:CompositeFrame, now:Array<Float>, t:Float, shown:Null<Array<Float>>, drawn:Bool, moves:Array<Void->Void>) {
 		if (f.buffers.length == 0 || f.pipeline == null || broken) return;
+		var began = haxe.Timer.stamp();
 		gl = cast r.impl;
 		if (!attach()) return;
 		compose(f, now, t, shown, drawn);
@@ -155,12 +155,13 @@ class ScLayers extends LayerSplit {
 		changes += gone.length;
 		gone.resize(0);
 		for (p in toDraw) {
-			var buf = p.next();
+			var buf = p.next(), t0 = haxe.Timer.stamp();
 			if (buf == null || at + p.len > f.capacity || !draw(r, f, buf.texture, p, b, at)) {
 				p.invalidate();
-				if (buf == null) fail("no buffer");
+				if (!p.allocated) fail("no buffer");
 				continue;
 			}
+			timing[1] += haxe.Timer.stamp() - t0;
 			at += p.len;
 			drawnTotal++;
 			quadsTotal += p.quads.length;
@@ -170,16 +171,23 @@ class ScLayers extends LayerSplit {
 		if (changes > 0) {
 			// (one in flight: the last one presented first, or long enough)
 			var until = haxe.Timer.stamp() + period * 2;
+			var t0 = haxe.Timer.stamp();
 			while (Sc.presented() < sent && haxe.Timer.stamp() < until)
 				Sys.sleep(0.0005);
+			timing[3] += haxe.Timer.stamp() - t0;
 			stalled();
 			Sc.apply(tx, ++sent);
 		}
 		Sc.delete(tx);
 		tx = Ptr.nil();
 		frames++;
+		timing[0] += haxe.Timer.stamp() - began;
 		if (single) suspend();
 	}
+
+	// (seconds on the render thread in all: showing, drawing, waiting for a
+	// buffer, waiting for the last transaction's presentation: tests)
+	@:noCompletion public final timing = [0.0, 0.0, 0.0, 0.0];
 
 	// (ours under the window the surface has now, on the main thread: none
 	// where this Android has no reparent, the layers off then)
@@ -696,10 +704,14 @@ private class ScPlane extends LayerPlane {
 	// (a buffer to draw into: of its size now (those of another let go), one
 	// the system let go of, its release fence waited for, else a new one, up
 	// to two (one shown, one drawn: the last transaction is presented before
-	// the next applies), three for a small one (a thumb's, drawn each frame:
-	// not waiting for the last transaction's release before it draws))
+	// the next applies), three for a small one (a thumb's, drawn each frame);
+	// null while none is let go within a display period: drawn next frame,
+	// the frame's moves not held back by it. Off once one waited 1.5 s: the
+	// system never lets go of what it was given. allocated: false where a
+	// buffer could not be made)
 	public function next():Null<ScBuffer> {
 		var gl = owner.gl;
+		allocated = true;
 		if (pw != bufW || ph != bufH) {
 			for (b in buffers)
 				b.free(gl);
@@ -709,35 +721,32 @@ private class ScPlane extends LayerPlane {
 			bufW = pw;
 			bufH = ph;
 		}
-		var until = haxe.Timer.stamp() + 0.25;
+		var t0 = haxe.Timer.stamp(), until = t0 + owner.period;
 		while (true) {
 			for (b in buffers)
-				if (!b.busy) {
-					b.wait();
-					owner.stolen = 0;
+				if (!b.busy && b.ready()) {
+					waiting = -1;
+					owner.timing[2] += haxe.Timer.stamp() - t0;
 					return b;
 				}
 			if (buffers.length < (pw * ph * 4 <= owner.device.width * owner.device.height ? 3 : 2)) {
 				var b = ScBuffer.make(gl, pw, ph);
-				if (b != null) buffers.push(b);
+				if (b != null) buffers.push(b) else allocated = false;
+				waiting = -1;
 				return b;
 			}
 			if (haxe.Timer.stamp() > until) break;
 			Sys.sleep(0.0005);
 			owner.released();
 		}
-		// (none let go in 250 ms: a transaction's callback lost; the oldest
-		// not shown, the layers off after three in a row: the system never
-		// lets go of what it was given)
-		if (++owner.stolen >= 3) owner.fail("buffers never released");
-		for (b in buffers)
-			if (b != shownBuffer) {
-				b.busy = false;
-				queued.resize(0);
-				return b;
-			}
+		var t = haxe.Timer.stamp();
+		owner.timing[2] += t - t0;
+		if (waiting < 0) waiting = t0 else if (t - waiting > 1.5) owner.fail("buffers never released");
 		return null;
 	}
+
+	public var allocated = true;
+	var waiting = -1.0;
 
 	// (buffer b drawn, done once fence is (-1: done), set in transaction seq)
 	public function queue(b:ScBuffer, fence:Int, seq:Int) {
@@ -854,12 +863,13 @@ private class ScBuffer {
 		busy = false;
 	}
 
-	// (its release fence waited for: before it is drawn into)
-	public function wait() {
-		if (fence < 0) return;
-		Sc.wait(fence);
+	// (whether its release fence signalled (a little waited for): drawn into only then)
+	public function ready():Bool {
+		if (fence < 0) return true;
+		if (!Sc.wait(fence)) return false;
 		Posix.close(fence);
 		fence = -1;
+		return true;
 	}
 
 	public function free(gl:GLBackend) {
@@ -1044,12 +1054,12 @@ private class Sc {
 		return image.isNull() ? 0 : gl.imageTexture(image, w, h);
 	}
 
-	// (a fence waited for, at most 100 ms)
-	public static function wait(fd:Int) {
+	// (whether a fence signalled, waited for 4 ms at most: next's loop waits on)
+	public static function wait(fd:Int):Bool {
 		var p = Mem.stack(8);
 		Mem.setI32(p, 0, fd);
 		Mem.setI32(p, 4, 1); // POLLIN
-		FencePoll.poll(p, 1, 100);
+		return FencePoll.poll(p, 1, 4) > 0;
 	}
 
 	// the last transaction the system presented

@@ -1577,8 +1577,9 @@ paint). A full-window scroller's layer covers what it recorded, its
 tiles' columns too (1600×5700 for a 1080×2400 list: about 70 MB in two
 buffers). Below 33, or where a call or a buffer fails, the textured
 compositor; and while running, where the system misbehaves (no
-transaction reported presented for 1.5 s, a layer's buffers never let go
-of three times in a row), the layers turn off for good and the program
+transaction reported presented for 1.5 s, a layer kept 1.5 s from a
+buffer: one not let go of within a display period is drawn the next
+frame, the frame's moves not held back by it), the layers turn off for good and the program
 draws its next frame onto the window (`LayerSplit.fell`).
 `tests/ui/android-layers.sh` (CI's android job) runs `AndroidLayersTest`
 three ways: system layers, the textured compositor, and the layers
