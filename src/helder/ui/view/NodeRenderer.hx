@@ -123,6 +123,9 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 			case "field:textarea": new helder.ui.widgets.TextArea();
 			// (the system's web view where the window has one: helder.ui.platform.WebView)
 			case "webview": new helder.ui.platform.WebView();
+			// (Liquid Glass: the system's where it has one, else drawn)
+			case "glass": new Glass();
+			case "glass-group": new GlassGroup();
 			// (the neutral elements' DOM names: a view or text here, their element in a page)
 			case t if (StringTools.startsWith(t, "view:")):
 				var n = new Node(t.substr(5));
@@ -486,6 +489,23 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 
 	@:attribute static function backGesture(n:Node, name:String, v:Dynamic)
 		webView(n, name).backGesture = !(v == false || v == "false");
+
+	// (glass's, <glass>: the colour it leans to, whether it answers a press;
+	// <glass-group>'s: how near its glass merges)
+	@:attribute static function tint(n:Node, name:String, v:Dynamic) {
+		if (!Std.isOfType(n, Glass)) noAttribute(n, name);
+		(cast n : Glass).tint = v == null ? null : @:privateAccess StyleAttrs.colorOf(v);
+	}
+
+	@:attribute static function interactive(n:Node, name:String, v:Dynamic) {
+		if (!Std.isOfType(n, Glass)) noAttribute(n, name);
+		(cast n : Glass).interactive = v == true || v == "true" || v == "";
+	}
+
+	@:attribute static function spacing(n:Node, name:String, v:Dynamic) {
+		if (!Std.isOfType(n, GlassGroup)) noAttribute(n, name);
+		(cast n : GlassGroup).spacing = v == null ? 0 : Std.isOfType(v, String) ? Std.parseFloat(v) : v;
+	}
 
 	static function webView(n:Node, name:String):helder.ui.platform.WebView {
 		if (!Std.isOfType(n, helder.ui.platform.WebView)) noAttribute(n, name);
