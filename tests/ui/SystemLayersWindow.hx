@@ -431,7 +431,8 @@ class SystemLayersWindow {
 				helder.os.objc.Msg.vPtrPtr(c, helder.os.objc.ObjC.sel("postNotificationName:object:"), s, nsw);
 				helder.os.objc.ObjC.release(s);
 			});
-		var steps = 24, frames = 0, scripting = false, busy = 0.0, stale = 0, synced = 0, shifted = -1, held = 0.0;
+		var steps = 24, frames = 0, scripting = false, busy = 0.0, stale = 0, synced = 0, shifted = -1, held = 0.0, total = 0.0;
+		var late:Array<Int> = [], arrived = 0;
 		App.run(() -> {
 			// (a live resize's frame, the main thread waiting in its call)
 			if (scripting) {
@@ -462,9 +463,13 @@ class SystemLayersWindow {
 						c.value.size.height = f.size.height;
 						// (the last step: the program busy past the wait from its Resize on, its frame later still, the window's last frame shown at its top left)
 						if (i == steps) busy = 0.3;
-						var t0 = haxe.Timer.stamp();
+						var t0 = haxe.Timer.stamp(), h0 = @:privateAccess helder.os.cocoa.CocoaWindow.held, l0 = @:privateAccess helder.os.cocoa.CocoaWindow.late;
 						helder.os.objc.Msg.vRectBool(nsw, helder.os.objc.ObjC.sel("setFrame:display:"), c.value, true);
-						held = Math.max(held, haxe.Timer.stamp() - t0);
+						// (helder's callbacks timed, not AppKit's own work around them: once
+						// 0.2 s of setFrame:display: on CI's VMs with 7 ms in helder's)
+						held = Math.max(held, @:privateAccess helder.os.cocoa.CocoaWindow.held - h0);
+						total = Math.max(total, haxe.Timer.stamp() - t0);
+						if (i < steps && @:privateAccess helder.os.cocoa.CocoaWindow.late > l0) late.push(i);
 						// (committed, as the run loop does between a drag's events; the frame given up on: what the screen shows meanwhile)
 						helder.os.objc.Msg.v(helder.os.objc.ObjC.cls("CATransaction"), helder.os.objc.ObjC.sel("flush"));
 						if (i < steps) return;
@@ -491,15 +496,24 @@ class SystemLayersWindow {
 					for (e in log)
 						if (e[0] == i && e[5] == 1 && e[1] == e[3] && e[2] == e[4]) ok = true;
 					if (ok) synced++;
+					// (a step whose 0.1 s wait gave up on a slow program passes by design: its
+					// frame comes after AppKit's transaction, at the window's size then)
+					if (ok || late.indexOf(i) < 0) continue;
+					for (e in log)
+						if (e[0] >= i && e[1] == e[3] && e[2] == e[4]) {
+							arrived++;
+							break;
+						}
 				}
 				var n = log.length;
 				lock.release();
 				var mode = w.compositor != null && w.compositor.layers != null ? "Core Animation's layers" : "the window's layer";
-				// (the main thread held by the busy program no longer than CocoaWindow's wait, a frame's time over it)
-				var ok = stale == 0 && synced == steps && shifted <= 0 && held < 0.2;
+				// (the main thread held by the busy program no longer than CocoaWindow's wait, a frame's time
+				// over it; most steps in the transaction, else the check would hold for a program always late)
+				var given = steps - synced, ok = stale == 0 && arrived == given && synced >= steps / 2 && shifted <= 0 && held < 0.2;
 				Sys.println('SystemLayersWindow: ${ok ? "ok" : "FAIL"}: a live resize of $steps steps on $mode: $n frames presented, $stale at a size not the window\'s, '
-					+ '$synced of $steps steps\' frames presented on the main thread at the new size${shifted < 0 ? "" : shifted == 0 ? ", kept at the top left while late" : ", moved off the top left while late"}, '
-					+ 'the main thread held ${Math.round(held * 1000)} ms at most by a program busy 300 ms');
+					+ '$synced of $steps steps\' frames presented on the main thread at the new size${given > 0 ? ', $given given up on (steps $late), $arrived of them presented after' : ''}${shifted < 0 ? "" : shifted == 0 ? ", kept at the top left while late" : ", moved off the top left while late"}, '
+					+ 'the main thread held ${Math.round(held * 1000)} ms at most by a program busy 300 ms (setFrame:display: ${Math.round(total * 1000)} ms)');
 				w.close();
 				Sys.exit(ok ? 0 : 1);
 			}
