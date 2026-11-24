@@ -141,30 +141,34 @@ class AndroidLayersTest {
 			plock.acquire();
 			var during = [for (t in presents) if (t > from && t <= to) t];
 			plock.release();
-			// (the render thread busy showing (drawing, waiting on the system) most
-			// of the phase: a device too slow for it, reported; idle with no
-			// frames: the compositor's own fault, checked)
+			// (the device too slow for the phase, the frame count and the pace
+			// reported, not checked: the render thread busy showing (drawing,
+			// waiting on the system) most of it; waiting for the system to
+			// present the last transaction most of it (a loaded emulator's
+			// pace); or each frame shown taking most of a display period (CI's
+			// emulator: 56 frames in 3 s, each shown in 18 ms, on its pace).
+			// An idle compositor shows few frames quickly, a stalled one none:
+			// checked, and under 4 frames a second whatever the device)
 			var busy = sc == null ? 0.0 : (sc.timing[0] - t0[0]) / (to - from);
-			// (and waiting for the system to present the last transaction most of
-			// it: the system's pace, slower than the display's (a loaded emulator))
 			var systems = sc == null ? 0.0 : (sc.timing[3] - t0[3]) / (to - from);
-			if (strict && during.length < seconds * 20 && busy > 0.6) {
-				say('note: $what: the render thread was busy ${Math.round(busy * 100)}% of the phase: reported, not checked');
-				strict = false;
-			}
+			var shown = sc == null ? 0 : layers.frames - f0;
+			var each = shown == 0 ? 0.0 : (sc.timing[0] - t0[0]) / shown;
+			var slow = busy > 0.6 || systems > 0.4 || each > 0.8 / 60;
 			var gaps = [for (i in 1...during.length) during[i] - during[i - 1]];
 			gaps.sort(Reflect.compare);
 			var median = gaps.length > 0 ? gaps[Std.int(gaps.length / 2)] : 1.0;
-			check('$what: frames presented while the program was blocked ${Math.round(seconds * 1000)} ms', during.length >= seconds * 20,
-				during.length + " frames");
-			var paced = strict;
-			if (pace && strict && median >= 0.03 && systems > 0.4) {
-				say('note: $what: the system presented at ${Math.round(1 / median)} a second, waited for ${Math.round(systems * 100)}% of the phase: reported, not checked');
+			var checked = strict;
+			if (strict && slow && (during.length < seconds * 20 || pace && median >= 0.03)) {
+				say('note: $what: the render thread busy ${Math.round(busy * 100)}% of the phase, waiting on the system ${Math.round(systems * 100)}%, ${Math.round(each * 10000) / 10} ms a frame shown: reported, not checked');
 				strict = false;
 			}
+			check('$what: frames presented while the program was blocked ${Math.round(seconds * 1000)} ms', during.length >= seconds * 20,
+				during.length + " frames");
 			if (pace) check('$what: at the display\'s pace', gaps.length > 0 && median < 0.03, "median gap " + Math.round(median * 10000) / 10 + " ms")
 			else say('$what: median gap ${Math.round(median * 10000) / 10} ms');
-			strict = paced;
+			strict = checked;
+			// (a compositor that stalls or idles on any device)
+			if (strict) check('$what: at least 4 frames a second', during.length >= seconds * 4, during.length + " frames");
 			if (sc != null) {
 				var d = [for (i in 0...4) Math.round((sc.timing[i] - t0[i]) * 1000)];
 				say('$what: the render thread: showing ${d[0]} ms, drawing ${d[1]}, waiting for buffers ${d[2]}, for the last transaction ${d[3]}, frames ${layers.frames - f0}');
@@ -251,13 +255,19 @@ class AndroidLayersTest {
 					// (still: a whole offset, the box at rest, for the screencaps)
 					// (on whole pixels: 8 points are 21 pixels at 2.625)
 					list.scrollY = 304;
-					// (on whole pixels at 2.625, a phone's density: 8 points are 21 pixels)
+					// (on whole pixels at 2.625, a phone's density: 8 points are 21 pixels;
+					// see-through, from 0.4: its colour checked in each mode)
 					mover.style.transform = Transform.parse("translate(100px, 34px)");
-					mover.style.opacity = 1;
+					mover.style.opacity = 0.6;
 					phase = 5;
 					at = now;
 				case 5 if (now - at > 5):
 					say('slot at ${Math.round((slotted.absX + 32) * k)} ${Math.round((slotted.absY + 8 - list.scrollY) * k)}');
+					// (the box at 0.6 over the header: its colour then, in every mode)
+					var bg = 0x18181B, fg = 0x2A7AE2, mix = 0;
+					for (c in [16, 8, 0])
+						mix |= Math.round(0.6 * (fg >> c & 0xFF) + 0.4 * (bg >> c & 0xFF)) << c;
+					say('box at ${Math.round(164 * k)} ${Math.round(96 * k)} ${StringTools.hex(mix, 6)}');
 					say("still 1");
 					phase = 6;
 					at = now;
@@ -272,9 +282,12 @@ class AndroidLayersTest {
 				case 7:
 					list.scrollY += 4;
 					timed++;
-					if (timed == 240) {
+					// (240 frames, or 8 s on a device too slow for them: the stills' script waits)
+					if (timed == 240 || now - t0 > 8) {
 						var ms = (cpu() - cpu0) / timed, q = layers == null ? 0 : layers.quadsTotal - q0;
 						say('timed: steady scroll: $timed frames in ${Math.round((now - t0) * 10) / 10} s, CPU ${Math.round(ms * 100) / 100} ms a frame, ${Math.round(q / timed * 10) / 10} quads drawn a frame');
+						// (where 240 frames take it, however many there were: the same in every mode for the stills)
+						list.scrollY = 304 + 4 * 240;
 						mover.style.transition = Transition.parse("transform 4s linear, opacity 4s linear");
 						mover.style.transform = Transform.parse("translate(240px, 300px)");
 						mover.style.opacity = 1;

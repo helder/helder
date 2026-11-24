@@ -354,6 +354,7 @@ class Ui extends ScrollHost {
 		for (n in natives.copy())
 			n.syncNative();
 		helder.ui.motion.Motions.updating = false;
+		@:privateAccess ScreenContext.current.ticked = false;
 		if (helder.ui.motion.Motions.on) helder.ui.motion.Motions.updated();
 	}
 
