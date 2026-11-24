@@ -19,7 +19,8 @@ import helder.view.graph.Signal;
 // system layers (helder.ui.draw.CaLayers) where the node is a plain
 // rectangle (no radius) and the picture upright (SampleLayer:
 // AVSampleBufferDisplayLayer, the frames queued with their times on a
-// timebase kept to the player's clock), clipped and moved with its
+// timebase kept to the player's clock; Android's ScLayers: SurfaceLayer,
+// MediaCodec rendering onto a SurfaceControl), clipped and moved with its
 // scrollers; asked for, not the default, until its colours are measured
 // on hardware (a virtual Mac's window server showed them some 30 levels
 // off). While it plays the animation clock ticks it (Clock.add): the
@@ -49,6 +50,7 @@ class VideoNode extends Node {
 	var ticking = false;
 	var drawn:Null<VideoFrame>;
 	var queued = -1;
+	var placing = false;
 	final id = -(++ids) - 4000000;
 
 	static var ids = 0;
@@ -136,6 +138,11 @@ class VideoNode extends Node {
 	}
 
 	function advance(p:Player) {
+		if (placing) {
+			placing = false;
+			layerChanged();
+			ui.requestFrame();
+		}
 		var f = sample != null ? sample.feed(p) : p.update();
 		var t = p.time;
 		if (time.peek() != t) {
@@ -145,8 +152,12 @@ class VideoNode extends Node {
 		if (playing.peek() != p.playing) playing(p.playing);
 		if (f != drawn) {
 			drawn = f;
-			// (the system's layer shows it: nothing of helder's drawn again)
-			if (sample == null) layerChanged();
+			// (the system's layer shows it: nothing of helder's drawn again;
+			// else a frame asked for: a clock's step alone paints none)
+			if (sample == null) {
+				layerChanged();
+				ui.requestFrame();
+			}
 		}
 	}
 
@@ -222,8 +233,10 @@ class VideoNode extends Node {
 			var sl = sample = SampleLayer.make(this);
 			if (sl != null) {
 				sl.fit(fit);
-				// (the frame shown queued on it at the next tick)
+				// (the frame shown queued on it at the next tick, which asks
+				// for a frame that places the slot: this one, a frame's, is done)
 				drawn = null;
+				placing = true;
 				tick();
 			}
 		}
@@ -231,7 +244,12 @@ class VideoNode extends Node {
 		if (sample != null) sample.slot.shown = visible();
 	}
 
+	// (its content box as last painted: a system layer's fit, Android's)
+	@:allow(helder.media.ui) final box = [0.0, 0.0];
+
 	override public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {
+		box[0] = width;
+		box[1] = height;
 		var p = player;
 		if (sample != null || p == null || width <= 0 || height <= 0) return;
 		var f = p.shown;

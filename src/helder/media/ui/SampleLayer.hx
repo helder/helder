@@ -15,7 +15,8 @@ import hxmc.unsafe.*;
 // control timebase kept at the player's clock (a frame shows once the
 // timebase is at its time; stopped, so the clock alone moves it), on the
 // main thread (OsThread: posted, the sample buffers made on the program's). Fit is
-// the layer's video gravity, the layer clipping to its bounds. make: null
+// the layer's video gravity, the layer clipping to its bounds. On Android
+// a SurfaceLayer (MediaCodec onto a SurfaceControl in the slot). make: null
 // where the system has none.
 @:hxmc.unsafe(gc)
 class SampleLayer {
@@ -26,16 +27,33 @@ class SampleLayer {
 	#end
 	var last:Null<VideoFrame>;
 	var at = -1.0;
+	#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
+	var android:Null<SurfaceLayer>;
+	#end
 
 	public static function make(owner:VideoNode):Null<SampleLayer> {
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		if (Platform.os() == 1) return new SampleLayer();
 		#end
+		#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
+		if (Platform.target() >= 9) {
+			var s = SurfaceLayer.make(owner);
+			if (s == null) return null;
+			var l = new SampleLayer(s.slot);
+			l.android = s;
+			return l;
+		}
+		#end
 		return null;
 	}
 
-	function new() {
+	function new(?slot:LayerSlot) {
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
+		if (slot != null) {
+			this.slot = slot;
+			layer = timebase = Ptr.nil();
+			return;
+		}
 		Posix.dlopen(Mem.cstr("/System/Library/Frameworks/AVFoundation.framework/AVFoundation"), 2);
 		var l = layer = helder.os.OsThread.get(() -> {
 			var l = Msg.id(Msg.id(ObjC.cls("AVSampleBufferDisplayLayer"), ObjC.sel("alloc")), ObjC.sel("init"));
@@ -50,13 +68,16 @@ class SampleLayer {
 		CoreMedia.CMTimebaseSetRate(timebase, 0);
 		var tb = timebase;
 		helder.os.OsThread.run(() -> Msg.vPtr(l, ObjC.sel("setControlTimebase:"), tb));
-		slot = new LayerSlot(layer);
+		this.slot = new LayerSlot(layer);
 		#else
-		slot = new LayerSlot(hxmc.unsafe.Ptr.nil());
+		this.slot = slot ?? new LayerSlot(hxmc.unsafe.Ptr.nil());
 		#end
 	}
 
 	public function fit(f:ImageFit) {
+		#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
+		if (android != null) android.fit = f;
+		#end
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		var name = switch f {
 			case Cover: "AVLayerVideoGravityResizeAspectFill";
@@ -73,6 +94,9 @@ class SampleLayer {
 
 	// (each tick: the frame due enqueued once, the timebase at the clock)
 	public function feed(p:Player):Null<VideoFrame> {
+		#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
+		if (android != null) return android.feed(p);
+		#end
 		var f = p.update();
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		if (f != null && f != last) {
@@ -153,7 +177,7 @@ class SampleLayer {
 		at = -1;
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		var l = layer;
-		helder.os.OsThread.post(() -> Msg.v(l, ObjC.sel("flush")));
+		if (!l.isNull()) helder.os.OsThread.post(() -> Msg.v(l, ObjC.sel("flush")));
 		#end
 	}
 
@@ -163,7 +187,7 @@ class SampleLayer {
 		at = -1;
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		var l = layer;
-		helder.os.OsThread.post(() -> Msg.v(l, ObjC.sel("flushAndRemoveImage")));
+		if (!l.isNull()) helder.os.OsThread.post(() -> Msg.v(l, ObjC.sel("flushAndRemoveImage")));
 		#end
 	}
 
@@ -171,6 +195,12 @@ class SampleLayer {
 	// frame that no longer has the slot, which still names it: let go of a
 	// second later, not before)
 	public function dispose() {
+		#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
+		if (android != null) {
+			android.dispose();
+			return;
+		}
+		#end
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		var l = layer, tb = timebase;
 		helder.os.OsThread.post(() -> Msg.v(l, ObjC.sel("flushAndRemoveImage")));

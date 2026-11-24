@@ -17,7 +17,9 @@ import helder.media.ui.VideoShader;
 // are the decoder's surfaces opened as textures (Device.openShared: Apple's
 // IOSurfaces, no copy), kept by their handle while the decoder's pool
 // reuses them (at most KEEP; one not used for long let go); in a browser
-// the frame copied into an RGBA texture on the GPU first
+// the frame copied into an RGBA texture on the GPU first; on Android the
+// decoder's AHardwareBuffer sampled as an external texture, its YUV the
+// driver's to convert
 class VideoTexture {
 	static inline var KEEP = 24;
 
@@ -40,6 +42,9 @@ class VideoTexture {
 		this.device = device;
 		var desc = VideoShader.pipeline({});
 		desc.colorFormat = RGBA8;
+		#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
+		if (hxmc.Platform.target() >= 9) desc = external(desc);
+		#end
 		pipeline = device.createPipeline(desc);
 		var v = VideoShader.vertexBytes([{pos: new Vec2(-1, -1)}, {pos: new Vec2(3, -1)}, {pos: new Vec2(-1, 3)}]);
 		triangle = device.createBuffer({size: v.length, usage: Vertex, data: v});
@@ -60,6 +65,9 @@ class VideoTexture {
 		#if (hxmc.target == "wasm32-wasi")
 		return browser(f, rotation);
 		#else
+		#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
+		if (hxmc.Platform.target() >= 9) return android(f, rotation);
+		#end
 		luma = open(f.plane(0), f.width, f.height);
 		chroma = open(f.plane(1), (f.width + 1) >> 1, (f.height + 1) >> 1);
 		if (luma == null || chroma == null) return false;
@@ -98,7 +106,37 @@ class VideoTexture {
 			r: new Vec4(1, 0, 0, 0),
 			g: new Vec4(0, 1, 0, 0),
 			b: new Vec4(0, 0, 1, 0),
-			turn: new Vec4(Std.int(rotation / 90) & 3, 0, 1, 0)
+			turn: new Vec4(Std.int(rotation / 90) & 3, 1, 1, 1)
+		}, bytes);
+		return true;
+	}
+	#end
+
+	#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
+	// (Android's pass: the decoder's AHardwareBuffers as external textures,
+	// samplerExternalOES, the driver converting their YUV as the codec
+	// tagged them; GLSL ES's, the shader's own otherwise)
+	static function external(desc:helder.gfx.PipelineDesc):helder.gfx.PipelineDesc {
+		var f = VideoShader.fragmentCode, glsl = f.glsl ?? "";
+		glsl = StringTools.replace(glsl, "sampler2D", "samplerExternalOES");
+		glsl = StringTools.replace(glsl, "#version 300 es\n", "#version 300 es\n#extension GL_OES_EGL_image_external_essl3 : require\n");
+		return {program: {vertex: VideoShader.vertexCode, fragment: {glsl: glsl, bindings: f.bindings}}, layout: desc.layout, colorFormat: RGBA8};
+	}
+
+	// (f's buffer, opened the first time it comes (the decoder's pool
+	// reuses them), its crop the share sampled, turned as planes are)
+	function android(f:VideoFrame, rotation:Int):Bool {
+		var h = f.plane(0);
+		if (h == null) return false;
+		var at = h.split(":"), bw = Std.parseInt(at[2]) ?? f.width, bh = Std.parseInt(at[3]) ?? f.height;
+		var t = open(h, bw, bh);
+		if (t == null) return false;
+		luma = chroma = t;
+		VideoShader.params.video.write({
+			r: new Vec4(1, 0, 0, 0),
+			g: new Vec4(0, 1, 0, 0),
+			b: new Vec4(0, 0, 1, 0),
+			turn: new Vec4(Std.int(rotation / 90) & 3, f.width / bw, 1, f.height / bh)
 		}, bytes);
 		return true;
 	}

@@ -68,7 +68,8 @@ export declare class Player {
 // system layers (helder.ui.draw.CaLayers) where the node is a plain
 // rectangle (no radius) and the picture upright (SampleLayer:
 // AVSampleBufferDisplayLayer, the frames queued with their times on a
-// timebase kept to the player's clock), clipped and moved with its
+// timebase kept to the player's clock; Android's ScLayers: SurfaceLayer,
+// MediaCodec rendering onto a SurfaceControl), clipped and moved with its
 // scrollers; asked for, not the default, until its colours are measured
 // on hardware (a virtual Mac's window server showed them some 30 levels
 // off). While it plays the animation clock ticks it (Clock.add): the
