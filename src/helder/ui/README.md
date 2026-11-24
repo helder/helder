@@ -579,8 +579,8 @@ nav.path(); nav.depth(); nav.query();                  // Reads of the top
 ### Phones and tablets
 
 `SizeClass.current` is how much room the screen has, from its surface's
-width in points (`ScreenContext.width`: the window's, the first one's when
-there are several; a story's): `Compact` under 600 (a phone, a narrow
+width in points (`ScreenContext.width`, and `height`: the window's, the
+first one's when there are several; a story's): `Compact` under 600 (a phone, a narrow
 browser tab), `Medium` to 1024 (a tablet upright, a foldable, split view),
 `Expanded` from 1024 (a tablet on its side, a desktop). It is a signal, so
 a shell that switches on it follows a rotation or a resize:
