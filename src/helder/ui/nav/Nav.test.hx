@@ -59,6 +59,7 @@ function tests() {
 			Graph.flush();
 			equals(SizeClass.current.peek(), Expanded);
 			equals(ScreenContext.current.width.peek(), 1180.0);
+			equals(ScreenContext.current.height.peek(), 820.0);
 		});
 	});
 	describe("NavScreen", () -> {

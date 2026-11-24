@@ -291,7 +291,7 @@ class Ui extends ScrollHost {
 		var was = breakpoint(this.width);
 		this.width = width;
 		this.height = height;
-		context.resized(this, width);
+		context.resized(this, width, height);
 		root.markDirty();
 		overlay.markDirty();
 		// (across a breakpoint: the rules for sm, md... hold or not)
@@ -305,7 +305,7 @@ class Ui extends ScrollHost {
 	// Ui's, a window's first (UiWindow)
 	@:noCompletion public function claim() {
 		context.surface = this;
-		context.resized(this, width);
+		context.resized(this, width, height);
 	}
 
 	// Tailwind's breakpoints (sm, md, lg, xl, 2xl: the window at least so wide, in pixels)

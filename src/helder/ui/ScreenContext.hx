@@ -41,9 +41,11 @@ class ScreenContext {
 	public final titlebarArea:Signal<Null<TitlebarArea>>;
 	// dark or light: a host gives it to the screen's Ui (Ui.dark)
 	public final dark:Signal<Bool>;
-	// its surface's width in points and its size class (SizeClass.current):
-	// the Ui made last in it, as it resizes (a window's, a story's)
+	// its surface's width and height in points and its size class
+	// (SizeClass.current): the Ui made last in it, as it resizes (a window's,
+	// a story's)
 	public final width:Signal<Float>;
+	public final height:Signal<Float>;
 	public final sizeClass:Signal<SizeClass>;
 	// (the Ui whose width it is)
 	@:allow(helder.ui) var surface:Null<Ui> = null;
@@ -75,6 +77,7 @@ class ScreenContext {
 		titlebarArea = Graph.signalOf((null : Null<TitlebarArea>), {ownedWrite: true});
 		dark = Graph.signalOf(true, {ownedWrite: true});
 		width = Graph.signalOf(0.0, {ownedWrite: true});
+		height = Graph.signalOf(0.0, {ownedWrite: true});
 		sizeClass = Graph.signalOf(SizeClass.Expanded, {ownedWrite: true});
 		#if (target.name == "hxmc")
 		stores = isolated ? new Map() : null;
@@ -125,9 +128,10 @@ class ScreenContext {
 	}
 
 	// (Ui: its surface's width now)
-	@:allow(helder.ui) function resized(ui:Ui, w:Float) {
+	@:allow(helder.ui) function resized(ui:Ui, w:Float, h:Float) {
 		if (surface != ui) return;
 		if (width.peek() != w) width(w);
+		if (height.peek() != h) height(h);
 		var c = SizeClass.of(w);
 		if (sizeClass.peek() != c) sizeClass(c);
 	}
