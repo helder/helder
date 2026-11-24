@@ -94,9 +94,10 @@ class CocoaWindow {
 		#end
 		// titled, closable, miniaturizable, resizable (inset: the content under
 		// the title bar, NSWindowStyleMaskFullSizeContentView); buffered backing
-		var inset = owner.titlebar == Inset;
-		window = Msg.idRectIntIntBool(Msg.id(ObjC.cls("NSWindow"), ObjC.sel("alloc")), ObjC.sel("initWithContentRect:styleMask:backing:defer:"), rect.value,
-			(inset ? 15 | 1 << 15 : 15 : Int64), 2, false);
+		// (none: borderless, NSWindowStyleMaskBorderless, of a class that may be key)
+		var inset = owner.titlebar == Inset, bare = owner.titlebar == None;
+		window = Msg.idRectIntIntBool(Msg.id(bare ? borderless() : ObjC.cls("NSWindow"), ObjC.sel("alloc")), ObjC.sel("initWithContentRect:styleMask:backing:defer:"), rect.value,
+			(bare ? 0 : inset ? 15 | 1 << 15 : 15 : Int64), 2, false);
 		if (inset) {
 			// (the bar drawn by nothing but its buttons; no title: NSWindowTitleHidden)
 			Msg.vBool(window, ObjC.sel("setTitlebarAppearsTransparent:"), true);
@@ -190,6 +191,21 @@ class CocoaWindow {
 		Msg.vPtr(app, ObjC.sel("setApplicationIconImage:"), img);
 		ObjC.release(img);
 	}
+
+	// (an NSWindow subclass made at run time whose windows may be key and
+	// main: a borderless NSWindow is neither, its keys going nowhere)
+	static function borderless():Ptr {
+		var made = Runtime.objc_getClass(Mem.cstr("HxmcBorderlessWindow"));
+		if (!made.isNull()) return made;
+		var cls = Runtime.objc_allocateClassPair(ObjC.cls("NSWindow"), Mem.cstr("HxmcBorderlessWindow"), 0);
+		Runtime.class_addMethod(cls, ObjC.sel("canBecomeKeyWindow"), Callback.addr(yes), Mem.cstr("c@:"));
+		Runtime.class_addMethod(cls, ObjC.sel("canBecomeMainWindow"), Callback.addr(yes), Mem.cstr("c@:"));
+		Runtime.objc_registerClassPair(cls);
+		return cls;
+	}
+
+	@:hxmc.callback static function yes(self:Ptr, cmd:Ptr):Int
+		return 1;
 
 	static function start() {
 		// (loads AppKit: its classes are found by name, so nothing else imports from it)
@@ -471,6 +487,38 @@ class CocoaWindow {
 			Msg.vPtrIntPtr(content, ObjC.sel("addSubview:positioned:relativeTo:"), effect, -1, Ptr.nil());
 			return true;
 		});
+
+	// (Window.onTop: NSFloatingWindowLevel 3, else NSNormalWindowLevel 0)
+	function setOnTop(on:Bool)
+		OsThread.run(() -> Msg.vInt(window, ObjC.sel("setLevel:"), on ? 3 : 0));
+
+	// (Window.taskbar false: out of the Window menu and of the window
+	// cycle, NSWindowCollectionBehaviorIgnoresCycle 1 << 6; the Dock's icon
+	// is the app's, App's, not a window's)
+	function setTaskbar(on:Bool)
+		OsThread.run(() -> {
+			Msg.vBool(window, ObjC.sel("setExcludedFromWindowsMenu:"), !on);
+			var b = Msg.i(window, ObjC.sel("collectionBehavior")).toInt();
+			Msg.vInt(window, ObjC.sel("setCollectionBehavior:"), on ? b & ~(1 << 6) : b | 1 << 6);
+		});
+
+	// (Window.workArea: the screen's visibleFrame, clear of the menu bar
+	// and the Dock, and of a notch's top inset (safeAreaInsets, macOS 12 on);
+	// points from the main screen's top left)
+	function workArea():{x:Int, y:Int, width:Int, height:Int}
+		return OsThread.get(() -> {
+			var screen = Msg.id(window, ObjC.sel("screen"));
+			if (screen.isNull()) screen = Msg.id(ObjC.cls("NSScreen"), ObjC.sel("mainScreen"));
+			var v = Msg.rect(screen, ObjC.sel("visibleFrame")), f = Msg.rect(screen, ObjC.sel("frame"));
+			var top = v.origin.y + v.size.height;
+			if (Msg.bPtr(screen, ObjC.sel("respondsToSelector:"), ObjC.sel("safeAreaInsets"))) top = Math.min(top, f.origin.y + f.size.height - insetTop(screen));
+			var h = screenHeight();
+			{x: Math.ceil(v.origin.x), y: Math.ceil(h - top), width: Math.floor(v.size.width), height: Math.floor(top - v.origin.y)};
+		});
+
+	// (NSEdgeInsets' top: four doubles, top first, returned in registers)
+	static function insetTop(screen:Ptr):Float
+		return Msg.rect(screen, ObjC.sel("safeAreaInsets")).origin.x;
 
 	// (the system's shadow: a transparent window's follows its pixels, made again as they change shape: invalidate)
 	function shadow():Bool
@@ -1024,7 +1072,7 @@ class CocoaWindow {
 		var hit = Msg.idPoint(Msg.id(content, ObjC.sel("superview")), ObjC.sel("hitTest:"), Msg.point(ev, ObjC.sel("locationInWindow")));
 		if (!hit.isNull() && Msg.bPtr(hit, ObjC.sel("isDescendantOf:"), content)) return true;
 		// (an inset title bar: the content's but the system's buttons, which AppKit tracks)
-		return owner.titlebar == Inset && !hit.isNull() && !Msg.bPtr(hit, ObjC.sel("isKindOfClass:"), ObjC.cls("NSButton"));
+		return owner.titlebar != Standard && !hit.isNull() && !Msg.bPtr(hit, ObjC.sel("isKindOfClass:"), ObjC.cls("NSButton"));
 	}
 
 	// --- an inset title bar (Window.titlebar Inset): the system's buttons over the content
@@ -1131,7 +1179,7 @@ class CocoaWindow {
 	// bars (AppleActionOnDoubleClick: Minimize, None, else zoom). True: the
 	// press was the window's, not the app's
 	function dragged(ev:Ptr, x:Int, y:Int):Bool {
-		if (owner.titlebar != Inset || owner.titlebarAt == null || owner.titlebarAt(x, y) != Drag) return false;
+		if (owner.titlebar == Standard || owner.titlebarAt == null || owner.titlebarAt(x, y) != Drag) return false;
 		if (Msg.i(ev, ObjC.sel("clickCount")).toInt() == 2) {
 			var defaults = Msg.id(ObjC.cls("NSUserDefaults"), ObjC.sel("standardUserDefaults"));
 			var key = ObjC.str("AppleActionOnDoubleClick");

@@ -43,7 +43,7 @@ class ShapeWindow {
 		w.root.append(bar);
 		// (both at one place: the window behind's own move not yet done)
 		if (desk != null) w.window.moveTo(200, 200);
-		var step = 0, all = desk == null ? [w] : [desk, w], end = 40, downs = [0, 0];
+		var step = 0, all = desk == null ? [w] : [desk, w], end = 40, downs = [0, 0], edge:Null<UiWindow> = null, clicking = false;
 		App.run(() -> {
 			if (++step == 12) {
 				check(w.window.transparent == (expect == "yes"), 'transparent: ${w.window.transparent}, ${expect == "yes" ? "asked for and composed so" : "not here: opaque"}');
@@ -59,10 +59,13 @@ class ShapeWindow {
 				system(w, desk);
 				if (w.window.transparent) inputs(w);
 				backdrops(w);
-				if (w.window.transparent && desk != null && Click.can()) end = 70;
+				if (w.window.transparent && desk != null && Click.can()) {
+					clicking = true;
+					end = 70;
+				}
 			}
 			// (a click where it is clear: the window behind's; on the box: its own)
-			for (i => at in [[10.0, 10.0], [80.0, 70.0]]) {
+			if (clicking) for (i => at in [[10.0, 10.0], [80.0, 70.0]]) {
 				var s0 = 41 + i * 14;
 				if (step == s0) Click.move(w.window, at[0], at[1]);
 				if (step == s0 + 4) {
@@ -75,7 +78,13 @@ class ShapeWindow {
 						'a click ${i == 0 ? "where it is clear: the window behind's" : "on the box: its own"} (presses: behind ${downs[0]}, it ${downs[1]})');
 				}
 			}
-			if (step == end) {
+			// (then a window at the work area's right edge, as the time tracker's)
+			if (step == end && edge == null) {
+				edge = edgeWindow();
+				all.push(edge);
+				end += 30;
+			} else if (step == end) {
+				edgeChecks(edge);
 				Sys.println("ShapeWindow: " + (failed == 0 ? "ok" : '$failed FAILED'));
 				for (u in all)
 					u.close();
@@ -154,6 +163,70 @@ class ShapeWindow {
 		});
 		#else
 		return null;
+		#end
+	}
+
+	static inline var EDGE = 120;
+
+	// (borderless, transparent, over the others, out of the task bar, full
+	// height at the right of its screen's work area)
+	static function edgeWindow():UiWindow {
+		var e = new UiWindow("ShapeWindow edge", EDGE, 200, null, false, None, true);
+		e.background = Color.TRANSPARENT;
+		var strip = new Node();
+		strip.style.set({position: Absolute, right: 0, top: 0, bottom: 0, width: 8, background: 0xFFFF0000});
+		e.root.append(strip);
+		e.window.onTop = true;
+		e.window.taskbar = false;
+		var a = e.window.workArea();
+		if (a != null) {
+			e.window.resize(EDGE, a.height);
+			e.window.moveTo(a.x + a.width - EDGE, a.y);
+		}
+		return e;
+	}
+
+	static function edgeChecks(e:UiWindow) {
+		var win = e.window, a = win.workArea(), p = win.position();
+		if (a == null) Sys.println("ShapeWindow: the edge window: no work area here (Wayland places windows): its place not checked");
+		else {
+			check(a.width > 0 && a.height > 0, 'the work area: ${a.x}, ${a.y}, ${a.width} x ${a.height}');
+			check(p != null && p.x == a.x + a.width - EDGE && p.y == a.y, 'the edge window at the work area\'s right edge (${p.x}, ${p.y})');
+			var h = Math.round(win.height / win.scale);
+			check(Math.abs(h - a.height) <= 1, 'the edge window full height in it ($h of ${a.height})');
+		}
+		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
+		var view = win.surface.handle;
+		var got = OsThread.get(() -> {
+			var w = helder.os.objc.Msg.id(view, helder.os.objc.ObjC.sel("window"));
+			[helder.os.objc.Msg.i(w, helder.os.objc.ObjC.sel("styleMask")).toInt(), helder.os.objc.Msg.i(w, helder.os.objc.ObjC.sel("level")).toInt(),
+				helder.os.objc.Msg.i(w, helder.os.objc.ObjC.sel("collectionBehavior")).toInt(), helder.os.objc.Msg.b(w, helder.os.objc.ObjC.sel("isExcludedFromWindowsMenu")) ? 1 : 0,
+				helder.os.objc.Msg.b(w, helder.os.objc.ObjC.sel("canBecomeKeyWindow")) ? 1 : 0];
+		});
+		check(got[0] == 0 && got[4] == 1, 'macOS: borderless, and may be key (style ${got[0]}, key ${got[4]})');
+		check(got[1] == 3, 'macOS: on top, the floating level (${got[1]})');
+		check(got[2] & (1 << 6) != 0 && got[3] == 1, 'macOS: out of the window cycle and the Window menu (${got[2]}, ${got[3]})');
+		#elseif (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+		var st = ScreenDc.GetWindowLongPtrW(win.surface.handle, -16).toI64(), ex = ScreenDc.GetWindowLongPtrW(win.surface.handle, -20).toI64();
+		check(st & (0x80000000 : haxe.Int64) != 0 && st & 0xC00000 == 0, 'Windows: WS_POPUP, no caption (style 0x${StringTools.hex(st.toInt())})');
+		check(ex & 0x8 != 0, 'Windows: on top, WS_EX_TOPMOST (0x${StringTools.hex(ex.toInt())})');
+		check(ex & 0x80 != 0, 'Windows: out of the task bar, WS_EX_TOOLWINDOW');
+		#elseif (hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64")
+		if (win.surface.kind == X11) {
+			var d = win.surface.display, hints = hxmc.unsafe.Arena.scopedValue(a -> Xlib.XInternAtom(d, a.cstring("_MOTIF_WM_HINTS"), 1));
+			var dec = hxmc.unsafe.Arena.scopedValue(a -> {
+				var type:hxmc.unsafe.Ptr<haxe.Int64> = a.alloc(8), format:hxmc.unsafe.Ptr<hxmc.unsafe.Int32> = a.alloc(4), n:hxmc.unsafe.Ptr<haxe.Int64> = a.alloc(8),
+					after:hxmc.unsafe.Ptr<haxe.Int64> = a.alloc(8), data:hxmc.unsafe.Ptr<hxmc.unsafe.Ptr> = a.alloc(8);
+				Xlib.XGetWindowProperty(d, win.surface.handle.toI64(), hints, 0, 5, 0, 0, type, format, n, after, data);
+				var v = data.value.isNull() || n.value < 3 ? -1 : haxe.Int64.toInt((cast data.value : hxmc.unsafe.Ptr<haxe.Int64>)[2]);
+				if (!data.value.isNull()) Xlib.XFree(data.value);
+				v;
+			});
+			check(dec == 0, 'X11: no decorations, Motif\'s hints ($dec)');
+			Sys.println("ShapeWindow: X11: on top and out of the task bar asked of the window manager (_NET_WM_STATE): none here to read them");
+		} else {
+			check(!win.onTop && win.taskbar, "Wayland: on top and out of the task bar: not to be asked (false, true)");
+		}
 		#end
 	}
 
@@ -320,14 +393,17 @@ class ShapeWindow {
 // Windows: SetCursorPos, SendInput (the same); X11: XTest; not on Wayland)
 @:hxmc.unsafe(gc)
 class Click {
+	// (whether can allowed them: nothing is sent before, as it moves the user's pointer)
+	static var allowed = false;
+
 	public static function can():Bool {
 		#if (hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64")
-		return Sys.getEnv("WAYLAND_DISPLAY") == null && Xtst.ok;
+		allowed = Sys.getEnv("WAYLAND_DISPLAY") == null && Xtst.ok;
 		#else
-		var ok = Sys.getEnv("GITHUB_ACTIONS") == "true" || Sys.getEnv("SHAPE_INPUT") == "1";
-		if (!ok) Sys.println("ShapeWindow: clicks not sent (they move the pointer; CI or SHAPE_INPUT=1): skipped");
-		return ok;
+		allowed = Sys.getEnv("GITHUB_ACTIONS") == "true" || Sys.getEnv("SHAPE_INPUT") == "1";
+		if (!allowed) Sys.println("ShapeWindow: clicks not sent (they move the pointer; CI or SHAPE_INPUT=1): skipped");
 		#end
+		return allowed;
 	}
 
 	public static function move(w:Window, x:Float, y:Float)
@@ -341,6 +417,7 @@ class Click {
 
 	// (0: a move, 1: the left button down, 2: up)
 	static function send(w:Window, x:Float, y:Float, what:Int) {
+		if (!allowed) return;
 		var p = w.position();
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 		var at:hxmc.unsafe.Ptr<helder.os.objc.CGPoint> = hxmc.unsafe.LibC.malloc(16);
@@ -406,6 +483,7 @@ class Screen {
 	static function GetDC(hwnd:hxmc.unsafe.Ptr):hxmc.unsafe.Ptr;
 	static function ReleaseDC(hwnd:hxmc.unsafe.Ptr, dc:hxmc.unsafe.Ptr):Int;
 	static function SetCursorPos(x:Int, y:Int):Int;
+	static function GetWindowLongPtrW(hwnd:hxmc.unsafe.Ptr, index:Int):hxmc.unsafe.Ptr;
 	static function SendInput(count:Int, inputs:hxmc.unsafe.Ptr, size:Int):Int;
 }
 

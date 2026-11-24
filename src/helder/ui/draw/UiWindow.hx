@@ -47,8 +47,13 @@ typedef SurfaceProps = {
 	?antialias:Bool,
 	// "inset": the content under the title bar (helder.os's TitleBar), the
 	// window's buttons in its layout (WindowControls), dragged by its
-	// drag-region nodes, env(titlebar-area-*) its free area; default the system's
+	// drag-region nodes, env(titlebar-area-*) its free area; "none": no
+	// title bar nor frame (its drag regions still move it); default the system's
 	?titlebar:String,
+	// over every other window (helder.os's Window.onTop)
+	?onTop:helder.view.graph.Read<Bool>,
+	// false: out of the task bar and the window switcher (Window.taskbar)
+	?taskbar:helder.view.graph.Read<Bool>,
 	// helder.text's own engine's font smoothing in this window: "on" (as
 	// macOS draws by default) or "off" ("antialiased", as CSS's
 	// -webkit-font-smoothing); default the app's (helder.text.Shaping.smoothing)
@@ -208,7 +213,7 @@ class UiWindow {
 		ui.clipboard = new SystemClipboard(window);
 		ui.window = new OsWindow(this);
 		// (an inset title bar: a press's answer the ui's, its drag regions and window buttons)
-		if (titlebar == Inset) window.titlebarAt = (x, y) -> ui.titleHit(x / scale, y / scale);
+		if (titlebar != Standard) window.titlebarAt = (x, y) -> ui.titleHit(x / scale, y / scale);
 		ui.dark = dark.peek();
 		nativeScroll(scrolling);
 		// (a touch drag the program's where it scrolls something: the page's otherwise)
@@ -917,7 +922,7 @@ class UiWindow {
 		var title:Null<String> = Render.read(props.title);
 		var bg:Dynamic = Render.read(props.background), backdrop:Null<String> = Render.read(props.backdrop);
 		var w = new UiWindow(title ?? "helder", width ?? (web ? 0 : 800), height ?? (web ? 0 : 600), null, props.antialias != false,
-			props.titlebar == "inset" ? Inset : Standard, (bg != null && colour(bg).a < 255) || (backdrop != null && backdrop != "none"));
+			props.titlebar == "inset" ? Inset : props.titlebar == "none" ? helder.os.TitleBar.None : Standard, (bg != null && colour(bg).a < 255) || (backdrop != null && backdrop != "none"));
 		// (a backdrop seen through a clear background, unless one is given)
 		if (bg == null && backdrop != null && backdrop != "none") w.background = Color.TRANSPARENT;
 		if (props.backdrop != null) Graph.renderEffect(() -> (Render.read(props.backdrop) : String), v -> w.window.backdrop = cast v);
@@ -938,6 +943,8 @@ class UiWindow {
 		if (props.scrolling != null) w.nativeScroll(props.scrolling != "helder");
 		if (props.scrollbars != null) w.scrollbarStyle(props.scrollbars);
 		if (props.clickThrough == false) w.clickThrough = false;
+		if (props.onTop != null) Graph.renderEffect(() -> (Render.read(props.onTop) : Bool), v -> w.window.onTop = v);
+		if (props.taskbar != null) Graph.renderEffect(() -> (Render.read(props.taskbar) : Bool), v -> w.window.taskbar = v);
 		if (props.onClose != null) w.onClose = props.onClose;
 		if (props.onDrop != null) w.onDrop = props.onDrop;
 		// (in this owner: what is above the root, contexts, seen inside)

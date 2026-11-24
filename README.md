@@ -182,7 +182,8 @@ Windows of any shape: a transparent background is in (premultiplied
 alpha: macOS, Wayland, Windows through DirectComposition, X11 with a
 compositing manager, the browser's canvas), clicks passing through what
 it doesn't draw, and the system's materials behind it (macOS vibrancy
-and glass, Windows 11 Mica and Acrylic, KDE's blur). Its first user, an
+and glass, Windows 11 Mica and Acrylic, KDE's blur), borderless, on
+top, out of the task bar, placed in the work area. Its first user, an
 example app: a time tracker
 drawn on the screen's right edge, nothing behind it, full height within
 the work area (menu bar, notch, dock and taskbar kept clear), scrolling

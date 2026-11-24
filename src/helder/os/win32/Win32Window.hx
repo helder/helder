@@ -73,6 +73,10 @@ class Win32Window {
 	// (the child windows clipped out of its painting: native editors over it)
 	static inline var STYLE = WM.WS_OVERLAPPEDWINDOW | 0x02000000;
 
+	// (no title bar: WS_POPUP, no frame; WS_CLIPCHILDREN)
+	inline function style():Int
+		return owner.titlebar == None ? (0x80000000 : Int) | 0x02000000 : STYLE;
+
 	final owner:Window;
 	final hwnd:Ptr;
 	final surface:Surface;
@@ -110,11 +114,11 @@ class Win32Window {
 			var r = a.make(RECT);
 			r.value.right = w;
 			r.value.bottom = h;
-			User32.AdjustWindowRectEx(r, STYLE, 0, 0);
+			User32.AdjustWindowRectEx(r, style(), 0, 0);
 			// (inset: no caption above the client area)
 			if (owner.titlebar == Inset) r.value.top = 0;
 			// (transparent: no redirection surface, its pixels DirectComposition's alone)
-			User32.CreateWindowExW(owner.clear ? 0x00200000 : 0, className, a.wstring(title), STYLE, WM.CW_USEDEFAULT, WM.CW_USEDEFAULT, r.value.right - r.value.left,
+			User32.CreateWindowExW(owner.clear ? 0x00200000 : 0, className, a.wstring(title), style(), WM.CW_USEDEFAULT, WM.CW_USEDEFAULT, r.value.right - r.value.left,
 				r.value.bottom - r.value.top, Ptr.nil(), Ptr.nil(), instance, Ptr.nil());
 		});
 		if (hwnd.isNull()) throw "helder.os: CreateWindowExW failed (error " + Kernel32.GetLastError() + ")";
@@ -270,7 +274,7 @@ class Win32Window {
 			var r = a.make(RECT);
 			r.value.right = Math.round(w * scale);
 			r.value.bottom = Math.round(h * scale);
-			User32.AdjustWindowRectEx(r, STYLE, 0, 0);
+			User32.AdjustWindowRectEx(r, style(), 0, 0);
 			// (inset: no caption above the client area)
 			if (owner.titlebar == Inset) r.value.top = 0;
 			{w: r.value.right - r.value.left, h: r.value.bottom - r.value.top};
@@ -372,6 +376,30 @@ class Win32Window {
 		}));
 	}
 
+	// (Window.onTop: HWND_TOPMOST -1, HWND_NOTOPMOST -2; SWP_NOMOVE, NOSIZE, NOACTIVATE)
+	function setOnTop(on:Bool)
+		OsThread.run(() -> User32.SetWindowPos(hwnd, Ptr.ofI64(on ? -1 : -2), 0, 0, 0, 0, 0x2 | 0x1 | 0x10));
+
+	// (Window.taskbar false: WS_EX_TOOLWINDOW 0x80, out of the task bar and
+	// Alt+Tab; hidden and shown again, as the task bar reads it when shown)
+	function setTaskbar(on:Bool)
+		OsThread.run(() -> {
+			var ex = User32.GetWindowLongPtrW(hwnd, -20).toI64(), shown = User32.IsWindowVisible(hwnd) != 0;
+			if (shown) User32.ShowWindow(hwnd, 0);
+			User32.SetWindowLongPtrW(hwnd, -20, Ptr.ofI64(on ? ex & ~(0x80 : Int64) : ex | 0x80));
+			if (shown) User32.ShowWindow(hwnd, 4); // (SW_SHOWNOACTIVATE)
+		});
+
+	// (Window.workArea: the monitor's rcWork, clear of the task bar)
+	function workArea():{x:Int, y:Int, width:Int, height:Int}
+		return OsThread.get(() -> Arena.scopedValue(a -> {
+			var info:Ptr<Int32> = a.alloc(40);
+			info[0] = 40;
+			User32.GetMonitorInfoW(User32.MonitorFromWindow(hwnd, 2), info);
+			var k = scale;
+			{x: Math.ceil(info[5] / k), y: Math.ceil(info[6] / k), width: Math.floor((info[7] - info[5]) / k), height: Math.floor((info[8] - info[6]) / k)};
+		}));
+
 	// the frame's shadow (DWMWA_NCRENDERING_POLICY: DWMNCRP_DISABLED 1, its frame not drawn by DWM: no shadow; DWMNCRP_ENABLED 2)
 	var shadow = true;
 
@@ -442,7 +470,7 @@ class Win32Window {
 	function moveTo(x:Int, y:Int)
 		OsThread.run(() -> Arena.scoped(a -> {
 			var r = a.make(RECT);
-			User32.AdjustWindowRectEx(r, STYLE, 0, 0);
+			User32.AdjustWindowRectEx(r, style(), 0, 0);
 			if (owner.titlebar == Inset) r.value.top = 0;
 			User32.SetWindowPos(hwnd, Ptr.nil(), Math.round(x * scale) + r.value.left, Math.round(y * scale) + r.value.top, 0, 0, 0x1 | 0x4 | 0x10);
 		}));
@@ -821,7 +849,7 @@ class Win32Window {
 				return 0;
 			case 0x0084 if (w.taking != null && !w.takes(w.client(lParam).x, w.client(lParam).y)): // WM_NCHITTEST outside its input
 				return -1; // (HTTRANSPARENT)
-			case 0x0084 if (w.owner.titlebar == Inset && !w.fullscreen): // WM_NCHITTEST
+			case 0x0084 if (w.owner.titlebar != Standard && !w.fullscreen): // WM_NCHITTEST
 				var d = User32.DefWindowProcW(hwnd, message, wParam, lParam);
 				if (d.toInt() != WM.HTCLIENT) return d;
 				return TitleBars.win32(w.titleHit(lParam));

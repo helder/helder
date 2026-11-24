@@ -38,4 +38,16 @@ A transparent window takes clicks only where it draws something; elsewhere they 
 
 From Haxe, `window.input(rects)` sets where the window takes the pointer, in pixels.
 
+## A window at the edge
+
+`titlebar="none"` takes the title bar and frame away. `onTop` keeps the window over the others, and `taskbar={false}` keeps it out of the task bar and the window switcher. `window.workArea()` gives the part of the screen windows go in, clear of the menu bar, a notch, the Dock and the task bar, so a window can sit at its edge:
+
+```haxe
+var a = window.workArea();
+window.resize(120, a.height);
+window.moveTo(a.x + a.width - 120, a.y);
+```
+
+Wayland has no way for a window to ask for any of these, except no title bar.
+
 <Reference to="os,ui"/>
