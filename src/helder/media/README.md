@@ -200,7 +200,13 @@ D3D11-aware decoder is given an `IMFDXGIDeviceManager` on it (DXVA; the
 device's context made safe across threads), its frames NV12 or P010
 textures in the decoder's array; else (WARP, `MfVideo.software`) it
 decodes into samples of ours in memory, locked while a frame is held.
-Colours as the output type names them, else BT.601's video range. Audio:
+Colours as the output type names them, else as the stream's SPS does
+(`CodecConfig.colours`: its HEVC decoder names no matrix), else BT.601's
+video range. A DXVA frame is copied out of the decoder's pool on the GPU
+into a texture of ours and its sample let go at once: a synchronous
+decoder whose pool its frames hold waits in ProcessOutput for one back. A
+10-bit stream's DXVA decoder offers NV12 until it has read the stream,
+then P010 with a format change; the frames' depth is the output's. Audio:
 AAC (HEAACWAVEINFO's tail and the AudioSpecificConfig), MP3, FLAC
 (STREAMINFO, forms tried in turn), ALAC (its cookie), Opus where the
 system has a decoder, floats where it gives them, else 16 bits; outputs

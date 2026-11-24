@@ -48,6 +48,8 @@ class MfVideo implements VideoDecoder {
 	var matrix = "601";
 	var full = false;
 	var bits = 8;
+	// (the stream's, its config's; bits is the output's)
+	var depth = 8;
 	var codedWidth = 0;
 	var codedHeight = 0;
 	var stride = 0;
@@ -74,7 +76,8 @@ class MfVideo implements VideoDecoder {
 		lengths = CodecConfig.lengths(track);
 		var sets = CodecConfig.sets(track), c = track.config;
 		prefix = sets != null ? join(sets[0], sets[1]) : track.codec == Av1 && c != null && c.length > 4 ? c.sub(4, c.length - 4) : null;
-		bits = CodecConfig.depth(track);
+		depth = CodecConfig.depth(track);
+		bits = depth;
 		width = track.width;
 		height = track.height;
 	}
@@ -165,10 +168,13 @@ class MfVideo implements VideoDecoder {
 		return hr >= 0 && output(t);
 	}
 
-	// (NV12, P010 at 10 bits: the decoder's own layout, nothing converted)
+	// (NV12, P010 at 10 bits: the decoder's own layout, nothing converted;
+	// the other where it offers only that: a DXVA decoder offers NV12 until
+	// it has read a 10-bit stream, then P010 with a format change)
 	function output(t:Ptr):Bool {
-		var want = Mf.fourcc(bits > 8 ? "P010" : "NV12");
-		return MfTransform.choose(t, o -> MfTransform.subtypeOf(o) == want);
+		var nv12 = Mf.fourcc("NV12"), p010 = Mf.fourcc("P010"), want = depth > 8 ? p010 : nv12;
+		return MfTransform.choose(t, o -> MfTransform.subtypeOf(o) == want)
+			|| MfTransform.choose(t, o -> MfTransform.subtypeOf(o) == (want == nv12 ? p010 : nv12));
 	}
 
 	// (the output's size, stride, picture and colours, as its type says;
@@ -179,6 +185,7 @@ class MfVideo implements VideoDecoder {
 		var t = c.current();
 		if (t.isNull()) return;
 		var size = MfTransform.pair(t, MfId.FRAME_SIZE);
+		bits = MfTransform.subtypeOf(t) == Mf.fourcc("P010") ? 10 : 8;
 		if (size != null) {
 			codedWidth = size[0];
 			codedHeight = size[1];
@@ -199,6 +206,11 @@ class MfVideo implements VideoDecoder {
 		var m = MfTransform.read(t, MfId.YUV_MATRIX), r = MfTransform.read(t, MfId.NOMINAL_RANGE);
 		matrix = m == 1 ? "709" : m == 4 || m == 5 ? "2020" : "601";
 		full = r == 1;
+		// (what it does not name, the stream's SPS does (its HEVC decoder names
+		// no matrix: BT.2020 shown as 601, 4 levels off))
+		var named = CodecConfig.colours(track);
+		if (named != null && m <= 0) matrix = named.matrix;
+		if (named != null && r <= 0) full = named.full;
 		Com.release(t);
 	}
 

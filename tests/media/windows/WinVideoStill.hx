@@ -117,18 +117,28 @@ class WinVideoStill implements Markup {
 		if (dir != null) sys.io.File.saveBytes('$dir/still-${layer ? "layer" : "drawn"}.rgba', px);
 		// (the window's own background beside the box: whether the capture has the window at all)
 		var bg = (20 * width + 20) * 4;
-		say('the background at 20,20: ${px.get(bg)} ${px.get(bg + 1)} ${px.get(bg + 2)} (the window\'s 51 51 51)');
+		var back:Int = w.background;
+		say('the background at 20,20 in PrintWindow: ${px.get(bg)} ${px.get(bg + 1)} ${px.get(bg + 2)} (the window\'s 0x${StringTools.hex(back, 8)})');
 		var x = n.absX * k, y = n.absY * k, bw = n.width * k, bh = n.height * k;
-		var s = Math.min(bw / 64, bh / 48), x0 = x + (bw - 64 * s) / 2, y0 = y + (bh - 48 * s) / 2, worst = 0, got = [];
-		for (i => q in [[16, 12], [48, 12], [16, 36], [48, 36]]) {
-			var at = (Math.round(y0 + (q[1] + 0.5) * s) * width + Math.round(x0 + (q[0] + 0.5) * s)) * 4;
-			var c = [px.get(at), px.get(at + 1), px.get(at + 2)];
-			for (j in 0...3) worst = Std.int(Math.max(worst, Math.abs(c[j] - SOURCE[i][j])));
-			got.push(c.join(" "));
+		var s = Math.min(bw / 64, bh / 48), x0 = x + (bw - 64 * s) / 2, y0 = y + (bh - 48 * s) / 2;
+		// (the quadrants' centres of a capture: the largest difference from the source, the colours read)
+		function read(px:Bytes):{worst:Int, got:String} {
+			var worst = 0, got = [];
+			for (i => q in [[16, 12], [48, 12], [16, 36], [48, 36]]) {
+				var at = (Math.round(y0 + (q[1] + 0.5) * s) * width + Math.round(x0 + (q[0] + 0.5) * s)) * 4;
+				var c = [px.get(at), px.get(at + 1), px.get(at + 2)];
+				for (j in 0...3) worst = Std.int(Math.max(worst, Math.abs(c[j] - SOURCE[i][j])));
+				got.push(c.join(" "));
+			}
+			return {worst: worst, got: got.join(", ")};
 		}
-		var ok = worst <= LEVELS && time == 0.2;
+		var printed = read(px), shown = capture(w.window, width, height, true);
+		var onScreen = shown == null ? {worst: 255, got: "none"} : read(shown);
+		if (shown != null) say('the background at 20,20 on the screen: ${shown.get(bg)} ${shown.get(bg + 1)} ${shown.get(bg + 2)}');
+		var name = unit ? "layer in a scroller of its own" : layer ? "layer" : "drawn";
+		var ok = printed.worst <= LEVELS && onScreen.worst <= LEVELS && time == 0.2;
 		if (layer && onLayer && !ok) probes(n, w, x, y, x0, y0, s, width, height);
-		say('${ok ? "ok" : "FAIL"}: ${unit ? "layer in a scroller of its own" : layer ? "layer" : "drawn"}: the frame at $time $how, the quadrants ${got.join(", ")}, at most $worst levels off the source ($LEVELS)');
+		say('${ok ? "ok" : "FAIL"}: $name: the frame at $time $how; PrintWindow\'s quadrants ${printed.got} (at most ${printed.worst} off); the screen\'s ${onScreen.got} (at most ${onScreen.worst} off; the source within $LEVELS)');
 		Sys.exit(ok ? 0 : 1);
 	}
 
@@ -178,13 +188,13 @@ class WinVideoStill implements Markup {
 	// (the client area's pixels as RGBA, on the main thread: PrintWindow,
 	// which composes the window's DirectComposition content, else the
 	// screen's where the window is: WinLayersWindow's)
-	static function capture(w:helder.os.Window, width:Int, height:Int):Null<Bytes> {
+	static function capture(w:helder.os.Window, width:Int, height:Int, screen = false):Null<Bytes> {
 		var hwnd = w.surface.handle;
 		return OsThread.get(() -> {
 			var rgba:Null<Bytes> = null;
 			Arena.scoped(a -> {
-				var screen = User32.GetDC(Ptr.nil());
-				var dc = Gdi32.CreateCompatibleDC(screen);
+				var desk = User32.GetDC(Ptr.nil());
+				var dc = Gdi32.CreateCompatibleDC(desk);
 				var info = a.make(BITMAPINFOHEADER);
 				info.value.biSize = 40;
 				info.value.biWidth = width;
@@ -196,10 +206,17 @@ class WinVideoStill implements Markup {
 				if (!bmp.isNull()) {
 					var old = Gdi32.SelectObject(dc, bmp);
 					var px:Ptr<UInt8> = bits.value;
-					var ok = User32.PrintWindow(hwnd, dc, WM.PW_CLIENTONLY | WM.PW_RENDERFULLCONTENT) != 0;
+					var ok = false;
+					if (screen) {
+						// (the display's pixels where the window is: what DWM shows, the window brought to the front first)
+						User32.SetForegroundWindow(hwnd);
+						var p = a.make(POINT);
+						User32.ClientToScreen(hwnd, p);
+						ok = Gdi32.BitBlt(dc, 0, 0, width, height, desk, p.value.x, p.value.y, WM.SRCCOPY) != 0;
+					} else
+						ok = User32.PrintWindow(hwnd, dc, WM.PW_CLIENTONLY | WM.PW_RENDERFULLCONTENT) != 0;
 					Gdi32.GdiFlush();
-					// (no fallback to the screen's pixels: on CI's runner they are black everywhere)
-					if (!ok) Sys.println("WinVideoStill: PrintWindow failed: no capture");
+					if (!ok) Sys.println('WinVideoStill: ${screen ? "the screen" : "PrintWindow"}: no capture');
 					if (ok) {
 						var out = Bytes.alloc(width * height * 4);
 						for (i in 0...width * height) {
@@ -214,7 +231,7 @@ class WinVideoStill implements Markup {
 					Gdi32.DeleteObject(bmp);
 				}
 				Gdi32.DeleteDC(dc);
-				User32.ReleaseDC(Ptr.nil(), screen);
+				User32.ReleaseDC(Ptr.nil(), desk);
 			});
 			rgba;
 		});

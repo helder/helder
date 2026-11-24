@@ -634,6 +634,11 @@ private class DcPlane extends LayerPlane {
 	public var content = Ptr.nil();
 	public var clip = Ptr.nil();
 	var box = Ptr.nil();
+	// (the visual a system layer's box is in: its own clip, or its
+	// scroller's; a visual has one parent, and one added to another while it
+	// is in the first is not added: a slot that was its scroller's and is
+	// then a unit of its own stayed in the scroller's clip, out of the tree)
+	var boxIn = Ptr.nil();
 	var effect = Ptr.nil();
 	var rounded = Ptr.nil();
 	var surfW = 0;
@@ -698,10 +703,20 @@ private class DcPlane extends LayerPlane {
 		}
 		if (attached < 0 && clip.isNull()) {
 			clip = o.visual();
-			if (!clip.isNull()) IDCompositionVisual.AddVisual(clip, box, 1, Ptr.nil());
+			n = true;
+		}
+		if (attached < 0 && !clip.isNull() && boxIn != clip) {
+			moveBox(clip, Ptr.nil());
 			n = true;
 		}
 		return n;
+	}
+
+	// (the box out of the visual it is in, into to, above below (nil: under all))
+	public function moveBox(to:Ptr, below:Ptr) {
+		if (!boxIn.isNull()) IDCompositionVisual.RemoveVisual(boxIn, box);
+		boxIn = Ptr.nil();
+		if (!to.isNull() && IDCompositionVisual.AddVisual(to, box, 1, below) >= 0) boxIn = to;
 	}
 
 	// (a scroller's clip: its content, then the system layers in it, in order)
@@ -713,9 +728,15 @@ private class DcPlane extends LayerPlane {
 			if (want[i] != innerOrder[i]) same = false;
 		if (same) return;
 		IDCompositionVisual.RemoveAllVisuals(clip);
+		// (the boxes that were in it: in none now)
+		for (q in slots) {
+			var d:DcPlane = cast q;
+			if (d.boxIn == clip) d.boxIn = Ptr.nil();
+		}
 		var below = Ptr.nil();
 		for (v in want) {
-			IDCompositionVisual.AddVisual(clip, v, 1, below);
+			var d = v == visual ? null : Lambda.find(slots, q -> (cast q : DcPlane).box == v);
+			if (d != null) (cast d : DcPlane).moveBox(clip, below) else IDCompositionVisual.AddVisual(clip, v, 1, below);
 			below = v;
 		}
 		innerOrder.resize(0);
@@ -841,12 +862,16 @@ private class DcPlane extends LayerPlane {
 		return content.isNull() ? 0 : surfW * surfH * 4.0;
 
 	override public function free():Void->Void {
+		// (the box out of a scroller's clip it is in, which outlives it)
+		var outer = boxIn != clip ? boxIn : Ptr.nil();
+		boxIn = Ptr.nil();
 		var all = [content, visual, clip, box, effect, rounded], sl = kind == LayerPlane.SLOT ? slot.handle : Ptr.nil();
 		var parent = clip.isNull() ? box : clip;
 		content = visual = clip = box = effect = rounded = Ptr.nil();
 		return () -> {
 			// (the node's visual out of its box: its owner's still)
 			if (!sl.isNull() && !all[3].isNull()) IDCompositionVisual.RemoveVisual(all[3], sl);
+			if (!outer.isNull() && !all[3].isNull()) IDCompositionVisual.RemoveVisual(outer, all[3]);
 			if (!parent.isNull()) IDCompositionVisual.RemoveAllVisuals(parent);
 			for (o in all)
 				Com.release(o);
