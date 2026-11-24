@@ -79,7 +79,7 @@ class FxBox extends helder.ui.Node {
 	}
 
 	override public function paintContent(canvas:helder.ui.Canvas, x:Float, y:Float, width:Float, height:Float) {
-		var r = helder.ui.draw.Renderer.of(canvas);
+		var r = helder.ui.draw.GpuHost.of(canvas);
 		if (r == null) return helder.ui.draw.GpuPlaceholder.draw(canvas, x, y, width, height);
 		if (pipeline == null) ready(r.device);
 		var k = density > 0 ? Math.min(1, density / r.scale) : 1;

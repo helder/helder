@@ -40,7 +40,12 @@ class Raster {
 	public static inline var SAMPLES = 48;
 	public static inline var DEPTH16 = 52;
 	public static inline var TABLE = 56;
-	public static inline var PASS = 64;
+	// the clears each tile makes of its pixels first (1 the colour, 2 the
+	// depth), the colour's texel as stored, the depth's
+	public static inline var CLEAR = 64;
+	public static inline var CLEAR_TEXEL = 72;
+	public static inline var CLEAR_DEPTH = 88;
+	public static inline var PASS = 96;
 
 	// a tile's triangles: chunks of 63 (the first, the last, how many in the last)
 	public static inline var FIRST = 0;
@@ -87,6 +92,8 @@ class Raster {
 		var x0 = tx * TILE, y0 = ty * TILE, x1 = x0 + TILE < w ? x0 + TILE : w, y1 = y0 + TILE < h ? y0 + TILE : h;
 		var bin = Mem.getPtr(pass, BINS).add(BIN * i);
 		var chunk = Mem.getPtr(bin, FIRST), last = Mem.getPtr(bin, LAST), count = Mem.getI32(bin, COUNT);
+		var clear = Mem.getI32(pass, CLEAR);
+		if (clear != 0) clearTile(pass, clear, x0, y0, x1, y1);
 		if (chunk.isNull()) return 0;
 		var c = Mem.stack(C_SIZE);
 		Mem.setPtr(c, Abi.IN, c.add(C_IN));
@@ -105,6 +112,38 @@ class Raster {
 			chunk = Mem.getPtr(chunk, 0);
 		}
 		return 0;
+	}
+
+	// (the pass's clears, of the tile's pixels: in parallel, and the tile's memory warm for its triangles)
+	static function clearTile(pass:Ptr, clear:Int, x0:Int, y0:Int, x1:Int, y1:Int) {
+		var w = Mem.getI32(pass, W), s = Mem.getI32(pass, SAMPLES), n = (x1 - x0) * s;
+		if (clear & 1 != 0) {
+			var color = Mem.getPtr(pass, COLOR);
+			if (Mem.getI32(pass, KIND) == SoftTexture.F4) {
+				var v = F32x4.loadPtr(pass, CLEAR_TEXEL);
+				for (y in y0...y1) {
+					var row = color.add(16 * s * (y * w + x0));
+					for (i in 0...n)
+						v.storePtr(row, 16 * i);
+				}
+			} else {
+				var v = Mem.getI32(pass, CLEAR_TEXEL);
+				for (y in y0...y1) {
+					var row = color.add(4 * s * (y * w + x0));
+					for (i in 0...n)
+						Mem.setI32(row, 4 * i, v);
+				}
+			}
+		}
+		var depth = Mem.getPtr(pass, DEPTH);
+		if (clear & 2 != 0 && !depth.isNull()) {
+			var v = Mem.getI32(pass, CLEAR_DEPTH);
+			for (y in y0...y1) {
+				var row = depth.add(4 * s * (y * w + x0));
+				for (i in 0...n)
+					Mem.setI32(row, 4 * i, v);
+			}
+		}
 	}
 
 	// (a triangle's quads in the tile, one sample a pixel)

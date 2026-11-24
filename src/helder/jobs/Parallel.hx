@@ -35,7 +35,7 @@ class Parallel {
 	static inline var SLEEPS = 64;
 	static inline var MAX = 256;
 	// (how long a thread spins for the next run before it sleeps)
-	static inline var SPIN = 200000;
+	static inline var SPIN = 2000000;
 
 	static var run_ = Ptr.nil();
 	static var generation = 0;

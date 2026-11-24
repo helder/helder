@@ -312,15 +312,26 @@ class SoftBackend {
 		resolveFrom = samples > 1 && c.resolve != null ? target : Ptr.nil();
 		resolveTo = c.resolve == null ? Ptr.nil() : texture(c.resolve.id());
 		// the clears
-		if (c.load != Load) clearColor(target, layer, c.clear == null ? new Color(0, 0, 0, 1) : c.clear);
-		if (!depth.isNull() && d != null && d.load != Load) clearDepth(depth, d.clear == null ? 1 : d.clear);
+		// the clears: the tiles' first work (all of them run at the pass's end)
+		var clears = 0;
+		if (c.load != Load) {
+			clearTexel(target, c.clear == null ? new Color(0, 0, 0, 1) : c.clear);
+			clears |= 1;
+		}
+		if (!depth.isNull() && d != null && d.load != Load) {
+			var z:Float = d.clear == null ? 1 : d.clear;
+			if (Mem.getI32(depth, SoftTexture.FORMAT) == (cast TextureFormat.Depth16 : Int)) z = Math.fround(z * 65535) / 65535;
+			Mem.setF32(pass, Raster.CLEAR_DEPTH, z);
+			clears |= 2;
+		}
+		Mem.setI32(pass, Raster.CLEAR, clears);
 		pipeline = null;
 		inPass = true;
 	}
 
-	function clearColor(r:Ptr, layer:Int, k:Color) {
-		var kind = Mem.getI32(r, SoftTexture.KIND), format:TextureFormat = cast Mem.getI32(r, SoftTexture.FORMAT);
-		var n = Mem.getI32(r, SoftTexture.WIDTH) * Mem.getI32(r, SoftTexture.HEIGHT) * Mem.getI32(r, SoftTexture.SAMPLES), p = SoftTexture.at(r, 0, layer);
+	// (a clear colour as the target stores it, into the pass's record)
+	function clearTexel(r:Ptr, k:Color) {
+		var kind = Mem.getI32(r, SoftTexture.KIND), format:TextureFormat = cast Mem.getI32(r, SoftTexture.FORMAT), p = pass.add(Raster.CLEAR_TEXEL);
 		inline function c01(v:Float):Float
 			return v < 0 ? 0 : v > 1 ? 1 : v;
 		if (kind == SoftTexture.U8) {
@@ -328,30 +339,17 @@ class SoftBackend {
 			inline function code(v:Float, color:Bool):Int
 				return srgb && color ? Formats.srgbCode(t, c01(v)) : Std.int(c01(v) * 255 + 0.5);
 			var g = format == R8 ? 0.0 : k.g, b = format == R8 || format == RG8 ? 0.0 : k.b, a = format == R8 || format == RG8 ? 1.0 : k.a;
-			var px = code(k.r, true) | (code(g, true) << 8) | (code(b, true) << 16) | (code(a, false) << 24);
-			for (i in 0...n)
-				Mem.setI32(p, 4 * i, px);
+			Mem.setI32(p, 0, code(k.r, true) | (code(g, true) << 8) | (code(b, true) << 16) | (code(a, false) << 24));
 		} else if (kind == SoftTexture.F4) {
 			var half = format == RGBA16F;
 			inline function v(x:Float):Float
 				return half ? Formats.roundHalf(x) : x;
-			var r = v(k.r), g = v(k.g), b = v(k.b), a = v(k.a);
-			for (i in 0...n) {
-				Mem.setF32(p, 16 * i, r);
-				Mem.setF32(p, 16 * i + 4, g);
-				Mem.setF32(p, 16 * i + 8, b);
-				Mem.setF32(p, 16 * i + 12, a);
-			}
+			Mem.setF32(p, 0, v(k.r));
+			Mem.setF32(p, 4, v(k.g));
+			Mem.setF32(p, 8, v(k.b));
+			Mem.setF32(p, 12, v(k.a));
 		} else
-			for (i in 0...n)
-				Mem.setF32(p, 4 * i, k.r);
-	}
-
-	function clearDepth(r:Ptr, z:Float) {
-		var n = Mem.getI32(r, SoftTexture.WIDTH) * Mem.getI32(r, SoftTexture.HEIGHT) * Mem.getI32(r, SoftTexture.SAMPLES), p = SoftTexture.at(r, 0, 0);
-		if (Mem.getI32(r, SoftTexture.FORMAT) == (cast TextureFormat.Depth16 : Int)) z = Math.fround(z * 65535) / 65535;
-		for (i in 0...n)
-			Mem.setF32(p, 4 * i, z);
+			Mem.setF32(p, 0, k.r);
 	}
 
 	public function setPipeline(id:Int)
@@ -707,6 +705,7 @@ class SoftBackend {
 		var n = Mem.getI32(pass, Raster.TILES_X) * Mem.getI32(pass, Raster.TILES_Y);
 		helder.jobs.Parallel.run(TileCall.address(), pass, n, threads);
 		Mem.zero(bins, n * Raster.BIN);
+		Mem.setI32(pass, Raster.CLEAR, 0);
 		rebase();
 	}
 
