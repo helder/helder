@@ -13,4 +13,7 @@ enum abstract Backend(Int) {
 	// WebGL2 (the browser without WebGPU): the GL back end on OpenGL ES 3.0's
 	// web counterpart (no compute: the fallback tier)
 	var WebGL2;
+	// the CPU (helder.gfx.soft, -D helder.soft builds): no GPU at all (no
+	// compute: the fallback tier)
+	var Soft;
 }
