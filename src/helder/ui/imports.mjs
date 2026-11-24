@@ -28,6 +28,8 @@
 // to the worker's queues.
 // (a keyboard's inputmode)
 const MODES = { number: 'numeric', phone: 'tel' };
+// (an editor's number as a system layer: helder.ui.platform.WebEditor's EDITOR)
+const EDITOR = 1 << 24;
 
 export default function ui(host) {
 	const editors = new Map();
@@ -272,6 +274,8 @@ export default function ui(host) {
 			layer(c).appendChild(e);
 			const ed = { e, c, style, multiline, focusing: false };
 			editors.set(h, ed);
+			// (a layer of the window's where the page's are its: WebViews' EDITOR | h)
+			slotted.set(EDITOR | h, e);
 			const mods = (ev) => (ev.shiftKey ? 1 : 0) | (ev.ctrlKey ? 2 : 0) | (ev.altKey ? 4 : 0) | (ev.metaKey ? 8 : 0);
 			e.addEventListener('input', () => queue([h, 1, e.selectionStart ?? 0, e.selectionEnd ?? 0, e.value]));
 			e.addEventListener('focus', () => ed.focusing || queue([h, 2, 0, 0, 0]));
@@ -340,6 +344,7 @@ export default function ui(host) {
 		editor_dispose(h) {
 			const ed = editors.get(h);
 			if (!ed) return;
+			slotted.delete(EDITOR | h);
 			if (document.activeElement === ed.e) ed.c.focus({ preventScroll: true });
 			ed.e.remove();
 			ed.style.remove();
@@ -505,14 +510,19 @@ export default function ui(host) {
 				const e = slotted.get(v.s), s = v.v ? views?.get(v.v) : null, into = s ? s.spacer : l;
 				if (!e) continue;
 				if (e.parentNode !== into) into.appendChild(e);
-				const st = e.style, [x0, y0, x1, y1] = v.c;
+				// (an editor: its box in points scaled to the page's, as editor_place has it, its font in points)
+				const st = e.style, [x0, y0, x1, y1] = v.c, q = e.tagName === 'CANVAS' ? k : 1;
 				st.display = v.on ? '' : 'none';
 				st.left = v.x * k + 'px';
 				st.top = v.y * k + 'px';
-				st.width = v.w * k + 'px';
-				st.height = v.h * k + 'px';
+				st.width = v.w * q + 'px';
+				st.height = v.h * q + 'px';
+				if (q === 1) {
+					st.transformOrigin = '0 0';
+					st.transform = Math.abs(k - 1) < 1e-3 ? '' : 'scale(' + k + ')';
+				}
 				st.zIndex = s ? 1 : v.z;
-				st.clipPath = `inset(${(y0 - v.y) * k}px ${(v.x + v.w - x1) * k}px ${(v.y + v.h - y1) * k}px ${(x0 - v.x) * k}px)`;
+				st.clipPath = `inset(${(y0 - v.y) * q}px ${(v.x + v.w - x1) * q}px ${(v.y + v.h - y1) * q}px ${(x0 - v.x) * q}px)`;
 				all.set(v.i, { e, tiles: [], view: null, slot: true });
 				continue;
 			}
