@@ -196,6 +196,7 @@ class WinLayer {
 
 	@:noCompletion public function probe(mode:Int, x:Float, y:Float) {
 		var dc = layers.dev, root = layers.dc.root, visual = slot.handle, k = placed[2], solid = mode == 3 || mode >= 5 ? layers.solid(0x00FF00) : Ptr.nil();
+		if (mode == 7) note('the box as placed: ${layers.placedOf(slot).join(", ")} (x, y, w, h, alpha, shown)');
 		var levels = layers.visualsOf(slot);
 		device.inOrder(_ -> Arena.scoped(a -> {
 			var out:Ptr<Ptr> = a.alloc(8), m:Ptr<Float32> = a.alloc(24);
@@ -218,7 +219,7 @@ class WinLayer {
 				IDCompositionVisual.SetTransform(probed, m);
 				note('probe: on the root ${hr(IDCompositionVisual.AddVisual(root, probed, 0, Ptr.nil()))}');
 			}
-			if (mode == 4 && levels.length == 3 && IDCompositionDevice.CreateVisual(dc, out) >= 0) {
+			if (mode == 4 && levels.length >= 3 && IDCompositionDevice.CreateVisual(dc, out) >= 0) {
 				probed = out.value;
 				probedIn = levels[2];
 				IDCompositionVisual.SetContent(probed, surface);
@@ -228,9 +229,21 @@ class WinLayer {
 				IDCompositionVisual.SetTransform(probed, m);
 				note('probe: on top of the stack ${hr(IDCompositionVisual.AddVisual(probedIn, probed, 0, Ptr.nil()))}');
 			}
-			if (mode >= 5 && levels.length == 3 && !solid.isNull()) {
+			if (mode >= 7 && levels.length == 4 && !levels[1].isNull()) {
+				// (7: the box's clip all of the window; 8: its effect let go)
+				if (mode == 7) {
+					var f:Ptr<Float32> = a.alloc(16);
+					f[0] = -1e6;
+					f[1] = -1e6;
+					f[2] = 1e6;
+					f[3] = 1e6;
+					note('probe: the box unclipped ${hr(IDCompositionVisual.SetClip(levels[1], f))}');
+				} else note('probe: the box without its effect (it had one: ${!levels[3].isNull()}) ${hr(IDCompositionVisual.SetEffect(levels[1], Ptr.nil()))}');
+			}
+			if (mode >= 5 && levels.length >= 3 && !solid.isNull()) {
 				probed = solid;
 				probedIn = levels[mode == 5 ? 0 : 1];
+				if (mode >= 7) probedIn = levels[1];
 				note('probe: a solid colour in the slot\'s ${mode == 5 ? "clip" : "box"} (${!probedIn.isNull()}) ${probedIn.isNull() ? "" : hr(IDCompositionVisual.AddVisual(probedIn, solid, 0, Ptr.nil()))}');
 			}
 			if (mode == 3 && !solid.isNull()) {

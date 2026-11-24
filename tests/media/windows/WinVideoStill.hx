@@ -139,12 +139,12 @@ class WinVideoStill implements Markup {
 		var sl = @:privateAccess n.sample, wl = sl == null ? null : @:privateAccess sl.windows;
 		if (wl == null) return;
 		var before = helder.media.ui.WinLayer.log.length;
-		for (mode in [1, 2, 3, 4, 5, 6]) {
+		for (mode in [1, 2, 3, 4, 5, 6, 7, 8]) {
 			wl.probe(mode, x, y);
 			Sys.sleep(0.4);
 			var px = capture(w.window, width, height);
 			var at = (Math.round(y0 + 12.5 * s) * width + Math.round(x0 + 16.5 * s)) * 4, c = (Math.round(y + 5) * width + Math.round(x + 5)) * 4;
-			var what = ["", "the surface also on top of the root", "the slot visual unscaled", "a solid green in the slot", "the surface on top of the stack", "a solid green in the slot clip", "a solid green in the slot box"][mode];
+			var what = ["", "the surface also on top of the root", "the slot visual unscaled", "a solid green in the slot", "the surface on top of the stack", "a solid green in the slot clip", "a solid green in the slot box", "green in the box, the box unclipped", "green in the box, its effect let go"][mode];
 			var q = px == null ? "no capture" : px.get(at) + " " + px.get(at + 1) + " " + px.get(at + 2);
 			var corner = px == null ? "" : px.get(c) + " " + px.get(c + 1) + " " + px.get(c + 2);
 			say('probe $mode: $what: the top left quadrant $q, the box corner $corner');

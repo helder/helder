@@ -518,8 +518,15 @@ class DcLayers extends LayerSplit {
 		for (p in kept)
 			if (p.kind == LayerPlane.SLOT && p.slot == slot) {
 				var d:DcPlane = cast p;
-				return [@:privateAccess d.clip, @:privateAccess d.box, stack];
+				return [@:privateAccess d.clip, @:privateAccess d.box, stack, @:privateAccess d.effect];
 			}
+		return [];
+	}
+
+	// (tests: a slot's box as last placed: x, y, w, h, alpha, shown)
+	@:noCompletion public function placedOf(slot:helder.ui.LayerSlot):Array<Float> {
+		for (p in kept)
+			if (p.kind == LayerPlane.SLOT && p.slot == slot) return [for (i in 0...6) @:privateAccess (cast p : DcPlane).set[i]];
 		return [];
 	}
 
