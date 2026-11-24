@@ -194,6 +194,8 @@ class CocoaWindow {
 			mode = ObjC.str("kCFRunLoopDefaultMode");
 			Runtime.class_replaceMethod(made, ObjC.sel("windowShouldClose:"), Callback.addr(shouldClose), Mem.cstr("c@:@"));
 			Runtime.class_replaceMethod(made, ObjC.sel("windowDidResize:"), Callback.addr(didResize), Mem.cstr("v@:@"));
+			Runtime.class_replaceMethod(made, ObjC.sel("windowDidBecomeKey:"), Callback.addr(didChangeKey), Mem.cstr("v@:@"));
+			Runtime.class_replaceMethod(made, ObjC.sel("windowDidResignKey:"), Callback.addr(didChangeKey), Mem.cstr("v@:@"));
 			Runtime.class_replaceMethod(made, ObjC.sel("windowDidChangeBackingProperties:"), Callback.addr(didChangeScale), Mem.cstr("v@:@"));
 			Runtime.class_replaceMethod(made, ObjC.sel("windowWillStartLiveResize:"), Callback.addr(startResize), Mem.cstr("v@:@"));
 			Runtime.class_replaceMethod(made, ObjC.sel("windowDidEndLiveResize:"), Callback.addr(endResize), Mem.cstr("v@:@"));
@@ -223,6 +225,8 @@ class CocoaWindow {
 		var cls = Runtime.objc_allocateClassPair(ObjC.cls("NSObject"), Mem.cstr("HxmcWindowDelegate"), 0);
 		Runtime.class_addMethod(cls, ObjC.sel("windowShouldClose:"), Callback.addr(shouldClose), Mem.cstr("c@:@"));
 		Runtime.class_addMethod(cls, ObjC.sel("windowDidResize:"), Callback.addr(didResize), Mem.cstr("v@:@"));
+		Runtime.class_addMethod(cls, ObjC.sel("windowDidBecomeKey:"), Callback.addr(didChangeKey), Mem.cstr("v@:@"));
+		Runtime.class_addMethod(cls, ObjC.sel("windowDidResignKey:"), Callback.addr(didChangeKey), Mem.cstr("v@:@"));
 		Runtime.class_addMethod(cls, ObjC.sel("windowDidChangeBackingProperties:"), Callback.addr(didChangeScale), Mem.cstr("v@:@"));
 		Runtime.class_addMethod(cls, ObjC.sel("windowWillStartLiveResize:"), Callback.addr(startResize), Mem.cstr("v@:@"));
 		Runtime.class_addMethod(cls, ObjC.sel("windowDidEndLiveResize:"), Callback.addr(endResize), Mem.cstr("v@:@"));
@@ -361,6 +365,7 @@ class CocoaWindow {
 			var s = ObjC.str(t);
 			Msg.vPtr(window, ObjC.sel("setTitle:"), s);
 			ObjC.release(s);
+			keepControls();
 		});
 	}
 
@@ -727,6 +732,7 @@ class CocoaWindow {
 
 	@:hxmc.callback static function didResize(self:Ptr, cmd:Ptr, note:Ptr):Void {
 		var w = find(Msg.id(note, ObjC.sel("object")));
+		if (w != null) w.keepControls();
 		if (w == null || !w.measure()) return;
 		w.resized();
 		// (a drag of the window's edge runs AppKit's own loop until the mouse is up, and
@@ -992,6 +998,22 @@ class CocoaWindow {
 			controlsY = py;
 			layoutControls();
 		});
+	}
+
+	// (AppKit lays its title bar out again after a title, a resize, a change
+	// of key status, and puts the buttons back where it keeps them: that
+	// layout done now and the buttons moved again in the same turn of the
+	// main thread, before the window is drawn, so they are never seen there)
+	function keepControls() {
+		if (owner.titlebar != Inset || controlsX < 0 || isFullscreen()) return;
+		var frame = Msg.id(Msg.id(window, ObjC.sel("contentView")), ObjC.sel("superview"));
+		if (!frame.isNull()) Msg.v(frame, ObjC.sel("layoutSubtreeIfNeeded"));
+		layoutControls();
+	}
+
+	@:hxmc.callback static function didChangeKey(self:Ptr, cmd:Ptr, note:Ptr):Void {
+		var w = find(Msg.id(note, ObjC.sel("object")));
+		if (w != null) w.keepControls();
 	}
 
 	// (the close button where layoutControls put it, in the window: AppKit moves

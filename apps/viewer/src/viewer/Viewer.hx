@@ -4,6 +4,7 @@ import helder.image.AnimatedImage;
 import helder.view.graph.Graph;
 import helder.view.graph.Signal;
 import viewer.Decode.Decoded;
+import viewer.PdfPages.PdfSizes;
 import viewer.ViewerActions;
 
 using StringTools;
@@ -15,10 +16,11 @@ enum abstract ViewState(String) to String {
 	var Failed = "failed";
 }
 
-// The viewer without its window: the folder, the decodes, the camera, and
-// what the window shows as signals (its title, the state and its message,
-// the status line, the picker), driven by keys, the wheel and the pointer
-// the shell passes on. Headless in tests (a decode of its own, no GPU).
+// The full-size viewer without its window: the folder's files (the
+// browser's list), the decodes, the camera, and what the window shows as
+// signals (its title, the state and its message, the status line), driven
+// by keys, the wheel and the pointer the shell passes on. Headless in
+// tests (a decode of its own, no GPU).
 class Viewer {
 	public final folder = new FolderModel();
 	public final cache:DecodeCache;
@@ -33,10 +35,6 @@ class Viewer {
 	public final fullscreen = Graph.signal(false);
 	// a change the image view draws (a new image, frame or camera)
 	public final version = Graph.signal(0);
-	// the picker: open, its folder, its entries (folders end in "/")
-	public final pickerOpen = Graph.signal(false);
-	public final pickerDir = Graph.signal("");
-	public final pickerEntries:Signal<Array<String>> = Graph.signal([]);
 	// a PDF's page shown (from 0) and its pages (1: an image's, or not known
 	// yet); as signals for the window (its key context, the go to page card)
 	public var page(default, null) = 0;
@@ -60,45 +58,88 @@ class Viewer {
 	public var prefetch = 2;
 	// Mod's name for the hints: Ctrl, or Cmd on macOS
 	public var mod = "Ctrl";
-	// the system's open dialog (Mod+O; the shell's: helder.os.FileDialog):
-	// true when it showed one, else the picker
-	public var openDialog:Null<Void->Bool> = null;
+	// the system's open dialog (Mod+O; the shell's: helder.os.FileDialog)
+	public var openDialog:Null<Void->Void> = null;
 
+	// (back in the browser: decodes landing show nothing)
+	var closed = true;
 	var frameAt = 0.0;
 	var played = 0;
 	var wheelAcc = 0.0;
 	var wheelAt = -1.0;
 
-	public function new(decode:(path:String, side:Int, done:Decoded->Void) -> Void, ?budget:Float) {
+	// a PDF shown (its pages in one column: PdfDoc, PdfView), null while none
+	public final pdf:Signal<Null<PdfDoc>> = Graph.signal((null : Null<PdfDoc>));
+	var doc:Null<PdfDoc> = null;
+
+	// the PDF shown now (pdf's value before its signal's write lands)
+	public function document():Null<PdfDoc>
+		return doc;
+	final decode:(path:String, side:Int, done:Decoded->Void) -> Void;
+	final sizes:(path:String, done:PdfSizes->Void) -> Void;
+
+	// decode: a file's or a PDF page's decode at a side (Decode.key); sizes:
+	// a PDF's pages' sizes (the shell's a job's; else at once)
+	public function new(decode:(path:String, side:Int, done:Decoded->Void) -> Void, ?budget:Float, ?sizes:(path:String, done:PdfSizes->Void) -> Void) {
+		this.decode = decode;
+		this.sizes = sizes ?? (path, done) -> done(PdfPages.sizesOf(path));
 		cache = new DecodeCache(decode, budget ?? 768 * 1048576.0);
 		cache.onReady = p -> if (p == key()) show();
 		empty();
 	}
 
-	// a file or a folder (the command line's, a drop's, the picker's)
-	public function open(path:String):Bool {
-		pickerOpen(false);
+	// a file of a folder shown, the folder's files those (the browser's, in its order)
+	public function view(dir:String, names:Array<String>, name:String) {
+		closed = false;
 		gotoOpen(false);
 		setPage(0);
 		setPages(1);
-		if (!folder.open(path)) {
-			fail("unreadable", "Cannot open " + path, "No such file or folder");
-			return false;
-		}
+		folder.set(dir, names, name);
+		refresh();
+		if (onOpened != null) onOpened(FolderModel.join(dir, name));
+	}
+
+	// the folder's files again (the browser's watch, its order changed): the
+	// one shown kept by name
+	public function relist(names:Array<String>) {
+		var shown = folder.name;
+		if (!folder.relist(names)) return;
 		if (folder.index < 0) {
-			cache.clear();
-			shown = null;
-			shownPath = "";
-			media("");
-			state(Empty);
-			message("No images in " + folder.dir);
-			detail("Drop an image here, or press " + mod + "+O");
-			updateTitle();
-			return true;
+			release();
+			return;
+		}
+		if (folder.name != shown) {
+			setPage(0);
+			setPages(1);
 		}
 		refresh();
-		if (onOpened != null) onOpened(path);
-		return true;
+	}
+
+	// files changed on disk: decoded again
+	public function modified(paths:Array<String>) {
+		for (p in paths)
+			cache.dropFile(p);
+		if (folder.current != null && paths.contains(folder.current)) refresh();
+	}
+
+	// back in the browser: the player stopped, nothing more shown, the
+	// picture kept for the view's fade (release lets it go)
+	public function close() {
+		closed = true;
+		media("");
+		gotoOpen(false);
+	}
+
+	// the decodes let go (the browser left the folder)
+	public function release() {
+		closed = true;
+		dropPdf();
+		cache.clear();
+		shown = null;
+		shownPath = "";
+		media("");
+		empty();
+		updateTitle();
 	}
 
 	// a file opened (the shell's recent files)
@@ -134,9 +175,9 @@ class Viewer {
 		return toPage(page - 1);
 
 	public function toPage(p:Int):Bool {
-		if (folder.current == null || p < 0 || p >= pages || p == page) return false;
-		setPage(p);
-		refresh();
+		var d = doc;
+		if (d == null || p < 0 || p >= pages) return false;
+		d.goTo(p);
 		return true;
 	}
 
@@ -147,6 +188,9 @@ class Viewer {
 		if (n == null) return false;
 		return toPage(Std.int(Math.max(1, Math.min(n, pages))) - 1);
 	}
+
+	public static function isPdf(name:String):Bool
+		return Kinds.extension(name) == "pdf";
 
 	function setPage(p:Int) {
 		page = p;
@@ -162,18 +206,6 @@ class Viewer {
 	public function key():Null<String>
 		return folder.current == null ? null : Decode.key(folder.current, page);
 
-	// the folder read again (the watch): new and removed files, the one
-	// shown decoded again when it changed on disk
-	public function watch() {
-		if (folder.dir == "") return;
-		var r = folder.rescan();
-		for (p in r.modified)
-			cache.dropFile(p);
-		if (r.listChanged || r.modified.length > 0) {
-			if (folder.index < 0) open(folder.dir) else refresh();
-		}
-	}
-
 	// (what is shown and what is decoded ahead: JPEGs at the view's size, its larger side)
 	function refresh() {
 		// (before the window's first frame its size is not known: a screen's)
@@ -187,16 +219,15 @@ class Viewer {
 	function wanted():Array<String> {
 		var around = folder.around(prefetch);
 		if (around.length == 0) return [];
-		var cur = folder.path(around[0]), p = page, n = pages;
-		var out = FolderModel.isMedia(cur) ? [] : [Decode.key(cur, p)];
-		if (p + 1 < n) out.push(Decode.key(cur, p + 1));
-		if (p > 0) out.push(Decode.key(cur, p - 1));
+		var cur = folder.path(around[0]);
+		var out = FolderModel.isMedia(cur) || isPdf(cur) ? [] : [cur];
 		for (i in around.slice(1))
-			if (!FolderModel.isMedia(folder.files[i])) out.push(folder.path(i));
+			if (!FolderModel.isMedia(folder.files[i]) && !isPdf(folder.files[i])) out.push(folder.path(i));
 		return out;
 	}
 
 	function show() {
+		if (closed) return;
 		var path = key();
 		if (path == null) return;
 		// (a video or an audio file: the shell's player shows it, nothing decoded here)
@@ -212,12 +243,12 @@ class Viewer {
 			return;
 		}
 		media("");
-		var d = cache.get(path);
-		// (a PDF's page count, known once one of its pages landed: its next page decoded ahead)
-		if (d != null && d.pages > 0 && d.pages != pages) {
-			setPages(d.pages);
-			cache.want(wanted());
+		if (isPdf(folder.name)) {
+			showPdf(path);
+			return;
 		}
+		dropPdf();
+		var d = cache.get(path);
 		if (d == null) {
 			if (shownPath != path) {
 				shown = null;
@@ -247,18 +278,56 @@ class Viewer {
 		changed();
 	}
 
-	function fail(kind:String, m:String, d:String) {
+	// (a PDF: its pages' sizes asked for, then its column shown)
+	function showPdf(path:String) {
+		if (doc != null && doc.path == path) {
+			updateTitle();
+			return;
+		}
+		dropPdf();
 		shown = null;
-		state(Failed);
-		message(m);
-		detail(d);
+		shownPath = path;
+		state(Loading);
+		message("Loading " + folder.name + "…");
+		detail("");
 		updateTitle();
+		sizes(path, r -> {
+			if (closed || folder.current != path || doc != null) return;
+			if (r.error != null || r.sizes.length == 0) {
+				state(Failed);
+				message(r.error ?? "A damaged PDF: no pages");
+				detail(folder.name + " · PDF");
+				updateTitle();
+				return;
+			}
+			var d = new PdfDoc(path, r.sizes, r.fileSize, decode);
+			d.onPage = p -> {
+				setPage(p);
+				updateTitle();
+			};
+			doc = d;
+			pdf(d);
+			setPage(0);
+			setPages(r.sizes.length);
+			state(Shown);
+			message("");
+			detail("");
+			updateTitle();
+		});
+	}
+
+	function dropPdf() {
+		if (doc == null) return;
+		doc = null;
+		pdf(null);
+		setPage(0);
+		setPages(1);
 	}
 
 	function empty() {
 		state(Empty);
 		message("No image open");
-		detail("Drop an image here, or press " + mod + "+O");
+		detail("");
 	}
 
 	function updateTitle() {
@@ -275,8 +344,13 @@ class Viewer {
 			status(parts.join(" · ") + (mediaStatus == "" ? "" : " · " + mediaStatus));
 			return;
 		}
-		var paged = pages > 1 ? 'page ${page + 1} / ${pages}' : "";
+		var paged = doc != null ? 'page ${page + 1} / ${pages}' : "";
 		if (paged != "") parts.push(paged) else if (d != null) parts.push('${d.width}×${d.height}');
+		if (doc != null) {
+			title(parts.join(" · "));
+			status('${doc.percent()}% · $paged · PDF · ${size(doc.fileSize)} · ${folder.index + 1} / $n');
+			return;
+		}
 		title(parts.join(" · "));
 		if (d == null) {
 			status(parts.join(" · "));
@@ -313,16 +387,31 @@ class Viewer {
 	// --- zoom and pan (device pixels)
 
 	public function fit() {
+		if (doc != null) {
+			doc.fit();
+			updateTitle();
+			return;
+		}
 		camera.fit();
 		changed();
 	}
 
 	public function actual() {
+		if (doc != null) {
+			doc.actual();
+			updateTitle();
+			return;
+		}
 		camera.actual();
 		changed();
 	}
 
 	public function zoomStep(dir:Int) {
+		if (doc != null) {
+			doc.step(dir);
+			updateTitle();
+			return;
+		}
 		if (shown == null) return;
 		camera.step(dir);
 		changed();
@@ -367,9 +456,7 @@ class Viewer {
 	public function perform(a:ViewerAction):Bool {
 		switch a {
 			case Open:
-				if (openDialog == null || !openDialog()) openPicker(folder.dir);
-			case OpenRecent(path):
-				open(path);
+				if (openDialog != null) openDialog();
 			case Next: next();
 			case Previous: previous();
 			case First: first();
@@ -381,18 +468,26 @@ class Viewer {
 			case ToggleFullscreen: fullscreen(!fullscreen.peek());
 			case LeaveFullscreen: fullscreen(false);
 			case ToggleStatus: statusOn(!statusOn.peek());
-			case ClosePicker: pickerOpen(false);
 			case NextPage: nextPage();
 			case PreviousPage: previousPage();
 			case FirstPage: toPage(0);
 			case LastPage: toPage(pages - 1);
+			case ScrollDown | ScrollUp | LineDown | LineUp:
+				var d = doc;
+				if (d == null) return false;
+				switch a {
+					case ScrollDown: d.screens(1);
+					case ScrollUp: d.screens(-1);
+					case LineDown: d.lines(1);
+					case _: d.lines(-1);
+				}
 			case GoToPage:
 				if (pages < 2) return false;
 				gotoText("");
 				gotoOpen(true);
 			case CloseGoTo: gotoOpen(false);
 			case CloseAbout: aboutOpen(false);
-			case CopyPath | ShowInFolder | OpenWithDefault | PlayPause | StepForward | StepBack | ToggleMute: return false;
+			case _: return false;
 		}
 		return true;
 	}
@@ -401,8 +496,9 @@ class Viewer {
 	public function actionState(a:ViewerAction):helder.ui.actions.Actions.ActionState
 		return switch a {
 			case Next | Previous | First | Last: folder.index >= 0 ? Enabled : Disabled;
-			case ZoomIn | ZoomOut | Fit | ActualSize: state.peek() == Shown ? Enabled : Disabled;
+			case ZoomIn | ZoomOut | Fit | ActualSize: state.peek() == Shown || doc != null ? Enabled : Disabled;
 			case NextPage | LastPage: page + 1 < pages ? Enabled : Disabled;
+			case ScrollDown | ScrollUp | LineDown | LineUp: doc != null ? Enabled : Disabled;
 			case PreviousPage | FirstPage: page > 0 && pages > 1 ? Enabled : Disabled;
 			case GoToPage: pages > 1 ? Enabled : Disabled;
 			case CopyPath | ShowInFolder | OpenWithDefault: shownPath != "" || folder.current != null ? Enabled : Disabled;
@@ -442,33 +538,6 @@ class Viewer {
 		}
 		if (moved) changed();
 		return moved || (d != null && d.frames.length > 1) || camera.gliding;
-	}
-
-	// --- the picker: a folder's subfolders and images
-
-	public function openPicker(dir:String) {
-		var d = dir == "" ? Sys.getCwd() : dir;
-		var names = try sys.FileSystem.readDirectory(d) catch (_:Dynamic) [];
-		var dirs = [], images = [];
-		for (n in names) {
-			if (n.startsWith(".")) continue;
-			var p = FolderModel.join(d, n);
-			if (try sys.FileSystem.isDirectory(p) catch (_:Dynamic) false) dirs.push(n + "/") else if (FolderModel.isImage(n) || FolderModel.isMedia(n)) images.push(n);
-		}
-		dirs.sort(FolderModel.compare);
-		images.sort(FolderModel.compare);
-		pickerDir(d);
-		pickerEntries(["../"].concat(dirs).concat(images));
-		pickerOpen(true);
-	}
-
-	// an entry picked: a folder entered, an image opened
-	public function pick(entry:String) {
-		var d = pickerDir.peek();
-		if (entry == "../") {
-			var up = haxe.io.Path.directory(haxe.io.Path.removeTrailingSlashes(d));
-			openPicker(up == "" ? "/" : up);
-		} else if (entry.endsWith("/")) openPicker(FolderModel.join(d, entry.substr(0, entry.length - 1))) else open(FolderModel.join(d, entry));
 	}
 
 	public static function size(bytes:Int):String

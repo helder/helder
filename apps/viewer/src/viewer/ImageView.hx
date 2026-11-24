@@ -16,8 +16,13 @@ import viewer.PhotoShader;
 // the wheel and a pinch the viewer's (Viewer.wheel). Without a GPU (a
 // story, a test) it lays out and hits, and draws nothing.
 class ImageView extends helder.ui.Node {
-	// the background, as sRGB (#161618) and as linear light
-	public static inline var BACKGROUND = 0x161618;
+	// the background behind the image, as sRGB (0xRRGGBB; the look's canvas, light or dark)
+	public var background(default, set) = 0x121212;
+
+	function set_background(c:Int):Int {
+		if (c != background) redraw();
+		return background = c;
+	}
 
 	final viewer:Viewer;
 	var device:Null<Device>;
@@ -216,7 +221,7 @@ class ImageView extends helder.ui.Node {
 		records++;
 		var t = target;
 		if (t == null) return;
-		var bg = BACKGROUND;
+		var bg = background;
 		var clear = new Color(((bg >> 16) & 255) / 255, ((bg >> 8) & 255) / 255, (bg & 255) / 255, 1);
 		enc.beginPass({colors: [{load: Clear, clear: clear, texture: t}]});
 		var d = viewer.shown;

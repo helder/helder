@@ -1,32 +1,57 @@
 # Viewer
 
-A fast image viewer for Windows, macOS and Linux. Open a file and you
-can step through every image in its folder. It is a single small program
-built on helder alone, with no browser engine and no runtime to install.
+A fast image viewer and file browser for Windows, macOS and Linux. Browse
+your folders, see what is in them, and open any image, PDF or video full
+size; step through the folder from there and come back to where you were.
+It is a single small program built on helder alone, with no browser engine
+and no runtime to install.
 
+- **A browser of folders.** A sidebar of your places (Home, Desktop,
+  Documents, Downloads, Pictures, Movies, Music) and drives, one level at a
+  time: a folder's subfolders, the one you are in highlighted, › to go
+  deeper, the drive's free space at the foot. A toolbar with back and
+  forward, the folder's name (its menu lists the folders enclosing it),
+  search, the View menu (the order, folders first, hidden files) and the
+  inspector; the path along the bottom, each folder a button and each
+  separator a menu of that folder's subfolders.
+- **A grid of thumbnails, or a list** (name, date, size, kind; sorted by
+  its header). Thumbnails come from the viewer's own cache, the nearest
+  first. Select several with Shift and Ctrl (Cmd), Ctrl+A, or a marquee
+  drawn from empty space, and drag them out to other apps: a file
+  manager, mail, chat, a browser's upload.
+- **Large folders.** A folder is read off the window's thread, 2,000
+  entries at a time; the first show at once, the rest are merged in sorted
+  without moving what you look at or losing the selection. Sorted the way
+  people count (`img2` before `img10`), or by kind, date or size. Watched:
+  files added, removed or changed show up.
+- **The inspector**: the selected file's preview (several: a stack of
+  them, their kinds and total size), its kind and size,
+  Open, Show in Finder (Explorer, the file manager), Move to Trash (put
+  back with Undo) and its details: dimensions, pages, duration, dates.
 - **Opens** PNG and APNG, JPEG, GIF, WebP and PDF on every system, and
   TIFF, HEIC/HEIF, AVIF and camera RAW files where the system has their
   codecs (Windows' WIC, macOS's ImageIO, Linux's libtiff, libheif,
-  libavif and libraw).
-- **A folder in order.** Files are sorted the way people count (`img2`
-  before `img10`), and the neighbours of the current file are decoded
-  ahead, so the next image is already there. The folder is watched, so
-  files you add or change show up.
+  libavif and libraw), full size in the same window, with a pill back to
+  the folder. The neighbours of the file shown are decoded ahead, so the
+  next is already there.
 - **Sharp at any size.** Images are filtered in linear light when they
   are scaled down. JPEGs are decoded at the size they are shown, and very
   large images (9000 pixels or more) are drawn in tiles. EXIF orientation
   is applied.
 - **Animations play**: GIF, WebP and APNG.
-- **PDFs, page by page.** The next page is drawn ahead in the background,
-  and you can go straight to a page by its number.
+- **PDFs as a browser shows them**: the pages in one column you scroll
+  through, fitted to the window's width, each drawn at the size it is
+  shown (sharp again after a zoom) as it comes into view, a tag with the
+  page you are on, and straight to a page by its number.
 - **Video and audio** on macOS: MP4, MOV, M4V, WebM, MKV, M4A, MP3 and
   FLAC (H.264, HEVC, VP9 and AV1 where the Mac's hardware decodes them;
   AAC, MP3, FLAC, ALAC, Opus, Vorbis) play in the folder beside the
   images, with a scrub bar showing the keyframe under the pointer, frame
   stepping, and the volume.
 - **Desktop integration**: "Open with", the system's open dialog, drag
-  and drop, one window that later launches hand their file to, and the
-  window's size and place remembered between runs.
+  and drop, one window that later launches hand their file to, the light
+  or dark appearance the system has, and the window's size and place, the
+  folder, the order and the inspector remembered between runs.
 
 ## Install
 
@@ -61,31 +86,53 @@ put `org.helder.viewer.flatpak.json` next to the tarball and run
 `flatpak-builder --user --install --install-deps-from=flathub build
 org.helder.viewer.flatpak.json`, then `flatpak run org.helder.viewer`.
 
-From the command line on any system, `viewer photo.jpg` opens a file in
-its folder, `viewer folder/` opens a folder's first image, `viewer --new`
-opens a second window, and `viewer --version` prints the version.
+From the command line on any system, `viewer` opens the folder you were
+last in (else Pictures, else your home folder), `viewer folder/` browses a
+folder, `viewer photo.jpg` opens a file full size in its folder, `viewer
+--new` opens a second window, and `viewer --version` prints the version.
 
 ## Shortcuts
 
 Ctrl is Cmd on macOS.
 
-| | |
+| In the browser | |
 | --- | --- |
-| Open a file | Ctrl+O, or drop a file on the window |
-| Next, previous image | Right or Down, Left or Up; Space, Page Down; Backspace, Page Up; the mouse wheel while the image fits |
-| First, last image | Home, End |
+| Move, select | the arrows (in the grid across and down), Home, End, Page Up and Down; type a name's first letters |
+| Select several | Shift with a click or the arrows; Ctrl with a click (Cmd on macOS); Ctrl+A; a drag from empty space |
+| Drag out to another app | drag the selected files |
+| Open (a folder: go in; a file: full size) | Enter, a double click; Cmd+Down on macOS |
+| Back, forward | Ctrl+[ and Ctrl+], Alt+Left and Alt+Right |
+| The enclosing folder | Ctrl+Up |
+| Grid, list | Ctrl+1, Ctrl+2 |
+| Search the folder by name | Ctrl+F; Escape clears it |
+| The inspector | Ctrl+I |
+| Type a path | Ctrl+L, then Enter |
+| Show hidden files | Ctrl+Shift+. |
+| Move to Trash (Recycle Bin), put back | Delete or Ctrl+Backspace; Ctrl+Z |
+| Copy the file's path | Ctrl+Shift+C; a right click has Show in Folder and Open with Default App too |
+
+| Full size | |
+| --- | --- |
+| Back to the folder | Escape (after leaving full screen), Ctrl+Up, the pill at the top left |
+| Next, previous file | Right or Down, Left or Up; Space, Page Down; Backspace, Page Up; the mouse wheel while the image fits |
+| First, last file | Home, End |
 | Zoom in, out | `+`, `-`; Ctrl and the wheel; a trackpad's pinch; the wheel once zoomed in |
 | Fit, 100% | `0`, `1`; a double click toggles between them |
 | Pan | drag the image |
-| PDF: next, previous page | Page Down, Space or `]`; Page Up, Backspace or `[`; the wheel while the page fits |
-| PDF: first, last page | Ctrl+Home, Ctrl+End |
+| PDF: scroll | the wheel or a trackpad; Page Down or Space, Page Up or Backspace a screen; Down, Up a line |
+| PDF: next, previous page | `]`, `[` |
+| PDF: first, last page | Home, End |
 | PDF: go to page | G or Ctrl+G, type the number, Enter |
+| PDF: zoom | `+`, `-`; Ctrl and the wheel, a pinch, about the pointer; `0` fitted to the width, `1` 100% |
 | Full screen | F11 or Enter (Ctrl+Cmd+F on macOS); Escape leaves it |
 | Status line | I: the zoom, the size, the format, the page, the place in the folder |
-| Copy the file's path | Ctrl+Shift+C; a right click has Show in Folder and Open with Default App too |
 | Video: play, pause | Space or K; next, previous file: Down, Up, Page Down, Page Up |
 | Video: a frame on, back | `.` or Right, `,` or Left |
 | Video: mute | M |
+
+| Anywhere | |
+| --- | --- |
+| Open a file | Ctrl+O, or drop a file or a folder on the window |
 | Menus | the menu bar (on Linux in the window: F10) |
 | Quit | Ctrl+Q (Cmd+Q) |
 
@@ -93,10 +140,11 @@ Every shortcut can be changed in `helder-viewer-keymap.json` in the
 viewer's settings folder (`~/.local/share/helder-viewer` on Linux,
 `%APPDATA%\helder-viewer` on Windows, `~/Library/Application
 Support/helder-viewer` on macOS). For example, to make N go to the next
-image and turn off Space:
+image and turn off Space (the context `Viewer && full` is a file shown full
+size, `Viewer && browser` the browser):
 
 ```json
-[{"context": "Viewer", "bindings": {"n": "viewer::Next", "space": null}}]
+[{"context": "Viewer && full", "bindings": {"n": "viewer::Next", "space": null}}]
 ```
 
 The file is read again when it changes. The actions are listed in
@@ -170,27 +218,59 @@ desktop app: it is not built for the web.
 
 ```sh
 bun run helder build apps/viewer                 # bin/<target>/viewer (--target windows-x86_64, macos-arm64)
-apps/viewer/bin/linux-x86_64/viewer photo.jpg    # a file: its folder, at it
-apps/viewer/bin/linux-x86_64/viewer ~/Pictures   # a folder: its first image
+apps/viewer/bin/linux-x86_64/viewer photo.jpg    # a file: full size, in its folder
+apps/viewer/bin/linux-x86_64/viewer ~/Pictures   # a folder: browsed
 bun run test viewer viewer-window                # its tests; a real window on the GPU
 ```
 
-The title is the file's name, its place in the folder and its size
-(`photo.jpg · 3 / 128 · 4032×3024`). A file that cannot be read, is not
+The title is the folder's name, or a file's full size: its name, its place
+among the folder's files and its size (`photo.jpg · 3 / 128 · 4032×3024`). A file that cannot be read, is not
 an image this viewer reads, is damaged or larger than helder.image's
 limits (`ImageLimits`: 268 MP, 65536 a side, 2 GiB to decode) shows why
 in place of the image, and the keys go on to the next. The window's
-size and place, and the status line, are kept between runs (helder.os's
-`Store`, `helder-viewer`).
+size and place, the folder and its selection, the layout, the order,
+hidden files, the inspector and the status line are kept between runs
+(helder.os's `Store`, `helder-viewer`).
 
 ### How it works
 
-- **FolderModel** (`src/viewer/FolderModel.hx`): the folder's images in
-  natural order (`img2` before `img10`, without case), the one shown,
-  next and previous wrapping, the neighbours nearest first; `rescan`
-  reads the folder again (the shell's watch, every second): files added
-  and removed, the one shown kept by name (gone: the one after it), the
-  ones changed on disk named.
+- **Files** (`src/viewer/Files.hx`): every file the browser reads or
+  changes goes through one, a stand-in for hxmc's asynchronous file system
+  to come: `list` (a folder's entries in batches of 2,000: name, kind,
+  size, dates), `stat`, `open` (a `ByteSource`), `localPath`, `watch`,
+  `trash` and `rename`. **NativeFiles** reads a folder on helder.jobs'
+  pool (its names, then a stat of each, sent back over a channel), its
+  watch lists it again every 2 s; **MemoryFiles** is the tests'.
+- **Browser** (`Browser.hx`): the folder shown and its history (back,
+  forward, the enclosing folder with the one left selected), its entries
+  as batches arrive, each sorted on its own and merged in (`Listing.hx`:
+  natural order, kind, date or size, folders first, hidden files, the
+  search's filter), the selection kept by name through new batches, a
+  sort and the watch (a folder of fewer than 5,000 entries every 2 s, a
+  larger one when the pointer comes back to the window: helder.os has no
+  focus event), type-ahead, the trash and its undo (a rename back from
+  where the trash put it, where the system says). Its state is `Cell`s:
+  read back at once by the model, signals for the window.
+- **Sidebar** (`Sidebar.hx`): the overview (helder.os's `Places.user()`
+  and `Places.volumes()`) or a folder's level: its subfolders, each with
+  › when it has its own (its listing stopped at the first). The level
+  follows the folder shown: its parent, so the folder is among its
+  siblings (a drive's top: itself); a place chosen shows its own.
+- The selection is helder.ui's `Selection` (by name), the grid its
+  `VirtualGrid` and the list its `VirtualList`, both with that selection's
+  keys, presses, marquee and type-ahead; a drag of an entry (4 points)
+  starts the system's drag of the selected files (`DragOut.hx`:
+  `Ui.dragFiles`, the entry's thumbnail its picture).
+- **Explorer** (`Explorer.hx`) is the browser and the viewer without a
+  window: a file opened full size from the browser (the viewer's list
+  the browser's viewable files in its order, again when it changes), back
+  to the folder with the file viewed last selected, the command line's
+  path, the actions of the keymap and the menus and their states.
+- **FolderModel** (`FolderModel.hx`): the files the viewer steps
+  through (the browser's list), the one shown, next and previous
+  wrapping, the neighbours nearest first, natural order's comparison
+  (`img2` before `img10`, without case); the list given again keeps the
+  one shown by name (gone: the one now at its place).
 - **DecodeCache** (`DecodeCache.hx`): decodes kept by path within a
   budget (768 MB), the wanted ones (the image shown, then two neighbours
   each side) decoded nearest first, two at a time; over the budget the
@@ -227,20 +307,29 @@ size and place, and the status line, are kept between runs (helder.os's
   in the oldest quarter copied forward). One process owns it (`thumbs/lock`,
   held with flock or an exclusive handle); another reads only. A JPEG, PNG,
   GIF or WebP under 64 KB is decoded every time (as fast as a cache read);
-  every other kind is cached at any size. The folder grid will use this queue.
+  every other kind is cached at any size. The browser's grid and list ask it (`Tiles.thumbnail`).
+- **PdfLayout**, **PdfDoc**, **PdfView** (`PdfLayout.hx`, `PdfDoc.hx`,
+  `PdfView.hx`): a PDF as pdf.js shows one by default: its pages down one
+  column, centred, 12 points apart, a white sheet each with a soft shadow
+  on the canvas, their offsets a `HeightIndex`'s (the pages' sizes in points
+  known first: `PdfPages.sizes`, on a job), fitted to the width until
+  zoomed (Ctrl and the wheel, a pinch, about the pointer: the point under
+  it stays; `+`, `-` about the middle; 100% a point a point). Only the
+  pages in view and one each side are made, and drawn: those in view
+  first, two at a time, at the size shown in device pixels (again larger
+  when a zoom needs it, the smaller drawing shown meanwhile; again smaller
+  past 2.5 times), let go two pages out of view. The page at a third of
+  the view's height is the one it is on (the title's, the tag's).
 - **PdfPages** (`PdfPages.hx`): a PDF's pages, each a decode of its own
-  (`Decode.key`: the path, the page after a newline), so they go through
-  the cache, the tiles and the zoom an image's do: its 100% two pixels a
-  point (4096 a side at most), drawn at the view's side, again larger when
-  a zoom needs it (`refine`); the page shown first, then the next and the
-  previous page, then the folder's neighbours. The two documents opened
+  (`Decode.key`: the path, the page after a newline), drawn at the side
+  asked for (4096 a side at most; the inspector's first page at 512). The two documents opened
   last are kept open on the jobs' side with helder.pdf's own cache of
   decoded images and page contents (`PdfLimits.imageCache`, 48 MB each),
   so the next page decodes none of what the last one did; one page is
   drawn at a time under a lock; each page has its own decompression
-  budget; a changed file is opened again. The key context `pdf` (a
-  document of several pages) gives Page Down, Space and `]` to the pages,
-  the arrows stay the folder's; `goto` is the go to page card's.
+  budget; a changed file is opened again. The key context `pdf` (a PDF
+  shown) gives Page Down, Space, Up, Down, `[`, `]`, Home and End to the
+  column, Left and Right stay the folder's; `goto` is the go to page card's.
 - **Version** (`Version.hx`): `helder.webmanifest`'s version, read at
   compile time, the about card's and `--version`'s.
 - **ViewCamera** (`ViewCamera.hx`): the scale (device pixels per image
@@ -257,35 +346,60 @@ size and place, and the status line, are kept between runs (helder.os's
   window is filtered and averaged in linear light, and nearest from 200%
   up; composed over the dark background in linear light and written as
   sRGB. An animation's frame written into the texture as it changes.
-- **Viewer** (`Viewer.hx`) is all of it without a window: the state and
-  the texts the window shows as signals, the keys, the wheel and the
-  pointer; **ViewerActions** (`ViewerActions.hx`) its actions, default
-  keymap (the root's key context `Viewer`, with `picker` and `fullscreen`
-  while they are), menus and context menu (helder.ui.actions, helder.ui.menu);
-  **Shell** (`Shell.hx`) the window (`UiWindow`, `<Surface>`
-  with `onDrop`), its markup, the jobs, the watch, the settings.
+- **Viewer** (`Viewer.hx`) is a file full size without a window: the
+  state and the texts the window shows as signals, the keys, the wheel
+  and the pointer; **ViewerActions** (`ViewerActions.hx`) the actions,
+  default keymap (the root's key context `Viewer`, with `browser` or
+  `full`, and `fullscreen`, `pdf`, `media`, `goto`, `about` while they
+  are), menus and context menus (helder.ui.actions, helder.ui.menu).
+- **Preview** (`Preview.hx`): the inspector's picture of the selected
+  file, an image or a PDF's first page decoded through Decode's path at
+  512 pixels and halved to fit on the pool, a video's keyframe (Thumbs)
+  and its duration; the thumbnail meanwhile. The list's and grid's
+  pictures come from one place, `Tiles.thumbnail`: Thumbnails' queue, the
+  newest asked for first, cancelled when its cell goes, the last 300 kept
+  in memory; a file with none, or a kind none is made of, its glyph.
+- **Shell** (`Shell.hx`) the window (`UiWindow`, `<Surface>` with its
+  title bar inset and `onDrop`), its look (helder's controls' `Look.base`
+  in the system's font, the browser's parts in its tokens, light or dark
+  as the system), the jobs, the settings; its parts `SidebarView`,
+  `ContentView` (the toolbar, the list, `States`: empty, still reading,
+  unreadable, no results; the path bar, helder's `PathBar`),
+  `InspectorView` and `ViewerView` (a file full size, its back pill).
 
 ### Tests
 
 `bun run test viewer` (`helder test` in this directory, natively, and on
 Eval the camera's maths; the viewer is a desktop app, not built for the
-web): `tests/viewer/FolderModel.test.hx` (natural
-order, opening a file or a folder, wrapping, the watch: added, removed,
-changed), `DecodeCache.test.hx` (the order, two at a time, eviction by
+web): `tests/viewer/Browser.test.hx` (on MemoryFiles: navigation
+and history, the sidebar's level for a folder, the orders, folders first,
+hidden files and the filter, batches merged with the selection kept, the
+watch, a file opened full size and back, the trash and its undo,
+several selected), `FolderModel.test.hx` (natural order, wrapping, the
+browser's list given again), `DecodeCache.test.hx` (the order, two at a time, eviction by
 distance, a budget too small for every neighbour, a changed file),
 `ViewCamera.test.hx` (the fit, zooms about the cursor and their stops,
 the steps, the double click, pans, the glide), `Viewer.test.hx` (a
 scripted run of the shell's tree in a headless Ui: the fixture folder
-opened, flipped through with the keys and the wheel, an animation's
-frames, a damaged file's message, zoomed with `+`, `1`, Ctrl and the
-wheel, `0`, the status line, EXIF's orientation, the picker, fullscreen's
-keys), `Viewer.story.hx` (its states: empty, an error, fitted, 100%, the
-status line on; their trees in `Viewer.story.snap`). EXIF's reader is
+browsed, a file opened with Enter, flipped through with the keys and the
+wheel, an animation's frames, a damaged file's message, zoomed with `+`,
+`1`, Ctrl and the wheel, `0`, the status line, EXIF's orientation, back
+with Escape and Ctrl+Up, fullscreen's keys, the browser's keys: grid
+and list, the inspector, search; a PDF's column: the keys scrolling
+it, go to page, the zoom), `Pdf.test.hx` (the pages' places at a zoom,
+the pages a scroll shows and draws, go to page's scroll, a zoom kept
+about its point, a page that cannot be drawn),
+`Viewer.story.hx` (the grid and the list dark and light, several
+selected, the inspector of a photo and of a PDF, an empty folder, a missing one, no results, a file full size, a
+PDF's column scrolled between two pages,
+an error in its place, the status line; their trees in
+`Viewer.story.snap`). EXIF's reader is
 helder.image's (`src/helder/image/Exif.test.hx`), the drops helder.os's
 (`bun run test window`). `bun run test viewer-window`: the viewer in a
 real window on the GPU (Linux under Xvfb; `GFX_TARGET=windows-x86_64`
 under Wine), the fixtures' photo opened, decoded on helder.jobs and
-shown, closed after 3 s (`--exit-after`), a 9000x2000 PNG in tiles
+shown full size, closed after 3 s (`--exit-after`: the title and state
+printed, or the folder and its count while browsing), a 9000x2000 PNG in tiles
 (`tests/bigpng.mjs`), then again with no system font
 found (`HELDER_NO_SYSTEM_FONTS=1`: helder.text looks for none, and the
 viewer adds its own, `fonts/DejaVuSans-viewer.ttf`, a 41 KB subset of
@@ -336,7 +450,7 @@ File names, the title and the status line in any script: helder.text's
 platform engine (HarfBuzz and FreeType on Linux, DirectWrite, Core Text)
 shapes the scripts its own does not (Devanagari, Bengali, Tamil...) and
 falls back to the system's fonts (fontconfig, IDWriteFontFallback, Core
-Text's cascade), an emoji to a colour face; the picker's names are laid
+Text's cascade), an emoji to a colour face; the list's names are laid
 out left to right (`dir`: an extension stays at the end of a Hebrew or
 Arabic name, the name itself right to left inside it, UAX #9).
 `tests/fixtures/scripts`: Arabic, Hebrew, Devanagari, Bengali, Tamil,
@@ -345,7 +459,8 @@ them).
 
 ### Not yet
 
-On Linux, libraw's and HEVC's paths (HEIC needs libheif's libde265 plugin)
+Renaming, dropping files into a folder (a drop opens it), tabs, a date
+scrubber, EXIF's camera details, a thumbnail size. On Linux, libraw's and HEVC's paths (HEIC needs libheif's libde265 plugin)
 have no fixture in the tests; colour management; a PDF's password
 (no prompt), its text selection and search; the window's maximised state
 (helder.os has no call for it); an X11 window's class (WM_CLASS: helder.os

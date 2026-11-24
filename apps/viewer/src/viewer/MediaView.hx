@@ -9,7 +9,7 @@ import helder.view.graph.Graph.*;
 
 // A video or audio file in the viewer (Viewer.media): the picture filling
 // the window as an image does (contained), its controls along the bottom:
-// play and pause, the scrub bar (a drag seeks to keyframes as it goes and
+// in the look's colours: play and pause, the scrub bar (a drag seeks to keyframes as it goes and
 // exactly where it ends; a thumbnail of the keyframe under the pointer
 // above it: Thumbs), the time and the duration, mute and the volume.
 // Space plays and pauses, , and . (and Left and Right) step a frame, M
@@ -22,6 +22,8 @@ class MediaView {
 	static var thumbs:Null<Thumbs>;
 
 	public static function make(viewer:Viewer):Node {
+		// (the look's colours: light or dark as the window)
+		var t = helder.ui.controls.Look.ref;
 		var root = box({position: Absolute, left: 0, top: 0, right: 0, bottom: 0});
 		var video = current = new VideoNode();
 		video.autoplay = true;
@@ -29,28 +31,29 @@ class MediaView {
 		root.append(video);
 		// (an audio file: its name where the picture would be)
 		var name = new TextNode("");
-		name.style.set({fontSize: 17, color: 0xFFA1A1AA});
+		name.style.set({fontSize: 17, color: t.fg3});
 		var audio = box({position: Absolute, left: 0, top: 0, right: 0, bottom: 0, alignItems: Center, justify: Center, pointerEvents: None, display: None});
 		audio.append(name);
 		root.append(audio);
-		var bar = box({position: Absolute, left: 0, right: 0, bottom: 0, padding: [6, 12, 10, 12], rowGap: 6, background: 0xB3000000});
-		var scrub = box({height: 14, justify: Center}), track = box({height: 4, radius: 2, background: 0xFF3F3F46});
-		var done = box({height: 4, radius: 2, background: 0xFFE4E4E7, width: 0});
+		var bar = box({position: Absolute, left: 0, right: 0, bottom: 0, padding: [6, 12, 10, 12], rowGap: 6, background: t.raised, borderColor: t.line,
+			borders: [1, 0, 0, 0]});
+		var scrub = box({height: 14, justify: Center}), track = box({height: 4, radius: 2, background: t.fill});
+		var done = box({height: 4, radius: 2, background: t.fg, width: 0});
 		track.append(done);
 		scrub.append(track);
-		var thumb = box({position: Absolute, bottom: 18, padding: 3, radius: 6, background: 0xFF232326, borderWidth: 1, borderColor: 0xFF3F3F46,
+		var thumb = box({position: Absolute, bottom: 18, padding: 3, radius: 6, background: t.raised, borderWidth: 1, borderColor: t.edge,
 			pointerEvents: None, alignItems: Center, rowGap: 2, display: None});
 		var picture = new ImageNode();
 		picture.style.set({width: Thumbs.WIDTH, radius: 3});
 		var at = new TextNode("");
-		at.style.set({color: 0xFFD4D4D8, fontSize: 11});
+		at.style.set({color: t.fg2, fontSize: 11});
 		thumb.append(picture);
 		thumb.append(at);
 		scrub.append(thumb);
 		var play = new MediaIcon("play"), mute = new MediaIcon("sound"), clockText = new TextNode("0:00 / 0:00");
-		clockText.style.color = 0xFFD4D4D8;
-		var volume = box({width: 80, height: 14, justify: Center}), levels = box({height: 4, radius: 2, background: 0xFF3F3F46});
-		var level = box({height: 4, radius: 2, background: 0xFFE4E4E7, width: 80});
+		clockText.style.color = t.fg2;
+		var volume = box({width: 80, height: 14, justify: Center}), levels = box({height: 4, radius: 2, background: t.fill});
+		var level = box({height: 4, radius: 2, background: t.fg, width: 80});
 		levels.append(level);
 		volume.append(levels);
 		var row = box({direction: Row, alignItems: Center, columnGap: 10});
@@ -148,7 +151,7 @@ class MediaView {
 		b.semantics = {role: helder.ui.access.Role.Button, label: label};
 		b.focusable = true;
 		b.onActivate = _ -> press();
-		icon.style.set({width: 18, height: 18, color: 0xFFE4E4E7});
+		icon.style.set({width: 18, height: 18, color: helder.ui.controls.Look.ref.fg});
 		b.append(icon);
 		return b;
 	}

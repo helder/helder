@@ -1,15 +1,13 @@
 package viewer;
 
-import sys.FileSystem;
-
 using StringTools;
 
-// The images (and videos) of one folder, in natural order ("img2" before "img10",
-// letters without case), and the one shown: next and previous wrap, the
-// neighbours by distance (what to prefetch). rescan reads the folder again
-// (the watch: every second or so): the list follows what was added or
-// removed, the image shown kept by name (or the one now at its place), and
-// the files whose size or time changed are named (to decode again).
+// The images (and videos) of one folder as the viewer steps through them:
+// the browser's list (its order and filter: Browser.viewable), the one
+// shown, next and previous wrapping, the neighbours by distance (what to
+// prefetch). The list given again (the browser's watch) keeps the one shown
+// by name (gone: the one now at its place). Natural order ("img2" before
+// "img10", letters without case) is compare's.
 class FolderModel {
 	// (helder.image's, and the system's where it has decoders: helder.os.SystemImages)
 	public static final EXTENSIONS = ["png", "apng", "jpg", "jpeg", "jfif", "gif", "webp", "pdf"].concat(helder.os.SystemImages.available() ? helder.os.SystemImages.EXTENSIONS : []);
@@ -20,9 +18,6 @@ class FolderModel {
 	public var files(default, null):Array<String> = [];
 	// the image shown (-1: none)
 	public var index(default, null) = -1;
-
-	// (each file's stamp: size and modification time)
-	var stamps = new Map<String, String>();
 
 	public function new() {}
 
@@ -52,34 +47,22 @@ class FolderModel {
 		return dot > 0 && MEDIA.contains(name.substr(dot + 1).toLowerCase());
 	}
 
-	// a file (its folder, it shown even when its extension is another's) or
-	// a folder (its first image); false when neither can be read
-	public function open(path:String):Bool {
-		path = normalize(path);
-		var isDir = try FileSystem.isDirectory(path) catch (_:Dynamic) false;
-		if (isDir) {
-			dir = path;
-			setEntries(list(path));
-			index = files.length > 0 ? 0 : -1;
-			restamp();
-			return true;
-		}
-		if (!(try FileSystem.exists(path) catch (_:Dynamic) false)) return false;
-		var slash = Std.int(Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\")));
-		dir = slash < 0 ? "." : slash == 0 ? "/" : path.substr(0, slash);
-		var name = path.substr(slash + 1);
-		var names = list(dir);
-		if (!names.contains(name)) names.push(name);
-		setEntries(names, name);
-		restamp();
-		return true;
+	// the folder's files (in order), the one named shown
+	public function set(dir:String, names:Array<String>, name:String) {
+		this.dir = dir;
+		files = names.copy();
+		if (!files.contains(name)) files.push(name);
+		index = files.indexOf(name);
 	}
 
-	// (each file's stamp, as the folder is now)
-	function restamp() {
-		stamps = new Map();
-		for (f in files)
-			stamps.set(f, stamp(join(dir, f)));
+	// the list again: the one shown kept by name, else the one now at its
+	// place; whether it changed
+	public function relist(names:Array<String>):Bool {
+		if (names.join("\n") == files.join("\n")) return false;
+		var keep = index >= 0 && names.contains(files[index]) ? files[index] : null, at = index;
+		files = names.copy();
+		index = keep != null ? files.indexOf(keep) : files.length == 0 ? -1 : Std.int(Math.min(Math.max(at, 0), files.length - 1));
+		return true;
 	}
 
 	// the names, sorted and filtered; the one named keep shown (else the
@@ -91,36 +74,6 @@ class FolderModel {
 		files.sort(compare);
 		index = wanted != null ? files.indexOf(wanted) : -1;
 		if (index < 0 && files.length > 0) index = before < 0 ? 0 : Std.int(Math.min(before, files.length - 1));
-	}
-
-	// the folder read again: whether its list changed, and the files whose
-	// stamp changed (to decode again)
-	public function rescan():{listChanged:Bool, modified:Array<String>} {
-		if (dir == "") return {listChanged: false, modified: []};
-		var names = list(dir);
-		var keep = index >= 0 && names.contains(files[index]) ? files[index] : null;
-		var old = files.copy();
-		if (keep == null && index >= 0) {
-			// (the one shown is gone: the one after it in the old order, else before)
-			var i = index;
-			while (keep == null && ++i < old.length)
-				if (names.contains(old[i])) keep = old[i];
-			i = index;
-			while (keep == null && --i >= 0)
-				if (names.contains(old[i])) keep = old[i];
-		}
-		var shown = index;
-		setEntries(names, keep);
-		if (keep == null && files.length > 0) index = Std.int(Math.min(Math.max(shown, 0), files.length - 1));
-		var modified = [];
-		var next = new Map<String, String>();
-		for (f in files) {
-			var s = stamp(join(dir, f));
-			next.set(f, s);
-			if (stamps.exists(f) && stamps.get(f) != s) modified.push(join(dir, f));
-		}
-		stamps = next;
-		return {listChanged: old.join("\n") != files.join("\n"), modified: modified};
 	}
 
 	// the next or previous (delta), wrapping; false when there is no other
@@ -194,21 +147,4 @@ class FolderModel {
 		return s.substr(k);
 	}
 
-	static function list(dir:String):Array<String>
-		return try [for (n in FileSystem.readDirectory(dir)) if (!n.startsWith(".") && !isDirectory(join(dir, n))) n] catch (_:Dynamic) [];
-
-	static function isDirectory(p:String):Bool
-		return try FileSystem.isDirectory(p) catch (_:Dynamic) false;
-
-	static function stamp(p:String):String
-		return try {
-			var s = FileSystem.stat(p);
-			s.size + ":" + s.mtime.getTime();
-		} catch (_:Dynamic) "";
-
-	static function normalize(p:String):String {
-		while (p.length > 1 && (p.endsWith("/") || p.endsWith("\\")) && !(p.length == 3 && p.charAt(1) == ":"))
-			p = p.substr(0, p.length - 1);
-		return p;
-	}
 }
