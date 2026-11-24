@@ -9,9 +9,11 @@
 // slide (a layer that moves on its own: a Web Animation) going on while
 // the program is busy, where the flat window's would not; a frame read
 // back (host.gfx.readPixels) drawn whole, as the flat window's.
-//   node tests/ui/web-layers.mjs <WebLayersPage.wasm>   (ENGINE=firefox, webkit: those)
+// A still that differs is saved in the out dir: its two screenshots and
+// their difference (red where they differ).
+//   node tests/ui/web-layers.mjs <WebLayersPage.wasm> [out dir]   (ENGINE=firefox, webkit: those)
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -20,7 +22,7 @@ const require = createRequire(import.meta.url);
 let pw;
 try { pw = require('playwright'); } catch { pw = require(path.join(process.execPath, '../../lib/node_modules/playwright')); }
 const here = path.dirname(fileURLToPath(import.meta.url));
-const [wasm] = process.argv.slice(2);
+const [wasm, out = 'bin/ui'] = process.argv.slice(2);
 const src = (p) => path.join(here, '../../src/helder', p);
 const files = {
 	'/layers.wasm': wasm, '/os/browser.mjs': src('os/browser.mjs'), '/os/imports.mjs': src('os/imports.mjs'), '/os/thread.mjs': src('os/thread.mjs'),
@@ -44,6 +46,20 @@ const pixels = async (b64) => {
 	const c = new OffscreenCanvas(b.width, b.height), g = c.getContext('2d');
 	g.drawImage(b, 0, 0);
 	return g.getImageData(0, 0, b.width, b.height);
+};
+// (their difference as a PNG: b dimmed, red where they differ)
+window.diffImage = async (a, b) => {
+	const p = await pixels(a), q = await pixels(b), d = new ImageData(p.width, p.height);
+	for (let i = 0; i < p.data.length; i += 4) {
+		const off = [0, 1, 2].some((c) => Math.abs(p.data[i + c] - q.data[i + c]) > 24);
+		d.data.set(off ? [255, 0, 0, 255] : [q.data[i] / 3, q.data[i + 1] / 3, q.data[i + 2] / 3, 255], i);
+	}
+	const c = new OffscreenCanvas(p.width, p.height);
+	c.getContext('2d').putImageData(d, 0, 0);
+	const u = new Uint8Array(await (await c.convertToBlob()).arrayBuffer());
+	let s = '';
+	for (const x of u) s += String.fromCharCode(x);
+	return btoa(s);
 };
 window.diff = async (a, b, x0, y0, x1, y1) => {
 	const p = await pixels(a), q = await pixels(b);
@@ -102,6 +118,18 @@ async function open(gfx, worker, flat) {
 	return { p, backend };
 }
 const shot = async (p) => (await p.screenshot({ clip: { x: 0, y: 0, width: 400, height: 300 } })).toString('base64');
+// (two screenshots' differing pixels in region r; past 40, the two and their difference saved as name)
+async function compare(p, name, a, b, r) {
+	const n = await p.evaluate(([a, b, r]) => window.diff(a, b, ...r), [a, b, r]);
+	if (n > 40) {
+		const f = path.join(out, 'web-layers-' + name.replace(/\W+/g, '-'));
+		await writeFile(f + '-layers.png', Buffer.from(a, 'base64'));
+		await writeFile(f + '-flat.png', Buffer.from(b, 'base64'));
+		await writeFile(f + '-diff.png', Buffer.from(await p.evaluate(([a, b]) => window.diffImage(a, b), [a, b]), 'base64'));
+		console.log(`web-layers.mjs: saved ${f}-{layers,flat,diff}.png`);
+	}
+	return n;
+}
 const state = async (p) => (await p.evaluate(() => window.log)).filter((l) => l.startsWith('layers ')).pop();
 // (the list's rows, less its scrollbar's edge, where helder draws its thumb)
 const LIST = [0, 40, 380, 300];
@@ -118,7 +146,7 @@ try {
 			const flat = await q.evaluate(() => window.layers());
 			check(`${mode}: flat: none`, flat.tiles === 0 && flat.over === 0, JSON.stringify(flat));
 			const a = await shot(p), b = await shot(q);
-			let n = await p.evaluate(([a, b]) => window.diff(a, b, 0, 0, 400, 300), [a, b]);
+			let n = await compare(p, `${mode} still`, a, b, [0, 0, 400, 300]);
 			check(`${mode}: shown as the flat window shows it`, n <= 40, `${n} pixels differ`);
 			const [ra, rb] = [await p.evaluate(() => window.read()), await q.evaluate(() => window.read())];
 			check(`${mode}: a frame read back drawn whole, as the flat window's`, ra === rb, `${ra} and ${rb}`);
@@ -129,7 +157,7 @@ try {
 			}
 			await p.waitForTimeout(600);
 			const s0 = await state(p), s1 = await state(q);
-			n = await p.evaluate(([a, b]) => window.diff(a, b, 0, 0, 400, 300), [await shot(p), await shot(q)]);
+			n = await compare(p, `${mode} scrolled`, await shot(p), await shot(q), [0, 0, 400, 300]);
 			check(`${mode}: scrolled, shown as the flat window shows it`, s0 === s1 && s0.includes('list=300') && n <= 40, `${s0}, flat ${s1}; ${n} pixels differ`);
 			if (worker) {
 				// (the program busy: the browser scrolls the list's layer, the program draws nothing)

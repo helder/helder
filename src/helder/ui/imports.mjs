@@ -480,7 +480,29 @@ export default function ui(host) {
 			e.hxmcContext.transferFromImageBitmap(bitmaps[0]);
 		} else e.style.objectFit = ['fill', 'contain', 'cover', 'none'][fit] ?? 'contain';
 	};
-	hxmc_ui.layers_snap = (canvas, w, h) => snaps.push(createImageBitmap(host.handles.get(canvas), 0, 0, w, h)) - 1;
+	// (WebGPU: the canvas's texture now copied on the GPU into a scratch
+	// OffscreenCanvas of the same device, its bitmap taken at once: what a
+	// canvas element gives createImageBitmap mid-task differs by version,
+	// Chromium 141's not the texture drawn; WebGL2: the canvas as it is now)
+	let scratch = null;
+	const snap = (c, w, h) => {
+		const device = host.gfx?.backend === 'webgpu' ? host.gfx.device : null;
+		if (!device) return createImageBitmap(c, 0, 0, w, h);
+		const t = c.getContext('webgpu').getCurrentTexture();
+		if (!scratch || scratch.format !== t.format) {
+			scratch = { canvas: new OffscreenCanvas(w, h), format: t.format };
+			scratch.context = scratch.canvas.getContext('webgpu');
+			scratch.context.configure({ device, format: t.format, alphaMode: 'premultiplied', usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT });
+		}
+		const s = scratch.canvas;
+		if (s.width !== w) s.width = w;
+		if (s.height !== h) s.height = h;
+		const e = device.createCommandEncoder();
+		e.copyTextureToTexture({ texture: t }, { texture: scratch.context.getCurrentTexture() }, [w, h]);
+		device.queue.submit([e.finish()]);
+		return Promise.resolve(s.transferToImageBitmap());
+	};
+	hxmc_ui.layers_snap = (canvas, w, h) => snaps.push(snap(host.handles.get(canvas), w, h)) - 1;
 	hxmc_ui.layers_update = (canvas, json) => {
 		// (when: its moving layers' animations start from this moment, the page's time)
 		const list = snaps, u = host.string(json), at = performance.timeOrigin + performance.now();
