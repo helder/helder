@@ -867,7 +867,7 @@ import { Button, Checkbox, Switch, Themed, Look } from "helder/ui";
 
   | Control | Keys | To assistive technology | Attributes a recipe reads |
   | --- | --- | --- | --- |
-  | Button | a click, Enter, Space | button, disabled, pressed if a toggle | `data-disabled`, `data-selected=true\|false` |
+  | Button | a click, Enter, Space | button, disabled, pressed if a toggle | `data-disabled`, `data-selected` |
   | Checkbox | a click, Space (not Enter) | checkbox, checked or mixed | `data-state=checked\|unchecked\|mixed` |
   | Switch | a click, Space, Enter | switch, checked | `data-state` |
 

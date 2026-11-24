@@ -99,7 +99,7 @@ class ControlsGallery implements Markup {
 		var icon = ui.root.find("size-icon");
 		check('$at: an icon alone, square', icon.width == icon.height, '${icon.width} x ${icon.height}');
 		var inspector = ui.root.find("inspector");
-		check('$at: a selected ghost', inspector.attr("data-selected") == "true" && inspector.style.background == colors.get("accentSoft"));
+		check('$at: a selected ghost', inspector.attr("data-selected") == "" && inspector.style.background == colors.get("accentSoft"));
 		check('$at: a collapsed path', ui.root.find("path-narrow").find("pathbar-overflow").style.display == Flex);
 		var on = ui.root.find("checked-rest"), mixed = ui.root.find("mixed-rest");
 		check('$at: a checkbox on', on.semantics.role == CheckBox && on.semantics.checked == true && on.attr("data-state") == "checked");
