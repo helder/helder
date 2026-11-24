@@ -212,6 +212,21 @@ size and place, and the status line, are kept between runs (helder.os's
   and again larger when a zoom needs its pixels (`refine`: the smaller
   one shown meanwhile); a still image past 128 MP on the GPU is halved
   until within (its size stays the file's).
+- **Thumbnails** (`Thumbnails.hx`): a folder's thumbnails, 256 pixels on
+  the long side, decoded on helder.jobs (at most half the cores, at least
+  two), the lowest priority first; a request can be cancelled or moved.
+  A photo's or RAW's embedded preview where it is large enough (Exif.previews),
+  else a JPEG decoded at a reduced scale, the system's decoders in their
+  thumbnail mode (HEIC, AVIF, TIFF, RAW), helder's own (PNG, GIF, WebP),
+  a PDF's first page, a video's keyframe near 10%. Every read of a file's
+  bytes goes through one function (`read`). `ThumbCache` keeps them in the
+  viewer's own cache (`thumbs/`, never the system's): 16 MB append-only
+  segments of CRC-checked records (the JPEG at quality 80, or "none"), an
+  index in memory saved every 5 s and rebuilt from the segments when it is
+  missing, damaged or stale, the oldest segment deleted past 512 MB (a hit
+  in the oldest quarter copied forward). One process owns it (`thumbs/lock`,
+  held with flock or an exclusive handle); another reads only. Files under
+  64 KB are decoded every time. The folder grid will use this queue.
 - **PdfPages** (`PdfPages.hx`): a PDF's pages, each a decode of its own
   (`Decode.key`: the path, the page after a newline), so they go through
   the cache, the tiles and the zoom an image's do: its 100% two pixels a

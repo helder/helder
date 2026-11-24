@@ -70,12 +70,16 @@ class SystemImagesTest {
 				worst = Std.int(Math.max(worst, Math.max(Math.abs(r.rgba.get(p) - Y * 4), Math.abs(r.rgba.get(p + 1) - (47 - X) * 5))));
 			}
 		check("gradient-rot6.tif: turned as EXIF says", r.pixelsWidth == 48 && worst <= 2, 'worst $worst');
+		var preview = SystemImages.decode('$dir/gradient-rot6.tif', 32, true);
+		check("thumbnail mode, TIFF: orientation kept", preview.width == 48 && preview.height == 64 && preview.pixelsHeight > preview.pixelsWidth);
 		if (Sys.args().length > 1) {
 			var heic = Sys.args()[1];
 			var d = SystemImages.decode(heic);
 			check("HEIC: its size", d.width == 64 && d.height == 48, '${d.width}x${d.height}');
 			var small = SystemImages.decode(heic, 32);
 			check("HEIC at a side of 32: scaled as decoded", small.pixelsWidth == 32 && small.width == 64, '${small.pixelsWidth}x${small.pixelsHeight}');
+			var thumb = SystemImages.decode(heic, 32, true);
+			check("HEIC thumbnail mode: generated when absent", thumb.pixelsWidth == 32 && thumb.pixelsHeight == 24);
 		}
 		var keep = ImageLimits.maxPixels;
 		ImageLimits.maxPixels = 100;

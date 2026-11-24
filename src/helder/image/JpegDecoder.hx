@@ -47,6 +47,36 @@ class JpegDecoder {
 	var eobrun = 0;
 	var markerHit = false;
 
+	// The SOF's stored dimensions, without decoding a scan or applying EXIF.
+	public static function size(bytes:Bytes, offset = 0, length = -1):Null<{width:Int, height:Int}> {
+		if (offset < 0 || offset > bytes.length) return null;
+		var file = new ByteReader(bytes), n = length < 0 ? bytes.length - offset : length;
+		if (n < 4 || n > bytes.length - offset || file.u8(offset) != 0xFF || file.u8(offset + 1) != 0xD8) return null;
+		var p = offset + 2, end = offset + n;
+		inline function be16(at:Int):Int
+			return (file.u8(at) << 8) | file.u8(at + 1);
+		while (end - p >= 2 && file.u8(p) == 0xFF) {
+			var m = file.u8(p + 1);
+			if (m == 0xFF) {
+				p++;
+				continue;
+			}
+			if (m == 0xD9 || m == 0xDA || m == 0 || end - p < 4) break;
+			if (m == 0xD8 || m == 1 || (m >= 0xD0 && m <= 0xD7)) {
+				p += 2;
+				continue;
+			}
+			var len = be16(p + 2);
+			if (len < 2 || len > end - p - 2) break;
+			if (m >= 0xC0 && m <= 0xCF && m != 0xC4 && m != 0xC8 && m != 0xCC && len >= 8) {
+				var w = be16(p + 7), h = be16(p + 5);
+				return w > 0 && h > 0 ? {width: w, height: h} : null;
+			}
+			p += 2 + len;
+		}
+		return null;
+	}
+
 	// the pixels: width * height * 4 bytes, rows top to bottom, opaque
 	// (mem: where its planes, coefficients and pixels are, ImageMemory;
 	// scale 1, 2, 4 or 8: the image at that fraction of its size, each

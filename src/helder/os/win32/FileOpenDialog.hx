@@ -71,6 +71,7 @@ class FileOpenDialog {
 
 @:hxmc.c @:hxmc.lib("ole32") extern class Shell32Com {
 	static function CoInitializeEx(reserved:Ptr, flags:Int):Int;
+	static function CoUninitialize():Void;
 	static function CoCreateInstance(clsid:Ptr, outer:Ptr, context:Int, iid:Ptr, out:Ptr<Ptr>):Int;
 	static function CoTaskMemFree(p:Ptr):Void;
 	static function PropVariantClear(pv:Ptr):Int;

@@ -60,6 +60,53 @@ function tests() {
 				equals(Exif.swaps(o), o >= 5);
 			}
 		});
+		test("embedded JPEG in Exif APP1, TIFF IFD1 and RAF", () -> {
+			var preview = JpegEncoder.encode(Bytes.alloc(4 * 3 * 2), 3, 2);
+			var t = thumbnailTiff(preview), jpg = jpeg(t);
+			var raf = Bytes.alloc(92 + preview.length);
+			raf.blit(0, Bytes.ofString("FUJIFILMCCD-RAW"), 0, 15);
+			for (i in 0...4) {
+				raf.set(84 + i, (92 >>> (24 - 8 * i)) & 255);
+				raf.set(88 + i, (preview.length >>> (24 - 8 * i)) & 255);
+			}
+			raf.blit(92, preview, 0, preview.length);
+			for (f in [{bytes: jpg, at: 56}, {bytes: t, at: 44}, {bytes: raf, at: 92}]) {
+				equals(Exif.previews(f.bytes), [{offset: f.at, length: preview.length, width: 3, height: 2}]);
+				var prefix = f.bytes.sub(0, f.at + 5);
+				equals(Exif.previews(prefix).length, 0);
+				equals(Exif.previewsNeed(prefix), f.at + preview.length);
+				var damaged = f.bytes.sub(0, f.bytes.length);
+				damaged.set(f.at + preview.length - 1, 0);
+				equals(Exif.previews(damaged).length, 0, "missing EOI");
+				for (n in 0...f.at) Exif.previews(f.bytes.sub(0, n));
+			}
+		});
+		test("TIFF SubIFDs, old and new JPEG compression, a loop and unsigned offsets", () -> {
+			var small = JpegEncoder.encode(Bytes.alloc(8), 2, 1), big = JpegEncoder.encode(Bytes.alloc(32), 4, 2);
+			var start = 98, b = Bytes.alloc(start + big.length + small.length);
+			b.setUInt16(0, 0x4949);
+			b.setUInt16(2, 0x55); // (RW2's TIFF magic)
+			b.setInt32(4, 8);
+			b.setUInt16(8, 1);
+			tag(b, 10, 0x014A, 4, 26);
+			b.setUInt16(26, 3);
+			tag(b, 28, 0x0103, 3, 7);
+			tag(b, 40, 0x0111, 4, start);
+			tag(b, 52, 0x0117, 4, big.length);
+			b.setInt32(64, 68);
+			b.setUInt16(68, 2);
+			tag(b, 70, 0x0201, 4, start + big.length);
+			tag(b, 82, 0x0202, 4, small.length);
+			b.blit(start, big, 0, big.length);
+			b.blit(start + big.length, small, 0, small.length);
+			equals([for (p in Exif.previews(b)) p.width], [2, 4]);
+			b.setInt32(64, 8);
+			equals([for (p in Exif.previews(b)) p.width], [4]);
+			b.setUInt16(36, 6);
+			equals(Exif.previews(b).length, 1);
+			b.setInt32(48, 0xFFFFFFFF);
+			equals(Exif.previewsNeed(b), 0);
+		});
 		test("JpegDecoder applies it", () -> {
 			// (a 16x8 baseline JPEG turned by an APP1 of orientation 6: 8x16)
 			var plain = sys.io.File.getBytes("tests/image/jpeg/large-420.jpg");
@@ -149,4 +196,24 @@ private function webp(t:Bytes, prefix:Bool):Bytes {
 	b.add(data);
 	if (data.length & 1 == 1) b.addByte(0);
 	return b.getBytes();
+}
+
+private function tag(b:Bytes, at:Int, id:Int, type:Int, value:Int) {
+	b.setUInt16(at, id);
+	b.setUInt16(at + 2, type);
+	b.setInt32(at + 4, 1);
+	b.setInt32(at + 8, value);
+}
+
+private function thumbnailTiff(preview:Bytes):Bytes {
+	var b = Bytes.alloc(44 + preview.length);
+	b.setUInt16(0, 0x4949);
+	b.setUInt16(2, 42);
+	b.setInt32(4, 8);
+	b.setInt32(10, 14); // (IFD0 is empty)
+	b.setUInt16(14, 2);
+	tag(b, 16, 0x0201, 4, 44);
+	tag(b, 28, 0x0202, 4, preview.length);
+	b.blit(44, preview, 0, preview.length);
+	return b;
 }

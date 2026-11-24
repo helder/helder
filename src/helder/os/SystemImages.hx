@@ -3,7 +3,6 @@ package helder.os;
 import haxe.io.Bytes;
 import helder.image.ImageError;
 import helder.image.ImageLimits;
-import hxmc.Platform;
 import hxmc.unsafe.*;
 
 // The system's own image decoders, for what helder.image does not read:
@@ -24,71 +23,77 @@ class SystemImages {
 	// the extensions it may read where there are system decoders
 	public static final EXTENSIONS = ["tif", "tiff", "heic", "heif", "avif", "dng", "cr2", "cr3", "nef", "arw", "raf", "orf", "rw2"];
 
-	// (Linux's: a constant condition, so that no other target links its libraries' loaders)
-	static inline function linux():Bool
-		return Platform.apple() == 0 && Platform.os() == 0 && Platform.target() < 9;
-
 	public static function available():Bool
-		return Platform.apple() == 0 && (Platform.os() == 1 || Platform.os() == 2) #if (!helder.os || helder.os == "linux") || linux() && helder.os.linux.LinuxImages.any() #end;
+		return #if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64" || (!hxmc.target && helder.os == "windows")) true
+			#elseif (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || (!hxmc.target && helder.os == "macos")) hxmc.Platform.apple() == 0
+			#elseif ((hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64" || (!hxmc.target && helder.os == "linux")) && hxmc.libc == "glibc") helder.os.linux.LinuxImages.any()
+			#else false #end;
 
 	public static function supports(path:String):Bool {
 		var dot = path.lastIndexOf("."), ext = dot > 0 ? path.substr(dot + 1).toLowerCase() : "";
 		if (!EXTENSIONS.contains(ext)) return false;
-		return #if (!helder.os || helder.os == "linux") if (linux()) helder.os.linux.LinuxImages.supports(ext) else #end available();
+		return #if ((hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64" || (!hxmc.target && helder.os == "linux")) && hxmc.libc == "glibc") helder.os.linux.LinuxImages.supports(ext) #else available() #end;
 	}
 
-	// the file decoded (side > 0: at most that a side, where the system scales
-	// as it decodes); an ImageError when it cannot be
-	public static function decode(path:String, side = 0):{width:Int, height:Int, pixelsWidth:Int, pixelsHeight:Int, rgba:Bytes}
-		return if (Platform.apple() != 0) throw ImageError.unsupported("SystemImages: none here") else
-			#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) wic(path) else #end
-			#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) imageIO(path, side) else #end
-			#if (!helder.os || helder.os == "linux") if (linux()) linuxLibraries(path) else #end
-			throw ImageError.unsupported("SystemImages: none on this system");
+	// The file decoded (side > 0: at most that a side, where the system scales
+	// as it decodes). Thumbnail mode can use a preview from inside the file.
+	public static function decode(path:String, side = 0, thumbnail = false):{width:Int, height:Int, pixelsWidth:Int, pixelsHeight:Int, rgba:Bytes}
+		return #if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64" || (!hxmc.target && helder.os == "windows")) wic(path, side, thumbnail)
+			#elseif (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || (!hxmc.target && helder.os == "macos")) if (hxmc.Platform.apple() == 0) imageIO(path, side, thumbnail) else throw ImageError.unsupported("SystemImages: none here")
+			#elseif ((hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64" || (!hxmc.target && helder.os == "linux")) && hxmc.libc == "glibc") linuxLibraries(path, side, thumbnail)
+			#else throw ImageError.unsupported("SystemImages: none on this system") #end;
 
-	#if (!helder.os || helder.os == "linux")
+	#if ((hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64" || (!hxmc.target && helder.os == "linux")) && hxmc.libc == "glibc")
 	// --- Linux: libtiff, libheif, libavif, libraw where they are (helder.os.linux.LinuxImages)
 
-	static function linuxLibraries(path:String):{width:Int, height:Int, pixelsWidth:Int, pixelsHeight:Int, rgba:Bytes} {
+	static function linuxLibraries(path:String, side:Int, thumbnail:Bool):{width:Int, height:Int, pixelsWidth:Int, pixelsHeight:Int, rgba:Bytes} {
 		var ext = path.substr(path.lastIndexOf(".") + 1).toLowerCase();
-		var d = helder.os.linux.LinuxImages.decode(path, ext);
+		var d = helder.os.linux.LinuxImages.decode(path, ext, side, thumbnail);
 		// (libtiff's RGBA premultiplied: straight, as the others')
 		if (ext == "tif" || ext == "tiff") unpremultiply(d.rgba);
-		return {width: d.width, height: d.height, pixelsWidth: d.width, pixelsHeight: d.height, rgba: d.rgba};
+		return {width: d.sourceWidth ?? d.width, height: d.sourceHeight ?? d.height, pixelsWidth: d.width, pixelsHeight: d.height, rgba: d.rgba};
 	}
 
 	#end
 
-	#if (!helder.os || helder.os == "windows")
+	#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64" || (!hxmc.target && helder.os == "windows"))
 	// --- Windows: WIC
 
-	static var factory = Ptr.nil();
 	static final CLSID_WICImagingFactory = helder.os.win32.Com.guid(0xCACAF262, 0x9370, 0x4615, [0xA1, 0x3B, 0x9F, 0x55, 0x39, 0xDA, 0x4C, 0x0A]);
 	static final IID_IWICImagingFactory = helder.os.win32.Com.guid(0xEC5EC8A9, 0xC395, 0x4314, [0x9C, 0x77, 0x54, 0xD7, 0xA9, 0x35, 0xFF, 0x70]);
 	static final RGBA = helder.os.win32.Com.guid(0xF5C7AD2D, 0x6A8D, 0x43DD, [0xA7, 0xA8, 0xA2, 0x99, 0x35, 0x26, 0x1A, 0xE9]);
 
-	static function wic(path:String):{width:Int, height:Int, pixelsWidth:Int, pixelsHeight:Int, rgba:Bytes} {
-		if (factory.isNull()) {
-			helder.os.win32.FileOpenDialog.Shell32Com.CoInitializeEx(Ptr.nil(), 0); // (COINIT_MULTITHREADED: a decode's thread)
-			var out:Ptr<Ptr> = LibC.malloc(8);
-			out.value = Ptr.nil();
-			helder.os.win32.FileOpenDialog.Shell32Com.CoCreateInstance(CLSID_WICImagingFactory, Ptr.nil(), 1, IID_IWICImagingFactory, out);
-			factory = out.value;
-			LibC.free(cast out);
-			if (factory.isNull()) throw ImageError.unsupported("SystemImages: no WIC");
+	static function wic(path:String, side:Int, thumbnail:Bool):{width:Int, height:Int, pixelsWidth:Int, pixelsHeight:Int, rgba:Bytes} {
+		// (each calling thread needs COM; an existing apartment is fine)
+		var com = helder.os.win32.FileOpenDialog.Shell32Com.CoInitializeEx(Ptr.nil(), 0);
+		if (com < 0 && com != 0x80010106) throw ImageError.unsupported("SystemImages: COM could not start");
+		try {
+			var d = wicFrame(path, side, thumbnail);
+			if (com >= 0) helder.os.win32.FileOpenDialog.Shell32Com.CoUninitialize();
+			return d;
+		} catch (e:Dynamic) {
+			if (com >= 0) helder.os.win32.FileOpenDialog.Shell32Com.CoUninitialize();
+			throw e;
 		}
+	}
+
+	static function wicFrame(path:String, side:Int, thumbnail:Bool):{width:Int, height:Int, pixelsWidth:Int, pixelsHeight:Int, rgba:Bytes} {
 		var held:Array<Ptr> = [];
-		inline function one():Ptr<Ptr> {
-			var p:Ptr<Ptr> = LibC.malloc(8);
-			p.value = Ptr.nil();
-			return p;
-		}
-		var out = one();
+		var out:Ptr<Ptr> = LibC.malloc(8);
+		out.value = Ptr.nil();
 		function done() {
-			for (h in held)
-				helder.os.win32.Com.release(h);
+			for (i in 0...held.length)
+				helder.os.win32.Com.release(held[held.length - 1 - i]);
 			LibC.free(cast out);
 		}
+		helder.os.win32.FileOpenDialog.Shell32Com.CoCreateInstance(CLSID_WICImagingFactory, Ptr.nil(), 1, IID_IWICImagingFactory, out);
+		var factory = out.value;
+		if (factory.isNull()) {
+			done();
+			throw ImageError.unsupported("SystemImages: no WIC");
+		}
+		held.push(factory);
+		out.value = Ptr.nil();
 		// (GENERIC_READ, WICDecodeMetadataCacheOnDemand)
 		var hr = Arena.scopedValue(a -> IWICImagingFactory.CreateDecoderFromFilename(factory, a.wstring(path), Ptr.nil(), 0x80000000, 0, out));
 		if (hr < 0 || out.value.isNull()) {
@@ -106,13 +111,44 @@ class SystemImages {
 		var frame = out.value;
 		held.push(frame);
 		var size:Ptr<Int32> = LibC.malloc(8);
+		size[0] = size[1] = 0;
 		IWICBitmapSource.GetSize(frame, cast size, cast size.add(4));
-		var w = size[0], h = size[1];
-		LibC.free(cast size);
+		var w = size[0], h = size[1], pw = w, ph = h, source = frame;
 		try ImageLimits.check("SystemImages", w, h, 4) catch (e:ImageError) {
+			LibC.free(cast size);
 			done();
 			throw e;
 		}
+		if (thumbnail && side > 0) {
+			out.value = Ptr.nil();
+			if (IWICBitmapFrameDecode.GetThumbnail(frame, out) >= 0 && !out.value.isNull()) {
+				var thumb = out.value;
+				held.push(thumb);
+				if (IWICBitmapSource.GetSize(thumb, cast size, cast size.add(4)) >= 0 && size[0] > 0 && size[1] > 0) {
+					var tw = size[0], th = size[1], long = Math.max(tw, th);
+					if (long >= side / 2) {
+						if (long <= side) {
+							source = thumb;
+							pw = tw;
+							ph = th;
+						} else {
+							out.value = Ptr.nil();
+							if (IWICImagingFactory.CreateBitmapScaler(factory, out) >= 0 && !out.value.isNull()) {
+								var scaler = out.value, sw = Std.int(Math.max(1, Math.round(tw * (side / long)))), sh = Std.int(Math.max(1, Math.round(th * (side / long))));
+								held.push(scaler);
+								// (WICBitmapInterpolationModeFant)
+								if (IWICBitmapScaler.Initialize(scaler, thumb, sw, sh, 3) >= 0) {
+									source = scaler;
+									pw = sw;
+									ph = sh;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		LibC.free(cast size);
 		out.value = Ptr.nil();
 		IWICImagingFactory.CreateFormatConverter(factory, out);
 		var conv = out.value;
@@ -122,21 +158,21 @@ class SystemImages {
 		}
 		held.push(conv);
 		// (WICBitmapDitherTypeNone, WICBitmapPaletteTypeCustom)
-		if (IWICFormatConverter.Initialize(conv, frame, RGBA, 0, Ptr.nil(), 0, 0) < 0) {
+		if (IWICFormatConverter.Initialize(conv, source, RGBA, 0, Ptr.nil(), 0, 0) < 0) {
 			done();
 			throw ImageError.unsupported("SystemImages: not convertible to RGBA");
 		}
 		var o = orientation(frame);
-		var n = w * h * 4, buf = LibC.malloc((n : hxmc.I64));
-		var r = IWICBitmapSource.CopyPixels(conv, Ptr.nil(), w * 4, n, buf);
+		var n = pw * ph * 4, buf = LibC.malloc((n : hxmc.I64));
+		var r = IWICBitmapSource.CopyPixels(conv, Ptr.nil(), pw * 4, n, buf);
 		var rgba = Bytes.alloc(n);
 		if (r >= 0) BytesPtr.copyIn(rgba, 0, buf, n);
 		LibC.free(buf);
 		done();
 		if (r < 0) throw ImageError.corrupt("SystemImages: WIC's pixels (0x" + StringTools.hex(r, 8) + ")");
 		// (upright, as ImageIO's: EXIF's orientation applied, the sides swapped by a quarter turn)
-		var up = helder.image.Exif.apply(rgba, w, h, o);
-		return {width: up.width, height: up.height, pixelsWidth: up.width, pixelsHeight: up.height, rgba: up.rgba};
+		var up = helder.image.Exif.apply(rgba, pw, ph, o), turn = helder.image.Exif.swaps(o);
+		return {width: turn ? h : w, height: turn ? w : h, pixelsWidth: up.width, pixelsHeight: up.height, rgba: up.rgba};
 	}
 
 	// (the frame's EXIF orientation, 1 to 8, by its metadata query reader: the photo
@@ -167,10 +203,10 @@ class SystemImages {
 
 	#end
 
-	#if (!helder.os || helder.os == "macos")
+	#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || (!hxmc.target && helder.os == "macos"))
 	// --- macOS: ImageIO
 
-	static function imageIO(path:String, side:Int):{width:Int, height:Int, pixelsWidth:Int, pixelsHeight:Int, rgba:Bytes} {
+	static function imageIO(path:String, side:Int, thumbnail:Bool):{width:Int, height:Int, pixelsWidth:Int, pixelsHeight:Int, rgba:Bytes} {
 		var pool = helder.os.objc.Runtime.objc_autoreleasePoolPush();
 		try {
 			var p = helder.os.objc.ObjC.str(path);
@@ -197,7 +233,8 @@ class SystemImages {
 			}
 			// (a thumbnail of the whole, its orientation applied, at most the side asked for)
 			var max = side > 0 ? Std.int(Math.min(side, Math.max(w, h))) : Std.int(Math.max(w, h));
-			var keys = ["kCGImageSourceCreateThumbnailFromImageAlways", "kCGImageSourceCreateThumbnailWithTransform", "kCGImageSourceThumbnailMaxPixelSize", "kCGImageSourceShouldCacheImmediately"];
+			var prefer = thumbnail && side > 0;
+			var keys = [prefer ? "kCGImageSourceCreateThumbnailFromImageIfAbsent" : "kCGImageSourceCreateThumbnailFromImageAlways", "kCGImageSourceCreateThumbnailWithTransform", "kCGImageSourceThumbnailMaxPixelSize", "kCGImageSourceShouldCacheImmediately"];
 			var dict = helder.os.objc.Msg.id(helder.os.objc.ObjC.cls("NSMutableDictionary"), helder.os.objc.ObjC.sel("dictionary"));
 			for (i in 0...keys.length) {
 				var k = helder.os.objc.ObjC.str(keys[i]);
@@ -207,6 +244,17 @@ class SystemImages {
 				helder.os.objc.ObjC.release(k);
 			}
 			var img = ImageIO.CGImageSourceCreateThumbnailAtIndex(src, 0, dict);
+			if (prefer && (img.isNull() || Math.max(CG.CGImageGetWidth(img).toInt(), CG.CGImageGetHeight(img).toInt()) < max)) {
+				if (!img.isNull()) CFs.CFRelease(img);
+				var absent = helder.os.objc.ObjC.str(keys[0]);
+				helder.os.objc.Msg.vPtr(dict, helder.os.objc.ObjC.sel("removeObjectForKey:"), absent);
+				helder.os.objc.ObjC.release(absent);
+				var always = helder.os.objc.ObjC.str("kCGImageSourceCreateThumbnailFromImageAlways");
+				var yes = helder.os.objc.Msg.idInt(helder.os.objc.ObjC.cls("NSNumber"), helder.os.objc.ObjC.sel("numberWithBool:"), 1);
+				helder.os.objc.Msg.vPtrPtr(dict, helder.os.objc.ObjC.sel("setObject:forKey:"), yes, always);
+				helder.os.objc.ObjC.release(always);
+				img = ImageIO.CGImageSourceCreateThumbnailAtIndex(src, 0, dict);
+			}
 			CFs.CFRelease(src);
 			if (img.isNull()) throw ImageError.corrupt("SystemImages: ImageIO cannot decode it");
 			var pw = CG.CGImageGetWidth(img).toInt(), ph = CG.CGImageGetHeight(img).toInt();
@@ -252,13 +300,14 @@ class SystemImages {
 		}
 }
 
-#if (!helder.os || helder.os == "windows")
+#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64" || (!hxmc.target && helder.os == "windows"))
 // (WIC's interfaces: IUnknown 0-2, then each's own, in the headers' order)
 @:build(helder.os.win32.Com.build())
 @:hxmc.unsafe(gc)
 class IWICImagingFactory {
 	@:slot(3) static function CreateDecoderFromFilename(self:Ptr, name:Ptr, vendor:Ptr, access:Int, options:Int, out:Ptr<Ptr>):Int;
 	@:slot(10) static function CreateFormatConverter(self:Ptr, out:Ptr<Ptr>):Int;
+	@:slot(11) static function CreateBitmapScaler(self:Ptr, out:Ptr<Ptr>):Int;
 }
 
 @:build(helder.os.win32.Com.build())
@@ -271,6 +320,7 @@ class IWICBitmapDecoder {
 @:hxmc.unsafe(gc)
 class IWICBitmapFrameDecode {
 	@:slot(8) static function GetMetadataQueryReader(self:Ptr, out:Ptr<Ptr>):Int;
+	@:slot(10) static function GetThumbnail(self:Ptr, out:Ptr<Ptr>):Int;
 }
 
 @:build(helder.os.win32.Com.build())
@@ -288,13 +338,19 @@ class IWICBitmapSource {
 
 @:build(helder.os.win32.Com.build())
 @:hxmc.unsafe(gc)
+private class IWICBitmapScaler {
+	@:slot(8) static function Initialize(self:Ptr, source:Ptr, width:Int, height:Int, mode:Int):Int;
+}
+
+@:build(helder.os.win32.Com.build())
+@:hxmc.unsafe(gc)
 class IWICFormatConverter {
 	@:slot(8) static function Initialize(self:Ptr, source:Ptr, format:Ptr, dither:Int, palette:Ptr, alpha:Float, paletteType:Int):Int;
 }
 
 #end
 
-#if (!helder.os || helder.os == "macos")
+#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || (!hxmc.target && helder.os == "macos"))
 // (each function from the framework that has it: they are bound as the program loads)
 @:hxmc.c @:hxmc.lib("/System/Library/Frameworks/ImageIO.framework/ImageIO") extern class ImageIO {
 	static function CGImageSourceCreateWithURL(url:Ptr, options:Ptr):Ptr;
