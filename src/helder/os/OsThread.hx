@@ -149,6 +149,58 @@ class OsThread {
 		nest--;
 	}
 
+	// f on the program's thread, from the main thread, as back, waited for
+	// seconds at most (what the program hands the main thread meanwhile run):
+	// whether it ran by then. Else it runs when the program comes to it, an
+	// error of it thrown there, and the next call waits for it in place of
+	// its own (a live resize's frame: AppKit waits for no busy program, and
+	// one frame at a time is asked of it, not one each time it is slow)
+	public static function within(f:Void->Void, seconds:Float):Bool {
+		if (program == 0 || NativeThread.current() != 1) {
+			f();
+			return true;
+		}
+		var until = haxe.Timer.stamp() + seconds;
+		mutex.acquire();
+		var c = behind != null && !behind.done ? behind : null;
+		if (c != null) c.left = false;
+		behind = null;
+		mutex.release();
+		if (c == null) {
+			c = new Call(f, mainWake);
+			mutex.acquire();
+			toProgram.push(c);
+			mutex.release();
+			programWake.release();
+		}
+		nest++;
+		while (true) {
+			try drain(toMain) catch (e:haxe.Exception) {
+				nest--;
+				throw e;
+			}
+			mutex.acquire();
+			var done = c.done, left = until - haxe.Timer.stamp();
+			if (!done && left <= 0) {
+				c.left = true;
+				behind = c;
+			}
+			mutex.release();
+			if (done) break;
+			if (left <= 0) {
+				nest--;
+				return false;
+			}
+			mainWake.wait(left);
+		}
+		nest--;
+		if (c.error != null) throw c.error;
+		return true;
+	}
+
+	// (within's call given up on, not run yet)
+	static var behind:Null<Call> = null;
+
 	// whether the main thread serves the program from inside a call of its
 	// own to it (back: a system's callout, a run loop source's, under it):
 	// an autorelease pool pushed outside that callout is not popped there
@@ -237,8 +289,11 @@ class OsThread {
 			if (failed != null && c.error == null) c.error = failed;
 			mutex.acquire();
 			c.done = true;
+			var left = c.left;
 			mutex.release();
 			if (c.wake != null) c.wake.release();
+			// (no one waits for it any more: its error is this thread's)
+			if (left && c.error != null) throw c.error;
 		}
 	}
 }
@@ -247,6 +302,8 @@ private class Call {
 	public final f:Void->Void;
 	public final wake:Null<Lock>;
 	public var done = false;
+	// (within's, given up on: no one waits for it)
+	public var left = false;
 	public var error:Null<haxe.Exception> = null;
 
 	public function new(f, wake) {

@@ -731,8 +731,13 @@ class CocoaWindow {
 		w.resized();
 		// (a drag of the window's edge runs AppKit's own loop until the mouse is up, and
 		// App.run draws nothing: a frame at the new size from here, as Win32Window's timer)
-		if (onFrame != null && App.windows.length > 0 && Msg.b(w.window, ObjC.sel("inLiveResize"))) OsThread.back(onFrame);
+		if (w.surface.resizing || Msg.b(w.window, ObjC.sel("inLiveResize"))) liveFrame(Ptr.nil(), Ptr.nil(), Ptr.nil());
 	}
+
+	// (a live resize's frame waited for so long at most: presented in the
+	// transaction that gives the window its new size, else the last frame
+	// shows, at the window's top left, until it comes)
+	static inline var LIVE_WAIT = 0.1;
 
 	// while an edge is dragged, frames from a timer too: AppKit's loop runs
 	// it (the common modes: its tracking mode's too), and the content moves
@@ -740,6 +745,8 @@ class CocoaWindow {
 	static var timer = Ptr.nil();
 
 	@:hxmc.callback static function startResize(self:Ptr, cmd:Ptr, note:Ptr):Void {
+		var w = find(Msg.id(note, ObjC.sel("object")));
+		if (w != null) w.surface.resizing = true;
 		if (!timer.isNull()) return;
 		var t = Msg.idFloatPtrPtrPtrBool(ObjC.cls("NSTimer"), ObjC.sel("timerWithTimeInterval:target:selector:userInfo:repeats:"), 1 / 120, delegate,
 			ObjC.sel("liveFrame:"), Ptr.nil(), true);
@@ -750,6 +757,8 @@ class CocoaWindow {
 	}
 
 	@:hxmc.callback static function endResize(self:Ptr, cmd:Ptr, note:Ptr):Void {
+		var w = find(Msg.id(note, ObjC.sel("object")));
+		if (w != null) w.surface.resizing = false;
 		if (timer.isNull()) return;
 		Msg.v(timer, ObjC.sel("invalidate"));
 		Runtime.objc_release(timer);
@@ -757,7 +766,7 @@ class CocoaWindow {
 	}
 
 	@:hxmc.callback static function liveFrame(self:Ptr, cmd:Ptr, t:Ptr):Void
-		if (onFrame != null && App.windows.length > 0) OsThread.back(onFrame);
+		if (onFrame != null && App.windows.length > 0) OsThread.within(onFrame, LIVE_WAIT);
 
 	// waits for an event (left in the queue for poll), or seconds
 	static function wait(seconds:Float) {

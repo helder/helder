@@ -42,6 +42,14 @@ class DamageTest {
 			device.dispose();
 			planes(scale);
 		}
+		// (last: motion, once declared, is on for the process)
+		for (scale in [1, 2]) {
+			var device = Device.create(Surface.headless(W * scale, H * scale));
+			for (how in [Plain, Moving, Scrolled, Presence])
+				for (tiles in [false, true])
+					swaps(device, scale, how, tiles);
+			device.dispose();
+		}
 		Sys.println("DamageTest: " + (failed == 0 ? "ok" : '$failed FAILED'));
 		Sys.exit(failed == 0 ? 0 : 1);
 	}
@@ -149,6 +157,53 @@ class DamageTest {
 				m.title.text = "Header " + [j, j % 10, j * 37 % 1000][i % 3];
 			case _:
 		}
+	}
+
+	// (a sidebar with no background of its own switched between two views of
+	// different sizes and places, as the viewer's between its overview and a
+	// folder's level (#111: one's pixels left under the other): Plain; the
+	// view coming in moved and faded in on a transition (Moving); the sidebar
+	// in a scroller, scrolled (Scrolled); the views entering and leaving on
+	// their presence (Presence: drawn until their exits settle))
+	static function swaps(device:Device, scale:Float, how:Swap, tiles:Bool) {
+		var w = device.width, h = device.height;
+		var made = [new Sidebar(how), new Sidebar(how)], rs = [for (k in 0...2) new Renderer(device)];
+		for (k in 0...2) {
+			rs[k].scale = scale;
+			rs[k].groups = true;
+			rs[k].tiles = tiles;
+			made[k].ui.scale = scale;
+		}
+		rs[1].keep = true;
+		var pixels = [Bytes.alloc(w * h * 4), Bytes.alloc(w * h * 4)];
+		var seed = how.getIndex() * 31 + Math.round(scale) * 7 + (tiles ? 3 : 0) + 1;
+		function rnd(n:Int):Int {
+			seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+			return (seed >> 8) % n;
+		}
+		var off = 0, first = "", kept = 0, swapped = 0, frames = 120, t = Clock.now + 10;
+		// (what moves or fades in is mostly drawn whole while it does: only its pixels count)
+		var moving = how == Moving || how == Presence;
+		for (f in 0...frames) {
+			var op = rnd(12), j = rnd(1000);
+			if (op == 0) swapped++;
+			for (m in made)
+				m.change(op, j);
+			t += 0.016;
+			Clock.tick(t);
+			for (k in 0...2)
+				frame(device, made[k].ui, rs[k], w, h, pixels[k]);
+			var n = 0;
+			for (p in 0...w * h)
+				if (pixels[0].getInt32(p * 4) != pixels[1].getInt32(p * 4)) {
+					if (n++ == 0 && first == "")
+						first = 'frame $f (op $op) at ${p % w},${Std.int(p / w)}: ${StringTools.hex(pixels[0].getInt32(p * 4), 8)} drawn, ${StringTools.hex(pixels[1].getInt32(p * 4), 8)} kept';
+				}
+			off += n;
+			if (rs[1].drawn < w * h) kept++;
+		}
+		check('scale $scale ${how}${tiles ? " from tiles" : ""}: a sidebar switched between two views, drawn where it changed as drawn whole',
+			off == 0 && (moving || kept > frames / 4), '$off pixels differ${first == "" ? "" : ", first " + first}; $swapped switches, $kept of $frames frames drawn in part');
 	}
 
 	// (whole pixels from tiles, as tiles are exact there; turned where replayed)
@@ -380,6 +435,138 @@ class DamageTest {
 		popup.style.shadow = Shadow.parse("0 4px 12px rgba(0,0,0,0.3)");
 		popup.append(new TextNode("A popup"));
 		return {ui: ui, scrollers: scrollers, rows: rows, card: card, field: field, popup: popup, title: title};
+	}
+}
+
+enum Swap {
+	Plain;
+	Moving;
+	Scrolled;
+	Presence;
+}
+
+// (the viewer's sidebar, #111: no background of its own; an overview (a
+// scroller of a heading and rows) or a folder's level (a back row with a
+// button, a title, a scroller of a few rows, a foot), one at a time)
+class Sidebar {
+	public final ui = new Ui(new DrawText(), 320, 240);
+	final how:Swap;
+	final side = new Node();
+	final outer = new Node();
+	var view:Null<Node> = null;
+	var level = false;
+	var rows:Array<Node> = [];
+	var list:Null<Node> = null;
+	var button:Null<Node> = null;
+	var arriving:Null<Node> = null;
+	var depth = 0;
+
+	public function new(how:Swap) {
+		this.how = how;
+		ui.root.style.set({direction: Row, background: 0xFFF4F4F5, fontSize: 13});
+		side.style.set({width: 150, shrink: 0, padding: 8, rowGap: 10, overflow: Hidden});
+		if (how == Scrolled) {
+			outer.style.set({overflow: Scroll, width: 170, shrink: 0, minHeight: 0});
+			side.style.set({height: 400});
+			outer.append(side);
+			ui.root.append(outer);
+		} else
+			ui.root.append(side);
+		if (how == Presence) side.motion = helder.ui.motion.MotionSpec.DEFAULT;
+		var pane = new Node();
+		pane.style.set({grow: 1, background: 0xFFFFFFFF, radius: 10, margin: 8});
+		ui.root.append(pane);
+		show();
+	}
+
+	public function change(op:Int, j:Int) {
+		if (arriving != null) {
+			arriving.style.transform = Transform.parse("translate(0px, 0px)");
+			arriving.style.opacity = 1;
+			arriving = null;
+		}
+		switch op {
+			case 0:
+				level = !level;
+				depth = j % 4;
+				show();
+			case 3:
+				var r = rows[j % rows.length];
+				r.style.background = r.style.background == 0xFFE4E4E7 ? 0x00000000 : 0xFFE4E4E7;
+			case 4:
+				if (list != null) ui.scrollTo(list, 0, Math.max(0, list.scrollY + [9, -6, 30][j % 3]));
+			case 5:
+				if (how == Scrolled) ui.scrollTo(outer, 0, Math.max(0, outer.scrollY + [11, -7, 40][j % 3]));
+			case 6:
+				if (button != null) button.style.background = button.style.background == 0xFFE4E4E7 ? 0xFFD4D4D8 : 0xFFE4E4E7;
+			case _:
+		}
+	}
+
+	function show() {
+		if (view != null) side.remove(view);
+		var v = view = level ? makeLevel() : makeOverview();
+		if (how == Presence) v.style.transition = Transition.parse("fade slide-up");
+		if (how == Moving) {
+			v.style.transition = Transition.parse("transform 0.2s linear, opacity 0.2s linear");
+			v.style.transform = Transform.parse('translate(${level ? 24 : -24}px, 0px)');
+			v.style.opacity = 0.3;
+			arriving = v;
+		}
+		side.append(v);
+	}
+
+	function text(s:String, ?size:Float, ?weight:Int):TextNode {
+		var t = new TextNode(s);
+		if (size != null) t.style.fontSize = size;
+		if (weight != null) t.style.fontWeight = weight;
+		return t;
+	}
+
+	function row(s:String, selected:Bool):Node {
+		var r = new Node(), icon = new Node();
+		r.style.set({direction: Row, alignItems: Center, columnGap: 6, padding: 4, radius: 5, background: selected ? 0xFFE4E4E7 : 0x00000000});
+		icon.style.set({width: 12, height: 12, radius: 3, borderWidth: 1, borderColor: 0xFF52525B});
+		r.append(icon);
+		r.append(text(s));
+		rows.push(r);
+		return r;
+	}
+
+	function makeOverview():Node {
+		rows = [];
+		button = null;
+		var s = list = new Node();
+		s.style.set({overflow: Scroll, grow: 1, minHeight: 0, rowGap: 1});
+		s.append(text("Locations", 11, 600));
+		for (i in 0...12)
+			s.append(row(["ben", "Desktop", "Documents", "Downloads", "Pictures", "Movies"][i % 6] + (i < 6 ? "" : " " + i), i == 2));
+		return s;
+	}
+
+	function makeLevel():Node {
+		rows = [];
+		var v = new Node(), back = new Node(), head = new Node(), foot = new Node();
+		v.style.set({grow: 1, minHeight: 0, rowGap: 6});
+		back.style.set({direction: Row, alignItems: Center, justify: SpaceBetween});
+		back.append(text("< " + ["ben", "Documents", "a longer folder", "x"][depth]));
+		var b = button = new Node();
+		b.style.set({width: 22, height: 22, radius: 6, background: 0xFFE4E4E7});
+		back.append(b);
+		head.style.set({direction: Row, alignItems: Center, justify: SpaceBetween});
+		head.append(text(["Documents", "CyFun", "Pictures", "A"][depth], 17, 700));
+		head.append(text('${depth + 1} folders', 10));
+		var s = list = new Node();
+		s.style.set({overflow: Scroll, grow: 1, minHeight: 0, rowGap: 1});
+		for (i in 0...depth + 1)
+			s.append(row("Folder " + i, i == 0));
+		foot.style.set({borders: [1, 0, 0, 0], borderColor: 0xFFD4D4D8, paddingTop: 6});
+		foot.append(text("Macintosh HD"));
+		v.append(back);
+		v.append(head);
+		v.append(s);
+		v.append(foot);
+		return v;
 	}
 }
 
