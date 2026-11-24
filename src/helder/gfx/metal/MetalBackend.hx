@@ -202,13 +202,24 @@ class MetalBackend {
 		return {id: textures.length, handle: "iosurface:" + id};
 	}
 
+	// ("iosurface:ID", BGRA; "iosurface:ID:PLANE:FORMAT", a plane of a
+	// video's, r8, rg8, r16 or rg16: helder.media's frames, this process's)
 	public function openShared(handle:String, w:Int, h:Int):Int {
 		if (!StringTools.startsWith(handle, "iosurface:")) return 0;
-		var n = Std.parseInt(handle.substr(10));
+		var parts = handle.substr(10).split(":");
+		var n = Std.parseInt(parts[0]);
 		if (n == null) return 0;
 		var surf = IOSurface.IOSurfaceLookup(n);
 		if (surf.isNull()) return 0;
-		var t = surfaceTexture(surf, w, h, MTL.TextureUsageShaderRead);
+		var plane = parts.length > 2 ? Std.parseInt(parts[1]) ?? 0 : 0;
+		var format = parts.length > 2 ? switch parts[2] {
+			case "r8": MTL.PixelFormatR8Unorm;
+			case "rg8": MTL.PixelFormatRG8Unorm;
+			case "r16": 20; // MTLPixelFormatR16Unorm
+			case "rg16": 60; // MTLPixelFormatRG16Unorm
+			case _: MTL.PixelFormatBGRA8Unorm;
+		} : MTL.PixelFormatBGRA8Unorm;
+		var t = surfaceTexture(surf, w, h, MTL.TextureUsageShaderRead, plane, format);
 		MtlCF.CFRelease(surf);
 		if (t.isNull()) return 0;
 		textures.push(t);
@@ -216,13 +227,13 @@ class MetalBackend {
 		return textures.length;
 	}
 
-	function surfaceTexture(surf:Ptr, w:Int, h:Int, usage:Int):Ptr {
+	function surfaceTexture(surf:Ptr, w:Int, h:Int, usage:Int, plane = 0, format = MTL.PixelFormatBGRA8Unorm):Ptr {
 		var d = make("MTLTextureDescriptor");
-		Msg.vInt(d, ObjC.sel("setPixelFormat:"), MTL.PixelFormatBGRA8Unorm);
+		Msg.vInt(d, ObjC.sel("setPixelFormat:"), format);
 		Msg.vInt(d, ObjC.sel("setWidth:"), w);
 		Msg.vInt(d, ObjC.sel("setHeight:"), h);
 		Msg.vInt(d, ObjC.sel("setUsage:"), usage);
-		var t = MtlMsg.idPtrPtrInt(device, ObjC.sel("newTextureWithDescriptor:iosurface:plane:"), d, surf, 0);
+		var t = MtlMsg.idPtrPtrInt(device, ObjC.sel("newTextureWithDescriptor:iosurface:plane:"), d, surf, plane);
 		Runtime.objc_release(d);
 		return t;
 	}

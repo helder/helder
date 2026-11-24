@@ -42,7 +42,7 @@ class Vorbis {
 	var audioPage = 0;
 	var audioSeg = 0;
 	// the packet, copied from its segments
-	final packet:Bytes;
+	var packet:Bytes;
 	var packetLen = 0;
 	var bytePos = 0;
 	var bitPos = 0;
@@ -84,6 +84,54 @@ class Vorbis {
 
 	public static function open(bytes:Bytes):Vorbis
 		return new Vorbis(bytes);
+
+	// a stream a container holds (Matroska's CodecPrivate: its three
+	// headers, Xiph-laced), its packets then given one at a time (feed):
+	// the headers put in pages of their own, read as a file's are
+	public static function headers(config:Bytes):Vorbis {
+		if (config.length < 3 || config.get(0) != 2) throw "helder.os.audio.Vorbis: not three Xiph-laced headers";
+		var at = 1, sizes = [];
+		for (_ in 0...2) {
+			var n = 0, b;
+			do {
+				if (at >= config.length) throw "helder.os.audio.Vorbis: cut headers";
+				n += b = config.get(at++);
+			} while (b == 255);
+			sizes.push(n);
+		}
+		sizes.push(config.length - at - sizes[0] - sizes[1]);
+		if (sizes[2] <= 0) throw "helder.os.audio.Vorbis: cut headers";
+		var ogg = new haxe.io.BytesBuffer();
+		for (i in 0...3) {
+			var n = sizes[i], segs = Std.int(n / 255) + 1;
+			if (segs > 255) throw "helder.os.audio.Vorbis: a header too large";
+			// (a page of one packet: no checksum, which open does not read)
+			var head = Bytes.alloc(27 + segs);
+			head.blit(0, Bytes.ofString("OggS"), 0, 4);
+			head.set(5, i == 0 ? 2 : 0);
+			head.setInt32(14, 1);
+			head.setInt32(18, i);
+			head.set(26, segs);
+			for (k in 0...segs) head.set(27 + k, k < segs - 1 ? 255 : n % 255);
+			ogg.add(head);
+			ogg.addBytes(config, at, n);
+			at += n;
+		}
+		return new Vorbis(ogg.getBytes());
+	}
+
+	// a packet of a stream made by headers decoded: the frames now in `out`
+	// (0: none, the first packet or one it could not read)
+	public function feed(b:Bytes):Int {
+		if (b.length + 8 > packet.length) packet = Bytes.alloc(b.length + 8);
+		packet.blit(0, b, 0, b.length);
+		packetLen = b.length;
+		bytePos = 0;
+		bitPos = 0;
+		eop = false;
+		lastPacket = false;
+		return decodePacket();
+	}
 
 	// the whole stream decoded: interleaved samples (Wav's shape)
 	public static function decode(bytes:Bytes):Wav {

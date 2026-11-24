@@ -145,7 +145,16 @@ class Shell implements Markup {
 		{mime: "image/tiff", extensions: ["tif", "tiff"]},
 		{mime: "image/heic", extensions: ["heic", "heif"]},
 		{mime: "image/avif", extensions: ["avif"]}
-	];
+	].concat(helder.media.Decoders.available() ? [
+		// (helder.media's, where the system decodes them: FolderModel.MEDIA)
+		{mime: "video/mp4", extensions: ["mp4", "m4v"]},
+		{mime: "video/quicktime", extensions: ["mov"]},
+		{mime: "video/webm", extensions: ["webm"]},
+		{mime: "video/x-matroska", extensions: ["mkv"]},
+		{mime: "audio/mp4", extensions: ["m4a"]},
+		{mime: "audio/mpeg", extensions: ["mp3"]},
+		{mime: "audio/flac", extensions: ["flac"]}
+	] : []);
 
 	// the viewer's own font (DejaVu Sans, a subset: fonts/README.md), added
 	// only when the system has none it finds (a bare Wine prefix, a minimal
@@ -192,7 +201,7 @@ class Shell implements Markup {
 	// the app's), the folder watched
 	public static function attach(root:Node, viewer:Viewer, watch = true) {
 		ViewerActions.defaults(helder.ui.actions.Keymap.global);
-		renderEffect(() -> "Viewer" + (viewer.pickerOpen() ? " picker" : "") + (viewer.fullscreen() ? " fullscreen" : "") + (viewer.pagesSignal() > 1 ? " pdf" : "")
+		renderEffect(() -> "Viewer" + (viewer.pickerOpen() ? " picker" : "") + (viewer.fullscreen() ? " fullscreen" : "") + (viewer.pagesSignal() > 1 ? " pdf" : "") + (viewer.media() != "" ? " media" : "")
 			+ (viewer.gotoOpen() ? " goto" : "") + (viewer.aboutOpen() ? " about" : ""),
 			c -> root.keyContext = helder.ui.actions.KeyContext.parse(c));
 		root.on(ViewerAction, a -> switch a {
@@ -204,6 +213,18 @@ class Shell implements Markup {
 				true;
 			case OpenWithDefault:
 				if (viewer.folder.current != null) openDefault(viewer.folder.current);
+				true;
+			case PlayPause:
+				MediaView.toggle();
+				true;
+			case StepForward:
+				MediaView.step(1);
+				true;
+			case StepBack:
+				MediaView.step(-1);
+				true;
+			case ToggleMute:
+				MediaView.toggleMute();
 				true;
 			case _: viewer.perform(a);
 		}, viewer.actionState);
@@ -290,6 +311,7 @@ class Shell implements Markup {
 		});
 		return <view tag="viewer" grow={1} background="#161618" color="#e4e4e7" font-size={13}>
 			{image}
+			<Show when={viewer.media() != ""}>{MediaView.make(viewer)}</Show>
 			<Show when={viewer.state() != Shown && (viewer.state() != Loading || slow())}>
 				<view tag="message" position="absolute" inset={0} align-items="center" justify="center" row-gap={8} padding={24} pointer-events="none">
 					<text tag="title" font-size={17} color={viewer.state() == Failed ? "#fca5a5" : "#e4e4e7"} text-align="center">{viewer.message}</text>

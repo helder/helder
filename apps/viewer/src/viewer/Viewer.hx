@@ -48,6 +48,8 @@ class Viewer {
 	public final gotoText = Graph.signal("");
 	// the about card
 	public final aboutOpen = Graph.signal(false);
+	// the video or audio file shown (its path; "" none): the shell plays it
+	public final media = Graph.signal("");
 
 	// the image shown (its decode, its path), the animation's frame
 	public var shown(default, null):Null<Decoded> = null;
@@ -87,6 +89,7 @@ class Viewer {
 			cache.clear();
 			shown = null;
 			shownPath = "";
+			media("");
 			state(Empty);
 			message("No images in " + folder.dir);
 			detail("Drop an image here, or press " + mod + "+O");
@@ -185,17 +188,30 @@ class Viewer {
 		var around = folder.around(prefetch);
 		if (around.length == 0) return [];
 		var cur = folder.path(around[0]), p = page, n = pages;
-		var out = [Decode.key(cur, p)];
+		var out = FolderModel.isMedia(cur) ? [] : [Decode.key(cur, p)];
 		if (p + 1 < n) out.push(Decode.key(cur, p + 1));
 		if (p > 0) out.push(Decode.key(cur, p - 1));
 		for (i in around.slice(1))
-			out.push(folder.path(i));
+			if (!FolderModel.isMedia(folder.files[i])) out.push(folder.path(i));
 		return out;
 	}
 
 	function show() {
 		var path = key();
 		if (path == null) return;
+		// (a video or an audio file: the shell's player shows it, nothing decoded here)
+		if (FolderModel.isMedia(folder.name)) {
+			shown = null;
+			shownPath = path;
+			state(Shown);
+			message("");
+			detail("");
+			media(path);
+			updateTitle();
+			version(v -> v + 1);
+			return;
+		}
+		media("");
 		var d = cache.get(path);
 		// (a PDF's page count, known once one of its pages landed: its next page decoded ahead)
 		if (d != null && d.pages > 0 && d.pages != pages) {
@@ -253,6 +269,12 @@ class Viewer {
 		}
 		var n = folder.files.length, d = shown;
 		var parts = [folder.name, '${folder.index + 1} / $n'];
+		if (media.peek() != "") {
+			if (mediaInfo != "") parts.push(mediaInfo);
+			title(parts.join(" · "));
+			status(parts.join(" · ") + (mediaStatus == "" ? "" : " · " + mediaStatus));
+			return;
+		}
 		var paged = pages > 1 ? 'page ${page + 1} / ${pages}' : "";
 		if (paged != "") parts.push(paged) else if (d != null) parts.push('${d.width}×${d.height}');
 		title(parts.join(" · "));
@@ -276,6 +298,16 @@ class Viewer {
 		}
 		updateTitle();
 		version(v -> v + 1);
+	}
+
+	// the media shown's size and what it is (the shell's, once its player loaded it)
+	public var mediaInfo = "";
+	public var mediaStatus = "";
+
+	public function described(info:String, status:String) {
+		mediaInfo = info;
+		mediaStatus = status;
+		updateTitle();
 	}
 
 	// --- zoom and pan (device pixels)
@@ -360,7 +392,7 @@ class Viewer {
 				gotoOpen(true);
 			case CloseGoTo: gotoOpen(false);
 			case CloseAbout: aboutOpen(false);
-			case CopyPath | ShowInFolder | OpenWithDefault: return false;
+			case CopyPath | ShowInFolder | OpenWithDefault | PlayPause | StepForward | StepBack | ToggleMute: return false;
 		}
 		return true;
 	}
@@ -374,6 +406,7 @@ class Viewer {
 			case PreviousPage | FirstPage: page > 0 && pages > 1 ? Enabled : Disabled;
 			case GoToPage: pages > 1 ? Enabled : Disabled;
 			case CopyPath | ShowInFolder | OpenWithDefault: shownPath != "" || folder.current != null ? Enabled : Disabled;
+			case PlayPause | StepForward | StepBack | ToggleMute: media.peek() != "" ? Enabled : Disabled;
 			case ToggleFullscreen: fullscreen.peek() ? Checked : Unchecked;
 			case ToggleStatus: statusOn.peek() ? Checked : Unchecked;
 			case _: Enabled;
@@ -420,7 +453,7 @@ class Viewer {
 		for (n in names) {
 			if (n.startsWith(".")) continue;
 			var p = FolderModel.join(d, n);
-			if (try sys.FileSystem.isDirectory(p) catch (_:Dynamic) false) dirs.push(n + "/") else if (FolderModel.isImage(n)) images.push(n);
+			if (try sys.FileSystem.isDirectory(p) catch (_:Dynamic) false) dirs.push(n + "/") else if (FolderModel.isImage(n) || FolderModel.isMedia(n)) images.push(n);
 		}
 		dirs.sort(FolderModel.compare);
 		images.sort(FolderModel.compare);

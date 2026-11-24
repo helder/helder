@@ -821,7 +821,9 @@ Vorbis (`Vorbis.hx`, the Vorbis I specification, some 900 lines): floor 1,
 residues 0 to 2, any channels; floor 0, unused by encoders since 2002, is
 refused. `open` parses the headers and allocates every buffer; `next()`
 decodes a packet (the IMDCT through an n/4-point FFT) into `out`,
-`rewind()` loops. Ogg Vorbis rather than a simpler codec: music is
+`rewind()` loops; a container's stream (helder.media's Matroska) is
+`Vorbis.headers(config)` (its three headers, Xiph-laced), then
+`feed(packet)` a packet at a time. Ogg Vorbis rather than a simpler codec: music is
 distributed in it, at a quarter of the bytes of ADPCM or QOA for the same
 quality. Its samples match ffmpeg's decoder within a float's rounding
 (about 1e-7; the tests' files are ffmpeg's libvorbis), some 300 times

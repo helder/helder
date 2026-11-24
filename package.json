@@ -46,6 +46,9 @@
     "./store": {
       "types": "./src/helder/store/index.d.ts"
     },
+    "./media": {
+      "types": "./src/helder/media/index.d.ts"
+    },
     "./gfx": {
       "types": "./src/helder/gfx/index.ts"
     },

@@ -34,6 +34,10 @@ enum ViewerAction {
 	CopyPath;
 	ShowInFolder;
 	OpenWithDefault;
+	PlayPause;
+	StepForward;
+	StepBack;
+	ToggleMute;
 }
 
 class ViewerActions {
@@ -41,8 +45,8 @@ class ViewerActions {
 
 	// the viewer's default bindings, in keymap (once): the root's context is
 	// "Viewer", with picker while the picker is open, fullscreen while it is,
-	// pdf while a document of several pages is shown, goto while its go to
-	// page card is open
+	// pdf while a document of several pages is shown, media while a video
+	// or an audio file is, goto while its go to page card is open
 	public static function defaults(keymap:Keymap) {
 		if (declared) return;
 		declared = true;
@@ -79,6 +83,15 @@ class ViewerActions {
 		keymap.bind("secondary-end", LastPage, pdf);
 		keymap.bind("secondary-g", GoToPage, pdf);
 		keymap.bind("g", GoToPage, pdf);
+		// (a video or audio file: Space plays and pauses, the arrows across and , and . step a frame, M mutes; Up and Down still the folder's)
+		var media = "Viewer && media && !picker && !goto && !about";
+		for (k in ["space", "k"])
+			keymap.bind(k, PlayPause, media);
+		for (k in [".", "right"])
+			keymap.bind(k, StepForward, media);
+		for (k in [",", "left"])
+			keymap.bind(k, StepBack, media);
+		keymap.bind("m", ToggleMute, media);
 		keymap.bind("escape", CloseGoTo, "Viewer && goto");
 		keymap.bind("escape", CloseAbout, "Viewer && about");
 		keymap.bind("enter", CloseAbout, "Viewer && about");
@@ -98,7 +111,8 @@ class ViewerActions {
 				items: [
 					Item("Fit", Fit), Item("Actual Size", ActualSize), Item("Zoom In", ZoomIn), Item("Zoom Out", ZoomOut), Separator,
 					Item("Previous", Previous), Item("Next", Next), Separator, Item("Previous Page", PreviousPage), Item("Next Page", NextPage),
-					Item("Go to Page…", GoToPage), Separator, Item("Full Screen", ToggleFullscreen), Item("Status Line", ToggleStatus)
+					Item("Go to Page…", GoToPage), Separator, Item("Play or Pause", PlayPause), Item("Next Frame", StepForward), Item("Previous Frame", StepBack),
+					Item("Mute", ToggleMute), Separator, Item("Full Screen", ToggleFullscreen), Item("Status Line", ToggleStatus)
 				]
 			},
 			{label: "Help", items: [Role(About)]}

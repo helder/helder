@@ -19,6 +19,11 @@ built on helder alone, with no browser engine and no runtime to install.
 - **Animations play**: GIF, WebP and APNG.
 - **PDFs, page by page.** The next page is drawn ahead in the background,
   and you can go straight to a page by its number.
+- **Video and audio** on macOS: MP4, MOV, M4V, WebM, MKV, M4A, MP3 and
+  FLAC (H.264, HEVC, VP9 and AV1 where the Mac's hardware decodes them;
+  AAC, MP3, FLAC, ALAC, Opus, Vorbis) play in the folder beside the
+  images, with a scrub bar showing the keyframe under the pointer, frame
+  stepping, and the volume.
 - **Desktop integration**: "Open with", the system's open dialog, drag
   and drop, one window that later launches hand their file to, and the
   window's size and place remembered between runs.
@@ -78,6 +83,9 @@ Ctrl is Cmd on macOS.
 | Full screen | F11 or Enter (Ctrl+Cmd+F on macOS); Escape leaves it |
 | Status line | I: the zoom, the size, the format, the page, the place in the folder |
 | Copy the file's path | Ctrl+Shift+C; a right click has Show in Folder and Open with Default App too |
+| Video: play, pause | Space or K; next, previous file: Down, Up, Page Down, Page Up |
+| Video: a frame on, back | `.` or Right, `,` or Left |
+| Video: mute | M |
 | Menus | the menu bar (on Linux in the window: F10) |
 | Quit | Ctrl+Q (Cmd+Q) |
 

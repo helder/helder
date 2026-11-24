@@ -4,7 +4,7 @@ import sys.FileSystem;
 
 using StringTools;
 
-// The images of one folder, in natural order ("img2" before "img10",
+// The images (and videos) of one folder, in natural order ("img2" before "img10",
 // letters without case), and the one shown: next and previous wrap, the
 // neighbours by distance (what to prefetch). rescan reads the folder again
 // (the watch: every second or so): the list follows what was added or
@@ -13,6 +13,8 @@ using StringTools;
 class FolderModel {
 	// (helder.image's, and the system's where it has decoders: helder.os.SystemImages)
 	public static final EXTENSIONS = ["png", "apng", "jpg", "jpeg", "jfif", "gif", "webp", "pdf"].concat(helder.os.SystemImages.available() ? helder.os.SystemImages.EXTENSIONS : []);
+	// (video and audio, where the system decodes them: helder.media)
+	public static final MEDIA = helder.media.Decoders.available() ? ["mp4", "mov", "m4v", "webm", "mkv", "m4a", "mp3", "flac", "mka"] : [];
 
 	public var dir(default, null) = "";
 	public var files(default, null):Array<String> = [];
@@ -43,6 +45,11 @@ class FolderModel {
 	public static function isImage(name:String):Bool {
 		var dot = name.lastIndexOf(".");
 		return dot > 0 && EXTENSIONS.contains(name.substr(dot + 1).toLowerCase());
+	}
+
+	public static function isMedia(name:String):Bool {
+		var dot = name.lastIndexOf(".");
+		return dot > 0 && MEDIA.contains(name.substr(dot + 1).toLowerCase());
 	}
 
 	// a file (its folder, it shown even when its extension is another's) or
@@ -80,7 +87,7 @@ class FolderModel {
 	public function setEntries(names:Array<String>, ?keep:String) {
 		var before = index;
 		var wanted = keep;
-		files = [for (n in names) if (isImage(n) || n == wanted) n];
+		files = [for (n in names) if (isImage(n) || isMedia(n) || n == wanted) n];
 		files.sort(compare);
 		index = wanted != null ? files.indexOf(wanted) : -1;
 		if (index < 0 && files.length > 0) index = before < 0 ? 0 : Std.int(Math.min(before, files.length - 1));
