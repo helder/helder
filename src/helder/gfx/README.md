@@ -480,3 +480,88 @@ queries without flushing, Metal reads its shared buffer once the frame's
 command buffer completed, WebGPU resolves a frame's queries into a buffer
 mapped after its submit (while one read is on its way, the next frames'
 answers are let go). helder.scene's `Occlusion` culls by them.
+
+## On the CPU
+
+`-D helder.soft` (`helder run --headless --soft`) builds the device on the
+CPU (`Backend.Soft`, `helder.gfx.soft`): no GPU code linked, a static
+executable on Linux, frames byte-identical on every machine. Its shaders
+are the definitions' own: the macro emits each stage a fifth time
+(`helder.gfx.shader.Soft`), as Haxe over `hxmc.simd`'s 4 lanes, one 2x2
+quad of pixels (or 4 vertices) a call:
+
+- values every lane shares (constants, uniform blocks, what only they
+  make) stay scalar, computed as the CPU code computes them; their `if`s
+  and loops are plain; the rest runs under a mask of its lanes (an `if`
+  runs the branches its lanes take, a loop while a lane is in it, a
+  `return` or `discard` takes its lanes out);
+- `sample` takes its mip level from the quad (lane 1 - lane 0 across,
+  lane 2 - lane 0 down, one level for the four pixels, as GPUs do);
+- lanes are float32 (`exp`, `log`, `pow`, `sin` and `cos` SIMD polynomials,
+  no fused multiply-adds: the same bits everywhere); with
+  `-D helder.soft.exact` two `F64x2`s, Haxe's doubles, and with
+  `-D helder.soft.reference` each stage also as its scalar code lane by
+  lane: `tests/gfx/SoftShaderTest.hx` runs every shader of `src/helder`
+  both ways on random inputs, blocks and textures and requires the same
+  bits (89 of 89). `Lane`, `LaneInt` and `LaneBool` are the one place the
+  width is known: wider lanes are another implementation of those three.
+
+A draw runs its vertex stage at once, clips (near, far, and a guard band
+that keeps the fixed point exact), sets triangles up in fixed point (8 bits
+under the pixel, the top-left rule; the planes of depth, 1/w and each
+varying over w: perspective-correct) and bins them into the pass's 32x32
+tiles. The pass's end shades the tiles in parallel (`helder.jobs.Parallel`:
+GC-free callbacks on the pool's threads, which spin a while between runs;
+`HELDER_SOFT_THREADS=n` caps them, 1 none), each its triangles in order:
+a row's span from the edges, the depth test before the fragment stage,
+blending as GL's factors into the target's format (unorm clamped and
+rounded, sRGB in linear values, RGBA16F rounded to halves), a pass's
+clears in its tiles first. Targets, textures and the pass's records are
+outside the collector's heap (`SoftTexture`, `Chunks`): tiles read and
+write them from any thread with no copies. Textures: every
+`TextureFormat` (R8 and RG8 as RGBA8, half floats as floats, BC1, BC3 and
+the ASTC helder's encoder writes decoded when written, another ASTC block
+magenta), nearest, linear and trilinear, repeat, clamp and mirror, cubes
+filtered within a face (not across its edge), no anisotropy (helder's
+samplers have none). MSAA: 4 samples at the standard positions, the pixel
+shaded once, resolved at the pass's end. Not here: the compute tier
+(`has` is false: helder.scene's fallbacks, as WebGL2's), shared textures,
+showing a window's frame, shaders without a CPU form (TypeScript's
+`shader(...)` and materials: JSON, no Haxe to emit; they draw nothing);
+lines and points are a pixel-wide quad.
+
+Against the GPUs, tests/3d's 76 scenes and tests/gfx's 10 frames (`bun
+run test gfx-soft`, GfxTest's rule): all within it of their goldens
+(llvmpipe's), but khrspecular and khrclearcoat, within 6 levels (Metal
+lands 9 and 151 from those goldens too: specular sparkles); against Metal
+74 of 76 (khrclearcoat's sparkles; compressed: Metal on the Mac draws its
+ASTC quad grey, the CPU decodes it). helder.ui's GPU nodes draw on it in a
+`--soft` UI (`GpuHost`): glow's `<Scene>` is Metal's frame exactly,
+showreel's material within a level; fx's effects that hash with `sin`
+(`fract(sin(x) * 43758.5)`) differ, as GPUs differ between themselves there.
+
+Speed: tests/3d/FrameBench.hx (each scene's first frame, made, drawn and
+read back, then the least of 10), the 76 scenes summed, Linux x86-64 in
+Docker (`helder-llvmpipe-dejavu`, emulated on an M4, 10 threads, scenes
+alternating between the two so that the machine's load weighs on both):
+
+| | steady | first frames |
+| --- | ---: | ---: |
+| llvmpipe, 256x192 | 1309 ms | 238 s |
+| CPU, 256x192 | 1024 ms | 20.8 s |
+| llvmpipe, 1024x768 | 5374 ms | 149 s |
+| CPU, 1024x768 | 9855 ms | 31.9 s |
+| llvmpipe, one thread, 256x192 | 2091 ms | 76.6 s |
+| CPU, one thread, 256x192 | 2860 ms | 8.6 s |
+
+On a quiet machine, 256x192: 390 ms against llvmpipe's 599. First frames
+are 5 to 12 times faster (llvmpipe compiles each shader when first drawn);
+steady frames are faster at the tests' size, slower at 1024x768 and on
+one thread, where the per-pixel work (texture gathers, the fragment
+stage's calls) is what is left to make faster. On the M4 natively: 0.27 s
+for the 76 scenes at 256x192, Metal 0.04 s.
+
+Size: a `--soft` headless build with a `<Scene>` (examples/glow) 2.1 MB →
+3.2 MB (the back end and its shaders' SIMD forms; the grey box before),
+todo 3.88 → 4.01 MB (its controls' part shaders now drawn); GPU builds
+are unchanged (counter on macOS and Windows the same bytes' count).
