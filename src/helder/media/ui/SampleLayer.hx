@@ -167,15 +167,18 @@ class SampleLayer {
 		#end
 	}
 
+	// (its layer out of the tree by CaLayers, in a transaction after the
+	// frame that no longer has the slot, which still names it: let go of a
+	// second later, not before)
 	public function dispose() {
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		var l = layer, tb = timebase;
-		helder.os.OsThread.post(() -> {
+		helder.os.OsThread.post(() -> Msg.v(l, ObjC.sel("flushAndRemoveImage")));
+		helder.ui.Clock.after(1, () -> helder.os.OsThread.post(() -> {
 			Msg.vPtr(l, ObjC.sel("setControlTimebase:"), Ptr.nil());
-			Msg.v(l, ObjC.sel("removeFromSuperlayer"));
 			ObjC.release(l);
 			CF.CFRelease(tb);
-		});
+		}));
 		#end
 	}
 }
