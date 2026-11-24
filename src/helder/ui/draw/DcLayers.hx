@@ -16,8 +16,8 @@ import hxmc.unsafe.*;
 // window's target (DcRoot, made under the window's child windows: an EDIT
 // stays over what is drawn, as before, and is moved as before); over it, a
 // stack of visuals: the window's layer, each unit's (a scroller's content
-// inside a visual clipping to its clip, rounded too: a rectangle clip's
-// corners; a mover, its 2D transform and opacity an effect group's), each
+// inside a visual clipping to its clip; a mover, its 2D transform and
+// opacity an effect group's), each
 // node's system layer (LayerSlot: a visual, in its clip), what is over
 // each. Each layer's pixels are an IDCompositionSurface drawn by Direct3D
 // 11 (BeginDraw's texture, at its offset in it: frameOnto), whose updates
@@ -26,16 +26,24 @@ import hxmc.unsafe.*;
 // last (LayerPlane.cut, one rectangle: a surface's update is one, its
 // pixels undefined until drawn). A scroll moves its content's visual and a
 // mover's transform and opacity are its visual's, so neither draws. A
-// frame that changes anything is one commit, after DirectComposition
-// processed the last one (GetFrameStatistics: the display's pace, two
-// periods at most); one that changes nothing commits nothing. A frame
+// rounded scroller stays drawn (rounds false): a rectangle clip's corners
+// are not UiShader's coverage (up to 119 levels off at 54 corner pixels on
+// CI's runner). A frame that changes anything is one commit, after
+// DirectComposition processed the last one (GetFrameStatistics); then,
+// as a swap chain's present would, the render thread waits for DWM's next
+// composition (DwmFlush; else the next one its statistics estimate, a
+// period at most): nothing else paces the frames, the program's (which
+// present nothing) or the compositor's, which ran unpaced at 700 a second
+// without it. One that changes nothing commits nothing. A frame
 // split into the window's layer alone (a scene over the window: single) is
 // drawn onto the window's swap chain and presented as before, the stack
 // taken out of the tree once that frame is queued. Off where the window
 // has no composition (no DirectComposition, HELDER_SYSTEM_LAYERS=0); while
 // running, where the system misbehaves (no commit processed for 1.5 s,
-// =stall: none reported; a call failed, the device lost), off for good,
-// the next frame the window's own. Frames read back never use these.
+// =stall: none reported; a call failed, the device lost), off for good:
+// every visual but the window's out of the tree in one commit, the
+// layers let go, the next frame the window's own. Frames read back never
+// use these.
 @:hxmc.unsafe(gc)
 @:access(helder.ui.draw.CompositeFrame)
 @:access(helder.ui.Node)
@@ -87,6 +95,7 @@ class DcLayers extends LayerSplit {
 		floats = LibC.malloc(32);
 		ints = LibC.malloc(32);
 		stats = LibC.malloc(64);
+		rounds = false;
 	}
 
 	override function plane(kind:Int, key:Dynamic):LayerPlane {
@@ -108,8 +117,9 @@ class DcLayers extends LayerSplit {
 	function all():Array<LayerPlane>
 		return [base].concat([for (p in kept) p]).concat([for (p in overs) p]);
 
-	// (seconds on the render thread in all: showing, drawing, waiting for the last commit: tests)
-	@:noCompletion public final timing = [0.0, 0.0, 0.0];
+	// (seconds on the render thread in all: showing, drawing, waiting for
+	// the last commit, for DWM's next composition: tests)
+	@:noCompletion public final timing = [0.0, 0.0, 0.0, 0.0];
 	// layers drawn in part, and the pixels drawn in all (tests)
 	@:noCompletion public var cutTotal(default, null) = 0;
 	@:noCompletion public var pixelsTotal(default, null) = 0.0;
@@ -190,6 +200,8 @@ class DcLayers extends LayerSplit {
 			commits++;
 			committedAt = clock();
 		}
+		// (the program's frames too: they present nothing that would wait)
+		if (changes > 0 || drawn) pace();
 		frames++;
 		timing[0] += haxe.Timer.stamp() - began;
 		if (single) suspend();
@@ -215,6 +227,19 @@ class DcLayers extends LayerSplit {
 		var s = stats, freq = big(6);
 		if (s[3] > 0 && s[2] > 0) period = s[3] / s[2];
 		return freq > 0 ? big(4) / freq : haxe.Timer.stamp();
+	}
+
+	// (until DWM's next composition, as a swap chain's present waits: its
+	// flush, else its next frame as its statistics estimate it, a period at most)
+	function pace() {
+		var t0 = haxe.Timer.stamp();
+		if (Dwm.DwmFlush() < 0) {
+			var next = clock(), freq = big(6), at = freq > 0 ? big(8) / freq : -1.0;
+			var until = at > next && at - next < period ? t0 + (at - next) : t0 + period;
+			while (haxe.Timer.stamp() < until)
+				Sys.sleep(0.0005);
+		}
+		timing[3] += haxe.Timer.stamp() - t0;
 	}
 
 	function processed():Bool {
@@ -501,12 +526,34 @@ class DcLayers extends LayerSplit {
 		redraw = false;
 		if (!hide || stack.isNull()) return;
 		hide = false;
+		if (broken) {
+			drop();
+			return;
+		}
 		if (stackShown) {
 			stackShown = false;
 			IDCompositionVisual.RemoveVisual(dc.root, stack);
 			IDCompositionDevice.Commit(dev);
-			if (broken) Sys.println("helder.ui: system layers off: the window's own frame shown, the layers taken out");
 		}
+	}
+
+	// (off for good: the root's children but the window's own visual gone in
+	// one commit, every layer and slot with them, whatever the stack held;
+	// the layers' visuals and surfaces let go)
+	function drop() {
+		stackShown = false;
+		IDCompositionVisual.RemoveAllVisuals(dc.root);
+		IDCompositionVisual.AddVisual(dc.root, dc.window, 1, Ptr.nil());
+		var hr = IDCompositionDevice.Commit(dev);
+		for (p in all())
+			(cast p : DcPlane).free()();
+		kept.clear();
+		overs.clear();
+		gone.resize(0);
+		shownOrder.resize(0);
+		Com.release(stack);
+		stack = Ptr.nil();
+		Sys.println('helder.ui: system layers off: the window\'s own frame shown, the layers taken out of the tree (commit 0x${StringTools.hex(hr, 8)})');
 	}
 
 	override public function dispose() {

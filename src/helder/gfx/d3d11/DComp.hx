@@ -12,6 +12,11 @@ import hxmc.unsafe.*;
 	static function DCompositionCreateDevice(dxgiDevice:Ptr, iid:Ptr, out:Ptr<Ptr>):Int;
 }
 
+// (DWM's: until its next composition is presented)
+@:hxmc.c @:hxmc.lib("dwmapi") extern class Dwm {
+	static function DwmFlush():Int;
+}
+
 @:build(helder.os.win32.Com.build())
 @:hxmc.unsafe(gc)
 class IDCompositionDevice {

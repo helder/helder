@@ -1630,18 +1630,23 @@ view too), the same split as visuals over it, each layer's pixels an
 `IDCompositionSurface` drawn by Direct3D 11 into BeginDraw's texture at
 its offset (never cleared whole: it may be an atlas). A scroll is a
 visual's offset, on whole pixels, a mover's 2D transform its visual's
-(turns too) and its opacity an effect group's; a rounded scroller's clip
-is a rectangle clip's corners. A surface keeps what it showed and its
+(turns too) and its opacity an effect group's. A rounded scroller stays
+drawn: a rectangle clip's corners are not UiShader's coverage (54 corner
+pixels over 8 levels, up to 119, on CI's runner). A surface keeps what it showed and its
 update lands with the commit, so a layer drawn again is drawn in one
 rectangle around what changed since its last draw (`LayerPlane.cut`). A
 frame that changes anything is one commit, after DirectComposition
-processed the last (its frame statistics: the display's pace); one that
-changes nothing commits nothing; one split into the window's layer alone
+processed the last (its frame statistics), and then waits for DWM's next
+composition (`DwmFlush`), as a swap chain's present would: nothing else
+paces them, the program's frames presenting nothing (without it, 700
+frames a second on CI's runner); one that changes nothing commits
+nothing; one split into the window's layer alone
 is drawn onto the swap chain and presented as before, the stack taken out
 of the tree once that frame is queued. A node's `LayerSlot` is a visual
 (`DcLayers.visualFor`), cut to its box in its clip. No commit processed
 for 1.5 s, a call that fails or a lost device turn the layers off for
-good, the next frame the window's own; `HELDER_SYSTEM_LAYERS=0`, or no
+good: every visual but the window's own out of the tree in one commit,
+the next frame the window's own; `HELDER_SYSTEM_LAYERS=0`, or no
 DirectComposition, keeps a swap chain of the window's own.
 `WinLayersWindow` (the window lane, CI's desktop-windows job) runs a list
 with a system layer, a rounded scroller and a moving box three ways

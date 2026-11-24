@@ -95,16 +95,23 @@ class WinLayersWindow {
 			w.close();
 			Sys.exit(1);
 		}
-		var presents:Array<Float> = [], plock = new sys.thread.Mutex();
+		var presents:Array<Float> = [], offsets:Array<Float> = [], plock = new sys.thread.Mutex();
 		if (c != null) c.onFrame = t -> {
+			var o = c.offsets(list);
 			plock.acquire();
 			presents.push(t);
+			offsets.push(o == null ? -1 : o.y);
 			plock.release();
 		};
 		function live():Bool
 			return layers != null && layers.fell == null;
+		// (frames n in s seconds no faster than the display's (the compositor's period, learnt from its frames), a third over it at most)
+		function paced(what:String, n:Int, s:Float) {
+			var rate = n / s, hz = c == null ? 60.0 : 1 / @:privateAccess c.period;
+			check('$what: paced to the display', rate <= hz * 1.33, '${Math.round(rate)} frames a second, the display ${Math.round(hz)}');
+		}
 		// (a phase blocking the program: frames presented meanwhile, their gaps, the layers' frames and quads)
-		function blocked(what:String, before:Void->Void) {
+		function blocked(what:String, before:Void->Void):Array<Float> {
 			var was = strict;
 			strict = was && (mode == "textured" || live());
 			var t0 = dc == null ? [] : dc.timing.copy(), f0 = layers == null ? 0 : layers.frames, q0 = layers == null ? 0 : layers.quadsTotal;
@@ -114,6 +121,7 @@ class WinLayersWindow {
 			var to = Timer.stamp();
 			plock.acquire();
 			var during = [for (t in presents) if (t > from && t <= to) t];
+			var moved = [for (i in 0...presents.length) if (presents[i] > from && presents[i] <= to) offsets[i]];
 			plock.release();
 			var gaps = [for (i in 1...during.length) during[i] - during[i - 1]];
 			gaps.sort(Reflect.compare);
@@ -121,16 +129,17 @@ class WinLayersWindow {
 			check('$what: frames presented while the program was blocked 300 ms', during.length >= 10, during.length + " frames");
 			check('$what: at the display\'s pace', gaps.length > 0 && median < 0.03, "median gap " + Math.round(median * 10000) / 10 + " ms");
 			if (dc != null) {
-				var d = [for (i in 0...3) Math.round((dc.timing[i] - t0[i]) * 1000)];
-				say('$what: the render thread: showing ${d[0]} ms, drawing ${d[1]}, waiting for the last commit ${d[2]}, frames ${layers.frames - f0}');
+				var d = [for (i in 0...4) Math.round((dc.timing[i] - t0[i]) * 1000)];
+				say('$what: the render thread: showing ${d[0]} ms, drawing ${d[1]}, waiting for the last commit ${d[2]}, for DWM\'s next composition ${d[3]}, frames ${layers.frames - f0}');
 			}
 			if (live() && !layers.single) {
 				var f = layers.frames - f0, q = layers.quadsTotal - q0;
 				check('$what: on the system\'s layers, moved, not drawn', f > 0 && q <= 8 * f, '$f frames, ${Math.round(q / Math.max(1, f) * 10) / 10} quads drawn a frame');
 			}
 			strict = was;
+			return moved;
 		}
-		var step = 0, phase = 0, at = 0.0, k = w.window.scale, timed = 0, cpu0 = 0.0, t0 = 0.0, q0 = 0, f0 = 0, n0 = 0;
+		var step = 0, phase = 0, at = 0.0, k = w.window.scale, timed = 0, cpu0 = 0.0, t0 = 0.0, q0 = 0, f0 = 0, n0 = 0, scrolled = 0.0;
 		function still(n:Int) {
 			var px = capture(w.window, w.device.width, w.device.height);
 			if (px == null) {
@@ -139,11 +148,16 @@ class WinLayersWindow {
 			}
 			var file = '$dir/still$n-$mode.rgba';
 			sys.io.File.saveBytes(file, px);
+			// (and for the job's artifacts: bin/text/*.png)
+			sys.FileSystem.createDirectory("bin/text");
+			sys.io.File.saveBytes('bin/text/winlayers-still$n-$mode.png', helder.image.PngEncoder.encode(px, w.device.width, w.device.height, true));
+			var o = c == null ? null : c.offsets(list);
+			say('still $n: the list at ${list.scrollY} (the compositor\'s ${o == null ? null : o.y}), the slot\'s node at ${slotted.absX}, ${slotted.absY}');
 			// (the system layer's colour where it is: which shows)
-			var sx = Math.round((slotted.absX + 30) * k), sy = Math.round((slotted.absY + 6 - list.scrollY) * k);
+			var sx = Math.round((slotted.absX + 30) * k), sy = Math.round((slotted.absY + 6) * k);
 			if (sy > 40 * k && sy < w.device.height) {
 				var o = 4 * (sy * w.device.width + sx);
-				say('still $n: at the system layer ${StringTools.hex(px.get(o) << 16 | px.get(o + 1) << 8 | px.get(o + 2), 6)} (its own 31a050, its node\'s 30a050)');
+				say('still $n: at the system layer ($sx, $sy) ${StringTools.hex(px.get(o) << 16 | px.get(o + 1) << 8 | px.get(o + 2), 6)} (its own 31a050, its node\'s 30a050)');
 			}
 			if (mode == "textured") {
 				say('still $n: written');
@@ -159,7 +173,10 @@ class WinLayersWindow {
 				check('still $n: against the textured compositor\'s', false, 'sizes ${b.length} and ${px.length}');
 				return;
 			}
-			var over = 0, some = 0, most = 0, x0 = W, y0 = H, x1 = -1, y1 = -1;
+			var over = 0, some = 0, most = 0, x0 = W, y0 = H, x1 = -1, y1 = -1, samples:Array<String> = [];
+			// (the rounded scroller's corners: what over LEVELS falls within its radius and a pixel of each, and its most)
+			var rx0 = Math.round(round.absX * k), ry0 = Math.round(round.absY * k), rx1 = Math.round((round.absX + 120) * k), ry1 = Math.round((round.absY + 100) * k);
+			var rr = Math.round(14 * k) + 1, corner = [0, 0, 0, 0], cornerMost = [0, 0, 0, 0], inside = 0;
 			for (i in 0...W * H) {
 				var d = 0;
 				for (j in 0...3)
@@ -169,12 +186,23 @@ class WinLayersWindow {
 				if (d > LEVELS) {
 					over++;
 					var x = i % W, y = Std.int(i / W);
+					if (samples.length < 6) samples.push('$x,$y ${StringTools.hex(b.get(4 * i) << 16 | b.get(4 * i + 1) << 8 | b.get(4 * i + 2), 6)}>${StringTools.hex(px.get(4 * i) << 16 | px.get(4 * i + 1) << 8 | px.get(4 * i + 2), 6)}');
+					var cx = x < rx0 + rr ? 0 : x >= rx1 - rr ? 1 : -1, cy = y < ry0 + rr ? 0 : y >= ry1 - rr ? 1 : -1;
+					if (x >= rx0 && x < rx1 && y >= ry0 && y < ry1) {
+						inside++;
+						if (cx >= 0 && cy >= 0) {
+							var j = cy * 2 + cx;
+							corner[j]++;
+							if (d > cornerMost[j]) cornerMost[j] = d;
+						}
+					}
 					x0 = Std.int(Math.min(x0, x));
 					y0 = Std.int(Math.min(y0, y));
 					x1 = Std.int(Math.max(x1, x));
 					y1 = Std.int(Math.max(y1, y));
 				}
 			}
+			if (over > 0) say('still $n: over $LEVELS levels (textured>here): ${samples.join(" ")}; in the rounded scroller $inside, at its corners (top left, top right, bottom left, bottom right) $corner, at most $cornerMost');
 			var was = strict;
 			strict = true;
 			check('still $n: against the textured compositor\'s, at most ${SHARE * 100}% of the pixels over $LEVELS levels', over <= SHARE * W * H,
@@ -194,12 +222,22 @@ class WinLayersWindow {
 				case 1 if (now - at > 1):
 					// (the wheel while the program is blocked: the compositor scrolls)
 					var inject:Null<Inject> = null;
-					blocked("a scroll", () -> inject = Inject.start(w.window, 300));
+					var moved = blocked("a scroll", () -> inject = Inject.start(w.window, 300));
 					inject.join();
-					say('a scroll: ${inject.sent} wheel events injected, the list at ${list.scrollY}');
+					// (the compositor's offsets of the list as its frames drew it: the program has them at its next turn)
+					var was = strict;
+					strict = true;
+					check("a scroll: the list's offset advancing in the compositor's frames", moved.length > 1 && moved[moved.length - 1] > moved[0],
+						'${inject.sent} wheel events, ' + (moved.length > 0 ? '${moved[0]} to ${moved[moved.length - 1]}' : "no frame"));
+					strict = was;
+					scrolled = moved.length > 0 ? moved[moved.length - 1] : 0;
 					phase = 2;
 					at = now;
 				case 2 if (now - at > 1 && (c == null || !c.moving())):
+					var was = strict;
+					strict = true;
+					check("a scroll: the program has the compositor's offset", list.scrollY > 0 && list.scrollY >= scrolled, '$scrolled, the list at ${list.scrollY}');
+					strict = was;
 					mover.style.transform = Transform.parse("translate(-200px, -20px)");
 					mover.style.opacity = 0.5;
 					phase = 3;
@@ -233,7 +271,8 @@ class WinLayersWindow {
 					timed++;
 					if (timed == 120) {
 						var q = layers == null ? 0 : layers.quadsTotal - q0;
-						say('timed: steady scroll: $timed frames in ${Math.round((now - t0) * 10) / 10} s, CPU ${Math.round((cpu() - cpu0) / timed * 100) / 100} ms a frame, ${Math.round(q / timed * 10) / 10} quads drawn a frame');
+						say('timed: steady scroll: $timed frames in ${Math.round((now - t0) * 10) / 10} s (${Math.round(timed / (now - t0))} a second), CPU ${Math.round((cpu() - cpu0) / timed * 100) / 100} ms a frame, ${Math.round(q / timed * 10) / 10} quads drawn a frame');
+						paced("timed: steady scroll", timed, now - t0);
 						// (an animation the compositor draws, the program idle)
 						mover.style.transition = Transition.parse("transform 3s linear, opacity 3s linear");
 						mover.style.transform = Transform.parse("translate(0px, 0px)");
@@ -250,7 +289,8 @@ class WinLayersWindow {
 					n0++;
 					if (now - at > 3.2) {
 						var f = (c == null ? 0 : c.count - f0) + n0, q = layers == null ? 0 : layers.quadsTotal - q0;
-						say('timed: animation: $f frames ($n0 the program\'s) in ${Math.round((now - t0) * 10) / 10} s, CPU ${Math.round((cpu() - cpu0) / Math.max(1, f) * 100) / 100} ms a frame, ${Math.round(q / Math.max(1, f) * 10) / 10} quads drawn a frame');
+						say('timed: animation: $f frames ($n0 the program\'s) in ${Math.round((now - t0) * 10) / 10} s (${Math.round(f / (now - t0))} a second), CPU ${Math.round((cpu() - cpu0) / Math.max(1, f) * 100) / 100} ms a frame, ${Math.round(q / Math.max(1, f) * 10) / 10} quads drawn a frame');
+						paced("timed: animation", f, now - t0);
 						list.scrollY = 120 + 4 * 120;
 						phase = 8;
 						at = now;
