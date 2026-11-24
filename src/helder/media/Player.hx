@@ -582,7 +582,9 @@ class Player {
 	// the track's end (its duration, 0: none). The first frame's time is
 	// the packet's pts, but a packet that decoded to fewer frames than it
 	// lasts lost them at its start (Apple's Opus decoder's first, 120 of
-	// 960), so its end is where they meet
+	// 960), so its end is where they meet; one that decoded to more ends at
+	// its duration (Matroska's last BlockDuration: a WebM's track has no
+	// duration to end it)
 	static function keep(p:Packet, n:Int, rate:Int, from:Float, end:Float):{first:Int, count:Int, time:Float} {
 		var d = p.duration / p.track.timescale, at = p.time, delay = p.track.delay;
 		// (Matroska's times are whole milliseconds: the first packet's -7 ms is CodecDelay's -6.5)
@@ -591,6 +593,8 @@ class Player {
 		var first = 0, count = n;
 		while (first < n && t0 + first / rate < from - EPS) first++;
 		count = n - first;
+		var last = d > 0 ? Math.round((at + d - t0) * rate) - first : count;
+		if (n > Math.round(d * rate) + 1 && last < count) count = Std.int(Math.max(0, last));
 		if (end > 0) while (count > 0 && t0 + (first + count - 1) / rate >= end - EPS) count--;
 		return {first: first, count: count, time: t0 + first / rate};
 	}

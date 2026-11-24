@@ -51,16 +51,26 @@ class MediaWindowsTest {
 		var expected:Dynamic = haxe.Json.parse(Asset.embed("tests/media/apple/decoded.json").toString());
 		var t0 = haxe.Timer.stamp();
 		say('Media Foundation: ${helder.media.windows.Mf.loaded()}');
+		// (the device first: where it is a GPU's, the decoders decode on it, DXVA)
+		var device = helder.gfx.Device.create(helder.os.Surface.headless(64, 64));
+		say('a hardware device for DXVA: ${!helder.gfx.d3d11.D3D11Backend.decoding.isNull()}');
 		Async.run(_ -> {
 			try {
 				var videos:DynamicAccess<Dynamic> = expected.video;
-				for (f => e in videos) video(f, e);
+				say("videos");
+				for (f => e in videos) {
+					MfVideo.software = true;
+					video(f, e);
+					MfVideo.software = false;
+					if (!helder.gfx.d3d11.D3D11Backend.decoding.isNull()) video(f, e, true);
+				}
+				say("audio");
 				var audios:DynamicAccess<Dynamic> = expected.audio;
 				for (k => e in audios) audio(k, e);
 				var rgbs:DynamicAccess<Dynamic> = expected.rgb;
 				// (each part said first: a crash's place in the log)
 				say("colours");
-				colours(rgbs);
+				colours(rgbs, device);
 				say("seeks");
 				seeks(videos);
 				say("played");
@@ -115,9 +125,16 @@ class MediaWindowsTest {
 		return frames;
 	}
 
-	@:coroutine static function video(f:String, e:Dynamic) {
+	// (gpu: the GPU's decoder, said where the system's would not take it)
+	@:coroutine static function video(f:String, e:Dynamic, gpu = false) {
 		var frames = decodeAll(f);
 		if (frames == null) return;
+		if (gpu && !decoders[0].hardware) {
+			say('$f: DXVA not taken (${decoders[0].why})');
+			for (fr in frames) fr.release();
+			close();
+			return;
+		}
 		var m = open(f), t = Lambda.find(m.tracks, t -> t.kind == Video), pts = [], p;
 		while ((p = m.next()) != null) if (p.track == t) pts.push(p.time);
 		m.close();
@@ -180,7 +197,10 @@ class MediaWindowsTest {
 		}
 		for (i in 0...samples.length)
 			if (i * 97 < left.length) worst = Math.max(worst, Math.abs(left[i * 97] - samples[i]));
-		var frames:Int = e.frames, slack = t.codec == Opus ? 960 : 0;
+		// (MP4's Opus: ffmpeg reads its pre-skip in the track's timescale, its
+		// count off by that; Matroska's within a millisecond (its times whole
+		// ones: the first packet's -7 is CodecDelay's -6.5); else exact)
+		var frames:Int = e.frames, slack = t.codec != Opus ? 0 : f.indexOf(".mp4") > 0 ? 960 : 48;
 		var ok = d.rate == e.rate && Math.abs(left.length - frames) <= slack && worst <= tolerance;
 		check('$key ${t.codec}: ${left.length} frames at ${d.rate}, its samples as ffmpeg\'s', ok, 'ffmpeg ${frames}, the largest difference $worst');
 		if (!ok) {
@@ -214,8 +234,7 @@ class MediaWindowsTest {
 	// planes opened from the decoder's memory, VideoShader's conversion) and
 	// by WinLayer's on the CPU, upright where the pass turns them, against
 	// ffmpeg's where the picture is flat: a mean under 1 level, at most 8
-	@:coroutine static function colours(rgbs:DynamicAccess<Dynamic>) {
-		var device = helder.gfx.Device.create(helder.os.Surface.headless(64, 64));
+	@:coroutine static function colours(rgbs:DynamicAccess<Dynamic>, device:helder.gfx.Device) {
 		var vt = new VideoTexture(device);
 		for (f => e in rgbs) {
 			var frames = decodeAll(f);
@@ -233,8 +252,8 @@ class MediaWindowsTest {
 				device.endFrame();
 			}
 			device.frameInto(null);
-			var r = compare(e, px, w);
-			check('$f: frame ${e.frame} in RGB on ${device.backend}, ${w}x$h upright, as ffmpeg turns it where flat', ok && w == e.width && h == e.height
+			var r = compare(e, px, w), how = decoders[0].hardware ? "DXVA" : "software";
+			check('$f ($how): frame ${e.frame} in RGB on ${device.backend}, ${w}x$h upright, as ffmpeg turns it where flat', ok && w == e.width && h == e.height
 				&& r.mean < 1 && r.worst <= 8, r.detail);
 			// (the system layer's conversion, on the CPU: the picture as decoded, not turned)
 			if (t.rotation == 0) {
@@ -251,6 +270,7 @@ class MediaWindowsTest {
 		}
 		vt.dispose();
 		device.dispose();
+		say('the device let go: no decoder on it after (${helder.gfx.d3d11.D3D11Backend.decoding.isNull()})');
 	}
 
 	static function compare(e:Dynamic, px:haxe.io.Bytes, w:Int):{mean:Float, worst:Int, detail:String} {

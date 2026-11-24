@@ -30,6 +30,8 @@ class MfAudio implements AudioDecoder {
 	final given:Array<Packet> = [];
 	var channels = 2;
 	var floats = true;
+	// (integer PCM's bytes a sample: 2, 3 or 4)
+	var width = 2;
 	// (the first output since a start or a seek: its excess over its packet dropped)
 	var lead = true;
 
@@ -119,9 +121,10 @@ class MfAudio implements AudioDecoder {
 	}
 
 	// (floats where it gives them, else 16 bits)
+	// (floats where offered, else integer PCM of 16, 24 or 32 bits: ALAC's decoder offers only its own depth's)
 	static function output(t:Ptr):Bool
-		return MfTransform.choose(t, o -> MfTransform.subtypeOf(o) == 3)
-			|| MfTransform.choose(t, o -> MfTransform.subtypeOf(o) == 1 && MfTransform.read(o, MfId.BITS) == 16);
+		return MfTransform.choose(t, o -> MfTransform.subtypeOf(o) == 3) || MfTransform.choose(t, o -> MfTransform.subtypeOf(o) == 1
+			&& [16, 24, 32].indexOf(MfTransform.read(o, MfId.BITS)) >= 0);
 
 	// (what it gives: its channels, floats or 16 bits)
 	function formats() {
@@ -130,6 +133,8 @@ class MfAudio implements AudioDecoder {
 		var n = MfTransform.read(t, MfId.CHANNELS);
 		if (n > 0) channels = n;
 		floats = MfTransform.subtypeOf(t) == 3;
+		var b = MfTransform.read(t, MfId.BITS);
+		width = floats ? 4 : b > 0 ? b >> 3 : 2;
 		Com.release(t);
 	}
 
@@ -190,13 +195,16 @@ class MfAudio implements AudioDecoder {
 				Com.release(b.value);
 				return 0;
 			}
-			var at = data.value, w = floats ? 4 : 2, ch = channels, n = Std.int(len.value / (w * ch));
+			var at = data.value, w = width, ch = channels, n = Std.int(len.value / (w * ch));
 			samples.room(n);
 			var r = ch > 1 ? 1 : 0;
+			inline function read(o:Int):Float
+				return floats ? Mem.getF32(at, o) : w == 2 ? Mem.getI16(at, o) / 32768 : w == 4 ? Mem.getI32(at, o) / 2147483648.0 : ((Mem.getU8(at, o)
+					| Mem.getU8(at, o + 1) << 8 | Mem.getI8(at, o + 2) << 16) / 8388608);
 			for (i in 0...n) {
 				var o = i * ch * w;
-				samples.set(i * 2, floats ? Mem.getF32(at, o) : Mem.getI16(at, o) / 32768);
-				samples.set(i * 2 + 1, floats ? Mem.getF32(at, o + r * w) : Mem.getI16(at, o + r * 2) / 32768);
+				samples.set(i * 2, read(o));
+				samples.set(i * 2 + 1, read(o + r * w));
 			}
 			IMFMediaBuffer.Unlock(b.value);
 			Com.release(b.value);

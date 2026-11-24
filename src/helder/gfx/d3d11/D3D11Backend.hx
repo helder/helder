@@ -317,10 +317,11 @@ class D3D11Backend {
 
 	// (a video frame's plane, helder.media's: "mem:ADDRESS:PITCH:FORMAT:N",
 	// its rows in memory copied into a texture of w x h (a software
-	// decoder's); "d3d11:TEXTURE:SLICE:FORMAT:W:H:N", a DXVA decoder's NV12
-	// or P010 texture on this device, its slice's W x H copied on the GPU
-	// (the decoder's is an array, and its pool reuses it), the plane sampled
-	// by the view's format (r8, rg8; r16, rg16): no copy on the CPU)
+	// decoder's); "d3d11:TEXTURE:SLICE:FORMAT:W:H:N", an NV12 or P010
+	// texture on this device, viewed as it is where it is one slice that may
+	// be sampled (helder.media's copy of a DXVA frame), else its slice's
+	// W x H copied on the GPU first, the plane sampled by the view's format
+	// (r8, rg8; r16, rg16): no copy on the CPU)
 	function openPlane(handle:String, w:Int, h:Int):Int {
 		var at = handle.split(":"), mem = at[0] == "mem";
 		var format = switch at[3] {
@@ -349,6 +350,12 @@ class D3D11Backend {
 				return ID3D11Device.CreateTexture2D(device, d, init, scratch);
 			}
 			ID3D11Texture2D.GetDesc(p, d);
+			// (one slice that may be sampled (helder.media's copy out of the decoder's pool): viewed as it is)
+			if (d.value.ArraySize == 1 && d.value.BindFlags & D3D.BIND_SHADER_RESOURCE != 0) {
+				IUnknown.AddRef(p);
+				scratch.value = p;
+				return 0;
+			}
 			var fw = Std.parseInt(at[4]) ?? 0, fh = Std.parseInt(at[5]) ?? 0;
 			d.value.Width = (fw + 1) & ~1;
 			d.value.Height = (fh + 1) & ~1;

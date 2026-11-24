@@ -4,6 +4,7 @@ package helder.media.windows;
 import haxe.io.Bytes;
 import helder.media.windows.Mf;
 import helder.os.win32.Com;
+import helder.gfx.d3d11.D3D11;
 import hxmc.unsafe.*;
 
 // helder.media's VideoDecoder on Windows: Media Foundation's decoder of the
@@ -23,13 +24,15 @@ class MfVideo implements VideoDecoder {
 	public static var software = false;
 	static inline var BASE = 1000.0;
 	// (a frame's record: its sample, buffer (locked: software's), the
-	// address, pitch, coded height, texture and slice (DXVA's), serial)
-	static inline var RECORD = 64;
+	// address, pitch, rows, texture (DXVA's: ours, copied out), serial, a
+	// 2D buffer locked, a staging copy mapped)
+	static inline var RECORD = 80;
 	static var serials = 0;
 
 	public var pending(get, never):Int;
-	// the decoder: on the GPU (DXVA), else in software
+	// the decoder: on the GPU (DXVA), else in software; why not the GPU (tests)
 	public var hardware(default, null) = false;
+	@:noCompletion public var why(default, null) = "";
 
 	final track:MediaTrack;
 	var mft:Null<MfTransform>;
@@ -89,9 +92,15 @@ class MfVideo implements VideoDecoder {
 		var device = software ? Ptr.nil() : helder.gfx.d3d11.D3D11Backend.decoding;
 		mft = MfTransform.open(MfId.VIDEO_DECODER, MfId.VIDEO, sub, t -> {
 			// (on the GPU where it is D3D11-aware and takes the device and the types; else in software)
-			if (!device.isNull() && aware(t) && gpu(t, device)) {
-				if (types(t, sub)) return hardware = true;
-				IMFTransform.ProcessMessage(t, Mf.SET_D3D_MANAGER, Ptr.nil());
+			why = device.isNull() ? software ? "asked for software" : "no hardware device" : !aware(t) ? "the decoder is not D3D11-aware" : "";
+			if (why == "") {
+				var hr = gpu(t, device);
+				if (hr >= 0) {
+					if (types(t, sub)) return hardware = true;
+					why = 'its types refused with the device (${MfTransform.found})';
+					IMFTransform.ProcessMessage(t, Mf.SET_D3D_MANAGER, Ptr.nil());
+				} else
+					why = 'the device refused (${MfTransform.hex(hr)})';
 			}
 			hardware = false;
 			types(t, sub);
@@ -116,7 +125,7 @@ class MfVideo implements VideoDecoder {
 
 	// (the device's manager given the decoder; its context's calls made safe
 	// across threads: the decoder's on ours, helder.gfx's on its render thread)
-	function gpu(t:Ptr, device:Ptr):Bool {
+	function gpu(t:Ptr, device:Ptr):Int {
 		if (manager.isNull()) {
 			var m = Arena.scopedValue(a -> {
 				var token:Ptr<Int32> = a.alloc(4), out:Ptr<Ptr> = a.alloc(8);
@@ -132,10 +141,10 @@ class MfVideo implements VideoDecoder {
 				}
 				out.value;
 			});
-			if (m.isNull()) return false;
+			if (m.isNull()) return -1;
 			manager = m;
 		}
-		return IMFTransform.ProcessMessage(t, Mf.SET_D3D_MANAGER, manager) >= 0;
+		return IMFTransform.ProcessMessage(t, Mf.SET_D3D_MANAGER, manager);
 	}
 
 	function types(t:Ptr, sub:Ptr):Bool {
@@ -259,12 +268,21 @@ class MfVideo implements VideoDecoder {
 			Mem.setPtr(r, 8, b.value);
 			if (IUnknown.QueryInterface(b.value, MfId.IMFDXGIBuffer, q) >= 0) {
 				var tex:Ptr<Ptr> = a.alloc(8);
-				var got = IMFDXGIBuffer.GetResource(q.value, helder.gfx.d3d11.D3D11.IID.ID3D11Texture2D, tex) >= 0;
+				var got = IMFDXGIBuffer.GetResource(q.value, IID.ID3D11Texture2D, tex) >= 0;
 				IMFDXGIBuffer.GetSubresourceIndex(q.value, n);
 				Com.release(q.value);
 				if (got) {
-					Mem.setPtr(r, 32, tex.value);
-					Mem.setI32(r, 40, n.value);
+					// (copied out on the GPU and the sample let go at once: a
+					// synchronous decoder whose pool is held by its frames waits
+					// in ProcessOutput for one back, for good where they are all held)
+					var own = copyOut(tex.value, n.value);
+					Com.release(tex.value);
+					if (own.isNull()) return false;
+					Mem.setPtr(r, 32, own);
+					Com.release(b.value);
+					Com.release(s);
+					Mem.setPtr(r, 8, Ptr.nil());
+					Mem.setPtr(r, 0, Ptr.nil());
 					return true;
 				}
 			}
@@ -300,7 +318,102 @@ class MfVideo implements VideoDecoder {
 			true;
 		});
 
+	// (src's slice into a texture of ours of the picture's size, its format,
+	// sampled: helder.gfx's views of its planes; nil where it fails)
+	function copyOut(src:Ptr, slice:Int):Ptr
+		return Arena.scopedValue(a -> {
+			var d = a.make(D3D11_TEXTURE2D_DESC), out:Ptr<Ptr> = a.alloc(8), box:Ptr<Int32> = a.alloc(24);
+			ID3D11Texture2D.GetDesc(src, d);
+			var w = (width + 1) & ~1, h = (height + 1) & ~1;
+			if (w > d.value.Width) w = d.value.Width;
+			if (h > d.value.Height) h = d.value.Height;
+			d.value.Width = w;
+			d.value.Height = h;
+			d.value.MipLevels = 1;
+			d.value.ArraySize = 1;
+			d.value.Usage = D3D.USAGE_DEFAULT;
+			d.value.BindFlags = D3D.BIND_SHADER_RESOURCE;
+			d.value.CPUAccessFlags = 0;
+			d.value.MiscFlags = 0;
+			var dev = device(src);
+			if (dev.isNull()) return Ptr.nil();
+			var hr = ID3D11Device.CreateTexture2D(dev, d, Ptr.nil(), out);
+			if (hr < 0) {
+				Com.release(dev);
+				return Ptr.nil();
+			}
+			var own = out.value;
+			ID3D11Device.GetImmediateContext(dev, out);
+			var ctx = out.value;
+			box[0] = 0;
+			box[1] = 0;
+			box[2] = 0;
+			box[3] = w;
+			box[4] = h;
+			box[5] = 1;
+			ID3D11DeviceContext.CopySubresourceRegion(ctx, own, 0, 0, 0, 0, src, slice, cast box);
+			Com.release(ctx);
+			Com.release(dev);
+			own;
+		});
+
+	static function device(tex:Ptr):Ptr
+		return Arena.scopedValue(a -> {
+			var out:Ptr<Ptr> = a.alloc(8);
+			out.value = Ptr.nil();
+			ID3D11Texture2D.GetDevice(tex, out);
+			out.value;
+		});
+
+	// (a DXVA frame's texture read back: a staging copy mapped, kept while the frame is held)
+	function readBack(r:Ptr):Bool
+		return Arena.scopedValue(a -> {
+			var tex = Mem.getPtr(r, 32), d = a.make(D3D11_TEXTURE2D_DESC), out:Ptr<Ptr> = a.alloc(8);
+			ID3D11Texture2D.GetDesc(tex, d);
+			d.value.Usage = D3D.USAGE_STAGING;
+			d.value.BindFlags = 0;
+			d.value.CPUAccessFlags = D3D.CPU_ACCESS_READ;
+			var dev = device(tex);
+			if (dev.isNull()) return false;
+			var hr = ID3D11Device.CreateTexture2D(dev, d, Ptr.nil(), out);
+			if (hr < 0) {
+				Com.release(dev);
+				return false;
+			}
+			var st = out.value;
+			ID3D11Device.GetImmediateContext(dev, out);
+			var ctx = out.value, m = a.make(D3D11_MAPPED_SUBRESOURCE);
+			ID3D11DeviceContext.CopyResource(ctx, st, tex);
+			hr = ID3D11DeviceContext.Map(ctx, st, 0, D3D.MAP_READ, 0, m);
+			Com.release(ctx);
+			Com.release(dev);
+			if (hr < 0) {
+				Com.release(st);
+				return false;
+			}
+			Mem.setPtr(r, 64, st);
+			Mem.setPtr(r, 16, m.value.pData);
+			Mem.setI32(r, 24, m.value.RowPitch);
+			Mem.setI32(r, 28, d.value.Height);
+			true;
+		});
+
 	function unlock(r:Ptr) {
+		var st = Mem.getPtr(r, 64);
+		if (!st.isNull()) {
+			var dev = device(st);
+			if (!dev.isNull()) Arena.scoped(a -> {
+				var out:Ptr<Ptr> = a.alloc(8);
+				ID3D11Device.GetImmediateContext(dev, out);
+				ID3D11DeviceContext.Unmap(out.value, st, 0);
+				Com.release(out.value);
+				Com.release(dev);
+			});
+			Com.release(st);
+			Mem.setPtr(r, 64, Ptr.nil());
+			Mem.setPtr(r, 16, Ptr.nil());
+			return;
+		}
 		if (Mem.getPtr(r, 16).isNull()) return;
 		var q = Mem.getPtr(r, 56);
 		if (!q.isNull()) {
@@ -354,7 +467,7 @@ class MfVideo implements VideoDecoder {
 	public function mapped(f:VideoFrame):Null<{at:Ptr, pitch:Int, rows:Int}> {
 		var r = f.image;
 		if (r.isNull()) return null;
-		if (Mem.getPtr(r, 16).isNull() && !lock(r)) return null;
+		if (Mem.getPtr(r, 16).isNull() && !(Mem.getPtr(r, 32).isNull() ? lock(r) : readBack(r))) return null;
 		return {at: Mem.getPtr(r, 16), pitch: Mem.getI32(r, 24), rows: Mem.getI32(r, 28)};
 	}
 
@@ -366,7 +479,7 @@ class MfVideo implements VideoDecoder {
 		if (r.isNull()) return null;
 		var format = plane == 0 ? (f.bits > 8 ? "r16" : "r8") : f.bits > 8 ? "rg16" : "rg8";
 		var serial = Mem.getI32(r, 48), tex = Mem.getPtr(r, 32);
-		if (!tex.isNull()) return 'd3d11:${hex(tex)}:${Mem.getI32(r, 40)}:$format:${f.width}:${f.height}:$serial';
+		if (!tex.isNull()) return 'd3d11:${hex(tex)}:0:$format:${f.width}:${f.height}:$serial';
 		var m = mapped(f);
 		if (m == null) return null;
 		return 'mem:${hex(m.at.add(plane == 0 ? 0 : m.pitch * m.rows))}:${m.pitch}:$format:$serial';

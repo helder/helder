@@ -43,6 +43,7 @@ class ID3D11Device {
 	@:slot(33) static function CheckFeatureSupport(self:Ptr, feature:Int, data:Ptr, size:Int):Int;
 	@:slot(37) static function GetFeatureLevel(self:Ptr):Int;
 	@:slot(39) static function GetDeviceRemovedReason(self:Ptr):Int;
+	@:slot(40) static function GetImmediateContext(self:Ptr, out:Ptr<Ptr>):Void;
 }
 
 @:build(helder.os.win32.Com.build())
@@ -115,6 +116,7 @@ class ID3DBlob {
 @:build(helder.os.win32.Com.build())
 @:hxmc.unsafe(gc)
 class ID3D11Texture2D {
+	@:slot(3) static function GetDevice(self:Ptr, out:Ptr<Ptr>):Void;
 	@:slot(10) static function GetDesc(self:Ptr, desc:Ptr<D3D11_TEXTURE2D_DESC>):Void;
 }
 

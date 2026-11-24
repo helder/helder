@@ -130,8 +130,10 @@ class WinLayer {
 		drop(visual, dc);
 		Arena.scoped(a -> {
 			var out:Ptr<Ptr> = a.alloc(8);
-			var hr = IDCompositionDevice.CreateSurface(dc, w, h, D3D.FORMAT_R8G8B8A8_UNORM, D3D.ALPHA_MODE_IGNORE, out);
-			note('made: CreateSurface ${w}x$h RGBA8, alpha ignored: ${WinLayer.hr(hr)}');
+			// (premultiplied, as DcLayers' layers are, every pixel opaque: one
+			// of its alpha ignored (and a swap chain's) showed black, CI's)
+			var hr = IDCompositionDevice.CreateSurface(dc, w, h, D3D.FORMAT_R8G8B8A8_UNORM, D3D.ALPHA_MODE_PREMULTIPLIED, out);
+			note('made: CreateSurface ${w}x$h RGBA8 premultiplied: ${WinLayer.hr(hr)}');
 			if (hr < 0) {
 				Sys.println('helder.media: no surface for the video\'s layer (CreateSurface 0x${StringTools.hex(hr, 8)})');
 				return;
