@@ -700,6 +700,10 @@ jobs:
         if: always()
         # (and CoreText's sheets for the text-quality lane: tests/text/coretext/sheets is a copy of bin/text/coretext)
         with: {name: text-macos, path: "bin/text/*.png\nbin/text/coretext/*", retention-days: 7, if-no-files-found: ignore}
+      # (the window lane's <Video> both ways, the window server's captures and helder's frame: tests/media/apple/VideoWindow.hx)
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with: {name: video-window-macos, path: "bin/media/video-window/*.png", retention-days: 7, if-no-files-found: ignore}
       - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
         with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}

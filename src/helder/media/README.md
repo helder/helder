@@ -178,19 +178,24 @@ upright, where the style gives none; src a path or a ByteSource; its
 `time`, `duration` and `playing` signals, `onTime` each frame. While it
 plays the animation clock ticks it. Two ways to show it:
 
-- drawn by helder (`ui.VideoTexture`): the frame's planes opened as
-  textures (`Device.openShared` of the IOSurface's plane: no copy; kept
-  while the decoder's pool reuses them), turned to RGB upright in a pass of
-  their own (`ui.VideoShader`: the matrix of the frame's coefficients,
-  range and depth; chroma sited left), then drawn as a `<Scene>`'s box is:
-  in captures, headless frames and every compositor;
-- in a window of system layers (helder.ui.draw.CaLayers), where the node
-  is a plain rectangle (no radius; `layer={false}`: never): the system's
-  `AVSampleBufferDisplayLayer` in a `LayerSlot` (`ui.SampleLayer`), each
-  frame enqueued as it falls due with its time, its control timebase at
-  the player's clock, clipped and moved with its scrollers, under what is
-  drawn over it. helder draws nothing for it frame by frame; a window's
-  capture of helder's frame leaves it out, as it does native views.
+- drawn by helder (`ui.VideoTexture`), the default: the frame's planes
+  opened as textures (`Device.openShared` of the IOSurface's plane: no
+  copy; kept while the decoder's pool reuses them), turned to RGB upright
+  in a pass of their own (`ui.VideoShader`: the matrix of the frame's
+  coefficients, range and depth; chroma sited left), then drawn as a
+  `<Scene>`'s box is: in captures, headless frames and every compositor;
+- `layer={true}`, in a window of system layers (helder.ui.draw.CaLayers),
+  where the node is a plain rectangle (no radius) and the picture upright:
+  the system's `AVSampleBufferDisplayLayer` in a `LayerSlot`
+  (`ui.SampleLayer`), each frame enqueued as it falls due with its time
+  (tagged with its matrix, BT.709's primaries and sRGB's transfer, as
+  helder draws it), its control timebase at the player's clock, clipped
+  and moved with its scrollers, under what is drawn over it; let go a
+  second after the slot, once CaLayers took it out of the tree. Asked for,
+  not the default: on CI's virtual Mac the window server showed its
+  colours some 30 levels off helder's (the same pre-converted to BGRA by
+  VideoToolbox), to be measured on hardware; a window's capture of
+  helder's frame leaves it out, as it does native views.
 
 Audio alone is a Player without a box. TypeScript: `helder/media`'s
 `Video`, `VideoNode`, `Player`, `FileSource`, `MemorySource`.
@@ -235,5 +240,11 @@ and steps landing on the frame by time and pixels; a clip played through
 CoreAudio's file output: each frame once, within a frame of the clock, the
 audio's 8000 frames there. The window lane's `VideoWindow.hx`: a `<Video>`
 in a scroller under a popup both ways, seeked, played, paused, scrolled
-(drawn: helder's frames read back; the system's layer: rendering, placed
-and moved with the scroller, cut by its clip).
+(drawn: helder's frames read back, `quads.mp4`'s flat colours exact; the
+system's layer: rendering, placed and moved with the scroller, cut by its
+clip); where the window server's captures have pixels, the drawn colours
+there checked and the layer's printed, the captures kept as PNGs (CI's
+artifact `video-window-macos`). VideoToolbox's decoding of `quads.mp4`
+made at crf 18 or less is not ffmpeg's (its right half's Cr 255, an M4 and
+CI's virtual Mac alike): the fixture is crf 23's, and the decoding test
+checks it.

@@ -33,9 +33,6 @@ import hxmc.unsafe.*;
 	static function VTDecompressionSessionWaitForAsynchronousFrames(s:Ptr):Int;
 	static function VTDecompressionSessionInvalidate(s:Ptr):Void;
 	static function VTIsHardwareDecodeSupported(codec:Int):Bool;
-	static function VTPixelTransferSessionCreate(alloc:Ptr, out:Ptr<Ptr>):Int;
-	static function VTPixelTransferSessionTransferImage(s:Ptr, from:Ptr, to:Ptr):Int;
-	static function VTPixelTransferSessionInvalidate(s:Ptr):Void;
 	// (macOS 11: VP9 and AV1's decoders are loaded on request)
 	static function VTRegisterSupplementalVideoDecoderIfAvailable(codec:Int):Void;
 }
@@ -52,7 +49,6 @@ import hxmc.unsafe.*;
 	static function CVPixelBufferGetHeightOfPlane(b:Ptr, plane:Int64):Int64;
 	static function CVPixelBufferGetWidthOfPlane(b:Ptr, plane:Int64):Int64;
 	static function CVBufferCopyAttachment(b:Ptr, key:Ptr, mode:Ptr):Ptr;
-	static function CVPixelBufferCreate(alloc:Ptr, width:Int64, height:Int64, format:Int, attributes:Ptr, out:Ptr<Ptr>):Int;
 	static function CVBufferSetAttachment(b:Ptr, key:Ptr, value:Ptr, mode:Int):Void;
 	static function CVBufferRemoveAttachment(b:Ptr, key:Ptr):Void;
 }

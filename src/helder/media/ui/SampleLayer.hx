@@ -24,10 +24,6 @@ class SampleLayer {
 	final layer:Ptr;
 	final timebase:Ptr;
 	#end
-	// (the frames shown as BGRA VideoToolbox converts them, not as Y'CbCr the
-	// system converts: VideoWindow's measure of both)
-	@:noCompletion public static var rgb = false;
-
 	var last:Null<VideoFrame>;
 	var at = -1.0;
 
@@ -105,10 +101,6 @@ class SampleLayer {
 		var image = f.image;
 		if (image.isNull()) return;
 		tag(f);
-		// (RGB: the frame turned to BGRA by VideoToolbox, its matrix and range applied there)
-		var owned = rgb ? bgra(f) : Ptr.nil();
-		if (rgb && owned.isNull()) return;
-		if (rgb) image = owned;
 		var sample = Arena.scopedValue(a -> {
 			var fd:Ptr<Ptr> = a.alloc(8), out:Ptr<Ptr> = a.alloc(8);
 			if (CoreMedia.CMVideoFormatDescriptionCreateForImageBuffer(Ptr.nil(), image, fd) != 0) return Ptr.nil();
@@ -122,7 +114,6 @@ class SampleLayer {
 			CF.CFRelease(fd.value);
 			s == 0 ? out.value : Ptr.nil();
 		});
-		if (!owned.isNull()) CF.CFRelease(owned);
 		if (sample.isNull()) return;
 		var l = layer;
 		helder.os.OsThread.post(() -> {
@@ -133,40 +124,6 @@ class SampleLayer {
 	#end
 
 	#if (!helder.os || helder.os == "macos" || helder.os == "ios")
-	var transfer = Ptr.nil();
-
-	// (a BGRA copy of the frame on an IOSurface: VTPixelTransferSession, the
-	// source's matrix and range its own; its values sRGB's, as helder's)
-	function bgra(f:VideoFrame):Ptr {
-		var pool = Runtime.objc_autoreleasePoolPush();
-		var made = Arena.scopedValue(a -> {
-			var out:Ptr<Ptr> = a.alloc(8);
-			if (transfer.isNull()) {
-				if (VideoToolbox.VTPixelTransferSessionCreate(Ptr.nil(), out) != 0) return Ptr.nil();
-				transfer = out.value;
-			}
-			var attrs = Msg.id(ObjC.cls("NSMutableDictionary"), ObjC.sel("dictionary"));
-			var k = ObjC.str("IOSurfaceProperties");
-			Msg.vPtrPtr(attrs, ObjC.sel("setObject:forKey:"), Msg.id(ObjC.cls("NSDictionary"), ObjC.sel("dictionary")), k);
-			ObjC.release(k);
-			if (CoreVideo.CVPixelBufferCreate(Ptr.nil(), f.width, f.height, 0x42475241, attrs, out) != 0) return Ptr.nil(); // 'BGRA'
-			var dst = out.value;
-			for (kv in [["CVImageBufferColorPrimaries", "ITU_R_709_2"], ["CVImageBufferTransferFunction", "IEC_sRGB"]]) {
-				var key = ObjC.str(kv[0]), v = ObjC.str(kv[1]);
-				CoreVideo.CVBufferSetAttachment(dst, key, v, 1);
-				ObjC.release(key);
-				ObjC.release(v);
-			}
-			if (VideoToolbox.VTPixelTransferSessionTransferImage(transfer, f.image, dst) != 0) {
-				CF.CFRelease(dst);
-				return Ptr.nil();
-			}
-			dst;
-		});
-		Runtime.objc_autoreleasePoolPop(pool);
-		return made;
-	}
-
 	// (the colours the system converts the frame with, as helder's pass
 	// does: the frame's matrix, its values shown as sRGB's, so BT.709's
 	// primaries and sRGB's transfer, no gamut or HDR conversion; VideoToolbox
@@ -216,11 +173,6 @@ class SampleLayer {
 	public function dispose() {
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		var l = layer, tb = timebase;
-		if (!transfer.isNull()) {
-			VideoToolbox.VTPixelTransferSessionInvalidate(transfer);
-			CF.CFRelease(transfer);
-			transfer = Ptr.nil();
-		}
 		helder.os.OsThread.post(() -> Msg.v(l, ObjC.sel("flushAndRemoveImage")));
 		helder.ui.Clock.after(1, () -> helder.os.OsThread.post(() -> {
 			Msg.vPtr(l, ObjC.sel("setControlTimebase:"), Ptr.nil());

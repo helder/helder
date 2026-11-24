@@ -12,22 +12,23 @@ import helder.view.graph.Signal;
 
 // A video in helder.ui (<Video>, MediaTags): its Player's frame shown in
 // the content box as fit says (contain by default), its size the
-// picture's (upright) where the style gives none. Two ways to show it:
-// drawn by helder (VideoTexture: the frame turned to RGB in a pass of its
-// own, then drawn as a <Scene>'s box is), so that it is in captures,
-// headless frames and every compositor; or, in a window of system layers
-// (helder.ui.draw.CaLayers) where the node is a plain rectangle (no
-// radius; layer false: never) and the picture upright (no rotation), the
-// system's own layer in its slot
-// (SampleLayer: AVSampleBufferDisplayLayer, the frames queued with their
-// times on a timebase kept to the player's clock), clipped and moved with
-// its scrollers. While it plays the animation clock ticks it (Clock.add):
-// the frame due picked, time set. The controls are the app's.
+// picture's (upright) where the style gives none. Drawn by helder
+// (VideoTexture: the frame turned to RGB in a pass of its own, then drawn
+// as a <Scene>'s box is), so that it is in captures, headless frames and
+// every compositor. layer: the system's own layer instead, in a window of
+// system layers (helder.ui.draw.CaLayers) where the node is a plain
+// rectangle (no radius) and the picture upright (SampleLayer:
+// AVSampleBufferDisplayLayer, the frames queued with their times on a
+// timebase kept to the player's clock), clipped and moved with its
+// scrollers; asked for, not the default, until its colours are measured
+// on hardware (a virtual Mac's window server showed them some 30 levels
+// off). While it plays the animation clock ticks it (Clock.add): the
+// frame due picked, time set. The controls are the app's.
 class VideoNode extends Node {
 	public var player(default, null):Null<Player>;
 	public var fit(default, set):ImageFit = Contain;
-	// the system's layer where the window has them (else always drawn)
-	public var layer = true;
+	// the system's layer where the window has them (else drawn by helder)
+	public var layer = false;
 	public var autoplay = false;
 	public var loop(default, set) = false;
 	public var muted(default, set) = false;

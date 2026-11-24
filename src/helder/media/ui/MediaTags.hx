@@ -9,6 +9,9 @@ import helder.view.graph.Graph;
 //
 //   <Video src="clip.mp4" fit="cover" autoplay loop muted grow={1} ref={v -> video = v}/>
 //
+// layer={true}: the system's AVSampleBufferDisplayLayer where the window
+// has system layers, not helder's drawing (VideoNode.layer)
+//
 // <Video> is a box of helder.ui's showing a video (VideoNode): src a path
 // or a helder.media.ByteSource (a file's bytes: a MemorySource; a signal:
 // another file when it changes); its player's controls are the node's

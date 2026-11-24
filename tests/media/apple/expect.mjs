@@ -71,7 +71,7 @@ out.rgb['h264-aac.mp4'] = rgb(path.join(media, 'h264-aac.mp4'), 4, 'bt601', 'tv'
 out.rgb['rotated.mp4'] = rgb(path.join(media, 'rotated.mp4'), 4, 'bt601', 'tv');
 out.rgb['apple/h264-full.mp4'] = rgb(path.join(media, 'apple/h264-full.mp4'), 2, 'bt709', 'pc');
 out.rgb['apple/hevc10.mp4'] = rgb(path.join(media, 'apple/hevc10.mp4'), 2, 'bt2020', 'tv');
-for (const f of ['h264-aac.mp4', 'hevc.mp4', 'editlist.mov', 'rotated.mp4', 'fragmented.mp4', 'av1.webm', 'av1.mp4', 'apple/vp9-yuv.webm', 'apple/hevc10.mp4', 'apple/h264-full.mp4'])
+for (const f of ['h264-aac.mp4', 'hevc.mp4', 'editlist.mov', 'rotated.mp4', 'fragmented.mp4', 'av1.webm', 'av1.mp4', 'apple/vp9-yuv.webm', 'apple/hevc10.mp4', 'apple/h264-full.mp4', 'apple/quads.mp4'])
 	out.video[f] = video(path.join(media, f));
 for (const [f, codecs] of [['apple/chirp.mp4', ['aac', 'mp3', 'flac', 'alac', 'opus']], ['apple/chirp.mkv', ['vorbis']], ['apple/vp9-yuv.webm', ['opus']]])
 	codecs.forEach((c, n) => out.audio[`${f}:${n}`] = audio(path.join(media, f), n, c));
