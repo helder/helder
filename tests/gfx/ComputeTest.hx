@@ -239,6 +239,7 @@ class ComputeTest {
 			case D3D11: "D3D11";
 			case WebGPU: "WebGPU";
 			case WebGL2: "WebGL2";
+			case Soft: "Soft";
 		}
 
 	static function ints(xs:Array<Int>):Bytes {
