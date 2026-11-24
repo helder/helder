@@ -10,16 +10,20 @@ class SoftWaylandTest {
 		var w = new Window("SoftWaylandTest", 160, 120);
 		var device = Device.create(w.surface);
 		var pass:PassDesc = {colors: [{load: Clear, clear: new Color(1, 0, 1)}]};
-		var frames = 0, start = haxe.Timer.stamp(), ok = false;
+		var frames = 0, start = haxe.Timer.stamp(), ok = false, tries = 0, last = 0.0;
 		App.run(() -> {
 			var enc = device.beginFrame();
 			if (enc == null) return;
 			enc.beginPass(pass);
 			enc.endPass();
 			device.endFrame();
-			if (++frames < 10 || haxe.Timer.stamp() - start < 1) return;
-			ok = check(device.width * device.height);
-			App.quit();
+			var now = haxe.Timer.stamp();
+			if (++frames < 10 || now - start < 1 || now - last < 0.25) return;
+			// (the compositor's output may not hold the window yet: looked at
+			// again, frames presented meanwhile, up to 8 times)
+			last = now;
+			ok = check(device.width * device.height, ++tries);
+			if (ok || tries == 8) App.quit();
 		}, e -> if (e.kind == Close) App.quit());
 		device.dispose();
 		w.close();
@@ -27,7 +31,7 @@ class SoftWaylandTest {
 	}
 
 	// (the compositor's output: at least the window's pixels magenta)
-	static function check(pixels:Int):Bool {
+	static function check(pixels:Int, tries:Int):Bool {
 		var dir = haxe.io.Path.join([Sys.getEnv("XDG_RUNTIME_DIR") ?? "/tmp", "soft-shot"]);
 		sys.FileSystem.createDirectory(dir);
 		for (f in sys.FileSystem.readDirectory(dir))
@@ -46,7 +50,8 @@ class SoftWaylandTest {
 		for (i in 0...png.width * png.height)
 			if (png.rgba.get(4 * i) == 255 && png.rgba.get(4 * i + 1) == 0 && png.rgba.get(4 * i + 2) == 255) magenta++;
 		var ok = magenta >= pixels;
-		Sys.println('SoftWaylandTest: ${ok ? "ok" : "FAIL"}: $magenta magenta pixels on the ${png.width}x${png.height} screen, the window has $pixels');
+		if (!ok && tries < 8) return false;
+		Sys.println('SoftWaylandTest: ${ok ? "ok" : "FAIL"}: $magenta magenta pixels on the ${png.width}x${png.height} screen, the window has $pixels (screenshot $tries)');
 		return ok;
 	}
 }
