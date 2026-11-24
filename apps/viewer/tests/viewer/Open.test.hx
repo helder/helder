@@ -11,7 +11,8 @@ import viewer.Browser.Layout;
 // Opening from the browser as a user does: a folder of mixed kinds in the
 // grid and the list, an entry double-clicked (and nudged between the two
 // clicks), each kind: an image and a PDF full size, a folder entered, a
-// file the viewer does not show handed to the system's app; back again
+// file the viewer does not show handed to the system's app; back again;
+// the inspector showing a thumbnail before its preview
 function tests() {
 	describe("Opening from the browser", () -> {
 		function mixed():Explorer {
@@ -88,6 +89,20 @@ function tests() {
 				frame(ui);
 				equals(x.browser.selected.value, "CyFun");
 			});
+		test("a selection's thumbnail shown while its preview comes (the crash opening a file)", () -> {
+			var files = Fixtures.files(["tests/fixtures/folder"]);
+			// (a preview that has not answered yet)
+			var x = new Explorer(files, (path, side, done) -> done(Decode.file({path: path, side: side})), [], [], (_, _) -> () -> {});
+			var ui = mount(x);
+			for (name in ["photo 2.jpg", "anim.gif"])
+				Tiles.remember(x, x.browser.entry(name), new helder.image.Image(4, 3, Bytes.alloc(48)));
+			x.browser.select("photo 2.jpg");
+			frame(ui);
+			assert(ui.root.find("preview-image") != null, "the thumbnail in the inspector");
+			x.open("anim.gif");
+			frame(ui);
+			equals(x.full.value, true);
+		});
 	});
 }
 

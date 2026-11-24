@@ -180,14 +180,16 @@ class InspectorView implements Markup {
 		if (img == null) return Tiles.large(e);
 		var k = Math.min(252 / img.width, 188 / img.height);
 		var w = Math.round(img.width * k), h = Math.round(img.height * k);
+		// (the thumbnail while the preview comes: nothing known of it yet; a Show's children are made with it)
+		var pages = s == null ? 0 : s.pages, duration = s == null ? 0.0 : s.duration;
 		return <view align-items="center" justify="center" width="100%" height="100%">
 			<image tag="preview-image" src={img} width={w} height={h} radius={4} shadow="0 4px 16px rgba(0,0,0,0.4)"/>
-			<Show when={s != null && s.pages > 1}>
-				<text tag="pages" position="absolute" bottom={8} padding="2 8" radius={9} background="rgba(10,10,10,0.6)" color="#ffffff" font-size={11.5}>{'1 / ${s.pages}'}</text>
+			<Show when={pages > 1}>
+				<text tag="pages" position="absolute" bottom={8} padding="2 8" radius={9} background="rgba(10,10,10,0.6)" color="#ffffff" font-size={11.5}>{'1 / $pages'}</text>
 			</Show>
-			<Show when={s != null && s.duration > 0}>
+			<Show when={duration > 0}>
 				<text tag="duration" position="absolute" right={10} bottom={10} padding="0 5" radius={4} background="rgba(0,0,0,0.62)" color="#ffffff"
-					font-size={10.5} font-weight={600}>{clock(s.duration)}</text>
+					font-size={10.5} font-weight={600}>{clock(duration)}</text>
 			</Show>
 		</view>;
 	}
