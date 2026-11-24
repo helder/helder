@@ -27,8 +27,21 @@ class PlacesTrashTest {
 		FileSystem.createDirectory(dir);
 		var moved:Array<String> = [];
 		var linux = Sys.systemName() == "Linux", data = Sys.getEnv("XDG_DATA_HOME");
-		if (linux) Sys.putEnv("XDG_DATA_HOME", dir + "/data");
+		if (linux) {
+			Sys.putEnv("XDG_DATA_HOME", dir + "/data");
+			// (0755 by the umask, as some tools leave the home trash)
+			FileSystem.createDirectory(dir + "/data/Trash");
+		}
 		try {
+			if (linux) {
+				var config = Sys.getEnv("XDG_CONFIG_HOME");
+				FileSystem.createDirectory(dir + "/config");
+				File.saveContent(dir + "/config/user-dirs.dirs", 'XDG_DESKTOP_DIR="$$HOME/"\n');
+				Sys.putEnv("XDG_CONFIG_HOME", dir + "/config");
+				var desktop = Places.user().filter(p -> p.kind == Desktop).length;
+				Sys.putEnv("XDG_CONFIG_HOME", config);
+				check(desktop == 0, "a folder set to HOME is disabled");
+			}
 			var name = "space é.txt", file = dir + "/" + name, folder = dir + "/folder";
 			File.saveContent(file, "one");
 			move(file, moved);

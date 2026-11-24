@@ -29,7 +29,8 @@ class LinuxPlaces {
 		for (i in 0...keys.length) {
 			var path = i == 0 ? home : PathsDesktop.userDir(dirs, "XDG_" + keys[i] + "_DIR", home);
 			if (path == null && home.startsWith("/")) path = home + defaults[i];
-			if (path == null || !path.startsWith("/") || !Places.directory(path)) continue;
+			// (a folder set to $HOME itself is disabled)
+			if (path == null || !path.startsWith("/") || i > 0 && haxe.io.Path.removeTrailingSlashes(path) == haxe.io.Path.removeTrailingSlashes(home) || !Places.directory(path)) continue;
 			result.push({kind: Places.kinds[i], name: basename(path), path: path});
 		}
 		return result;

@@ -39,8 +39,8 @@ class LinuxTrash {
 				data = home != null && home.startsWith("/") ? join(home, ".local/share") : null;
 			}
 			var uid = TrashFs.geteuid(), local = data == null ? null : existingParent(a, data);
-			var directory:String, recorded:String;
-			if (local != null && local.device == entry.device) {
+			var directory:String, recorded:String, homeTrash = local != null && local.device == entry.device;
+			if (homeTrash) {
 				FileSystem.createDirectory(data);
 				directory = join(data, "Trash");
 				recorded = source;
@@ -48,11 +48,11 @@ class LinuxTrash {
 				var top = topdir(source);
 				var shared = join(top, ".Trash"), sharedEntry = status(a.cstring(shared));
 				var personal = sharedEntry != null && isDir(sharedEntry) && (sharedEntry.mode & 0x200) != 0 ? join(shared, '$uid') : null;
-				directory = personal != null && setup(a, personal, uid) ? personal : join(top, '.Trash-$uid');
+				directory = personal != null && setup(a, personal, uid, true) ? personal : join(top, '.Trash-$uid');
 				recorded = source.substr(top == "/" ? 1 : top.length + 1);
 			}
 			var files = join(directory, "files"), info = join(directory, "info");
-			if (!setup(a, directory, uid)) throw 'Trash: cannot use $directory';
+			if (!setup(a, directory, uid, !homeTrash)) throw 'Trash: cannot use $directory';
 
 			var encoded = recorded.urlEncode().replace("%2F", "/");
 			var date = Date.now().toString().replace(" ", "T");
@@ -122,13 +122,16 @@ class LinuxTrash {
 		return Posix.close(fd) == 0 && offset == size;
 	}
 
-	static function setup(a:Arena, dir:String, uid:Int):Bool
-		return makePrivate(a, dir, uid) && makePrivate(a, join(dir, "files"), uid) && makePrivate(a, join(dir, "info"), uid);
+	// (the home trash only needs to be a directory: other tools make it 0755
+	// or link it; a top directory's trash must be the user's own and private)
+	static function setup(a:Arena, dir:String, uid:Int, strict:Bool):Bool
+		return makePrivate(a, dir, uid, strict) && makePrivate(a, join(dir, "files"), uid, strict) && makePrivate(a, join(dir, "info"), uid, strict);
 
-	static function makePrivate(a:Arena, path:String, uid:Int):Bool {
+	static function makePrivate(a:Arena, path:String, uid:Int, strict:Bool):Bool {
 		var p = a.cstring(path);
 		// (0700; lstat refuses links even when they point to a directory)
 		Posix.mkdir(p, 0x1C0);
+		if (!strict) return FileSystem.isDirectory(path);
 		var entry = status(p);
 		return entry != null && isDir(entry) && entry.uid == uid && (entry.mode & 0x3F) == 0;
 	}
