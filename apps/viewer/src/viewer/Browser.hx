@@ -56,7 +56,11 @@ class Browser {
 
 	public function new(files:Files) {
 		this.files = files;
-		selection = new helder.ui.Selection(i -> items.value[i].name, () -> items.value.length);
+		// (an index of an older list, a view's not yet updated: no key)
+		selection = new helder.ui.Selection(i -> {
+			var e = items.value[i];
+			e == null ? "" : e.name;
+		}, () -> items.value.length);
 	}
 
 	// --- where it is

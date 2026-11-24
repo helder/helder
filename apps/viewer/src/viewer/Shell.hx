@@ -62,6 +62,18 @@ class Shell implements Markup {
 			return v == null ? d : v;
 		}
 		fallbackFont();
+		// (an event's, a frame's or a task's error: written down with where it was thrown, the window kept)
+		var log = store == null ? null : haxe.io.Path.join([haxe.io.Path.directory(store.path), "errors.log"]);
+		helder.async.Errors.handler = (e, source) -> {
+			var line = 'viewer: an error in the $source: ${e.details()}\n';
+			Sys.stderr().writeString(line);
+			if (log != null) try {
+				var f = sys.io.File.append(log);
+				f.writeString(Date.now().toString() + " " + line);
+				f.close();
+			} catch (_:Dynamic) {}
+			true;
+		};
 		// (a decode's IDCT, upsampling and colours over two threads: the pool decodes two files at once)
 		helder.image.JpegDecoder.threads = 2;
 		var x = new Explorer(new NativeFiles(), jobDecode, helder.os.Places.user(), helder.os.Places.volumes());

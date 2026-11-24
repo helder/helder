@@ -26,7 +26,10 @@ class NativeFiles implements Files {
 			t.async(_ -> Jobs.job(read).run({dir: dir, out: ch}));
 			var b:Null<Batch>;
 			while ((b = ch.receive()) != null)
-				if (!stopped) batch(b);
+				if (!stopped && !deliver(batch, b)) {
+					stopped = true;
+					ch.close();
+				}
 		});
 		return () -> {
 			stopped = true;
@@ -58,13 +61,24 @@ class NativeFiles implements Files {
 		return () -> stopped = true;
 	}
 
+	// (a batch handed over; its handler failing: the listing ends, unreadable)
+	static function deliver(batch:Batch->Void, b:Batch):Bool {
+		try {
+			batch(b);
+			return true;
+		} catch (e:Dynamic) {
+			try batch({entries: [], done: true, error: "denied"}) catch (_:Dynamic) {}
+			return false;
+		}
+	}
+
 	static function signature(entries:Array<Entry>):String
 		return [for (e in entries) e.name + "\x00" + e.size + "\x00" + e.modified].join("\x01");
 
 	// (on the pool: the names, then each one's stat, in batches; a channel the
 	// browser closed ends it)
 	static function read(input:{dir:String, out:Channel<Batch>}):Int {
-		var names = hxmc.NativeSys.readDirectory(input.dir);
+		var names = try hxmc.NativeSys.readDirectory(input.dir) catch (_:Dynamic) null;
 		if (names == null) {
 			try input.out.send({entries: [], done: true, error: failure(input.dir)}) catch (_:Dynamic) {}
 			input.out.close();
@@ -72,7 +86,7 @@ class NativeFiles implements Files {
 		}
 		var out = [];
 		for (n in names) {
-			var e = entry(FolderModel.join(input.dir, n), n);
+			var e = try entry(FolderModel.join(input.dir, n), n) catch (_:Dynamic) null;
 			if (e != null) out.push(e);
 			if (out.length < BATCH) continue;
 			try input.out.send({entries: out, done: false}) catch (_:Dynamic) return 0;
@@ -85,11 +99,11 @@ class NativeFiles implements Files {
 
 	// (the watch's: the whole folder at once)
 	static function whole(dir:String):Batch {
-		var names = hxmc.NativeSys.readDirectory(dir);
+		var names = try hxmc.NativeSys.readDirectory(dir) catch (_:Dynamic) null;
 		if (names == null) return {entries: [], done: true, error: failure(dir)};
 		var out = [];
 		for (n in names) {
-			var e = entry(FolderModel.join(dir, n), n);
+			var e = try entry(FolderModel.join(dir, n), n) catch (_:Dynamic) null;
 			if (e != null) out.push(e);
 		}
 		return {entries: out, done: true};
@@ -112,7 +126,7 @@ class NativeFiles implements Files {
 
 	// (why a folder cannot be read: gone, not a folder, or not allowed)
 	static function failure(dir:String):String {
-		var s = hxmc.NativeSys.stat(dir);
+		var s = try hxmc.NativeSys.stat(dir) catch (_:Dynamic) null;
 		return s == null ? "missing" : Std.int(s[10]) & 0xF000 != 0x4000 ? "notfolder" : "denied";
 	}
 }

@@ -28,10 +28,8 @@ class Preview {
 			media(path, s -> if (!stopped) done(s));
 			return () -> stopped = true;
 		}
-		Async.launch(_ -> {
-			var r = helder.jobs.Jobs.job(decode).run(path);
-			if (!stopped) done(shown(r));
-		});
+		// (a job that could not run: no preview, the glyph stays)
+		Async.launch(_ -> helder.jobs.Jobs.job(decode).run(path)).onCompletion((r, _) -> if (!stopped && r != null) done(shown(r)));
 		return () -> stopped = true;
 	}
 
@@ -43,6 +41,10 @@ class Preview {
 
 	// (on the pool: the decode, its pixels copied out, fitted)
 	static function decode(path:String):{width:Int, height:Int, pw:Int, ph:Int, rgba:Null<Bytes>, pages:Int, format:String, error:Null<String>} {
+		return try decoded(path) catch (e:Dynamic) {width: 0, height: 0, pw: 0, ph: 0, rgba: null, pages: 0, format: "", error: "The preview failed: " + Std.string(e)};
+	}
+
+	static function decoded(path:String):{width:Int, height:Int, pw:Int, ph:Int, rgba:Null<Bytes>, pages:Int, format:String, error:Null<String>} {
 		var d = Decode.file({path: path, side: SIDE});
 		if (d.error != null || d.frames.length == 0) {
 			Decode.release(d);
