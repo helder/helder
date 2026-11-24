@@ -13,6 +13,7 @@ import hxmc.unsafe.*;
 	static function eglTerminate(d:Ptr):Int;
 	static function eglBindAPI(api:Int):Int;
 	static function eglChooseConfig(d:Ptr, attribs:Ptr<Int32>, configs:Ptr<Ptr>, size:Int, count:Ptr<Int32>):Int;
+	static function eglGetConfigAttrib(d:Ptr, config:Ptr, attribute:Int, value:Ptr<Int32>):Int;
 	// win: an X11 Window (EGLNativeWindowType: an XID on X11)
 	static function eglCreateWindowSurface(d:Ptr, config:Ptr, win:Ptr, attribs:Ptr<Int32>):Ptr;
 	static function eglCreatePbufferSurface(d:Ptr, config:Ptr, attribs:Ptr<Int32>):Ptr;
@@ -70,6 +71,7 @@ class EGL {
 	public static inline var GREEN_SIZE = 0x3023;
 	public static inline var BLUE_SIZE = 0x3022;
 	public static inline var ALPHA_SIZE = 0x3021;
+	public static inline var NATIVE_VISUAL_ID = 0x302E;
 	public static inline var DEPTH_SIZE = 0x3025;
 	public static inline var SAMPLES = 0x3031;
 	public static inline var SAMPLE_BUFFERS = 0x3032;

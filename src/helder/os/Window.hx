@@ -71,10 +71,15 @@ class Window {
 	// the system's title bar, or the content under it (TitleBar: "inset",
 	// the window's buttons in the app's layout); given when it is made
 	public final titlebar:TitleBar;
+	// (transparent as it was asked for: what the platform's window reads)
+	@:allow(helder.os) final clear:Bool;
 
-	@:typescript public function new(title:String, width:Int, height:Int, titlebar:TitleBar = Standard) {
+	// (transparent: its pixels' alpha shows what is behind it, premultiplied;
+	// where the system cannot, opaque: see transparent)
+	@:typescript public function new(title:String, width:Int, height:Int, titlebar:TitleBar = Standard, transparent = false) {
 		this.title = title;
 		this.titlebar = titlebar;
+		clear = transparent;
 		#if (!helder.os || helder.headless)
 		if (HEADLESS) {
 			native = new helder.os.headless.HeadlessWindow(this, width, height);
@@ -99,6 +104,15 @@ class Window {
 			#if ((!helder.os || helder.os == "linux") && !helder.headless) (Std.isOfType(native, WaylandWindow) ? wayland().surface : x11().surface) #else throw "unreachable" #end;
 		App.windows.push(this);
 	}
+
+	// whether what is behind it shows through its clear pixels: asked for
+	// when made, and the system composes it so (macOS, Windows through
+	// DirectComposition, Wayland, X11 with a compositing manager, the
+	// browser's canvas); false where it was not asked for or cannot be
+	@:typescript public var transparent(get, never):Bool;
+
+	inline function get_transparent()
+		return surface.transparent;
 
 	// the surface's size in pixels
 	@:typescript public var width(get, never):Int;
@@ -325,6 +339,28 @@ class Window {
 		if (Platform.os() == 3) {} else
 		if (Platform.target() >= 9) {} else
 		#if ((!helder.os || helder.os == "linux") && !helder.headless) (Std.isOfType(native, WaylandWindow) ? wayland().maximize(on) : x11().maximize(on)); #else {} #end
+		return on;
+	}
+
+	// the system's shadow around it (macOS's, following a transparent
+	// window's pixels; Windows' around its frame): true by default, false
+	// none; elsewhere the window manager's, always false here
+	public var shadow(get, set):Bool;
+
+	function get_shadow():Bool
+		return
+			closed || HEADLESS ? false :
+			Platform.apple() >= 1 ? false :
+			#if (!helder.os || helder.os == "macos") Platform.os() == 1 ? mac().shadow() : #end
+			#if (!helder.os || helder.os == "windows") Platform.os() == 2 ? win().shadow : #end
+			false;
+
+	function set_shadow(on:Bool):Bool {
+		if (closed || HEADLESS) return on;
+		if (Platform.apple() >= 1) {} else
+		#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) mac().setShadow(on) else #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) win().setShadow(on) else #end
+		{};
 		return on;
 	}
 

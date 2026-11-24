@@ -32,6 +32,7 @@ class HeadlessWindow {
 		this.width = width;
 		this.height = height;
 		surface = Surface.headless(Math.round(width * scale), Math.round(height * scale));
+		surface.see(window.clear);
 		run.opened(this);
 	}
 
