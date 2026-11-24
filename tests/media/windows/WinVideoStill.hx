@@ -109,7 +109,6 @@ class WinVideoStill implements Markup {
 		var px = capture(w.window, width, height);
 		var how = onLayer ? "on the system layer" : "drawn by helder";
 		if (layer && !onLayer) say('note: the system layer did not show it (layered ${@:privateAccess n.ui.layered}): drawn by helder');
-		if (layer) layers(n, w);
 		if (px == null) {
 			say("FAIL: no capture");
 			Sys.exit(1);
@@ -117,8 +116,9 @@ class WinVideoStill implements Markup {
 		if (dir != null) sys.io.File.saveBytes('$dir/still-${layer ? "layer" : "drawn"}.rgba', px);
 		// (the window's own background beside the box: whether the capture has the window at all)
 		var bg = (20 * width + 20) * 4;
+		// (the window's background beside the box, said: UiWindow takes the
+		// markup's string, "#333333", as the Int it is not: 0, transparent black)
 		var back:Int = w.background;
-		say('the background at 20,20 in PrintWindow: ${px.get(bg)} ${px.get(bg + 1)} ${px.get(bg + 2)} (the window\'s 0x${StringTools.hex(back, 8)})');
 		var x = n.absX * k, y = n.absY * k, bw = n.width * k, bh = n.height * k;
 		var s = Math.min(bw / 64, bh / 48), x0 = x + (bw - 64 * s) / 2, y0 = y + (bh - 48 * s) / 2;
 		// (the quadrants' centres of a capture: the largest difference from the source, the colours read)
@@ -134,55 +134,11 @@ class WinVideoStill implements Markup {
 		}
 		var printed = read(px), shown = capture(w.window, width, height, true);
 		var onScreen = shown == null ? {worst: 255, got: "none"} : read(shown);
-		if (shown != null) say('the background at 20,20 on the screen: ${shown.get(bg)} ${shown.get(bg + 1)} ${shown.get(bg + 2)}');
+		say('the background at 20,20: PrintWindow ${px.get(bg)} ${px.get(bg + 1)} ${px.get(bg + 2)}, the screen ${shown == null ? "none" : shown.get(bg) + " " + shown.get(bg + 1) + " " + shown.get(bg + 2)} (the window\'s 0x${StringTools.hex(back, 8)})');
 		var name = unit ? "layer in a scroller of its own" : layer ? "layer" : "drawn";
 		var ok = printed.worst <= LEVELS && onScreen.worst <= LEVELS && time == 0.2;
-		if (layer && onLayer && !ok) probes(n, w, x, y, x0, y0, s, width, height);
 		say('${ok ? "ok" : "FAIL"}: $name: the frame at $time $how; PrintWindow\'s quadrants ${printed.got} (at most ${printed.worst} off); the screen\'s ${onScreen.got} (at most ${onScreen.worst} off; the source within $LEVELS)');
 		Sys.exit(ok ? 0 : 1);
-	}
-
-	// (a black layer still: captured again with the surface also at the top
-	// of the window's root, the slot's visual unscaled, a colour of
-	// DcLayers' own in the slot: which shows says where the frame is lost)
-	static function probes(n:VideoNode, w:UiWindow, x:Float, y:Float, x0:Float, y0:Float, s:Float, width:Int, height:Int) {
-		var sl = @:privateAccess n.sample, wl = sl == null ? null : @:privateAccess sl.windows;
-		if (wl == null) return;
-		var before = helder.media.ui.WinLayer.log.length;
-		for (mode in [1, 2, 3, 4, 5, 6, 7, 8]) {
-			wl.probe(mode, x, y);
-			Sys.sleep(0.4);
-			var px = capture(w.window, width, height);
-			var at = (Math.round(y0 + 12.5 * s) * width + Math.round(x0 + 16.5 * s)) * 4, c = (Math.round(y + 5) * width + Math.round(x + 5)) * 4;
-			var what = ["", "the surface also on top of the root", "the slot visual unscaled", "a solid green in the slot", "the surface on top of the stack", "a solid green in the slot clip", "a solid green in the slot box", "green in the box, the box unclipped", "green in the box, its effect let go"][mode];
-			var q = px == null ? "no capture" : px.get(at) + " " + px.get(at + 1) + " " + px.get(at + 2);
-			var corner = px == null ? "" : px.get(c) + " " + px.get(c + 1) + " " + px.get(c + 2);
-			say('probe $mode: $what: the top left quadrant $q, the box corner $corner');
-			wl.probe(0, x, y);
-		}
-		for (l in helder.media.ui.WinLayer.log.slice(before)) say('layer: $l');
-	}
-
-	// (the layer run's diagnostics: WinLayer's calls and state, DcLayers'
-	// state, the slot's plane as the split placed it)
-	static function layers(n:VideoNode, w:UiWindow) {
-		w.device.settle();
-		for (l in helder.media.ui.WinLayer.log) say('layer: $l');
-		var s = @:privateAccess n.sample, wl = s == null ? null : @:privateAccess s.windows;
-		say('layer: ${wl == null ? "no WinLayer" : wl.state()}');
-		var c = w.compositor, d = c == null ? null : Std.downcast(c.layers, helder.ui.draw.DcLayers);
-		if (d == null) {
-			say("layer: no DcLayers");
-			return;
-		}
-		say('layer: DcLayers frames ${d.frames}, single ${d.single}, fell ${d.fell}, stack shown ${@:privateAccess d.stackShown}, hidden ${@:privateAccess d.hide}, broken ${@:privateAccess d.broken}');
-		say('layer: the units ${[for (u in @:privateAccess d.units) u.kind].join(",")} (4: a system layer), the scrollers not units of their own: ${d.reasons.join("; ")}');
-		// (the stack bottom to top: each plane's kind (0 the window's, 1 what is over a unit, 2 a scroller, 3 a mover, 4 a system layer), its quads, its place)
-		say('layer: the order ${[for (p in @:privateAccess d.order) p == null ? "-" : '${p.kind}:${p.quads.length}q@${Math.round(p.ox)},${Math.round(p.oy)} ${p.pw}x${p.ph}'].join(" | ")}');
-		for (p in @:privateAccess d.kept)
-			if (p.kind == helder.ui.draw.LayerPlane.SLOT)
-				say('layer: a slot plane, ours ${wl != null && p.slot == wl.slot}, shown ${p.slot != null && p.slot.shown}, attached ${p.attached}, index ${p.index}, clip ${p.cx0},${p.cy0}..${p.cx1},${p.cy1}');
-		say('layer: the node at ${n.absX},${n.absY} ${n.width}x${n.height}, its box ${@:privateAccess n.box}');
 	}
 
 	// (the client area's pixels as RGBA, on the main thread: PrintWindow,
