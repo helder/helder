@@ -21,7 +21,7 @@ class MediaView {
 	public static var current(default, null):Null<VideoNode>;
 	static var thumbs:Null<Thumbs>;
 
-	public static function make(viewer:Viewer):Node {
+	public static function make(viewer:Viewer, files:Files):Node {
 		// (the look's colours: light or dark as the window)
 		var t = helder.ui.controls.Look.ref;
 		var root = box({position: Absolute, left: 0, top: 0, right: 0, bottom: 0});
@@ -88,9 +88,9 @@ class MediaView {
 		effect(() -> video.playing(), _ -> shown());
 		renderEffect(() -> viewer.media(), path -> {
 			if (thumbs != null) thumbs.close();
-			thumbs = path == "" ? null : new Thumbs(path);
+			thumbs = path == "" ? null : new Thumbs(() -> files.open(path));
 			name.text = haxe.io.Path.withoutDirectory(path);
-			video.open(path == "" ? null : path);
+			video.open(path == "" ? null : files.open(path));
 		});
 
 		// (the scrub bar: a drag seeks to keyframes, its end exactly; the thumbnail where the pointer is)

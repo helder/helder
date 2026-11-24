@@ -22,10 +22,12 @@
 // OffscreenCanvas, WebGL2 in one; imports given as URLs; a module that imports nothing
 // only the page has (PAGE_ONLY: audio's AudioContext, helder.web's DOM,
 // helder.media's <video> element, helder.canvas's Canvas 2D: Chromium's
-// OffscreenCanvas clips without antialiasing); no option that is the
+// OffscreenCanvas clips without antialiasing; helder.os.web.WebFolders'
+// folder picker and drops); no option that is the
 // page's own (audioContext, track, gpu). One window: a second one gets no
 // canvas.
-const PAGE_ONLY = new Set(['hxmc_os.audio_open', 'hxmc_web', 'helder_media.element', 'hxmc_canvas', 'helder_preview']);
+const FOLDERS = ['available', 'pick', 'name', 'list', 'drop'].map((n) => 'hxmc_os.folders_' + n);
+const PAGE_ONLY = new Set(['hxmc_os.audio_open', 'hxmc_web', 'helder_media.element', 'hxmc_canvas', 'helder_preview', ...FOLDERS]);
 
 // the module compiled (a URL fetched, a Response streamed, bytes; a
 // promise of one awaited), so that its imports can be read and it posted

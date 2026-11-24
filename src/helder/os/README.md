@@ -350,6 +350,18 @@ helder.webmanifest's `file_handlers`). Tests: the window lane
 dbus lane (tests/os/DBusTest.hx: a real dbus-daemon, the portal's
 OpenFile against a stand-in portal).
 
+In a browser there are no paths: `helder.os.web.WebFolders` gives a page
+the user's folders instead, read only. `pick()` (a coroutine) shows the
+File System Access API's `showDirectoryPicker` where the browser has one
+(`available()`: Chromium's), `onDrop(f)` hands over what is dropped on the
+page (a folder's handle; its entry where there are no handles; files, as a
+folder "Dropped" of them). A folder is a handle; `list(folder, batch)`
+reads its entries 500 at a time (a file's size and date from its `File`),
+each subfolder a handle of its own, each file's `File` given to
+helder.media under a name (`host.blob`: `WebSource.blob`, `ofBlob`). The
+viewer's web build (apps/viewer: `WebFiles`) is its user and its test
+(`apps/viewer/tests/web.mjs`: a drop, a tree of handles the page makes).
+
 ### The system's image decoders
 
 `SystemImages.decode(path, side)`: what helder.image does not read,

@@ -181,6 +181,27 @@ export default function os(host) {
 		document.body.append(input);
 		input.click();
 	};
+	// helder.os.web.WebFolders': a folder is a node, {name, dir: true,
+	// entries()} (an async iterator of nodes), a file {name, dir: false,
+	// file()} (a promise of its File): a FileSystemHandle's, an entry's
+	// (webkitGetAsEntry: a drop where there are no handles), a dropped
+	// File's, or the dropped files themselves as a folder of their own
+	const node = (h) => {
+		if (h instanceof Blob) return { name: h.name, dir: false, file: async () => h };
+		if (h.kind === 'directory') return { name: h.name, dir: true, entries: async function* () { for await (const c of h.values()) yield node(c); } };
+		if (h.kind === 'file') return { name: h.name, dir: false, file: () => h.getFile() };
+		if (h.isDirectory)
+			return { name: h.name, dir: true, entries: async function* () {
+				const r = h.createReader();
+				for (;;) {
+					const part = await new Promise((ok, no) => r.readEntries(ok, no));
+					if (part.length === 0) return;
+					for (const c of part) yield node(c);
+				}
+			} };
+		return { name: h.name, dir: false, file: () => new Promise((ok, no) => h.file(ok, no)) };
+	};
+	let blobs = 0;
 	// helder.os.Location's last fix (latitude, longitude, accuracy, altitude,
 	// heading, speed, time: NaN where unknown) and the watches' ids
 	const located = new Float64Array(7), watches = new Map();
@@ -1005,6 +1026,61 @@ export default function os(host) {
 			const v = /Android ([\d.]+)|OS ([\d_]+) like Mac|Mac OS X ([\d_.]+)|Windows NT ([\d.]+)/.exec(ua);
 			const version = v ? (v[1] ?? v[2] ?? v[3] ?? v[4]).replace(/_/g, '.') : '';
 			return host.handles.add([browser, n.vendor ?? '', os, version].join('\n'));
+		},
+		folders_available: () => (typeof globalThis.showDirectoryPicker == 'function' ? 1 : 0),
+		// a folder picked (read only): done(id, its node's handle; 0 when cancelled or there is no picker)
+		folders_pick(done, id) {
+			if (typeof globalThis.showDirectoryPicker != 'function') return host.call(done, id, 0);
+			showDirectoryPicker({ mode: 'read' }).then((h) => host.call(done, id, host.handles.add(node(h))), () => host.call(done, id, 0));
+		},
+		folders_name: (h) => host.handles.add(host.handles.get(h)?.name ?? ''),
+		// a folder's entries, at most 500 a batch: done(id, a string handle
+		// of their lines (folder or file, name, size, modified in ms, then a
+		// folder's node handle or the name its File is kept under for
+		// helder.media, host.blob), 1 when it is the last, else 0; -1: failed)
+		folders_list(h, done, id) {
+			const dir = host.handles.get(h);
+			(async () => {
+				let lines = [];
+				for await (const c of dir.entries()) {
+					if (c.dir) lines.push(['folder', c.name, 0, 0, host.handles.add(c)].join('\t'));
+					else {
+						const f = await c.file().catch(() => null);
+						if (!f) continue;
+						const key = 'helder.os.folders/' + ++blobs;
+						host.blob?.(key, f);
+						lines.push(['file', c.name, f.size, f.lastModified, key].join('\t'));
+					}
+					if (lines.length < 500) continue;
+					host.call(done, id, host.handles.add(lines.join('\n')), 0);
+					lines = [];
+				}
+				host.call(done, id, host.handles.add(lines.join('\n')), 1);
+			})().catch(() => host.call(done, id, 0, -1));
+		},
+		// what is dropped on the page from now on: dropped(a folder's node
+		// handle: the folder dropped, else a folder "Dropped" of what was);
+		// the items taken while the drop event lasts, read after
+		folders_drop(dropped) {
+			if (typeof document == 'undefined') return;
+			document.addEventListener('dragover', (e) => {
+				if (!e.dataTransfer?.types.includes('Files')) return;
+				e.preventDefault();
+				e.dataTransfer.dropEffect = 'copy';
+			});
+			document.addEventListener('drop', (e) => {
+				if (!e.dataTransfer?.types.includes('Files')) return;
+				e.preventDefault();
+				// (each item's handle, else its entry, else its File: a drop the page made has neither)
+				const got = [...e.dataTransfer.items].filter((i) => i.kind === 'file')
+					.map((i) => ({ handle: i.getAsFileSystemHandle?.(), entry: i.webkitGetAsEntry?.(), file: i.getAsFile() }));
+				Promise.all(got.map((g) => Promise.resolve(g.handle).catch(() => null).then((h) => h ?? g.entry ?? g.file))).then((hs) => {
+					const nodes = hs.filter((h) => h).map(node);
+					if (nodes.length === 0) return;
+					const one = nodes.length === 1 && nodes[0].dir ? nodes[0] : { name: 'Dropped', dir: true, entries: async function* () { yield* nodes; } };
+					host.call(dropped, host.handles.add(one));
+				});
+			});
 		},
 		photos_length: (i) => photos[i]?.length ?? 0,
 		photos_take(i, p, n) {

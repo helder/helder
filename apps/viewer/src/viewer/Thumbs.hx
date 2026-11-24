@@ -11,7 +11,7 @@ import helder.media.*;
 class Thumbs {
 	public static inline var WIDTH = 160;
 
-	final path:String;
+	final open:Void->ByteSource;
 	final cache = new Map<String, Image>();
 	var media:Null<Media>;
 	var decoder:Null<VideoDecoder>;
@@ -19,8 +19,9 @@ class Thumbs {
 	var busy = false;
 	var closed = false;
 
-	public function new(path:String)
-		this.path = path;
+	// open: a reading of the file of its own (its Files')
+	public function new(open:Void->ByteSource)
+		this.open = open;
 
 	// the thumbnail at t, done(image) once there (at once when kept; null: none)
 	public function at(t:Float, done:Null<Image>->Void) {
@@ -34,7 +35,7 @@ class Thumbs {
 	}
 
 	@:coroutine function find(t:Float):Null<Image> {
-		if (media == null) ready(Media.open(new FileSource(path)));
+		if (media == null) ready(Media.open(open()));
 		var m = media;
 		if (m == null || decoder == null) return null;
 		var key = keyOf(m.seek(t));
