@@ -20,7 +20,9 @@ import hxmc.unsafe.*;
 // centres against the source's colours as ffmpeg decodes them: within 8
 // levels both ways (helder's conversion on the GPU, WinLayer's on the CPU,
 // DWM showing its values as they are). Where the layer did not show it
-// (no system layers), said and checked as drawn.
+// (no system layers), said and checked as drawn. PrintWindow is DWM's
+// composition of the window as it draws it for a capture, not the
+// display's: a real display (not CI's runner) settles the layer's pixels.
 //   WinVideoStill drawn|layer [dir]
 @:hxmc.unsafe(gc)
 class WinVideoStill implements Markup {
@@ -161,6 +163,7 @@ class WinVideoStill implements Markup {
 			return;
 		}
 		say('layer: DcLayers frames ${d.frames}, single ${d.single}, fell ${d.fell}, stack shown ${@:privateAccess d.stackShown}, hidden ${@:privateAccess d.hide}, broken ${@:privateAccess d.broken}');
+		say('layer: the units ${[for (u in @:privateAccess d.units) u.kind].join(",")} (4: a system layer), the scrollers not units of their own: ${d.reasons.join("; ")}');
 		for (p in @:privateAccess d.kept)
 			if (p.kind == helder.ui.draw.LayerPlane.SLOT)
 				say('layer: a slot plane, ours ${wl != null && p.slot == wl.slot}, shown ${p.slot != null && p.slot.shown}, attached ${p.attached}, index ${p.index}, clip ${p.cx0},${p.cy0}..${p.cx1},${p.cy1}');
@@ -190,14 +193,8 @@ class WinVideoStill implements Markup {
 					var px:Ptr<UInt8> = bits.value;
 					var ok = User32.PrintWindow(hwnd, dc, WM.PW_CLIENTONLY | WM.PW_RENDERFULLCONTENT) != 0;
 					Gdi32.GdiFlush();
-					var c = 4 * ((height >> 1) * width + (width >> 1));
-					if (!ok || px[c] + px[c + 1] + px[c + 2] == 0) {
-						Sys.println("WinVideoStill: PrintWindow drew nothing: the screen's pixels");
-						var p = a.make(POINT);
-						User32.ClientToScreen(hwnd, p);
-						ok = Gdi32.BitBlt(dc, 0, 0, width, height, screen, p.value.x, p.value.y, WM.SRCCOPY) != 0;
-						Gdi32.GdiFlush();
-					}
+					// (no fallback to the screen's pixels: on CI's runner they are black everywhere)
+					if (!ok) Sys.println("WinVideoStill: PrintWindow failed: no capture");
 					if (ok) {
 						var out = Bytes.alloc(width * height * 4);
 						for (i in 0...width * height) {
