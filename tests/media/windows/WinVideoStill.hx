@@ -117,8 +117,9 @@ class WinVideoStill implements Markup {
 		// (the window's own background beside the box: whether the capture has the window at all)
 		var bg = (20 * width + 20) * 4;
 		// (the window's background beside the box: the markup's string,
-		// "#333333", parsed (UiWindow.colour), shown on both reads)
-		var back:Int = w.background, want = [back >> 16 & 0xFF, back >> 8 & 0xFF, back & 0xFF];
+		// "#333333", parsed (UiWindow.colour), shown on both reads; in
+		// layer-unit's scroller, its own #222222 there)
+		var back:Int = w.background, shows = unit ? 0xFF222222 : back, want = [shows >> 16 & 0xFF, shows >> 8 & 0xFF, shows & 0xFF];
 		function off(px:Bytes):Int
 			return Std.int(Math.max(Math.abs(px.get(bg) - want[0]), Math.max(Math.abs(px.get(bg + 1) - want[1]), Math.abs(px.get(bg + 2) - want[2]))));
 		var x = n.absX * k, y = n.absY * k, bw = n.width * k, bh = n.height * k;
@@ -137,7 +138,7 @@ class WinVideoStill implements Markup {
 		var printed = read(px), shown = capture(w.window, width, height, true);
 		var onScreen = shown == null ? {worst: 255, got: "none"} : read(shown);
 		var backOk = back == 0xFF333333 && off(px) <= LEVELS && shown != null && off(shown) <= LEVELS;
-		say('${backOk ? "ok" : "FAIL"}: the background at 20,20: PrintWindow ${px.get(bg)} ${px.get(bg + 1)} ${px.get(bg + 2)}, the screen ${shown == null ? "none" : shown.get(bg) + " " + shown.get(bg + 1) + " " + shown.get(bg + 2)} (the window\'s 0x${StringTools.hex(back, 8)}, the markup\'s 0xFF333333)');
+		say('${backOk ? "ok" : "FAIL"}: the background at 20,20: PrintWindow ${px.get(bg)} ${px.get(bg + 1)} ${px.get(bg + 2)}, the screen ${shown == null ? "none" : shown.get(bg) + " " + shown.get(bg + 1) + " " + shown.get(bg + 2)} (the window\'s 0x${StringTools.hex(back, 8)}, the markup\'s 0xFF333333; shown there 0x${StringTools.hex(shows, 8)})');
 		var name = unit ? "layer in a scroller of its own" : layer ? "layer" : "drawn";
 		var ok = printed.worst <= LEVELS && onScreen.worst <= LEVELS && time == 0.2 && backOk;
 		say('${ok ? "ok" : "FAIL"}: $name: the frame at $time $how; PrintWindow\'s quadrants ${printed.got} (at most ${printed.worst} off); the screen\'s ${onScreen.got} (at most ${onScreen.worst} off; the source within $LEVELS)');
