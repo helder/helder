@@ -35,6 +35,9 @@ class Player {
 	public var media(default, null):Null<Media>;
 	public var video(default, null):Null<MediaTrack>;
 	public var audio(default, null):Null<MediaTrack>;
+	// an audio track this system does not decode, played without it (Vorbis
+	// where helder's decoder is not linked: VorbisDecoder.link; null: none)
+	public var unheard(default, null):Null<MediaTrack>;
 	// seconds (0 until loaded)
 	public var duration(default, null) = 0.0;
 	public var loaded(default, null) = false;
@@ -254,7 +257,8 @@ class Player {
 		if (eof && flushed && a != null && a.pending == 0 && r != null && v != null)
 			pads = ringTime + r.written / a.rate < (v.duration > 0 ? v.duration : duration) - 1e-3;
 		if (playing && eof && flushed && frames.length == 0 && (vdec == null || vdec.pending == 0) && (adec == null || adec.pending == 0)
-			&& (ring == null || ring.available() == 0)) {
+			// (no output (none on the machine, a muted page's let go): the ring is drained by none, the monotonic clock ends it)
+			&& (ring == null || out == null || ring.available() == 0)) {
 			var end = ring != null && adec != null ? ringTime + ring.written / adec.rate : 0.0;
 			if (video != null) end = Math.max(end, Math.max(duration, last));
 			if (t >= end - 1e-3) finish();
@@ -332,7 +336,10 @@ class Player {
 			// (the browser's answer awaited: isConfigSupported; elsewhere the decoders tell)
 			#if (hxmc.target == "wasm32-wasi")
 			if (v != null && !Decoders.supported(v)) v = null;
-			if (a != null && !Decoders.supported(a)) a = null;
+			if (a != null && !Decoders.supported(a)) {
+				unheard = a;
+				a = null;
+			}
 			var all = Lambda.find(m.tracks, t -> t.kind == Video);
 			if (all != null && (v == null || helder.media.web.WebElement.forced) && fallback(m, all)) return;
 			#end
@@ -400,7 +407,10 @@ class Player {
 		}
 		if (audio != null) {
 			adec = try Decoders.audio(audio) catch (e:MediaError) null;
-			if (adec == null) audio = null;
+			if (adec == null) {
+				unheard = audio;
+				audio = null;
+			}
 		}
 		if (video == null && audio == null) throw new MediaError("nothing this system decodes");
 		duration = m.duration > 0 ? m.duration : Math.max(video != null ? video.duration : 0, audio != null ? audio.duration : 0);
@@ -572,7 +582,9 @@ class Player {
 	// the track's end (its duration, 0: none). The first frame's time is
 	// the packet's pts, but a packet that decoded to fewer frames than it
 	// lasts lost them at its start (Apple's Opus decoder's first, 120 of
-	// 960), so its end is where they meet
+	// 960), so its end is where they meet; one that decoded to more ends at
+	// its duration (Matroska's last BlockDuration: a WebM's track has no
+	// duration to end it)
 	static function keep(p:Packet, n:Int, rate:Int, from:Float, end:Float):{first:Int, count:Int, time:Float} {
 		var d = p.duration / p.track.timescale, at = p.time, delay = p.track.delay;
 		// (Matroska's times are whole milliseconds: the first packet's -7 ms is CodecDelay's -6.5)
@@ -581,6 +593,8 @@ class Player {
 		var first = 0, count = n;
 		while (first < n && t0 + first / rate < from - EPS) first++;
 		count = n - first;
+		var last = d > 0 ? Math.round((at + d - t0) * rate) - first : count;
+		if (n > Math.round(d * rate) + 1 && last < count) count = Std.int(Math.max(0, last));
 		if (end > 0) while (count > 0 && t0 + (first + count - 1) / rate >= end - EPS) count--;
 		return {first: first, count: count, time: t0 + first / rate};
 	}

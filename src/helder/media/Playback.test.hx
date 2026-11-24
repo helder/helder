@@ -112,4 +112,30 @@ function tests() {
 			equals(hxmc.GcStats.bytesAllocated() - before, 0.0);
 		});
 	});
+	// (what of a packet's decoded frames plays: Player.keep)
+	describe("Player.keep", () -> {
+		var info = new TrackInfo();
+		info.kind = Audio;
+		info.codec = Opus;
+		info.timescale = 1000;
+		info.sampleRate = 48000;
+		var t = @:privateAccess new MediaTrack(info);
+		function packet(ms:Float, d:Float)
+			return @:privateAccess new Packet(t, 0, 0, ms, ms, d, true);
+		test("a packet decoded to its duration plays whole", () -> {
+			var k = @:privateAccess Player.keep(packet(100, 20), 960, 48000, 0, 0);
+			equals(k.first, 0);
+			equals(k.count, 960);
+		});
+		test("one decoded short lost frames at its start", () -> {
+			var k = @:privateAccess Player.keep(packet(100, 20), 840, 48000, 0, 0);
+			equals(k.count, 840);
+			approx(k.time, 0.1 + 120 / 48000);
+		});
+		test("WebM's last packet ends at its BlockDuration: 7 ms of its 960 frames", () -> {
+			var k = @:privateAccess Player.keep(packet(494, 7), 960, 48000, 0, 0);
+			equals(k.first, 0);
+			equals(k.count, 336);
+		});
+	});
 }

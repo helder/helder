@@ -41,9 +41,9 @@ abstract Impl(Native) {
 	public inline function damaged(rects:Null<Array<Int>>)
 		#if (helder.os != "macos" && helder.os != "ios") this.damaged(rects) #else {} #end;
 
-	// (until the window's swap chain takes a frame without queueing it: Direct3D 11's)
+	// (until the window's swap chain takes a frame without queueing it: Direct3D 11's; the CPU's has none)
 	public inline function waitFrame()
-		#if (helder.os == "windows") this.waitFrame() #else {} #end;
+		#if (helder.os == "windows" && !helder.soft) this.waitFrame() #else {} #end;
 
 	// (the back end's context let go by this thread, used by the render thread from now on: GL's)
 	public inline function detach()

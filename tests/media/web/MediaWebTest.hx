@@ -40,6 +40,7 @@ class MediaWebTest {
 	}
 
 	static function main() {
+		helder.media.VorbisDecoder.link();
 		Async.main(_ -> {
 			if (Sys.getEnv("MODE") == "autoplay") {
 				autoplay();
