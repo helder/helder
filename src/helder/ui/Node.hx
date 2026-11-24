@@ -339,15 +339,23 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 
 	// --- changes ---
 
-	// (what the accessibility tree reads: a change builds it again)
+	// (what the accessibility tree reads: a change builds it again; a frame
+	// asked for, as nothing else may: once the overlay bars faded, a program
+	// setting its offset was never drawn, the compositor's mirror kept the last)
 	// (a detached node's, the compositor's copies' (ScrollMirror) on its thread: none)
 	function set_scrollX(v:Float):Float {
-		if (v != scrollX && ui != null) Ui.accessEpoch++;
+		if (v != scrollX && ui != null) {
+			Ui.accessEpoch++;
+			ui.requestFrame();
+		}
 		return scrollX = v;
 	}
 
 	function set_scrollY(v:Float):Float {
-		if (v != scrollY && ui != null) Ui.accessEpoch++;
+		if (v != scrollY && ui != null) {
+			Ui.accessEpoch++;
+			ui.requestFrame();
+		}
 		return scrollY = v;
 	}
 
@@ -851,6 +859,22 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 			compositeAt = f;
 		}
 		if (drawnAt == f || shows()) u.requestFrame();
+	}
+
+	// (its transform or opacity set to move (a transition, a motion's
+	// track): its own layer at once, so that the frame declaring it hands
+	// it to the compositor running, the program free to block after it)
+	@:allow(helder.ui) function willMove() {
+		var u = ui;
+		if (u == null) return;
+		var f = @:privateAccess u.paintFrame;
+		if (paintLayer == null) {
+			layerChanged(true);
+			paintLayer = new helder.ui.draw.Layer(this, false);
+			@:privateAccess u.layers.push(paintLayer);
+		}
+		paintLayer.movedAt = f;
+		compositeAt = f;
 	}
 
 	// whether its content (paintContent) is drawn anew each frame: what it

@@ -5,14 +5,15 @@
 // at most 0.1% of them: the moving box's anti-aliased edge, a pixel wide,
 // as the compositor composes a mover against the program's own paint (up
 // to about 110 levels there; Apple's layers show it too).
-// With a probe x,y,rgb: a's pixel there is rgb (a node's system layer,
-// one level off what its node draws under it).
-//   node tests/ui/android-layers.mjs <a.png> <b.png> <name> [x,y,rrggbb]
+// With probes x,y,rgb: a's pixel there is rgb, within a level (a node's
+// system layer, one level off what its node draws under it; the box at
+// 0.6 over the header).
+//   node tests/ui/android-layers.mjs <a.png> <b.png> <name> [x,y,rrggbb ...]
 import fs from 'node:fs';
 import zlib from 'node:zlib';
 
 const LEVELS = 8;
-const [a, b, name, probe] = process.argv.slice(2);
+const [a, b, name, ...probes] = process.argv.slice(2);
 
 function png(file) {
 	const buf = fs.readFileSync(file);
@@ -72,10 +73,11 @@ for (let y = y0; y < y1; y++)
 const total = A.width * (y1 - y0), ok = over <= total * 0.001;
 console.log(`android-layers.mjs: ${name}: ${ok ? 'ok' : 'FAIL'}: ${differ} of ${total} pixels differ, ${over2} by more than 2 levels, ${over} by more than ${LEVELS}, at most ${max}`);
 let shown = true;
-if (probe) {
+for (const probe of probes) {
 	const [x, y, rgb] = probe.split(','), i = (Number(y) * A.width + Number(x)) * 4, want = parseInt(rgb, 16);
 	const got = [A.px[i], A.px[i + 1], A.px[i + 2]];
-	shown = got.every((v, k) => Math.abs(v - ((want >> (16 - 8 * k)) & 0xff)) <= 1);
-	console.log(`android-layers.mjs: ${name}: the system layer at ${x},${y}: ${shown ? 'ok' : 'FAIL'} (${got.join(' ')})`);
+	const here = got.every((v, k) => Math.abs(v - ((want >> (16 - 8 * k)) & 0xff)) <= 1);
+	if (!here) shown = false;
+	console.log(`android-layers.mjs: ${name}: ${rgb} at ${x},${y}: ${here ? 'ok' : 'FAIL'} (${got.join(' ')})`);
 }
 process.exit(ok && shown ? 0 : 1);

@@ -55,6 +55,8 @@ class ScreenContext {
 	@:allow(helder.ui.Clock) public var now(default, null) = 0.0;
 	@:allow(helder.ui.Clock) final steps:Array<Float->Bool> = [];
 	@:allow(helder.ui.Clock) final timers:Array<Timer> = [];
+	// (ticked since a Ui's last update: now is the frame's time, not an idle clock's)
+	@:allow(helder.ui) var ticked = false;
 	// (helder.ui.motion's: what moves in it, whether its step is on its clock)
 	@:allow(helder.ui.motion.Motions) final motions:Array<helder.ui.motion.Present> = [];
 	@:allow(helder.ui.motion.Motions) var motionTicking = false;

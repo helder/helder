@@ -416,6 +416,7 @@ class Motions {
 		var c = Clock.reducedMotion ? Curve.REDUCED_FADE : curveOf(prop == OPACITY ? spec.opacityCurve() : spec.radiusCurve(), n);
 		tr.animate(now(), to, c);
 		activate(p);
+		if (prop == OPACITY) @:privateAccess n.willMove();
 		return true;
 	}
 
@@ -476,6 +477,7 @@ class Motions {
 		if (p.tx == null) p.setLanes(from == null || from.isIdentity() ? null : from.toMatrix(n.width, n.height));
 		p.animateLanes(now(), to == null || to.isIdentity() ? null : to.toMatrix(n.width, n.height), curveOf(spec.transformCurve(), n));
 		activate(p);
+		@:privateAccess n.willMove();
 	}
 
 	// --- the clock ---
