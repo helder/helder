@@ -1451,7 +1451,9 @@ drawn whole. Content past what was recorded shows the scroller's
 background until the program records it. The program takes the offsets
 at its next turn (`Ui.mirrored`: onScroll, scrollX and scrollY, its
 frame drawn from them; a stretch held past the ends not clamped), and an
-offset it set itself wins. A gesture whose first step lands under a node
+offset it set itself wins (setting scrollX or scrollY asks for a frame:
+once the overlay bars had faded, nothing else did, and the mirror kept
+the last offset). A gesture whose first step lands under a node
 that may claim it (a pointer's, wheel or gesture handler, selectable
 text, a drag's data; a key the focus, its handlers or the keymap take)
 asks the program first (`Event.routed`: ASK; Ladybird's wheel listener
@@ -1465,7 +1467,13 @@ frame): a node with a layer of its own, its transform and opacity under
 a transition, a spring or a tween (the same closed forms the program
 samples: the transition's run, each Track's segment, copied; a part whose
 start is its next tick waits for it, as the program's does; one
-retargeted hands over its new segment with the next frame); sticky nodes,
+retargeted hands over its new segment with the next frame). A transition
+or a motion of transform or opacity gives its node a layer as it is
+declared, and one declared in a frame's update (a rule's restyle: a
+hover, a press) starts at that frame's time, as motion's tracks do, so
+the frame declaring it hands it over running and the program may block
+at once (tap, animate, heavy work: animated from the first vsync it
+misses; `AsyncScrollTest`); sticky nodes,
 placed by the compositor's offsets as Layout places them; overlay
 scrollbars, drawn shown and faded as `Ui`'s are. Its quads are turned
 and faded in the target's pixels (a clip inside it bounded as a turned
@@ -1574,7 +1582,8 @@ thread 98 in 3 s, all at 16–17 ms, the list's layer moved and not drawn
 against `HELDER_SYSTEM_LAYERS=0`: within 6 levels (glyphs' edges in the
 list's layer) but for a moving box's anti-aliased edge (0.03% of the
 pixels, as the compositor composes a mover against the program's own
-paint). A full-window scroller's layer covers what it recorded, its
+paint); the box, at 0.6 over the header, is that blend within a level in
+every mode. A full-window scroller's layer covers what it recorded, its
 tiles' columns too (1600×5700 for a 1080×2400 list: about 70 MB in two
 buffers). Below 33, or where a call or a buffer fails, the textured
 compositor; and while running, where the system misbehaves (no

@@ -251,13 +251,19 @@ class AndroidLayersTest {
 					// (still: a whole offset, the box at rest, for the screencaps)
 					// (on whole pixels: 8 points are 21 pixels at 2.625)
 					list.scrollY = 304;
-					// (on whole pixels at 2.625, a phone's density: 8 points are 21 pixels)
+					// (on whole pixels at 2.625, a phone's density: 8 points are 21 pixels;
+					// see-through, from 0.4: its colour checked in each mode)
 					mover.style.transform = Transform.parse("translate(100px, 34px)");
-					mover.style.opacity = 1;
+					mover.style.opacity = 0.6;
 					phase = 5;
 					at = now;
 				case 5 if (now - at > 5):
 					say('slot at ${Math.round((slotted.absX + 32) * k)} ${Math.round((slotted.absY + 8 - list.scrollY) * k)}');
+					// (the box at 0.6 over the header: its colour then, in every mode)
+					var bg = 0x18181B, fg = 0x2A7AE2, mix = 0;
+					for (c in [16, 8, 0])
+						mix |= Math.round(0.6 * (fg >> c & 0xFF) + 0.4 * (bg >> c & 0xFF)) << c;
+					say('box at ${Math.round(164 * k)} ${Math.round(96 * k)} ${StringTools.hex(mix, 6)}');
 					say("still 1");
 					phase = 6;
 					at = now;

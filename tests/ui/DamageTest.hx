@@ -35,6 +35,8 @@ class DamageTest {
 				for (tree in 0...3)
 					compare(device, scale, tree, tiles);
 			if (scale == 1) damages(device);
+			for (tiles in [false, true])
+				see(device, scale, tiles);
 			device.dispose();
 		}
 		Sys.println("DamageTest: " + (failed == 0 ? "ok" : '$failed FAILED'));
@@ -148,6 +150,47 @@ class DamageTest {
 		var turn = tiles ? '' : ' rotate(${k % 5}deg)';
 		m.card.style.transform = Transform.parse('translate(${k % 7}px, ${k % 3}px)$turn');
 		m.card.style.opacity = [1, 0.75, 0.5][k % 3];
+	}
+
+	// (a box moving to 0.4, then to 0.6, frames drawn only while something
+	// moves, as a window draws them: at rest, its colour that of 0.6 over
+	// the background, kept and drawn whole, replayed and from tiles (#94
+	// saw a translucent mover drawn by the program alone at about 0.4 of that))
+	static function see(device:Device, scale:Float, tiles:Bool) {
+		var w = device.width, h = device.height, pixels = Bytes.alloc(w * h * 4), t = Clock.now + 10;
+		var got = [for (keep in [false, true]) {
+			var ui = new Ui(new DrawText(), W, H), r = new Renderer(device), box = new Node();
+			r.scale = ui.scale = scale;
+			r.groups = true;
+			r.tiles = tiles;
+			r.keep = keep;
+			box.style.set({position: Absolute, left: 20, top: 30, width: 88, height: 64, radius: 10, background: 0xFF2A7AE2});
+			box.style.transform = Transform.parse("translate(0px, 0px)");
+			box.style.transition = Transition.parse("transform 0.5s linear, opacity 0.5s linear");
+			ui.root.append(box);
+			function frames(n:Int)
+				for (_ in 0...n) {
+					t += 1 / 60;
+					Clock.tick(t);
+					ui.update();
+					if (ui.needsFrame || Clock.active) frame(device, ui, r, w, h, pixels);
+				}
+			frames(5);
+			box.style.transform = Transform.parse("translate(100px, 60px)");
+			box.style.opacity = 0.4;
+			frames(60);
+			box.style.transform = Transform.parse("translate(60px, 40px)");
+			box.style.opacity = 0.6;
+			frames(120);
+			pixels.getInt32((Std.int(102 * scale) * w + Std.int(124 * scale)) * 4);
+		}];
+		// (0.6 of 0x2A7AE2 over white)
+		var want = [0x7F, 0xAF, 0xEE], off = 0;
+		for (v in got)
+			for (k in 0...3)
+				off = Std.int(Math.max(off, Math.abs((v >> (8 * k) & 0xFF) - want[k])));
+		check('scale $scale${tiles ? " from tiles" : ""}: a box moved to 0.4, then 0.6, at rest at 0.6, drawn whole and kept', off <= 1,
+			[for (v in got) StringTools.hex(v & 0xFFFFFF, 6)].join(" ") + ' (ABGR), at most $off levels off');
 	}
 
 	// a row toggled damages that row's bounds; the caret moved, only the caret

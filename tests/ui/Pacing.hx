@@ -7,7 +7,9 @@ import helder.ui.draw.*;
 // (AsyncScrollWindow --anim): a box turning, moving and fading over the
 // list; the program blocked for 300 ms while it runs: the compositor's
 // frames keep coming at the display's pace, from the animation alone (no
-// input meanwhile). With --pace s [--work ms]: the frames' pacing over s
+// input meanwhile); then a box that never moved, its transition declared
+// and the program blocked right after the frame declaring it: animated by
+// the compositor from the first vsync the program misses. With --pace s [--work ms]: the frames' pacing over s
 // seconds of an animation, the program working ms after each of its
 // frames (HELDER_ASYNC_SCROLL=0: the synchronous path's); on a display
 // kept awake (caffeinate -d on macOS), its presents waiting for the vsync.
@@ -19,6 +21,12 @@ class Pacing {
 		var length = pace > 0 ? pace + 1 : 1.2;
 		spin.style.transition = Transition.parse('transform ${length}s linear, opacity ${length}s linear');
 		w.root.append(spin);
+		// (one that never moved: no layer of its own until it is declared)
+		var tap = new Node();
+		tap.style.set({position: Absolute, left: 250, top: 40, width: 60, height: 40, radius: 8, background: 0xFFE2462A});
+		tap.style.transform = Transform.parse("translate(0px, 0px)");
+		tap.style.transition = Transition.parse("transform 1s linear, opacity 1s linear");
+		w.root.append(tap);
 		var c = w.compositor, lock = new sys.thread.Mutex(), mine:Array<Float> = [], theirs:Array<Float> = [];
 		if (c == null && pace <= 0) {
 			Sys.println("Pacing: no compositor here: skipped");
@@ -30,7 +38,22 @@ class Pacing {
 			mine.push(t);
 			lock.release();
 		};
-		var step = 0, from = 0.0, to = 0.0, failed = 0;
+		var step = 0, from = 0.0, to = 0.0, failed = 0, tapped = -1;
+		function check(what:String, ok:Bool, detail:String) {
+			if (!ok) failed++;
+			Sys.println('Pacing: ${ok ? "ok" : "FAIL"}: $what ($detail)');
+		}
+		// (the compositor's frames between from and to, their median gap)
+		function blocked(what:String) {
+			lock.acquire();
+			var during = [for (t in mine) if (t > from && t <= to) t];
+			lock.release();
+			var gaps = [for (i in 1...during.length) during[i] - during[i - 1]];
+			gaps.sort(Reflect.compare);
+			var median = gaps.length > 0 ? gaps[Std.int(gaps.length / 2)] : 1.0;
+			check('the animation\'s frames presented while the program was blocked for 300 ms$what', during.length >= 10, during.length + " frames");
+			check('at the display\'s pace$what', gaps.length > 0 && median < 0.03, "median gap " + Math.round(median * 10000) / 10 + " ms");
+		}
 		App.run(() -> {
 			step++;
 			if (step == 10) {
@@ -44,6 +67,12 @@ class Pacing {
 				to = Timer.stamp();
 			}
 			if (pace > 0 && step == 16) from = Timer.stamp();
+			// (once the first is over: nothing else moving, the compositor's frames this one's alone)
+			if (pace <= 0 && step > 24 && tapped < 0 && !Clock.active && !c.moving() && c.due() < 0) {
+				tapped = step;
+				tap.style.transform = Transform.parse("translate(-120px, 150px)");
+				tap.style.opacity = 0.5;
+			}
 			if (w.needsFrame()) {
 				w.frame();
 				w.device.settle();
@@ -51,23 +80,23 @@ class Pacing {
 				theirs.push(Timer.stamp());
 				lock.release();
 			}
+			if (pace <= 0 && step == tapped) {
+				// (blocked right after the frame declaring it: that frame hands it over running)
+				from = Timer.stamp();
+				Sys.sleep(0.3);
+				to = Timer.stamp();
+			}
 			if (pace > 0 && work > 0 && step > 10) {
 				var until = Timer.stamp() + work;
 				while (Timer.stamp() < until) {}
 			}
-			if (pace <= 0 && step == 24) {
-				lock.acquire();
-				var during = [for (t in mine) if (t > from && t <= to) t];
-				lock.release();
-				var gaps = [for (i in 1...during.length) during[i] - during[i - 1]];
-				gaps.sort(Reflect.compare);
-				var median = gaps.length > 0 ? gaps[Std.int(gaps.length / 2)] : 1.0;
-				function check(what:String, ok:Bool, detail:String) {
-					if (!ok) failed++;
-					Sys.println('Pacing: ${ok ? "ok" : "FAIL"}: $what ($detail)');
-				}
-				check("the animation's frames presented while the program was blocked for 300 ms", during.length >= 10, during.length + " frames");
-				check("at the display's pace", gaps.length > 0 && median < 0.03, "median gap " + Math.round(median * 10000) / 10 + " ms");
+			if (pace <= 0 && step == 24) blocked("");
+			if (pace <= 0 && tapped < 0 && step > 24 && Timer.stamp() - to > 10) {
+				check("at rest after the first animation", false, "still moving 10 s on");
+				tapped = step - 8;
+			}
+			if (pace <= 0 && tapped > 0 && step == tapped + 8) {
+				blocked(", declared in the frame before");
 				w.close();
 				Sys.println("Pacing: " + (failed == 0 ? "ok" : '$failed FAILED'));
 				Sys.exit(failed == 0 ? 0 : 1);

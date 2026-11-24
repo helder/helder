@@ -13,8 +13,11 @@ import helder.ui.*;
 // A gated gesture (a slider in the page: it may claim the drag) asks the
 // program and is the slider's, a wheel over a node that hears wheels and
 // lets them through scrolls once answered. What moves on its own
-// (helder.ui.Mover): transitions of transform and opacity, a spring
-// retargeted mid-flight, a tween, sticky headers in a scrolled list; the
+// (helder.ui.Mover, taken as the compositor takes them: from the nodes
+// painted on a layer of their own): transitions of transform and
+// opacity, one declared (by the program, by a hover's rule in the update)
+// with the program blocked from the next vsync, a spring retargeted
+// mid-flight, a tween, sticky headers in a scrolled list; the
 // compositor's samples each vsync the program is held against the
 // program's own, and its frames (those, overlay scrollbars shown and
 // fading) against the program's pixel for pixel.
@@ -98,6 +101,38 @@ class AsyncScrollTest {
 				n[0].style.transform = Transform.parse("translate(40px, 12px) rotate(25deg) scale(1.2)");
 				n[0].style.opacity = 0.25;
 			}
+		});
+		// (declared, then the program blocked at once: handed over in the
+		// declaring frame, set by the program or by a rule's restyle in its update)
+		out.push({
+			name: "a transition declared and the program blocked",
+			frames: 40,
+			holdFrom: 4,
+			holdTo: 34,
+			build: ui -> [
+				box(ui, b -> {
+					b.style.transform = Transform.parse("translate(0px, 0px)");
+					b.style.transition = Transition.parse("transform 0.3s ease-out, opacity 0.25s linear");
+				})
+			],
+			act: (k, n) -> if (k == 3) {
+				n[0].style.transform = Transform.parse("translate(60px, 20px)");
+				n[0].style.opacity = 0.3;
+			}
+		});
+		out.push({
+			name: "a hover's transition declared in the update and the program blocked",
+			frames: 40,
+			holdFrom: 4,
+			holdTo: 34,
+			build: ui -> {
+				ui.theme = {rules: [
+					{slot: "m", style: {transform: Transform.parse("translate(0px, 0px)"), transition: Transition.parse("transform 0.3s ease-out, opacity 0.25s linear")}},
+					{slot: "m", when: ["hover"], style: {transform: Transform.parse("translate(60px, 20px)"), opacity: 0.3}}
+				]};
+				[box(ui, b -> b.slot = "m")];
+			},
+			act: (k, n) -> if (k == 3) n[0].ui.pointerMove(n[0].absX + 5, n[0].absY + 5)
 		});
 		out.push({
 			name: "a spring retargeted mid-flight",
@@ -200,7 +235,7 @@ class AsyncScrollTest {
 		var ui = new Ui(new MonoText(), 300, 200), nodes = c.build(ui), from = c.from ?? 0;
 		ui.update();
 		drawn(ui.root);
-		var movers:Array<Mover> = [], out = [];
+		var movers:Array<Null<Mover>> = [], out = [], last:Array<Array<Float>> = [];
 		for (k in 0...c.frames) {
 			now = 1 + k / 60;
 			var y = c.scroll == null ? 0.0 : c.scroll(k);
@@ -209,13 +244,20 @@ class AsyncScrollTest {
 				if (c.scroll != null) ui.scrollTo(nodes[0], 0, y);
 				Clock.tick(now);
 				ui.update();
-				movers = [for (i in from...nodes.length) Mover.of(nodes[i], nodes[i].transformMatrix(), values(nodes[i])[6])];
-				out.push([for (i in from...nodes.length) for (v in values(nodes[i])) v]);
+				// (painted: the compositor takes those with a layer of their own, and sticky ones)
+				ui.paint(@:privateAccess Ui.nowhere);
+				movers = [
+					for (i in from...nodes.length)
+						@:privateAccess nodes[i].paintLayer != null || nodes[i].style.position == Sticky ? Mover.of(nodes[i], nodes[i].transformMatrix(), values(nodes[i])[6]) : null
+				];
+				last = [for (i in from...nodes.length) values(nodes[i])];
+				out.push([for (v in last) for (x in v) x]);
 			} else {
 				var m = new helder.canvas.Matrix(), row = [];
-				for (mv in movers) {
-					var o = mv.sample(now, 0, Math.min(y, @:privateAccess Scrolling.maxScroll(nodes[0], false)), m);
-					for (v in [m.a, m.b, m.c, m.d, m.e, m.f, o])
+				for (i => mv in movers) {
+					var o = mv == null ? 0.0 : mv.sample(now, 0, Math.min(y, @:privateAccess Scrolling.maxScroll(nodes[0], false)), m);
+					var vs = mv == null ? last[i] : [m.a, m.b, m.c, m.d, m.e, m.f, o];
+					for (v in vs)
 						row.push(v);
 				}
 				out.push(row);

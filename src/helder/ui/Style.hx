@@ -764,7 +764,11 @@ class Style {
 			return from == to;
 		}
 		if (i >= 0 && m[i].to == to) return true;
-		var run:Moving = {name: name, from: from, to: to, start: -1, duration: t.duration, delay: t.delay, easing: t.easing};
+		// (declared in a frame's update (a rule's restyle) after its tick:
+		// begun at the frame's time, so that the frame hands it to the
+		// compositor running; else at the next tick, the clock may have been idle)
+		var at = helder.ui.motion.Motions.updating && @:privateAccess ScreenContext.current.ticked ? Clock.now + t.delay : -1;
+		var run:Moving = {name: name, from: from, to: to, start: at, duration: t.duration, delay: t.delay, easing: t.easing};
 		if (i >= 0) m[i] = run else {
 			if (m == null) r.moving = m = [];
 			m.push(run);
@@ -773,6 +777,7 @@ class Style {
 			r.ticking = true;
 			Clock.addFor(node, step);
 		}
+		if (name == "transform" || name == "opacity") @:privateAccess node.willMove();
 		node.styleChanged(false);
 		return true;
 	}

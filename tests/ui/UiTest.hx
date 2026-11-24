@@ -58,6 +58,7 @@ class UiTest {
 		visibility();
 		pointerEvents();
 		rtlScroll();
+		scrollSet();
 		nativeScrolls();
 		trackpad();
 		androidScroll();
@@ -945,6 +946,31 @@ class UiTest {
 			Clock.tick(time);
 		}
 		check("android: a fling glides on past the drag (OverScroller's 194 for 1000 a second)", Math.abs(page.scrollY - dragged - 194) < 2, dragged + " " + page.scrollY);
+		Ui.now = haxe.Timer.stamp;
+	}
+
+	// (an offset the program sets once its bars faded: a frame asked for)
+	static function scrollSet() {
+		var ui = new Ui(new MonoText(), 200, 100), list = new Node(), tall = new Node();
+		list.style.set({width: 200, height: 100, overflow: Scroll});
+		tall.style.set({height: 2000, shrink: 0});
+		list.append(tall);
+		ui.root.append(list);
+		var t = 1.0;
+		Ui.now = () -> t;
+		for (_ in 0...3) {
+			ui.update();
+			ui.paint(new Recording());
+		}
+		list.scrollY = 600;
+		ui.update();
+		ui.paint(new Recording());
+		t += 10;
+		ui.update();
+		ui.paint(new Recording());
+		var rest = ui.needsFrame;
+		list.scrollY = 300;
+		check("a scroll offset set at rest asks for a frame", !rest && ui.needsFrame, '$rest ${ui.needsFrame}');
 		Ui.now = haxe.Timer.stamp;
 	}
 

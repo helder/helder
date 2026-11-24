@@ -62,10 +62,13 @@ for mode in layers stall 0; do
 	fi
 done
 adb shell setprop debug.helder.layers "''"
-# (the node's system layer where the layers' run put it)
+# (the node's system layer where the layers' run put it; the see-through
+# box's colour, in every mode)
 slot=$(grep -o "slot at [0-9]* [0-9]*" "$out/layers-layers.txt" | head -1 | awk '{print $3","$4}')
-node tests/ui/android-layers.mjs "$out/still1-layers.png" "$out/still1-0.png" still1 "$slot,22c060" || failed=1
+box=$(grep -o "box at [0-9]* [0-9]* [0-9A-F]*" "$out/layers-layers.txt" | head -1 | awk '{print $3","$4","$5}')
+node tests/ui/android-layers.mjs "$out/still1-layers.png" "$out/still1-0.png" still1 "$slot,22c060" "$box" || failed=1
+node tests/ui/android-layers.mjs "$out/still1-0.png" "$out/still1-layers.png" "still1, textured" "$box" || failed=1
 node tests/ui/android-layers.mjs "$out/still2-layers.png" "$out/still2-0.png" still2 || failed=1
 # (fallen back: the textured compositor's pixels)
-node tests/ui/android-layers.mjs "$out/still1-stall.png" "$out/still1-0.png" "still1, stalled" || failed=1
+node tests/ui/android-layers.mjs "$out/still1-stall.png" "$out/still1-0.png" "still1, stalled" "$box" || failed=1
 exit $failed

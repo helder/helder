@@ -77,6 +77,7 @@ class Clock {
 	public static function tick(t:Float):Bool {
 		var c = ScreenContext.current, steps = c.steps;
 		c.now = t;
+		c.ticked = true;
 		timers(c, t);
 		var i = 0, ran = steps.length > 0;
 		while (i < steps.length) {
