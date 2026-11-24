@@ -122,8 +122,30 @@ class WinVideoStill implements Markup {
 			got.push(c.join(" "));
 		}
 		var ok = worst <= LEVELS && time == 0.2;
+		if (layer && onLayer && !ok) probes(n, w, x, y, x0, y0, s, width, height);
 		say('${ok ? "ok" : "FAIL"}: ${layer ? "layer" : "drawn"}: the frame at $time $how, the quadrants ${got.join(", ")}, at most $worst levels off the source ($LEVELS)');
 		Sys.exit(ok ? 0 : 1);
+	}
+
+	// (a black layer still: captured again with the surface also at the top
+	// of the window's root, the slot's visual unscaled, a colour of
+	// DcLayers' own in the slot: which shows says where the frame is lost)
+	static function probes(n:VideoNode, w:UiWindow, x:Float, y:Float, x0:Float, y0:Float, s:Float, width:Int, height:Int) {
+		var sl = @:privateAccess n.sample, wl = sl == null ? null : @:privateAccess sl.windows;
+		if (wl == null) return;
+		var before = helder.media.ui.WinLayer.log.length;
+		for (mode in [1, 2, 3]) {
+			wl.probe(mode, x, y);
+			Sys.sleep(0.4);
+			var px = capture(w.window, width, height);
+			var at = (Math.round(y0 + 12.5 * s) * width + Math.round(x0 + 16.5 * s)) * 4, c = (Math.round(y + 5) * width + Math.round(x + 5)) * 4;
+			var what = ["", "the surface also on top of the root", "the slot visual unscaled", "a solid green in the slot"][mode];
+			var q = px == null ? "no capture" : px.get(at) + " " + px.get(at + 1) + " " + px.get(at + 2);
+			var corner = px == null ? "" : px.get(c) + " " + px.get(c + 1) + " " + px.get(c + 2);
+			say('probe $mode: $what: the top left quadrant $q, the box corner $corner');
+			wl.probe(0, x, y);
+		}
+		for (l in helder.media.ui.WinLayer.log.slice(before)) say('layer: $l');
 	}
 
 	// (the layer run's diagnostics: WinLayer's calls and state, DcLayers'

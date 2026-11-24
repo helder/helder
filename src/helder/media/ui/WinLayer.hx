@@ -186,6 +186,44 @@ class WinLayer {
 			s;
 		});
 
+	// (tests: where a black still comes from, the render thread's: 1 the
+	// surface also on a visual at the top of the window's root, at the box;
+	// 2 the slot's visual unscaled; 3 a colour of DcLayers' own (solid) in
+	// the slot's visual; 0 each undone)
+	var probed = Ptr.nil();
+
+	@:noCompletion public function probe(mode:Int, x:Float, y:Float) {
+		var dc = layers.dev, root = layers.dc.root, visual = slot.handle, k = placed[2], solid = mode == 3 ? layers.solid(0x00FF00) : Ptr.nil();
+		device.inOrder(_ -> Arena.scoped(a -> {
+			var out:Ptr<Ptr> = a.alloc(8), m:Ptr<Float32> = a.alloc(24);
+			if (!probed.isNull()) {
+				IDCompositionVisual.RemoveVisual(root, probed);
+				IDCompositionVisual.RemoveVisual(visual, probed);
+				Com.release(probed);
+				probed = Ptr.nil();
+			}
+			m[1] = m[2] = 0;
+			m[0] = m[3] = mode == 2 ? 1 : k;
+			m[4] = m[5] = 0;
+			if (!inner.isNull()) IDCompositionVisual.SetTransform(inner, m);
+			if (mode == 1 && IDCompositionDevice.CreateVisual(dc, out) >= 0) {
+				probed = out.value;
+				IDCompositionVisual.SetContent(probed, surface);
+				m[0] = m[3] = k;
+				m[4] = x;
+				m[5] = y;
+				IDCompositionVisual.SetTransform(probed, m);
+				note('probe: on the root ${hr(IDCompositionVisual.AddVisual(root, probed, 0, Ptr.nil()))}');
+			}
+			if (mode == 3 && !solid.isNull()) {
+				probed = solid;
+				note('probe: a solid colour in the slot ${hr(IDCompositionVisual.AddVisual(visual, solid, 0, Ptr.nil()))}');
+			}
+			note('probe $mode: Commit ${hr(IDCompositionDevice.Commit(dc))}');
+		}));
+		device.settle();
+	}
+
 	// (tests: its state now, said by WinVideoStill)
 	@:noCompletion public function state():String
 		return 'inner ${!inner.isNull()}, surface ${!surface.isNull()}, ${width}x$height, placed ${placed.join(",")}, presents $presents, showing $showing';
