@@ -27,6 +27,8 @@ class Playback {
 	var since = 0.0;
 	// (the latest time told: it never goes back while playing, audio's callbacks jittering)
 	var told = Math.NEGATIVE_INFINITY;
+	// (a play's or seek's first frame not shown yet: shown even when late)
+	var owed = true;
 	// (the audio master: frames a second, the output's latency; what the
 	// audio thread publishes, a sequence lock around fed, before and stamp)
 	var sampleRate = 0;
@@ -55,6 +57,7 @@ class Playback {
 	public function play() {
 		if (playing) return;
 		told = Math.NEGATIVE_INFINITY;
+		owed = true;
 		since = start();
 		playing = true;
 	}
@@ -68,6 +71,7 @@ class Playback {
 
 	public function seek(time:Float) {
 		told = Math.NEGATIVE_INFINITY;
+		owed = true;
 		anchor = time;
 		since = start();
 	}
@@ -99,10 +103,14 @@ class Playback {
 	}
 
 	// the index of the frame to show: the last of times (seconds, ascending)
-	// at or before the time; -1 when none is due yet
+	// at or before the time; -1 when none is due yet. The first after a
+	// play or seek is the first of times even when later ones are due too
+	// (decoded late, a slow start): it shows, the rest catch up
 	public function due(times:Array<Float>):Int {
 		var t = time, i = -1;
 		for (k in 0...times.length) if (times[k] <= t) i = k else break;
+		if (i > 0 && owed) i = 0;
+		if (i >= 0) owed = false;
 		return i;
 	}
 

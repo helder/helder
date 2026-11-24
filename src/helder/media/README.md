@@ -116,7 +116,9 @@ monotonic clock and never past what was given (a stalled output stalls
 the pictures); without one, the monotonic clock. A play or seek starts
 with the next frames the callback gives, the time held until they are
 heard. The video side asks `due(times)`: which of its decoded frames
-shows now; `wait(t)`: seconds until one is due.
+shows now (the first after a play or seek even when later ones are due
+too: a frame decoded late shows, the rest catch up); `wait(t)`: seconds
+until one is due.
 
 ## Decoding
 
@@ -200,6 +202,9 @@ audio) by a task of the loop, the audio into an output of its own
 through a ring of floats; that output is the clock (`Playback`), the
 monotonic clock without audio. `update()` each frame gives the frame due
 (frames reorder: one is due once three decoded after it have come).
+Until a seek's first frame has settled (the start's too) the clock is
+held at the seek's time and the output given nothing, so a slow decoder
+starts in time with the sound; frames late after it are skipped.
 `play`, `pause`, `seek(t, exact)` (exact: the frame due at t, decoded from
 its keyframe; else the keyframe, sooner), `step(±1)` (on: the next frame
 decoded; back: a seek to just before the one shown), `rate` (the output at

@@ -94,6 +94,16 @@ function tests() {
 			now += 0.001;
 			assert(clock.time >= t);
 		});
+		test("a slow start: the first frame shows though late, the rest catch up", () -> {
+			clock.play();
+			now = 10.25;
+			equals(clock.due([0, 0.1, 0.2, 0.3]), 0);
+			equals(clock.due([0.1, 0.2, 0.3]), 1);
+			clock.seek(1);
+			now = 10.4;
+			equals(clock.due([1, 1.1, 1.2]), 0);
+			equals(clock.due([1.1, 1.2]), 0);
+		});
 		test("an audio callback allocates nothing", () -> {
 			clock.audio(48000, 0);
 			clock.played(512);
