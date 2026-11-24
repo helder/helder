@@ -63,6 +63,35 @@ and sent nowhere; in any browser you can drop a folder or files on the page.
 What only a desktop does is not there: the trash, Show in Finder, Open with,
 dragging files out, the settings kept between visits.
 
+## On phones and tablets
+
+The same viewer fits the screen it is on, by its width:
+
+- **On a phone** it is a stack of screens, the way iOS Files and the
+  Android file managers are. Browse lists your places (on a phone, the
+  app's own Documents folder for now); a folder fills the screen with its
+  large title, a search field under it and a grid of three columns (four
+  on its side), or a list; its … menu has the view, the order, folders
+  first and hidden files. Tap to open, swipe from the left edge or tap the
+  back button to go back, and press and hold the back button for any
+  folder above. Select picks several with taps, or a drag sideways across
+  a row; its toolbar has Open in… (the system's share sheet), Copy, Info
+  and Trash. Press and hold a file for its menu: Open, Get Info, Open in…,
+  Copy, Select, Move to Trash. Full size, tap to hide the bars, swipe to
+  the next or previous file, pinch or double tap to zoom and swipe down to
+  go back; Info is a sheet you pull up. Recents lists the files you opened
+  last.
+- **On a tablet** held upright (and in a narrow window) it is the desktop's
+  browser with more room for the folder: the sidebar slides over it from
+  the toolbar's button or a swipe from the left edge, the inspector is a
+  popover from Get Info, and the path bar is gone.
+- **On a wide screen** (a tablet on its side, a desktop, the web) it is the
+  browser described above.
+
+Every target is at least 44 points, the bars stay inside the screen's
+safe areas, and light and dark follow the system. In a browser at a
+phone's width the phone's screens are the ones shown.
+
 ## Install
 
 Download the package for your system from the

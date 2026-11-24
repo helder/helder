@@ -27,6 +27,18 @@ class Explorer {
 	public var copy:Null<String->Void> = null;
 	// the web's: a folder of the user's picked and shown (none: no button for it)
 	public var openFolder:Null<Void->Void> = null;
+	// a phone's: the system's folder picker, the folder added to the places
+	// (none: no Add a folder…)
+	public var addFolder:Null<Void->Void> = null;
+	// the system's share sheet with these files (a phone's Open in…; none: not shown)
+	public var share:Null<Array<String>->Void> = null;
+	// the files opened last, the newest first (the shell's store: Recents, Open Recent)
+	public final recent:Cell<Array<String>> = new Cell([]);
+	// a tablet's sidebar over the folder, its inspector in a sheet
+	public final sidebarOpen = new Cell(false);
+	public final infoOpen = new Cell(false);
+	// (the tablet's Get Info button: its sheet's popover's anchor)
+	public var infoAnchor:Null<helder.ui.Node> = null;
 	// the thumbnails' queue (the shell's; none: glyphs alone)
 	public var thumbnails:Null<Thumbnails> = null;
 	// the list's focus on its selection (the shell's, once the list is made)
@@ -35,6 +47,7 @@ class Explorer {
 	public final preview:(path:String, done:Preview.Shown->Void)->(Void->Void);
 
 	var choosing = false;
+	static inline var RECENT = 20;
 
 	public function new(files:Files, decode:(path:String, side:Int, done:Decoded->Void) -> Void, ?places:Array<Place>, ?volumes:Array<Volume>,
 			?preview:(path:String, done:Preview.Shown->Void)->(Void->Void), ?pdfSizes:(path:String, done:PdfPages.PdfSizes->Void)->Void) {
@@ -50,6 +63,12 @@ class Explorer {
 		};
 		browser.onItems = () -> if (full.value) viewer.relist(browser.viewable());
 		browser.onModified = paths -> viewer.modified(paths);
+		viewer.onOpened = p -> {
+			var r = recent.value.filter(q -> q != p);
+			r.unshift(p);
+			if (r.length > RECENT) r.resize(RECENT);
+			recent(r);
+		};
 	}
 
 	// what the command line names: a folder browsed, a file full size in its folder

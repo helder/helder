@@ -23,7 +23,8 @@ class InspectorView implements Markup {
 	public static inline var WIDTH = 300;
 	public static inline var BOX = 220;
 
-	public static function make(x:Explorer):View {
+	// (fill: as wide as its place, a sheet's)
+	public static function make(x:Explorer, fill = false):View {
 		var b = x.browser, shown:Signal<Null<Shown>> = signal((null : Null<Shown>)), stop:Null<Void->Void> = null;
 		// (the selection's preview, one at a time: the last one's stopped)
 		effect(() -> {
@@ -50,8 +51,8 @@ class InspectorView implements Markup {
 			var picked = b.picked();
 			return picked.length > 1 ? [for (n in picked) b.entry(n)] : [];
 		}
-		return <view tag="inspector" slot="panel" width={WIDTH} shrink={0} overflow="hidden" borders="0 0 0 1"
-			border-color={Look.ref.line}>
+		return <view tag="inspector" slot="panel" width={fill ? "100%" : WIDTH} grow={fill ? 1 : 0} shrink={0} overflow="hidden"
+			borders={fill ? "0 0 0 0" : "0 0 0 1"} border-color={Look.ref.line}>
 			<Show when={several().length > 1}>{() -> {
 				var all = several();
 				all.length > 1 ? many(x, all) : null;

@@ -44,15 +44,18 @@
 #   verified) and Play Billing through helder's Maven libraries
 #   (tests/pack/billing.sh: helder.store's Purchases, verified ahead of
 #   time, a short error without the Play Store, the library's objects read
-#   from fixture JSON; the libraries' downloads cached, bin/pack/cache/maven); the
-#   APKs' own checks are the headless job's pack lane;
+#   from fixture JSON; the libraries' downloads cached, bin/pack/cache/maven);
+#   the viewer's phone shell (tests/pack/viewer-android.sh: running, a
+#   screenshot); the APKs' own checks are the headless job's pack lane;
 # - ios-simulator: two shards, an iPhone simulator each (tests/pack/simulator.sh:
 #   made and booting once the CLI and helder's compiler are built, while
 #   the apps build; shared by a shard's scripts through HELDER_IOS_SIMULATOR;
 #   deleted at the end): pack-webview, tests/pack/Hello.hx (helder run,
 #   simctl), the audio stream and the web view (tests/platform/webview-ios.sh,
 #   as Android's); gfx, the cube's window and a tap (tests/gfx/ios.sh:
-#   SimTap's clicks) and text input (tests/platform/textinput-ios.sh).
+#   SimTap's clicks), text input (tests/platform/textinput-ios.sh) and the
+#   viewer's phone shell (tests/pack/viewer-ios.sh: its Documents browsed,
+#   a screenshot).
 #   That is a pull request's
 #   (IOS_SUITE=smoke); pushes to main and the nightly run the full suite:
 #   the assets, the screen fixture, the planets example, UIAccessibility,
@@ -514,6 +517,7 @@ jobs:
             sh tests/platform/webview-android.sh bin/cli/helder bin/pack/android-webview
             sh tests/pack/jvm.sh bin/pack/android-jvm
             sh tests/pack/billing.sh bin/cli/helder bin/pack/android-billing
+            sh tests/pack/viewer-android.sh bin/cli/helder bin/pack/android-viewer
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -521,6 +525,8 @@ jobs:
           path: |
             bin/pack/android/*.txt
             bin/pack/android/*.png
+            bin/pack/android-viewer/*.txt
+            bin/pack/android-viewer/*.png
             bin/pack/android-gfx/*.txt
             bin/pack/android-gfx/*.png
             bin/pack/android-layers/*.txt
@@ -602,10 +608,13 @@ jobs:
             a=$!
             IOS_BUILD_ONLY=1 sh tests/platform/textinput-ios.sh bin/cli/helder bin/pack/ios-textinput > "$RUNNER_TEMP/build-textinput.txt" 2>&1 &
             b=$!
+            IOS_BUILD_ONLY=1 sh tests/pack/viewer-ios.sh bin/cli/helder bin/pack/ios-viewer > "$RUNNER_TEMP/build-viewer.txt" 2>&1 &
+            c=$!
             bin/cli/helder build tests/gfx/ios --target ios-sim -o bin/pack/IosTest.app || status=1
             wait $a || status=1
             wait $b || status=1
-            cat "$RUNNER_TEMP/build-textinput.txt"
+            wait $c || status=1
+            cat "$RUNNER_TEMP/build-textinput.txt" "$RUNNER_TEMP/build-viewer.txt"
           fi
           echo "IOS_PREBUILT=1" >> "$GITHUB_ENV"
           wait $s || status=1
@@ -623,6 +632,9 @@ jobs:
       - name: Text input on the simulator, UIKit on its main thread (tests/platform/textinput-ios.sh)
         if: ${{ !cancelled() && steps.setup.outcome == 'success' && matrix.shard == 'gfx' }}
         run: sh tests/platform/textinput-ios.sh bin/cli/helder bin/pack/ios-textinput
+      - name: The viewer's phone shell on the simulator (tests/pack/viewer-ios.sh)
+        if: ${{ !cancelled() && steps.setup.outcome == 'success' && matrix.shard == 'gfx' }}
+        run: sh tests/pack/viewer-ios.sh bin/cli/helder bin/pack/ios-viewer
       - name: The web view on the simulator (tests/platform/webview-ios.sh)
         # (also when Hello's step failed: their checks are their own)
         if: ${{ !cancelled() && steps.setup.outcome == 'success' && matrix.shard == 'pack-webview' }}
@@ -644,6 +656,8 @@ jobs:
             bin/pack/ios-webview/*.txt
             bin/pack/ios-webview/*.png
             bin/pack/ios-textinput/*.txt
+            bin/pack/ios-viewer/*.txt
+            bin/pack/ios-viewer/*.png
             bin/pack/ios-textinput/*.png
           retention-days: 7
           if-no-files-found: ignore

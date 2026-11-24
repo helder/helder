@@ -26,6 +26,37 @@ class ViewerView implements Markup {
 
 	public static function make(x:Explorer):View {
 		var viewer = x.viewer;
+		return <view tag="viewer" position="absolute" inset={0} background={Look.ref.canvas} color={Look.ref.fg} font-size={13}
+			opacity={x.full() ? 1 : 0} motion-opacity={'$FADE 0'} pointer-events={x.full() ? "auto" : "none"} hidden={!x.full()}>
+			<view tag="viewer-bar" direction="row" align-items="center" column-gap={8} height={BAR} shrink={0} drag-region
+				padding-left={WindowButtons.side() == "start" ? 86 : 14} padding-right={WindowButtons.side() == "end" ? 152 : 14}
+				display={viewer.fullscreen() ? "none" : "flex"}>
+				<view:button tag="back-pill" role="button" focusable label={() -> "Back to " + x.sidebar.title(x.browser.dir())} direction="row"
+					align-items="center" column-gap={6} height={30} padding="0 12 0 6" radius={8} background={Look.ref.fill} color={Look.ref.fg}
+					font-weight={500} shrink={1} min-width={0} onPress={() -> x.close()}>
+					<image src={Glyphs.get("back")} width={16} height={16} shrink={0}/>
+					<image src={() -> Glyphs.get(x.browser.layout() == Grid ? "grid" : "list")} width={14} height={14} shrink={0}/>
+					<text max-lines={1} text-overflow="ellipsis">{() -> x.sidebar.title(x.browser.dir())}</text>
+				</view:button>
+				<text tag="viewer-title" grow={1} shrink={1} min-width={0} text-align="center" max-lines={1} text-overflow="ellipsis" color={Look.ref.fg2}
+					dir={helder.ui.Dir.Ltr}>{viewer.title}</text>
+				<Show when={x.files.trash != null}>
+					<view:button tag="viewer-trash" role="button" focusable label={ViewerActions.trashLabel()} width={30} height={30} radius={8}
+						align-items="center" justify="center" color={Look.ref.fg2} onPress={() -> x.perform(Trash)}>
+						<image src={Glyphs.get("trash")} width={16} height={16}/>
+					</view:button>
+				</Show>
+			</view>
+			{stage(x)}
+		</view>;
+	}
+
+	// the file itself: the image (its view's own presses: a drag pans, a
+	// double click zooms), a video's or an audio file's player, a PDF's
+	// column, the message in their place, the status line, go to page; the
+	// browser's and a phone's
+	public static function stage(x:Explorer):View {
+		var viewer = x.viewer;
 		var image = new ImageView(viewer);
 		image.onContextMenu = (px, py) -> if (image.ui != null) helder.ui.menu.Menus.popup(image.ui, ViewerActions.context, px, py, image);
 		image.focusable = true;
@@ -74,48 +105,26 @@ class ViewerView implements Markup {
 				return false;
 			});
 		});
-		return <view tag="viewer" position="absolute" inset={0} background={Look.ref.canvas} color={Look.ref.fg} font-size={13}
-			opacity={x.full() ? 1 : 0} motion-opacity={'$FADE 0'} pointer-events={x.full() ? "auto" : "none"} hidden={!x.full()}>
-			<view tag="viewer-bar" direction="row" align-items="center" column-gap={8} height={BAR} shrink={0} drag-region
-				padding-left={WindowButtons.side() == "start" ? 86 : 14} padding-right={WindowButtons.side() == "end" ? 152 : 14}
-				display={viewer.fullscreen() ? "none" : "flex"}>
-				<view:button tag="back-pill" role="button" focusable label={() -> "Back to " + x.sidebar.title(x.browser.dir())} direction="row"
-					align-items="center" column-gap={6} height={30} padding="0 12 0 6" radius={8} background={Look.ref.fill} color={Look.ref.fg}
-					font-weight={500} shrink={1} min-width={0} onPress={() -> x.close()}>
-					<image src={Glyphs.get("back")} width={16} height={16} shrink={0}/>
-					<image src={() -> Glyphs.get(x.browser.layout() == Grid ? "grid" : "list")} width={14} height={14} shrink={0}/>
-					<text max-lines={1} text-overflow="ellipsis">{() -> x.sidebar.title(x.browser.dir())}</text>
-				</view:button>
-				<text tag="viewer-title" grow={1} shrink={1} min-width={0} text-align="center" max-lines={1} text-overflow="ellipsis" color={Look.ref.fg2}
-					dir={helder.ui.Dir.Ltr}>{viewer.title}</text>
-				<Show when={x.files.trash != null}>
-					<view:button tag="viewer-trash" role="button" focusable label={ViewerActions.trashLabel()} width={30} height={30} radius={8}
-						align-items="center" justify="center" color={Look.ref.fg2} onPress={() -> x.perform(Trash)}>
-						<image src={Glyphs.get("trash")} width={16} height={16}/>
-					</view:button>
-				</Show>
-			</view>
-			<view tag="stage" grow={1} min-height={0}>
-				{image}
-				<Show when={viewer.media() != ""}>{MediaView.make(viewer, x.files)}</Show>
-				<Show when={viewer.pdf() != null}>{() -> {
-					var d = viewer.pdf();
-					d == null ? null : PdfView.make(d);
-				}}</Show>
-				<Show when={viewer.state() != Shown && (viewer.state() != Loading || slow())}>
-					<view tag="message" position="absolute" inset={0} align-items="center" justify="center" row-gap={8} padding={24} pointer-events="none">
-						<text tag="title" font-size={17} color={viewer.state() == Failed ? Look.ref.danger : Look.ref.fg} text-align="center">{viewer.message}</text>
-						<text tag="detail" color={Look.ref.fg3} text-align="center">{viewer.detail}</text>
-					</view>
-				</Show>
-				<Show when={viewer.statusOn() && viewer.status() != ""}>
-					<view tag="status" position="absolute" left={0} right={0} bottom={0} padding="6 12" background={Look.ref.raised} borders="1 0 0 0"
-						border-color={Look.ref.line} direction="row">
-						<text color={Look.ref.fg2}>{viewer.status}</text>
-					</view>
-				</Show>
-				<Show when={viewer.gotoOpen()}>{goTo(viewer)}</Show>
-			</view>
+		return <view tag="stage" grow={1} min-height={0}>
+			{image}
+			<Show when={viewer.media() != ""}>{MediaView.make(viewer, x.files)}</Show>
+			<Show when={viewer.pdf() != null}>{() -> {
+				var d = viewer.pdf();
+				d == null ? null : PdfView.make(d);
+			}}</Show>
+			<Show when={viewer.state() != Shown && (viewer.state() != Loading || slow())}>
+				<view tag="message" position="absolute" inset={0} align-items="center" justify="center" row-gap={8} padding={24} pointer-events="none">
+					<text tag="title" font-size={17} color={viewer.state() == Failed ? Look.ref.danger : Look.ref.fg} text-align="center">{viewer.message}</text>
+					<text tag="detail" color={Look.ref.fg3} text-align="center">{viewer.detail}</text>
+				</view>
+			</Show>
+			<Show when={viewer.statusOn() && viewer.status() != ""}>
+				<view tag="status" position="absolute" left={0} right={0} bottom={0} padding="6 12" background={Look.ref.raised} borders="1 0 0 0"
+					border-color={Look.ref.line} direction="row">
+					<text color={Look.ref.fg2}>{viewer.status}</text>
+				</view>
+			</Show>
+			<Show when={viewer.gotoOpen()}>{goTo(viewer)}</Show>
 		</view>;
 	}
 

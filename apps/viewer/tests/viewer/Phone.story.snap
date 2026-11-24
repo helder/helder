@@ -1,0 +1,1252 @@
+// helder.test snapshots: `helder test -u` rewrites them
+
+--- story Phone/Browse: Phone/Browse (31 lines)
+Node#root 0,0 390x844
+  Node#view 0,0 390x844
+    Node#phone 0,0 390x844
+      Node#stack 0,0 390x844
+        Node#screen 0,0 390x844
+          Node#nav-screen 0,0 390x844
+            Node#nav-scroll 0,0 390x844
+              Node#view 0,44 390x54
+                TextNode#text 0,44 390x50 "Browse"
+              Node#view 0,98 390x125
+                TextNode#locations-head 0,98 390x51 "Locations"
+                Node#locations 16,149 358x50
+                  Node#place-Samples 16,149 358x50
+                    ImageNode#image 32,163 22x22
+                    TextNode#text 69,163 262x21 "Samples"
+                    ImageNode#image 344,166 16x16
+            Node#view 0,0 390x44
+              Node#view 0,0 390x44
+              Node#view 0,0 390x44
+                Node#view 8,22 374x0
+                TextNode#nav-title 96,11 198x22 "Browse"
+            Node#view 0,794 390x50
+              Node#tabs 0,794 390x50
+                Node#tab-recents 60,794 138x50
+                  ImageNode#image 116,798 26x26
+                  TextNode#text 110,827 37x13 "Recents"
+                Node#tab-browse 198,794 132x50
+                  ImageNode#image 251,798 26x26
+                  TextNode#text 248,827 32x13 "Browse"
+          Node#view 0,0 390x844
+        TextNode#text 0,0 1x1 ""
+
+--- story Phone/Folder: Phone/Folder (136 lines)
+Node#root 0,0 390x844
+  Node#view 0,0 390x844
+    Node#phone 0,0 390x844
+      Node#stack 0,0 390x844
+        Node#screen 0,0 390x844
+          Node#nav-screen 0,0 390x844
+            Node#nav-scroll 0,0 390x844
+              Node#view 0,44 390x54
+                TextNode#text 0,44 390x50 "Browse"
+              Node#view 0,98 390x125
+                TextNode#locations-head 0,98 390x51 "Locations"
+                Node#locations 16,149 358x50
+                  Node#place-Samples 16,149 358x50
+                    ImageNode#image 32,163 22x22
+                    TextNode#text 69,163 262x21 "Samples"
+                    ImageNode#image 344,166 16x16
+            Node#view 0,0 390x44
+              Node#view 0,0 390x44
+              Node#view 0,0 390x44
+                Node#view 8,22 374x0
+                TextNode#nav-title 96,11 198x22 "Browse"
+            Node#view 0,794 390x50
+              Node#tabs 0,794 390x50
+                Node#tab-recents 60,794 138x50
+                  ImageNode#image 116,798 26x26
+                  TextNode#text 110,827 37x13 "Recents"
+                Node#tab-browse 198,794 132x50
+                  ImageNode#image 251,798 26x26
+                  TextNode#text 248,827 32x13 "Browse"
+          Node#view 0,0 390x844
+        Node#screen 0,0 390x844
+          Node#folder 0,0 390x844
+            Node#view 0,0 390x844
+              GridScroll#grid 0,0 390x844
+                Spacer#before 0,0 390x184
+                Node#row 0,184 390x164
+                  Node#cell 16,184 113x154
+                    Node#view 16,184 113x154
+                      Node#tile-More 16,184 113x154
+                        Node#view 16,184 112x112
+                          ImageNode#image 26,203 92x74
+                        TextNode#text 53,300 38x18 "More"
+                        TextNode#text 55,318 35x15 "Folder"
+                  Node#cell 139,184 112x154
+                    Node#view 139,184 112x154
+                      Node#tile-About Viewer.pdf 139,184 112x154
+                        Node#view 139,184 112x112
+                          ImageNode#image 139,184 112x112
+                        TextNode#text 156,300 77x18 "About Viewer.pdf"
+                        TextNode#text 143,318 104x15 "24 Nov 2026, 13:00"
+                  Node#cell 261,184 113x154
+                    Node#view 261,184 113x154
+                      Node#tile-Chimes.m4a 261,184 113x154
+                        Node#view 262,184 112x112
+                          Node#view 282,194 72x92
+                            ImageNode#image 306,222 24x24
+                            TextNode#text 306,261 24x14 "M4A"
+                        TextNode#text 279,300 77x18 "Chimes.m4a"
+                        TextNode#text 266,318 103x15 "24 Nov 2026, 13:00"
+                Node#row 0,348 390x164
+                  Node#cell 16,348 113x154
+                    Node#view 16,348 113x154
+                      Node#tile-Dusk panorama.jpg 16,348 113x154
+                        Node#view 16,348 112x112
+                          ImageNode#image 16,348 112x112
+                        TextNode#text 27,464 90x18 "Dusk panorama.jpg"
+                        TextNode#text 21,482 103x15 "24 Nov 2026, 13:00"
+                  Node#cell 139,348 112x154
+                    Node#view 139,348 112x154
+                      Node#tile-Mandelbrot.jpg 139,348 112x154
+                        Node#view 139,348 112x112
+                          ImageNode#image 139,348 112x112
+                        TextNode#text 143,464 103x18 "Mandelbrot.jpg"
+                        TextNode#text 143,482 104x15 "24 Nov 2026, 13:00"
+                  Node#cell 261,348 113x154
+                    Node#view 261,348 113x154
+                      Node#tile-Murmuration.jpg 261,348 113x154
+                        Node#view 262,348 112x112
+                          ImageNode#image 262,348 112x112
+                        TextNode#text 263,464 109x18 "Murmuration.jpg"
+                        TextNode#text 266,482 103x15 "24 Nov 2026, 13:00"
+                Node#row 0,512 390x164
+                  Node#cell 16,512 113x154
+                    Node#view 16,512 113x154
+                      Node#tile-Planet.jpg 16,512 113x154
+                        Node#view 16,512 112x112
+                          ImageNode#image 16,512 112x112
+                        TextNode#text 34,628 77x18 "Planet.jpg"
+                        TextNode#text 21,646 103x15 "24 Nov 2026, 13:00"
+                  Node#cell 139,512 112x154
+                    Node#view 139,512 112x154
+                      Node#tile-Starlings.jpg 139,512 112x154
+                        Node#view 139,512 112x112
+                          ImageNode#image 139,512 112x112
+                        TextNode#text 147,628 96x18 "Starlings.jpg"
+                        TextNode#text 143,646 104x15 "24 Nov 2026, 13:00"
+                  Node#cell 261,512 113x154
+                    Node#view 261,512 113x154
+                      Node#tile-Starlings.mp4 261,512 113x154
+                        Node#view 262,512 112x112
+                          Node#view 282,522 72x92
+                            ImageNode#image 306,550 24x24
+                            TextNode#text 306,589 24x14 "MP4"
+                        TextNode#text 269,628 97x18 "Starlings.mp4"
+                        TextNode#text 266,646 103x15 "24 Nov 2026, 13:00"
+                Spacer#after 0,676 390x66
+            Node#view 0,44 390x124
+              Node#view 0,44 390x124
+                TextNode#text 0,44 390x50 "Samples"
+                TextNode#text 0,88 390x26 "9 items"
+                Node#search 16,114 358x38
+                  ImageNode#image 26,125 17x17
+                  TextField#search-field 50,123 314x21 ""
+            Node#view 0,0 390x44
+              Node#view 0,0 390x44
+              Node#view 0,0 390x44
+                Node#nav-back 8,0 85x44
+                  ImageNode#image 8,10 24x24
+                  TextNode#text 34,11 51x22 "Browse"
+                Node#view 93,22 174x0
+                Node#select 267,0 71x44
+                  TextNode#text 277,11 51x22 "Select"
+                Node#view 338,0 44x44
+                  Node#view-menu 338,0 44x44
+                    ImageNode#image 349,11 22x22
+                TextNode#nav-title 96,11 198x22 "Samples"
+            Node#view 0,794 390x50
+              Node#tabs 0,794 390x50
+                Node#tab-recents 60,794 138x50
+                  ImageNode#image 116,798 26x26
+                  TextNode#text 110,827 37x13 "Recents"
+                Node#tab-browse 198,794 132x50
+                  ImageNode#image 251,798 26x26
+                  TextNode#text 248,827 32x13 "Browse"
+          Node#view 0,0 390x844
+        TextNode#text 0,0 1x1 "Samples"
+
+--- story Phone/Full size: Phone/Full size (162 lines)
+Node#root 0,0 390x844
+  Node#view 0,0 390x844
+    Node#phone 0,0 390x844
+      Node#stack 0,0 390x844
+        Node#screen 0,0 390x844
+          Node#nav-screen 0,0 390x844
+            Node#nav-scroll 0,0 390x844
+              Node#view 0,44 390x54
+                TextNode#text 0,44 390x50 "Browse"
+              Node#view 0,98 390x125
+                TextNode#locations-head 0,98 390x51 "Locations"
+                Node#locations 16,149 358x50
+                  Node#place-Samples 16,149 358x50
+                    ImageNode#image 32,163 22x22
+                    TextNode#text 69,163 262x21 "Samples"
+                    ImageNode#image 344,166 16x16
+            Node#view 0,0 390x44
+              Node#view 0,0 390x44
+              Node#view 0,0 390x44
+                Node#view 8,22 374x0
+                TextNode#nav-title 96,11 198x22 "Browse"
+            Node#view 0,794 390x50
+              Node#tabs 0,794 390x50
+                Node#tab-recents 60,794 138x50
+                  ImageNode#image 116,798 26x26
+                  TextNode#text 110,827 37x13 "Recents"
+                Node#tab-browse 198,794 132x50
+                  ImageNode#image 251,798 26x26
+                  TextNode#text 248,827 32x13 "Browse"
+          Node#view 0,0 390x844
+        Node#screen 0,0 390x844
+          Node#folder 0,0 390x844
+            Node#view 0,0 390x844
+              GridScroll#grid 0,0 390x844
+                Spacer#before 0,0 390x184
+                Node#row 0,184 390x164
+                  Node#cell 16,184 113x154
+                    Node#view 16,184 113x154
+                      Node#tile-More 16,184 113x154
+                        Node#view 16,184 112x112
+                          ImageNode#image 26,203 92x74
+                        TextNode#text 53,300 38x18 "More"
+                        TextNode#text 55,318 35x15 "Folder"
+                  Node#cell 139,184 112x154
+                    Node#view 139,184 112x154
+                      Node#tile-About Viewer.pdf 139,184 112x154
+                        Node#view 139,184 112x112
+                          ImageNode#image 139,184 112x112
+                        TextNode#text 156,300 77x18 "About Viewer.pdf"
+                        TextNode#text 143,318 104x15 "24 Nov 2026, 13:00"
+                  Node#cell 261,184 113x154
+                    Node#view 261,184 113x154
+                      Node#tile-Chimes.m4a 261,184 113x154
+                        Node#view 262,184 112x112
+                          Node#view 282,194 72x92
+                            ImageNode#image 306,222 24x24
+                            TextNode#text 306,261 24x14 "M4A"
+                        TextNode#text 279,300 77x18 "Chimes.m4a"
+                        TextNode#text 266,318 103x15 "24 Nov 2026, 13:00"
+                Node#row 0,348 390x164
+                  Node#cell 16,348 113x154
+                    Node#view 16,348 113x154
+                      Node#tile-Dusk panorama.jpg 16,348 113x154
+                        Node#view 16,348 112x112
+                          ImageNode#image 16,348 112x112
+                        TextNode#text 27,464 90x18 "Dusk panorama.jpg"
+                        TextNode#text 21,482 103x15 "24 Nov 2026, 13:00"
+                  Node#cell 139,348 112x154
+                    Node#view 139,348 112x154
+                      Node#tile-Mandelbrot.jpg 139,348 112x154
+                        Node#view 139,348 112x112
+                          ImageNode#image 139,348 112x112
+                        TextNode#text 143,464 103x18 "Mandelbrot.jpg"
+                        TextNode#text 143,482 104x15 "24 Nov 2026, 13:00"
+                  Node#cell 261,348 113x154
+                    Node#view 261,348 113x154
+                      Node#tile-Murmuration.jpg 261,348 113x154
+                        Node#view 262,348 112x112
+                          ImageNode#image 262,348 112x112
+                        TextNode#text 263,464 109x18 "Murmuration.jpg"
+                        TextNode#text 266,482 103x15 "24 Nov 2026, 13:00"
+                Node#row 0,512 390x164
+                  Node#cell 16,512 113x154
+                    Node#view 16,512 113x154
+                      Node#tile-Planet.jpg 16,512 113x154
+                        Node#view 16,512 112x112
+                          ImageNode#image 16,512 112x112
+                        TextNode#text 34,628 77x18 "Planet.jpg"
+                        TextNode#text 21,646 103x15 "24 Nov 2026, 13:00"
+                  Node#cell 139,512 112x154
+                    Node#view 139,512 112x154
+                      Node#tile-Starlings.jpg 139,512 112x154
+                        Node#view 139,512 112x112
+                          ImageNode#image 139,512 112x112
+                        TextNode#text 147,628 96x18 "Starlings.jpg"
+                        TextNode#text 143,646 104x15 "24 Nov 2026, 13:00"
+                  Node#cell 261,512 113x154
+                    Node#view 261,512 113x154
+                      Node#tile-Starlings.mp4 261,512 113x154
+                        Node#view 262,512 112x112
+                          Node#view 282,522 72x92
+                            ImageNode#image 306,550 24x24
+                            TextNode#text 306,589 24x14 "MP4"
+                        TextNode#text 269,628 97x18 "Starlings.mp4"
+                        TextNode#text 266,646 103x15 "24 Nov 2026, 13:00"
+                Spacer#after 0,676 390x66
+            Node#view 0,44 390x124
+              Node#view 0,44 390x124
+                TextNode#text 0,44 390x50 "Samples"
+                TextNode#text 0,88 390x26 "9 items"
+                Node#search 16,114 358x38
+                  ImageNode#image 26,125 17x17
+                  TextField#search-field 50,123 314x21 ""
+            Node#view 0,0 390x44
+              Node#view 0,0 390x44
+              Node#view 0,0 390x44
+                Node#nav-back 8,0 85x44
+                  ImageNode#image 8,10 24x24
+                  TextNode#text 34,11 51x22 "Browse"
+                Node#view 93,22 174x0
+                Node#select 267,0 71x44
+                  TextNode#text 277,11 51x22 "Select"
+                Node#view 338,0 44x44
+                  Node#view-menu 338,0 44x44
+                    ImageNode#image 349,11 22x22
+                TextNode#nav-title 96,11 198x22 "Samples"
+            Node#view 0,794 390x50
+              Node#tabs 0,794 390x50
+                Node#tab-recents 60,794 138x50
+                  ImageNode#image 116,798 26x26
+                  TextNode#text 110,827 37x13 "Recents"
+                Node#tab-browse 198,794 132x50
+                  ImageNode#image 251,798 26x26
+                  TextNode#text 248,827 32x13 "Browse"
+          Node#view 0,0 390x844
+        Node#screen 0,0 390x844
+          Node#full 0,0 390x844
+            Node#full-stage 0,0 390x844
+              Node#view 0,0 390x844
+                Node#stage 0,0 390x844
+                  ImageView#photo 0,0 390x844
+                    Node#image-rect 0,0 1x1
+            Node#view 0,0 390x44
+              Node#view 0,0 390x44
+              Node#view 0,0 390x44
+                Node#nav-back 8,0 94x44
+                  ImageNode#image 8,10 24x24
+                  TextNode#text 34,11 60x22 "Samples"
+                Node#view 102,22 236x0
+                Node#full-info 338,0 44x44
+                  ImageNode#image 349,11 22x22
+                TextNode#nav-title 96,11 198x22 "Starlings.jpg"
+            Node#view 0,788 390x56
+              Node#tools 0,788 390x56
+                Node#info 12,794 60x50
+                  ImageNode#image 31,800 22x22
+                  TextNode#text 32,825 21x13 "Info"
+                Node#trash 318,794 60x50
+                  ImageNode#image 337,800 22x22
+                  TextNode#text 335,825 26x13 "Trash"
+          Node#view 0,0 390x844
+        TextNode#text 0,0 1x1 "Samples"
+
+--- story Phone/Info: Phone/Info (162 lines)
+Node#root 0,0 390x844
+  Node#view 0,0 390x844
+    Node#phone 0,0 390x844
+      Node#stack 0,0 390x844
+        Node#screen 0,0 390x844
+          Node#nav-screen 0,0 390x844
+            Node#nav-scroll 0,0 390x844
+              Node#view 0,44 390x54
+                TextNode#text 0,44 390x50 "Browse"
+              Node#view 0,98 390x125
+                TextNode#locations-head 0,98 390x51 "Locations"
+                Node#locations 16,149 358x50
+                  Node#place-Samples 16,149 358x50
+                    ImageNode#image 32,163 22x22
+                    TextNode#text 69,163 262x21 "Samples"
+                    ImageNode#image 344,166 16x16
+            Node#view 0,0 390x44
+              Node#view 0,0 390x44
+              Node#view 0,0 390x44
+                Node#view 8,22 374x0
+                TextNode#nav-title 96,11 198x22 "Browse"
+            Node#view 0,794 390x50
+              Node#tabs 0,794 390x50
+                Node#tab-recents 60,794 138x50
+                  ImageNode#image 116,798 26x26
+                  TextNode#text 110,827 37x13 "Recents"
+                Node#tab-browse 198,794 132x50
+                  ImageNode#image 251,798 26x26
+                  TextNode#text 248,827 32x13 "Browse"
+          Node#view 0,0 390x844
+        Node#screen 0,0 390x844
+          Node#folder 0,0 390x844
+            Node#view 0,0 390x844
+              GridScroll#grid 0,0 390x844
+                Spacer#before 0,0 390x184
+                Node#row 0,184 390x164
+                  Node#cell 16,184 113x154
+                    Node#view 16,184 113x154
+                      Node#tile-More 16,184 113x154
+                        Node#view 16,184 112x112
+                          ImageNode#image 26,203 92x74
+                        TextNode#text 53,300 38x18 "More"
+                        TextNode#text 55,318 35x15 "Folder"
+                  Node#cell 139,184 112x154
+                    Node#view 139,184 112x154
+                      Node#tile-About Viewer.pdf 139,184 112x154
+                        Node#view 139,184 112x112
+                          ImageNode#image 139,184 112x112
+                        TextNode#text 156,300 77x18 "About Viewer.pdf"
+                        TextNode#text 143,318 104x15 "24 Nov 2026, 13:00"
+                  Node#cell 261,184 113x154
+                    Node#view 261,184 113x154
+                      Node#tile-Chimes.m4a 261,184 113x154
+                        Node#view 262,184 112x112
+                          Node#view 282,194 72x92
+                            ImageNode#image 306,222 24x24
+                            TextNode#text 306,261 24x14 "M4A"
+                        TextNode#text 279,300 77x18 "Chimes.m4a"
+                        TextNode#text 266,318 103x15 "24 Nov 2026, 13:00"
+                Node#row 0,348 390x164
+                  Node#cell 16,348 113x154
+                    Node#view 16,348 113x154
+                      Node#tile-Dusk panorama.jpg 16,348 113x154
+                        Node#view 16,348 112x112
+                          ImageNode#image 16,348 112x112
+                        TextNode#text 27,464 90x18 "Dusk panorama.jpg"
+                        TextNode#text 21,482 103x15 "24 Nov 2026, 13:00"
+                  Node#cell 139,348 112x154
+                    Node#view 139,348 112x154
+                      Node#tile-Mandelbrot.jpg 139,348 112x154
+                        Node#view 139,348 112x112
+                          ImageNode#image 139,348 112x112
+                        TextNode#text 143,464 103x18 "Mandelbrot.jpg"
+                        TextNode#text 143,482 104x15 "24 Nov 2026, 13:00"
+                  Node#cell 261,348 113x154
+                    Node#view 261,348 113x154
+                      Node#tile-Murmuration.jpg 261,348 113x154
+                        Node#view 262,348 112x112
+                          ImageNode#image 262,348 112x112
+                        TextNode#text 263,464 109x18 "Murmuration.jpg"
+                        TextNode#text 266,482 103x15 "24 Nov 2026, 13:00"
+                Node#row 0,512 390x164
+                  Node#cell 16,512 113x154
+                    Node#view 16,512 113x154
+                      Node#tile-Planet.jpg 16,512 113x154
+                        Node#view 16,512 112x112
+                          ImageNode#image 16,512 112x112
+                        TextNode#text 34,628 77x18 "Planet.jpg"
+                        TextNode#text 21,646 103x15 "24 Nov 2026, 13:00"
+                  Node#cell 139,512 112x154
+                    Node#view 139,512 112x154
+                      Node#tile-Starlings.jpg 139,512 112x154
+                        Node#view 139,512 112x112
+                          ImageNode#image 139,512 112x112
+                        TextNode#text 147,628 96x18 "Starlings.jpg"
+                        TextNode#text 143,646 104x15 "24 Nov 2026, 13:00"
+                  Node#cell 261,512 113x154
+                    Node#view 261,512 113x154
+                      Node#tile-Starlings.mp4 261,512 113x154
+                        Node#view 262,512 112x112
+                          Node#view 282,522 72x92
+                            ImageNode#image 306,550 24x24
+                            TextNode#text 306,589 24x14 "MP4"
+                        TextNode#text 269,628 97x18 "Starlings.mp4"
+                        TextNode#text 266,646 103x15 "24 Nov 2026, 13:00"
+                Spacer#after 0,676 390x66
+            Node#view 0,44 390x124
+              Node#view 0,44 390x124
+                TextNode#text 0,44 390x50 "Samples"
+                TextNode#text 0,88 390x26 "9 items"
+                Node#search 16,114 358x38
+                  ImageNode#image 26,125 17x17
+                  TextField#search-field 50,123 314x21 ""
+            Node#view 0,0 390x44
+              Node#view 0,0 390x44
+              Node#view 0,0 390x44
+                Node#nav-back 8,0 85x44
+                  ImageNode#image 8,10 24x24
+                  TextNode#text 34,11 51x22 "Browse"
+                Node#view 93,22 174x0
+                Node#select 267,0 71x44
+                  TextNode#text 277,11 51x22 "Select"
+                Node#view 338,0 44x44
+                  Node#view-menu 338,0 44x44
+                    ImageNode#image 349,11 22x22
+                TextNode#nav-title 96,11 198x22 "Samples"
+            Node#view 0,794 390x50
+              Node#tabs 0,794 390x50
+                Node#tab-recents 60,794 138x50
+                  ImageNode#image 116,798 26x26
+                  TextNode#text 110,827 37x13 "Recents"
+                Node#tab-browse 198,794 132x50
+                  ImageNode#image 251,798 26x26
+                  TextNode#text 248,827 32x13 "Browse"
+          Node#view 0,0 390x844
+        Node#screen 0,0 390x844
+          Node#full 0,0 390x844
+            Node#full-stage 0,0 390x844
+              Node#view 0,0 390x844
+                Node#stage 0,0 390x844
+                  ImageView#photo 0,0 390x844
+                    Node#image-rect 0,0 1x1
+            Node#view 0,0 390x44
+              Node#view 0,0 390x44
+              Node#view 0,0 390x44
+                Node#nav-back 8,0 94x44
+                  ImageNode#image 8,10 24x24
+                  TextNode#text 34,11 60x22 "Samples"
+                Node#view 102,22 236x0
+                Node#full-info 338,0 44x44
+                  ImageNode#image 349,11 22x22
+                TextNode#nav-title 96,11 198x22 "Planet.jpg"
+            Node#view 0,788 390x56
+              Node#tools 0,788 390x56
+                Node#info 12,794 60x50
+                  ImageNode#image 31,800 22x22
+                  TextNode#text 32,825 21x13 "Info"
+                Node#trash 318,794 60x50
+                  ImageNode#image 337,800 22x22
+                  TextNode#text 335,825 26x13 "Trash"
+          Node#view 0,0 390x844
+        TextNode#text 0,0 1x1 "Samples"
+
+--- story Phone/List: Phone/List (143 lines)
+Node#root 0,0 390x844
+  Node#view 0,0 390x844
+    Node#phone 0,0 390x844
+      Node#stack 0,0 390x844
+        Node#screen 0,0 390x844
+          Node#nav-screen 0,0 390x844
+            Node#nav-scroll 0,0 390x844
+              Node#view 0,44 390x54
+                TextNode#text 0,44 390x50 "Browse"
+              Node#view 0,98 390x125
+                TextNode#locations-head 0,98 390x51 "Locations"
+                Node#locations 16,149 358x50
+                  Node#place-Samples 16,149 358x50
+                    ImageNode#image 32,163 22x22
+                    TextNode#text 69,163 262x21 "Samples"
+                    ImageNode#image 344,166 16x16
+            Node#view 0,0 390x44
+              Node#view 0,0 390x44
+              Node#view 0,0 390x44
+                Node#view 8,22 374x0
+                TextNode#nav-title 96,11 198x22 "Browse"
+            Node#view 0,794 390x50
+              Node#tabs 0,794 390x50
+                Node#tab-recents 60,794 138x50
+                  ImageNode#image 116,798 26x26
+                  TextNode#text 110,827 37x13 "Recents"
+                Node#tab-browse 198,794 132x50
+                  ImageNode#image 251,798 26x26
+                  TextNode#text 248,827 32x13 "Browse"
+          Node#view 0,0 390x844
+        Node#screen 0,0 390x844
+          Node#folder 0,0 390x844
+            Node#view 0,0 390x844
+              VirtualScroll#rows 0,0 390x844
+                Spacer#before 0,0 390x168
+                Node#row 0,168 390x62
+                  Node#view 0,168 390x62
+                    Node#view 0,168 390x62
+                      Node#view 16,178 42x42
+                        ImageNode#image 20,185 34x28
+                      Node#view 70,180 276x38
+                        TextNode#text 70,180 276x20 "More"
+                        TextNode#text 70,202 276x16 ""
+                      ImageNode#image 358,191 16x16
+                Node#row 0,230 390x62
+                  Node#view 0,230 390x62
+                    Node#view 0,230 390x62
+                      Node#view 16,240 42x42
+                        ImageNode#image 16,240 42x42
+                      Node#view 70,242 304x38
+                        TextNode#text 70,242 304x20 "About Viewer.pdf"
+                        TextNode#text 70,264 304x16 "24 Nov 2026, 13:00 · 182 KB"
+                Node#row 0,292 390x62
+                  Node#view 0,292 390x62
+                    Node#view 0,292 390x62
+                      Node#view 16,302 42x42
+                        Node#view 1,302 72x42
+                          ImageNode#image 25,305 24x24
+                          TextNode#text 25,319 24x14 "M4A"
+                      Node#view 70,304 304x38
+                        TextNode#text 70,304 304x20 "Chimes.m4a"
+                        TextNode#text 70,326 304x16 "24 Nov 2026, 13:00 · 91 KB"
+                Node#row 0,354 390x62
+                  Node#view 0,354 390x62
+                    Node#view 0,354 390x62
+                      Node#view 16,364 42x42
+                        ImageNode#image 16,364 42x42
+                      Node#view 70,366 304x38
+                        TextNode#text 70,366 304x20 "Dusk panorama.jpg"
+                        TextNode#text 70,388 304x16 "24 Nov 2026, 13:00 · 293 KB"
+                Node#row 0,416 390x62
+                  Node#view 0,416 390x62
+                    Node#view 0,416 390x62
+                      Node#view 16,426 42x42
+                        ImageNode#image 16,426 42x42
+                      Node#view 70,428 304x38
+                        TextNode#text 70,428 304x20 "Mandelbrot.jpg"
+                        TextNode#text 70,450 304x16 "24 Nov 2026, 13:00 · 370 KB"
+                Node#row 0,478 390x62
+                  Node#view 0,478 390x62
+                    Node#view 0,478 390x62
+                      Node#view 16,488 42x42
+                        ImageNode#image 16,488 42x42
+                      Node#view 70,490 304x38
+                        TextNode#text 70,490 304x20 "Murmuration.jpg"
+                        TextNode#text 70,512 304x16 "24 Nov 2026, 13:00 · 294 KB"
+                Node#row 0,540 390x62
+                  Node#view 0,540 390x62
+                    Node#view 0,540 390x62
+                      Node#view 16,550 42x42
+                        ImageNode#image 16,550 42x42
+                      Node#view 70,552 304x38
+                        TextNode#text 70,552 304x20 "Planet.jpg"
+                        TextNode#text 70,574 304x16 "24 Nov 2026, 13:00 · 41 KB"
+                Node#row 0,602 390x62
+                  Node#view 0,602 390x62
+                    Node#view 0,602 390x62
+                      Node#view 16,612 42x42
+                        ImageNode#image 16,612 42x42
+                      Node#view 70,614 304x38
+                        TextNode#text 70,614 304x20 "Starlings.jpg"
+                        TextNode#text 70,636 304x16 "24 Nov 2026, 13:00 · 747 KB"
+                Node#row 0,664 390x62
+                  Node#view 0,664 390x62
+                    Node#view 0,664 390x62
+                      Node#view 16,674 42x42
+                        Node#view 1,674 72x42
+                          ImageNode#image 25,677 24x24
+                          TextNode#text 25,691 24x14 "MP4"
+                      Node#view 70,676 304x38
+                        TextNode#text 70,676 304x20 "Starlings.mp4"
+                        TextNode#text 70,698 304x16 "24 Nov 2026, 13:00 · 1.0 MB"
+                Spacer#after 0,726 390x50
+            Node#view 0,44 390x124
+              Node#view 0,44 390x124
+                TextNode#text 0,44 390x50 "Samples"
+                TextNode#text 0,88 390x26 "9 items"
+                Node#search 16,114 358x38
+                  ImageNode#image 26,125 17x17
+                  TextField#search-field 50,123 314x21 ""
+            Node#view 0,0 390x44
+              Node#view 0,0 390x44
+              Node#view 0,0 390x44
+                Node#nav-back 8,0 85x44
+                  ImageNode#image 8,10 24x24
+                  TextNode#text 34,11 51x22 "Browse"
+                Node#view 93,22 174x0
+                Node#select 267,0 71x44
+                  TextNode#text 277,11 51x22 "Select"
+                Node#view 338,0 44x44
+                  Node#view-menu 338,0 44x44
+                    ImageNode#image 349,11 22x22
+                TextNode#nav-title 96,11 198x22 "Samples"
+            Node#view 0,794 390x50
+              Node#tabs 0,794 390x50
+                Node#tab-recents 60,794 138x50
+                  ImageNode#image 116,798 26x26
+                  TextNode#text 110,827 37x13 "Recents"
+                Node#tab-browse 198,794 132x50
+                  ImageNode#image 251,798 26x26
+                  TextNode#text 248,827 32x13 "Browse"
+          Node#view 0,0 390x844
+        TextNode#text 0,0 1x1 "More"
+
+--- story Phone/Long press: Phone/Long press (136 lines)
+Node#root 0,0 390x844
+  Node#view 0,0 390x844
+    Node#phone 0,0 390x844
+      Node#stack 0,0 390x844
+        Node#screen 0,0 390x844
+          Node#nav-screen 0,0 390x844
+            Node#nav-scroll 0,0 390x844
+              Node#view 0,44 390x54
+                TextNode#text 0,44 390x50 "Browse"
+              Node#view 0,98 390x125
+                TextNode#locations-head 0,98 390x51 "Locations"
+                Node#locations 16,149 358x50
+                  Node#place-Samples 16,149 358x50
+                    ImageNode#image 32,163 22x22
+                    TextNode#text 69,163 262x21 "Samples"
+                    ImageNode#image 344,166 16x16
+            Node#view 0,0 390x44
+              Node#view 0,0 390x44
+              Node#view 0,0 390x44
+                Node#view 8,22 374x0
+                TextNode#nav-title 96,11 198x22 "Browse"
+            Node#view 0,794 390x50
+              Node#tabs 0,794 390x50
+                Node#tab-recents 60,794 138x50
+                  ImageNode#image 116,798 26x26
+                  TextNode#text 110,827 37x13 "Recents"
+                Node#tab-browse 198,794 132x50
+                  ImageNode#image 251,798 26x26
+                  TextNode#text 248,827 32x13 "Browse"
+          Node#view 0,0 390x844
+        Node#screen 0,0 390x844
+          Node#folder 0,0 390x844
+            Node#view 0,0 390x844
+              GridScroll#grid 0,0 390x844
+                Spacer#before 0,0 390x184
+                Node#row 0,184 390x164
+                  Node#cell 16,184 113x154
+                    Node#view 16,184 113x154
+                      Node#tile-More 16,184 113x154
+                        Node#view 16,184 112x112
+                          ImageNode#image 26,203 92x74
+                        TextNode#text 53,300 38x18 "More"
+                        TextNode#text 55,318 35x15 "Folder"
+                  Node#cell 139,184 112x154
+                    Node#view 139,184 112x154
+                      Node#tile-About Viewer.pdf 139,184 112x154
+                        Node#view 139,184 112x112
+                          ImageNode#image 139,184 112x112
+                        TextNode#text 156,300 77x18 "About Viewer.pdf"
+                        TextNode#text 143,318 104x15 "24 Nov 2026, 13:00"
+                  Node#cell 261,184 113x154
+                    Node#view 261,184 113x154
+                      Node#tile-Chimes.m4a 261,184 113x154
+                        Node#view 262,184 112x112
+                          Node#view 282,194 72x92
+                            ImageNode#image 306,222 24x24
+                            TextNode#text 306,261 24x14 "M4A"
+                        TextNode#text 279,300 77x18 "Chimes.m4a"
+                        TextNode#text 266,318 103x15 "24 Nov 2026, 13:00"
+                Node#row 0,348 390x164
+                  Node#cell 16,348 113x154
+                    Node#view 16,348 113x154
+                      Node#tile-Dusk panorama.jpg 16,348 113x154
+                        Node#view 16,348 112x112
+                          ImageNode#image 16,348 112x112
+                        TextNode#text 27,464 90x18 "Dusk panorama.jpg"
+                        TextNode#text 21,482 103x15 "24 Nov 2026, 13:00"
+                  Node#cell 139,348 112x154
+                    Node#view 139,348 112x154
+                      Node#tile-Mandelbrot.jpg 139,348 112x154
+                        Node#view 139,348 112x112
+                          ImageNode#image 139,348 112x112
+                        TextNode#text 143,464 103x18 "Mandelbrot.jpg"
+                        TextNode#text 143,482 104x15 "24 Nov 2026, 13:00"
+                  Node#cell 261,348 113x154
+                    Node#view 261,348 113x154
+                      Node#tile-Murmuration.jpg 261,348 113x154
+                        Node#view 262,348 112x112
+                          ImageNode#image 262,348 112x112
+                        TextNode#text 263,464 109x18 "Murmuration.jpg"
+                        TextNode#text 266,482 103x15 "24 Nov 2026, 13:00"
+                Node#row 0,512 390x164
+                  Node#cell 16,512 113x154
+                    Node#view 16,512 113x154
+                      Node#tile-Planet.jpg 16,512 113x154
+                        Node#view 16,512 112x112
+                          ImageNode#image 16,512 112x112
+                        TextNode#text 34,628 77x18 "Planet.jpg"
+                        TextNode#text 21,646 103x15 "24 Nov 2026, 13:00"
+                  Node#cell 139,512 112x154
+                    Node#view 139,512 112x154
+                      Node#tile-Starlings.jpg 139,512 112x154
+                        Node#view 139,512 112x112
+                          ImageNode#image 139,512 112x112
+                        TextNode#text 147,628 96x18 "Starlings.jpg"
+                        TextNode#text 143,646 104x15 "24 Nov 2026, 13:00"
+                  Node#cell 261,512 113x154
+                    Node#view 261,512 113x154
+                      Node#tile-Starlings.mp4 261,512 113x154
+                        Node#view 262,512 112x112
+                          Node#view 282,522 72x92
+                            ImageNode#image 306,550 24x24
+                            TextNode#text 306,589 24x14 "MP4"
+                        TextNode#text 269,628 97x18 "Starlings.mp4"
+                        TextNode#text 266,646 103x15 "24 Nov 2026, 13:00"
+                Spacer#after 0,676 390x66
+            Node#view 0,44 390x124
+              Node#view 0,44 390x124
+                TextNode#text 0,44 390x50 "Samples"
+                TextNode#text 0,88 390x26 "9 items"
+                Node#search 16,114 358x38
+                  ImageNode#image 26,125 17x17
+                  TextField#search-field 50,123 314x21 ""
+            Node#view 0,0 390x44
+              Node#view 0,0 390x44
+              Node#view 0,0 390x44
+                Node#nav-back 8,0 85x44
+                  ImageNode#image 8,10 24x24
+                  TextNode#text 34,11 51x22 "Browse"
+                Node#view 93,22 174x0
+                Node#select 267,0 71x44
+                  TextNode#text 277,11 51x22 "Select"
+                Node#view 338,0 44x44
+                  Node#view-menu 338,0 44x44
+                    ImageNode#image 349,11 22x22
+                TextNode#nav-title 96,11 198x22 "Samples"
+            Node#view 0,794 390x50
+              Node#tabs 0,794 390x50
+                Node#tab-recents 60,794 138x50
+                  ImageNode#image 116,798 26x26
+                  TextNode#text 110,827 37x13 "Recents"
+                Node#tab-browse 198,794 132x50
+                  ImageNode#image 251,798 26x26
+                  TextNode#text 248,827 32x13 "Browse"
+          Node#view 0,0 390x844
+        TextNode#text 0,0 1x1 "Samples"
+
+--- story Phone/PDF: Phone/PDF (171 lines)
+Node#root 0,0 390x844
+  Node#view 0,0 390x844
+    Node#phone 0,0 390x844
+      Node#stack 0,0 390x844
+        Node#screen 0,0 390x844
+          Node#nav-screen 0,0 390x844
+            Node#nav-scroll 0,0 390x844
+              Node#view 0,44 390x54
+                TextNode#text 0,44 390x50 "Browse"
+              Node#view 0,98 390x125
+                TextNode#locations-head 0,98 390x51 "Locations"
+                Node#locations 16,149 358x50
+                  Node#place-Samples 16,149 358x50
+                    ImageNode#image 32,163 22x22
+                    TextNode#text 69,163 262x21 "Samples"
+                    ImageNode#image 344,166 16x16
+            Node#view 0,0 390x44
+              Node#view 0,0 390x44
+              Node#view 0,0 390x44
+                Node#view 8,22 374x0
+                TextNode#nav-title 96,11 198x22 "Browse"
+            Node#view 0,794 390x50
+              Node#tabs 0,794 390x50
+                Node#tab-recents 60,794 138x50
+                  ImageNode#image 116,798 26x26
+                  TextNode#text 110,827 37x13 "Recents"
+                Node#tab-browse 198,794 132x50
+                  ImageNode#image 251,798 26x26
+                  TextNode#text 248,827 32x13 "Browse"
+          Node#view 0,0 390x844
+        Node#screen 0,0 390x844
+          Node#folder 0,0 390x844
+            Node#view 0,0 390x844
+              GridScroll#grid 0,0 390x844
+                Spacer#before 0,0 390x184
+                Node#row 0,184 390x164
+                  Node#cell 16,184 113x154
+                    Node#view 16,184 113x154
+                      Node#tile-More 16,184 113x154
+                        Node#view 16,184 112x112
+                          ImageNode#image 26,203 92x74
+                        TextNode#text 53,300 38x18 "More"
+                        TextNode#text 55,318 35x15 "Folder"
+                  Node#cell 139,184 112x154
+                    Node#view 139,184 112x154
+                      Node#tile-About Viewer.pdf 139,184 112x154
+                        Node#view 139,184 112x112
+                          ImageNode#image 139,184 112x112
+                        TextNode#text 156,300 77x18 "About Viewer.pdf"
+                        TextNode#text 143,318 104x15 "24 Nov 2026, 13:00"
+                  Node#cell 261,184 113x154
+                    Node#view 261,184 113x154
+                      Node#tile-Chimes.m4a 261,184 113x154
+                        Node#view 262,184 112x112
+                          Node#view 282,194 72x92
+                            ImageNode#image 306,222 24x24
+                            TextNode#text 306,261 24x14 "M4A"
+                        TextNode#text 279,300 77x18 "Chimes.m4a"
+                        TextNode#text 266,318 103x15 "24 Nov 2026, 13:00"
+                Node#row 0,348 390x164
+                  Node#cell 16,348 113x154
+                    Node#view 16,348 113x154
+                      Node#tile-Dusk panorama.jpg 16,348 113x154
+                        Node#view 16,348 112x112
+                          ImageNode#image 16,348 112x112
+                        TextNode#text 27,464 90x18 "Dusk panorama.jpg"
+                        TextNode#text 21,482 103x15 "24 Nov 2026, 13:00"
+                  Node#cell 139,348 112x154
+                    Node#view 139,348 112x154
+                      Node#tile-Mandelbrot.jpg 139,348 112x154
+                        Node#view 139,348 112x112
+                          ImageNode#image 139,348 112x112
+                        TextNode#text 143,464 103x18 "Mandelbrot.jpg"
+                        TextNode#text 143,482 104x15 "24 Nov 2026, 13:00"
+                  Node#cell 261,348 113x154
+                    Node#view 261,348 113x154
+                      Node#tile-Murmuration.jpg 261,348 113x154
+                        Node#view 262,348 112x112
+                          ImageNode#image 262,348 112x112
+                        TextNode#text 263,464 109x18 "Murmuration.jpg"
+                        TextNode#text 266,482 103x15 "24 Nov 2026, 13:00"
+                Node#row 0,512 390x164
+                  Node#cell 16,512 113x154
+                    Node#view 16,512 113x154
+                      Node#tile-Planet.jpg 16,512 113x154
+                        Node#view 16,512 112x112
+                          ImageNode#image 16,512 112x112
+                        TextNode#text 34,628 77x18 "Planet.jpg"
+                        TextNode#text 21,646 103x15 "24 Nov 2026, 13:00"
+                  Node#cell 139,512 112x154
+                    Node#view 139,512 112x154
+                      Node#tile-Starlings.jpg 139,512 112x154
+                        Node#view 139,512 112x112
+                          ImageNode#image 139,512 112x112
+                        TextNode#text 147,628 96x18 "Starlings.jpg"
+                        TextNode#text 143,646 104x15 "24 Nov 2026, 13:00"
+                  Node#cell 261,512 113x154
+                    Node#view 261,512 113x154
+                      Node#tile-Starlings.mp4 261,512 113x154
+                        Node#view 262,512 112x112
+                          Node#view 282,522 72x92
+                            ImageNode#image 306,550 24x24
+                            TextNode#text 306,589 24x14 "MP4"
+                        TextNode#text 269,628 97x18 "Starlings.mp4"
+                        TextNode#text 266,646 103x15 "24 Nov 2026, 13:00"
+                Spacer#after 0,676 390x66
+            Node#view 0,44 390x124
+              Node#view 0,44 390x124
+                TextNode#text 0,44 390x50 "Samples"
+                TextNode#text 0,88 390x26 "9 items"
+                Node#search 16,114 358x38
+                  ImageNode#image 26,125 17x17
+                  TextField#search-field 50,123 314x21 ""
+            Node#view 0,0 390x44
+              Node#view 0,0 390x44
+              Node#view 0,0 390x44
+                Node#nav-back 8,0 85x44
+                  ImageNode#image 8,10 24x24
+                  TextNode#text 34,11 51x22 "Browse"
+                Node#view 93,22 174x0
+                Node#select 267,0 71x44
+                  TextNode#text 277,11 51x22 "Select"
+                Node#view 338,0 44x44
+                  Node#view-menu 338,0 44x44
+                    ImageNode#image 349,11 22x22
+                TextNode#nav-title 96,11 198x22 "Samples"
+            Node#view 0,794 390x50
+              Node#tabs 0,794 390x50
+                Node#tab-recents 60,794 138x50
+                  ImageNode#image 116,798 26x26
+                  TextNode#text 110,827 37x13 "Recents"
+                Node#tab-browse 198,794 132x50
+                  ImageNode#image 251,798 26x26
+                  TextNode#text 248,827 32x13 "Browse"
+          Node#view 0,0 390x844
+        Node#screen 0,0 390x844
+          Node#full 0,0 390x844
+            Node#full-stage 0,0 390x844
+              Node#view 0,0 390x844
+                Node#stage 0,0 390x844
+                  ImageView#photo 0,0 390x844
+                  Node#pdf 0,0 390x844
+                    Node#pdf-scroll 0,0 390x844
+                      Node#pdf-pages 0,0 390x1576
+                        Node#page 16,16 358x507
+                          ImageNode#page-image 17,17 356x505
+                        Node#page 16,535 358x506
+                          ImageNode#page-image 17,536 356x504
+                        Node#page 16,1053 358x507
+                          ImageNode#page-image 17,1054 356x505
+                    TextNode#page-indicator 324,12 50x23 "1 / 3"
+            Node#view 0,0 390x44
+              Node#view 0,0 390x44
+              Node#view 0,0 390x44
+                Node#nav-back 8,0 94x44
+                  ImageNode#image 8,10 24x24
+                  TextNode#text 34,11 60x22 "Samples"
+                Node#view 102,22 236x0
+                Node#full-info 338,0 44x44
+                  ImageNode#image 349,11 22x22
+                TextNode#nav-title 96,11 198x22 "About Viewer.pdf"
+            Node#view 0,788 390x56
+              Node#tools 0,788 390x56
+                Node#info 12,794 60x50
+                  ImageNode#image 31,800 22x22
+                  TextNode#text 32,825 21x13 "Info"
+                Node#trash 318,794 60x50
+                  ImageNode#image 337,800 22x22
+                  TextNode#text 335,825 26x13 "Trash"
+          Node#view 0,0 390x844
+        TextNode#text 0,0 1x1 "1 / 3"
+
+--- story Phone/Select: Phone/Select (147 lines)
+Node#root 0,0 390x844
+  Node#view 0,0 390x844
+    Node#phone 0,0 390x844
+      Node#stack 0,0 390x844
+        Node#screen 0,0 390x844
+          Node#nav-screen 0,0 390x844
+            Node#nav-scroll 0,0 390x844
+              Node#view 0,44 390x54
+                TextNode#text 0,44 390x50 "Browse"
+              Node#view 0,98 390x125
+                TextNode#locations-head 0,98 390x51 "Locations"
+                Node#locations 16,149 358x50
+                  Node#place-Samples 16,149 358x50
+                    ImageNode#image 32,163 22x22
+                    TextNode#text 69,163 262x21 "Samples"
+                    ImageNode#image 344,166 16x16
+            Node#view 0,0 390x44
+              Node#view 0,0 390x44
+              Node#view 0,0 390x44
+                Node#view 8,22 374x0
+                TextNode#nav-title 96,11 198x22 "Browse"
+            Node#view 0,794 390x50
+              Node#tabs 0,794 390x50
+                Node#tab-recents 60,794 138x50
+                  ImageNode#image 116,798 26x26
+                  TextNode#text 110,827 37x13 "Recents"
+                Node#tab-browse 198,794 132x50
+                  ImageNode#image 251,798 26x26
+                  TextNode#text 248,827 32x13 "Browse"
+          Node#view 0,0 390x844
+        Node#screen 0,0 390x844
+          Node#folder 0,0 390x844
+            Node#view 0,0 390x844
+              GridScroll#grid 0,0 390x844
+                Spacer#before 0,0 390x184
+                Node#row 0,184 390x164
+                  Node#cell 16,184 113x154
+                    Node#view 16,184 113x154
+                      Node#tile-More 16,184 113x154
+                        Node#view 16,184 112x112
+                          ImageNode#image 26,203 92x74
+                          Node#pick 98,266 24x24
+                        TextNode#text 53,300 38x18 "More"
+                        TextNode#text 55,318 35x15 "Folder"
+                  Node#cell 139,184 112x154
+                    Node#view 139,184 112x154
+                      Node#tile-About Viewer.pdf 139,184 112x154
+                        Node#view 139,184 112x112
+                          ImageNode#image 139,184 112x112
+                          Node#pick 221,266 24x24
+                        TextNode#text 156,300 77x18 "About Viewer.pdf"
+                        TextNode#text 143,318 104x15 "24 Nov 2026, 13:00"
+                  Node#cell 261,184 113x154
+                    Node#view 261,184 113x154
+                      Node#tile-Chimes.m4a 261,184 113x154
+                        Node#view 262,184 112x112
+                          Node#view 282,194 72x92
+                            ImageNode#image 306,222 24x24
+                            TextNode#text 306,261 24x14 "M4A"
+                          Node#pick 344,266 24x24
+                        TextNode#text 279,300 77x18 "Chimes.m4a"
+                        TextNode#text 266,318 103x15 "24 Nov 2026, 13:00"
+                Node#row 0,348 390x164
+                  Node#cell 16,348 113x154
+                    Node#view 16,348 113x154
+                      Node#tile-Dusk panorama.jpg 16,348 113x154
+                        Node#view 16,348 112x112
+                          ImageNode#image 16,348 112x112
+                          Node#pick 98,430 24x24
+                        TextNode#text 27,464 90x18 "Dusk panorama.jpg"
+                        TextNode#text 21,482 103x15 "24 Nov 2026, 13:00"
+                  Node#cell 139,348 112x154
+                    Node#view 139,348 112x154
+                      Node#tile-Mandelbrot.jpg 139,348 112x154
+                        Node#view 139,348 112x112
+                          ImageNode#image 139,348 112x112
+                          Node#pick 221,430 24x24
+                        TextNode#text 143,464 103x18 "Mandelbrot.jpg"
+                        TextNode#text 143,482 104x15 "24 Nov 2026, 13:00"
+                  Node#cell 261,348 113x154
+                    Node#view 261,348 113x154
+                      Node#tile-Murmuration.jpg 261,348 113x154
+                        Node#view 262,348 112x112
+                          ImageNode#image 262,348 112x112
+                          Node#pick 344,430 24x24
+                            ImageNode#image 348,435 15x15
+                        TextNode#text 263,464 109x18 "Murmuration.jpg"
+                        TextNode#text 266,482 103x15 "24 Nov 2026, 13:00"
+                Node#row 0,512 390x164
+                  Node#cell 16,512 113x154
+                    Node#view 16,512 113x154
+                      Node#tile-Planet.jpg 16,512 113x154
+                        Node#view 16,512 112x112
+                          ImageNode#image 16,512 112x112
+                          Node#pick 98,594 24x24
+                            ImageNode#image 103,599 15x15
+                        TextNode#text 34,628 77x18 "Planet.jpg"
+                        TextNode#text 21,646 103x15 "24 Nov 2026, 13:00"
+                  Node#cell 139,512 112x154
+                    Node#view 139,512 112x154
+                      Node#tile-Starlings.jpg 139,512 112x154
+                        Node#view 139,512 112x112
+                          ImageNode#image 139,512 112x112
+                          Node#pick 221,594 24x24
+                            ImageNode#image 225,599 15x15
+                        TextNode#text 147,628 96x18 "Starlings.jpg"
+                        TextNode#text 143,646 104x15 "24 Nov 2026, 13:00"
+                  Node#cell 261,512 113x154
+                    Node#view 261,512 113x154
+                      Node#tile-Starlings.mp4 261,512 113x154
+                        Node#view 262,512 112x112
+                          Node#view 282,522 72x92
+                            ImageNode#image 306,550 24x24
+                            TextNode#text 306,589 24x14 "MP4"
+                          Node#pick 344,594 24x24
+                        TextNode#text 269,628 97x18 "Starlings.mp4"
+                        TextNode#text 266,646 103x15 "24 Nov 2026, 13:00"
+                Spacer#after 0,676 390x72
+            Node#view 0,44 390x124
+              Node#view 0,44 390x124
+                TextNode#text 0,44 390x50 "3 Selected"
+                TextNode#text 0,88 390x26 "9 items"
+                Node#search 16,114 358x38
+                  ImageNode#image 26,125 17x17
+                  TextField#search-field 50,123 314x21 ""
+            Node#view 0,0 390x44
+              Node#view 0,0 390x44
+              Node#view 0,0 390x44
+                Node#nav-back 8,0 85x44
+                  ImageNode#image 8,10 24x24
+                  TextNode#text 34,11 51x22 "Browse"
+                Node#select-all 93,0 105x44
+                  TextNode#text 103,11 85x22 "Select All"
+                Node#view 198,22 130x0
+                Node#done 328,0 54x44
+                  TextNode#text 338,11 34x22 "Done"
+                TextNode#nav-title 96,11 198x22 "3 Selected"
+            Node#view 0,788 390x56
+              Node#tools 0,788 390x56
+                Node#info 12,794 60x50
+                  ImageNode#image 31,800 22x22
+                  TextNode#text 32,825 21x13 "Info"
+                Node#trash 318,794 60x50
+                  ImageNode#image 337,800 22x22
+                  TextNode#text 335,825 26x13 "Trash"
+          Node#view 0,0 390x844
+        TextNode#text 0,0 1x1 "3 Selected"
+
+--- story Tablet/Folder, sidebar: Tablet/Folder, sidebar (145 lines)
+Node#root 0,0 390x844
+  Node#view 0,0 390x844
+    Node#window 0,0 390x844
+      Node#browser 0,0 390x844
+        Node#view 0,0 390x844
+          Node#main 0,0 390x844
+            Node#toolbar 1,0 389x52
+              Node#sidebar-toggle 9,8 36x36
+                ImageNode#image 19,18 16x16
+              Node#view 51,11 62x30
+                Node#back 51,11 30x30
+                  ImageNode#image 58,18 16x16
+                Node#forward 83,11 30x30
+                  ImageNode#image 90,18 16x16
+              Node#folder-title 119,11 81x30
+                TextNode#text 127,17 49x17 "Samples"
+                ImageNode#image 180,19 14x14
+              Node#view 206,26 51x0
+              Node#search 263,11 30x30
+                ImageNode#image 270,18 16x16
+              Node#view-menu 299,11 41x30
+                ImageNode#image 306,18 16x16
+                ImageNode#image 324,20 12x12
+              Node#view 346,8 36x36
+                Node#info-toggle 346,8 36x36
+                  ImageNode#image 356,18 16x16
+            Node#content 1,52 389x792
+              Node#list 1,52 389x792
+                GridScroll#grid 1,52 389x792
+                  Spacer#before 1,52 389x12
+                  Node#row 1,64 389x170
+                    Node#cell 13,64 181x166
+                      Node#view 13,64 181x167
+                        Node#view 13,64 181x167
+                          Node#view 45,68 116x116
+                            ImageNode#image 55,87 96x78
+                          TextNode#text 85,190 37x18 "More"
+                          TextNode#text 86,209 35x14 "Folder"
+                    Node#cell 198,64 180x166
+                      Node#view 198,64 180x167
+                        Node#view 198,64 180x167
+                          Node#view 230,68 116x116
+                            Node#view 234,72 108x108
+                              ImageNode#image 234,72 108x108
+                          TextNode#text 232,190 112x18 "About Viewer.pdf"
+                          TextNode#text 271,209 34x14 "182 KB"
+                  Node#row 1,234 389x170
+                    Node#cell 13,234 181x166
+                      Node#view 13,234 181x167
+                        Node#view 13,234 181x167
+                          Node#view 45,238 116x116
+                            Node#view 67,250 72x92
+                              ImageNode#image 91,278 24x24
+                              TextNode#text 91,317 24x14 "M4A"
+                          TextNode#text 66,360 75x18 "Chimes.m4a"
+                          TextNode#text 89,379 29x14 "91 KB"
+                    Node#cell 198,234 180x166
+                      Node#view 198,234 180x167
+                        Node#view 198,234 180x167
+                          Node#view 230,238 116x116
+                            Node#view 234,242 108x108
+                              ImageNode#image 234,242 108x108
+                          TextNode#text 229,360 118x18 "Dusk panorama.jpg"
+                          TextNode#text 271,379 34x14 "293 KB"
+                  Node#row 1,404 389x170
+                    Node#cell 13,404 181x166
+                      Node#view 13,404 181x167
+                        Node#view 13,404 181x167
+                          Node#view 45,408 116x116
+                            Node#view 49,412 108x108
+                              ImageNode#image 49,412 108x108
+                          TextNode#text 54,530 99x18 "Mandelbrot.jpg"
+                          TextNode#text 86,549 35x14 "370 KB"
+                    Node#cell 198,404 180x166
+                      Node#view 198,404 180x167
+                        Node#view 198,404 180x167
+                          Node#view 230,408 116x116
+                            Node#view 234,412 108x108
+                              ImageNode#image 234,412 108x108
+                          TextNode#text 235,530 106x18 "Murmuration.jpg"
+                          TextNode#text 271,549 34x14 "294 KB"
+                  Node#row 1,574 389x170
+                    Node#cell 13,574 181x166
+                      Node#view 13,574 181x167
+                        Node#view 13,574 181x167
+                          Node#view 45,578 116x116
+                            Node#view 49,582 108x108
+                              ImageNode#image 49,582 108x108
+                          TextNode#text 66,700 75x18 "Planet.jpg"
+                          TextNode#text 89,719 29x14 "41 KB"
+                    Node#cell 198,574 180x166
+                      Node#view 198,574 180x167
+                        Node#view 198,574 180x167
+                          Node#view 230,578 116x116
+                            Node#view 234,582 108x108
+                              ImageNode#image 234,582 108x108
+                          TextNode#text 241,700 93x18 "Starlings.jpg"
+                          TextNode#text 271,719 34x14 "747 KB"
+                  Node#row 1,744 389x170
+                    Node#cell 13,744 181x166
+                      Node#view 13,744 181x167
+                        Node#view 13,744 181x167
+                          Node#view 45,748 116x116
+                            Node#view 67,760 72x92
+                              ImageNode#image 91,788 24x24
+                              TextNode#text 91,827 24x14 "MP4"
+                          TextNode#text 57,870 93x18 "Starlings.mp4"
+                          TextNode#text 86,889 35x14 "1.0 MB"
+                  Spacer#after 1,914 389x12
+      Node#drawer-edge 0,0 20x844
+      Node#drawer-scrim 0,0 390x844
+      Node#drawer 0,0 300x844
+        Node#sidebar 20,8 236x99
+          Node#view 30,16 216x91
+            Node#view 30,16 216x30
+              Node#level-back 32,18 74x26
+                ImageNode#image 34,24 14x14
+                TextNode#text 50,24 48x15 "Overview"
+              Node#view 108,31 104x0
+              Node#level-home 214,16 30x30
+                ImageNode#image 221,23 16x16
+            Node#view 30,52 216x21
+              TextNode#level-title 38,54 53x19 "Samples"
+              Node#view 99,63 85x0
+              TextNode#text 192,56 46x15 "1 folder"
+            Node#scroll 30,79 216x28
+              Node#button 30,79 216x28
+                ImageNode#image 38,85 16x16
+                TextNode#text 62,85 176x16 "More"
+      Node#viewer 0,0 390x844
+        Node#viewer-bar 0,0 390x52
+          Node#back-pill 14,11 106x30
+            ImageNode#image 20,18 16x16
+            ImageNode#image 42,19 14x14
+            TextNode#text 62,18 46x16 "Samples"
+          TextNode#viewer-title 128,18 210x16 "Viewer"
+          Node#viewer-trash 346,11 30x30
+            ImageNode#image 353,18 16x16
+        Node#stage 0,52 390x792
+          ImageView#photo 0,52 390x792
+          Node#message 0,52 390x792
+            TextNode#title 140,425 110x22 "No image open"
+            TextNode#detail 195,455 0x16 ""
+      Node#window-start 16,0 0x40
+      Node#window-end 390,0 0x0
