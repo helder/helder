@@ -66,8 +66,8 @@ class Compositor implements RenderIdle {
 	var drained = -1e9;
 	var stepped = -1e9;
 	var drew = -1e9;
-	// (whether the last frame waited for the swap chain's latency object
-	// (Direct3D 11's): it paces the next, due as soon as this one is drawn.
+	// (whether the last frame was presented to a swap chain whose latency
+	// object paces the next (Direct3D 11's): due as soon as it is drawn.
 	// Half a period after the draw, the render thread's timed wait, is
 	// Windows' 15.6 ms tick, or two of them after a slow draw (WARP's): the
 	// next vblank missed, the frames locked at half the display's rate)
@@ -370,11 +370,8 @@ class Compositor implements RenderIdle {
 		// drained meanwhile)
 		if (layers == null || layers.single) {
 			lock.release();
-			var w0 = haxe.Timer.stamp();
 			r.impl.waitFrame();
-			var waited = haxe.Timer.stamp() - w0 > 0.001;
 			lock.acquire();
-			paced = waited;
 			if (haxe.Timer.stamp() - drained < period * 0.6) {
 				lock.release();
 				return;
@@ -383,7 +380,7 @@ class Compositor implements RenderIdle {
 			mirror.step(at);
 			stepped = haxe.Timer.stamp();
 			offsetsNow(f, at);
-		} else paced = false;
+		}
 		for (i in 0...now.length)
 			shownAt[i] = now[i];
 		animAt = at;
@@ -396,12 +393,16 @@ class Compositor implements RenderIdle {
 			() -> @:privateAccess n.placeNative(x, y, w, h, on);
 		}];
 		posts.resize(0);
-		if (layers != null && !layers.single) layers.show(r, f, now, at, f.overlay ? barShown : null, false, moves) else {
+		if (layers != null && !layers.single) {
+			paced = false;
+			layers.show(r, f, now, at, f.overlay ? barShown : null, false, moves);
+		} else {
 			// (the window's layer alone since the program's last frame: drawn onto it, taking its drawable)
 			if (layers != null) layers.quiet(r, false);
 			for (m in moves)
 				helder.os.OsThread.post(m);
 			draw(r, f, null, at);
+			paced = r.impl.paces();
 			if (layers != null) layers.windowShown();
 		}
 		var at = haxe.Timer.stamp(), d = at - drew;
