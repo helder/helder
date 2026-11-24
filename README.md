@@ -180,10 +180,10 @@ in `compute()`; GPU particles, cloth and soft bodies as its first users.
   tuned against it elsewhere and in screenshots, on every back end; next
   its frames on the compositor's thread and the system's layers.
 
-Windows of any shape: a transparent background (premultiplied alpha:
-macOS and Wayland first, Windows through DirectComposition, X11 with a
-compositing manager), clicks passing through clear pixels, and the
-system's materials behind them (macOS vibrancy and glass, Windows 11 Mica
+Windows of any shape: a transparent background is in (premultiplied
+alpha: macOS, Wayland, Windows through DirectComposition, X11 with a
+compositing manager, the browser's canvas); next clicks passing through
+clear pixels, and the system's materials behind them (macOS vibrancy and glass, Windows 11 Mica
 and Acrylic, KDE's blur). Its first user, an example app: a time tracker
 drawn on the screen's right edge, nothing behind it, full height within
 the work area (menu bar, notch, dock and taskbar kept clear), scrolling

@@ -185,7 +185,8 @@ class D3D11Backend {
 		nils = LibC.malloc(8 * 16);
 		LibC.memset(nils, 0, 8 * 16);
 		var level:Ptr<Int32> = scratch.offset(2).raw();
-		var composed = compose && surface.kind == Win32;
+		// (a transparent window's too: its alpha is DirectComposition's to compose)
+		var composed = (compose || surface.transparent) && surface.kind == Win32;
 		compose = false;
 		#if hxmc.dev_host
 		// (the host keeps the swap chain, not a composition of this build's)
@@ -490,7 +491,7 @@ class D3D11Backend {
 			d.value.Flags = D3D.SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 			var root = composed ? DcRoot.make(dxgi, surface.handle) : null;
 			if (root != null) {
-				d.value.AlphaMode = D3D.ALPHA_MODE_IGNORE;
+				d.value.AlphaMode = surface.transparent ? D3D.ALPHA_MODE_PREMULTIPLIED : D3D.ALPHA_MODE_IGNORE;
 				var hr = IDXGIFactory2.CreateSwapChainForComposition(factory, device, d, Ptr.nil(), scratch);
 				if (hr >= 0 && IDCompositionVisual.SetContent(root.window, scratch.value) >= 0 && IDCompositionDevice.Commit(root.device) >= 0) {
 					composition = root;
@@ -500,6 +501,8 @@ class D3D11Backend {
 				if (hr >= 0) Com.release(scratch.value);
 				root.dispose();
 				d.value.AlphaMode = 0;
+				if (surface.transparent) Sys.println("helder.gfx: the window opaque: no DirectComposition for its alpha");
+				surface.see(false);
 			}
 			var hr = IDXGIFactory2.CreateSwapChainForHwnd(factory, device, surface.handle, d, Ptr.nil(), Ptr.nil(), scratch);
 			if (hr >= 0) IDXGIFactory2.MakeWindowAssociation(factory, surface.handle, D3D.MWA_NO_ALT_ENTER);

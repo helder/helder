@@ -827,6 +827,8 @@ class WaylandWindow {
 		var bw = bufferW(), bh = bufferH();
 		egl = WaylandEgl.wl_egl_window_create(wlSurface, bw, bh);
 		surface = new Surface(Wayland, display, egl, bw, bh);
+		// (EGL's buffers are ARGB8888, premultiplied, and no opaque region is set: the compositor blends them)
+		surface.see(owner.clear);
 		applyScale();
 		drawBar();
 		WaylandClient.wl_display_flush(display);

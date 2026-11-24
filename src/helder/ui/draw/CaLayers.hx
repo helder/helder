@@ -241,10 +241,7 @@ class CaLayers extends LayerSplit {
 		c.begin(Replay.BEGIN_PASS);
 		c.int(1);
 		c.int(cast LoadOp.Clear);
-		c.float(opaque ? (bg >> 16 & 0xFF) / 255 : 0);
-		c.float(opaque ? (bg >> 8 & 0xFF) / 255 : 0);
-		c.float(opaque ? (bg & 0xFF) / 255 : 0);
-		c.float(opaque ? 1 : 0);
+		CompositeFrame.clearTo(c, opaque ? bg : 0);
 		c.int(0);
 		c.int(0);
 		c.int(Replay.NONE);
