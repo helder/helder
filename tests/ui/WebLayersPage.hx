@@ -5,8 +5,10 @@ import helder.ui.draw.UiWindow;
 // Chromium): a 400x300 window, a header over a list of 60 rows (its
 // content a layer of the page's in its scroll view, taller than the
 // window: tiles), a round button over the list (what is over it: a layer
-// of its own). B keeps the program busy 1.5 s. After each frame whose state
-// changed it prints "layers list=y | busy=n".
+// of its own), a box in the header that M slides 200 points and back (a
+// transition of 1 s: a layer that moves on its own). B keeps the program
+// busy 1.5 s. After each frame whose state changed it prints "layers
+// list=y | busy=n | slid=n".
 class WebLayersPage {
 	static function main() {
 		var w = new UiWindow("Layers", 400, 300);
@@ -23,13 +25,21 @@ class WebLayersPage {
 		}
 		var fab = new Node("fab");
 		fab.style.set({position: Absolute, right: 20, bottom: 20, width: 44, height: 44, radius: 22, background: Color.rgb(0xdc2626)});
+		var box = new Node("box");
+		box.style.set({position: Absolute, left: 120, top: 8, width: 24, height: 24, radius: 4, background: Color.rgb(0xfacc15)});
+		box.style.transform = Transform.parse("translate(0px, 0px)");
+		box.style.transition = Transition.parse("transform 1s linear");
 		page.append(header);
 		page.append(list);
 		page.append(fab);
+		page.append(box);
 		w.root.append(page);
-		var busy = 0;
+		var busy = 0, slid = 0;
 		page.focusable = true;
-		page.onKeyDown = e -> if (e.key == "b".code) {
+		page.onKeyDown = e -> if (e.key == "m".code) {
+			slid++;
+			box.style.transform = Transform.parse(slid % 2 == 1 ? "translate(200px, 0px)" : "translate(0px, 0px)");
+		} else if (e.key == "b".code) {
 			busy++;
 			var end = haxe.Timer.stamp() + 1.5;
 			while (haxe.Timer.stamp() < end) {}
@@ -37,7 +47,7 @@ class WebLayersPage {
 		}
 		var last = "";
 		w.onFrame = () -> {
-			var s = 'layers list=${list.scrollY} | busy=$busy';
+			var s = 'layers list=${list.scrollY} | busy=$busy | slid=$slid';
 			if (s != last) {
 				last = s;
 				Sys.println(s);

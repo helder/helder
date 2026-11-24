@@ -5,8 +5,10 @@
 // shown (a screenshot) the same as with every layer on the window's
 // (HELDER_SYSTEM_LAYERS=flat), at rest and scrolled by the wheel; in a
 // worker, the list scrolled by the wheel while the program is busy (B):
-// shown moved at once, as the program draws it once it is done; a frame
-// read back (host.gfx.readPixels) drawn whole, as the flat window's.
+// shown moved at once, as the program draws it once it is done; the box's
+// slide (a layer that moves on its own: a Web Animation) going on while
+// the program is busy, where the flat window's would not; a frame read
+// back (host.gfx.readPixels) drawn whole, as the flat window's.
 //   node tests/ui/web-layers.mjs <WebLayersPage.wasm>
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -143,6 +145,24 @@ try {
 				const same = await p.evaluate(([a, b, r]) => window.diff(a, b, ...r), [during, after, LIST]);
 				check(`${mode}: scrolled while the program is busy: shown at once, as the program then draws it`,
 					top1 < top0 && !busy.includes('busy=1') && moved > 1000 && same <= 40 && done.includes('busy=1'), `top ${top0} -> ${top1}, ${busy} -> ${done}; moved ${moved}, then ${same} differ`);
+				// (the box sliding, the program busy from a tenth of a second in: on the page, not on the flat window)
+				// (the header within the window's edges: the busy scroll above left a focus ring on this one)
+				const HEADER = [100, 3, 397, 37];
+				const slides = [];
+				for (const r of [p, q]) {
+					await r.mouse.click(200, 20);
+					await r.keyboard.press('m');
+					await r.waitForTimeout(100);
+					await r.keyboard.press('b');
+					await r.waitForTimeout(150);
+					const s0 = await shot(r);
+					await r.waitForTimeout(400);
+					slides.push(await r.evaluate(([a, b, h]) => window.diff(a, b, ...h), [s0, await shot(r), HEADER]));
+					await r.waitForTimeout(1600);
+				}
+				check(`${mode}: a slide goes on while the program is busy, as a Web Animation`, slides[0] > 100 && slides[1] === 0, `${slides[0]} pixels moved, the flat window's ${slides[1]}`);
+				const end = await p.evaluate(([a, b, h]) => window.diff(a, b, ...h), [await shot(p), await shot(q), HEADER]);
+				check(`${mode}: slid, shown as the flat window shows it`, end <= 40, `${end} pixels differ`);
 			}
 			await p.close();
 			await q.close();

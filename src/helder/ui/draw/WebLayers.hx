@@ -11,9 +11,10 @@ import hxmc.unsafe.*;
 // window's the canvas itself. A top-level scroller's content is placed in
 // its scroll view (WebScroll's element), so that the browser moves it as
 // it scrolls, at the screen's rate, while the program draws nothing or is
-// busy; what is over it in the layer of scroll views over the canvas,
-// stacked in paint order (a layer that moves on its own stays drawn:
-// unfit). A frame the page reads back (host.gfx.readPixels) is drawn
+// busy; what is over it, and a layer that moves on its own (Mover) in
+// the layer of scroll views over the canvas, stacked in paint order, its
+// transform and opacity a Web Animation sampled from the program's
+// (animate). A frame the page reads back (host.gfx.readPixels) is drawn
 // whole onto the canvas (priming), the page's layers left; a scroller
 // with a sticky node in it stays drawn (fits). Each is drawn
 // by the window's own device into the window's canvas, in tiles of the
@@ -76,17 +77,6 @@ class WebLayers extends LayerSplit {
 	override public function show(r:Replay, f:CompositeFrame, now:Array<Float>, t:Float, shown:Null<Array<Float>>, drawn:Bool, moves:Array<Void->Void>) {
 		if (f.buffers.length == 0 || f.pipeline == null) return;
 		compose(f, now, t, shown, drawn);
-		// (a layer that moves on its own stays drawn: the page would read it each frame)
-		var movers = false;
-		for (u in units)
-			if (u.kind == LayerPlane.MOVER) {
-				unfit.set(u.key, true);
-				movers = true;
-			}
-		if (movers) {
-			split = -1;
-			compose(f, now, t, shown, drawn);
-		}
 		var W = f.width, H = f.height, s = f.scale, b = f.buffers[ring = (ring + 1) % f.buffers.length], snaps = 0;
 		var buf = new StringBuf();
 		buf.add('{"s":');
@@ -122,7 +112,9 @@ class WebLayers extends LayerSplit {
 				x += p.drawnX - v.x;
 				y += p.drawnY - v.y;
 			}
-			buf.add('{"i":${p.id},"z":$z,"v":${v == null ? 0 : v.id},"x":${num(x)},"y":${num(y)},"w":${num(p.pw / s)},"h":${num(p.ph / s)},"tw":$tw,"th":$th,"c":$cols,"n":${cols * rows},"t":[');
+			buf.add('{"i":${p.id},"z":$z,"v":${v == null ? 0 : v.id},"x":${num(x)},"y":${num(y)},"w":${num(p.pw / s)},"h":${num(p.ph / s)},"tw":$tw,"th":$th,"c":$cols,"n":${cols * rows},');
+			if (p.kind == LayerPlane.MOVER) animate(f, p.index, t, buf);
+			buf.add('"t":[');
 			var any = false;
 			for (k in 0...cols * rows) {
 				var tx = (k % cols) * tw, ty = Std.int(k / cols) * th;
@@ -177,6 +169,24 @@ class WebLayers extends LayerSplit {
 	}
 
 	var sent = "";
+
+	// (a layer that moves on its own: its transform (the frame's pixels) and
+	// opacity from now as the program samples them, a frame's worth apart
+	// until it rests, 2 s at most (the program's next frames send what
+	// follows): the page's Web Animation, run by the browser while the
+	// program is busy)
+	function animate(f:CompositeFrame, m:Int, t:Float, buf:StringBuf) {
+		var until = f.movers[m].until, n = Std.int(Math.max(1, Math.min(120, Math.ceil((until - t) * 60) + 1)));
+		buf.add('"m":[');
+		for (i in 0...n) {
+			f.sample(f.offsets, t + i / 60);
+			for (q in 0...7) {
+				if (i > 0 || q > 0) buf.add(',');
+				buf.add(num(f.moved[m * 7 + q]));
+			}
+		}
+		buf.add('],');
+	}
 
 	// (a frame read back, the page's readPixels': drawn whole onto the
 	// canvas, as the reference draws it, the page's layers left as they are)

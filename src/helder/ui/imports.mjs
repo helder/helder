@@ -437,16 +437,17 @@ export default function ui(host) {
 	hxmc_ui.layers_reading = () => (host.gfx?.reading?.() ? 1 : 0);
 	hxmc_ui.layers_snap = (canvas, w, h) => snaps.push(createImageBitmap(host.handles.get(canvas), 0, 0, w, h)) - 1;
 	hxmc_ui.layers_update = (canvas, json) => {
-		const list = snaps, u = host.string(json);
+		// (when: its moving layers' animations start from this moment, the page's time)
+		const list = snaps, u = host.string(json), at = performance.timeOrigin + performance.now();
 		snaps = [];
 		const apply = host.page ? host.page.forward('hxmc_ui', 'layers_apply', '') : hxmc_ui.layers_apply;
-		updates = updates.then(() => Promise.all(list)).then((bitmaps) => apply(canvas, u, bitmaps), (e) => console.error('helder.ui: a layer not read:', e));
+		updates = updates.then(() => Promise.all(list)).then((bitmaps) => apply(canvas, u, bitmaps, at), (e) => console.error('helder.ui: a layer not read:', e));
 	};
 	// the page half: each layer a box of canvases (its tiles, bitmaprenderer's),
 	// a scroller's content in its scroll view's spacer (scrolled by the
 	// browser), the others in the layer of scroll views, stacked by z
 	const layered = new Map();
-	hxmc_ui.layers_apply = (canvas, json, bitmaps) => {
+	hxmc_ui.layers_apply = (canvas, json, bitmaps, at) => {
 		const c = host.handles.get(canvas), u = JSON.parse(json), l = scrollLayer(c), views = scrollers.get(canvas);
 		let all = layered.get(canvas);
 		if (!all) layered.set(canvas, (all = new Map()));
@@ -487,6 +488,23 @@ export default function ui(host) {
 			st.width = v.w * k + 'px';
 			st.height = v.h * k + 'px';
 			st.zIndex = s ? '' : v.z;
+			// (a moving layer: its transform about the frame's origin, its opacity, from the program's samples a frame apart)
+			if (v.m) {
+				const kf = [];
+				for (let i = 0; i < v.m.length; i += 7) {
+					const m = v.m;
+					kf.push({ transform: `matrix(${m[i]},${m[i + 1]},${m[i + 2]},${m[i + 3]},${m[i + 4] * px},${m[i + 5] * px})`, opacity: m[i + 6] });
+				}
+				st.transformOrigin = `${-v.x * k}px ${-v.y * k}px`;
+				a.anim?.cancel();
+				a.anim = null;
+				st.transform = kf[kf.length - 1].transform;
+				st.opacity = kf[kf.length - 1].opacity;
+				if (kf.length > 1) {
+					a.anim = a.e.animate(kf, { duration: (kf.length - 1) * 1000 / 60, fill: 'both' });
+					a.anim.currentTime = Math.max(0, performance.timeOrigin + performance.now() - at);
+				}
+			}
 			for (const [n, w, h, b] of v.t) {
 				let t = a.tiles[n];
 				if (!t) {
