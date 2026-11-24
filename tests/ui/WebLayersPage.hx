@@ -8,7 +8,8 @@ import helder.ui.draw.UiWindow;
 // of its own), a box in the header that M slides 200 points and back (a
 // transition of 1 s: a layer that moves on its own). B keeps the program
 // busy 1.5 s. After each frame whose state changed it prints "layers
-// list=y | busy=n | slid=n".
+// list=y | busy=n | slid=n | bars=page|drawn" (the list's scrollbars the
+// page's own, or drawn).
 class WebLayersPage {
 	static function main() {
 		var w = new UiWindow("Layers", 400, 300);
@@ -47,7 +48,8 @@ class WebLayersPage {
 		}
 		var last = "";
 		w.onFrame = () -> {
-			var s = 'layers list=${list.scrollY} | busy=$busy | slid=$slid';
+			var bars = @:privateAccess w.ui.barsOf;
+			var s = 'layers list=${list.scrollY} | busy=$busy | slid=$slid | bars=${bars != null && bars(list) ? "page" : "drawn"}';
 			if (s != last) {
 				last = s;
 				Sys.println(s);

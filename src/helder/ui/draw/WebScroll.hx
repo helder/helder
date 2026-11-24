@@ -34,9 +34,14 @@ class WebScroll {
 	public function new(canvas:Int, ui:Ui) {
 		this.ui = ui;
 		this.canvas = canvas;
-		// (the scrollbars helder's, drawn in order with what the tree draws: the page's would be over all of it)
+		// (the scrollbars helder's, drawn in order with what the tree draws: the page's would be over all of it;
+		// but a view holding its scroller's content as a layer of the page's, stacked, whose bars overlay: the page's)
 		ui.nativeBars = false;
+		ui.barsOf = n -> pageBars.exists(n);
 	}
+
+	// (the scrollers whose views show the page's own scrollbars)
+	final pageBars = new Map<Node, Bool>();
 
 	// (UiWindow: after each frame)
 	public function update() {
@@ -97,6 +102,8 @@ class WebScroll {
 			if (!seen.exists(id)) {
 				sent.remove(id);
 				sentCovers.remove(id);
+				var n = views.get(id);
+				if (n != null) pageBars.remove(n);
 				views.remove(id);
 				if (!first) buf.add(',');
 				first = false;
@@ -116,6 +123,15 @@ class WebScroll {
 		Arena.scoped(a -> {
 			var p:Ptr<Int32> = a.alloc(12);
 			while (WebScrolls.scroll_event(p) != 0) {
+				// (-id: whether that view shows the page's scrollbars)
+				if (p[0] < 0) {
+					var n = views.get(-p[0]);
+					if (n != null) {
+						if (p[1] != 0) pageBars.set(n, true) else pageBars.remove(n);
+						ui.requestFrame();
+					}
+					continue;
+				}
 				var id = p[0], n = views.get(id), last = sent.get(id);
 				if (n == null) continue;
 				var x = p[1] / 256, y = p[2] / 256;
@@ -129,6 +145,7 @@ class WebScroll {
 
 	public function dispose() {
 		ui.nativeBars = false;
+		ui.barsOf = null;
 		ui.nativeScroll = false;
 		update();
 	}
