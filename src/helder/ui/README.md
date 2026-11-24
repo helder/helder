@@ -458,6 +458,70 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
 - **Shortcuts**: the keymap's bindings to actions (below), run when the
   focused node does not take the key; menu items show them.
 
+## VirtualGrid and Selection
+
+`VirtualGrid` (markup, `UiFlow`) lays a list's items out in fixed-size
+cells, as a file browser's icons: as many columns of at least
+`cellWidth` as fit, widened to fill the row, `gap` apart (4) and
+`padding` in (12). It is a `GridScroll`, a `VirtualScroll` whose rows
+are the grid's rows, so only the rows in view are made, for any number
+of items. A resize keeps the first item in view where it was; a change
+to the list makes again only the rows whose keys (`by`) changed, and
+writes the others' items. `ref` gives the `GridScroll`: its
+`selection`, `columns`, `scrollToIndex(i, align)` and `focusIndex(i)`,
+in item indices.
+
+```haxe
+import helder.ui.view.UiFlow.VirtualGrid;
+
+<VirtualGrid each={files} by={f -> f.path} cellWidth={120} cellHeight={90}
+	textOf={f -> f.name} onActivate={open} label="Files">
+	{(file, i) -> <text>{file().name}</text>}
+</VirtualGrid>
+```
+
+```tsx
+import { Selection, VirtualGrid } from "helder/ui";
+
+const picked = new Selection(i => files()[i].path, () => files().length);
+<VirtualGrid each={files} by={f => f.path} cellWidth={120} cellHeight={90}
+  selection={picked} textOf={f => f.name} onActivate={open} label="Files">
+  {file => <text>{file().name}</text>}
+</VirtualGrid>
+```
+
+`Selection` is the selection of an ordered list, held by key (`keyOf`,
+`count`: the list as it is now), so it survives sorting, filtering and
+items arriving: `has`, `size`, `keys()` (in the list's order), the
+`anchor` and `focus` keys, `focusIndex()`; `select`, `toggle`, `extend`
+(the range from the anchor, replaced as it grows or shrinks, the keys
+toggled outside it kept), `selectAll`, `clear`, `setKeys` (a marquee's);
+`prune()` forgets keys no longer in the list. `version` is a signal
+bumped on each change. A grid without one makes its own.
+
+The grid's input, as desktop file browsers have it: a press selects (Shift
+extends, Cmd on macOS and Ctrl elsewhere toggles); a press on a selected
+item keeps the selection until it is released without a drag (so the
+selection can be dragged); a double click or Enter is `onActivate`, given
+the selected indices; a right press is `onContextMenu(index, x, y)`, the
+item selected first if it was not. The arrows move in two dimensions (Left
+and Right across rows), with Home, End, Page Up and Down: alone they
+select, with Shift extend, with Cmd/Ctrl move only the focus (Cmd/Ctrl
+Space toggles it); Cmd/Ctrl A selects all, Escape clears. Typing finds the
+first item from the focus on whose `textOf` starts with what was typed in
+the last second (wrapping). A drag from empty space draws a marquee
+(slot `grid-marquee`) and selects the cells it crosses, counted rather
+than looked for (rows not made too), scrolling near the top and bottom
+edges; Shift or Cmd/Ctrl at its start adds to the selection, a click on
+empty space clears it. To assistive technology a grid of rows of
+multi-selectable cells, each with its place among all.
+
+`VirtualList` takes the same `selection`, `onActivate` (then given the
+selected indices), `onContextMenu` and `textOf`, in one dimension;
+without a `selection` its `selected` key and `onActivate` given an item
+are as they were. Cells (slot `grid-cell`) and a selection's rows carry
+`data-selected` and `data-focused`; nothing else is styled.
+
 ## Navigation
 
 `Router` (helder.ui) holds screens by path as a stack, `Stack` shows it

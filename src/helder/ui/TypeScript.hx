@@ -7,12 +7,12 @@ package helder.ui;
 // Its widgets, controls and code editor are whole packages: a class added
 // to them is the program's too.
 @:typescript("helder/ui")
-@:typescript.classes(helder.ui.draw.UiWindow, helder.ui.Event, helder.ui.Key, helder.ui.VirtualScroll, helder.ui.Clock, helder.ui.platform.WebViewEvent, helder.ui.platform.WebContent, helder.ui.platform.WebResponse)
+@:typescript.classes(helder.ui.draw.UiWindow, helder.ui.Event, helder.ui.Key, helder.ui.VirtualScroll, helder.ui.Selection, helder.ui.GridScroll, helder.ui.Clock, helder.ui.platform.WebViewEvent, helder.ui.platform.WebContent, helder.ui.platform.WebResponse)
 @:typescript.classes(helder.ui.Node, helder.ui.TextNode, helder.ui.view.UiFlow, helder.ui.SafeArea, helder.ui.nav.Router)
 @:typescript.packages(helder.ui.widgets, helder.ui.controls, helder.ui.code)
 // (an icon or a drawing: made by Icons.parse and Icons.svg, given to <image src>)
-@:typescript.types(helder.canvas.Svg, helder.ui.nav.Router.RouteParams, helder.ui.nav.Screens.StackTransition)
-@:typescript.functions(tone = helder.ui.controls.Look.tone, Surface = helder.ui.draw.UiWindow.Surface, VirtualList = helder.ui.view.UiFlow.VirtualList, Stack = helder.ui.nav.Screens.Stack)
+@:typescript.types(helder.canvas.Svg, helder.ui.view.UiFlow.VirtualListProps, helder.ui.nav.Router.RouteParams, helder.ui.nav.Screens.StackTransition)
+@:typescript.functions(tone = helder.ui.controls.Look.tone, Surface = helder.ui.draw.UiWindow.Surface, VirtualList = helder.ui.view.UiFlow.VirtualList, VirtualGrid = helder.ui.view.UiFlow.VirtualGrid, Stack = helder.ui.nav.Screens.Stack)
 @:typescript.jsx(neutral)
 @:build(helder.typescript.api.Manifest.build())
 class TypeScript {}

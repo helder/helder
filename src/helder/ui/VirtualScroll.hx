@@ -71,6 +71,9 @@ class VirtualScroll extends Node {
 	// (a row scrolled to, held until settled; its alignment: 0 start, 1 center, 2 end)
 	var target = -1;
 	var targetAlign = 0;
+	// (the grid's padding at the ends of its rows)
+	var insetTop = 0.0;
+	var insetBottom = 0.0;
 
 	public function new(?tag:String, estimate = 44.0) {
 		super(tag ?? "virtual-list");
@@ -107,17 +110,19 @@ class VirtualScroll extends Node {
 	// --- the list's rows
 
 	// n rows, none made or measured (a new list)
-	public function reset(n:Int) {
+	public function reset(n:Int)
+		resetWindow(n, 0);
+
+	function resetWindow(n:Int, y:Float) {
 		for (s in slots.copy())
 			drop(s);
 		count = n;
 		heights.reset(n);
 		active = -1;
 		target = -1;
-		anchorRow = 0;
-		anchorDelta = 0;
-		scrollY = 0;
-		seenScroll = 0;
+		scrollY = y;
+		anchor();
+		follow();
 		place();
 	}
 
@@ -202,14 +207,14 @@ class VirtualScroll extends Node {
 
 	// the first and last rows in view (-1: none)
 	@:typescript public function firstVisible():Int
-		return count == 0 ? -1 : heights.rowAt(scrollY);
+		return count == 0 ? -1 : rowAtOffset(scrollY);
 
 	@:typescript public function lastVisible():Int {
 		if (count == 0) return -1;
 		var y = scrollY + viewHeight();
-		var r = heights.rowAt(y);
+		var r = rowAtOffset(y);
 		// (a row starting at the view's end is not in it)
-		return r > 0 && heights.offsetOf(r) >= y ? r - 1 : r;
+		return r > 0 && rowOffset(r) >= y ? r - 1 : r;
 	}
 
 	// --- scrolling and focus
@@ -224,7 +229,7 @@ class VirtualScroll extends Node {
 			case "center": 1;
 			case "end": 2;
 			case _:
-				var top = heights.offsetOf(index), bottom = top + heights.heightOf(index);
+				var top = rowOffset(index), bottom = top + heights.heightOf(index);
 				if (top >= scrollY && bottom <= scrollY + viewHeight()) -1 else top < scrollY ? 0 : 2;
 		}
 		if (a < 0) return;
@@ -260,8 +265,8 @@ class VirtualScroll extends Node {
 			case Key.DOWN: to = i + 1;
 			case Key.HOME: to = 0;
 			case Key.END: to = count - 1;
-			case Key.PAGE_UP: to = heights.rowAt(heights.offsetOf(i) - viewHeight());
-			case Key.PAGE_DOWN: to = heights.rowAt(heights.offsetOf(i) + viewHeight());
+			case Key.PAGE_UP: to = rowAtOffset(rowOffset(i) - viewHeight());
+			case Key.PAGE_DOWN: to = rowAtOffset(rowOffset(i) + viewHeight());
 			case Key.ENTER | Key.SPACE:
 				if (e.target != r.node || onRowActivate == null) return;
 				onRowActivate(i);
@@ -278,7 +283,15 @@ class VirtualScroll extends Node {
 
 	// --- the window
 
-	// (the view's height: its content box)
+	inline function rowOffset(i:Int):Float
+		return insetTop + heights.offsetOf(i);
+
+	inline function rowAtOffset(y:Float):Int
+		return heights.rowAt(y - insetTop);
+
+	inline function extent():Float
+		return rowOffset(count) + insetBottom;
+
 	// (the view's height: its content box; no more than the window's, a list
 	// as tall as its rows (not bounded by its parent) making no more than fill it)
 	function viewHeight():Float {
@@ -292,14 +305,14 @@ class VirtualScroll extends Node {
 	function wanted():Float {
 		var vh = viewHeight(), y:Float;
 		if (target >= 0 && target < count) {
-			var top = heights.offsetOf(target), h = heights.heightOf(target);
+			var top = rowOffset(target), h = heights.heightOf(target);
 			y = switch targetAlign {
 				case 1: top + h / 2 - vh / 2;
 				case 2: top + h - vh;
 				case _: top;
 			}
-		} else y = count == 0 ? 0 : heights.offsetOf(anchorRow) + anchorDelta;
-		var max = heights.total() - vh;
+		} else y = count == 0 ? 0 : rowOffset(anchorRow) + anchorDelta;
+		var max = extent() - vh;
 		if (y > max) y = max;
 		return y < 0 ? 0 : y;
 	}
@@ -319,8 +332,8 @@ class VirtualScroll extends Node {
 			anchorDelta = 0;
 			return;
 		}
-		anchorRow = heights.rowAt(scrollY);
-		anchorDelta = scrollY - heights.offsetOf(anchorRow);
+		anchorRow = rowAtOffset(scrollY);
+		anchorDelta = scrollY - rowOffset(anchorRow);
 	}
 
 	// the rows of the window made and shown, the others hidden (keep of them
@@ -330,7 +343,7 @@ class VirtualScroll extends Node {
 		var lo = 0, hi = 0;
 		if (count > 0) {
 			var vh = viewHeight();
-			var a = heights.rowAt(scrollY), b = heights.rowAt(scrollY + vh);
+			var a = rowAtOffset(scrollY), b = rowAtOffset(scrollY + vh);
 			lo = a - overscan;
 			hi = b + 1 + overscan;
 			if (lo < 0) lo = 0;
@@ -375,7 +388,7 @@ class VirtualScroll extends Node {
 			drop(far);
 			hidden--;
 		}
-		var top = heights.offsetOf(lo), bottom = heights.total() - heights.offsetOf(hi);
+		var top = rowOffset(lo), bottom = extent() - rowOffset(hi);
 		if (setHeight(before, top)) changed = true;
 		if (setHeight(after, bottom)) changed = true;
 		for (s in slots)

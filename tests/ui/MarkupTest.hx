@@ -1,4 +1,5 @@
 import helder.ui.*;
+import helder.ui.actions.Keymap;
 import helder.view.*;
 import helder.ui.view.*;
 import helder.view.Flow.*;
@@ -51,6 +52,9 @@ class MarkupTest implements Markup {
 		liveRegions();
 		focusEvents();
 		virtual();
+		virtualGrid();
+		virtualGridItems();
+		virtualSelection();
 		Sys.println('MarkupTest: $checks checks' + (failed == 0 ? ", ok" : ', $failed FAILED'));
 		Sys.exit(failed == 0 ? 0 : 1);
 	}
@@ -422,6 +426,190 @@ class MarkupTest implements Markup {
 			&& an.toJson().href == "https://hxmc.dev/docs");
 		check("document: break-before, break-inside and page kept in a window", ch.style.breakBefore == Page && ch.style.breakInside == Avoid
 			&& ch.style.page == "wide" && ch.height == 20);
+	}
+
+	static function virtualGrid() {
+		var ui = new Ui(new MonoText(), 300, 150);
+		var items = signal([for (i in 0...50000) "File " + i]);
+		var grid:GridScroll = null, made = 0, activated:Array<Int> = [], menu = -1;
+		var dispose = Render.render(<VirtualGrid each={items} by={s -> s} cellWidth={60} cellHeight={30} label="Files"
+			textOf={s -> s} ref={g -> grid = g} onActivate={a -> activated = a} onContextMenu={(i, x, y) -> menu = i}>{(item, i) -> {
+			made++;
+			<text>{item()}</text>;
+		}}</VirtualGrid>, ui.root);
+		ui.update();
+		var s = grid.selection;
+		var cell = grid.rowAt(0).node.children[0];
+		check("grid: columns, width, padding and fixed rows", grid.columns == 4 && cell.width == 66 && cell.absX == 12 && cell.absY == 12
+			&& grid.fixedHeight == 34);
+		check("grid: 50,000 cells, only the window made", made <= 36 && grid.count == 12500, '$made cells made');
+		check("grid: accessibility roles and cell place", grid.semantics.role == Role.Table && grid.semantics.multiselectable
+			&& cell.parent.semantics.role == Role.Row && cell.semantics.role == Role.Cell && cell.semantics.posInSet == 1 && cell.semantics.setSize == 50000);
+		grid.scrollToIndex(44, "start");
+		ui.update();
+		grid.scrollY += 7;
+		ui.update();
+		ui.resize(360, 150);
+		ui.update();
+		check("grid: resize anchors an item in its new row", grid.columns == 5 && grid.firstVisible() == 8 && grid.scrollY == 12 + 8 * 34 + 7,
+			'${grid.columns} columns at ${grid.scrollY}');
+		ui.resize(300, 150);
+		ui.update();
+		check("grid: reflow back keeps the original item", grid.columns == 4 && grid.firstVisible() == 11 && grid.scrollY == 12 + 11 * 34 + 7);
+
+		var mod = Keymap.mac ? Key.MOD_META : Key.MOD_CONTROL;
+		grid.focusIndex(3);
+		ui.update();
+		ui.keyDown(Key.RIGHT, 0);
+		check("grid: Right wraps at the end of a row", s.focusIndex() == 4 && s.keys().join(",") == "File 4");
+		ui.keyDown(Key.DOWN, Key.MOD_SHIFT);
+		check("grid: Shift Down selects a range", s.focusIndex() == 8 && s.size() == 5);
+		ui.keyDown(Key.UP, mod);
+		check("grid: secondary Up moves focus alone", s.focusIndex() == 4 && s.size() == 5);
+		ui.keyDown(Key.SPACE, mod);
+		check("grid: secondary Space toggles focus", s.size() == 4 && !s.has("File 4"));
+		ui.keyDown(Key.ENTER, 0);
+		check("grid: Enter activates indices in order", activated.join(",") == "5,6,7,8");
+		ui.keyDown(Key.PAGE_DOWN, 0);
+		check("grid: Page Down moves by visible rows", s.focusIndex() == 20);
+		ui.keyDown("a".code, mod);
+		check("grid: secondary A selects all", s.size() == 50000);
+		ui.keyDown(Key.ESCAPE, 0);
+		check("grid: Escape clears the selection", s.size() == 0);
+		grid.focusIndex(49999);
+		ui.update();
+		ui.keyDown(Key.DOWN, 0);
+		check("grid: Down clamps at the last item", s.focusIndex() == 49999);
+
+		var now = Ui.now, at = 10.0;
+		Ui.now = () -> at;
+		ui.textInput("fI");
+		ui.textInput("le 12");
+		check("grid: type-ahead accumulates, ignores case and wraps", s.focusIndex() == 12 && s.size() == 1);
+		at += 1.1;
+		ui.textInput("file 41");
+		check("grid: type-ahead expires", s.focusIndex() == 41);
+		grid.scrollToIndex(0, "start");
+		grid.scrollY = 0;
+		ui.update();
+		s.setKeys(["File 0", "File 1"]);
+		ui.update();
+		cell = grid.rowAt(0).node.children[0];
+		check("grid: selection attributes and access state", cell.attr("data-selected") == "true" && cell.semantics.selected == true);
+		ui.pointerDown(20, 20, 1);
+		check("grid: a press preserves a multi-selection", s.size() == 2);
+		ui.pointerMove(32, 20);
+		ui.pointerUp(32, 20, 1);
+		check("grid: a cell drag preserves a multi-selection", s.size() == 2);
+		ui.pointerDown(20, 20, 1);
+		ui.pointerUp(20, 20, 1);
+		check("grid: a release without a drag selects only the item", s.size() == 1 && s.has("File 0"));
+		activated = [];
+		at += 0.1;
+		ui.pointerDown(20, 20, 1);
+		ui.pointerUp(20, 20, 1);
+		check("grid: double click activates", activated.join(",") == "0");
+		ui.pointerDown(90, 20, 3);
+		ui.pointerUp(90, 20, 3);
+		check("grid: context menu gets item index", menu == 1);
+		Ui.now = now;
+
+		s.setKeys(["File 49999"]);
+		ui.keyDown(Key.SHIFT, Key.MOD_SHIFT);
+		ui.pointerDown(6, 6, 1);
+		ui.pointerMove(30, 9);
+		ui.update();
+		check("grid: a marquee is a node with its own slot", grid.find("marquee").slot == "grid-marquee");
+		ui.pointerMove(130, 148);
+		ui.update();
+		check("grid: the marquee intersects cells, not their gaps", s.has("File 0") && s.has("File 1") && !s.has("File 2"));
+		var time = Clock.now;
+		for (i in 0...14) {
+			Clock.tick(time + i * 0.05);
+			ui.update();
+		}
+		check("grid: marquee auto-scroll selects rows no longer made", grid.rowAt(2) == null && s.has("File 8") && s.has("File 49999")
+			&& s.size() > 30, '${s.size()} selected at ${grid.scrollY}');
+		ui.pointerUp(130, 148, 1);
+		check("grid: release removes the marquee", grid.find("marquee") == null);
+		ui.keyUp(Key.SHIFT, 0);
+		ui.pointerDown(5, 50, 1);
+		ui.pointerUp(5, 50, 1);
+		check("grid: empty click clears", s.size() == 0);
+		dispose();
+	}
+
+	static function virtualGridItems() {
+		var ui = new Ui(new MonoText(), 300, 150);
+		var items = signal([for (i in 0...10) 'File $i:a']);
+		var grid:GridScroll = null, made = 0;
+		var dispose = Render.render(<VirtualGrid each={items} by={s -> s.split(":")[0]} cellWidth={60} cellHeight={30} ref={g -> grid = g}>{(item, i) -> {
+			made++;
+			<text>{item()}</text>;
+		}}</VirtualGrid>, ui.root);
+		ui.update();
+		var s = grid.selection;
+		s.setKeys(["File 1", "File 2"]);
+		ui.pointerDown(250, 20, 1);
+		check("grid items: a press on an unselected cell selects it at once", s.keys().join(",") == "File 3");
+		ui.pointerUp(250, 20, 1);
+		function text(i:Int):String
+			return (cast grid.rowAt(Std.int(i / grid.columns)).node.children[i % grid.columns].children[0] : TextNode).text;
+		made = 0;
+		items(items.peek().concat(["File 10:a", "File 11:a"]));
+		ui.update();
+		check("grid items: appended items remake only the last row", made == 4 && grid.count == 3 && text(11) == "File 11:a", '$made made');
+		made = 0;
+		var next = items.peek().copy();
+		next[1] = "File 1:b";
+		items(next);
+		ui.update();
+		check("grid items: a kept key's cell gets its new item", made == 0 && text(1) == "File 1:b");
+		var reversed = items.peek().copy();
+		reversed.reverse();
+		items(reversed);
+		ui.update();
+		check("grid items: the selection follows its key through a reorder", s.keys().join(",") == "File 3" && s.focusIndex() == 8
+			&& grid.rowAt(2).node.children[0].attr("data-selected") == "true");
+		dispose();
+	}
+
+	static function virtualSelection() {
+		var ui = new Ui(new MonoText(), 220, 150);
+		var items = signal(["Alpha", "Beta", "Cedar", "Delta", "Elm"]);
+		var s = new Selection(i -> items.peek()[i], () -> items.peek().length);
+		var list:VirtualScroll = null, activated:Array<Int> = [], menu = -1;
+		var dispose = Render.render(<VirtualList each={items} by={s -> s} selection={s} itemHeight={24} height={144} textOf={s -> s}
+			ref={l -> list = l} onActivate={a -> activated = a} onContextMenu={(i, x, y) -> menu = i}>{(item, i) ->
+			<text>{item()}</text>}</VirtualList>, ui.root);
+		ui.update();
+		ui.pointerDown(10, 35, 1);
+		ui.pointerUp(10, 35, 1);
+		ui.keyDown(Key.DOWN, Key.MOD_SHIFT);
+		check("list selection: plain click and Shift Down", s.keys().join(",") == "Beta,Cedar");
+		ui.keyDown(Key.DOWN, Keymap.mac ? Key.MOD_META : Key.MOD_CONTROL);
+		check("list selection: focus only, with reactive row attributes", s.focusIndex() == 3 && s.size() == 2
+			&& list.rowAt(1).node.attr("data-selected") == "true" && list.rowAt(3).node.attr("data-focused") == "true");
+		ui.keyDown(Key.ENTER, 0);
+		check("list selection: Enter gives the selected indices", activated.join(",") == "1,2");
+		ui.textInput("el");
+		check("list selection: type ahead", s.focusIndex() == 4 && s.keys().join(",") == "Elm");
+		ui.pointerDown(10, 107, 3);
+		ui.pointerUp(10, 107, 3);
+		check("list selection: context menu", menu == 4);
+		items(["Elm", "Delta", "Cedar", "Beta", "Alpha"]);
+		ui.update();
+		check("list selection: a keyed row keeps its state when moved", list.rowAt(0).node.attr("data-selected") == "true" && s.focusIndex() == 0);
+		dispose();
+		var picked = "";
+		var legacy = Render.render(<VirtualList each={items} itemHeight={24} height={144} onActivate={item -> picked = item.toUpperCase()}>{(item, i) ->
+			<text>{item()}</text>}</VirtualList>, ui.root);
+		ui.update();
+		ui.pointerDown(10, 12, 1);
+		ui.pointerUp(10, 12, 1);
+		ui.keyDown(Key.ENTER, 0);
+		check("list selection: legacy activation still receives its item", picked == "ELM");
+		legacy();
 	}
 
 	static function virtual() {
