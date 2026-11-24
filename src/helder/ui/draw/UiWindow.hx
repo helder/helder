@@ -262,10 +262,19 @@ class UiWindow {
 	// the window's compositor (null: none, scrolling the program's alone)
 	public var compositor(default, null):Null<Compositor> = null;
 
-	// (at each turn's start: what the compositors scrolled taken)
+	// (at each turn's start, a window's last frame presented: until its
+	// next is taken without queueing (Device.waitFrame), then what the
+	// compositors scrolled taken, the input after it the frame's)
 	static function drainAll()
-		for (w in open)
+		for (w in open) {
+			if (w.presents) {
+				w.presents = false;
+				w.device.waitFrame();
+			}
 			if (w.compositor != null) w.compositor.drain(w.ui);
+		}
+
+	var presents = false;
 	#end
 
 	#if hxmc.dev_host
@@ -472,6 +481,7 @@ class UiWindow {
 		if (renderer.keep) device.damaged(whole ? null : renderer.regions.length > 0 ? renderer.regions : [0, 0, 1, 1]);
 		device.endFrame();
 		#if (!helder.headless && !helder.soft && hxmc.target != "wasm32-wasi")
+		presents = !planes;
 		if (compositor != null && capture == null) compositor.present(planes);
 		#end
 		updateTextInput();
