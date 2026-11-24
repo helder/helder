@@ -29,6 +29,9 @@ class Msg {
 	static function idIntPtrPtrBool(self:Ptr, sel:Ptr, a:Int64, b:Ptr, c:Ptr, d:Bool):Ptr;
 	static function idRectIntIntBool(self:Ptr, sel:Ptr, r:CGRect, a:Int64, b:Int64, c:Bool):Ptr;
 	static function idRect(self:Ptr, sel:Ptr, r:CGRect):Ptr;
+	static function idSize(self:Ptr, sel:Ptr, size:CGSize):Ptr;
+	static function idPtrIntIntIntIntBoolBoolPtrIntIntInt(self:Ptr, sel:Ptr, planes:Ptr, width:Int64, height:Int64, bits:Int64, samples:Int64,
+		alpha:Bool, planar:Bool, colorSpace:Ptr, format:Int64, stride:Int64, pixelBits:Int64):Ptr;
 	static function idPoint(self:Ptr, sel:Ptr, p:CGPoint):Ptr;
 	static function idPtrInt(self:Ptr, sel:Ptr, a:Ptr, b:Int64):Ptr;
 	// (NSSpellChecker's: an NSRange by value as two NSUIntegers)
@@ -48,6 +51,7 @@ class Msg {
 	static function vSize(self:Ptr, sel:Ptr, a:CGSize):Void;
 	static function vRect(self:Ptr, sel:Ptr, a:CGRect):Void;
 	static function vPoint(self:Ptr, sel:Ptr, a:CGPoint):Void;
+	static function vRectPtr(self:Ptr, sel:Ptr, frame:CGRect, contents:Ptr):Void;
 	static function vRectBool(self:Ptr, sel:Ptr, a:CGRect, b:Bool):Void;
 	static function rectInt(self:Ptr, sel:Ptr, a:Int64):CGRect;
 	static function fIntInt(self:Ptr, sel:Ptr, a:Int64, b:Int64):Float;

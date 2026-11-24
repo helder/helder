@@ -1,5 +1,7 @@
 package helder.ui;
 
+import helder.os.DragOperation;
+
 // The window a Ui is drawn in, for what draws the window's own buttons
 // (WindowControls) in an inset title bar (UiWindow's; null: none, a story's
 // screen, a test's Ui)
@@ -15,5 +17,8 @@ interface WindowHost {
 	function minimize():Void;
 	function maximized():Bool;
 	function maximize(on:Bool):Void;
+	// a system drag of files from the press (Window.dragFiles)
+	function dragFiles(paths:Array<String>, image:Null<helder.image.Image>, offsetX:Float, offsetY:Float, allowed:Array<DragOperation>,
+		done:DragOperation->Void):Bool;
 	function close():Void;
 }

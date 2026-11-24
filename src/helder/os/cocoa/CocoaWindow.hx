@@ -1,5 +1,6 @@
 package helder.os.cocoa;
 
+import helder.os.DragOperation;
 import helder.os.Event;
 import helder.os.TitleBar;
 import helder.os.objc.*;
@@ -54,6 +55,7 @@ class CocoaWindow {
 	final surface:Surface;
 	var scale = 1.0;
 	var cursor:Cursor = Default;
+	var dragEvent = Ptr.nil();
 	var over = false; // the pointer over the content, at the last move
 	// (an NSRect and a CGSize to pass by value)
 	final rect:Ptr<CGRect>;
@@ -317,9 +319,24 @@ class CocoaWindow {
 		return true;
 	}
 
+	function dragFiles(paths:Array<String>, image:Null<helder.image.Image>, x:Float, y:Float, allowed:Array<DragOperation>,
+		done:DragOperation->Void):Bool
+		return OsThread.get(() -> {
+			if (dragEvent.isNull() || !CocoaFileDrag.begin(this, dragEvent, paths, image, x, y, allowed, done)) return false;
+			rememberDragEvent(Ptr.nil());
+			return true;
+		});
+
+	function rememberDragEvent(ev:Ptr) {
+		if (!ev.isNull()) Runtime.objc_retain(ev);
+		ObjC.release(dragEvent);
+		dragEvent = ev;
+	}
+
 	function destroy() {
 		helder.os.OsThread.run(() -> {
 			open.remove(this);
+			rememberDragEvent(Ptr.nil());
 			#if hxmc.dev_host
 			// (handing over: the window, its views and layer left to the next build)
 			if (helder.dev.Hosted.handingOver && helder.dev.Hosted.get(helder.dev.Hosted.UI_WINDOW) == window) {
@@ -1109,7 +1126,17 @@ class CocoaWindow {
 			e.x = Math.floor(p.x * scale);
 			e.y = Math.floor((b.size.height - p.y) * scale);
 			if (e.kind == MouseMove) hover(type != NS.MouseMoved || p.x >= 0 && p.y >= 0 && p.x < b.size.width && p.y < b.size.height);
-			if (type == NS.LeftMouseDown && dragged(ev, e.x, e.y)) return;
+			switch type {
+				case NS.LeftMouseDown | NS.RightMouseDown | NS.OtherMouseDown:
+					rememberDragEvent(Ptr.nil());
+					if (type == NS.LeftMouseDown && dragged(ev, e.x, e.y)) return;
+					rememberDragEvent(ev);
+				case NS.LeftMouseDragged | NS.RightMouseDragged | NS.OtherMouseDragged:
+					if (!dragEvent.isNull()) rememberDragEvent(ev);
+				case NS.LeftMouseUp | NS.RightMouseUp | NS.OtherMouseUp | NS.MouseMoved:
+					rememberDragEvent(Ptr.nil());
+				case _:
+			}
 		}
 		dispatch(e);
 	}

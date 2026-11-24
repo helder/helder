@@ -36,6 +36,7 @@ import hxmc.unsafe.*;
 	static function AdjustWindowRectEx(r:Ptr<RECT>, style:Int, menu:Int, exStyle:Int):Int;
 	static function ScreenToClient(hwnd:Ptr, p:Ptr<POINT>):Int;
 	static function GetKeyState(key:Int):Int;
+	static function GetAsyncKeyState(key:Int):Int16;
 	static function ClientToScreen(hwnd:Ptr, p:Ptr<POINT>):Int;
 	static function LoadCursorW(instance:Ptr, name:Ptr):Ptr;
 	static function SetCursor(cursor:Ptr):Ptr;

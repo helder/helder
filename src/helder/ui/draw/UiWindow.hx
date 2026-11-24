@@ -1,5 +1,6 @@
 package helder.ui.draw;
 
+import helder.os.DragOperation;
 import helder.ui.platform.*;
 import helder.gfx.*;
 import helder.os.App;
@@ -911,6 +912,10 @@ class OsWindow implements WindowHost {
 
 	public function close()
 		w.handle(@:privateAccess UiWindow.closeEvent());
+
+	public function dragFiles(paths:Array<String>, image:Null<helder.image.Image>, offsetX:Float, offsetY:Float, allowed:Array<DragOperation>,
+		done:DragOperation->Void):Bool
+		return w.window.dragFiles(paths, image, offsetX, offsetY, allowed, done);
 }
 
 // the system's clipboard (helder.os.Clipboard) for a window's Ui

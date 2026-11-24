@@ -16,6 +16,8 @@ import hxmc.unsafe.*;
 // - macOS: a dragging info of a class made here (a pasteboard of file URLs,
 //   the destination window) given to the window's dragging destination,
 //   draggingEntered: then performDragOperation:.
+//
+// Then files dragged out (Window.dragFiles; DragOut below).
 class WindowTest {
 	static var failed = 0;
 
@@ -32,6 +34,7 @@ class WindowTest {
 		// keep them: é as e and its accent; ASCII there)
 		var want = Platform.os() == 2 ? ["C:\\photos\\a b.png", "C:\\photos\\é.jpg"] : Platform.os() == 1 ? ["/tmp/photos/a b.png", "/tmp/photos/c.jpg"] : ["/tmp/photos/a b.png", "/tmp/photos/é.jpg"];
 		var source:Null<DropSource> = null;
+		var out:Null<DragOut> = null, outAt = 0.0;
 		App.run(() -> {
 			frames++;
 			var t = haxe.Timer.stamp() - start;
@@ -52,10 +55,18 @@ class WindowTest {
 				check("moveTo, position", p != null && p.x == 120 && p.y == 160, p == null ? "null" : '${p.x}, ${p.y}');
 				window.raise();
 				integration(check);
-				window.fullscreen = true;
+				out = new DragOut(window, check);
+				outAt = t;
 			}
-			if (step == 2 && t > 6.5) {
+			if (step == 2) out.pump();
+			if (step == 2 && (out.done != null || t > outAt + 5)) {
 				step = 3;
+				out.finish(check);
+				window.fullscreen = true;
+				outAt = t;
+			}
+			if (step == 3 && t > outAt + 1.5) {
+				step = 4;
 				// (asked: a window manager, Windows and macOS's spaces may take a while; X11 without one never)
 				Sys.println('WindowTest: fullscreen ${window.fullscreen}, ${window.width}x${window.height}');
 				window.fullscreen = false;
@@ -100,6 +111,9 @@ function integration(check:(String, Bool, String) -> Void) {
 		check("FileTypes: the ProgID's command", command == '"C:\\tools\\viewer.exe" "%1"', command);
 		check("FileTypes: the extensions' OpenWithProgids", w.indexOf("HKCU\\Software\\Classes\\.jpg\\OpenWithProgids\\helder.windowtest.file") >= 0, w.length + " values");
 		check("FileDialog: IFileOpenDialog made", !helder.os.win32.FileOpenDialog.make("Open", [{name: "Images", extensions: ["jpg"]}]).isNull(), "");
+		#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+		WinDragOut.check(check);
+		#end
 	}
 	if (Platform.os() == 1) {
 		check("FileDialog: NSOpenPanel made", !helder.os.cocoa.OpenPanel.make("Open", [{name: "Images", extensions: ["jpg"]}]).isNull(), "");
@@ -112,6 +126,173 @@ function integration(check:(String, Bool, String) -> Void) {
 		check("App.onOpen: application:openURLs:", got.join("|") == "/tmp/photos/a b.png", got.join("|"));
 	}
 }
+
+// files dragged out of the window:
+//
+// - X11: a second connection's window is an XdndAware target under the
+//   pointer; it answers XdndEnter and XdndPosition with XdndStatus (copy),
+//   lets the button go, converts the selection at XdndDrop (its
+//   text/uri-list checked) and sends XdndFinished: done(Copy);
+// - macOS: the dragging items' file URLs, the source's operation mask and
+//   its end (no session: AppKit's would follow the real mouse);
+// - Windows: the Shell's data object (integration's WinDragOut).
+private class DragOut {
+	static final FILES = ["/tmp/photos/a b.png", "/tmp/photos/é.jpg"];
+
+	public var done:Null<DragOperation>;
+
+	final window:Window;
+	final check:(String, Bool, String) -> Void;
+	var d = Ptr.nil();
+	var app:Int64 = 0;
+	var target:Int64 = 0;
+	var atoms:Map<String, Int64> = [];
+	var entered = "";
+	var released = false;
+	var text = "";
+
+	public function new(window:Window, check:(String, Bool, String) -> Void) {
+		this.window = window;
+		this.check = check;
+		check("drag out: nothing to drag refused", !window.dragFiles([], null, 0, 0, [Copy], op -> {}), "");
+		#if (hxmc.libc == "glibc")
+		if (Platform.os() == 0) x11();
+		#end
+		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
+		mac();
+		#end
+	}
+
+	public function pump() {
+		#if (hxmc.libc == "glibc")
+		if (!d.isNull()) pumpX11();
+		#end
+	}
+
+	public function finish(check:(String, Bool, String) -> Void) {
+		if (Platform.os() == 2) return;
+		check("drag out: done with the target's operation", done == Copy, '$done');
+		if (Platform.os() != 0) return;
+		check("drag out: XdndEnter, version 5 with text/uri-list", entered == "5 true", entered);
+		check("drag out: the selection's text/uri-list", text == "file:///tmp/photos/a%20b.png\r\nfile:///tmp/photos/%C3%A9.jpg\r\n", text);
+	}
+
+	#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
+	function mac() {
+		var w:helder.os.cocoa.CocoaWindow = cast @:privateAccess window.native;
+		// (ASCII: NSURL's path gives é decomposed)
+		var files = ["/tmp/photos/a b.png", "/tmp/photos/c.jpg"];
+		var items = @:privateAccess helder.os.cocoa.CocoaFileDrag.items(w, Ptr.nil(), files, null, 0, 0), got = [];
+		for (i in 0...Msg.i(items, ObjC.sel("count")).toInt()) {
+			var url = Msg.id(Msg.idInt(items, ObjC.sel("objectAtIndex:"), i), ObjC.sel("item"));
+			got.push(ObjC.string(Msg.id(url, ObjC.sel("path"))));
+		}
+		check("drag out: a dragging item per file URL", got.join("|") == files.join("|"), got.join("|"));
+		var drag = @:privateAccess new helder.os.cocoa.CocoaFileDrag([Copy, Move], op -> done = op), source = @:privateAccess drag.source;
+		var answers = Msg.bPtr(source, ObjC.sel("respondsToSelector:"), ObjC.sel("draggingSession:sourceOperationMaskForDraggingContext:"))
+			&& Msg.bPtr(source, ObjC.sel("respondsToSelector:"), ObjC.sel("draggingSession:endedAtPoint:operation:"));
+		@:privateAccess helder.os.cocoa.CocoaFileDrag.active.push(drag);
+		var mask = @:privateAccess helder.os.cocoa.CocoaFileDrag.operations(source, Ptr.nil(), Ptr.nil(), 0);
+		check("drag out: the source's methods, its mask copy and move", answers && mask == 17, 'mask $mask');
+		// (NSDragOperationCopy)
+		@:privateAccess helder.os.cocoa.CocoaFileDrag.ended(source, Ptr.nil(), Ptr.nil(), 0, 0, 1);
+	}
+	#end
+
+	#if (hxmc.libc == "glibc")
+	function x11() {
+		var w:helder.os.x11.X11Window = cast @:privateAccess window.native;
+		app = @:privateAccess w.id;
+		d = Xlib.XOpenDisplay(Ptr.nil());
+		for (n in ["XdndAware", "XdndEnter", "XdndPosition", "XdndStatus", "XdndDrop", "XdndFinished", "XdndSelection", "XdndActionCopy", "text/uri-list", "HXMC_DRAG_OUT"])
+			Arena.scoped(a -> atoms.set(n, Xlib.XInternAtom(d, a.cstring(n), 0)));
+		var root = Xlib.XDefaultRootWindow(d);
+		// (beside the window, the pointer over it)
+		target = Xlib.XCreateSimpleWindow(d, root, 400, 100, 100, 100, 0, 0, 0);
+		Arena.scoped(a -> {
+			var v:Ptr<Int64> = a.alloc(8);
+			v.value = 5;
+			Xlib.XChangeProperty(d, target, atoms["XdndAware"], 4, 32, 0, v, 1);
+		});
+		Xlib.XMapWindow(d, target);
+		Warp.XWarpPointer(d, 0, root, 0, 0, 0, 0, 450, 150);
+		Xlib.XSync(d, 0);
+		// (the press the drag takes: as a ButtonPress leaves it)
+		@:privateAccess w.dragButton = 1;
+		@:privateAccess w.dragTime = 0;
+		check("drag out: started", window.dragFiles(FILES, null, 0, 0, [Copy, Move], op -> done = op), "");
+	}
+
+	function send(to:Int64, type:String, l0:Int64, l1:Int64, l2:Int64, l3:Int64, l4:Int64)
+		Arena.scoped(a -> {
+			var raw:Ptr<UInt8> = a.alloc(192);
+			var m:Ptr<XClientMessageEvent> = cast raw;
+			m.value.type = 33;
+			m.value.display = d;
+			m.value.window = to;
+			m.value.message_type = atoms[type];
+			m.value.format = 32;
+			var l:Ptr<Int64> = cast raw.add(56);
+			l[0] = l0;
+			l[1] = l1;
+			l[2] = l2;
+			l[3] = l3;
+			l[4] = l4;
+			Xlib.XSendEvent(d, to, 0, 0, cast raw);
+		});
+
+	// (XButtonEvent: window 32, root 40, state 80, button 84, same_screen 88)
+	function release()
+		Arena.scoped(a -> {
+			var raw:Ptr<UInt8> = a.alloc(192);
+			(cast raw : Ptr<Int32>).value = 5;
+			(cast raw.add(24) : Ptr<Ptr>).value = d;
+			(cast raw.add(32) : Ptr<Int64>).value = app;
+			(cast raw.add(40) : Ptr<Int64>).value = Xlib.XDefaultRootWindow(d);
+			(cast raw.add(80) : Ptr<Int32>).value = 1 << 8;
+			(cast raw.add(84) : Ptr<Int32>).value = 1;
+			(cast raw.add(88) : Ptr<Int32>).value = 1;
+			Xlib.XSendEvent(d, app, 0, 0, cast raw);
+		});
+
+	function pumpX11() {
+		var ev:Ptr<UInt8> = LibC.malloc(192);
+		while (Xlib.XPending(d) > 0) {
+			Xlib.XNextEvent(d, cast ev);
+			var type = (cast ev : Ptr<Int32>).value;
+			if (type == 33) {
+				var m:Ptr<XClientMessageEvent> = cast ev, l:Ptr<Int64> = cast ev.add(56), t = m.value.message_type;
+				if (t == atoms["XdndEnter"]) entered = '${(l[1] >> 24).toInt()} ${l[2] == atoms["text/uri-list"]}';
+				if (t == atoms["XdndPosition"]) {
+					send(app, "XdndStatus", target, 1, 0, 0, atoms["XdndActionCopy"]);
+					if (!released) release();
+					released = true;
+				}
+				if (t == atoms["XdndDrop"]) Xlib.XConvertSelection(d, atoms["XdndSelection"], atoms["text/uri-list"], atoms["HXMC_DRAG_OUT"], target, l[2]);
+			} else if (type == 31) {
+				text = Arena.scopedValue(a -> {
+					var kind:Ptr<Int64> = a.alloc(8), format:Ptr<Int32> = a.alloc(4), count:Ptr<Int64> = a.alloc(8), after:Ptr<Int64> = a.alloc(8);
+					var data:Ptr<Ptr> = a.alloc(8);
+					if (Xlib.XGetWindowProperty(d, target, atoms["HXMC_DRAG_OUT"], 0, 1024, 1, 0, kind, format, count, after, data) != 0 || data.value.isNull()) return "";
+					var b = haxe.io.Bytes.alloc(count.value.toInt());
+					BytesPtr.copyIn(b, 0, data.value, b.length);
+					Xlib.XFree(data.value);
+					return b.toString();
+				});
+				send(app, "XdndFinished", target, 1, atoms["XdndActionCopy"], 0, 0);
+			}
+		}
+		LibC.free(ev);
+		Xlib.XFlush(d);
+	}
+	#end
+}
+
+#if (hxmc.libc == "glibc")
+@:hxmc.c @:hxmc.lib("libX11.so.6") private extern class Warp {
+	static function XWarpPointer(d:Ptr, from:Int64, to:Int64, x:Int, y:Int, width:Int, height:Int, toX:Int, toY:Int):Int;
+}
+#end
 
 // a drop made by the system's own means (above)
 private class DropSource {
@@ -306,3 +487,69 @@ private class MacDrag {
 	@:hxmc.callback static function mask(self:Ptr, cmd:Ptr):Int64
 		return 1;
 }
+
+#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+// a drag out's data object (DoDragDrop itself waits on a person): the
+// Shell's, for two temp files, read back as CF_HDROP
+private class WinDragOut {
+	public static function check(check:(String, Bool, String) -> Void) {
+		var dir = Sys.getEnv("TEMP") ?? "C:\\Windows\\Temp";
+		var files = [dir + "\\drag a.txt", dir + "\\drag b.txt"];
+		for (f in files)
+			sys.io.File.saveContent(f, "x");
+		// (the shell item array's, then the parent folder's: Wine's; on the
+		// windows' thread, OLE's. TEMP may be a short name, the Shell's long)
+		for (items in [true, false]) {
+			var how = items ? "items" : "folder";
+			var got = OsThread.get(() -> {
+				step('the data object ($how)');
+				var data = @:privateAccess helder.os.win32.WinFileDrag.dataObject(files, items);
+				step(data.isNull() ? "none" : "its CF_HDROP");
+				hdrop(data);
+			});
+			var names = [for (g in got) haxe.io.Path.withoutDirectory(g)].join("|");
+			check('drag out: the Shell\'s data object as CF_HDROP ($how)', names == "drag a.txt|drag b.txt", got.join("|"));
+		}
+		for (f in files)
+			sys.FileSystem.deleteFile(f);
+	}
+
+	// (printed at once: a crash in the Shell shows the step it was in)
+	static function step(what:String) {
+		Sys.println('WindowTest: drag out: $what');
+		Sys.stdout().flush();
+	}
+
+	static function hdrop(data:Ptr):Array<String> {
+		var got = data.isNull() ? [] : Arena.scopedValue(a -> {
+			// (FORMATETC: CF_HDROP, DVASPECT_CONTENT, every index, TYMED_HGLOBAL; STGMEDIUM: tymed, the HGLOBAL)
+			var format = a.alloc(32), medium:Ptr<Ptr> = a.alloc(24), f:Ptr<Int32> = format;
+			f[0] = 15;
+			f[4] = 1;
+			f[5] = -1;
+			f[6] = 1;
+			if (DataObject.GetData(data, format, medium) < 0) return [];
+			step("DragQueryFileW");
+			var drop = medium[1], buf:Ptr<UInt16> = a.alloc(1024), out = [];
+			for (i in 0...Shell32.DragQueryFileW(drop, -1, Ptr.nil(), 0)) {
+				var n = Shell32.DragQueryFileW(drop, i, buf, 512), b = new StringBuf();
+				for (k in 0...n)
+					b.addChar(buf[k]);
+				out.push(b.toString());
+			}
+			step("ReleaseStgMedium");
+			@:privateAccess helder.os.win32.WinFileDrag.DragOle32.ReleaseStgMedium(medium);
+			return out;
+		});
+		step("released");
+		helder.os.win32.Com.release(data);
+		return got;
+	}
+}
+
+@:build(helder.os.win32.Com.build())
+@:hxmc.unsafe(gc)
+private class DataObject {
+	@:slot(3) static function GetData(self:Ptr, format:Ptr, medium:Ptr):Int;
+}
+#end

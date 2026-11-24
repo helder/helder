@@ -1,5 +1,6 @@
 package helder.os.x11;
 
+import helder.os.DragOperation;
 import helder.os.Event;
 import helder.os.TitleBar;
 import helder.os.x11.Xlib;
@@ -53,6 +54,9 @@ class X11Window {
 	static var XdndSelection:Int64 = 0;
 	static var XdndTypeList:Int64 = 0;
 	static var XdndActionCopy:Int64 = 0;
+	static var XdndActionMove:Int64 = 0;
+	static var XdndActionLink:Int64 = 0;
+	static var XdndProxy:Int64 = 0;
 	static var URI_LIST:Int64 = 0;
 	static var HXMC_DND:Int64 = 0;
 	static var NET_WM_STATE:Int64 = 0;
@@ -66,6 +70,9 @@ class X11Window {
 	var ic = Ptr.nil();
 	// a drag over it (XDND): its source (0: none), whether it carries files,
 	// where the pointer is (the root's pixels), the drop's time
+	var dragButton = 0;
+	var dragTime:Int64 = 0;
+	var dragState = 0;
 	var dndSource:Int64 = 0;
 	var dndFiles = false;
 	var dndX = 0;
@@ -207,6 +214,9 @@ class X11Window {
 		XdndSelection = Xlib.XInternAtom(display, Mem.cstr("XdndSelection"), 0);
 		XdndTypeList = Xlib.XInternAtom(display, Mem.cstr("XdndTypeList"), 0);
 		XdndActionCopy = Xlib.XInternAtom(display, Mem.cstr("XdndActionCopy"), 0);
+		XdndActionMove = Xlib.XInternAtom(display, Mem.cstr("XdndActionMove"), 0);
+		XdndActionLink = Xlib.XInternAtom(display, Mem.cstr("XdndActionLink"), 0);
+		XdndProxy = Xlib.XInternAtom(display, Mem.cstr("XdndProxy"), 0);
 		URI_LIST = Xlib.XInternAtom(display, Mem.cstr("text/uri-list"), 0);
 		HXMC_DND = Xlib.XInternAtom(display, Mem.cstr("HXMC_DND"), 0);
 		NET_WM_STATE = Xlib.XInternAtom(display, Mem.cstr("_NET_WM_STATE"), 0);
@@ -238,7 +248,15 @@ class X11Window {
 		}
 	}
 
+	function dragFiles(paths:Array<String>, allowed:Array<DragOperation>, done:DragOperation->Void):Bool {
+		if (!X11FileDrag.start(this, dragButton, dragTime, dragState, paths, allowed, done)) return false;
+		dragButton = 0;
+		return true;
+	}
+
 	function destroy() {
+		var drag = X11FileDrag.active;
+		if (drag != null && drag.window == this) drag.finish(DragOperation.None);
 		#if hxmc.dev_host
 		// (the host's window: left to the next build when handing over, else gone with the host's state)
 		if (helder.dev.Hosted.hosted() && helder.dev.Hosted.get(helder.dev.Hosted.X11_WINDOW).toI64() == id) {
@@ -529,54 +547,51 @@ class X11Window {
 		Xlib.XFlush(display);
 	}
 
-	// another client asks for the selection this process owns: its text into
-	// the property it names (UTF-8 for UTF8_STRING, Latin-1 for STRING; the
-	// two for TARGETS), then SelectionNotify (property 0: refused)
+	// The clipboard's text (UTF-8 or Latin-1), or its list of formats.
 	static function answerSelection(r:Ptr<XSelectionRequestEvent>) {
-		var property = r.value.property == 0 ? r.value.target : r.value.property;
-		var ok = clipboardText != null && r.value.selection == CLIPBOARD;
-		if (ok) Arena.scoped(a -> {
-			if (r.value.target == TARGETS) {
-				var atoms:Ptr<Int64> = a.alloc(24);
-				atoms[0] = TARGETS;
-				atoms[1] = UTF8_STRING;
-				atoms[2] = X.XA_STRING;
-				Xlib.XChangeProperty(display, r.value.requestor, property, X.XA_ATOM, 32, X.PropModeReplace, atoms, 3);
-			} else if (r.value.target == UTF8_STRING || r.value.target == X.XA_STRING) {
-				var b = r.value.target == UTF8_STRING ? haxe.io.Bytes.ofString(clipboardText) : latin1(clipboardText);
-				if (b.length > INCR_OVER) {
-					// in parts: INCR (with the size), then each part as the requestor deletes the last
-					var size:Ptr<Int64> = a.alloc(8);
-					size.value = b.length;
-					if (find(r.value.requestor) == null) Xlib.XSelectInput(display, r.value.requestor, (X.PropertyChangeMask : Int64));
-					Xlib.XChangeProperty(display, r.value.requestor, property, INCR, 32, X.PropModeReplace, size, 1);
-					sending.push({requestor: r.value.requestor, property: property, target: r.value.target, data: b, at: 0});
-				} else
-					Xlib.XChangeProperty(display, r.value.requestor, property, r.value.target, 8, X.PropModeReplace, a.copyBytes(b), b.length);
-			} else ok = false;
-			var raw = a.alloc(X.EVENT_SIZE);
-			var n:Ptr<XSelectionEvent> = raw;
-			n.value.type = X.SelectionNotify;
-			n.value.display = display;
-			n.value.requestor = r.value.requestor;
-			n.value.selection = r.value.selection;
-			n.value.target = r.value.target;
-			n.value.property = ok ? property : 0;
-			n.value.time = r.value.time;
-			Xlib.XSendEvent(display, r.value.requestor, 0, 0, raw);
-		}) else Arena.scoped(a -> {
-			var raw = a.alloc(X.EVENT_SIZE);
-			var n:Ptr<XSelectionEvent> = raw;
-			n.value.type = X.SelectionNotify;
-			n.value.display = display;
-			n.value.requestor = r.value.requestor;
-			n.value.selection = r.value.selection;
-			n.value.target = r.value.target;
-			n.value.property = 0;
-			n.value.time = r.value.time;
-			Xlib.XSendEvent(display, r.value.requestor, 0, 0, raw);
+		Arena.scoped(a -> {
+			var property = r.value.property == 0 ? r.value.target : r.value.property;
+			var ok = clipboardText != null && r.value.selection == CLIPBOARD;
+			if (ok) {
+				if (r.value.target == TARGETS) {
+					var atoms:Ptr<Int64> = a.alloc(24);
+					atoms[0] = TARGETS;
+					atoms[1] = UTF8_STRING;
+					atoms[2] = X.XA_STRING;
+					Xlib.XChangeProperty(display, r.value.requestor, property, X.XA_ATOM, 32, X.PropModeReplace, atoms, 3);
+				} else if (r.value.target == UTF8_STRING || r.value.target == X.XA_STRING) {
+					var b = r.value.target == UTF8_STRING ? haxe.io.Bytes.ofString(clipboardText) : latin1(clipboardText);
+					sendSelectionBytes(a, r.value.requestor, property, r.value.target, b);
+				} else ok = false;
+			}
+			notifySelection(a, r, ok ? property : 0);
 		});
 		Xlib.XFlush(display);
+	}
+
+	static function sendSelectionBytes(a:Arena, requestor:Int64, property:Int64, target:Int64, b:haxe.io.Bytes) {
+		if (b.length > INCR_OVER) {
+			// in parts: INCR (with the size), then each part as the requestor deletes the last
+			var size:Ptr<Int64> = a.alloc(8);
+			size.value = b.length;
+			if (find(requestor) == null) Xlib.XSelectInput(display, requestor, (X.PropertyChangeMask : Int64));
+			Xlib.XChangeProperty(display, requestor, property, INCR, 32, X.PropModeReplace, size, 1);
+			sending.push({requestor: requestor, property: property, target: target, data: b, at: 0});
+		} else
+			Xlib.XChangeProperty(display, requestor, property, target, 8, X.PropModeReplace, a.copyBytes(b), b.length);
+	}
+
+	static function notifySelection(a:Arena, r:Ptr<XSelectionRequestEvent>, property:Int64) {
+		var raw = a.alloc(X.EVENT_SIZE);
+		var n:Ptr<XSelectionEvent> = raw;
+		n.value.type = X.SelectionNotify;
+		n.value.display = display;
+		n.value.requestor = r.value.requestor;
+		n.value.selection = r.value.selection;
+		n.value.target = r.value.target;
+		n.value.property = property;
+		n.value.time = r.value.time;
+		Xlib.XSendEvent(display, r.value.requestor, 0, 0, raw);
 	}
 
 	static function latin1(s:String):haxe.io.Bytes {
@@ -695,20 +710,23 @@ class X11Window {
 				handle(onEvent);
 			}
 			preRouted = -1;
+			X11FileDrag.active?.tick();
 			return;
 		}
 		while (!display.isNull() && Xlib.XPending(display) > 0) {
 			Xlib.XNextEvent(display, xev);
 			handle(onEvent);
 		}
+		X11FileDrag.active?.tick();
 	}
 
 	// (the XEvent in xev dispatched)
 	static function handle(onEvent:Event->Void) {
 		{
+			var any:Ptr<XAnyEvent> = xev, drag = X11FileDrag.active;
+			if (drag != null && any.value.window == drag.window.id && drag.input(any.value.type, xev)) return;
 			// (what the input method takes: a dead key, a compose sequence's keys)
 			if (!im.isNull() && Xlib.XFilterEvent(xev, 0) != 0) return;
-			var any:Ptr<XAnyEvent> = xev;
 			// (the keyboard mapping changed: another layout; it has no window)
 			if (any.value.type == X.MappingNotify) {
 				Xlib.XRefreshKeyboardMapping(xev);
@@ -730,11 +748,15 @@ class X11Window {
 			switch any.value.type {
 				case X.ClientMessage:
 					var m:Ptr<XClientMessageEvent> = xev;
-					if (!w.dnd(m) && m.value.l0 == wmDelete) e.kind = Close;
+					if (!(drag != null && drag.window == w && drag.clientMessage(m)) && !w.dnd(m) && m.value.l0 == wmDelete) e.kind = Close;
 				case X.SelectionRequest:
-					answerSelection(xev);
+					var request:Ptr<XSelectionRequestEvent> = xev;
+					if (drag != null && drag.window == w && request.value.selection == XdndSelection) drag.answer(request) else answerSelection(request);
 				case X.SelectionClear:
-					clipboardText = null;
+					var clear:Ptr<XSelectionClearEvent> = xev;
+					if (clear.value.selection == CLIPBOARD) clipboardText = null;
+					if (clear.value.selection == XdndSelection && drag != null && drag.window == w
+						&& Xlib.XGetSelectionOwner(display, XdndSelection) != w.id) drag.finish(DragOperation.None);
 				case X.SelectionNotify:
 					var s:Ptr<XSelectionEvent> = xev;
 					if (s.value.selection == XdndSelection) w.dropArrived(s, e) else w.selectionArrived(xev);
@@ -782,6 +804,11 @@ class X11Window {
 						e.deltaY = button == 4 ? -40 : button == 5 ? 40 : 0;
 					} else {
 						if (t == X.ButtonPress && button == 1 && w.titlePress(b.value.x, b.value.y, b.value.x_root, b.value.y_root)) return;
+						if (t == X.ButtonPress && button >= 1 && button <= 3) w.dragButton = button;
+						if (t == X.ButtonRelease && w.dragButton == button) w.dragButton = 0;
+						if (t == X.MotionNotify && w.dragButton != 0 && b.value.state & (1 << (7 + w.dragButton)) == 0) w.dragButton = 0;
+						w.dragTime = b.value.time;
+						w.dragState = b.value.state;
 						e.kind = t == X.ButtonPress ? MouseDown : t == X.ButtonRelease ? MouseUp : MouseMove;
 						e.button = button;
 					}
@@ -863,6 +890,7 @@ class X11Window {
 		var w = find(any.value.window);
 		queueLock.release();
 		if (w == null) return null;
+		if (X11FileDrag.active?.window == w) return null;
 		e.window = w.owner;
 		e.phase = e.momentum = 0;
 		e.eased = false;
@@ -948,6 +976,7 @@ class X11Window {
 	static function waitFor(seconds:Float) {
 		var loop = helder.async.Driven.MainLoop.main;
 		if (loop == null) return wait(seconds);
+		if (X11FileDrag.active != null) seconds = X11FileDrag.active.waitTime(seconds);
 		// (the main thread reads the connection: woken by its pipe once it queued events)
 		if (OsThread.program != 0 && wakeProgram >= 0) {
 			queueLock.acquire();
@@ -961,6 +990,7 @@ class X11Window {
 	}
 
 	static function wait(seconds:Float) {
+		if (X11FileDrag.active != null) seconds = X11FileDrag.active.waitTime(seconds);
 		if (OsThread.program != 0 && wakeProgram >= 0) {
 			queueLock.acquire();
 			var any = queued.length > 0;

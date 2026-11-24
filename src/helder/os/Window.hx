@@ -345,6 +345,29 @@ class Window {
 		return c;
 	}
 
+	// a system drag of files (absolute paths) to other apps, from the press
+	// being moved (call it from a pointer move with a button down; Windows:
+	// the left one): image (straight RGBA, a pixel a point; X11: none, the
+	// cursor) with its top left at the pointer less offsetX, offsetY; the
+	// press is the system's from here (no release follows), done called
+	// once with what the target did (None: cancelled, refused). False: no
+	// drag (no press, Wayland, the web, phones), done never called.
+	public function dragFiles(paths:Array<String>, image:Null<helder.image.Image>, offsetX:Float, offsetY:Float, allowed:Array<DragOperation>,
+		done:DragOperation->Void):Bool {
+		if (closed || HEADLESS || paths.length == 0 || !Lambda.exists(allowed, op -> op != DragOperation.None)) return false;
+		#if (!helder.headless && (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64"))
+		var started = mac().dragFiles(paths, image, offsetX, offsetY, allowed, done);
+		#elseif (!helder.headless && (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64"))
+		var started = win().dragFiles(paths, image, offsetX, offsetY, allowed, done);
+		#elseif (!helder.headless && hxmc.libc == "glibc" && (hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64"))
+		var started = Std.isOfType(native, X11Window) && x11().dragFiles(paths, allowed, done);
+		#else
+		var started = false;
+		#end
+		if (started) Pointers.releaseForDrag(this);
+		return started;
+	}
+
 	// whether text is typed into it now (startTextInput until stopTextInput:
 	// a text field focused, ui's UiWindow), when Escape is the field's, not App.onBack's
 	public var typing(default, null) = false;
