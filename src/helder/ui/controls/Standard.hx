@@ -26,8 +26,7 @@ class Standard implements Markup {
 		var look = Look.current(), own = Graph.use(Look.context) == null;
 		var render:Null<ButtonProps<Dynamic>->UiView> = look.renderOf("button");
 		if (render != null) return render(cast props);
-		var p = new Press("button", props.disabled, props.onPress);
-		p.label = props.label;
+		var p = Press.of(props, "button");
 		p.variant = props.variant ?? look.defaultOf("button", "variant");
 		p.size = props.size ?? look.defaultOf("button", "size");
 		var text = Std.isOfType(props.children, String), alone = props.children == null && props.icon != null;
@@ -46,6 +45,9 @@ class Standard implements Markup {
 			<Show when={!text && props.children != null}>{props.children}</Show>
 		</view:button>;
 	}
+
+	public static function PathBar(props:PathBarProps):UiView
+		return <>{new PathBarMount(props)}</>;
 
 	public static function Checkbox(props:CheckboxProps<BaseVariants>):UiView {
 		var look = Look.current(), own = Graph.use(Look.context) == null;

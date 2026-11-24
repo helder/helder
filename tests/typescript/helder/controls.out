@@ -31,3 +31,5 @@ root
         text "on: Porch"
 
 function
+0 0 pathbar-separator pathbar null md
+/New false

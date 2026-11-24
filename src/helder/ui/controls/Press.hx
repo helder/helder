@@ -37,6 +37,7 @@ class Press {
 	public var size:Null<String> = null;
 
 	final onPress:Null<Void->Void>;
+	var selected:Null<Read<Bool>>;
 	var role:Role = Button;
 
 	public function new(slot:String, ?disabled:Read<Bool>, ?onPress:Void->Void) {
@@ -51,9 +52,10 @@ class Press {
 	}
 
 	// a press of props' (a replaced rendering's: Look's render) for a control named slot
-	public static function of(props:{?label:String, ?disabled:Read<Bool>, ?onPress:Void->Void}, slot:String):Press {
+	public static function of(props:{?label:String, ?disabled:Read<Bool>, ?selected:Read<Bool>, ?onPress:Void->Void}, slot:String):Press {
 		var p = new Press(slot, props.disabled, props.onPress);
 		p.label = props.label;
+		p.selected = props.selected;
 		return p;
 	}
 
@@ -84,6 +86,10 @@ class Press {
 			n.focusable = !d;
 			sem.disabled = d;
 			n.setAttr("data-disabled", d ? "" : null);
+		});
+		if (selected != null) renderEffect(() -> selected(), on -> {
+			sem.checked = on;
+			n.setAttr("data-selected", on ? "true" : "false");
 		});
 		bound(n);
 		sync(true);

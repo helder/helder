@@ -110,6 +110,7 @@ class Look<V> {
 		recipe("button", Reflect.field(p, "button"));
 		recipe("checkbox", Reflect.field(p, "checkbox"));
 		recipe("switch", Reflect.field(p, "switch") ?? Reflect.field(p, "switch_"));
+		recipe("pathbar", Reflect.field(p, "pathbar"));
 		var rn = [for (k => v in renders) k => v];
 		var given:Dynamic = Reflect.field(p, "render");
 		function render(c:String, f:Dynamic)

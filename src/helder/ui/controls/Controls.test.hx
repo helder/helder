@@ -6,8 +6,12 @@ import helder.ui.Color;
 import helder.ui.Key;
 import helder.ui.Node;
 import helder.ui.Ui;
+import helder.ui.access.AccessTree;
+import helder.ui.access.Role;
 import helder.ui.controls.Props;
 import helder.ui.controls.Variant;
+import helder.ui.menu.DrawnMenu;
+import helder.ui.widgets.TextField;
 import helder.view.Render;
 import helder.view.View;
 import helder.view.graph.Graph;
@@ -41,8 +45,38 @@ function tests() {
 		return Look.base.sheet().light.get(name);
 	function dark(name:String):Color
 		return Look.base.sheet().dark.get(name);
+	function click(ui:Ui, n:Node) {
+		var x = n.absX + n.width / 2, y = n.absY + n.height / 2;
+		ui.pointerDown(x, y, 1);
+		ui.pointerUp(x, y, 1);
+		ui.update();
+	}
+	function access(tree:AccessTree, n:Node)
+		return @:privateAccess tree.nodes.get(n.accessId);
 
 	describe("Press", () -> {
+		test("a selected button exposes its toggle state, with square icons at each size", () -> {
+			var selected = Graph.signal(false);
+			var m = mount(Fixture.iconButtons(selected));
+			for (i => height in [30, 36, 44]) {
+				var icon = m.ui.root.find('icon-$i');
+				equals(icon.width, height);
+				equals(icon.height, height);
+			}
+			var b = m.ui.root.find("icon-1");
+			equals(b.attr("data-selected"), "false");
+			equals(access(AccessTree.build(m.ui), b).checked, false);
+			click(m.ui, b);
+			m.ui.pointerMove(300, 180);
+			settle(m.ui);
+			equals(b.attr("data-selected"), "true");
+			equals(access(AccessTree.build(m.ui), b).checked, true);
+			equals(b.style.background, light("accentSoft"));
+			m.ui.pointerMove(b.absX + 4, b.absY + 4);
+			settle(m.ui);
+			equals(b.style.background, light("hover"));
+			m.dispose();
+		});
 		test("a click, Enter and Space press it; disabled, nothing and not focusable", () -> {
 			var count = 0, off = Graph.signal(false);
 			var m = mount(Fixture.button(() -> count++, off));
@@ -75,6 +109,108 @@ function tests() {
 			m.ui.pointerMove(b.absX + 300, b.absY + 150);
 			Graph.flush();
 			equals(p.pressed.peek(), false);
+			m.dispose();
+		});
+	});
+
+	describe("PathBar", () -> {
+		test("links and separators take focus and press, and the last segment is current", () -> {
+			var visited = [], index = -1, anchor:Node = null;
+			var editing = Graph.signal(false), segments = Graph.signal(Fixture.pathSegments());
+			var m = mount(Fixture.path(segments, editing, i -> visited.push(i), _ -> {}, (i, n) -> {
+				index = i;
+				anchor = n;
+			}), 340);
+			var bar = m.ui.root.find("location"), first = bar.find("pathbar-segment"), separator = bar.find("pathbar-separator");
+			var current = bar.find("pathbar-current"), tree = AccessTree.build(m.ui);
+			var nav = access(tree, bar);
+			equals(nav.role, Navigation);
+			equals(nav.name, "Location");
+			equals(access(tree, first).role, Link);
+			equals(access(tree, current).current, true);
+			equals(access(tree, current).focusable, false);
+			equals(first.height, 24);
+			equals(bar.height, 32);
+			m.ui.keyDown(Key.TAB, 0);
+			equals(m.ui.focus, first);
+			m.ui.keyDown(Key.ENTER, 0);
+			m.ui.keyDown(Key.SPACE, 0);
+			equals(visited.join(","), "0,0");
+			m.ui.keyDown(Key.TAB, 0);
+			equals(m.ui.focus, separator);
+			click(m.ui, separator);
+			equals(index, 0);
+			equals(anchor, separator);
+			equals(editing.peek(), false);
+			m.dispose();
+		});
+
+		test("overflow hides ancestors in order and its menu navigates by original index", () -> {
+			var visited = -1, segments = Graph.signal(Fixture.pathSegments());
+			var m = mount(Fixture.path(segments, Graph.signal(false), i -> visited = i, _ -> {}), 266);
+			var ui = m.ui, bar = ui.root.find("location");
+			function visible():String {
+				var tree = AccessTree.build(ui);
+				return [for (i in access(tree, bar).children) tree.nodes.get(i).name].join(",");
+			}
+			equals(visible(), "Home,Hidden folders,2026,Reference images");
+			click(ui, bar.find("pathbar-overflow"));
+			var menu = DrawnMenu.current;
+			equals([for (n in menu.popup.children) n.semantics.label].join(","), "Pictures");
+			ui.keyDown(Key.ENTER, 0);
+			equals(visited, 1);
+			ui.resize(222, 200);
+			ui.update();
+			equals(visible(), "Home,Hidden folders,Reference images");
+			ui.resize(93, 200);
+			ui.update();
+			equals(visible(), "Hidden folders,Reference images");
+			var label:helder.ui.TextNode = cast bar.find("pathbar-current").children[0];
+			assert(label.width < label.minContentWidth(ui.text));
+			click(ui, bar.find("pathbar-overflow"));
+			equals([for (n in DrawnMenu.current.popup.children) n.semantics.label].join(","), "Home,Pictures,2026");
+			ui.keyDown(Key.ESCAPE, 0);
+			ui.resize(340, 200);
+			ui.update();
+			equals(visible(), "Home,Pictures,2026,Reference images");
+			segments([{label: "New current"}]);
+			ui.update();
+			equals(visible(), "New current");
+			m.dispose();
+		});
+
+		test("editing selects the path, submits Enter, and cancels Escape and blur", () -> {
+			var submitted = [], editing = Graph.signal(false), segments = Graph.signal(Fixture.pathSegments());
+			var m = mount(Fixture.path(segments, editing, _ -> {}, s -> submitted.push(s)), 340);
+			var ui = m.ui, bar = ui.root.find("location");
+			click(ui, bar.find("pathbar-current"));
+			var f:TextField = cast ui.focus;
+			equals(f.text, "Home/Pictures/2026/Reference images");
+			equals(f.selectionStart, 0);
+			equals(f.selectionEnd, f.text.length);
+			ui.textInput("/tmp");
+			ui.keyDown(Key.ENTER, 0);
+			ui.update();
+			equals(submitted.join(","), "/tmp");
+			equals(editing.peek(), false);
+			editing(true);
+			ui.update();
+			f = cast ui.focus;
+			equals(f.text, "Home/Pictures/2026/Reference images");
+			ui.textInput("discarded");
+			ui.keyDown(Key.ESCAPE, 0);
+			ui.update();
+			equals(editing.peek(), false);
+			equals(submitted.length, 1);
+			// (click past the end of the path)
+			ui.pointerDown(bar.absX + bar.width - 2, bar.absY + bar.height / 2, 1);
+			ui.pointerUp(bar.absX + bar.width - 2, bar.absY + bar.height / 2, 1);
+			ui.update();
+			equals(ui.focus.slot, "pathbar-field");
+			ui.setFocus(null);
+			ui.update();
+			equals(editing.peek(), false);
+			equals(submitted.length, 1);
 			m.dispose();
 		});
 	});
@@ -263,6 +399,23 @@ function tests() {
 }
 
 private class Fixture implements helder.view.Markup {
+	public static function iconButtons(selected:Signal<Bool>):View {
+		var icon = helder.ui.widgets.Icons.svg("panel-left");
+		return <view direction="row">
+			<Standard.Button tag="icon-0" icon={icon} label="Small" size="sm"/>
+			<Standard.Button tag="icon-1" icon={icon} label="Inspector" variant="ghost" selected={selected} onPress={() -> selected(!selected.peek())}/>
+			<Standard.Button tag="icon-2" icon={icon} label="Large" size="lg"/>
+		</view>;
+	}
+
+	public static function pathSegments():Array<PathSegment>
+		return [{label: "Home", icon: helder.ui.widgets.Icons.svg("folder")}, {label: "Pictures"}, {label: "2026"}, {label: "Reference images"}];
+
+	public static function path(segments:Signal<Array<PathSegment>>, editing:Signal<Bool>, onNavigate:Int->Void, onSubmit:String->Void,
+			?onSeparator:(Int, Node)->Void):View
+		return <Standard.PathBar tag="location" label="Location" segments={segments} editing={editing} onNavigate={onNavigate}
+			onSeparator={onSeparator} onSubmit={onSubmit}/>;
+
 	public static var lastPress:Null<Press> = null;
 
 	public static function button(onPress:Void->Void, off:Signal<Bool>):View

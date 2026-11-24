@@ -135,7 +135,8 @@ export default function (host) {
 		set('data-href', n.href);
 		// (what UI tests find it by: Playwright's getByTestId)
 		set('data-testid', n.identifier);
-		set('aria-checked', n.checked);
+		set('aria-checked', n.role === 'button' ? null : n.checked);
+		set('aria-pressed', n.role === 'button' ? n.checked : null);
 		set('aria-selected', n.selected);
 		set('aria-multiselectable', n.multiselectable ? 'true' : null);
 		set('aria-current', n.current ? 'page' : null);

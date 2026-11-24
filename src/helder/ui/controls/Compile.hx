@@ -17,7 +17,7 @@ import helder.ui.controls.Tokens;
 // part gives its own): a hover's for a button, a toggle's for the others,
 // a toggle's travel (its knob's) springing.
 @:noCompletion class Compile {
-	public static final CONTROLS = ["button", "checkbox", "switch"];
+	public static final CONTROLS = ["button", "checkbox", "switch", "pathbar"];
 	static final STATES = ["hover", "pressed", "focus", "checked", "mixed", "selected", "open", "invalid", "readonly", "dark", "disabled"];
 	static final CONDS = [
 		"hover", "active", "focus-visible", "data-state=checked", "data-state=mixed", "data-selected", "data-state=open", "data-invalid", "data-readonly", "dark",
@@ -26,6 +26,9 @@ import helder.ui.controls.Tokens;
 	static final AXES = ["variant", "size"];
 	// (a toggle's travel: a spring's overshoot, as a cubic Bézier)
 	static final SPRING = [0.3, 1.35, 0.55, 1.0];
+
+	static function slotOf(control:String, part:String):String
+		return part == "root" ? control : control + "-" + (control == "pathbar" && part == "segmentIcon" ? "segment-icon" : part);
 
 	public static function look(tokens:Tokens, refs:Refs, recipes:Map<String, Array<Refs->Dynamic>>, parts:Map<String, Array<Refs->Dynamic>>):Look.Compiled {
 		var rules:Array<Rule> = [], markers = new Map<String, String>(), defaults = new Map<String, Dynamic>(), draws = new Map<String, Recipe.PartDraw>();
@@ -37,21 +40,22 @@ import helder.ui.controls.Tokens;
 				r.add(call(f, refs));
 			markers.set(c, "group/" + c);
 			defaults.set(c, r.defaults);
-			var time = c == "button" ? tokens.hoverTime : tokens.toggleTime;
+			var toggle = c == "checkbox" || c == "switch";
+			var time = toggle ? tokens.toggleTime : tokens.hoverTime;
 			var eases = new Transition(Transition.EASED, [for (p in Transition.EASED) p == "ringWidth" || p == "ringColor" ? tokens.hoverTime : time], null,
-				[for (p in Transition.EASED) p == "transform" && c != "button" ? SPRING : Transition.EASE_OUT]);
+				[for (p in Transition.EASED) p == "transform" && toggle ? SPRING : Transition.EASE_OUT]);
 			for (name => part in r.parts) {
-				var slot = name == "root" ? c : c + "-" + name;
+				var slot = slotOf(c, name);
 				if (part.draw != null) draws.set(slot, part.draw);
-				emit(rules, slot, part, [], name == "root" ? null : c, null, null, eases);
+				emit(rules, slot, part, [], name == "root" || c == "pathbar" ? null : c, null, null, eases);
 			}
 			for (axis in AXES)
 				for (value => byPart in r.variants.get(axis))
 					for (name => part in byPart) {
 						var root = name == "root";
-						var slot = root ? c : c + "-" + name;
+						var slot = slotOf(c, name);
 						if (root) emit(rules, slot, part, [], null, axis == "variant" ? value : null, axis == "size" ? value : null, null)
-						else emit(rules, slot, part, ['group/$c:$axis=$value'], c, null, null, null);
+						else emit(rules, slot, part, ['group/$c:$axis=$value'], c == "pathbar" ? null : c, null, null, null);
 					}
 		}
 		for (name => list in parts) {
@@ -95,7 +99,8 @@ import helder.ui.controls.Tokens;
 		for (k in 0...STATES.length) {
 			var s = part.states.get(STATES[k]);
 			if (s == null) continue;
-			var cond = group == null || STATES[k] == "dark" ? CONDS[k] : 'group/$group:${CONDS[k]}';
+			var condition = STATES[k] == "selected" && (slot == "button" || group == "button") ? "data-selected=true" : CONDS[k];
+			var cond = group == null || STATES[k] == "dark" ? condition : 'group/$group:$condition';
 			emit(rules, slot, s, when.concat([cond]), group, variant, size, null);
 		}
 	}
