@@ -66,6 +66,12 @@ class Compositor implements RenderIdle {
 	var drained = -1e9;
 	var stepped = -1e9;
 	var drew = -1e9;
+	// (whether the last frame waited for the swap chain's latency object
+	// (Direct3D 11's): it paces the next, due as soon as this one is drawn.
+	// Half a period after the draw, the render thread's timed wait, is
+	// Windows' 15.6 ms tick, or two of them after a slow draw (WARP's): the
+	// next vblank missed, the frames locked at half the display's rate)
+	var paced = false;
 	// (the render thread's: the overlay bars' last moves and how far they
 	// show, per frame; the time its last frame was drawn at, Ui.now's)
 	final barAt:Array<Float> = [];
@@ -321,7 +327,7 @@ class Compositor implements RenderIdle {
 		if (f != null && (mirror.moving || moved(f) || f.moves(animAt) || fading(animAt))) {
 			// (the program's to draw while it keeps the pace: it drained this vsync)
 			// (asleep: it wakes for the input and draws it, unless it has not drained since)
-			d = Math.max(drew + period * 0.5, turn ? drained + period * 0.6 : drained > routedAt ? drained + period * 0.6 : routedAt + period * 0.6);
+			d = Math.max(paced ? drew : drew + period * 0.5, turn ? drained + period * 0.6 : drained > routedAt ? drained + period * 0.6 : routedAt + period * 0.6);
 		}
 		lock.release();
 		return d;
@@ -364,8 +370,11 @@ class Compositor implements RenderIdle {
 		// drained meanwhile)
 		if (layers == null || layers.single) {
 			lock.release();
+			var w0 = haxe.Timer.stamp();
 			r.impl.waitFrame();
+			var waited = haxe.Timer.stamp() - w0 > 0.001;
 			lock.acquire();
+			paced = waited;
 			if (haxe.Timer.stamp() - drained < period * 0.6) {
 				lock.release();
 				return;
@@ -374,7 +383,7 @@ class Compositor implements RenderIdle {
 			mirror.step(at);
 			stepped = haxe.Timer.stamp();
 			offsetsNow(f, at);
-		}
+		} else paced = false;
 		for (i in 0...now.length)
 			shownAt[i] = now[i];
 		animAt = at;
