@@ -65,6 +65,8 @@ class Player {
 	// (decoded, in presentation order)
 	final frames:Array<VideoFrame> = [];
 	final fresh:Array<VideoFrame> = [];
+	// (the settled frames' times, for the clock's due)
+	final times:Array<Float> = [];
 	// (frames shown before, let go a few updates later: the GPU may still read them)
 	final retired:Array<VideoFrame> = [];
 	final retiredAt:Array<Int> = [];
@@ -76,6 +78,10 @@ class Player {
 	// (after a seek: the first frame shown, the first audio heard)
 	var target = 0.0;
 	var audioFrom = 0.0;
+	// (no frame settled since a seek: the clock held at from, the audio not
+	// given, so a slow start shows its first frame in time)
+	var primed = true;
+	var from = 0.0;
 	// (the media time of the ring's first frame since a seek)
 	var ringTime = 0.0;
 	var eof = false;
@@ -221,22 +227,26 @@ class Player {
 		// (playing, muted, its output giving nothing: a page before its first
 		// gesture, whose audio waits for one; the pictures go on, on the
 		// monotonic clock, the output opened again when unmuted)
-		if (playing && muted && out != null && ring != null && ring.read == readAt && playAt > 0 && haxe.Timer.stamp() - playAt > 0.3) {
+		if (playing && primed && muted && out != null && ring != null && ring.read == readAt && playAt > 0 && haxe.Timer.stamp() - playAt > 0.3) {
 			out.close();
 			out = null;
 			clock.audio(0, 0);
 		}
 		collect();
 		if (stepping > 0) return shown;
+		if (playing && !primed) clock.seek(from);
 		var settled = drained() ? frames.length : frames.length - REORDER;
-		var due = -1, t = clock.time;
-		for (i in 0...settled) if (frames[i].time <= t) due = i else break;
+		times.resize(0);
+		for (i in 0...settled) times.push(frames[i].time);
+		var due = clock.due(times), t = clock.time;
 		if (due >= 0) {
 			retire(shown);
 			shown = frames[due];
 			for (i in 0...due) frames[i].release();
 			frames.splice(0, due + 1);
 		}
+		// (a frame settled, shown or due later; or none to come)
+		if (settled > 0 || drained()) prime();
 		// (the end once heard: the clock at the audio's last frame, or the
 		// video's end where it is longer; the output's queue played out)
 		// (all the audio decoded: whether it ends before the video)
@@ -267,6 +277,14 @@ class Player {
 		return shown;
 	}
 	#end
+
+	// (the seek's first frame settled: the clock and the audio go on)
+	function prime() {
+		if (primed) return;
+		primed = true;
+		playAt = haxe.Timer.stamp();
+		readAt = ring == null ? 0 : ring.read;
+	}
 
 	function retire(f:Null<VideoFrame>) {
 		if (f == null) return;
@@ -409,7 +427,7 @@ class Player {
 	// (the audio thread)
 	function fill(buffer:Ptr<Float32>, n:Int) {
 		var r = ring;
-		if (!sounding || r == null) return;
+		if (!sounding || !primed || r == null) return;
 		var g = muted ? 0.0 : volume;
 		var k = r.take(buffer, n, g);
 		// (the audio over and the video on: silence, the clock going on with it)
@@ -447,7 +465,9 @@ class Player {
 			if (s.track == video && s.packet != null) target = exact ? s.time : s.packet.time;
 		audioFrom = exact || video == null ? time : target;
 		ringTime = audioFrom;
-		clock.seek(exact ? time : target);
+		from = exact ? time : target;
+		primed = video == null;
+		clock.seek(from);
 		if (out != null && sounding) out.start();
 		if (audio == null) return 1e300;
 		var lossless = audio.codec == Flac || audio.codec == Alac || audio.codec == Pcm;
@@ -472,6 +492,7 @@ class Player {
 		for (k in 0...i) frames[k].release();
 		frames.splice(0, i + 1);
 		clock.seek(shown.time);
+		prime();
 		stepping--;
 		if (onFrame != null) onFrame();
 		return true;
