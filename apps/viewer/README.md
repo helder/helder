@@ -1,10 +1,10 @@
 # Viewer
 
-A fast image viewer and file browser for Windows, macOS and Linux. Browse
-your folders, see what is in them, and open any image, PDF or video full
-size; step through the folder from there and come back to where you were.
-It is a single small program built on helder alone, with no browser engine
-and no runtime to install.
+A fast image viewer and file browser for Windows, macOS, Linux and the
+web. Browse your folders, see what is in them, and open any image, PDF or
+video full size; step through the folder from there and come back to where
+you were. It is a single small program built on helder alone, with no
+browser engine and no runtime to install.
 
 - **A browser of folders.** A sidebar of your places (Home, Desktop,
   Documents, Downloads, Pictures, Movies, Music) and drives, one level at a
@@ -52,6 +52,16 @@ and no runtime to install.
   and drop, one window that later launches hand their file to, the light
   or dark appearance the system has, and the window's size and place, the
   folder, the order and the inspector remembered between runs.
+
+## On the web
+
+[viewer.helder.run](https://viewer.helder.run) is the same viewer in the
+browser. It opens on a sample folder (photos of several shapes, a PDF, a
+video, a sound, a folder inside). In Chromium-based browsers (Chrome, Edge,
+Opera, Brave) Open folder shows a folder of your own, read in the browser
+and sent nowhere; in any browser you can drop a folder or files on the page.
+What only a desktop does is not there: the trash, Show in Finder, Open with,
+dragging files out, the settings kept between visits.
 
 ## Install
 
@@ -170,14 +180,15 @@ of the image, and the keys go on to the next one.
 
 A tag `viewer-v<version>` builds the three packages and attaches them to
 a draft GitHub Release (`.github/workflows/release.yml`); the owner
-publishes the draft. The version must be `helder.webmanifest`'s
-`"helder": {"version"}`, and `"build"` should rise with each release.
+publishes the draft. The version must be `helder.json`'s `"version"`, and
+`"build"` should rise with each release. The web build is published by
+`.github/workflows/run.yml` on every push to main (helder.json's `run`).
 `viewer-v<version>-dry` runs everything and publishes nothing (the
 packages are the run's artifacts).
 
 ```sh
-git tag viewer-v0.1.0-dry && git push origin viewer-v0.1.0-dry   # a rehearsal
-git tag viewer-v0.1.0 && git push origin viewer-v0.1.0           # the draft release
+git tag viewer-v0.2.0-dry && git push origin viewer-v0.2.0-dry   # a rehearsal
+git tag viewer-v0.2.0 && git push origin viewer-v0.2.0           # the draft release
 ```
 
 The packages are `helder build --package` (src/helder/cli/Desktop.hx,
@@ -213,14 +224,15 @@ secrets that it reads.
 ## For developers
 
 The viewer is built on helder alone (helder.os's window, helder.gfx,
-helder.ui, helder.image's decoders, helder.pdf, helder.jobs). It is a
-desktop app: it is not built for the web.
+helder.ui, helder.image's decoders, helder.pdf, helder.jobs).
 
 ```sh
 bun run helder build apps/viewer                 # bin/<target>/viewer (--target windows-x86_64, macos-arm64)
 apps/viewer/bin/linux-x86_64/viewer photo.jpg    # a file: full size, in its folder
 apps/viewer/bin/linux-x86_64/viewer ~/Pictures   # a folder: browsed
 bun run test viewer viewer-window                # its tests; a real window on the GPU
+bun run helder build --target web apps/viewer    # bin/web: viewer.html, served as it is (helder dev apps/viewer --target web)
+bun run helder publish apps/viewer --run --dry-run   # what run.yml publishes to viewer.helder.run
 ```
 
 The title is the folder's name, or a file's full size: its name, its place
@@ -240,7 +252,8 @@ hidden files, the inspector and the status line are kept between runs
   size, dates), `stat`, `open` (a `ByteSource`), `localPath`, `watch`,
   `trash` and `rename`. **NativeFiles** reads a folder on helder.jobs'
   pool (its names, then a stat of each, sent back over a channel), its
-  watch lists it again every 2 s; **MemoryFiles** is the tests'.
+  watch lists it again every 2 s; **MemoryFiles** is the tests';
+  **WebFiles** the web's (below).
 - **Browser** (`Browser.hx`): the folder shown and its history (back,
   forward, the enclosing folder with the one left selected), its entries
   as batches arrive, each sorted on its own and merged in (`Listing.hx`:
@@ -330,7 +343,7 @@ hidden files, the inspector and the status line are kept between runs
   budget; a changed file is opened again. The key context `pdf` (a PDF
   shown) gives Page Down, Space, Up, Down, `[`, `]`, Home and End to the
   column, Left and Right stay the folder's; `goto` is the go to page card's.
-- **Version** (`Version.hx`): `helder.webmanifest`'s version, read at
+- **Version** (`Version.hx`): `helder.json`'s version, read at
   compile time, the about card's and `--version`'s.
 - **ViewCamera** (`ViewCamera.hx`): the scale (device pixels per image
   pixel) and the image point at the view's centre; fitted by default
@@ -359,6 +372,23 @@ hidden files, the inspector and the status line are kept between runs
   pictures come from one place, `Tiles.thumbnail`: Thumbnails' queue, the
   newest asked for first, cancelled when its cell goes, the last 300 kept
   in memory; a file with none, or a kind none is made of, its glyph.
+- **On the web** (`WebShell.hx`, `WebFiles.hx`, `Samples.hx`): the page
+  is the window (no title bar of its own). `WebFiles` holds the sample
+  folder (`samples/`, listed when compiling, each file fetched from beside
+  the page when first read: helder.asset's `Asset.bytes`) and the folders
+  the user opens or drops (helder.os's `WebFolders`: the File System Access
+  API's `showDirectoryPicker`, read only, where the browser has it; a drop's
+  folder handle, or its entry, or its files as a folder "Dropped"), each a
+  top of its own by its name and a place in the sidebar; a folder is listed
+  500 entries at a time, its files read through helder.media's `WebSource`
+  (their Blobs). The decodes, the previews and the thumbnails (in memory
+  only: `Tiles` keeps the last 300) read a file's bytes on the page and
+  decode them on helder.jobs' Web Workers, a PDF on the page itself (a
+  worker's instance runs only the static initializers before helder.jobs',
+  and helder.pdf's come after). What needs a disk is left out of the build
+  (`#if`): the trash, Show in Finder, Open with, the drag out, the second
+  launch's hand-over, the thumbnails' cache, the system's decoders, the
+  store; their buttons and menu items are not shown (`ViewerActions.LOCAL`).
 - **Shell** (`Shell.hx`) the window (`UiWindow`, `<Surface>` with its
   title bar inset and `onDrop`), its look (helder's controls' `Look.base`
   in the system's font, the browser's parts in its tokens, light or dark
@@ -370,8 +400,7 @@ hidden files, the inspector and the status line are kept between runs
 ### Tests
 
 `bun run test viewer` (`helder test` in this directory, natively, and on
-Eval the camera's maths; the viewer is a desktop app, not built for the
-web): `tests/viewer/Browser.test.hx` (on MemoryFiles: navigation
+Eval the camera's maths): `tests/viewer/Browser.test.hx` (on MemoryFiles: navigation
 and history, the sidebar's level for a folder, the orders, folders first,
 hidden files and the filter, batches merged with the selection kept, the
 watch, a file opened full size and back, the trash and its undo,
@@ -379,7 +408,9 @@ several selected), `FolderModel.test.hx` (natural order, wrapping, the
 browser's list given again), `DecodeCache.test.hx` (the order, two at a time, eviction by
 distance, a budget too small for every neighbour, a changed file),
 `ViewCamera.test.hx` (the fit, zooms about the cursor and their stops,
-the steps, the double click, pans, the glide), `Viewer.test.hx` (a
+the steps, the double click, pans, the glide), `Samples.test.hx` (the web
+build's sample folder as its browser has it: at Samples, its files and
+subfolder, the PDF opened and its pages), `Viewer.test.hx` (a
 scripted run of the shell's tree in a headless Ui: the fixture folder
 browsed, a file opened with Enter, flipped through with the keys and the
 wheel, an animation's frames, a damaged file's message, zoomed with `+`,
@@ -407,6 +438,11 @@ DejaVu Sans, only then). CI runs the tests in its
 headless job, the window on Linux (gfx), macOS and Windows (the desktop
 jobs).
 
+`bun run test ui-web` builds the viewer for the web too and runs it in
+headless Chromium (`tests/web.mjs`): the browser at Samples, the PDF
+opened, files dropped on the page, Open folder on a tree of handles the
+page makes; no error on the page.
+
 `bun run test viewer-package`: the three releases built by `helder build
 --package` (Linux's on Linux; Windows' signed by tests/pack/signing's
 throwaway identity; macOS's ad hoc) and checked (tests/pack/DesktopCheck.hx,
@@ -416,7 +452,7 @@ codesign on a Mac).
 ### Packages
 
 - **macOS**: the universal `Viewer.app` (arm64 and x86-64) in a zip. Its
-  document types come from `helder.webmanifest`'s `file_handlers`, so
+  document types come from `helder.json`'s `fileHandlers`, so
   Finder's "Open With" lists it. Its icon is the manifest's on Apple's
   grid. The bundle is sealed (`_CodeSignature/CodeResources`) and each
   slice is signed by helder.pack's own codesign: ad hoc, or by a

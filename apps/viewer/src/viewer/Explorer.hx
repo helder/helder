@@ -25,6 +25,8 @@ class Explorer {
 	public var reveal:Null<String->Void> = null;
 	public var openDefault:Null<String->Void> = null;
 	public var copy:Null<String->Void> = null;
+	// the web's: a folder of the user's picked and shown (none: no button for it)
+	public var openFolder:Null<Void->Void> = null;
 	// the thumbnails' queue (the shell's; none: glyphs alone)
 	public var thumbnails:Null<Thumbnails> = null;
 	// the list's focus on its selection (the shell's, once the list is made)
@@ -37,7 +39,7 @@ class Explorer {
 	public function new(files:Files, decode:(path:String, side:Int, done:Decoded->Void) -> Void, ?places:Array<Place>, ?volumes:Array<Volume>,
 			?preview:(path:String, done:Preview.Shown->Void)->(Void->Void), ?pdfSizes:(path:String, done:PdfPages.PdfSizes->Void)->Void) {
 		this.files = files;
-		this.preview = preview ?? Preview.request;
+		this.preview = preview ?? #if (hxmc.target == "wasm32-wasi") (_, _) -> () -> {} #else Preview.request #end;
 		browser = new Browser(files);
 		sidebar = new Sidebar(files, places ?? [], volumes ?? []);
 		viewer = new Viewer(decode, null, pdfSizes);

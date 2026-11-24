@@ -16,7 +16,7 @@ import hxmc.unsafe.*;
 	// a colour target: a canvas (its handle: helder.os.Surface's) configured
 	// for WebGPU in the preferred format, or a texture of that size (RGBA8)
 	// (antialias 1: the canvas's frames multisampled, 4 samples a pixel; the page's run option antialias, when set, decides)
-	static function target_canvas(canvas:Int, antialias:Int):Int;
+	static function target_canvas(canvas:Int, antialias:Int, alpha:Int):Int;
 	static function target_texture(width:Int, height:Int):Int;
 	static function buffer(size:Int, usage:Int, data:Ptr, length:Int):Int;
 	// size bytes at data into the buffer at offset (multiples of 4: WebGPU's writeBuffer)

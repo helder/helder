@@ -40,6 +40,11 @@ class Surface {
 	// a live resize (macOS: the window's edge dragged): its frames presented
 	// on the main thread, in the transaction that gives the window its size
 	@:noCompletion public var resizing = false;
+	// its pixels see-through where their alpha is below 1, premultiplied
+	// (Window's transparent, where the system composes it so)
+	public var transparent(default, null) = false;
+	// (X11: the visual of a transparent window, its EGL config's)
+	@:noCompletion public var visual(default, null) = 0;
 	// the size in pixels
 	@:typescript public var width(default, null):Int;
 	@:typescript public var height(default, null):Int;
@@ -70,6 +75,11 @@ class Surface {
 	@:allow(helder.os) function resized(w:Int, h:Int) {
 		width = w;
 		height = h;
+	}
+
+	@:allow(helder.os, helder.gfx) function see(through:Bool, visual = 0) {
+		transparent = through;
+		this.visual = visual;
 	}
 
 	@:allow(helder.os) function reattach(h:Ptr, w:Int, ht:Int) {
