@@ -9,7 +9,8 @@
 # - headless: the lanes that need no GPU, display or browser (bun run test -j 3
 #   headless; pack a job of its own) but typescript and examples, which are jobs of their own; the
 #   pack lane's Android half with bundletool (PACK_REQUIRE: the runtime
-#   objects required);
+#   objects required); gfx-soft (helder.gfx on the CPU) a job of its own,
+#   with no Mesa;
 # - typescript: the TypeScript frontend's checks (tests/typescript/run.mjs,
 #   in shards over two jobs' cores, TS_PART);
 # - examples: every example built (EXAMPLES_WEB=site: the web builds the
@@ -128,8 +129,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {part: lanes, cache: headless, run: -j 3 headless -x typescript -x examples -x pack}
+          - {part: lanes, cache: headless, run: -j 3 headless -x typescript -x examples -x pack -x gfx-soft}
           - {part: pack, cache: headless-pack, run: pack}
+          # (helder.gfx on the CPU: static builds, no Mesa; its shaders' check alone is a large build)
+          - {part: soft, cache: headless-soft, run: gfx-soft}
     steps:
       - uses: actions/checkout@v7
       - id: setup
@@ -139,6 +142,7 @@ jobs:
         # (helder test's host build links helder.gfx's libEGL.so.1 when a test
         # reaches the scene; nothing opens a display. llvmpipe: the pack
         # lane's store screenshots, rendered offscreen: STORE_SHOTS_REQUIRE)
+        if: matrix.part != 'soft'
         run: sudo apt-get update -qq && sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core fonts-liberation libegl1 libegl-mesa0 libgl1-mesa-dri
       - name: Headless checks
         # (pack: the Android and iOS runtime objects fetched and required;
