@@ -207,7 +207,7 @@ class Thumbnails {
 		cacheOf(owner)?.flush();
 
 	static function work(req:ThumbRequest):ThumbResult {
-		var cache = req.size >= MIN_CACHE_SIZE ? cacheOf(req.owner) : null;
+		var cache = req.size >= MIN_CACHE_SIZE || !cheap(req.path) ? cacheOf(req.owner) : null;
 		var key = cache == null ? haxe.Int64.ofInt(0) : ThumbCache.key(req.path, req.size, req.mtime, req.side);
 		var hit = cache == null ? null : cache.get(key);
 		if (hit != null && hit.bytes == null) return {width: 0, height: 0, pixels: null, cold: false};
@@ -235,6 +235,12 @@ class Thumbnails {
 		mem.free();
 		if (cache != null) cache.putNone(key);
 		return {width: 0, height: 0, pixels: null, cold: cold};
+	}
+
+	// (a small file of these decodes about as fast as the cache reads it)
+	static function cheap(path:String):Bool {
+		var dot = path.lastIndexOf(".");
+		return dot >= 0 && ["jpg", "jpeg", "jfif", "png", "apng", "gif", "webp"].contains(path.substr(dot + 1).toLowerCase());
 	}
 
 	static function source(path:String, size:Float, side:Int, mem:ImageMemory):Null<ThumbPixels> {

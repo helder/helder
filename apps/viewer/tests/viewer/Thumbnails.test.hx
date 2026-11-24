@@ -34,19 +34,14 @@ function tests() {
 				var first = require(ask(queue, path), f.name);
 				equals([first.width, first.height], f.dims, f.name);
 				equals(queue.sourceDecodes, ++n);
-				if (st.size < 65536) {
+				// (small PDFs are cached: a decode costs more than a read)
+				if (st.size < 65536 && haxe.io.Path.extension(path) != "pdf") {
 					var small = require(ask(queue, path), f.name);
 					equals([small.width, small.height], f.dims, f.name);
 					equals(queue.sourceDecodes, ++n);
-					// (trailing bytes keep the fixture's first image and exercise
-					// the cacheable path, with the PDF's trailer still at the end)
+					// (trailing bytes keep the fixture's first image and exercise the cacheable path)
 					var padded = Bytes.alloc(65536);
-					if (haxe.io.Path.extension(path) == "pdf") {
-						var trailer = original.toString().lastIndexOf("startxref");
-						padded.fill(0, padded.length, 32);
-						padded.blit(0, original, 0, trailer);
-						padded.blit(padded.length - (original.length - trailer), original, trailer, original.length - trailer);
-					} else padded.blit(0, original, 0, original.length);
+					padded.blit(0, original, 0, original.length);
 					path = dir + "/" + haxe.io.Path.withoutDirectory(path);
 					File.saveBytes(path, padded);
 					require(ask(queue, path), f.name + " padded");
@@ -57,6 +52,13 @@ function tests() {
 				equals(queue.sourceDecodes, n);
 			}
 		})).timeout(20);
+		test("a small PDF's second request is a cache hit", async(() -> {
+			var path = "tests/fixtures/pdf/pages.pdf";
+			assert(FileSystem.stat(path).size < 65536);
+			var first = require(ask(queue, path)), second = require(ask(queue, path));
+			equals([second.width, second.height], [first.width, first.height]);
+			equals(queue.sourceDecodes, 1);
+		})).timeout(5);
 		test("no thumbnail for a broken JPEG or a text file", async(() -> {
 			equals(ask(queue, "tests/fixtures/folder/broken.jpg"), null);
 			equals(ask(queue, "tests/fixtures/folder/notes.txt"), null);
