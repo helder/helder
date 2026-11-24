@@ -401,7 +401,7 @@ class LayerSplit {
 		for (u in units)
 			u.follow = u.slots.copy();
 		lock.release();
-		single = off || units.length == 0 && !flat;
+		single = off || units.length == 0 && !flat || f.backdrops > 0;
 		for (k in 0...nf)
 			free[k] = unitOf[top[k]] >= 0;
 		for (key in [for (k in kept.keys()) k])

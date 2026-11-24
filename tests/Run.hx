@@ -109,6 +109,7 @@ class Run {
 		{name: "code-bench", about: "helder.ui.code's budgets measured, not checked (Linux: Mesa's llvmpipe, no display): examples/code-editor on a 10,000-line TSX file run headless with --stats (tests/bench/code.mjs: keystrokes, the wheel down and back up, idle frames: ms against the 8 ms budget, GC bytes a frame), and the editor's own work without the renderer (tests/bench/CodeBench.hx, natively)", run: codeBench},
 		{name: "million-bench", about: "helder.ui's VirtualList measured, not checked (Linux: Mesa's llvmpipe, no display): examples/million (a million rows of their own heights) run headless with --stats on a script of the wheel over new rows and over rows made before, jumps to the end and back, rows put in above the view and the keyboard (tests/bench/million.mjs: each phase's ms and GC bytes a frame against the 8 ms budget), then tests/bench/MillionBench.hx: the list's own work a frame natively without the renderer, and what it holds (tests/bench/results/million.md)", run: millionBench},
 		{name: "headless-run", about: "`helder run --headless` (helder.headless; Linux: Mesa's llvmpipe, no display): examples/todo and examples/ts-todo driven by one script (tests/headless/todo.json: typed into, Enter, the Add button, a checkbox by its role and label, a filter), their --tree at a mark and at the end checked, their --snap against tests/headless's goldens, the --trace's lines, --frames with --every and keycaps; examples/glow's --snap at 0.5 s against its golden; examples/million and ts-million (a VirtualList of a million rows of their own heights, tests/headless/million.json: the wheel, End, the keyboard, the selection through recycling, rows put in above the view; their trees' options, places and rects at each mark, their last frame against its golden); examples/code-editor (helder.ui.code) on a 2,000-line TSX file (tests/headless/code-editor.tsx.txt repeated; tests/headless/code-editor.json: a word double-clicked and typed over, go to line, three cursors by secondary-D, undo and redo, find and replace all, a drag), its text and status bar at each mark and its last frame against its golden; apps/viewer opening a file through its file dialog (the script's answer) and a context menu's item picked (tests/headless/viewer.json; its status bar shown by its key, its store empty as in every headless run); examples/todo's and ts-todo's dev builds with a live literal's colour and a text patched by the script (tests/headless/literals.json: helder.dev.Literals), the frame after showing them; all run twice, the outputs byte for byte the same (tests/headless/Check.hx); a --video when ffmpeg is installed", run: headlessRun},
+		{name: "thread-web", about: "not in CI: the program on the page's thread against the program in a worker (browser.mjs's option worker), ThreadBench.wasm in headless Chromium, Firefox and WebKit where Playwright has them: the first frame, input to frame, frame times, and both while the page is busy (tests/ui/thread-bench.mjs)", run: threadWeb},
 		{name: "ui-web", about: "the todo example, text editors, the accessibility fixture's ARIA mirror (web-access.mjs) and the browser's scroll views (web-scroll.mjs) as wasm32-wasi in headless Chromium", run: uiWeb},
 		{name: "bench", about: "the engine's benchmarks (tests/bench) natively and as wasm32-wasi, and the examples' sizes and compile times: a table (bin/bench/results.md)", run: bench},
 		{name: "scene-markup-bench", about: "3D in markup against the same scene in code (tests/bench/SceneMarkupBench.hx, DESIGN-MARKUP.md 9): 1,000 and 10,000 meshes mounted, moved every frame (the markup's share and the recorded pass; natively on a headless device, as wasm32-wasi without a GPU), idle, unmounted; each variant in a process of its own, the median of RUNS (3) (SCENE_BENCH: the variants): bin/bench/scene-markup.md, the results' tests/bench/results/scene-markup.md", run: sceneMarkupBench},
@@ -710,6 +711,11 @@ class Run {
 			native('bin/media/$GFX_TARGET/WinVideoStill', cps(["src", "tests/media/windows"]).concat(["-main", "WinVideoStill"]), GFX_TARGET);
 			for (mode in ["drawn", "layer-unit", "layer"]) run(exePath('bin/media/$GFX_TARGET/WinVideoStill', GFX_TARGET), [mode, "bin/media"]);
 		}
+		// (Windows: Liquid Glass drawn on D3D11, its shaders as HLSL: tests/ui/GlassTest.hx)
+		if (GFX_TARGET.startsWith("windows-") && HOST.startsWith("windows-")) {
+			native('bin/ui/$GFX_TARGET/GlassTest', uiCp().concat(["-main", "GlassTest"]), GFX_TARGET);
+			run(exePath('bin/ui/$GFX_TARGET/GlassTest', GFX_TARGET), ["--smoke"]);
+		}
 		// (an inset title bar: tests/os/TitleBarTest.hx)
 		native('bin/os/$GFX_TARGET/TitleBarTest', cps(["src", "tests/os"]).concat(["-main", "TitleBarTest"]), GFX_TARGET);
 		var bar = exePath('bin/os/$GFX_TARGET/TitleBarTest', GFX_TARGET);
@@ -762,6 +768,8 @@ class Run {
 		if ((GFX_TARGET.startsWith("macos-") && Sys.systemName() == "Mac") || (GFX_TARGET.startsWith("windows-") && HOST.startsWith("windows-"))) {
 			var s = 'bin/ui/$GFX_TARGET/ShapeWindow';
 			native(s, uiCp().concat(["-main", "ShapeWindow"]), GFX_TARGET);
+			// (Windows: first over a helder window, its state and the screen told, not checked)
+			if (GFX_TARGET.startsWith("windows-")) run(exePath(s, GFX_TARGET), ["--behind", "helder"], ["HELDER_BACKGROUND" => "1"]);
 			run(exePath(s, GFX_TARGET), [], ["HELDER_BACKGROUND" => "1"]);
 		}
 		// (Core Animation's layers: a sidebar switched (#111), a live resize on
@@ -1197,10 +1205,13 @@ class Run {
 	static function touchWeb() {
 		wasm("bin/os/PointersWeb.wasm", cps(["src", "tests/os"]).concat(["-main", "PointersWeb"]));
 		run(NODE, ["tests/os/pointers-web.mjs", "bin/os/PointersWeb.wasm"]);
+		run(NODE, ["tests/os/pointers-web.mjs", "bin/os/PointersWeb.wasm", "worker"]);
 		wasm("bin/os/BackWeb.wasm", cps(["src", "tests/os"]).concat(["-main", "BackWeb"]));
 		run(NODE, ["tests/os/back-web.mjs", "bin/os/BackWeb.wasm"]);
+		run(NODE, ["tests/os/back-web.mjs", "bin/os/BackWeb.wasm", "worker"]);
 		wasm("bin/os/NavWeb.wasm", uiCp().concat(["-main", "NavWeb"]));
 		run(NODE, ["tests/ui/nav-web.mjs", "bin/os/NavWeb.wasm"]);
+		run(NODE, ["tests/ui/nav-web.mjs", "bin/os/NavWeb.wasm", "worker"]);
 	}
 
 	static final SCENE_EXAMPLES = [for (e in ["gltf-viewer", "orbits", "showroom", "falling", "walker", "chains", "glow"]) 'examples/$e'];
@@ -1692,7 +1703,7 @@ class Run {
 
 	static function uiPrograms() {
 		var t = GFX_TARGET;
-		var programs = ["UiDrawTest", "TodoTest", "StressTest", "LayerTest", "DamageTest", "ClipboardTest", "EmojiTest", "BoxTest", "SnapTest", "WindowTest", "ControlsGallery", "ControlsBench", "RenderThreadTest", "AsyncScrollTest", "AsyncScrollWindow"];
+		var programs = ["UiDrawTest", "TodoTest", "StressTest", "LayerTest", "DamageTest", "ClipboardTest", "EmojiTest", "BoxTest", "SnapTest", "WindowTest", "ControlsGallery", "ControlsBench", "RenderThreadTest", "AsyncScrollTest", "AsyncScrollWindow", "GlassTest"];
 		if (t.startsWith("macos-")) programs = programs.concat(["SystemLayersWindow", "GlassWindow"]);
 		if (t.startsWith("linux-")) programs = programs.concat(["TextInputTest", "LinuxAccessTest", "AtspiProbe", "AccessApp"]);
 		if (t.startsWith("windows-")) programs.push("WinAccessTest");
@@ -1722,7 +1733,7 @@ class Run {
 	// (the image tests drawn on the CPU: their goldens; on Linux static, so nothing of a GPU's can be loaded)
 	static function uiSoft() {
 		var b = 'bin/ui-soft/$HOST', bless = BLESS ? " --bless" : "";
-		var programs = ["UiDrawTest", "TodoTest", "BoxTest", "EmojiTest", "ControlsGallery", "SnapTest"];
+		var programs = ["UiDrawTest", "TodoTest", "BoxTest", "EmojiTest", "ControlsGallery", "SnapTest", "GlassTest"];
 		prebuild([for (m in programs) {out: exePath('$b/$m', HOST), args: uiCp().concat(["-main", m, "-D", "helder.soft", "-D", 'hxmc.target=$HOST'])}]);
 		for (m in programs)
 			hxmc(exePath('$b/$m', HOST), uiCp().concat(["-main", m, "-D", "helder.soft", "-D", 'hxmc.target=$HOST']));
@@ -1731,6 +1742,7 @@ class Run {
 		shell('$b/BoxTest tests/ui/boxes.png $b/boxes.png');
 		shell('$b/EmojiTest tests/ui/emoji.png $b/emoji.png');
 		shell('$b/SnapTest');
+		shell('$b/GlassTest tests/ui/glass.png $b/glass.png$bless');
 		mkdirs('$b/controls');
 		shell('$b/ControlsGallery tests/ui/controls $b/controls$bless');
 	}
@@ -1753,6 +1765,8 @@ class Run {
 		shell('$gpu $b/EmojiTest tests/ui/emoji.png $b/emoji.png');
 		shell('$gpu $b/BoxTest tests/ui/boxes.png $b/boxes.png');
 		shell('$gpu $b/SnapTest');
+		// (Liquid Glass drawn: its backdrop, blur and lens against the CPU's)
+		shell('$gpu $b/GlassTest tests/ui/glass.png $b/glass.png');
 		// (the controls: their gallery against tests/ui/controls' images, their cost)
 		mkdirs('$b/controls');
 		shell('$gpu $b/ControlsGallery tests/ui/controls $b/controls$bless');
@@ -1793,18 +1807,28 @@ class Run {
 			'"password text:Password"']
 	];
 
+	static function threadWeb() {
+		wasm("bin/ui/ThreadBench.wasm", uiCp().concat(["-main", "ThreadBench"]));
+		run(NODE, ["tests/ui/thread-bench.mjs", "bin/ui/ThreadBench.wasm", "--json", "bin/ui/thread-bench.json"]);
+	}
+
 	static function uiWeb() {
 		var b = "bin/ui";
 		wasm('$b/WebTodo.wasm', uiCp().concat(["-main", "WebTodo"]));
 		run(NODE, ["tests/ui/web.mjs", '$b/WebTodo.wasm', b]);
 		wasm('$b/WebField.wasm', uiCp().concat(["-main", "WebField"]));
 		run(NODE, ["tests/ui/web-field.mjs", '$b/WebField.wasm']);
+		run(NODE, ["tests/ui/web-field.mjs", '$b/WebField.wasm', "worker"]);
 		// (the ARIA mirror of the fixture: Playwright's snapshot, Chromium's tree, a screen reader's clicks)
 		wasm('$b/WebAccessPage.wasm', uiCp().concat(["-main", "WebAccessPage"]));
 		run(NODE, ["tests/ui/web-access.mjs", '$b/WebAccessPage.wasm']);
+		run(NODE, ["tests/ui/web-access.mjs", '$b/WebAccessPage.wasm', "worker"]);
 		// (the browser's scroll views driving the scrollers: wheels, clicks, keys and swipes)
 		wasm('$b/WebScrollPage.wasm', uiCp().concat(["-main", "WebScrollPage"]));
 		run(NODE, ["tests/ui/web-scroll.mjs", '$b/WebScrollPage.wasm']);
+		// (Liquid Glass drawn on WebGPU and WebGL2 against the CPU's golden)
+		wasm('$b/WebGlass.wasm', uiCp().concat(["-main", "WebGlass"]));
+		run(NODE, ["tests/ui/web-glass.mjs", '$b/WebGlass.wasm']);
 	}
 
 	// (each program run twice, the second from the first's snapshot)

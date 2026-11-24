@@ -174,9 +174,10 @@ in `compute()`; GPU particles, cloth and soft bodies as its first users.
   DirectComposition; Wayland to subsurfaces (X11 keeps one layer); video's
   layers on Apple, Android and Windows. Ladybird's Compositor
   (LibCompositing, BSD-2-Clause) is this design, as a process of its own.
-- Then Liquid Glass: `<glass>` is the system's own on iOS and macOS 26
-  (UIGlassEffect, NSGlassEffectView, in the layer tree); next a shader
-  matching it elsewhere and in screenshots.
+- Liquid Glass: `<glass>` is the system's own on iOS and macOS 26
+  (UIGlassEffect, NSGlassEffectView, in the layer tree) and a shader
+  tuned against it elsewhere and in screenshots, on every back end; next
+  its frames on the compositor's thread and the system's layers.
 
 Windows of any shape: a transparent background is in (premultiplied
 alpha: macOS, Wayland, Windows through DirectComposition, X11 with a
@@ -199,8 +200,9 @@ Also screen reader checks, and a low-end Android phone among the benchmarks.
 place, as `helder dev` does locally; sharing a project again keeps its link.
 
 **Layers on the web**, in every browser: the program and its drawing in a
-worker (OffscreenCanvas) by default where it holds up across engines, the
-page's thread as the fallback; the browser as the system compositor: each layer
+worker (OffscreenCanvas) by default, the page's thread passing input on
+and the fallback (done: Chromium, Firefox and WebKit, the same frames and
+input latency); the browser as the system compositor: each layer
 a canvas in the page, drawn from a worker (OffscreenCanvas, WebGPU's one
 device for all of them, ImageBitmaps under WebGL2), tiled where it is
 long; scrollers the browser's own elements with their layers inside, so

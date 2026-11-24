@@ -4,7 +4,7 @@
 // files: run's option fonts lists the ones it may use (URLs, or
 // ArrayBuffers), fetched before the module starts; SystemFonts adds them
 // as its fonts.
-export default async function (host) {
+export default async function text(host) {
 	const fonts = [];
 	for (const f of host.options.fonts ?? []) {
 		const b = f instanceof ArrayBuffer ? f : await (await fetch(f)).arrayBuffer();
@@ -29,5 +29,10 @@ export default async function (host) {
 			if (old) document.fonts.delete(old);
 		},
 	};
+	// (the program in a worker: the page's FontFace)
+	if (host.page) hxmc_text.font_face = host.page.forward('hxmc_text', 'font_face', 'snnb');
 	return { hxmc_text };
 }
+
+// the page half of a program in a worker: its fonts' faces
+export const page = (host) => text({ ...host, options: { ...host.options, fonts: [] } });
