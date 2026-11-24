@@ -35,12 +35,12 @@ class Explorer {
 	var choosing = false;
 
 	public function new(files:Files, decode:(path:String, side:Int, done:Decoded->Void) -> Void, ?places:Array<Place>, ?volumes:Array<Volume>,
-			?preview:(path:String, done:Preview.Shown->Void)->(Void->Void)) {
+			?preview:(path:String, done:Preview.Shown->Void)->(Void->Void), ?pdfSizes:(path:String, done:PdfPages.PdfSizes->Void)->Void) {
 		this.files = files;
 		this.preview = preview ?? Preview.request;
 		browser = new Browser(files);
 		sidebar = new Sidebar(files, places ?? [], volumes ?? []);
-		viewer = new Viewer(decode);
+		viewer = new Viewer(decode, null, pdfSizes);
 		browser.onDir = d -> {
 			if (!choosing) sidebar.follow(d);
 			// (another folder: the decodes of the last let go)
@@ -190,7 +190,8 @@ class Explorer {
 			case UndoTrash: on(b.canUndo.value);
 			case CopyPath | ShowInFolder | OpenWithDefault: on(target() != null);
 			case Search | EditPath: on(!full.value);
-			case Next | Previous | First | Last | ZoomIn | ZoomOut | Fit | ActualSize | NextPage | PreviousPage | FirstPage | LastPage | GoToPage | PlayPause
+			case Next | Previous | First | Last | ZoomIn | ZoomOut | Fit | ActualSize | NextPage | PreviousPage | FirstPage | LastPage | GoToPage | ScrollDown
+				| ScrollUp | LineDown | LineUp | PlayPause
 				| StepForward | StepBack | ToggleMute | ToggleFullscreen | LeaveFullscreen | ToggleStatus | Close:
 				full.value ? viewer.actionState(a) : Disabled;
 			case _: Enabled;

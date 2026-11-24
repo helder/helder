@@ -98,6 +98,10 @@ class ViewerView implements Markup {
 			<view tag="stage" grow={1} min-height={0}>
 				{image}
 				<Show when={viewer.media() != ""}>{MediaView.make(viewer)}</Show>
+				<Show when={viewer.pdf() != null}>{() -> {
+					var d = viewer.pdf();
+					d == null ? null : PdfView.make(d);
+				}}</Show>
 				<Show when={viewer.state() != Shown && (viewer.state() != Loading || slow())}>
 					<view tag="message" position="absolute" inset={0} align-items="center" justify="center" row-gap={8} padding={24} pointer-events="none">
 						<text tag="title" font-size={17} color={viewer.state() == Failed ? Look.ref.danger : Look.ref.fg} text-align="center">{viewer.message}</text>

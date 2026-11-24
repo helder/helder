@@ -39,8 +39,10 @@ and no runtime to install.
   large images (9000 pixels or more) are drawn in tiles. EXIF orientation
   is applied.
 - **Animations play**: GIF, WebP and APNG.
-- **PDFs, page by page.** The next page is drawn ahead in the background,
-  and you can go straight to a page by its number.
+- **PDFs as a browser shows them**: the pages in one column you scroll
+  through, fitted to the window's width, each drawn at the size it is
+  shown (sharp again after a zoom) as it comes into view, a tag with the
+  page you are on, and straight to a page by its number.
 - **Video and audio** on macOS: MP4, MOV, M4V, WebM, MKV, M4A, MP3 and
   FLAC (H.264, HEVC, VP9 and AV1 where the Mac's hardware decodes them;
   AAC, MP3, FLAC, ALAC, Opus, Vorbis) play in the folder beside the
@@ -117,9 +119,11 @@ Ctrl is Cmd on macOS.
 | Zoom in, out | `+`, `-`; Ctrl and the wheel; a trackpad's pinch; the wheel once zoomed in |
 | Fit, 100% | `0`, `1`; a double click toggles between them |
 | Pan | drag the image |
-| PDF: next, previous page | Page Down, Space or `]`; Page Up, Backspace or `[`; the wheel while the page fits |
-| PDF: first, last page | Ctrl+Home, Ctrl+End |
+| PDF: scroll | the wheel or a trackpad; Page Down or Space, Page Up or Backspace a screen; Down, Up a line |
+| PDF: next, previous page | `]`, `[` |
+| PDF: first, last page | Home, End |
 | PDF: go to page | G or Ctrl+G, type the number, Enter |
+| PDF: zoom | `+`, `-`; Ctrl and the wheel, a pinch, about the pointer; `0` fitted to the width, `1` 100% |
 | Full screen | F11 or Enter (Ctrl+Cmd+F on macOS); Escape leaves it |
 | Status line | I: the zoom, the size, the format, the page, the place in the folder |
 | Video: play, pause | Space or K; next, previous file: Down, Up, Page Down, Page Up |
@@ -304,19 +308,28 @@ hidden files, the inspector and the status line are kept between runs
   held with flock or an exclusive handle); another reads only. A JPEG, PNG,
   GIF or WebP under 64 KB is decoded every time (as fast as a cache read);
   every other kind is cached at any size. The browser's grid and list ask it (`Tiles.thumbnail`).
+- **PdfLayout**, **PdfDoc**, **PdfView** (`PdfLayout.hx`, `PdfDoc.hx`,
+  `PdfView.hx`): a PDF as pdf.js shows one by default: its pages down one
+  column, centred, 12 points apart, a white sheet each with a soft shadow
+  on the canvas, their offsets a `HeightIndex`'s (the pages' sizes in points
+  known first: `PdfPages.sizes`, on a job), fitted to the width until
+  zoomed (Ctrl and the wheel, a pinch, about the pointer: the point under
+  it stays; `+`, `-` about the middle; 100% a point a point). Only the
+  pages in view and one each side are made, and drawn: those in view
+  first, two at a time, at the size shown in device pixels (again larger
+  when a zoom needs it, the smaller drawing shown meanwhile; again smaller
+  past 2.5 times), let go two pages out of view. The page at a third of
+  the view's height is the one it is on (the title's, the tag's).
 - **PdfPages** (`PdfPages.hx`): a PDF's pages, each a decode of its own
-  (`Decode.key`: the path, the page after a newline), so they go through
-  the cache, the tiles and the zoom an image's do: its 100% two pixels a
-  point (4096 a side at most), drawn at the view's side, again larger when
-  a zoom needs it (`refine`); the page shown first, then the next and the
-  previous page, then the folder's neighbours. The two documents opened
+  (`Decode.key`: the path, the page after a newline), drawn at the side
+  asked for (4096 a side at most; the inspector's first page at 512). The two documents opened
   last are kept open on the jobs' side with helder.pdf's own cache of
   decoded images and page contents (`PdfLimits.imageCache`, 48 MB each),
   so the next page decodes none of what the last one did; one page is
   drawn at a time under a lock; each page has its own decompression
-  budget; a changed file is opened again. The key context `pdf` (a
-  document of several pages) gives Page Down, Space and `]` to the pages,
-  the arrows stay the folder's; `goto` is the go to page card's.
+  budget; a changed file is opened again. The key context `pdf` (a PDF
+  shown) gives Page Down, Space, Up, Down, `[`, `]`, Home and End to the
+  column, Left and Right stay the folder's; `goto` is the go to page card's.
 - **Version** (`Version.hx`): `helder.webmanifest`'s version, read at
   compile time, the about card's and `--version`'s.
 - **ViewCamera** (`ViewCamera.hx`): the scale (device pixels per image
@@ -372,9 +385,13 @@ browsed, a file opened with Enter, flipped through with the keys and the
 wheel, an animation's frames, a damaged file's message, zoomed with `+`,
 `1`, Ctrl and the wheel, `0`, the status line, EXIF's orientation, back
 with Escape and Ctrl+Up, fullscreen's keys, the browser's keys: grid
-and list, the inspector, search),
+and list, the inspector, search; a PDF's column: the keys scrolling
+it, go to page, the zoom), `Pdf.test.hx` (the pages' places at a zoom,
+the pages a scroll shows and draws, go to page's scroll, a zoom kept
+about its point, a page that cannot be drawn),
 `Viewer.story.hx` (the grid and the list dark and light, several
-selected, the inspector of a photo and of a PDF, an empty folder, a missing one, no results, a file full size,
+selected, the inspector of a photo and of a PDF, an empty folder, a missing one, no results, a file full size, a
+PDF's column scrolled between two pages,
 an error in its place, the status line; their trees in
 `Viewer.story.snap`). EXIF's reader is
 helder.image's (`src/helder/image/Exif.test.hx`), the drops helder.os's

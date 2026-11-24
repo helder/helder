@@ -113,7 +113,7 @@ class Shell implements Markup {
 		#end
 		// (a decode's IDCT, upsampling and colours over two threads: the pool decodes two files at once)
 		helder.image.JpegDecoder.threads = 2;
-		var x = new Explorer(new NativeFiles(), jobDecode, helder.os.Places.user(), helder.os.Places.volumes());
+		var x = new Explorer(new NativeFiles(), jobDecode, helder.os.Places.user(), helder.os.Places.volumes(), null, jobSizes);
 		var viewer = x.viewer;
 		viewer.mod = mac ? "Cmd" : "Ctrl";
 		x.reveal = reveal;
@@ -232,6 +232,11 @@ class Shell implements Markup {
 		if (fonts.match("sans-serif") == null) fonts.add(helder.asset.Asset.embed("fonts/DejaVuSans-viewer.ttf"));
 	}
 
+	// (a PDF's pages' sizes on a pool's thread: the document opened there, kept for its pages)
+	static function jobSizes(path:String, done:PdfPages.PdfSizes->Void)
+		Async.launch(_ -> helder.jobs.Jobs.job(PdfPages.sizesOf).run(path)).onCompletion((r, _) ->
+			done(r ?? {sizes: [], fileSize: 0, error: "The PDF could not be read"}));
+
 	// (the decode on a pool's thread: Decode.job)
 	static function jobDecode(path:String, side:Int, done:Decoded->Void)
 		Async.launch(_ -> done(Decode.job(path, side)));
@@ -301,7 +306,7 @@ class Shell implements Markup {
 		ViewerActions.defaults(helder.ui.actions.Keymap.global);
 		var viewer = x.viewer;
 		renderEffect(() -> "Viewer" + (x.full() ? " full" : " browser") + (viewer.fullscreen() ? " fullscreen" : "")
-			+ (x.full() && viewer.pagesSignal() > 1 ? " pdf" : "") + (x.full() && viewer.media() != "" ? " media" : "") + (viewer.gotoOpen() ? " goto" : "")
+			+ (x.full() && viewer.pdf() != null ? " pdf" : "") + (x.full() && viewer.media() != "" ? " media" : "") + (viewer.gotoOpen() ? " goto" : "")
 			+ (viewer.aboutOpen() ? " about" : ""),
 			c -> root.keyContext = helder.ui.actions.KeyContext.parse(c));
 		x.copy = p -> if (root.ui != null) root.ui.clipboard.write(p);

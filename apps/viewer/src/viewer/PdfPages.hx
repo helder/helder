@@ -13,10 +13,13 @@ import helder.pdf.PdfLimits;
 // is drawn at a time, under a lock: the pool's two jobs never share a
 // document, and the pages' memory is one canvas at a time.
 //
-// A page's size, as the viewer shows it (its 100%), is NOMINAL pixels a
-// point (at most MAX_SIDE a side); it is drawn at the side asked for (the
-// view's: smaller, "decoded" smaller as a JPEG is), and again larger when a
-// zoom needs it (DecodeCache.refine).
+// A page's size, as a decode says it, is NOMINAL pixels a point (at most
+// MAX_SIDE a side); it is drawn at the side asked for (the size it is shown
+// at: PdfDoc's, the inspector's), at most MAX_SIDE; sizes gives every page's
+// size in points without drawing any.
+// a PDF's pages' sizes in points (turned as shown), its file's size, or why it cannot be read
+typedef PdfSizes = {sizes:Array<{width:Float, height:Float}>, fileSize:Int, error:Null<String>};
+
 class PdfPages {
 	// the documents kept open
 	public static inline var KEEP = 2;
@@ -55,7 +58,8 @@ class PdfPages {
 			if (index < 0 || index >= doc.pages.length) throw helder.pdf.PdfError.corrupt('no page ${index + 1} (of ${doc.pages.length})');
 			var pg = doc.pages[index], big = Math.max(pg.width, pg.height);
 			var nominal = Math.min(NOMINAL, MAX_SIDE / big);
-			var k = side > 0 ? Math.min(side / big, nominal) : nominal;
+			// (a side asked for: that, a zoom's past the nominal too; else the nominal)
+			var k = side > 0 ? Math.min(side / big, MAX_SIDE / big) : nominal;
 			// (each page its own decompression budget: the document's total counts every page drawn since it opened)
 			doc.decoded = 0;
 			var b = Pdf.render(doc, index, k);
@@ -73,6 +77,32 @@ class PdfPages {
 		} catch (e:Dynamic) {
 			lock.release();
 			throw e;
+		}
+	}
+
+	// each page's size in points, as it is shown (turned), the file's size: the document opened and kept
+	public static function sizes(path:String):{sizes:Array<{width:Float, height:Float}>, fileSize:Int} {
+		lock.acquire();
+		try {
+			var doc = document(path, null);
+			var out = {sizes: [for (p in doc.pages) {width: p.width, height: p.height}], fileSize: doc.data.length};
+			lock.release();
+			return out;
+		} catch (e:Dynamic) {
+			lock.release();
+			throw e;
+		}
+	}
+
+	// (the job's: an error said, not thrown)
+	public static function sizesOf(path:String):PdfSizes {
+		return try {
+			var s = sizes(path);
+			{sizes: s.sizes, fileSize: s.fileSize, error: null};
+		} catch (e:helder.pdf.PdfError) {
+			{sizes: [], fileSize: 0, error: e.kind == Encrypted ? "This PDF is protected by a password" : "A damaged PDF: " + e.message};
+		} catch (e:Dynamic) {
+			{sizes: [], fileSize: 0, error: "A damaged PDF: " + Std.string(e)};
 		}
 	}
 

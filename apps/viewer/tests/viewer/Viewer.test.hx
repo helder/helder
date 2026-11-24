@@ -147,7 +147,7 @@ function tests() {
 			equals(bad.errorKind, "corrupt");
 			assert(StringTools.startsWith(Decode.decode(haxe.io.Bytes.ofString("hello")).error, "Not an image this viewer reads"), "not an image");
 		});
-		test("a PDF's pages: the keys, the wheel, go to page, the next page decoded ahead", () -> {
+		test("a PDF: its pages in one column, the keys scrolling it, go to page, the zoom", () -> {
 			var asked = [];
 			var x = new Explorer(Fixtures.files(["tests/fixtures/pdf"]), (path, side, done) -> {
 				asked.push(Decode.parseKey(path).page);
@@ -156,68 +156,60 @@ function tests() {
 			var ui = new Ui(new StoryText(), 800, 600);
 			Render.render(Shell.view(x), ui.root);
 			Shell.attach(ui.root, x);
-			viewer.camera.setView(800, 600);
+			function frame() {
+				helder.view.graph.Graph.flush();
+				ui.update();
+				helder.view.graph.Graph.flush();
+				ui.update();
+			}
 			x.start("tests/fixtures/pdf/pages.pdf");
-			helder.view.graph.Graph.flush();
-			ui.update();
+			frame();
 			equals(viewer.state.peek(), Shown);
 			equals(viewer.pages, 3);
 			equals(viewer.title.peek(), "pages.pdf · 1 / 1 · page 1 / 3");
-			// (its size at 100%: 2 pixels a point; drawn at the view's side)
-			equals([viewer.shown.width, viewer.shown.height], [600, 800]);
-			equals(viewer.shown.pixelsHeight, 800);
-			// (page 2 decoded ahead, before it was asked for)
-			equals(asked, [0, 1]);
-			assert(viewer.cache.get(Decode.key(viewer.folder.current, 1)) != null, "page 2 ahead");
-			// (Page Down: page 2, landscape, fitted again; page 3 ahead)
+			var doc = viewer.pdf.peek();
+			assert(doc != null, "the column");
+			// (the stage below the bar: 800 by 548; fitted to its width, the first page drawn and the next)
+			equals([doc.layout.viewWidth, doc.layout.viewHeight], [800.0, 548.0]);
+			equals(doc.layout.zoom, doc.layout.fitWidth());
+			assert(ui.root.find("pdf-scroll") != null && ui.root.find("page") != null, "pages made");
+			equals(asked.slice(0, 2), [0, 1]);
+			assert(doc.image(0) != null, "page 1 drawn");
+			// (Page Down a screen; ] the next page, its title; End the last, Home the first)
 			ui.keyDown(Key.PAGE_DOWN, 0);
-			ui.update();
+			frame();
+			equals(doc.y, 548 * 0.9);
+			ui.keyDown("]".code, 0);
+			frame();
+			equals(doc.y, doc.layout.scrollFor(1));
 			equals(viewer.title.peek(), "pages.pdf · 1 / 1 · page 2 / 3");
-			equals([viewer.shown.width, viewer.shown.height], [800, 600]);
-			equals(viewer.camera.fitted, true);
-			equals(asked, [0, 1, 2]);
-			// (the status line: the page, not a size)
-			ui.keyDown("i".code, 0);
-			ui.update();
-			equals(text(ui, "status"), "100% · page 2 / 3 · PDF · 1 KB · 1 / 1");
-			// (Space the next page; at the last, nothing; Backspace back; the wheel, fitted, by pages)
-			ui.keyDown(" ".code, 0);
+			ui.keyDown(Key.END, 0);
+			frame();
 			equals(viewer.page, 2);
-			ui.keyDown(" ".code, 0);
-			equals(viewer.page, 2);
-			ui.keyDown(Key.BACKSPACE, 0);
-			equals(viewer.page, 1);
-			viewer.wheel(400, 300, -40, false, 20);
-			equals(viewer.page, 0);
-			// (Ctrl+End the last page, Ctrl+Home the first)
-			ui.keyDown(Key.END, Key.MOD_CONTROL);
-			equals(viewer.page, 2);
-			ui.keyDown(Key.HOME, Key.MOD_CONTROL);
-			equals(viewer.page, 0);
+			ui.keyDown(Key.HOME, 0);
+			frame();
+			equals([viewer.page, Std.int(doc.y)], [0, 4]);
 			// (go to page: G, a number, Enter; past the last: the last)
 			ui.keyDown("g".code, 0);
-			helder.view.graph.Graph.flush();
-			ui.update();
+			frame();
 			equals(viewer.gotoOpen.peek(), true);
 			assert(ui.root.find("goto") != null, "the go to page card");
 			equals(viewer.goToTyped("3"), true);
-			helder.view.graph.Graph.flush();
+			frame();
 			equals(viewer.page, 2);
 			equals(viewer.gotoOpen.peek(), false);
 			viewer.goToTyped("99");
 			equals(viewer.page, 2);
-			viewer.goToTyped("1");
-			equals(viewer.page, 0);
-			// (zoomed in: page 1 drawn again larger, as a JPEG's refine)
-			viewer.camera.setView(300, 200);
-			viewer.cache.clear();
-			x.close();
-			x.start("tests/fixtures/pdf/pages.pdf");
-			helder.view.graph.Graph.flush();
-			equals([viewer.shown.width, viewer.shown.pixelsHeight], [600, 300]);
-			viewer.actual();
-			equals(viewer.shown.pixelsHeight, 800);
-			equals(viewer.title.peek(), "pages.pdf · 1 / 1 · page 1 / 3");
+			// (1: 100%; 0: fitted again; the status line says the zoom and the page)
+			ui.keyDown("1".code, 0);
+			frame();
+			equals(doc.percent(), 100);
+			ui.keyDown("0".code, 0);
+			frame();
+			equals(doc.layout.zoom, doc.layout.fitWidth());
+			ui.keyDown("i".code, 0);
+			frame();
+			equals(text(ui, "status"), '${doc.percent()}% · page ${viewer.page + 1} / 3 · PDF · 1 KB · 1 / 1');
 			// (past the last page: nothing)
 			equals(viewer.toPage(5), false);
 		});

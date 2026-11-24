@@ -47,6 +47,10 @@ enum ViewerAction {
 	PreviousPage;
 	FirstPage;
 	LastPage;
+	ScrollDown;
+	ScrollUp;
+	LineDown;
+	LineUp;
 	GoToPage;
 	CloseGoTo;
 	CloseAbout;
@@ -117,14 +121,22 @@ class ViewerActions {
 		keymap.bind("f11", ToggleFullscreen, here);
 		keymap.bind("escape", LeaveFullscreen, "Viewer && full && fullscreen && !goto && !about");
 		keymap.bind("i", ToggleStatus, here);
-		// (a PDF's pages: Page Down and Up, Space and Backspace page through it, the arrows still the folder's files)
+		// (a PDF, its pages one column: Page Down and Up, Space and Backspace a
+		// screen, Down and Up a line, [ and ] a page, Home and End its first and
+		// last; Left and Right still the folder's files)
 		var pdf = "Viewer && full && pdf && !goto && !about";
-		for (k in ["pagedown", "space", "]"])
-			keymap.bind(k, NextPage, pdf);
-		for (k in ["pageup", "backspace", "shift-space", "["])
-			keymap.bind(k, PreviousPage, pdf);
-		keymap.bind("secondary-home", FirstPage, pdf);
-		keymap.bind("secondary-end", LastPage, pdf);
+		for (k in ["pagedown", "space"])
+			keymap.bind(k, ScrollDown, pdf);
+		for (k in ["pageup", "backspace", "shift-space"])
+			keymap.bind(k, ScrollUp, pdf);
+		keymap.bind("down", LineDown, pdf);
+		keymap.bind("up", LineUp, pdf);
+		keymap.bind("]", NextPage, pdf);
+		keymap.bind("[", PreviousPage, pdf);
+		for (k in ["home", "secondary-home"])
+			keymap.bind(k, FirstPage, pdf);
+		for (k in ["end", "secondary-end"])
+			keymap.bind(k, LastPage, pdf);
 		keymap.bind("secondary-g", GoToPage, pdf);
 		keymap.bind("g", GoToPage, pdf);
 		// (a video or audio file: Space plays and pauses, the arrows across and , and . step a frame, M mutes; Up and Down still the folder's)

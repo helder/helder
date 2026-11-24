@@ -5,7 +5,8 @@ import helder.ui.Node;
 import helder.view.*;
 
 // The browser and the viewer, at a laptop's size: the folder as a grid
-// and as a list, dark and light; several selected; the inspector of a photo and of a PDF; a photo full size
+// and as a list, dark and light; several selected; a PDF's column scrolled
+// between two pages; the inspector of a photo and of a PDF; a photo full size
 // with its back pill, an error in its place, the status line; an empty
 // folder, one that cannot be read, a search with no results (their trees
 // in Viewer.story.snap)
@@ -90,6 +91,22 @@ final noResults = story({
 final fit = story({name: "Viewer/fit", width: 1100, height: 700, render: c -> themed(viewing("photo 2.jpg"), true)});
 
 final error = story({name: "Viewer/error", width: 1100, height: 700, render: c -> themed(viewing("broken.jpg"), true)});
+
+final pdf = story({
+	name: "Viewer/PDF, between two pages",
+	width: 1100,
+	height: 700,
+	render: c -> {
+		var x = Fixtures.explorer(["tests/fixtures/pdf"]);
+		x.start("tests/fixtures/pdf/pages.pdf");
+		var doc = x.viewer.document();
+		// (the stage's size, below the bar; page 2's top a third of the way down)
+		doc.view(1100, 648);
+		doc.goTo(1);
+		doc.screens(-0.3);
+		themed(x, true);
+	}
+});
 
 final status = story({
 	name: "Viewer/status line",

@@ -1361,6 +1361,133 @@ Node#root 0,0 390x844
         Node#window-start 18,0 0x52
         Node#window-end 1100,0 0x0
 
+--- story Viewer/PDF, between two pages: Viewer/PDF, between two pages (125 lines)
+Node#root 0,0 390x844
+  Node#view 0,0 1100x700
+    Node#view 0,0 1100x700
+      Node#window 0,0 1100x700
+        Node#browser 0,0 1100x700
+          Node#sidebar 0,0 236x700
+            Node#view 10,10 216x680
+              Node#view 10,10 216x30
+                Node#level-back 12,12 56x26
+                  ImageNode#image 14,18 14x14
+                  TextNode#text 30,18 30x15 "tests"
+                Node#view 70,25 122x0
+                Node#level-home 194,10 30x30
+                  ImageNode#image 201,17 16x16
+              Node#view 10,46 216x21
+                TextNode#level-title 18,48 60x19 "fixtures"
+                Node#view 86,57 78x0
+                TextNode#text 172,50 46x15 "1 folder"
+              Node#scroll 10,73 216x617
+                Node#button 10,73 216x28
+                  ImageNode#image 18,79 16x16
+                  TextNode#text 42,79 176x16 "pdf"
+          Node#view 236,0 864x700
+            Node#main 236,8 548x684
+              Node#toolbar 237,9 546x52
+                Node#view 247,20 62x30
+                  Node#back 247,20 30x30
+                    ImageNode#image 254,27 16x16
+                  Node#forward 279,20 30x30
+                    ImageNode#image 286,27 16x16
+                Node#folder-title 315,20 53x30
+                  TextNode#text 323,26 21x17 "pdf"
+                  ImageNode#image 348,28 14x14
+                Node#view 374,35 280x0
+                Node#search 660,20 30x30
+                  ImageNode#image 667,27 16x16
+                Node#view-menu 696,20 41x30
+                  ImageNode#image 703,27 16x16
+                  ImageNode#image 721,29 12x12
+                Node#inspector-toggle 743,20 30x30
+                  ImageNode#image 750,27 16x16
+              Node#content 237,61 546x598
+                Node#list 237,61 546x598
+                  GridScroll#grid 237,61 546x598
+                    Spacer#before 237,61 546x12
+                    Node#row 237,73 546x170
+                      Node#cell 249,73 171x166
+                        Node#view 249,73 171x167
+                          Node#view 277,77 116x116
+                            Node#view 299,89 72x92
+                              ImageNode#image 323,117 24x24
+                              TextNode#text 323,156 24x14 "PDF"
+                          TextNode#text 301,199 68x18 "pages.pdf"
+                          TextNode#text 323,218 23x14 "1 KB"
+                    Spacer#after 237,243 546x12
+              Node#pathbar 237,659 546x32
+                Node#view 241,660 438x32
+                  PathBarNode#pathbar 241,660 438x32
+                    Node#pathbar-segments 247,664 426x24
+                      Node#pathbar-segment 247,664 42x24
+                        TextNode#text 253,668 30x15 "tests"
+                      Node#pathbar-separator 289,664 11x24
+                        ImageNode#image 289,670 11x11
+                      Node#pathbar-segment 300,664 60x24
+                        TextNode#text 306,668 48x15 "fixtures"
+                      Node#pathbar-separator 360,664 11x24
+                        ImageNode#image 360,670 11x11
+                      Node#pathbar-current 371,664 30x24
+                        TextNode#text 377,668 18x15 "pdf"
+                TextNode#count 679,668 96x15 "1 of 1 selected"
+            Node#inspector 792,8 300x684
+              Node#view 793,9 298x682
+                Node#preview 807,23 270x220
+                  Node#view 807,23 270x220
+                    ImageNode#preview-image 872,39 141x188
+                    TextNode#pages 920,217 44x18 "1 / 3"
+                Node#view 793,243 298x47
+                  TextNode#inspector-name 911,255 63x18 "pages.pdf"
+                  TextNode#inspector-kind 876,275 132x15 "PDF document · 3 pages"
+                Node#view 793,290 298x56
+                  Node#open 862,302 52x30
+                    TextNode#text 875,308 26x17 "Open"
+                  Node#reveal 920,302 30x30
+                    ImageNode#image 927,309 16x16
+                  Node#trash 956,302 30x30
+                    ImageNode#image 963,309 16x16
+                  Node#view 992,302 30x30
+                    Node#more 992,302 30x30
+                      ImageNode#image 999,309 16x16
+                Node#details 793,346 298x113
+                  Node#view 809,357 266x24
+                    ImageNode#image 809,362 14x14
+                    TextNode#text 829,362 39x13 "DETAILS"
+                  Node#view 809,381 266x24
+                    TextNode#text 809,385 25x15 "Size"
+                    TextNode#text 1050,385 25x15 "1 KB"
+                  Node#view 809,405 266x24
+                    TextNode#text 809,409 25x15 "Kind"
+                    TextNode#text 1000,409 75x15 "PDF document"
+                  Node#view 809,429 266x24
+                    TextNode#text 809,433 31x15 "Pages"
+                    TextNode#text 1069,433 6x15 "3"
+        Node#viewer 0,0 1100x700
+          Node#viewer-bar 0,0 1100x52
+            Node#back-pill 14,11 80x30
+              ImageNode#image 20,18 16x16
+              ImageNode#image 42,19 14x14
+              TextNode#text 62,18 20x16 "pdf"
+            TextNode#viewer-title 102,18 946x16 "pages.pdf · 1 / 1 · page 2 / 3"
+            Node#viewer-trash 1056,11 30x30
+              ImageNode#image 1063,18 16x16
+          Node#stage 0,52 1100x648
+            ImageView#photo 0,52 1100x648
+            Node#pdf 0,52 1100x648
+              Node#pdf-scroll 0,52 1100x648
+                Node#pdf-pages 0,52 1100x2993
+                  Node#page 150,68 801x1068
+                    ImageNode#page-image 150,68 801x1068
+                  Node#page 16,1148 1068x801
+                    ImageNode#page-image 16,1148 1068x801
+                  Node#page 150,1961 801x1068
+                    ImageNode#page-image 150,1961 801x1068
+              TextNode#page-indicator 1034,64 50x23 "2 / 3"
+        Node#window-start 18,0 0x52
+        Node#window-end 1100,0 0x0
+
 --- story Viewer/error: Viewer/error (168 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
