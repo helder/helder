@@ -52,8 +52,12 @@ class ShaderMacro {
 	public static function build(out:ShaderOutput, lower:Lower, stages:{vertex:Expr, fragment:Expr, vertexType:ComplexType, fragmentType:ComplexType}, lean = false):Expr {
 		var p = out.program;
 		var pos = Context.currentPos();
-		function code(s:StageCode):Expr {
+		// (-D helder.soft: the stages' form for the CPU back end too, Soft)
+		var soft = Soft.enabled() ? new Soft(p, softPrefix(out), Context.getLocalModule().split(".").slice(0, -1), Context.getLocalModule()) : null;
+		var softCode = soft == null ? null : soft.stages();
+		function code(s:StageCode, ?cpu:Expr):Expr {
 			var fields:Array<ObjectField> = [for (c in s.code) {field: c.language, expr: macro $v{c.text}}];
+			if (cpu != null) fields.push({field: "soft", expr: cpu});
 			var bindings = [
 				for (b in s.bindings)
 					b.uniform ? macro {name: $v{b.name}, slot: $v{b.slot}, kind: helder.gfx.ShaderBinding.BindingKind.Uniform, size: $v{b.size}} : b.dimension == 0 ? macro {
@@ -125,7 +129,7 @@ class ShaderMacro {
 			public final fragment:$ft;
 
 			public function new(vertex:$vt, fragment:$ft) {
-				super(${code(out.vertex)}, ${code(out.fragment)}, $layout, $uniforms, $textures, $writeVertices, $paramsExpr);
+				super(${code(out.vertex, softCode?.vertex)}, ${code(out.fragment, softCode?.fragment)}, $layout, $uniforms, $textures, $writeVertices, $paramsExpr);
 				this.vertex = vertex;
 				this.fragment = fragment;
 			}
@@ -154,6 +158,10 @@ class ShaderMacro {
 			}).fields);
 		}
 		var name = base + "_" + haxe.crypto.Md5.encode(new haxe.macro.Printer().printTypeDefinition(cls)).substr(0, 8);
+		if (soft != null) {
+			cls.fields = cls.fields.concat(soft.fields);
+			if (Context.defined("helder.soft.print")) for (f in soft.fields) Sys.println(new haxe.macro.Printer().printField(f));
+		}
 		cls.name = name;
 		cls.pack = pack;
 		cls.pos = pos;
@@ -162,6 +170,13 @@ class ShaderMacro {
 		if (!exists) Context.defineType(cls, module);
 		var tp:TypePath = {pack: pack, name: name};
 		return macro new $tp(${stages.vertex}, ${stages.fragment});
+	}
+
+	// (the CPU form's types' names: the module's, its field's and the stages' text)
+	static function softPrefix(out:ShaderOutput):String {
+		var module = Context.getLocalModule(), field = Context.getLocalMethod() ?? "shader";
+		var text = [for (s in [out.vertex, out.fragment]) for (c in s.code) c.text].join("");
+		return module.split(".").pop() + "_" + field + "_" + haxe.crypto.Md5.encode(text).substr(0, 8);
 	}
 
 	// a uniform block's writer (UniformWriter): each field stored at its std140 offset

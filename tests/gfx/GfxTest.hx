@@ -48,7 +48,10 @@ class GfxTest {
 		var name = args[1], golden = args[2], out = args[3];
 		var ok = switch args[0] {
 			case "headless": headless(name, golden, out, args[4] == "--bless");
+			// (-D helder.soft: the CPU's back end, headless only, static on Linux: no window code linked)
+			#if !helder.soft
 			case "window": window(name, golden, out, args.length > 4 ? Std.parseInt(args[4]) : 5);
+			#end
 			case m: throw "GfxTest: no mode " + m;
 		}
 		Sys.exit(ok ? 0 : 1);
