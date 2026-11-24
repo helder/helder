@@ -1,6 +1,5 @@
 package helder.ui.draw;
 
-#if (hxmc.target != "wasm32-wasi")
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.os.Event as OsEvent;
@@ -30,7 +29,8 @@ import sys.thread.Mutex;
 // IosScroll), their offsets come to it on the main thread as they move
 // (nativeScrolled), its frames drawn at them, the physics the system's.
 // Where the system composites layers (macOS and iOS: CaLayers; Android:
-// ScLayers; Windows: DcLayers; Wayland: WlLayers; LayerSplit), every
+// ScLayers; Windows: DcLayers; Wayland: WlLayers; the browser: WebLayers,
+// the program's frames only, its scroll views the browser's; LayerSplit), every
 // frame, the program's too, is handed to it from the same state, a
 // scroller's content and a mover on layers the system moves. Off with
 // HELDER_ASYNC_SCROLL=0, and where the program has no thread of its own
@@ -102,6 +102,9 @@ class Compositor implements RenderIdle {
 		#end
 		#if (!helder.os || helder.os == "linux")
 		if (hxmc.Platform.os() == 0 && hxmc.Platform.target() < 9 && WlLayers.wanted(device)) layers = new WlLayers(device);
+		#end
+		#if (!helder.os || helder.os == "web")
+		if (hxmc.Platform.os() == 3 && WebLayers.wanted()) layers = new WebLayers(device);
 		#end
 	}
 
@@ -626,4 +629,3 @@ private class Spot {
 		return true;
 	}
 }
-#end

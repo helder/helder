@@ -83,6 +83,36 @@ export default function ui(host) {
 		c.hxmcForward?.(l);
 		return l;
 	}
+	// a scroll view's popups over it left out of it (clip-path: neither
+	// drawn, its scrollbar with it, nor hit there): the page draws it over the
+	// canvas, and so over what the tree draws above it; one holding a layer
+	// of the window's (layers_apply) is not cut, which would cut its content:
+	// clear elements over it take the input there instead (hxmcBlock: the
+	// canvas's, as over the canvas)
+	function cover(s, l) {
+		const c = s.covers ?? [], k = s.k;
+		for (const b of s.blocks ?? []) b.remove();
+		s.blocks = [];
+		if (s.hosting) {
+			s.clip = '';
+			s.e.style.clipPath = '';
+			const r = s.e.getBoundingClientRect(), o = l.getBoundingClientRect();
+			for (let i = 0; i < c.length; i += 4) {
+				const b = document.createElement('div');
+				b.hxmcBlock = true;
+				b.style.cssText = `position:absolute;left:${r.left - o.left + c[i] * k}px;top:${r.top - o.top + c[i + 1] * k}px;width:${c[i + 2] * k}px;height:${c[i + 3] * k}px;z-index:100000;pointer-events:auto;`;
+				l.appendChild(b);
+				s.blocks.push(b);
+			}
+			return;
+		}
+		// (its own outline far out: the holes are what count, whatever its size becomes)
+		let d = '';
+		for (let i = 0; i < c.length; i += 4)
+			d += ` M${c[i] * k} ${c[i + 1] * k}h${c[i + 2] * k}v${c[i + 3] * k}h${-c[i + 2] * k}Z`;
+		s.clip = d ? `path(evenodd, "M-100000 -100000H100000V100000H-100000Z${d}")` : '';
+		s.e.style.clipPath = s.clip;
+	}
 	// per canvas: its views by id ({e: the scroller, s: its spacer}); the scrolls they made, queued
 	const scrollers = new Map();
 	const scrolled = [];
@@ -372,13 +402,8 @@ export default function ui(host) {
 				// the popups over it left out of it (clip-path: neither drawn, its scrollbar with it, nor hit there):
 				// the page draws it over the canvas, and so over what the tree draws above it
 				if (v.c) {
-					// (its own outline far out: the holes are what count, whatever its size becomes)
-					const c = v.c;
-					let d = '';
-					for (let i = 0; i < c.length; i += 4)
-						d += ` M${c[i] * k} ${c[i + 1] * k}h${c[i + 2] * k}v${c[i + 3] * k}h${-c[i + 2] * k}Z`;
-					s.clip = d ? `path(evenodd, "M-100000 -100000H100000V100000H-100000Z${d}")` : '';
-					s.e.style.clipPath = s.clip;
+					s.covers = v.c;
+					cover(s, l);
 				}
 				if (v.o) {
 					s.e.scrollLeft = v.o[0] * k;
@@ -403,6 +428,83 @@ export default function ui(host) {
 			new Int32Array(host.memory().buffer, p, 2).set(a);
 			return 1;
 		},
+	};
+	// the window's layers (src/helder/ui/draw/WebLayers.hx): the bitmaps
+	// read from the canvas since the last update, then each update once its
+	// bitmaps are read, in order, to the page (layers_apply)
+	let snaps = [], updates = Promise.resolve();
+	hxmc_ui.layers_alpha = (canvas) => (host.handles.get(canvas).hxmcAlpha = true);
+	hxmc_ui.layers_snap = (canvas, w, h) => snaps.push(createImageBitmap(host.handles.get(canvas), 0, 0, w, h)) - 1;
+	hxmc_ui.layers_update = (canvas, json) => {
+		const list = snaps, u = host.string(json);
+		snaps = [];
+		const apply = host.page ? host.page.forward('hxmc_ui', 'layers_apply', '') : hxmc_ui.layers_apply;
+		updates = updates.then(() => Promise.all(list)).then((bitmaps) => apply(canvas, u, bitmaps), (e) => console.error('helder.ui: a layer not read:', e));
+	};
+	// the page half: each layer a box of canvases (its tiles, bitmaprenderer's),
+	// a scroller's content in its scroll view's spacer (scrolled by the
+	// browser), the others in the layer of scroll views, stacked by z
+	const layered = new Map();
+	hxmc_ui.layers_apply = (canvas, json, bitmaps) => {
+		const c = host.handles.get(canvas), u = JSON.parse(json), l = scrollLayer(c), views = scrollers.get(canvas);
+		let all = layered.get(canvas);
+		if (!all) layered.set(canvas, (all = new Map()));
+		// (CSS pixels a point)
+		const k = (c.getBoundingClientRect().width / Math.max(1, (c.hxmcBuf ?? c).width)) * u.s, px = k / u.s;
+		for (const id of u.r) {
+			all.get(id)?.e.remove();
+			all.delete(id);
+		}
+		const seen = new Set();
+		for (const v of u.l) {
+			seen.add(v.i);
+			let a = all.get(v.i);
+			if (!a) {
+				const e = document.createElement('div');
+				e.style.cssText = 'position:absolute;pointer-events:none;overflow:hidden;';
+				all.set(v.i, (a = { e, tiles: [], view: null }));
+			}
+			const s = v.v ? views?.get(v.v) : null, into = s ? s.spacer : l;
+			if (a.e.parentNode !== into) into.appendChild(a.e);
+			if (a.view !== s) {
+				if (a.view) {
+					a.view.hosting = false;
+					a.view.e.style.zIndex = '';
+					cover(a.view, l);
+				}
+				a.view = s;
+				if (s) {
+					s.hosting = true;
+					cover(s, l);
+				}
+			}
+			if (s) s.e.style.zIndex = v.z;
+			const st = a.e.style;
+			st.display = '';
+			st.left = v.x * k + 'px';
+			st.top = v.y * k + 'px';
+			st.width = v.w * k + 'px';
+			st.height = v.h * k + 'px';
+			st.zIndex = s ? '' : v.z;
+			for (const [n, w, h, b] of v.t) {
+				let t = a.tiles[n];
+				if (!t) {
+					t = a.tiles[n] = document.createElement('canvas');
+					t.style.cssText = 'position:absolute;';
+					t.hxmcContext = t.getContext('bitmaprenderer');
+					a.e.appendChild(t);
+				}
+				t.width = w;
+				t.height = h;
+				t.hxmcContext.transferFromImageBitmap(bitmaps[b]);
+				t.style.left = (n % v.c) * v.tw * px + 'px';
+				t.style.top = Math.floor(n / v.c) * v.th * px + 'px';
+				t.style.width = w * px + 'px';
+				t.style.height = h * px + 'px';
+			}
+			for (const t of a.tiles.splice(v.n)) t?.remove();
+		}
+		for (const [id, a] of all) if (!seen.has(id)) a.e.style.display = 'none';
 	};
 	// the program in a worker: the page's calls forwarded, the page half's events queued here
 	if (host.page) {

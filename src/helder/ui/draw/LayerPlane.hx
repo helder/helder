@@ -1,6 +1,5 @@
 package helder.ui.draw;
 
-#if (hxmc.target != "wasm32-wasi")
 import haxe.io.Bytes;
 import helder.gfx.Texture;
 
@@ -418,4 +417,3 @@ class LayerPlane {
 	public function free():Void->Void
 		return () -> {};
 }
-#end

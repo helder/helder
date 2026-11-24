@@ -1,6 +1,5 @@
 package helder.ui.draw;
 
-#if (hxmc.target != "wasm32-wasi")
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.ui.Node;
@@ -551,4 +550,3 @@ private class MoverKey {
 	public function new(n:Node)
 		node = n;
 }
-#end
