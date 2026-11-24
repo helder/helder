@@ -643,6 +643,16 @@ final class Device {
 		c.end();
 	}
 
+	// (until the window's next frame is taken without queueing it behind
+	// another: Windows' swap chain, one frame queued at most; helder.ui's
+	// window waits so before a turn's input, the frame after shown at the
+	// next vsync, and the frame waits for nothing more; elsewhere nothing)
+	@:noCompletion public function waitFrame() {
+		#if (!helder.os || helder.os == "windows")
+		if (hxmc.Platform.os() == 2) answer(r -> r.impl.waitFrame());
+		#end
+	}
+
 	// submits the frame and presents it
 	@:typescript public function endFrame() {
 		#if helder.headless

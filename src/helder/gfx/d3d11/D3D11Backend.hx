@@ -9,12 +9,16 @@ import helder.os.Surface;
 import hxmc.unsafe.*;
 
 // The Direct3D 11 back end (Windows): a device and its immediate context,
-// rendering to a window's flip-model swap chain (DXGI_SWAP_EFFECT_FLIP_DISCARD,
+// rendering to a window's flip-model swap chain (DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL,
 // two RGBA8 buffers, resized with the window) or, headless, to an offscreen
-// texture. WARP (the system's software rasterizer) when HXMC_GFX_SOFTWARE=1
-// or when there is no hardware device. Shaders are HLSL compiled at run
-// time (D3DCompile, entry point main, shader model 5.0, or 4.0 below
-// feature level 11_0), vertex inputs at semantic TEXCOORD<location> (as
+// texture. The swap chain queues one frame at most: a window's frame waits
+// for its frame latency object before it is drawn (waitFrame: the program's
+// before it takes its input, the compositor's before it samples its
+// offsets, else at beginFrame), so that its presents keep the display's
+// pace, a frame never queued behind another. WARP (the system's software
+// rasterizer) when HXMC_GFX_SOFTWARE=1 or when there is no hardware device.
+// Shaders are HLSL compiled at run time (D3DCompile, entry point main,
+// shader model 5.0, or 4.0 below feature level 11_0), vertex inputs at semantic TEXCOORD<location> (as
 // SPIRV-Cross names them); a 32-bit float depth buffer of the target's
 // size; a pipeline's state objects (rasterizer, depth, blend) made with it.
 // A texture at slot n is a shader resource view at tn and its sampler at
@@ -153,6 +157,9 @@ class D3D11Backend {
 	public var composition(default, null):Null<DcRoot> = null;
 	// the window's own frames left unpresented: the system's layers are drawn from what they render into targets
 	public var quiet = false;
+	// (the swap chain's frame latency object (nil: none), and whether the next present waited for it)
+	var latency = Ptr.nil();
+	var waited = false;
 
 	static inline var MAX_SLOTS = 8;
 
@@ -185,6 +192,7 @@ class D3D11Backend {
 			device = keptDevice;
 			context = helder.dev.Hosted.get(helder.dev.Hosted.D3D_CONTEXT);
 			swapChain = helder.dev.Hosted.get(helder.dev.Hosted.D3D_SWAP_CHAIN);
+			paced();
 			shaderModel = ID3D11Device.GetFeatureLevel(device) >= D3D.FEATURE_LEVEL_11_0 ? "_5_0" : "_4_0";
 			if (Sys.getEnv("HXMC_GFX_D3D11_NO_OFFSETS") != "1") offsetting();
 			width = surface.width;
@@ -376,7 +384,10 @@ class D3D11Backend {
 			d.value.BufferUsage = D3D.USAGE_RENDER_TARGET_OUTPUT;
 			d.value.BufferCount = 2;
 			d.value.Scaling = D3D.SCALING_STRETCH;
-			d.value.SwapEffect = D3D.SWAP_EFFECT_FLIP_DISCARD;
+			// (sequential: Present1's dirty rectangles are a flip-sequential
+			// chain's; on a flip-discard one DWM kept an earlier frame's glyph, #98)
+			d.value.SwapEffect = D3D.SWAP_EFFECT_FLIP_SEQUENTIAL;
+			d.value.Flags = D3D.SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 			var root = composed ? DcRoot.make(dxgi, surface.handle) : null;
 			if (root != null) {
 				d.value.AlphaMode = D3D.ALPHA_MODE_IGNORE;
@@ -398,7 +409,26 @@ class D3D11Backend {
 		Com.release(factory);
 		check(hr, "CreateSwapChainForHwnd");
 		swapChain = scratch.value;
+		paced();
 		backBuffer();
+	}
+
+	// (one frame queued at most, its latency object kept; none where the
+	// swap chain was made without it: a build's under hxmc dev's host)
+	function paced() {
+		if (IUnknown.QueryInterface(swapChain, IID.IDXGISwapChain2, scratch) < 0) return;
+		var c = scratch.value;
+		if (IDXGISwapChain2.SetMaximumFrameLatency(c, 1) >= 0) latency = IDXGISwapChain2.GetFrameLatencyWaitableObject(c);
+		Com.release(c);
+	}
+
+	// until the swap chain takes a frame without queueing it behind another
+	// (once a present: a frame that waited goes on; at most 100 ms, a
+	// hidden window's)
+	public function waitFrame() {
+		if (latency.isNull() || waited) return;
+		waited = true;
+		WaitTimer.WaitForSingleObjectEx(latency, 100, 1);
 	}
 
 	function backBuffer() {
@@ -1046,6 +1076,7 @@ class D3D11Backend {
 			if (depthWidth != width || depthHeight != height) createDepth();
 			return true;
 		}
+		waitFrame();
 		target = chainTarget;
 		view = chainView;
 		width = chainWidth;
@@ -1057,7 +1088,8 @@ class D3D11Backend {
 		Com.release(view);
 		Com.release(msaa);
 		Com.release(target);
-		var hr = IDXGISwapChain1.ResizeBuffers(swapChain, 0, surface.width, surface.height, D3D.FORMAT_UNKNOWN, 0);
+		var hr = IDXGISwapChain1.ResizeBuffers(swapChain, 0, surface.width, surface.height, D3D.FORMAT_UNKNOWN,
+			latency.isNull() ? 0 : D3D.SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT);
 		check(hr, "IDXGISwapChain1::ResizeBuffers");
 		width = surface.width;
 		height = surface.height;
@@ -1342,6 +1374,7 @@ class D3D11Backend {
 			params[0] = Ptr.ofI64(n);
 			IDXGISwapChain1.Present1(swapChain, 1, 0, params);
 		});
+		waited = false;
 		if (hr == D3D.DXGI_ERROR_DEVICE_REMOVED || hr == D3D.DXGI_ERROR_DEVICE_RESET)
 			check(ID3D11Device.GetDeviceRemovedReason(device), "Present: the device was removed");
 	}
@@ -1421,6 +1454,7 @@ class D3D11Backend {
 		#if hxmc.dev_host
 		// (handing over: the swap chain, the context and the device left to the next build)
 		var keep = helder.dev.Hosted.handingOver && helder.dev.Hosted.get(helder.dev.Hosted.D3D_DEVICE) == device;
+		if (!latency.isNull()) hxmc.unsafe.Win32.CloseHandle(latency);
 		if (!keep) {
 			if (composition != null) composition.dispose();
 			Com.release(swapChain);
@@ -1430,6 +1464,7 @@ class D3D11Backend {
 		#else
 		if (composition != null) composition.dispose();
 		Com.release(swapChain);
+		if (!latency.isNull()) hxmc.unsafe.Win32.CloseHandle(latency);
 		Com.release(context);
 		Com.release(device);
 		#end

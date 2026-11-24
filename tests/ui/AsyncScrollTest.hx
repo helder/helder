@@ -57,6 +57,7 @@ class AsyncScrollTest {
 		}
 		for (c in motionCases())
 			motion(c);
+		comesBack();
 		#if (target.name == "hxmc")
 		if (Sys.args().indexOf("--no-frames") < 0) for (scale in [1, 2]) {
 			frames(scale);
@@ -65,6 +66,36 @@ class AsyncScrollTest {
 		#end
 		Sys.println('AsyncScrollTest: $checks checks, ' + (failures == 0 ? "ok" : '$failures failed'));
 		if (failures > 0) Sys.exit(1);
+	}
+
+	// a scroller the compositor left at 600, the program moving it to 120,
+	// then back to 600 by steps: the mirror at the program's 600 (#98: it kept 596)
+	static function comesBack() {
+		var ui = new Ui(new MonoText(), 300, 200), list = new Node(), m = new ScrollMirror(), shot = new ScrollShot();
+		list.style.set({width: 300, height: 200, overflow: Scroll});
+		for (i in 0...100) {
+			var row = new Node();
+			row.style.set({height: 20, shrink: 0});
+			list.append(row);
+		}
+		ui.root.append(list);
+		function frame() {
+			ui.update();
+			ScrollShot.take(ui, shot);
+			m.adopt(shot);
+			m.drain((n, x, y, held, moving) -> ui.mirrored(n, x, y, held, moving));
+		}
+		frame();
+		ui.mirrored(list, 0, 600, false, false);
+		frame();
+		list.scrollY = 120;
+		frame();
+		while (list.scrollY < 600) {
+			list.scrollY += 4;
+			frame();
+		}
+		var o = m.offsets(list);
+		check("a scroller the compositor left at 600, the program back at 600: the mirror's", o != null && o.y == 600, o == null ? "none" : '${o.y}');
 	}
 
 	static function same(a:Array<Float>, b:Array<Float>):Bool {

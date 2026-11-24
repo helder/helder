@@ -8,8 +8,9 @@ import helder.ui.widgets.TextField;
 // A window's frame kept from frame to frame and drawn only where it
 // changed (Renderer.keep: Ui.paint's damage) against the same tree drawn
 // whole, pixel for pixel, headless on the GPU (bun run test ui-draw):
-// random trees (rounded scrollers of rows, a text field, a card, a popup)
-// changed at random over frames (rows restyled, relabelled, hidden; whole
+// random trees (a header, rounded scrollers of rows, a text field, a card,
+// a popup) changed at random over frames (the header's label, its width
+// with it; rows restyled, relabelled, hidden; whole
 // pixel scrolls; the card's transform and opacity moving; the popup opened
 // and closed; the caret moved, text typed), at scales 1 and 2, layers
 // replayed and from their tiles; with --window, in a window whose frame
@@ -37,6 +38,7 @@ class DamageTest {
 			if (scale == 1) damages(device);
 			for (tiles in [false, true])
 				see(device, scale, tiles);
+			rests(device, scale);
 			device.dispose();
 			planes(scale);
 		}
@@ -142,6 +144,9 @@ class DamageTest {
 				ui.textInput(["a", "bc", " "][j % 3]);
 			case 7:
 				row.style.display = row.style.display == None ? Flex : None;
+			case 8:
+				// (light on dark, its width changing with its digits: #98's header)
+				m.title.text = "Header " + [j, j % 10, j * 37 % 1000][i % 3];
 			case _:
 		}
 	}
@@ -192,6 +197,52 @@ class DamageTest {
 				off = Std.int(Math.max(off, Math.abs((v >> (8 * k) & 0xFF) - want[k])));
 		check('scale $scale${tiles ? " from tiles" : ""}: a box moved to 0.4, then 0.6, at rest at 0.6, drawn whole and kept', off <= 1,
 			[for (v in got) StringTools.hex(v & 0xFFFFFF, 6)].join(" ") + ' (ABGR), at most $off levels off');
+	}
+
+	// (a scroller at rest at a fraction of a device pixel, its tiles drawn
+	// there, then its offset set by the program, nothing else changing,
+	// frames drawn only while the ui asks for them: its tiles drawn snapped
+	// as it moved, then again where it rests, as the same replayed (#100: no
+	// paint at rest asked for, rows a pixel off))
+	static function rests(device:Device, scale:Float) {
+		var w = device.width, h = device.height, t = Clock.now + 10;
+		var got = [for (tiles in [true, false]) {
+			var ui = new Ui(new DrawText(), W, H), r = new Renderer(device), list = new Node(), pixels = Bytes.alloc(w * h * 4);
+			r.scale = ui.scale = scale;
+			r.groups = true;
+			r.tiles = r.keep = tiles;
+			list.style.set({overflow: Scroll, width: 200, height: H, background: 0xFFFFFFFF, rowGap: 2, padding: 4, fontSize: 13});
+			for (i in 0...60) {
+				var row = new Node(), box = new Node();
+				row.style.set({direction: Row, padding: 3, columnGap: 6, alignItems: Center, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF});
+				box.style.set({width: 12, height: 12, radius: 3, background: 0xFF000000 | ((i * 40503) & 0xFFFFFF)});
+				row.append(box);
+				row.append(new TextNode("Row " + i));
+				list.append(row);
+			}
+			ui.root.append(list);
+			function frames()
+				for (_ in 0...20) {
+					t += 1 / 60;
+					Clock.tick(t);
+					ui.update();
+					if (ui.needsFrame) frame(device, ui, r, w, h, pixels);
+				}
+			// (at rest at a fraction of a device pixel, its tiles drawn there: as a fling may leave it)
+			list.scrollY = 40 + 0.5 / scale;
+			for (_ in 0...5) {
+				ui.requestFrame();
+				frames();
+			}
+			list.scrollY = 120;
+			frames();
+			pixels;
+		}];
+		var off = 0, first = "";
+		for (p in 0...w * h)
+			if (got[0].getInt32(p * 4) != got[1].getInt32(p * 4) && off++ == 0)
+				first = ' first at ${p % w},${Std.int(p / w)}: ${StringTools.hex(got[0].getInt32(p * 4), 8)} from tiles, ${StringTools.hex(got[1].getInt32(p * 4), 8)} replayed';
+		check('scale $scale: a scroll offset set by the program, its tiles drawn again at rest', off == 0, '$off pixels differ$first');
 	}
 
 	// (the system layers' buffers drawn only where they changed (LayerPlane:
@@ -282,6 +333,11 @@ class DamageTest {
 		var ui = new Ui(new DrawText(), W, H), scrollers:Array<Node> = [], rows:Array<Node> = [];
 		var top = new Node();
 		top.style.set({direction: Column, height: H, padding: 8, rowGap: 6, background: 0xFFF4F4F5, fontSize: 13});
+		var head = new Node(), title = new TextNode("Header");
+		head.style.set({shrink: 0, background: 0xFF18181B, padding: 4});
+		title.style.set({color: 0xFFFFFFFF, fontSize: 14});
+		head.append(title);
+		top.append(head);
 		var field = new TextField("some text to edit");
 		field.style.set({background: 0xFFFFFFFF, borderWidth: 1, borderColor: 0xFFA1A1AA, padding: 3, width: 180, shrink: 0});
 		top.append(field);
@@ -323,11 +379,11 @@ class DamageTest {
 		popup.style.set({left: 120, top: 60, width: 120, height: 70, background: 0xFFFFFFFF, borderWidth: 1, borderColor: 0xFF71717A, radius: 6, padding: 6});
 		popup.style.shadow = Shadow.parse("0 4px 12px rgba(0,0,0,0.3)");
 		popup.append(new TextNode("A popup"));
-		return {ui: ui, scrollers: scrollers, rows: rows, card: card, field: field, popup: popup};
+		return {ui: ui, scrollers: scrollers, rows: rows, card: card, field: field, popup: popup, title: title};
 	}
 }
 
-typedef Made = {ui:Ui, scrollers:Array<Node>, rows:Array<Node>, card:Node, field:TextField, popup:Popup};
+typedef Made = {ui:Ui, scrollers:Array<Node>, rows:Array<Node>, card:Node, field:TextField, popup:Popup, title:TextNode};
 
 // (a window's stack as the system layers see it: its program's frames
 // composed (Compositor), split (LayerSplit), the window's layer drawn
