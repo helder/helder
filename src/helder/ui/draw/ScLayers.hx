@@ -211,15 +211,29 @@ class ScLayers extends LayerSplit {
 	}
 
 	// a SurfaceControl for a node's LayerSlot (a video's: its owner sets its
-	// buffers), under ours until a frame places it; nil before the first
-	// frame or where there are no system layers (the program's thread)
+	// buffers), under ours, hidden until a frame places it (uncropped, a
+	// layer of one colour would fill the window); nil before the first frame
+	// or where there are no system layers (the program's thread)
 	public function surface():Ptr {
 		prepare();
 		lock.acquire();
 		var h = host;
 		lock.release();
-		return h.isNull() || broken ? Ptr.nil() : Sc.fromWindow(h);
+		if (h.isNull() || broken) return Ptr.nil();
+		var l = Sc.fromWindow(h);
+		if (l.isNull()) return l;
+		var t = Sc.create();
+		Sc.visible(t, l, false);
+		Sc.apply(t, -1);
+		Sc.delete(t);
+		lock.acquire();
+		surfaces.push(l);
+		lock.release();
+		return l;
 	}
+
+	// (what surface() made: hidden with the layers when they turn off)
+	final surfaces:Array<Ptr> = [];
 
 	// (a surface() of one colour, 0xRRGGBB: tests)
 	@:noCompletion public function solid(rgb:Int):Ptr {
@@ -487,10 +501,18 @@ class ScLayers extends LayerSplit {
 		redraw = false;
 		if (!hide || stack.isNull()) return;
 		hide = false;
-		if (!stackShown) return;
-		stackShown = false;
 		var t = Sc.create();
-		Sc.visible(t, stack, false);
+		if (stackShown) Sc.visible(t, stack, false);
+		stackShown = false;
+		// (off for good: the nodes' layers too, which are not under the stack until placed)
+		if (broken) {
+			lock.acquire();
+			var all = surfaces.copy();
+			lock.release();
+			for (l in all)
+				Sc.visible(t, l, false);
+			Sys.println("helder.ui: system layers off: the window's own frame shown, the layers hidden");
+		}
 		Sc.apply(t, -1);
 		Sc.delete(t);
 	}

@@ -21,7 +21,8 @@ wait_for() {
 	while [ $i -lt "$2" ]; do
 		adb logcat -d -s hxmc:I > "$log" 2>/dev/null
 		grep -q "$1" "$log" && return 0
-		if adb logcat -d 2>/dev/null | grep -q "Fatal signal\|FATAL EXCEPTION\|dlopen failed\|CANNOT LINK"; then
+		# (this app's: another process's crash on the device is not its)
+		if adb logcat -d 2>/dev/null | grep -E -A3 "Fatal signal|FATAL EXCEPTION|dlopen failed|CANNOT LINK" | grep -q "$pkg"; then
 			echo "android-layers.sh: the app crashed or did not load:"
 			adb logcat -d 2>/dev/null | grep -E -A40 "Fatal signal|FATAL EXCEPTION|dlopen failed|CANNOT LINK" | head -80
 			return 1

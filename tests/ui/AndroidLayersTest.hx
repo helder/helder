@@ -89,14 +89,22 @@ class AndroidLayersTest {
 		var layers = c == null ? null : c.layers;
 		strict = layers != null && mode != "stall";
 		say('start: system layers ${mode == "" ? "default" : mode}, compositor ${c != null}, layers ${layers != null}');
-		var baseline = 60.0, armFrom = 0.0, unarmed = false;
+		var baseline = 60.0, armFrom = 0.0, unarmed = false, tries = 0;
+		// (a finger's fling: down, moves a frame apart, up; routed as the system's are)
+		function fling():String {
+			var t = Timer.stamp() * 1000, r = [];
+			for (i in 0...8)
+				r.push(touch(w, i == 0 ? PointerDown : PointerMove, 200, 700 - i * 60, t + i * 16));
+			r.push(touch(w, PointerUp, 200, 700 - 7 * 60, t + 8 * 16));
+			return r.join(" ") + ', moving ${c != null && c.moving()}';
+		}
 		// (the handshake before a phase blocks: the compositor holds a program
 		// frame with the motion running (its next frame due), else nothing
 		// moves on its own while the program is blocked: a transition whose
 		// start is its next tick waits for it, in the program's frames and the
 		// compositor's alike. Given up after 3 s: a failure)
-		function armed(what:String, now:Float):Bool {
-			if (c == null || c.due() >= 0) {
+		function armed(what:String, now:Float, glide = false):Bool {
+			if (c == null || c.due() >= 0 && (!glide || c.moving())) {
 				say('$what: the compositor armed ${Math.round((now - armFrom) * 1000)} ms after it began');
 				return true;
 			}
@@ -201,14 +209,17 @@ class AndroidLayersTest {
 					}
 				case 1:
 					// (a fling of the program's own: the compositor glides it while the program is blocked)
-					var t = now * 1000;
-					for (i in 0...8)
-						touch(w, i == 0 ? PointerDown : PointerMove, 200, 700 - i * 60, t + i * 16);
-					touch(w, PointerUp, 200, 700 - 7 * 60, t + 8 * 16);
+					say('a fling: injected, the compositor answered ${fling()}');
+					tries = 1;
 					phase = 11;
 					at = step;
 					armFrom = now;
-				case 11 if (step - at >= 4 && armed("a fling", now)):
+				case 11 if (c != null && !c.moving() && now - armFrom > 1 && tries < 3):
+					// (no glide began (the mirror not moving): flung again, as a finger would)
+					say('a fling: no glide after 1 s (list at ${list.scrollY}): flung again, the compositor answered ${fling()}');
+					tries++;
+					armFrom = now;
+				case 11 if (step - at >= 4 && armed("a fling", now, true)):
 					// (its pace not checked: the list's layer gets a buffer for the area it
 					// records as the fling passes it, which an emulator makes slowly)
 					var r = blocked("a fling", 0.3, () -> {}, false);
@@ -312,7 +323,8 @@ class AndroidLayersTest {
 		}, e -> if (e.kind == helder.os.Event.EventKind.Close) w.close() else w.handle(e));
 	}
 
-	static function touch(w:UiWindow, kind:helder.os.Event.EventKind, x:Float, y:Float, ms:Float) {
+	// (a touch's event as the system's would come, routed first; what the compositor answered)
+	static function touch(w:UiWindow, kind:helder.os.Event.EventKind, x:Float, y:Float, ms:Float):Int {
 		var e = new helder.os.Event(), p = @:privateAccess new Pointer(1), s = w.window.scale;
 		@:privateAccess {
 			p.type = Touch;
@@ -326,6 +338,7 @@ class AndroidLayersTest {
 		e.pointer = p;
 		Window.routed(e);
 		w.handle(e);
+		return e.routed;
 	}
 }
 
