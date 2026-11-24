@@ -6,8 +6,9 @@ import helder.async.*;
 // Server, a free one) and writes it, with a token of its own, to its store
 // (helder.os.Store "helder-viewer-instance"); a later launch connects there
 // and hands its file over ("open <token> <path>"; "ok" back), then ends. A
-// port no one answers on (a viewer that crashed): this launch becomes the
-// first. The first opens what it is handed and raises its window.
+// port no one answers on within 2 s (a viewer that crashed, the port
+// another program's since): this launch becomes the first. The first
+// opens what it is handed and raises its window.
 class Instance {
 	static inline var STORE = "helder-viewer-instance";
 
@@ -19,10 +20,10 @@ class Instance {
 		if (port == null || token == null) return false;
 		var s = try Socket.connect("127.0.0.1", port) catch (_:Dynamic) null;
 		if (s == null) return false;
-		var ok = try {
+		var ok = try Async.timeout(2, _ -> {
 			s.writeString('open $token $path\n');
 			new Reader(s).readLine() == "ok";
-		} catch (_:Dynamic) false;
+		}) catch (_:Dynamic) false;
 		s.close();
 		return ok;
 	}
