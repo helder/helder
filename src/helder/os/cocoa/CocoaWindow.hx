@@ -520,19 +520,43 @@ class CocoaWindow {
 	// delegate at once)
 	var pending = false;
 
-	function resized() {
+	function resized(live = false) {
 		if (onEvent == null) {
 			pending = true;
 			return;
 		}
 		pending = false;
 		layoutControls();
-		var e = event;
+		var e = live ? new Event() : event;
 		e.kind = Resize;
 		e.window = owner;
 		e.x = surface.width;
 		e.y = surface.height;
-		dispatch(e);
+		if (!live) {
+			dispatch(e);
+			return;
+		}
+		// (a live resize's: handed to the program with its frame, in the call
+		// the main thread waits for at most LIVE_WAIT, not waited out first)
+		Window.routed(e);
+		owing.acquire();
+		owed = [for (o in owed) if (o.window != owner) o];
+		owed.push(e);
+		owing.release();
+	}
+
+	// (the live resize's Resize events not delivered yet, the newest of each window)
+	static var owed:Array<Event> = [];
+	static final owing = new sys.thread.Mutex();
+
+	// (on the program's thread)
+	static function deliver(f:Event->Void) {
+		owing.acquire();
+		var es = owed;
+		owed = [];
+		owing.release();
+		for (e in es)
+			f(e);
 	}
 
 	function setCursor(c:Cursor) {
@@ -753,13 +777,24 @@ class CocoaWindow {
 	}
 
 	@:hxmc.callback static function didResize(self:Ptr, cmd:Ptr, note:Ptr):Void {
+		var t = haxe.Timer.stamp();
+		resizedLive(note);
+		held += haxe.Timer.stamp() - t;
+	}
+
+	// (the main thread's time in a live resize's callbacks, and its frames given up on: the resize check's)
+	static var held = 0.0;
+	static var late = 0;
+
+	static function resizedLive(note:Ptr) {
 		var w = find(Msg.id(note, ObjC.sel("object")));
 		if (w != null) w.keepControls();
 		if (w == null || !w.measure()) return;
-		w.resized();
+		var live = w.surface.resizing || Msg.b(w.window, ObjC.sel("inLiveResize"));
+		w.resized(live);
 		// (a drag of the window's edge runs AppKit's own loop until the mouse is up, and
 		// App.run draws nothing: a frame at the new size from here, as Win32Window's timer)
-		if (w.surface.resizing || Msg.b(w.window, ObjC.sel("inLiveResize"))) liveFrame(Ptr.nil(), Ptr.nil(), Ptr.nil());
+		if (live && !frameLive()) late++;
 	}
 
 	// (a live resize's frame waited for so long at most: presented in the
@@ -793,8 +828,21 @@ class CocoaWindow {
 		timer = Ptr.nil();
 	}
 
-	@:hxmc.callback static function liveFrame(self:Ptr, cmd:Ptr, t:Ptr):Void
-		if (onFrame != null && App.windows.length > 0) OsThread.within(onFrame, LIVE_WAIT);
+	@:hxmc.callback static function liveFrame(self:Ptr, cmd:Ptr, t:Ptr):Void {
+		var s = haxe.Timer.stamp();
+		frameLive();
+		held += haxe.Timer.stamp() - s;
+	}
+
+	static function frameLive():Bool
+		return onFrame == null || App.windows.length == 0 || OsThread.within(step, LIVE_WAIT);
+
+	// (a call given up on runs later: it delivers what is owed by then)
+	static function step() {
+		var f = onEvent;
+		if (f != null) deliver(f);
+		onFrame();
+	}
 
 	// waits for an event (left in the queue for poll), or seconds
 	static function wait(seconds:Float) {
@@ -809,6 +857,7 @@ class CocoaWindow {
 
 	// dispatches the pending events
 	static function poll(onFrame:Void->Void, onEvent:Event->Void) {
+		deliver(onEvent);
 		helder.os.OsThread.run(() -> {
 			CocoaWindow.onFrame = onFrame;
 			CocoaWindow.onEvent = onEvent;

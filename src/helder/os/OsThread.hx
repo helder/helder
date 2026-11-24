@@ -191,7 +191,9 @@ class OsThread {
 				nest--;
 				return false;
 			}
-			mainWake.wait(left);
+			// (in short waits: one timed wait of 0.1 s woke up to 0.1 s late on
+			// CI's macOS VMs, 2 ms ones a few ms at most)
+			mainWake.wait(Math.min(left, 0.002));
 		}
 		nest--;
 		if (c.error != null) throw c.error;
