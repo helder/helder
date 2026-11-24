@@ -203,11 +203,11 @@ place, as `helder dev` does locally; sharing a project again keeps its link.
 worker (OffscreenCanvas) by default, the page's thread passing input on
 and the fallback (done: Chromium, Firefox and WebKit, the same frames and
 input latency); the browser as the system compositor: each layer
-a canvas in the page, drawn from a worker (OffscreenCanvas, WebGPU's one
-device for all of them, ImageBitmaps under WebGL2), tiled where it is
-long; scrollers the browser's own elements with their layers inside, so
+a canvas in the page, drawn from a worker, tiled where it is long;
+scrollers the browser's own elements with their layers inside, so
 they scroll in step at the screen's rate (iOS Safari holds
-requestAnimationFrame and touch to 60 Hz, not its scrolling); the declared
+requestAnimationFrame and touch to 60 Hz, not its scrolling) (done:
+ImageBitmaps read from the window's canvas, WebGPU and WebGL2 alike); the declared
 animations Web Animations, sticky and scroll-linked effects CSS's; inputs,
 video and iframes between the layers; the program in a worker, the page's
 thread passing input on (an invisible scroller's offsets for drags the

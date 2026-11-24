@@ -5,7 +5,8 @@
 // shown (a screenshot) the same as with every layer on the window's
 // (HELDER_SYSTEM_LAYERS=flat), at rest and scrolled by the wheel; in a
 // worker, the list scrolled by the wheel while the program is busy (B):
-// shown moved at once, as the program draws it once it is done.
+// shown moved at once, as the program draws it once it is done; a frame
+// read back (host.gfx.readPixels) drawn whole, as the flat window's.
 //   node tests/ui/web-layers.mjs <WebLayersPage.wasm>
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -51,6 +52,15 @@ window.diff = async (a, b, x0, y0, x1, y1) => {
 			if (Math.abs(p.data[i] - q.data[i]) > 24 || Math.abs(p.data[i + 1] - q.data[i + 1]) > 24 || Math.abs(p.data[i + 2] - q.data[i + 2]) > 24) n++;
 		}
 	return n;
+};
+// (the next frame read back, a hash)
+window.read = async () => {
+	const pixels = window.result.host.gfx.readPixels();
+	window.result.host.os.redraw();
+	const d = (await pixels).data;
+	let h = 0;
+	for (let i = 0; i < d.length; i++) h = (Math.imul(h, 31) + d[i]) | 0;
+	return h;
 };
 // (the list's scroll view and what its layer shows: the tiles in its spacer)
 window.layers = () => {
@@ -106,6 +116,8 @@ try {
 			const a = await shot(p), b = await shot(q);
 			let n = await p.evaluate(([a, b]) => window.diff(a, b, 0, 0, 400, 300), [a, b]);
 			check(`${mode}: shown as the flat window shows it`, n <= 40, `${n} pixels differ`);
+			const [ra, rb] = [await p.evaluate(() => window.read()), await q.evaluate(() => window.read())];
+			check(`${mode}: a frame read back drawn whole, as the flat window's`, ra === rb, `${ra} and ${rb}`);
 			// (the wheel over the list, on both)
 			for (const r of [p, q]) {
 				await r.mouse.move(150, 180);

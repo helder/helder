@@ -434,6 +434,7 @@ export default function ui(host) {
 	// bitmaps are read, in order, to the page (layers_apply)
 	let snaps = [], updates = Promise.resolve();
 	hxmc_ui.layers_alpha = (canvas) => (host.handles.get(canvas).hxmcAlpha = true);
+	hxmc_ui.layers_reading = () => (host.gfx?.reading?.() ? 1 : 0);
 	hxmc_ui.layers_snap = (canvas, w, h) => snaps.push(createImageBitmap(host.handles.get(canvas), 0, 0, w, h)) - 1;
 	hxmc_ui.layers_update = (canvas, json) => {
 		const list = snaps, u = host.string(json);

@@ -243,6 +243,8 @@ export default async function (host) {
 			for (const g of contexts) g.getExtension('WEBGL_lose_context')?.loseContext();
 			contexts.length = 0;
 		},
+		// (whether a readPixels waits for the next frame: helder.ui's WebLayers draws that one whole on the canvas)
+		reading: () => captures.length > 0 || (current?.captures.length ?? 0) > 0,
 		readPixels() {
 			if (current) {
 				if (current.offscreen) return Promise.resolve(read(current));

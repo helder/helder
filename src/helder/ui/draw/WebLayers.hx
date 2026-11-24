@@ -11,8 +11,10 @@ import hxmc.unsafe.*;
 // window's the canvas itself. A top-level scroller's content is placed in
 // its scroll view (WebScroll's element), so that the browser moves it as
 // it scrolls, at the screen's rate, while the program draws nothing or is
-// busy; what is over it, and a layer that moves on its own, in the layer
-// of scroll views over the canvas, stacked in paint order. Each is drawn
+// busy; what is over it in the layer of scroll views over the canvas,
+// stacked in paint order (a layer that moves on its own stays drawn:
+// unfit). A frame the page reads back (host.gfx.readPixels) is drawn
+// whole onto the canvas (priming), the page's layers left. Each is drawn
 // by the window's own device into the window's canvas, in tiles of the
 // canvas's size at most (a long scroller's content: several), only those
 // its changes meet, each read back as an ImageBitmap (createImageBitmap:
@@ -62,6 +64,17 @@ class WebLayers extends LayerSplit {
 	override public function show(r:Replay, f:CompositeFrame, now:Array<Float>, t:Float, shown:Null<Array<Float>>, drawn:Bool, moves:Array<Void->Void>) {
 		if (f.buffers.length == 0 || f.pipeline == null) return;
 		compose(f, now, t, shown, drawn);
+		// (a layer that moves on its own stays drawn: the page would read it each frame)
+		var movers = false;
+		for (u in units)
+			if (u.kind == LayerPlane.MOVER) {
+				unfit.set(u.key, true);
+				movers = true;
+			}
+		if (movers) {
+			split = -1;
+			compose(f, now, t, shown, drawn);
+		}
 		var W = f.width, H = f.height, s = f.scale, b = f.buffers[ring = (ring + 1) % f.buffers.length], snaps = 0;
 		var buf = new StringBuf();
 		buf.add('{"s":');
@@ -153,12 +166,17 @@ class WebLayers extends LayerSplit {
 
 	var sent = "";
 
+	// (a frame read back, the page's readPixels': drawn whole onto the
+	// canvas, as the reference draws it, the page's layers left as they are)
+	override public function prepare()
+		priming = WebLayerImports.layers_reading() != 0;
+
 	// (a frame onto the window's layer alone: the page's layers hidden)
 	override public function windowShown()
-		hide();
+		if (!priming) hide();
 
 	override public function suspend()
-		hide();
+		if (!priming) hide();
 
 	override public function dispose()
 		hide();
@@ -302,6 +320,8 @@ class WebPlane extends LayerPlane {
 @:hxmc.c @:hxmc.lib("hxmc_ui") extern class WebLayerImports {
 	// the canvas's context of premultiplied alpha, asked before it is made
 	static function layers_alpha(canvas:Int):Void;
+	// whether the page waits to read the canvas's next frame (host.gfx.readPixels)
+	static function layers_reading():Int;
 	// the canvas's top left w x h as it is now, read into an ImageBitmap: its number in the next update
 	static function layers_snap(canvas:Int, w:Int, h:Int):Int;
 	// the layers' places and tiles (JSON), the bitmaps read since the last
