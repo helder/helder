@@ -22,8 +22,9 @@ import hxmc.unsafe.Ptr;
 // (Raster), then resolves a multisampled target. Uniform blocks are copied
 // when set and textures bound by their records, so later changes do not
 // reach draws already made. A window's frame is shown by the system's own
-// path (helder.os.Blit), where it changed. No compute tier (Device.has: none; programs take the
-// render stages' path, as on WebGL2), no shared textures.
+// path (helder.os.Blit), where it changed. Compute stages run on the
+// calling thread, 4 invocations a call (their CPU form's lanes). No shared
+// textures.
 @:hxmc.unsafe(gc)
 class SoftBackend {
 	public final backend = Backend.Soft;
@@ -37,7 +38,7 @@ class SoftBackend {
 	final bufferSizes:Array<Int> = [];
 	final textures:Array<Ptr> = [];
 	final samplers:Array<Int> = [];
-	final shaders:Array<Null<{entry:Ptr, varyings:Int, stage:Stage}>> = [];
+	final shaders:Array<Null<{entry:Ptr, varyings:Int, stage:Stage, size:Array<Int>}>> = [];
 	final pipelines:Array<SoftPipeline> = [];
 	final queries:Array<Ptr> = [];
 	final queryCounts:Array<Int> = [];
@@ -46,6 +47,7 @@ class SoftBackend {
 	var frameDepth = Ptr.nil();
 	var frameTarget = 0;
 	var damage:Null<Array<Int>> = null;
+	final damageRects:Array<Int> = [];
 	// what is bound
 	var pipeline:Null<SoftPipeline> = null;
 	final vertexBuffers:Array<Ptr> = [for (_ in 0...8) Ptr.nil()];
@@ -72,6 +74,12 @@ class SoftBackend {
 	var verts = Ptr.nil();
 	var vertsSize = 0;
 	final clip:Ptr;
+	// the compute tier's: pipelines, the one set, its context, ids and storage bindings
+	final computes:Array<{entry:Ptr, size:Array<Int>}> = [];
+	var computing:Null<{entry:Ptr, size:Array<Int>}> = null;
+	final cctx:Ptr;
+	final cin:Ptr;
+	final storage:Ptr;
 
 	public function new(surface:Surface, antialias:Bool) {
 		this.surface = surface;
@@ -84,6 +92,11 @@ class SoftBackend {
 		vin = LibC.malloc(16 * 64);
 		vout = LibC.malloc(64 + 16 * Abi.MAX_VARYINGS);
 		clip = LibC.malloc(2 * 16 * 4 * (4 + Abi.MAX_VARYINGS) + 3 * 4 * (4 + Abi.MAX_VARYINGS));
+		cctx = LibC.malloc(Abi.COMPUTE_SIZE);
+		LibC.memset(cctx, 0, Abi.COMPUTE_SIZE);
+		cin = LibC.malloc(16 * 10);
+		storage = LibC.malloc(Buffers.SIZE * 16);
+		LibC.memset(storage, 0, Buffers.SIZE * 16);
 		resize(surface.width, surface.height);
 	}
 
@@ -211,7 +224,7 @@ class SoftBackend {
 
 	public function createShader(d:ShaderDesc):Int {
 		var s = d.code.soft;
-		shaders.push(s == null ? null : {entry: Ptr.ofI64(s.entry), varyings: s.varyings, stage: d.stage});
+		shaders.push(s == null ? null : {entry: Ptr.ofI64(s.entry), varyings: s.varyings, stage: d.stage, size: d.code.workgroupSize});
 		return shaders.length;
 	}
 
@@ -801,8 +814,15 @@ class SoftBackend {
 	}
 
 	// the frame's rectangles that changed (x0, y0, x1, y1 each), the ones shown; null: all of it
-	public function damaged(rects:Null<Array<Int>>)
-		damage = rects == null ? null : rects.copy();
+	public function damaged(rects:Null<Array<Int>>) {
+		damage = null;
+		if (rects == null) return;
+		// (kept, not copied: a frame allocates nothing)
+		damageRects.resize(0);
+		for (r in rects)
+			damageRects.push(r);
+		damage = damageRects;
+	}
 
 	public function readPixels(dst:Bytes) {
 		var r = frameTarget != 0 ? texture(frameTarget) : frameColor;
@@ -815,25 +835,78 @@ class SoftBackend {
 	public function textureRecord(id:Int):Ptr
 		return texture(id);
 
-	// ---- the compute tier: none
+	// ---- the compute tier: a dispatch's invocations 4 a call (the
+	// stage's lanes), workgroup by workgroup, on this thread (its atomics'
+	// order the same on every machine); storage buffers and textures by slot
 
 	public function has(f:Feature):Bool
-		return false;
+		return true;
 
-	public function createComputePipeline(shader:Int):Int
-		throw "helder.gfx: the CPU back end has no compute stages";
+	public function createComputePipeline(shader:Int):Int {
+		var s = shader <= 0 || shader > shaders.length ? null : shaders[shader - 1];
+		if (s == null) throw "helder.gfx: createComputePipeline: a shader without its CPU form";
+		var size = s.size == null ? [1, 1, 1] : [for (k in 0...3) k < s.size.length ? s.size[k] : 1];
+		computes.push({entry: s.entry, size: size});
+		return computes.length;
+	}
 
-	public function beginCompute() {}
+	public function beginCompute()
+		if (inPass) endPass();
 
-	public function setComputePipeline(id:Int) {}
+	public function setComputePipeline(id:Int)
+		computing = id <= 0 || id > computes.length ? null : computes[id - 1];
 
-	public function setStorage(slot:Int, id:Int) {}
+	public function setStorage(slot:Int, id:Int) {
+		if (slot < 0 || slot >= 16) return;
+		var b = storage.add(Buffers.SIZE * slot), p = buffer(id);
+		Mem.setPtr(b, Buffers.DATA, p);
+		Mem.setI32(b, Buffers.BYTES, p.isNull() ? 0 : bufferSizes[id - 1]);
+		Mem.setPtr(cctx, Abi.STORAGE + 8 * slot, p.isNull() ? Ptr.nil() : b);
+	}
 
-	public function setStorageTexture(slot:Int, id:Int) {}
+	public function setStorageTexture(slot:Int, id:Int)
+		if (slot >= 0 && slot < 16) Mem.setPtr(cctx, Abi.IMAGES + 8 * slot, texture(id));
 
-	public function dispatch(x:Int, y:Int, z:Int) {}
+	public function dispatch(x:Int, y:Int, z:Int) {
+		var c = computing;
+		if (c == null || x <= 0 || y <= 0 || z <= 0) return;
+		LibC.memcpy(cctx.add(Abi.UNIFORMS), bound, 256);
+		Mem.setPtr(cctx, Abi.IN, cin);
+		var sx = c.size[0], sy = c.size[1], sz = c.size[2], n = sx * sy * sz;
+		for (gz in 0...z)
+			for (gy in 0...y)
+				for (gx in 0...x) {
+					var k = 0;
+					while (k < n) {
+						var lanes = n - k < 4 ? n - k : 4;
+						for (l in 0...4) {
+							// (a lane past the workgroup: the last one's ids, masked out)
+							var i = k + (l < lanes ? l : lanes - 1), lx = i % sx, ly = Std.int(i / sx) % sy, lz = Std.int(i / (sx * sy));
+							// (ComputeInput's fields in order: x, y, z, localX, localY, localZ, localIndex, groupX, groupY, groupZ)
+							inline function set(f:Int, v:Int)
+								Mem.setI32(cin, 16 * f + 4 * l, v);
+							set(0, gx * sx + lx);
+							set(1, gy * sy + ly);
+							set(2, gz * sz + lz);
+							set(3, lx);
+							set(4, ly);
+							set(5, lz);
+							set(6, i);
+							set(7, gx);
+							set(8, gy);
+							set(9, gz);
+						}
+						Mem.setI32(cctx, Abi.MASK, (1 << lanes) - 1);
+						Raster.Fragment.call(c.entry, cctx);
+						k += 4;
+					}
+				}
+	}
 
-	public function dispatchIndirect(id:Int, offset:Int) {}
+	public function dispatchIndirect(id:Int, offset:Int) {
+		var p = buffer(id);
+		if (!p.isNull()) dispatch(Mem.getI32(p, offset), Mem.getI32(p, offset + 4), Mem.getI32(p, offset + 8));
+	}
 
 	public function endCompute() {}
 

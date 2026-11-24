@@ -282,6 +282,11 @@ class ShaderMacro {
 			]
 		});
 		codeFields.push({field: "workgroupSize", expr: macro $v{c.size}});
+		// (-D helder.soft: the stage's form for the CPU back end, Soft)
+		var softForm = Soft.enabled() ? Soft.compute(c, Context.getLocalModule().split(".").pop() + "_" + (Context.getLocalMethod() ?? "compute") + "_"
+			+ haxe.crypto.Md5.encode([for (x in out.code) x.text].join("")).substr(0, 8),
+			Context.getLocalModule().split(".").slice(0, -1), Context.getLocalModule()) : null;
+		if (softForm != null) codeFields.push({field: "soft", expr: softForm.code});
 		var code:Expr = {expr: EObjectDecl(codeFields), pos: pos};
 		var uniforms = macro ([$a{[for (u in c.entry.uniforms) macro {name: $v{u.struct.name}, binding: $v{u.binding}, size: $v{u.size}}]}] : Array<helder.gfx.shader.Shader.UniformBlock>);
 		var textures = macro ([$a{[for (t in c.entry.textures) macro {name: $v{t.name}, binding: $v{t.slot}}]}] : Array<helder.gfx.shader.Shader.TextureBinding>);
@@ -331,6 +336,7 @@ class ShaderMacro {
 			}).fields);
 		}
 		var name = base + "_" + haxe.crypto.Md5.encode(new haxe.macro.Printer().printTypeDefinition(cls)).substr(0, 8);
+		if (softForm != null) cls.fields = cls.fields.concat(softForm.soft.fields);
 		cls.name = name;
 		cls.pack = pack;
 		cls.pos = pos;

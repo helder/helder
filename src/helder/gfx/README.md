@@ -522,13 +522,22 @@ write them from any thread with no copies. Textures: every
 `TextureFormat` (R8 and RG8 as RGBA8, half floats as floats, BC1, BC3 and
 the ASTC helder's encoder writes decoded when written, another ASTC block
 magenta), nearest, linear and trilinear, repeat, clamp and mirror, cubes
-filtered within a face (not across its edge), no anisotropy (helder's
+filtered across their faces' edges (seamless, as
+GL_TEXTURE_CUBE_MAP_SEAMLESS), no anisotropy (helder's
 samplers have none). MSAA: 4 samples at the standard positions, the pixel
-shaded once, resolved at the pass's end. Not here: the compute tier
-(`has` is false: helder.scene's fallbacks, as WebGL2's), shared textures,
-shaders without a CPU form (TypeScript's `shader(...)` and materials:
-JSON, no Haxe to emit; they draw nothing); lines and points are a
-pixel-wide quad.
+shaded once, resolved at the pass's end. Compute stages have the same
+form (`soft_cs`: 4 invocations a call, a lane each, their ids
+ComputeInput's fields), run on the calling thread workgroup by workgroup
+(so that atomics come in the same order on every machine): storage buffers
+read and written by element (std430), an index past a buffer read as 0 and
+written nowhere, atomics lane by lane, a storage texture's texel written
+in its format (`Buffers`); `has` is true for Compute, StorageTextures and
+Indirect, and helder.scene takes its compute paths (clustered lights,
+instance culling, prefiltering), whose frames are its fallbacks'. Not
+here: shared textures, shaders without a CPU form (TypeScript's
+`shader(...)` and materials: JSON, compiled straight to hxmc's IR, no
+Haxe for the macro to emit them from; they draw nothing); lines and points
+are a pixel-wide quad.
 
 A window's frame is shown by the system's own path, no GPU API
 (`helder.os.Blit`, at `endFrame`, where `damaged` said it changed): X11 an
