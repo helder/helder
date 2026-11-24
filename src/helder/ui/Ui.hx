@@ -530,7 +530,7 @@ class Ui extends ScrollHost {
 		// else may ask for one, a program's scroll the last change)
 		for (l in layers)
 			if (l.snapped) {
-				if (paintFrame - l.movedAt < 3) { if (!probeNoSnap) needsFrame = true; } else l.snapped = false; // TEMP probe
+				if (paintFrame - l.movedAt < 3) needsFrame = true else l.snapped = false;
 			}
 		flights.resize(0);
 		flightAt.resize(0);
@@ -538,9 +538,6 @@ class Ui extends ScrollHost {
 		target = null;
 		painting = null;
 	}
-
-	static final probeMirror = Sys.getEnv("HELDER_PROBE") != null && Sys.getEnv("HELDER_PROBE").indexOf("mirror") >= 0; // TEMP probe
-	static final probeNoSnap = Sys.getEnv("HELDER_PROBE") != null && Sys.getEnv("HELDER_PROBE").indexOf("nosnap") >= 0; // TEMP probe
 
 	// whether paint draws straight onto its canvas, not through the layers (a test comparing the two)
 	@:noCompletion public var direct = false;
@@ -2633,7 +2630,6 @@ class Ui extends ScrollHost {
 	// not clamped; moving: it goes on): its offsets taken, as the program's
 	// own scroll would have set them
 	@:noCompletion public function mirrored(n:Node, x:Float, y:Float, held:Bool, moving:Bool) {
-		if (probeMirror) Sys.println('probe mirrored: $x, $y held $held moving $moving, the program at ${n.scrollX}, ${n.scrollY}, paint $paintFrame'); // TEMP probe
 		mirrorAt.set(n, [x, y]);
 		if (held) mirrorHeld.set(n, true) else mirrorHeld.remove(n);
 		if (!moving) requestFrame();
@@ -2645,10 +2641,15 @@ class Ui extends ScrollHost {
 		requestFrame();
 	}
 
-	// (whether n's offsets are the program's own: not as the compositor last gave them)
+	// (whether n's offsets are the program's own: not as the compositor last
+	// gave them; those forgotten once it moved off them, so that the program
+	// coming back to them later is its own too, #98's list at a wheel's end)
 	function mirrorOwn(n:Node):Bool {
 		var a = mirrorAt.get(n);
-		return a == null || a[0] != n.scrollX || a[1] != n.scrollY;
+		if (a == null) return true;
+		if (a[0] == n.scrollX && a[1] == n.scrollY) return false;
+		mirrorAt.remove(n);
+		return true;
 	}
 	var accessBuilt = -1;
 

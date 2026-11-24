@@ -15,10 +15,10 @@ import hxmc.unsafe.*;
 // for its frame latency object before it is drawn (waitFrame: the program's
 // before it takes its input, the compositor's before it samples its
 // offsets, else at beginFrame), so that its presents keep the display's
-// pace, a frame never queued behind another. WARP (the system's software rasterizer) when HXMC_GFX_SOFTWARE=1
-// or when there is no hardware device. Shaders are HLSL compiled at run
-// time (D3DCompile, entry point main, shader model 5.0, or 4.0 below
-// feature level 11_0), vertex inputs at semantic TEXCOORD<location> (as
+// pace, a frame never queued behind another. WARP (the system's software
+// rasterizer) when HXMC_GFX_SOFTWARE=1 or when there is no hardware device.
+// Shaders are HLSL compiled at run time (D3DCompile, entry point main,
+// shader model 5.0, or 4.0 below feature level 11_0), vertex inputs at semantic TEXCOORD<location> (as
 // SPIRV-Cross names them); a 32-bit float depth buffer of the target's
 // size; a pipeline's state objects (rasterizer, depth, blend) made with it.
 // A texture at slot n is a shader resource view at tn and its sampler at
@@ -160,10 +160,6 @@ class D3D11Backend {
 	// (the swap chain's frame latency object (nil: none), and whether the next present waited for it)
 	var latency = Ptr.nil();
 	var waited = false;
-	public static var probeWaits = 0; // TEMP probe
-	public static var probeTimeouts = 0;
-	public static var probeMs = 0.0;
-	public static var probePresents = 0;
 
 	static inline var MAX_SLOTS = 8;
 
@@ -388,8 +384,8 @@ class D3D11Backend {
 			d.value.BufferUsage = D3D.USAGE_RENDER_TARGET_OUTPUT;
 			d.value.BufferCount = 2;
 			d.value.Scaling = D3D.SCALING_STRETCH;
-			// (sequential: DXGI takes Present1's dirty rectangles only from it; under
-			// discard, DWM kept a glyph of an earlier frame outside them, #98)
+			// (sequential: Present1's dirty rectangles are a flip-sequential
+			// chain's; on a flip-discard one DWM kept an earlier frame's glyph, #98)
 			d.value.SwapEffect = D3D.SWAP_EFFECT_FLIP_SEQUENTIAL;
 			d.value.Flags = D3D.SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 			var root = composed ? DcRoot.make(dxgi, surface.handle) : null;
@@ -432,10 +428,7 @@ class D3D11Backend {
 	public function waitFrame() {
 		if (latency.isNull() || waited) return;
 		waited = true;
-		var t0 = haxe.Timer.stamp(); // TEMP probe
-		if (WaitTimer.WaitForSingleObjectEx(latency, 100, 1) != 0) probeTimeouts++;
-		probeWaits++;
-		probeMs += (haxe.Timer.stamp() - t0) * 1000;
+		WaitTimer.WaitForSingleObjectEx(latency, 100, 1);
 	}
 
 	function backBuffer() {
@@ -1382,7 +1375,6 @@ class D3D11Backend {
 			IDXGISwapChain1.Present1(swapChain, 1, 0, params);
 		});
 		waited = false;
-		probePresents++;
 		if (hr == D3D.DXGI_ERROR_DEVICE_REMOVED || hr == D3D.DXGI_ERROR_DEVICE_RESET)
 			check(ID3D11Device.GetDeviceRemovedReason(device), "Present: the device was removed");
 	}

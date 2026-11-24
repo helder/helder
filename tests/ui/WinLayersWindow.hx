@@ -31,7 +31,7 @@ class WinLayersWindow {
 	}
 
 	static function say(s:String)
-		Sys.println("WinLayersWindow: " + s + ' [probe: waits ${helder.gfx.d3d11.D3D11Backend.probeWaits}, timeouts ${helder.gfx.d3d11.D3D11Backend.probeTimeouts}, ${Math.round(helder.gfx.d3d11.D3D11Backend.probeMs)} ms, presents ${helder.gfx.d3d11.D3D11Backend.probePresents}]');
+		Sys.println("WinLayersWindow: " + s);
 
 	// (pixels over this many levels, at most this share of them: the
 	// layers blended by DirectComposition, not UiShader, at translucent edges)
@@ -142,7 +142,6 @@ class WinLayersWindow {
 			strict = was;
 			return moved;
 		}
-		var probeStep = 0;
 		var step = 0, phase = 0, at = 0.0, k = w.window.scale, timed = 0, cpu0 = 0.0, t0 = 0.0, q0 = 0, f0 = 0, n0 = 0, scrolled = 0.0;
 		// (pixels over LEVELS in rows 0 to rows of two captures, a few of them: x,y a>b)
 		function band(a:Bytes, b:Bytes, W:Int, rows:Int):{over:Int, samples:String} {
@@ -299,7 +298,6 @@ class WinLayersWindow {
 						mover.style.opacity = 1;
 						phase = 7;
 						at = now;
-						probeStep = step;
 						cpu0 = cpu();
 						t0 = now;
 						q0 = layers == null ? 0 : layers.quadsTotal;
@@ -308,7 +306,6 @@ class WinLayersWindow {
 						n0 = @:privateAccess w.device.frames;
 					}
 				case 7:
-					if (step % 20 == 0 || step - probeStep < 12) say('probe: the list at ${list.scrollY}, the compositor\'s ${c == null ? null : c.offsets(list)}, the mirror\'s last ${@:privateAccess w.ui.mirrorAt.get(list)}');
 					if (now - at > 3.2) {
 						n0 = @:privateAccess w.device.frames - n0;
 						var f = (c == null ? 0 : c.count - f0) + n0, q = layers == null ? 0 : layers.quadsTotal - q0;
@@ -338,7 +335,6 @@ class WinLayersWindow {
 					}
 					timed++;
 					title.text = "Header " + timed;
-					if (timed >= 58) say('header: "${title.text}", the frame before drew ${@:privateAccess w.renderer.regions} (${@:privateAccess w.renderer.drawn} pixels), the compositor\'s frames ${c == null ? 0 : c.count}');
 					if (timed == 60) {
 						var f = layers == null ? 0 : layers.frames - f0;
 						say('timed: header: $timed changes in ${Math.round((now - t0) * 10) / 10} s, CPU ${Math.round((cpu() - cpu0) / timed * 100) / 100} ms a change, ${dc == null ? 0 : dc.cutTotal - n0} layers drawn in part over $f frames');
@@ -350,7 +346,6 @@ class WinLayersWindow {
 					timed = 1;
 					w.ui.requestFrame();
 				case 10 if (now - at > 1.5):
-					say('still 3: the compositor\'s frames ${c == null ? 0 : c.count}');
 					still(3);
 					if (dc != null) say('still 3: "${title.text}", the window\'s layer drawn ${@:privateAccess layers.base.serial} times, last in part over ${dc.lastCut}, the label at ${Math.round(title.absX * k)},${Math.round(title.absY * k)} ${Math.round(title.width * k)}x${Math.round(title.height * k)}');
 					phase = live() || mode == "textured" ? 12 : 11;
