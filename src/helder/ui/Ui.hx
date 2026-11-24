@@ -530,7 +530,7 @@ class Ui extends ScrollHost {
 		// else may ask for one, a program's scroll the last change)
 		for (l in layers)
 			if (l.snapped) {
-				if (paintFrame - l.movedAt < 3) needsFrame = true else l.snapped = false;
+				if (paintFrame - l.movedAt < 3) { if (!probeNoSnap) needsFrame = true; } else l.snapped = false; // TEMP probe
 			}
 		flights.resize(0);
 		flightAt.resize(0);
@@ -538,6 +538,8 @@ class Ui extends ScrollHost {
 		target = null;
 		painting = null;
 	}
+
+	static final probeNoSnap = Sys.getEnv("HELDER_PROBE") != null && Sys.getEnv("HELDER_PROBE").indexOf("nosnap") >= 0; // TEMP probe
 
 	// whether paint draws straight onto its canvas, not through the layers (a test comparing the two)
 	@:noCompletion public var direct = false;

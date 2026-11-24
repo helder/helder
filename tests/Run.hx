@@ -735,9 +735,9 @@ class Run {
 				var bad = 0;
 				for (r in [["textured", "HELDER_SYSTEM_LAYERS", "0"], ["stall", "HELDER_SYSTEM_LAYERS", "stall"], ["layers", "HELDER_SYSTEM_LAYERS", "1"]])
 					try run('$b/WinLayersWindow.exe', ['$b/winlayers', r[0]], [r[1] => r[2]]) catch (_:Failed) bad++;
-				for (p in [["HELDER_D3D_PROBE", "nolatency"], ["HELDER_D3D_PROBE", "nodirty"], ["HELDER_ASYNC_SCROLL", "0"]]) {
-					Sys.println('probe ${p.join("=")}');
-					try run('$b/WinLayersWindow.exe', ['$b/winlayers-probe', "textured"], ["HELDER_SYSTEM_LAYERS" => "0", p[0] => p[1]]) catch (_:Failed) Sys.println('probe ${p.join("=")}: failed');
+				for (p in [["textured", "HELDER_D3D_PROBE", "sequential"], ["layers", "HELDER_PROBE", "nosnap"], ["layers", "HELDER_PROBE", "noidlewait"]]) {
+					Sys.println('probe ${p.join(" ")}');
+					try run('$b/WinLayersWindow.exe', ['$b/winlayers', p[0]], [p[1] => p[2]]) catch (_:Failed) Sys.println('probe ${p.join(" ")}: failed');
 				}
 				if (bad > 0) throw new Failed('WinLayersWindow: $bad runs failed');
 			}

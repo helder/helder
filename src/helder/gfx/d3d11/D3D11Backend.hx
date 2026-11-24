@@ -388,7 +388,7 @@ class D3D11Backend {
 			d.value.BufferUsage = D3D.USAGE_RENDER_TARGET_OUTPUT;
 			d.value.BufferCount = 2;
 			d.value.Scaling = D3D.SCALING_STRETCH;
-			d.value.SwapEffect = D3D.SWAP_EFFECT_FLIP_DISCARD;
+			d.value.SwapEffect = (Sys.getEnv("HELDER_D3D_PROBE") ?? "").indexOf("sequential") >= 0 ? 3 : D3D.SWAP_EFFECT_FLIP_DISCARD; // TEMP probe
 			d.value.Flags = (Sys.getEnv("HELDER_D3D_PROBE") ?? "").indexOf("nolatency") >= 0 ? 0 : D3D.SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT; // TEMP probe
 			var root = composed ? DcRoot.make(dxgi, surface.handle) : null;
 			if (root != null) {

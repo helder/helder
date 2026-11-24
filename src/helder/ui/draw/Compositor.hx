@@ -360,7 +360,7 @@ class Compositor implements RenderIdle {
 		// (onto the window's swap chain: until it takes the frame without
 		// queueing it (Device.waitFrame), then sampled; the program's, if it
 		// drained meanwhile)
-		if (layers == null || layers.single) {
+		if ((layers == null || layers.single) && (Sys.getEnv("HELDER_PROBE") ?? "").indexOf("noidlewait") < 0) { // TEMP probe
 			lock.release();
 			r.impl.waitFrame();
 			lock.acquire();

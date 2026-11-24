@@ -306,6 +306,7 @@ class WinLayersWindow {
 						n0 = @:privateAccess w.device.frames;
 					}
 				case 7:
+					if (step % 20 == 0) say('probe: the list at ${list.scrollY}, the compositor\'s ${c == null ? null : c.offsets(list)}');
 					if (now - at > 3.2) {
 						n0 = @:privateAccess w.device.frames - n0;
 						var f = (c == null ? 0 : c.count - f0) + n0, q = layers == null ? 0 : layers.quadsTotal - q0;
