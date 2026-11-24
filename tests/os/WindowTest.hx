@@ -180,18 +180,20 @@ private class DragOut {
 	#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 	function mac() {
 		var w:helder.os.cocoa.CocoaWindow = cast @:privateAccess window.native;
-		var items = @:privateAccess helder.os.cocoa.CocoaFileDrag.items(w, Ptr.nil(), FILES, null, 0, 0), got = [];
+		// (ASCII: NSURL's path gives é decomposed)
+		var files = ["/tmp/photos/a b.png", "/tmp/photos/c.jpg"];
+		var items = @:privateAccess helder.os.cocoa.CocoaFileDrag.items(w, Ptr.nil(), files, null, 0, 0), got = [];
 		for (i in 0...Msg.i(items, ObjC.sel("count")).toInt()) {
 			var url = Msg.id(Msg.idInt(items, ObjC.sel("objectAtIndex:"), i), ObjC.sel("item"));
 			got.push(ObjC.string(Msg.id(url, ObjC.sel("path"))));
 		}
-		check("drag out: a dragging item per file URL", got.join("|") == "/tmp/photos/a b.png|/tmp/photos/é.jpg", got.join("|"));
+		check("drag out: a dragging item per file URL", got.join("|") == files.join("|"), got.join("|"));
 		var drag = @:privateAccess new helder.os.cocoa.CocoaFileDrag([Copy, Move], op -> done = op), source = @:privateAccess drag.source;
 		var answers = Msg.bPtr(source, ObjC.sel("respondsToSelector:"), ObjC.sel("draggingSession:sourceOperationMaskForDraggingContext:"))
 			&& Msg.bPtr(source, ObjC.sel("respondsToSelector:"), ObjC.sel("draggingSession:endedAtPoint:operation:"));
+		@:privateAccess helder.os.cocoa.CocoaFileDrag.active.push(drag);
 		var mask = @:privateAccess helder.os.cocoa.CocoaFileDrag.operations(source, Ptr.nil(), Ptr.nil(), 0);
 		check("drag out: the source's methods, its mask copy and move", answers && mask == 17, 'mask $mask');
-		@:privateAccess helder.os.cocoa.CocoaFileDrag.active.push(drag);
 		// (NSDragOperationCopy)
 		@:privateAccess helder.os.cocoa.CocoaFileDrag.ended(source, Ptr.nil(), Ptr.nil(), 0, 0, 1);
 	}
