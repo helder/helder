@@ -32,5 +32,7 @@ typedef ShaderCode = {
 	?wgsl:String,
 	?bindings:Array<ShaderBinding>,
 	// (a compute stage's) its workgroup's size: x, y, z
-	?workgroupSize:Array<Int>
+	?workgroupSize:Array<Int>,
+	// (the CPU back end's: -D helder.soft builds)
+	?soft:SoftCode
 }

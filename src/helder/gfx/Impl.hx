@@ -1,8 +1,10 @@
 package helder.gfx;
 
 import helder.os.Surface;
-#if (helder.os && helder.os != "web")
-#if (helder.os == "macos" || helder.os == "ios")
+#if (helder.soft || (helder.os && helder.os != "web"))
+#if helder.soft
+import helder.gfx.soft.SoftBackend as Native;
+#elseif (helder.os == "macos" || helder.os == "ios")
 import helder.gfx.metal.MetalBackend as Native;
 #elseif (helder.os == "windows")
 import helder.gfx.d3d11.D3D11Backend as Native;
@@ -11,9 +13,10 @@ import helder.gfx.gl.GLBackend as Native;
 #end
 
 // The back end of this target: Metal on macOS and iOS, D3D11 on Windows, GL
-// elsewhere. A build for one system (helder.os: helder.compiler.Os) has
-// its own only, its methods forwarded; the browser's two, and a build that
-// names no system (every back end typed), are told apart below.
+// elsewhere; the CPU's (helder.gfx.soft) with -D helder.soft, on any. A
+// build for one system (helder.os: helder.compiler.Os) has its own only,
+// its methods forwarded; the browser's two, and a build that names no
+// system (every back end typed), are told apart below.
 @:forward(backend, width, height, createBuffer, writeBuffer, createTexture, writeTexture, supports, generateMips, destroyBuffer, destroyTexture,
 	createSampler, createShader, createPipeline, beginFrame, beginPass, setPipeline, setVertexBuffer, setIndexBuffer, setUniforms, setTexture, draw,
 	drawIndexed, endPass, createQueries, destroyQueries, queryResult, resetQuery, beginQuery, endQuery, endFrame, readPixels, has, createComputePipeline,
@@ -22,6 +25,12 @@ import helder.gfx.gl.GLBackend as Native;
 abstract Impl(Native) {
 	public inline function new(surface:Surface, antialias:Bool)
 		this = new Native(surface, antialias);
+
+	#if helder.soft
+	// (a texture's record: the soft canvas reads a <Scene>'s pixels where they are)
+	public inline function textureRecord(id:Int):hxmc.unsafe.Ptr
+		return this.textureRecord(id);
+	#end
 
 	public inline function writeTextureImage(id:Int, image:Int, release:Bool)
 		throw "helder.gfx: writeTextureImage: in a browser only";
