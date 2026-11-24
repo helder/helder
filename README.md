@@ -107,10 +107,9 @@ ads and analytics.
 - Lazy layouts: horizontal and grid lists, collapsing headers, pull to refresh.
 - Network images with a cache; long press and double tap; state restored
   after the system ends the app.
-- Files: a tree view, dragging files out to other apps, the system's file
-  icons and thumbnails, the trash, the system's places (volumes,
-  favourites); the viewer as a file browser on them (a sidebar tree, a
-  grid or list of a folder of any size, previews), in the system's font.
+- Files: done (a grid and list for folders of any size, selection, the
+  system's places, the trash, file icons and thumbnails, dragging files
+  out, the viewer as a file browser); next a tree view and polish.
 
 **Software rendering**: helder.gfx on the CPU, faster than Mesa's
 llvmpipe, with no GPU stack: the shaders are Haxe functions that already
@@ -137,8 +136,9 @@ where the system allows, timed by the audio clock; a `<Video>` node with
 exact seeking and frame stepping, its controls the app's; the viewer
 playing video and audio beside images and PDFs. Done on macOS and iOS
 ([helder.media](src/helder/media/README.md): VideoToolbox, AudioToolbox,
-the viewer's videos), in browsers (WebCodecs) and on Android (MediaCodec);
-Media Foundation and VAAPI next.
+the viewer's videos), in browsers (WebCodecs), on Android (MediaCodec)
+and on Windows (Media Foundation, DXVA); Linux next (VAAPI, else the
+system's libavcodec).
 
 **Games**
 - Physics: mesh and convex colliders, layers, triggers, contact events, stable stacks.
@@ -169,8 +169,8 @@ in `compute()`; GPU particles, cloth and soft bodies as its first users.
   views and video between drawn layers in the same transaction as the
   frame, so they clip, stack and scroll with it. macOS and iOS hand their
   scrollers' content and moving layers to Core Animation, native views
-  inside the layer tree; Android to SurfaceControl (API 33); next,
-  video's layers, then Windows and Wayland. Ladybird's Compositor
+  inside the layer tree; Android to SurfaceControl (API 33); Windows to
+  DirectComposition; video's layers on each; next Wayland. Ladybird's Compositor
   (LibCompositing, BSD-2-Clause) is this design, as a process of its own.
 - Then Liquid Glass: the system's own on iOS and macOS 26 (UIGlassEffect,
   NSGlassEffectView) and a shader matching it elsewhere and in screenshots.
