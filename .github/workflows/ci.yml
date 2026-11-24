@@ -26,7 +26,7 @@
 #   Wayland, helder.media on libavcodec; gfx-3d: helder.scene and helder.physics; gfx-apps: the demos,
 #   syntax-run, the studio, the story host, the window lanes and the viewer's);
 # - browser, studio-web: WebGPU, WebGL2, WebAudio and the DOM in headless
-#   Chromium; helder studio built for the web (studio-web) and helder's
+#   Chromium (the viewer's web build among ui-web's); helder studio built for the web (studio-web) and helder's
 #   toolchain as wasm in a worker there (compiler-web), one build of it for both;
 # - android: on an emulator: tests/pack/Hello.hx (helder run, adb), the
 #   screen fixture (tests/pack/Screen.hx: its window, safe area and the
@@ -412,7 +412,7 @@ jobs:
       # (the frames each API drew: a golden's difference seen)
       - uses: actions/upload-artifact@v7
         if: always()
-        with: {name: 'images-browser-${{ matrix.shard }}', path: "bin/3d/*-webgpu-*.png\nbin/3d/*-webgl2-*.png", retention-days: 7, if-no-files-found: ignore}
+        with: {name: 'images-browser-${{ matrix.shard }}', path: "bin/3d/*-webgpu-*.png\nbin/3d/*-webgl2-*.png\nbin/ui/viewer/*.png", retention-days: 7, if-no-files-found: ignore}
       - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
         with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
