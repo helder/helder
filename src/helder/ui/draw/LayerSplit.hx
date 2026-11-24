@@ -7,7 +7,8 @@ import helder.ui.Node;
 import sys.thread.Mutex;
 
 // A window's frame split into the system's layers (Layers' step 5), as
-// CaLayers hands them to Core Animation and ScLayers to SurfaceControl:
+// CaLayers hands them to Core Animation, ScLayers to SurfaceControl,
+// DcLayers to DirectComposition and WlLayers to Wayland's subsurfaces:
 // each frame, the program's and the compositor's alike, composed from the
 // compositor's state (CompositeFrame) and split in paint order: the
 // window's layer at the bottom; a layer of its own for each top-level
@@ -60,6 +61,9 @@ class LayerSplit {
 	// as they move, by key; off: the window's layer alone, for good)
 	var rounds = true;
 	var off = false;
+	// (the pixels a clip's edges fall on a multiple of: Wayland's, whose
+	// subsurfaces sit on whole points)
+	var grid = 1.0;
 	final unfit = new haxe.ds.ObjectMap<Dynamic, Bool>();
 	// (a mover's layer kept by its node's key: a program's frame has Movers of its own)
 	final moverKeys = new haxe.ds.ObjectMap<Node, MoverKey>();
@@ -218,7 +222,7 @@ class LayerSplit {
 		var clips = [for (_ in 0...cands * 8) 0.0], clipped = [for (_ in 0...cands) false], why = [for (_ in 0...cands) ""];
 		inline function clipOf(c:Int, x0:Float, y0:Float, x1:Float, y1:Float, r0:Float, r1:Float, r2:Float, r3:Float) {
 			var k = 8 * c;
-			if (!whole(x0) || !whole(y0) || !whole(x1) || !whole(y1) || x1 <= x0 || y1 <= y0) {
+			if (!whole(x0 / grid) || !whole(y0 / grid) || !whole(x1 / grid) || !whole(y1 / grid) || x1 <= x0 || y1 <= y0) {
 				if (ok[c]) why[c] = 'clip $x0 $y0 $x1 $y1';
 				ok[c] = false;
 			} else if (!rounds && (r0 > 1e-3 || r1 > 1e-3 || r2 > 1e-3 || r3 > 1e-3)) {

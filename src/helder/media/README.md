@@ -6,9 +6,9 @@ source, an index for exact seeking, and the clock a player keeps. Decoded
 by the systems' own decoders, nothing bundled: Apple's VideoToolbox and
 AudioToolbox (`helder.media.apple`), the browser's WebCodecs
 (`helder.media.web`), Android's MediaCodec (`helder.media.android`),
-Windows' Media Foundation (`helder.media.windows`), helder's own Vorbis
-where an app links it; the roadmap's **Video** brings VAAPI. A `Player`
-plays a file, a `<Video>` shows it in helder.ui.
+Windows' Media Foundation (`helder.media.windows`), Linux's libavcodec,
+VAAPI through it (`helder.media.linux`), helder's own Vorbis where an app
+links it. A `Player` plays a file, a `<Video>` shows it in helder.ui.
 
 ```haxe
 var media = Media.open(new FileSource("clip.mp4"));   // a coroutine (helder.async)
@@ -77,7 +77,9 @@ and a Segment of unknown size (up to the next element of the Segment's,
 or the next EBML header). Matroska stores presentation times only: dts is
 pts. CodecDelay is taken off every pts, as ffmpeg does; it and
 SeekPreRoll are the track's `delay` and `preroll` (Opus's pre-skip, the
-audio to decode before a seek's target).
+audio to decode before a seek's target). A BlockGroup's DiscardPadding is
+its last frame's `trim` (Opus's and Vorbis's end, exact where
+BlockDuration is whole milliseconds).
 
 ## Tracks and packets
 
@@ -92,7 +94,8 @@ show), `sampleRate`, `channels`, `bits` (PCM's).
 
 `Packet`: its track, `offset` and `size` in the source (bytes by
 `media.read(p)`), `dts`, `pts` and `duration` in the track's ticks,
-`time`, `decodeTime` and `end` in seconds, `key`. A track's packets are
+`time`, `decodeTime` and `end` in seconds, `key`, `trim` (seconds of its
+decoded audio after its end not played). A track's packets are
 kept as columns (`Samples`), a Packet made as one is asked for.
 
 **Exact seeking**: `media.seek(time)` gives each track a `Seek`: the frame
@@ -125,7 +128,8 @@ until one is due.
 `Decoders.video(track)` and `Decoders.audio(track)`: the system's decoder
 of a track, null where there is none (`Decoders.available()`: video
 decoders here; `Decoders.supported(track)`, awaited: the browser's
-answer). Packets go in in decode order; a `VideoFrame` comes out (its
+answer; `Decoders.missing()`: what the system lacks, said, Linux's
+libavcodec; the player's error where it decodes nothing). Packets go in in decode order; a `VideoFrame` comes out (its
 time, size, matrix: 601, 709 or 2020, range, 8 or 10 bits, the system's
 image held until `release()`), audio as interleaved 32-bit floats, two
 channels (mono doubled, more: the first two), at the track's rate; a
@@ -215,6 +219,42 @@ packet (after a start or a seek) starts with the decoder's own lead,
 dropped: the MP3 decoder's 624 frames for the first 576. OpusHead goes in
 with its pre-skip 0: the player trims the priming by the packets' times. Not Vorbis (helder's).
 
+**libavcodec** (`linux.AvVideo`, `linux.AvAudio`, `linux.Av`: FFmpeg's
+libavcodec and libavutil, the system's, sonames 58 to 61, FFmpeg 4 to 7,
+loaded at run time: a glibc build's (`-D hxmc.libc=glibc`, helder build's
+for Linux); a static one, as the CLI, links and loads none, and says so;
+without it, `Decoders.missing()` names the package). Structs are read only
+where their layout is the same in all four (AVFrame's planes, pitches,
+size, format and pts; AVPacket's; AVCodecParameters' first fields), the
+rest through accessors: options (colours, rate, channels, threads),
+`avcodec_parameters_to_context` for the config (avcC, hvcC, av1C, AAC's
+AudioSpecificConfig, OpusHead with its pre-skip 0, FLAC's STREAMINFO,
+ALAC's box, Vorbis's headers: libavcodec reads them; FFmpeg 7 moved
+extradata), formats by name (their numbers differ), the channel layout by
+`av_opt_get_chlayout` (FFmpeg 4: `ac`); `hw_device_ctx` has none: its
+offset in each major version, from their headers. Video: H.264, HEVC,
+VP9, AV1 (libdav1d's: libavcodec's own decodes AV1 on hardware only),
+frame threads; each packet's pts a serial of ours, its frame found by it;
+a frame copied out at once into NV12 or P010 of ours (4:2:0's planes
+interleaved, 10 bits shifted to the top of 16) and libavcodec's let go;
+colours as the decoder names them, else as the stream's SPS does
+(`CodecConfig.colours`), else BT.601's video range. **VAAPI**: where
+libavutil makes a VAAPI device (its default: X11's display, else
+`/dev/dri/renderD128`; libva loaded by it, `LIBVA_DRIVER_NAME` its
+driver), the decoder is opened on it (libavcodec's hwaccel, its parsing:
+VAAPI takes a bitstream's parsed headers, not its bytes), its frames the
+driver's surfaces, mapped as DRM PRIME DMA-BUFs (`av_hwframe_map`, one a
+plane) that GL imports (EGL_EXT_image_dma_buf_import, below), the surface
+held while the frame is: at most 10 of them, the pool 16 beyond the
+decoder's own; past that, or where the device does not import DMA-BUFs
+(`AvVideo.copies`), a frame is copied out (`av_hwframe_transfer_data`)
+and its surface let go at once (a pool whose surfaces the frames hold
+leaves the decoder none: #104's hang on Windows). A profile the driver
+does not decode falls back to software in libavcodec. Audio: AAC, MP3,
+Opus (libopus's where it has it), Vorbis, FLAC, ALAC, floats asked for,
+whatever comes made two channels of floats; a packet's frames as it is
+sent, the end drained.
+
 **AudioToolbox** (`apple.AtDecoder`): AAC, MP3, ALAC, FLAC and Opus
 through an AudioConverter, the track's config its magic cookie (FLAC's
 STREAMINFO's body, its depth a format flag; a packet's frames asked for a
@@ -224,8 +264,8 @@ headers from Matroska's config, its packets fed one at a time (`feed`),
 linked where an app asks: `VorbisDecoder.link()` before it plays (apps/
 viewer does; 77 KB of examples/video on Windows x86-64, 50 KB on macOS
 arm64). Without it a Vorbis track is not heard (`player.unheard`: the
-track; a browser's WebCodecs decodes it where it can), the video plays
-on the monotonic clock. Games' `Sfx` keeps its own.
+track; a browser's WebCodecs and Linux's libavcodec decode it where they
+can), the video plays on the monotonic clock. Games' `Sfx` keeps its own.
 
 ## Playing
 
@@ -249,14 +289,14 @@ SeekPreRoll), decoded, not heard; it plays from the packet's time, a
 packet that decodes to fewer frames than it lasts lost them at its start
 (Apple's Opus decoder drops 120 of its first 960) and Matroska's first
 packet, its times whole milliseconds, starts at CodecDelay; it ends at the
-track's duration less CodecDelay. Paused, the output plays out what it
+track's duration less CodecDelay, a packet's `trim` dropped from its end. Paused, the output plays out what it
 holds; playing again starts the clock where the ring is. Ended once heard:
 the clock at the audio's last frame, or the video's end where it is longer
 (the output then plays silence, the clock going on; only then, so that a
 clip's last samples are heard before it ends; with no output, the
 monotonic clock's end, the ring drained by none). At the stream's end the
 decoders are drained (`flush`: AudioConverter's input over, WebCodecs'
-flush, MediaCodec's end of stream; their last frames into the ring up to
+flush, MediaCodec's end of stream, libavcodec's empty packet; their last frames into the ring up to
 the track's end). The ring holds two seconds and at least 65536 frames:
 a decoder that gives its frames later is asked for them while a packet's
 16384 fit (an 8 kHz track's two seconds would not). A decoder that holds
@@ -352,6 +392,15 @@ frame as the codec tagged it: SMPTE 170M's transfer onto the sRGB display
 (the emulator's grey 128 shows as 141), which MediaCodec sets on each
 buffer, so it cannot be tagged sRGB's as Apple's are.
 
+On Linux (`VideoTexture`): the planes opened by GLBackend.openShared: a
+VAAPI frame's DMA-BUFs (`dmabuf:0:`, this process's descriptors: R8 and
+GR88, R16 and GR1616, sampled where they are, no copy), else our copy's
+rows (`mem:`, uploaded as the texture is made: r8 and rg8, r16 and rg16
+where GL has EXT_texture_norm16); each frame its own handle; the same pass
+as Apple's. Where the device refuses a DMA-BUF, VideoTexture sets
+`AvVideo.copies` and the frame is copied out. Drawn by helder only: a
+system layer for video on Wayland comes with the Wayland layers' work.
+
 Audio alone is a Player without a box. TypeScript: `helder/media`'s
 `Video`, `VideoNode`, `Player`, `FileSource`, `MemorySource`.
 
@@ -360,10 +409,9 @@ Audio alone is a Player without a box. TypeScript: `helder/media`'s
 A box, element or cluster read whole is at most 256 MB; a track at most 50
 million samples; malformed or cut input ends in a `MediaError`, never
 another error, a hang, or an allocation of what a header claims. Not yet:
-Linux's decoders (the roadmap's next part), Ogg's container
-(Opus and Vorbis in .ogg or .opus files), HDR's transfers (PQ and HLG
-shown as SDR), a rate that keeps the pitch, WebM's DiscardPadding (Opus's
-end trimmed to the segment's duration), reading an MP4's fragments lazily
+Ogg's container (Opus and Vorbis in .ogg or .opus files), HDR's
+transfers (PQ and HLG shown as SDR), a rate that keeps the pitch,
+reading an MP4's fragments lazily
 through `sidx` (all are read at open), Matroska's ContentEncodings
 (header stripping, encryption) and MP4's encrypted entries (`encv`,
 `enca`: their `tag` the original's, the codec other), open GOPs' leading
@@ -398,7 +446,9 @@ Vorbis) through VideoToolbox: their count, each packet's time and planes'
 CRC-32 as ffmpeg decodes them (`decoded.json`, `expect.mjs`); every audio
 track's frames and samples against ffmpeg's (libopus's: ffmpeg 9's own
 Opus decoder is off on these, and reads an MP4's pre-skip in the track's
-timescale), trimmed as the player trims; four frames turned to RGB on Metal
+timescale: decoded whole by expect.mjs, trimmed by OpusHead's pre-skip and
+to the edit's duration), trimmed as the player trims, Opus's and Vorbis's
+totals exact; four frames turned to RGB on Metal
 against ffmpeg's where the picture is flat (within 2 levels); exact seeks
 and steps landing on the frame by time and pixels; a clip played through
 CoreAudio's file output: each frame once, within a frame of the clock, the
@@ -466,3 +516,20 @@ Windows: hardware's decoder untested by CI (no GPU there), the
 asynchronous hardware MFTs not used (Microsoft's synchronous ones use
 DXVA), the layer's conversion on the CPU, ALAC and FLAC as the system's
 decoders take their configs.
+
+On Linux (CI's gfx job: libavcodec 60 installed, no VAAPI driver, Mesa's
+llvmpipe): the system-images lane's `tests/media/linux/MediaLinuxTest.hx`
+(about 2 s), decoded.json's videos through libavcodec in software, count,
+each frame's time and planes' CRC-32 as ffmpeg's; the audio tracks'
+frames and samples (#93's tolerances; every total exact, Opus's and
+Vorbis's too); frames in RGB by helder's pass on GL against ffmpeg's
+where flat (a mean under 1 level, at most 8); exact seeks and steps; a
+clip played through ALSA's file output (paced at the clock: the audio
+heard is the clock), each frame once within a frame of it, its 8000
+frames in the file; then VAAPI's: where a driver decodes, the videos
+again on it and the colours through its DMA-BUFs, else skipped with a
+line. Codecs the system's libavcodec lacks are skipped with a line, H.264
+and AAC never. Limits on Linux: VAAPI and the DMA-BUF import untested by
+CI (no GPU there); VAAPI only through libavcodec (its hwaccel parses the
+streams), so not without it; 4:2:0 only (4:2:2 and 4:4:4 not shown); no
+system layer yet (Wayland's layers' work).

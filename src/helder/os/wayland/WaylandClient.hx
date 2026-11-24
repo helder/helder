@@ -27,6 +27,9 @@ class WaylandClient {
 	static function wl_proxy_add_dispatcher(p:Ptr, f:Ptr, data:Ptr, user:Ptr):Int;
 	static function wl_proxy_get_version(p:Ptr):Int;
 	static function wl_proxy_destroy(p:Ptr):Void;
+	static function wl_proxy_create_wrapper(p:Ptr):Ptr;
+	static function wl_proxy_wrapper_destroy(p:Ptr):Void;
+	static function wl_event_queue_destroy(q:Ptr):Void;
 }
 
 // libwayland-egl.so.1: an EGL window of a surface (EGLNativeWindowType on Wayland)

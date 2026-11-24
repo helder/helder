@@ -1822,7 +1822,51 @@ DirectComposition, keeps a swap chain of the window's own.
 `WinLayersWindow` (the window lane, CI's desktop-windows job) runs a list
 with a system layer, a rounded scroller and a moving box three ways
 (layers, `0`, `stall`).
-Wayland's subsurfaces come later; X11 and headless stay on the textured
+On Wayland the frames go to the compositor as subsurfaces
+(`helder.ui.draw.WlLayers`): the same split as wl_subsurfaces of the
+window's wl_surface, stacked over it, none taking input (an empty input
+region: the pointer and touches stay the window's). A subsurface is not
+clipped by its parent, so a scroller's content is cropped to its clip by
+its wp_viewport, and a scroll moves that crop (on whole pixels). A
+subsurface sits on whole points (`set_position`, the viewport's
+destination): clips on that grid (a scroller off it stays drawn), buffers
+placed on it, a mover rounded to it while it moves. One that turns,
+scales or fades stays drawn (a subsurface has no transform or opacity),
+as a rounded scroller does. Each layer's buffers are a dma-buf of a GL
+texture (`EGL_MESA_image_dma_buf_export`, zwp_linux_dmabuf_v1, its format
+and modifier among the compositor's) where the compositor takes one, else
+the layer's texture read back into wl_shm memory (llvmpipe's case, CI's);
+a layer is drawn again only where it changed since that buffer was drawn
+(`LayerPlane.cut`, `damage_buffer`). A layer of one square quad of one
+colour (a box) is a single-pixel buffer stretched by its viewport, drawn
+by nothing. Every layer's state is cached until the window's surface's
+commit (synchronized subsurfaces), one a frame; the next waits for its
+frame callback (two periods at most) and wp_presentation's feedback gives
+the display's period. A frame split into the window's layer alone, a new
+window's first and the first after a resize or a scale change are drawn
+onto the window's own EGL surface, the layers unmapped in that same
+commit. A node's `LayerSlot` is a wl_surface (`WlLayers.surface()`: its
+owner's buffers, desynchronized so they show as they come; `content()`
+their size), placed, cropped by its viewport and stacked by the frames
+(synchronized for the frame that moves it). Without wl_subcompositor or
+wp_viewporter, and with `HELDER_SYSTEM_LAYERS=0`, the textured
+compositor; while running, nothing committed shown within 1.5 s (`stall`:
+none counted; a hidden window's commits are not that once one showed), a
+buffer that cannot be made or a broken connection turn the layers off for
+good, unmapped with the window's next frame and then let go.
+`WaylandLayersWindow` (the wayland lane: a headless weston's kiosk shell,
+the window at the output's corner, scale 1 and 2) runs a list with a
+system layer, a rounded scroller and a moving box three ways (layers,
+`0`, `stall`): a fling and an animation while the program blocks, moved
+and not drawn, and stills of the output (`weston-screenshooter`) against
+the textured compositor's, 0 pixels over 8 levels, the system layer at
+its node and cut by the list's clip. A headless weston answers a frame
+callback every other refresh (its own `weston-simple-egl`: 30 frames a
+second), so the layers pace at 30 a second there; the window's own frames
+on Wayland are not paced (swap interval 0: 260–340 a second there). A
+steady scroll on arm64 Linux under it (400 x 300 points, llvmpipe): 2.1–2.7
+ms of CPU a frame on the layers, 1–4 quads drawn, against 19–23 ms for
+the textured compositor's. X11 and headless stay on the textured
 compositor.
 
 `AsyncScrollTest` scripts the wheel, eased notches, a trackpad's gesture
@@ -1838,7 +1882,8 @@ overlay bars shown and fading against the program's (a turned layer's
 within a level: its corners rounded to 32-bit floats once more).
 `AsyncScrollWindow` blocks the program 300 ms in a window while input
 comes, `--anim` while a layer animates (`--anim --pace s [--work ms]`:
-its frames' pacing; Windows: SendInput's wheel; the window lane there).
+its frames' pacing; Windows: SendInput's wheel; the window lane there;
+Wayland: on its layers, the wayland lane).
 On the iPhone simulator `IosTest scroll` (tests/gfx/ios.sh) has UIKit
 animate a UIScrollView while the program blocks 500 ms: the compositor's
 frames at its offsets meanwhile, the program at them after.

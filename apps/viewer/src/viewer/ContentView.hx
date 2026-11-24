@@ -23,9 +23,12 @@ import viewer.ViewerActions;
 // 300 ms, unreadable, no results), and the path bar with the count.
 class ContentView implements Markup {
 	public static inline var ROW = 30;
+	// the path bar's height, the sidebar's volume foot's too (one line across)
+	public static inline var FOOT = 32;
 
 	public static function make(x:Explorer):View {
-		return <view tag="main" slot="panel" grow={1} min-width={0} direction="column" margin="8 8 8 0" overflow="hidden">
+		return <view tag="main" slot="panel" grow={1} min-width={0} direction="column" overflow="hidden"
+			borders="0 0 0 1" border-color={Look.ref.line}>
 			{toolbar(x)}
 			{content(x)}
 			{pathBar(x)}
@@ -36,7 +39,7 @@ class ContentView implements Markup {
 
 	static function toolbar(x:Explorer):View {
 		var b = x.browser, title:Null<Node> = null, viewButton:Null<Node> = null;
-		return <view tag="toolbar" direction="row" align-items="center" column-gap={6} height={52} shrink={0} padding="0 10" drag-region
+		return <view tag="toolbar" direction="row" align-items="center" column-gap={6} height={Shell.BAR} shrink={0} padding="0 8" drag-region
 			borders="0 0 1 0" border-color={Look.ref.line}>
 			<view direction="row" column-gap={2}>
 				<Standard.Button tag="back" variant="ghost" size="sm" icon={Glyphs.get("back")} label="Back" disabled={() -> !b.canBack()}
@@ -228,7 +231,7 @@ class ContentView implements Markup {
 		}
 		function segments():Array<PathSegment>
 			return [for (p in folders()) ({label: s.title(p), icon: icon(x, p)} : PathSegment)];
-		return <view tag="pathbar" direction="row" align-items="center" height={32} shrink={0} padding="0 8 0 4" borders="1 0 0 0"
+		return <view tag="pathbar" direction="row" align-items="center" height={FOOT} shrink={0} padding="0 8 0 4" borders="1 0 0 0"
 			border-color={Look.ref.line}>
 			<view grow={1} min-width={0}>
 				<Standard.PathBar segments={segments} text={() -> b.dir()} editing={x.editingPath}

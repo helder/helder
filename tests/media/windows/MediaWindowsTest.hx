@@ -197,11 +197,8 @@ class MediaWindowsTest {
 		}
 		for (i in 0...samples.length)
 			if (i * 97 < left.length) worst = Math.max(worst, Math.abs(left[i * 97] - samples[i]));
-		// (MP4's Opus: ffmpeg reads its pre-skip in the track's timescale, its
-		// count off by that; Matroska's within a millisecond (its times whole
-		// ones: the first packet's -7 is CodecDelay's -6.5); else exact)
-		var frames:Int = e.frames, slack = t.codec != Opus ? 0 : f.indexOf(".mp4") > 0 ? 960 : 48;
-		var ok = d.rate == e.rate && Math.abs(left.length - frames) <= slack && worst <= tolerance;
+		var frames:Int = e.frames;
+		var ok = d.rate == e.rate && left.length == frames && worst <= tolerance;
 		check('$key ${t.codec}: ${left.length} frames at ${d.rate}, its samples as ffmpeg\'s', ok, 'ffmpeg ${frames}, the largest difference $worst');
 		if (!ok) {
 			// (what the decoder gave: each output's packet (pts+duration, the

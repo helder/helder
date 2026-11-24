@@ -70,6 +70,15 @@ class VideoTexture {
 		#end
 		luma = open(f.plane(0), f.width, f.height);
 		chroma = open(f.plane(1), (f.width + 1) >> 1, (f.height + 1) >> 1);
+		#if ((!helder.os || helder.os == "linux") && hxmc.target != "wasm32-wasi")
+		// (a VAAPI frame's DMA-BUFs this device does not import: its frames copied out from now on)
+		if ((luma == null || chroma == null) && (hxmc.Platform.target() == 7 || hxmc.Platform.target() == 8) && !helder.media.linux.AvVideo.copies
+			&& StringTools.startsWith(f.plane(0) ?? "", "dmabuf:")) {
+			helder.media.linux.AvVideo.copies = true;
+			luma = open(f.plane(0), f.width, f.height);
+			chroma = open(f.plane(1), (f.width + 1) >> 1, (f.height + 1) >> 1);
+		}
+		#end
 		if (luma == null || chroma == null) return false;
 		var m = matrix(f);
 		VideoShader.params.video.write({

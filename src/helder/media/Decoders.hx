@@ -6,9 +6,10 @@ import hxmc.Platform;
 // Apple's VideoToolbox and AudioToolbox (helder.media.apple), the
 // browser's WebCodecs (helder.media.web), Android's MediaCodec
 // (helder.media.android), Windows' Media Foundation
-// (helder.media.windows); Vorbis helder's own where the app links it
-// (VorbisDecoder.link(): 38 KB; else a Vorbis track is not heard, but a
-// browser's). Linux's comes with the roadmap's next part.
+// (helder.media.windows), Linux's libavcodec, VAAPI's through it
+// (helder.media.linux: a glibc build's; a static one loads no library);
+// Vorbis helder's own where the app links it (VorbisDecoder.link(): 38 KB;
+// else a Vorbis track is not heard, but a browser's or Linux's).
 class Decoders {
 	// whether this system has video decoders (an app's file types: the viewer's)
 	public static function available():Bool {
@@ -21,7 +22,19 @@ class Decoders {
 		#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi")
 		if (Platform.os() == 2) return helder.media.windows.Mf.loaded();
 		#end
+		#if ((!helder.os || helder.os == "linux") && hxmc.target != "wasm32-wasi")
+		if (Platform.target() == 7 || Platform.target() == 8) return helder.media.linux.Av.loaded();
+		#end
 		return #if (hxmc.target == "wasm32-wasi") true #else false #end;
+	}
+
+	// what this system lacks to decode, said (Linux: libavcodec; null: nothing)
+	public static function missing():Null<String> {
+		#if ((!helder.os || helder.os == "linux") && hxmc.target != "wasm32-wasi")
+		if (Platform.target() == 7 || Platform.target() == 8) return helder.media.linux.Av.missing();
+		if (Platform.target() < 2) return "helder.media: a static Linux build loads no decoder (-D hxmc.libc=glibc loads the system's libavcodec)";
+		#end
+		return null;
 	}
 
 	// whether video or audio of t decodes here (the browser's
@@ -62,6 +75,9 @@ class Decoders {
 		#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi")
 		if (Platform.os() == 2 && helder.media.windows.MfVideo.supports(t.codec)) return new helder.media.windows.MfVideo(t);
 		#end
+		#if ((!helder.os || helder.os == "linux") && hxmc.target != "wasm32-wasi")
+		if ((Platform.target() == 7 || Platform.target() == 8) && helder.media.linux.AvVideo.supports(t.codec)) return new helder.media.linux.AvVideo(t);
+		#end
 		#if (hxmc.target == "wasm32-wasi")
 		if (helder.media.web.WebCodec.name(t) != null) return new helder.media.web.WebVideoDecoder(t);
 		#end
@@ -78,6 +94,9 @@ class Decoders {
 		#end
 		#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi")
 		if (Platform.os() == 2 && helder.media.windows.MfAudio.supports(t.codec)) return new helder.media.windows.MfAudio(t);
+		#end
+		#if ((!helder.os || helder.os == "linux") && hxmc.target != "wasm32-wasi")
+		if ((Platform.target() == 7 || Platform.target() == 8) && helder.media.linux.AvAudio.supports(t.codec)) return new helder.media.linux.AvAudio(t);
 		#end
 		#if (hxmc.target == "wasm32-wasi")
 		if (helder.media.web.WebCodec.name(t) != null) return new helder.media.web.WebAudioDecoder(t);

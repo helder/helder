@@ -74,6 +74,11 @@ import helder.test.Test;
 			var viewport:helder.os.wayland.protocol.ViewporterProtocol.WpViewport = hxmc.unsafe.Ptr.ofI64(0x6000);
 			viewport.setSource(1.5, -2.25, 100, 50);
 			equals(seen[5].args.slice(0, 2), [Std.string(Std.int(1.5 * 256)), Std.string(Std.int(-2.25 * 256))]);
+			// (arguments named as the request's own locals, r and a: their values, not the arena)
+			record("nuuuu");
+			var pixel:helder.os.wayland.protocol.SinglePixelBufferV1Protocol.WpSinglePixelBufferManagerV1 = hxmc.unsafe.Ptr.ofI64(0x9000);
+			pixel.createU32RgbaBuffer(1, 2, 3, 4);
+			equals(seen[6].args, ["0", "1", "2", "3", "4"]);
 		});
 		test("events: decoded from the slots to the handlers", () -> {
 			Proxy.recorder = (_, _, _, _, _, _, _) -> hxmc.unsafe.Ptr.nil();
@@ -123,6 +128,10 @@ import helder.test.Test;
 			assert(r.code.indexOf("public inline function make(label:Null<String>):TestThing") >= 0, "make's request");
 			assert(r.code.indexOf("Proxy.marshal(this, 1, Ptr.nil(), -1, 1, args, 0)") >= 0, "destroy's flag");
 			assert(r.code.indexOf("var _2d = 1;") >= 0, "an entry starting with a digit");
+			var own = Scanner.generate(Xml.parse('<protocol name="p"><interface name="p_thing" version="1">
+				<request name="fill"><arg name="r" type="uint"/><arg name="a" type="uint"/></request>
+			</interface></protocol>').firstElement(), "p.xml");
+			assert(own.code.indexOf("function fill(r_:Int, a_:Int)") >= 0 && own.code.indexOf("args[1] = a_;") >= 0, "arguments named as the request's locals");
 		});
 	});
 }

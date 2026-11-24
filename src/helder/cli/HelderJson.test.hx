@@ -48,6 +48,8 @@ function tests() {
 	});
 	test("helder.json: run.name from the app's name, an address", () -> {
 		equals(HelderJson.parse('{"name": "Floating Greens!", "run": {}}').run.name, "floating-greens");
+		var d = HelderJson.parse('{"run": {"name": "viewer", "downloads": {"macos": "https://github.com/helder/helder/releases/latest"}}}').run.downloads;
+		equals([d.get("macos"), Std.string(d.get("linux"))], ["https://github.com/helder/helder/releases/latest", "null"]);
 		equals(HelderJson.slug("  Ünïcode -- Game 2 "), "n-code-game-2");
 		equals(HelderJson.nameProblem("floating-greens"), null);
 		equals(HelderJson.nameProblem("ab"), "is not 3 to 40 characters");
@@ -72,6 +74,8 @@ function tests() {
 		equals(error({run: {kind: "demo"}}), "helder.json: run.kind: \"demo\": game, app, tool");
 		equals(error({run: {tags: ["A"]}}), "helder.json: run.tags: at most 5 tags, each lowercase letters, digits and -");
 		equals(error({run: {screenshots: ["../x.png"]}}), "helder.json: run.screenshots: at most 8 image files beside helder.json");
+		equals(error({run: {downloads: {macos: "https://example.com/viewer.zip"}}}), "helder.json: run.downloads.macos: a GitHub release's URL (https://github.com/<owner>/<repo>/releases/...)");
+		equals(error({run: {downloads: {android: "https://github.com/a/b/releases"}}}).split(" (")[0], "helder.json: run.downloads: no member \"android\"");
 		equals(error({icon: {round: "a.png"}}).split(" (")[0], "helder.json: icon: no member \"round\"");
 		equals(error({links: {schemes: ["My App"]}}), "helder.json: links.schemes: an array of URL schemes (\"myapp\": lower case)");
 		equals(error({links: {schemes: ["https"]}}), "helder.json: links.schemes: \"https\" is the system's (domains: https links)");
