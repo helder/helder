@@ -1576,8 +1576,15 @@ pixels, as the compositor composes a mover against the program's own
 paint). A full-window scroller's layer covers what it recorded, its
 tiles' columns too (1600×5700 for a 1080×2400 list: about 70 MB in two
 buffers). Below 33, or where a call or a buffer fails, the textured
-compositor. `tests/ui/android-layers.sh` (CI's android job) runs
-`AndroidLayersTest` both ways. Windows' DirectComposition and Wayland's
+compositor; and while running, where the system misbehaves (no
+transaction reported presented for 1.5 s, a layer's buffers never let go
+of three times in a row), the layers turn off for good and the program
+draws its next frame onto the window (`LayerSplit.fell`).
+`tests/ui/android-layers.sh` (CI's android job) runs `AndroidLayersTest`
+three ways: system layers, the textured compositor, and the layers
+stalled (`HELDER_SYSTEM_LAYERS=stall`: no presentation reported), which
+must fall back while running (pixel for pixel the textured compositor's
+after). Windows' DirectComposition and Wayland's
 subsurfaces come later; X11 and headless stay on the textured compositor.
 
 `AsyncScrollTest` scripts the wheel, eased notches, a trackpad's gesture

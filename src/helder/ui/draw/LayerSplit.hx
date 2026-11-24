@@ -87,6 +87,11 @@ class LayerSplit {
 	// new window's first, which the system waits for: Android's)
 	public var priming(default, null) = false;
 
+	// why the system's layers turned off for good while running (null: they
+	// did not); a frame of the window's own wanted meanwhile (redraw)
+	public var fell(default, null):Null<String> = null;
+	public var redraw(default, null) = false;
+
 	// (a frame drawn onto the window's layer: split, whether the next is single)
 	public function check(f:CompositeFrame) {
 		if (f.buffers.length == 0 || f.pipeline == null) return;

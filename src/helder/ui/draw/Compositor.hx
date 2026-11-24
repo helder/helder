@@ -164,7 +164,7 @@ class Compositor implements RenderIdle {
 		lock.acquire();
 		var m = mirror.moving;
 		lock.release();
-		return m;
+		return m || layers != null && layers.redraw;
 	}
 
 	// the mirror's offsets of the program's node n (null: none), from any thread

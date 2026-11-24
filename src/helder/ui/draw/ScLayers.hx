@@ -39,7 +39,8 @@ import hxmc.unsafe.*;
 // the textured compositor replays it). It needs API 33 (the reparent;
 // setPosition, setCrop, setScale are 31's: looked up, never linked) and
 // falls back to the textured compositor where that, a buffer or an EGL
-// extension is missing or a call fails. HELDER_SYSTEM_LAYERS=0 keeps the textured compositor;
+// extension is missing or a call fails; while running, where the system
+// misbehaves (stalled, released), its next frame drawn onto the window. HELDER_SYSTEM_LAYERS=0 keeps the textured compositor;
 // frames read back never use these.
 @:hxmc.unsafe(gc)
 @:access(helder.ui.draw.CompositeFrame)
@@ -72,8 +73,9 @@ class ScLayers extends LayerSplit {
 	var ring = 0;
 	// (the display's period: how long a transaction may take to be presented)
 	var period = 1 / 60;
-	// (off for good: a buffer or a call failed)
+	// (off for good: a buffer or a call failed; buffers taken back unreleased in a row)
 	var broken = false;
+	@:allow(helder.ui.draw.ScPlane) var stolen = 0;
 	@:allow(helder.ui.draw.ScPlane) var gl:Null<GLBackend> = null;
 
 	function new(device:Device) {
@@ -170,6 +172,7 @@ class ScLayers extends LayerSplit {
 			var until = haxe.Timer.stamp() + period * 2;
 			while (Sc.presented() < sent && haxe.Timer.stamp() < until)
 				Sys.sleep(0.0005);
+			stalled();
 			Sc.apply(tx, ++sent);
 		}
 		Sc.delete(tx);
@@ -255,15 +258,35 @@ class ScLayers extends LayerSplit {
 		stack = root = Ptr.nil();
 	}
 
-	// (off for good, the textured compositor's from the next frame)
+	// (off for good, the textured compositor's from the next frame, which
+	// the program is asked for: what is on the layers may never have shown)
 	function fail(why:String) {
 		if (broken) return;
 		broken = true;
 		off = true;
 		single = true;
+		fell = why;
+		redraw = true;
 		Sys.println("helder.ui: system layers off: " + why);
 		hide = true;
 	}
+
+	// (a system whose transactions are never reported presented (a driver's
+	// fences that never signal, a compositor that drops the callbacks)
+	// shows nothing of them, or shows them late: off once none was for
+	// STALL seconds while some were waiting)
+	function stalled() {
+		var p = Sc.presented(), t = haxe.Timer.stamp();
+		if (p != seen || p >= sent) {
+			seen = p;
+			progress = t;
+		} else if (t - progress > STALL) fail('no transaction presented in $STALL s');
+	}
+
+	var seen = 0;
+	var progress = 0.0;
+
+	static inline var STALL = 1.5;
 
 	// (a unit's mover whose transform is not a translation and a scale:
 	// SurfaceControl has neither turns nor flips; its layer drawn as the
@@ -453,6 +476,7 @@ class ScLayers extends LayerSplit {
 
 	override public function windowShown() {
 		priming = false;
+		redraw = false;
 		if (!hide || stack.isNull()) return;
 		hide = false;
 		if (!stackShown) return;
@@ -685,11 +709,12 @@ private class ScPlane extends LayerPlane {
 			bufW = pw;
 			bufH = ph;
 		}
-		var until = haxe.Timer.stamp() + 0.1;
+		var until = haxe.Timer.stamp() + 0.25;
 		while (true) {
 			for (b in buffers)
 				if (!b.busy) {
 					b.wait();
+					owner.stolen = 0;
 					return b;
 				}
 			if (buffers.length < (pw * ph * 4 <= owner.device.width * owner.device.height ? 3 : 2)) {
@@ -701,7 +726,10 @@ private class ScPlane extends LayerPlane {
 			Sys.sleep(0.0005);
 			owner.released();
 		}
-		// (none let go in 100 ms: a transaction's callback lost; the oldest not shown)
+		// (none let go in 250 ms: a transaction's callback lost; the oldest
+		// not shown, the layers off after three in a row: the system never
+		// lets go of what it was given)
+		if (++owner.stolen >= 3) owner.fail("buffers never released");
 		for (b in buffers)
 			if (b != shownBuffer) {
 				b.busy = false;
@@ -884,11 +912,15 @@ private class Sc {
 	static var count = 0;
 
 	static inline var RING = 256;
+	// (HELDER_SYSTEM_LAYERS=stall: no transaction reported presented, as a
+	// misbehaving system's; tests the fallback)
+	static var stall = false;
 
 	// whether this Android has what system layers need (API 31's calls)
 	public static function load():Bool {
 		if (looked) return ok;
 		looked = true;
+		stall = Sys.getEnv("HELDER_SYSTEM_LAYERS") == "stall";
 		lib = Posix.dlopen(Mem.cstr("libandroid.so"), 2);
 		if (lib.isNull()) return false;
 		inline function f(name:String):Ptr
@@ -944,7 +976,7 @@ private class Sc {
 	// (t applied as transaction seq: presented() is seq once the system
 	// presented it; -1: no transaction to wait for)
 	public static function apply(t:Ptr, seq:Int) {
-		if (seq >= 0) ScCall.ppp(fOnComplete, t, Ptr.ofI64(seq), Callback.addr(presentedNow));
+		if (seq >= 0 && !stall) ScCall.ppp(fOnComplete, t, Ptr.ofI64(seq), Callback.addr(presentedNow));
 		ScCall.p(fTxApply, t);
 	}
 

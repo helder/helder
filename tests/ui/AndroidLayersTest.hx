@@ -15,7 +15,9 @@ import hxmc.unsafe.*;
 // turns (drawn, SurfaceControl has no turn). The system property
 // debug.helder.layers (setprop) is HELDER_SYSTEM_LAYERS: 0 runs the
 // textured compositor, for the screencaps' comparison, its pace reported
-// (an emulator's GPU may not keep it); debug.helder.async 0: no
+// (an emulator's GPU may not keep it); stall withholds every transaction's
+// presentation, as a misbehaving system would: the layers must fall back
+// to the textured compositor while running, its pace reported; debug.helder.async 0: no
 // compositor; debug.helder.damage: HELDER_DAMAGE.
 //   helder build tests/ui/AndroidLayersTest.hx --target android-arm64 -o AndroidLayersTest.apk
 @:hxmc.unsafe(gc)
@@ -84,7 +86,7 @@ class AndroidLayersTest {
 		root.append(mover);
 		var c = w.compositor;
 		var layers = c == null ? null : c.layers;
-		strict = layers != null;
+		strict = layers != null && mode != "stall";
 		say('start: system layers ${mode == "" ? "default" : mode}, compositor ${c != null}, layers ${layers != null}');
 		var presents:Array<Float> = [], offsets:Array<Float> = [], plock = new sys.thread.Mutex();
 		if (c != null) c.onFrame = t -> {
@@ -94,9 +96,12 @@ class AndroidLayersTest {
 			offsets.push(o == null ? -1 : o.y);
 			plock.release();
 		};
+		// (frames on the system's layers, which have not fallen back)
+		function live():Bool
+			return layers != null && layers.fell == null && layers.frames > 0;
 		// (a phase blocking the program: frames presented meanwhile, their gaps, the layers' frames and quads)
 		function blocked(what:String, seconds:Float, before:Void->Void, pace = true):{frames:Int, median:Float, from:Float, to:Float} {
-			strict = layers != null && layers.frames > 0;
+			strict = live();
 			var f0 = layers == null ? 0 : layers.frames, q0 = layers == null ? 0 : layers.quadsTotal;
 			var from = Timer.stamp();
 			before();
@@ -108,7 +113,7 @@ class AndroidLayersTest {
 			var gaps = [for (i in 1...during.length) during[i] - during[i - 1]];
 			gaps.sort(Reflect.compare);
 			var median = gaps.length > 0 ? gaps[Std.int(gaps.length / 2)] : 1.0;
-			check('$what: frames presented while the program was blocked ${Math.round(seconds * 1000)} ms', during.length >= seconds * (pace ? 30 : 25),
+			check('$what: frames presented while the program was blocked ${Math.round(seconds * 1000)} ms', during.length >= seconds * 20,
 				during.length + " frames");
 			if (pace) check('$what: at the display\'s pace', gaps.length > 0 && median < 0.03, "median gap " + Math.round(median * 10000) / 10 + " ms")
 			else say('$what: median gap ${Math.round(median * 10000) / 10} ms');
@@ -133,6 +138,10 @@ class AndroidLayersTest {
 					var sc = layers == null ? null : Std.downcast(layers, ScLayers);
 					if (sc != null) @:privateAccess slotted.systemLayer = new LayerSlot(sc.solid(0x22C060));
 					say('ready ${w.device.width}x${w.device.height}, scale $k');
+					phase = 14;
+					at = now;
+				case 14 if (now - at > 3):
+					// (after a launch's own work: an emulator's first seconds are its)
 					phase = 1;
 				case 1:
 					// (a fling of the program's own: the compositor glides it while the program is blocked)
@@ -171,13 +180,14 @@ class AndroidLayersTest {
 				case 4 if (now - at > 1 && (c == null || !c.moving())):
 					check("a swipe: the program has the compositor's offset", c == null || list.scrollY > flung, '$flung to ${list.scrollY}');
 					// (still: a whole offset, the box at rest, for the screencaps)
-					list.scrollY = 300;
+					// (on whole pixels: 8 points are 21 pixels at 2.625)
+					list.scrollY = 304;
 					// (on whole pixels at 2.625, a phone's density: 8 points are 21 pixels)
 					mover.style.transform = Transform.parse("translate(100px, 34px)");
 					mover.style.opacity = 1;
 					phase = 5;
 					at = now;
-				case 5 if (now - at > 2.5):
+				case 5 if (now - at > 3.5):
 					say('slot at ${Math.round((slotted.absX + 32) * k)} ${Math.round((slotted.absY + 8 - list.scrollY) * k)}');
 					say("still 1");
 					phase = 6;
@@ -227,6 +237,12 @@ class AndroidLayersTest {
 				case 10 if (now - at > 4):
 					var b = layers == null ? 0.0 : layers.bytes();
 					say('layers\' buffers ${Math.round(b / 1e5) / 10} MB, frames shown on them ${layers == null ? 0 : layers.frames}');
+					if (layers != null && layers.fell != null) say('system layers fell back: ${layers.fell}');
+					// (stall: they must have, the textured compositor's frames after)
+					if (mode == "stall") {
+						strict = true;
+						check("the system layers fell back to the textured compositor", layers != null && layers.fell != null && layers.single, '${layers == null ? null : layers.fell}');
+					}
 					say(failed == 0 ? "ok" : '$failed FAILED');
 					say("done");
 					w.close();

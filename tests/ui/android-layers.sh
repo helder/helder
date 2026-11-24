@@ -1,11 +1,13 @@
 #!/bin/sh
 # Android's system layers on the device or emulator adb reaches:
-# AndroidLayersTest.apk (tests/ui/AndroidLayersTest.hx) run twice, with
-# SurfaceControl's layers and with the textured compositor
-# (debug.helder.layers=0), its lines from logcat (tag hxmc): the
-# compositor's frames while the program is blocked (a fling, an animation,
-# this script's swipe), the layers moved, not drawn; screencaps of its two
-# stills compared (android-layers.mjs).
+# AndroidLayersTest.apk (tests/ui/AndroidLayersTest.hx) run three times:
+# with SurfaceControl's layers, with them stalled (debug.helder.layers=
+# stall: no transaction reported presented, so that they must fall back
+# to the textured compositor while running) and with the textured
+# compositor (=0); its lines from logcat (tag hxmc): the compositor's
+# frames while the program is blocked (a fling, an animation, this
+# script's swipe), the layers moved, not drawn; screencaps of its two
+# stills compared with the textured compositor's (android-layers.mjs).
 #   sh tests/ui/android-layers.sh <AndroidLayersTest.apk> [out dir]
 set -u
 apk=$1
@@ -36,9 +38,9 @@ adb install -r -t "$apk" > /dev/null || exit 1
 size=$(adb shell wm size | grep -o "[0-9]*x[0-9]*" | tail -1)
 W=${size%x*}
 H=${size#*x}
-for mode in layers 0; do
+for mode in layers stall 0; do
 	log="$out/layers-$mode.txt"
-	adb shell setprop debug.helder.layers "$([ $mode = layers ] && echo 1 || echo 0)"
+	adb shell setprop debug.helder.layers "$([ $mode = layers ] && echo 1 || echo $mode)"
 	adb logcat -c
 	adb shell am start -W -n $pkg/android.app.NativeActivity > /dev/null
 	wait_for "AndroidLayersTest: swipe now" 120 || { failed=1; continue; }
@@ -49,7 +51,11 @@ for mode in layers 0; do
 	adb logcat -d -s hxmc:I > "$log"
 	grep "AndroidLayersTest" "$log" | sed 's/^.*AndroidLayersTest/AndroidLayersTest/'
 	grep -q "AndroidLayersTest: ok$" "$log" || failed=1
-	if [ $mode = layers ] && grep -q "frames shown on them 0$" "$log"; then
+	# (layers: shown on them, else fallen back at run time, as stall must:
+	# then the textured compositor's, its pace the device's, a note)
+	if [ $mode = layers ] && grep -q "system layers fell back" "$log"; then
+		echo "android-layers.sh: note: this device's system layers fell back to the textured compositor"
+	elif [ $mode = layers ] && grep -q "frames shown on them 0$" "$log"; then
 		echo "android-layers.sh: no frame on the system's layers"
 		failed=1
 	fi
@@ -59,4 +65,6 @@ adb shell setprop debug.helder.layers "''"
 slot=$(grep -o "slot at [0-9]* [0-9]*" "$out/layers-layers.txt" | head -1 | awk '{print $3","$4}')
 node tests/ui/android-layers.mjs "$out/still1-layers.png" "$out/still1-0.png" still1 "$slot,22c060" || failed=1
 node tests/ui/android-layers.mjs "$out/still2-layers.png" "$out/still2-0.png" still2 || failed=1
+# (fallen back: the textured compositor's pixels)
+node tests/ui/android-layers.mjs "$out/still1-stall.png" "$out/still1-0.png" "still1, stalled" || failed=1
 exit $failed
