@@ -728,12 +728,12 @@ class Run {
 			}
 			if (Sys.systemName() == "Linux") shell('LIBGL_ALWAYS_SOFTWARE=1 $XVFB -a $wine$b/RenderThreadTest.exe') else run('$b/RenderThreadTest.exe', []);
 			// (DirectComposition's layers: the textured compositor's stills first,
-			// then the layers' and the stalled layers' against them; Wine has none)
+			// then the stalled layers' and the layers' against them; Wine has none)
 			if (HOST.startsWith("windows-")) {
 				native('$b/WinLayersWindow', uiCp().concat(["-main", "WinLayersWindow"]), GFX_TARGET);
 				run('$b/WinLayersWindow.exe', ['$b/winlayers', "textured"], ["HELDER_SYSTEM_LAYERS" => "0"]);
-				run('$b/WinLayersWindow.exe', ['$b/winlayers', "layers"]);
 				run('$b/WinLayersWindow.exe', ['$b/winlayers', "stall"], ["HELDER_SYSTEM_LAYERS" => "stall"]);
+				run('$b/WinLayersWindow.exe', ['$b/winlayers', "layers"]);
 			}
 		}
 		// (helder.ui's NSAccessibility, in process: tests/ui/MacAccessTest.hx, MacPatternsTest.hx)

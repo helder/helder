@@ -143,6 +143,19 @@ class WinLayersWindow {
 			return moved;
 		}
 		var step = 0, phase = 0, at = 0.0, k = w.window.scale, timed = 0, cpu0 = 0.0, t0 = 0.0, q0 = 0, f0 = 0, n0 = 0, scrolled = 0.0;
+		// (pixels over LEVELS in rows 0 to rows of two captures, a few of them: x,y a>b)
+		function band(a:Bytes, b:Bytes, W:Int, rows:Int):{over:Int, samples:String} {
+			var over = 0, samples = [];
+			for (i in 0...W * rows) {
+				var d = 0;
+				for (j in 0...3)
+					d = Std.int(Math.max(d, Math.abs(a.get(4 * i + j) - b.get(4 * i + j))));
+				if (d <= LEVELS) continue;
+				over++;
+				if (samples.length < 8) samples.push('${i % W},${Std.int(i / W)} ${StringTools.hex(a.get(4 * i) << 16 | a.get(4 * i + 1) << 8 | a.get(4 * i + 2), 6)}>${StringTools.hex(b.get(4 * i) << 16 | b.get(4 * i + 1) << 8 | b.get(4 * i + 2), 6)}');
+			}
+			return {over: over, samples: samples.join(" ")};
+		}
 		function still(n:Int) {
 			var px = capture(w.window, w.device.width, w.device.height);
 			if (px == null) {
@@ -210,6 +223,11 @@ class WinLayersWindow {
 			strict = true;
 			check('still $n: against the textured compositor\'s, at most ${SHARE * 100}% of the pixels over $LEVELS levels', over <= SHARE * W * H,
 				'$over over $LEVELS${over > 0 ? ' in $x0,$y0..$x1,$y1' : ""}, $some over 2, at most $most, of ${W * H}');
+			// (the header, its label changed each frame before still 3: drawn in part, as the textured compositor draws it whole)
+			// (still 3's: against the textured compositor's drawn whole, below; this one reported)
+			var h = band(b, px, W, Math.round(40 * k));
+			strict = n < 3;
+			check('still $n: the header as the textured compositor\'s, none over $LEVELS levels', h.over == 0, '${h.over} over $LEVELS${h.over > 0 ? ": " + h.samples : ""}');
 			strict = was;
 		}
 		App.run(() -> {
@@ -331,8 +349,41 @@ class WinLayersWindow {
 					w.ui.requestFrame();
 				case 10 if (now - at > 1.5):
 					still(3);
-					phase = 11;
+					if (dc != null) say('still 3: "${title.text}", the window\'s layer drawn ${@:privateAccess layers.base.serial} times, last in part over ${dc.lastCut}, the label at ${Math.round(title.absX * k)},${Math.round(title.absY * k)} ${Math.round(title.width * k)}x${Math.round(title.height * k)}');
+					phase = live() || mode == "textured" ? 12 : 11;
 					at = now;
+				case 12 if (timed == 1):
+					// (the same frame drawn whole: the layers drawn again; the textured
+					// compositor's frame kept let go, the next drawn whole)
+					timed = 2;
+					if (dc != null) @:privateAccess for (p in dc.all())
+						p.invalidate()
+					else @:privateAccess w.renderer.keptValid = false;
+					w.ui.requestFrame();
+				case 12 if (now - at > 1.5):
+					var W = w.device.width, rows = Math.round(40 * k);
+					var cut = sys.io.File.getBytes('$dir/still3-$mode.rgba'), px = capture(w.window, W, w.device.height);
+					if (px == null) {
+						check("still 3 drawn whole: captured", false, "no capture");
+						phase = 11;
+					} else {
+						sys.io.File.saveBytes('$dir/still3w-$mode.rgba', px);
+						sys.io.File.saveBytes('bin/text/winlayers-still3w-$mode.png', helder.image.PngEncoder.encode(px, W, w.device.height, true));
+						var h = band(cut, px, W, rows), was = strict;
+						if (mode == "textured") {
+							// (main's own: its frame kept, drawn where it changed and presented with those rectangles)
+							strict = false;
+							check("still 3: the textured compositor's header drawn in part as drawn whole", h.over == 0, '${h.over} over $LEVELS (in part>whole)${h.over != 0 ? ": " + h.samples : ""}');
+						} else {
+							strict = true;
+							check("still 3: the layers' header drawn in part as the same frame drawn whole, none over 8 levels", h.over == 0, '${h.over} over $LEVELS (in part>whole)${h.over != 0 ? ": " + h.samples : ""}');
+							var ref = '$dir/still3w-textured.rgba';
+							var t = sys.FileSystem.exists(ref) ? band(sys.io.File.getBytes(ref), cut, W, rows) : {over: -1, samples: "no " + ref};
+							check("still 3: the layers' header drawn in part as the textured compositor's drawn whole, none over 8 levels", t.over == 0, '${t.over} over $LEVELS (textured whole>layers in part)${t.over != 0 ? ": " + t.samples : ""}');
+						}
+						strict = was;
+						phase = 11;
+					}
 				case 11:
 					if (layers != null) say('layers\' surfaces ${Math.round(layers.bytes() / 1e5) / 10} MB, frames shown on them ${layers.frames}');
 					if (layers != null && layers.fell != null) say('system layers fell back: ${layers.fell}');

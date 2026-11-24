@@ -124,6 +124,8 @@ class DcLayers extends LayerSplit {
 	// layers drawn in part, and the pixels drawn in all (tests)
 	@:noCompletion public var cutTotal(default, null) = 0;
 	@:noCompletion public var pixelsTotal(default, null) = 0.0;
+	// (the window's layer's last rectangle drawn in part: x0, y0, x1, y1: tests)
+	@:noCompletion public var lastCut(default, null):Array<Int> = [];
 
 	override public function show(r:Replay, f:CompositeFrame, now:Array<Float>, t:Float, shown:Null<Array<Float>>, drawn:Bool, moves:Array<Void->Void>) {
 		if (f.buffers.length == 0 || f.pipeline == null || broken) return;
@@ -393,6 +395,7 @@ class DcLayers extends LayerSplit {
 			rect[1] = y0;
 			rect[2] = Std.int(p.cutBytes.getFloat(24));
 			rect[3] = Std.int(p.cutBytes.getFloat(44));
+			if (p.kind == LayerPlane.BASE) lastCut = [rect[0], rect[1], rect[2], rect[3]];
 		}
 		var offset:Ptr<Int32> = ints.offset(4);
 		var hr = IDCompositionSurface.BeginDraw(p.content, cut ? rect : Ptr.nil(), IID.ID3D11Texture2D, got, offset);
