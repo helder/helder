@@ -36,6 +36,7 @@ class GL {
 	public static inline var UNSIGNED_BYTE = 0x1401;
 	public static inline var RGBA = 0x1908;
 	public static inline var PACK_ALIGNMENT = 0x0D05;
+	public static inline var PACK_ROW_LENGTH = 0x0D02;
 	public static inline var CULL_FACE = 0x0B44;
 	public static inline var FRONT = 0x0404;
 	public static inline var BACK = 0x0405;

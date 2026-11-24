@@ -39,6 +39,9 @@ class Pacing {
 			lock.release();
 		};
 		var step = 0, from = 0.0, to = 0.0, failed = 0, tapped = -1;
+		// (Wayland's system layers wait for each commit's frame callback, which a
+		// headless weston answers every other refresh: 30 frames a second)
+		var slow = Sys.getEnv("WAYLAND_DISPLAY") != null && c != null && c.layers != null;
 		function check(what:String, ok:Bool, detail:String) {
 			if (!ok) failed++;
 			Sys.println('Pacing: ${ok ? "ok" : "FAIL"}: $what ($detail)');
@@ -51,8 +54,8 @@ class Pacing {
 			var gaps = [for (i in 1...during.length) during[i] - during[i - 1]];
 			gaps.sort(Reflect.compare);
 			var median = gaps.length > 0 ? gaps[Std.int(gaps.length / 2)] : 1.0;
-			check('the animation\'s frames presented while the program was blocked for 300 ms$what', during.length >= 10, during.length + " frames");
-			check('at the display\'s pace$what', gaps.length > 0 && median < 0.03, "median gap " + Math.round(median * 10000) / 10 + " ms");
+			check('the animation\'s frames presented while the program was blocked for 300 ms$what', during.length >= (slow ? 6 : 10), during.length + " frames");
+			check('at the display\'s pace$what', gaps.length > 0 && median < (slow ? 0.05 : 0.03), "median gap " + Math.round(median * 10000) / 10 + " ms");
 		}
 		App.run(() -> {
 			step++;

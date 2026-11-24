@@ -5,10 +5,14 @@
 # compositor's output (weston-screenshooter: the viewer's drawn menu bar,
 # helder's decorations).
 # Then, given, the compositor's scrolling in a window (AsyncScrollWindow),
-# and a layer's animation while the program blocks (its --anim).
-#   wayland.sh <WaylandTest> <viewer> <out dir> [AsyncScrollWindow]
+# and a layer's animation while the program blocks (its --anim); and the
+# system's layers (WaylandLayersWindow: subsurfaces) under a weston of
+# their own, its kiosk shell (the window fullscreen at the output's
+# corner, 400 x 300 points), at scale 1 (textured, layers, stall) and 2
+# (textured, layers).
+#   wayland.sh <WaylandTest> <viewer> <out dir> [AsyncScrollWindow [WaylandLayersWindow]]
 set -e
-test=$1; viewer=$2; out=$3; async=$4
+test=$1; viewer=$2; out=$3; async=$4; layers=$5
 mkdir -p "$out"
 export XDG_RUNTIME_DIR=$(mktemp -d)
 export LIBGL_ALWAYS_SOFTWARE=1
@@ -35,6 +39,23 @@ for scale in 1 2; do
 	fi
 	kill $w 2> /dev/null || true
 	wait $w 2> /dev/null || true
+	if [ -n "$layers" ]; then
+		sock=helder-wl-layers-$scale
+		weston --backend=headless --renderer=pixman --shell=kiosk-shell.so --socket=$sock --width=400 --height=300 --scale=$scale --debug > "$out/weston-layers-$scale.log" 2>&1 &
+		w=$!
+		i=0
+		while [ ! -S "$XDG_RUNTIME_DIR/$sock" ] && [ $i -lt 50 ]; do sleep 0.1; i=$((i + 1)); done
+		# (textured and layers timed at scale 1 alone, stall there only)
+		for m in textured layers stall; do
+			[ $m = stall ] && [ $scale = 2 ] && continue
+			case $m in textured) e=0 ;; stall) e=stall ;; *) e= ;; esac
+			q=--quick
+			[ $scale = 1 ] && [ $m != stall ] && q=
+			HELDER_SYSTEM_LAYERS=$e WAYLAND_DISPLAY=$sock timeout 120 "$layers" "$out/layers-$scale" $m $q || status=1
+		done
+		kill $w 2> /dev/null || true
+		wait $w 2> /dev/null || true
+	fi
 done
 rm -rf "$XDG_RUNTIME_DIR"
 exit $status
