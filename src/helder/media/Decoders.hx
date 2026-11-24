@@ -5,8 +5,10 @@ import hxmc.Platform;
 // The system's decoder of a track, where it has one (null: none here):
 // Apple's VideoToolbox and AudioToolbox (helder.media.apple), the
 // browser's WebCodecs (helder.media.web), Android's MediaCodec
-// (helder.media.android), helder's own Vorbis everywhere. The other
-// systems' come with the roadmap's next parts.
+// (helder.media.android), Windows' Media Foundation
+// (helder.media.windows); Vorbis helder's own where the app links it
+// (VorbisDecoder.link(): 38 KB; else a Vorbis track is not heard, but a
+// browser's). Linux's comes with the roadmap's next part.
 class Decoders {
 	// whether this system has video decoders (an app's file types: the viewer's)
 	public static function available():Bool {
@@ -16,6 +18,9 @@ class Decoders {
 		#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
 		if (Platform.target() >= 9) return helder.media.android.MediaNdk.loaded();
 		#end
+		#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi")
+		if (Platform.os() == 2) return helder.media.windows.Mf.loaded();
+		#end
 		return #if (hxmc.target == "wasm32-wasi") true #else false #end;
 	}
 
@@ -23,7 +28,7 @@ class Decoders {
 	// isConfigSupported, awaited; elsewhere true, video and audio telling)
 	@:coroutine public static function supported(t:MediaTrack):Bool {
 		#if (hxmc.target == "wasm32-wasi")
-		if (t.codec != Vorbis) {
+		if (t.codec != Vorbis || vorbis == null) {
 			var name = helder.media.web.WebCodec.name(t);
 			if (name == null) return false;
 			var h = asked(t, name);
@@ -44,12 +49,18 @@ class Decoders {
 	}
 	#end
 
+	// helder's own Vorbis decoder, once linked (VorbisDecoder.link)
+	@:allow(helder.media.VorbisDecoder) static var vorbis:Null<MediaTrack->AudioDecoder>;
+
 	public static function video(t:MediaTrack):Null<VideoDecoder> {
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		if (Platform.os() == 1 && helder.media.apple.VtDecoder.supports(t.codec)) return new helder.media.apple.VtDecoder(t);
 		#end
 		#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
 		if (Platform.target() >= 9 && helder.media.android.McVideo.supports(t.codec)) return new helder.media.android.McVideo(t);
+		#end
+		#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi")
+		if (Platform.os() == 2 && helder.media.windows.MfVideo.supports(t.codec)) return new helder.media.windows.MfVideo(t);
 		#end
 		#if (hxmc.target == "wasm32-wasi")
 		if (helder.media.web.WebCodec.name(t) != null) return new helder.media.web.WebVideoDecoder(t);
@@ -58,12 +69,15 @@ class Decoders {
 	}
 
 	public static function audio(t:MediaTrack):Null<AudioDecoder> {
-		if (t.codec == Vorbis) return new VorbisDecoder(t);
+		if (t.codec == Vorbis && vorbis != null) return vorbis(t);
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		if (Platform.os() == 1 && helder.media.apple.AtDecoder.supports(t.codec)) return new helder.media.apple.AtDecoder(t);
 		#end
 		#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
 		if (Platform.target() >= 9 && helder.media.android.McAudio.supports(t.codec)) return new helder.media.android.McAudio(t);
+		#end
+		#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi")
+		if (Platform.os() == 2 && helder.media.windows.MfAudio.supports(t.codec)) return new helder.media.windows.MfAudio(t);
 		#end
 		#if (hxmc.target == "wasm32-wasi")
 		if (helder.media.web.WebCodec.name(t) != null) return new helder.media.web.WebAudioDecoder(t);

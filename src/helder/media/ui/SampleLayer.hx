@@ -16,8 +16,9 @@ import hxmc.unsafe.*;
 // timebase is at its time; stopped, so the clock alone moves it), on the
 // main thread (OsThread: posted, the sample buffers made on the program's). Fit is
 // the layer's video gravity, the layer clipping to its bounds. On Android
-// a SurfaceLayer (MediaCodec onto a SurfaceControl in the slot). make: null
-// where the system has none.
+// a SurfaceLayer (MediaCodec onto a SurfaceControl in the slot), on Windows
+// a WinLayer (a DirectComposition surface in the slot's visual). make: null where the
+// system has none.
 @:hxmc.unsafe(gc)
 class SampleLayer {
 	public final slot:LayerSlot;
@@ -30,6 +31,9 @@ class SampleLayer {
 	#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
 	var android:Null<SurfaceLayer>;
 	#end
+	#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi" && !helder.soft)
+	var windows:Null<WinLayer>;
+	#end
 
 	public static function make(owner:VideoNode):Null<SampleLayer> {
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
@@ -41,6 +45,15 @@ class SampleLayer {
 			if (s == null) return null;
 			var l = new SampleLayer(s.slot);
 			l.android = s;
+			return l;
+		}
+		#end
+		#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi" && !helder.soft)
+		if (Platform.os() == 2) {
+			var w = WinLayer.make(owner);
+			if (w == null) return null;
+			var l = new SampleLayer(w.slot);
+			l.windows = w;
 			return l;
 		}
 		#end
@@ -78,6 +91,9 @@ class SampleLayer {
 		#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
 		if (android != null) android.fit = f;
 		#end
+		#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi" && !helder.soft)
+		if (windows != null) windows.fit = f;
+		#end
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		var name = switch f {
 			case Cover: "AVLayerVideoGravityResizeAspectFill";
@@ -100,6 +116,9 @@ class SampleLayer {
 		#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
 		if (android != null) return android.showing;
 		#end
+		#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi" && !helder.soft)
+		if (windows != null) return windows.showing;
+		#end
 		return true;
 	}
 
@@ -107,6 +126,9 @@ class SampleLayer {
 	public function feed(p:Player):Null<VideoFrame> {
 		#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
 		if (android != null) return android.feed(p);
+		#end
+		#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi" && !helder.soft)
+		if (windows != null) return windows.feed(p);
 		#end
 		var f = p.update();
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
@@ -209,6 +231,12 @@ class SampleLayer {
 		#if ((!helder.os || helder.os == "android") && hxmc.target != "wasm32-wasi")
 		if (android != null) {
 			android.dispose();
+			return;
+		}
+		#end
+		#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi" && !helder.soft)
+		if (windows != null) {
+			windows.dispose();
 			return;
 		}
 		#end

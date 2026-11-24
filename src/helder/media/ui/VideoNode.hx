@@ -20,7 +20,8 @@ import helder.view.graph.Signal;
 // rectangle (no radius) and the picture upright (SampleLayer:
 // AVSampleBufferDisplayLayer, the frames queued with their times on a
 // timebase kept to the player's clock; Android's ScLayers: SurfaceLayer,
-// MediaCodec rendering onto a SurfaceControl), clipped and moved with its
+// MediaCodec rendering onto a SurfaceControl; Windows' DcLayers: WinLayer,
+// a DirectComposition surface in the slot's visual), clipped and moved with its
 // scrollers; asked for, not the default, until its colours are measured
 // on hardware (a virtual Mac's window server showed them some 30 levels
 // off). While it plays the animation clock ticks it (Clock.add): the

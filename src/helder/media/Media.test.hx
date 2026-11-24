@@ -22,6 +22,16 @@ function tests() {
 			equals([for (t in m.tracks) t.codec], [Vp9, Opus]);
 			equals(count(m), 61);
 		}));
+		test("the SPS's colours: HEVC Main 10's BT.2020, H.264's BT.709 full range", async(() -> {
+			function said(c:Null<{matrix:String, full:Bool}>)
+				return c == null ? "none" : c.matrix + (c.full ? " full" : "");
+			var m = Media.open(new MemorySource(sys.io.File.getBytes("tests/media/apple/hevc10.mp4")));
+			equals(said(CodecConfig.colours(Lambda.find(m.tracks, t -> t.kind == Video))), "2020");
+			m.close();
+			var m = Media.open(new MemorySource(sys.io.File.getBytes("tests/media/apple/h264-full.mp4")));
+			equals(said(CodecConfig.colours(Lambda.find(m.tracks, t -> t.kind == Video))), "709 full");
+			m.close();
+		}));
 		test("H.264's B-frames (ctts): from the keyframe, 4 dropped to 0.4 s", async(() -> {
 			var m = open("h264-aac.mp4");
 			var s = m.seek(0.45);

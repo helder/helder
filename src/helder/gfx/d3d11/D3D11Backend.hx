@@ -155,6 +155,9 @@ class D3D11Backend {
 	public static var compose = false;
 
 	public var composition(default, null):Null<DcRoot> = null;
+	// the last hardware device made (nil: none, WARP's), where helder.media
+	// decodes video (DXVA: a device of D3D11_CREATE_DEVICE_VIDEO_SUPPORT)
+	public static var decoding(default, null) = Ptr.nil();
 	// the window's own frames left unpresented: the system's layers are drawn from what they render into targets
 	public var quiet = false;
 	// (the swap chain's frame latency object (nil: none), and whether the next present waited for it)
@@ -203,10 +206,13 @@ class D3D11Backend {
 		}
 		#end
 		var flags = composed ? D3D.CREATE_DEVICE_BGRA_SUPPORT : 0;
-		var hr = Sys.getEnv("HXMC_GFX_SOFTWARE") == "1" ? -1 : createDevice(D3D.DRIVER_TYPE_HARDWARE, level, flags);
+		// (video support for helder.media's decoders, where the driver has it)
+		var hr = Sys.getEnv("HXMC_GFX_SOFTWARE") == "1" ? -1 : createDevice(D3D.DRIVER_TYPE_HARDWARE, level, flags | D3D.CREATE_DEVICE_VIDEO_SUPPORT), video = hr >= 0;
+		if (hr < 0 && Sys.getEnv("HXMC_GFX_SOFTWARE") != "1") hr = createDevice(D3D.DRIVER_TYPE_HARDWARE, level, flags);
 		if (hr < 0) hr = createDevice(D3D.DRIVER_TYPE_WARP, level, flags);
 		check(hr, "D3D11CreateDevice");
 		device = scratch.value;
+		if (video) decoding = device;
 		context = scratch.offset(1).value;
 		shaderModel = level.value >= D3D.FEATURE_LEVEL_11_0 ? "_5_0" : "_4_0";
 		if (Sys.getEnv("HXMC_GFX_D3D11_NO_OFFSETS") != "1") offsetting();
@@ -292,6 +298,7 @@ class D3D11Backend {
 	}
 
 	public function openShared(handle:String, w:Int, h:Int):Int {
+		if (StringTools.startsWith(handle, "mem:") || StringTools.startsWith(handle, "d3d11:")) return openPlane(handle, w, h);
 		if (!StringTools.startsWith(handle, "dxgi:")) return 0;
 		var n = Std.parseInt(handle.substr(5));
 		if (n == null) return 0;
@@ -306,6 +313,98 @@ class D3D11Backend {
 		if (IUnknown.QueryInterface(tex, IID.IDXGIKeyedMutex, scratch) >= 0) t.mutex = scratch.value;
 		textures.push(t);
 		return textures.length;
+	}
+
+	// (a video frame's plane, helder.media's: "mem:ADDRESS:PITCH:FORMAT:N",
+	// its rows in memory copied into a texture of w x h (a software
+	// decoder's); "d3d11:TEXTURE:SLICE:FORMAT:W:H:N", an NV12 or P010
+	// texture on this device, viewed as it is where it is one slice that may
+	// be sampled (helder.media's copy of a DXVA frame), else its slice's
+	// W x H copied on the GPU first, the plane sampled by the view's format
+	// (r8, rg8; r16, rg16): no copy on the CPU)
+	function openPlane(handle:String, w:Int, h:Int):Int {
+		var at = handle.split(":"), mem = at[0] == "mem";
+		var format = switch at[3] {
+			case "r8": D3D.FORMAT_R8_UNORM;
+			case "rg8": D3D.FORMAT_R8G8_UNORM;
+			case "r16": D3D.FORMAT_R16_UNORM;
+			case "rg16": D3D.FORMAT_R16G16_UNORM;
+			case _: 0;
+		}
+		if (format == 0 || at[1].length != 16) return 0;
+		var p = address(at[1]);
+		var hr = Arena.scopedValue(a -> {
+			var d = a.make(D3D11_TEXTURE2D_DESC);
+			d.value.MipLevels = 1;
+			d.value.ArraySize = 1;
+			d.value.SampleCount = 1;
+			d.value.Usage = D3D.USAGE_DEFAULT;
+			d.value.BindFlags = D3D.BIND_SHADER_RESOURCE;
+			if (mem) {
+				d.value.Width = w;
+				d.value.Height = h;
+				d.value.Format = format;
+				var init = a.make(D3D11_SUBRESOURCE_DATA);
+				init.value.pSysMem = p;
+				init.value.SysMemPitch = Std.parseInt(at[2]) ?? 0;
+				return ID3D11Device.CreateTexture2D(device, d, init, scratch);
+			}
+			ID3D11Texture2D.GetDesc(p, d);
+			// (one slice that may be sampled (helder.media's copy out of the decoder's pool): viewed as it is)
+			if (d.value.ArraySize == 1 && d.value.BindFlags & D3D.BIND_SHADER_RESOURCE != 0) {
+				IUnknown.AddRef(p);
+				scratch.value = p;
+				return 0;
+			}
+			var fw = Std.parseInt(at[4]) ?? 0, fh = Std.parseInt(at[5]) ?? 0;
+			d.value.Width = (fw + 1) & ~1;
+			d.value.Height = (fh + 1) & ~1;
+			d.value.ArraySize = 1;
+			d.value.BindFlags = D3D.BIND_SHADER_RESOURCE;
+			d.value.MiscFlags = 0;
+			d.value.CPUAccessFlags = 0;
+			d.value.Usage = D3D.USAGE_DEFAULT;
+			var hr = ID3D11Device.CreateTexture2D(device, d, Ptr.nil(), scratch);
+			if (hr < 0) return hr;
+			var b = box;
+			b.value.left = 0;
+			b.value.top = 0;
+			b.value.front = 0;
+			b.value.right = d.value.Width;
+			b.value.bottom = d.value.Height;
+			b.value.back = 1;
+			ID3D11DeviceContext.CopySubresourceRegion(context, scratch.value, 0, 0, 0, 0, p, Std.parseInt(at[2]) ?? 0, b);
+			hr;
+		});
+		if (hr < 0) return 0;
+		var tex = scratch.value;
+		var t = new D3DTexture(tex, TextureInfo.of({width: w, height: h}));
+		hr = Arena.scopedValue(a -> {
+			// (D3D11_SHADER_RESOURCE_VIEW_DESC: the format, TEXTURE2D, its one level)
+			var v:Ptr<Int32> = a.alloc(24);
+			LibC.memset(v, 0, 24);
+			v[0] = format;
+			v[1] = 4;
+			v[3] = 1;
+			ID3D11Device.CreateShaderResourceView(device, tex, v, scratch);
+		});
+		if (hr < 0) {
+			t.release();
+			return 0;
+		}
+		t.view = scratch.value;
+		textures.push(t);
+		return textures.length;
+	}
+
+	// (16 hex digits)
+	static function address(s:String):Ptr {
+		var hi = 0, lo = 0;
+		for (i in 0...16) {
+			var c = s.charCodeAt(i), d = c <= 57 ? c - 48 : (c | 32) - 87;
+			if (i < 8) hi = hi << 4 | d else lo = lo << 4 | d;
+		}
+		return Ptr.ofI64((cast haxe.Int64.make(hi, lo) : Int64));
 	}
 
 	public function frameInto(id:Int)
@@ -1411,6 +1510,8 @@ class D3D11Backend {
 	}
 
 	public function dispose() {
+		// (no decoder opened later on a device let go)
+		if (decoding == device) decoding = Ptr.nil();
 		ID3D11DeviceContext.ClearState(context);
 		ID3D11DeviceContext.Flush(context);
 		for (p in pipelines) {
