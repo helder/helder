@@ -45,6 +45,10 @@ class WebSource implements ByteSource {
 	public static function of(url:String):WebSource
 		return new WebSource(WebMedia.url(url), url, false);
 
+	// a Blob the page gave, at once (a Files' open, which cannot wait): opened by the first read
+	public static function ofBlob(name:String):WebSource
+		return new WebSource(WebMedia.blob(name), name, false);
+
 	@:coroutine public static function url(url:String):WebSource
 		return opened(WebMedia.url(url), url);
 

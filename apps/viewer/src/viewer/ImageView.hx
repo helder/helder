@@ -164,7 +164,10 @@ class ImageView extends helder.ui.Node {
 
 	function setup(d:Device) {
 		device = d;
-		pipeline = d.createPipeline(PhotoShader.pipeline());
+		// (its target's format, not the frame's: WebGPU checks they match)
+		var desc = PhotoShader.pipeline();
+		desc.colorFormat = RGBA8;
+		pipeline = d.createPipeline(desc);
 		var vb = PhotoShader.vertexBytes([for (c in [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]) {corner: helder.gfx.shader.ShaderMath.vec2(c[0], c[1])}]);
 		corners = d.createBuffer({size: vb.length, usage: Vertex, data: vb});
 		var ib = Bytes.alloc(12);

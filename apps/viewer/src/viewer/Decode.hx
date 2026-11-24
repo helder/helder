@@ -51,19 +51,6 @@ class Decode {
 		return nl < 0 ? {path: key, page: 0} : {path: key.substr(0, nl), page: Std.parseInt(key.substr(nl + 1)) ?? 0};
 	}
 
-	// the job: a key in (a path, maybe a PDF's page: key; and the side it is shown at: 0, all of it), a Decoded out
-	public static function file(req:{path:String, side:Int}):Decoded {
-		var k = parseKey(req.path);
-		// (a PDF already open: its page drawn, the file not read again)
-		if (PdfPages.isOpen(k.path)) return pdf(k.path, null, k.page, req.side, 0);
-		var bytes = try sys.io.File.getBytes(k.path) catch (e:Dynamic) null;
-		if (bytes == null) return failed("unreadable", "The file cannot be read", 0, "");
-		// (none of helder.image's: the system's decoders, TIFF, HEIC, AVIF, RAW, where there are some)
-		if (formatOf(bytes) == "" && helder.os.SystemImages.supports(k.path)) return system(k.path, req.side, bytes.length);
-		if (formatOf(bytes) == "PDF") return pdf(k.path, bytes, k.page, req.side, bytes.length);
-		return decode(bytes, req.side);
-	}
-
 	// a PDF's page (helder.pdf, PdfPages: the document kept open for its next pages)
 	static function pdf(path:Null<String>, bytes:Null<Bytes>, page:Int, side:Int, size:Int):Decoded {
 		return try {
@@ -97,6 +84,20 @@ class Decode {
 			d.pages = path == null ? 0 : Std.int(Math.max(0, PdfPages.pagesOf(path)));
 			d;
 		}
+	}
+
+	#if (hxmc.target != "wasm32-wasi")
+	// the job: a key in (a path, maybe a PDF's page: key; and the side it is shown at: 0, all of it), a Decoded out
+	public static function file(req:{path:String, side:Int}):Decoded {
+		var k = parseKey(req.path);
+		// (a PDF already open: its page drawn, the file not read again)
+		if (PdfPages.isOpen(k.path)) return pdf(k.path, null, k.page, req.side, 0);
+		var bytes = try sys.io.File.getBytes(k.path) catch (e:Dynamic) null;
+		if (bytes == null) return failed("unreadable", "The file cannot be read", 0, "");
+		// (none of helder.image's: the system's decoders, TIFF, HEIC, AVIF, RAW, where there are some)
+		if (formatOf(bytes) == "" && helder.os.SystemImages.supports(k.path)) return system(k.path, req.side, bytes.length);
+		if (formatOf(bytes) == "PDF") return pdf(k.path, bytes, k.page, req.side, bytes.length);
+		return decode(bytes, req.side);
 	}
 
 	// (helder.os's SystemImages: WIC, ImageIO; ImageLimits before any pixel; upright, scaled where the system scales)
@@ -159,11 +160,37 @@ class Decode {
 		}
 		return try helder.jobs.Jobs.job(file).run({path: path, side: side}) catch (e:Dynamic) failed("corrupt", "The decode failed: " + Std.string(e), bytes.length, formatOf(bytes));
 	}
+	#end
+
+	// a file's bytes read already (the web's, through its Files), as a job: a
+	// PDF's page from the document kept open in this thread by its path
+	public static function of(req:{path:String, bytes:Bytes, side:Int}):Decoded {
+		var k = parseKey(req.path);
+		return formatOf(req.bytes) == "PDF" ? pdf(k.path, req.bytes, k.page, req.side, req.bytes.length) : decode(req.bytes, req.side);
+	}
+
+	#if (hxmc.target == "wasm32-wasi")
+	// the web's decode: the bytes read through the browser's files, decoded on
+	// a worker (helder.jobs' Web Workers), a PDF on the page (onPage); never throws
+	@:coroutine public static function read(files:WebFiles, key:String, side:Int):Decoded {
+		var b = try files.bytes(parseKey(key).path) catch (_:Dynamic) null;
+		if (b == null) return failed("unreadable", "The file cannot be read", 0, "");
+		var req = {path: key, bytes: b, side: side};
+		return try onPage(b) ? of(req) : helder.jobs.Jobs.job(of).run(req) catch (e:Dynamic) failed("corrupt", "The decode failed: " + Std.string(e), b.length,
+			formatOf(b));
+	}
+
+	// (a PDF is drawn on the page itself: a Web Worker's instance of the
+	// program runs only the static initializers ordered before helder.jobs'
+	// (WebJobs'), and helder.pdf's tables come after them)
+	public static function onPage(b:Bytes):Bool
+		return formatOf(b) == "PDF";
+	#end
 
 	public static function decode(bytes:Bytes, side = 0):Decoded {
 		var format = formatOf(bytes);
 		if (bytes.length == 0) return failed("corrupt", "The file is empty", 0, "");
-		if (format == "") return failed("unsupported", "Not an image this viewer reads (PNG, JPEG, GIF, WebP, PDF" + (helder.os.SystemImages.available() ? "; the system's: TIFF, HEIC, AVIF, RAW" : "") + ")", bytes.length, "");
+		if (format == "") return failed("unsupported", "Not an image this viewer reads (PNG, JPEG, GIF, WebP, PDF" + (FolderModel.SYSTEM ? "; the system's: TIFF, HEIC, AVIF, RAW" : "") + ")", bytes.length, "");
 		try {
 			var frames:Array<{rgba:Bytes, delay:Float}>, w:Int, h:Int, reps = 0;
 			// (the image's own size, when it was decoded smaller)

@@ -167,7 +167,7 @@ class DcLayers extends LayerSplit {
 		gone.resize(0);
 		for (p in toDraw) {
 			var t0 = haxe.Timer.stamp();
-			var cut = p.surface() && p.drawnAt >= 0 && p.cut(p.drawnAt, p.kind == LayerPlane.BASE ? f.background | 0xFF000000 : 0, true);
+			var cut = p.surface() && p.drawnAt >= 0 && p.cut(p.drawnAt, p.kind == LayerPlane.BASE ? f.background : 0, true);
 			var len = cut ? p.cutLen : p.len + CompositeFrame.STRIDE;
 			if (p.content.isNull() || at + len > f.capacity) {
 				p.invalidate();
@@ -416,7 +416,7 @@ class DcLayers extends LayerSplit {
 			c.int(b.id());
 			c.int(at);
 			if (cut) c.bytes(p.cutBytes, 0, p.cutLen) else {
-				LayerPlane.rect(clearQuad, 0, 0, 0, p.pw, p.ph, p.pw, p.ph, p.kind == LayerPlane.BASE ? f.background | 0xFF000000 : 0);
+				LayerPlane.rect(clearQuad, 0, 0, 0, p.pw, p.ph, p.pw, p.ph, p.kind == LayerPlane.BASE ? f.background : 0);
 				c.bytes(clearQuad, 0, S);
 			}
 			c.end();
