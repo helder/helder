@@ -160,7 +160,7 @@ class LinuxAccess {
 		if (b.name != n.name && n.id != tree.root) emit(n.id, "PropertyChange", "accessible-name", 0, 0, new Variant("s", n.name));
 		if (b.description != n.description) emit(n.id, "PropertyChange", "accessible-description", 0, 0, new Variant("s", n.description ?? ""));
 		if (b.valueNow != n.valueNow && n.valueNow != null) emit(n.id, "PropertyChange", "accessible-value", 0, 0, new Variant("d", n.valueNow));
-		if (b.checked != n.checked) stateChanged(n.id, "checked", n.checked == true);
+		if (b.checked != n.checked) stateChanged(n.id, n.role == Button ? "pressed" : "checked", n.checked == true);
 		if (b.mixed != n.mixed) stateChanged(n.id, "indeterminate", n.mixed);
 		if (b.invalid != n.invalid) stateChanged(n.id, "invalid-entry", n.invalid);
 		if (b.required != n.required) stateChanged(n.id, "required", n.required);

@@ -759,8 +759,8 @@ name up at run time and links them all.
 ## Controls
 
 `helder.ui.controls` holds the standard controls, drawn by helder in one
-look on every platform: `Button`, `Checkbox` (`indeterminate` too) and
-`Switch` so far; the rest of the set, and why it has these layers, are in
+look on every platform: `Button`, `Checkbox` (`indeterminate` too),
+`Switch` and `PathBar`. The rest of the set and its design are in
 [docs/design/controls.md](/docs/design/controls.md). Each control is its
 behaviour (`Press`, `Toggle`), its parts (nodes bound by `ref`), and a
 look's recipe for it (`Look`).
@@ -788,8 +788,10 @@ import { Button, Checkbox, Switch, Themed, Look } from "helder/ui";
 
 - **Props.** `Button`: `children` (text or views), `label` (its name for
   assistive technology: an `icon` alone's), `icon` (an `Svg`; alone: a
-  square button), `variant`, `size`, `disabled` (a `Read<Bool>`),
-  `onPress`. `Checkbox` and `Switch`: `label`, `checked` (a
+  square button), `variant`, `size`, `disabled` and `selected` (each a
+  `Read<Bool>`), and `onPress`. Give `selected` to expose a toggle
+  button's pressed state and update its value from `onPress`.
+  `Checkbox` and `Switch`: `label`, `checked` (a
   `Read<Bool>`), `onChange`, `disabled`, `variant`, `size`;
   `indeterminate` (a checkbox's mixed). `checked` with no `onChange`: the
   caller's alone; neither: the control's own state. Each takes `tag`.
@@ -797,7 +799,7 @@ import { Button, Checkbox, Switch, Themed, Look } from "helder/ui";
 
   | Control | Keys | To assistive technology | Attributes a recipe reads |
   | --- | --- | --- | --- |
-  | Button | a click, Enter, Space | button, disabled | `data-disabled` |
+  | Button | a click, Enter, Space | button, disabled, pressed if a toggle | `data-disabled`, `data-selected` |
   | Checkbox | a click, Space (not Enter) | checkbox, checked or mixed | `data-state=checked\|unchecked\|mixed` |
   | Switch | a click, Space, Enter | switch, checked | `data-state` |
 
@@ -816,6 +818,16 @@ import { Button, Checkbox, Switch, Themed, Look } from "helder/ui";
   IsDataValidForForm and IsRequiredForForm, AT-SPI's INVALID_ENTRY,
   REQUIRED and MODAL, macOS's required and modal, Android's
   contentInvalid, ARIA's).
+
+**PathBar** takes `segments` (a `Read<Array<PathSegment>>`, each with a
+`label` and optional `icon`) and calls `onNavigate(index)` for an ancestor,
+including one picked from the overflow menu. Give `onSeparator(index, anchor)`
+to open a folder menu from its chevron. Clicking the current segment or
+empty space starts editing. Pass an `editing` signal to start it from a
+shortcut. The editor selects `text` (the labels joined with `/` by
+default), calls `onSubmit(text)` on Enter, and closes on Escape or blur.
+`editable={false}` disables the editor. The bar takes `size` (`sm` or
+`md`), `tag`, and an accessible `label` (defaults to “Path”).
 
 ### Looks
 

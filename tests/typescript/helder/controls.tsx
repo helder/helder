@@ -5,7 +5,7 @@
 // checked by the types (the @ts-expect-error below: the base look has no
 // "soft"), styles written as markup writes them ('0 20').
 import { signal, Render } from "helder/view";
-import { Button, Checkbox, Switch, Themed, Look, tone, Toggle, Key, Node, type CheckboxProps } from "helder/ui";
+import { Button, Checkbox, Switch, PathBar, Themed, Look, tone, Toggle, Key, Node, type CheckboxProps, type PathSegment } from "helder/ui";
 import { UiProbe } from "./ui-probe";
 
 const saved = signal(0), terms = signal(false), dark = signal(true);
@@ -67,3 +67,22 @@ function never() {
 	return <Button variant="soft">Soft</Button>;
 }
 console.log(typeof never);
+
+const path = signal<PathSegment[]>([{label: "Home"}, {label: "Pictures"}]);
+const editing = signal(false);
+let visited = -1, separator = "", submitted = "";
+Render.render(
+	<PathBar tag="location" segments={path} size="md" editing={editing} text="/Home/Pictures"
+		onNavigate={i => { visited = i; }}
+		onSeparator={(i, anchor) => { separator = i + " " + anchor.slot; }}
+		onSubmit={text => { submitted = text; }}/>,
+	UiProbe.root(320, 160)
+);
+UiProbe.click("pathbar-segment");
+UiProbe.click("pathbar-separator");
+console.log(visited, separator, UiProbe.slot("location"));
+editing(true);
+UiProbe.dump();
+UiProbe.type("/New");
+UiProbe.key(Key.ENTER);
+console.log(submitted, editing());

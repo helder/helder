@@ -16,8 +16,8 @@ import helder.view.graph.Signal;
 // leaves; focusVisible: focused from the keyboard) and eased amounts
 // (Eased). No look: root and part bind it to nodes, by ref, setting their
 // slots (the control's, "button"; its part's, "button-icon"), the root's
-// role, label, variant and size and its data-disabled, which a look's
-// recipes read.
+// role, label, variant and size and its data-disabled (and a toggle's
+// data-selected), which a look's recipes read.
 //
 //   final p = Press.of(props, "button");
 //   <view:button ref={p.root}><image ref={p.part("icon")} .../></view:button>
@@ -37,6 +37,7 @@ class Press {
 	public var size:Null<String> = null;
 
 	final onPress:Null<Void->Void>;
+	var selected:Null<Read<Bool>>;
 	var role:Role = Button;
 
 	public function new(slot:String, ?disabled:Read<Bool>, ?onPress:Void->Void) {
@@ -51,9 +52,10 @@ class Press {
 	}
 
 	// a press of props' (a replaced rendering's: Look's render) for a control named slot
-	public static function of(props:{?label:String, ?disabled:Read<Bool>, ?onPress:Void->Void}, slot:String):Press {
+	public static function of(props:{?label:String, ?disabled:Read<Bool>, ?selected:Read<Bool>, ?onPress:Void->Void}, slot:String):Press {
 		var p = new Press(slot, props.disabled, props.onPress);
 		p.label = props.label;
+		p.selected = props.selected;
 		return p;
 	}
 
@@ -84,6 +86,10 @@ class Press {
 			n.focusable = !d;
 			sem.disabled = d;
 			n.setAttr("data-disabled", d ? "" : null);
+		});
+		if (selected != null) renderEffect(() -> selected(), on -> {
+			sem.checked = on;
+			n.setAttr("data-selected", on ? "" : null);
 		});
 		bound(n);
 		sync(true);

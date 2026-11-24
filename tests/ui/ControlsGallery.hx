@@ -4,6 +4,8 @@ import helder.os.*;
 import helder.ui.*;
 import helder.ui.controls.*;
 import helder.ui.controls.Standard;
+import helder.ui.controls.Props.PathSegment;
+import helder.ui.widgets.Icons;
 import helder.ui.draw.*;
 import helder.view.*;
 
@@ -17,7 +19,7 @@ import helder.view.*;
 //   ControlsGallery <golden dir> <out dir> [--bless]
 class ControlsGallery implements Markup {
 	static inline var W = 760;
-	static inline var H = 660;
+	static inline var H = 700;
 	static final STATES = ["rest", "hover", "pressed", "focus", "disabled"];
 	static var failed = 0;
 	static var checks = 0;
@@ -96,6 +98,9 @@ class ControlsGallery implements Markup {
 			&& Type.enumEq(ui.root.find("size-lg").style.height, (t.controlLg : Dim)));
 		var icon = ui.root.find("size-icon");
 		check('$at: an icon alone, square', icon.width == icon.height, '${icon.width} x ${icon.height}');
+		var inspector = ui.root.find("inspector");
+		check('$at: a selected ghost', inspector.attr("data-selected") == "" && inspector.style.background == colors.get("accentSoft"));
+		check('$at: a collapsed path', ui.root.find("path-narrow").find("pathbar-overflow").style.display == Flex);
 		var on = ui.root.find("checked-rest"), mixed = ui.root.find("mixed-rest");
 		check('$at: a checkbox on', on.semantics.role == CheckBox && on.semantics.checked == true && on.attr("data-state") == "checked");
 		check('$at: its box', on.children[0].slot == "checkbox-box" && on.children[0].style.background == colors.get("accent"));
@@ -157,6 +162,9 @@ class ControlsGallery implements Markup {
 		}
 	}
 
+	static function location():Array<PathSegment>
+		return [{label: "Home", icon: Icons.svg("folder")}, {label: "Pictures"}, {label: "2026"}, {label: "Reference images"}];
+
 	static function gallery(look:Look<Dynamic>):View
 		return <Standard.Themed look={look}>
 			<view grow={1} padding={16} row-gap={4} background={Look.ref.canvas} color={Look.ref.fg} font-family="Inter" font-size={13}>
@@ -173,7 +181,17 @@ class ControlsGallery implements Markup {
 					<Standard.Button tag="size-sm" variant="primary" size="sm">Small</Standard.Button>
 					<Standard.Button tag="size-md" variant="primary">Medium</Standard.Button>
 					<Standard.Button tag="size-lg" variant="primary" size="lg">Large</Standard.Button>
-					<Standard.Button tag="size-icon" icon={helder.ui.widgets.Icons.svg("search")} label="Search"/>
+					<Standard.Button tag="size-icon" icon={Icons.svg("search")} label="Search"/>
+					<Standard.Button tag="inspector" icon={Icons.svg("panel-left")} variant="ghost" label="Inspector" selected={true}/>
+				</view>
+				<view direction="row" align-items="center">
+					<text width={100} color={Look.ref.fg3}>path bar</text>
+					<view width={330}>
+						<Standard.PathBar segments={location()} onNavigate={_ -> {}} onSubmit={_ -> {}}/>
+					</view>
+					<view width={196}>
+						<Standard.PathBar tag="path-narrow" segments={location()} onNavigate={_ -> {}} onSubmit={_ -> {}}/>
+					</view>
 				</view>
 			</view>
 		</Standard.Themed>;

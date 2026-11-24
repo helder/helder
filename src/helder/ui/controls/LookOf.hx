@@ -101,6 +101,7 @@ class LookMacro {
 			opt("button", macro :helder.ui.controls.Tokens.Refs->Dynamic),
 			opt("checkbox", macro :helder.ui.controls.Tokens.Refs->Dynamic),
 			opt("switch", macro :helder.ui.controls.Tokens.Refs->Dynamic),
+			opt("pathbar", macro :helder.ui.controls.Tokens.Refs->Dynamic),
 			opt("render", renders)
 		]);
 	}

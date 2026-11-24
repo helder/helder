@@ -49,6 +49,17 @@ typedef CheckboxRecipe = {> CheckboxParts, ?variants:VariantParts<CheckboxParts>
 typedef SwitchParts = {?root:PartStyle, ?track:PartStyle, ?knob:PartStyle, ?label:PartStyle}
 @:typescript.type("import('./style').SwitchRecipe") @:typescript.dynamic
 typedef SwitchRecipe = {> SwitchParts, ?variants:VariantParts<SwitchParts>, ?defaults:Defaults}
+typedef PathBarParts = {
+	?root:PartStyle,
+	?segment:PartStyle,
+	?segmentIcon:PartStyle,
+	?separator:PartStyle,
+	?overflow:PartStyle,
+	?current:PartStyle,
+	?field:PartStyle
+}
+@:typescript.type("import('./style').PathBarRecipe") @:typescript.dynamic
+typedef PathBarRecipe = {> PathBarParts, ?variants:VariantParts<PathBarParts>}
 
 // what Look.with takes (Haxe's: Look.with's macro checks a patch against
 // it; "switch" written as such, as a key: the macro's switch_): a density,
@@ -64,6 +75,7 @@ typedef Patch = {
 	?button:Refs->ButtonRecipe,
 	?checkbox:Refs->CheckboxRecipe,
 	?switch_:Refs->SwitchRecipe,
+	?pathbar:Refs->PathBarRecipe,
 	?render:Renders,
 	?parts:DynamicAccess<Refs->PartStyle>
 }

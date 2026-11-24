@@ -13,6 +13,7 @@ package helder.ui.access;
 	public var description(default, set):Null<String> = null;
 	// where a link goes (markup: href, making the node a Link): a document's link annotation, the browser's
 	public var href(default, set):Null<String> = null;
+	// a toggle's state (a button's pressed state)
 	public var checked(default, set):Null<Bool> = null;
 	// a checkbox neither checked nor not (ARIA's checked="mixed"; markup: checked="mixed")
 	public var mixed(default, set):Bool = false;

@@ -3,6 +3,7 @@ package helder.ui.controls;
 import helder.ui.Svg;
 import helder.ui.controls.Variant;
 import helder.view.graph.Read;
+import helder.view.graph.Signal;
 
 // The controls' props, V the look whose variants and sizes they take
 // (Look<V>: Look.base's for Standard's, a look's own for look.Button).
@@ -17,6 +18,7 @@ typedef ButtonProps<V> = {
 	?variant:ButtonVariant<V>,
 	?size:ButtonSize<V>,
 	?disabled:Read<Bool>,
+	?selected:Read<Bool>,
 	?onPress:Void->Void,
 	?tag:String
 }
@@ -40,4 +42,19 @@ typedef SwitchProps<V> = {
 	?variant:SwitchVariant<V>,
 	?size:SwitchSize<V>,
 	?tag:String
+}
+
+typedef PathSegment = {label:String, ?icon:Svg}
+
+typedef PathBarProps = {
+	segments:Read<Array<PathSegment>>,
+	onNavigate:Int->Void,
+	onSubmit:String->Void,
+	?onSeparator:(index:Int, anchor:helder.ui.Node)->Void,
+	?editable:Bool,
+	?text:Read<String>,
+	?editing:Signal<Bool>,
+	?size:PathBarSize,
+	?tag:String,
+	?label:String
 }
