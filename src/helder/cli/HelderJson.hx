@@ -27,7 +27,8 @@ using StringTools;
 //       "kind": "game",                    game, app or tool
 //       "tags": ["sports"],
 //       "source": "https://github.com/...",
-//       "screenshots": ["shots/1.png"]     (an override; else the stories with store: true, else one of the program)
+//       "screenshots": ["shots/1.png"],    (an override; else the stories with store: true, else one of the program)
+//       "downloads": {"macos": "https://github.com/<owner>/<repo>/releases/..."}   macos, windows, linux: GitHub releases only
 //     },
 //     "listing": {"subtitle", "summary", "description", "keywords", ...}   the stores' pages (Listing)
 //     "targets": {
@@ -53,7 +54,10 @@ class HelderJson {
 		"$schema", "name", "label", "description", "id", "version", "build", "entry", "icon", "colors", "splash", "display", "orientation", "lang", "dir",
 		"categories", "fileHandlers", "locale", "links", "run", "targets", "listing"
 	];
-	public static final RUN = ["name", "listed", "kind", "tags", "source", "screenshots"];
+	public static final RUN = ["name", "listed", "kind", "tags", "source", "screenshots", "downloads"];
+	public static final DOWNLOADS = ["macos", "windows", "linux"];
+	// (a download is a GitHub release's: helder.build serves no binaries, and points only where GitHub scans and serves them)
+	static final RELEASE = ~/^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/releases(\/[^\s]*)?$/;
 	public static final KINDS = ["game", "app", "tool"];
 	public static final TARGETS = ["web", "android", "ios", "macos", "windows", "linux"];
 	// each target's destinations for `helder publish` (helder.run is run's)
@@ -176,13 +180,24 @@ class HelderJson {
 		var shots:Dynamic = r.screenshots;
 		if (shots != null && !(Std.isOfType(shots, Array) && (shots : Array<Dynamic>).length <= 8 && Lambda.foreach((shots : Array<Dynamic>), x -> Std.isOfType(x, String) && Manifest.local(x))))
 			throw '$FILE: run.screenshots: at most 8 image files beside helder.json';
+		var downloads = new haxe.DynamicAccess<String>();
+		if (r.downloads != null) {
+			if (!isObject(r.downloads)) throw '$FILE: run.downloads: an object ({"macos": "https://github.com/..."})';
+			known(r.downloads, DOWNLOADS, "run.downloads");
+			for (k => v in (r.downloads : haxe.DynamicAccess<Dynamic>)) {
+				if (!(Std.isOfType(v, String) && (v : String).length <= 300 && RELEASE.match(v)))
+					throw '$FILE: run.downloads.$k: a GitHub release\'s URL (https://github.com/<owner>/<repo>/releases/...)';
+				downloads.set(k, v);
+			}
+		}
 		return {
 			name: name,
 			listed: r.listed == true,
 			kind: r.kind,
 			tags: tags == null ? [] : [for (t in (tags : Array<Dynamic>)) Std.string(t)],
 			source: r.source,
-			screenshots: shots == null ? null : [for (s in (shots : Array<Dynamic>)) Std.string(s)]
+			screenshots: shots == null ? null : [for (s in (shots : Array<Dynamic>)) Std.string(s)],
+			downloads: downloads
 		};
 	}
 
@@ -318,6 +333,8 @@ typedef RunConfig = {
 	tags:Array<String>,
 	source:Null<String>,
 	screenshots:Null<Array<String>>,
+	// the desktops' packages: a GitHub release's page or file for each
+	downloads:haxe.DynamicAccess<String>,
 }
 
 // a target's destination for `helder publish`
