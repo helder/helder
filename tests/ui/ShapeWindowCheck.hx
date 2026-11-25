@@ -218,8 +218,8 @@ class ShapeWindowCheck {
 		e.window.taskbar = false;
 		var a = e.window.workArea();
 		if (a != null) {
-			e.window.resize(EDGE, a.height);
-			e.window.moveTo(a.x + a.width - EDGE, a.y);
+			e.window.resize(EDGE, Math.round(a.height));
+			e.window.moveTo(Math.round(a.x + a.width) - EDGE, Math.round(a.y));
 		}
 		return e;
 	}

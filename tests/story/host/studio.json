@@ -1,7 +1,9 @@
 {
   "events": [
     {"t": 0.3, "type": "mark", "name": "overview"},
-    {"t": 0.4, "type": "tap", "tag": "nav-screen-lists-screen-46"},
+    {"t": 0.4, "type": "tap", "tag": "command"},
+    {"t": 0.5, "type": "type", "text": "screen 46"},
+    {"t": 0.6, "type": "key", "name": "Enter"},
     {"t": 1.6, "type": "mark", "name": "zoomed"},
     {"t": 1.7, "type": "double-click", "tag": "stage", "ox": 400, "oy": 123},
     {"t": 2.4, "type": "mark", "name": "selected"},
