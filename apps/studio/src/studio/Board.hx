@@ -121,7 +121,7 @@ class Board implements Markup {
 
 	// (a screen's still from the frames file until the program draws it: dimmed when its files changed since)
 	static function still(studio:Studio, s:Previews.Screen, r:Read<Rect>):Node {
-		var n = new StillFrame(s.still.peek(), s.stillWidth, s.stillHeight);
+		var n = new StillFrame(s.still.peek(), s.stillPasses, s.stillWidth, s.stillHeight);
 		n.tag = "still";
 		effect(() -> {w: r().w, h: r().h, dim: s.stale() || studio.failure() != null}, v -> {
 			n.style.set({position: Absolute, left: 0, top: 0, width: v.w, height: v.h, opacity: v.dim ? 0.45 : 1});
@@ -130,7 +130,7 @@ class Board implements Markup {
 		var name = s.info.name;
 		effect(() -> studio.hovered() == name && s.image() == null, on -> {
 			var l = on ? studio.previews.fileLoop(s) : null;
-			if (l == null) n.stop() else n.play(l.fps, l.lists, () -> studio.loopShown(name, "file"),
+			if (l == null) n.stop() else n.play(l.fps, l.lists, l.passes, () -> studio.loopShown(name, "file"),
 				(frames, ms) -> studio.log("loop-played", {screen: name, frames: frames, msPerFrame: Math.round(ms * 1000) / 1000}));
 		});
 		return n;

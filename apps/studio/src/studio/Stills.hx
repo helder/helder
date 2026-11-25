@@ -31,28 +31,29 @@ class Stills {
 	}
 
 	// a screen's still from the file (null: none, or a font it draws gone)
-	public function list(name:String):Null<DisplayList>
-		return try archive.list(name) catch (e:Dynamic) {
+	// (passes: what passes draw as data, filled: FrameReader's)
+	public function list(name:String, ?passes:Array<helder.ui.draw.PassData>):Null<DisplayList>
+		return try archive.list(name, passes) catch (e:Dynamic) {
 			Sys.println('studio: $FILE: $name: $e');
 			null;
 		}
 
 	// a screen's loop from the file (decoded once: its lists kept), null: none
-	public function loop(name:String):Null<{fps:Int, lists:Array<DisplayList>, ms:Float}> {
+	public function loop(name:String):Null<{fps:Int, lists:Array<DisplayList>, passes:Array<Array<helder.ui.draw.PassData>>, ms:Float}> {
 		if (!archive.looped(name)) return null;
 		var l = loops.get(name);
 		if (l != null) return l;
 		var t0 = haxe.Timer.stamp();
-		var d = try archive.loop(name) catch (e:Dynamic) {
+		var d = try archive.loop(name, true) catch (e:Dynamic) {
 			Sys.println('studio: $FILE: $name\'s loop: $e');
 			null;
 		}
 		if (d == null) return null;
-		loops.set(name, l = {fps: d.fps, lists: d.lists, ms: Math.round((haxe.Timer.stamp() - t0) * 10000) / 10});
+		loops.set(name, l = {fps: d.fps, lists: d.lists, passes: d.passes, ms: Math.round((haxe.Timer.stamp() - t0) * 10000) / 10});
 		return l;
 	}
 
-	final loops = new Map<String, {fps:Int, lists:Array<DisplayList>, ms:Float}>();
+	final loops = new Map<String, {fps:Int, lists:Array<DisplayList>, passes:Array<Array<helder.ui.draw.PassData>>, ms:Float}>();
 
 	public function looped(name:String):Bool
 		return archive.looped(name);
