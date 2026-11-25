@@ -1,5 +1,5 @@
 #!/bin/sh
-# The browser test's own file (MediaWebTest.hx): VP9 in WebM, 4 s in
+# The browser test's own file (MediaWebCheck.hx): VP9 in WebM, 4 s in
 # clusters of a second each, a keyframe a second: longer than a player's
 # read-ahead, so that its first frame needs a part of it (the Range check);
 # 128x96, the least Apple's VP9 decoder takes (Firefox's and WebKit's on macOS).

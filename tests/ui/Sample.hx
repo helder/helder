@@ -3,7 +3,7 @@ import helder.ui.*;
 import helder.image.Image;
 
 // A sample UI built with helder.ui's nodes: a toolbar, a sidebar of items, a
-// card with wrapped text and buttons (UiDrawTest draws it headless, Demo
+// card with wrapped text and buttons (UiDrawCheck draws it headless, Demo
 // in a window)
 class Sample {
 	public static function build(root:Node) {

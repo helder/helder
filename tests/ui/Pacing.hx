@@ -4,7 +4,7 @@ import helder.ui.*;
 import helder.ui.draw.*;
 
 // A layer's transition in a real window while the program is busy
-// (AsyncScrollWindow --anim): a box turning, moving and fading over the
+// (AsyncScrollWindowCheck --anim): a box turning, moving and fading over the
 // list; the program blocked for 300 ms while it runs: the compositor's
 // frames keep coming at the display's pace, from the animation alone (no
 // input meanwhile); then a box that never moved, its transition declared

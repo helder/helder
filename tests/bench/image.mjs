@@ -1,5 +1,5 @@
 // helder.image against vips (vips, vipsthumbnail: libvips' CLI) and Bun.Image
-// where they are installed, on the same files (the image-bench lane): a table
+// where they are installed, on the same files (the bench image lane): a table
 // in bin/bench/image.md. Each time the median of five runs; vips' and bun's
 // include their process start or file writes where noted.
 //

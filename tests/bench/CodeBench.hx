@@ -6,7 +6,7 @@ import helder.ui.code.CodeEditor;
 import helder.ui.draw.DrawText;
 
 // helder.ui.code's own work a frame, without the GPU renderer: a
-// CodeEditor on a file (10,000 lines in the code-bench lane) in a Ui of
+// CodeEditor on a file (10,000 lines in the bench code lane) in a Ui of
 // helder.text's engine, painted into a canvas that draws nothing, each
 // frame timed and its GC bytes counted (GcStats): a keystroke (its key
 // down, text and key up through the Ui, the edit, highlighting, the frame

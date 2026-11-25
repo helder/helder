@@ -25,7 +25,7 @@ final class Replay {
 	// (the render thread's: the first command that threw, rethrown to the program at its next wait)
 	public var error:Null<haxe.Exception> = null;
 	// after each frame's present returned, where it ran (latency measured:
-	// tests/ui/RenderThreadTest)
+	// tests/ui/RenderThreadCheck)
 	public var onEndFrame:Null<Void->Void> = null;
 
 	var scratch = Bytes.alloc(4096);

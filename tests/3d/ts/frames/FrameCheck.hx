@@ -5,9 +5,9 @@ import helder.gfx.*;
 import helder.os.*;
 
 // helder/scene's frames drawn by TypeScript (tests/3d/ts/frames.ts), as
-// RenderTest draws Haxe's: headless, 256 x 192, against a golden image by
-// helder.gfx's rule (GfxTest.compareBytes; HXMC_3D_TOLERANCE as
-// RenderTest's). Declared to the program by FramesTypeScript.
+// RenderCheck draws Haxe's: headless, 256 x 192, against a golden image by
+// helder.gfx's rule (GfxCheck.compareBytes; HXMC_3D_TOLERANCE as
+// RenderCheck's). Declared to the program by FramesTypeScript.
 //
 //   frames <scene> <golden.png> <out.png> [--bless]
 class FrameCheck {
@@ -55,6 +55,6 @@ class FrameCheck {
 				for (k in 0...WIDTH * HEIGHT * 4)
 					if (Math.abs(pixels.get(k) - g.rgba.get(k)) <= tolerance) pixels.set(k, g.rgba.get(k));
 		}
-		Sys.exit(GfxTest.compareBytes('$name (TypeScript), headless', pixels, png) ? 0 : 1);
+		Sys.exit(GfxCheck.compareBytes('$name (TypeScript), headless', pixels, png) ? 0 : 1);
 	}
 }

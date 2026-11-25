@@ -112,7 +112,7 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
     (`"1px 2px 4px #0006"`, several, inherited, `none`) draws the text's
     and its lines' shadows under them (a text field's and its placeholder's
     too), blurred as Chromium blurs them
-    (BoxTest compares them). `fontFeatureSettings` (`"'tnum'"`,
+    (BoxCheck compares them). `fontFeatureSettings` (`"'tnum'"`,
     `"'liga' 0, 'ss01'"`, inherited) asks for OpenType features as CSS's
     font-feature-settings does; `fontVariantNumeric` (`"tabular-nums"`,
     `"oldstyle-nums slashed-zero"`) as font-variant-numeric does, under it.
@@ -134,7 +134,7 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
     Chromium blurs them, within a few levels of its pixels), `outlineWidth`,
     `outlineOffset`, `outlineColor` (or markup `outline="2px solid red"`: a
     solid line around the border box over the content, its corners the
-    box's grown, as Chromium draws it; BoxTest compares them), `outlineStyle`
+    box's grown, as Chromium draws it; BoxCheck compares them), `outlineStyle`
     (`Auto`, the default: the window's focus ring while focused by the
     keyboard; `Solid`: only the outline; `Dashed`, `Dotted`: it drawn so;
     `None`: neither, as CSS's `outline-style: none`), `ringWidth`, `ringColor`, `ringOffsetWidth`,
@@ -408,7 +408,7 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
     have been idle); a layout's within the frame it is laid out.
   1,000 boxes moving at once: a frame's work the same as drawing them still
   (0.82 ms against 0.85 ms median, headless on llvmpipe), retargeting all
-  of them 3.7 ms, 152 GC bytes a frame either way (the motion-bench lane).
+  of them 3.7 ms, 152 GC bytes a frame either way (the bench motion lane).
 - **`helder.ui.widgets`**: text editing, `TextField` (caret, selection,
   keyboard editing, `cut`, `copy`, `paste`, `selectAll`) and `TextArea`
   (lines: wrapping, Up and Down, scrolling), both on `EditableText`, with
@@ -455,7 +455,7 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
   `onChange` with each edit's changes (helder.syntax's: a
   `Transaction`'s). examples/code-editor hosts it; tests: `CodeModel.test.hx`,
   `CodeEditor.test.hx`, the headless-run lane (a scripted 2,000-line TSX
-  file), the code-bench lane (tests/bench/results/code-editor.md). Not
+  file), the bench code lane (tests/bench/results/code-editor.md). Not
   yet: soft wrap, folding, completion, bidi text on its column grid.
 - **Popups**: `Popup` nodes are layers over the tree (`Ui.open`, `Ui.close`:
   children of `Ui.overlay`, drawn and hit after the tree, not clipped by
@@ -492,8 +492,8 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
   Up and Down, Home and End move the focus (and `selected`, a key that
   outlives its row's node) onto them; a listbox to assistive technology,
   each made row's place among all (`Semantics.posInSet`, `setSize`).
-  examples/million and ts-million (a million messages); tests: MarkupTest,
-  `HeightIndex.test.hx`, the headless-run lane, the million-bench lane
+  examples/million and ts-million (a million messages); tests: MarkupCheck,
+  `HeightIndex.test.hx`, the headless-run lane, the bench million lane
   (tests/bench/results/million.md). Not yet: sticky headers across rows
   (a header sticks within its own row), horizontal lists, the code
   editor's lines on the index (fixed height: a multiplication is all it needs).
@@ -821,7 +821,7 @@ Windows' lets the closing press reach the window after the menu has gone,
 where a menu button takes it rather than opening again. A window's resize
 closes a drawn menu (the platforms' menus are modal: the window cannot be
 resized while one is open); a popover anchored to a node follows it
-instead. `tests/os/MenuTest.hx` reads each
+instead. `tests/os/MenuCheck.hx` reads each
 platform's back (the window lane); `src/helder/ui/menu/Menus.test.hx` the
 model and the drawn menus.
 
@@ -1192,7 +1192,7 @@ texture of its own, in a pass before the window's, shown under the
 part's children. Each such part costs a pass and splits the window's one
 draw (a texture bound between quads), so the default look has none: 500
 buttons draw in one pass, one pipeline and one draw, as 500 plain views
-do (`tests/ui/ControlsBench.hx`, the ui-draw lane, which checks both).
+do (`tests/ui/ControlsCostCheck.hx`, the ui-draw lane, which checks both).
 
 The controls' gallery, every state in light and dark at both densities,
 is `tests/ui/ControlsGallery.hx` against `tests/ui/controls/`.
@@ -1418,7 +1418,7 @@ its content view) where the window's layers are the system's
 press, so that it clips, stacks and scrolls with the layers, samples what
 is behind it as the system does, and leaves the input to helder's view.
 The system's interactive response is its own (macOS 27's
-`effectIsInteractive`). `tests/ui/GlassWindow.hx` (the ui-draw lane,
+`effectIsInteractive`). `tests/ui/GlassWindowCheck.hx` (the ui-draw lane,
 macOS) checks the views in the tree: each glass at its box and radius, a
 group's in its container.
 
@@ -1446,14 +1446,14 @@ shadow, clear glass a dimmed blur. A frame with drawn glass is drawn whole
 the window's own layer: the compositor's own frames and the system's
 layers would move what is under it without it.
 
-Its look is tuned against the system's on screen (`tests/ui/GlassKinds.hx`:
+Its look is tuned against the system's on screen (`tests/ui/GlassKindsCheck.hx`:
 every kind of the glass demo, regular, clear, four tints, four shapes, a
 group, over fixed bands): out of a key window against macOS 26's
 NSGlassEffectView over the same bands, shown behind every window and
 captured by the window server (`tests/ui/glass-kinds.swift`, which needs
 Screen Recording's permission; a key window would take the focus), in a
 key window against iOS 27's UIGlassEffect in the simulator
-(`tests/ui/GlassKindsIos.hx`). Mean levels over each kind and its rim, at
+(`tests/ui/GlassKindsIosCheck.hx`). Mean levels over each kind and its rim, at
 2x:
 
 | | regular | clear | tints | shapes | group | all |
@@ -1470,7 +1470,7 @@ its glass in its first glass's variant and tint. The golden
 window's look; its text in helder's embedded Inter, so the same on every
 machine) is the CPU's, made on Linux by ui-soft; Metal, llvmpipe, WebGPU
 and WebGL2 land within 12 levels of it, under 0.1% of its pixels over 6
-(`tests/ui/web-glass.mjs` checks the browsers', `GlassTest --smoke` D3D11).
+(`tests/ui/web-glass.mjs` checks the browsers', `GlassCheck --smoke` D3D11).
 
 ### Native or drawn, per widget
 
@@ -1499,10 +1499,10 @@ drawn again while a popup covers it or a scroller clips it. In the
 browser the editors are the page's input and textarea over the canvas
 (`WebViews`; `web-field.mjs` drives them in Chromium); on Windows EDIT
 controls, children of the window, coloured through WM_CTLCOLOREDIT with the
-background behind them (`windows.Views`; `WinAccessTest`); on macOS
+background behind them (`windows.Views`; `WinAccessCheck`); on macOS
 NSTextFields over the window's content view (a password's an
 NSSecureTextField) in the field's font, colour and alignment, a text area an
-NSTextView in a borderless NSScrollView (`MacViews`; `MacAccessTest`); on
+NSTextView in a borderless NSScrollView (`MacViews`; `MacAccessCheck`); on
 iOS UITextFields and UITextViews over the window's view, so that UIKit's
 own editing is the app's: marked text (Japanese, Chinese, Korean,
 dictation), the selection's handles and loupe, autocorrection; their text,
@@ -1562,8 +1562,8 @@ and frame; a text input's characters, selection and lines; a table's
 rows, columns and headers, a row's and an item's index; press,
 increment and decrement come back as actions, as do a value, the focus,
 expanded and selected set; the notifications of what changed), which
-VoiceOver reads (the window lane on macOS: `MacAccessTest`,
-`MacPatternsTest`, in process); on iOS to UIAccessibility (`IosAccess`:
+VoiceOver reads (the window lane on macOS: `MacAccessCheck`,
+`MacPatternsCheck`, in process); on iOS to UIAccessibility (`IosAccess`:
 the window's view a container of a UIAccessibilityElement per node
 VoiceOver stops at, its label, value, hint, traits and frame; activate,
 increment and decrement come back as actions; layout changes and
@@ -1582,8 +1582,8 @@ Grid, GridItem, Table, TableItem and Text patterns, a text's ranges by
 characters, words, lines and the whole (`TextUnits`); the focus,
 structure, property, selection, text and live region events of what
 changed), which Narrator reads (the window lane: in process,
-`WinAccessTest`, `WinPatternsTest`; from another process through
-IUIAutomation, `WinAccessProbe`, on the fixture and the screens Linux's
+`WinAccessCheck`, `WinPatternsCheck`; from another process through
+IUIAutomation, `WinAccessRemoteCheck`, on the fixture and the screens Linux's
 probe reads; under Wine, whose IUIAutomation has no patterns, the tree
 and its properties); on
 Linux to AT-SPI over D-Bus (`linux.Access`, through helder's own D-Bus
@@ -1594,7 +1594,7 @@ what changed since the last frame: children added and removed, names,
 values, states, the text's edits and caret, a selection's change), which
 Orca reads (the ui-draw lane reads the fixture, the todo and mail
 examples and the guide's widgets through libatspi, the viewer lane the
-viewer's main screen: `tests/ui/AtspiProbe.hx`). On macOS, Windows
+viewer's main screen: `tests/ui/AtspiCheck.hx`). On macOS, Windows
 and Linux the tree is built only once a client first asks for it, so a
 program nobody reads pays nothing for it.
 
@@ -1659,7 +1659,7 @@ golden scene, below) and the same bytes on every machine given the same
 fonts (`HELDER_FONT_DIRS`: those directories alone, e.g. DejaVu on a Mac),
 so the image tests' goldens are its (`bun run test ui-soft`).
 
-Against the GPU (tests/ui/SoftBench.hx: a frame painted and read back, the
+Against the GPU (tests/bench/SoftBench.hx: a frame painted and read back, the
 least of 20; first frame in brackets; ms):
 
 | scene | Metal (M4) | CPU (M4) | llvmpipe, Docker | CPU, Docker | CPU, Docker, one thread |
@@ -1738,7 +1738,7 @@ out nothing on a clean tree; after a change it lays out again the dirty
 path (a node's measures are cached per constraints) and rounds only the
 subtrees that moved. A changed node whose parent's measures of it come out
 as they were (a checkbox toggled, a field typed into: its size its own) is
-laid out again in place, its ancestors not (`Layout.inPlace`; UiTest checks
+laid out again in place, its ancestors not (`Layout.inPlace`; UiCheck checks
 it against layouts from scratch of random trees changed at random). Paint and hit tests skip subtrees whose bounds
 (their ink: the box, overflowing text, children unless clipped, widened
 by shadows and the focus ring) miss the window or their scrollers. The
@@ -1765,7 +1765,7 @@ content is recorded over what is seen and a viewport each way (a quarter
 after a change), again once a scroll leaves that or a sticky node in it
 moves. The layers are then walked onto the canvas, each where its scroller
 and transform put it now, culled to what is seen: the calls painting
-directly gives, in its order (UiTest checks it on random trees changed at
+directly gives, in its order (UiCheck checks it on random trees changed at
 random over frames: scrollers and sticky rows, transforms and opacity
 moving, motion's entering and leaving rows), and a frame that only scrolls
 or moves a transform records nothing. Passes (`beforePass`) are entries of
@@ -1784,7 +1784,7 @@ interpolated position a rasterizer places a little apart in a target of
 another size. So the tiles give the pixels replaying gives, at whole
 pixels, on Metal and Mesa alike. A scroll draws no new tile once those
 around the view are drawn. Screenshots, story renders and golden images
-replay every layer (`LayerTest` checks the two pixel for pixel, on
+replay every layer (`LayerCheck` checks the two pixel for pixel, on
 rounded scrollers at scales 1 and 2). The renderer draws a quad as four
 vertices and six indices, batched by texture.
 
@@ -1808,9 +1808,9 @@ the window), the frame is drawn whole straight to the drawable, as copying
 it in and out would draw more. UiShader measures every fragment from its
 pixel's centre, a turned quad's solved from its corners, so what is drawn
 into the frame kept is what drawing whole gives, on GL too, which draws
-textures the other way up (`DamageTest`: random trees changed at random
+textures the other way up (`DamageCheck`: random trees changed at random
 over 80 frames, pixel for pixel against drawing whole, at scales 1 and 2,
-replayed and from tiles, on Metal and Mesa; `DamageTest --window` in a
+replayed and from tiles, on Metal and Mesa; `DamageCheck --window` in a
 multisampled window). Headless runs, screenshots,
 golden images and X11 draw every frame whole; `HELDER_DAMAGE=full` draws
 a window's so, `HELDER_DAMAGE=flash` shows each frame's rectangles.
@@ -1855,7 +1855,7 @@ declared, and one declared in a frame's update (a rule's restyle: a
 hover, a press) starts at that frame's time, as motion's tracks do, so
 the frame declaring it hands it over running and the program may block
 at once (tap, animate, heavy work: animated from the first vsync it
-misses; `AsyncScrollTest`); sticky nodes,
+misses; `AsyncScrollCheck`); sticky nodes,
 placed by the compositor's offsets as Layout places them; overlay
 scrollbars, drawn shown and faded as `Ui`'s are. Its quads are turned
 and faded in the target's pixels (a clip inside it bounded as a turned
@@ -1921,15 +1921,15 @@ such a layer keeps its last place for the frame. Pixels: the textured
 compositor's where the layers are opaque; a translucent layer (an edge, a
 fade) is blended by the window server in the display's colours, a few
 levels off UiShader's sRGB blending (12 at most on a P3 panel, in
-`SystemLayersWindow`). Memory: the layers' drawables beside the tiles
-(7.4 MB for `SystemLayersWindow`'s scene at scale 2, 11.1 before a
+`SystemLayersWindowCheck`). Memory: the layers' drawables beside the tiles
+(7.4 MB for `SystemLayersWindowCheck`'s scene at scale 2, 11.1 before a
 scroller's layer was bounded to what its clip shows, beside 6.3 MB of
 tiles). A steady scroll at scale 2 on an M-series Mac: 0.05–0.07 ms of
 GPU a frame, a rounded list as a square one (drawn, before: 0.8–1.1).
 `HELDER_SYSTEM_LAYERS=0` keeps one CAMetalLayer and the textured
 compositor (`=flat`: the same split, all on the window's layer, native
 views over it as before); a frame read back (a window's capture) is drawn
-as before, the layers hidden for it. `SystemLayersWindow` (ui-draw,
+as before, the layers hidden for it. `SystemLayersWindowCheck` (ui-draw,
 macOS) runs one scene on a clock of its own three ways (Core Animation's
 layers, `flat`, `0`) and compares window captures
 (`CGWindowListCreateImage`, a process's own windows): a rounded list
@@ -1976,13 +1976,13 @@ into since; past 40% of it, drawn whole): its buffers are its own, so each
 is brought up to date from what it missed since it was drawn (a history of
 the last draws: buffer age), those rectangles cleared without blending,
 then each quad that meets one, cut to it by UiShader's region, over the
-rest as it was (`DamageTest`: two stacks, a header's label, a badge, its
+rest as it was (`DamageCheck`: two stacks, a header's label, a badge, its
 colour, the list scrolled and rows toggled over 60 frames, the window's
 layer drawn in part against drawn whole, 0 pixels differ at scales 1 and
 2); the transaction tells SurfaceFlinger which (`setDamageRegion`, API
 29); a buffer not let go in time leaves its layer drawn the next frame,
 what it missed kept. A header's
-label changed each frame over a full-window list (`AndroidLayersTest`,
+label changed each frame over a full-window list (`AndroidLayersCheck`,
 API 33 emulator): 1,260–44,800 pixels a frame drawn against 2,243,000
 drawn whole, 120 changes in 5.5–6.5 s against 9.5, 22–28 ms of CPU a
 change against 52. A scroller's content layer covers what its clip shows at an
@@ -1998,7 +1998,7 @@ transaction reported presented for 1.5 s, a layer kept 1.5 s from a
 buffer: one not let go of within a display period is drawn the next
 frame, the frame's moves not held back by it), the layers turn off for good and the program
 draws its next frame onto the window (`LayerSplit.fell`).
-`tests/ui/android-layers.sh` (CI's android job) runs `AndroidLayersTest`
+`tests/ui/android-layers.sh` (CI's android job) runs `AndroidLayersCheck`
 three ways: system layers, the textured compositor, and the layers
 stalled (`HELDER_SYSTEM_LAYERS=stall`: no presentation reported), which
 must fall back while running (pixel for pixel the textured compositor's
@@ -2032,7 +2032,7 @@ for 1.5 s, a call that fails or a lost device turn the layers off for
 good: every visual but the window's own out of the tree in one commit,
 the next frame the window's own; `HELDER_SYSTEM_LAYERS=0`, or no
 DirectComposition, keeps a swap chain of the window's own.
-`WinLayersWindow` (the window lane, CI's desktop-windows job) runs a list
+`WinLayersWindowCheck` (the window lane, CI's desktop-windows job) runs a list
 with a system layer, a rounded scroller and a moving box three ways
 (layers, `0`, `stall`).
 On Wayland the frames go to the compositor as subsurfaces
@@ -2067,7 +2067,7 @@ compositor; while running, nothing committed shown within 1.5 s (`stall`:
 none counted; a hidden window's commits are not that once one showed), a
 buffer that cannot be made or a broken connection turn the layers off for
 good, unmapped with the window's next frame and then let go.
-`WaylandLayersWindow` (the wayland lane: a headless weston's kiosk shell,
+`WaylandLayersWindowCheck` (the wayland lane: a headless weston's kiosk shell,
 the window at the output's corner, scale 1 and 2) runs a list with a
 system layer, a rounded scroller and a moving box three ways (layers,
 `0`, `stall`): a fling and an animation while the program blocks, moved
@@ -2122,7 +2122,7 @@ the program then draws it, and a box's slide going on while the program
 is busy; `tests/ui/web-video-layers.mjs` a video playing on its slot
 between the window's canvas and the layer over it.
 
-`AsyncScrollTest` scripts the wheel, eased notches, a trackpad's gesture
+`AsyncScrollCheck` scripts the wheel, eased notches, a trackpad's gesture
 and momentum past an end, a finger's fling, the keys, a thumb and a
 nested chain through both paths with an injected clock, the program held
 for vsyncs: the same offsets at every vsync, the same end, and the
@@ -2133,11 +2133,11 @@ vsync, and frames of a layer turning and fading, a card with overlapping
 children fading while the program is held, sticky headers and
 overlay bars shown and fading against the program's (a turned layer's
 within a level: its corners rounded to 32-bit floats once more).
-`AsyncScrollWindow` blocks the program 300 ms in a window while input
+`AsyncScrollWindowCheck` blocks the program 300 ms in a window while input
 comes, `--anim` while a layer animates (`--anim --pace s [--work ms]`:
 its frames' pacing; Windows: SendInput's wheel; the window lane there;
 Wayland: on its layers, the wayland lane).
-On the iPhone simulator `IosTest scroll` (tests/gfx/ios.sh) has UIKit
+On the iPhone simulator `IosCheck scroll` (tests/gfx/ios.sh) has UIKit
 animate a UIScrollView while the program blocks 500 ms: the compositor's
 frames at its offsets meanwhile, the program at them after.
 `HELDER_ASYNC_SCROLL=0` turns it off; headless runs,
@@ -2150,7 +2150,7 @@ waits for it to be presented before it takes the next events (`settle`),
 so a frame shows the input it was drawn for, as without the thread, while
 the driver's encoding overlaps the rest of the turn: the frame's
 accessibility tree, the text input, other windows' frames, the app's own
-work. `RenderThreadTest` (ui-draw) checks its frames against the
+work. `RenderThreadCheck` (ui-draw) checks its frames against the
 synchronous path's, pixel for pixel, in a window; `--time n [--work ms]`
 times it. A list of 400 rows scrolled a pixel a frame with 4 ms of the
 program's work after each: 13.1 ms a frame synchronously, 10.8 on the
@@ -2162,7 +2162,7 @@ Memory per node is kept small: leaves share one empty children array; event
 handlers and the rarely set style properties (grid, transforms, shadows,
 offsets...) are allocated when first set; paragraphs share their font sets.
 
-`StressTest [rows]` (`bun run test ui-draw` runs it) prints the times of the
+`StressCheck [rows]` (`bun run test ui-draw` runs it) prints the times of the
 first layout, of the frames after a change, a scroll and an append, and of
 a steady frame; `RT_STATS=1` adds the collector's figures and the RSS, and
 a build with `-D hxmc.census` run with `RT_CENSUS=1` lists the live heap by

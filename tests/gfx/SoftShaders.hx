@@ -4,7 +4,7 @@ import haxe.macro.Expr;
 import haxe.macro.Type;
 #end
 
-// (SoftShaderTest's) every shader src/helder defines: its modules' statics
+// (SoftShaderCheck's) every shader src/helder defines: its modules' statics
 // (module-level finals) of a Shader, and a MaterialShader's variants
 class SoftShaders {
 	public static macro function all():Expr {

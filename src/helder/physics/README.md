@@ -39,5 +39,5 @@ Still missing (the stress example shows it): towers of boxes do not stand (no wa
 contacts: a stack of three cubes dropped a centimetre drifts and falls; piles settle), and the broad phase
 sorts along one axis (a thousand bodies in a pit: many pairs).
 
-Tests: `tests/physics/PhysicsTest.hx`, `src/helder/physics/Kinematic.test.hx` (kinematic bodies, waking, raycasts allocating nothing) and the Falling and Walker examples' frames
+Tests: `tests/physics/PhysicsCheck.hx`, `src/helder/physics/Kinematic.test.hx` (kinematic bodies, waking, raycasts allocating nothing) and the Falling and Walker examples' frames
 (tests/3d, `bun run test 3d`, `bun run test 3d-web`).

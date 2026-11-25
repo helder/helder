@@ -1,6 +1,6 @@
 {
-  "name": "AndroidTest",
+  "name": "AndroidCheck",
   "private": true,
   "haxe": {"classPath": ["..", "../../../examples/triangle", "../../../examples/cube", "../../../examples/instances", "../../../examples/mips", "../../../examples/formats"]},
-  "helder": {"main": "AndroidTest"}
+  "helder": {"main": "AndroidCheck"}
 }

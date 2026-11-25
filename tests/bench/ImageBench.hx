@@ -1,7 +1,7 @@
 import haxe.io.Bytes;
 import helder.image.*;
 
-// helder.image's speed on a photo (the image-bench lane, natively; against
+// helder.image's speed on a photo (the bench image lane, natively; against
 // vips and Bun.Image by tests/bench/image.mjs): a JPEG decoded (one
 // thread, four), at 1/8, its 256-pixel thumbnail (1/8, then halved and
 // boxed), a 50% resize (decoded at 1/2), a large PNG decoded; each the

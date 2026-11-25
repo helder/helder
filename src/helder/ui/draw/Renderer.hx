@@ -1099,7 +1099,7 @@ class Renderer implements TextureCanvas {
 		var w = Std.int(frameW), h = Std.int(frameH), s = scale, k = kept, t = k.texture;
 		// (single-sampled in a multisampled window too: UiShader grows each
 		// quad past its anti-aliased edge, so samples change no pixel the UI
-		// draws; DamageTest --window checks it)
+		// draws; DamageCheck --window checks it)
 		k.open(device, w, h, true);
 		var gone = !keptValid || k.texture != t || keptScale != s;
 		d.round(s, w, h);

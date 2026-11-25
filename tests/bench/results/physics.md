@@ -3,7 +3,7 @@
 The README's "An allocation-free core", for helder.physics: a step
 allocated 45-570 KB on the GC heap (baseline.md: 330 KB for 200 crates);
 it now allocates nothing once its buffers have grown to the world's size
-(6be57d0). The same numbers bit for bit: PhysicsTest unchanged (its
+(6be57d0). The same numbers bit for bit: PhysicsCheck unchanged (its
 pile's checksum on Eval, natively and as wasm32-wasi), every body's
 position, orientation and velocities hashed after 150-200 steps of each
 workload alike before and after, natively and as wasm32, and the 3d lane's

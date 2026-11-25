@@ -40,7 +40,7 @@ class EffectScenes {
 	public static function make(name:String, device:Device):Encoder->Void {
 		var r = new Renderer(device, true, 1, true);
 		Scenes.renderer = r;
-		// (a dark sky: GfxTest takes a dark corner and a lit middle as drawn)
+		// (a dark sky: GfxCheck takes a dark corner and a lit middle as drawn)
 		r.clearColor = new Vec4(0.02, 0.03, 0.06, 1);
 		r.sunColor = new Vec3(1.6, 1.5, 1.35);
 		r.sunDirection = new Vec3(-0.5, 0.9, 0.35);

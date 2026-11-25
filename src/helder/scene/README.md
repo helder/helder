@@ -59,7 +59,7 @@ are the CPU's types too, so what the CPU computes is what a shader reads.
 
 ## Tests
 
-`tests/3d/SceneTest.hx`, `tests/3d/GltfTest.hx`, the `*.test.hx` beside
+`tests/3d/SceneCheck.hx`, `tests/3d/GltfCheck.hx`, the `*.test.hx` beside
 the sources (Geometry, Curve3, Sprites, the shading models, Material,
 InstancedMesh, Bvh, Raycaster, DebugDraw, Extrude: `helder test`,
 natively and as wasm32-wasi) and the frames
@@ -564,7 +564,7 @@ golden, and is its brute force's: every light at every pixel). The lists
 and the lights go into one R32F texture the standard material reads in a
 branch, so no material has a variant more and it runs on WebGL2.
 
-Measured (`tests/3d/LightBench.hx`, headless at a phone's render size,
+Measured (`tests/bench/LightBench.hx`, headless at a phone's render size,
 810 x 1800, on Mesa's llvmpipe; a CPU's rasterizer is not a phone's GPU,
 the ratios are what carry over; a floor and nine pillars, 24.5 ms with no
 local light):
@@ -1082,7 +1082,7 @@ Example: [High-end effects](/examples/highend/Highend.hx) (`helder run examples/
 
 ### What they cost
 
-Measured headless (`tests/3d/EffectBench.hx`: the
+Measured headless (`tests/bench/EffectBench.hx`: the
 frames' courtyard below at a phone's render size, 0.75 of 1080 x 2400,
 810 x 1800, each frame read back, the median of 15) on Mesa's llvmpipe (a
 Ryzen 5 3600's 12 threads): a CPU's rasterizer, not a phone's GPU, so
@@ -1200,7 +1200,7 @@ Example: [Instancing stress](/examples/instancing/Instancing.hx) (`helder run ex
 
 Tests: `src/helder/scene/render/InstancedMesh.test.hx` (the layout, resize,
 nothing allocated), the 3d lane's `instancedmesh` frame (shadows, a set
-culled), `tests/3d-ui/SceneUiTest.hx`.
+culled), `tests/3d-ui/SceneUiCheck.hx`.
 
 ### Occlusion culling
 
@@ -1335,7 +1335,7 @@ one with custom data (its second buffer is not culled with it), a
 see-through one (its order is its own: `Sprites`), more than four levels
 or four primitives a level. Shadows draw every instance at the set's mesh.
 
-Measured (`tests/3d/LightBench.hx`, as [Lights and
+Measured (`tests/bench/LightBench.hx`, as [Lights and
 shadows](#many-lights)): a field of 20,000 spheres of three
 levels, 678 of them in view, drawn whole 438 ms a frame; culled and
 levelled on the GPU 42.4 ms (0.1x), on the CPU 41.3 ms. `InstanceCulling`
@@ -1574,7 +1574,7 @@ the same nearest triangle at the same distance, every triangle by
 allocated a cast), `Raycaster.test.hx` (turned and unevenly scaled nodes,
 the nearest of several, children, hidden nodes and layers, bounds alone,
 backs, instances, every hit in order, nothing allocated a cast),
-`tests/3d-ui/SurfaceTest.hx` (a click on a box's face in a `<Scene
+`tests/3d-ui/SurfaceCheck.hx` (a click on a box's face in a `<Scene
 pick="triangles">`: its uv and normal), the 3d lane's `packed` frame (the
 sample packed with `--bvh`: each tree the one built from its data) and
 `text3d` frame (rays at a word's glyphs), `tests/typescript/helder/picking.ts`
@@ -1628,7 +1628,7 @@ its release within a step still count. Equal zones are one control.
 Nothing is allocated per event or per step (`changed`'s closures and the
 key sets' maps are gone). Tests: `src/helder/scene/input/TouchActions.test.hx`
 (natively and as wasm32-wasi, the allocation included),
-`tests/3d/InputTest.hx`, `<Stick>` drawn in `tests/3d-ui/SurfaceTest.hx`.
+`tests/3d/InputCheck.hx`, `<Stick>` drawn in `tests/3d-ui/SurfaceCheck.hx`.
 
 ## Debugging
 

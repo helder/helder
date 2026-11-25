@@ -142,8 +142,8 @@ class, CoreGraphics' y autohinter alone (TrueType faces at 7 to 18 ppem),
 grayscale anti-aliasing. The same pixels on every machine, which makes
 golden-image tests portable; the platform's engine (below) does the rest.
 
-Tests: `bun run test text` (`tests/text/TextTest.hx`; the pipeline against
-CoreGraphics' own output: `tests/text/CoreGraphicsTest.hx`).
+Tests: `bun run test text` (`tests/text/TextCheck.hx`; the pipeline against
+CoreGraphics' own output: `tests/text/CoreGraphicsCheck.hx`).
 
 ## CoreText's look
 
@@ -192,7 +192,7 @@ The platform's engine (`Shaping.SYSTEM`) draws with its own rasters, as
 before; on macOS Core Text's without smoothing.
 
 The text-quality lane (`bun run test text-quality`,
-`tests/text/TextQuality.hx`) measures helder's engine against CoreText
+`tests/text/TextQualityCheck.hx`) measures helder's engine against CoreText
 itself: Inter Regular and Bold at 9 to 32 pt, DejaVu Sans at 11 to 16 and
 an Inter 16/26 paragraph, in four inks (dark on light, light grey and
 near white on dark, a mid blue), at 1x and 2x, in both modes, drawn as
@@ -249,7 +249,7 @@ A generic family is the platform's own face first (`SystemFonts.match`:
 `platformGeneric`, with the platform's engine only), then
 `SystemFonts.GENERIC`'s list. A named family is the directories' face,
 then the platform's (`TextBackend.find`). The system-text lane
-(`tests/text/SystemTextTest.hx`, natively, and in CI's ios-simulator job
+(`tests/text/SystemTextCheck.hx`, natively, and in CI's ios-simulator job
 on iOS) checks each platform's: its back end, sans-serif its interface
 font and bold of the same family, monospace a fixed pitch face, each
 script's fallback, Indic scripts shaped by the system.
@@ -298,7 +298,7 @@ Tests: `linux/HarfBuzz.test.hx` (TextLayout's glyphs as HarfBuzz's for
 Latin, Hebrew, Arabic, CJK, Thai, Devanagari, Bengali and Tamil; carets
 and lines over shaped clusters; helder's engine chosen per app and per
 font), `Bidi.test.hx`, and the system-text lane
-(`tests/text/SystemTextTest.hx`, natively on each OS: each script's
+(`tests/text/SystemTextCheck.hx`, natively on each OS: each script's
 fallback, a family found, the reordered and split vowels, rasters; every
 script drawn with both engines, `bin/text/system-<os>.png`).
 
@@ -320,5 +320,5 @@ helder's own text engine (`Shaping.HELDER`: tests, stories,
 screenshots) or `HELDER_NO_SPELLCHECK=1`; `Spell.given` sets a checker of
 the program's own (tests). helder.ui's text fields use it
 (`EditableText.spellcheck`). Tests: `Spell.test.hx`, and
-`tests/text/SpellTest.hx` in the window lane (each desktop's checker: a
+`tests/text/SpellCheck.hx` in the window lane (each desktop's checker: a
 right and a wrong word, suggestions, a word added).

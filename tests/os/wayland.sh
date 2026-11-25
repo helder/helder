@@ -1,17 +1,17 @@
 #!/bin/sh
 # The wayland lane's runs under a headless weston (pixman, its own runtime
-# directory), at scale 1 and 2: tests/os/WaylandTest.hx, then the viewer
+# directory), at scale 1 and 2: tests/os/WaylandCheck.hx, then the viewer
 # on Wayland (a photo shown, --exit-after) with a screenshot of the
 # compositor's output (weston-screenshooter: the viewer's drawn menu bar,
 # helder's decorations).
-# Then, given, the compositor's scrolling in a window (AsyncScrollWindow),
+# Then, given, the compositor's scrolling in a window (AsyncScrollWindowCheck),
 # and a layer's animation while the program blocks (its --anim); the
-# system's layers (WaylandLayersWindow: subsurfaces) under a weston of
+# system's layers (WaylandLayersWindowCheck: subsurfaces) under a weston of
 # their own, its kiosk shell (the window fullscreen at the output's
 # corner, 400 x 300 points), at scale 1 (textured, layers, stall) and 2
-# (textured, layers); a window drawn on the CPU (SoftWaylandTest: wl_shm
+# (textured, layers); a window drawn on the CPU (SoftWaylandCheck: wl_shm
 # frames, the screenshot's pixels).
-#   wayland.sh <WaylandTest> <viewer> <out dir> [AsyncScrollWindow [WaylandLayersWindow [SoftWaylandTest]]]
+#   wayland.sh <WaylandCheck> <viewer> <out dir> [AsyncScrollWindowCheck [WaylandLayersWindowCheck [SoftWaylandCheck]]]
 set -e
 test=$1; viewer=$2; out=$3; async=$4; layers=$5; soft=$6
 mkdir -p "$out"

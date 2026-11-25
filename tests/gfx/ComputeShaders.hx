@@ -1,7 +1,7 @@
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 
-// The compute tier's test stages (ComputeTest): a prefix sum's step, a
+// The compute tier's test stages (ComputeCheck): a prefix sum's step, a
 // particle move that appends the particles it keeps and counts them into
 // an indirect draw's arguments, a storage texture's gradient; and the
 // render stages that draw their results (the kept particles as instances

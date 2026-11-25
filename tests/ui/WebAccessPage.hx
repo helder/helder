@@ -1,6 +1,7 @@
 import helder.ui.*;
 import helder.ui.UiWindow;
 import helder.view.Render;
+import fixtures.AccessFixture;
 
 // AccessFixture's controls in a browser (web-access.mjs: wasm32-wasi in
 // headless Chromium), for the ARIA mirror in the canvas: after each frame

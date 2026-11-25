@@ -401,7 +401,7 @@ that no line of the code above it moves).
 
 ## Tests
 
-`bun run test view`: `tests/view/ViewTest.hx` on two test renderers (the
+`bun run test view`: `tests/view/ViewCheck.hx` on two test renderers (the
 graph's own tests, Solid 2's ported, are `tests/view/graph`, the test lane's)
 (boundaries between them, a component under both, roots: several windows
 by `Render.open`), on Eval, natively and in JavaScript, and the programs the

@@ -190,7 +190,7 @@ class CoreText implements TextBackend {
 	// its glyphs at their pens (x and the baseline's y in device pixels, y
 	// down, not quantised: Core Text quantises them); scale: device pixels a
 	// point. The bitmap's green channel, rows top down: the text-quality
-	// lane's references (tests/text/TextQuality.hx)
+	// lane's references (tests/text/TextQualityCheck.hx)
 	public static function sheet(w:Int, h:Int, scale:Float, bg:Int, fg:Int, smooth:Bool, runs:Array<SheetRun>):haxe.io.Bytes {
 		var pool = helder.os.apple.objc.Runtime.objc_autoreleasePoolPush();
 		var n = w * h * 4, px = LibC.malloc((n : hxmc.I64));

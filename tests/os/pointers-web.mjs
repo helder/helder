@@ -1,5 +1,5 @@
 // helder.os's pointers in headless Chromium (bun run test touch-web):
-// PointersWeb.wasm on a 300x200 canvas at a pixel ratio of 2, driven by the
+// PointersWebCheck.wasm on a 300x200 canvas at a pixel ratio of 2, driven by the
 // DevTools protocol's touches (two fingers at once, moved, lifted, one
 // cancelled), a pen and the mouse (Input.dispatchMouseEvent's pointerType),
 // its lines checked: dense slots (the mouse 0, fingers and pens from 1), the
@@ -9,7 +9,7 @@
 // JavaScript (setPointerCapture's NotFoundError caught); the wheel with
 // Control prevented (a pinch: not the page's zoom), a plain one not, and
 // Safari's gesture events made such wheels.
-//   node tests/os/pointers-web.mjs <PointersWeb.wasm>
+//   node tests/os/pointers-web.mjs <PointersWebCheck.wasm>
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -30,7 +30,7 @@ const files = {
 	'/os/worker.mjs': path.join(here, '../../src/helder/os/worker.mjs'),
 };
 const types = { '.mjs': 'text/javascript', '.wasm': 'application/wasm' };
-const page = `<!doctype html><title>PointersWeb</title><body style="margin:0">
+const page = `<!doctype html><title>PointersWebCheck</title><body style="margin:0">
 <canvas id="c" style="width: 300px; height: 200px; display: block"></canvas>
 <script type="module">
 import { run } from './os/browser.mjs';

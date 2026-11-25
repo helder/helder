@@ -22,7 +22,7 @@ bun run test layout-conformance            # BLESS=1: manifest.json from the res
   requires it. `skip`: validated, not laid out (and why).
 - `capabilities.json`: the subset of CSS layout helder.ui claims against
   that reference, what it leaves out and where its defaults differ.
-- `LayoutConformance.hx`: the runner. It maps the fixtures' CSS onto
+- `LayoutConformanceCheck.hx`: the runner. It maps the fixtures' CSS onto
   `Style` (CSS's initial values where helder.ui's differ), places the root
   in a max-content viewport as Taffy does, and compares within half a
   pixel. Text is Taffy's test measure, not a font: Ahem's 10px squares,

@@ -234,9 +234,9 @@ islands), `DemoBundle.hx` and `Counter.hx` (their bundles), `Lab.hx` and
 WebAssembly island, shown with its source, and ui's counter
 (`examples/counter`) as a `<Surface>`.
 
-`bun run test web`: `tests/web/StaticTest.hx` on Eval and natively (escaping,
+`bun run test web`: `tests/web/StaticCheck.hx` on Eval and natively (escaping,
 attributes, styles, markers, islands, a `<Surface>`), then `tests/web/web.mjs` in headless
-Chromium: `tests/web/DomTest.hx` (the DOM renderer; hydration of what the static
+Chromium: `tests/web/DomCheck.hx` (the DOM renderer; hydration of what the static
 renderer wrote, both renderers in one program; a DOM `<Surface>` starting
 its module), and the demo page:
 hydrated with every node kept, reactive afterwards, the mismatch rendered

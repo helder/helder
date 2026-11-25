@@ -53,9 +53,9 @@ class Viewer {
 		if (said.indexOf("viewer: photo 2.jpg · 5 / 6 · 1242×1048 (shown") < 0) throw new Failed('the viewer did not show the photo: $said');
 		// (its main screen's accessibility tree read whole over AT-SPI, as the ui-draw lane reads AccessApp's: Linux's)
 		if (GFX_TARGET.startsWith("linux-") && Sys.systemName() == "Linux") {
-			native('bin/ui/$GFX_TARGET/AtspiProbe', uiCp().concat(["-main", "AtspiProbe"]), GFX_TARGET);
+			native('bin/ui/$GFX_TARGET/AtspiCheck', uiCp().concat(["-main", "AtspiCheck"]), GFX_TARGET);
 			shell('$XVFB -a dbus-run-session -- sh -c \'$exe --new --exit-after 30 "apps/viewer/tests/fixtures/folder/photo 2.jpg" & p=$$!; '
-				+ 'bin/ui/$GFX_TARGET/AtspiProbe "photo 2" "image:photo 2.jpg · 5 / 6 · 1242×1048" "menu item:File" "menu item:View"; s=$$?; kill $$p; exit $$s\'');
+				+ 'bin/ui/$GFX_TARGET/AtspiCheck "photo 2" "image:photo 2.jpg · 5 / 6 · 1242×1048" "menu item:File" "menu item:View"; s=$$?; kill $$p; exit $$s\'');
 		}
 		// (a PDF's first page, its pages counted)
 		var pdf = '$wine$exe --new --exit-after 3 apps/viewer/tests/fixtures/pdf/pages.pdf';

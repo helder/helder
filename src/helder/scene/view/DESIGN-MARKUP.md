@@ -1153,7 +1153,7 @@ struct (Vec3) as one of another type", SceneTags.hx).
    function returning Dynamic cannot return yet: bind a Signal<Quat>, or
    give the renderer typed setters".
 
-Tests: `tests/3d-ui/SceneUiTest.hx` binds inline `Quat`, `Vec3` and `Vec4`
+Tests: `tests/3d-ui/SceneUiCheck.hx` binds inline `Quat`, `Vec3` and `Vec4`
 expressions (constant and reactive), natively and as wasm32-wasi;
 `tests/view/reject` holds the error.
 
@@ -1185,14 +1185,14 @@ hits a nearer mesh: one raycast a frame per overlay, opt-in),
 `distanceFactor` (scaled by the distance, as drei's), and `center`
 (the default today, kept).
 
-Test: `tests/3d-ui/SurfaceTest.hx`, with the camera moved in one frame,
+Test: `tests/3d-ui/SurfaceCheck.hx`, with the camera moved in one frame,
 checks the overlay's pixels at the node's projection in that same frame.
 
 ### 10.3 Picking's defaults
 
 Section 4.3: `auto` (bounds then triangles) by default, `bounds` and `none`
 as choices, `pick` per element, only nodes with listeners tested, hover
-picked once a frame. Tests in `tests/3d-ui/SurfaceTest.hx`: a click in a
+picked once a frame. Tests in `tests/3d-ui/SurfaceCheck.hx`: a click in a
 torus's hole hits what is behind it; a click on a mesh without a listener
 under one with none goes to the scene's `onPointerMissed`; ten thousand
 static meshes and one with a listener build one BVH.

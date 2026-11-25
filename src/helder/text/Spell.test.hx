@@ -6,7 +6,7 @@ import helder.test.Test;
 // apostrophe inside, digits' words left out), the misspelled ones through
 // a checker of the test's and its cache, the deterministic switch (helder
 // test's text engine: no system checker); the platform's own checker is
-// tests/text/SpellTest.hx's (the window lane, each desktop).
+// tests/text/SpellCheck.hx's (the window lane, each desktop).
 class FakeChecker implements SpellChecker {
 	public var language(default, null) = "en_US";
 	public var asked:Array<String> = [];

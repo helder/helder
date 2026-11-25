@@ -8,7 +8,7 @@ import haxe.macro.Expr;
 // ones: Lane2..Lane4's componentwise operators (vector(n)) and Lanes' builtins
 // (builtins()), each the scalar formula of VecBuild in the same order of
 // operations, so that a shader's lanes compute what its scalar code does
-// (exactly, with -D helder.soft.exact: SoftShaderTest)
+// (exactly, with -D helder.soft.exact: SoftShaderCheck)
 class LaneBuild {
 	static final XYZW = ["x", "y", "z", "w"];
 

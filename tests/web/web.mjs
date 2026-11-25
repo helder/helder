@@ -1,5 +1,5 @@
 // helder.web in headless Chromium (bun run test web): the DOM renderer's checks
-// (DomTest.hx, domtest.js), then the demo page (examples:
+// (DomCheck.hx, domtest.js), then the demo page (examples:
 // DemoPage's index.html, DemoBundle's islands.js, Counter's counter.js,
 // lab.wasm, cube.wasm, counter-ui.wasm) served as a static site with src/helder/web/loader.js
 // and the packages' browser.mjs and imports.mjs:
@@ -58,7 +58,7 @@ const server = createServer(async (req, res) => {
 	const p = new URL(req.url, 'http://x').pathname;
 	requested.push(p);
 	try {
-		const b = p === '/domtest.html' ? Buffer.from('<!doctype html><title>DomTest</title><body><script src="domtest.js"></script>')
+		const b = p === '/domtest.html' ? Buffer.from('<!doctype html><title>DomCheck</title><body><script src="domtest.js"></script>')
 			: await readFile(p in files ? files[p] : path.join(dir, 'demo', p === '/' ? 'index.html' : p));
 		res.writeHead(200, { 'content-type': types[path.extname(p)] ?? 'text/html' });
 		res.end(b);
@@ -84,9 +84,9 @@ function check(what, ok, detail) {
 	p.on('pageerror', (e) => errors.push(e.message));
 	await p.goto(url + 'domtest.html');
 	const r = await p.evaluate(() => window.domTest);
-	check(`DomTest: ${r?.checks} checks`, r && r.failed.length === 0 && errors.length === 0, r ? r.failed.concat(errors) : errors);
+	check(`DomCheck: ${r?.checks} checks`, r && r.failed.length === 0 && errors.length === 0, r ? r.failed.concat(errors) : errors);
 	const surface = await p.waitForFunction(() => window.domSurface, null, { timeout: 5000 }).then((h) => h.jsonValue()).catch(() => null);
-	check('DomTest: a DOM <Surface> starts its module on its canvas', surface && surface.url.endsWith('/app.wasm') && surface.canvas && surface.fonts[0].endsWith('f.ttf')
+	check('DomCheck: a DOM <Surface> starts its module on its canvas', surface && surface.url.endsWith('/app.wasm') && surface.canvas && surface.fonts[0].endsWith('f.ttf')
 		&& surface.imports.includes('ui/imports.mjs'), surface);
 	await p.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce', contrast: 'more' });
 	await p.setViewportSize({ width: 320, height: 480 });
@@ -95,12 +95,12 @@ function check(what, ok, detail) {
 		return s?.dark && s.motion && s.contrast === 'more' && s.orientation === 'portrait';
 	}, null, { timeout: 5000 })
 		.then(() => true).catch(() => false);
-	check('DomTest: settings signals update when media preferences change', settings);
+	check('DomCheck: settings signals update when media preferences change', settings);
 	await p.evaluate(() => {
 		Object.defineProperty(navigator, 'languages', { value: ['fr-CA', 'en-US'], configurable: true });
 		window.dispatchEvent(new Event('languagechange'));
 	});
-	check('DomTest: locale follows languagechange', await p.evaluate(() => window.domLocale === 'fr-CA'));
+	check('DomCheck: locale follows languagechange', await p.evaluate(() => window.domLocale === 'fr-CA'));
 	const locale = await p.evaluate(async () => {
 		const { run } = await import('/os/browser.mjs');
 		const log = [];

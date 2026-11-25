@@ -4,7 +4,7 @@ import haxe.crypto.Base64;
 import haxe.io.Bytes;
 import helder.os.audio.Sound;
 import helder.os.audio.Vorbis;
-import os.audio.VorbisFixture;
+import os.audio.fixtures.VorbisFixture;
 import helder.test.Test;
 
 // Vorbis: two files ffmpeg's libvorbis wrote (VorbisFixture: stereo at

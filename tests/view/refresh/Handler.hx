@@ -1,6 +1,6 @@
 package refresh;
 
-// (RefreshTest: a generic class whose type parameters have constraints,
+// (RefreshCheck: a generic class whose type parameters have constraints,
 // typed after the signal of a class holding it is made)
 class Handler<A:EnumValue, M:EnumValue> {
 	final model:Model<A, M>;

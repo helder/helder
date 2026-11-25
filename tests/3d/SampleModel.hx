@@ -19,9 +19,9 @@ import helder.scene.math.Quat;
 // (also skinned.glb, textured.glb, normals.glb, morph.glb and panorama.png beside it)
 //
 // Numbers in the JSON are written with 6 decimals, so the file is the same
-// wherever it is generated; GltfTest checks it against the checked-in one.
+// wherever it is generated; GltfCheck checks it against the checked-in one.
 class SampleModel {
-	// the meshes' vertices, as generated (GltfTest reads them back)
+	// the meshes' vertices, as generated (GltfCheck reads them back)
 	public static var groundPositions:Array<Float>;
 	public static var cubePositions:Array<Float>;
 	public static var spherePositions:Array<Float>;

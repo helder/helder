@@ -9,7 +9,7 @@ import hxmc.unsafe.Ptr;
 // Soft's soft_vs_ref and soft_fs_ref, the same stage lane by lane in
 // helder.gfx.shader's scalar code), on the same random inputs, uniform
 // blocks and textures: their outputs' bits and the lanes left must be equal
-// (with -D helder.soft.exact, the lanes Haxe's doubles: tests/gfx/SoftShaderTest).
+// (with -D helder.soft.exact, the lanes Haxe's doubles: tests/gfx/SoftShaderCheck).
 // Each shader of such a build registers its check (Soft: soft_check).
 @:hxmc.unsafe(gc)
 class Check {

@@ -226,11 +226,11 @@ generated from the classes (M3). In a `<Scene>`, the renderer's own
 pipelines draw into its target; its features' (skins, normal maps, the
 sky, particles) are the frame's still.
 
-Tests (`bun run test 3d`): `tests/3d-ui/SceneUiTest.hx` (markup on a
+Tests (`bun run test 3d`): `tests/3d-ui/SceneUiCheck.hx` (markup on a
 world; the geometry, material, light and sprites tags; inline `Quat`,
 `Vec3` and `Vec4` values, constant and bound; set props in place),
 `tests/3d-ui/reject` (a prop an element does not take, a value not of
-its type, a signal of another type: rejected), `tests/3d-ui/SurfaceTest.hx` (under Xvfb: two `<Surface>`s, a
+its type, a signal of another type: rejected), `tests/3d-ui/SurfaceCheck.hx` (under Xvfb: two `<Surface>`s, a
 `<Scene>`'s pixels in its box, a click picked in it, fingers picked at
 their presses, a tap on the mesh, a drag from it orbiting the camera, a
 cancel, `<Ui>` placed, `<Stick>` drawn, a click picked by triangles (its

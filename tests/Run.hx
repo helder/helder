@@ -73,6 +73,7 @@ class Run {
 			args.splice(i, 2);
 		}
 		if (args.length == 0) args = ["headless"];
+		args = benches(args);
 		if (args.contains("help")) {
 			Sys.println("bun run test [-k] [--jobs n] [--shard i/n] <lane> ...\n");
 			for (l in LANES) Sys.println("  " + l.name.rpad(" ", 19) + " " + l.about);
@@ -172,6 +173,21 @@ class Run {
 			Sys.println("failed: " + failed.join(", "));
 			Sys.exit(1);
 		}
+	}
+
+	// bench <name> ...: each its lane, "bench <name>"
+	static function benches(args:Array<String>):Array<String> {
+		var out = [], named = false;
+		for (a in args) {
+			if (named && Lambda.exists(LANES, l -> l.name == 'bench $a')) {
+				if (out[out.length - 1] == "bench") out.pop();
+				out.push('bench $a');
+				continue;
+			}
+			named = a == "bench";
+			out.push(a);
+		}
+		return out;
 	}
 
 	static function lane(name:String) {

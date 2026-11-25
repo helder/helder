@@ -2,7 +2,7 @@
 
 The studio's plan (3b) gives the code editor 8 ms from a keystroke to the
 screen, and smooth typing and scrolling on a 10,000-line file with no
-garbage in the steady state. `bun run test code-bench` measures it two
+garbage in the steady state. `bun run test bench code` measures it two
 ways, on a TSX file of 10,000 lines (examples/ts-todo's app repeated,
 each repetition's lines marked with its number so no two lines are
 alike), 2026-11-07, a 4-core VM, three runs (the ranges below).

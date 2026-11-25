@@ -1,7 +1,7 @@
 import helder.gfx.Color;
 import helder.ui.*;
 
-// Glass over backgrounds (GlassWindow: the system's, GlassTest: drawn):
+// Glass over backgrounds (GlassWindowCheck: the system's, GlassCheck: drawn):
 // stripes, a gradient, text, a photo; on each a regular capsule with a
 // label, clear glass with rounded corners, and a tinted regular circle; with group, two glass merging in a <glass-group>.
 // Its text in helder's own Inter (embedded): the same glyphs on every

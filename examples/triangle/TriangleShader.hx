@@ -3,7 +3,7 @@ import helder.gfx.shader.ShaderMath.*;
 
 // The triangle's shaders (Triangle.hx): the vertex type is also what the
 // CPU writes into the vertex buffer (vertexBytes), and both stages run as
-// ordinary Haxe too (tests/gfx/ShaderTest.hx).
+// ordinary Haxe too (tests/gfx/ShaderCheck.hx).
 @:structInit @:publicFields class Vertex {
 	var pos:Vec2;
 	var color:Vec3;

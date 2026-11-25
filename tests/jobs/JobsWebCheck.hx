@@ -1,0 +1,99 @@
+import helder.async.Async;
+import helder.async.Async.TimeoutException;
+import helder.jobs.*;
+import helder.os.App;
+import helder.os.Window;
+import hxmc.Buffer;
+
+// helder.jobs in a browser (tests/jobs/browser.mjs: headless Chromium), on
+// App.run's loop: jobs on Web Workers instantiating this module (a GC-free
+// one, a GC one, a channel, an error, a cancelled one's worker ended and
+// the next job on a new one), then the canvas hidden: no frames, and a
+// timer and a job still complete (as in a hidden tab).
+class JobsWebCheck {
+	static var failed = 0;
+
+	static function check(what:String, ok:Bool, detail = "") {
+		Sys.println('JobsWebCheck: ${ok ? "ok" : "FAIL"}: $what' + (detail == "" ? "" : ' ($detail)'));
+		if (!ok) failed++;
+	}
+
+	@:hxmc.kernel @:hxmc.callback static function invert(job:Job):Int {
+		var src = job.input(), out = job.output(src.length);
+		if (out.length < src.length) return -1;
+		for (i in 0...src.length)
+			out[i] = 255 - src[i];
+		return 0;
+	}
+
+	// (a GC job: where it ran, and some garbage of its own)
+	static function where(n:Int):{worker:Bool, sum:Int} {
+		var a = [for (i in 0...n) Std.string(i)];
+		return {worker: Jobs.onWorker(), sum: a.length};
+	}
+
+	static function count(ch:Channel<Int>):Void {
+		for (i in 0...3) ch.send(i);
+		ch.close();
+	}
+
+	static function boom(x:Int):Int
+		throw "boom";
+
+	// (a long one: cancelled)
+	static function forever(x:Int):Int {
+		var s = 0;
+		while (true) s = (s + 1) & 0xFFFF;
+		return s;
+	}
+
+	static function main() {
+		var window = new Window("JobsWebCheck", 64, 64);
+		var frames = 0;
+		Async.launch(_ -> {
+			var b = new Buffer(3);
+			b.set(1, 5);
+			var out = Jobs.job(invert).run(b);
+			check("a GC-free job", out.length == 3 && out.get(0) == 255 && out.get(1) == 250);
+			out.close();
+			var w = Jobs.job(where).run(100000);
+			check("a GC job on a worker", w.worker && w.sum == 100000);
+			var ch = new Channel<Int>(), got = [];
+			Async.scope(task -> {
+				task.async(_ -> Jobs.job(count).run(ch));
+				var v;
+				while ((v = ch.receive()) != null) got.push(v);
+			});
+			check("a channel from a worker", got.join(",") == "0,1,2", got.join(","));
+			var e = try {
+				Jobs.job(boom).run(1);
+				"";
+			} catch (e:JobError) e.message;
+			check("a job's error", e == "boom", e);
+			var a = haxe.Timer.stamp(), fa = frames;
+			Async.delay(0.1);
+			check("frames and a timer", frames - fa >= 2 && haxe.Timer.stamp() - a < 0.5, '${frames - fa} frames in ${haxe.Timer.stamp() - a} s');
+			var t0 = haxe.Timer.stamp();
+			var timedOut = try {
+				Async.timeout(0.1, _ -> Jobs.job(forever).run(0));
+				"no";
+			} catch (e:TimeoutException) "yes" catch (e:Dynamic) Std.string(e);
+			check("a running job cancelled", timedOut == "yes" && haxe.Timer.stamp() - t0 < 0.5, timedOut);
+			check("the next job, on a new worker", Jobs.job(where).run(10).worker);
+			// (the canvas hidden: frames stop; the loop goes on)
+			Sys.println("JobsWebCheck: hide");
+			Async.delay(0.3);
+			var f0 = frames;
+			Async.delay(0.2);
+			var r = Jobs.job(where).run(10);
+			Async.delay(0.2);
+			check("without frames: timers and jobs", r.worker && frames == f0, '${frames - f0} frames while hidden');
+			Sys.println('JobsWebCheck: done ${failed}');
+			App.quit();
+		});
+		App.run(() -> frames++, e -> switch e.kind {
+			case Close: window.close();
+			case _:
+		});
+	}
+}

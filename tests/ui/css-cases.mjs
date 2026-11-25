@@ -1,7 +1,7 @@
 // Writes tests/ui/css/: CSS colours as Chromium computes them
 // (colors.json: the text and its RGBA), and CSS gradients as Chromium draws
 // them as a box's background (<case>.png, RGBA, the box's size;
-// gradients.json: names, the CSS and sizes), which UiTest compares with
+// gradients.json: names, the CSS and sizes), which UiCheck compares with
 // Color.parse and Gradient.render (bun run test ui).
 //   node tests/ui/css-cases.mjs   (needs Playwright)
 import fs from 'node:fs';

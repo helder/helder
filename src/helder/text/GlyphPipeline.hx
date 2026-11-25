@@ -855,7 +855,7 @@ class HintMetrics {
 	// and for a face without TrueType instructions (no fpgm, prep or cvt:
 	// CoreGraphics on CI's Mac hints none of the text-quality lane's subsets,
 	// cut with fontTools' --no-hinting, while it hints the whole fonts:
-	// tests/text/TextQuality.hx)
+	// tests/text/TextQualityCheck.hx)
 	public static function of(font:FontFile):Null<HintMetrics> {
 		if (!font.trueType || !(font.hasTable("fpgm") || font.hasTable("prep") || font.hasTable("cvt "))) return null;
 		var o = font.glyph("o".code), x = font.glyph("X".code);

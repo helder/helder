@@ -1,4 +1,4 @@
-// The variable font of TextTest's variation checks, and Chromium's
+// The variable font of TextCheck's variation checks, and Chromium's
 // measures of it: writes var.ttf (VarTest, one axis, wght 100 to 900, 400
 // by default; avar maps 0.5 to 0.25) whose glyphs each exercise a part of
 // gvar: A, every point moved (a tuple at each end of the axis); B, two

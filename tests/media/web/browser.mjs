@@ -1,4 +1,4 @@
-// helder.media's decoding in browsers: MediaWebTest.wasm run by
+// helder.media's decoding in browsers: MediaWebCheck.wasm run by
 // src/helder/os/browser.mjs on a page served from the repository by a
 // server that honours Range, in Chromium (on WebGPU where it has it, and
 // on WebGL2), Firefox and WebKit, each where Playwright has it installed

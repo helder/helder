@@ -64,7 +64,7 @@ class Access {
 	static inline var INVALID_OPERATION = 0x80131509; // UIA_E_INVALIDOPERATION
 
 	static var vtables:Array<Ptr> = [];
-	// each event raised, told (tests: WinAccessProbe's run prints them)
+	// each event raised, told (tests: WinAccessRemoteCheck's run prints them)
 	public static var log:Null<String->Void> = null;
 
 	static function raise(p:Ptr, id:Int) {

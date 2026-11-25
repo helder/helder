@@ -3,6 +3,7 @@ import helder.ui.*;
 import helder.ui.UiWindow;
 import helder.view.*;
 import hxmc.unsafe.*;
+import fixtures.AccessFixture;
 
 // helder.ui's UIAccessibility on iOS (IosAccess; CI's ios-simulator job,
 // tests/pack/ios.sh): AccessFixture's controls, the window's view read as

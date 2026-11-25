@@ -9,8 +9,8 @@ using StringTools;
 class Async {
 	public static final LANES:Array<Lane> = [
 		{name: "tls", about: "helder.async's https, wss and http natively", run: () -> {
-			exe("bin/async/TlsTest", cps(["src", "tests/async"]).concat(["-main", "TlsTest"]));
-			run(exePath("bin/async/TlsTest", HOST), []);
+			exe("bin/async/TlsCheck", cps(["src", "tests/async"]).concat(["-main", "TlsCheck"]));
+			run(exePath("bin/async/TlsCheck", HOST), []);
 		}},
 		{name: "async", about: "helder.async on Eval, natively and as wasm32-wasi", run: async},
 		{name: "header-check", about: "typed C bindings against each POSIX target's headers", run: headerCheck},
@@ -23,22 +23,20 @@ class Async {
 	// macos-arm64,windows-x86_64: their runtime objects installed)
 	static function async() {
 		var cp = cps(["src", "tests/async"]);
-		interp(cp, "AsyncTest");
-		exe("bin/async/AsyncTest", cp.concat(["-main", "AsyncTest"]));
-		run(exePath("bin/async/AsyncTest", HOST), []);
+		interp(cp, "AsyncCheck");
+		exe("bin/async/AsyncCheck", cp.concat(["-main", "AsyncCheck"]));
+		run(exePath("bin/async/AsyncCheck", HOST), []);
 		// (TLS by mbedtls: a server and a client in one process, https and wss over it)
-		exe("bin/async/TlsTest", cp.concat(["-main", "TlsTest"]));
-		run(exePath("bin/async/TlsTest", HOST), []);
-		wasm("bin/async/WebTest.wasm", cp.concat(["-main", "WebTest"]));
-		run(NODE, ["tests/async/web.mjs", "bin/async/WebTest.wasm"]);
+		exe("bin/async/TlsCheck", cp.concat(["-main", "TlsCheck"]));
+		run(exePath("bin/async/TlsCheck", HOST), []);
+		wasm("bin/async/WebCheck.wasm", cp.concat(["-main", "WebCheck"]));
+		run(NODE, ["tests/async/web.mjs", "bin/async/WebCheck.wasm"]);
 		var dev = cps(["src", "examples/async-dev"]).concat(["-main", "AsyncDev"]);
 		exe("bin/async/AsyncDev", dev);
 		Sys.println('AsyncDev: ${Math.round(FileSystem.stat(exePath("bin/async/AsyncDev", HOST)).size / 1024)} KB');
 		run(NODE, ["tests/async/dev.mjs", exePath("bin/async/AsyncDev", HOST), "bin/async"]);
 		for (t in (Sys.getEnv("ASYNC_TARGETS") ?? "").split(","))
 			if (t != "") native('bin/async/$t/AsyncDev', dev, t);
-		exe("bin/async/AsyncBench", cp.concat(["-main", "AsyncBench"]));
-		run(exePath("bin/async/AsyncBench", HOST), []);
 	}
 
 	static function headerCheck() {
@@ -74,12 +72,12 @@ class Async {
 	}
 
 	static function jobsWeb() {
-		wasm("bin/jobs/JobsWeb.wasm", cps(["src", "tests/jobs"]).concat(["-main", "JobsWeb"]));
-		run(NODE, ["tests/jobs/browser.mjs", "bin/jobs/JobsWeb.wasm"]);
+		wasm("bin/jobs/JobsWebCheck.wasm", cps(["src", "tests/jobs"]).concat(["-main", "JobsWebCheck"]));
+		run(NODE, ["tests/jobs/browser.mjs", "bin/jobs/JobsWebCheck.wasm"]);
 	}
 
 	static function asyncWeb() {
-		wasm("bin/async/WebTest.wasm", cps(["src", "tests/async"]).concat(["-main", "WebTest"]));
-		run(NODE, ["tests/async/browser.mjs", "bin/async/WebTest.wasm"]);
+		wasm("bin/async/WebCheck.wasm", cps(["src", "tests/async"]).concat(["-main", "WebCheck"]));
+		run(NODE, ["tests/async/browser.mjs", "bin/async/WebCheck.wasm"]);
 	}
 }

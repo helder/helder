@@ -4,7 +4,7 @@ import helder.ui.*;
 import helder.ui.draw.*;
 import helder.ui.widgets.TextField;
 
-// The program on its own thread on iOS (IosTest scroll: tests/gfx/ios.sh
+// The program on its own thread on iOS (IosCheck scroll: tests/gfx/ios.sh
 // launches the app again with it): a list scrolled by its UIScrollView,
 // UIKit animating the offset while the program blocks for 500 ms. Its
 // offsets reach the compositor on the main thread (helder.ui.platform.apple.IosScroll), whose frames

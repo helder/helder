@@ -1,6 +1,6 @@
 import helder.gfx.*;
 
-// The tests' scenes (GfxTest, WebTest): the triangle example, the cube
+// The tests' scenes (GfxCheck, WebCheck): the triangle example, the cube
 // example turned by ANGLE radians, or the instances, targets (msaa: its
 // target multisampled), mips and
 // formats examples at TIME seconds, the blend modes (Blending) the shaders' arrays (Palette) or cube and array textures (Layers)

@@ -7,15 +7,43 @@ import lanes.Tools.*;
 using StringTools;
 
 class Bench {
+	// (bun run test bench <name>: one of them; bench alone: the engine's)
 	public static final LANES:Array<Lane> = [
-		{name: "image-bench", about: "helder.image's decode speed against vips", run: imageBench},
-		{name: "motion-bench", about: "helder.ui.motion's budget measured", run: motionBench},
-		{name: "code-bench", about: "helder.ui.code's budgets measured", run: codeBench},
-		{name: "million-bench", about: "VirtualList over a million rows measured", run: millionBench},
 		{name: "bench", about: "the engine's benchmarks and the examples' sizes", run: bench},
-		{name: "scene-markup-bench", about: "3D in markup against the same scene in code", run: sceneMarkupBench},
-		{name: "jobs-bench", about: "background work against the main thread's frames", run: jobs}
+		{name: "bench image", about: "helder.image's decode speed against vips", run: imageBench},
+		{name: "bench motion", about: "helder.ui.motion's budget measured", run: motionBench},
+		{name: "bench code", about: "helder.ui.code's budgets measured", run: codeBench},
+		{name: "bench million", about: "VirtualList over a million rows measured", run: millionBench},
+		{name: "bench scene-markup", about: "3D in markup against the same scene in code", run: sceneMarkupBench},
+		{name: "bench jobs", about: "background work against the main thread's frames", run: jobs},
+		{name: "bench thread", about: "the page's thread against a worker, in browsers", run: threadWeb},
+		{name: "bench effect", about: "post's effects a frame, headless", run: () -> scenes("EffectBench")},
+		{name: "bench light", about: "the lighting features a frame, headless", run: () -> scenes("LightBench")},
+		{name: "bench frame", about: "tests/3d's scenes timed, first frame and after", run: () -> scenes("FrameBench")},
+		{name: "bench async", about: "helder.async's tasks, timers, switches and locks", run: () -> program("AsyncBench", cps(["src"]))},
+		{name: "bench watch", about: "the watchers' cost a tick on a large tree", run: () -> program("WatchBench", cps(["src"]))},
+		{name: "bench soft", about: "the CPU's canvas against the GPU on the same scenes", run: () -> {
+			program("SoftBench", uiCp());
+			run(exePath("bin/bench/SoftBench", HOST), [], ["HELDER_SOFT" => "1"]);
+		}}
 	];
+
+	// a bench of tests/bench built natively and run
+	static function program(main:String, cp:Array<String>) {
+		exe('bin/bench/$main', cp.concat(cps(["tests/bench"])).concat(["-main", main]));
+		run(exePath('bin/bench/$main', HOST), []);
+	}
+
+	// (tests/3d's scenes read the packed models: the 3d lane's pack)
+	static function scenes(main:String) {
+		pack();
+		program(main, sceneCp());
+	}
+
+	static function threadWeb() {
+		wasm("bin/bench/ThreadBench.wasm", uiCp().concat(cps(["tests/bench"])).concat(["-main", "ThreadBench"]));
+		run(NODE, ["tests/bench/thread-bench.mjs", "bin/bench/ThreadBench.wasm", "--json", "bin/bench/thread-bench.json"]);
+	}
 
 	// (IMAGE_BENCH_JPEG, IMAGE_BENCH_PNG: the files, a photo and a large PNG;
 	// by default the repository's largest: examples' comparison.jpg, tests/ui/todo.png)

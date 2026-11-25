@@ -5,7 +5,7 @@
 // frame; an animation's frames), each with the RGBA8 pixels libwebp decodes from it (<case>.rgba,
 // through ImageMagick's decoder: libwebp's defaults, as Chromium has them;
 // cases.json: names and sizes), which WebpDecoder must give exactly.
-// ImageTest decodes them (bun run test image).
+// ImageCheck decodes them (bun run test image).
 //   node tests/image/webp-cases.mjs   (needs ImageMagick with WebP)
 import fs from 'node:fs';
 import path from 'node:path';

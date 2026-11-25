@@ -633,7 +633,7 @@ On a 4-core Linux container (Mesa's llvmpipe, headless, otherwise idle):
 | A structural edit (an attribute added): built, the screens reloaded | 0.6–0.8 s (built in 0.57 s) | 0.6–1.2 s (built in 0.47–0.54 s) |
 
 The gfx-shared lane proves each platform's way of sharing a frame between
-two processes (tests/gfx/SharedTexture.hx: a frame drawn in one, opened,
+two processes (tests/gfx/SharedTextureCheck.hx: a frame drawn in one, opened,
 drawn and read back in the other, then a second frame through the same
 texture): IOSurface on CI's macOS runner (opened and drawn in 95 ms, the
 next frame 1.7 ms), DXGI on its Windows runner (7.7 ms, 0.7 ms), dma-bufs

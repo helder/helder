@@ -111,7 +111,7 @@ import hxmc.unsafe.*;
 	static function GlobalSize(mem:Ptr):Int64;
 }
 
-// a window's pixels (GfxTest's capture)
+// a window's pixels (GfxCheck's capture)
 @:hxmc.c @:hxmc.fast @:hxmc.lib("gdi32") extern class Gdi32 {
 	static function CreateCompatibleDC(dc:Ptr):Ptr;
 	static function DeleteDC(dc:Ptr):Int;

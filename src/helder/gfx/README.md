@@ -185,7 +185,7 @@ without those: llvmpipe without udmabuf; `HELDER_NO_DMABUF=1`). A frame
 into a shared texture waits for the GPU at `endFrame`, so its pixels are
 complete when the other process is told; the producer does not draw into a
 texture the consumer is sampling (helder.story keeps buffers for that).
-`tests/gfx/SharedTexture.hx` is the gfx-shared lane's check, two processes:
+`tests/gfx/SharedTextureCheck.hx` is the gfx-shared lane's check, two processes:
 
 ```haxe
 var s = device.createShared(w, h);                   // null: no sharing here
@@ -246,12 +246,12 @@ current there, D3D11's immediate context and swap chain) and presents:
   through Xlib); Android: `Surface.lost` run on the thread, waited for.
 
 `HELDER_RENDER_THREAD=0` turns it off, `=1` on for every window's device.
-`tests/ui/RenderThreadTest.hx` (ui-draw) draws random trees on the thread
+`tests/ui/RenderThreadCheck.hx` (ui-draw) draws random trees on the thread
 and synchronously in one window and compares every frame pixel for pixel,
 and hammers creation, uploads, read-backs, destruction and resizes while
 frames are on their way (nothing left in the back end's tables), on Metal
-and Mesa. Frame times (`--time`, `tests/3d/OrbitsTime.hx` for
-examples/orbits), with 4 ms of the program's own work after each frame:
+and Mesa. Frame times (examples/orbits with `--time`), with 4 ms of the
+program's own work after each frame:
 
 | | synchronous | render thread |
 | --- | ---: | ---: |
@@ -351,7 +351,7 @@ README): `fragment: (i, p: {tint: Tint, image: Texture2D}) => ...`, its
 a `UniformWriter<T>` for the others).
 
 `src/helder/gfx/shader/Shader.hx` lists the generated members; the tests are
-`tests/gfx/ShaderTest.hx` (`bun run test gfx-shader`) and GfxTest and WebTest,
+`tests/gfx/ShaderCheck.hx` (`bun run test gfx-shader`) and GfxCheck and WebCheck,
 the examples' frames against `tests/gfx/<scene>.png` (triangle, cube,
 instances, targets, mips, formats) on each back end (`bun run test gfx`, `bun run test gfx-web`).
 
@@ -446,12 +446,12 @@ indirect buffers and sampled textures). `compute(...)` is Haxe's: the
 TypeScript shader adapter has no Int yet; TypeScript sees `Device.has`
 and `Feature` (helder/scene).
 
-The tests: `tests/gfx/ComputeTest.hx` (`bun run test gfx-compute`: GL on
+The tests: `tests/gfx/ComputeCheck.hx` (`bun run test gfx-compute`: GL on
 Mesa, D3D11, Metal; `gfx-compute-web`: WebGPU in Chromium, and WebGL2's
 lack of it) runs a prefix sum of ten dispatches, an indirect dispatch
 that moves particles and counts the kept ones into an indirect draw of
 them, a storage texture sampled into the frame, and checks that a frame
-allocates nothing; `ShaderTest` the compute stages' text in the four
+allocates nothing; `ShaderCheck` the compute stages' text in the four
 languages (`tests/gfx/shader/*.comp.*`), their CPU runs and the programs
 it rejects.
 
@@ -502,7 +502,7 @@ quad of pixels (or 4 vertices) a call:
   no fused multiply-adds: the same bits everywhere); with
   `-D helder.soft.exact` two `F64x2`s, Haxe's doubles, and with
   `-D helder.soft.reference` each stage also as its scalar code lane by
-  lane: `tests/gfx/SoftShaderTest.hx` runs every shader of `src/helder`
+  lane: `tests/gfx/SoftShaderCheck.hx` runs every shader of `src/helder`
   both ways on random inputs, blocks and textures and requires the same
   bits (89 of 89). `Lane`, `LaneInt` and `LaneBool` are the one place the
   width is known: wider lanes are another implementation of those three.
@@ -554,7 +554,7 @@ GPU build (counter: macOS 3.88 MB against 4.11, Linux 3.67 against 4.35,
 Windows 3.46 against 3.97), and the web's imports no GL or GPU module.
 
 Against the GPUs, tests/3d's 76 scenes and tests/gfx's 10 frames (`bun
-run test gfx-soft`, GfxTest's rule): all within it of their goldens
+run test gfx-soft`, GfxCheck's rule): all within it of their goldens
 (llvmpipe's), but khrspecular and khrclearcoat, within 6 levels (Metal
 lands 9 and 151 from those goldens too: specular sparkles); against Metal
 74 of 76 (khrclearcoat's sparkles; compressed: Metal on the Mac draws its
@@ -574,7 +574,7 @@ sRGB and float texels gathered as bits; on x86-64, whole texel coordinates
 converted by 2^23's bits (hxmc's saturating conversion is 7 instructions
 there). Each change leaves the frames as they were, byte for byte.
 
-Speed: tests/3d/FrameBench.hx (each scene's first frame, made, drawn and
+Speed: tests/bench/FrameBench.hx (`bun run test bench frame`) (each scene's first frame, made, drawn and
 read back, then the least of 10), the 76 scenes summed, Linux x86-64 in
 Docker (`helder-llvmpipe-dejavu`, emulated on an M4, 10 threads, scenes
 alternating between the two so that the machine's load weighs on both):

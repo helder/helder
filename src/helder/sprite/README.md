@@ -44,7 +44,7 @@ enc.beginPass(pass); batch.flush(enc); enc.endPass();
 
 Tests: `Atlas.test.hx` and `SpriteQuads.test.hx` (natively and as
 wasm32-wasi: the test lane), `bun run test sprite` (a headless GPU frame
-read back: placed, scaled, faded, added, two textures; tests/sprite/SpriteFrame.hx).
+read back: placed, scaled, faded, added, two textures; tests/sprite/SpriteFrameCheck.hx).
 
 Example: `examples/bunnymark` (Bunnymark as PixiJS's: bouncing bunnies, one
 quad each, all one draw; hold to add 500 a frame, the count still at 60

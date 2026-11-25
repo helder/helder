@@ -1,11 +1,11 @@
 #!/bin/sh
 # helder.media on the Android device or emulator adb reaches (CI's android
-# job): MediaAndroidTest.apk (MediaCodec's decoding against ffmpeg's, the
-# player, A/V sync; its lines from logcat, tag hxmc), then VideoStill.apk
+# job): MediaAndroidCheck.apk (MediaCodec's decoding against ffmpeg's, the
+# player, A/V sync; its lines from logcat, tag hxmc), then VideoStillCheck.apk
 # three times, drawn by helder, on its system layer (setprop
 # debug.helder.video layer) and with that layer asked for once paused
 # (late), each still's screencap checked by still.mjs as it was shown.
-#   sh tests/media/android/android.sh <MediaAndroidTest.apk> <VideoStill.apk> [out dir]
+#   sh tests/media/android/android.sh <MediaAndroidCheck.apk> <VideoStillCheck.apk> [out dir]
 set -u
 out=${3:-.}
 mkdir -p "$out"
@@ -32,9 +32,9 @@ adb wait-for-device
 adb install -r -t "$1" > /dev/null || exit 1
 adb logcat -c
 adb shell am start -W -n org.helder.mediaandroidtest/android.app.NativeActivity > /dev/null
-wait_for "MediaAndroidTest: passed\|MediaAndroidTest: [0-9]* failed" "$out/decode.txt" 240 || failed=1
-grep "MediaAndroidTest" "$out/decode.txt" | sed 's/^.*MediaAndroidTest/MediaAndroidTest/'
-grep -q "MediaAndroidTest: passed" "$out/decode.txt" || failed=1
+wait_for "MediaAndroidCheck: passed\|MediaAndroidCheck: [0-9]* failed" "$out/decode.txt" 240 || failed=1
+grep "MediaAndroidCheck" "$out/decode.txt" | sed 's/^.*MediaAndroidCheck/MediaAndroidCheck/'
+grep -q "MediaAndroidCheck: passed" "$out/decode.txt" || failed=1
 adb shell am force-stop org.helder.mediaandroidtest
 
 adb install -r -t "$2" > /dev/null || exit 1
@@ -43,9 +43,9 @@ for mode in drawn layer late; do
 	adb logcat -c
 	adb shell am start -W -n org.helder.videostill/android.app.NativeActivity > /dev/null
 	log="$out/still-$mode.txt"
-	wait_for "VideoStill: still" "$log" 120 || { failed=1; continue; }
+	wait_for "VideoStillCheck: still" "$log" 120 || { failed=1; continue; }
 	adb exec-out screencap -p > "$out/still-$mode.png"
-	grep "VideoStill" "$log" | sed 's/^.*VideoStill/VideoStill/'
+	grep "VideoStillCheck" "$log" | sed 's/^.*VideoStillCheck/VideoStillCheck/'
 	box=$(grep -o "box at [0-9]* [0-9]* [0-9]* [0-9]*" "$log" | head -1 | awk '{print $3","$4","$5","$6}')
 	# (which way the still was shown, said at it: the layer's check where
 	# the system layer showed it, else helder's drawing, the fallback's)

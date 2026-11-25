@@ -1,9 +1,9 @@
-// helder.jobs in headless Chromium: JobsWeb.wasm run by
+// helder.jobs in headless Chromium: JobsWebCheck.wasm run by
 // src/helder/os/browser.mjs with os's, async's and jobs' imports (Web
 // Workers instantiating the same module) on a page served from the
-// repository; "JobsWeb: hide" hides the canvas (no frames, as a hidden
-// tab), "JobsWeb: done <failures>" ends it.
-//   node tests/jobs/browser.mjs <JobsWeb.wasm>
+// repository; "JobsWebCheck: hide" hides the canvas (no frames, as a hidden
+// tab), "JobsWebCheck: done <failures>" ends it.
+//   node tests/jobs/browser.mjs <JobsWebCheck.wasm>
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -18,7 +18,7 @@ const page = `<!doctype html><canvas id="c" width="64" height="64"></canvas><scr
 import { run } from '/src/helder/os/browser.mjs';
 const log = (l) => {
 	console.log(l);
-	if (l === 'JobsWeb: hide') document.getElementById('c').style.display = 'none';
+	if (l === 'JobsWebCheck: hide') document.getElementById('c').style.display = 'none';
 };
 await run('/module.wasm', { canvas: 'c', imports: ['/src/helder/os/imports.mjs', '/src/helder/async/imports.mjs', '/src/helder/jobs/imports.mjs'], stdout: log, stderr: log });
 </script>`;
@@ -38,7 +38,7 @@ const p = await browser.newPage();
 const out = [];
 const done = new Promise((resolve) => p.on('console', (m) => {
 	out.push(m.text());
-	const d = /^JobsWeb: done (\d+)/.exec(m.text());
+	const d = /^JobsWebCheck: done (\d+)/.exec(m.text());
 	if (d) resolve(Number(d[1]));
 }));
 p.on('pageerror', (e) => out.push('page error: ' + e.message));

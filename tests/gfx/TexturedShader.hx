@@ -3,8 +3,8 @@ import helder.gfx.shader.ShaderMath.*;
 
 // A shader with textures in both stages (sample, sampleLevel), one of them shared and one passed
 // on to a helper, next to a uniform block (slots: height 0, Fade 1, albedo
-// 2), for the shader definition's tests (ShaderTest: run on the CPU, the emitted
-// source against test/shader/; GfxTest and WebTest: compiled by each back end).
+// 2), for the shader definition's tests (ShaderCheck: run on the CPU, the emitted
+// source against test/shader/; GfxCheck and WebCheck: compiled by each back end).
 @:structInit @:publicFields class TexVertex {
 	var pos:Vec2;
 	var uv:Vec2;

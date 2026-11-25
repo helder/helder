@@ -51,3 +51,25 @@ by `site/build.mjs`. One sheet,
 `site/site.css`, styles them and the examples' pages, in helder.build's
 look; the host's theme (`SITE_THEME`, `site/build.mjs`) sets the top bar's
 links, a notice, the footer and its own sheets over it.
+
+## Tests
+
+`bun run test` runs the lanes that need no GPU, display or browser;
+`bun run test <lane>` runs one (`bun run test help` lists them,
+[tests/README.md](tests/README.md) says what each checks).
+
+- **Unit tests** are `*.test.hx` (helder.test) next to their source:
+  `src/helder/jobs/Jobs.test.hx` for `src/helder/jobs`. `helder test`
+  finds them; the test lane runs them all.
+- **A new module with a model or an inverse comes with a property**
+  (helder.test's `property`): a parser against its printer, an edit
+  against its undo, a structure against a plain array.
+- **Checks** are native or integration programs that exit non-zero on a
+  failure: `*Check.hx` in `tests/<package>/`, run by a lane of
+  `tests/lanes/`.
+- **Fixtures** are data the tests read, in `tests/<package>/fixtures`
+  (`*Fixture.hx` when the data is Haxe).
+- **Benches** measure and do not fail: `tests/bench/*Bench.hx`, each run
+  by `bun run test bench <name>`.
+- **Goldens** are PNGs beside their check, written by `BLESS=1`. Keep them
+  small: the least size that still shows what the check proves.

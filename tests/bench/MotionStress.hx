@@ -9,7 +9,7 @@ import helder.view.graph.Read;
 // helder.ui.motion's budget: 1,000 boxes in a wrapping row under motion,
 // their order reversed every 0.25 s from 0.5 s on, so that every box is
 // always moving (retargeted mid-flight, its edges from where they are drawn).
-// Measured headless (the motion-bench lane: helder run --headless --stats):
+// Measured headless (the bench motion lane: helder run --headless --stats):
 // each frame's ms and GC bytes once the boxes move, against an idle frame's.
 // Its argument: how many boxes (1000).
 class MotionStress implements Markup {

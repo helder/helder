@@ -12,7 +12,7 @@ import helder.ui.Ui;
 // the mouse's right button too, the wheel zooms (not the page's), a flick
 // glides on and slows, the limits hold; the box's bounds and the view's ray
 // filled in place (rectInto, rayInto), its zoom and pan allocating nothing. The taps on a mesh beside the
-// orbit: tests/3d-ui/SurfaceTest.hx (a GPU's).
+// orbit: tests/3d-ui/SurfaceCheck.hx (a GPU's).
 function tests() {
 	describe("OrbitControls", () -> {
 		var t = 0.0;

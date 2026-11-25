@@ -18,11 +18,11 @@ class Gfx {
 	];
 
 	static function gfxShader() {
-		interp(cps(["src", "tests/gfx"]).concat(cps(GFX_EXAMPLES)), "ShaderTest", [TOOL].concat(BLESS ? ["--bless"] : []));
+		interp(cps(["src", "tests/gfx"]).concat(cps(GFX_EXAMPLES)), "ShaderCheck", [TOOL].concat(BLESS ? ["--bless"] : []));
 	}
 
 	static function gfxPrograms() {
-		for (m in ["GfxTest", "Triangle", "Cube", "Instances", "Targets", "Mips", "Formats"])
+		for (m in ["GfxCheck", "Triangle", "Cube", "Instances", "Targets", "Mips", "Formats"])
 			native('bin/gfx/$GFX_TARGET/$m', gfxCp().concat(["-main", m]), GFX_TARGET);
 	}
 
@@ -32,27 +32,27 @@ class Gfx {
 	}
 
 	static function gfxShared() {
-		native('bin/gfx-shared/$GFX_TARGET/SharedTexture', cps(["src", "tests/gfx"]).concat(["-main", "SharedTexture"]), GFX_TARGET);
-		var exe = exePath('bin/gfx-shared/$GFX_TARGET/SharedTexture', GFX_TARGET);
+		native('bin/gfx-shared/$GFX_TARGET/SharedTextureCheck', cps(["src", "tests/gfx"]).concat(["-main", "SharedTextureCheck"]), GFX_TARGET);
+		var exe = exePath('bin/gfx-shared/$GFX_TARGET/SharedTextureCheck', GFX_TARGET);
 		// (a Mac's and Windows' own GPU always share; under Wine, or on Linux without a dma-buf exporter, skipped)
 		var require = GFX_TARGET == HOST && (HOST.startsWith("macos-") || HOST.startsWith("windows-"));
 		if (GFX_TARGET.startsWith("windows-") && !HOST.startsWith("windows-")) run("wine", [exe]) else run(exe, require ? ["--require"] : []);
 	}
 
 	static function sprite() {
-		native('bin/sprite/$GFX_TARGET/SpriteFrame', cps(["src", "tests/sprite"]).concat(["-main", "SpriteFrame"]), GFX_TARGET);
+		native('bin/sprite/$GFX_TARGET/SpriteFrameCheck', cps(["src", "tests/sprite"]).concat(["-main", "SpriteFrameCheck"]), GFX_TARGET);
 		Sys.putEnv("LIBGL_ALWAYS_SOFTWARE", "1");
-		run(exePath('bin/sprite/$GFX_TARGET/SpriteFrame', GFX_TARGET), []);
+		run(exePath('bin/sprite/$GFX_TARGET/SpriteFrameCheck', GFX_TARGET), []);
 	}
 
 	static function gfxWeb() {
-		wasm("bin/gfx/WebTest.wasm", gfxCp().concat(["-main", "WebTest"]));
-		run(NODE, ["tests/gfx/web.mjs", "bin/gfx/WebTest.wasm", "bin/gfx"]);
+		wasm("bin/gfx/WebCheck.wasm", gfxCp().concat(["-main", "WebCheck"]));
+		run(NODE, ["tests/gfx/web.mjs", "bin/gfx/WebCheck.wasm", "bin/gfx"]);
 	}
 
 	static function gfxCompute() {
-		native('bin/gfx-compute/$GFX_TARGET/ComputeTest', cps(["src", "tests/gfx"]).concat(["-main", "ComputeTest"]), GFX_TARGET);
-		var exe = exePath('bin/gfx-compute/$GFX_TARGET/ComputeTest', GFX_TARGET);
+		native('bin/gfx-compute/$GFX_TARGET/ComputeCheck', cps(["src", "tests/gfx"]).concat(["-main", "ComputeCheck"]), GFX_TARGET);
+		var exe = exePath('bin/gfx-compute/$GFX_TARGET/ComputeCheck', GFX_TARGET);
 		// (Mesa's llvmpipe and WARP: software; no Metal device on a Mac VM: exit 3, skipped)
 		Sys.putEnv("LIBGL_ALWAYS_SOFTWARE", "1");
 		Sys.putEnv("HXMC_GFX_SOFTWARE", "1");
@@ -65,8 +65,8 @@ class Gfx {
 	}
 
 	static function gfxComputeWeb() {
-		wasm("bin/gfx-compute/ComputeTest.wasm", cps(["src", "tests/gfx"]).concat(["-main", "ComputeTest"]));
-		run(NODE, ["tests/gfx/compute-web.mjs", "bin/gfx-compute/ComputeTest.wasm"]);
+		wasm("bin/gfx-compute/ComputeCheck.wasm", cps(["src", "tests/gfx"]).concat(["-main", "ComputeCheck"]));
+		run(NODE, ["tests/gfx/compute-web.mjs", "bin/gfx-compute/ComputeCheck.wasm"]);
 	}
 
 	// (helder.gfx's frames and helder.scene's drawn on the CPU against the GPUs'
@@ -75,18 +75,18 @@ class Gfx {
 		var b = 'bin/gfx-soft/$HOST', soft = ["-D", "helder.soft", "-D", 'hxmc.target=$HOST'];
 		pack();
 		var builds = [
-			{out: exePath('$b/SoftShaderTest', HOST), args: cps(["src", "tests/gfx"]).concat(["-main", "SoftShaderTest", "-D", "helder.soft.exact", "-D", "helder.soft.reference"]).concat(soft)},
-			{out: exePath('$b/GfxTest', HOST), args: gfxCp().concat(["-main", "GfxTest", "-D", "helder.headless"]).concat(soft)},
-			{out: exePath('$b/ComputeTest', HOST), args: cps(["src", "tests/gfx"]).concat(["-main", "ComputeTest", "-D", "helder.headless"]).concat(soft)},
-			{out: exePath('$b/RenderTest', HOST), args: sceneCp().concat(["-main", "RenderTest"]).concat(soft)}
+			{out: exePath('$b/SoftShaderCheck', HOST), args: cps(["src", "tests/gfx"]).concat(["-main", "SoftShaderCheck", "-D", "helder.soft.exact", "-D", "helder.soft.reference"]).concat(soft)},
+			{out: exePath('$b/GfxCheck', HOST), args: gfxCp().concat(["-main", "GfxCheck", "-D", "helder.headless"]).concat(soft)},
+			{out: exePath('$b/ComputeCheck', HOST), args: cps(["src", "tests/gfx"]).concat(["-main", "ComputeCheck", "-D", "helder.headless"]).concat(soft)},
+			{out: exePath('$b/RenderCheck', HOST), args: sceneCp().concat(["-main", "RenderCheck"]).concat(soft)}
 		];
 		prebuild(builds);
 		for (p in builds)
 			hxmc(p.out, p.args);
-		run(exePath('$b/SoftShaderTest', HOST), []);
-		run(exePath('$b/ComputeTest', HOST), []);
+		run(exePath('$b/SoftShaderCheck', HOST), []);
+		run(exePath('$b/ComputeCheck', HOST), []);
 		for (s in ["triangle", "cube", "instances", "targets", "msaa", "mips", "formats", "blend", "palette", "layers"])
-			run(exePath('$b/GfxTest', HOST), ["headless", s, 'tests/gfx/$s.png', '$b/$s.png']);
+			run(exePath('$b/GfxCheck', HOST), ["headless", s, 'tests/gfx/$s.png', '$b/$s.png']);
 		run("sh", ["tests/3d/check.sh", b], ["SOFT" => "1"]);
 	}
 }

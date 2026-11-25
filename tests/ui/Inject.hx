@@ -1,7 +1,7 @@
 import hxmc.unsafe.*;
 
 // Scroll input put where the system's comes in, from a thread of its own,
-// while the program is busy (AsyncScrollWindow): a wheel's pixels every
+// while the program is busy (AsyncScrollWindowCheck): a wheel's pixels every
 // 16 ms at the window's middle. macOS: NSEvents made from CGEvents, posted
 // to the application's queue, which the main thread reads (MacWindow's
 // pump); X11: wheel presses sent to the window by a connection of its

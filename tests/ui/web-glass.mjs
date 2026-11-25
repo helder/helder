@@ -1,7 +1,7 @@
 // Liquid Glass in a browser (bun run test ui-web): WebGlass.wasm in headless
 // Chromium on WebGPU, then on WebGL2 (forced), its frame against the
-// stripes, the top half of glass.png (GlassTest's golden, the CPU's), within
-// GlassTest's tolerance: the backdrop captured, blurred and lensed by the
+// stripes, the top half of glass.png (GlassCheck's golden, the CPU's), within
+// GlassCheck's tolerance: the backdrop captured, blurred and lensed by the
 // glass's shaders as WGSL and GLSL ES (helder.async's imports: the
 // scene's Inter, an embedded asset).
 //   node tests/ui/web-glass.mjs <WebGlass.wasm>
@@ -29,7 +29,7 @@ const files = {
 	'/glass.png': path.join(here, 'glass.png'),
 };
 const types = { '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.png': 'image/png', '.ttf': 'font/ttf' };
-// (GlassTest's: TOLERANCE, MAX_FAR, MEAN)
+// (GlassCheck's: TOLERANCE, MAX_FAR, MEAN)
 const page = `<!doctype html><title>Glass</title><body style="margin:0">
 <canvas id="c" style="width: 400px; height: 300px; display: block"></canvas>
 <script type="module">
