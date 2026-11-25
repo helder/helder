@@ -128,6 +128,51 @@ class Inject {
 
 	public function join()
 		done.wait();
+
+	#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
+	// a wheel's n pixels (else a press and its release: click) at x, y points of
+	// w's content, as NSEvents posted to the application's own queue, which
+	// the main thread reads (no window server: a single CGEventPostToPid one
+	// is dropped now and then); false, nothing sent, where not supported
+	public static function at(w:helder.os.Window, x:Float, y:Float, click:Bool, pixels = 4):Bool {
+		if (!supported) return false;
+		var view = w.surface.handle;
+		helder.os.OsThread.get(() -> {
+			var M = helder.os.apple.objc.Msg, O = helder.os.apple.objc.ObjC;
+			var pool = helder.os.apple.objc.Runtime.objc_autoreleasePoolPush();
+			var win = M.id(view, O.sel("window")), app = M.id(O.cls("NSApplication"), O.sel("sharedApplication"));
+			var n = M.i(win, O.sel("windowNumber"));
+			var c = M.rect(M.id(win, O.sel("contentView")), O.sel("frame"));
+			var loc:Ptr<helder.os.apple.objc.CGPoint> = LibC.malloc(16);
+			// (the window's coordinates: y up)
+			loc.value.x = x;
+			loc.value.y = c.size.height - y;
+			if (click) {
+				// (NSEventTypeLeftMouseDown, NSEventTypeLeftMouseUp)
+				for (type in [1, 2])
+					M.vPtrBool(app, O.sel("postEvent:atStart:"), MouseMsg.mouse(O.cls("NSEvent"),
+						O.sel("mouseEventWithType:location:modifierFlags:timestamp:windowNumber:context:eventNumber:clickCount:pressure:"), type, loc.value, 0,
+						M.f(M.id(O.cls("NSProcessInfo"), O.sel("processInfo")), O.sel("systemUptime")), n, Ptr.nil(), 0, 1, type == 1 ? 1.0 : 0.0), false);
+			} else {
+				// (a wheel's CGEvent at the screen's point, in the window)
+				var s = M.pointPoint(win, O.sel("convertPointToScreen:"), loc.value);
+				var first = M.rect(M.idInt(M.id(O.cls("NSScreen"), O.sel("screens")), O.sel("objectAtIndex:"), 0), O.sel("frame"));
+				var e = CG.CGEventCreateScrollWheelEvent2(Ptr.nil(), 0, 1, -pixels, 0, 0);
+				loc.value.x = s.x;
+				loc.value.y = first.size.height - s.y;
+				CG.CGEventSetLocation(e, loc.value);
+				CG.CGEventSetIntegerValueField(e, 91, n);
+				CG.CGEventSetIntegerValueField(e, 92, n);
+				M.vPtrBool(app, O.sel("postEvent:atStart:"), M.idPtr(O.cls("NSEvent"), O.sel("eventWithCGEvent:"), e), false);
+				CF.CFRelease(e);
+			}
+			LibC.free(loc);
+			helder.os.apple.objc.Runtime.objc_autoreleasePoolPop(pool);
+			true;
+		});
+		return true;
+	}
+	#end
 }
 
 #if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
@@ -136,6 +181,12 @@ class Inject {
 	static function CGEventSetLocation(e:Ptr, p:helder.os.apple.objc.CGPoint):Void;
 	static function CGEventSetIntegerValueField(e:Ptr, field:Int, value:Int64):Void;
 	static function CGEventPostToPid(pid:Int, e:Ptr):Void;
+}
+
+@:build(helder.os.apple.objc.Sender.build())
+@:hxmc.unsafe(gc)
+private class MouseMsg {
+	static function mouse(self:Ptr, sel:Ptr, type:Int64, p:helder.os.apple.objc.CGPoint, flags:Int64, time:Float, window:Int64, context:Ptr, number:Int64, clicks:Int64, pressure:Float):Ptr;
 }
 
 @:hxmc.c @:hxmc.lib("/usr/lib/libSystem.B.dylib") private extern class Libc {

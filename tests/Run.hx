@@ -70,6 +70,7 @@ class Run {
 		{name: "system-text", about: "helder.text on the platform's own stack (tests/text/SystemTextTest.hx, natively: Linux's fontconfig, HarfBuzz and FreeType, Windows' DirectWrite, macOS's Core Text): each script's fallback face, a family found, Devanagari, Bengali and Tamil shaped (reordered and split vowels), TextLayout through it, glyphs rasterised; each script drawn with the platform's engine and helder's (bin/text/system-<os>.png; GFX_TARGET=windows-x86_64 from Linux: under Wine)", run: systemText},
 		{name: "text-quality", about: "helder.text's own engine against macOS's CoreText (tests/text/TextQuality.hx, natively): Inter Regular and Bold at seven sizes, DejaVu Sans at three and a paragraph, four inks on their pages, 1x and 2x, font smoothing on and off, the way the Renderer draws them, against CoreText's sheets of the same glyphs at the same pens (tests/text/coretext/sheets, drawn by the system-text lane on a Mac: CTFontDrawGlyphs through helder's Core Text back end): SSIM, the ink's weight, the pixels' differences, before (the rasterizer helder had) and now (bin/text-quality/report.md, heatmaps)", run: textQuality},
 		{name: "os", about: "helder.os Places and Trash (tests/os/PlacesTrashTest.hx): existing user folders, the system volume, a file and folder trashed; Linux's trashinfo and name clashes; headless and web have neither", run: placesTrash},
+		{name: "glass-window", about: "a window with Liquid Glass (tests/ui/GlassWindow.hx; macOS): the system's (macOS 26) in the layer tree, its views at their boxes; then, under the system's or drawn glass, scroll and presses sent to the app's own queue (CI's, or HELDER_TEST_INPUT=1) reaching helder, and AppKit's hit test at the glass finding neither a glass view nor its host", run: glassWindow},
 		{name: "system-images", about: "helder.os's system decoders (tests/os/SystemImagesTest.hx: Windows' WIC, macOS's ImageIO): a TIFF of a known gradient, plain and LZW, its pixels and straight alpha; macOS: a HEIC made by sips, whole and at a side; ImageLimits before any pixel; a file that is no image (GFX_TARGET=windows-x86_64 from Linux: under Wine); macOS: helder.media's decoders (tests/media/apple/MediaAppleTest.hx: VideoToolbox's frames and AudioToolbox's samples against ffmpeg's, exact seeks and steps, a clip played through CoreAudio's file output, frames to RGB on Metal); Windows: Media Foundation's (tests/media/windows/MediaWindowsTest.hx: frames and samples against ffmpeg's, seeks and steps, a clip played, frames to RGB on Direct3D 11 and for the system layer); Linux: libavcodec's and VAAPI's where a driver is (tests/media/linux/MediaLinuxTest.hx: frames and samples against ffmpeg's, seeks and steps, a clip played through ALSA's file output, frames to RGB on GL)", run: systemImages},
 		{name: "dbus", about: "helder.os's D-Bus client against a real dbus-daemon (Linux: dbus-run-session): Hello, ListNames, a service's half, then xdg-desktop-portal's FileChooser OpenFile against a stand-in portal (its arguments, its Response's URI as the path picked; tests/os/DBusTest.hx)", run: dbus},
 		{name: "async-web", about: "helder.async's browser loop (wasm32-wasi) in headless Chromium: timers, tasks, cancellation, fetches", run: asyncWeb},
@@ -805,6 +806,16 @@ class Run {
 		run(exePath("bin/text-quality/TextQuality", HOST), ["compare", "tests/text/coretext/sheets", "bin/text-quality"]);
 	}
 
+	// (ui-draw's too, which CI runs on Linux only)
+	static function glassWindow() {
+		if (!GFX_TARGET.startsWith("macos-")) {
+			Sys.println("glass-window: macOS's: skipped");
+			return;
+		}
+		native('bin/ui/$GFX_TARGET/GlassWindow', uiCp().concat(["-main", "GlassWindow"]), GFX_TARGET);
+		shell('HELDER_BACKGROUND=1 bin/ui/$GFX_TARGET/GlassWindow');
+	}
+
 	static function systemImages() {
 		native('bin/os/$GFX_TARGET/SystemImagesTest', cps(["src", "tests/os"]).concat(["-main", "SystemImagesTest"]), GFX_TARGET);
 		var exe = exePath('bin/os/$GFX_TARGET/SystemImagesTest', GFX_TARGET), args = ["tests/os/images"];
@@ -1084,6 +1095,25 @@ class Run {
 			expect(h, ["devices"], ["PATH" => FileSystem.fullPath("bin/cli/path/adb"), "ADB" => ""], "emulator-5554  Pixel 7");
 		}
 		run(h, ["build", "examples/counter/Counter.hx"]);
+		// (outside the checkout, no node_modules above it, a fresh cache, no
+		// HXMC_RT_DIR from the launcher this runs under: helder's compiler,
+		// alone in the cache, finds the platform package's runtime objects;
+		// the compiler copied in, not built again)
+		var tmp = (Sys.getEnv("RUNNER_TEMP") ?? Sys.getEnv("TMPDIR") ?? Sys.getEnv("TEMP") ?? "/tmp").split("\\").join("/");
+		var fresh = '$tmp/helder-fresh-${Std.random(1 << 30)}', compiler = Path.directory(StringTools.trim(output(NODE, ["src/helder/compiler/build.mjs", "--quiet"])));
+		copy(compiler, '$fresh/cache/compiler/${Path.withoutDirectory(compiler)}');
+		if (!HOST.startsWith("windows-")) run("chmod", ["-R", "+x", '$fresh/cache/compiler']);
+		File.copy("examples/counter/Counter.hx", '$fresh/Counter.hx');
+		var here = Sys.getCwd(), cli = FileSystem.fullPath(h);
+		Sys.setCwd(fresh);
+		// (the directory made here, outside bin/: removed by removeTree, not rmrf)
+		try run(cli, ["build", "Counter.hx"], ["HELDER_CACHE" => '$fresh/cache', "HXMC_RT_DIR" => ""]) catch (e:Failed) {
+			Sys.setCwd(here);
+			removeTree(fresh);
+			throw e;
+		}
+		Sys.setCwd(here);
+		removeTree(fresh);
 		run(h, ["build", "--target", "web", "examples/counter"]);
 		// (its imports the browser's and WASI's only: no other system's library reached, #83)
 		run(NODE, ["tests/cli/imports.mjs", "bin/web/Counter.wasm"]);
