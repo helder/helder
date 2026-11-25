@@ -647,6 +647,9 @@ class Run {
 	// Xvfb, a Windows target on another host under Wine)
 	static function viewerWindow() {
 		var h = helderCli();
+		// (the viewer's store, its thumbnails' cache: the lane's, not this machine's user's)
+		mkdirs("bin/viewer/home");
+		Sys.putEnv("HELDER_HOME", FileSystem.fullPath("bin/viewer/home"));
 		run(h, ["build", "--target", GFX_TARGET, "apps/viewer"]);
 		var exe = exePath('apps/viewer/bin/$GFX_TARGET/viewer', GFX_TARGET);
 		var wine = GFX_TARGET.startsWith("windows-") && !HOST.startsWith("windows-") ? "wine " : "";

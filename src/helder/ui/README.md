@@ -455,7 +455,9 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
   that sort above its first row stays at its top, and so does one whose
   top inset grows (a bar's large title laid out after it). Rows leaving the window are hidden and kept
   by key (`keep`, the farthest let go), coming back made already;
-  `scrollToIndex` and `focusIndex` reach rows not made, the arrows, Page
+  `scrollToIndex` and `focusIndex` reach rows not made (shown within
+  the list's insets, `insets(top, bottom)`: under a bar laid over its top,
+  the last row clear of its bottom padding), the arrows, Page
   Up and Down, Home and End move the focus (and `selected`, a key that
   outlives its row's node) onto them; a listbox to assistive technology,
   each made row's place among all (`Semantics.posInSet`, `setSize`).

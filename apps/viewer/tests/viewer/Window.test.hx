@@ -152,6 +152,44 @@ function tests() {
 			equals(x.browser.selected.value, "pic 147.png");
 			assert(at >= y && at + 30 <= y + 490, 'pic 147 at $at in view from $y');
 		});
+		for (layout in [Browser.Layout.List, Browser.Layout.Grid])
+			test('scrolled to the end, the last row whole in view with room; each row\'s text inside its row (${layout})', () -> {
+				var x = big(), ui = new Ui(new StoryText(), 1212, 592);
+				Render.render(Shell.view(x, () -> helder.ui.SizeClass.Expanded), ui.root);
+				function frame()
+					for (_ in 0...3) {
+						helder.view.graph.Graph.flush();
+						ui.update();
+					}
+				x.start("/home/folder 0");
+				x.browser.layout(layout);
+				frame();
+				var v:helder.ui.VirtualScroll = cast ui.root.find(layout == List ? "rows" : "grid");
+				// (by the scroll's end, and by the keys' End: scrolled to the last item)
+				for (way in ["scroll", "key"]) {
+					if (way == "scroll") v.scrollY = 1e6 else {
+						v.scrollY = 0;
+						frame();
+						v.scrollToIndex(x.browser.items.value.length - 1);
+					}
+					frame();
+					var shown = [for (r in v.rows()) if (r.node.style.display != None) r];
+					var last = shown[shown.length - 1].node, end = last.absY - v.scrollY + last.height;
+					var room = v.absY + v.height - end, bar = ui.root.find("pathbar");
+					assert(room >= 6 && room <= 12, '$way: the last row ends $room above the view\'s end');
+					assert(v.absY + v.height <= bar.absY, '$way: the view ends above the path bar');
+				}
+				function inside(n:Node, row:Node) {
+					if (Std.isOfType(n, helder.ui.TextNode))
+						assert(n.absY >= row.absY - 0.01 && n.absY + n.height <= row.absY + row.height + 0.01,
+							'"${(cast n : helder.ui.TextNode).text}" at ${n.absY}+${n.height} in ${row.absY}+${row.height}');
+					for (c in n.children)
+						inside(c, row);
+				}
+				for (r in v.rows())
+					for (c in (layout == List ? [r.node] : r.node.children))
+						inside(c, c);
+			});
 	});
 }
 

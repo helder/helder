@@ -161,6 +161,11 @@ headless runs keep it there.
 icon, never key nor active, shown on screen so that frames present): for
 window tests run while someone uses the machine.
 
+`HELDER_HOME=dir` puts what an app keeps under dir: `Paths.data` and
+`Paths.cache` (`dir/data/<name>`, `dir/cache/<name>`), so every `Store`
+too. A test's run of an app (the viewer-window lane's) keeps to its own
+and leaves the user's settings and caches alone.
+
 ### Files dropped, full screen, a window's place
 
 ```haxe

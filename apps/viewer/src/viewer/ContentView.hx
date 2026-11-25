@@ -24,6 +24,7 @@ import viewer.ViewerActions;
 // 300 ms, unreadable, no results), and the path bar with the count.
 class ContentView implements Markup {
 	public static inline var ROW = 30;
+	static inline var EDGE = 6;
 	// the path bar's height, the sidebar's volume foot's too (one line across)
 	public static inline var FOOT = 32;
 
@@ -214,7 +215,11 @@ class ContentView implements Markup {
 				{header(x)}
 				<VirtualList tag="rows" each={() -> b.items()} by={(e:Entry) -> e.name} itemHeight={ROW} selection={b.selection} label="Files"
 					textOf={(e:Entry) -> e.name} onActivate={(picked:Array<Int>) -> activate(picked)} onContextMenu={menu}
-					ref={v -> made(v)}>{(e, i) -> row(x, e)}</VirtualList>
+					ref={v -> {
+						// (its ends' room: a row's focus ring whole, the last row clear of the path bar)
+						v.insets(EDGE, EDGE);
+						made(v);
+					}}>{(e, i) -> row(x, e)}</VirtualList>
 			</Show>
 			<Show when={b.layout() == Grid}>
 				<VirtualGrid tag="grid" each={() -> b.items()} by={(e:Entry) -> e.name} cellWidth={Tiles.CELL_WIDTH} cellHeight={Tiles.CELL_HEIGHT}

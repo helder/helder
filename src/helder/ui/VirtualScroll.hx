@@ -19,7 +19,8 @@ import helder.ui.access.Semantics;
 // before it (splice), so the content does not move; at the very top it
 // stays at the top (rows put in above the first come into view). scrollToIndex (start,
 // center, end or the nearest edge: auto) goes to a row made or not, held
-// there while its rows are measured; focusIndex makes the row, scrolls to
+// there while its rows are measured, within the insets (a bar over the
+// top, a padding: the row shown with their room); focusIndex makes the row, scrolls to
 // it and focuses it. The rows are a listbox's options to assistive
 // technology (rowRole), each its place among all (posInSet, setSize). The
 // keyboard on a row (its focus within the list): Up and Down, Page Up and
@@ -247,7 +248,8 @@ class VirtualScroll extends Node {
 			case "center": 1;
 			case "end": 2;
 			case _:
-				var top = rowOffset(index), bottom = top + heights.heightOf(index);
+				// (shown: with its insets' room, a bar's over them or the padding)
+				var top = rowOffset(index) - insetTop, bottom = rowOffset(index) + heights.heightOf(index) + insetBottom;
 				if (top >= scrollY && bottom <= scrollY + viewHeight()) -1 else top < scrollY ? 0 : 2;
 		}
 		if (a < 0) return;
@@ -323,11 +325,12 @@ class VirtualScroll extends Node {
 	function wanted():Float {
 		var vh = viewHeight(), y:Float;
 		if (target >= 0 && target < count) {
+			// (the row within the insets: under a bar over the top, the last clear of the bottom's padding)
 			var top = rowOffset(target), h = heights.heightOf(target);
 			y = switch targetAlign {
-				case 1: top + h / 2 - vh / 2;
-				case 2: top + h - vh;
-				case _: top;
+				case 1: top + h / 2 - insetTop - (vh - insetTop - insetBottom) / 2;
+				case 2: top + h + insetBottom - vh;
+				case _: top - insetTop;
 			}
 		} else y = count == 0 ? 0 : rowOffset(anchorRow) + anchorDelta;
 		var max = extent() - vh;

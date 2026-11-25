@@ -499,7 +499,9 @@ the window's bottom, the sidebar's level scrolls; a folder entered from a
 scrolled one at its top and back at the old offset, read a frame later,
 in the list and the grid; a folder read in batches that each sort above
 the last, still at its top; the full-size viewer closed with the folder
-where it was and the last file in view),
+where it was and the last file in view; scrolled to the end by the
+scroll and by End, the last row whole above the path bar with room, each
+row's text inside its row),
 `Viewer.story.hx` (the grid and the list dark and light, several
 selected, the inspector of a photo, of a PDF and of a Markdown document, a marquee
 being dragged over the grid, an empty folder, a missing one, no results, a file full size, a

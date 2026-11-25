@@ -24,7 +24,8 @@ import hxmc.unsafe.*;
 // renamed over the old one, so a crash mid-write leaves the last one whole.
 // A store that cannot be read (none yet, damaged) opens empty; one that
 // cannot be written (a read-only disk, a private window) keeps its values
-// for the run (written false). dir puts the file elsewhere (tests; wasm32
+// for the run (written false); HELDER_HOME moves every store of a run
+// (Paths: a test's, the user's own left alone). dir puts the file elsewhere (tests; wasm32
 // without localStorage, as under node's WASI: "." by default). In a
 // headless run (-D helder.headless) a store without dir starts empty and
 // stays in memory: what an earlier run, or the user's own app, kept does

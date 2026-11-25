@@ -447,7 +447,8 @@ class MarkupTest implements Markup {
 			&& cell.parent.semantics.role == Role.Row && cell.semantics.role == Role.Cell && cell.semantics.posInSet == 1 && cell.semantics.setSize == 50000);
 		grid.scrollToIndex(44, "start");
 		ui.update();
-		grid.scrollY += 7;
+		check("grid: a jump to an item's row: at the top, the padding's room above it", grid.scrollY == 11 * 34, '${grid.scrollY}');
+		grid.scrollY += 12 + 7;
 		ui.update();
 		ui.resize(360, 150);
 		ui.update();
@@ -742,6 +743,18 @@ class MarkupTest implements Markup {
 		l.insets(60, 0);
 		ui.update();
 		check("virtual rows: at the top, the inset grown: still at the top", l.scrollY == 0 && drawnY(shown()[0]) == 60, '${l.scrollY} ${drawnY(shown()[0])}');
+		// (a jump with insets: the row within them, a bar's over the top, the last clear of the bottom's)
+		l.insets(40, 20);
+		l.scrollToIndex(l.count - 1, "end");
+		ui.update();
+		var s0 = shown(), lastRow = s0[s0.length - 1];
+		check("virtual rows: a jump to the last row with insets: its end the bottom inset's above the view's", drawnY(lastRow) + lastRow.height == 300 - 20,
+			'${drawnY(lastRow) + lastRow.height}');
+		l.scrollToIndex(500, "start");
+		ui.update();
+		var at500 = l.rowAt(500);
+		check("virtual rows: a jump to a row with insets: under the top inset", at500 != null && drawnY(at500.node) == 40,
+			at500 == null ? "none" : '${drawnY(at500.node)}');
 		l.insets(0, 0);
 		ui.update();
 		// (a jump to the last row: made, measured, its end at the view's)
