@@ -51,7 +51,7 @@ class Shortcuts implements helder.view.Markup {
 			for (k in Keystroke.sequence(keys))
 				ui.keyDown(k.key, k.held());
 		Sys.println(log.join("\n"));
-		Sys.println('${ui.dispatchAction(Move({x: 1, y: 2}))} ${ui.dispatchAction(Open("b", []))} ${(ui.actionState(Next) : Int)} ${(ui.actionState(ZoomTo(1)) : Int)}');
+		Sys.println('${ui.dispatchAction(Move({x: 1, y: 2}))} ${ui.dispatchAction(Open("b", []))} ${ui.actionState(Next)} ${ui.actionState(ZoomTo(1))}');
 		Sys.println([for (b in keymap.bindings()) b.toString()].join("\n"));
 		var viewer = [helder.ui.actions.KeyContext.parse("Viewer")];
 		Sys.println('${keymap.label(ZoomTo(200), viewer)} ${keymap.label(ZoomTo(50), viewer)} ${keymap.label(ZoomTo(100))} ${keymap.label(StandardAction.Quit)}');

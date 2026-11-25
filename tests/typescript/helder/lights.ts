@@ -6,14 +6,14 @@
 // ClusteredLights assigns them without compute). (Drawn: the 3d lane's
 // lights8, clustered, spotshadow, pointshadow, shadowatlas and lod frames,
 // tests/3d/LightScenes.hx.)
-import { World, Light, LightKind, Lod, Clusters, Shapes, Geometry, Material, type LodLevel } from "helder/scene";
+import { World, Light, Lod, Clusters, Shapes, Geometry, Material, type LodLevel } from "helder/scene";
 import { vec3, vec4, mat4 } from "helder/gfx";
 
 const world = new World("lights");
 const lamp = world.node("lamp");
 const spot = Light.attach(lamp, Light.spot(vec3(1, 0.8, 0.6), 30, 12, 0.3, 0.5));
 const sun = Light.attach(world.node("sun"), Light.directional(vec3(1, 1, 1), 2));
-console.log(spot.kind === LightKind.Spot, spot.castShadows, sun.castShadows, spot.shadow === null);
+console.log(spot.kind === "spot", spot.castShadows, sun.castShadows, spot.shadow === null);
 spot.castShadows = true;
 spot.shadow = {size: 512, bias: 0.002, radius: 1.5};
 console.log(spot.castShadows, spot.shadow.size, spot.shadow.bias, spot.shadow.radius);
