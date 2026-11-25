@@ -1035,9 +1035,6 @@ class MacWindow {
 	// the accessibility's requests, timers or delegates, which would touch the program's state)
 	static var pumpMode = Ptr.nil();
 	static final peeked = new Event();
-	static final INPUT = (1 << NS.LeftMouseDown) | (1 << NS.LeftMouseUp) | (1 << NS.RightMouseDown) | (1 << NS.RightMouseUp) | (1 << NS.MouseMoved)
-		| (1 << NS.LeftMouseDragged) | (1 << NS.RightMouseDragged) | (1 << NS.KeyDown) | (1 << NS.KeyUp) | (1 << 12) | (1 << NS.ApplicationDefined)
-		| (1 << NS.ScrollWheel) | (1 << NS.OtherMouseDown) | (1 << NS.OtherMouseUp) | (1 << NS.OtherMouseDragged) | (1 << NS.Magnify);
 
 	// (whether a window's compositor takes the input as it is read)
 	static function routing():Bool {
@@ -1046,15 +1043,18 @@ class MacWindow {
 		return false;
 	}
 
-	// the main thread's wait while the program runs on: the next input
-	// event read, routed to its window's compositor at once, kept for the
-	// program's poll; false where no window has a compositor
+	// the main thread's wait while the program runs on: the next event
+	// read, input routed to its window's compositor at once, each kept for
+	// the program's poll; false where no window has a compositor. (Every
+	// kind read, not the input's alone: asked for input only, AppKit never
+	// took the app's activation, a click on an inactive window making it
+	// frontmost but never active nor the window key)
 	static function pump():Bool {
 		if (app.isNull() || !routing()) return false;
 		var pool = Runtime.objc_autoreleasePoolPush();
 		if (pumpMode.isNull()) pumpMode = ObjC.str("kCFRunLoopDefaultMode");
 		var until = Msg.idFloat(ObjC.cls("NSDate"), ObjC.sel("dateWithTimeIntervalSinceNow:"), 1.0);
-		var ev = Msg.idIntPtrPtrBool(app, ObjC.sel("nextEventMatchingMask:untilDate:inMode:dequeue:"), INPUT, until, pumpMode, true);
+		var ev = Msg.idIntPtrPtrBool(app, ObjC.sel("nextEventMatchingMask:untilDate:inMode:dequeue:"), -1, until, pumpMode, true);
 		if (!ev.isNull()) {
 			var type = Msg.i(ev, ObjC.sel("type")).toInt();
 			if (type != NS.ApplicationDefined) {

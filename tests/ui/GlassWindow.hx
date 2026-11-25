@@ -180,6 +180,7 @@ private class Input {
 	var presses = 0;
 	var wheels = 0;
 	var before = 0;
+	var sent = 0.0;
 
 	public function new(w:helder.ui.UiWindow) {
 		this.w = w;
@@ -252,6 +253,7 @@ private class Input {
 	public function step(n:Int):Null<Bool> {
 		switch n {
 			case 10:
+				sent = haxe.Timer.stamp();
 				if (!Inject.at(w.window, 200, 200, false, 6)) {
 					Sys.println("GlassWindow: input not sent (CI's, or HELDER_TEST_INPUT=1): skipped");
 					return true;
@@ -259,6 +261,9 @@ private class Input {
 			case 30:
 				if (!check(list.scrollY > 0, 'a scroll where no glass is reaches the list under it: scrolled ${list.scrollY}')) return false;
 			case 50:
+				// (past the wheel's latch to the list the first scroll went to, ScrollHost.WHEEL_LATCH: 0.5 s)
+				var left = 1.0 - (haxe.Timer.stamp() - sent);
+				if (left > 0) Sys.sleep(left);
 				before = wheels;
 				var m = middle(button);
 				Inject.at(w.window, m[0], m[1], false, 6);
