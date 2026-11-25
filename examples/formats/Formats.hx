@@ -3,7 +3,7 @@
 // tags: gfx, shaders, textures, render targets
 // demo: canvas 512x384
 
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 import FormatsShader;
 import haxe.io.Bytes;
 import helder.gfx.*;

@@ -1,6 +1,7 @@
 // A stage's workgroup memory is 16 KB at most.
-// expect: WorkgroupTooLarge.hx:9: lines 9-12
+// expect: WorkgroupTooLarge.hx:10: lines 10-13
 // expect: workgroup memory: 17408 bytes, more than 16384 (16 KB, WebGPU's and GL ES 3.1's limit)
+import helder.math.*;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 

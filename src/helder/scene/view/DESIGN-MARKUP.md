@@ -1128,7 +1128,7 @@ struct value (a `Vec3`) where a binding expects one".
 the markup macro passes the expression as a function, which hxmc must then
 treat as a function returning `Dynamic`. A `Quat` is an abstract over
 `@:hxmc.struct QuatData`, a value copied, never allocated
-(src/helder/scene/math/Quat.hx). A closure returning a struct by value,
+(src/helder/math/Quat.hx). A closure returning a struct by value,
 used where a function returning `Dynamic` is expected, is the conversion
 hxmc does not make yet, so the caller reads a struct's bytes as a
 reference. `OrbitControls`' `target` works round it in the same way

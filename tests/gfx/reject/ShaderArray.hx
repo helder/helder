@@ -1,6 +1,7 @@
 // Arrays allocate: not in a shader (the error at the array).
-// expect: ShaderArray.hx:17: characters 11-21
+// expect: ShaderArray.hx:18: characters 11-21
 // expect: arrays are not supported in a shader
+import helder.math.*;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 

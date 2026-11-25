@@ -1,5 +1,6 @@
 package helder.sprite;
 
+import helder.math.*;
 import helder.gfx.*;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;

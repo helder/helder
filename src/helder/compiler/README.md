@@ -186,7 +186,8 @@ TS checked node ─► TS adapter  ──┘
 ### 3. Shaders
 
 ```ts
-import {shader, vec4, mix, normalize, pow, clamp, type Vec2, type Vec4, type Mat4} from 'helder/gfx'
+import {shader, vec4, mix, normalize, pow, clamp} from 'helder/gfx'
+import {type Vec2, type Vec4, type Mat4} from 'helder/math'
 
 type SkyParams = {invViewProj: Mat4, eye: Vec4, horizon: Vec4, zenith: Vec4}
 

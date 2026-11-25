@@ -1,6 +1,6 @@
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 
 // What each of post's effects adds to a program (sizes.sh's post table):

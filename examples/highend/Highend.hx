@@ -2,14 +2,14 @@
 // summary: Screen-space reflections on a polished floor, god rays from a low sun, TAA or SMAA, motion blur as the camera turns, and a transform gizmo on what you click
 // tags: 3d, post, gizmo, scene markup
 // demo: canvas 760x440
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.Camera;
 import helder.scene.Node;
 import helder.scene.World;
 import helder.scene.render.Light;
 import helder.scene.render.Sky;
-import helder.scene.math.Quat;
+import helder.math.Quat;
 import helder.scene.view.EffectTags.*;
 import helder.scene.view.SceneTags.*;
 import helder.scene.view.SceneView;

@@ -57,7 +57,7 @@ hosted web releases and store uploads.
 | | |
 | --- | --- |
 | [os](src/helder/os/README.md) | windows, input, the app loop, audio, on every platform |
-| [gfx](src/helder/gfx/README.md) | a GPU API over GL/GLES, Metal, D3D11, WebGPU, WebGL2 and the CPU; shaders in Haxe and TypeScript |
+| [gfx](src/helder/gfx/README.md), [math](src/helder/math/README.md) | a GPU API over GL/GLES, Metal, D3D11, WebGPU, WebGL2 and the CPU; shaders in Haxe and TypeScript; the vectors, matrices and quaternions they share |
 | [view](src/helder/view/README.md) | signals and markup, compiled to direct calls |
 | [ui](src/helder/ui/README.md) | CSS layout, text input, accessibility, keymaps, scrolling, drawn on gfx |
 | [web](src/helder/web/README.md) | view in the browser's DOM: rendering, hydration, islands |

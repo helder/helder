@@ -2,6 +2,7 @@
 // summary: A checkered floor to the horizon, filtered trilinearly through generated mip levels, and swatches of a texture's levels uploaded one by one
 // tags: gfx, shaders, 3d, textures
 // demo: canvas 512x384
+import helder.math.*;
 import MipsShader;
 import haxe.io.Bytes;
 import helder.gfx.*;

@@ -1,5 +1,5 @@
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.World;
 import helder.scene.view.SceneRenderer;
 import helder.view.*;

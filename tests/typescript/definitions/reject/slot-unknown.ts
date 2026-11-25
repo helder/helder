@@ -1,6 +1,7 @@
 // with(...) replaces the slots a slot object has (in Haxe: RejectSlotUnknown.hx).
 // expect: shader: the slot object has no slot colour (it has color)
-import {slots, position, vec3, vec4, type Vec2, type Vec3, type Vec4} from "helder/gfx";
+import {slots, position, vec3, vec4} from "helder/gfx";
+import {type Vec2, type Vec3, type Vec4} from "helder/math";
 
 type V = {pos: Vec2};
 type O = {pos: Vec4};

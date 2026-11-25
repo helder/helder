@@ -138,7 +138,7 @@ code: arithmetic on F64s, fields at fixed offsets, for-of over an array by
 index, `Math`'s functions called directly (Math is frozen). Such a class's
 constructor and methods are direct functions on a typed `this`: `new C(...)`
 makes and initializes the instance in place (C its declaration's name or an
-import of it: helder/gfx's Vec3 in a program's module, 64 bytes where the
+import of it: helder/math's Vec3 in a program's module, 64 bytes where the
 runtime's construct took 424), and `o.m(...)` calls the
 method o's class runs (found by o's prototype among C and its subclasses
 with layouts), the prototype keeping thin wrappers for dynamic calls. Its
@@ -191,10 +191,11 @@ classes, each the Haxe class `__haxe` names, its functions and components
 (`function f`, the static `__haxe` names: `f: "pack.Class.f"`, its class
 not declared) and the module's declaration class (`__module`). TSX is helder.view's markup.
 
-`helder/gfx` is TypeScript itself (`src/helder/gfx/index.ts`, written by
-`src/helder/gfx/typescript.mjs`), compiled with the program: the shader
-math as CPU code (Vec2, Vec3, Vec4, Mat4, Texture2D, ShaderMath's builtins
-by their names; the operators as methods, `a.mul(b)`) and
+`helder/math` and `helder/gfx` are TypeScript themselves
+(`src/helder/math/index.ts` and `src/helder/gfx/index.ts`, written by their
+`typescript.mjs`), compiled with the program: the math types as CPU code
+(Vec2, Vec3, Vec4, Mat4, Quat; the operators as methods, `a.mul(b)`),
+then the shader builtins (Texture2D, ShaderMath's builtins by their names) and
 `shader({vertex, fragment})`, a definition (src/helder/compiler/README.md).
 Its call is compiled when the program is (`lower/Definitions.hx`): the
 argument's kernel tree from the AST, its stages lowered to helder.gfx's
@@ -384,14 +385,14 @@ Uint8Array sharing them (a field's `@:typescript.type("Uint8ClampedArray")`
 another kind: ImageData's `data`), and a typed array, a DataView or an
 ArrayBuffer given for Bytes its bytes (shared when it views all its
 buffer, else copied).
-helder's math types, helder.gfx.shader's Vec2, Vec3, Vec4 and Mat4 and
-helder.scene.math's Quat (abstracts over `@:hxmc.struct` classes: values,
-immutable), are helder/gfx's classes of those names (the program's own,
-immutable too: the declarations import them from helder/gfx) and cross by
+helder's math types, helder.math's Vec2, Vec3, Vec4, Mat4 and Quat
+(abstracts over `@:hxmc.struct` classes: values, immutable), are
+helder/math's classes of those names (the program's own, immutable too:
+the declarations import them from helder/math) and cross by
 value (`Haxe.mathToHaxe`, `mathToJs`): a value given has its components
 copied into a slot of the caller's frame, the struct Haxe's function takes;
 a struct result (written where the call says, its sret) or a struct field
-(read in the object) becomes a new instance of helder/gfx's class, so
+(read in the object) becomes a new instance of helder/math's class, so
 neither side sees the other change; a struct field written is copied in
 (tests/typescript/helder/math.ts, tests/view's MathProbe). The manifest's
 keep calls a function taking or returning one rather than naming it as a
@@ -552,7 +553,7 @@ attributes that read bound, a Read prop, a getter), `static.tsx` (helder.web's
 static renderer, an island), `ui.tsx` (helder.ui headless, `env()`), `async.ts`
 (async functions on the graph: an async memo, a run cancelled, writes after
 an await), `bytes.ts` (Bytes as typed arrays: ImageData, a PNG), `math.ts`
-(helder's math types as helder/gfx's classes, by value), `scene.ts`
+(helder's math types as helder/math's classes, by value), `scene.ts`
 (helder/scene without a GPU: nodes, a camera, a light, a material and its
 constructor's defaults, a fixed step). The 3d lane draws helder/scene's
 frames from TypeScript (tests/3d/ts/frames.ts: examples/ts-scene's scenes,

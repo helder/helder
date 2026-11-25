@@ -5,14 +5,14 @@
 import Atmosphere;
 import haxe.io.Bytes;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.image.Image;
 import helder.os.*;
 import helder.scene.*;
 import helder.scene.debug.FrameStats;
 import helder.scene.debug.Overlay;
-import helder.scene.math.Quat;
+import helder.math.Quat;
 import helder.scene.render.*;
 
 // The atmosphere is the example's own code (Atmosphere, AtmosphereShader:

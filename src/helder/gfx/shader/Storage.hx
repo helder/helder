@@ -1,5 +1,7 @@
 package helder.gfx.shader;
 
+import helder.math.*;
+
 // A storage buffer a compute stage reads (ShaderMath.compute): its
 // parameter, at a slot of its own (Encoder.setStorage), read by index
 // (p.lights[i]); GLSL's readonly buffer block (std430), WGSL's

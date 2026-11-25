@@ -1,6 +1,7 @@
-import helder.gfx.shader.Mat4;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Quat;
+import helder.math.Mat4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.asset.Asset;
 import helder.asset.Assets;
 import helder.scene.*;

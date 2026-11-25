@@ -2,8 +2,8 @@ package helder.scene.render;
 
 import haxe.io.Bytes;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.math.MathTools;
 import helder.scene.render.SkyShader;
 
@@ -22,13 +22,13 @@ class Sky implements RenderFeature {
 	final quad:Buffer;
 	final bytes = Bytes.alloc(SkyShader.uniforms[0].size);
 	// (the block as written, kept: nothing allocated per frame)
-	final block:SkyParams = {invViewProj: helder.gfx.shader.Mat4.identity(), eye: new Vec4(0, 0, 0, 0), zenith: new Vec4(0, 0, 0, 0), horizon: new Vec4(0, 0, 0, 0), ground: new Vec4(0, 0, 0, 0), sun: new Vec4(0, 0, 0, 0), sunColor: new Vec4(0, 0, 0, 0), fog: new Vec4(0, 0, 0, 0), fogShape: new Vec4(0, 0, 0, 0)};
+	final block:SkyParams = {invViewProj: helder.math.Mat4.identity(), eye: new Vec4(0, 0, 0, 0), zenith: new Vec4(0, 0, 0, 0), horizon: new Vec4(0, 0, 0, 0), ground: new Vec4(0, 0, 0, 0), sun: new Vec4(0, 0, 0, 0), sunColor: new Vec4(0, 0, 0, 0), fog: new Vec4(0, 0, 0, 0), fogShape: new Vec4(0, 0, 0, 0)};
 
 	public function new(device:Device) {
 		this.device = device;
 		var v = SkyShader.vertexBytes([
-			{pos: new helder.gfx.shader.Vec2(-1, -1)}, {pos: new helder.gfx.shader.Vec2(1, -1)}, {pos: new helder.gfx.shader.Vec2(-1, 1)},
-			{pos: new helder.gfx.shader.Vec2(-1, 1)}, {pos: new helder.gfx.shader.Vec2(1, -1)}, {pos: new helder.gfx.shader.Vec2(1, 1)}
+			{pos: new helder.math.Vec2(-1, -1)}, {pos: new helder.math.Vec2(1, -1)}, {pos: new helder.math.Vec2(-1, 1)},
+			{pos: new helder.math.Vec2(-1, 1)}, {pos: new helder.math.Vec2(1, -1)}, {pos: new helder.math.Vec2(1, 1)}
 		]);
 		quad = device.createBuffer({size: v.length, usage: Vertex, data: v});
 	}

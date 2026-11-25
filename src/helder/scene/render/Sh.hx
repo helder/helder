@@ -2,8 +2,8 @@ package helder.scene.render;
 
 import haxe.io.Bytes;
 import helder.gfx.TextureFormat;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 
 // Light around a point as L2 spherical harmonics (Ramamoorthi and Hanrahan,
 // "An Efficient Representation for Irradiance Environment Maps"): nine RGB

@@ -4,11 +4,11 @@
 // demo: canvas 640x400
 import haxe.io.Bytes;
 import helder.gfx.Texture;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.Camera;
 import helder.scene.World;
-import helder.scene.math.Quat;
+import helder.math.Quat;
 import helder.scene.render.Geometry;
 import helder.scene.render.Light;
 import helder.scene.render.Lines;

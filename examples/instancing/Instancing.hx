@@ -3,13 +3,13 @@
 // tags: 3d, instancing, performance
 // demo: canvas 640x480
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.scene.*;
 import helder.scene.debug.FrameStats;
 import helder.scene.debug.Overlay;
-import helder.scene.math.Quat;
+import helder.math.Quat;
 import helder.scene.render.*;
 
 // Three ways to draw many copies of one mesh, the same rocks in each:

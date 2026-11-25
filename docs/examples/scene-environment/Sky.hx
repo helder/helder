@@ -4,8 +4,8 @@
 // demo: canvas 640x400
 import haxe.io.Bytes;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.scene.*;
 import helder.scene.render.*;

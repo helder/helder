@@ -2,10 +2,11 @@
 // summary: Text3D: a word extruded and bevelled, lit and casting its shadow; a score turned to the camera over a ball, counting up; a flat sign; all of it helder.text's outlines made geometry
 // tags: 3d, text, geometry, docs
 // demo: canvas 640x400
+import helder.math.Quat;
 import helder.asset.Asset;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.scene.*;
 import helder.scene.math.*;

@@ -2,8 +2,8 @@ package helder.scene.render;
 
 import haxe.io.Bytes;
 import helder.gfx.*;
-import helder.gfx.shader.Vec2;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec2;
+import helder.math.Vec4;
 import helder.scene.render.PostShader;
 import helder.scene.render.CompositeFxaaShader;
 import helder.scene.render.PostEffects;
@@ -81,8 +81,8 @@ class PostProcess {
 	public var saturation = 1.0;
 	public var contrast = 1.0;
 	// added to the shadows (rgb, 0 to about 0.05) and the colour's gain (rgb)
-	public var lift = new helder.gfx.shader.Vec3(0, 0, 0);
-	public var gain = new helder.gfx.shader.Vec3(1, 1, 1);
+	public var lift = new helder.math.Vec3(0, 0, 0);
+	public var gain = new helder.math.Vec3(1, 1, 1);
 	// how much darker the corners are (0 to 1)
 	public var vignette = 0.0;
 	// film grain's strength (0 to about 0.1); a dither below a step of 8 bits is always there

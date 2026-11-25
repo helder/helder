@@ -1,7 +1,7 @@
 package helder.scene.render;
 
-import helder.gfx.shader.Vec2;
-import helder.gfx.shader.Vec3;
+import helder.math.Vec2;
+import helder.math.Vec3;
 import helder.scene.Node;
 
 // Where a ray met the world (world.raycast, Raycaster): filled by the cast,

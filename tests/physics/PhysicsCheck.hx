@@ -1,4 +1,4 @@
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.physics.*;
 import helder.scene.*;
 
@@ -89,7 +89,7 @@ class PhysicsCheck {
 		var w6 = new PhysicsWorld();
 		w6.add(new Body(Plane(new Vec3(0, 1, 0), 0), new Vec3(0, 0, 0), 0));
 		var box = w6.add(new Body(Box(new Vec3(0.5, 0.25, 0.5)), new Vec3(0, 1.5, 0)));
-		box.orientation = helder.scene.math.Quat.axisAngle(new Vec3(1, 0, 1), 0.5);
+		box.orientation = helder.math.Quat.axisAngle(new Vec3(1, 0, 1), 0.5);
 		var turned = false;
 		var top:Null<Body> = null;
 		for (k in 0...600) {
@@ -116,7 +116,7 @@ class PhysicsCheck {
 		// a turned box's raycast: from above at a corner's reach
 		var rb = new PhysicsWorld();
 		var turnedBox = rb.add(new Body(Box(new Vec3(1, 1, 1)), new Vec3(0, 0, 0), 0));
-		turnedBox.orientation = helder.scene.math.Quat.axisAngle(new Vec3(0, 0, 1), Math.PI / 4);
+		turnedBox.orientation = helder.math.Quat.axisAngle(new Vec3(0, 0, 1), Math.PI / 4);
 		var rh = rb.raycast(new Vec3(0, 5, 0), new Vec3(0, -1, 0));
 		check("raycast on a turned box", rh != null && near(rh.distance, 5 - Math.sqrt(2), 1e-9));
 		// capsules: one kept upright stands on the plane and on a box, one tilted falls flat
@@ -128,7 +128,7 @@ class PhysicsCheck {
 		var onStep = cw.add(new Body(Capsule(0.3, 0.6), new Vec3(4.2, 3, 0)));
 		onStep.rotates = false;
 		var lying = cw.add(new Body(Capsule(0.25, 0.5), new Vec3(-3, 2, 0)));
-		lying.orientation = helder.scene.math.Quat.axisAngle(new Vec3(0, 0, 1), 0.4);
+		lying.orientation = helder.math.Quat.axisAngle(new Vec3(0, 0, 1), 0.4);
 		for (_ in 0...400)
 			cw.step(dt);
 		check('an upright capsule stands on the plane (y ${Math.round(standing.position.y * 1000) / 1000})',
@@ -143,9 +143,9 @@ class PhysicsCheck {
 		Collide.test(cap, new Body(Sphere(0.5), new Vec3(0.9, 0.5, 0)), contacts);
 		check("capsule and sphere: along the side", contacts.length == 1 && near(contacts[0].depth, 0.1, 1e-9) && near(contacts[0].normal.x, 1, 1e-9));
 		var across = new Body(Capsule(0.5, 1), new Vec3(0, 0, 0), 0);
-		across.orientation = helder.scene.math.Quat.axisAngle(new Vec3(0, 0, 1), Math.PI / 2);
+		across.orientation = helder.math.Quat.axisAngle(new Vec3(0, 0, 1), Math.PI / 2);
 		var other = new Body(Capsule(0.5, 1), new Vec3(0, 0.9, 0), 0);
-		other.orientation = helder.scene.math.Quat.axisAngle(new Vec3(1, 0, 0), Math.PI / 2);
+		other.orientation = helder.math.Quat.axisAngle(new Vec3(1, 0, 0), Math.PI / 2);
 		contacts = [];
 		Collide.test(across, other, contacts);
 		check("crossed capsules", contacts.length == 1 && near(contacts[0].depth, 0.1, 1e-9) && near(contacts[0].normal.y, 1, 1e-9));

@@ -2,6 +2,7 @@
 // summary: A scene rendered into a texture with its own depth buffer each frame, then shown on the faces of the cube
 // tags: gfx, shaders, 3d, render targets
 // demo: canvas 512x384
+import helder.math.*;
 import TargetsShader;
 import haxe.io.Bytes;
 import helder.gfx.*;

@@ -1,7 +1,7 @@
 package helder.scene.render;
 
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 
 // Fog over a scene (Renderer.fog; null: none). A surface's light is mixed
 // towards color (linear, times the exposure) by the fog between it and

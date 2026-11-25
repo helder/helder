@@ -2,9 +2,10 @@
 // summary: helder.scene's optional renderer features together: an environment map lighting metal and plastic spheres, a normal-mapped crate, a morphing surface, two shadow cascades, see-through glass; drag to turn around
 // tags: 3d, pbr, gltf
 // demo: canvas 512x384
+import helder.math.Quat;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.asset.Asset;
 import helder.asset.Assets;

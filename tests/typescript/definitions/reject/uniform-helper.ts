@@ -1,6 +1,7 @@
 // A uniform's value is read in a stage, passed on to what it calls (in Haxe: RejectUniformHelper.hx).
 // expect: shader: time.value: a uniform is read in a stage (its value passed on to the functions it calls)
-import {shader, uniform, position, vec4, type Vec2, type Vec4} from "helder/gfx";
+import {shader, uniform, position, vec4} from "helder/gfx";
+import {type Vec2, type Vec4} from "helder/math";
 
 type V = {pos: Vec2};
 type O = {pos: Vec4};

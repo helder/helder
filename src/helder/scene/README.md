@@ -44,12 +44,11 @@ into results the caller owns.
 
 ## Math
 
-gfx's shader types (`Vec2`, `Vec3`, `Vec4`, `Mat4` of `helder.gfx.shader`)
-are the CPU's types too, so what the CPU computes is what a shader reads.
-3d adds, as immutable values like them:
+helder.math's types (`Vec2`, `Vec3`, `Vec4`, `Mat4`, `Quat`:
+[helder.math](/src/helder/math/README.md)) are the CPU's and the shaders'
+types, so what the CPU computes is what a shader reads. 3d adds, as
+immutable values like them (`helder.scene.math`):
 
-- `Quat`: a unit quaternion (`axisAngle`, `fromEuler`, `fromMat4`, `*`,
-  `rotate`, `toMat4`, `slerp`, `conjugate`);
 - `Aabb`: an axis-aligned box (`union`, `transform`, `contains`,
   `intersects`, `ray`);
 - `MathTools`, a static extension of `Mat4` (`using

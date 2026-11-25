@@ -2,9 +2,9 @@ package helder.scene.render;
 
 import haxe.io.Bytes;
 import helder.gfx.*;
-import helder.gfx.shader.Mat4;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Mat4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.Camera;
 import helder.scene.Node;
 import helder.scene.World;
@@ -108,7 +108,7 @@ class Renderer {
 	// target (x right, y down; 0, 0: none): temporal antialiasing's
 	// (post.taa: Taa sets it before each frame), the view buffers' and
 	// the main pass's alike; the motion the view buffers record leaves it out
-	public var jitter:helder.gfx.shader.Vec2 = new helder.gfx.shader.Vec2(0, 0);
+	public var jitter:helder.math.Vec2 = new helder.math.Vec2(0, 0);
 	// the frames drawn (each draw one)
 	public var frames(default, null) = 0;
 	// the frame's point and spot lights (gathered by draw: what the draws'
@@ -404,7 +404,7 @@ class Renderer {
 		var projection = camera.projection(aspect);
 		frame.projection = jittered ? jitterOf(projection, jx, jy) : projection;
 		frame.viewProj = viewProj;
-		frame.jitter = new helder.gfx.shader.Vec2(jx, jy);
+		frame.jitter = new helder.math.Vec2(jx, jy);
 		frame.stillViewProj = still;
 		frame.previousViewProj = frames > 0 && lastWorld == world ? lastViewProj : still;
 		frame.index = frames;
@@ -1286,7 +1286,7 @@ class FrameInfo {
 	public var stillViewProj:Mat4 = Mat4.identity();
 	public var previousViewProj:Mat4 = Mat4.identity();
 	// the jitter in clip space (x, y: Renderer.jitter's)
-	public var jitter:helder.gfx.shader.Vec2 = new helder.gfx.shader.Vec2(0, 0);
+	public var jitter:helder.math.Vec2 = new helder.math.Vec2(0, 0);
 	// the renderer's frames drawn before this one
 	public var index = 0;
 	public var eye:Vec3 = new Vec3(0, 0, 0);

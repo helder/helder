@@ -5,7 +5,8 @@
 // SceneRenderer took them as Haxe's values, the run threw (a class cast).
 import { UiWindow, Surface } from "helder/ui";
 import { Scene } from "helder/scene/view";
-import { vec3, vec4, Quat } from "helder/gfx";
+import { vec3, vec4 } from "helder/gfx";
+import { Quat } from "helder/math";
 
 UiWindow.run(<Surface title="Props" width={320} height={240}>
 	<Scene flexGrow={1}>

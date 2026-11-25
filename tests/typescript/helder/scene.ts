@@ -4,7 +4,8 @@
 // (InputMap's is examples/ts-scene's: it reaches the windows' code, which a
 // static build does not link)
 import { World, Node, Camera, Light, Material, FixedStep } from "helder/scene";
-import { vec3, vec4, Quat } from "helder/gfx";
+import { vec3, vec4 } from "helder/gfx";
+import { Quat } from "helder/math";
 
 const world = new World("test");
 const arm = world.node("arm");

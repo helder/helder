@@ -1,10 +1,10 @@
 package helder.scene.render;
 
 import helder.gfx.Device;
-import helder.gfx.shader.Mat4;
-import helder.gfx.shader.Vec2;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Mat4;
+import helder.math.Vec2;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.World;
 import helder.scene.render.EffectShaders.octDecode;
 import helder.scene.render.EffectShaders.viewPointAt;

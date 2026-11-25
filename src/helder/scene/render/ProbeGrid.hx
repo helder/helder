@@ -1,7 +1,7 @@
 package helder.scene.render;
 
 import haxe.io.Bytes;
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.scene.Node;
 
 // A grid of light probes, a component of a node: a box (size, centred on

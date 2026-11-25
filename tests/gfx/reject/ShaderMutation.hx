@@ -1,6 +1,7 @@
 // Shader values are immutable (a struct is copied on the GPU, shared on the CPU): assigning to a field is an error.
-// expect: ShaderMutation.hx:18: characters 3-8
+// expect: ShaderMutation.hx:19: characters 3-8
 // expect: shader values are immutable: assign to a local, not to a field
+import helder.math.*;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 

@@ -8,7 +8,8 @@
 // tests/3d/LineScenes.hx.)
 import { World, Shapes, Geometry, Material, MeshRenderer, Hit, HitList, RaycastOptions, Raycaster, Bvh, Lines, DebugDraw,
 	AxesHelper, BoundsHelper, Helper } from "helder/scene";
-import { vec3, Quat } from "helder/gfx";
+import { vec3 } from "helder/gfx";
+import { Quat } from "helder/math";
 
 const world = new World("pick");
 const box = world.node("box");

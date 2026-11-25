@@ -1,6 +1,6 @@
 package helder.scene.render;
 
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.scene.Node;
 
 // A light probe, a component of a node: the light around its node's position

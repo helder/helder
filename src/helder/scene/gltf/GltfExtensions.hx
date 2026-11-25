@@ -1,7 +1,7 @@
 package helder.scene.gltf;
 
-import helder.gfx.shader.Vec2;
-import helder.gfx.shader.Vec3;
+import helder.math.Vec2;
+import helder.math.Vec3;
 import helder.scene.gltf.GltfDoc;
 import helder.scene.render.Material;
 

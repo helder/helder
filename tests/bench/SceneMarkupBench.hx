@@ -1,5 +1,5 @@
 import haxe.Timer;
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.scene.Camera;
 import helder.scene.Node;
 import helder.scene.World;

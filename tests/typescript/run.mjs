@@ -245,7 +245,8 @@ for(const file of fs.readdirSync(`${D}/reject`).filter(f=>/\.tsx?$/.test(f)).sor
     assert.ok((b.stdout+b.stderr).includes(want),`${main}.hx should report ${want}, got ${b.stdout}${b.stderr}`);
     console.log(`PASS definition rejected: ${file}, ${main}.hx`);
 }
-// helder/gfx's TypeScript, as typescript.mjs writes it
+// helder/math's and helder/gfx's TypeScript, as their typescript.mjs write them
+if(mine())ok(run(process.execPath,['src/helder/math/typescript.mjs','--check']),'src/helder/math/index.ts');
 if(mine())ok(run(process.execPath,['src/helder/gfx/typescript.mjs','--check']),'src/helder/gfx/index.ts');
 // The CLI end to end: TypeScript entries built and run by `helder run` (a file, a directory)
 // (one unit with helder dev's below: the CLI built once)

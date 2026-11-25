@@ -1,12 +1,12 @@
 package helder.scene.view;
 
-import helder.gfx.shader.Mat4;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Mat4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.Camera;
 import helder.scene.Node;
 import helder.scene.math.MathTools;
-import helder.scene.math.Quat;
+import helder.math.Quat;
 import helder.scene.render.Lines;
 import helder.ui.gesture.Gesture;
 

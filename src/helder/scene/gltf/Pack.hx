@@ -291,9 +291,9 @@ class Pack {
 			var t = g.translation, r = g.rotation, s = g.scale;
 			if (g.matrix != null) {
 				var m = g.matrix;
-				var d = MathTools.decompose(new helder.gfx.shader.Mat4(new helder.gfx.shader.Vec4(m[0], m[1], m[2], m[3]),
-					new helder.gfx.shader.Vec4(m[4], m[5], m[6], m[7]), new helder.gfx.shader.Vec4(m[8], m[9], m[10], m[11]),
-					new helder.gfx.shader.Vec4(m[12], m[13], m[14], m[15])));
+				var d = MathTools.decompose(new helder.math.Mat4(new helder.math.Vec4(m[0], m[1], m[2], m[3]),
+					new helder.math.Vec4(m[4], m[5], m[6], m[7]), new helder.math.Vec4(m[8], m[9], m[10], m[11]),
+					new helder.math.Vec4(m[12], m[13], m[14], m[15])));
 				t = d.t;
 				r = d.r;
 				s = d.s;

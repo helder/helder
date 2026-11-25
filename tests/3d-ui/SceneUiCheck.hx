@@ -1,4 +1,4 @@
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.scene.*;
 import helder.scene.render.InstancedMesh;
 import helder.scene.render.Light;
@@ -50,7 +50,7 @@ class SceneUiCheck implements Markup {
 			<light kind="point" intensity={() -> x() * 2} range={8.0}/>
 			<Show when={shown}><node name="flag"/></Show>
 			<For each={moons}>{m -> <node name={m()}/>}</For>
-			<hemisphereLight name="sky" sky={new helder.gfx.shader.Vec3(0.5, 0.6, 0.9)} ground={new helder.gfx.shader.Vec3(0.3, 0.2, 0.1)} intensity={2}/>
+			<hemisphereLight name="sky" sky={new helder.math.Vec3(0.5, 0.6, 0.9)} ground={new helder.math.Vec3(0.3, 0.2, 0.1)} intensity={2}/>
 			<sprites name="clouds" of={clouds} mode="axis"/>
 			<mesh name="post"><cylinderGeometry radiusTop={0.2} height={1} flat/><toonMaterial steps={3}/></mesh>
 			<spotLight name="lamp" range={12.0} castShadows shadowSize={512} shadowBias={0.002} shadowRadius={1.5}/>
@@ -117,9 +117,9 @@ class SceneUiCheck implements Markup {
 		var world = new World();
 		var angle = signal(0.5), lift = signal(1.0), red = signal(0.25), power = signal(2.0), kind = signal("point");
 		Render.render(<node>
-			<node name="turned" rotation={helder.scene.math.Quat.axisAngle(up, angle())} position={new Vec3(0, lift(), 0)} scale={new Vec3(2, 2, 2)}/>
-			<node name="fixed" rotation={helder.scene.math.Quat.axisAngle(up, 0.25)}/>
-			<mesh name="painted" shape="box" color={new helder.gfx.shader.Vec4(red(), 0, 0, 1)} roughness={0.75}/>
+			<node name="turned" rotation={helder.math.Quat.axisAngle(up, angle())} position={new Vec3(0, lift(), 0)} scale={new Vec3(2, 2, 2)}/>
+			<node name="fixed" rotation={helder.math.Quat.axisAngle(up, 0.25)}/>
+			<mesh name="painted" shape="box" color={new helder.math.Vec4(red(), 0, 0, 1)} roughness={0.75}/>
 			<light name="bulb" kind={kind()} intensity={power()} range={6} castShadows/>
 			<camera name="lens" fov={angle() * 2}/>
 		</node>, SceneRenderer.root(world));

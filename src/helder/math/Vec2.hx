@@ -1,10 +1,10 @@
-package helder.gfx.shader;
+package helder.math;
 
 // 2 floats: vec2 in a shader, an immutable value in CPU code (a
 // @:hxmc.struct value on hxmc's targets: copied, never allocated; an object
 // elsewhere, such as the macro context). The components and swizzles read
 // only; the operators are VecBuild's.
-@:build(helder.gfx.shader.VecBuild.vector(2))
+@:build(helder.math.VecBuild.vector(2))
 @:forward(x, y)
 abstract Vec2(Vec2Data) {
 	public inline function new(x:Float, y:Float)

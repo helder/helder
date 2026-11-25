@@ -93,7 +93,7 @@ interface OcclusionSource {
 	// before the draw list: the results of the frames before read (what
 	// hidden answers), the queries' pass set up
 	// (viewProj: the frame's, eye: the camera's place)
-	function prepare(renderer:Renderer, world:helder.scene.World, viewProj:helder.gfx.shader.Mat4, eye:helder.gfx.shader.Vec3):Void;
+	function prepare(renderer:Renderer, world:helder.scene.World, viewProj:helder.math.Mat4, eye:helder.math.Vec3):Void;
 	// whether a node tested was hidden behind others when last answered
 	function hidden(node:helder.scene.Node):Bool;
 	// in the frame's pass, after its opaque surfaces: the tested nodes'
@@ -106,7 +106,7 @@ interface ShadowSource {
 	// the atlas' pass, before the frame's: the sun's cascades (towards the
 	// light toLight, fitted to frame's view), the local lights' tiles (the
 	// renderer's frameLights, their tiles set there)
-	function render(enc:helder.gfx.Encoder, renderer:Renderer, toLight:helder.gfx.shader.Vec3, frame:Renderer.FrameInfo):Void;
+	function render(enc:helder.gfx.Encoder, renderer:Renderer, toLight:helder.math.Vec3, frame:Renderer.FrameInfo):Void;
 	// the last pass's atlas and how to read it (an object: hxmc passes struct
 	// values through interface calls wrongly for now)
 	function shadowFrame():ShadowFrame;
@@ -117,17 +117,17 @@ class ShadowFrame {
 	public var map:helder.gfx.Texture = cast 0;
 	// the sun's first cascade: its view-projection; x strength, y bias, z a
 	// texel of the tile, w the soft radius in its uv; its tile in the atlas
-	public var viewProj:helder.gfx.shader.Mat4 = helder.gfx.shader.Mat4.identity();
-	public var params:helder.gfx.shader.Vec4 = new helder.gfx.shader.Vec4(0, 0, 0, 0);
-	public var rect:helder.gfx.shader.Vec4 = new helder.gfx.shader.Vec4(0, 0, 1, 1);
+	public var viewProj:helder.math.Mat4 = helder.math.Mat4.identity();
+	public var params:helder.math.Vec4 = new helder.math.Vec4(0, 0, 0, 0);
+	public var rect:helder.math.Vec4 = new helder.math.Vec4(0, 0, 1, 1);
 	// the second cascade's (one cascade: the first's)
-	public var viewProjFar:helder.gfx.shader.Mat4 = helder.gfx.shader.Mat4.identity();
-	public var paramsFar:helder.gfx.shader.Vec4 = new helder.gfx.shader.Vec4(0, 0, 0, 0);
-	public var rectFar:helder.gfx.shader.Vec4 = new helder.gfx.shader.Vec4(0, 0, 1, 1);
+	public var viewProjFar:helder.math.Mat4 = helder.math.Mat4.identity();
+	public var paramsFar:helder.math.Vec4 = new helder.math.Vec4(0, 0, 0, 0);
+	public var rectFar:helder.math.Vec4 = new helder.math.Vec4(0, 0, 1, 1);
 	// the soft filter's (PbrFrame.shadowSoft; x 0: the 3x3 filter)
-	public var soft:helder.gfx.shader.Vec4 = new helder.gfx.shader.Vec4(0, 0, 0, 0);
+	public var soft:helder.math.Vec4 = new helder.math.Vec4(0, 0, 0, 0);
 	// a texel of the atlas (x, y)
-	public var atlas:helder.gfx.shader.Vec4 = new helder.gfx.shader.Vec4(1, 1, 0, 0);
+	public var atlas:helder.math.Vec4 = new helder.math.Vec4(1, 1, 0, 0);
 	// the local lights' tiles: the rows after the frame's lights (FrameLights.ROW bytes each)
 	public var tiles:Null<haxe.io.Bytes> = null;
 	// the last frame's draws into the atlas, every tile's
@@ -172,9 +172,9 @@ class ClusterFrame {
 	// the cells' lists, then the lights' rows
 	public var clusterMap:helder.gfx.Texture = cast 0;
 	// PbrFrame's clusters, clusterDepth, clusterAxis
-	public var clusters:helder.gfx.shader.Vec4 = new helder.gfx.shader.Vec4(0, 0, 0, 0);
-	public var depth:helder.gfx.shader.Vec4 = new helder.gfx.shader.Vec4(0, 0, 0, 0);
-	public var axis:helder.gfx.shader.Vec4 = new helder.gfx.shader.Vec4(0, 0, 0, 0);
+	public var clusters:helder.math.Vec4 = new helder.math.Vec4(0, 0, 0, 0);
+	public var depth:helder.math.Vec4 = new helder.math.Vec4(0, 0, 0, 0);
+	public var axis:helder.math.Vec4 = new helder.math.Vec4(0, 0, 0, 0);
 
 	public function new() {}
 }

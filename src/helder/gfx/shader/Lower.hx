@@ -1,6 +1,7 @@
 package helder.gfx.shader;
 
 #if macro
+import helder.math.*;
 import haxe.macro.Context;
 import haxe.macro.Expr;
 import haxe.macro.Type;
@@ -31,6 +32,8 @@ using haxe.macro.Tools;
 // order is safe.
 class Lower implements ShaderAdapter {
 	static final SHADER_PACK = "helder.gfx.shader";
+	// (the math types: Vec2, Vec3, Vec4, Mat4)
+	static final MATH_PACK = "helder.math";
 
 	final structs = new Map<String, SStruct>();
 	final building = new Map<String, Bool>();
@@ -340,10 +343,10 @@ class Lower implements ShaderAdapter {
 					case ["", "Int"]: TInt;
 					case ["", "Bool"]: TBool;
 					case ["", "Void"]: TVoid;
-					case [SHADER_PACK, "Vec2"]: TVec(2);
-					case [SHADER_PACK, "Vec3"]: TVec(3);
-					case [SHADER_PACK, "Vec4"]: TVec(4);
-					case [SHADER_PACK, "Mat4"]: TMat4;
+					case [MATH_PACK, "Vec2"]: TVec(2);
+					case [MATH_PACK, "Vec3"]: TVec(3);
+					case [MATH_PACK, "Vec4"]: TVec(4);
+					case [MATH_PACK, "Mat4"]: TMat4;
 					// (a compute stage's storage buffers)
 					case [SHADER_PACK, "Storage"]: TStorage(type(params[0], pos), false);
 					case [SHADER_PACK, "RWStorage"]: TStorage(type(params[0], pos), true);
@@ -358,10 +361,10 @@ class Lower implements ShaderAdapter {
 				// (the math types' representations, as `this` of their methods)
 				var c = c.get();
 				switch [c.pack.join("."), c.name] {
-					case [SHADER_PACK, "Vec2Data"]: TVec(2);
-					case [SHADER_PACK, "Vec3Data"]: TVec(3);
-					case [SHADER_PACK, "Vec4Data"]: TVec(4);
-					case [SHADER_PACK, "Mat4Data"]: TMat4;
+					case [MATH_PACK, "Vec2Data"]: TVec(2);
+					case [MATH_PACK, "Vec3Data"]: TVec(3);
+					case [MATH_PACK, "Vec4Data"]: TVec(4);
+					case [MATH_PACK, "Mat4Data"]: TMat4;
 					case [SHADER_PACK, "Texture2D"]: TTexture;
 					case [SHADER_PACK, "TextureCube"]: TTextureCube;
 					case [SHADER_PACK, "Texture2DArray"]: TTextureArray;
@@ -981,7 +984,7 @@ class Lower implements ShaderAdapter {
 						error("the length of a storage buffer is not known to every back end (Metal's buffers have none): pass the count in a uniform block", e.pos);
 					case name: error('${a.get().name}.$name is not supported in a shader', e.pos);
 				}
-			case KAbstractImpl(a) if (a.get().pack.join(".") == SHADER_PACK):
+			case KAbstractImpl(a) if (a.get().pack.join(".") == MATH_PACK):
 				var xs = lowered();
 				var name = cf.name;
 				if (name == "_new") return {e: ENew(xs), t: t};

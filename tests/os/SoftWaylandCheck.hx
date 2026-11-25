@@ -1,4 +1,4 @@
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 import helder.gfx.*;
 import helder.os.*;
 

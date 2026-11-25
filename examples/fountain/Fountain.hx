@@ -2,6 +2,7 @@
 // summary: Drops of a fountain moved by a compute stage written in Haxe (helder.gfx's compute tier: WebGPU, Metal, D3D11, GL ES 3.1), drawn as instances straight from its storage buffer; on WebGL2 the same function runs on the CPU
 // tags: gfx, shaders, compute, particles
 // demo: canvas 640x480
+import helder.math.*;
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.gfx.shader.*;

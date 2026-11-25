@@ -2,6 +2,7 @@
 // summary: A textured cube with rounded, lit edges casting a soft shadow, depth-tested, its matrices a uniform block; drag it to turn it
 // tags: gfx, shaders, 3d, input
 // demo: canvas 512x384
+import helder.math.*;
 import CubeShader;
 import haxe.io.Bytes;
 import helder.gfx.*;

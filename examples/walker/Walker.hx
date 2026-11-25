@@ -2,9 +2,10 @@
 // summary: A capsule character of helder.physics (Character: steered, grounded by a ray, jumping) walking among crates it pushes and onto a platform, the camera following; arrow keys, WASD or a gamepad's stick walk, space, A or the lower right corner jumps
 // tags: 3d, physics
 // demo: canvas 512x384
+import helder.math.Quat;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.physics.*;
 import helder.scene.*;

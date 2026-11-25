@@ -2,9 +2,10 @@
 // summary: Lines with a width: a path marching in dashes, its colour fading along it; zig-zags with mitred, round and bevelled joins; a ribbon as wide in metres as it is long; a ring hidden behind a pillar where it passes, and one drawn over everything
 // tags: 3d, lines, docs
 // demo: canvas 640x400
+import helder.math.Quat;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.scene.*;
 import helder.scene.math.*;

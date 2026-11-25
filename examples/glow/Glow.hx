@@ -2,6 +2,7 @@
 // summary: A material of its own: the standard PBR shader with two of its slots replaced (a pulsing emissive light, a brighter base colour), drawn plain and instanced
 // tags: 3d, shaders, pbr
 // demo: canvas 512x384
+import helder.math.*;
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.gfx.shader.*;

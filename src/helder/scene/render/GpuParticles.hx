@@ -2,8 +2,8 @@ package helder.scene.render;
 
 import haxe.io.Bytes;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.math.MathTools;
 import helder.scene.render.GpuParticleShader;
 
@@ -48,7 +48,7 @@ class GpuParticles implements RenderFeature {
 	final indices:Buffer;
 	final viewBytes = Bytes.alloc(GpuParticleShader.uniforms[0].size);
 	// (the block as written, kept: nothing allocated per frame)
-	final viewBlock:GpuParticleView = {viewProj: helder.gfx.shader.Mat4.identity(), right: new Vec4(0, 0, 0, 0), up: new Vec4(0, 0, 0, 0), forward: new Vec4(0, 0, 0, 0), gravity: new Vec4(0, 0, 0, 0), fog: new Vec4(0, 0, 0, 0), fogShape: new Vec4(0, 0, 0, 0), eye: new Vec4(0, 0, 0, 0)};
+	final viewBlock:GpuParticleView = {viewProj: helder.math.Mat4.identity(), right: new Vec4(0, 0, 0, 0), up: new Vec4(0, 0, 0, 0), forward: new Vec4(0, 0, 0, 0), gravity: new Vec4(0, 0, 0, 0), fog: new Vec4(0, 0, 0, 0), fogShape: new Vec4(0, 0, 0, 0), eye: new Vec4(0, 0, 0, 0)};
 	var pipeline:Pipeline = cast 0;
 	// the next slot written, and the run written since the last upload (from, count)
 	var next = 0;

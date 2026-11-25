@@ -2,9 +2,10 @@
 // summary: A low sun casting soft shadows (Shadows.soft: sharp where they meet their casters, wider farther away), two coloured point lights circling and a spot light, under a sky
 // tags: 3d, lights, shadows, docs
 // demo: canvas 640x400
+import helder.math.Quat;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.scene.*;
 import helder.scene.math.*;

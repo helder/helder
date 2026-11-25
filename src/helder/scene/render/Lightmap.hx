@@ -1,7 +1,7 @@
 package helder.scene.render;
 
 import helder.gfx.Texture;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 import helder.scene.Node;
 
 // A baked lightmap, a component of a node (Bevy's model, not a material's

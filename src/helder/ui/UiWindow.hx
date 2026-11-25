@@ -1,7 +1,7 @@
 package helder.ui;
 
 import helder.os.Rect;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 
 import helder.os.DragOperation;
 #if (hxmc.target == "wasm32-wasi")

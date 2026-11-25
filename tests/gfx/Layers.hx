@@ -1,7 +1,7 @@
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 import haxe.io.Bytes;
 import helder.gfx.*;
-import helder.gfx.shader.Vec2;
+import helder.math.Vec2;
 import LayersShader;
 
 // The layers frame (LayersShader): cube and 2D array textures. A cube of 2x2

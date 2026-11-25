@@ -1,7 +1,7 @@
 package helder.scene.view;
 
 import helder.gfx.Texture;
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.scene.Camera;
 import helder.scene.Node as SceneGraphNode;
 import helder.scene.World;
@@ -290,7 +290,7 @@ class SceneBox extends helder.ui.Node {
 		hit.distance = b.distance;
 		hit.point = b.point;
 		hit.normal = ray.dir * -1;
-		hit.uv = new helder.gfx.shader.Vec2(0, 0);
+		hit.uv = new helder.math.Vec2(0, 0);
 		hit.triangle = -1;
 		hit.primitive = null;
 		hit.instance = -1;

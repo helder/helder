@@ -39,9 +39,9 @@ class HotWorld {
 			var i = at.get(path);
 			if (i == null || 10 * i + 10 > saved.trs.length) return;
 			var t = saved.trs, b = 10 * i;
-			n.position = new helder.gfx.shader.Vec3(t[b], t[b + 1], t[b + 2]);
-			n.rotation = new helder.scene.math.Quat(t[b + 3], t[b + 4], t[b + 5], t[b + 6]);
-			n.scale = new helder.gfx.shader.Vec3(t[b + 7], t[b + 8], t[b + 9]);
+			n.position = new helder.math.Vec3(t[b], t[b + 1], t[b + 2]);
+			n.rotation = new helder.math.Quat(t[b + 3], t[b + 4], t[b + 5], t[b + 6]);
+			n.scale = new helder.math.Vec3(t[b + 7], t[b + 8], t[b + 9]);
 			count++;
 		});
 		return count;

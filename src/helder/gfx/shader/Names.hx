@@ -1,5 +1,6 @@
 package helder.gfx.shader;
 
+import helder.math.*;
 import helder.gfx.shader.Ir;
 
 // The names of a shader program's code, shared by both adapters (Lower,

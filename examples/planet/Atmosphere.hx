@@ -2,8 +2,8 @@
 import AtmosphereShader;
 import haxe.io.Bytes;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.render.Renderer;
 import helder.scene.render.Renderer.FrameInfo;
 import AtmosphereShader.ozone;

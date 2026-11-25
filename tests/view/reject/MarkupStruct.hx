@@ -4,6 +4,6 @@
 // expect: (a struct value), which a function returning Dynamic cannot return yet
 class MarkupStruct implements helder.view.Markup {
 	static function main() {
-		var e = <div title={new helder.gfx.shader.Vec3(Math.random(), 0, 0)}/>;
+		var e = <div title={new helder.math.Vec3(Math.random(), 0, 0)}/>;
 	}
 }

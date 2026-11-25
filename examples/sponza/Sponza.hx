@@ -4,9 +4,9 @@
 // demo: canvas 960x600
 // data: models
 
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 import helder.asset.Asset;
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.async.Async;
 import helder.async.Fetch;
 import helder.scene.*;

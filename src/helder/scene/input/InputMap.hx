@@ -1,6 +1,6 @@
 package helder.scene.input;
 
-import helder.gfx.shader.Vec2;
+import helder.math.Vec2;
 import helder.os.Event;
 import helder.os.Gamepads;
 import helder.os.Pointer;

@@ -3,9 +3,9 @@
 // tags: 3d, particles, performance, touch
 // demo: canvas 640x480
 
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 import helder.os.*;
 import helder.scene.*;
 import helder.scene.debug.FrameStats;

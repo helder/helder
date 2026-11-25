@@ -6,7 +6,7 @@ import helder.canvas.Paint;
 import helder.canvas.Path;
 import helder.canvas.Stroke;
 import helder.canvas.SvgPath;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 import helder.image.Image;
 
 // The gallery's canvas piece: a neon sign drawn with helder.canvas's

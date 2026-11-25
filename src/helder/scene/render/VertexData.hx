@@ -1,12 +1,12 @@
 package helder.scene.render;
 
 import haxe.io.Bytes;
-import helder.gfx.shader.Mat4;
-import helder.gfx.shader.Vec2;
-import helder.gfx.shader.Vec3;
+import helder.math.Mat4;
+import helder.math.Vec2;
+import helder.math.Vec3;
 import helder.scene.math.Aabb;
 import helder.scene.math.MathTools;
-import helder.scene.math.Quat;
+import helder.math.Quat;
 
 // A primitive's vertices and indices in the renderer's layout, made from
 // arrays (Mesh.add at run time, the asset step's packer at build time,

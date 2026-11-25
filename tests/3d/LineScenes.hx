@@ -1,8 +1,8 @@
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.*;
-import helder.scene.math.Quat;
+import helder.math.Quat;
 import helder.scene.render.*;
 import helder.scene.render.Lines;
 
@@ -119,11 +119,11 @@ class LineScenes {
 					Debug.ray(new Vec3(-1.8, 0.2, -1.4), new Vec3(0.3, 1, 0), 1.2);
 					Debug.arrow(new Vec3(-1.0, 0.1, 0.6), new Vec3(0.2, 0.9, 0.2), 0x40FFC0);
 					Debug.aabb(box);
-					Debug.boxOf(helder.gfx.shader.Mat4.translation(1.9, 0.5, 0.2) * turned, new Vec3(-0.35, -0.35, -0.35), new Vec3(0.35, 0.35, 0.35), 0xFFE040);
+					Debug.boxOf(helder.math.Mat4.translation(1.9, 0.5, 0.2) * turned, new Vec3(-0.35, -0.35, -0.35), new Vec3(0.35, 0.35, 0.35), 0xFFE040);
 					Debug.sphere(new Vec3(0.4, 0.9, 0.9), 0.45);
 					Debug.circle(new Vec3(-2.8, 0.02, 0.4), new Vec3(0, 1, 0), 0.5, 0xFF80FF);
 					Debug.cross3(new Vec3(-2.8, 0.5, 0.4), 0.3);
-					Debug.axes(helder.gfx.shader.Mat4.translation(2.8, 0.02, 1.6) * turned, 0.6);
+					Debug.axes(helder.math.Mat4.translation(2.8, 0.02, 1.6) * turned, 0.6);
 					Debug.frustum(lens, 1.5);
 					Debug.light(sunNode);
 					Debug.light(bulb);

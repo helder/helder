@@ -2,9 +2,10 @@
 // summary: A scene graph: a planet orbiting its sun and a moon orbiting the planet, each a node turned under its parent, the camera a node too
 // tags: 3d, docs
 // demo: canvas 640x400
+import helder.math.Quat;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.scene.*;
 import helder.scene.math.*;

@@ -1,8 +1,8 @@
 package helder.scene.math;
 
-import helder.gfx.shader.Mat4;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Mat4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 
 // An axis-aligned box, min to max (an empty one: min above max, Aabb.empty),
 // immutable as the math types are.

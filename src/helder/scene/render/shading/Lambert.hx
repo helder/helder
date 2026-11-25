@@ -1,5 +1,6 @@
 package helder.scene.render.shading;
 
+import helder.math.*;
 import helder.gfx.shader.*;
 import helder.scene.render.MaterialShader;
 import helder.scene.render.PbrShader;

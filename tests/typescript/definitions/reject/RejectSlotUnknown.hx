@@ -1,5 +1,6 @@
 // with(...) replaces the slots a slot object has (in TypeScript: slot-unknown.ts).
 // expect: shader: the slot object has no slot colour (it has color)
+import helder.math.*;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 

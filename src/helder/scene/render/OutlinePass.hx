@@ -2,7 +2,7 @@ package helder.scene.render;
 
 import haxe.io.Bytes;
 import helder.gfx.*;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 import helder.scene.render.PostEffects;
 
 // Outline's part of the composite (PostFx's, made by post.outline's

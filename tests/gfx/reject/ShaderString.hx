@@ -1,6 +1,7 @@
 // Strings are not shader values.
-// expect: ShaderString.hx:17: characters 11-16
+// expect: ShaderString.hx:18: characters 11-16
 // expect: a String is not a shader value
+import helder.math.*;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 

@@ -292,7 +292,7 @@ abstract class ClassValues extends Expressions {
 	}
 
 	// `new C(...)` of a class with a layout, C its declaration's name or an
-	// import of it (helder/gfx's Vec3 in a program's module): made and
+	// import of it (helder/math's Vec3 in a program's module): made and
 	// initialized directly (before its declaration ran: the runtime's way,
 	// which throws)
 	function layoutConstruct(n:Node):Null<Ex> {

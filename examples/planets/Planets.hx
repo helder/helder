@@ -2,11 +2,11 @@
 // summary: A scene in ui's layout, all markup: <Scene> beside a panel, nodes turned by signals, a planet picked by a click, its name over it (<Ui>)
 // tags: 3d, ui, view, scene markup
 // demo: canvas 640x400
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.scene.Camera;
 import helder.scene.World;
-import helder.scene.math.Quat;
+import helder.math.Quat;
 import helder.scene.view.SceneTags.*;
 import helder.scene.view.SceneView;
 import helder.ui.Clock;

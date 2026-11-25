@@ -23,7 +23,7 @@
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 import type {Asset, FontFile, Image} from "helder/asset";
-import type {Mat4, Quat, Vec2, Vec3, Vec4} from "helder/gfx";
+import type {Mat4, Quat, Vec2, Vec3, Vec4} from "helder/math";
 import type {Node} from "helder/scene";
 import type {Read} from "helder/view";
 

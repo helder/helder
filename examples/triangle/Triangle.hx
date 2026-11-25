@@ -3,7 +3,7 @@
 // tags: gfx, shaders
 // demo: canvas 512x384
 
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 import helder.gfx.*;
 import helder.gfx.shader.ShaderMath.*;
 import helder.os.*;

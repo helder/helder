@@ -1,6 +1,6 @@
 package helder.physics;
 
-import helder.gfx.shader.Vec3;
+import helder.math.Vec3;
 
 // A step's contacts as Collide finds them, struct-of-arrays: the bodies,
 // then STRIDE floats each (the normal from a to b, the point, the depth,

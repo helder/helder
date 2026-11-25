@@ -1,5 +1,6 @@
 // A shader takes the fields it knows (in TypeScript: unknown-field.ts).
 // expect: shader: the argument has no field vertx (it has vertex, fragment)
+import helder.math.*;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 

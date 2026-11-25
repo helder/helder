@@ -1,5 +1,6 @@
 // A closure is not shader code (in TypeScript: closure.ts).
 // expect: shader: a closure is not supported in a shader
+import helder.math.*;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 

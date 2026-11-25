@@ -1,5 +1,6 @@
 package helder.gfx.shader;
 
+import helder.math.*;
 import haxe.macro.Expr;
 
 // A slot object (ShaderMath.slots, a definition: DESIGN.md 3 in

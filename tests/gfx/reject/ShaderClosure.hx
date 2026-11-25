@@ -1,6 +1,7 @@
 // A closure is not shader code.
-// expect: ShaderClosure.hx:17: characters 11-29
+// expect: ShaderClosure.hx:18: characters 11-29
 // expect: a closure is not supported in a shader
+import helder.math.*;
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 

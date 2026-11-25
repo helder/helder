@@ -1,8 +1,8 @@
 package helder.ui.draw.soft;
 
 import helder.gfx.shader.ShaderMath.*;
-import helder.gfx.shader.Vec2;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec2;
+import helder.math.Vec4;
 import helder.ui.draw.UiShapes;
 import hxmc.simd.F32x4;
 import hxmc.simd.I32x4;

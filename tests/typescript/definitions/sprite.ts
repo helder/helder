@@ -1,6 +1,7 @@
 // helder.sprite's shader (src/helder/sprite/SpriteShader.hx) in TypeScript:
 // the same text in every language as Haxe's (Sprite.hx prints that one).
-import {shader, position, sample, vec2, vec4, type Vec2, type Vec4, type Texture2D} from "helder/gfx";
+import {shader, position, sample, vec2, vec4, type Texture2D} from "helder/gfx";
+import {type Vec2, type Vec4} from "helder/math";
 import {print} from "./print";
 
 type SpriteVertex = {pos: Vec2, uv: Vec2, color: Vec4};

@@ -1,7 +1,8 @@
 // uniform(value) in TypeScript: the shader that reads its value gets it in
 // a block of its own (Uniforms: offset, then time, as first read), the
 // same text in every language as Haxe's (Pulse.hx), the same bytes.
-import {shader, uniform, position, sin, vec2, vec4, type Vec2, type Vec4} from "helder/gfx";
+import {shader, uniform, position, sin, vec2, vec4} from "helder/gfx";
+import {type Vec2, type Vec4} from "helder/math";
 import {print} from "./print";
 
 type PulseVertex = {pos: Vec2};

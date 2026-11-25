@@ -1,8 +1,9 @@
+import helder.math.Quat;
 import haxe.Timer;
 import haxe.io.Bytes;
-import helder.gfx.shader.Mat4;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Mat4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.physics.*;
 import helder.scene.Camera;
 import helder.scene.World;

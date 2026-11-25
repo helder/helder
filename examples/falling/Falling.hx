@@ -2,9 +2,10 @@
 // summary: Balls and tumbling boxes dropped into a walled box by helder.physics (contacts with angular impulses, restitution, friction, sleeping at a fixed step), drawn by helder.scene with shadows; click to drop more
 // tags: 3d, physics
 // demo: canvas 512x384
+import helder.math.Quat;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.physics.*;
 import helder.scene.*;

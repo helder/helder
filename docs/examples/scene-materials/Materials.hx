@@ -2,10 +2,11 @@
 // summary: The standard material's parameters side by side: metal and plastic from smooth to rough, a clear coat, transmission, an alpha cutoff and emission, lit by an environment map
 // tags: 3d, pbr, docs
 // demo: canvas 640x400
+import helder.math.Quat;
 import helder.asset.Asset;
 import helder.gfx.*;
-import helder.gfx.shader.Vec3;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec3;
+import helder.math.Vec4;
 import helder.os.*;
 import helder.scene.*;
 import helder.scene.math.*;

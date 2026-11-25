@@ -30,7 +30,7 @@ class LaneBuild {
 			fields.push(f);
 		}
 		pub(fn("fill", [["s", "Lane"]], self, each("s"), null, false));
-		pub(fn("splat", [["v", 'helder.gfx.shader.Vec$n']], self, each("Lane.splat(v.$)"), null, false));
+		pub(fn("splat", [["v", 'helder.math.Vec$n']], self, each("Lane.splat(v.$)"), null, false));
 		pub(fn("zero", [], self, each("Lane.zero()"), null, false));
 		pub(fn("select", [["m", "LaneBool"], ["a", self], ["b", self]], self, each("Lane.select(m, a.$, b.$)"), null, false));
 		return fields;

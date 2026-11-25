@@ -2,7 +2,7 @@ package helder.scene.render;
 
 import haxe.io.Bytes;
 import helder.gfx.*;
-import helder.gfx.shader.Vec4;
+import helder.math.Vec4;
 import helder.scene.math.MathTools;
 import helder.scene.render.EnvironmentShader;
 
@@ -63,7 +63,7 @@ class Environment implements RenderFeature {
 	final flat:Sampler;
 	final bytes = Bytes.alloc(EnvironmentShader.uniforms[0].size);
 	// (the block as written, kept: nothing allocated per frame)
-	final block:EnvironmentParams = {invViewProj: helder.gfx.shader.Mat4.identity(), eye: new Vec4(0, 0, 0, 0), params: new Vec4(0, 0, 0, 0), fog: new Vec4(0, 0, 0, 0), fogShape: new Vec4(0, 0, 0, 0)};
+	final block:EnvironmentParams = {invViewProj: helder.math.Mat4.identity(), eye: new Vec4(0, 0, 0, 0), params: new Vec4(0, 0, 0, 0), fog: new Vec4(0, 0, 0, 0), fogShape: new Vec4(0, 0, 0, 0)};
 
 	// texture: mip-mapped (Images.mipmapped's), width twice its height; or
 	// a prefiltered atlas of rows levels (prefiltered), width its width
@@ -77,8 +77,8 @@ class Environment implements RenderFeature {
 			l++;
 		levels = l;
 		var v = EnvironmentShader.vertexBytes([
-			{pos: new helder.gfx.shader.Vec2(-1, -1)}, {pos: new helder.gfx.shader.Vec2(1, -1)}, {pos: new helder.gfx.shader.Vec2(-1, 1)},
-			{pos: new helder.gfx.shader.Vec2(-1, 1)}, {pos: new helder.gfx.shader.Vec2(1, -1)}, {pos: new helder.gfx.shader.Vec2(1, 1)}
+			{pos: new helder.math.Vec2(-1, -1)}, {pos: new helder.math.Vec2(1, -1)}, {pos: new helder.math.Vec2(-1, 1)},
+			{pos: new helder.math.Vec2(-1, 1)}, {pos: new helder.math.Vec2(1, -1)}, {pos: new helder.math.Vec2(1, 1)}
 		]);
 		quad = device.createBuffer({size: v.length, usage: Vertex, data: v});
 		sampler = device.createSampler({filter: Linear, mipFilter: Linear, wrap: Repeat});

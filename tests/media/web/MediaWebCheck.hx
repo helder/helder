@@ -197,10 +197,10 @@ class MediaWebCheck {
 		vt.record(enc);
 		var blit = Blit.of(device), u = haxe.io.Bytes.alloc(64);
 		VideoShader.params.video.write({
-			r: new helder.gfx.shader.Vec4(1, 0, 0, 0),
-			g: new helder.gfx.shader.Vec4(0, 1, 0, 0),
-			b: new helder.gfx.shader.Vec4(0, 0, 1, 0),
-			turn: new helder.gfx.shader.Vec4(0, 1, 1, 1)
+			r: new helder.math.Vec4(1, 0, 0, 0),
+			g: new helder.math.Vec4(0, 1, 0, 0),
+			b: new helder.math.Vec4(0, 0, 1, 0),
+			turn: new helder.math.Vec4(0, 1, 1, 1)
 		}, u);
 		enc.beginPass({colors: [{load: Clear}]});
 		enc.setPipeline(blit);
