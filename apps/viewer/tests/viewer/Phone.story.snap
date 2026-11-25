@@ -83,7 +83,7 @@ Node#root 0,0 390x844
                         Node#view 139,184 112x112
                           ImageNode#image 139,184 112x112
                         TextNode#text 156,300 77x18 "About Viewer.pdf"
-                        TextNode#text 143,318 104x15 "24 Nov 2026, 13:00"
+                        TextNode#text 143,318 104x15 "24 Nov 2026, 12:00"
                   Node#cell 261,184 113x154
                     Node#view 261,184 113x154
                       Node#tile-Chimes.m4a 261,184 113x154
@@ -92,7 +92,7 @@ Node#root 0,0 390x844
                             ImageNode#image 306,222 24x24
                             TextNode#text 306,261 24x14 "M4A"
                         TextNode#text 279,300 77x18 "Chimes.m4a"
-                        TextNode#text 266,318 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 266,318 103x15 "24 Nov 2026, 12:00"
                 Node#row 0,348 390x164
                   Node#cell 16,348 113x154
                     Node#view 16,348 113x154
@@ -100,21 +100,21 @@ Node#root 0,0 390x844
                         Node#view 16,348 112x112
                           ImageNode#image 16,348 112x112
                         TextNode#text 27,464 90x18 "Dusk panorama.jpg"
-                        TextNode#text 21,482 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 21,482 103x15 "24 Nov 2026, 12:00"
                   Node#cell 139,348 112x154
                     Node#view 139,348 112x154
                       Node#tile-Mandelbrot.jpg 139,348 112x154
                         Node#view 139,348 112x112
                           ImageNode#image 139,348 112x112
                         TextNode#text 143,464 103x18 "Mandelbrot.jpg"
-                        TextNode#text 143,482 104x15 "24 Nov 2026, 13:00"
+                        TextNode#text 143,482 104x15 "24 Nov 2026, 12:00"
                   Node#cell 261,348 113x154
                     Node#view 261,348 113x154
                       Node#tile-Murmuration.jpg 261,348 113x154
                         Node#view 262,348 112x112
                           ImageNode#image 262,348 112x112
                         TextNode#text 263,464 109x18 "Murmuration.jpg"
-                        TextNode#text 266,482 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 266,482 103x15 "24 Nov 2026, 12:00"
                 Node#row 0,512 390x164
                   Node#cell 16,512 113x154
                     Node#view 16,512 113x154
@@ -122,14 +122,14 @@ Node#root 0,0 390x844
                         Node#view 16,512 112x112
                           ImageNode#image 16,512 112x112
                         TextNode#text 34,628 77x18 "Planet.jpg"
-                        TextNode#text 21,646 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 21,646 103x15 "24 Nov 2026, 12:00"
                   Node#cell 139,512 112x154
                     Node#view 139,512 112x154
                       Node#tile-Starlings.jpg 139,512 112x154
                         Node#view 139,512 112x112
                           ImageNode#image 139,512 112x112
                         TextNode#text 147,628 96x18 "Starlings.jpg"
-                        TextNode#text 143,646 104x15 "24 Nov 2026, 13:00"
+                        TextNode#text 143,646 104x15 "24 Nov 2026, 12:00"
                   Node#cell 261,512 113x154
                     Node#view 261,512 113x154
                       Node#tile-Starlings.mp4 261,512 113x154
@@ -138,7 +138,7 @@ Node#root 0,0 390x844
                             ImageNode#image 306,550 24x24
                             TextNode#text 306,589 24x14 "MP4"
                         TextNode#text 269,628 97x18 "Starlings.mp4"
-                        TextNode#text 266,646 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 266,646 103x15 "24 Nov 2026, 12:00"
                 Spacer#after 0,676 390x66
             Node#view 0,44 390x124
               Node#view 0,44 390x124
@@ -221,7 +221,7 @@ Node#root 0,0 390x844
                         Node#view 139,184 112x112
                           ImageNode#image 139,184 112x112
                         TextNode#text 156,300 77x18 "About Viewer.pdf"
-                        TextNode#text 143,318 104x15 "24 Nov 2026, 13:00"
+                        TextNode#text 143,318 104x15 "24 Nov 2026, 12:00"
                   Node#cell 261,184 113x154
                     Node#view 261,184 113x154
                       Node#tile-Chimes.m4a 261,184 113x154
@@ -230,7 +230,7 @@ Node#root 0,0 390x844
                             ImageNode#image 306,222 24x24
                             TextNode#text 306,261 24x14 "M4A"
                         TextNode#text 279,300 77x18 "Chimes.m4a"
-                        TextNode#text 266,318 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 266,318 103x15 "24 Nov 2026, 12:00"
                 Node#row 0,348 390x164
                   Node#cell 16,348 113x154
                     Node#view 16,348 113x154
@@ -238,21 +238,21 @@ Node#root 0,0 390x844
                         Node#view 16,348 112x112
                           ImageNode#image 16,348 112x112
                         TextNode#text 27,464 90x18 "Dusk panorama.jpg"
-                        TextNode#text 21,482 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 21,482 103x15 "24 Nov 2026, 12:00"
                   Node#cell 139,348 112x154
                     Node#view 139,348 112x154
                       Node#tile-Mandelbrot.jpg 139,348 112x154
                         Node#view 139,348 112x112
                           ImageNode#image 139,348 112x112
                         TextNode#text 143,464 103x18 "Mandelbrot.jpg"
-                        TextNode#text 143,482 104x15 "24 Nov 2026, 13:00"
+                        TextNode#text 143,482 104x15 "24 Nov 2026, 12:00"
                   Node#cell 261,348 113x154
                     Node#view 261,348 113x154
                       Node#tile-Murmuration.jpg 261,348 113x154
                         Node#view 262,348 112x112
                           ImageNode#image 262,348 112x112
                         TextNode#text 263,464 109x18 "Murmuration.jpg"
-                        TextNode#text 266,482 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 266,482 103x15 "24 Nov 2026, 12:00"
                 Node#row 0,512 390x164
                   Node#cell 16,512 113x154
                     Node#view 16,512 113x154
@@ -260,14 +260,14 @@ Node#root 0,0 390x844
                         Node#view 16,512 112x112
                           ImageNode#image 16,512 112x112
                         TextNode#text 34,628 77x18 "Planet.jpg"
-                        TextNode#text 21,646 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 21,646 103x15 "24 Nov 2026, 12:00"
                   Node#cell 139,512 112x154
                     Node#view 139,512 112x154
                       Node#tile-Starlings.jpg 139,512 112x154
                         Node#view 139,512 112x112
                           ImageNode#image 139,512 112x112
                         TextNode#text 147,628 96x18 "Starlings.jpg"
-                        TextNode#text 143,646 104x15 "24 Nov 2026, 13:00"
+                        TextNode#text 143,646 104x15 "24 Nov 2026, 12:00"
                   Node#cell 261,512 113x154
                     Node#view 261,512 113x154
                       Node#tile-Starlings.mp4 261,512 113x154
@@ -276,7 +276,7 @@ Node#root 0,0 390x844
                             ImageNode#image 306,550 24x24
                             TextNode#text 306,589 24x14 "MP4"
                         TextNode#text 269,628 97x18 "Starlings.mp4"
-                        TextNode#text 266,646 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 266,646 103x15 "24 Nov 2026, 12:00"
                 Spacer#after 0,676 390x66
             Node#view 0,44 390x124
               Node#view 0,44 390x124
@@ -385,7 +385,7 @@ Node#root 0,0 390x844
                         Node#view 139,184 112x112
                           ImageNode#image 139,184 112x112
                         TextNode#text 156,300 77x18 "About Viewer.pdf"
-                        TextNode#text 143,318 104x15 "24 Nov 2026, 13:00"
+                        TextNode#text 143,318 104x15 "24 Nov 2026, 12:00"
                   Node#cell 261,184 113x154
                     Node#view 261,184 113x154
                       Node#tile-Chimes.m4a 261,184 113x154
@@ -394,7 +394,7 @@ Node#root 0,0 390x844
                             ImageNode#image 306,222 24x24
                             TextNode#text 306,261 24x14 "M4A"
                         TextNode#text 279,300 77x18 "Chimes.m4a"
-                        TextNode#text 266,318 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 266,318 103x15 "24 Nov 2026, 12:00"
                 Node#row 0,348 390x164
                   Node#cell 16,348 113x154
                     Node#view 16,348 113x154
@@ -402,21 +402,21 @@ Node#root 0,0 390x844
                         Node#view 16,348 112x112
                           ImageNode#image 16,348 112x112
                         TextNode#text 27,464 90x18 "Dusk panorama.jpg"
-                        TextNode#text 21,482 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 21,482 103x15 "24 Nov 2026, 12:00"
                   Node#cell 139,348 112x154
                     Node#view 139,348 112x154
                       Node#tile-Mandelbrot.jpg 139,348 112x154
                         Node#view 139,348 112x112
                           ImageNode#image 139,348 112x112
                         TextNode#text 143,464 103x18 "Mandelbrot.jpg"
-                        TextNode#text 143,482 104x15 "24 Nov 2026, 13:00"
+                        TextNode#text 143,482 104x15 "24 Nov 2026, 12:00"
                   Node#cell 261,348 113x154
                     Node#view 261,348 113x154
                       Node#tile-Murmuration.jpg 261,348 113x154
                         Node#view 262,348 112x112
                           ImageNode#image 262,348 112x112
                         TextNode#text 263,464 109x18 "Murmuration.jpg"
-                        TextNode#text 266,482 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 266,482 103x15 "24 Nov 2026, 12:00"
                 Node#row 0,512 390x164
                   Node#cell 16,512 113x154
                     Node#view 16,512 113x154
@@ -424,14 +424,14 @@ Node#root 0,0 390x844
                         Node#view 16,512 112x112
                           ImageNode#image 16,512 112x112
                         TextNode#text 34,628 77x18 "Planet.jpg"
-                        TextNode#text 21,646 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 21,646 103x15 "24 Nov 2026, 12:00"
                   Node#cell 139,512 112x154
                     Node#view 139,512 112x154
                       Node#tile-Starlings.jpg 139,512 112x154
                         Node#view 139,512 112x112
                           ImageNode#image 139,512 112x112
                         TextNode#text 147,628 96x18 "Starlings.jpg"
-                        TextNode#text 143,646 104x15 "24 Nov 2026, 13:00"
+                        TextNode#text 143,646 104x15 "24 Nov 2026, 12:00"
                   Node#cell 261,512 113x154
                     Node#view 261,512 113x154
                       Node#tile-Starlings.mp4 261,512 113x154
@@ -440,7 +440,7 @@ Node#root 0,0 390x844
                             ImageNode#image 306,550 24x24
                             TextNode#text 306,589 24x14 "MP4"
                         TextNode#text 269,628 97x18 "Starlings.mp4"
-                        TextNode#text 266,646 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 266,646 103x15 "24 Nov 2026, 12:00"
                 Spacer#after 0,676 390x66
             Node#view 0,44 390x124
               Node#view 0,44 390x124
@@ -551,7 +551,7 @@ Node#root 0,0 390x844
                         ImageNode#image 16,240 42x42
                       Node#view 70,242 304x38
                         TextNode#text 70,242 304x20 "About Viewer.pdf"
-                        TextNode#text 70,264 304x16 "24 Nov 2026, 13:00 · 182 KB"
+                        TextNode#text 70,264 304x16 "24 Nov 2026, 12:00 · 182 KB"
                 Node#row 0,292 390x62
                   Node#view 0,292 390x62
                     Node#view 0,292 390x62
@@ -561,7 +561,7 @@ Node#root 0,0 390x844
                           TextNode#text 25,319 24x14 "M4A"
                       Node#view 70,304 304x38
                         TextNode#text 70,304 304x20 "Chimes.m4a"
-                        TextNode#text 70,326 304x16 "24 Nov 2026, 13:00 · 91 KB"
+                        TextNode#text 70,326 304x16 "24 Nov 2026, 12:00 · 91 KB"
                 Node#row 0,354 390x62
                   Node#view 0,354 390x62
                     Node#view 0,354 390x62
@@ -569,7 +569,7 @@ Node#root 0,0 390x844
                         ImageNode#image 16,364 42x42
                       Node#view 70,366 304x38
                         TextNode#text 70,366 304x20 "Dusk panorama.jpg"
-                        TextNode#text 70,388 304x16 "24 Nov 2026, 13:00 · 293 KB"
+                        TextNode#text 70,388 304x16 "24 Nov 2026, 12:00 · 293 KB"
                 Node#row 0,416 390x62
                   Node#view 0,416 390x62
                     Node#view 0,416 390x62
@@ -577,7 +577,7 @@ Node#root 0,0 390x844
                         ImageNode#image 16,426 42x42
                       Node#view 70,428 304x38
                         TextNode#text 70,428 304x20 "Mandelbrot.jpg"
-                        TextNode#text 70,450 304x16 "24 Nov 2026, 13:00 · 370 KB"
+                        TextNode#text 70,450 304x16 "24 Nov 2026, 12:00 · 370 KB"
                 Node#row 0,478 390x62
                   Node#view 0,478 390x62
                     Node#view 0,478 390x62
@@ -585,7 +585,7 @@ Node#root 0,0 390x844
                         ImageNode#image 16,488 42x42
                       Node#view 70,490 304x38
                         TextNode#text 70,490 304x20 "Murmuration.jpg"
-                        TextNode#text 70,512 304x16 "24 Nov 2026, 13:00 · 294 KB"
+                        TextNode#text 70,512 304x16 "24 Nov 2026, 12:00 · 294 KB"
                 Node#row 0,540 390x62
                   Node#view 0,540 390x62
                     Node#view 0,540 390x62
@@ -593,7 +593,7 @@ Node#root 0,0 390x844
                         ImageNode#image 16,550 42x42
                       Node#view 70,552 304x38
                         TextNode#text 70,552 304x20 "Planet.jpg"
-                        TextNode#text 70,574 304x16 "24 Nov 2026, 13:00 · 41 KB"
+                        TextNode#text 70,574 304x16 "24 Nov 2026, 12:00 · 41 KB"
                 Node#row 0,602 390x62
                   Node#view 0,602 390x62
                     Node#view 0,602 390x62
@@ -601,7 +601,7 @@ Node#root 0,0 390x844
                         ImageNode#image 16,612 42x42
                       Node#view 70,614 304x38
                         TextNode#text 70,614 304x20 "Starlings.jpg"
-                        TextNode#text 70,636 304x16 "24 Nov 2026, 13:00 · 747 KB"
+                        TextNode#text 70,636 304x16 "24 Nov 2026, 12:00 · 747 KB"
                 Node#row 0,664 390x62
                   Node#view 0,664 390x62
                     Node#view 0,664 390x62
@@ -611,7 +611,7 @@ Node#root 0,0 390x844
                           TextNode#text 25,691 24x14 "MP4"
                       Node#view 70,676 304x38
                         TextNode#text 70,676 304x20 "Starlings.mp4"
-                        TextNode#text 70,698 304x16 "24 Nov 2026, 13:00 · 1.0 MB"
+                        TextNode#text 70,698 304x16 "24 Nov 2026, 12:00 · 1.0 MB"
                 Spacer#after 0,726 390x50
             Node#view 0,44 390x124
               Node#view 0,44 390x124
@@ -694,7 +694,7 @@ Node#root 0,0 390x844
                         Node#view 139,184 112x112
                           ImageNode#image 139,184 112x112
                         TextNode#text 156,300 77x18 "About Viewer.pdf"
-                        TextNode#text 143,318 104x15 "24 Nov 2026, 13:00"
+                        TextNode#text 143,318 104x15 "24 Nov 2026, 12:00"
                   Node#cell 261,184 113x154
                     Node#view 261,184 113x154
                       Node#tile-Chimes.m4a 261,184 113x154
@@ -703,7 +703,7 @@ Node#root 0,0 390x844
                             ImageNode#image 306,222 24x24
                             TextNode#text 306,261 24x14 "M4A"
                         TextNode#text 279,300 77x18 "Chimes.m4a"
-                        TextNode#text 266,318 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 266,318 103x15 "24 Nov 2026, 12:00"
                 Node#row 0,348 390x164
                   Node#cell 16,348 113x154
                     Node#view 16,348 113x154
@@ -711,21 +711,21 @@ Node#root 0,0 390x844
                         Node#view 16,348 112x112
                           ImageNode#image 16,348 112x112
                         TextNode#text 27,464 90x18 "Dusk panorama.jpg"
-                        TextNode#text 21,482 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 21,482 103x15 "24 Nov 2026, 12:00"
                   Node#cell 139,348 112x154
                     Node#view 139,348 112x154
                       Node#tile-Mandelbrot.jpg 139,348 112x154
                         Node#view 139,348 112x112
                           ImageNode#image 139,348 112x112
                         TextNode#text 143,464 103x18 "Mandelbrot.jpg"
-                        TextNode#text 143,482 104x15 "24 Nov 2026, 13:00"
+                        TextNode#text 143,482 104x15 "24 Nov 2026, 12:00"
                   Node#cell 261,348 113x154
                     Node#view 261,348 113x154
                       Node#tile-Murmuration.jpg 261,348 113x154
                         Node#view 262,348 112x112
                           ImageNode#image 262,348 112x112
                         TextNode#text 263,464 109x18 "Murmuration.jpg"
-                        TextNode#text 266,482 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 266,482 103x15 "24 Nov 2026, 12:00"
                 Node#row 0,512 390x164
                   Node#cell 16,512 113x154
                     Node#view 16,512 113x154
@@ -733,14 +733,14 @@ Node#root 0,0 390x844
                         Node#view 16,512 112x112
                           ImageNode#image 16,512 112x112
                         TextNode#text 34,628 77x18 "Planet.jpg"
-                        TextNode#text 21,646 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 21,646 103x15 "24 Nov 2026, 12:00"
                   Node#cell 139,512 112x154
                     Node#view 139,512 112x154
                       Node#tile-Starlings.jpg 139,512 112x154
                         Node#view 139,512 112x112
                           ImageNode#image 139,512 112x112
                         TextNode#text 147,628 96x18 "Starlings.jpg"
-                        TextNode#text 143,646 104x15 "24 Nov 2026, 13:00"
+                        TextNode#text 143,646 104x15 "24 Nov 2026, 12:00"
                   Node#cell 261,512 113x154
                     Node#view 261,512 113x154
                       Node#tile-Starlings.mp4 261,512 113x154
@@ -749,7 +749,7 @@ Node#root 0,0 390x844
                             ImageNode#image 306,550 24x24
                             TextNode#text 306,589 24x14 "MP4"
                         TextNode#text 269,628 97x18 "Starlings.mp4"
-                        TextNode#text 266,646 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 266,646 103x15 "24 Nov 2026, 12:00"
                 Spacer#after 0,676 390x66
             Node#view 0,44 390x124
               Node#view 0,44 390x124
@@ -832,7 +832,7 @@ Node#root 0,0 390x844
                         Node#view 139,184 112x112
                           ImageNode#image 139,184 112x112
                         TextNode#text 156,300 77x18 "About Viewer.pdf"
-                        TextNode#text 143,318 104x15 "24 Nov 2026, 13:00"
+                        TextNode#text 143,318 104x15 "24 Nov 2026, 12:00"
                   Node#cell 261,184 113x154
                     Node#view 261,184 113x154
                       Node#tile-Chimes.m4a 261,184 113x154
@@ -841,7 +841,7 @@ Node#root 0,0 390x844
                             ImageNode#image 306,222 24x24
                             TextNode#text 306,261 24x14 "M4A"
                         TextNode#text 279,300 77x18 "Chimes.m4a"
-                        TextNode#text 266,318 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 266,318 103x15 "24 Nov 2026, 12:00"
                 Node#row 0,348 390x164
                   Node#cell 16,348 113x154
                     Node#view 16,348 113x154
@@ -849,21 +849,21 @@ Node#root 0,0 390x844
                         Node#view 16,348 112x112
                           ImageNode#image 16,348 112x112
                         TextNode#text 27,464 90x18 "Dusk panorama.jpg"
-                        TextNode#text 21,482 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 21,482 103x15 "24 Nov 2026, 12:00"
                   Node#cell 139,348 112x154
                     Node#view 139,348 112x154
                       Node#tile-Mandelbrot.jpg 139,348 112x154
                         Node#view 139,348 112x112
                           ImageNode#image 139,348 112x112
                         TextNode#text 143,464 103x18 "Mandelbrot.jpg"
-                        TextNode#text 143,482 104x15 "24 Nov 2026, 13:00"
+                        TextNode#text 143,482 104x15 "24 Nov 2026, 12:00"
                   Node#cell 261,348 113x154
                     Node#view 261,348 113x154
                       Node#tile-Murmuration.jpg 261,348 113x154
                         Node#view 262,348 112x112
                           ImageNode#image 262,348 112x112
                         TextNode#text 263,464 109x18 "Murmuration.jpg"
-                        TextNode#text 266,482 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 266,482 103x15 "24 Nov 2026, 12:00"
                 Node#row 0,512 390x164
                   Node#cell 16,512 113x154
                     Node#view 16,512 113x154
@@ -871,14 +871,14 @@ Node#root 0,0 390x844
                         Node#view 16,512 112x112
                           ImageNode#image 16,512 112x112
                         TextNode#text 34,628 77x18 "Planet.jpg"
-                        TextNode#text 21,646 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 21,646 103x15 "24 Nov 2026, 12:00"
                   Node#cell 139,512 112x154
                     Node#view 139,512 112x154
                       Node#tile-Starlings.jpg 139,512 112x154
                         Node#view 139,512 112x112
                           ImageNode#image 139,512 112x112
                         TextNode#text 147,628 96x18 "Starlings.jpg"
-                        TextNode#text 143,646 104x15 "24 Nov 2026, 13:00"
+                        TextNode#text 143,646 104x15 "24 Nov 2026, 12:00"
                   Node#cell 261,512 113x154
                     Node#view 261,512 113x154
                       Node#tile-Starlings.mp4 261,512 113x154
@@ -887,7 +887,7 @@ Node#root 0,0 390x844
                             ImageNode#image 306,550 24x24
                             TextNode#text 306,589 24x14 "MP4"
                         TextNode#text 269,628 97x18 "Starlings.mp4"
-                        TextNode#text 266,646 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 266,646 103x15 "24 Nov 2026, 12:00"
                 Spacer#after 0,676 390x66
             Node#view 0,44 390x124
               Node#view 0,44 390x124
@@ -1007,7 +1007,7 @@ Node#root 0,0 390x844
                           ImageNode#image 139,184 112x112
                           Node#pick 221,266 24x24
                         TextNode#text 156,300 77x18 "About Viewer.pdf"
-                        TextNode#text 143,318 104x15 "24 Nov 2026, 13:00"
+                        TextNode#text 143,318 104x15 "24 Nov 2026, 12:00"
                   Node#cell 261,184 113x154
                     Node#view 261,184 113x154
                       Node#tile-Chimes.m4a 261,184 113x154
@@ -1017,7 +1017,7 @@ Node#root 0,0 390x844
                             TextNode#text 306,261 24x14 "M4A"
                           Node#pick 344,266 24x24
                         TextNode#text 279,300 77x18 "Chimes.m4a"
-                        TextNode#text 266,318 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 266,318 103x15 "24 Nov 2026, 12:00"
                 Node#row 0,348 390x164
                   Node#cell 16,348 113x154
                     Node#view 16,348 113x154
@@ -1026,7 +1026,7 @@ Node#root 0,0 390x844
                           ImageNode#image 16,348 112x112
                           Node#pick 98,430 24x24
                         TextNode#text 27,464 90x18 "Dusk panorama.jpg"
-                        TextNode#text 21,482 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 21,482 103x15 "24 Nov 2026, 12:00"
                   Node#cell 139,348 112x154
                     Node#view 139,348 112x154
                       Node#tile-Mandelbrot.jpg 139,348 112x154
@@ -1034,7 +1034,7 @@ Node#root 0,0 390x844
                           ImageNode#image 139,348 112x112
                           Node#pick 221,430 24x24
                         TextNode#text 143,464 103x18 "Mandelbrot.jpg"
-                        TextNode#text 143,482 104x15 "24 Nov 2026, 13:00"
+                        TextNode#text 143,482 104x15 "24 Nov 2026, 12:00"
                   Node#cell 261,348 113x154
                     Node#view 261,348 113x154
                       Node#tile-Murmuration.jpg 261,348 113x154
@@ -1043,7 +1043,7 @@ Node#root 0,0 390x844
                           Node#pick 344,430 24x24
                             ImageNode#image 348,435 15x15
                         TextNode#text 263,464 109x18 "Murmuration.jpg"
-                        TextNode#text 266,482 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 266,482 103x15 "24 Nov 2026, 12:00"
                 Node#row 0,512 390x164
                   Node#cell 16,512 113x154
                     Node#view 16,512 113x154
@@ -1053,7 +1053,7 @@ Node#root 0,0 390x844
                           Node#pick 98,594 24x24
                             ImageNode#image 103,599 15x15
                         TextNode#text 34,628 77x18 "Planet.jpg"
-                        TextNode#text 21,646 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 21,646 103x15 "24 Nov 2026, 12:00"
                   Node#cell 139,512 112x154
                     Node#view 139,512 112x154
                       Node#tile-Starlings.jpg 139,512 112x154
@@ -1062,7 +1062,7 @@ Node#root 0,0 390x844
                           Node#pick 221,594 24x24
                             ImageNode#image 225,599 15x15
                         TextNode#text 147,628 96x18 "Starlings.jpg"
-                        TextNode#text 143,646 104x15 "24 Nov 2026, 13:00"
+                        TextNode#text 143,646 104x15 "24 Nov 2026, 12:00"
                   Node#cell 261,512 113x154
                     Node#view 261,512 113x154
                       Node#tile-Starlings.mp4 261,512 113x154
@@ -1072,7 +1072,7 @@ Node#root 0,0 390x844
                             TextNode#text 306,589 24x14 "MP4"
                           Node#pick 344,594 24x24
                         TextNode#text 269,628 97x18 "Starlings.mp4"
-                        TextNode#text 266,646 103x15 "24 Nov 2026, 13:00"
+                        TextNode#text 266,646 103x15 "24 Nov 2026, 12:00"
                 Spacer#after 0,676 390x72
             Node#view 0,44 390x124
               Node#view 0,44 390x124

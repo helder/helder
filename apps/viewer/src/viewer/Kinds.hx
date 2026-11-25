@@ -65,11 +65,18 @@ class Kinds {
 
 	static final MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-	// a time as "14 Jun 2026, 22:51" (local)
+	// dates in UTC rather than the machine's zone: the stories', so their
+	// trees are the same on every machine
+	public static var utc = false;
+
+	// a time as "14 Jun 2026, 22:51"
 	public static function date(seconds:Float):String {
 		if (seconds <= 0) return "";
 		var d = Date.fromTime(seconds * 1000);
-		return '${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}, ${StringTools.lpad(Std.string(d.getHours()), "0", 2)}:${StringTools.lpad(Std.string(d.getMinutes()), "0", 2)}';
+		inline function two(n:Int)
+			return StringTools.lpad(Std.string(n), "0", 2);
+		return utc ? '${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}, ${two(d.getUTCHours())}:${two(d.getUTCMinutes())}'
+			: '${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}, ${two(d.getHours())}:${two(d.getMinutes())}';
 	}
 
 	// a count with thousands' separators ("48,213")

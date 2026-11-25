@@ -122,6 +122,7 @@ private function samples():Explorer {
 
 // (the phone's shell, brought to its moment by at)
 private function phone(at:PhoneState->Void):View {
+	Kinds.utc = true;
 	var x = samples();
 	return <Standard.Themed look={Shell.look}><Phone.Root x={x} at={p -> {
 		at(p);
