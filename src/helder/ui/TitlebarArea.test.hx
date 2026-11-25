@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Rect;
 import helder.gfx.Color;
 import helder.os.DragOperation;
 import helder.os.TitleBar.TitleHit;
@@ -18,7 +19,7 @@ function tests() {
 	describe("TitlebarArea", () -> {
 		afterEach(() -> SafeArea.setTitlebar(null));
 		test("env(titlebar-area-*) resolved, the fallback without one", () -> {
-			var t = new TitlebarArea(78, 0, 1102, 32), e = Edges.ZERO;
+			var t = {x: 78, y: 0, width: 1102, height: 32}, e = Edges.ZERO;
 			equals(SafeArea.resolve("env(titlebar-area-x) env(titlebar-area-y) env(titlebar-area-width) env(titlebar-area-height)", e, t), "78px 0px 1102px 32px");
 			equals(SafeArea.resolve("calc(env(titlebar-area-x) + 8px)", e, t), "86px");
 			equals(SafeArea.resolve("env(titlebar-area-height, 40px)", e), "40px");
@@ -30,7 +31,7 @@ function tests() {
 			ui.update();
 			var bar = ui.root.find("bar");
 			equals([bar.style.paddingLeft, bar.rect().height], [12.0, 40.0]);
-			SafeArea.setTitlebar(new TitlebarArea(78, 0, 722, 28));
+			SafeArea.setTitlebar({x: 78, y: 0, width: 722, height: 28});
 			ui.update();
 			equals([bar.style.paddingLeft, bar.rect().height], [78.0, 28.0]);
 			dispose();
@@ -71,14 +72,14 @@ function tests() {
 			equals(WindowButtons.side(), null);
 			equals([ui.root.find("start-controls") == null, ui.root.find("end-controls") == null], [true, true]);
 			// (Windows', Linux's: the bar from the left edge, the buttons at the right)
-			SafeArea.setTitlebar(new TitlebarArea(0, 0, 662, 32));
+			SafeArea.setTitlebar({x: 0, y: 0, width: 662, height: 32});
 			ui.update();
 			ui.update();
 			equals(WindowButtons.side(), "end");
 			equals([ui.root.find("start-controls") == null, ui.root.find("end-controls") != null], [true, true]);
 			equals(ui.titleHit(800 - 23, 10), Close);
 			// (macOS's: the bar after its buttons, at the left)
-			SafeArea.setTitlebar(new TitlebarArea(78, 0, 722, 28));
+			SafeArea.setTitlebar({x: 78, y: 0, width: 722, height: 28});
 			ui.update();
 			equals(WindowButtons.side(), "start");
 			equals([ui.root.find("start-controls") != null, ui.root.find("end-controls") == null], [true, true]);
@@ -109,8 +110,8 @@ private class Host implements WindowHost {
 	public function controls():String
 		return kind;
 
-	public function systemControls():Null<Bounds> {
-		var b = new Bounds();
+	public function systemControls():Null<Rect> {
+		var b = {x: 0.0, y: 0.0, width: 0.0, height: 0.0};
 		b.width = 54;
 		b.height = 16;
 		return b;

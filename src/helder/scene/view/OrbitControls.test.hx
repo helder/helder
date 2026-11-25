@@ -113,7 +113,7 @@ function tests() {
 			equals(orbit.pitch, orbit.maxPitch);
 		});
 		test("the box's bounds and the view's ray filled in place: as rect and ray, nothing made", () -> {
-			var b = new helder.ui.Bounds(), r = new helder.scene.Camera.CameraRay();
+			var b = {x: 0.0, y: 0.0, width: 0.0, height: 0.0}, r = new helder.scene.Camera.CameraRay();
 			var old = box.rect(), oldRay = camera.ray(0.25, -0.5, 1.5);
 			box.rectInto(b);
 			camera.rayInto(0.25, -0.5, 1.5, r);

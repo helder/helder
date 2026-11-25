@@ -391,13 +391,13 @@ class WinWindow {
 		});
 
 	// (Window.workArea: the monitor's rcWork, clear of the task bar)
-	function workArea():{x:Int, y:Int, width:Int, height:Int}
+	function workArea():Rect
 		return OsThread.get(() -> Arena.scopedValue(a -> {
 			var info:Ptr<Int32> = a.alloc(40);
 			info[0] = 40;
 			User32.GetMonitorInfoW(User32.MonitorFromWindow(hwnd, 2), info);
 			var k = scale;
-			{x: Math.ceil(info[5] / k), y: Math.ceil(info[6] / k), width: Math.floor((info[7] - info[5]) / k), height: Math.floor((info[8] - info[6]) / k)};
+			({x: Math.ceil(info[5] / k), y: Math.ceil(info[6] / k), width: Math.floor((info[7] - info[5]) / k), height: Math.floor((info[8] - info[6]) / k)} : Rect);
 		}));
 
 	// the frame's shadow (DWMWA_NCRENDERING_POLICY: DWMNCRP_DISABLED 1, its frame not drawn by DWM: no shadow; DWMNCRP_ENABLED 2)

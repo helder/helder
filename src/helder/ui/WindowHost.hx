@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Rect;
 import helder.os.DragOperation;
 
 // The window a Ui is drawn in, for what draws the window's own buttons
@@ -11,7 +12,7 @@ interface WindowHost {
 	// inset (the system's title bar), the browser, a phone
 	function controls():String;
 	// the system's buttons' box (points; null: none)
-	function systemControls():Null<Bounds>;
+	function systemControls():Null<Rect>;
 	// the system's buttons' top left moved to x, y (points)
 	function placeControls(x:Float, y:Float):Void;
 	function minimize():Void;

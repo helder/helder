@@ -1,6 +1,7 @@
 package helder.gfx;
 
 import helder.async.Errors;
+import helder.os.Rect;
 import helder.os.Surface;
 #if hxmc.dev
 import helder.dev.Hot;
@@ -629,18 +630,24 @@ final class Device {
 		return replay.began ? encoder : null;
 	}
 
-	// what the frame presented next changed: rectangles x0, y0, x1, y1 in
-	// its pixels, rows from the top (a window's kept frame: Renderer.regions;
+	// what the frame presented next changed: rectangles in its pixels, rows
+	// from the top (a window's kept frame: Renderer.regions;
 	// null: all of it), told the system where it takes them as it presents
 	// (EGL_KHR/EXT_swap_buffers_with_damage: Wayland's damage_buffer,
 	// Android's; DXGI's Present1 dirty rectangles), so that it composites
 	// only those; its frame drawn whole still
-	public function damaged(rects:Null<Array<Int>>) {
+	public function damaged(rects:Null<Array<Rect>>) {
 		var c = commands;
 		c.begin(Replay.DAMAGED);
-		c.int(rects == null ? -1 : rects.length);
-		if (rects != null) for (v in rects)
-			c.int(v);
+		// (the back ends': x0, y0, x1, y1 each)
+		c.int(rects == null ? -1 : rects.length * 4);
+		if (rects != null) for (r in rects) {
+			var x0 = Math.floor(r.x), y0 = Math.floor(r.y);
+			c.int(x0);
+			c.int(y0);
+			c.int(Math.ceil(r.x + r.width));
+			c.int(Math.ceil(r.y + r.height));
+		}
 		c.end();
 	}
 

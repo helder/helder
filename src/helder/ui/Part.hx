@@ -1,5 +1,7 @@
 package helder.ui;
 
+import helder.os.Rect;
+
 // A component's part as either renderer has it (single-source components,
 // @:neutral): what a neutral element's ref gets, a Node here, a
 // page's element wrapped by its renderer (helder.web); the little a widget
@@ -9,7 +11,7 @@ interface Part {
 	function focus(visible:Bool = true):Void;
 
 	// its box in the window's (the page's) coordinates, after layout
-	function rect():{x:Float, y:Float, width:Float, height:Float};
+	function rect():Rect;
 
 	// scrolled into view in the scrollers around it
 	function scrollIntoView():Void;

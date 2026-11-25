@@ -20,7 +20,7 @@ import helder.ui.gesture.Scale;
 class OrbitControls implements SceneBox.SceneControl {
 	public final box:SceneBox;
 	// (the box's bounds, filled each gesture's move: nothing made, Node.rectInto)
-	final bounds = new helder.ui.Bounds();
+	final bounds = {x: 0.0, y: 0.0, width: 0.0, height: 0.0};
 	// the camera it moves (the box's view by default)
 	public var camera:Camera;
 	// what it turns about, and the camera's place round it

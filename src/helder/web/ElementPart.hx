@@ -1,6 +1,7 @@
 package helder.web;
 
 #if js
+import helder.os.Rect;
 import js.html.Element;
 
 // A page's element as a widget's part (helder.ui.Part): what a neutral
@@ -19,7 +20,7 @@ class ElementPart implements helder.ui.Part {
 	@:ifFeature("helder.web.ElementPart.of") public function focus(visible:Bool = true)
 		(cast element : Dynamic).focus({focusVisible: visible});
 
-	@:ifFeature("helder.web.ElementPart.of") public function rect():{x:Float, y:Float, width:Float, height:Float} {
+	@:ifFeature("helder.web.ElementPart.of") public function rect():Rect {
 		var r = element.getBoundingClientRect();
 		return {x: r.left, y: r.top, width: r.width, height: r.height};
 	}

@@ -1,5 +1,6 @@
 package helder.ui.code;
 
+import helder.os.Rect;
 import helder.gfx.Color;
 import helder.syntax.Lexer.TokenClass;
 import helder.ui.code.CodeAction;
@@ -101,7 +102,7 @@ class CodeView extends Node {
 	final context = {text: "", start: 0, end: 0, multiline: true, secret: false};
 	var contextLineStart = 0;
 	var caretShown = false;
-	final bounds = new Bounds();
+	final bounds = {x: 0.0, y: 0.0, width: 0.0, height: 0.0};
 
 	// the space left of the text, right of the gutter (pixels)
 	static inline var PAD = 8.0;
@@ -841,7 +842,7 @@ class CodeView extends Node {
 		changed();
 	}
 
-	override public function textInputArea():Null<{x:Float, y:Float, width:Float, height:Float}>
+	override public function textInputArea():Null<Rect>
 		return focused && caretShown ? area : null;
 
 	// (the caret's line and the primary selection in it, for the input method)

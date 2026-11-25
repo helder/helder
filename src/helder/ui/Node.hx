@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Rect;
 import helder.gfx.Color;
 import helder.ui.Event;
 import helder.canvas.Matrix;
@@ -1148,11 +1149,11 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		ui.setFocus(this);
 	}
 
-	public function rect():{x:Float, y:Float, width:Float, height:Float}
+	public function rect():Rect
 		return windowBounds();
 
 	// rect, written into out (returned): nothing made (windowBoundsInto)
-	@:noCompletion public inline function rectInto(out:Bounds):Bounds
+	@:noCompletion public inline function rectInto(out:Rect):Rect
 		return windowBoundsInto(out);
 
 	public function scrollIntoView()
@@ -1211,14 +1212,13 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	// the border box where it is drawn, in window pixels: its ancestors'
 	// scrolling taken off, through the transforms (its own too; the bounds
 	// of the box they turn)
-	public function windowBounds():{x:Float, y:Float, width:Float, height:Float} {
-		var b = windowBoundsInto(new Bounds());
-		return {x: b.x, y: b.y, width: b.width, height: b.height};
+	public function windowBounds():Rect {
+		return windowBoundsInto({x: 0.0, y: 0.0, width: 0.0, height: 0.0});
 	}
 
 	// windowBounds, written into out (returned): its corners in locals, no
 	// array or box made (a transformed ancestor's matrix still is: transformMatrix)
-	public function windowBoundsInto(out:Bounds):Bounds {
+	public function windowBoundsInto(out:Rect):Rect {
 		var w = width, h = height;
 		if (present != null) {
 			w = present.width();
@@ -1369,7 +1369,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 
 	// where text is typed into it (its caret, window pixels, after a paint):
 	// an input method's place; null: it takes no text
-	public function textInputArea():Null<{x:Float, y:Float, width:Float, height:Float}>
+	public function textInputArea():Null<Rect>
 		return null;
 
 	// the text around its caret, for an input method (Window.textContext:

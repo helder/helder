@@ -1,13 +1,12 @@
 package viewer;
 
+import helder.os.Rect;
 import helder.os.DragOperation;
 import helder.story.StoryText;
 import helder.test.Test;
-import helder.ui.Bounds;
 import helder.ui.Node;
 import helder.ui.SafeArea;
 import helder.ui.TextNode;
-import helder.ui.TitlebarArea;
 import helder.ui.Ui;
 import helder.ui.WindowHost;
 import helder.view.Render;
@@ -54,7 +53,7 @@ function overlaps(kind:String, w:Float, h:Float, full:Bool, lay:String):String {
 	var ui = new Ui(new StoryText(), w, h);
 	ui.window = new Host(kind);
 	// (macOS's bar after its buttons at the left; Windows' to its buttons at the right)
-	SafeArea.setTitlebar(kind == "system" ? new TitlebarArea(78, 0, w - 78, 28) : new TitlebarArea(0, 0, w - 138, 32));
+	SafeArea.setTitlebar(kind == "system" ? {x: 78, y: 0, width: w - 78, height: 28} : {x: 0, y: 0, width: w - 138, height: 32});
 	var dispose = Render.render(Shell.view(x), ui.root);
 	for (_ in 0...3) {
 		Graph.flush();
@@ -110,8 +109,8 @@ private class Host implements WindowHost {
 		return kind;
 
 	// (macOS's three buttons: 54 by 16)
-	public function systemControls():Null<Bounds> {
-		var b = new Bounds();
+	public function systemControls():Null<Rect> {
+		var b = {x: 0.0, y: 0.0, width: 0.0, height: 0.0};
 		b.width = 54;
 		b.height = 16;
 		return b;

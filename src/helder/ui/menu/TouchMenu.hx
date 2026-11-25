@@ -1,5 +1,6 @@
 package helder.ui.menu;
 
+import helder.os.Rect;
 import helder.ui.Key;
 import helder.ui.Node;
 import helder.ui.Popup;
@@ -70,7 +71,7 @@ class TouchMenu implements Markup {
 	// opens the menu for what is at rect (window points): its preview there
 	// when given; onClose once it is gone. The popup (ui.close(p) closes it
 	// too, onClose not called)
-	public static function open(ui:Ui, choices:Array<Choice>, rect:{x:Float, y:Float, width:Float, height:Float}, ?preview:Any, blur = true,
+	public static function open(ui:Ui, choices:Array<Choice>, rect:Rect, ?preview:Any, blur = true,
 			?theme:helder.ui.StyleSheet, ?onClose:Void->Void):Popup {
 		var p = new Popup("touch-menu-layer");
 		p.modal = true;
@@ -95,7 +96,7 @@ class TouchMenu implements Markup {
 	}
 
 	// (where the preview and the menu go)
-	static function place(ui:Ui, choices:Array<Choice>, r:{x:Float, y:Float, width:Float, height:Float}, lifted:Bool):Placed {
+	static function place(ui:Ui, choices:Array<Choice>, r:Rect, lifted:Bool):Placed {
 		var safe = SafeArea.insets.peek();
 		var top = safe.top + EDGE, bottom = ui.height - safe.bottom - EDGE;
 		var mh = 0.0;

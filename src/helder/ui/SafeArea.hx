@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Rect;
 import helder.view.graph.Graph;
 import helder.view.graph.Signal;
 
@@ -16,7 +17,7 @@ import helder.view.graph.Signal;
 // Code reads insets() (a signal: what reads it in an effect or a reactive
 // attribute follows it). env(titlebar-area-x), -y, -width and -height are an
 // inset title bar's area free of the window's buttons (the Window Controls
-// Overlay's: helder.os's Window.titlebarArea, TitlebarArea), bound the same
+// Overlay's: helder.os's Window.titlebarArea), bound the same
 // way; without one (not inset, the browser, a phone) the fallback, else 0.
 class SafeArea {
 	// top, right, bottom, left in UI pixels (the current screen's:
@@ -39,16 +40,20 @@ class SafeArea {
 	public static final keyboard:Signal<Float> = Graph.signal(0.0);
 
 	// an inset title bar's area (the current screen's; null: none)
-	public static var titlebar(get, never):Signal<Null<TitlebarArea>>;
+	public static var titlebar(get, never):Signal<Null<Rect>>;
 
-	static inline function get_titlebar():Signal<Null<TitlebarArea>>
+	static inline function get_titlebar():Signal<Null<Rect>>
 		return ScreenContext.current.titlebarArea;
 
 	// (UiWindow) the title bar's area now: the signal set when it changed
-	@:noCompletion public static function setTitlebar(a:Null<TitlebarArea>) {
+	@:noCompletion public static function setTitlebar(a:Null<Rect>) {
 		var s = ScreenContext.current.titlebarArea;
-		if (!TitlebarArea.same(s.peek(), a)) s(a);
+		if (!same(s.peek(), a)) s(a);
 	}
+
+	// whether two areas are the same (null: none)
+	@:noCompletion public static function same(a:Null<Rect>, b:Null<Rect>):Bool
+		return a == null || b == null ? a == b : a.x == b.x && a.y == b.y && a.width == b.width && a.height == b.height;
 
 	// (markup: NodeRenderer.setProperty, a literal value naming env()) the
 	// attribute set from the value resolved, again when the insets change
@@ -57,7 +62,7 @@ class SafeArea {
 
 	// value with each env() replaced by its pixels (of e, t), then calc(), max()
 	// and min() of pixels folded
-	@:noCompletion public static function resolve(value:String, e:Edges, ?t:TitlebarArea):String {
+	@:noCompletion public static function resolve(value:String, e:Edges, ?t:Rect):String {
 		var s = replace(value, "env", inner -> {
 			var comma = inner.indexOf(",");
 			var name = StringTools.trim(comma < 0 ? inner : inner.substr(0, comma));

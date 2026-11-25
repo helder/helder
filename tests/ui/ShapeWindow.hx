@@ -270,7 +270,8 @@ class ShapeWindow {
 
 	// (where it takes the pointer: the boxes it draws, in pixels, not the bar of pointer-events none)
 	static function inputs(w:helder.ui.UiWindow) {
-		var k = w.scale, r = w.window.inputRects;
+		var k = w.scale, given = w.window.inputRects;
+		var r = given == null ? null : [for (b in given) for (v in [b.x, b.y, b.width, b.height]) Std.int(v)];
 		function box(x:Float, y:Float, bw:Float, bh:Float):Array<Int> {
 			var x0 = Math.floor(x * k), y0 = Math.floor(y * k);
 			return [x0, y0, Math.ceil((x + bw) * k) - x0, Math.ceil((y + bh) * k) - y0];

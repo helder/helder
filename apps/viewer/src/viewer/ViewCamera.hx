@@ -1,5 +1,7 @@
 package viewer;
 
+import helder.os.Rect;
+
 // Where an image is in the view: its scale (device pixels per image pixel:
 // 1 is 100%, one image pixel a screen pixel) and the image point at the
 // view's centre. Fitted (the default) it follows the view's size: the
@@ -158,7 +160,7 @@ class ViewCamera {
 	}
 
 	// the image on the view: its left, top, width and height (device pixels)
-	public function rect():{x:Float, y:Float, width:Float, height:Float}
+	public function rect():Rect
 		return {
 			x: viewWidth / 2 - centerX * scale,
 			y: viewHeight / 2 - centerY * scale,
