@@ -5,20 +5,20 @@ Images, fonts, models, sounds and data files are referenced by path, anywhere in
 <Example id="gltf-viewer"/>
 
 ```ts
-import { bytes, loaded } from "helder/asset";
-import icon from "./icon.png" with { type: "image" };
+import {bytes, loaded} from 'helder/asset'
+import icon from './icon.png' with {type: 'image'}
 
-const level = await loaded(bytes("levels/one.bin"));
+const level = await loaded(bytes('levels/one.bin'))
 ```
 
 ```haxe
 import helder.asset.Asset;
 
 // in a coroutine: suspends until loaded
-var ship = Asset.model("models/ship.glb").load();
+var ship = Asset.model('models/ship.glb').load();
 
 // in the frame loop, without waiting
-var icon = Asset.image("ui/icons/sword.png");
+var icon = Asset.image('ui/icons/sword.png');
 if (icon.ready) draw(icon.peek());
 ```
 
@@ -26,7 +26,7 @@ In markup, a view waits for what it reads inside a `<Loading>` boundary:
 
 ```haxe
 <Loading fallback={<text>loading</text>}>
-  <image src={Asset.image("ui/hero.png")}/>
+  <image src={Asset.image('ui/hero.png')}/>
 </Loading>
 ```
 

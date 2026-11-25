@@ -23,7 +23,7 @@ process, with no build: a design file.
   nor TypeScript's.
 - **Interpreted in the studio, compiled everywhere else.** The studio
   renders a design file by running helder.markup.Plan's mount steps
-  directly (view's DESIGN.md 7.2's third emitter) against helder.ui's
+  directly (the runtime emitter of the shared markup planner) against helder.ui's
   renderer, in the studio's process: an edit shows the same frame. A
   build compiles it through the markup macro like any literal: no
   interpreter in an app, DCE as usual. Interpreting at an app's run time

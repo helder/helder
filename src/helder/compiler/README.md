@@ -24,7 +24,7 @@ compilation server alike.
   one. A package is listed once it passes Strict on every target, dev and
   headless (the studio, examples/todo and a story host, built with
   `--no-output`).
-- `MarkupHook.hx`: markup in any function (helder.view's DESIGN.md 3.5).
+- `MarkupHook.hx`: markup in any function ([markup in helder.view](../view/README.md#markup)).
   Around hxmc's parse (`TypeloadParse.parseHook`, again when a compilation
   server has replaced it), each parsed file's markup literals are wrapped as
   `implements Markup` wraps them, `helder.view.View.literal(@:markup

@@ -2,13 +2,14 @@
 
 A calm puzzle in overgrown ruins over still black water, lit only by
 what lives there: a tiny white moth whose light wakes glyphs that move
-the stone, leading its young, a caterpillar, to its cocoon. GAME.md is
-the game as designed and built; this is the code.
+the stone, leading its young, a caterpillar, to its cocoon.
 
-The game now opens on its greybox prototypes (Greybox, Light, Way,
-Shadow, Board, Route, Shadows, Sketch: GAME.md, the greybox
-prototypes); the painted game below is the title's last choice,
-`-- --proto game`.
+The title opens the greyboxes: Light routes a beam, Way opens the
+caterpillar's path, and Shadow uses the moth's light and the shadows it
+casts. The painted game is the last choice, `-- --proto game`. The
+greyboxes came from a desktop playtest: hovering over a glyph was hard
+to repeat, and it was hard to tell what it moved. A tap is now the act
+and the board shows what a switch affects before it is pressed.
 
 - **Shadow** (C): the moth as the only light. Shadows (a point light's
   sight in 2D) holds the segments that cast shadows (each step: the
@@ -50,6 +51,11 @@ characters alone under a lantern's light (standing, taking off, landing,
 turning, six moments of a wingbeat; the caterpillar curled, waking and
 crawling; both at a few sizes), `-- --detail 0.7` draws
 the scene at that share of the screen's pixels each way (a slow device).
+
+To replay a greybox solution, run
+`node examples/afterglow/play/greybox.mjs 390x844` to write the scripts.
+Pass one to `helder run --headless --script` with its prototype and
+screen, and take a snapshot at `mark:solved`.
 
 ## How it plays
 

@@ -31,8 +31,8 @@ bun run helder dev examples/counter/Counter.hx   # or build; --target web for a 
 `Render.render(content, node)` mounts markup into a node of your own (a
 `UiWindow`'s `root`, a test's `Ui`).
 
-[GUIDE.md](GUIDE.md) walks through building an app: components, state,
-lists, popups, your own nodes, each platform, tests.
+[Views and signals](/docs/apps/views.md) starts the app guide, with
+pages for layout, lists, controls, interaction and windows.
 `examples/todo/Todo.hx` is a complete app (a text field, a keyed
 list, checkboxes, filters), `examples/mail/Mail.hx` a larger one (a
 toolbar, folders, messages sorted by column, search, shortcuts, undo, dark
@@ -393,10 +393,9 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
   group) and `Tip` (a tooltip: what a control does and its shortcut, under
   it once the pointer rests there, for a button that shows only an icon).
 - **`helder.ui.controls`**: the standard controls, `Button`, `Checkbox`
-  and `Switch` so far, their behaviour (`Press`, `Toggle`) and their
+  `Switch` and `PathBar`, their behaviour (`Press`, `Toggle`) and their
   looks (`Look`): "Controls" below. Others (menus, tabs) are still views
-  with a role, `focusable` and `onPress`, as in the examples and
-  `GUIDE.md`. A
+  with a role, `focusable` and `onPress`, as in the examples. A
   `UiWindow`'s `Ui.dark` follows the system's appearance
   (`helder.os.App.prefersDark`: the browser's colour scheme, macOS's,
   Windows', GTK's settings).
@@ -481,9 +480,9 @@ import helder.ui.view.UiFlow.VirtualGrid;
 ```
 
 ```tsx
-import { Selection, VirtualGrid } from "helder/ui";
+import {Selection, VirtualGrid} from 'helder/ui'
 
-const picked = new Selection(i => files()[i].path, () => files().length);
+const picked = new Selection(i => files()[i].path, () => files().length)
 <VirtualGrid each={files} by={f => f.path} cellWidth={120} cellHeight={90}
   selection={picked} textOf={f => f.name} onActivate={open} label="Files">
   {file => <text>{file().name}</text>}
@@ -601,21 +600,21 @@ types the action as (a type has no parameter names), and the bodies never
 run. It is plain TypeScript, checked by tsgo as it is written:
 
 ```tsx
-import { actions, type ActionOf, handle, Keymap } from "helder/ui/actions";
+import {actions, type ActionOf, handle, Keymap} from 'helder/ui/actions'
 
-export const Viewer = actions("viewer", {
-	next() {},
-	zoomTo(percent: number) { return { percent }; },
-});
-export type ViewerAction = ActionOf<typeof Viewer>;   // {type: "next"} | {type: "zoomTo", percent: number}
+export const Viewer = actions('viewer', {
+  next() {},
+  zoomTo(percent: number) { return {percent} }
+})
+export type ViewerAction = ActionOf<typeof Viewer>   // {type: 'next'} | {type: 'zoomTo', percent: number}
 
-Keymap.global.bind("1", Viewer.zoomTo(100), "Viewer");
+Keymap.global.bind('1', Viewer.zoomTo(100), 'Viewer')
 <view key-context="Viewer" actions={handle(Viewer, a => {
-	switch (a.type) {
-		case "next": next(); return true;
-		case "zoomTo": zoom(a.percent); return true;
-	}
-}, a => a.type === "next" && last() ? Disabled : Enabled)}>...</view>
+  switch (a.type) {
+    case 'next': next(); return true
+    case 'zoomTo': zoom(a.percent); return true
+  }
+}, a => a.type === 'next' && last() ? Disabled : Enabled)}>...</view>
 ```
 
 `Viewer.zoomTo(100)` makes a value, `{type: "zoomTo", percent: 100}`; a
@@ -828,10 +827,12 @@ name up at run time and links them all.
 
 `helder.ui.controls` holds the standard controls, drawn by helder in one
 look on every platform: `Button`, `Checkbox` (`indeterminate` too),
-`Switch` and `PathBar`. The rest of the set and its design are in
-[docs/design/controls.md](/docs/design/controls.md). Each control is its
-behaviour (`Press`, `Toggle`), its parts (nodes bound by `ref`), and a
-look's recipe for it (`Look`).
+`Switch` and `PathBar`. Each control has its behaviour (`Press`,
+`Toggle`), its named parts (nodes bound by `ref`), and a look's recipe
+for those parts. Behaviour owns the keys, focus and accessibility
+state. Recipes compile once per look into rules, and a custom renderer
+can bind the same parts to its own nodes. Typed refs also keep markup's
+attribute lookup on the compile-time path.
 
 ```haxe
 import helder.ui.controls.Look;
@@ -845,7 +846,7 @@ import helder.ui.controls.Standard;
 ```
 
 ```tsx
-import { Button, Checkbox, Switch, Themed, Look } from "helder/ui";
+import {Button, Checkbox, Switch, Themed, Look} from 'helder/ui'
 
 <Themed look={Look.base}>
   <Button variant="primary" onPress={save}>Save</Button>
@@ -975,12 +976,12 @@ static final look = Look.base.with({
 
 ```ts
 const look = Look.base.with({
-  accent: "violet",
-  tokens: { radius: 6 },
-  button: t => ({ variants: { variant: { soft: { root: { background: t.accentSoft, color: t.accentInk } } } } }),
-  switch: () => ({ knob: { radius: 3 } }),
-  render: { switch: Lamp }
-});
+  accent: 'violet',
+  tokens: {radius: 6},
+  button: t => ({variants: {variant: {soft: {root: {background: t.accentSoft, color: t.accentInk}}}}}),
+  switch: () => ({knob: {radius: 3}}),
+  render: {switch: Lamp}
+})
 ```
 
 - **Typed variants.** A look's type names its variants and sizes, the
