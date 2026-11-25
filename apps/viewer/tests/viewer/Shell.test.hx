@@ -194,6 +194,44 @@ function tests() {
 			equals([for (l in frames[0].split("\n")) if (StringTools.startsWith(l, "image 4x3")) l].length, 10);
 			assert(frames[0].indexOf("alpha 0 ") < 0, "nothing at opacity 0");
 		});
+		test("pointer moves that change nothing ask for no frame", () -> {
+			var t = 0.0;
+			Ui.now = () -> t;
+			var files = new MemoryFiles();
+			files.add("/pictures/");
+			for (i in 0...60)
+				files.add('/pictures/img$i.png', haxe.io.Bytes.alloc(10));
+			var x = new Explorer(files, (_, _, _) -> {}, [], [], Preview.now);
+			x.start("/pictures");
+			for (e in x.browser.items.value)
+				Tiles.remember(x, e, new helder.image.Image(4, 3, haxe.io.Bytes.alloc(48)));
+			var ui = new Ui(new StoryText(), 1212, 592);
+			Render.render(Shell.view(x), ui.root);
+			Shell.attach(ui.root, x);
+			function tick():Bool {
+				t += 1 / 60;
+				Clock.tick(t);
+				Graph.flush();
+				ui.update();
+				var asked = ui.needsFrame;
+				if (asked) ui.paint(new Nothing());
+				return asked;
+			}
+			for (_ in 0...60)
+				tick();
+			var tile = [for (c in cells(ui.root.find("grid"))) if (c.slot == "grid-tile") c][0].windowBounds();
+			var side = ui.root.find("sidebar").windowBounds();
+			for (spot in [{x: tile.x + 30, y: tile.y + 30}, {x: side.x + 100, y: side.y + side.height - 10}]) {
+				ui.pointerMove(spot.x, spot.y);
+				for (_ in 0...120)
+					tick();
+				var asked = [for (k in 0...30) {
+					ui.pointerMove(spot.x + (k % 3), spot.y + (k % 2));
+					tick();
+				}].filter(a -> a).length;
+				equals(asked, 0);
+			}
+		});
 		test("the sidebar scrolls: the wheel over it, its last row shown", () -> {
 			Ui.now = () -> 0.0;
 			var x = Fixtures.explorer();

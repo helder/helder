@@ -171,7 +171,9 @@ class ContentView implements Markup {
 		var want:Null<Float> = 0.0;
 		function place() {
 			var v = scroller, w = want;
-			if (v == null || w == null) return;
+			// (none of the folder read yet: its first batch places it; placed
+			// on the empty list, the rows coming in would carry their old place)
+			if (v == null || w == null || b.reading.value && b.items.value.length == 0) return;
 			if (w < 0) {
 				// (the entry asked for, once it is read; gone: the top)
 				var i = b.indexOf(b.selected.value);

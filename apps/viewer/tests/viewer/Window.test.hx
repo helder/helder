@@ -82,6 +82,68 @@ function tests() {
 				equals(view.scrollY, was);
 			});
 		for (layout in [Browser.Layout.List, Browser.Layout.Grid])
+			test('a file picked at a folder\'s end, a sibling, back by the sidebar: the folder at its top (${layout})', () -> {
+				var x = big(), ui = new Ui(new StoryText(), 1212, 592);
+				Render.render(Shell.view(x, () -> helder.ui.SizeClass.Expanded), ui.root);
+				function frame()
+					for (_ in 0...3) {
+						helder.view.graph.Graph.flush();
+						ui.update();
+					}
+				x.start("/home/folder 0");
+				x.browser.layout(layout);
+				frame();
+				var view = ui.root.find(layout == List ? "rows" : "grid");
+				// (the last file pressed, as a user does at the folder's end)
+				view.scrollY = 1e6;
+				frame();
+				var shown = [for (r in (cast view : helder.ui.VirtualScroll).rows()) if (r.node.style.display != None) r];
+				var last = shown[shown.length - 1].node;
+				var b = (layout == List ? last : last.children[last.children.length - 1]).windowBounds();
+				ui.pointerDown(b.x + 10, b.y + 10, 1);
+				ui.pointerUp(b.x + 10, b.y + 10, 1);
+				frame();
+				x.browser.go("/home/folder 1");
+				frame();
+				x.browser.go("/home/folder 0");
+				frame();
+				equals(ui.root.find(layout == List ? "rows" : "grid").scrollY, 0.0);
+			});
+		for (layout in [Browser.Layout.List, Browser.Layout.Grid])
+			test('scrolled to its end, a sibling, back, the sibling again, the folder by the sidebar: at its top (${layout})', () -> {
+				var x = big(), ui = new Ui(new StoryText(), 1212, 592);
+				Render.render(Shell.view(x, () -> helder.ui.SizeClass.Expanded), ui.root);
+				function frame()
+					for (_ in 0...3) {
+						helder.view.graph.Graph.flush();
+						ui.update();
+					}
+				function view()
+					return ui.root.find(layout == List ? "rows" : "grid");
+				// (each folder read a frame later, as a disk answers)
+				var files:MemoryFiles = cast x.files;
+				function later(go:Void->Void) {
+					files.hold = true;
+					go();
+					frame();
+					files.release();
+					frame();
+				}
+				x.start("/home/folder 0");
+				x.browser.layout(layout);
+				frame();
+				view().scrollY = 1e6;
+				frame();
+				var end = view().scrollY;
+				later(() -> x.browser.go("/home/folder 1"));
+				later(() -> x.browser.goBack());
+				equals(view().scrollY, end);
+				later(() -> x.browser.go("/home/folder 1"));
+				equals(view().scrollY, 0.0);
+				later(() -> x.browser.go("/home/folder 0"));
+				equals(view().scrollY, 0.0);
+			});
+		for (layout in [Browser.Layout.List, Browser.Layout.Grid])
 			test('a folder read in batches, each sorting above the last, stays at its top (${layout})', () -> {
 				Kinds.utc = true;
 				Tiles.forget();
