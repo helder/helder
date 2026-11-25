@@ -166,6 +166,17 @@ class Host {
 		return drawn;
 	}
 
+	// a screen's frame as data (FrameWriter's: the studio's stills, its
+	// frames file), on the host's background as drawn; null: not built
+	public function written(s:HostScreen):Null<FrameWriter.Frame> {
+		var ui = s.ui;
+		if (ui == null) return null;
+		var w = new FrameWriter();
+		w.rect(0, 0, s.width, s.height, 0, background, 0, 0);
+		s.context.run(() -> ui.paint(w));
+		return w.frame();
+	}
+
 	// whether anything shown would draw in the next turn (else the loop may sleep until the next event or timer)
 	public function busy():Bool {
 		for (s in screens)
