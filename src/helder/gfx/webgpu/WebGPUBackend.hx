@@ -147,7 +147,7 @@ class WebGPUBackend {
 	// ---- the compute tier
 
 	public function has(f:Feature):Bool
-		return true;
+		return f != Subgroups || WebGPU.subgroups() != 0;
 
 	public function createComputePipeline(shader:Int):Int {
 		WebGPU.pipeline_begin();

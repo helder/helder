@@ -357,6 +357,9 @@ class TsAdapter implements ShaderAdapter {
 	var uniformBlock:Null<SStruct>;
 	public final uniformRefs:Array<Node> = [];
 
+	public function posOf(e:SExpr):Null<KPos>
+		return null;
+
 	public function uniforms():Null<SStruct>
 		return uniformBlock;
 	final slotFunctions = new Map<String, SFunction>();

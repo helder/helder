@@ -352,6 +352,16 @@ class GLBackend {
 			compute = es31 && Sys.getEnv("HELDER_NO_COMPUTE") != "1" && GL.has_glDispatchCompute() && GL.has_glDispatchComputeIndirect() && GL.has_glMemoryBarrier()
 				&& GL.has_glBindBufferBase() && GL.has_glBindImageTexture() && GL.has_glDrawArraysIndirect() && GL.has_glDrawElementsIndirect()
 				&& GL.has_glMapBufferRange() && GL.has_glUnmapBuffer();
+			// (subgroups: GL_KHR_shader_subgroup in the compute stage, its basic, vote, arithmetic, ballot and shuffle operations)
+			if (compute) {
+				var e = GL.glGetString(GL.EXTENSIONS);
+				if (!e.isNull() && (cast e : CString).toString().indexOf("GL_KHR_shader_subgroup") >= 0) {
+					GL.glGetIntegerv(GL.SUBGROUP_SUPPORTED_STAGES, scratch);
+					var stages = scratch.value;
+					GL.glGetIntegerv(GL.SUBGROUP_SUPPORTED_FEATURES, scratch);
+					subgroups = stages & GL.COMPUTE_SHADER_BIT != 0 && scratch.value & 0x1F == 0x1F;
+				}
+			}
 		}
 	}
 
@@ -618,7 +628,9 @@ class GLBackend {
 	// ---- the compute tier
 
 	public function has(f:Feature):Bool
-		return compute;
+		return f == Subgroups ? subgroups : compute;
+
+	var subgroups = false;
 
 	// (its uniform blocks, textures, storage at their layout(binding)s)
 	public function createComputePipeline(shader:Int):Int {

@@ -1,0 +1,40 @@
+#include <metal_stdlib>
+using namespace metal;
+struct ComputeInput {
+	int x;
+	int y;
+	int z;
+	int localX;
+	int localY;
+	int localZ;
+	int localIndex;
+	int groupX;
+	int groupY;
+	int groupZ;
+	int subgroupLane;
+	int subgroupSize;
+	int subgroupIndex;
+	int subgroups;
+};
+void cs(ComputeInput id, device atomic_int* sb_0, threadgroup int* wg_0, threadgroup int* wg_1) {
+	int i = id.localIndex;
+	int t0 = id.subgroupLane;
+	wg_0[i] = t0;
+	int t1 = id.subgroupIndex;
+	wg_1[i] = t1;
+	int first = simd_broadcast(i, ushort(0));
+	int other = simd_shuffle(i, ushort(id.subgroupLane ^ 1));
+	int back = simd_shuffle(other, ushort(id.subgroupLane ^ 1));
+	float2 pair = simd_shuffle(float2(float(i), 1.0), ushort(id.subgroupLane ^ 1));
+	float2 count = simd_sum(float2(1.0, 0.0));
+	threadgroup_barrier(mem_flags::mem_threadgroup);
+	bool ok = ((((((((wg_0[first] == 0) && (wg_1[first] == id.subgroupIndex)) && (wg_0[other] == (id.subgroupLane ^ 1))) && (wg_1[other] == id.subgroupIndex)) && (back == i)) && (int(pair.x) == other)) && (int(count.x) == id.subgroupSize)) && (((id.subgroupIndex * id.subgroupSize) + id.subgroupLane) == i)) && ((id.subgroups * id.subgroupSize) == 64);
+	int t2 = id.x;
+	int t3 = ok ? 1 : 0;
+	atomic_store_explicit(&sb_0[t2], t3, memory_order_relaxed);
+}
+kernel void main0(uint3 gid [[thread_position_in_grid]], uint3 lid [[thread_position_in_threadgroup]], uint lidx [[thread_index_in_threadgroup]], uint3 grp [[threadgroup_position_in_grid]], device atomic_int* sb_0 [[buffer(0)]], uint sgl [[thread_index_in_simdgroup]], uint sgs [[threads_per_simdgroup]], uint sgi [[simdgroup_index_in_threadgroup]], uint sgn [[simdgroups_per_threadgroup]]) {
+	threadgroup int wg_0[64];
+	threadgroup int wg_1[64];
+	cs(ComputeInput{int(gid.x), int(gid.y), int(gid.z), int(lid.x), int(lid.y), int(lid.z), int(lidx), int(grp.x), int(grp.y), int(grp.z), int(sgl), int(sgs), int(sgi), int(sgn)}, sb_0, wg_0, wg_1);
+}

@@ -16,7 +16,10 @@ import helder.gfx.shader.Ir;
 // var<storage, read> sb_<n>: array<T>` (read_write when it is written; an
 // RWStorage<Int> array<atomic<i32>>, read and written by atomicLoad and
 // atomicStore), a storage texture `var img_<n>: texture_storage_2d<<format>,
-// write>`.
+// write>`; its workgroup memory `var<workgroup> wg_<k>: array<T, n>`; its
+// subgroups `enable subgroups;` (WebGPU's feature) and the builtins
+// subgroup_invocation_id and subgroup_size (its subgroup's index
+// local_invocation_index / subgroup_size).
 class Wgsl extends Emit {
 	override function type(t:SType):String
 		return switch t {
@@ -34,6 +37,7 @@ class Wgsl extends Emit {
 			case TStorage(TInt, true): "array<atomic<i32>>";
 			case TStorage(t, _): 'array<${type(t)}>';
 			case TImage(f): 'texture_storage_2d<${imageFormat(f)}, write>';
+			case TWorkgroup(t): 'array<${type(t)}>';
 		}
 
 	static function imageFormat(f:Int):String
@@ -48,8 +52,14 @@ class Wgsl extends Emit {
 	override function store(b:SExpr, i:SExpr, v:SExpr):String
 		return atomic(b) ? "atomicStore(&" + operand(b) + "[" + expr(i) + "], " + expr(v) + ");" : super.store(b, i, v);
 
-	override function computeHeader(c:SCompute)
+	override function computeHeader(c:SCompute) {
+		if (native()) line("enable subgroups;");
 		header(c.entry);
+	}
+
+	override function workgroup(c:SCompute)
+		for (s in c.shared)
+			line('var<workgroup> wg_${s.index}: array<${type(s.element)}, ${s.length}>;');
 
 	override function storage(c:SCompute) {
 		for (s in c.storage)
@@ -67,8 +77,10 @@ class Wgsl extends Emit {
 			line('@group(0) @binding(${16 + t.slot}) var smp_${t.slot}: sampler;');
 		}
 		var args = Emit.computeArgs(e, u -> 'u_${u.binding}', t -> 'tex_${t.slot}, smp_${t.slot}', s -> null, m -> null);
-		var ids = "i32(gid.x), i32(gid.y), i32(gid.z), i32(lid.x), i32(lid.y), i32(lid.z), i32(lidx), i32(grp.x), i32(grp.y), i32(grp.z)";
-		line('@compute @workgroup_size(${c.size.join(", ")}) fn main(@builtin(global_invocation_id) gid: vec3u, @builtin(local_invocation_id) lid: vec3u, @builtin(local_invocation_index) lidx: u32, @builtin(workgroup_id) grp: vec3u) {');
+		var ids = "i32(gid.x), i32(gid.y), i32(gid.z), i32(lid.x), i32(lid.y), i32(lid.z), i32(lidx), i32(grp.x), i32(grp.y), i32(grp.z)"
+			+ subgroupIds(native() ? ["i32(sgl)", "i32(sgs)", "i32(lidx / sgs)", 'i32((${c.invocations}u + sgs - 1u) / sgs)'] : null, "i32(lidx)");
+		var builtins = native() ? ", @builtin(subgroup_invocation_id) sgl: u32, @builtin(subgroup_size) sgs: u32" : "";
+		line('@compute @workgroup_size(${c.size.join(", ")}) fn main(@builtin(global_invocation_id) gid: vec3u, @builtin(local_invocation_id) lid: vec3u, @builtin(local_invocation_index) lidx: u32, @builtin(workgroup_id) grp: vec3u$builtins) {');
 		line('\t${e.fn.name}(' + ['${e.input.name}($ids)'].concat(args).join(", ") + ");");
 		line("}");
 	}
@@ -125,6 +137,8 @@ class Wgsl extends Emit {
 			case "sampleLevel": "textureSampleLevel(" + arg(args[0]) + ", " + expr(args[1]) + ", " + expr(args[2]) + ")";
 			case "atomicAdd" | "atomicMin" | "atomicMax": name + "(&" + operand(args[0]) + "[" + expr(args[1]) + "], " + expr(args[2]) + ")";
 			case "textureStore": "textureStore(" + expr(args[0]) + ", vec2i(" + expr(args[1]) + ", " + expr(args[2]) + "), " + expr(args[3]) + ")";
+			case "barrier": "workgroupBarrier()";
+			case "subgroupBroadcast" | "subgroupShuffle": name + "(" + expr(args[0]) + ", u32(" + expr(args[1]) + "))";
 			case _: super.builtin(name == "inversesqrt" ? "inverseSqrt" : name, args, t);
 		}
 

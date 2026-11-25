@@ -5,7 +5,10 @@ import helder.gfx.shader.ShaderMath.*;
 // particle move that appends the particles it keeps and counts them into
 // an indirect draw's arguments, a storage texture's gradient; and the
 // render stages that draw their results (the kept particles as instances
-// from the storage buffer, the texture sampled).
+// from the storage buffer, the texture sampled). Then workgroup memory and
+// subgroups: a reduction (Sums, the design's), a prefix sum in workgroup
+// memory (Prefix), the other subgroup operations' workgroup results
+// (Extremes) and the lanes' ids checked against each other (Lanes).
 @:structInit @:publicFields class ScanStep {
 	var offset:Int;
 	var count:Int;
@@ -25,6 +28,10 @@ import helder.gfx.shader.ShaderMath.*;
 @:structInit @:publicFields class GradientSize {
 	var width:Int;
 	var height:Int;
+}
+
+@:structInit @:publicFields class Count {
+	var n:Int;
 }
 
 @:structInit @:publicFields class DotVertex {
@@ -92,4 +99,94 @@ final DotShader = shader({
 final ImageShader = shader({
 	vertex: function(v:ImageVertex):ImageVaryings return {pos: position(vec4(v.pos, 0, 1)), uv: v.uv},
 	fragment: function(i:ImageVaryings, p:{image:Texture2D}):Vec4 return sample(p.image, i.uv)
+});
+
+// each workgroup's sum of its 256 values: its subgroups' first, then theirs
+final Sums = compute({
+	size: [256],
+	main: function(id:ComputeInput, p:{count:Count, values:Storage<Float>, out:RWStorage<Float>}, w:{part:Workgroup<Float>}) {
+		var v = id.x < p.count.n ? p.values[id.x] : 0.0;
+		v = subgroupAdd(v);
+		if (id.subgroupLane == 0) w.part[id.subgroupIndex] = v;
+		barrier();
+		if (id.localIndex == 0) {
+			var s = 0.0;
+			for (k in 0...id.subgroups)
+				s += w.part[k];
+			p.out[id.groupX] = s;
+		}
+	}
+});
+
+// an inclusive prefix sum of each workgroup's 256 values (Hillis and
+// Steele's, in workgroup memory: a barrier between the steps' reads and writes)
+final Prefix = compute({
+	size: [256],
+	main: function(id:ComputeInput, p:{count:Count, values:Storage<Int>, out:RWStorage<Int>}, w:{sums:Workgroup<Int>}) {
+		var i = id.localIndex;
+		w.sums[i] = id.x < p.count.n ? p.values[id.x] : 0;
+		barrier();
+		var offset = 1;
+		while (offset < 256) {
+			var v = w.sums[i];
+			if (i >= offset) v += w.sums[i - offset];
+			barrier();
+			w.sums[i] = v;
+			barrier();
+			offset *= 2;
+		}
+		if (id.x < p.count.n) p.out[id.x] = w.sums[i];
+	}
+});
+
+// each workgroup's smallest and largest value, whether all are above 0
+// and whether any is 7: out[4 * group ...], its subgroups' first
+final Extremes = compute({
+	size: [64],
+	main: function(id:ComputeInput, p:{count:Count, values:Storage<Int>, out:RWStorage<Int>},
+			w:{@:length(16) var lo:Workgroup<Int>; @:length(16) var hi:Workgroup<Int>; var flags:Workgroup<Int>;}) {
+		var inside = id.x < p.count.n;
+		var v = inside ? p.values[id.x] : 0;
+		var lo = subgroupMin(inside ? v : 1000000), hi = subgroupMax(inside ? v : -1000000);
+		var all = subgroupAll(!inside || v > 0), any = subgroupAny(inside && v == 7);
+		if (id.subgroupLane == 0) {
+			w.lo[id.subgroupIndex] = lo;
+			w.hi[id.subgroupIndex] = hi;
+			w.flags[id.subgroupIndex] = (all ? 1 : 0) | (any ? 2 : 0);
+		}
+		barrier();
+		if (id.localIndex == 0) {
+			var a = w.lo[0], b = w.hi[0], f = w.flags[0];
+			for (k in 1...id.subgroups) {
+				if (w.lo[k] < a) a = w.lo[k];
+				if (w.hi[k] > b) b = w.hi[k];
+				f = (f & w.flags[k] & 1) | ((f | w.flags[k]) & 2);
+			}
+			p.out[4 * id.groupX] = a;
+			p.out[4 * id.groupX + 1] = b;
+			p.out[4 * id.groupX + 2] = f & 1;
+			p.out[4 * id.groupX + 3] = f >> 1;
+		}
+	}
+});
+
+// 1 in out[x] where the invocation's subgroup ids agree with what its
+// subgroup's lanes broadcast and shuffle (lane ^ 1: its neighbour's)
+final Lanes = compute({
+	size: [64],
+	main: function(id:ComputeInput, p:{out:RWStorage<Int>}, w:{lane:Workgroup<Int>, group:Workgroup<Int>}) {
+		var i = id.localIndex;
+		w.lane[i] = id.subgroupLane;
+		w.group[i] = id.subgroupIndex;
+		var first = subgroupBroadcast(i, 0);
+		var other = subgroupShuffle(i, id.subgroupLane ^ 1);
+		var back = subgroupShuffle(other, id.subgroupLane ^ 1);
+		var pair = subgroupShuffle(vec2(i, 1), id.subgroupLane ^ 1);
+		var count = subgroupAdd(vec2(1, 0));
+		barrier();
+		var ok = w.lane[first] == 0 && w.group[first] == id.subgroupIndex && w.lane[other] == (id.subgroupLane ^ 1) && w.group[other] == id.subgroupIndex
+			&& back == i && Std.int(pair.x) == other && Std.int(count.x) == id.subgroupSize && id.subgroupIndex * id.subgroupSize + id.subgroupLane == i
+			&& id.subgroups * id.subgroupSize == 64;
+		p.out[id.x] = ok ? 1 : 0;
+	}
 });

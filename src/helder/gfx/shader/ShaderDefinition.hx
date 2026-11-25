@@ -17,6 +17,8 @@ interface ShaderAdapter extends Adapter {
 	function useSlots(use:SlotsUse):Void;
 	// (the block of the uniform(...)s the stages read, made while lowering them: null, none)
 	function uniforms():Null<SStruct>;
+	// (where a builtin's call is written: barrier(), the subgroup operations; null, unknown)
+	function posOf(e:SExpr):Null<KPos>;
 }
 
 // shader({vertex, fragment}) (compiler/README.md 3), the handler both languages run:
@@ -30,6 +32,8 @@ interface ShaderAdapter extends Adapter {
 // expression of a Shader).
 class ShaderDefinition implements Definition<ShaderAdapter, ShaderOutput> {
 	public static inline var MAX_SLOTS = 16;
+	// a compute stage's workgroup memory at most (WebGPU's and GL ES 3.1's floor; D3D11's and Metal's 32 KB)
+	public static inline var MAX_WORKGROUP = 16384;
 
 	public final name = "shader";
 
@@ -149,7 +153,9 @@ class ShaderDefinition implements Definition<ShaderAdapter, ShaderOutput> {
 		if (f.ret != TVoid) a.error('the compute function returns nothing (it writes its storage), not a ${Names.typeName(f.ret)}', pos);
 		var resources:Array<SResource> = [];
 		var written = 0;
-		for (i in 1...f.params.length)
+		// (the parameters after the input: the resources, then the workgroup memory)
+		var count = f.params.length - f.workgroup.length;
+		for (i in 1...count)
 			switch f.params[i].type {
 				case TStorage(_, true): written++;
 				case _:
@@ -158,7 +164,7 @@ class ShaderDefinition implements Definition<ShaderAdapter, ShaderOutput> {
 		// written ones; a written buffer's or texture's u register in HLSL;
 		// a storage texture's image unit in GL)
 		var reads = 0, uavs = 0, images = 0;
-		for (i in 1...f.params.length) {
+		for (i in 1...count) {
 			var p = f.params[i], name = f.fields[i - 1] ?? p.name, slot = i - 1;
 			resources.push(switch p.type {
 				case TStruct(s):
@@ -170,7 +176,7 @@ class ShaderDefinition implements Definition<ShaderAdapter, ShaderOutput> {
 					RUniform(std140(a, s, slot, pos));
 				case TTexture | TTextureCube | TTextureArray: RTexture(new STexture(p.name, slot, Textures.dimension(p.type)));
 				case TStorage(e, write):
-					var l = std430(a, e, name, pos);
+					var l = std430(a, e, 'the storage $name\'s element', pos);
 					RStorage(new SStorage(name, slot, e, write, l.offsets, l.stride, write ? uavs++ : written + reads++));
 				case TImage(format):
 					RImage(new SImage(name, slot, format, images++, uavs++));
@@ -180,8 +186,32 @@ class ShaderDefinition implements Definition<ShaderAdapter, ShaderOutput> {
 		if (resources.length > MAX_SLOTS) a.error('more than $MAX_SLOTS uniform blocks, textures and storage buffers', pos);
 		// (D3D11's compute stage has 8 UAVs; GL ES 3.1's devices 4 storage buffers and 4 images at least)
 		if (uavs > 8) a.error('more than 8 storage buffers and textures written (D3D11\'s UAVs)', pos);
+		// (workgroup memory: std430's strides, as WGSL counts it; its total, with the emulated subgroups' scratch)
+		var invocations = size[0] * size[1] * size[2];
+		var shared = [
+			for (i in 0...f.workgroup.length) {
+				var w = f.workgroup[i], v = f.params[count + i];
+				var t = switch v.type {
+					case TWorkgroup(t): t;
+					case _: throw "workgroup";
+				}
+				var n = w.length == 0 ? invocations : w.length;
+				var l = std430(a, t, 'the workgroup memory ${w.name}\'s element', pos);
+				new SShared(w.name, v, t, n, l.offsets, l.stride, i);
+			}
+		];
+		var misplaced = Uniformity.check(f);
+		if (misplaced != null) a.error(misplaced.message, a.posOf(misplaced.e) ?? pos);
+		var subgroups = Subgroups.uses(f);
+		var bytes = 0;
+		for (s in shared)
+			bytes += s.bytes;
+		var scratch = subgroups ? Subgroups.scratch(f, invocations) : 0;
+		if (bytes + scratch > MAX_WORKGROUP)
+			a.error('workgroup memory: ${bytes + scratch} bytes' + (scratch > 0 ? ' (the emulated subgroups\' $scratch of them)' : "")
+				+ ', more than $MAX_WORKGROUP (16 KB, WebGPU\'s and GL ES 3.1\'s limit)', pos);
 		a.finish();
-		var c = new SCompute(entry(Compute, f, input, resources), size);
+		var c = new SCompute(entry(Compute, f, input, resources), size, shared, subgroups);
 		var bindings = [
 			for (r in resources)
 				switch r {
@@ -193,20 +223,25 @@ class ShaderDefinition implements Definition<ShaderAdapter, ShaderOutput> {
 		];
 		var params:Array<ShaderParam> = [for (i in 0...resources.length) {name: f.fields[i], resource: resources[i]}];
 		var block = a.uniforms();
-		return {
-			program: c,
-			code: [
+		var android = StringTools.startsWith(a.defined("hxmc.target") ?? "", "android");
+		function texts(c:SCompute):Array<{language:String, text:String}>
+			return [
 				for (l in languages(a, arg.pos))
-					{
+					// (cs_5_0 has no subgroups: its form the emulated one only)
+					if (l != "hlsl" || !c.subgroups || c.emulated) {
 						language: l,
 						text: switch l {
-							case "glsl": new Glsl(StringTools.startsWith(a.defined("hxmc.target") ?? "", "android")).compute(c);
+							case "glsl": new Glsl(android).compute(c);
 							case "wgsl": new Wgsl().compute(c);
 							case "msl": new Msl().compute(c);
 							case _: new Hlsl().compute(c);
 						}
 					}
-			],
+			];
+		return {
+			program: c,
+			code: texts(c),
+			emulated: subgroups ? texts(Subgroups.emulate(c)) : null,
 			bindings: bindings,
 			params: params,
 			uniforms: block == null ? null : Lambda.find(c.entry.uniforms, u -> u.struct == block)
@@ -216,7 +251,7 @@ class ShaderDefinition implements Definition<ShaderAdapter, ShaderOutput> {
 	// std430 (WGSL's storage layout, MSL's and C's for these types): a
 	// storage buffer's element, a scalar, a Vec2, Vec4, Mat4 or a struct of
 	// them, its offsets (a struct's fields) and the stride of the array
-	public static function std430(a:Adapter, t:SType, name:String, pos:KPos):{offsets:Array<Int>, stride:Int} {
+	public static function std430(a:Adapter, t:SType, what:String, pos:KPos):{offsets:Array<Int>, stride:Int} {
 		function sizeAlign(t:SType, what:String):Array<Int>
 			return switch t {
 				case TFloat | TInt: [4, 4];
@@ -238,7 +273,7 @@ class ShaderDefinition implements Definition<ShaderAdapter, ShaderOutput> {
 				}
 				{offsets: offsets, stride: (off + align - 1) & ~(align - 1)};
 			case t:
-				{offsets: [0], stride: sizeAlign(t, 'the storage $name\'s element')[0]};
+				{offsets: [0], stride: sizeAlign(t, what)[0]};
 		}
 	}
 
@@ -268,6 +303,13 @@ class ShaderDefinition implements Definition<ShaderAdapter, ShaderOutput> {
 				case TFloat | TVec(_):
 				case t: a.error('the vertex function: the varying ${varyings.path}.${f.field} is a ${Names.typeName(t)}: varyings are Float, Vec2, Vec3 or Vec4', vpos);
 			}
+		for (g in [vf, ff]) {
+			var x = Uniformity.find(g);
+			if (x != null) a.error('${switch x.e {
+				case EBuiltin(n, _): n;
+				case _: "";
+			}}(): a compute stage\'s, not a render stage\'s', a.posOf(x) ?? vpos);
+		}
 		if (positions != 1)
 			a.error('the vertex function: exactly one field of ${varyings.path} is the clip-space position, marked by position(...) where it is built (it has $positions)',
 				vpos);
@@ -566,6 +608,8 @@ class SlotsDef {
 typedef ComputeOutput = {
 	program:SCompute,
 	code:Array<{language:String, text:String}>,
+	// (a stage using subgroups: its form made of workgroup memory, ShaderCode.emulated)
+	emulated:Null<Array<{language:String, text:String}>>,
 	bindings:Array<{name:String, slot:Int, kind:Int, size:Int, index:Int, format:Int, dimension:Int}>,
 	params:Array<ShaderParam>,
 	uniforms:Null<SUniform>

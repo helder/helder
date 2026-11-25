@@ -32,7 +32,8 @@ import helder.gfx.shader.Shader.UniformBlock;
 //   enc.endCompute();
 //
 // The function takes the invocation's ids (ComputeInput) and one object of
-// parameters, as the render stages do: its fields uniform blocks (structs,
+// parameters, as the render stages do (and a third, its workgroup memory:
+// Workgroup; barrier() and the subgroup operations, ShaderMath): its fields uniform blocks (structs,
 // std140), textures (Texture2D, sampled at the first mip level or one
 // given), storage buffers (Storage<T> read, RWStorage<T> read and written:
 // std430) and storage textures (StorageTexture, written), at slots 0, 1,
@@ -43,6 +44,8 @@ import helder.gfx.shader.Shader.UniformBlock;
 //   code                 its ShaderCode, in the target's languages (its workgroupSize)
 //   size                 the workgroup's size
 //   pipeline()           a ComputePipelineDesc of it (Device.createComputePipeline)
+//   emulated()           one of its second form, its subgroups made of
+//                        workgroup memory (what a device without them runs)
 //   groups(n, axis)      the workgroups that cover n invocations along an axis
 //   params.<name>        a uniform block's writer (UniformWriter), a
 //                        texture's slot (TextureSlot), a storage buffer's
@@ -69,6 +72,12 @@ class ComputeShader<P> {
 
 	public function pipeline():ComputePipelineDesc
 		return {program: code};
+
+	// a pipeline of its second form, its subgroups made of workgroup
+	// memory (ShaderCode.emulated: what a device without Feature.Subgroups
+	// runs; tests run it where the device has them), else pipeline()
+	public function emulated():ComputePipelineDesc
+		return {program: helder.gfx.ShaderCode.emulatedForm(code)};
 
 	// the workgroups that cover n invocations along an axis (0: x, 1: y, 2: z)
 	public inline function groups(n:Int, axis = 0):Int

@@ -1019,8 +1019,9 @@ class D3D11Backend {
 
 	// ---- the compute tier
 
+	// (cs_5_0 has no subgroups: a stage's emulated form)
 	public function has(f:Feature):Bool
-		return shaderModel == "_5_0";
+		return f != Subgroups && shaderModel == "_5_0";
 
 	public function createComputePipeline(shader:Int):Int {
 		var s = shaders[shader - 1];

@@ -20,7 +20,12 @@ class Abi {
 	// textures' records (SoftTexture) by slot after the render stages' context
 	public static inline var STORAGE = SIZE;
 	public static inline var IMAGES = SIZE + 8 * 16;
-	public static inline var COMPUTE_SIZE = SIZE + 16 * 16;
+	// its workgroup's memory, the frame of the call's invocations and the
+	// phase it runs (helder.gfx.shader.Phases: the call returns the next, -1 the end)
+	public static inline var WORKGROUP = IMAGES + 8 * 16;
+	public static inline var FRAME = WORKGROUP + 8;
+	public static inline var PHASE = FRAME + 8;
+	public static inline var COMPUTE_SIZE = PHASE + 8;
 	// the most varying components after the position a stage has here
 	public static inline var MAX_VARYINGS = 60;
 }

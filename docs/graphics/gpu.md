@@ -38,6 +38,7 @@ final Sprite = shader({
 ## What else
 
 - **Compute:** compute stages with storage buffers and atomics on WebGPU, Metal, Direct3D 11 and OpenGL ES 3.1 and the CPU back end, with a CPU fallback for WebGL2 ([Murmuration](https://helder.build/examples/#murmuration) steers half a million birds this way).
+- **Workgroups:** shared workgroup memory, `barrier()` and subgroup operations (sums, minimums, broadcasts, shuffles, votes) for reductions and prefix sums, the GPU's own subgroups where it has them and the same results everywhere else.
 - **The API:** buffers, textures in every portable format, render targets, mip maps, instanced and indirect draws, occlusion queries.
 - **Shared textures** between processes, through IOSurface and DXGI.
 - **No surprises:** pipelines are immutable, handles are integers, and a steady frame allocates nothing.

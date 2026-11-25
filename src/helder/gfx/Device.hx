@@ -490,6 +490,8 @@ final class Device {
 
 	// throws the compiler's log when the source does not compile
 	public function createShader(d:ShaderDesc):ShaderModule {
+		// (a compute stage's subgroups made of workgroup memory where the device has none)
+		if (d.code.emulated != null && !has(Subgroups)) d = {stage: d.stage, code: helder.gfx.ShaderCode.emulatedForm(d.code)};
 		var id = threaded ? ++shaderIds : 0;
 		answer(r -> r.make(r.shaders, id, r.impl.createShader(d)));
 		return new ShaderModule(id == 0 ? replay.made : id);

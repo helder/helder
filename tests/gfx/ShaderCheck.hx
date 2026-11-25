@@ -237,6 +237,20 @@ class ShaderCheck {
 		var sb = Scan.code.bindings;
 		check("Scan.code.bindings", sb[1].kind == Storage && sb[1].index == 1 && sb[2].kind == StorageWrite && sb[2].index == 0, Std.string(sb));
 		check("Gradient.code", Gradient.code.workgroupSize.join(",") == "8,8,1" && Gradient.code.bindings[1].kind == StorageTexture, Std.string(Gradient.code.bindings));
+		// (workgroup memory and subgroups on the CPU: an invocation alone, a
+		// subgroup of one; the invocations in reverse, so that the first's
+		// sum reads the others' parts)
+		var values:Array<Float> = [for (i in 0...10) i + 1], out:Array<Float> = [0], part:Array<Float> = [for (_ in 0...256) 0];
+		var x = 255;
+		while (x >= 0)
+			Sums.main(ComputeInput.at(x--, 0, 0, 256, 1, 1), {count: {n: 10}, values: values, out: out}, {part: part});
+		check("Sums.main", out[0] == 55, Std.string(out));
+		var i = ComputeInput.at(70, 0, 0, 64, 1, 1);
+		check("ComputeInput.at's subgroups", i.subgroupLane == 0 && i.subgroupSize == 1 && i.subgroupIndex == 6 && i.subgroups == 64, Std.string(i));
+		// (the subgroups' second form beside the first; cs_5_0's only that one)
+		var e = Sums.emulated().program;
+		check("Sums.emulated()", Sums.code.hlsl == null && e.hlsl != null && e.wgsl != Sums.code.wgsl && Prefix.code.emulated == null && Prefix.emulated().program == Prefix.code
+			&& e.workgroupSize.join(",") == "256,1,1" && e.bindings == Sums.code.bindings);
 	}
 
 	// the emitted source against the golden files
@@ -262,12 +276,22 @@ class ShaderCheck {
 			{name: "PaletteShader.frag", code: PaletteShader.fragmentCode},
 			{name: "Scan.comp", code: Scan.code},
 			{name: "Move.comp", code: Move.code},
-			{name: "Gradient.comp", code: Gradient.code}
+			{name: "Gradient.comp", code: Gradient.code},
+			{name: "Sums.comp", code: Sums.code},
+			{name: "Sums.emulated.comp", code: Sums.emulated().program},
+			{name: "Prefix.comp", code: Prefix.code},
+			{name: "Lanes.comp", code: Lanes.code},
+			{name: "Lanes.emulated.comp", code: Lanes.emulated().program}
 		];
 		for (c in codes)
 			for (l in ["glsl", "wgsl", "msl", "hlsl"]) {
-				var src:String = Reflect.field(c.code, l);
+				var src:Null<String> = Reflect.field(c.code, l);
 				var file = '$dir/${c.name}.$l';
+				// (a language without this form: HLSL has no subgroups)
+				if (src == null) {
+					check('$file', !sys.FileSystem.exists(file), "a form the stage has not");
+					continue;
+				}
 				if (bless) {
 					sys.io.File.saveContent(file, src);
 					continue;

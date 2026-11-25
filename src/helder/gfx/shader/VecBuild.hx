@@ -140,6 +140,13 @@ class VecBuild {
 		add("mat4", [["s", "Float"]], "Mat4", "new Mat4(new Vec4(s, 0, 0, 0), new Vec4(0, s, 0, 0), new Vec4(0, 0, s, 0), new Vec4(0, 0, 0, s))");
 		// (the fragment dropped, a statement of the fragment stage: alpha
 		// testing; on the CPU nothing, the colour returned as the GPU would not)
+		// (compute: the workgroup waits; on the CPU nothing, an invocation called alone)
+		fields.push({
+			name: "barrier",
+			access: [APublic, AStatic, AInline],
+			kind: FFun({args: [], ret: macro :Void, expr: macro {}}),
+			pos: Context.currentPos()
+		});
 		fields.push({
 			name: "discard",
 			access: [APublic, AStatic, AInline],
@@ -150,7 +157,12 @@ class VecBuild {
 	}
 
 	static function ct(name:String):ComplexType
-		return name == "Float" ? macro :Float : TPath({pack: ["helder", "gfx", "shader"], name: name});
+		return switch name {
+			case "Float": macro :Float;
+			case "Int": macro :Int;
+			case "Bool": macro :Bool;
+			case _: TPath({pack: ["helder", "gfx", "shader"], name: name});
+		}
 
 	static function fn(name:String, args:Array<Array<String>>, ret:String, body:String, ?meta:Metadata):Field {
 		var pos = Context.currentPos();

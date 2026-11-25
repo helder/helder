@@ -19,6 +19,14 @@ import ComputeShaders;
 //              others' black; the count read back
 //   image      a storage texture of 32x32 written by Gradient, then
 //              sampled into the frame's top left: its texels' pixels
+//   workgroup  workgroup memory and subgroups: Sums (1000 Floats' sums by
+//              workgroup of 256), Prefix (their inclusive prefix sums in
+//              workgroup memory), Extremes (smallest, largest, all above 0,
+//              any 7, by workgroup of 64) and Lanes (the subgroups' ids
+//              against what they broadcast and shuffle), each against the
+//              CPU's results in both forms: the device's (its own
+//              subgroups, or emulated without Feature.Subgroups) and the
+//              emulated one (ShaderCode.emulated) forced
 //
 // The second frame allocates nothing in the GC heap from beginFrame to
 // endFrame (hxmc.GcStats, the drawing thread's). Natively the results are read back here; in a
@@ -119,6 +127,84 @@ class ComputeCheck {
 			])
 		});
 		var imagePipeline = device.createPipeline(ImageShader.pipeline());
+		// (workgroup memory and subgroups: each stage in its two forms, a buffer for each's results)
+		var subgroups = device.has(Subgroups);
+		Sys.println('ComputeCheck: subgroups ' + (subgroups ? "the device's own" : "emulated"));
+		var floatValues = Bytes.alloc(N * 4), intValues = Bytes.alloc(N * 4);
+		var sumsWant = Bytes.alloc(Sums.groups(N) * 4), prefixWant = Bytes.alloc(N * 4), extremesWant = Bytes.alloc(Extremes.groups(N) * 16),
+			lanesWant = Bytes.alloc(Lanes.groups(128) * 64 * 4);
+		for (i in 0...N) {
+			var v = (i * 37) % 97 + 1, g = Std.int(i / 64);
+			// (a value below 0 in every third workgroup of 64)
+			if (g % 3 == 1 && i % 64 == 10) v = -5;
+			floatValues.setFloat(4 * i, i % 7 + 1);
+			intValues.setInt32(4 * i, v);
+		}
+		var total = 0.0, run = 0;
+		for (i in 0...N) {
+			if (i % 256 == 0) run = 0;
+			total += i % 7 + 1;
+			run += intValues.getInt32(4 * i);
+			prefixWant.setInt32(4 * i, run);
+			if (i % 256 == 255 || i == N - 1) {
+				sumsWant.setFloat(4 * Std.int(i / 256), total);
+				total = 0;
+			}
+		}
+		for (g in 0...Extremes.groups(N)) {
+			var lo = 1000000, hi = -1000000, all = 1, any = 0;
+			for (i in 64 * g...(64 * g + 64 < N ? 64 * g + 64 : N)) {
+				var v = intValues.getInt32(4 * i);
+				if (v < lo) lo = v;
+				if (v > hi) hi = v;
+				if (v <= 0) all = 0;
+				if (v == 7) any = 1;
+			}
+			for (k in 0...4)
+				extremesWant.setInt32(16 * g + 4 * k, [lo, hi, all, any][k]);
+		}
+		for (i in 0...Lanes.groups(128) * 64)
+			lanesWant.setInt32(4 * i, 1);
+		var floatBuffer = device.createBuffer({size: N * 4, usage: Storage, data: floatValues}),
+			intBuffer = device.createBuffer({size: N * 4, usage: Storage, data: intValues});
+		var countBytes = Bytes.alloc(Sums.params.count.block.size);
+		Sums.params.count.write({n: N}, countBytes);
+		var groupStages:Array<{name:String, pipeline:ComputePipeline, out:Buffer, want:Bytes, run:(Encoder, ComputePipeline, Buffer) -> Void}> = [];
+		function stage(name:String, desc:ComputePipelineDesc, want:Bytes, run:(Encoder, ComputePipeline, Buffer) -> Void)
+			groupStages.push({name: name, pipeline: device.createComputePipeline(desc), out: device.createBuffer({size: want.length, usage: Storage}), want: want, run: run});
+		function sums(enc:Encoder, p:ComputePipeline, out:Buffer) {
+			enc.setComputePipeline(p);
+			enc.setUniforms(Sums.params.count.block.binding, countBytes);
+			enc.setStorage(Sums.params.values.binding, floatBuffer);
+			enc.setStorage(Sums.params.out.binding, out);
+			enc.dispatch(Sums.groups(N));
+		}
+		function prefix(enc:Encoder, p:ComputePipeline, out:Buffer) {
+			enc.setComputePipeline(p);
+			enc.setUniforms(Prefix.params.count.block.binding, countBytes);
+			enc.setStorage(Prefix.params.values.binding, intBuffer);
+			enc.setStorage(Prefix.params.out.binding, out);
+			enc.dispatch(Prefix.groups(N));
+		}
+		function extremes(enc:Encoder, p:ComputePipeline, out:Buffer) {
+			enc.setComputePipeline(p);
+			enc.setUniforms(Extremes.params.count.block.binding, countBytes);
+			enc.setStorage(Extremes.params.values.binding, intBuffer);
+			enc.setStorage(Extremes.params.out.binding, out);
+			enc.dispatch(Extremes.groups(N));
+		}
+		function lanes(enc:Encoder, p:ComputePipeline, out:Buffer) {
+			enc.setComputePipeline(p);
+			enc.setStorage(Lanes.params.out.binding, out);
+			enc.dispatch(Lanes.groups(128));
+		}
+		stage("sums", Sums.pipeline(), sumsWant, sums);
+		stage("sumsemulated", Sums.emulated(), sumsWant, sums);
+		stage("prefix", Prefix.pipeline(), prefixWant, prefix);
+		stage("extremes", Extremes.pipeline(), extremesWant, extremes);
+		stage("extremesemulated", Extremes.emulated(), extremesWant, extremes);
+		stage("lanes", Lanes.pipeline(), lanesWant, lanes);
+		stage("lanesemulated", Lanes.emulated(), lanesWant, lanes);
 		// (the uniform blocks' bytes, written each dispatch into the frame's ring)
 		var scanSteps = [], offset = 1;
 		while (offset < N) {
@@ -158,6 +244,8 @@ class ComputeCheck {
 			enc.setUniforms(Gradient.params.size.block.binding, sizeBlock);
 			enc.setStorageTexture(Gradient.params.image.binding, image);
 			enc.dispatch(Gradient.groups(IMAGE), Gradient.groups(IMAGE, 1));
+			for (g in groupStages)
+				g.run(enc, g.pipeline, g.out);
 			enc.endCompute();
 			enc.beginPass(pass);
 			enc.setPipeline(imagePipeline);
@@ -201,6 +289,8 @@ class ComputeCheck {
 			// (the harness reads them: host.gfx.readBuffer, readPixels)
 			Sys.println('ComputeCheck: read scan ${scanA.id()} ${N * 4} ${fnv(expected)}');
 			Sys.println('ComputeCheck: read args ${draws.id()} 16 ${fnv(argsWant)}');
+			for (g in groupStages)
+				Sys.println('ComputeCheck: read ${g.name} ${g.out.id()} ${g.want.length} ${fnv(g.want)}');
 			for (p in points)
 				Sys.println('ComputeCheck: pixel ${p.x} ${p.y} ${p.rgb.join(" ")}');
 		} else {
@@ -227,6 +317,16 @@ class ComputeCheck {
 					}
 			}
 			check("pixels: the kept particles drawn indirectly, the storage texture sampled", bad.length == 0, bad.slice(0, 4).join("; "));
+			for (g in groupStages) {
+				var got = Bytes.alloc(g.want.length);
+				device.readBuffer(g.out, 0, got);
+				var wrong = -1;
+				for (i in 0...g.want.length >> 2)
+					if (got.getInt32(4 * i) != g.want.getInt32(4 * i) && wrong < 0) wrong = i;
+				var floats = g.name.indexOf("sums") == 0;
+				check('workgroup: ${g.name}', wrong < 0,
+					wrong < 0 ? null : 'element $wrong is ${floats ? Std.string(got.getFloat(4 * wrong)) : Std.string(got.getInt32(4 * wrong))}, not ${floats ? Std.string(g.want.getFloat(4 * wrong)) : Std.string(g.want.getInt32(4 * wrong))}');
+			}
 		}
 		// (in a browser the harness reads the buffers and the frame after main: kept)
 		if (!web) device.dispose();
