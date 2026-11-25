@@ -46,16 +46,17 @@ typedef MarkdownProps = {
 // its blocks, a long document's rows out of view too, copied with a blank
 // line between blocks and a line between list items (markers not in it).
 // Spacing between nested blocks is their container's row-gap (a quote's,
-// an item body's, a list's).
+// an item body's, a list's). update(doc) shows another doc (a reply as it
+// streams in): the rows of the blocks it shares with the last kept.
 class MarkdownView extends Node {
 	public static inline var VIRTUAL = 300;
 
-	public final doc:Doc;
+	public var doc(default, null):Doc;
 	// the scroller (a VirtualScroll past VIRTUAL blocks; null with scroll false)
 	public final scroller:Null<Node>;
 
 	final props:MarkdownProps;
-	final shown:Array<Block>;
+	var shown:Array<Block>;
 	final virtual:Null<VirtualScroll>;
 	final rows:Array<Node> = [];
 	// (a heading's id: the top-level block it is in)
@@ -80,8 +81,11 @@ class MarkdownView extends Node {
 		if (props.scroll == false) {
 			virtual = null;
 			scroller = null;
-			for (b in shown)
-				append(row(b));
+			for (b in shown) {
+				var r = row(b);
+				rows.push(r);
+				append(r);
+			}
 			return;
 		}
 		style.grow = 1;
@@ -120,6 +124,59 @@ class MarkdownView extends Node {
 		scroller.style.alignItems = Center;
 		append(scroller);
 		if (virtual != null) virtual.reset(shown.length);
+	}
+
+	// another doc shown (the same text grown: a reply streamed): the rows of
+	// the first blocks equal to the last doc's kept (their nodes, a selection
+	// in them, the scroll), the rest made again; a long document's
+	// (VirtualScroll) made again whole
+	public function update(next:Doc) {
+		doc = next;
+		var old = shown;
+		shown = props.blocks == null ? next.blocks : next.blocks.slice(0, props.blocks);
+		anchors.clear();
+		ids.resize(0);
+		for (i in 0...shown.length)
+			collectAnchors(shown[i], i);
+		if (virtual != null) {
+			virtual.reset(shown.length);
+			return;
+		}
+		var k = 0;
+		while (k < old.length && k < shown.length && same(old[k], shown[k]))
+			k++;
+		var holder = scroller ?? this;
+		while (rows.length > k)
+			holder.remove(rows.pop());
+		for (i in k...shown.length) {
+			var r = row(shown[i]);
+			rows.push(r);
+			holder.append(r);
+		}
+	}
+
+	// (blocks and inlines alike: enums, arrays, a list item's fields, values)
+	static function same(a:Dynamic, b:Dynamic):Bool {
+		if (a == null || b == null) return a == b;
+		if (Std.isOfType(a, String)) return Std.isOfType(b, String) && (a : String) == (b : String);
+		if (Std.isOfType(a, Bool)) return Std.isOfType(b, Bool) && (a : Bool) == (b : Bool);
+		if (Std.isOfType(a, Float)) return Std.isOfType(b, Float) && (a : Float) == (b : Float);
+		if (Reflect.isEnumValue(a)) {
+			if (!Reflect.isEnumValue(b) || Type.enumIndex(a) != Type.enumIndex(b)) return false;
+			var pa = Type.enumParameters(a), pb = Type.enumParameters(b);
+			for (i in 0...pa.length)
+				if (!same(pa[i], pb[i])) return false;
+			return true;
+		}
+		if (Std.isOfType(a, Array)) {
+			var xa:Array<Dynamic> = a, xb:Array<Dynamic> = b;
+			if (!Std.isOfType(b, Array) || xa.length != xb.length) return false;
+			for (i in 0...xa.length)
+				if (!same(xa[i], xb[i])) return false;
+			return true;
+		}
+		var item:ListItem = a, other:ListItem = b;
+		return same(item.task, other.task) && same(item.blocks, other.blocks);
 	}
 
 	// the heading with this id (a link's "#id", Markdown.slug's) brought to the view's top; false: none

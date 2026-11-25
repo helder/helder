@@ -54,6 +54,7 @@ class MarkupTest implements Markup {
 		virtual();
 		virtualGrid();
 		virtualGridItems();
+		virtualGridShort();
 		virtualSelection();
 		Sys.println('MarkupTest: $checks checks' + (failed == 0 ? ", ok" : ', $failed FAILED'));
 		Sys.exit(failed == 0 ? 0 : 1);
@@ -389,9 +390,14 @@ class MarkupTest implements Markup {
 		Render.render(<view align-items="start" padding={10}>
 			<view:button tag="b" slot="button" focusable states={(s:States) -> (s.hovered() ? {background: Color.rgb(0xFF0000)} : {} : StyleProps)}>Go</view:button>
 			<view tag="c" data-state={() -> ticked() ? "checked" : "unchecked"} states={(s:States) -> (s.attr("data-state")() == "checked" ? {opacity: 0.5} : {} : StyleProps)}/>
+			<glass tag="g" width={40} height={20} states={(s:States) -> (s.hovered() ? {opacity: 0.5} : {} : StyleProps)}/>
 		</view>, ui.root);
 		ui.update();
-		var b = ui.root.find("b"), c = ui.root.find("c");
+		var b = ui.root.find("b"), c = ui.root.find("c"), g = ui.root.find("g");
+		// (an element not neutral (<glass>): its states a function too, set once, not read as a hole)
+		ui.pointerMove(g.absX + 2, g.absY + 2);
+		ui.update();
+		check("states: an element of its renderer's own (<glass>), its style a function of its states", g.style.opacity == 0.5, '${g.style.opacity}');
 		var before = b.style.background;
 		ui.pointerMove(b.absX + 2, b.absY + 2);
 		ui.update();
@@ -447,7 +453,8 @@ class MarkupTest implements Markup {
 			&& cell.parent.semantics.role == Role.Row && cell.semantics.role == Role.Cell && cell.semantics.posInSet == 1 && cell.semantics.setSize == 50000);
 		grid.scrollToIndex(44, "start");
 		ui.update();
-		grid.scrollY += 7;
+		check("grid: a jump to an item's row: at the top, the padding's room above it", grid.scrollY == 11 * 34, '${grid.scrollY}');
+		grid.scrollY += 12 + 7;
 		ui.update();
 		ui.resize(360, 150);
 		ui.update();
@@ -536,6 +543,28 @@ class MarkupTest implements Markup {
 		ui.pointerDown(5, 50, 1);
 		ui.pointerUp(5, 50, 1);
 		check("grid: empty click clears", s.size() == 0);
+		dispose();
+	}
+
+	// (a grid scrolled far, its items replaced by two rows that fit: at its
+	// top, not past its end, and so frame after frame)
+	static function virtualGridShort() {
+		var ui = new Ui(new MonoText(), 300, 200);
+		var items = signal([for (i in 0...400) 'File $i']);
+		var grid:GridScroll = null;
+		var dispose = Render.render(<VirtualGrid each={items} by={s -> s} cellWidth={60} cellHeight={30} ref={g -> grid = g}>{(item, i) -> <text>{item()}</text>}</VirtualGrid>,
+			ui.root);
+		ui.update();
+		grid.scrollY = 1000;
+		ui.update();
+		items([for (i in 0...7) 'Other $i']);
+		flush();
+		ui.update();
+		var at = [for (_ in 0...3) {
+			ui.update();
+			grid.scrollY;
+		}];
+		check("grid: scrolled far, two rows that fit in its place: at its top", at.join(",") == "0,0,0", at.join(","));
 		dispose();
 	}
 
@@ -722,6 +751,40 @@ class MarkupTest implements Markup {
 		again = shown().filter(n -> idOf(n) == topId)[0];
 		check("virtual rows: rows taken out above the view: nothing moves", again != null && drawnY(again) == topY && l.count == 1000001,
 			again == null ? "gone" : '${drawnY(again)} $topY');
+		// (at the very top: rows put in above the first come into view, the view stays at the top)
+		l.scrollY = 0;
+		ui.update();
+		next = items().copy();
+		for (k in 0...5)
+			next.insert(0, 3000000 + k);
+		items(next);
+		flush();
+		ui.update();
+		check("virtual rows: at the top, rows put in above the first: still at the top", l.scrollY == 0 && idOf(shown()[0]) == 3000004,
+			'${l.scrollY} ${idOf(shown()[0])}');
+		next = items().copy();
+		next.splice(0, 5);
+		items(next);
+		flush();
+		ui.update();
+		// (at the top, a bar's inset grown over it: still at the top, the first row under the inset)
+		l.insets(60, 0);
+		ui.update();
+		check("virtual rows: at the top, the inset grown: still at the top", l.scrollY == 0 && drawnY(shown()[0]) == 60, '${l.scrollY} ${drawnY(shown()[0])}');
+		// (a jump with insets: the row within them, a bar's over the top, the last clear of the bottom's)
+		l.insets(40, 20);
+		l.scrollToIndex(l.count - 1, "end");
+		ui.update();
+		var s0 = shown(), lastRow = s0[s0.length - 1];
+		check("virtual rows: a jump to the last row with insets: its end the bottom inset's above the view's", drawnY(lastRow) + lastRow.height == 300 - 20,
+			'${drawnY(lastRow) + lastRow.height}');
+		l.scrollToIndex(500, "start");
+		ui.update();
+		var at500 = l.rowAt(500);
+		check("virtual rows: a jump to a row with insets: under the top inset", at500 != null && drawnY(at500.node) == 40,
+			at500 == null ? "none" : '${drawnY(at500.node)}');
+		l.insets(0, 0);
+		ui.update();
 		// (a jump to the last row: made, measured, its end at the view's)
 		l.scrollToIndex(l.count - 1, "end");
 		ui.update();

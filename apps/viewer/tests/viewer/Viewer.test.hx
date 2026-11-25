@@ -140,6 +140,46 @@ function tests() {
 			ui.keyDown(Key.ESCAPE, 0);
 			equals(x.browser.query.value, "");
 		});
+		test("the grid's marquee: drawn in the look's accent while it is dragged", () -> {
+			var x = Fixtures.explorer(), ui = new Ui(new StoryText(), 1100, 700);
+			Render.render(Fixtures.themed(x, true), ui.root);
+			x.start(dir);
+			helder.view.graph.Graph.flush();
+			ui.update();
+			var grid = ui.root.find("grid");
+			// (from the empty space under the cells, up over the first row)
+			var bottom = grid.absY + grid.height - 20, right = grid.absX + grid.width - 20;
+			ui.pointerDown(right, bottom, 1);
+			ui.pointerMove(right - 100, bottom - 100);
+			ui.pointerMove(grid.absX + 40, grid.absY + 40);
+			helder.view.graph.Graph.flush();
+			ui.update();
+			var band = grid.find("marquee");
+			notEquals(band, null);
+			equals(band.style.background, Shell.look.sheet().dark.get("accentSoft"));
+			equals(band.style.borderWidth, 1.0);
+			assert(band.width > 300 && band.height > 300, '${band.width} x ${band.height}');
+			assert(x.browser.selection.size() > 1, "the cells it crosses selected");
+			ui.pointerUp(grid.absX + 40, grid.absY + 40, 1);
+			equals(grid.find("marquee"), null);
+		});
+		test("the View menu: open as the mouse goes down, closed by a press on its button", () -> {
+			var x = Fixtures.explorer(), ui = new Ui(new StoryText(), 1100, 700);
+			Render.render(Fixtures.themed(x, true), ui.root);
+			x.start(dir);
+			helder.view.graph.Graph.flush();
+			ui.update();
+			var button = ui.root.find("view-menu"), at = {x: button.absX + 8, y: button.absY + 8};
+			ui.pointerDown(at.x, at.y, 1);
+			ui.update();
+			equals(ui.overlay.children.length, 1);
+			ui.pointerUp(at.x, at.y, 1);
+			equals(ui.overlay.children.length, 1);
+			ui.pointerDown(at.x, at.y, 1);
+			ui.pointerUp(at.x, at.y, 1);
+			ui.update();
+			equals(ui.overlay.children.length, 0);
+		});
 		test("what a broken file says", () -> {
 			equals(Decode.decode(haxe.io.Bytes.alloc(0)).error, "The file is empty");
 			var bad = Decode.decode(haxe.io.Bytes.ofString("%PDF-1.4\nnonsense"));
@@ -169,9 +209,9 @@ function tests() {
 			equals(viewer.title.peek(), "pages.pdf · 1 / 1 · page 1 / 3");
 			var doc = viewer.pdf.peek();
 			assert(doc != null, "the column");
-			// (the stage below the bar: 800 by 548; fitted to its width, the first page drawn and the next)
+			// (the stage below the bar: 800 by 548; auto, there its width, the first page drawn and the next)
 			equals([doc.layout.viewWidth, doc.layout.viewHeight], [800.0, 548.0]);
-			equals(doc.layout.zoom, doc.layout.fitWidth());
+			equals(doc.layout.zoom, doc.layout.auto());
 			assert(ui.root.find("pdf-scroll") != null && ui.root.find("page") != null, "pages made");
 			equals(asked.slice(0, 2), [0, 1]);
 			assert(doc.image(0) != null, "page 1 drawn");
@@ -206,7 +246,7 @@ function tests() {
 			equals(doc.percent(), 100);
 			ui.keyDown("0".code, 0);
 			frame();
-			equals(doc.layout.zoom, doc.layout.fitWidth());
+			equals(doc.layout.zoom, doc.layout.auto());
 			ui.keyDown("i".code, 0);
 			frame();
 			equals(text(ui, "status"), '${doc.percent()}% · page ${viewer.page + 1} / 3 · PDF · 1 KB · 1 / 1');

@@ -9,25 +9,39 @@ browser engine and no runtime to install.
 - **A browser of folders.** A sidebar of your places (Home, Desktop,
   Documents, Downloads, Pictures, Movies, Music) and drives, one level at a
   time: a folder's subfolders, the one you are in highlighted, › to go
-  deeper, the drive's free space at the foot. A toolbar with back and
+  deeper, the drive's free space at the foot. The sidebar is the
+  system's material, as Finder's is: macOS's sidebar, Windows 11's Mica,
+  KDE's blur (opaque with Reduce Transparency, and elsewhere). A toolbar with back and
   forward, the folder's name (its menu lists the folders enclosing it),
-  search, the View menu (the order, folders first, hidden files) and the
-  inspector; the path along the bottom, each folder a button and each
+  search, the View menu (the order, folders first, hidden files: a menu
+  button, opened as the mouse goes down, an item picked by dragging onto
+  it and letting go) and the inspector; the path along the bottom, each folder a button and each
   separator a menu of that folder's subfolders.
 - **A grid of thumbnails, or a list** (name, date, size, kind; sorted by
   its header). Thumbnails come from the viewer's own cache, the nearest
   first. Select several with Shift and Ctrl (Cmd), Ctrl+A, or a marquee
   drawn from empty space, and drag them out to other apps: a file
   manager, mail, chat, a browser's upload.
+- **Scrollbars that keep out of the way**: overlay ones on every system
+  (macOS's even when a connected mouse makes the system show them
+  always; thin ones on Windows, Linux and the web), shown while you
+  scroll or bring the pointer to the edge, draggable, faded after.
 - **Large folders.** A folder is read off the window's thread, 2,000
   entries at a time; the first show at once, the rest are merged in sorted
-  without moving what you look at or losing the selection. Sorted the way
+  without moving what you look at or losing the selection. A folder
+  entered shows its top; back and forward show a folder where you left it
+  (its scroll and selection kept with the history, put back once enough of
+  it is read), and closing a file shown full size leaves the folder where
+  it was with the last file viewed in view. Sorted the way
   people count (`img2` before `img10`), or by kind, date or size. Watched:
   files added, removed or changed show up.
 - **The inspector**: the selected file's preview (several: a stack of
   them, their kinds and total size), its kind and size,
   Open, Show in Finder (Explorer, the file manager), Move to Trash (put
   back with Undo) and its details: dimensions, pages, duration, dates.
+  Kept while the selected file is the same one (its path, size and
+  modified time): a search's keystrokes, a sort or a batch read in change
+  the list, not the inspector, whose preview is decoded once.
 - **Opens** PNG and APNG, JPEG, GIF, WebP and PDF on every system, and
   TIFF, HEIC/HEIF, AVIF and camera RAW files where the system has their
   codecs (Windows' WIC, macOS's ImageIO, Linux's libtiff, libheif,
@@ -106,14 +120,16 @@ phone's width the phone's screens are the ones shown.
 The viewer keeps its settings (the window's size and place, the folder,
 the layout, the order, recent files), its error log, your keymap file and
 its thumbnails' cache where your system keeps an app's data. Point it
-somewhere else with `--store <dir>` or the `HELDER_VIEWER_STORE`
-environment variable (the flag wins): the test lanes (`viewer-window`,
-`viewer-app`) do, so their runs never touch your own, and a second
-launch hands its file to the viewer started with the same store. When you
-try a build by hand, do the same:
+somewhere else with helder's `HELDER_HOME` environment variable (its data
+under `<dir>/data`, its cache under `<dir>/cache`: helder.os's README), or
+with `--store <dir>`, which sets it where no environment reaches the program
+(macOS's `open -a`). The test lanes (`viewer-window`, `viewer-app`) do, and
+check afterwards that your own store is as it was; a second launch hands
+its file to the viewer started with the same home. When you try a build by
+hand, do the same:
 
 ```sh
-HELDER_VIEWER_STORE=$(mktemp -d) apps/viewer/bin/macos-arm64/viewer --new some/folder
+HELDER_HOME=$(mktemp -d) apps/viewer/bin/macos-arm64/viewer --new some/folder
 ```
 
 ## Install
@@ -186,7 +202,7 @@ Ctrl is Cmd on macOS.
 | PDF: next, previous page | `]`, `[` |
 | PDF: first, last page | Home, End |
 | PDF: go to page | G or Ctrl+G, type the number, Enter |
-| PDF: zoom | `+`, `-`; Ctrl and the wheel, a pinch, about the pointer; `0` fitted to the width, `1` 100% |
+| PDF: zoom | `+`, `-`; Ctrl and the wheel, a pinch, about the pointer; `0` fitted as it opened, `1` 100% (96 dpi) |
 | Markdown: scroll | the wheel or a trackpad; Page Down or Space, Page Up or Backspace a screen; Down, Up a line; Home, End the top and the end |
 | Markdown: the source | Ctrl+U, or Source in the bar; again for the document |
 | Full screen | F11 or Enter (Ctrl+Cmd+F on macOS); Escape leaves it |
@@ -381,9 +397,12 @@ hidden files, the inspector and the status line are kept between runs
   `PdfView.hx`): a PDF as pdf.js shows one by default: its pages down one
   column, centred, 12 points apart, a white sheet each with a soft shadow
   on the canvas, their offsets a `HeightIndex`'s (the pages' sizes in points
-  known first: `PdfPages.sizes`, on a job), fitted to the width until
-  zoomed (Ctrl and the wheel, a pinch, about the pointer: the point under
-  it stays; `+`, `-` about the middle; 100% a point a point). Only the
+  known first: `PdfPages.sizes`, on a job), at pdf.js's "auto" zoom until
+  zoomed (fitted to the width, at most 125% of the actual size, so a wide
+  window's column stays a page wide, an A4 page some 990 points; a
+  landscape document fitted whole; Ctrl and the wheel, a pinch, about the
+  pointer: the point under it stays; `+`, `-` about the middle; 100% its
+  points at 96 dpi, as pdf.js's). Only the
   pages in view and one each side are made, and drawn: those in view
   first, two at a time, at the size shown in device pixels (again larger
   when a zoom needs it, the smaller drawing shown meanwhile; again smaller
@@ -412,8 +431,10 @@ hidden files, the inspector and the status line are kept between runs
   browsed; another file the system's app's); `http`, `https` and `mailto`
   are helder.os's `Links.open` (the browser; a new tab on the web). Its
   pictures are decoded as the viewer decodes a file (`Viewer.decode`, at
-  most 1600 a side), at most the column's width; a web address's is not
-  fetched, its alt text shown. The key context `markdown` (a document
+  most 1600 a side), at most the column's width, and laid out at the size
+  their headers say (helder.image's `Image.size`, read through Files
+  before the document is shown: `Viewer.measure`), so nothing below one
+  moves when it lands; a web address's is not fetched, its alt text shown. The key context `markdown` (a document
   shown) gives Page Down, Space, Up, Down, Home and End to the column and
   Mod+U to the source. The grid's tile is a page with the document's
   first heading (`Tiles`: read once, its first 16 KB, no rendering), the
@@ -487,8 +508,13 @@ distance, a budget too small for every neighbour, a changed file),
 opened among its folder's files, its column, its picture decoded and a
 remote one's alt text, its links: an anchor, another document at a
 heading of it, a web address, a missing file; the keys scrolling, the
-source by Mod+U and back, the inspector's preview and the grid's tiles),
-`ViewCamera.test.hx` (the fit, zooms about the cursor and their stops,
+source by Mod+U and back, the inspector's preview and the grid's tiles;
+two pictures at their sizes before they decode), `Media.test.hx`
+(tests/fixtures/media's silent Vorbis files, the desktop's and the
+phone's shells: over open, next, previous, close, another folder,
+another file and a PDF, at most one player plays, the shown file's),
+`Scrub.test.hx` (the scrub bar: keyframe seeks as it is dragged, the
+release exact), `ViewCamera.test.hx` (the fit, zooms about the cursor and their stops,
 the steps, the double click, pans, the glide), `Samples.test.hx` (the web
 build's sample folder as its browser has it: at Samples, its files and
 subfolder, the PDF opened and its pages), `Viewer.test.hx` (a
@@ -500,9 +526,20 @@ with Escape and Ctrl+Up, fullscreen's keys, the browser's keys: grid
 and list, the inspector, search; a PDF's column: the keys scrolling
 it, go to page, the zoom), `Pdf.test.hx` (the pages' places at a zoom,
 the pages a scroll shows and draws, go to page's scroll, a zoom kept
-about its point, a page that cannot be drawn),
+about its point, a page that cannot be drawn, the auto zoom it opens at),
+`Inspector.test.hx` (a search's keystrokes: the selected file's preview
+asked for once, its picture and details kept), `Window.test.hx` (a
+folder among 30, at desktop sizes: the panels and the path bar end at
+the window's bottom, the sidebar's level scrolls; a folder entered from a
+scrolled one at its top and back at the old offset, read a frame later,
+in the list and the grid; a folder read in batches that each sort above
+the last, still at its top; the full-size viewer closed with the folder
+where it was and the last file in view; scrolled to the end by the
+scroll and by End, the last row whole above the path bar with room, each
+row's text inside its row),
 `Viewer.story.hx` (the grid and the list dark and light, several
-selected, the inspector of a photo, of a PDF and of a Markdown document, an empty folder, a missing one, no results, a file full size, a
+selected, the inspector of a photo, of a PDF and of a Markdown document, a marquee
+being dragged over the grid, an empty folder, a missing one, no results, a file full size, a
 PDF's column scrolled between two pages, the Markdown sample dark and light,
 an error in its place, the status line; their trees in
 `Viewer.story.snap`). EXIF's reader is
@@ -511,8 +548,10 @@ helder.image's (`src/helder/image/Exif.test.hx`), the drops helder.os's
 real window on the GPU (Linux under Xvfb; `GFX_TARGET=windows-x86_64`
 under Wine), the fixtures' photo opened, decoded on helder.jobs and
 shown full size, closed after 3 s (`--exit-after`: the title and state
-printed, or the folder and its count while browsing), a PDF's first page, a
-Markdown document (tests/fixtures/markdown), a 9000x2000 PNG in tiles
+printed, or the folder, its count and where the panels end against the
+window's height while browsing), a PDF's first page, a
+Markdown document (tests/fixtures/markdown), a folder among 40 (its
+panels ending at the window's bottom), a 9000x2000 PNG in tiles
 (`tests/bigpng.mjs`), then again with no system font
 found (`HELDER_NO_SYSTEM_FONTS=1`: helder.text looks for none, and the
 viewer adds its own, `fonts/DejaVuSans-viewer.ttf`, a 41 KB subset of

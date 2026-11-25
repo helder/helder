@@ -6,7 +6,7 @@ typedef PageSize = {width:Float, height:Float};
 
 // A PDF's pages laid out as a browser shows one (pdf.js's default):
 // stacked down one column, each centred, GAP apart, MARGIN around them,
-// at a zoom (view points a PDF point; 1: 100%, a point a point). The
+// at a zoom (view points a PDF point; ACTUAL: 100%, 96 dpi). The
 // pages' offsets are a HeightIndex's (each row a page and the gap after
 // it), so a page at a scroll and a scroll for a page are lookups. Pure:
 // what the view shows, the tests read.
@@ -15,6 +15,10 @@ class PdfLayout {
 	public static inline var MARGIN = 16.0;
 	public static inline var MIN_ZOOM = 0.1;
 	public static inline var MAX_ZOOM = 8.0;
+	// a page at its actual size: its points at 96 dpi (pdf.js's 100%)
+	public static inline var ACTUAL = 96 / 72;
+	// (auto's largest: pdf.js's MAX_AUTO_SCALE, of the actual size; an A4 page some 990 points wide)
+	static inline var MAX_AUTO = 1.25;
 
 	public final sizes:Array<PageSize>;
 	public var zoom(default, null) = 1.0;
@@ -42,6 +46,15 @@ class PdfLayout {
 	// the zoom where the widest page fills the view's width less the margins
 	public function fitWidth():Float
 		return clamp((viewWidth - 2 * MARGIN) / widest);
+
+	// pdf.js's "auto": fitted to the width, at most 125% of the actual
+	// size (a wide window's column not as wide as it); a landscape document
+	// (its first page) fitted whole, its height too
+	public function auto():Float {
+		var z = Math.min(fitWidth(), MAX_AUTO * ACTUAL), first = sizes.length > 0 ? sizes[0] : null;
+		if (first != null && first.width > first.height) z = Math.min(z, (viewHeight - 2 * MARGIN) / first.height);
+		return clamp(z);
+	}
 
 	public function setZoom(z:Float) {
 		zoom = clamp(z);

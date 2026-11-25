@@ -28,7 +28,7 @@ class ViewerView implements Markup {
 		return <view tag="viewer" position="absolute" inset={0} background={Look.ref.canvas} color={Look.ref.fg} font-size={13}
 			opacity={x.zoom.shown()} pointer-events={x.full() ? "auto" : "none"} hidden={!x.full()}>
 			<view tag="viewer-bar" direction="row" align-items="center" column-gap={8} height={BAR} shrink={0} drag-region
-				padding-left={WindowButtons.side() == "start" ? 86 : 14} padding-right={WindowButtons.side() == "end" ? 152 : 14}
+				padding-left={WindowButtons.side() == "start" ? Shell.BUTTONS : 14} padding-right={WindowButtons.side() == "end" ? 152 : 14}
 				display={viewer.fullscreen() ? "none" : "flex"}>
 				<view:button tag="back-pill" role="button" focusable label={() -> "Back to " + x.sidebar.title(x.browser.dir())} direction="row"
 					align-items="center" column-gap={6} height={30} padding="0 12 0 6" radius={8} background={Look.ref.fill} color={Look.ref.fg}
@@ -116,30 +116,32 @@ class ViewerView implements Markup {
 				return false;
 			});
 		});
+		// (the file over the status line, not under it: the media bar, the PDF's column, the picture all above it)
 		return <view tag="stage" grow={1} min-height={0}>
-			{image}
-			<Show when={viewer.media() != ""}>{MediaView.make(viewer, x.files)}</Show>
-			<Show when={viewer.pdf() != null}>{() -> {
-				var d = viewer.pdf();
-				d == null ? null : PdfView.make(d);
-			}}</Show>
-			<Show when={viewer.markdown() != null}>{() -> {
-				var d = viewer.markdown();
-				d == null ? null : MarkdownPage.make(x, d);
-			}}</Show>
-			<Show when={viewer.state() != Shown && (viewer.state() != Loading || slow()) && x.zoom.flying() == ""}>
-				<view tag="message" position="absolute" inset={0} align-items="center" justify="center" row-gap={8} padding={24} pointer-events="none">
-					<text tag="title" font-size={17} color={viewer.state() == Failed ? Look.ref.danger : Look.ref.fg} text-align="center">{viewer.message}</text>
-					<text tag="detail" color={Look.ref.fg3} text-align="center">{viewer.detail}</text>
-				</view>
-			</Show>
+			<view tag="stage-content" grow={1} min-height={0}>
+				{image}
+				<Show when={viewer.media() != ""}>{MediaView.make(viewer, x.files)}</Show>
+				<Show when={viewer.pdf() != null}>{() -> {
+					var d = viewer.pdf();
+					d == null ? null : PdfView.make(d);
+				}}</Show>
+				<Show when={viewer.markdown() != null}>{() -> {
+					var d = viewer.markdown();
+					d == null ? null : MarkdownPage.make(x, d);
+				}}</Show>
+				<Show when={viewer.state() != Shown && (viewer.state() != Loading || slow()) && x.zoom.flying() == ""}>
+					<view tag="message" position="absolute" inset={0} align-items="center" justify="center" row-gap={8} padding={24} pointer-events="none">
+						<text tag="title" font-size={17} color={viewer.state() == Failed ? Look.ref.danger : Look.ref.fg} text-align="center">{viewer.message}</text>
+						<text tag="detail" color={Look.ref.fg3} text-align="center">{viewer.detail}</text>
+					</view>
+				</Show>
+				<Show when={viewer.gotoOpen()}>{goTo(viewer)}</Show>
+			</view>
 			<Show when={viewer.statusOn() && viewer.status() != ""}>
-				<view tag="status" position="absolute" left={0} right={0} bottom={0} padding="6 12" background={Look.ref.raised} borders="1 0 0 0"
-					border-color={Look.ref.line} direction="row">
-					<text color={Look.ref.fg2}>{viewer.status}</text>
+				<view tag="status" shrink={0} padding="6 12" background={Look.ref.raised} borders="1 0 0 0" border-color={Look.ref.line} direction="row">
+					<text shrink={1} min-width={0} max-lines={1} text-overflow="ellipsis" color={Look.ref.fg2}>{viewer.status}</text>
 				</view>
 			</Show>
-			<Show when={viewer.gotoOpen()}>{goTo(viewer)}</Show>
 		</view>;
 	}
 

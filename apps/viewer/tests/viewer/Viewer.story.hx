@@ -7,7 +7,8 @@ import helder.view.*;
 // The browser and the viewer, at a laptop's size: the folder as a grid
 // and as a list, dark and light; several selected; a PDF's column scrolled
 // between two pages; a Markdown document, dark and light; the inspector of
-// a photo, of a PDF and of a Markdown document; a photo full size
+// a photo, of a PDF and of a Markdown document; a marquee being dragged
+// over the grid; the search field focused, dark and light; a photo full size
 // with its back pill, an error in its place, the status line; an empty
 // folder, one that cannot be read, a search with no results (their trees
 // in Viewer.story.snap)
@@ -29,6 +30,40 @@ final several = story({
 		x.browser.selection.extend(x.browser.indexOf("lossy.webp"));
 		x.browser.selectionChanged();
 		themed(x, true);
+	}
+});
+
+// (a marquee dragged from under the cells up over the first row, as a mouse would: its band in the look's accent)
+final marquee = story({
+	name: "Browser/marquee",
+	width: 1100,
+	height: 700,
+	render: c -> {
+		c.settled(false);
+		Fixtures.marquee(browse(), () -> c.settled(true));
+	}
+});
+
+// (the search field focused: one ring round its box, Look's composite field's)
+final searchDark = story({
+	name: "Browser/search focused, dark",
+	width: 1100,
+	height: 700,
+	render: c -> {
+		var x = browse();
+		x.browser.searching(true);
+		themed(x, true);
+	}
+});
+
+final searchLight = story({
+	name: "Browser/search focused, light",
+	width: 1100,
+	height: 700,
+	render: c -> {
+		var x = browse();
+		x.browser.searching(true);
+		themed(x, false);
 	}
 });
 

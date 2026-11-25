@@ -69,6 +69,22 @@ a `VirtualScroll` (helder.ui's README, Long lists): only the rows in view
 are made, each measured once shown. `scrollToHeading(id)` brings a
 heading to the top (a `#id` link), `headings()` lists their ids.
 
+`update(doc)` shows another doc in the same view: a reply streamed in,
+parsed whole again at each chunk (parsing is linear). The top-level
+blocks equal to the last doc's, from the first, keep their rows (their
+nodes, a selection in them, the scroll); the rows from the first that
+differs are made again (as a reply grows, the last block, and the ones
+appended). An open code fence shows what came so far and closes when
+its ``` does. A long document's VirtualScroll is made again whole.
+
+```haxe
+var view = new MarkdownView({doc: Markdown.parse(""), scroll: false});
+function chunk(text:String) {
+	reply += text;
+	view.update(Markdown.parse(reply));
+}
+```
+
 - **Links** (`Link`, `Autolink`, a link around an image) call
   `onLink(href)`; the app decides what a relative path, an anchor or a
   URL opens.
@@ -124,5 +140,7 @@ static final look = Look.base.with({
 ```
 
 Tests: `MarkdownView.test.hx` (headless: the slots, a link's press,
-images, a long document's rows and a heading scrolled to), `index.test.ts`
+images, a long document's rows and a heading scrolled to, a streamed
+reply's blocks kept: chunks appended, a fence streamed then closed, a
+list growing item by item), `index.test.ts`
 (from TypeScript).

@@ -69,6 +69,9 @@ class Ui extends ScrollHost {
 	// colours and the rules for "dark" apply
 	public var theme(default, set):Null<StyleSheet> = null;
 	public var dark(default, set) = false;
+	// whether its window is the key one (UiWindow's: macOS's key window, else
+	// always): Liquid Glass drawn flat, untinted, when not, as the system's
+	public var active = true;
 
 	function set_focusVisible(v:Bool):Bool {
 		if (v == focusVisible) return v;
@@ -189,6 +192,21 @@ class Ui extends ScrollHost {
 		return along >= tr[0] && along <= tr[0] + tr[1] && across >= edge - g && across <= edge;
 	}
 
+	// (the overlay bar the pointer is over: shown as it comes, a frame asked
+	// for, so that it shows near the edge before a press, which then takes it)
+	var barUnder:Null<Node> = null;
+
+	function nearBar(target:Null<Node>) {
+		var n = target, over:Null<Node> = null;
+		while (n != null && over == null) {
+			if (n.style.overflow == Scroll && (overBar(n, false) || overBar(n, true))) over = n;
+			n = n.parent;
+		}
+		if (over == barUnder) return;
+		barUnder = over;
+		requestFrame();
+	}
+
 	// how far n's overlay scrollbars show (0 to 1), its last moves noted; a frame asked for while they fade
 	function barShown(n:Node):Float {
 		var m = barMoved.get(n), t = now();
@@ -237,6 +255,8 @@ class Ui extends ScrollHost {
 	// the pointer whose event is being dispatched (Node.capture's)
 	var dispatching = -1;
 
+	// (the mouse's press a menu's dismissal took: its release taken too)
+	var swallowed = false;
 	// the thumb being dragged: its node, axis, the pointer and scroll it started at
 	var drag:Null<Node> = null;
 	// drag and drop: the node a press may drag (its dragData), where it went down; the drag, its target that accepts
@@ -300,6 +320,7 @@ class Ui extends ScrollHost {
 		context.resized(this, width, height);
 		root.markDirty();
 		overlay.markDirty();
+		if (overlay.children.length > 0) Popups.resized(this);
 		// (across a breakpoint: the rules for sm, md... hold or not)
 		if (breakpoint(width) != was) {
 			Rules.restyleTree(root);
@@ -1472,6 +1493,7 @@ class Ui extends ScrollHost {
 		}
 		var target = hit(x, y);
 		setHover(target);
+		if (overlayBars) nearBar(target);
 		if (dragging != null) {
 			dragging.x = x;
 			dragging.y = y;
@@ -1558,7 +1580,13 @@ class Ui extends ScrollHost {
 		pointerX = x;
 		pointerY = y;
 		var target = hit(x, y);
-		Popups.dismissOutside(this, target);
+		// (a menu dismissed takes the press, its release too: nothing beneath hears it)
+		swallowed = false;
+		if (Popups.dismissOutside(this, target)) {
+			swallowed = true;
+			setHover(target);
+			return true;
+		}
 		// (a press focuses without the ring: hidden before the focus moves)
 		if (focusVisible) {
 			focusVisible = false;
@@ -1615,6 +1643,12 @@ class Ui extends ScrollHost {
 		pointerX = x;
 		pointerY = y;
 		var selected = selector.release();
+		// (a press a closing menu took: nothing under it hears its release)
+		if (swallowed) {
+			swallowed = false;
+			setHover(hit(x, y));
+			return;
+		}
 		if (drag != null) {
 			drag = null;
 			dragMirrored = false;
@@ -1692,7 +1726,7 @@ class Ui extends ScrollHost {
 		@:privateAccess touchScroll.stop();
 		var halted = nativeScroll && nativeHalt != null && nativeHalt();
 		var target = hit(x, y);
-		Popups.dismissOutside(this, target);
+		if (Popups.dismissOutside(this, target)) return true;
 		if (focusVisible) {
 			focusVisible = false;
 			requestFrame();
@@ -2595,18 +2629,39 @@ class Ui extends ScrollHost {
 		return false;
 	}
 
+	// the pointer's shape over what is pressed (a button, a link, a menu
+	// item, a tab, a toggle) whose style sets none, Default while it is
+	// disabled: Auto, the arrow, as native apps have it; a browser's
+	// window's Pointer, as web pages have it (UiWindow)
+	public var pressCursor:Cursor = Auto;
+
 	// the pointer's shape: the style of the node under it (or that has it
-	// captured), Auto taking the parent's; Default over a scrollbar's drag
+	// captured), Auto taking the parent's (or pressCursor, over what is
+	// pressed); Default over a scrollbar's drag
 	public function cursor():Cursor {
 		if (drag != null) return Default;
 		var n = capture != null ? capture : hover;
 		while (n != null) {
 			if (n.style.cursor != Auto) return n.style.cursor;
+			if (pressCursor != Auto && pressable(n)) return n.semantics?.disabled == true ? Default : pressCursor;
 			// (a text of a selectable scope: the text's, as a browser's over text)
 			if (Std.isOfType(n, TextNode) && !Std.isOfType(n.parent, TextNode) && n.userSelect() != None && n.selectionScope() != null) return Text;
 			n = n.parent;
 		}
 		return Default;
+	}
+
+	// (a button's element (view:button, a link's view:a), what has an
+	// onPress (Node.onActivate), or what assistive technology is told is pressed)
+	static function pressable(n:Node):Bool {
+		if (n.tag == "button" || n.tag == "a" || n.onActivate != null) return true;
+		var s = n.semantics;
+		if (s == null) return false;
+		if (s.href != null) return true;
+		return switch s.role {
+			case Button | Link | MenuItem | MenuItemCheckBox | MenuItemRadio | Tab | CheckBox | Switch | RadioButton: true;
+			case _: false;
+		}
 	}
 
 	// --- accessibility ---

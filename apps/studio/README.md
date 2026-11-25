@@ -98,7 +98,15 @@ export const phone = story({name: 'Phone/Three items', render: () => {todos(thre
 ```
 
 The stories are read from their text (helder.syntax) when the project
-opens, not built, so the canvas is laid out before anything compiled.
+opens, not built, so the canvas is laid out before anything compiled. A
+story file is read again whenever it changes, whoever changed it (the
+code view, an agent's `project.patch`, another editor or an agent on disk:
+the studio watches the story and design files), and when one is added or
+removed: when its stories changed (added, removed, renamed, resized, bound
+to another export) the screens follow (those whose names stay keep their
+place and their last frame), the host's main is written again
+(`screens.tsx`, `StudioScreens.hx`) and every source built. A project
+whose stories are all gone shows its App screen again.
 
 ## Design files
 
@@ -300,6 +308,14 @@ opens and closes it.
   `run.snap`). The host ends with the studio (`HXMC_DEV_EXIT_WITH_SERVER`).
 - The compiler stays warm (helder.compiler.service). One build runs at a
   time; files edited during a build are written after it.
+- **A failed build is shown, not only logged.** The last good build keeps
+  running, and each frame of the program says so: its last frame dimmed,
+  a chip by its caption ("Build failed · app.tsx:88 · TS2322: …", the
+  first error), until a build is good again. After a failed build every
+  save builds again (not a live literal's patch). The failure is the
+  studio's state (`Studio.failure`: its first error, where, every
+  diagnostic) for a prompt's turn to say; `project.patch` answers with
+  the diagnostics.
 - A project's stories share its modules' state, one program: a story keeps
   what it changes to itself (examples/ts-todo's stories each make a store
   of their own, `store(three, "done")`, rather than setting the module's
@@ -523,7 +539,12 @@ entry), every edit's span and the file checked. Then the file browser
 (tests/studio/files.json: tests/studio/design with an image, a font and code
 in folders): the folders opened, the image, the font and the code each in
 its view, the image dragged onto the Home frame (the file's `<image>`), a
-file dropped from the system on a folder (headless scripts' `drop`). The
+file dropped from the system on a folder (headless scripts' `drop`). Then
+a story file changed under the studio (a copy of examples/ts-todo driven
+over MCP, as an agent drives it): its exports renamed, a story renamed and
+one added (the screens follow, built, the new ones shown), a story file
+written on disk (read by the watcher, its screen shown), a type error in
+app.tsx (the failure, at app.tsx:88) and its fix (cleared). The
 test lane runs the studio's own tests (Snap.test.hx, FileTree.test.hx).
 
 On a 4-core Linux container (Mesa's llvmpipe, headless, otherwise idle):

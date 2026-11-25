@@ -61,6 +61,7 @@ class UiTest {
 		scrollSet();
 		nativeScrolls();
 		trackpad();
+		overlayBars();
 		androidScroll();
 		noWrap();
 		textTransform();
@@ -714,6 +715,44 @@ class UiTest {
 		ui.pointerMove(50, 40, 1);
 		ui.pointerUp(50, 40, 1, 1);
 		check("native scroll: off, helder's own drag scrolls", outer.scrollY > 0, "" + outer.scrollY);
+	}
+
+	// overlay scrollbars (Ui.overlayBars, helder's plain ones): none at rest,
+	// shown as the pointer comes to the edge (a frame asked for), taken by a
+	// press there and dragged, faded once left alone
+	static function overlayBars() {
+		var time = 100.0;
+		Ui.now = () -> time;
+		var ui = new Ui(new MonoText(), 200, 100);
+		ui.overlayBars = true;
+		var page = new Node("page"), tall = new Node("tall");
+		page.style.set({width: 200, height: 100, overflow: Scroll});
+		tall.style.set({height: 400, shrink: 0});
+		page.append(tall);
+		ui.root.append(page);
+		ui.update();
+		ui.paint(new Recording());
+		check("overlay bars: none at rest", @:privateAccess ui.barShown(page) == 0);
+		ui.pointerMove(100, 50);
+		ui.update();
+		ui.paint(new Recording());
+		@:privateAccess ui.needsFrame = false;
+		ui.pointerMove(197, 10);
+		check("overlay bars: the pointer at the edge asks for a frame", @:privateAccess ui.needsFrame);
+		ui.update();
+		ui.paint(new Recording());
+		check("overlay bars: shown near the edge", @:privateAccess ui.barShown(page) == 1);
+		ui.pointerDown(197, 10, 1);
+		ui.pointerMove(197, 60);
+		ui.pointerUp(197, 60, 1);
+		check("overlay bars: its thumb dragged", page.scrollY > 100, "" + page.scrollY);
+		ui.pointerMove(100, 50);
+		ui.update();
+		ui.paint(new Recording());
+		time += 1;
+		ui.update();
+		ui.paint(new Recording());
+		check("overlay bars: faded once left alone", @:privateAccess ui.barShown(page) == 0);
 	}
 
 	// a trackpad's gestures as macOS's views take them (Ui.elastic): latched
@@ -2958,6 +2997,29 @@ static function transitions() {
 		check("cursor: the node's own", ui.cursor() == Text);
 		ui.pointerMove(190, 90);
 		check("cursor: outside", ui.cursor() == Default);
+		// over what is pressed: the arrow, or a browser's hand (pressCursor), Default while disabled
+		var ui = new Ui(new MonoText(), 200, 100);
+		ui.root.style.set({direction: Row});
+		var button = new Node("button"), off = new Node("off"), field = new TextField(""), plain = new TextNode("hi");
+		button.append(new TextNode("OK"));
+		off.semantics = ({role: helder.ui.access.Role.Button, disabled: true} : helder.ui.access.Semantics);
+		for (n in [button, off, field, plain]) {
+			n.style.set({width: 40, height: 20});
+			ui.root.append(n);
+		}
+		ui.update();
+		var over = (x:Float) -> {
+			ui.pointerMove(x, 10);
+			return ui.cursor();
+		};
+		check("cursor: the arrow over a button natively", over(5) == Default);
+		ui.pressCursor = Pointer;
+		check("cursor: pressCursor over a button's label", over(5) == Pointer);
+		check("cursor: Default over a disabled button", over(45) == Default);
+		check("cursor: a field's I-beam", over(85) == Text);
+		check("cursor: Default over plain text", over(125) == Default);
+		button.style.cursor = Crosshair;
+		check("cursor: the button's own", over(5) == Crosshair);
 	}
 
 	// --- layout against Chromium ---

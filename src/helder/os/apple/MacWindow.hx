@@ -67,6 +67,8 @@ class MacWindow {
 
 	function new(owner:Window, title:String, width:Int, height:Int) {
 		this.owner = owner;
+		// (not key until AppKit says so: windowDidBecomeKey; one kept in the background never is)
+		@:privateAccess owner.active = false;
 		if (app.isNull()) start();
 		rect = LibC.malloc(32);
 		size = LibC.malloc(16);
@@ -467,8 +469,9 @@ class MacWindow {
 	}
 
 	// (Window.backdrop: an NSVisualEffectView behind the window, its
-	// material hudWindow 13 or underWindowBackground 21, or an
-	// NSGlassEffectView (macOS 26), filling the content view under the layer's)
+	// material hudWindow 13, underWindowBackground 21 or sidebar 7 (its
+	// state following the window's, as Finder's), or an NSGlassEffectView
+	// (macOS 26), filling the content view under the layer's)
 	var effect = Ptr.nil();
 
 	function setBackdrop(b:WindowBackdrop):Bool
@@ -485,10 +488,10 @@ class MacWindow {
 			effect = Msg.idRect(Msg.id(cls, ObjC.sel("alloc")), ObjC.sel("initWithFrame:"), Msg.rect(content, ObjC.sel("bounds")));
 			Msg.vInt(effect, ObjC.sel("setAutoresizingMask:"), 18);
 			if (b != Glass) {
-				// (behind the window, always active)
+				// (behind the window, always active; a sidebar's as the window is)
 				Msg.vInt(effect, ObjC.sel("setBlendingMode:"), 0);
-				Msg.vInt(effect, ObjC.sel("setMaterial:"), b == Blur ? 13 : 21);
-				Msg.vInt(effect, ObjC.sel("setState:"), 1);
+				Msg.vInt(effect, ObjC.sel("setMaterial:"), b == Blur ? 13 : b == Sidebar ? 7 : 21);
+				Msg.vInt(effect, ObjC.sel("setState:"), b == Sidebar ? 0 : 1);
 			}
 			// (NSWindowBelow -1: under every view of the content's)
 			Msg.vPtrIntPtr(content, ObjC.sel("addSubview:positioned:relativeTo:"), effect, -1, Ptr.nil());
@@ -1033,9 +1036,6 @@ class MacWindow {
 	// the accessibility's requests, timers or delegates, which would touch the program's state)
 	static var pumpMode = Ptr.nil();
 	static final peeked = new Event();
-	static final INPUT = (1 << NS.LeftMouseDown) | (1 << NS.LeftMouseUp) | (1 << NS.RightMouseDown) | (1 << NS.RightMouseUp) | (1 << NS.MouseMoved)
-		| (1 << NS.LeftMouseDragged) | (1 << NS.RightMouseDragged) | (1 << NS.KeyDown) | (1 << NS.KeyUp) | (1 << 12) | (1 << NS.ApplicationDefined)
-		| (1 << NS.ScrollWheel) | (1 << NS.OtherMouseDown) | (1 << NS.OtherMouseUp) | (1 << NS.OtherMouseDragged) | (1 << NS.Magnify);
 
 	// (whether a window's compositor takes the input as it is read)
 	static function routing():Bool {
@@ -1044,15 +1044,18 @@ class MacWindow {
 		return false;
 	}
 
-	// the main thread's wait while the program runs on: the next input
-	// event read, routed to its window's compositor at once, kept for the
-	// program's poll; false where no window has a compositor
+	// the main thread's wait while the program runs on: the next event
+	// read, input routed to its window's compositor at once, each kept for
+	// the program's poll; false where no window has a compositor. (Every
+	// kind read, not the input's alone: asked for input only, AppKit never
+	// took the app's activation, a click on an inactive window making it
+	// frontmost but never active nor the window key)
 	static function pump():Bool {
 		if (app.isNull() || !routing()) return false;
 		var pool = Runtime.objc_autoreleasePoolPush();
 		if (pumpMode.isNull()) pumpMode = ObjC.str("kCFRunLoopDefaultMode");
 		var until = Msg.idFloat(ObjC.cls("NSDate"), ObjC.sel("dateWithTimeIntervalSinceNow:"), 1.0);
-		var ev = Msg.idIntPtrPtrBool(app, ObjC.sel("nextEventMatchingMask:untilDate:inMode:dequeue:"), INPUT, until, pumpMode, true);
+		var ev = Msg.idIntPtrPtrBool(app, ObjC.sel("nextEventMatchingMask:untilDate:inMode:dequeue:"), -1, until, pumpMode, true);
 		if (!ev.isNull()) {
 			var type = Msg.i(ev, ObjC.sel("type")).toInt();
 			if (type != NS.ApplicationDefined) {
@@ -1196,7 +1199,15 @@ class MacWindow {
 
 	@:hxmc.callback static function didChangeKey(self:Ptr, cmd:Ptr, note:Ptr):Void {
 		var w = find(Msg.id(note, ObjC.sel("object")));
-		if (w != null) w.keepControls();
+		if (w == null) return;
+		w.keepControls();
+		var key = Msg.b(w.window, ObjC.sel("isKeyWindow"));
+		if (key == w.owner.active) return;
+		@:privateAccess w.owner.active = key;
+		var e = event;
+		e.kind = Redraw;
+		e.window = w.owner;
+		dispatch(e);
 	}
 
 	// (the close button where layoutControls put it, in the window: AppKit moves

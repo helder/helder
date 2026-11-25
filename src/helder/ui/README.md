@@ -277,7 +277,13 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
     its momentum the system's replayed at the frames' times; the
     scrollbars are AppKit's own scrollers drawn into the tree
     (`ScrollbarArt`: `MacScrollbarArt`), overlay ones fading as macOS's,
-    as the system's "Show scroll bars" says. The
+    as the system's "Show scroll bars" says, or as a window asks
+    (`<Surface scrollbars="overlay">`, or "always"). Elsewhere (Windows,
+    Linux, the web) the bars are helder's thin ones (`Plain`), always
+    shown, or with `scrollbars="overlay"` (`Ui.overlayBars`) shown while
+    scrolling, while the pointer is over one (a frame asked for as it
+    comes near the edge, so it can be grabbed) and while dragged, then
+    faded. The
     tree still decides whose drag it is (`Ui.nativeBegins`: none while a
     recogniser of the tree holds a pointer or a node there follows the
     pointer's moves; else the nearest scroller that can move that way,
@@ -312,8 +318,10 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
   atlas pages, so that a frame is one draw call (a texture of its own, a
   large image or a `<Scene>`'s, a draw more where it is bound), its
   instances in a ring of buffers written where they changed; `UiWindow` puts a
-  `Ui` in an `helder.os` window, shows the hovered node's cursor and runs
-  the loop. In markup the window is `<Surface>` (`UiWindow.Surface`, a
+  `Ui` in an `helder.os` window, shows the hovered node's cursor (in a
+  browser a hand over what is pressed and sets none, as web pages have it:
+  a button, a link, a menu item, a tab, a toggle; the arrow while it is
+  disabled; natively the arrow, `Ui.pressCursor`) and runs the loop. In markup the window is `<Surface>` (`UiWindow.Surface`, a
   root): `UiWindow.run(<Surface title="Todo" width={480} height={560}
   theme={sheet}>...</Surface>)` opens it and runs the loop; its props
   (title, size, theme, background, dark) are values or reactive, several
@@ -453,8 +461,15 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
   children of `Ui.overlay`, drawn and hit after the tree, not clipped by
   it), anchored to a node (below, above, beside; flipped and kept in the
   window), in a corner of the window (notifications), at a point (a context menu) or modal (a backdrop, the focus kept inside); a press outside or
-  Escape asks them to close. In markup, `UiFlow.Popover` puts its children
-  in one while `open` is true.
+  Escape asks them to close. An anchored popup follows its anchor, placed
+  again every layout (the window resized, the anchor scrolled): a
+  popover (`UiFlow.Popover`, `Sheet`'s popover on a wide screen). A menu
+  (`Popup.menu`: `DrawnMenu`'s) is dismissed as the platforms' menus are
+  instead: by the window's resize, and by a press outside it that goes no
+  further (neither it nor its release reaches what is beneath, as a menu
+  of macOS, GTK or a browser's `<select>` takes it); a popover's outside
+  press still reaches what it lands on. In markup, `UiFlow.Popover` puts
+  its children in one while `open` is true.
 - **Long lists**: `VirtualScroll` (markup's `VirtualList`, `UiFlow`)
   makes only the rows in view and an overscan more, in the flow between
   two spacers; a `HeightIndex` (a sum tree over leaves of 128 rows: 4
@@ -466,9 +481,14 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
   laid out again while one changes), so no frame shows a gap. The scroll
   is anchored to the row at its top: measures, the estimate, rows put in
   or taken out above it (`splice`; VirtualList diffs its list by key into
-  them) move nothing in view. Rows leaving the window are hidden and kept
+  them) move nothing in view; at the very top there is no anchor (as a
+  browser's scroll anchoring at offset 0), so a list filled in batches
+  that sort above its first row stays at its top, and so does one whose
+  top inset grows (a bar's large title laid out after it). Rows leaving the window are hidden and kept
   by key (`keep`, the farthest let go), coming back made already;
-  `scrollToIndex` and `focusIndex` reach rows not made, the arrows, Page
+  `scrollToIndex` and `focusIndex` reach rows not made (shown within
+  the list's insets, `insets(top, bottom)`: under a bar laid over its top,
+  the last row clear of its bottom padding), the arrows, Page
   Up and Down, Home and End move the focus (and `selected`, a key that
   outlives its row's node) onto them; a listbox to assistive technology,
   each made row's place among all (`Semantics.posInSet`, `setSize`).
@@ -532,7 +552,8 @@ select, with Shift extend, with Cmd/Ctrl move only the focus (Cmd/Ctrl
 Space toggles it); Cmd/Ctrl A selects all, Escape clears. Typing finds the
 first item from the focus on whose `textOf` starts with what was typed in
 the last second (wrapping). A drag from empty space draws a marquee
-(slot `grid-marquee`) and selects the cells it crosses, counted rather
+(slot `grid-marquee`: drawn by the look, `Look.base`'s an accent-tinted
+band with an accent border; `VirtualList` has none) and selects the cells it crosses, counted rather
 than looked for (rows not made too), scrolling near the top and bottom
 edges; Shift or Cmd/Ctrl at its start adds to the selection, a click on
 empty space clears it. To assistive technology a grid of rows of
@@ -551,11 +572,12 @@ are as they were. Cells (slot `grid-cell`) and a selection's rows carry
 
 ## Navigation
 
-`Router` (helder.ui) holds screens by path as a stack, `Stack` shows it
-(examples/navigation):
+`Router` (helder.ui.nav) holds screens by path as a stack, `Stack` shows it
+(examples/navigation); Haxe's `Routes` is a Router whose routes' params are
+typed by their paths:
 
 ```haxe
-final nav = new Router();
+final nav = new Routes();
 nav.route("/", _ -> <Home/>)
 	.route("/product/:id", p -> <Product id={p.id}/>)   // p:{id:String}
 	.fallback(path -> <NotFound path={path}/>);
@@ -767,7 +789,9 @@ a `Menu` is a title and its items (`role: Window`: the window menu).
 shortcut from the keymap (the first binding where the context stack of
 the node it is for holds), enabled and checked from its handler's state.
 `Menus.popup(ui, items, x, y, ?from)` shows a context menu, its choice
-dispatched from `from`; `MenuBar` (markup's `<MenuBarView menus={...}/>`)
+dispatched from `from`; `Menus.button(node, items)` makes a node a menu
+button (a pull-down: macOS's NSPopUpButton, a browser's `<select>`), its
+menu under it; `MenuBar` (markup's `<MenuBarView menus={...}/>`)
 the window's bar, set again when a label or a state changes (checked
 before each update, `Ui.beforeUpdate`). Where `Ui.hostOf` says native
 (`"context-menu"`, `"menubar"`) and the window has them: macOS's NSMenu
@@ -782,7 +806,22 @@ first; Left and Right move along it; a hover moves while one is open) and
 popups with check marks, shortcuts at the right and submenus; Up, Down,
 Home, End, a letter, Right and Left into and out of submenus, Enter or
 Space chooses, Escape closes the innermost, a press outside all; the
-focus given back when they close. `tests/os/MenuTest.hx` reads each
+focus given back when they close.
+
+Menus behave as the platforms' own do. A menu button's opens as the
+mouse goes down on it, not on its release (a tap, Enter or Space open it
+too); held, dragged onto an item and let go there, that item is chosen
+(macOS's and Windows' menus; a drawn menu bar's titles too); a press on
+the button while its menu is open closes it on the press, which goes no
+further (its release opens nothing). A press elsewhere closes a drawn
+menu and is taken (`Popup.menu`); the platform's menus decide for
+themselves: macOS's tracking takes the press that closes it and the
+release of a press it opened on (the button's press let go of after it),
+Windows' lets the closing press reach the window after the menu has gone,
+where a menu button takes it rather than opening again. A window's resize
+closes a drawn menu (the platforms' menus are modal: the window cannot be
+resized while one is open); a popover anchored to a node follows it
+instead. `tests/os/MenuTest.hx` reads each
 platform's back (the window lane); `src/helder/ui/menu/Menus.test.hx` the
 model and the drawn menus.
 
@@ -1020,8 +1059,15 @@ A look is tokens, a recipe per control, the renderings an app replaced
 and its own parts, compiled once into a `StyleSheet` that `Rules` runs:
 a control's states only change which rules hold. `Look.base` is helder's;
 `<Themed look={look}>` installs one for a subtree (its sheet, and the
-look its controls take); a control under none takes `Look.base` for
-itself.
+look its controls take; its node grows to fill its place and takes no
+minimum from its content, so a scroller inside it scrolls rather than
+pushing it past a window's bottom); a control under none takes
+`Look.base` for itself. Base's parts include the grid's marquee
+(`grid-marquee`: the accent's soft tint, a one-point accent border) and a
+composite field (an icon and a text field in a box, a search field):
+`field-box` on the box, ringed as one at its radius in `focusSoft` while
+its field has the focus (`focusWithin`, as macOS rings a field), and
+`field-box-input` on the text field, which then draws no ring of its own.
 
 **Tokens.** Colours are tones (`Look.tone(light, dark)`, as CSS writes a
 colour: `oklch()`, `#hex`), the rest plain values; a recipe reads them
@@ -1033,7 +1079,7 @@ as `Refs` (colours as token references, light or dark by the window,
 | --- | --- |
 | Surfaces | `canvas` (the window), `surface` (what rests on it), `raised` (what floats), `well` (fields), `hover`, `press` (washes), `fill`, `fillHover`, `fillPress` (a filled control's gray), `rail`, `railHover` (a switch's track off), `line`, `edge`, `edgeStrong` |
 | Text | `fg`, `fg2`, `fg3` |
-| Accent | `accent`, `accentStrong` (its hover), `accentSoft`, `accentFg` (text on it), `accentInk` (accent text), `focus` (the ring: one blue for every accent) |
+| Accent | `accent`, `accentStrong` (its hover), `accentSoft`, `accentFg` (text on it), `accentInk` (accent text), `focus` (the ring: one blue for every accent), `focusSoft` (a field's ring: it half seen) |
 | Status | `danger`, `dangerStrong`, `dangerSoft`, `dangerFg`, `success`, `warning`, `info` |
 | Other colours | `knob`, `scrim`, `shadow` |
 | Type | `font` (Inter), `display` (Inter Display), `mono` (Geist Mono), `size` 14, `small` 12, `large` 16, `title` 20, `medium` 500 |
@@ -1065,6 +1111,7 @@ part's style; a style's keys may be states, nested (`checked: {hover:
 | `pressed` | pressed | | `selected`, `open` | `data-selected`, `data-state=open` |
 | `focus` | the keyboard's focus | | `invalid`, `readonly` | `data-invalid`, `data-readonly` |
 | `disabled` | `data-disabled` | | `dark` | the dark appearance |
+| `focusWithin` | the focus in it (`has:focus`), by the pointer too | | | |
 
 `variants: {variant: {...}, size: {...}}` gives each value's parts,
 `defaults: {variant, size}` what a control takes when its props give
@@ -1381,39 +1428,48 @@ it is drawn (`helder.ui.draw.GlassPass`, `GlassShader`), on every back end
 handed to the canvas where it paints, `TextureCanvas.pass`) is what was
 drawn under it so far: the Renderer draws the quads that meet it again
 into a target of their own before the frame's pass, the CPU's canvas
-copies its pixels. That is blurred at a half or a quarter of its size
-(a Gaussian along x, then y), then the glass is shaded over its box and
-its shadow's: a distance field of its shape (a group's shapes blended by
-a smooth minimum within `spacing`), what is behind it read from further in
-near its rim (a lens), frosted, saturated, tinted by the light behind it,
-a rim light from the top left and the bottom right, a soft shadow, a
-press's glow. A frame with drawn glass is drawn whole (what the glass reads
-reaches past what changed) and by the program, onto the window's own layer:
-the compositor's own frames and the system's layers would move what is
-under it without it.
+copies its pixels. That is brought down to a half or a quarter of its size
+by a box filter (each texel its block's mean: nothing aliases), blurred
+there (a Gaussian along x, then y), then the glass is shaded over its box
+and its shadow's: a rounded box's exact distance (Inigo Quilez's
+sdRoundBox; a group's shapes blended by a smooth minimum within
+`spacing`), what is behind it read a little further in near its rim (a
+lens within a bevel at most half the shape's thickness, moved at most 0.45
+of the bevel so that it never folds, along the normal of a rounder box so
+that it never jumps across a corner's diagonal), frosted, saturated, washed
+toward its tint, a rim light, a soft shadow, a press's glow, a dither of a
+level against banding. In a window that is not the key one (`Ui.active`:
+macOS's key window, `Window.active`; `Glass.active` overrides it) it is
+the system's flatter look: more frosted, untinted, no rim light nor
+shadow, clear glass a dimmed blur. A frame with drawn glass is drawn whole
+(what the glass reads reaches past what changed) and by the program, onto
+the window's own layer: the compositor's own frames and the system's
+layers would move what is under it without it.
 
-Its look is tuned against the system's (`tests/ui/GlassTest.hx --tune`):
-regular glass's blur, frost, saturation and brightness against macOS 26's
-NSGlassEffectView, drawn offscreen by Core Animation
-(`tests/ui/glass-reference.swift`: CARenderer, which needs no screen
-capture); its lens, rim, clear glass and tint against iOS 27's
-UIGlassEffect in the simulator (`tests/ui/GlassIos.hx`), as CARenderer
-draws no lens, rim or tint (its portal layers). Over GlassScene's
-backgrounds, mean levels over each glass and its shadow:
+Its look is tuned against the system's on screen (`tests/ui/GlassKinds.hx`:
+every kind of the glass demo, regular, clear, four tints, four shapes, a
+group, over fixed bands): out of a key window against macOS 26's
+NSGlassEffectView over the same bands, shown behind every window and
+captured by the window server (`tests/ui/glass-kinds.swift`, which needs
+Screen Recording's permission; a key window would take the focus), in a
+key window against iOS 27's UIGlassEffect in the simulator
+(`tests/ui/GlassKindsIos.hx`). Mean levels over each kind and its rim, at
+2x:
 
-| | regular | clear | tinted |
-|---|---:|---:|---:|
-| macOS 26, CARenderer, 1x | 7.4 | 23.3 | 23.5 |
-| iOS 27 simulator, 3x | 10.7 | 12.0 | 7.3 |
+| | regular | clear | tints | shapes | group | all |
+|---|---:|---:|---:|---:|---:|---:|
+| not key, macOS 26 | 4.9 | 5.0 | 4.3 to 13.4 | 2.8 to 4.9 | 2.7 | 5.6 |
+| key, iOS 27 | 8.3 | 20.0 | 6.4 to 8.6 | 4.5 to 8.8 | 4.7 | 8.3 |
 
-Where it differs: the system's specular highlights at a capsule's ends
-(a reflection the lens makes bright), its continuous corners (a rounded
-rectangle's here), Apple's dimming of clear glass by what is behind it;
-a group draws all its glass in its first glass's variant and tint. The
-golden (`tests/ui/glass.png`: stripes over text, a group among the
-glass; its text in helder's embedded Inter, so the same on every
+Where it differs: the system's ghosts of strong stripes behind regular
+glass (its blur keeps more of them), iOS's clear glass, which magnifies
+behind its rim more than macOS's slight bend, and the dark and green tints
+out of a key window, which the system keeps a little of; a group draws all
+its glass in its first glass's variant and tint. The golden
+(`tests/ui/glass.png`: stripes over text, a group among the glass, a key
+window's look; its text in helder's embedded Inter, so the same on every
 machine) is the CPU's, made on Linux by ui-soft; Metal, llvmpipe, WebGPU
-and WebGL2 land within 8 levels of it, one pixel over 6
+and WebGL2 land within 12 levels of it, under 0.1% of its pixels over 6
 (`tests/ui/web-glass.mjs` checks the browsers', `GlassTest --smoke` D3D11).
 
 ### Native or drawn, per widget

@@ -23,10 +23,16 @@ import viewer.ViewerActions;
 // sidebar's top on macOS, at the top right elsewhere); files dropped on it
 // opened; its size and place, the folder, the layout, the order and the
 // inspector kept between runs (helder.os.Store "helder-viewer"); decodes
-// and listings as helder.jobs' jobs.
+// and listings as helder.jobs' jobs. On a desktop that has one, the
+// sidebar is the system's material (Finder's), the rest opaque.
 class Shell implements Markup {
 	// the toolbar's height, the window's buttons' row (macOS: the sidebar's top)
 	public static inline var BAR = 40;
+	// (macOS's buttons, left of a bar at the window's left edge: what the bar keeps clear)
+	public static inline var BUTTONS = 86;
+	// the window's least size (a desktop's: the tablet's shell at its narrowest, never a phone's)
+	public static inline var MIN_WIDTH = 640;
+	public static inline var MIN_HEIGHT = 400;
 
 	// helder's controls' look in the system's font, the browser's parts in its tokens
 	public static final look = Look.base.with({
@@ -101,7 +107,7 @@ class Shell implements Markup {
 		{mime: "image/heic", extensions: ["heic", "heif"]},
 		{mime: "image/avif", extensions: ["avif"]}
 	].concat(helder.media.Decoders.available() ? [
-		// (helder.media's, where the system decodes them: FolderModel.MEDIA)
+		// (helder.media's, where the system decodes them: FolderModel.media())
 		{mime: "video/mp4", extensions: ["mp4", "m4v"]},
 		{mime: "video/quicktime", extensions: ["mov"]},
 		{mime: "video/webm", extensions: ["webm"]},
@@ -124,10 +130,12 @@ class Shell implements Markup {
 		var mac = hxmc.Platform.os() == 1, phone = Phone.mobile();
 		// (a phone: one app, no other to hand files to)
 		if (phone) args = args.concat(["--new"]);
-		// (--store or HELDER_VIEWER_STORE: what it keeps elsewhere than the user's own, a test's run)
-		var dir = storeDir(args, Sys.getEnv("HELDER_VIEWER_STORE"));
-		Instance.dir = dir;
-		var store = try helder.os.Store.open("helder-viewer", dir) catch (_:Dynamic) null;
+		// (--store: what it keeps under that home, a test's run, as HELDER_HOME
+		// puts it; set here, before anything is opened: Launch Services' open -a
+		// passes the program no environment)
+		var own = storeDir(args);
+		if (own != null) Sys.putEnv("HELDER_HOME", own);
+		var store = try helder.os.Store.open("helder-viewer") catch (_:Dynamic) null;
 		inline function num(k:String, d:Int):Int {
 			var v = store == null ? null : Std.parseInt(store.get(k) ?? "");
 			return v == null ? d : v;
@@ -199,7 +207,7 @@ class Shell implements Markup {
 		#end
 		var viewer = x.viewer;
 		viewer.mod = mac ? "Cmd" : "Ctrl";
-		x.thumbnails = try new Thumbnails(dir == null ? null : new ThumbCache(512 << 20, 16 << 20, dir + "/thumbs")) catch (_:Dynamic) null;
+		x.thumbnails = try new Thumbnails() catch (_:Dynamic) null;
 		// (the keymap: secondary as this platform's; the user's file over the defaults, beside the store)
 		helder.ui.actions.Keymap.mac = mac;
 		helder.ui.menu.Menus.appName = "Viewer";
@@ -246,8 +254,13 @@ class Shell implements Markup {
 				opener(p);
 		}
 		var window:Null<UiWindow> = null;
+		// (the sidebar's material: the window clear, its content opaque but
+		// for the sidebar; reduce transparency's opaque as ever)
+		var glass = !phone && material(Sys.systemName(), helder.os.DeviceInfo.get().osVersion, Sys.getEnv("XDG_CURRENT_DESKTOP") ?? "");
+		var shows = signal(false);
 		UiWindow.run(<Surface title={() -> x.full() ? viewer.title() : x.sidebar.title(x.browser.dir())} width={num("width", 1180)} height={num("height", 780)}
-			titlebar="inset" background={() -> "#" + StringTools.hex(ViewerView.canvas(UiWindow.dark()), 6)}
+			titlebar="inset" scrollbars="overlay" background={() -> glass ? "transparent" : "#" + StringTools.hex(ViewerView.canvas(UiWindow.dark()), 6)}
+			backdrop={glass ? () -> helder.os.Settings.reducedTransparency() ? "none" : "sidebar" : null} clickThrough={false}
 			onDrop={(files, _, _) -> if (files.length > 0) x.start(files[0])}
 			onClose={() -> {
 				save(store, window, x);
@@ -257,11 +270,13 @@ class Shell implements Markup {
 			}}
 			ref={w -> {
 				window = w;
-				if (!phone) w.window.setMinSize(640, 400);
+				if (!phone) w.window.setMinSize(MIN_WIDTH, MIN_HEIGHT);
 				var placed = store != null && store.exists("x") && store.exists("y");
 				if (placed) w.window.moveTo(num("x", 0), num("y", 0));
 				asked = {x: placed ? num("x", 0) : null, y: placed ? num("y", 0) : null, width: num("width", 1180), height: num("height", 780)};
 				attach(w.ui.root, x);
+				// (what the system made of it: none where it has no such material)
+				if (glass) renderEffect(() -> helder.os.Settings.reducedTransparency(), _ -> shows(w.window.backdrop == helder.os.WindowBackdrop.Sidebar));
 				effect(() -> viewer.fullscreen(), on -> w.window.fullscreen = on);
 				// (the window's size and place kept as they change, not only at its close: macOS's Quit, a crash, a logout)
 				Async.launch(_ -> while (!w.window.closed) {
@@ -271,7 +286,7 @@ class Shell implements Markup {
 				if (exitAfter >= 0) Async.launch(_ -> {
 					Async.delay(exitAfter);
 					var line = x.full.value ? 'viewer: ${viewer.title.peek()} (${viewer.state.peek()}${viewer.message.peek() == "" ? "" : ": " + viewer.message.peek()}, ${viewer.camera.percent()}%, ${w.window.width}x${w.window.height})'
-						: 'viewer: ${x.sidebar.title(x.browser.dir.value)} (browsing, ${ContentView.count(x)}, ${w.window.width}x${w.window.height})';
+						: 'viewer: ${x.sidebar.title(x.browser.dir.value)} (browsing, ${ContentView.count(x)}, ${w.window.width}x${w.window.height}, ${ends(w.ui)})';
 					Sys.println(line);
 					if (report != null) try sys.io.File.saveContent(report, line + "\n") catch (_:Dynamic) {}
 					save(store, w, x);
@@ -281,20 +296,49 @@ class Shell implements Markup {
 				});
 			}}>
 			{phone ? null : <MenuBarView menus={ViewerActions.menus(recent.slice(0, 8), places)} ref={b -> bar = b}/>}
-			{view(x)}
+			{view(x, null, shows)}
 		</Surface>);
+	}
+
+	// (where the browser's panels end against the window's bottom, and the
+	// folder's scroll: the window lane's checks (a column's content may not
+	// push it further; a folder opened shows its top))
+	static function ends(ui:helder.ui.Ui):String {
+		var low = 0.0;
+		for (t in ["sidebar", "main", "pathbar", "inspector"]) {
+			var n = ui.root.find(t);
+			if (n != null) low = Math.max(low, n.absY + n.height);
+		}
+		var list = ui.root.find("rows") ?? ui.root.find("grid");
+		return 'ends at ${Math.round(low)} of ${Math.round(ui.height)}, scrolled ${list == null ? 0 : Math.round(list.scrollY)}';
 	}
 
 	// where the viewer keeps what it keeps (its store, beside it its errors'
 	// log and keymap, the running viewer's port, the thumbnails' cache):
-	// --store <dir>, else env (HELDER_VIEWER_STORE), else null, the
-	// platform's place for the user's own (helder.os.Store, Paths.cache)
-	public static function storeDir(args:Array<String>, env:Null<String>):Null<String> {
+	// --store <dir>'s home (helder.os's HELDER_HOME), else null: the
+	// environment's HELDER_HOME, else the platform's place for the user's own
+	public static function storeDir(args:Array<String>):Null<String> {
 		var i = args.indexOf("--store");
-		if (i >= 0 && i + 1 < args.length && args[i + 1] != "") return args[i + 1];
-		return env == null || env == "" ? null : env;
+		return i >= 0 && i + 1 < args.length && args[i + 1] != "" ? args[i + 1] : null;
 	}
 
+	#end
+
+	// whether the sidebar is the system's material on this desktop (os:
+	// Sys.systemName, version: DeviceInfo's, desktop: XDG_CURRENT_DESKTOP):
+	// macOS's; Windows 11's Mica (22H2, build 22621, on); KDE's blur. Else
+	// none: the window opaque as ever (Windows 10, GNOME, a phone, the web)
+	public static function material(os:String, version:String, desktop:String):Bool
+		return switch os {
+			case "Mac": true;
+			case "Windows":
+				var parts = version.split(".");
+				parts.length >= 3 && (Std.parseInt(parts[2]) ?? 0) >= 22621;
+			case "Linux": desktop.split(":").contains("KDE");
+			case _: false;
+		}
+
+	#if (hxmc.target != "wasm32-wasi")
 	// (a phone's explorer: its Documents and its grants; a file on disk
 	// (Documents', iOS's grants') decoded as the desktop's are, one that is
 	// not (Android's documents) from its bytes)
@@ -472,27 +516,32 @@ class Shell implements Markup {
 	// on a tablet (Medium) the browser with its sidebar over the folder and
 	// its inspector in a sheet, no path bar; else (Expanded) the browser,
 	// or a file full size over it (to assistive technology the one shown
-	// alone)
-	public static function view(x:Explorer, ?size:Read<SizeClass>):View {
+	// alone). material: the system's behind the window (Shell.material),
+	// seen through the sidebar alone
+	public static function view(x:Explorer, ?size:Read<SizeClass>, ?material:Read<Bool>):View {
 		var cls:Read<SizeClass> = size ?? () -> SizeClass.current();
+		var glass:Read<Bool> = material ?? () -> false;
 		return <Standard.Themed look={look}>
 			<Switch>
 				<Match when={cls() == Compact}><Phone.Root x={x}/></Match>
-				<Match when={true}><Desktop x={x} medium={() -> cls() == Medium}/></Match>
+				<Match when={true}><Desktop x={x} medium={() -> cls() == Medium} material={glass}/></Match>
 			</Switch>
 		</Standard.Themed>;
 	}
 
-	static function Desktop(props:{x:Explorer, medium:Read<Bool>}):View {
+	static function Desktop(props:{x:Explorer, medium:Read<Bool>, material:Read<Bool>}):View {
 		var x = props.x, b = x.browser, medium = props.medium;
+		// (the material through the sidebar: the window's own canvas under the rest)
+		var clear = () -> props.material() && !medium();
 		// (a large folder, not watched: read again when the pointer comes back to the window)
 		function back()
 			if (!x.full.value && b.total.value >= Browser.WATCH_BELOW && !b.reading.value) b.refresh();
-		return <view tag="window" grow={1} min-height={0} background={Look.ref.canvas} color={Look.ref.fg} font-family="system-ui" font-size={13} onPointerEnter={back}
+		return <view tag="window" grow={1} min-height={0} background={clear() ? ("transparent" : Dynamic) : Look.ref.canvas} color={Look.ref.fg} font-family="system-ui" font-size={13} onPointerEnter={back}
 			ref={(n:Node) -> x.zoom.attach(n)}>
 			<view tag="browser" grow={1} min-height={0} direction="row" hidden={x.full()}>
 				<Show when={!medium()}>{SidebarView.make(x)}</Show>
-				<view grow={1} min-width={0} direction="row" padding-top={WindowButtons.side() == "end" ? 32 : 0}>
+				<view grow={1} min-width={0} direction="row" padding-top={WindowButtons.side() == "end" ? 32 : 0}
+					background={clear() ? Look.ref.canvas : null}>
 					{ContentView.make(x, medium)}
 					<Show when={b.inspector() && !medium()}>{InspectorView.make(x)}</Show>
 				</view>

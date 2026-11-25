@@ -17,7 +17,7 @@ class Device {
 			// (RTL_OSVERSIONINFOW: its size, major, minor, build, platform, a service pack's 128 characters)
 			var v:Ptr<Int32> = a.alloc(276, 4);
 			v[0] = 276;
-			var f = Kernel.GetProcAddress(Kernel.GetModuleHandleW(a.wstring("ntdll.dll")), a.cstring("RtlGetVersion"));
+			var f = Procs.GetProcAddress(Kernel.GetModuleHandleW(a.wstring("ntdll.dll")), a.cstring("RtlGetVersion"));
 			if (!f.isNull() && Version.call(f, v) == 0) d.osVersion = '${v[1]}.${v[2]}.${v[3]}';
 			var hklm = Ptr.ofI64(haxe.Int64.make(0xFFFFFFFF, 0x80000002));
 			function value(name:String):String {
@@ -39,8 +39,14 @@ class Device {
 }
 
 #if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
-@:hxmc.c @:hxmc.lib("kernel32") private extern class Kernel {
+// (each as the rest of helder.os declares it: GetModuleHandleW fast as
+// User32.hx's Kernel32, GetProcAddress not, as Library.hx; an app with a
+// window links them all)
+@:hxmc.c @:hxmc.fast @:hxmc.lib("kernel32") private extern class Kernel {
 	static function GetModuleHandleW(name:Ptr):Ptr;
+}
+
+@:hxmc.c @:hxmc.lib("kernel32") private extern class Procs {
 	static function GetProcAddress(module:Ptr, name:Ptr):Ptr;
 }
 

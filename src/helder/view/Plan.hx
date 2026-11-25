@@ -398,7 +398,7 @@ class Plan<E> {
 					return target.call(Host, "setProperty", [e, target.string(name, ap), x], ap);
 				}
 				if (!event && target.liveOn() && !Live.fixed(name)) x = target.liveIn(x);
-				// (states: a function of a part's states, as a neutral element's: set once, not bound)
+				// (states: a function of a part's states, its own style: set once, not bound, as a neutral element's)
 				if (name == "states") return target.call(Host, "setProperty", [e, target.string(name, ap), hole(x)], ap);
 				if (!event && name != "ref" && name != "key") x = reactive(x);
 				if (event) x = target.handler(x, name, renderer, false, ap);

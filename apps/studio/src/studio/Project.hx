@@ -22,7 +22,8 @@ using StringTools;
 // "/" (none: "Screens"), its size the story's (a phone's, 390x844, without).
 // A project without stories has one screen: its own main's window, the flow
 // "App". The stories are read from their text (helder.syntax), not built:
-// the canvas lays them out before anything compiled. A design file's frames
+// the canvas lays them out before anything compiled; a story file's again
+// when it changes (story: Studio's, then a build of the new host). A design file's frames
 // (*.helder: DesignFile) are screens too, a flow a file, drawn by the
 // studio itself (Designs: interpreted, nothing built); a project of design
 // files alone has no program, nor an App screen.
@@ -52,12 +53,15 @@ class Project {
 	public final typescript:Bool;
 	public final screens:Array<ScreenInfo> = [];
 	// bumped when the screens change (a design file's frames added, removed,
-	// renamed, moved or resized: read again from its text, Studio.changed)
+	// renamed, moved or resized; a story file's stories: read again from its
+	// text, Studio.changed)
 	public final version = signal(0);
-	// (the design files, their frames' screens; the stories', or the App)
+	// (the design files, their frames' screens; the story files, their stories)
 	final designs:Array<String> = [];
 	final frames = new Map<String, Array<ScreenInfo>>();
-	final rest:Array<ScreenInfo> = [];
+	final stories = new Map<String, Array<ScreenInfo>>();
+	// (it has a program: its App screen when it has no stories)
+	var program = false;
 	// the live frames' places by their design files (DesignFile.places)
 	final places = new Map<String, Array<DesignFile.Place>>();
 	// where the studio's files for it go: <root>/bin/studio/<name>
@@ -122,6 +126,7 @@ class Project {
 	// the project's own main the App screen when it has one and no stories
 	// (program: it has one)
 	function findScreens(files:Array<String>, program:Bool) {
+		this.program = program;
 		for (f in files) {
 			if (f.endsWith(".helder")) {
 				designs.push(f);
@@ -133,38 +138,63 @@ class Project {
 				if (d != null) places.set(f, d.places);
 				continue;
 			}
-			var text = Files.read(f);
-			var doc = Document.parse(text, Lang.of(f));
-			for (c in doc.calls("story")) {
-				var o = c.object(0);
-				if (o == null) continue;
-				var n = o.field("name");
-				var lit = n == null ? null : n.literal();
-				if (lit == null) continue;
-				var name = unquote(lit.text(doc.text));
-				var cut = name.lastIndexOf("/");
-				rest.push({
-					name: name,
-					flow: cut < 0 ? "Screens" : name.substr(0, cut),
-					label: cut < 0 ? name : name.substr(cut + 1),
-					width: num(o, "width", doc) ?? 390,
-					height: num(o, "height", doc) ?? 844,
-					file: f,
-					source: Story(c.name)
-				});
-			}
+			var l = storiesOf(f, Files.read(f));
+			if (l.length > 0) stories.set(f, l);
 		}
-		if (rest.length == 0 && program) rest.push({
-			name: name,
-			flow: "App",
-			label: name,
-			width: 0,
-			height: 0,
-			file: #if (hxmc.target == "wasm32-wasi") "" #else entry.typescript ?? "" #end,
-			source: App
-		});
 		order();
 	}
+
+	// a story file's stories, read from its text (in the order written)
+	function storiesOf(file:String, text:String):Array<ScreenInfo> {
+		var doc = Document.parse(text, Lang.of(file)), out:Array<ScreenInfo> = [];
+		for (c in doc.calls("story")) {
+			var o = c.object(0);
+			if (o == null) continue;
+			var n = o.field("name");
+			var lit = n == null ? null : n.literal();
+			if (lit == null) continue;
+			var name = unquote(lit.text(doc.text));
+			var cut = name.lastIndexOf("/");
+			out.push({
+				name: name,
+				flow: cut < 0 ? "Screens" : name.substr(0, cut),
+				label: cut < 0 ? name : name.substr(cut + 1),
+				width: num(o, "width", doc) ?? 390,
+				height: num(o, "height", doc) ?? 844,
+				file: file,
+				source: Story(c.name)
+			});
+		}
+		return out;
+	}
+
+	// a story file's text now (null: it is gone): its stories read again;
+	// whether the program's screens changed (a story added, removed,
+	// renamed, resized or bound to another export: a build of a new host's)
+	public function story(file:String, text:Null<String>):Bool {
+		var was = key(live());
+		// (the places of the screens whose names stay, their <Frame story> naming an export renamed: kept)
+		var kept = [for (s in live()) if (s.at != null) s.name => s.at];
+		var l = text == null ? [] : storiesOf(file, text);
+		var before = stories.get(file);
+		if (l.length == 0) stories.remove(file) else stories.set(file, l);
+		order(kept);
+		if (key(live()) == was) {
+			// (the same screens: the ones the views have kept)
+			if (before == null) stories.remove(file) else stories.set(file, before);
+			order();
+			return false;
+		}
+		version(v -> v + 1);
+		return true;
+	}
+
+	static function key(l:Array<ScreenInfo>):String
+		return [for (s in l) '${s.name}|${s.width}|${s.height}|${s.file}|${s.source}'].join("\n");
+
+	// whether a file holds stories (by its name)
+	public static function isStory(f:String):Bool
+		return f.endsWith(".story.hx") || f.endsWith(".story.tsx") || f.endsWith(".story.ts");
 
 	// a design file's frames as screens: each named by the file's path and
 	// its own name (app.helder#Home: no story's name, Flow/Screen, is one),
@@ -192,14 +222,26 @@ class Project {
 		return out;
 	}
 
-	function order() {
+	function order(?kept:Map<String, {x:Float, y:Float}>) {
 		screens.resize(0);
 		for (d in designs)
 			for (s in frames.get(d))
 				screens.push(s);
+		var files = [for (f in stories.keys()) f];
+		files.sort(Reflect.compare);
+		var rest = [for (f in files) for (s in stories.get(f)) s];
+		if (rest.length == 0 && program) rest.push({
+			name: name,
+			flow: "App",
+			label: name,
+			width: 0,
+			height: 0,
+			file: #if (hxmc.target == "wasm32-wasi") "" #else entry.typescript ?? "" #end,
+			source: App
+		});
 		for (s in rest) {
 			var p = placeOf(s);
-			s.at = p?.at;
+			s.at = p?.at ?? (p == null ? kept?.get(s.name) : null);
 			s.place = p == null ? null : {file: p.file, start: p.start};
 			s.cover = p?.cover == true;
 			screens.push(s);
@@ -293,7 +335,7 @@ class Project {
 		for (n in Files.list(d)) {
 			if (n == "bin" || n == "node_modules" || n.startsWith(".")) continue;
 			var p = '$d/$n';
-			if (Files.isDirectory(p)) walk(p, into) else if (n.endsWith(".story.hx") || n.endsWith(".story.tsx") || n.endsWith(".story.ts") || n.endsWith(".helder")) into.push(p);
+			if (Files.isDirectory(p)) walk(p, into) else if (isStory(n) || n.endsWith(".helder")) into.push(p);
 		}
 	}
 

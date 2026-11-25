@@ -23,7 +23,9 @@ class Base {
 
 	// (the touch pieces' parts, a slot each: helder.ui.nav's bars and sheets,
 	// helder.ui.menu's touch menu; 44-point targets, the system's type sizes
-	// of iOS: 17 for a bar's title and a row, 32 for a large title)
+	// of iOS: 17 for a bar's title and a row, 32 for a large title; and the
+	// grid's marquee, GridScroll's, which has no look of its own; a
+	// composite field's box and its text field)
 	static function touch():Map<String, Array<Refs->Dynamic>> {
 		var parts = new Map<String, Array<Refs->Dynamic>>();
 		function part(slot:String, f:Refs->PartStyle)
@@ -57,6 +59,13 @@ class Base {
 		} : PartStyle);
 		part("touch-menu-item", t -> row(t, false));
 		part("touch-menu-item-danger", t -> row(t, true));
+		part("grid-marquee", t -> {background: t.accentSoft, borderWidth: 1, borderColor: t.accent, radius: 3});
+		// (a composite field, an icon and a text field in a box (a search
+		// field): one ring round the box at its radius while what is in it
+		// has the focus, as macOS rings one, none on the text field)
+		part("field-box", t -> {direction: Row, alignItems: Center, columnGap: 7, padding: [0, 8], radius: t.radius, background: t.fill, color: t.fg,
+			ringColor: CLEAR, focusWithin: {ringWidth: 3, ringColor: t.focusSoft, ringOffsetWidth: 0}});
+		part("field-box-input", t -> {grow: 1, minWidth: 0, outlineStyle: None});
 		return parts;
 	}
 

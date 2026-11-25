@@ -360,7 +360,7 @@ class WinWindow {
 	}
 
 	// (Window.backdrop: DWMWA_SYSTEMBACKDROP_TYPE 38, Windows 11 22H2 on:
-	// DWMSBT_NONE 1, MAINWINDOW 2 (Mica), TRANSIENTWINDOW 3 (Acrylic); the
+	// DWMSBT_NONE 1, MAINWINDOW 2 (Mica: mica and sidebar), TRANSIENTWINDOW 3 (Acrylic); the
 	// frame extended over the client area (MARGINS -1), the backdrop behind
 	// it all; no glass)
 	function setBackdrop(b:WindowBackdrop):Bool {

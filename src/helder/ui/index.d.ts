@@ -97,7 +97,7 @@ export type PathSegment = { label: string; icon?: Svg };
 // in its own place or gives its own behaviour (macOS).
 export type PlatformMenuItem = { id: number; label: string; shortcut?: string; keys?: unknown; disabled?: boolean; checked?: boolean; separator?: boolean; items?: PlatformMenuItem[]; role?: string };
 
-export type Refs = { canvas?: number; surface?: number; raised?: number; well?: number; hover?: number; press?: number; fill?: number; fillHover?: number; fillPress?: number; rail?: number; railHover?: number; line?: number; edge?: number; edgeStrong?: number; fg?: number; fg2?: number; fg3?: number; accent?: number; accentStrong?: number; accentSoft?: number; accentFg?: number; accentInk?: number; focus?: number; danger?: number; dangerStrong?: number; dangerSoft?: number; dangerFg?: number; success?: number; warning?: number; info?: number; knob?: number; scrim?: number; shadow?: number; density?: "comfortable" | "compact"; font?: string; display?: string; mono?: string; size?: number; small?: number; large?: number; title?: number; medium?: number; radius?: number; radiusPanel?: number; radiusSurface?: number; controlSm?: number; control?: number; controlLg?: number; padSm?: number; pad?: number; padLg?: number; gap?: number; icon?: number; box?: number; track?: number; trackHeight?: number; thumb?: number; hoverTime?: number; toggleTime?: number; openTime?: number; floatTime?: number; dialogTime?: number; exitTime?: number; pressScale?: number; disabledOpacity?: number };
+export type Refs = { canvas?: number; surface?: number; raised?: number; well?: number; hover?: number; press?: number; fill?: number; fillHover?: number; fillPress?: number; rail?: number; railHover?: number; line?: number; edge?: number; edgeStrong?: number; fg?: number; fg2?: number; fg3?: number; accent?: number; accentStrong?: number; accentSoft?: number; accentFg?: number; accentInk?: number; focus?: number; focusSoft?: number; danger?: number; dangerStrong?: number; dangerSoft?: number; dangerFg?: number; success?: number; warning?: number; info?: number; knob?: number; scrim?: number; shadow?: number; density?: "comfortable" | "compact"; font?: string; display?: string; mono?: string; size?: number; small?: number; large?: number; title?: number; medium?: number; radius?: number; radiusPanel?: number; radiusSurface?: number; controlSm?: number; control?: number; controlLg?: number; padSm?: number; pad?: number; padLg?: number; gap?: number; icon?: number; box?: number; track?: number; trackHeight?: number; thumb?: number; hoverTime?: number; toggleTime?: number; openTime?: number; floatTime?: number; dialogTime?: number; exitTime?: number; pressScale?: number; disabledOpacity?: number };
 
 // A theme's rule (StyleSheet): the style a node with this slot (Node.slot,
 // the name of the part it is: "button", "switch-thumb"), variant and size
@@ -133,7 +133,7 @@ export type SwitchProps<V> = { label: string; checked?: Read<boolean>; onChange?
 // values. A recipe reads them as Refs: the colours as token references
 // (Color.token, resolved with the window's light or dark values), the rest
 // as they are. A look's patch gives some of them (Look.with: tokens).
-export type Tokens = { canvas?: Tone; surface?: Tone; raised?: Tone; well?: Tone; hover?: Tone; press?: Tone; fill?: Tone; fillHover?: Tone; fillPress?: Tone; rail?: Tone; railHover?: Tone; line?: Tone; edge?: Tone; edgeStrong?: Tone; fg?: Tone; fg2?: Tone; fg3?: Tone; accent?: Tone; accentStrong?: Tone; accentSoft?: Tone; accentFg?: Tone; accentInk?: Tone; focus?: Tone; danger?: Tone; dangerStrong?: Tone; dangerSoft?: Tone; dangerFg?: Tone; success?: Tone; warning?: Tone; info?: Tone; knob?: Tone; scrim?: Tone; shadow?: Tone; density?: "comfortable" | "compact"; font?: string; display?: string; mono?: string; size?: number; small?: number; large?: number; title?: number; medium?: number; radius?: number; radiusPanel?: number; radiusSurface?: number; controlSm?: number; control?: number; controlLg?: number; padSm?: number; pad?: number; padLg?: number; gap?: number; icon?: number; box?: number; track?: number; trackHeight?: number; thumb?: number; hoverTime?: number; toggleTime?: number; openTime?: number; floatTime?: number; dialogTime?: number; exitTime?: number; pressScale?: number; disabledOpacity?: number };
+export type Tokens = { canvas?: Tone; surface?: Tone; raised?: Tone; well?: Tone; hover?: Tone; press?: Tone; fill?: Tone; fillHover?: Tone; fillPress?: Tone; rail?: Tone; railHover?: Tone; line?: Tone; edge?: Tone; edgeStrong?: Tone; fg?: Tone; fg2?: Tone; fg3?: Tone; accent?: Tone; accentStrong?: Tone; accentSoft?: Tone; accentFg?: Tone; accentInk?: Tone; focus?: Tone; focusSoft?: Tone; danger?: Tone; dangerStrong?: Tone; dangerSoft?: Tone; dangerFg?: Tone; success?: Tone; warning?: Tone; info?: Tone; knob?: Tone; scrim?: Tone; shadow?: Tone; density?: "comfortable" | "compact"; font?: string; display?: string; mono?: string; size?: number; small?: number; large?: number; title?: number; medium?: number; radius?: number; radiusPanel?: number; radiusSurface?: number; controlSm?: number; control?: number; controlLg?: number; padSm?: number; pad?: number; padLg?: number; gap?: number; icon?: number; box?: number; track?: number; trackHeight?: number; thumb?: number; hoverTime?: number; toggleTime?: number; openTime?: number; floatTime?: number; dialogTime?: number; exitTime?: number; pressScale?: number; disabledOpacity?: number };
 
 // A colour token's values in light and dark: Look.tone("oklch(0.56 0.19
 // 258)", "oklch(0.64 0.17 258)"), written as CSS writes a colour (one for
@@ -283,9 +283,11 @@ export declare class Key {
 //
 // The scroll is anchored to a row: the first in view and how far into it,
 // kept through measures, a new estimate and rows put in or taken out
-// before it (splice), so the content does not move. scrollToIndex (start,
+// before it (splice), so the content does not move; at the very top it
+// stays at the top (rows put in above the first come into view). scrollToIndex (start,
 // center, end or the nearest edge: auto) goes to a row made or not, held
-// there while its rows are measured; focusIndex makes the row, scrolls to
+// there while its rows are measured, within the insets (a bar over the
+// top, a padding: the row shown with their room); focusIndex makes the row, scrolls to
 // it and focuses it. The rows are a listbox's options to assistive
 // technology (rowRole), each its place among all (posInSet, setSize). The
 // keyboard on a row (its focus within the list): Up and Down, Page Up and
@@ -812,7 +814,7 @@ export declare class SafeArea {
 // back pops (false at the root; backTo several),
 // replace swaps the top, reset starts a new stack, open a link's (a full
 // URL or a path): the root and the matched route. Each entry's screen is
-// made once, when it is pushed. Haxe's helder.ui.Router types a route's params by its path.
+// made once, when it is pushed. Haxe's helder.ui.nav.Routes types a route's params by its path.
 export declare class Router {
 	constructor();
 	// the top's path (without its query), how many entries are above the root, the top's query
