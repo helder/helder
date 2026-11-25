@@ -137,6 +137,7 @@ for (const worker of [false, true]) for (const gfx of ['webgpu', 'webgl2']) {
 		const times = [];
 		for (let i = 0; i < frames.length - 1; i++) if (frames[i] >= t0) times.push(frames[i + 1] - frames[i]);
 		let shown = 0, stale = 0;
+		const late = [];
 		if (!worker) for (const r of resizes) {
 			if (r[0] < t0) continue;
 			shown++;
@@ -148,7 +149,12 @@ for (const worker of [false, true]) for (const gfx of ['webgpu', 'webgl2']) {
 			const r = newest(resizes, frames[i + 1]), d = newest(drawn, frames[i + 1]);
 			if (!r) continue;
 			shown++;
-			if (!d || d[1] !== r[1] || d[2] !== r[2]) stale++;
+			if (d && d[1] === r[1] && d[2] === r[2]) continue;
+			stale++;
+			// (how late: the resize seen this far into its frame, its size drawn this long after the next began)
+			const later = resizes.filter((x) => x[0] >= r[0]).map((x) => x[1] + 'x' + x[2]);
+			const at = drawn.find((x) => x[0] > r[0] && later.includes(x[1] + 'x' + x[2]));
+			late.push([r[0] - frames[i], at ? at[0] - frames[i + 1] : Infinity]);
 		}
 		times.sort((a, b) => a - b);
 		const at = (q) => times[Math.min(times.length - 1, Math.floor(q * times.length))].toFixed(1);
@@ -160,7 +166,9 @@ for (const worker of [false, true]) for (const gfx of ['webgpu', 'webgl2']) {
 		const settled = !!end && end[1] === last[1] && end[2] === last[2];
 		const ok = errors.length === 0 && sizes >= n / 2 && settled && (!worker ? stale === 0 : !keeps || stale * 10 <= shown);
 		if (!ok) failed++;
-		line = `${mode}: ${sizes} sizes, ${shown} frames, ${stale} at a stale size${worker && !keeps ? ' (its frames slower than the steps)' : ''}${settled ? '' : ', the last not at the last size'}; frame times median ${at(0.5)} ms, p95 ${at(0.95)} ms${ok ? '' : ' FAILED'}`;
+		const ms = (v) => (v === Infinity ? 'never' : v.toFixed(1));
+		const how = late.length ? ` (seen ${late.map((l) => ms(l[0])).join(' ')} ms into their frames, drawn ${late.map((l) => ms(l[1])).join(' ')} ms after the next began)` : '';
+		line = `${mode}: ${sizes} sizes, ${shown} frames, ${stale} at a stale size${how}${worker && !keeps ? ' (its frames slower than the steps)' : ''}${settled ? '' : ', the last not at the last size'}; frame times median ${at(0.5)} ms, p95 ${at(0.95)} ms${ok ? '' : ' FAILED'}`;
 	} catch (e) {
 		failed++;
 		line = `${mode}: ${e.message} FAILED`;

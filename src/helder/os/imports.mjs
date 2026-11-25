@@ -904,6 +904,13 @@ export default function os(host) {
 			c.hxmcSize.observe(c);
 			sync(h);
 			c.hxmcOff = listen(c, h);
+			// (in a worker: the page's resize told at once, its layout read then,
+			// before the frame's animation frames: the worker draws while the page
+			// lays out, rather than from the ResizeObserver's after it, a frame on)
+			if (program) addEventListener('resize', () => {
+				c.hxmcResized = true;
+				sync(h);
+			}, { signal: c.hxmcOff.signal });
 			c.hxmcSeen = new IntersectionObserver(([e]) => {
 				c.hxmcShown = e.isIntersecting;
 				program?.post({ type: 'state', state: { shown: { [h]: e.isIntersecting } } });
