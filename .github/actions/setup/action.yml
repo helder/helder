@@ -37,12 +37,17 @@ runs:
       run: |
         # Also applies to the apt commands launched by Playwright.
         echo 'Acquire::Retries "3";' | sudo tee /etc/apt/apt.conf.d/80-helder-retries
-        # Make the image's Mesa versions APT candidates, even when a package
-        # such as libegl-mesa0 or libgbm1 is named explicitly by an install.
-        dpkg-query -W -f='${binary:Package}\t${source:Package}\t${db:Status-Status}\t${Version}\n' |
-          awk '$2 == "mesa" && $3 == "installed" {
-            printf "Package: %s\nPin: version %s\nPin-Priority: 1001\n\n", $1, $4
-          }' | sudo tee /etc/apt/preferences.d/helder-mesa
+        # EGL is absent from the runner image and depends on matching Mesa
+        # libraries. Use the coherent Mesa version from the verified main build.
+        sudo tee /etc/apt/preferences.d/helder-mesa <<'PREFERENCES'
+        Package: src:mesa:any
+        Pin: version 25.2.8-0ubuntu0.24.04.5
+        Pin-Priority: 1001
+
+        Package: src:mesa:any
+        Pin: version *
+        Pin-Priority: -1
+        PREFERENCES
     - id: key
       shell: bash
       run: |
