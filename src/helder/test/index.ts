@@ -22,7 +22,7 @@
 // `.snap` beside it (Foo.test.ts's Foo.test.snap; `helder test -u`
 // rewrites it). TSX mounts headless with helder/story's `tree`, its
 // tree as text, which a snapshot keeps.
-import {Script, Entry, UiScript} from './runner'
+import {Script, Entry, UiScript, PropertyScript, Choices as Draws} from './runner'
 import type {Ui} from 'helder/ui/actions'
 
 export type { Entry };
@@ -219,6 +219,182 @@ export function fail(msg: string, at?: string): never {
 // test file's .snap: written when missing, rewritten by `helder test -u`
 export function snapshot(name: string, value: unknown, at?: string): void {
 	Script.snapshot(name, typeof value === "string" ? value : show(value), at ?? "(unknown)");
+}
+
+// --- properties: body run on values of gen (100 cases), each case's
+// failures its assertions' (or what it threw); the first failing case
+// shrunk and reported smallest, with its seed and choices to replay (as
+// helder.test's Property: src/helder/test/README.md)
+
+export type PropertyOptions = {
+	// cases generated (100)
+	cases?: number;
+	// seconds to generate them in, and again to shrink a failure (5)
+	seconds?: number;
+	// the run's seed, as a failure reports it (else HELDER_PROPERTY_SEED's; else 0)
+	seed?: number;
+	// a failure's choices, as reported: that case alone
+	replay?: string;
+	// a stateful case's most steps (50)
+	steps?: number;
+};
+
+// a stateful property's system: made for each case, steps drawn among those
+// whose when holds and run on it, check after setup and each step, teardown at the end
+export type Machine<S> = {
+	setup: () => S;
+	steps: Array<{name: string; run: (system: S, c: Choices) => void; when?: (system: S) => boolean}>;
+	check?: (system: S) => void;
+	teardown?: (system: S) => void;
+};
+
+// a case's choices, which generators draw from
+export class Choices {
+	constructor(readonly raw: Draws) {}
+
+	draw<T>(g: Gen<T>): T {
+		return this.raw.draw(g.next) as T;
+	}
+
+	// a choice in 0 to bound, shrinking to 0
+	choice(bound: number): number {
+		return this.raw.choice(bound);
+	}
+
+	// true with probability p, shrinking to false
+	weighted(p: number): boolean {
+		return this.raw.weighted(p);
+	}
+
+	// text shown with a failing case
+	note(text: string): void {
+		this.raw.note(text);
+	}
+}
+
+// values drawn from a case's choices, shrinking to the simplest
+export class Gen<T> {
+	constructor(readonly next: (c: Draws) => T) {}
+
+	map<R>(f: (value: T) => R): Gen<R> {
+		const next = this.next;
+		return new Gen(c => f(c.draw(next) as T));
+	}
+
+	// its values for which ok holds (three draws, else the case is rejected)
+	filter(ok: (value: T) => boolean): Gen<T> {
+		const next = this.next;
+		return new Gen(c => {
+			for (let k = 0; k < 3; k++) {
+				const v = c.draw(next) as T;
+				if (ok(v)) return v;
+			}
+			PropertyScript.reject();
+			throw new Error("rejected");
+		});
+	}
+}
+
+// a generator of your own, drawing from others: gen(c => ({x: c.draw(int(0, 9))}))
+export function gen<T>(f: (c: Choices) => T): Gen<T> {
+	return new Gen(c => f(new Choices(c)));
+}
+
+// an integer in min to max, shrinking to 0 or the bound nearest to it
+export function int(min: number, max: number): Gen<number> {
+	return new Gen(PropertyScript.int(min, max));
+}
+
+// a finite number in min to max, shrinking to round numbers
+export function float(min: number, max: number): Gen<number> {
+	return new Gen(PropertyScript.float(min, max));
+}
+
+export function bool(): Gen<boolean> {
+	return new Gen(PropertyScript.bool());
+}
+
+export function constant<T>(value: T): Gen<T> {
+	return new Gen(() => value);
+}
+
+// one of values, shrinking to the first
+export function pick<T>(values: Array<T>): Gen<T> {
+	const index = PropertyScript.index(values.length);
+	return new Gen(c => values[c.draw(index) as number]);
+}
+
+// a value of one of gens, shrinking to the first's
+export function oneOf<T>(gens: Array<Gen<T>>): Gen<T> {
+	const index = PropertyScript.index(gens.length);
+	return new Gen(c => c.draw(gens[c.draw(index) as number].next) as T);
+}
+
+// min to max items of item (0 to 100), shrinking to fewer
+export function array<T>(item: Gen<T>, min?: number, max?: number): Gen<Array<T>> {
+	return new Gen(c => {
+		const out: Array<T> = [];
+		PropertyScript.items(c, item.next, min ?? 0, max ?? 100, v => {
+			out.push(v as T);
+		});
+		return out;
+	});
+}
+
+// a character: letters mostly, and whitespace, line ends, right-to-left,
+// combining marks, emoji, other scripts; nul: NUL and controls too
+export function char(nul?: boolean): Gen<string> {
+	return new Gen(PropertyScript.char(nul ?? false));
+}
+
+// min to max characters of chars (char()'s; 0 to 2000), sometimes long
+export function string(chars?: Gen<string>, min?: number, max?: number): Gen<string> {
+	return array(chars ?? char(), min ?? 0, max ?? 2000).map(c => c.join(""));
+}
+
+// base, or extend's value of a smaller one, at most depth (3) levels deep
+export function recursive<T>(base: Gen<T>, extend: (inner: Gen<T>) => Gen<T>, depth?: number): Gen<T> {
+	const d = depth ?? 3;
+	return d <= 0 ? base : oneOf([base, extend(recursive(base, extend, d - 1))]);
+}
+
+// the case left out when cond is false (rejected, not failed)
+export function assume(cond: boolean): void {
+	if (!cond) PropertyScript.reject();
+}
+
+// (a body's end as PropertyScript takes it: null, "" when stopped, else the error)
+function outcome(f: () => void): string | null {
+	try {
+		f();
+		return null;
+	} catch (e) {
+		if (e instanceof Stop || PropertyScript.pending()) return "";
+		return errorText(e);
+	}
+}
+
+// body holds for gen's values
+export function property<T>(gen: Gen<T>, body: (value: T) => void, options?: PropertyOptions, at?: string): void {
+	const o = options ?? {};
+	PropertyScript.property(gen.next, v => outcome(() => body(v as T)), show, o.cases ?? null, o.seconds ?? null, o.seed ?? null, o.replay ?? null, at ?? "(unknown)");
+}
+
+// steps of m drawn and run on its system, its check holding after each
+export function stateful<S>(m: Machine<S>, options?: PropertyOptions, at?: string): void {
+	const o = options ?? {}, steps = m.steps;
+	// (the system kept here: through Haxe's Dynamic it would be a copy)
+	let system = undefined as S;
+	PropertyScript.stateful(() => {
+		system = m.setup();
+	}, steps.length, i => steps[i].name, (i, c) => outcome(() => steps[i].run(system, new Choices(c))), i => {
+		const when = steps[i].when;
+		return when === undefined || when(system);
+	}, () => outcome(() => {
+		if (m.check !== undefined) m.check(system);
+	}), () => {
+		if (m.teardown !== undefined) m.teardown(system);
+	}, show, o.cases ?? null, o.seconds ?? null, o.seed ?? null, o.replay ?? null, o.steps ?? null, at ?? "(unknown)");
 }
 
 // --- values

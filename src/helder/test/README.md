@@ -122,6 +122,95 @@ A failure is the file and line of the call, then its message; the test
 goes on, except after `require`, `fail` or an error thrown (its message
 and the frames above the runner's).
 
+## Properties
+
+A property is a test's assertions over generated values: `property(gen,
+body)` runs body on 100 values of gen, and the first that fails is shrunk
+to the smallest that still fails and reported with how to replay it.
+Generators are `import helder.test.Gen;`'s.
+
+```haxe
+import helder.test.Gen;
+import helder.test.Test;
+
+function tests() {
+  test("sort keeps the items", () -> property(array(int(-50, 50)), xs -> {
+    var s = xs.copy();
+    s.sort(Reflect.compare);
+    equals(s.length, xs.length);
+  }));
+  test("parse never throws", () -> property(string(char(true)), s -> Markdown.parse(s), {cases: 300}));
+}
+```
+
+| | |
+| --- | --- |
+| `int(min, max)`, `float(min, max)`, `bool()` | shrinking to 0, or the bound nearest to it; floats to round numbers |
+| `pick(values)`, `oneOf(gens)`, `constant(v)` | shrinking to the first |
+| `array(item, min = 0, max = 100)` | mostly short, sometimes up to max; shrinking to fewer items |
+| `string(?chars, min = 0, max = 2000)`, `char(nul = false)` | char(): ASCII mostly, and whitespace and line ends, right-to-left letters and marks, combining marks, emoji sequences, other scripts; NUL and controls with nul |
+| `recursive(base, extend, depth = 3)` | base, or extend's of a smaller one |
+| `g.map(f)`, `g.filter(ok)` | filter draws three times, else rejects the case |
+| `c -> ...` | a Gen of your own is a function of the case's Choices: `c -> {x: c.draw(int(0, 9)), y: c.draw(int(0, 9))}`; `c.choice(bound)`, `c.weighted(p)`, `c.note(text)` |
+| `assume(cond)` | the case rejected, not failed; over 4 rejected for each case asked, or none run, fails the property ("the generator rejects too much") |
+
+How it works (Hypothesis' design): a case is the sequence of choices
+its generators made (Choices), each an int in 0 to a bound, 0 its
+simplest. A failure is shrunk by editing that sequence and running the
+body again (spans of a draw deleted, an array's item or a stateful step
+with them; chunks deleted and zeroed; each value lowered, a value moved
+onto a later one; same-length siblings sorted), keeping the edit while the
+case still fails, until nothing changes or the budget is spent. A
+sequence that runs out while replayed is overran: not a failure. Each
+case's failures are its assertions' (or what it threw), kept apart from
+the test's until the smallest is reported:
+
+```
+src/geom/Vec.test.hx:12: property failed after 4 cases, shrunk 9 times:
+  [101]
+  src/geom/Vec.test.hx:13: over 100
+  replay: {replay: "1 101 0"}, or {seed: 0} (HELDER_PROPERTY_SEED=0)
+```
+
+Options (the last argument): `cases` (100), `seconds` (5: generating, and
+again shrinking), `seed`, `replay` (a reported sequence: that case alone),
+`steps` (stateful: 50). The seed is 0 unless HELDER_PROPERTY_SEED (a
+number, or `random`) or `seed` says, mixed with the property's test and
+place in it, so a run's cases are the same on every run and target (host,
+wasm and interp draw the same: Property.test.hx's snapshot). A failure's
+sequence is kept in bin/test/properties (one file a property, named by its
+file, test and index in it) and replayed first on the next run, shrunk
+further if it still fails, removed once it passes. Bodies are plain
+functions (no `async` inside a property).
+
+A stateful property draws steps and runs them on a system made for each
+case, its check holding after setup and after each step; a step's draws
+are its arguments, shown with it; shrinking takes steps out:
+
+```haxe
+test("a stack against an array", () -> stateful({
+  setup: () -> {real: new Stack(), model: []},
+  steps: [
+    {name: "push", run: (s, c) -> {
+      var v = c.draw(int(0, 9));
+      s.real.push(v);
+      s.model.push(v);
+    }},
+    {name: "pop", run: (s, c) -> equals(s.real.pop(), s.model.pop()), when: s -> s.model.length > 0}
+  ],
+  check: s -> equals(s.real.length, s.model.length),
+  teardown: s -> {}
+}));
+```
+
+reported as its steps: `push(0)` `push(0)` `push(0)` `push(0)`, then the
+failure. A headless Ui is a system too: src/helder/ui/GridScroll.test.hx
+wheels, resizes, presses and keys a VirtualGrid, its scroll, selection and
+focus checked after each. Tests: Property.test.hx (shrinking's classic
+cases, replays, the store, rejections, stateful),
+src/helder/markdown/Markdown.test.hx's properties, tests/image/Decoders.test.hx
+(tests/image/Fuzz.hx's mutations as a property).
+
 ## Running
 
 The runner (`Runner`) prints each file, then `(pass)`, `(fail)` with its
@@ -171,6 +260,12 @@ describe('todos', () => {
   }).timeout(1)
 })
 ```
+
+Properties are the same (`property`, `stateful`, `assume`, and `gen`,
+`int`, `float`, `bool`, `pick`, `oneOf`, `constant`, `array`, `string`,
+`char`, `recursive`, a Gen's `map` and `filter`; values shown as `show`
+writes them): src/helder/test/property.test.ts. A Gen of your own is
+`gen(c => ({x: c.draw(int(0, 9))}))`.
 
 The assertions are Haxe's (`assert`, `equals`, `notEquals`, `approx`,
 `throws`, `rejects` for a promise, `require`, `fail`, `snapshot`), each

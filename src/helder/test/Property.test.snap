@@ -1,0 +1,4 @@
+// helder.test snapshots: `helder test -u` rewrites them
+
+--- replaying > a seed's values: the snapshot's, on every target: values (1 line)
+{bools: [true, false, true, true, false, false, false, false], choices: 80, ints: [-401, 0, 771, -1000, 907, 33, -993, -1000], lists: [[7, 1, 5], [9, 2], [9, 9, 0, 3, 1, 6]], picks: ["x", "z", "x", "y"], strings: ["a", "=H`N1j\r\nE", "i", "5"]}
