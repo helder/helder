@@ -5,7 +5,7 @@
 // (Discard, Save), the status bar; while there is no server, how to start
 // one; a menu over everything
 import { For, Match, Read, Repeat, Show, Switch, signal } from "helder/view";
-import { DataGrid, Key, Node, SafeArea, Svg, TextField, Theme, WindowControls } from "helder/ui";
+import { type Color, DataGrid, Key, Node, SafeArea, Svg, TextField, Theme, WindowControls } from "helder/ui";
 import {uiOf} from 'helder/ui/actions'
 import * as format from "./format";
 import * as icons from "./icons";
@@ -37,7 +37,7 @@ export function view(app: Tables) {
 	</view>;
 }
 
-function Icon(props: { src: Svg; color: number; size?: number }) {
+function Icon(props: { src: Svg; color: Color; size?: number }) {
 	const size = props.size ?? Theme.ICON_S;
 	return <image src={props.src} width={size} height={size} color={props.color} shrink={0}/>;
 }
