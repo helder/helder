@@ -19,7 +19,7 @@ function tests() {
 	describe("TitlebarArea", () -> {
 		afterEach(() -> SafeArea.setTitlebar(null));
 		test("env(titlebar-area-*) resolved, the fallback without one", () -> {
-			var t = {x: 78, y: 0, width: 1102, height: 32}, e = Edges.ZERO;
+			var t:Rect = {x: 78, y: 0, width: 1102, height: 32}, e = Edges.ZERO;
 			equals(SafeArea.resolve("env(titlebar-area-x) env(titlebar-area-y) env(titlebar-area-width) env(titlebar-area-height)", e, t), "78px 0px 1102px 32px");
 			equals(SafeArea.resolve("calc(env(titlebar-area-x) + 8px)", e, t), "86px");
 			equals(SafeArea.resolve("env(titlebar-area-height, 40px)", e), "40px");
