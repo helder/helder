@@ -263,6 +263,34 @@ A file that is damaged, cut short, not an image or larger than the
 viewer's limits (268 megapixels, 65,536 pixels a side) shows why in place
 of the image, and the keys go on to the next one.
 
+## How fast
+
+Measured on an Apple M4 (macOS, a release build, a test home, the window
+in the background; 10 runs each, median / p90 in ms, from the frame
+presented that shows it; the machine shared with other work, a load
+average of 11 to 14). `node apps/viewer/tests/bench/finder.mjs viewer`
+measures it again (the viewer writes its milestones with
+HELDER_VIEWER_TIMING=<file>: `src/viewer/Timing.hx`); `… finder` measures
+Finder the same way, on the screen.
+
+| | median | p90 |
+| --- | --- | --- |
+| launch → first frame | 486 | 525 |
+| launch → a folder of 350 entries shown, its thumbnails | 510, 527 | 572, 607 |
+| the same, its thumbnails' cache emptied | 526, 553 | 826, 867 |
+| go to 10, 350 or 200 photos: first rows | 8–13 | 12–21 |
+| go to 10,000 entries: first rows, all listed | 61, 67 | 85, 87 |
+| a folder of 200 photos first seen: its tiles' thumbnails | 175 | |
+| back, forward | 20 | 21 |
+| open a 24 MP JPEG (3.5 MB) full size | 435 | 576 |
+| open a HEIC (1.1 MB), a PDF's first page | 224, 217 | 370, 234 |
+
+A launch's time: 190 ms before `main` runs (the 9.5 MB executable loaded),
+20 ms to the folder asked for, 170 ms making the window and its GPU device,
+110 ms to the first frame (the listing's result is delivered on the window's
+loop, so it lands with it), and the rows a frame later. A folder of 10,000
+entries: read in 61 ms, of which 31 ms sorting its batches in.
+
 ## Releasing
 
 A tag `viewer-v<version>` builds the three packages and attaches them to

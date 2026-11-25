@@ -248,6 +248,7 @@ class Explorer {
 	// (from the browser: zoomed from its tile; a link followed in place)
 	public function view(name:String) {
 		var names = browser.viewable(), was = full.value;
+		Timing.opening(browser.path(name));
 		viewer.view(browser.dir.value, names, name);
 		full(true);
 		if (!was) zoom.open(browser.path(name));

@@ -128,6 +128,7 @@ class Shell implements Markup {
 
 	#if (hxmc.target != "wasm32-wasi")
 	public static function main(args:Array<String>) {
+		Timing.mark("start " + Date.now().getTime());
 		var mac = hxmc.Platform.os() == 1, phone = Phone.mobile();
 		// (a phone: one app, no other to hand files to)
 		if (phone) args = args.concat(["--new"]);
@@ -247,6 +248,10 @@ class Shell implements Markup {
 		// (files handed over while this one started: opened after its own)
 		if (!args.contains("--new")) {
 			opener = p -> {
+				if (Timing.command(x, p)) {
+					helder.view.graph.Graph.flush();
+					return;
+				}
 				x.start(p);
 				helder.view.graph.Graph.flush();
 				for (w in helder.os.App.windows) w.raise();
@@ -259,6 +264,7 @@ class Shell implements Markup {
 		// for the sidebar; reduce transparency's opaque as ever)
 		var glass = !phone && material(Sys.systemName(), helder.os.DeviceInfo.get().osVersion, Sys.getEnv("XDG_CURRENT_DESKTOP") ?? "");
 		var shows = signal(false);
+		Timing.mark("run");
 		UiWindow.run(<Surface title={() -> x.full() ? viewer.title() : x.sidebar.title(x.browser.dir())} width={num("width", 1180)} height={num("height", 780)}
 			titlebar="inset" scrollbars="overlay" background={() -> glass ? "transparent" : "#" + StringTools.hex(ViewerView.canvas(UiWindow.dark()), 6)}
 			backdrop={glass ? () -> helder.os.Settings.reducedTransparency() ? helder.os.WindowBackdrop.None : helder.os.WindowBackdrop.Sidebar : null} clickThrough={false}
@@ -271,6 +277,14 @@ class Shell implements Markup {
 			}}
 			ref={w -> {
 				window = w;
+				Timing.mark("made");
+				if (Timing.on) {
+					var before = w.onFrame;
+					w.onFrame = () -> {
+						if (before != null) before();
+						Timing.frame(x);
+					};
+				}
 				if (!phone) w.window.setMinSize(MIN_WIDTH, MIN_HEIGHT);
 				var placed = store != null && store.exists("x") && store.exists("y");
 				if (placed) w.window.moveTo(num("x", 0), num("y", 0));
