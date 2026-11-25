@@ -475,8 +475,13 @@ distance, a budget too small for every neighbour, a changed file),
 opened among its folder's files, its column, its picture decoded and a
 remote one's alt text, its links: an anchor, another document at a
 heading of it, a web address, a missing file; the keys scrolling, the
-source by Mod+U and back, the inspector's preview and the grid's tiles),
-`ViewCamera.test.hx` (the fit, zooms about the cursor and their stops,
+source by Mod+U and back, the inspector's preview and the grid's tiles;
+two pictures at their sizes before they decode), `Media.test.hx`
+(tests/fixtures/media's silent Vorbis files, the desktop's and the
+phone's shells: over open, next, previous, close, another folder,
+another file and a PDF, at most one player plays, the shown file's),
+`Scrub.test.hx` (the scrub bar: keyframe seeks as it is dragged, the
+release exact), `ViewCamera.test.hx` (the fit, zooms about the cursor and their stops,
 the steps, the double click, pans, the glide), `Samples.test.hx` (the web
 build's sample folder as its browser has it: at Samples, its files and
 subfolder, the PDF opened and its pages), `Viewer.test.hx` (a
@@ -488,7 +493,7 @@ with Escape and Ctrl+Up, fullscreen's keys, the browser's keys: grid
 and list, the inspector, search; a PDF's column: the keys scrolling
 it, go to page, the zoom), `Pdf.test.hx` (the pages' places at a zoom,
 the pages a scroll shows and draws, go to page's scroll, a zoom kept
-about its point, a page that cannot be drawn),
+about its point, a page that cannot be drawn, the auto zoom it opens at),
 `Viewer.story.hx` (the grid and the list dark and light, several
 selected, the inspector of a photo, of a PDF and of a Markdown document, an empty folder, a missing one, no results, a file full size, a
 PDF's column scrolled between two pages, the Markdown sample dark and light,
