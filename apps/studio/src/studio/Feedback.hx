@@ -16,9 +16,12 @@ import studio.Theme.c;
 // made flashes, then holds an outline; a frame's new image after a build
 // it caused is revealed behind a scan line; an agent off the view is a tab
 // on the edge nearest it (a click flies there: the user's click, the
-// camera never moved for the agent); the toast says what changed, Undo
-// beside it. Its chip by a frame's caption and a frame not drawn yet (its
-// shimmer) are Board's, from here. Nothing else on the canvas takes input.
+// camera never moved for the agent); so is a frame new since the project
+// opened until it was in the view ("New: Settings ›"). What an agent
+// changed is a line in the chat (Chat, Undo there: the canvas takes no
+// input but a pan, a zoom, a frame aimed at or played, and these tabs).
+// Its chip by a frame's caption and a frame not drawn yet (its shimmer) are
+// Board's, from here.
 class Feedback implements Markup {
 	// the layer, in the stage's points (Board's overlay)
 	public static function canvas(studio:Studio):View
@@ -46,21 +49,20 @@ class Feedback implements Markup {
 					</view>
 				</view>
 			}</For>
-			<For each={edges(studio)} by={(e:Edge) -> e.peer}>{(e:Read<Edge>) ->
-				<view:button tag={"edge-" + Shell.slug(e().name)} role="button" label={'${e().name} · ${e().label}'} pointer-events="auto" cursor="pointer"
+			<For each={edges(studio)} by={(e:Edge) -> e.key}>{(e:Read<Edge>) ->
+				<view:button tag={"edge-" + Shell.slug(e().key)} role="button" label={e().text} pointer-events="auto" cursor="pointer"
 					position="absolute" left={e().angle == 0 ? null : e().x} right={e().angle == 0 ? 8 + studio.insets().right : null} top={e().y} height={26} direction="row" align-items="center" column-gap={6} padding="0 10"
 					radius={13} background={c("skeleton")} border-width={1} border-color={c("hair2")} onPress={() -> studio.flyTo(e().screen)}>
 					<view width={6} height={6} radius={3} background={Color.parse(e().colour)}/>
-					<text font-size={Theme.SMALL} color={c("ink2")} max-lines={1} text-wrap="nowrap">{'${e().name} · ${e().label}'}</text>
+					<text font-size={Theme.SMALL} color={c("ink2")} max-lines={1} text-wrap="nowrap">{e().text}</text>
 					<image src={Icons.chevronRight} width={Theme.ICON_XS} height={Theme.ICON_XS} color={c("ink3")} transform={'rotate(${e().angle}deg)'}/>
 				</view:button>
 			}</For>
-			<Show when={studio.marks.toast() != null}>{toast(studio)}</Show>
 		</view>;
 
 	// a frame's chip by its caption: the agent working on it (its dot breathing, its status), its done note a few seconds after
 	public static function chip(studio:Studio, screen:String):View
-		return <For each={on(studio, screen)} by={(p:Peer) -> p.id}>{(p:Read<Peer>) ->
+		return <For each={on(studio, screen).slice(0, 1)} by={(p:Peer) -> p.id}>{(p:Read<Peer>) ->
 			<view tag={"working-" + Shell.slug(p().name)} height={20} padding="0 8" radius={10} direction="row" align-items="center" column-gap={5}
 				shrink={1} min-width={0} background={tint(p().colour, 0.14)}>
 				<view width={6} height={6} radius={3} shrink={0} background={Color.parse(p().colour)} opacity={p().working ? pulse(studio) : 1}/>
@@ -97,27 +99,6 @@ class Feedback implements Markup {
 		var t = Math.max(0, Math.min(1, (studio.marks.time() - a.at) / Marks.ARRIVE));
 		var e = 1 - Math.pow(1 - t, 3);
 		return {opacity: e, transform: 'translate(0px, ${8 * (1 - e)}px) scale(${0.97 + 0.03 * e})'};
-	}
-
-	// (the toast: what changed, by whom; Undo while that edit is still the one undo takes)
-	static function toast(studio:Studio):View {
-		var t = () -> studio.marks.toast();
-		return <view tag="toast" position="absolute" top={studio.insets().top + 12} left={studio.insets().left} right={studio.insets().right} align-items="center">
-			<view pointer-events="auto" direction="row" align-items="center" column-gap={8} height={32} padding="0 6 0 12" radius={8} background={c("card")}
-				border-width={1} border-color={c("hair2")} shadow={Theme.POPOVER}>
-				<view width={6} height={6} radius={3} background={Color.parse(t()?.colour ?? "#ffffff")}/>
-				<text font-size={Theme.BODY} color={c("ink2")} max-lines={1} text-wrap="nowrap">{'${t()?.by} changed ${t()?.file}'}</text>
-				<Show when={t()?.entry != null && studio.docs.nextUndo() == t().entry}>
-					<view:button tag="toast-undo" role="button" label="Undo" cursor="pointer" height={22} padding="0 8" radius={6} justify="center"
-						background={c("hair")} onPress={() -> {
-							studio.undo();
-							studio.marks.toast(null);
-						}}>
-						<text font-size={Theme.SMALL} color={c("ink")}>Undo</text>
-					</view:button>
-				</Show>
-			</view>
-		</view>;
 	}
 
 	// (a new image revealed top to bottom behind a scan line, ~1 s)
@@ -164,7 +145,7 @@ class Feedback implements Markup {
 	}
 
 	// (the agents on a frame: at work, or done a few seconds ago)
-	static function on(studio:Studio, screen:String):Array<Peer> {
+	public static function on(studio:Studio, screen:String):Array<Peer> {
 		var pr = studio.presence;
 		return [
 			for (p in pr.peers())
@@ -186,26 +167,31 @@ class Feedback implements Markup {
 	static function halos(studio:Studio):Array<Peer>
 		return [for (p in studio.presence.peers()) if (p.screen != null && studio.layout.rect(p.screen) != null) p];
 
-	// (an agent whose frame is out of the view: a tab on the edge nearest it, along it at the frame's place)
+	// (an agent whose frame is out of the view, a frame new and not seen yet:
+	// a tab on the edge nearest it, along it at the frame's place)
 	static function edges(studio:Studio):Array<Edge> {
 		studio.camera.changed();
 		studio.stageSize();
 		// (the view: the stage less what the panels cover)
 		var i = studio.insets(), cam = studio.camera, out:Array<Edge> = [];
 		var l = i.left, t = i.top, w = studio.stageWidth - i.right, h = studio.stageHeight - i.bottom;
-		for (p in studio.presence.peers()) {
-			var r = p.screen == null ? null : studio.layout.rect(p.screen);
+		var of = [for (p in studio.presence.peers()) if (p.screen != null) {key: p.id, text: '${p.name} · ${label(studio, p.screen)}', colour: p.colour, screen: p.screen}];
+		for (n in studio.marks.fresh())
+			if (!Lambda.exists(of, o -> o.screen == n)) of.push({key: "new:" + n, text: 'New: ${label(studio, n)}', colour: studio.marks.lastColour ?? "#8b8b94", screen: n});
+		for (o in of) {
+			var r = studio.layout.rect(o.screen);
 			if (r == null) continue;
 			var x0 = cam.sx(r.x), y0 = cam.sy(r.y), x1 = cam.sx(r.x + r.w), y1 = cam.sy(r.y + r.h);
 			if (x1 > l && y1 > t && x0 < w && y0 < h) continue;
-			var cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, tw = 40 + 6.5 * (p.name.length + label(studio, p.screen).length);
+			var cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, tw = 40 + 6.5 * o.text.length;
 			function along(v:Float, lo:Float, hi:Float)
 				return Math.max(lo + 8, Math.min(hi - 8, v));
-			var e:Edge = if (x0 >= w) {peer: p.id, name: p.name, colour: p.colour, screen: p.screen, label: label(studio, p.screen), x: w - tw - 8, y: along(cy - 13, t, h - 26), angle: 0}
-			else if (x1 <= l) {peer: p.id, name: p.name, colour: p.colour, screen: p.screen, label: label(studio, p.screen), x: l + 8, y: along(cy - 13, t, h - 26), angle: 180}
-			else if (y1 <= t) {peer: p.id, name: p.name, colour: p.colour, screen: p.screen, label: label(studio, p.screen), x: along(cx - tw / 2, l, w - tw), y: t + 8, angle: -90}
-			else {peer: p.id, name: p.name, colour: p.colour, screen: p.screen, label: label(studio, p.screen), x: along(cx - tw / 2, l, w - tw), y: h - 34, angle: 90};
-			out.push(e);
+			// (more than one on an edge: each a row lower)
+			var k = out.length * 32;
+			out.push(if (x0 >= w) {key: o.key, text: o.text, colour: o.colour, screen: o.screen, x: w - tw - 8, y: along(cy - 13 + k, t, h - 26), angle: 0}
+			else if (x1 <= l) {key: o.key, text: o.text, colour: o.colour, screen: o.screen, x: l + 8, y: along(cy - 13 + k, t, h - 26), angle: 180}
+			else if (y1 <= t) {key: o.key, text: o.text, colour: o.colour, screen: o.screen, x: along(cx - tw / 2, l, w - tw), y: t + 8 + k, angle: -90}
+			else {key: o.key, text: o.text, colour: o.colour, screen: o.screen, x: along(cx - tw / 2, l, w - tw), y: h - 34 - k, angle: 90});
 		}
 		return out;
 	}
@@ -250,4 +236,4 @@ class Feedback implements Markup {
 		return Color.mix(Color.parse(hex), Color.parse("#ffffff"), 0.25);
 }
 
-private typedef Edge = {peer:String, name:String, colour:String, screen:String, label:String, x:Float, y:Float, angle:Float};
+private typedef Edge = {key:String, text:String, colour:String, screen:String, x:Float, y:Float, angle:Float};

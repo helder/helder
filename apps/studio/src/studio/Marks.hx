@@ -9,23 +9,25 @@ import helder.view.graph.Graph.*;
 import helder.view.graph.Signal;
 import studio.Presence.Peer;
 import studio.Project.Source;
+import studio.Turn.Turns;
 
 // What an agent's work leaves on the canvas, as it happens (Watch draws
 // it): the nodes an edit of its made, flashed then outlined (touches); its
 // cursor gliding to them; a frame's new image after a build it caused
 // revealed behind a scan line (reveals); a new frame rising into place
-// (arrivals); "Claude changed pond.helder · Undo" (toast). Times are the
+// (arrivals) and, out of the view, a tab on the edge until seen (fresh);
+// what it changed, a line in the chat ("Changed pond.helder · Undo":
+// changes; the canvas takes no input). Times are the
 // canvas' clock's (helder.ui.Clock: a headless run's virtual one), stepped
 // only while something moves (time). Only agents' edits mark: the user's
 // own do not move the canvas.
 class Marks {
 	// (seconds) a touch's flash and outline, a reveal's scan, a frame's
-	// rise, between two frames rising, the toast, a done note shown
+	// rise, between two frames rising, a done note shown
 	public static inline var TOUCH = 1.8;
 	public static inline var REVEAL = 1.0;
 	public static inline var ARRIVE = 0.5;
 	public static inline var STAGGER = 0.12;
-	public static inline var TOAST = 5.0;
 	public static inline var DONE = 4.0;
 	// the cursor's glide (600 ms, ease in-out)
 	static final GLIDE = Curve.tween(0.6, [0.45, 0, 0.2, 1]);
@@ -36,7 +38,14 @@ class Marks {
 	public final touches:Signal<Array<Touch>> = signal([]);
 	public final reveals:Signal<Array<Reveal>> = signal([]);
 	public final arrivals:Signal<Array<Arrival>> = signal([]);
-	public final toast:Signal<Null<Toast>> = signal(null);
+	// an agent's edits, by turn (the chat's lines), each file's merged in a turn
+	public final changes:Signal<Array<Changed>> = signal([]);
+	// the frames new since the project opened, not in the view yet (edge tabs until seen)
+	public final fresh:Signal<Array<String>> = signal([]);
+	// (the colour of the agent that edited last: a new frame's tab's)
+	public var lastColour(default, null):Null<String> = null;
+	var changeList:Array<Changed> = [];
+	var freshList:Array<String> = [];
 	// each agent's cursor (its hand) where it is now (world points), for the agents with a frame
 	public final cursors:Signal<Array<Hand>> = signal([]);
 	// (the truths: a signal's write lands at the event's end)
@@ -80,7 +89,7 @@ class Marks {
 				if (e.start > c.start && e.start <= c.end && !starts.contains(e.start)) starts.push(e.start);
 		}
 		var name = p.dir.length < file.length ? file.substr(p.dir.length + 1) : file;
-		toast({by: peer.name, colour: peer.colour, file: name, entry: studio.docs.nextUndo(), at: Clock.now});
+		changed(peer, name);
 		var shown = studio.layout.inView();
 		var w:Wait = {peer: peer.id, colour: peer.colour, file: file, starts: starts, designs: [], live: [], frame: studio.frames, landed: false};
 		for (s in p.screens)
@@ -92,6 +101,26 @@ class Marks {
 		building = {colour: peer.colour, screens: w.live};
 		wake();
 	}
+
+	// (a line of the chat's turn: its turn's, else after the turns; a file's edits in one turn one line, the last undoable)
+	function changed(peer:Peer, file:String) {
+		lastColour = peer.colour;
+		var turns = studio.talk.list(), last = turns.length - 1;
+		var turn = last >= 0 && Turns.running(turns[last]) ? last : -1, entry = studio.docs.nextUndo();
+		var was = Lambda.find(changeList, c -> c.turn == turn && c.by == peer.name && c.file == file);
+		changes(changeList = was == null ? changeList.concat([{id: next++, by: peer.name, colour: peer.colour, file: file, turn: turn, entry: entry, count: 1}]) : [
+			for (c in changeList) c != was ? c : {id: c.id, by: c.by, colour: c.colour, file: c.file, turn: c.turn, entry: entry, count: c.count + 1}
+		]);
+	}
+
+	// the frames in the view now (Studio.drawn, while some are fresh): those seen no longer fresh
+	public function inView(names:Array<String>) {
+		var left = freshList.filter(n -> !names.contains(n));
+		if (left.length != freshList.length) fresh(freshList = left);
+	}
+
+	public function anyFresh():Bool
+		return freshList.length > 0;
 
 	// the edit told to the program: patched (its next frames show it), or
 	// built (ok: the frames drawn next are the new build's, revealed)
@@ -130,6 +159,7 @@ class Marks {
 		var fresh = [for (n in names) if (!was.contains(n)) {screen: n, at: t + STAGGER * k++}];
 		if (fresh.length == 0) return;
 		arrivals(arrivalList = arrivalList.concat(fresh));
+		this.fresh(freshList = freshList.filter(n -> names.contains(n)).concat([for (a in fresh) a.screen]));
 		wake();
 	}
 
@@ -175,8 +205,6 @@ class Marks {
 		if (touchList.length > 0 && Lambda.exists(touchList, x -> t - x.at > TOUCH)) touches(touchList = touchList.filter(x -> t - x.at <= TOUCH));
 		if (revealList.length > 0 && Lambda.exists(revealList, x -> t - x.at > REVEAL)) reveals(revealList = revealList.filter(x -> t - x.at <= REVEAL));
 		if (arrivalList.length > 0 && Lambda.exists(arrivalList, x -> t - x.at > ARRIVE)) arrivals(arrivalList = arrivalList.filter(x -> t - x.at <= ARRIVE));
-		var tst = toast.peek();
-		if (tst != null && t - tst.at > TOAST) toast(null);
 		// (a design's touches: its frame drawn again with the edit, two of the studio's frames on)
 		for (w in waiting.copy())
 			if (w.designs.length > 0 && studio.frames >= w.frame + 2) {
@@ -186,7 +214,7 @@ class Marks {
 				if (w.live.length == 0) waiting.remove(w);
 			}
 		var moving = glide(t);
-		ticking = moving || touchList.length > 0 || revealList.length > 0 || arrivalList.length > 0 || toast.peek() != null || waiting.length > 0 || busy();
+		ticking = moving || touchList.length > 0 || revealList.length > 0 || arrivalList.length > 0 || waiting.length > 0 || busy();
 		return ticking;
 	}
 
@@ -239,6 +267,7 @@ class Marks {
 typedef Touch = {id:Int, colour:String, screen:String, x:Float, y:Float, w:Float, h:Float, at:Float};
 typedef Reveal = {screen:String, colour:String, at:Float};
 typedef Arrival = {screen:String, at:Float};
-typedef Toast = {by:String, colour:String, file:String, entry:Null<Docs.Entry>, at:Float};
+// (an agent's edits of a file in a turn: the last one's history entry, how many)
+typedef Changed = {id:Int, by:String, colour:String, file:String, turn:Int, entry:Null<Docs.Entry>, count:Int};
 typedef Hand = {peer:String, name:String, colour:String, screen:String, x:Float, y:Float, working:Bool};
 private typedef Wait = {peer:String, colour:String, file:String, starts:Array<Int>, designs:Array<String>, live:Array<String>, frame:Int, landed:Bool};

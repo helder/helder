@@ -137,7 +137,7 @@ class Board implements Markup {
 					<text font-size={Theme.SMALL} max-lines={1} shrink={0} font-weight={studio.focused() == r().name ? Theme.MEDIUM : 400}
 						color={studio.focused() == r().name ? c("accent-ink") : c("fg3")}>{label(studio, r().name)}</text>
 					{Feedback.chip(studio, r().name)}
-					<Show when={studio.failure() != null && !studio.project.screen(r().name).source.match(Design(_))}>
+					<Show when={studio.failure() != null && !studio.project.screen(r().name).source.match(Design(_)) && Feedback.on(studio, r().name).length == 0}>
 						<view tag={"failed-" + Shell.slug(r().name)} height={20} padding="0 8" radius={10} direction="row" align-items="center" column-gap={5}
 							shrink={1} min-width={0} background={c("error-soft")}>
 							<view width={6} height={6} radius={3} shrink={0} background={c("error")}/>

@@ -556,16 +556,19 @@ for an agent):
   glides there in 600 ms (an analytic track in world points: a pan moves
   it with the canvas);
 - what an edit made flashes (a 2-point ring and a 10-point spread), keeps
-  a 1.5-point outline for 1.5 s, then fades; a toast at the canvas' top,
-  "Claude changed pond.helder · Undo", 5 s (Undo while that edit is
-  still the one undo takes);
+  a 1.5-point outline for 1.5 s, then fades; the chat's turn says it, a
+  line a file ("Claude changed pond.helder (3 edits) · Undo": Undo while
+  its last edit is still the one undo takes; the canvas takes no input);
 - a frame's new image after a build it caused is revealed top to bottom
   behind a 2-point scan line, ~1 s; a frame not drawn yet (a story added,
   its build running) holds its place as a shimmer (1.6 s); a new frame
   rises 8 points into place (500 ms, 120 ms apart);
 - an agent whose frame is out of the view is a tab on the edge nearest it
-  ("Codex · Settings ›": a click flies the camera there);
-- a failed build dims each program's frame, a chip by its caption.
+  ("Codex · Settings ›": a click flies the camera there); so is a frame
+  new since the project opened, until it has been in the view ("New:
+  Settings ›");
+- a failed build dims each program's frame, a chip by its caption; one
+  chip a frame: an agent's status while it works there, else the failure.
 
 Times are the canvas' clock's (helder.ui.Clock: a headless run's virtual
 one), stepped only while something moves. The ground is #0f0f11 with a
