@@ -121,7 +121,7 @@ class Sendable {
 			// declared type, as written)
 			case StringK: macro(cast $r.string() : $ct);
 			case BytesK: macro(cast $r.bytes() : $ct);
-			case BufferK: macro $r.buffer();
+			case BufferK: macro(cast $r.buffer() : $ct);
 			case StructK(c):
 				var cls = classExpr(c);
 				macro ($r.struct(hxmc.unsafe.Struct.sizeOf($cls)) : $ct);
