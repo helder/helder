@@ -24,6 +24,14 @@ function tests() {
 			equals(l[0].entry == s.docs.nextUndo(), true);
 			equals(s.presence.peer("a").screen, "app.helder#Home");
 		}));
+		test("an agent's patch adding a frame: the agent on the new one", async(() -> {
+			var s = studio("bin/marks-test-4");
+			s.presence.arrive("a", "claude-code");
+			s.tools.call("project.patch", {path: "app.helder", edits: [{old: "\t</Frame>\n</Design>", "new": '\t</Frame>\n\t<Frame name="Settings" canvas:at="2600 0"><text>Settings</text></Frame>\n</Design>'}]}, "a");
+			equals(s.presence.peer("a").screen, "app.helder#Settings");
+			s.tools.call("project.patch", {path: "app.helder", edits: [{old: "<text>Settings</text>", "new": "<text>Options</text>"}]}, "a");
+			equals(s.presence.peer("a").screen, "app.helder#Settings");
+		}));
 		test("the user's own edit: nothing marked", () -> {
 			var s = studio("bin/marks-test-2");
 			var f = s.project.dir + "/app.helder", text = s.docs.get(f).text, at = text.indexOf("#3b82f6");
