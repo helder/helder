@@ -423,7 +423,10 @@ Stop cancels the turn. What it reads is the files as the studio has them,
 unsaved edits too; what it writes goes through the studio's history, one
 entry a file written: shown on the canvas at once (a live literal
 patched, else built) and undone like any other edit. Paths outside the
-project are refused. When the agent's process ends, the turn fails with
+project are refused. A turn ends once the studio's build of its edits
+has: a failed build shows with it (its first error), and every prompt
+carries the last build's errors while it is failing, so the agent does
+not take its work for done. When the agent's process ends, the turn fails with
 its last log lines and the next prompt starts it again.
 
 ## Agents over MCP

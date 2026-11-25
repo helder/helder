@@ -17,11 +17,13 @@ typedef Turn = {
 	ask:Null<{question:String, options:Array<String>, answer:Int->Void}>,
 	end:Null<String>,
 	error:Null<String>,
+	// the studio's build failed after it: its first error
+	build:Null<String>,
 }
 
 class Turns {
 	public static function start(prompt:String):Turn
-		return {prompt: prompt, text: "", thought: "", tools: [], steps: [], ask: null, end: null, error: null};
+		return {prompt: prompt, text: "", thought: "", tools: [], steps: [], ask: null, end: null, error: null, build: null};
 
 	public static function add(t:Turn, e:AgentEvent):Turn {
 		var n:Turn = Reflect.copy(t);
@@ -53,6 +55,13 @@ class Turns {
 				n.error = message;
 				n.ask = null;
 		}
+		return n;
+	}
+
+	// (the studio's build failing as it ended: its first error)
+	public static function broken(t:Turn, problem:String):Turn {
+		var n:Turn = Reflect.copy(t);
+		n.build = problem;
 		return n;
 	}
 

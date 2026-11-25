@@ -44,22 +44,17 @@ class Prompt implements Markup {
 		</view>;
 	}
 
-	// the turn: its text, tools, plan and question (the compact sheet's too)
+	// the turn: what failed and its question first, its plan, its last
+	// tools, its text (the compact sheet's too)
 	public static function transcript(studio:Studio):View {
 		function turn():Turn
 			return studio.turn() ?? Turns.start("");
 		return <scroll tag="turn-log" max-height={260} min-height={0} row-gap={4}>
-			<For each={turn().steps.map(s -> s)}>{(s:Read<{text:String, done:Bool}>) ->
-				<text color={s().done ? c("fg3") : c("fg2")} font-size={Theme.SMALL}>{(s().done ? "✓ " : "○ ") + s().text}</text>
-			}</For>
-			<For each={turn().tools} by={(t:{id:String, title:String, kind:String, status:String}) -> t.id}>{(t:Read<{id:String, title:String, kind:String, status:String}>) ->
-				<view tag={"turn-tool-" + t().id} direction="row" column-gap={6}>
-					<text grow={1} shrink={1} min-width={0} max-lines={1} text-overflow="ellipsis" color={c("fg2")} font-size={Theme.SMALL}>{t().title}</text>
-					<text color={c("fg3")} font-size={Theme.SMALL}>{t().status}</text>
-				</view>
-			}</For>
-			<Show when={turn().text != ""}>
-				<text tag="turn-text" color={c("fg")} font-size={Theme.SMALL}>{turn().text}</text>
+			<Show when={turn().build != null}>
+				<text tag="turn-build" color={c("red")} font-size={Theme.SMALL}>{"The build failed: " + (turn().build ?? "")}</text>
+			</Show>
+			<Show when={turn().error != null}>
+				<text tag="turn-error" color={c("red")} font-size={Theme.SMALL}>{turn().error ?? ""}</text>
 			</Show>
 			<Show when={turn().ask != null}>
 				<view tag="turn-ask" row-gap={4}>
@@ -73,8 +68,17 @@ class Prompt implements Markup {
 					</view>
 				</view>
 			</Show>
-			<Show when={turn().error != null}>
-				<text tag="turn-error" color={c("red")} font-size={Theme.SMALL}>{turn().error ?? ""}</text>
+			<For each={turn().steps.map(s -> s)}>{(s:Read<{text:String, done:Bool}>) ->
+				<text color={s().done ? c("fg3") : c("fg2")} font-size={Theme.SMALL}>{(s().done ? "✓ " : "○ ") + s().text}</text>
+			}</For>
+			<For each={turn().tools.slice(-4)} by={(t:{id:String, title:String, kind:String, status:String}) -> t.id}>{(t:Read<{id:String, title:String, kind:String, status:String}>) ->
+				<view tag={"turn-tool-" + t().id} direction="row" column-gap={6}>
+					<text grow={1} shrink={1} min-width={0} max-lines={1} text-overflow="ellipsis" color={c("fg2")} font-size={Theme.SMALL}>{t().title}</text>
+					<text color={c("fg3")} font-size={Theme.SMALL}>{t().status}</text>
+				</view>
+			}</For>
+			<Show when={turn().text != ""}>
+				<text tag="turn-text" color={c("fg")} font-size={Theme.SMALL}>{turn().text}</text>
 			</Show>
 			<Show when={turn().error == null && turn().text == ""}>
 				<text color={c("fg3")} font-size={Theme.SMALL}>{turn().end == null ? "…" : 'ended: ${turn().end}'}</text>

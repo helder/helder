@@ -32,4 +32,6 @@ typedef AgentContext = {
 	// the screen in focus (null: the whole app), the node selected in it
 	screen:Null<String>,
 	selection:Null<{screen:String, file:String, start:Int, tag:String}>,
+	// the studio's last build's errors ("file:line: message"; none: it built)
+	problems:Array<String>,
 }

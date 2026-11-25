@@ -77,7 +77,8 @@ async function prompt(id, p) {
     outside: outside.error ? 'error' : 'ok',
     missing: missing.error?.code,
     servers,
-    link: link?.name ?? null
+    link: link?.name ?? null,
+    problems: p.prompt.find(b => b.type === 'text' && b.text.startsWith("The studio's last build failed"))?.text ?? null
   }
   update(s, {sessionUpdate: 'agent_message_chunk', content: {type: 'text', text: JSON.stringify(report)}})
   send({id, result: {stopReason: 'end_turn'}})

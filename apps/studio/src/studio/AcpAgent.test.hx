@@ -19,7 +19,7 @@ function tests() {
 			var w = workspace();
 			var agent = new AcpAgent(fake(), w);
 			var sel = {screen: "Home", file: w.dir + "/app.helder", start: w.docs.get(w.dir + "/app.helder").text.indexOf("<text"), tag: "text"};
-			var events = turn(agent, "edit", {screen: "Home", selection: sel}, true);
+			var events = turn(agent, "edit", {screen: "Home", selection: sel, problems: ["app.tsx:3: oops"]}, true);
 			agent.close();
 			var kinds = [for (e in events) e.getName()];
 			equals(kinds, ["Text", "Thought", "Text", "Steps", "Tool", "Ask", "Tool", "Tool", "Text", "Done"]);
@@ -37,6 +37,7 @@ function tests() {
 			equals([report.wrote, report.outside, report.missing], ["ok", "error", -32601]);
 			equals(report.servers, ["http helder-studio http://127.0.0.1:7340/mcp"]);
 			equals(report.link, "app.helder:2");
+			equals(report.problems, "The studio's last build failed:\n- app.tsx:3: oops");
 			var f = w.dir + "/app.helder";
 			equals(w.docs.get(f).text, "<frame>\n\t<text>Hi</text>\n</frame>\n");
 			equals(w.docs.undo(), "fake's edit of app.helder");
@@ -47,7 +48,7 @@ function tests() {
 			var agent = new AcpAgent(fake(), workspace());
 			var events = [];
 			var done = false;
-			agent.ask("wait", {screen: null, selection: null}, e -> {
+			agent.ask("wait", {screen: null, selection: null, problems: []}, e -> {
 				events.push(e);
 				switch e {
 					case Ask(_, _, _): agent.cancel();
@@ -64,13 +65,13 @@ function tests() {
 		})).timeout(20);
 		test("the process ends: a failure with its log, then started again", async(() -> {
 			var agent = new AcpAgent(fake(), workspace());
-			var died = turn(agent, "die", {screen: null, selection: null}, false);
+			var died = turn(agent, "die", {screen: null, selection: null, problems: []}, false);
 			var message = switch died[died.length - 1] {
 				case Failed(m): m;
 				case _: "";
 			}
 			assert(message.indexOf("fake: about to die") > 0, message);
-			var again = turn(agent, "wait", {screen: null, selection: null}, false, true);
+			var again = turn(agent, "wait", {screen: null, selection: null, problems: []}, false, true);
 			agent.close();
 			equals(again[again.length - 1], Done("cancelled"));
 		})).timeout(20);

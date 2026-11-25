@@ -1360,19 +1360,45 @@ class Studio {
 		var a = LocalAgent.tool(p) != null ? local : agent;
 		setTurn(Turns.start(p));
 		var answered = false;
-		a.ask(p, {screen: focused.peek(), selection: selection.peek()}, e -> {
+		function end(e:Agent.AgentEvent) {
 			var t = Turns.add(turnNow ?? Turns.start(p), e);
+			var ps = a == local ? [] : problems();
+			if (ps.length > 0) t = Turns.broken(t, ps[0]);
 			setTurn(t);
-			switch e {
-				case Tool(id, title, _, status): log("agent-tool", {id: id, title: title, status: status});
-				case Done(_) | Failed(_):
-					answered = true;
-					var r = t.error ?? t.text;
-					log("replied", {prompt: p, reply: r, end: t.end});
-				case _:
-			}
+			answered = true;
+			log("replied", {prompt: p, reply: t.error ?? t.text, end: t.end, build: t.build});
+		}
+		a.ask(p, {screen: focused.peek(), selection: selection.peek(), problems: problems()}, e -> switch e {
+			case Done(_) | Failed(_):
+				// (not done before the studio's build of its edits is: a failed one shown with the turn)
+				var pr = previews;
+				if (pr == null || !pr.busy()) end(e) else Async.launch(_ -> {
+					var t0 = haxe.Timer.stamp();
+					while (pr.busy() && haxe.Timer.stamp() - t0 < 120)
+						Async.delay(0.05);
+					end(e);
+				});
+			case _:
+				setTurn(Turns.add(turnNow ?? Turns.start(p), e));
+				switch e {
+					case Tool(id, title, _, status): log("agent-tool", {id: id, title: title, status: status});
+					case _:
+				}
 		});
 		hold(() -> answered, "the agent's reply", a == local ? 30 : 300);
+	}
+
+	// the last build's errors, "file:line: message" (none: it did not fail)
+	public function problems():Array<String> {
+		var pr = previews;
+		if (pr == null || !pr.failed) return [];
+		var dir = project.dir + "/";
+		var out = [
+			for (d in pr.diagnostics.peek())
+				if (d.severity == "error" || d.severity == "ERROR")
+					(d.file == null ? "" : (d.file.startsWith(dir) ? d.file.substr(dir.length) : d.file) + ':${d.line}: ') + d.message
+		];
+		return out.length > 0 ? out : ["the build failed"];
 	}
 
 	// the turn stopped (the prompt bar's Stop)

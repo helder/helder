@@ -128,6 +128,8 @@ class AcpAgent implements Agent {
 			out.push({type: "resource_link", uri: uri(sel.file) + '#L$line', name: where});
 		} else if (context.screen != null)
 			out.push({type: "text", text: 'In helder studio: the screen ${context.screen} is in focus.'});
+		if (context.problems.length > 0)
+			out.push({type: "text", text: "The studio's last build failed:\n" + context.problems.slice(0, 10).map(p -> '- $p').join("\n")});
 		if (context.screen != null && work.snap != null && caps.promptCapabilities?.image == true) {
 			var png = try work.snap(context.screen) catch (_:Exception) null;
 			if (png != null) out.push({type: "image", mimeType: "image/png", data: png});
