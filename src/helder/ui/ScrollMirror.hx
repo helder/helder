@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Mods;
 import helder.os.ScrollPhase;
 import helder.ui.gesture.TouchScroll;
 
@@ -223,7 +224,7 @@ class ScrollMirror extends ScrollHost {
 		i.gesture = 0;
 		switch i.kind {
 			case Wheel:
-				var phased = (elastic || kinetic) && (i.phase != 0 || i.momentum != 0) && i.mods & Key.MOD_CONTROL == 0;
+				var phased = (elastic || kinetic) && (i.phase != 0 || i.momentum != 0) && i.mods & Mods.CONTROL == 0;
 				i.time = phased ? eventTime(i.time) : -1;
 				if (phased) {
 					// (a gesture: from its Began, or a move without one, until the next)
@@ -385,7 +386,7 @@ class ScrollMirror extends ScrollHost {
 	// (whether the keys would scroll from n, as Scrolling.keyScroll)
 	function keyScrolls(n:Node, key:Int, mods:Int):Bool {
 		var x = key == Key.LEFT || key == Key.RIGHT;
-		var back = key == Key.UP || key == Key.LEFT || key == Key.PAGE_UP || key == Key.HOME || key == Key.SPACE && mods & Key.MOD_SHIFT != 0;
+		var back = key == Key.UP || key == Key.LEFT || key == Key.PAGE_UP || key == Key.HOME || key == Key.SPACE && mods & Mods.SHIFT != 0;
 		var p:Null<Node> = n;
 		while (p != null) {
 			if (p.style.overflow == Scroll && Scrolling.canScroll(p, back ? -1 : 1, x)) return true;

@@ -60,7 +60,9 @@ export type {
   LodLevel, MatcapOptions, MaterialOptions, MotionBlurOptions, PhongOptions,
   PlaneOptions, RingOptions, SmaaOptions, SphereOptions, SpritesOptions,
   SsaoOptions, SsrOptions, TaaOptions, Text3DOptions, TextGeometryOptions,
-  ToonOptions, TorusKnotOptions, TorusOptions, TubeOptions
+  ToonOptions, TorusKnotOptions, TorusOptions, TubeOptions, EventKind,
+  Feature, ToneMap, Antialias, DofMode, LineUnits, LineJoin, LineCap,
+  LightKind, LightmapMode, SpriteMode, MaterialBlend
 } from './runtime'
 export {
 	pbr, pbrColor, pbrAlpha, pbrNormal, pbrRoughness, pbrMetalness, pbrEmissive, pbrPosition, pbrDirect, pbrIndirect, reflectance, litSurface, daylight,
@@ -117,49 +119,6 @@ export function material<D extends SlotsDef, X>(
 		},
 	};
 }
-
-// the post chain's enums by name (PostProcess.toneMap, antialias; Dof.mode)
-export const ToneMap = {AgX: 0, Aces: 1, Clamp: 2} as const;
-export type ToneMap = number;
-export const Antialias = {None: 0, Fxaa: 1} as const;
-export type Antialias = number;
-export const DofMode = {Focus: 0, TiltShift: 1} as const;
-export type DofMode = number;
-// Lines' enums by name (widthUnits, join, cap)
-export const LineUnits = {Pixels: 0, World: 1} as const;
-export type LineUnits = number;
-export const LineJoin = {Miter: 0, Round: 1, Bevel: 2} as const;
-export type LineJoin = number;
-export const LineCap = {Butt: 0, Round: 1, Square: 2} as const;
-export type LineCap = number;
-
-// helder.os's EventKind (an Event's kind) by name
-export const EventKind = {
-	None: 0, Close: 1, Resize: 2, KeyDown: 3, KeyUp: 4, MouseMove: 5, MouseDown: 6, MouseUp: 7, TextInput: 8, Redraw: 9, TextEditing: 10,
-	Scroll: 11, ScaleChange: 12, Suspend: 13, Resume: 14, PointerDown: 15, PointerMove: 16, PointerUp: 17, PointerCancel: 18, Drop: 19, TextReplace: 20,
-} as const;
-export type EventKind = number;
-
-// helder.gfx's Feature by name (Device.has: the compute tier, which WebGPU,
-// Metal, D3D11 and GL ES 3.1 have, WebGL2 not)
-export const Feature = { Compute: 0, StorageTextures: 1, Indirect: 2 } as const;
-export type Feature = number;
-
-// a Light's kind (Light.kind) by name
-export const LightKind = {Directional: 0, Point: 1, Spot: 2, Hemisphere: 3, RectArea: 4, DiscArea: 5} as const;
-export type LightKind = number;
-
-// what a Lightmap holds (Lightmap.mode) by name: the ambient alone, or all the light
-export const LightmapMode = {Indirect: 0, All: 1} as const;
-export type LightmapMode = number;
-
-// how Sprites face the camera (Sprites.mode, SpritesOptions.mode) by name
-export const SpriteMode = {Spherical: 0, Axis: 1, Fixed: 2} as const;
-export type SpriteMode = number;
-
-// helder.gfx's Blend (Material.blending, MaterialOptions.blending) by name
-export const Blend = {Opaque: 0, Alpha: 1, Additive: 2, Premultiplied: 3, Multiply: 4} as const;
-export type Blend = number;
 
 export class Node {
 	constructor(readonly id: number) {}

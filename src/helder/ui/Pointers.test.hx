@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Mods;
 import helder.test.Test;
 
 // helder.ui's fingers and pens (Ui.pointerDown with a pointer id): their
@@ -183,8 +184,8 @@ function tests() {
 			ui.root.onWheel = e -> mods = e.mods;
 			ui.keyDown(Key.META, 0);
 			ui.wheel(50, 25, 0, -10);
-			ui.keyUp(Key.META, Key.MOD_META);
-			equals(mods, Key.MOD_META);
+			ui.keyUp(Key.META, Mods.META);
+			equals(mods, Mods.META);
 		});
 		test("whose a press is: a node's, not the root's nor a world's under the ui", () -> {
 			var world = box(ui.root, 200, 0, 50, 50, new WorldBox("scene"));

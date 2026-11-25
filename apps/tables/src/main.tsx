@@ -1,7 +1,7 @@
 // Tables: drizzle-kit studio's server in a window, written in TypeScript.
 // `tables [url]`, the server at http://127.0.0.1:4983 unless given
 import { UiWindow, Surface, MenuBarView, Theme } from "helder/ui";
-import { actions, handle, item, role, separator, submenu, Keymap, Checked, Unchecked, Enabled, Disabled } from "helder/ui/actions";
+import { actions, handle, item, role, separator, submenu, Keymap } from "helder/ui/actions";
 import { font } from "helder/asset";
 import { App } from "helder/scene";
 import { platform } from "helder/native/platform";
@@ -104,15 +104,15 @@ UiWindow.run(
 			return true;
 		}, a => {
 			switch (a.type) {
-				case "data": return app.mode.peek() === "data" ? Checked : Unchecked;
-				case "structure": return app.mode.peek() === "structure" ? Checked : Unchecked;
-				case "query": return app.mode.peek() === "sql" ? Checked : Unchecked;
-				case "panel": return app.panel.peek() ? Checked : Unchecked;
-				case "appearance": return app.appearance.peek() === a.kind ? Checked : Unchecked;
-				case "save": case "discard": case "undo": return app.changes.peek() > 0 ? Enabled : Disabled;
-				case "back": return app.canBack.peek() ? Enabled : Disabled;
-				case "run": return app.mode.peek() === "sql" ? Enabled : Disabled;
-				default: return Enabled;
+				case "data": return app.mode.peek() === "data" ? "checked" : "unchecked";
+				case "structure": return app.mode.peek() === "structure" ? "checked" : "unchecked";
+				case "query": return app.mode.peek() === "sql" ? "checked" : "unchecked";
+				case "panel": return app.panel.peek() ? "checked" : "unchecked";
+				case "appearance": return app.appearance.peek() === a.kind ? "checked" : "unchecked";
+				case "save": case "discard": case "undo": return app.changes.peek() > 0 ? "enabled" : "disabled";
+				case "back": return app.canBack.peek() ? "enabled" : "disabled";
+				case "run": return app.mode.peek() === "sql" ? "enabled" : "disabled";
+				default: return "enabled";
 			}
 		})}>
 			<MenuBarView menus={menus}/>

@@ -453,7 +453,7 @@ class PostProcess {
 			enc.setPipeline(plain(fxaa, count > 0));
 		// (the first level holds the n levels' light added: lift.w, 1 / n, scales it back)
 		var c = compositeBlock;
-		c.exposure = new Vec4(exposure, n > 0 ? Math.min(1, bloom) : 0, (cast toneMap : Int), grain > 0 ? time % 1000 : 0);
+		c.exposure = new Vec4(exposure, n > 0 ? Math.min(1, bloom) : 0, toneMap == AgX ? 0 : toneMap == Aces ? 1 : 2, grain > 0 ? time % 1000 : 0);
 		c.grade = new Vec4(saturation, contrast, vignette, grain);
 		c.lift = new Vec4(lift.x, lift.y, lift.z, n > 0 ? 1 / n : 0);
 		c.gain = new Vec4(gain.x, gain.y, gain.z, 0);
@@ -589,21 +589,21 @@ class PostProcess {
 }
 
 // the curve from linear light to the display
-enum abstract ToneMap(Int) to Int {
+enum abstract ToneMap(String) {
 	// Sobotka's AgX: hues kept, highlights to white
-	var AgX;
+	var AgX = "agx";
 	// ACES filmic, Narkowicz's fit: the 8-bit path's (aces), so a
 	// scene tuned there keeps its look
-	var Aces;
+	var Aces = "aces";
 	// none: clipped at 1
-	var Clamp;
+	var Clamp = "clamp";
 }
 
 // antialiasing in post (PostProcess.antialias), beside a <Scene>'s MSAA:
 // None, or Fxaa (in the composite: its read of the scene along the edges);
 // SMAA and TAA are effects of their own (post.smaa, post.taa: an enum's
 // value set at run time would link every technique's passes)
-enum abstract Antialias(Int) {
-	var None;
-	var Fxaa;
+enum abstract Antialias(String) {
+	var None = "none";
+	var Fxaa = "fxaa";
 }

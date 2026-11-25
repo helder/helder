@@ -141,7 +141,7 @@ class Path {
 		paint = stroke == null || !(stroke.width > 0) ? null : paintOf(stroke.paint, m, w, h);
 		if (paint != null) {
 			var line = new helder.canvas.Stroke();
-			SvgCanvas.strokeStyle(line, stroke.width, stroke.cap ?? Butt, stroke.join ?? Miter, stroke.miterLimit ?? 4, stroke.dashes, stroke.dashOffset ?? 0);
+			SvgCanvas.strokeStyle(line, stroke.width, stroke.cap == Round ? 1 : stroke.cap == Square ? 2 : 0, stroke.join == Round ? 1 : stroke.join == Bevel ? 2 : 0, stroke.miterLimit ?? 4, stroke.dashes, stroke.dashOffset ?? 0);
 			c.stroke(p, line, paint);
 		}
 		return c.bitmap.toImage();

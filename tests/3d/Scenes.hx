@@ -138,7 +138,7 @@ class Scenes {
 				var gem = new Material("crystal", new helder.gfx.shader.Vec4(0.08, 0.35, 1, 0.7), 0, 0.1, new Vec3(0.05, 0.3, 1.1));
 				gem.crystal = 1;
 				gem.ground = 1;
-				gem.blend = true;
+				gem.blend = Alpha;
 				var crystal = Shapes.box(device, gem, 0.1, 0.32, 0.1);
 				// (round the planet's rim as the eye sees it, each standing on the
 				// sphere: its up the normal there, turned from y about y x up)
@@ -347,7 +347,7 @@ class Scenes {
 				var colors = [new helder.gfx.shader.Vec4(0.2, 0.5, 1, 0.45), new helder.gfx.shader.Vec4(1, 0.3, 0.2, 0.45), new helder.gfx.shader.Vec4(0.3, 1, 0.4, 0.35)];
 				for (k in 0...3) {
 					var glass = new Material("glass" + k, colors[k], 0, 0.1, null, k == 2);
-					glass.blend = true;
+					glass.blend = Alpha;
 					var pane = world.node("pane" + k);
 					pane.position = new Vec3(-0.7 + 0.7 * k, 0.8, 0.4 - 0.5 * k);
 					pane.rotation = helder.scene.math.Quat.fromEuler(0, -0.5 + 0.5 * k, 0);
@@ -1003,7 +1003,7 @@ class Scenes {
 					trees.setColor(i, 0.7 + 0.1 * (i % 3), 0.9, 0.7);
 				}
 				var clouds = new Sprites(device,
-					Material.unlit({color: new helder.gfx.shader.Vec4(1, 1, 1, 0.85), texture: softDisc(device), blend: true, fog: false}), 8);
+					Material.unlit({color: new helder.gfx.shader.Vec4(1, 1, 1, 0.85), texture: softDisc(device), blend: Alpha, fog: false}), 8);
 				Sprites.attach(world.node("clouds"), clouds);
 				clouds.count = 5;
 				for (i in 0...5)
@@ -1011,7 +1011,7 @@ class Scenes {
 				var lamps = Material.lambert({color: new helder.gfx.shader.Vec4(0.25, 0.25, 0.28, 1)});
 				var post = Geometry.cylinder({radiusTop: 0.04, radiusBottom: 0.05, height: 1, radialSegments: 8});
 				var halos = new Sprites(device,
-					Material.unlit({color: new helder.gfx.shader.Vec4(0.9, 0.5, 0.15, 1), texture: softDisc(device), blend: true, blending: Additive}), 4);
+					Material.unlit({color: new helder.gfx.shader.Vec4(0.9, 0.5, 0.15, 1), texture: softDisc(device), blend: Additive}), 4);
 				Sprites.attach(world.node("halos"), halos);
 				halos.count = 3;
 				var postMesh = Shapes.of(device, post, lamps);

@@ -7,7 +7,7 @@
 // nodes and renderer, Vec3 and Quat values.
 //
 //   helder run docs/examples/scene-nodes/main.ts
-import { Window, Device, App, World, Camera, Light, Material, MeshRenderer, Shapes, Renderer, FixedStep, EventKind } from "helder/scene";
+import { Window, Device, App, World, Camera, Light, Material, MeshRenderer, Shapes, Renderer, FixedStep } from "helder/scene";
 import { vec3, vec4, Quat } from "helder/gfx";
 
 const window = new Window("World and nodes", 640, 400);
@@ -48,5 +48,5 @@ App.run(() => {
 	renderer.draw(enc, world, camera);
 	device.endFrame();
 }, e => {
-	if (e.kind === EventKind.Close) window.close();
+	if (e.kind === "close") window.close();
 });

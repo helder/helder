@@ -48,7 +48,7 @@ class Materials {
 		glass.transmission = 1;
 		// blend: alpha blended, drawn after the opaque, farthest first
 		var tinted = new Material("tinted", new Vec4(0.9, 0.3, 0.8, 0.4), 0, 0.3);
-		tinted.blend = true;
+		tinted.blend = Alpha;
 		// emission: light of its own (no light needed)
 		var lamp = new Material("lamp", new Vec4(0.05, 0.05, 0.05, 1), 0, 0.5, new Vec3(2.5, 1.6, 0.5));
 		var floor = new Material("floor", new Vec4(0.3, 0.3, 0.32, 1), 0, 0.8);

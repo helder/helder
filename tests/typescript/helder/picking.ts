@@ -6,7 +6,7 @@
 // along), their enums by name; DebugDraw's calls into its ring, helpers on
 // nodes. (Drawn: the 3d lane's lines, debugdraw, helpers and text3d frames,
 // tests/3d/LineScenes.hx.)
-import { World, Shapes, Geometry, Material, MeshRenderer, Hit, HitList, RaycastOptions, Raycaster, Bvh, Lines, LineJoin, LineCap, LineUnits, DebugDraw,
+import { World, Shapes, Geometry, Material, MeshRenderer, Hit, HitList, RaycastOptions, Raycaster, Bvh, Lines, DebugDraw,
 	AxesHelper, BoundsHelper, Helper } from "helder/scene";
 import { vec3, Quat } from "helder/gfx";
 
@@ -37,14 +37,14 @@ const tree = Bvh.build(Geometry.torusKnot());
 const again = Bvh.read(tree.bytes());
 console.log(tree.triangleCount, again.nodeCount === tree.nodeCount, tree.intersect(vec3(0, 0, 5), vec3(0, 0, -1), 100, false) === again.intersect(vec3(0, 0, 5), vec3(0, 0, -1), 100, false));
 
-const path = new Lines(8, {width: 4, join: LineJoin.Round, cap: LineCap.Square, widthUnits: LineUnits.World, dash: 0.2, gap: 0.1});
+const path = new Lines(8, {width: 4, join: "round", cap: "square", widthUnits: "world", dash: 0.2, gap: 0.1});
 path.count = 3;
 path.setPoint(0, 0, 0, 0);
 path.setPoint(1, 3, 0, 0, 1, 0.5, 0);
 path.setPoint(2, 3, 4, 0);
 path.prepare();
 const records = new DataView(path.data.buffer, path.data.byteOffset, path.data.byteLength);
-console.log(path.drawn, records.getFloat32(96 + 12, true), path.join === LineJoin.Round, path.widthUnits, path.get(1, 4));
+console.log(path.drawn, records.getFloat32(96 + 12, true), path.join === "round", path.widthUnits, path.get(1, 4));
 
 DebugDraw.line(vec3(0, 0, 0), vec3(1, 1, 1), 0xFF0000);
 DebugDraw.sphere(vec3(0, 0, 0), 1);

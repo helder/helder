@@ -153,11 +153,11 @@ typedef LightShadow = {
 }
 
 // what kind of light a Light is
-enum abstract LightKind(Int) to Int {
-	var Directional;
-	var Point;
-	var Spot;
-	var Hemisphere;
-	var RectArea;
-	var DiscArea;
+enum abstract LightKind(String) {
+	var Directional = "directional";
+	var Point = "point";
+	var Spot = "spot";
+	var Hemisphere = "hemisphere";
+	var RectArea = "rect-area";
+	var DiscArea = "disc-area";
 }

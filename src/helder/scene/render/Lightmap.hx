@@ -44,7 +44,7 @@ class Lightmap {
 }
 
 // what a Lightmap holds: the ambient light alone (the lights added), or all of it
-enum abstract LightmapMode(Int) to Int {
-	var Indirect;
-	var All;
+enum abstract LightmapMode(String) {
+	var Indirect = "indirect";
+	var All = "all";
 }

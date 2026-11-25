@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Mods;
 import helder.ui.actions.Keymap;
 
 // Ui.textSelection's pointer and keys. A press on a scope's text starts
@@ -63,7 +64,7 @@ class TextSelector {
 			return;
 		}
 		selecting = true;
-		if (mods & Key.MOD_SHIFT != 0 && s != null && s.scope == scope && clicks == 1) {
+		if (mods & Mods.SHIFT != 0 && s != null && s.scope == scope && clicks == 1) {
 			unit = 1;
 			ui.selectText(new TextSelection(scope, s.anchor, h.point));
 			return;
@@ -139,10 +140,10 @@ class TextSelector {
 
 	// (a key the selection takes: Shift and an arrow, Mod+A)
 	function key(key:Int, mods:Int):Bool {
-		var mod = mods & (Keymap.mac ? Key.MOD_META : Key.MOD_CONTROL) != 0;
-		if (mod && (key == "a".code || key == "A".code) && mods & (Key.MOD_SHIFT | Key.MOD_ALT) == 0) return selectAll();
+		var mod = mods & (Keymap.mac ? Mods.META : Mods.CONTROL) != 0;
+		if (mod && (key == "a".code || key == "A".code) && mods & (Mods.SHIFT | Mods.ALT) == 0) return selectAll();
 		var s = ui.textSelection;
-		if (s == null || mods & Key.MOD_SHIFT == 0 || mods & (Key.MOD_CONTROL | Key.MOD_META | Key.MOD_ALT) != 0 || !owned()) return false;
+		if (s == null || mods & Mods.SHIFT == 0 || mods & (Mods.CONTROL | Mods.META | Mods.ALT) != 0 || !owned()) return false;
 		var to = switch key {
 			case Key.LEFT: step(s, -1);
 			case Key.RIGHT: step(s, 1);

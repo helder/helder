@@ -124,7 +124,7 @@ class LineRenderer implements RenderFeature {
 		b.viewProj = frame.viewProj;
 		b.model = model;
 		b.viewport = new Vec4(frame.width, frame.height, frame.projection.c1.y, frame.hdr ? 1 : 0);
-		b.style = new Vec4(l.width * 0.5, l.widthUnits == World ? 1 : 0, (l.join : Int), (l.cap : Int));
+		b.style = new Vec4(l.width * 0.5, l.widthUnits == World ? 1 : 0, l.join == Miter ? 0 : l.join == Round ? 1 : 2, l.cap == Butt ? 0 : l.cap == Round ? 1 : 2);
 		b.dash = new Vec4(l.dash > 0 ? l.dash : 0, l.gap, l.dashOffset, l.toneMapped ? 1 : 0);
 		b.fog = Fog.colorOf(frame.fog);
 		b.fogShape = Fog.shapeOf(frame.fog);

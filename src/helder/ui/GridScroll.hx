@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Mods;
 import helder.ui.access.Role;
 import helder.view.graph.Graph;
 
@@ -82,7 +83,7 @@ class GridScroll extends VirtualScroll {
 			down(e);
 			if (e.defaultPrevented || e.button != 1 || !e.isPrimary || itemAt(e.target) >= 0) return;
 			finishMarquee();
-			drag = new GridMarquee(e, scrollY, e.mods & Key.MOD_SHIFT != 0 || SelectionInput.secondary(e.mods));
+			drag = new GridMarquee(e, scrollY, e.mods & Mods.SHIFT != 0 || SelectionInput.secondary(e.mods));
 			if (ui != null && e.target != this) {
 				@:privateAccess ui.setPressed(e.target, false);
 				@:privateAccess ui.setPressed(this, true);

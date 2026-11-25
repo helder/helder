@@ -59,8 +59,7 @@ class Extensions {
 		glass.thickness = 0.9; // KHR_materials_volume: refracted through it
 		glass.attenuationColor = new Vec3(0.3, 0.8, 0.5);
 		glass.attenuationDistance = 0.6;
-		glass.blend = true;
-		glass.blending = Premultiplied;
+		glass.blend = Premultiplied;
 		glass.castShadows = false;
 		// #endregion
 

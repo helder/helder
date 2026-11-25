@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Mods;
 import helder.gfx.Color;
 
 // Ui's scrolling: the wheel's (the nearest Overflow Scroll ancestor that
@@ -79,9 +80,9 @@ class Scrolling {
 
 	// (from n, the focus or the pointer's node)
 	static function keyScrollFrom(ui:ScrollHost, n:Null<Node>, key:Int, mods:Int):Bool {
-		if (mods & (Key.MOD_CONTROL | Key.MOD_META | Key.MOD_ALT) != 0) return false;
+		if (mods & (Mods.CONTROL | Mods.META | Mods.ALT) != 0) return false;
 		var x = key == Key.LEFT || key == Key.RIGHT;
-		var back = key == Key.UP || key == Key.LEFT || key == Key.PAGE_UP || key == Key.HOME || key == Key.SPACE && mods & Key.MOD_SHIFT != 0;
+		var back = key == Key.UP || key == Key.LEFT || key == Key.PAGE_UP || key == Key.HOME || key == Key.SPACE && mods & Mods.SHIFT != 0;
 		var page = key == Key.PAGE_UP || key == Key.PAGE_DOWN || key == Key.SPACE, edge = key == Key.HOME || key == Key.END;
 		if (!(x || page || edge || key == Key.UP || key == Key.DOWN)) return false;
 		while (n != null) {

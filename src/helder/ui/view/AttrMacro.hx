@@ -312,6 +312,11 @@ class AttrMacro {
 		for (f in a.impl.get().statics.get()) {
 			if (!f.meta.has(":enum") || !f.kind.match(FVar(_, _))) continue;
 			var keys = [key(f.name)];
+			// (a string enum's value too: "ew-resize")
+			switch f.expr()?.expr {
+				case TConst(TString(s)) | TCast({expr: TConst(TString(s))}, _) if (keys.indexOf(key(s)) < 0): keys.push(key(s));
+				case _:
+			}
 			for (m in f.meta.extract(":css"))
 				for (p in m.params)
 					switch p.expr {

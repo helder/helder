@@ -4,7 +4,7 @@
 //
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
-import type {Menu, Node, PlatformMenuItem} from "helder/ui";
+import type {ActionState, Menu, Node, PlatformMenuItem} from "helder/ui";
 
 declare const __haxe: {Script: "helder.ui.actions.Script", __module: "helder.ui.actions.TypeScript"};
 
@@ -30,13 +30,13 @@ export declare class Script {
 	static mirror(space: unknown, index: (arg0: any) => number, args: (arg0: any) => any[], make: (arg0: number, arg1: any[]) => any): void;
 	// a handler of space's actions (for <view actions={...}>): run takes one
 	// (true) or lets it bubble (false), state what a menu shows it as
-	static handle(space: unknown, run: (arg0: any) => boolean, state?: (arg0: any) => number): unknown;
+	static handle(space: unknown, run: (arg0: any) => boolean, state?: (arg0: any) => ActionState): unknown;
 	// a node's handler (Node.on: a ref's node), removed by the function returned
-	static on(node: Node, space: unknown, run: (arg0: any) => boolean, state?: (arg0: any) => number): (() => void);
+	static on(node: Node, space: unknown, run: (arg0: any) => boolean, state?: (arg0: any) => ActionState): (() => void);
 	// a window's handler (Ui.on), after its tree's
-	static onWindow(ui: unknown, space: unknown, run: (arg0: any) => boolean, state?: (arg0: any) => number): (() => void);
+	static onWindow(ui: unknown, space: unknown, run: (arg0: any) => boolean, state?: (arg0: any) => ActionState): (() => void);
 	// the app's handler (Actions.on), after every window's
-	static onApp(space: unknown, run: (arg0: any) => boolean, state?: (arg0: any) => number): (() => void);
+	static onApp(space: unknown, run: (arg0: any) => boolean, state?: (arg0: any) => ActionState): (() => void);
 	// "viewer::ZoomTo"
 	static name(action: any): string;
 	// an action of a keymap's JSON: "viewer::Next", ["viewer::ZoomTo", 100]
@@ -66,7 +66,7 @@ export declare class Script {
 	// action dispatched from the focus (or from), true: a handler took it
 	static dispatch(ui: unknown, action: any, from?: Node): boolean;
 	// what a menu shows action as from the focus (or from): ActionState
-	static state(ui: unknown, action: any, from?: Node): number;
+	static state(ui: unknown, action: any, from?: Node): ActionState;
 	static item(label: string, action: any): unknown;
 	static separator(): unknown;
 	static submenu(label: string, items: unknown[]): unknown;

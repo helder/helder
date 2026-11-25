@@ -1,41 +1,41 @@
 package helder.ui;
 
-enum abstract EventType(Int) {
-	var PointerDown;
-	var PointerUp;
-	var PointerMove;
-	var PointerEnter;
-	var PointerLeave;
-	var Click;
-	var Wheel;
-	var KeyDown;
-	var KeyUp;
-	var TextInput;
-	var Composition;
-	var Focus;
-	var Blur;
+enum abstract EventType(String) {
+	var PointerDown = "pointer-down";
+	var PointerUp = "pointer-up";
+	var PointerMove = "pointer-move";
+	var PointerEnter = "pointer-enter";
+	var PointerLeave = "pointer-leave";
+	var Click = "click";
+	var Wheel = "wheel";
+	var KeyDown = "key-down";
+	var KeyUp = "key-up";
+	var TextInput = "text-input";
+	var Composition = "composition";
+	var Focus = "focus";
+	var Blur = "blur";
 	// drag and drop (Node.dragData): the source's start and end, a target's
 	// over (preventDefault accepts the drop), leave and drop
-	var DragStart;
-	var DragOver;
-	var DragLeave;
-	var Drop;
-	var DragEnd;
+	var DragStart = "drag-start";
+	var DragOver = "drag-over";
+	var DragLeave = "drag-leave";
+	var Drop = "drop";
+	var DragEnd = "drag-end";
 	// the focus came into a node or its subtree, or left it: as Focus and
 	// Blur, but bubbling (the DOM's focusin, focusout)
-	var FocusIn;
-	var FocusOut;
+	var FocusIn = "focus-in";
+	var FocusOut = "focus-out";
 	// a text field's text changed by its user (text: its text now), as the DOM's input
-	var Input;
+	var Input = "input";
 	// a pointer's press taken (Node.onPointerCancel), a capture lost (Node.onLostPointerCapture)
-	var PointerCancel;
-	var LostPointerCapture;
+	var PointerCancel = "pointer-cancel";
+	var LostPointerCapture = "lost-pointer-capture";
 	// its laid-out size changed, or it was first laid out (Node.onResize:
 	// target's width and height, after the layout; not bubbling)
-	var Resize;
+	var Resize = "resize";
 	// a text field's Enter (its keyboard's Enter key: Done, Next, Go...;
 	// text: its text), as a form's submit
-	var Submit;
+	var Submit = "submit";
 }
 
 // An event as Ui dispatches it: to the target, then (unless stopped) to
@@ -58,9 +58,9 @@ class Event {
 	public var pointerType:helder.os.PointerType = Mouse;
 	public var pressure = 0.0;
 	public var isPrimary = true;
-	// KeyDown, KeyUp: the key (Key) and the modifiers (Key.MOD_*)
+	// KeyDown, KeyUp: the key (Key) and the modifiers (helder.os.Mods)
 	public var key = 0;
-	public var mods = 0;
+	public var mods:helder.os.Mods = helder.os.Mods.NONE;
 	// TextInput: the characters typed (an IME's composed text, too); Input: the field's text;
 	// Composition: an input method's text not committed yet (empty: none)
 	public var text = "";

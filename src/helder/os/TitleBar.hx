@@ -16,20 +16,20 @@ enum abstract TitleBar(String) to String {
 }
 
 // what a point of an inset window is
-enum abstract TitleHit(Int) to Int {
-	var Content = 0;
-	var Drag = 1;
-	var Minimize = 2;
-	var Maximize = 3;
-	var Close = 4;
-	var Top = 5;
-	var Bottom = 6;
-	var Left = 7;
-	var Right = 8;
-	var TopLeft = 9;
-	var TopRight = 10;
-	var BottomLeft = 11;
-	var BottomRight = 12;
+enum abstract TitleHit(String) {
+	var Content = "content";
+	var Drag = "drag";
+	var Minimize = "minimize";
+	var Maximize = "maximize";
+	var Close = "close";
+	var Top = "top";
+	var Bottom = "bottom";
+	var Left = "left";
+	var Right = "right";
+	var TopLeft = "top-left";
+	var TopRight = "top-right";
+	var BottomLeft = "bottom-left";
+	var BottomRight = "bottom-right";
 }
 
 @:noCompletion

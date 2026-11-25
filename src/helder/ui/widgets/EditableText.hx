@@ -1,5 +1,6 @@
 package helder.ui.widgets;
 
+import helder.os.Mods;
 import helder.os.Rect;
 import helder.gfx.Color;
 import helder.ui.platform.*;
@@ -288,7 +289,7 @@ class EditableText extends TextNode implements PlatformEditorListener {
 				caret = lineEnd(i);
 			} else {
 				caret = i;
-				if (e.mods & Key.MOD_SHIFT == 0) anchor = i;
+				if (e.mods & Mods.SHIFT == 0) anchor = i;
 			}
 			dragging = clicks == 1;
 			changed();
@@ -436,9 +437,9 @@ class EditableText extends TextNode implements PlatformEditorListener {
 		return caret < anchor ? anchor : caret;
 
 	function key(e:Event) {
-		var shift = e.mods & Key.MOD_SHIFT != 0, ctrl = e.mods & (Key.MOD_CONTROL | Key.MOD_META) != 0;
+		var shift = e.mods & Mods.SHIFT != 0, ctrl = e.mods & (Mods.CONTROL | Mods.META) != 0;
 		// (by words: Control, or Alt as macOS's Option; Command+Left and Right: the line's ends)
-		var word = e.mods & (Key.MOD_CONTROL | Key.MOD_ALT) != 0, edge = e.mods & Key.MOD_META != 0;
+		var word = e.mods & (Mods.CONTROL | Mods.ALT) != 0, edge = e.mods & Mods.META != 0;
 		if (!moreKeys(e, shift, ctrl)) switch e.key {
 			case Key.LEFT if (edge): move(lineStart(caret), shift);
 			case Key.RIGHT if (edge): move(lineEnd(caret), shift);

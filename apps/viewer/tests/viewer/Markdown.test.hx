@@ -1,6 +1,7 @@
 package viewer;
 
 import helder.async.Async;
+import helder.os.Mods;
 import helder.story.StoryText;
 import helder.test.Test;
 import helder.ui.Clock;
@@ -116,7 +117,7 @@ function tests() {
 			t.frame();
 			assert(page.scrollY > 0, "the end");
 			// (Mod+U: the source; the bar's button: the document again)
-			t.ui.keyDown("u".code, Key.MOD_CONTROL);
+			t.ui.keyDown("u".code, Mods.CONTROL);
 			t.frame();
 			equals(md.source.peek(), true);
 			equals(t.ui.root.find("markdown-doc").style.display, None);
@@ -176,7 +177,7 @@ function tests() {
 			t.frame();
 			var doc = t.ui.root.find("markdown-doc");
 			// (nothing pressed in it: Mod+A not taken)
-			t.ui.keyDown("a".code, Key.MOD_CONTROL);
+			t.ui.keyDown("a".code, Mods.CONTROL);
 			equals(t.ui.textSelection, null);
 			function point(n:Node, i:Int):{x:Float, y:Float} {
 				var c = n.selectableCaret(i);
@@ -187,11 +188,11 @@ function tests() {
 			t.ui.pointerMove(b.x, b.y);
 			t.ui.pointerUp(b.x, b.y, 1);
 			equals(t.ui.selectedText(), "The document\n\nA paragrap");
-			t.ui.keyDown("c".code, Key.MOD_CONTROL);
+			t.ui.keyDown("c".code, Mods.CONTROL);
 			var copied = "";
 			t.ui.clipboard.read(s -> copied = s);
 			equals(copied, "The document\n\nA paragrap");
-			t.ui.keyDown("a".code, Key.MOD_CONTROL);
+			t.ui.keyDown("a".code, Mods.CONTROL);
 			var text = t.ui.selectedText();
 			assert(StringTools.startsWith(text, "The document\n\nA paragraph with a link to Usage, the other one, "), text);
 			assert(StringTools.endsWith(text, "A remote one\n\nUsage\n\none\ntwo\n\ntrace(\"hello\");\n\na\tb\n1\t2"), text);

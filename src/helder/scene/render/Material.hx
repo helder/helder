@@ -52,12 +52,25 @@ class Material {
 	// repeating; glTF's samplers otherwise)
 	public var sampler:Null<helder.gfx.Sampler>;
 	// see-through (glTF's alphaMode BLEND): blended over what is behind,
-	// drawn after the opaque surfaces, farthest first, without writing depth
-	public var blend = false;
-	// how, when blend is on: by the base colour's alpha (Alpha), added to
-	// what is behind (Additive: glows, holograms, beams; faded by its
-	// alpha), or premultiplied
-	public var blending:helder.gfx.Blend = Alpha;
+	// drawn after the opaque surfaces, farthest first, without writing
+	// depth; by the base colour's alpha (Alpha), added to what is behind
+	// (Additive: glows, holograms, beams; faded by its alpha), premultiplied
+	// or multiplied; None (the default): opaque
+	public var blend(default, set):MaterialBlend = None;
+	// (blend not None, and its pipelines' blending: the renderer's loops read these)
+	@:noCompletion public var blended(default, null) = false;
+	@:noCompletion public var blending(default, null):helder.gfx.Blend = Alpha;
+
+	function set_blend(b:MaterialBlend):MaterialBlend {
+		blended = b != None;
+		blending = switch b {
+			case Additive: Additive;
+			case Premultiplied: Premultiplied;
+			case Multiply: Multiply;
+			case _: Alpha;
+		}
+		return blend = b;
+	}
 	// whether it casts a shadow (Shadows: its primitives drawn into the map,
 	// their meshes inside the map's bounds); off for glows and glass
 	public var castShadows = true;
@@ -305,7 +318,6 @@ class Material {
 		if (o.emissive != null) m.emissive = o.emissive;
 		if (o.doubleSided != null) m.doubleSided = o.doubleSided;
 		if (o.blend != null) m.blend = o.blend;
-		if (o.blending != null) m.blending = o.blending;
 		if (o.alphaCutoff != null) m.alphaCutoff = o.alphaCutoff;
 		if (o.fog != null) m.fog = o.fog;
 		if (o.castShadows != null) m.castShadows = o.castShadows;
@@ -341,8 +353,7 @@ typedef MaterialOptions = {
 	?roughness:Float,
 	?emissive:Vec3,
 	?doubleSided:Bool,
-	?blend:Bool,
-	?blending:helder.gfx.Blend,
+	?blend:MaterialBlend,
 	?alphaCutoff:Float,
 	?fog:Bool,
 	?castShadows:Bool,
@@ -366,4 +377,13 @@ typedef PhongOptions = {
 typedef MatcapOptions = {
 	> MaterialOptions,
 	matcap:Texture
+}
+
+// how a see-through material is blended over what is behind (Material.blend)
+enum abstract MaterialBlend(String) {
+	var None = "none";
+	var Alpha = "alpha";
+	var Additive = "additive";
+	var Premultiplied = "premultiplied";
+	var Multiply = "multiply";
 }

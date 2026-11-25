@@ -122,8 +122,7 @@ class PhysicalScenes {
 					var m = new Material("glass", new Vec4(1, 1, 1, 1), 0, roughness);
 					m.transmission = 1;
 					m.thickness = thickness;
-					m.blend = true;
-					m.blending = Premultiplied;
+					m.blend = Premultiplied;
 					m.castShadows = false;
 					if (absorbs != null) {
 						m.attenuationColor = absorbs;

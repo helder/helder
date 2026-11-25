@@ -18,9 +18,6 @@ import * as filters from "./filters";
 import { Condition } from "./filters";
 import { Column, Relation, Table } from "./table";
 
-// (TextAlign's values: helder's enum abstracts are numbers to TypeScript)
-const LEFT = 0, RIGHT = 2;
-
 // a menu's item: its label, a quieter detail, an icon, disabled, checked (on), a separator (line)
 export type Entry = { label: string; detail?: string; icon?: Svg; disabled?: boolean; on?: boolean; muted?: boolean; line?: boolean; run: () => void };
 export const LINE: Entry = { label: "", line: true, run: () => {} };
@@ -304,7 +301,7 @@ export class Tables {
 		this.cols = t.columns.map((_, k) => k).filter(k => !off.includes(t.columns[k].name));
 		this.grid.columns = this.cols.map(k => {
 			const c = t.columns[k];
-			return new GridColumn(c.name, width(c), c.numeric ? RIGHT : LEFT, c.detail());
+			return new GridColumn(c.name, width(c), c.numeric ? "right" : "left", c.detail());
 		});
 		const r = this.rows;
 		this.grid.sortColumn = r === null ? -1 : this.cols.indexOf(r.sortCol);
@@ -909,7 +906,7 @@ export class Tables {
 			const ms = Date.now() - t0;
 			this.resultRows = recs;
 			this.resultKeys = recs.length > 0 ? Object.keys(recs[0]) : [];
-			this.results.columns = this.resultKeys.map(k => new GridColumn(k, 160, numeric(recs, k) ? RIGHT : LEFT));
+			this.results.columns = this.resultKeys.map(k => new GridColumn(k, 160, numeric(recs, k) ? "right" : "left"));
 			this.results.rowCount = recs.length;
 			this.results.reset();
 			this.resultNote(recs.length === 0 ? `No rows · ${ms} ms` : `${format.count(recs.length)} ${recs.length === 1 ? "row" : "rows"} · ${ms} ms`);

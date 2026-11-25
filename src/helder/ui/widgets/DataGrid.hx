@@ -1,5 +1,6 @@
 package helder.ui.widgets;
 
+import helder.os.Mods;
 import helder.os.Rect;
 import helder.gfx.Color;
 import helder.ui.access.Role;
@@ -173,7 +174,7 @@ class DataGrid extends Node {
 		};
 		onWheel = e -> {
 			var dx = e.deltaX, dy = e.deltaY;
-			if (e.mods & Key.MOD_SHIFT != 0 && dx == 0) {
+			if (e.mods & Mods.SHIFT != 0 && dx == 0) {
 				dx = dy;
 				dy = 0;
 			}
@@ -476,7 +477,7 @@ class DataGrid extends Node {
 		clickAt = double ? -1e9 : t;
 		clickX = e.x;
 		clickY = e.y;
-		var shift = e.mods & Key.MOD_SHIFT != 0;
+		var shift = e.mods & Mods.SHIFT != 0;
 		// (the scrollbars)
 		if (dataH() > bodyH() && lx >= viewW - BAR && ly >= headerHeight) {
 			var th = thumb(bodyH(), dataH(), scrollTop);
@@ -636,7 +637,7 @@ class DataGrid extends Node {
 	function key(e:Event) {
 		if (e.target != this || e.defaultPrevented || rowCount == 0 || columns.length == 0) return;
 		stopGlide();
-		var shift = e.mods & Key.MOD_SHIFT != 0, primary = e.mods & (Key.MOD_CONTROL | Key.MOD_META) != 0;
+		var shift = e.mods & Mods.SHIFT != 0, primary = e.mods & (Mods.CONTROL | Mods.META) != 0;
 		var page = Std.int(Math.max(1, Math.floor(bodyH() / rowHeight) - 1));
 		switch e.key {
 			case Key.UP: moveTo(primary ? 0 : cursorRow - 1, cursorCol, shift, wholeRows && shift);

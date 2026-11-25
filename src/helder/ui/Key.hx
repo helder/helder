@@ -27,10 +27,4 @@ class Key {
 	public static inline var ALT = 0xFFE9;
 	public static inline var META = 0xFFE7;
 	public static inline var SPACE = 0x20;
-
-	// Event.mods bits
-	public static inline var MOD_SHIFT = 1;
-	public static inline var MOD_CONTROL = 2;
-	public static inline var MOD_ALT = 4;
-	public static inline var MOD_META = 8;
 }

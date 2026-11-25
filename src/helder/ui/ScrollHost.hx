@@ -1,5 +1,7 @@
 package helder.ui;
 
+import helder.os.Mods;
+
 // What the scroll physics move the scrollers for (Scrolling, Trackpad,
 // Stretch, ScrollGlide): a Ui on its tree, and the compositor on its copy
 // of the scrollers (helder.ui.draw.ScrollMirror), so that both scroll by
@@ -82,7 +84,7 @@ class ScrollHost {
 		if (mods < 0) mods = held();
 		overNode = null;
 		overX = overY = 0;
-		var phased = (elastic || kinetic) && (phase != 0 || momentum != 0) && mods & Key.MOD_CONTROL == 0;
+		var phased = (elastic || kinetic) && (phase != 0 || momentum != 0) && mods & Mods.CONTROL == 0;
 		var target = hit(x, y);
 		if (phased) {
 			// (the tree hears the moves, the momentum's too, and may keep them: no scroll then)

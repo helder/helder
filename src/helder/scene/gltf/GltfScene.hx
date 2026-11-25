@@ -73,7 +73,7 @@ class GltfScene {
 				mat.occlusionTexture = textureOf(m.occlusionTexture);
 				mat.normalTexture = textureOf(m.normalTexture);
 				mat.normalScale = m.normalScale;
-				mat.blend = m.alphaMode == "BLEND";
+				mat.blend = m.alphaMode == "BLEND" ? Alpha : None;
 				if (m.alphaMode == "MASK") mat.alphaCutoff = Math.max(m.alphaCutoff, 1e-4);
 				mat.uvOffset = m.uvOffset;
 				mat.uvRotation = m.uvRotation;
@@ -87,8 +87,7 @@ class GltfScene {
 				if (physical != null) mat.shader = physical.get(mat.extensions());
 				if (m.transmission > 0) {
 					// (light through it: see-through, its colours premultiplied, no shadow)
-					mat.blend = true;
-					mat.blending = Premultiplied;
+					mat.blend = Premultiplied;
 					mat.castShadows = false;
 				}
 				// (one sampler a material: its base colour's, else its first map's)

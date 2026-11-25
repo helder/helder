@@ -11,6 +11,22 @@ import type {Read} from "helder/view";
 
 declare const __haxe: {Store: "helder.os.Store", Settings: "helder.os.Settings", Locale: "helder.os.Locale", Format: "helder.os.Format", Plural: "helder.os.Plural", Network: "helder.os.Network", Share: "helder.os.Share", Permissions: "helder.os.Permissions", Notifications: "helder.os.Notifications", Photos: "helder.os.Photos", Location: "helder.os.Location", Biometrics: "helder.os.Biometrics", Paths: "helder.os.Paths", Places: "helder.os.Places", Trash: "helder.os.Trash", Folders: "helder.os.Folders", DeviceInfo: "helder.os.DeviceInfo", StatusBar: "helder.os.StatusBar", args: "Sys.args", env: "Sys.getEnv", __module: "helder.os.TypeScript"};
 
+// What a pointer is (Pointer.type): the mouse (or a trackpad's cursor), a
+// finger on a touch screen, a pen or stylus. Kept apart so that gestures can
+// differ (hover only for the mouse and a pen, a finger's larger slop).
+export type PointerType = "mouse" | "touch" | "pen";
+
+// The pointer's shape over a window (Window.cursor): the system's own on
+// each platform (X11's cursor font, Win32's IDC_ ones, NSCursor, CSS's names).
+// helder.ui's nodes take it too (Style.cursor, ui's Cursor), with Auto.
+export type Cursor = "auto" | "default" | "pointer" | "text" | "crosshair" | "move" | "not-allowed" | "ew-resize" | "ns-resize" | "grab" | "grabbing";
+
+// what a point of an inset window is
+export type TitleHit = "content" | "drag" | "minimize" | "maximize" | "close" | "top" | "bottom" | "left" | "right" | "top-left" | "top-right" | "bottom-left" | "bottom-right";
+
+// a modifier key held with an event (Mods.has)
+export type Mod = "shift" | "control" | "alt" | "meta";
+
 export type Contrast = "normal" | "more" | "less" | "custom";
 
 export type Orientation = "portrait" | "landscape";

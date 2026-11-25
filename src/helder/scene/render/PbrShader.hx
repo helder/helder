@@ -471,7 +471,7 @@ function materialInto(m:Material, out:PbrMaterial):PbrMaterial {
 	out.ground = new Vec4(m.ground, m.air.w, m.crystal, m.fog ? 1 : 0);
 	out.air = m.air;
 	out.uvU = new Vec4(c * m.uvScale.x, s * m.uvScale.y, m.uvOffset.x, 0);
-	out.uvV = new Vec4(-s * m.uvScale.x, c * m.uvScale.y, m.uvOffset.y, m.blend && m.blending == Additive ? 1 : 0);
+	out.uvV = new Vec4(-s * m.uvScale.x, c * m.uvScale.y, m.uvOffset.y, m.blended && m.blending == Additive ? 1 : 0);
 	out.layers = new Vec4(m.clearcoat, m.clearcoatRoughness, m.transmission, m.alphaCutoff);
 	out.model = new Vec4(m.steps, m.toneMapped ? 1 : 0, m.depthNear, m.depthFar);
 	out.shadeColor = new Vec4(m.shade.x, m.shade.y, m.shade.z, 0);
@@ -910,7 +910,7 @@ function shade(s:LitSurface, lights:Vec3, indirect:Vec3, env:IndirectLight, emis
 		// emissive colour lifted towards white where it is seen through
 		// most (facing the eye: a fake subsurface), and the sun through it
 		// from behind; its edges opaque and bright, its middle see-through
-		// by the base colour's alpha (with Material.blend))
+		// by the base colour's alpha (with Material.blended))
 		var fres = pow(edge, 3);
 		var glow = mix(material.emissive.xyz, vec3(dot(material.emissive.xyz, vec3(0.3, 0.4, 0.3))) * 1.6 + material.emissive.xyz * 0.4, 0.22);
 		var inner = glow * (0.35 + 0.65 * nv * nv) * (0.75 + 0.25 * day);

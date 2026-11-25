@@ -98,7 +98,7 @@ function tests() {
 		}
 		// (Mod: Command on a Mac, Control elsewhere)
 		function mod():Int
-			return helder.ui.actions.Keymap.mac ? helder.ui.Key.MOD_META : helder.ui.Key.MOD_CONTROL;
+			return helder.ui.actions.Keymap.mac ? helder.os.Mods.META : helder.os.Mods.CONTROL;
 		function drag(ui:Ui, a:{x:Float, y:Float}, b:{x:Float, y:Float}) {
 			ui.pointerDown(a.x, a.y, 1);
 			ui.pointerMove(b.x, b.y);
@@ -150,7 +150,7 @@ function tests() {
 			var far:Null<Node> = null;
 			for (p in all(t.view, "markdown-p", []))
 				if ((cast p : TextNode).allText() == "Paragraph 500.") far = p;
-			@:privateAccess t.ui.mods = helder.ui.Key.MOD_SHIFT;
+			@:privateAccess t.ui.mods = helder.os.Mods.SHIFT;
 			t.ui.pointerDown(point(far, 4).x, point(far, 4).y, 1);
 			t.ui.pointerUp(point(far, 4).x, point(far, 4).y, 1);
 			@:privateAccess t.ui.mods = 0;

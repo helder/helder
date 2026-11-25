@@ -1,5 +1,6 @@
 package helder.ui.widgets;
 
+import helder.os.Mods;
 import helder.test.Test;
 import helder.ui.Key;
 import helder.ui.Ui;
@@ -28,7 +29,7 @@ function tests() {
 			ui.keyDown(Key.LEFT, 0);
 			Graph.flush();
 			equals(v.peek(), 95.0);
-			ui.keyDown(Key.LEFT, Key.MOD_SHIFT);
+			ui.keyDown(Key.LEFT, Mods.SHIFT);
 			Graph.flush();
 			equals(v.peek(), 45.0);
 			ui.keyDown(Key.HOME, 0);

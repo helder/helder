@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Mods;
 import helder.ui.actions.Keymap;
 
 // The input shared by a VirtualGrid and a VirtualList with a Selection.
@@ -111,7 +112,7 @@ class SelectionInput {
 	}
 
 	public static function secondary(mods:Int):Bool
-		return mods & (Keymap.mac ? Key.MOD_META : Key.MOD_CONTROL) != 0;
+		return mods & (Keymap.mac ? Mods.META : Mods.CONTROL) != 0;
 
 	public static function dragged(x:Float, y:Float, fromX:Float, fromY:Float):Bool {
 		var dx = x - fromX, dy = y - fromY;
@@ -132,12 +133,12 @@ class SelectionInput {
 		pressedX = e.x;
 		pressedY = e.y;
 		moved = false;
-		held = i >= 0 && selection.has(selection.keyOf(i)) && e.mods & Key.MOD_SHIFT == 0 && !secondary(e.mods);
+		held = i >= 0 && selection.has(selection.keyOf(i)) && e.mods & Mods.SHIFT == 0 && !secondary(e.mods);
 		if (i >= 0 && !held && !selectMode) choose(i, e.mods);
 	}
 
 	function choose(i:Int, mods:Int) {
-		if (mods & Key.MOD_SHIFT != 0) selection.extend(i)
+		if (mods & Mods.SHIFT != 0) selection.extend(i)
 		else if (secondary(mods)) selection.toggle(i)
 		else selection.select(i);
 	}
@@ -192,9 +193,9 @@ class SelectionInput {
 	}
 
 	function key(e:Event) {
-		if (e.defaultPrevented || e.mods & Key.MOD_ALT != 0) return;
+		if (e.defaultPrevented || e.mods & Mods.ALT != 0) return;
 		var mod = secondary(e.mods);
-		if (!mod && e.mods & (Key.MOD_CONTROL | Key.MOD_META) != 0) return;
+		if (!mod && e.mods & (Mods.CONTROL | Mods.META) != 0) return;
 		var at = indexAtFocus(e.target);
 		if (at == -2) return;
 		var n = count(), i = selection.focusIndex();
@@ -208,7 +209,7 @@ class SelectionInput {
 				var to = move(i, e.key);
 				if (to == null || n == 0) return;
 				to = Std.int(Math.max(0, Math.min(n - 1, to)));
-				if (e.mods & Key.MOD_SHIFT != 0) {
+				if (e.mods & Mods.SHIFT != 0) {
 					if (selection.focus == null) selection.moveFocus(i);
 					selection.extend(to);
 				} else if (!mod) selection.select(to);

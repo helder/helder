@@ -1,3 +1,4 @@
+import helder.os.Mods;
 import helder.gfx.Color;
 import Model;
 import helder.text.FontEncoder.FontPoint;
@@ -61,13 +62,13 @@ class Board extends Node {
 		onKeyDown = key;
 		onKeyUp = e -> {
 			if (e.key == Key.SPACE) hand(false);
-			if (e.mods & Key.MOD_ALT == 0) measure(null);
+			if (e.mods & Mods.ALT == 0) measure(null);
 		};
 		onWheel = e -> {
 			var p = local(e);
 			// (Control or Command and the wheel, or a trackpad's pinch (a wheel with Control): zoom; else pan)
 			// (a pinch's deltas are -180 ln(its scale): followed a little ahead of the fingers)
-			if (e.mods & (Key.MOD_CONTROL | Key.MOD_META) != 0) zoomAt(Math.exp(-e.deltaY * 0.0068), p.x, p.y) else pan(-e.deltaX, -e.deltaY);
+			if (e.mods & (Mods.CONTROL | Mods.META) != 0) zoomAt(Math.exp(-e.deltaY * 0.0068), p.x, p.y) else pan(-e.deltaX, -e.deltaY);
 			e.preventDefault();
 		};
 		ws.board = this;
@@ -560,14 +561,14 @@ class Board extends Node {
 	function lineKey(e:Event):Bool {
 		if (e.key != Key.LEFT && e.key != Key.RIGHT) return false;
 		var f = ws.value(), char = ws.current.peek(), seq = sequence(f, char), dir = e.key == Key.RIGHT ? 1 : -1;
-		if (e.mods & Key.MOD_ALT != 0) {
+		if (e.mods & Mods.ALT != 0) {
 			if (seq.at + 1 >= seq.keys.length) return true;
 			if (!Model.kernable(f)) {
 				ws.say("This font's kerning is in its GPOS table, which Foundry keeps as it is: editing it comes later");
 				return true;
 			}
 			var next = seq.keys[seq.at + 1];
-			ws.kern(char, next, Model.kern(f, char, next) + dir * (e.mods & Key.MOD_SHIFT != 0 ? 25 : 5), "kern");
+			ws.kern(char, next, Model.kern(f, char, next) + dir * (e.mods & Mods.SHIFT != 0 ? 25 : 5), "kern");
 			return true;
 		}
 		var nothing = ws.layer.peek() == "outline" ? ws.points.peek().length == 0 : ws.selected.peek() == null;
@@ -626,7 +627,7 @@ class Board extends Node {
 			if (Math.abs(p.x - sx) < 10 && p.y > handleY() - 6 && p.y < handleY() + 28) {
 				// (Alt: the kerning with the letter on that side, not the spacing)
 				var other = side == "left" ? seq.at - 1 : seq.at + 1;
-				if (e.mods & Key.MOD_ALT != 0 && other >= 0 && other < seq.keys.length) {
+				if (e.mods & Mods.ALT != 0 && other >= 0 && other < seq.keys.length) {
 					if (!Model.kernable(f)) {
 						ws.say("This font's kerning is in its GPOS table, which Foundry keeps as it is: editing it comes later");
 						return;
@@ -651,7 +652,7 @@ class Board extends Node {
 		if (ws.layer.peek() == "outline") return downOutline(e, p, g);
 		switch ws.tool.peek() {
 			case "draw":
-				straight = e.mods & Key.MOD_SHIFT != 0;
+				straight = e.mods & Mods.SHIFT != 0;
 				stroke = [{x: gx(p.x), y: gy(p.y)}];
 			case "adjust":
 				var k = knotAt(p, g);
@@ -689,12 +690,12 @@ class Board extends Node {
 		var st = stroke, d = drag;
 		// (Alt held over the board, nothing pressed: measured where the pointer is)
 		if (st == null && d == null) {
-			if (e.mods & Key.MOD_ALT != 0) measure(measuring(p, f, char, e.mods & Key.MOD_SHIFT != 0)) else if (measured != null) measure(null);
+			if (e.mods & Mods.ALT != 0) measure(measuring(p, f, char, e.mods & Mods.SHIFT != 0)) else if (measured != null) measure(null);
 		}
 		if (st != null) {
 			var q = {x: gx(p.x), y: gy(p.y)}, last = st[st.length - 1];
 			if (Math.abs(px(q.x) - px(last.x)) + Math.abs(py(q.y) - py(last.y)) > 1.5) st.push(q);
-			straight = e.mods & Key.MOD_SHIFT != 0;
+			straight = e.mods & Mods.SHIFT != 0;
 			return repaint();
 		}
 		if (d != null) {
@@ -784,7 +785,7 @@ class Board extends Node {
 		if (st != null) {
 			stroke = null;
 			var char = ws.current.peek(), f = ws.value();
-			var l = Freehand.line(st, f, Ink.lines(f, char), straight || e.mods & Key.MOD_SHIFT != 0);
+			var l = Freehand.line(st, f, Ink.lines(f, char), straight || e.mods & Mods.SHIFT != 0);
 			if (l != null) ws.addLine(char, l);
 		}
 		drag = null;
@@ -820,7 +821,7 @@ class Board extends Node {
 			ws.deleteSelected();
 			return e.preventDefault();
 		}
-		var step = e.mods & Key.MOD_SHIFT != 0 ? 25 : 5, dx = 0, dy = 0;
+		var step = e.mods & Mods.SHIFT != 0 ? 25 : 5, dx = 0, dy = 0;
 		if (e.key == Key.LEFT) dx = -step else if (e.key == Key.RIGHT) dx = step else if (e.key == Key.UP) dy = step else if (e.key == Key.DOWN) dy = -step else
 			return;
 		var l = ws.glyph(char).lines[sel.line];
@@ -915,7 +916,7 @@ class Board extends Node {
 				lastPress = 0;
 				return;
 			}
-			if (e.mods & Key.MOD_SHIFT != 0) ws.points(picked ? chosen.filter(s -> !(s.c == hit.c && s.p == hit.p)) : chosen.concat([hit])) else if (!picked)
+			if (e.mods & Mods.SHIFT != 0) ws.points(picked ? chosen.filter(s -> !(s.c == hit.c && s.p == hit.p)) : chosen.concat([hit])) else if (!picked)
 				ws.points([hit]);
 			dragFrom = outline;
 			drag = {kind: "points", x: gx(p.x), y: gy(p.y), left: 0, right: 0};
@@ -928,7 +929,7 @@ class Board extends Node {
 			lastPress = 0;
 			return;
 		}
-		if (e.mods & Key.MOD_SHIFT == 0) ws.points([]);
+		if (e.mods & Mods.SHIFT == 0) ws.points([]);
 		repaint();
 	}
 
@@ -944,7 +945,7 @@ class Board extends Node {
 			ws.points([]);
 			return e.preventDefault();
 		}
-		var step = e.mods & Key.MOD_SHIFT != 0 ? 10 : 1, dx = 0, dy = 0;
+		var step = e.mods & Mods.SHIFT != 0 ? 10 : 1, dx = 0, dy = 0;
 		if (e.key == Key.LEFT) dx = -step else if (e.key == Key.RIGHT) dx = step else if (e.key == Key.UP) dy = step else if (e.key == Key.DOWN) dy = -step else
 			return;
 		ws.setOutline(char, OutlineEdit.moved(outline, chosen, dx, dy), "nudge");

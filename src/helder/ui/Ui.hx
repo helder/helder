@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Mods;
 import helder.os.Rect;
 import helder.gfx.Color;
 import helder.os.DragOperation;
@@ -59,7 +60,7 @@ class Ui extends ScrollHost {
 	// the node a button went down on (gets the pointer until it is up)
 	public var capture(default, null):Null<Node>;
 	public var needsFrame(default, null) = true;
-	// the modifier keys held (Key.MOD_*: from the key events), which pointer events carry too
+	// the modifier keys held (Mods: from the key events), which pointer events carry too
 	public var mods(default, null) = 0;
 	// the last pointer position
 	public var pointerX(default, null) = 0.0;
@@ -1968,7 +1969,7 @@ class Ui extends ScrollHost {
 
 	// (an event: the graph's writes in it land at its end, helder.view.graph)
 	// (eased: a mouse's notches, the scroll gliding to them)
-	// mods: the scroll's own modifiers (Key.MOD_*), else (-1) the keys' last
+	// mods: the scroll's own modifiers (Mods), else (-1) the keys' last
 	// (a trackpad's pinch is a wheel with Control that no key event carries)
 	// phase, momentum: a trackpad's gesture's and its momentum's
 	// (helder.os.ScrollPhase; 0: a wheel's), time its event's (Ui.now's
@@ -2202,7 +2203,7 @@ class Ui extends ScrollHost {
 			typed = [{key: key, mods: mods}];
 			m = keymap.match(typed, stack);
 		}
-		if (typed.length == 1 && typing && mods & (Key.MOD_CONTROL | Key.MOD_ALT | Key.MOD_META) == 0 && key < 0xFF00) return false;
+		if (typed.length == 1 && typing && mods & (Mods.CONTROL | Mods.ALT | Mods.META) == 0 && key < 0xFF00) return false;
 		// (the best binding whose action some handler takes; an unbound one stops the search)
 		var best:Null<helder.ui.actions.Actions.Action> = null, bestDepth = -1;
 		for (b in m.exact) {
@@ -2279,7 +2280,7 @@ class Ui extends ScrollHost {
 		if (!e.defaultPrevented && !e.stopped && selector.key(key, mods)) return;
 		if (!e.defaultPrevented && !e.stopped && (routed == ScrollMirror.TAKEN || Scrolling.keyScroll(this, key, mods))) return;
 		// (Control or Command and C: the selected text copied, when the focus took no such key)
-		if (!e.defaultPrevented && !e.stopped && (key == "c".code || key == "C".code) && mods & (Key.MOD_CONTROL | Key.MOD_META) != 0) {
+		if (!e.defaultPrevented && !e.stopped && (key == "c".code || key == "C".code) && mods & (Mods.CONTROL | Mods.META) != 0) {
 			var t = selectedText();
 			if (t != "") {
 				clipboard.write(t);
@@ -2289,7 +2290,7 @@ class Ui extends ScrollHost {
 		if (!e.defaultPrevented && key == Key.TAB) {
 			// (shown before the focus moves: its handlers see it)
 			focusVisible = true;
-			moveFocus(mods & Key.MOD_SHIFT != 0 ? -1 : 1);
+			moveFocus(mods & Mods.SHIFT != 0 ? -1 : 1);
 			focusVisible = focus != null;
 			requestFrame();
 		}
@@ -2421,10 +2422,10 @@ class Ui extends ScrollHost {
 	// the modifier a modifier key is (0: none)
 	static function modOf(key:Int):Int
 		return switch key {
-			case Key.SHIFT | 0xFFE2: Key.MOD_SHIFT;
-			case Key.CONTROL | 0xFFE4: Key.MOD_CONTROL;
-			case Key.ALT | 0xFFEA: Key.MOD_ALT;
-			case Key.META | 0xFFE8 | 0xFFEB | 0xFFEC: Key.MOD_META;
+			case Key.SHIFT | 0xFFE2: Mods.SHIFT;
+			case Key.CONTROL | 0xFFE4: Mods.CONTROL;
+			case Key.ALT | 0xFFEA: Mods.ALT;
+			case Key.META | 0xFFE8 | 0xFFEB | 0xFFEC: Mods.META;
 			case _: 0;
 		}
 

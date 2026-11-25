@@ -1,3 +1,4 @@
+import helder.os.Mods;
 import helder.gfx.Color;
 import helder.ui.*;
 import helder.view.*;
@@ -427,8 +428,8 @@ class GuideTest implements Markup {
 			if (Std.isOfType(n, helder.ui.widgets.TextArea)) area = n else for (c in n.children) find(c);
 		find(ui.root);
 		ui.setFocus(area);
-		ui.keyDown("s".code, Key.MOD_CONTROL);
-		ui.keyDown("k".code, Key.MOD_CONTROL | Key.MOD_SHIFT);
+		ui.keyDown("s".code, Mods.CONTROL);
+		ui.keyDown("k".code, Mods.CONTROL | Mods.SHIFT);
 		check("shortcuts: two bindings, the focus in the text", saved == 1 && text() == "", saved + " " + text());
 	}
 

@@ -1,3 +1,4 @@
+import helder.os.Mods;
 import helder.gfx.Color;
 import helder.ui.*;
 import helder.ui.actions.Keymap;
@@ -235,13 +236,13 @@ class MarkupTest implements Markup {
 		clip.text = "before";
 		ui.setFocus(f);
 		f.selectAll();
-		ui.keyDown("c".code, Key.MOD_CONTROL);
-		ui.keyDown("x".code, Key.MOD_CONTROL);
+		ui.keyDown("c".code, Mods.CONTROL);
+		ui.keyDown("x".code, Mods.CONTROL);
 		var t = ui.accessTree(), node = [for (id in t.order) if (t.nodes.get(id).role == TextInput) t.nodes.get(id)][0];
 		check("password: shown and given as dots, not copied or cut", (cast f.layoutText(ui.text, Math.NaN) : MonoText.MonoParagraph).width == 7 * 7
 			&& clip.text == "before" && pw() == "hunter2" && node.secret && node.value == "•••••••" && node.toJson().secret == true, node.value);
 		f.select(3, 3);
-		ui.keyDown(Key.LEFT, Key.MOD_CONTROL);
+		ui.keyDown(Key.LEFT, Mods.CONTROL);
 		check("password: a word is all of it", f.caret == 0, "" + f.caret);
 	}
 
@@ -465,12 +466,12 @@ class MarkupTest implements Markup {
 		ui.update();
 		check("grid: reflow back keeps the original item", grid.columns == 4 && grid.firstVisible() == 11 && grid.scrollY == 12 + 11 * 34 + 7);
 
-		var mod = Keymap.mac ? Key.MOD_META : Key.MOD_CONTROL;
+		var mod = Keymap.mac ? Mods.META : Mods.CONTROL;
 		grid.focusIndex(3);
 		ui.update();
 		ui.keyDown(Key.RIGHT, 0);
 		check("grid: Right wraps at the end of a row", s.focusIndex() == 4 && s.keys().join(",") == "File 4");
-		ui.keyDown(Key.DOWN, Key.MOD_SHIFT);
+		ui.keyDown(Key.DOWN, Mods.SHIFT);
 		check("grid: Shift Down selects a range", s.focusIndex() == 8 && s.size() == 5);
 		ui.keyDown(Key.UP, mod);
 		check("grid: secondary Up moves focus alone", s.focusIndex() == 4 && s.size() == 5);
@@ -523,7 +524,7 @@ class MarkupTest implements Markup {
 		Ui.now = now;
 
 		s.setKeys(["File 49999"]);
-		ui.keyDown(Key.SHIFT, Key.MOD_SHIFT);
+		ui.keyDown(Key.SHIFT, Mods.SHIFT);
 		ui.pointerDown(6, 6, 1);
 		ui.pointerMove(30, 9);
 		ui.update();
@@ -615,9 +616,9 @@ class MarkupTest implements Markup {
 		ui.update();
 		ui.pointerDown(10, 35, 1);
 		ui.pointerUp(10, 35, 1);
-		ui.keyDown(Key.DOWN, Key.MOD_SHIFT);
+		ui.keyDown(Key.DOWN, Mods.SHIFT);
 		check("list selection: plain click and Shift Down", s.keys().join(",") == "Beta,Cedar");
-		ui.keyDown(Key.DOWN, Keymap.mac ? Key.MOD_META : Key.MOD_CONTROL);
+		ui.keyDown(Key.DOWN, Keymap.mac ? Mods.META : Mods.CONTROL);
 		check("list selection: focus only, with reactive row attributes", s.focusIndex() == 3 && s.size() == 2
 			&& list.rowAt(1).node.attr("data-selected") == "true" && list.rowAt(3).node.attr("data-focused") == "true");
 		ui.keyDown(Key.ENTER, 0);

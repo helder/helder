@@ -87,7 +87,7 @@ class ImageView extends helder.ui.Node {
 		onPointerUp = up;
 		onPointerCancel = _ -> dragging = false;
 		onWheel = e -> {
-			viewer.wheel(e.localX * density, e.localY * density, e.deltaY * density, e.mods & helder.ui.Key.MOD_CONTROL != 0, haxe.Timer.stamp());
+			viewer.wheel(e.localX * density, e.localY * density, e.deltaY * density, e.mods & helder.os.Mods.CONTROL != 0, haxe.Timer.stamp());
 			e.preventDefault();
 		};
 	}

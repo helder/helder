@@ -1,3 +1,4 @@
+import helder.os.Mods;
 import helder.gfx.Color;
 import helder.ui.*;
 import helder.ui.platform.*;
@@ -1739,19 +1740,19 @@ class UiTest {
 						what = "typed";
 					case 3:
 						var shift = rnd(2) == 0;
-						ui.keyDown(Key.LEFT, shift ? Key.MOD_SHIFT : 0);
+						ui.keyDown(Key.LEFT, shift ? Mods.SHIFT : 0);
 						caret = caret != anchor && !shift ? (caret < anchor ? caret : anchor) : prev(caret);
 						if (!shift) anchor = caret;
 						what = "left";
 					case 4:
 						var shift = rnd(2) == 0;
-						ui.keyDown(Key.RIGHT, shift ? Key.MOD_SHIFT : 0);
+						ui.keyDown(Key.RIGHT, shift ? Mods.SHIFT : 0);
 						caret = caret != anchor && !shift ? (caret < anchor ? anchor : caret) : next(caret);
 						if (!shift) anchor = caret;
 						what = "right";
 					case 5:
 						var shift = rnd(2) == 0, end = rnd(2) == 0;
-						ui.keyDown(end ? Key.END : Key.HOME, shift ? Key.MOD_SHIFT : 0);
+						ui.keyDown(end ? Key.END : Key.HOME, shift ? Mods.SHIFT : 0);
 						caret = end ? text.length : 0;
 						if (!shift) anchor = caret;
 						what = end ? "end" : "home";
@@ -1766,7 +1767,7 @@ class UiTest {
 						over("");
 						what = "delete";
 					case _:
-						ui.keyDown("a".code, Key.MOD_CONTROL);
+						ui.keyDown("a".code, Mods.CONTROL);
 						anchor = 0;
 						caret = text.length;
 						what = "select all";
@@ -1781,10 +1782,10 @@ class UiTest {
 			// (undone to the start, redone to the end)
 			var end = f.text;
 			for (i in 0...200)
-				ui.keyDown("z".code, Key.MOD_CONTROL);
+				ui.keyDown("z".code, Mods.CONTROL);
 			var undone = f.text;
 			for (i in 0...200)
-				ui.keyDown("z".code, Key.MOD_CONTROL | Key.MOD_SHIFT);
+				ui.keyDown("z".code, Mods.CONTROL | Mods.SHIFT);
 			if (undone != "" || f.text != end) {
 				bad++;
 				if (first == "") first = 'round $round: undone to "$undone", redone to "${f.text}", not "$end"';
@@ -1947,7 +1948,7 @@ class UiTest {
 		ui.paint(rec);
 		var calls = [for (c in rec.calls) if (StringTools.startsWith(c, "rect") || StringTools.startsWith(c, "text")) c.split(" ").slice(0, 5).join(" ")];
 		check("selection: painted under the text", calls.join("|") == "rect 0 0 25 12.5|text 0 0 75", calls.join("|"));
-		ui.keyDown("c".code, Key.MOD_CONTROL);
+		ui.keyDown("c".code, Mods.CONTROL);
 		var copied:Null<String> = null;
 		ui.clipboard.read(s -> copied = s);
 		check("selection: Control+C copies it", copied == "hello", copied);
@@ -2007,10 +2008,10 @@ class UiTest {
 	// (a keymap's keystrokes: their keys, their labels; the keymap itself is Actions.test.hx's)
 	static function shortcuts() {
 		var s = Keystroke.parse("secondary-shift-s");
-		check("shortcuts: secondary as Control, Shift's capital", s.matches("s".code, Key.MOD_CONTROL | Key.MOD_SHIFT) && s.matches("S".code, Key.MOD_CONTROL | Key.MOD_SHIFT)
-			&& !s.matches("s".code, Key.MOD_CONTROL) && !s.matches("s".code, Key.MOD_META | Key.MOD_SHIFT) && !s.matches("s".code, Key.MOD_SHIFT));
-		check("shortcuts: keys by name", Keystroke.parse("f5").matches(0xFFC2, 0) && Keystroke.parse("ctrl-pagedown").matches(Key.PAGE_DOWN, Key.MOD_CONTROL)
-			&& Keystroke.parse("ctrl-+").matches("+".code, Key.MOD_CONTROL) && Keystroke.parse("alt-Enter").matches(Key.ENTER, Key.MOD_ALT));
+		check("shortcuts: secondary as Control, Shift's capital", s.matches("s".code, Mods.CONTROL | Mods.SHIFT) && s.matches("S".code, Mods.CONTROL | Mods.SHIFT)
+			&& !s.matches("s".code, Mods.CONTROL) && !s.matches("s".code, Mods.META | Mods.SHIFT) && !s.matches("s".code, Mods.SHIFT));
+		check("shortcuts: keys by name", Keystroke.parse("f5").matches(0xFFC2, 0) && Keystroke.parse("ctrl-pagedown").matches(Key.PAGE_DOWN, Mods.CONTROL)
+			&& Keystroke.parse("ctrl-+").matches("+".code, Mods.CONTROL) && Keystroke.parse("alt-Enter").matches(Key.ENTER, Mods.ALT));
 		var labels = [s.label(), Keystroke.parse("alt-f4").label(), Keystroke.parse("escape").label()].join(" ");
 		Keymap.mac = true;
 		var mac = [s.label(), Keystroke.parse("ctrl-alt-delete").label(), Keystroke.parse("secondary-enter").label()].join(" ");
@@ -2142,35 +2143,35 @@ class UiTest {
 			ui.keyDown(k, mods);
 		type("hello world");
 		check("fields: typing", f.text == "hello world" && f.caret == 11 && changes == 11, f.text);
-		key(Key.LEFT, Key.MOD_SHIFT);
-		key(Key.LEFT, Key.MOD_SHIFT);
-		key(Key.LEFT, Key.MOD_SHIFT);
-		key(Key.LEFT, Key.MOD_SHIFT);
-		key(Key.LEFT, Key.MOD_SHIFT);
-		key("c".code, Key.MOD_CONTROL);
+		key(Key.LEFT, Mods.SHIFT);
+		key(Key.LEFT, Mods.SHIFT);
+		key(Key.LEFT, Mods.SHIFT);
+		key(Key.LEFT, Mods.SHIFT);
+		key(Key.LEFT, Mods.SHIFT);
+		key("c".code, Mods.CONTROL);
 		var clip:ClipboardHost.MemoryClipboard = cast ui.clipboard;
 		check("fields: copy", clip.text == "world" && f.text == "hello world", clip.text);
-		key("x".code, Key.MOD_CONTROL);
+		key("x".code, Mods.CONTROL);
 		check("fields: cut", clip.text == "world" && f.text == "hello " && f.caret == 6, f.text);
 		key(Key.HOME);
-		key("v".code, Key.MOD_META);
+		key("v".code, Mods.META);
 		check("fields: paste (Command too)", f.text == "worldhello " && f.caret == 5, f.text);
 		clip.text = "two\nlines\r\nhere";
-		key("a".code, Key.MOD_CONTROL);
-		key("v".code, Key.MOD_CONTROL);
+		key("a".code, Mods.CONTROL);
+		key("v".code, Mods.CONTROL);
 		check("fields: a paste over the selection, on one line", f.text == "two lines here", f.text);
 		key(Key.BACKSPACE);
 		key(Key.BACKSPACE);
 		key(Key.BACKSPACE);
 		key(Key.BACKSPACE);
 		check("fields: Backspace", f.text == "two lines ", f.text);
-		key("c".code, Key.MOD_CONTROL);
+		key("c".code, Mods.CONTROL);
 		check("fields: copy without a selection leaves the clipboard", clip.text == "two\nlines\r\nhere");
 		// a clipboard that answers later
 		var lc = new LaterClipboard();
 		var later = lc.waiting;
 		ui.clipboard = lc;
-		key("v".code, Key.MOD_CONTROL);
+		key("v".code, Mods.CONTROL);
 		check("fields: a paste waits for the text", f.text == "two lines " && later.length == 1);
 		later[0]("later");
 		check("fields: then types it", f.text == "two lines later", f.text);
@@ -2187,30 +2188,30 @@ class UiTest {
 			for (c in new haxe.iterators.StringIteratorUnicode(t))
 				ui.textInput(String.fromCharCode(c));
 		typeH("hello big world");
-		ui.keyDown(Key.LEFT, Key.MOD_CONTROL);
+		ui.keyDown(Key.LEFT, Mods.CONTROL);
 		check("words: Control+Left to the word's start", h.caret == 10, '${h.caret}');
-		ui.keyDown(Key.LEFT, Key.MOD_ALT);
+		ui.keyDown(Key.LEFT, Mods.ALT);
 		check("words: Alt+Left (Option) too", h.caret == 6, '${h.caret}');
-		ui.keyDown(Key.RIGHT, Key.MOD_CONTROL | Key.MOD_SHIFT);
+		ui.keyDown(Key.RIGHT, Mods.CONTROL | Mods.SHIFT);
 		check("words: Shift selects to the word's end", h.selectionStart == 6 && h.selectionEnd == 9, '${h.selectionStart}-${h.selectionEnd}');
 		ui.keyDown(Key.END, 0);
-		ui.keyDown(Key.BACKSPACE, Key.MOD_CONTROL);
+		ui.keyDown(Key.BACKSPACE, Mods.CONTROL);
 		check("words: Control+Backspace deletes a word", h.text == "hello big ", h.text);
-		ui.keyDown(Key.LEFT, Key.MOD_META);
+		ui.keyDown(Key.LEFT, Mods.META);
 		check("words: Command+Left to the start", h.caret == 0);
-		check("undo: a word deleted, undone", { ui.keyDown("z".code, Key.MOD_CONTROL); h.text == "hello big world"; }, h.text);
-		ui.keyDown("z".code, Key.MOD_META);
+		check("undo: a word deleted, undone", { ui.keyDown("z".code, Mods.CONTROL); h.text == "hello big world"; }, h.text);
+		ui.keyDown("z".code, Mods.META);
 		check("undo: typing undone as runs (words apart)", h.text == "hello big ", h.text);
-		ui.keyDown("z".code, Key.MOD_CONTROL | Key.MOD_SHIFT);
+		ui.keyDown("z".code, Mods.CONTROL | Mods.SHIFT);
 		check("redo: Control+Shift+Z", h.text == "hello big world", h.text);
-		ui.keyDown("y".code, Key.MOD_CONTROL);
+		ui.keyDown("y".code, Mods.CONTROL);
 		check("redo: Control+Y", h.text == "hello big ", h.text);
 		for (_ in 0...10)
-			ui.keyDown("z".code, Key.MOD_CONTROL);
+			ui.keyDown("z".code, Mods.CONTROL);
 		check("undo: back to empty", h.text == "", h.text);
-		ui.keyDown("y".code, Key.MOD_CONTROL);
+		ui.keyDown("y".code, Mods.CONTROL);
 		typeH("x");
-		ui.keyDown("y".code, Key.MOD_CONTROL);
+		ui.keyDown("y".code, Mods.CONTROL);
 		check("redo: an edit clears what was undone", StringTools.endsWith(h.text, "x"), h.text);
 		h.setText("one two three");
 		ui.update();
@@ -2232,7 +2233,7 @@ class UiTest {
 		clickH(cx, 10.4);
 		check("clicks: a triple click the line", h.selectionStart == 0 && h.selectionEnd == 13, '${h.selectionStart}-${h.selectionEnd}');
 		clickH(cx, 20);
-		clickH(h.absX + h.style.borderWidth + h.style.padding.left + 1, 30, Key.MOD_SHIFT);
+		clickH(h.absX + h.style.borderWidth + h.style.padding.left + 1, 30, Mods.SHIFT);
 		check("clicks: Shift+click extends the selection", h.selectionStart == 0 && h.selectionEnd == 6, '${h.selectionStart}-${h.selectionEnd}');
 		EditableText.now = haxe.Timer.stamp;
 		// the focus moved by Tab: its node scrolled into view; a press does not scroll
@@ -2256,9 +2257,9 @@ class UiTest {
 		for (_ in 0...4)
 			sui.keyDown(Key.TAB, 0);
 		check("focus: Tab scrolls the focused row into view", sui.focus == rows[4] && box.scrollY == 4 * 20 + 20 - 50, '${box.scrollY}');
-		sui.keyDown(Key.TAB, Key.MOD_SHIFT);
-		sui.keyDown(Key.TAB, Key.MOD_SHIFT);
-		sui.keyDown(Key.TAB, Key.MOD_SHIFT);
+		sui.keyDown(Key.TAB, Mods.SHIFT);
+		sui.keyDown(Key.TAB, Mods.SHIFT);
+		sui.keyDown(Key.TAB, Mods.SHIFT);
 		check("focus: and back up", sui.focus == rows[1] && box.scrollY == 20, '${box.scrollY}');
 		// grapheme clusters: a letter and its marks, an emoji with its modifier, a flag move as one; Backspace takes a mark at a time
 		var q = "e\u0301\u{1F44D}\u{1F3FD}\u{1F1E7}\u{1F1EA}";
@@ -2393,9 +2394,9 @@ class UiTest {
 		check("area: Down to a shorter line: its end", a.caret == 17, '${a.caret}');
 		ui.keyDown(Key.HOME, 0);
 		check("area: Home of the line", a.caret == 11, '${a.caret}');
-		ui.keyDown(Key.UP, Key.MOD_SHIFT);
+		ui.keyDown(Key.UP, Mods.SHIFT);
 		check("area: Shift+Up selects", a.selectionStart == 0 && a.selectionEnd == 11, '${a.selectionStart}-${a.selectionEnd}');
-		ui.keyDown(Key.END, Key.MOD_CONTROL);
+		ui.keyDown(Key.END, Mods.CONTROL);
 		typeIn(" and a third line that wraps");
 		ui.update();
 		var c = new Recording();
@@ -2403,7 +2404,7 @@ class UiTest {
 		check("area: wrapped and scrolled to the caret (three lines in two)", c.calls.filter(s -> StringTools.startsWith(s, "text")).join("") == "text 0 -12.5 100", c.calls.join("|"));
 		var clip:ClipboardHost.MemoryClipboard = cast ui.clipboard;
 		clip.text = "x\ny";
-		ui.keyDown("v".code, Key.MOD_CONTROL);
+		ui.keyDown("v".code, Mods.CONTROL);
 		check("area: a paste keeps its lines", StringTools.endsWith(a.text, "wrapsx\ny"), a.text);
 	}
 
@@ -3274,7 +3275,7 @@ static function transitions() {
 		check("events: Tab moves the focus", log.join("|") == "key a 65289|key panel 65289|key root 65289|blur a|focus b" && ui.focus == b, log.join("|"));
 		ui.keyDown(Key.TAB, 0);
 		check("events: Tab wraps", ui.focus == a);
-		ui.keyDown(Key.TAB, Key.MOD_SHIFT);
+		ui.keyDown(Key.TAB, Mods.SHIFT);
 		check("events: Shift+Tab goes back", ui.focus == b);
 		log.resize(0);
 		ui.pointerDown(250, 150, 1);
@@ -3339,7 +3340,7 @@ static function transitions() {
 		ui.keyDown(Key.END, 0);
 		Clock.finish();
 		var end = list.scrollY;
-		ui.keyDown(Key.SPACE, Key.MOD_SHIFT);
+		ui.keyDown(Key.SPACE, Mods.SHIFT);
 		Clock.finish();
 		var shiftSpace = list.scrollY;
 		ui.keyDown(Key.HOME, 0);
@@ -3347,7 +3348,7 @@ static function transitions() {
 		check("scroll keys: the end, Shift+Space up a page, home", end == 200 && shiftSpace == 112.5 && list.scrollY == 0, end + " " + shiftSpace + " " + list.scrollY);
 		item1.onKeyDown = e -> if (e.key == Key.DOWN) e.preventDefault();
 		ui.keyDown(Key.DOWN, 0);
-		ui.keyDown(Key.DOWN, Key.MOD_CONTROL);
+		ui.keyDown(Key.DOWN, Mods.CONTROL);
 		Clock.finish();
 		check("scroll keys: not a key the focus took, nor with Control", list.scrollY == 0, "" + list.scrollY);
 		item1.onKeyDown = null;

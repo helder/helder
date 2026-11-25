@@ -1,5 +1,6 @@
 package helder.ui.platform.windows;
 
+import helder.os.Mods;
 import helder.gfx.Color;
 import helder.os.windows.User32;
 import helder.ui.*;
@@ -270,8 +271,8 @@ class WinEditor implements helder.ui.platform.PlatformEditor {
 					case _: 0;
 				}
 				if (key != 0) {
-					var mods = (User32.GetKeyState(0x10) < 0 ? Key.MOD_SHIFT : 0) | (User32.GetKeyState(0x11) < 0 ? Key.MOD_CONTROL : 0)
-						| (User32.GetKeyState(0x12) < 0 ? Key.MOD_ALT : 0);
+					var mods = (User32.GetKeyState(0x10) < 0 ? Mods.SHIFT : 0) | (User32.GetKeyState(0x11) < 0 ? Mods.CONTROL : 0)
+						| (User32.GetKeyState(0x12) < 0 ? Mods.ALT : 0);
 					@:privateAccess views.push(this, 4, key, mods);
 					return 0;
 				}

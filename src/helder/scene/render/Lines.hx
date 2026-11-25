@@ -226,23 +226,23 @@ class Lines {
 }
 
 // a line's width: in pixels on the screen, or in the world's units
-enum abstract LineUnits(Int) to Int {
-	var Pixels;
-	var World;
+enum abstract LineUnits(String) {
+	var Pixels = "pixels";
+	var World = "world";
 }
 
 // where a polyline's segments meet
-enum abstract LineJoin(Int) to Int {
-	var Miter;
-	var Round;
-	var Bevel;
+enum abstract LineJoin(String) {
+	var Miter = "miter";
+	var Round = "round";
+	var Bevel = "bevel";
 }
 
 // a line's ends
-enum abstract LineCap(Int) to Int {
-	var Butt;
-	var Round;
-	var Square;
+enum abstract LineCap(String) {
+	var Butt = "butt";
+	var Round = "round";
+	var Square = "square";
 }
 
 // what Lines are made with (each optional): 2 pixels wide, mitred, butt

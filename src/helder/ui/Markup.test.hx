@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Mods;
 import helder.test.Test;
 import helder.view.Render;
 import helder.view.graph.Graph;
@@ -93,9 +94,9 @@ function tests() {
 			var ui = new Ui(null, 200, 200), seen = [];
 			var dispose = Render.render(Fixture.wheeled(seen), ui.root);
 			ui.update();
-			ui.wheel(10, 10, 0, 5, false, Key.MOD_CONTROL);
+			ui.wheel(10, 10, 0, 5, false, Mods.CONTROL);
 			ui.wheel(10, 10, 0, 5);
-			equals(seen, [Key.MOD_CONTROL, 0]);
+			equals(seen, [Mods.CONTROL, 0]);
 			dispose();
 		});
 		test("line-height in pixels or as a multiple", () -> {

@@ -1,5 +1,7 @@
 package helder.ui;
 
+import helder.os.Mods;
+
 // What the program's last frame had of its scrollers, for the compositor
 // (ScrollMirror.adopt): each scroller's box, view, range and offsets, its
 // scrollbars; the nodes that may claim a drag or a wheel (a slider, a
@@ -127,7 +129,7 @@ class ScrollShot {
 
 	// (its bit: Shift and Space the last)
 	public static function keyBit(key:Int, mods:Int):Int {
-		if (key == Key.SPACE && mods & Key.MOD_SHIFT != 0) return 1 << 9;
+		if (key == Key.SPACE && mods & Mods.SHIFT != 0) return 1 << 9;
 		var i = SCROLL_KEYS.indexOf(key);
 		return i < 0 ? 0 : 1 << i;
 	}
@@ -142,7 +144,7 @@ class ScrollShot {
 		}
 		var stack = ui.contextStack(), bits = 0;
 		for (i in 0...KEYS) {
-			var m = ui.keymap.match([{key: SCROLL_KEYS[i], mods: i == 9 ? Key.MOD_SHIFT : 0}], stack);
+			var m = ui.keymap.match([{key: SCROLL_KEYS[i], mods: i == 9 ? Mods.SHIFT : 0}], stack);
 			if (m.exact.length > 0 || m.longer) bits |= 1 << i;
 		}
 		return bits;

@@ -32,7 +32,7 @@ export declare class UiProbe {
 	// text typed into the focused node
 	static type(text: string): void;
 	// a key pressed (Key's codes)
-	static key(code: number, mods?: number): void;
+	static key(code: number, mods?: Array<import("helder/os").Mod>): void;
 	// the safe area's insets, as a phone's window sets them (SafeArea)
 	static insets(top: number, right: number, bottom: number, left: number): void;
 	// the padding of the first node with tag: top right bottom left
