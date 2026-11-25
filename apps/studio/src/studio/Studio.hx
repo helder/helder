@@ -1195,21 +1195,26 @@ class Studio {
 		var p = presence.named(by) ?? presence.arrive("acp:" + by, by);
 		var doc = docs.get(file).doc, rel = file.startsWith(project.dir + "/") ? file.substr(project.dir.length + 1) : file;
 		presence.patched(p.id, rel, [for (c in tx.inverse.changes) {file: rel, from: doc.lineCol(c.start).line, to: doc.lineCol(c.end).line}]);
-		var at = tx.inverse.changes.length == 0 ? 0 : tx.inverse.changes[0].start;
-		presence.working(p.id, null, presence.peer(p.id).screen == null || file.endsWith(".helder") ? screenFor(file, at) : null);
+		var cs = tx.inverse.changes, from = cs.length == 0 ? 0 : cs[0].start, to = cs.length == 0 ? 0 : cs[cs.length - 1].end;
+		presence.working(p.id, null, presence.peer(p.id).screen == null || file.endsWith(".helder") ? screenFor(file, from, to) : null);
 		marks.edited(presence.peer(p.id), file, tx);
 	}
 
-	// (the frame an edit shows on: a design's frame holding it, else the one in focus, else the first program's frame in view)
-	function screenFor(file:String, at:Int):Null<String> {
+	// (the frame an edit shows on, its changed range the text's after it: a
+	// design's frame holding the range, else the first it made (a frame, a
+	// group's), else the one holding its start; a program's: the one in
+	// focus, else the first in view)
+	function screenFor(file:String, from:Int, to:Int):Null<String> {
 		if (file.endsWith(".helder")) {
-			var doc = docs.get(file).doc, best:Null<String> = null;
-			for (s in project.screens)
-				if (s.file == file && s.start != null && s.start <= at) {
-					var el = doc.elementAt(s.start);
-					if (el != null && el.end >= at) best = s.name;
-				}
-			return best;
+			var doc = docs.get(file).doc, holding:Null<String> = null, made:Null<String> = null, near:Null<String> = null;
+			for (s in project.screens) {
+				var el = s.file == file && s.start != null ? doc.elementAt(s.start) : null;
+				if (el == null) continue;
+				if (el.start <= from && el.end >= to) holding = s.name;
+				else if (el.start >= from && el.end <= to) made ??= s.name;
+				else if (el.start <= from && el.end >= from) near ??= s.name;
+			}
+			return holding ?? made ?? near;
 		}
 		var shown = layout.inView();
 		return focused.peek() ?? Lambda.find(project.live(), s -> shown.contains(s.name))?.name;

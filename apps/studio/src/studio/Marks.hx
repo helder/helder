@@ -82,11 +82,14 @@ class Marks {
 		var p = studio.project;
 		if (p == null) return;
 		var doc = studio.docs.get(file).doc, starts = [];
+		// (the elements a change made, else the one holding it: a frame added is
+		// outlined, not the frame before it whose end the change began at)
 		for (c in tx.inverse.changes) {
-			var held = doc.elementHolding(c.start);
+			var made = [for (e in doc.elements()) if (e.start >= c.start && e.start < c.end && !starts.contains(e.start)) e.start];
+			var held = made.length > 0 ? null : doc.elementHolding(c.start);
 			if (held != null && !starts.contains(held.start)) starts.push(held.start);
-			for (e in doc.elements())
-				if (e.start > c.start && e.start <= c.end && !starts.contains(e.start)) starts.push(e.start);
+			for (s in made)
+				starts.push(s);
 		}
 		var name = p.dir.length < file.length ? file.substr(p.dir.length + 1) : file;
 		changed(peer, name);
