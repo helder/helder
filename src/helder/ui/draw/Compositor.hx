@@ -77,9 +77,13 @@ class Compositor implements RenderIdle {
 	// render thread came to it, the last frame's end, whether that one was
 	// paced, the swap chain's wait (ms), the frame's end (-1: the program's
 	// turn after the wait), whether it is paced, the 1 ms timer on, Present's
-	// HRESULT)
+	// HRESULT, the last window frame's GPU time read (ms, -1: none), the
+	// quads drawn, the pixels they cover (thousands, clipped to the window),
+	// whether the adapter is a software one)
 	@:noCompletion public var probe:Null<Array<Float>> = null;
-	@:noCompletion public static inline var PROBE = 8;
+	@:noCompletion public static inline var PROBE = 12;
+	var drawnQuads = 0;
+	var drawnArea = 0.0;
 	// (the render thread's: the overlay bars' last moves and how far they
 	// show, per frame; the time its last frame was drawn at, Ui.now's)
 	final barAt:Array<Float> = [];
@@ -438,7 +442,9 @@ class Compositor implements RenderIdle {
 		var p = probe;
 		if (p == null) return;
 		lock.acquire();
-		for (v in [t, last, was ? 1 : 0, waited * 1000, end, paced ? 1 : 0, RenderThread.fine ? 1 : 0, r.impl.presentResult()])
+		var gpu = r.impl.gpuTime();
+		for (v in [t, last, was ? 1 : 0, waited * 1000, end, paced ? 1 : 0, RenderThread.fine ? 1 : 0, r.impl.presentResult(), gpu,
+			drawnQuads, drawnArea / 1000, r.impl.software() ? 1 : 0])
 			p.push(v);
 		lock.release();
 	}
@@ -507,6 +513,7 @@ class Compositor implements RenderIdle {
 		if (out.length < need) out = Bytes.alloc(need * 2);
 		var n = f.compose(now, t, f.overlay ? barShown : null, out, runTextures, runs);
 		if (n * CompositeFrame.STRIDE > f.capacity) return;
+		if (probe != null) covered(n, f.width, f.height);
 		var b = f.buffers[ring = (ring + 1) % f.buffers.length], c = commands, bg = f.background;
 		c.clear();
 		one(Replay.BEGIN_FRAME);
@@ -555,6 +562,20 @@ class Compositor implements RenderIdle {
 		one(Replay.END_FRAME);
 		r.run(c, false);
 		c.clear();
+	}
+
+	// (the pixels n composed quads cover, each its corners' box in the frame: what is shaded)
+	function covered(n:Int, w:Int, h:Int) {
+		var a = 0.0;
+		for (q in 0...n) {
+			var o = q * CompositeFrame.STRIDE;
+			var x0 = out.getFloat(o + 8), y0 = out.getFloat(o + 12), x1 = out.getFloat(o + 24), y2 = out.getFloat(o + 44);
+			var dx = Math.max(0, Math.min(w, Math.max(x0, x1)) - Math.max(0, Math.min(x0, x1)));
+			var dy = Math.max(0, Math.min(h, Math.max(y0, y2)) - Math.max(0, Math.min(y0, y2)));
+			a += dx * dy;
+		}
+		drawnQuads = n;
+		drawnArea = a;
 	}
 
 	inline function one(op:Int) {
