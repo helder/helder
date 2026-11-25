@@ -5,8 +5,8 @@ using StringTools;
 // The project an empty folder starts as (the studio opened on one, its
 // Untitled one): the smallest TypeScript helder program that builds and
 // shows on the canvas, so that the agent starts from something that works:
-// main.tsx (the app's window), app.tsx (its view), app.story.tsx (one
-// screen, the canvas' frame), tsconfig.json (helder's modules where they
+// main.tsx (the app's window), app.tsx (its view: a breathing orb until
+// the agent makes the app), app.story.tsx (one screen, the canvas' frame), tsconfig.json (helder's modules where they
 // are: config). A TypeScript project outside a package with helder in it
 // gets that tsconfig.json too, when it has none (an agent's first main.tsx).
 class Starter {
@@ -85,10 +85,24 @@ UiWindow.run(
 );
 ';
 
-	static inline var APP = 'export function App() {
-	return <view grow={1} align-items="center" justify="center" row-gap={8} background="#f8fafc">
-		<text font-size={28} font-weight={700} color="#18181b">Hello</text>
-		<text font-size={14} color="#71717a">Ask in the chat to make it something</text>
+	static inline var APP = 'import { signal, onCleanup } from "helder/view";
+import { Clock } from "helder/ui";
+
+// The starter\'s screen until the app is made: a soft orb on the dark
+// ground, breathing (a 5 s breath: its glow swells and settles)
+export function App() {
+	const breath = signal(0);
+	let alive = true;
+	onCleanup(() => alive = false);
+	Clock.add(t => {
+		breath(0.5 - 0.5 * Math.cos(t / 5 * Math.PI * 2));
+		return alive;
+	});
+	return <view grow={1} align-items="center" justify="center" background="#0f0f11">
+		<view position="absolute" width={380} height={380} opacity={0.35 + breath() * 0.35} transform={`scale($${0.9 + breath() * 0.12})`}
+			background-image="radial-gradient(circle closest-side, rgba(129,140,248,0.4) 0%, rgba(129,140,248,0.12) 50%, rgba(129,140,248,0) 100%)"/>
+		<view width={180} height={180} opacity={0.85 + breath() * 0.15} transform={`scale($${0.96 + breath() * 0.05})`}
+			background-image="radial-gradient(circle closest-side, #f5f3ff 0%, #c7d2fe 22%, #818cf8 52%, rgba(99,102,241,0.3) 78%, rgba(99,102,241,0) 100%)"/>
 	</view>;
 }
 ';

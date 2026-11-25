@@ -477,8 +477,13 @@ Agent Client Protocol (ACP: JSON-RPC on the agent's stdin and stdout,
 
 `--agent`, else `HELDER_STUDIO_AGENT`, else the first found in that order
 (a headless run: `local` unless one is named); the studio says which at
-start. The agent starts on the first prompt, in the project's directory,
-with the studio's MCP server (below) when it takes one over HTTP, so it
+start. The agent starts as the project opens, in the background (its
+process, `initialize`, its session: npx resolves its package for
+seconds), so the first prompt goes straight to it; a prompt sent before
+it is up waits for it ("Starting Claude…" in the turn), and a start that
+fails is a row of the chat's (the next prompt tries again). The turn shows
+at once: the prompt's bubble and the agent's pulsing mark. It runs in the
+project's directory, with the studio's MCP server (below) when it takes one over HTTP, so it
 has `run.snap`, `run.tree`, `build.check` beside its own tools. A prompt
 carries the screen in focus and the selection's `file:line`, and the
 screen's last frame as an image when the agent takes images.
@@ -534,7 +539,8 @@ initializes again), and `DELETE /mcp` with it ends the session.
 **A project starts working.** An empty folder opened in the studio (the
 Untitled one, or any) becomes the starter (`Starter`): the smallest
 TypeScript program that builds and shows on the canvas (`main.tsx`,
-`app.tsx`, `app.story.tsx` with one screen, a `tsconfig.json` mapping
+`app.tsx`, `app.story.tsx` with one screen: a soft orb on the dark
+ground, breathing, until the agent makes the app; a `tsconfig.json` mapping
 helder's modules to the helder the studio was built with when no package
 resolves them, and TypeScript's checker found beside it). The blank sheet
 stays until the first prompt; then its frame rises onto the canvas, built.

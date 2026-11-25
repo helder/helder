@@ -233,6 +233,7 @@ class Studio {
 		agent.close();
 		agent = agentOf(name);
 		agentChanged(v -> v + 1);
+		bootAgent();
 	}
 
 	// bumped when the agent changes (what shows its name reads it)
@@ -277,7 +278,7 @@ class Studio {
 		if (c != null && p != null) {
 			Sys.println('studio: the agent: ${c.name} (${c.cmd} ${c.args.join(" ")})');
 			var self = this;
-			return new AcpAgent(c, {dir: p.dir, docs: docs, mcp: () -> self.mcp?.url, snap: screen -> self.snapOf(screen)});
+			return new AcpAgent(c, {dir: p.dir, docs: docs, mcp: () -> self.mcp?.url, serving: () -> self.mcp != null, snap: screen -> self.snapOf(screen)});
 		}
 		Sys.println("studio: the agent: local (the studio's tools alone: /tree, /snap, /check, /read)");
 		#end
@@ -312,7 +313,44 @@ class Studio {
 		#if (hxmc.target == "wasm32-wasi")
 		Async.launch(_ -> studio.web.WebTools.serve(this));
 		#end
+		// (on the loop: open is the window's making, where no signal is written)
+		var self = this;
+		Async.launch(_ -> self.bootAgent());
 	}
+
+	// the prompt's agent started in the background (an ACP agent: its process,
+	// its session), so the first prompt goes straight to it; a failure a row
+	// of the chat's (the next prompt starts it again)
+	function bootAgent() {
+		#if !(hxmc.target == "wasm32-wasi")
+		if (!Std.isOfType(agent, AcpAgent) || project == null) return;
+		var a:AcpAgent = cast agent, self = this;
+		talk.trouble(null);
+		booting(true);
+		a.boot(message -> {
+			self.talk.trouble(message);
+			self.log("agent-boot", {failed: message});
+		});
+		Async.launch(_ -> {
+			while (a.starting())
+				Async.delay(0.05);
+			if (self.agent != a) return;
+			self.booting(false);
+			self.log("agent-boot", {ms: Math.round(a.bootedIn * 1000)});
+		});
+		// (a headless run's script waits for it: its prompts timed from a started agent)
+		hold(() -> !a.starting(), "the agent's start", 180);
+		#end
+	}
+
+	// (a prompt sent: when, until a frame shows it)
+	var acking = -1.0;
+
+	// an ACP agent starting (its process, its session): the chat's turn says so while its prompt waits
+	public final booting = signal(false);
+
+	public function agentStarting():Bool
+		return booting();
 
 	// a file made (an agent's project.patch of a path not there, an ACP agent's
 	// write): one entry of the history (its undo: gone)
@@ -425,6 +463,10 @@ class Studio {
 	public function drawn() {
 		var stage = stageNode;
 		frames++;
+		if (acking > 0) {
+			log("acked", {ms: Math.round((haxe.Timer.stamp() - acking) * 1000)});
+			acking = -1;
+		}
 		if (!firstFrame) {
 			firstFrame = true;
 			var ms = Math.round((haxe.Timer.stamp() - startedAt) * 1000);
@@ -1743,6 +1785,11 @@ class Studio {
 			if (project != null) marks.rise([for (s in project.screens) s.name]);
 		}
 		setTurn(Turns.start(said ? p : ""), true);
+		talk.trouble(null);
+		// (timed: the prompt to the frame showing it, to the agent's first text)
+		var sent = haxe.Timer.stamp(), spoke = false;
+		acking = sent;
+		log("asked", {prompt: p, starting: booting.peek()});
 		var answered = false, heard = -1.0, asked:Null<String> = null;
 		function end(e:Agent.AgentEvent) {
 			if (asked != null) questions.close(asked);
@@ -1771,6 +1818,10 @@ class Studio {
 				});
 			case _:
 				heard = haxe.Timer.stamp();
+				if (!spoke && e.match(Text(_))) {
+					spoke = true;
+					log("first-text", {ms: Math.round((heard - sent) * 1000)});
+				}
 				setTurn(Turns.add(turnNow ?? Turns.start(p), e));
 				switch e {
 					case Tool(id, title, _, status): log("agent-tool", {id: id, title: title, status: status});

@@ -14,6 +14,8 @@ class Conversation {
 	public final open = signal(true);
 	public final reading:Signal<Null<{file:String, line:Null<Int>}>> = signal(null);
 	public final asked = signal(0);
+	// the agent's start failed: why (a row of the chat's until it starts)
+	public final trouble:Signal<Null<String>> = signal(null);
 	// the input's field (focused by a card's "Something else…")
 	public var field:Null<helder.ui.Node> = null;
 	// (the truth: a signal's write lands at the event's end)

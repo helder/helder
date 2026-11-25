@@ -13,9 +13,10 @@ using StringTools;
 
 // The user's own coding agent (Claude Code, Codex, Gemini CLI: Agents) over
 // the Agent Client Protocol (agentclientprotocol.com, version 1): started
-// on the first prompt (initialize, then session/new in the project's
-// directory, the studio's MCP server given to it when it takes one over
-// HTTP), each prompt a session/prompt (the text, the selection's file:line,
+// as the project opens (boot: spawned, initialize, then session/new in the
+// project's directory, the studio's MCP server given to it when it takes
+// one over HTTP; npx resolves its package for seconds, so not on the first
+// prompt, which waits on a boot still running), each prompt a session/prompt (the text, the selection's file:line,
 // the focused screen's PNG), its session/update notifications the turn's
 // events. What it asks the user (session/request_permission) is an Ask;
 // what it reads (fs/read_text_file) is the files as the studio has them,
@@ -33,6 +34,10 @@ class AcpAgent implements Agent {
 	final asks = new Map<Int, Int->Void>();
 	var asked = 0;
 	final log:Array<String> = [];
+	// (the start running: its task, what waits for it awaits it)
+	var booting:Null<Task<Acp>> = null;
+	// when the last start began and ended (seconds; ended -1: running or none)
+	public var bootedIn(default, null) = -1.0;
 
 	public function new(command:AgentCommand, work:Workspace) {
 		this.command = command;
@@ -57,6 +62,25 @@ class AcpAgent implements Agent {
 		if (acp != null) acp.close();
 	}
 
+	// started now, in the background (the project opened): the first prompt
+	// goes straight to session/prompt; failed: told (a start's failure), and
+	// the next prompt starts it again
+	public function boot(?failed:String->Void) {
+		if (booting != null || (acp != null && !acp.closed && session != null)) return;
+		var self = this, t0 = haxe.Timer.stamp();
+		var t = Async.launch(_ -> self.open());
+		booting = t;
+		t.onCompletion((_, e) -> {
+			if (booting == t) booting = null;
+			bootedIn = haxe.Timer.stamp() - t0;
+			if (e != null && failed != null) failed(failure(e));
+		});
+	}
+
+	// whether a start runs
+	public function starting():Bool
+		return booting != null;
+
 	@:coroutine function turn(prompt:String, context:AgentContext, on:AgentEvent->Void) {
 		var r:Dynamic = try {
 			var a = start();
@@ -70,10 +94,20 @@ class AcpAgent implements Agent {
 		on(Done(r?.stopReason ?? "end_turn"));
 	}
 
-	// (the agent running, its session made: lazily, again after it ended)
+	// (the agent running, its session made: the boot's, else one started now, again after it ended)
 	@:coroutine function start():Acp {
-		if (acp != null && !acp.closed) return acp;
+		if (booting == null && acp != null && !acp.closed && session != null) return acp;
+		if (booting == null) boot();
+		return booting.await();
+	}
+
+	@:coroutine function open():Acp {
 		log.resize(0);
+		session = null;
+		// (the studio's MCP server listening first: its URL the session's)
+		var t0 = haxe.Timer.stamp();
+		while (work.mcp() == null && work.serving != null && work.serving() && haxe.Timer.stamp() - t0 < 5)
+			Async.delay(0.02);
 		var a = Acp.spawn(command.cmd, command.args, {cwd: work.dir});
 		acp = a;
 		var self = this;
@@ -222,5 +256,7 @@ typedef Workspace = {
 	dir:String,
 	docs:Docs,
 	mcp:Void->Null<String>,
+	// whether an MCP server is to come (its URL not known yet)
+	?serving:Void->Bool,
 	snap:Null<Coroutine<String->Null<String>>>,
 }
