@@ -1,4 +1,4 @@
-package helder.devtools;
+package helder.dev;
 
 // The collector's counters, the one place they are read: hxmc.GcStats, the
 // same natively and on wasm32 (collections, the bytes allocated on the GC

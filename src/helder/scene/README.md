@@ -422,7 +422,7 @@ Against Khronos' sample viewer: [examples/gltf-showcase](/examples/gltf-showcase
 ### A material of its own
 
 The standard material is a slot object, `pbr` (`PbrShader`; helder.gfx's
-`slots`, [DESIGN.md](/src/helder/compiler/DESIGN.md) 3): one shader whose
+`slots`, [README.md](/src/helder/compiler/README.md) 3): one shader whose
 variants are the renderer's (`pbr.variant({normalMap, skinned,
 instanced, prepass})`: `PbrShader`, `PbrNormalShader`, `PbrSkinnedShader`,
 `PbrInstancedShader`, `PbrInstancedNormalShader`; the view buffers'

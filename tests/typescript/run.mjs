@@ -143,7 +143,7 @@ for(const file of fs.readdirSync(`${T}/helder`).filter(f=>/\.tsx?$/.test(f)&&!f.
     assert.equal(r.stdout,fs.readFileSync(`${T}/helder/${stem}.out`,'utf8'),`${file} stdout ${target}`);
     console.log(`PASS helder ${file} ${target}`);
 }
-// helder/platform's constants folded as Haxe's Platform.os() is: platform/main.ts
+// helder/native/platform's constants folded as Haxe's Platform.os() is: platform/main.ts
 // and Main.hx built for Linux (glibc's dynamic mode, where a C function of a
 // shared library is an import) and wasm32-wasi, their Windows branch
 // (kernel32's GetTickCount64) not in the binary; the same TS with a condition
@@ -208,7 +208,7 @@ for(const name of fs.readdirSync(`${T}/configs`).sort()) {
     }
     console.log(`PASS config ${name}`);
 }
-// Definitions (src/helder/compiler/DESIGN.md) in both languages:
+// Definitions (src/helder/compiler/README.md) in both languages:
 // definitions/<name>.ts (or .tsx) and the Haxe program <Name>.hx, built natively and
 // as wasm32-wasi, print the same (a shader's text in all four languages,
 // its writers' bytes); each pair of definitions/reject is refused by both

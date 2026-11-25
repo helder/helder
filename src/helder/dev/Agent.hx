@@ -1,4 +1,4 @@
-package helder.devtools;
+package helder.dev;
 
 #if (hxmc.dev && !macro)
 import haxe.Json;
@@ -184,7 +184,7 @@ class Agent {
 	public static inline function frame()
 		if (framing) Frames.frame();
 
-	@:allow(helder.devtools.Frames) static function setFraming(v:Bool)
+	@:allow(helder.dev.Frames) static function setFraming(v:Bool)
 		framing = v;
 }
 

@@ -3,7 +3,7 @@ package helder.story;
 import haxe.macro.Expr;
 #if macro
 import haxe.macro.Context;
-import helder.definition.HaxeAdapter;
+import helder.compiler.HaxeAdapter;
 #else
 import haxe.PosInfos;
 import helder.view.View;
@@ -13,7 +13,7 @@ import helder.view.graph.Signal;
 
 // Stories, as Storybook's: a `Foo.story.hx` file anywhere a test file may
 // be (src/, tests/, the class paths) whose module-level values are made by
-// story({...}), a definition (src/helder/compiler/DESIGN.md 4; its handler
+// story({...}), a definition (src/helder/compiler/README.md 4; its handler
 // StoryDefinition, TypeScript's helder/story the same):
 //
 //   // src/game/Inventory.story.hx

@@ -4,7 +4,7 @@ package helder.gfx.shader;
 import haxe.macro.Context;
 import haxe.macro.Expr;
 import haxe.macro.Type;
-import helder.definition.HaxeAdapter;
+import helder.compiler.HaxeAdapter;
 import helder.gfx.shader.Ir;
 import helder.gfx.shader.ShaderDefinition;
 

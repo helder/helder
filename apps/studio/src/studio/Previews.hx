@@ -28,7 +28,7 @@ typedef Previews = studio.web.WebPreviews;
 // screens' program (Project.words: a dev build of the project's stories,
 // helder.story.Screens over them: helder.story.NativeHost here) and starts
 // it once, with helder dev's machinery (HXMC_DEV: a connection to the
-// studio's socket speaking the devtools protocol, src/helder/devtools/
+// studio's socket speaking the devtools protocol, src/helder/dev/
 // README.md; HXMC_DEV_SNAPSHOT: its state across a rebuild). Every story
 // is mounted in it as a root of its own with a context of its own
 // (helder.ui.ScreenContext); only the screens in the canvas' view draw (the

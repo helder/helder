@@ -1074,7 +1074,7 @@ console (`TERM=linux`) gets ASCII too.
 
 ## The devtools' relay
 
-`helder dev` speaks the devtools protocol (src/helder/devtools/README.md)
+`helder dev` speaks the devtools protocol (src/helder/dev/README.md)
 with a program built with its agent: the program is started with
 `HXMC_DEV_PROTOCOL=1` and says `Runtime.hello`, a reload is a
 `Runtime.reload` request answered once the snapshot is saved

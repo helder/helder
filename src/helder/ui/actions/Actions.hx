@@ -4,7 +4,7 @@ import haxe.macro.Expr;
 import helder.ui.actions.JsonType;
 
 // Actions are values of an app's or a library's own types, declared by a
-// definition (src/helder/compiler/DESIGN.md 4, its handler ActionsDefinition):
+// definition (src/helder/compiler/README.md 4, its handler ActionsDefinition):
 // in Haxe an enum, its constructors the actions and their arguments the
 // parameters (GPUI's action types); in TypeScript an object's methods
 // (helder/ui/actions, src/helder/ui/actions/index.ts):

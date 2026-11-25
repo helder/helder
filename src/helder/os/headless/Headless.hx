@@ -599,7 +599,7 @@ class Headless {
 		f.close();
 		sys.FileSystem.rename(tmp, serve);
 		#if hxmc.dev
-		helder.devtools.Agent.notify("Headless.frame", {version: served, width: pixelsWidth, height: pixelsHeight, path: serve});
+		helder.dev.Agent.notify("Headless.frame", {version: served, width: pixelsWidth, height: pixelsHeight, path: serve});
 		#end
 	}
 

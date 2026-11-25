@@ -6,7 +6,7 @@ import helder.gfx.ShaderCode;
 import helder.gfx.VertexBufferLayout;
 
 // A shader: what shader({vertex, fragment}) makes (ShaderMath.shader, a
-// definition: DESIGN.md in src/helder/compiler), its stages' functions
+// definition: README.md in src/helder/compiler), its stages' functions
 // compiled at build time:
 //
 //   @:structInit @:publicFields class Vertex { var pos:Vec2; var color:Vec3; }

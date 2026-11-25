@@ -1275,7 +1275,7 @@ export declare class Model<N, M, A, C> {
 	dispose(): void;
 }
 
-// A material's own shader (DESIGN.md 3 in src/helder/compiler): pbr (the
+// A material's own shader (README.md 3 in src/helder/compiler): pbr (the
 // standard material, PbrShader) with some of its slots replaced, compiled
 // at build time into the variants the renderer draws with (plain, normal
 // mapped, skinned, instanced, instanced and normal mapped), set on a

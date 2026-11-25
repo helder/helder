@@ -286,7 +286,7 @@ class Declarations {
 		e.line('}');
 	}
 
-	// the neutral elements (helder.markup.Plan's: view, text, view:button...),
+	// the neutral elements (helder.view.Plan's: view, text, view:button...),
 	// their handlers typed by ui's events (MarkupMacro.NEUTRAL_EVENTS)
 	static function jsxNeutral(e:DefinitionEmitter, declared:BaseType->Null<String>) {
 		var writer:TypeWriter = {write: _ -> {}, declared: declared};
@@ -306,9 +306,9 @@ class Declarations {
 		e.line('\tnamespace JSX {');
 		e.line('\t\t// the neutral elements: ui\'s, realised by each renderer');
 		e.line('\t\tinterface IntrinsicElements {');
-		for (n in helder.markup.Plan.NEUTRAL)
+		for (n in helder.view.Plan.NEUTRAL)
 			e.line('\t\t\t' + n + ': NeutralAttributes;');
-		for (n in helder.markup.Plan.NEUTRAL_PREFIXES)
+		for (n in helder.view.Plan.NEUTRAL_PREFIXES)
 			e.line('\t\t\t[tag: `' + n + ':$${string}`]: NeutralAttributes;');
 		e.line('\t\t}');
 		e.line('\t}');

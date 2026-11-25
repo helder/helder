@@ -82,7 +82,7 @@ abstract class Core {
 
 	// definitions' calls (helder/gfx's shader): their handlers' output
 	final definitions:Definitions;
-	// helder/platform's constants (the build's target)
+	// helder/native/platform's constants (the build's target)
 	final platform:Platform;
 	// (job(f)'s: each job's function on the worker, by its number)
 	var jobs:Array<FuncInfo> = [];

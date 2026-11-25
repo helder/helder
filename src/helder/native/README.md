@@ -14,4 +14,20 @@ console.log(libc.getpid())
 
 Omit `lib` for libc. The declaration's body is a placeholder. See
 [index.ts](index.ts) for types, library names and calling conventions,
-and [helder.platform](../platform/README.md) for target-specific calls.
+and [the platform](#the-platform) below for target-specific calls.
+
+## The platform
+
+Read the build's OS, exact target and architecture from TypeScript.
+The compiler folds `platform.os`, `platform.target` and `platform.arm`
+and keeps only the selected branch of a condition on them.
+
+```ts
+import {platform} from 'helder/native/platform'
+
+if (platform.os === 'windows') useWin32()
+else if (platform.os === 'macos') useCocoa()
+```
+
+Read the fields directly. They are compile-time constants. See
+[platform.ts](platform.ts) for the values.
