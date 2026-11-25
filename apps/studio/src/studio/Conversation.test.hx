@@ -50,6 +50,13 @@ function tests() {
 			helder.view.graph.Graph.flush();
 			equals(Chat.status(s, t), "Thinking…");
 		});
+		test("a question's place: where the turn's reply was when it was asked", () -> {
+			var s = studio("bin/conversation-test-3");
+			s.talk.set(Turn.Turns.add(Turn.Turns.start("a game"), Text("Three ideas.")), true);
+			var q = s.questions.ask(null, "Which game?", [{id: "a", label: "A"}, {id: "b", label: "B"}], false);
+			equals([q.turn, q.at], [0, 12]);
+			equals(Turn.Turns.split("Three ideas. Building A.", [q.at]), ["Three ideas.", " Building A."]);
+		});
 		#end
 	});
 }
