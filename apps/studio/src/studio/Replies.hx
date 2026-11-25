@@ -9,14 +9,14 @@ using StringTools;
 // studio knows is a chip ("studio:screen/<name>", "studio:frame/<file>#<name>",
 // "studio:group/<file>#<title>": a place on the canvas, the camera flies there; a file of the project, "path", "path:12", "path#L12",
 // "file://…": a file's, the code panel opens at its line), a code span
-// naming a file of the project a file's chip too; its tools, the last few
-// shown, the ones before folded into one line.
+// naming a file of the project a file's chip too; the files it changed, the
+// last few shown, the ones before folded into one line.
 class Replies {
 	public static inline var SCREEN = "studio:screen/";
 	public static inline var FRAME = "studio:frame/";
 	public static inline var GROUP = "studio:group/";
-	// the tools shown before the rest fold
-	public static inline var TOOLS = 3;
+	// the lines shown before the rest fold
+	public static inline var SHOWN = 3;
 
 	// a link's chip slot (null: a plain link)
 	public static function chip(href:String, dir:Null<String>):Null<String> {
@@ -75,19 +75,11 @@ class Replies {
 		return {blocks: blocks(d.blocks), frontMatter: d.frontMatter};
 	}
 
-	// the tools as shown: the last TOOLS (all of them when open), how many folded before them
-	public static function tools<T>(all:Array<T>, open:Bool):{folded:Int, shown:Array<T>} {
-		if (open || all.length <= TOOLS + 1) return {folded: 0, shown: all};
-		return {folded: all.length - TOOLS, shown: all.slice(all.length - TOOLS)};
+	// lines as shown: the last SHOWN (all of them when open), how many folded before them
+	public static function fold<T>(all:Array<T>, open:Bool):{folded:Int, shown:Array<T>} {
+		if (open || all.length <= SHOWN + 1) return {folded: 0, shown: all};
+		return {folded: all.length - SHOWN, shown: all.slice(all.length - SHOWN)};
 	}
-
-	// a tool's line: ✓ done, ✗ failed, ◌ running
-	public static function mark(status:String):String
-		return switch status {
-			case "completed": "✓";
-			case "failed": "✗";
-			case _: "◌";
-		}
 }
 
 // a place on the canvas a chip names

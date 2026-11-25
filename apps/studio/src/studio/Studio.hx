@@ -1905,7 +1905,7 @@ class Studio {
 		}
 		// (typed while a turn runs: a direction, the inbox's, not a prompt)
 		if (Turns.running(turnNow)) {
-			inbox.direct(p, talk.list().length - 1);
+			inbox.direct(p, talk.list().length - 1, turnNow.text.length);
 			log("directed", {text: p});
 			return;
 		}
@@ -1928,9 +1928,10 @@ class Studio {
 			if (ps.length > 0) t = Turns.broken(t, ps[0]);
 			setTurn(t);
 			answered = true;
-			// (the ACP agent's turn over: it is done, its marks fade)
+			// (the ACP agent's turn over: it is done, its marks fade; its calls to
+			// the MCP server are its too, a peer of its name)
 			for (x in presence.list())
-				if (x.working && x.id.startsWith("acp:")) presence.done(x.id, t.error ?? null);
+				if (x.working && (x.id.startsWith("acp:") || x.name == agentName())) presence.done(x.id, t.error ?? null);
 			log("replied", {prompt: p, reply: t.error ?? t.text, end: t.end, build: t.build});
 			// (the notes its tools did not carry: the next prompt, at once)
 			var notes = a == local ? [] : inbox.take();
@@ -1963,7 +1964,7 @@ class Studio {
 						asked = questions.permission(asker(), question, options, (picked, text) -> {
 							var i = picked.length == 0 ? -1 : Std.parseInt(picked[0]) ?? -1;
 							answer(i);
-							if (i < 0 && text != null) inbox.direct(text, talk.list().length - 1);
+							if (i < 0 && text != null) inbox.direct(text, talk.list().length - 1, turnNow?.text.length ?? 0);
 						}).id;
 					case _:
 				}

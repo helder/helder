@@ -8,6 +8,17 @@ import studio.Turn;
 // tool's updates merged into its row, the question gone once it ends
 function tests() {
 	describe("Turn", () -> {
+		test("a message after a tool call: its own paragraph", () -> {
+			var t = Turns.start("hi");
+			for (e in [Text("Checking it builds."), Text(" Then"), Tool("t1", "Build", "other", "completed"), Text("Court looks good.")])
+				t = Turns.add(t, e);
+			equals(t.text, "Checking it builds. Then\n\nCourt looks good.");
+		});
+		test("a reply split where notes were sent", () -> {
+			equals(Turns.split("abcdef", []), ["abcdef"]);
+			equals(Turns.split("abcdef", [2, 4]), ["ab", "cd", "ef"]);
+			equals(Turns.split("abc", [5]), ["abc", ""]);
+		});
 		test("events folded", () -> {
 			var t = Turns.start("hi");
 			for (e in [
@@ -15,7 +26,7 @@ function tests() {
 				Steps([{text: "edit", done: true}]), Ask("Allow?", ["Yes", "No"], _ -> {})
 			])
 				t = Turns.add(t, e);
-			equals(t.text, "Hello world");
+			equals(t.text, "Hello \n\nworld");
 			equals(t.tools, [{id: "t1", title: "Edit app.helder", kind: "edit", status: "completed"}]);
 			equals(t.ask.options, ["Yes", "No"]);
 			assert(Turns.running(t));

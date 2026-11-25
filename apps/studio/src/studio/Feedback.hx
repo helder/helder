@@ -167,7 +167,7 @@ class Feedback implements Markup {
 	static function halos(studio:Studio):Array<Peer>
 		return [for (p in studio.presence.peers()) if (p.screen != null && studio.layout.rect(p.screen) != null) p];
 
-	// (an agent whose frame is out of the view, a frame new and not seen yet:
+	// (an agent at work whose frame is out of the view, a frame new and not seen yet:
 	// a tab on the edge nearest it, along it at the frame's place)
 	static function edges(studio:Studio):Array<Edge> {
 		studio.camera.changed();
@@ -175,7 +175,7 @@ class Feedback implements Markup {
 		// (the view: the stage less what the panels cover)
 		var i = studio.insets(), cam = studio.camera, out:Array<Edge> = [];
 		var l = i.left, t = i.top, w = studio.stageWidth - i.right, h = studio.stageHeight - i.bottom;
-		var of = [for (p in studio.presence.peers()) if (p.screen != null) {key: p.id, text: '${p.name} · ${label(studio, p.screen)}', colour: p.colour, screen: p.screen}];
+		var of = [for (p in studio.presence.peers()) if (p.screen != null && p.working) {key: p.id, text: '${p.name} · ${label(studio, p.screen)}', colour: p.colour, screen: p.screen}];
 		for (n in studio.marks.fresh())
 			if (!Lambda.exists(of, o -> o.screen == n)) of.push({key: "new:" + n, text: 'New: ${label(studio, n)}', colour: studio.marks.lastColour ?? "#8b8b94", screen: n});
 		for (o in of) {

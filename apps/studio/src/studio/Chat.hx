@@ -17,9 +17,10 @@ using StringTools;
 // The chat column (the watched shell's, left of the canvas): each turn the
 // user's prompt in a bubble, then the agent's: its reply as Markdown (links
 // the studio knows as chips: Replies), its plan one dim line, "Thinking…"
-// while it thinks, its last tools as lines (the ones before folded), a
+// while it thinks, the files it changed (Undo; the ones before folded), a
 // failed build's row, its question as a card, what the user said while it
-// worked (the inbox's notes: "sent while working", then "seen"); at the
+// worked where it said it (the inbox's notes: "sent while working", then
+// "seen"; its tools are not shown: plumbing the user can't act on); at the
 // bottom the questions waiting (a quiet strip) and the input, with the
 // agent's chip (its menu a popup above it) and send, which while the agent
 // works is its mark, pulsing in its colour (a press stops it). Every input
@@ -30,7 +31,7 @@ class Chat implements Markup {
 		var follow = true;
 		effect(() -> {
 			var t = studio.talk.turns();
-			'${t.length} ${t.length == 0 ? 0 : t[t.length - 1].text.length + t[t.length - 1].tools.length} ${studio.questions.all().length} ${studio.questions.open().length} ${studio.inbox.notes().length} ${studio.marks.changes().length}';
+			'${t.length} ${t.length == 0 ? 0 : t[t.length - 1].text.length} ${studio.questions.all().length} ${studio.questions.open().length} ${studio.inbox.notes().length} ${studio.marks.changes().length}';
 		}, _ -> if (follow) toEnd());
 		return <view tag="chat" width={Theme.CHAT} shrink={0} background={c("chat")} border-width="0 1 0 0" border-color={c("hair")} min-height={0}
 			transition="fade slide-left(24)">
@@ -85,9 +86,13 @@ class Chat implements Markup {
 		return t.length > 0 && Turns.running(t[t.length - 1]);
 	}
 
+	// (in a row: its width settled before its height, which a column's
+	// item of a max-width measures at the column's width, one line short)
 	static function bubble(text:String):View
-		return <view tag="chat-you" align-self="flex-end" max-width={260} padding="8 12" radius={Theme.CARD} background={c("bubble")}>
-			<text color={c("ink")} font-size={Theme.CHAT_SIZE} line-height={1.55}>{text}</text>
+		return <view direction="row" justify="flex-end" align-self="stretch">
+			<view tag="chat-you" max-width={260} shrink={1} min-width={0} padding="8 12" radius={Theme.CARD} background={c("bubble")}>
+				<text color={c("ink")} font-size={Theme.CHAT_SIZE} line-height={1.55}>{text}</text>
+			</view>
 		</view>;
 
 	// a note the user sent while the agent worked: its bubble, marked; "seen" once delivered
@@ -109,7 +114,7 @@ class Chat implements Markup {
 			var all = studio.talk.turns();
 			return i < all.length ? all[i] : Turns.start("");
 		}
-		var steps = signal(false), tools = signal(false);
+		var steps = signal(false), changed = signal(false);
 		return <view tag={"chat-turn-" + i} row-gap={8}>
 			<Show when={t().prompt != ""}>{bubble(t().prompt)}</Show>
 			<Show when={t().steps.length > 0}>
@@ -122,36 +127,46 @@ class Chat implements Markup {
 					</Show>
 				</view>
 			</Show>
-			{reply(studio, t)}
-			<Show when={Turns.running(t()) && t().text == "" && t().tools.length == 0}>
+			{reply(studio, () -> Turns.split(t().text, notes(studio, i).map(n -> n.at))[0])}
+			<For each={notes(studio, i)} by={(n:Inbox.Note) -> n.id}>{(n:Read<Inbox.Note>) ->
+				<view row-gap={8}>
+					{note(n)}
+					{reply(studio, () -> after(t(), notes(studio, i), n().id))}
+				</view>
+			}</For>
+			<Show when={Turns.running(t()) && t().text == ""}>
 				<view tag="chat-thinking" direction="row" align-items="center" column-gap={8}>
 					<view tag="chat-thinking-mark" width={8} height={8} radius={4} background={Color.parse(studio.agentColour())}
 						ref={(n:Node) -> Watch.pulse(n, () -> Turns.running(t()))}/>
 					<text color={c("dim")} font-size={12}>{studio.agentStarting() ? 'Starting ${studio.agentName()}…' : t().thought != "" ? "Thinking…" : ""}</text>
 				</view>
 			</Show>
-			<Show when={t().tools.length > 0}>
-				<view tag="chat-tools" row-gap={4} font-family={Theme.CODE} font-size={Theme.SMALL} color={c("ink3")}>
-					<Show when={Replies.tools(t().tools, tools()).folded > 0}>
-						<text tag="chat-tools-folded" font-family={Theme.UI} font-size={12} cursor="pointer" onClick={_ -> tools(true)}>{
-							'Made ${Replies.tools(t().tools, false).folded} changes ▸'
-						}</text>
-					</Show>
-					<For each={Replies.tools(t().tools, tools()).shown} by={(x:{id:String, title:String, kind:String, status:String}) -> x.id}>{
-						(x:Read<{id:String, title:String, kind:String, status:String}>) ->
-						<view tag={"chat-tool-" + x().id} direction="row" column-gap={6}
-							color={x().status == "failed" ? c("red") : x().status != "completed" && Turns.running(t()) ? Color.parse(studio.agentColour()) : c("ink3")}>
-							<text shrink={0}>{Turns.running(t()) || x().status == "completed" || x().status == "failed" ? Replies.mark(x().status) : "·"}</text>
-							<text grow={1} min-width={0} max-lines={1} text-overflow="ellipsis">{x().title}</text>
-						</view>
-					}</For>
-				</view>
-			</Show>
 			<Show when={t().build != null || t().error != null}>{failure(studio, t)}</Show>
-			<For each={studio.marks.changes().filter(c -> c.turn == i)} by={(c:Marks.Changed) -> c.id}>{(c:Read<Marks.Changed>) -> change(studio, c)}</For>
+			<Show when={Replies.fold(changes(studio, i), changed()).folded > 0}>
+				<text tag="chat-changes-folded" font-size={12} color={c("ink3")} cursor="pointer" onClick={_ -> changed(true)}>{
+					'Made ${changes(studio, i).length} changes ▸'
+				}</text>
+			</Show>
+			<For each={Replies.fold(changes(studio, i), changed()).shown} by={(c:Marks.Changed) -> c.id}>{(c:Read<Marks.Changed>) -> change(studio, c)}</For>
 			<For each={studio.questions.all().filter(q -> q.turn == i)} by={(q:Questions.Question) -> q.id}>{(q:Read<Questions.Question>) -> Asks.card(studio, q)}</For>
-			<For each={studio.inbox.notes().filter(n -> n.turn == i && n.kind == "direction")} by={(n:Inbox.Note) -> n.id}>{(n:Read<Inbox.Note>) -> note(n)}</For>
 		</view>;
+	}
+
+	// (the reply's part after a note, to the next one)
+	static function after(t:Turn, notes:Array<Inbox.Note>, id:Int):String {
+		var k = Lambda.findIndex(notes, n -> n.id == id);
+		return k < 0 ? "" : Turns.split(t.text, notes.map(n -> n.at))[k + 1];
+	}
+
+	// (a turn's changes: one a file)
+	static function changes(studio:Studio, i:Int):Array<Marks.Changed>
+		return studio.marks.changes().filter(c -> c.turn == i);
+
+	// (the directions sent during a turn, in the order of their places in its reply)
+	static function notes(studio:Studio, i:Int):Array<Inbox.Note> {
+		var out = studio.inbox.notes().filter(n -> n.turn == i && n.kind == "direction");
+		out.sort((a, b) -> a.at - b.at);
+		return out;
 	}
 
 	// an agent's edits of a file: "Changed app.helder · Undo" (Undo while its last is the one undo takes)
@@ -166,7 +181,7 @@ class Chat implements Markup {
 		</view>;
 
 	// the reply's Markdown, kept as it streams (MarkdownView.update), its chips the studio's
-	static function reply(studio:Studio, t:Void->Turn):MarkdownView {
+	static function reply(studio:Studio, text:Void->String):MarkdownView {
 		var dir = studio.project?.dir;
 		var v = new MarkdownView({
 			doc: Markdown.parse(""),
@@ -177,7 +192,7 @@ class Chat implements Markup {
 			linkSlot: href -> Replies.chip(href, dir)
 		});
 		v.tag = "chat-reply";
-		effect(() -> t().text, text -> v.update(Replies.parse(text, dir, f -> Files.exists(f) && !Files.isDirectory(f))));
+		effect(() -> text(), s -> v.update(Replies.parse(s, dir, f -> Files.exists(f) && !Files.isDirectory(f))));
 		return v;
 	}
 

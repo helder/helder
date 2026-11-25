@@ -3,7 +3,8 @@
 // agents speak it. Prompts: "ask" asks a question of several picks over
 // the studio's MCP server (studio.ask, as an MCP agent named claude-code);
 // "work" streams a plan, a thought, a Markdown
-// reply with chips and five tool calls (the last running), then waits for
+// reply with chips and five tool calls (the last running), a message after
+// them, then waits for
 // session/cancel; "think" only thinks, until session/cancel; "pulse" calls a tool every
 // 600 ms, ten times, then waits for session/cancel; "The user says…" (the inbox's notes) is noted; "markdown" streams a Markdown reply in small
 // chunks; "edit" streams text, a thought, a tool call, a
@@ -76,6 +77,9 @@ async function prompt(id, p) {
     tools.forEach((title, k) => {
       update(s, {sessionUpdate: 'tool_call', toolCallId: 'w' + k, title, kind: 'edit', status: k < tools.length - 1 ? 'completed' : 'in_progress'})
     })
+    // (a message of its own after the tools: a paragraph of its own, after a note sent meanwhile)
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    update(s, {sessionUpdate: 'agent_message_chunk', content: {type: 'text', text: 'The list looks right.'}})
     await new Promise(resolve => (cancelled = resolve))
     send({id, result: {stopReason: 'cancelled'}})
     return
