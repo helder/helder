@@ -43,7 +43,7 @@ class Watch implements Markup {
 
 	// a blank sheet: nothing on the canvas, nothing asked yet
 	public static function blank(studio:Studio):Bool
-		return studio.talk.turns().length == 0 && studio.layout.screens().length == 0;
+		return studio.talk.turns().length == 0 && (studio.layout.screens().length == 0 || studio.starter);
 
 	static function header(studio:Studio):View
 		return <view tag="header" drag-region height={Theme.HEADER} shrink={0} direction="row" align-items="center" column-gap={8}

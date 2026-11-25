@@ -166,6 +166,13 @@ class Marks {
 		wake();
 	}
 
+	// frames shown now that were there before (the blank sheet's, unveiled by the first prompt): risen into place
+	public function rise(names:Array<String>) {
+		var t = Clock.now, k = 0;
+		arrivals(arrivalList = arrivalList.concat([for (n in names) {screen: n, at: t + STAGGER * k++}]));
+		wake();
+	}
+
 	// (a program's screen's tree asked: the nodes whose markup the edit made)
 	function find(w:Wait, name:String) {
 		var pr = studio.previews, p = studio.project, s = pr?.screen(name);

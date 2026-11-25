@@ -121,6 +121,11 @@ class Tools implements Mcp.Target {
 			}
 		},
 		{
+			name: "studio.guide",
+			description: "How to build here, fast: the project's files, screens as stories, sketching on the canvas, and the TypeScript APIs a topic needs (start, ui, game, design, assets). Call it instead of exploring the repository: start first, then the topic you need.",
+			inputSchema: {type: "object", properties: {topic: {type: "string", description: "start (the default), ui, game, design, assets"}}}
+		},
+		{
 			name: "studio.inbox",
 			description: "What the user said since you last heard (answers to your questions, direction typed while you work). It also arrives appended to every tool result.",
 			inputSchema: {type: "object", properties: {}}
@@ -172,6 +177,7 @@ class Tools implements Mcp.Target {
 				if (agent != null) studio.presence.done(agent, args.note);
 				text("ok");
 			case "studio.ask": text(Json.stringify(ask(args, agent), "  "));
+			case "studio.guide": text(Guides.get(args.topic));
 			case "studio.inbox":
 				var notes = studio.inbox.take();
 				text(notes.length == 0 ? "Nothing new from the user." : Inbox.text(notes));
@@ -248,10 +254,17 @@ class Tools implements Mcp.Target {
 
 	@:coroutine function patch(args:Dynamic, agent:Null<String>):Dynamic {
 		var f = path(args.path);
-		var doc = studio.docs.get(f);
-		var base = doc.text, changes = [];
 		// (a whole text sent beside edits is an agent's slip: it once wiped a file)
 		if (args.text != null && args.edits != null) throw "text or edits, not both";
+		var by = agent == null ? null : studio.presence.peer(agent)?.name;
+		// (a file not there yet: made by its text, through the history: undone, it is gone)
+		if (!studio.docs.has(f)) {
+			if (args.text == null) throw '${args.path}: no such file; send text to create it';
+			studio.create(f, args.text, by);
+			return landed();
+		}
+		var doc = studio.docs.get(f);
+		var base = doc.text, changes = [];
 		if (args.text != null) changes.push(new helder.syntax.Transaction.Change(0, base.length, args.text));
 		else {
 			var edits:Array<Dynamic> = args.edits ?? [];
@@ -263,13 +276,16 @@ class Tools implements Mcp.Target {
 				changes.push(new helder.syntax.Transaction.Change(at, at + old.length, Reflect.field(e, "new")));
 			}
 		}
-		var pr = studio.previews;
-		var before = pr == null ? 0 : pr.buildMs.peek();
 		var tx = new Transaction(changes, null, base);
-		var by = agent == null ? null : studio.presence.peer(agent)?.name;
 		// (the agent there and its marks: Studio.agentEdited, by its name)
 		studio.edit(f, tx, rel(f), "agent", null, by);
-		// (its way to the program: a patch at once, a build waited for)
+		return landed();
+	}
+
+	// (an edit's way to the program, waited for: a patch at once, a build;
+	// the program the project's now: a file made may have brought it)
+	@:coroutine function landed():Dynamic {
+		var pr = studio.previews;
 		var t0 = haxe.Timer.stamp();
 		Async.delay(0.02);
 		while (pr != null && pr.busy() && haxe.Timer.stamp() - t0 < 120) Async.delay(0.02);

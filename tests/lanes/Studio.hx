@@ -155,6 +155,7 @@ class Studio {
 			'$NODE ${FileSystem.fullPath("tests/studio/acp-agent.mjs")}', "--events", '$b/acp.jsonl'
 		]);
 		studioStories(h, b);
+		studioStart(h, b);
 		exe('$b/Check', cps(["src", "tests/studio"]).concat(["-main", "Check"]));
 		run(exePath('$b/Check', HOST), [b].concat(BLESS ? ["--bless"] : []));
 	}
@@ -165,49 +166,11 @@ class Studio {
 	// (project.patch), a story file written on disk, a type error in app.tsx
 	// and its fix; Check reads the events)
 	static function studioStories(h:String, b:String) {
-		var dir = '$b/stories', hold = '$b/stories.hold';
+		var dir = '$b/stories';
 		copy('examples/ts-todo', dir);
 		run("git", ["init", "-q", "-b", "studio", dir]);
-		File.saveContent(hold, "");
-		var p = new Process(h, [
-			"run", "--headless", "apps/studio", "--script", "tests/studio/stories.json", "--size", "1180x740", "--snap", '$b/stories-end.png', "--at",
-			"mark:end", "--", dir, "--classic", "--events", '$b/stories.jsonl', "--hold-while", hold
-		]);
-		var url:Null<String> = null;
-		function drain(i:haxe.io.Input)
-			sys.thread.Thread.create(() -> try while (true) {
-				var l = i.readLine();
-				Sys.println(l);
-				var at = l.indexOf("studio: MCP at ");
-				if (at >= 0) url = l.substr(at + 15).split(" ")[0];
-			} catch (_:Dynamic) {});
-		drain(p.stdout);
-		drain(p.stderr);
-		function events(name:String):Array<Dynamic>
-			return try [for (l in File.getContent('$b/stories.jsonl').split("\n")) if (l.indexOf('"event":"$name"') >= 0) haxe.Json.parse(l)] catch (_:Dynamic) [];
-		function until(what:String, done:Void->Bool) {
-			var t0 = Sys.time();
-			while (!done()) {
-				if (Sys.time() - t0 > 300) throw new Failed('studio: stories: no $what in 300 s');
-				Sys.sleep(0.2);
-			}
-		}
-		function call(tool:String, args:Dynamic):String {
-			var http = new sys.Http(url);
-			http.cnxTimeout = 300;
-			http.setHeader("content-type", "application/json");
-			http.setPostData(haxe.Json.stringify({jsonrpc: "2.0", id: 1, method: "tools/call", params: {name: tool, arguments: args}}));
-			var out = "";
-			http.onData = d -> out = d;
-			http.onError = e -> throw new Failed('studio: stories: $tool: $e');
-			http.request(true);
-			var r:Dynamic = haxe.Json.parse(out);
-			var text:String = r.result.content[0].text;
-			Sys.println('studio: stories: $tool: ' + text.split("\n").join(" ").substr(0, 200));
-			return text;
-		}
-		try {
-			until("first build", () -> url != null && events("all-shown").length > 0);
+		held(h, b, "stories", dir, ["--classic"], (call, events, until) -> {
+			until("first build", () -> events("all-shown").length > 0);
 			var story = File.getContent('$dir/app.story.tsx'), app = File.getContent('$dir/app.tsx');
 			// (the exports renamed, a story renamed, one added)
 			call("project.patch", {
@@ -223,7 +186,68 @@ class Studio {
 			// (a type error, then its fix)
 			call("project.patch", {path: "app.tsx", text: app + 'export const broken: number = "not a number";\n'});
 			call("project.patch", {path: "app.tsx", text: app});
-		} catch (e:Dynamic) {
+		});
+	}
+
+	// (an empty folder opened in the studio's own shell: the starter written,
+	// its screen built and shown after the first prompt (the script's /tree);
+	// studio.guide's topics answered; Check reads the events)
+	static function studioStart(h:String, b:String) {
+		var dir = '$b/start';
+		mkdirs(dir);
+		held(h, b, "start", dir, [], (call, events, until) -> {
+			until("the starter's first build", () -> events("all-shown").length > 0);
+			var start = call("studio.guide", {}), game = call("studio.guide", {topic: "game"});
+			if (!start.startsWith("# Start") || start.indexOf("Topics (studio.guide {topic}): start:") < 0) throw new Failed('studio: start: studio.guide {}: ${start.substr(0, 80)}');
+			if (!game.startsWith("# Game") || game.indexOf("Clock.add") < 0) throw new Failed('studio: start: studio.guide {topic: "game"}: ${game.substr(0, 80)}');
+		});
+	}
+
+	// (the studio held open (--hold-while) on dir, its script tests/studio/<name>.json, the
+	// end snapped to <b>/<name>-end.png, its events in <b>/<name>.jsonl, driven over its MCP
+	// server by body; then let go to finish its script)
+	static function held(h:String, b:String, name:String, dir:String, flags:Array<String>,
+			body:(call:(String, Dynamic) -> String, events:String->Array<Dynamic>, until:(String, Void->Bool) -> Void) -> Void) {
+		var hold = '$b/$name.hold';
+		File.saveContent(hold, "");
+		var p = new Process(h, [
+			"run", "--headless", "apps/studio", "--script", 'tests/studio/$name.json', "--size", "1180x740", "--snap", '$b/$name-end.png', "--at",
+			"mark:end", "--", dir
+		].concat(flags).concat(["--events", '$b/$name.jsonl', "--hold-while", hold]));
+		var url:Null<String> = null;
+		function drain(i:haxe.io.Input)
+			sys.thread.Thread.create(() -> try while (true) {
+				var l = i.readLine();
+				Sys.println(l);
+				var at = l.indexOf("studio: MCP at ");
+				if (at >= 0) url = l.substr(at + 15).split(" ")[0];
+			} catch (_:Dynamic) {});
+		drain(p.stdout);
+		drain(p.stderr);
+		function events(e:String):Array<Dynamic>
+			return try [for (l in File.getContent('$b/$name.jsonl').split("\n")) if (l.indexOf('"event":"$e"') >= 0) haxe.Json.parse(l)] catch (_:Dynamic) [];
+		function until(what:String, done:Void->Bool) {
+			var t0 = Sys.time();
+			while (url == null || !done()) {
+				if (Sys.time() - t0 > 300) throw new Failed('studio: $name: no $what in 300 s');
+				Sys.sleep(0.2);
+			}
+		}
+		function call(tool:String, args:Dynamic):String {
+			var http = new sys.Http(url);
+			http.cnxTimeout = 300;
+			http.setHeader("content-type", "application/json");
+			http.setPostData(haxe.Json.stringify({jsonrpc: "2.0", id: 1, method: "tools/call", params: {name: tool, arguments: args}}));
+			var out = "";
+			http.onData = d -> out = d;
+			http.onError = e -> throw new Failed('studio: $name: $tool: $e');
+			http.request(true);
+			var r:Dynamic = haxe.Json.parse(out);
+			var text:String = r.result.content[0].text;
+			Sys.println('studio: $name: $tool: ' + text.split("\n").join(" ").substr(0, 200));
+			return text;
+		}
+		try body(call, events, until) catch (e:Dynamic) {
 			try sys.FileSystem.deleteFile(hold) catch (_:Dynamic) {}
 			p.kill();
 			throw e;
@@ -231,7 +255,7 @@ class Studio {
 		sys.FileSystem.deleteFile(hold);
 		var code = p.exitCode();
 		p.close();
-		if (code != 0) throw new Failed('studio: stories: the studio ended with $code');
+		if (code != 0) throw new Failed('studio: $name: the studio ended with $code');
 	}
 
 	// the demos' stills: [name, entry, script or "", the program's arguments, times (seconds or mark:<name>)]

@@ -191,11 +191,8 @@ class AcpAgent implements Agent {
 	function write(p:Dynamic):Dynamic {
 		var f = inside(p?.path);
 		var text:String = p.content ?? "";
-		if (!Files.exists(f)) {
-			#if !(hxmc.target == "wasm32-wasi")
-			sys.FileSystem.createDirectory(haxe.io.Path.directory(f));
-			#end
-			Files.save(f, text);
+		if (!work.docs.has(f)) {
+			work.docs.create(f, text, rel(f), "agent", Presence.name(command.name));
 			return null;
 		}
 		var d = work.docs.get(f);

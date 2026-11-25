@@ -25,6 +25,10 @@ class Docs {
 	// told after each change of a file's text: the file, the transaction (against its text before), who made it
 	public var onChange:Null<(file:String, tx:Transaction, origin:String) -> Void> = null;
 
+	// told when a file an edit made is gone again (its undo): the file deleted, the project told
+	public var onGone:Null<String->Void> = null;
+	// (the files made, then undone: not there)
+	final gone:Array<String> = [];
 	public function new() {}
 
 	// a file's current state (read from disk the first time)
@@ -49,10 +53,26 @@ class Docs {
 		if (group != null && last != null && last.group == group && last.file == path && last.by == by) {
 			last.tx = last.tx.then(tx, last.before);
 			last.after = f.text;
-		} else undos.push({file: path, tx: tx, label: label, group: group, by: by, before: before, after: f.text});
+		} else undos.push({file: path, tx: tx, label: label, group: group, by: by, before: before, after: f.text, created: false});
 		redos.resize(0);
 		changed(path, tx, origin);
 	}
+
+	// a file made (not there yet): its text an edit of nothing, its undo the
+	// file gone again (onGone), its redo made again
+	public function create(path:String, text:String, label:String, origin:String, ?by:String) {
+		var f = new OpenFile(path, "");
+		files.set(path, f);
+		var tx = new Transaction([new Change(0, 0, text)], null, "");
+		f.set(text);
+		undos.push({file: path, tx: tx, label: label, group: null, by: by, before: "", after: text, created: true});
+		redos.resize(0);
+		changed(path, tx, origin);
+	}
+
+	// whether a file is one the studio has (open, or on disk)
+	public function has(path:String):Bool
+		return files.exists(path) && !gone.contains(path) || Files.exists(path);
 
 	// the last edit undone (null: none)
 	public function undo():Null<Entry> {
@@ -63,6 +83,10 @@ class Docs {
 		f.set(e.before);
 		redos.push(e);
 		changed(e.file, back, "undo");
+		if (e.created) {
+			gone.push(e.file);
+			if (onGone != null) onGone(e.file);
+		}
 		return e;
 	}
 
@@ -73,6 +97,7 @@ class Docs {
 		var tx = new Transaction(e.tx.changes, null, f.text);
 		f.set(e.after);
 		undos.push(e);
+		gone.remove(e.file);
 		changed(e.file, tx, "redo");
 		return e;
 	}
@@ -149,4 +174,6 @@ typedef Entry = {
 	// the file's text before and after it
 	before:String,
 	after:String,
+	// it made the file (Docs.create: undone, the file gone)
+	created:Bool,
 }

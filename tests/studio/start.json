@@ -1,0 +1,7 @@
+{"events": [
+  {"t": 0.3, "type": "mark", "name": "blank"},
+  {"t": 0.4, "type": "tap", "tag": "prompt"},
+  {"t": 0.5, "type": "type", "text": "/tree"},
+  {"t": 0.6, "type": "key", "name": "Enter"},
+  {"t": 2.0, "type": "mark", "name": "end"}
+]}

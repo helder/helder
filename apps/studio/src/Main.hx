@@ -59,7 +59,7 @@ class Main implements Markup {
 			.bind("shift-1", studio.Shell.StudioAction.FitAll)
 			.bind("shift-2", studio.Shell.StudioAction.FitSelection)
 			.bind("secondary-b", studio.Shell.StudioAction.Chat);
-		var s = new Studio(dir, {events: events, mcpPort: port, holdWhile: holdWhile, cover: cover, agent: agent, classic: classic});
+		var s = new Studio(dir, {events: events, mcpPort: port, holdWhile: holdWhile, cover: cover, agent: agent, classic: classic, starter: !classic && cover == null});
 		#if !(hxmc.target == "wasm32-wasi")
 		// (an error of the studio's own out of an event or a frame: shown, the studio going on; in the
 		// browser the module ends instead, its page showing its frames, which a WebAssembly catch has not)

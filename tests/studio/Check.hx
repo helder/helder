@@ -43,6 +43,8 @@ using StringTools;
 // dragged from the tree onto the Home frame (an <image src> of its path,
 // its size the image's); a file dropped from the system on the assets
 // folder's row copied into it.
+// Then an empty folder in the studio's own shell (studioStart): the starter
+// written, its one screen built and shown once the first prompt is answered.
 // Then a story file changed under the studio (tests/Run.hx's studioStories:
 // a copy of examples/ts-todo driven over MCP): its exports renamed, a story
 // renamed and one added, the screens following them, built, the new one
@@ -87,6 +89,7 @@ class Check {
 		files(File.getContent("tests/studio/design/app.helder"), File.getContent('$dir/files/app.helder'), events('$dir/files.jsonl'), '$dir/files');
 		acp(events('$dir/acp.jsonl'));
 		stories(events('$dir/stories.jsonl'));
+		start(events('$dir/start.jsonl'));
 		Sys.println("studio: | | cold start to first frame | open to all screens shown | inspector change to the program's frame |");
 		for (r in rows) Sys.println('studio: | ${r.app} | ${r.first} ms | ${r.shown} ms | ${r.patch} ms (${r.frames} studio frame(s)) |');
 		Sys.println('studio: $checks checks' + (failed == 0 ? ", ok" : ', $failed FAILED'));
@@ -163,6 +166,16 @@ class Check {
 		check('free: Play runs the selected story in the studio', play != null && play.kind == "story" && play.screen == "Todo/Three items" && play.target == "studio", Json.stringify(play));
 		check('free: a tap in the player is the story\'s (Call Ana removed), Escape stops',
 			stopped != null && (stopped.texts : Array<String>).contains("Buy milk") && !(stopped.texts : Array<String>).contains("Call Ana"), Json.stringify(stopped));
+	}
+
+	static function start(ev:Array<Dynamic>) {
+		function all(name:String):Array<Dynamic>
+			return [for (e in ev) if (e.event == name) e];
+		check('start: an empty folder: the starter written', all("starter").length == 1, Json.stringify(all("starter")));
+		var shown:Dynamic = all("all-shown")[0];
+		check('start: its one screen built and shown', shown != null && shown.screens == 1, Json.stringify(shown));
+		var replied:Dynamic = all("replied")[0];
+		check('start: the first prompt answered (the blank sheet gone)', replied != null && (replied.reply : String).startsWith("run.tree: {"), Json.stringify(replied));
 	}
 
 	static function stories(ev:Array<Dynamic>) {
