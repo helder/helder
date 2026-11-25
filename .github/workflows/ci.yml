@@ -771,6 +771,8 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with: {name: text-windows, path: "bin/text/*.png", retention-days: 7, if-no-files-found: ignore}
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
+        uses: ./.github/actions/save
 
   # main's module caches: every job's files (.github/actions/save) laid over
   # the OS's last entry, trimmed by hxmc (least recently used first, past
@@ -799,6 +801,7 @@ jobs:
         uses: ./.github/actions/key
       - uses: actions/download-artifact@v7
         if: steps.setup.outputs.save == 'true'
+        continue-on-error: true
         with: {pattern: 'modules-${{ runner.os }}-*', path: '${{ runner.temp }}/modules'}
       - id: merge
         if: steps.setup.outputs.save == 'true'
@@ -806,6 +809,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           # (relative names: Windows' tar takes D:\ for a remote host)
+          [ -d "$RUNNER_TEMP/modules" ] || { echo "no job handed over a module cache"; exit 0; }
           cd "$RUNNER_TEMP/modules"
           for t in */modules.tar; do tar -C ~ -xf "$t"; done
           cd ~
@@ -847,8 +851,6 @@ jobs:
 
   # The required jobs' verdict, always reported: a skipped job (a change to
   # the docs alone) passes, a failed or cancelled one fails it.
-      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
-        uses: ./.github/actions/save
 
   ci:
     needs: [changes, headless, typescript, examples, site, site-check]
