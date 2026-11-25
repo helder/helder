@@ -6,6 +6,7 @@ import helder.story.Story;
 import helder.ui.*;
 import helder.ui.draw.*;
 import helder.view.*;
+import helder.async.Errors;
 
 // The screenshots of the stories with store: true, the one place an app's
 // screenshots come from: the stores' and helder.run's. Each rendered
@@ -181,10 +182,10 @@ class StoreShots implements Markup {
 			// (what it runs stopped, its GPU targets freed: a <Scene>'s)
 			dispose();
 			helder.image.PngEncoder.encode(pixels, width, height, true);
-		}) catch (e:Dynamic) {
+		}) catch (e:haxe.Exception) {
 			Ui.now = now;
 			device.frameInto(null);
-			throw e;
+			throw Errors.kept(e);
 		}
 		Ui.now = now;
 		device.frameInto(null);

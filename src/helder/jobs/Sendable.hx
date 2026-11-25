@@ -250,6 +250,8 @@ class Sendable {
 		} else {
 			var void = isVoid(ret);
 			var call = args.length == 1 ? macro @:privateAccess $fpath(${read(args[0].t, macro r)}) : macro @:privateAccess $fpath();
+			// (the call at the job's own function: inlined, a stack names it there, not here)
+			call = {expr: call.expr, pos: cf.pos};
 			var body = if (void) macro {
 				$call;
 				0;
@@ -288,7 +290,7 @@ class Sendable {
 					return try {
 						$head;
 						$body;
-					} catch (e:Dynamic) helder.jobs.Jobs.failed(job, e);
+					} catch (e:haxe.Exception) helder.jobs.Jobs.failed(job, e);
 				}
 
 				// (the entry's address, as a number)

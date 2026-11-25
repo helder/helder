@@ -1,6 +1,7 @@
 package helder.os.android;
 
 import hxmc.unsafe.*;
+import helder.async.Errors;
 
 @:hxmc.android
 @:hxmc.unsafe(gc)
@@ -65,9 +66,9 @@ class AndroidLocale {
 		var value = fallback;
 		MainThread.run(() -> {
 			Jni.pushFrame();
-			try value = fn() catch (error:Dynamic) {
+			try value = fn() catch (error:haxe.Exception) {
 				Jni.popFrame();
-				throw error;
+				throw Errors.kept(error);
 			}
 			Jni.popFrame();
 		});

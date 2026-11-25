@@ -2,6 +2,7 @@ package helder.pdf;
 
 import haxe.io.Bytes;
 import helder.pdf.PdfValue;
+import helder.async.Errors;
 
 // A PDF file read (after leanpdf's core: its xref, reader and recovery):
 // the cross-reference table or stream at startxref and those it chains to
@@ -43,7 +44,7 @@ class Document {
 		try {
 			readXref();
 		} catch (e:PdfError) {
-			if (e.kind == TooLarge) throw e;
+			if (e.kind == TooLarge) throw Errors.kept(e);
 			repairReason = e.message;
 			recover();
 		}
@@ -278,7 +279,7 @@ class Document {
 			}
 		} catch (e:PdfError) {
 			loading.remove(n);
-			if (e.kind == TooLarge) throw e;
+			if (e.kind == TooLarge) throw Errors.kept(e);
 			v = PNull;
 		}
 		loading.remove(n);

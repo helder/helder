@@ -1,5 +1,6 @@
 package helder.dev;
 
+import helder.async.Errors;
 #if macro
 import haxe.macro.Context;
 import haxe.macro.Expr;
@@ -163,9 +164,9 @@ class Hot {
 			var r = f();
 			frame = saved;
 			return r;
-		} catch (e:Dynamic) {
+		} catch (e:haxe.Exception) {
 			frame = saved;
-			throw e;
+			throw Errors.kept(e);
 		}
 	}
 
@@ -179,9 +180,9 @@ class Hot {
 			var r = f();
 			frame = saved;
 			return r;
-		} catch (e:Dynamic) {
+		} catch (e:haxe.Exception) {
 			frame = saved;
-			throw e;
+			throw Errors.kept(e);
 		}
 	}
 

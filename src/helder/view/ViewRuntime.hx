@@ -141,11 +141,11 @@ class ViewRuntime {
 	static function mountIn(home:Null<helder.view.graph.Owner>, content:Dynamic, parent:HostNode, anchor:Null<HostNode>):helder.view.Mounted.Shown<HostNode> {
 		var o = new helder.view.graph.Owner(home);
 		var nodes:Array<HostNode> = [];
-		try helder.view.graph.Graph.runWithOwner(o, () -> insertTo(content, parent, anchor, nodes)) catch (e:Dynamic) {
+		try helder.view.graph.Graph.runWithOwner(o, () -> insertTo(content, parent, anchor, nodes)) catch (e:haxe.Exception) {
 			o.dispose();
 			for (n in nodes)
 				detach(parent, n);
-			throw e;
+			throw helder.async.Errors.kept(e);
 		}
 		return new helder.view.Mounted.Shown(o, nodes);
 	}
@@ -489,11 +489,11 @@ class ViewRuntime {
 		c.nodes.resize(0);
 		c.attached = true;
 		var made:Array<HostNode> = [];
-		try helder.view.graph.Graph.untrack(() -> insertTo(content, parent, c.anchor, made)) catch (e:Dynamic) {
+		try helder.view.graph.Graph.untrack(() -> insertTo(content, parent, c.anchor, made)) catch (e:haxe.Exception) {
 			hide(c);
 			c.nodes.resize(0);
 			c.attached = true;
-			throw e;
+			throw helder.async.Errors.kept(e);
 		}
 	}
 
@@ -522,9 +522,9 @@ class ViewRuntime {
 			anchor:HostNode):helder.view.Mounted.Shown<HostNode> {
 		var saved = fallbackOf;
 		fallbackOf = c;
-		var s = try mountIn(home, content, parent, anchor) catch (e:Dynamic) {
+		var s = try mountIn(home, content, parent, anchor) catch (e:haxe.Exception) {
 			fallbackOf = saved;
-			throw e;
+			throw helder.async.Errors.kept(e);
 		}
 		fallbackOf = saved;
 		return s;

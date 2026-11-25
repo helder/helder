@@ -3,6 +3,7 @@ package helder.os.android;
 import helder.os.android.Jni;
 import helder.os.android.Native;
 import hxmc.unsafe.*;
+import helder.async.Errors;
 
 // Gamepads on Android: the input queue's events of a gamepad or joystick
 // source (AndroidWindow hands them here once Gamepads is enabled: no UI
@@ -153,9 +154,9 @@ class AndroidGamepads {
 			lock.acquire();
 			checked = {all: all, pads: pads};
 			lock.release();
-		} catch (e:Dynamic) {
+		} catch (e:haxe.Exception) {
 			Jni.popFrame();
-			throw e;
+			throw Errors.kept(e);
 		}
 		Jni.popFrame();
 	}

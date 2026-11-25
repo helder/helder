@@ -6,6 +6,7 @@ import helder.os.Places.Place;
 import helder.os.Places.Volume;
 import helder.os.windows.FileOpenDialog.Shell32Com;
 import hxmc.unsafe.*;
+import helder.async.Errors;
 
 @:hxmc.unsafe(gc)
 class WinPlaces {
@@ -70,9 +71,9 @@ class WinPlaces {
 			var result = read();
 			if (apartment >= 0) Shell32Com.CoUninitialize();
 			return result;
-		} catch (e:Dynamic) {
+		} catch (e:haxe.Exception) {
 			if (apartment >= 0) Shell32Com.CoUninitialize();
-			throw e;
+			throw Errors.kept(e);
 		}
 	}
 

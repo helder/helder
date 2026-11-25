@@ -8,6 +8,7 @@ import helder.async.*;
 import helder.async.http.Client.Reply;
 import helder.async.http.Client.RequestOptions;
 import hxmc.unsafe.*;
+import helder.async.Errors;
 
 // Client.request on Windows: WinHTTP (the system's TLS, Schannel, its
 // certificate store and proxies, HTTP/2), asynchronous: its callbacks come on
@@ -93,7 +94,7 @@ class Http {
 			}
 		} catch (e:Exception) {
 			close();
-			throw e;
+			throw Errors.kept(e);
 		}
 		close();
 		return new Reply(status, map, chunks.getBytes());
@@ -249,7 +250,7 @@ class WinWebSocket {
 			WinHttpApi.WinHttpCloseHandle(req);
 			WinHttpApi.WinHttpCloseHandle(conn);
 			LibC.free(ctx);
-			throw e;
+			throw Errors.kept(e);
 		}
 		WinHttpApi.WinHttpSetStatusCallback(req, Ptr.nil(), 0, 0);
 		WinHttpApi.WinHttpCloseHandle(req);
@@ -299,7 +300,7 @@ class WinWebSocket {
 			if (e != WRITE) throw new Exception('WebSocket: WinHTTP failed (${Mem.getI32(ctx, SEND + Http.ERROR)})');
 		} catch (e:Exception) {
 			lock.release();
-			throw e;
+			throw Errors.kept(e);
 		}
 		lock.release();
 	}

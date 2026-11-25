@@ -7,6 +7,7 @@ import helder.pdf.Interpreter;
 import helder.pdf.Pdf;
 import helder.pdf.PdfError;
 import helder.pdf.PdfValue;
+import helder.async.Errors;
 
 // helder.pdf on the web back end with the browser decoding its JPEGs
 // (helder.canvas.web.BrowserImages): prepare(page, scale, done) finds the
@@ -38,7 +39,7 @@ class PdfWeb {
 			it.run(page.contents(), page.resources);
 			it.annotations(page.dict.get("Annots"), page.resources);
 		} catch (e:PdfError) {
-			if (e.kind == TooLarge) throw e;
+			if (e.kind == TooLarge) throw Errors.kept(e);
 		}
 		var seen = new Map<String, Bool>(), keys = [], requests = [];
 		for (f in found) {

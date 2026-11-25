@@ -42,11 +42,8 @@ class MainThread {
 			f();
 			return;
 		}
-		var error:Dynamic = null, failed = false;
-		var mine = enqueue(() -> try f() catch (e:Dynamic) {
-			error = e;
-			failed = true;
-		});
+		var error:Null<haxe.Exception> = null;
+		var mine = enqueue(() -> try f() catch (e:haxe.Exception) error = e);
 		while (true) {
 			lock.acquire();
 			var done = finished >= mine;
@@ -54,7 +51,7 @@ class MainThread {
 			if (done) break;
 			AndroidWindow.pump(-1, null);
 		}
-		if (failed) throw error;
+		if (error != null) throw helder.async.Errors.carried(error);
 	}
 
 	// runs f on the main thread later

@@ -7,6 +7,7 @@ import helder.pack.Jwt;
 import helder.pack.apple.Identity.PrivateKey;
 import sys.FileSystem;
 import sys.io.File;
+import helder.async.Errors;
 
 using StringTools;
 
@@ -484,9 +485,9 @@ class Publish {
 					throw 'Google Play has no $lang listing, and would keep no screenshots of it: listing.title, summary and description for $lang (or --locale)';
 				changes = changes.concat(Listing.playImages(api, pkg, edit, token, lang, dir, android, dry));
 			}
-		} catch (err:Dynamic) {
+		} catch (err:haxe.Exception) {
 			try json("DELETE", '$base/edits/$edit', token) catch (_:Dynamic) {}
-			throw err;
+			throw Errors.kept(err);
 		}
 		if (dry || changes.length == 0) json("DELETE", '$base/edits/$edit', token) else json("POST", '$base/edits/$edit:commit', token);
 		changes = changes.concat(Listing.dataSafety(cfg?.listing, e.root, base, token, dry));
@@ -532,9 +533,9 @@ class Publish {
 			var edit:String = json("POST", '$base/edits', token, {}).id;
 			try {
 				p = {details: json("GET", '$base/edits/$edit/details', token), listings: json("GET", '$base/edits/$edit/listings', token).listings ?? []};
-			} catch (err:Dynamic) {
+			} catch (err:haxe.Exception) {
 				try json("DELETE", '$base/edits/$edit', token) catch (_:Dynamic) {}
-				throw err;
+				throw Errors.kept(err);
 			}
 			json("DELETE", '$base/edits/$edit', token);
 		}

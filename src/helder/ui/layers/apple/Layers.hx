@@ -6,6 +6,7 @@ import helder.gfx.*;
 import helder.gfx.metal.MetalBackend;
 import helder.os.apple.objc.*;
 import hxmc.unsafe.*;
+import helder.async.Errors;
 
 // The system's compositor on macOS and iOS (Layers' step 5): a window's
 // layers handed to Core Animation. Each frame, the program's and the
@@ -104,7 +105,7 @@ class Layers extends helder.ui.layers.LayerSplit {
 		var mb:MetalBackend = cast r.impl, pool = Runtime.objc_autoreleasePoolPush();
 		try compose(f, now, t, shown, drawn) catch (e:haxe.Exception) {
 			Runtime.objc_autoreleasePoolPop(pool);
-			throw e;
+			throw Errors.kept(e);
 		}
 		var cs = Msg.f(root, S.contentsScale), ops:Array<Void->Void> = [];
 		var b = f.buffers[ring = (ring + 1) % f.buffers.length], at = 0, toDraw:Array<Plane> = [];

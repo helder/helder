@@ -5,6 +5,7 @@ import helder.image.ImageError;
 import helder.image.ImageLimits;
 import helder.image.JpegDecoder;
 import hxmc.unsafe.*;
+import helder.async.Errors;
 
 private typedef LinuxImage = {
 	width:Int,
@@ -37,9 +38,9 @@ class Images {
 			var ok = loadOnce(lib);
 			loading.release();
 			return ok;
-		} catch (e:Dynamic) {
+		} catch (e:haxe.Exception) {
 			loading.release();
-			throw e;
+			throw Errors.kept(e);
 		}
 	}
 
@@ -109,7 +110,7 @@ class Images {
 		if (o < 1 || o > 8) o = 1;
 		try ImageLimits.check("SystemImages", w, h, 4) catch (e:ImageError) {
 			Tiff.TIFFClose(t);
-			throw e;
+			throw Errors.kept(e);
 		}
 		var n = w * h * 4, buf = LibC.malloc((n : hxmc.I64));
 		// (as stored: the orientation asked its own, so libtiff flips nothing; then all of it applied)
@@ -153,12 +154,12 @@ class Images {
 				if (d != null) result = {width: d.width, height: d.height, rgba: d.rgba, sourceWidth: w, sourceHeight: h};
 			}
 			if (result == null && !previewOnly) result = heifPixels(handle, out);
-		} catch (e:Dynamic) {
+		} catch (e:haxe.Exception) {
 			if (!thumb.isNull()) Heif.heif_image_handle_release(thumb);
 			Heif.heif_image_handle_release(handle);
 			LibC.free(cast out);
 			Heif.heif_context_free(ctx);
-			throw e;
+			throw Errors.kept(e);
 		}
 		if (!thumb.isNull()) Heif.heif_image_handle_release(thumb);
 		Heif.heif_image_handle_release(handle);
@@ -209,9 +210,9 @@ class Images {
 				BytesPtr.copyIn(rgba, y * pw * 4, plane.add(y * s), pw * 4);
 			Heif.heif_image_release(img);
 			return {width: pw, height: ph, rgba: rgba};
-		} catch (e:Dynamic) {
+		} catch (e:haxe.Exception) {
 			Heif.heif_image_release(img);
-			throw e;
+			throw Errors.kept(e);
 		}
 	}
 
@@ -252,7 +253,7 @@ class Images {
 		var dims:Ptr<Int32> = cast img, w = dims[0], h = dims[1];
 		try ImageLimits.check("SystemImages", w, h, 4) catch (e:ImageError) {
 			Avif.avifImageDestroy(img);
-			throw e;
+			throw Errors.kept(e);
 		}
 		// (avifRGBImage: width, height, depth, format first; its pixels and rowBytes last, where
 		// their offset differs by version: found as the pointer before a word of width * 4)
@@ -295,9 +296,9 @@ class Images {
 		var w = Raw.libraw_get_iwidth(lr), h = Raw.libraw_get_iheight(lr);
 		try ImageLimits.check("SystemImages", w, h, 4) catch (e:ImageError) fail(e);
 		if (side > 0) {
-			var preview = try rawPreview(path, lr, side, w, h) catch (_:ImageError) null catch (e:Dynamic) {
+			var preview = try rawPreview(path, lr, side, w, h) catch (_:ImageError) null catch (e:haxe.Exception) {
 				Raw.libraw_close(lr);
-				throw e;
+				throw Errors.kept(e);
 			};
 			if (preview != null) {
 				Raw.libraw_close(lr);
@@ -342,9 +343,9 @@ class Images {
 				bytes = Bytes.alloc(n);
 				BytesPtr.copyIn(bytes, 0, img.add(16), n);
 			}
-		} catch (e:Dynamic) {
+		} catch (e:haxe.Exception) {
 			Raw.libraw_dcraw_clear_mem(img);
-			throw e;
+			throw Errors.kept(e);
 		}
 		Raw.libraw_dcraw_clear_mem(img);
 		if (bytes == null) return null;
@@ -364,9 +365,9 @@ class Images {
 	// (the file's first max bytes, fewer when it is shorter)
 	static function head(path:String, max:Int):Bytes {
 		var f = sys.io.File.read(path, true), b = Bytes.alloc(max), n = 0;
-		try while (n < max) n += f.readBytes(b, n, max - n) catch (_:haxe.io.Eof) {} catch (e:Dynamic) {
+		try while (n < max) n += f.readBytes(b, n, max - n) catch (_:haxe.io.Eof) {} catch (e:haxe.Exception) {
 			f.close();
-			throw e;
+			throw Errors.kept(e);
 		}
 		f.close();
 		return b.sub(0, n);

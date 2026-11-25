@@ -2,6 +2,7 @@ package helder.view.graph;
 
 import helder.view.graph.Awaitable.NotReady;
 import helder.view.graph.Owner.GraphError;
+import helder.async.Errors;
 
 // A node of the graph: a signal (a value), a computed (a memo, or a
 // derived signal, which can also be written) or an effect.
@@ -72,6 +73,8 @@ class Node<T> extends Owner implements Read.Reader<T> {
 	var error:Dynamic = null;
 	var hasError = false;
 	var stagedError:Dynamic = null;
+	// (the exception the last error came as: where it was thrown)
+	var thrown:Null<haxe.Exception> = null;
 	var stagedFailed = false;
 	var sources:Null<Array<Node<Dynamic>>> = null;
 	var observers:Null<Array<Node<Dynamic>>> = null;
@@ -157,9 +160,9 @@ class Node<T> extends Owner implements Read.Reader<T> {
 			var r = fn();
 			observer = saved;
 			return r;
-		} catch (e:Dynamic) {
+		} catch (e:haxe.Exception) {
 			observer = saved;
-			throw e;
+			throw Errors.kept(e);
 		}
 	}
 
@@ -173,10 +176,10 @@ class Node<T> extends Owner implements Read.Reader<T> {
 			Owner.current = savedOwner;
 			observer = savedObserver;
 			return r;
-		} catch (e:Dynamic) {
+		} catch (e:haxe.Exception) {
 			Owner.current = savedOwner;
 			observer = savedObserver;
-			throw e;
+			throw Errors.kept(e);
 		}
 	}
 
@@ -247,14 +250,14 @@ class Node<T> extends Owner implements Read.Reader<T> {
 			if (!screen && (ahead == w || (p != null && p == w))) {
 				if (runner != null) runner.joined = true;
 				if (p != null) notReady(w);
-				if (stagedFailed) throw stagedError;
+				if (stagedFailed) throwError(stagedError);
 				return staged;
 			}
 			// (a frame reader: the screen, again at the commit)
 			if (runner != null && !ahead.readers.contains(runner)) ahead.readers.push(runner);
 			if (uninit) notReady(ahead);
 		} else if (uninit) notReady(null);
-		if (hasError) throw error;
+		if (hasError) throwError(error);
 		return value;
 	}
 
@@ -269,11 +272,11 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		var watch = t != null ? t : p;
 		if (watch != null && runner != null && !watch.readers.contains(runner)) watch.readers.push(runner);
 		if (t != null) {
-			if (stagedFailed) throw stagedError;
+			if (stagedFailed) throwError(stagedError);
 			return staged;
 		}
 		if (uninit) notReady(p);
-		if (hasError) throw error;
+		if (hasError) throwError(error);
 		return value;
 	}
 
@@ -381,7 +384,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		if (retired == null) return;
 		var r = retired;
 		retired = null;
-		try r.dispose() catch (e:Dynamic) Scheduler.report(e);
+		try r.dispose() catch (e:haxe.Exception) Scheduler.report(e);
 	}
 
 	// (its async answered: the answer staged in the transaction that asked, its readers run again)
@@ -501,7 +504,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 			children = null;
 			cleanups = null;
 		} else
-			try clean() catch (e:Dynamic) Scheduler.report(e);
+			try clean() catch (e:haxe.Exception) Scheduler.report(e);
 		shown = false;
 		tick = Scheduler.ticks;
 		// (a superseded async run: cancelled, its answer dropped)
@@ -524,8 +527,9 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		kept = 0;
 		added = null;
 		var r:Dynamic = null, failure:Dynamic = null, failed = false, waiting = false;
-		try r = call() catch (e:NotReady) waiting = true catch (e:Dynamic) {
-			failure = e;
+		try r = call() catch (e:NotReady) waiting = true catch (e:haxe.Exception) {
+			failure = e.native;
+			thrown = e;
 			failed = true;
 		}
 		Owner.current = savedOwner;
@@ -624,8 +628,9 @@ class Node<T> extends Owner implements Read.Reader<T> {
 	function settle(v:Null<T>, tx:Null<Tx>) {
 		if (kind == COMPUTED) {
 			// (a comparator's error is the computation's)
-			var changed = try uninit || hasError || stagedFailed || !same(stagedIn != null ? staged : value, v) catch (e:Dynamic) {
-				failWith(e, tx);
+			var changed = try uninit || hasError || stagedFailed || !same(stagedIn != null ? staged : value, v) catch (e:haxe.Exception) {
+				thrown = e;
+				failWith(e.native, tx);
 				return;
 			};
 			if (!changed) return;
@@ -679,14 +684,27 @@ class Node<T> extends Owner implements Read.Reader<T> {
 			try {
 				within(null, null, () -> onFailure(e));
 				return;
-			} catch (thrown:Dynamic) e = thrown;
+			} catch (x:haxe.Exception) {
+				e = x.native;
+				thrown = x;
+			}
 		}
 		if (parent != null && parent.handle(e)) return;
 		if (kind == EFFECT && onFailure == null) {
 			trace('helder.view: an effect failed, its run skipped: $e');
 			return;
 		}
-		Scheduler.failed(e);
+		Scheduler.failed(exception(e));
+	}
+
+	// (e as the exception it was thrown as)
+	function exception(e:Dynamic):haxe.Exception
+		return thrown != null && thrown.native == e ? thrown : @:privateAccess haxe.Exception.caught(e);
+
+	// (an error read: thrown again, where it was thrown kept)
+	function throwError(e:Dynamic) {
+		if (thrown != null && thrown.native == e) throw helder.async.Errors.carried(thrown);
+		throw e;
 	}
 
 	// s read in the current run
@@ -747,7 +765,7 @@ class Node<T> extends Owner implements Read.Reader<T> {
 			if (!disposed) deliver(e);
 			return;
 		}
-		try applyNow() catch (e:Dynamic) if (parent == null || !parent.handle(e)) Scheduler.report(e);
+		try applyNow() catch (e:haxe.Exception) if (parent == null || !parent.handle(e.native)) Scheduler.report(e);
 	}
 
 	// (the previous apply's cleanup first)
@@ -768,11 +786,11 @@ class Node<T> extends Owner implements Read.Reader<T> {
 		// (hxmc dev: in its compute's scope, what it makes keyed as there: helder.view.Refresh)
 		var c = try (hotPath == null ? apply(value, prev) : helder.dev.Hot.at(hotPath, () -> apply(value, prev))) catch (e:Dynamic) {
 		#else
-		var c = try apply(value, prev) catch (e:Dynamic) {
+		var c = try apply(value, prev) catch (e:haxe.Exception) {
 		#end
 			Owner.current = savedOwner;
 			observer = savedObserver;
-			throw e;
+			throw Errors.kept(e);
 		}
 		Owner.current = savedOwner;
 		observer = savedObserver;
@@ -803,9 +821,9 @@ class Node<T> extends Owner implements Read.Reader<T> {
 			var c = applyCleanup;
 			applyCleanup = null;
 			Owner.disposing++;
-			try c() catch (e:Dynamic) {
+			try c() catch (e:haxe.Exception) {
 				Owner.disposing--;
-				throw e;
+				throw Errors.kept(e);
 			}
 			Owner.disposing--;
 		}

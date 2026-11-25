@@ -539,11 +539,11 @@ class Promises {
 		var i = 0;
 		while (i < jobs.length) {
 			var job = jobs[i++];
-			try job() catch (e:Dynamic) {
+			try job() catch (e:haxe.Exception) {
 				// (what is left stays queued; drain again from there)
 				jobs = jobs.slice(i);
 				draining = false;
-				throw e;
+				throw helder.async.Errors.kept(e);
 			}
 			if (i > 4096) {
 				jobs = jobs.slice(i);

@@ -1,6 +1,7 @@
 package helder.ui.platform;
 
 import haxe.io.Bytes;
+import helder.async.Errors;
 
 // What a web view's own origin serves (WebView.content): the files of the
 // app's bundle (assets the program names, helder.asset's keys under a
@@ -103,9 +104,9 @@ class WebContent {
 	#if (hxmc.target != "wasm32-wasi")
 	function started():WebServer {
 		lock.acquire();
-		if (server == null) server = try new WebServer(this) catch (e:Dynamic) {
+		if (server == null) server = try new WebServer(this) catch (e:haxe.Exception) {
 			lock.release();
-			throw e;
+			throw Errors.kept(e);
 		}
 		lock.release();
 		return server;

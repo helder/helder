@@ -1,5 +1,6 @@
 package helder.async.http;
 
+import helder.async.Errors;
 import haxe.Exception;
 import haxe.io.Bytes;
 import helder.async.*;
@@ -128,7 +129,7 @@ class WebSocket {
 		#if (target.name == "hxmc" && hxmc.target != "wasm32-wasi")
 		var tls = try TlsSocket.client(s, u.host, ca == null ? null : sys.ssl.Certificate.fromString(ca)) catch (e:Exception) {
 			s.close();
-			throw e;
+			throw Errors.kept(e);
 		}
 		return handshake(tls, tls, () -> tls.abort(), host, u.path);
 		#else
@@ -316,7 +317,7 @@ class WebSocket {
 		lock.acquire();
 		try out.write(b, 0, b.length) catch (e:Exception) {
 			lock.release();
-			throw e;
+			throw Errors.kept(e);
 		}
 		lock.release();
 	}

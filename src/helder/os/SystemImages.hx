@@ -4,6 +4,7 @@ import haxe.io.Bytes;
 import helder.image.ImageError;
 import helder.image.ImageLimits;
 import hxmc.unsafe.*;
+import helder.async.Errors;
 
 // The system's own image decoders, for what helder.image does not read:
 // Windows' WIC (COM: the factory's decoder from the file, its first frame
@@ -71,9 +72,9 @@ class SystemImages {
 			var d = wicFrame(path, side, thumbnail);
 			if (com >= 0) helder.os.windows.FileOpenDialog.Shell32Com.CoUninitialize();
 			return d;
-		} catch (e:Dynamic) {
+		} catch (e:haxe.Exception) {
 			if (com >= 0) helder.os.windows.FileOpenDialog.Shell32Com.CoUninitialize();
-			throw e;
+			throw Errors.kept(e);
 		}
 	}
 
@@ -117,7 +118,7 @@ class SystemImages {
 		try ImageLimits.check("SystemImages", w, h, 4) catch (e:ImageError) {
 			LibC.free(cast size);
 			done();
-			throw e;
+			throw Errors.kept(e);
 		}
 		if (thumbnail && side > 0) {
 			out.value = Ptr.nil();
@@ -229,7 +230,7 @@ class SystemImages {
 			CFs.CFRelease(props);
 			try ImageLimits.check("SystemImages", w, h, 4) catch (e:ImageError) {
 				CFs.CFRelease(src);
-				throw e;
+				throw Errors.kept(e);
 			}
 			// (a thumbnail of the whole, its orientation applied, at most the side asked for)
 			var max = side > 0 ? Std.int(Math.min(side, Math.max(w, h))) : Std.int(Math.max(w, h));
@@ -285,7 +286,7 @@ class SystemImages {
 			return {width: turned ? h : w, height: turned ? w : h, pixelsWidth: pw, pixelsHeight: ph, rgba: rgba};
 		} catch (e:ImageError) {
 			helder.os.apple.objc.Runtime.objc_autoreleasePoolPop(pool);
-			throw e;
+			throw Errors.kept(e);
 		}
 	}
 

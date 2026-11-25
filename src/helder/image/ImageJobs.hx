@@ -9,6 +9,7 @@ import hxmc.Buffer;
 import hxmc.ReadOnlySpan;
 import hxmc.Span;
 import hxmc.unsafe.UInt8;
+import helder.async.Errors;
 
 // Images decoded as GC-free jobs (helder.jobs: natively on a pool's thread
 // in a safe region, in a browser on a worker), so that a large one leaves
@@ -66,9 +67,9 @@ class ImageJobs {
 	// safe region, so collections never wait for it)
 	@:hxmc.unsafe(gc) static function system(file:Buffer):{width:Int, height:Int, pixels:Buffer} {
 		var io = file.detach();
-		var d = try SystemDecoder.decode(io.ptr, io.length) catch (e:Dynamic) {
+		var d = try SystemDecoder.decode(io.ptr, io.length) catch (e:haxe.Exception) {
 			io.free();
-			throw e;
+			throw Errors.kept(e);
 		}
 		io.free();
 		return {width: d.width, height: d.height, pixels: Buffer.adopt(d.pixels)};
@@ -85,7 +86,7 @@ class ImageJobs {
 		var w = info.getInt32(PngCore.WIDTH), h = info.getInt32(PngCore.HEIGHT);
 		if (e == 0) try ImageLimits.check("PngDecoder", w, h, 0, PngCore.bufferLength(ReadOnlySpan.ofBytes(info), w, h)) catch (x:ImageError) {
 			file.close();
-			throw x;
+			throw Errors.kept(x);
 		}
 		if (e != 0) {
 			file.close();

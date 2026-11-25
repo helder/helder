@@ -33,6 +33,14 @@ function tests() {
 			dispose2();
 			dispose();
 		});
+		test("<glass states>: a function of its states", () -> {
+			var ui = new Ui(null, 200, 200);
+			var seen = [];
+			var dispose = Render.render(Fixture.glassStates(seen), ui.root);
+			ui.update();
+			equals(seen, [true]);
+			dispose();
+		});
 		test("a transform bound to a runtime string", () -> {
 			var ui = new Ui(null, 200, 200);
 			var x = Graph.signal(10.0);
@@ -110,6 +118,14 @@ private class Fixture implements helder.view.Markup {
 		return <view>
 			<svg tag="glyph" viewBox="0 0 10 10" width={size()} height={size()}><rect width="10" height="10" fill="#ff0000"/></svg>
 		</view>;
+
+	public static function glassStates(seen:Array<Bool>)
+		return <view><glass width={40} height={40} states={(s:helder.ui.view.States) -> noted(s, seen)}/></view>;
+
+	static function noted(s:helder.ui.view.States, seen:Array<Bool>):StyleProps {
+		seen.push(s != null);
+		return {};
+	}
 
 	public static function moved(x:Signal<Float>)
 		return <view>

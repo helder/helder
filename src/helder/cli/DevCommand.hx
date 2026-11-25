@@ -12,6 +12,7 @@ import helder.cli.BuildCommand.Lines;
 import helder.cli.Compiler.CompileServer;
 import sys.FileSystem;
 import sys.io.File;
+import helder.async.Errors;
 
 using StringTools;
 
@@ -600,7 +601,7 @@ class DevCommand {
 				Devtools.output(line, err);
 			}
 		} catch (e:haxe.Exception) {
-			if (e.message != "closed") throw e;
+			if (e.message != "closed") throw Errors.kept(e);
 		}
 	}
 
