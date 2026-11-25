@@ -61,3 +61,5 @@ export declare class MarkdownView extends Node {
 	// the headings' ids, in order
 	headings(): string[];
 }
+
+export {};
