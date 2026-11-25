@@ -5,7 +5,8 @@
 # the newest iOS runtime and iPhone made, booted and deleted at the end)
 # `helder run --target ios -d <it>` (built, installed, launched, its output
 # followed from the files simctl writes it to until it ends) prints the
-# hello line; then the audio stream, helder.store's StoreKit. IOS_SUITE=smoke stops there (CI's pull
+# hello line; then the audio stream, helder.store's StoreKit, helder.os's
+# Folders. IOS_SUITE=smoke stops there (CI's pull
 # requests); the full suite (the default; CI's pushes to main and its
 # nightly) goes on: the assets, the screen, the planets example,
 # UIAccessibility, the images, Core Text. IOS_BUILD_ONLY=1: the builds
@@ -39,6 +40,7 @@ build() {
 build tests/pack/Hello.hx "$out/Hello.app"
 build tests/pack/AudioCheck.hx "$out/AudioCheck.app"
 build tests/store/StoreCheck.hx "$out/StoreCheck.app"
+build tests/os/FoldersCheck.hx "$out/FoldersCheck.app"
 if [ "$suite" = full ]; then
 	build tests/asset/Checksum.hx "$out/Checksum.app"
 	build tests/pack/Screen.hx "$out/Screen.app"
@@ -84,6 +86,15 @@ grep -q "store: available true" "$out/store.txt"
 check "store: HelderStore.framework loaded" $?
 grep -q "store: ok" "$out/store.txt"
 check "store: products and owned answered (StoreKit 2)" $?
+
+# helder.os.Folders (tests/os/FoldersCheck.hx): a folder of the app's
+# Documents kept as a picked one is (a bookmark), resolved again, listed,
+# a file read, one deleted, forgotten: "folders: ok" (the picker itself
+# cannot be answered unattended).
+"$helder" run tests/os/FoldersCheck.hx --target ios -d "$udid" > "$out/folders.txt" 2>&1
+cat "$out/folders.txt"
+grep -q "folders: ok" "$out/folders.txt"
+check "folders: a bookmark kept and resolved, listed, read, deleted" $?
 
 [ "$suite" = full ] || exit $failed
 

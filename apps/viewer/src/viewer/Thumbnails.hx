@@ -175,7 +175,7 @@ class Thumbnails {
 		#if (hxmc.target == "wasm32-wasi")
 		var files = files;
 		var job = Async.launch(_ -> {
-			var b = try files.bytes(w.request.path) catch (_:Dynamic) null;
+			var b = try FileBytes.read(files, w.request.path) catch (_:Dynamic) null;
 			b == null ? null : Decode.onPage(b) ? made({request: w.request, bytes: b}) : Jobs.job(made).run({request: w.request, bytes: b});
 		});
 		#else

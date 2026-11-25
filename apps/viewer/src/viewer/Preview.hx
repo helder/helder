@@ -36,21 +36,19 @@ class Preview {
 	}
 	#end
 
-	#if (hxmc.target == "wasm32-wasi")
-	// the web's: the file read through the browser's files, decoded on a worker
-	public static function read(files:WebFiles, path:String, done:Shown->Void):Void->Void {
+	// the file read through files (the web's, a phone's documents), decoded on a worker
+	public static function read(files:Files, path:String, done:Shown->Void):Void->Void {
 		var stopped = false;
 		if (FolderModel.isMedia(path)) {
 			media(() -> files.open(path), s -> if (!stopped) done(s));
 			return () -> stopped = true;
 		}
 		Async.launch(_ -> {
-			var b = try files.bytes(path) catch (_:Dynamic) null;
+			var b = try FileBytes.read(files, path) catch (_:Dynamic) null;
 			b == null ? null : Decode.onPage(b) ? decodeBytes({path: path, bytes: b}) : helder.jobs.Jobs.job(decodeBytes).run({path: path, bytes: b});
 		}).onCompletion((r, _) -> if (!stopped && r != null) done(shown(r)));
 		return () -> stopped = true;
 	}
-	#end
 
 	#if (hxmc.target != "wasm32-wasi")
 	// at once, on this thread (tests and stories)
