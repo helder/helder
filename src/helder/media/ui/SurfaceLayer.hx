@@ -7,12 +7,12 @@ import helder.os.android.MainThread;
 import helder.os.android.Native;
 import helder.ui.ImageFit;
 import helder.ui.LayerSlot;
-import helder.ui.draw.ScLayers;
-import helder.ui.draw.UiWindow;
+import helder.ui.layers.android.Layers;
+import helder.ui.UiWindow;
 import hxmc.unsafe.*;
 
 // A video shown by Android's compositor (SampleLayer's on Android, in a
-// window of system layers: helder.ui.draw.ScLayers): MediaCodec renders
+// window of system layers: helder.ui.layers.android.Layers): MediaCodec renders
 // straight onto the Surface of a SurfaceControl of its own (a Java one: the
 // NDK has no Surface of an ASurfaceControl), whose native handle
 // (ASurfaceControl_fromJava, API 34) goes under the node's slot, scaled
@@ -32,7 +32,7 @@ class SurfaceLayer {
 	public var showing(default, null) = false;
 
 	final owner:VideoNode;
-	final layers:ScLayers;
+	final layers:Layers;
 	final java:Ptr;
 	final surface:Ptr;
 	final window:Ptr;
@@ -44,9 +44,9 @@ class SurfaceLayer {
 	public static function make(owner:VideoNode):Null<SurfaceLayer> {
 		var p = owner.player, ui = owner.ui;
 		if (p == null || p.video == null || ui == null || !Tx.loaded()) return null;
-		var layers:Null<ScLayers> = null;
+		var layers:Null<Layers> = null;
 		for (w in @:privateAccess UiWindow.open)
-			if (w.ui == ui && w.compositor != null) layers = Std.downcast(w.compositor.layers, ScLayers);
+			if (w.ui == ui && w.compositor != null) layers = Std.downcast(w.compositor.layers, Layers);
 		// (not before the layers showed a frame: a slot in the window's first
 		// frames kept them from starting; drawn by helder until then)
 		if (layers == null || layers.frames == 0) return null;
@@ -79,7 +79,7 @@ class SurfaceLayer {
 		} catch (_:Dynamic) null;
 	}
 
-	function new(owner:VideoNode, layers:ScLayers, host:Ptr, made:Array<Ptr>) {
+	function new(owner:VideoNode, layers:Layers, host:Ptr, made:Array<Ptr>) {
 		this.owner = owner;
 		this.layers = layers;
 		java = made[0];
@@ -147,7 +147,7 @@ class SurfaceLayer {
 	}
 
 	// (the decoder back onto its images, the layer out of the slot; the
-	// slot let go a second later, once ScLayers' transaction no longer names it)
+	// slot let go a second later, once Layers' transaction no longer names it)
 	public function dispose() {
 		var p = owner.player;
 		if (decoder != null && p != null && @:privateAccess p.vdec == decoder) decoder.output(Ptr.nil());

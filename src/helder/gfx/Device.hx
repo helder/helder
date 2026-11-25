@@ -179,7 +179,7 @@ final class Device {
 	}
 
 	// work the render thread does between what the devices hand it (the
-	// compositor's frames: helder.ui.draw.Compositor), with this device's
+	// compositor's frames: helder.ui.layers.Compositor), with this device's
 	// back end; false where there is no render thread (synchronous)
 	@:noCompletion public function addIdle(i:RenderIdle):Bool {
 		#if (hxmc.target != "wasm32-wasi")

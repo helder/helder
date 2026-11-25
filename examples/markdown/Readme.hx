@@ -4,8 +4,8 @@
 // demo: canvas 760x640
 import helder.markdown.Markdown;
 import helder.markdown.MarkdownView;
-import helder.ui.draw.UiWindow;
-import helder.ui.draw.UiWindow.Surface;
+import helder.ui.UiWindow;
+import helder.ui.UiWindow.Surface;
 import helder.view.*;
 
 // A Markdown document (the file given, else the one below) in a window, in

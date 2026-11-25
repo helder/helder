@@ -1,6 +1,6 @@
 import helder.ui.Router;
 import helder.ui.Stack;
-import helder.ui.draw.UiWindow;
+import helder.ui.UiWindow;
 import helder.view.*;
 
 // helder.ui's Stack in a browser (nav-web.mjs): the key "n" pushes the next

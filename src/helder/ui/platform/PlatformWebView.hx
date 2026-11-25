@@ -1,7 +1,7 @@
 package helder.ui.platform;
 
 // A system web view (WebView's, a node's; WebShell's, the whole screen):
-// WKWebView on iOS and macOS (AppleWebView), android.webkit.WebView on
+// WKWebView on iOS and macOS (apple.WebView), android.webkit.WebView on
 // Android (AndroidWebView). Its events go to its listener on the program's
 // thread when it is polled (WebView: before each layout; WebShell: its loop).
 interface PlatformWebView {

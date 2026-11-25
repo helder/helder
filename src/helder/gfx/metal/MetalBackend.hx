@@ -32,7 +32,7 @@ import hxmc.unsafe.*;
 // theirs; a dispatch gives the workgroup's size (ShaderCode.workgroupSize).
 // readBuffer commits the frame's work so far and waits for it (as
 // readPixels), then copies from the buffer's shared memory.
-// The system's layers (helder.ui.draw.CaLayers): a frame may be drawn onto
+// The system's layers (helder.ui.layers.apple.Layers): a frame may be drawn onto
 // another CAMetalLayer of the window (planeFrame), single-sampled, the
 // frame's pipelines made again for it without depth, its drawable kept to
 // be presented with the Core Animation transaction that places the layer
@@ -242,7 +242,7 @@ class MetalBackend {
 		frameTarget = id;
 
 	// the next frame onto layer's next drawable (a CAMetalLayer of the
-	// window's: helder.ui.draw.CaLayers), kept for takePresents
+	// window's: helder.ui.layers.apple.Layers), kept for takePresents
 	public function planeFrame(layer:Ptr)
 		plane = layer;
 
@@ -937,7 +937,7 @@ class MetalBackend {
 			Msg.vBool(layer, ObjC.sel("setPresentsWithTransaction:"), true);
 		}
 		// (a layer whose drawables Core Animation's layers present in their
-		// transactions (CaLayers): in one too, once scheduled, as they are)
+		// transactions (apple.Layers): in one too, once scheduled, as they are)
 		var transacted = presented && Msg.b(layer, S.presentsWithTransaction);
 		if (presented && !transacted) Msg.vPtr(cmd, S.presentDrawable, drawable);
 		Msg.v(cmd, S.commit);

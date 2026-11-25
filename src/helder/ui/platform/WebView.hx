@@ -5,7 +5,7 @@ import helder.ui.platform.PlatformWebView;
 
 // A system web view in a drawn tree, `<webview>` in markup: placed where
 // it is laid out, over the window's drawn surface (iOS and macOS: a
-// WKWebView, AppleWebView; Android: android.webkit.WebView, AndroidWebView;
+// WKWebView, helder.ui.platform.apple.WebView; Android: android.webkit.WebView, helder.ui.platform.android.AndroidWebView;
 // elsewhere, for now, nothing: its box alone is drawn). Made once it is in
 // a window that has one, let go when it leaves it.
 //
@@ -213,11 +213,11 @@ class WebView extends Node implements WebViewListener {
 	// the platform's web view for a window's ui (null: none here)
 	public static function make(ui:Ui, o:WebViewOptions, queued:Void->Void):Null<PlatformWebView> {
 		#if (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
-		return new AndroidWebView(o, () -> ui.scale, queued);
+		return new helder.ui.platform.android.AndroidWebView(o, () -> ui.scale, queued);
 		#elseif (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64" || hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 		// (the window's view: its surface's)
-		for (w in @:privateAccess helder.ui.draw.UiWindow.open)
-			if (w.ui == ui) return helder.os.OsThread.get(() -> new AppleWebView(w.window.surface.handle, o, queued, false, ui.layered));
+		for (w in @:privateAccess helder.ui.UiWindow.open)
+			if (w.ui == ui) return helder.os.OsThread.get(() -> new helder.ui.platform.apple.WebView(w.window.surface.handle, o, queued, false, ui.layered));
 		return null;
 		#else
 		return null;

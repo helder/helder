@@ -318,7 +318,7 @@ class Renderer implements TextureCanvas {
 	}
 
 	// what end does but drawing onto the target (the system's layers draw
-	// the frame from the compositor's: CaLayers): the atlas uploaded, the
+	// the frame from the compositor's: apple.Layers): the atlas uploaded, the
 	// quads once, for the buffers their copies share
 	public function upload() {
 		uploadAtlas();
@@ -843,7 +843,7 @@ class Renderer implements TextureCanvas {
 	// tiles (tileGroup), what moves on its own tagged too (mover: drawn at
 	// its opacity's 1, the compositor turns and fades it); nothing of it
 	// drawn by the frame
-	public var composite:Null<CompositeFrame> = null;
+	public var composite:Null<helder.ui.layers.CompositeFrame> = null;
 	var templating = false;
 	// (the scroller frame the quads are in (-1: none), their clip's, a thumb's; under a frame nothing culled)
 	var contentFrame = -1;
@@ -862,7 +862,7 @@ class Renderer implements TextureCanvas {
 	// (the next pushGroup a mover's; the compositor's frames' groups, those
 	// of the one being filled taken so far)
 	var groupNext = false;
-	final composedGroups = new haxe.ds.ObjectMap<CompositeFrame, Array<Group>>();
+	final composedGroups = new haxe.ds.ObjectMap<helder.ui.layers.CompositeFrame, Array<Group>>();
 	var composed = 0;
 	// (the frame's state, put back after the walk)
 	var savedGroups = false;
@@ -999,7 +999,7 @@ class Renderer implements TextureCanvas {
 	// (the composite's state once the frame ended: the atlas as end uploaded
 	// it, grown maybe; the quads' corners and indices, made at their first
 	// upload; false: none yet)
-	@:allow(helder.ui.draw.Compositor) function ended(c:CompositeFrame):Bool {
+	@:allow(helder.ui.layers.Compositor) function ended(c:helder.ui.layers.CompositeFrame):Bool {
 		var sh = quads.shared();
 		if (sh.corners == null || sh.indices == null) return false;
 		c.atlas = atlasTexture;

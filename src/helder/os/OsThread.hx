@@ -19,7 +19,7 @@ import sys.thread.Mutex;
 // ...), not around their run-time Platform branches: a closure there is
 // compiled on every target, and would link AppKit into Linux's and
 // Windows' builds. While the program runs on, the main thread may read the
-// system's input (waitMain: the compositor's, helder.ui.draw.Compositor),
+// system's input (waitMain: the compositor's, helder.ui.layers.Compositor),
 // woken by a call handed to it (wakeMain); the events are the program's
 // at its next poll, as before. A system's callback that comes meanwhile
 // and needs no answer (iOS's touches, a UIScrollView's offset) waits for

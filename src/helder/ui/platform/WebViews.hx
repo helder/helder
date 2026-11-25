@@ -91,7 +91,7 @@ class WebViews implements PlatformViews {
 @:hxmc.unsafe(gc)
 class WebEditor implements PlatformEditor {
 	// (in a window whose layers are the page's: its element stacked among
-	// them, by the number EDITOR | its handle, helder.ui.draw.WebLayers)
+	// them, by the number EDITOR | its handle, helder.ui.layers.web.Layers)
 	public function slot():Null<helder.ui.LayerSlot> {
 		if (hosted == null) hosted = new helder.ui.LayerSlot(Ptr.ofI64(EDITOR | h));
 		return hosted;

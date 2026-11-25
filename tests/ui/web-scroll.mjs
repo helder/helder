@@ -1,6 +1,6 @@
 // The browser's scroll views driving the scrollers (bun run test ui-web):
 // WebScrollPage.wasm in headless Chromium, its scrollers the page's own
-// elements over the canvas (WebScroll), driven by real events: the wheel
+// elements over the canvas (web.Scroll), driven by real events: the wheel
 // scrolls the row and the page natively, the program following (a scroller
 // out of sight losing its view); a click
 // over a scroll view still reaches the program's button; a wheel with

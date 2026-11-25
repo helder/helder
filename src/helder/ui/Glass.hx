@@ -5,7 +5,7 @@ package helder.ui;
 // radius (a capsule unless given one: `radius={12}`); `variant="clear"` is
 // the system's clear glass (else regular), `tint` the colour it leans to
 // (its alpha how far), `interactive` makes it answer a press. On iOS and
-// macOS 26 it is the system's own (helder.ui.platform.AppleGlass) where the
+// macOS 26 it is the system's own (helder.ui.platform.apple.Glass) where the
 // window's layers are the system's (Ui.layered), a view placed in the layer
 // tree (LayerSlot) that samples what is behind it; elsewhere, and in frames
 // read back, it is drawn. In a `<glass-group>` (GlassGroup) glass near each
@@ -116,7 +116,7 @@ class Glass extends Node {
 }
 
 #if ((!helder.os || helder.os == "macos" || helder.os == "ios") && (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64" || hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64"))
-typedef GlassNative = helder.ui.platform.AppleGlass;
+typedef GlassNative = helder.ui.platform.apple.Glass;
 #else
 // (no system glass here: drawn)
 @:noCompletion

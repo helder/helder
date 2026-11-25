@@ -38,7 +38,7 @@ import hxmc.unsafe.*;
 // shown (its traits Window.textKind's: Traits); what it inserts a
 // TextInput event (a newline: Enter's KeyDown and KeyUp), deleteBackward
 // Backspace's. No composition: helder.ui's fields are UIKit's own editors
-// on iOS (helder.ui.platform.IosViews), this is a drawn field's. The
+// on iOS (helder.ui.platform.apple.IosViews), this is a drawn field's. The
 // keyboard's frame (UIKeyboardWillChangeFrameNotification) is
 // Window.keyboard: its overlap with the view, its animation's duration, a
 // Resize.

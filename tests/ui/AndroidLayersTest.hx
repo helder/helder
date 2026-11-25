@@ -4,7 +4,7 @@ import helder.ui.*;
 import helder.ui.draw.*;
 import hxmc.unsafe.*;
 
-// Android's system layers (helder.ui.draw.ScLayers) on a device or emulator
+// Android's system layers (helder.ui.layers.android.Layers) on a device or emulator
 // (tests/ui/android-layers.sh): a list under a header and a box that
 // moves. The program blocks 300 ms while its own fling glides, then while
 // the box animates: the compositor's frames keep the display's pace, the
@@ -46,7 +46,7 @@ class AndroidLayersTest {
 		// (debug.helder.damage: HELDER_DAMAGE)
 		Props.__system_property_get(Mem.cstr("debug.helder.damage"), v);
 		if ((cast v : CString).toString() != "") Props.setenv(Mem.cstr("HELDER_DAMAGE"), v, 1);
-		var w = new UiWindow("AndroidLayersTest", 0, 0);
+		var w = new helder.ui.UiWindow("AndroidLayersTest", 0, 0);
 		var root = w.root;
 		root.style.set({direction: Column, background: 0xFFFFFFFF});
 		var header = new Node();
@@ -132,7 +132,7 @@ class AndroidLayersTest {
 		function blocked(what:String, seconds:Float, before:Void->Void, pace = true):{frames:Int, median:Float, from:Float, to:Float} {
 			strict = live() && mode != "stall" && baseline >= 20 && !unarmed;
 			unarmed = false;
-			var sc = layers == null ? null : Std.downcast(layers, ScLayers), t0 = sc == null ? [] : sc.timing.copy();
+			var sc = layers == null ? null : Std.downcast(layers, helder.ui.layers.android.Layers), t0 = sc == null ? [] : sc.timing.copy();
 			if (c != null) @:privateAccess {
 				var f = c.shown, d = c.due();
 				say('$what: the compositor holds the program\'s frame painted ${f == null ? -1 : Math.round((helder.ui.Ui.now() - f.paintedAt) * 1000)} ms ago, its movers ${f == null ? 0 : f.movers.length}, the mirror moving ${c.mirror.moving}, next frame due in ${d < 0 ? "never" : Math.round((d - Timer.stamp()) * 1000) + " ms"}');
@@ -204,7 +204,7 @@ class AndroidLayersTest {
 			switch phase {
 				case 0 if (step > 20 && list.height > 0):
 					// (its layer one level off its own background: the screencap tells which shows)
-					var sc = layers == null ? null : Std.downcast(layers, ScLayers);
+					var sc = layers == null ? null : Std.downcast(layers, helder.ui.layers.android.Layers);
 					if (sc != null) @:privateAccess slotted.systemLayer = new LayerSlot(sc.solid(0x22C060));
 					say('ready ${w.device.width}x${w.device.height}, scale $k');
 					phase = 14;
@@ -356,13 +356,13 @@ class AndroidLayersTest {
 					t0 = now;
 					cpu0 = cpu();
 					q0 = layers == null ? 0 : layers.quadsTotal;
-					var sc = layers == null ? null : Std.downcast(layers, ScLayers);
+					var sc = layers == null ? null : Std.downcast(layers, helder.ui.layers.android.Layers);
 					header0 = layers == null ? [0, 0, 0.0, 0] : [layers.frames, sc == null ? 0 : sc.cutTotal, sc == null ? 0 : sc.pixelsTotal, sc == null ? 0 : sc.timing[1]];
 				case 16 if (timed > 0):
 					title.text = "Header " + timed;
 					timed++;
 					if (timed > 120) {
-						var sc = layers == null ? null : Std.downcast(layers, ScLayers), n = timed - 1;
+						var sc = layers == null ? null : Std.downcast(layers, helder.ui.layers.android.Layers), n = timed - 1;
 						var f = layers == null ? 0 : layers.frames - Std.int(header0[0]);
 						var ms = (cpu() - cpu0) / n;
 						if (sc != null)
@@ -399,7 +399,7 @@ class AndroidLayersTest {
 	}
 
 	// (a touch's event as the system's would come, routed first; what the compositor answered)
-	static function touch(w:UiWindow, kind:helder.os.Event.EventKind, x:Float, y:Float, ms:Float):Int {
+	static function touch(w:helder.ui.UiWindow, kind:helder.os.Event.EventKind, x:Float, y:Float, ms:Float):Int {
 		var e = new helder.os.Event(), p = @:privateAccess new Pointer(1), s = w.window.scale;
 		@:privateAccess {
 			p.type = Touch;

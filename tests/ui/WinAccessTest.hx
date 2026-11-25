@@ -1,19 +1,19 @@
 import helder.ui.*;
-import helder.ui.draw.UiWindow;
-import helder.ui.draw.WinAccess;
-import helder.ui.platform.WinViews;
-import helder.ui.platform.Win32;
+import helder.ui.UiWindow;
+import helder.ui.access.windows.Access;
+import helder.ui.platform.windows.Views;
+import helder.ui.platform.windows.Win32;
 import helder.view.*;
 import helder.view.graph.Graph.*;
 import Plain.*;
 import hxmc.unsafe.*;
 
-// helder.ui's accessibility on Windows (WinAccess; CI's Windows jobs): a
+// helder.ui's accessibility on Windows (Access; CI's Windows jobs): a
 // window of controls (Plain's), its UI Automation providers called through their COM
 // interfaces as UI Automation calls them (navigation, properties, bounds,
 // the patterns: invoke, toggle, range value, value; UI Automation's own
 // client, from another process, is WinAccessProbe's). Its field native (host="native": drawn is the
-// desktop's default; WinViews: an EDIT over the window):
+// desktop's default; Views: an EDIT over the window):
 // the value set through UI Automation in it, a character typed into it in
 // the field's signal, Tab from it moving the window's focus on; centred,
 // an EDIT made again ES_CENTER with the same text.
@@ -79,7 +79,7 @@ class WinAccessTest implements Markup {
 		w.onFrame = () -> helder.os.OsThread.run(() -> {
 			switch step {
 				case 0:
-					var a:WinAccess = cast @:privateAccess w.winAccess;
+					var a:Access = cast @:privateAccess w.winAccess;
 					var root = a.rootProvider();
 					check("the root's provider", !root.isNull());
 					var f = qi(root, FRAGMENT);
@@ -131,7 +131,7 @@ class WinAccessTest implements Markup {
 						Simple.GetPatternProvider(t, 10015, out);
 						check("the toggle state after it", !out.value.isNull() && Toggle.get_ToggleState(out.value, i32) == 0 && i32.value == 1);
 					}
-					var eds:Array<WinEditor> = @:privateAccess WinViews.editors;
+					var eds:Array<WinEditor> = @:privateAccess Views.editors;
 					check("the field native: one EDIT", eds.length == 1, "" + eds.length);
 					if (eds.length == 1) {
 						var edit:Ptr = @:privateAccess eds[0].hwnd;
@@ -143,7 +143,7 @@ class WinAccessTest implements Markup {
 					step = 2;
 				case 2:
 					check("typed into the EDIT, the field's signal follows", name() == "Adax", name());
-					var eds:Array<WinEditor> = @:privateAccess WinViews.editors;
+					var eds:Array<WinEditor> = @:privateAccess Views.editors;
 					if (eds.length == 1) W32.SendMessageW(@:privateAccess eds[0].hwnd, 0x100, 9, 0);
 					step = 3;
 				case 3:
@@ -151,7 +151,7 @@ class WinAccessTest implements Markup {
 					w.root.find("name").style.textAlign = Center;
 					step = 4;
 				case 4:
-					var eds:Array<WinEditor> = @:privateAccess WinViews.editors;
+					var eds:Array<WinEditor> = @:privateAccess Views.editors;
 					if (eds.length == 1) {
 						var style = WinEdit.GetWindowLongPtrW(@:privateAccess eds[0].hwnd, -16).toInt(); // GWL_STYLE
 						check("centred: the EDIT made again ES_CENTER", style & 3 == 1, "" + (style & 3));

@@ -25,7 +25,7 @@ class GlassWindow {
 
 	#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 	static function run(dir:Null<String>) {
-		var w = new UiWindow("GlassWindow", GlassScene.W, GlassScene.H);
+		var w = new helder.ui.UiWindow("GlassWindow", GlassScene.W, GlassScene.H);
 		var scenes = dir == null ? ["stripes"] : GlassScene.backgrounds, at = 0, step = 0, failed = 0, glass:Array<Glass> = [];
 		inline function check(ok:Bool, what:String) {
 			if (!ok) failed++;
@@ -98,7 +98,7 @@ class GlassWindow {
 	}
 
 	// (the content's pixels, BGRA, as the display shows them)
-	static function capture(w:UiWindow):{width:Int, height:Int, pixels:haxe.io.Bytes} {
+	static function capture(w:helder.ui.UiWindow):{width:Int, height:Int, pixels:haxe.io.Bytes} {
 		w.device.settle();
 		// (the glass's material settles over a few of the window server's frames)
 		Sys.sleep(0.6);
@@ -125,7 +125,7 @@ class GlassWindow {
 
 	// (the glass views in passive hosts under the window's content view, in order: x, y, w, h, corner radius in points)
 	// (grouped: those in a container's content view instead)
-	static function views(w:UiWindow, grouped = false):Array<Array<Float>> {
+	static function views(w:helder.ui.UiWindow, grouped = false):Array<Array<Float>> {
 		var view = w.window.surface.handle;
 		return OsThread.get(() -> {
 			var M = helder.os.apple.objc.Msg, O = helder.os.apple.objc.ObjC, out = [];
@@ -153,7 +153,7 @@ class GlassWindow {
 #if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 private class Scale {
 	// (the window's pixels a point)
-	public static function of(w:UiWindow):Float
+	public static function of(w:helder.ui.UiWindow):Float
 		return w.device.surface.width / w.window.width;
 }
 #end

@@ -67,7 +67,7 @@ class WaylandWindow {
 	static var cursorShapes:WpCursorShapeManagerV1 = Ptr.nil();
 	static var cursorDevice:WpCursorShapeDeviceV1 = Ptr.nil();
 	static var textInputs:ZwpTextInputManagerV3 = Ptr.nil();
-	// (the system's layers': helder.ui.draw.WlLayers; the formats wl_shm and
+	// (the system's layers': helder.ui.layers.linux.Layers; the formats wl_shm and
 	// linux-dmabuf take, a dma-buf's as fourcc:modifier)
 	static var presentation:WpPresentation = Ptr.nil();
 	static var singlePixel:WpSinglePixelBufferManagerV1 = Ptr.nil();
@@ -1251,7 +1251,7 @@ class WaylandWindow {
 		return null;
 	}
 
-	// (the window of a Surface: the system's layers', helder.ui.draw.WlLayers)
+	// (the window of a Surface: the system's layers', helder.ui.layers.linux.Layers)
 	static function of(s:Surface):Null<WaylandWindow> {
 		for (w in open)
 			if (w.surface == s) return w;

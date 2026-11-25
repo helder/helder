@@ -1,10 +1,10 @@
 import helder.ui.*;
-import helder.ui.draw.UiWindow;
-import helder.ui.draw.WinAccess;
+import helder.ui.UiWindow;
+import helder.ui.access.windows.Access;
 import helder.view.*;
 import hxmc.unsafe.*;
 
-// helder.ui's UI Automation patterns (WinAccess), in process: AccessFixture's
+// helder.ui's UI Automation patterns (Access), in process: AccessFixture's
 // controls, their providers called through their COM interfaces as UI
 // Automation calls them (Wine's own client has no patterns, so this is
 // what runs them there; WinAccessProbe's client does on Windows): a
@@ -104,7 +104,7 @@ class WinPatternsTest {
 		w.onFrame = () -> helder.os.OsThread.run(() -> {
 			switch step {
 				case 0:
-					var a:WinAccess = cast @:privateAccess w.winAccess;
+					var a:Access = cast @:privateAccess w.winAccess;
 					nodes = all(qi(a.rootProvider(), FRAGMENT), []);
 					check("the fixture's nodes (the scroll view a group: its id)", nodes.length == 32, '${nodes.length}');
 					// a table
@@ -183,7 +183,7 @@ class WinPatternsTest {
 					}
 					step = 1;
 				case 1:
-					var a:WinAccess = cast @:privateAccess w.winAccess;
+					var a:Access = cast @:privateAccess w.winAccess;
 					var t = @:privateAccess a.tree, field = 0;
 					for (id in t.order)
 						if (t.nodes.get(id).name == "Name") field = id;

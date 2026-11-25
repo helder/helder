@@ -11,7 +11,7 @@ import helder.ui.draw.*;
 // Run it with HELDER_ASYNC_SCROLL=0 for the synchronous path; on a display
 // kept awake (caffeinate -d on macOS), its presents waiting for the vsync.
 class Latency {
-	public static function run(w:UiWindow, list:Node, n:Int, work:Float) {
+	public static function run(w:helder.ui.UiWindow, list:Node, n:Int, work:Float) {
 		if (!Inject.supported) {
 			Sys.println("Latency: no input to inject here");
 			w.close();

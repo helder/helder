@@ -380,8 +380,8 @@ class Examples {
 
 	// the guide's screen (tests/ui/AccessApp.hx's guide): its widgets in a window
 	static final GUIDE_SCREEN = "import helder.ui.*;
-import helder.ui.draw.UiWindow;
-import helder.ui.draw.UiWindow.Surface;
+import helder.ui.UiWindow;
+import helder.ui.UiWindow.Surface;
 import helder.view.*;
 import helder.view.graph.Graph.*;
 

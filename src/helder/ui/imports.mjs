@@ -1,7 +1,7 @@
 // The JavaScript side of helder.ui in the browser, loaded by
 // src/helder/os/browser.mjs (run's imports: 'ui/imports.mjs' beside os, gfx
 // and text's): the imports of the module "hxmc_ui"
-// (src/helder/ui/draw/WebAccess.hx), the accessibility tree's adapter.
+// (src/helder/ui/access/web/Access.hx), the accessibility tree's adapter.
 //
 // A UiWindow's accessibility tree (helder.ui.access.AccessTree) is mirrored
 // as elements inside its canvas: a canvas's children are its fallback
@@ -56,7 +56,7 @@ export default function ui(host) {
 		c.hxmcEditors = l;
 		return l;
 	}
-	// a canvas's layer of scroll views (src/helder/ui/draw/WebScroll.hx): as
+	// a canvas's layer of scroll views (src/helder/ui/platform/web/Scroll.hx): as
 	// the editors' but under them; the canvas's listeners take the pointer's
 	// events over it (helder.os's c.hxmcForward), its cursor the canvas's
 	function scrollLayer(c) {
@@ -379,7 +379,7 @@ export default function ui(host) {
 			new Int32Array(host.memory().buffer, p, 5).set(ev);
 			return 1;
 		},
-		// the scrollers' changes (WebScroll's JSON: the ui's width; views by
+		// the scrollers' changes (web.Scroll's JSON: the ui's width; views by
 		// id, their geometry g (parent, box, content in ui points, axes,
 		// bars, covered) and offsets o when they changed; r: the ids gone)
 		scroll_update(canvas, json) {
@@ -458,7 +458,7 @@ export default function ui(host) {
 			return 1;
 		},
 	};
-	// the window's layers (src/helder/ui/draw/WebLayers.hx): the bitmaps
+	// the window's layers (src/helder/ui/layers/web/Layers.hx): the bitmaps
 	// read from the canvas since the last update, then each update once its
 	// bitmaps are read, in order, to the page (layers_apply)
 	let snaps = [], updates = Promise.resolve();

@@ -31,7 +31,7 @@ class ShapeWindow {
 	static function main() {
 		var a = Sys.args(), t = a.indexOf("--transparent"), expect = t < 0 ? "yes" : a[t + 1];
 		var desk = behind();
-		var w = new UiWindow("ShapeWindow", W, H, null, false, Standard, true);
+		var w = new helder.ui.UiWindow("ShapeWindow", W, H, null, false, Standard, true);
 		w.background = Color.TRANSPARENT;
 		var box = new Node(), half = new Node();
 		box.style.set({position: Absolute, left: 50, top: 40, width: 60, height: 60, background: 0xFFFF0000});
@@ -47,7 +47,7 @@ class ShapeWindow {
 		#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
 		if (desk == null) w.window.moveTo(200, 200);
 		#end
-		var step = 0, all = desk == null ? [w] : [desk, w], end = 40, downs = [0, 0], edge:Null<UiWindow> = null;
+		var step = 0, all = desk == null ? [w] : [desk, w], end = 40, downs = [0, 0], edge:Null<helder.ui.UiWindow> = null;
 		var clickStart = 0, clickIndex = 0, retried = false;
 		App.run(() -> {
 			if (++step == 12) {
@@ -138,7 +138,7 @@ class ShapeWindow {
 	// (the system's material behind it, as the system tells: macOS's view
 	// under the layer's, Windows' DWMWA_SYSTEMBACKDROP_TYPE, X11's property
 	// (the atom made first, as KWin does); none where the system has none)
-	static function backdrops(w:UiWindow) {
+	static function backdrops(w:helder.ui.UiWindow) {
 		var win = w.window;
 		if (!win.transparent) {
 			win.backdrop = WindowBackdrop.Blur;
@@ -207,8 +207,8 @@ class ShapeWindow {
 
 	// (borderless, transparent, over the others, out of the task bar, full
 	// height at the right of its screen's work area)
-	static function edgeWindow():UiWindow {
-		var e = new UiWindow("ShapeWindow edge", EDGE, 200, null, false, None, true);
+	static function edgeWindow():helder.ui.UiWindow {
+		var e = new helder.ui.UiWindow("ShapeWindow edge", EDGE, 200, null, false, None, true);
 		e.background = Color.TRANSPARENT;
 		var strip = new Node();
 		strip.style.set({position: Absolute, right: 0, top: 0, bottom: 0, width: 8, background: 0xFFFF0000});
@@ -223,7 +223,7 @@ class ShapeWindow {
 		return e;
 	}
 
-	static function edgeChecks(e:UiWindow) {
+	static function edgeChecks(e:helder.ui.UiWindow) {
 		var win = e.window, a = win.workArea(), p = win.position();
 		if (a == null) Sys.println("ShapeWindow: the edge window: no work area here (Wayland places windows): its place not checked");
 		else {
@@ -268,7 +268,7 @@ class ShapeWindow {
 	}
 
 	// (where it takes the pointer: the boxes it draws, in pixels, not the bar of pointer-events none)
-	static function inputs(w:UiWindow) {
+	static function inputs(w:helder.ui.UiWindow) {
 		var k = w.scale, r = w.window.inputRects;
 		function box(x:Float, y:Float, bw:Float, bh:Float):Array<Int> {
 			var x0 = Math.floor(x * k), y0 = Math.floor(y * k);
@@ -279,7 +279,7 @@ class ShapeWindow {
 	}
 
 	// (the frame read back, RGBA: at points x, y)
-	static function frame(w:UiWindow) {
+	static function frame(w:helder.ui.UiWindow) {
 		var px = captured;
 		var k = w.device.width / W;
 		function at(x:Float, y:Float):Array<Int> {
@@ -329,7 +329,7 @@ class ShapeWindow {
 	}
 
 	// (the window at a press: whether it ignores the mouse, where it finds the pointer)
-	static function macState(w:UiWindow) {
+	static function macState(w:helder.ui.UiWindow) {
 		var view = w.window.surface.handle;
 		Sys.println(OsThread.get(() -> {
 			var win = helder.os.apple.objc.Msg.id(view, helder.os.apple.objc.ObjC.sel("window"));
@@ -359,7 +359,7 @@ class ShapeWindow {
 		#end
 	}
 
-	static function behind():Null<UiWindow> {
+	static function behind():Null<helder.ui.UiWindow> {
 		#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64" || hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64" || hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 		if (Sys.systemName() == "Linux" && Sys.getEnv("WAYLAND_DISPLAY") != null && Sys.getEnv("HELDER_X11") != "1") return null;
 		#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
@@ -368,7 +368,7 @@ class ShapeWindow {
 			return null;
 		}
 		#end
-		var d = new UiWindow("ShapeWindow desk", W * 2, H * 2, null, false);
+		var d = new helder.ui.UiWindow("ShapeWindow desk", W * 2, H * 2, null, false);
 		d.background = Color.rgb(0x00FF00);
 		d.window.moveTo(200, 200);
 		return d;
@@ -378,7 +378,7 @@ class ShapeWindow {
 	}
 
 	// (what the system shows)
-	static function system(w:UiWindow, desk:Null<UiWindow>) {
+	static function system(w:helder.ui.UiWindow, desk:Null<helder.ui.UiWindow>) {
 		if (!w.window.transparent) return;
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 		var view = w.window.surface.handle;
@@ -421,7 +421,7 @@ class ShapeWindow {
 	#if (hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64")
 	// (X11: the window's own pixels, 32 bits with their alpha; the root's,
 	// composed by the compositing manager, the window behind through the clear ones)
-	static function x11(w:UiWindow) {
+	static function x11(w:helder.ui.UiWindow) {
 		var s = w.window.surface;
 		function at(id:haxe.Int64, x:Int, y:Int):Array<Int> {
 			var img = Xlib.XGetImage(s.display, id, x, y, 1, 1, (-1 : haxe.Int64), X.ZPixmap);
@@ -439,7 +439,7 @@ class ShapeWindow {
 
 	// (Wayland: weston's screenshot, its background green (tests/os/wayland.sh's
 	// weston.ini); where the box is, the window)
-	static function wayland(w:UiWindow) {
+	static function wayland(w:helder.ui.UiWindow) {
 		var dir = Sys.getEnv("XDG_RUNTIME_DIR") + "/shape-" + Std.random(1 << 30);
 		sys.FileSystem.createDirectory(dir);
 		var old = Sys.getCwd();

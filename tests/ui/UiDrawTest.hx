@@ -9,7 +9,7 @@ import helder.ui.draw.*;
 // MAX_OFF of them may not), on the target's GPU API (bun run test ui-draw;
 // Linux: Mesa's llvmpipe on an EGL pbuffer):
 //   UiDrawTest <golden.png> <out.png> [--bless | --dump | --window | --smoke]
-// (--dump prints the laid-out tree; --window draws it in a UiWindow, X11
+// (--dump prints the laid-out tree; --window draws it in a helder.ui.UiWindow, X11
 // under Xvfb on Linux, and compares the frame read back before its present;
 // --smoke, for the machines without DejaVu Sans (Windows, macOS: CI's
 // gfx-windows and gfx-macos): no golden image, but the system font found
@@ -88,7 +88,7 @@ class UiDrawTest {
 
 	#if !(helder.soft && helder.headless)
 	static function window(golden:String, out:String) {
-		var w = new UiWindow("UiDrawTest", W, H);
+		var w = new helder.ui.UiWindow("UiDrawTest", W, H);
 		Sample.build(w.root);
 		var pixels = Bytes.alloc(W * H * 4);
 		var frames = 0;
@@ -98,7 +98,7 @@ class UiDrawTest {
 			if (frames < 3) w.ui.requestFrame();
 			if (frames == 2) w.capture = pixels;
 		};
-		// UiWindow.run's loop, counting the turns with nothing to draw: each
+		// helder.ui.UiWindow.run's loop, counting the turns with nothing to draw: each
 		// sleeps (App.wait) until an event or 50 ms; closed after half a second idle
 		var idle = 0, since = 0.0;
 		App.run(() -> {
@@ -125,7 +125,7 @@ class UiDrawTest {
 
 	#if (helder.soft && helder.os == "linux")
 	// (-D helder.soft on X11: the window's pixels, as helder.os.Blit put them, the frame's)
-	@:hxmc.unsafe(gc) static function shown(w:UiWindow, frame:Bytes) {
+	@:hxmc.unsafe(gc) static function shown(w:helder.ui.UiWindow, frame:Bytes) {
 		var s = w.window.surface;
 		if (s.kind != X11) return;
 		var img = helder.os.linux.x11.Xlib.XGetImage(s.display, s.handle.toI64(), 0, 0, W, H, (-1 : hxmc.unsafe.Int64), 2);

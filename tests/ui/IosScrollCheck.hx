@@ -7,7 +7,7 @@ import helder.ui.widgets.TextField;
 // The program on its own thread on iOS (IosTest scroll: tests/gfx/ios.sh
 // launches the app again with it): a list scrolled by its UIScrollView,
 // UIKit animating the offset while the program blocks for 500 ms. Its
-// offsets reach the compositor on the main thread (IosScroll), whose frames
+// offsets reach the compositor on the main thread (helder.ui.platform.apple.IosScroll), whose frames
 // keep coming meanwhile at them, and the program has the view's offset
 // afterwards; then text typed into a native field (a UITextField:
 // UIKeyInput's insertText:) reaches its node.
@@ -21,7 +21,7 @@ class IosScrollCheck {
 	}
 
 	public static function run() {
-		var w = new UiWindow("IosScrollCheck", 0, 0);
+		var w = new helder.ui.UiWindow("IosScrollCheck", 0, 0);
 		var field = new TextField();
 		field.host = Native;
 		field.style.set({height: 40, shrink: 0, margin: 60});
@@ -54,9 +54,9 @@ class IosScrollCheck {
 			if (step == 1) check("the program on a thread of its own", OsThread.program != 0 && hxmc.NativeThread.current() == OsThread.program, 'thread ${OsThread.program}');
 			if (step == 30) {
 				// (UIKit animates the view's offset on the main thread, the program blocked meanwhile)
-				var s:IosScroll = cast @:privateAccess w.iosScroll;
+				var s:helder.ui.platform.apple.IosScroll = cast @:privateAccess w.iosScroll;
 				var v:Null<hxmc.unsafe.Ptr> = s == null ? null : @:privateAccess s.views.get(list);
-				check("the list has its UIScrollView", v != null, s == null ? "no IosScroll" : v == null ? "none for the list" : "");
+				check("the list has its UIScrollView", v != null, s == null ? "no helder.ui.platform.apple.IosScroll" : v == null ? "none for the list" : "");
 				if (v == null) Sys.exit(1);
 				var k = @:privateAccess s.k;
 				target = 1200;
@@ -91,7 +91,7 @@ class IosScrollCheck {
 				field.focus();
 			}
 			if (step == 30 + 50) {
-				var e = @:privateAccess (cast field.editor : helder.ui.platform.IosViews.IosEditor);
+				var e = @:privateAccess (cast field.editor : helder.ui.platform.apple.IosViews.IosEditor);
 				check("the field native", e != null, "");
 				if (e != null) OsThread.run(() -> {
 					var s = helder.os.apple.objc.ObjC.str("typed");

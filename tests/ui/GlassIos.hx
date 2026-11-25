@@ -1,5 +1,5 @@
 import helder.ui.*;
-import helder.ui.draw.UiWindow;
+import helder.ui.UiWindow;
 
 // GlassScene's backgrounds under the system's glass on iOS 26 (a
 // UIGlassEffect each, helder.ui.Glass), each shown 4 s in turn, 140 points

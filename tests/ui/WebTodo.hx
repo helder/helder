@@ -1,5 +1,5 @@
 import helder.ui.*;
-import helder.ui.draw.UiWindow;
+import helder.ui.UiWindow;
 import helder.view.Render;
 
 // The todo example in a browser (web.mjs: wasm32-wasi in headless Chromium,

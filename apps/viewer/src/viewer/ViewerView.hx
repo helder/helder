@@ -2,7 +2,7 @@ package viewer;
 
 import helder.ui.Clock;
 import helder.ui.controls.Look;
-import helder.ui.draw.UiWindow;
+import helder.ui.UiWindow;
 import helder.ui.widgets.WindowButtons;
 import helder.view.*;
 import helder.view.Flow.*;

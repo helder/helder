@@ -547,7 +547,7 @@ class AsyncScrollTest {
 			list.append(row);
 		}
 		ui.root.append(list);
-		var c = new helder.ui.draw.Compositor(device), mine = haxe.io.Bytes.alloc(w * h * 4), theirs = haxe.io.Bytes.alloc(w * h * 4);
+		var c = new helder.ui.layers.Compositor(device), mine = haxe.io.Bytes.alloc(w * h * 4), theirs = haxe.io.Bytes.alloc(w * h * 4);
 		function frame(composite:Bool, ?pixels:haxe.io.Bytes) {
 			ui.update();
 			var enc = device.beginFrame();
@@ -640,7 +640,7 @@ class AsyncScrollTest {
 		ui.root.append(list);
 		ui.root.append(spin);
 		ui.root.append(card);
-		var c = new helder.ui.draw.Compositor(device), mine = haxe.io.Bytes.alloc(w * h * 4), theirs = haxe.io.Bytes.alloc(w * h * 4);
+		var c = new helder.ui.layers.Compositor(device), mine = haxe.io.Bytes.alloc(w * h * 4), theirs = haxe.io.Bytes.alloc(w * h * 4);
 		function frame(composite:Bool, ?pixels:haxe.io.Bytes) {
 			Clock.tick(now);
 			ui.update();

@@ -1,5 +1,5 @@
 import helder.ui.*;
-import helder.ui.draw.UiWindow;
+import helder.ui.UiWindow;
 import helder.view.*;
 import helder.view.graph.Graph.*;
 
@@ -26,7 +26,7 @@ class AccessApp implements Markup {
 		var w = new UiWindow(which, size[0], size[1]);
 		#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
 		// (the events UI Automation is given, printed: HELDER_ACCESS_LOG)
-		if (Sys.getEnv("HELDER_ACCESS_LOG") != null) helder.ui.draw.WinAccess.log = s -> {
+		if (Sys.getEnv("HELDER_ACCESS_LOG") != null) helder.ui.access.windows.Access.log = s -> {
 			Sys.println("AccessApp: " + s);
 			Sys.stdout().flush();
 		};

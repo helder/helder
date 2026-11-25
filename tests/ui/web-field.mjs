@@ -103,7 +103,7 @@ const editor = (tag) => p.evaluate((t) => {
 	const e = document.querySelector(t);
 	if (!e) return null;
 	const r = e.getBoundingClientRect(), cx = r.x + r.width / 2, cy = r.y + r.height / 2;
-	// (stacked among the window's layers, helder.ui's WebLayers: a layer over it there, at its centre)
+	// (stacked among the window's layers, helder.ui's web.Layers: a layer over it there, at its centre)
 	const l = e.parentNode, z = Number(e.style.zIndex) || 0;
 	const under = l && l.hxmcScroller === undefined && [...l.children].some((o) => o !== e && o.tagName === 'DIV' && Number(o.style.zIndex) > z && o.style.display !== 'none'
 		&& (({ left, top, right, bottom }) => cx >= left && cx < right && cy >= top && cy < bottom)(o.getBoundingClientRect()));

@@ -3,8 +3,8 @@
 // tags: ui, view, signals
 // demo: canvas 320x200
 import helder.view.*;
-import helder.ui.draw.UiWindow;
-import helder.ui.draw.UiWindow.Surface;
+import helder.ui.UiWindow;
+import helder.ui.UiWindow.Surface;
 import helder.view.graph.Graph.*;
 
 // The README's example: a signal, markup bound to it, a button that changes it

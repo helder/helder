@@ -16,11 +16,11 @@ import helder.view.graph.Signal;
 // (VideoTexture: the frame turned to RGB in a pass of its own, then drawn
 // as a <Scene>'s box is), so that it is in captures, headless frames and
 // every compositor. layer: the system's own layer instead, in a window of
-// system layers (helder.ui.draw.CaLayers) where the node is a plain
+// system layers (helder.ui.layers.apple.Layers) where the node is a plain
 // rectangle (no radius) and the picture upright (SampleLayer:
 // AVSampleBufferDisplayLayer, the frames queued with their times on a
-// timebase kept to the player's clock; Android's ScLayers: SurfaceLayer,
-// MediaCodec rendering onto a SurfaceControl; Windows' DcLayers: WinLayer,
+// timebase kept to the player's clock; Android's android.Layers: SurfaceLayer,
+// MediaCodec rendering onto a SurfaceControl; Windows' windows.Layers: WinLayer,
 // a DirectComposition surface in the slot's visual), clipped and moved with its
 // scrollers; asked for, not the default, until its colours are measured
 // on hardware (a virtual Mac's window server showed them some 30 levels

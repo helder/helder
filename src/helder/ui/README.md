@@ -5,8 +5,8 @@ drawn with the GPU (`helder.gfx`), written in markup with fine-grained
 signals, Solid's way (`helder.view`, which renders into its nodes).
 
 ```haxe
-import helder.ui.draw.UiWindow;
-import helder.ui.draw.UiWindow.Surface;
+import helder.ui.UiWindow;
+import helder.ui.UiWindow.Surface;
 import helder.view.*;
 import helder.view.graph.Graph.*;
 
@@ -1193,7 +1193,7 @@ the native menus (a context menu, the menu bar), the platform's text
 editors where `Ui.policy` or a node says native (on the desktop helder
 draws its own by default), the system's web view (`WebView`, below),
 and later other heavy views (video) when an app needs one. A window's `Ui.platform` is its
-`PlatformViews` (`MacViews` on macOS, `IosViews` on iOS, `WinViews` on
+`PlatformViews` (`MacViews` on macOS, `IosViews` on iOS, `windows.Views` on
 Windows, `WebViews` in a browser; none on Linux and Android, where
 everything is drawn); a
 `PlatformEditor` is one text editor, `PlatformMenuItem` a menu's item as
@@ -1204,7 +1204,7 @@ helder.os's are theirs (`AkMsg`, `UkMsg`, `Win32`).
 
 `<webview>` (`helder.ui.platform.WebView`, a node) is the system's web
 view placed where it is laid out, over the drawn surface: on iOS and
-macOS a WKWebView (`AppleWebView`: a subview of the window's view,
+macOS a WKWebView (`apple.WebView`: a subview of the window's view,
 its UiWindow's surface's), on Android an `android.webkit.WebView` (`AndroidWebView`:
 a panel window of the activity's, since NativeActivity's own window draws
 no views, made and driven on Java's main thread); elsewhere nothing yet
@@ -1336,11 +1336,11 @@ nearer each other than `spacing` points merging.
 </glass>
 ```
 
-On iOS and macOS 26 it is the system's own (`helder.ui.platform.AppleGlass`:
+On iOS and macOS 26 it is the system's own (`helder.ui.platform.apple.Glass`:
 NSGlassEffectView, a UIVisualEffectView of a UIGlassEffect; a group's
 NSGlassEffectContainerView or UIGlassContainerEffect, its glass views in
 its content view) where the window's layers are the system's
-(CaLayers): a view in the layer tree (LayerSlot) in a host that takes no
+(apple.Layers): a view in the layer tree (LayerSlot) in a host that takes no
 press, so that it clips, stacks and scrolls with the layers, samples what
 is behind it as the system does, and leaves the input to helder's view.
 The system's interactive response is its own (macOS 27's
@@ -1416,7 +1416,7 @@ drawn again while a popup covers it or a scroller clips it. In the
 browser the editors are the page's input and textarea over the canvas
 (`WebViews`; `web-field.mjs` drives them in Chromium); on Windows EDIT
 controls, children of the window, coloured through WM_CTLCOLOREDIT with the
-background behind them (`WinViews`; `WinAccessTest`); on macOS
+background behind them (`windows.Views`; `WinAccessTest`); on macOS
 NSTextFields over the window's content view (a password's an
 NSSecureTextField) in the field's font, colour and alignment, a text area an
 NSTextView in a borderless NSScrollView (`MacViews`; `MacAccessTest`); on
@@ -1486,12 +1486,12 @@ VoiceOver stops at, its label, value, hint, traits and frame; activate,
 increment and decrement come back as actions; layout changes and
 announcements posted; `tests/ui/IosAccessCheck.hx` on CI's simulator); on Android to an
 AccessibilityNodeProvider on NativeActivity's content view
-(`AndroidAccess`, its Java classes.dex's `org.hxmc.AccessProvider` and
+(`android.Access`, its Java classes.dex's `org.hxmc.AccessProvider` and
 `AccessDelegate`, natives: a virtual view per node, its class, text,
 bounds, states, range, collection and item info and actions, the
 accessibility focus its own, TalkBack's order the tree's; the content
 changed, the focus and announcements sent; `tests/ui/AndroidAccessCheck.hx`
-read by `uiautomator dump` on CI's emulator); on Windows to UI Automation (`WinAccess`: a COM
+read by `uiautomator dump` on CI's emulator); on Windows to UI Automation (`windows.Access`: a COM
 provider per node, made here: navigation, properties (an item's place in
 its set, a heading's level, off screen), bounds, the Invoke, Toggle,
 RangeValue, Value, ExpandCollapse, SelectionItem, Selection, ScrollItem,
@@ -1503,7 +1503,7 @@ changed), which Narrator reads (the window lane: in process,
 IUIAutomation, `WinAccessProbe`, on the fixture and the screens Linux's
 probe reads; under Wine, whose IUIAutomation has no patterns, the tree
 and its properties); on
-Linux to AT-SPI over D-Bus (`LinuxAccess`, through helder's own D-Bus
+Linux to AT-SPI over D-Bus (`linux.Access`, through helder's own D-Bus
 client, `helder.os.linux.DBus`: Accessible, Component, Action, Value,
 Text by characters, words, sentences and lines with the caret and the
 selection, EditableText, Selection, Table and TableCell; the events of
@@ -1733,7 +1733,7 @@ golden images and X11 draw every frame whole; `HELDER_DAMAGE=full` draws
 a window's so, `HELDER_DAMAGE=flash` shows each frame's rectangles.
 
 On macOS, iOS, Windows, Linux (X11, Wayland) and Android a window has a compositor
-(`helder.ui.draw.Compositor`), so that scrolling keeps the display's pace
+(`helder.ui.layers.Compositor`), so that scrolling keeps the display's pace
 while the program is busy. The main thread hands it each input event as
 it reads it (helder.os's README, "Threads"), before the program. Its
 mirror of the scrollers (`ScrollMirror`: each program frame's
@@ -1790,7 +1790,7 @@ drawn at the display's pace while the program is busy; the program has
 them at its next turn.
 
 On macOS and iOS the frames go to the system's compositor
-(`helder.ui.draw.CaLayers`): each frame, the program's and the
+(`helder.ui.layers.apple.Layers`): each frame, the program's and the
 compositor's, is composed from the compositor's state and split in paint
 order into Core Animation layers: the window's CAMetalLayer at the
 bottom; a CAMetalLayer of their own for each top-level scroller's content
@@ -1819,7 +1819,7 @@ too), under what is drawn over it, moved with its scroller and its
 transform. Native views (the text fields, the web view) are slots too:
 AppKit and UIKit keep a view's layer in its superview's tree, so each is
 a view in a host view (its clip, and the mask's copy) and what is drawn
-over it goes in a view over it (`CaViews`), which takes a press only
+over it goes in a view over it (`apple.LayerViews`), which takes a press only
 where something is drawn over a host. They are never hidden for a popup
 or a scroller cutting them, so their focus and editing stay the
 system's.
@@ -1861,7 +1861,7 @@ gone unpaced: 5,600 frames in 4 s at 110% of a core on an M-series Mac,
 now the display's 119 a second at 21–28%).
 
 On Android (API 33 on) the frames go to SurfaceFlinger
-(`helder.ui.draw.ScLayers`): the same split as SurfaceControls, under one
+(`helder.ui.layers.android.Layers`): the same split as SurfaceControls, under one
 of Java's put under the window (a view's root surface has no handle for
 the NDK's `ASurfaceControl_createFromWindow`), each with buffers of its
 own (AHardwareBuffers drawn by GLES through an EGLImage, fenced, two a
@@ -1922,7 +1922,7 @@ must fall back while running (pixel for pixel the textured compositor's
 after).
 
 On Windows the frames go to DirectComposition
-(`helder.ui.draw.DcLayers`): the window's swap chain is made for
+(`helder.ui.layers.windows.Layers`): the window's swap chain is made for
 composition, a visual of a target on the window (under its child
 windows: an EDIT stays over what is drawn and moves as before; the web
 view too), the same split as visuals over it, each layer's pixels an
@@ -1944,7 +1944,7 @@ when every frame waited for DWM's next composition after it); one that
 changes nothing commits nothing; one split into the window's layer alone
 is drawn onto the swap chain and presented as before, the stack taken out
 of the tree once that frame is queued. A node's `LayerSlot` is a visual
-(`DcLayers.visualFor`), cut to its box in its clip. No commit processed
+(`windows.Layers.visualFor`), cut to its box in its clip. No commit processed
 for 1.5 s, a call that fails or a lost device turn the layers off for
 good: every visual but the window's own out of the tree in one commit,
 the next frame the window's own; `HELDER_SYSTEM_LAYERS=0`, or no
@@ -1953,7 +1953,7 @@ DirectComposition, keeps a swap chain of the window's own.
 with a system layer, a rounded scroller and a moving box three ways
 (layers, `0`, `stall`).
 On Wayland the frames go to the compositor as subsurfaces
-(`helder.ui.draw.WlLayers`): the same split as wl_subsurfaces of the
+(`helder.ui.layers.linux.Layers`): the same split as wl_subsurfaces of the
 window's wl_surface, stacked over it, none taking input (an empty input
 region: the pointer and touches stay the window's). A subsurface is not
 clipped by its parent, so a scroller's content is cropped to its clip by
@@ -1975,7 +1975,7 @@ frame callback (two periods at most) and wp_presentation's feedback gives
 the display's period. A frame split into the window's layer alone, a new
 window's first and the first after a resize or a scale change are drawn
 onto the window's own EGL surface, the layers unmapped in that same
-commit. A node's `LayerSlot` is a wl_surface (`WlLayers.surface()`: its
+commit. A node's `LayerSlot` is a wl_surface (`linux.Layers.surface()`: its
 owner's buffers, desynchronized so they show as they come; `content()`
 their size), placed, cropped by its viewport and stacked by the frames
 (synchronized for the frame that moves it). Without wl_subcompositor or
@@ -1999,7 +1999,7 @@ ms of CPU a frame on the layers, 1–4 quads drawn, against 19–23 ms for
 the textured compositor's. X11 and headless stay on the textured
 compositor.
 
-In a browser the page is the compositor (`helder.ui.draw.WebLayers`):
+In a browser the page is the compositor (`helder.ui.layers.web.Layers`):
 the same split, each layer but the window's a canvas of the page. A
 top-level scroller's content goes in its scroll view (the clear
 `overflow: auto` element it already has), so the browser scrolls it at

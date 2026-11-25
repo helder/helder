@@ -1,6 +1,6 @@
 import helder.ui.actions.Actions;
-import helder.ui.draw.UiWindow;
-import helder.ui.draw.UiWindow.Surface;
+import helder.ui.UiWindow;
+import helder.ui.UiWindow.Surface;
 import helder.view.*;
 import studio.Studio;
 

@@ -1,7 +1,7 @@
 #!/bin/sh
 # helder.ui.platform's web view on macOS (CI's desktop-macos job): the
 # WKWebView of tests/platform/WebViewCheck.hx in a drawn window (the same
-# AppleWebView as iOS's), its page, wasm, bridge and snapshot, then
+# apple.WebView as iOS's), its page, wasm, bridge and snapshot, then
 # examples/todo's web build in it; its last line "webview: embedded: N
 # checks, ok".
 #   sh tests/platform/webview-macos.sh <helder> [out dir]

@@ -1,6 +1,6 @@
 import helder.os.apple.objc.*;
 import helder.ui.*;
-import helder.ui.draw.UiWindow;
+import helder.ui.UiWindow;
 import helder.view.*;
 import hxmc.unsafe.*;
 

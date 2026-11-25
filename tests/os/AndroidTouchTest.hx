@@ -1,6 +1,6 @@
 import helder.os.App;
 import helder.ui.*;
-import helder.ui.draw.UiWindow;
+import helder.ui.UiWindow;
 
 // A touch fling in a drawn UI on Android (CI's android job: android-touch.sh
 // swipes with adb and reads the lines from logcat): a header over a scroll
@@ -11,7 +11,7 @@ import helder.ui.draw.UiWindow;
 // (helder.ui.gesture.TouchScroll) scrolls the box at where it started, so
 // it follows the finger the whole way (scrolled by the finger's travel
 // when let go), then glides on. Where the compositor took the drag
-// (helder.ui.draw.Compositor: routed as the UI thread read it), the
+// (helder.ui.layers.Compositor: routed as the UI thread read it), the
 // program's offset at the release is the compositor's, its glide begun:
 // at least the travel. Checked once it settled; Back closes.
 //   helder build tests/os/AndroidTouchTest.hx --target android-x86_64 -o AndroidTouchTest.apk

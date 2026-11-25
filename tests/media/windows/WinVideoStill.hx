@@ -6,8 +6,8 @@ import helder.media.ui.VideoNode;
 import helder.os.OsThread;
 import helder.os.windows.User32;
 import helder.ui.Clock;
-import helder.ui.draw.UiWindow;
-import helder.ui.draw.UiWindow.Surface;
+import helder.ui.UiWindow;
+import helder.ui.UiWindow.Surface;
 import helder.view.*;
 import hxmc.unsafe.*;
 

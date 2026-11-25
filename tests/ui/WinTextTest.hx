@@ -1,5 +1,5 @@
 import helder.ui.*;
-import helder.ui.draw.UiWindow;
+import helder.ui.UiWindow;
 import helder.ui.widgets.EditableText;
 import helder.os.windows.Com;
 import helder.os.windows.Tsf;
@@ -37,10 +37,10 @@ class WinTextTest implements Markup {
 			IUnknownQi.QueryInterface(o, iid, p) >= 0 ? p.value : Ptr.nil();
 		});
 
-	// the drawn field through UI Automation's providers (WinAccess): an Edit,
+	// the drawn field through UI Automation's providers (windows.Access): an Edit,
 	// its value the field's, a value set through the Value pattern
 	static function access(w:UiWindow, name:helder.view.graph.Signal<String>) {
-		var a:helder.ui.draw.WinAccess = cast @:privateAccess w.winAccess;
+		var a:helder.ui.access.windows.Access = cast @:privateAccess w.winAccess;
 		var root = a.rootProvider();
 		var simple = Com.guid(0xD6DD68D1, 0x86FD, 0x4332, [0x86, 0x66, 0x9A, 0xBE, 0xDE, 0xA2, 0xD2, 0x4C]);
 		var fragment = Com.guid(0xF7063DA8, 0x8359, 0x439C, [0x92, 0x97, 0xBB, 0xC5, 0x29, 0x9A, 0x7D, 0x87]);

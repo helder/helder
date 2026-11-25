@@ -335,14 +335,14 @@ plays the animation clock ticks it. Two ways to show it:
   in a pass of their own (`ui.VideoShader`: the matrix of the frame's
   coefficients, range and depth; chroma sited left), then drawn as a
   `<Scene>`'s box is: in captures, headless frames and every compositor;
-- `layer={true}`, in a window of system layers (helder.ui.draw.CaLayers),
+- `layer={true}`, in a window of system layers (helder.ui.layers.apple.Layers),
   where the node is a plain rectangle (no radius) and the picture upright:
   the system's `AVSampleBufferDisplayLayer` in a `LayerSlot`
   (`ui.SampleLayer`), each frame enqueued as it falls due with its time
   (tagged with its matrix, BT.709's primaries and sRGB's transfer, as
   helder draws it), its control timebase at the player's clock, clipped
   and moved with its scrollers, under what is drawn over it; let go a
-  second after the slot, once CaLayers took it out of the tree. Asked for,
+  second after the slot, once apple.Layers took it out of the tree. Asked for,
   not the default: on CI's virtual Mac the window server showed its
   colours some 30 levels off helder's (the same pre-converted to BGRA by
   VideoToolbox), to be measured on hardware; a window's capture of
@@ -363,10 +363,10 @@ the picture's size, each plane sampled by its view's format: r8 and rg8,
 r16 and rg16), a software decoder's rows (`mem:`, uploaded as the
 texture is made); each frame its own handle (the decoder's pool reuses
 its textures and memory), the same pass as Apple's. `layer={true}`
-(`ui.WinLayer`, in a window of DcLayers): a DirectComposition surface of
-the picture's size (as DcLayers' layers are: a swap chain for composition
+(`ui.WinLayer`, in a window of windows.Layers): a DirectComposition surface of
+the picture's size (as windows.Layers' layers are: a swap chain for composition
 showed black in CI's window captures), the content of a visual in the
-node's slot (`DcLayers.visualFor`), scaled and centred as fit says; each
+node's slot (`windows.Layers.visualFor`), scaled and centred as fit says; each
 frame drawn into it and committed as it falls due on the player's clock,
 so DWM shows it at its next composition and helder draws nothing for it. The frame is turned to
 RGB on the CPU as VideoShader turns it (a DXVA frame read back by Media
@@ -381,12 +381,12 @@ its YUV as the buffer is tagged, the picture its crop's share of the
 buffer (`turn.y`, `turn.w`). `layer={true}` (`ui.SurfaceLayer`, API 34):
 MediaCodec renders straight onto the Surface of a SurfaceControl of its
 own (Java's: the NDK has no Surface of an ASurfaceControl), its native
-handle (`ASurfaceControl_fromJava`) under the node's slot (ScLayers),
+handle (`ASurfaceControl_fromJava`) under the node's slot (android.Layers),
 scaled as fit says; each frame released to it as it falls due on the
 player's clock (`releaseOutputBufferAtTime`). Until a frame was rendered
 onto it the node draws them (`showing`), and one made while paused seeks
 to where the player is, the frame due decoded again onto it. Where the
-window's frames are not split onto layers (no scroller: ScLayers'
+window's frames are not split onto layers (no scroller: android.Layers'
 single), and until the layers showed a frame, it is drawn by helder. SurfaceFlinger converts the
 frame as the codec tagged it: SMPTE 170M's transfer onto the sRGB display
 (the emulator's grey 128 shows as 141), which MediaCodec sets on each

@@ -3,11 +3,11 @@ package helder.media.ui;
 #if (hxmc.target == "wasm32-wasi")
 import helder.ui.ImageFit;
 import helder.ui.LayerSlot;
-import helder.ui.draw.UiWindow;
-import helder.ui.draw.WebLayers;
+import helder.ui.UiWindow;
+import helder.ui.layers.web.Layers;
 
 // A video shown by the page (SampleLayer's in a browser, in a window whose
-// layers are the page's: helder.ui.draw.WebLayers): a canvas of the page in
+// layers are the page's: helder.ui.layers.web.Layers): a canvas of the page in
 // the node's slot, among the window's layers in paint order (in its scroll
 // view where its scroller's content is a layer), each frame as it falls
 // due read into an ImageBitmap (the browser's VideoFrame: no copy through
@@ -26,7 +26,7 @@ class WebSample {
 		var p = owner.player, ui = owner.ui;
 		if (p == null || p.video == null || ui == null) return null;
 		for (w in @:privateAccess UiWindow.open)
-			if (w.ui == ui && w.compositor != null && Std.isOfType(w.compositor.layers, WebLayers) && w.compositor.layers.frames > 0) {
+			if (w.ui == ui && w.compositor != null && Std.isOfType(w.compositor.layers, Layers) && w.compositor.layers.frames > 0) {
 				var c = w.window.surface.handle.toI64().toInt();
 				return new WebSample(c, WebLayerImports.layers_slot(c));
 			}

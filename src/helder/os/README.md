@@ -139,7 +139,7 @@ loop the window procedure hands the program its events and the sizing
 timer's frames, as before. A Win32 call of the app's own that may send
 its window a message goes through `OsThread.run`: the main thread does
 not serve one sent from elsewhere while it waits. A window of system
-layers (helder.ui.draw.DcLayers) has its DirectComposition target made
+layers (helder.ui.layers.windows.Layers) has its DirectComposition target made
 there with its swap chain; its visuals are the render thread's, which
 commits them.
 
@@ -356,7 +356,7 @@ over the client area; KDE's blur for both: `org_kde_kwin_blur` on Wayland
 Elsewhere, on an opaque window, and for one the system lacks it reads
 `None` (and the last one is taken away). `<Surface backdrop>` makes the
 window transparent, its background clear unless given. #115's
-`AppleGlass` is glass in the layer tree; a window's backdrop is a view of
+`apple.Glass` is glass in the layer tree; a window's backdrop is a view of
 its own under it all, so it doesn't use it.
 
 Tests: `tests/ui/ShapeWindow.hx` (the frame
@@ -760,7 +760,7 @@ helder.os.linux.wayland.Scanner src/helder/os/linux/wayland/protocol <xml>...`; 
 in, `bun run test wayland` makes them again from the system's XML and
 compares): core, xdg-shell, xdg-decoration, viewporter, fractional-scale,
 cursor-shape, text-input-v3, presentation-time, single-pixel-buffer and
-linux-dmabuf (the last three helder.ui's system layers', WlLayers), each interface an abstract over its proxy with a method
+linux-dmabuf (the last three helder.ui's system layers', linux.Layers), each interface an abstract over its proxy with a method
 per request (`wl_proxy_marshal_array_flags`, the arguments as wl_argument
 slots) and an events class of handlers (one C dispatcher,
 `wl_proxy_add_dispatcher`), the wl_interface and wl_message structs made

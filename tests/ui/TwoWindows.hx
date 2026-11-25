@@ -21,10 +21,10 @@ class TwoWindows {
 	static function main() {
 		#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
 		var see = Sys.args().indexOf("transparent") >= 0;
-		var g = new UiWindow("TwoWindows green", 300, 200, null, false);
+		var g = new helder.ui.UiWindow("TwoWindows green", 300, 200, null, false);
 		g.background = Color.rgb(0x00FF00);
 		g.window.moveTo(100, 100);
-		var o = new UiWindow("TwoWindows " + (see ? "transparent" : "blue"), 200, 150, null, false, Standard, see);
+		var o = new helder.ui.UiWindow("TwoWindows " + (see ? "transparent" : "blue"), 200, 150, null, false, Standard, see);
 		if (see) {
 			o.background = Color.TRANSPARENT;
 			var box = new Node();
@@ -66,7 +66,7 @@ class TwoWindows {
 		return "#" + StringTools.hex(c, 6);
 
 	#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
-	static function state(u:UiWindow):String {
+	static function state(u:helder.ui.UiWindow):String {
 		var b:helder.gfx.d3d11.D3D11Backend = cast @:privateAccess u.device.impl, l = u.compositor == null ? null : u.compositor.layers;
 		return 'composed ${b.composition != null}, system layers ${l != null}' + (l == null ? "" : ', frames on them ${l.frames}, single ${l.single}')
 			+ ', its own frames ${b.quiet ? "quiet" : "presented"}';
@@ -82,7 +82,7 @@ class Win {
 		return (c & 0xFF) << 16 | (c & 0xFF00) | (c >> 16 & 0xFF);
 
 	// (the screen's pixel at x, y points of u's content)
-	public static function screen(u:UiWindow, x:Float, y:Float):Int {
+	public static function screen(u:helder.ui.UiWindow, x:Float, y:Float):Int {
 		var p = u.window.position(), k = u.window.scale, dc = WinGdi.GetDC(hxmc.unsafe.Ptr.nil());
 		var c = WinPixel.GetPixel(dc, Math.round((p.x + x) * k), Math.round((p.y + y) * k));
 		WinGdi.ReleaseDC(hxmc.unsafe.Ptr.nil(), dc);
@@ -90,7 +90,7 @@ class Win {
 	}
 
 	// (its own pixels, PrintWindow's PW_RENDERFULLCONTENT | PW_CLIENTONLY: the middle of its content)
-	public static function printed(u:UiWindow):Int {
+	public static function printed(u:helder.ui.UiWindow):Int {
 		var hwnd = u.window.surface.handle, w = u.window.surface.width, h = u.window.surface.height;
 		return OsThread.get(() -> {
 			var screen = WinGdi.GetDC(hxmc.unsafe.Ptr.nil());

@@ -2,8 +2,8 @@
 // summary: <glass> over a scrolling list: a toolbar of merging glass buttons and a capsule, the system's on iOS and macOS 26, drawn elsewhere
 // tags: ui, glass, docs
 // demo: canvas 480x360
-import helder.ui.draw.UiWindow;
-import helder.ui.draw.UiWindow.Surface;
+import helder.ui.UiWindow;
+import helder.ui.UiWindow.Surface;
 import helder.ui.widgets.Icons;
 import helder.view.*;
 
