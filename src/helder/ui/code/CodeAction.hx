@@ -67,13 +67,19 @@ enum CodeAction {
 
 class CodeActions {
 	static var declared = false;
+	// (the keymaps given the bindings: a screen context's own is Keymap.global
+	// while it is current, a story's apart from the program's)
+	static final bound:Array<Keymap> = [];
 
-	// the actions declared and their default bindings added to the global keymap (once)
+	// the actions declared (once) and their default bindings added to the global keymap (once each)
 	public static function declare() {
-		if (declared) return;
-		declared = true;
-		actions("code", CodeAction);
+		if (!declared) {
+			declared = true;
+			actions("code", CodeAction);
+		}
 		var k = Keymap.global, ed = "CodeEditor", find = "CodeFind";
+		if (bound.indexOf(k) >= 0) return;
+		bound.push(k);
 		var list:Array<Array<Dynamic>> = [
 			["left", MoveLeft], ["right", MoveRight], ["up", MoveUp], ["down", MoveDown], ["home", MoveLineStart], ["end", MoveLineEnd],
 			["pageup", MovePageUp], ["pagedown", MovePageDown], ["shift-left", SelectLeft], ["shift-right", SelectRight], ["shift-up", SelectUp],

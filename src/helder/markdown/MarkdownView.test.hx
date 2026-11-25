@@ -33,7 +33,6 @@ function tests() {
 		return {ui: ui, view: v};
 	}
 	describe("MarkdownView", () -> {
-		beforeEach(() -> helder.ui.actions.Keymap.mac = false);
 		test("blocks in their slots", () -> {
 			var v = view("# Title\n\nSome *text* and `code`.\n\n- [x] one\n- two\n\n> quoted\n\n```ts\nlet a = 1\n```\n\n| a | b |\n|---|--:|\n| 1 | 2 |\n\n---\n").view;
 			equals(slots(v, []), [
@@ -97,6 +96,9 @@ function tests() {
 				all(c, slot, out);
 			return out;
 		}
+		// (Mod: Command on a Mac, Control elsewhere)
+		function mod():Int
+			return helder.ui.actions.Keymap.mac ? helder.ui.Key.MOD_META : helder.ui.Key.MOD_CONTROL;
 		function drag(ui:Ui, a:{x:Float, y:Float}, b:{x:Float, y:Float}) {
 			ui.pointerDown(a.x, a.y, 1);
 			ui.pointerMove(b.x, b.y);
@@ -120,7 +122,7 @@ function tests() {
 			var c = all(t.view, "markdown-th", []);
 			t.ui.pointerDown(point(c[0], 0).x, point(c[0], 0).y, 1);
 			t.ui.pointerUp(point(c[0], 0).x, point(c[0], 0).y, 1);
-			t.ui.keyDown("a".code, helder.ui.Key.MOD_CONTROL);
+			t.ui.keyDown("a".code, mod());
 			equals(t.ui.selectedText(), "a\tb\n1\t2\n\nafter");
 		});
 		test("a link's click still follows it; a drag from it selects", () -> {
@@ -163,7 +165,7 @@ function tests() {
 			var again = all(t.view, "markdown-p", [])[2];
 			assert(again != first);
 			equals(t.ui.textSelection.rangeIn(again, 13), {start: 0, end: 13});
-			t.ui.keyDown("a".code, helder.ui.Key.MOD_CONTROL);
+			t.ui.keyDown("a".code, mod());
 			var whole = t.ui.selectedText();
 			assert(StringTools.startsWith(whole, "Paragraph 0.\n\nParagraph 1.\n\n"));
 			assert(StringTools.endsWith(whole, "Paragraph 998.\n\nParagraph 999."));
