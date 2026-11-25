@@ -7,7 +7,7 @@ import Cube.Spin;
 // reads the results from logcat, where helder.os sends what the app prints):
 //   helder build tests/gfx/android --target android-x86_64 -o AndroidCheck.apk
 //   (tests/gfx/android/package.json: tests/gfx and the gfx examples' class
-//   paths; the app org.helder.androidtest)
+//   paths; the app org.helder.androidcheck)
 // - headless: Scene's cube on an EGL pbuffer of the device's GPU, read back
 //   and compared with cube.png (built into the app) by GfxCheck's rule;
 // - in the activity's window: frames drawn (the cube turning), the window's

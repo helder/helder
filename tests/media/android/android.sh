@@ -31,17 +31,17 @@ wait_for() {
 adb wait-for-device
 adb install -r -t "$1" > /dev/null || exit 1
 adb logcat -c
-adb shell am start -W -n org.helder.mediaandroidtest/android.app.NativeActivity > /dev/null
+adb shell am start -W -n org.helder.mediaandroidcheck/android.app.NativeActivity > /dev/null
 wait_for "MediaAndroidCheck: passed\|MediaAndroidCheck: [0-9]* failed" "$out/decode.txt" 240 || failed=1
 grep "MediaAndroidCheck" "$out/decode.txt" | sed 's/^.*MediaAndroidCheck/MediaAndroidCheck/'
 grep -q "MediaAndroidCheck: passed" "$out/decode.txt" || failed=1
-adb shell am force-stop org.helder.mediaandroidtest
+adb shell am force-stop org.helder.mediaandroidcheck
 
 adb install -r -t "$2" > /dev/null || exit 1
 for mode in drawn layer late; do
 	adb shell setprop debug.helder.video $mode
 	adb logcat -c
-	adb shell am start -W -n org.helder.videostill/android.app.NativeActivity > /dev/null
+	adb shell am start -W -n org.helder.videostillcheck/android.app.NativeActivity > /dev/null
 	log="$out/still-$mode.txt"
 	wait_for "VideoStillCheck: still" "$log" 120 || { failed=1; continue; }
 	adb exec-out screencap -p > "$out/still-$mode.png"
@@ -55,7 +55,7 @@ for mode in drawn layer late; do
 		[ $mode != drawn ] && echo "android.sh: note: no system layer showed it here (Android before 14, its layers off or not split): drawn, checked so"
 		node tests/media/android/still.mjs "$out/still-$mode.png" "$box" "$mode, drawn" 8 || failed=1
 	fi
-	adb shell am force-stop org.helder.videostill
+	adb shell am force-stop org.helder.videostillcheck
 done
 # (quoted for the device's shell: an empty value)
 adb shell "setprop debug.helder.video ''"
