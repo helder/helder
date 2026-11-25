@@ -2,6 +2,8 @@
 // summary: A coloured triangle: a vertex buffer, a pipeline and shaders written in Haxe, compiled to WGSL, GLSL, MSL and HLSL
 // tags: gfx, shaders
 // demo: canvas 512x384
+
+import helder.gfx.shader.Vec4;
 import helder.gfx.*;
 import helder.gfx.shader.ShaderMath.*;
 import helder.os.*;
@@ -22,7 +24,7 @@ class Triangle {
 	final device:Device;
 	final vertices:Buffer;
 	final pipeline:Pipeline;
-	final pass:PassDesc = {colors: [{load: Clear, clear: new Color(0.1, 0.1, 0.12)}]};
+	final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0.1, 0.1, 0.12, 1)}]};
 
 	public function new(device:Device) {
 		this.device = device;

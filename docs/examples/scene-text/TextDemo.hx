@@ -25,7 +25,7 @@ class TextDemo {
 		var window = new Window("Text in the world", 640, 400);
 		var device = Device.create(window.surface);
 		var renderer = new Renderer(device);
-		renderer.clearColor = new Color(0.08, 0.1, 0.14);
+		renderer.clearColor = new Vec4(0.08, 0.1, 0.14, 1);
 		renderer.use(new Shadows(device, 2048));
 		var world = new World("text");
 		// #region text

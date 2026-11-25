@@ -15,7 +15,7 @@ import helder.gfx.Texture;
 // first onDraw: where a program adds its textures.
 class SpriteBox extends helder.ui.Node {
 	public var animate = false;
-	public var background = new Color(0, 0, 0, 0);
+	public var background:Color = Color.TRANSPARENT;
 	public var onReady:Null<SpriteBatch->Void>;
 	public var onDraw:Null<(batch:SpriteBatch, width:Float, height:Float) -> Void>;
 	public var batch(default, null):Null<SpriteBatch>;
@@ -97,7 +97,7 @@ class SpriteBox extends helder.ui.Node {
 		records++;
 		var c = color, b = batch;
 		if (c == null || b == null) return;
-		enc.beginPass({colors: [{load: Clear, clear: background, texture: c}]});
+		enc.beginPass({colors: [{load: Clear, clear: background.toVec4(), texture: c}]});
 		b.flush(enc);
 		enc.endPass();
 	}

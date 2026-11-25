@@ -1,5 +1,6 @@
 package helder.ui.code;
 
+import helder.gfx.Color;
 import helder.syntax.Transaction;
 
 // A selection: anchor (where it started) to head (the caret); goal: the

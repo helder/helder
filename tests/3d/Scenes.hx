@@ -1,3 +1,4 @@
+import helder.gfx.shader.Vec4;
 import helder.gfx.*;
 import helder.gfx.shader.Vec3;
 import helder.asset.Asset;
@@ -579,7 +580,7 @@ class Scenes {
 				r.sunColor = new Vec3(1.2, 1.15, 1.1);
 				r.sky = new Vec3(0.04, 0.05, 0.08);
 				r.ground = new Vec3(0.02, 0.02, 0.02);
-				r.clearColor = new Color(0.01, 0.012, 0.02, 1);
+				r.clearColor = new Vec4(0.01, 0.012, 0.02, 1);
 				var post = new PostProcess(device, RGBA8, true);
 				post.bloom = 0.08;
 				post.vignette = 0.3;
@@ -729,7 +730,7 @@ class Scenes {
 				r.use(env);
 				r.sunColor = new Vec3(0, 0, 0);
 				// (dark: the tests' check that something was drawn looks for a dark corner)
-				r.clearColor = new Color(0.02, 0.02, 0.025, 1);
+				r.clearColor = new Vec4(0.02, 0.02, 0.025, 1);
 				renderer = r;
 				var world = new World();
 				if (name == "khrtransform") Model.of("TextureTransformTest.glb").instantiate(world, device) else Model.of("ClearCoatTest.glb").instantiate(world, device);
@@ -750,7 +751,7 @@ class Scenes {
 				r.sunColor = new Vec3(0, 0, 0);
 				r.sky = new Vec3(1, 1, 1);
 				r.ground = new Vec3(1, 1, 1);
-				r.clearColor = new Color(0.02, 0.02, 0.025, 1);
+				r.clearColor = new Vec4(0.02, 0.02, 0.025, 1);
 				renderer = r;
 				var w = 64, rgba = haxe.io.Bytes.alloc(w * w * 4);
 				for (y in 0...w)
@@ -986,7 +987,7 @@ class Scenes {
 				// sorted far to near), lamps' halos added (Additive, unlit)
 				var r = new Renderer(device);
 				renderer = r;
-				r.clearColor = new Color(0.05, 0.07, 0.12);
+				r.clearColor = new Vec4(0.05, 0.07, 0.12, 1);
 				var world = new World();
 				var floor = world.node("floor");
 				MeshRenderer.attach(floor,
@@ -1037,7 +1038,7 @@ class Scenes {
 				// lambert and standard spheres, a rough metal one, boxes
 				var r = new Renderer(device);
 				renderer = r;
-				r.clearColor = new Color(0.08, 0.1, 0.14);
+				r.clearColor = new Vec4(0.08, 0.1, 0.14, 1);
 				var world = new World();
 				Light.attach(world.node("sky"), Light.hemisphere(new Vec3(0.55, 0.7, 1.0), new Vec3(0.45, 0.28, 0.12), 1.6));
 				var white = new helder.gfx.shader.Vec4(0.9, 0.9, 0.9, 1);

@@ -1,5 +1,7 @@
 package helder.canvas.gpu;
 
+import helder.gfx.shader.Vec4;
+
 import haxe.io.Bytes;
 import helder.canvas.Blend.Blender;
 import helder.canvas.Gradient;
@@ -199,7 +201,7 @@ class GpuCanvas implements Painter {
 		if (s.pixels == null) s.pixels = device.createTexture({width: width, height: height, renderTarget: true});
 		s.drawTarget = s.pixels;
 		var e = begin();
-		e.beginPass({colors: [{load: Clear, clear: new Color(0, 0, 0, 0), texture: s.pixels}]});
+		e.beginPass({colors: [{load: Clear, clear: new Vec4(0, 0, 0, 0), texture: s.pixels}]});
 		e.endPass();
 	}
 
@@ -343,7 +345,7 @@ class GpuCanvas implements Painter {
 		uniforms.setFloat(24, width);
 		uniforms.setFloat(28, height);
 		quadIndices(traps.count);
-		e.beginPass({colors: [{load: Clear, clear: new Color(0, 0, 0, 0), texture: coverage}]});
+		e.beginPass({colors: [{load: Clear, clear: new Vec4(0, 0, 0, 0), texture: coverage}]});
 		if (traps.count > 0) {
 			e.setPipeline(coveragePipe);
 			e.setUniforms(CoverageShader.uniforms[0].binding, uniforms, 0, 32);
@@ -621,7 +623,7 @@ class GpuCanvas implements Painter {
 		uniforms.setFloat(24, width);
 		uniforms.setFloat(28, height);
 		quadIndices(Std.int(Math.max(batchTraps, batchCount)));
-		e.beginPass({colors: [{load: Clear, clear: new Color(0, 0, 0, 0), texture: coverage}]});
+		e.beginPass({colors: [{load: Clear, clear: new Vec4(0, 0, 0, 0), texture: coverage}]});
 		if (batchTraps > 0) {
 			e.setPipeline(coveragePipe);
 			e.setUniforms(CoverageShader.uniforms[0].binding, uniforms, 0, 32);
@@ -705,12 +707,12 @@ class GpuCanvas implements Painter {
 		fill(scratch, erase);
 	}
 
-	public function clear(color = 0) {
+	public function clear(color:Color = 0) {
 		finishBatch();
 		var a = ((color >>> 24) & 255) / 255;
 		var e = begin();
 		e.beginPass({
-			colors: [{load: Clear, clear: new Color(((color >> 16) & 255) / 255 * a, ((color >> 8) & 255) / 255 * a, (color & 255) / 255 * a, a),
+			colors: [{load: Clear, clear: new Vec4(((color >> 16) & 255) / 255 * a, ((color >> 8) & 255) / 255 * a, (color & 255) / 255 * a, a),
 				texture: state.drawTarget}]
 		});
 		e.endPass();
@@ -797,7 +799,7 @@ class GpuCanvas implements Painter {
 		}
 		var at = upload(copyQuad, 64);
 		quadIndices(1);
-		e.beginPass({colors: [{load: Clear, clear: new Color(0, 0, 0, 1)}]});
+		e.beginPass({colors: [{load: Clear, clear: new Vec4(0, 0, 0, 1)}]});
 		e.setPipeline(presentPipe);
 		e.setTexture(CopyShader.textures[0].binding, target, linear);
 		e.setVertexBuffer(0, vertices, at);
@@ -819,7 +821,7 @@ class GpuCanvas implements Painter {
 		}
 		var at = upload(copyQuad, 64);
 		quadIndices(1);
-		e.beginPass({colors: [{load: Clear, clear: new Color(0, 0, 0, 0)}]});
+		e.beginPass({colors: [{load: Clear, clear: new Vec4(0, 0, 0, 0)}]});
 		e.setPipeline(presentPipe);
 		e.setTexture(CopyShader.textures[0].binding, tex, nearest);
 		e.setVertexBuffer(0, vertices, at);

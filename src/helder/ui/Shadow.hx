@@ -1,5 +1,7 @@
 package helder.ui;
 
+import helder.gfx.Color;
+
 // A box shadow (Style.shadow): the node's rounded rectangle offset by x, y,
 // grown by spread and blurred as CSS blurs it (a Gaussian whose standard
 // deviation is half of blur), drawn outside the node under its background;

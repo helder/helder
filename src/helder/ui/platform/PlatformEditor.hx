@@ -1,5 +1,7 @@
 package helder.ui.platform;
 
+import helder.gfx.Color;
+
 // A native text editor: the theme draws its box, the editor its text (in
 // the box's font, colour and alignment, with no border or background of
 // its own) inside the box's padding. Its events go to the listener.

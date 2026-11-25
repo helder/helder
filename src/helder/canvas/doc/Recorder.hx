@@ -1,5 +1,6 @@
 package helder.canvas.doc;
 
+import helder.gfx.Color;
 import haxe.io.Bytes;
 import helder.canvas.Blend.Blender;
 
@@ -102,7 +103,7 @@ class Recorder implements Painter {
 		o.rect = [x, y, w, h];
 	}
 
-	public function clear(color = 0) {
+	public function clear(color:Color = 0) {
 		// (everything before it gone: a page cleared starts again)
 		if (depth == 0) ops.resize(0);
 		var o = push(Clear);

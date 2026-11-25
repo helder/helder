@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.gfx.Color;
 import helder.image.Image;
 
 // A CSS gradient for a node's background (Style.backgroundImage):

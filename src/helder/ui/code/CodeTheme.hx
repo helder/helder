@@ -1,5 +1,6 @@
 package helder.ui.code;
 
+import helder.gfx.Color;
 import helder.syntax.Lexer.TokenClass;
 
 // A code editor's colours, by theme token: a StyleSheet's light and dark

@@ -22,8 +22,8 @@ class SmaaPass implements PostPass {
 	var weights:Null<Texture> = null;
 	final bytes = Bytes.alloc(SmaaEdgeShader.uniforms[0].size);
 	final block:SmaaParams = {size: new Vec4(0, 0, 0, 0)};
-	final edgePass:PassDesc = {colors: [{load: Clear, clear: new Color(0, 0, 0, 0)}]};
-	final weightPass:PassDesc = {colors: [{load: Clear, clear: new Color(0, 0, 0, 0)}]};
+	final edgePass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0, 0, 0, 0)}]};
+	final weightPass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0, 0, 0, 0)}]};
 	var w = 0;
 	var h = 0;
 

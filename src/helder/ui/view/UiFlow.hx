@@ -1,5 +1,6 @@
 package helder.ui.view;
 
+import helder.gfx.Color;
 import helder.ui.*;
 import helder.view.*;
 import haxe.extern.EitherType;

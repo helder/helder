@@ -41,7 +41,7 @@ class EffectScenes {
 		var r = new Renderer(device, true, 1, true);
 		Scenes.renderer = r;
 		// (a dark sky: GfxTest takes a dark corner and a lit middle as drawn)
-		r.clearColor = new Color(0.02, 0.03, 0.06, 1);
+		r.clearColor = new Vec4(0.02, 0.03, 0.06, 1);
 		r.sunColor = new Vec3(1.6, 1.5, 1.35);
 		r.sunDirection = new Vec3(-0.5, 0.9, 0.35);
 		r.sky = new Vec3(0.5, 0.58, 0.72);
@@ -126,7 +126,7 @@ class EffectScenes {
 			var triangle = device.createBuffer({size: v.length, usage: Vertex, data: v});
 			var nearest = device.createSampler({filter: Nearest, wrap: Clamp});
 			var bytes = haxe.io.Bytes.alloc(ViewsShader.uniforms[0].size);
-			var pass:PassDesc = {colors: [{load: Clear, clear: new Color(0, 0, 0, 1)}]};
+			var pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0, 0, 0, 1)}]};
 			Scenes.probe = () -> r.prepassDraws > 0 && views.width == w ? null : 'prepass: ${r.prepassDraws} draws, ${views.width} wide';
 			return enc -> {
 				r.drawInto(enc, world, camera, light, depth, w, h);
@@ -166,7 +166,7 @@ class EffectScenes {
 			var v = ShowShader.vertexBytes([{pos: new Vec2(-1, -1)}, {pos: new Vec2(3, -1)}, {pos: new Vec2(-1, 3)}]);
 			var triangle = device.createBuffer({size: v.length, usage: Vertex, data: v});
 			var sampler = device.createSampler({filter: Linear, wrap: Clamp});
-			var pass:PassDesc = {colors: [{load: Clear, clear: new Color(0, 0, 0, 1)}]};
+			var pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0, 0, 0, 1)}]};
 			return enc -> {
 				draw(enc);
 				enc.beginPass(pass);

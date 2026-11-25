@@ -19,7 +19,7 @@ class DofPass implements PostPass {
 	var pipeline:Null<Pipeline> = null;
 	final bytes = Bytes.alloc(DofShader.uniforms[1].size);
 	final block:DofParams = {size: new Vec4(0, 0, 0, 0), views: new Vec4(0, 0, 0, 0)};
-	final pass:PassDesc = {colors: [{load: Clear, clear: new Color(0, 0, 0, 0)}]};
+	final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0, 0, 0, 0)}]};
 	var w = 0;
 	var h = 0;
 

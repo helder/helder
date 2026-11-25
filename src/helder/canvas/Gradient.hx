@@ -1,5 +1,6 @@
 package helder.canvas;
 
+import helder.gfx.Color;
 import haxe.ds.Vector;
 import helder.canvas.Paint.Shader;
 
@@ -36,7 +37,7 @@ abstract class Gradient implements Shader {
 
 	// a stop at offset (0 to 1), its colour 0xAARRGGBB; stops are kept in
 	// offset order, one at an offset already there after it
-	public function addStop(offset:Float, color:Int):Gradient {
+	public function addStop(offset:Float, color:Color):Gradient {
 		var i = offsets.length;
 		while (i > 0 && offsets[i - 1] > offset)
 			i--;

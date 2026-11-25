@@ -119,7 +119,7 @@ class TaaPass implements LightPass {
 		for (_ in 0...2) {
 			var t = device.createTexture({width: w, height: h, format: RGBA16F, renderTarget: true});
 			histories.push(t);
-			passes.push({colors: [{load: Clear, clear: new Color(0, 0, 0, 0), texture: t}]});
+			passes.push({colors: [{load: Clear, clear: new Vec4(0, 0, 0, 0), texture: t}]});
 		}
 		valid = false;
 	}

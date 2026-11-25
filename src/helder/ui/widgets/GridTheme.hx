@@ -1,5 +1,7 @@
 package helder.ui.widgets;
 
+import helder.gfx.Color;
+
 // A data grid's colours, by theme token: a StyleSheet's light and dark
 // colours named "grid-" and one of NAMES win, else the neutral defaults
 // here. Resolved once per sheet and appearance.

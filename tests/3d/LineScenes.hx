@@ -33,7 +33,7 @@ class LineScenes {
 	public static function make(name:String, device:Device):Encoder->Void {
 		var r = new Renderer(device);
 		Scenes.renderer = r;
-		r.clearColor = new Color(0.06, 0.07, 0.1);
+		r.clearColor = new Vec4(0.06, 0.07, 0.1, 1);
 		var world = new World();
 		var floor = world.node("floor");
 		MeshRenderer.attach(floor,

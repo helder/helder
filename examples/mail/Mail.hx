@@ -2,6 +2,8 @@
 // summary: A mail client's three panes: folders, messages sorted by a click on a column's title, the one selected read beside them; a toolbar, shortcuts, search and undo
 // tags: ui, view, styles
 // demo: canvas 860x560
+
+import helder.gfx.Color;
 import helder.ui.*;
 import helder.ui.actions.Actions;
 import helder.ui.actions.Keymap;

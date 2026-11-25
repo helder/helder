@@ -1,3 +1,4 @@
+import helder.gfx.shader.Vec4;
 import helder.gfx.*;
 import helder.os.*;
 
@@ -9,7 +10,7 @@ class SoftWaylandTest {
 	static function main() {
 		var w = new Window("SoftWaylandTest", 160, 120);
 		var device = Device.create(w.surface);
-		var pass:PassDesc = {colors: [{load: Clear, clear: new Color(1, 0, 1)}]};
+		var pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(1, 0, 1, 1)}]};
 		var frames = 0, start = haxe.Timer.stamp(), ok = false, tries = 0, last = 0.0;
 		App.run(() -> {
 			var enc = device.beginFrame();

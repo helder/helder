@@ -1,5 +1,7 @@
 package helder.ui;
 
+import helder.gfx.Color;
+
 // Liquid Glass, `<glass>` in markup: a surface that lenses and blurs what is
 // behind it, its children over it. Its shape is its box with its corners'
 // radius (a capsule unless given one: `radius={12}`); `variant="clear"` is

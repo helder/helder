@@ -1,5 +1,6 @@
 package helder.ui.view;
 
+import helder.gfx.Color;
 import helder.view.Syntax;
 import helder.ui.view.Interpreter.Interpreted;
 import helder.test.Test;

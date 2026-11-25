@@ -1,3 +1,4 @@
+import helder.gfx.Color;
 import haxe.Timer;
 import helder.ui.*;
 import helder.ui.code.CodeEditor;

@@ -4,7 +4,7 @@ import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.gfx.shader.Vec2;
 import helder.gfx.shader.Vec4;
-import helder.ui.Color;
+import helder.gfx.Color;
 import helder.ui.draw.GlassShader;
 
 // Liquid Glass drawn (helder.ui.Glass's, a GlassGroup's: GlassShader): its
@@ -169,7 +169,7 @@ class GlassPass {
 		GlassBlur.params.blur.write({map: new Vec4(0, 0, 1, 1), step: new Vec4(1 / bw, 0, bs, 0)}, blurBytes[0]);
 		GlassBlur.params.blur.write({map: new Vec4(0, 0, 1, 1), step: new Vec4(0, 1 / bh, bs, 0)}, blurBytes[1]);
 		for (j in 0...3) {
-			enc.beginPass({colors: [{load: Clear, clear: new helder.gfx.Color(0, 0, 0, 0), texture: j == 0 ? blurA : j == 1 ? blurB : blurC}]});
+			enc.beginPass({colors: [{load: Clear, clear: new Vec4(0, 0, 0, 0), texture: j == 0 ? blurA : j == 1 ? blurB : blurC}]});
 			enc.setPipeline(p[j == 0 ? 2 : 0]);
 			enc.setVertexBuffer(0, triangle);
 			if (j == 0) {
@@ -204,7 +204,7 @@ class GlassPass {
 			rects: rects,
 			radii: radii
 		}, bytes);
-		enc.beginPass({colors: [{load: Clear, clear: new helder.gfx.Color(0, 0, 0, 0), texture: o}]});
+		enc.beginPass({colors: [{load: Clear, clear: new Vec4(0, 0, 0, 0), texture: o}]});
 		enc.setPipeline(p[1]);
 		enc.setVertexBuffer(0, triangle);
 		enc.setUniforms(GlassShader.params.glass.block.binding, bytes);

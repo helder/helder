@@ -1,5 +1,7 @@
 package helder.story;
 
+import helder.gfx.shader.Vec4;
+
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.os.Surface;
@@ -51,7 +53,7 @@ class Host {
 	// told: a screen's frame drawn and handed over
 	public var onFrame:Null<HostScreen->Void> = null;
 
-	final pass:PassDesc = {colors: [{load: Clear, clear: new helder.gfx.Color(1, 1, 1)}]};
+	final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(1, 1, 1, 1)}]};
 
 	public function new(stories:Array<Story>, runtime:HostRuntime, scale = 1.0) {
 		this.runtime = runtime;
@@ -152,12 +154,8 @@ class Host {
 			return;
 		}
 		s.redraw = false;
-		var c = pass.colors[0].clear;
-		if (c != null) @:privateAccess {
-			c.r = background.r / 255;
-			c.g = background.g / 255;
-			c.b = background.b / 255;
-		}
+		var t = pass.colors[0], c = t.clear;
+		if (c != null) helder.gfx.ColorTarget.ClearValue.set(t, background.r / 255, background.g / 255, background.b / 255, c.w);
 		renderer.scale = scale;
 		ui.scale = scale;
 		s.context.run(() -> {

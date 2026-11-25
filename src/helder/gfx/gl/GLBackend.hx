@@ -1180,7 +1180,7 @@ class GLBackend {
 		if (flipped != frontCW) GL.glFrontFace((frontCW = flipped) ? GL.CW : GL.CCW);
 		if (c.load != Load) {
 			var k = c.clear;
-			k == null ? GL.glClearColor(0, 0, 0, 1) : GL.glClearColor(k.r, k.g, k.b, k.a);
+			k == null ? GL.glClearColor(0, 0, 0, 1) : GL.glClearColor(k.x, k.y, k.z, k.w);
 			mask |= GL.COLOR_BUFFER_BIT;
 		}
 		if (d != null && d.load != Load) {

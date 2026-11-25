@@ -1,5 +1,7 @@
 package helder.ui;
 
+import helder.gfx.Color;
+
 // what a path is filled or stroked with (Canvas.path): a colour, or a CSS
 // gradient over the path's bounds
 abstract Paint(PaintValue) from PaintValue to PaintValue {

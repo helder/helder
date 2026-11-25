@@ -1,5 +1,7 @@
 package helder.canvas;
 
+import helder.gfx.Color;
+
 #if !macro
 import helder.image.Image;
 #end
@@ -101,7 +103,7 @@ class Svg {
 	#if !macro
 	// the drawing at width by height pixels (its intrinsic size by
 	// default), currentColor painted color (black)
-	public function render(?width:Int, ?height:Int, color:Int = 0xFF000000):Image {
+	public function render(?width:Int, ?height:Int, color:Color = Color.BLACK):Image {
 		var w:Int = width != null ? width : Std.int(Math.ceil(this.width)), h:Int = height != null ? height : Std.int(Math.ceil(this.height));
 		var canvas = new SvgCanvas(w, h, color);
 		// the viewport: the viewBox fitted (or the user units at the intrinsic size)
@@ -148,12 +150,12 @@ class SvgGradient {
 	public var matrix = new Matrix();
 	public var spread = 0;
 	public final offsets:Array<Float> = [];
-	public final colors:Array<Int> = [];
+	public final colors:Array<Color> = [];
 
 	public function new() {}
 
 	// (one Svg.parse made when compiled: SvgBuild; n x1 y1 x2 y2 cx cy r fx fy)
-	@:noCompletion public static function of(linear:Bool, n:Array<Float>, boundingBox:Bool, matrix:Matrix, spread:Int, offsets:Array<Float>, colors:Array<Int>):SvgGradient {
+	@:noCompletion public static function of(linear:Bool, n:Array<Float>, boundingBox:Bool, matrix:Matrix, spread:Int, offsets:Array<Float>, colors:Array<Color>):SvgGradient {
 		var g = new SvgGradient();
 		g.linear = linear;
 		g.x1 = n[0];
@@ -193,7 +195,7 @@ class SvgStyle {
 	public var dashes:Null<Array<Float>> = null;
 	public var dashOffset = 0.0;
 	// what currentColor is when the color property sets it (else render's)
-	public var color:Null<Int> = null;
+	public var color:Null<Color> = null;
 
 	public function new() {}
 
@@ -202,7 +204,7 @@ class SvgStyle {
 
 	// (one Svg.parse made when compiled: SvgBuild)
 	@:noCompletion public static function of(fill:SvgPaint, stroke:SvgPaint, fillOpacity:Float, strokeOpacity:Float, strokeWidth:Float, cap:Int, join:Int,
-			miterLimit:Float, evenOdd:Bool, dashes:Null<Array<Float>>, dashOffset:Float, color:Null<Int>):SvgStyle {
+			miterLimit:Float, evenOdd:Bool, dashes:Null<Array<Float>>, dashOffset:Float, color:Null<Color>):SvgStyle {
 		var s = new SvgStyle();
 		s.fill = fill;
 		s.stroke = stroke;
@@ -811,7 +813,7 @@ class SvgParse {
 	// a CSS colour (CssColor's), currentColor: current
 	public static function color(v:String, current:Null<Int>):Null<Int> {
 		var t = StringTools.trim(v).toLowerCase();
-		return t == "currentcolor" ? current : CssColor.parse(t);
+		return t == "currentcolor" ? current : helder.gfx.CssColor.parse(t);
 	}
 }
 

@@ -25,7 +25,7 @@ class Sparks {
 		fx.gravity = new Vec3(0, -4, 0);
 		fx.drag = 0.4;
 		var renderer = new Renderer(device).use(fx);
-		renderer.clearColor = new Color(0.02, 0.02, 0.03);
+		renderer.clearColor = new Vec4(0.02, 0.02, 0.03, 1);
 		renderer.sky = new Vec3(0.06, 0.06, 0.08);
 		renderer.ground = new Vec3(0.03, 0.03, 0.03);
 

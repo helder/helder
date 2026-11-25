@@ -1,5 +1,6 @@
 package helder.ui.motion;
 
+import helder.gfx.Color;
 import helder.canvas.Matrix;
 
 // A node's presented state (Node.present, made when something of it first

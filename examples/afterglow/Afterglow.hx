@@ -133,7 +133,7 @@ class Afterglow {
 	final glyphView:GlyphView = {viewProj: Mat4.identity(), moth: new Vec4(0, 0, 0, 0), state: [for (_ in 0...8) new Vec4(0, 0, 0, 0)]};
 	// (bands of tone, how far edges wander, the indigo's share, grain; the mist faded into)
 	final finishView:FinishView = {size: new Vec4(0, 0, 0, 0), look: new Vec4(18, 0.45, 0.25, 0.09), fade: new Vec4(0.03, 0.05, 0.09, 0)};
-	final mirrorPass:PassDesc = {colors: [{load: Clear, clear: new Color(0.02, 0.03, 0.06)}], depth: {load: Clear}};
+	final mirrorPass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0.02, 0.03, 0.06, 1)}], depth: {load: Clear}};
 	final extra:Array<Glow> = [];
 	var width = 0;
 	var height = 0;
@@ -158,7 +158,7 @@ class Afterglow {
 	public function new(device:Device) {
 		this.device = device;
 		renderer = new Renderer(device, true, 4, true);
-		renderer.clearColor = new Color(0.02, 0.03, 0.06);
+		renderer.clearColor = new Vec4(0.02, 0.03, 0.06, 1);
 		post = new PostProcess(device, RGBA8, true);
 		post.bloom = 0.17;
 		post.radius = 1.4;

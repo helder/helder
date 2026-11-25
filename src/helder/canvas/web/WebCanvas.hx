@@ -1,5 +1,6 @@
 package helder.canvas.web;
 
+import helder.gfx.Color;
 import haxe.io.Bytes;
 import helder.canvas.Blend.Blender;
 import helder.canvas.Gradient;
@@ -301,7 +302,7 @@ class WebCanvas implements Painter implements GlyphCache implements HandleImages
 		num(h);
 	}
 
-	public function clear(color = 0) {
+	public function clear(color:Color = 0) {
 		op(CLEAR, 1);
 		num(color);
 	}

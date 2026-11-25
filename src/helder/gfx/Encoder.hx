@@ -17,10 +17,10 @@ final class Encoder {
 		c.int((clear != null ? 1 : 0) | (d != null ? 2 : 0) | (d != null && d.clear != null ? 4 : 0));
 		c.int(cast k.load);
 		if (clear != null) {
-			c.float(clear.r);
-			c.float(clear.g);
-			c.float(clear.b);
-			c.float(clear.a);
+			c.float(clear.x);
+			c.float(clear.y);
+			c.float(clear.z);
+			c.float(clear.w);
 		}
 		c.int(k.texture == null ? 0 : k.texture.id());
 		c.int(k.resolve == null ? 0 : k.resolve.id());

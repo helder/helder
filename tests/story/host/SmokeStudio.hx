@@ -1,3 +1,4 @@
+import helder.gfx.shader.Vec4;
 import haxe.Json;
 import haxe.io.Bytes;
 import helder.async.*;
@@ -84,7 +85,7 @@ class SmokeStudio {
 				r.begin(240, 160);
 				r.gpuTexture(img, -1, 0, 0, w, h);
 				r.prepare(enc);
-				enc.beginPass({colors: [{load: Clear, clear: new helder.gfx.Color(0, 0, 0)}]});
+				enc.beginPass({colors: [{load: Clear, clear: new Vec4(0, 0, 0, 1)}]});
 				r.end(enc);
 				enc.endPass();
 				device.readPixels(px);

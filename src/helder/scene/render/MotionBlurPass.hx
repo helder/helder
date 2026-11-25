@@ -141,7 +141,7 @@ class MotionBlurPass implements LightPass {
 		for (s in [[vw, vh], [tw, th], [tw, th], [bw, bh], [w, h]]) {
 			var t = device.createTexture({width: s[0], height: s[1], format: RGBA16F, renderTarget: true});
 			targets.push(t);
-			passes.push({colors: [{load: Clear, clear: new Color(0, 0, 0, 0), texture: t}]});
+			passes.push({colors: [{load: Clear, clear: new Vec4(0, 0, 0, 0), texture: t}]});
 		}
 	}
 

@@ -1,6 +1,6 @@
 package helder.ui.motion;
 
-import helder.ui.Color;
+import helder.gfx.Color;
 
 // A colour as four tracks in premultiplied OKLab (Björn Ottosson's: L, a
 // and b, each times the alpha, and the alpha), so that a colour moves

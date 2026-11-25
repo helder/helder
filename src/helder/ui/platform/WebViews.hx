@@ -1,5 +1,6 @@
 package helder.ui.platform;
 
+import helder.gfx.Color;
 import helder.os.web.Dom;
 import helder.ui.*;
 import hxmc.unsafe.*;

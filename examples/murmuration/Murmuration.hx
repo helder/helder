@@ -48,7 +48,7 @@ class Murmuration {
 	final birdBytes = Bytes.alloc(BirdShader.params.view.block.size);
 	final hawkView = Bytes.alloc(BirdShader.params.view.block.size);
 	final mirrorView = Bytes.alloc(BirdShader.params.view.block.size);
-	final pass:PassDesc = {colors: [{load: Clear, clear: new Color(0, 0, 0)}]};
+	final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0, 0, 0, 1)}]};
 	final sun:Vec3;
 	final hills:Texture;
 	final weather:Texture;

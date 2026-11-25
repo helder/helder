@@ -24,7 +24,7 @@ class Room {
 		var window = new Window("Probes and area lights", 640, 400);
 		var device = Device.create(window.surface);
 		var renderer = new Renderer(device);
-		renderer.clearColor = new Color(0.01, 0.01, 0.015);
+		renderer.clearColor = new Vec4(0.01, 0.01, 0.015, 1);
 		renderer.sunColor = new Vec3(0, 0, 0);
 		renderer.sky = new Vec3(0.02, 0.02, 0.03);
 		renderer.ground = new Vec3(0.01, 0.01, 0.01);

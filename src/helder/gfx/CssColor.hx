@@ -1,10 +1,10 @@
-package helder.canvas;
+package helder.gfx;
 
 // A CSS colour as 0xAARRGGBB (straight alpha), null when it is not one:
 // "#rgb", "#rgba", "#rrggbb", "#rrggbbaa" (the # may be left out), rgb()
 // and rgba() (numbers or percentages, commas or spaces, an alpha after a
 // slash), hsl() and hsla(), oklch() and oklab() (to sRGB, clipped), the
-// 148 names (as Chromium has them), transparent. helder.ui's Color (its
+// 148 names (as Chromium has them), transparent. Color (its
 // tokens besides), Svg's paints and the DOM facade's styles read them so.
 class CssColor {
 	public static function parse(s:String):Null<Int> {

@@ -6,7 +6,7 @@
 // attributes that read bound; examples/ts-todo's shape.
 import { signal, memo, For, Show, render, Signal, Read } from "helder/view";
 import { Settings, Network, Permissions, Share, Notifications, Photos, Location, Biometrics, Paths, DeviceInfo, StatusBar } from "helder/os";
-import { CodeEditor, Event, Key, Node } from "helder/ui";
+import { CodeEditor, Event, Key, Node, TextField } from "helder/ui";
 import { UiProbe } from "./ui-probe";
 
 class Item {
@@ -110,6 +110,11 @@ code.complete = (text, caret) => {
 code.suggest(true);
 code.suggest(true);
 console.log(asked);
+// a colour given as CSS writes one or as its number (helder.gfx.Color)
+const field = new TextField();
+field.placeholderColor = "#3366ff";
+field.selectionColor = 0x80ff0000;
+console.log(field.placeholderColor === 0xff3366ff, field.selectionColor === 0x80ff0000);
 console.log("platform settings", Settings.textScale() > 0, typeof Settings.dark());
 console.log("app services", typeof Network.online(), typeof Network.kind(), typeof Permissions.status("camera"), typeof Share.share, typeof Permissions.request, typeof Notifications.cancel, typeof Photos.pick);
 console.log("more services", typeof Photos.take, typeof Location.current, typeof Location.watch, typeof Biometrics.kind(), typeof Paths.data, typeof DeviceInfo.get().kind, typeof StatusBar.style);

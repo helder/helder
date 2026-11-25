@@ -24,7 +24,7 @@ package helder.ui;
 @:typescript.internal(UiFlow, Controls, Pager, WindowButtons, Standard, GridTheme,
 	Eased, Press, Sel, Decoration, CodeModel, Rope)
 // (an icon or a drawing: made by Icons.parse and Icons.svg, given to <image src>)
-@:typescript.types(helder.canvas.Svg, helder.ui.view.UiFlow.VirtualListProps, helder.ui.nav.Router.RouteParams, helder.ui.nav.Screens.StackTransition,
+@:typescript.types(helder.gfx.Color, helder.canvas.Svg, helder.ui.view.UiFlow.VirtualListProps, helder.ui.nav.Router.RouteParams, helder.ui.nav.Screens.StackTransition,
 	helder.ui.SizeClass, helder.ui.nav.Sheets.Detent, helder.ui.nav.Bar.NavScreenProps, helder.ui.nav.Sheets.SheetProps)
 @:typescript.functions(tone = helder.ui.controls.Look.tone, Surface = helder.ui.UiWindow.Surface, VirtualList = helder.ui.view.UiFlow.VirtualList, VirtualGrid = helder.ui.view.UiFlow.VirtualGrid, Stack = helder.ui.nav.Screens.Stack,
 	NavScreen = helder.ui.nav.Bar.NavScreen, NavButton = helder.ui.nav.Bar.NavButton, Sheet = helder.ui.nav.Sheets.Sheet)

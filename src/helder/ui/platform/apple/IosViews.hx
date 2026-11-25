@@ -1,5 +1,6 @@
 package helder.ui.platform.apple;
 
+import helder.gfx.Color;
 import helder.os.apple.objc.*;
 import helder.os.apple.Traits;
 import helder.ui.*;

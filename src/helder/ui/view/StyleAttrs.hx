@@ -1,5 +1,6 @@
 package helder.ui.view;
 
+import helder.gfx.Color;
 import helder.ui.*;
 
 // Markup attributes as Style properties (NodeRenderer): an attribute named

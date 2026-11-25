@@ -117,7 +117,7 @@ class Knot implements Markup {
 
 	static function setup(r:Renderer) {
 		renderer = r;
-		r.clearColor = new helder.gfx.Color(0.027, 0.031, 0.05, 1);
+		r.clearColor = new Vec4(0.027, 0.031, 0.05, 1);
 		r.sky = new Vec3(0.015, 0.018, 0.03);
 		r.ground = new Vec3(0.004, 0.004, 0.006);
 		r.sunColor = new Vec3(0.55, 0.55, 0.75);

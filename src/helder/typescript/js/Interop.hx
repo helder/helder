@@ -241,6 +241,21 @@ class Interop {
 		return new helder.view.graph.Read.Const<Dynamic>(toHaxe(v));
 	}
 
+	// a colour: its number, or a CSS string parsed (helder.gfx.Color)
+	public static function color(v:Dynamic, where:String):Int {
+		if (!Std.isOfType(v, String)) return int(v, where);
+		var c = helder.gfx.Color.tryParse(v);
+		if (c == null) Seed.diverge("a colour", v, where);
+		return c;
+	}
+
+	// a Read of colours (reader's), each value as color takes it
+	public static function colorReader(v:Dynamic, where:String):helder.view.graph.Read<helder.gfx.Color> {
+		if (!Std.isOfType(v, JsFunction)) return new helder.view.graph.Read.Const<helder.gfx.Color>(color(toHaxe(v), where));
+		var r:helder.view.graph.Read<Dynamic> = reader(v);
+		return new helder.view.graph.Read.Thunk<helder.gfx.Color>(() -> color(r(), where));
+	}
+
 	// a Read of values generic code only passes on: a function as reader's,
 	// a constant's arrays Haxe's with their items the program's own
 	public static function readerOf(v:Dynamic):Dynamic {

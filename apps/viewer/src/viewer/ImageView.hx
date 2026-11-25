@@ -1,5 +1,7 @@
 package viewer;
 
+import helder.gfx.shader.Vec4;
+
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.ui.Event;
@@ -233,7 +235,7 @@ class ImageView extends helder.ui.Node {
 		var t = target;
 		if (t == null) return;
 		var bg = background;
-		var clear = new Color(((bg >> 16) & 255) / 255, ((bg >> 8) & 255) / 255, (bg & 255) / 255, 1);
+		var clear = new Vec4(((bg >> 16) & 255) / 255, ((bg >> 8) & 255) / 255, (bg & 255) / 255, 1);
 		enc.beginPass({colors: [{load: Clear, clear: clear, texture: t}]});
 		var d = viewer.shown;
 		if (d != null && !veiled && tiles.length > 0 && texShown == d) {

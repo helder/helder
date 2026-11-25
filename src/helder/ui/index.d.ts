@@ -10,6 +10,22 @@ import type {Read, RootView, Signal, View} from "helder/view";
 
 declare const __haxe: {UiWindow: "helder.ui.UiWindow", Event: "helder.ui.Event", Key: "helder.ui.Key", VirtualScroll: "helder.ui.VirtualScroll", Selection: "helder.ui.Selection", GridScroll: "helder.ui.GridScroll", Clock: "helder.ui.Clock", WebViewEvent: "helder.ui.platform.WebViewEvent", WebContent: "helder.ui.platform.WebContent", WebResponse: "helder.ui.platform.WebResponse", Node: "helder.ui.Node", TextNode: "helder.ui.TextNode", UiFlow: "helder.ui.view.UiFlow", SafeArea: "helder.ui.SafeArea", Router: "helder.ui.nav.Router", Controls: "helder.ui.widgets.Controls", DataGrid: "helder.ui.widgets.DataGrid", EditableText: "helder.ui.widgets.EditableText", GridColumn: "helder.ui.widgets.GridColumn", GridTheme: "helder.ui.widgets.GridTheme", Icons: "helder.ui.widgets.Icons", Pager: "helder.ui.widgets.Pager", TextArea: "helder.ui.widgets.TextArea", TextField: "helder.ui.widgets.TextField", Theme: "helder.ui.widgets.Theme", WindowButtons: "helder.ui.widgets.WindowButtons", Eased: "helder.ui.controls.Eased", Look: "helder.ui.controls.Look", Press: "helder.ui.controls.Press", Standard: "helder.ui.controls.Standard", Toggle: "helder.ui.controls.Toggle", CodeActions: "helder.ui.code.CodeAction.CodeActions", CodeCompletion: "helder.ui.code.CodeCompletion", CodeEditor: "helder.ui.code.CodeEditor", CodeLanguage: "helder.ui.code.CodeLanguage", SyntaxLanguage: "helder.ui.code.CodeLanguage.SyntaxLanguage", CodeLanguages: "helder.ui.code.CodeLanguage.CodeLanguages", Sel: "helder.ui.code.CodeModel.Sel", Decoration: "helder.ui.code.CodeModel.Decoration", CodeDiagnostic: "helder.ui.code.CodeModel.CodeDiagnostic", CodeModel: "helder.ui.code.CodeModel", CodeTheme: "helder.ui.code.CodeTheme", CodeView: "helder.ui.code.CodeView", Rope: "helder.ui.code.Rope", SqlLanguage: "helder.ui.code.SqlLanguage", tone: "helder.ui.controls.Look.tone", Surface: "helder.ui.UiWindow.Surface", VirtualList: "helder.ui.view.UiFlow.VirtualList", VirtualGrid: "helder.ui.view.UiFlow.VirtualGrid", Stack: "helder.ui.nav.Screens.Stack", NavScreen: "helder.ui.nav.Bar.NavScreen", NavButton: "helder.ui.nav.Bar.NavButton", Sheet: "helder.ui.nav.Sheets.Sheet", pager: "helder.ui.widgets.Pager.create", windowControlsSide: "helder.ui.widgets.WindowButtons.side", Popover: "helder.ui.view.UiFlow.Popover", MenuBarView: "helder.ui.view.UiFlow.MenuBarView", Slider: "helder.ui.widgets.Controls.Slider", Segmented: "helder.ui.widgets.Controls.Segmented", Tip: "helder.ui.widgets.Controls.Tip", Pages: "helder.ui.widgets.Pager.Pages", WindowControls: "helder.ui.widgets.WindowButtons.WindowControls", Button: "helder.ui.controls.Standard.Button", PathBar: "helder.ui.controls.Standard.PathBar", Checkbox: "helder.ui.controls.Standard.Checkbox", Switch: "helder.ui.controls.Standard.Switch", Themed: "helder.ui.controls.Standard.Themed", __module: "helder.ui.TypeScript"};
 
+// A colour as 0xAARRGGBB (straight alpha), helder's one colour: ui's,
+// canvas' and sprite's (TypeScript's Color: a number or a CSS string).
+// From an Int literal written 0xRRGGBB it is opaque only through rgb():
+// `Color.rgb(0x3366ff)`; `Color.rgba(0x3366ff, 0.5)`; TRANSPARENT is 0. A
+// CSS string converts too, a literal's parsed when compiled (`var c:Color
+// = '#3366ff'`), another's when run (parse). A token reference
+// (Color.token, "var(--primary)", "var(--ring)/50") stands for a style
+// sheet's colour of that name (StyleSheet), resolved when a rule using it
+// is applied: drawn as it is, it is transparent (its alpha is 0; its other
+// bytes name the token and its alpha, so a transparent colour with any
+// other byte set is one); "currentColor" is one, the text's colour where
+// it is applied, and so are the system colours "Canvas" and "CanvasText"
+// (a sheet's colours of those names, else the browser's, light or dark).
+// A shader's colour is a Vec4 (toVec4).
+export type Color = number | string;
+
 // An SVG document for icons and drawings: parsed once (Svg.parse), drawn
 // into an Image at any size (the Image's drawing: this, for a writer's vectors; render: the viewBox fitted as
 // preserveAspectRatio says, xMidYMid meet by default). The static subset
@@ -97,7 +113,7 @@ export type PathSegment = { label: string; icon?: Svg };
 // in its own place or gives its own behaviour (macOS).
 export type PlatformMenuItem = { id: number; label: string; shortcut?: string; keys?: unknown; disabled?: boolean; checked?: boolean; separator?: boolean; items?: PlatformMenuItem[]; role?: string };
 
-export type Refs = { canvas?: number; surface?: number; raised?: number; well?: number; hover?: number; press?: number; fill?: number; fillHover?: number; fillPress?: number; rail?: number; railHover?: number; line?: number; edge?: number; edgeStrong?: number; fg?: number; fg2?: number; fg3?: number; accent?: number; accentStrong?: number; accentSoft?: number; accentFg?: number; accentInk?: number; focus?: number; focusSoft?: number; danger?: number; dangerStrong?: number; dangerSoft?: number; dangerFg?: number; success?: number; warning?: number; info?: number; knob?: number; scrim?: number; shadow?: number; density?: "comfortable" | "compact"; font?: string; display?: string; mono?: string; size?: number; small?: number; large?: number; title?: number; medium?: number; radius?: number; radiusPanel?: number; radiusSurface?: number; controlSm?: number; control?: number; controlLg?: number; padSm?: number; pad?: number; padLg?: number; gap?: number; icon?: number; box?: number; track?: number; trackHeight?: number; thumb?: number; hoverTime?: number; toggleTime?: number; openTime?: number; floatTime?: number; dialogTime?: number; exitTime?: number; pressScale?: number; disabledOpacity?: number };
+export type Refs = { canvas?: Color; surface?: Color; raised?: Color; well?: Color; hover?: Color; press?: Color; fill?: Color; fillHover?: Color; fillPress?: Color; rail?: Color; railHover?: Color; line?: Color; edge?: Color; edgeStrong?: Color; fg?: Color; fg2?: Color; fg3?: Color; accent?: Color; accentStrong?: Color; accentSoft?: Color; accentFg?: Color; accentInk?: Color; focus?: Color; focusSoft?: Color; danger?: Color; dangerStrong?: Color; dangerSoft?: Color; dangerFg?: Color; success?: Color; warning?: Color; info?: Color; knob?: Color; scrim?: Color; shadow?: Color; density?: "comfortable" | "compact"; font?: string; display?: string; mono?: string; size?: number; small?: number; large?: number; title?: number; medium?: number; radius?: number; radiusPanel?: number; radiusSurface?: number; controlSm?: number; control?: number; controlLg?: number; padSm?: number; pad?: number; padLg?: number; gap?: number; icon?: number; box?: number; track?: number; trackHeight?: number; thumb?: number; hoverTime?: number; toggleTime?: number; openTime?: number; floatTime?: number; dialogTime?: number; exitTime?: number; pressScale?: number; disabledOpacity?: number };
 
 // A theme's rule (StyleSheet): the style a node with this slot (Node.slot,
 // the name of the part it is: "button", "switch-thumb"), variant and size
@@ -138,7 +154,7 @@ export type Tokens = { canvas?: Tone; surface?: Tone; raised?: Tone; well?: Tone
 // A colour token's values in light and dark: Look.tone("oklch(0.56 0.19
 // 258)", "oklch(0.64 0.17 258)"), written as CSS writes a colour (one for
 // both). A structure, not a class: a TypeScript program's are its objects.
-export type Tone = { light: number; dark: number };
+export type Tone = { light: Color; dark: Color };
 
 // helder.ui's markup (helder.view.ViewOf): a component returning one is
 // pinned to ui, a children prop typed so makes its content ui's (a
@@ -610,7 +626,7 @@ export declare class Node {
 	// game's controls leave it alone): a node drawing a world under the ui
 	// (a <Scene>'s box) says no
 	ownsPointer(): boolean;
-	textColor(): number;
+	textColor(): Color;
 	// whether it is seen: its visibility, else its nearest ancestor's (Style.visibility)
 	visible(): boolean;
 	// whether the pointer finds it: seen, and its pointerEvents (else its
@@ -774,7 +790,7 @@ export declare function VirtualGrid<T>(props: VirtualGridProps<T>): unknown;
 // outside (unless dismissOnOutside is false) or Escape asks it to close; onOpen once it is open (to move
 // the focus into it); a modal one's backdrop its colour; the popup's
 // slot for a theme (Node.slot). Its content is rendered once, kept while closed.
-export declare function Popover(props: { open: Read<boolean>; anchor?: Node; placement?: string; gap?: number; modal?: boolean; backdrop?: number; slot?: string; onDismiss?: () => void; dismissOnOutside?: boolean; onOpen?: (arg0: unknown) => void; at?: () => { x: number; y: number }; tag?: string; children?: unknown }): unknown;
+export declare function Popover(props: { open: Read<boolean>; anchor?: Node; placement?: string; gap?: number; modal?: boolean; backdrop?: Color; slot?: string; onDismiss?: () => void; dismissOnOutside?: boolean; onOpen?: (arg0: unknown) => void; at?: () => { x: number; y: number }; tag?: string; children?: unknown }): unknown;
 // the window's menu bar (helder.ui.menu.MenuBar): the platform's, or
 // drawn here (put it first in the window's content); ref: the bar
 export declare function MenuBarView(props: { menus: Menu[]; ref?: (arg0: unknown) => void }): unknown;
@@ -990,16 +1006,16 @@ export declare class EditableText extends TextNode {
 	// a password: shown as dots (one a UTF-16 unit, the indices kept), not
 	// copied or cut, moved through by words as one (Semantics.secret)
 	secret: boolean;
-	placeholderColor: number;
-	selectionColor: number;
+	placeholderColor: Color;
+	selectionColor: Color;
 	// null: the text's colour (as Chromium's caret)
-	caretColor: number | null;
+	caretColor: Color | null;
 	onChange: ((arg0: string) => void) | null;
 	// its words checked by the platform's spellchecker, the misspelled underlined
 	spellcheck: boolean;
 	// the misspelled words, start and end pairs in text (UTF-16), as last checked
 	readonly misspelled: number[];
-	spellColor: number;
+	spellColor: Color;
 	// the words checked now
 	checkSpelling(): void;
 	// the misspelled word around i (start and end; null: none)
@@ -1073,7 +1089,7 @@ export declare class GridColumn {
 declare class GridTheme {
 	constructor();
 	// the colours now, by the indices above
-	readonly colors: number[];
+	readonly colors: Color[];
 	// the colours for a sheet and an appearance; whether they changed
 	resolve(sheet: StyleSheet | null, dark: boolean): boolean;
 }
@@ -1193,7 +1209,7 @@ export declare class Theme {
 	// whether the colours given inline are the dark ones (read by c: a hole
 	// that reads it follows it)
 	static appearance: (() => boolean);
-	static c(name: string): number;
+	static c(name: string): Color;
 	// the one shadow, of what floats
 	static popover(): string;
 	static readonly sheet: StyleSheet;
@@ -1445,7 +1461,7 @@ export declare class CodeEditor extends Node {
 	// several selections ([anchor, head, anchor, head...]; the last the primary)
 	setSelections(pairs: number[]): void;
 	// a range drawn another way: its background, border, underline; the whole lines it covers or its characters; its id
-	addDecoration(start: number, end: number, background?: number, border?: number, underline?: number, wholeLine?: boolean): number;
+	addDecoration(start: number, end: number, background?: Color, border?: Color, underline?: Color, wholeLine?: boolean): number;
 	removeDecoration(id: number): boolean;
 	clearDecorations(): void;
 	// a compiler's diagnostics (Service.check's) of this file (file: its path; others left out)
@@ -1527,13 +1543,13 @@ declare class Sel {
 // none), the whole lines it covers or its characters. Its offsets move
 // with edits (an insertion at its start or end is outside it).
 declare class Decoration {
-	constructor(id: number, start: number, end: number, background?: number, border?: number, underline?: number, wholeLine?: boolean);
+	constructor(id: number, start: number, end: number, background?: Color, border?: Color, underline?: Color, wholeLine?: boolean);
 	readonly id: number;
 	start: number;
 	end: number;
-	background: number | null;
-	border: number | null;
-	underline: number | null;
+	background: Color | null;
+	border: Color | null;
+	underline: Color | null;
 	wholeLine: boolean;
 }
 
@@ -1705,7 +1721,7 @@ declare class CodeModel {
 	undo(): boolean;
 	redo(): boolean;
 	// a range drawn another way (Decoration): its id, for removeDecoration
-	addDecoration(start: number, end: number, background?: number, border?: number, underline?: number, wholeLine?: boolean): number;
+	addDecoration(start: number, end: number, background?: Color, border?: Color, underline?: Color, wholeLine?: boolean): number;
 	removeDecoration(id: number): boolean;
 	clearDecorations(): void;
 	// a compiler's messages placed on the text: its lines (from 1) and
@@ -1751,11 +1767,11 @@ export declare class CodeTheme {
 	static readonly PANEL_BORDER: number;
 	static readonly TOOLTIP: number;
 	// the colours now, by the indices above
-	readonly colors: number[];
+	readonly colors: Color[];
 	// the colours for a sheet and an appearance (again only when either changed)
 	resolve(sheet: StyleSheet | null, dark: boolean): void;
 	// a token class's colour
-	token(cls: number): number;
+	token(cls: number): Color;
 }
 
 // A code editor's text, drawn (CodeEditor's; usable alone): a CodeModel's

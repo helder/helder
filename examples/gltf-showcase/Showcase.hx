@@ -1,3 +1,4 @@
+import helder.gfx.shader.Vec4;
 import helder.gfx.Device;
 import helder.gfx.shader.Vec3;
 import helder.scene.*;
@@ -66,7 +67,7 @@ class Showcase {
 	// helder at load from their atlases' first row, the panorama itself:
 	// Environment.prefilter), bloom and ACES; envs: each environment's atlas bytes
 	public function setup(r:Renderer, envs:Array<haxe.io.Bytes>) {
-		r.clearColor = new helder.gfx.Color(0.05, 0.05, 0.06, 1);
+		r.clearColor = new Vec4(0.05, 0.05, 0.06, 1);
 		r.use(new NormalMaps(r.device));
 		r.use(new Physical());
 		r.use(new Transmission(r.device));

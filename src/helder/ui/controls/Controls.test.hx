@@ -2,7 +2,7 @@ package helder.ui.controls;
 
 import helder.test.Test;
 import helder.ui.Clock;
-import helder.ui.Color;
+import helder.gfx.Color;
 import helder.ui.Key;
 import helder.ui.Node;
 import helder.ui.Ui;

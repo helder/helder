@@ -23,8 +23,8 @@ class SsaoPass implements PostPass {
 	// (the blocks as written, kept: nothing allocated per frame)
 	final aoBlock:AoParams = {inverseProjection: helder.gfx.shader.Mat4.identity(), p: new Vec4(0, 0, 0, 0), size: new Vec4(0, 0, 0, 0), more: new Vec4(0, 0, 0, 0)};
 	final blurBlock:AoBlurParams = {p: new Vec4(0, 0, 0, 0), inverseProjection: helder.gfx.shader.Mat4.identity()};
-	final rawPass:PassDesc = {colors: [{load: Clear, clear: new Color(1, 1, 1, 1)}]};
-	final outPass:PassDesc = {colors: [{load: Clear, clear: new Color(1, 1, 1, 1)}]};
+	final rawPass:PassDesc = {colors: [{load: Clear, clear: new Vec4(1, 1, 1, 1)}]};
+	final outPass:PassDesc = {colors: [{load: Clear, clear: new Vec4(1, 1, 1, 1)}]};
 	var w = 0;
 	var h = 0;
 	var rw = 0;

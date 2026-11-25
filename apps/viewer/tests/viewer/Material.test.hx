@@ -2,7 +2,7 @@ package viewer;
 
 import helder.story.StoryText;
 import helder.test.Test;
-import helder.ui.Color;
+import helder.gfx.Color;
 import helder.ui.Node;
 import helder.ui.Ui;
 import helder.view.Render;

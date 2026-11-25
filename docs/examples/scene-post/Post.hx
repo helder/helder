@@ -27,7 +27,7 @@ class Post {
 		renderer.sunColor = new Vec3(1.2, 1.15, 1.1);
 		renderer.sky = new Vec3(0.04, 0.05, 0.08);
 		renderer.ground = new Vec3(0.02, 0.02, 0.02);
-		renderer.clearColor = new Color(0.01, 0.012, 0.02, 1);
+		renderer.clearColor = new Vec4(0.01, 0.012, 0.02, 1);
 
 		var post = new PostProcess(device, RGBA8, true);   // RGBA8, into the frame
 		post.bloom = 0.08;                                 // the share of the light spread

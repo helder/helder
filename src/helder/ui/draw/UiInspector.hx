@@ -1,5 +1,6 @@
 package helder.ui.draw;
 
+import helder.gfx.Color;
 import helder.os.headless.Inspector;
 import helder.ui.*;
 import helder.ui.menu.DrawnMenu;

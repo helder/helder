@@ -1,5 +1,7 @@
 package helder.ui;
 
+import helder.gfx.Color;
+
 // A theme's rules applied to the nodes with a slot (Node.slot): those of
 // the nearest sheet (Node.theme, else Ui.theme), or without one the base
 // rules (the widgets' unstyled looks, addBase: a sheet starts from none

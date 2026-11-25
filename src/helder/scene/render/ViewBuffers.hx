@@ -99,7 +99,7 @@ class ViewBuffers implements RenderFeature implements RenderFeature.ViewSource {
 	// (the blocks as written, kept: nothing allocated per draw)
 	final materialBlock:PbrMaterial = materialOf(new Material());
 	final prepassBlock:PbrPrepass = {view: Mat4.identity(), id: new Vec4(0, 0, 0, 0)};
-	final pass:PassDesc = {colors: [{load: Clear, clear: new Color(0.5, 0.5, 1, 0)}], depth: {load: Clear}};
+	final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0.5, 0.5, 1, 0)}], depth: {load: Clear}};
 	final white:Texture;
 	final sampler:Sampler;
 	// (a material's own prepass variants: plain and instanced, by cull)

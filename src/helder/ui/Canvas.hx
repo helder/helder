@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.gfx.Color;
 import helder.image.Image;
 
 // What draws a UI tree: the GPU renderer (helder.ui.draw.Renderer) or a test's.

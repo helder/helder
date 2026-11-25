@@ -1,6 +1,6 @@
 package helder.ui.controls;
 
-import helder.ui.Color;
+import helder.gfx.Color;
 
 // A look's tokens: its colours (each a Tone, light and dark) and its other
 // values. A recipe reads them as Refs: the colours as token references

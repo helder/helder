@@ -1,6 +1,6 @@
 package helder.ui.controls;
 
-import helder.ui.Color;
+import helder.gfx.Color;
 import helder.ui.Rule;
 import helder.ui.StyleSheet;
 import helder.ui.Transition;

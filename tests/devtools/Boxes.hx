@@ -1,3 +1,4 @@
+import helder.gfx.Color;
 import helder.ui.*;
 
 // A ui program without a window for the devtools lane: a Ui of a few boxes

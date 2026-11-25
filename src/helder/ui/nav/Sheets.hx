@@ -293,7 +293,7 @@ class SheetMount implements Mountable<Node> implements Markup {
 				Graph.runWithOwner(home, () -> dispose = Render.render(<Sheets.Floating s={s}>{props.children}</Sheets.Floating>, q));
 			} else {
 				q.modal = true;
-				q.style.background = helder.ui.Color.TRANSPARENT;
+				q.style.background = helder.gfx.Color.TRANSPARENT;
 				q.onDismiss = () -> s.dismiss(0);
 				Graph.runWithOwner(home, () -> dispose = Render.render(<Sheets.Panel s={s}>{props.children}</Sheets.Panel>, q));
 				s.show(u.height);

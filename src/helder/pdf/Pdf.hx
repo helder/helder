@@ -1,5 +1,6 @@
 package helder.pdf;
 
+import helder.gfx.Color;
 import helder.pdf.PdfValue;
 import helder.pdf.Document;
 import helder.pdf.Colors;
@@ -121,7 +122,7 @@ class NoPainter implements Painter {
 
 	public function clearRect(x:Float, y:Float, w:Float, h:Float) {}
 
-	public function clear(color = 0) {}
+	public function clear(color:Color = 0) {}
 
 	public function drawImage(img:Bitmap, sx:Float, sy:Float, sw:Float, sh:Float, dx:Float, dy:Float, dw:Float, dh:Float, paint:helder.canvas.Paint, smooth = true) {}
 

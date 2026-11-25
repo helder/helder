@@ -1,5 +1,7 @@
 package helder.ui;
 
+import helder.gfx.Color;
+
 // A CSS transition (Style.transition): the properties that ease to a new
 // value rather than jump to it, over a duration (seconds) after a delay,
 // along a timing function (a cubic Bézier, CSS's: ease by default; linear,

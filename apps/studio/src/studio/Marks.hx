@@ -1,5 +1,6 @@
 package studio;
 
+import helder.gfx.Color;
 import helder.async.*;
 import helder.ui.*;
 import helder.view.*;

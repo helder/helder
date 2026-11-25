@@ -1,3 +1,4 @@
+import helder.gfx.shader.Vec4;
 import haxe.io.Bytes;
 import haxe.Timer;
 import helder.gfx.*;
@@ -113,7 +114,7 @@ class RenderThreadTest {
 			return (seed >> 8) % n;
 		}
 		var textures:Array<Texture> = [], buffers:Array<Buffer> = [], made = 0, destroyed = 0, reads = 0, wrong = 0;
-		var src = Bytes.alloc(64 * 64 * 4), back = Bytes.alloc(256), pass:PassDesc = {colors: [{load: Clear, clear: new helder.gfx.Color(0.2, 0.3, 0.4)}]};
+		var src = Bytes.alloc(64 * 64 * 4), back = Bytes.alloc(256), pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0.2, 0.3, 0.4, 1)}]};
 		var target = device.createTexture({width: 64, height: 64, renderTarget: true});
 		for (f in 0...240) {
 			if (f % 60 == 30) win.resize(W + rnd(200), H + rnd(120));

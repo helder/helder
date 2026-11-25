@@ -38,7 +38,7 @@ class MenuTest {
 		var k = Keymap.global;
 		k.bind("secondary-o", Open).bind("f11", Full).bind("secondary-k secondary-t", Tile);
 		var w = new UiWindow("MenuTest", 480, 320);
-		w.background = helder.ui.Color.rgb(0x161618);
+		w.background = helder.gfx.Color.rgb(0x161618);
 		w.ui.dark = true;
 		var log = [], full = true;
 		w.ui.root.on(TestAction, a -> {

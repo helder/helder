@@ -1,3 +1,4 @@
+import helder.gfx.shader.Vec4;
 import haxe.io.Bytes;
 import helder.ui.*;
 import helder.ui.draw.soft.SoftCanvas;
@@ -19,7 +20,7 @@ class DrawFrame {
 	#if !helder.soft
 	public final device:Null<Device>;
 	public final renderer:Null<Renderer>;
-	final pass:PassDesc = {colors: [{load: Clear, clear: new helder.gfx.Color(1, 1, 1)}]};
+	final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(1, 1, 1, 1)}]};
 	#end
 
 	public function new(width:Int, height:Int) {
@@ -77,11 +78,11 @@ class DrawFrame {
 	}
 
 	// the ui painted on background (opaque), its pixels read into out (a new buffer when not given)
-	public function draw(ui:Ui, ?out:Bytes, background:helder.ui.Color = helder.ui.Color.WHITE):Bytes
+	public function draw(ui:Ui, ?out:Bytes, background:helder.gfx.Color = helder.gfx.Color.WHITE):Bytes
 		return paint(c -> ui.paint(c), out, background);
 
 	// what f draws on a canvas, the same way
-	public function paint(f:Canvas->Void, ?out:Bytes, background:helder.ui.Color = helder.ui.Color.WHITE):Bytes {
+	public function paint(f:Canvas->Void, ?out:Bytes, background:helder.gfx.Color = helder.gfx.Color.WHITE):Bytes {
 		var pixels = out ?? Bytes.alloc(width * height * 4);
 		if (soft != null) {
 			soft.begin(width, height, background);
@@ -91,11 +92,7 @@ class DrawFrame {
 		}
 		#if !helder.soft
 		var c = pass.colors[0].clear;
-		@:privateAccess {
-			c.r = background.r / 255;
-			c.g = background.g / 255;
-			c.b = background.b / 255;
-		}
+		helder.gfx.ColorTarget.ClearValue.set(pass.colors[0], background.r / 255, background.g / 255, background.b / 255, c == null ? 1 : c.w);
 		var enc = device.beginFrame();
 		renderer.begin(width, height);
 		f(renderer);

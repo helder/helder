@@ -43,7 +43,7 @@ class PhysicsStress {
 
 	public function new(device:Device) {
 		renderer = new Renderer(device).use(new Shadows(device, 2048));
-		renderer.clearColor = new Color(0.55, 0.62, 0.72);
+		renderer.clearColor = new Vec4(0.55, 0.62, 0.72, 1);
 		physics.iterations = 10;
 		var ground = new Material("ground", new Vec4(0.45, 0.48, 0.52, 1), 0, 0.85);
 		var floor = world.node("floor");

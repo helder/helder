@@ -26,7 +26,7 @@ class ManyLights {
 		var window = new Window("Many lights", 640, 400);
 		var device = Device.create(window.surface);
 		var renderer = new Renderer(device);
-		renderer.clearColor = new Color(0.02, 0.02, 0.035);
+		renderer.clearColor = new Vec4(0.02, 0.02, 0.035, 1);
 		renderer.sky = new Vec3(0.03, 0.035, 0.05);
 		renderer.ground = new Vec3(0.02, 0.02, 0.02);
 		// #region clustered

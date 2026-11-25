@@ -1,5 +1,7 @@
 package helder.ui;
 
+import helder.gfx.Color;
+
 // Ui's scrolling: the wheel's (the nearest Overflow Scroll ancestor that
 // can move that way), the keys' (eased: scrollBy), scrollIntoView, and the
 // scrollbars' geometry and their thumbs dragged (a click on a track pages).

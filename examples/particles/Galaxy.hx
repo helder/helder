@@ -2,6 +2,8 @@
 // summary: A million particles moved by the GPU (helder.scene.render.GpuParticles): a spiral galaxy flung from its core by a turning emitter, its arms young and blue, a dusty disc and a glowing core; drag to turn around it, tap the disc for a supernova
 // tags: 3d, particles, performance, touch
 // demo: canvas 640x480
+
+import helder.gfx.shader.Vec4;
 import helder.gfx.*;
 import helder.gfx.shader.Vec3;
 import helder.os.*;
@@ -52,7 +54,7 @@ class Galaxy {
 		fx = new GpuParticles(device, CAPACITY);
 		fx.drag = 0.25;
 		renderer = new Renderer(device).use(fx);
-		renderer.clearColor = new Color(0.004, 0.005, 0.012);
+		renderer.clearColor = new Vec4(0.004, 0.005, 0.012, 1);
 		eye = world.node("eye");
 		camera = Camera.attach(eye, Camera.perspective(0.9, 0.1, 400));
 	}

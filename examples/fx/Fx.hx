@@ -74,7 +74,7 @@ class Fx implements Markup {
 	static inline var ACCENT = "#6d8bff";
 
 	static function vec(hex:String):Vec4 {
-		var c = helder.ui.Color.parse(hex);
+		var c = helder.gfx.Color.parse(hex);
 		return new Vec4(c.r / 255, c.g / 255, c.b / 255, 1);
 	}
 

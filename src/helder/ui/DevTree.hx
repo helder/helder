@@ -1,5 +1,7 @@
 package helder.ui;
 
+import helder.gfx.Color;
+
 #if (hxmc.dev && !macro)
 // The devtools' Ui domain (src/helder/dev/README.md), in dev builds:
 // each Ui made registers here (Ui's constructor), the first one the method

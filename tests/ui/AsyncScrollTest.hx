@@ -1,3 +1,4 @@
+import helder.gfx.shader.Vec4;
 import helder.os.Event as OsEvent;
 import helder.os.Pointer;
 import helder.os.ScrollPhase;
@@ -525,7 +526,7 @@ class AsyncScrollTest {
 	// ---- the compositor's frames: from the program's last at the mirror's
 	// offsets, against the program's own at the same offsets, pixel for pixel
 
-	static final pass:helder.gfx.PassDesc = {colors: [{load: Clear, clear: new helder.gfx.Color(1, 1, 1)}]};
+	static final pass:helder.gfx.PassDesc = {colors: [{load: Clear, clear: new Vec4(1, 1, 1, 1)}]};
 
 	static function frames(scale:Int) {
 		var W = 320, H = 240, device = helder.gfx.Device.create(helder.os.Surface.headless(W * scale, H * scale));

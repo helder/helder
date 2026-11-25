@@ -2,6 +2,8 @@
 // summary: The classic 2D sprite benchmark on helder.sprite's SpriteBatch: bunnies bouncing under gravity, one textured quad each, every one in a single draw; press and hold to add more, the overlay showing how many still run at 60 fps
 // tags: 2d, sprites, performance
 // demo: canvas 640x480 1x
+
+import helder.gfx.shader.Vec4;
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.image.Image;
@@ -30,7 +32,7 @@ class Bunnymark {
 	final device:Device;
 	final batch:SpriteBatch;
 	final sheet:SpriteTexture;
-	final pass:PassDesc = {colors: [{load: Clear, clear: new Color(0.93, 0.95, 0.97)}]};
+	final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0.93, 0.95, 0.97, 1)}]};
 	var x:Array<Float> = [];
 	var y:Array<Float> = [];
 	var vx:Array<Float> = [];

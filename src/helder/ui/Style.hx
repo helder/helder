@@ -1,5 +1,7 @@
 package helder.ui;
 
+import helder.gfx.Color;
+
 // A node's style: flexbox layout (Layout) and how the node is drawn. Each
 // property's setter tells the node what changed (its layout, or only its
 // paint), so that only that is redone. The text properties from color on

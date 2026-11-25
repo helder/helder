@@ -1,5 +1,7 @@
 package helder.ui.draw;
 
+import helder.gfx.shader.Vec4;
+
 import helder.gfx.Device;
 import helder.gfx.PassDesc;
 import helder.os.Surface;
@@ -22,7 +24,7 @@ function tests() {
 			var a = new Image(300, 300), b = new Image(300, 300);
 			function frame(images:Array<Image>) {
 				var enc = device.beginFrame();
-				enc.beginPass(({colors: [{load: Clear, clear: new helder.gfx.Color(1, 1, 1)}]} : PassDesc));
+				enc.beginPass(({colors: [{load: Clear, clear: new Vec4(1, 1, 1, 1)}]} : PassDesc));
 				r.begin(64, 64);
 				for (img in images)
 					r.image(img, 0, 0, 32, 32, 0, 0, 1, 1, 0);
@@ -72,7 +74,7 @@ private class Grid {
 	static inline var W = 800;
 	static inline var H = 240;
 	static inline var GRID = 600;
-	static final pass:PassDesc = {colors: [{load: Clear, clear: new helder.gfx.Color(1, 1, 1)}]};
+	static final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(1, 1, 1, 1)}]};
 
 	final keep:Bool;
 	final device = Device.create(Surface.headless(W * 2, H * 2));

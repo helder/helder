@@ -110,7 +110,7 @@ class FxBox extends helder.ui.Node {
 		records++;
 		var c = color;
 		if (c == null || pipeline == null) return;
-		enc.beginPass({colors: [{load: Clear, clear: new helder.gfx.Color(0, 0, 0, 1), texture: c}]});
+		enc.beginPass({colors: [{load: Clear, clear: new Vec4(0, 0, 0, 1), texture: c}]});
 		enc.setPipeline(pipeline);
 		enc.setVertexBuffer(0, triangle);
 		enc.setUniforms(shader.uniforms[0].binding, bytes);

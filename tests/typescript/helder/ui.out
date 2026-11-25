@@ -70,6 +70,7 @@ held false
 true
 undefined
 2
+true true
 platform settings true boolean
 app services boolean string string function function function function
 more services function function function string function string function

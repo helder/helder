@@ -14,7 +14,7 @@ class Colors {
 		var fn = ~/^(rgba?|hsla?)\(/;
 		if (fn.match(v)) return func(fn.matched(1), v.substr(fn.matched(0).length));
 		if (StringTools.startsWith(v, "var(") || v == "canvas" || v == "canvastext") return null;
-		return helder.canvas.CssColor.parse(s);
+		return helder.gfx.CssColor.parse(s);
 	}
 
 	// (a token: a number, a percentage, an angle, none, a comma or a slash)

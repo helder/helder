@@ -25,7 +25,7 @@ class Nodes {
 		var renderer = new Renderer(device);
 		renderer.sky = new Vec3(0.05, 0.06, 0.1);
 		renderer.ground = new Vec3(0.02, 0.02, 0.03);
-		renderer.clearColor = new Color(0.02, 0.02, 0.04);
+		renderer.clearColor = new Vec4(0.02, 0.02, 0.04, 1);
 
 		var world = new World("nodes");
 		var sun = world.node("sun");

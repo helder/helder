@@ -1,5 +1,6 @@
 package helder.ui.code;
 
+import helder.gfx.Color;
 import helder.syntax.Lexer.TokenClass;
 import helder.ui.code.CodeAction;
 import helder.ui.code.CodeModel;

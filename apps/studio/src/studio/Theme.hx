@@ -1,5 +1,6 @@
 package studio;
 
+import helder.gfx.Color;
 import helder.ui.*;
 
 // The studio's look, every value of it here (README.md's "Look"): near

@@ -1,3 +1,4 @@
+import helder.gfx.shader.Vec4;
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.image.Image;
@@ -52,7 +53,7 @@ class SpriteFrame {
 		// (the other texture: a yellow quad at the bottom right corner)
 		batch.image(other, 0, 0, 1, 1, 56, 56, 8, 8);
 		var enc = device.beginFrame();
-		enc.beginPass({colors: [{load: Clear, clear: new Color(0, 0, 0.2)}]});
+		enc.beginPass({colors: [{load: Clear, clear: new Vec4(0, 0, 0.2, 1)}]});
 		batch.flush(enc);
 		enc.endPass();
 		var pixels = Bytes.alloc(W * H * 4);

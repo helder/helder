@@ -1,5 +1,7 @@
 package helder.gfx.soft;
 
+import helder.gfx.shader.Vec4;
+
 import haxe.io.Bytes;
 import helder.os.Blit;
 import helder.os.Surface;
@@ -30,6 +32,8 @@ class SoftBackend {
 	public final backend = Backend.Soft;
 	public var width(default, null) = 0;
 	public var height(default, null) = 0;
+
+	static final BLACK = new Vec4(0, 0, 0, 1);
 
 	final surface:Surface;
 	final threads:Int;
@@ -330,7 +334,7 @@ class SoftBackend {
 		// the clears: the tiles' first work (all of them run at the pass's end)
 		var clears = 0;
 		if (c.load != Load) {
-			clearTexel(target, c.clear == null ? new Color(0, 0, 0, 1) : c.clear);
+			clearTexel(target, c.clear ?? BLACK);
 			clears |= 1;
 		}
 		if (!depth.isNull() && d != null && d.load != Load) {
@@ -345,7 +349,7 @@ class SoftBackend {
 	}
 
 	// (a clear colour as the target stores it, into the pass's record)
-	function clearTexel(r:Ptr, k:Color) {
+	function clearTexel(r:Ptr, k:Vec4) {
 		var kind = Mem.getI32(r, SoftTexture.KIND), format:TextureFormat = cast Mem.getI32(r, SoftTexture.FORMAT), p = pass.add(Raster.CLEAR_TEXEL);
 		inline function c01(v:Float):Float
 			return v < 0 ? 0 : v > 1 ? 1 : v;
@@ -353,18 +357,18 @@ class SoftBackend {
 			var t = Formats.srgb(), srgb = format == RGBA8Srgb;
 			inline function code(v:Float, color:Bool):Int
 				return srgb && color ? Formats.srgbCode(t, c01(v)) : Std.int(c01(v) * 255 + 0.5);
-			var g = format == R8 ? 0.0 : k.g, b = format == R8 || format == RG8 ? 0.0 : k.b, a = format == R8 || format == RG8 ? 1.0 : k.a;
-			Mem.setI32(p, 0, code(k.r, true) | (code(g, true) << 8) | (code(b, true) << 16) | (code(a, false) << 24));
+			var g = format == R8 ? 0.0 : k.y, b = format == R8 || format == RG8 ? 0.0 : k.z, a = format == R8 || format == RG8 ? 1.0 : k.w;
+			Mem.setI32(p, 0, code(k.x, true) | (code(g, true) << 8) | (code(b, true) << 16) | (code(a, false) << 24));
 		} else if (kind == SoftTexture.F4) {
 			var half = format == RGBA16F;
 			inline function v(x:Float):Float
 				return half ? Formats.roundHalf(x) : x;
-			Mem.setF32(p, 0, v(k.r));
-			Mem.setF32(p, 4, v(k.g));
-			Mem.setF32(p, 8, v(k.b));
-			Mem.setF32(p, 12, v(k.a));
+			Mem.setF32(p, 0, v(k.x));
+			Mem.setF32(p, 4, v(k.y));
+			Mem.setF32(p, 8, v(k.z));
+			Mem.setF32(p, 12, v(k.w));
 		} else
-			Mem.setF32(p, 0, k.r);
+			Mem.setF32(p, 0, k.x);
 	}
 
 	public function setPipeline(id:Int)

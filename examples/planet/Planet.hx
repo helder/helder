@@ -52,7 +52,7 @@ class Planet {
 	public function new(device:Device) {
 		this.device = device;
 		renderer = new Renderer(device);
-		renderer.clearColor = new Color(0, 0, 0.002);
+		renderer.clearColor = new Vec4(0, 0, 0.002, 1);
 		renderer.sky = new Vec3(0.012, 0.012, 0.016);
 		renderer.ground = new Vec3(0.006, 0.006, 0.008);
 		renderer.sunColor = new Vec3(1.25, 1.2, 1.12);

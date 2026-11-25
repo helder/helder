@@ -1,5 +1,7 @@
 package helder.ui.code;
 
+import helder.gfx.Color;
+
 // A code editor's suggestions at the caret (CodeEditor.complete): a list
 // drawn under the word they replace, eight rows at most (it scrolls to
 // keep the chosen one in view), the chosen one tinted; a row's label, its

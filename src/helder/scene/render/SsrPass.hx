@@ -24,8 +24,8 @@ class SsrPass implements LightPass {
 	final block:SsrParams = {
 		projection: Mat4.identity(), inverseProjection: Mat4.identity(), p: new Vec4(0, 0, 0, 0), size: new Vec4(0, 0, 0, 0), q: new Vec4(0, 0, 0, 0)
 	};
-	final tracePass:PassDesc = {colors: [{load: Clear, clear: new Color(0, 0, 0, 0)}]};
-	final resolvePass:PassDesc = {colors: [{load: Clear, clear: new Color(0, 0, 0, 0)}]};
+	final tracePass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0, 0, 0, 0)}]};
+	final resolvePass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0, 0, 0, 0)}]};
 	var w = 0;
 	var h = 0;
 	var rw = 0;

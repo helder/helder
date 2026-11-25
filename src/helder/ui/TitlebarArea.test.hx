@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.gfx.Color;
 import helder.os.DragOperation;
 import helder.os.TitleBar.TitleHit;
 import helder.test.Test;
