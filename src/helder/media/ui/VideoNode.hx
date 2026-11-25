@@ -261,8 +261,8 @@ class VideoNode extends Node {
 		if (f == null || g == null || r == null) return;
 		if (texture == null) texture = new VideoTexture(r.device);
 		var t = texture, rotation = p.video == null ? 0 : p.video.rotation;
-		if (queued != r.frames) {
-			queued = r.frames;
+		if (queued != r.passKey) {
+			queued = r.passKey;
 			if (!t.prepare(f, rotation)) return;
 			r.beforePass(t.record);
 		}

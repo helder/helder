@@ -165,8 +165,8 @@ class ImageView extends helder.ui.Node {
 			device.destroyTexture(retired.shift().t);
 		viewer.camera.setView(pw, ph);
 		upload();
-		if (queued != r.frames) {
-			queued = r.frames;
+		if (queued != r.passKey) {
+			queued = r.passKey;
 			r.beforePass(record);
 		}
 		(cast canvas : helder.ui.draw.TextureCanvas).gpuTexture(target, id, x, y, width, height);

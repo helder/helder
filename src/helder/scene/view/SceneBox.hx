@@ -364,8 +364,8 @@ class SceneBox extends helder.ui.Node {
 		var cam = view();
 		// (once a frame, with the textures there are when it records: a frame
 		// skipped, its recording runs with the next one's)
-		if (queued != r.frames) {
-			queued = r.frames;
+		if (queued != r.passKey) {
+			queued = r.passKey;
 			r.beforePass(record);
 		}
 		g.gpuTexture(color, id, x, y, width, height);

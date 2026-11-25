@@ -393,6 +393,17 @@ class Renderer implements TextureCanvas {
 
 	// f records a pass of its own before the frame's (prepare): what a
 	// texture drawn this frame shows, rendered first (a <Scene>'s)
+	// what a pass asked for now goes with: the recording of the display list
+	// it is recorded into, else the frame. A node asks for its pass once a
+	// key, not once a frame: a list recorded again in the same frame (a walk
+	// again under motion) drops the first recording's passes with it, and a
+	// node that asked once that frame drew a new texture never (magenta on
+	// Apple's GPUs, beside a picture as a window zoomed)
+	public var passKey(get, never):Int;
+
+	inline function get_passKey():Int
+		return recording == null ? -1 - frames : recording.take;
+
 	public function beforePass(f:Encoder->Void) {
 		if (templating) return;
 		if (recording != null) recording.pass(f) else before.push(f);

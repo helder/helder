@@ -1787,7 +1787,13 @@ directly gives, in its order (UiCheck checks it on random trees changed at
 random over frames: scrollers and sticky rows, transforms and opacity
 moving, motion's entering and leaving rows), and a frame that only scrolls
 or moves a transform records nothing. Passes (`beforePass`) are entries of
-the lists, run in their place. A window's renderer (`Renderer.tiles`: not
+the lists, run in their place: a node asks for its pass once a
+`Renderer.passKey` (the recording of the list it is painted into), not once
+a frame, as a frame that walks again (a node entering under motion) records
+a list again and drops the first recording's passes with it (a texture
+made in it was never drawn: magenta beside the viewer's picture as a window
+zoomed; `src/helder/ui/draw/Renderer.test.hx` resizes such a node as nodes
+enter). A window's renderer (`Renderer.tiles`: not
 headless, X11's or a browser's) draws a layer that holds no other and
 draws nothing anew from tiles of its own, textures of 512 device pixels
 kept while it paints the same and moves by whole device pixels (snapped
