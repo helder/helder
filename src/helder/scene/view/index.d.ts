@@ -17,8 +17,8 @@ declare const __haxe: {Scene: "helder.scene.view.SceneTags.Scene", OrbitControls
 // pinned to the scene, a children prop typed so makes its content scene nodes
 export type SceneView = unknown;
 
-// a box (ui's: grow, width, height, style...) of world as camera sees it
-export declare function Scene(props: { world?: World; camera?: Camera; grow?: number; width?: Read<any>; height?: Read<any>; style?: any; animate?: boolean; antialias?: boolean; scale?: Read<number>; density?: Read<number>; hdr?: boolean; pick?: unknown; setup?: (arg0: Renderer) => void; ref?: (arg0: unknown) => void; children?: SceneView }): Node;
+// a box (ui's: flexGrow, width, height, style...) of world as camera sees it
+export declare function Scene(props: { world?: World; camera?: Camera; flexGrow?: number; width?: Read<any>; height?: Read<any>; style?: any; animate?: boolean; antialias?: boolean; scale?: Read<number>; density?: Read<number>; hdr?: boolean; pick?: unknown; setup?: (arg0: Renderer) => void; ref?: (arg0: unknown) => void; children?: SceneView }): Node;
 // the <Scene>'s camera orbiting target, driven by the pointers over its
 // box (OrbitControls: one finger or the left button turns it, two
 // pinch and move it, the right button moves it, the wheel zooms); its

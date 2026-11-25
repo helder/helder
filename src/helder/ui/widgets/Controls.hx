@@ -15,7 +15,7 @@ import helder.ui.view.UiFlow.Popover;
 //
 //   <Slider label="Weight" value={weight} min={20} max={200} step={1} onChange={weight}/>
 //   <Segmented label="Tool" value={tool} options={[{value: "draw", label: "Draw"}, ...]} onChange={tool}/>
-//   <Tip label="Tracing letter" keys="T"><view:button ...><image src={eye}/></view:button></Tip>
+//   <Tip label="Tracing letter" keys="T"><button ...><image src={eye}/></button></Tip>
 class Controls implements Markup {
 	// A number between min and max, shown as a field (its label inside on
 	// the left, its value on the right, the part up to it filled): a press
@@ -44,8 +44,8 @@ class Controls implements Markup {
 		}
 		function by(n:Float)
 			set(props.value() + n * (step > 0 ? step : range / 100));
-		return <view tag={props.tag} slot="slider" role="slider" label={props.label} focusable value-now={props.value()} value-min={props.min}
-			value-max={props.max} ref={(n:Node) -> root = n} onPointerDown={e -> {
+		return <view tag={props.tag} slot="slider" role="slider" aria-label={props.label} focusable aria-valuenow={props.value()} aria-valuemin={props.min}
+			aria-valuemax={props.max} ref={(p:helder.ui.Part) -> root = cast p} onPointerDown={e -> {
 				root?.capture();
 				dragging = true;
 				at(e.x);
@@ -56,9 +56,9 @@ class Controls implements Markup {
 					set(props.min) else if (e.key == Key.END) set(props.max) else return;
 				e.preventDefault();
 			}}>
-			<view slot="slider-fill" position="absolute" left={0} top={0} bottom={0} width={(fraction() * 100) + "%"} pointer-events="none"/>
-			<text slot="field-label" grow={1} pointer-events="none">{props.label}</text>
-			<text slot="slider-value" pointer-events="none" font-variant-numeric="tabular-nums">{format(props.value(), digits) + (props.unit ?? "")}</text>
+			<view slot="slider-fill" position="absolute" left={0} top={0} bottom={0} width={(fraction() * 100) + "%"} pointerEvents="none"/>
+			<text slot="field-label" flexGrow={1} pointerEvents="none">{props.label}</text>
+			<text slot="slider-value" pointerEvents="none" fontVariantNumeric="tabular-nums">{format(props.value(), digits) + (props.unit ?? "")}</text>
 		</view>;
 	}
 
@@ -74,18 +74,18 @@ class Controls implements Markup {
 			var n = props.options.length;
 			props.onChange(props.options[(i + by + n) % n].value);
 		}
-		return <view tag={props.tag} slot="seg" role="radiogroup" label={props.label} onKeyDown={e -> {
+		return <view tag={props.tag} slot="seg" role="radiogroup" aria-label={props.label} onKeyDown={e -> {
 			if (e.key == Key.RIGHT || e.key == Key.DOWN) move(1) else if (e.key == Key.LEFT || e.key == Key.UP) move(-1) else return;
 			e.preventDefault();
 		}}>
 			<For each={props.options}>{(o:Read<{value:String, label:String, ?icon:Svg, ?hint:String}>) -> {
 				var option = o();
-				<view:button tag={props.tag == null ? null : props.tag + "-" + option.value} slot="seg-item" role="radio" label={option.hint ?? option.label}
-					focusable checked={props.value() == option.value} data-on={props.value() == option.value ? "true" : "false"}
+				<button tag={props.tag == null ? null : props.tag + "-" + option.value} slot="seg-item" role="radio" aria-label={option.hint ?? option.label}
+ aria-checked={props.value() == option.value} data-on={props.value() == option.value ? "true" : "false"}
 					onPress={() -> props.onChange(option.value)}>
-					<Show when={option.icon != null}><image src={option.icon} width={14} height={14} shrink={0}/></Show>
+					<Show when={option.icon != null}><image src={option.icon} width={14} height={14} flexShrink={0}/></Show>
 					<Show when={!(props.compact ?? false) || option.icon == null}><text>{option.label}</text></Show>
-				</view:button>;
+				</button>;
 			}}</For>
 		</view>;
 	}
@@ -101,7 +101,7 @@ class Controls implements Markup {
 			open(false);
 		}
 		onCleanup(hide);
-		return <view direction="row" onPointerEnter={_ -> {
+		return <view flexDirection="row" onPointerEnter={_ -> {
 			var since = hovered = helder.ui.Clock.now;
 			helder.ui.Clock.add(now -> {
 				if (hovered != since) return false;
@@ -112,7 +112,7 @@ class Controls implements Markup {
 		}} onPointerLeave={_ -> hide()} onPointerDown={_ -> hide()}>
 			{props.children}
 			<Popover open={open} placement={props.placement ?? Below} gap={6} dismissOnOutside={false}>
-				<view slot="tip" role="tooltip" direction="row" align-items="center" column-gap={8} pointer-events="none">
+				<view slot="tip" role="tooltip" flexDirection="row" alignItems="center" columnGap={8} pointerEvents="none">
 					<text>{props.label}</text>
 					<Show when={props.keys != null}><text slot="kbd">{props.keys ?? ""}</text></Show>
 				</view>

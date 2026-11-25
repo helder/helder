@@ -128,7 +128,8 @@ export declare function flush(): void;
 
 export declare function For<T>(props: ForProps<T>): unknown;
 export declare function Repeat(props: { count: Read<number>; children: (arg0: number) => unknown }): unknown;
-export declare function Show<T>(props: { when: Read<T>; fallback?: unknown; children?: unknown }): unknown;
+// (TypeScript's: a function child's parameter typed by when's value)
+export declare const Show: <T>(props: {when: Read<T>; fallback?: unknown; children?: ((value: Read<NonNullable<T>>) => unknown) | {} | null}) => unknown;
 export declare function Switch(props: { fallback?: unknown; children?: unknown }): unknown;
 export declare function Match<T>(props: { when: Read<T>; children?: unknown }): unknown;
 export declare function Loading(props: { fallback?: unknown; children?: unknown }): unknown;
