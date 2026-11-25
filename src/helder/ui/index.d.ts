@@ -809,7 +809,9 @@ export declare class SafeArea {
 // Screens by path, kept as a stack (helder.ui.Stack shows it): routes are
 // matched in the order they were added, a segment ":name" taking any one
 // segment (its value given to the route, decoded), the fallback any path
-// none matched. go pushes, back pops (false at the root; backTo several),
+// none matched. go pushes (still: faded in place and popped so, not slid,
+// when the app moves what matters itself: a picture zoomed from its tile),
+// back pops (false at the root; backTo several),
 // replace swaps the top, reset starts a new stack, open a link's (a full
 // URL or a path): the root and the matched route. Each entry's screen is
 // made once, when it is pushed. Haxe's helder.ui.Router types a route's params by its path.
@@ -823,7 +825,7 @@ export declare class Router {
 	route: <P extends string>(path: P, render: (params: RouteParams<P>) => View) => Router;
 	// what a path no route matches shows (else go throws)
 	fallback(render: (path: string) => View): Router;
-	go(path: string): void;
+	go(path: string, still?: boolean): void;
 	back(): boolean;
 	// pops to the entry depth entries above the root (0: the root): whether it moved
 	backTo(depth: number): boolean;

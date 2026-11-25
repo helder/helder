@@ -60,8 +60,12 @@ class Phone implements Markup {
 		var p = new PhoneState(props.x);
 		if (props.at != null) onSettled(() -> props.at(p));
 		return <view tag="phone" grow={1} background={Look.ref.canvas} color={Look.ref.fg} font-family="system-ui" font-size={17}
-			ref={(n:Node) -> p.attach(n)}>
+			ref={(n:Node) -> {
+				p.attach(n);
+				props.x.zoom.attach(n);
+			}}>
 			<Stack router={p.nav}/>
+			{Flight.layer(props.x.zoom)}
 			<Sheet open={() -> p.info()} detents={[Medium, Large]} label="Info" onDismiss={() -> p.info(false)}>{InspectorView.make(p.x, true)}</Sheet>
 		</view>;
 	}
@@ -185,11 +189,20 @@ class Phone implements Markup {
 	// its place kept, not emptied and refilled))
 	static function Listed(props:{p:PhoneState, path:String}):View {
 		var p = props.p, x = p.x, b = x.browser, path = props.path, nav = use(Bar.here);
+		var here = () -> b.dir.value == path;
 		var last:Array<Entry> = [];
 		var items = memo(() -> b.dir() == path && !(b.reading() && b.items().length == 0 && last.length > 0) ? (last = b.items()) : last);
 		effect(() -> b.selection.version(), _ -> b.selectionChanged());
-		function scroller(v:helder.ui.VirtualScroll)
+		var list:Null<helder.ui.VirtualScroll> = null;
+		function scroller(v:helder.ui.VirtualScroll) {
+			list = v;
 			if (nav != null) nav.scroller(v);
+		}
+		// (a file closed: its tile in view, for the zoom back into it)
+		renderEffect(() -> x.full(), on -> {
+			var i = b.indexOf(b.selected.value);
+			if (!on && list != null && here() && i >= 0) list.scrollToIndex(i);
+		});
 		// (why it shows nothing, last: under the bar and the large title)
 		return <view grow={1} min-height={0}>
 			<Show when={b.layout() == Grid}>{() -> {
@@ -226,7 +239,8 @@ class Phone implements Markup {
 		}
 		return <view tag={"tile-" + e().name} grow={1} align-items="center" row-gap={4} onTap={_ -> if (!p.selecting.peek()) p.open(e().name)}>
 			<view slot="photo" data-selected={on() && p.selecting()} width={side} height={side} shrink={0} align-items="center" justify="center" radius={9}
-				background={e().kind == Folder ? helder.ui.Color.TRANSPARENT : Look.ref.fill} overflow="hidden">
+				background={e().kind == Folder ? helder.ui.Color.TRANSPARENT : Look.ref.fill} overflow="hidden"
+				opacity={x.zoom.flying() == x.browser.path(e().name) ? 0 : 1} ref={(n:Node) -> x.zoom.tile(n, x.browser.path(e().name))}>
 				{() -> square(x, e(), side)}
 				<Show when={p.selecting()}>
 					<view tag="pick" position="absolute" right={6} bottom={6} width={24} height={24} radius={12} border-width={1.5} align-items="center"
@@ -259,7 +273,8 @@ class Phone implements Markup {
 		}
 		return <view direction="row" align-items="center" column-gap={12} height={ROW} padding="0 16" grow={1}
 			background={on() && p.selecting() ? Look.ref.accentSoft : helder.ui.Color.TRANSPARENT} onTap={_ -> if (!p.selecting.peek()) p.open(e().name)}>
-			<view width={42} height={42} align-items="center" justify="center" radius={6} overflow="hidden">{() -> square(x, e(), 42)}</view>
+			<view width={42} height={42} align-items="center" justify="center" radius={6} overflow="hidden"
+				opacity={x.zoom.flying() == x.browser.path(e().name) ? 0 : 1} ref={(n:Node) -> x.zoom.tile(n, x.browser.path(e().name))}>{() -> square(x, e(), 42)}</view>
 			<view grow={1} min-width={0} row-gap={2}>
 				<text font-size={16} max-lines={1} text-overflow="ellipsis" dir={helder.ui.Dir.Ltr}>{e().name}</text>
 				<text font-size={13} color={Look.ref.fg3} max-lines={1}>{Kinds.date(e().modified) + (e().kind == Folder ? "" : " · " + Kinds.size(e().size))}</text>
@@ -405,11 +420,12 @@ class PhoneState implements Markup {
 		// (where the Explorer starts: its folder over Browse, a file full size over that)
 		var dir = x.browser.dir.value;
 		if (dir != "") push("/folder/" + StringTools.urlEncode(dir));
-		if (x.full.value) push("/view");
+		if (x.full.value) push("/view", true);
 		// (the stack's top is what the Explorer shows: a folder browsed again, a file closed)
 		renderEffect(() -> nav.path(), arrived);
+		// (a file's screen faded in place, not slid: the zoom from its tile moves it)
 		renderEffect(() -> x.full(), on -> {
-			if (on && top != "/view") push("/view");
+			if (on && top != "/view") push("/view", true);
 			if (!on && top == "/view") nav.back();
 		});
 	}
@@ -445,9 +461,9 @@ class PhoneState implements Markup {
 		}
 	}
 
-	function push(path:String) {
+	function push(path:String, still = false) {
 		top = path;
-		nav.go(path);
+		nav.go(path, still);
 	}
 
 	// the root's tab (a tab of the root pressed elsewhere: back to it)
