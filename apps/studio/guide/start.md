@@ -57,6 +57,10 @@ export const start = story({ name: "App/Start", width: 480, height: 640, render:
 export const phone = story({ name: "App/Phone", render: () => <App/> });
 ```
 
+Each story is a literal `story({name, width, height, render})` at the
+module's top level, read before anything is built: no helper making it,
+no spread in it; put any shared code inside `render`.
+
 Add a story to add a screen; rename or remove one and the canvas follows.
 
 The canvas is a storyboard of stills: each story shows its moment, it does
