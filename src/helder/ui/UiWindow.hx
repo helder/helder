@@ -34,7 +34,7 @@ typedef SurfaceProps = {
 	// (a first value not opaque, "transparent" or a colour's alpha: a
 	// transparent window, what is behind it seen through: Window's)
 	?background:helder.view.graph.Read<Dynamic>,
-	// the system's material behind the window ("blur", "mica", "glass":
+	// the system's material behind the window ("blur", "mica", "sidebar", "glass":
 	// helder.os's Backdrop, where the system has it), seen through a clear or
 	// half-clear background; one makes the window transparent
 	?backdrop:helder.view.graph.Read<String>,

@@ -14,6 +14,10 @@ class Settings {
 			if (Advapi32.RegGetValueW(hkcu, a.wstring("Software\\Microsoft\\Accessibility"), a.wstring("TextScaleFactor"), 0x10,
 				Ptr.nil(), data, size) == 0 && data.value > 0) v.textScale = data.value / 100;
 			if (User32.SystemParametersInfoW(0x1042, 0, data, 0) != 0) v.reducedMotion = data.value == 0;
+			// (Personalization's Transparency effects off; RRF_RT_REG_DWORD)
+			size.value = 4;
+			if (Advapi32.RegGetValueW(hkcu, a.wstring("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"), a.wstring("EnableTransparency"),
+				0x10, Ptr.nil(), data, size) == 0) v.reducedTransparency = data.value == 0;
 			// HIGHCONTRASTW: length, flags, scheme pointer.
 			var hc:Ptr<Int32> = a.alloc(16);
 			hc[0] = 16;

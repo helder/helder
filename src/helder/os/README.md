@@ -306,7 +306,7 @@ window.shadow = false;  // no system shadow (macOS, Windows)
 ```
 
 ```tsx
-<Surface backdrop="blur">…</Surface>  // the system's material behind: "blur", "mica", "glass"
+<Surface backdrop="blur">…</Surface>  // the system's material behind: "blur", "mica", "sidebar", "glass"
 ```
 
 ```haxe
@@ -347,10 +347,11 @@ by a scroller's clip; macOS and Windows follow the pointer at the program's
 polls, so while it sleeps (0.1 s at most) the window keeps its last answer.
 The system's material behind a transparent window (`backdrop`): macOS's
 NSVisualEffectView under the layer's view (behind the window, active;
-blur its hudWindow material, mica underWindowBackground) or, macOS 26,
-an NSGlassEffectView filling it (glass); Windows 11 (22H2 on):
-`DWMWA_SYSTEMBACKDROP_TYPE` (blur Acrylic, mica Mica), the frame extended
-over the client area; KDE's blur for both: `org_kde_kwin_blur` on Wayland
+blur its hudWindow material, mica underWindowBackground; sidebar the
+sidebar material, Finder's, dimmed with the window as it goes inactive)
+or, macOS 26, an NSGlassEffectView filling it (glass); Windows 11 (22H2
+on): `DWMWA_SYSTEMBACKDROP_TYPE` (blur Acrylic, mica and sidebar Mica),
+the frame extended over the client area; KDE's blur for all three: `org_kde_kwin_blur` on Wayland
 (plasma-wayland-protocols' XML, generated as the others), on X11
 `_KDE_NET_WM_BLUR_BEHIND_REGION` where its atom exists (KWin makes it).
 Elsewhere, on an opaque window, and for one the system lacks it reads
@@ -542,7 +543,8 @@ program's.
 
 `helder.os.Settings` exposes read-only `helder.view` signals. Read them in
 markup or an effect as `Settings.textScale()`, `Settings.reducedMotion()`,
-`Settings.contrast()`, `Settings.dark()`, and `Settings.orientation()`.
+`Settings.reducedTransparency()`, `Settings.contrast()`, `Settings.dark()`,
+and `Settings.orientation()`.
 In TypeScript, import `Settings` from `helder/os`.
 
 Text scale is a multiplier, defaulting to 1. Contrast is `normal`, `more`,
@@ -557,7 +559,9 @@ iOS text scale is Dynamic Type at the body size. Android reads the font
 scale and animation setting, with contrast on API 34 and later. Windows
 reads the system text size, animation, and high-contrast settings.
 Linux reads GNOME's preferences where its GSettings schemas are installed.
-macOS exposes motion and contrast through AppKit. macOS and the web
+macOS exposes motion, transparency and contrast through AppKit; iOS reads
+Reduce Transparency, Windows Personalization's Transparency effects;
+reduced transparency is false elsewhere (an app keeps its materials). macOS and the web
 report 1 for text scale.
 
 `Clipboard.write(window, text)` and `Clipboard.read(window, callback)`

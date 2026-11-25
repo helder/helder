@@ -10,6 +10,7 @@ class Settings {
 			var pool = Runtime.objc_autoreleasePoolPush();
 			var w = Msg.id(ObjC.cls("NSWorkspace"), ObjC.sel("sharedWorkspace"));
 			v.reducedMotion = Msg.b(w, ObjC.sel("accessibilityDisplayShouldReduceMotion"));
+			v.reducedTransparency = Msg.b(w, ObjC.sel("accessibilityDisplayShouldReduceTransparency"));
 			v.contrast = Msg.b(w, ObjC.sel("accessibilityDisplayShouldIncreaseContrast")) ? More : Normal;
 			Runtime.objc_autoreleasePoolPop(pool);
 		});
@@ -31,6 +32,7 @@ class Settings {
 		v.textScale = Msg.fFloatPtr(Msg.id(ObjC.cls("UIFontMetrics"), ObjC.sel("defaultMetrics")),
 			ObjC.sel("scaledValueForValue:compatibleWithTraitCollection:"), 17, sizes) / 17;
 		v.reducedMotion = Accessibility.UIAccessibilityIsReduceMotionEnabled();
+		v.reducedTransparency = Accessibility.UIAccessibilityIsReduceTransparencyEnabled();
 		v.contrast = Accessibility.UIAccessibilityDarkerSystemColorsEnabled() ? More : Normal;
 		Runtime.objc_autoreleasePoolPop(pool);
 	}
@@ -39,5 +41,6 @@ class Settings {
 @:hxmc.c @:hxmc.framework("UIKit")
 private extern class Accessibility {
 	static function UIAccessibilityIsReduceMotionEnabled():Bool;
+	static function UIAccessibilityIsReduceTransparencyEnabled():Bool;
 	static function UIAccessibilityDarkerSystemColorsEnabled():Bool;
 }
