@@ -34,12 +34,13 @@ class Agents {
 		return null;
 	}
 
-	// the agents found on this machine (the chat's menu), local last
+	// the agents found on this machine (the chat's menu); local, the studio's tools, only when none is
 	public static function found():Array<String> {
 		#if (hxmc.target == "wasm32-wasi")
 		return ["local"];
 		#else
-		return [for (n in ["claude", "codex", "gemini"]) if (of(n, true) != null) n].concat(["local"]);
+		var l = [for (n in ["claude", "codex", "gemini"]) if (of(n, true) != null) n];
+		return l.length > 0 ? l : ["local"];
 		#end
 	}
 
