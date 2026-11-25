@@ -9,7 +9,7 @@ import {signal, For, Show} from 'helder/view'
 
 const todos = signal<Array<{id: number, title: string}>>([])
 
-const list = <scroll grow={1} min-height={0} row-gap={6}>
+const list = <scroll flexGrow={1} minHeight={0} rowGap={6}>
   <For each={todos} by={t => t.id}>{item =>
     <text>{item().title}</text>
   }</For>
@@ -25,7 +25,7 @@ import helder.view.graph.Graph.*;
 
 var todos = signal(new Array<Todo>());
 
-<scroll grow={1} min-height={0} row-gap={6}>
+<scroll flexGrow={1} minHeight={0} rowGap={6}>
   <For each={todos()}>{(item:Read<Todo>) ->
     <text>{item().title}</text>
   }</For>

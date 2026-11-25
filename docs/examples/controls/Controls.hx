@@ -18,11 +18,11 @@ class Controls implements Markup {
 		var dark = signal(false);
 		UiWindow.run(<Surface title="Controls" width={560} height={360} dark={dark}>
 			<Standard.Themed look={Look.base}>
-				<view grow={1} padding={20} row-gap={12} background={Look.ref.canvas} color={Look.ref.fg} font-family="Inter" font-size={14}>
-					{[for (v in ["primary", "secondary", "outline", "ghost", "danger"]) <view direction="row" align-items="center" column-gap={10}>
+				<view flexGrow={1} padding={20} rowGap={12} background={Look.ref.canvas} color={Look.ref.fg} fontFamily="Inter" fontSize={14}>
+					{[for (v in ["primary", "secondary", "outline", "ghost", "danger"]) <view flexDirection="row" alignItems="center" columnGap={10}>
 						{button(v, "sm")}{button(v, "md")}{button(v, "lg")}{button(v, "md", true)}
 					</view>]}
-					<view direction="row" align-items="center" column-gap={20}>
+					<view flexDirection="row" alignItems="center" columnGap={20}>
 						<Standard.Button icon={Icons.svg("search")} label="Search"/>
 						<Standard.Checkbox label="Off"/>
 						<Standard.Checkbox label="On" checked={true}/>

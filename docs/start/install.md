@@ -26,10 +26,10 @@ const count = signal(0)
 
 UiWindow.run(
   <Surface title='Counter' width={320} height={200}>
-    <view grow={1} align-items='center' justify='center' row-gap={12}>
-      <text font-size={32}>{count}</text>
-      <view:button padding='8 16' radius={6} background='#18181b'
-        color='#fafafa' onPress={() => count(c => c + 1)}>+1</view:button>
+    <view flexGrow={1} alignItems='center' justifyContent='center' rowGap={12}>
+      <text fontSize={32}>{count}</text>
+      <button padding='8 16' borderRadius={6} background='#18181b'
+        color='#fafafa' onPress={() => count(c => c + 1)}>+1</button>
     </view>
   </Surface>
 )

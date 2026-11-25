@@ -14,10 +14,10 @@ class Counter implements Markup {
 	static function main() {
 		var count = signal(0);
 		UiWindow.run(<Surface title="Counter" width={320} height={200}>
-			<view grow={1} padding={24} row-gap={12} align-items="center" justify="center">
-				<text font-size={32}>{count}</text>
-				<view:button role="button" focusable padding="8 16" radius={6} background="#18181b" color="#fafafa" cursor="pointer"
-					onPress={() -> count(c -> c + 1)}>+1</view:button>
+			<view flexGrow={1} padding={24} rowGap={12} alignItems="center" justifyContent="center">
+				<text fontSize={32}>{count}</text>
+				<button padding="8 16" borderRadius={6} background="#18181b" color="#fafafa" cursor="pointer"
+					onPress={() -> count(c -> c + 1)}>+1</button>
 			</view>
 		</Surface>);
 	}
@@ -43,11 +43,11 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
 
 - **`helder.ui`**, the core, plain Haxe (it runs on any target; its tests
   run on Eval): `Node` and `TextNode`, `Style`, `Layout`, `Ui`.
-  - Layout is CSS flexbox, column by default: `direction`, `wrap`,
-    `justify`, `alignItems`, `alignSelf` (`Baseline`: a row's items on their
+  - Layout is CSS flexbox, column by default: `flexDirection`, `flexWrap`,
+    `justifyContent`, `alignItems`, `alignSelf` (`Baseline`: a row's items on their
     first baselines, a text's first line's, a box without one on its bottom
-    edge; a column's on their start edges), `alignContent`, `grow`,
-    `shrink`, `basis`, `width`, `height`, min and max (widths also
+    edge; a column's on their start edges), `alignContent`, `flexGrow`,
+    `flexShrink`, `flexBasis`, `width`, `height`, min and max (widths also
     `min-content`, `max-content`, `fit-content`: CSS's intrinsic sizes;
     `"calc(100% - 2px)"`, `Calc(100, -2)`: a percentage plus pixels),
     `aspectRatio`,
@@ -119,9 +119,9 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
     `maxLines` cuts a
     text to so many lines, the last ending in an ellipsis where Chromium's
     line-clamp puts it.
-  - Paint: `background`, `borderColor`, `radius` (`corners`, or markup
-    `radius="12 12 0 0"`: each corner's, as CSS's border-radius; `borders`,
-    or `border-width="0 0 2 0"`: each side's width, laid out and drawn, the
+  - Paint: `background`, `borderColor`, `borderRadius` (`corners`, or markup
+    `borderRadius="12 12 0 0"`: each corner's, as CSS's border-radius; `borders`,
+    or `borderWidth="0 0 2 0"`: each side's width, laid out and drawn, the
     inner corners quarter ellipses as Chromium draws them), `borderStyle`
     (`border-style="dashed"`: `Solid`, `Dashed` or `Dotted`, each side's
     dashes or dots fitted to it from a corner to the next, around rounded
@@ -187,7 +187,7 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
     `AnimatedImage` played on the `Clock`), shown by an `ImageNode` at its own
     size or the style's (keeping its aspect ratio), fitted as `Fill`,
     `Contain`, `Cover` or `None`, placed by `position` (CSS's object-position:
-    `"right 10px top"`, markup `object-position`; centred by default, the
+    `"right 10px top"`, markup `objectPosition`; centred by default, the
     part outside cut), its corners rounded with the node's.
   - SVG: `Svg.parse` (helder.canvas's `Svg`) reads the static subset icon sets use (shapes, all of
     path data, fills and strokes with their joins, caps and dashes, linear
@@ -382,7 +382,7 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
     where the tracks are (the renderer's translation, the presented size;
     text and children keep their layout); `windowBounds`, the inspector
     and `--trace` say where it is drawn. Hit testing stays on the layout.
-  - Properties: `opacity`, `radius`, `background`, `borderColor` and
+  - Properties: `opacity`, `borderRadius`, `background`, `borderColor` and
     `color` (premultiplied OKLab; a text colour in half the time, so a
     theme switch keeps its contrast: `textLeads`) spring as they are set;
     the style reads where they are, `style.target(name)` where they go;
@@ -413,7 +413,7 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
   keyboard editing, `cut`, `copy`, `paste`, `selectAll`) and `TextArea`
   (lines: wrapping, Up and Down, scrolling), both on `EditableText`, with
   an input method's composition shown at the caret (markup's `<field/>`
-  and `<field:textarea/>`); `Icons`, lucide's icons by name (markup's
+  and `<textarea/>`); `Icons`, lucide's icons by name (markup's
   `<icon/>`); `Theme`, the studio's look for any app (its sheet's
   parts by slot: panels, sections, buttons, fields, menus; light and dark
   from the same tokens, `Theme.c` for a colour given inline; superseded
@@ -565,10 +565,11 @@ phone's Select: a press toggles its item and nothing is activated, a drag
 sideways from an item selects the run to the item under the finger (all
 off if the first was on), a vertical one still scrolls.
 
-`VirtualList` takes the same `selection`, `selectMode`, `onActivate` (then given the
-selected indices), `onContextMenu` and `textOf`, in one dimension;
-without a `selection` its `selected` key and `onActivate` given an item
-are as they were. Cells (slot `grid-cell`) and a selection's rows carry
+`VirtualList<T, K>` takes the same `selection`, `selectMode`, `onActivate`
+(given the selected indices), `onContextMenu` and `textOf`, in one
+dimension; without a `selection` its `selected` key (a `Signal<Null<K>>`,
+`by`'s key: another type is an error) and `onActivate` given the row's
+index (`[i]`). Cells (slot `grid-cell`) and a selection's rows carry
 `data-selected` and `data-focused`; nothing else is styled.
 
 ## Navigation
@@ -725,7 +726,7 @@ export const Viewer = actions('viewer', {
 export type ViewerAction = ActionOf<typeof Viewer>   // {type: 'next'} | {type: 'zoomTo', percent: number}
 
 Keymap.global.bind('1', Viewer.zoomTo(100), 'Viewer')
-<view key-context="Viewer" actions={handle(Viewer, a => {
+<view keyContext="Viewer" actions={handle(Viewer, a => {
   switch (a.type) {
     case 'next': next(); return true
     case 'zoomTo': zoom(a.percent); return true
@@ -770,11 +771,11 @@ out). A popup gives the focus back to where it was when it closes. In
 markup:
 
 ```haxe
-<view key-context="Viewer" actions={[Actions.handle(ViewerAction, a -> switch a {
+<view keyContext="Viewer" actions={[Actions.handle(ViewerAction, a -> switch a {
 	case ZoomIn: camera.zoomIn(); true;
 	case _: false;
 }, a -> a == ZoomIn && camera.canZoom() ? Enabled : Disabled)]}>
-	<view track-focus={handle} tab-index={1}/>
+	<view trackFocus={handle} tabIndex={1}/>
 </view>
 ```
 
@@ -851,67 +852,96 @@ its look and its tests). Slots: `touch-menu`, `touch-menu-item`,
 
 ## Markup
 
-Intrinsic elements: `view` (a box), `text` (a run of text), `scroll` (a box
-that scrolls), `image` (an `ImageNode`: `src={image}` or `src={svg}`, `fit="cover"`, `object-position="left top"`).
-Inside a `text`, elements are spans of rich text: `span`, `b`, `i` or
-`text` again, each with its own style (colour, weight, size...) and
-handlers (a link: `<span color="#2563eb" onClick={...}>`); lines are as
-high as CSS makes them, their spans on one baseline.
-Attributes:
+Elements (`helder.view.Vocabulary`, one table for Haxe, TypeScript, the
+studio's designs and helder.web): helder's own, `view` (a box), `text` (a
+run of text), `scroll` (a box that scrolls), `image` (an `ImageNode`:
+`src={image}` or `src={svg}`, `objectFit="cover"`,
+`objectPosition="left top"`), `icon`, `field`, `glass`, `webview`,
+`video` (helder.media's); and HTML's names, each a view or a text that is
+natively what it is: `button` (a Button, focusable, pressed by Enter and
+Space; an explicit `role` wins), `a` (a Link to its `href`), `h1` to `h6`
+(a Heading of its level), `ul`, `ol`, `li` (a List, its ListItems),
+`fieldset` and `legend` (a Group, its legend), `label` (a Label), the
+landmarks `nav`, `main`, `header`, `footer`, `section`, `article`,
+`aside`, `form` (ARIA's navigation, main, banner, contentinfo, region,
+article, complementary, form on every platform), `p`, `strong`, `em`,
+`code` (texts; headings, strong, em and code styled by the controls' look,
+`Look.base`, else plain) and `textarea` (a field of several lines). A
+name outside the table is a page's (helder.web's renderer): in ui's
+markup an error when compiled, the one meant named (`<div>`: `<view>`,
+`<b>`: `<strong>`); a prefix (`view:button`) is an error everywhere.
+Inside a `text`, elements are spans of rich text: `text` again, `strong`,
+`em`, `code`, `a`, each with its own style (colour, weight, size...) and
+handlers (a link: `<a color="#2563eb" href={url} onPress={...}>`); lines
+are as high as CSS makes them, their spans on one baseline.
+Attributes are camel, as React Native writes them:
 
-- any Style property, in camelCase or kebab-case, with values as CSS
-  writes them: `direction="row"`, `justify="space-between"`,
-  `padding="8 12"`, `width="50%"`, `background="#3b82f6"`, `radius={6}`;
-  `style={...}` takes a typed `StyleProps` object;
-- events: `onClick`, `onPointerDown`, `onPointerUp`, `onPointerMove`,
+- any Style property by CSS's name in camel, with values as CSS writes
+  them: `flexDirection="row"`, `justifyContent="space-between"`,
+  `padding="8 12"`, `width="50%"`, `background="#3b82f6"`,
+  `borderRadius={6}`; `style={...}` takes a typed `StyleProps` object, its
+  names the same; helder's own where CSS has none (`ringWidth`,
+  `corners`, `lineHeightPx`). A kebab name (`align-items`) or helder's old
+  one (`grow`, `radius`, `direction` for the flex direction) is an error
+  naming the one meant;
+- events: `onPointerDown`, `onPointerUp`, `onPointerMove`,
   `onPointerEnter`, `onPointerLeave`, `onPointerCancel`,
   `onLostPointerCapture`, `onWheel`, `onKeyDown`, `onKeyUp`,
   `onTextInput`, `onFocus`, `onBlur`, `onFocusIn`, `onFocusOut` (bubbling) (an `Event -> Void`);
-  `onPress` (`Node.onActivate`: a click of the primary button (a right click is the context menu's, as a browser's), or Enter or Space unless `onKeyDown`
-  took it, as a DOM button's click); the gestures `onTap`, `onLongPress`
-  (held still half a second: it wins the press then), `onPan`
-  (`pan-axis="x"`, `pan-min-pointers`), `onPinch`, `onScale` (a
-  recogniser made on the node, given to its handler: a `Tap`, a
-  `LongPress`, a `Pan`, a
-  `Scale`). `helder.ui.view.NodeEvents` declares them (NodeRenderer's
-  `@:events`, the neutral elements' in every renderer), and markup checks
-  each handler against it: a function of its event or of none
-  (`onPress={() -> ...}`), an untyped parameter typed as it
-  (`onPan={g -> x(g.tx)}`, `onInput={e -> name(e.text)}`); another type, a
-  Dynamic value or a name not there is a compile error at the attribute
-  (helder.view's README);
-- `key-context="Viewer zoomed"` (what the node is to the keymap),
+  `onPress` (`Node.onPress`: a click of the primary button (a right click is the context menu's, as a browser's), or Enter or Space unless `onKeyDown`
+  took it, as a DOM button's click; `onClick` is a page's, an error here);
+  the gestures `onTap`, `onLongPress` (held still half a second: it wins
+  the press then), `onPan` (`panAxis="x"`, `panMinPointers`), `onPinch`,
+  `onScale` (a recogniser made on the node, given to its handler: a `Tap`,
+  a `LongPress`, a `Pan`, a `Scale`); an element's own (a field's
+  `onSubmit`, a web view's, a video's). `helder.ui.view.NodeEvents`
+  declares them (NodeRenderer's `@:events`, the neutral elements' in
+  every renderer), and markup checks each handler against it: a function
+  of its event or of none (`onPress={() -> ...}`), an untyped parameter
+  typed as it (`onPan={g -> x(g.tx)}`, `onInput={e -> name(e.text)}`);
+  another type, a Dynamic value or a name not there is a compile error at
+  the attribute (helder.view's README);
+- `keyContext="Viewer zoomed"` (what the node is to the keymap),
   `actions={[Actions.handle(ViewerAction, a -> ...)]}` (its action
-  handlers), `track-focus={handle}` (a `FocusHandle` tied to it),
-  `tab-index={1}` (Tab's order): see Actions and keymaps below;
-- `focusable`, `ref={n -> ...}` (the node), `tag="name"` (for `Node.find`);
-  `id` none here (a page's element's, where a page's renderer realises
-  the element).
+  handlers), `trackFocus={handle}` (a `FocusHandle` tied to it),
+  `tabIndex={1}` (Tab's order): see Actions and keymaps below;
+- what it is to assistive technology, as HTML writes it: `role`, `href`,
+  `disabled`, `required` and ARIA's attributes (`aria-label`,
+  `aria-checked`, `aria-expanded`, `aria-valuenow`... below), the node's
+  `Semantics`; `hidden` is HTML's (not rendered), `aria-hidden` assistive
+  technology's; React's `htmlFor` and `className` warnings naming `for`
+  and `class`, which are set;
+- `focusable`, `autoFocus`, `ref={n -> ...}` (the node, typed by the
+  element: an `ImageNode` for an image, a `TextField` for a field; a
+  `helder.ui.Part` in a single-source literal), `tag="name"` (for
+  `Node.find`); `id` (`Semantics.identifier`, a page's element's id).
 
 The elements are also the neutral ones of single-source components
-(`@:neutral`, src/helder/view/README.md): `view:button`, `view:label`... and
-`text:p`, `text:h2`... are a view and a text here, the element of that name
-in a page; `<icon name="check"/>` draws lucide's icon of that name
-(`helder.ui.widgets.Icons`, an inline SVG in a page; `mirrored` flips it
-right to left, `data-mirrored` in a page); `<field/>` and
-`<field:textarea/>` are a text field (`TextField`, `TextArea`: native
-where `Ui.policy` says; a page's `<input>`, `<textarea>`): `value`,
-`placeholder`, `type` (`password`: dots), `rows`, `readonly`,
-`maxlength`, `spellcheck` (the platform's checker on its words: a text
-area's by default, a field's asked; misspelled words underlined with a red
-wave, their corrections and Add to Dictionary in a right click's menu;
-`helder.text.Spell`, off in the deterministic modes), its soft keyboard
-(`helder.os.TextKind`, Text input below): `keyboard` (`text`, `email`,
-`number`, `decimal`, `phone`, `url`, `search`), `enterkey` (`default`,
-`done`, `next`, `go`, `search`, `send`), `autocapitalize` (`none`,
-`words`, `sentences`, `characters`), `autocorrect`, `autocomplete`
-(`new-password`: iOS suggests one), `inputmode` (a page's), `onInput` (its
-text changed by its user: `e.text`), `onSubmit` (Enter, the keyboard's
-Enter key whatever its label: `e.text`), its own editing after the markup's
-`onKeyDown`... unless that prevented the default; a ref of theirs gets an `helder.ui.Part` (Node is one: `focus`,
-`rect`, `scrollIntoView`, `contains`, `attr`, `rtl`, `capture`: a press's
-moves and release to it (in a handler, that event's pointer: a finger's too); `select`: a field's selection).
-- drag and drop: `drag-data={value}` makes a node draggable; `onDragStart`,
+(`@:neutral`, src/helder/view/README.md): a view and a text here, the
+element of that name in a page; `<icon name="check"/>` draws lucide's icon
+of that name (`helder.ui.widgets.Icons`, an inline SVG in a page;
+`mirrored` flips it right to left, `data-mirrored` in a page); `<field/>`
+and `<textarea/>` are a text field (`TextField`, `TextArea`: native where
+`Ui.policy` says; a page's `<input>`, `<textarea>`): `value`,
+`placeholder`, `type` (`password`: dots), `rows` (a text area's alone),
+`readOnly`, `maxLength`, `spellCheck` (the platform's checker on its
+words: a text area's by default, a field's asked; misspelled words
+underlined with a red wave, their corrections and Add to Dictionary in a
+right click's menu; `helder.text.Spell`, off in the deterministic modes),
+its soft keyboard (`helder.os.TextKind`, Text input below): `keyboard`
+(`text`, `email`, `number`, `decimal`, `phone`, `url`, `search`),
+`enterKeyHint` (`default`, `done`, `next`, `go`, `search`, `send`),
+`autoCapitalize` (`none`, `words`, `sentences`, `characters`),
+`autoCorrect`, `autoComplete` (`new-password`: iOS suggests one),
+`inputMode` (a page's), `onInput` (its text changed by its user:
+`e.text`), `onSubmit` (a field's Enter, the keyboard's Enter key whatever
+its label: `e.text`), its own editing after the markup's `onKeyDown`...
+unless that prevented the default; a ref of theirs in a single-source
+literal gets a `helder.ui.Part` (Node is one: `focus`, `rect`,
+`scrollIntoView`, `contains`, `attr`, `rtl`, `capture`: a press's moves
+and release to it (in a handler, that event's pointer: a finger's too);
+`select`: a field's selection).
+- drag and drop: `dragData={value}` makes a node draggable; `onDragStart`,
   `onDragEnd` (`e.dropped`) on the source, `onDragOver` (`e.preventDefault()`
   accepts), `onDragLeave` and `onDrop` (`e.data`) on targets; Escape cancels.
   Out of the app: `ui.dragFiles(paths, image, offsetX, offsetY, [Copy], done)`
@@ -940,7 +970,7 @@ under it and the app lays out the window's buttons with
 the system's own buttons' size, the buttons placed at it after each
 layout; on Windows minimise, maximise and close drawn, 46 by 32, the close
 button red when hovered; on Linux round ones; nothing in the browser, on a
-phone or with the system's title bar). A node with `drag-region` moves the
+phone or with the system's title bar). A node with `dragRegion` moves the
 window when pressed (what takes presses inside it, a button or a field,
 stays the content's: `Ui.titleHit`, which each system's code asks at a
 press, Windows at each WM_NCHITTEST); `env(titlebar-area-x)`, `-y`,
@@ -956,18 +986,18 @@ title bar), which a bar's padding at that end can follow too. Tests:
 
 ```haxe
 <Surface title="Studio" titlebar="inset">
-	<view direction="row" drag-region height="env(titlebar-area-height, 40px)" padding-left="env(titlebar-area-x)">
-		<text>Studio</text><view grow={1}/><WindowControls/>
+	<view flexDirection="row" dragRegion height="env(titlebar-area-height, 40px)" paddingLeft="env(titlebar-area-x)">
+		<text>Studio</text><view flexGrow={1}/><WindowControls/>
 	</view>
 </Surface>
 ```
 
 ```haxe
-<view direction="row">
-	<view tag="sidebar" drag-region><WindowControls side="start"/><text>Project</text></view>
-	<view grow={1}/>
-	<view tag="inspector" drag-region padding-right={WindowButtons.side() == "end" ? 0 : 12}>
-		<text>Inspector</text><view grow={1}/><WindowControls side="end"/>
+<view flexDirection="row">
+	<view tag="sidebar" dragRegion><WindowControls side="start"/><text>Project</text></view>
+	<view flexGrow={1}/>
+	<view tag="inspector" dragRegion paddingRight={WindowButtons.side() == "end" ? 0 : 12}>
+		<text>Inspector</text><view flexGrow={1}/><WindowControls side="end"/>
 	</view>
 </view>
 ```
@@ -1135,9 +1165,9 @@ static final look = Look.base.with({
   accent: Violet,
   tokens: {radius: 6},
   button: t -> {variants: {variant: {soft: {root: {background: t.accentSoft, color: t.accentInk}}}}},
-  "switch": t -> {knob: {radius: 3}},
+  "switch": t -> {knob: {borderRadius: 3}},
   render: {"switch": Lamp},
-  parts: {card: t -> {padding: 24, radius: t.radiusSurface, background: t.surface}}
+  parts: {card: t -> {padding: 24, borderRadius: t.radiusSurface, background: t.surface}}
 });
 ```
 
@@ -1146,7 +1176,7 @@ const look = Look.base.with({
   accent: 'violet',
   tokens: {radius: 6},
   button: t => ({variants: {variant: {soft: {root: {background: t.accentSoft, color: t.accentInk}}}}}),
-  switch: () => ({knob: {radius: 3}}),
+  switch: () => ({knob: {borderRadius: 3}}),
   render: {switch: Lamp}
 })
 ```
@@ -1167,7 +1197,7 @@ const look = Look.base.with({
   ```haxe
   function Lamp(props:SwitchProps<Dynamic>):View {
     final sw = Toggle.of(props, "switch");
-    return <view ref={sw.root} direction="row" column-gap={8}>
+    return <view ref={sw.root} flexDirection="row" columnGap={8}>
       <image ref={sw.part("icon")} src={() -> sw.checked() ? lit : unlit} width={24} height={24}/>
       <text>{props.label}</text>
     </view>;
@@ -1243,7 +1273,7 @@ node has no look but its own style, unless a program adds base rules
 own (`Todo.sheet`, `Mail.sheet`). A part's states are signals (`helder.ui.view.States.of(node)`:
 `hovered`, `pressed`, `focused`, `focusVisible`, `disabled`,
 `attr("data-state")`...), and a node's `states` attribute is a function of
-them, as React Aria's render props: `<view:button states={(s:States) ->
+them, as React Aria's render props: `<button states={(s:States) ->
 (s.pressed() ? {opacity: 0.8} : {} : StyleProps)}>` (typed: a function
 literal markup cannot type is a reactive value; over the theme's rules;
 what it stops giving, the theme's again). The system colours `Canvas` and `CanvasText` are a sheet's colours of those
@@ -1294,7 +1324,7 @@ phone, where only the system's web view runs wasm compiled at run time).
 
 ```haxe
 var content = WebContent.bundle("web/");          // Asset.bytes("web/index.html") etc.: the bundle's files
-<webview src="index.html" content={content} flex-grow={1}
+<webview src="index.html" content={content} flexGrow={1}
 	onMessage={e -> reply(e.text)} onTitle={e -> title(e.text)} onLoadError={e -> trace(e.text)}/>
 
 web.post("hello");                                 // the page's helder.onmessage (e.data)
@@ -1402,14 +1432,14 @@ iframe), ArrayBuffers from the page without base64.
 `<glass>` (`helder.ui.Glass`, a node) is Liquid Glass: a surface that
 lenses and blurs what is behind it, its children drawn over it. Its shape
 is its box with its corners' radius, a capsule unless it is given one
-(`radius={12}`); `variant="clear"` is the system's clear glass (else
+(`borderRadius={12}`); `variant="clear"` is the system's clear glass (else
 regular), `tint` the colour it leans to (its alpha how far), `interactive`
-makes it answer a press. `<glass-group spacing={16}>` (`GlassGroup`, as
-SwiftUI's GlassEffectContainer) draws the glass inside it together, glass
-nearer each other than `spacing` points merging.
+makes it answer a press. A view's `glassSpacing={16}` (`GlassGroup.of`,
+`GlassGroup`, as SwiftUI's GlassEffectContainer) draws the glass inside it
+together, glass nearer each other than that many points merging.
 
 ```haxe
-<glass direction="row" padding={12} column-gap={8} tint="#3478f640" interactive>
+<glass flexDirection="row" padding={12} columnGap={8} tint="#3478f640" interactive>
   <icon name="play"/><text>Play</text>
 </glass>
 ```
@@ -1526,10 +1556,15 @@ WM_COMMAND).
 
 `helder.ui.access` builds the tree assistive technology sees (AccessKit's
 model: roles, names, states, actions) from the nodes: each node's
-`semantics` (in markup: `role`, `label`, `description`, `checked`,
-`selected`, `expanded`, `disabled`, `value-now`, `value-min`,
-`value-max`, `value-text`, `multiselectable`, `live`, `current`,
-`invalid`, `required`, `modal`), text as labels,
+`semantics` (in markup HTML's: the element itself (`button`, `a`, `h2`,
+`li`, `nav`...), `role`, `href`, `disabled`, `required`, and ARIA's
+attributes, `aria-label`, `aria-description`, `aria-checked`,
+`aria-pressed`, `aria-selected`, `aria-expanded`, `aria-hidden`,
+`aria-disabled`, `aria-level`, `aria-valuenow`, `aria-valuemin`,
+`aria-valuemax`, `aria-valuetext`, `aria-multiselectable`, `aria-live`,
+`aria-current`, `aria-invalid`, `aria-required`, `aria-modal`,
+`aria-posinset`, `aria-setsize`: the node's Semantics, and a theme's
+states as `data-*` are; another `aria-*` a theme's alone), text as labels,
 focusable nodes as groups; the text fields declare theirs. An `id`
 (`Semantics.identifier`) is what UI tests find a node by, and puts it in
 the tree (a group when it has no role): iOS's and macOS's
@@ -1538,12 +1573,16 @@ on iOS an identified group is a container of the elements below it, with
 its frame), Android's view id resource name (UiAutomator's `By.res`),
 UI Automation's AutomationId, AT-SPI's accessible id, the browser
 mirror's `data-testid` (Playwright's `getByTestId`). A node without one
-is `helder-<n>`, stable while it lives. A `navigation`
-role is a landmark (ARIA's navigation, AT-SPI's landmark, UI Automation's
-navigation landmark type, macOS's AXLandmarkNavigation); `current` marks
+is `helder-<n>`, stable while it lives. The landmarks (`nav`, `main`,
+`header`, `footer`, `aside`, `section`, `form`: ARIA's navigation, main,
+banner, contentinfo, complementary, region, form) are AT-SPI's landmark
+(form: its form), UI Automation's landmark types (navigation, main, form;
+the others custom, named), macOS's AXLandmark subroles, Android's groups;
+an `article` is ARIA's article (AT-SPI's, AXDocumentArticle).
+`aria-current` marks
 the current one of a set (aria-current="page"; AT-SPI's current
 attribute, UI Automation's AriaProperties; macOS has no property for it). A live region
-(`live="polite"` or `"assertive"`) has its changes announced
+(`aria-live="polite"` or `"assertive"`) has its changes announced
 (`AccessTree.announcements`: its new text): ARIA's aria-live, AT-SPI's
 Announcement, UI Automation's LiveRegionChanged, macOS's announcement
 request. `Ui.accessTree()` gives it, `AccessTree.changes`
@@ -1931,7 +1970,7 @@ changed measured slower on an M-series GPU (0.09–0.13 ms a frame against
 0.04–0.09 for a header's label over a list).
 
 A node can own a system layer between what is drawn (`LayerSlot`, Node's
-`systemLayer`: a CALayer, helder.media's `<Video>`'s
+`systemLayer`: a CALayer, helder.media's `<video>`'s
 AVSampleBufferDisplayLayer): it goes in the tree at
 its paint position, placed at its box, clipped by its scrollers (rounded
 too), under what is drawn over it, moved with its scroller and its
@@ -2129,7 +2168,7 @@ Web Animation of the program's samples a frame apart, until it rests (2 s
 at most, the program's next frames sending what follows), so it moves
 while the program is busy. A node's `LayerSlot` is an element of the page
 at its box among the layers, cut by its clip, in its scroll view where its
-scroller's content is a layer: a `<Video layer>`'s canvas (helder.media's
+scroller's content is a layer: a `<video layer>`'s canvas (helder.media's
 `WebSample`, each frame read from the browser's VideoFrame) and the text
 editors' inputs and textareas (`WebEditor.slot`), so a popup's layer
 covers them. Each layer is drawn by the window's own

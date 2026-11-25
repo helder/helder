@@ -1050,7 +1050,7 @@ helder.scene.view.EffectTags.*`; a `<Show>` toggles one); a node's
 `outline` prop is its selection group, so a hover is a binding:
 
 ```haxe
-<Scene grow={1}>
+<Scene flexGrow={1}>
   <Effects bloom={0.05} toneMap={AgX}>
     <Ssao radius={0.5} samples={8}/>
     <Dof tiltShift={true} band={0.2}/>

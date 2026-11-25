@@ -278,7 +278,7 @@ window.minimize(); window.maximized = !window.maximized;
 ```
 
 `Inset` runs the content under the title bar, the window's buttons in the
-app's own layout (helder.ui's `<WindowControls/>`, `drag-region` and
+app's own layout (helder.ui's `<WindowControls/>`, `dragRegion` and
 `env(titlebar-area-*)`), what a press is the app's answer
 (`titlebarAt`: `TitleHit`'s Drag, Minimize, Maximize, Close or Content;
 `TitleBars.hit` adds the window's edges, 6 points, unless maximised or full
@@ -324,7 +324,7 @@ window.shadow = false;  // no system shadow (macOS, Windows)
 
 ```tsx
 <Surface background="transparent">…</Surface>  // or any colour with alpha: a transparent window
-<view pointer-events="none">…</view>           // drawn, its clicks passing through
+<view pointerEvents="none">…</view>           // drawn, its clicks passing through
 ```
 
 ```tsx

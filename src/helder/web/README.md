@@ -160,7 +160,7 @@ static HTML's by where it is mounted.
 
 ## Video and audio
 
-A `<Video>` (helder.media) in a ui program on the page decodes with the
+A `<video>` (helder.media) in a ui program on the page decodes with the
 browser's WebCodecs, its frames copied into textures on the GPU, its audio
 through helder.os's AudioWorklet, a URL read by Range requests
 (`WebSource`), a picked or dropped file as a Blob; where WebCodecs does not
@@ -200,13 +200,16 @@ page.
 
 A component of one definition for a canvas and a page (`@:neutral`,
 src/helder/view/README.md) is written in the neutral elements, and
-DomRenderer realises them at compile time (NeutralMacro: `view` a `div`,
-`text` a `span`, `view:button` a `button`, `icon` an `svg`, `image` an
-`img`, `field` an `input`, `field:textarea` a `textarea` (`value` the
-property, `onInput` the DOM's input, its text `e.text`)...; `slot`,
-`variant`, `size` as `data-*`, `label`, `checked`, `expanded`... as
-`aria-*`, `focusable` as `tabindex`, `id` as it is, ui's `tag` none,
-StyleProps as inline style; events as ui's Event, `onPress` a click,
+DomRenderer realises them at compile time (NeutralMacro, from
+helder.view.Vocabulary: `view` a `div`, `text` a `span`, HTML's names
+their own (`button` a button not a form's, `h2`, `nav`...), `icon` an
+`svg`, `image` an `img`, `field` an `input`, `textarea` a `textarea`
+(`value` the property, `onInput` the DOM's input, its text `e.text`)...;
+`slot`, `variant`, `size` as `data-*`, ARIA's and `data-*` as they are,
+HTML's camel names as the DOM's (`tabIndex` tabindex, `readOnly`
+readonly), `focusable` as `tabindex`, `id` and `class` as they are, ui's
+`tag` none, the style properties as inline style by CSS's names; events
+as ui's Event, `onPress` a click,
 typed as ui's (`NodeEvents`) when compiled; a name it has not an error), a ref getting an `ElementPart`. The page's look
 is its CSS.
 

@@ -19,7 +19,7 @@ batch.image(sheet, sx, sy, sw, sh, x, y, w, h);        // a part of a texture ov
 enc.beginPass(pass); batch.flush(enc); enc.endPass();
 
 // in ui's markup: a box of its own size, drawn into a texture before ui's pass
-<Sprites grow={1} animate onReady={b -> sheet = b.add(image)} onDraw={(b, w, h) -> draw(b, w, h)}/>
+<Sprites flexGrow={1} animate onReady={b -> sheet = b.add(image)} onDraw={(b, w, h) -> draw(b, w, h)}/>
 ```
 
 - `SpriteQuads` is the CPU half: four vertices a quad (`SpriteShader`'s
