@@ -13,6 +13,7 @@ import helder.view.graph.Graph.*;
 import helder.view.graph.Signal;
 import studio.Previews;
 import studio.Project;
+import studio.Turn;
 
 using StringTools;
 
@@ -43,7 +44,18 @@ class Studio {
 	public final tree:Null<FileTree>;
 	// the file shown: in its viewer (mode "file": an image, a font...), the code view's, a design's page
 	public final shown:Signal<Null<String>> = signal(null);
+	// the prompt's agent (Agents: the user's own over ACP, else the studio's
+	// tools alone), the turn it runs or ran last (the prompt bar's transcript)
 	public final agent:Agent;
+	final local:LocalAgent;
+	public final turn:Signal<Null<Turn>> = signal(null);
+	// (the turn as just changed: the signal's write lands at the event's end)
+	var turnNow:Null<Turn> = null;
+
+	function setTurn(t:Null<Turn>) {
+		turnNow = t;
+		turn(t);
+	}
 	public var mcp(default, null):Null<Mcp> = null;
 	// the agents here and where they work (Presence: Mcp's sessions, the tools they call), their marks
 	public final presence = new Presence();
@@ -100,9 +112,8 @@ class Studio {
 	// why, its first error and the diagnostics (the live frames show it,
 	// Board; the prompt's turn can)
 	public final failure:Signal<Null<Failure>> = signal(null);
-	// the status line's message, the agent's last reply
+	// the status line's message
 	public final message = signal("");
-	public final reply = signal("");
 	// the stage's size (points): what fits a view; its node; bumped when it changes
 	public var stageWidth(default, null) = 0.0;
 	public var stageHeight(default, null) = 0.0;
@@ -133,7 +144,7 @@ class Studio {
 	var covering = false;
 	var covered = false;
 
-	public function new(dir:Null<String>, options:{?events:String, ?mcpPort:Int, ?holdWhile:String, ?cover:String}) {
+	public function new(dir:Null<String>, options:{?events:String, ?mcpPort:Int, ?holdWhile:String, ?cover:String, ?agent:String}) {
 		current = this;
 		startedAt = processStart;
 		var p:Null<Project> = null;
@@ -158,7 +169,8 @@ class Studio {
 		tools = new Tools(this);
 		drag = new Drag(this);
 		tree = p == null ? null : new FileTree(p);
-		agent = new Agent.LocalAgent(this);
+		local = new LocalAgent(this);
+		agent = agentOf(options.cover == null ? options.agent : "local");
 		editor = new CodeEditor("", null);
 		editor.view.fontFamily = Theme.CODE;
 		editor.view.fontSize = Theme.CODE_SIZE;
@@ -181,6 +193,36 @@ class Studio {
 		#end
 		coverPath = options.cover;
 		if (coverPath != null) hold(() -> covered, "the cover", 600);
+	}
+
+	// (the one chosen, else the first found; a headless run's local unless one is named)
+	function agentOf(name:Null<String>):Agent {
+		#if !(hxmc.target == "wasm32-wasi")
+		#if helder.headless
+		name ??= "local";
+		#end
+		var c = try Agents.command(name) catch (e:Dynamic) {
+			Sys.println('studio: $e');
+			null;
+		}
+		var p = project;
+		if (c != null && p != null) {
+			Sys.println('studio: the agent: ${c.name} (${c.cmd} ${c.args.join(" ")})');
+			var self = this;
+			return new AcpAgent(c, {dir: p.dir, docs: docs, mcp: () -> self.mcp?.url, snap: screen -> self.snapOf(screen)});
+		}
+		Sys.println("studio: the agent: local (the studio's tools alone: /tree, /snap, /check, /read)");
+		#end
+		return local;
+	}
+
+	// (a screen's last frame for the agent: run.snap's PNG)
+	@:coroutine function snapOf(screen:String):Null<String> {
+		var r = tools.call("run.snap", {screen: screen});
+		if (r.isError) return null;
+		for (c in r.content)
+			if (c.type == "image" && c.data != "") return c.data;
+		return null;
 	}
 
 	// the project opened: the compiler, the screens' program built and started, the MCP server
@@ -1092,7 +1134,7 @@ class Studio {
 					continue;
 				}
 				var d = docs.get(f);
-				if (d.text != text) docs.apply(f, new Transaction([difference(d.text, text)], null, d.text), "the file changed on disk", "disk");
+				if (d.text != text) docs.apply(f, new Transaction([Docs.difference(d.text, text)], null, d.text), "the file changed on disk", "disk");
 			}
 			for (f in [for (k in stamps.keys()) k])
 				if (!now.contains(f)) {
@@ -1101,18 +1143,6 @@ class Studio {
 				}
 		}
 		#end
-	}
-
-	// (the one range where a and b differ, as a change of a: what is the same before and after it kept)
-	static function difference(a:String, b:String):Change {
-		var s = 0, ea = a.length, eb = b.length;
-		while (s < ea && s < eb && StringTools.fastCodeAt(a, s) == StringTools.fastCodeAt(b, s))
-			s++;
-		while (ea > s && eb > s && StringTools.fastCodeAt(a, ea - 1) == StringTools.fastCodeAt(b, eb - 1)) {
-			ea--;
-			eb--;
-		}
-		return new Change(s, ea, b.substring(s, eb));
 	}
 
 	// the program told of a file's text: its live literals patched now (the
@@ -1238,14 +1268,38 @@ class Studio {
 		decorate();
 	}
 
-	// a file in the code view (the command field's, the sidebar's), nothing selected
-	public function openCode(file:String) {
+	// a file in the code view (the command field's, the sidebar's, a link's), nothing selected; at a line (1-based)
+	public function openCode(file:String, ?line:Int) {
 		selection(null);
 		others([]);
 		focused(null);
 		shown(file);
 		load(file);
 		setMode("code");
+		if (line == null) return;
+		var text = docs.get(file).text, at = 0;
+		for (_ in 1...line) {
+			var n = text.indexOf("\n", at);
+			if (n < 0) break;
+			at = n + 1;
+		}
+		editor.revealRange(at, at, true);
+	}
+
+	// a link of the agent's reply: a web or mail address in the browser, a
+	// file of the project in the code view (at its line: "#L12", ":12")
+	public function follow(href:String) {
+		var h = href.trim();
+		if (~/^(https?|mailto):/i.match(h)) {
+			helder.os.Links.open(h, false);
+			return;
+		}
+		var l = project == null ? null : FileLink.parse(h, project.dir);
+		if (l == null || !Files.exists(l.path) || Files.isDirectory(l.path)) {
+			message('$href: not a file of the project');
+			return;
+		}
+		openCode(l.path, l.line);
 	}
 
 	// a file of the tree opened in its view: a design or story file's page
@@ -1423,19 +1477,75 @@ class Studio {
 		return {label: s == null ? "Ask about the whole app…" : 'Ask about ${s.label}…', scope: scope, screen: name, selection: sel};
 	}
 
+	// a prompt to the agent (the studio's own /tree, /snap, /check, /read to
+	// its tools), its events folded into the turn; one turn at a time
 	public function ask(prompt:String) {
-		if (prompt.trim() == "") return;
-		reply("…");
+		var p = prompt.trim();
+		if (p == "" || Turns.running(turnNow)) return;
+		var a = LocalAgent.tool(p) != null ? local : agent;
+		setTurn(Turns.start(p));
 		var answered = false;
-		agent.ask(prompt, {screen: focused.peek(), selection: selection.peek()}, r -> {
-			reply(r);
+		function end(e:Agent.AgentEvent) {
+			var t = Turns.add(turnNow ?? Turns.start(p), e);
+			var ps = a == local ? [] : problems();
+			if (ps.length > 0) t = Turns.broken(t, ps[0]);
+			setTurn(t);
 			answered = true;
-			log("replied", {prompt: prompt, reply: r});
+			log("replied", {prompt: p, reply: t.error ?? t.text, end: t.end, build: t.build});
+		}
+		a.ask(p, {screen: focused.peek(), selection: selection.peek(), problems: problems()}, e -> switch e {
+			case Done(_) | Failed(_):
+				// (not done before the studio's build of its edits is: a failed one shown with the turn)
+				var pr = previews;
+				if (pr == null || !pr.busy()) end(e) else Async.launch(_ -> {
+					var t0 = haxe.Timer.stamp();
+					while (pr.busy() && haxe.Timer.stamp() - t0 < 120)
+						Async.delay(0.05);
+					end(e);
+				});
+			case _:
+				setTurn(Turns.add(turnNow ?? Turns.start(p), e));
+				switch e {
+					case Tool(id, title, _, status): log("agent-tool", {id: id, title: title, status: status});
+					case _:
+				}
 		});
-		hold(() -> answered, "the agent's reply", 30);
+		// (a question for the user lets the script go on: its answer is the script's)
+		hold(() -> answered || turnNow?.ask != null, "the agent's reply", a == local ? 30 : 300);
+	}
+
+	// the last build's errors, "file:line: message" (none: it did not fail)
+	public function problems():Array<String> {
+		var pr = previews;
+		if (pr == null || !pr.failed) return [];
+		var dir = project.dir + "/";
+		var out = [
+			for (d in pr.diagnostics.peek())
+				if (d.severity == "error" || d.severity == "ERROR")
+					(d.file == null ? "" : (d.file.startsWith(dir) ? d.file.substr(dir.length) : d.file) + ':${d.line}: ') + d.message
+		];
+		return out.length > 0 ? out : ["the build failed"];
+	}
+
+	// the turn stopped (the prompt bar's Stop)
+	public function stopTurn()
+		if (Turns.running(turnNow)) agent.cancel();
+
+	// the last turn gone from the prompt bar
+	public function clearTurn()
+		if (!Turns.running(turnNow)) setTurn(null);
+
+	// the agent's question answered: an option's index
+	public function answer(i:Int) {
+		var t = turnNow;
+		if (t == null || t.ask == null) return;
+		var a = t.ask.answer;
+		setTurn(Turns.answered(t));
+		a(i);
 	}
 
 	@:coroutine public function stop() {
+		agent.close();
 		stopPlay();
 		if (previews != null) previews.stop();
 		#if !(hxmc.target == "wasm32-wasi")

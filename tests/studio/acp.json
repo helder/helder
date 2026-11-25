@@ -1,0 +1,17 @@
+{
+  "events": [
+    {"t": 0.5, "type": "tap", "tag": "prompt"},
+    {"t": 0.6, "type": "type", "text": "markdown"},
+    {"t": 0.7, "type": "key", "name": "Enter"},
+    {"t": 1.5, "type": "mark", "name": "md"},
+    {"t": 1.6, "type": "tap", "tag": "ask-clear"},
+    {"t": 1.7, "type": "tap", "tag": "prompt"},
+    {"t": 1.8, "type": "type", "text": "wait"},
+    {"t": 1.9, "type": "key", "name": "Enter"},
+    {"t": 2.6, "type": "mark", "name": "ask"},
+    {"t": 2.7, "type": "tap", "tag": "turn-option-0"},
+    {"t": 3.0, "type": "mark", "name": "answered"},
+    {"t": 3.1, "type": "tap", "tag": "ask-stop"},
+    {"t": 3.6, "type": "mark", "name": "end"}
+  ]
+}

@@ -59,9 +59,9 @@ bun run helder studio                      # the project in this directory
   transaction on one file; a gesture (a field typed into, a number
   scrubbed, a word typed) is one entry.
 - **The prompt bar** asks about what is in focus ("Ask about the whole
-  app…", "Ask about Three items…"). No model is connected yet: `/tree`,
-  `/snap`, `/check` and `/read <file>` call the studio's tools, and any
-  other prompt says how to drive the studio over MCP.
+  app…", "Ask about Three items…"): the user's own coding agent answers
+  (below, "Agents in the studio"), its turn shown above the bar; `/tree`,
+  `/snap`, `/check` and `/read <file>` call the studio's tools.
 
 ## Screens
 
@@ -412,6 +412,43 @@ first build) and swapped in in 8.8 s, undone (warm) in 0.8 s; when a warm
 build's program ends right after it starts (hxmc's server, as above), the
 page builds it again from cold with a new compiler.
 
+## Agents in the studio
+
+The prompt bar drives the coding agent the user already has, over the
+Agent Client Protocol (ACP: JSON-RPC on the agent's stdin and stdout,
+`AcpAgent`), with the user's own login:
+
+| `--agent` | Started as | Taken by default when |
+|---|---|---|
+| `claude` | `npx -y @agentclientprotocol/claude-agent-acp` (Claude Code's adapter, the Claude Agent SDK's) | `claude` is on the PATH |
+| `codex` | `codex-acp`, else `npx -y @agentclientprotocol/codex-acp` | `codex-acp` or `codex` is |
+| `gemini` | `gemini --experimental-acp` (newer Gemini CLIs also take `--acp`) | `gemini` is |
+| `local` | none: the studio's tools alone | none of them is |
+| a command line | any other ACP agent: `--agent "node my-agent.mjs"` | never |
+
+`--agent`, else `HELDER_STUDIO_AGENT`, else the first found in that order
+(a headless run: `local` unless one is named); the studio says which at
+start. The agent starts on the first prompt, in the project's directory,
+with the studio's MCP server (below) when it takes one over HTTP, so it
+has `run.snap`, `run.tree`, `build.check` beside its own tools. A prompt
+carries the screen in focus and the selection's `file:line`, and the
+screen's last frame as an image when the agent takes images.
+
+Above the bar its turn streams in: its reply as Markdown (helder.markdown's
+MarkdownView, updated as each chunk comes: the blocks before the last
+kept), its thinking dim, the tools it calls (each with its status), its
+plan, and what it asks permission for, as buttons; Stop cancels the turn.
+A link in the reply opens in the browser, a file of the project's (`app.tsx`,
+`app.tsx:12`, `app.tsx#L12`) in the code view at its line. What it reads is the files as the studio has them,
+unsaved edits too; what it writes goes through the studio's history, one
+entry a file written: shown on the canvas at once (a live literal
+patched, else built) and undone like any other edit. Paths outside the
+project are refused. A turn ends once the studio's build of its edits
+has: a failed build shows with it (its first error), and every prompt
+carries the last build's errors while it is failing, so the agent does
+not take its work for done. When the agent's process ends, the turn fails with
+its last log lines and the next prompt starts it again.
+
 ## Agents over MCP
 
 The studio serves its tools over MCP (Streamable HTTP, JSON responses)
@@ -473,7 +510,7 @@ Then ask Claude Code to change the app: it reads what you look at
 `run.tree`), edits with `project.patch` (you see each edit on the canvas,
 in its colour, and can undo it), checks with `build.check` and looks at
 the result with `run.snap` before it reports with `studio.done`. The
-prompt bar's agent (`Agent`, `LocalAgent` for now) is the interface the
+prompt bar's agent (`Agent`: its turn as events) is the interface the
 hosted prompt box plugs into later, through the same tools.
 
 **In the browser** the same tools are the page's (`studio.web.WebTools`:
@@ -580,7 +617,11 @@ over MCP, as an agent drives it): its exports renamed, a story renamed and
 one added (the screens follow, built, the new ones shown), a story file
 written on disk (read by the watcher, its screen shown), a type error in
 app.tsx (the failure, at app.tsx:88) and its fix (cleared). The
-test lane runs the studio's own tests (Snap.test.hx, FileTree.test.hx).
+test lane runs the studio's own tests (Snap.test.hx, FileTree.test.hx,
+Turn.test.hx; Acp.test.hx: ACP's lines and messages; AcpAgent.test.hx:
+a turn against a scripted agent, tests/studio/acp-agent.mjs on node, its
+events, its permission answered, its write one entry of the history, a
+cancel, its process ending).
 
 On a 4-core Linux container (Mesa's llvmpipe, headless, otherwise idle):
 
@@ -649,7 +690,10 @@ runs through shared memory).
   the story's view gets its attributes crossed; fixed by hxmc#161, not yet
   in the nightly package.json pins); the studio sees the host end at its
   start and builds again from cold (2 s more).
-- No model calls: the prompt bar's agent only calls the tools.
+- The prompt bar's agent: no picker yet (`--agent`); a file the agent
+  makes is written, not in the history; the agent's own terminal edits
+  files behind the studio's back (the design files are read again from
+  disk, the others are not); no agent in the browser.
 - In the browser: a TypeScript project's structural edits are not built
   there yet (its screens' program for the web is Haxe's alone); its screens share its modules'
   state in one program (a story that sets a module's signal sets it for

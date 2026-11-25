@@ -85,6 +85,7 @@ class Check {
 		free(events('$dir/free.jsonl'), '$dir/free');
 		phone(events('$dir/phone.jsonl'));
 		files(File.getContent("tests/studio/design/app.helder"), File.getContent('$dir/files/app.helder'), events('$dir/files.jsonl'), '$dir/files');
+		acp(events('$dir/acp.jsonl'));
 		stories(events('$dir/stories.jsonl'));
 		Sys.println("studio: | | cold start to first frame | open to all screens shown | inspector change to the program's frame |");
 		for (r in rows) Sys.println('studio: | ${r.app} | ${r.first} ms | ${r.shown} ms | ${r.patch} ms (${r.frames} studio frame(s)) |');
@@ -192,6 +193,16 @@ class Check {
 			sheets.join(", ") == "files half, inspect half, inspect full, none, code half", sheets.join(", "));
 		var focused:Dynamic = Lambda.find(ev, e -> e.event == "focused");
 		check('phone: a frame picked in the files\' sheet', focused != null && focused.screen == "app.helder#Home", Json.stringify(focused));
+	}
+
+	// the scripted agent over ACP: its Markdown reply streamed whole, its
+	// question answered from the transcript's button (reaching it), Stop
+	static function acp(ev:Array<Dynamic>) {
+		var replies = ev.filter(e -> e.event == "replied");
+		var md:Dynamic = replies[0], wait:Dynamic = replies[1];
+		check('acp: the Markdown reply streamed whole', md != null && md.end == "end_turn" && (md.reply : String).indexOf("```ts\nlet a = 1\n```") > 0,
+			Json.stringify(md));
+		check('acp: the question answered, then stopped', wait != null && wait.reply == "waiting selected" && wait.end == "cancelled", Json.stringify(wait));
 	}
 
 	static function files(original:String, final_:String, ev:Array<Dynamic>, dir:String) {
