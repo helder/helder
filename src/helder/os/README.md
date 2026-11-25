@@ -369,6 +369,38 @@ first; each backdrop as the system reads it (macOS's view under the
 layer's, Windows' `DwmGetWindowAttribute`, X11's property once the atom is
 made as KWin does; none where it has none); `tests/ui/shape.sh` on Linux).
 
+### A window at the screen's edge
+
+```haxe
+var w = new Window("Tracker", 120, 600, None, true);  // TitleBar None: no title bar nor frame
+w.onTop = true;     // over every other window
+w.taskbar = false;  // out of the task bar and the window switcher
+var a = w.workArea();  // the screen less the menu bar, a notch, the Dock, the task bar
+w.resize(120, a.height);
+w.moveTo(a.x + a.width - 120, a.y);
+```
+
+```tsx
+<Surface titlebar="none" background="transparent" onTop taskbar={false}>…</Surface>
+```
+
+`None` is a borderless window: macOS's `NSWindowStyleMaskBorderless`, of
+a class made at run time that may be key and main (a borderless NSWindow
+is neither); Windows' `WS_POPUP`; X11's Motif hints, no decorations;
+Wayland neither the compositor's decorations nor helder's bar. Its drag
+regions still move it (`titlebarAt`, as an inset bar's). `onTop`: macOS's
+floating level, Windows' `HWND_TOPMOST`, X11's `_NET_WM_STATE_ABOVE`.
+`taskbar = false`: Windows' `WS_EX_TOOLWINDOW` (hidden and shown again,
+as the task bar reads it then), X11's `_NET_WM_STATE_SKIP_TASKBAR` and
+`SKIP_PAGER`, macOS's Window menu and window cycle
+(`NSWindowCollectionBehaviorIgnoresCycle`; the Dock's icon is the app's,
+its activation policy). `workArea()`: macOS's `visibleFrame` and the
+notch's `safeAreaInsets` top, Windows' `rcWork`, X11's `_NET_WORKAREA`
+(else the screen). Wayland has none of these to ask for: `onTop` false,
+`taskbar` true, `workArea()` null (the compositor places windows).
+Tests: `tests/ui/ShapeWindow.hx`'s edge window, read back through each
+system's API (X11's states unread: Xvfb runs no window manager).
+
 ### Dialogs, file types, the files the system opens
 
 ```haxe

@@ -808,8 +808,8 @@ class WaylandWindow {
 		listeners.push(toplevel.listen(te));
 		toplevel.setTitle(title);
 		toplevel.setAppId(appId());
-		if (owner.titlebar == Inset) drawsBar = false;
-		if (!decorations.isNull() && owner.titlebar != Inset) {
+		if (owner.titlebar != Standard) drawsBar = false;
+		if (!decorations.isNull() && owner.titlebar == Standard) {
 			decoration = decorations.getToplevelDecoration(toplevel);
 			var de = new ZxdgToplevelDecorationV1Events();
 			de.configure = mode -> {
@@ -963,7 +963,7 @@ class WaylandWindow {
 	// a drag region moves (a double press maximises; the right button the
 	// compositor's window menu). True: the compositor's, not the app's
 	function titlePress(button:Int, serial:Int):Bool {
-		if (owner.titlebar != Inset || (button != 0x110 && button != 0x111)) return false;
+		if (owner.titlebar == Standard || (button != 0x110 && button != 0x111)) return false;
 		var k = scale(), x = Math.round(px * k), y = Math.round(py * k);
 		var app = owner.titlebarAt == null ? Content : owner.titlebarAt(x, y);
 		var h = TitleBars.hit(px, py, pointsW, pointsH, 6, !maximized && !fullscreen, app);

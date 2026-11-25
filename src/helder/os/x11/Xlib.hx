@@ -22,6 +22,8 @@ import hxmc.unsafe.*;
 	static function XCreateWindow(d:Ptr, parent:Int64, x:Int, y:Int, width:Int, height:Int, borderWidth:Int, depth:Int, cls:Int, visual:Ptr,
 		mask:Int64, attributes:Ptr):Int64;
 	static function XDestroyWindow(d:Ptr, w:Int64):Int;
+	static function XDisplayWidth(d:Ptr, screen:Int):Int;
+	static function XDisplayHeight(d:Ptr, screen:Int):Int;
 	static function XStoreName(d:Ptr, w:Int64, name:Ptr):Int;
 	static function XResizeWindow(d:Ptr, w:Int64, width:Int, height:Int):Int;
 	static function XMoveWindow(d:Ptr, w:Int64, x:Int, y:Int):Int;

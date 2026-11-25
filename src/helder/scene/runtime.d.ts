@@ -2944,7 +2944,7 @@ export declare class Surface {
 export declare class Window {
 	// (transparent: its pixels' alpha shows what is behind it, premultiplied;
 	// where the system cannot, opaque: see transparent)
-	constructor(title: string, width: number, height: number, titlebar?: "standard" | "inset", transparent?: boolean);
+	constructor(title: string, width: number, height: number, titlebar?: "standard" | "inset" | "none", transparent?: boolean);
 	readonly surface: Surface;
 	// its title bar's text (the browser: the page's title)
 	title: string;

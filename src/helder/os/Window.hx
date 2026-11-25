@@ -68,7 +68,7 @@ class Window {
 		return cast native;
 	#end
 
-	// the system's title bar, or the content under it (TitleBar: "inset",
+	// the system's title bar, none (TitleBar: "none", borderless), or the content under it (TitleBar: "inset",
 	// the window's buttons in the app's layout); given when it is made
 	public final titlebar:TitleBar;
 	// (transparent as it was asked for: what the platform's window reads)
@@ -412,6 +412,54 @@ class Window {
 			Platform.os() == 3 ? false :
 			Platform.target() >= 9 ? false :
 			#if ((!helder.os || helder.os == "linux") && !helder.headless) (Std.isOfType(native, WaylandWindow) ? wayland().setBackdrop(b) : x11().setBackdrop(b)) #else false #end;
+
+	// over every other window, whichever has the focus (macOS's floating
+	// level, Windows' HWND_TOPMOST, X11's _NET_WM_STATE_ABOVE); Wayland has
+	// no way to ask, false there
+	public var onTop(default, set) = false;
+
+	function set_onTop(on:Bool):Bool {
+		if (closed || HEADLESS || on == onTop) return onTop;
+		if (Platform.apple() >= 1 || Platform.os() == 3 || Platform.target() >= 9) return false;
+		#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) mac().setOnTop(on) else #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) win().setOnTop(on) else #end
+		#if ((!helder.os || helder.os == "linux") && !helder.headless) if (Std.isOfType(native, WaylandWindow)) return false else x11().setState("_NET_WM_STATE_ABOVE", on); #else {} #end
+		return onTop = on;
+	}
+
+	// among the windows the task bar and the window switcher show (true by
+	// default); false: out of them (Windows' WS_EX_TOOLWINDOW, X11's
+	// _NET_WM_STATE_SKIP_TASKBAR and SKIP_PAGER, macOS's Window menu and
+	// window cycle: the Dock's icon is the app's); Wayland can't, true there
+	public var taskbar(default, set) = true;
+
+	function set_taskbar(on:Bool):Bool {
+		if (closed || HEADLESS || on == taskbar) return taskbar;
+		if (Platform.apple() >= 1 || Platform.os() == 3 || Platform.target() >= 9) return true;
+		#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) mac().setTaskbar(on) else #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) win().setTaskbar(on) else #end
+		#if ((!helder.os || helder.os == "linux") && !helder.headless) if (Std.isOfType(native, WaylandWindow)) return true else {
+			x11().setState("_NET_WM_STATE_SKIP_TASKBAR", !on);
+			x11().setState("_NET_WM_STATE_SKIP_PAGER", !on);
+		} #else {} #end
+		return taskbar = on;
+	}
+
+	// the part of its screen windows go in, in points from the screen's top
+	// left as position (pixels on X11): the screen less the menu bar, a
+	// notch, the Dock (macOS's visibleFrame, safeAreaInsets), the task bar
+	// (Windows' rcWork), the panels (X11's _NET_WORKAREA); null where a
+	// window has no place of its own (Wayland, the browser, phones)
+	public function workArea():Null<{x:Int, y:Int, width:Int, height:Int}>
+		return
+			closed ? null :
+			#if (!helder.os || helder.headless) HEADLESS ? {x: 0, y: 0, width: headless().width, height: headless().height} : #end
+			Platform.apple() >= 1 ? null :
+			#if (!helder.os || helder.os == "macos") Platform.os() == 1 ? mac().workArea() : #end
+			#if (!helder.os || helder.os == "windows") Platform.os() == 2 ? win().workArea() : #end
+			Platform.os() == 3 ? null :
+			Platform.target() >= 9 ? null :
+			#if ((!helder.os || helder.os == "linux") && !helder.headless) (Std.isOfType(native, WaylandWindow) ? null : x11().workArea()) #else null #end;
 
 	// the pointer's shape over the window (Auto: Default)
 	public var cursor(default, set):Cursor = Default;

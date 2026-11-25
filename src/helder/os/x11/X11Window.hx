@@ -120,7 +120,7 @@ class X11Window {
 		});
 		// (inset: no decorations, Motif's hints asked of the window manager:
 		// flags MWM_HINTS_DECORATIONS, decorations 0)
-		if (owner.titlebar == Inset) Arena.scoped(a -> {
+		if (owner.titlebar != Standard) Arena.scoped(a -> {
 			var hints:Ptr<Int64> = a.alloc(40);
 			for (i in 0...5)
 				hints[i] = 0;
@@ -384,6 +384,23 @@ class X11Window {
 		Xlib.XFlush(display);
 	}
 
+	// (Window.onTop, taskbar: an EWMH state asked of the window manager, added or removed)
+	function setState(name:String, on:Bool) {
+		Arena.scoped(a -> sendMessage(Xlib.XDefaultRootWindow(display), id, NET_WM_STATE, on ? 1 : 0, Xlib.XInternAtom(display, a.cstring(name), 0), 0, 1, 0,
+			X.SubstructureRedirectMask | X.SubstructureNotifyMask));
+		Xlib.XFlush(display);
+	}
+
+	// (Window.workArea: the window manager's _NET_WORKAREA, the current
+	// desktop's first; without one the screen)
+	function workArea():{x:Int, y:Int, width:Int, height:Int} {
+		var p = Arena.scopedValue(a -> sourceProperty(Xlib.XDefaultRootWindow(display), Xlib.XInternAtom(display, a.cstring("_NET_WORKAREA"), 0)));
+		if (p != null && p.format == 32 && p.bytes.length >= 32)
+			return {x: p.bytes.getInt32(0), y: p.bytes.getInt32(8), width: p.bytes.getInt32(16), height: p.bytes.getInt32(24)};
+		var s = Xlib.XDefaultScreen(display);
+		return {x: 0, y: 0, width: Xlib.XDisplayWidth(display, s), height: Xlib.XDisplayHeight(display, s)};
+	}
+
 	function minimize() {
 		Xlib.XIconifyWindow(display, id, Xlib.XDefaultScreen(display));
 		Xlib.XFlush(display);
@@ -403,7 +420,7 @@ class X11Window {
 	// application), a double press on a drag region maximising. True: the
 	// window manager's, not the app's
 	function titlePress(x:Int, y:Int, rx:Int, ry:Int):Bool {
-		if (owner.titlebar != Inset) return false;
+		if (owner.titlebar == Standard) return false;
 		var app = owner.titlebarAt == null ? Content : owner.titlebarAt(x, y);
 		var h = TitleBars.hit(x, y, surface.width, surface.height, 6, !maximized && !fullscreen, app);
 		var d = TitleBars.x11(h);

@@ -100,7 +100,7 @@ export type Rule = { slot: string; variant?: string; size?: string; when?: strin
 export type StyleSheet = { rules: Rule[]; light?: unknown; dark?: unknown; lengths?: unknown; markers?: unknown; motion?: unknown };
 
 // <Surface>'s props (UiWindow.Surface)
-export type SurfaceProps = { title?: Read<string>; width?: Read<number>; height?: Read<number>; theme?: Read<any>; background?: Read<any>; backdrop?: Read<string>; clickThrough?: boolean; dark?: Read<boolean>; onClose?: () => void; onDrop?: (files: string[], x: number, y: number) => void; ref?: (arg0: UiWindow) => void; antialias?: boolean; titlebar?: string; fontSmoothing?: Read<string>; scrolling?: string; scrollbars?: string; children?: UiView };
+export type SurfaceProps = { title?: Read<string>; width?: Read<number>; height?: Read<number>; theme?: Read<any>; background?: Read<any>; backdrop?: Read<string>; clickThrough?: boolean; dark?: Read<boolean>; onClose?: () => void; onDrop?: (files: string[], x: number, y: number) => void; ref?: (arg0: UiWindow) => void; antialias?: boolean; titlebar?: string; onTop?: Read<boolean>; taskbar?: Read<boolean>; fontSmoothing?: Read<string>; scrolling?: string; scrollbars?: string; children?: UiView };
 
 export type SwitchProps<V> = { label: string; checked?: Read<boolean>; onChange?: (arg0: boolean) => void; disabled?: Read<boolean>; variant?: import('./style').Axis<V, 'switch_variant'>; size?: import('./style').Axis<V, 'switch_size'>; tag?: string };
 
