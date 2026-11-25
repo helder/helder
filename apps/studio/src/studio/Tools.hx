@@ -21,10 +21,16 @@ using StringTools;
 //   build.check    {}                         the program typed (tsgo's check too), nothing written: diagnostics
 //   run.snap       {screen?, path?}           a screen's last frame as a PNG (an image, and the file written; a design's frame drawn offscreen)
 //   run.tree       {screen?}                  a screen's node tree: tags, boxes, texts, styles, sources (a design's: its interpreted nodes)
+//   studio.focus   {}                         what the user looks at: the project, the screen in focus, the selection, the screens in view
+//   studio.working {screen?, path?, note}     what the agent is about to do (its status in Presence)
+//   studio.done    {note?}                    the agent finished: its marks fade
+//
+// A call of an agent's (agent: its Presence id) moves it there (Presence.called);
+// its patches are its in the history (Docs' by).
 //
 // In the browser the page calls them (studio.web.WebTools: WebMCP's, a
 // draft's link) and makes the PNGs, its GPU's pixels read asynchronously.
-class Tools {
+class Tools implements Mcp.Target {
 	final studio:Studio;
 
 	public function new(studio)
@@ -47,7 +53,7 @@ class Tools {
 						type: "array",
 						items: {type: "object", properties: {old: {type: "string"}, "new": {type: "string"}}, required: ["old", "new"]}
 					},
-					text: {type: "string", description: "the file's whole new text (instead of edits)"}
+					text: {type: "string", description: "the file's whole new text, for a new file or a rewrite (never together with edits)"}
 				},
 				required: ["path"]
 			}
@@ -67,14 +73,45 @@ class Tools {
 			description: "A screen's node tree from the running program (a design file's frame: its nodes as interpreted from its markup, and what could not be): each node's tag, box, text, a few styles and where its markup is (file:line).",
 			inputSchema: {type: "object", properties: {screen: {type: "string"}}}
 		},
+		{
+			name: "studio.focus",
+			description: "What the user is looking at in the studio: the project, the screen in focus, the node selected (its tag, file:line and box) and the screens in view. 'This' or 'here' in a prompt means the selection.",
+			inputSchema: {type: "object", properties: {}}
+		},
+		{
+			name: "studio.working",
+			description: "Say what you are about to do: the note is shown to the user as your status, on the screen or file given.",
+			inputSchema: {
+				type: "object",
+				properties: {note: {type: "string"}, screen: {type: "string"}, path: {type: "string"}},
+				required: ["note"]
+			}
+		},
+		{
+			name: "studio.done",
+			description: "Say you finished: one line on what changed. Your marks on the canvas fade.",
+			inputSchema: {type: "object", properties: {note: {type: "string"}}}
+		},
 	];
 
+	public function agents():Presence
+		return studio.presence;
+
+	@:coroutine public function tool(name:String, args:Dynamic, agent:String):{content:Array<Dynamic>, isError:Bool}
+		return call(name, args, agent);
+
 	// a tool called: its content (MCP's: [{type: text, text} | {type: image, data, mimeType}]) and whether it failed
-	@:coroutine public function call(name:String, args:Dynamic):{content:Array<Dynamic>, isError:Bool} {
+	@:coroutine public function call(name:String, args:Dynamic, ?agent:String):{content:Array<Dynamic>, isError:Bool} {
 		if (args == null) args = {};
+		if (agent != null) {
+			// (its path as the project's, the way the studio names files)
+			var at = Reflect.copy(args);
+			if (args.path != null) at.path = try rel(path(args.path)) catch (_:Dynamic) args.path;
+			studio.presence.called(agent, name, at);
+		}
 		return try switch name {
 			case "project.read": text(read(args.path));
-			case "project.patch": text(Json.stringify(patch(args), "  "));
+			case "project.patch": text(Json.stringify(patch(args, agent), "  "));
 			case "build.check":
 				var pr = studio.previews;
 				if (pr == null) throw "no project open";
@@ -82,6 +119,17 @@ class Tools {
 				text(Json.stringify({ok: r.ok, ms: r.ms, diagnostics: r.diagnostics}, "  "));
 			case "run.snap": snap(args);
 			case "run.tree": text(Json.stringify(tree(args.screen), "  "));
+			case "studio.focus":
+				// (the agent is where the user looks)
+				var f = focus();
+				if (agent != null && f.screen != null) studio.presence.working(agent, null, f.screen);
+				text(Json.stringify(f, "  "));
+			case "studio.working":
+				if (agent != null) studio.presence.working(agent, args.note, args.screen, args.path == null ? null : rel(path(args.path)));
+				text("ok");
+			case "studio.done":
+				if (agent != null) studio.presence.done(agent, args.note);
+				text("ok");
 			case _: throw 'no tool $name';
 		} catch (e:Dynamic) {content: [{type: "text", text: Std.string(e)}], isError: true};
 	}
@@ -112,10 +160,33 @@ class Tools {
 		return studio.docs.get(f).text;
 	}
 
-	@:coroutine function patch(args:Dynamic):Dynamic {
+	// what the user looks at: the project, the screen in focus, the selection, the screens in view
+	function focus():Dynamic {
+		var p = studio.project;
+		if (p == null) throw "no project open";
+		var sel = studio.selection.peek();
+		var selected:Dynamic = sel == null ? null : {
+			screen: sel.screen,
+			tag: sel.tag,
+			node: sel.nodeTag,
+			source: rel(sel.file) + ":" + studio.docs.get(sel.file).doc.lineCol(sel.start).line,
+			rect: [r(sel.x), r(sel.y), r(sel.width), r(sel.height)]
+		};
+		return {
+			project: {name: p.name, dir: p.dir},
+			screen: studio.focused.peek(),
+			selection: selected,
+			others: [for (o in studio.others.peek()) rel(o.file) + ":" + studio.docs.get(o.file).doc.lineCol(o.start).line],
+			inView: studio.layout.inView()
+		};
+	}
+
+	@:coroutine function patch(args:Dynamic, agent:Null<String>):Dynamic {
 		var f = path(args.path);
 		var doc = studio.docs.get(f);
 		var base = doc.text, changes = [];
+		// (a whole text sent beside edits is an agent's slip: it once wiped a file)
+		if (args.text != null && args.edits != null) throw "text or edits, not both";
 		if (args.text != null) changes.push(new helder.syntax.Transaction.Change(0, base.length, args.text));
 		else {
 			var edits:Array<Dynamic> = args.edits ?? [];
@@ -129,12 +200,21 @@ class Tools {
 		}
 		var pr = studio.previews;
 		var before = pr == null ? 0 : pr.buildMs.peek();
-		studio.edit(f, new Transaction(changes, null, base), "agent's patch", "agent");
+		var tx = new Transaction(changes, null, base);
+		var by = agent == null ? null : studio.presence.peer(agent)?.name;
+		studio.edit(f, tx, rel(f), "agent", null, by);
+		var ranges = [for (c in tx.inverse.changes) {start: c.start, end: c.end}];
+		if (agent != null) {
+			var after = studio.docs.get(f).doc;
+			studio.presence.patched(agent, rel(f), [for (x in ranges) {file: rel(f), from: after.lineCol(x.start).line, to: after.lineCol(x.end).line}]);
+		}
 		// (its way to the program: a patch at once, a build waited for)
 		var t0 = haxe.Timer.stamp();
 		Async.delay(0.02);
 		while (pr != null && pr.busy() && haxe.Timer.stamp() - t0 < 120) Async.delay(0.02);
 		var diags = pr == null ? [] : [for (d in pr.latest) d];
+		var colour = agent == null ? null : studio.presence.peer(agent)?.colour;
+		if (colour != null) studio.marks.touched(colour, f, ranges);
 		return {
 			result: pr == null ? "saved" : pr.failed ? "failed" : studio.message.peek().startsWith("patched") ? "patched" : "built",
 			message: studio.message.peek(),

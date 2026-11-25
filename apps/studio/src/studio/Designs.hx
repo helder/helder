@@ -218,6 +218,12 @@ class Designs {
 		return null;
 	}
 
+	// the nodes a frame drew for the markup at any of starts (an agent's patch's: Marks)
+	public function nodesAt(name:String, starts:Array<Int>):Array<Node> {
+		var d = drawn.get(name);
+		return d == null ? [] : [for (n => a in d.sources) if (starts.contains(a)) n];
+	}
+
 	// each frame the studio draws: the first time every frame is drawn told
 	// (the open's measure), the selection's box followed (an edit drew its
 	// frame again: the node there now)

@@ -244,7 +244,7 @@ class Options {
 			entry: true,
 			common: ["args"],
 			own: [
-				{key: "mcp-port", names: ["--mcp-port"], value: "<n>", number: true, about: "the MCP server's port on 127.0.0.1 (else HELDER_STUDIO_MCP_PORT, else a free one)"},
+				{key: "mcp-port", names: ["--mcp-port"], value: "<n>", number: true, about: "the MCP server's port on 127.0.0.1 (else HELDER_STUDIO_MCP_PORT, else 7340; taken: the next up to 7359, then a free one)"},
 			],
 			notes: [
 				"the project's screens are its stories (*.story.hx, *.story.tsx), \"Flow/Screen\" by name;",
