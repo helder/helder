@@ -475,7 +475,8 @@ class Shell implements Markup {
 		// (a large folder, not watched: read again when the pointer comes back to the window)
 		function back()
 			if (!x.full.value && b.total.value >= Browser.WATCH_BELOW && !b.reading.value) b.refresh();
-		return <view tag="window" grow={1} background={Look.ref.canvas} color={Look.ref.fg} font-family="system-ui" font-size={13} onPointerEnter={back}>
+		return <view tag="window" grow={1} background={Look.ref.canvas} color={Look.ref.fg} font-family="system-ui" font-size={13} onPointerEnter={back}
+			ref={(n:Node) -> x.zoom.attach(n)}>
 			<view tag="browser" grow={1} direction="row" hidden={x.full()}>
 				<Show when={!medium()}>{SidebarView.make(x)}</Show>
 				<view grow={1} min-width={0} direction="row" padding-top={WindowButtons.side() == "end" ? 32 : 0}>
@@ -485,6 +486,7 @@ class Shell implements Markup {
 			</view>
 			<Show when={medium()}>{Tablet.make(x)}</Show>
 			{ViewerView.make(x)}
+			{Flight.layer(x.zoom)}
 			<Show when={WindowButtons.side() == "end"}>
 				<view position="absolute" top={0} left={medium() ? 0 : SidebarView.WIDTH} right={0} height={Shell.BAR} drag-region
 					display={x.full() ? "none" : "flex"}/>

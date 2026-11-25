@@ -8,7 +8,9 @@ import helder.view.graph.Signal;
 // Screens by path, kept as a stack (helder.ui.Stack shows it): routes are
 // matched in the order they were added, a segment ":name" taking any one
 // segment (its value given to the route, decoded), the fallback any path
-// none matched. go pushes, back pops (false at the root; backTo several),
+// none matched. go pushes (still: faded in place and popped so, not slid,
+// when the app moves what matters itself: a picture zoomed from its tile),
+// back pops (false at the root; backTo several),
 // replace swaps the top, reset starts a new stack, open a link's (a full
 // URL or a path): the root and the matched route. Each entry's screen is
 // made once, when it is pushed. Haxe's helder.ui.Router types a route's params by its path.
@@ -58,9 +60,9 @@ class Router {
 		return this;
 	}
 
-	public function go(path:String) {
+	public function go(path:String, still = false) {
 		begin();
-		commit(stack.concat([entry(path)]));
+		commit(stack.concat([entry(path, still)]));
 	}
 
 	public function back():Bool {
@@ -104,7 +106,7 @@ class Router {
 		entries(next);
 	}
 
-	function entry(url:String):Entry {
+	function entry(url:String, still = false):Entry {
 		var q = url.indexOf("?"), h = url.indexOf("#");
 		var end = h < 0 ? url.length : h;
 		var path = q < 0 || q > end ? url.substring(0, end) : url.substring(0, q);
@@ -120,7 +122,7 @@ class Router {
 		if (path == "") path = "/";
 		var view = match(path);
 		if (view == null) throw 'Router: no route for $path';
-		return new Entry(path, path + (q >= 0 && q < end ? url.substring(q, end) : ""), query, fields, view);
+		return new Entry(path, path + (q >= 0 && q < end ? url.substring(q, end) : ""), query, fields, view, still);
 	}
 
 	function match(path:String):Null<View> {
@@ -158,20 +160,23 @@ class Router {
 	}
 }
 
-// One screen of a router's stack: its path, its URL (path and query), what it shows
+// One screen of a router's stack: its path, its URL (path and query), what
+// it shows, whether it comes and goes in place (go's still)
 @:noCompletion class Entry {
 	public final path:String;
 	public final url:String;
 	public final query:Map<String, String>;
 	public final fields:Dynamic;
 	public final view:View;
+	public final still:Bool;
 
-	public function new(path:String, url:String, query:Map<String, String>, fields:Dynamic, view:View) {
+	public function new(path:String, url:String, query:Map<String, String>, fields:Dynamic, view:View, still = false) {
 		this.path = path;
 		this.url = url;
 		this.query = query;
 		this.fields = fields;
 		this.view = view;
+		this.still = still;
 	}
 }
 

@@ -58,13 +58,15 @@ class Screens implements Markup {
 	}
 }
 
-// (how screens move: iOS's slide, Android's, a fade, reduced motion's fade, none)
+// (how screens move: iOS's slide, Android's, a fade, reduced motion's
+// fade, none; a still entry's fade in place)
 enum abstract Kind(Int) {
 	var Ios;
 	var Android;
 	var Fading;
 	var Reduced;
 	var Still;
+	var InPlace;
 }
 
 // A screen of a stack, as what is mounted in it sees it: its title (a
@@ -126,7 +128,7 @@ class Screen {
 		return switch kind {
 			case Ios: 1;
 			case Android: a * (1 - c * 0.1);
-			case Fading | Reduced: a * (1 - c);
+			case Fading | Reduced | InPlace: a * (1 - c);
 			case Still: c >= 1 ? 0 : 1;
 		}
 	}
@@ -156,7 +158,9 @@ class Screen {
 class StackState {
 	public final screens = signalOf(([] : Array<Screen>), {ownedWrite: true});
 	public final said = signalOf("", {ownedWrite: true});
+	// (how this change moves: the stack's, or a still entry's in place)
 	public var kind(default, null):Kind;
+	var base:Kind;
 	@:allow(helder.ui.nav) final router:Router;
 	final transition:StackTransition;
 	var node:Null<Node> = null;
@@ -173,7 +177,7 @@ class StackState {
 	public function new(router:Router, transition:StackTransition) {
 		this.router = router;
 		this.transition = transition;
-		kind = kindOf();
+		base = kind = kindOf();
 		#if (target.name == "hxmc")
 		var at = helder.os.History.location();
 		if (at != null) {
@@ -185,7 +189,7 @@ class StackState {
 		#end
 		router.begin();
 		renderEffect(() -> router.entries(), es -> sync(es));
-		renderEffect(() -> helder.os.Settings.reducedMotion(), _ -> kind = kindOf());
+		renderEffect(() -> helder.os.Settings.reducedMotion(), _ -> base = kind = kindOf());
 		systemBack();
 	}
 
@@ -242,6 +246,9 @@ class StackState {
 			if (!known.exists(e)) next.push(new Screen(e));
 		list = next;
 		var now = top();
+		var pushed = now != null && !known.exists(now.entry);
+		var still = now != old && (pushed ? now.entry.still : old != null && old.entry.still);
+		kind = still && (base == Ios || base == Android || base == Fading) ? InPlace : base;
 		if (old == null || kind == Still) {
 			// (the first screens, or none moving: at once)
 			for (s in list) {
@@ -257,7 +264,6 @@ class StackState {
 			}
 		} else if (now != old) {
 			var curve = curveOf();
-			var pushed = !known.exists(now.entry);
 			for (s in list)
 				if (s != now && s != old) s.cover.set(1);
 			if (pushed) {
@@ -277,7 +283,8 @@ class StackState {
 			tick();
 		}
 		fling = null;
-		if (edge != null) edge.enabled = swipes() && entries.length > 1;
+		// (a still top: not dragged away from the edge either)
+		if (edge != null) edge.enabled = swipes() && entries.length > 1 && !(now?.entry.still ?? false);
 		screens(list.copy());
 	}
 
@@ -291,8 +298,8 @@ class StackState {
 	// (iOS's swipe back: its slide's, and under reduced motion a fade that
 	// follows the finger as the slide would)
 	function swipes():Bool {
-		if (kind == Ios) return true;
-		if (kind != Reduced || transition != Slide) return false;
+		if (base == Ios) return true;
+		if (base != Reduced || transition != Slide) return false;
 		#if (target.name == "hxmc")
 		if (Platform.target() >= 9) return false;
 		#end
@@ -304,6 +311,8 @@ class StackState {
 			case Ios: Curve.spring(0.35, 0);
 			case Android: Curve.tween(0.3, [0.05, 0.7, 0.1, 1.0]);
 			case Fading: Curve.tween(0.15, Transition.EASE_OUT);
+			// (as long as a picture's zoom from its tile)
+			case InPlace: Curve.tween(0.22, Transition.EASE_OUT);
 			case _: Curve.tween(0.15, Transition.LINEAR);
 		}
 
@@ -361,6 +370,8 @@ class StackState {
 		var w = n.width <= 0 ? 1 : n.width;
 		switch g.state {
 			case Began | Changed if (swipes() && below != null):
+				// (after a still entry's change: dragged as the stack's own)
+				kind = base;
 				dragging = true;
 				var k = 1 - Math.max(0, Math.min(1, g.tx / w));
 				now.at.set(k);

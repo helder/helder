@@ -70,7 +70,8 @@ class Tiles implements Markup {
 
 	// the list's 20-point picture
 	public static function mini(x:Explorer, e:Read<Entry>):View {
-		return <view width={20} height={20} shrink={0} align-items="center" justify="center">
+		return <view width={20} height={20} shrink={0} align-items="center" justify="center" opacity={x.zoom.flying() == x.browser.path(e().name) ? 0 : 1}
+			ref={(n:Node) -> x.zoom.tile(n, x.browser.path(e().name))}>
 			{() -> {
 				var f = e();
 				f.kind == Folder ? <image src={Glyphs.folder(UiWindow.dark())} width={18} height={15}/> : glyph(x, f);
@@ -95,7 +96,8 @@ class Tiles implements Markup {
 			return b.selection.has(e().name);
 		}
 		return <view slot="grid-tile" grow={1} align-items="center" row-gap={6} padding="4 4 8 4" ref={(n:Node) -> DragOut.from(x, n, () -> e().name)}>
-			<view slot="thumb-box" data-selected={on() && e().kind == Folder} width={116} height={116} shrink={0} align-items="center" justify="center">
+			<view slot="thumb-box" data-selected={on() && e().kind == Folder} width={116} height={116} shrink={0} align-items="center" justify="center"
+				opacity={x.zoom.flying() == x.browser.path(e().name) ? 0 : 1}>
 				{() -> picture(x, e(), on)}
 			</view>
 			<text slot="name-pill" data-selected={on()} max-width={130} max-lines={1} text-overflow="ellipsis" dir={helder.ui.Dir.Ltr}>{e().name}</text>
@@ -108,7 +110,8 @@ class Tiles implements Markup {
 		var t = thumbnail(x, e), raw = RAW.contains(Kinds.extension(e.name));
 		return <>
 			<Show when={t().image != null || t().waiting}>
-				<view slot="photo" data-selected={on()} width={108} height={108} overflow="hidden" shadow="0 1px 3px rgba(0,0,0,0.35)">
+				<view slot="photo" data-selected={on()} width={108} height={108} overflow="hidden" shadow="0 1px 3px rgba(0,0,0,0.35)"
+					ref={(n:Node) -> x.zoom.tile(n, x.browser.path(e.name))}>
 					<Show when={t().image != null}><image src={t().image} width={108} height={108} fit="cover"/></Show>
 					<Show when={raw}>
 						<text position="absolute" left={4} top={4} font-size={9.5} font-weight={700} padding="0 4" radius={3} background="rgba(0,0,0,0.55)"
@@ -116,7 +119,7 @@ class Tiles implements Markup {
 					</Show>
 				</view>
 			</Show>
-			<Show when={t().image == null && !t().waiting}>{FolderModel.isMarkdown(e.name) ? document(x, e) : large(e)}</Show>
+			<Show when={t().image == null && !t().waiting}>{FolderModel.isMarkdown(e.name) ? document(x, e) : large(e, n -> x.zoom.tile(n, x.browser.path(e.name)))}</Show>
 		</>;
 	}
 
@@ -128,7 +131,7 @@ class Tiles implements Markup {
 	static function document(x:Explorer, e:Entry):View {
 		var title = heading(x, e);
 		return <view tag="document-tile" width={84} height={108} radius={6} background={Look.ref.raised} border-width={1} border-color={Look.ref.edge}
-			padding="11 9" row-gap={5} overflow="hidden" shadow="0 1px 2px rgba(0,0,0,0.25)">
+			padding="11 9" row-gap={5} overflow="hidden" shadow="0 1px 2px rgba(0,0,0,0.25)" ref={(n:Node) -> x.zoom.tile(n, x.browser.path(e.name))}>
 			<text tag="document-title" font-size={9.5} font-weight={700} line-height={1.2} max-lines={4} text-overflow="ellipsis" color={Look.ref.fg}
 				shrink={0}>{title}</text>
 			{[for (w in ["100%", "88%", "94%", "62%", "90%", "76%"]) <view height={2.5} shrink={0} radius={1} width={w} background={Look.ref.line}/>]}
@@ -156,11 +159,12 @@ class Tiles implements Markup {
 	}
 
 	// a large picture: the folder's, or a page with the file's extension
-	public static function large(e:Entry):View {
+	// (mark: its page's node, the zoom's tile)
+	public static function large(e:Entry, ?mark:Node->Void):View {
 		if (e.kind == Folder) return <image src={Glyphs.folder(UiWindow.dark())} width={96} height={78}/>;
 		var ext = Kinds.extension(e.name).toUpperCase();
 		return <view width={72} height={92} radius={7} background={Look.ref.raised} border-width={1} border-color={Look.ref.edge} align-items="center"
-			justify="center" shadow="0 1px 2px rgba(0,0,0,0.25)">
+			justify="center" shadow="0 1px 2px rgba(0,0,0,0.25)" ref={(n:Node) -> if (mark != null) mark(n)}>
 			<image src={Glyphs.get(Glyphs.of(Kinds.glyph(e)))} width={24} height={24} color={Look.ref.fg3} margin-top={-12}/>
 			<Show when={ext != ""}>
 				<text position="absolute" bottom={10} font-size={9.5} font-weight={700} color="#ffffff" padding="1 5" radius={3}
