@@ -54,6 +54,13 @@ class WindowTest {
 				var p = window.position();
 				check("moveTo, position", p != null && p.x == 120 && p.y == 160, p == null ? "null" : '${p.x}, ${p.y}');
 				window.raise();
+				#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
+				// (in the background, the pointer passed through to the windows under it, unless real input is allowed)
+				var view = window.surface.handle, passive = Sys.getEnv("HELDER_BACKGROUND") == "1" && Sys.getEnv("GITHUB_ACTIONS") != "true"
+					&& Sys.getEnv("HELDER_TEST_INPUT") != "1";
+				var ignores = helder.os.OsThread.get(() -> Msg.b(Msg.id(view, ObjC.sel("window")), ObjC.sel("ignoresMouseEvents")));
+				check('the pointer ${passive ? "passed through a background window" : "taken"}', ignores == passive, 'ignoresMouseEvents $ignores');
+				#end
 				integration(check);
 				out = new DragOut(window, check);
 				outAt = t;

@@ -80,7 +80,16 @@ heading to the top (a `#id` link), `headings()` lists their ids.
   where `CodeLanguages` knows the fence's language (`ts`, `tsx`, `js`,
   `hx`/`haxe`, `helder`, `sql`), plain otherwise; `codeFont` and
   `codeSize` set its font.
-- **Text** is selectable (each block's), its spans in their slots.
+- **Text** is one selection, as a browser's page: the view is a
+  selectable scope (helder.ui's `Node.selectable`), so a drag runs from
+  one block into the next (headings, paragraphs, list items, quotes,
+  table cells, code blocks), a double click selects a word, a triple a
+  line, Shift extends; Mod+C copies it (a blank line between blocks, a
+  line between list items and table rows, a tab between cells, code as its
+  text; markers and task boxes not in it), Mod+A selects the whole
+  document once a press in it left the focus there. A long document's
+  rows out of view keep their part, and are made for their text when
+  copied. Spans are in their slots.
 
 Every part has a slot, styled by the app's look as controls' parts are
 (a `Look`'s `parts`, a `StyleSheet`'s rules):

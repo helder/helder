@@ -449,12 +449,13 @@ class MacWindow {
 	function setInput(rects:Null<Array<Int>>)
 		OsThread.run(() -> {
 			input = rects;
+			if (passive) return;
 			if (rects == null) Msg.vBool(window, ObjC.sel("setIgnoresMouseEvents:"), false) else track();
 		});
 
 	function track() {
 		var r = input;
-		if (r == null) return;
+		if (r == null || passive) return;
 		var p = Msg.pointPointPtr(view, ObjC.sel("convertPoint:fromView:"), Msg.point(window, ObjC.sel("mouseLocationOutsideOfEventStream")), Ptr.nil());
 		var b = Msg.rect(view, ObjC.sel("bounds"));
 		var x = p.x * scale, y = (b.size.height - p.y) * scale, on = false, i = 0;
@@ -538,6 +539,7 @@ class MacWindow {
 		helder.os.OsThread.run(() -> {
 			// (in the background: on screen, so that its frames present, but never key nor the app active)
 			if (background) {
+				if (passive) Msg.vBool(window, ObjC.sel("setIgnoresMouseEvents:"), true);
 				Msg.v(window, ObjC.sel("orderFrontRegardless"));
 				return;
 			}
@@ -548,6 +550,10 @@ class MacWindow {
 
 	// whether the windows stay in the background (HELDER_BACKGROUND=1: tests run while the machine is in use)
 	public static final background = Sys.getEnv("HELDER_BACKGROUND") == "1";
+	// (and the pointer passing through them to the windows under them, where a
+	// person may be working: unless a test's real input is allowed, CI's or
+	// HELDER_TEST_INPUT=1's: a person's clicks and scrolls went to the test's window)
+	static final passive = background && Sys.getEnv("GITHUB_ACTIONS") != "true" && Sys.getEnv("HELDER_TEST_INPUT") != "1";
 
 	// the system asks the app to open files or URLs (NSApplicationDelegate):
 	// the files' paths and the other URLs (the app's schemes) to App.onOpen

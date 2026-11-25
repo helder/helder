@@ -48,8 +48,11 @@ export declare class Markdown {
 // info string, CodeLanguages; plain text otherwise), -table, -th, -td,
 // -rule, -html (raw HTML, as text), -image-alt; in text -em, -strong,
 // -del, -code-span, -link. Links call onLink; images ask image for a node.
-// Text is selectable; spacing between nested blocks is their container's
-// row-gap (a quote's, an item body's, a list's).
+// It is one selectable scope (Node.selectable): a selection runs across
+// its blocks, a long document's rows out of view too, copied with a blank
+// line between blocks and a line between list items (markers not in it).
+// Spacing between nested blocks is their container's row-gap (a quote's,
+// an item body's, a list's).
 export declare class MarkdownView extends Node {
 	constructor(props: MarkdownProps);
 	static readonly VIRTUAL: number;
