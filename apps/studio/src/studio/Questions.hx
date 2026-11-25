@@ -55,6 +55,7 @@ class Questions {
 			text: null,
 			answered: false,
 			turn: studio.talk.list().length - 1,
+			at: here(),
 			waited: false
 		};
 		set(list.concat([q]));
@@ -77,11 +78,18 @@ class Questions {
 			text: null,
 			answered: false,
 			turn: studio.talk.list().length - 1,
+			at: here(),
 			waited: true,
 			reply: reply
 		};
 		set(list.concat([q]));
 		return q;
+	}
+
+	// (how much of the turn's reply there is now: the card's place in it)
+	function here():Int {
+		var l = studio.talk.list();
+		return l.length == 0 ? 0 : l[l.length - 1].text.length;
 	}
 
 	// a question no longer asked (its turn ended, the agent gone): closed, nothing answered
@@ -199,8 +207,9 @@ typedef Question = {
 	picked:Array<String>,
 	text:Null<String>,
 	answered:Bool,
-	// the chat's turn it was asked in
+	// the chat's turn it was asked in, its place in that turn's reply
 	turn:Int,
+	at:Int,
 	// a call waits for its answer (studio.ask's wait)
 	waited:Bool,
 	// (an ACP agent's permission ask: its answer given here, not the inbox's)

@@ -18,8 +18,8 @@ using StringTools;
 // user's prompt in a bubble, then the agent's: its reply as Markdown (links
 // the studio knows as chips: Replies), its plan one dim line, "Thinking…"
 // while it thinks, the files it changed (Undo; the ones before folded), a
-// failed build's row, its question as a card, what the user said while it
-// worked where it said it (the inbox's notes: "sent while working", then
+// failed build's row, its questions as cards and what the user said while it
+// worked, each where it came in the reply (the inbox's notes: "sent while working", then
 // "seen"; its tools are not shown: plumbing the user can't act on); at the
 // bottom the questions waiting (a quiet strip) and the input, with the
 // agent's chip (its menu a popup above it) and send, which while the agent
@@ -123,11 +123,11 @@ class Chat implements Markup {
 					</Show>
 				</view>
 			</Show>
-			{reply(studio, () -> Turns.split(t().text, notes(studio, i).map(n -> n.at))[0])}
-			<For each={notes(studio, i)} by={(n:Inbox.Note) -> n.id}>{(n:Read<Inbox.Note>) ->
+			{reply(studio, () -> Turns.split(t().text, places(studio, i).map(p -> p.at))[0])}
+			<For each={places(studio, i)} by={(p:Place) -> p.key}>{(p:Read<Place>) ->
 				<view row-gap={8}>
-					{note(n)}
-					{reply(studio, () -> after(t(), notes(studio, i), n().id))}
+					{p().note != null ? note(() -> p().note) : Asks.card(studio, () -> p().ask)}
+					{reply(studio, () -> after(t(), places(studio, i), p().key))}
 				</view>
 			}</For>
 			<Show when={Turns.running(t()) && t().text == ""}>
@@ -144,14 +144,13 @@ class Chat implements Markup {
 				}</text>
 			</Show>
 			<For each={Replies.fold(changes(studio, i), changed()).shown} by={(c:Marks.Changed) -> c.id}>{(c:Read<Marks.Changed>) -> change(studio, c)}</For>
-			<For each={studio.questions.all().filter(q -> q.turn == i)} by={(q:Questions.Question) -> q.id}>{(q:Read<Questions.Question>) -> Asks.card(studio, q)}</For>
 		</view>;
 	}
 
-	// (the reply's part after a note, to the next one)
-	static function after(t:Turn, notes:Array<Inbox.Note>, id:Int):String {
-		var k = Lambda.findIndex(notes, n -> n.id == id);
-		return k < 0 ? "" : Turns.split(t.text, notes.map(n -> n.at))[k + 1];
+	// (the reply's part after a place, to the next one)
+	static function after(t:Turn, places:Array<Place>, key:String):String {
+		var k = Lambda.findIndex(places, p -> p.key == key);
+		return k < 0 ? "" : Turns.split(t.text, places.map(p -> p.at))[k + 1];
 	}
 
 	// (the turn's one dim line until its first words: starting, what the agent
@@ -167,13 +166,16 @@ class Chat implements Markup {
 	static function changes(studio:Studio, i:Int):Array<Marks.Changed>
 		return studio.marks.changes().filter(c -> c.turn == i);
 
-	// (the directions sent during a turn, in the order of their places in its reply)
-	static function notes(studio:Studio, i:Int):Array<Inbox.Note> {
-		var out = studio.inbox.notes().filter(n -> n.turn == i && n.kind == "direction");
-		out.sort((a, b) -> a.at - b.at);
+	// (what sits in a turn's reply where it came: the directions sent during it,
+	// the questions asked in it; in the order of their places, as they came)
+	static function places(studio:Studio, i:Int):Array<Place> {
+		var out:Array<Place> = [
+			for (n in studio.inbox.notes())
+				if (n.turn == i && n.kind == "direction") {key: "note" + n.id, at: n.at, note: n, ask: null}
+		].concat([for (q in studio.questions.all()) if (q.turn == i) {key: q.id, at: q.at, note: null, ask: q}]);
+		haxe.ds.ArraySort.sort(out, (a, b) -> a.at - b.at);
 		return out;
 	}
-
 	// an agent's edits of a file: "Changed app.helder · Undo" (Undo while its last is the one undo takes)
 	static function change(studio:Studio, x:Read<Marks.Changed>):View
 		return <view tag={"chat-change-" + x().id} direction="row" align-items="center" column-gap={6} font-size={12} color={c("ink3")}>
@@ -281,3 +283,6 @@ class Chat implements Markup {
 			}</For>
 		</view>;
 }
+
+// a note or a question card in its place in a turn's reply
+private typedef Place = {key:String, at:Int, note:Null<Inbox.Note>, ask:Null<Questions.Question>};
