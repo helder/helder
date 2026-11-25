@@ -68,6 +68,56 @@ class Menus {
 		if (ui.hostOf(at, "context-menu") == Native && ui.platform.menu(resolved, x, y, done)) return;
 		DrawnMenu.open(ui, resolved, x, y, null, done);
 	}
+
+	// n a menu button (a pull-down: macOS's NSPopUpButton, a browser's
+	// <select>): its items' menu under it, dispatched from n, opened as the
+	// mouse goes down on it (not on its release), by a tap, Enter or Space.
+	// Held, dragged onto an item and let go: that item, as macOS's and
+	// Windows' menus do; a press on n while it is open closes it, on the
+	// press, which goes no further. The platform's menu where Ui.hostOf
+	// says native for "context-menu" (macOS's, Windows'): its tracking takes
+	// the press's release; the press that closes a Windows menu also reaches
+	// the window after it, and is taken there
+	public static function button(n:Node, items:Void->Array<MenuItem>) {
+		var drawn:Null<DrawnMenu> = null, native = false, closed = -1.0;
+		if (n.semantics == null) n.semantics = {};
+		n.semantics.expanded = false;
+		function shut(id:Int, actions:Array<Action>) {
+			n.semantics.expanded = false;
+			if (id >= 0 && id < actions.length && n.ui != null) n.ui.dispatchAction(actions[id], n);
+		}
+		function open() {
+			var ui = n.ui;
+			if (ui == null || native || drawn != null && drawn.isOpen) return;
+			var actions = [], list = resolve(ui, items(), n, actions);
+			if (list.length == 0) return;
+			n.semantics.expanded = true;
+			if (ui.hostOf(n, "context-menu") == Native) {
+				var r = n.windowBounds();
+				native = ui.platform.menu(list, n.rtl() ? r.x + r.width : r.x, r.y + r.height + 4, id -> {
+					native = false;
+					closed = haxe.Timer.stamp();
+					// (the press it opened on: let go of, its release the platform's)
+					if (ui.captureOf(0) == n) ui.pointerCancel(0);
+					shut(id, actions);
+				});
+				if (native) return;
+			}
+			var m = DrawnMenu.open(ui, list, 0, 0, n, id -> shut(id, actions));
+			m.popup.gap = 4;
+			drawn = m;
+		}
+		n.onPointerDown = e -> {
+			if (e.pointerType != helder.os.PointerType.Mouse || e.button != 1) return;
+			// (the focus left where it is: the menu's)
+			e.preventDefault();
+			// (a Windows menu's closing press, after it: taken)
+			if (drawn != null && drawn.isOpen) drawn.close(false) else if (haxe.Timer.stamp() - closed > 0.3) open();
+		};
+		n.onPointerUp = e -> if (e.pointerType == helder.os.PointerType.Mouse && drawn != null && drawn.isOpen) drawn.release(e.x, e.y);
+		// (a mouse's click: its press opened it already)
+		n.onActivate = e -> if (e == null || e.type != helder.ui.Event.EventType.Click || e.pointerType != helder.os.PointerType.Mouse) open();
+	}
 }
 
 // A window's menu bar from the model: the platform's (macOS's, the
@@ -210,6 +260,8 @@ class MenuBar {
 				if (openIndex == index) close() else show(index, false);
 			};
 			t.onPointerEnter = _ -> if (open != null && openIndex != index) show(index, false);
+			// (held from its title onto a row: that row)
+			t.onPointerUp = e -> if (open != null && openIndex == index) open.release(e.x, e.y);
 			node.append(t);
 			titles.push(t);
 		}

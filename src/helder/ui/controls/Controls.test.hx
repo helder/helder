@@ -322,6 +322,24 @@ function tests() {
 			equals(lamp.children[0].slot, "switch-icon");
 			m.dispose();
 		});
+		test("a grid's marquee: drawn in the accent while it is dragged", () -> {
+			var m = mount(Fixture.grid(), 320, 200);
+			var grid = m.ui.root.find("files");
+			// (from the empty space after the last cell, back over the cells)
+			m.ui.pointerDown(300, 180, 1);
+			m.ui.pointerMove(200, 120);
+			m.ui.pointerMove(40, 20);
+			settle(m.ui);
+			var band = grid.find("marquee");
+			notEquals(band, null);
+			equals(band.style.background, light("accentSoft"));
+			equals(band.style.borderColor, light("accent"));
+			equals(band.style.borderWidth, 1.0);
+			assert(band.width > 200 && band.height > 100, '${band.width} x ${band.height}');
+			m.ui.pointerUp(40, 20, 1);
+			equals(grid.find("marquee"), null);
+			m.dispose();
+		});
 	});
 
 	describe("Eased", () -> {
@@ -450,6 +468,13 @@ private class Fixture implements helder.view.Markup {
 
 	public static function lamped(look:LookOf<Dynamic>, on:Signal<Bool>):View
 		return <Standard.Themed look={look}><Standard.Switch label="Porch" checked={on} onChange={v -> on(v)}/></Standard.Themed>;
+
+	public static function grid():View
+		return <Standard.Themed look={Look.base}>
+			<helder.ui.view.UiFlow.VirtualGrid tag="files" each={() -> [for (i in 0...5) 'File $i']} by={(s:String) -> s} cellWidth={60} cellHeight={30}>
+				{(s, i) -> <text>{s()}</text>}
+			</helder.ui.view.UiFlow.VirtualGrid>
+		</Standard.Themed>;
 
 	public static function inlined():View
 		return <Standard.Themed look={Look.base}><text tag="muted" color={Look.ref.fg3}>muted</text></Standard.Themed>;

@@ -23,7 +23,8 @@ class Base {
 
 	// (the touch pieces' parts, a slot each: helder.ui.nav's bars and sheets,
 	// helder.ui.menu's touch menu; 44-point targets, the system's type sizes
-	// of iOS: 17 for a bar's title and a row, 32 for a large title)
+	// of iOS: 17 for a bar's title and a row, 32 for a large title; and the
+	// grid's marquee, GridScroll's, which has no look of its own)
 	static function touch():Map<String, Array<Refs->Dynamic>> {
 		var parts = new Map<String, Array<Refs->Dynamic>>();
 		function part(slot:String, f:Refs->PartStyle)
@@ -57,6 +58,7 @@ class Base {
 		} : PartStyle);
 		part("touch-menu-item", t -> row(t, false));
 		part("touch-menu-item-danger", t -> row(t, true));
+		part("grid-marquee", t -> {background: t.accentSoft, borderWidth: 1, borderColor: t.accent, radius: 3});
 		return parts;
 	}
 

@@ -27,19 +27,6 @@ class InspectorView implements Markup {
 	// (fill: as wide as its place, a sheet's)
 	public static function make(x:Explorer, fill = false):View {
 		var b = x.browser, shown:Signal<Null<Shown>> = signal((null : Null<Shown>)), stop:Null<Void->Void> = null;
-		// (the selection's preview, one at a time: the last one's stopped)
-		effect(() -> {
-			b.selected();
-			b.items();
-			var e = b.current();
-			e == null || e.kind == Folder || !Kinds.viewable(e) ? "" : b.path(e.name);
-		}, path -> {
-			if (stop != null) stop();
-			stop = null;
-			shown(null);
-			if (path != "") stop = x.preview(path, s -> shown(s));
-		});
-		onCleanup(() -> if (stop != null) stop());
 		function entry():Null<Entry> {
 			b.selected();
 			b.items();
@@ -52,19 +39,46 @@ class InspectorView implements Markup {
 			var picked = b.picked();
 			return picked.length > 1 ? [for (n in picked) b.entry(n)] : [];
 		}
+		// (keys: the same while the entries are, a filter's or a sort's change
+		// of the items none, so that nothing is made or decoded again)
+		var preview = memo(() -> {
+			b.selected();
+			b.items();
+			var e = b.current();
+			e == null || e.kind == Folder || !Kinds.viewable(e) ? "" : key(b, e);
+		});
+		var one = memo(() -> {
+			var e = entry();
+			e == null ? "" : key(b, e);
+		});
+		var many = memo(() -> [for (e in several()) key(b, e)].join("\n"));
+		// (the selection's preview, one at a time: the last one's stopped)
+		effect(() -> preview(), k -> {
+			if (stop != null) stop();
+			stop = null;
+			shown(null);
+			if (k != "") stop = x.preview(k.substr(0, k.indexOf("\t")), s -> shown(s));
+		});
+		onCleanup(() -> if (stop != null) stop());
 		return <view tag="inspector" slot="panel" width={fill ? "100%" : WIDTH} grow={fill ? 1 : 0} shrink={0} overflow="hidden"
 			borders={fill ? "0 0 0 0" : "0 0 0 1"} border-color={Look.ref.line}>
-			<Show when={several().length > 1}>{() -> {
-				var all = several();
-				all.length > 1 ? many(x, all) : null;
+			<Show when={many() != ""}>{() -> {
+				many();
+				var all = untrack(several);
+				all.length > 1 ? InspectorView.many(x, all) : null;
 			}}</Show>
-			<Show when={entry() != null}>{() -> {
-				var e = entry();
+			<Show when={one() != ""}>{() -> {
+				one();
+				var e = untrack(entry);
 				e == null ? null : file(x, e, shown);
 			}}</Show>
-			<Show when={entry() == null && several().length < 2}>{() -> folder(x)}</Show>
+			<Show when={one() == "" && many() == ""}>{() -> folder(x)}</Show>
 		</view>;
 	}
+
+	// (an entry by its path, size and modified time: its file changed, another key)
+	static function key(b:Browser, e:Entry):String
+		return b.path(e.name) + "\t" + e.size + "\t" + e.modified;
 
 	static function file(x:Explorer, e:Entry, shown:Signal<Null<Shown>>):View {
 		var more:Null<Node> = null;

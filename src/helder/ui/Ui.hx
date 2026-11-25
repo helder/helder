@@ -237,6 +237,8 @@ class Ui extends ScrollHost {
 	// the pointer whose event is being dispatched (Node.capture's)
 	var dispatching = -1;
 
+	// (the mouse's press a menu's dismissal took: its release taken too)
+	var swallowed = false;
 	// the thumb being dragged: its node, axis, the pointer and scroll it started at
 	var drag:Null<Node> = null;
 	// drag and drop: the node a press may drag (its dragData), where it went down; the drag, its target that accepts
@@ -294,6 +296,7 @@ class Ui extends ScrollHost {
 		context.resized(this, width, height);
 		root.markDirty();
 		overlay.markDirty();
+		if (overlay.children.length > 0) Popups.resized(this);
 		// (across a breakpoint: the rules for sm, md... hold or not)
 		if (breakpoint(width) != was) {
 			Rules.restyleTree(root);
@@ -1553,7 +1556,13 @@ class Ui extends ScrollHost {
 		pointerX = x;
 		pointerY = y;
 		var target = hit(x, y);
-		Popups.dismissOutside(this, target);
+		// (a menu dismissed takes the press, its release too: nothing beneath hears it)
+		swallowed = false;
+		if (Popups.dismissOutside(this, target)) {
+			swallowed = true;
+			setHover(target);
+			return true;
+		}
 		// (a press focuses without the ring: hidden before the focus moves)
 		if (focusVisible) {
 			focusVisible = false;
@@ -1606,6 +1615,11 @@ class Ui extends ScrollHost {
 		pointerX = x;
 		pointerY = y;
 		selecting = false;
+		if (swallowed) {
+			swallowed = false;
+			setHover(hit(x, y));
+			return;
+		}
 		if (drag != null) {
 			drag = null;
 			dragMirrored = false;
@@ -1683,7 +1697,7 @@ class Ui extends ScrollHost {
 		@:privateAccess touchScroll.stop();
 		var halted = nativeScroll && nativeHalt != null && nativeHalt();
 		var target = hit(x, y);
-		Popups.dismissOutside(this, target);
+		if (Popups.dismissOutside(this, target)) return true;
 		if (focusVisible) {
 			focusVisible = false;
 			requestFrame();

@@ -7,7 +7,8 @@ import helder.view.*;
 // The browser and the viewer, at a laptop's size: the folder as a grid
 // and as a list, dark and light; several selected; a PDF's column scrolled
 // between two pages; a Markdown document, dark and light; the inspector of
-// a photo, of a PDF and of a Markdown document; a photo full size
+// a photo, of a PDF and of a Markdown document; a marquee being dragged
+// over the grid; a photo full size
 // with its back pill, an error in its place, the status line; an empty
 // folder, one that cannot be read, a search with no results (their trees
 // in Viewer.story.snap)
@@ -29,6 +30,31 @@ final several = story({
 		x.browser.selection.extend(x.browser.indexOf("lossy.webp"));
 		x.browser.selectionChanged();
 		themed(x, true);
+	}
+});
+
+// (a marquee dragged from under the cells up over the first row, as a mouse would: its band in the look's accent)
+final marquee = story({
+	name: "Browser/marquee",
+	width: 1100,
+	height: 700,
+	render: c -> {
+		var x = browse(), frames = 0;
+		c.settled(false);
+		<view width={1100} height={700} shrink={0} ref={(n:Node) -> helder.ui.Clock.add(_ -> {
+			var grid = n.ui == null ? null : n.ui.root.find("grid");
+			if (grid == null || grid.height == 0) return true;
+			var bottom = grid.absY + grid.height - 20, right = grid.absX + grid.width - 20;
+			switch frames++ {
+				case 0: n.ui.pointerDown(right, bottom, 1);
+				case 1: n.ui.pointerMove(right - 100, bottom - 100);
+				case _:
+					n.ui.pointerMove(grid.absX + 120, grid.absY + 60);
+					c.settled(true);
+					return false;
+			}
+			true;
+		})}>{themed(x, true)}</view>;
 	}
 });
 

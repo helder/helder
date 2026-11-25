@@ -220,8 +220,8 @@ class ViewRuntime {
 			return;
 		}
 		var ps:Array<Dynamic> = [];
-		for (p in parts) {
-			var t = p == null ? "" : textPart(p);
+		for (q in parts) {
+			var p = once(q), t = p == null ? "" : textPart(p);
 			// (a reactive hole that is not text now: bound anyway)
 			if (t == null) {
 				if (helder.view.Render.isReactive(p)) t = p else throw 'helder.view: <$tag> holds text only, not ' + describe(p);
@@ -241,8 +241,8 @@ class ViewRuntime {
 	}
 
 	// a hole among other children: text (a text node, bound when reactive) or other content
-	public static function hole(parent:HostNode, before:Null<HostNode>, out:Null<Array<HostNode>>, v:Any, span:Bool, end = false) {
-		var t = textPart(v);
+	public static function hole(parent:HostNode, before:Null<HostNode>, out:Null<Array<HostNode>>, h:Any, span:Bool, end = false) {
+		var v = once(h), t = textPart(v);
 		if (t == null) {
 			add(v, parent, before, out, end);
 			return;
@@ -264,7 +264,7 @@ class ViewRuntime {
 			run = [];
 		}
 		for (k in 0...parts.length) {
-			var p = parts[k];
+			var p = once(parts[k]);
 			var t = textPart(p);
 			if (t != null) {
 				run.push(t);
@@ -275,6 +275,11 @@ class ViewRuntime {
 		}
 		flush();
 	}
+
+	// (a function hole read once, tracked, by a memo that what binds it reads
+	// again: telling its text from content does not make what it makes twice)
+	static function once(v:Dynamic):Dynamic
+		return Reflect.isFunction(v) ? helder.view.graph.Graph.memo(_ -> helder.view.Render.read(v)) : v;
 
 	// the value as a text part (a String, or a reactive one whose value is text now), or null when it is not text
 	static function textPart(v:Dynamic):Null<Dynamic> {
