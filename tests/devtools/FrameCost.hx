@@ -1,11 +1,11 @@
-import helder.devtools.*;
+import helder.dev.*;
 
 // The Frame domain's cost a frame (the devtools lane, a dev build natively):
 // Hot's two calls a turn (Agent.turn, Agent.frame) with Frame disabled, then
 // enabled (a frame recorded: the clock, the GC counters, five columns), and
 // a batch of 6 frames sent (60 fps at 10 batches a second; no dev server,
 // so the line is built, not written); the GC bytes each allocates.
-@:access(helder.devtools.Frames)
+@:access(helder.dev.Frames)
 class FrameCost {
 	static inline var N = 1000000;
 

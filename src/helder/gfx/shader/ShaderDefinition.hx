@@ -1,6 +1,6 @@
 package helder.gfx.shader;
 
-import helder.definition.Kernel;
+import helder.compiler.Kernel;
 import helder.gfx.shader.Ir;
 
 // What a shader's adapter does for the handler: a stage's function lowered
@@ -19,7 +19,7 @@ interface ShaderAdapter extends Adapter {
 	function uniforms():Null<SStruct>;
 }
 
-// shader({vertex, fragment}) (compiler/DESIGN.md 3), the handler both languages run:
+// shader({vertex, fragment}) (compiler/README.md 3), the handler both languages run:
 // the stages' interface checked (a vertex of attributes in, the varyings
 // out with exactly one position(...), the same varyings into the fragment
 // stage, a colour out), the fields of each stage's object of parameters

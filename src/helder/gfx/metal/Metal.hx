@@ -2,7 +2,7 @@ package helder.gfx.metal;
 
 import hxmc.unsafe.*;
 
-// Metal (the framework's one C function; the rest are messages, MtlMsg) and
+// Metal (the framework's one C function; the rest are messages, helder.os.apple.objc.Msg) and
 // the structs its methods take by value.
 @:hxmc.c @:hxmc.lib("/System/Library/Frameworks/Metal.framework/Metal") extern class Metal {
 	static function MTLCreateSystemDefaultDevice():Ptr;
@@ -93,35 +93,3 @@ class MTL {
 	public static inline var CommandBufferStatusError = 5;
 }
 
-@:hxmc.struct @:publicFields class MTLClearColor {
-	var red:Float;
-	var green:Float;
-	var blue:Float;
-	var alpha:Float;
-}
-
-@:hxmc.struct @:publicFields class MTLViewport {
-	var originX:Float;
-	var originY:Float;
-	var width:Float;
-	var height:Float;
-	var znear:Float;
-	var zfar:Float;
-}
-
-@:hxmc.struct @:publicFields class MTLOrigin {
-	var x:Int64;
-	var y:Int64;
-	var z:Int64;
-}
-
-@:hxmc.struct @:publicFields class MTLSize {
-	var width:Int64;
-	var height:Int64;
-	var depth:Int64;
-}
-
-@:hxmc.struct @:publicFields class MTLRegion {
-	var origin:MTLOrigin;
-	var size:MTLSize;
-}

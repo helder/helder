@@ -2,15 +2,15 @@ package helder.typescript.lower;
 
 import haxe.ds.Vector;
 import hxmc.ir.Ir;
-import helder.markup.Plan;
-import helder.markup.Syntax;
+import helder.view.Plan;
+import helder.view.Syntax;
 import helder.typescript.check.Ast;
 import helder.typescript.check.Kind;
 import helder.typescript.check.Kind.*;
 import helder.typescript.ir.Builder;
 import helder.typescript.lower.Api;
 
-// A TSX literal's code as the planner writes it (helder.markup.Plan's
+// A TSX literal's code as the planner writes it (helder.view.Plan's
 // Target<TsMarkup>), lowered by Tsx: the program's expressions where the
 // literal is, the mount's calls to its renderer (pure IR, on Haxe values).
 enum TsMarkup {
@@ -71,7 +71,7 @@ class Tsx {
 	// (dev builds and headless runs: elements and components told where they are written, helder.view.Source)
 	public final sources:Bool;
 	var serial = 0;
-	// live literals (dev builds, helder.markup.Live): the literals of
+	// live literals (dev builds, helder.view.Live): the literals of
 	// attributes' branches read from their slots (by node: file#index), the
 	// expressions holding them (bound: they read), and the table's directory
 	// (-D helder.literals)
@@ -481,7 +481,7 @@ class Tsx {
 		return b.runtime("libFunction", [r.clos, EInt(r.arity), ECast(TBool, EInt(0)), EInt(1), EStr("")]);
 	}
 
-	// ---- live literals (dev builds: helder.markup.Live, helder.dev.Literals)
+	// ---- live literals (dev builds: helder.view.Live, helder.dev.Literals)
 
 	public static function key(n:Node):String return n.file.path + "#" + n.index;
 
@@ -489,25 +489,25 @@ class Tsx {
 	public function live(value:TsMarkup, n:Null<Node>, form:String):Null<TsMarkup> {
 		if (!dev || n == null) return null;
 		var file = try sys.FileSystem.fullPath(n.file.path) catch (_:Dynamic) n.file.path;
-		var c = helder.markup.Live.content(file);
+		var c = helder.view.Live.content(file);
 		if (c == null) return null;
 		var start = n.file.offset(n.file.skipTrivia(n.pos)), end = n.file.offset(n.end);
 		if (form == "text") start = n.file.offset(n.pos);
 		var kind = "string", fn = "liveString";
 		switch value {
-			case MString(v): kind = form == "text" ? "text" : helder.markup.Live.stringKind(v);
+			case MString(v): kind = form == "text" ? "text" : helder.view.Live.stringKind(v);
 			case MBool(_):
 				kind = "boolean";
 				fn = "liveBool";
 			case MCode(x, _) if (x.kind == KindNumericLiteral):
 				kind = "number";
 				fn = "liveFloat";
-			case MCode(x, _) if (x.kind == KindStringLiteral): kind = helder.markup.Live.stringKind(x.text);
+			case MCode(x, _) if (x.kind == KindStringLiteral): kind = helder.view.Live.stringKind(x.text);
 			case _: return null;
 		}
-		var id = helder.markup.Live.id(file, c.content, start, kind);
-		if (liveTable != null && liveTable != "" && liveTable != "1") helder.markup.Live.record(liveTable, file, c.hash, {id: id, start: start, end: end, form: form});
-		return MLive(fn, id, value, helder.markup.Live.anchor(c.content, start, end));
+		var id = helder.view.Live.id(file, c.content, start, kind);
+		if (liveTable != null && liveTable != "" && liveTable != "1") helder.view.Live.record(liveTable, file, c.hash, {id: id, start: start, end: end, form: form});
+		return MLive(fn, id, value, helder.view.Live.anchor(c.content, start, end));
 	}
 
 	// an attribute's expression: the literals of its branches (a ternary's, ??'s) live, read by Expressions

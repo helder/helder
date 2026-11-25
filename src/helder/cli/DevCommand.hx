@@ -58,8 +58,8 @@ using StringTools;
 //   and starts it again.
 // The program answers {"type":"saved"} and {"type":"frame"} (its first
 // frame: the reload's time, from the change seen). Natively a program with
-// helder.devtools' agent (HXMC_DEV_PROTOCOL=1) speaks JSON-RPC instead
-// (src/helder/devtools/README.md): Runtime.hello, Runtime.reload answered
+// helder.dev's agent (HXMC_DEV_PROTOCOL=1) speaks JSON-RPC instead
+// (src/helder/dev/README.md): Runtime.hello, Runtime.reload answered
 // once saved, Runtime.ready; Devtools relays it to the tools connected at
 // /__helder/devtools on the HTTP port (natively too: bin/dev/devtools.json
 // names it). When the program ends by itself, ExitPolicy decides: closed
@@ -254,7 +254,7 @@ class DevCommand {
 		return 0;
 	}
 
-	// --- live literals (helder.dev.Literals, helder.markup.Live, LiteralEdit)
+	// --- live literals (helder.dev.Literals, helder.view.Live, LiteralEdit)
 
 	// whether a change was only to live literals' values, then patched in the
 	// running program (Hot.literals); else (or when the program cannot take
@@ -353,7 +353,7 @@ class DevCommand {
 	static function depsFile():String
 		return Path.withoutExtension(out) + ".deps";
 
-	// the live literals' tables (helder.markup.Live: a source's per its content)
+	// the live literals' tables (helder.view.Live: a source's per its content)
 	static function literalDir():String
 		return (FileSystem.fullPath(Path.directory(exeOut) == "" ? "." : Path.directory(exeOut)) + "/" + Path.withoutExtension(Path.withoutDirectory(exeOut)) + ".literals").split("\\").join("/");
 

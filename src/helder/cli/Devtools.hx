@@ -3,8 +3,8 @@ package helder.cli;
 import haxe.Json;
 import helder.async.http.WebSocket;
 
-// `helder dev` as the devtools' relay (src/helder/devtools/README.md): the
-// program speaks JSON-RPC on its connection (helder.devtools.Agent), the
+// `helder dev` as the devtools' relay (src/helder/dev/README.md): the
+// program speaks JSON-RPC on its connection (helder.dev.Agent), the
 // tools on WebSockets at /__helder/devtools. A tool's request goes to the
 // program under an id of ours and its response back to that tool by it;
 // the program's notifications go to the tools that enabled their domain (a

@@ -1,7 +1,7 @@
 package helder.view;
 
 // Where a node was written, in dev builds (-D hxmc.dev) and headless runs
-// (-D helder.headless): the markup planner (helder.markup.Plan) tells each
+// (-D helder.headless): the markup planner (helder.view.Plan) tells each
 // element it makes the span of its tag in the file (`<` to the closing
 // tag's `>`), Haxe markup and TSX alike, and each component the span of its
 // call and of its function's definition. A release build has none of this:

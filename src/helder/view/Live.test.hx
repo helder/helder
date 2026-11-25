@@ -1,4 +1,4 @@
-package helder.markup;
+package helder.view;
 
 import helder.test.Test;
 

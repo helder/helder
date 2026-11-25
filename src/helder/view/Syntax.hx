@@ -1,4 +1,4 @@
-package helder.markup;
+package helder.view;
 
 // A markup literal's syntax, the same in Haxe (the literal's source as
 // written) and TypeScript (built from TSX's tree): elements, fragments,
@@ -14,7 +14,7 @@ enum PKind {
 }
 
 // (at, end: a text's raw run, its offsets in the root literal, where a
-// target can say it: live literals, helder.markup.Live)
+// target can say it: live literals, helder.view.Live)
 typedef PNode = {kind:PKind, ?at:Int, ?end:Int};
 typedef PAttr = {name:String, value:PValue, at:Int};
 

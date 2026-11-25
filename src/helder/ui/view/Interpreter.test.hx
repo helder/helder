@@ -1,6 +1,6 @@
 package helder.ui.view;
 
-import helder.markup.Syntax;
+import helder.view.Syntax;
 import helder.ui.view.Interpreter.Interpreted;
 import helder.test.Test;
 import helder.view.Render;

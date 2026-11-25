@@ -2,11 +2,11 @@ package helder.asset;
 
 #if macro
 import haxe.macro.Expr;
-import helder.definition.HaxeAdapter;
-import helder.definition.Kernel;
+import helder.compiler.HaxeAdapter;
+import helder.compiler.Kernel;
 
 // Asset.image(path), font, model, sound, bytes and embed as definitions
-// (src/helder/compiler/DESIGN.md 4): the argument, a path literal relative
+// (src/helder/compiler/README.md 4): the argument, a path literal relative
 // to the asset root, read through the definitions' kernel (anything else is
 // rejected as not static, at its position), and handled as AssetMacro has
 // it: the file found and bundled, the typed handle returned.
