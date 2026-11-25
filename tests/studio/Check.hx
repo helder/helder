@@ -200,7 +200,8 @@ class Check {
 	// delivered as the next prompt once the turn was stopped; the chat put
 	// away and back; a question answered in its card (reaching the agent),
 	// stopped; a frame aimed at by a click; an MCP agent's question of
-	// several picks, two picked in its card and sent
+	// several picks, two picked in its card and sent; the canvas' hand
+	// (Space held, a drag panning it)
 	static function acp(ev:Array<Dynamic>) {
 		var replies = ev.filter(e -> e.event == "replied");
 		function reply(p:String):Dynamic
@@ -212,6 +213,8 @@ class Check {
 		check('acp: the chat put away and back', [for (e in ev) if (e.event == "chat") e.open].join(",") == "false,true");
 		check('acp: the question answered in the card, then stopped', wait != null && wait.reply == "waiting selected" && wait.end == "cancelled", Json.stringify(wait));
 		check('acp: a frame aimed at', Lambda.exists(ev, e -> e.event == "aimed" && e.screen != null));
+		check('acp: the hand: open with Space, closed panning, the arrow after', [for (e in ev) if (e.event == "hand") e.cursor].join(",") == "default,grab,grabbing,grab,default",
+			Json.stringify([for (e in ev) if (e.event == "hand") e.cursor]));
 		var several:Dynamic = Lambda.find(ev, e -> e.event == "answered" && e.question == "Which rows should glow?");
 		check('acp: an MCP agent\'s question of several picks: two picked, sent', several != null && (several.picked : Array<String>).join(",") == "done,new",
 			Json.stringify(several));

@@ -31,6 +31,14 @@
     {"t": 6.5, "type": "tap", "tag": "ask-option-new"},
     {"t": 6.7, "type": "mark", "name": "picked"},
     {"t": 6.8, "type": "tap", "tag": "ask-send"},
-    {"t": 7.6, "type": "mark", "name": "end"}
+    {"t": 7.55, "type": "tap", "tag": "stage", "ox": 20, "oy": 600},
+    {"t": 7.6, "type": "key-down", "name": "space"},
+    {"t": 7.699999999999999, "type": "mark", "name": "grab"},
+    {"t": 7.8, "type": "down", "tag": "stage", "ox": 600, "oy": 400},
+    {"t": 7.8999999999999995, "type": "move", "tag": "stage", "ox": 640, "oy": 420},
+    {"t": 7.949999999999999, "type": "mark", "name": "grabbing"},
+    {"t": 8.0, "type": "up", "tag": "stage", "ox": 640, "oy": 420},
+    {"t": 8.1, "type": "key-up", "name": "space"},
+    {"t": 8.299999999999999, "type": "mark", "name": "end"}
   ]
 }
