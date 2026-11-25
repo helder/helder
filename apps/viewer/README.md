@@ -32,8 +32,10 @@ browser engine and no runtime to install.
   TIFF, HEIC/HEIF, AVIF and camera RAW files where the system has their
   codecs (Windows' WIC, macOS's ImageIO, Linux's libtiff, libheif,
   libavif and libraw), full size in the same window, with a pill back to
-  the folder. The neighbours of the file shown are decoded ahead, so the
-  next is already there.
+  the folder. A file grows out of its thumbnail into place, as Quick Look
+  does, and shrinks back into it when you go back (a short fade instead
+  with reduced motion). The neighbours of the file shown are decoded
+  ahead, so the next is already there.
 - **Sharp at any size.** Images are filtered in linear light when they
   are scaled down. JPEGs are decoded at the size they are shown, and very
   large images (9000 pixels or more) are drawn in tiles. EXIF orientation
@@ -98,6 +100,21 @@ The same viewer fits the screen it is on, by its width:
 Every target is at least 44 points, the bars stay inside the screen's
 safe areas, and light and dark follow the system. In a browser at a
 phone's width the phone's screens are the ones shown.
+
+## Where it keeps things
+
+The viewer keeps its settings (the window's size and place, the folder,
+the layout, the order, recent files), its error log, your keymap file and
+its thumbnails' cache where your system keeps an app's data. Point it
+somewhere else with `--store <dir>` or the `HELDER_VIEWER_STORE`
+environment variable (the flag wins): the test lanes (`viewer-window`,
+`viewer-app`) do, so their runs never touch your own, and a second
+launch hands its file to the viewer started with the same store. When you
+try a build by hand, do the same:
+
+```sh
+HELDER_VIEWER_STORE=$(mktemp -d) apps/viewer/bin/macos-arm64/viewer --new some/folder
+```
 
 ## Install
 

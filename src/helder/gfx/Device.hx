@@ -487,10 +487,10 @@ final class Device {
 	}
 
 	// throws the compiler's log when the source does not compile
-	public function createShader(d:ShaderDesc):Shader {
+	public function createShader(d:ShaderDesc):ShaderModule {
 		var id = threaded ? ++shaderIds : 0;
 		answer(r -> r.make(r.shaders, id, r.impl.createShader(d)));
-		return new Shader(id == 0 ? replay.made : id);
+		return new ShaderModule(id == 0 ? replay.made : id);
 	}
 
 	// a compute stage's pipeline (a ComputeShader's pipeline(); d.program: its
@@ -601,8 +601,8 @@ final class Device {
 		var layout = d.layout, topology = d.topology, cull = d.cull, blend = d.blend, depthCompare = d.depthCompare, depthWrite = d.depthWrite,
 			colorFormat = d.colorFormat, depthFormat = d.depthFormat, samples = d.samples;
 		answer(r -> r.make(r.pipelines, id, r.impl.createPipeline({
-			vertex: vs == 0 ? null : new Shader(Replay.at(r.shaders, vs)),
-			fragment: fs == 0 ? null : new Shader(Replay.at(r.shaders, fs)),
+			vertex: vs == 0 ? null : new ShaderModule(Replay.at(r.shaders, vs)),
+			fragment: fs == 0 ? null : new ShaderModule(Replay.at(r.shaders, fs)),
 			layout: layout,
 			topology: topology,
 			cull: cull,

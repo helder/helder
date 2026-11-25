@@ -52,7 +52,7 @@ class Script {
 			done(null);
 		}));
 
-	static function pos(at:String):haxe.PosInfos {
+	@:allow(helder.test) static function pos(at:String):haxe.PosInfos {
 		var i = at.lastIndexOf(":");
 		var line = i < 0 ? null : Std.parseInt(at.substr(i + 1));
 		return {fileName: line == null ? at : at.substr(0, i), lineNumber: line ?? 0, className: "", methodName: ""};

@@ -553,17 +553,19 @@ are as they were. Cells (slot `grid-cell`) and a selection's rows carry
 
 ## Navigation
 
-`Router` (helder.ui) holds screens by path as a stack, `Stack` shows it
-(examples/navigation):
+`Router` (helder.ui.nav) holds screens by path as a stack, `Stack` shows it
+(examples/navigation); Haxe's `Routes` is a Router whose routes' params are
+typed by their paths:
 
 ```haxe
-final nav = new Router();
+final nav = new Routes();
 nav.route("/", _ -> <Home/>)
 	.route("/product/:id", p -> <Product id={p.id}/>)   // p:{id:String}
 	.fallback(path -> <NotFound path={path}/>);
 <Stack router={nav}/>                                  // transition={Slide | Fade | None}
 
 nav.go("/product/3");  nav.back();  nav.replace("/cart");  nav.reset("/");
+nav.go("/photo", true);                                // still: faded in place, popped so
 nav.open(url);         // myapp://host/product/3, https://..., a path: the root and the match
 nav.path(); nav.depth(); nav.query();                  // Reads of the top
 ```
@@ -597,7 +599,10 @@ nav.path(); nav.depth(); nav.query();                  // Reads of the top
   An explicit `Slide` is iOS's off Android. Reduced motion
   (`Settings.reducedMotion`, `Clock.reducedMotion`): a 150 ms fade
   for a slide or a fade (`None` stays none); the edge's drag still follows
-  the finger there, as a fade. Screens are see-through unless their content
+  the finger there, as a fade. A still entry (`go(path, true)`) comes and
+  goes as a cross-fade in place over 220 ms, ease-out, whatever the
+  transition, and is not dragged from the edge: for an app that moves what
+  matters itself (the viewer zooms a picture from its tile). Screens are see-through unless their content
   has a background: give a screen's root one under a slide.
 
 ### Phones and tablets

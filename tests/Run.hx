@@ -647,6 +647,7 @@ class Run {
 	// Xvfb, a Windows target on another host under Wine)
 	static function viewerWindow() {
 		var h = helderCli();
+		var kept = viewerStore();
 		run(h, ["build", "--target", GFX_TARGET, "apps/viewer"]);
 		var exe = exePath('apps/viewer/bin/$GFX_TARGET/viewer', GFX_TARGET);
 		var wine = GFX_TARGET.startsWith("windows-") && !HOST.startsWith("windows-") ? "wine " : "";
@@ -711,6 +712,36 @@ class Run {
 			Sys.print(r);
 			if (r.indexOf(GFX_TARGET.startsWith("windows-") ? "helder-viewer.file\\shell\\open\\command" : "helder-viewer.desktop") < 0) throw new Failed('--register: $r');
 		}
+		viewerStoreKept(kept);
+	}
+
+	// (the viewer's runs keep what they keep in a store of their own
+	// (HELDER_VIEWER_STORE, its launches' and their shells'), not the user's:
+	// a test's folders and recent files out of theirs, a second launch
+	// handing its file to the test's viewer, not to the user's; the user's
+	// own store as it was before: its file's size and time)
+	static function viewerStore():{dir:String, user:String} {
+		var dir = FileSystem.fullPath("bin") + "/viewer-store";
+		rmrf(dir);
+		mkdirs(dir);
+		Sys.putEnv("HELDER_VIEWER_STORE", dir);
+		return {dir: dir, user: userViewerStore()};
+	}
+
+	static function viewerStoreKept(kept:{dir:String, user:String}) {
+		if (!FileSystem.exists(kept.dir + "/helder-viewer.json")) throw new Failed('the viewer kept nothing in its test store ${kept.dir}');
+		var now = userViewerStore();
+		if (now != kept.user) throw new Failed('the viewer\'s runs changed the user\'s own store: $now, was ${kept.user}');
+	}
+
+	// (the user's own store, helder.os.Store's place for helder-viewer: its size and time, "none")
+	static function userViewerStore():String {
+		var home = Sys.getEnv("HOME") ?? "", os = Sys.systemName();
+		var dir = os == "Mac" ? '$home/Library/Application Support' : os == "Windows" ? Sys.getEnv("APPDATA") ?? "" : Sys.getEnv("XDG_DATA_HOME") ?? '$home/.local/share';
+		var f = '$dir/helder-viewer/store.json';
+		if (!FileSystem.exists(f)) return "none";
+		var s = FileSystem.stat(f);
+		return '${s.size} bytes, ${s.mtime.getTime()}';
 	}
 
 	// (macOS: the universal bundle, its Info.plist and slices checked by
@@ -722,17 +753,20 @@ class Run {
 		var app = "apps/viewer/bin/macos/Viewer.app";
 		run("plutil", ["-lint", '$app/Contents/Info.plist']);
 		shell('lipo -archs $app/Contents/MacOS/viewer | grep -q "x86_64 arm64\\|arm64 x86_64"');
+		var kept = viewerStore();
 		var report = FileSystem.fullPath("bin") + "/viewer-app.txt";
 		if (FileSystem.exists(report)) FileSystem.deleteFile(report);
 		// (absolute: open -a takes a relative path for an application's name)
 		var abs = FileSystem.fullPath(app), photo = FileSystem.fullPath("apps/viewer/tests/fixtures/folder/photo 2.jpg");
-		shell('open -W -n -a "$abs" "$photo" --args --new --exit-after 5 --report "$report"');
+		// (Launch Services passes no environment: its store by --store)
+		shell('open -W -n -a "$abs" "$photo" --args --new --exit-after 5 --report "$report" --store "${kept.dir}"');
 		var said = FileSystem.exists(report) ? File.getContent(report) : "(no report)";
 		Sys.print(said);
 		if (said.indexOf("viewer: photo 2.jpg") < 0) throw new Failed('the bundle, opened with a file, did not show it: $said');
 		// (sealed and signed ad hoc by helder: codesign's own check of the bundle)
 		run("codesign", ["--verify", "--deep", "--strict", "-vvvv", app]);
 		run("codesign", ["-dvvv", app]);
+		viewerStoreKept(kept);
 	}
 
 	// (the releases of the three desktops from this machine: Linux's on

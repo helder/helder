@@ -28,7 +28,7 @@ using StringTools;
 class Definitions {
 	// helder/test's assertions: the index of their `at` parameter, given the call's file and line
 	static final located = [
-		"assert" => 2, "equals" => 3, "notEquals" => 3, "approx" => 4, "throws" => 2, "rejects" => 2, "require" => 2, "fail" => 1, "snapshot" => 2
+		"assert" => 2, "equals" => 3, "notEquals" => 3, "approx" => 4, "throws" => 2, "rejects" => 2, "require" => 2, "fail" => 1, "snapshot" => 2, "property" => 3, "stateful" => 2
 	];
 
 	// the definitions by module and name
