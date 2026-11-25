@@ -28,11 +28,17 @@ class FrameWriter implements TextureCanvas {
 	// (this frame's fonts and images, by their index in it: its loop's too)
 	final fonts:Array<FontFile> = [];
 	final images:Array<Image> = [];
-	// the passes drawn (a pass's box, a placeholder's: what a frame of data cannot show)
+	// the passes drawn as placeholders (what a frame of data cannot show)
 	public var passes(default, null) = 0;
+	// the renderer whose frame it writes again (gpu): the GPU host what draws
+	// on the GPU finds (Renderer.of), its pass done in that frame, its texture
+	// read back (pixels) for its box to be its picture; null: a placeholder
+	public var host(default, null):Null<Renderer> = null;
+	public var pixels:Null<Texture->Null<Image>> = null;
 	// (a loop after the still: its fps, the still's streams, its frames' records)
 	var fps = 0;
 	var still:Null<Bytes> = null;
+	var stillPasses = 0;
 	final loopFrames:Array<Array<FrameStreams.FrameRec>> = [];
 
 	public function new() {}
@@ -44,12 +50,17 @@ class FrameWriter implements TextureCanvas {
 			bytes: still ?? out.bytes(),
 			fonts: [for (f in fonts) FrameArchive.fontRef(f)],
 			images: [for (i in images) FrameArchive.imageRef(i)],
-			loop: fps > 0 && loopFrames.length > 0 ? {fps: fps, frames: FrameLoop.encode(loopFrames)} : null
+			// (a loop a pass draws in: none, played live)
+			loop: fps > 0 && loopFrames.length > 0 && passes == stillPasses ? {fps: fps, frames: FrameLoop.encode(loopFrames)} : null
 		};
 	}
 
 	// the still painted: what is painted next is its loop's first frame, at fps
 	public function loop(fps:Int) {
+		// (its frames drawn by no renderer: a pass in them a placeholder, counted)
+		host = null;
+		pixels = null;
+		stillPasses = passes;
 		still = out.bytes();
 		this.fps = fps;
 		out = new FrameStreams(true);
@@ -208,8 +219,32 @@ class FrameWriter implements TextureCanvas {
 	}
 
 	// (what a pass draws: its box; read back, a placeholder)
-	public function gpuTexture(t:Texture, id:Int, x:Float, y:Float, w:Float, h:Float, radius:Float = 0.0, ?corners:Corners)
-		placeholder(x, y, w, h);
+	public function gpuTexture(t:Texture, id:Int, x:Float, y:Float, w:Float, h:Float, radius:Float = 0.0, ?corners:Corners) {
+		var img = pixels == null ? null : pixels(t);
+		if (img == null) placeholder(x, y, w, h) else image(img, x, y, w, h, 0, 0, 1, 1, radius, corners);
+	}
+
+	// a pass's box its picture: what r drew in its last frame (painted
+	// after it, before its next), the textures read back
+	public function gpu(r:Renderer) {
+		host = r;
+		pixels = read(r.device);
+	}
+
+	// a device's textures read back (frameInto, readPixels: no frame on its way), each its pixels as an image
+	public static function read(device:helder.gfx.Device):Texture->Null<Image>
+		return t -> {
+			device.frameInto(t);
+			var enc = device.beginFrame();
+			var img = enc == null ? null : {
+				var w = device.width, h = device.height, px = Bytes.alloc(w * h * 4);
+				device.readPixels(px);
+				new Image(w, h, px);
+			}
+			device.endFrame();
+			device.frameInto(null);
+			img;
+		}
 
 	public function pass(f:Any) {}
 
