@@ -400,30 +400,65 @@ page builds it again from cold with a new compiler.
 
 The studio serves its tools over MCP (Streamable HTTP, JSON responses)
 on 127.0.0.1: the port `--mcp-port`, else `HELDER_STUDIO_MCP_PORT`, else
-a free one. It prints the URL at start and writes it to
+7340; when it is taken the next ones up to 7359, then a free one (a
+headless run's a free one). It prints the URL at start and writes it to
 `<root>/bin/studio/<name>/mcp.json`.
+
+`/mcp` follows the project in front (one today; with tabs, the tab in
+front); `/mcp/<name>` is the project named `<name>` (its
+`bin/studio/<name>`), an unknown name a 404 JSON-RPC error. Each agent is
+a session: `initialize` answers with an `Mcp-Session-Id`, and the client
+it names (`clientInfo.name`) is the agent's name: `claude-code` Claude,
+`codex…` Codex, `gemini…` Gemini, `cursor…` Cursor, `opencode` OpenCode,
+anything else its name title-cased; a second Claude is "Claude 2". Later
+requests carry the header; a request without it (an older client) is the
+one anonymous agent, "Agent"; an unknown one is a 404 (the client
+initializes again), and `DELETE /mcp` with it ends the session.
 
 | Tool | Does |
 |---|---|
 | `project.read {path?}` | a file's text as the studio has it (its unsaved state too); without a path, the files and the screens by flow |
-| `project.patch {path, edits: [{old, new}]}` or `{path, text}` | an edit through the studio's history (undoable like any other): live literals patched in the screens, anything else built; answers what happened and the diagnostics |
+| `project.patch {path, edits: [{old, new}]}` or `{path, text}` | an edit through the studio's history (undoable like any other, the agent's name on it): live literals patched in the screens, anything else built; answers what happened and the diagnostics |
 | `build.check {}` | the program typed (tsgo's check too), nothing written: diagnostics at file and line |
 | `run.snap {screen?, path?}` | a screen's last frame as a PNG (the selected one, else the first); a design's frame drawn offscreen |
 | `run.tree {screen?}` | a screen's node tree: tags, boxes, texts, colours and each node's `file:line` (a design's frame: its interpreted nodes) |
+| `studio.focus {}` | what the user looks at: the project (name, dir), the screen in focus, the node selected (its tag, `file:line`, box) and the screens in view |
+| `studio.working {note, screen?, path?}` | what the agent is about to do: the note its status |
+| `studio.done {note?}` | the agent finished: its marks fade, the note its status |
+
+**Presence** (`Presence`): the studio knows each agent here, its colour
+(one of six, in order of arrival, freed when it leaves), the screen it is
+on, the file it works on, the lines its last patch made, its status and
+whether it works. Its tool calls move it without a call of its own: a
+file read, a screen's tree or frame, a patch ("Editing app.tsx"), a check
+("Checking"); `studio.focus` puts it where the user looks. A minute
+without a call it no longer works, ten and it leaves. The canvas shows a
+chip in its colour by the caption of the frame it is on while it works,
+and outlines the nodes a patch of its made, fading in 1.5 s; the header a
+chip each, its status after its name (`Marks`: quiet, to be restyled).
+The history keeps who made each edit (null: you), and the undo button
+says it: "Undo Claude: app.tsx".
+
+`initialize`'s instructions (`Instructions`) tell an agent how to work
+here: start with `studio.focus`, look before changing (`run.tree`,
+`project.read`), say what it is about to do (`studio.working`), patch in
+small steps, look at the result (`run.snap`, `build.check`) and finish
+with `studio.done`.
 
 Claude Code, with the studio open on a project:
 
 ```sh
-bun run helder studio examples/ts-todo --mcp-port 7340
+bun run helder studio examples/ts-todo
 claude mcp add --transport http helder-studio http://127.0.0.1:7340/mcp
 ```
 
-Then ask Claude Code to change the app: it reads the files and the
-screens' trees (`project.read`, `run.tree`), edits with `project.patch`
-(you see each edit on the canvas, and can undo it), checks with
-`build.check` and looks at the result with `run.snap` before it reports.
-The prompt bar's agent (`Agent`, `LocalAgent` for now) is the interface
-the hosted prompt box plugs into later, through the same tools.
+Then ask Claude Code to change the app: it reads what you look at
+(`studio.focus`), the files and the screens' trees (`project.read`,
+`run.tree`), edits with `project.patch` (you see each edit on the canvas,
+in its colour, and can undo it), checks with `build.check` and looks at
+the result with `run.snap` before it reports with `studio.done`. The
+prompt bar's agent (`Agent`, `LocalAgent` for now) is the interface the
+hosted prompt box plugs into later, through the same tools.
 
 **In the browser** the same tools are the page's (`studio.web.WebTools`:
 the page calls them through the module, `studio.mjs`, and makes each

@@ -45,6 +45,9 @@ class Studio {
 	public final shown:Signal<Null<String>> = signal(null);
 	public final agent:Agent;
 	public var mcp(default, null):Null<Mcp> = null;
+	// the agents here and where they work (Presence: Mcp's sessions, the tools they call), their marks
+	public final presence = new Presence();
+	public final marks:Marks;
 	// "design" (the canvas), "code" (the code view beside the screen), "stories" (the list)
 	public final mode = signal("design");
 	// the screen zoomed into (its name; null: all screens)
@@ -147,6 +150,7 @@ class Studio {
 		previews = p == null || p.live().length == 0 ? null : new Previews(p);
 		designs = new Designs(this);
 		layout = new Layout(this);
+		marks = new Marks(this);
 		tools = new Tools(this);
 		drag = new Drag(this);
 		tree = p == null ? null : new FileTree(p);
@@ -167,8 +171,8 @@ class Studio {
 			var f = options.holdWhile;
 			hold(() -> !sys.FileSystem.exists(f), 'while $f exists', 600);
 		}
-		// (a cover's run is no session: no MCP server)
-		if (p != null && options.cover == null) mcp = new Mcp(this, options.mcpPort ?? 0);
+		// (a cover's run is no session: no MCP server; a headless one's port a free one, not an agent's)
+		if (p != null && options.cover == null) mcp = new Mcp(served, options.mcpPort ?? #if helder.headless 0 #else Mcp.PORT #end);
 		#end
 		coverPath = options.cover;
 		if (coverPath != null) hold(() -> covered, "the cover", 600);
@@ -180,13 +184,32 @@ class Studio {
 		if (project != null) Async.launch(_ -> watch());
 		// (a project of design files alone: its MCP server too, no program)
 		if (mcp != null) {
-			var m = mcp;
-			Async.launch(task -> m.serve(task));
+			var m = mcp, p = project;
+			Async.launch(task -> m.serve(task, url -> written(p, url)));
 		}
+		var agents = presence;
+		Async.launch(_ -> while (true) {
+			Async.delay(1);
+			agents.tick();
+		});
 		var pr = previews;
 		if (pr != null) Async.launch(task -> pr.start(task));
 		#if (hxmc.target == "wasm32-wasi")
 		Async.launch(_ -> studio.web.WebTools.serve(this));
+		#end
+	}
+
+	// the project an MCP route reaches (name null: the one in front; one project today)
+	function served(name:Null<String>):Null<Mcp.Target>
+		return project != null && (name == null || name == project.name) ? tools : null;
+
+	// (the MCP server's URL where an agent finds it: <out>/mcp.json)
+	function written(p:Project, url:String) {
+		#if !(hxmc.target == "wasm32-wasi")
+		try {
+			helder.cli.TestCommand.mkdirs(p.out);
+			sys.io.File.saveContent('${p.out}/mcp.json', Json.stringify({url: url, project: p.dir, tools: [for (t in Tools.list) t.name]}, "  ") + "\n");
+		} catch (_:Dynamic) {}
 		#end
 	}
 
@@ -959,8 +982,9 @@ class Studio {
 	}
 
 	// an edit of a file by the studio (origin: inspector, agent, canvas), recorded
-	public function edit(file:String, tx:Transaction, label:String, origin:String, ?group:String)
-		docs.apply(file, tx, label, origin, group);
+	// (by: the agent who made it, Presence's name; null: the user)
+	public function edit(file:String, tx:Transaction, label:String, origin:String, ?group:String, ?by:String)
+		docs.apply(file, tx, label, origin, group, by);
 
 	// the next edit its own history entry (a field left, a scrub ended)
 	public function endGesture() {
@@ -969,16 +993,20 @@ class Studio {
 	}
 
 	public function undo() {
-		var l = docs.undo();
-		message(l == null ? "nothing to undo" : 'undid $l');
+		var e = docs.undo();
+		message(e == null ? "nothing to undo" : 'undid ${entryLabel(e)}');
 		gesture++;
 	}
 
 	public function redo() {
-		var l = docs.redo();
-		message(l == null ? "nothing to redo" : 'redid $l');
+		var e = docs.redo();
+		message(e == null ? "nothing to redo" : 'redid ${entryLabel(e)}');
 		gesture++;
 	}
+
+	// a history entry as the undo button says it: "Claude: app.tsx", the user's its label alone
+	public static function entryLabel(e:Docs.Entry):String
+		return e.by == null ? e.label : '${e.by}: ${e.label}';
 
 	// a file's text changed (Docs): the selection moved with it, the code view
 	// told, then the program: a live literal patched, else a build
@@ -1408,6 +1436,15 @@ class Layout {
 
 	public function rect(name:String):Null<{name:String, flow:String, x:Float, y:Float, w:Float, h:Float}>
 		return Lambda.find(screens(), s -> s.name == name);
+
+	// the screens the stage shows now (any part of them)
+	public function inView():Array<String> {
+		var cam = studio.camera, w = studio.stageWidth, h = studio.stageHeight;
+		return [
+			for (r in screens())
+				if (cam.sx(r.x + r.w) > 0 && cam.sy(r.y + r.h) > 0 && cam.sx(r.x) < w && cam.sy(r.y) < h) r.name
+		];
+	}
 
 	public function at(wx:Float, wy:Float):Null<{name:String, flow:String, x:Float, y:Float, w:Float, h:Float}>
 		return Lambda.find(screens(), s -> wx >= s.x && wy >= s.y && wx < s.x + s.w && wy < s.y + s.h);

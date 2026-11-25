@@ -102,6 +102,7 @@ class Shell implements Markup {
 			height={Theme.HEADER} padding={'0 ${wide() && controlsRight() ? 0 : Theme.PAD - 4} 0 ${Theme.PAD}'} border-width="0 0 1 0" direction="row"
 			align-items="center" column-gap={8} overflow="visible">
 			{crumbs(studio)}
+			<Show when={studio.presence.peers().length > 0}>{Marks.chips(studio)}</Show>
 			<view grow={1} min-width={4}/>
 			{commandField(studio)}
 			<view grow={1} min-width={4}/>
@@ -140,15 +141,19 @@ class Shell implements Markup {
 			<text slot="kbd" shrink={0}>{shortcut("K")}</text>
 		</view:button>;
 
+	// (an agent's edit named: "Undo Claude: app.tsx")
+	static function undoLabel(what:String, e:Null<Docs.Entry>):String
+		return e == null || e.by == null ? what : '$what ${Studio.entryLabel(e)}';
+
 	// a shortcut as the platform writes it: ⌘K on macOS, Ctrl K elsewhere
 	public static function shortcut(key:String):String
 		return helder.ui.actions.Keymap.mac ? "⌘" + key : "Ctrl " + key;
 
 	static function buttons(studio:Studio):View
 		return <view direction="row" align-items="center" column-gap={2} shrink={0}>
-			<view:button tag="undo" slot="button" role="button" label="Undo" focusable data-disabled={studio.docs.canUndo() ? "false" : "true"}
+			<view:button tag="undo" slot="button" role="button" label={undoLabel("Undo", studio.docs.nextUndo())} focusable data-disabled={studio.docs.canUndo() ? "false" : "true"}
 				onPress={() -> studio.undo()}><image src={Icons.undo} width={Theme.ICON_S} height={Theme.ICON_S}/></view:button>
-			<view:button tag="redo" slot="button" role="button" label="Redo" focusable data-disabled={studio.docs.canRedo() ? "false" : "true"}
+			<view:button tag="redo" slot="button" role="button" label={undoLabel("Redo", studio.docs.nextRedo())} focusable data-disabled={studio.docs.canRedo() ? "false" : "true"}
 				onPress={() -> studio.redo()}><image src={Icons.redo} width={Theme.ICON_S} height={Theme.ICON_S}/></view:button>
 			<view width={6}/>
 			<view slot="seg">

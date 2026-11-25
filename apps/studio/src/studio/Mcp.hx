@@ -7,65 +7,110 @@ import helder.async.http.Http;
 using StringTools;
 
 // The studio's tools (Tools) over MCP, the Model Context Protocol's
-// Streamable HTTP transport in its simplest form: JSON-RPC requests POSTed
-// to /mcp, each answered with one JSON response (no event stream, no
-// session needed; notifications answered 202). Listening on 127.0.0.1 only,
-// on HELDER_STUDIO_MCP_PORT, --mcp-port, else a free port; the URL is
-// printed and written to <root>/bin/studio/<name>/mcp.json for an agent to
-// find. Claude Code:
+// Streamable HTTP transport in its simplest form: JSON-RPC requests POSTed,
+// each answered with one JSON response (no event stream; notifications
+// answered 202). Listening on 127.0.0.1 only: --mcp-port, else
+// HELDER_STUDIO_MCP_PORT, else 7340, the next ones up to 7359 when taken,
+// then a free one; the URL is printed and written to
+// <root>/bin/studio/<name>/mcp.json for an agent to find. Claude Code:
 //
-//   claude mcp add --transport http helder-studio http://127.0.0.1:<port>/mcp
+//   claude mcp add --transport http helder-studio http://127.0.0.1:7340/mcp
+//
+// /mcp follows the project in front, /mcp/<name> is the project named so
+// (both through resolve). initialize starts a session (Mcp-Session-Id, its
+// client's name: the agent's in Presence); a request without one is the
+// one anonymous agent's ("Agent"), an unknown one a 404 (the client
+// initializes again), DELETE ends it.
 class Mcp {
 	public static inline var VERSION = "2025-06-18";
+	public static inline var PORT = 7340;
+	public static inline var ANONYMOUS = "anonymous";
 
-	final studio:Studio;
+	final resolve:Null<String>->Null<Target>;
 	final port:Int;
+	// the sessions started: their clients' names
+	final sessions = new Map<String, Null<String>>();
 	public var url(default, null):Null<String> = null;
 
-	public function new(studio, port:Int) {
-		this.studio = studio;
+	public function new(resolve, port:Int) {
+		this.resolve = resolve;
 		this.port = port;
 	}
 
-	@:coroutine public function serve(task:Node) {
-		var server = try Server.listen("127.0.0.1", port) catch (e:Dynamic) {
+	// (ready: the URL, once listening)
+	@:coroutine public function serve(task:Node, ready:String->Void) {
+		var server = try listen(port) catch (e:Dynamic) {
 			Sys.println('studio: no MCP server ($e)');
 			return;
 		}
 		url = 'http://127.0.0.1:${server.port}/mcp';
 		Sys.println('studio: MCP at $url (claude mcp add --transport http helder-studio $url)');
-		var p = studio.project;
-		if (p != null) try {
-			helder.cli.TestCommand.mkdirs(p.out);
-			sys.io.File.saveContent('${p.out}/mcp.json', Json.stringify({url: url, project: p.dir, tools: [for (t in Tools.list) t.name]}, "  ") + "\n");
-		} catch (_:Dynamic) {}
+		ready(url);
 		Http.serve(server, handle);
 	}
 
-	@:coroutine function handle(req:Request):Null<Response> {
-		if (req.path != "/mcp") return Response.text("helder studio: MCP is at /mcp\n", 404);
-		if (req.method == "GET") return Response.text("helder studio: no event stream; POST JSON-RPC to /mcp\n", 405);
-		if (req.method == "DELETE") return new Response(200);
-		if (req.method != "POST") return Response.text("POST /mcp\n", 405);
-		var m:Dynamic = try Json.parse(req.body.toString()) catch (_:Dynamic) null;
-		if (m == null) return json({jsonrpc: "2.0", id: null, error: {code: -32700, message: "not JSON"}}, 400);
-		if (Std.isOfType(m, Array)) {
-			var out = [];
-			for (x in (m : Array<Dynamic>)) {
-				var r = one(x);
-				if (r != null) out.push(r);
-			}
-			return out.length == 0 ? new Response(202) : json(out);
+	// port, else the next of the 20 from it, else a free one (port 0: a free one)
+	public static function listen(port:Int):Server {
+		if (port > 0) for (p in port...port + 20) {
+			var s = try Server.listen("127.0.0.1", p) catch (_:Dynamic) null;
+			if (s != null) return s;
 		}
-		var r = one(m);
-		return r == null ? new Response(202) : json(r);
+		return Server.listen("127.0.0.1", 0);
+	}
+
+	@:coroutine function handle(req:Request):Null<Response>
+		return respond(req.method, req.path, req.header("mcp-session-id"), req.body.toString());
+
+	@:coroutine public function respond(method:String, path:String, session:Null<String>, body:String):Response {
+		var name = route(path);
+		if (name == null) return Response.text("helder studio: MCP is at /mcp\n", 404);
+		var target = resolve(name == "" ? null : name);
+		if (target == null) return error(-32001, 'no project $name open in the studio', 404);
+		if (method == "GET") return Response.text("helder studio: no event stream; POST JSON-RPC to /mcp\n", 405);
+		if (method == "DELETE") {
+			if (session == null || !sessions.exists(session)) return error(-32001, "no such session", 404);
+			sessions.remove(session);
+			target.agents().leave(session);
+			return new Response(200);
+		}
+		if (method != "POST") return Response.text("POST /mcp\n", 405);
+		var m:Dynamic = try Json.parse(body) catch (_:Dynamic) null;
+		if (m == null) return error(-32700, "not JSON", 400);
+		var all:Array<Dynamic> = Std.isOfType(m, Array) ? m : [m];
+		var init:Dynamic = Lambda.find(all, (x:Dynamic) -> x.method == "initialize");
+		if (session != null && !sessions.exists(session) && init == null) return error(-32001, "no such session (initialize again)", 404);
+		// (initialize: a session started, its agent here at its next request; without one, the anonymous agent)
+		var id = session ?? ANONYMOUS;
+		if (init != null) {
+			id = newId();
+			sessions.set(id, init.params?.clientInfo?.name);
+		} else {
+			var p = target.agents();
+			p.arrive(id, id == ANONYMOUS ? null : sessions.get(id));
+			p.seen(id);
+		}
+		var out = [];
+		for (x in all) {
+			var r = one(x, target, id);
+			if (r != null) out.push(r);
+		}
+		var res = out.length == 0 ? new Response(202) : json(Std.isOfType(m, Array) ? out : out[0]);
+		if (init != null) res.headers.set("mcp-session-id", id);
+		return res;
+	}
+
+	// a path's project: "" the one in front, else its name (null: not MCP's)
+	public static function route(path:String):Null<String> {
+		if (path == "/mcp" || path == "/mcp/") return "";
+		if (!path.startsWith("/mcp/")) return null;
+		var name = StringTools.urlDecode(path.substr(5));
+		return name.contains("/") ? null : name;
 	}
 
 	// one message: its response (null: a notification's, none)
-	@:coroutine function one(m:Dynamic):Null<Dynamic> {
+	@:coroutine function one(m:Dynamic, target:Target, agent:String):Null<Dynamic> {
 		var id:Dynamic = m.id;
-		if (m.method == null) return null;
-		if (id == null) return null;
+		if (m.method == null || id == null) return null;
 		var method:String = m.method;
 		var result:Dynamic = switch method {
 			case "initialize":
@@ -73,13 +118,13 @@ class Mcp {
 					protocolVersion: m.params?.protocolVersion ?? VERSION,
 					capabilities: {tools: {listChanged: false}},
 					serverInfo: {name: "helder-studio", version: "0.1.0"},
-					instructions: "helder studio's project: read and patch its files (project.read, project.patch: through the studio's history; live literals patched in the running screens, anything else rebuilt), check it (build.check), and see what each screen (a story) shows (run.snap, run.tree)."
+					instructions: Instructions.text
 				};
 			case "ping": {};
 			case "tools/list": {tools: Tools.list};
 			case "tools/call":
 				var name:String = m.params?.name;
-				studio.tools.call(name, m.params?.arguments);
+				target.tool(name, m.params?.arguments, agent);
 			case "resources/list": {resources: []};
 			case "prompts/list": {prompts: []};
 			case _: null;
@@ -88,6 +133,24 @@ class Mcp {
 		return {jsonrpc: "2.0", id: id, result: result};
 	}
 
+	// (the clock's part: a session of a studio before this one not taken for one now)
+	static function newId():String {
+		var b = new StringBuf();
+		b.add(StringTools.hex(Std.int(haxe.Timer.stamp() * 1000) & 0xffffff, 6));
+		for (_ in 0...3) b.add(StringTools.hex(Std.random(0x10000), 4));
+		return b.toString().toLowerCase();
+	}
+
+	static function error(code:Int, message:String, status:Int):Response
+		return json({jsonrpc: "2.0", id: null, error: {code: code, message: message}}, status);
+
 	static function json(v:Dynamic, status = 200):Response
 		return Response.text(Json.stringify(v), status, "application/json");
+}
+
+// what a route reaches: a project open in the studio, its agents and its
+// tools (Tools: the studio's own)
+interface Target {
+	function agents():Presence;
+	@:coroutine function tool(name:String, args:Dynamic, agent:String):{content:Array<Dynamic>, isError:Bool};
 }

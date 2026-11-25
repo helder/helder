@@ -77,6 +77,10 @@ class Theme {
 	// the one shadow: what pops over (a menu, the command list, a phone's sheet)
 	public static inline var POPOVER = "0 12 32 rgba(0,0,0,0.45)";
 	public static inline var SHEET_SHADOW = "0 -8 24 rgba(0,0,0,0.35)";
+	// the agents' colours (Presence: one each, in order of arrival), apart
+	// from the selection's blue, mid tones that read on a light screen and
+	// on the canvas
+	public static final AGENTS = ["#f59e0b", "#10b981", "#ec4899", "#8b5cf6", "#06b6d4", "#ef4444"];
 
 	public static final colors:Map<String, Color> = withKinds(withCode([
 		// the darks, near neutral (a hint of cool): the canvas under everything, the cards, fields, hovers, what is pressed
