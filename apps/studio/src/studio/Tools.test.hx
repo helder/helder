@@ -59,9 +59,9 @@ function tests() {
 			try {
 				equals(s.project.typescript, false);
 				equals(s.previews == null, true);
-				// (the screens in view, as the canvas tells them each frame: drawn)
+				// (one screen in view, as the canvas tells it each frame: the other drawn all the same, not waited on)
 				helder.async.Async.launch(_ -> while (!done) {
-					if (s.previews != null) s.previews.show([for (x in s.previews.screens) x.info.name], null);
+					if (s.previews != null) s.previews.show(["Pond/Start"], null);
 					helder.async.Async.delay(0.1);
 				});
 				s.tools.call("project.patch", {path: "app.tsx", text: 'export function App() {\n\treturn <view grow={1} background="#0e1424"><text color="#9fd3ff">Pond</text></view>;\n}\n'}, "a");
@@ -75,6 +75,8 @@ function tests() {
 				while (s.previews.busy() && haxe.Timer.stamp() - t0 < 120)
 					helder.async.Async.delay(0.1);
 				equals(s.previews.screen("Pond/Start").version > 0, true);
+				var snap = s.tools.call("run.snap", {screen: "Pond/Ripple"}, "a");
+				equals([snap.isError, s.previews.screen("Pond/Ripple").version > 0], [false, true]);
 				var c:Dynamic = haxe.Json.parse(s.tools.call("build.check", {}, "a").content[0].text);
 				equals(c.ok, true);
 				// (Play: the story in a window of its own, a main of it beside the project's files)

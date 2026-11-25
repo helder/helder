@@ -1963,14 +1963,8 @@ class Studio {
 		}
 		a.ask(p, {screen: focused.peek(), selection: classic ? selection.peek() : null, problems: problems()}, e -> switch e {
 			case Done(_) | Failed(_):
-				// (not done before the studio's build of its edits is: a failed one shown with the turn)
-				var pr = previews;
-				if (pr == null || !pr.busy()) end(e) else Async.launch(_ -> {
-					var t0 = haxe.Timer.stamp();
-					while (pr.busy() && haxe.Timer.stamp() - t0 < 120)
-						Async.delay(0.05);
-					end(e);
-				});
+				// (done as the agent is: a build still running shows on its frames, not as a held turn)
+				end(e);
 			case _:
 				heard = haxe.Timer.stamp();
 				if (!spoke && e.match(Text(_))) {

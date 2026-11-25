@@ -79,8 +79,9 @@ class WebPreviews {
 	public function allShown():Bool
 		return !Lambda.exists(screens, s -> s.version == 0 && !s.crashed) || failed;
 
+	// (screens in view not shown yet: Previews.busy's)
 	public function busy():Bool
-		return !failed && !allShown();
+		return !failed && Lambda.exists(screens, s -> s.version == 0 && !s.crashed && showWanted != null && showWanted.names.contains(s.info.name));
 
 	// (the worker's start is the page's: startMs)
 	public function sinceHost():Float
