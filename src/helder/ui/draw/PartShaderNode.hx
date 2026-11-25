@@ -104,8 +104,8 @@ import helder.ui.controls.Look;
 			fg: rgba(dark ? t.fg.dark : t.fg.light),
 			surface: rgba(dark ? t.surface.dark : t.surface.light)
 		}, bytes);
-		if (queued != r.frames) {
-			queued = r.frames;
+		if (queued != r.passKey) {
+			queued = r.passKey;
 			r.beforePass(record);
 		}
 		painted++;

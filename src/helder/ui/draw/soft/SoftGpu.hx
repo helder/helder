@@ -16,6 +16,12 @@ class SoftGpu {
 
 	var recording:Null<DisplayList> = null;
 
+	// (as Renderer.passKey)
+	public var passKey(get, never):Int;
+
+	inline function get_passKey():Int
+		return recording == null ? -1 - frames : recording.take;
+
 	public function new(canvas:SoftCanvas) {
 		this.canvas = canvas;
 		device = Device.create(helder.os.Surface.headless(1, 1));

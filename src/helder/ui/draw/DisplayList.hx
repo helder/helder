@@ -78,8 +78,14 @@ class DisplayList implements TextureCanvas {
 	// (the images' resources: their versions told, stale)
 	final images:Array<Int> = [];
 
+	// its recording's number: another at each begin and clear (Renderer.passKey)
+	public var take(default, null) = 0;
+
+	static var takes = 0;
+
 	// forgets the calls and their resources, its arrays kept
 	public function clear() {
+		take = ++takes;
 		for (i in 0...nr)
 			resources[i] = null;
 		ni = nf = nr = length = layers = live = slots = 0;
@@ -90,6 +96,7 @@ class DisplayList implements TextureCanvas {
 
 	// begins a recording, the one before kept until done
 	public function begin() {
+		take = ++takes;
 		var i = oldInts, f = oldFloats, r = oldResources, v = oldVersions;
 		oldInts = ints;
 		oldFloats = floats;

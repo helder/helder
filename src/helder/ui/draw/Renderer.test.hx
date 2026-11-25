@@ -6,6 +6,8 @@ import helder.gfx.Device;
 import helder.gfx.PassDesc;
 import helder.os.Surface;
 import helder.image.Image;
+import helder.test.Choices;
+import helder.test.Gen;
 import helder.test.Test;
 
 // The renderer's textures given back when the system wants memory (trim:
@@ -13,7 +15,10 @@ import helder.test.Test;
 // not drawn in the last frame lets its texture go, one drawn keeps it, and
 // one drawn again is uploaded again. What the compositor's frames show (a
 // scroller's tiles, the images and opacity groups they were drawn from) is
-// not freed while only the compositor draws it
+// not freed while only the compositor draws it. A node drawn into a
+// texture of its own, resized at random in frames whose walk runs again (a
+// node entering under motion): the compositor never shows an undrawn
+// texture of it
 function tests() {
 	describe("Renderer", () -> {
 		// (natively: a headless device; a browser's needs WebGPU or WebGL2)
@@ -61,11 +66,170 @@ function tests() {
 				w.dispose();
 				equals(after, {blank: -1, tiles: tiles.length, images: images.length, groups: groups.length});
 			});
+		// (its pass asked for once a recording of its list (Renderer.passKey),
+		// not once a frame: a frame that walks again (a node entering) records
+		// the list again, the first recording's passes dropped with it, and a
+		// texture made in the first was never drawn: magenta on Apple's GPUs
+		// beside a picture as a window zoomed)
+		for (keep in [true, false])
+			test("a node's own texture resized as a node enters: the compositor shows what it drew, never an undrawn texture (" + (keep ? "a frame kept" : "the system's layers") + ")", () -> stateful({
+				setup: () -> new Owned(keep),
+				steps: [
+					{name: "size", run: (w, c) -> w.size(c.draw(int(40, 700)), c.draw(int(30, 220)), c.draw(bool()))},
+					{name: "label", run: (w, c) -> w.label()}
+				],
+				check: w -> w.check(),
+				teardown: w -> w.dispose()
+			}, {cases: 12, steps: 10}));
 		#end
 	});
 }
 
 #if (target.name == "hxmc" && hxmc.target != "wasm32-wasi")
+// (a window at scale 2: a node drawn into a texture of its own, cleared to
+// its colour by its pass, a label and nodes that enter with a fade beside
+// it; the compositor's frames read back, the node's box all its colour)
+private class Owned {
+	static inline var W = 800;
+	static inline var H = 240;
+	static final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(1, 1, 1, 1)}]};
+
+	final keep:Bool;
+	final device = Device.create(Surface.headless(W * 2, H * 2));
+	final r:Renderer;
+	final ui = new helder.ui.Ui(new DrawText(), W, H);
+	final c:helder.ui.layers.Compositor;
+	final node = new OwnTexture();
+	final side = new helder.ui.Node();
+	final text = new helder.ui.TextNode("0");
+	var count = 0;
+
+	public function new(keep:Bool) {
+		this.keep = keep;
+		r = new Renderer(device);
+		r.keep = keep;
+		r.scale = ui.scale = 2;
+		r.background = 0xFFFFFFFF;
+		var row = new helder.ui.Node();
+		row.style.set({direction: Row, width: W, height: H, alignItems: Start});
+		node.style.set({width: 300, height: 200, shrink: 0});
+		side.style.set({direction: Row, columnGap: 2});
+		row.append(node);
+		row.append(text);
+		row.append(side);
+		ui.root.append(row);
+		c = new helder.ui.layers.Compositor(device);
+		for (_ in 0...12)
+			frame();
+	}
+
+	// (its size; entering: a node fading in, in the same frame)
+	public function size(w:Int, h:Int, entering:Bool) {
+		node.style.width = w;
+		node.style.height = h;
+		if (entering) {
+			var n = new helder.ui.Node();
+			n.style.set({width: 4, height: 4, background: 0xFF808080});
+			n.style.transition = helder.ui.Transition.parse("fade");
+			side.append(n);
+		}
+		frame();
+	}
+
+	public function label() {
+		text.text = "" + ++count;
+		frame();
+	}
+
+	function frame() {
+		ui.update();
+		var enc = device.beginFrame();
+		r.begin(W * 2, H * 2);
+		c.begin(r);
+		ui.paint(r);
+		r.prepare(enc);
+		if (keep) {
+			enc.beginPass(pass);
+			r.end(enc);
+			enc.endPass();
+		} else
+			r.upload();
+		c.end(ui, r);
+		device.endFrame();
+	}
+
+	// (the compositor's frame: the node's box, a few pixels in from its edges, all its colour)
+	public function check() {
+		var b = haxe.io.Bytes.alloc(W * H * 16);
+		c.drawNow(b);
+		var x0 = Std.int(node.absX * 2) + 4, y0 = Std.int(node.absY * 2) + 4, x1 = Std.int((node.absX + node.width) * 2) - 4,
+			y1 = Std.int((node.absY + node.height) * 2) - 4, off = 0, seen = 0;
+		var y = y0;
+		while (y < y1) {
+			var x = x0;
+			while (x < x1) {
+				var o = (y * W * 2 + x) * 4;
+				// (RGBA: 0x33, 0x66, 0x99)
+				if (b.get(o) != 0x33 || b.get(o + 1) != 0x66 || b.get(o + 2) != 0x99) {
+					if (off == 0) seen = b.getInt32(o);
+					off++;
+				}
+				x += 3;
+			}
+			y += 3;
+		}
+		equals('$off pixels not its colour (the first ${StringTools.hex(seen, 8)})', '0 pixels not its colour (the first 00000000)');
+	}
+
+	public function dispose() {
+		c.dispose();
+		device.dispose();
+	}
+}
+
+// (a node drawn into its texture, made at its size, its pass asked for
+// once a Renderer.passKey; byFrame: once a frame, as before)
+private class OwnTexture extends helder.ui.Node {
+	public static var byFrame = false;
+	static var ids = 0;
+
+	final id = -(++ids) - 6000000;
+	var target:Null<helder.gfx.Texture> = null;
+	var tw = 0;
+	var th = 0;
+	var queued = -1;
+
+	public function new()
+		super("own");
+
+	override public function hasContent():Bool
+		return true;
+
+	override public function paintContent(canvas:helder.ui.Canvas, x:Float, y:Float, width:Float, height:Float) {
+		var r = Renderer.of(canvas);
+		if (r == null) return;
+		var pw = Std.int(Math.max(1, Math.round(width * r.scale))), ph = Std.int(Math.max(1, Math.round(height * r.scale)));
+		if (pw != tw || ph != th) {
+			target = r.device.createTexture({width: pw, height: ph, renderTarget: true});
+			tw = pw;
+			th = ph;
+		}
+		var key = byFrame ? r.frames : r.passKey;
+		if (queued != key) {
+			queued = key;
+			r.beforePass(record);
+		}
+		(cast canvas : TextureCanvas).gpuTexture(target, id, x, y, width, height);
+	}
+
+	function record(enc:helder.gfx.Encoder) {
+		var t = target;
+		if (t == null) return;
+		enc.beginPass({colors: [{load: Clear, clear: new Vec4(0x33 / 255, 0x66 / 255, 0x99 / 255, 1), texture: t}]});
+		enc.endPass();
+	}
+}
+
 // (a window's renderer at scale 2: a scroller of image rows, tiled, three
 // tiles wide and two high, a half-opaque badge in each row; beside it a
 // label that changes and a list that scrolls, its new tiles over the
