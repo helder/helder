@@ -98,11 +98,13 @@ class Errors {
 		return b.toString();
 	}
 
+	#if (target.name == "hxmc" && !macro && hxmc.target != "wasm32-wasi")
 	// (printed as hxmc prints an uncaught exception)
 	static function fail(e:Exception, again:Null<CallStack>) {
 		Sys.stderr().writeString("Uncaught exception: " + text(e, again) + "\n");
 		Sys.exit(1);
 	}
+	#end
 
 	static function carry(e:Exception, ?here:CallStack) {
 		// (carried again: the first one's stack is where it was thrown)
