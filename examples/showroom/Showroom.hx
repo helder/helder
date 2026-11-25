@@ -54,7 +54,7 @@ class Showroom {
 		var animator = new Animator(made);
 		animator.play(morph.clip(morph.animations.breathe), {loop: true});
 		var glass = new Material("glass", new Vec4(0.3, 0.6, 1, 0.35), 0, 0.05, null, true);
-		glass.blend = true;
+		glass.blend = Alpha;
 		var pane = world.node("pane");
 		pane.position = new Vec3(0, 0.8, 1.8);
 		MeshRenderer.attach(pane, Shapes.box(device, glass, 1.6, 1.6, 0.04));

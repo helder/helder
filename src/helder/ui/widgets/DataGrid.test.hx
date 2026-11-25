@@ -1,5 +1,6 @@
 package helder.ui.widgets;
 
+import helder.os.Mods;
 import helder.gfx.Color;
 import helder.test.Test;
 import helder.ui.Ui;
@@ -30,8 +31,8 @@ function tests() {
 			key(t.ui, Key.DOWN);
 			key(t.ui, Key.RIGHT);
 			equals([t.grid.cursorRow, t.grid.cursorCol], [1, 1]);
-			key(t.ui, Key.DOWN, Key.MOD_SHIFT);
-			key(t.ui, Key.RIGHT, Key.MOD_SHIFT);
+			key(t.ui, Key.DOWN, Mods.SHIFT);
+			key(t.ui, Key.RIGHT, Mods.SHIFT);
 			equals(t.grid.range(), {top: 1, bottom: 2, left: 1, right: 2});
 			equals(t.grid.selectionText(), "1.1\t\n2.1\t2.2");
 			key(t.ui, Key.ESCAPE);
@@ -42,7 +43,7 @@ function tests() {
 			key(t.ui, Key.UP);
 			key(t.ui, Key.LEFT);
 			equals([t.grid.cursorRow, t.grid.cursorCol], [0, 0]);
-			key(t.ui, Key.END, Key.MOD_CONTROL);
+			key(t.ui, Key.END, Mods.CONTROL);
 			equals([t.grid.cursorRow, t.grid.cursorCol], [99, 2]);
 		});
 		test("the cursor is kept in view", () -> {
@@ -52,7 +53,7 @@ function tests() {
 			key(t.ui, Key.PAGE_DOWN);
 			equals(t.grid.cursorRow, 10);
 			equals(t.grid.scrollTop, 11 * 30.0 - 180);
-			key(t.ui, Key.HOME, Key.MOD_CONTROL);
+			key(t.ui, Key.HOME, Mods.CONTROL);
 			equals(t.grid.scrollTop, 0.0);
 		});
 		test("the cursor stays in view when the grid gets shorter", () -> {

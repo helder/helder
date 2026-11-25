@@ -5,7 +5,7 @@
 // the JSON's actions and a menu's items with their keys and states.
 import {
 	actions, type ActionOf, handle, Keymap, Standard, rootOf, setKeymap, find, focus, dispatch, stateOf,
-	actionName, parseAction, sameAction, item, separator, role, resolve, MenuBar, Enabled, Disabled, Checked, Unchecked
+	actionName, parseAction, sameAction, item, separator, role, resolve, MenuBar
 } from "helder/ui/actions";
 import {headless, mount, press} from 'helder/test'
 
@@ -48,7 +48,7 @@ mount(ui, <view key-context="Viewer" actions={[handle(Viewer, a => {
 	log.push(show(a));
 	if (a.type === "zoomTo") zoomed = !zoomed;
 	return a.type !== "open";
-}, a => a.type === "next" ? Disabled : a.type === "zoomTo" ? (zoomed ? Checked : Unchecked) : Enabled), handle(Standard, a => {
+}, a => a.type === "next" ? "disabled" : a.type === "zoomTo" ? (zoomed ? "checked" : "unchecked") : "enabled"), handle(Standard, a => {
 	log.push(actionName(a));
 	return true;
 })]}>

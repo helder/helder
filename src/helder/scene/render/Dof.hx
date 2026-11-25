@@ -90,7 +90,7 @@ class Dof {
 }
 
 // how depth of field's circle grows (Dof.focus, Dof.tiltShift)
-enum abstract DofMode(Int) {
-	var Focus;
-	var TiltShift;
+enum abstract DofMode(String) {
+	var Focus = "focus";
+	var TiltShift = "tilt-shift";
 }

@@ -49,7 +49,7 @@ function tests() {
 		});
 		test("see-through by alpha: drawn far to near", () -> {
 			var m = new Material();
-			m.blend = true;
+			m.blend = Alpha;
 			var s = spritesMade(m, 3);
 			s.set(0, 0, 0, 2, 1, 1);
 			s.set(1, 0, 0, -8, 1, 1);
@@ -61,7 +61,7 @@ function tests() {
 		});
 		test("a frame's writes and turn allocate nothing", () -> {
 			var m = new Material();
-			m.blend = true;
+			m.blend = Alpha;
 			var s = spritesMade(m, 1000, {mode: Spherical, columns: 4, rows: 4});
 			function frame(t:Float) {
 				for (i in 0...s.count) {

@@ -33,7 +33,7 @@ class UiProbe {
 	}
 
 	// a key pressed (Key's codes)
-	@:typescript public static function key(code:Int, mods = 0) {
+	@:typescript public static function key(code:Int, mods:helder.os.Mods = 0) {
 		ui.keyDown(code, mods);
 		ui.update();
 	}

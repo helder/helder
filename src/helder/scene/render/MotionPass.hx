@@ -128,7 +128,7 @@ class MotionPass implements RenderFeature.MotionSource {
 			for (b in 0...r.batchCount) {
 				var n = r.batchSize[b];
 				var d = r.list[r.batchStart[b]];
-				if (d.primitive.material.blend) break;
+				if (d.primitive.material.blended) break;
 				if (n < 2 || d.primitive.skinned) continue;
 				var o = r.batchOffset[b];
 				if (o + 64 * n > lastBytes.length) {
@@ -163,7 +163,7 @@ class MotionPass implements RenderFeature.MotionSource {
 				var set = r.sets[k];
 				for (p in set.mesh.primitives) {
 					var m = p.material;
-					if (p.skinned || m.blend) continue;
+					if (p.skinned || m.blended) continue;
 					enc.setPipeline(pipelines[2 + (m.doubleSided ? 1 : 0)]);
 					enc.setUniforms(instancedFrame, frameBytes);
 					enc.setVertexBuffer(0, p.vertices);
@@ -178,7 +178,7 @@ class MotionPass implements RenderFeature.MotionSource {
 			for (b in 0...r.batchCount) {
 				var start = r.batchStart[b], n = r.batchSize[b];
 				var d = r.list[start], p = d.primitive, m = p.material;
-				if (m.blend) break;
+				if (m.blended) break;
 				if (p.skinned) continue;
 				var many = n > 1;
 				var want = pipelines[(many ? 2 : 0) + (m.doubleSided ? 1 : 0)];
@@ -209,7 +209,7 @@ class MotionPass implements RenderFeature.MotionSource {
 			// (each node drawn: its matrix now, the next frame's last)
 			for (k in 0...r.count) {
 				var d = r.list[k];
-				if (d.primitive.material.blend || d.primitive.skinned) continue;
+				if (d.primitive.material.blended || d.primitive.skinned) continue;
 				store.record(d.node, now, d.node.worldMatrix());
 			}
 		}

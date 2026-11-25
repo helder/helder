@@ -54,11 +54,11 @@ class Script {
 
 	// a handler of space's actions (for <view actions={...}>): run takes one
 	// (true) or lets it bubble (false), state what a menu shows it as
-	public static function handle(space:ActionSpace<Dynamic>, run:Dynamic->Bool, ?state:Dynamic->Int):ActionHandler
-		return ActionHandler.ofScript(space, run, state == null ? null : a -> (state(a) : ActionState));
+	public static function handle(space:ActionSpace<Dynamic>, run:Dynamic->Bool, ?state:Dynamic->ActionState):ActionHandler
+		return ActionHandler.ofScript(space, run, state == null ? null : state);
 
 	// a node's handler (Node.on: a ref's node), removed by the function returned
-	public static function on(node:Node, space:ActionSpace<Dynamic>, run:Dynamic->Bool, ?state:Dynamic->Int):Void->Void {
+	public static function on(node:Node, space:ActionSpace<Dynamic>, run:Dynamic->Bool, ?state:Dynamic->ActionState):Void->Void {
 		var h = handle(space, run, state);
 		if (node.actionHandlers == null) node.actionHandlers = [];
 		node.actionHandlers.push(h);
@@ -66,14 +66,14 @@ class Script {
 	}
 
 	// a window's handler (Ui.on), after its tree's
-	public static function onWindow(ui:Ui, space:ActionSpace<Dynamic>, run:Dynamic->Bool, ?state:Dynamic->Int):Void->Void {
+	public static function onWindow(ui:Ui, space:ActionSpace<Dynamic>, run:Dynamic->Bool, ?state:Dynamic->ActionState):Void->Void {
 		var h = handle(space, run, state);
 		ui.actionHandlers.push(h);
 		return () -> ui.actionHandlers.remove(h);
 	}
 
 	// the app's handler (Actions.on), after every window's
-	public static function onApp(space:ActionSpace<Dynamic>, run:Dynamic->Bool, ?state:Dynamic->Int):Void->Void {
+	public static function onApp(space:ActionSpace<Dynamic>, run:Dynamic->Bool, ?state:Dynamic->ActionState):Void->Void {
 		var h = handle(space, run, state);
 		Actions.app.push(h);
 		return () -> Actions.app.remove(h);
@@ -144,7 +144,7 @@ class Script {
 		return ui.dispatchAction(action, from);
 
 	// what a menu shows action as from the focus (or from): ActionState
-	public static function state(ui:Ui, action:Dynamic, ?from:Node):Int
+	public static function state(ui:Ui, action:Dynamic, ?from:Node):ActionState
 		return ui.actionState(action, from);
 
 	// --- menus

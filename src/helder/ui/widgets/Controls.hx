@@ -1,5 +1,6 @@
 package helder.ui.widgets;
 
+import helder.os.Mods;
 import helder.ui.Key;
 import helder.ui.Node;
 import helder.ui.Svg;
@@ -50,7 +51,7 @@ class Controls implements Markup {
 				at(e.x);
 			}} onPointerMove={e -> if (dragging) at(e.x)} onPointerUp={_ -> dragging = false} onLostPointerCapture={_ -> dragging = false}
 			onKeyDown={e -> {
-				var shift = e.mods & Key.MOD_SHIFT != 0 ? 10 : 1;
+				var shift = e.mods & Mods.SHIFT != 0 ? 10 : 1;
 				if (e.key == Key.RIGHT || e.key == Key.UP) by(shift) else if (e.key == Key.LEFT || e.key == Key.DOWN) by(-shift) else if (e.key == Key.HOME)
 					set(props.min) else if (e.key == Key.END) set(props.max) else return;
 				e.preventDefault();

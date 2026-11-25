@@ -1,5 +1,6 @@
 package helder.ui.actions;
 
+import helder.os.Mods;
 import helder.ui.Key;
 
 // One key with its modifiers, as a keymap writes it (Zed's GPUI): "ctrl-s",
@@ -14,7 +15,7 @@ import helder.ui.Key;
 // without Shift's capital (a key's code is its unshifted character).
 class Keystroke {
 	public final key:Int;
-	// Key.MOD_* besides secondary
+	// Mods besides secondary
 	public final mods:Int;
 	public final secondary:Bool;
 
@@ -26,7 +27,7 @@ class Keystroke {
 
 	// the modifiers it needs on this platform (secondary resolved)
 	public inline function held():Int
-		return mods | (secondary ? (Keymap.mac ? Key.MOD_META : Key.MOD_CONTROL) : 0);
+		return mods | (secondary ? (Keymap.mac ? Mods.META : Mods.CONTROL) : 0);
 
 	public static function parse(s:String):Keystroke {
 		var t = StringTools.trim(s);
@@ -43,10 +44,10 @@ class Keystroke {
 		var mods = 0, secondary = false;
 		for (p in parts)
 			switch p.toLowerCase() {
-				case "ctrl" | "control": mods |= Key.MOD_CONTROL;
-				case "alt" | "option" | "opt": mods |= Key.MOD_ALT;
-				case "shift": mods |= Key.MOD_SHIFT;
-				case "cmd" | "meta" | "super" | "win" | "command": mods |= Key.MOD_META;
+				case "ctrl" | "control": mods |= Mods.CONTROL;
+				case "alt" | "option" | "opt": mods |= Mods.ALT;
+				case "shift": mods |= Mods.SHIFT;
+				case "cmd" | "meta" | "super" | "win" | "command": mods |= Mods.META;
 				case "secondary" | "mod": secondary = true;
 				case _: throw "helder.ui: " + p + " is not a modifier, in " + s;
 			}
@@ -92,7 +93,7 @@ class Keystroke {
 	// whether a key press with these modifiers is this keystroke
 	public function matches(key:Int, mods:Int):Bool {
 		if (key >= "A".code && key <= "Z".code) key += 32;
-		return key == this.key && mods & (Key.MOD_SHIFT | Key.MOD_CONTROL | Key.MOD_ALT | Key.MOD_META) == held();
+		return key == this.key && mods & (Mods.SHIFT | Mods.CONTROL | Mods.ALT | Mods.META) == held();
 	}
 
 	public function equals(o:Keystroke):Bool
@@ -101,7 +102,7 @@ class Keystroke {
 	// as the platform's menus show it: "Ctrl+Shift+S", "⇧⌘S" (Keymap.mac)
 	public function label():String {
 		var mac = Keymap.mac, m = held();
-		var ctrl = m & Key.MOD_CONTROL != 0, meta = m & Key.MOD_META != 0, shift = m & Key.MOD_SHIFT != 0, alt = m & Key.MOD_ALT != 0;
+		var ctrl = m & Mods.CONTROL != 0, meta = m & Mods.META != 0, shift = m & Mods.SHIFT != 0, alt = m & Mods.ALT != 0;
 		var k = switch key {
 			case Key.ENTER: mac ? "↩" : "Enter";
 			case Key.ESCAPE: mac ? "⎋" : "Esc";
@@ -128,8 +129,8 @@ class Keystroke {
 
 	// as a keymap writes it: "secondary-shift-s"
 	public function toString():String {
-		var s = (secondary ? "secondary-" : "") + (mods & Key.MOD_CONTROL != 0 ? "ctrl-" : "") + (mods & Key.MOD_ALT != 0 ? "alt-" : "")
-			+ (mods & Key.MOD_SHIFT != 0 ? "shift-" : "") + (mods & Key.MOD_META != 0 ? "cmd-" : "");
+		var s = (secondary ? "secondary-" : "") + (mods & Mods.CONTROL != 0 ? "ctrl-" : "") + (mods & Mods.ALT != 0 ? "alt-" : "")
+			+ (mods & Mods.SHIFT != 0 ? "shift-" : "") + (mods & Mods.META != 0 ? "cmd-" : "");
 		return s + switch key {
 			case Key.ENTER: "enter";
 			case Key.ESCAPE: "escape";

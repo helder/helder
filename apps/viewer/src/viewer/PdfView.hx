@@ -1,5 +1,6 @@
 package viewer;
 
+import helder.os.Mods;
 import helder.ui.Key;
 import helder.ui.Node;
 import helder.ui.controls.Look;
@@ -31,7 +32,7 @@ class PdfView implements Markup {
 			<scroll tag="pdf-scroll" position="absolute" inset={0} onResize={_ -> sized()} ref={(n:Node) -> {
 				scroller = n;
 				n.onScroll = () -> doc.scrolled(n.scrollX, n.scrollY);
-			}} onWheel={e -> if (e.mods & (Key.MOD_CONTROL | Key.MOD_META) != 0) {
+			}} onWheel={e -> if (e.mods & (Mods.CONTROL | Mods.META) != 0) {
 					doc.zoomBy(Math.exp(-e.deltaY * Math.log(1.25) / 40), e.localX, e.localY);
 					e.preventDefault();
 				}}>

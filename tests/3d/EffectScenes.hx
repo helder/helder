@@ -237,7 +237,7 @@ class EffectScenes {
 		var sphere = put("sphere", Shapes.sphere(device, new Material("ball", new Vec4(0.9, 0.85, 0.8, 1), 0, 0.35), 0.6, 32, 16), -0.1, 0.6, 0.2);
 		var pillar = put("pillar", Shapes.box(device, stone, 0.45, 2.6, 0.45), 1.3, 1.3, -0.9);
 		var glass = new Material("glass", new Vec4(0.6, 0.8, 0.9, 0.35), 0, 0.1);
-		glass.blend = true;
+		glass.blend = Alpha;
 		glass.doubleSided = true;
 		put("pane", Shapes.box(device, glass, 1.2, 1.4, 0.04), 0.6, 0.75, 1.4, -0.3);
 		// (the island: far behind, its rows the sphere's on the screen)

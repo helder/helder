@@ -1,3 +1,4 @@
+import helder.os.Mods;
 import helder.gfx.Color;
 import helder.ui.*;
 import helder.ui.UiWindow;
@@ -35,7 +36,7 @@ class WebScrollPage {
 			}
 			page.append(r);
 		}
-		page.onWheel = e -> if (e.mods & Key.MOD_CONTROL != 0) {
+		page.onWheel = e -> if (e.mods & Mods.CONTROL != 0) {
 			wheels++;
 			e.preventDefault();
 			w.ui.requestFrame();

@@ -1,6 +1,7 @@
 package helder.web;
 
 #if js
+import helder.os.Mods;
 import helder.ui.Event.EventType;
 import helder.ui.Key;
 import js.html.Element;
@@ -179,9 +180,9 @@ class Neutral {
 			case _: 0;
 		}
 
-	// (its modifiers as Key.MOD_* bits)
+	// (its modifiers as Mods bits)
 	static function mods(e:Dynamic):Int
-		return (e.shiftKey ? Key.MOD_SHIFT : 0) | (e.ctrlKey ? Key.MOD_CONTROL : 0) | (e.altKey ? Key.MOD_ALT : 0) | (e.metaKey ? Key.MOD_META : 0);
+		return (e.shiftKey ? Mods.SHIFT : 0) | (e.ctrlKey ? Mods.CONTROL : 0) | (e.altKey ? Mods.ALT : 0) | (e.metaKey ? Mods.META : 0);
 
 	// the pointer of the last pointerdown a handler got (a part's capture())
 	public static var pointer:Null<Int> = null;

@@ -1,5 +1,6 @@
 package helder.ui.actions;
 
+import helder.os.Mods;
 import helder.test.Test;
 import helder.ui.Clock;
 import helder.ui.Key;
@@ -43,19 +44,19 @@ function tests() {
 		test("parsed as GPUI writes them, secondary per platform", () -> {
 			var k = Keystroke.parse("ctrl-shift-s");
 			equals(k.key, "s".code);
-			equals(k.mods, Key.MOD_CONTROL | Key.MOD_SHIFT);
-			assert(k.matches("S".code, Key.MOD_CONTROL | Key.MOD_SHIFT));
-			assert(!k.matches("s".code, Key.MOD_CONTROL));
+			equals(k.mods, Mods.CONTROL | Mods.SHIFT);
+			assert(k.matches("S".code, Mods.CONTROL | Mods.SHIFT));
+			assert(!k.matches("s".code, Mods.CONTROL));
 			equals(Keystroke.parse("ctrl--").key, "-".code);
 			equals(Keystroke.parse("-").key, "-".code);
 			equals(Keystroke.parse("f11").key, Key.F1 + 10);
 			equals(Keystroke.sequence("secondary-k secondary-s").length, 2);
 			Keymap.mac = true;
-			assert(Keystroke.parse("secondary-o").matches("o".code, Key.MOD_META));
-			assert(!Keystroke.parse("secondary-o").matches("o".code, Key.MOD_CONTROL));
+			assert(Keystroke.parse("secondary-o").matches("o".code, Mods.META));
+			assert(!Keystroke.parse("secondary-o").matches("o".code, Mods.CONTROL));
 			equals(Keystroke.parse("secondary-shift-o").label(), "⇧⌘O");
 			Keymap.mac = false;
-			assert(Keystroke.parse("secondary-o").matches("o".code, Key.MOD_CONTROL));
+			assert(Keystroke.parse("secondary-o").matches("o".code, Mods.CONTROL));
 			equals(Keystroke.parse("secondary-shift-o").label(), "Ctrl+Shift+O");
 			throws(() -> Keystroke.parse("hyper-x"));
 		});
@@ -180,15 +181,15 @@ function tests() {
 				true;
 			});
 			f.ui.setFocus(f.leaf);
-			f.ui.keyDown("k".code, Key.MOD_CONTROL);
+			f.ui.keyDown("k".code, Mods.CONTROL);
 			equals(f.ui.pendingKeys.length, 1);
 			equals(log, []);
-			f.ui.keyDown("s".code, Key.MOD_CONTROL);
+			f.ui.keyDown("s".code, Mods.CONTROL);
 			equals(log, ["test::Next"]);
 			equals(f.ui.pendingKeys.length, 0);
 			// (broken: another key, which is tried alone)
-			f.ui.keyDown("x".code, Key.MOD_CONTROL);
-			f.ui.keyDown("k".code, Key.MOD_CONTROL);
+			f.ui.keyDown("x".code, Mods.CONTROL);
+			f.ui.keyDown("k".code, Mods.CONTROL);
 			equals(f.ui.pendingKeys.length, 1);
 			// (timed out: ctrl-k's own binding runs)
 			Clock.tick(100);
@@ -244,7 +245,7 @@ function tests() {
 			});
 			f.ui.setFocus(field);
 			f.ui.keyDown("n".code, 0);
-			f.ui.keyDown("n".code, Key.MOD_CONTROL);
+			f.ui.keyDown("n".code, Mods.CONTROL);
 			equals(log, ["test::Bubble"]);
 		});
 	});
@@ -264,7 +265,7 @@ function tests() {
 				names.push(ui.focus.tag);
 			}
 			equals(names, ["c", "a", "d", "c"]);
-			ui.keyDown(Key.TAB, Key.MOD_SHIFT);
+			ui.keyDown(Key.TAB, Mods.SHIFT);
 			equals(ui.focus.tag, "d");
 			ui.root.find("b").focus();
 			ui.keyDown(Key.TAB, 0);

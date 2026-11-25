@@ -1,5 +1,6 @@
 package helder.ui.code;
 
+import helder.os.Mods;
 import helder.os.Rect;
 import helder.gfx.Color;
 import helder.syntax.Lexer.TokenClass;
@@ -124,7 +125,7 @@ class CodeView extends Node {
 		tick = t -> step(t);
 		onKeyDown = e -> {
 			// (a character typed: text input's, not a shortcut: the keymap not asked)
-			if (e.mods & (Key.MOD_CONTROL | Key.MOD_ALT | Key.MOD_META) == 0 && e.key >= 0x20 && e.key < 0xFF00) e.stop();
+			if (e.mods & (Mods.CONTROL | Mods.ALT | Mods.META) == 0 && e.key >= 0x20 && e.key < 0xFF00) e.stop();
 		};
 		onTextInput = e -> {
 			if (e.text == "") return;
@@ -142,7 +143,7 @@ class CodeView extends Node {
 		};
 		onWheel = e -> {
 			var dx = e.deltaX, dy = e.deltaY;
-			if (e.mods & Key.MOD_SHIFT != 0 && dx == 0) {
+			if (e.mods & Mods.SHIFT != 0 && dx == 0) {
 				dx = dy;
 				dy = 0;
 			}
@@ -762,7 +763,7 @@ class CodeView extends Node {
 		clickAt = t;
 		clickX = e.x;
 		clickY = e.y;
-		var shift = e.mods & Key.MOD_SHIFT != 0, alt = e.mods & Key.MOD_ALT != 0;
+		var shift = e.mods & Mods.SHIFT != 0, alt = e.mods & Mods.ALT != 0;
 		if (lx < gutterW) {
 			// (the gutter: a line, or lines from the selection's anchor)
 			var l = model.lineOf(pos), a = model.lineStart(l), b = l + 1 < model.lineCount ? model.lineStart(l + 1) : model.length;

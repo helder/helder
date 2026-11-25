@@ -24,12 +24,12 @@ import helder.scene.math.MathTools;
 // Its material is any (Material.unlit with Additive: halos; with a texture
 // and alphaCutoff: leaves; a lit one: its normal faces the camera, so it is
 // lit as a card). See-through ones are drawn after the opaque surfaces
-// (Material.blend), Alpha's sorted far to near among themselves when the
+// (Material.blended), Alpha's sorted far to near among themselves when the
 // camera moves. An atlas is columns by rows cells of the material's
 // texture, left to right then top to bottom (the material's uvScale set to a
 // cell's share; a sprite's cell moves its uvs there: PbrShader.instanceUv).
 //
-//   var halos = new Sprites(device, Material.unlit({color: gold, texture: glow, blend: true, blending: Additive}), 64);
+//   var halos = new Sprites(device, Material.unlit({color: gold, texture: glow, blend: Additive}), 64);
 //   Sprites.attach(world.node("halos"), halos);
 //   halos.count = lamps.length;
 //   for (i in 0...halos.count) halos.set(i, lamps[i].x, lamps[i].y, lamps[i].z, 0.8, 0.8);
@@ -168,7 +168,7 @@ class Sprites extends InstancedMesh {
 		var up = unit(new Vec3(viewProj.c0.y, viewProj.c1.y, viewProj.c2.y));
 		var back = unit(new Vec3(viewProj.c0.z, viewProj.c1.z, viewProj.c2.z)) * -1;
 		// (see-through by alpha: far to near, each frame's order from the last's)
-		var sorted = material.blend && material.blending == Alpha;
+		var sorted = material.blended && material.blending == Alpha;
 		if (count != lastCount)
 			for (i in 0...count)
 				order[i] = i;
@@ -261,13 +261,13 @@ class Sprites extends InstancedMesh {
 }
 
 // how sprites face the camera (Sprites.mode)
-enum abstract SpriteMode(Int) to Int {
+enum abstract SpriteMode(String) {
 	// facing the camera, upright on the screen
-	var Spherical;
+	var Spherical = "spherical";
 	// turning about Sprites.axis only, upright along it
-	var Axis;
+	var Axis = "axis";
 	// facing +z, turned about z by their rotation
-	var Fixed;
+	var Fixed = "fixed";
 }
 
 // what Sprites are made with (each optional): how they face the camera

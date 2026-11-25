@@ -30,6 +30,7 @@
 // menus with their keys and their handlers' states. `Standard` is
 // StandardAction's (standard::Quit, standard::Copy...).
 import { Script } from './runtime';
+import type { ActionState } from 'helder/ui';
 
 // an action's arguments (a method's), as an object (its result)
 type Method = (...args: any[]) => object | void;
@@ -48,12 +49,7 @@ export type ActionOf<A> = { [K in keyof A]: A[K] extends (...args: any[]) => inf
 export type Action = { readonly type: string };
 
 // what a menu shows an action as (the handler that would take it says)
-export type ActionState = 0 | 1 | 2 | 3 | 4;
-export const Unhandled: ActionState = 0;
-export const Disabled: ActionState = 1;
-export const Enabled: ActionState = 2;
-export const Checked: ActionState = 3;
-export const Unchecked: ActionState = 4;
+export type { ActionState };
 
 // a handler of one kind's actions (a node's: <view actions={...}>)
 export type ActionHandler = { readonly __actionHandler: true };
@@ -157,22 +153,22 @@ function spaceOf(type: object): any {
 // a handler of type's actions, for a node (<view actions={handle(Viewer, a => ...)}>):
 // run takes one (true) or lets it bubble on (false); state what a menu shows it as
 export function handle<A extends object>(type: A, run: (a: ActionOf<A>) => boolean, state?: (a: ActionOf<A>) => ActionState): ActionHandler {
-	return Script.handle(spaceOf(type), run as (a: any) => boolean, state as ((a: any) => number) | undefined) as any;
+	return Script.handle(spaceOf(type), run as (a: any) => boolean, state as ((a: any) => ActionState) | undefined) as any;
 }
 
 // a node's handler (a ref's node), removed by the function returned
 export function on<A extends object>(node: unknown, type: A, run: (a: ActionOf<A>) => boolean, state?: (a: ActionOf<A>) => ActionState): () => void {
-	return Script.on(node as any, spaceOf(type), run as (a: any) => boolean, state as ((a: any) => number) | undefined);
+	return Script.on(node as any, spaceOf(type), run as (a: any) => boolean, state as ((a: any) => ActionState) | undefined);
 }
 
 // a window's handler (its Ui: uiOf a node in it, a ref's), after its tree's
 export function onWindow<A extends object>(ui: Ui, type: A, run: (a: ActionOf<A>) => boolean, state?: (a: ActionOf<A>) => ActionState): () => void {
-	return Script.onWindow(ui as any, spaceOf(type), run as (a: any) => boolean, state as ((a: any) => number) | undefined);
+	return Script.onWindow(ui as any, spaceOf(type), run as (a: any) => boolean, state as ((a: any) => ActionState) | undefined);
 }
 
 // the app's handler, after every window's
 export function onApp<A extends object>(type: A, run: (a: ActionOf<A>) => boolean, state?: (a: ActionOf<A>) => ActionState): () => void {
-	return Script.onApp(spaceOf(type), run as (a: any) => boolean, state as ((a: any) => number) | undefined);
+	return Script.onApp(spaceOf(type), run as (a: any) => boolean, state as ((a: any) => ActionState) | undefined);
 }
 
 // an action's name in a keymap: "viewer::ZoomTo"
@@ -258,7 +254,7 @@ export function dispatch(ui: Ui, action: Action, from?: unknown): boolean {
 }
 // what a menu shows an action as, from the focus (or from)
 export function stateOf(ui: Ui, action: Action, from?: unknown): ActionState {
-	return Script.state(ui as any, action, from as any) as ActionState;
+	return Script.state(ui as any, action, from as any);
 }
 
 // Menus (helder.ui.menu): items bound to actions, each shown with its keys

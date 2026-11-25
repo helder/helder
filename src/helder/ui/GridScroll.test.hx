@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Mods;
 import helder.test.Choices;
 import helder.test.Gen;
 import helder.test.Test;
@@ -31,7 +32,7 @@ private final KEYS = [
 	"home" => Key.HOME, "end" => Key.END, "page up" => Key.PAGE_UP, "page down" => Key.PAGE_DOWN
 ];
 // (a modifier's key and its bit)
-private final MODS = ["shift" => [Key.SHIFT, Key.MOD_SHIFT], "meta" => [Key.META, Key.MOD_META], "control" => [Key.CONTROL, Key.MOD_CONTROL]];
+private final MODS = ["shift" => [Key.SHIFT, Mods.SHIFT], "meta" => [Key.META, Mods.META], "control" => [Key.CONTROL, Mods.CONTROL]];
 
 private class Fixture {
 	final ui:Ui;
@@ -87,7 +88,7 @@ private class Fixture {
 	// (the focus in view after it only when the grid had it)
 	public function key(name:String, shift:Bool) {
 		keyed = @:privateAccess grid.focusWithin();
-		ui.keyDown(KEYS[name], shift ? Key.MOD_SHIFT : 0);
+		ui.keyDown(KEYS[name], shift ? Mods.SHIFT : 0);
 		settle();
 	}
 

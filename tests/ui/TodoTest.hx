@@ -53,8 +53,8 @@ class TodoTest {
 		ui.update();
 		check("Enter adds it", app.todos().length == 1 && app.draft() == "" && (cast ui.root.find("draft") : TextNode).text == "");
 		type("Write the renderer");
-		ui.keyDown(Key.LEFT, Key.MOD_SHIFT);
-		ui.keyDown(Key.LEFT, Key.MOD_SHIFT);
+		ui.keyDown(Key.LEFT, Mods.SHIFT);
+		ui.keyDown(Key.LEFT, Mods.SHIFT);
 		type("ER");
 		check("a selection is replaced", app.draft() == "Write the renderER", app.draft());
 		ui.keyDown(Key.BACKSPACE, 0);

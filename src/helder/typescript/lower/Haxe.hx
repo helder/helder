@@ -147,6 +147,9 @@ class Haxe {
 				ELocal(l);
 			case HAbstract(path, _, _, _) if (path == NODE):
 				nodeToHaxe(e, where);
+			case HAbstract(path, _, _, _) if (path == MODS):
+				// (their names, or the bits as a number)
+				from == TF64 ? EConv(F2I, e) : from == TI32 ? e : call(interop("mods"), [any(e), EStr(where)]);
 			case HAbstract(path, _, _, _) if (path == COLOR):
 				// (a number as it is, a CSS string parsed)
 				from == TF64 ? EConv(F2I, e) : from == TI32 ? e : call(interop("color"), [any(e), EStr(where)]);
@@ -370,7 +373,9 @@ class Haxe {
 			case [TVoid, _]: b.runtime("getUndefined", []);
 			case [TStruct(_), _] if (mathOf(t) != null): mathToJs(e, mathOf(t));
 			case [TI32, _] if (isNode(t)): nodeToJs(e);
-			case [TI32, _] if (isColor(t)):
+			case [TI32, _] if (is(t, MODS)):
+				call(interop("modsToJs"), [e]);
+			case [TI32, _] if (is(t, COLOR)):
 				// (unsigned, as a program writes one: 0xff3366ff)
 				var v = b.temp(e), l = b.local("color", TF64);
 				b.out.push(SSet(l, EConv(I2F, v)));
@@ -484,11 +489,13 @@ class Haxe {
 	public static inline var NODE = "helder.scene.Node";
 	// helder.gfx.Color: a number or a CSS string (Interop.color)
 	public static inline var COLOR = "helder.gfx.Color";
+	// helder.os.Mods: the names of the keys (Interop.mods, modsToJs)
+	public static inline var MODS = "helder.os.Mods";
 
-	static function isColor(t:HType):Bool
+	static function is(t:HType, abstractPath:String):Bool
 		return switch t {
-			case HNull(x): isColor(x);
-			case HAbstract(path, _, _, _): path == COLOR;
+			case HNull(x): is(x, abstractPath);
+			case HAbstract(path, _, _, _): path == abstractPath;
 			case _: false;
 		}
 

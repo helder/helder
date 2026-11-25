@@ -6,7 +6,7 @@
 // (ReflectionProbe.weight), area lights' kinds (Light.rectArea, discArea)
 // and a lightmap's modes. (Drawn: the 3d lane's sh, probes, arealight and
 // lightmap frames, tests/3d/IndirectScenes.hx.)
-import { World, Light, LightKind, Sh, ProbeGrid, LightProbe, ReflectionProbe, Probes, LightmapMode } from "helder/scene";
+import { World, Light, Sh, ProbeGrid, LightProbe, ReflectionProbe, Probes, type LightmapMode } from "helder/scene";
 import { vec3 } from "helder/gfx";
 
 const up = vec3(0, 1, 0), down = vec3(0, -1, 0), side = vec3(1, 0, 0);
@@ -41,6 +41,7 @@ console.log(box.weight(0, 1, 0, 0.5, 0.5, 0.5), box.weight(0, 10, 0, 0.5, 0.5, 0
 
 const rect = Light.rectArea(vec3(1, 0.8, 0.6), 6, 2, 1);
 const disc = Light.discArea(vec3(1, 1, 1), 4, 0.5);
-console.log(rect.kind === LightKind.RectArea, disc.kind === LightKind.DiscArea, rect.area, rect.local, rect.castShadows, rect.width, rect.height, disc.width);
-console.log(LightmapMode.Indirect, LightmapMode.All);
+console.log(rect.kind === "rect-area", disc.kind === "disc-area", rect.area, rect.local, rect.castShadows, rect.width, rect.height, disc.width);
+const modes: LightmapMode[] = ["indirect", "all"];
+console.log(...modes);
 world.dispose();

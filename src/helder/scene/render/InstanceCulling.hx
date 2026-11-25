@@ -72,7 +72,7 @@ class InstanceCulling implements RenderFeature implements RenderFeature.CullSour
 			var mesh = levels != null ? levels[l].mesh : set.mesh;
 			if (mesh.primitives.length > MAX_PRIMITIVES) return false;
 			for (p in mesh.primitives)
-				if (p.material.blend || p.skinned) return false;
+				if (p.material.blended || p.skinned) return false;
 		}
 		return true;
 	}

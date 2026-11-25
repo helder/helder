@@ -17,7 +17,7 @@ render(
 	root
 );
 UiProbe.click("file-0");
-UiProbe.key(Key.DOWN, Key.MOD_SHIFT);
+UiProbe.key(Key.DOWN, ["shift"]);
 const made = mounted()!;
 console.log(made.columns, made.selection.keys().join(","));
 UiProbe.key(Key.ENTER);
@@ -35,7 +35,7 @@ render(
 	UiProbe.root(240, 140)
 );
 UiProbe.click("row-1");
-UiProbe.key(Key.DOWN, Key.MOD_SHIFT);
+UiProbe.key(Key.DOWN, ["shift"]);
 UiProbe.key(Key.ENTER);
 
 render(

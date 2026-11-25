@@ -249,6 +249,16 @@ class Interop {
 		return c;
 	}
 
+	// the modifier keys: their names (helder.os.Mods), or a number of their bits
+	public static function mods(v:Dynamic, where:String):Int {
+		if (Std.isOfType(v, Float)) return int(v, where);
+		if (!Std.isOfType(v, JsArray)) Seed.diverge("an array of key names", v, where);
+		return helder.os.Mods.ofNames([for (x in (v : JsArray).elements()) string(x, where)]);
+	}
+
+	public static function modsToJs(m:Int):Dynamic
+		return toJs((m : helder.os.Mods).names());
+
 	// a Read of colours (reader's), each value as color takes it
 	public static function colorReader(v:Dynamic, where:String):helder.view.graph.Read<helder.gfx.Color> {
 		if (!Std.isOfType(v, JsFunction)) return new helder.view.graph.Read.Const<helder.gfx.Color>(color(toHaxe(v), where));

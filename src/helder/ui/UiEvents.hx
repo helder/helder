@@ -16,7 +16,7 @@ class UiEvents {
 			case Scroll:
 				i = m.event(Wheel);
 				var dx = e.deltaX, dy = e.deltaY;
-				if (e.mods & OsEvent.Mods.SHIFT != 0 && dx == 0) {
+				if (e.mods & helder.os.Mods.SHIFT != 0 && dx == 0) {
 					dx = dy;
 					dy = 0;
 				}
@@ -120,7 +120,7 @@ class UiEvents {
 			case Scroll:
 				// (Shift turns a vertical wheel sideways, as browsers do)
 				var dx = e.deltaX, dy = e.deltaY;
-				if (e.mods & helder.os.Event.Mods.SHIFT != 0 && dx == 0) {
+				if (e.mods & helder.os.Mods.SHIFT != 0 && dx == 0) {
 					dx = dy;
 					dy = 0;
 				}

@@ -1178,7 +1178,7 @@ class WaylandWindow {
 	// cursor-shape-v1's shape, else the theme's image on a surface of ours
 	static function applyCursor(serial:Int) {
 		var c = pointerOnBar ? Cursor.Default : cursorNow;
-		var i:Int = c;
+		var i = c.index();
 		if (!cursorDevice.isNull()) {
 			// (default 1, pointer 4, text 9, crosshair 8, move 13, not_allowed 15, ew_resize 26, ns_resize 27, grab 16, grabbing 17)
 			cursorDevice.setShape(serial, [1, 4, 9, 8, 13, 15, 26, 27, 16, 17][i]);

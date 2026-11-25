@@ -535,8 +535,8 @@ class Renderer {
 				}
 				d.primitive = p;
 				// (the pipeline, then the material)
-				d.key = (p.material.blend ? 1 << 26 : 0) | (mapped(p) ? 1 << 25 : 0) | (p.material.doubleSided ? 1 << 24 : 0) | (p.material.id & 0xFFFFFF);
-				if (p.material.blend) {
+				d.key = (p.material.blended ? 1 << 26 : 0) | (mapped(p) ? 1 << 25 : 0) | (p.material.doubleSided ? 1 << 24 : 0) | (p.material.id & 0xFFFFFF);
+				if (p.material.blended) {
 					// (how far: the bounds' centre's depth in clip space)
 					var b = p.bounds, c = viewProj * (model * new Vec4((b.min.x + b.max.x) / 2, (b.min.y + b.max.y) / 2, (b.min.z + b.max.z) / 2, 1));
 					d.depth = c.w != 0 ? c.z / c.w : c.z;
@@ -571,7 +571,7 @@ class Renderer {
 		}
 		// (the see-through draws, last in the list: farthest first)
 		var first = count;
-		while (first > 0 && list[first - 1].primitive.material.blend)
+		while (first > 0 && list[first - 1].primitive.material.blended)
 			first--;
 		for (i in first + 1...count) {
 			var d = list[i], j = i - 1;
@@ -779,7 +779,7 @@ class Renderer {
 		for (b in 0...batchCount) {
 			var start = batchStart[b], n = batchSize[b];
 			var d = list[start], p = d.primitive, m = p.material;
-			if (opaque && m.blend) {
+			if (opaque && m.blended) {
 				// (the hooks after the opaque surfaces, the sky's among them,
 				// before the see-through ones; their pipelines are theirs;
 				// then the see-through instanced sets: Sprites' halos)
@@ -810,14 +810,14 @@ class Renderer {
 			var normals = skin == null && mapped(p) ? normalSource : null;
 			var own = shader != null ? custom(shader, m, many ? (normals != null ? 4 : 3) : skin != null ? 2 : normals != null ? 1 : 0) : null;
 			// (lit by probes, area lights by LTC: the standard material's opaque draws, plain and instanced)
-			var standard = own == null && skin == null && normals == null && !m.blend;
+			var standard = own == null && skin == null && normals == null && !m.blended;
 			// (a lightmapped node with second uvs: the lightmap variant, alone)
 			var baked = lightmapSource != null && standard && !many && p.uv1 != null && lightmapSource.has(d.node);
 			var probed = probeSource != null && standard && !baked;
 			var areaLit = areaSource != null && frameLights.areas > 0 && standard && !baked;
-			var want = baked ? lightmapSource.pipeline(m.doubleSided) : areaLit ? areaSource.pipeline(many, m.doubleSided, probed) : probed ? probeSource.pipeline(many, m.doubleSided) : own != null ? own.pipeline : many ? (normals != null ? normals.instancedPipeline(m.doubleSided) : opaquePipeline(true, m.doubleSided)) : skin != null ? skin.pipeline(m.doubleSided) : normals != null ? normals.pipeline(m.doubleSided) : m.blend ? blended(m) : opaquePipeline(false, m.doubleSided);
+			var want = baked ? lightmapSource.pipeline(m.doubleSided) : areaLit ? areaSource.pipeline(many, m.doubleSided, probed) : probed ? probeSource.pipeline(many, m.doubleSided) : own != null ? own.pipeline : many ? (normals != null ? normals.instancedPipeline(m.doubleSided) : opaquePipeline(true, m.doubleSided)) : skin != null ? skin.pipeline(m.doubleSided) : normals != null ? normals.pipeline(m.doubleSided) : m.blended ? blended(m) : opaquePipeline(false, m.doubleSided);
 			if (want != current) {
-				slots = baked ? lightmapSource.slots() : areaLit ? areaSource.slots(many, probed) : probed ? probeSource.slots(many) : own != null ? own.slots : many ? (normals != null ? normals.instancedSlots() : m.blend ? instancedSlots : sunOnly ? sunInstancedSlots : untiled ? untiledInstancedSlots : instancedSlots) : skin != null ? skin.slots() : normals != null ? normals.slots() : m.blend ? plainSlots : sunOnly ? sunSlots : untiled ? untiledSlots : plainSlots;
+				slots = baked ? lightmapSource.slots() : areaLit ? areaSource.slots(many, probed) : probed ? probeSource.slots(many) : own != null ? own.slots : many ? (normals != null ? normals.instancedSlots() : m.blended ? instancedSlots : sunOnly ? sunInstancedSlots : untiled ? untiledInstancedSlots : instancedSlots) : skin != null ? skin.slots() : normals != null ? normals.slots() : m.blended ? plainSlots : sunOnly ? sunSlots : untiled ? untiledSlots : plainSlots;
 				bindPipeline(enc, want, slots);
 				if (areaLit) areaSource.bind(enc, slots);
 				current = want;
@@ -951,13 +951,13 @@ class Renderer {
 				var mesh = levels != null ? levels[level].mesh : s.mesh;
 				for (i in 0...mesh.primitives.length) {
 					var p = mesh.primitives[i];
-					if (p.skinned || p.material.blend != blended) continue;
+					if (p.skinned || p.material.blended != blended) continue;
 					var m = p.material;
 					var normals = mapped(p) ? normalSource : null;
 					var shader = shaderOf(m);
 					var own = shader != null ? custom(shader, m, normals != null ? 4 : 3) : null;
-					var slots = own != null ? own.slots : normals != null ? normals.instancedSlots() : m.blend ? instancedSlots : sunOnly ? sunInstancedSlots : untiled ? untiledInstancedSlots : instancedSlots;
-					bindPipeline(enc, own != null ? own.pipeline : normals != null ? normals.instancedPipeline(m.doubleSided) : m.blend ? blendedInstanced(m) : opaquePipeline(true, m.doubleSided),
+					var slots = own != null ? own.slots : normals != null ? normals.instancedSlots() : m.blended ? instancedSlots : sunOnly ? sunInstancedSlots : untiled ? untiledInstancedSlots : instancedSlots;
+					bindPipeline(enc, own != null ? own.pipeline : normals != null ? normals.instancedPipeline(m.doubleSided) : m.blended ? blendedInstanced(m) : opaquePipeline(true, m.doubleSided),
 						slots);
 					writeObject(Mat4.identity(), WHITE, setLights, k * FrameLights.PER_DRAW);
 					if (slots[1] >= 0) enc.setUniforms(slots[1], objectBytes);
@@ -1049,7 +1049,7 @@ class Renderer {
 		var list = customs.get(s);
 		if (list == null) customs.set(s, list = []);
 		// (blended: a plain draw's, or an instanced set's)
-		var blend = (kind == 0 || kind == 3) && m.blend;
+		var blend = (kind == 0 || kind == 3) && m.blended;
 		var k = kind * 2 + (m.doubleSided ? 1 : 0) + (blend ? 10 * (1 + (cast m.blending : Int)) : 0);
 		var c = list[k];
 		if (c == null) {
@@ -1082,7 +1082,7 @@ class Renderer {
 			// (any scale: the instanced shader turns normals by the matrix's
 			// inverse transpose, as the object's normalMatrix)
 			// (a lightmapped node a draw of its own: its lightmap its)
-			if (instancing && !list[i].primitive.skinned && !list[i].primitive.material.blend && !lightmapped(list[i].node))
+			if (instancing && !list[i].primitive.skinned && !list[i].primitive.material.blended && !lightmapped(list[i].node))
 				while (j < count && list[j].primitive == list[i].primitive && list[j].group == list[i].group && list[j].lightKey == list[i].lightKey
 					&& !lightmapped(list[j].node)
 					&& DrawItem.same(list[j].lights, list[i].lights))

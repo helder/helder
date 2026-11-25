@@ -245,22 +245,19 @@ class ActionForm {
 }
 
 // what a menu shows an action as, from the handler that would take it
-enum abstract ActionState(Int) to Int {
+enum abstract ActionState(String) {
 	// no handler on the path takes it
-	var Unhandled;
-	var Disabled;
-	var Enabled;
+	var Unhandled = "unhandled";
+	var Disabled = "disabled";
+	var Enabled = "enabled";
 	// enabled, a check mark shown (or not: Unchecked)
-	var Checked;
-	var Unchecked;
+	var Checked = "checked";
+	var Unchecked = "unchecked";
 
 	public var enabled(get, never):Bool;
 
 	inline function get_enabled()
-		return this >= 2;
-
-	@:from static inline function ofInt(i:Int):ActionState
-		return cast i;
+		return abstract != Unhandled && abstract != Disabled;
 }
 
 // a node's, a window's or the app's handler of one kind's actions

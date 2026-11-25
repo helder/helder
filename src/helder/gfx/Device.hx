@@ -323,7 +323,7 @@ final class Device {
 	}
 
 	final supported = new Map<Int, Bool>();
-	final features = new Map<Int, Bool>();
+	final features = new Map<String, Bool>();
 	var maxSize = 0;
 	var shares:Null<Null<String>> = null;
 	var shareAsked = false;
@@ -337,7 +337,7 @@ final class Device {
 	// 11_0 and a GL ES 3.1 context do; WebGL2 and GL ES 3.0 do not (their
 	// programs take the render stages' path)
 	@:typescript public function has(feature:Feature):Bool {
-		var k:Int = cast feature, v = features.get(k);
+		var k:String = cast feature, v = features.get(k);
 		if (v == null) {
 			var r = false;
 			ask(_ -> r = impl.has(feature));

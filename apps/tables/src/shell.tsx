@@ -491,7 +491,7 @@ function FieldRow(props: { app: Tables; t: Table; k: number }) {
 			<view padding="2 0 0" shrink={0}>{label()}</view>
 			<field:textarea slot="field-input" variant="tall" spellcheck="false" max-height={240} label={col.name} value={app.fieldText(k) ?? ""}
 				placeholder={placeholder()} readonly={t.readOnly} onInput={(e) => (typed = e.text)} onBlur={() => keep()} onKeyDown={(e) => {
-					if (e.key === Key.ENTER && (e.mods & (Key.MOD_META | Key.MOD_CONTROL)) !== 0) keep();
+					if (e.key === Key.ENTER && (e.mods.includes("meta") || e.mods.includes("control"))) keep();
 				}}/>
 		</view>
 	</Show>;

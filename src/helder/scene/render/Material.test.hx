@@ -93,8 +93,7 @@ function tests() {
 			m.fog = false;
 			approx(sum(shade(m, n, sunny(), sunny(), eye, null, fog)), sum(clear), 1e-6, "a material without it");
 			m.fog = true;
-			m.blend = true;
-			m.blending = Additive;
+			m.blend = Additive;
 			approx(shade(m, n, sunny(), sunny(), eye, null, fog).x, clear.x * (1 - k), 1e-6, "light added fades, not reddened");
 		});
 

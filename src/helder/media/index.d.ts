@@ -5,7 +5,7 @@
 //
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
-import type {Node} from "helder/ui";
+import type {ImageFit, Node} from "helder/ui";
 import type {Read, Signal} from "helder/view";
 
 declare const __haxe: {Player: "helder.media.Player", VideoNode: "helder.media.ui.VideoNode", FileSource: "helder.media.FileSource", MemorySource: "helder.media.MemorySource", Video: "helder.media.ui.MediaTags.Video", __module: "helder.media.TypeScript"};
@@ -81,7 +81,7 @@ export declare class Player {
 export declare class VideoNode extends Node {
 	constructor();
 	readonly player: Player | null;
-	fit: number;
+	fit: ImageFit;
 	// the system's layer where the window has them (else drawn by helder)
 	layer: boolean;
 	autoplay: boolean;

@@ -1,5 +1,6 @@
 package helder.ui.menu;
 
+import helder.os.Mods;
 import helder.ui.Key;
 import helder.ui.Node;
 import helder.ui.platform.PlatformMenuItem;
@@ -269,7 +270,7 @@ class DrawnMenu {
 			case Key.ESCAPE:
 				if (parent != null) close(false, true) else close(false);
 			case Key.TAB: close(true);
-			case k if (k > 32 && k < 127 && e.mods & (Key.MOD_CONTROL | Key.MOD_META | Key.MOD_ALT) == 0):
+			case k if (k > 32 && k < 127 && e.mods & (Mods.CONTROL | Mods.META | Mods.ALT) == 0):
 				// (the next row whose label begins with it)
 				var c = String.fromCharCode(k).toLowerCase(), n = rows.length;
 				for (d in 1...n + 1) {

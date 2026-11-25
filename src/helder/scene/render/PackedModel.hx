@@ -78,7 +78,7 @@ class PackedModel {
 			var f = [for (_ in 0...9) i.readFloat()];
 			var flags = i.readByte();
 			var mat = new Material(name, new Vec4(f[0], f[1], f[2], f[3]), f[4], f[5], new Vec3(f[6], f[7], f[8]), flags & 1 != 0);
-			mat.blend = flags & 2 != 0;
+			mat.blend = flags & 2 != 0 ? Alpha : None;
 			mat.normalScale = i.readFloat();
 			var maps = [for (_ in 0...5) i.readInt32()];
 			function tex(k:Int):Null<helder.gfx.Texture>
@@ -98,8 +98,7 @@ class PackedModel {
 			mat.clearcoatRoughness = x[7];
 			mat.transmission = x[8];
 			if (mat.transmission > 0) {
-				mat.blend = true;
-				mat.blending = Premultiplied;
+				mat.blend = Premultiplied;
 				mat.castShadows = false;
 			}
 			var desc = helder.scene.gltf.GltfSamplers.desc(s[0], s[1], s[2], s[3]);

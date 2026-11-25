@@ -46,7 +46,7 @@ export declare class Encoder {
 	private readonly encoder: never;
 }
 
-export type EventKind = number;
+export type EventKind = "none" | "close" | "resize" | "key-down" | "key-up" | "mouse-move" | "mouse-down" | "mouse-up" | "text-input" | "redraw" | "text-editing" | "scroll" | "scale-change" | "suspend" | "resume" | "pointer-down" | "pointer-move" | "pointer-up" | "pointer-cancel" | "drop" | "text-replace" | "text-select";
 
 // What drives an action (InputMap.bind): a key (helder.os's KeySym: a Latin-1
 // key's unshifted character, 0xFF51..0xFF54 the arrows, 0x20 Space), a
@@ -72,34 +72,40 @@ export declare class Binding {
 // 11_0: cs_5_0) and GL ES 3.1 (Android's floor) have all three; WebGL2 and
 // a GL ES 3.0 context none, the render stages' path (helder.scene's
 // fallbacks) staying theirs.
-export type Feature = number;
+export type Feature = "compute" | "storage-textures" | "indirect";
 
 // the curve from linear light to the display
-export type ToneMap = number;
+export type ToneMap = "agx" | "aces" | "clamp";
 
 // antialiasing in post (PostProcess.antialias), beside a <Scene>'s MSAA:
 // None, or Fxaa (in the composite: its read of the scene along the edges);
 // SMAA and TAA are effects of their own (post.smaa, post.taa: an enum's
 // value set at run time would link every technique's passes)
-export type Antialias = number;
+export type Antialias = "none" | "fxaa";
 
 // how depth of field's circle grows (Dof.focus, Dof.tiltShift)
-export type DofMode = number;
+export type DofMode = "focus" | "tilt-shift";
 
 // a line's width: in pixels on the screen, or in the world's units
-export type LineUnits = number;
+export type LineUnits = "pixels" | "world";
 
 // where a polyline's segments meet
-export type LineJoin = number;
+export type LineJoin = "miter" | "round" | "bevel";
 
 // a line's ends
-export type LineCap = number;
+export type LineCap = "butt" | "round" | "square";
 
 // what kind of light a Light is
-export type LightKind = number;
+export type LightKind = "directional" | "point" | "spot" | "hemisphere" | "rect-area" | "disc-area";
 
 // what a Lightmap holds: the ambient light alone (the lights added), or all of it
-export type LightmapMode = number;
+export type LightmapMode = "indirect" | "all";
+
+// how sprites face the camera (Sprites.mode)
+export type SpriteMode = "spherical" | "axis" | "fixed";
+
+// how a see-through material is blended over what is behind (Material.blend)
+export type MaterialBlend = "none" | "alpha" | "additive" | "premultiplied" | "multiply";
 
 export type AnyShader = unknown;
 
@@ -148,17 +154,17 @@ export type LocalShadowsOptions = { atlas?: number; maxLocal?: number; tileSize?
 export type LodLevel = { mesh: Mesh; until?: number };
 
 // Material.matcap's: also the matcap, a lit sphere's picture (sRGB)
-export type MatcapOptions = { name?: string; color?: Vec4; texture?: number; metallic?: number; roughness?: number; emissive?: Vec3; doubleSided?: boolean; blend?: boolean; blending?: number; alphaCutoff?: number; fog?: boolean; castShadows?: boolean; toneMapped?: boolean; matcap: number };
+export type MatcapOptions = { name?: string; color?: Vec4; texture?: number; metallic?: number; roughness?: number; emissive?: Vec3; doubleSided?: boolean; blend?: MaterialBlend; alphaCutoff?: number; fog?: boolean; castShadows?: boolean; toneMapped?: boolean; matcap: number };
 
 // what a material is made from (Material's factories): each field the
 // material's of the same meaning, its default where not given (color the
 // base colour, linear; texture the base colour's, sRGB)
-export type MaterialOptions = { name?: string; color?: Vec4; texture?: number; metallic?: number; roughness?: number; emissive?: Vec3; doubleSided?: boolean; blend?: boolean; blending?: number; alphaCutoff?: number; fog?: boolean; castShadows?: boolean; toneMapped?: boolean };
+export type MaterialOptions = { name?: string; color?: Vec4; texture?: number; metallic?: number; roughness?: number; emissive?: Vec3; doubleSided?: boolean; blend?: MaterialBlend; alphaCutoff?: number; fog?: boolean; castShadows?: boolean; toneMapped?: boolean };
 
 export type MotionBlurOptions = { strength?: number; samples?: number; max?: number; objects?: boolean };
 
 // Material.phong's: also three's shininess (30 by default)
-export type PhongOptions = { name?: string; color?: Vec4; texture?: number; metallic?: number; roughness?: number; emissive?: Vec3; doubleSided?: boolean; blend?: boolean; blending?: number; alphaCutoff?: number; fog?: boolean; castShadows?: boolean; toneMapped?: boolean; shininess?: number };
+export type PhongOptions = { name?: string; color?: Vec4; texture?: number; metallic?: number; roughness?: number; emissive?: Vec3; doubleSided?: boolean; blend?: MaterialBlend; alphaCutoff?: number; fog?: boolean; castShadows?: boolean; toneMapped?: boolean; shininess?: number };
 
 export type PlaneOptions = { flat?: boolean; tangents?: boolean; width?: number; height?: number; widthSegments?: number; heightSegments?: number };
 
@@ -171,7 +177,7 @@ export type SphereOptions = { flat?: boolean; tangents?: boolean; radius?: numbe
 // what Sprites are made with (each optional): how they face the camera
 // (Spherical), the axis Axis turns about (y), the atlas' columns and rows
 // (1 by 1), the sprites shown (all)
-export type SpritesOptions = { mode?: number; axis?: Vec3; columns?: number; rows?: number; count?: number };
+export type SpritesOptions = { mode?: SpriteMode; axis?: Vec3; columns?: number; rows?: number; count?: number };
 
 export type SsaoOptions = { radius?: number; intensity?: number; samples?: number; slices?: number; halfRes?: boolean };
 
@@ -193,7 +199,7 @@ export type Text3DOptions = { size?: number; depth?: number; bevelSize?: number;
 export type TextGeometryOptions = { size?: number; depth?: number; bevelSize?: number; bevelSegments?: number; lineHeight?: number; letterSpacing?: number; align?: number; tolerance?: number; flat?: boolean; tangents?: boolean };
 
 // Material.toon's: also its bands and its shade
-export type ToonOptions = { name?: string; color?: Vec4; texture?: number; metallic?: number; roughness?: number; emissive?: Vec3; doubleSided?: boolean; blend?: boolean; blending?: number; alphaCutoff?: number; fog?: boolean; castShadows?: boolean; toneMapped?: boolean; steps?: number; shade?: Vec3 };
+export type ToonOptions = { name?: string; color?: Vec4; texture?: number; metallic?: number; roughness?: number; emissive?: Vec3; doubleSided?: boolean; blend?: MaterialBlend; alphaCutoff?: number; fog?: boolean; castShadows?: boolean; toneMapped?: boolean; steps?: number; shade?: Vec3 };
 
 export type TorusKnotOptions = { flat?: boolean; tangents?: boolean; radius?: number; tube?: number; tubularSegments?: number; radialSegments?: number; p?: number; q?: number };
 
@@ -672,12 +678,11 @@ export declare class Material {
 	// repeating; glTF's samplers otherwise)
 	sampler: number | null;
 	// see-through (glTF's alphaMode BLEND): blended over what is behind,
-	// drawn after the opaque surfaces, farthest first, without writing depth
-	blend: boolean;
-	// how, when blend is on: by the base colour's alpha (Alpha), added to
-	// what is behind (Additive: glows, holograms, beams; faded by its
-	// alpha), or premultiplied
-	blending: number;
+	// drawn after the opaque surfaces, farthest first, without writing
+	// depth; by the base colour's alpha (Alpha), added to what is behind
+	// (Additive: glows, holograms, beams; faded by its alpha), premultiplied
+	// or multiplied; None (the default): opaque
+	blend: MaterialBlend;
 	// whether it casts a shadow (Shadows: its primitives drawn into the map,
 	// their meshes inside the map's bounds); off for glows and glass
 	castShadows: boolean;
@@ -1183,12 +1188,12 @@ export declare class InstancedMesh {
 // Its material is any (Material.unlit with Additive: halos; with a texture
 // and alphaCutoff: leaves; a lit one: its normal faces the camera, so it is
 // lit as a card). See-through ones are drawn after the opaque surfaces
-// (Material.blend), Alpha's sorted far to near among themselves when the
+// (Material.blended), Alpha's sorted far to near among themselves when the
 // camera moves. An atlas is columns by rows cells of the material's
 // texture, left to right then top to bottom (the material's uvScale set to a
 // cell's share; a sprite's cell moves its uvs there: PbrShader.instanceUv).
 //
-//   var halos = new Sprites(device, Material.unlit({color: gold, texture: glow, blend: true, blending: Additive}), 64);
+//   var halos = new Sprites(device, Material.unlit({color: gold, texture: glow, blend: Additive}), 64);
 //   Sprites.attach(world.node("halos"), halos);
 //   halos.count = lamps.length;
 //   for (i in 0...halos.count) halos.set(i, lamps[i].x, lamps[i].y, lamps[i].z, 0.8, 0.8);
@@ -1206,7 +1211,7 @@ export declare class Sprites extends InstancedMesh {
 	// what they are drawn with (the quad's)
 	readonly material: Material;
 	// how they face the camera
-	mode: number;
+	mode: SpriteMode;
 	// the axis Axis turns about (the world's; unit)
 	axis: Vec3;
 	// the atlas' cells (1 by 1: the whole image)
@@ -3025,7 +3030,7 @@ export declare class Event {
 	// Scroll: pixels toward the right and the bottom
 	deltaY: number;
 	// keys, mouse buttons and scrolls: the modifiers held (Mods: Shift, Control, Alt, Meta: the Windows or Command key)
-	mods: number;
+	mods: Array<import("helder/os").Mod>;
 }
 
 // What helder/scene's Node (src/helder/scene/index.ts, a class of the

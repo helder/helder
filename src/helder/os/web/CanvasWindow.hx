@@ -81,7 +81,7 @@ class CanvasWindow {
 	}
 
 	function setCursor(c:Cursor)
-		Dom.set_cursor(canvas, c);
+		Dom.set_cursor(canvas, c.index());
 
 	function setTitle(t:String)
 		Arena.scoped(a -> Dom.set_title(a.cstring(t)));
@@ -132,7 +132,7 @@ class CanvasWindow {
 				continue;
 			}
 			e.window = w.owner;
-			e.kind = cast ev[1];
+			e.kind = EventKind.ALL[ev[1]];
 			e.key = ev[2];
 			e.x = ev[3];
 			e.y = ev[4];
@@ -170,13 +170,14 @@ class CanvasWindow {
 	// sample: kept for its next event)
 	static function pointer(w:CanvasWindow, onEvent:Event->Void) {
 		var key = ev[2], x = ev[3] / 256, y = ev[4] / 256, bits = ev[7];
-		var type:PointerType = cast bits & 15, pressure = ev[8] / 65536, time = ev[9] / 16;
+		var t = bits & 15, pressure = ev[8] / 65536, time = ev[9] / 16;
+		var type:PointerType = t == 1 ? Touch : t == 2 ? Pen : Mouse;
 		var p = Pointers.find(key, type);
 		if (ev[1] == 101) {
 			if (p != null) @:privateAccess p.sample(x, y, time);
 			return;
 		}
-		var kind:EventKind = cast ev[1];
+		var kind = EventKind.ALL[ev[1]];
 		if (kind == PointerDown) p = Pointers.press(w.owner, key, type, x, y, pressure, time);
 		if (p == null) return;
 		if (kind == PointerMove) @:privateAccess p.moveTo(x, y, pressure, time);

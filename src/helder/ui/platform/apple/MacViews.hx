@@ -1,5 +1,6 @@
 package helder.ui.platform.apple;
 
+import helder.os.Mods;
 import helder.gfx.Color;
 import helder.os.apple.objc.*;
 import helder.ui.*;
@@ -323,8 +324,8 @@ class MacViews implements helder.ui.platform.PlatformViews {
 				Msg.vBool(item, ObjC.sel("setEnabled:"), it.disabled != true);
 				// (NSEventModifierFlagShift 1 << 17, Control 1 << 18, Option 1 << 19, Command 1 << 20)
 				if (equivalent != "")
-					Msg.vInt(item, ObjC.sel("setKeyEquivalentModifierMask:"), (k.mods & Key.MOD_META != 0 ? 1 << 20 : 0)
-						| (k.mods & Key.MOD_SHIFT != 0 ? 1 << 17 : 0) | (k.mods & Key.MOD_CONTROL != 0 ? 1 << 18 : 0) | (k.mods & Key.MOD_ALT != 0 ? 1 << 19 : 0));
+					Msg.vInt(item, ObjC.sel("setKeyEquivalentModifierMask:"), (k.mods & Mods.META != 0 ? 1 << 20 : 0)
+						| (k.mods & Mods.SHIFT != 0 ? 1 << 17 : 0) | (k.mods & Mods.CONTROL != 0 ? 1 << 18 : 0) | (k.mods & Mods.ALT != 0 ? 1 << 19 : 0));
 				if (it.checked == true) Msg.vInt(item, ObjC.sel("setState:"), 1);
 				if (it.items != null) {
 					var sub = nsMenu(it.items, action, it.label);
@@ -414,7 +415,7 @@ class MacViews implements helder.ui.platform.PlatformViews {
 		var key = 0, mods = 0;
 		if (sel == ObjC.sel("insertTab:")) key = Key.TAB else if (sel == ObjC.sel("insertBacktab:")) {
 			key = Key.TAB;
-			mods = Key.MOD_SHIFT;
+			mods = Mods.SHIFT;
 		} else if (sel == ObjC.sel("cancelOperation:")) key = Key.ESCAPE;
 		if (key == 0) return 0;
 		@:privateAccess e.views.push(e, 4, key, mods);
@@ -454,7 +455,7 @@ class MacViews implements helder.ui.platform.PlatformViews {
 		var key = 0, mods = 0;
 		if (sel == ObjC.sel("insertTab:")) key = Key.TAB else if (sel == ObjC.sel("insertBacktab:")) {
 			key = Key.TAB;
-			mods = Key.MOD_SHIFT;
+			mods = Mods.SHIFT;
 		} else if (sel == ObjC.sel("cancelOperation:")) key = Key.ESCAPE else if (sel == ObjC.sel("insertNewline:")) key = Key.ENTER else
 			if (sel == ObjC.sel("moveUp:")) key = Key.UP else if (sel == ObjC.sel("moveDown:")) key = Key.DOWN;
 		if (key == 0) return 0;

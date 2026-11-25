@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Mods;
 import helder.test.Test;
 
 // Text selection headless, on helder.text's own layout (DrawText): in a
@@ -121,7 +122,7 @@ function tests() {
 			equals(s.rangeIn(d.texts[0], 11), {start: 6, end: 11});
 			equals(s.rangeIn(d.texts[1], 7), {start: 0, end: 3});
 			equals(s.rangeIn(d.texts[2], 3), null);
-			ui.keyDown("c".code, Key.MOD_CONTROL);
+			ui.keyDown("c".code, Mods.CONTROL);
 			var copied = "";
 			ui.clipboard.read(t -> copied = t);
 			equals(copied, "world\n\nfoo");
@@ -145,7 +146,7 @@ function tests() {
 			var d = doc(ui, ["hello world", "foo bar baz"]);
 			click(ui, at(d.texts[0], 2, 0));
 			time += 1;
-			click(ui, at(d.texts[1], 5, 0), Key.MOD_SHIFT);
+			click(ui, at(d.texts[1], 5, 0), Mods.SHIFT);
 			equals(ui.selectedText(), "llo world\n\nfoo b");
 			time += 1;
 			var w = at(d.texts[1], 5);
@@ -170,16 +171,16 @@ function tests() {
 			field.style.set({width: 40, height: 20});
 			ui.root.append(field);
 			ui.update();
-			ui.keyDown("a".code, Key.MOD_CONTROL);
+			ui.keyDown("a".code, Mods.CONTROL);
 			equals(ui.textSelection, null);
 			click(ui, at(d.texts[0], 1));
-			ui.keyDown("a".code, Key.MOD_CONTROL);
+			ui.keyDown("a".code, Mods.CONTROL);
 			equals(ui.selectedText(), "one\n\ntwo");
 			field.focus();
-			ui.keyDown("a".code, Key.MOD_CONTROL);
+			ui.keyDown("a".code, Mods.CONTROL);
 			equals(ui.selectedText(), "one\n\ntwo");
 			ui.selectText(null);
-			ui.keyDown("a".code, Key.MOD_CONTROL);
+			ui.keyDown("a".code, Mods.CONTROL);
 			equals(ui.textSelection, null);
 		});
 		test("a press on a control in it, a button's label or a field, selects nothing", () -> {
@@ -202,7 +203,7 @@ function tests() {
 			var b = field.windowBounds();
 			drag(ui, {x: b.x + 2, y: b.y + b.height / 2}, {x: b.x + 30, y: b.y + b.height / 2});
 			equals(ui.textSelection, null);
-			ui.keyDown("a".code, Key.MOD_CONTROL);
+			ui.keyDown("a".code, Mods.CONTROL);
 			equals(ui.selectedText(), "");
 			assert(field.selectionEnd > field.selectionStart);
 		});
@@ -210,17 +211,17 @@ function tests() {
 			var ui = window();
 			var d = doc(ui, ["ab", "ab"]);
 			click(ui, at(d.texts[0], 1, 0));
-			ui.keyDown(Key.RIGHT, Key.MOD_SHIFT);
+			ui.keyDown(Key.RIGHT, Mods.SHIFT);
 			equals(ui.selectedText(), "b");
-			ui.keyDown(Key.RIGHT, Key.MOD_SHIFT);
-			ui.keyDown(Key.RIGHT, Key.MOD_SHIFT);
+			ui.keyDown(Key.RIGHT, Mods.SHIFT);
+			ui.keyDown(Key.RIGHT, Mods.SHIFT);
 			equals(ui.selectedText(), "b\n\na");
-			ui.keyDown(Key.LEFT, Key.MOD_SHIFT);
-			ui.keyDown(Key.LEFT, Key.MOD_SHIFT);
+			ui.keyDown(Key.LEFT, Mods.SHIFT);
+			ui.keyDown(Key.LEFT, Mods.SHIFT);
 			equals(ui.selectedText(), "b");
-			ui.keyDown(Key.DOWN, Key.MOD_SHIFT);
+			ui.keyDown(Key.DOWN, Mods.SHIFT);
 			equals(ui.selectedText(), "b\n\nab");
-			ui.keyDown(Key.UP, Key.MOD_SHIFT);
+			ui.keyDown(Key.UP, Mods.SHIFT);
 			equals(ui.selectedText(), "b");
 		});
 		test("a drag past a scroller's edge scrolls it, the selection with it", () -> {

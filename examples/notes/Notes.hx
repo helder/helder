@@ -2,6 +2,7 @@
 // summary: A notes app recreated whole: folders, a list that moves as notes are pinned, added and deleted, an editor in Inter, a command launcher (Ctrl/Cmd+K) that fuzzy-finds commands and notes, the keyboard throughout, a dark theme morphing through OKLab
 // tags: ui, view, motion, app, keyboard, showcase
 // demo: canvas 1280x720
+import helder.os.Mods;
 import helder.ui.Key;
 import helder.ui.UiWindow;
 import helder.ui.UiWindow.Surface;
@@ -290,7 +291,7 @@ class Notes implements Markup {
 	}
 
 	static function key(e:helder.ui.Event) {
-		var mod = e.mods & (Key.MOD_CONTROL | Key.MOD_META) != 0;
+		var mod = e.mods & (Mods.CONTROL | Mods.META) != 0;
 		if (mod) {
 			switch e.key {
 				case 0x6b:
@@ -307,7 +308,7 @@ class Notes implements Markup {
 			e.preventDefault();
 			return;
 		}
-		if (e.mods & Key.MOD_ALT != 0 && (e.key == Key.UP || e.key == Key.DOWN)) {
+		if (e.mods & Mods.ALT != 0 && (e.key == Key.UP || e.key == Key.DOWN)) {
 			step(e.key == Key.UP ? -1 : 1);
 			e.preventDefault();
 		}

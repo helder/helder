@@ -491,7 +491,7 @@ class WinWindow {
 	// no open or closed hand: IDC_HAND and IDC_SIZEALL)
 	function setCursor(c:Cursor)
 		OsThread.run(() -> {
-			cursor = User32.LoadCursorW(Ptr.nil(), Ptr.ofI64([32512, 32649, 32513, 32515, 32646, 32648, 32644, 32645, 32649, 32646][(c : Int)]));
+			cursor = User32.LoadCursorW(Ptr.nil(), Ptr.ofI64([32512, 32649, 32513, 32515, 32646, 32648, 32644, 32645, 32649, 32646][c.index()]));
 			User32.SetCursor(cursor);
 		});
 

@@ -1,5 +1,6 @@
 package helder.ui.code;
 
+import helder.os.Mods;
 import helder.gfx.Color;
 import helder.syntax.Transaction;
 import helder.test.Test;
@@ -54,20 +55,20 @@ function tests() {
 			equals(editor.text, "set f");
 		});
 				test("typed text and keys through the keymap: moves, secondary-D, undo", () -> {
-			key(Key.END, Key.MOD_CONTROL);
+			key(Key.END, Mods.CONTROL);
 			equals(editor.model.primary.head, editor.model.length);
-			key(Key.HOME, Key.MOD_CONTROL);
+			key(Key.HOME, Mods.CONTROL);
 			key("x".code, 0, "x");
 			equals(editor.text.substr(0, 7), "xconst ");
-			key(Key.RIGHT, Key.MOD_CONTROL);
-			key(Key.RIGHT, Key.MOD_CONTROL);
-			key("d".code, Key.MOD_CONTROL);
-			key("d".code, Key.MOD_CONTROL);
-			key("d".code, Key.MOD_CONTROL);
+			key(Key.RIGHT, Mods.CONTROL);
+			key(Key.RIGHT, Mods.CONTROL);
+			key("d".code, Mods.CONTROL);
+			key("d".code, Mods.CONTROL);
+			key("d".code, Mods.CONTROL);
 			equals(editor.model.sels.length, 2);
 			key("z".code, 0, "z");
 			equals(editor.text, "xconst z = 1;\nconst b = z + 1;\n\tlet c = <view/>;\n");
-			key("z".code, Key.MOD_CONTROL);
+			key("z".code, Mods.CONTROL);
 			equals(editor.text, "xconst a = 1;\nconst b = a + 1;\n\tlet c = <view/>;\n");
 			key(Key.ESCAPE);
 			equals(editor.model.sels.length, 1);
@@ -78,9 +79,9 @@ function tests() {
 			key(Key.END);
 			key(Key.ENTER);
 			equals(editor.model.line(3), "\t");
-			key("/".code, Key.MOD_CONTROL);
+			key("/".code, Mods.CONTROL);
 			key(Key.UP);
-			key("/".code, Key.MOD_CONTROL);
+			key("/".code, Mods.CONTROL);
 			equals(editor.model.line(2), "\t// let c = <view/>;");
 		});
 		test("an input method: the caret's line as its context, its edit there", () -> {
@@ -108,7 +109,7 @@ function tests() {
 			ui.pointerUp(x0 + cw * 6 + 1, v.absY + 30, 1);
 			equals(editor.model.primary.toString(), '${editor.model.lineStart(1) + 6}-${editor.model.lineStart(1) + 7}');
 			Clock.tick(Clock.now + 1);
-			@:privateAccess ui.mods = Key.MOD_ALT;
+			@:privateAccess ui.mods = Mods.ALT;
 			ui.pointerDown(x0 + cw * 2, v.absY + 10, 1);
 			ui.pointerUp(x0 + cw * 2, v.absY + 10, 1);
 			@:privateAccess ui.mods = 0;
@@ -124,7 +125,7 @@ function tests() {
 			equals(v.scrollTop, 100.0);
 		});
 		test("find and replace, go to line", () -> {
-			key("f".code, Key.MOD_CONTROL);
+			key("f".code, Mods.CONTROL);
 			assert(editor.findOpen);
 			equals(editor.search("const"), 2);
 			equals(editor.model.primary.toString(), "0-5");
@@ -135,7 +136,7 @@ function tests() {
 			equals(editor.model.line(0), "var a = 1;");
 			key(Key.ESCAPE);
 			assert(!editor.findOpen);
-			key("g".code, Key.MOD_CONTROL);
+			key("g".code, Mods.CONTROL);
 			assert(editor.gotoOpen);
 			editor.goToLine(3, 2);
 			equals(editor.model.primary.head, editor.model.lineStart(2) + 1);
@@ -144,7 +145,7 @@ function tests() {
 			var other = new ScreenContext("other");
 			other.run(() -> new CodeView());
 			assert(other.keymap.bindings().length > 0);
-			key(Key.END, Key.MOD_CONTROL);
+			key(Key.END, Mods.CONTROL);
 			equals(editor.model.primary.head, editor.model.length);
 		});
 		test("onChange: a Transaction's changes; decorations and diagnostics", () -> {

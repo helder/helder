@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Mods;
 import helder.ui.access.Role;
 import helder.ui.access.Semantics;
 
@@ -277,7 +278,7 @@ class VirtualScroll extends Node {
 
 	// (the keyboard on a row)
 	function key(e:Event) {
-		if (e.defaultPrevented || e.mods & (Key.MOD_CONTROL | Key.MOD_META | Key.MOD_ALT) != 0) return;
+		if (e.defaultPrevented || e.mods & (Mods.CONTROL | Mods.META | Mods.ALT) != 0) return;
 		var r = rowOf(e.target);
 		if (r == null) return;
 		var i = r.index, to = -1;

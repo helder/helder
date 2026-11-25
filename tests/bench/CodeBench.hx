@@ -1,3 +1,4 @@
+import helder.os.Mods;
 import helder.gfx.Color;
 import haxe.Timer;
 import helder.ui.*;
@@ -39,7 +40,7 @@ class CodeBench {
 		run("keystroke (a character typed)", 300, () -> key("x".code, "x"));
 		// (its parts: the Ui's key events, the edit alone, the frame after it)
 		run("  the Ui's key down and up (no edit)", 300, () -> {
-			ui.keyDown(Key.SHIFT, Key.MOD_SHIFT);
+			ui.keyDown(Key.SHIFT, Mods.SHIFT);
 			ui.keyUp(Key.SHIFT, 0);
 		});
 		run("  the edit alone (CodeModel.type)", 300, () -> editor.model.type("y"));

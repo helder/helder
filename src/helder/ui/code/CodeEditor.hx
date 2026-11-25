@@ -1,5 +1,6 @@
 package helder.ui.code;
 
+import helder.os.Mods;
 import helder.gfx.Color;
 import helder.syntax.Transaction;
 import helder.ui.code.CodeAction;
@@ -107,7 +108,7 @@ class CodeEditor extends Node {
 			refreshMatches();
 			selectMatch(model.primary.from, 1);
 		};
-		findField.onSubmit = _ -> findNext(ui != null && ui.mods & Key.MOD_SHIFT != 0 ? -1 : 1);
+		findField.onSubmit = _ -> findNext(ui != null && ui.mods & Mods.SHIFT != 0 ? -1 : 1);
 		replaceField.onSubmit = _ -> replaceOne();
 		var top = row("find-row", [findField, count]);
 		var names = [["Aa", "Match case"], ["W", "Whole word"], [".*", "Regular expression"]];
@@ -165,8 +166,8 @@ class CodeEditor extends Node {
 
 	// (a key while suggestions show: theirs, or they close)
 	function completionKey(e:Event):Bool {
-		var ctrl = e.mods & (Key.MOD_CONTROL | Key.MOD_META) != 0;
-		if (e.key == Key.SPACE && e.mods & Key.MOD_CONTROL != 0 && complete != null) {
+		var ctrl = e.mods & (Mods.CONTROL | Mods.META) != 0;
+		if (e.key == Key.SPACE && e.mods & Mods.CONTROL != 0 && complete != null) {
 			suggest(true);
 			return true;
 		}

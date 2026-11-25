@@ -1,5 +1,6 @@
 package studio;
 
+import helder.os.Mods;
 import helder.syntax.Document;
 import helder.syntax.Edits;
 import helder.ui.*;
@@ -30,7 +31,7 @@ class Layers implements Markup {
 				<For each={rows(studio)} by={(r:Row) -> r.key}>{(r:Read<Row>) ->
 					<view tag={"layer-" + r().key} slot="nav-item" data-layer="true" role="button" label={r().label} padding={'0 8 0 ${8 + r().depth * 12}'}
 						data-on={r().on ? "true" : "false"} transform={offset(moving, r().key)} instant
-						onClick={e -> select(studio, r(), e.mods & Key.MOD_SHIFT != 0)}
+						onClick={e -> select(studio, r(), e.mods & Mods.SHIFT != 0)}
 						onPan={g -> {
 							var row = r();
 							if (g.state == Ended || g.state == Cancelled) {

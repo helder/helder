@@ -6,7 +6,7 @@
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 import type {Image} from "helder/asset";
-import type {Rect} from "helder/os";
+import type {PointerType, Rect} from "helder/os";
 import type {Read, RootView, Signal, View} from "helder/view";
 
 declare const __haxe: {UiWindow: "helder.ui.UiWindow", Event: "helder.ui.Event", Key: "helder.ui.Key", VirtualScroll: "helder.ui.VirtualScroll", Selection: "helder.ui.Selection", GridScroll: "helder.ui.GridScroll", Clock: "helder.ui.Clock", WebViewEvent: "helder.ui.platform.WebViewEvent", WebContent: "helder.ui.platform.WebContent", WebResponse: "helder.ui.platform.WebResponse", Node: "helder.ui.Node", TextNode: "helder.ui.TextNode", UiFlow: "helder.ui.view.UiFlow", SafeArea: "helder.ui.SafeArea", Router: "helder.ui.nav.Router", Controls: "helder.ui.widgets.Controls", DataGrid: "helder.ui.widgets.DataGrid", EditableText: "helder.ui.widgets.EditableText", GridColumn: "helder.ui.widgets.GridColumn", GridTheme: "helder.ui.widgets.GridTheme", Icons: "helder.ui.widgets.Icons", Pager: "helder.ui.widgets.Pager", TextArea: "helder.ui.widgets.TextArea", TextField: "helder.ui.widgets.TextField", Theme: "helder.ui.widgets.Theme", WindowButtons: "helder.ui.widgets.WindowButtons", Eased: "helder.ui.controls.Eased", Look: "helder.ui.controls.Look", Press: "helder.ui.controls.Press", Standard: "helder.ui.controls.Standard", Toggle: "helder.ui.controls.Toggle", CodeActions: "helder.ui.code.CodeAction.CodeActions", CodeCompletion: "helder.ui.code.CodeCompletion", CodeEditor: "helder.ui.code.CodeEditor", CodeLanguage: "helder.ui.code.CodeLanguage", SyntaxLanguage: "helder.ui.code.CodeLanguage.SyntaxLanguage", CodeLanguages: "helder.ui.code.CodeLanguage.CodeLanguages", Sel: "helder.ui.code.CodeModel.Sel", Decoration: "helder.ui.code.CodeModel.Decoration", CodeDiagnostic: "helder.ui.code.CodeModel.CodeDiagnostic", CodeModel: "helder.ui.code.CodeModel", CodeTheme: "helder.ui.code.CodeTheme", CodeView: "helder.ui.code.CodeView", Rope: "helder.ui.code.Rope", SqlLanguage: "helder.ui.code.SqlLanguage", tone: "helder.ui.controls.Look.tone", Surface: "helder.ui.UiWindow.Surface", VirtualList: "helder.ui.view.UiFlow.VirtualList", VirtualGrid: "helder.ui.view.UiFlow.VirtualGrid", Stack: "helder.ui.nav.Screens.Stack", NavScreen: "helder.ui.nav.Bar.NavScreen", NavButton: "helder.ui.nav.Bar.NavButton", Sheet: "helder.ui.nav.Sheets.Sheet", pager: "helder.ui.widgets.Pager.create", windowControlsSide: "helder.ui.widgets.WindowButtons.side", Popover: "helder.ui.view.UiFlow.Popover", MenuBarView: "helder.ui.view.UiFlow.MenuBarView", Slider: "helder.ui.widgets.Controls.Slider", Segmented: "helder.ui.widgets.Controls.Segmented", Tip: "helder.ui.widgets.Controls.Tip", Pages: "helder.ui.widgets.Pager.Pages", WindowControls: "helder.ui.widgets.WindowButtons.WindowControls", Button: "helder.ui.controls.Standard.Button", PathBar: "helder.ui.controls.Standard.PathBar", Checkbox: "helder.ui.controls.Standard.Checkbox", Switch: "helder.ui.controls.Standard.Switch", Themed: "helder.ui.controls.Standard.Themed", __module: "helder.ui.TypeScript"};
@@ -26,6 +26,20 @@ declare const __haxe: {UiWindow: "helder.ui.UiWindow", Event: "helder.ui.Event",
 // (a sheet's colours of those names, else the browser's, light or dark).
 // A shader's colour is a Vec4 (toVec4).
 export type Color = number | string;
+
+export type EventType = "pointer-down" | "pointer-up" | "pointer-move" | "pointer-enter" | "pointer-leave" | "click" | "wheel" | "key-down" | "key-up" | "text-input" | "composition" | "focus" | "blur" | "drag-start" | "drag-over" | "drag-leave" | "drop" | "drag-end" | "focus-in" | "focus-out" | "input" | "pointer-cancel" | "lost-pointer-capture" | "resize" | "submit";
+
+export type TextAlign = "left" | "center" | "right" | "justify";
+
+// How an ImageNode's image fills its content box (CSS's object-fit)
+export type ImageFit = "fill" | "contain" | "cover" | "none";
+
+// whether the pointer finds a node (CSS's pointer-events): None lets it
+// through to what is under it; inherited, so a descendant can be Auto again
+export type PointerEvents = "auto" | "none";
+
+// what a menu shows an action as, from the handler that would take it
+export type ActionState = "unhandled" | "disabled" | "enabled" | "checked" | "unchecked";
 
 // An SVG document for icons and drawings: parsed once (Svg.parse), drawn
 // into an Image at any size (the Image's drawing: this, for a writer's vectors; render: the viewBox fitted as
@@ -208,8 +222,8 @@ export declare function Surface(props: SurfaceProps): View;
 // Blur, which each node gets for itself.
 export declare class Event {
 	// an event of type at target, the pointer at x, y in the window's coordinates
-	static of(type: number, target: Node, x: number, y: number): Event;
-	readonly type: number;
+	static of(type: EventType, target: Node, x: number, y: number): Event;
+	readonly type: EventType;
 	readonly target: Node;
 	// the node whose handler runs
 	readonly current: Node;
@@ -222,12 +236,12 @@ export declare class Event {
 	// finger or a pen: Pointer.id), its type, its pressure (0 to 1), and
 	// whether it is the primary one (the mouse, the first finger down)
 	pointerId: number;
-	pointerType: number;
+	pointerType: PointerType;
 	pressure: number;
 	isPrimary: boolean;
-	// KeyDown, KeyUp: the key (Key) and the modifiers (Key.MOD_*)
+	// KeyDown, KeyUp: the key (Key) and the modifiers (helder.os.Mods)
 	key: number;
-	mods: number;
+	mods: Array<import("helder/os").Mod>;
 	// TextInput: the characters typed (an IME's composed text, too); Input: the field's text;
 	// Composition: an input method's text not committed yet (empty: none)
 	text: string;
@@ -280,11 +294,6 @@ export declare class Key {
 	static readonly ALT: number;
 	static readonly META: number;
 	static readonly SPACE: number;
-	// Event.mods bits
-	static readonly MOD_SHIFT: number;
-	static readonly MOD_CONTROL: number;
-	static readonly MOD_ALT: number;
-	static readonly MOD_META: number;
 }
 
 // A scroller over a long list's rows, only those in view made
@@ -613,7 +622,7 @@ export declare class Node {
 	// handles e's actions dispatched through it (Ui.dispatchAction: from the focus
 	// up): handle true takes one, false lets it bubble; state what a menu
 	// shows it as (default: Enabled). Returns what removes it.
-	on<T>(type: any, handle: (arg0: T) => boolean, state?: (arg0: T) => number): (() => void);
+	on<T>(type: any, handle: (arg0: T) => boolean, state?: (arg0: T) => ActionState): (() => void);
 	// it or a descendant has the focus (CSS's :focus-within)
 	focusWithin(): boolean;
 	// its gesture recognisers (helder.ui.gesture: Tap, Pan, Scale), in the
@@ -639,7 +648,7 @@ export declare class Node {
 	textWrap(): number;
 	// how its text's letters are shown: its textTransform, else its nearest ancestor's
 	textTransform(): number;
-	textAlign(): number;
+	textAlign(): TextAlign;
 	// whether its inline direction is right to left (Style.dir, inherited)
 	// its text's user-select as set on it or an ancestor (Auto: none set)
 	userSelect(): number;
@@ -1077,11 +1086,11 @@ export declare class EditableText extends TextNode {
 // A data grid's column: its title, a detail drawn quieter beside it (a
 // type), its width (pixels; the user resizes it) and how its cells align.
 export declare class GridColumn {
-	constructor(title: string, width?: number, align?: number, detail?: string);
+	constructor(title: string, width?: number, align?: TextAlign, detail?: string);
 	readonly title: string;
 	readonly detail: string;
 	width: number;
-	readonly align: number;
+	readonly align: TextAlign;
 }
 
 // A data grid's colours, by theme token: a StyleSheet's light and dark

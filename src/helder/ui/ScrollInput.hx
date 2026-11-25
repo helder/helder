@@ -4,7 +4,7 @@ package helder.ui;
 // window's points: a wheel's or a trackpad's scroll (its phases, its time:
 // ms on the system's clock), a finger's down, move, up or cancel (id, its
 // time), the mouse's button (key: 1 the left) and moves, a key (key, mods:
-// Key.MOD_*). UiEvents.route fills one from a window's event.
+// Mods). UiEvents.route fills one from a window's event.
 @:allow(helder.ui)
 class ScrollInput {
 	public var kind:ScrollInputKind = Wheel;

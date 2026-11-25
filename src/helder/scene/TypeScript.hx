@@ -39,6 +39,7 @@ package helder.scene;
 	helder.scene.input.Bindings, helder.scene.FixedStep, helder.gfx.Device, helder.os.Surface, helder.os.Window, helder.os.App, helder.os.Event, helder.scene.Script)
 @:typescript.types(helder.scene.render.Mesh, helder.gfx.Encoder, helder.os.Event.EventKind, helder.scene.input.Binding, helder.gfx.Feature,
 	helder.scene.render.PostProcess.ToneMap, helder.scene.render.PostProcess.Antialias, helder.scene.render.Dof.DofMode, helder.scene.render.Lines.LineUnits,
-	helder.scene.render.Lines.LineJoin, helder.scene.render.Lines.LineCap, helder.scene.render.Light.LightKind, helder.scene.render.Lightmap.LightmapMode)
+	helder.scene.render.Lines.LineJoin, helder.scene.render.Lines.LineCap, helder.scene.render.Light.LightKind, helder.scene.render.Lightmap.LightmapMode,
+	helder.scene.render.Sprites.SpriteMode, helder.scene.render.Material.MaterialBlend)
 @:build(helder.typescript.api.Manifest.build())
 class TypeScript {}

@@ -194,7 +194,7 @@ class ViewBuffers implements RenderFeature implements RenderFeature.ViewSource {
 				var set = r.sets[k];
 				for (p in set.mesh.primitives) {
 					var m = p.material;
-					if (p.skinned || m.blend) continue;
+					if (p.skinned || m.blended) continue;
 					var own = m.shader != null && m.shader.prepassInstanced != null ? custom(m, 1) : null;
 					enc.setPipeline(own != null ? own.pipeline : pipelines[2 + (m.doubleSided ? 1 : 0)]);
 					sl = own != null ? own.slots : slots[1];
@@ -215,7 +215,7 @@ class ViewBuffers implements RenderFeature implements RenderFeature.ViewSource {
 				var start = r.batchStart[b], n = r.batchSize[b];
 				var d = r.list[start], p = d.primitive, m = p.material;
 				// (the see-through draws, last in the list: none of the view's)
-				if (m.blend) break;
+				if (m.blended) break;
 				var many = n > 1, skin = p.skinned ? r.skinSource : null;
 				if (p.skinned && skin == null) continue;
 				var own = !p.skinned && m.shader != null && (many ? m.shader.prepassInstanced : m.shader.prepass) != null ? custom(m, many ? 1 : 0) : null;

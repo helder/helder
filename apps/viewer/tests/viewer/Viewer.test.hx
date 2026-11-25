@@ -1,5 +1,6 @@
 package viewer;
 
+import helder.os.Mods;
 import helder.story.StoryText;
 import helder.test.Test;
 import helder.ui.Key;
@@ -39,10 +40,10 @@ function tests() {
 			equals(ContentView.count(x), "7 items");
 			assert(ui.root.find("grid") != null, "the grid");
 			// (Mod+2 the list, Mod+1 the grid again)
-			ui.keyDown("2".code, Key.MOD_CONTROL);
+			ui.keyDown("2".code, Mods.CONTROL);
 			ui.update();
 			assert(ui.root.find("rows") != null && ui.root.find("grid") == null, "the list");
-			ui.keyDown("1".code, Key.MOD_CONTROL);
+			ui.keyDown("1".code, Mods.CONTROL);
 			ui.update();
 			assert(ui.root.find("grid") != null, "the grid again");
 			// (Enter on the first: the viewer, its list the folder's images in the browser's order)
@@ -78,7 +79,7 @@ function tests() {
 			equals(viewer.camera.fitted, true);
 			equals(viewer.camera.percent(), 57);
 			// (the zoom: + (Shift and =), 1, the wheel about the cursor, 0; the viewer's keymap)
-			ui.keyDown("=".code, Key.MOD_SHIFT);
+			ui.keyDown("=".code, Mods.SHIFT);
 			equals(viewer.camera.percent(), 67);
 			ui.keyDown("1".code, 0);
 			equals(viewer.camera.percent(), 100);
@@ -124,15 +125,15 @@ function tests() {
 			equals([viewer.shown.width, viewer.shown.pixelsWidth], [1242, 1242]);
 			viewer.camera.setView(800, 600);
 			// (Mod+Up: the folder again)
-			ui.keyDown(Key.UP, Key.MOD_CONTROL);
+			ui.keyDown(Key.UP, Mods.CONTROL);
 			helder.view.graph.Graph.flush();
 			equals(x.full.value, false);
 			equals(x.browser.selected.value, "photo 2.jpg");
 			// (the browser's keys: Mod+2 the list, Mod+I the inspector, Mod+F search)
-			ui.keyDown("i".code, Key.MOD_CONTROL);
+			ui.keyDown("i".code, Mods.CONTROL);
 			helder.view.graph.Graph.flush();
 			equals(x.browser.inspector.value, false);
-			ui.keyDown("f".code, Key.MOD_CONTROL);
+			ui.keyDown("f".code, Mods.CONTROL);
 			helder.view.graph.Graph.flush();
 			equals(x.browser.searching.value, true);
 			x.browser.search("photo");

@@ -9,7 +9,7 @@
 // (an InputMap's axis), Escape to close.
 //
 //   bun run helder run examples/ts-scene
-import { Window, Device, App, InputMap, Bindings, EventKind } from "helder/scene";
+import { Window, Device, App, InputMap, Bindings } from "helder/scene";
 import { loaded, model } from "helder/asset";
 import { vec3 } from "helder/gfx";
 import { Showcase } from "./scene";
@@ -43,7 +43,7 @@ async function main() {
 		device.endFrame();
 	}, e => {
 		actions.event(e);
-		if (e.kind === EventKind.Close) window.close();
+		if (e.kind === "close") window.close();
 	});
 }
 main();

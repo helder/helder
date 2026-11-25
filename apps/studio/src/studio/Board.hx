@@ -1,5 +1,6 @@
 package studio;
 
+import helder.os.Mods;
 import helder.ui.*;
 import helder.view.*;
 import helder.view.Flow.*;
@@ -28,12 +29,12 @@ class Board implements Markup {
 			studio.stageNode = n;
 		}}
 			onPointerDown={_ -> panned = false}
-			onClick={e -> if (studio.mode() != "stories" && !panned) studio.clickStage(e.localX, e.localY, e.mods & Key.MOD_SHIFT != 0)}
+			onClick={e -> if (studio.mode() != "stories" && !panned) studio.clickStage(e.localX, e.localY, e.mods & Mods.SHIFT != 0)}
 			onWheel={e -> {
 				// (a pinch's deltaY is -100 ln of its scale, as browsers make it:
 				// e^(-dy/100) follows the fingers; a wheel's notch, 40 to 120
 				// points at once, capped to a step of about 1.28)
-				if (e.mods & (Key.MOD_CONTROL | Key.MOD_META) != 0) studio.camera.zoomAt(e.localX, e.localY, Math.exp(-Math.max(-25, Math.min(25, e.deltaY)) / 100))
+				if (e.mods & (Mods.CONTROL | Mods.META) != 0) studio.camera.zoomAt(e.localX, e.localY, Math.exp(-Math.max(-25, Math.min(25, e.deltaY)) / 100))
 				else studio.camera.panBy(-e.deltaX, -e.deltaY);
 				e.preventDefault();
 				e.stop();
