@@ -198,7 +198,7 @@ class AcpAgent implements Agent {
 			return null;
 		}
 		var d = work.docs.get(f);
-		if (d.text != text) work.docs.apply(f, new Transaction([Docs.difference(d.text, text)], null, d.text), '${command.name}\'s edit of ${rel(f)}', "agent");
+		if (d.text != text) work.docs.apply(f, new Transaction([Docs.difference(d.text, text)], null, d.text), rel(f), "agent", null, Presence.name(command.name));
 		return null;
 	}
 
