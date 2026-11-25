@@ -88,7 +88,8 @@ class Board implements Markup {
 	static function live(studio:Studio, r:Read<Rect>):View {
 		var s = studio.previews.screen(r().name);
 		return <view tag={"screen-" + Shell.slug(s.info.name)} slot="screen" position="absolute" left={r().x} top={r().y} width={r().w}
-			height={r().h} data-on={studio.focused() == s.info.name ? "true" : "false"} data-frame={s.frames()}>
+			height={r().h} data-on={studio.focused() == s.info.name ? "true" : "false"} data-frame={s.frames()}
+			opacity={Feedback.arrive(studio, s.info.name).opacity} transform={Feedback.arrive(studio, s.info.name).transform}>
 			<image src={s.image()} width={r().w} height={r().h} opacity={studio.failure() == null ? 1 : 0.45}/>
 			<Show when={s.crashedSignal()}>
 				<view tag="crashed" position="absolute" left={8} top={8} right={8} row-gap={2}>
@@ -96,11 +97,7 @@ class Board implements Markup {
 					<text color={c("fg3")} font-size={Theme.SMALL} max-lines={8} text-overflow="ellipsis">{s.report()}</text>
 				</view>
 			</Show>
-			<Show when={s.frames() == 0 && !s.crashedSignal()}>
-				<view position="absolute" inset={0} align-items="center" justify="center">
-					<text color={c("fg3")} font-size={Theme.SMALL}>{studio.previews.failed ? "the build failed" : "building…"}</text>
-				</view>
-			</Show>
+			<Show when={s.frames() == 0 && !s.crashedSignal()}>{Feedback.skeleton(studio, r().w)}</Show>
 		</view>;
 	}
 
@@ -109,7 +106,8 @@ class Board implements Markup {
 	// click goes through them to the stage
 	static function design(studio:Studio, r:Read<Rect>, info:Project.ScreenInfo):View
 		return <view tag={"screen-" + Shell.slug(info.name)} slot="screen" position="absolute" left={r().x} top={r().y} width={r().w}
-			height={r().h} data-on={studio.focused() == info.name ? "true" : "false"}>
+			height={r().h} data-on={studio.focused() == info.name ? "true" : "false"} opacity={Feedback.arrive(studio, info.name).opacity}
+			transform={Feedback.arrive(studio, info.name).transform}>
 			<view tag="design" width={r().w} height={r().h} overflow="hidden" pointer-events="none" background="#ffffff" color="#000000"
 				font-family={helder.ui.Style.DEFAULT_FAMILY} font-size={helder.ui.Style.DEFAULT_SIZE} font-weight={helder.ui.Style.DEFAULT_WEIGHT}
 				ref={(n:Node) -> n.theme = {rules: []}}>
@@ -134,10 +132,12 @@ class Board implements Markup {
 					direction="row" align-items="center" column-gap={6} max-width={frameWidth(studio, r()) + 8}>
 					<text font-size={Theme.SMALL} max-lines={1} shrink={0} font-weight={studio.focused() == r().name ? Theme.MEDIUM : 400}
 						color={studio.focused() == r().name ? c("accent-ink") : c("fg3")}>{label(studio, r().name)}</text>
+					{Feedback.chip(studio, r().name)}
 					<Show when={studio.failure() != null && !studio.project.screen(r().name).source.match(Design(_))}>
-						<view tag={"failed-" + Shell.slug(r().name)} height={18} padding="0 6" radius={Theme.RADIUS} shrink={1} min-width={0} background={c("error-soft")}
-							justify="center">
-							<text font-size={Theme.SMALL} max-lines={1} text-wrap="nowrap" text-overflow="ellipsis" color={c("error")}>{failed(studio)}</text>
+						<view tag={"failed-" + Shell.slug(r().name)} height={20} padding="0 8" radius={10} direction="row" align-items="center" column-gap={5}
+							shrink={1} min-width={0} background={c("error-soft")}>
+							<view width={6} height={6} radius={3} shrink={0} background={c("error")}/>
+							<text font-size={Theme.SMALL} max-lines={1} text-wrap="nowrap" text-overflow="ellipsis" shrink={1} min-width={0} color={c("error")}>{failed(studio)}</text>
 						</view>
 					</Show>
 				</view>
@@ -153,7 +153,7 @@ class Board implements Markup {
 			<For each={guides(studio)}>{(g:Read<{x:Float, y:Float, w:Float, h:Float}>) ->
 				<view tag="guide" position="absolute" left={g().x} top={g().y} width={g().w} height={g().h} background={c("sel")}/>
 			}</For>
-			{Marks.canvas(studio)}
+			{Feedback.canvas(studio)}
 		</view>;
 	}
 

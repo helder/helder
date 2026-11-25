@@ -202,19 +202,13 @@ class Tools implements Mcp.Target {
 		var before = pr == null ? 0 : pr.buildMs.peek();
 		var tx = new Transaction(changes, null, base);
 		var by = agent == null ? null : studio.presence.peer(agent)?.name;
+		// (the agent there and its marks: Studio.agentEdited, by its name)
 		studio.edit(f, tx, rel(f), "agent", null, by);
-		var ranges = [for (c in tx.inverse.changes) {start: c.start, end: c.end}];
-		if (agent != null) {
-			var after = studio.docs.get(f).doc;
-			studio.presence.patched(agent, rel(f), [for (x in ranges) {file: rel(f), from: after.lineCol(x.start).line, to: after.lineCol(x.end).line}]);
-		}
 		// (its way to the program: a patch at once, a build waited for)
 		var t0 = haxe.Timer.stamp();
 		Async.delay(0.02);
 		while (pr != null && pr.busy() && haxe.Timer.stamp() - t0 < 120) Async.delay(0.02);
 		var diags = pr == null ? [] : [for (d in pr.latest) d];
-		var colour = agent == null ? null : studio.presence.peer(agent)?.colour;
-		if (colour != null) studio.marks.touched(colour, f, ranges);
 		return {
 			result: pr == null ? "saved" : pr.failed ? "failed" : studio.message.peek().startsWith("patched") ? "patched" : "built",
 			message: studio.message.peek(),

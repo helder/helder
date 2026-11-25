@@ -520,12 +520,38 @@ on, the file it works on, the lines its last patch made, its status and
 whether it works. Its tool calls move it without a call of its own: a
 file read, a screen's tree or frame, a patch ("Editing app.tsx"), a check
 ("Checking"); `studio.focus` puts it where the user looks. A minute
-without a call it no longer works, ten and it leaves. The canvas shows a
-chip in its colour by the caption of the frame it is on while it works,
-and outlines the nodes a patch of its made, fading in 1.5 s; the header a
-chip each, its status after its name (`Marks`: quiet, to be restyled).
-The history keeps who made each edit (null: you), and the undo button
-says it: "Undo Claude: app.tsx".
+without a call it no longer works, ten and it leaves. An ACP agent's
+writes make it present too (by its name, the history entry's).
+
+**Its work on the canvas** (`Marks`, the model; `Feedback`, the layer: the
+boards' Motion.dc.html), all in the agent's colour and only for an
+agent's edits (the user's own move nothing; the camera is never moved
+for an agent):
+
+- the frame it is on breathes a halo (a 1.5-point ring and a soft spread,
+  6 to 12 points, 2 s), a chip by its caption says its status; done, the
+  halo fades (300 ms) and the chip says the done note a few seconds;
+- its cursor (an arrow and its name) sits where it last touched and
+  glides there in 600 ms (an analytic track in world points: a pan moves
+  it with the canvas);
+- what an edit made flashes (a 2-point ring and a 10-point spread), keeps
+  a 1.5-point outline for 1.5 s, then fades; a toast at the canvas' top,
+  "Claude changed pond.helder · Undo", 5 s (Undo while that edit is
+  still the one undo takes);
+- a frame's new image after a build it caused is revealed top to bottom
+  behind a 2-point scan line, ~1 s; a frame not drawn yet (a story added,
+  its build running) holds its place as a shimmer (1.6 s); a new frame
+  rises 8 points into place (500 ms, 120 ms apart);
+- an agent whose frame is out of the view is a tab on the edge nearest it
+  ("Codex · Settings ›": a click flies the camera there);
+- a failed build dims each program's frame, a chip by its caption.
+
+Times are the canvas' clock's (helder.ui.Clock: a headless run's virtual
+one), stepped only while something moves. The ground is #0f0f11 with a
+dot grid (a point every 24, `Dots`); `--classic` keeps the old shell's
+ground for the scripted lanes. The header has a chip each, its status
+after its name. The history keeps who made each edit (null: you), and
+the undo button says it: "Undo Claude: app.tsx".
 
 `initialize`'s instructions (`Instructions`) tell an agent how to work
 here: start with `studio.focus`, look before changing (`run.tree`,

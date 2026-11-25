@@ -1,154 +1,244 @@
 package studio;
 
 import helder.os.Rect;
-import helder.gfx.Color;
-import helder.async.*;
-import helder.ui.*;
-import helder.view.*;
-import helder.view.Flow.*;
+import helder.syntax.Transaction;
+import helder.ui.Clock;
+import helder.ui.motion.Curve;
+import helder.ui.motion.Track;
 import helder.view.graph.Graph.*;
-import helder.view.graph.Read;
 import helder.view.graph.Signal;
 import studio.Presence.Peer;
 import studio.Project.Source;
-import studio.Theme.c;
 
-// Where the agents are, drawn quietly from Presence (a redesign restyles
-// these alone): on the canvas a chip in the agent's colour above the frame
-// it is on, while it works, and the nodes its last patch made outlined in
-// its colour, fading; in the header a chip each (Shell).
-class Marks implements Markup {
-	public static inline var FADE = 1.5;
+// What an agent's work leaves on the canvas, as it happens (Watch draws
+// it): the nodes an edit of its made, flashed then outlined (touches); its
+// cursor gliding to them; a frame's new image after a build it caused
+// revealed behind a scan line (reveals); a new frame rising into place
+// (arrivals); "Claude changed pond.helder · Undo" (toast). Times are the
+// canvas' clock's (helder.ui.Clock: a headless run's virtual one), stepped
+// only while something moves (time). Only agents' edits mark: the user's
+// own do not move the canvas.
+class Marks {
+	// (seconds) a touch's flash and outline, a reveal's scan, a frame's
+	// rise, between two frames rising, the toast, a done note shown
+	public static inline var TOUCH = 1.8;
+	public static inline var REVEAL = 1.0;
+	public static inline var ARRIVE = 0.5;
+	public static inline var STAGGER = 0.12;
+	public static inline var TOAST = 5.0;
+	public static inline var DONE = 4.0;
+	// the cursor's glide (600 ms, ease in-out)
+	static final GLIDE = Curve.tween(0.6, [0.45, 0, 0.2, 1]);
 
 	final studio:Studio;
-	// the boxes a patch touched (each in its screen's points; on: just made, then fading)
-	public final boxes:Signal<Array<Touch>> = signal([]);
-	// (the truth: a signal's write lands at the event's end)
-	var all:Array<Touch> = [];
+	// the canvas' clock as last stepped (read through time())
+	public final now = signal(0.0);
+	public final touches:Signal<Array<Touch>> = signal([]);
+	public final reveals:Signal<Array<Reveal>> = signal([]);
+	public final arrivals:Signal<Array<Arrival>> = signal([]);
+	public final toast:Signal<Null<Toast>> = signal(null);
+	// each agent's cursor (its hand) where it is now (world points), for the agents with a frame
+	public final cursors:Signal<Array<Hand>> = signal([]);
+	// (the truths: a signal's write lands at the event's end)
+	var touchList:Array<Touch> = [];
+	var revealList:Array<Reveal> = [];
+	var arrivalList:Array<Arrival> = [];
 	var next = 0;
+	var ticking = false;
+	// (an agent's last touched box, in its frame's points: where its cursor goes)
+	final aims = new Map<String, {screen:String, x:Float, y:Float}>();
+	final glides = new Map<String, {x:Track, y:Track, screen:String}>();
+	// (an edit's touches waiting for what shows them: a design's next frames,
+	// a program's frame after the edit landed: patched or built)
+	var waiting:Array<Wait> = [];
+	// (an edit of an agent's that is building: the frames drawn after it revealed)
+	var building:Null<{colour:String, screens:Array<String>}> = null;
+	final drawing = new Map<String, String>();
+	// (the screens seen: one new after the first is an arrival)
+	var seen:Null<Array<String>> = null;
 
 	public function new(studio)
 		this.studio = studio;
 
-	// an agent's patch of file: the elements it changed (ranges: offsets of
-	// the text after it) outlined on the screens in view that show them
-	public function touched(colour:String, file:String, ranges:Array<{start:Int, end:Int}>) {
+	// the clock, for a view that moves with it (stepped while one does)
+	public function time():Float {
+		wake();
+		return now();
+	}
+
+	// an agent's edit of file (its history entry's: tx against the text
+	// before): the elements it made outlined where they show, its cursor
+	// there, the toast; its frames revealed when a build follows (landed)
+	public function edited(peer:Peer, file:String, tx:Transaction) {
 		var p = studio.project;
 		if (p == null) return;
 		var doc = studio.docs.get(file).doc, starts = [];
-		for (r in ranges) {
-			var held = doc.elementHolding(r.start);
+		for (c in tx.inverse.changes) {
+			var held = doc.elementHolding(c.start);
 			if (held != null && !starts.contains(held.start)) starts.push(held.start);
 			for (e in doc.elements())
-				if (e.start > r.start && e.start <= r.end && !starts.contains(e.start)) starts.push(e.start);
+				if (e.start > c.start && e.start <= c.end && !starts.contains(e.start)) starts.push(e.start);
 		}
-		if (starts.length == 0) return;
+		var name = p.dir.length < file.length ? file.substr(p.dir.length + 1) : file;
+		toast({by: peer.name, colour: peer.colour, file: name, entry: studio.docs.nextUndo(), at: Clock.now});
 		var shown = studio.layout.inView();
+		var w:Wait = {peer: peer.id, colour: peer.colour, file: file, starts: starts, designs: [], live: [], frame: studio.frames, landed: false};
 		for (s in p.screens)
-			if (s.file == file && s.source.match(Design(_)) && shown.contains(s.name))
-				add(colour, s.name, [for (n in studio.designs.nodesAt(s.name, starts)) studio.designs.box(s.name, n)]);
-		var pr = studio.previews;
-		if (pr != null) for (s in pr.screens) {
-			var name = s.info.name;
-			if (shown.contains(name)) pr.request(s, "Ui.getTree", {}, t -> {
-				var found = [];
-				function walk(n:Dynamic) {
-					if (n == null) return;
-					var at:Null<Array<Dynamic>> = n.source?.offsets;
-					if (at != null && at.length > 0 && p.real(n.source.file) == file && starts.contains(doc.fromByte(Std.int(at[0]))))
-						found.push({x: (n.x : Float), y: (n.y : Float), width: (n.width : Float), height: (n.height : Float)});
-					for (c in (n.children : Array<Dynamic>) ?? []) walk(c);
-				}
-				walk(Studio.rootOf(t));
-				add(colour, name, found);
-			});
-		}
+			if (s.file == file && s.source.match(Design(_)) && shown.contains(s.name)) w.designs.push(s.name);
+		if (studio.previews != null)
+			for (s in studio.previews.screens)
+				if (shown.contains(s.info.name)) w.live.push(s.info.name);
+		if (starts.length > 0) waiting.push(w);
+		building = {colour: peer.colour, screens: w.live};
+		wake();
 	}
 
-	// (outlined at once, then faded out and let go)
-	function add(colour:String, screen:String, found:Array<Rect>) {
-		if (found.length == 0) return;
-		var made:Array<Touch> = [for (b in found.slice(0, 24)) {id: next++, colour: colour, screen: screen, x: b.x, y: b.y, w: b.width, h: b.height, on: true}];
-		var ids = [for (m in made) m.id];
-		boxes(all = all.concat(made));
-		Async.launch(_ -> {
-			Async.delay(0.05);
-			boxes(all = [for (b in all) if (ids.contains(b.id)) {var o = Reflect.copy(b); o.on = false; o;} else b]);
-			Async.delay(FADE + 0.1);
-			boxes(all = all.filter(b -> !ids.contains(b.id)));
+	// the edit told to the program: patched (its next frames show it), or
+	// built (ok: the frames drawn next are the new build's, revealed)
+	public function landed(built:Bool, ok = true) {
+		for (w in waiting)
+			w.landed = true;
+		var b = building;
+		building = null;
+		if (built && ok && b != null)
+			for (s in b.screens)
+				drawing.set(s, b.colour);
+	}
+
+	// a screen's new frame (Studio.framed): its reveal started, the touches waiting for it found in its tree
+	public function framed(name:String) {
+		var colour = drawing.get(name);
+		if (colour != null) {
+			drawing.remove(name);
+			reveals(revealList = revealList.filter(r -> r.screen != name).concat([{screen: name, colour: colour, at: Clock.now}]));
+			wake();
+		}
+		for (w in waiting.copy())
+			if (w.landed && w.live.contains(name)) {
+				w.live.remove(name);
+				find(w, name);
+				if (w.live.length == 0 && w.designs.length == 0) waiting.remove(w);
+			}
+	}
+
+	// the project's screens now: those new since the last (not the first time) rise into place, a stagger apart
+	public function saw(names:Array<String>) {
+		var was = seen;
+		seen = names.copy();
+		if (was == null) return;
+		var t = Clock.now, k = 0;
+		var fresh = [for (n in names) if (!was.contains(n)) {screen: n, at: t + STAGGER * k++}];
+		if (fresh.length == 0) return;
+		arrivals(arrivalList = arrivalList.concat(fresh));
+		wake();
+	}
+
+	// (a program's screen's tree asked: the nodes whose markup the edit made)
+	function find(w:Wait, name:String) {
+		var pr = studio.previews, p = studio.project, s = pr?.screen(name);
+		if (s == null) return;
+		var doc = studio.docs.get(w.file).doc;
+		pr.request(s, "Ui.getTree", {}, t -> {
+			var found:Array<Rect> = [];
+			function walk(n:Dynamic) {
+				if (n == null) return;
+				var at:Null<Array<Dynamic>> = n.source?.offsets;
+				if (at != null && at.length > 0 && p.real(n.source.file) == w.file && w.starts.contains(doc.fromByte(Std.int(at[0]))))
+					found.push({x: (n.x : Float), y: (n.y : Float), width: (n.width : Float), height: (n.height : Float)});
+				for (c in (n.children : Array<Dynamic>) ?? []) walk(c);
+			}
+			walk(Studio.rootOf(t));
+			add(w, name, found);
 		});
 	}
 
-	// the canvas' marks, in the stage's points (Board's overlay)
-	public static function canvas(studio:Studio):View
-		return <view tag="agent-marks" position="absolute" inset={0} pointer-events="none">
-			<For each={studio.marks.boxes()} by={(b:Touch) -> b.id}>{(b:Read<Touch>) ->
-				<view tag="agent-touch" position="absolute" left={box(studio, b()).x} top={box(studio, b()).y} width={box(studio, b()).w}
-					height={box(studio, b()).h} border-width={1.5} border-color={Color.parse(b().colour)} opacity={b().on ? 1 : 0} transition="opacity 1.5s ease-out"/>
-			}</For>
-			<For each={onFrames(studio)} by={(g:OnFrame) -> g.screen}>{(g:Read<OnFrame>) ->
-				<view tag="agent-chips" position="absolute" right={right(studio, g().screen)} top={top(studio, g().screen) - 22} height={18}
-					direction="row" column-gap={4}>
-					<For each={g().peers} by={(p:Peer) -> p.id}>{(p:Read<Peer>) ->
-						<view tag={"agent-on-" + Shell.slug(p().name)} direction="row" align-items="center" column-gap={4} height={18} padding="0 6"
-							radius={9} background={c("bg")} opacity={p().working ? 1 : 0} transition="opacity 0.6s">
-							<view width={6} height={6} radius={3} background={Color.parse(p().colour)}/>
-							<text font-size={Theme.SMALL} max-lines={1} color={c("fg2")}>{p().name}</text>
-						</view>
-					}</For>
-				</view>
-			}</For>
-		</view>;
+	// (flashed now, outlined, then let go; the agent's cursor to the first)
+	function add(w:Wait, screen:String, found:Array<Rect>) {
+		if (found.length == 0) return;
+		var t = Clock.now;
+		var made:Array<Touch> = [for (b in found.slice(0, 24)) {id: next++, colour: w.colour, screen: screen, x: b.x, y: b.y, w: b.width, h: b.height, at: t}];
+		touches(touchList = touchList.concat(made));
+		var b = found[0];
+		aims.set(w.peer, {screen: screen, x: b.x + Math.min(b.width * 0.6, 48), y: b.y + Math.min(b.height * 0.6, 24)});
+		wake();
+	}
 
-	// the header's: a chip each, its status after its name
-	public static function chips(studio:Studio):View
-		return <view tag="agents" direction="row" align-items="center" column-gap={4} shrink={1} min-width={0}>
-			<For each={studio.presence.peers()} by={(p:Peer) -> p.id}>{(p:Read<Peer>) ->
-				<view tag={"agent-" + Shell.slug(p().name)} direction="row" align-items="center" column-gap={5} height={22} padding="0 7" radius={11}
-					background={c("well")} shrink={1} min-width={0} max-width={200} opacity={p().working ? 1 : 0.6}>
-					<view width={6} height={6} radius={3} background={Color.parse(p().colour)} shrink={0}/>
-					<text font-size={Theme.SMALL} max-lines={1} color={c("fg")} shrink={0}>{p().name}</text>
-					<text font-size={Theme.SMALL} max-lines={1} text-overflow="ellipsis" color={c("fg3")} shrink={1} min-width={0}>{p().status}</text>
-				</view>
-			}</For>
-		</view>;
+	function wake() {
+		if (ticking) return;
+		ticking = true;
+		Clock.add(step);
+	}
 
-	// (the agents by the frame each is on: the one it named, else one of the file it works on)
-	static function onFrames(studio:Studio):Array<OnFrame> {
-		var out:Array<OnFrame> = [], p = studio.project;
-		if (p == null) return out;
-		for (a in studio.presence.peers()) {
-			var s = a.screen;
-			if (s == null && a.file != null) s = Lambda.find(p.screens, i -> i.file == p.dir + "/" + a.file)?.name;
-			if (s == null || studio.layout.rect(s) == null) continue;
-			var g = Lambda.find(out, g -> g.screen == s);
-			if (g == null) out.push({screen: s, peers: [a]}) else g.peers.push(a);
+	// (each frame while something moves: the clock, what ended let go, the cursors moved)
+	function step(t:Float):Bool {
+		now(t);
+		if (touchList.length > 0 && Lambda.exists(touchList, x -> t - x.at > TOUCH)) touches(touchList = touchList.filter(x -> t - x.at <= TOUCH));
+		if (revealList.length > 0 && Lambda.exists(revealList, x -> t - x.at > REVEAL)) reveals(revealList = revealList.filter(x -> t - x.at <= REVEAL));
+		if (arrivalList.length > 0 && Lambda.exists(arrivalList, x -> t - x.at > ARRIVE)) arrivals(arrivalList = arrivalList.filter(x -> t - x.at <= ARRIVE));
+		var tst = toast.peek();
+		if (tst != null && t - tst.at > TOAST) toast(null);
+		// (a design's touches: its frame drawn again with the edit, two of the studio's frames on)
+		for (w in waiting.copy())
+			if (w.designs.length > 0 && studio.frames >= w.frame + 2) {
+				for (n in w.designs)
+					add(w, n, [for (x in studio.designs.nodesAt(n, w.starts)) {var b = studio.designs.box(n, x); {x: b.x, y: b.y, width: b.width, height: b.height};}]);
+				w.designs = [];
+				if (w.live.length == 0) waiting.remove(w);
+			}
+		var moving = glide(t);
+		ticking = moving || touchList.length > 0 || revealList.length > 0 || arrivalList.length > 0 || toast.peek() != null || waiting.length > 0 || busy();
+		return ticking;
+	}
+
+	// (the cursors aimed: at an agent's last touch on its frame, else its
+	// frame's caption; gliding there; whether one moves)
+	function glide(t:Float):Bool {
+		var out:Array<Hand> = [], moving = false;
+		for (p in studio.presence.list()) {
+			var s = p.screen ?? aims.get(p.id)?.screen;
+			var r = s == null ? null : studio.layout.rect(s);
+			if (r == null) continue;
+			var aim = aims.get(p.id);
+			var x = r.x + (aim != null && aim.screen == s ? aim.x : 24), y = r.y + (aim != null && aim.screen == s ? aim.y : -8);
+			var g = glides.get(p.id);
+			if (g == null) {
+				g = {x: new Track(x, 0.05), y: new Track(y, 0.05), screen: s};
+				glides.set(p.id, g);
+			} else if (g.x.target != x || g.y.target != y) {
+				g.x.animate(t, x, GLIDE);
+				g.y.animate(t, y, GLIDE);
+			}
+			g.x.sample(t);
+			g.y.sample(t);
+			if (g.x.kind != Track.REST || g.y.kind != Track.REST) moving = true;
+			out.push({peer: p.id, name: p.name, colour: p.colour, screen: s, x: g.x.value, y: g.y.value, working: p.working});
 		}
-		return out;
+		for (k in [for (k in glides.keys()) k])
+			if (studio.presence.peer(k) == null) glides.remove(k);
+		if (!same(out, cursors.peek())) cursors(out);
+		return moving;
 	}
 
-	static function box(studio:Studio, b:Touch):{x:Float, y:Float, w:Float, h:Float} {
-		var r = studio.layout.rect(b.screen);
-		if (r == null) return {x: -100, y: -100, w: 0, h: 0};
-		studio.camera.changed();
-		var cam = studio.camera;
-		return {x: cam.sx(r.x + b.x), y: cam.sy(r.y + b.y), w: b.w * cam.k, h: b.h * cam.k};
+	static function same(a:Array<Hand>, b:Array<Hand>):Bool {
+		if (a.length != b.length) return false;
+		for (k in 0...a.length)
+			if (a[k].peer != b[k].peer || a[k].x != b[k].x || a[k].y != b[k].y || a[k].working != b[k].working || a[k].screen != b[k].screen) return false;
+		return true;
 	}
 
-	static function top(studio:Studio, screen:String):Float {
-		var r = studio.layout.rect(screen);
-		studio.camera.changed();
-		return r == null ? -100 : studio.camera.sy(r.y);
-	}
-
-	static function right(studio:Studio, screen:String):Float {
-		var r = studio.layout.rect(screen);
-		studio.camera.changed();
-		studio.stageSize();
-		return r == null ? -1000 : studio.stageWidth - studio.camera.sx(r.x + r.w) - 4;
+	// (what loops while it is on: an agent at work (its halo), a done note
+	// shown, a frame not drawn yet (its shimmer))
+	function busy():Bool {
+		var pr = studio.presence, at = pr.now();
+		if (Lambda.exists(pr.list(), p -> p.working || (p.doneAt > 0 && at - p.doneAt < DONE))) return true;
+		var pv = studio.previews;
+		return pv != null && Lambda.exists(pv.screens, s -> s.version == 0 && !s.crashed);
 	}
 }
 
-typedef Touch = {id:Int, colour:String, screen:String, x:Float, y:Float, w:Float, h:Float, on:Bool};
-
-private typedef OnFrame = {screen:String, peers:Array<Peer>};
+typedef Touch = {id:Int, colour:String, screen:String, x:Float, y:Float, w:Float, h:Float, at:Float};
+typedef Reveal = {screen:String, colour:String, at:Float};
+typedef Arrival = {screen:String, at:Float};
+typedef Toast = {by:String, colour:String, file:String, entry:Null<Docs.Entry>, at:Float};
+typedef Hand = {peer:String, name:String, colour:String, screen:String, x:Float, y:Float, working:Bool};
+private typedef Wait = {peer:String, colour:String, file:String, starts:Array<Int>, designs:Array<String>, live:Array<String>, frame:Int, landed:Bool};

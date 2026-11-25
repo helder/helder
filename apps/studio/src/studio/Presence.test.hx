@@ -38,6 +38,15 @@ function tests() {
 			equals(p.peer("a").working, false);
 			equals(p.peer("a").status, "The title is red");
 		});
+		test("done: when, by its clock; found by its name", () -> {
+			var now = 5.0;
+			var p = new Presence(() -> now);
+			p.arrive("a", "claude-code");
+			p.done("a", "red");
+			equals(p.peer("a").doneAt, 5.0);
+			equals(p.named("Claude")?.id, "a");
+			equals(p.named("Codex"), null);
+		});
 		test("quiet a minute it stops, ten it leaves", () -> {
 			var now = 0.0;
 			var p = new Presence(() -> now);

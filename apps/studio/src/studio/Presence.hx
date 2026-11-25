@@ -50,7 +50,8 @@ class Presence {
 			status: "",
 			working: false,
 			lastSeen: clock(),
-			touched: 0
+			touched: 0,
+			doneAt: 0
 		};
 		set(all.concat([p]));
 		return p;
@@ -98,7 +99,16 @@ class Presence {
 		update(id, p -> {
 			p.working = false;
 			p.status = note ?? "Done";
+			p.doneAt = clock();
 		});
+
+	// its clock's time now (lastSeen's, doneAt's)
+	public function now():Float
+		return clock();
+
+	// the agent here of a name (an ACP agent's edits name it: Docs' by)
+	public function named(name:String):Null<Peer>
+		return Lambda.find(all, p -> p.name == name);
 
 	// the lines a patch of its changed (each file's, the text after it)
 	public function patched(id:String, file:String, spans:Array<Span>)
@@ -165,6 +175,8 @@ typedef Peer = {
 	status:String,
 	working:Bool,
 	lastSeen:Float,
+	// when it said it was done (0: not yet; its note shown a few seconds)
+	doneAt:Float,
 }
 
 // lines of a file, from and to (1-based, both in)

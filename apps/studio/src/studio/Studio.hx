@@ -174,6 +174,7 @@ class Studio {
 		designs = new Designs(this);
 		layout = new Layout(this);
 		marks = new Marks(this);
+		if (p != null) marks.saw([for (s in p.screens) s.name]);
 		tools = new Tools(this);
 		drag = new Drag(this);
 		tree = p == null ? null : new FileTree(p);
@@ -1017,6 +1018,7 @@ class Studio {
 
 	// a screen's new frame: the first ones counted, a patch's measured, the selection followed
 	function framed(s:Screen) {
+		marks.framed(s.info.name);
 		var ui = Main.window?.ui;
 		if (ui != null) ui.requestFrame();
 		if (s.version == 1) log("screen-shown", {screen: s.info.name});
@@ -1172,7 +1174,37 @@ class Studio {
 			decorate();
 		}
 		log("edited", {file: file, origin: origin, changes: [for (c in tx.changes) {start: c.start, end: c.end, text: c.text}]});
+		if (origin == "agent") agentEdited(file, tx);
 		if (origin == "code") saveLater(file) else commit(file);
+	}
+
+	// an agent's edit (an MCP agent's project.patch, an ACP agent's write: its
+	// history entry by its name): the agent there (Presence: its lines, its
+	// frame when it named none), what it made marked (Marks)
+	function agentEdited(file:String, tx:Transaction) {
+		var by = docs.nextUndo()?.by;
+		if (by == null || project == null) return;
+		var p = presence.named(by) ?? presence.arrive("acp:" + by, by);
+		var doc = docs.get(file).doc, rel = file.startsWith(project.dir + "/") ? file.substr(project.dir.length + 1) : file;
+		presence.patched(p.id, rel, [for (c in tx.inverse.changes) {file: rel, from: doc.lineCol(c.start).line, to: doc.lineCol(c.end).line}]);
+		var at = tx.inverse.changes.length == 0 ? 0 : tx.inverse.changes[0].start;
+		presence.working(p.id, null, presence.peer(p.id).screen == null || file.endsWith(".helder") ? screenFor(file, at) : null);
+		marks.edited(presence.peer(p.id), file, tx);
+	}
+
+	// (the frame an edit shows on: a design's frame holding it, else the one in focus, else the first program's frame in view)
+	function screenFor(file:String, at:Int):Null<String> {
+		if (file.endsWith(".helder")) {
+			var doc = docs.get(file).doc, best:Null<String> = null;
+			for (s in project.screens)
+				if (s.file == file && s.start != null && s.start <= at) {
+					var el = doc.elementAt(s.start);
+					if (el != null && el.end >= at) best = s.name;
+				}
+			return best;
+		}
+		var shown = layout.inView();
+		return focused.peek() ?? Lambda.find(project.live(), s -> shown.contains(s.name))?.name;
 	}
 
 	// a design file's frames read again (null: as they were): what was
@@ -1191,6 +1223,7 @@ class Studio {
 		if (renamed.length > 0) others([]);
 		if (f != null && project.screen(f) == null) focus(null);
 		log("frames", {file: file, frames: [for (s in project.screens) if (s.file == file) s.name], renamed: renamed});
+		marks.saw([for (s in project.screens) s.name]);
 	}
 
 	// (natively) the design and story files on disk watched, a second apart:
@@ -1255,6 +1288,7 @@ class Studio {
 		}
 		if (pr == null) {
 			f.save();
+			marks.landed(false);
 			return;
 		}
 		// (a story file's stories changed: the host's screens with them, every source built)
@@ -1281,10 +1315,14 @@ class Studio {
 			pr.took(patches);
 			message('patched ${patches.length} live literal(s), nothing built');
 			log("patched", {file: file, patches: patches});
+			marks.landed(false);
 			return;
 		}
 		pr.write(file, f.text);
-		if (patches != null && patches.length == 0) return;
+		if (patches != null && patches.length == 0) {
+			marks.landed(false);
+			return;
+		}
 		message('building: ${why ?? "not a live literal"}');
 		log("building", {file: file, why: why});
 		rebuild(file);
@@ -1295,6 +1333,7 @@ class Studio {
 		var done = false;
 		Async.launch(task -> {
 			var ok = pr.rebuild(task, all ? project.sources() : [file]);
+			marks.landed(true, ok);
 			done = true;
 			message(ok ? 'rebuilt in ${pr.buildMs.peek()} ms' : "the build failed: the last good build keeps running");
 			log("built", {ok: ok, ms: pr.buildMs.peek(), diagnostics: pr.latest.length});
@@ -1334,6 +1373,7 @@ class Studio {
 		}
 		if (f != null && project.screen(f) == null) focus(null, false);
 		log("stories", {file: file, screens: [for (s in project.live()) s.name]});
+		marks.saw([for (s in project.screens) s.name]);
 		return true;
 	}
 
@@ -1602,6 +1642,9 @@ class Studio {
 			if (ps.length > 0) t = Turns.broken(t, ps[0]);
 			setTurn(t);
 			answered = true;
+			// (the ACP agent's turn over: it is done, its marks fade)
+			for (x in presence.list())
+				if (x.working && x.id.startsWith("acp:")) presence.done(x.id, t.error ?? null);
 			log("replied", {prompt: p, reply: t.error ?? t.text, end: t.end, build: t.build});
 			// (the notes its tools did not carry: the next prompt, at once)
 			var notes = a == local ? [] : inbox.take();

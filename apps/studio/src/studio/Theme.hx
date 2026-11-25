@@ -97,6 +97,11 @@ class Theme {
 	public static final colors:Map<String, Color> = withKinds(withCode([
 		// the darks, near neutral (a hint of cool): the canvas under everything, the cards, fields, hovers, what is pressed
 		"canvas" => Color.parse("#0b0b0d"),
+		// the agents' work on the canvas (Feedback): a frame not drawn yet (a
+		// skeleton) and its shimmer, the text on an agent's colour (its name tag)
+		"skeleton" => Color.parse("#1a1a1e"),
+		"shimmer" => Color.parse("#25252b"),
+		"on-agent" => Color.parse("#1a0f08"),
 		"bg" => Color.parse("#141416"),
 		"well" => Color.parse("#1c1c1f"),
 		"hover" => Color.parse("#232326"),
