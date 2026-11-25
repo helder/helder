@@ -7,6 +7,8 @@ import helder.ui.Svg;
 // those used, embedded; 24 by 24, stroked in the text's colour, drawn at
 // 16 or 14 points (Theme.ICON), their strokes Lucide's 2
 class Icons {
+	// (the studio's own: an agent's pointer on the canvas, filled in its colour)
+	public static final pointer = load(Asset.embed("icons/agent-pointer.svg"));
 	public static final appWindow = load(Asset.embed("icons/app-window.svg"));
 	public static final arrowUp = load(Asset.embed("icons/arrow-up.svg"));
 	public static final audioLines = load(Asset.embed("icons/audio-lines.svg"));

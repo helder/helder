@@ -107,7 +107,7 @@ class Shell implements Markup {
 			height={Theme.HEADER} padding={'0 ${wide() && controlsRight() ? 0 : Theme.PAD - 4} 0 ${Theme.PAD}'} border-width="0 0 1 0" direction="row"
 			align-items="center" column-gap={8} overflow="visible">
 			{crumbs(studio)}
-			<Show when={studio.presence.peers().length > 0}>{Marks.chips(studio)}</Show>
+			<Show when={studio.presence.peers().length > 0}>{Feedback.chips(studio)}</Show>
 			<view grow={1} min-width={4}/>
 			{commandField(studio)}
 			<view grow={1} min-width={4}/>
