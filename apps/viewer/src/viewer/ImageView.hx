@@ -24,6 +24,14 @@ class ImageView extends helder.ui.Node {
 		return background = c;
 	}
 
+	// nothing but the background drawn (the picture in flight over it: Flight)
+	public var veiled(default, set) = false;
+
+	function set_veiled(v:Bool):Bool {
+		if (v != veiled) redraw();
+		return veiled = v;
+	}
+
 	final viewer:Viewer;
 	var device:Null<Device>;
 	var target:Null<Texture>;
@@ -228,7 +236,7 @@ class ImageView extends helder.ui.Node {
 		var clear = new Color(((bg >> 16) & 255) / 255, ((bg >> 8) & 255) / 255, (bg & 255) / 255, 1);
 		enc.beginPass({colors: [{load: Clear, clear: clear, texture: t}]});
 		var d = viewer.shown;
-		if (d != null && tiles.length > 0 && texShown == d) {
+		if (d != null && !veiled && tiles.length > 0 && texShown == d) {
 			var c = viewer.camera, rect = c.rect();
 			// (the decoded pixels' size on the view: a JPEG decoded smaller is magnified the more)
 			var kx = rect.width / d.pixelsWidth, ky = rect.height / d.pixelsHeight;

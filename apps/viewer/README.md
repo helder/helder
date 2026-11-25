@@ -32,8 +32,10 @@ browser engine and no runtime to install.
   TIFF, HEIC/HEIF, AVIF and camera RAW files where the system has their
   codecs (Windows' WIC, macOS's ImageIO, Linux's libtiff, libheif,
   libavif and libraw), full size in the same window, with a pill back to
-  the folder. The neighbours of the file shown are decoded ahead, so the
-  next is already there.
+  the folder. A file grows out of its thumbnail into place, as Quick Look
+  does, and shrinks back into it when you go back (a short fade instead
+  with reduced motion). The neighbours of the file shown are decoded
+  ahead, so the next is already there.
 - **Sharp at any size.** Images are filtered in linear light when they
   are scaled down. JPEGs are decoded at the size they are shown, and very
   large images (9000 pixels or more) are drawn in tiles. EXIF orientation

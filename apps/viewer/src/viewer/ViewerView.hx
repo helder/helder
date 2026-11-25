@@ -16,8 +16,6 @@ import helder.view.graph.Graph.*;
 // bar hidden.
 class ViewerView implements Markup {
 	public static inline var BAR = 52;
-	// (the fade into and out of the browser: a spring this long, without bounce)
-	public static inline var FADE = 0.2;
 
 	// the look's canvas as 0xRRGGBB, dark or light (the image's backdrop, the window's)
 	public static function canvas(dark:Bool):Int {
@@ -28,7 +26,7 @@ class ViewerView implements Markup {
 	public static function make(x:Explorer):View {
 		var viewer = x.viewer;
 		return <view tag="viewer" position="absolute" inset={0} background={Look.ref.canvas} color={Look.ref.fg} font-size={13}
-			opacity={x.full() ? 1 : 0} motion-opacity={'$FADE 0'} pointer-events={x.full() ? "auto" : "none"} hidden={!x.full()}>
+			opacity={x.zoom.shown()} pointer-events={x.full() ? "auto" : "none"} hidden={!x.full()}>
 			<view tag="viewer-bar" direction="row" align-items="center" column-gap={8} height={BAR} shrink={0} drag-region
 				padding-left={WindowButtons.side() == "start" ? 86 : 14} padding-right={WindowButtons.side() == "end" ? 152 : 14}
 				display={viewer.fullscreen() ? "none" : "flex"}>
@@ -70,6 +68,9 @@ class ViewerView implements Markup {
 		var image = new ImageView(viewer);
 		image.onContextMenu = (px, py) -> if (image.ui != null) helder.ui.menu.Menus.popup(image.ui, ViewerActions.context, px, py, image);
 		image.focusable = true;
+		x.zoom.view(image);
+		// (its picture in flight: the image under it not drawn)
+		renderEffect(() -> x.zoom.flying() != "", on -> image.veiled = on);
 		renderEffect(() -> UiWindow.dark(), d -> image.background = canvas(d));
 		image.style.position = Absolute;
 		image.style.left = image.style.top = image.style.right = image.style.bottom = 0;
@@ -126,7 +127,7 @@ class ViewerView implements Markup {
 				var d = viewer.markdown();
 				d == null ? null : MarkdownPage.make(x, d);
 			}}</Show>
-			<Show when={viewer.state() != Shown && (viewer.state() != Loading || slow())}>
+			<Show when={viewer.state() != Shown && (viewer.state() != Loading || slow()) && x.zoom.flying() == ""}>
 				<view tag="message" position="absolute" inset={0} align-items="center" justify="center" row-gap={8} padding={24} pointer-events="none">
 					<text tag="title" font-size={17} color={viewer.state() == Failed ? Look.ref.danger : Look.ref.fg} text-align="center">{viewer.message}</text>
 					<text tag="detail" color={Look.ref.fg3} text-align="center">{viewer.detail}</text>
