@@ -97,10 +97,10 @@ permissions:
   actions: write
 
 concurrency:
-  # (a pull request's newer push cancels its run; main's and the nightly's
-  # always finish, each its own group: GitHub would otherwise replace a
-  # pending run with the next)
-  group: ci-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
+  # (a pull request's newer push cancels its run; a started run of main or
+  # the nightly always finishes, and of those waiting behind it only the
+  # newest runs next: one run per merge queued every job, 4 at once)
+  group: ci-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('{0}-{1}', github.ref, github.event_name == 'schedule' && 'nightly' || 'run') }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
