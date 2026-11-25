@@ -1,4 +1,4 @@
-package helder.devtools;
+package helder.dev;
 
 #if (hxmc.dev && !macro)
 import haxe.ds.Vector;
@@ -10,7 +10,7 @@ import haxe.ds.Vector;
 // interval (or per CAP frames). A frame recorded allocates nothing; a batch
 // sent counts its own garbage apart (Agent.own, agentBytes), so the frames'
 // bytes are the program's.
-@:allow(helder.devtools.Agent)
+@:allow(helder.dev.Agent)
 class Frames {
 	static inline var CAP = 256;
 

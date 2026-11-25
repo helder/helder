@@ -15,12 +15,15 @@ src/helder/image/ImageMemory.hx: var b = hxmc.unsafe.IoBuffer.alloc(n), v = b.vi
 src/helder/image/ImageMemory.hx: @:hxmc.unsafe(gc) public function take(v:Bytes):hxmc.Buffer {  # trusted: the view's IoBuffer adopted by the caller's Buffer (moved, not copied)
 src/helder/image/ImageMemory.hx: @:hxmc.unsafe(gc) public function free() {  # trusted: the buffers under its views freed
 src/helder/image/PngCore.hx: import hxmc.unsafe.UInt8;  # the spans' element type
+src/helder/image/SystemDecoder.hx: import hxmc.unsafe.Arena;  # iOS's: CFNumber's value and the drawing's CGRect, scoped
 src/helder/image/SystemDecoder.hx: import hxmc.unsafe.IoBuffer;  # the decoded pixels' memory, which CGBitmapContextCreate draws into (iOS) and AImageDecoder decodes into (Android)
-src/helder/image/SystemDecoder.hx: import hxmc.unsafe.Ptr;  # the file's native memory, which NSData wraps (iOS) and AImageDecoder reads (Android) without a copy
+src/helder/image/SystemDecoder.hx: import hxmc.unsafe.Mem;  # iOS's: the frameworks' constants' names, literals
+src/helder/image/SystemDecoder.hx: import hxmc.unsafe.Posix;  # iOS's: dlsym of ImageIO's, Core Foundation's and Core Graphics' constants
+src/helder/image/SystemDecoder.hx: import hxmc.unsafe.Ptr;  # the file's native memory, which a CFData wraps (iOS) and AImageDecoder reads (Android) without a copy
 src/helder/image/SystemDecoder.hx: @:hxmc.unsafe(gc) class SystemDecoder {  # trusted: ImageIO and Core Graphics (iOS), AImageDecoder (Android) over native memory: the file lent by the caller, the pixels an IoBuffer freed on a failure or handed to the caller
 src/helder/image/SystemDecoder.hx: import hxmc.unsafe.Arena;  # Android's: the decoder's out-parameter, scoped
 src/helder/image/SystemDecoder.hx: import hxmc.unsafe.IoBuffer;  # the decoded pixels' memory, which CGBitmapContextCreate draws into (iOS) and AImageDecoder decodes into (Android)
-src/helder/image/SystemDecoder.hx: import hxmc.unsafe.Ptr;  # the file's native memory, which NSData wraps (iOS) and AImageDecoder reads (Android) without a copy
+src/helder/image/SystemDecoder.hx: import hxmc.unsafe.Ptr;  # the file's native memory, which a CFData wraps (iOS) and AImageDecoder reads (Android) without a copy
 src/helder/image/SystemDecoder.hx: @:hxmc.unsafe(gc) class SystemDecoder {  # trusted: ImageIO and Core Graphics (iOS), AImageDecoder (Android) over native memory: the file lent by the caller, the pixels an IoBuffer freed on a failure or handed to the caller
 src/helder/image/SystemDecoder.hx: @:hxmc.unsafe(gc)  # AImageDecoder's functions, loaded at run time (helder.os.Dl): pointers and native memory
 src/helder/image/WebImages.hx: import hxmc.unsafe.UInt8;  # the spans' element type (the browser decoder's imports take a file as a span: wasm32 only)

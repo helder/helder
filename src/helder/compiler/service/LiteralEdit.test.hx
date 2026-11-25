@@ -1,9 +1,9 @@
 package helder.compiler.service;
 
-import helder.markup.Live;
+import helder.view.Live;
 import helder.test.Test;
 
-// live literals' compile-time half (helder.markup.Live) and helder dev's
+// live literals' compile-time half (helder.view.Live) and helder dev's
 // comparison of a save with the built source (LiteralEdit): only the
 // tables' spans changed, each still a literal of its form, else a build
 function tests() {
@@ -12,7 +12,7 @@ function tests() {
 		var i = src.indexOf(text, from);
 		return {start: i, end: i + text.length};
 	}
-	var entries:Array<helder.markup.Live.Entry> = [
+	var entries:Array<helder.view.Live.Entry> = [
 		{id: "a", start: span("24").start, end: span("24").end, form: "number"},
 		{id: "b", start: span('"#fafafa"').start, end: span('"#fafafa"').end, form: "quoted"},
 		{id: "c", start: span('"#3b82f6"').start, end: span('"#3b82f6"').end, form: "quoted"},
@@ -82,7 +82,7 @@ function tests() {
 }
 
 // (the patches of a save that needs no build)
-function patches(built:String, now:String, entries:Array<helder.markup.Live.Entry>):Array<{id:String, source:String}> {
+function patches(built:String, now:String, entries:Array<helder.view.Live.Entry>):Array<{id:String, source:String}> {
 	var d = LiteralEdit.diff(built, now, entries);
 	if (d == null) throw "a build, not patches";
 	return d;

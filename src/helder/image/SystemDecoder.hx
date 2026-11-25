@@ -1,23 +1,13 @@
 package helder.image;
 
 #if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
-import coregraphics.CGContext;
-import coregraphics.CGImage;
-import coregraphics.CGPoint;
-import coregraphics.CGRect;
-import coregraphics.CGSize;
-import coregraphics.CoreGraphics as CG;
-import foundation.NSData;
-import foundation.NSMutableDictionary;
-import foundation.NSNumber;
-import foundation.NSString;
-import hxmc.I64;
-import hxmc.objc.AutoreleasePool;
-import hxmc.objc.Id;
+import helder.os.apple.objc.CGRect;
+import helder.os.apple.objc.Runtime;
+import hxmc.unsafe.Arena;
 import hxmc.unsafe.IoBuffer;
+import hxmc.unsafe.Mem;
+import hxmc.unsafe.Posix;
 import hxmc.unsafe.Ptr;
-import imageio.CGImageSource;
-import imageio.ImageIO;
 
 // iOS's image decoders (ImageIO): what the system reads (JPEG, GIF's first
 // frame, WebP, HEIC; PNGs are helder's, Image.decode), upright (EXIF's orientation applied), drawn
@@ -28,53 +18,131 @@ import imageio.ImageIO;
 // checked on the size the file says, before a pixel is decoded; the decode
 // and the drawing run in a safe region (as every extern call not
 // @:hxmc.fast does), so other threads' collections never wait for them.
+// ImageIO, Core Foundation and Core Graphics are C: what is made here is
+// released here (the Create rule), in an autorelease pool for what ImageIO
+// autoreleases on a job's thread.
 @:hxmc.unsafe(gc) class SystemDecoder {
 	public static inline function available():Bool
 		return true;
 
 	public static function decode(file:Ptr, length:Int):{width:Int, height:Int, pixels:IoBuffer} {
-		var out = null;
-		AutoreleasePool.run(() -> out = image(file, length));
-		return out;
+		var pool = Runtime.objc_autoreleasePoolPush();
+		try {
+			var out = image(file, length);
+			Runtime.objc_autoreleasePoolPop(pool);
+			return out;
+		} catch (e:haxe.Exception) {
+			Runtime.objc_autoreleasePoolPop(pool);
+			throw e;
+		}
 	}
 
-	static function image(file:Ptr, length:Int):{width:Int, height:Int, pixels:IoBuffer} {
-		var src = ImageIO.CGImageSourceCreateWithData(NSData.dataWithBytesNoCopy(file, length, false), null);
-		if (src == null) throw ImageError.unsupported("SystemDecoder: not an image ImageIO reads");
-		var props = ImageIO.CGImageSourceCopyPropertiesAtIndex(src, 0, null);
-		if (props == null) throw ImageError.corrupt("SystemDecoder: no image in it");
-		inline function int(key:NSString):Int {
-			var v = props.objectForKey(key);
-			return v == null ? 0 : (cast v : NSNumber).integerValue.toInt();
-		}
-		var w = int(ImageIO.kCGImagePropertyPixelWidth), h = int(ImageIO.kCGImagePropertyPixelHeight);
-		if (w <= 0 || h <= 0) throw ImageError.corrupt("SystemDecoder: no size");
-		ImageLimits.check("SystemDecoder", w, h, 4);
-		var opts:NSMutableDictionary<Id, Id> = NSMutableDictionary.dictionary();
-		opts.setObject(NSNumber.numberWithBool(true), ImageIO.kCGImageSourceShouldCacheImmediately);
-		var o = int(ImageIO.kCGImagePropertyOrientation);
-		// (turned or mirrored: a thumbnail of the whole at its own size, the one call that applies
-		// the orientation; else the image itself, as a thumbnail of an indexed PNG with alpha comes
-		// premultiplied twice)
-		if (o > 1) {
-			opts.setObject(NSNumber.numberWithBool(true), ImageIO.kCGImageSourceCreateThumbnailFromImageAlways);
-			opts.setObject(NSNumber.numberWithBool(true), ImageIO.kCGImageSourceCreateThumbnailWithTransform);
-			opts.setObject(NSNumber.numberWithInteger(w > h ? w : h), ImageIO.kCGImageSourceThumbnailMaxPixelSize);
-		}
-		var img = o > 1 ? ImageIO.CGImageSourceCreateThumbnailAtIndex(src, 0, opts) : ImageIO.CGImageSourceCreateImageAtIndex(src, 0, opts);
-		if (img == null) throw ImageError.corrupt("SystemDecoder: ImageIO cannot decode it");
-		var pw = CG.CGImageGetWidth(img).toInt(), ph = CG.CGImageGetHeight(img).toInt();
-		// (zeroed: an image with alpha is drawn over what the bitmap holds)
-		var pixels = IoBuffer.alloc(pw * ph * 4);
-		// (kCGImageAlphaPremultipliedLast: R G B A)
-		var ctx = CG.CGBitmapContextCreate(pixels.ptr, pw, ph, 8, pw * 4, CG.CGColorSpaceCreateWithName(CG.kCGColorSpaceSRGB), cast 1);
-		if (ctx == null) {
-			pixels.free();
-			throw ImageError.unsupported("SystemDecoder: no bitmap context");
-		}
-		CG.CGContextDrawImage(ctx, new CGRect(new CGPoint(0, 0), new CGSize(pw, ph)), img);
-		return {width: pw, height: ph, pixels: pixels};
+	// a constant of the frameworks': a CFStringRef (the symbol's value) or,
+	// given by address, a struct (the dictionary callbacks)
+	static inline function constant(name:String):Ptr {
+		var p:Ptr<Ptr> = cast Posix.dlsym(Ptr.ofI64(-2), Mem.cstr(name));
+		return p.isNull() ? Ptr.nil() : p.value;
 	}
+
+	static inline function address(name:String):Ptr
+		return Posix.dlsym(Ptr.ofI64(-2), Mem.cstr(name));
+
+	static function image(file:Ptr, length:Int):{width:Int, height:Int, pixels:IoBuffer} {
+		var made:Array<Ptr> = [];
+		inline function keep(p:Ptr):Ptr {
+			if (!p.isNull()) made.push(p);
+			return p;
+		}
+		function release() {
+			for (p in made) CF.CFRelease(p);
+			made = [];
+		}
+		try {
+			// (kCFAllocatorNull: the bytes are the caller's, not freed)
+			var data = keep(CF.CFDataCreateWithBytesNoCopy(Ptr.nil(), file, length, constant("kCFAllocatorNull")));
+			var src = keep(IO.CGImageSourceCreateWithData(data, Ptr.nil()));
+			if (src.isNull()) throw ImageError.unsupported("SystemDecoder: not an image ImageIO reads");
+			var props = keep(IO.CGImageSourceCopyPropertiesAtIndex(src, 0, Ptr.nil()));
+			if (props.isNull()) throw ImageError.corrupt("SystemDecoder: no image in it");
+			function int(key:Ptr):Int {
+				var v = CF.CFDictionaryGetValue(props, key);
+				if (v.isNull()) return 0;
+				return Arena.scopedValue(a -> {
+					var n:Ptr<hxmc.I64> = cast a.alloc(8);
+					// (kCFNumberSInt64Type)
+					CF.CFNumberGetValue(v, 4, n) ? n.value.toInt() : 0;
+				});
+			}
+			var w = int(constant("kCGImagePropertyPixelWidth")), h = int(constant("kCGImagePropertyPixelHeight"));
+			if (w <= 0 || h <= 0) throw ImageError.corrupt("SystemDecoder: no size");
+			ImageLimits.check("SystemDecoder", w, h, 4);
+			var opts = keep(CF.CFDictionaryCreateMutable(Ptr.nil(), 0, address("kCFTypeDictionaryKeyCallBacks"), address("kCFTypeDictionaryValueCallBacks")));
+			var yes = constant("kCFBooleanTrue");
+			CF.CFDictionarySetValue(opts, constant("kCGImageSourceShouldCacheImmediately"), yes);
+			var o = int(constant("kCGImagePropertyOrientation"));
+			// (turned or mirrored: a thumbnail of the whole at its own size, the one call that applies
+			// the orientation; else the image itself, as a thumbnail of an indexed PNG with alpha comes
+			// premultiplied twice)
+			if (o > 1) {
+				CF.CFDictionarySetValue(opts, constant("kCGImageSourceCreateThumbnailFromImageAlways"), yes);
+				CF.CFDictionarySetValue(opts, constant("kCGImageSourceCreateThumbnailWithTransform"), yes);
+				var side = Arena.scopedValue(a -> {
+					var n:Ptr<hxmc.I64> = cast a.alloc(8);
+					n.value = w > h ? w : h;
+					CF.CFNumberCreate(Ptr.nil(), 4, n);
+				});
+				CF.CFDictionarySetValue(opts, constant("kCGImageSourceThumbnailMaxPixelSize"), keep(side));
+			}
+			var img = keep(o > 1 ? IO.CGImageSourceCreateThumbnailAtIndex(src, 0, opts) : IO.CGImageSourceCreateImageAtIndex(src, 0, opts));
+			if (img.isNull()) throw ImageError.corrupt("SystemDecoder: ImageIO cannot decode it");
+			var pw = CG.CGImageGetWidth(img).toInt(), ph = CG.CGImageGetHeight(img).toInt();
+			// (zeroed: an image with alpha is drawn over what the bitmap holds)
+			var pixels = IoBuffer.alloc(pw * ph * 4);
+			var space = keep(CG.CGColorSpaceCreateWithName(constant("kCGColorSpaceSRGB")));
+			// (kCGImageAlphaPremultipliedLast: R G B A)
+			var ctx = keep(CG.CGBitmapContextCreate(pixels.ptr, pw, ph, 8, pw * 4, space, 1));
+			if (ctx.isNull()) {
+				pixels.free();
+				throw ImageError.unsupported("SystemDecoder: no bitmap context");
+			}
+			Arena.scoped(a -> {
+				var r = a.make(CGRect);
+				r.value.size.width = pw;
+				r.value.size.height = ph;
+				CG.CGContextDrawImage(ctx, r.value, img);
+			});
+			release();
+			return {width: pw, height: ph, pixels: pixels};
+		} catch (e:haxe.Exception) {
+			release();
+			throw e;
+		}
+	}
+}
+
+@:hxmc.c @:hxmc.lib("/System/Library/Frameworks/ImageIO.framework/ImageIO") private extern class IO {
+	static function CGImageSourceCreateWithData(data:Ptr, options:Ptr):Ptr;
+	static function CGImageSourceCopyPropertiesAtIndex(src:Ptr, index:hxmc.I64, options:Ptr):Ptr;
+	static function CGImageSourceCreateImageAtIndex(src:Ptr, index:hxmc.I64, options:Ptr):Ptr;
+	static function CGImageSourceCreateThumbnailAtIndex(src:Ptr, index:hxmc.I64, options:Ptr):Ptr;
+}
+
+@:hxmc.c @:hxmc.lib("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation") private extern class CF {
+	static function CFRelease(o:Ptr):Void;
+	static function CFDataCreateWithBytesNoCopy(alloc:Ptr, bytes:Ptr, length:hxmc.I64, deallocator:Ptr):Ptr;
+	static function CFDictionaryGetValue(d:Ptr, key:Ptr):Ptr;
+	static function CFDictionaryCreateMutable(alloc:Ptr, capacity:hxmc.I64, keys:Ptr, values:Ptr):Ptr;
+	static function CFDictionarySetValue(d:Ptr, key:Ptr, value:Ptr):Void;
+	static function CFNumberGetValue(n:Ptr, type:hxmc.I64, out:Ptr):Bool;
+	static function CFNumberCreate(alloc:Ptr, type:hxmc.I64, value:Ptr):Ptr;
+}
+
+@:hxmc.c @:hxmc.lib("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics") private extern class CG {
+	static function CGImageGetWidth(img:Ptr):hxmc.I64;
+	static function CGImageGetHeight(img:Ptr):hxmc.I64;
+	static function CGColorSpaceCreateWithName(name:Ptr):Ptr;
+	static function CGBitmapContextCreate(data:Ptr, w:hxmc.I64, h:hxmc.I64, bits:hxmc.I64, stride:hxmc.I64, space:Ptr, info:Int):Ptr;
+	static function CGContextDrawImage(ctx:Ptr, rect:CGRect, img:Ptr):Void;
 }
 #elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
 import hxmc.unsafe.Arena;

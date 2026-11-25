@@ -4,7 +4,7 @@ import { UiWindow, Surface, MenuBarView, Theme } from "helder/ui";
 import { actions, handle, item, role, separator, submenu, Keymap, Checked, Unchecked, Enabled, Disabled } from "helder/ui/actions";
 import { font } from "helder/asset";
 import { App } from "helder/scene";
-import { platform } from "helder/platform";
+import { platform } from "helder/native/platform";
 import { args } from "helder/os";
 import { Tables, setMac } from "./tables";
 import { view, focusSearch, focusFilter } from "./shell";

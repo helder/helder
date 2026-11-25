@@ -3,14 +3,14 @@ package helder.scene.render;
 #if macro
 import haxe.macro.Context;
 import haxe.macro.Expr;
-import helder.definition.HaxeAdapter;
-import helder.definition.Kernel;
+import helder.compiler.HaxeAdapter;
+import helder.compiler.Kernel;
 import helder.gfx.shader.Ir;
 import helder.gfx.shader.ShaderDefinition;
 import helder.gfx.shader.SlotsMacro;
 #end
 
-// A material's own shader (DESIGN.md 3 in src/helder/compiler): pbr (the
+// A material's own shader (README.md 3 in src/helder/compiler): pbr (the
 // standard material, PbrShader) with some of its slots replaced, compiled
 // at build time into the variants the renderer draws with (plain, normal
 // mapped, skinned, instanced, instanced and normal mapped), set on a

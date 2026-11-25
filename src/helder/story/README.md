@@ -24,7 +24,7 @@ export const plain = story({name: 'Card/plain', render: c => <Card title={c.text
 console.log(tree(plain))
 ```
 
-- **`story({...})`** is a definition (src/helder/compiler/DESIGN.md 4;
+- **`story({...})`** is a definition (src/helder/compiler/README.md 4;
   its handler `StoryDefinition`, one for both languages): `name`, `render`
   (a function of the story's controls), `seed` (Controls.random's, 1),
   `width` and `height` (its size in points, whole numbers: the studio's

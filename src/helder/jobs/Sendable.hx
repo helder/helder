@@ -216,7 +216,7 @@ class Sendable {
 
 	// ---- job(f)
 
-	// job(f) (Jobs.job, a definition: src/helder/compiler/DESIGN.md 4): f a
+	// job(f) (Jobs.job, a definition: src/helder/compiler/README.md 4): f a
 	// static or module-level function named (the argument's kernel tree a
 	// reference to it), checked as its tier wants, and a class of its own
 	// beside it, <Class>_<f>_Job: its worker entry (a GC job's: a callback,
@@ -377,7 +377,7 @@ class Sendable {
 
 // job(f)'s Haxe adapter: f the static or module-level function named, its
 // signature from its type (a GC-free job's: a kernel, which hxmc checks)
-private class JobAdapter extends helder.definition.HaxeAdapter implements helder.jobs.JobDefinition.JobAdapter {
+private class JobAdapter extends helder.compiler.HaxeAdapter implements helder.jobs.JobDefinition.JobAdapter {
 	public var c:ClassType;
 	public var cf:ClassField;
 	public var args:Array<{name:String, opt:Bool, t:Type}>;

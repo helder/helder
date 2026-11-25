@@ -4,8 +4,8 @@ package helder.view;
 import haxe.macro.Context;
 import haxe.macro.Expr;
 import haxe.macro.Type;
-import helder.markup.Plan;
-import helder.markup.Syntax;
+import helder.view.Plan;
+import helder.view.Syntax;
 
 using haxe.macro.ExprTools;
 
@@ -763,7 +763,7 @@ class HaxeTarget implements Target<Expr> {
 	public function liveOn():Bool
 		return LiveMacro.on();
 
-	public function live(value:Expr, at:helder.markup.Plan.LiveAt):Null<Expr>
+	public function live(value:Expr, at:helder.view.Plan.LiveAt):Null<Expr>
 		return LiveMacro.live(value, at, file, base);
 
 	public function liveIn(e:Expr):Expr

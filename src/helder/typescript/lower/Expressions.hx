@@ -26,10 +26,10 @@ abstract class Expressions extends Statements {
 		}
 		var x = api == null ? null : apiExpr(n);
 		if (x != null) return x;
-		// (helder/platform's constants, and conditions of them: a literal)
+		// (helder/native/platform's constants, and conditions of them: a literal)
 		var k:Dynamic = n.kind == KindPropertyAccessExpression || n.kind == KindBinaryExpression || n.kind == KindPrefixUnaryExpression ? platform.constant(n) : null;
 		if (k != null) return Std.isOfType(k, Bool) ? ECast(TBool, EInt(k ? 1 : 0)) : EStr(k);
-		if (Platform.bare(n)) fail(n, "helder/platform's platform is the build's constants: read its fields (platform.os, platform.target, platform.arm)");
+		if (Platform.bare(n)) fail(n, "helder/native/platform's platform is the build's constants: read its fields (platform.os, platform.target, platform.arm)");
 		var result:Ex = switch (n.kind) {
 			case KindPropertyAccessExpression | KindElementAccessExpression | KindCallExpression if (chainTop(n)): optionalChain(n);
 			case KindNumericLiteral: EF64(Std.parseFloat(n.text));

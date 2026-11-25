@@ -1,7 +1,7 @@
-package helder.definition;
+package helder.compiler;
 
 // A definition's argument as its handler sees it (src/helder/compiler/
-// DESIGN.md): the same tree from either language's adapter, Haxe's
+// README.md): the same tree from either language's adapter, Haxe's
 // (HaxeAdapter, from the macro's untyped expression) or TypeScript's
 // (helder.typescript.lower, from tsgo's checked AST). Only what is static
 // makes one: literals, object and array literals, functions, and references
