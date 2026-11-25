@@ -240,7 +240,10 @@ cancelled with Escape, dropped where nothing took it). The press is the
 system's from then on: no release follows (helder.ui lets its pressed node,
 its capture and a drag of its own go). macOS: a dragging session
 (`beginDraggingSessionWithItems:event:source:`) from the last mouse-down
-or -dragged event, an `NSDraggingItem` per file URL, the source a class
+or -dragged event, an `NSDraggingItem` per file URL, each with a dragging
+frame AppKit takes (the first the image at the pointer, the others, and
+all of them without an image, the file's icon at 32 points: one left
+without a frame made AppKit throw and abort the app), the source a class
 made at run time (its operation mask from `allowed`, its
 `draggingSession:endedAtPoint:operation:` the completion); events keep
 flowing. Windows: OLE's modal `DoDragDrop` (`OleInitialize` on the
