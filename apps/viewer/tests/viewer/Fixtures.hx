@@ -20,6 +20,7 @@ class Fixtures implements Markup {
 
 	// an explorer of them, decoding at once on this thread
 	public static function explorer(?dirs:Array<String>):Explorer {
+		Kinds.utc = true;
 		var m = files(dirs ?? ["tests/fixtures/folder", "tests/fixtures/pdf"]);
 		return new Explorer(m, (path, side, done) -> done(Decode.file({path: path, side: side})), [], [], Preview.now, null, (path, done) -> done(m.text(path)));
 	}
@@ -31,9 +32,13 @@ class Fixtures implements Markup {
 	// the web build's sample folder as its browser has it (Samples: its
 	// paths, the files' bytes read here), decoding at once from those bytes
 	// as the web's decodes do (Decode.of), the PDF's sizes too; no previews
-	public static function samples():Explorer {
+	// (keep: the files kept, by name; a story's leaves out video and audio,
+	// which only some machines decode, so its counts are the same everywhere)
+	public static function samples(?keep:String->Bool):Explorer {
+		Kinds.utc = true;
 		var m = new MemoryFiles(), bytes = new Map<String, haxe.io.Bytes>();
 		for (f in Samples.FILES) {
+			if (keep != null && !keep(f.file)) continue;
 			bytes.set(f.path, sample(f));
 			m.add(f.path, bytes.get(f.path), Samples.MODIFIED);
 		}

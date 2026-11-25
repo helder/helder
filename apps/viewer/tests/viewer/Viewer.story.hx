@@ -139,7 +139,7 @@ final status = story({
 
 // (the web build's Markdown sample full size: headings, a list, a table, code, a picture of its folder)
 private function welcome():Explorer {
-	var x = Fixtures.samples();
+	var x = Fixtures.samples(name -> !FolderModel.isMedia(name));
 	x.browser.go(Samples.ROOT);
 	x.open("Welcome.md");
 	return x;

@@ -118,7 +118,8 @@ function tests() {
 			t.frame();
 			equals(md.source.peek(), true);
 			equals(t.ui.root.find("markdown-doc").style.display, None);
-			equals(md.code.model.text(), md.text);
+			// (line ends aside: a checkout on Windows gives this file's strings CRLF)
+			equals(md.code.model.text().split("\r\n").join("\n"), md.text.split("\r\n").join("\n"));
 			assert(md.code.model.readOnly);
 			x.perform(ToggleSource);
 			t.frame();
