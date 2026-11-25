@@ -73,8 +73,22 @@ try {
 	await p.goto(url);
 	await p.evaluate((w) => window.start(w), worker);
 	await p.waitForFunction(() => window.log.some((l) => l.startsWith('state ')), null, { timeout: 20000 });
-	await p.waitForTimeout(300);
 	const state = async () => (await p.evaluate(() => window.log)).filter((l) => l.startsWith('state ')).pop();
+	// (each step's outcome waited for, not a fixed 300 ms: in a worker a
+	// click goes to the program and the tree comes back by messages, later
+	// on a busy machine; f's last value once truthy, or once 10 s passed;
+	// how long each took, printed)
+	const waited = [];
+	const until = async (f, ms = 10000) => {
+		const t0 = Date.now();
+		let v = await f();
+		while (!v && Date.now() - t0 < ms) {
+			await p.waitForTimeout(50);
+			v = await f();
+		}
+		waited.push(Date.now() - t0);
+		return v;
+	};
 	// Chromium's accessibility tree (what a screen reader gets; Playwright's
 	// ARIA snapshot leaves the canvas's fallback content out, having no
 	// boxes): each node as role "name" [states]
@@ -88,37 +102,49 @@ try {
 		});
 		return { ax, text: lines.join('\n') };
 	};
-	const first = await snapshot();
-	const ax = first.ax;
-	for (const want of ['button "Save"', 'checkbox "Remember" [checked=false]', 'slider "Volume"', 'textbox "Name"', 'textbox "Code" [readonly=true]', 'textbox "Notes"',
+	const wants = ['button "Save"', 'checkbox "Remember" [checked=false]', 'slider "Volume"', 'textbox "Name"', 'textbox "Code" [readonly=true]', 'textbox "Notes"',
 		'button "More" [expanded=false]', 'list "Fruits"', 'listitem "Pear"', 'grid "Mail"', 'row "Bob Lunch" [selected=false]', 'gridcell "Lunch"',
-		'columnheader "Subject"', 'tablist ""', 'tab "General" [selected=true]', 'StaticText "Ready"'])
-		check(`the tree: ${want}`, first.text.split('\n').some((l) => l.startsWith(want)), want);
+		'columnheader "Subject"', 'tablist ""', 'tab "General" [selected=true]', 'StaticText "Ready"'];
+	const has = (text, want) => text.split('\n').some((l) => l.startsWith(want));
+	// (the tree once the mirror has all of it, else the last read)
+	let first;
+	await until(async () => {
+		first = await snapshot();
+		return wants.every((want) => has(first.text, want));
+	});
+	for (const want of wants)
+		check(`the tree: ${want}`, has(first.text, want), want);
 	if (failed) console.log(first.text);
-	const node = (role, name) => ax.find((n) => n.role?.value === role && n.name?.value === name);
 	const prop = (n, k) => n?.properties?.find((x) => x.name === k)?.value?.value;
 	// a screen reader's clicks on the mirror's elements
-	const click = (role, name) => p.evaluate(([r, n]) => {
+	const click = (role, name) => until(() => p.evaluate(([r, n]) => {
 		const e = [...document.querySelectorAll(`#c [role=${r}]`)].find((x) => x.getAttribute('aria-label') === n);
 		if (!e) return false;
 		e.click();
 		return true;
-	}, [role, name]);
+	}, [role, name]));
+	// (the program's state once it has s, else its last)
+	const stated = async (s) => (await until(async () => (await state()).includes(s))) ? await state() : `${await state()} (no ${s} in 10 s)`;
 	check('More clicked', await click('button', 'More'));
-	await p.waitForTimeout(300);
-	check('expanded: the program', (await state()).includes('open=true'), await state());
-	const after = (await snapshot()).text;
+	const open = await stated('open=true');
+	check('expanded: the program', open.includes('open=true') && !open.includes(' (no '), open);
+	let after;
+	await until(async () => (after = (await snapshot()).text).includes('button "More" [expanded=true]') && after.includes('StaticText "Extra"'));
 	check('expanded: the tree', after.includes('button "More" [expanded=true]') && after.includes('StaticText "Extra"'), after);
 	check('a row clicked', await click('row', 'Bob Lunch'));
-	await p.waitForTimeout(300);
-	check('selected: the program', (await state()).includes('row=1'), await state());
-	const ax2 = (await cdp.send('Accessibility.getFullAXTree')).nodes.filter((n) => !n.ignored);
-	const bob = ax2.find((n) => n.role?.value === 'row' && n.name?.value === 'Bob Lunch');
-	check('selected: the tree', prop(bob, 'selected') === true);
+	const row = await stated('row=1');
+	check('selected: the program', !row.includes(' (no '), row);
+	const bob = await until(async () => {
+		const ax = (await cdp.send('Accessibility.getFullAXTree')).nodes.filter((n) => !n.ignored);
+		const n = ax.find((n) => n.role?.value === 'row' && n.name?.value === 'Bob Lunch');
+		return prop(n, 'selected') === true ? n : null;
+	});
+	check('selected: the tree', bob != null);
 	check('Save clicked', await click('button', 'Save'));
-	await p.waitForTimeout(300);
-	check('saved', (await state()).includes('saved=1'), await state());
+	const saved = await stated('saved=1');
+	check('saved', !saved.includes(' (no '), saved);
 	check('no page errors', errors.length === 0, errors.join(' | '));
+	console.log(`web-access.mjs${mode}: waited (ms) for the tree, More's click, the program, the tree, the row's click, the program, the tree, Save's click, the program: ${waited.join(' ')}`);
 } catch (e) {
 	failed++;
 	console.log('web-access.mjs: FAIL: ' + e.message);
