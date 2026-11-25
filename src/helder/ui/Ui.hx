@@ -2717,14 +2717,19 @@ class Ui extends ScrollHost {
 	// own scroll would have set them
 	@:noCompletion public function mirrored(n:Node, x:Float, y:Float, held:Bool, moving:Bool) {
 		mirrorAt.set(n, [x, y]);
+		var was = mirrorHeld.exists(n);
 		if (held) mirrorHeld.set(n, true) else mirrorHeld.remove(n);
 		if (!moving) requestFrame();
-		if (x == n.scrollX && y == n.scrollY) return;
-		Scrolling.stopGlide(this, n);
-		n.scrollX = x;
-		n.scrollY = y;
-		if (n.onScroll != null) n.onScroll();
-		requestFrame();
+		if (x != n.scrollX || y != n.scrollY) {
+			Scrolling.stopGlide(this, n);
+			n.scrollX = x;
+			n.scrollY = y;
+			if (n.onScroll != null) n.onScroll();
+			requestFrame();
+		}
+		// (let go past an end by the compositor (it no longer scrolls it): back
+		// within its range, as no layout may clamp it soon)
+		if (was && !held && !trackpad.holds(n)) Scrolling.clamp(n);
 	}
 
 	// (whether n's offsets are the program's own: not as the compositor last
