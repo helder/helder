@@ -479,6 +479,12 @@ class CodeView extends Node {
 
 	function paintSelections(canvas:Canvas, tx:Float, ty:Float, first:Int, last:Int) {
 		var sels = model.sels, color = codeTheme.colors[CodeTheme.SELECTION], lh = lineHeight;
+		// (a text selection of the scope it is in: its part of it, in the selection's colour)
+		var r = ui.textSelection == null ? null : ui.textSelection.rangeIn(this, model.length);
+		if (r != null) {
+			sels = sels.concat([new Sel(r.start, r.end)]);
+			color = ui.selectionColor;
+		}
 		for (k in 0...sels.length) {
 			var s = sels[k];
 			if (s.empty()) continue;
@@ -746,7 +752,8 @@ class CodeView extends Node {
 	}
 
 	function pointerDown(e:Event) {
-		if (e.button == 3) return;
+		// (in a selectable scope: the scope's text selection, not its own)
+		if (e.button == 3 || selectionScope() != null) return;
 		var lx = localX(e.x, e.y), ly = localY(e.x, e.y), t = Ui.now();
 		var pos = offsetAt(lx, ly);
 		clicks = t - clickAt < 0.45 && Math.abs(e.x - clickX) < 5 && Math.abs(e.y - clickY) < 5 ? clicks + 1 : 1;
@@ -871,6 +878,25 @@ class CodeView extends Node {
 		model.insert(value);
 		changed();
 		return true;
+	}
+
+	// (a text of a selectable scope's: its text, its offsets)
+	@:noCompletion override public function selectableText():Null<String>
+		return model.text();
+
+	@:noCompletion override public function selectableIndex(px:Float, py:Float, under = false):Int {
+		var lx = localX(px, py), ly = localY(px, py);
+		if (!under || cw <= 0) return offsetAt(lx, ly);
+		var l = Std.int(Math.floor((ly + scrollTop) / lineHeight));
+		if (l < 0) return 0;
+		if (l >= model.lineCount) return model.length;
+		var col = (lx - gutterW - PAD + scrollLeft) / cw;
+		return model.offsetAtColumn(l, col < 0 ? 0 : Std.int(col));
+	}
+
+	@:noCompletion override public function selectableCaret(i:Int):Null<{x:Float, y:Float, height:Float}> {
+		var b = windowBounds(), p = pointOf(i);
+		return {x: b.x + p.x, y: b.y + p.y, height: lineHeight};
 	}
 
 	override public function select(start:Int, end:Int) {

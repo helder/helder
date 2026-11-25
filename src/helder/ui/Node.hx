@@ -92,6 +92,12 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	// takes the focus when it comes into a window (a dialog's first button, a
 	// menu's first item: as the DOM's autofocus, wherever it is inserted)
 	public var autofocus(default, set) = false;
+	// whether its text can be selected (Ui.textSelection: a drag, a double
+	// click a word, a triple a line, Shift extending; Mod+C copies it, Mod+A
+	// selects all of it): a TextNode's with its spans; any other node's
+	// texts all in one selection, as a document's (TextSelection: its scope,
+	// the outermost such node)
+	public var selectable(default, set) = false;
 	// what it is to assistive technology (helder.ui.access.AccessTree)
 	public var semantics(default, set):Null<helder.ui.access.Semantics> = null;
 	// its id in the accessibility tree (0: none yet)
@@ -1162,6 +1168,33 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 
 	// (a text field's: EditableText's)
 	public function select(start:Int, end:Int) {}
+
+	function set_selectable(v:Bool):Bool
+		return selectable = v;
+
+	// the scope its text is selected in: its outermost selectable ancestor
+	// (itself too; user-select none: not one), else null
+	public function selectionScope():Null<Node> {
+		var n:Null<Node> = this, scope:Null<Node> = null;
+		while (n != null) {
+			if (n.selectable && n.style.userSelect != None) scope = n;
+			n = n.parent;
+		}
+		return scope;
+	}
+
+	// (a text selection's text of it: null, none of its own, as a TextNode's span)
+	@:noCompletion public function selectableText():Null<String>
+		return null;
+
+	// (the index in that text nearest to a point of the window; under: the
+	// character's under it)
+	@:noCompletion public function selectableIndex(px:Float, py:Float, under = false):Int
+		return 0;
+
+	// (index i's caret in the window: x, its line's top and height; null: not laid out)
+	@:noCompletion public function selectableCaret(i:Int):Null<{x:Float, y:Float, height:Float}>
+		return null;
 
 	// (kept wherever nodes are laid out: a Part's, which a component calls opaquely in a page too)
 	@:ifFeature("helder.ui.Node.markDirty") public function editable():Bool

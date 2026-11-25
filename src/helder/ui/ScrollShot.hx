@@ -318,7 +318,7 @@ private class Taking {
 		var gs = n.gestures;
 		if (gs != null) for (g in gs)
 			if (!Std.isOfType(g, helder.ui.gesture.Tap)) c |= ScrollShot.DRAG;
-		if (Std.isOfType(n, TextNode) && (cast n : TextNode).selectable) c |= ScrollShot.DRAG;
+		if (n.selectable) c |= ScrollShot.DRAG;
 		return c;
 	}
 
