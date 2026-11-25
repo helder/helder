@@ -154,16 +154,13 @@ try {
 	await shown('Chimes.m4a again', true);
 	await away('Escape', 'Chimes.m4a');
 	await left('Chimes.m4a closed');
-	// (the video's frames on swiftshader's WebGPU: Dawn cannot import a decoded
-	// VideoFrame (copyExternalImageToTexture's external texture is invalid),
-	// those errors of this step only set aside; the frames are not what is checked here)
-	const before = errors.length;
+	// (a video: its frames' WebGPU errors are the page's, as any: helder.gfx
+	// copies by the CPU those it cannot import, as a platform decoder's
+	// frames on SwiftShader)
 	await open('Starlings.mp4', 'Starlings.mp4 · ');
 	await shown('Starlings.mp4', false);
 	await away('Escape', 'Starlings.mp4');
 	await left('Starlings.mp4 closed');
-	const imported = /WebGPU: \[Invalid (Texture|TextureView|ExternalTexture)/;
-	errors.splice(before, errors.length - before, ...errors.slice(before).filter((e) => !imported.test(e)));
 	// (Opus in WebM: plays wherever the check runs; left for the next file, then for the folder above)
 	await open('More', 'More');
 	await open('Bells', 'Bells.webm · ', 'More');
