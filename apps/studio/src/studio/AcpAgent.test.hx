@@ -40,7 +40,8 @@ function tests() {
 			equals(report.problems, "The studio's last build failed:\n- app.tsx:3: oops");
 			var f = w.dir + "/app.helder";
 			equals(w.docs.get(f).text, "<frame>\n\t<text>Hi</text>\n</frame>\n");
-			equals(w.docs.undo(), "fake's edit of app.helder");
+			var e = w.docs.undo();
+			equals([e.by, e.label], ["Fake", "app.helder"]);
 			equals(w.docs.get(f).text, "<frame>\n\t<text>Hello</text>\n</frame>\n");
 			equals(w.docs.undo(), null);
 		})).timeout(20);
