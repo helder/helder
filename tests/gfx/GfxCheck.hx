@@ -95,7 +95,7 @@ class GfxCheck {
 			if (wrong != null) return false;
 		}
 		if (bless) {
-			sys.io.File.saveBytes(golden, Png.encode(pixels, WIDTH, HEIGHT));
+			sys.io.File.saveBytes(golden, Png.golden(pixels, WIDTH, HEIGHT));
 			Sys.println('GfxCheck: blessed $golden');
 			return true;
 		}

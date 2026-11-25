@@ -243,6 +243,18 @@ class TextNode extends Node {
 		inline function same(a:Float, b:Float):Bool
 			return a == b || (Math.isNaN(a) && Math.isNaN(b));
 		if (paragraph != null && laidText == text && f.equals(laidFont) && same(w, laidWidth) && same(cut, laidCut)) return paragraph;
+		// (text-overflow: middle: the longest start that fits with the end kept)
+		if (style.textOverflow == Middle && rich == null && !Math.isNaN(box)) {
+			var m = middle(engine, shown, f, box, clamp > 0 ? clamp : 1, justify, base);
+			if (m != null) {
+				paragraph = m;
+				laidFont = f;
+				laidWidth = w;
+				laidCut = cut;
+				laidText = text;
+				return m;
+			}
+		}
 		// (the last paragraph laid out again in place: the engine's buffers reused)
 		paragraph = engine.layout(shown, f, w, spans, clamp, justify, base, Math.isNaN(cut) ? -1 : cut, paragraph != mp ? paragraph : null);
 		// (balanced: two to six lines at the narrowest width, to 1/64 pixel, that keeps their number, as Chromium's)
@@ -262,6 +274,37 @@ class TextNode extends Node {
 		laidCut = cut;
 		laidText = text;
 		return paragraph;
+	}
+
+	// (text cut in its middle to fit lines lines of width: whole when it fits;
+	// else its start, "…" and its end: a name's extension and the four
+	// characters before it (else its last six), the start as long as fits;
+	// null: not even the end fits)
+	static function middle(engine:TextEngine, text:String, f:Font, width:Float, lines:Int, justify:Bool, base:Int):Null<Paragraph> {
+		inline function fits(p:Paragraph):Bool
+			return p.lineCount <= lines && p.width <= width + 1 / 64;
+		var whole = engine.layout(text, f, width, null, 0, justify, base);
+		if (fits(whole)) return whole;
+		var n = text.length, dot = text.lastIndexOf(".");
+		var keep = dot > 0 && n - dot <= 8 ? n - dot + 4 : 6;
+		if (keep > n >> 1) keep = n >> 1;
+		// (a surrogate pair kept whole)
+		inline function whole16(i:Int):Int
+			return i > 0 && i < n && StringTools.fastCodeAt(text, i) >= 0xDC00 && StringTools.fastCodeAt(text, i) <= 0xDFFF ? i - 1 : i;
+		var from = whole16(n - keep), tail = "\u2026" + text.substr(from);
+		var best = engine.layout(tail, f, width, null, 0, justify, base);
+		if (!fits(best)) return null;
+		var lo = 0, hi = from;
+		while (lo < hi) {
+			var mid = whole16((lo + hi + 1) >> 1);
+			if (mid <= lo) mid = lo + 1;
+			var p = engine.layout(text.substr(0, mid) + tail, f, width, null, 0, justify, base);
+			if (fits(p)) {
+				lo = mid;
+				best = p;
+			} else hi = mid - 1;
+		}
+		return best;
 	}
 
 	// the paragraph as drawn (after Ui.update), or null

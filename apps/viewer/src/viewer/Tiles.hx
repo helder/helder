@@ -21,8 +21,15 @@ typedef Thumb = {image:Null<Image>, waiting:Bool};
 // an image's, a video's, an audio file's, a PDF's), a Markdown document's
 // page with its first heading; and the grid's cell.
 class Tiles implements Markup {
-	public static inline var CELL_WIDTH = 136;
-	public static inline var CELL_HEIGHT = 166;
+	// the grid's cells: a desktop's, the picture's box 90 points (a little
+	// over Finder's 64-point icons), its name in two lines; a tablet's (a
+	// finger's) the box 116
+	public static inline var CELL_WIDTH = 112;
+	public static inline var CELL_HEIGHT = 160;
+	public static inline var TABLET_WIDTH = 136;
+	public static inline var TABLET_HEIGHT = 184;
+	// (a desktop's pictures to a tablet's)
+	static inline var SMALL = 0.78;
 	// (thumbnails kept in memory: 256 a side, at most about 256 KB each)
 	static inline var KEEP = 300;
 	static final RAW = ["dng", "cr2", "cr3", "nef", "arw", "raf", "orf", "rw2"];
@@ -87,39 +94,43 @@ class Tiles implements Markup {
 		</>;
 	}
 
-	// the grid's cell: the picture in a 116-point box, the name (an accent
-	// pill when selected), the size
-	public static function cell(x:Explorer, e:Read<Entry>):View {
-		var b = x.browser;
+	// the grid's cell: the picture in its box, the name in two lines, cut
+	// in its middle (its extension kept; an accent pill when selected), the
+	// size (tablet: a tablet's sizes)
+	public static function cell(x:Explorer, e:Read<Entry>, tablet = false):View {
+		var b = x.browser, k = tablet ? 1.0 : SMALL, box = Math.round(116 * k), width = tablet ? TABLET_WIDTH : CELL_WIDTH;
 		function on():Bool {
 			b.selection.version();
 			return b.selection.has(e().name);
 		}
 		return <view slot="grid-tile" grow={1} align-items="center" row-gap={6} padding="4 4 8 4" ref={(n:Node) -> DragOut.from(x, n, () -> e().name)}>
-			<view slot="thumb-box" data-selected={on() && e().kind == Folder} width={116} height={116} shrink={0} align-items="center" justify="center"
+			<view slot="thumb-box" data-selected={on() && e().kind == Folder} width={box} height={box} shrink={0} align-items="center" justify="center"
 				opacity={x.zoom.flying() == x.browser.path(e().name) ? 0 : 1}>
-				{() -> picture(x, e(), on)}
+				{() -> picture(x, e(), on, k)}
 			</view>
-			<text slot="name-pill" data-selected={on()} max-width={130} max-lines={1} text-overflow="ellipsis" dir={helder.ui.Dir.Ltr}>{e().name}</text>
+			<text slot="name-pill" data-selected={on()} max-width={width - 8} max-lines={2} text-overflow="middle" text-align="center"
+				dir={helder.ui.Dir.Ltr}>{e().name}</text>
 			<text font-size={11.5} color={Look.ref.fg3} margin-top={-5} max-lines={1}>{e().kind == Folder ? "Folder" : Kinds.size(e().size)}</text>
 		</view>;
 	}
 
-	static function picture(x:Explorer, e:Entry, on:Void->Bool):View {
-		if (e.kind == Folder) return <image src={Glyphs.folder(UiWindow.dark())} width={96} height={78}/>;
-		var t = thumbnail(x, e), raw = RAW.contains(Kinds.extension(e.name));
+	static function picture(x:Explorer, e:Entry, on:Void->Bool, k:Float):View {
+		inline function px(v:Float):Float
+			return Math.round(v * k);
+		if (e.kind == Folder) return <image src={Glyphs.folder(UiWindow.dark())} width={px(96)} height={px(78)}/>;
+		var t = thumbnail(x, e), raw = RAW.contains(Kinds.extension(e.name)), side = px(108);
 		return <>
 			<Show when={t().image != null || t().waiting}>
-				<view slot="photo" data-selected={on()} width={108} height={108} overflow="hidden" shadow="0 1px 3px rgba(0,0,0,0.35)"
+				<view slot="photo" data-selected={on()} width={side} height={side} overflow="hidden" shadow="0 1px 3px rgba(0,0,0,0.35)"
 					ref={(n:Node) -> x.zoom.tile(n, x.browser.path(e.name))}>
-					<Show when={t().image != null}><image src={t().image} width={108} height={108} fit="cover"/></Show>
+					<Show when={t().image != null}><image src={t().image} width={side} height={side} fit="cover"/></Show>
 					<Show when={raw}>
 						<text position="absolute" left={4} top={4} font-size={9.5} font-weight={700} padding="0 4" radius={3} background="rgba(0,0,0,0.55)"
 							color="#ffffff">RAW</text>
 					</Show>
 				</view>
 			</Show>
-			<Show when={t().image == null && !t().waiting}>{FolderModel.isMarkdown(e.name) ? document(x, e) : large(e, n -> x.zoom.tile(n, x.browser.path(e.name)))}</Show>
+			<Show when={t().image == null && !t().waiting}>{FolderModel.isMarkdown(e.name) ? document(x, e, k) : large(e, n -> x.zoom.tile(n, x.browser.path(e.name)), k)}</Show>
 		</>;
 	}
 
@@ -128,9 +139,9 @@ class Tiles implements Markup {
 
 	// a Markdown document's tile: a page with its first heading's text (the
 	// name while it is read, or without one), over a few lines' shapes
-	static function document(x:Explorer, e:Entry):View {
+	static function document(x:Explorer, e:Entry, k:Float):View {
 		var title = heading(x, e);
-		return <view tag="document-tile" width={84} height={108} radius={6} background={Look.ref.raised} border-width={1} border-color={Look.ref.edge}
+		return <view tag="document-tile" width={Math.round(84 * k)} height={Math.round(108 * k)} radius={6} background={Look.ref.raised} border-width={1} border-color={Look.ref.edge}
 			padding="11 9" row-gap={5} overflow="hidden" shadow="0 1px 2px rgba(0,0,0,0.25)" ref={(n:Node) -> x.zoom.tile(n, x.browser.path(e.name))}>
 			<text tag="document-title" font-size={9.5} font-weight={700} line-height={1.2} max-lines={4} text-overflow="ellipsis" color={Look.ref.fg}
 				shrink={0}>{title}</text>
@@ -159,11 +170,11 @@ class Tiles implements Markup {
 	}
 
 	// a large picture: the folder's, or a page with the file's extension
-	// (mark: its page's node, the zoom's tile)
-	public static function large(e:Entry, ?mark:Node->Void):View {
-		if (e.kind == Folder) return <image src={Glyphs.folder(UiWindow.dark())} width={96} height={78}/>;
+	// (mark: its page's node, the zoom's tile; k: its size's factor)
+	public static function large(e:Entry, ?mark:Node->Void, k = 1.0):View {
+		if (e.kind == Folder) return <image src={Glyphs.folder(UiWindow.dark())} width={Math.round(96 * k)} height={Math.round(78 * k)}/>;
 		var ext = Kinds.extension(e.name).toUpperCase();
-		return <view width={72} height={92} radius={7} background={Look.ref.raised} border-width={1} border-color={Look.ref.edge} align-items="center"
+		return <view width={Math.round(72 * k)} height={Math.round(92 * k)} radius={7} background={Look.ref.raised} border-width={1} border-color={Look.ref.edge} align-items="center"
 			justify="center" shadow="0 1px 2px rgba(0,0,0,0.25)" ref={(n:Node) -> if (mark != null) mark(n)}>
 			<image src={Glyphs.get(Glyphs.of(Kinds.glyph(e)))} width={24} height={24} color={Look.ref.fg3} margin-top={-12}/>
 			<Show when={ext != ""}>

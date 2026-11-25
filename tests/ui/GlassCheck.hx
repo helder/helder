@@ -41,8 +41,7 @@ class GlassCheck {
 		f.dispose();
 		File.saveBytes(out, Png.encode(all, W, H * GOLDEN.length));
 		if (bless) {
-			// (compressed, RGB: the golden in the repository small)
-			File.saveBytes(golden, helder.image.PngEncoder.encode(all, W, H * GOLDEN.length, true));
+			File.saveBytes(golden, Png.golden(all, W, H * GOLDEN.length));
 			Sys.println('GlassCheck: blessed $golden');
 			return;
 		}

@@ -1178,7 +1178,7 @@ Node#root 0,0 390x844
           Node#view 0,0 390x844
         TextNode#text 0,0 1x1 "3 Selected"
 
---- story Tablet/Folder, sidebar: Tablet/Folder, sidebar (161 lines)
+--- story Tablet/Folder, sidebar: Tablet/Folder, sidebar (162 lines)
 Node#root 0,0 390x844
   Node#view 0,0 390x844
     Node#window 0,0 390x844
@@ -1209,120 +1209,121 @@ Node#root 0,0 390x844
               Node#list 1,52 389x792
                 GridScroll#grid 1,52 389x792
                   Spacer#before 1,52 389x12
-                  Node#row 1,64 389x170
-                    Node#cell 13,64 181x166
-                      Node#view 13,64 181x167
-                        Node#view 13,64 181x167
+                  Node#row 1,64 389x188
+                    Node#cell 13,64 181x184
+                      Node#view 13,64 181x184
+                        Node#view 13,64 181x184
                           Node#view 45,68 116x116
                             ImageNode#image 55,87 96x78
                           TextNode#text 85,190 37x18 "More"
                           TextNode#text 86,209 35x14 "Folder"
-                    Node#cell 198,64 180x166
-                      Node#view 198,64 180x167
-                        Node#view 198,64 180x167
+                    Node#cell 198,64 180x184
+                      Node#view 198,64 180x184
+                        Node#view 198,64 180x184
                           Node#view 230,68 116x116
                             Node#view 234,72 108x108
                               ImageNode#image 234,72 108x108
                           TextNode#text 232,190 112x18 "About Viewer.pdf"
                           TextNode#text 271,209 34x14 "182 KB"
-                  Node#row 1,234 389x170
-                    Node#cell 13,234 181x166
-                      Node#view 13,234 181x167
-                        Node#view 13,234 181x167
-                          Node#view 45,238 116x116
-                            Node#view 67,250 72x92
-                              ImageNode#image 91,278 24x24
-                              TextNode#text 91,317 24x14 "M4A"
-                          TextNode#text 66,360 75x18 "Chimes.m4a"
-                          TextNode#text 89,379 29x14 "91 KB"
-                    Node#cell 198,234 180x166
-                      Node#view 198,234 180x167
-                        Node#view 198,234 180x167
-                          Node#view 230,238 116x116
-                            Node#view 234,242 108x108
-                              ImageNode#image 234,242 108x108
-                          TextNode#text 229,360 118x18 "Dusk panorama.jpg"
-                          TextNode#text 271,379 34x14 "293 KB"
-                  Node#row 1,404 389x170
-                    Node#cell 13,404 181x166
-                      Node#view 13,404 181x167
-                        Node#view 13,404 181x167
-                          Node#view 45,408 116x116
-                            Node#view 49,412 108x108
-                              ImageNode#image 49,412 108x108
-                          TextNode#text 54,530 99x18 "Mandelbrot.jpg"
-                          TextNode#text 86,549 35x14 "370 KB"
-                    Node#cell 198,404 180x166
-                      Node#view 198,404 180x167
-                        Node#view 198,404 180x167
-                          Node#view 230,408 116x116
-                            Node#view 234,412 108x108
-                              ImageNode#image 234,412 108x108
-                          TextNode#text 235,530 106x18 "Murmuration.jpg"
-                          TextNode#text 271,549 34x14 "294 KB"
-                  Node#row 1,574 389x170
-                    Node#cell 13,574 181x166
-                      Node#view 13,574 181x167
-                        Node#view 13,574 181x167
-                          Node#view 45,578 116x116
-                            Node#view 49,582 108x108
-                              ImageNode#image 49,582 108x108
-                          TextNode#text 66,700 75x18 "Planet.jpg"
-                          TextNode#text 89,719 29x14 "41 KB"
-                    Node#cell 198,574 180x166
-                      Node#view 198,574 180x167
-                        Node#view 198,574 180x167
-                          Node#view 230,578 116x116
-                            Node#view 234,582 108x108
-                              ImageNode#image 234,582 108x108
-                          TextNode#text 241,700 93x18 "Starlings.jpg"
-                          TextNode#text 271,719 34x14 "747 KB"
-                  Node#row 1,744 389x170
-                    Node#cell 13,744 181x166
-                      Node#view 13,744 181x167
-                        Node#view 13,744 181x167
-                          Node#view 45,748 116x116
-                            Node#view 67,760 72x92
-                              ImageNode#image 91,788 24x24
-                              TextNode#text 91,827 24x14 "MP4"
-                          TextNode#text 57,870 93x18 "Starlings.mp4"
-                          TextNode#text 86,889 35x14 "1.0 MB"
-                    Node#cell 198,744 180x166
-                      Node#view 198,744 180x167
-                        Node#view 198,744 180x167
-                          Node#view 230,748 116x116
-                            Node#document-tile 246,752 84x108
-                              TextNode#document-title 256,764 64x23 "Welcome to Viewer"
-                              Node#view 256,792 64x2
-                              Node#view 256,799 56x3
-                              Node#view 256,807 60x2
-                              Node#view 256,814 39x3
-                              Node#view 256,822 57x2
-                              Node#view 256,829 48x3
-                              TextNode#text 256,838 16x13 "MD"
-                          TextNode#text 251,870 74x18 "Welcome.md"
-                          TextNode#text 276,889 23x14 "1 KB"
-                  Spacer#after 1,914 389x12
+                  Node#row 1,252 389x188
+                    Node#cell 13,252 181x184
+                      Node#view 13,252 181x184
+                        Node#view 13,252 181x184
+                          Node#view 45,256 116x116
+                            Node#view 67,268 72x92
+                              ImageNode#image 91,296 24x24
+                              TextNode#text 91,335 24x14 "M4A"
+                          TextNode#text 66,378 75x18 "Chimes.m4a"
+                          TextNode#text 89,397 29x14 "91 KB"
+                    Node#cell 198,252 180x184
+                      Node#view 198,252 180x184
+                        Node#view 198,252 180x184
+                          Node#view 230,256 116x116
+                            Node#view 234,260 108x108
+                              ImageNode#image 234,260 108x108
+                          TextNode#text 229,378 118x18 "Dusk panorama.jpg"
+                          TextNode#text 271,397 34x14 "293 KB"
+                  Node#row 1,440 389x188
+                    Node#cell 13,440 181x184
+                      Node#view 13,440 181x184
+                        Node#view 13,440 181x184
+                          Node#view 45,444 116x116
+                            Node#view 49,448 108x108
+                              ImageNode#image 49,448 108x108
+                          TextNode#text 54,566 99x18 "Mandelbrot.jpg"
+                          TextNode#text 86,585 35x14 "370 KB"
+                    Node#cell 198,440 180x184
+                      Node#view 198,440 180x184
+                        Node#view 198,440 180x184
+                          Node#view 230,444 116x116
+                            Node#view 234,448 108x108
+                              ImageNode#image 234,448 108x108
+                          TextNode#text 235,566 106x18 "Murmuration.jpg"
+                          TextNode#text 271,585 34x14 "294 KB"
+                  Node#row 1,628 389x188
+                    Node#cell 13,628 181x184
+                      Node#view 13,628 181x184
+                        Node#view 13,628 181x184
+                          Node#view 45,632 116x116
+                            Node#view 49,636 108x108
+                              ImageNode#image 49,636 108x108
+                          TextNode#text 66,754 75x18 "Planet.jpg"
+                          TextNode#text 89,773 29x14 "41 KB"
+                    Node#cell 198,628 180x184
+                      Node#view 198,628 180x184
+                        Node#view 198,628 180x184
+                          Node#view 230,632 116x116
+                            Node#view 234,636 108x108
+                              ImageNode#image 234,636 108x108
+                          TextNode#text 241,754 93x18 "Starlings.jpg"
+                          TextNode#text 271,773 34x14 "747 KB"
+                  Node#row 1,816 389x188
+                    Node#cell 13,816 181x184
+                      Node#view 13,816 181x184
+                        Node#view 13,816 181x184
+                          Node#view 45,820 116x116
+                            Node#view 67,832 72x92
+                              ImageNode#image 91,860 24x24
+                              TextNode#text 91,899 24x14 "MP4"
+                          TextNode#text 57,942 93x18 "Starlings.mp4"
+                          TextNode#text 86,961 35x14 "1.0 MB"
+                    Node#cell 198,816 180x184
+                      Node#view 198,816 180x184
+                        Node#view 198,816 180x184
+                          Node#view 230,820 116x116
+                            Node#document-tile 246,824 84x108
+                              TextNode#document-title 256,836 64x23 "Welcome to Viewer"
+                              Node#view 256,864 64x2
+                              Node#view 256,871 56x3
+                              Node#view 256,879 60x2
+                              Node#view 256,886 39x3
+                              Node#view 256,894 57x2
+                              Node#view 256,901 48x3
+                              TextNode#text 256,910 16x13 "MD"
+                          TextNode#text 251,942 74x18 "Welcome.md"
+                          TextNode#text 276,961 23x14 "1 KB"
+                  Spacer#after 1,1004 389x12
       Node#drawer-edge 0,0 20x844
       Node#drawer-scrim 0,0 390x844
       Node#drawer 0,0 300x844
         Node#sidebar 20,8 236x99
-          Node#view 30,16 216x91
-            Node#view 30,16 216x30
-              Node#level-back 32,18 74x26
-                ImageNode#image 34,24 14x14
-                TextNode#text 50,24 48x15 "Overview"
-              Node#view 108,31 104x0
-              Node#level-home 214,16 30x30
-                ImageNode#image 221,23 16x16
-            Node#view 30,52 216x21
-              TextNode#level-title 38,54 53x19 "Samples"
-              Node#view 99,63 85x0
-              TextNode#text 192,56 46x15 "1 folder"
-            Node#scroll 30,79 216x28
-              Node#button 30,79 216x28
-                ImageNode#image 38,85 16x16
-                TextNode#text 62,85 176x16 "More"
+          Node#sidebar-body 30,16 216x91
+            Node#view 30,16 216x91
+              Node#view 30,16 216x30
+                Node#level-back 32,18 74x26
+                  ImageNode#image 34,24 14x14
+                  TextNode#text 50,24 48x15 "Overview"
+                Node#view 108,31 104x0
+                Node#level-home 214,16 30x30
+                  ImageNode#image 221,23 16x16
+              Node#view 30,52 216x21
+                TextNode#level-title 38,54 53x19 "Samples"
+                Node#view 99,63 85x0
+                TextNode#text 192,56 46x15 "1 folder"
+              Node#scroll 30,79 216x28
+                Node#button 30,79 216x28
+                  ImageNode#image 38,85 16x16
+                  TextNode#text 62,85 176x16 "More"
       Node#viewer 0,0 390x844
         Node#viewer-bar 0,0 390x52
           Node#back-pill 14,11 106x30

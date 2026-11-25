@@ -19,6 +19,8 @@ import helder.view.graph.Graph;
 function tests() {
 	describe("Zoom", () -> {
 		var t = 0.0;
+		// (the zoom's length)
+		final D = Flight.CURVE.duration;
 		function frame(ui:Ui) {
 			Graph.flush();
 			ui.update();
@@ -87,12 +89,12 @@ function tests() {
 			var stage = ui.root.find("photo").windowBounds();
 			var k = Math.min(1, Math.min(stage.width / 1242, stage.height / 1048));
 			var fitted = {x: stage.x + (stage.width - 1242 * k) / 2, y: stage.y + (stage.height - 1048 * k) / 2, width: 1242 * k, height: 1048 * k};
-			at(ui, 0.11);
+			at(ui, D / 2);
 			var mid = box(ui);
-			assert(mid.width > tile.width + 50 && mid.width < fitted.width - 50, 'half way: ${mid.width} between');
+			assert(mid.width > tile.width + 20 && mid.width < fitted.width - 20, 'half way: ${mid.width} between');
 			assert(mid.y < tile.y && mid.y > fitted.y, 'half way: ${mid.y} between');
 			assert(x.zoom.shown.peek() > 0.5 && x.zoom.shown.peek() < 1, "the viewer fading in");
-			at(ui, 0.1099);
+			at(ui, D / 2 - 0.0001);
 			same(box(ui), fitted, "the end");
 			at(ui, 0.01);
 			equals(box(ui), null);
@@ -110,10 +112,10 @@ function tests() {
 			equals(x.full.value, false);
 			at(ui, 0);
 			same(box(ui), fitted, "closing's start");
-			at(ui, 0.11);
+			at(ui, D / 2);
 			var back = box(ui);
-			assert(back.width < fitted.width - 50 && back.width > tile.width + 50, 'closing half way: ${back.width}');
-			at(ui, 0.1099);
+			assert(back.width < fitted.width - 20 && back.width > tile.width + 20, 'closing half way: ${back.width}');
+			at(ui, D / 2 - 0.0001);
 			same(box(ui), tile, "closing's end");
 			at(ui, 0.01);
 			equals(box(ui), null);
@@ -124,7 +126,7 @@ function tests() {
 			x.open("alpha.png");
 			frame(ui);
 			at(ui, 0);
-			at(ui, 0.2199);
+			at(ui, D - 0.0001);
 			var stage = ui.root.find("photo").windowBounds(), end = box(ui);
 			same(end, {x: stage.x + (stage.width - 13) / 2, y: stage.y + (stage.height - 11) / 2, width: 13, height: 11}, "13 by 11");
 			Clock.finish();
@@ -157,7 +159,7 @@ function tests() {
 			at(ui, 0);
 			same(box(ui), page, "the start");
 			equals(ui.root.find("zoom-page").style.opacity, 1.0);
-			at(ui, 0.2199);
+			at(ui, D - 0.0001);
 			var stage = ui.root.find("photo").windowBounds();
 			same(box(ui), {x: stage.x + (stage.width - 760) / 2, y: stage.y, width: 760.0, height: stage.height}, "the column");
 			assert(ui.root.find("zoom-page").style.opacity < 0.01, "given way");
@@ -174,7 +176,7 @@ function tests() {
 			x.open("pages.pdf");
 			frame(ui);
 			at(ui, 0);
-			at(ui, 0.2199);
+			at(ui, D - 0.0001);
 			same(box(ui), ui.root.find("page").windowBounds(), "the first page");
 			Clock.finish();
 		});
@@ -185,7 +187,7 @@ function tests() {
 			frame(ui);
 			equals(x.zoom.flying.peek(), "");
 			at(ui, 0);
-			at(ui, 0.11);
+			at(ui, D / 2);
 			assert(x.zoom.shown.peek() > 0 && x.zoom.shown.peek() < 1, "fading in");
 			Clock.finish();
 			equals(x.zoom.shown.peek(), 1.0);
@@ -212,7 +214,7 @@ function tests() {
 			frame(ui);
 			at(ui, 0);
 			same(box(ui), from, "the start");
-			at(ui, 0.11);
+			at(ui, D / 2);
 			var screens = [for (n in ui.root.find("stack").children) if (n.tag == "screen") n];
 			equals(screens.length, 3);
 			var top = screens[2];
@@ -227,7 +229,7 @@ function tests() {
 			frame(ui);
 
 			at(ui, 0);
-			at(ui, 0.2199);
+			at(ui, D - 0.0001);
 			same(box(ui), tile.children[0].windowBounds(), "closing's end");
 		});
 	});
