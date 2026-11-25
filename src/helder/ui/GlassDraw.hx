@@ -22,7 +22,7 @@ class GlassDraw {
 		var glass = [for (g in group.glass()) if (g.visible() && g.width > 0 && g.height > 0) g];
 		if (glass.length == 0) return;
 		#if (target.name == "hxmc")
-		var shapes = [], press = 0.0, u = group.ui, first = glass[0];
+		var shapes = [], press = 0.0, u = group.node.ui, first = glass[0];
 		for (g in glass) {
 			for (v in [g.absX, g.absY, g.width, g.height, g.radius()])
 				shapes.push(v);

@@ -43,7 +43,7 @@ class GlassKindsCheck {
 		}
 		band(0, 90).style.backgroundImage = Gradient.parse("linear-gradient(135deg, #ff5e62, #ff9966)");
 		var stripes = band(90, 70);
-		stripes.style.direction = Row;
+		stripes.style.flexDirection = Row;
 		for (i in 0...Std.int(W / 10)) {
 			var s = new Node();
 			s.style.set({width: 10, height: 70, background: i % 2 == 0 ? 0xFF111111 : 0xFFFAFAFA});
@@ -73,12 +73,12 @@ class GlassKindsCheck {
 		add("green", 16, 136, 92, 48, g -> g.tint = Color.parse("#30d15888"));
 		add("dark", 118, 136, 92, 48, g -> g.tint = Color.parse("#000000aa"));
 		add("capsule", 220, 136, 110, 48);
-		add("radius16", 340, 132, 110, 64, g -> g.style.radius = 16);
-		add("radius4", 16, 222, 90, 64, g -> g.style.radius = 4);
+		add("radius16", 340, 132, 110, 64, g -> g.style.borderRadius = 16);
+		add("radius4", 16, 222, 90, 64, g -> g.style.borderRadius = 4);
 		add("circle", 116, 222, 64, 64);
-		var group = new GlassGroup();
-		group.spacing = 16;
-		group.style.set({position: Absolute, left: 196, top: 228, direction: Row, columnGap: 4});
+		var group = new Node();
+		GlassGroup.of(group, 16);
+		group.style.set({position: Absolute, left: 196, top: 228, flexDirection: Row, columnGap: 4});
 		for (_ in 0...4) {
 			var c = new Glass();
 			c.style.set({width: 52, height: 52});
@@ -118,8 +118,8 @@ class GlassKindsCheck {
 		ui.update();
 		for (kd in kinds) {
 			var n = kd.node;
-			if (Std.isOfType(n, GlassGroup)) {
-				lines.push('group ${n.absX} ${n.absY} ${n.width} ${n.height} ${(cast n : GlassGroup).spacing}');
+			if (n.glassSpacing != null) {
+				lines.push('group ${n.absX} ${n.absY} ${n.width} ${n.height} ${n.glassSpacing}');
 				for (c in n.children)
 					lines.push(line("child", cast c));
 			} else lines.push(line(kd.name, cast n));

@@ -39,9 +39,9 @@ class GlassWindowCheck {
 			w.root.append(r);
 			// (a group of two, merging: the system's container, their views in it)
 			if (dir == null) {
-				var g = new GlassGroup();
-				g.spacing = 20;
-				g.style.set({position: Absolute, left: 200, top: 110, width: 180, height: 44, direction: Row, columnGap: 8});
+				var g = new Node();
+				GlassGroup.of(g, 20);
+				g.style.set({position: Absolute, left: 200, top: 110, width: 180, height: 44, flexDirection: Row, columnGap: 8});
 				for (_ in 0...2) {
 					var c = new Glass();
 					c.style.set({width: 44, height: 44});
@@ -196,7 +196,7 @@ private class Input {
 		list.style.set({overflow: Scroll, height: GlassScene.H, rowGap: 4, padding: 4});
 		for (i in 0...60) {
 			var row = new Node();
-			row.style.set({height: 30, shrink: 0, background: i % 2 == 0 ? 0xFF2F7FE8 : 0xFFE8463A});
+			row.style.set({height: 30, flexShrink: 0, background: i % 2 == 0 ? 0xFF2F7FE8 : 0xFFE8463A});
 			list.append(row);
 		}
 		r.append(list);
@@ -204,9 +204,9 @@ private class Input {
 		button.style.set({position: Absolute, left: 40, top: 40, width: 120, height: 50});
 		button.onClick = _ -> presses++;
 		r.append(button);
-		var g = new GlassGroup();
-		g.spacing = 12;
-		g.style.set({position: Absolute, left: 240, top: 40, direction: Row, columnGap: 6});
+		var g = new Node();
+		GlassGroup.of(g, 12);
+		g.style.set({position: Absolute, left: 240, top: 40, flexDirection: Row, columnGap: 6});
 		var first = new Glass();
 		first.style.set({width: 50, height: 50});
 		grouped.interactive = true;

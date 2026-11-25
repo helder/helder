@@ -22,7 +22,7 @@ class GlassScene {
 		back.style.set({position: Absolute, left: 0, top: 0, width: W, height: H, overflow: Hidden});
 		switch bg {
 			case "stripes":
-				back.style.direction = Row;
+				back.style.flexDirection = Row;
 				for (i in 0...25) {
 					var s = new Node();
 					s.style.set({width: 16, height: H, background: [0xFF111111, 0xFFFFFFFF, 0xFFE8463A, 0xFFFFFFFF, 0xFF2F7FE8][i % 5]});
@@ -46,22 +46,22 @@ class GlassScene {
 		root.append(back);
 		if (!glass) return [];
 		var capsule = new Glass();
-		capsule.style.set({position: Absolute, left: 100, top: 40, width: 200, height: 56, alignItems: Align.Center, justify: Justify.Center});
+		capsule.style.set({position: Absolute, left: 100, top: 40, width: 200, height: 56, alignItems: Align.Center, justifyContent: Justify.Center});
 		var label = new TextNode("Glass");
 		label.style.set({fontSize: 18, fontWeight: 600, color: 0xFF111111});
 		if (labels) capsule.append(label);
 		var clear = new Glass();
 		clear.variant = "clear";
-		clear.style.set({position: Absolute, left: 40, top: 140, width: 140, height: 120, radius: 24});
+		clear.style.set({position: Absolute, left: 40, top: 140, width: 140, height: 120, borderRadius: 24});
 		var tinted = new Glass();
 		tinted.tint = Color.rgba(0x2F7FE8, 0.5);
 		tinted.style.set({position: Absolute, left: 250, top: 160, width: 80, height: 80});
 		for (g in [capsule, clear, tinted])
 			root.append(g);
 		if (group) {
-			var gg = new GlassGroup();
-			gg.spacing = 12;
-			gg.style.set({position: Absolute, left: 210, top: 252, direction: Row, columnGap: 6});
+			var gg = new Node();
+			GlassGroup.of(gg, 12);
+			gg.style.set({position: Absolute, left: 210, top: 252, flexDirection: Row, columnGap: 6});
 			for (_ in 0...2) {
 				var c = new Glass();
 				c.style.set({width: 36, height: 36});

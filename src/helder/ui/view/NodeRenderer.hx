@@ -110,8 +110,10 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 	public static inline function createElement(tag:String):Node
 		return switch tag {
 			case "view": new Node("view");
-			// (a text in a text is one of its spans)
+			// (a text in a text is one of its spans; span the runtime's own, a run of text
+			// and holes in a text: ViewRuntime's, never markup's)
 			case "text": new TextNode("", "text");
+			case "span": new TextNode("", "span");
 			case "scroll":
 				var n = new Node("scroll");
 				n.style.overflow = Scroll;
@@ -490,7 +492,7 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 	// (a view's: the glass inside it drawn together, nearer than this many
 	// points merged: helder.ui.GlassGroup; null, none)
 	@:attribute static function glassSpacing(n:Node, name:String, v:Dynamic)
-		n.glassSpacing = v == null || v == false ? null : Std.isOfType(v, String) ? Std.parseFloat(v) : v;
+		GlassGroup.of(n, v == null || v == false ? null : Std.isOfType(v, String) ? Std.parseFloat(v) : v);
 
 	@:attribute static function src(n:Node, name:String, v:Dynamic) {
 		// (a web view's: its URL, or a path of its content's origin)
