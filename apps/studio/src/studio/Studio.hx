@@ -40,11 +40,19 @@ class Studio {
 	var unveiled = false;
 	// an agent changed the project (an edit, a file made): the canvas has something of its
 	public final touched = signal(false);
-	// the agents' work as it happens: bumped by each tool call of the prompt's agent and each agent's edit (the orb pulses)
-	public final activity = signal(0);
-
 	// the canvas has nothing of the agent's yet (nothing on it, or the starter's
-	// alone): the orb shows, the starter's frame hidden under it
+	// alone): after the first prompt its places held (Watch's queued blocks),
+	// the starter's frame hidden
+	// (the agent's first change: the canvas' frames rise into the places the blocks held)
+	var touchedNow = false;
+
+	function touch() {
+		if (touchedNow) return;
+		touchedNow = true;
+		touched(true);
+		if (starter && project != null) marks.rise([for (s in project.screens) s.name]);
+	}
+
 	public function waiting():Bool
 		return project == null || project.screens.length == 0 || (starter && !touched());
 	// (read again when what the project is changes: revive)
@@ -366,7 +374,7 @@ class Studio {
 	// a file made (an agent's project.patch of a path not there, an ACP agent's
 	// write): one entry of the history (its undo: gone)
 	public function create(file:String, text:String, ?by:String) {
-		touched(true);
+		touch();
 		docs.create(file, text, project == null || !file.startsWith(project.dir + "/") ? file : file.substr(project.dir.length + 1), "agent", by);
 	}
 
@@ -1404,8 +1412,7 @@ class Studio {
 	// history entry by its name): the agent there (Presence: its lines, its
 	// frame when it named none), what it made marked (Marks)
 	function agentEdited(file:String, tx:Transaction) {
-		touched(true);
-		activity(v -> v + 1);
+		touch();
 		var by = docs.nextUndo()?.by;
 		if (by == null || project == null) return;
 		var p = presence.named(by) ?? presence.arrive("acp:" + by, by);
@@ -1921,8 +1928,7 @@ class Studio {
 				switch e {
 					case Tool(id, title, _, status):
 						log("agent-tool", {id: id, title: title, status: status});
-						activity(v -> v + 1);
-					// (a permission ask: the chat's card, as studio.ask's; an answer in
+									// (a permission ask: the chat's card, as studio.ask's; an answer in
 					// the user's words cancels it and goes to the agent as a note)
 					case Ask(question, options, _) if (!classic):
 						if (asked != null) questions.close(asked);

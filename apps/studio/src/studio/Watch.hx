@@ -26,11 +26,7 @@ class Watch implements Markup {
 				<Show when={!blank(studio) && studio.talk.open()}>{Chat.view(studio)}</Show>
 				<view tag="canvas" grow={1} min-width={0}>
 					<view position="absolute" inset={0}>{Board.view(studio)}</view>
-					<Show when={!studio.classic && studio.waiting()}>
-						<view tag="orb" position="absolute" inset={0} align-items="center" justify="center" pointer-events="none" transition="fade scale(1.06)">
-							<view width={ORB} height={ORB} margin-top={blank(studio) ? -360 : 0}>{orb(studio)}</view>
-						</view>
-					</Show>
+					<Show when={!studio.classic && !blank(studio) && studio.waiting()}>{blocks(studio)}</Show>
 					{CodePanel.view(studio)}
 					<Show when={blank(studio)}>
 						<view tag="blank" position="absolute" inset={0} align-items="center" justify="center" pointer-events="none">
@@ -46,16 +42,34 @@ class Watch implements Markup {
 			</view>
 		</view>;
 
-	// (the orb: free on the ground, no box drawn; its glow room enough to fade into the dots)
-	static inline var ORB = 560;
+	// (the first frames' places, held: frame-sized blocks shimmering, no
+	// caption, until the agent's first change makes them; then they fade as
+	// the frames rise into place)
+	static inline var BLOCK_W = 210;
+	static inline var BLOCK_H = 300;
 
-	// (the orb: the agent's colour, the current blue for the studio's own tools; quickened while a turn runs, pulsed by its work)
-	static function orb(studio:Studio):Node {
-		var n = Orb.node(() -> studio.agentName() == "Studio" ? "#3b82f6" : studio.agentColour(), () -> Chat.working(studio), () -> studio.activity.peek());
-		n.style.width = ORB;
-		n.style.height = ORB;
-		return n;
+	static function blocks(studio:Studio):View {
+		studio.marks.hold();
+		return <view tag="queued" position="absolute" inset={0} direction="row" align-items="center" justify="center" column-gap={24} pointer-events="none"
+			transition="fade">
+			<For each={[0, 1, 2]}>{(k:Read<Int>) ->
+				<view tag={"queued-" + k()} width={BLOCK_W} height={BLOCK_H} radius={Theme.CARD} overflow="hidden" shrink={0} background={c("skeleton")}>
+					<For each={[for (j in 0...STRIPES) j]}>{(j:Read<Int>) ->
+						<view position="absolute" top={0} bottom={0} width={SWEEP / STRIPES + 1} left={sweep(studio) + j() * SWEEP / STRIPES}
+							background={c("shimmer")} opacity={1 - Math.abs((j() + 0.5) / STRIPES * 2 - 1)}/>
+					}</For>
+				</view>
+			}</For>
+		</view>;
 	}
+
+	// (the shimmer: a band SWEEP wide, the queued frames' 1.6 s sweep, of solid
+	// stripes rising to #25252b and back, so that the blocks' corners clip it)
+	static inline var SWEEP = 260;
+	static inline var STRIPES = 26;
+
+	static function sweep(studio:Studio):Float
+		return ((studio.marks.time() / 1.6) % 1) * (BLOCK_W + SWEEP) - SWEEP;
 
 	// a blank sheet: nothing on the canvas, nothing asked yet
 	public static function blank(studio:Studio):Bool

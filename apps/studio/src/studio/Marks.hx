@@ -266,7 +266,16 @@ class Marks {
 
 	// (what loops while it is on: an agent at work (its halo), a done note
 	// shown, a frame not drawn yet (its shimmer))
+	// the canvas' places held (Watch's queued blocks: their shimmer on this clock, while the canvas waits)
+	public function hold() {
+		holding = true;
+		wake();
+	}
+
+	var holding = false;
+
 	function busy():Bool {
+		if (holding && studio.waiting()) return true;
 		var pr = studio.presence, at = pr.now();
 		if (Lambda.exists(pr.list(), p -> p.working || (p.doneAt > 0 && at - p.doneAt < DONE))) return true;
 		var pv = studio.previews;

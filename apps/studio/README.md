@@ -560,17 +560,12 @@ TypeScript program that builds and shows on the canvas (`main.tsx`,
 `app.tsx`, `app.story.tsx` with one plain screen; a `tsconfig.json`
 mapping helder's modules to the helder the studio was built with when no
 package resolves them, and TypeScript's checker found beside it). Until
-the agent changes the project the canvas shows the studio's orb (`Orb`):
-a living core of light free on the canvas' ground (no frame, no
-caption): a plasma flowing inside it (domain-warped waves) in hues spread
-around the agent's colour (the current blue for the studio's own tools),
-a white-hot heart, a soft rim, a glow breathing into the dots and faint
-motes drifting in. While a turn runs a faster flow blends in and the glow
-swells; each tool call or edit of the agent's pulses it once
-(`Studio.activity`). Drawn by a part shader of the studio's (helder.ui's
-PartShader: one pass of one triangle, shown as one quad), over the blank
-sheet and an empty canvas. The agent's first edit fades it out
-(arrive-style) and the frames rise onto the canvas, built.
+the agent changes the project the canvas waits: the blank sheet is the
+dots and the prompt alone; after the first prompt, three frame-sized
+blocks (radius 12, no caption) hold the places where the first frames
+will land, a shimmer sweeping them (1.6 s, the queued frames' own). The
+agent's first change fades them and the frames rise onto the canvas,
+built (the arrive motion).
 What a project is (TypeScript or Haxe, its main, whether it has a program)
 is read again whenever a story or a main is made or changes (`revive`), so
 a folder that starts empty or changes kind comes alive: its screens shown,
