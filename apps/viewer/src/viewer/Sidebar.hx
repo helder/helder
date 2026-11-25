@@ -41,27 +41,44 @@ class Sidebar {
 	public function follow(dir:String)
 		show(levelFor(dir));
 
+	// the level shown (the one going to: target; the last one's rows kept
+	// until its are read, or Browser.STALE seconds pass, then both in one
+	// write, so that going between levels never shows an empty one)
 	public function show(path:String) {
 		path = path == "" ? "" : Browser.normalize(path);
-		if (path == level.value) return;
+		if (path == target) return;
 		for (s in stops)
 			s();
 		stops = [];
-		level(path);
-		rows([]);
-		if (path == "") return;
-		var got:Array<Row> = [];
+		target = path;
+		if (path == "") {
+			level(path);
+			rows([]);
+			return;
+		}
+		var got:Array<Row> = [], shown = false;
+		function land(r:Array<Row>) {
+			shown = true;
+			level(path);
+			rows(r);
+		}
 		stops.push(files.list(path, b -> {
-			if (level.value != path) return;
+			if (target != path) return;
 			for (e in b.entries)
 				if (e.kind == Folder && !Kinds.hidden(e.name)) got.push({name: e.name, path: FolderModel.join(path, e.name), deeper: false});
 			if (!b.done) return;
 			got.sort((a, b) -> FolderModel.compare(a.name, b.name));
-			rows(got);
+			land(got);
 			for (r in got)
 				deeper(path, r);
 		}));
+		if (!shown && target == path) helder.async.Async.launch(_ -> {
+			helder.async.Async.delay(Browser.STALE);
+			if (!shown && target == path) land([]);
+		});
 	}
+
+	var target = "";
 
 	// (whether a row has subfolders of its own, for its "›": its listing stopped at the first)
 	function deeper(at:String, row:Row) {

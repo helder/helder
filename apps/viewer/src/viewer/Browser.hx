@@ -46,6 +46,12 @@ class Browser {
 	// scroll now (the list's or the grid's), kept with the history
 	public var offset(default, null) = 0.0;
 	public var scrolled:Void->Float = () -> 0;
+	// items are still the last folder's: kept until this one's first batch
+	// comes (or STALE seconds pass, then none: the loading state), so that
+	// going between folders never shows an empty list for a frame
+	public var stale(default, null) = false;
+	public static inline var STALE = 0.15;
+	var loads = 0;
 	// the folder changed (the sidebar follows it)
 	public var onDir:Null<String->Void> = null;
 	// the entries changed (the viewer's list follows them); files changed on disk named
@@ -131,7 +137,15 @@ class Browser {
 		dir(path);
 		all = [];
 		keep = select;
-		items([]);
+		var load = ++loads;
+		stale = items.value.length > 0;
+		if (!stale) items([]) else helder.async.Async.launch(_ -> {
+			helder.async.Async.delay(STALE);
+			if (!stale || loads != load) return;
+			stale = false;
+			items([]);
+			if (onItems != null) onItems();
+		});
 		selection.clear();
 		total(0);
 		error("");
@@ -156,7 +170,10 @@ class Browser {
 		if (b.error != null) error(b.error);
 		all = all.concat(b.entries);
 		total(all.length);
-		items(Listing.merge(items.value, b.entries, order.value, hidden.value, query.value));
+		// (the last folder's entries, kept until now, replaced whole: in one frame)
+		var was = stale ? [] : items.value;
+		stale = false;
+		items(Listing.merge(was, b.entries, order.value, hidden.value, query.value));
 		if (keep != "" && entry(keep) != null) {
 			select(keep);
 			keep = "";

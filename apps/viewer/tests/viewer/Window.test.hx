@@ -274,6 +274,43 @@ function tests() {
 			x.thumbnails.close();
 			equals(asked, cells.length);
 		});
+		test("going between folders: the old entries and level shown until the new are read, never an empty grid", () -> {
+			var x = big(), ui = new Ui(new StoryText(), 1212, 592);
+			Render.render(Shell.view(x, () -> helder.ui.SizeClass.Expanded), ui.root);
+			function frame()
+				for (_ in 0...3) {
+					helder.view.graph.Graph.flush();
+					ui.update();
+				}
+			function tiles():Int {
+				var n = 0;
+				function walk(c:Node) {
+					if (c.slot == "grid-tile" && c.visible()) n++;
+					for (k in c.children)
+						walk(k);
+				}
+				walk(ui.root.find("grid"));
+				return n;
+			}
+			x.start("/home/folder 0");
+			frame();
+			var before = tiles(), level = x.sidebar.level.value, sideRows = x.sidebar.rows.value.length;
+			assert(before > 0, "the folder's tiles");
+			var files:MemoryFiles = cast x.files;
+			files.hold = true;
+			x.browser.go("/home/folder 0/sub");
+			x.sidebar.show("/home/folder 0");
+			frame();
+			// (not read yet: the last folder's tiles and level still shown)
+			equals(tiles(), before);
+			equals(x.sidebar.level.value, level);
+			equals(x.sidebar.rows.value.length, sideRows);
+			files.release();
+			frame();
+			equals(x.browser.items.value.length, 300);
+			equals(x.browser.items.value[0].name, "inner 0.txt");
+			equals(x.sidebar.level.value, "/home/folder 0");
+		});
 	});
 }
 
