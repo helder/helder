@@ -5,8 +5,8 @@ import helder.os.*;
 // a Window, its size, scale and safe area; the display's frames (App.run's
 // from Choreographer, CADisplayLink): the first ones' times, then over 120
 // frames their mean, least and largest delta, the period App.frame
-// learnt, whether they were vsyncs, and what was allocated meanwhile
-// (nothing: the loop's frames are allocation-free); then the bars hidden
+// learnt, whether they were vsyncs, and what the process allocated meanwhile
+// (UIKit uses cross-thread calls; Android's loop is allocation-free); then the bars hidden
 // (Window.immersive) and the safe area again. Then it runs until the system
 // ends it, a line for each Resize (a rotation: its size and safe area),
 // ScaleChange, Suspend and Resume (the first frame after it: its delta one

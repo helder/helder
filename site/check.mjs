@@ -113,17 +113,17 @@ try {
 		}, id, { timeout: 60000 });
 		const error = await island.getAttribute('data-error'), gfx = await island.getAttribute('data-gfx');
 		check(error === null, `${id} started${error ? ': ' + error : ''}`);
-		if (!drawn) continue;
+		if (!drawn || error !== null) continue;
 		check(!!gfx, `${id} draws with ${gfx}`);
-		await page.waitForTimeout(1500);
 		await island.scrollIntoViewIfNeeded();
+		await renderedFrames(island);
 		const after = await canvas.screenshot();
 		check(!before.equals(after), `${id}'s canvas drawn`);
 		if (shots) {
 			await page.screenshot({ path: path.join(shots, `site-desktop-${id}.png`) });
 			await page.setViewportSize({ width: 390, height: 844 });
-			await page.waitForTimeout(800);
 			await island.scrollIntoViewIfNeeded();
+			await renderedFrames(island);
 			await page.screenshot({ path: path.join(shots, `site-phone-${id}.png`) });
 			await page.setViewportSize({ width: 1280, height: 900 });
 		}
@@ -165,7 +165,8 @@ async function checkDocs(page) {
 		// (the pictures of <Image>: a live example's poster is hidden once it draws)
 		for (const img of await page.locator('main .still img').all()) {
 			await img.scrollIntoViewIfNeeded();
-			check(await img.evaluate(i => i.complete && i.naturalWidth > 0), `${p.url}: ${await img.getAttribute('src')} shown`);
+			const decoded = await img.evaluate(i => i.decode().then(() => i.naturalWidth > 0, () => false));
+			check(decoded, `${p.url}: ${await img.getAttribute('src')} shown`);
 		}
 		const langs = page.locator('.langs');
 		if (await langs.count()) {
@@ -187,9 +188,9 @@ async function checkDocs(page) {
 			}, id, { timeout: 60000 });
 			const error = await island.getAttribute('data-error');
 			check(error === null, `${p.url}: ${id} started once in view${error ? ': ' + error : ''}`);
-			if (sound) continue;
+			if (sound || error !== null) continue;
 			// (started once in view, so there is no frame from before it ran: a frame of more than a few colours is drawn)
-			await page.waitForTimeout(1500);
+			await renderedFrames(island);
 			const colours = await colourCount(page, await island.locator('canvas').screenshot());
 			check(colours > 8, `${p.url}: ${id}'s canvas drawn (${colours} colours)`);
 			if (shots) await page.screenshot({ path: path.join(shots, `docs-${id}.png`) });
@@ -220,6 +221,33 @@ async function checkDocs(page) {
 	await page.keyboard.press('Escape');
 	check(await page.locator('.results').isHidden() && await page.locator('.search').evaluate(input => input === document.activeElement),
 		'Escape closes results and returns focus to search');
+}
+
+// Readback resolves once a canvas frame has rendered, including in a worker.
+// Request each frame separately so an idle scene redraws and a slow GPU can catch up.
+async function renderedFrames(island) {
+	await island.evaluate(async (el) => {
+		const { host } = await globalThis.hxmcWasm[el.id];
+		let timer;
+		try {
+			await Promise.race([
+				(async () => {
+					for (let n = 0; n < 3; n++) {
+						const frame = host.gfx.readPixels();
+						host.os.redraw();
+						await frame;
+					}
+					// Let the browser composite the canvas before Playwright captures it.
+					await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+				})(),
+				new Promise((_, reject) => {
+					timer = setTimeout(() => reject(new Error(`${el.id}: timed out waiting for three rendered frames`)), 60000);
+				}),
+			]);
+		} finally {
+			clearTimeout(timer);
+		}
+	});
 }
 
 // how many colours a PNG has, sampled on a grid (decoded by the page)

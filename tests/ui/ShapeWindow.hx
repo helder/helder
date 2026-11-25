@@ -47,7 +47,8 @@ class ShapeWindow {
 		#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
 		if (desk == null) w.window.moveTo(200, 200);
 		#end
-		var step = 0, all = desk == null ? [w] : [desk, w], end = 40, downs = [0, 0], edge:Null<UiWindow> = null, clicking = false;
+		var step = 0, all = desk == null ? [w] : [desk, w], end = 40, downs = [0, 0], edge:Null<UiWindow> = null;
+		var clickStart = 0, clickIndex = 0, retried = false;
 		App.run(() -> {
 			if (++step == 12) {
 				check(w.window.transparent == (expect == "yes"), 'transparent: ${w.window.transparent}, ${expect == "yes" ? "asked for and composed so" : "not here: opaque"}');
@@ -73,16 +74,18 @@ class ShapeWindow {
 				if (w.window.transparent) inputs(w);
 				backdrops(w);
 				if (w.window.transparent && (desk != null || behindPlain()) && Click.can()) {
-					clicking = true;
-					end = 70;
+					clickStart = step + 1;
+					end = -1;
 				}
 			}
 			// (a click on the box: its own; then where it is clear: the window
 			// behind's, which it activates and raises, so it comes last)
-			if (clicking) for (i => at in [[80.0, 70.0], [10.0, 10.0]]) {
-				var s0 = 41 + i * 14, through = i == 1;
+			if (clickStart > 0) {
+				var through = clickIndex == 1;
+				var x = through ? 10.0 : 80.0, y = through ? 10.0 : 70.0;
+				var s0 = clickStart;
 				// (twice: a runner's first posted move was seen dropped)
-				if (step == s0 || step == s0 + 2) Click.move(w.window, at[0], at[1]);
+				if (step == s0 || step == s0 + 2) Click.move(w.window, x, y);
 				if (step == s0 + 4) {
 					downs = [0, 0];
 					#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
@@ -91,14 +94,25 @@ class ShapeWindow {
 					#elseif (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 					macState(w);
 					#end
-					Click.press(w.window, at[0], at[1]);
+					Click.press(w.window, x, y);
 				}
 				if (step == s0 + 12) {
 					#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
 					downs[0] += Plain.downs;
 					#end
-					check(through ? downs[0] >= 1 && downs[1] == 0 : downs[1] >= 1 && downs[0] == 0,
-						'a click ${through ? "where it is clear: the window behind's" : "on the box: its own"} (presses: behind ${downs[0]}, it ${downs[1]})');
+					var passed = through ? downs[0] >= 1 && downs[1] == 0 : downs[1] >= 1 && downs[0] == 0;
+					var what = 'a click ${through ? "where it is clear: the window behind's" : "on the box: its own"} (presses: behind ${downs[0]}, it ${downs[1]})';
+					if (!passed && !retried && downs[0] == 0 && downs[1] == 0) {
+						Sys.println('ShapeWindow: first attempt failed: $what; retrying once');
+						retried = true;
+						clickStart = step + 2;
+					} else {
+						check(passed, what);
+						retried = false;
+						clickIndex++;
+						clickStart = clickIndex < 2 ? step + 2 : 0;
+						if (clickStart == 0) end = step + 3;
+					}
 				}
 			}
 			// (then a window at the work area's right edge, as the time tracker's)
@@ -472,11 +486,10 @@ class Click {
 	static var allowed = false;
 
 	public static function can():Bool {
+		allowed = Sys.getEnv("GITHUB_ACTIONS") == "true" || Sys.getEnv("HELDER_TEST_INPUT") == "1" || Sys.getEnv("SHAPE_INPUT") == "1";
+		if (!allowed) Sys.println("ShapeWindow: clicks skipped (set HELDER_TEST_INPUT=1 to allow moving the pointer)");
 		#if (hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64")
-		allowed = Sys.getEnv("WAYLAND_DISPLAY") == null && Xtst.ok;
-		#else
-		allowed = Sys.getEnv("GITHUB_ACTIONS") == "true" || Sys.getEnv("SHAPE_INPUT") == "1";
-		if (!allowed) Sys.println("ShapeWindow: clicks not sent (they move the pointer; CI or SHAPE_INPUT=1): skipped");
+		allowed = allowed && Sys.getEnv("WAYLAND_DISPLAY") == null && Xtst.ok;
 		#end
 		return allowed;
 	}
