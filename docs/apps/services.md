@@ -8,34 +8,34 @@ Status and settings are signals, so views follow the device; the rest are calls,
 
 ```ts
 import { Network, Permissions, Share, Notifications, Photos, Location,
-  Biometrics, StatusBar, Settings } from "helder/os";
+  Biometrics, StatusBar, Settings } from 'helder/os'
 
-<text>{Network.online() ? "Online" : "Offline"}</text>
-<view background={Settings.dark() ? "#18181b" : "#ffffff"}/>
+const status = <text>{Network.online() ? 'Online' : 'Offline'}</text>
+const panel = <view background={Settings.dark() ? '#18181b' : '#ffffff'}/>
 
-if (await Permissions.request("notifications") === "granted")
-  Notifications.schedule({ id: "tea", title: "Tea is ready", after: 180 });
-await Share.share({ text: "A course", url: "https://example.com/c/3" });
-const [photo] = await Photos.pick({ max: 1 });   // its file's bytes
-const shot = await Photos.take();                 // the camera's JPEG, or null
-const here = await Location.current();           // { latitude, longitude, ... } or null
-if (Biometrics.kind() !== "none" && await Biometrics.verify("Unlock your notes")) open();
-StatusBar.style("light");                        // light icons over a dark app
+if (await Permissions.request('notifications') === 'granted')
+  Notifications.schedule({id: 'tea', title: 'Tea is ready', after: 180})
+await Share.share({text: 'A course', url: 'https://example.com/c/3'})
+const [photo] = await Photos.pick({max: 1})   // its file's bytes
+const shot = await Photos.take()                 // the camera's JPEG, or null
+const here = await Location.current()           // {latitude, longitude, ...} or null
+if (Biometrics.kind() !== 'none' && await Biometrics.verify('Unlock your notes')) open()
+StatusBar.style('light')                        // light icons over a dark app
 ```
 
 ```haxe
 import helder.os.*;
 
-<text>{Network.online() ? "Online" : "Offline"}</text>
-<view background={Settings.dark() ? "#18181b" : "#ffffff"}/>
+<text>{Network.online() ? 'Online' : 'Offline'}</text>
+<view background={Settings.dark() ? '#18181b' : '#ffffff'}/>
 
 // in a coroutine: no await
 if (Permissions.request(Notify) == Granted)
-  Notifications.schedule({id: "tea", title: "Tea is ready", after: 180});
-Share.share({text: "A course", url: "https://example.com/c/3"});
+  Notifications.schedule({id: 'tea', title: 'Tea is ready', after: 180});
+Share.share({text: 'A course', url: 'https://example.com/c/3'});
 var photos = Photos.pick({max: 1});              // the files' bytes
 var here = Location.current();                   // null when denied or unknown
-var save = Paths.data() + "/save.json";          // the app's own directory
+var save = Paths.data() + '/save.json';          // the app's own directory
 App.onOpen = urls -> nav.open(urls[0]);          // a deep link
 ```
 

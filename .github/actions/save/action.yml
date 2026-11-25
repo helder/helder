@@ -1,53 +1,30 @@
-# The compilers' caches saved at a job's end (.github/actions/setup restored
-# them; its `save` output says when): helder's compiler builds of other
-# sources than the newest two dropped first (each is tens of MB; hxmc's
-# module cache trims itself). On main, the job's older entries there are
-# deleted once this one is saved: one a job, the newest, not one a merge
-# until the repository's 10 GB evicts what pull requests need.
+# A main run's job end: what it compiled (the module cache's files newer
+# than its restore, .github/actions/setup) handed to the cache job as an artifact, which merges every job's
+# into the OS's one entry. helder's compiler builds of other sources than
+# the newest two are dropped first (each is tens of MB).
 name: save
-description: the compilers' caches saved
-inputs:
-  key:
-    description: the setup step's key
-    required: true
-  prefix:
-    description: the setup step's prefix (main's older entries of it deleted)
-    default: ''
-  extra:
-    description: the setup step's extra paths, the same
-    default: ''
+description: the job's module cache handed to the cache job
 runs:
   using: composite
   steps:
-    - shell: bash
+    - id: tar
+      shell: bash
       run: |
         for d in ~/.cache/helder ~/Library/Caches/helder ~/AppData/Local/helder/cache; do
           for k in compiler compiler-web; do
-            [ -d "$d/$k" ] || continue
-            ls -1td "$d/$k"/*/ 2> /dev/null | tail -n +3 | xargs -r rm -rf
+            { ls -1td "$d/$k"/*/ 2> /dev/null || true; } | tail -n +3 | xargs -r rm -rf
           done
         done
-        du -sh ~/.cache/hxmc ~/.cache/helder ~/Library/Caches/hxmc ~/Library/Caches/helder ~/AppData/Local/hxmc/cache ~/AppData/Local/helder 2> /dev/null || true
-    - uses: actions/cache/save@v6
-      with:
-        path: |
-          ~/.cache/hxmc
-          ~/.cache/helder
-          ~/Library/Caches/hxmc
-          ~/Library/Caches/helder
-          ~/AppData/Local/hxmc/cache
-          ~/AppData/Local/helder
-          ${{ inputs.extra }}
-        key: ${{ inputs.key }}
-    - if: github.ref == 'refs/heads/main' && inputs.prefix != ''
-      shell: bash
+        cd ~
+        dirs=$(ls -d .cache/hxmc .cache/helder Library/Caches/hxmc Library/Caches/helder AppData/Local/hxmc/cache AppData/Local/helder 2> /dev/null || true)
+        find $dirs -type f -newer "$RUNNER_TEMP/modules-restored" > "$RUNNER_TEMP/modules.txt"
+        tar -cf "$RUNNER_TEMP/modules.tar" -T "$RUNNER_TEMP/modules.txt"
+        du -sh $dirs "$RUNNER_TEMP/modules.tar"
+        echo "name=modules-$RUNNER_OS-$GITHUB_JOB-$RANDOM$RANDOM" >> "$GITHUB_OUTPUT"
+    - uses: actions/upload-artifact@v7
       continue-on-error: true
-      env:
-        GH_TOKEN: ${{ github.token }}
-      run: |
-        # (the job's entries on main, of any compiler, but the one just saved)
-        prefix="${{ inputs.prefix }}"
-        gh cache list --repo "${{ github.repository }}" --ref refs/heads/main --key "${prefix%%-hxmc-*}-hxmc-" --limit 100 --json id,key \
-          --jq '.[] | select(.key != "${{ inputs.key }}") | .id' | while read -r id; do
-          gh cache delete "$id" --repo "${{ github.repository }}" && echo "deleted main's older cache $id"
-        done
+      with:
+        name: ${{ steps.tar.outputs.name }}
+        path: ${{ runner.temp }}/modules.tar
+        retention-days: 1
+        compression-level: 1

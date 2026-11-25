@@ -921,12 +921,12 @@ t.cart.items({count: 3});
 ```
 
 ```ts
-import { strings } from "helder/asset";
+import {strings} from 'helder/asset'
 
-const t = strings("locales");
-t.get("title");
-t.get("hello", {name: "Ada"});
-t.get("cart.items", {count: 3});
+const t = strings('locales')
+t.get('title')
+t.get('hello', {name: 'Ada'})
+t.get('cart.items', {count: 3})
 ```
 
 The first filename alphabetically defines the keys and parameter types.
