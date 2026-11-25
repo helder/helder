@@ -1,8 +1,8 @@
-package helder.headless;
+package helder.os.headless;
 
 import haxe.io.Bytes;
-import helder.headless.Inspector;
-import helder.headless.Script;
+import helder.os.headless.Inspector;
+import helder.os.headless.Script;
 import helder.os.Event;
 import helder.os.Surface;
 import helder.os.headless.HeadlessWindow;
@@ -13,14 +13,15 @@ using StringTools;
 // a build with -D helder.headless, its options in HELDER_HEADLESS as
 // JSON): its windows are HeadlessWindows (helder.os.Window: offscreen
 // surfaces, drawn by the real renderer), its loop (App.run) steps a
-// virtual clock (Time: frame n at n / fps seconds, whatever the machine's
+// virtual clock (helder.async.Time: frame n at n / fps seconds, whatever the machine's
 // speed) instead of waiting for the display, its events are the script's
 // (Script: pointer moves and presses, keys, text, wheel, resizes, menus'
 // and file dialogs' answers, aimed at a node by its tag or at x, y), and
 // each frame gives the outputs asked for: PNG snapshots at a time, the
 // node tree (Inspector: helder.ui's) as JSON, PNG sequences (and a
 // video's frames, which the CLI encodes), the motion trace (JSON lines),
-// keycaps and press ripples drawn over the frames (Overlay). Math.random
+// keycaps and press ripples drawn over the frames (Headless.overlays:
+// helder.headless.Overlay's). Math.random
 // is seeded (--seed), so the same script gives the same bytes.
 //
 // Holds (hold): a program that waits for work outside it (the studio: its
@@ -39,6 +40,11 @@ using StringTools;
 class Headless {
 	// a tap's press held (s)
 	public static inline var HOLD = 0.05;
+
+	// what draws over the frames (--keys, --pointer): helder.headless.Overlay
+	// sets it, as it draws with helder.canvas and helder.text, which are above
+	// helder.os (the CLI's headless build compiles it in)
+	public static var overlays:Null<(keys:Null<String>, theme:String, pointer:Bool) -> HeadlessOverlay> = null;
 
 	public static var run(get, never):Headless;
 	static var current:Null<Headless>;
@@ -78,7 +84,7 @@ class Headless {
 	var statKeys = 0;
 	var statWheels = 0;
 	var statPointers = 0;
-	final overlay:Null<Overlay>;
+	final overlay:Null<HeadlessOverlay>;
 	// when the run ends (s)
 	final end:Float;
 	// serve: the file each frame drawn is written to (null: a run)
@@ -162,7 +168,8 @@ class Headless {
 		trace = Reflect.field(o, "trace");
 		stats = Reflect.field(o, "stats");
 		var keys:Null<String> = Reflect.field(o, "keys"), pointer = Reflect.field(o, "pointer") == true;
-		overlay = keys != null || pointer ? new Overlay(keys, Reflect.field(o, "keysTheme") ?? (dark ? "dark" : "light"), pointer) : null;
+		if ((keys != null || pointer) && overlays == null) throw "helder headless: --keys and --pointer need helder.headless.Overlay in the build";
+		overlay = keys != null || pointer ? overlays(keys, Reflect.field(o, "keysTheme") ?? (dark ? "dark" : "light"), pointer) : null;
 		var e = 0.0;
 		for (t in ends)
 			if (t > e) e = t;
@@ -171,7 +178,7 @@ class Headless {
 		serveStart = haxe.Timer.stamp();
 		wantsNodes = trees.length > 0 || trace != null;
 		seed(Std.int(num(o, "seed", 1)));
-		Time.now = 0;
+		helder.async.Time.now = 0;
 	}
 
 	static function num(o:Dynamic, name:String, fallback:Float):Float {
@@ -255,7 +262,7 @@ class Headless {
 		if (held()) {
 			while (posted.length > 0)
 				onEvent(posted.shift());
-			Time.now = frameTime();
+			helder.async.Time.now = frameTime();
 			return;
 		}
 		var t = scriptTime() + 1e-9;
@@ -269,15 +276,15 @@ class Headless {
 			if (st > t && at > t) break;
 			if (st <= at) {
 				var s = script.steps[stepAt++];
-				Time.now = s.t + shift;
+				helder.async.Time.now = s.t + shift;
 				expand(s);
 			} else {
 				var a = acts.shift();
-				Time.now = a.t + shift;
+				helder.async.Time.now = a.t + shift;
 				act(a, onEvent);
 			}
 		}
-		Time.now = frameTime();
+		helder.async.Time.now = frameTime();
 	}
 
 	function add(a:Act) {
@@ -489,7 +496,7 @@ class Headless {
 	public function fileDialog(title:String):Null<String> {
 		var s = answers.shift();
 		if (s == null) {
-			Sys.println('headless: a file dialog ($title) at ${round(Time.now)} s, no file-dialog step left: cancelled');
+			Sys.println('headless: a file dialog ($title) at ${round(helder.async.Time.now)} s, no file-dialog step left: cancelled');
 			return null;
 		}
 		return s.type == "file-dialog" ? s.str("path") : null;
@@ -659,11 +666,11 @@ class Headless {
 		var left = [for (i in stepAt...script.steps.length) script.steps[i]].filter(s -> s.t <= end);
 		Sys.println('headless: $frame frames, 0 to ${round((frame - 1) / fps)} s');
 		if (missed.length > 0) {
-			Sys.stderr().writeString('helder headless: the program ended at ${round(Time.now)} s, before ${missed.join(", ")}\n');
+			Sys.stderr().writeString('helder headless: the program ended at ${round(helder.async.Time.now)} s, before ${missed.join(", ")}\n');
 			Sys.exit(1);
 		}
 		if (left.length > 0) {
-			Sys.stderr().writeString('helder headless: the program ended at ${round(Time.now)} s, before ${left[0]}\n');
+			Sys.stderr().writeString('helder headless: the program ended at ${round(helder.async.Time.now)} s, before ${left[0]}\n');
 			Sys.exit(1);
 		}
 	}
@@ -950,4 +957,10 @@ class Act {
 		this.y = y;
 		return this;
 	}
+}
+
+interface HeadlessOverlay {
+	function key(t:Float, label:String, typed:Bool):Void;
+	function press(t:Float, x:Float, y:Float):Void;
+	function draw(rgba:Bytes, w:Int, h:Int, scale:Float, t:Float, dark:Bool):Void;
 }
