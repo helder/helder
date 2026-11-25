@@ -11,7 +11,8 @@
 // newest draw before the next began, and at most one in ten may be stale,
 // where its frames keep up with the steps (SwiftShader's WebGL2 in a worker
 // draws one in about 300 ms: there only that a frame soon shows the last
-// size). The frames' times printed (median, p95).
+// size). The frames' times printed (median, p95); a worker's failed run
+// (TRACE=1: each) its trace around its longest wait between draws.
 //   node tests/ui/web-resize.mjs <WebTodo.wasm>
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -53,13 +54,58 @@ if (self.GPUCanvasContext) {
 		return t;
 	};
 }
+// (the worker's trace, printed when a run fails: its messages, animation
+// frames, timers, the canvas's resizes and GL calls of more than 5 ms)
+const tr = new BroadcastChannel('trace'), now = () => performance.timeOrigin + performance.now();
+const log = (k, d, t0) => tr.postMessage([t0 ?? now(), k, d, t0 === undefined ? 0 : now() - t0]);
+if (!main) {
+	self.probeLog = log;
+	const raf = self.requestAnimationFrame?.bind(self), st = self.setTimeout.bind(self);
+	if (raf) self.requestAnimationFrame = (f) => raf((t) => {
+		const t0 = now();
+		f(t);
+		log('raf', '', t0);
+	});
+	self.setTimeout = (f, ms, ...a) => st(typeof f !== 'function' ? f : () => {
+		const t0 = now();
+		f(...a);
+		log('timer', ms, t0);
+	}, ms);
+	for (const k of ['width', 'height']) {
+		const d = Object.getOwnPropertyDescriptor(OffscreenCanvas.prototype, k);
+		Object.defineProperty(OffscreenCanvas.prototype, k, { ...d, set(v) {
+			const t0 = now();
+			d.set.call(this, v);
+			log('canvas.' + k, v, t0);
+		} });
+	}
+	const G = WebGL2RenderingContext.prototype;
+	for (const k of Object.getOwnPropertyNames(G)) {
+		const f = Object.getOwnPropertyDescriptor(G, k).value;
+		if (typeof f !== 'function' || k === 'constructor') continue;
+		G[k] = function (...a) {
+			const t0 = now(), r = f.apply(this, a);
+			if (now() - t0 > 5) log('gl.' + k, '', t0);
+			return r;
+		};
+	}
+	addEventListener('message', (e) => log('message', e.data?.type ?? ''));
+}
 if (main) {
 	self.drawn = [];
+	self.trace = [];
 	ch.onmessage = (e) => self.drawn.push(e.data);
-	const W = Worker;
+	tr.onmessage = (e) => self.trace.push(e.data);
+	const W = Worker, post = W.prototype.postMessage;
+	W.prototype.postMessage = function (m, t) {
+		self.trace.push([now(), 'posted', m?.type + (m?.type === 'size' ? ' ' + m.w + 'x' + m.hh : ''), 0]);
+		return post.call(this, m, t);
+	};
 	self.Worker = class extends W {
 		constructor(url, o) {
-			const s = 'import ' + JSON.stringify(location.origin + '/probe.js') + '; import ' + JSON.stringify(new URL(url, location.href).href) + ';';
+			// (the probe first, then the worker; a listener after the worker's own: each message's end)
+			const s = 'import ' + JSON.stringify(location.origin + '/probe.js') + '; import ' + JSON.stringify(new URL(url, location.href).href)
+				+ '; addEventListener("message", (e) => self.probeLog("handled", e.data?.type ?? "", performance.timeOrigin + performance.now()));';
 			super(URL.createObjectURL(new Blob([s], { type: 'text/javascript' })), o);
 		}
 	};
@@ -119,6 +165,7 @@ for (const worker of [false, true]) for (const gfx of ['webgpu', 'webgl2']) {
 	const errors = [];
 	p.on('pageerror', (e) => errors.push(e.message));
 	let line;
+	const trail = [];
 	try {
 		await p.goto(`http://localhost:${server.address().port}/`);
 		renderer ??= await p.evaluate(() => window.renderer());
@@ -139,7 +186,7 @@ for (const worker of [false, true]) for (const gfx of ['webgpu', 'webgl2']) {
 			const r = window.resizes[window.resizes.length - 1], d = window.drawn[window.drawn.length - 1];
 			return r && d && r[1] === d[1] && r[2] === d[2];
 		}, null, { timeout: 5000 }).catch(() => {});
-		const { frames, resizes, drawn } = await p.evaluate(() => ({ frames: window.frames, resizes: window.resizes, drawn: window.drawn }));
+		const { frames, resizes, drawn, trace } = await p.evaluate(() => ({ frames: window.frames, resizes: window.resizes, drawn: window.drawn, trace: window.trace }));
 		const times = [];
 		for (let i = 0; i < frames.length - 1; i++) if (frames[i] >= t0) times.push(frames[i + 1] - frames[i]);
 		let shown = 0, stale = 0;
@@ -177,12 +224,24 @@ for (const worker of [false, true]) for (const gfx of ['webgpu', 'webgl2']) {
 		// (a worker's longest wait between draws while resized: a stall)
 		const stall = worker && gaps.length ? `, its longest gap between draws ${gaps[gaps.length - 1].toFixed(1)} ms` : '';
 		const how = late.length ? ` (seen ${late.map((l) => ms(l[0])).join(' ')} ms into their frames, drawn ${late.map((l) => ms(l[1])).join(' ')} ms after the next began)` : '';
+		// (a failed worker's run: its trace around its longest wait between draws)
+		if (worker && (!ok || process.env.TRACE)) {
+			const ds = drawn.filter((d) => d[0] > t0 && d[0] < t1);
+			let k = 1;
+			for (let i = 2; i < ds.length; i++) if (ds[i][0] - ds[i - 1][0] > ds[k][0] - ds[k - 1][0]) k = i;
+			const from = (ds[k - 1]?.[0] ?? t0) - 30, to = (ds[k]?.[0] ?? t1) + 5;
+			const events = [...trace, ...frames.map((f) => [f, 'page frame', '', 0]), ...resizes.map((r) => [r[0], 'laid out', r[1] + 'x' + r[2], 0]),
+				...drawn.map((d) => [d[0], 'drew', d[1] + 'x' + d[2], 0])].filter((e) => e[0] >= from && e[0] <= to).sort((a, b) => a[0] - b[0]);
+			trail.push(`  the worker's trace from 30 ms before its longest gap (${(ds[k][0] - ds[k - 1][0]).toFixed(1)} ms, from +30.0):`);
+			for (const e of events.slice(0, 160)) trail.push(`    +${(e[0] - from).toFixed(1)} ${e[1]} ${e[2] ?? ''}${e[3] ? ' (' + e[3].toFixed(1) + ' ms)' : ''}`);
+		}
 		line = `${mode}: ${sizes} sizes, ${shown} frames, ${stale} at a stale size${how}${stall}${worker && !keeps ? ' (its frames slower than the steps)' : ''}${settled ? '' : ', the last not at the last size'}; frame times median ${at(0.5)} ms, p95 ${at(0.95)} ms${ok ? '' : ' FAILED'}`;
 	} catch (e) {
 		failed++;
 		line = `${mode}: ${e.message} FAILED`;
 	}
 	console.log('web-resize.mjs: ' + line);
+	for (const t of trail) console.log(t);
 	for (const e of errors) console.log('  error: ' + e);
 	await p.close();
 }

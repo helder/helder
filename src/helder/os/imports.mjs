@@ -621,6 +621,20 @@ export default function os(host) {
 		const vv = globalThis.visualViewport;
 		return vv ? Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop)) : 0;
 	};
+	// (in a worker: the windows' canvases resized to the newest sizes the
+	// page told, before a frame; only what changed, as setting either
+	// reallocates the drawing buffer)
+	function resizeNext() {
+		for (const h of windows) {
+			const c = host.handles.get(h), n = c.hxmcNext;
+			if (!n) continue;
+			c.hxmcNext = null;
+			if (c.width === n[0] && c.height === n[1]) continue;
+			if (c.width !== n[0]) c.width = n[0];
+			if (c.height !== n[1]) c.height = n[1];
+			push([h, RESIZE, 0, n[0], n[1], 0, 0]);
+		}
+	}
 	// (whether the page's styles leave a canvas's displayed size its buffer's: told before its control went to a worker)
 	function unsized(c) {
 		if (c.hxmcUnsized !== undefined) return c.hxmcUnsized;
@@ -704,13 +718,14 @@ export default function os(host) {
 		page.on('event', (m) => push(m.ev));
 		page.on('size', (m) => {
 			const c = host.handles.get(m.h);
-			if (!c || (c.width === m.w && c.height === m.hh)) return;
-			c.width = m.w;
-			c.height = m.hh;
-			push([m.h, RESIZE, 0, m.w, m.hh, 0, 0]);
-			// (drawn by the frame waiting for the page's marker, at once: the
-			// page shows the old frame stretched until a new one comes; never a
-			// frame more, so that a burst of sizes draws the newest once)
+			if (!c) return;
+			// (the newest kept, the canvas resized by the next frame: a resize
+			// reallocates its drawing buffer, tens of ms under a software GL,
+			// so that sizes come in while one is made, each made in turn. Drawn
+			// by the frame waiting for the page's marker, at once: the page
+			// shows the old frame stretched until a new one comes; never a frame
+			// more, so that a burst of sizes draws the newest once)
+			c.hxmcNext = [m.w, m.hh];
 			frameNow?.();
 		});
 		page.on('state', (m) => {
@@ -1363,6 +1378,7 @@ export default function os(host) {
 			};
 			// (false once the program asks for no more)
 			const step = () => {
+				if (page) resizeNext();
 				// (in a worker the page tells these as they change)
 				if (!page && pixelRatio() !== ratio) {
 					ratio = pixelRatio();
