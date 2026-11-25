@@ -48,22 +48,22 @@ class GuideCheck implements Markup {
 
 	// "Components"
 	static function Button(props:{label:String, onClick:Void->Void, ?tag:String, ?variant:String}):View
-		return <view:button tag={props.tag} slot="button" variant={props.variant} role="button" focusable
-			onPress={() -> props.onClick()}>{props.label}</view:button>;
+		return <button tag={props.tag} slot="button" variant={props.variant}
+			onPress={() -> props.onClick()}>{props.label}</button>;
 
 	static function Stepper(props:{label:String, value:Signal<Int>, ?step:Int}):View {
 		var step = props.step ?? 1;
-		return <view direction="row" align-items="center" column-gap={8}>
-			<text grow={1}>{props.label}</text>
+		return <view flexDirection="row" alignItems="center" columnGap={8}>
+			<text flexGrow={1}>{props.label}</text>
 			<Button tag="minus" label="-" onClick={() -> props.value(v -> v - step)}/>
-			<text min-width={32} text-align="center">{props.value}</text>
+			<text minWidth={32} textAlign="center">{props.value}</text>
 			<Button tag="plus" label="+" onClick={() -> props.value(v -> v + step)}/>
 		</view>;
 	}
 
 	static function Card(props:{title:String, ?children:Any}):View
-		return <view padding={16} row-gap={8} radius={8} background="#ffffff" shadow="0 1 4 #0000001a">
-			<text font-weight={700}>{props.title}</text>
+		return <view padding={16} rowGap={8} borderRadius={8} background="#ffffff" boxShadow="0 1 4 #0000001a">
+			<text fontWeight={700}>{props.title}</text>
 			{props.children}
 		</view>;
 
@@ -79,7 +79,7 @@ class GuideCheck implements Markup {
 
 	// "Lists and conditions"
 	static function Names(props:{names:Signal<Array<String>>}):View
-		return <view row-gap={4}>
+		return <view rowGap={4}>
 			<For each={props.names}>{name -> <text>{name}</text>}</For>
 			<Show when={props.names().length == 0} fallback={<text tag="count">{props.names().length} names</text>}>
 				<text tag="empty">No names yet</text>
@@ -93,7 +93,7 @@ class GuideCheck implements Markup {
 		</Switch>;
 
 	// "A long list belongs in a VirtualList"
-	static function Messages(props:{messages:Signal<Array<{id:Int, text:String}>>, selected:Signal<Dynamic>, ref:VirtualScroll->Void}):View
+	static function Messages(props:{messages:Signal<Array<{id:Int, text:String}>>, selected:Signal<Null<Int>>, ref:VirtualScroll->Void}):View
 		return <view height={200}><VirtualList each={props.messages} by={m -> m.id} estimate={52} selected={props.selected} label="Messages"
 			ref={props.ref}>{(m:Read<{id:Int, text:String}>, i:Int) -> <text padding="8 16">{m().text}</text>}</VirtualList></view>;
 
@@ -111,9 +111,9 @@ class GuideCheck implements Markup {
 		return <view>
 			<Button tag="delete" label="Delete" onClick={() -> open(true)}/>
 			<Popover open={open} modal placement="center" onDismiss={() -> open(false)}>
-				<view role="dialog" label="Delete this file?" padding={16} row-gap={12} radius={8} background="#ffffff">
-					<text font-weight={700}>Delete this file?</text>
-					<view direction="row" column-gap={8} justify="end">
+				<view role="dialog" aria-label="Delete this file?" padding={16} rowGap={12} borderRadius={8} background="#ffffff">
+					<text fontWeight={700}>Delete this file?</text>
+					<view flexDirection="row" columnGap={8} justifyContent="end">
 						<Button tag="no" label="Cancel" onClick={() -> open(false)}/>
 						<Button tag="yes" label="Delete" onClick={() -> {
 							open(false);
@@ -193,7 +193,7 @@ class GuideCheck implements Markup {
 		flush();
 		ui2.update();
 		check("lists: Switch picks the first Match that holds", text(ui2, "settings") == "Settings" && ui2.root.find("home") == null);
-		var messages = signal([for (i in 0...10000) {id: i, text: "message " + i}]), selected:Signal<Dynamic> = signal((null : Dynamic));
+		var messages = signal([for (i in 0...10000) {id: i, text: "message " + i}]), selected:Signal<Null<Int>> = signal((null : Null<Int>));
 		var list:Null<VirtualScroll> = null;
 		var ui3 = window();
 		Render.render(<Messages messages={messages} selected={selected} ref={l -> list = l}/>, ui3.root);
@@ -239,8 +239,8 @@ class GuideCheck implements Markup {
 			<text tag="c">{count()}</text>
 			<view tag="d" background={() -> on() ? "#22c55e" : "#e4e4e7"}/>
 			<view tag="e" height={height} overflow="hidden"><text>Hello</text></view>
-			<view tag="banner" height={48} radius={8} background="linear-gradient(to right, #6366f1, rgb(236 72 153))"/>
-			<view tag="f" role="button" label="Close" focusable onClick={_ -> close()}
+			<view tag="banner" height={48} borderRadius={8} background="linear-gradient(to right, #6366f1, rgb(236 72 153))"/>
+			<view tag="f" role="button" aria-label="Close" focusable onPress={_ -> close()}
 				onKeyDown={e -> if (e.key == Key.ENTER || e.key == Key.SPACE) close()}><text>×</text></view>
 		</view>, ui.root);
 		count(5);
@@ -249,14 +249,14 @@ class GuideCheck implements Markup {
 		var banner = ui.root.find("banner");
 		check("snippets: a gradient background", banner.style.backgroundImage != null && banner.style.background == Color.TRANSPARENT);
 		var bar = new Ui(new MonoText(), 300, 100);
-		Render.render(<view tag="toolbar" direction="row" column-gap={8}>
+		Render.render(<view tag="toolbar" flexDirection="row" columnGap={8}>
 			<view tag="back" width={60} height={24}/>
 			<view tag="help" width={60} height={24} margin="0 0 0 auto"/>
 		</view>, bar.root);
 		bar.update();
 		check("snippets: an auto margin pushes to the end", bar.root.find("help").absX == 240, "" + bar.root.find("help").absX);
 		var other = new Ui(new MonoText(), 100, 100);
-		Render.render(<view tag="badge" width={24} height={24} radius={12} background="#ef4444" transform="rotate(15deg) scale(1.2)" transform-origin="left top"/>, other.root);
+		Render.render(<view tag="badge" width={24} height={24} borderRadius={12} background="#ef4444" transform="rotate(15deg) scale(1.2)" transformOrigin="left top"/>, other.root);
 		other.update();
 		var badge = other.root.find("badge"), bm = badge.transformMatrix();
 		check("snippets: a transform about its origin", bm != null && Math.abs(bm.a - 1.2 * Math.cos(Math.PI / 12)) < 1e-9 && badge.width == 24
@@ -275,20 +275,20 @@ class GuideCheck implements Markup {
 
 	// "Layout and style": a grid
 	static function Dashboard(props:{}):View
-		return <view display="grid" grid-template-columns="200px 1fr 1fr" grid-auto-rows="80px" column-gap={12} row-gap={12} padding={12}>
-			<view tag="nav" grid-row="span 2" background="#e4e4e7"/>
-			<view tag="chart" grid-column="span 2" background="#dbeafe"/>
+		return <view display="grid" gridTemplateColumns="200px 1fr 1fr" gridAutoRows="80px" columnGap={12} rowGap={12} padding={12}>
+			<view tag="nav" gridRow="span 2" background="#e4e4e7"/>
+			<view tag="chart" gridColumn="span 2" background="#dbeafe"/>
 			<view tag="a" background="#fef3c7"/>
 			<view tag="b" background="#dcfce7"/>
 		</view>;
 
 	static function Shell(props:{}):View
-		return <view display="grid" grid-template-columns="160px 1fr" grid-template-rows="48px 1fr 32px" height="100%"
-			grid-template-areas="'head head' 'side main' 'foot foot'">
-			<view tag="head" grid-area="head" background="#e4e4e7"/>
-			<view tag="side" grid-area="side" background="#f4f4f5"/>
-			<view tag="main" grid-area="main"/>
-			<view tag="foot" grid-area="foot" background="#e4e4e7"/>
+		return <view display="grid" gridTemplateColumns="160px 1fr" gridTemplateRows="48px 1fr 32px" height="100%"
+			gridTemplateAreas="'head head' 'side main' 'foot foot'">
+			<view tag="head" gridArea="head" background="#e4e4e7"/>
+			<view tag="side" gridArea="side" background="#f4f4f5"/>
+			<view tag="main" gridArea="main"/>
+			<view tag="foot" gridArea="foot" background="#e4e4e7"/>
 		</view>;
 
 	static function grids() {
@@ -310,7 +310,7 @@ class GuideCheck implements Markup {
 
 	// "Rich text": spans in a paragraph
 	static function Greeting(props:{name:Signal<String>, onLink:Void->Void}):View
-		return <text tag="greeting">Hello <b>{props.name}</b>, read <span tag="link" color="#2563eb" text-decoration="underline" cursor="pointer" onClick={_ -> props.onLink()}>the guide</span>.</text>;
+		return <text tag="greeting">Hello <strong>{props.name}</strong>, read <text tag="link" color="#2563eb" textDecoration="underline" cursor="pointer" onPress={_ -> props.onLink()}>the guide</text>.</text>;
 
 	static function richText() {
 		var ui = window();
@@ -340,7 +340,7 @@ class GuideCheck implements Markup {
 		check("rich text: the link underlined under its text", calls.length == 2 && under[0] == "rect" && Std.parseFloat(under[1]) == t.absX + 5 * 15
 			&& Std.parseFloat(under[3]) == 5 * 9 && StringTools.startsWith(calls[1], "text"), calls.join("|"));
 		var clamped = window();
-		Render.render(<view width={100}><text tag="clamped" max-lines={2}>one two three four five six seven eight nine ten</text></view>, clamped.root);
+		Render.render(<view width={100}><text tag="clamped" lineClamp={2}>one two three four five six seven eight nine ten</text></view>, clamped.root);
 		clamped.update();
 		var ct = clamped.root.find("clamped");
 		check("max-lines: two lines of a long text", ct.height == 25, '${ct.height}');
@@ -350,7 +350,7 @@ class GuideCheck implements Markup {
 	// "Themes and dark mode": a StyleSheet's rules and colours, light and dark
 	static final sheet:StyleSheet = {
 		rules: [
-			{slot: "button", style: {background: Color.parse("var(--primary)"), color: Color.parse("var(--primary-foreground)"), radius: 6, padding: [8, 16]}},
+			{slot: "button", style: {background: Color.parse("var(--primary)"), color: Color.parse("var(--primary-foreground)"), borderRadius: 6, padding: [8, 16]}},
 			{slot: "button", when: ["hover"], style: {background: Color.parse("var(--primary)/90")}},
 			{slot: "button", variant: "outline", style: {background: Color.TRANSPARENT, color: Color.parse("var(--foreground)"), borderWidth: 1, borderColor: Color.parse("var(--border)")}}
 		],
@@ -360,13 +360,13 @@ class GuideCheck implements Markup {
 
 	static function themes() {
 		var ui = window();
-		Render.render(<view align-items="start"><Button tag="themed" label="Themed" onClick={() -> {}}/><Button tag="outlined" label="Outlined" variant="outline" onClick={() -> {}}/></view>, ui.root);
+		Render.render(<view alignItems="start"><Button tag="themed" label="Themed" onClick={() -> {}}/><Button tag="outlined" label="Outlined" variant="outline" onClick={() -> {}}/></view>, ui.root);
 		ui.update();
 		var b = ui.root.find("themed"), o = ui.root.find("outlined");
 		var unstyled = b.style.background == Color.TRANSPARENT && b.style.borderWidth == 0;
 		ui.theme = sheet;
 		ui.update();
-		check("themes: unstyled, then the sheet's looks", unstyled && b.style.background == Color.rgb(0x171717) && b.style.radius == 6
+		check("themes: unstyled, then the sheet's looks", unstyled && b.style.background == Color.rgb(0x171717) && b.style.borderRadius == 6
 			&& b.style.borderWidth == 0 && o.style.borderWidth == 1 && o.style.borderColor == Color.rgb(0xE5E5E5), StringTools.hex(b.style.background, 8));
 		var dark = signal(false);
 		root(_ -> renderEffect(() -> dark(), d -> ui.dark = d));
@@ -385,8 +385,8 @@ class GuideCheck implements Markup {
 		stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>');
 
 	static function SearchButton(props:{onClick:Void->Void}):View
-		return <view tag="search" role="button" label="Search" focusable direction="row" column-gap={6} align-items="center"
-			color="#2563eb" onClick={_ -> props.onClick()}>
+		return <view tag="search" role="button" aria-label="Search" focusable flexDirection="row" columnGap={6} alignItems="center"
+			color="#2563eb" onPress={_ -> props.onClick()}>
 			<image src={SEARCH} width={16} height={16}/>
 			<text>Search</text>
 		</view>;
@@ -407,14 +407,14 @@ class GuideCheck implements Markup {
 
 	// "Keyboard shortcuts"
 	static function Editor(props:{text:Signal<String>, onSave:Void->Void}):View
-		return <view row-gap={8} key-context="Editor" actions={[helder.ui.actions.Actions.handle(EditorAction, a -> {
+		return <view rowGap={8} keyContext="Editor" actions={[helder.ui.actions.Actions.handle(EditorAction, a -> {
 			switch a {
 				case Save: props.onSave();
 				case Clear: props.text("");
 			}
 			true;
 		})]}>
-			<field:textarea label="Text" value={props.text} onInput={e -> props.text(e.text)}/>
+			<textarea aria-label="Text" value={props.text} onInput={e -> props.text(e.text)}/>
 		</view>;
 
 	static function shortcuts() {
@@ -435,10 +435,10 @@ class GuideCheck implements Markup {
 
 	// "Text fields": drawn on the desktop, spellcheck asked or a text area's, native asked
 	static function Compose(props:{subject:Signal<String>, body:Signal<String>}):View
-		return <view row-gap={8}>
-			<field label="Subject" value={props.subject} spellcheck="true" onInput={e -> props.subject(e.text)}/>
-			<field:textarea label="Body" value={props.body} onInput={e -> props.body(e.text)}/>
-			<field type="password" label="Password" host="native"/>
+		return <view rowGap={8}>
+			<field aria-label="Subject" value={props.subject} spellCheck="true" onInput={e -> props.subject(e.text)}/>
+			<textarea aria-label="Body" value={props.body} onInput={e -> props.body(e.text)}/>
+			<field type="password" aria-label="Password" host="native"/>
 		</view>;
 
 	static function textFields() {
@@ -462,10 +462,10 @@ class GuideCheck implements Markup {
 			list.insert(list.indexOf(before), what);
 			props.items(list);
 		}
-		return <view row-gap={4}>
+		return <view rowGap={4}>
 			<For each={props.items}>{item -> {
 				var name = item();
-				<view tag={"item-" + name} drag-data={name} padding={6}
+				<view tag={"item-" + name} dragData={name} padding={6}
 					background={over() == name ? "#dbeafe" : "#ffffff"}
 					onDragOver={e -> {
 						e.preventDefault();
@@ -483,7 +483,7 @@ class GuideCheck implements Markup {
 	static function dragAndDrop() {
 		var ui = window();
 		var items = signal(["a", "b", "c", "d"]), clicks = 0;
-		Render.render(<view onClick={_ -> clicks++}><Sortable items={items}/></view>, ui.root);
+		Render.render(<view onPress={_ -> clicks++}><Sortable items={items}/></view>, ui.root);
 		ui.update();
 		function center(tag:String) {
 			var n = ui.root.find(tag);

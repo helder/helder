@@ -11,6 +11,7 @@ import helder.view.graph.Context;
 //   <For each={fleets} by={f -> f.id}>{f -> <Token fleet={f}/>}</For>
 //   <Repeat count={3}>{i -> <dot/>}</Repeat>
 //   <Show when={count() > 0} fallback="none">{...}</Show>
+//   <Show when={user()}>{u -> <text>{u().name}</text>}</Show>
 //   <Switch fallback="other"><Match when={a()}>A</Match><Match when={b()}>B</Match></Switch>
 //   <Provider context={theme} value={dark}>{...}</Provider>
 //   <Errored fallback={(e, reset) -> ...}>{...}</Errored>
@@ -25,7 +26,9 @@ import helder.view.graph.Context;
 // 1's Index). Repeat makes a row per number
 // below count. Show and Switch render a branch again only when the branch
 // chosen changes (not on every change of what chooses it): `when` is
-// truthy when not null and not false. Provider sets a context for its
+// truthy when not null and not false; Show's child a function of one, its
+// children made by it given when's value as a Read (Solid's keyed={false}:
+// made once while it holds, the Read its latest). Provider sets a context for its
 // children (Graph.use). Errored shows fallback instead of its children
 // when making them throws, or a computation inside them does later; reset
 // tries again. Loading shows fallback instead of its children while what
@@ -43,9 +46,17 @@ class Flow {
 		return new ForList(cast(numbers : Read<Array<Int>>), true, (i:Read<Dynamic>) -> render(i()), null);
 	}
 
-	public static function Show<T>(props:{when:Read<T>, ?fallback:Any, ?children:Any}):Any {
+	// (TypeScript's: a function child's parameter typed by when's value)
+	@:typescript.type('<T>(props: {when: Read<T>; fallback?: unknown; children?: ((value: Read<NonNullable<T>>) => unknown) | {} | null}) => unknown')
+	public static function Show<T>(props:{when:Read<T>, ?fallback:Any, ?children:haxe.extern.EitherType<Any, Read<T>->Any>}):Any {
 		var when:Read<T> = Read.of(props.when);
 		var on = Graph.memo(() -> truthy(when()));
+		var children:Dynamic = props.children;
+		// (a function of when's value: called once each time it holds, untracked)
+		if (Reflect.isFunction(children)) {
+			var value:Read<T> = () -> when();
+			return () -> on() ? Graph.untrack(() -> (children : Read<T>->Any)(value)) : props.fallback;
+		}
 		return () -> on() ? props.children : props.fallback;
 	}
 
