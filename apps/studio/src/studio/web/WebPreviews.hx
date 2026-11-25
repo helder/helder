@@ -229,7 +229,7 @@ class WebPreviews {
 	public function wake() {}
 
 	// (natively a hovered loop from the frames file; here the host's)
-	public function fileLoop(s:Screen):Null<{fps:Int, lists:Array<helder.ui.draw.DisplayList>}>
+	public function fileLoop(s:Screen):Null<{fps:Int, lists:Array<helder.ui.draw.DisplayList>, passes:Array<Array<helder.ui.draw.PassData>>}>
 		return null;
 
 	public function show(names:Array<String>, focused:Null<String>, scale = 1.0) {

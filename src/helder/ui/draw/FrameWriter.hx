@@ -220,8 +220,36 @@ class FrameWriter implements TextureCanvas {
 
 	// (what a pass draws: its box; read back, a placeholder)
 	public function gpuTexture(t:Texture, id:Int, x:Float, y:Float, w:Float, h:Float, radius:Float = 0.0, ?corners:Corners) {
+		// (what it draws as data, given: kept as that)
+		var f = datas.get(id), d = f == null ? null : f();
+		if (d != null) {
+			out.op(FrameOp.PASS_DATA);
+			box(x, y, w, h);
+			out.float(10, radius);
+			this.corners(corners);
+			d.write(out);
+			return;
+		}
 		var img = pixels == null ? null : pixels(t);
 		if (img == null) placeholder(x, y, w, h) else image(img, x, y, w, h, 0, 0, 1, 1, radius, corners);
+	}
+
+	// (what a node that draws on the GPU draws, as data, by the id its
+	// texture is drawn with: asked for as that texture is, null: its picture)
+	final datas = new Map<Int, Void->Null<PassData>>();
+
+	public function data(id:Int, f:Void->Null<PassData>)
+		datas.set(id, f);
+
+	// the writer a canvas paints into (a list recorded for it: its target's), or null
+	public static function of(c:Null<Canvas>):Null<FrameWriter> {
+		var at = c;
+		while (true) {
+			var l = Std.downcast(at, DisplayList);
+			if (l == null || l.target == null) break;
+			at = l.target;
+		}
+		return Std.downcast(at, FrameWriter);
 	}
 
 	// a pass's box its picture: what r drew in its last frame (painted
@@ -451,4 +479,6 @@ class FrameOp {
 	public static inline var TEXT = 14;
 	public static inline var TEXT_SHADOW = 15;
 	public static inline var PLACEHOLDER = 16;
+	// (what a pass draws as data: PassData)
+	public static inline var PASS_DATA = 17;
 }

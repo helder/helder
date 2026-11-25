@@ -154,7 +154,8 @@ class Previews {
 
 	// (a screen's still from the file, dimmed when its files changed since)
 	function still(s:Screen):Bool {
-		var l = kept.list(s.info.name), size = kept.size(s.info.name);
+		var passes = [], l = kept.list(s.info.name, passes), size = kept.size(s.info.name);
+		s.stillPasses = passes;
 		if (size != null) {
 			s.stillWidth = size.width;
 			s.stillHeight = size.height;
@@ -171,7 +172,7 @@ class Previews {
 	}
 
 	// a hovered screen's loop from the file (null: none, it runs live)
-	public function fileLoop(s:Screen):Null<{fps:Int, lists:Array<helder.ui.draw.DisplayList>}> {
+	public function fileLoop(s:Screen):Null<{fps:Int, lists:Array<helder.ui.draw.DisplayList>, passes:Array<Array<helder.ui.draw.PassData>>}> {
 		if (!fileLoops(s.info.name)) return null;
 		var first = !decoded.exists(s.info.name);
 		var l = kept.loop(s.info.name);
@@ -807,6 +808,8 @@ class Screen {
 	public final stale = signal(false);
 	// (the still's size in points: its story's when it was made)
 	public var stillWidth = 0.0;
+	// (what its still's passes draw as data: a markup <Scene>'s, built again where it is shown)
+	public var stillPasses:Array<helder.ui.draw.PassData> = [];
 	public var stillHeight = 0.0;
 	public var version = 0;
 	// (natively) the host's target its image shows (helder.story.NativeHost's buffer; 0: none)

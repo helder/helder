@@ -319,6 +319,15 @@ class SceneBox extends helder.ui.Node {
 	override public function paintContent(canvas:helder.ui.Canvas, x:Float, y:Float, width:Float, height:Float) {
 		// (on the GPU only: a canvas recording, a test's, draws nothing)
 		var g = Std.downcast(canvas, helder.ui.draw.TextureCanvas), r = helder.ui.draw.GpuHost.of(canvas);
+		// (a frame written as data: a scene of markup alone its data, drawn again from it; else its picture)
+		if (g != null && helder.ui.draw.FrameWriter.of(canvas) != null) {
+			var d = SceneData.capture(this);
+			if (d != null) {
+				helder.ui.draw.FrameWriter.of(canvas).data(id, () -> d);
+				g.gpuTexture(color ?? (cast 0 : Texture), id, x, y, width, height);
+				return;
+			}
+		}
 		if (g == null || r == null) return helder.ui.draw.GpuPlaceholder.draw(canvas, x, y, width, height);
 		if (animate && ui != null) ui.requestFrame();
 		// (its controls' glides, by the time since the last frame drawn)

@@ -1,34 +1,49 @@
 package studio;
 
+#if !(hxmc.target == "wasm32-wasi")
+import helder.scene.view.SceneData;
+#end
 import helder.ui.Canvas;
 import helder.ui.Clock;
 import helder.ui.Node;
 import helder.ui.draw.DisplayList;
+import helder.ui.draw.PassCanvas;
+import helder.ui.draw.PassData;
 
 // A screen's still from the frames file (Stills): its list replayed in
-// the node's box, scaled from the story's points to it, vector at any zoom.
-// Its loop (a hovered loop story's, from the file) played over it at the
-// fps it was recorded at, from its first frame, round and round; stopped,
-// the still again.
+// the node's box, scaled from the story's points to it, vector at any zoom;
+// what a markup <Scene> in it draws built again from its data and drawn in
+// its place (SceneData: crisp at any zoom too). Its loop (a hovered loop
+// story's, from the file) played over it at the fps it was recorded at,
+// from its first frame, round and round, its scenes' changed props set at
+// each; stopped, the still again.
 class StillFrame extends Node {
 	final still:DisplayList;
+	final stillPasses:Array<PassData>;
 	final w:Float;
 	final h:Float;
 	var list:DisplayList;
+	var passes:Array<PassData>;
+	#if !(hxmc.target == "wasm32-wasi")
+	// (the scenes of its passes, built when first drawn; the browser's studio
+	// has no frames file: helder.scene not linked for it)
+	final scenes:Array<SceneReplay> = [];
+	#end
 	var playing = 0;
 	// (a loop's frames painted, their replays' time: its cost a frame)
 	var painted = 0;
 	var paintMs = 0.0;
 
-	public function new(list:DisplayList, width:Float, height:Float) {
+	public function new(list:DisplayList, passes:Array<PassData>, width:Float, height:Float) {
 		super();
 		still = this.list = list;
+		stillPasses = this.passes = passes;
 		w = width;
 		h = height;
 	}
 
 	// a loop's frames, played; first: told at its first frame, done: when stopped (frames painted, ms each)
-	public function play(fps:Int, lists:Array<DisplayList>, ?first:Void->Void, ?done:(frames:Int, ms:Float) -> Void) {
+	public function play(fps:Int, lists:Array<DisplayList>, framePasses:Array<Array<PassData>>, ?first:Void->Void, ?done:(frames:Int, ms:Float) -> Void) {
 		if (lists.length == 0 || fps <= 0) return;
 		var id = ++playing, t0 = -1.0;
 		painted = 0;
@@ -37,9 +52,10 @@ class StillFrame extends Node {
 		Clock.addFor(this, t -> {
 			if (playing != id) return false;
 			if (t0 < 0) t0 = t;
-			var next = lists[Std.int((t - t0) * fps) % lists.length];
-			if (next != list) {
-				list = next;
+			var i = Std.int((t - t0) * fps) % lists.length;
+			if (lists[i] != list) {
+				list = lists[i];
+				passes = framePasses[i] ?? [];
 				paintChanged();
 			}
 			if (first != null) {
@@ -56,6 +72,7 @@ class StillFrame extends Node {
 		if (list == still && stopped == null) return;
 		playing++;
 		list = still;
+		passes = stillPasses;
 		paintChanged();
 		var done = stopped;
 		stopped = null;
@@ -74,6 +91,14 @@ class StillFrame extends Node {
 		var t0 = haxe.Timer.stamp();
 		c.pushClip(x, y, width, height, 0);
 		c.pushTransform(width / w, 0, 0, height / h, x, y);
+		#if !(hxmc.target == "wasm32-wasi")
+		if (passes.length > 0) {
+			// (each scene of this frame's data: built once, its props set as they change)
+			for (k => d in passes)
+				if (k >= scenes.length) scenes.push(SceneData.build(d)) else scenes[k].apply(d);
+			list.replay(new PassCanvas(c, (k, px, py, pw, ph) -> if (k < scenes.length) scenes[k].draw(c, px, py, pw, ph)));
+		} else
+		#end
 		list.replay(c);
 		c.popTransform();
 		c.popClip();

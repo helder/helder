@@ -1640,8 +1640,14 @@ its moment: `FrameWriter.loop`, `next`) is kept with its still as
 `FrameLoop` deltas: each frame from the last as `DisplayList.diff` sees
 two recordings, the ops alike at both ends kept with only their changed
 numbers as steps, the ops between whole, a key frame every 30;
-`loop(name)` gives its frames' lists and fps. A frame in which a pass
-draws (`passes`) cannot be kept as data: such a loop is played live.
+`loop(name)` gives its frames' lists and fps. A pass's box (a scene, a
+shader, video, sprites) is what it drew: written after its renderer's frame
+(`FrameWriter.gpu`), its texture read back, an image (the studio's stills
+draw the screen at 2x for it); a markup `<Scene>` of tags and plain props
+alone is kept as data instead (`PassData`, helder.scene.view's
+`SceneData`: its tags, props and their steps in a loop), the list read
+with passes marking its place (`PassCanvas`) for the scene to be built
+again and drawn there. A loop with a pass that is no data is played live.
 
 ### On the CPU
 

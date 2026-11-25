@@ -13,7 +13,10 @@ import helder.ui.draw.RunParagraph.RunLine;
 // call, its fonts and images given (the archive's: FrameArchive.list), so
 // that replaying the list draws what painting the frame drew.
 class FrameReader {
-	public static function read(bytes:haxe.io.Bytes, fonts:Array<FontFile>, images:Array<Null<Image>>):DisplayList {
+	// passes: where what passes draw as data goes (PassData), each a GPU
+	// texture of the list (PassData.MARK less its index) for the one who
+	// replays it to draw; without, a placeholder's box
+	public static function read(bytes:haxe.io.Bytes, fonts:Array<FontFile>, images:Array<Null<Image>>, ?passes:Array<PassData>):DisplayList {
 		var list = new DisplayList(), r = new FrameInput(bytes);
 		function box():{x:Float, y:Float, w:Float, h:Float}
 			return {x: r.float(0), y: r.float(1), w: r.float(2), h: r.float(3)};
@@ -94,6 +97,12 @@ class FrameReader {
 				case FrameOp.PLACEHOLDER:
 					var b = box();
 					list.rect(b.x, b.y, b.w, b.h, 0, GpuPlaceholder.COLOR, 0, 0);
+				case FrameOp.PASS_DATA:
+					var b = box(), radius = r.float(10), c = corners(), d = PassData.read(r);
+					if (passes == null) list.rect(b.x, b.y, b.w, b.h, radius, GpuPlaceholder.COLOR, 0, 0, c) else {
+						passes.push(d);
+						list.gpuTexture(cast 0, PassData.MARK - (passes.length - 1), b.x, b.y, b.w, b.h, radius, c);
+					}
 				case op:
 					throw 'FrameReader: op $op unknown (a newer helder\'s frame)';
 			}

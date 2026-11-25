@@ -109,13 +109,14 @@ class FrameArchive {
 	}
 
 	// a screen's frame recorded into a list to draw; null when there is none,
-	// or a font it draws is not here (its file gone or changed)
-	public function list(name:String):Null<DisplayList> {
+	// or a font it draws is not here (its file gone or changed); passes: what
+	// passes draw as data (FrameReader.read's)
+	public function list(name:String, ?passes:Array<PassData>):Null<DisplayList> {
 		var s = screens.get(name);
 		if (s == null) return null;
 		var fonts = [for (f in s.fonts) font(f)];
 		if (fonts.contains(null)) return null;
-		return FrameReader.read(s.bytes, cast fonts, [for (i in s.images) image(i)]);
+		return FrameReader.read(s.bytes, cast fonts, [for (i in s.images) image(i)], passes);
 	}
 
 	// whether a screen has a loop stored
@@ -124,13 +125,19 @@ class FrameArchive {
 
 	// a screen's loop: its fps and its frames recorded into lists; null when
 	// it has none (one with a pass plays live) or a font it draws is not here
-	public function loop(name:String):Null<{fps:Int, lists:Array<DisplayList>}> {
+	// (passes: each frame's passes' data kept, as list's)
+	public function loop(name:String, passes = false):Null<{fps:Int, lists:Array<DisplayList>, passes:Array<Array<PassData>>}> {
 		var s = screens.get(name);
 		if (s == null || s.loop == null) return null;
 		var fonts = [for (f in s.fonts) font(f)];
 		if (fonts.contains(null)) return null;
-		var images = [for (i in s.images) image(i)];
-		return {fps: s.loop.fps, lists: [for (recs in FrameLoop.decode(s.loop.frames)) FrameReader.read(FrameStreams.of(recs), cast fonts, images)]};
+		var images = [for (i in s.images) image(i)], lists = [], datas = [];
+		for (recs in FrameLoop.decode(s.loop.frames)) {
+			var d = passes ? [] : null;
+			lists.push(FrameReader.read(FrameStreams.of(recs), cast fonts, images, d));
+			datas.push(d ?? []);
+		}
+		return {fps: s.loop.fps, lists: lists, passes: datas};
 	}
 
 	public function encode():Bytes {
