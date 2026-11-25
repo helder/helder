@@ -84,10 +84,10 @@ try {
 	}
 	if (shots) {
 		await mkdir(shots, { recursive: true });
-		await page.screenshot({ path: path.join(shots, 'site-desktop.png') });
+		await shot(page, 'site-desktop.png');
 		await page.setViewportSize({ width: 390, height: 844 });
-		await page.screenshot({ path: path.join(shots, 'site-phone.png') });
-		await page.screenshot({ path: path.join(shots, 'site-phone-full.png'), fullPage: true });
+		await shot(page, 'site-phone.png');
+		await shot(page, 'site-phone-full.png', { fullPage: true });
 		await page.setViewportSize({ width: 1280, height: 900 });
 	}
 	// (each demo alone in the page, loaded again: the heavy ones, a million
@@ -120,11 +120,11 @@ try {
 		await renderedFrames(island);
 		check(!before.equals(await canvas.screenshot()), `${id}'s canvas drawn`);
 		if (shots) {
-			await page.screenshot({ path: path.join(shots, `site-desktop-${id}.png`) });
+			await shot(page, `site-desktop-${id}.png`);
 			await page.setViewportSize({ width: 390, height: 844 });
 			await island.scrollIntoViewIfNeeded();
 			await renderedFrames(island);
-			await page.screenshot({ path: path.join(shots, `site-phone-${id}.png`) });
+			await shot(page, `site-phone-${id}.png`);
 			await page.setViewportSize({ width: 1280, height: 900 });
 		}
 		// (an example of fetched data, heavy: stopped once out of view, data-stop="offscreen")
@@ -192,7 +192,7 @@ async function checkDocs(page) {
 			// (started once in view, so there is no frame from before it ran: a frame of more than a few colours is drawn)
 			const colours = await renderedFrames(island);
 			check(colours > 8, `${p.url}: ${id}'s canvas drawn (${colours} colours)`);
-			if (shots) await page.screenshot({ path: path.join(shots, `docs-${id}.png`) });
+			if (shots) await shot(page, `docs-${id}.png`);
 		}
 	}
 	// (Haxe chosen on one page: the next page's samples open in Haxe)
@@ -220,6 +220,16 @@ async function checkDocs(page) {
 	await page.keyboard.press('Escape');
 	check(await page.locator('.results').isHidden() && await page.locator('.search').evaluate(input => input === document.activeElement),
 		'Escape closes results and returns focus to search');
+}
+
+// a screenshot for the artifacts, not a check: one that times out (a heavy
+// demo starving SwiftShader's frames) is noted and the check goes on
+async function shot(page, name, options = {}) {
+	try {
+		await page.screenshot({ path: path.join(shots, name), ...options });
+	} catch (e) {
+		console.log(`site/check.mjs: no screenshot ${name}: ${e.message.split('\n')[0]}`);
+	}
 }
 
 // Readback resolves once a canvas frame has rendered, including in a worker.
@@ -272,19 +282,19 @@ async function checkPhone(shots) {
 		const links = await visible('.top nav a');
 		check(['Examples', 'Docs', 'GitHub'].every((l) => links.includes(l)), `phone, ${at}: the top bar's links (${links.join(', ')})`);
 		check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `phone, ${at}: no sideways scroll`);
-		if (shots) await page.screenshot({ path: path.join(shots, `phone-${name}.png`) });
+		if (shots) await shot(page, `phone-${name}.png`);
 	}
 	const docs = JSON.parse(fs.readFileSync(path.join(dir, 'docs/search.json'), 'utf8'));
 	await page.goto(url + docs[1].url);
 	check((await visible('.top nav a')).length === 0, `phone, ${docs[1].url}: the top bar's links hidden`);
 	check(await page.locator('.menu').isVisible(), `phone, ${docs[1].url}: the menu shown`);
 	check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `phone, ${docs[1].url}: no sideways scroll`);
-	if (shots) await page.screenshot({ path: path.join(shots, 'phone-docs.png') });
+	if (shots) await shot(page, 'phone-docs.png');
 	await page.locator('.menu').tap();
 	const inMenu = await visible('.sidebar .links a');
 	check(['Examples', 'GitHub'].every((l) => inMenu.includes(l)) && (await page.locator('.sidebar ul a').first().isVisible()),
 		`phone, ${docs[1].url}: the menu holds the site's links (${inMenu.join(', ')}) and the pages`);
-	if (shots) await page.screenshot({ path: path.join(shots, 'phone-docs-menu.png') });
+	if (shots) await shot(page, 'phone-docs-menu.png');
 	await context.close();
 }
 
@@ -304,7 +314,7 @@ async function phone(page, shots, id) {
 	}, id);
 	check(full.el && full.w === 390 && full.h === 844, `${id} full screen: the stage the full screen element, its canvas ${full.w}x${full.h}`);
 	check(full.bw === Math.round(full.w * full.dpr) && full.bh === Math.round(full.h * full.dpr), `${id} full screen: the canvas's buffer ${full.bw}x${full.bh} (its size times ${full.dpr})`);
-	if (shots) await page.screenshot({ path: path.join(shots, `${id}-fullscreen.png`) });
+	if (shots) await shot(page, `${id}-fullscreen.png`);
 	await page.locator(`#${id} button.exit`).click();
 	await page.waitForTimeout(800);
 	check(await page.evaluate((id) => !document.fullscreenElement && !document.querySelector(`#${id} .stage.expanded`), id), `${id} full screen: left by Exit`);
@@ -333,7 +343,7 @@ async function phone(page, shots, id) {
 	await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 	await page.waitForTimeout(500);
 	check(await page.evaluate(() => scrollY) === ex.scroll, `${id} expanded: a touch drag did not scroll the page`);
-	if (shots) await page.screenshot({ path: path.join(shots, `${id}-expanded.png`) });
+	if (shots) await shot(page, `${id}-expanded.png`);
 	await page.locator(`#${id} button.exit`).click();
 	await page.waitForTimeout(500);
 	check(await page.evaluate((id) => !document.querySelector(`#${id} .stage.expanded`) && !document.documentElement.classList.contains('playing'), id), `${id} expanded: left by Exit`);
