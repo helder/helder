@@ -9,7 +9,7 @@
 //
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
-import type {Event, WebViewEvent} from "helder/ui";
+import "helder/ui";
 import type {Signal, View} from "helder/view";
 
 declare const __haxe: {Story: "helder.story.Story", Controls: "helder.story.Story.Controls", Stories: "helder.story.Stories", Screens: "helder.story.Screens", StoreShots: "helder.story.StoreShots", __module: "helder.story.TypeScript"};
@@ -29,7 +29,7 @@ export type StoryDef = { name: string; render: (arg0: Controls) => View; seed?: 
 // that runs to a moment (a game mid-play): unsettled until its clock has
 // run that long, the renderers running its frames on a virtual clock;
 // onDispose, what to let go with the story
-export declare class Controls {
+declare class Controls {
 	constructor(seed?: number);
 	readonly seed: number;
 	readonly list: Array<{ name: string; kind: string; value: any; options?: string[] }>;
@@ -64,7 +64,7 @@ export declare class Controls {
 // story's view rendered into its root and brought to its moment: settle),
 // and as tests (test: each story's tree snapshotted, helder test's runner
 // calls it for a .story.hx file with its stories: of, helder.cli.TestCommand)
-export declare class Stories {
+declare class Stories {
 	// story({...}) in a TypeScript program (helder/story; the definition
 	// checked its fields where they are written)
 	static define(def: StoryDef): Story;
@@ -89,7 +89,7 @@ export declare const tree: typeof Stories.tree;
 //   // the studio's generated main (bin/studio/<name>/gen/StudioScreens.hx, screens.tsx)
 //   helder.story.Screens.run(helder.story.Stories.of("Todo_story"));
 //   import { screens } from "helder/story"; screens([empty, items]);
-export declare class Screens {
+declare class Screens {
 	static run(stories: Story[]): void;
 }
 
@@ -120,70 +120,9 @@ export declare const screens: typeof Screens.run;
 // publish --screenshots and --run build a program of the project's story
 // files around main (helder.cli.Shots); a TypeScript project's calls shots
 // (helder/story) with its stories.
-export declare class StoreShots {
+declare class StoreShots {
 	// (TypeScript's shots(stories): main over them; helder/story)
 	static run(stories: Story[]): void;
 }
 
 export declare const shots: typeof StoreShots.run;
-
-// a neutral element's attributes: any, its handlers given ui's events (helder.ui.view.NodeEvents)
-export interface NeutralAttributes {
-	[attribute: string]: unknown;
-	onPress?: ((event: Event) => void) | null;
-	onClick?: ((event: Event) => void) | null;
-	onPointerDown?: ((event: Event) => void) | null;
-	onPointerUp?: ((event: Event) => void) | null;
-	onPointerMove?: ((event: Event) => void) | null;
-	onPointerEnter?: ((event: Event) => void) | null;
-	onPointerLeave?: ((event: Event) => void) | null;
-	onPointerCancel?: ((event: Event) => void) | null;
-	onLostPointerCapture?: ((event: Event) => void) | null;
-	onWheel?: ((event: Event) => void) | null;
-	onKeyDown?: ((event: Event) => void) | null;
-	onKeyUp?: ((event: Event) => void) | null;
-	onTextInput?: ((event: Event) => void) | null;
-	onComposition?: ((event: Event) => void) | null;
-	onInput?: ((event: Event) => void) | null;
-	onSubmit?: ((event: Event) => void) | null;
-	onFocus?: ((event: Event) => void) | null;
-	onBlur?: ((event: Event) => void) | null;
-	onFocusIn?: ((event: Event) => void) | null;
-	onFocusOut?: ((event: Event) => void) | null;
-	onDragStart?: ((event: Event) => void) | null;
-	onDragOver?: ((event: Event) => void) | null;
-	onDragLeave?: ((event: Event) => void) | null;
-	onDrop?: ((event: Event) => void) | null;
-	onDragEnd?: ((event: Event) => void) | null;
-	onResize?: ((event: Event) => void) | null;
-	onTap?: ((event: unknown) => void) | null;
-	onPan?: ((event: unknown) => void) | null;
-	onPinch?: ((event: unknown) => void) | null;
-	onScale?: ((event: unknown) => void) | null;
-	onMessage?: ((event: WebViewEvent) => void) | null;
-	onNavigate?: ((event: WebViewEvent) => void) | null;
-	onUrlChange?: ((event: WebViewEvent) => void) | null;
-	onLoad?: ((event: WebViewEvent) => void) | null;
-	onTitle?: ((event: WebViewEvent) => void) | null;
-	onProgress?: ((event: WebViewEvent) => void) | null;
-	onLoadError?: ((event: WebViewEvent) => void) | null;
-	onConsole?: ((event: WebViewEvent) => void) | null;
-	onCrash?: ((event: WebViewEvent) => void) | null;
-}
-
-declare global {
-	namespace JSX {
-		// the neutral elements: ui's, realised by each renderer
-		interface IntrinsicElements {
-			view: NeutralAttributes;
-			text: NeutralAttributes;
-			scroll: NeutralAttributes;
-			image: NeutralAttributes;
-			icon: NeutralAttributes;
-			field: NeutralAttributes;
-			[tag: `view:${string}`]: NeutralAttributes;
-			[tag: `text:${string}`]: NeutralAttributes;
-			[tag: `field:${string}`]: NeutralAttributes;
-		}
-	}
-}

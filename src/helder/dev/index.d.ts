@@ -14,7 +14,7 @@ declare const __haxe: {Slot: "helder.dev.Slot", __module: "helder.dev.TypeScript
 // the key, unless the initial value's source changed, saved on each
 // snapshot (a program's data: numbers, strings, booleans, null, arrays and
 // plain objects of them, as its signals'); else init().
-export declare class Slot {
+declare class Slot {
 	// a value kept across a reload under `helder dev`: the key a string
 	// literal, the initial value made by a function of no arguments
 	static keep<T>(key: string, init: () => T): T;

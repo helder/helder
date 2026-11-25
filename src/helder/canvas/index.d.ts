@@ -8,7 +8,7 @@
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 
-declare const __haxe: {Canvas: "helder.canvas.dom.Canvas", CanvasRenderingContext2D: "helder.canvas.dom.CanvasRenderingContext2D", Path2D: "helder.canvas.dom.Path2D", CanvasGradient: "helder.canvas.dom.CanvasGradient", CanvasPattern: "helder.canvas.dom.CanvasPattern", ImageData: "helder.canvas.dom.ImageData", DOMMatrix: "helder.canvas.dom.DOMMatrix", Image: "helder.canvas.dom.Image", TextMetrics: "helder.canvas.dom.TextMetrics", FontLibrary: "helder.canvas.dom.FontLibrary", Gpu: "helder.canvas.gpu.Gpu", Web: "helder.canvas.web.Web", __module: "helder.canvas.TypeScript"};
+declare const __haxe: {Canvas: "helder.canvas.dom.Canvas", CanvasRenderingContext2D: "helder.canvas.dom.CanvasRenderingContext2D", Path2D: "helder.canvas.dom.Path2D", CanvasGradient: "helder.canvas.dom.CanvasGradient", CanvasPattern: "helder.canvas.dom.CanvasPattern", ImageData: "helder.canvas.dom.ImageData", DOMMatrix: "helder.canvas.dom.DOMMatrix", Image: "helder.canvas.dom.Image", TextMetrics: "helder.canvas.dom.TextMetrics", FontLibrary: "helder.canvas.dom.FontLibrary", ImageLoader: "helder.canvas.dom.Image.ImageLoader", Gpu: "helder.canvas.gpu.Gpu", Web: "helder.canvas.web.Web", __module: "helder.canvas.TypeScript"};
 
 // A canvas as skia-canvas's and @napi-rs/canvas's (and the browser's
 // OffscreenCanvas): `new Canvas(width, height)`, its 2D context
@@ -42,7 +42,7 @@ export declare class Canvas {
 // kept in the user units of the transform now: a change of transform moves
 // it, so it stays where it was drawn, as the browser's.
 export declare class CanvasRenderingContext2D {
-	constructor(canvas: Canvas);
+	private constructor();
 	readonly canvas: Canvas;
 	save(): void;
 	restore(): void;
@@ -162,13 +162,13 @@ export declare class Path2D {
 // The browser's CanvasGradient: linear, radial or conic (a context's
 // createLinearGradient...), its stops added with CSS colours
 export declare class CanvasGradient {
-	constructor(gradient: unknown);
+	private constructor();
 	addColorStop(offset: number, color: string): void;
 }
 
 // The browser's CanvasPattern: an image repeated (createPattern), placed by setTransform
 export declare class CanvasPattern {
-	constructor(pattern: unknown);
+	private constructor();
 	setTransform(transform?: DOMMatrix): void;
 }
 
@@ -233,8 +233,6 @@ export declare class DOMMatrix {
 // loadImage(src) gives one decoded.
 export declare class Image {
 	constructor();
-	// an image decoded from a file's path or a data: URL (throws when it is not one)
-	static load(src: string): Image;
 	readonly width: number;
 	readonly height: number;
 	readonly complete: boolean;
@@ -243,13 +241,11 @@ export declare class Image {
 	onerror: ((error: string) => void) | null;
 }
 
-export declare const loadImage: typeof Image.load;
-
 // The browser's TextMetrics (measureText): the advance, the ink's box
 // from the alignment point, the font's and the em box's ascent and
 // descent, the baselines from textBaseline's
 export declare class TextMetrics {
-	constructor();
+	private constructor();
 	readonly width: number;
 	readonly actualBoundingBoxLeft: number;
 	readonly actualBoundingBoxRight: number;
@@ -276,10 +272,16 @@ export declare class FontLibrary {
 	static reset(): void;
 }
 
+declare class ImageLoader {
+	static load(src: string): Image;
+}
+
+export declare const loadImage: typeof ImageLoader.load;
+
 // The DOM facade's canvases drawn on the GPU from now on (GpuCanvas, each
 // on a headless device of its size): `useGpu()` in helder/canvas. A class
 // apart, so that a program that never calls it keeps no GPU code.
-export declare class Gpu {
+declare class Gpu {
 	static use(): void;
 }
 
@@ -289,7 +291,7 @@ export declare const useGpu: typeof Gpu.use;
 // on (WebCanvas): `useWeb()` in helder/canvas, for a web build
 // (wasm32 with src/helder/canvas/imports.mjs). A class apart: a program
 // that never calls it keeps none of it.
-export declare class Web {
+declare class Web {
 	static use(): void;
 }
 

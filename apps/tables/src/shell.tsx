@@ -191,7 +191,7 @@ function Seg(props: { app: Tables; mode: string; label: string; src: Svg }) {
 
 // ---- the rows
 
-let filterField: Node | null = null;
+let filterField: TextField | null = null;
 let quickField: Node | null = null;
 
 // the filter field focused (end: the caret after its text)
@@ -200,8 +200,7 @@ export function focusFilter(end = false) {
 	if (f === null) return;
 	f.focus(true);
 	if (end) setTimeout(() => {
-		const t = f as unknown as TextField;
-		t.select(t.text.length, t.text.length);
+		f.select(f.text.length, f.text.length)
 	}, 0);
 }
 
@@ -223,7 +222,7 @@ function Data(props: { app: Tables }) {
 			</view>
 			<view slot="field" grow={1} max-width={640} data-error={app.filterFailed() ? "true" : "false"} onClick={() => filterField?.focus(true)}>
 				<text slot="field-label" font-family={Theme.CODE}>WHERE</text>
-				<field tag="filter" slot="field-input" label="Filter" placeholder={example(app)} value={app.filter} ref={(n: Node) => (filterField = n)}
+				<field tag="filter" slot="field-input" label="Filter" placeholder={example(app)} value={app.filter} ref={(n: TextField) => (filterField = n)}
 					onInput={(e) => app.filter(e.text)} onKeyDown={(e) => {
 						if (e.key === Key.ENTER) app.applyFilter();
 						if (e.key === Key.ESCAPE) {
@@ -562,7 +561,7 @@ function MenuLayer(props: { app: Tables }) {
 	const at = signal({ x: m.x, y: m.y });
 	const close = () => {
 		app.menu(null);
-		if (m.from !== undefined && m.from.ui !== null) m.from.focus(false);
+		m.from?.focus(false)
 		else app.grid.focus(false);
 	};
 	const step = (d: number) => {

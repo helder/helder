@@ -272,30 +272,37 @@ class Api {
 
 	public function new(project:Project) {
 		for (sf in project.declarations) index(sf);
-		// (a module of the program re-exporting a declaration file's, `export *
-		// from` it: helder/scene's of helder/scene/runtime)
-		var reexports = new Map<String, Array<String>>();
-		for (sf in project.files) for (n in sf.root.statements())
-			if (n.kind == KindExportDeclaration && n.exportClause() == null && n.moduleSpecifier() != null) {
-				var target = project.resolve(n.moduleSpecifier());
-				if (target == null || !exports.exists(target)) continue;
-				if (!reexports.exists(sf.path)) reexports.set(sf.path, []);
-				reexports.get(sf.path).push(target);
-			}
-		// (the program's imports of them)
-		for (sf in project.files) for (n in sf.root.statements()) if (n.kind == KindImportDeclaration) {
+		for (sf in project.files) for (n in sf.root.statements()) {
+			if (n.kind != KindExportDeclaration || n.isTypeOnly()
+				|| n.moduleSpecifier() == null) continue;
 			var target = project.resolve(n.moduleSpecifier());
-			var clause = n.importClause();
-			if (target == null || clause == null || clause.namedBindings() == null || clause.namedBindings().kind != KindNamedImports) continue;
-			var from = project.declarations.find(d -> d.path == target);
-			var sources = from != null ? [from.path] : reexports.get(target);
-			if (sources == null) continue;
-			for (spec in clause.namedBindings().elements()) {
-				var exported = (spec.propertyName() ?? spec.name()).text;
-				for (path in sources) {
-					var f = exports.get(path).get(exported);
-					if (f != null && spec.name().symbol != null) bySymbol.set(spec.name().symbol, f);
+			if (target == null) continue;
+			var source = exports.get(target);
+			if (source == null) continue;
+			var out = exports.get(sf.path);
+			if (out == null) exports.set(sf.path, out = []);
+			var clause = n.exportClause();
+			if (clause == null) {
+				for (name => f in source) if (name != "default") out.set(name, f);
+			} else if (clause.kind == KindNamedExports) {
+				for (spec in clause.elements()) if (!spec.isTypeOnly()) {
+					var f = source.get((spec.propertyName() ?? spec.name()).text);
+					if (f != null) out.set(spec.name().text, f);
 				}
+			}
+		}
+		for (sf in project.files) for (n in sf.root.statements()) {
+			if (n.kind != KindImportDeclaration) continue;
+			var target = project.resolve(n.moduleSpecifier());
+			if (target == null) continue;
+			var source = exports.get(target);
+			var clause = n.importClause();
+			if (source == null || clause == null || clause.namedBindings() == null
+				|| clause.namedBindings().kind != KindNamedImports) continue;
+			for (spec in clause.namedBindings().elements()) {
+				var f = source.get((spec.propertyName() ?? spec.name()).text);
+				if (f != null && spec.name().symbol != null)
+					bySymbol.set(spec.name().symbol, f);
 			}
 		}
 		linkImports(project);
@@ -365,7 +372,8 @@ class Api {
 				classesBySymbol.set(n.name().symbol, c);
 				bySymbol.set(n.name().symbol, FClass(c));
 			}
-			out.set(name, FClass(c));
+			if (!named.exists(name) || Lambda.exists(n.modifiers(), m -> m.kind == KindExportKeyword))
+				out.set(name, FClass(c));
 		}
 		if (module != null && modules.indexOf(module) < 0) modules.push(module);
 		// (helder/view's types: Signal and Memo interfaces, Read an alias)

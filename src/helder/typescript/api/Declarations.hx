@@ -202,7 +202,8 @@ class Declarations {
 		}
 		for (c in m.classes) {
 			e.line();
-			e.emitClass(c.cls.name, c.cls, c.statics, c.members, c.ctor);
+			var exported = c.only == null && m.internal.indexOf(c.cls.name) < 0;
+			e.emitClass(c.cls.name, c.cls, c.statics, c.members, c.ctor, exported);
 			var fs = [for (f in m.functions) if (f.cls == c) f];
 			if (fs.length > 0) e.line();
 			for (f in fs)
@@ -217,10 +218,12 @@ class Declarations {
 			}
 		}
 		var head = [for (r in m.references) '/// <reference path="./$r" />'];
-		head = head.concat([for (l in Docs.of(decl.pos)) "//" + (l == "" ? "" : " " + l)]);
+		head = head.concat([for (l in Docs.of(decl.meta.extract(":typescript")[0].pos)) "//" + (l == "" ? "" : " " + l)]);
 		head.push("//");
 		head.push("// Generated from helder's Haxe types (helder.typescript.api.Declarations: node");
 		head.push("// src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.");
+		for (k in m.imports)
+			head.push('import ' + haxe.Json.stringify(k) + ';');
 		var names = [for (k in imports.keys()) k];
 		names.sort(Reflect.compare);
 		for (k in names) {

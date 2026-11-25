@@ -94,7 +94,7 @@ export declare const Wasm: typeof Island.Wasm;
 // DOM renderer starts it once mounted (WasmModule.load). A page can hold
 // several. Another renderer's markup has no <Surface> of helder.web's (an
 // error naming it: ui's is UiWindow.Surface).
-export declare class WebTags {
+declare class WebTags {
 	static Surface(props: { src: string; imports?: string[]; fonts?: string[]; args?: string[]; runner?: string; load?: Load; id?: string; className?: string; style?: string; children?: unknown }): View;
 }
 

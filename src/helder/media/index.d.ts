@@ -108,9 +108,6 @@ export declare class VideoNode extends Node {
 	step(n: number): void;
 	// the picture's size upright (0 x 0 before it is loaded)
 	picture(): { width: number; height: number };
-	hasContent(): boolean;
-	measureContent(engine: unknown, knownWidth: number, knownHeight: number, availWidth: number, availHeight: number): unknown;
-	paintContent(canvas: unknown, x: number, y: number, width: number, height: number): void;
 	// lets go of the player and what shows it
 	dispose(): void;
 }
@@ -145,7 +142,7 @@ export declare class MemorySource {
 // another file when it changes); its player's controls are the node's
 // (ref): play, pause, seek, step, and its time, duration and playing
 // signals. An audio file plays the same way without a box (helder.media.Player).
-export declare class MediaTags {
+declare class MediaTags {
 	static Video(props: { src?: any; fit?: any; autoplay?: boolean; loop?: boolean; muted?: Read<boolean>; volume?: Read<number>; rate?: Read<number>; layer?: boolean; grow?: number; width?: Read<any>; height?: Read<any>; style?: any; onLoaded?: () => void; onEnded?: () => void; onError?: (arg0: string) => void; onTime?: (arg0: number) => void; ref?: (arg0: VideoNode) => void }): Node;
 }
 

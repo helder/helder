@@ -6,8 +6,9 @@
 //
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
+import type {View} from "helder/view";
 
-declare const __haxe: {Script: "helder.test.Script", Entry: "helder.test.Runner.Entry", __module: "helder.test.TypeScript"};
+declare const __haxe: {Script: "helder.test.Script", Entry: "helder.test.Runner.Entry", UiScript: "helder.test.UiScript", __module: "helder.test.TypeScript"};
 
 // helder.test's runner for TypeScript test files (helder/test, its
 // index.ts, over helder/test/runner: helder.test.TypeScript): the same
@@ -46,4 +47,16 @@ export declare class Entry {
 	timeout(seconds: number): Entry;
 	// "describe > test", without the file
 	fullName(): string;
+}
+
+export declare class UiScript {
+	// on macOS secondary is Command (Keymap.mac, known at start)
+	static setMac(mac: boolean): void;
+	// a Ui of no window (tests), its text helder's own (helder.story's, the same on every system)
+	static headless(width: number, height: number): unknown;
+	// content rendered into its root and laid out (dispose removes it)
+	static mount(ui: unknown, content: View): (() => void);
+	static layout(ui: unknown): void;
+	// each keystroke of keys typed ("ctrl-k ctrl-s"), through the keymap
+	static type(ui: unknown, keys: string): void;
 }

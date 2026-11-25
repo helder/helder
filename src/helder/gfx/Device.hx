@@ -20,7 +20,7 @@ import helder.dev.Hot;
 // thrown there), at settle and at dispose.
 @:hxmc.unsafe(gc)
 final class Device {
-	public final backend:Backend;
+	@:noCompletion public final backend:Backend;
 	public final surface:Surface;
 
 	final impl:Impl;
@@ -245,7 +245,7 @@ final class Device {
 
 	// the bytes of the textures alive: their levels' and samples', as their
 	// formats store them (the GPU's own padding and alignment aside)
-	public var textureBytes(default, null) = 0.0;
+	@:noCompletion public var textureBytes(default, null) = 0.0;
 
 	final textureSizes = new Map<Int, Float>();
 
@@ -356,7 +356,7 @@ final class Device {
 
 	// whether textures are filled from images the browser decoded
 	// (writeTextureImage; helder.gfx.ImageTexture): in a browser
-	public var decodesImages(get, never):Bool;
+	@:noCompletion public var decodesImages(get, never):Bool;
 
 	inline function get_decodesImages()
 		return hxmc.Platform.os() == 3;
@@ -403,7 +403,7 @@ final class Device {
 	// process taking its file descriptor with pidfd_getfd, imported with
 	// EGL_EXT_image_dma_buf_import); null: none (WebGPU, WebGL2, Android, an
 	// EGL without those extensions: llvmpipe without udmabuf), a copy then.
-	public var sharing(get, never):Null<String>;
+	@:noCompletion public var sharing(get, never):Null<String>;
 
 	function get_sharing() {
 		if (!shareAsked) {
@@ -417,7 +417,7 @@ final class Device {
 	// the frame drawn into with frameInto, its handle a string to give that
 	// process (null: this device cannot share). The texture's format is the
 	// frame's (Metal: BGRA8, sampled as RGBA); destroyed by destroyTexture.
-	public function createShared(width:Int, height:Int):Null<{texture:Texture, handle:String}> {
+	@:noCompletion public function createShared(width:Int, height:Int):Null<{texture:Texture, handle:String}> {
 		var id = threaded ? ++textureIds : 0, handle:Null<String> = null;
 		answer(r -> {
 			var made = r.impl.createShared(width, height);
@@ -441,7 +441,7 @@ final class Device {
 	// producer's frame being complete before it hands the handle over (its
 	// endFrame waits for the GPU) and on the producer not drawing into a
 	// texture this one samples (helder.story's buffers)
-	public function openShared(handle:String, width:Int, height:Int):Null<Texture> {
+	@:noCompletion public function openShared(handle:String, width:Int, height:Int):Null<Texture> {
 		var id = threaded ? ++textureIds : 0, opened = 0;
 		answer(r -> r.make(r.textures, id, opened = r.impl.openShared(handle, width, height)));
 		return opened == 0 ? null : new Texture(id == 0 ? opened : id);
@@ -452,7 +452,7 @@ final class Device {
 	// its size, its passes without a colour texture into it, readPixels
 	// reading it; null: the surface again. A frame into a shared texture
 	// waits for the GPU at endFrame (its pixels complete for the other process)
-	public function frameInto(t:Null<Texture>) {
+	@:noCompletion public function frameInto(t:Null<Texture>) {
 		one(Replay.FRAME_INTO, t == null ? 0 : t.id());
 		ran();
 	}

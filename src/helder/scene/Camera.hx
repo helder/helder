@@ -10,7 +10,7 @@ import helder.scene.math.MathTools;
 // near plane). Several cameras may look at one world (split screens,
 // shadow views, XR's two eyes): each is drawn by its own Renderer.draw.
 class Camera {
-	public static final KIND = new StoreKind<Camera>("camera");
+	@:noCompletion public static final KIND = new StoreKind<Camera>("camera");
 
 	public var isPerspective:Bool;
 	// perspective: the vertical field of view (radians); orthographic: the

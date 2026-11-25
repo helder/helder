@@ -20,7 +20,7 @@ declare const __haxe: {Job: "helder.jobs.script.Job", __module: "helder.jobs.Typ
 //   import {job} from "helder/jobs";
 //   function count(text: string): number { return text.split(" ").length; }
 //   const n = await job(count).run("one two three");
-export declare class Job<In, Out> {
+declare class Job<In, Out> {
 	// f's job (a definition: its calls are compiled, this is never called)
 	static of<In, Out>(f: (arg0: In) => Out): Job<In, Out>;
 	// f run on a worker with input: its result (its exception a JobError)

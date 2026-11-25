@@ -8,7 +8,7 @@
 //
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
-import type {Model} from "helder/scene/runtime";
+import type {Model} from "helder/scene";
 
 declare const __haxe: {Asset: "helder.asset.Asset", Image: "helder.image.Image", FontFile: "helder.text.FontFile", Strings: "helder.asset.Strings", ScriptAssets: "helder.asset.ScriptAssets", __module: "helder.asset.TypeScript"};
 
@@ -89,6 +89,7 @@ export declare class FontFile {
 }
 
 export declare class Strings {
+	private constructor();
 	// Read a message with named string and number arguments.
 	get(key: string, params?: any): string;
 }
@@ -100,7 +101,7 @@ export declare class Strings {
 // (helder.typescript.lower's TsAssets), the call given its key's marker
 // and, where the program reads it from disk (helder dev), the file. Also
 // written `import icon from "./icon.png" with {type: "image"}`.
-export declare class ScriptAssets {
+declare class ScriptAssets {
 	// an image (helder.image.Image)
 	static image(path: string, file?: string): Asset<Image>;
 	// a font (helder.text.FontFile)

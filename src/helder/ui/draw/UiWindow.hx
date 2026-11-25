@@ -111,7 +111,7 @@ class UiWindow {
 	// the CPU's canvas where it draws a headless run or a -D helder.soft
 	// window (helder.ui.draw.soft: no GPU linked; HELDER_SOFT=1; or no GPU
 	// device to be made), else null
-	public var soft(default, null):Null<helder.ui.draw.soft.SoftCanvas> = null;
+	@:noCompletion public var soft(default, null):Null<helder.ui.draw.soft.SoftCanvas> = null;
 	#end
 	// its pixels a point (the renderer's scale), from its first frame
 	public var scale(default, null) = 1.0;
@@ -124,11 +124,11 @@ class UiWindow {
 	public var onFrame:Null<Void->Void>;
 	// when set, the next frame's pixels are read into it before they are
 	// presented (RGBA8, rows top to bottom: tests and screenshots)
-	public var capture:Null<haxe.io.Bytes>;
+	@:noCompletion public var capture:Null<haxe.io.Bytes>;
 
 	// how long the loop sleeps at most with nothing to draw (seconds): what
 	// changes the UI from outside its events shows within it
-	public static var idleWait = 0.1;
+	@:noCompletion public static var idleWait = 0.1;
 	// whether the system's appearance is dark (App.prefersDark), asked again
 	// every second while the loop runs; each window's Ui.dark follows it
 	@:typescript public static final dark:helder.view.graph.Signal<Bool> = Graph.signalOf(App.prefersDark(), {ownedWrite: true});
@@ -299,7 +299,7 @@ class UiWindow {
 
 	#if (!helder.headless && !helder.soft)
 	// the window's compositor (null: none, scrolling the program's alone)
-	public var compositor(default, null):Null<Compositor> = null;
+	@:noCompletion public var compositor(default, null):Null<Compositor> = null;
 
 	// (at each turn's start, a window's last frame presented: until its
 	// next is taken without queueing (Device.waitFrame), then what the
@@ -349,7 +349,7 @@ class UiWindow {
 	#end
 
 	// the platform's scroll views on or off for this window (where it has them)
-	public function nativeScroll(on:Bool) {
+	@:noCompletion public function nativeScroll(on:Bool) {
 		#if !helder.headless
 		ui.nativeScroll = on && (Platform.apple() >= 1 || Platform.os() == 3);
 		// (macOS: no scroll views under the tree; its trackpad's gestures and momentum taken as its own views take them, Trackpad's, and its overlay scrollbars)
@@ -406,7 +406,7 @@ class UiWindow {
 	}
 
 	// macOS's scrollbars for this window: "system", "overlay" or "always" (UiWindow.scrollbars)
-	public function scrollbarStyle(style:String) {
+	@:noCompletion public function scrollbarStyle(style:String) {
 		bars = style;
 		nativeScroll(ui.nativeScroll || ui.elastic);
 	}
@@ -994,6 +994,7 @@ class UiWindow {
 }
 
 // the window for its Ui's WindowControls (WindowHost)
+@:noCompletion
 class OsWindow implements WindowHost {
 	final w:UiWindow;
 
@@ -1039,6 +1040,7 @@ class OsWindow implements WindowHost {
 }
 
 // the system's clipboard (helder.os.Clipboard) for a window's Ui
+@:noCompletion
 class SystemClipboard implements ClipboardHost {
 	final window:helder.os.Window;
 
@@ -1056,6 +1058,7 @@ class SystemClipboard implements ClipboardHost {
 // reached only from the browser's branches
 #if (!helder.os || helder.os == "web")
 @:hxmc.unsafe(gc)
+@:noCompletion
 class WebMirror {
 	public static function views(canvas:Int):PlatformViews
 		return new WebViews(canvas);

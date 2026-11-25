@@ -1,11 +1,11 @@
 // tests/3d/ts/frames.ts's own module: FrameCheck, which draws a frame
 // headless and compares it (declared as helder's modules are:
 // helder.typescript.api.Modules; frame-check.d.ts generated, checked by the
-// 3d lane)
+// declarations lane)
 //
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
-import type {Device, Encoder} from "helder/scene/runtime";
+import type {Device, Encoder} from "helder/scene";
 
 declare const __haxe: {FrameCheck: "frames.FrameCheck", __module: "frames.FramesTypeScript"};
 

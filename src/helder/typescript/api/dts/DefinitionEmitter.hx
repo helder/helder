@@ -60,7 +60,7 @@ class DefinitionEmitter {
 	}
 
 	// a class: its constructor, statics and members
-	public function emitClass(name:String, cl:ClassType, statics:Array<ClassField>, members:Array<ClassField>, ctor:Null<ClassField>) {
+	public function emitClass(name:String, cl:ClassType, statics:Array<ClassField>, members:Array<ClassField>, ctor:Null<ClassField>, exported:Bool) {
 		comment(Docs.of(cl.pos));
 		// (its superclass, when declared: its members are the subclass's too)
 		var sup:Null<String> = null, s = cl.isInterface ? null : cl.superClass;
@@ -69,7 +69,7 @@ class DefinitionEmitter {
 
 			s = s.t.get().superClass;
 		}
-		line('export declare ' + (cl.isInterface ? 'interface' : 'class') + ' ' + name + params(cl.params) + (sup == null ? '' : ' extends ' + sup) + ' {');
+		line((exported ? 'export ' : '') + 'declare ' + (cl.isInterface ? 'interface' : 'class') + ' ' + name + params(cl.params) + (sup == null ? '' : ' extends ' + sup) + ' {');
 		indent = "\t";
 		if (ctor != null)
 			switch ctor.type {
@@ -78,6 +78,8 @@ class DefinitionEmitter {
 					line('constructor(' + args_(args, argMetas(ctor)) + ');');
 				case _:
 			}
+		else if (cl.constructor != null && cl.constructor.get().meta.has(":noCompletion"))
+			line('private constructor();');
 		for (f in statics)
 			emitField(f, true);
 		for (f in members)

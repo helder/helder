@@ -86,10 +86,6 @@ export declare class View {
 // options of a signal and a memo
 export type NodeOptions<T> = { equals?: (arg0: T, arg1: T) => boolean; unobserved?: () => void; ownedWrite?: boolean };
 
-// a root's content (Root): a literal expected as one holds components only,
-// a component returning one is a root (<Surface>), no renderer's markup
-export type RootView = unknown;
-
 // Mounting content: render and insert go to the runtime (ViewRuntime) of the
 // renderer whose nodes parent is, chosen by its type when compiling (its
 // class's @:rendered, HostMacro.rendererOf); what is mounted there is made
@@ -99,12 +95,15 @@ export type RootView = unknown;
 // nodes in it); content passes through it unchanged. open mounts content
 // with no parent: a program's root, components making roots of their own
 // (<Surface>s).
-export declare class Render {
+declare class Render {
 	// renders content into parent (its root: dispose removes it and stops its effects)
 	static render: (content: unknown, parent: unknown) => () => void;
 	// inserts content into parent before a node (null: at the end); the nodes made
 	static insert: (content: unknown, parent: unknown, before: unknown) => unknown[];
 }
+
+export declare const render: typeof Render.render;
+export declare const insert: typeof Render.insert;
 
 // helder.view's reactive graph (DESIGN.md): Solid 2's semantics on a
 // runtime of helder's own. Signals hold values, memos derive them, effects
@@ -118,7 +117,7 @@ export declare class Render {
 //   var double = memo(() -> count() * 2);
 //   effect(() -> double(), v -> trace(v));
 //   count(c -> c + 1);
-export declare class Graph {
+declare class Graph {
 	// (a value's signal, as TypeScript's signal(v) calls it: index.d.ts)
 	static signalValue<T>(value: T extends Function ? never : T): Signal<T>;
 	static memo<T>(fn: (prev: T | null) => T | PromiseLike<T>, options?: NodeOptions<T>): Memo<T>;
@@ -166,7 +165,7 @@ export declare const isPending: typeof Graph.isPending;
 // flush comes from flush(), or, after a write outside one, from `later`
 // (helder.async's loop: when the task running ends, as Solid 2's
 // microtask; unset, nothing flushes until flush() is called).
-export declare class Scheduler {
+declare class Scheduler {
 	static flush(): void;
 }
 
@@ -201,7 +200,7 @@ export declare const flush: typeof Scheduler.flush;
 // Asset); once it has shown them it keeps them shown, a later change held
 // until it lands (Graph.isPending says one is on its way). Its children
 // are made once: what reads a value not ready waits inside the graph.
-export declare class Flow {
+declare class Flow {
 	static For<T>(props: { each: Read<T[]>; keyed?: boolean; by?: (arg0: T) => any; children: (arg0: Read<T>) => unknown }): unknown;
 	static Repeat(props: { count: Read<number>; children: (arg0: number) => unknown }): unknown;
 	static Show<T>(props: { when: Read<T>; fallback?: unknown; children?: unknown }): unknown;

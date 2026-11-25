@@ -178,6 +178,9 @@ jobs:
         with: {cache: 'typescript-${{ matrix.part }}', node-version: 24}
       - name: Fonts and libEGL (the programs rendering headless)
         run: sudo apt-get update -qq && sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core fonts-liberation libegl1 libegl-mesa0 libgl1-mesa-dri
+      - name: TypeScript declarations
+        if: matrix.part == 0
+        run: bun run test declarations
       - name: The TypeScript frontend (tests/typescript/run.mjs, sharded)
         env:
           TS_JOBS: 4

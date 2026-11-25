@@ -343,7 +343,7 @@ class World {
 	// (component stores)
 
 	// the world's store of a kind (made on first use)
-	public function store<T>(kind:StoreKind<T>):ComponentStore<T> {
+	@:noCompletion public function store<T>(kind:StoreKind<T>):ComponentStore<T> {
 		while (stores.length <= kind.id)
 			stores.push(null);
 		var s = stores[kind.id];

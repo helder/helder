@@ -153,7 +153,7 @@ under a directory named: `helder test examples/ts-todo`), built by helder's
 compiler into a program of their own and run natively and as wasm32-wasi,
 through the same runner: its groups, hooks, `-t`, `.only()`, `.skip()`,
 `.timeout()`, snapshots and report. They import `helder/test`
-(src/helder/test/index.ts, over `helder/test/runner`: helder.test.Script)
+(src/helder/test/index.ts, over its own `runner.d.ts`: helder.test.Script)
 and register at their top level:
 
 ```ts

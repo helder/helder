@@ -9,7 +9,7 @@ package helder.view;
 // function.
 @:typescript("helder/view")
 @:typescript.types(helder.view.graph.Signal, helder.view.graph.Memo, helder.view.graph.Read, helder.view.View)
-@:typescript.classes(helder.view.Render)
+@:typescript.functions(render = helder.view.Render.render, insert = helder.view.Render.insert)
 @:typescript.functions(signal = helder.view.graph.Graph.signalValue, memo = helder.view.graph.Graph.memo, effect = helder.view.graph.Graph.effect,
 	renderEffect = helder.view.graph.Graph.renderEffect, flush = helder.view.graph.Scheduler.flush, untrack = helder.view.graph.Graph.untrack,
 	root = helder.view.graph.Graph.root, onCleanup = helder.view.graph.Graph.onCleanup, onSettled = helder.view.graph.Graph.onSettled,

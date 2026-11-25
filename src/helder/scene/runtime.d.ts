@@ -234,8 +234,6 @@ export declare class World {
 	raycast(origin: Vec3, dir: Vec3, hit: Hit, options?: RaycastOptions): boolean;
 	// every triangle the ray meets into hits, nearest first; their count
 	raycastAll(origin: Vec3, dir: Vec3, hits: HitList, options?: RaycastOptions): number;
-	// the world's store of a kind (made on first use)
-	store<T>(kind: unknown): unknown;
 }
 
 // A camera, a component of a node (Camera.attach(node, camera)): it looks
@@ -244,7 +242,6 @@ export declare class World {
 // near plane). Several cameras may look at one world (split screens,
 // shadow views, XR's two eyes): each is drawn by its own Renderer.draw.
 export declare class Camera {
-	static readonly KIND: unknown;
 	static perspective(fovY: number, near: number, far: number): Camera;
 	static orthographic(height: number, near: number, far: number): Camera;
 	// camera on node (a camera is on one node at a time; node had one: replaced)
@@ -307,7 +304,6 @@ export declare class Camera {
 // castShadows (a directional light by default, a point or spot light when
 // asked: Shadows' tiles, within its budget), filtered as shadow says.
 export declare class Light {
-	static readonly KIND: unknown;
 	static directional(color: Vec3, intensity: number): Light;
 	static pointLight(color: Vec3, intensity: number, range: number): Light;
 	// a point light shining down its node's -z within a cone: full inside
@@ -887,7 +883,6 @@ export declare class Transmission {
 // The mesh a node draws: a component (a store keyed by node), several
 // nodes may share one Mesh.
 export declare class MeshRenderer {
-	static readonly KIND: unknown;
 	static attach(node: Node, mesh: Mesh): Mesh;
 	static of(node: Node): Mesh | null;
 	static detach(node: Node): void;
@@ -1108,7 +1103,6 @@ export declare class Curve3 {
 // write it directly (data.setFloat, then changed()).
 export declare class InstancedMesh {
 	constructor(mesh: Mesh, capacity: number, count?: number, custom?: number);
-	static readonly KIND: unknown;
 	// bytes an instance in data
 	static readonly STRIDE: number;
 	static attach(node: Node, instances: InstancedMesh): InstancedMesh;
@@ -1270,6 +1264,7 @@ export declare class Sprites extends InstancedMesh {
 // no sheen; a model Model.load reads is drawn by Physical's (every
 // extension), when the program uses it.
 export declare class Model<N, M, A, C> {
+	private constructor();
 	// a model whose path is known only at run time: loaded in the background
 	// (in the browser fetched, relative to the page; natively read at once),
 	// its names unknown when compiling (find nodes by name: model.doc)
@@ -1868,10 +1863,6 @@ export declare class Occlusion {
 export declare class Lines {
 	// capacity points (count of them drawn: none by default)
 	constructor(capacity: number, options?: LinesOptions);
-	static readonly KIND: unknown;
-	// the triangles of a join's or a round cap's fan
-	static readonly FAN: number;
-	static readonly RECORD: number;
 	static attach(node: Node, lines: Lines): Lines;
 	static of(node: Node): Lines | null;
 	static detach(node: Node): void;
@@ -2022,7 +2013,6 @@ export declare class DebugDraw {
 // Unlike DebugDraw's calls, helpers are not compiled out of a release build:
 // a program attaching one wants it.
 export declare class Helper {
-	static readonly KIND: unknown;
 	// h added to node's helpers
 	static add<T>(node: Node, h: T): T;
 	// node's helpers removed
@@ -2372,7 +2362,6 @@ export declare class Clusters {
 // cameras keeps one level a node.
 export declare class Lod {
 	constructor(levels: LodLevel[], hysteresis?: number);
-	static readonly KIND: unknown;
 	static readonly RANGE: unknown;
 	// the levels on node (its MeshRenderer the first's, made if it has none)
 	static attach(node: Node, levels: LodLevel[], hysteresis?: number): Lod;
@@ -2571,7 +2560,6 @@ export declare class Sh {
 // per pixel.
 export declare class LightProbe {
 	constructor(sh: Sh, radius?: number);
-	static readonly KIND: unknown;
 	// probe on node (a node has one; the one it had is replaced)
 	static attach(node: Node, probe: LightProbe): LightProbe;
 	static of(node: Node): LightProbe | null;
@@ -2596,7 +2584,6 @@ export declare class LightProbe {
 //   ProbeGrid.attach(world.node("gi"), grid);
 export declare class ProbeGrid {
 	constructor(size: Vec3, nx: number, ny: number, nz: number);
-	static readonly KIND: unknown;
 	// grid on node (a node has one)
 	static attach(node: Node, grid: ProbeGrid): ProbeGrid;
 	static of(node: Node): ProbeGrid | null;
@@ -2640,7 +2627,6 @@ export declare class ProbeGrid {
 //   hall.node.position = new Vec3(0, 2, 0);
 export declare class ReflectionProbe {
 	constructor(size: Vec3, blend?: number);
-	static readonly KIND: unknown;
 	// probe on node (a node has one)
 	static attach(node: Node, probe: ReflectionProbe): ReflectionProbe;
 	static of(node: Node): ReflectionProbe | null;
@@ -2724,7 +2710,6 @@ export declare class Probes {
 //   Lightmap.attach(node, new Lightmap(baked, new Vec4(0, 0, 0.5, 0.5)));
 export declare class Lightmap {
 	constructor(texture: number, rect?: Vec4, srgb?: boolean);
-	static readonly KIND: unknown;
 	// lightmap on node (a node has one)
 	static attach(node: Node, lightmap: Lightmap): Lightmap;
 	static of(node: Node): Lightmap | null;

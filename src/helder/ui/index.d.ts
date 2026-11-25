@@ -1,11 +1,14 @@
-// (an icon or a drawing: made by Icons.parse and Icons.svg, given to <image src>)
+// helder.ui for TypeScript programs (helder.typescript): windows and their
+// markup (see helder/view), the events handlers are given, the keys. Each
+// class is the Haxe class `__haxe` names. The neutral elements (view, text,
+// view:button...) take any attribute, their handlers given ui's events.
 //
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 import type {Image} from "helder/asset";
 import type {Read, RootView, Signal, View} from "helder/view";
 
-declare const __haxe: {Svg: "helder.canvas.Svg", UiWindow: "helder.ui.draw.UiWindow", Event: "helder.ui.Event", Key: "helder.ui.Key", VirtualScroll: "helder.ui.VirtualScroll", Selection: "helder.ui.Selection", GridScroll: "helder.ui.GridScroll", Clock: "helder.ui.Clock", WebViewEvent: "helder.ui.platform.WebViewEvent", WebContent: "helder.ui.platform.WebContent", WebResponse: "helder.ui.platform.WebResponse", Node: "helder.ui.Node", TextNode: "helder.ui.TextNode", UiFlow: "helder.ui.view.UiFlow", SafeArea: "helder.ui.SafeArea", Router: "helder.ui.nav.Router", Controls: "helder.ui.widgets.Controls", DataGrid: "helder.ui.widgets.DataGrid", EditableText: "helder.ui.widgets.EditableText", GridColumn: "helder.ui.widgets.GridColumn", GridTheme: "helder.ui.widgets.GridTheme", Icons: "helder.ui.widgets.Icons", Pager: "helder.ui.widgets.Pager", TextArea: "helder.ui.widgets.TextArea", TextField: "helder.ui.widgets.TextField", Theme: "helder.ui.widgets.Theme", WindowButtons: "helder.ui.widgets.WindowButtons", Eased: "helder.ui.controls.Eased", Look: "helder.ui.controls.Look", Press: "helder.ui.controls.Press", Standard: "helder.ui.controls.Standard", Toggle: "helder.ui.controls.Toggle", CodeActions: "helder.ui.code.CodeAction.CodeActions", CodeCompletion: "helder.ui.code.CodeCompletion", CodeEditor: "helder.ui.code.CodeEditor", CodeLanguage: "helder.ui.code.CodeLanguage", SyntaxLanguage: "helder.ui.code.CodeLanguage.SyntaxLanguage", CodeLanguages: "helder.ui.code.CodeLanguage.CodeLanguages", Sel: "helder.ui.code.CodeModel.Sel", Decoration: "helder.ui.code.CodeModel.Decoration", CodeDiagnostic: "helder.ui.code.CodeModel.CodeDiagnostic", ShapedLine: "helder.ui.code.CodeModel.ShapedLine", CodeModel: "helder.ui.code.CodeModel", CodeTheme: "helder.ui.code.CodeTheme", CodeView: "helder.ui.code.CodeView", Rope: "helder.ui.code.Rope", SqlLanguage: "helder.ui.code.SqlLanguage", Screens: "helder.ui.nav.Screens", __module: "helder.ui.TypeScript"};
+declare const __haxe: {Svg: "helder.canvas.Svg", UiWindow: "helder.ui.draw.UiWindow", Event: "helder.ui.Event", Key: "helder.ui.Key", VirtualScroll: "helder.ui.VirtualScroll", Selection: "helder.ui.Selection", GridScroll: "helder.ui.GridScroll", Clock: "helder.ui.Clock", WebViewEvent: "helder.ui.platform.WebViewEvent", WebContent: "helder.ui.platform.WebContent", WebResponse: "helder.ui.platform.WebResponse", Node: "helder.ui.Node", TextNode: "helder.ui.TextNode", UiFlow: "helder.ui.view.UiFlow", SafeArea: "helder.ui.SafeArea", Router: "helder.ui.nav.Router", Controls: "helder.ui.widgets.Controls", DataGrid: "helder.ui.widgets.DataGrid", EditableText: "helder.ui.widgets.EditableText", GridColumn: "helder.ui.widgets.GridColumn", GridTheme: "helder.ui.widgets.GridTheme", Icons: "helder.ui.widgets.Icons", Pager: "helder.ui.widgets.Pager", TextArea: "helder.ui.widgets.TextArea", TextField: "helder.ui.widgets.TextField", Theme: "helder.ui.widgets.Theme", WindowButtons: "helder.ui.widgets.WindowButtons", Eased: "helder.ui.controls.Eased", Look: "helder.ui.controls.Look", Press: "helder.ui.controls.Press", Standard: "helder.ui.controls.Standard", Toggle: "helder.ui.controls.Toggle", CodeActions: "helder.ui.code.CodeAction.CodeActions", CodeCompletion: "helder.ui.code.CodeCompletion", CodeEditor: "helder.ui.code.CodeEditor", SyntaxLanguage: "helder.ui.code.CodeLanguage.SyntaxLanguage", CodeLanguages: "helder.ui.code.CodeLanguage.CodeLanguages", Sel: "helder.ui.code.CodeModel.Sel", Decoration: "helder.ui.code.CodeModel.Decoration", CodeDiagnostic: "helder.ui.code.CodeModel.CodeDiagnostic", CodeModel: "helder.ui.code.CodeModel", CodeTheme: "helder.ui.code.CodeTheme", CodeView: "helder.ui.code.CodeView", Rope: "helder.ui.code.Rope", SqlLanguage: "helder.ui.code.SqlLanguage", Screens: "helder.ui.nav.Screens", __module: "helder.ui.TypeScript"};
 
 // An SVG document for icons and drawings: parsed once (Svg.parse), drawn
 // into an Image at any size (the Image's drawing: this, for a writer's vectors; render: the viewBox fitted as
@@ -446,14 +449,11 @@ export declare class WebResponse {
 // (helder.view's markup: its renderer, NodeRenderer)
 export declare class Node {
 	constructor(tag?: string);
-	readonly style: unknown;
 	readonly parent: Node | null;
 	// (a leaf's: one empty array shared by all, replaced by its own when a child comes)
 	readonly children: Node[];
 	// a name for debugging and markup (the element's name)
 	tag: string;
-	// the Ui this node's tree is attached to (null: detached)
-	readonly ui: unknown | null;
 	// the layout's result (Layout): relative to the parent, then absolute; rounded
 	readonly x: number;
 	readonly y: number;
@@ -536,12 +536,8 @@ export declare class Node {
 	variant: string | null;
 	size: string | null;
 	theme: StyleSheet | null;
-	// what draws the controls of this subtree (Host: Auto, the parent's; Ui.hostOf)
-	host: number;
 	// what it is to the keymap (helder.ui.actions: "Editor mode=full"; markup's key-context)
 	keyContext: unknown | null;
-	// its handlers of actions dispatched through it (on; markup's actions)
-	actionHandlers: unknown[] | null;
 	// Tab's order among the focusable (as the DOM's tabindex): those above 0
 	// first, in its order, then 0's in tree order; below 0: focusable by a
 	// click or focus(), passed over by Tab
@@ -552,17 +548,7 @@ export declare class Node {
 	// (instant); kept against its parent's trailing edges while the parent's
 	// size moves (ride: 1 across, 2 down, 3 both; markup's ride="trailing")
 	motion: unknown | null;
-	matched: string | null;
 	instant: boolean;
-	// what a press on it is to an inset title bar (markup's drag-region: Drag;
-	// WindowControls' buttons theirs), its ancestors' when Content (Ui.titleHit)
-	titleHit: number;
-	ride: number;
-	// its presented state: the tracks of what moves of it (made when first needed)
-	readonly present: unknown | null;
-	// its children that left and are still drawn until their exits settle (Motions), and a leaving node's old parent
-	readonly exits: Node[] | null;
-	readonly leftFrom: Node | null;
 	append(child: Node): Node;
 	// child at index (moved if it is already a child of this node)
 	insert(child: Node, index: number): Node;
@@ -591,11 +577,6 @@ export declare class Node {
 	// game's controls leave it alone): a node drawing a world under the ui
 	// (a <Scene>'s box) says no
 	ownsPointer(): boolean;
-	// the layout of this node (and so of its ancestors) must be redone
-	markDirty(): void;
-	font(): unknown;
-	// the text shadows its text casts (Style.textShadow, inherited; null: none)
-	textShadow(): unknown | null;
 	textColor(): number;
 	// whether it is seen: its visibility, else its nearest ancestor's (Style.visibility)
 	visible(): boolean;
@@ -622,8 +603,6 @@ export declare class Node {
 	localY(windowX: number, windowY: number): number;
 	focus(visible?: boolean): void;
 	rect(): { x: number; y: number; width: number; height: number };
-	// rect, written into out (returned): nothing made (windowBoundsInto)
-	rectInto(out: unknown): unknown;
 	scrollIntoView(): void;
 	// (a press's pointer: the pressed node's until released (Ui.capture), this one's now;
 	// in a pointer event's handler, that pointer: a finger's, a pen's)
@@ -645,12 +624,6 @@ export declare class Node {
 	// the transform (Style.transform about Style.transformOrigin) in window
 	// pixels, as Canvas.pushTransform takes it; null: none
 	transformMatrix(): unknown | null;
-	hasContent(): boolean;
-	// the content's size for the given content-box constraints (NaN: unknown
-	// or unbounded)
-	measureContent(text: unknown, knownWidth: number, knownHeight: number, availWidth: number, availHeight: number): unknown;
-	// assistive technology sets its value (a text input's text): false when it has none
-	accessSetValue(value: string): boolean;
 	// a text input's value for assistive technology when it is not a
 	// TextNode's text (a code editor's document); null: none
 	accessValue(): string | null;
@@ -672,12 +645,6 @@ export declare class Node {
 	backgroundImage(scale: number): Image;
 	// whether it takes typed text while focused (a text field): keys that type are its, not shortcuts
 	takesText(): boolean;
-	// whether its children are part of its content (a TextNode's spans), not boxes laid out
-	contentOwnsChildren(): boolean;
-	// the content's min-content width (its widest unbreakable part)
-	minContentWidth(text: unknown): number;
-	// draws the content in its content box at (x, y), in window pixels
-	paintContent(canvas: unknown, x: number, y: number, width: number, height: number): void;
 	// the topmost node under (px, py) in window pixels, among this subtree
 	// (clipped by Overflow, through the transforms), or null
 	hitTest(px: number, py: number): Node | null;
@@ -687,8 +654,6 @@ export declare class Node {
 	// (one without any: its bottom edge, as CSS's flexbox synthesizes it);
 	// NaN: none (no text, no items)
 	firstBaseline(): number;
-	// its content's size where it may draw past its content box (Size.NONE: none)
-	contentInk(): unknown;
 	// the first descendant (or this) with the tag, depth first
 	find(tag: string): Node | null;
 	toString(): string;
@@ -712,17 +677,10 @@ export declare class Node {
 export declare class TextNode extends Node {
 	constructor(text?: string, tag?: string);
 	text: string;
-	hasContent(): boolean;
-	measureContent(engine: unknown, knownWidth: number, knownHeight: number, availWidth: number, availHeight: number): unknown;
-	// (from the max-content paragraph, which the layout asks for too)
-	// (not wrapped: as wide as its longest line)
-	minContentWidth(engine: unknown): number;
 	// the whole text, as shown: its own, or its spans'
 	allText(): string;
 	// the span whose text is at index i (null: none, or no spans)
 	spanAt(i: number): TextNode | null;
-	// (laid out as content: its spans are not boxes)
-	contentOwnsChildren(): boolean;
 	// whether its text can be selected: a drag, a double click (a word), a
 	// triple click (all of it); Ui.textSelection holds it, Mod+C copies it
 	selectable: boolean;
@@ -730,14 +688,10 @@ export declare class TextNode extends Node {
 	textIndexAt(px: number, py: number): number;
 	// a point over a span's text: that span (its handlers, its cursor)
 	hitTest(px: number, py: number): Node | null;
-	// the paragraph for a width (NaN: unbounded), from the last one when the same
-	layoutText(engine: unknown, maxWidth: number): unknown;
 	// the paragraph as drawn (after Ui.update), or null
 	laidOut(): unknown | null;
 	// (its first line's, in its content box)
 	firstBaseline(): number;
-	contentInk(): unknown;
-	paintContent(canvas: unknown, x: number, y: number, width: number, height: number): void;
 }
 
 // helder.ui's own control flow components for markup (import
@@ -745,7 +699,7 @@ export declare class TextNode extends Node {
 //
 //   <Popover open={open} placement="below">{...}</Popover>
 //   <VirtualList each={rows} by={r -> r.id} estimate={44} selected={sel}>{(row, i) -> ...}</VirtualList>
-export declare class UiFlow {
+declare class UiFlow {
 	// the children in a popup (helder.ui.Popup: a layer over the tree), open
 	// while open is true: anchored to anchor (else the node the markup puts
 	// it in), placed by placement ("below", "above", "right", "left",
@@ -810,22 +764,12 @@ export declare class SafeArea {
 	// top, right, bottom, left in UI pixels (the current screen's:
 	// helder.ui.ScreenContext, a story host's screens each their own)
 	static readonly insets: Signal<unknown>;
-	// (UiWindow) the insets now: the signal set when they changed
-	static set(top: number, right: number, bottom: number, left: number): void;
 	// the main window's soft keyboard over it, in UI pixels (0 while hidden;
 	// helder.os.Window.keyboard): the insets' bottom is at least this while it
 	// is up
 	static readonly keyboard: Signal<number>;
 	// an inset title bar's area (the current screen's; null: none)
 	static readonly titlebar: Signal<unknown | null>;
-	// (UiWindow) the title bar's area now: the signal set when it changed
-	static setTitlebar(a: unknown | null): void;
-	// (markup: NodeRenderer.setProperty, a literal value naming env()) the
-	// attribute set from the value resolved, again when the insets change
-	static bind(n: Node, set: (n: Node, name: string, v: any) => void, name: string, value: string): void;
-	// value with each env() replaced by its pixels (of e, t), then calc(), max()
-	// and min() of pixels folded
-	static resolve(value: string, e: unknown, t?: unknown): string;
 }
 
 // Screens by path, kept as a stack (helder.ui.Stack shows it): routes are
@@ -858,7 +802,7 @@ export declare class Router {
 //   <Slider label="Weight" value={weight} min={20} max={200} step={1} onChange={weight}/>
 //   <Segmented label="Tool" value={tool} options={[{value: "draw", label: "Draw"}, ...]} onChange={tool}/>
 //   <Tip label="Tracing letter" keys="T"><view:button ...><image src={eye}/></view:button></Tip>
-export declare class Controls {
+declare class Controls {
 	// A number between min and max, shown as a field (its label inside on
 	// the left, its value on the right, the part up to it filled): a press
 	// or a drag anywhere sets it, the arrow keys step it (Shift: ten steps),
@@ -969,9 +913,6 @@ export declare class DataGrid extends Node {
 	refresh(): void;
 	// back to the top left, the cursor on the first cell
 	reset(): void;
-	hasContent(): boolean;
-	measureContent(engine: unknown, knownWidth: number, knownHeight: number, availWidth: number, availHeight: number): unknown;
-	minContentWidth(engine: unknown): number;
 	// the selected range: its first and last rows and columns
 	range(): { top: number; bottom: number; left: number; right: number };
 	selected(row: number, col: number): boolean;
@@ -1002,7 +943,6 @@ export declare class DataGrid extends Node {
 	// the editor's text kept (then the cursor down a row, or moved by dx)
 	commitEdit(refocus?: boolean, dy?: number, dx?: number): void;
 	cancelEdit(): void;
-	paintContent(canvas: unknown, x: number, y: number, width: number, height: number): void;
 }
 
 export declare class EditableText extends TextNode {
@@ -1053,7 +993,6 @@ export declare class EditableText extends TextNode {
 	// in text until committed; the caret in it
 	readonly composition: string;
 	accessText(): { start: number; end: number; caret: number; readOnly: boolean } | null;
-	accessSetValue(value: string): boolean;
 	// (native: the editor takes it, not the window's text input)
 	takesText(): boolean;
 	textInputArea(): { x: number; y: number; width: number; height: number } | null;
@@ -1096,7 +1035,7 @@ export declare class GridColumn {
 // A data grid's colours, by theme token: a StyleSheet's light and dark
 // colours named "grid-" and one of NAMES win, else the neutral defaults
 // here. Resolved once per sheet and appearance.
-export declare class GridTheme {
+declare class GridTheme {
 	constructor();
 	static readonly NAMES: string[];
 	static readonly BACKGROUND: number;
@@ -1146,9 +1085,10 @@ export declare class Icons {
 //   var pager = new Pager(page, 3, p -> page(p));   // (in a component)
 //   <Pager.Pages pager={pager} slides={[<Overview/>, <Build/>, <Recruit/>]}/>
 //   <view left={(pager.position() * 100 / 3) + "%"} .../>   // a tab bar's pill
-export declare class Pager {
+declare class Pager {
 	// (made in a component: its spring stops with it)
 	constructor(page: Read<number>, count: number, onPage: (arg0: number) => void);
+	static create(page: Read<number>, count: number, onPage: (arg0: number) => void): Pager;
 	// the page a drag let go goes to: the next or the previous one past a
 	// fifth of the width or flung (points a second), else the same
 	static settle(page: number, count: number, travel: number, speed: number, width: number): number;
@@ -1160,6 +1100,7 @@ export declare class Pager {
 	readonly position: Signal<number>;
 }
 
+export declare const pager: typeof Pager.create;
 export declare const Pages: typeof Pager.Pages;
 
 // Several lines of text edited in place (EditableText's keys and pointer):
@@ -1177,10 +1118,6 @@ export declare class TextArea extends EditableText {
 	rows: number;
 	// (always wrapped, whatever it inherits: as a textarea's own pre-wrap)
 	textWrap(): number;
-	// as wide as it is given (its text wrapped to that), rows lines high (or its lines', at least one)
-	measureContent(engine: unknown, knownWidth: number, knownHeight: number, availWidth: number, availHeight: number): unknown;
-	minContentWidth(engine: unknown): number;
-	paintContent(canvas: unknown, x: number, y: number, width: number, height: number): void;
 }
 
 // A one-line text field (EditableText's keys and pointer; Enter submits):
@@ -1194,11 +1131,6 @@ export declare class TextArea extends EditableText {
 export declare class TextField extends EditableText {
 	constructor(text?: string);
 	onSubmit: ((arg0: string) => void) | null;
-	// (a field shrinks: its text scrolls)
-	minContentWidth(engine: unknown): number;
-	// one line: as wide as it is given (the text scrolls in it), as high as a line
-	measureContent(engine: unknown, knownWidth: number, knownHeight: number, availWidth: number, availHeight: number): unknown;
-	paintContent(canvas: unknown, x: number, y: number, width: number, height: number): void;
 }
 
 // Superseded by helder.ui.controls' looks (Look.base, look.with: the
@@ -1269,7 +1201,7 @@ export declare class Theme {
 // Linux's at the end), the other nothing.
 //   <view drag-region><WindowControls side="start"/><text>Project</text></view>
 //   <view drag-region><text>Inspector</text><view grow={1}/><WindowControls side="end"/></view>
-export declare class WindowButtons {
+declare class WindowButtons {
 	// the side of the window the system puts its buttons: "start" (macOS's,
 	// at the left: env(titlebar-area-x) after them), "end" (Windows', Linux's),
 	// null without an inset title bar (the system's, the browser, a phone).
@@ -1278,6 +1210,7 @@ export declare class WindowButtons {
 	static WindowControls(props: { tag?: string; side?: string }): View;
 }
 
+export declare const windowControlsSide: typeof WindowButtons.side;
 export declare const WindowControls: typeof WindowButtons.WindowControls;
 
 // A control's states as amounts that ease between 0 and 1 (hover, pressed,
@@ -1287,7 +1220,7 @@ export declare const WindowControls: typeof WindowButtons.WindowControls;
 // eases the same way, through the parts' transitions (Look); these are
 // for what draws itself: a part's shader (helder.ui.draw.PartShader), a
 // replaced rendering.
-export declare class Eased {
+declare class Eased {
 	// times: each state's seconds (HOVER... OPEN)
 	constructor(times: number[]);
 	static readonly HOVER: number;
@@ -1366,7 +1299,7 @@ export declare const tone: typeof Look.tone;
 //
 //   final p = Press.of(props, "button");
 //   <view:button ref={p.root}><image ref={p.part("icon")} .../></view:button>
-export declare class Press {
+declare class Press {
 	constructor(slot: string, disabled?: Read<boolean>, onPress?: () => void);
 	// a press of props' (a replaced rendering's: Look's render) for a control named slot
 	static of(props: { label?: string; disabled?: Read<boolean>; selected?: Read<boolean>; onPress?: () => void }, slot: string): Press;
@@ -1403,7 +1336,7 @@ export declare class Press {
 //   <Checkbox label="Remember me" checked={remember} onChange={v -> remember(v)}/>
 //   <Switch label="Dark mode" checked={dark} onChange={v -> dark(v)}/>
 // (pinned to ui's renderer, UiView: drawn controls, of no other renderer)
-export declare class Standard {
+declare class Standard {
 	static Button(props: ButtonProps<BaseVariants>): View;
 	static PathBar(props: PathBarProps): View;
 	static Checkbox(props: CheckboxProps<BaseVariants>): View;
@@ -1462,8 +1395,6 @@ export declare class CodeCompletion extends Node {
 	hide(): void;
 	// the chosen row moved by d (wrapping)
 	move(d: number): void;
-	hasContent(): boolean;
-	paintContent(canvas: unknown, x: number, y: number, width: number, height: number): void;
 }
 
 // A code editor (helder.ui.code; helder.ui's README): a CodeView of a CodeModel,
@@ -1542,23 +1473,6 @@ export declare class CodeEditor extends Node {
 	goToLine(line: number, column?: number): void;
 }
 
-// What highlights a language's lines in a code editor (CodeModel): a line
-// read from the state at its start, its tokens appended to out (start, end,
-// class: helder.syntax.TokenClass, relative to the line, in order) and the
-// next line's state returned. States are Ints that are equal when what is
-// open at a line's start is the same: the editor reads again only from an
-// edited line until a line's state is the one it had. Languages are
-// registered by file extension (CodeLanguages); TypeScript, TSX and Haxe
-// are helder.syntax's Lexer.
-export declare interface CodeLanguage {
-	// its name ("tsx", "haxe")
-	name(): string;
-	startState(): number;
-	tokenize(line: string, state: number, out: number[]): number;
-	// what starts a line comment ("//"; null: none)
-	lineComment(): string | null;
-}
-
 // helder.syntax's Lexer as a CodeLanguage (TypeScript, TSX, Haxe, design files)
 export declare class SyntaxLanguage {
 	constructor(lang: number);
@@ -1573,14 +1487,14 @@ export declare class SyntaxLanguage {
 // register adds more
 export declare class CodeLanguages {
 	// a language for files ending in .ext (made fresh for each editor: a language may keep state)
-	static register(ext: string, make: () => CodeLanguage): void;
+	static register(ext: string, make: () => unknown): void;
 	// the language of a path by its extension (null: none, plain text)
-	static forPath(path: string): CodeLanguage | null;
+	static forPath(path: string): unknown | null;
 }
 
 // A selection: anchor (where it started) to head (the caret); goal: the
 // column Up and Down keep (-1: the head's)
-export declare class Sel {
+declare class Sel {
 	constructor(anchor: number, head: number);
 	anchor: number;
 	head: number;
@@ -1595,7 +1509,7 @@ export declare class Sel {
 // canvas", a search's matches): its background, border and underline (null:
 // none), the whole lines it covers or its characters. Its offsets move
 // with edits (an insertion at its start or end is outside it).
-export declare class Decoration {
+declare class Decoration {
 	constructor(id: number, start: number, end: number, background?: number, border?: number, underline?: number, wholeLine?: boolean);
 	readonly id: number;
 	start: number;
@@ -1617,20 +1531,6 @@ export declare class CodeDiagnostic {
 	readonly message: string;
 }
 
-// A line as a view laid it out (CodeView): its text as drawn (tabs as
-// spaces), the tokens it was coloured by, its paragraph and each span's
-// class, and their colours as last painted (its own: a display list
-// holds them until it is replayed); dropped when the line's text or tokens
-// change
-export declare class ShapedLine {
-	constructor(text: string, tokens: number[], paragraph: unknown, classes: number[]);
-	readonly text: string;
-	readonly tokens: number[];
-	readonly paragraph: unknown;
-	readonly classes: number[];
-	readonly colors: number[];
-}
-
 // A code editor's document (CodeEditor's, usable without one): its text
 // (Rope), its lines' cached texts and highlighting (CodeLanguage, read
 // again from an edited line until a line's state is the one it had), its
@@ -1645,8 +1545,8 @@ export declare class ShapedLine {
 // occurrence, find and replace. Every edit is a list of changes
 // (helder.syntax's Change: offsets of the text before, in order), given to
 // onChange as they are: a Transaction's.
-export declare class CodeModel {
-	constructor(text?: string, language?: CodeLanguage);
+declare class CodeModel {
+	constructor(text?: string, language?: unknown);
 	static readonly EDIT: number;
 	static readonly TYPE: number;
 	static readonly DELETE: number;
@@ -1655,7 +1555,7 @@ export declare class CodeModel {
 	static map(pos: number, changes: unknown[], assoc: number): number;
 	static isWordChar(c: number): boolean;
 	readonly rope: Rope;
-	language: CodeLanguage | null;
+	language: unknown | null;
 	// the selections, in order and not overlapping; primary: the one the view follows
 	readonly sels: Sel[];
 	readonly primary: Sel;
@@ -1887,9 +1787,6 @@ export declare class CodeView extends Node {
 	currentMatch: number;
 	// an input method's composition at the primary caret (not in the text until committed)
 	readonly composition: string;
-	hasContent(): boolean;
-	measureContent(engine: unknown, knownWidth: number, knownHeight: number, availWidth: number, availHeight: number): unknown;
-	minContentWidth(engine: unknown): number;
 	// (keys that type are its: not shortcuts, not the window's scrolling)
 	takesText(): boolean;
 	changed(reveal?: boolean): void;
@@ -1897,7 +1794,6 @@ export declare class CodeView extends Node {
 	revealRange(start: number, end: number, center?: boolean): void;
 	// scrolled to (clamped): whether it moved
 	scrollTo(left: number, top: number): boolean;
-	paintContent(canvas: unknown, x: number, y: number, width: number, height: number): void;
 	// where offset pos is drawn, from the view's top left (pixels): x, its line's top
 	pointOf(pos: number): { x: number; y: number };
 	// the offset at a point of the node (its own pixels)
@@ -1911,7 +1807,6 @@ export declare class CodeView extends Node {
 	replaceText(start: number, end: number, s: string): void;
 	accessValue(): string | null;
 	accessText(): { start: number; end: number; caret: number; readOnly: boolean } | null;
-	accessSetValue(value: string): boolean;
 	select(start: number, end: number): void;
 	// a CodeAction on the text: whether it did something
 	run(a: unknown): boolean;
@@ -1926,7 +1821,7 @@ export declare class CodeView extends Node {
 // editor's) map to UTF-8 bytes (helder.view.Source's, a language
 // server's) and back the same way. Lines end with "\n" ("\r\n" is the
 // owner's to normalise: CodeModel does on load).
-export declare class Rope {
+declare class Rope {
 	constructor(text?: string);
 	// (a chunk's size: an edit's rebuilt chunk split above MAX, joined to its next below MIN)
 	static readonly MAX: number;
@@ -1979,7 +1874,7 @@ export declare class SqlLanguage {
 // (App.onBack, App.backDepth: Android's back, Escape, the browser's
 // history: an entry a push); on iOS's slide a drag from the left edge
 // pops it as it goes.
-export declare class Screens {
+declare class Screens {
 	static Stack(props: { router: Router; transition?: StackTransition }): View;
 }
 

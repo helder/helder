@@ -53,7 +53,7 @@ class Gamepads {
 		return i >= 0 && i < MAX && a >= 0 && a < AXES ? axes[i][a] : 0;
 
 	// pad i fed by the program (null: given back to the device)
-	public static function set(i:Int, ?pressed:Array<Bool>, ?sticks:Array<Float>) {
+	@:noCompletion public static function set(i:Int, ?pressed:Array<Bool>, ?sticks:Array<Float>) {
 		if (i < 0 || i >= MAX) return;
 		virtual[i] = pressed != null || sticks != null;
 		live[i] = virtual[i];
@@ -66,14 +66,14 @@ class Gamepads {
 	// the devices read again, once enabled (a program that never calls
 	// enable links no device code: a few tens of KB, and in the browser
 	// imports a test under node's WASI does not have)
-	public static function poll() {
+	@:noCompletion public static function poll() {
 		if (devices != null) devices();
 	}
 
 	static var devices:Null<Void->Void>;
 
 	// the devices read from now on (a program reading gamepads calls it once)
-	public static function enable() {
+	@:noCompletion public static function enable() {
 		devices = pollDevices;
 		#if (hxmc.target != "wasm32-wasi" && !eval)
 		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) helder.os.android.AndroidGamepads.enable(); #end

@@ -71,10 +71,6 @@ export type Volume = { name: string; path: string; total: number; free: number; 
 // stays in memory: what an earlier run, or the user's own app, kept does
 // not change what the run shows, and the run keeps nothing.
 export declare class Store {
-	// the stores open() gives while set (null: the platform's): a screen's of
-	// a story host (helder.ui.ScreenContext, which sets it while current),
-	// each name's store in memory, kept for the run
-	static scope: unknown | null;
 	// the store of that name (letters, digits, '.', '-' and '_'), in the platform's place or in dir
 	static open(name: string, dir?: string): Store;
 	readonly name: string;
@@ -143,7 +139,7 @@ export declare class Permissions {
 export declare class Notifications {
 	static onOpen: ((arg0: string) => void) | null;
 	// whether it was scheduled (false where the system has none for the app)
-	static schedule(n: { id: string; title: string; body?: string; at?: unknown; after?: number }): boolean;
+	static schedule(n: { id: string; title: string; body?: string; at?: Date; after?: number }): boolean;
 	static cancel(id: string): void;
 }
 
@@ -230,7 +226,7 @@ export declare class StatusBar {
 	static hidden(h: boolean): void;
 }
 
-export declare class Sys {
+declare class Sys {
 	static args(): string[];
 	static getEnv(s: string): string | null;
 }

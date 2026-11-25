@@ -1699,7 +1699,7 @@ lane's frames and the examples' videos on the site are made this way.
 
 ## TypeScript
 
-`helder/scene` (src/helder/scene/index.ts, over `helder/scene/runtime`,
+`helder/scene` (src/helder/scene/index.ts, over its own `runtime.d.ts`,
 which `TypeScript.hx` declares: [helder.typescript](/src/helder/typescript/README.md))
 is this package for TypeScript programs: World, Camera, Light, Material,
 MeshRenderer, Shapes, Model, Renderer, PostProcess and its effects (Ssao,
