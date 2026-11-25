@@ -44,26 +44,12 @@ class Filters {
 		}
 	}
 
+	// (a zlib stream, or a raw one as some writers make it; a damaged or cut
+	// one: what came of it, as viewers show it)
 	public static function inflate(data:Bytes, budget:Int):Bytes {
-		var input = new haxe.io.BytesInput(data);
-		var out = new BytesBuffer(), chunk = Bytes.alloc(65536), total = 0;
-		try {
-			// (a zlib header, or none: raw deflate as some writers make it)
-			var raw = data.length < 2 || ((data.get(0) & 15) != 8 || (((data.get(0) << 8) | data.get(1)) % 31) != 0);
-			var z = new haxe.zip.InflateImpl(input, !raw, !raw);
-			while (true) {
-				var n = z.readBytes(chunk, 0, chunk.length);
-				if (n <= 0) break;
-				total += n;
-				if (total > budget) throw PdfError.tooLarge("a stream past " + budget + " bytes decoded");
-				out.addBytes(chunk, 0, n);
-			}
-		} catch (e:PdfError) {
-			throw e;
-		} catch (e:Dynamic) {
-			// (a stream cut short or damaged: what came of it, as viewers show it)
-		}
-		return out.getBytes();
+		var out = helder.image.Inflate.all(data, budget);
+		if (out == null) throw PdfError.tooLarge("a stream past " + budget + " bytes decoded");
+		return out;
 	}
 
 	// PNG's predictors (10 to 15: each row's own) and TIFF's (2)

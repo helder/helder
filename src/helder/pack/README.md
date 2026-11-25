@@ -7,10 +7,10 @@ the package, with no SDK, no Xcode and no Mac. Ported from hxmc (MIT),
 then grown here.
 
 - `Zip`, `Buf`, `Entropy`: a zip (stored, or an entry deflated: `deflate`)
-  and its reader, a byte buffer, the system's random source.
-- `Deflate`, `Tar`: deflate's raw stream and gzip's file (helder.image's
-  PngEncoder's compressor: LZ77 and the fixed Huffman codes, pure Haxe),
-  a ustar archive (files with their modes, directories, links; a fixed
+  and its reader, a byte buffer, the system's random source. Deflate and
+  inflate are helder.image's (`Deflate`, `Inflate`), PNG's and PDF's too.
+- `Tar`: gzip's file (`Tar.gzip`, of helder.image's `Deflate.raw`: LZ77
+  and the fixed Huffman codes, pure Haxe), a ustar archive (files with their modes, directories, links; a fixed
   time, root's owner): Linux's .tar.gz.
 - `Timestamp`: RFC 3161's request for a signature's bytes and its reply's
   token (the caller posts it: helder.cli's curl), for Authenticode and
