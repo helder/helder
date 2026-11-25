@@ -102,6 +102,8 @@ class Headless {
 
 	var frame = 0;
 	var stepAt = 0;
+	// (the step whose target a wait was held for: it runs next, found or not)
+	var waited = -1;
 	final acts:Array<Act> = [];
 	final posted:Array<Event> = [];
 	final answers:Array<Step> = [];
@@ -220,8 +222,9 @@ class Headless {
 		return frameTime() - shift;
 
 	// the script waits until done() (the program's work outside it: a build,
-	// another process's answer), the frames going on; the run fails when a
-	// hold lasts seconds of the machine's time
+	// another process's answer), the frames going on; after seconds of the
+	// machine's time it is let go, said, and the script goes on (a run with
+	// a real agent outlives any one wait; what never came shows in its steps)
 	public function hold(done:Void->Bool, why:String, seconds = 120.0) {
 		if (serve != null || done()) return;
 		var now = haxe.Timer.stamp();
@@ -236,7 +239,10 @@ class Headless {
 			if (h.done()) {
 				holds.remove(h);
 				if (now - h.since > 0.5) Sys.println('headless: held ${Math.round((now - h.since) * 10) / 10} s (${h.why})');
-			} else if (now > h.until) fail('held for ${Math.round(now - h.since)} s, never done: ${h.why}');
+			} else if (now > h.until) {
+				holds.remove(h);
+				Sys.println('headless: held ${Math.round(now - h.since)} s, never done, let go: ${h.why}');
+			}
 		if (holds.length == 0) return false;
 		shift += 1 / fps;
 		Sys.sleep(0.003);
@@ -275,6 +281,14 @@ class Headless {
 			var at = acts.length > 0 ? acts[0].t : Math.POSITIVE_INFINITY;
 			if (st > t && at > t) break;
 			if (st <= at) {
+				// (a step with "wait": held until its target is shown, the seconds given or 120)
+				var w = script.steps[stepAt];
+				if (Reflect.hasField(w.data, "wait") && waited != stepAt && !shown(w)) {
+					waited = stepAt;
+					var secs:Dynamic = Reflect.field(w.data, "wait");
+					hold(() -> shown(w), '$w: its target', Std.isOfType(secs, Float) ? secs : 120.0);
+					break;
+				}
 				var s = script.steps[stepAt++];
 				helder.async.Time.now = s.t + shift;
 				expand(s);
@@ -519,6 +533,14 @@ class Headless {
 	}
 
 	// where a step aims (points): its node's centre (or ox, oy from its top left), x, y, else the pointer
+	// whether a step's node is there to aim at
+	function shown(s:Step):Bool {
+		if (inspector == null) return true;
+		var id = s.str("id"), nodes = inspector.nodes();
+		var n = id != null ? Lambda.find(nodes, x -> x.identifier == id) : find(nodes, s.str("tag"), s.str("path"), s.str("role"), s.str("label"), Std.int(s.num("index", 0)));
+		return n != null && n.width > 0 && n.height > 0 && n.opacity > 0;
+	}
+
 	function target(s:Step):{x:Float, y:Float} {
 		var tag = s.str("tag"), path = s.str("path"), role = s.str("role"), label = s.str("label"), id = s.str("id");
 		if (tag == null && path == null && role == null && label == null && id == null) {
