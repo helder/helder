@@ -10,7 +10,7 @@
 // worker, whose frames reach the compositor on their own, a frame shows the
 // newest draw before the next began, and at most one in ten may be stale,
 // where its frames keep up with the steps (SwiftShader's WebGL2 in a worker
-// draws one in about 300 ms: there only that the last frame shows the last
+// draws one in about 300 ms: there only that a frame soon shows the last
 // size). The frames' times printed (median, p95).
 //   node tests/ui/web-resize.mjs <WebTodo.wasm>
 import { createServer } from 'node:http';
@@ -128,8 +128,11 @@ for (const worker of [false, true]) for (const gfx of ['webgpu', 'webgl2']) {
 			await p.setViewportSize({ width: Math.round(640 - 240 * k), height: Math.round(480 - 120 * k) });
 			await p.evaluate(() => window.frame());
 		}
-		await p.evaluate(() => window.frame().then(window.frame));
-		await p.waitForTimeout(200);
+		// (settled: the newest draw at the newest size, a slow worker's a few of its frames on)
+		await p.waitForFunction(() => {
+			const r = window.resizes[window.resizes.length - 1], d = window.drawn[window.drawn.length - 1];
+			return r && d && r[1] === d[1] && r[2] === d[2];
+		}, null, { timeout: 5000 }).catch(() => {});
 		const { frames, resizes, drawn } = await p.evaluate(() => ({ frames: window.frames, resizes: window.resizes, drawn: window.drawn }));
 		const times = [];
 		for (let i = 0; i < frames.length - 1; i++) if (frames[i] >= t0) times.push(frames[i + 1] - frames[i]);

@@ -710,7 +710,7 @@ export default function os(host) {
 			// (drawn at once: the page shows the old frame stretched until a new
 			// one comes; not when it waited behind a slow frame, the next of
 			// which takes the newest size, rather than one for each)
-			if (performance.timeOrigin + performance.now() - (m.at ?? 0) < 8) frameNow?.();
+			if (performance.timeOrigin + performance.now() - (m.at ?? 0) < 16) frameNow?.();
 		});
 		page.on('state', (m) => {
 			const t = m.state;
