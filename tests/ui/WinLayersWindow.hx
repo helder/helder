@@ -137,7 +137,7 @@ class WinLayersWindow {
 			if (bound == null) check('$what: at the display\'s pace', paced, gap) else {
 				var was = strict;
 				strict = false;
-				check('$what: at the display\'s pace', false, '$gap: bound by the software adapter\'s GPU, $bound');
+				check('$what: at the display\'s pace', false, '$gap: bound by the software adapter (its GPU or DWM on it), $bound');
 				strict = was;
 			}
 			if (c != null) summary(what, c, from, to);
@@ -444,10 +444,11 @@ class WinLayersWindow {
 	// (a phase slower than the display's pace whose frames were all on time:
 	// each paced (its swap chain's wait the one before it) and presented
 	// (Present's S_OK, not OCCLUDED), the time in that wait itself, over
-	// most of a period: what the adapter's GPU took to show the last one.
-	// Only Microsoft's software adapter's (WARP, the Basic Render Driver:
-	// CI's runners, their GPU work on the CPU's threads after Present) is
-	// let go so; on a GPU the display's pace is the check's. The lock's
+	// most of a period: what the adapter took to show the last one, its
+	// GPU's work or DWM's composition of it. Only Microsoft's software
+	// adapter's (WARP, the Basic Render Driver: CI's runners, where both run
+	// on the CPU's few threads, a frame's own GPU time 4 ms) is let go so;
+	// on a GPU the display's pace is the check's. The lock's
 	// signatures fail wherever they show: frames not paced, OCCLUDED, the
 	// time before the wait (a coarse timer). Why, else null)
 	static function gpuBound(c:Compositor, t0:Float, t1:Float):Null<String> {
