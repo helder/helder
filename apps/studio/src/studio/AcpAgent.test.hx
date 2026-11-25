@@ -76,6 +76,25 @@ function tests() {
 			agent.close();
 			equals(again[again.length - 1], Done("cancelled"));
 		})).timeout(20);
+		test("started before the first prompt: it goes straight to the session", async(() -> {
+			var agent = new AcpAgent(fake(), workspace());
+			agent.boot();
+			assert(agent.starting());
+			while (agent.starting())
+				Async.delay(0.01);
+			assert(agent.bootedIn >= 0);
+			var events = turn(agent, "markdown", {screen: null, selection: null, problems: []}, false);
+			agent.close();
+			equals(events[events.length - 1], Done("end_turn"));
+		})).timeout(20);
+		test("a start that fails: told, and the next prompt starts it again", async(() -> {
+			var agent = new AcpAgent({name: "missing", cmd: "node", args: ["/no/such/agent.mjs"]}, workspace());
+			var told:Null<String> = null;
+			agent.boot(m -> told = m);
+			while (agent.starting())
+				Async.delay(0.01);
+			assert(told != null && told.indexOf("missing: closed") == 0, told);
+		})).timeout(20);
 	});
 }
 

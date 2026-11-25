@@ -40,6 +40,11 @@ class Chat implements Markup {
 					n.onScroll = () -> follow = n.scrollY >= n.contentHeight - n.height - 24;
 				}}>
 				<For each={[for (i in 0...studio.talk.turns().length) i]}>{(i:Read<Int>) -> turn(studio, i())}</For>
+				<Show when={studio.talk.trouble() != null}>
+					<view tag="chat-trouble" padding="8 10" radius={Theme.CHIP} background={c("error-soft")}>
+						<text color={c("error")} font-size={12} max-lines={6} text-overflow="ellipsis">{studio.talk.trouble() ?? ""}</text>
+					</view>
+				</Show>
 				<For each={studio.marks.changes().filter(c -> c.turn < 0)} by={(c:Marks.Changed) -> c.id}>{(c:Read<Marks.Changed>) -> change(studio, c)}</For>
 				<For each={studio.questions.all().filter(q -> q.turn < 0)} by={(q:Questions.Question) -> q.id}>{(q:Read<Questions.Question>) -> Asks.card(studio, q)}</For>
 				<view tag="chat-end" height={16} shrink={0}/>
@@ -118,8 +123,12 @@ class Chat implements Markup {
 				</view>
 			</Show>
 			{reply(studio, t)}
-			<Show when={Turns.running(t()) && t().thought != "" && t().text == ""}>
-				<text tag="chat-thinking" color={c("dim")} font-size={12}>Thinking…</text>
+			<Show when={Turns.running(t()) && t().text == "" && t().tools.length == 0}>
+				<view tag="chat-thinking" direction="row" align-items="center" column-gap={8}>
+					<view tag="chat-thinking-mark" width={8} height={8} radius={4} background={Color.parse(studio.agentColour())}
+						ref={(n:Node) -> Watch.pulse(n, () -> Turns.running(t()))}/>
+					<text color={c("dim")} font-size={12}>{studio.agentStarting() ? 'Starting ${studio.agentName()}…' : t().thought != "" ? "Thinking…" : ""}</text>
+				</view>
 			</Show>
 			<Show when={t().tools.length > 0}>
 				<view tag="chat-tools" row-gap={4} font-family={Theme.CODE} font-size={Theme.SMALL} color={c("ink3")}>
