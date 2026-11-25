@@ -61,4 +61,11 @@ class Fixtures implements Markup {
 	// trees are taken in a phone's whatever a story's width: Stories.tree)
 	public static function themed(x:Explorer, dark:Bool):View
 		return <view width={1100} height={700} shrink={0} ref={(n:Node) -> if (n.ui != null) n.ui.dark = dark}>{Shell.view(x, () -> helder.ui.SizeClass.Expanded)}</view>;
+
+	// (the phone stories' markup: on Windows a story file's own isn't processed)
+	public static function phone(x:Explorer, at:viewer.Phone.PhoneState->Void):View
+		return <helder.ui.controls.Standard.Themed look={Shell.look}><Phone.Root x={x} at={at}/></helder.ui.controls.Standard.Themed>;
+
+	public static function tile(name:String):View
+		return <view grow={1}>{Tiles.large({name: name, kind: File, size: 0, modified: 0, created: 0})}</view>;
 }

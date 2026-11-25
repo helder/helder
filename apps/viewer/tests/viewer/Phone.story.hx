@@ -2,7 +2,6 @@ package viewer;
 
 import helder.story.Story;
 import helder.ui.Clock;
-import helder.ui.controls.Standard;
 import helder.ui.menu.TouchMenu;
 import helder.view.*;
 import viewer.Phone.PhoneState;
@@ -63,7 +62,7 @@ final menu = story({
 				{label: "Open in…", run: () -> {}},
 				{label: "Select", run: () -> {}},
 				{label: "Move to Trash", destructive: true, separated: true, run: () -> {}}
-			], t.windowBounds(), <view grow={1}>{Tiles.large({name: "Murmuration.jpg", kind: File, size: 0, modified: 0, created: 0})}</view>, true,
+			], t.windowBounds(), Fixtures.tile("Murmuration.jpg"), true,
 				t.sheet());
 		}
 	})
@@ -124,8 +123,8 @@ private function samples():Explorer {
 private function phone(at:PhoneState->Void):View {
 	Kinds.utc = true;
 	var x = samples();
-	return <Standard.Themed look={Shell.look}><Phone.Root x={x} at={p -> {
+	return Fixtures.phone(x, p -> {
 		at(p);
 		Fixtures.thumbnails(x);
-	}}/></Standard.Themed>;
+	});
 }
