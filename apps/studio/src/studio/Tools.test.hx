@@ -51,6 +51,18 @@ function tests() {
 			equals(missing.isError, true);
 			equals(missing.content[0].text, "app.tsx: no such file; send text to create it");
 		}));
+		test("a patch deletes a file; undone it is back, redone gone", async(() -> {
+			var s = empty("bin/tools-delete"), f = s.project.dir + "/sketches/a.helder";
+			s.tools.call("project.patch", {path: "sketches/a.helder", text: '<Design>\n\t<Frame name="Home"><text>Hi</text></Frame>\n</Design>\n'}, "a");
+			equals(s.tools.call("project.patch", {path: "sketches/a.helder", delete: true}, "a").isError, false);
+			equals([sys.FileSystem.exists(f), s.project.screen("sketches/a.helder#Home") != null], [false, false]);
+			equals(s.docs.nextUndo().by, "Claude");
+			s.undo();
+			equals([sys.FileSystem.exists(f), s.project.screen("sketches/a.helder#Home") != null], [true, true]);
+			s.redo();
+			equals([sys.FileSystem.exists(f), s.project.screen("sketches/a.helder#Home") != null], [false, false]);
+			equals(s.tools.call("project.patch", {path: "sketches/a.helder", delete: true}, "a").isError, true);
+		}));
 		test("an empty folder: a main and a story made, its screen there and built", async(() -> {
 			// (outside any package: its own project, helder's modules mapped by the
 			// tsconfig.json the studio writes; helder's src/ the studio's, as Main sets it)

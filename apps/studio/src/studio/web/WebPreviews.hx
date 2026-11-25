@@ -251,6 +251,9 @@ class WebPreviews {
 	public function write(path:String, text:String)
 		studio.Files.save(path, text);
 
+	// (Previews.forget's: written at once here, nothing held)
+	public function forget(path:String) {}
+
 	// a save from the code view: its live literals patched, else a build's (the compiler's worker)
 	@:coroutine public function saved(task:Node, file:String, ?literalsOnly:Bool):String {
 		if (failed && literalsOnly != true) return rebuild(task, [file]) ? "built" : "failed";

@@ -44,7 +44,7 @@ class Tools implements Mcp.Target {
 		},
 		{
 			name: "project.patch",
-			description: "Edit a file of the project: each edit's old text (once in the file) replaced by its new text, or the whole text given. The edit goes through the studio's history (undoable); live literals' values are patched in the running screens at once, anything else rebuilds. Answers what happened and the build's diagnostics.",
+			description: "Edit a file of the project: each edit's old text (once in the file) replaced by its new text, or the whole text given, or the file deleted (delete: true, e.g. the starter's app.tsx and app.story.tsx once unused). The edit goes through the studio's history (undoable); live literals' values are patched in the running screens at once, anything else rebuilds. Answers what happened and the build's diagnostics.",
 			inputSchema: {
 				type: "object",
 				properties: {
@@ -53,7 +53,8 @@ class Tools implements Mcp.Target {
 						type: "array",
 						items: {type: "object", properties: {old: {type: "string"}, "new": {type: "string"}}, required: ["old", "new"]}
 					},
-					text: {type: "string", description: "the file's whole new text, for a new file or a rewrite (never together with edits)"}
+					text: {type: "string", description: "the file's whole new text, for a new file or a rewrite (never together with edits)"},
+					delete: {type: "boolean", description: "true: the file deleted (nothing else given)"}
 				},
 				required: ["path"]
 			}
@@ -257,6 +258,12 @@ class Tools implements Mcp.Target {
 		// (a whole text sent beside edits is an agent's slip: it once wiped a file)
 		if (args.text != null && args.edits != null) throw "text or edits, not both";
 		var by = agent == null ? null : studio.presence.peer(agent)?.name;
+		if (args.delete == true) {
+			if (args.text != null || args.edits != null) throw "delete, or text or edits, not both";
+			if (!studio.docs.has(f)) throw '${args.path}: no such file';
+			studio.remove(f, by);
+			return landed();
+		}
 		// (a file not there yet: made by its text, through the history: undone, it is gone)
 		if (!studio.docs.has(f)) {
 			if (args.text == null) throw '${args.path}: no such file; send text to create it';

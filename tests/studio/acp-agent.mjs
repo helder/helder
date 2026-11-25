@@ -15,7 +15,7 @@ import {createInterface} from 'node:readline'
 
 let next = 0
 const waiting = new Map()
-let cwd = '', servers = [], mcp = null, cancelled = null
+let cwd = '', servers = [], mcp = null, cancelled = null, denied = null
 
 function send(m) {
   process.stdout.write(JSON.stringify({jsonrpc: '2.0', ...m}) + '\n')
@@ -153,6 +153,7 @@ async function prompt(id, p) {
     outside: outside.error ? 'error' : 'ok',
     missing: missing.error?.code,
     servers,
+    denied,
     link: link?.name ?? null,
     problems: p.prompt.find(b => b.type === 'text' && b.text.startsWith("The studio's last build failed"))?.text ?? null
   }
@@ -181,6 +182,7 @@ lines.on('line', line => {
       cwd = m.params.cwd
       servers = m.params.mcpServers.map(s => s.type + ' ' + s.name + ' ' + s.url)
       mcp = m.params.mcpServers[0]?.url ?? null
+      denied = m.params._meta?.claudeCode?.options?.disallowedTools ?? null
       return send({id: m.id, result: {sessionId: 's1'}})
     case 'session/prompt':
       return void prompt(m.id, m.params)
