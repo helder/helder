@@ -4,7 +4,7 @@ package helder.gfx.shader;
 import haxe.macro.Context;
 import haxe.macro.Expr;
 import haxe.macro.Type;
-import helder.definition.Kernel;
+import helder.compiler.Kernel;
 import helder.gfx.shader.Ir;
 import helder.gfx.shader.ShaderDefinition;
 
@@ -1087,7 +1087,7 @@ class Lower implements ShaderAdapter {
 						case _: throw "slot";
 					}
 				case KRef(ref):
-					var r = helder.definition.HaxeAdapter.refs.get(ref);
+					var r = helder.compiler.HaxeAdapter.refs.get(ref);
 					if (r == null) error('the slot $name, $ref, is not a function', node.pos);
 					var te = Sources.typed(r.c, r.cf);
 					if (te == null) error('${display(r.c, r.cf)} has no source a shader can compile (a static or module-level function written in Haxe)', node.pos);

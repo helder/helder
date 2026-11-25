@@ -1,7 +1,7 @@
-// helder/platform's constants folded: the Windows branch (kernel32's
+// helder/native/platform's constants folded: the Windows branch (kernel32's
 // GetTickCount64, Win32.ticks) is left out of other platforms' builds, and
 // with it the symbol (run.mjs: the binary does not name it).
-import { platform } from "helder/platform";
+import { platform } from "helder/native/platform";
 import { Win32 } from "./win32";
 
 function uptime(): string {

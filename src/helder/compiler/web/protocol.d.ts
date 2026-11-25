@@ -189,7 +189,7 @@ export type Event =
 	| {type: "progress"; phase: "download" | "compile" | "unpack" | "warm"; loaded?: number; total?: number}
 	/**
 	 * A devtools request for the running preview (helder's devtools protocol,
-	 * src/helder/devtools/README.md: Hot.literals, Runtime.reload). The page
+	 * src/helder/dev/README.md: Hot.literals, Runtime.reload). The page
 	 * answers with a RunningResponse of the same rid: the program's JSON-RPC
 	 * response, or null when no preview runs.
 	 */

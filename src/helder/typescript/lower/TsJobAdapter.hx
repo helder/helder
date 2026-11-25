@@ -1,6 +1,6 @@
 package helder.typescript.lower;
 
-import helder.definition.Kernel;
+import helder.compiler.Kernel;
 import helder.jobs.JobDefinition;
 import helder.typescript.check.Ast;
 import helder.typescript.check.Kind;

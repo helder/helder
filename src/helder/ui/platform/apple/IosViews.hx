@@ -79,12 +79,12 @@ class IosViews implements helder.ui.platform.PlatformViews {
 		Msg.vBool(v, ObjC.sel("setHidden:"), true);
 		Msg.vPtr(v, ObjC.sel("setDelegate:"), delegate);
 		if (multiline) {
-			Arena.scoped(a -> UkMsg.vInsets(v, ObjC.sel("setTextContainerInset:"), a.make(UIEdgeInsets).value));
+			Arena.scoped(a -> Msg.vInsets(v, ObjC.sel("setTextContainerInset:"), a.make(UIEdgeInsets).value));
 			Msg.vFloat(Msg.id(v, ObjC.sel("textContainer")), ObjC.sel("setLineFragmentPadding:"), 0);
 		} else {
 			Msg.vInt(v, ObjC.sel("setBorderStyle:"), 0); // UITextBorderStyleNone
 			// (UIControlEventEditingChanged)
-			UkMsg.vPtrPtrInt(v, ObjC.sel("addTarget:action:forControlEvents:"), delegate, ObjC.sel("hxmcChanged:"), 1 << 17);
+			Msg.vPtrPtrInt(v, ObjC.sel("addTarget:action:forControlEvents:"), delegate, ObjC.sel("hxmcChanged:"), 1 << 17);
 		}
 		var e = new IosEditor(this, v, multiline);
 		// (in the system's layer tree: in a host, placed with the window's layers)
@@ -187,13 +187,13 @@ class IosViews implements helder.ui.platform.PlatformViews {
 	// a UIFont for a ui Font: its family's, else the system's at its weight; italic
 	static function uiFont(f:Font):Ptr {
 		var name = ObjC.str(f.family), cls = ObjC.cls("UIFont");
-		var font = UkMsg.idPtrFloat(cls, ObjC.sel("fontWithName:size:"), name, f.size);
+		var font = Msg.idPtrFloat(cls, ObjC.sel("fontWithName:size:"), name, f.size);
 		ObjC.release(name);
 		var traits = f.italic ? 1 : 0; // UIFontDescriptorTraitItalic
-		if (font.isNull()) font = UkMsg.idFloatFloat(cls, ObjC.sel("systemFontOfSize:weight:"), f.size, weight(f.weight)) else if (f.weight >= 600) traits |= 2; // ...Bold
+		if (font.isNull()) font = Msg.idFloatFloat(cls, ObjC.sel("systemFontOfSize:weight:"), f.size, weight(f.weight)) else if (f.weight >= 600) traits |= 2; // ...Bold
 		if (traits == 0) return font;
 		var d = Msg.idInt(Msg.id(font, ObjC.sel("fontDescriptor")), ObjC.sel("fontDescriptorWithSymbolicTraits:"), traits);
-		return d.isNull() ? font : UkMsg.idPtrFloat(cls, ObjC.sel("fontWithDescriptor:size:"), d, f.size);
+		return d.isNull() ? font : Msg.idPtrFloat(cls, ObjC.sel("fontWithDescriptor:size:"), d, f.size);
 	}
 
 	// (UIFontWeight: ultra light -0.8 ... regular 0, medium 0.23, semibold 0.3, bold 0.4, heavy 0.56, black 0.62)
@@ -201,7 +201,7 @@ class IosViews implements helder.ui.platform.PlatformViews {
 		return w <= 100 ? -0.8 : w <= 200 ? -0.6 : w <= 300 ? -0.4 : w <= 400 ? 0 : w <= 500 ? 0.23 : w <= 600 ? 0.3 : w <= 700 ? 0.4 : w <= 800 ? 0.56 : 0.62;
 
 	static function uiColor(c:Color):Ptr
-		return UkMsg.idFloat4(ObjC.cls("UIColor"), ObjC.sel("colorWithRed:green:blue:alpha:"), c.r / 255, c.g / 255, c.b / 255, c.a / 255);
+		return Msg.idFloat4(ObjC.cls("UIColor"), ObjC.sel("colorWithRed:green:blue:alpha:"), c.r / 255, c.g / 255, c.b / 255, c.a / 255);
 }
 
 @:allow(helder.ui)
@@ -245,7 +245,7 @@ class IosEditor implements helder.ui.platform.PlatformEditor {
 		var r = Msg.id(view, ObjC.sel("selectedTextRange")), b = Msg.id(view, ObjC.sel("beginningOfDocument"));
 		if (r.isNull()) return [0, 0];
 		var sel = ObjC.sel("offsetFromPosition:toPosition:");
-		var s = UkMsg.iPtrPtr(view, sel, b, Msg.id(r, ObjC.sel("start"))).toInt(), e = UkMsg.iPtrPtr(view, sel, b, Msg.id(r, ObjC.sel("end"))).toInt();
+		var s = Msg.iPtrPtr(view, sel, b, Msg.id(r, ObjC.sel("start"))).toInt(), e = Msg.iPtrPtr(view, sel, b, Msg.id(r, ObjC.sel("end"))).toInt();
 		return [s, e];
 	}
 

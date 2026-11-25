@@ -1,6 +1,6 @@
-package helder.markup;
+package helder.view;
 
-import helder.markup.Syntax;
+import helder.view.Syntax;
 
 // The markup compiler's middle (typescript's README): one literal's code, decided
 // here for every language, written by a Target in its own (the Haxe macro's
@@ -335,7 +335,7 @@ class Plan<E> {
 	function reactive(x:Null<E>):Null<E>
 		return x != null && target.mayRead(x) ? target.thunk(x) : x;
 
-	// --- live literals (dev builds: helder.markup.Live, helder.dev.Literals)
+	// --- live literals (dev builds: helder.view.Live, helder.dev.Literals)
 
 	// a text set as it is: not a live literal (a release build, a text of no place)
 	function fixedText(k:PNode):Bool
@@ -626,7 +626,7 @@ interface Target<E> {
 	// written; null in a build that keeps none (a component's call and
 	// definition: its factory's, the target's own)
 	function located(element:E, at:Int):Null<E>;
-	// live literals (dev builds: helder.markup.Live): whether they are on;
+	// live literals (dev builds: helder.view.Live): whether they are on;
 	// a literal's read of its slot, its value as the planner has it (a
 	// string, a flag's true, the literal's expression), at where it is
 	// (null: not live there); e with the literals of its branches (a

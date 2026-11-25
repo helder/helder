@@ -33,12 +33,12 @@ s.stop();
 `running` is a function sending a devtools request to the program and
 handing its response over (`helder dev`: its relay, `Devtools.request`;
 the studio: its connection to the preview's process), false when none is
-connected. The protocol is `src/helder/devtools/README.md`'s.
+connected. The protocol is `src/helder/dev/README.md`'s.
 
 ## Live literals
 
 In a dev build (`-D hxmc.dev`; never `helder.release`) the markup planner
-(`helder.markup.Plan`, Haxe's markup and TSX alike) writes the literals of
+(`helder.view.Plan`, Haxe's markup and TSX alike) writes the literals of
 markup as reads of a slot table (`helder.dev.Literals`):
 
 - elements' and neutral elements' attribute values: numbers, strings
