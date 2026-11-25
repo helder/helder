@@ -17,8 +17,9 @@ import helder.view.Render;
 // scrolled to, another document of the folder and a heading of it, a web
 // address given to the browser, a missing file left alone); its picture
 // decoded as the viewer decodes, a remote one's alt text; the source
-// (Mod+U, the bar's button); the keys scrolling; the inspector's preview and
-// the grid's tile; pictures laid out at their sizes before they decode
+// (Mod+U, the bar's button); the keys scrolling; its text one selection
+// (a drag across blocks copied, Mod+A once pressed in it); the inspector's
+// preview and the grid's tile; pictures laid out at their sizes before they decode
 function tests() {
 	describe("Markdown", () -> {
 		beforeEach(() -> helder.ui.actions.Keymap.mac = false);
@@ -169,6 +170,32 @@ function tests() {
 			equals([for (p in pictures) (cast p : ImageNode).image != null], [true, true]);
 			equals(blocks(), first);
 		}));
+		test("its text one selection: across its blocks, copied; Mod+A with the focus in it", () -> {
+			var t = open(), x = t.x;
+			x.start('$dir/doc.md');
+			t.frame();
+			var doc = t.ui.root.find("markdown-doc");
+			// (nothing pressed in it: Mod+A not taken)
+			t.ui.keyDown("a".code, Key.MOD_CONTROL);
+			equals(t.ui.textSelection, null);
+			function point(n:Node, i:Int):{x:Float, y:Float} {
+				var c = n.selectableCaret(i);
+				return {x: c.x + 0.5, y: c.y + c.height / 2};
+			}
+			var a = point(all(doc, "markdown-h1", [])[0], 0), b = point(all(doc, "markdown-p", [])[0], 10);
+			t.ui.pointerDown(a.x, a.y, 1);
+			t.ui.pointerMove(b.x, b.y);
+			t.ui.pointerUp(b.x, b.y, 1);
+			equals(t.ui.selectedText(), "The document\n\nA paragrap");
+			t.ui.keyDown("c".code, Key.MOD_CONTROL);
+			var copied = "";
+			t.ui.clipboard.read(s -> copied = s);
+			equals(copied, "The document\n\nA paragrap");
+			t.ui.keyDown("a".code, Key.MOD_CONTROL);
+			var text = t.ui.selectedText();
+			assert(StringTools.startsWith(text, "The document\n\nA paragraph with a link to Usage, the other one, "), text);
+			assert(StringTools.endsWith(text, "A remote one\n\nUsage\n\none\ntwo\n\ntrace(\"hello\");\n\na\tb\n1\t2"), text);
+		});
 		test("the inspector's preview, the grid's tile", () -> {
 			var t = open(), x = t.x;
 			x.browser.go(dir);

@@ -8,7 +8,8 @@ import helder.ui.*;
 // renderer): keys through the keymap (CodeAction's bindings), typing, an
 // input method's context and replacement on the caret's line, the
 // pointer (a click, a double click, Alt+click, the gutter), the wheel,
-// find and replace, go to line, and what assistive technology reads
+// find and replace, go to line, and what assistive technology reads; its
+// keys bound in each screen context's keymap
 function tests() {
 	describe("CodeEditor", () -> {
 		var ui:Ui = null, editor:CodeEditor = null;
@@ -137,6 +138,13 @@ function tests() {
 			assert(editor.gotoOpen);
 			editor.goToLine(3, 2);
 			equals(editor.model.primary.head, editor.model.lineStart(2) + 1);
+		});
+		test("its keys in each screen context's keymap: a view made first in another's", () -> {
+			var other = new ScreenContext("other");
+			other.run(() -> new CodeView());
+			assert(other.keymap.bindings().length > 0);
+			key(Key.END, Key.MOD_CONTROL);
+			equals(editor.model.primary.head, editor.model.length);
 		});
 		test("onChange: a Transaction's changes; decorations and diagnostics", () -> {
 			var text = editor.text;

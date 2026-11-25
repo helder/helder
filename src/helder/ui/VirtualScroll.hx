@@ -45,6 +45,7 @@ class VirtualScroll extends Node {
 	public var focusableRows = true;
 
 	// a row's node filled for row index (what the source keeps with it returned), a row let go
+	// (a row without a parent: made for its text alone, a text selection copied across rows not made)
 	public var onMakeRow:Null<(index:Int, row:Node) -> Dynamic> = null;
 	public var onDropRow:Null<(row:Node, data:Dynamic) -> Void> = null;
 	// the row the keyboard or a press moved to; Enter or Space on a row
@@ -447,6 +448,17 @@ class VirtualScroll extends Node {
 		made++;
 		if (onMakeRow != null) s.data = onMakeRow(i, n);
 	}
+
+	// (row i made for its text alone, out of the list (a text selection
+	// copied across rows not made): onMakeRow's row without a parent)
+	function textRow(i:Int):VirtualRow {
+		var s = new VirtualRow(i, new Node("row"));
+		if (onMakeRow != null) s.data = onMakeRow(i, s.node);
+		return s;
+	}
+
+	function dropTextRow(s:VirtualRow)
+		if (onDropRow != null) onDropRow(s.node, s.data);
 
 	// (a row let go)
 	function drop(s:VirtualRow) {
