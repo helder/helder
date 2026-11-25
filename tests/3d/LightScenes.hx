@@ -7,7 +7,7 @@ import helder.scene.render.*;
 import helder.scene.render.Light.LightKind;
 import helder.scene.render.Lod.LodLevel;
 
-// Phase 4's frames (src/helder/scene/DESIGN-3D.md): lights at scale and
+// Lighting reference frames: lights at scale and
 // their shadows, levels of detail (Scenes):
 //   lights8     32 point lights over a floor of 64 tiles (one primitive: its
 //               runs cut where their tiles' lists differ) round a pillar that

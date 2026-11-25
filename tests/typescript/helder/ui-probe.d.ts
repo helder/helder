@@ -46,3 +46,5 @@ export declare class UiProbe {
 	// the tree: a node a line, indented by its depth
 	static dump(): string;
 }
+
+export {};

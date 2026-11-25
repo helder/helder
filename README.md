@@ -24,19 +24,19 @@ npm i -D helder@next typescript@next
 Save this counter as `src/main.tsx`:
 
 ```tsx
-import { signal } from "helder/view";
-import { UiWindow, Surface } from "helder/ui";
+import {signal} from 'helder/view'
+import {UiWindow, Surface} from 'helder/ui'
 
-const count = signal(0);
+const count = signal(0)
 
 UiWindow.run(
-	<Surface title="Counter" width={320} height={200}>
-		<view grow={1} align-items="center" justify="center" row-gap={12}>
-			<text font-size={32}>{count}</text>
-			<view:button role="button" focusable padding="8 16" onPress={() => count(c => c + 1)}>+1</view:button>
-		</view>
-	</Surface>
-);
+  <Surface title='Counter' width={320} height={200}>
+    <view grow={1} align-items='center' justify='center' row-gap={12}>
+      <text font-size={32}>{count}</text>
+      <view:button role='button' focusable padding='8 16' onPress={() => count(c => c + 1)}>+1</view:button>
+    </view>
+  </Surface>
+)
 ```
 
 ```sh
@@ -57,7 +57,7 @@ hosted web releases and store uploads.
 | | |
 | --- | --- |
 | [os](src/helder/os/README.md) | windows, input, the app loop, audio, on every platform |
-| [gfx](src/helder/gfx/README.md) | a GPU API over GL/GLES, Metal, D3D11, WebGPU and WebGL2; shaders in Haxe |
+| [gfx](src/helder/gfx/README.md) | a GPU API over GL/GLES, Metal, D3D11, WebGPU, WebGL2 and the CPU; shaders in Haxe and TypeScript |
 | [view](src/helder/view/README.md) | signals and markup, compiled to direct calls |
 | [ui](src/helder/ui/README.md) | CSS layout, text input, accessibility, keymaps, scrolling, drawn on gfx |
 | [web](src/helder/web/README.md) | view in the browser's DOM: rendering, hydration, islands |
@@ -68,6 +68,11 @@ hosted web releases and store uploads.
 | [asset](src/helder/asset/README.md) | files checked at compile time, bundled by use, hot reloaded |
 | [async](src/helder/async/README.md), [jobs](src/helder/jobs/README.md) | coroutines, sockets, HTTP and WebSocket; work on other threads |
 | [cli](src/helder/cli/README.md), [pack](src/helder/pack/README.md), [test](src/helder/test/README.md) | the `helder` command, APKs and app bundles without an SDK, tests |
+| [store](src/helder/store/README.md) | in-app purchases on Apple platforms and Android |
+| [story](src/helder/story/README.md), [headless](src/helder/headless/README.md) | screens in isolation, scripted runs and snapshots |
+| [dev](src/helder/dev/README.md), [devtools](src/helder/devtools/README.md) | live reload, preserved state, logs and inspection |
+| [typescript](src/helder/typescript/README.md), [compiler](src/helder/compiler/README.md), [syntax](src/helder/syntax/README.md) | TypeScript and Haxe builds, source parsing and edits |
+| [native](src/helder/native/README.md), [platform](src/helder/platform/README.md) | native calls and compile-time target checks from TypeScript |
 
 ## Working on helder
 
@@ -85,143 +90,42 @@ the node tree ([cli](src/helder/cli/README.md), "Headless runs").
 
 ## Roadmap
 
-**Lately**: [app services](src/helder/os/README.md#app-services): network
-status, permissions, the share sheet, local notifications, the photo picker,
-the camera, location, biometrics, the app's directories, device info, the
-status bar's style and incoming deep links; [navigation](src/helder/ui/README.md#navigation);
-gamepads on every platform; http, https and WebSockets on each platform's
-own stack; [localization](src/helder/os/README.md#localization); the
-platform's settings as signals; new [docs](https://helder.build/docs/).
+**Lately**: [video](src/helder/media/README.md) on every platform; layers
+on macOS, iOS, Android, Windows, Wayland and the web, with Liquid Glass;
+[software rendering](src/helder/gfx/README.md#on-the-cpu) for drawing,
+compute and windows; [windows of any shape](docs/apps/windows.md),
+with transparent backgrounds, click-through, backdrops, borderless and
+on-top modes, taskbar control and work areas; [files](src/helder/os/README.md#dialogs-file-types-the-files-the-system-opens),
+from folder grids to trash, thumbnails and dragging out of the viewer.
 
-**Now**: standard controls with a default look and forms; text input on
-phones.
+### Now
 
-**Packages**, for what needs a library or glue the system lacks, built so
-that their users need no Xcode or Android SDK: [in-app purchases](src/helder/store/README.md)
-are done (StoreKit 2 on iOS and macOS, Play Billing fetched from Maven and
-dexed by helder); next push notifications, Game Center and Play Games,
-ads and analytics.
+- **Software rendering:** TypeScript shaders and per-pixel speed at 1024×768.
+- **Time tracker:** an example along the screen's edge, inside the work
+  area, scrolling through days. Hairline hours, a stroke per project and
+  ticks for switches and activity. An OS service reads the frontmost app
+  and window, idle time and input counts, with the system's permission.
 
-**Apps**
-- Effects on nodes: blur, backdrop blur, filters, clip paths, shaders.
-- Lazy layouts: horizontal and grid lists, collapsing headers, pull to refresh.
-- Network images with a cache; long press and double tap; state restored
-  after the system ends the app.
-- Files: done (a grid and list for folders of any size, selection, the
-  system's places, the trash, file icons and thumbnails, dragging files
-  out, the viewer as a file browser); next a tree view and polish.
+### Next
 
-**Software rendering**: helder.gfx on the CPU, faster than Mesa's
-llvmpipe, with no GPU stack: the shaders are Haxe functions that already
-run on the CPU, compiled ahead of time, so nothing needs a JIT. First
-helder.ui's display list replayed through helder.canvas (headless runs and
-UI goldens without GL or Mesa: done, helder.ui's [On the
-CPU](src/helder/ui/README.md#on-the-cpu)), then a CPU back end beside Metal, D3D11,
-GL and WebGPU under the same Device and Encoder, SIMD from the start: the
-shader macro also emits each shader over hxmc.simd's 4 lanes, a 2x2 pixel
-quad per call (derivatives and mip levels as GPUs get them), the scalar
-functions kept as the reference; tiles in parallel over helder.jobs;
-rasterizing, depth, blending, sampling, compressed textures, MSAA (done:
-helder.gfx's [On the CPU](src/helder/gfx/README.md#on-the-cpu): tests/3d
-and the UI's scenes with no GPU, the same bytes on every machine, faster
-than llvmpipe at the tests' size). Next: per-pixel speed at large sizes,
-compute on the CPU, then wider lanes and the Parallel item's vectorizer on
-the same pieces.
-
-**Video**: video and audio playback on the systems' own decoders, nothing
-bundled: MP4/MOV and WebM/Matroska read in Haxe, so a file plays the same
-everywhere; decoded by VideoToolbox and AVFoundation, MediaCodec, Media
-Foundation, VAAPI and WebCodecs; frames as GPU textures without copies
-where the system allows, timed by the audio clock; a `<Video>` node with
-exact seeking and frame stepping, its controls the app's; the viewer
-playing video and audio beside images and PDFs. Done on macOS and iOS
-([helder.media](src/helder/media/README.md): VideoToolbox, AudioToolbox,
-the viewer's videos), in browsers (WebCodecs), on Android (MediaCodec),
-on Windows (Media Foundation, DXVA) and on Linux (the system's
-libavcodec, VAAPI through it where a driver decodes, its frames as
-DMA-BUFs).
-
-**Games**
-- Physics: mesh and convex colliders, layers, triggers, contact events, stable stacks.
-- Animation state machines and layers; tweens for any value.
-- 3D audio, buses and effects; richer particles.
-- 2D: animated sprites, tilemaps, a 2D camera and physics.
-- Pathfinding, saves, ETC2 and KTX2 textures, a profiler.
-
-**Parallel**: one function over a range or buffers that compiles to both
-SIMD across jobs and a GPU compute pass, picked per call (as C++'s
-parallel algorithms, ISPC and Taichi do); workgroup memory and subgroups
-in `compute()`; GPU particles, cloth and soft bodies as its first users.
-
-**Layers**, divided as browsers divide rendering:
-- The program's thread runs signals and layout and records a display list
-  per layer, in flat buffers outside the collector's heap; a layer is
-  rastered in tiles, those near the view first, and only what changed is
-  drawn again (damage rects).
-- A compositor thread owns the GPU: it composites the layers and applies
-  what needs no layout (scroll offsets, sticky boxes, transforms, opacity,
-  filters, clips) and the declared springs and tweens, from the latest
-  input each vsync, so scrolling and animations keep going while the
-  program is busy. Scroll
-  physics move there; scroll-linked effects (sticky and collapsing headers)
-  are declared; a gesture that may claim a drag says so upfront.
-- The system's compositor where there is one (CALayer, SurfaceControl,
-  DirectComposition, Wayland subsurfaces): layers handed to it, native
-  views and video between drawn layers in the same transaction as the
-  frame, so they clip, stack and scroll with it. macOS and iOS hand their
-  scrollers' content and moving layers to Core Animation, native views
-  inside the layer tree; Android to SurfaceControl (API 33); Windows to
-  DirectComposition; Wayland to subsurfaces (X11 keeps one layer); video's
-  layers on Apple, Android and Windows. Ladybird's Compositor
-  (LibCompositing, BSD-2-Clause) is this design, as a process of its own.
-- Liquid Glass: `<glass>` is the system's own on iOS and macOS 26
-  (UIGlassEffect, NSGlassEffectView, in the layer tree) and a shader
-  tuned against it elsewhere and in screenshots, on every back end; next
-  its frames on the compositor's thread and the system's layers.
-
-Windows of any shape: a transparent background is in (premultiplied
-alpha: macOS, Wayland, Windows through DirectComposition, X11 with a
-compositing manager, the browser's canvas); next clicks passing through
-clear pixels, and the system's materials behind them (macOS vibrancy and glass, Windows 11 Mica
-and Acrylic, KDE's blur). Its first user, an example app: a time tracker
-drawn on the screen's right edge, nothing behind it, full height within
-the work area (menu bar, notch, dock and taskbar kept clear), scrolling
-into the days before and after: hairline hours, a stroke per project,
-switches and activity as ticks, ticks that grow and brighten near the
-pointer, snap and click as it scrolls, figures that roll; another edge or
-screen from its menu, an icon in the dock or taskbar. Under it a service
-in helder.os: the frontmost app and window, idle time and input counted
-(never what is typed), each with the system's permission where it asks.
-
-Also screen reader checks, and a low-end Android phone among the benchmarks.
-
-**helder.run**: share and run links that update live: `helder share
---watch` sends each rebuild to the same address and open pages reload in
-place, as `helder dev` does locally; sharing a project again keeps its link.
-
-**Layers on the web**, in every browser: the program and its drawing in a
-worker (OffscreenCanvas) by default, the page's thread passing input on
-and the fallback (done: Chromium, Firefox and WebKit, the same frames and
-input latency); the browser as the system compositor: each layer
-a canvas in the page, drawn from a worker (OffscreenCanvas, WebGPU's one
-device for all of them, ImageBitmaps under WebGL2), tiled where it is
-long; scrollers the browser's own elements with their layers inside, so
-they scroll in step at the screen's rate (iOS Safari holds
-requestAnimationFrame and touch to 60 Hz, not its scrolling); the declared
-animations Web Animations, sticky and scroll-linked effects CSS's; inputs,
-video and iframes between the layers; the program in a worker, the page's
-thread passing input on (an invisible scroller's offsets for drags the
-program follows).
-
-Also: Windows' touchpad scrolling, the web's scroll lag and Safari's rubber band.
-
-**Later**: decals, volumetric fog, a lightmap baker, soft bodies, multiplayer,
-a Vulkan back end (Android and Linux: async compute, timestamps, bindless),
-io_uring for files and sockets on Linux.
+- **Packages:** push notifications, Game Center and Play Games, ads and
+  analytics, with no Xcode or Android SDK needed.
+- **Games:** more physics (mesh and convex colliders, layers, triggers,
+  contact events, stable stacks), animation state machines and tweens,
+  3D audio, richer particles, tilemaps and 2D physics, pathfinding, saves,
+  ETC2 and KTX2 textures, and a profiler.
+- **Parallel:** one function over a range or buffers, compiled to SIMD
+  across jobs and GPU compute, picked per call. Workgroup memory and
+  subgroups in `compute()`, with particles, cloth and soft bodies first.
+- **helder.run:** `helder share --watch` sends each rebuild to the same
+  address and open pages reload in place. Sharing again keeps the link.
+- **Later:** decals, volumetric fog, a lightmap baker, soft bodies,
+  multiplayer, Vulkan on Android and Linux, and io_uring for files and
+  sockets on Linux.
 
 ## License
 
-MIT (LICENSE). helder.pack's asset catalog and code signing are helder's own
+[MIT](LICENSE). helder.pack's asset catalog and code signing are helder's own
 code, written from the formats as
 [viraptor/actool](https://github.com/viraptor/actool) (MIT) and
 [rcodesign](https://github.com/indygreg/apple-platform-rs) (MPL-2.0, read

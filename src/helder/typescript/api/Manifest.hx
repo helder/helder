@@ -8,7 +8,7 @@ import helder.typescript.api.Modules;
 
 using haxe.macro.TypeTools;
 
-// The manifest of helder's API for TypeScript programs (DESIGN.md 7.3),
+// The manifest of helder's API for TypeScript programs (typescript's README),
 // made from the Haxe types while the build is typed: for each module (a
 // declaration class, Modules: helder.view.TypeScript...), its classes'
 // members and their types, and the contracts of the renderers it reaches

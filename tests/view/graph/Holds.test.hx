@@ -94,7 +94,7 @@ function tests() {
 			equals([for (fr in frames) if (Std.isOfType(fr[1], Int)) fr], [(["1", 1, false] : Array<Dynamic>), (["2", 1, false] : Array<Dynamic>)]);
 			equals([for (fr in frames) if (fr[1] == 0) fr], []);
 			dispose();
-		}).skip(); // (known gap: Solid's rule not yet followed, DESIGN.md 2, Holds)
+		}).skip(); // (known gap: Solid's rule not yet followed, view's README, Holds)
 
 		test("a shared reader forces one settle point: nothing commits until both asyncs resolve", () -> {
 			var a = signal(1), b = signal(1);
@@ -186,7 +186,7 @@ function tests() {
 			release();
 			flush();
 			equals(log, ["0:0", "0:1", "1:1"]);
-		}).skip(); // (known gap: Solid's rule not yet followed, DESIGN.md 2, Holds)
+		}).skip(); // (known gap: Solid's rule not yet followed, view's README, Holds)
 	});
 
 	// tick-scoped-pass-transaction.test.ts: membership in a hold is the tick's (ruling 1; F-2)
@@ -235,7 +235,7 @@ function tests() {
 			equals(h.shownA, [1]);
 			equals(h.shownB, [2]);
 			equals([isPending(() -> h.a()), isPending(() -> h.b())], [false, false]);
-		}).skip(); // (known gap: Solid's rule not yet followed, DESIGN.md 2, Holds)
+		}).skip(); // (known gap: Solid's rule not yet followed, view's README, Holds)
 
 		test("mountA(); flush(); mountB(); flush() — the manual flush ends the frame: independent, A reveals at its own release while B stays held", () -> {
 			var h = twoHolds();
@@ -341,7 +341,7 @@ function tests() {
 			var r = run("in-flush");
 			equals(r.atRelease, []);
 			containsAll(r.log, ["header bob", "page page-bob"]);
-		}).skip(); // (known gap: Solid's rule not yet followed, DESIGN.md 2, Holds)
+		}).skip(); // (known gap: Solid's rule not yet followed, view's README, Holds)
 
 		test("in a flush, under a Loading that has not shown content: the hold lands at its release; the boundary shows its fallback meanwhile", () -> {
 			var r = run("in-flush-boundary");
@@ -427,6 +427,6 @@ function tests() {
 			h.release();
 			flush();
 			equals(log, ["sel:-1", "sel:1"]);
-		}).skip(); // (known gap: Solid's rule not yet followed, DESIGN.md 2, Holds)
+		}).skip(); // (known gap: Solid's rule not yet followed, view's README, Holds)
 	});
 }

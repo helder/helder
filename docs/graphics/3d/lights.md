@@ -7,12 +7,12 @@ The sun, point lights, spot lights and a sky, with shadows that are sharp where 
 Lights attach to nodes and shine along them. Shadows are opted in, so a scene without them links none of their code.
 
 ```haxe
-var sun = world.node("sun");
+var sun = world.node('sun');
 Light.attach(sun, Light.directional(new Vec3(1, 0.95, 0.85), 2.2));
 sun.lookAt(new Vec3(0.35, -0.45, 0.82));     // it shines along its node's -z
 
 var bulb = Light.pointLight(new Vec3(1, 0.3, 0.1), 3, 4);  // colour, power, range
-var lamp = Light.attach(world.node("lamp"), bulb);
+var lamp = Light.attach(world.node('lamp'), bulb);
 lamp.castShadows = true;
 
 var shadows = new Shadows(device, 2048).soft(0.25, 16, 0.08);

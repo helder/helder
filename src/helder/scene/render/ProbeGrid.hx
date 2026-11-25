@@ -16,7 +16,7 @@ import helder.scene.Node;
 //   grid.fill(p -> Sh.ofHemisphere(...));
 //   ProbeGrid.attach(world.node("gi"), grid);
 class ProbeGrid {
-	public static final KIND = new StoreKind<ProbeGrid>("probeGrid");
+	@:noCompletion public static final KIND = new StoreKind<ProbeGrid>("probeGrid");
 
 	// the box's size (scene units) and its probes along each axis (2 or more)
 	public final size:Vec3;

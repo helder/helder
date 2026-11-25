@@ -9,7 +9,7 @@
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 import type {Read} from "helder/view";
 
-declare const __haxe: {Store: "helder.os.Store", Settings: "helder.os.Settings", Locale: "helder.os.Locale", Format: "helder.os.Format", Plural: "helder.os.Plural", Network: "helder.os.Network", Share: "helder.os.Share", Permissions: "helder.os.Permissions", Notifications: "helder.os.Notifications", Photos: "helder.os.Photos", Location: "helder.os.Location", Biometrics: "helder.os.Biometrics", Paths: "helder.os.Paths", Places: "helder.os.Places", Trash: "helder.os.Trash", DeviceInfo: "helder.os.DeviceInfo", StatusBar: "helder.os.StatusBar", Sys: "Sys", __module: "helder.os.TypeScript"};
+declare const __haxe: {Store: "helder.os.Store", Settings: "helder.os.Settings", Locale: "helder.os.Locale", Format: "helder.os.Format", Plural: "helder.os.Plural", Network: "helder.os.Network", Share: "helder.os.Share", Permissions: "helder.os.Permissions", Notifications: "helder.os.Notifications", Photos: "helder.os.Photos", Location: "helder.os.Location", Biometrics: "helder.os.Biometrics", Paths: "helder.os.Paths", Places: "helder.os.Places", Trash: "helder.os.Trash", DeviceInfo: "helder.os.DeviceInfo", StatusBar: "helder.os.StatusBar", args: "Sys.args", env: "Sys.getEnv", __module: "helder.os.TypeScript"};
 
 export type Contrast = "normal" | "more" | "less" | "custom";
 
@@ -71,10 +71,6 @@ export type Volume = { name: string; path: string; total: number; free: number; 
 // stays in memory: what an earlier run, or the user's own app, kept does
 // not change what the run shows, and the run keeps nothing.
 export declare class Store {
-	// the stores open() gives while set (null: the platform's): a screen's of
-	// a story host (helder.ui.ScreenContext, which sets it while current),
-	// each name's store in memory, kept for the run
-	static scope: unknown | null;
 	// the store of that name (letters, digits, '.', '-' and '_'), in the platform's place or in dir
 	static open(name: string, dir?: string): Store;
 	readonly name: string;
@@ -143,7 +139,7 @@ export declare class Permissions {
 export declare class Notifications {
 	static onOpen: ((arg0: string) => void) | null;
 	// whether it was scheduled (false where the system has none for the app)
-	static schedule(n: { id: string; title: string; body?: string; at?: unknown; after?: number }): boolean;
+	static schedule(n: { id: string; title: string; body?: string; at?: Date; after?: number }): boolean;
 	static cancel(id: string): void;
 }
 
@@ -230,10 +226,7 @@ export declare class StatusBar {
 	static hidden(h: boolean): void;
 }
 
-export declare class Sys {
-	static args(): string[];
-	static getEnv(s: string): string | null;
-}
+export declare function args(): string[];
+export declare function env(s: string): string | null;
 
-export declare const args: typeof Sys.args;
-export declare const env: typeof Sys.getEnv;
+export {};

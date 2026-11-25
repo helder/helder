@@ -1,6 +1,6 @@
 package helder.view.graph;
 
-// Async work a computation returns (DESIGN.md 2, Holds): its answer later
+// Async work a computation returns (view's README, Holds): its answer later
 // (a value or an error, once), and a cancel when the run that asked is
 // superseded or its owner disposed. helder.async's tasks, helder.asset's
 // loads and TypeScript's promises are Awaitables; Later is one by hand.

@@ -426,7 +426,7 @@ function tests() {
 			flush();
 			equals(last(latestOnly), 2);
 			equals(last(pairs), "false 2");
-		}).skip(); // (known gap: Solid's rule not yet followed, DESIGN.md 2, Holds)
+		}).skip(); // (known gap: Solid's rule not yet followed, view's README, Holds)
 
 		test("latest(signal) with sync consumer - latest(signal) is never pending; the plain form reports the hold", () -> {
 			var f = new Fetcher((v:Int) -> v * 10);
@@ -449,7 +449,7 @@ function tests() {
 			equals(last(pendingSignal), false);
 			equals(last(pairs), "false 2");
 			equals(x(), 2);
-		}).skip(); // (known gap: Solid's rule not yet followed, DESIGN.md 2, Holds)
+		}).skip(); // (known gap: Solid's rule not yet followed, view's README, Holds)
 
 		// (F-6: async derived from a display-ahead read holds its own lane)
 		test("latest(signal) consumed by async memo - latest form stays settled; downstream async reports itself", () -> {
@@ -487,7 +487,7 @@ function tests() {
 			flush();
 			equals(last(pairs), "false 2");
 			equals(id(), 2);
-		}).skip(); // (known gap: Solid's rule not yet followed, DESIGN.md 2, Holds)
+		}).skip(); // (known gap: Solid's rule not yet followed, view's README, Holds)
 
 		test("A10: single async - [isPending(x), x()] pairs update atomically", () -> {
 			var f = new Fetcher((v:Int) -> v * 10);
@@ -590,7 +590,7 @@ function tests() {
 			fb.resolveAll();
 			flush();
 			equals(last(pairsB), "false 21");
-		}).skip(); // (known gap: Solid's rule not yet followed, DESIGN.md 2, Holds)
+		}).skip(); // (known gap: Solid's rule not yet followed, view's README, Holds)
 
 		test("multiple independent async - [isPending(x), x()] pairs with progressive resolution", () -> {
 			var fa = new Fetcher((v:Int) -> v * 10), fb = new Fetcher((v:Int) -> v * 100);
@@ -658,7 +658,7 @@ function tests() {
 			fb.resolveAll();
 			flush();
 			equals(last(pairsB), "false 200");
-		}).skip(); // (known gap: Solid's rule not yet followed, DESIGN.md 2, Holds)
+		}).skip(); // (known gap: Solid's rule not yet followed, view's README, Holds)
 	});
 
 	// spec-async-semantics.test.ts
@@ -1107,7 +1107,7 @@ function tests() {
 			flush();
 			equals(log[log.length - 1], "plain=false latestP=false latestPm=false");
 			dispose();
-		}).skip(); // (known gap: Solid's rule not yet followed, DESIGN.md 2, Holds)
+		}).skip(); // (known gap: Solid's rule not yet followed, view's README, Holds)
 	});
 
 	// latest-derived-held-error-4106.test.ts (F-6, D-41)
@@ -1458,7 +1458,7 @@ function tests() {
 			f.resolveAll();
 			flush();
 			equals(pendingLog, [false, true, false]);
-		}).skip(); // (known gap: Solid's rule not yet followed, DESIGN.md 2, Holds)
+		}).skip(); // (known gap: Solid's rule not yet followed, view's README, Holds)
 
 		test("control: memo reading double() too flips true (issue's workaround)", () -> {
 			var f = new Fetcher((v:Int) -> v * 2);
@@ -1481,7 +1481,7 @@ function tests() {
 			f.resolveAll();
 			flush();
 			equals(pendingLog[pendingLog.length - 1], false);
-		}).skip(); // (known gap: Solid's rule not yet followed, DESIGN.md 2, Holds)
+		}).skip(); // (known gap: Solid's rule not yet followed, view's README, Holds)
 
 		test("plain sync write (no async downstream) never glitches the wrapper true", () -> {
 			var a = signal(0);
@@ -1522,7 +1522,7 @@ function tests() {
 			f.resolveAll();
 			flush();
 			equals(pendingLog, [false, true, false]);
-		}).skip(); // (known gap: Solid's rule not yet followed, DESIGN.md 2, Holds)
+		}).skip(); // (known gap: Solid's rule not yet followed, view's README, Holds)
 	});
 
 	// latest-beside-staged-read-4365.test.ts (#4365; F-1, F-6)
@@ -1558,7 +1558,7 @@ function tests() {
 				equals(passes, ["2+3"]);
 				equals(out, "title=6");
 				dispose();
-			}).skip(); // (known gap: Solid's rule not yet followed, DESIGN.md 2, Holds)
+			}).skip(); // (known gap: Solid's rule not yet followed, view's README, Holds)
 
 		for (order in ["[latest(s), s()]", "[s(), latest(s)]"])
 			test('a memo of $order commits one whole frame on a plain write', () -> {
@@ -1647,7 +1647,7 @@ function tests() {
 				equals(seen, ["1,1", "2,1", "2,2"]);
 				dispose();
 			});
-			// (known gap for the memo: Solid's rule not yet followed, DESIGN.md 2, Holds)
+			// (known gap for the memo: Solid's rule not yet followed, view's README, Holds)
 			if (reader == "memo") entry.skip();
 		}
 	});

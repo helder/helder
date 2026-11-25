@@ -4,9 +4,9 @@
 // write commits at the loop's turn's end: flush() commits it here.) Its
 // filters' shortcuts typed into it, in a headless window of its own.
 import { flush } from "helder/view";
-import { test, equals, snapshot } from "helder/test";
+import {test, equals, snapshot, headless, mount, press} from 'helder/test'
 import { story, tree } from "helder/story";
-import { headless, mount, rootOf, find, focus, press, actionName } from "helder/ui/actions";
+import {rootOf, find, focus, actionName} from 'helder/ui/actions'
 import { App, Todo as TodoActions, todos, draft, add, filter } from "./app";
 import { toggled } from "./todos";
 
@@ -36,10 +36,10 @@ test("the filters' shortcuts: Todo's actions, from the text field", () => {
 	const ui = headless(480, 560);
 	const dispose = mount(ui, <App/>);
 	focus(find(rootOf(ui), "draft"));
-	press(ui, "ctrl-2");
+	press(ui, 'secondary-2')
 	flush();
 	equals(filter(), "active");
-	press(ui, "ctrl-3");
+	press(ui, 'secondary-3')
 	flush();
 	equals(filter(), "done");
 	equals(actionName(TodoActions.show("all")), "todo::Show");

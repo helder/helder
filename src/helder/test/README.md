@@ -153,23 +153,23 @@ under a directory named: `helder test examples/ts-todo`), built by helder's
 compiler into a program of their own and run natively and as wasm32-wasi,
 through the same runner: its groups, hooks, `-t`, `.only()`, `.skip()`,
 `.timeout()`, snapshots and report. They import `helder/test`
-(src/helder/test/index.ts, over `helder/test/runner`: helder.test.Script)
+(src/helder/test/index.ts, over its own `runner.d.ts`: helder.test.Script)
 and register at their top level:
 
 ```ts
 // examples/ts-todo/todos.test.ts
-import { describe, test, beforeEach, equals } from "helder/test";
-import { added, left } from "./todos";
+import {describe, test, beforeEach, equals} from 'helder/test'
+import {added, left} from './todos'
 
-describe("todos", () => {
-  let list = [];
-  beforeEach(() => { list = added([], 1, "Buy milk"); });
-  test("left", () => equals(left(list), "1 item left"));
-  test("later", async () => {
-    await new Promise(r => setTimeout(r, 1));
-    equals(list.length, 1);
-  }).timeout(1);
-});
+describe('todos', () => {
+  let list = []
+  beforeEach(() => {list = added([], 1, 'Buy milk')})
+  test('left', () => equals(left(list), '1 item left'))
+  test('later', async () => {
+    await new Promise(r => setTimeout(r, 1))
+    equals(list.length, 1)
+  }).timeout(1)
+})
 ```
 
 The assertions are Haxe's (`assert`, `equals`, `notEquals`, `approx`,

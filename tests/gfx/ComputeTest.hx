@@ -21,7 +21,7 @@ import ComputeShaders;
 //              sampled into the frame's top left: its texels' pixels
 //
 // The second frame allocates nothing in the GC heap from beginFrame to
-// endFrame (hxmc.GcStats). Natively the results are read back here; in a
+// endFrame (hxmc.GcStats, the drawing thread's). Natively the results are read back here; in a
 // browser WebGPU reads back asynchronously only: the program prints what
 // it expects (a buffer's handle, size and FNV-1a; pixels) and the harness
 // checks it. Without compute (WebGL2): Device.has says so,
@@ -177,10 +177,12 @@ class ComputeTest {
 			device.writeBuffer(scanA, 0, input);
 			device.writeBuffer(particleBuffer, 0, particleBytes);
 			device.writeBuffer(draws, 0, drawArgs);
-			var before = hxmc.GcStats.bytesAllocated();
+			// (this thread's: the CPU back end's helper threads, in their safe
+			// regions, move the count of every thread's by their buffers' sizes)
+			var before = hxmc.GcStats.threadBytesAllocated();
 			var enc = device.beginFrame();
 			frame(enc);
-			allocated = hxmc.GcStats.bytesAllocated() - before;
+			allocated = hxmc.GcStats.threadBytesAllocated() - before;
 			if (n == 1 && !web) device.readPixels(pixels);
 			device.endFrame();
 		}

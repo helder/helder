@@ -38,13 +38,13 @@ import helder.scene.Node;
 //   path.count = n;
 //   for (i in 0...n) path.setPoint(i, xs[i], ys[i], zs[i], 1, 1, 1, fade(i));
 class Lines {
-	public static final KIND = new StoreKind<Lines>("lines");
+	@:noCompletion public static final KIND = new StoreKind<Lines>("lines");
 	// the triangles of a join's or a round cap's fan
-	public static inline var FAN = 8;
+	@:noCompletion public static inline var FAN = 8;
 	// (a point as kept: x, y, z, r, g, b, a; as uploaded: x, y, z, its
 	// distance along, r, g, b, a: 32 bytes)
 	static inline var FIELDS = 7;
-	public static inline var RECORD = 32;
+	@:noCompletion public static inline var RECORD = 32;
 
 	public final capacity:Int;
 	// separate segments (points 2k and 2k + 1), not a polyline

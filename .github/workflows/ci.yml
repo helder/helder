@@ -1,9 +1,10 @@
 # The checks (tests/Run.hx: bun run test <lane>), with @hxmc/cli's compiler
 # installed by bun (package.json's dependencies; node runs the compiler's
 # launcher and the test scripts). Each job starts with .github/actions/setup
-# (node, bun, the compilers' caches restored: hxmc's module cache and
-# helder's, keyed by the OS, the job, hxmc's version, the lockfile and the
-# sources) and saves them at its end (.github/actions/save).
+# (node and bun pinned, the module cache restored: hxmc's and helder's, one
+# entry per OS, .github/actions/key) and, on main, hands what it compiled to
+# the cache job (.github/actions/save), which merges every job's into the
+# OS's entry. Pull requests only restore it.
 # - changes: what the change touches; one of docs alone (docs/**, **/*.md)
 #   runs only the docs' checks (examples, site) and ci;
 # - headless: the lanes that need no GPU, display or browser (bun run test -j 3
@@ -90,12 +91,21 @@ on:
 
 permissions:
   contents: read
-  # (main's older caches deleted once a job saved its newest: .github/actions/save)
+  # (main's older module caches deleted once the cache job saved the newest)
   actions: write
 
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'schedule' && 'nightly' || 'run' }}
-  cancel-in-progress: true
+  # (a pull request's newer push cancels its run; main's and the nightly's
+  # always finish, each its own group: GitHub would otherwise replace a
+  # pending run with the next)
+  group: ci-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # (test windows that never take the focus)
+  HELDER_BACKGROUND: 1
+  # (the merged cache whole, not trimmed by a job: the cache job trims it)
+  HXMC_CACHE_SIZE: 4G
 
 jobs:
   changes:
@@ -129,15 +139,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {part: lanes, cache: headless, run: -j 3 headless -x typescript -x examples -x pack -x gfx-soft}
-          - {part: pack, cache: headless-pack, run: pack}
+          - {part: lanes, run: -j 3 headless -x typescript -x examples -x pack -x gfx-soft}
+          - {part: pack, run: pack}
           # (helder.gfx on the CPU: static builds, no Mesa; its shaders' check alone is a large build)
-          - {part: soft, cache: headless-soft, run: gfx-soft}
+          - {part: soft, run: gfx-soft}
     steps:
       - uses: actions/checkout@v7
       - id: setup
         uses: ./.github/actions/setup
-        with: {cache: '${{ matrix.cache }}', node-version: 24}
+        with: {node-version: 24}
       - name: Fonts (DejaVu Sans, for text and ui), libEGL and Mesa's llvmpipe
         # (helder test's host build links helder.gfx's libEGL.so.1 when a test
         # reaches the scene; nothing opens a display. llvmpipe: the pack
@@ -156,12 +166,12 @@ jobs:
           curl -sSL --retry 3 -o "$RUNNER_TEMP/bundletool.jar" https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar
           export BUNDLETOOL="$RUNNER_TEMP/bundletool.jar"
           bun run test -k ${{ matrix.run }}
-      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
-        uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
   # (two jobs, 4 shards each: TS_PART, tests/typescript/run.mjs; one job's
   # 4 cores took 5.5 min)
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
+        uses: ./.github/actions/save
+
   typescript:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -175,9 +185,12 @@ jobs:
       - uses: actions/checkout@v7
       - id: setup
         uses: ./.github/actions/setup
-        with: {cache: 'typescript-${{ matrix.part }}', node-version: 24}
+        with: {node-version: 24}
       - name: Fonts and libEGL (the programs rendering headless)
         run: sudo apt-get update -qq && sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core fonts-liberation libegl1 libegl-mesa0 libgl1-mesa-dri
+      - name: TypeScript declarations
+        if: matrix.part == 0
+        run: bun run test declarations
       - name: The TypeScript frontend (tests/typescript/run.mjs, sharded)
         env:
           TS_JOBS: 4
@@ -185,7 +198,6 @@ jobs:
         run: bun run test typescript
       - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
   examples:
     needs: changes
@@ -195,16 +207,13 @@ jobs:
       - uses: actions/checkout@v7
       - id: setup
         uses: ./.github/actions/setup
-        with: {cache: examples, node-version: 24}
+        with: {node-version: 24}
       - name: Fonts (DejaVu Sans) and libEGL
         run: sudo apt-get update -qq && sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core fonts-liberation libegl1 libegl-mesa0 libgl1-mesa-dri
       - name: Every example built (the web builds the site job makes too, there)
         env:
           EXAMPLES_WEB: site
         run: bun run test examples
-      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
-        uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
   # The examples' pages and the docs (site/, docs/: bun run site), built and
   # checked, not deployed: helder.build's deploy builds them from main on its
@@ -217,6 +226,9 @@ jobs:
   # examples, the top bar's links on an iPhone's screen), its screenshots
   # kept a week. SITE_SKIP_DATA: the examples of fetched models (Sponza's,
   # tens of MB) listed without a Play button (the examples job builds them).
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
+        uses: ./.github/actions/save
+
   site:
     needs: changes
     runs-on: ubuntu-24.04
@@ -225,7 +237,7 @@ jobs:
       - uses: actions/checkout@v7
       - id: setup
         uses: ./.github/actions/setup
-        with: {cache: site, node-version: 24}
+        with: {node-version: 24}
       - name: Fonts (DejaVu Sans, for the ui and text examples)
         run: sudo apt-get update -qq && sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core
       - name: Build
@@ -235,14 +247,14 @@ jobs:
       # (the built site for site-check's machines)
       - uses: actions/upload-artifact@v7
         with: {name: site-built, path: "bin/site\nbin/site-build/examples.json", retention-days: 1, compression-level: 1}
-      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
-        uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
   # The site's check (bun run site:check), its demos and docs pages in two
   # shards (SITE_SHARD), a machine each: on one machine, two Chromiums'
   # SwiftShader starved each other's frames (a heavy demo's canvas beside
   # the other's); each is alone on its cores as main's single check was.
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
+        uses: ./.github/actions/save
+
   site-check:
     needs: site
     runs-on: ubuntu-24.04
@@ -255,7 +267,7 @@ jobs:
       - uses: actions/checkout@v7
       - id: setup
         uses: ./.github/actions/setup
-        with: {cache: site-check, node-version: 24, playwright: 1.56.1}
+        with: {node-version: 24, playwright: 1.56.1}
       - name: Fonts (DejaVu Sans), Mesa
         run: sudo apt-get update -qq && sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core libegl1 libegl-mesa0
       - uses: actions/download-artifact@v7
@@ -267,6 +279,8 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with: {name: 'site-${{ matrix.shard }}', path: bin/site-check/*.png, retention-days: 7, if-no-files-found: ignore}
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
+        uses: ./.github/actions/save
 
   fuzz:
     needs: changes
@@ -278,12 +292,11 @@ jobs:
       - uses: actions/checkout@v7
       - id: setup
         uses: ./.github/actions/setup
-        with: {cache: fuzz, node-version: 24}
+        with: {node-version: 24}
       - name: helder.image's decoders fuzzed for 30 s (tests/image/Fuzz.hx), helder.pdf for 30 s (tests/pdf/Fuzz.hx)
         run: bun run test -k image-fuzz pdf-fuzz
       - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
   gfx:
     needs: changes
@@ -295,28 +308,27 @@ jobs:
       - uses: actions/checkout@v7
       - id: setup
         uses: ./.github/actions/setup
-        with: {cache: gfx}
       - name: System packages
         run: |
           sudo apt-get update -qq
           sudo apt-get install -qqy --no-install-recommends libegl1 libegl-mesa0 libgl1-mesa-dri libgles2 xvfb xauth libasound2t64 fonts-dejavu-core fonts-inter libgtk-3-0t64 dbus at-spi2-core fonts-noto-color-emoji fonts-freefont-ttf libharfbuzz0b libfreetype6 fontconfig libtiff6 libheif1 libheif-plugin-aomdec libraw23t64 osslsigncode desktop-file-utils appstream libenchant-2-2 hunspell-en-us libavcodec60
-      # (a headless weston for the wayland lane, the protocols' XML, xcompmgr for X11's transparent window; without them the lane only builds)
+      # (a headless weston for the wayland lane, the protocols' XML (KDE's blur too), xcompmgr and libXtst for X11's transparent window and its clicks; without them the lane only builds)
       - name: Wayland's packages
         timeout-minutes: 6
         continue-on-error: true
-        run: sudo apt-get install -qqy --no-install-recommends weston wayland-protocols libwayland-dev libwayland-egl1 libxkbcommon0 xcompmgr
+        run: sudo apt-get install -qqy --no-install-recommends weston wayland-protocols libwayland-dev libwayland-egl1 libxkbcommon0 xcompmgr libxtst6 plasma-wayland-protocols
       - name: gfx, audio, ui, helder run --headless, the shared textures and the story host across processes, Wayland (a headless weston), the platform's text, images and media decoders (Mesa llvmpipe, Xvfb; libavcodec, no VAAPI driver)
         # (two at once: headless-run alone was 171 s of the step's 235)
         run: bun run test -k -j 2 headless-run gfx gfx-compute gfx-shared story-shared audio ui-draw wayland dbus system-text system-images canvas-gpu
       - uses: actions/upload-artifact@v7
         if: always()
         with: {name: images, path: "bin/gfx/**/*.png\nbin/headless-run/**/*.png\nbin/canvas/*.png\nbin/ui/**/*.png\nbin/text/*.png\nbin/os/**/*.png", retention-days: 7, if-no-files-found: ignore}
-      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
-        uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
   # helder.scene and helder.physics (the 3d lane), a job of their own: its
   # builds (about 20 programs, made at once) and frames were half of gfx's
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
+        uses: ./.github/actions/save
+
   gfx-3d:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -327,7 +339,6 @@ jobs:
       - uses: actions/checkout@v7
       - id: setup
         uses: ./.github/actions/setup
-        with: {cache: gfx-3d}
       - name: System packages
         run: sudo apt-get update -qq && sudo apt-get install -qqy --no-install-recommends libegl1 libegl-mesa0 libgl1-mesa-dri libgles2 xvfb xauth fonts-dejavu-core fonts-inter libharfbuzz0b libfreetype6 fontconfig
       - name: helder.scene and helder.physics (Mesa llvmpipe, Xvfb)
@@ -338,12 +349,12 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with: {name: images-3d, path: "bin/3d/**/*.png", retention-days: 7, if-no-files-found: ignore}
-      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
-        uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
   # (two jobs: the demos and the viewer's packages and windows; the studio's
   # lanes. One took 7 min)
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
+        uses: ./.github/actions/save
+
   gfx-apps:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -360,7 +371,6 @@ jobs:
       - uses: actions/checkout@v7
       - id: setup
         uses: ./.github/actions/setup
-        with: {cache: 'gfx-${{ matrix.part }}'}
       - name: System packages
         run: |
           sudo apt-get update -qq
@@ -370,14 +380,14 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with: {name: 'images-${{ matrix.part }}', path: "bin/demos/*.png\nbin/studio-check/*.png\nbin/os/*.png", retention-days: 7, if-no-files-found: ignore}
-      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
-        uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
   # (four jobs, 3d-web's runs in three shards, SCENES_SHARD, a machine each:
   # one run at a time on a machine's cores, as SwiftShader's frames need;
   # the other lanes a job of their own. Two shards, the other lanes on the
   # first: 371 and 328 s)
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
+        uses: ./.github/actions/save
+
   browser:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -396,7 +406,7 @@ jobs:
       - uses: actions/checkout@v7
       - id: setup
         uses: ./.github/actions/setup
-        with: {cache: 'browser-${{ matrix.shard }}', playwright: 1.56.1}
+        with: {playwright: 1.56.1}
       - name: Fonts, poppler, Mesa
         run: sudo apt-get update -qq && sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core poppler-utils libegl1 libegl-mesa0
       - name: gfx, 3d, audio, web and ui in Chromium
@@ -412,10 +422,9 @@ jobs:
       # (the frames each API drew: a golden's difference seen)
       - uses: actions/upload-artifact@v7
         if: always()
-        with: {name: 'images-browser-${{ matrix.shard }}', path: "bin/3d/*-webgpu-*.png\nbin/3d/*-webgl2-*.png\nbin/ui/viewer/*.png", retention-days: 7, if-no-files-found: ignore}
+        with: {name: 'images-browser-${{ matrix.shard }}', path: "bin/3d/*-webgpu-*.png\nbin/3d/*-webgl2-*.png\nbin/ui/viewer/*.png\nbin/ui/web-layers-*.png", retention-days: 7, if-no-files-found: ignore}
       - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
   studio-web:
     needs: changes
@@ -427,19 +436,32 @@ jobs:
       - uses: actions/checkout@v7
       - id: setup
         uses: ./.github/actions/setup
-        # (bin/compiler-web kept: its brotli files, minutes at quality 11, reused for the same bytes)
-        with: {cache: studio-web, playwright: 1.56.1, extra: bin/compiler-web}
+        with: {playwright: 1.56.1}
       - name: Fonts, Mesa
         run: sudo apt-get update -qq && sudo apt-get install -qqy --no-install-recommends fonts-dejavu-core libegl1 libegl-mesa0
+      # Keep the expensive Brotli results separate from the shared compiler cache.
+      - id: compiler-web
+        uses: actions/cache/restore@v6
+        with:
+          path: |
+            bin/compiler-web/*.br
+            bin/compiler-web/manifest.json
+          key: compiler-web-br-${{ hashFiles('bun.lock', 'src/**') }}
+          restore-keys: compiler-web-br-
       # (one job: compiler-web's toolchain is studio-web's too, built once in bin/compiler-web)
       - name: helder studio in the browser, helder's compiler in the browser
         run: bun run test -k studio-web compiler-web
       - uses: actions/upload-artifact@v7
         if: always()
         with: {name: studio-web, path: "bin/studio-web/*.png\nbin/studio-web/results.md", retention-days: 7, if-no-files-found: ignore}
-      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
-        uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}', extra: bin/compiler-web}
+      - if: ${{ !cancelled() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && steps.compiler-web.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v6
+        continue-on-error: true
+        with:
+          path: |
+            bin/compiler-web/*.br
+            bin/compiler-web/manifest.json
+          key: ${{ steps.compiler-web.outputs.cache-primary-key }}
 
   # Android on an x86-64 emulator with KVM (reactivecircus/android-emulator-runner,
   # API 34, as hxmc's CI): tests/pack/android.sh (helder run --target
@@ -451,6 +473,9 @@ jobs:
   # navigation bar and a camera's cutout, for the insets. (The APKs' and the
   # App Bundle's checks without a device, bundletool's too, are the
   # headless job's pack lane.)
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
+        uses: ./.github/actions/save
+
   android:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -461,11 +486,11 @@ jobs:
       - uses: actions/checkout@v7
       - id: setup
         uses: ./.github/actions/setup
-        with: {cache: android}
       # (the Maven libraries billing.sh and jvm.sh fetch: billing's tree,
       # kotlin-stdlib; keyed by what names their versions)
       - name: Maven's libraries
-        uses: actions/cache@v6
+        id: maven
+        uses: actions/cache/restore@v6
         with:
           path: bin/pack/cache/maven
           key: maven-${{ hashFiles('src/helder/pack/android/Maven.hx', 'tests/pack/jvm/JvmFixture.hx', 'src/helder/store/PurchasesAndroid.hx') }}
@@ -535,9 +560,12 @@ jobs:
             bin/pack/*.apk
           retention-days: 7
           if-no-files-found: ignore
-      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
-        uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
+      - if: ${{ !cancelled() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && steps.maven.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v6
+        continue-on-error: true
+        with:
+          path: bin/pack/cache/maven
+          key: ${{ steps.maven.outputs.cache-primary-key }}
 
   # iOS on an iPhone simulator of a macOS runner (Apple silicon: hxmc's
   # ios-sim-arm64), as hxmc's CI. One simulator for the job: made and
@@ -556,6 +584,9 @@ jobs:
   # beside it, gfx's a minute. The CLI and helder's compiler built before
   # the simulator is made: beside its first boot they took 245 and 190 s,
   # 4 and 17 s without it; the apps while it boots. One job: 910 s)
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
+        uses: ./.github/actions/save
+
   ios-simulator:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -574,7 +605,6 @@ jobs:
       # took 1 and 3 minutes, 20 s otherwise)
       - id: setup
         uses: ./.github/actions/setup
-        with: {cache: 'ios-simulator-${{ matrix.shard }}'}
       - name: The CLI and helder's compiler, before the simulator
         run: |
           set -u
@@ -647,9 +677,6 @@ jobs:
             bin/pack/ios-textinput/*.png
           retention-days: 7
           if-no-files-found: ignore
-      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
-        uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
   # The iOS bundles' checks that need a Mac but no simulator: the pack
   # lane's iOS half (PACK_ONLY=ios: tests/pack/PackCheck.hx on every .app
@@ -660,6 +687,9 @@ jobs:
   # entitlements and requirement, assetutil --info on the icon's Assets.car
   # (tests/pack/signing/verify.sh). App Store Connect's acceptance is a
   # TestFlight upload with the owner's account (src/helder/pack/README.md).
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
+        uses: ./.github/actions/save
+
   ios-signing:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -670,7 +700,6 @@ jobs:
       - uses: actions/checkout@v7
       - id: setup
         uses: ./.github/actions/setup
-        with: {cache: ios-signing}
       - name: The iOS bundles checked by Apple's tools too (pack, PACK_ONLY=ios)
         env:
           PACK_ONLY: ios
@@ -679,13 +708,13 @@ jobs:
       - name: Signed by helder, checked by codesign and assetutil
         if: ${{ !cancelled() && steps.setup.outcome == 'success' }}
         run: sh tests/pack/signing/verify.sh
-      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
-        uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
   # The desktops beside Linux's: macOS (Apple silicon) and Windows, their
   # windows (the window lane: a drop through each system's own mechanism,
   # moveTo and position, fullscreen) on the runner's own session.
+      - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
+        uses: ./.github/actions/save
+
   desktop-macos:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -696,7 +725,6 @@ jobs:
       - uses: actions/checkout@v7
       - id: setup
         uses: ./.github/actions/setup
-        with: {cache: desktop-macos}
       - name: macOS x86-64's runtime objects (the universal bundle's second slice)
         run: |
           v=$(node -p "require('./node_modules/@hxmc/cli/package.json').version")
@@ -721,7 +749,6 @@ jobs:
         with: {name: video-window-macos, path: "bin/media/video-window/*.png", retention-days: 7, if-no-files-found: ignore}
       - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
 
   desktop-windows:
     needs: changes
@@ -739,7 +766,6 @@ jobs:
       - uses: actions/checkout@v7
       - id: setup
         uses: ./.github/actions/setup
-        with: {cache: desktop-windows}
       - name: window, the viewer (its tests, its builds, a real window), the system's decoders, helder/native from TypeScript (COM), shared textures (DXGI, helder.gfx's and the story host's)
         run: bun run test -k os window viewer viewer-window system-images system-text typescript-native gfx-shared story-shared gfx-compute tls
       - uses: actions/upload-artifact@v7
@@ -747,10 +773,85 @@ jobs:
         with: {name: text-windows, path: "bin/text/*.png", retention-days: 7, if-no-files-found: ignore}
       - if: ${{ !cancelled() && steps.setup.outputs.save == 'true' }}
         uses: ./.github/actions/save
-        with: {key: '${{ steps.setup.outputs.key }}', prefix: '${{ steps.setup.outputs.prefix }}'}
+
+  # main's module caches: every job's files (.github/actions/save) laid over
+  # the OS's last entry, trimmed by hxmc (least recently used first, past
+  # HXMC_CACHE_SIZE: an hxmc build, the CLI's, with its last trim's time
+  # removed), saved as the OS's one entry, the older entries deleted (a run
+  # that ends after a newer one's: its merge restored first, still warm).
+  cache:
+    needs: [changes, headless, typescript, examples, site, site-check, fuzz, gfx, gfx-3d, gfx-apps, browser, studio-web, android, ios-simulator, ios-signing, desktop-macos, desktop-windows]
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && needs.changes.outputs.code == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    env:
+      HXMC_CACHE_SIZE: 1500M
+    steps:
+      - uses: actions/checkout@v7
+      - id: setup
+        uses: ./.github/actions/setup
+      - id: key
+        uses: ./.github/actions/key
+      - uses: actions/download-artifact@v7
+        if: steps.setup.outputs.save == 'true'
+        continue-on-error: true
+        with: {pattern: 'modules-${{ runner.os }}-*', path: '${{ runner.temp }}/modules'}
+      - id: merge
+        if: steps.setup.outputs.save == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # (relative names: Windows' tar takes D:\ for a remote host)
+          [ -d "$RUNNER_TEMP/modules" ] || { echo "no job handed over a module cache"; exit 0; }
+          cd "$RUNNER_TEMP/modules"
+          for t in */modules.tar; do tar -C ~ -xf "$t"; done
+          cd ~
+          dirs=$(ls -d .cache/hxmc .cache/helder Library/Caches/hxmc Library/Caches/helder AppData/Local/hxmc/cache AppData/Local/helder 2> /dev/null || true)
+          du -sh $dirs
+          find $dirs -name trim.txt -delete
+          cd "$GITHUB_WORKSPACE"
+          node src/helder/cli/run.mjs help > /dev/null
+          for d in ~/.cache/helder ~/Library/Caches/helder ~/AppData/Local/helder/cache; do
+            for k in compiler compiler-web; do
+              { ls -1td "$d/$k"/*/ 2> /dev/null || true; } | tail -n +3 | xargs -r rm -rf
+            done
+          done
+          (cd ~ && du -sh $dirs)
+          echo "merged=true" >> "$GITHUB_OUTPUT"
+      - id: save
+        if: steps.merge.outputs.merged == 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ~/.cache/hxmc
+            ~/.cache/helder
+            ~/Library/Caches/hxmc
+            ~/Library/Caches/helder
+            ~/AppData/Local/hxmc/cache
+            ~/AppData/Local/helder
+          key: ${{ steps.key.outputs.key }}
+      - if: steps.save.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # (all but the newest saved, this run's or a later one's; an older
+          # hxmc's too)
+          prefix="${{ steps.key.outputs.prefix }}"
+          gh cache list --repo "$GITHUB_REPOSITORY" --ref refs/heads/main --key "${prefix%%hxmc-*}" --limit 100 --sort created_at --order desc --json id \
+            --jq '.[1:][] | .id' | while read -r id; do
+            gh cache delete "$id" --repo "$GITHUB_REPOSITORY"
+          done
 
   # The required jobs' verdict, always reported: a skipped job (a change to
   # the docs alone) passes, a failed or cancelled one fails it.
+
   ci:
     needs: [changes, headless, typescript, examples, site, site-check]
     if: always()

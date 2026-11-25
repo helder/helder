@@ -7,28 +7,28 @@ A `Router` holds your app's screens by path, as a stack; a `Stack` shows it. Scr
 Routes match in order; `:id` takes one segment and arrives typed. Each screen is made once, when it is pushed, and kept with its state while covered.
 
 ```tsx
-import { Router, Stack } from "helder/ui";
+import {Router, Stack} from 'helder/ui'
 
 const nav = new Router()
-  .route("/", () => <Home/>)
-  .route("/product/:id", p => <Product id={p.id}/>)
-  .fallback(path => <NotFound path={path}/>);
+  .route('/', () => <Home/>)
+  .route('/product/:id', p => <Product id={p.id}/>)
+  .fallback(path => <NotFound path={path}/>)
 
-<Stack router={nav}/>
+const stack = <Stack router={nav}/>
 
-nav.go("/product/3");   // push
-nav.back();             // pop
+nav.go('/product/3')   // push
+nav.back()             // pop
 ```
 
 ```haxe
 final nav = new Router();
-nav.route("/", _ -> <Home/>)
-  .route("/product/:id", p -> <Product id={p.id}/>)   // p: {id:String}
+nav.route('/', _ -> <Home/>)
+  .route('/product/:id', p -> <Product id={p.id}/>)   // p: {id:String}
   .fallback(path -> <NotFound path={path}/>);
 
 <Stack router={nav}/>
 
-nav.go("/product/3");   // push
+nav.go('/product/3');   // push
 nav.back();             // pop
 ```
 

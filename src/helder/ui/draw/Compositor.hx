@@ -30,7 +30,8 @@ import sys.thread.Mutex;
 // IosScroll), their offsets come to it on the main thread as they move
 // (nativeScrolled), its frames drawn at them, the physics the system's.
 // Where the system composites layers (macOS and iOS: CaLayers; Android:
-// ScLayers; Windows: DcLayers; Wayland: WlLayers; LayerSplit), every
+// ScLayers; Windows: DcLayers; Wayland: WlLayers; LayerSplit; the browser's
+// is WebCompositor's, WebLayers), every
 // frame, the program's too, is handed to it from the same state, a
 // scroller's content and a mover on layers the system moves. Off with
 // HELDER_ASYNC_SCROLL=0, and where the program has no thread of its own
@@ -72,6 +73,17 @@ class Compositor implements RenderIdle {
 	// Windows' 15.6 ms tick, or two of them after a slow draw (WARP's): the
 	// next vblank missed, the frames locked at half the display's rate)
 	var paced = false;
+	// (a test's, when set: each frame's timing, PROBE values: when the
+	// render thread came to it, the last frame's end, whether that one was
+	// paced, the swap chain's wait (ms), the frame's end (-1: the program's
+	// turn after the wait), whether it is paced, the 1 ms timer on, Present's
+	// HRESULT, the last window frame's GPU time read (ms, -1: none), the
+	// quads drawn, the pixels they cover (thousands, clipped to the window),
+	// whether the adapter is a software one)
+	@:noCompletion public var probe:Null<Array<Float>> = null;
+	@:noCompletion public static inline var PROBE = 12;
+	var drawnQuads = 0;
+	var drawnArea = 0.0;
 	// (the render thread's: the overlay bars' last moves and how far they
 	// show, per frame; the time its last frame was drawn at, Ui.now's)
 	final barAt:Array<Float> = [];
@@ -110,11 +122,15 @@ class Compositor implements RenderIdle {
 	public var layers(default, null):Null<LayerSplit> = null;
 	// (the window's frames drawn onto its layer last, as the textured compositor draws: not quiet)
 	var loud = true;
+	// (whether the last frame ended with no quads ever drawn (a window of its
+	// background alone): the layers have nothing to show, so the window's
+	// own frames are, until one has quads)
+	var empty = false;
 
 	// whether the program's frames go to the system's layers
 	public function planes():Bool {
 		if (layers != null) layers.prepare();
-		return layers != null && !layers.single && !layers.priming;
+		return layers != null && !empty && !layers.single && !layers.priming;
 	}
 
 	// (before the program's frame: whether it draws onto the window's layer
@@ -279,7 +295,8 @@ class Compositor implements RenderIdle {
 		spots = made;
 		lock.release();
 		drewSince = false;
-		if (!f.ready || !r.ended(f)) return;
+		empty = f.ready && !r.ended(f);
+		if (!f.ready || empty) return;
 		// (room for every quad it may draw, in each buffer of the ring)
 		var need = (f.quads() + 64) * CompositeFrame.STRIDE;
 		if (need > capacity) {
@@ -372,12 +389,15 @@ class Compositor implements RenderIdle {
 		// (onto the window's swap chain: until it takes the frame without
 		// queueing it (Device.waitFrame), then sampled; the program's, if it
 		// drained meanwhile)
+		var last = drew, was = paced, w0 = haxe.Timer.stamp(), waited = 0.0;
 		if (layers == null || layers.single) {
 			lock.release();
 			r.impl.waitFrame();
+			waited = haxe.Timer.stamp() - w0;
 			lock.acquire();
 			if (haxe.Timer.stamp() - drained < period * 0.6) {
 				lock.release();
+				probed(t, last, was, waited, -1, r);
 				return;
 			}
 			at = Ui.now();
@@ -412,9 +432,21 @@ class Compositor implements RenderIdle {
 		var at = haxe.Timer.stamp(), d = at - drew;
 		if (d > 0.002 && d < period * 1.5) period = period * 0.9 + d * 0.1;
 		drew = at;
+		probed(t, last, was, waited, at, r);
 		drewSince = true;
 		count++;
 		if (onFrame != null) onFrame(drew);
+	}
+
+	function probed(t:Float, last:Float, was:Bool, waited:Float, end:Float, r:Replay) {
+		var p = probe;
+		if (p == null) return;
+		lock.acquire();
+		var gpu = r.impl.gpuTime();
+		for (v in [t, last, was ? 1 : 0, waited * 1000, end, paced ? 1 : 0, RenderThread.fine ? 1 : 0, r.impl.presentResult(), gpu,
+			drawnQuads, drawnArea / 1000, r.impl.software() ? 1 : 0])
+			p.push(v);
+		lock.release();
 	}
 
 	// (the mirror's offsets of f's scrollers into now, at t: whether they
@@ -481,6 +513,7 @@ class Compositor implements RenderIdle {
 		if (out.length < need) out = Bytes.alloc(need * 2);
 		var n = f.compose(now, t, f.overlay ? barShown : null, out, runTextures, runs);
 		if (n * CompositeFrame.STRIDE > f.capacity) return;
+		if (probe != null) covered(n, f.width, f.height);
 		var b = f.buffers[ring = (ring + 1) % f.buffers.length], c = commands, bg = f.background;
 		c.clear();
 		one(Replay.BEGIN_FRAME);
@@ -529,6 +562,20 @@ class Compositor implements RenderIdle {
 		one(Replay.END_FRAME);
 		r.run(c, false);
 		c.clear();
+	}
+
+	// (the pixels n composed quads cover, each its corners' box in the frame: what is shaded)
+	function covered(n:Int, w:Int, h:Int) {
+		var a = 0.0;
+		for (q in 0...n) {
+			var o = q * CompositeFrame.STRIDE;
+			var x0 = out.getFloat(o + 8), y0 = out.getFloat(o + 12), x1 = out.getFloat(o + 24), y2 = out.getFloat(o + 44);
+			var dx = Math.max(0, Math.min(w, Math.max(x0, x1)) - Math.max(0, Math.min(x0, x1)));
+			var dy = Math.max(0, Math.min(h, Math.max(y0, y2)) - Math.max(0, Math.min(y0, y2)));
+			a += dx * dy;
+		}
+		drawnQuads = n;
+		drawnArea = a;
 	}
 
 	inline function one(op:Int) {

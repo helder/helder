@@ -6,7 +6,7 @@ import helder.scene.World;
 // The mesh a node draws: a component (a store keyed by node), several
 // nodes may share one Mesh.
 class MeshRenderer {
-	public static final KIND = new StoreKind<Mesh>("mesh");
+	@:noCompletion public static final KIND = new StoreKind<Mesh>("mesh");
 
 	public static inline function attach(node:Node, mesh:Mesh):Mesh
 		return node.world.store(KIND).set(node, mesh);

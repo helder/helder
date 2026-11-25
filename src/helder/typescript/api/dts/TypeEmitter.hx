@@ -106,6 +106,13 @@ class TypeEmitter {
 			case TLazy(f):
 				emitType(writer, f(), wrap);
 			case TInst(ref = _.get() => cl, params):
+				if (cl.module == "helder.async.Task" && params.length == 1)
+					switch Context.follow(params[0]) {
+						case TAbstract(_.get() => {pack: [], name: "Void" | "Any"}, _):
+							write('Promise<void>');
+							return;
+						case _:
+					}
 				var t = template(cl.meta, [for (p in cl.params) p.name], params, writer);
 				if (t != null) {
 					write(t);
@@ -114,6 +121,8 @@ class TypeEmitter {
 				switch [cl, params] {
 					case [{pack: [], name: 'String'}, _]:
 						write('string');
+					case [{pack: [], name: 'Date'}, _]:
+						write('Date');
 					case [{pack: [], name: "Array"}, [elemT]]:
 						var inner = toString(writer, elemT);
 						write(~/^[A-Za-z0-9_.<>]+$/.match(inner) ? inner + '[]' : 'Array<' + inner + '>');

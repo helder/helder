@@ -7,7 +7,7 @@ import helder.gfx.shader.Vec4;
 import helder.scene.*;
 import helder.scene.render.*;
 
-// Phase 6's frames (src/helder/scene/DESIGN-3D.md 1.3): the glTF material
+// Physical material reference frames: the glTF material
 // extensions, lit by a prefiltered studio (studio-ibl.png) and a sun (Scenes):
 //   physical        materials made in code, drawn by Physical (every
 //                   extension's variants): sheen (KHR_materials_sheen) on a

@@ -8,7 +8,7 @@ import helder.ui.controls.Tokens;
 import helder.ui.controls.Variant;
 
 // helder's default look (Look.base), after CUI's (MIT,
-// github.com/yappologistic/CUI: docs/design/controls.md): pure grays in
+// github.com/yappologistic/CUI): pure grays in
 // light and dark, a neutral accent (others to choose), soft rectangles on
 // a radius ladder (controls, panels, surfaces), two densities; solid
 // controls on a hairline of shadow; an opaque blue ring for the keyboard

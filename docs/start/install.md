@@ -19,20 +19,20 @@ npm i -D helder@next typescript@next
 Save this as `src/main.tsx`. helder finds `src/main.tsx` or `src/main.ts` when you run it from the project's root.
 
 ```tsx
-import { signal } from "helder/view";
-import { UiWindow, Surface } from "helder/ui";
+import {signal} from 'helder/view'
+import {UiWindow, Surface} from 'helder/ui'
 
-const count = signal(0);
+const count = signal(0)
 
 UiWindow.run(
-  <Surface title="Counter" width={320} height={200}>
-    <view grow={1} align-items="center" justify="center" row-gap={12}>
+  <Surface title='Counter' width={320} height={200}>
+    <view grow={1} align-items='center' justify='center' row-gap={12}>
       <text font-size={32}>{count}</text>
-      <view:button padding="8 16" radius={6} background="#18181b"
-        color="#fafafa" onPress={() => count(c => c + 1)}>+1</view:button>
+      <view:button padding='8 16' radius={6} background='#18181b'
+        color='#fafafa' onPress={() => count(c => c + 1)}>+1</view:button>
     </view>
   </Surface>
-);
+)
 ```
 
 `signal(0)` holds the count, the `<text>` reads it, and the button updates it. `<Surface>` is the window; in a browser it fills the page.

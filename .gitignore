@@ -6,3 +6,4 @@
 /examples/*/models/
 /apps/*/bin/
 /examples/*/bin/
+.DS_Store

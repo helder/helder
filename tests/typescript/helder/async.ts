@@ -1,4 +1,4 @@
-// TypeScript's async functions on helder's graph (DESIGN.md 7.4): an async
+// TypeScript's async functions on helder's graph (typescript's README): an async
 // function given to memo is an async computation (its value the answer,
 // what it reads before its first await tracked), a run superseded is
 // cancelled (its pending await throws an AbortError, its finally blocks

@@ -16,7 +16,7 @@ class Image {
 	public function new() {}
 
 	// an image decoded from a file's path or a data: URL (throws when it is not one)
-	public static function load(src:String):Image {
+	@:noCompletion public static function load(src:String):Image {
 		var img = new Image();
 		img.decode(src);
 		return img;
@@ -58,4 +58,10 @@ class Image {
 		img.complete = true;
 		return img;
 	}
+}
+
+@:noCompletion
+class ImageLoader {
+	public static function load(src:String):Image
+		return Image.load(src);
 }

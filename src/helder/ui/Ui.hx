@@ -902,7 +902,7 @@ class Ui extends ScrollHost {
 
 	// (the scrollbars of a scroller recorded in a layer: drawn live, as they fade and follow the pointer)
 	function walkBars(n:Node, nw:Float, nh:Float, c:Canvas, w:Walk) {
-		if (w.draw && !(nativeScroll && nativeBars)) paintBars(n, c, nw, nh);
+		if (w.draw && !platformBars(n)) paintBars(n, c, nw, nh);
 		else if (tracking && w.mark) barsMoved(n, nw, nh);
 	}
 
@@ -911,7 +911,7 @@ class Ui extends ScrollHost {
 	function barsMoved(n:Node, nw:Float, nh:Float) {
 		var now = barsList, l = n.contentLayer, was = l == null ? null : l.bars;
 		now.clear();
-		if (!(nativeScroll && nativeBars)) paintBars(n, now, nw, nh);
+		if (!platformBars(n)) paintBars(n, now, nw, nh);
 		if (was != null && was.same(now)) return;
 		for (list in [now, was])
 			if (list != null) {
@@ -1301,7 +1301,7 @@ class Ui extends ScrollHost {
 			nh = p.height();
 		}
 		if (s.overflow == Scroll && !hidden) {
-			if (dl != null) dl.bars(n, nw, nh) else if (!(nativeScroll && nativeBars)) paintBars(n, canvas, nw, nh);
+			if (dl != null) dl.bars(n, nw, nh) else if (!platformBars(n)) paintBars(n, canvas, nw, nh);
 		}
 		// (its outline over its content, the focus ring over that)
 		if (s.outlineWidth > 0 && !hidden && s.outlineStyle != None) {
@@ -2288,8 +2288,14 @@ class Ui extends ScrollHost {
 	// helder's own, takes only the touches elsewhere. Off: helder's own
 	// everywhere (a Surface's scrolling="helder")
 	public var nativeScroll = false;
-	// (the platform draws the scrollbars: the thumbs not drawn)
+	// (the platform draws the scrollbars: the thumbs not drawn; barsOf:
+	// those of the scrollers it says, the browser's where a scroller's
+	// content is a layer of the page's and its scrollbars overlay)
 	public var nativeBars = false;
+	public var barsOf:Null<Node->Bool> = null;
+
+	inline function platformBars(n:Node):Bool
+		return nativeScroll && (nativeBars || barsOf != null && barsOf(n));
 	// (a touch going down: the platform's scroll views stopped where one
 	// glides, whether one did; the touch then clicks nothing, as on iOS)
 	public var nativeHalt:Null<Void->Bool> = null;

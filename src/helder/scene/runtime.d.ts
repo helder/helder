@@ -27,7 +27,7 @@ import type {Mat4, Quat, Vec2, Vec3, Vec4} from "helder/gfx";
 import type {Node} from "helder/scene";
 import type {Read} from "helder/view";
 
-declare const __haxe: {Mesh: "helder.scene.render.Mesh", Encoder: "helder.gfx.Encoder", World: "helder.scene.World", Camera: "helder.scene.Camera", Light: "helder.scene.render.Light", Renderer: "helder.scene.render.Renderer", Shadows: "helder.scene.render.Shadows", Fog: "helder.scene.render.Fog", Material: "helder.scene.render.Material", UvTransform: "helder.scene.render.Material.UvTransform", Physical: "helder.scene.render.Physical", Transmission: "helder.scene.render.Transmission", MeshRenderer: "helder.scene.render.MeshRenderer", Shapes: "helder.scene.render.Shapes", Geometry: "helder.scene.render.Geometry", VertexData: "helder.scene.render.VertexData", Curve3: "helder.scene.math.Curve3", InstancedMesh: "helder.scene.render.InstancedMesh", Sprites: "helder.scene.render.Sprites", Model: "helder.scene.render.Model", MaterialShader: "helder.scene.render.MaterialShader", PostProcess: "helder.scene.render.PostProcess", Ssao: "helder.scene.render.Ssao", Dof: "helder.scene.render.Dof", Outline: "helder.scene.render.Outline", Lut: "helder.scene.render.Lut", ViewBuffers: "helder.scene.render.ViewBuffers", Ssr: "helder.scene.render.Ssr", MotionBlur: "helder.scene.render.MotionBlur", GodRays: "helder.scene.render.GodRays", Taa: "helder.scene.render.Taa", Smaa: "helder.scene.render.Smaa", Occlusion: "helder.scene.render.Occlusion", Lines: "helder.scene.render.Lines", LineRenderer: "helder.scene.render.LineRenderer", DebugDraw: "helder.scene.render.DebugDraw", Helper: "helder.scene.render.Helper", AxesHelper: "helder.scene.render.AxesHelper", GridHelper: "helder.scene.render.GridHelper", BoundsHelper: "helder.scene.render.BoundsHelper", LightHelper: "helder.scene.render.LightHelper", CameraHelper: "helder.scene.render.CameraHelper", SkeletonHelper: "helder.scene.render.SkeletonHelper", Hit: "helder.scene.render.Hit", HitList: "helder.scene.render.Hit.HitList", RaycastOptions: "helder.scene.render.Hit.RaycastOptions", Raycaster: "helder.scene.render.Raycaster", Bvh: "helder.scene.render.Bvh", Text3D: "helder.scene.render.Text3D", ClusteredLights: "helder.scene.render.ClusteredLights", Clusters: "helder.scene.render.Clusters", Lod: "helder.scene.render.Lod", InstanceCulling: "helder.scene.render.InstanceCulling", Environment: "helder.scene.render.Environment", Sh: "helder.scene.render.Sh", LightProbe: "helder.scene.render.LightProbe", ProbeGrid: "helder.scene.render.ProbeGrid", ReflectionProbe: "helder.scene.render.ReflectionProbe", Probes: "helder.scene.render.Probes", Lightmap: "helder.scene.render.Lightmap", Lightmaps: "helder.scene.render.Lightmaps", AreaLights: "helder.scene.render.AreaLights", InputMap: "helder.scene.input.InputMap", Bindings: "helder.scene.input.Bindings", FixedStep: "helder.scene.FixedStep", Device: "helder.gfx.Device", Surface: "helder.os.Surface", Window: "helder.os.Window", App: "helder.os.App", Event: "helder.os.Event", Script: "helder.scene.Script", __module: "helder.scene.TypeScript"};
+declare const __haxe: {World: "helder.scene.World", Camera: "helder.scene.Camera", Light: "helder.scene.render.Light", Renderer: "helder.scene.render.Renderer", Shadows: "helder.scene.render.Shadows", Fog: "helder.scene.render.Fog", Material: "helder.scene.render.Material", UvTransform: "helder.scene.render.Material.UvTransform", Physical: "helder.scene.render.Physical", Transmission: "helder.scene.render.Transmission", MeshRenderer: "helder.scene.render.MeshRenderer", Shapes: "helder.scene.render.Shapes", Geometry: "helder.scene.render.Geometry", VertexData: "helder.scene.render.VertexData", Curve3: "helder.scene.math.Curve3", InstancedMesh: "helder.scene.render.InstancedMesh", Sprites: "helder.scene.render.Sprites", Model: "helder.scene.render.Model", MaterialShader: "helder.scene.render.MaterialShader", PostProcess: "helder.scene.render.PostProcess", Ssao: "helder.scene.render.Ssao", Dof: "helder.scene.render.Dof", Outline: "helder.scene.render.Outline", Lut: "helder.scene.render.Lut", ViewBuffers: "helder.scene.render.ViewBuffers", Ssr: "helder.scene.render.Ssr", MotionBlur: "helder.scene.render.MotionBlur", GodRays: "helder.scene.render.GodRays", Taa: "helder.scene.render.Taa", Smaa: "helder.scene.render.Smaa", Occlusion: "helder.scene.render.Occlusion", Lines: "helder.scene.render.Lines", LineRenderer: "helder.scene.render.LineRenderer", DebugDraw: "helder.scene.render.DebugDraw", Helper: "helder.scene.render.Helper", AxesHelper: "helder.scene.render.AxesHelper", GridHelper: "helder.scene.render.GridHelper", BoundsHelper: "helder.scene.render.BoundsHelper", LightHelper: "helder.scene.render.LightHelper", CameraHelper: "helder.scene.render.CameraHelper", SkeletonHelper: "helder.scene.render.SkeletonHelper", Hit: "helder.scene.render.Hit", HitList: "helder.scene.render.Hit.HitList", RaycastOptions: "helder.scene.render.Hit.RaycastOptions", Raycaster: "helder.scene.render.Raycaster", Bvh: "helder.scene.render.Bvh", Text3D: "helder.scene.render.Text3D", ClusteredLights: "helder.scene.render.ClusteredLights", Clusters: "helder.scene.render.Clusters", Lod: "helder.scene.render.Lod", InstanceCulling: "helder.scene.render.InstanceCulling", Environment: "helder.scene.render.Environment", Sh: "helder.scene.render.Sh", LightProbe: "helder.scene.render.LightProbe", ProbeGrid: "helder.scene.render.ProbeGrid", ReflectionProbe: "helder.scene.render.ReflectionProbe", Probes: "helder.scene.render.Probes", Lightmap: "helder.scene.render.Lightmap", Lightmaps: "helder.scene.render.Lightmaps", AreaLights: "helder.scene.render.AreaLights", InputMap: "helder.scene.input.InputMap", Bindings: "helder.scene.input.Bindings", FixedStep: "helder.scene.FixedStep", Device: "helder.gfx.Device", Surface: "helder.os.Surface", Window: "helder.os.Window", App: "helder.os.App", Event: "helder.os.Event", Script: "helder.scene.Script", __module: "helder.scene.TypeScript"};
 
 // What a node draws (node.mesh): primitives, each a vertex buffer in the
 // renderer's layout (PbrVertex: position, normal, uv; 32 bytes a vertex),
@@ -234,8 +234,6 @@ export declare class World {
 	raycast(origin: Vec3, dir: Vec3, hit: Hit, options?: RaycastOptions): boolean;
 	// every triangle the ray meets into hits, nearest first; their count
 	raycastAll(origin: Vec3, dir: Vec3, hits: HitList, options?: RaycastOptions): number;
-	// the world's store of a kind (made on first use)
-	store<T>(kind: unknown): unknown;
 }
 
 // A camera, a component of a node (Camera.attach(node, camera)): it looks
@@ -244,7 +242,6 @@ export declare class World {
 // near plane). Several cameras may look at one world (split screens,
 // shadow views, XR's two eyes): each is drawn by its own Renderer.draw.
 export declare class Camera {
-	static readonly KIND: unknown;
 	static perspective(fovY: number, near: number, far: number): Camera;
 	static orthographic(height: number, near: number, far: number): Camera;
 	// camera on node (a camera is on one node at a time; node had one: replaced)
@@ -307,7 +304,6 @@ export declare class Camera {
 // castShadows (a directional light by default, a point or spot light when
 // asked: Shadows' tiles, within its budget), filtered as shadow says.
 export declare class Light {
-	static readonly KIND: unknown;
 	static directional(color: Vec3, intensity: number): Light;
 	static pointLight(color: Vec3, intensity: number, range: number): Light;
 	// a point light shining down its node's -z within a cone: full inside
@@ -831,7 +827,7 @@ export declare class UvTransform {
 	texCoord: number;
 }
 
-// The physical shader for every material (DESIGN-3D.md 1.3): one variant
+// The physical shader for every material: one variant
 // set with every glTF material extension (PhysicalShader.ALL: sheen,
 // specular and ior, clearcoat with its maps, transmission and volume,
 // iridescence, anisotropy; each core map at its own uvs), drawing each material whose fields use one
@@ -853,8 +849,8 @@ export declare class Physical {
 	shaderOf(m: Material): MaterialShader | null;
 }
 
-// The opaque frame behind see-through surfaces (DESIGN-3D.md 1.3:
-// KHR_materials_transmission and _volume), what a physical shader's
+// The opaque frame behind see-through surfaces
+// (KHR_materials_transmission and _volume), what a physical shader's
 // transmitting surface (PhysicalShader, Material.transmission) shows
 // through it, refracted by its ior and thickness and blurred by its
 // roughness (a mip level a roughness): once a frame that draws one, after
@@ -887,7 +883,6 @@ export declare class Transmission {
 // The mesh a node draws: a component (a store keyed by node), several
 // nodes may share one Mesh.
 export declare class MeshRenderer {
-	static readonly KIND: unknown;
 	static attach(node: Node, mesh: Mesh): Mesh;
 	static of(node: Node): Mesh | null;
 	static detach(node: Node): void;
@@ -1108,7 +1103,6 @@ export declare class Curve3 {
 // write it directly (data.setFloat, then changed()).
 export declare class InstancedMesh {
 	constructor(mesh: Mesh, capacity: number, count?: number, custom?: number);
-	static readonly KIND: unknown;
 	// bytes an instance in data
 	static readonly STRIDE: number;
 	static attach(node: Node, instances: InstancedMesh): InstancedMesh;
@@ -1270,6 +1264,7 @@ export declare class Sprites extends InstancedMesh {
 // no sheen; a model Model.load reads is drawn by Physical's (every
 // extension), when the program uses it.
 export declare class Model<N, M, A, C> {
+	private constructor();
 	// a model whose path is known only at run time: loaded in the background
 	// (in the browser fetched, relative to the page; natively read at once),
 	// its names unknown when compiling (find nodes by name: model.doc)
@@ -1807,7 +1802,7 @@ export declare class Smaa {
 // its last answer is let go (Device.resetQuery). The boxes are one draw
 // each (a query each): test what is worth it, not every pebble. Nothing is
 // allocated per frame. GPU-driven culling against a depth pyramid is the
-// compute tier's (DESIGN-3D.md, section 8).
+// compute tier's.
 //
 //   renderer.use(new Occlusion(device));
 //   Occlusion.test(building);           // its node's meshes culled while hidden
@@ -1868,10 +1863,6 @@ export declare class Occlusion {
 export declare class Lines {
 	// capacity points (count of them drawn: none by default)
 	constructor(capacity: number, options?: LinesOptions);
-	static readonly KIND: unknown;
-	// the triangles of a join's or a round cap's fan
-	static readonly FAN: number;
-	static readonly RECORD: number;
 	static attach(node: Node, lines: Lines): Lines;
 	static of(node: Node): Lines | null;
 	static detach(node: Node): void;
@@ -2022,7 +2013,6 @@ export declare class DebugDraw {
 // Unlike DebugDraw's calls, helpers are not compiled out of a release build:
 // a program attaching one wants it.
 export declare class Helper {
-	static readonly KIND: unknown;
 	// h added to node's helpers
 	static add<T>(node: Node, h: T): T;
 	// node's helpers removed
@@ -2372,7 +2362,6 @@ export declare class Clusters {
 // cameras keeps one level a node.
 export declare class Lod {
 	constructor(levels: LodLevel[], hysteresis?: number);
-	static readonly KIND: unknown;
 	static readonly RANGE: unknown;
 	// the levels on node (its MeshRenderer the first's, made if it has none)
 	static attach(node: Node, levels: LodLevel[], hysteresis?: number): Lod;
@@ -2571,7 +2560,6 @@ export declare class Sh {
 // per pixel.
 export declare class LightProbe {
 	constructor(sh: Sh, radius?: number);
-	static readonly KIND: unknown;
 	// probe on node (a node has one; the one it had is replaced)
 	static attach(node: Node, probe: LightProbe): LightProbe;
 	static of(node: Node): LightProbe | null;
@@ -2596,7 +2584,6 @@ export declare class LightProbe {
 //   ProbeGrid.attach(world.node("gi"), grid);
 export declare class ProbeGrid {
 	constructor(size: Vec3, nx: number, ny: number, nz: number);
-	static readonly KIND: unknown;
 	// grid on node (a node has one)
 	static attach(node: Node, grid: ProbeGrid): ProbeGrid;
 	static of(node: Node): ProbeGrid | null;
@@ -2640,7 +2627,6 @@ export declare class ProbeGrid {
 //   hall.node.position = new Vec3(0, 2, 0);
 export declare class ReflectionProbe {
 	constructor(size: Vec3, blend?: number);
-	static readonly KIND: unknown;
 	// probe on node (a node has one)
 	static attach(node: Node, probe: ReflectionProbe): ReflectionProbe;
 	static of(node: Node): ReflectionProbe | null;
@@ -2724,7 +2710,6 @@ export declare class Probes {
 //   Lightmap.attach(node, new Lightmap(baked, new Vec4(0, 0, 0.5, 0.5)));
 export declare class Lightmap {
 	constructor(texture: number, rect?: Vec4, srgb?: boolean);
-	static readonly KIND: unknown;
 	// lightmap on node (a node has one)
 	static attach(node: Node, lightmap: Lightmap): Lightmap;
 	static of(node: Node): Lightmap | null;
@@ -2944,7 +2929,7 @@ export declare class Surface {
 export declare class Window {
 	// (transparent: its pixels' alpha shows what is behind it, premultiplied;
 	// where the system cannot, opaque: see transparent)
-	constructor(title: string, width: number, height: number, titlebar?: "standard" | "inset", transparent?: boolean);
+	constructor(title: string, width: number, height: number, titlebar?: "standard" | "inset" | "none", transparent?: boolean);
 	readonly surface: Surface;
 	// its title bar's text (the browser: the page's title)
 	title: string;
@@ -3078,3 +3063,5 @@ export declare class Script {
 	// a material's block of its own (a shader of its own's: MaterialShader.blocks) by its parameter's name
 	static materialBlock(m: Material, name: string, bytes: Uint8Array): void;
 }
+
+export {};

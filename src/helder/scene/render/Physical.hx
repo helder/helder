@@ -1,6 +1,6 @@
 package helder.scene.render;
 
-// The physical shader for every material (DESIGN-3D.md 1.3): one variant
+// The physical shader for every material: one variant
 // set with every glTF material extension (PhysicalShader.ALL: sheen,
 // specular and ior, clearcoat with its maps, transmission and volume,
 // iridescence, anisotropy; each core map at its own uvs), drawing each material whose fields use one

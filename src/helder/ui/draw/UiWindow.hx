@@ -1,6 +1,10 @@
 package helder.ui.draw;
 
 import helder.os.DragOperation;
+#if (hxmc.target == "wasm32-wasi")
+// (the browser's: the program's frames on the page's layers alone)
+import helder.ui.draw.WebCompositor as Compositor;
+#end
 import helder.ui.platform.*;
 import helder.gfx.*;
 import helder.os.App;
@@ -27,6 +31,14 @@ typedef SurfaceProps = {
 	// (a first value not opaque, "transparent" or a colour's alpha: a
 	// transparent window, what is behind it seen through: Window's)
 	?background:helder.view.graph.Read<Dynamic>,
+	// the system's material behind the window ("blur", "mica", "glass":
+	// helder.os's Backdrop, where the system has it), seen through a clear or
+	// half-clear background; one makes the window transparent
+	?backdrop:helder.view.graph.Read<String>,
+	// a transparent window's clicks passing through what it doesn't draw
+	// (default true: UiWindow.clickThrough; pointer-events="none" on a
+	// node lets them through it too); false: it takes them everywhere
+	?clickThrough:Bool,
 	// dark or light (default: the system's appearance, UiWindow.dark)
 	?dark:helder.view.graph.Read<Bool>,
 	// the window closed by its user (default: closed)
@@ -39,8 +51,13 @@ typedef SurfaceProps = {
 	?antialias:Bool,
 	// "inset": the content under the title bar (helder.os's TitleBar), the
 	// window's buttons in its layout (WindowControls), dragged by its
-	// drag-region nodes, env(titlebar-area-*) its free area; default the system's
+	// drag-region nodes, env(titlebar-area-*) its free area; "none": no
+	// title bar nor frame (its drag regions still move it); default the system's
 	?titlebar:String,
+	// over every other window (helder.os's Window.onTop)
+	?onTop:helder.view.graph.Read<Bool>,
+	// false: out of the task bar and the window switcher (Window.taskbar)
+	?taskbar:helder.view.graph.Read<Bool>,
 	// helder.text's own engine's font smoothing in this window: "on" (as
 	// macOS draws by default) or "off" ("antialiased", as CSS's
 	// -webkit-font-smoothing); default the app's (helder.text.Shaping.smoothing)
@@ -90,11 +107,11 @@ class UiWindow {
 	public var device(default, null):Device;
 	public var renderer(default, null):Renderer;
 	#end
-	#if helder.headless
-	// the CPU's canvas where it draws a headless run (helder.ui.draw.soft:
-	// -D helder.soft, which links no GPU; HELDER_SOFT=1; or no GPU device to
-	// be made), else null
-	public var soft(default, null):Null<helder.ui.draw.soft.SoftCanvas> = null;
+	#if (helder.headless || helder.soft)
+	// the CPU's canvas where it draws a headless run or a -D helder.soft
+	// window (helder.ui.draw.soft: no GPU linked; HELDER_SOFT=1; or no GPU
+	// device to be made), else null
+	@:noCompletion public var soft(default, null):Null<helder.ui.draw.soft.SoftCanvas> = null;
 	#end
 	// its pixels a point (the renderer's scale), from its first frame
 	public var scale(default, null) = 1.0;
@@ -107,11 +124,11 @@ class UiWindow {
 	public var onFrame:Null<Void->Void>;
 	// when set, the next frame's pixels are read into it before they are
 	// presented (RGBA8, rows top to bottom: tests and screenshots)
-	public var capture:Null<haxe.io.Bytes>;
+	@:noCompletion public var capture:Null<haxe.io.Bytes>;
 
 	// how long the loop sleeps at most with nothing to draw (seconds): what
 	// changes the UI from outside its events shows within it
-	public static var idleWait = 0.1;
+	@:noCompletion public static var idleWait = 0.1;
 	// whether the system's appearance is dark (App.prefersDark), asked again
 	// every second while the loop runs; each window's Ui.dark follows it
 	@:typescript public static final dark:helder.view.graph.Signal<Bool> = Graph.signalOf(App.prefersDark(), {ownedWrite: true});
@@ -166,14 +183,15 @@ class UiWindow {
 		window = new helder.os.Window(title, width, height, titlebar, transparent);
 		// (Android: text fields get the soft keyboard and the input method)
 		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) helder.os.android.TextInput.enable(); #end
-		#if (helder.soft && !helder.headless)
-		throw "UiWindow: -D helder.soft draws a headless build's (-D helder.headless)";
-		#end
-		#if helder.headless
+		#if (helder.headless || helder.soft)
 		if (helder.ui.draw.soft.SoftCanvas.wanted() #if !helder.soft || (device = gpu(window.surface, antialias)) == null #end) {
 			soft = new helder.ui.draw.soft.SoftCanvas();
 			soft.groups = true;
 			soft.steps = true;
+			// (a window's frame kept, what changed drawn and shown: helder.os.Blit)
+			#if !helder.headless
+			soft.keep = true;
+			#end
 		} else
 		#end
 		{
@@ -181,6 +199,10 @@ class UiWindow {
 			// (Windows: the swap chain made for DirectComposition where the window's layers will be the system's)
 			#if ((!helder.os || helder.os == "windows") && !helder.headless && hxmc.target != "wasm32-wasi")
 			if (Platform.os() == 2) helder.gfx.d3d11.D3D11Backend.compose = DcLayers.asked();
+			#end
+			// (the browser's layers: the window's canvas of premultiplied alpha, its layers' pixels read from it)
+			#if ((!helder.os || helder.os == "web") && !helder.headless)
+			if (Platform.os() == 3 && WebLayers.wanted()) WebLayers.transparent(window.surface.handle.toI64().toInt());
 			#end
 			#if !helder.headless device = Device.create(window.surface, {antialias: antialias, thread: true}); #end
 			renderer = new Renderer(device);
@@ -200,7 +222,7 @@ class UiWindow {
 		ui.clipboard = new SystemClipboard(window);
 		ui.window = new OsWindow(this);
 		// (an inset title bar: a press's answer the ui's, its drag regions and window buttons)
-		if (titlebar == Inset) window.titlebarAt = (x, y) -> ui.titleHit(x / scale, y / scale);
+		if (titlebar != Standard) window.titlebarAt = (x, y) -> ui.titleHit(x / scale, y / scale);
 		ui.dark = dark.peek();
 		nativeScroll(scrolling);
 		// (a touch drag the program's where it scrolls something: the page's otherwise)
@@ -248,6 +270,17 @@ class UiWindow {
 		// (helder dev's host, at a hand-over: what the system keeps of this build's code given back)
 		helder.dev.Hot.onDispose(handOver);
 		#end
+		// (the browser as the compositor: the window's layers canvases of the page, its scrollers' content in their scroll views)
+		#if ((!helder.os || helder.os == "web") && !helder.headless && !helder.soft)
+		if (Platform.os() == 3 && WebLayers.wanted() && ui.nativeScroll) {
+			var c = new Compositor(device);
+			if (c.layers != null) {
+				compositor = c;
+				ui.layered = LayerSplit.slots();
+				(cast c.layers : WebLayers).viewOf = n -> webScroll == null ? null : (cast webScroll : WebScroll).viewOf(n);
+			}
+		}
+		#end
 		#if (!helder.headless && !helder.soft && hxmc.target != "wasm32-wasi")
 		// (the compositor: scrolling at the display's rate while the program is busy)
 		// (iOS's own scroll views: their offsets to it as they move, IosScroll)
@@ -266,9 +299,9 @@ class UiWindow {
 		#end
 	}
 
-	#if (!helder.headless && !helder.soft && hxmc.target != "wasm32-wasi")
+	#if (!helder.headless && !helder.soft)
 	// the window's compositor (null: none, scrolling the program's alone)
-	public var compositor(default, null):Null<Compositor> = null;
+	@:noCompletion public var compositor(default, null):Null<Compositor> = null;
 
 	// (at each turn's start, a window's last frame presented: until its
 	// next is taken without queueing (Device.waitFrame), then what the
@@ -318,7 +351,7 @@ class UiWindow {
 	#end
 
 	// the platform's scroll views on or off for this window (where it has them)
-	public function nativeScroll(on:Bool) {
+	@:noCompletion public function nativeScroll(on:Bool) {
 		#if !helder.headless
 		ui.nativeScroll = on && (Platform.apple() >= 1 || Platform.os() == 3);
 		// (macOS: no scroll views under the tree; its trackpad's gestures and momentum taken as its own views take them, Trackpad's, and its overlay scrollbars)
@@ -365,7 +398,7 @@ class UiWindow {
 			if (iosScroll == null) {
 				if (!ui.nativeScroll) return;
 				iosScroll = new IosScroll(window, ui);
-				#if (!helder.headless && !helder.soft && hxmc.target != "wasm32-wasi")
+				#if (!helder.headless && !helder.soft)
 				(cast iosScroll : IosScroll).compositor = compositor;
 				#end
 			}
@@ -375,7 +408,7 @@ class UiWindow {
 	}
 
 	// macOS's scrollbars for this window: "system", "overlay" or "always" (UiWindow.scrollbars)
-	public function scrollbarStyle(style:String) {
+	@:noCompletion public function scrollbarStyle(style:String) {
 		bars = style;
 		nativeScroll(ui.nativeScroll || ui.elastic);
 	}
@@ -392,7 +425,7 @@ class UiWindow {
 
 	// (the compositor's glides and springs: the program's frames follow them, as they would its own)
 	inline function mirrorMoves():Bool {
-		#if (!helder.headless && !helder.soft && hxmc.target != "wasm32-wasi")
+		#if (!helder.headless && !helder.soft)
 		return compositor != null && compositor.moving();
 		#else
 		return false;
@@ -422,7 +455,7 @@ class UiWindow {
 		var at = ui.controlsAt;
 		if (at != null && at.ui == ui) ui.window.placeControls(at.absX, at.absY);
 		// (the system's layers turned off: the window's own frame, now)
-		#if (!helder.headless && !helder.soft && hxmc.target != "wasm32-wasi")
+		#if (!helder.headless && !helder.soft)
 		if (compositor != null && compositor.layers != null && compositor.layers.redraw) redraw = true;
 		#end
 		// (the clock ticked, nothing changed: the last frame stands, as drawn;
@@ -434,12 +467,12 @@ class UiWindow {
 			return;
 		}
 		// (the system's layers drawn from the compositor's state after the frame, but for a frame read back)
-		#if helder.headless
+		#if (helder.headless || helder.soft)
 		if (soft != null) return softFrame(w, h, s);
 		#end
 		#if !helder.soft
 		var planes = false;
-		#if (!helder.headless && !helder.soft && hxmc.target != "wasm32-wasi")
+		#if (!helder.headless && !helder.soft)
 		if (compositor != null) {
 			planes = compositor.planes() && capture == null;
 			compositor.quiet(planes);
@@ -468,11 +501,12 @@ class UiWindow {
 		renderer.flash = damage == "flash";
 		renderer.background = bg;
 		renderer.begin(device.width, device.height);
-		#if (!helder.headless && !helder.soft && hxmc.target != "wasm32-wasi")
+		#if (!helder.headless && !helder.soft)
 		var c = capture == null ? compositor : null;
 		if (c != null) c.begin(renderer);
 		#end
 		ui.paint(renderer);
+		if (window.transparent && clickThrough) inputs();
 		renderer.prepare(enc);
 		if (planes) renderer.upload() else {
 			enc.beginPass(pass);
@@ -487,13 +521,13 @@ class UiWindow {
 		}
 		// (what the frame kept changed, told the system: none, a pixel's worth; all of it after the compositor's)
 		var whole = renderer.drawn >= device.width * device.height;
-		#if (!helder.headless && !helder.soft && hxmc.target != "wasm32-wasi")
+		#if (!helder.headless && !helder.soft)
 		if (compositor != null && compositor.drewSince) whole = true;
 		if (c != null) c.end(ui, renderer);
 		#end
 		if (renderer.keep) device.damaged(whole ? null : renderer.regions.length > 0 ? renderer.regions : [0, 0, 1, 1]);
 		device.endFrame();
-		#if (!helder.headless && !helder.soft && hxmc.target != "wasm32-wasi")
+		#if (!helder.headless && !helder.soft)
 		presents = !planes;
 		if (compositor != null && capture == null) compositor.present(planes);
 		#end
@@ -510,13 +544,67 @@ class UiWindow {
 		#end
 	}
 
+	// a transparent window's clicks pass through what it doesn't draw: it
+	// takes the pointer over the nodes that draw something (a background,
+	// a border, a shadow, text, an image, a control) and that the pointer
+	// finds (pointer-events not none), elsewhere what is behind it gets
+	// them (helder.os's Window.input, given when they change); false: the
+	// window's input left as it is
+	public var clickThrough = true;
+	var taken = "";
+
+	function inputs() {
+		var out:Array<Int> = [];
+		boxes(ui.root, 0, 0, out);
+		boxes(ui.overlay, 0, 0, out);
+		// (many: one box around them all)
+		if (out.length > 4 * 128) {
+			var x0 = 1 << 30, y0 = 1 << 30, x1 = -x0, y1 = -y0, i = 0;
+			while (i < out.length) {
+				x0 = Std.int(Math.min(x0, out[i]));
+				y0 = Std.int(Math.min(y0, out[i + 1]));
+				x1 = Std.int(Math.max(x1, out[i] + out[i + 2]));
+				y1 = Std.int(Math.max(y1, out[i + 1] + out[i + 3]));
+				i += 4;
+			}
+			out = [x0, y0, x1 - x0, y1 - y0];
+		}
+		var key = out.join(" ");
+		if (key == taken) return;
+		taken = key;
+		window.input(out);
+	}
+
+	// (n's box where it draws and the pointer finds it, else its children's;
+	// dx, dy: the scrolls it is under, in points)
+	function boxes(n:Node, dx:Float, dy:Float, out:Array<Int>) {
+		if (n.style.display == None || !n.visible()) return;
+		var st = n.style;
+		var draws = Type.getClass(n) != Node || st.background.a > 0 || st.background.isToken || st.borderWidth > 0 || st.backgroundImage != null
+			|| st.shadow != null;
+		if (draws && n.hittable()) {
+			var k = scale, x0 = Math.floor((n.absX - dx) * k), y0 = Math.floor((n.absY - dy) * k);
+			out.push(x0);
+			out.push(y0);
+			out.push(Math.ceil((n.absX - dx + n.width) * k) - x0);
+			out.push(Math.ceil((n.absY - dy + n.height) * k) - y0);
+			return;
+		}
+		if (st.overflow == Scroll) {
+			dx += n.scrollX;
+			dy += n.scrollY;
+		}
+		for (c in n.children)
+			boxes(c, dx, dy, out);
+	}
+
 	// (the background drawn: its alpha where the window is transparent)
 	function shown():Color
 		return window.transparent ? background : Color.rgb((background : Int) & 0xFFFFFF);
 
 	// (the glyph atlas it draws with: the renderer's, the CPU's canvas')
 	function atlas():helder.text.GlyphAtlas {
-		#if helder.headless
+		#if (helder.headless || helder.soft)
 		if (soft != null) return soft.atlas;
 		#end
 		#if helder.soft
@@ -526,7 +614,7 @@ class UiWindow {
 		#end
 	}
 
-	#if helder.headless
+	#if (helder.headless || helder.soft)
 	// (a device, where one can be made: none, the CPU's canvas draws)
 	#if !helder.soft
 	static function gpu(surface:helder.os.Surface, antialias:Bool):Null<Device>
@@ -546,12 +634,17 @@ class UiWindow {
 		c.scale = scale;
 		c.begin(w, h, shown());
 		ui.paint(c);
+		if (window.transparent && clickThrough) inputs();
 		if (c.again) redraw = true;
 		if (capture != null) {
 			c.readPixels(capture);
 			capture = null;
 		}
+		#if helder.headless
 		helder.headless.Headless.run.present(window.surface, w, h, c.readPixels);
+		#else
+		c.present(window.surface);
+		#end
 		updateTextInput();
 		sendAccess();
 		syncScroll();
@@ -781,7 +874,7 @@ class UiWindow {
 		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2 && winAccess != null) (cast winAccess : WinAccess).dispose(); #end
 		#if ((!helder.os || helder.os == "linux") && !helder.soft) if (Platform.os() == 0 && Platform.target() < 9 && linuxAccess != null) (cast linuxAccess : LinuxAccess).dispose(); #end
 		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9 && androidAccess != null) (cast androidAccess : AndroidAccess).dispose(); #end
-		#if (!helder.headless && !helder.soft && hxmc.target != "wasm32-wasi")
+		#if (!helder.headless && !helder.soft)
 		if (compositor != null) compositor.dispose();
 		compositor = null;
 		#end
@@ -833,7 +926,7 @@ class UiWindow {
 				if (w.device != null) w.device.settle();
 			#end
 			if (!drew) {
-				#if (!helder.headless && !helder.soft && hxmc.target != "wasm32-wasi")
+				#if (!helder.headless && !helder.soft)
 				for (w in open)
 					if (w.compositor != null) w.compositor.rest();
 				#end
@@ -853,9 +946,12 @@ class UiWindow {
 		var web = Platform.os() == 3;
 		var width:Null<Int> = Render.read(props.width), height:Null<Int> = Render.read(props.height);
 		var title:Null<String> = Render.read(props.title);
-		var bg:Dynamic = Render.read(props.background);
+		var bg:Dynamic = Render.read(props.background), backdrop:Null<String> = Render.read(props.backdrop);
 		var w = new UiWindow(title ?? "helder", width ?? (web ? 0 : 800), height ?? (web ? 0 : 600), null, props.antialias != false,
-			props.titlebar == "inset" ? Inset : Standard, bg != null && colour(bg).a < 255);
+			props.titlebar == "inset" ? Inset : props.titlebar == "none" ? helder.os.TitleBar.None : Standard, (bg != null && colour(bg).a < 255) || (backdrop != null && backdrop != "none"));
+		// (a backdrop seen through a clear background, unless one is given)
+		if (bg == null && backdrop != null && backdrop != "none") w.background = Color.TRANSPARENT;
+		if (props.backdrop != null) Graph.renderEffect(() -> (Render.read(props.backdrop) : String), v -> w.window.backdrop = cast v);
 		// (each reactive prop followed after its first value)
 		follow(props.title, (v:String) -> w.window.title = v);
 		follow(props.width, (_:Int) -> resize(w, props));
@@ -872,6 +968,9 @@ class UiWindow {
 		});
 		if (props.scrolling != null) w.nativeScroll(props.scrolling != "helder");
 		if (props.scrollbars != null) w.scrollbarStyle(props.scrollbars);
+		if (props.clickThrough == false) w.clickThrough = false;
+		if (props.onTop != null) Graph.renderEffect(() -> (Render.read(props.onTop) : Bool), v -> w.window.onTop = v);
+		if (props.taskbar != null) Graph.renderEffect(() -> (Render.read(props.taskbar) : Bool), v -> w.window.taskbar = v);
 		if (props.onClose != null) w.onClose = props.onClose;
 		if (props.onDrop != null) w.onDrop = props.onDrop;
 		// (in this owner: what is above the root, contexts, seen inside)
@@ -897,6 +996,7 @@ class UiWindow {
 }
 
 // the window for its Ui's WindowControls (WindowHost)
+@:noCompletion
 class OsWindow implements WindowHost {
 	final w:UiWindow;
 
@@ -942,6 +1042,7 @@ class OsWindow implements WindowHost {
 }
 
 // the system's clipboard (helder.os.Clipboard) for a window's Ui
+@:noCompletion
 class SystemClipboard implements ClipboardHost {
 	final window:helder.os.Window;
 
@@ -959,6 +1060,7 @@ class SystemClipboard implements ClipboardHost {
 // reached only from the browser's branches
 #if (!helder.os || helder.os == "web")
 @:hxmc.unsafe(gc)
+@:noCompletion
 class WebMirror {
 	public static function views(canvas:Int):PlatformViews
 		return new WebViews(canvas);

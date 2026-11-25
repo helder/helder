@@ -61,7 +61,7 @@ class Glass extends Node {
 	public function radius():Float
 		return Math.min(style.radius, Math.min(width, height) / 2);
 
-	override public function hasContent():Bool
+	@:noCompletion override public function hasContent():Bool
 		return true;
 
 	override function statesChanged() {
@@ -69,7 +69,7 @@ class Glass extends Node {
 		if (interactive) paintChanged();
 	}
 
-	override public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {
+	@:noCompletion override public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {
 		if (systemLayer != null || native != null && native.grouped || group() != null) return;
 		GlassDraw.draw(canvas, this);
 	}
@@ -119,6 +119,7 @@ class Glass extends Node {
 typedef GlassNative = helder.ui.platform.AppleGlass;
 #else
 // (no system glass here: drawn)
+@:noCompletion
 class GlassNative {
 	public static function make(ui:Ui, ?into:GlassNative, group = false):Null<GlassNative>
 		return null;

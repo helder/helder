@@ -7,17 +7,17 @@ Buttons, checkboxes and switches that look the same on every platform, behave as
 Each control is drawn by the nearest look; `Look.base` is helder's, and `look.with` makes yours from it. A variant your look adds is checked where you write it.
 
 ```tsx
-import { Button, Checkbox, Switch, Themed, Look } from "helder/ui";
+import {Button, Checkbox, Switch, Themed, Look} from 'helder/ui'
 
 const look = Look.base.with({
-  accent: "violet",
-  button: t => ({ variants: { variant: { soft: { root: { background: t.accentSoft, color: t.accentInk } } } } })
-});
+  accent: 'violet',
+  button: t => ({ variants: { variant: { soft: { root: {background: t.accentSoft, color: t.accentInk} } } } })
+})
 
-<Themed look={look}>
-  <look.Button variant="soft" onPress={invite}>Invite</look.Button>
-  <Checkbox label="Remember me" checked={remember} onChange={remember}/>
-  <Switch label="Dark mode" checked={dark} onChange={dark}/>
+const controls = <Themed look={look}>
+  <look.Button variant='soft' onPress={invite}>Invite</look.Button>
+  <Checkbox label='Remember me' checked={remember} onChange={remember}/>
+  <Switch label='Dark mode' checked={dark} onChange={dark}/>
 </Themed>
 ```
 
@@ -28,9 +28,9 @@ static final look = Look.base.with({
 });
 
 <Standard.Themed look={look}>
-  <look.Button variant="soft" onPress={invite}>Invite</look.Button>
-  <Standard.Checkbox label="Remember me" checked={remember} onChange={v -> remember(v)}/>
-  <Standard.Switch label="Dark mode" checked={dark} onChange={v -> dark(v)}/>
+  <look.Button variant='soft' onPress={invite}>Invite</look.Button>
+  <Standard.Checkbox label='Remember me' checked={remember} onChange={v -> remember(v)}/>
+  <Standard.Switch label='Dark mode' checked={dark} onChange={v -> dark(v)}/>
 </Standard.Themed>
 ```
 
@@ -49,6 +49,7 @@ static final look = Look.base.with({
 - **Options:** a button's `variant` (`primary`, `secondary`, `outline`, `ghost`, `danger`), `size` (`sm`, `md`, `lg`), `icon`, `disabled`, `onPress`; a checkbox's and a switch's `label`, `checked`, `onChange`, `disabled`, and a checkbox's `indeterminate`.
 - **Looks:** colours in light and dark, a neutral accent and eight others, a compact density, a type scale and motion, all tokens; restyle one part (`switch: t => ({knob: {radius: 3}})`) or any state of it.
 - **Your own rendering:** `render: {switch: Lamp}` draws every switch as your component, inside other widgets too; it keeps the switch's keys and accessibility.
+- **Interactions:** [popups, keyboard shortcuts and drag and drop](interactions.md).
 - **Motion:** hovers, presses and toggles ease, the focus ring fades in for the keyboard only, and reduced motion keeps the end states.
 - **Cost:** a screen of controls draws in one pass, as plain views do.
 

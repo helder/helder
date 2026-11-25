@@ -52,11 +52,13 @@ export declare class Purchases {
 	// what the user owns now: non-consumables, active subscriptions
 	static owned(): Promise<Purchase[]>;
 	// after delivering it (Play: acknowledged; Play refunds one left for 3 days)
-	static finish(p: Purchase): Promise<unknown>;
+	static finish(p: Purchase): Promise<void>;
 	// a consumable's, after delivering it: it can be bought again (StoreKit: finished; Play: consumed)
-	static consume(p: Purchase): Promise<unknown>;
+	static consume(p: Purchase): Promise<void>;
 	// the user's purchases fetched again from the store (StoreKit asks them
 	// to sign in; Play's unfinished ones go to onPurchase): a Restore
 	// button's; owned() after it
-	static restore(): Promise<unknown>;
+	static restore(): Promise<void>;
 }
+
+export {};

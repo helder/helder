@@ -17,7 +17,7 @@ import helder.os.*;
 //   9  + normal maps (NormalMaps: the normal-mapped shader)
 // and, with -D size_packed at level 4, the renderer drawing the sample
 // packed at build time (PackedModel: no glTF reader, no JSON); at level 4
-// too, the opt-ins of DESIGN-3D.md's phase 1, each a cost only when used:
+// too, the renderer's opt-ins, each a cost only when used:
 // -D size_toon (Material.toon: one shading model's shader), -D size_models
 // (every Material factory: lambert, phong, toon, unlit, matcap, normals,
 // depth), -D size_geometry (every Geometry generator and Curve3),

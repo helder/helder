@@ -1,7 +1,8 @@
-package helder.os.audio;
+package os.audio;
 
 import haxe.crypto.Base64;
-import helder.os.audio.VorbisFixture;
+import helder.os.audio.Sfx;
+import os.audio.VorbisFixture;
 import helder.test.Test;
 import hxmc.unsafe.*;
 

@@ -3,7 +3,7 @@ package view.graph;
 import helder.test.Test;
 import helder.view.graph.Graph.*;
 
-// DESIGN.md 2, Allocation: a steady write and its flush, through a memo to
+// view's README, Signals: a steady write and its flush, through a memo to
 // a render effect and an effect, allocate nothing (hxmc.GcStats, this
 // thread's). The values are objects made beforehand: a type parameter's
 // Int or Float is boxed where it is stored (hxmc's generics), 16 bytes a

@@ -5,7 +5,8 @@
 // Enter submits the field; Tab and Shift+Tab move the program's focus
 // between the editors and the drawn widgets (the page's focus following);
 // a newline typed in the text area; the program's own change shown in the
-// editor; an editor hidden while the select's list covers it, shown again
+// editor; an editor hidden while the select's list covers it (or, the
+// window's layers the page's, stacked under the list's layer), shown again
 // when it closes; Tab from a drawn field (its host drawn, typed in through
 // the window's text input) into a native one, which keeps the focus; the
 // field's keyboard as its input's inputmode, enterkeyhint, autocapitalize,
@@ -101,8 +102,12 @@ const state = async () => {
 const editor = (tag) => p.evaluate((t) => {
 	const e = document.querySelector(t);
 	if (!e) return null;
-	const r = e.getBoundingClientRect();
-	return { x: r.x, y: r.y, w: r.width, h: r.height, shown: getComputedStyle(e).display !== 'none', value: e.value, focused: document.activeElement === e, font: getComputedStyle(e).fontFamily };
+	const r = e.getBoundingClientRect(), cx = r.x + r.width / 2, cy = r.y + r.height / 2;
+	// (stacked among the window's layers, helder.ui's WebLayers: a layer over it there, at its centre)
+	const l = e.parentNode, z = Number(e.style.zIndex) || 0;
+	const under = l && l.hxmcScroller === undefined && [...l.children].some((o) => o !== e && o.tagName === 'DIV' && Number(o.style.zIndex) > z && o.style.display !== 'none'
+		&& (({ left, top, right, bottom }) => cx >= left && cx < right && cy >= top && cy < bottom)(o.getBoundingClientRect()));
+	return { x: r.x, y: r.y, w: r.width, h: r.height, shown: getComputedStyle(e).display !== 'none', value: e.value, focused: document.activeElement === e, font: getComputedStyle(e).fontFamily, under };
 }, tag);
 const results = [];
 const check = (what, ok, detail) => results.push({ what, ok, detail });
@@ -156,7 +161,7 @@ check('the program\'s change in the editor', input.value === 'Reset', JSON.strin
 await p.mouse.click(m.fruit.x + m.fruit.w / 2, m.fruit.y + m.fruit.h / 2);
 await settle();
 input = await editor('input[data-hxmc-editor]');
-check('covered by the select\'s list: hidden', !input.shown, JSON.stringify(input));
+check('covered by the select\'s list: hidden, or under its layer', !input.shown || input.under, JSON.stringify(input));
 await p.keyboard.press('Escape');
 await settle();
 input = await editor('input[data-hxmc-editor]');

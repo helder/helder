@@ -1,7 +1,6 @@
 # helder.canvas
 
-A 2D drawing API with a CPU back end (phase 1 of the roadmap's
-`helder.canvas`): paths, fills, strokes, paints, clips, layers, images and
+A 2D drawing API with a CPU back end: paths, fills, strokes, paints, clips, layers, images and
 text, drawn into a pixel buffer with analytic antialiasing, so the same
 code gives the same pixels on every machine. It learns from Canvas 2D,
 Skia, tiny-skia, Vello and Kha's g2 rather than copying one: paints and
@@ -117,7 +116,7 @@ helder.ui draws on it without a GPU too (helder.ui.draw.soft): its paths
 and SVGs rasterized here, its rectangles, borders, shadows, glyphs and
 images shaded by UiShader's own functions, into a `Bitmap`.
 
-## Extras (phase 4)
+## Extras
 
 - **Documents** (`helder.canvas.doc`): `Recorder`, a Painter that keeps
   every call (its path, paint and stroke copied), `Document`, pages of
@@ -168,7 +167,7 @@ the canvas-gpu lane runs examples/canvas-window in a window (Xvfb).
 
 ## The GPU back end: `helder.canvas.gpu`
 
-`GpuCanvas` (phase 2) is the same `Painter` as the CPU's `Canvas` (the
+`GpuCanvas` is the same `Painter` as the CPU's `Canvas` (the
 interface the DOM facade and `Glyphs` draw on), on helder.gfx:
 
 - **Paths as trapezoids**: `Trapezoids` cuts a path's lines (flattened
@@ -211,7 +210,7 @@ Metal, Direct3D and WebGPU back ends tested (only GL's is, in CI's gfx job).
 
 ## The web back end: `helder.canvas.web`
 
-`WebCanvas` (phase 3) is the same `Painter` drawn by the browser's own
+`WebCanvas` is the same `Painter` drawn by the browser's own
 Canvas 2D, for a web build (wasm32 with `src/helder/canvas/imports.mjs`,
 the module `hxmc_canvas`, beside os's and text's in browser.mjs's
 `imports`). Its calls are recorded as commands (float64s: an opcode, its
@@ -305,19 +304,19 @@ TypeScript programs import it as `helder/canvas` (`index.d.ts`, made from
 these classes: `node src/helder/typescript/api/declarations.mjs`):
 
 ```ts
-import { Canvas, FontLibrary } from "helder/canvas";
+import {Canvas, FontLibrary} from 'helder/canvas'
 
-FontLibrary.use("Inter", ["fonts/Inter.ttf"]);
-const canvas = new Canvas(320, 200);
-const ctx = canvas.getContext("2d")!;
-ctx.fillStyle = "#2563eb";
-ctx.beginPath();
-ctx.roundRect(20, 20, 280, 160, [24]);
-ctx.fill();
-ctx.font = "24px Inter";
-ctx.fillStyle = "white";
-ctx.fillText("Hello", 40, 110);
-canvas.saveAs("hello.png");
+FontLibrary.use('Inter', ['fonts/Inter.ttf'])
+const canvas = new Canvas(320, 200)
+const ctx = canvas.getContext('2d')!
+ctx.fillStyle = '#2563eb'
+ctx.beginPath()
+ctx.roundRect(20, 20, 280, 160, [24])
+ctx.fill()
+ctx.font = '24px Inter'
+ctx.fillStyle = 'white'
+ctx.fillText('Hello', 40, 110)
+canvas.saveAs('hello.png')
 ```
 
 skia-canvas's extras are there too (see Extras above).

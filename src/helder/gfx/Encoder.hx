@@ -201,5 +201,5 @@ final class Encoder {
 	}
 
 	// the uniform ring's size per frame in flight
-	public static inline var UNIFORM_RING = 256 * 1024;
+	@:allow(helder.gfx) static inline var UNIFORM_RING = 256 * 1024;
 }

@@ -174,7 +174,7 @@ function tests() {
 			flush();
 			equals(values, [4, 8]);
 			equals(pending[pending.length - 1], false);
-		}).skip(); // (known gap: Solid's rule not yet followed, DESIGN.md 2, Holds)
+		}).skip(); // (known gap: Solid's rule not yet followed, view's README, Holds)
 
 		test("should waterfall when dependent on another async with shared source", () -> {
 			var s = signal(1);
@@ -386,7 +386,7 @@ function tests() {
 			c.advanceTo(9000);
 			equals(c.log, ["0 / 0", "2 / 1"]);
 			equals(c.when, [2000, 5000]);
-		}).skip(); // (known gap: Solid's rule not yet followed, DESIGN.md 2, Holds)
+		}).skip(); // (known gap: Solid's rule not yet followed, view's README, Holds)
 
 		test("#3376 isPending stays true across the stale first-hop landing", () -> {
 			var c = new Clock();
@@ -450,7 +450,7 @@ function tests() {
 			flush();
 			c.advanceTo(9000);
 			equals(c.frames(), ["0: Count: 0", "2000: B: 0", "4200: B: 0", "6000: B: 2 | Count: 2"]);
-		}).skip(); // (known gap: Solid's rule not yet followed, DESIGN.md 2, Holds)
+		}).skip(); // (known gap: Solid's rule not yet followed, view's README, Holds)
 
 		test("#3374 (two hops) the remounted reader holds through an intermediate memo", () -> {
 			var c = new Clock();
@@ -473,7 +473,7 @@ function tests() {
 			flush();
 			c.advanceTo(9000);
 			equals(c.frames(), ["0: Count: 0", "2000: Details: 0", "4500: Count: 1 | Details: 1"]);
-		}).skip(); // (known gap: Solid's rule not yet followed, DESIGN.md 2, Holds)
+		}).skip(); // (known gap: Solid's rule not yet followed, view's README, Holds)
 	});
 
 	// first-observer-stale-reader.test.ts (#3458, A15 reveal corollary; F-2)
@@ -497,6 +497,6 @@ function tests() {
 			flush();
 			c.advanceTo(9000);
 			equals(c.frames(), ["0: B: hidden | Count: 0", "1000: A: 0", "3500: B: 0", "5000: A: 1 | B: 1 | Count: 1"]);
-		}).skip(); // (known gap: Solid's rule not yet followed, DESIGN.md 2, Holds)
+		}).skip(); // (known gap: Solid's rule not yet followed, view's README, Holds)
 	});
 }

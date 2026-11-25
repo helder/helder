@@ -322,15 +322,16 @@ class App {
 			loopTurn();
 			if (running && windows.length > 0) {
 				// (a frame at the display link's; until it comes, the run loop, which it stops)
-				if (!UIKitWindow.drawable()) {
-					frame.pause();
-					UIKitWindow.wait(bounded(settingsWait(-1)));
-				} else if (UIKitWindow.vsynced()) {
-					frame.tick(UIKitWindow.takeVsync(), true);
-					onFrame();
-				} else {
-					UIKitWindow.requestVsync();
-					UIKitWindow.wait(bounded(-1));
+				switch UIKitWindow.next() {
+					case 0:
+						frame.pause();
+						UIKitWindow.wait(bounded(settingsWait(-1)));
+					case 1:
+						frame.tick(UIKitWindow.vsyncTaken, true);
+						onFrame();
+					case _:
+						UIKitWindow.requestVsync();
+						UIKitWindow.wait(bounded(-1));
 				}
 			}
 		} else

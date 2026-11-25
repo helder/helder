@@ -18,6 +18,7 @@ class Inject {
 	public static var supported(get, never):Bool;
 
 	static function get_supported():Bool {
+		if (Sys.getEnv("GITHUB_ACTIONS") != "true" && Sys.getEnv("HELDER_TEST_INPUT") != "1") return false;
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 		return true;
 		#elseif (hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64")
@@ -32,6 +33,10 @@ class Inject {
 	// every `every` seconds for ms, each sent's time (haxe.Timer.stamp) to sent
 	public static function start(w:helder.os.Window, ms:Int, every = 0.016, ?onSent:Float->Void):Inject {
 		var i = new Inject();
+		if (!supported) {
+			i.done.release();
+			return i;
+		}
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 		var view = w.surface.handle;
 		var at = helder.os.OsThread.get(() -> {

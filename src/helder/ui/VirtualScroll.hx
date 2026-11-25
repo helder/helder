@@ -555,10 +555,10 @@ private class Spacer extends Node {
 		style.shrink = 0;
 	}
 
-	override public function hasContent():Bool
+	@:noCompletion override public function hasContent():Bool
 		return true;
 
-	override public function measureContent(text:TextEngine, knownWidth:Float, knownHeight:Float, availWidth:Float, availHeight:Float):Size
+	@:noCompletion override public function measureContent(text:TextEngine, knownWidth:Float, knownHeight:Float, availWidth:Float, availHeight:Float):Size
 		return new Size(0, extent);
 
 	@:allow(helder.ui) override function paintsLive():Bool
