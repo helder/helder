@@ -40,7 +40,7 @@ class LayoutConformanceCheck {
 			var id:String = c.id;
 			need(!seen.exists(id), 'manifest: $id twice');
 			seen.set(id, true);
-			var fixture:Dynamic = haxe.Json.parse(File.getContent('$here/${c.fixture}'));
+			var fixture:Dynamic = haxe.Json.parse(File.getContent('$here/fixtures/$id.json'));
 			validate(id, fixture, manifest.taffy_revision);
 			var pending:DynamicAccess<String> = c.pending ?? {};
 			for (v in pending.keys())
@@ -76,7 +76,7 @@ class LayoutConformanceCheck {
 					if (!wasPending) failures.push('$id [$v]: ${r.reason}');
 				}
 			}
-			var out:Dynamic = {id: id, fixture: c.fixture};
+			var out:Dynamic = {id: id};
 			if (next.keys().length > 0) out.pending = next;
 			if (c.skip != null) out.skip = c.skip;
 			blessed.push(out);

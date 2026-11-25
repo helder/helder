@@ -46,7 +46,7 @@ class Bench {
 	}
 
 	// (IMAGE_BENCH_JPEG, IMAGE_BENCH_PNG: the files, a photo and a large PNG;
-	// by default the repository's largest: examples' comparison.jpg, tests/ui/todo.png)
+	// by default examples' comparison.jpg and tests/ui/todo.png)
 	static function imageBench() {
 		exe("bin/bench/ImageBench", cps(["src", "tests/bench"]).concat(["-main", "ImageBench"]));
 		run(NODE, ["tests/bench/image.mjs", exePath("bin/bench/ImageBench", HOST), Sys.getEnv("IMAGE_BENCH_JPEG") ?? "examples/gltf-showcase/comparison.jpg",

@@ -85,7 +85,7 @@ class TodoCheck {
 		frame.dispose();
 		sys.io.File.saveBytes(args[1], Png.encode(pixels, W, H));
 		if (args[2] == "--bless") {
-			sys.io.File.saveBytes(args[0], Png.encode(pixels, W, H));
+			sys.io.File.saveBytes(args[0], Png.golden(pixels, W, H));
 			Sys.println('TodoCheck: blessed ${args[0]}');
 			Sys.exit(failed == 0 ? 0 : 1);
 		}

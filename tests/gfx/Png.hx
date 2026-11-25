@@ -1,11 +1,15 @@
 import haxe.io.Bytes;
 
 // 8-bit RGB PNG files for the tests: written with stored (uncompressed)
-// deflate blocks, read with any compression and filters (haxe.zip.InflateImpl,
+// deflate blocks (fast, a run's outputs), goldens deflated (small in the
+// repository), read with any compression and filters (haxe.zip.InflateImpl,
 // 32 KiB at a time: its window takes no more at once, and a stored block may
 // hold 65535 bytes).
 class Png {
 	// rgba: width * height * 4 bytes, rows top to bottom; alpha is dropped
+	public static function golden(rgba:Bytes, width:Int, height:Int):Bytes
+		return helder.image.PngEncoder.encode(rgba, width, height, true);
+
 	public static function encode(rgba:Bytes, width:Int, height:Int):Bytes {
 		var raw = new haxe.io.BytesBuffer();
 		for (y in 0...height) {
