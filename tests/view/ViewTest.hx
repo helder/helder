@@ -302,6 +302,22 @@ class ViewTest implements Markup {
 		name("gone");
 		flush();
 		check("and stops its effects", div.children[0].text == "Hello Bo!");
+		// (a function hole, text or content, is run once for each change: not again to tell which)
+		var made = 0, said = 0, which = signal(1);
+		var stop = Render.render(<div>{() -> {
+			made++;
+			var w = which();
+			<b>{w}</b>;
+		}}<i>{() -> {
+			said++;
+			"n" + which();
+		}}</i></div>, root);
+		check("a function hole run once", made == 1 && said == 1, '$made $said');
+		which(2);
+		flush();
+		check("and once again for a change", made == 2 && said == 2 && root.toHtml() == "<root><div><b>2</b><!--anchor--><i>n2</i></div></root>",
+			'$made $said ' + root.toHtml());
+		stop();
 	}
 
 	static final theme = context("light");

@@ -19,10 +19,10 @@ import helder.ui.controls.Tokens;
 // a toggle's travel (its knob's) springing.
 @:noCompletion class Compile {
 	public static final CONTROLS = ["button", "checkbox", "switch", "pathbar"];
-	static final STATES = ["hover", "pressed", "focus", "checked", "mixed", "selected", "open", "invalid", "readonly", "dark", "disabled"];
+	static final STATES = ["hover", "pressed", "focus", "checked", "mixed", "selected", "open", "invalid", "readonly", "dark", "disabled", "focusWithin"];
 	static final CONDS = [
 		"hover", "active", "focus-visible", "data-state=checked", "data-state=mixed", "data-selected", "data-state=open", "data-invalid", "data-readonly", "dark",
-		"data-disabled"
+		"data-disabled", "has:focus"
 	];
 	static final AXES = ["variant", "size"];
 	// (a toggle's travel: a spring's overshoot, as a cubic Bézier)
@@ -161,7 +161,7 @@ private class Merged {
 
 // (a part's style merged: its properties, its states', its draw)
 private class Part {
-	static final STATES = ["hover", "pressed", "focus", "checked", "mixed", "selected", "open", "invalid", "readonly", "dark", "disabled"];
+	static final STATES = ["hover", "pressed", "focus", "checked", "mixed", "selected", "open", "invalid", "readonly", "dark", "disabled", "focusWithin"];
 
 	public final props:Dynamic = {};
 	public final states = new Map<String, Part>();

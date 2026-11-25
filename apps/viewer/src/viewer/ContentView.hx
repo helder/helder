@@ -25,6 +25,7 @@ import viewer.ViewerActions;
 // 300 ms, unreadable, no results), and the path bar with the count.
 class ContentView implements Markup {
 	public static inline var ROW = 30;
+	static inline var EDGE = 6;
 	// the path bar's height, the sidebar's volume foot's too (one line across)
 	public static inline var FOOT = 32;
 
@@ -42,7 +43,7 @@ class ContentView implements Markup {
 	// --- the toolbar
 
 	static function toolbar(x:Explorer, tablet:Read<Bool>):View {
-		var b = x.browser, title:Null<Node> = null, viewButton:Null<Node> = null;
+		var b = x.browser;
 		// (a tablet's, no sidebar left of it: macOS's buttons at its start, kept clear)
 		return <view tag="toolbar" direction="row" align-items="center" column-gap={6} height={tablet() ? 52 : Shell.BAR} shrink={0} padding="0 8" drag-region
 			padding-left={tablet() && WindowButtons.side() == "start" ? Shell.BUTTONS : 8}
@@ -57,7 +58,7 @@ class ContentView implements Markup {
 					onPress={() -> b.goForward()}/>
 			</view>
 			<view:button tag="folder-title" slot="title-button" role="button" focusable label={() -> x.sidebar.title(b.dir()) + ", show enclosing folders"}
-				ref={(n:Node) -> title = n} onPress={() -> if (title != null) enclosing(x, title)}>
+				ref={(n:Node) -> Menus.button(n, () -> enclosing(x))}>
 				<text max-lines={1} text-overflow="ellipsis">{() -> x.sidebar.title(b.dir())}</text>
 				<image src={Glyphs.get("down")} width={14} height={14} shrink={0} color={Look.ref.fg3}/>
 			</view:button>
@@ -70,8 +71,7 @@ class ContentView implements Markup {
 				<Standard.Button tag="search" variant="ghost" size="sm" icon={Glyphs.get("search")} label="Search" onPress={() -> b.searching(true)}/>
 			</Show>
 			<Show when={b.searching()}>{search(x)}</Show>
-			<view:button tag="view-menu" slot="tool" role="button" focusable label="View options" ref={(n:Node) -> viewButton = n}
-				onPress={() -> if (viewButton != null) popup(viewButton, ViewerActions.view())}>
+			<view:button tag="view-menu" slot="tool" role="button" focusable label="View options" ref={(n:Node) -> Menus.button(n, ViewerActions.view)}>
 				<image src={() -> Glyphs.get(b.layout() == Grid ? "grid" : "list")} width={16} height={16}/>
 				<image src={Glyphs.get("down")} width={12} height={12}/>
 			</view:button>
@@ -90,10 +90,10 @@ class ContentView implements Markup {
 
 	static function search(x:Explorer):View {
 		var b = x.browser;
-		return <view tag="search-box" direction="row" align-items="center" column-gap={7} width={196} height={30} shrink={0} padding="0 8" radius={8}
-			background={Look.ref.fill} key-context="search">
+		// (Look's composite field: one ring round the box while the field has the focus)
+		return <view tag="search-box" slot="field-box" width={196} height={30} shrink={0} radius={8} key-context="search">
 			<image src={Glyphs.get("search")} width={14} height={14} color={Look.ref.fg3}/>
-			<field tag="search-field" grow={1} min-width={0} value={() -> b.query()} placeholder="Search" label="Search this folder" font-size={13}
+			<field tag="search-field" slot="field-box-input" value={() -> b.query()} placeholder="Search" label="Search this folder" font-size={13}
 				onInput={e -> b.search(e.text)}
 				onKeyDown={e -> if (e.key == helder.ui.Key.ESCAPE) {
 					b.closeSearch();
@@ -111,11 +111,11 @@ class ContentView implements Markup {
 	}
 
 	// (the folder's title's menu: the folders enclosing it, nearest first)
-	static function enclosing(x:Explorer, at:Node) {
+	static function enclosing(x:Explorer):Array<MenuItem> {
 		var up = Browser.ancestry(x.browser.dir.value);
 		up.pop();
 		up.reverse();
-		popup(at, [for (p in up) Item(x.sidebar.title(p), Go(p))]);
+		return [for (p in up) Item(x.sidebar.title(p), Go(p))];
 	}
 
 	static function popup(at:Node, items:Array<MenuItem>) {
@@ -164,8 +164,37 @@ class ContentView implements Markup {
 			var s = scroller, i = b.indexOf(v);
 			if (s != null && i >= 0) s.scrollToIndex(i);
 		});
+		// (a folder shown: where the browser says, once its items are in: its
+		// top; a place kept in the history, the batches it needs waited for;
+		// the selected entry in view. Not the scroller's own anchor, which
+		// would keep the last folder's offset)
+		var want:Null<Float> = 0.0;
+		function place() {
+			var v = scroller, w = want;
+			// (none of the folder read yet: its first batch places it; placed
+			// on the empty list, the rows coming in would carry their old place)
+			if (v == null || w == null || b.reading.value && b.items.value.length == 0) return;
+			if (w < 0) {
+				// (the entry asked for, once it is read; gone: the top)
+				var i = b.indexOf(b.selected.value);
+				if (i >= 0) v.scrollToIndex(i, "center") else if (!b.reading.value) v.scrollY = 0;
+				if (i >= 0 || !b.reading.value) want = null;
+				return;
+			}
+			var max = Math.max(0, @:privateAccess (v.extent() - v.viewHeight()));
+			if (w > max && b.reading.value) return;
+			v.scrollY = Math.min(w, max);
+			want = null;
+		}
+		b.scrolled = () -> scroller == null ? 0 : scroller.scrollY;
+		effect(() -> b.dir(), _ -> want = b.offset);
+		effect(() -> {
+			b.items();
+			b.reading();
+		}, _ -> place());
 		function made(v:VirtualScroll) {
 			scroller = v;
+			place();
 			// (on the next frame: the list shown again first)
 			x.focusList = () -> Clock.add(_ -> {
 				var i = b.indexOf(b.selected.value);
@@ -192,7 +221,11 @@ class ContentView implements Markup {
 				{header(x)}
 				<VirtualList tag="rows" each={() -> b.items()} by={(e:Entry) -> e.name} itemHeight={ROW} selection={b.selection} label="Files"
 					textOf={(e:Entry) -> e.name} onActivate={(picked:Array<Int>) -> activate(picked)} onContextMenu={menu}
-					ref={v -> made(v)}>{(e, i) -> row(x, e)}</VirtualList>
+					ref={v -> {
+						// (its ends' room: a row's focus ring whole, the last row clear of the path bar)
+						v.insets(EDGE, EDGE);
+						made(v);
+					}}>{(e, i) -> row(x, e)}</VirtualList>
 			</Show>
 			<Show when={b.layout() == Grid}>
 				<VirtualGrid tag="grid" each={() -> b.items()} by={(e:Entry) -> e.name} cellWidth={Tiles.CELL_WIDTH} cellHeight={Tiles.CELL_HEIGHT}

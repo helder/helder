@@ -43,6 +43,7 @@ typedef Palette<T> = {
 	?accentFg:T,
 	?accentInk:T,
 	?focus:T,
+	?focusSoft:T,
 	?danger:T,
 	?dangerStrong:T,
 	?dangerSoft:T,
@@ -120,7 +121,7 @@ class TokenSet {
 	// the palette's names, as the sheet's colours are named
 	public static final COLORS = [
 		"canvas", "surface", "raised", "well", "hover", "press", "fill", "fillHover", "fillPress", "rail", "railHover", "line", "edge", "edgeStrong", "fg", "fg2", "fg3", "accent", "accentStrong", "accentSoft",
-		"accentFg", "accentInk", "focus", "danger", "dangerStrong", "dangerSoft", "dangerFg", "success", "warning", "info", "knob", "scrim", "shadow"
+		"accentFg", "accentInk", "focus", "focusSoft", "danger", "dangerStrong", "dangerSoft", "dangerFg", "success", "warning", "info", "knob", "scrim", "shadow"
 	];
 
 	// the palette's tones in COLORS' order (read as fields: no reflection
@@ -128,7 +129,7 @@ class TokenSet {
 	public static function tones(t:Tokens):Array<Null<Tone>>
 		return [
 			t.canvas, t.surface, t.raised, t.well, t.hover, t.press, t.fill, t.fillHover, t.fillPress, t.rail, t.railHover, t.line, t.edge, t.edgeStrong, t.fg, t.fg2, t.fg3, t.accent, t.accentStrong, t.accentSoft,
-			t.accentFg, t.accentInk, t.focus, t.danger, t.dangerStrong, t.dangerSoft, t.dangerFg, t.success, t.warning, t.info, t.knob, t.scrim, t.shadow
+			t.accentFg, t.accentInk, t.focus, t.focusSoft, t.danger, t.dangerStrong, t.dangerSoft, t.dangerFg, t.success, t.warning, t.info, t.knob, t.scrim, t.shadow
 		];
 
 	// (each accent's light and dark colour and text on them, after CUI's
@@ -163,6 +164,8 @@ class TokenSet {
 			fg3: gray(0.565, 0.64),
 			// (one blue for every accent, opaque)
 			focus: tone("0.58 0.15 250", "0.73 0.15 250"),
+			// (a field's ring: the focus blue half seen, as macOS rings a text field)
+			focusSoft: tone("0.58 0.15 250 / 0.5", "0.73 0.15 250 / 0.55"),
 			danger: tone("0.55 0.19 27", "0.7 0.16 24"),
 			dangerStrong: tone("0.6 0.17 27", "0.65 0.15 24"),
 			dangerSoft: tone("0.55 0.19 27 / 0.12", "0.7 0.16 24 / 0.2"),

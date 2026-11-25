@@ -12,9 +12,11 @@ import helder.ui.menu.Menus;
 
 // helder.ui.menu: the model resolved (the keymap's shortcuts, the handlers'
 // states, separators, submenus, roles), a context menu drawn and driven by
-// the keyboard and the pointer, a drawn menu bar (Right along it, a hover
-// moving while one is open), the platform's menus given the model and set
-// again when a state changes
+// the keyboard and the pointer, a menu button's as native ones behave (on
+// the press, a press-drag-release, the closing press taken), menus closed
+// by a resize while a popover follows its anchor, a drawn menu bar (Right
+// along it, a hover moving while one is open), the platform's menus given
+// the model and set again when a state changes
 function tests() {
 	actions("menu_test", MenuAction);
 	function setup() {
@@ -105,6 +107,99 @@ function tests() {
 			f.ui.update();
 			f.ui.pointerDown(390, 290, 1);
 			equals(f.ui.overlay.children.length, 0);
+		});
+		test("a menu button: opened as the mouse goes down, closed by a press on it, the press taken", () -> {
+			var f = setup(), log = [];
+			var button = new Node("button");
+			button.style.set({width: 80, height: 24});
+			button.focusable = true;
+			var below = new Node("below");
+			below.style.set({width: 400, height: 250});
+			below.onPointerDown = _ -> log.push("down");
+			below.onClick = _ -> log.push("click");
+			f.view.append(button);
+			f.ui.root.append(below);
+			Menus.button(button, () -> MODEL);
+			f.ui.update();
+			f.ui.pointerDown(10, 10, 1);
+			f.ui.update();
+			var m = DrawnMenu.current;
+			notEquals(m, null);
+			equals(m.popup.anchor, button);
+			equals(button.semantics.expanded, true);
+			// (its release on the button: a click, kept open)
+			f.ui.pointerUp(10, 10, 1);
+			equals(m.isOpen, true);
+			// (pressed again: closed on the press, not opened again on its release)
+			f.ui.pointerDown(10, 10, 1);
+			equals(m.isOpen, false);
+			f.ui.pointerUp(10, 10, 1);
+			f.ui.update();
+			equals(f.ui.overlay.children.length, 0);
+			equals(button.semantics.expanded, false);
+			// (a press elsewhere closes it and reaches nothing beneath, nor its release)
+			f.ui.pointerDown(10, 10, 1);
+			f.ui.pointerUp(10, 10, 1);
+			f.ui.update();
+			var x = below.absX + 380, y = below.absY + 200;
+			f.ui.pointerDown(x, y, 1);
+			f.ui.pointerUp(x, y, 1);
+			equals(f.ui.overlay.children.length, 0);
+			equals(log, []);
+			f.ui.pointerDown(x, y, 1);
+			f.ui.pointerUp(x, y, 1);
+			equals(log, ["down", "click"]);
+			// (Enter opens it too, its first row highlighted)
+			f.ui.setFocus(button);
+			f.ui.keyDown(Key.ENTER, 0);
+			equals(DrawnMenu.current.highlighted, 0);
+			f.ui.keyDown(Key.ESCAPE, 0);
+			equals(f.ui.overlay.children.length, 0);
+		});
+		test("a menu button: held, dragged onto an item and let go there chooses it", () -> {
+			var f = setup();
+			var button = new Node("button");
+			button.style.set({width: 80, height: 24});
+			f.view.append(button);
+			Menus.button(button, () -> MODEL);
+			f.ui.update();
+			f.ui.pointerDown(10, 10, 1);
+			f.ui.update();
+			var full = DrawnMenu.current.popup.children[2];
+			f.ui.pointerMove(full.absX + 5, full.absY + 5);
+			equals(DrawnMenu.current.highlighted, 2);
+			f.ui.pointerUp(full.absX + 5, full.absY + 5, 1);
+			equals(f.log, ["Full"]);
+			equals(f.ui.overlay.children.length, 0);
+			equals(f.ui.focus.tag, "view");
+			// (let go outside it, after a drag: closed, nothing chosen)
+			f.ui.pointerDown(10, 10, 1);
+			f.ui.update();
+			f.ui.pointerMove(390, 290);
+			f.ui.pointerUp(390, 290, 1);
+			equals(f.ui.overlay.children.length, 0);
+			equals(f.log, ["Full"]);
+		});
+		test("a menu closes as the window is resized; a popover follows its anchor", () -> {
+			var f = setup();
+			Menus.popup(f.ui, MODEL, 50, 40, f.view);
+			f.ui.update();
+			f.ui.resize(380, 300);
+			equals(f.ui.overlay.children.length, 0);
+			var anchor = new Node("anchor");
+			anchor.style.set({position: Absolute, right: 10, top: 10, width: 100, height: 20});
+			f.ui.root.append(anchor);
+			var pop = new helder.ui.Popup("popover");
+			pop.style.set({width: 100, height: 50});
+			pop.anchor = anchor;
+			f.ui.open(pop);
+			f.ui.update();
+			equals(pop.style.left.resolve(0), 380 - 10 - 100.0);
+			f.ui.resize(300, 300);
+			f.ui.update();
+			equals(f.ui.overlay.children.length, 1);
+			equals(pop.style.left.resolve(0), 300 - 10 - 100.0);
+			equals(pop.style.top.resolve(0), 10 + 20 + 4.0);
 		});
 		test("a drawn menu bar: F10, Right to the next menu, a hover while open, a choice", () -> {
 			var f = setup();

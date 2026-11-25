@@ -15,7 +15,11 @@ package helder.ui;
 // it, the tree under it takes no pointer events. onDismiss: asked to close
 // by a click outside it (not on its anchor; unless dismissOnOutside is
 // false, as an alert dialog) or by Escape; Ui.close closes it and gives the
-// focus back to where it was.
+// focus back to where it was. An anchored one follows its anchor, placed
+// again every layout (a window resized, the anchor scrolled). A menu
+// (DrawnMenu's) is dismissed as the platforms' menus are instead: by a
+// window's resize, and by a press outside it that goes no further (not
+// delivered beneath, its release neither).
 class Popup extends Node {
 	public var anchor:Null<Node>;
 	public var placement:Placement = Below;
@@ -27,6 +31,7 @@ class Popup extends Node {
 	public var modal = false;
 	public var onDismiss:Null<Void->Void>;
 	public var dismissOnOutside = true;
+	public var menu = false;
 	// the focus when it opened (given back when it closes)
 	@:allow(helder.ui.Ui) @:allow(helder.ui.Popups) var returnFocus:Null<Node>;
 

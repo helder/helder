@@ -130,10 +130,12 @@ class Shell implements Markup {
 		var mac = hxmc.Platform.os() == 1, phone = Phone.mobile();
 		// (a phone: one app, no other to hand files to)
 		if (phone) args = args.concat(["--new"]);
-		// (--store or HELDER_VIEWER_STORE: what it keeps elsewhere than the user's own, a test's run)
-		var dir = storeDir(args, Sys.getEnv("HELDER_VIEWER_STORE"));
-		Instance.dir = dir;
-		var store = try helder.os.Store.open("helder-viewer", dir) catch (_:Dynamic) null;
+		// (--store: what it keeps under that home, a test's run, as HELDER_HOME
+		// puts it; set here, before anything is opened: Launch Services' open -a
+		// passes the program no environment)
+		var own = storeDir(args);
+		if (own != null) Sys.putEnv("HELDER_HOME", own);
+		var store = try helder.os.Store.open("helder-viewer") catch (_:Dynamic) null;
 		inline function num(k:String, d:Int):Int {
 			var v = store == null ? null : Std.parseInt(store.get(k) ?? "");
 			return v == null ? d : v;
@@ -205,7 +207,7 @@ class Shell implements Markup {
 		#end
 		var viewer = x.viewer;
 		viewer.mod = mac ? "Cmd" : "Ctrl";
-		x.thumbnails = try new Thumbnails(dir == null ? null : new ThumbCache(512 << 20, 16 << 20, dir + "/thumbs")) catch (_:Dynamic) null;
+		x.thumbnails = try new Thumbnails() catch (_:Dynamic) null;
 		// (the keymap: secondary as this platform's; the user's file over the defaults, beside the store)
 		helder.ui.actions.Keymap.mac = mac;
 		helder.ui.menu.Menus.appName = "Viewer";
@@ -257,7 +259,7 @@ class Shell implements Markup {
 		var glass = !phone && material(Sys.systemName(), helder.os.DeviceInfo.get().osVersion, Sys.getEnv("XDG_CURRENT_DESKTOP") ?? "");
 		var shows = signal(false);
 		UiWindow.run(<Surface title={() -> x.full() ? viewer.title() : x.sidebar.title(x.browser.dir())} width={num("width", 1180)} height={num("height", 780)}
-			titlebar="inset" background={() -> glass ? "transparent" : "#" + StringTools.hex(ViewerView.canvas(UiWindow.dark()), 6)}
+			titlebar="inset" scrollbars="overlay" background={() -> glass ? "transparent" : "#" + StringTools.hex(ViewerView.canvas(UiWindow.dark()), 6)}
 			backdrop={glass ? () -> helder.os.Settings.reducedTransparency() ? "none" : "sidebar" : null} clickThrough={false}
 			onDrop={(files, _, _) -> if (files.length > 0) x.start(files[0])}
 			onClose={() -> {
@@ -284,7 +286,7 @@ class Shell implements Markup {
 				if (exitAfter >= 0) Async.launch(_ -> {
 					Async.delay(exitAfter);
 					var line = x.full.value ? 'viewer: ${viewer.title.peek()} (${viewer.state.peek()}${viewer.message.peek() == "" ? "" : ": " + viewer.message.peek()}, ${viewer.camera.percent()}%, ${w.window.width}x${w.window.height})'
-						: 'viewer: ${x.sidebar.title(x.browser.dir.value)} (browsing, ${ContentView.count(x)}, ${w.window.width}x${w.window.height})';
+						: 'viewer: ${x.sidebar.title(x.browser.dir.value)} (browsing, ${ContentView.count(x)}, ${w.window.width}x${w.window.height}, ${ends(w.ui)})';
 					Sys.println(line);
 					if (report != null) try sys.io.File.saveContent(report, line + "\n") catch (_:Dynamic) {}
 					save(store, w, x);
@@ -298,14 +300,26 @@ class Shell implements Markup {
 		</Surface>);
 	}
 
+	// (where the browser's panels end against the window's bottom, and the
+	// folder's scroll: the window lane's checks (a column's content may not
+	// push it further; a folder opened shows its top))
+	static function ends(ui:helder.ui.Ui):String {
+		var low = 0.0;
+		for (t in ["sidebar", "main", "pathbar", "inspector"]) {
+			var n = ui.root.find(t);
+			if (n != null) low = Math.max(low, n.absY + n.height);
+		}
+		var list = ui.root.find("rows") ?? ui.root.find("grid");
+		return 'ends at ${Math.round(low)} of ${Math.round(ui.height)}, scrolled ${list == null ? 0 : Math.round(list.scrollY)}';
+	}
+
 	// where the viewer keeps what it keeps (its store, beside it its errors'
 	// log and keymap, the running viewer's port, the thumbnails' cache):
-	// --store <dir>, else env (HELDER_VIEWER_STORE), else null, the
-	// platform's place for the user's own (helder.os.Store, Paths.cache)
-	public static function storeDir(args:Array<String>, env:Null<String>):Null<String> {
+	// --store <dir>'s home (helder.os's HELDER_HOME), else null: the
+	// environment's HELDER_HOME, else the platform's place for the user's own
+	public static function storeDir(args:Array<String>):Null<String> {
 		var i = args.indexOf("--store");
-		if (i >= 0 && i + 1 < args.length && args[i + 1] != "") return args[i + 1];
-		return env == null || env == "" ? null : env;
+		return i >= 0 && i + 1 < args.length && args[i + 1] != "" ? args[i + 1] : null;
 	}
 
 	#end

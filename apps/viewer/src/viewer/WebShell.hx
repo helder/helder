@@ -32,7 +32,7 @@ class WebShell implements Markup {
 		helder.os.web.WebFolders.onDrop(g -> Shell.showFolder(x, files.grants, g));
 		x.browser.go(Samples.ROOT);
 		UiWindow.run(<Surface title={() -> x.full() ? viewer.title() : x.sidebar.title(x.browser.dir())}
-			background={() -> "#" + StringTools.hex(ViewerView.canvas(UiWindow.dark()), 6)} ref={w -> {
+			scrollbars="overlay" background={() -> "#" + StringTools.hex(ViewerView.canvas(UiWindow.dark()), 6)} ref={w -> {
 				Shell.attach(w.ui.root, x);
 				helder.view.graph.Graph.effect(() -> viewer.fullscreen(), on -> w.window.fullscreen = on);
 			}}>

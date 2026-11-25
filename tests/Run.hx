@@ -676,6 +676,16 @@ class Run {
 		said = File.getContent(out);
 		Sys.print(said);
 		if (said.indexOf("viewer: doc.md · 1 / 3 (shown") < 0) throw new Failed('the viewer did not show the Markdown document: $said');
+		// (a folder among 40: the sidebar's level of them scrolls, not pushing the window's content past its bottom)
+		for (i in 0...40)
+			mkdirs('bin/viewer/many/folder $i');
+		File.saveContent("bin/viewer/many/folder 0/a.txt", "a");
+		var many = '$wine$exe --new --exit-after 3 "bin/viewer/many/folder 0"';
+		if (Sys.systemName() == "Linux") shell('$XVFB -a $many > $out') else shell('$many > $out');
+		said = File.getContent(out);
+		Sys.print(said);
+		var ends = ~/ends at ([0-9]+) of ([0-9]+)/;
+		if (!ends.match(said) || ends.matched(1) != ends.matched(2)) throw new Failed('the window\'s content does not end at its bottom: $said');
 		// (macOS: a video, played by helder.media on VideoToolbox; a video alone, so nothing is heard)
 		if (GFX_TARGET.startsWith("macos-") && HOST.startsWith("macos-")) {
 			shell('$exe --new --exit-after 2 tests/media/hevc.mp4 > $out');
@@ -715,21 +725,22 @@ class Run {
 		viewerStoreKept(kept);
 	}
 
-	// (the viewer's runs keep what they keep in a store of their own
-	// (HELDER_VIEWER_STORE, its launches' and their shells'), not the user's:
+	// (the viewer's runs keep what they keep in a home of their own
+	// (HELDER_HOME: its store, its thumbnails' cache; its launches' and their
+	// shells', --store where Launch Services passes no environment), not the user's:
 	// a test's folders and recent files out of theirs, a second launch
 	// handing its file to the test's viewer, not to the user's; the user's
 	// own store as it was before: its file's size and time)
 	static function viewerStore():{dir:String, user:String} {
-		var dir = FileSystem.fullPath("bin") + "/viewer-store";
+		var dir = FileSystem.fullPath("bin") + "/viewer-home";
 		rmrf(dir);
 		mkdirs(dir);
-		Sys.putEnv("HELDER_VIEWER_STORE", dir);
+		Sys.putEnv("HELDER_HOME", dir);
 		return {dir: dir, user: userViewerStore()};
 	}
 
 	static function viewerStoreKept(kept:{dir:String, user:String}) {
-		if (!FileSystem.exists(kept.dir + "/helder-viewer.json")) throw new Failed('the viewer kept nothing in its test store ${kept.dir}');
+		if (!FileSystem.exists(kept.dir + "/data/helder-viewer/store.json")) throw new Failed('the viewer kept nothing in its test home ${kept.dir}');
 		var now = userViewerStore();
 		if (now != kept.user) throw new Failed('the viewer\'s runs changed the user\'s own store: $now, was ${kept.user}');
 	}
