@@ -380,7 +380,7 @@ jobs:
 
   # (two jobs: 3d-web's runs, one at a time on a machine's cores as
   # SwiftShader's frames need (three shards spent 43 s of setup and the same
-  # SceneWebTest.wasm build each for 60 s of runs); the other lanes)
+  # SceneWebCheck.wasm build each for 60 s of runs); the other lanes)
   browser:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -482,7 +482,7 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: bin/pack/cache/maven
-          key: maven-${{ hashFiles('src/helder/pack/android/Maven.hx', 'tests/pack/jvm/JvmFixture.hx', 'src/helder/store/android/AndroidPurchases.hx') }}
+          key: maven-${{ hashFiles('src/helder/pack/android/Maven.hx', 'tests/pack/jvm/JvmDex.hx', 'src/helder/store/android/AndroidPurchases.hx') }}
           restore-keys: maven-
       - name: The CLI, Android's runtime objects, the device tests' apps (bun run test android-device --build-only)
         env:
@@ -653,7 +653,7 @@ jobs:
         if: always()
         # (and CoreText's sheets for the text-quality lane: tests/text/coretext/sheets is a copy of bin/text/coretext)
         with: {name: text-macos, path: "bin/text/*.png\nbin/text/coretext/*", retention-days: 7, if-no-files-found: ignore}
-      # (the window lane's <Video> both ways, the window server's captures and helder's frame: tests/media/apple/VideoWindow.hx)
+      # (the window lane's <Video> both ways, the window server's captures and helder's frame: tests/media/apple/VideoWindowCheck.hx)
       - uses: actions/upload-artifact@v7
         if: always()
         with: {name: video-window-macos, path: "bin/media/video-window/*.png", retention-days: 7, if-no-files-found: ignore}

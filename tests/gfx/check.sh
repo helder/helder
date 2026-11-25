@@ -1,19 +1,19 @@
 #!/bin/sh
 # The examples (examples: Triangle.hx, Cube.hx, Instances.hx,
-# Targets.hx, Mips.hx, Formats.hx; the blend modes: Blending.hx; arrays: Palette.hx; cube and array textures: Layers.hx) against <scene>.png (GfxTest.hx),
+# Targets.hx, Mips.hx, Formats.hx; the blend modes: Blending.hx; arrays: Palette.hx; cube and array textures: Layers.hx) against <scene>.png (GfxCheck.hx),
 # headless, then in a window. Linux: on Mesa's llvmpipe, an EGL pbuffer, then an X11 window under Xvfb (needs
 # libEGL, Mesa's drivers, Xvfb and xvfb-run). macOS: Metal, an offscreen
-# texture (skipped without a Metal device: GfxTest exits with 3), then a
+# texture (skipped without a Metal device: GfxCheck exits with 3), then a
 # Cocoa window (skipped outside a GUI session, which has no window server).
-# Windows (GfxTest.exe): D3D11 on WARP, an offscreen texture, then a Win32
+# Windows (GfxCheck.exe): D3D11 on WARP, an offscreen texture, then a Win32
 # window; on Linux, under Wine (WINE, by default /usr/lib/wine/wine64:
 # wined3d over Mesa's llvmpipe, under Xvfb).
-#   sh tests/gfx/check.sh <dir with GfxTest> [out dir]
+#   sh tests/gfx/check.sh <dir with GfxCheck> [out dir]
 set -e
 bin=$1
 out=${2:-$1}
 here=$(dirname "$0")
-if [ -f "$bin/GfxTest.exe" ]; then
+if [ -f "$bin/GfxCheck.exe" ]; then
 	export HXMC_GFX_SOFTWARE=1
 	case "$(uname -s)" in
 	MINGW* | MSYS* | CYGWIN*) run() { "$@"; } ;;
@@ -23,15 +23,15 @@ if [ -f "$bin/GfxTest.exe" ]; then
 		;;
 	esac
 	for s in triangle cube instances targets msaa mips formats blend palette layers; do
-		run "$bin/GfxTest.exe" headless $s "$here/$s.png" "$out/$s-headless.png"
-		run "$bin/GfxTest.exe" window $s "$here/$s.png" "$out/$s-window.png" 5
+		run "$bin/GfxCheck.exe" headless $s "$here/$s.png" "$out/$s-headless.png"
+		run "$bin/GfxCheck.exe" window $s "$here/$s.png" "$out/$s-window.png" 5
 	done
 	exit 0
 fi
 if [ "$(uname -s)" = Darwin ]; then
 	for s in triangle cube instances targets msaa mips formats blend palette layers; do
 		code=0
-		"$bin/GfxTest" headless $s "$here/$s.png" "$out/$s-headless.png" || code=$?
+		"$bin/GfxCheck" headless $s "$here/$s.png" "$out/$s-headless.png" || code=$?
 		[ $code = 3 ] && exit 0
 		[ $code = 0 ] || exit $code
 	done
@@ -40,12 +40,12 @@ if [ "$(uname -s)" = Darwin ]; then
 		exit 0
 	fi
 	for s in triangle cube instances targets msaa mips formats blend palette layers; do
-		"$bin/GfxTest" window $s "$here/$s.png" "$out/$s-window.png" 5
+		"$bin/GfxCheck" window $s "$here/$s.png" "$out/$s-window.png" 5
 	done
 	exit 0
 fi
 export LIBGL_ALWAYS_SOFTWARE=1
 for s in triangle cube instances targets msaa mips formats blend palette layers; do
-	env -u DISPLAY "$bin/GfxTest" headless $s "$here/$s.png" "$out/$s-headless.png"
-	sh "$here/../xvfb-run.sh" -a -s "-screen 0 640x480x24" "$bin/GfxTest" window $s "$here/$s.png" "$out/$s-window.png" 5
+	env -u DISPLAY "$bin/GfxCheck" headless $s "$here/$s.png" "$out/$s-headless.png"
+	sh "$here/../xvfb-run.sh" -a -s "-screen 0 640x480x24" "$bin/GfxCheck" window $s "$here/$s.png" "$out/$s-window.png" 5
 done

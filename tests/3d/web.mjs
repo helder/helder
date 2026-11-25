@@ -1,10 +1,10 @@
 // helder.scene's scenes (Scenes.hx; SCENES=a,b for some) on WebGPU, then on
 // WebGL2 (forced), in headless Chromium (bun run test 3d-web), against
-// <scene>.png by helder.gfx's rule (its compare.mjs): SceneWebTest.wasm
+// <scene>.png by helder.gfx's rule (its compare.mjs): SceneWebCheck.wasm
 // headless, then in a 256x192 canvas drawn by the browser's loop.
 // Chromium renders with WebGPU on SwiftShader and WebGL2 on ANGLE's
 // SwiftShader, as in tests/gfx/web.mjs.
-//   node tests/3d/web.mjs <SceneWebTest.wasm> [out dir]
+//   node tests/3d/web.mjs <SceneWebCheck.wasm> [out dir]
 // SCENES_WINDOW=a,b: those scenes in the window too, the others headless
 // alone (CI's pull requests: the window's path, the canvas and the
 // browser's loop, is the scene's own in few; every scene's in both on main);
@@ -26,7 +26,7 @@ const args = process.argv.slice(2);
 const [shard, shards] = takeShard(args);
 const [wasm, out] = args;
 if (!wasm) {
-	console.error('usage: node web.mjs <SceneWebTest.wasm> [out dir]');
+	console.error('usage: node web.mjs <SceneWebCheck.wasm> [out dir]');
 	process.exit(2);
 }
 const CHROMIUM_ARGS = ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-vulkan=swiftshader', '--use-angle=swiftshader'];
@@ -58,7 +58,7 @@ try {
 	console.log(`web.mjs: ${list.length} files fetched before main: ${list.join(', ')}`);
 } catch {}
 const types = { '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.png': 'image/png', '.json': 'application/json', '.glb': 'model/gltf-binary' };
-const page = `<!doctype html><title>SceneWebTest</title>
+const page = `<!doctype html><title>SceneWebCheck</title>
 <canvas id="c" style="width: 256px; height: 192px; display: block"></canvas>
 <script type="module">
 import { run } from './os/browser.mjs';
@@ -72,7 +72,7 @@ window.start = async (gfx, mode, scene) => {
 	if (r.host.gfx.backend !== gfx) return { ok: false, text: gfx + ' ' + mode + ': on ' + r.host.gfx.backend };
 	if (mode === 'window') {
 		const t0 = performance.now();
-		while (!log.some((l) => l.startsWith('SceneWebTest: window:')) && performance.now() - t0 < 10000) await new Promise((f) => setTimeout(f, 50));
+		while (!log.some((l) => l.startsWith('SceneWebCheck: window:')) && performance.now() - t0 < 10000) await new Promise((f) => setTimeout(f, 50));
 	}
 	const px = await r.host.gfx.readPixels();
 	window.pixels = Array.from(px.data);
@@ -113,7 +113,7 @@ async function one([scene, gfx, mode]) {
 	await p.goto(url);
 	const r = await p.evaluate(([g, m, s]) => window.start(g, m, s), [gfx, mode, scene]).catch((e) => ({ ok: false, text: e.message.split('\n')[0] }));
 	const api = gfx === 'webgpu' ? 'WebGPU' : 'WebGL2';
-	const expect = [mode === 'window' ? `SceneWebTest: window: 3 frames (${api})` : `SceneWebTest: headless: 256x192 (${api})`];
+	const expect = [mode === 'window' ? `SceneWebCheck: window: 3 frames (${api})` : `SceneWebCheck: headless: 256x192 (${api})`];
 	const log = await p.evaluate(() => window.log);
 	if (out) {
 		const png = await p.evaluate(async () => {

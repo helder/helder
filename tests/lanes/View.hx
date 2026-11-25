@@ -14,30 +14,29 @@ class View {
 		{name: "web", about: "helder.web's static and DOM renderers", run: web},
 		{name: "ui-soft", about: "helder.ui drawn on the CPU, writing the goldens", run: uiSoft},
 		{name: "ui-draw", about: "helder.ui's GPU renderer against golden images", run: uiDraw},
-		{name: "thread-web", about: "not in CI: the page's thread against a worker", run: threadWeb},
 		{name: "ui-web", about: "helder.ui as wasm32-wasi in headless Chromium", run: uiWeb}
 	];
 
 	static function view() {
 		var cp = cps(["src", "tests/view"]);
-		interp(cp, "ViewTest", [TOOL]);
-		exe("bin/view/ViewTest", cp.concat(["-main", "ViewTest"]));
-		run(exePath("bin/view/ViewTest", HOST), []);
-		js("bin/view/ViewTest.js", cp.concat(["-main", "ViewTest"]));
-		run(NODE, ["bin/view/ViewTest.js"]);
+		interp(cp, "ViewCheck", [TOOL]);
+		exe("bin/view/ViewCheck", cp.concat(["-main", "ViewCheck"]));
+		run(exePath("bin/view/ViewCheck", HOST), []);
+		js("bin/view/ViewCheck.js", cp.concat(["-main", "ViewCheck"]));
+		run(NODE, ["bin/view/ViewCheck.js"]);
 	}
 
 	static function ui() {
 		var cp = cps(["src", "tests/ui"]);
-		interp(cp, "UiTest");
-		interp(cp, "MarkupTest");
-		interp(cp.concat(cps([guideTestSource()])), "GuideTest");
+		interp(cp, "UiCheck");
+		interp(cp, "MarkupCheck");
+		interp(cp.concat(cps([guideTestSource()])), "GuideCheck");
 	}
 
 	static function guideTestSource():String {
 		var dir = "bin/ui/guide";
 		var sample = "docs/apps/interactions.md";
-		var source = File.getContent("tests/ui/GuideTest.hx").replace("\r\n", "\n");
+		var source = File.getContent("tests/ui/GuideCheck.hx").replace("\r\n", "\n");
 		var blocks = File.getContent(sample).replace("\r\n", "\n").split("\n```haxe\n").slice(1).map(b -> b.split("\n```")[0]);
 		for (name in ["Confirm", "Editor"]) {
 			var declaration = 'static function $name(';
@@ -45,25 +44,25 @@ class View {
 			if (code == null) throw new Failed('$sample: missing Haxe sample for $name');
 			var start = source.indexOf('\t' + declaration);
 			var end = source.indexOf("\n\n", start);
-			if (start < 0 || end < 0) throw new Failed('GuideTest: missing $name');
+			if (start < 0 || end < 0) throw new Failed('GuideCheck: missing $name');
 			source = source.substr(0, start) + code + source.substr(end);
 		}
 		mkdirs(dir);
-		File.saveContent('$dir/GuideTest.hx', source);
+		File.saveContent('$dir/GuideCheck.hx', source);
 		return dir;
 	}
 
 	static function layoutConformance()
-		interp(cps(["src", "tests/ui", "tests/layout-conformance"]), "LayoutConformance");
+		interp(cps(["src", "tests/ui", "tests/layout-conformance"]), "LayoutConformanceCheck");
 
 	static function web() {
 		var cp = cps(["src", "tests/web", "examples/web-demo"]);
-		interp(cp, "StaticTest");
-		exe("bin/web/StaticTest", cp.concat(["-main", "StaticTest"]));
-		run(exePath("bin/web/StaticTest", HOST), []);
+		interp(cp, "StaticCheck");
+		exe("bin/web/StaticCheck", cp.concat(["-main", "StaticCheck"]));
+		run(exePath("bin/web/StaticCheck", HOST), []);
 		rmrf("bin/web/demo");
 		interp(cp, "DemoPage", ["bin/web/demo"]);
-		js("bin/web/domtest.js", cp.concat(["-main", "DomTest", "-debug"]));
+		js("bin/web/domtest.js", cp.concat(["-main", "DomCheck", "-debug"]));
 		js("bin/web/demo/islands.js", cp.concat(["-main", "DemoBundle", "-dce", "full", "-debug"]));
 		js("bin/web/demo/counter.js", cp.concat(["-main", "Counter", "-dce", "full", "-D", "js-es=6", "-D", "analyzer-optimize"]));
 		wasm("bin/web/demo/locale.wasm", cps(["src", "tests/os"]).concat(["-main", "LocaleCheck", "-D", "helder.asset.out=bin/web/demo/locale.wasm"]));
@@ -78,10 +77,10 @@ class View {
 
 	static function uiPrograms() {
 		var t = GFX_TARGET;
-		var programs = ["UiDrawTest", "TodoTest", "StressTest", "LayerTest", "DamageTest", "ClipboardTest", "EmojiTest", "BoxTest", "SnapTest", "WindowTest", "ControlsGallery", "ControlsBench", "RenderThreadTest", "AsyncScrollTest", "AsyncScrollWindow", "GlassTest"];
-		if (t.startsWith("macos-")) programs = programs.concat(["SystemLayersWindow", "GlassWindow"]);
-		if (t.startsWith("linux-")) programs = programs.concat(["TextInputTest", "LinuxAccessTest", "AtspiProbe", "AccessApp"]);
-		if (t.startsWith("windows-")) programs.push("WinAccessTest");
+		var programs = ["UiDrawCheck", "TodoCheck", "StressCheck", "LayerCheck", "DamageCheck", "ClipboardCheck", "EmojiCheck", "BoxCheck", "SnapCheck", "WindowCheck", "ControlsGallery", "ControlsCostCheck", "RenderThreadCheck", "AsyncScrollCheck", "AsyncScrollWindowCheck", "GlassCheck"];
+		if (t.startsWith("macos-")) programs = programs.concat(["SystemLayersWindowCheck", "GlassWindowCheck"]);
+		if (t.startsWith("linux-")) programs = programs.concat(["KeyInputCheck", "LinuxAccessCheck", "AtspiCheck", "AccessApp"]);
+		if (t.startsWith("windows-")) programs.push("WinAccessCheck");
 		for (m in programs)
 			native('bin/ui/$t/$m', uiCp().concat(["-main", m]), t);
 	}
@@ -89,18 +88,18 @@ class View {
 	// (the image tests drawn on the CPU: their goldens; on Linux static, so nothing of a GPU's can be loaded)
 	static function uiSoft() {
 		var b = 'bin/ui-soft/$HOST', bless = BLESS ? " --bless" : "";
-		var programs = ["UiDrawTest", "TodoTest", "BoxTest", "EmojiTest", "ControlsGallery", "SnapTest", "GlassTest"];
+		var programs = ["UiDrawCheck", "TodoCheck", "BoxCheck", "EmojiCheck", "ControlsGallery", "SnapCheck", "GlassCheck"];
 		// (-D helder.headless: no window code, static on Linux)
 		var soft = ["-D", "helder.soft", "-D", "helder.headless", "-D", 'hxmc.target=$HOST'];
 		prebuild([for (m in programs) {out: exePath('$b/$m', HOST), args: uiCp().concat(["-main", m]).concat(soft)}]);
 		for (m in programs)
 			hxmc(exePath('$b/$m', HOST), uiCp().concat(["-main", m]).concat(soft));
-		shell('$b/UiDrawTest tests/ui/draw.png $b/draw.png$bless');
-		shell('$b/TodoTest tests/ui/todo.png $b/todo.png$bless');
-		shell('$b/BoxTest tests/ui/boxes.png $b/boxes.png');
-		shell('$b/EmojiTest tests/ui/emoji.png $b/emoji.png');
-		shell('$b/SnapTest');
-		shell('$b/GlassTest tests/ui/glass.png $b/glass.png$bless');
+		shell('$b/UiDrawCheck tests/ui/draw.png $b/draw.png$bless');
+		shell('$b/TodoCheck tests/ui/todo.png $b/todo.png$bless');
+		shell('$b/BoxCheck tests/ui/boxes.png $b/boxes.png');
+		shell('$b/EmojiCheck tests/ui/emoji.png $b/emoji.png');
+		shell('$b/SnapCheck');
+		shell('$b/GlassCheck tests/ui/glass.png $b/glass.png$bless');
 		mkdirs('$b/controls');
 		shell('$b/ControlsGallery tests/ui/controls $b/controls$bless');
 	}
@@ -114,51 +113,46 @@ class View {
 		// (Linux: a window in Xvfb; elsewhere the desktop's own)
 		var linux = Sys.systemName() == "Linux";
 		var xvfb = linux ? '$XVFB -a -s "-screen 0 640x480x24"' : "";
-		shell('$gpu $b/UiDrawTest tests/ui/draw.png $b/draw.png$bless');
-		shell('LIBGL_ALWAYS_SOFTWARE=1 $xvfb $b/UiDrawTest tests/ui/draw.png $b/window.png --window');
-		shell('$gpu $b/TodoTest tests/ui/todo.png $b/todo.png$bless');
-		shell('$gpu $b/StressTest');
-		shell('$gpu $b/LayerTest');
-		shell('$gpu $b/DamageTest');
-		shell('$gpu $b/EmojiTest tests/ui/emoji.png $b/emoji.png');
-		shell('$gpu $b/BoxTest tests/ui/boxes.png $b/boxes.png');
-		shell('$gpu $b/SnapTest');
+		shell('$gpu $b/UiDrawCheck tests/ui/draw.png $b/draw.png$bless');
+		shell('LIBGL_ALWAYS_SOFTWARE=1 $xvfb $b/UiDrawCheck tests/ui/draw.png $b/window.png --window');
+		shell('$gpu $b/TodoCheck tests/ui/todo.png $b/todo.png$bless');
+		shell('$gpu $b/StressCheck');
+		shell('$gpu $b/LayerCheck');
+		shell('$gpu $b/DamageCheck');
+		shell('$gpu $b/EmojiCheck tests/ui/emoji.png $b/emoji.png');
+		shell('$gpu $b/BoxCheck tests/ui/boxes.png $b/boxes.png');
+		shell('$gpu $b/SnapCheck');
 		// (Liquid Glass drawn: its backdrop, blur and lens against the CPU's)
-		shell('$gpu $b/GlassTest tests/ui/glass.png $b/glass.png');
+		shell('$gpu $b/GlassCheck tests/ui/glass.png $b/glass.png');
 		// (the controls: their gallery against tests/ui/controls' images, their cost)
 		mkdirs('$b/controls');
 		shell('$gpu $b/ControlsGallery tests/ui/controls $b/controls$bless');
-		shell('$gpu $b/ControlsBench');
-		shell('$xvfb $b/WindowTest');
+		shell('$gpu $b/ControlsCostCheck');
+		shell('$xvfb $b/WindowCheck');
 		// (damage in a window whose frame is multisampled, the frame kept single-sampled: the same pixels)
-		shell('LIBGL_ALWAYS_SOFTWARE=1 $xvfb $b/DamageTest --window');
+		shell('LIBGL_ALWAYS_SOFTWARE=1 $xvfb $b/DamageCheck --window');
 		// (the render thread's frames against the synchronous path's, in a window; resources hammered while frames are on their way)
-		shell('LIBGL_ALWAYS_SOFTWARE=1 $xvfb $b/RenderThreadTest');
+		shell('LIBGL_ALWAYS_SOFTWARE=1 $xvfb $b/RenderThreadCheck');
 		// (the compositor's scrolling: its physics and frames against the program's, then in a window the program blocked while scroll input comes)
-		shell('$gpu $b/AsyncScrollTest');
-		shell('LIBGL_ALWAYS_SOFTWARE=1 $xvfb $b/AsyncScrollWindow');
-		shell('LIBGL_ALWAYS_SOFTWARE=1 $xvfb $b/AsyncScrollWindow --anim');
-		if (!linux) shell('$b/AsyncScrollWindow --native');
+		shell('$gpu $b/AsyncScrollCheck');
+		shell('LIBGL_ALWAYS_SOFTWARE=1 $xvfb $b/AsyncScrollWindowCheck');
+		shell('LIBGL_ALWAYS_SOFTWARE=1 $xvfb $b/AsyncScrollWindowCheck --anim');
+		if (!linux) shell('$b/AsyncScrollWindowCheck --native');
 		// (Core Animation's layers: the same scene composited by it and by the textured compositor, window captures compared)
-		if (GFX_TARGET.startsWith("macos-") && !linux) shell('$b/SystemLayersWindow');
+		if (GFX_TARGET.startsWith("macos-") && !linux) shell('$b/SystemLayersWindowCheck');
 		// (the system's Liquid Glass, macOS 26: its views in the layer tree, kept in the background)
-		if (GFX_TARGET.startsWith("macos-") && !linux) shell('HELDER_BACKGROUND=1 $b/GlassWindow');
+		if (GFX_TARGET.startsWith("macos-") && !linux) shell('HELDER_BACKGROUND=1 $b/GlassWindowCheck');
 		// (the clipboard: Xvfb's own, not a desktop's in use; X11's text input
 		// and AT-SPI: Linux's; Windows' are the window lane's)
 		if (!linux) return;
-		shell('$xvfb $b/ClipboardTest');
-		shell('$xvfb $b/TextInputTest');
+		shell('$xvfb $b/ClipboardCheck');
+		shell('$xvfb $b/KeyInputCheck');
 		// (AT-SPI: the window's tree read by another process through libatspi,
 		// in a D-Bus session: the fixture's, acted on, then the examples' and
 		// the guide's, read whole)
-		shell('LIBGL_ALWAYS_SOFTWARE=1 $xvfb dbus-run-session -- sh -c \'$b/LinuxAccessTest & p=$$!; $b/AtspiProbe fixture; s=$$?; wait $$p && exit $$s\'');
+		shell('LIBGL_ALWAYS_SOFTWARE=1 $xvfb dbus-run-session -- sh -c \'$b/LinuxAccessCheck & p=$$!; $b/AtspiCheck fixture; s=$$?; wait $$p && exit $$s\'');
 		for (screen in ACCESS_SCREENS)
-			shell('LIBGL_ALWAYS_SOFTWARE=1 $xvfb dbus-run-session -- sh -c \'$b/AccessApp ${screen[0]} & p=$$!; $b/AtspiProbe ${screen.join(" ")}; s=$$?; kill $$p; exit $$s\'');
-	}
-
-	static function threadWeb() {
-		wasm("bin/ui/ThreadBench.wasm", uiCp().concat(["-main", "ThreadBench"]));
-		run(NODE, ["tests/ui/thread-bench.mjs", "bin/ui/ThreadBench.wasm", "--json", "bin/ui/thread-bench.json"]);
+			shell('LIBGL_ALWAYS_SOFTWARE=1 $xvfb dbus-run-session -- sh -c \'$b/AccessApp ${screen[0]} & p=$$!; $b/AtspiCheck ${screen.join(" ")}; s=$$?; kill $$p; exit $$s\'');
 	}
 
 	static function uiWeb() {

@@ -7,7 +7,7 @@
 // upsampling and colour conversion, as Chromium has them. ImageMagick
 // (convert) encodes most; this script the rest: restart intervals (a small
 // baseline encoder below) and the orientation (an APP1 segment added).
-// ImageTest decodes them (bun run test image).
+// ImageCheck decodes them (bun run test image).
 //   node tests/image/jpeg-cases.mjs   (needs ImageMagick and Playwright)
 import fs from 'node:fs';
 import path from 'node:path';

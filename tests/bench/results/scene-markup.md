@@ -1,7 +1,7 @@
 # 3D in markup against code, by milestone
 
 DESIGN-MARKUP.md 9's benchmark (tests/bench/SceneMarkupBench.hx, `bun run
-test scene-markup-bench`): the same scene in code and in markup at 1,000
+test bench scene-markup`): the same scene in code and in markup at 1,000
 and 10,000 meshes of one geometry and material, natively on a headless
 device and as wasm32-wasi (no GPU there: bare nodes, the world's matrices
 for the pass). Each milestone adds its section; the latest is the lane's
@@ -26,7 +26,7 @@ a row's `p()` (a Vec3 through a closure) is the Quat gap of 10.1 until M1.
 What it shows:
 
 - **Every removed node leaks**: `left` is all of them (1,001 and 10,001),
-  and SceneUiTest's leak check (a `<Show>` toggled 100 times, a `<For>` of
+  and SceneUiCheck's leak check (a `<Show>` toggled 100 times, a `<For>` of
   100 emptied and filled) leaves 305 nodes of 1 (a known failure until M2).
 - **Signals cost 15x to 70x code's frame** in the markup's share, and
   allocate 32 B per node per frame (each Vec3 boxed by its signal and its

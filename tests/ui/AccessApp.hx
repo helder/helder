@@ -2,14 +2,15 @@ import helder.ui.*;
 import helder.ui.UiWindow;
 import helder.view.*;
 import helder.view.graph.Graph.*;
+import fixtures.AccessFixture;
 
 // A window whose accessibility tree another process reads through the
-// platform's API (AtspiProbe on Linux, WinAccessProbe on Windows): the
+// platform's API (AtspiCheck on Linux, WinAccessRemoteCheck on Windows): the
 // screen named by its argument, in a window of that title:
 //   fixture   AccessFixture's controls (closed once its Save is pressed)
 //   todo      the todo example (examples/todo) with two items
 //   mail      the mail example (examples/mail)
-//   guide     the guide's widgets (GuideTest's: a card of steppers, a
+//   guide     the guide's widgets (GuideCheck's: a card of steppers, a
 //             button opening a dialog, rich text, an editor, a form)
 // It runs until it is closed or 60 seconds pass; the window's tree is the
 // platform's from the first frame (the adapters wait for a client).
@@ -61,12 +62,12 @@ class AccessApp implements Markup {
 			case "guide":
 				var text = signal("A draft"), subject = signal("Hi"), body = signal(""), name = signal("Ann");
 				var v:View = @:privateAccess <view padding={12} row-gap={12}>
-					{GuideTest.Order({})}
-					{GuideTest.Confirm({onYes: () -> {}})}
-					{GuideTest.Greeting({name: name, onLink: () -> {}})}
-					{GuideTest.SearchButton({onClick: () -> {}})}
-					{GuideTest.Editor({text: text, onSave: () -> {}})}
-					{GuideTest.Compose({subject: subject, body: body})}
+					{GuideCheck.Order({})}
+					{GuideCheck.Confirm({onYes: () -> {}})}
+					{GuideCheck.Greeting({name: name, onLink: () -> {}})}
+					{GuideCheck.SearchButton({onClick: () -> {}})}
+					{GuideCheck.Editor({text: text, onSave: () -> {}})}
+					{GuideCheck.Compose({subject: subject, body: body})}
 				</view>;
 				Render.render(v, w.root);
 			case _:

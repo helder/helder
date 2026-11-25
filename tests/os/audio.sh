@@ -1,9 +1,9 @@
 #!/bin/sh
-# AudioTest (AudioTest.hx) through each back end's real API, without
+# AudioOutputCheck (AudioOutputCheck.hx) through each back end's real API, without
 # speakers. Linux: ALSA's null device, then its file plugin (the samples
 # ALSA was given, checked exactly; paced at the clock by helder). macOS: the "file:" device (CoreAudio's
 # generic output unit, rendered at the clock's pace), then the default
-# output when the machine has one (exit 3: none). Windows (AudioTest.exe):
+# output when the machine has one (exit 3: none). Windows (AudioOutputCheck.exe):
 # WASAPI on the default endpoint when the machine has one (exit 3: none);
 # on Linux under Wine (WINE, by default /usr/lib/wine/wine64), whose WASAPI
 # plays through winealsa to an ALSA default made the file plugin: what
@@ -11,7 +11,7 @@
 # of the callbacks (--rate) is checked where something paces them: a device,
 # CoreAudio's renderer, helder's ALSA file output; not ALSA's null sink,
 # which takes samples as fast as they come, nor Wine's mixer over ALSA's.
-#   sh tests/os/audio.sh <dir with AudioTest> [out dir]
+#   sh tests/os/audio.sh <dir with AudioOutputCheck> [out dir]
 set -e
 bin=$1
 out=$(cd "${2:-$1}" && pwd)
@@ -26,10 +26,10 @@ maybe() {
 	fi
 	return $code
 }
-if [ -f "$bin/AudioTest.exe" ]; then
+if [ -f "$bin/AudioOutputCheck.exe" ]; then
 	case "$(uname -s)" in
 	MINGW* | MSYS* | CYGWIN*)
-		maybe "$bin/AudioTest.exe" default $frames --rate
+		maybe "$bin/AudioOutputCheck.exe" default $frames --rate
 		;;
 	*)
 		# (a prefix and an ALSA configuration of our own)
@@ -45,7 +45,7 @@ if [ -f "$bin/AudioTest.exe" ]; then
 		EOF
 		rm -f "$out/wine.raw"
 		wine=${WINE:-/usr/lib/wine/wine64}
-		HOME="$home" WINEPREFIX="$home/prefix" WINEDEBUG=-all "$wine" "$bin/AudioTest.exe" default $frames --expect "Z:$out/wine.raw"
+		HOME="$home" WINEPREFIX="$home/prefix" WINEDEBUG=-all "$wine" "$bin/AudioOutputCheck.exe" default $frames --expect "Z:$out/wine.raw"
 		HOME="$home" WINEPREFIX="$home/prefix" "$(dirname "$wine")/wineserver" -w || true
 		rm -rf "$home" "$out/wine.raw"
 		;;
@@ -53,11 +53,11 @@ if [ -f "$bin/AudioTest.exe" ]; then
 	exit 0
 fi
 if [ "$(uname -s)" = Darwin ]; then
-	"$bin/AudioTest" "file:$out/coreaudio.raw" $frames --rate --expect "$out/coreaudio.raw"
+	"$bin/AudioOutputCheck" "file:$out/coreaudio.raw" $frames --rate --expect "$out/coreaudio.raw"
 	rm -f "$out/coreaudio.raw"
-	maybe "$bin/AudioTest" default $frames --rate
+	maybe "$bin/AudioOutputCheck" default $frames --rate
 	exit 0
 fi
-"$bin/AudioTest" null $frames
-"$bin/AudioTest" "file:$out/alsa.raw" $frames --rate --expect "$out/alsa.raw"
+"$bin/AudioOutputCheck" null $frames
+"$bin/AudioOutputCheck" "file:$out/alsa.raw" $frames --rate --expect "$out/alsa.raw"
 rm -f "$out/alsa.raw"

@@ -7,7 +7,7 @@
 // transparency, a delay of 0), each frame as Chromium's ImageDecoder
 // composes it (<case>.frames.rgba, one after the other; cases.json: their
 // durations and the repetition count). ImageMagick (convert) encodes them.
-// ImageTest decodes them (bun run test image).
+// ImageCheck decodes them (bun run test image).
 //   node tests/image/gif-cases.mjs   (needs ImageMagick and Playwright)
 import fs from 'node:fs';
 import path from 'node:path';

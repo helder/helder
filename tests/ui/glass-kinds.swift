@@ -1,4 +1,4 @@
-// The system's Liquid Glass on screen over GlassKinds' bands (macOS 26):
+// The system's Liquid Glass on screen over GlassKindsCheck's bands (macOS 26):
 // NSGlassEffectView for each kind, a group's in an
 // NSGlassEffectContainerView, in a borderless window kept behind every
 // other (never activated, never key: the system's glass as in a window that

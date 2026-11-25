@@ -1,14 +1,14 @@
 // helder.os.audio on WebAudio, in headless Chromium (bun run test audio):
-// AudioTest.wasm (AudioTest.hx) loaded by src/helder/os/browser.mjs with
+// AudioOutputCheck.wasm (AudioOutputCheck.hx) loaded by src/helder/os/browser.mjs with
 // src/helder/os/imports.mjs, twice:
 // - realtime: an AudioContext (Chromium without a sound card plays to a
-//   fake output, at the device's pace): AudioTest checks that its callbacks
+//   fake output, at the device's pace): AudioOutputCheck checks that its callbacks
 //   came at the sample rate (--rate) and reports from the callback;
 // - offline: an OfflineAudioContext (browser.mjs's option audioContext),
 //   which start fills at once and the harness renders: the rendered
-//   samples must be AudioTest's signal (a 440 Hz sine left, 660 Hz right),
+//   samples must be AudioOutputCheck's signal (a 440 Hz sine left, 660 Hz right),
 //   from the first frame, as floats (the path copies, never converts).
-//   node tests/os/web.mjs <AudioTest.wasm>
+//   node tests/os/web.mjs <AudioOutputCheck.wasm>
 // (Playwright from npm, with Chromium: npx playwright install chromium)
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -22,7 +22,7 @@ try { pw = require('playwright'); } catch { pw = require(path.join(process.execP
 const here = path.dirname(fileURLToPath(import.meta.url));
 const [wasm] = process.argv.slice(2);
 if (!wasm) {
-	console.error('usage: node web.mjs <AudioTest.wasm>');
+	console.error('usage: node web.mjs <AudioOutputCheck.wasm>');
 	process.exit(2);
 }
 const RATE = 48000, FRAMES = 48000;
@@ -33,7 +33,7 @@ const files = {
 	'/os/imports.mjs': path.join(here, '../../src/helder/os/imports.mjs'),
 };
 const types = { '.mjs': 'text/javascript', '.wasm': 'application/wasm' };
-const page = `<!doctype html><title>AudioTest</title>
+const page = `<!doctype html><title>AudioOutputCheck</title>
 <script type="module">
 import { run } from './os/browser.mjs';
 const log = [];
@@ -86,7 +86,7 @@ for (const mode of ['realtime', 'offline']) {
 	await p.goto(url);
 	const r = await p.evaluate((m) => window[m](), mode).catch((e) => ({ error: e.message.split('\n')[0], log: [] }));
 	let ok = !r.error && errors.length === 0;
-	if (mode === 'realtime') ok &&= r.exit === 0 && r.log.includes('AudioTest: passed');
+	if (mode === 'realtime') ok &&= r.exit === 0 && r.log.includes('AudioOutputCheck: passed');
 	else {
 		// (float32 all the way: the same values)
 		ok &&= r.exit === 0 && r.channels === 2 && r.rate === RATE && r.worst === 0;

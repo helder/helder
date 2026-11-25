@@ -1,8 +1,8 @@
 #!/bin/sh
-# A transparent window on Linux (tests/ui/ShapeWindow.hx): under Xvfb with
+# A transparent window on Linux (tests/ui/ShapeWindowCheck.hx): under Xvfb with
 # no compositing manager (opaque, as said), with xcompmgr where installed,
 # and under a headless weston whose background is green (its screenshot).
-#   shape.sh <ShapeWindow>
+#   shape.sh <ShapeWindowCheck>
 set -e
 exe=$1
 export LIBGL_ALWAYS_SOFTWARE=1

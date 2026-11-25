@@ -1,10 +1,10 @@
 // helder.ui's Stack in headless Chromium (bun run test touch-web):
-// NavWeb.wasm on a page that came after another (/start): each push an
+// NavWebCheck.wasm on a page that came after another (/start): each push an
 // entry of the page's history with the screen's path; the history's back
 // pops (the URL and the app's top together); Escape pops and the URL
 // follows; a reload at /item/2 restores that screen over the root, whose
 // back is the root's /; at the root the page's own back leaves it.
-//   node tests/ui/nav-web.mjs <NavWeb.wasm>
+//   node tests/ui/nav-web.mjs <NavWebCheck.wasm>
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -32,7 +32,7 @@ const files = {
 };
 const types = { '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.ttf': 'font/ttf' };
 // (every other path the app's page: a reload at /item/2 loads it there)
-const page = `<!doctype html><title>NavWeb</title><body style="margin:0">
+const page = `<!doctype html><title>NavWebCheck</title><body style="margin:0">
 <canvas id="c" style="width: 200px; height: 120px; display: block"></canvas>
 <script type="module">
 import { run } from '/os/browser.mjs';

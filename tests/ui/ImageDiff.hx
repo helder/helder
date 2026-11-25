@@ -4,7 +4,7 @@ import haxe.io.Bytes;
 // difference of its red, green and blue (alpha left out), and over the
 // image, or rows top to bottom (exclusive), their mean, how many pixels
 // differ at all, how many by more than a tolerance (far), the largest. The
-// image tests (UiDrawTest, BoxTest, EmojiTest) compare with their
+// image tests (UiDrawCheck, BoxCheck, EmojiCheck) compare with their
 // references through it.
 class ImageDiff {
 	public final count:Int;

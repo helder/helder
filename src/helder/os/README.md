@@ -73,7 +73,7 @@ in a browser with module workers and OffscreenCanvas, when the module
 imports nothing only a page has (audio's AudioContext, helder.web's DOM,
 helder.media's `<video>`, helder.canvas's Canvas 2D) and with one window;
 `helder dev`'s builds, swapped in place, stay on the page's thread. The
-details are in `src/helder/os/thread.mjs`; `bun run test thread-web`
+details are in `src/helder/os/thread.mjs`; `bun run test bench thread`
 compares both threads in Chromium, Firefox and WebKit.
 
 On Android (`helder build --target android`: an APK, helder.pack.android)
@@ -217,7 +217,7 @@ is prevented, the program's and not the page's zoom, other wheels left to
 scroll a page around it; Safari's pinch, its `gesturestart` and
 `gesturechange` (prevented too), comes as the same `Scroll` with
 `Mods.CONTROL` (-100 ln of the scale's step, in CSS pixels, as Chrome makes
-it). Tests: `bun run test window` (tests/os/WindowTest.hx: on X11
+it). Tests: `bun run test window` (tests/os/WindowCheck.hx: on X11
 a second connection drags two files over the window speaking XDND, on
 Windows an HDROP posted as `WM_DROPFILES`, under Wine too
 (`GFX_TARGET=windows-x86_64`), on macOS a dragging info of the test's
@@ -304,7 +304,7 @@ or an edge (the pointer's grab let go first), maximised through
 macOS puts them (7, 6 points, 54 by 16): `<WindowControls/>` draws
 stand-ins. Tests: `TitleBar.test.hx` (the edges, each system's codes;
 natively, as wasm32-wasi and on Eval) and the window lane's
-`tests/os/TitleBarTest.hx` (macOS: the window's style, the buttons
+`tests/os/TitleBarCheck.hx` (macOS: the window's style, the buttons
 measured, placed and kept through a resize, the bar's presses the app's
 and the buttons' AppKit's; Windows: no caption, WM_NCHITTEST's answers;
 X11: Motif's hints). Not yet: the edges' cursors on Wayland and X11 (the
@@ -379,7 +379,7 @@ window transparent, its background clear unless given. #115's
 `apple.Glass` is glass in the layer tree; a window's backdrop is a view of
 its own under it all, so it doesn't use it.
 
-Tests: `tests/ui/ShapeWindow.hx` (the frame
+Tests: `tests/ui/ShapeWindowCheck.hx` (the frame
 read back; macOS's capture of the window, Windows' screen over an opaque
 window behind, X11's 32-bit pixels and the composed screen, weston's
 screenshot over its background; the input rectangles, and clicks sent
@@ -418,7 +418,7 @@ its activation policy). `workArea()`: macOS's `visibleFrame` and the
 notch's `safeAreaInsets` top, Windows' `rcWork`, X11's `_NET_WORKAREA`
 (else the screen). Wayland has none of these to ask for: `onTop` false,
 `taskbar` true, `workArea()` null (the compositor places windows).
-Tests: `tests/ui/ShapeWindow.hx`'s edge window, read back through each
+Tests: `tests/ui/ShapeWindowCheck.hx`'s edge window, read back through each
 system's API (X11's states unread: Xvfb runs no window manager).
 
 ### Dialogs, file types, the files the system opens
@@ -445,7 +445,7 @@ macOS bundle's are its Info.plist's (`helder build --target macos`, from
 helder.webmanifest's `file_handlers`). Tests: the window lane
 (IFileOpenDialog and NSOpenPanel made; FileTypes' registry values and
 .desktop file read back; application:openURLs: reaching App.onOpen), the
-dbus lane (tests/os/DBusTest.hx: a real dbus-daemon, the portal's
+dbus lane (tests/os/DBusCheck.hx: a real dbus-daemon, the portal's
 OpenFile against a stand-in portal).
 
 In a browser and on a phone there are no paths to browse: the user gives
@@ -468,7 +468,7 @@ its AV1 decoder), libavif and libraw where installed, each loaded at run
 time (none: `supports` false for its formats; `available()` whether any
 is); the limits first on each one's size (HEIF's and AVIF's from their
 ispe boxes). Tests: `bun run test system-images`
-(tests/os/SystemImagesTest.hx: a TIFF of a known gradient, plain and LZW,
+(tests/os/SystemImagesCheck.hx: a TIFF of a known gradient, plain and LZW,
 its pixels and straight alpha; one with EXIF's orientation 6, upright; an
 AVIF where the system reads it; macOS: a HEIC made by sips, whole and at
 a side; the limits first; Linux natively, Windows under Wine with
@@ -803,9 +803,9 @@ touch (Pointers); wl_data_device's clipboard text and file drops
 (helder's menus are drawn in the window), edge resizing of helder's
 decorations. Tests: `src/helder/os/linux/wayland/Wayland.test.hx` (the structs,
 requests and events against a recorder: no compositor), and the wayland
-lane under a headless weston at scale 1 and 2 (tests/os/WaylandTest.hx, the
+lane under a headless weston at scale 1 and 2 (tests/os/WaylandCheck.hx, the
 viewer, a screenshot; helder.ui's system layers under its kiosk shell,
-tests/ui/WaylandLayersWindow.hx).
+tests/ui/WaylandLayersWindowCheck.hx).
 
 ## Pointers: the mouse, fingers and pens
 
@@ -862,7 +862,7 @@ or pen down that no control took the left button while it is down
 
 Tests: `src/helder/os/Pointers.test.hx` (slots, frames, samples, cancels,
 no allocation: natively and as wasm32-wasi, the test lane),
-`bun run test touch-web` (`tests/os/PointersWeb.hx` in headless
+`bun run test touch-web` (`tests/os/PointersWebCheck.hx` in headless
 Chromium: two fingers, a pen and the mouse through the DevTools
 protocol, samples, a cancel, a tap and a drag without mouse events or
 scrolls, a wheel with Control prevented and a plain one not, Safari's
@@ -1170,7 +1170,7 @@ any other name is ALSA's (`"null"`, `"hw:0"`). In the browser,
 `OfflineAudioContext` in tests). An output that has no device throws
 `helder.os.audio: no output device (...)`.
 
-Tests (`tests/os/AudioTest.hx`): a known signal through each back end's real
+Tests (`tests/os/AudioOutputCheck.hx`): a known signal through each back end's real
 API, the samples that reach it compared with the signal, the callbacks'
 count and rate. `bun run test audio` (`tests/os/audio.sh`): ALSA's null and file
 devices; CoreAudio's file device, then the default output where there is

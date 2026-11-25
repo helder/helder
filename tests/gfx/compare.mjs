@@ -1,4 +1,4 @@
-// GfxTest's comparison (GfxTest.hx: compare) in JavaScript, for the WebGPU
+// GfxCheck's comparison (GfxCheck.hx: compare) in JavaScript, for the WebGPU
 // and WebGL2 tests in a browser (web.mjs, site/tools/browser-test.mjs):
 // a pixel matches when no channel differs by more than TOLERANCE, and at
 // most MAX_OFF of the pixels may differ by more (the edges); the centre

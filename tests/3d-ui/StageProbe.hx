@@ -1,7 +1,7 @@
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 
-// SurfaceTest's post stage (a <Scene hdr>'s setup adds it): the image so
+// SurfaceCheck's post stage (a <Scene hdr>'s setup adds it): the image so
 // far with its green channel full, so a frame it ran over is marked
 @:structInit @:publicFields class ProbeVertex {
 	var pos:Vec2;

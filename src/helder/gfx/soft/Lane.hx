@@ -9,7 +9,7 @@ import hxmc.unsafe.Ptr;
 // top row, 2, 3 the bottom one: dFdx is lane 1 - lane 0, dFdy lane 2 -
 // lane 0, as GPUs take them) or 4 vertices. float32, as GPUs compute; with
 // -D helder.soft.exact two F64x2s, Haxe's own doubles, so that a shader's
-// lanes equal its scalar code bit for bit (tests/gfx/SoftShaderTest). The
+// lanes equal its scalar code bit for bit (tests/gfx/SoftShaderCheck). The
 // one place the lane width is known with LaneBool and LaneInt: wider lanes
 // are another implementation of these three.
 #if helder.soft.exact

@@ -10,9 +10,9 @@ import type {Device, Encoder} from "helder/scene";
 declare const __haxe: {FrameCheck: "frames.FrameCheck", __module: "frames.FramesTypeScript"};
 
 // helder/scene's frames drawn by TypeScript (tests/3d/ts/frames.ts), as
-// RenderTest draws Haxe's: headless, 256 x 192, against a golden image by
-// helder.gfx's rule (GfxTest.compareBytes; HXMC_3D_TOLERANCE as
-// RenderTest's). Declared to the program by FramesTypeScript.
+// RenderCheck draws Haxe's: headless, 256 x 192, against a golden image by
+// helder.gfx's rule (GfxCheck.compareBytes; HXMC_3D_TOLERANCE as
+// RenderCheck's). Declared to the program by FramesTypeScript.
 //
 //   frames <scene> <golden.png> <out.png> [--bless]
 export declare class FrameCheck {

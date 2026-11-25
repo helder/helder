@@ -5,7 +5,7 @@ import helder.ui.draw.*;
 import helder.ui.widgets.TextField;
 
 // A native view over a scroller moved with the compositor's scroll
-// (AsyncScrollWindow --native; macOS: an NSTextField, Windows: an EDIT): the program blocked
+// (AsyncScrollWindowCheck --native; macOS: an NSTextField, Windows: an EDIT): the program blocked
 // while wheel input comes, the field read on the main thread before the
 // program's next frame places it: where the compositor's offset puts it.
 // Elsewhere (no native fields) skipped.

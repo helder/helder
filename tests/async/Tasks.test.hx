@@ -6,7 +6,7 @@ import helder.async.*;
 import helder.async.Async.TimeoutException;
 import helder.test.Test;
 
-// helder.async's tasks, cancellation, errors and timers (AsyncTest.hx has
+// helder.async's tasks, cancellation, errors and timers (AsyncCheck.hx has
 // the loop and the I/O): `bun run helder test tests/async`. The tests of
 // Async.run itself are plain, the others coroutines on the runner's loop.
 function tests() {

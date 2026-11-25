@@ -1,4 +1,4 @@
-// The browser test's own references (MediaWebTest.hx's rgb.json; CI has no
+// The browser test's own references (MediaWebCheck.hx's rgb.json; CI has no
 // ffmpeg): frames of the videos Linux's Chromium decodes (VP9, AV1; not
 // H.264, whose references are decoded.json's) as ffmpeg turns them into RGB,
 // at pixels where the picture is flat, as tests/media/apple/expect.mjs does.

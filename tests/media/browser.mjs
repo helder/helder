@@ -1,4 +1,4 @@
-// helder.media's WebSource in headless Chromium: WebSourceTest.wasm run by
+// helder.media's WebSource in headless Chromium: WebSourceCheck.wasm run by
 // src/helder/os/browser.mjs with helder.async's and helder.media's
 // imports, on a page served from the repository by a server that honours
 // Range (206, Content-Range) and, under /whole/, one that ignores it; the

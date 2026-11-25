@@ -2,12 +2,12 @@
 // headless Chromium on WebGPU, then on WebGL2 (forced), its canvas driven
 // by real events (Playwright's mouse and keyboard: clicks, typing, Enter,
 // Shift+Left; Control+A, X and V through the page's clipboard), the same
-// steps as TodoTest's; its accessibility tree (the ARIA mirror in the
+// steps as TodoCheck's; its accessibility tree (the ARIA mirror in the
 // canvas) checked, a checkbox activated through it as a screen reader
 // would; an input method's composition (the DevTools protocol's
 // Input.imeSetComposition: drawn in the field, cancelled, then committed
 // and added); then its pixels compared with
-// todo.png (TodoTest's frame: our own text rasterizer, so the glyphs are
+// todo.png (TodoCheck's frame: our own text rasterizer, so the glyphs are
 // the same; the GPUs' edges may differ a little). Then all of it again
 // with the program in a worker (browser.mjs's option worker), its pixels
 // the page's thread's exactly.
@@ -141,7 +141,7 @@ for (const [gfx, worker] of [['webgpu', false], ['webgl2', false], ['webgpu', tr
 	await click('checkbox');
 	await click('filter-active');
 	await click('filter-all');
-	// (the pointer stays over the last button clicked, hovered, as in TodoTest)
+	// (the pointer stays over the last button clicked, hovered, as in TodoCheck)
 	await p.waitForTimeout(300);
 	const { line } = await boxes();
 	const state = line.split(' | ').slice(1, 3).join(' | ');

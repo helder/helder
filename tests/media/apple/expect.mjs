@@ -1,4 +1,4 @@
-// What ffmpeg decodes in the decoding tests' files (MediaAppleTest.hx's
+// What ffmpeg decodes in the decoding tests' files (MediaAppleCheck.hx's
 // decoded.json; CI has no ffmpeg): each video's frames in presentation
 // order, the CRC-32 of their planes as the system's decoder gives them
 // (NV12 or P010, rows packed; edit lists ignored: every frame decoded);

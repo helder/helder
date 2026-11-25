@@ -2,7 +2,7 @@
 
 The README's phase 3, "To prototype first, and what decides it": is a
 GC-free job tier needed, and if so, on `helder.scoped`'s memory or on plain
-off-heap memory? Measured by tests/bench/Jobs.hx (`bun run test jobs-bench`),
+off-heap memory? Measured by tests/bench/Jobs.hx (`bun run test bench jobs`),
 2026-10-27, @hxmc/cli 0.1.0-nightly.20261027.8e54b1e, a shared 4-core Intel
 Xeon VM.
 
@@ -334,7 +334,7 @@ Without the checker, the module cache saves 70%; with it, nothing.
 ## Reproduce
 
 ```sh
-bun run test jobs-bench              # everything: bin/jobs/results.md (RUNS=5, JOBS="none a b c d c0 d0")
+bun run test bench jobs              # everything: bin/jobs/results.md (RUNS=5, JOBS="none a b c d c0 d0")
 node tests/bench/photo.mjs bin/jobs/photo.png
 haxe -cp src -cp tests/bench -main Jobs --macro "helder.scoped.Check.enable()" \
   -D hxmc.target=linux-x86_64 -D hxmc.libc=glibc --custom-target hxmc=bin/jobs/Jobs
@@ -360,7 +360,7 @@ d0 154 ms; b 35 ms (32-47); the worker's allocation for b now exact (119 MB).
 ## Through helder.jobs (2026-10-28)
 
 The same frames and photo through the real API (tests/bench/JobsApi.hx,
-in `bun run test jobs-bench`): the frames a task on helder.async's loop
+in `bun run test bench jobs`): the frames a task on helder.async's loop
 (its timers and waits, as App.run drives it), the decode
 `ImageJobs.pixels`: PngCore as a GC-free job on the pool natively, on a
 worker's instance on wasm32 (node 22, worker_threads, helder test's

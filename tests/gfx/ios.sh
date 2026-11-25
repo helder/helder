@@ -1,11 +1,11 @@
 #!/bin/sh
-# IosTest.app (IosTest.hx) on an iPhone simulator (macOS with Xcode; CI's
+# IosCheck.app (IosCheck.hx) on an iPhone simulator (macOS with Xcode; CI's
 # ios-simulator job): on HELDER_IOS_SIMULATOR's simulator, else one of the
 # newest iOS runtime and iPhone made and booted (tests/pack/simulator.sh),
 # installs the app and launches it with its stdout and stderr in files
 # (what the app prints: its lines), then:
 #   - the cube rendered headless on the simulator's Metal matches cube.png
-#     (GfxTest's rule); the window has a size, and its frame is lit;
+#     (GfxCheck's rule); the window has a size, and its frame is lit;
 #   - 120 frames drawn in the window;
 #   - a tap on the Simulator's window (SimTap: a click posted as an HID
 #     event, the simulator's touch) comes back as a touch's PointerDown and
@@ -18,7 +18,7 @@
 #   - a screenshot (simctl io) to <out>/cube-ios.png;
 #   - (full) another app (Settings) sends it to the background (Suspend),
 #     launching it again brings it back (Resume) and frames go on;
-#   - launched again as `IosTest scroll` (tests/ui/IosScrollCheck.hx): a
+#   - launched again as `IosCheck scroll` (tests/ui/IosScrollCheck.hx): a
 #     list's UIScrollView animated by UIKit while the program is blocked,
 #     the compositor's frames coming meanwhile at its offsets, the program
 #     at the view's offset after; text typed into a native field;
@@ -26,13 +26,13 @@
 #     <out>/log.txt; a simulator made here is deleted at the end.
 # (The bundle's static checks, codesign --verify and plutil -lint, are the
 # pack lane's on a Mac, CI's ios-signing job, on bundles built alike.)
-#   sh tests/gfx/ios.sh <IosTest.app> [out dir] [SimTap]
+#   sh tests/gfx/ios.sh <IosCheck.app> [out dir] [SimTap]
 set -u
 app=$1
 out=$(mkdir -p "${2:-.}" && cd "${2:-.}" && pwd)
 tap=${3:-}
 suite=${IOS_SUITE:-full}
-id=org.helder.IosTest
+id=org.helder.IosCheck
 stdout="$out/stdout.txt"
 failed=0
 
@@ -73,13 +73,13 @@ check "install" $?
 rm -f "$stdout" "$out/stderr.txt"
 xcrun simctl launch --terminate-running-process --stdout="$stdout" --stderr="$out/stderr.txt" "$udid" $id
 check "launch" $?
-wait_for "IosTest: frames 120" 120
+wait_for "IosCheck: frames 120" 120
 check "120 frames in the window" $?
-grep -q "GfxTest: cube, ios headless: ok" "$stdout"
+grep -q "GfxCheck: cube, ios headless: ok" "$stdout"
 check "the headless cube matches cube.png" $?
-grep -q "IosTest: window [1-9][0-9]*x[1-9]" "$stdout"
+grep -q "IosCheck: window [1-9][0-9]*x[1-9]" "$stdout"
 check "the window has a size" $?
-grep -q "IosTest: window frame .*: lit" "$stdout"
+grep -q "IosCheck: window frame .*: lit" "$stdout"
 check "the window's frame is lit" $?
 xcrun simctl io "$udid" screenshot "$out/cube-ios.png"
 check "screenshot" $?
@@ -111,7 +111,7 @@ if [ -n "$tap" ] && [ "$suite" = full ]; then
 	# fling (a quick drag sideways): flicked on at the drag's speed after
 	# the lift. No scrolls, no mouse events: the pointers alone.
 	angle() {
-		grep -o "IosTest: spin $1 angle -*[0-9]*" "$stdout" | tail -1 | grep -o -- "-*[0-9]*$"
+		grep -o "IosCheck: spin $1 angle -*[0-9]*" "$stdout" | tail -1 | grep -o -- "-*[0-9]*$"
 	}
 	ups=$(grep -c "event PointerUp" "$stdout")
 	before=$(angle free)
@@ -148,14 +148,14 @@ if [ -n "$tap" ] && [ "$suite" = full ]; then
 	lines=$(wc -l < "$stdout")
 	"$tap" 0.3 0.55 0.7 0.55
 	i=0
-	while [ $i -lt 20 ] && ! tail -n +$((lines + 1)) "$stdout" | grep -q "IosTest: released speed"; do
+	while [ $i -lt 20 ] && ! tail -n +$((lines + 1)) "$stdout" | grep -q "IosCheck: released speed"; do
 		sleep 0.5
 		i=$((i + 1))
 	done
-	released=$(tail -n +$((lines + 1)) "$stdout" | grep -o "IosTest: released speed .*" | tail -1)
+	released=$(tail -n +$((lines + 1)) "$stdout" | grep -o "IosCheck: released speed .*" | tail -1)
 	echo "ios.sh: the fling: ${released:-no release logged}"
-	flick=$(echo "$released" | sed -n 's/^IosTest: released speed \(-*[0-9]*\) drag \(-*[0-9]*\) .*/\1/p')
-	drag=$(echo "$released" | sed -n 's/^IosTest: released speed \(-*[0-9]*\) drag \(-*[0-9]*\) .*/\2/p')
+	flick=$(echo "$released" | sed -n 's/^IosCheck: released speed \(-*[0-9]*\) drag \(-*[0-9]*\) .*/\1/p')
+	drag=$(echo "$released" | sed -n 's/^IosCheck: released speed \(-*[0-9]*\) drag \(-*[0-9]*\) .*/\2/p')
 	[ -n "$flick" ] && [ -n "$drag" ] && [ "$flick" -ge 1200 ] && [ $((flick * 2)) -ge "$drag" ]
 	check "a fling carries the cube on at the drag's speed (let go at $flick mrad/s, the drag $drag)" $?
 	! grep -q "event MouseDown\|event MouseUp\|event Scroll" "$stdout"
@@ -169,7 +169,7 @@ if [ "$suite" = full ]; then
 	wait_for "event Resume" 30
 	check "back again: Resume" $?
 	frames=$(grep -o "frames [0-9]*" "$stdout" | tail -1 | cut -d' ' -f2)
-	wait_for "IosTest: frames $((frames + 60))" 60
+	wait_for "IosCheck: frames $((frames + 60))" 60
 	check "frames after Resume" $?
 fi
 # (the program on its own thread: UIScrollView's offsets to the compositor while it is blocked)
@@ -184,10 +184,10 @@ while [ $i -lt 60 ] && ! grep -q "IosScrollCheck: ok$\|IosScrollCheck: [0-9]* FA
 done
 cat "$scroll"
 grep -q "IosScrollCheck: ok$" "$scroll"
-check "UIScrollView's offsets to the compositor while the program is blocked; a native field typed into (IosTest scroll)" $?
+check "UIScrollView's offsets to the compositor while the program is blocked; a native field typed into (IosCheck scroll)" $?
 # (the system log: a minute and more on a runner, so on a failure and in the full suite)
 if [ $failed != 0 ] || [ "$suite" = full ]; then
-	xcrun simctl spawn "$udid" log show --last 10m --style compact --predicate 'process == "IosTest"' > "$out/log.txt" 2>&1
+	xcrun simctl spawn "$udid" log show --last 10m --style compact --predicate 'process == "IosCheck"' > "$out/log.txt" 2>&1
 fi
 xcrun simctl terminate "$udid" $id
 cat "$stdout"

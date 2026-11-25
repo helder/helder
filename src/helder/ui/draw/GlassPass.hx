@@ -13,7 +13,7 @@ import helder.ui.draw.GlassShader;
 // quarter of its size, blurred along x, then y, then the glass), the
 // glass's texture drawn in its place (TextureCanvas.gpuTexture), over its
 // box and its shadow's margin. Its look in points, tuned against the
-// system's on screen (tests/ui/GlassKinds.hx: macOS 26's NSGlassEffectView).
+// system's on screen (tests/ui/GlassKindsCheck.hx: macOS 26's NSGlassEffectView).
 class GlassPass {
 	// the look, regular and clear, in a key window and not: the blur's sigma, the rim's displacement,
 	// the bevel's width, the rim light's width and strength, the frost, the

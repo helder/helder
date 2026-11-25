@@ -1,7 +1,7 @@
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 
-// A slot object (Slots) and its variants, for ShaderTest: an option tested
+// A slot object (Slots) and its variants, for ShaderCheck: an option tested
 // (tinted: the vertex's optional tint and shift read, a varying kept), a
 // loop over one unrolled (taps), a slot's default (a module-level
 // function) and an override with a parameter of its own (a texture,

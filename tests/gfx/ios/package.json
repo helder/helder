@@ -1,6 +1,6 @@
 {
-  "name": "IosTest",
+  "name": "IosCheck",
   "private": true,
   "haxe": {"classPath": ["..", "../../ui", "../../../examples/triangle", "../../../examples/cube", "../../../examples/instances", "../../../examples/mips", "../../../examples/formats"]},
-  "helder": {"main": "IosTest"}
+  "helder": {"main": "IosCheck"}
 }

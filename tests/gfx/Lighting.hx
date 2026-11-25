@@ -1,7 +1,7 @@
 import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 
-// Shader helpers in a module of their own, for LitShader (ShaderTest).
+// Shader helpers in a module of their own, for LitShader (ShaderCheck).
 class Lighting {
 	public static inline var AMBIENT = 0.1;
 

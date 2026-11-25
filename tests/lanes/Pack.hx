@@ -47,11 +47,11 @@ class Pack {
 		if (!usePrebuilt) {
 			run(NODE, ["tests/pack/runtime.mjs", env["HXMC_RT_DIR"]]);
 			for (build in [
-				{entry: "tests/gfx/android", name: "AndroidTest"},
-				{entry: "tests/os/AndroidTouchTest.hx", name: "AndroidTouchTest"},
-				{entry: "tests/ui/AndroidLayersTest.hx", name: "AndroidLayersTest"},
-				{entry: "tests/media/android/MediaAndroidTest.hx", name: "MediaAndroidTest"},
-				{entry: "tests/media/android/VideoStill.hx", name: "VideoStill"},
+				{entry: "tests/gfx/android", name: "AndroidCheck"},
+				{entry: "tests/os/AndroidTouchCheck.hx", name: "AndroidTouchCheck"},
+				{entry: "tests/ui/AndroidLayersCheck.hx", name: "AndroidLayersCheck"},
+				{entry: "tests/media/android/MediaAndroidCheck.hx", name: "MediaAndroidCheck"},
+				{entry: "tests/media/android/VideoStillCheck.hx", name: "VideoStillCheck"},
 				{entry: "tests/os/FoldersCheck.hx", name: "FoldersCheck"}
 			]) run(h, ["build", build.entry, "--target", "android-x86_64", "-o", 'bin/pack/${build.name}.apk'], env);
 		}
@@ -59,10 +59,10 @@ class Pack {
 		deviceChecks([
 			["sh", "tests/pack/android.sh", h, "bin/pack/android"],
 			[NODE, "tests/os/dev/dev-android.mjs", h, "bin/pack/dev-emulator"],
-			["sh", "tests/gfx/android.sh", "bin/pack/AndroidTest.apk", "bin/pack/android-gfx"],
-			["sh", "tests/os/android-touch.sh", "bin/pack/AndroidTouchTest.apk", "bin/pack/android-gfx"],
-			["sh", "tests/ui/android-layers.sh", "bin/pack/AndroidLayersTest.apk", "bin/pack/android-layers"],
-			["sh", "tests/media/android/android.sh", "bin/pack/MediaAndroidTest.apk", "bin/pack/VideoStill.apk", "bin/pack/android-media"],
+			["sh", "tests/gfx/android.sh", "bin/pack/AndroidCheck.apk", "bin/pack/android-gfx"],
+			["sh", "tests/os/android-touch.sh", "bin/pack/AndroidTouchCheck.apk", "bin/pack/android-gfx"],
+			["sh", "tests/ui/android-layers.sh", "bin/pack/AndroidLayersCheck.apk", "bin/pack/android-layers"],
+			["sh", "tests/media/android/android.sh", "bin/pack/MediaAndroidCheck.apk", "bin/pack/VideoStillCheck.apk", "bin/pack/android-media"],
 			["sh", "tests/typescript/native/android.sh", h, "bin/pack/android-ts"],
 			["sh", "tests/pack/viewer-android.sh", h, "bin/pack/android-viewer"],
 			["sh", "tests/os/folders-android.sh", "bin/pack/FoldersCheck.apk", "bin/pack/android-folders"],
@@ -80,7 +80,7 @@ class Pack {
 		if (own) udid = output("sh", ["tests/pack/simulator.sh", "create", "helder-test"]).trim();
 		var pack = shardTotal == 1 || shardIndex == 0;
 		var gfx = shardTotal == 1 || shardIndex == 1;
-		var app = "bin/pack/IosTest.app", tap = Path.join([Sys.getCwd(), "bin/pack/SimTap"]);
+		var app = "bin/pack/IosCheck.app", tap = Path.join([Sys.getCwd(), "bin/pack/SimTap"]);
 		var hello = ["sh", "tests/pack/ios.sh", h, "bin/pack/ios"];
 		var webview = ["sh", "tests/platform/webview-ios.sh", h, "bin/pack/ios-webview"];
 		var text = ["sh", "tests/platform/textinput-ios.sh", h, "bin/pack/ios-textinput"];

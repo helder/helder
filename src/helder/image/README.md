@@ -160,7 +160,7 @@ scaled decodes) after the scans. `JpegDecoder.threads` splits the IDCT, the upsa
 (`idctSimd`) and the YCbCr conversion run four lanes at once (hxmc.simd:
 jpeg_idct_islow's and jdcolor's integer arithmetic lane by lane, the same
 pixels); `Resize.half` halves two pixels at once where they are opaque.
-`bun run test image-bench` (tests/bench/ImageBench.hx, tests/bench/image.mjs)
+`bun run test bench image` (tests/bench/ImageBench.hx, tests/bench/image.mjs)
 against vips 8.15 and Bun.Image 1.4.4 on one machine (4 cores), a 24 MP
 JPEG and a 12 MP PNG, ms:
 
@@ -186,9 +186,9 @@ libwebp's, as stored (helder's viewer applies it).
 SVG is `helder.canvas`'s (`Svg`: an image it draws keeps it as its `drawing`).
 
 Tests: `src/helder/image/ImageLimits.test.hx` and `Exif.test.hx` (the
-test lane, natively and on wasm32); `tests/image/ImageTest.hx` (`bun run test image`, on Eval and
+test lane, natively and on wasm32); `tests/image/ImageCheck.hx` (`bun run test image`, on Eval and
 natively): the decoders against Chromium's and libwebp's pixels, the
-cases written by `tests/image/*-cases.mjs`; `tests/image/ImageJobs.test.hx`
+cases written by `tests/image/*-cases.mjs`; `src/helder/image/ImageJobs.test.hx`
 the PNG cases through the job (natively and on wasm32-wasi);
 `BlockCompress.test.hx` the blocks' round trips (the test lane), the GPU's
 decoders reading them in the 3d lane's `compressed` frame.

@@ -1,4 +1,4 @@
-// The layout tests' cases (layout-ref.mjs draws them in Chromium; UiTest
+// The layout tests' cases (layout-ref.mjs draws them in Chromium; UiCheck
 // lays them out with helder.ui.Layout): a tree of styles (Style's property
 // names; lengths in pixels or "<n>%"), the root sized width x height.
 const box = (w, h, style = {}) => ({ style: { width: w, height: h, ...style } });

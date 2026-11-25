@@ -1,12 +1,12 @@
 #!/bin/sh
 # Touch in a drawn UI on the device or emulator adb reaches (CI's android
-# job, after tests/gfx/android.sh, whose AndroidTest checks a drag held on
-# the cube): AndroidTouchTest.apk (AndroidTouchTest.hx: a header over a
+# job, after tests/gfx/android.sh, whose AndroidCheck checks a drag held on
+# the cube): AndroidTouchCheck.apk (AndroidTouchCheck.hx: a header over a
 # scroll box), its lines from logcat (tag hxmc). A fling (a quick swipe up,
 # from low in the box to over the header): the finger its pointer's events
 # alone, the box following it the whole way (ui's own drag, at where it
 # started), gliding on once let go; Back closes the window.
-#   sh tests/os/android-touch.sh <AndroidTouchTest.apk> [out dir]
+#   sh tests/os/android-touch.sh <AndroidTouchCheck.apk> [out dir]
 set -u
 apk=$1
 out=${2:-.}
@@ -41,9 +41,9 @@ check() {
 adb wait-for-device
 adb logcat -c
 adb install -r "$apk"
-check "install AndroidTouchTest" $?
+check "install AndroidTouchCheck" $?
 adb shell am start -W -n org.helder.androidtouchtest/android.app.NativeActivity
-wait_for "AndroidTouchTest: ready" 60
+wait_for "AndroidTouchCheck: ready" 60
 check "the window" $?
 sleep 1
 # (the display's size: the swipe's ends)
@@ -53,20 +53,20 @@ H=${size#*x}
 echo "android-touch.sh: display ${W}x$H"
 # (as the touchscreen's events, its lift with its last move: android-swipe.mjs)
 node tests/os/android-swipe.mjs $((W / 2)) $((H * 85 / 100)) $((W / 2)) $((H * 5 / 100)) 8
-wait_for "AndroidTouchTest: let go" 20
+wait_for "AndroidTouchCheck: let go" 20
 check "a fling: its release" $?
-wait_for "AndroidTouchTest: settled" 30
+wait_for "AndroidTouchCheck: settled" 30
 check "the box settled" $?
-grep -q "AndroidTouchTest: ok: the finger: its pointer.s events alone" "$log"
+grep -q "AndroidTouchCheck: ok: the finger: its pointer.s events alone" "$log"
 check "the finger: its pointer's events alone (no scrolls, no mouse events)" $?
-grep -q "AndroidTouchTest: ok: the box followed the finger the whole drag" "$log"
+grep -q "AndroidTouchCheck: ok: the box followed the finger the whole drag" "$log"
 check "the box followed the finger over the header" $?
-grep -q "AndroidTouchTest: ok: the fling glides on once let go" "$log"
+grep -q "AndroidTouchCheck: ok: the fling glides on once let go" "$log"
 check "the fling glides on once let go" $?
 adb exec-out screencap -p > "$out/touch-android.png"
 check "screenshot" $?
 adb shell input keyevent KEYCODE_BACK
-wait_for "AndroidTouchTest: done" 30
+wait_for "AndroidTouchCheck: done" 30
 check "Back closes the window" $?
 adb logcat -d > "$out/touch-logcat-all.txt" 2>/dev/null
 cat "$log"

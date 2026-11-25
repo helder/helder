@@ -191,15 +191,15 @@ bodies, a server's https (TLS on `Http.serve`'s connections). A caught error is 
 that returns without suspending (the coroutine transform's,
 tests/async/rep/CatchThenCall.hx); helder.async's own calls clear it.
 
-Tests: `tests/async/Watcher.test.hx` (SampledWatcher; `WatchBench.hx` its
+Tests: `tests/async/Watcher.test.hx` (SampledWatcher; `tests/bench/WatchBench.hx` its
 cost a tick against PollWatcher's), `tests/async/Tasks.test.hx` (tasks, cancellation, errors, timers:
 helder.test's, `bun run helder test tests/async --target all`),
-`AsyncTest.hx` (the loop, TCP, processes, the watcher, HTTP and
-WebSocket: `bun run test async`, on Eval and natively), `TlsTest.hx`
+`AsyncCheck.hx` (the loop, TCP, processes, the watcher, HTTP and
+WebSocket: `bun run test async`, on Eval and natively), `TlsCheck.hx`
 (TLS both ways in one process with `tls/`'s certificate for localhost,
-https and wss over it, the system's roots refusing it, natively), `WebTest.hx` (the
+https and wss over it, the system's roots refusing it, natively), `WebCheck.hx` (the
 browser's loop: under node, and in Chromium with `bun run test
 async-web`), `examples/async-dev` end to end (`tests/async/dev.mjs`),
 `AsyncBench.hx`. Workers, jobs and channels between threads are
 helder.jobs' (src/helder/jobs/README.md); App.run's loop is the `app`
-lane's (tests/os/AppLoopTest.hx).
+lane's (tests/os/AppLoopCheck.hx).

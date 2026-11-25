@@ -70,7 +70,7 @@ class LayerSplit {
 	// (why each top-level scroller not on a layer of its own is not, at the last split: tests)
 	@:noCompletion public var reasons(default, null):Array<String> = [];
 	// (HELDER_SYSTEM_LAYERS=flat: all of it on the window's layer, as the
-	// textured compositor draws it: the split's own check, SystemLayersWindow)
+	// textured compositor draws it: the split's own check, SystemLayersWindowCheck)
 	static final flat = Sys.getEnv("HELDER_SYSTEM_LAYERS") == "flat";
 
 	function new(base:LayerPlane) {

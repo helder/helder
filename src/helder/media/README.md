@@ -436,10 +436,10 @@ packet's times, size, keyframe flag and bytes' CRC-32; exact seeks with
 B-frames, an edit list, fragments, Cues, live, lacing; frame stepping back;
 every file cut short and with bytes changed. `Playback.test.hx`: the clock
 on synthetic audio callbacks. `bun run test audio-web`
-(`tests/media/WebSourceTest.hx`, `browser.mjs`): WebSource in Chromium, a
+(`tests/media/WebSourceCheck.hx`, `browser.mjs`): WebSource in Chromium, a
 server honouring Range (under half the MP4 sent to open it, seek and read
 a frame), one ignoring it, a Blob, OPFS. macOS's system-images lane
-(`tests/media/apple/MediaAppleTest.hx`, 1.5 s): every frame of tests/media's
+(`tests/media/apple/MediaAppleCheck.hx`, 1.5 s): every frame of tests/media's
 videos and `tests/media/apple`'s (`fixtures.sh`: VP9 4:2:0, HEVC Main 10 in
 BT.2020, full-range BT.709 H.264, a chirp in AAC, MP3, FLAC, ALAC, Opus and
 Vorbis) through VideoToolbox: their count, each packet's time and planes'
@@ -452,7 +452,7 @@ totals exact; four frames turned to RGB on Metal
 against ffmpeg's where the picture is flat (within 2 levels); exact seeks
 and steps landing on the frame by time and pixels; a clip played through
 CoreAudio's file output: each frame once, within a frame of the clock, the
-audio's 8000 frames there. The window lane's `VideoWindow.hx`: a `<Video>`
+audio's 8000 frames there. The window lane's `VideoWindowCheck.hx`: a `<Video>`
 in a scroller under a popup both ways, seeked, played, paused, scrolled
 (drawn: helder's frames read back, `quads.mp4`'s flat colours exact; the
 system's layer: rendering, placed and moved with the scroller, cut by its
@@ -463,7 +463,7 @@ crf 18 or less is not ffmpeg's (its right half's Cr 255, not the source's;
 an M4 and CI's virtual Mac alike; AVAssetReader, Apple's demuxer and
 decoder without helder, gives the same bytes as helder): the fixture is
 crf 23's, which every decoder decodes alike, and the decoding test checks
-it. `bun run test audio-web` (`tests/media/web/MediaWebTest.hx`,
+it. `bun run test audio-web` (`tests/media/web/MediaWebCheck.hx`,
 `browser.mjs`, about 9 s in Chromium): decoded.json's videos through
 WebCodecs, every frame's time and planes' CRC-32 as ffmpeg's (where the
 browser gives planes as decoded); the audio tracks' frames and samples;
@@ -480,7 +480,7 @@ played, sought, drawn. Firefox and WebKit too where Playwright has them
 `WebCodec.test.hx`: the codec strings and unnamed colours natively.
 
 The android job (`tests/media/android/android.sh`, about 20 s on the
-emulator): `MediaAndroidTest.hx`, decoded.json's videos through
+emulator): `MediaAndroidCheck.hx`, decoded.json's videos through
 MediaCodec read as YUV_420_888 (`McVideo.readable`): count, each frame's
 time, planes' CRC-32 as ffmpeg's, where the system's decoder differs (the
 emulator's goldfish ones) said and c2.android's checked; the audio tracks'
@@ -489,17 +489,17 @@ AHardwareBuffer's EGLImage against ffmpeg's where flat (a mean under 1.5,
 at most 8; where the system tags them otherwise than ffmpeg reads them,
 said); exact seeks and steps; a clip played through AAudio (each frame
 once, within a frame of the clock, its 8000 frames). Codecs the device
-lacks are skipped with a line, H.264 and AAC never. `VideoStill.hx`: a
+lacks are skipped with a line, H.264 and AAC never. `VideoStillCheck.hx`: a
 `<Video>` of `quads.mp4` in a scroller, drawn, on its system layer, and
 with the layer asked for once paused (`late`, as a slow device's layers
 start), played until six frames were shown, sought and paused, the frame
 at 0.2 shown for ten frames; `still.mjs` reads the screencap's quadrants
-against the source as the still was shown (said by VideoStill): drawn
+against the source as the still was shown (said by VideoStillCheck): drawn
 within 8 levels (the emulator's 1), the layer within 16 (the emulator's 13).
 
 On Windows (CI's desktop-windows job: no GPU, Media Foundation's
 software decoders and WARP): the system-images lane's
-`tests/media/windows/MediaWindowsTest.hx`, decoded.json's videos through
+`tests/media/windows/MediaWindowsCheck.hx`, decoded.json's videos through
 Media Foundation, count, each frame's time and planes' CRC-32 as
 ffmpeg's; the audio tracks' frames and samples (#93's tolerances);
 frames in RGB by helder's pass on Direct3D 11 and by WinLayer's
@@ -508,7 +508,7 @@ exact seeks and steps; a clip played (WASAPI's clock, the monotonic
 clock where the machine has no output, said: CI's runner), each frame
 once within a frame of it. HEVC, VP9 and AV1 (Store extensions), Opus
 and what else the system lacks are skipped with a line, H.264 and AAC
-never. The window lane's `WinVideoStill.hx`: a `<Video>` of `quads.mp4`
+never. The window lane's `WinVideoStillCheck.hx`: a `<Video>` of `quads.mp4`
 in a scroller, drawn and on its layer, played until six frames were
 shown, sought and paused, the window's pixels (PrintWindow) read at the
 quadrants' centres: within 8 levels of the source both ways. Limits on
@@ -518,7 +518,7 @@ DXVA), the layer's conversion on the CPU, ALAC and FLAC as the system's
 decoders take their configs.
 
 On Linux (CI's gfx job: libavcodec 60 installed, no VAAPI driver, Mesa's
-llvmpipe): the system-images lane's `tests/media/linux/MediaLinuxTest.hx`
+llvmpipe): the system-images lane's `tests/media/linux/MediaLinuxCheck.hx`
 (about 2 s), decoded.json's videos through libavcodec in software, count,
 each frame's time and planes' CRC-32 as ffmpeg's; the audio tracks'
 frames and samples (#93's tolerances; every total exact, Opus's and

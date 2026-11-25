@@ -27,7 +27,7 @@ import helder.gfx.shader.Ir;
 // back end's context (helder.gfx.soft.Abi): its inputs' and outputs' lanes,
 // the lanes to shade, the uniform blocks' and textures' addresses by slot.
 // With -D helder.soft.reference the same stages also as scalar code, lane
-// by lane (soft_vs_ref, soft_fs_ref), which SoftShaderTest compares.
+// by lane (soft_vs_ref, soft_fs_ref), which SoftShaderCheck compares.
 class Soft {
 	static inline var ABI_IN = 0;
 	static inline var ABI_OUT = 8;

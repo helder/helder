@@ -7,7 +7,7 @@ import helder.dev.Hot;
 // It is reload-safe under `helder dev` with Hot's public calls only: the three
 // lines in the constructor, and `create`, which keys a store by where it is
 // made and hashes its state's type, so that its users write nothing.
-// (src/helder/os/README.md, "Fast refresh: `helder.dev.Hot`"; tested by tests/os/HotTest.hx)
+// (src/helder/os/README.md, "Fast refresh: `helder.dev.Hot`"; tested by tests/os/HotCheck.hx)
 class Store<S> {
 	public var state(default, null):S;
 

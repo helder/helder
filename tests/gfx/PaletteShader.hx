@@ -2,7 +2,7 @@ import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 
 // A vector constant, atan2 and arrays in a uniform block (the gfx lanes'
-// palette frame, Palette.hx; ShaderTest: on the CPU and its text): four columns, each
+// palette frame, Palette.hx; ShaderCheck: on the CPU and its text): four columns, each
 // its colour of the palette by its index (read in the fragment stage, an
 // index not known when compiling), times TINT; placed by the second of two
 // matrices (the first all zeros: a wrong one draws nothing), coloured at

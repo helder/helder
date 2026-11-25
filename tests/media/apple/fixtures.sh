@@ -1,5 +1,5 @@
 #!/bin/sh
-# The decoding tests' own files (MediaAppleTest.hx), beside tests/media's:
+# The decoding tests' own files (MediaAppleCheck.hx), beside tests/media's:
 # what Apple's decoders take that those are not (VP9 in 4:2:0 from 128
 # pixels, its hardware's least; 10 bits, BT.2020; full range) and audio of a
 # chirp, so that a sample off shows. expect.mjs records ffmpeg's decoding.
@@ -15,7 +15,7 @@ f -f lavfi -i testsrc=size=128x96:rate=10:duration=1 $chirp -c:v libvpx-vp9 -pix
 f -f lavfi -i testsrc=size=64x48:rate=10:duration=0.5 -c:v libx265 -x265-params log-level=none:bframes=2:keyint=5 -preset ultrafast -tag:v hvc1 -pix_fmt yuv420p10le -colorspace bt2020nc -color_primaries bt2020 -color_trc smpte2084 $plain hevc10.mp4
 # H.264, full range, BT.709
 f -f lavfi -i testsrc=size=64x48:rate=10:duration=0.5 -c:v libx264 -preset veryfast -bf 2 -pix_fmt yuvj420p -colorspace bt709 -color_range pc $plain h264-full.mp4
-# flat quadrants (red, green, blue, grey) and a square moving: VideoWindow's
+# flat quadrants (red, green, blue, grey) and a square moving: VideoWindowCheck's
 # colours, away from edges (at crf 18 or less Apple's decoding of it is not
 # ffmpeg's: the right half's Cr 255, not the source's 34 and 128, on an M4
 # and CI's virtual Mac; AVAssetReader's the same byte for byte, so the

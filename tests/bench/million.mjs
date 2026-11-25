@@ -1,5 +1,5 @@
 // examples/million's frames (a VirtualList of a million rows, `helder run
-// --headless --stats` on the million-bench lane's script): its first frame,
+// --headless --stats` on the bench million lane's script): its first frame,
 // the wheel over rows made the first time and over rows made before, the
 // jumps (End, Top), the rows put in above the view, the keyboard's Down and
 // idle; each phase's median, p95 and longest ms against the 8 ms budget and

@@ -2,7 +2,7 @@ package os.audio;
 
 import haxe.crypto.Base64;
 import helder.os.audio.Sfx;
-import os.audio.VorbisFixture;
+import os.audio.fixtures.VorbisFixture;
 import helder.test.Test;
 import hxmc.unsafe.*;
 

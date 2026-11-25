@@ -2,7 +2,7 @@ import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 import helder.ui.draw.PartShader;
 
-// A part's shader for ControlsBench's escape hatch (PartShader): a glow of
+// A part's shader for ControlsCostCheck's escape hatch (PartShader): a glow of
 // the look's accent, brighter as the control's hover eases in
 final ControlsGlow = shader({
 	vertex: function(v:DrawVertex):DrawVaryings return drawVertex(v),

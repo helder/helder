@@ -1,4 +1,4 @@
-// helder.async's browser loop in headless Chromium: WebTest.wasm run by
+// helder.async's browser loop in headless Chromium: WebCheck.wasm run by
 // src/helder/os/browser.mjs with src/helder/async/imports.mjs on a page
 // served from the repository, its output read from the console.
 //   node tests/async/browser.mjs <module.wasm>

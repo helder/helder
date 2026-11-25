@@ -1,5 +1,5 @@
-// A screencap of VideoStill (android.sh) checked: quads.mp4's frame at
-// 0.2 s contained in the box VideoStill said (x,y,w,h in pixels), each
+// A screencap of VideoStillCheck (android.sh) checked: quads.mp4's frame at
+// 0.2 s contained in the box VideoStillCheck said (x,y,w,h in pixels), each
 // quadrant's centre (away from the square moving through the middle)
 // within levels of the source's colours as ffmpeg decodes them: drawn,
 // the driver's conversion (the emulator's: within 1), 8; the system

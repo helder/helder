@@ -3,7 +3,7 @@ import helder.gfx.shader.ShaderMath.*;
 
 // Every builtin of ShaderMath, the math types' operators and the
 // statements, once each, so that each back end's compiler sees all the
-// emitter writes (GfxTest, WebTest; ShaderTest: the source against
+// emitter writes (GfxCheck, WebCheck; ShaderCheck: the source against
 // test/shader/ and the CPU's result).
 @:structInit @:publicFields class BuiltinVertex {
 	var pos:Vec4;

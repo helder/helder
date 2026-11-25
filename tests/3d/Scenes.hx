@@ -9,13 +9,13 @@ import helder.scene.render.*;
 import helder.scene.math.MathTools;
 import StageShaders;
 
-// helder.scene's test scenes (RenderTest natively, SceneWebTest in the
+// helder.scene's test scenes (RenderCheck natively, SceneWebCheck in the
 // browser), each a frame against tests/3d/<name>.png:
 //   gltf   the sample glTF scene (examples/gltf-viewer/sample.glb) from its camera,
 //          lit by the renderer's sun and sky
 //   shadows the same with a shadow map (Shadows, 512x512)
 //   physics helder.physics' Falling example after STEPS steps
-//   instances 169 nodes on two meshes: instanced draws (RenderTest checks
+//   instances 169 nodes on two meshes: instanced draws (RenderCheck checks
 //          their count)
 //   skin   the skinned sample (examples/skinned.glb) bent by its animation,
 //          casting its shadow
@@ -105,12 +105,12 @@ class Scenes {
 	public static final NAMES = ["gltf", "orbits", "shadows", "physics", "instances", "skin", "overlay", "textured", "packed", "spot", "sky", "lazy", "normals", "blend", "walker", "packedskin", "packednormals", "cascades", "environment", "morph", "chains", "packedmorph", "bloom", "normalgrid", "gpuparticles", "crystal", "khrtransform", "khrclearcoat", "compressed", "packedbc", "packedastc", "instancedmesh", "glow", "tsscene", "fog", "poststage", "unevenscale", "softshadows", "shading", "primitives", "toon", "sprites", "hemisphere"].concat(EffectScenes.NAMES).concat(LineScenes.NAMES).concat(HighEndScenes.NAMES).concat(PhysicalScenes.NAMES).concat(LightScenes.NAMES).concat(IndirectScenes.NAMES);
 	// whether the last scene has what it draws (a lazy one: once its files loaded)
 	public static var ready:Void->Bool = () -> true;
-	// the last scene's renderer (its statistics: RenderTest)
+	// the last scene's renderer (its statistics: RenderCheck)
 	public static var renderer:Null<Renderer>;
-	// the last scene's own checks beyond its frame (RenderTest; null: none)
+	// the last scene's own checks beyond its frame (RenderCheck; null: none)
 	public static var probe:Null<Void->String>;
 	// the last scene drawn another way that must give the same frame
-	// (RenderTest, after the first and its probe; null: none)
+	// (RenderCheck, after the first and its probe; null: none)
 	public static var twin:Null<Encoder->Void>;
 	public static inline var TIME = 2.0;
 	public static inline var STEPS = 150;
@@ -176,7 +176,7 @@ class Scenes {
 				Scenes.renderer = renderer;
 				if (name != "gltf") renderer.use(new Shadows(device, 512));
 				// (the sky at the BeforeOpaque injection point)
-				// (a night sky: the tests want a dark corner, compare.mjs and GfxTest alike)
+				// (a night sky: the tests want a dark corner, compare.mjs and GfxCheck alike)
 				if (name == "sky") {
 					var sky = new Sky(device);
 					sky.zenith = new Vec3(0.004, 0.008, 0.03);
@@ -941,7 +941,7 @@ class Scenes {
 				Light.attach(world.node("sky"), Light.hemisphere(new Vec3(0.35, 0.4, 0.5), new Vec3(0.12, 0.1, 0.08)));
 				var eye = world.node("eye");
 				var camera = Camera.attach(eye, Camera.perspective(0.9, 0.1, 50));
-				// (a column at the frame's centre, which RenderTest checks is drawn)
+				// (a column at the frame's centre, which RenderCheck checks is drawn)
 				eye.position = new Vec3(0.45, 0.45, 5);
 				eye.lookAt(new Vec3(0.45, 0.45, 0));
 				enc -> r.draw(enc, world, camera);

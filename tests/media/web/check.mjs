@@ -1,4 +1,4 @@
-// MediaWebTest's page side: the frame's pixels read back (helder.gfx's
+// MediaWebCheck's page side: the frame's pixels read back (helder.gfx's
 // readPixels: a headless target's as it is, resolved later), by handle;
 // each decoded frame's planes read before helder.media gives it out (its
 // hook host.mediaFrame), for the checksums. The test's alone: apps never

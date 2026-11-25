@@ -1,6 +1,7 @@
 import helder.ui.*;
 import helder.ui.UiWindow;
 import helder.view.*;
+import fixtures.AccessFixture;
 
 // helder.ui's accessibility on Android (android.Access; CI's emulator job,
 // tests/pack/android.sh): AccessFixture's controls in the window, read by

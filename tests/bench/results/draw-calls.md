@@ -12,25 +12,25 @@ buffers, each written where it changed. Measured 2026-11-07 with
 Mesa's llvmpipe (a GPU in software), a 4-core VM shared with other
 builds; medians over the frames drawn.
 
-The screens: AccessApp's (tests/ui: GuideTest's widgets, todo with two
+The screens: AccessApp's (tests/ui: GuideCheck's widgets, todo with two
 items, mail) under a script of 180 pointer moves (a hover a frame); the
 studio (apps/studio on a copy of examples/todo, tests/studio/edit.json,
-zoomed with three previews shown); MotionStress (the motion-bench lane:
+zoomed with three previews shown); MotionStress (the bench motion lane:
 1,000 boxes under motion); examples/million (tests/headless/million.json);
 examples/code-editor (tests/headless/code-editor.json).
 
 | screen | quads | passes | draw calls (max) | textures bound | renderer CPU ms | of it draw calls | renderer without draw calls | uploaded KB |
 |---|---|---|---|---|---|---|---|---|
-| GuideTest's screen | 82 | 1 → 1 | 3 (3) → 1 (1) | 6 → 2 | 0.116 → 0.110 | 0.059 → 0.061 | 0.059 → 0.048 | 46 → 0 |
+| GuideCheck's screen | 82 | 1 → 1 | 3 (3) → 1 (1) | 6 → 2 | 0.116 → 0.110 | 0.059 → 0.061 | 0.059 → 0.048 | 46 → 0 |
 | todo | 89 | 1 → 1 | 1 (1) → 1 (1) | 2 → 2 | 0.110 → 0.110 | 0.065 → 0.073 | 0.043 → 0.035 | 50 → 0 |
 | mail | 300 | 1 → 1 | 1 (1) → 1 (1) | 2 → 2 | 0.250 → 0.231 | 0.153 → 0.151 | 0.096 → 0.079 | 169 → 23 |
 | the studio (three previews) | 167 | 1 → 1 | 10 (12) → 4 (5) | 20 → 5 | 0.237 → 0.218 | 0.154 → 0.148 | 0.080 → 0.068 | 94 → 16 |
-| motion-bench (1,000 boxes moving) | 1001 | 1 → 1 | 1 (1) → 1 (1) | 2 → 2 | 0.715 → 0.747 | 0.474 → 0.581 | 0.237 → 0.162 | 563 → 188 |
+| bench motion (1,000 boxes moving) | 1001 | 1 → 1 | 1 (1) → 1 (1) | 2 → 2 | 0.715 → 0.747 | 0.474 → 0.581 | 0.237 → 0.162 | 563 → 188 |
 | million | 750 | 1 → 1 | 1 (1) → 1 (1) | 2 → 2 | 0.570 → 0.471 | 0.369 → 0.316 | 0.183 → 0.150 | 422 → 135 |
 | code-editor | 1281 | 1 → 1 | 1 (1) → 1 (1) | 2 → 2 | 0.683 → 0.704 | 0.400 → 0.482 | 0.273 → 0.212 | 721 → 17 |
 
 - **Draw calls**: one a frame on every screen but the studio's. Before,
-  each path or image (an icon) split the run (GuideTest's search icon:
+  each path or image (an icon) split the run (GuideCheck's search icon:
   3 draws); now they share an atlas page. The studio's previews are
   larger than a page takes (about 490 x 570 px each), each a texture of
   its own, so the draw splits where one is bound: 4 draws, from 10.
@@ -55,5 +55,5 @@ examples/code-editor (tests/headless/code-editor.json).
 - **Pixels**: the corners are still placed by the CPU in doubles, so the
   goldens are unchanged: ui-draw's draw, window, todo and emoji exact,
   headless-run's and the studio's exact, ui-web's todo the same 618
-  pixels off on WebGPU and WebGL2 as before; BoxTest (within a tolerance)
+  pixels off on WebGPU and WebGL2 as before; BoxCheck (within a tolerance)
   1 pixel 1 level from before.

@@ -178,9 +178,9 @@ values, a job reading files in a browser's worker (no file system there),
 GC jobs safe natively (hxmc's loop safepoints), SharedArrayBuffer as a
 fast path, text's glyphs as jobs (README, phase 3).
 
-Tests: `tests/jobs/Jobs.test.hx` (the pool, both tiers, cancellation,
+Tests: `src/helder/jobs/Jobs.test.hx` (the pool, both tiers, cancellation,
 errors, channels, the loop without workers: `bun run helder test
-tests/jobs --target host,wasm`), `bun run test jobs` (the sendable
+src/helder/jobs --target host,wasm`), `bun run test jobs` (the sendable
 check's rejections), `jobs-web` (Chromium: workers, a cancelled one
-ended, the loop without frames), `app` (App.run's loop: tests/os/AppLoopTest.hx),
-`jobs-bench`.
+ended, the loop without frames), `app` (App.run's loop: tests/os/AppLoopCheck.hx),
+`bench jobs`.

@@ -2,7 +2,7 @@
 
 examples/million: a million messages in a `VirtualList` (helder.ui's
 `VirtualScroll` over a `HeightIndex`), each row as tall as its text
-wraps (26 to 100 px), estimated until shown. `bun run test million-bench`
+wraps (26 to 100 px), estimated until shown. `bun run test bench million`
 measures it two ways, 2026-11-07, a 4-core VM shared with other builds.
 
 ## The whole frame: `helder run --headless --stats`

@@ -4,7 +4,7 @@
 // several, inset; overflow hidden
 // clipping to the padding box's rounded corners; solid outlines, offset; CSS transforms about their
 // origins, nested ones inside their parents'; a text in DejaVu Sans with
-// its text shadows, blurred) on white: what BoxTest's
+// its text shadows, blurred) on white: what BoxCheck's
 // renderer must draw (bun run test ui-draw).
 //   node tests/ui/box-ref.mjs   (needs Playwright)
 import fs from 'node:fs';

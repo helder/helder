@@ -1,10 +1,10 @@
 // App.onBack and App.backDepth in headless Chromium (bun run test
-// touch-web): BackWeb.wasm on a page that came after another (/start), its
+// touch-web): BackWebCheck.wasm on a page that came after another (/start), its
 // lines and history.length checked: one entry of the page's own while deep,
 // whatever the depth; history back a step up while deep, the entry kept
 // until the last step, then gone; at depth 0 back the page's own (back to
 // /start); the entry gone again when the app is no longer deep by itself.
-//   node tests/os/back-web.mjs <BackWeb.wasm>
+//   node tests/os/back-web.mjs <BackWebCheck.wasm>
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -25,7 +25,7 @@ const files = {
 	'/os/worker.mjs': path.join(here, '../../src/helder/os/worker.mjs'),
 };
 const types = { '.mjs': 'text/javascript', '.wasm': 'application/wasm' };
-const page = `<!doctype html><title>BackWeb</title><body style="margin:0">
+const page = `<!doctype html><title>BackWebCheck</title><body style="margin:0">
 <canvas id="c" style="width: 200px; height: 100px; display: block"></canvas>
 <script type="module">
 import { run } from './os/browser.mjs';

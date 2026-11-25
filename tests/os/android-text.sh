@@ -1,11 +1,11 @@
 #!/bin/sh
 # Text input in a window the program draws, on the device or emulator adb
 # reaches; the app's lines from logcat (tag hxmc):
-#   - AndroidTextTest.apk: text input on shows the soft keyboard for its
+#   - AndroidTextCheck.apk: text input on shows the soft keyboard for its
 #     hidden EditText (dumpsys input_method), keys typed by adb come as
 #     TextInput, an input method's composition and commit as TextEditing
 #     and TextInput; off hides it.
-#   sh tests/os/android-text.sh <AndroidTextTest.apk> [out dir]
+#   sh tests/os/android-text.sh <AndroidTextCheck.apk> [out dir]
 set -u
 text=$1
 out=${2:-.}
@@ -45,9 +45,9 @@ adb wait-for-device
 # text input in a drawn window
 adb logcat -c
 adb install -r "$text"
-check "install AndroidTextTest" $?
+check "install AndroidTextCheck" $?
 adb shell am start -W -n org.hxmc.texttest/android.app.NativeActivity
-wait_for "AndroidTextTest: window" 60
+wait_for "AndroidTextCheck: window" 60
 check "the window" $?
 sleep 2
 ime "mInputShown=true"
@@ -55,16 +55,16 @@ check "text input on: the soft keyboard shown" $?
 adb shell dumpsys input_method | grep -q "mServedView=.*EditText"
 check "for the hidden EditText" $?
 adb shell input text hello
-wait_for 'AndroidTextTest: typed "hello"' 20
+wait_for 'AndroidTextCheck: typed "hello"' 20
 check "keys typed: TextInput" $?
-wait_for "AndroidTextTest: text input off" 20
+wait_for "AndroidTextCheck: text input off" 20
 check "an input method's composition and commit" $?
-grep -q "AndroidTextTest: ok: the input method's composition and commit" "$log"
+grep -q "AndroidTextCheck: ok: the input method's composition and commit" "$log"
 check "as TextEditing and TextInput" $?
 sleep 2
 ime "mInputShown=false"
 check "text input off: the keyboard hidden" $?
-wait_for "AndroidTextTest: end" 30
+wait_for "AndroidTextCheck: end" 30
 check "the window closes" $?
 adb logcat -d > "$out/text-logcat-all.txt" 2>/dev/null
 cat "$log"

@@ -7,7 +7,7 @@ import helder.jobs.Jobs;
 import hxmc.Buffer;
 
 // Jobs.hx's measurement through helder.jobs' API (`bun run test
-// jobs-bench`): JobsFrame's frames at 60 fps, as a task on helder.async's
+// bench jobs`): JobsFrame's frames at 60 fps, as a task on helder.async's
 // loop (its timers and waits, as App.run drives them), while the 4K PNG is
 // decoded from frame 60:
 //

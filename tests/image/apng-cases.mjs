@@ -7,7 +7,7 @@
 // left, cleared or put back) and a default image apart from the animation;
 // one by ffmpeg's encoder (its own regions and ops). Alphas are 0 or 255,
 // where every compositor agrees, transparent pixels black.
-// ImageTest decodes them (bun run test image).
+// ImageCheck decodes them (bun run test image).
 //   node tests/image/apng-cases.mjs   (needs ffmpeg, ImageMagick and Playwright's Chromium)
 import fs from 'node:fs';
 import path from 'node:path';

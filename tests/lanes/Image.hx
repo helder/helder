@@ -12,9 +12,9 @@ class Image {
 
 	static function image() {
 		var cp = cps(["src", "tests/image"]);
-		interp(cp, "ImageTest");
-		exe("bin/image/ImageTest", cp.concat(["-main", "ImageTest"]));
-		run(exePath("bin/image/ImageTest", HOST), []);
+		interp(cp, "ImageCheck");
+		exe("bin/image/ImageCheck", cp.concat(["-main", "ImageCheck"]));
+		run(exePath("bin/image/ImageCheck", HOST), []);
 		run(NODE, ["tests/image/unsafe.mjs"]);
 	}
 

@@ -990,7 +990,7 @@ helder run --headless --soft examples/todo --snap out.png   # drawn on the CPU, 
   written at the end, and a summary of the frames drawn printed (each
   column's median, the passes' and draw calls' largest). The machine's
   times: not part of the determinism below (tests/bench/code.mjs reads
-  it: the code-bench lane).
+  it: the bench code lane).
 - **`--frames N -o dir`**: `frame_0000.png`... from `--start`, every
   `--every`-th written (named by their frame); `-o` without `--frames`:
   `--duration`'s (auto: to the end). A sequence keeps its first frame's

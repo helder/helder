@@ -2,8 +2,8 @@ import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 
 // A shader with uniform blocks and helpers from another module
-// (Lighting.hx), for the shader definition's tests (ShaderTest: run on the CPU,
-// the emitted source against test/shader/; GfxTest and WebTest: compiled
+// (Lighting.hx), for the shader definition's tests (ShaderCheck: run on the CPU,
+// the emitted source against test/shader/; GfxCheck and WebCheck: compiled
 // by each back end).
 @:structInit @:publicFields class LitVertex {
 	var pos:Vec3;

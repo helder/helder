@@ -47,7 +47,7 @@ if [ "$suite" = full ]; then
 	build examples/planets/Planets.hx "$out/Planets.app"
 	build tests/ui/IosAccessCheck.hx "$out/IosAccessCheck.app"
 	build tests/image/SystemImageCheck.hx "$out/SystemImageCheck.app"
-	build tests/text/SystemTextTest.hx "$out/SystemTextTest.app"
+	build tests/text/SystemTextCheck.hx "$out/SystemTextCheck.app"
 fi
 [ -n "${IOS_BUILD_ONLY:-}" ] && exit $failed
 
@@ -199,9 +199,9 @@ tail -20 "$out/images.txt"
 grep -q "images: .* checks ok" "$out/images.txt"
 check "images: the system's decoders" $?
 
-# helder.text on Core Text (tests/text/SystemTextTest.hx): each script's
+# helder.text on Core Text (tests/text/SystemTextCheck.hx): each script's
 # fallback face, Indic scripts shaped by the system; "system-text: all passed".
-"$helder" run tests/text/SystemTextTest.hx --target ios -d "$udid" > "$out/text.txt" 2>&1
+"$helder" run tests/text/SystemTextCheck.hx --target ios -d "$udid" > "$out/text.txt" 2>&1
 tail -30 "$out/text.txt"
 grep -q "system-text: all passed" "$out/text.txt"
 check "system-text: Core Text behind helder.text" $?

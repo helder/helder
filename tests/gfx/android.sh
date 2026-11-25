@@ -1,11 +1,11 @@
 #!/bin/sh
-# AndroidTest.apk (AndroidTest.hx) on the device or emulator adb reaches
+# AndroidCheck.apk (AndroidCheck.hx) on the device or emulator adb reaches
 # (CI's android job: an x86-64 emulator with KVM): installs it, starts its
 # NativeActivity and reads the app's lines from logcat (helder.os sends what
 # the app prints there, tag hxmc; with its own lifecycle lines, tag helder.os
 # at the debug level: each activity callback, the window's size):
 #   - the cube rendered headless on the device's GPU matches cube.png
-#     (GfxTest's rule); the activity's window, waited for, has a size, and
+#     (GfxCheck's rule); the activity's window, waited for, has a size, and
 #     its frame is lit;
 #   - 120 frames drawn in the window;
 #   - a tap and a key come back as events (a touch's PointerDown and
@@ -24,7 +24,7 @@
 #   - a screenshot (screencap) to <out>/cube-android.png, the log to
 #     <out>/logcat.txt; Back (Escape) closes the window and the app's main
 #     returns.
-#   sh tests/gfx/android.sh <AndroidTest.apk> [out dir]
+#   sh tests/gfx/android.sh <AndroidCheck.apk> [out dir]
 set -u
 apk=$1
 out=${2:-.}
@@ -77,13 +77,13 @@ adb logcat -c
 adb install -r "$apk"
 check "install" $?
 adb shell am start -W -n $pkg/android.app.NativeActivity
-wait_for "AndroidTest: frames 120" 120
+wait_for "AndroidCheck: frames 120" 120
 check "120 frames in the window" $?
-grep -q "AndroidTest: GfxTest: cube, android headless: ok\|GfxTest: cube, android headless: ok" "$log"
+grep -q "AndroidCheck: GfxCheck: cube, android headless: ok\|GfxCheck: cube, android headless: ok" "$log"
 check "the headless cube matches cube.png" $?
-grep -q "AndroidTest: window [1-9][0-9]*x[1-9]" "$log"
+grep -q "AndroidCheck: window [1-9][0-9]*x[1-9]" "$log"
 check "the window has a size" $?
-grep -q "AndroidTest: window frame .*: lit" "$log"
+grep -q "AndroidCheck: window frame .*: lit" "$log"
 check "the window's frame is lit" $?
 adb shell input tap 300 300
 adb shell input keyevent KEYCODE_A
@@ -100,13 +100,13 @@ check "the tap: no mouse events, no scrolls (a touch is its pointer's alone)" $?
 # after the finger lifted. No scrolls, no mouse events: the pointers alone.
 angle() {
 	adb logcat -d -s hxmc:I helder.os:D > "$log" 2>/dev/null
-	grep -o "AndroidTest: spin $1 angle -*[0-9]*" "$log" | tail -1 | grep -o -- "-*[0-9]*$"
+	grep -o "AndroidCheck: spin $1 angle -*[0-9]*" "$log" | tail -1 | grep -o -- "-*[0-9]*$"
 }
 speed() {
 	adb logcat -d -s hxmc:I helder.os:D > "$log" 2>/dev/null
-	grep -o "AndroidTest: spin free angle -*[0-9]* speed -*[0-9]*" "$log" | tail -1 | grep -o -- "-*[0-9]*$"
+	grep -o "AndroidCheck: spin free angle -*[0-9]* speed -*[0-9]*" "$log" | tail -1 | grep -o -- "-*[0-9]*$"
 }
-size=$(grep -o "AndroidTest: window [0-9]*x[0-9]*" "$log" | head -1 | grep -o "[0-9]*x[0-9]*$")
+size=$(grep -o "AndroidCheck: window [0-9]*x[0-9]*" "$log" | head -1 | grep -o "[0-9]*x[0-9]*$")
 W=${size%x*}
 H=${size#*x}
 x0=$((W / 4))
@@ -146,7 +146,7 @@ check "a fling: its release" $?
 # (the speed the release gave it, logged with it: the spin's lines every 20
 # frames came up to 1.7 s after it on the emulator, the flick eased off by then)
 adb logcat -d -s hxmc:I helder.os:D > "$log" 2>/dev/null
-flick=$(tail -n +$((lines + 1)) "$log" | grep -o "AndroidTest: let go, spin speed -*[0-9]*" | head -1 | grep -o -- "-*[0-9]*$")
+flick=$(tail -n +$((lines + 1)) "$log" | grep -o "AndroidCheck: let go, spin speed -*[0-9]*" | head -1 | grep -o -- "-*[0-9]*$")
 echo "android.sh: the fling's speed as let go: $flick mrad/s (its own 600)"
 [ -n "$flick" ] && [ "$flick" -ge 1500 ]
 check "the fling carries the cube on at the drag's speed" $?
@@ -161,7 +161,7 @@ adb shell am start -W -n $pkg/android.app.NativeActivity
 wait_for "event Resume" 30
 check "back again: Resume" $?
 frames=$(grep -o "frames [0-9]*" "$log" | tail -1 | cut -d' ' -f2)
-wait_for "AndroidTest: frames $((frames + 60))" 60
+wait_for "AndroidCheck: frames $((frames + 60))" 60
 check "frames after Resume" $?
 relaunch() {
 	adb logcat -d -s hxmc:I helder.os:D > "$log" 2>/dev/null
@@ -172,16 +172,16 @@ relaunch() {
 	check "font scale $1: the activity made again in the process" $?
 	wait_count "event Resume" $((resumed + 1)) 30
 	check "font scale $1: the new activity's window (Resume)" $?
-	grep -q "onDestroy: finishing\|AndroidTest: done" "$log"
+	grep -q "onDestroy: finishing\|AndroidCheck: done" "$log"
 	check "font scale $1: the program goes on" $((1 - $?))
 	frames=$(grep -o "frames [0-9]*" "$log" | tail -1 | cut -d' ' -f2)
-	wait_for "AndroidTest: frames $((frames + 60))" 60
+	wait_for "AndroidCheck: frames $((frames + 60))" 60
 	check "font scale $1: frames after the relaunch" $?
 }
 relaunch 1.15
 relaunch 1.0
 adb shell input keyevent KEYCODE_BACK
-wait_for "AndroidTest: done" 30
+wait_for "AndroidCheck: done" 30
 check "Back: the app's main returns" $?
 adb logcat -d > "$out/logcat-all.txt" 2>/dev/null
 cat "$log"

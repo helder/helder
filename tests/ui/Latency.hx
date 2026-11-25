@@ -4,7 +4,7 @@ import helder.ui.*;
 import helder.ui.draw.*;
 
 // The time from a scroll's input to the present of the first frame that
-// shows it (AsyncScrollWindow --latency n [--work ms]): a wheel's event put
+// shows it (AsyncScrollWindowCheck --latency n [--work ms]): a wheel's event put
 // where the system's come in every 250 ms (Inject), the frames' presents
 // and offsets recorded (the program's after settle, the compositor's after
 // its present), with the program working ms after each of its frames.

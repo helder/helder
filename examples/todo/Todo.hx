@@ -22,7 +22,7 @@ import helder.view.graph.Read;
 //
 //   haxe -lib helder -cp examples/todo -main Todo --custom-target hxmc=todo -D hxmc.libc=glibc
 //
-// (TodoTest drives it headless, WebTodo in a browser.)
+// (TodoCheck drives it headless, WebTodo in a browser.)
 class Todo implements Markup {
 	static function main() {
 		UiWindow.run(<Surface title="Todo" width={480} height={560} theme={sheet}>{new Todo().view()}</Surface>);

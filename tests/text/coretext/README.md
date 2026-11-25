@@ -22,8 +22,8 @@ Inter 4.1 Regular (SHA-256 `40d692fc…0c82`, Rune's `assets/`), and
 dash and curly quotes (Rune's `tests/coretext/`).
 
 `sheets/`: CoreText's own sheets for the text-quality lane
-(`tests/text/TextQuality.hx`), drawn on CI's Mac by the system-text lane
-(`TextQuality reference`: CTFontDrawGlyphs through helder's Core Text back
+(`tests/text/TextQualityCheck.hx`), drawn on CI's Mac by the system-text lane
+(`TextQualityCheck reference`: CTFontDrawGlyphs through helder's Core Text back
 end) and copied from its `text-macos` artifact (`bin/text/coretext`).
 `<pair>-<scale>x.png` has font smoothing on, `flat-<pair>-<scale>x.png`
 off; each is the green channel. `layout.txt` is the digest of helder's

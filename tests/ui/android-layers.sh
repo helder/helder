@@ -1,6 +1,6 @@
 #!/bin/sh
 # Android's system layers on the device or emulator adb reaches:
-# AndroidLayersTest.apk (tests/ui/AndroidLayersTest.hx) run three times:
+# AndroidLayersCheck.apk (tests/ui/AndroidLayersCheck.hx) run three times:
 # with SurfaceControl's layers, with them stalled (debug.helder.layers=
 # stall: no transaction reported presented, so that they must fall back
 # to the textured compositor while running) and with the textured
@@ -10,7 +10,7 @@
 # stills (the last after the header's label changed each frame, drawn
 # only where it changed) compared with the textured compositor's
 # (android-layers.mjs).
-#   sh tests/ui/android-layers.sh <AndroidLayersTest.apk> [out dir]
+#   sh tests/ui/android-layers.sh <AndroidLayersCheck.apk> [out dir]
 set -u
 apk=$1
 out=${2:-.}
@@ -46,15 +46,15 @@ for mode in layers stall 0; do
 	adb shell setprop debug.helder.layers "$([ $mode = layers ] && echo 1 || echo $mode)"
 	adb logcat -c
 	adb shell am start -W -n $pkg/android.app.NativeActivity > /dev/null
-	wait_for "AndroidLayersTest: swipe now" 120 || { failed=1; continue; }
+	wait_for "AndroidLayersCheck: swipe now" 120 || { failed=1; continue; }
 	adb shell input swipe $((W / 2)) $((H * 80 / 100)) $((W / 2)) $((H * 30 / 100)) 120
-	wait_for "AndroidLayersTest: still 1" 120 && adb exec-out screencap -p > "$out/still1-$mode.png"
-	wait_for "AndroidLayersTest: still 2" 120 && adb exec-out screencap -p > "$out/still2-$mode.png"
-	wait_for "AndroidLayersTest: still 3" 120 && adb exec-out screencap -p > "$out/still3-$mode.png"
-	wait_for "AndroidLayersTest: done" 120
+	wait_for "AndroidLayersCheck: still 1" 120 && adb exec-out screencap -p > "$out/still1-$mode.png"
+	wait_for "AndroidLayersCheck: still 2" 120 && adb exec-out screencap -p > "$out/still2-$mode.png"
+	wait_for "AndroidLayersCheck: still 3" 120 && adb exec-out screencap -p > "$out/still3-$mode.png"
+	wait_for "AndroidLayersCheck: done" 120
 	adb logcat -d -s hxmc:I > "$log"
-	grep "AndroidLayersTest" "$log" | sed 's/^.*AndroidLayersTest/AndroidLayersTest/'
-	grep -q "AndroidLayersTest: ok$" "$log" || failed=1
+	grep "AndroidLayersCheck" "$log" | sed 's/^.*AndroidLayersCheck/AndroidLayersCheck/'
+	grep -q "AndroidLayersCheck: ok$" "$log" || failed=1
 	# (layers: shown on them, else fallen back at run time, as stall must:
 	# then the textured compositor's, its pace the device's, a note)
 	if [ $mode = layers ] && grep -q "system layers fell back" "$log"; then

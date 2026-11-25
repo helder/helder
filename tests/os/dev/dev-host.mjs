@@ -1,6 +1,6 @@
 // helder dev's host without a dev server (src/helder/dev; the test lane
 // dev-host): the dev host (helder.dev.DevHost) and three builds of
-// tests/gfx/DevHostTest.hx as its shared libraries (-D hxmc.shared
+// tests/gfx/DevHostCheck.hx as its shared libraries (-D hxmc.shared
 // -D hxmc.dev-host: .so, .dll, .dylib), the first run by the host with
 // HXMC_DEV_NEXT naming the other two, which the running build hands over to
 // in turn (helder.dev.Hot, a second after its first frame), in the same
@@ -53,7 +53,7 @@ check('the host builds', fs.existsSync(host));
 // (Windows: each DLL at a base of its own, as helder dev gives them)
 const libs = [1, 2, 3].map((v) => {
 	const lib = path.join(work, `DevHost${v}${ext}`);
-	haxe(['-D', 'hxmc.markup-braces', '-cp', 'src', '-cp', 'tests/gfx', ...['triangle', 'cube', 'instances', 'mips', 'formats'].flatMap((e) => ['-cp', 'examples/' + e]), '-main', 'DevHostTest', '-D', 'devhost_version=' + v, '-D', 'hxmc.dev',
+	haxe(['-D', 'hxmc.markup-braces', '-cp', 'src', '-cp', 'tests/gfx', ...['triangle', 'cube', 'instances', 'mips', 'formats'].flatMap((e) => ['-cp', 'examples/' + e]), '-main', 'DevHostCheck', '-D', 'devhost_version=' + v, '-D', 'hxmc.dev',
 		'-D', 'hxmc.shared', '-D', 'hxmc.dev-host', '-D', 'hxmc.exports=hxmc_dev_run,hxmc_dev_state',
 		...(win ? ['-D', 'hxmc.dll-base=0x' + (0x10000000 + (v % 3) * 0x20000000).toString(16)] : []),
 		'helder.dev.Hosted', '--custom-target', 'hxmc=' + lib]);
@@ -73,13 +73,13 @@ if (!runs) {
 	for (const s of [p.stdout, p.stderr]) s.on('data', (d) => out.push(...d.toString().split(/\r?\n/).filter((l) => l)));
 	const ended = new Promise((r) => p.on('exit', r));
 	const t0 = Date.now();
-	while (Date.now() - t0 < 120000 && !out.some((l) => /^DevHostTest: v3 /.test(l)) && p.exitCode == null)
+	while (Date.now() - t0 < 120000 && !out.some((l) => /^DevHostCheck: v3 /.test(l)) && p.exitCode == null)
 		await new Promise((r) => setTimeout(r, 250));
 	p.kill();
 	await Promise.race([ended, new Promise((r) => setTimeout(r, 3000))]);
 	if (wine) spawnSync(path.join(path.dirname(wine), 'wineserver'), ['-k']);
 	for (const l of out) console.log('  | ' + l);
-	const at = (v) => out.find((l) => l.startsWith(`DevHostTest: v${v} `)) ?? '';
+	const at = (v) => out.find((l) => l.startsWith(`DevHostCheck: v${v} `)) ?? '';
 	const field = (l, k) => new RegExp(`${k}=(\\S+)`).exec(l)?.[1];
 	check('two builds swapped in', !!at(3));
 	check('the count kept across the builds (n=1, 2, 3)', [1, 2, 3].every((v) => field(at(v), 'n') === String(v)), [1, 2, 3].map(at).join(' / '));

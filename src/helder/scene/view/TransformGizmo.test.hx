@@ -15,7 +15,7 @@ import helder.ui.Ui;
 // their axis, arms scale it, snaps step; a node under a turned parent is
 // moved along the world's axis all the same; with writesNode off the
 // value is onChange's, the node left; a frame's handles and a drag's steps allocate
-// nothing. (Its drag through a real window: tests/3d-ui/SurfaceTest.hx.)
+// nothing. (Its drag through a real window: tests/3d-ui/SurfaceCheck.hx.)
 function tests() {
 	describe("TransformGizmo", () -> {
 		var t = 0.0;
