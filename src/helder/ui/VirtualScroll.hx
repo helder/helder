@@ -250,9 +250,11 @@ class VirtualScroll extends Node {
 			case "center": 1;
 			case "end": 2;
 			case _:
-				// (shown: with its insets' room, a bar's over them or the padding)
-				var top = rowOffset(index) - insetTop, bottom = rowOffset(index) + heights.heightOf(index) + insetBottom;
-				if (top >= scrollY && bottom <= scrollY + viewHeight()) -1 else top < scrollY ? 0 : 2;
+				// (shown: with its insets' room, a bar's over them or the padding;
+				// taller than the view, its top)
+				var h = heights.heightOf(index), vh = viewHeight();
+				var top = rowOffset(index) - room(insetTop, h), bottom = rowOffset(index) + h + room(insetBottom, h);
+				if (top >= scrollY && bottom <= scrollY + vh) -1 else top < scrollY || h > vh ? 0 : 2;
 		}
 		if (a < 0) return;
 		target = index;
@@ -323,6 +325,11 @@ class VirtualScroll extends Node {
 		return h > 0 ? h : 0;
 	}
 
+	// (an inset as much as a row of height h leaves room for: a row the
+	// insets would push out of a short view kept whole, as an inset gives way)
+	inline function room(inset:Float, h:Float):Float
+		return Math.max(0, Math.min(inset, viewHeight() - h));
+
 	// (the scroll the anchor or the row scrolled to asks for, clamped)
 	function wanted():Float {
 		var vh = viewHeight(), y:Float;
@@ -331,8 +338,8 @@ class VirtualScroll extends Node {
 			var top = rowOffset(target), h = heights.heightOf(target);
 			y = switch targetAlign {
 				case 1: top + h / 2 - insetTop - (vh - insetTop - insetBottom) / 2;
-				case 2: top + h + insetBottom - vh;
-				case _: top - insetTop;
+				case 2: top + h + room(insetBottom, h) - vh;
+				case _: top - room(insetTop, h);
 			}
 		} else y = count == 0 ? 0 : rowOffset(anchorRow) + anchorDelta;
 		var max = extent() - vh;
