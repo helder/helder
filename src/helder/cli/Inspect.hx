@@ -35,7 +35,7 @@ class Inspect {
 			path = info.path ?? path;
 			if (info.host != null && info.host != "localhost") host = info.host;
 		}
-		ws = try WebSocket.connect(host, port, path) catch (e:haxe.Exception) {
+		ws = try WebSocket.open('ws://$host:$port$path') catch (e:haxe.Exception) {
 			Sys.println('helder inspect: no helder dev at $host:$port (${e.message})');
 			return 1;
 		}

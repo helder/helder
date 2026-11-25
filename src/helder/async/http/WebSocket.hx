@@ -82,12 +82,6 @@ class WebSocket {
 		return new WebSocket(out, shut, r, false);
 	}
 
-	// a client's WebSocket to host:port at path (ws)
-	@:coroutine public static function connect(host:String, port:Int, path = "/"):WebSocket {
-		var s = Socket.connect(host, port);
-		return handshake(s, s, () -> s.close(), '$host:$port', path);
-	}
-
 	// a client's WebSocket to a ws or wss url: the system's stack where there
 	// is one (NSURLSession on macOS and iOS, WinHTTP on Windows, Java's
 	// sockets under these frames on Android); else, or with a ca (PEM), wss

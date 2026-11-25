@@ -14,7 +14,7 @@ import hxmc.unsafe.*;
 //   var level = Fetch.bytes("levels/2.glb");
 //   var map = Fetch.bytes("maps/big.bin", (loaded, total) -> trace(loaded / total));
 class Fetch {
-	@:coroutine public static function bytes(path:String, ?progress:(loaded:Int, total:Int) -> Void):Bytes {
+	@:typescript @:coroutine public static function bytes(path:String, ?progress:(loaded:Int, total:Int) -> Void):Bytes {
 		#if (hxmc.target == "wasm32-wasi")
 		var h = fetched(path, progress);
 		// (taken straight into the Bytes: no copy in between, no GC point)
