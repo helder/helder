@@ -27,6 +27,8 @@ class PdfDoc {
 	// and a render that landed (what the view follows)
 	public final page = new Cell(0);
 	public final zoom = new Cell(1.0);
+	// (the layout laid out again: a zoom, a view's new size; what places the pages reads it)
+	public final laid = new Cell(0);
 	public final scroll = new Cell({x: 0.0, y: 0.0});
 	public final shown:Cell<Array<Int>> = new Cell([]);
 	public final rendered = new Cell(0);
@@ -59,15 +61,17 @@ class PdfDoc {
 	function get_pages():Int
 		return layout.sizes.length;
 
-	// the view's size (its first: auto, at the top)
+	// the view's size (its first: auto, at the top; again: the page point at
+	// the view's top middle kept there, the column centred in the new width)
 	public function view(width:Float, height:Float) {
 		if (width <= 0 || height <= 0 || (sized && width == layout.viewWidth && height == layout.viewHeight)) return;
+		var a = sized ? layout.anchor(x, y, layout.viewWidth / 2, 0) : null;
 		sized = true;
 		layout.setView(width, height);
-		if (fitted) {
-			var s = layout.zoomAbout(layout.auto(), x, y, 0, 0);
-			moved(s.x, s.y);
-		} else moved(layout.clampX(x), layout.clampY(y));
+		if (fitted) layout.setZoom(layout.auto());
+		laid(laid.value + 1);
+		var s = a == null ? {x: layout.clampX(0), y: layout.clampY(0)} : layout.placed(a, width / 2, 0);
+		moved(s.x, s.y);
 	}
 
 	// the view scrolled there (its own: the wheel, a trackpad, its bars)

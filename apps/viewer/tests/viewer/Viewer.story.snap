@@ -3178,13 +3178,13 @@ Node#root 0,0 390x844
               ImageView#photo 0,52 1100x648
               Node#pdf 0,52 1100x648
                 Node#pdf-scroll 0,52 1100x648
-                  Node#pdf-pages 0,52 1100x1889
-                    Node#page 300,68 500x667
-                      ImageNode#page-image 301,69 498x665
-                    Node#page 217,747 666x500
-                      ImageNode#page-image 218,748 664x498
-                    Node#page 300,1259 500x666
-                      ImageNode#page-image 301,1260 498x664
+                  Node#pdf-pages 0,52 1100x1669
+                    Node#page 330,68 440x587
+                      ImageNode#page-image 331,69 438x585
+                    Node#page 257,667 586x440
+                      ImageNode#page-image 258,668 584x438
+                    Node#page 330,1119 440x586
+                      ImageNode#page-image 331,1120 438x584
                 TextNode#page-indicator 1034,64 50x23 "2 / 3"
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0

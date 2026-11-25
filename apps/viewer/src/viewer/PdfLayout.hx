@@ -17,8 +17,9 @@ class PdfLayout {
 	public static inline var MAX_ZOOM = 8.0;
 	// a page at its actual size: its points at 96 dpi (pdf.js's 100%)
 	public static inline var ACTUAL = 96 / 72;
-	// (auto's largest: pdf.js's MAX_AUTO_SCALE, of the actual size; an A4 page some 990 points wide)
-	static inline var MAX_AUTO = 1.25;
+	// (auto's largest, of the actual size: pdf.js's MAX_AUTO_SCALE is 1.25; a
+	// little narrower here, an A4 page some 873 points wide)
+	static inline var MAX_AUTO = 1.1;
 
 	public final sizes:Array<PageSize>;
 	public var zoom(default, null) = 1.0;
@@ -47,7 +48,7 @@ class PdfLayout {
 	public function fitWidth():Float
 		return clamp((viewWidth - 2 * MARGIN) / widest);
 
-	// pdf.js's "auto": fitted to the width, at most 125% of the actual
+	// pdf.js's "auto": fitted to the width, at most 110% of the actual
 	// size (a wide window's column not as wide as it); a landscape document
 	// (its first page) fitted whole, its height too
 	public function auto():Float {
@@ -116,13 +117,21 @@ class PdfLayout {
 	// the zoom changed to z with the point (vx, vy) of the view, scrolled
 	// to (x, y), staying over the same point of its page: the new scroll
 	public function zoomAbout(z:Float, x:Float, y:Float, vx:Float, vy:Float):{x:Float, y:Float} {
-		if (sizes.length == 0) {
-			setZoom(z);
-			return {x: 0, y: 0};
-		}
-		var cx = x + vx, cy = y + vy, p = pageAt(cy), k = zoom;
-		var fx = (cx - left(p)) / k, fy = (cy - top(p)) / k;
+		var a = anchor(x, y, vx, vy);
 		setZoom(z);
-		return {x: clampX(left(p) + fx * zoom - vx), y: clampY(top(p) + fy * zoom - vy)};
+		return placed(a, vx, vy);
+	}
+
+	// the page and its point (in points) at the view's point (vx, vy), scrolled to (x, y)
+	public function anchor(x:Float, y:Float, vx:Float, vy:Float):{page:Int, x:Float, y:Float} {
+		if (sizes.length == 0) return {page: -1, x: 0, y: 0};
+		var cx = x + vx, cy = y + vy, p = pageAt(cy);
+		return {page: p, x: (cx - left(p)) / zoom, y: (cy - top(p)) / zoom};
+	}
+
+	// the scroll that puts an anchor's page point at the view's point (vx, vy), as the layout is now
+	public function placed(a:{page:Int, x:Float, y:Float}, vx:Float, vy:Float):{x:Float, y:Float} {
+		if (a.page < 0) return {x: 0, y: 0};
+		return {x: clampX(left(a.page) + a.x * zoom - vx), y: clampY(top(a.page) + a.y * zoom - vy)};
 	}
 }

@@ -24,9 +24,9 @@ function tests() {
 			l.setZoom(2);
 			equals(l.width(), 800 * 2 + 32.0);
 		});
-		test("auto: fitted to the width, at most 125% of the actual size; a landscape document fitted whole", () -> {
+		test("auto: fitted to the width, at most 110% of the actual size; a landscape document fitted whole", () -> {
 			// (A4, upright and landscape; the column of a 1200- and a 2400-point window)
-			var a4 = {width: 595.28, height: 841.89}, cap = 1.25 * 96 / 72;
+			var a4 = {width: 595.28, height: 841.89}, cap = 1.1 * 96 / 72;
 			var upright = new PdfLayout([a4, a4]), landscape = new PdfLayout([{width: a4.height, height: a4.width}]);
 			function width(l:PdfLayout, w:Float, h:Float):Int {
 				l.setView(w, h);
@@ -34,7 +34,7 @@ function tests() {
 				return Math.round(l.pageWidth(0));
 			}
 			equals(width(upright, 1200, 800), Math.round(a4.width * cap));
-			equals(width(upright, 2400, 1300), 992);
+			equals(width(upright, 2400, 1300), 873);
 			// (its height: 800 less the margins)
 			equals(width(landscape, 1200, 800), Math.round(a4.height * (800 - 32) / a4.width));
 			equals(width(landscape, 2400, 1300), Math.round(a4.height * cap));
@@ -48,9 +48,9 @@ function tests() {
 		test("the zoom from auto: Fit back to it, Actual Size 96 dpi, the keys a step", () -> {
 			var doc = new PdfDoc("doc.pdf", [{width: 595.28, height: 841.89}], 1000, (_, side, done) -> done(fake(side)));
 			doc.view(2400, 1300);
-			var auto = 1.25 * PdfLayout.ACTUAL;
+			var auto = 1.1 * PdfLayout.ACTUAL;
 			equals(doc.layout.zoom, auto);
-			equals(doc.percent(), 125);
+			equals(doc.percent(), 110);
 			doc.step(1);
 			equals(doc.layout.zoom, auto * 1.25);
 			doc.actual();
@@ -58,12 +58,33 @@ function tests() {
 			equals(doc.layout.zoom, 96 / 72);
 			doc.fit();
 			equals(doc.layout.zoom, auto);
-			// (auto kept as the window is resized; a zoom is kept)
-			doc.view(1000, 700);
-			equals(doc.layout.zoom, (1000 - 32) / 595.28);
+			// (auto kept as the window is resized: there under the cap, the width; a zoom is kept)
+			doc.view(800, 700);
+			equals(doc.layout.zoom, (800 - 32) / 595.28);
 			doc.step(-1);
 			doc.view(2400, 1300);
-			equals(doc.layout.zoom, (1000 - 32) / 595.28 * 0.8);
+			equals(doc.layout.zoom, (800 - 32) / 595.28 * 0.8);
+		});
+		test("the window resized: laid out again, the page point at the view's top middle kept", () -> {
+			var doc = new PdfDoc("doc.pdf", sizes, 1000, (_, side, done) -> done(fake(side)));
+			doc.view(1000, 700);
+			doc.goTo(2);
+			doc.lines(3);
+			for (z in [1.0, 3.0]) {
+				// (auto, the pages narrower than the view; then zoomed past its width, scrolled across)
+				if (z > 1) {
+					doc.zoomBy(z, 500, 0);
+					doc.scrolled(doc.layout.clampX(doc.x + 200), doc.y);
+				}
+				var l = doc.layout, before = l.anchor(doc.x, doc.y, l.viewWidth / 2, 0), laid = doc.laid.value;
+				doc.view(1600, 900);
+				// (what places the pages told: PdfView's boxes follow laid, the zoom unchanged or not)
+				equals(doc.laid.value, laid + 1);
+				var after = l.anchor(doc.x, doc.y, 800, 0);
+				equals(after.page, before.page);
+				assert(Math.abs(after.x - before.x) < 1e-6 && Math.abs(after.y - before.y) < 1e-6, '$before, then $after');
+				doc.view(1000, 700);
+			}
 		});
 		test("the pages a scroll shows; the page the view is on", () -> {
 			var l = new PdfLayout(sizes);

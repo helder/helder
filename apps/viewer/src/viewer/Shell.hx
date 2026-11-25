@@ -261,7 +261,7 @@ class Shell implements Markup {
 		var shows = signal(false);
 		UiWindow.run(<Surface title={() -> x.full() ? viewer.title() : x.sidebar.title(x.browser.dir())} width={num("width", 1180)} height={num("height", 780)}
 			titlebar="inset" scrollbars="overlay" background={() -> glass ? "transparent" : "#" + StringTools.hex(ViewerView.canvas(UiWindow.dark()), 6)}
-			backdrop={glass ? () -> helder.os.Settings.reducedTransparency() ? "none" : "sidebar" : null} clickThrough={false}
+			backdrop={glass ? () -> helder.os.Settings.reducedTransparency() ? helder.os.WindowBackdrop.None : helder.os.WindowBackdrop.Sidebar : null} clickThrough={false}
 			onDrop={(files, _, _) -> if (files.length > 0) x.start(files[0])}
 			onClose={() -> {
 				save(store, window, x);
