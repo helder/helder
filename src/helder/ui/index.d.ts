@@ -1749,6 +1749,9 @@ export declare class CodeView extends Node {
 	ligatures: boolean;
 	lineNumbers: boolean;
 	indentGuides: boolean;
+	// the caret's line marked; its background and gutter's drawn (false: what is behind shows, a document's code block)
+	currentLine: boolean;
+	background: boolean;
 	// the scroll offsets (pixels)
 	readonly scrollTop: number;
 	readonly scrollLeft: number;
