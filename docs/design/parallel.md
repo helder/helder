@@ -11,7 +11,10 @@ to end slice: one particle step written once as a compute stage
 as the kernel compiler would emit them (`ParallelKernels.hx`), and a bench
 (`bun run test bench parallel`, `tests/bench/ParallelBench.hx`) that runs
 it as scalar code, as 4-lane SIMD, across helder.jobs' threads and on the
-GPU, and checks the forms against each other.
+GPU, and checks the forms against each other. `PARALLEL_GPU=0` skips the
+GPU, `PARALLEL_SOFT=1` adds the CPU back end's `soft_cs`, `PARALLEL_N="1000
+5000"` and `PARALLEL_FORMS="lanes,jobs"` narrow a run, `PARALLEL_VERBOSE=1`
+prints each GPU run.
 
 - [What exists](#what-exists)
 - [The API](#the-api)
@@ -298,9 +301,10 @@ The last argument (`On`), or none:
      corrected by the call site's own measured runs: the first runs of a
      site time the candidates it can take, a few each, and keep the
      result), against the measured fixed costs: `Jobs` when one thread's
-     estimate exceeds about 20 µs (its dispatch is 2-3 µs, more when its
-     threads have slept), `Gpu` when the estimate plus moving the data
-     beats `Jobs`;
+     estimate exceeds about 5 µs (its dispatch is 2-3 µs while its threads
+     spin, more once they have slept: the crossover measured below is
+     3,000 of these particles), `Gpu` when its estimate plus the data it
+     moves beats `Jobs` plus the data that moves;
   3. `HELDER_PARALLEL=scalar|simd|jobs|gpu` forces every call (tests,
      bisecting a difference), and `Parallel.log` prints each site's choice.
 
@@ -472,7 +476,7 @@ a pass over the groups' sums; on the CPU forms a reduction needs neither.
 prototype's kernel (`v' = v·drag − g·dt; p' = p + v'·dt`, bounced at y =
 0; 32 bytes a particle, read and written), µs a step, the least of its runs
 (a run: steps enough for 2 ms; on the GPU each run one frame, the least of
-15-40). Built without hxmc's module cache (`HXMC_MODULE_CACHE=0`).
+15-40).
 
 - **today**: `Integrate.main` over an `Array<Particle>` (examples/fountain's
   CPU fallback), then `store`d into the buffer's bytes;
@@ -487,7 +491,94 @@ prototype's kernel (`v' = v·drag − g·dt; p' = p + v'·dt`, bounced at y =
 Checked first (1003 particles, 64 steps, against lanes): vec and jobs the
 same bits; scalar and today within 4e-6; the GPU (D3D11) within 3e-6.
 
-MEASURED_TABLES
+The machine: an AMD Ryzen 5 3600 (6 cores, 12 threads: `Parallel.run`
+on 11 helpers and the caller), DDR4, an NVIDIA GT 710 (Kepler GK208, 64-bit
+DDR3, about 14 GB/s, PCIe 2.0 x8) on D3D11 at feature level 11_0. The box was
+shared with other agents' lanes throughout (WSL's load average 7-19): each
+table is the least of each cell over three runs (two on the GPU), which
+removes most of the contention but not all of it; the `jobs` column suffers
+most (its threads are the ones preempted), Linux's worst (load 17-19 there).
+
+**Windows, the CPU forms** (µs a step):
+
+| N | today | scalar | vec | lanes | jobs |
+|---:|---:|---:|---:|---:|---:|
+| 1,000 | 26.3 | 3.8 | 2.8 | 1.8 | 3.7 |
+| 3,000 | 77.4 | 10.6 | 8.4 | 5.2 | 4.9 |
+| 10,000 | 259 | 35.2 | 28.2 | 17.6 | 7.8 |
+| 30,000 | 778 | 102 | 84.7 | 52.9 | 16.7 |
+| 100,000 | 2698 | 342 | 282 | 176 | 64.1 |
+| 300,000 | 8939 | 1021 | 845 | 524 | 152 |
+| 1,000,000 | 29580 | 3840 | 3479 | 3114 | 804 |
+
+**Windows, the GPU** (GT 710, D3D11; µs):
+
+| N | gpu | gpu x10 | sync | upload | gpu +read | gpu +write+read |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1,000 | 83.9 | 15.4 | 44.3 | 106 | 101 | 129 |
+| 3,000 | 88.7 | 19.7 | 43.4 | 120 | 122 | 173 |
+| 10,000 | 101 | 38.2 | 43.6 | 224 | 219 | 377 |
+| 30,000 | 268 | 183 | 42.4 | 466 | 601 | 1099 |
+| 100,000 | 648 | 611 | 42.4 | 1914 | 1846 | 3786 |
+| 300,000 | 1865 | 1905 | 43.6 | 7456 | 5462 | 13006 |
+| 1,000,000 | 6229 | 6340 | 43.6 | 25014 | 18642 | 42458 |
+
+**Windows, today's CPU back end** (`-D helder.soft`: the same `compute()`
+dispatched on `Backend.Soft`, `soft_cs` on one thread; `PARALLEL_SOFT=1`),
+µs a step (gpu x10's column; the same bits as lanes):
+
+| N | 1,000 | 3,000 | 10,000 | 30,000 | 100,000 | 300,000 | 1,000,000 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| soft_cs | 64.7 | 194 | 529 | 1999 | 6688 | 21324 | 73354 |
+
+**WSL Linux (Ubuntu 26.04, the same CPU), the CPU forms** (µs):
+
+| N | today | scalar | vec | lanes | jobs |
+|---:|---:|---:|---:|---:|---:|
+| 1,000 | 31.2 | 4.9 | 2.8 | 1.7 | 18.2 |
+| 3,000 | 113 | 14.6 | 10.4 | 6.4 | 20.5 |
+| 10,000 | 248 | 37.4 | 34.2 | 21.4 | 24.1 |
+| 30,000 | 1078 | 141 | 102 | 68.1 | 39.3 |
+| 100,000 | 3961 | 464 | 329 | 211 | 90.1 |
+| 300,000 | 11581 | 1170 | 1147 | 655 | 207 |
+| 1,000,000 | 42120 | 5512 | 4441 | 4160 | 1883 |
+
+What they say:
+
+- **lanes over scalar**: 2.1x at 1,000 (where it all stays in L1/L2),
+  1.9x to 300,000, 1.2x at 1M, where 32 MB read and written a step is the
+  memory's speed, not the code's. vec (a Vec4 a register) sits between
+  them: the transpose costs less than it saves.
+- **today's CPU fallback** (`main` over an `Array` of struct objects, then
+  `store`d) is 7-8x slower than scalar over the bytes and 10-15x slower
+  than lanes, and today's CPU
+  back end's compute (`soft_cs`: lane-by-lane gathers with a bounds check
+  each, one call per 4 invocations) 36x slower than lanes at 1,000 and 24x
+  at 1M, slower even than the Array path. The range form's contiguous
+  loads are most of the win.
+- **jobs over lanes**: the crossover is at about **3,000 particles**
+  (4.9 against 5.2 µs: about 5 µs of one thread's work), on Windows; 3x at
+  30,000, 3.4x at 300,000, 3.9x at 1M (11 helpers: bandwidth again).
+  Its fixed cost is 2-3 µs a run (1,000: 3.7 against 1.8) while its threads
+  spin. On the loaded Linux runs the crossover moved to between 10,000
+  and 30,000 and the fixed cost to 16 µs (preempted helpers: a `Parallel.run` waits for
+  the last chunk).
+- **The GPU never beats the CPU here for this kernel.** Resident and
+  throughput-bound (gpu x10), the GT 710 takes 6.3 ms at 1M (64 MB a step:
+  about 10 GB/s, its memory's speed) against jobs' 0.8 ms and one thread's
+  3.1 ms; at 1,000, 15 µs a dispatch against 1.8. A step that waits for its
+  result (gpu) adds the 43 µs floor of a frame and a read back (sync).
+- **But drawing changes it**: particles the GPU draws have to be uploaded
+  after a CPU step, and the upload (`writeBuffer`, D3D11's
+  `UpdateSubresource` of the whole buffer: 1.3 GB/s here) costs more than
+  the GPU's own step at every size: at 1M, jobs + upload is 0.8 + 25.0 ms
+  against the GPU's 6.2 ms; at 10,000, 7.8 + 180 µs against 58 µs; at
+  1,000, 3.7 + 62 against 40 µs (upload and gpu less the sync floor, which
+  a frame pays anyway). Reading the GPU's results back costs as much
+  (1M: 12.4 ms more). So the crossovers this machine gives Auto are:
+  **CPU data, CPU reader: lanes below about 3,000 items, jobs above, never
+  the GPU; GPU reader (a draw): the GPU from the first item**, its upload
+  avoided. A faster GPU moves the first, not the second.
 
 ## Plan
 
@@ -553,8 +644,15 @@ Risks:
 - **Soft's emitter is the Simd form's base**: changing it touches the CPU
   back end's 89 bit-exact shaders; the range form must stay a separate
   entry with SoftShaderCheck guarding both.
-- The bench box is shared: timings taken while other agents ran were up
-  to 2x slower; the tables above are from quiet runs.
+- The bench box is shared: a full run taken while other agents ran was up
+  to 2x slower, and the tables are the least of three runs under load (WSL
+  at 7-19), not quiet runs: the jobs column and Linux are pessimistic. A
+  rerun on a quiet machine (and on an Apple GPU, which shares memory and
+  has no upload) should precede Auto's thresholds.
+- One full GPU run stalled at its last measurement (1M, upload + step +
+  read back, a 32 MB `UpdateSubresource` each run) and was killed after ten
+  minutes; run alone the same measurement takes 56 ms, and the later full
+  runs passed. Not understood; watch it in phase 2's D3D11 upload path.
 
 Open questions for you:
 
