@@ -102,7 +102,7 @@ class ShapeWindow {
 					#end
 					var passed = through ? downs[0] >= 1 && downs[1] == 0 : downs[1] >= 1 && downs[0] == 0;
 					var what = 'a click ${through ? "where it is clear: the window behind's" : "on the box: its own"} (presses: behind ${downs[0]}, it ${downs[1]})';
-					if (!passed && !retried && downs[0] == 0 && downs[1] == 0) {
+					if (!passed && !retried) {
 						Sys.println('ShapeWindow: first attempt failed: $what; retrying once');
 						retried = true;
 						clickStart = step + 2;
