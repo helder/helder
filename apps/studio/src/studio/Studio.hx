@@ -425,7 +425,7 @@ class Studio {
 			hold(() -> pr.allShown(), "the screens' first frames", 300);
 		}
 		revived(v -> v + 1);
-		marks.saw([for (s in p.screens) s.name]);
+		if (marks.saw([for (s in p.screens) s.name])) firstFrames();
 		log("revived", {typescript: p.typescript, entry: p.entry?.main, screens: [for (s in p.screens) s.name]});
 		return true;
 		#end
@@ -518,6 +518,10 @@ class Studio {
 		var key = r == null ? "" : '${r.x} ${r.y} ${r.width} ${r.height}';
 		if (key != playRect && (playRect = key) != "")
 			log("player", {rect: [r.x, r.y, r.width, r.height], stage: [stageWidth, stageHeight], compact: compactNow});
+		if (framing && stageWidth > 0) {
+			framing = false;
+			if (!camera.taken) frameAll();
+		}
 		showVisible();
 		if (marks.anyFresh()) marks.inView(layout.inView());
 		designs.follow(openedAt > 0 ? openedAt : startedAt);
@@ -701,6 +705,25 @@ class Studio {
 		}
 	}
 
+	// (the first new frames came (an agent's: the watched shell's): the canvas framed once, in the next
+	// frame, every frame at most 1:1, unless the user moved it already: the
+	// studio's first framing, never the agent moving the camera)
+	var framing = false;
+	var framedOnce = false;
+
+	function firstFrames() {
+		if (framedOnce || classic) return;
+		framedOnce = true;
+		framing = true;
+	}
+
+	function frameAll() {
+		var b = layout.bounds(), i = insets();
+		var v = Camera.fit(b.x, b.y, b.w, b.h, stageWidth, stageHeight, 28, i.right, i.bottom, i.top + Theme.TITLES, i.left, 1);
+		camera.fly(v.x, v.y, v.k);
+		log("framed", {k: v.k});
+	}
+
 	// the view for what is in focus (fly: on the spring)
 	public function fitView(fly:Bool, ?m:String)
 		fitTo(focused.peek(), fly, m);
@@ -807,6 +830,7 @@ class Studio {
 	// the camera flown to a frame (a chip's, a marker's: the user's click)
 	public function flyTo(name:String) {
 		if (layout.rect(name) == null) return;
+		camera.taken = true;
 		fitTo(name, true);
 		log("flown", {screen: name});
 	}
@@ -1296,7 +1320,7 @@ class Studio {
 		Sys.println('studio: all ${pr.screens.length} screens shown $ms ms after opening ${project.name}' + (host >= 0 ? ', $host ms after the screens\' program started' : '')
 			+ (stills > 0 ? ', $stills from the frames file' : ''));
 		log("all-shown", {ms: ms, screens: pr.screens.length, hostMs: host, sharing: pr.sharing, stills: stills});
-		fitView(false);
+		if (!camera.taken) fitView(false);
 	}
 
 	// the strongest colour in the selection's box of the screen's last frame (a check's: what it shows)
@@ -1487,7 +1511,7 @@ class Studio {
 		if (renamed.length > 0) others([]);
 		if (f != null && project.screen(f) == null) focus(null);
 		log("frames", {file: file, frames: [for (s in project.screens) if (s.file == file) s.name], renamed: renamed});
-		marks.saw([for (s in project.screens) s.name]);
+		if (marks.saw([for (s in project.screens) s.name])) firstFrames();
 	}
 
 	// (natively) the design and story files on disk watched, a second apart:
@@ -1642,7 +1666,7 @@ class Studio {
 		}
 		if (f != null && project.screen(f) == null) focus(null, false);
 		log("stories", {file: file, screens: [for (s in project.live()) s.name]});
-		marks.saw([for (s in project.screens) s.name]);
+		if (marks.saw([for (s in project.screens) s.name])) firstFrames();
 		return true;
 	}
 

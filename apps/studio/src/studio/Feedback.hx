@@ -168,32 +168,54 @@ class Feedback implements Markup {
 		return [for (p in studio.presence.peers()) if (p.screen != null && studio.layout.rect(p.screen) != null) p];
 
 	// (an agent at work whose frame is out of the view, a frame new and not seen yet:
-	// a tab on the edge nearest it, along it at the frame's place)
+	// a tab on the edge nearest it, along it at the frame's place; several on
+	// one edge fold into one, at the nearest of them, flying there: "3 new",
+	// "Claude · Rally · 2 more")
 	static function edges(studio:Studio):Array<Edge> {
 		studio.camera.changed();
 		studio.stageSize();
 		// (the view: the stage less what the panels cover)
-		var i = studio.insets(), cam = studio.camera, out:Array<Edge> = [];
+		var i = studio.insets(), cam = studio.camera;
 		var l = i.left, t = i.top, w = studio.stageWidth - i.right, h = studio.stageHeight - i.bottom;
-		var of = [for (p in studio.presence.peers()) if (p.screen != null && p.working) {key: p.id, text: '${p.name} · ${label(studio, p.screen)}', colour: p.colour, screen: p.screen}];
+		var of = [for (p in studio.presence.peers()) if (p.screen != null && p.working) {key: p.id, text: '${p.name} · ${label(studio, p.screen)}', colour: p.colour, screen: p.screen, fresh: false}];
 		for (n in studio.marks.fresh())
-			if (!Lambda.exists(of, o -> o.screen == n)) of.push({key: "new:" + n, text: 'New: ${label(studio, n)}', colour: studio.marks.lastColour ?? "#8b8b94", screen: n});
+			if (!Lambda.exists(of, o -> o.screen == n)) of.push({key: "new:" + n, text: 'New: ${label(studio, n)}', colour: studio.marks.lastColour ?? "#8b8b94", screen: n, fresh: true});
+		// (each edge's: the ones out of the view there, the nearest first)
+		var sides = [for (_ in 0...4) []];
 		for (o in of) {
 			var r = studio.layout.rect(o.screen);
 			if (r == null) continue;
 			var x0 = cam.sx(r.x), y0 = cam.sy(r.y), x1 = cam.sx(r.x + r.w), y1 = cam.sy(r.y + r.h);
 			if (x1 > l && y1 > t && x0 < w && y0 < h) continue;
-			var cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, tw = 40 + 6.5 * o.text.length;
+			var cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+			var side = x0 >= w ? 0 : x1 <= l ? 1 : y1 <= t ? 2 : 3;
+			sides[side].push({o: o, cx: cx, cy: cy, d: Math.pow(cx - (l + w) / 2, 2) + Math.pow(cy - (t + h) / 2, 2)});
+		}
+		var out:Array<Edge> = [];
+		for (side in 0...4) {
+			var all = sides[side];
+			if (all.length == 0) continue;
+			all.sort((a, b) -> a.d < b.d ? -1 : a.d > b.d ? 1 : 0);
+			var near = all[0], agent = Lambda.find(all, a -> !a.o.fresh);
+			var text = folded([for (a in all) a.o]), colour = (agent ?? near).o.colour, tw = 40 + 6.5 * text.length;
 			function along(v:Float, lo:Float, hi:Float)
 				return Math.max(lo + 8, Math.min(hi - 8, v));
-			// (more than one on an edge: each a row lower)
-			var k = out.length * 32;
-			out.push(if (x0 >= w) {key: o.key, text: o.text, colour: o.colour, screen: o.screen, x: w - tw - 8, y: along(cy - 13 + k, t, h - 26), angle: 0}
-			else if (x1 <= l) {key: o.key, text: o.text, colour: o.colour, screen: o.screen, x: l + 8, y: along(cy - 13 + k, t, h - 26), angle: 180}
-			else if (y1 <= t) {key: o.key, text: o.text, colour: o.colour, screen: o.screen, x: along(cx - tw / 2, l, w - tw), y: t + 8 + k, angle: -90}
-			else {key: o.key, text: o.text, colour: o.colour, screen: o.screen, x: along(cx - tw / 2, l, w - tw), y: h - 34 - k, angle: 90});
+			var key = "side" + side;
+			out.push(switch side {
+				case 0: {key: key, text: text, colour: colour, screen: near.o.screen, x: w - tw - 8, y: along(near.cy - 13, t, h - 26), angle: 0};
+				case 1: {key: key, text: text, colour: colour, screen: near.o.screen, x: l + 8, y: along(near.cy - 13, t, h - 26), angle: 180};
+				case 2: {key: key, text: text, colour: colour, screen: near.o.screen, x: along(near.cx - tw / 2, l, w - tw), y: t + 8, angle: -90};
+				case _: {key: key, text: text, colour: colour, screen: near.o.screen, x: along(near.cx - tw / 2, l, w - tw), y: h - 34, angle: 90};
+			});
 		}
 		return out;
+	}
+
+	// an edge's tab's text, its tabs folded (the nearest first)
+	public static function folded(tabs:Array<{text:String, fresh:Bool}>):String {
+		if (tabs.length == 1) return tabs[0].text;
+		var agent = Lambda.find(tabs, t -> !t.fresh);
+		return agent == null ? '${tabs.length} new' : '${agent.text} · ${tabs.length - 1} more';
 	}
 
 	static function label(studio:Studio, screen:String):String

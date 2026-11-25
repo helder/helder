@@ -42,7 +42,8 @@ function tests() {
 		});
 		test("a frame new since the last: it arrives", () -> {
 			var s = studio("bin/marks-test-3");
-			s.marks.saw(["app.helder#Home", "app.helder#Empty", "app.helder#Done"]);
+			equals(s.marks.saw(["app.helder#Home", "app.helder#Empty", "app.helder#Done"]), true);
+			equals(s.marks.saw(["app.helder#Home", "app.helder#Empty", "app.helder#Done"]), false);
 			helder.view.graph.Graph.flush();
 			equals([for (a in s.marks.arrivals.peek()) a.screen], ["app.helder#Done"]);
 			equals(s.marks.fresh.peek(), ["app.helder#Done"]);

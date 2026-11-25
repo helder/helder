@@ -47,6 +47,7 @@ class Board implements Markup {
 				// (a pinch's deltaY is -100 ln of its scale, as browsers make it:
 				// e^(-dy/100) follows the fingers; a wheel's notch, 40 to 120
 				// points at once, capped to a step of about 1.28)
+				studio.camera.taken = true;
 				if (e.mods & (Mods.CONTROL | Mods.META) != 0) studio.camera.zoomAt(e.localX, e.localY, Math.exp(-Math.max(-25, Math.min(25, e.deltaY)) / 100))
 				else studio.camera.panBy(-e.deltaX, -e.deltaY);
 				e.preventDefault();
@@ -58,6 +59,7 @@ class Board implements Markup {
 				// (the mouse's release after a drag is a click too: not the stage's)
 				panned = true;
 				if (watch) {
+					studio.camera.taken = true;
 					studio.camera.panBy(g.dx, g.dy);
 					studio.camera.dragging(g.state != Ended && g.state != Cancelled);
 					return;
@@ -68,6 +70,7 @@ class Board implements Markup {
 			onDragOver={e -> if (!watch && Std.isOfType(e.data, String) && FileTree.kindOf(e.data) == Image) e.preventDefault()}
 			onDrop={e -> if (!watch && Std.isOfType(e.data, String)) studio.dropImage(e.data, e.localX, e.localY)}
 			onPinch={g -> {
+				studio.camera.taken = true;
 				studio.camera.zoomAt(g.x, g.y, g.dscale);
 				if (g.state == Ended) studio.log("pinched", {k: studio.camera.k});
 			}}>
