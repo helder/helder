@@ -8,7 +8,7 @@ import helder.view.Flow.Mountable;
 // Markup interpreted: a parsed literal (helder.markup.Syntax) made into
 // helder.ui's nodes at run time, in this process, with no build (the
 // studio's design files: apps/studio/DESIGN.md). A third Target of the same
-// Plan as the macro's and TypeScript's (view's DESIGN.md 7.2), so that what
+// Plan as the macro's and TypeScript's, so that what
 // is made, in what order, and which attributes go where are the compiler's
 // decisions; its steps run at once instead of being written as code. The
 // nodes are NodeRenderer's (createElement, setAttribute: the path a name

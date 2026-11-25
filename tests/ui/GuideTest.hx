@@ -8,8 +8,9 @@ import helder.view.graph.Read;
 import helder.view.Flow.*;
 import UiTest.Recording;
 
-// The examples of src/helder/ui/GUIDE.md, compiled and run on Eval (bun run
-// test ui): what the guide shows works as it says. Keep the two in step.
+// App guide behaviour on Eval (bun run test ui). That lane compiles
+// Confirm and Editor from docs/apps/interactions.md in this test class.
+// The copies here also serve AccessApp and the syntax editing lane.
 class GuideTest implements Markup {
 	static var checks = 0;
 	static var failed = 0;

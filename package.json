@@ -12,8 +12,7 @@
     "apps/studio/package.json",
     "!**/*.test.hx",
     "!**/*.test.ts",
-    "!**/*.snap",
-    "!src/helder/os/audio/VorbisFixture.hx"
+    "!**/*.snap"
   ],
   "bin": {
     "helder": "src/helder/cli/run.mjs"

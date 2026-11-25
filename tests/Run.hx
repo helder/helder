@@ -101,7 +101,7 @@ class Run {
 		{name: "ui-draw", about: "helder.ui's GPU renderer and its programs against golden images (ui-soft's, the CPU's canvas's: within the tests' tolerance) (Linux: Mesa, Xvfb, AT-SPI); layers drawn from their tiles against the same replayed (LayerTest); a window's frame kept and drawn only where it changed against the same drawn whole (DamageTest); the controls' gallery (tests/ui/controls) and cost (ControlsBench); the compositor's scrolling and what moves on its own (layers' transitions, springs and tweens, sticky nodes, overlay scrollbars) against the program's, its values each vsync and its frames pixel for pixel (AsyncScrollTest), and in a window with the program blocked while scroll input comes or a layer animates (AsyncScrollWindow); macOS's Core Animation layers against the textured compositor, window captures compared (SystemLayersWindow); the system's Liquid Glass in the layer tree (GlassWindow, macOS 26: each <glass> an NSGlassEffectView at its box, a group's in its container)", run: uiDraw},
 		{name: "syntax", about: "helder.syntax, the syntax trees the studio edits (src/helder/syntax; its edits' tests are the test lane's, Syntax.test.hx): every .ts and .tsx file, and every .hx file with markup, of the repository read and printed back byte for byte, read structurally, each Haxe markup literal read as the macro's parser reads it (tests/syntax/Check.hx, on Eval and natively: the read of the largest file timed)", run: syntaxLane},
 		{name: "syntax-run", about: "helder.syntax's edits on the examples (tests/syntax/Examples.hx; Linux: Mesa's llvmpipe, no display): todo, ts-todo, mail, the guide's screen and the viewer's shell and shader copied into bin/syntax/run and edited (attributes set, added and removed, literals, children inserted, elements moved, deleted, wrapped, unwrapped and renamed, a component renamed, a definition's field), each edit's change only in its span and undone by its inverse; each built and run headless (helder run --headless), its --tree showing each change; ts-todo's story renamed and its tests run (helder test)", run: syntaxRun},
-		{name: "studio", about: "helder studio (apps/studio; Linux: Mesa's llvmpipe, no display) run headless on copies of examples/todo and examples/ts-todo by tests/studio/edit.json: every screen shown (the stories in one dev build's process, helder.story.NativeHost: its frames shared GPU textures, else shared memory, llvmpipe's), one zoomed into, its title clicked and selected, its colour changed in the inspector (the value's span alone, a live literal patched, the program's frame showing it within 3 frames), a padding added and undone (built twice), tag=\"title\" typed into the code view (built, the node tagged), the prompt bar's /tree; the files at the end and every edit's span checked, the overview, zoomed and selected frames against tests/studio's goldens, the times printed (tests/studio/Check.hx); then examples/design, design files alone, by tests/studio/design.json: its frames interpreted in the studio (nothing built), a frame moved by its caption (snapped), the title clicked and selected, its colour changed in the inspector (drawn again within 3 frames), undone and redone, resized by its handle (snapped to the frame's centre), a node shift-clicked into the selection and out, its layer dragged below the next, both undone (the resize one entry), every edit's span and the file checked; the free canvas by tests/studio/free.json on examples/todo (a click selects a frame, the camera where it was; a story moved by its caption, its place written into canvas.helder; a double click enters a frame and selects a node; Escape leaves, then selects nothing; Play: the story live, a tap in it its program's, Escape stops); a phone's sheets by tests/studio/phone.json (opened from the bar, a frame picked lowering the files' to peek, the handle dragged up to full and flung away, the code's at half); the sidebar's file browser by tests/studio/files.json (folders opened, an image, a font and code each in its view, the image dragged onto a frame, a file dropped from the system on a folder); `helder studio --help`", run: studioLane},
+		{name: "studio", about: "helder studio (apps/studio; Linux: Mesa's llvmpipe, no display) run headless on copies of examples/todo and examples/ts-todo by tests/studio/edit.json: every screen shown (the stories in one dev build's process, helder.story.NativeHost: its frames shared GPU textures, else shared memory, llvmpipe's), one zoomed into, its title clicked and selected, its colour changed in the inspector (the value's span alone, a live literal patched, the program's frame showing it within 3 frames), a padding added and undone (built twice), tag=\"title\" typed into the code view (built, the node tagged), the prompt bar's /tree; the files at the end and every edit's span checked, the overview, zoomed and selected frames against tests/studio's goldens, the times printed (tests/studio/Check.hx); then tests/studio/design, design files alone, by tests/studio/design.json: its frames interpreted in the studio (nothing built), a frame moved by its caption (snapped), the title clicked and selected, its colour changed in the inspector (drawn again within 3 frames), undone and redone, resized by its handle (snapped to the frame's centre), a node shift-clicked into the selection and out, its layer dragged below the next, both undone (the resize one entry), every edit's span and the file checked; the free canvas by tests/studio/free.json on examples/todo (a click selects a frame, the camera where it was; a story moved by its caption, its place written into canvas.helder; a double click enters a frame and selects a node; Escape leaves, then selects nothing; Play: the story live, a tap in it its program's, Escape stops); a phone's sheets by tests/studio/phone.json (opened from the bar, a frame picked lowering the files' to peek, the handle dragged up to full and flung away, the code's at half); the sidebar's file browser by tests/studio/files.json (folders opened, an image, a font and code each in its view, the image dragged onto a frame, a file dropped from the system on a folder); `helder studio --help`", run: studioLane},
 		{name: "demos", about: "the showcase demos run headless (Linux: Mesa's llvmpipe, no display) at half scale: examples/showreel's scenes each by --scene, examples/fx's gallery, its --tour with an effect open and its reduced-motion stills, examples/literal's and examples/notes' demo scripts (their pointer and keys); each one's stills at a few times against tests/demos's goldens, within a tolerance (tests/demos/Check.hx)", run: demosLane},
 		{name: "studio-web", about: "helder studio in the browser (apps/studio/web: the studio built for the web, its projects in OPFS, the preview host in a worker, helder.story.web.Preview) in headless Chromium on WebGPU (tests/studio-web/check.mjs): examples/todo opened from the welcome, all screens shown, one zoomed into, its title selected, its colour changed in the inspector (a live literal patched in the worker's preview, the next frames showing it, the file saved in OPFS), a padding added (built by the compiler's worker, helder.compiler.web's toolchain built as the compiler-web lane builds it, and the preview swapped in with its state); at a phone's width with touches: the inspector a bottom sheet, a tap selecting, a pinch zooming, the screens' drawer; 50 screens (tests/story/host/host.mjs project) opened, timed and measured; the overview and zoomed states against tests/studio-web's goldens at both widths: bin/studio-web/results.md", run: studioWeb},
 		{name: "story-host", about: "helder.story.Host, the studio's preview host (Linux: Mesa's llvmpipe, no display): 50 stories of examples/todo (tests/story/host/host.mjs gen) mounted in one program, each its own root and ScreenContext, drawn offscreen and read back; then the desktop studio (apps/studio, headless) on the same stories as a project, its one preview process (helder.story.NativeHost: shared GPU textures, else shared memory): the start to every screen's first frame and the memory then (resident, Pss: the host's and the studio's), an inspector's colour change to the host's new frame (tests/story/host/studio.json); the headless host's turns with one screen focused (only it draws) and none (none draws): bin/story-host/results.md", run: storyHost},
@@ -357,7 +357,26 @@ class Run {
 		var cp = cps(["src", "tests/ui"]);
 		interp(cp, "UiTest");
 		interp(cp, "MarkupTest");
-		interp(cp, "GuideTest");
+		interp(cp.concat(cps([guideTestSource()])), "GuideTest");
+	}
+
+	static function guideTestSource():String {
+		var dir = "bin/ui/guide";
+		var sample = "docs/apps/interactions.md";
+		var source = File.getContent("tests/ui/GuideTest.hx").replace("\r\n", "\n");
+		var blocks = File.getContent(sample).replace("\r\n", "\n").split("\n```haxe\n").slice(1).map(b -> b.split("\n```")[0]);
+		for (name in ["Confirm", "Editor"]) {
+			var declaration = 'static function $name(';
+			var code = Lambda.find(blocks, b -> b.startsWith(declaration));
+			if (code == null) throw new Failed('$sample: missing Haxe sample for $name');
+			var start = source.indexOf('\t' + declaration);
+			var end = source.indexOf("\n\n", start);
+			if (start < 0 || end < 0) throw new Failed('GuideTest: missing $name');
+			source = source.substr(0, start) + code + source.substr(end);
+		}
+		mkdirs(dir);
+		File.saveContent('$dir/GuideTest.hx', source);
+		return dir;
 	}
 
 	static function layoutConformance()
@@ -1464,7 +1483,7 @@ class Run {
 			]);
 		}
 		// (a project of design files alone: its frames interpreted, nothing built)
-		copy('examples/design', '$b/design');
+		copy('tests/studio/design', '$b/design');
 		run("git", ["init", "-q", "-b", "studio", '$b/design']);
 		run(h, [
 			"run", "--headless", "apps/studio", "--script", "tests/studio/design.json", "--size", "1180x740", "--snap", '$b/design-selected.png', "--at",
@@ -1477,13 +1496,13 @@ class Run {
 			"mark:entered", "--snap", '$b/free-playing.png', "--at", "mark:playing", "--snap", '$b/free-end.png', "--at", "mark:end", "--", '$b/free', "--events", '$b/free.jsonl'
 		]);
 		// (a phone's: the sheets over the canvas, switched by the bar, dragged by the handle)
-		copy('examples/design', '$b/phone');
+		copy('tests/studio/design', '$b/phone');
 		run(h, [
 			"run", "--headless", "apps/studio", "--script", "tests/studio/phone.json", "--size", "390x844", "--snap", '$b/phone-picked.png', "--at",
 			"mark:picked", "--snap", '$b/phone-end.png', "--at", "mark:end", "--", '$b/phone', "--events", '$b/phone.jsonl'
 		]);
 		// (the sidebar's file browser: design files, an image, a font, code in folders)
-		copy('examples/design', '$b/files');
+		copy('tests/studio/design', '$b/files');
 		mkdirs('$b/files/assets');
 		mkdirs('$b/files/fonts');
 		mkdirs('$b/files/src');

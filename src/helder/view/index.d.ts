@@ -106,7 +106,7 @@ export declare class Render {
 	static insert: (content: unknown, parent: unknown, before: unknown) => unknown[];
 }
 
-// helder.view's reactive graph (DESIGN.md): Solid 2's semantics on a
+// helder.view's reactive graph: Solid 2's semantics on a
 // runtime of helder's own. Signals hold values, memos derive them, effects
 // run in two halves (compute tracked, apply after the commit). Writes are
 // deferred: committed together at the next flush (the loop's task ending,

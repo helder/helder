@@ -7,7 +7,7 @@ import helder.scene.*;
 import helder.scene.render.*;
 import helder.scene.render.Lod.LodLevel;
 
-// What phase 4's features cost a frame (DESIGN-3D.md 7's budgets),
+// What the lighting features cost a frame,
 // measured headless as EffectBench measures post's effects (Linux: Mesa's
 // llvmpipe, Windows: D3D11's WARP), at a phone's render size (810 x 1800),
 // each configuration drawn FRAMES times after WARM frames, each frame read

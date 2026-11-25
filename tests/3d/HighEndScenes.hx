@@ -7,7 +7,7 @@ import helder.scene.render.PostProcess;
 import helder.scene.render.PostEffects;
 import StageShaders;
 
-// The high end's frames (Scenes, phase 7 of src/helder/scene/DESIGN-3D.md),
+// High-end rendering reference frames (Scenes),
 // each drawn in HDR through a PostProcess into the frame:
 //   ssr         screen-space reflections (Ssr): a dark polished floor and a
 //               mirror of metal reflecting coloured blocks, a sphere and

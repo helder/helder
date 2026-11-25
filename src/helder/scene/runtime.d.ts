@@ -831,7 +831,7 @@ export declare class UvTransform {
 	texCoord: number;
 }
 
-// The physical shader for every material (DESIGN-3D.md 1.3): one variant
+// The physical shader for every material: one variant
 // set with every glTF material extension (PhysicalShader.ALL: sheen,
 // specular and ior, clearcoat with its maps, transmission and volume,
 // iridescence, anisotropy; each core map at its own uvs), drawing each material whose fields use one
@@ -853,7 +853,7 @@ export declare class Physical {
 	shaderOf(m: Material): MaterialShader | null;
 }
 
-// The opaque frame behind see-through surfaces (DESIGN-3D.md 1.3:
+// The opaque frame behind see-through surfaces (
 // KHR_materials_transmission and _volume), what a physical shader's
 // transmitting surface (PhysicalShader, Material.transmission) shows
 // through it, refracted by its ior and thickness and blurred by its
@@ -1807,7 +1807,7 @@ export declare class Smaa {
 // its last answer is let go (Device.resetQuery). The boxes are one draw
 // each (a query each): test what is worth it, not every pebble. Nothing is
 // allocated per frame. GPU-driven culling against a depth pyramid is the
-// compute tier's (DESIGN-3D.md, section 8).
+// compute tier's.
 //
 //   renderer.use(new Occlusion(device));
 //   Occlusion.test(building);           // its node's meshes culled while hidden

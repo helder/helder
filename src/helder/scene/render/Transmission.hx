@@ -5,7 +5,7 @@ import helder.gfx.shader.*;
 import helder.gfx.shader.ShaderMath.*;
 import helder.scene.render.PostShader;
 
-// The opaque frame behind see-through surfaces (DESIGN-3D.md 1.3:
+// The opaque frame behind see-through surfaces (
 // KHR_materials_transmission and _volume), what a physical shader's
 // transmitting surface (PhysicalShader, Material.transmission) shows
 // through it, refracted by its ior and thickness and blurred by its

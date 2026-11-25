@@ -29,8 +29,8 @@ declare const __haxe: {Asset: "helder.asset.Asset", Image: "helder.image.Image",
 // with tasks: task.async(_ -> a.load()), then Async.all. Without
 // suspending (the frame loop): ready, peek() (null until then), state.
 //
-// The handle is a node of helder.view's graph (an async memo, DESIGN.md
-// 2): read() reads it, tracked, as markup does with the handle itself
+// The handle is an async memo in helder.view's graph. read() tracks it,
+// as markup does with the handle itself
 // (<image src={icon}/>, a Read prop): pending while it loads (a <Loading>
 // boundary above shows its fallback on its first load), the AssetError
 // after a failure (an <Errored>'s). A reload's new value is pending in turn

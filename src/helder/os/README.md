@@ -73,7 +73,7 @@ the program prints goes to logcat (`adb logcat -s hxmc`). Text input
 (`startTextInput`, once `helder.os.android.TextInput.enable()` was called:
 helder.ui's drawn windows do) shows the soft keyboard and brings the input
 method's compositions and commits through a hidden `EditText`; a
-`ChildSurface` is a GPU view among Android's views. No clipboard there yet. Java from Haxe: `helder.os.android.Jni` (JNI's function tables,
+Java from Haxe: `helder.os.android.Jni` (JNI's function tables,
 bound like COM's by `helder.os.VTable`), `MainThread` (Java's main
 thread, where views live: work handed to it, Choreographer's frames
 there) and `Glue` (Java's listeners calling Haxe: helder then writes a
