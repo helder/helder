@@ -9,9 +9,10 @@ import helder.view.graph.Graph.*;
 
 // A video or audio file in the viewer (Viewer.media): the picture filling
 // the window as an image does (contained), its controls along the bottom:
-// in the look's colours: play and pause, the scrub bar (a drag seeks to keyframes as it goes and
-// exactly where it ends; a thumbnail of the keyframe under the pointer
-// above it: Thumbs), the time and the duration, mute and the volume.
+// in the look's colours: play and pause, the scrub bar (Scrub: a drag
+// seeks to keyframes as it goes and exactly where it ends; a thumbnail of
+// the keyframe under the pointer above it: Thumbs), the time and the
+// duration, mute and the volume.
 // Space plays and pauses, , and . (and Left and Right) step a frame, M
 // mutes (ViewerActions' media context). Nodes of its own set as the
 // player goes (onTime), not markup: a reactive tree of them cost the
@@ -37,10 +38,10 @@ class MediaView {
 		root.append(audio);
 		var bar = box({position: Absolute, left: 0, right: 0, bottom: 0, padding: [6, 12, 10, 12], rowGap: 6, background: t.raised, borderColor: t.line,
 			borders: [1, 0, 0, 0]});
-		var scrub = box({height: 14, justify: Center}), track = box({height: 4, radius: 2, background: t.fill});
-		var done = box({height: 4, radius: 2, background: t.fg, width: 0});
-		track.append(done);
-		scrub.append(track);
+		var scrub = new Scrub((at, exact) -> {
+			video.seek(at, exact);
+			if (refresh != null) refresh();
+		});
 		var thumb = box({position: Absolute, bottom: 18, padding: 3, radius: 6, background: t.raised, borderWidth: 1, borderColor: t.edge,
 			pointerEvents: None, alignItems: Center, rowGap: 2, display: None});
 		var picture = new ImageNode();
@@ -49,7 +50,7 @@ class MediaView {
 		at.style.set({color: t.fg2, fontSize: 11});
 		thumb.append(picture);
 		thumb.append(at);
-		scrub.append(thumb);
+		scrub.node.append(thumb);
 		var play = new MediaIcon("play"), mute = new MediaIcon("sound"), clockText = new TextNode("0:00 / 0:00");
 		clockText.style.color = t.fg2;
 		var volume = box({width: 80, height: 14, justify: Center}), levels = box({height: 4, radius: 2, background: t.fill});
@@ -62,15 +63,17 @@ class MediaView {
 		row.append(box({grow: 1}));
 		row.append(button(mute, "Mute", toggleMute));
 		row.append(volume);
-		bar.append(scrub);
+		bar.append(scrub.node);
 		bar.append(row);
 		root.append(bar);
 
-		// (what the controls show, as the player goes)
+		// (what the controls show, as the player goes: its time, not the
+		// signal's, whose write lands after onTime)
 		function shown() {
-			var p = video.player, d = p == null ? 0.0 : p.duration, t = video.time.peek();
-			done.style.width = d > 0 ? scrub.width * Math.min(1, t / d) : 0;
-			clockText.text = clock(t) + " / " + clock(d);
+			var p = video.player, d = p == null ? 0.0 : p.duration, t = p == null ? 0.0 : p.time;
+			scrub.duration = d;
+			scrub.show(t);
+			clockText.text = clock(scrub.time) + " / " + clock(d);
 			play.kind = video.playing.peek() ? "pause" : "play";
 			mute.kind = video.muted ? "muted" : "sound";
 			level.style.width = video.muted ? 0 : 80 * video.volume;
@@ -93,41 +96,27 @@ class MediaView {
 			video.open(path == "" ? null : files.open(path));
 		});
 
-		// (the scrub bar: a drag seeks to keyframes, its end exactly; the thumbnail where the pointer is)
-		var dragging = false;
-		function ratio(e:Event, n:Node):Float
-			return n.width <= 0 ? 0 : Math.max(0, Math.min(1, e.localX / n.width));
-		function seek(e:Event, exact:Bool) {
-			var p = video.player;
-			if (p != null) video.seek(ratio(e, scrub) * p.duration, exact);
-		}
-		scrub.onPointerDown = e -> {
-			scrub.capture();
-			dragging = true;
-			seek(e, false);
-		};
-		scrub.onPointerUp = e -> {
-			dragging = false;
-			seek(e, true);
-		};
-		scrub.onPointerMove = e -> {
-			if (dragging) seek(e, false);
-			var p = video.player, th = thumbs, k = ratio(e, scrub);
+		// (the thumbnail where the pointer is)
+		scrub.hover = k -> {
+			var p = video.player, th = thumbs;
 			if (p == null || p.video == null || th == null) return;
-			thumb.style.left = scrub.width * k - Thumbs.WIDTH / 2 - 3;
+			thumb.style.left = scrub.node.width * k - Thumbs.WIDTH / 2 - 3;
 			th.at(k * p.duration, img -> {
 				picture.image = img;
 				at.text = clock(k * p.duration);
 				thumb.style.display = img == null ? None : Flex;
 			});
 		};
-		scrub.onPointerLeave = _ -> thumb.style.display = None;
+		scrub.node.onPointerLeave = _ -> thumb.style.display = None;
+		var dragging = false;
+		function ratio(e:Event):Float
+			return volume.width <= 0 ? 0 : Math.max(0, Math.min(1, e.localX / volume.width));
 		volume.onPointerDown = e -> {
 			volume.capture();
 			dragging = true;
-			setVolume(ratio(e, volume));
+			setVolume(ratio(e));
 		};
-		volume.onPointerMove = e -> if (dragging) setVolume(ratio(e, volume));
+		volume.onPointerMove = e -> if (dragging) setVolume(ratio(e));
 		volume.onPointerUp = _ -> dragging = false;
 		return root;
 	}

@@ -236,7 +236,9 @@ class Player {
 			clock.audio(0, 0);
 		}
 		collect();
-		if (stepping > 0) return shown;
+		// (a seek not begun yet: what was decoded before it is not shown, a
+		// drag's keyframe after its exact release)
+		if (stepping > 0 || asked > -1e299) return shown;
 		if (playing && !primed) clock.seek(from);
 		var settled = drained() ? frames.length : frames.length - REORDER;
 		times.resize(0);

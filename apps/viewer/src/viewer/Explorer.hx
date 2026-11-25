@@ -67,6 +67,7 @@ class Explorer {
 		sidebar = new Sidebar(files, places ?? [], volumes ?? []);
 		viewer = new Viewer(decode, null, pdfSizes);
 		viewer.read = this.read;
+		viewer.measure = (paths, done) -> measureAll(files, paths, done);
 		browser.onDir = d -> {
 			if (!choosing) sidebar.follow(d);
 			// (another folder: the decodes of the last let go)
@@ -209,6 +210,36 @@ class Explorer {
 			s.close();
 			out.getBytes().toString();
 		}).onCompletion((r, _) -> done(r));
+
+	// (pictures' sizes as their headers say, Image.size, read through files
+	// on the loop: one task each, a failed one null)
+	static function measureAll(files:Files, paths:Array<String>, done:Array<Null<{width:Int, height:Int}>>->Void) {
+		var sizes:Array<Null<{width:Int, height:Int}>> = [for (_ in paths) null], left = paths.length;
+		if (left == 0) return done(sizes);
+		for (i => p in paths)
+			helder.async.Async.launch(_ -> header(files, p)).onCompletion((s, _) -> {
+				sizes[i] = s;
+				if (--left == 0) done(sizes);
+			});
+	}
+
+	// (a file's first 64 KB; a JPEG's frame header past larger metadata,
+	// EXIF's thumbnail or an ICC profile: its first MB)
+	@:coroutine static function header(files:Files, path:String):Null<{width:Int, height:Int}> {
+		var s = files.open(path), size:Null<{width:Int, height:Int}> = null;
+		try {
+			for (n in [65536, 1 << 20]) {
+				var b = haxe.io.Bytes.alloc(n), got = s.read(0, b, 0, n);
+				size = helder.image.Image.size(b, 0, got);
+				if (size != null || got < n) break;
+			}
+		} catch (e:Dynamic) {
+			s.close();
+			throw e;
+		}
+		s.close();
+		return size;
+	}
 
 	// a file of the folder full size, the viewer's list the browser's viewable files
 	public function view(name:String) {

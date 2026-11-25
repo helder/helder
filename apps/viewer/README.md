@@ -395,8 +395,10 @@ hidden files, the inspector and the status line are kept between runs
   browsed; another file the system's app's); `http`, `https` and `mailto`
   are helder.os's `Links.open` (the browser; a new tab on the web). Its
   pictures are decoded as the viewer decodes a file (`Viewer.decode`, at
-  most 1600 a side), at most the column's width; a web address's is not
-  fetched, its alt text shown. The key context `markdown` (a document
+  most 1600 a side), at most the column's width, and laid out at the size
+  their headers say (helder.image's `Image.size`, read through Files
+  before the document is shown: `Viewer.measure`), so nothing below one
+  moves when it lands; a web address's is not fetched, its alt text shown. The key context `markdown` (a document
   shown) gives Page Down, Space, Up, Down, Home and End to the column and
   Mod+U to the source. The grid's tile is a page with the document's
   first heading (`Tiles`: read once, its first 16 KB, no rendering), the
