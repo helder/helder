@@ -232,6 +232,67 @@ function tests() {
 				equals(asked, 0);
 			}
 		});
+		// (the user's log: a file opened, closed by the back pill, then the wheel over the grid moved nothing)
+		for (kind in ["png", "pdf"])
+		test('a ${kind} opened, scrolled and closed by its back pill: the wheel scrolls the grid', () -> {
+			var t = 0.0;
+			Ui.now = () -> t;
+			var files = new MemoryFiles();
+			files.add("/pictures/");
+			for (i in 0...80)
+				files.add('/pictures/img$i.png', haxe.io.Bytes.alloc(10));
+			var pdf = sys.io.File.getBytes("tests/fixtures/pdf/pages.pdf");
+			files.add("/pictures/img10.pdf", pdf);
+			function bytes(path:String):haxe.io.Bytes
+				return StringTools.endsWith(path, ".pdf") ? pdf : haxe.io.Bytes.alloc(10);
+			var x = new Explorer(files, (path, side, done) -> done(Decode.of({path: path, bytes: bytes(Decode.parseKey(path).path), side: side})), [], [],
+				Preview.now, (path, done) -> done(PdfPages.sizesIn({path: path, bytes: bytes(path)})));
+			x.start("/pictures");
+			for (e in x.browser.items.value)
+				Tiles.remember(x, e, new helder.image.Image(4, 3, haxe.io.Bytes.alloc(48)));
+			var ui = new Ui(new StoryText(), 1212, 592);
+			Render.render(Shell.view(x), ui.root);
+			Shell.attach(ui.root, x);
+			function tick(n = 1)
+				for (_ in 0...n) {
+					t += 1 / 60;
+					Clock.tick(t);
+					Graph.flush();
+					ui.update();
+					if (ui.needsFrame) ui.paint(new Nothing());
+				}
+			tick(30);
+			var grid = ui.root.find("grid"), b = grid.windowBounds();
+			// (scrolled a little, a tile double-clicked: full size)
+			ui.wheel(b.x + 100, b.y + 100, 0, 300);
+			tick(30);
+			var was = grid.scrollY;
+			assert(was > 0, 'the wheel scrolls it first: $was');
+			var name = 'img10.$kind';
+			x.browser.select(name);
+			x.view(name);
+			tick(90);
+			// (scrolled in the full view: a PDF's column)
+			ui.wheel(600, 300, 0, 400);
+			tick(10);
+			equals(x.full.value, true);
+			var pill = ui.root.find("back-pill").windowBounds();
+			ui.pointerDown(pill.x + 10, pill.y + 10, 1);
+			ui.pointerUp(pill.x + 10, pill.y + 10, 1);
+			tick(120);
+			equals(x.full.value, false);
+			var under = @:privateAccess ui.hit(b.x + 100, b.y + 100);
+			var path = [];
+			var n = under;
+			while (n != null) {
+				path.push(n.tag);
+				n = n.parent;
+			}
+			trace('under the pointer: ' + path.join(" < "));
+			ui.wheel(b.x + 100, b.y + 100, 0, 300);
+			tick(30);
+			assert(grid.scrollY > was, 'scrolled after closing: ${grid.scrollY}, was $was');
+		});
 		test("the sidebar scrolls: the wheel over it, its last row shown", () -> {
 			Ui.now = () -> 0.0;
 			var x = Fixtures.explorer();
