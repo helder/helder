@@ -124,7 +124,10 @@ class Shell implements Markup {
 		var mac = hxmc.Platform.os() == 1, phone = Phone.mobile();
 		// (a phone: one app, no other to hand files to)
 		if (phone) args = args.concat(["--new"]);
-		var store = try helder.os.Store.open("helder-viewer") catch (_:Dynamic) null;
+		// (--store or HELDER_VIEWER_STORE: what it keeps elsewhere than the user's own, a test's run)
+		var dir = storeDir(args, Sys.getEnv("HELDER_VIEWER_STORE"));
+		Instance.dir = dir;
+		var store = try helder.os.Store.open("helder-viewer", dir) catch (_:Dynamic) null;
 		inline function num(k:String, d:Int):Int {
 			var v = store == null ? null : Std.parseInt(store.get(k) ?? "");
 			return v == null ? d : v;
@@ -145,7 +148,7 @@ class Shell implements Markup {
 		// (--exit-after s: the window closed after s seconds, what it shows
 		// printed: a smoke run of the real window and GPU, CI's)
 		// (--report file: that line written there too, for a launch whose output is the system's: open -a)
-		var valued = ["--exit-after", "--report"];
+		var valued = ["--exit-after", "--report", "--store"];
 		inline function arg(name:String):Null<String>
 			return args.indexOf(name) >= 0 ? args[args.indexOf(name) + 1] : null;
 		var exitAfter = arg("--exit-after") != null ? Std.parseFloat(arg("--exit-after")) : -1.0, report = arg("--report");
@@ -196,7 +199,7 @@ class Shell implements Markup {
 		#end
 		var viewer = x.viewer;
 		viewer.mod = mac ? "Cmd" : "Ctrl";
-		x.thumbnails = try new Thumbnails() catch (_:Dynamic) null;
+		x.thumbnails = try new Thumbnails(dir == null ? null : new ThumbCache(512 << 20, 16 << 20, dir + "/thumbs")) catch (_:Dynamic) null;
 		// (the keymap: secondary as this platform's; the user's file over the defaults, beside the store)
 		helder.ui.actions.Keymap.mac = mac;
 		helder.ui.menu.Menus.appName = "Viewer";
@@ -280,6 +283,16 @@ class Shell implements Markup {
 			{phone ? null : <MenuBarView menus={ViewerActions.menus(recent.slice(0, 8), places)} ref={b -> bar = b}/>}
 			{view(x)}
 		</Surface>);
+	}
+
+	// where the viewer keeps what it keeps (its store, beside it its errors'
+	// log and keymap, the running viewer's port, the thumbnails' cache):
+	// --store <dir>, else env (HELDER_VIEWER_STORE), else null, the
+	// platform's place for the user's own (helder.os.Store, Paths.cache)
+	public static function storeDir(args:Array<String>, env:Null<String>):Null<String> {
+		var i = args.indexOf("--store");
+		if (i >= 0 && i + 1 < args.length && args[i + 1] != "") return args[i + 1];
+		return env == null || env == "" ? null : env;
 	}
 
 	// (a phone's explorer: its Documents and its grants; a file on disk
