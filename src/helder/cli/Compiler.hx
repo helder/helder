@@ -36,6 +36,7 @@ class Compiler {
 		found = tool;
 
 	static function find():String {
+		runtimes();
 		var env = Sys.getEnv("HAXE");
 		if (env != null && env != "") return env;
 		var prebuilt = Sys.getEnv("HELDER_COMPILER");
@@ -70,6 +71,22 @@ class Compiler {
 		var bin = locate("node_modules/.bin/" + (win ? "haxe.cmd" : "haxe"));
 		Term.err(Style.status("warning", Warn, 'no native compiler (node_modules/@hxmc/${platformPackage()}): ${bin ?? "haxe"} instead, through node'));
 		return bin ?? (win ? "haxe.cmd" : "haxe");
+	}
+
+	// (the platform packages' runtime objects added to HXMC_RT_DIR, as the
+	// launcher does: helder's compiler, in the cache, finds none beside itself,
+	// and a build under the launcher (bun run test) inherits its HXMC_RT_DIR)
+	static function runtimes() {
+		var cli = locate("node_modules/@hxmc/cli/package.json");
+		if (cli == null) return;
+		var dir = Path.directory(Path.directory(cli)), sep = Sys.systemName() == "Windows" ? ";" : ":";
+		var dirs = [for (d in (Sys.getEnv("HXMC_RT_DIR") ?? "").split(sep)) if (d != "") d];
+		for (p in ["linux-x64", "linux-arm64", "darwin-arm64", "darwin-x64", "win32-x64", "win32-arm64"]) {
+			var d = '$dir/$p';
+			if (dirs.indexOf(d) < 0 && FileSystem.exists(d) && FileSystem.isDirectory(d) && Lambda.exists(FileSystem.readDirectory(d), t -> FileSystem.exists('$d/$t/rt.o')))
+				dirs.push(d);
+		}
+		if (dirs.length > 0) Sys.putEnv("HXMC_RT_DIR", dirs.join(sep));
 	}
 
 	// helder's compiler in tool()'s place (TypeScript programs, helder.typescript):
