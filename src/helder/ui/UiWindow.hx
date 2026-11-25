@@ -71,8 +71,10 @@ typedef SurfaceProps = {
 	// scrollbars);
 	// "helder": helder's own scrolling everywhere; default UiWindow.scrolling's
 	?scrolling:String,
-	// macOS's scrollbars: "system" (default: System Settings' Show scroll
-	// bars), "overlay" (shown while scrolling, over the content) or "always"
+	// the scrollbars: "system" (default: macOS's System Settings' Show
+	// scroll bars; elsewhere always shown), "overlay" (shown while
+	// scrolling, hovered or dragged, over the content: macOS's, helder's
+	// thin ones on Windows, Linux and the web) or "always"
 	?scrollbars:String,
 	?children:UiView
 };
@@ -162,9 +164,10 @@ class UiWindow {
 	// fling and stretch, helder.os.android.Fling and Stretch); false: helder's
 	// own scrolling (a Surface's scrolling prop sets a window's)
 	public static var scrolling = true;
-	// macOS's scrollbars: "system" (System Settings' Show scroll bars:
+	// the scrollbars: "system" (macOS's System Settings' Show scroll bars:
 	// overlay ones that show while scrolling, unless set to always or, by
-	// default, while a mouse is connected), "overlay" or "always" (a Surface's
+	// default, while a mouse is connected; elsewhere always shown),
+	// "overlay" (on every desktop and the web) or "always" (a Surface's
 	// scrollbars prop sets a window's)
 	public static var scrollbars = "system";
 	var bars = scrollbars;
@@ -361,6 +364,9 @@ class UiWindow {
 		if (Platform.os() == 0) {
 			if (Platform.target() < 9) ui.kinetic = on;
 		}
+		// (elsewhere helder's own thin bars, over the content: with "overlay"
+		// shown while scrolling, hovered or dragged, as macOS's; else always)
+		if (Platform.os() == 2 || Platform.os() == 3 || Platform.os() == 0 && Platform.target() < 9) ui.overlayBars = bars == "overlay";
 		// (nested: only a constant condition drops the branch, its AppKit calls with it)
 		#if (!helder.os || helder.os == "macos")
 		if (Platform.os() == 1) {
@@ -409,7 +415,7 @@ class UiWindow {
 		#end
 	}
 
-	// macOS's scrollbars for this window: "system", "overlay" or "always" (UiWindow.scrollbars)
+	// the scrollbars for this window: "system", "overlay" or "always" (UiWindow.scrollbars)
 	@:noCompletion public function scrollbarStyle(style:String) {
 		bars = style;
 		nativeScroll(ui.nativeScroll || ui.elastic);

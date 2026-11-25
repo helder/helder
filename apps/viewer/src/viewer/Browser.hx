@@ -79,7 +79,7 @@ class Browser {
 		}
 		if (dir.value != "") back.push(here());
 		forward.resize(0);
-		load(path, select ?? "", select == null ? 0 : -1);
+		load(path, select ?? "", select == null || select == "" ? 0 : -1);
 	}
 
 	public function goBack():Bool {

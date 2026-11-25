@@ -20,6 +20,10 @@ browser engine and no runtime to install.
   first. Select several with Shift and Ctrl (Cmd), Ctrl+A, or a marquee
   drawn from empty space, and drag them out to other apps: a file
   manager, mail, chat, a browser's upload.
+- **Scrollbars that keep out of the way**: overlay ones on every system
+  (macOS's even when a connected mouse makes the system show them
+  always; thin ones on Windows, Linux and the web), shown while you
+  scroll or bring the pointer to the edge, draggable, faded after.
 - **Large folders.** A folder is read off the window's thread, 2,000
   entries at a time; the first show at once, the rest are merged in sorted
   without moving what you look at or losing the selection. A folder

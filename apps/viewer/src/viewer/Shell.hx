@@ -244,7 +244,7 @@ class Shell implements Markup {
 		}
 		var window:Null<UiWindow> = null;
 		UiWindow.run(<Surface title={() -> x.full() ? viewer.title() : x.sidebar.title(x.browser.dir())} width={num("width", 1180)} height={num("height", 780)}
-			titlebar="inset" background={() -> "#" + StringTools.hex(ViewerView.canvas(UiWindow.dark()), 6)}
+			titlebar="inset" scrollbars="overlay" background={() -> "#" + StringTools.hex(ViewerView.canvas(UiWindow.dark()), 6)}
 			onDrop={(files, _, _) -> if (files.length > 0) x.start(files[0])}
 			onClose={() -> {
 				save(store, window, x);
@@ -282,15 +282,17 @@ class Shell implements Markup {
 		</Surface>);
 	}
 
-	// (where the browser's panels end against the window's bottom, the
-	// window lane's check: a column's content may not push it further)
+	// (where the browser's panels end against the window's bottom, and the
+	// folder's scroll: the window lane's checks (a column's content may not
+	// push it further; a folder opened shows its top))
 	static function ends(ui:helder.ui.Ui):String {
 		var low = 0.0;
 		for (t in ["sidebar", "main", "pathbar", "inspector"]) {
 			var n = ui.root.find(t);
 			if (n != null) low = Math.max(low, n.absY + n.height);
 		}
-		return 'ends at ${Math.round(low)} of ${Math.round(ui.height)}';
+		var list = ui.root.find("rows") ?? ui.root.find("grid");
+		return 'ends at ${Math.round(low)} of ${Math.round(ui.height)}, scrolled ${list == null ? 0 : Math.round(list.scrollY)}';
 	}
 
 	// (a phone's explorer: its Documents and its grants; a file on disk

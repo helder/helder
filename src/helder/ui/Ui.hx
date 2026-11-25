@@ -189,6 +189,21 @@ class Ui extends ScrollHost {
 		return along >= tr[0] && along <= tr[0] + tr[1] && across >= edge - g && across <= edge;
 	}
 
+	// (the overlay bar the pointer is over: shown as it comes, a frame asked
+	// for, so that it shows near the edge before a press, which then takes it)
+	var barUnder:Null<Node> = null;
+
+	function nearBar(target:Null<Node>) {
+		var n = target, over:Null<Node> = null;
+		while (n != null && over == null) {
+			if (n.style.overflow == Scroll && (overBar(n, false) || overBar(n, true))) over = n;
+			n = n.parent;
+		}
+		if (over == barUnder) return;
+		barUnder = over;
+		requestFrame();
+	}
+
 	// how far n's overlay scrollbars show (0 to 1), its last moves noted; a frame asked for while they fade
 	function barShown(n:Node):Float {
 		var m = barMoved.get(n), t = now();
@@ -1470,6 +1485,7 @@ class Ui extends ScrollHost {
 		}
 		var target = hit(x, y);
 		setHover(target);
+		if (overlayBars) nearBar(target);
 		if (dragging != null) {
 			dragging.x = x;
 			dragging.y = y;

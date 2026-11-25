@@ -254,7 +254,13 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
     its momentum the system's replayed at the frames' times; the
     scrollbars are AppKit's own scrollers drawn into the tree
     (`ScrollbarArt`: `MacScrollbarArt`), overlay ones fading as macOS's,
-    as the system's "Show scroll bars" says. The
+    as the system's "Show scroll bars" says, or as a window asks
+    (`<Surface scrollbars="overlay">`, or "always"). Elsewhere (Windows,
+    Linux, the web) the bars are helder's thin ones (`Plain`), always
+    shown, or with `scrollbars="overlay"` (`Ui.overlayBars`) shown while
+    scrolling, while the pointer is over one (a frame asked for as it
+    comes near the edge, so it can be grabbed) and while dragged, then
+    faded. The
     tree still decides whose drag it is (`Ui.nativeBegins`: none while a
     recogniser of the tree holds a pointer or a node there follows the
     pointer's moves; else the nearest scroller that can move that way,

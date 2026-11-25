@@ -79,6 +79,66 @@ function tests() {
 			}
 			equals(paints, 0);
 		});
+		// (the user's recording: a folder of two rows in Icons view, the pointer over the sidebar's rows, the grid's
+		// offset swinging between its top and one row down from frame to frame)
+		for (from in ["fresh", "from a scrolled folder"])
+			test('the grid\'s offset stable while the pointer moves over the sidebar (${from})', () -> {
+				var t = 0.0;
+				Ui.now = () -> t;
+				var files = new MemoryFiles();
+				files.add("/ben/");
+				for (i in 0...17)
+					files.add('/ben/f$i/');
+				for (n in ["build", "docs", "gen", "refs", "site", "sources", "tools"])
+					files.add('/ben/f0/$n/');
+				for (n in ["README.md", "serve.sh"])
+					files.add('/ben/f0/$n', haxe.io.Bytes.ofString("x"));
+				for (i in 0...200)
+					files.add('/ben/f1/img$i.png', haxe.io.Bytes.alloc(10));
+				var x = new Explorer(files, (_, _, _) -> {}, [], [], Preview.now);
+				var ui = new Ui(new StoryText(), 1212, 592), canvas = new Nothing();
+				Render.render(Shell.view(x), ui.root);
+				Shell.attach(ui.root, x);
+				function tick() {
+					t += 1 / 60;
+					Clock.tick(t);
+					Graph.flush();
+					ui.update();
+					if (ui.needsFrame) ui.paint(canvas);
+				}
+				if (from == "fresh") x.start("/ben/f0") else {
+					x.start("/ben/f1");
+					for (_ in 0...10)
+						tick();
+					ui.root.find("grid").scrollY = 2000;
+					for (_ in 0...10)
+						tick();
+					x.browser.go("/ben/f0");
+				}
+				for (_ in 0...30)
+					tick();
+				var grid = ui.root.find("grid"), side = ui.root.find("sidebar");
+				equals(grid.scrollY, 0.0);
+				// (its columns changed and back: the inspector hidden and shown)
+				for (on in [false, true]) {
+					x.browser.inspector(on);
+					for (_ in 0...10)
+						tick();
+					equals(grid.scrollY, 0.0);
+				}
+				var first = cells(grid).filter(c -> c.slot == "grid-tile")[0].windowBounds().y;
+				var rows = [for (c in cells(side)) if (c.slot == "side-row") c];
+				assert(rows.length >= 17, "the sidebar's rows");
+				for (r in rows) {
+					var b = r.windowBounds();
+					for (dy in [4.0, 14.0, 24.0]) {
+						ui.pointerMove(b.x + 40, b.y + dy);
+						tick();
+						equals(grid.scrollY, 0.0);
+						equals(cells(grid).filter(c -> c.slot == "grid-tile")[0].windowBounds().y, first);
+					}
+				}
+			});
 		test("the sidebar scrolls: the wheel over it, its last row shown", () -> {
 			Ui.now = () -> 0.0;
 			var x = Fixtures.explorer();

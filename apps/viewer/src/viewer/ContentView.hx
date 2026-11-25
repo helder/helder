@@ -170,8 +170,9 @@ class ContentView implements Markup {
 			var v = scroller, w = want;
 			if (v == null || w == null) return;
 			if (w < 0) {
+				// (the entry asked for, once it is read; gone: the top)
 				var i = b.indexOf(b.selected.value);
-				if (i >= 0) v.scrollToIndex(i, "center");
+				if (i >= 0) v.scrollToIndex(i, "center") else if (!b.reading.value) v.scrollY = 0;
 				if (i >= 0 || !b.reading.value) want = null;
 				return;
 			}

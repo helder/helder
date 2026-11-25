@@ -54,6 +54,7 @@ class MarkupTest implements Markup {
 		virtual();
 		virtualGrid();
 		virtualGridItems();
+		virtualGridShort();
 		virtualSelection();
 		Sys.println('MarkupTest: $checks checks' + (failed == 0 ? ", ok" : ', $failed FAILED'));
 		Sys.exit(failed == 0 ? 0 : 1);
@@ -537,6 +538,28 @@ class MarkupTest implements Markup {
 		ui.pointerDown(5, 50, 1);
 		ui.pointerUp(5, 50, 1);
 		check("grid: empty click clears", s.size() == 0);
+		dispose();
+	}
+
+	// (a grid scrolled far, its items replaced by two rows that fit: at its
+	// top, not past its end, and so frame after frame)
+	static function virtualGridShort() {
+		var ui = new Ui(new MonoText(), 300, 200);
+		var items = signal([for (i in 0...400) 'File $i']);
+		var grid:GridScroll = null;
+		var dispose = Render.render(<VirtualGrid each={items} by={s -> s} cellWidth={60} cellHeight={30} ref={g -> grid = g}>{(item, i) -> <text>{item()}</text>}</VirtualGrid>,
+			ui.root);
+		ui.update();
+		grid.scrollY = 1000;
+		ui.update();
+		items([for (i in 0...7) 'Other $i']);
+		flush();
+		ui.update();
+		var at = [for (_ in 0...3) {
+			ui.update();
+			grid.scrollY;
+		}];
+		check("grid: scrolled far, two rows that fit in its place: at its top", at.join(",") == "0,0,0", at.join(","));
 		dispose();
 	}
 
