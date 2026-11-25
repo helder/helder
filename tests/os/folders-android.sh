@@ -78,6 +78,8 @@ check "Sub/b.txt gone from the storage" $?
 adb exec-out screencap -p > "$out/folders.png"
 
 adb shell am force-stop $id
+# (the second launch's mark: main runs again whenever the activity is made again)
+adb shell touch /sdcard/Download/helder-folders/kept
 adb logcat -c
 adb shell am start -n $id/android.app.NativeActivity > /dev/null
 wait_for "folders: kept ok\|folders: failed\|folders: picking" "$out/folders-kept.txt" 60

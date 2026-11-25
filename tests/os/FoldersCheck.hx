@@ -46,6 +46,15 @@ class FoldersCheck {
 				g = kept[0];
 				Sys.println('folders: kept ${g.name}');
 				var names = list(g.id, "");
+				// (Android starts main again when the activity is made again, the
+				// picker's return among the times: the script's second launch is
+				// the one with a "kept" file it put in the folder)
+				#if (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
+				if (!names.contains("kept (0)")) {
+					Sys.println("folders: kept, the same launch");
+					return;
+				}
+				#end
 				Sys.println('folders: listed ${names.join(", ")}');
 				if (!names.contains("a.txt (5)")) throw "a.txt not listed";
 				Folders.forget(g.id);
