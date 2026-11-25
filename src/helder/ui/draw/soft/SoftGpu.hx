@@ -16,11 +16,22 @@ class SoftGpu {
 
 	var recording:Null<DisplayList> = null;
 
-	// (as Renderer.passKey)
+	// (as Renderer.passKey: another each frame and each recording)
 	public var passKey(get, never):Int;
 
-	inline function get_passKey():Int
-		return recording == null ? -1 - frames : recording.take;
+	var keyFrame = -1;
+	var keyTake = 0;
+	var key = 0;
+
+	function get_passKey():Int {
+		var t = recording == null ? -1 : recording.take;
+		if (frames != keyFrame || t != keyTake) {
+			keyFrame = frames;
+			keyTake = t;
+			key++;
+		}
+		return key;
+	}
 
 	public function new(canvas:SoftCanvas) {
 		this.canvas = canvas;
