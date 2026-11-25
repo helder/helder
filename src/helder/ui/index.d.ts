@@ -1369,7 +1369,7 @@ export declare class Toggle extends Press {
 }
 
 export declare class CodeActions {
-	// the actions declared and their default bindings added to the global keymap (once)
+	// the actions declared (once) and their default bindings added to the global keymap (once each)
 	static declare(): void;
 }
 

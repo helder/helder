@@ -316,11 +316,11 @@ class EditableText extends TextNode implements PlatformEditorListener {
 		return true;
 	}
 
-	// (native: the editor takes it, not the window's text input)
 	// (a field keeps its own selection, out of a selectable scope's)
 	@:noCompletion override public function selectableText():Null<String>
 		return null;
 
+	// (native: the editor takes it, not the window's text input)
 	override public function takesText():Bool
 		return !editorShown;
 
