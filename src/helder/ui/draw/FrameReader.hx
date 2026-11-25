@@ -93,7 +93,7 @@ class FrameReader {
 					if (shadow) list.textShadow(p, x, y, width, align, color, r.float(13), colors) else list.text(p, x, y, width, align, color, colors);
 				case FrameOp.PLACEHOLDER:
 					var b = box();
-					GpuPlaceholder.draw(list, b.x, b.y, b.w, b.h);
+					list.rect(b.x, b.y, b.w, b.h, 0, GpuPlaceholder.COLOR, 0, 0);
 				case op:
 					throw 'FrameReader: op $op unknown (a newer helder\'s frame)';
 			}

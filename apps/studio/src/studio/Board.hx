@@ -102,7 +102,7 @@ class Board implements Markup {
 		var s = studio.previews.screen(r().name);
 		return <view tag={"screen-" + Shell.slug(s.info.name)} slot="screen" position="absolute" left={r().x} top={r().y} width={r().w}
 			height={r().h} data-on={studio.focused() == s.info.name ? "true" : "false"} data-frame={s.frames()}
-			onPointerEnter={_ -> studio.hovered(s.info.name)} onPointerLeave={_ -> if (studio.hovered.peek() == s.info.name) studio.hovered(null)}
+			onPointerEnter={_ -> studio.hover(s.info.name)} onPointerLeave={_ -> if (studio.hovered.peek() == s.info.name) studio.hovered(null)}
 			opacity={Feedback.arrive(studio, s.info.name).opacity} transform={Feedback.arrive(studio, s.info.name).transform}>
 			<image src={s.image()} width={r().w} height={r().h} opacity={studio.failure() == null ? 1 : 0.45}/>
 			<Show when={s.image() == null && s.still() != null}>{still(studio, s, r)}</Show>
@@ -122,6 +122,13 @@ class Board implements Markup {
 		n.tag = "still";
 		effect(() -> {w: r().w, h: r().h, dim: s.stale() || studio.failure() != null}, v -> {
 			n.style.set({position: Absolute, left: 0, top: 0, width: v.w, height: v.h, opacity: v.dim ? 0.45 : 1});
+		});
+		// (hovered: its loop from the file, played; let go, the still)
+		var name = s.info.name;
+		effect(() -> studio.hovered() == name && s.image() == null, on -> {
+			var l = on ? studio.previews.fileLoop(s) : null;
+			if (l == null) n.stop() else n.play(l.fps, l.lists, () -> studio.loopShown(name, "file"),
+				(frames, ms) -> studio.log("loop-played", {screen: name, frames: frames, msPerFrame: Math.round(ms * 1000) / 1000}));
 		});
 		return n;
 	}

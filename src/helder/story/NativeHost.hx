@@ -25,7 +25,8 @@ import hxmc.unsafe.*;
 //                                          texture to open, or copy:<file> of its pixels)
 //   Host.still {screen, path}              a still's frame as data (Host.written), settled (no
 //                                          frame of it for STILL seconds): a frames file of its
-//                                          screen alone (helder.ui.draw.FrameArchive), its key ""
+//                                          screen alone (helder.ui.draw.FrameArchive), its key "";
+//                                          a loop story's loop recorded with it (LOOP_FPS)
 //   Hot.patched                            a patch's first frame (helder.dev)
 //
 // and a frame's target is drawn into again once the studio sends
@@ -205,6 +206,12 @@ class SharedFrames implements HostRuntime {
 	public function still(s:HostScreen) {
 		var h = hosted(), f = h.written(s);
 		if (f == null) return;
+		// (the same still as the last written: nothing new, its loop the same;
+		// a loop's recording builds the screen again, and it draws its still again)
+		var sum = haxe.crypto.Md5.make(f.bytes).toHex();
+		if (stills.get(s.name) == sum) return;
+		stills.set(s.name, sum);
+		if (s.story.loop != null) f = h.written(s, LOOP_FPS) ?? f;
 		var a = new helder.ui.draw.FrameArchive();
 		a.add(s.name, "", s.width, s.height, f);
 		var i = h.screens.indexOf(s);
@@ -215,9 +222,21 @@ class SharedFrames implements HostRuntime {
 		if (sys.FileSystem.exists(path)) sys.FileSystem.deleteFile(path);
 		sys.FileSystem.rename(path + ".part", path);
 		#if hxmc.dev
-		helder.dev.Agent.notify("Host.still", {screen: i, path: path});
+		var loop = f.loop;
+		helder.dev.Agent.notify("Host.still", {
+			screen: i,
+			path: path,
+			loopFrames: loop == null ? 0 : loop.frames.length,
+			loopBytes: loop == null ? 0 : Lambda.fold(loop.frames, (b, n) -> n + b.length, 0)
+		});
 		#end
 	}
+
+	// (each screen's last still written, its bytes' md5)
+	final stills = new Map<String, String>();
+
+	// a loop's frames a second (a story's loop recorded with its still)
+	public static inline var LOOP_FPS = 60;
 
 	// the studio shows a newer frame of the screen: this one's target free
 	public function release(s:HostScreen, buffer:Int) {

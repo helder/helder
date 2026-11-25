@@ -161,6 +161,26 @@ class Previews {
 		return l != null;
 	}
 
+	// whether a screen's loop plays from the file: its still shown, fresh, a loop stored
+	function fileLoops(name:String):Bool {
+		var s = screen(name);
+		return s != null && s.image.peek() == null && s.still.peek() != null && !s.stale.peek() && kept.looped(name);
+	}
+
+	// a hovered screen's loop from the file (null: none, it runs live)
+	public function fileLoop(s:Screen):Null<{fps:Int, lists:Array<helder.ui.draw.DisplayList>}> {
+		if (!fileLoops(s.info.name)) return null;
+		var first = !decoded.exists(s.info.name);
+		var l = kept.loop(s.info.name);
+		if (l != null && first) {
+			decoded.set(s.info.name, true);
+			onLog('studio: ${s.info.name}\'s loop from ${Stills.FILE}: ${l.lists.length} frames at ${l.fps} fps, decoded in ${l.ms} ms');
+		}
+		return l;
+	}
+
+	final decoded = new Map<String, Bool>();
+
 	// whether every screen is drawn from the file as its files are now
 	public function fresh():Bool
 		return hosting() && !Lambda.exists(screens, s -> s.still.peek() == null || s.stale.peek());
@@ -527,6 +547,7 @@ class Previews {
 	function tookStill(p:Dynamic) {
 		var s = order[Std.int(p.screen)], path:String = p.path;
 		if (s != null && running != null) kept.took(s.info.name, s.info.file, path, running);
+		if (s != null && p.loopFrames > 0) onLog('studio: ${s.info.name}\'s loop kept: ${p.loopFrames} frames, ${p.loopBytes} B before deflate');
 		try FileSystem.deleteFile(path) catch (_:Dynamic) {}
 	}
 
@@ -679,8 +700,8 @@ class Previews {
 		if (key == shown) return;
 		shown = key;
 		showWanted = {names: names, focused: focused, scale: scale};
-		// (a hovered loop runs live: the program)
-		if (looping != null) wake();
+		// (a hovered loop runs live: the program; its loop from the file plays without it)
+		if (looping != null && !fileLoops(looping)) wake();
 		var c = connection;
 		if (c != null && order.length > 0) c.request("Host.show", {screens: names, focused: focused, scale: scale, stills: stills, loop: looping}, _ -> {});
 	}

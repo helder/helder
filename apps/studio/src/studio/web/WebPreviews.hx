@@ -227,6 +227,10 @@ class WebPreviews {
 	// (natively the host started when the screens were drawn from the frames file; here it always runs)
 	public function wake() {}
 
+	// (natively a hovered loop from the frames file; here the host's)
+	public function fileLoop(s:Screen):Null<{fps:Int, lists:Array<helder.ui.draw.DisplayList>}>
+		return null;
+
 	public function show(names:Array<String>, focused:Null<String>, scale = 1.0) {
 		var key = names.join("\n") + "\t" + (focused ?? "") + "\t" + scale + "\t" + stills + "\t" + (looping ?? "");
 		if (key == shown) return;

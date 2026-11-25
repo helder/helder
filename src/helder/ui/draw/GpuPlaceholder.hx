@@ -18,6 +18,15 @@ class GpuPlaceholder {
 			at = l.target;
 		}
 		if (Std.isOfType(at, Gpuless)) c.rect(x, y, w, h, 0, COLOR, 0, 0);
+		// (a frame written as data: its box, a placeholder's when read, and the writer told)
+		else if (Std.isOfType(at, FrameWriter)) {
+			var fw:FrameWriter = cast at;
+			// (recorded for it: the box in the list, the pass counted now)
+			if (c == at) fw.placeholder(x, y, w, h) else {
+				fw.passed();
+				c.rect(x, y, w, h, 0, COLOR, 0, 0);
+			}
+		}
 	}
 }
 
