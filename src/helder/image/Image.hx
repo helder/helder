@@ -1,6 +1,7 @@
 package helder.image;
 
 import haxe.io.Bytes;
+import helder.async.Errors;
 
 // An image's pixels: RGBA8, rows top to bottom, straight (not
 // premultiplied) alpha. decode reads a PNG file (PngDecoder), a JPEG
@@ -333,9 +334,9 @@ class Image {
 			pre.set(4 * k + 3, a);
 		}
 		#if (target.name == "hxmc")
-		try use(pre) catch (e:Dynamic) {
+		try use(pre) catch (e:haxe.Exception) {
 			buf.free();
-			throw e;
+			throw Errors.kept(e);
 		}
 		buf.free();
 		#else
@@ -349,14 +350,14 @@ class Image {
 	@:hxmc.unsafe(gc) static function system(file:Bytes, use:(Int, Int, Bytes) -> Void) {
 		var copy = hxmc.unsafe.IoBuffer.alloc(file.length);
 		copy.view().blit(0, file, 0, file.length);
-		var d = try SystemDecoder.decode(copy.ptr, file.length) catch (e:Dynamic) {
+		var d = try SystemDecoder.decode(copy.ptr, file.length) catch (e:haxe.Exception) {
 			copy.free();
-			throw e;
+			throw Errors.kept(e);
 		}
 		copy.free();
-		try use(d.width, d.height, d.pixels.view()) catch (e:Dynamic) {
+		try use(d.width, d.height, d.pixels.view()) catch (e:haxe.Exception) {
 			d.pixels.free();
-			throw e;
+			throw Errors.kept(e);
 		}
 		d.pixels.free();
 	}

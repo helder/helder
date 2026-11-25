@@ -69,11 +69,12 @@ class Jobs {
 	@:noCompletion @:coroutine public static function runGcVoid(fn:I64, input:Null<Writer>):Void
 		Run.await(fn, false, null, input).discard();
 
-	// (a GC job's wrapper: an exception as the run's error, its message the output)
-	@:noCompletion @:hxmc.unsafe(gc) public static function failed(job:JobRecord, e:Dynamic):Int {
-		var m = e is haxe.Exception ? (e : haxe.Exception).message : Std.string(e);
+	// (a GC job's wrapper: an exception as the run's error, its message and
+	// where it was thrown the output: JobError.of)
+	@:noCompletion @:hxmc.unsafe(gc) public static function failed(job:JobRecord, e:haxe.Exception):Int {
 		var w = new Writer();
-		w.string(m);
+		w.string(e.message);
+		w.string(JobError.lines(e.stack));
 		job.setOutput(w.done());
 		return -1;
 	}

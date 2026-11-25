@@ -1,6 +1,7 @@
 package helder.ui;
 
 import helder.os.Event as OsEvent;
+import helder.async.Errors;
 
 // A window's input events to its Ui (UiWindow's, a test's): the pointer,
 // the wheel, the keys and text, in its points (k pixels a point), each as
@@ -75,7 +76,7 @@ class UiEvents {
 			input(ui, e, k)
 		catch (x:haxe.Exception) {
 			ui.routed = 0;
-			throw x;
+			throw Errors.kept(x);
 		}
 		ui.routed = 0;
 		// (a question answered: the scrolls held for it, the program's if it kept them)

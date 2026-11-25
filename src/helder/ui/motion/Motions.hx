@@ -3,6 +3,7 @@ package helder.ui.motion;
 import helder.canvas.Matrix;
 import helder.ui.Color;
 import helder.ui.ScreenContext;
+import helder.async.Errors;
 
 // Motion as property tracks: what moves a node's presented state (its
 // Present's tracks) when its layout, its style or its place in the tree
@@ -62,9 +63,9 @@ class Motions {
 	// changes made in f apply without motion (a drag's moves, a settle)
 	public static function instant(f:Void->Void) {
 		instantDepth++;
-		try f() catch (e:Dynamic) {
+		try f() catch (e:haxe.Exception) {
 			instantDepth--;
-			throw e;
+			throw Errors.kept(e);
 		}
 		instantDepth--;
 	}

@@ -9,6 +9,7 @@ import helder.pack.windows.Authenticode;
 import helder.pack.windows.Pe;
 import sys.FileSystem;
 import sys.io.File;
+import helder.async.Errors;
 
 using StringTools;
 
@@ -228,9 +229,9 @@ class Desktop {
 				File.saveBytes(zip, Zip.stored(tree(app, Path.withoutDirectory(app))));
 				Term.out(Style.status("stapled", Ok, Style.path(zip) + Style.dim(Style.sep() + BuildCommand.size(zip))));
 			}
-		} catch (err:Dynamic) {
+		} catch (err:haxe.Exception) {
 			try FileSystem.deleteFile(p8) catch (_:Dynamic) {};
-			throw err;
+			throw Errors.kept(err);
 		}
 		try FileSystem.deleteFile(p8) catch (_:Dynamic) {};
 		return 0;

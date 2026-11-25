@@ -8,6 +8,7 @@ import helder.typescript.js.Objects.*;
 import helder.typescript.js.Strings.*;
 import helder.typescript.js.Collections.*;
 import helder.typescript.js.Globals.*;
+import helder.async.Errors;
 
 // Array's built-ins: Array and its prototype, and the array-likes its generic methods take.
 @:access(helder.typescript.js.Builtins)
@@ -439,9 +440,9 @@ class Arrays {
 				if (v != null && !same(v, undef())) b.add(Seed.text(v));
 			}
 		}
-		catch (e:Dynamic) {
+		catch (e:haxe.Exception) {
 			cycle.pop();
-			throw e;
+			throw Errors.kept(e);
 		}
 		cycle.pop();
 		return b.toString();

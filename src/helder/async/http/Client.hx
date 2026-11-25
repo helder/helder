@@ -4,6 +4,7 @@ import haxe.Exception;
 import haxe.io.Bytes;
 import haxe.io.BytesBuffer;
 import helder.async.*;
+import helder.async.Errors;
 
 // An HTTP/1.1 client on helder.async's TCP (one connection a request): the
 // body read by Content-Length, chunked or until the server closes. No
@@ -58,7 +59,7 @@ class Client {
 				tls = TlsSocket.client(s, u.host, options?.ca == null ? null : sys.ssl.Certificate.fromString(options.ca));
 			} catch (e:Exception) {
 				s.close();
-				throw e;
+				throw Errors.kept(e);
 			}
 		}
 		var io:helder.async.Stream.Source = tls ?? s, out:helder.async.Stream.Sink = tls ?? s;
@@ -76,7 +77,7 @@ class Client {
 			return reply;
 		} catch (e:Exception) {
 			close(s #if (target.name == "hxmc" && hxmc.target != "wasm32-wasi"), tls #end);
-			throw e;
+			throw Errors.kept(e);
 		}
 	}
 

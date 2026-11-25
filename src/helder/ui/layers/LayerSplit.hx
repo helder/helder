@@ -4,6 +4,7 @@ import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.ui.Node;
 import sys.thread.Mutex;
+import helder.async.Errors;
 
 // A window's frame split into the system's layers (Layers' step 5), as
 // apple.Layers hands them to Core Animation, android.Layers to SurfaceControl,
@@ -178,7 +179,7 @@ class LayerSplit {
 		}
 		var n = try f.compose(now, t, shown, out, runTextures, runs) catch (e:haxe.Exception) {
 			unset();
-			throw e;
+			throw Errors.kept(e);
 		}
 		unset();
 		quadTextures.resize(n);

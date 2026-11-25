@@ -1,6 +1,7 @@
 package helder.view.graph;
 
 import helder.view.graph.Awaitable.NotReady;
+import helder.async.Errors;
 
 // The core of `<Loading>` (Graph.loadingBoundary; view's README, Holds,
 // Solid 2's F-4 and F-5): armed until it has shown content, it catches
@@ -88,15 +89,15 @@ class Boundary extends Owner {
 			// (caught, the read joined nothing: the fallback derives from no hold)
 			var run = Node.runner, world = run.world, joined = run.joined;
 			var v = try content.read() catch (e:NotReady) {
-				if (!b.armed) throw e;
+				if (!b.armed) throw Errors.kept(e);
 				run.world = world;
 				run.joined = joined;
 				return slot.show(fallback);
-			} catch (e:Dynamic) {
+			} catch (e:haxe.Exception) {
 				// (an error is an answer: it ends the first wait as a value does)
 				b.armed = false;
 				slot.hide();
-				throw e;
+				throw Errors.kept(e);
 			}
 			// (content shown: disarmed)
 			if (b.waiting.length == 0) b.armed = false;

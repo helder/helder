@@ -33,7 +33,7 @@ import hxmc.unsafe.Ptr;
 			return out;
 		} catch (e:haxe.Exception) {
 			Runtime.objc_autoreleasePoolPop(pool);
-			throw e;
+			throw helder.async.Errors.kept(e);
 		}
 	}
 
@@ -115,7 +115,7 @@ import hxmc.unsafe.Ptr;
 			return {width: pw, height: ph, pixels: pixels};
 		} catch (e:haxe.Exception) {
 			release();
-			throw e;
+			throw helder.async.Errors.kept(e);
 		}
 	}
 }
@@ -148,6 +148,7 @@ import hxmc.unsafe.Ptr;
 import hxmc.unsafe.Arena;
 import hxmc.unsafe.IoBuffer;
 import hxmc.unsafe.Ptr;
+import helder.async.Errors;
 
 // Android's image decoders (AImageDecoder, Android 11: libjnigraphics,
 // loaded when first asked, helder.os.Dl; Android 10 has none: available()
@@ -178,7 +179,7 @@ import hxmc.unsafe.Ptr;
 		var w = AImageDecoder.AImageDecoderHeaderInfo_getWidth(info), h = AImageDecoder.AImageDecoderHeaderInfo_getHeight(info);
 		try ImageLimits.check("SystemDecoder", w, h, 4) catch (e:ImageError) {
 			AImageDecoder.AImageDecoder_delete(d);
-			throw e;
+			throw Errors.kept(e);
 		}
 		// (RGBA_8888, premultiplied as decoded by default; in sRGB: ADATASPACE_SRGB)
 		AImageDecoder.AImageDecoder_setAndroidBitmapFormat(d, 1);

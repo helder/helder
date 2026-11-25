@@ -60,10 +60,14 @@ class Run implements IDispatchObject {
 
 	// (a failed run's error: a GC job's message its output; the output freed)
 	function error():JobError {
-		var m = null;
-		if (!gcFree && !(cast output : Ptr).isNull()) m = try new Wire.Reader(output).string() catch (_:Dynamic) null;
+		var m = null, where = null;
+		if (!gcFree && !(cast output : Ptr).isNull()) {
+			var r = new Wire.Reader(output);
+			m = try r.string() catch (_:Dynamic) null;
+			where = try r.string() catch (_:Dynamic) null;
+		}
 		discard();
-		return new JobError(status, m);
+		return JobError.of(status, m, where);
 	}
 
 	// its output, the awaiter's from here: a GC-free job's (empty when it made none)

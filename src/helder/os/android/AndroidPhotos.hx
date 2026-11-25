@@ -2,6 +2,7 @@ package helder.os.android;
 
 import haxe.io.Bytes;
 import hxmc.unsafe.*;
+import helder.async.Errors;
 
 // The photo picker (MediaStore.ACTION_PICK_IMAGES from Android 13, else
 // ACTION_GET_CONTENT of image/*), started for its result through
@@ -133,9 +134,9 @@ class AndroidPhotos {
 			var r = f(env);
 			Jni.JavaVm.DetachCurrentThread(vm);
 			return r;
-		} catch (e:Dynamic) {
+		} catch (e:haxe.Exception) {
 			Jni.JavaVm.DetachCurrentThread(vm);
-			throw e;
+			throw Errors.kept(e);
 		}
 	}
 }

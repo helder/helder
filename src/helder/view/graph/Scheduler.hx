@@ -1,5 +1,7 @@
 package helder.view.graph;
 
+import helder.async.Errors;
+
 // When writes are committed and effects run (view's README,
 // Holds). A write queues its node; a flush stages the pending
 // writes in a transaction, runs what they make stale for it (owned memos,
@@ -39,7 +41,7 @@ class Scheduler {
 	// (inside flush(fn): its writes wait for its own flush)
 	static var holding = 0;
 	static var asked = false;
-	static var failure:Null<Dynamic> = null;
+	static var failure:Null<haxe.Exception> = null;
 	static var hasFailure = false;
 	// (commits made: an unowned memo's freshness)
 	static var ticks = 0;
@@ -51,23 +53,23 @@ class Scheduler {
 		running = true;
 		asked = false;
 		// (the loop in a function of its own: locals inside a try are boxed)
-		try loop() catch (e:Dynamic) resetThrowing(e);
+		try loop() catch (e:haxe.Exception) resetThrowing(e);
 		running = false;
 		world = null;
 		if (hasFailure) rethrow();
 	}
 
 	// (a throw out of the flush: the queues emptied first)
-	static function resetThrowing(e:Dynamic) {
+	static function resetThrowing(e:haxe.Exception) {
 		reset();
-		throw e;
+		throw Errors.kept(e);
 	}
 
 	// (the first error a flush met, after it ran what it could)
 	static function rethrow() {
 		var e = failure;
 		reset();
-		throw e;
+		throw Errors.carried(e);
 	}
 
 	static function loop() {
@@ -123,9 +125,9 @@ class Scheduler {
 
 	public static function flushWith<T>(fn:Void->T):T {
 		holding++;
-		var r = try fn() catch (e:Dynamic) {
+		var r = try fn() catch (e:haxe.Exception) {
 			holding--;
-			throw e;
+			throw Errors.kept(e);
 		}
 		holding--;
 		flush();
@@ -155,9 +157,9 @@ class Scheduler {
 				}
 				start = end;
 			}
-		} catch (e:Dynamic) {
+		} catch (e:haxe.Exception) {
 			q.resize(0);
-			throw e;
+			throw Errors.kept(e);
 		}
 		q.resize(0);
 	}
@@ -270,12 +272,12 @@ class Scheduler {
 	}
 
 	// an error in a cleanup or an apply: in a flush, thrown at its end; else now
-	static function report(e:Dynamic) {
-		if (running) failed(e) else throw e;
+	static function report(e:haxe.Exception) {
+		if (running) failed(e) else throw Errors.carried(e);
 	}
 
 	// (an effect's error nothing handled: the flush throws it, after the others ran)
-	static function failed(e:Dynamic) {
+	static function failed(e:haxe.Exception) {
 		if (hasFailure) return;
 		failure = e;
 		hasFailure = true;

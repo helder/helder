@@ -88,6 +88,15 @@ function tests() {
 			equals(g.code, -1);
 			equals(g.message, "boom 3");
 		}));
+		#if (hxmc.target != "wasm32-wasi")
+		test("errors: a GC job's names where it was thrown", async(() -> {
+			var g:JobError = throwsAsync(() -> Jobs.job(JobsWork.fault).run(3));
+			var first = Errors.text(g).split("\n")[1];
+			equals(first.substr(first.lastIndexOf(" line ")), ' line ${JobsWork.faultAt})');
+			equals(first.indexOf("JobsWork.fault") > 0, true);
+			equals(Errors.text(g).indexOf("\nRethrown at:\n") > 0, true);
+		}));
+		#end
 		test("a channel: a job's values in order, then its close", async(() -> {
 			var ch = new Channel<{i:Int, s:String}>();
 			var got = Async.scope(task -> {
@@ -197,11 +206,27 @@ class JobsWork {
 	public static function boom(x:Int):Int
 		throw "boom " + x;
 
+	// (the line fault throws at; a try: a function of its own, never inlined)
+	public static final faultAt = line() + 3;
+	public static function fault(x:Int):Int {
+		var none:Null<JobsBox> = try x > 0 ? null : new JobsBox() catch (_:Dynamic) null;
+		return none.n;
+	}
+
+	static function line(?p:haxe.PosInfos):Int
+		return p.lineNumber;
+
 	public static function count(p:{n:Int, out:Channel<{i:Int, s:String}>}):Void {
 		for (i in 0...p.n)
 			p.out.send({i: i, s: "v"});
 		p.out.close();
 	}
+}
+
+class JobsBox {
+	public var n = 1;
+
+	public function new() {}
 }
 
 @:hxmc.struct class JobsVec {

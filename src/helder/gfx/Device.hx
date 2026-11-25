@@ -1,5 +1,6 @@
 package helder.gfx;
 
+import helder.async.Errors;
 import helder.os.Surface;
 #if hxmc.dev
 import helder.dev.Hot;
@@ -122,9 +123,9 @@ final class Device {
 		if (commands.length == 0) return;
 		try
 			replay.run(commands, true)
-		catch (e:Dynamic) {
+		catch (e:haxe.Exception) {
 			commands.clear();
-			throw e;
+			throw Errors.kept(e);
 		}
 		commands.clear();
 		presented();
@@ -155,7 +156,7 @@ final class Device {
 		presented();
 		if (e != null) {
 			replay.error = null;
-			throw e;
+			throw Errors.carried(e);
 		}
 	}
 
@@ -690,9 +691,9 @@ final class Device {
 		try {
 			commands.call(r -> r.impl.dispose());
 			sync();
-		} catch (e:Dynamic) {
+		} catch (e:haxe.Exception) {
 			release();
-			throw e;
+			throw Errors.kept(e);
 		}
 		release();
 	}

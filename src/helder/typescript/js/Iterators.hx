@@ -2,6 +2,7 @@ package helder.typescript.js;
 
 import helder.typescript.js.Values;
 import helder.typescript.js.Lib.*;
+import helder.async.Errors;
 
 class IteratorRecord {
 	public var target:Dynamic;
@@ -73,9 +74,9 @@ class Iterators {
 				return finished;
 			}
 			return get(next, "value");
-		} catch (e:Dynamic) {
+		} catch (e:haxe.Exception) {
 			record.done = true;
-			throw e;
+			throw Errors.kept(e);
 		}
 	}
 
@@ -175,10 +176,10 @@ class Iterators {
 				h.busy = false;
 				return result(value, false);
 			}
-		} catch (e:Dynamic) {
+		} catch (e:haxe.Exception) {
 			h.completed = true;
 			h.busy = false;
-			throw e;
+			throw Errors.kept(e);
 		}
 	}
 
@@ -194,9 +195,9 @@ class Iterators {
 			close(h.outer);
 			h.busy = false;
 			return result(undef(), true);
-		} catch (e:Dynamic) {
+		} catch (e:haxe.Exception) {
 			h.busy = false;
-			throw e;
+			throw Errors.kept(e);
 		}
 	}
 

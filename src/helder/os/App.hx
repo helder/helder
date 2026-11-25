@@ -241,7 +241,7 @@ class App {
 				if (eventAdopt != null) eventAdopt(true);
 				try while (turn(onFrame, onEvent)) {} catch (e:haxe.Exception) {
 					if (eventAdopt != null) eventAdopt(false);
-					throw e;
+					throw helder.async.Errors.kept(e);
 				}
 				if (eventAdopt != null) eventAdopt(false);
 			});
