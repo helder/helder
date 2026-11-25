@@ -49,7 +49,7 @@ class ShapeWindowCheck {
 		if (desk == null) w.window.moveTo(200, 200);
 		#end
 		var step = 0, all = desk == null ? [w] : [desk, w], end = 40, downs = [0, 0], edge:Null<helder.ui.UiWindow> = null;
-		var clickStart = 0, clickIndex = 0, retried = false;
+		var clickStart = 0, clickIndex = 0, clickPhase = 0, clickAt = 0.0, moves = 0, routed:Null<Bool> = null;
 		App.run(() -> {
 			if (++step == 12) {
 				check(w.window.transparent == (expect == "yes"), 'transparent: ${w.window.transparent}, ${expect == "yes" ? "asked for and composed so" : "not here: opaque"}');
@@ -80,40 +80,59 @@ class ShapeWindowCheck {
 				}
 			}
 			// (a click on the box: its own; then where it is clear: the window
-			// behind's, which it activates and raises, so it comes last)
-			if (clickStart > 0) {
-				var through = clickIndex == 1;
+			// behind's, which it activates and raises, so it comes last. The
+			// window takes the pointer or lets it through by where the pointer
+			// is at its polls (macOS' ignoresMouseEvents, Windows'
+			// WS_EX_TRANSPARENT), and the system routes a press by its own
+			// view of that, applied later still (CI's macOS: the window server's
+			// window at the point the one behind, this one not ignoring the
+			// mouse): the press only once the system's hit test at the pointer
+			// is the window that should get it, 3 s at most, said if not; then
+			// its presses counted until one came, 3 s at most, and 0.2 s on)
+			if (clickStart > 0 && step >= clickStart) {
+				var through = clickIndex == 1, now = haxe.Timer.stamp();
 				var x = through ? 10.0 : 80.0, y = through ? 10.0 : 70.0;
-				var s0 = clickStart;
-				// (twice: a runner's first posted move was seen dropped)
-				if (step == s0 || step == s0 + 2) Click.move(w.window, x, y);
-				if (step == s0 + 4) {
-					downs = [0, 0];
-					#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
-					Plain.downs = 0;
-					Plain.styles(w.window.surface.handle);
-					#elseif (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
-					macState(w);
-					#end
-					Click.press(w.window, x, y);
-				}
-				if (step == s0 + 12) {
-					#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
-					downs[0] += Plain.downs;
-					#end
-					var passed = through ? downs[0] >= 1 && downs[1] == 0 : downs[1] >= 1 && downs[0] == 0;
-					var what = 'a click ${through ? "where it is clear: the window behind's" : "on the box: its own"} (presses: behind ${downs[0]}, it ${downs[1]})';
-					if (!passed && !retried) {
-						Sys.println('ShapeWindowCheck: first attempt failed: $what; retrying once');
-						retried = true;
-						clickStart = step + 2;
-					} else {
-						check(passed, what);
-						retried = false;
-						clickIndex++;
-						clickStart = clickIndex < 2 ? step + 2 : 0;
-						if (clickStart == 0) end = step + 3;
-					}
+				switch clickPhase {
+					case 0:
+						Click.move(w.window, x, y);
+						clickPhase = 1;
+						clickAt = now;
+						moves = 1;
+					case 1:
+						var hit = Click.hitsIt(w.window);
+						// (posted again now and then: a runner's first posted move was seen dropped)
+						if (hit != !through && moves < 6 && now - clickAt > 0.4 * moves) {
+							Click.move(w.window, x, y);
+							moves++;
+						}
+						// (none read here (X11's input shape, the server's own): the move's events before the press's, in order)
+						if (hit == !through || (hit == null && now - clickAt > 0.1) || now - clickAt > 3) {
+							routed = hit;
+							Sys.println('ShapeWindowCheck: the press ${Math.round((now - clickAt) * 1000)} ms after the move (${moves} posted), the system\'s hit test at the pointer ${hit == null ? "not read here" : hit ? "this window" : "not this window"}');
+							downs = [0, 0];
+							#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+							Plain.downs = 0;
+							Plain.styles(w.window.surface.handle);
+							#elseif (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
+							macState(w);
+							#end
+							Click.press(w.window, x, y);
+							clickPhase = 2;
+							clickAt = now;
+						}
+					case 2:
+						var plain = #if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64") Plain.downs #else 0 #end;
+						var got = downs[0] + downs[1] + plain;
+						if ((got > 0 && now - clickAt > 0.2) || now - clickAt > 3) {
+							downs[0] += plain;
+							var passed = through ? downs[0] >= 1 && downs[1] == 0 : downs[1] >= 1 && downs[0] == 0;
+							var ready = routed == null ? "" : routed == !through ? "" : ', the system\'s hit test never ${through ? "let it through" : "this window"} in 3 s';
+							check(passed, 'a click ${through ? "where it is clear: the window behind's" : "on the box: its own"} (presses: behind ${downs[0]}, it ${downs[1]}$ready)');
+							clickIndex++;
+							clickPhase = 0;
+							clickStart = clickIndex < 2 ? step + 2 : 0;
+							if (clickStart == 0) end = step + 3;
+						}
 				}
 			}
 			// (then a window at the work area's right edge, as the time tracker's)
@@ -499,6 +518,33 @@ class Click {
 	public static function move(w:Window, x:Float, y:Float)
 		send(w, x, y, 0);
 
+	// (whether the system's own hit test at the pointer is w, as it routes a
+	// press: the window server's window there on macOS (after its view of
+	// ignoresMouseEvents), WindowFromPoint's top-level window on Windows
+	// (after WS_EX_TRANSPARENT and WM_NCHITTEST), on the main thread; null:
+	// none read here)
+	public static function hitsIt(w:Window):Null<Bool> {
+		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
+		var view = w.surface.handle;
+		return OsThread.get(() -> {
+			var M = helder.os.apple.objc.Msg, S = helder.os.apple.objc.ObjC;
+			var win = M.id(view, S.sel("window")), g = M.point(S.cls("NSEvent"), S.sel("mouseLocation"));
+			M.iPointInt(S.cls("NSWindow"), S.sel("windowNumberAtPoint:belowWindowWithWindowNumber:"), g, 0).toInt() == M.i(win, S.sel("windowNumber")).toInt();
+		});
+		#elseif (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+		var hwnd = w.surface.handle;
+		return OsThread.get(() -> hxmc.unsafe.Arena.scopedValue(a -> {
+			var p = a.make(helder.os.windows.User32.POINT);
+			ScreenDc.GetCursorPos(p);
+			// (a POINT by value: x the low half, y the high)
+			var at = ScreenDc.WindowFromPoint(haxe.Int64.make(p.value.y, p.value.x));
+			!at.isNull() && ScreenDc.GetAncestor(at, 2).toI64() == hwnd.toI64();
+		}));
+		#else
+		return null;
+		#end
+	}
+
 	public static function press(w:Window, x:Float, y:Float) {
 		send(w, x, y, 1);
 		Sys.sleep(0.05);
@@ -653,6 +699,8 @@ class Screen {
 	static function IsWindowVisible(hwnd:hxmc.unsafe.Ptr):Int;
 	static function IsIconic(hwnd:hxmc.unsafe.Ptr):Int;
 	static function PrintWindow(hwnd:hxmc.unsafe.Ptr, dc:hxmc.unsafe.Ptr, flags:Int):Int;
+	static function WindowFromPoint(p:haxe.Int64):hxmc.unsafe.Ptr;
+	static function GetAncestor(hwnd:hxmc.unsafe.Ptr, flags:Int):hxmc.unsafe.Ptr;
 }
 
 @:hxmc.c @:hxmc.lib("dwmapi") extern class ScreenDwm {
