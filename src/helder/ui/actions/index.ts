@@ -30,7 +30,7 @@
 // menus with their keys and their handlers' states. `Standard` is
 // StandardAction's (standard::Quit, standard::Copy...).
 import { Script } from './runtime';
-import type { ActionState, Menu, MenuItem, PlatformMenuItem } from 'helder/ui';
+import type { ActionState } from 'helder/ui';
 
 // an action's arguments (a method's), as an object (its result)
 type Method = (...args: any[]) => object | void;
@@ -257,38 +257,6 @@ export function stateOf(ui: Ui, action: Action, from?: unknown): ActionState {
 	return Script.state(ui as any, action, from as any);
 }
 
-// Menus (helder.ui.menu): items bound to actions, each shown with its keys
-// and its handler's state; separators, submenus, and the standard items
-// each platform has (roles: "about", "quit", "copy", "paste"...). helder/ui's
-// own types, so its MenuBarView takes these menus
-export type { Menu, MenuItem, PlatformMenuItem };
-
-export function item(label: string, action: Action): MenuItem {
-	return Script.item(label, action) as any;
-}
-export const separator: MenuItem = Script.separator() as any;
-export function submenu(label: string, items: MenuItem[]): MenuItem {
-	return Script.submenu(label, items as any) as any;
-}
-export function role(name: string, label?: string): MenuItem {
-	return Script.role(name, label) as any;
-}
-// the items as a platform's menu takes them (labels, the keymap's shortcuts, the handlers' states)
-export function resolve(ui: Ui, items: MenuItem[], from?: unknown): PlatformMenuItem[] {
-	return Script.resolve(ui as any, items as any, from as any) as any;
-}
-// a context menu at x, y for from (default: the focus)
-export function popup(ui: Ui, items: MenuItem[], x: number, y: number, from?: unknown): void {
-	Script.popup(ui as any, items as any, x, y, from as any);
-}
-
-// a window's menu bar: the platform's (macOS's, Windows'), else drawn at the top of its root
-export class MenuBar {
-	readonly bar: unknown;
-	constructor(ui: Ui, menus: Menu[]) {
-		this.bar = Script.menuBar(ui as any, menus.map(m => Script.menu(m.label, m.items as any, m.role)) as any);
-	}
-	setMenus(menus: Menu[]): void {
-		Script.setMenus(this.bar as any, menus.map(m => Script.menu(m.label, m.items as any, m.role)) as any);
-	}
-}
+// Menus are helder/ui's (Menu, MenuItem; item(label, action), separator(),
+// submenu, role, popup; MenuBarView): items bound to these actions, each
+// shown with its keys and its handler's state.

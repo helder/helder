@@ -30,6 +30,8 @@ package helder.ui;
 	NavScreen = helder.ui.nav.Bar.NavScreen, NavButton = helder.ui.nav.Bar.NavButton, Sheet = helder.ui.nav.Sheets.Sheet)
 @:typescript.functions(pager = helder.ui.widgets.Pager.create,
 	windowControlsSide = helder.ui.widgets.WindowButtons.side)
+@:typescript.functions(item = helder.ui.menu.Menus.menuItem, separator = helder.ui.menu.Menus.menuSeparator, submenu = helder.ui.menu.Menus.menuSubmenu,
+	role = helder.ui.menu.Menus.menuRole, popup = helder.ui.menu.Menus.popup, resolve = helder.ui.menu.Menus.menuResolve)
 @:typescript.jsx(neutral)
 @:build(helder.typescript.api.Manifest.build())
 class TypeScript {}

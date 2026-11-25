@@ -738,8 +738,8 @@ Keymap.global.bind('1', Viewer.zoomTo(100), 'Viewer')
 `Viewer.zoomTo(100)` makes a value, `{type: "zoomTo", percent: 100}`; a
 handler is a `switch (a.type)`, narrowed by the checker. The same
 machinery dispatches it (`on(node, ...)`, `onWindow`, `onApp`, a JSON
-keymap's `["viewer::ZoomTo", 100]`, menus' `item(label, action)`,
-`resolve`, `popup`, `MenuBar`); `Standard` is StandardAction's
+keymap's `["viewer::ZoomTo", 100]`, helder/ui's menus, `item(label,
+action)`, `popup`, `<MenuBarView>`); `Standard` is StandardAction's
 (`Standard.quit()`), its values given to a TypeScript handler as the
 program's objects. tests/typescript/definitions/shortcuts.tsx and
 Shortcuts.hx print the same; examples/ts-todo binds its filters.

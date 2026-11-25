@@ -5,8 +5,9 @@
 // the JSON's actions and a menu's items with their keys and states.
 import {
 	actions, type ActionOf, handle, Keymap, Standard, rootOf, setKeymap, find, focus, dispatch, stateOf,
-	actionName, parseAction, sameAction, item, separator, role, resolve, MenuBar
+	actionName, parseAction, sameAction
 } from "helder/ui/actions";
+import { item, separator, role, resolve, MenuBarView } from "helder/ui";
 import {headless, mount, press} from 'helder/test'
 
 export const Viewer = actions("viewer", {
@@ -62,8 +63,8 @@ console.log(keymap.bindings().join("\n"));
 console.log(keymap.label(Viewer.zoomTo(200), "Viewer"), keymap.label(Viewer.zoomTo(50), "Viewer"), keymap.label(Viewer.zoomTo(100)), keymap.label(Standard.quit()));
 const parsed = parseAction(`["viewer::ZoomTo", 7]`);
 console.log(actionName(parsed), sameAction(parsed, Viewer.zoomTo(7)), sameAction(parsed, Viewer.zoomTo(8)), actionName(parseAction(`"standard::Copy"`)));
-for (const it of resolve(ui, [item("Next", Viewer.next()), separator, item("Zoom", Viewer.zoomTo(200)), item("Open", Viewer.open("a.png", ["x", "y"])), role("quit")]))
+for (const it of resolve(ui, [item("Next", Viewer.next()), separator(), item("Zoom", Viewer.zoomTo(200)), item("Open", Viewer.open("a.png", ["x", "y"])), role("quit")]))
 	console.log(it.separator ? "-" : `${it.label}: ${it.shortcut ?? "-"}, ${it.disabled ? "disabled" : "enabled"}${it.checked === undefined ? "" : it.checked ? ", checked" : ", unchecked"}`);
 // (a menu bar: F10 bound to its own action, menu::OpenMenuBar)
-new MenuBar(ui, [{label: "View", items: [item("Zoom", Viewer.zoomTo(200))]}]);
+mount(ui, <MenuBarView menus={[{label: "View", items: [item("Zoom", Viewer.zoomTo(200))]}]}/>);
 console.log(keymap.label(parseAction(`"menu::OpenMenuBar"`)));

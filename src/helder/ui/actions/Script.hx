@@ -4,9 +4,6 @@ import helder.ui.Node;
 import helder.ui.Ui;
 import helder.ui.actions.Actions;
 import helder.ui.actions.JsonType;
-import helder.ui.menu.Menu;
-import helder.ui.menu.Menus;
-import helder.ui.platform.PlatformMenuItem;
 
 // helder.ui.actions for TypeScript programs (helder/ui/actions:
 // src/helder/ui/actions/index.ts, which a program imports; this is its
@@ -16,7 +13,7 @@ import helder.ui.platform.PlatformMenuItem;
 // value of them), and its spaces Haxe's (ActionSpace): a definition's
 // (define, its handler's output), and StandardAction's, whose values the
 // program's handlers are given as its objects (mirror). The rest are
-// helder.ui's: handlers, keymaps, dispatch, menus.
+// helder.ui's: handlers, keymaps, dispatch (menus: helder/ui's).
 class Script {
 	// a program's actions(namespace, {...}): its definition's output
 	// (ActionsDefinition.toJson), its values the program's (form: which
@@ -146,42 +143,4 @@ class Script {
 	// what a menu shows action as from the focus (or from): ActionState
 	public static function state(ui:Ui, action:Dynamic, ?from:Node):ActionState
 		return ui.actionState(action, from);
-
-	// --- menus
-
-	public static function item(label:String, action:Dynamic):MenuItem
-		return Item(label, action);
-
-	public static function separator():MenuItem
-		return Separator;
-
-	public static function submenu(label:String, items:Array<MenuItem>):MenuItem
-		return Submenu(label, items);
-
-	// a standard item ("about", "quit", "copy"...: MenuRole's), its label the platform's unless given
-	public static function role(role:String, ?label:String):MenuItem
-		return Role(cast role, label);
-
-	// a menu of the bar (role "window": the window menu)
-	public static function menu(label:String, items:Array<MenuItem>, ?role:String):Menu
-		return role == null ? {label: label, items: items} : {label: label, items: items, role: cast role};
-
-	// the items as the platform's menus take them: labels, shortcuts, states
-	public static function resolve(ui:Ui, items:Array<MenuItem>, ?from:Node):Array<PlatformMenuItem>
-		return Menus.resolve(ui, items, from, []);
-
-	// a context menu at x, y for from (default: the focus)
-	public static function popup(ui:Ui, items:Array<MenuItem>, x:Float, y:Float, ?from:Node):Void
-		Menus.popup(ui, items, x, y, from);
-
-	// the window's menu bar (the platform's, else drawn at the top of its root)
-	public static function menuBar(ui:Ui, menus:Array<Menu>):MenuBar {
-		var bar = new MenuBar(ui, menus);
-		ui.root.insert(bar.node, 0);
-		return bar;
-	}
-
-	public static function setMenus(bar:MenuBar, menus:Array<Menu>):Void
-		bar.setMenus(menus);
 }
-
