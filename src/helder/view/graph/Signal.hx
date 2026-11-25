@@ -1,6 +1,6 @@
 package helder.view.graph;
 
-// A value in the graph (DESIGN.md 3.1): called to read it (tracked inside
+// A value in the graph (view's README, Signals): called to read it (tracked inside
 // a computation), called with a value to write it, with a function to
 // update it from the latest value written (a write is committed at the
 // next flush: reads see the committed value until then). Made by

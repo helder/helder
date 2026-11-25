@@ -1,6 +1,6 @@
 # The CLI
 
-One command does everything: `helder` builds, runs, reloads, tests, inspects and publishes, for every platform, from any machine. It brings its own compiler, so an `npm install` is the whole setup.
+One command does everything: `helder` builds, runs, reloads, tests, inspects and publishes, for every platform, from any machine. It brings its own compiler. See [Install and first app](../start/install.md) for the Node.js version and TypeScript checker.
 
 <Terminal command="helder help" src="help.txt"/>
 

@@ -17,7 +17,7 @@ import helder.scene.Node;
 // tool's (Blender's, another's atlas).
 //   Lightmap.attach(node, new Lightmap(baked, new Vec4(0, 0, 0.5, 0.5)));
 class Lightmap {
-	public static final KIND = new StoreKind<Lightmap>("lightmap");
+	@:noCompletion public static final KIND = new StoreKind<Lightmap>("lightmap");
 
 	public var texture:Texture;
 	public var rect:Vec4;

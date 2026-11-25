@@ -2,7 +2,7 @@ package helder.view.graph;
 
 import haxe.coro.Coroutine;
 
-// How a coroutine computation starts (DESIGN.md 2, Holds): helder.async
+// How a coroutine computation starts (view's README, Holds): helder.async
 // registers it (Loop's module, when linked), so that the graph needs no
 // loop. The body runs now, inside the computation (its reads up to the
 // first suspension tracked), as a task; ok or fail its completion; the

@@ -13,7 +13,7 @@ fx.advance(dt);
 fx.emit(x, y, z, vx, vy, vz, r, g, b, a, size0, size1, life, stretch, heat);
 
 var rocks = new InstancedMesh(Shapes.box(device, rock), 100000);
-InstancedMesh.attach(world.node("belt"), rocks);
+InstancedMesh.attach(world.node('belt'), rocks);
 rocks.setTransform(i, x, y, z, qx, qy, qz, qw, scale);   // nothing allocated
 ```
 

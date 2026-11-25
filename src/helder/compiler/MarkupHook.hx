@@ -4,7 +4,7 @@ import core.Ast;
 import core.ds.VectorTools.vector;
 import syntax.Parser.ParseResult;
 
-// Markup in any function (DESIGN.md 3.5): each file helder's compiler parses
+// Markup in any function (view's README, Markup): each file helder's compiler parses
 // has its markup literals (@:markup "<...>", Haxe's parse of <view/>)
 // wrapped as `implements Markup` wraps them, helder.view.View.literal(@:markup
 // "<...>"), compiled when they are typed (MarkupMacro.literal), so that a

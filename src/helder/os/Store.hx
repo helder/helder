@@ -45,7 +45,7 @@ class Store {
 	// the stores open() gives while set (null: the platform's): a screen's of
 	// a story host (helder.ui.ScreenContext, which sets it while current),
 	// each name's store in memory, kept for the run
-	public static var scope:Null<Map<String, Store>> = null;
+	@:noCompletion public static var scope:Null<Map<String, Store>> = null;
 
 	function new(name:String, path:String, web:Bool, memory = false) {
 		this.name = name;

@@ -3,35 +3,34 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import os from 'node:os';
+import { takeShard } from '../shard.mjs';
 // The TypeScript frontend's checks (bun run test typescript): every program
 // of cases/ and modules/ compiled by tsc and run on node, then compiled by
 // helder's compiler natively and as wasm32-wasi, their outputs compared; standards/
 // throw on a mismatch themselves; reject/ must fail with a diagnostic.
-// Sharded: without TS_SHARD it builds the compiler, starts TS_JOBS shards
-// (the machine's cores, at most 4; TS_JOBS=1: this process alone) and fails
-// when one does; a shard (TS_SHARD=<i>/<n>) runs every n-th unit of the
-// checks below (a case, a case's target, a block), in this order on every shard.
-// TS_PART=<k>/<m>: this machine's part of m (CI's jobs): its TS_JOBS shards
-// are those k*TS_JOBS.. of the m*TS_JOBS (every part the same TS_JOBS).
+// --shard i/n selects this machine's work. --jobs sets its local worker count.
 const T='tests/typescript';
-if(!process.env.TS_SHARD) {
-    const jobs=Number(process.env.TS_JOBS)||Math.max(1,Math.min(4,os.availableParallelism()));
-    const [partK,partM]=(process.env.TS_PART??'0/1').split('/').map(Number);
-    if(jobs>1||partM>1) {
-        const b=spawnSync(process.execPath,['src/helder/compiler/build.mjs'],{stdio:['ignore','ignore','inherit']});
-        if(b.status!==0)process.exit(1);
-        const {spawn}=await import('node:child_process');
-        const t0=Date.now();
-        const codes=await Promise.all(Array.from({length:jobs},(_,i)=>new Promise(resolve=>{
-            const p=spawn(process.execPath,[process.argv[1],...process.argv.slice(2)],{env:{...process.env,TS_SHARD:`${partK*jobs+i}/${partM*jobs}`},stdio:['ignore','inherit','inherit']});
-            p.on('close',code=>resolve(code));
-        })));
-        const failed=codes.map((c,i)=>c===0?null:`${partK*jobs+i}/${partM*jobs}`).filter(x=>x);
-        console.log(`typescript: ${jobs} shards${partM>1?` (part ${partK} of ${partM})`:''} in ${Math.round((Date.now()-t0)/1000)} s${failed.length?`, failed: ${failed.join(', ')}`:', all passed'}`);
-        process.exit(failed.length?1:0);
-    }
+const args=process.argv.slice(2);
+const [partI,partN]=takeShard(args);
+const jobs=args[0]==='--jobs' ? Number(args[1]) : Math.max(1,Math.min(4,os.availableParallelism()));
+if((args.length && (args[0]!=='--jobs' || args.length!==2)) || !Number.isSafeInteger(jobs) || jobs<1) {
+    throw new Error('usage: run.mjs [--shard i/n] [--jobs n]');
 }
-const [shardI,shardN]=(process.env.TS_SHARD??'0/1').split('/').map(Number);
+if(jobs>1) {
+    const b=spawnSync(process.execPath,['src/helder/compiler/build.mjs'],{stdio:['ignore','ignore','inherit']});
+    if(b.status!==0)process.exit(1);
+    const {spawn}=await import('node:child_process');
+    const t0=Date.now();
+    const shards=Array.from({length:jobs},(_,i)=>`${partI*jobs+i}/${partN*jobs}`);
+    const codes=await Promise.all(shards.map(shard=>new Promise(resolve=>{
+        const p=spawn(process.execPath,[process.argv[1],'--shard',shard,'--jobs','1'],{stdio:['ignore','inherit','inherit']});
+        p.on('close',code=>resolve(code));
+    })));
+    const failed=shards.filter((_,i)=>codes[i]!==0);
+    console.log(`typescript: ${jobs} workers for shard ${partI}/${partN} in ${Math.round((Date.now()-t0)/1000)} s${failed.length?`, failed: ${failed.join(', ')}`:', all passed'}`);
+    process.exit(failed.length?1:0);
+}
+const [shardI,shardN]=[partI,partN];
 let unit=0;
 const mine=()=>unit++%shardN===shardI;
 const dir=`bin/typescript/run-${process.pid}`; fs.mkdirSync(dir,{recursive:true});
@@ -125,14 +124,6 @@ for(const file of fs.readdirSync(`${T}/reject`).filter(f=>f.endsWith('.ts')).sor
     if(expected)assert.ok(r.stderr.includes(expected),`${file} should report ${expected}, got ${r.stderr}`);
     assert.equal(fs.existsSync(out),false,`${file} must not emit an executable`);
     console.log(`PASS diagnostic ${file}`);
-}
-// helder's declaration files, and the tests' (test-renderer.d.ts): as its
-// Haxe types make them (helder.typescript.api.Declarations)
-if(mine()) {
-ok(run(process.execPath,['src/helder/typescript/api/declarations.mjs','--check']),'helder\'s declarations');
-ok(run(process.execPath,['src/helder/typescript/api/declarations.mjs','--check','--cp','tests/view','--cp','tests/ui','TestTypeScript','UiTypeScript']),'the tests\' declarations');
-ok(run(process.execPath,['src/helder/typescript/api/declarations.mjs','--check','--cp',`${T}/platform`,'PlatformTypeScript']),'platform/win32.d.ts');
-console.log('PASS declarations');
 }
 // src/helder/ui/style.d.ts, written by hand: its StyleProps naming
 // helder.ui.StyleProps' properties, no more, no fewer

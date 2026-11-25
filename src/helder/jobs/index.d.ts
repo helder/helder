@@ -7,7 +7,7 @@
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 
-declare const __haxe: {Job: "helder.jobs.script.Job", __module: "helder.jobs.TypeScript"};
+declare const __haxe: {Job: "helder.jobs.script.Job", job: "helder.jobs.script.Job.of", __module: "helder.jobs.TypeScript"};
 
 // A TypeScript program's job (helder/jobs: job(f), a definition compiled
 // by helder.typescript.lower's Definitions, its Sendable check
@@ -20,11 +20,12 @@ declare const __haxe: {Job: "helder.jobs.script.Job", __module: "helder.jobs.Typ
 //   import {job} from "helder/jobs";
 //   function count(text: string): number { return text.split(" ").length; }
 //   const n = await job(count).run("one two three");
-export declare class Job<In, Out> {
-	// f's job (a definition: its calls are compiled, this is never called)
-	static of<In, Out>(f: (arg0: In) => Out): Job<In, Out>;
+declare class Job<In, Out> {
 	// f run on a worker with input: its result (its exception a JobError)
 	run(input?: In): Promise<Out>;
 }
 
-export declare const job: typeof Job.of;
+// f's job (a definition: its calls are compiled, this is never called)
+export declare function job<In, Out>(f: (arg0: In) => Out): Job<In, Out>;
+
+export {};

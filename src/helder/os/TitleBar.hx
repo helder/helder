@@ -1,8 +1,9 @@
 package helder.os;
 
 // A window's title bar (Window's titlebar option): the system's
-// ("standard"), or the content under it ("inset"), the window's buttons
-// in the app's own layout: macOS's own buttons kept and placed over the
+// ("standard"), none at all ("none": no title bar, frame nor buttons, a
+// borderless window; its drag regions still the app's: titlebarAt), or the
+// content under it ("inset"), the window's buttons in the app's own layout: macOS's own buttons kept and placed over the
 // content, elsewhere drawn by the app (helder.ui's <WindowControls/>).
 // What a press is in an inset title bar is the app's answer
 // (Window.titlebarAt: a drag region, one of its buttons); the window's
@@ -11,6 +12,7 @@ package helder.os;
 enum abstract TitleBar(String) to String {
 	var Standard = "standard";
 	var Inset = "inset";
+	var None = "none";
 }
 
 // what a point of an inset window is
@@ -30,6 +32,7 @@ enum abstract TitleHit(Int) to Int {
 	var BottomRight = 12;
 }
 
+@:noCompletion
 class TitleBars {
 	// the title bar's height and the drawn buttons' width, in points
 	// (Windows' caption, 32, its buttons 46 wide; Linux's, GNOME's

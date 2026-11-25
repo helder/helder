@@ -1,7 +1,7 @@
 # helder.view
 
 Signals and JSX-like markup for Haxe and TypeScript, on every target:
-Solid 2's reactive graph (helder.view.graph, DESIGN.md) and markup
+a reactive graph based on Solid 2 (helder.view.graph) and markup
 literals compiled to direct calls on a renderer, with no virtual DOM.
 `helder.ui` renders it into its nodes, drawn or native.
 
@@ -28,7 +28,7 @@ function main() {
 The same in TypeScript (TSX), but for `const` and `=>`: helder.typescript
 compiles TSX through the same planner (helder.markup), its declarations
 (index.d.ts) generated from these classes' types (`TypeScript.hx`, the
-module's declaration: DESIGN.md 7).
+module's declaration).
 
 ## Signals
 
@@ -116,6 +116,75 @@ it makes its nodes, each time it is mounted.
   `Repeat` (a row per number), `Show`, `Switch` and `Match` (`when`
   truthy: not null and not false), `Provider`, `Errored`, `Loading`.
 
+## The graph
+
+One node type underneath, three roles: a signal holds a value, a memo
+derives one lazily when read and stale, an effect computes in the graph
+and applies after the commit. Each node's value has a status beside it:
+ready, pending (its previous value still there) or errored. Status
+propagates like a value: a memo reading a pending node is pending.
+Reading a pending value in a tracked computation stops it there (the
+one exception the runtime uses, internally); `peek()` never throws.
+
+### Holds
+
+The rules are Solid 2's async fundamentals (its
+`packages/signals/docs/RULES-FUNDAMENTALS.md`, F-1 to F-12): the screen
+is whole (F-1); a change that needs async to be shown is held, the
+screen keeping what it showed (F-2); only render effects are readers,
+and one holds only while it is the display (F-3); an armed `<Loading>`
+catches what is pending under it (F-4), a disarmed one forwards (F-5);
+`latest` and `isPending` read ahead of a hold and never hold it (F-6),
+nothing else reveals ahead (F-7); a first load is loading, not pending
+(F-9); a write is visible at its flush, to every channel (F-10); an
+error sends a boundary to its fallback, pending is not an error (F-12).
+F-11 (optimistic values) comes with actions, later.
+
+The mechanism is helder's: a flush is a transaction over the nodes its
+writes reach. Each node keeps its committed value (the screen's, and
+what untracked reads see) and, while a transaction holds it, a staged
+one beside it. A render effect that reads a value not ready, with no
+armed boundary above it, parks the transaction: its stagings stay
+staged, no apply runs. A computation that reads a node another parked
+transaction holds joins it, so the two land as one; transactions over
+disjoint nodes stay independent. Once nothing it renders waits, the
+transaction commits: every staging becomes the committed value and the
+applies run in one frame, render effects first.
+
+### Async work
+
+An async computation returns an `Awaitable<T>`, the core's whole
+contract with async work, so the core needs no loop:
+
+```haxe
+interface Awaitable<T> {
+  function onAnswer(value:T->Void, error:Dynamic->Void):Void; // once
+  function cancel():Void; // superseded, or its owner disposed
+}
+```
+
+helder.async's tasks, helder.asset's loads and TypeScript's promises
+are all Awaitables. `task(coroutine)` starts a helder.async task now,
+inside the computation, so its reads up to the first suspension are
+tracked. A superseded run is cancelled, its task tree with it: the work
+stops, not only its result.
+
+### Effects in two halves
+
+All `compute` halves of a commit run before any `apply`, so side
+effects see a complete graph. `apply` runs every time `compute` does
+(put a memo in front to skip unchanged values) and may return a
+cleanup. Renderers' bindings are effects with the renderer's `apply`:
+the graph never touches nodes outside one.
+
+### Ownership
+
+Computations made while another runs belong to it and are disposed
+before it runs again. `root(fn)` made inside an owner is owned by it,
+`runWithOwner(null, fn)` detaches. Disposal unwinds children first,
+later cleanups before earlier ones. An async run's task is a child of
+its node.
+
 ## Values not ready yet
 
 As Solid 2 has it: an async memo (one whose function returns an
@@ -187,7 +256,7 @@ declares its own with types and metadata the macro reads:
   `helder.web.DomEvents`, `helder.scene.view.SceneEvents`; a field `on`
   types custom events, `on:name`); markup checks handlers against it. Data,
   not code: helder.typescript's manifest and its declarations read it
-  (DESIGN.md 7.3). Without it any `on*` name is taken, its event unknown.
+  (see [TypeScript declarations](../typescript/README.md)). Without it any `on*` name is taken, its event unknown.
 
 The macro compiles each literal when it is typed (an expression macro,
 `View.literal`; the `Markup` build macro only wraps the literals) and

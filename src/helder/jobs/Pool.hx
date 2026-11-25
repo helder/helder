@@ -7,6 +7,7 @@ import sys.thread.Thread;
 // The native pool: Jobs.size() threads, started at the first job, waiting
 // for runs on one queue (in a safe region while they wait). A run's end is
 // posted to its loop, which a post wakes (helder.async.Loop: its wake pipe).
+@:noCompletion
 class Pool {
 	static var queue:Null<Deque<Run>>;
 	static var threads = 0;
@@ -40,6 +41,7 @@ class Pool {
 }
 
 // the cores this process may run on (at least one)
+@:noCompletion
 class Cores {
 	public static function count():Int {
 		var n = hxmc.Platform.os() == 2 ? CoresWin.GetActiveProcessorCount(0xFFFF) : CoresPosix.sysconf(hxmc.Platform.os() == 1 ? 58 : 84).toInt();

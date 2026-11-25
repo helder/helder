@@ -18,6 +18,7 @@ import hxmc.unsafe.Ptr;
 // Buffer or a Reader): the raw ones stay in its trusted methods.
 @:allow(helder.jobs)
 @:hxmc.unsafe(gc)
+@:noCompletion
 class Run implements IDispatchObject {
 	static var nextId = 1;
 

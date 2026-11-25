@@ -33,7 +33,7 @@ class UiDrawTest {
 		var args = Sys.args();
 		var golden = args[0], out = args[1], bless = args[2] == "--bless";
 		if (args[2] == "--smoke") smoke = true;
-		#if !helder.soft
+		#if !(helder.soft && helder.headless)
 		if (args[2] == "--window") {
 			window(golden, out);
 			return;
@@ -86,7 +86,7 @@ class UiDrawTest {
 		return ok;
 	}
 
-	#if !helder.soft
+	#if !(helder.soft && helder.headless)
 	static function window(golden:String, out:String) {
 		var w = new UiWindow("UiDrawTest", W, H);
 		Sample.build(w.root);
@@ -108,15 +108,41 @@ class UiDrawTest {
 			} else {
 				idle++;
 				App.wait(0.05);
-				if (haxe.Timer.stamp() - since > 0.5) w.close();
+				if (haxe.Timer.stamp() - since > 0.5) {
+					#if (helder.soft && helder.os == "linux")
+					shown(w, pixels);
+					#end
+					w.close();
+				}
 			}
 		}, e -> w.handle(e));
 		sys.io.File.saveBytes(out, Png.encode(pixels, W, H));
 		var slept = frames == 3 && idle > 2 && idle < 40;
-		Sys.println('UiDrawTest: window: $frames frames, then $idle turns idle, scale ${w.renderer.scale}' + (slept ? "" : " (FAIL: 3 frames and the loop asleep expected)"));
-		Sys.exit(compare(pixels, golden) && slept ? 0 : 1);
+		Sys.println('UiDrawTest: window: $frames frames, then $idle turns idle, scale ${w.scale}' + (slept ? "" : " (FAIL: 3 frames and the loop asleep expected)"));
+		Sys.exit(compare(pixels, golden) && slept && !failedShown ? 0 : 1);
 	}
 	#end
+
+	#if (helder.soft && helder.os == "linux")
+	// (-D helder.soft on X11: the window's pixels, as helder.os.Blit put them, the frame's)
+	@:hxmc.unsafe(gc) static function shown(w:UiWindow, frame:Bytes) {
+		var s = w.window.surface;
+		if (s.kind != X11) return;
+		var img = helder.os.x11.Xlib.XGetImage(s.display, s.handle.toI64(), 0, 0, W, H, (-1 : hxmc.unsafe.Int64), 2);
+		var differ = 0;
+		for (y in 0...H) {
+			var row = img.value.data.add(y * img.value.bytes_per_line);
+			for (x in 0...W)
+				for (k in 0...3)
+					if (row[4 * x + 2 - k] != frame.get(4 * (y * W + x) + k)) differ++;
+		}
+		helder.os.x11.Xlib.XDestroyImage(img);
+		if (differ > 0) failedShown = true;
+		Sys.println('UiDrawTest: window, X11 pixels: ' + (differ == 0 ? "ok (the frame's)" : 'FAIL ($differ channels differ from the frame)'));
+	}
+	#end
+
+	static var failedShown = false;
 
 	static function compare(pixels:Bytes, golden:String):Bool {
 		var g = Png.decode(sys.io.File.getBytes(golden));

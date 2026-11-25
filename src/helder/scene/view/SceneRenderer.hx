@@ -183,7 +183,7 @@ class SceneRenderer implements helder.view.Renders<SceneNode> {
 	public static function element_depthMaterial():SceneNode
 		return madeBy("depthMaterial", n -> Material.depth(SceneOptions.float(n.get("near", 0.1)), SceneOptions.float(n.get("far", 100.0)), SceneOptions.of(MaterialOptions, n.props)));
 
-	// lines, text and the helpers (DESIGN-3D.md's phase 3), each its own
+	// lines, text and the helpers, each its own
 	// element_<tag> too: a program links the line renderer, text's layout or
 	// debug drawing only when its markup names one
 	public static function element_lines():SceneNode

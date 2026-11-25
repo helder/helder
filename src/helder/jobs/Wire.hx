@@ -11,6 +11,7 @@ import hxmc.unsafe.Ptr;
 // from one. Little-endian; a String as UTF-8. A Buffer moves: natively its
 // memory's address, in a browser's worker its bytes (the sender's freed).
 @:hxmc.unsafe(gc)
+@:noCompletion
 class Writer {
 	var buf:Ptr;
 	var cap:Int;
@@ -115,6 +116,7 @@ class Writer {
 }
 
 @:hxmc.unsafe(gc)
+@:noCompletion
 class Reader {
 	final buf:IoBuffer;
 	// (whether free() frees buf: a message's or a result's, not a job's input)

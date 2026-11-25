@@ -73,7 +73,7 @@ the program prints goes to logcat (`adb logcat -s hxmc`). Text input
 (`startTextInput`, once `helder.os.android.TextInput.enable()` was called:
 helder.ui's drawn windows do) shows the soft keyboard and brings the input
 method's compositions and commits through a hidden `EditText`; a
-`ChildSurface` is a GPU view among Android's views. No clipboard there yet. Java from Haxe: `helder.os.android.Jni` (JNI's function tables,
+Java from Haxe: `helder.os.android.Jni` (JNI's function tables,
 bound like COM's by `helder.os.VTable`), `MainThread` (Java's main
 thread, where views live: work handed to it, Choreographer's frames
 there) and `Glue` (Java's listeners calling Haxe: helder then writes a
@@ -302,6 +302,17 @@ window.shadow = false;  // no system shadow (macOS, Windows)
 
 ```tsx
 <Surface background="transparent">…</Surface>  // or any colour with alpha: a transparent window
+<view pointer-events="none">…</view>           // drawn, its clicks passing through
+```
+
+```tsx
+<Surface backdrop="blur">…</Surface>  // the system's material behind: "blur", "mica", "glass"
+```
+
+```haxe
+window.backdrop = Blur;  // helder.os.WindowBackdrop; None after where the system has none
+window.input([x, y, width, height]);  // where it takes the pointer (pixels); elsewhere what is behind it does
+window.input(null);                   // everywhere (the default)
 ```
 
 A transparent window's pixels are premultiplied, its clear pixels show
@@ -318,10 +329,77 @@ else the window is opaque and says so. The browser: the canvas's alpha
 (WebGPU's `alphaMode: 'premultiplied'`, WebGL's `alpha`). helder.ui
 clears the frame to its background premultiplied (a transparent window's
 frames drawn whole: no damage rectangles) and an opaque window's
-background keeps alpha 1. Tests: `tests/ui/ShapeWindow.hx` (the frame
+background keeps alpha 1.
+
+Clicks pass through what a transparent window doesn't draw: helder.ui
+gives the window (`input`) the boxes of the nodes that draw something (a
+background, a border, a shadow, text, an image, a control) and that the
+pointer finds (`pointer-events` not `none`), again when they change
+(`UiWindow.clickThrough`, `<Surface clickThrough={false}>` to take them
+everywhere). macOS: `ignoresMouseEvents`, set by where the pointer is at
+each poll (an ignored window gets no move to say so). Windows:
+WM_NCHITTEST's `HTTRANSPARENT` passes a press to this thread's windows;
+for other apps' the window is `WS_EX_LAYERED | WS_EX_TRANSPARENT` while
+the pointer is outside them. Wayland: the surface's input region. X11:
+the input shape (`XShapeCombineRectangles`, libXext loaded when wanted).
+Not yet: the boxes are unturned (a transform is not followed) and not cut
+by a scroller's clip; macOS and Windows follow the pointer at the program's
+polls, so while it sleeps (0.1 s at most) the window keeps its last answer.
+The system's material behind a transparent window (`backdrop`): macOS's
+NSVisualEffectView under the layer's view (behind the window, active;
+blur its hudWindow material, mica underWindowBackground) or, macOS 26,
+an NSGlassEffectView filling it (glass); Windows 11 (22H2 on):
+`DWMWA_SYSTEMBACKDROP_TYPE` (blur Acrylic, mica Mica), the frame extended
+over the client area; KDE's blur for both: `org_kde_kwin_blur` on Wayland
+(plasma-wayland-protocols' XML, generated as the others), on X11
+`_KDE_NET_WM_BLUR_BEHIND_REGION` where its atom exists (KWin makes it).
+Elsewhere, on an opaque window, and for one the system lacks it reads
+`None` (and the last one is taken away). `<Surface backdrop>` makes the
+window transparent, its background clear unless given. #115's
+`AppleGlass` is glass in the layer tree; a window's backdrop is a view of
+its own under it all, so it doesn't use it.
+
+Tests: `tests/ui/ShapeWindow.hx` (the frame
 read back; macOS's capture of the window, Windows' screen over an opaque
 window behind, X11's 32-bit pixels and the composed screen, weston's
-screenshot over its background; `tests/ui/shape.sh` on Linux).
+screenshot over its background; the input rectangles, and clicks sent
+at a clear point and on the box (macOS: CGEventPost, Windows: SendInput,
+in CI or with SHAPE_INPUT=1; X11: XTest), the window behind getting the
+first; each backdrop as the system reads it (macOS's view under the
+layer's, Windows' `DwmGetWindowAttribute`, X11's property once the atom is
+made as KWin does; none where it has none); `tests/ui/shape.sh` on Linux).
+
+### A window at the screen's edge
+
+```haxe
+var w = new Window("Tracker", 120, 600, None, true);  // TitleBar None: no title bar nor frame
+w.onTop = true;     // over every other window
+w.taskbar = false;  // out of the task bar and the window switcher
+var a = w.workArea();  // the screen less the menu bar, a notch, the Dock, the task bar
+w.resize(120, a.height);
+w.moveTo(a.x + a.width - 120, a.y);
+```
+
+```tsx
+<Surface titlebar="none" background="transparent" onTop taskbar={false}>…</Surface>
+```
+
+`None` is a borderless window: macOS's `NSWindowStyleMaskBorderless`, of
+a class made at run time that may be key and main (a borderless NSWindow
+is neither); Windows' `WS_POPUP`; X11's Motif hints, no decorations;
+Wayland neither the compositor's decorations nor helder's bar. Its drag
+regions still move it (`titlebarAt`, as an inset bar's). `onTop`: macOS's
+floating level, Windows' `HWND_TOPMOST`, X11's `_NET_WM_STATE_ABOVE`.
+`taskbar = false`: Windows' `WS_EX_TOOLWINDOW` (hidden and shown again,
+as the task bar reads it then), X11's `_NET_WM_STATE_SKIP_TASKBAR` and
+`SKIP_PAGER`, macOS's Window menu and window cycle
+(`NSWindowCollectionBehaviorIgnoresCycle`; the Dock's icon is the app's,
+its activation policy). `workArea()`: macOS's `visibleFrame` and the
+notch's `safeAreaInsets` top, Windows' `rcWork`, X11's `_NET_WORKAREA`
+(else the screen). Wayland has none of these to ask for: `onTop` false,
+`taskbar` true, `workArea()` null (the compositor places windows).
+Tests: `tests/ui/ShapeWindow.hx`'s edge window, read back through each
+system's API (X11's states unread: Xvfb runs no window manager).
 
 ### Dialogs, file types, the files the system opens
 
@@ -843,12 +921,12 @@ t.cart.items({count: 3});
 ```
 
 ```ts
-import { strings } from "helder/asset";
+import {strings} from 'helder/asset'
 
-const t = strings("locales");
-t.get("title");
-t.get("hello", {name: "Ada"});
-t.get("cart.items", {count: 3});
+const t = strings('locales')
+t.get('title')
+t.get('hello', {name: 'Ada'})
+t.get('cart.items', {count: 3})
 ```
 
 The first filename alphabetically defines the keys and parameter types.

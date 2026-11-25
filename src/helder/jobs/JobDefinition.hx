@@ -19,6 +19,7 @@ import helder.definition.Kernel;
 //
 // Not: classes and interfaces (shared mutable state), enums, functions,
 // dynamic values, addresses, type parameters, maps, recursive types.
+@:noCompletion
 class JobDefinition implements Definition<JobAdapter, JobSignature> {
 	public static inline var WHAT = "flat values, String, Bytes, hxmc.Buffer, hxmc structs, and anonymous structures, Arrays and Channels of these";
 

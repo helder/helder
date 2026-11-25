@@ -70,6 +70,7 @@ class WebTest {
 		return switch b {
 			case WebGPU: "WebGPU";
 			case WebGL2: "WebGL2";
+			case Soft: "the CPU's";
 			case _: "?";
 		}
 

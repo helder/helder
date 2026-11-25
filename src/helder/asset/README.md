@@ -202,10 +202,10 @@ is here. A file of the program may also be imported with its type, the same
 definition:
 
 ```ts
-import {bytes, loaded} from "helder/asset";
-import icon from "./icon.png" with {type: "image"};
+import {bytes, loaded} from 'helder/asset'
+import icon from './icon.png' with {type: 'image'}
 
-const data = await loaded(bytes("files/level.bin"));
+const data = await loaded(bytes('files/level.bin'))
 ```
 
 The path is a literal, the file beside the program's file or in the

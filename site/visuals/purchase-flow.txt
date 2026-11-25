@@ -1,0 +1,5 @@
+products(['pro'])  → Pro · €4,99
+purchase('pro')    → purchased
+unlock('pro')      → Pro features available
+finish(purchase)   → purchase acknowledged
+owned()            → pro

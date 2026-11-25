@@ -7,7 +7,7 @@ import helder.scene.StoreKind;
 // program or played by an Animator's weights tracks; the renderer's Morph
 // bends the node's vertices by them.
 class MorphWeights {
-	public static final KIND = new StoreKind<MorphWeights>("morphWeights");
+	@:noCompletion public static final KIND = new StoreKind<MorphWeights>("morphWeights");
 
 	public final weights:Array<Float>;
 

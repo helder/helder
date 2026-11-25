@@ -8,6 +8,7 @@ import hxmc.unsafe.Ptr;
 // out of memory): its layout, hxmc.unsafe.IoBuffer's (a 16-byte header whose
 // second word is a NativeArray<Byte>'s, then the bytes)
 @:hxmc.kernel @:hxmc.unsafe
+@:noCompletion
 class Buffers {
 	public static inline var HEADER = 16;
 

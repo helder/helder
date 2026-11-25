@@ -341,8 +341,23 @@ export function uniform<T>(value: T): Uniform<T> {
 // one object of parameters, its fields uniform blocks and textures
 // (fragment: (i, p: {sky: SkyParams, image: Texture2D}) => ...)
 /** @definition shader */
-export function shader<V, I, VR extends [] | [object], FR extends [] | [object]>(def: {vertex: (v: V, ...p: VR) => I, fragment: (i: I, ...p: FR) => Vec4},
-		generated?: string, uniforms?: Uniform<any>[]): Shader<V, (v: V, ...p: VR) => I, (i: I, ...p: FR) => Vec4, ParamsOf<VR> & ParamsOf<FR>> {
+export function shader<V, I, VR extends [] | [object], FR extends [] | [object]>(
+  def: {vertex: (v: V, ...p: VR) => I, fragment: (i: I, ...p: FR) => Vec4}
+): Shader<V, (v: V, ...p: VR) => I, (i: I, ...p: FR) => Vec4,
+  ParamsOf<VR> & ParamsOf<FR>>
+export function shader<V, I, VR extends [] | [object], FR extends [] | [object]>(
+  def: {vertex: (v: V, ...p: VR) => I, fragment: (i: I, ...p: FR) => Vec4},
+  generated?: string, uniforms?: Uniform<any>[]
+): Shader<V, (v: V, ...p: VR) => I, (i: I, ...p: FR) => Vec4,
+  ParamsOf<VR> & ParamsOf<FR>> {
+  return buildShader(def, generated, uniforms)
+}
+
+function buildShader<V, I, VR extends [] | [object], FR extends [] | [object]>(
+  def: {vertex: (v: V, ...p: VR) => I, fragment: (i: I, ...p: FR) => Vec4},
+  generated?: string, uniforms?: Uniform<any>[]
+): Shader<V, (v: V, ...p: VR) => I, (i: I, ...p: FR) => Vec4,
+  ParamsOf<VR> & ParamsOf<FR>> {
 	if (generated === undefined) throw new Error("shader: a definition, compiled by helder's compiler (its argument static)");
 	const g = JSON.parse(generated);
 	const params: {[parameter: string]: UniformWriter<any> | TextureSlot} = {};
@@ -419,7 +434,7 @@ export function slots<D extends SlotsDef>(def: D): Slots<D> {
 			}
 			if (generated === undefined) throw new Error("slots: a variant is a definition, compiled by helder's compiler (the object and its options static)");
 			const m = {...def, options: {...def.options, ...(options ?? {})}};
-			return shader({vertex: (v: any, p: any) => def.vertex(v, p, m), fragment: (i: any, p: any) => def.fragment(i, p, m)}, generated, uniforms);
+			return buildShader({vertex: (v: any, p: any) => def.vertex(v, p, m), fragment: (i: any, p: any) => def.fragment(i, p, m)}, generated, uniforms);
 		},
 		with(over: any): any {
 			return slots({...def, ...over});
