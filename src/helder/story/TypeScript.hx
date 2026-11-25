@@ -6,13 +6,14 @@ package helder.story;
 // nothing in a release build), each story's view made from its Controls;
 // tree(story), its tree mounted headless as helder test snapshots it
 // (its markup helder.ui's: the neutral elements, its renderer); screens
-// (stories), the studio's program of a project's screens (Screens); shots
+// (stories), the studio's program of a project's screens (Screens); play
+// (story), one in a window of its own (the studio's Play); shots
 // (stories), helder publish's program of its screenshots (StoreShots).
 @:typescript("helder/story")
 @:typescript.classes(helder.story.Story.Controls)
 @:typescript.internal(Controls)
 @:typescript.types(helder.story.Story)
-@:typescript.functions(story = helder.story.Stories.define, tree = helder.story.Stories.tree, screens = helder.story.Screens.run, shots = helder.story.StoreShots.run)
+@:typescript.functions(story = helder.story.Stories.define, tree = helder.story.Stories.tree, screens = helder.story.Screens.run, play = helder.story.Screens.play, shots = helder.story.StoreShots.run)
 @:typescript.imports("helder/ui")
 @:typescript.renderers(helder.ui.view.NodeRenderer)
 @:build(helder.typescript.api.Manifest.build())

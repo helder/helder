@@ -102,6 +102,7 @@ class Board implements Markup {
 		var s = studio.previews.screen(r().name);
 		return <view tag={"screen-" + Shell.slug(s.info.name)} slot="screen" position="absolute" left={r().x} top={r().y} width={r().w}
 			height={r().h} data-on={studio.focused() == s.info.name ? "true" : "false"} data-frame={s.frames()}
+			onPointerEnter={_ -> studio.hovered(s.info.name)} onPointerLeave={_ -> if (studio.hovered.peek() == s.info.name) studio.hovered(null)}
 			opacity={Feedback.arrive(studio, s.info.name).opacity} transform={Feedback.arrive(studio, s.info.name).transform}>
 			<image src={s.image()} width={r().w} height={r().h} opacity={studio.failure() == null ? 1 : 0.45}/>
 			<Show when={s.crashedSignal()}>
@@ -149,6 +150,10 @@ class Board implements Markup {
 					direction="row" align-items="center" column-gap={6} max-width={frameWidth(studio, r()) + 8}>
 					<text font-size={Theme.SMALL} max-lines={1} shrink={0} font-weight={studio.focused() == r().name ? Theme.MEDIUM : 400}
 						color={studio.focused() == r().name ? c("accent-ink") : c("fg3")}>{label(studio, r().name)}</text>
+					<Show when={studio.project?.screen(r().name)?.loop != null}>
+						<image tag={"loop-" + Shell.slug(r().name)} src={Icons.repeat} width={Theme.ICON_XS} height={Theme.ICON_XS} shrink={0}
+							color={studio.hovered() == r().name ? c("ink2") : c("fg3")}/>
+					</Show>
 					{Feedback.chip(studio, r().name)}
 					<Show when={studio.failure() != null && !studio.project.screen(r().name).source.match(Design(_)) && Feedback.on(studio, r().name).length == 0}>
 						<view tag={"failed-" + Shell.slug(r().name)} height={20} padding="0 8" radius={10} direction="row" align-items="center" column-gap={5}

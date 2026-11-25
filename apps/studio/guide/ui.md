@@ -61,6 +61,8 @@ export function List() {
 }
 ```
 
+- A view that takes its state as props (`Read` props take a value or a
+  signal) can be posed by a story and run by the app alike.
 - `signal(v)`: read `s()`, set `s(v)` or `s(old => new)`.
 - `For each={signal}`: its child a function of each item (a `Read`: call it).
 - `Show when={...}`: shown while true.

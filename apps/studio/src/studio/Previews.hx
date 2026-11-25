@@ -98,6 +98,9 @@ class Previews {
 	// the screens in view and the one focused, last told; the last asked (told again to a new host)
 	var shown = "";
 	var showWanted:Null<{names:Array<String>, focused:Null<String>, scale:Float}> = null;
+	// the screens stills (the watched canvas: each at its moment, not run), the one running its loop (hovered; null: none)
+	public var stills = false;
+	public var looping:Null<String> = null;
 	// where the host's copies go (shared memory: /dev/shm), mapped here by path
 	final framesDir:String;
 	final files = new Map<String, FrameFile>();
@@ -362,7 +365,7 @@ class Previews {
 					connection = c;
 					onLog('studio: the screens\' host is running (${order.length} screens, frames: $sharing)');
 					// (what is in view, told again: those draw; the others keep their last frames, suspended)
-					if (showWanted != null) c.request("Host.show", {screens: showWanted.names, focused: showWanted.focused, scale: showWanted.scale}, _ -> {});
+					if (showWanted != null) c.request("Host.show", {screens: showWanted.names, focused: showWanted.focused, scale: showWanted.scale, stills: stills, loop: looping}, _ -> {});
 					for (s in screens)
 						if (s.version > 0 && (showWanted == null || !showWanted.names.contains(s.info.name))) s.reloading = false;
 					if (!Lambda.exists(screens, x -> x.reloading)) reloading = false;
@@ -557,12 +560,12 @@ class Previews {
 	// frames kept here) and the one zoomed into, drawn every frame at scale
 	// pixels a point (the canvas' zoom: its frames as sharp as the studio shows them)
 	public function show(names:Array<String>, focused:Null<String>, scale = 1.0) {
-		var key = names.join("\n") + "\t" + (focused ?? "") + "\t" + scale;
+		var key = names.join("\n") + "\t" + (focused ?? "") + "\t" + scale + "\t" + stills + "\t" + (looping ?? "");
 		if (key == shown) return;
 		shown = key;
 		showWanted = {names: names, focused: focused, scale: scale};
 		var c = connection;
-		if (c != null && order.length > 0) c.request("Host.show", {screens: names, focused: focused, scale: scale}, _ -> {});
+		if (c != null && order.length > 0) c.request("Host.show", {screens: names, focused: focused, scale: scale, stills: stills, loop: looping}, _ -> {});
 	}
 
 	// a devtools request about a screen (false: the host is not connected)
