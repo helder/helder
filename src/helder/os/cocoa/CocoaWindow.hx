@@ -700,8 +700,11 @@ class CocoaWindow {
 		if (w != null) return w;
 		var type = Msg.i(ev, ObjC.sel("type")).toInt();
 		if (type != NS.ScrollWheel && type != NS.MouseMoved && type != NS.LeftMouseDown && type != NS.LeftMouseUp && type != NS.LeftMouseDragged) return null;
-		var p = Msg.point(ev, ObjC.sel("locationInWindow"));
-		for (o in open) {
+		// (the frontmost window there that takes the mouse: one over another, a transparent one passing it through)
+		var p = Msg.point(ev, ObjC.sel("locationInWindow")), ordered = Msg.id(app, ObjC.sel("orderedWindows"));
+		for (i in 0...Msg.i(ordered, ObjC.sel("count")).toInt()) {
+			var o = find(Msg.idInt(ordered, ObjC.sel("objectAtIndex:"), i));
+			if (o == null || Msg.b(o.window, ObjC.sel("ignoresMouseEvents"))) continue;
 			var r = Msg.rect(o.window, ObjC.sel("frame"));
 			if (p.x >= r.origin.x && p.y >= r.origin.y && p.x < r.origin.x + r.size.width && p.y < r.origin.y + r.size.height) return o;
 		}
