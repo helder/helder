@@ -81,7 +81,7 @@ class RenderCheck {
 		device.dispose();
 		sys.io.File.saveBytes(out, Png.encode(pixels, WIDTH, HEIGHT));
 		if (args[3] == "--bless") {
-			sys.io.File.saveBytes(golden, Png.encode(pixels, WIDTH, HEIGHT));
+			sys.io.File.saveBytes(golden, Png.golden(pixels, WIDTH, HEIGHT));
 			Sys.println('RenderCheck: blessed $golden');
 			return;
 		}

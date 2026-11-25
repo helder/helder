@@ -120,7 +120,7 @@ for (const category of CATEGORIES) {
 			variants,
 		};
 		fs.writeFileSync(path.join(here, 'fixtures', category, `${name}.json`), JSON.stringify(fixture) + '\n');
-		cases.push(kept.get(id) ?? { id, fixture: `fixtures/${category}/${name}.json`, pending: { 'border-box-ltr': 'new', 'border-box-rtl': 'new' } });
+		cases.push(kept.get(id) ?? { id, pending: { 'border-box-ltr': 'new', 'border-box-rtl': 'new' } });
 	}
 }
 const manifest = {

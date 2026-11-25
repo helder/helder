@@ -19,6 +19,10 @@ class CoreGraphicsCheck {
 	static var checks = 0;
 	static var failed = 0;
 	static final DIR = "tests/text/coretext";
+
+	// (the large captures deflated in the repository: <name>.z, zlib's)
+	static function inflated(name:String):haxe.io.Bytes
+		return haxe.zip.InflateImpl.run(new haxe.io.BytesInput(sys.io.File.getBytes('$DIR/$name.z')));
 	// corpus tiles: the pen at x 8, the baseline 24 px above the bottom
 	static inline var TW = 96;
 	static inline var TH = 112;
@@ -110,7 +114,7 @@ class CoreGraphicsCheck {
 	}
 
 	static function dilation() {
-		var cases:Array<Dynamic> = Json.parse(sys.io.File.getContent('$DIR/dilation.json'));
+		var cases:Array<Dynamic> = Json.parse(inflated('dilation.json').toString());
 		var g = new GlyphPipeline(), worst = 0.0, structure = 0;
 		for (c in cases) {
 			var d = GlyphPipeline.radius(c.ppem, GlyphPipeline.bucket(rgb(c.color)));
@@ -164,7 +168,7 @@ class CoreGraphicsCheck {
 	// Inter Regular's masks through each mode against CoreGraphics', smoothing on and off
 	static function masks() {
 		var index:Array<Dynamic> = Json.parse(sys.io.File.getContent('$DIR/masks.json'));
-		var blob = sys.io.File.getBytes('$DIR/masks.bin');
+		var blob = inflated('masks.bin');
 		var inter = FontFile.parse(sys.io.File.getBytes('$DIR/Inter-Regular.ttf'));
 		var g = new GlyphPipeline(), r = new Rasterizer(0, 0);
 		for (on in [true, false]) {

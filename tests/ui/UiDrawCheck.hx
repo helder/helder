@@ -52,7 +52,7 @@ class UiDrawCheck {
 		Sys.println('UiDrawCheck ($f): layout ${Math.round((t1 - t0) * 1000)} ms, frame ${Math.round((haxe.Timer.stamp() - t1) * 1000)} ms');
 		sys.io.File.saveBytes(out, Png.encode(pixels, W, H));
 		if (bless) {
-			sys.io.File.saveBytes(golden, Png.encode(pixels, W, H));
+			sys.io.File.saveBytes(golden, Png.golden(pixels, W, H));
 			Sys.println('UiDrawCheck: blessed $golden');
 			Sys.exit(0);
 		}
