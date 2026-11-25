@@ -1,12 +1,14 @@
 // title: Fountain
-// summary: Drops of a fountain moved by a compute stage written in Haxe (helder.gfx's compute tier: WebGPU, Metal, D3D11, GL ES 3.1), drawn as instances straight from its storage buffer; on WebGL2 the same function runs on the CPU
-// tags: gfx, shaders, compute, particles
+// summary: Drops of a fountain moved by one body written in Haxe (helder.parallel's each): a compute dispatch where the GPU has compute (WebGPU, Metal, D3D11, GL ES 3.1), drawn as instances straight from its buffer; on WebGL2 the same body runs as SIMD lanes on the CPU
+// tags: gfx, shaders, compute, particles, parallel
 // demo: canvas 640x480
 import helder.math.*;
-import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.gfx.shader.*;
+import helder.gfx.shader.ShaderMath.*;
 import helder.os.*;
+import helder.parallel.Items;
+import helder.parallel.Parallel;
 import FountainShaders;
 
 // A fountain of drops in a window (close it, or press Escape):
@@ -14,13 +16,14 @@ import FountainShaders;
 //   helder run examples/fountain/Fountain.hx            (natively)
 //   helder build examples/fountain/Fountain.hx --target web
 //
-// Spray (FountainShaders.hx) is a compute stage: each frame one dispatch
-// moves every drop in a storage buffer (BufferUsage.Storage), then one
-// instanced draw reads that buffer as the drops' instance vertex buffer: the
-// CPU writes nothing a frame but the step's uniform block. Where the device
-// has no compute (WebGL2: Device.has(Compute) false) the same function,
-// Spray.main, moves fewer drops on the CPU, and their bytes are uploaded
-// with writeBuffer: the fallback path of the same program.
+// The drops are an Items<Drop> (helder.parallel), moved each frame by one
+// each(...): its body is compiled at build time into a compute stage and
+// SIMD lanes alike. The drops are drawn as instances from their Items'
+// buffer (drops.buffer(device)), so Auto runs the body on the GPU where the
+// device has compute: the drops stay there, the CPU writes nothing a frame
+// but the body's captured values. Without compute (WebGL2) it runs on the
+// CPU's lanes over fewer drops, and the draw uploads them: the fallback
+// path of the same program, the same body.
 class Fountain {
 	// (the CPU's share where there is no compute)
 	static inline var GPU_DROPS = 65536;
@@ -29,19 +32,10 @@ class Fountain {
 	final device:Device;
 	final compute:Bool;
 	final count:Int;
-	final drops:Buffer;
+	final drops:Items<Drop>;
 	final quad:Buffer;
 	final pipeline:Pipeline;
-	final spray:Null<ComputePipeline>;
-	final step = Bytes.alloc(Spray.params.step.block.size);
 	final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0.02, 0.03, 0.06, 1)}]};
-	// the step (the uniform block's value, written each frame); the CPU's
-	// fallback: the drops, their bytes and the ids it calls Spray.main with
-	final cpu:Array<Drop> = [];
-	final cpuBytes:Null<Bytes>;
-	final cpuStep:SprayStep = {dt: 0, time: 0, count: 0, aspect: 1};
-	final cpuParams:{step:SprayStep, drops:RWStorage<Drop>};
-	final id:ComputeInput = ComputeInput.at(0, 0, 0, 64, 1, 1);
 	var time = 0.0;
 	var last = -1.0;
 
@@ -49,23 +43,21 @@ class Fountain {
 		this.device = device;
 		compute = device.has(Compute);
 		count = compute ? GPU_DROPS : CPU_DROPS;
+		Parallel.device = device;
 		// (every drop old and below the floor: born at the first step, spread over the first frames)
+		drops = new Items<Drop>(count);
 		for (i in 0...count)
-			cpu.push({pos: new Vec4(0, -2, 0, LIFE + i / count), vel: new Vec4(0, 0, 0, 0)});
-		var initial = Spray.params.drops.bytesOf(cpu);
-		drops = device.createBuffer({size: initial.length, usage: compute ? Storage : Vertex, data: initial});
-		cpuBytes = compute ? null : initial;
-		cpuParams = {step: cpuStep, drops: cpu};
-		if (compute) cpu.resize(0);
+			drops[i] = {pos: new Vec4(0, -2, 0, LIFE + i / count), vel: new Vec4(0, 0, 0, 0)};
+		// (drawn from its buffer: from the first step on, the body runs where they are)
+		drops.buffer(device);
 		var s = 0.006;
 		quad = device.createBuffer({size: 48, usage: Vertex, data: floats([-s, -s, s, -s, s, s, -s, -s, s, s, -s, s])});
 		var d = DropShader.pipeline({blend: Additive});
 		d.layout = [
 			{stride: 8, attributes: [{location: 0, format: Float2, offset: 0}]},
-			{stride: Spray.params.drops.stride, step: Instance, attributes: [{location: 1, format: Float4, offset: 0}]}
+			{stride: 32, step: Instance, attributes: [{location: 1, format: Float4, offset: 0}]}
 		];
 		pipeline = device.createPipeline(d);
-		spray = compute ? device.createComputePipeline(Spray.pipeline()) : null;
 	}
 
 	public function frame() {
@@ -75,45 +67,39 @@ class Fountain {
 		device.endFrame();
 	}
 
-	// the frame's step (the drops moved: a dispatch, or the CPU's) and its pass; the caller ends the frame
+	// the frame's step (the drops moved: on the GPU, or the CPU's lanes) and its pass; the caller ends the frame
 	public function draw(enc:Encoder) {
 		var now = haxe.Timer.stamp();
 		var dt = last < 0 ? 1 / 60 : Math.min(now - last, 1 / 20);
 		last = now;
 		time += dt;
-		var aspect = device.width / Math.max(1, device.height);
-		cpuStep.dt = dt;
-		cpuStep.time = time;
-		cpuStep.count = count;
-		cpuStep.aspect = aspect;
-		if (!compute) {
-			// (Spray.main on the CPU, the drops uploaded)
-			for (i in 0...count) {
-				id.x = i;
-				Spray.main(id, cpuParams);
+		var t = time, aspect = device.width / Math.max(1, device.height);
+		var drops = this.drops;
+		each(count, i -> {
+			var d = drops[i];
+			var age = d.pos.w + dt;
+			var vel = d.vel.xyz - vec3(0, GRAVITY * dt, 0);
+			var pos = d.pos.xyz + vel * dt;
+			if (pos.y < -1 || age > LIFE) {
+				// (born again at the nozzle, sprayed up and out; its age spread so that they do not all land at once)
+				var n:Float = i;
+				var a = (hash(n, t) - 0.5) * 0.9, s = 1.5 + 0.5 * hash(n + 0.5, t);
+				pos = vec3(0, -0.85, 0);
+				vel = vec3(sin(a) * s / aspect, cos(a) * s, 0);
+				age = hash(n + 0.25, t) * 0.3;
 			}
-			Spray.params.drops.store(cpu, cpuBytes);
-			device.writeBuffer(drops, 0, cpuBytes);
-		}
-		if (compute) {
-			Spray.params.step.write(cpuStep, step);
-			enc.beginCompute();
-			enc.setComputePipeline(spray);
-			enc.setUniforms(Spray.params.step.block.binding, step);
-			enc.setStorage(Spray.params.drops.binding, drops);
-			enc.dispatch(Spray.groups(count));
-			enc.endCompute();
-		}
+			drops[i] = {pos: vec4(pos, age), vel: vec4(vel, 0)};
+		});
 		enc.beginPass(pass);
 		enc.setPipeline(pipeline);
 		enc.setVertexBuffer(0, quad);
-		enc.setVertexBuffer(1, drops);
+		enc.setVertexBuffer(1, drops.buffer(device));
 		enc.draw(6, count);
 		enc.endPass();
 	}
 
-	static function floats(xs:Array<Float>):Bytes {
-		var b = Bytes.alloc(4 * xs.length);
+	static function floats(xs:Array<Float>):haxe.io.Bytes {
+		var b = haxe.io.Bytes.alloc(4 * xs.length);
 		for (i in 0...xs.length)
 			b.setFloat(4 * i, xs[i]);
 		return b;
@@ -122,7 +108,7 @@ class Fountain {
 	static function main() {
 		var window = new Window({title: "Fountain", width: 640, height: 480});
 		var fountain = new Fountain(Device.create(window.surface));
-		Sys.println("Fountain: " + fountain.count + " drops, " + (fountain.compute ? "moved by a compute stage" : "moved on the CPU (no compute here)"));
+		Sys.println("Fountain: " + fountain.count + " drops, " + (fountain.compute ? "moved on the GPU" : "moved on the CPU's lanes (no compute here)"));
 		App.run(fountain.frame, e -> switch e.kind {
 			case Close: window.close();
 			case KeyDown if (e.key == 0xFF1B): window.close();

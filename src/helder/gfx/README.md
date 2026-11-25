@@ -6,7 +6,7 @@ or 3.0 where the driver has no more, on the activity's window), Metal (macOS, iO
 Direct3D 11 (Windows), WebGPU and WebGL2 (the browser). See
 `examples/triangle/Triangle.hx` (the least a program needs), `examples/cube/Cube.hx`
 (textures, depth, uniforms, blending, indices), `examples/fountain/Fountain.hx`
-(a compute stage and its fallback), `examples/instances/Instances.hx`
+(a helder.parallel body: a compute dispatch, or SIMD lanes without compute), `examples/instances/Instances.hx`
 (instanced draws), `examples/cube/Targets.hx` (render targets),
 `examples/mips/Mips.hx` (mip maps) and `examples/formats/Formats.hx` (texture formats).
 
@@ -364,7 +364,9 @@ level 11_0 (`cs_5_0`), GL ES 3.1 (Android's native floor) and the
 [CPU back end](#on-the-cpu) all run compute. The CPU back end runs Haxe
 compute stages four invocations at a time and supports storage buffers
 and textures. On WebGL2 and GL ES 3.0, use a render-stage path or run
-the compute function on the CPU as `examples/fountain` does.
+the work on the CPU: helder.parallel's bodies run as compute dispatches
+where there is compute and as SIMD lanes elsewhere, as `examples/fountain`'s
+does.
 `createComputePipeline` and storage buffers throw on those devices.
 
 ```haxe

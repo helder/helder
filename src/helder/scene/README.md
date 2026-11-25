@@ -1383,6 +1383,38 @@ Example: [GPU particles](/examples/particles/Galaxy.hx) (`helder run examples/pa
 
 Fog fades them (light added, not turned to the fog's colour: [Fog](#fog)).
 
+### Simulated
+
+`GpuParticles` moves each particle by a formula of its age: nothing it
+meets changes its path. `Particles` simulates them, one
+[helder.parallel](../parallel/README.md) `each` over its ring a step:
+gravity, `drag`, a floor to bounce on (`floor`, `bounce`), spheres to
+collide with (`spheres`, up to 8 by default: xyz the centre, w the
+radius), ages and deaths.
+
+```haxe
+var sparks = new Particles(65536);          // the ring; births a step at most: 1024 (burst)
+sparks.floor = 0;
+sparks.spheres[0] = new Vec4(0, 1, 0, 0.5);
+renderer.use(sparks);
+// each fixed step:
+sparks.emit(x, y, z, vx, vy, vz, r, g, b, a, size0, size1, life, stretch, heat);   // GpuParticles' arguments
+sparks.step(dt);
+```
+
+The particles are an `Items<SimParticle>` (`sparks.items`), drawn as
+instances from its buffer (ParticleShader: GpuParticles' quads, streaks
+and fades, at the step's positions). Emitted particles wait among the
+step's births (an Items of their own) and the step takes them into the
+ring, so the ring is never written on the CPU: where the device has
+compute the step runs on the GPU (helder.parallel's Auto: a body whose
+Items the GPU draws), and only the births are uploaded; on WebGL2 it
+runs on the CPU's lanes and the ring is uploaded. `sparks.on` forces a
+form; on the CPU's forms the same steps give the same numbers on every
+target. Tests: Particles.test.hx (births, the floor, a sphere, deaths,
+Simd and Jobs the same bits); tests/parallel/GpuCheck (the GPU's steps
+against the lanes').
+
 ## Lines
 
 ```haxe

@@ -50,6 +50,7 @@ class GpuCheck {
 		randomReductions();
 		reductionResidency();
 		largeReduction();
+		sceneParticles();
 		Sys.println(failures == 0 ? "GpuCheck: ok" : 'GpuCheck: $failures failed');
 		device.dispose();
 		Sys.exit(failures == 0 ? 0 : 1);
@@ -181,6 +182,29 @@ class GpuCheck {
 		Scale.run(5000, {from: a, to: g, by: 1.5}, Gpu);
 		Scale.run(5000, {from: a, to: c, by: 1.5}, Simd);
 		near("a kernel", g, c);
+	}
+
+	// helder.scene's simulated particles (Particles: births, a floor, a sphere) stepped on the GPU and on the CPU's lanes
+	static function sceneParticles() {
+		function run(on:On) {
+			var ps = new helder.scene.render.Particles(4096, 512);
+			ps.on = on;
+			ps.floor = 0;
+			ps.drag = 0.2;
+			ps.spheres[0] = vec4(0, 1, 0, 0.6);
+			for (s in 0...40) {
+				for (k in 0...100)
+					ps.emit(Math.sin(k) * 0.4, 2, Math.cos(k) * 0.4, Math.sin(k * 3), 1 + (k % 5) * 0.4, Math.cos(k * 7), 1, 1, 1, 1, 0.05, 0.01, 4);
+				ps.step(1 / 60);
+			}
+			var out = [for (k in 0...ps.capacity) ps.items[k].start];
+			ps.dispose();
+			return out;
+		}
+		var g = run(Gpu), c = run(Simd), worst = 0.0;
+		for (k in 0...g.length)
+			worst = Math.max(worst, Math.max(Math.abs(g[k].x - c[k].x), Math.max(Math.abs(g[k].y - c[k].y), Math.abs(g[k].z - c[k].z))));
+		check("helder.scene's Particles, 40 steps", worst <= 1e-3, 'at most $worst apart');
 	}
 
 	// past a row of 65535 workgroups: the index's y

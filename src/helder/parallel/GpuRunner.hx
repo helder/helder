@@ -31,28 +31,29 @@ class GpuRunner {
 	public final device:Device;
 	// (tests: the stages' emulated subgroups where the device has its own)
 	@:noCompletion public static var emulate = false;
+	// whether it dispatches (Device.has(Compute)): without, Items' buffers are vertex buffers, uploaded
+	public final compute:Bool;
 
 	var scratch = Bytes.alloc(64);
 	final none = Bytes.alloc(0);
 	// (buffers of Items collected: destroyed at the next dispatch, on its thread)
 	final dropped:Array<Buffer> = [];
 
-	function new(device:Device)
+	function new(device:Device) {
 		this.device = device;
+		compute = device.has(Compute);
+	}
 
-	// (Parallel.device's setter: a runner where the device has compute)
+	// (Parallel.device's setter: its runner, dispatching where the device has compute)
 	public static function use(d:Null<Device>):Bool {
-		current = d == null || !d.has(Compute) ? null : new GpuRunner(d);
+		current = d == null ? null : new GpuRunner(d);
 		var r = current;
-		Parallel.hooks(r == null ? null : r.dispatch, r == null ? null : r.reduce, r == null ? null : r.fetch, r == null ? null : r.release);
-		return r != null;
+		Parallel.hooks(r == null || !r.compute ? null : r.dispatch, r == null || !r.compute ? null : r.reduce, r == null ? null : r.fetch, r == null ? null : r.release);
+		return r != null && r.compute;
 	}
 
 	static function runner(d:Device):GpuRunner {
-		if (current == null || current.device != d) {
-			Parallel.device = d;
-			if (current == null) throw new haxe.Exception('Items.buffer: ${d.backend} has no compute stages');
-		}
+		if (current == null || current.device != d) Parallel.device = d;
 		return current;
 	}
 
@@ -71,7 +72,7 @@ class GpuRunner {
 		if (d.buffer == null) {
 			d.cpu();
 			var b = copy(d);
-			var buf = device.createBuffer({size: d.size == 0 ? 16 : d.size, usage: Storage, data: b});
+			var buf = device.createBuffer({size: d.size == 0 ? 16 : d.size, usage: compute ? Storage : Vertex, data: b});
 			d.buffer = buf;
 			d.device = device;
 			var shared = device.memory(buf);
