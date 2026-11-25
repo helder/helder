@@ -1059,71 +1059,71 @@ Node#root 0,0 390x844
                     Node#button 656,40 124x30
                       TextNode#text 656,47 23x15 "Kind"
                   VirtualScroll#rows 237,70 563x598
-                    Spacer#before 237,70 563x0
-                    Node#row 237,70 563x30
-                      Node#view 243,70 551x30
-                        Node#view 253,75 127x20
-                          Node#view 253,75 20x20
-                            ImageNode#image 256,78 14x14
-                          TextNode#name 281,77 99x16 "alpha.png"
-                        TextNode#text 392,77 156x16 ""
-                        TextNode#text 560,77 84x16 "530 bytes"
-                        TextNode#text 656,77 124x16 "PNG image"
-                    Node#row 237,100 563x30
-                      Node#view 243,100 551x30
-                        Node#view 253,105 127x20
-                          Node#view 253,105 20x20
-                            ImageNode#image 256,108 14x14
-                          TextNode#name 281,107 99x16 "anim.gif"
-                        TextNode#text 392,107 156x16 ""
-                        TextNode#text 560,107 84x16 "3 KB"
-                        TextNode#text 656,107 124x16 "GIF image"
-                    Node#row 237,130 563x30
-                      Node#view 243,130 551x30
-                        Node#view 253,135 127x20
-                          Node#view 253,135 20x20
-                            ImageNode#image 256,138 14x14
-                          TextNode#name 281,137 99x16 "broken.jpg"
-                        TextNode#text 392,137 156x16 ""
-                        TextNode#text 560,137 84x16 "300 bytes"
-                        TextNode#text 656,137 124x16 "JPEG image"
-                    Node#row 237,160 563x30
-                      Node#view 243,160 551x30
-                        Node#view 253,165 127x20
-                          Node#view 253,165 20x20
-                            ImageNode#image 256,168 14x14
-                          TextNode#name 281,167 99x16 "lossy.webp"
-                        TextNode#text 392,167 156x16 ""
-                        TextNode#text 560,167 84x16 "1 KB"
-                        TextNode#text 656,167 124x16 "WebP image"
-                    Node#row 237,190 563x30
-                      Node#view 243,190 551x30
-                        Node#view 253,195 127x20
-                          Node#view 253,195 20x20
-                            ImageNode#image 256,198 14x14
-                          TextNode#name 281,197 99x16 "notes.txt"
-                        TextNode#text 392,197 156x16 ""
-                        TextNode#text 560,197 84x16 "13 bytes"
-                        TextNode#text 656,197 124x16 "Plain text"
-                    Node#row 237,220 563x30
-                      Node#view 243,220 551x30
-                        Node#view 253,225 127x20
-                          Node#view 253,225 20x20
-                            ImageNode#image 256,228 14x14
-                          TextNode#name 281,227 99x16 "photo 2.jpg"
-                        TextNode#text 392,227 156x16 ""
-                        TextNode#text 560,227 84x16 "202 KB"
-                        TextNode#text 656,227 124x16 "JPEG image"
-                    Node#row 237,250 563x30
-                      Node#view 243,250 551x30
-                        Node#view 253,255 127x20
-                          Node#view 253,255 20x20
-                            ImageNode#image 256,258 14x14
-                          TextNode#name 281,257 99x16 "photo 10.jpg"
-                        TextNode#text 392,257 156x16 ""
-                        TextNode#text 560,257 84x16 "702 bytes"
-                        TextNode#text 656,257 124x16 "JPEG image"
-                    Spacer#after 237,280 563x0
+                    Spacer#before 237,70 563x6
+                    Node#row 237,76 563x30
+                      Node#view 243,76 551x30
+                        Node#view 253,81 127x20
+                          Node#view 253,81 20x20
+                            ImageNode#image 256,84 14x14
+                          TextNode#name 281,83 99x16 "alpha.png"
+                        TextNode#text 392,83 156x16 ""
+                        TextNode#text 560,83 84x16 "530 bytes"
+                        TextNode#text 656,83 124x16 "PNG image"
+                    Node#row 237,106 563x30
+                      Node#view 243,106 551x30
+                        Node#view 253,111 127x20
+                          Node#view 253,111 20x20
+                            ImageNode#image 256,114 14x14
+                          TextNode#name 281,113 99x16 "anim.gif"
+                        TextNode#text 392,113 156x16 ""
+                        TextNode#text 560,113 84x16 "3 KB"
+                        TextNode#text 656,113 124x16 "GIF image"
+                    Node#row 237,136 563x30
+                      Node#view 243,136 551x30
+                        Node#view 253,141 127x20
+                          Node#view 253,141 20x20
+                            ImageNode#image 256,144 14x14
+                          TextNode#name 281,143 99x16 "broken.jpg"
+                        TextNode#text 392,143 156x16 ""
+                        TextNode#text 560,143 84x16 "300 bytes"
+                        TextNode#text 656,143 124x16 "JPEG image"
+                    Node#row 237,166 563x30
+                      Node#view 243,166 551x30
+                        Node#view 253,171 127x20
+                          Node#view 253,171 20x20
+                            ImageNode#image 256,174 14x14
+                          TextNode#name 281,173 99x16 "lossy.webp"
+                        TextNode#text 392,173 156x16 ""
+                        TextNode#text 560,173 84x16 "1 KB"
+                        TextNode#text 656,173 124x16 "WebP image"
+                    Node#row 237,196 563x30
+                      Node#view 243,196 551x30
+                        Node#view 253,201 127x20
+                          Node#view 253,201 20x20
+                            ImageNode#image 256,204 14x14
+                          TextNode#name 281,203 99x16 "notes.txt"
+                        TextNode#text 392,203 156x16 ""
+                        TextNode#text 560,203 84x16 "13 bytes"
+                        TextNode#text 656,203 124x16 "Plain text"
+                    Node#row 237,226 563x30
+                      Node#view 243,226 551x30
+                        Node#view 253,231 127x20
+                          Node#view 253,231 20x20
+                            ImageNode#image 256,234 14x14
+                          TextNode#name 281,233 99x16 "photo 2.jpg"
+                        TextNode#text 392,233 156x16 ""
+                        TextNode#text 560,233 84x16 "202 KB"
+                        TextNode#text 656,233 124x16 "JPEG image"
+                    Node#row 237,256 563x30
+                      Node#view 243,256 551x30
+                        Node#view 253,261 127x20
+                          Node#view 253,261 20x20
+                            ImageNode#image 256,264 14x14
+                          TextNode#name 281,263 99x16 "photo 10.jpg"
+                        TextNode#text 392,263 156x16 ""
+                        TextNode#text 560,263 84x16 "702 bytes"
+                        TextNode#text 656,263 124x16 "JPEG image"
+                    Spacer#after 237,286 563x6
               Node#pathbar 237,668 563x32
                 Node#view 241,669 503x32
                   PathBarNode#pathbar 241,669 503x32
@@ -1222,71 +1222,71 @@ Node#root 0,0 390x844
                     Node#button 656,40 124x30
                       TextNode#text 656,47 23x15 "Kind"
                   VirtualScroll#rows 237,70 563x598
-                    Spacer#before 237,70 563x0
-                    Node#row 237,70 563x30
-                      Node#view 243,70 551x30
-                        Node#view 253,75 127x20
-                          Node#view 253,75 20x20
-                            ImageNode#image 256,78 14x14
-                          TextNode#name 281,77 99x16 "alpha.png"
-                        TextNode#text 392,77 156x16 ""
-                        TextNode#text 560,77 84x16 "530 bytes"
-                        TextNode#text 656,77 124x16 "PNG image"
-                    Node#row 237,100 563x30
-                      Node#view 243,100 551x30
-                        Node#view 253,105 127x20
-                          Node#view 253,105 20x20
-                            ImageNode#image 256,108 14x14
-                          TextNode#name 281,107 99x16 "anim.gif"
-                        TextNode#text 392,107 156x16 ""
-                        TextNode#text 560,107 84x16 "3 KB"
-                        TextNode#text 656,107 124x16 "GIF image"
-                    Node#row 237,130 563x30
-                      Node#view 243,130 551x30
-                        Node#view 253,135 127x20
-                          Node#view 253,135 20x20
-                            ImageNode#image 256,138 14x14
-                          TextNode#name 281,137 99x16 "broken.jpg"
-                        TextNode#text 392,137 156x16 ""
-                        TextNode#text 560,137 84x16 "300 bytes"
-                        TextNode#text 656,137 124x16 "JPEG image"
-                    Node#row 237,160 563x30
-                      Node#view 243,160 551x30
-                        Node#view 253,165 127x20
-                          Node#view 253,165 20x20
-                            ImageNode#image 256,168 14x14
-                          TextNode#name 281,167 99x16 "lossy.webp"
-                        TextNode#text 392,167 156x16 ""
-                        TextNode#text 560,167 84x16 "1 KB"
-                        TextNode#text 656,167 124x16 "WebP image"
-                    Node#row 237,190 563x30
-                      Node#view 243,190 551x30
-                        Node#view 253,195 127x20
-                          Node#view 253,195 20x20
-                            ImageNode#image 256,198 14x14
-                          TextNode#name 281,197 99x16 "notes.txt"
-                        TextNode#text 392,197 156x16 ""
-                        TextNode#text 560,197 84x16 "13 bytes"
-                        TextNode#text 656,197 124x16 "Plain text"
-                    Node#row 237,220 563x30
-                      Node#view 243,220 551x30
-                        Node#view 253,225 127x20
-                          Node#view 253,225 20x20
-                            ImageNode#image 256,228 14x14
-                          TextNode#name 281,227 99x16 "photo 2.jpg"
-                        TextNode#text 392,227 156x16 ""
-                        TextNode#text 560,227 84x16 "202 KB"
-                        TextNode#text 656,227 124x16 "JPEG image"
-                    Node#row 237,250 563x30
-                      Node#view 243,250 551x30
-                        Node#view 253,255 127x20
-                          Node#view 253,255 20x20
-                            ImageNode#image 256,258 14x14
-                          TextNode#name 281,257 99x16 "photo 10.jpg"
-                        TextNode#text 392,257 156x16 ""
-                        TextNode#text 560,257 84x16 "702 bytes"
-                        TextNode#text 656,257 124x16 "JPEG image"
-                    Spacer#after 237,280 563x0
+                    Spacer#before 237,70 563x6
+                    Node#row 237,76 563x30
+                      Node#view 243,76 551x30
+                        Node#view 253,81 127x20
+                          Node#view 253,81 20x20
+                            ImageNode#image 256,84 14x14
+                          TextNode#name 281,83 99x16 "alpha.png"
+                        TextNode#text 392,83 156x16 ""
+                        TextNode#text 560,83 84x16 "530 bytes"
+                        TextNode#text 656,83 124x16 "PNG image"
+                    Node#row 237,106 563x30
+                      Node#view 243,106 551x30
+                        Node#view 253,111 127x20
+                          Node#view 253,111 20x20
+                            ImageNode#image 256,114 14x14
+                          TextNode#name 281,113 99x16 "anim.gif"
+                        TextNode#text 392,113 156x16 ""
+                        TextNode#text 560,113 84x16 "3 KB"
+                        TextNode#text 656,113 124x16 "GIF image"
+                    Node#row 237,136 563x30
+                      Node#view 243,136 551x30
+                        Node#view 253,141 127x20
+                          Node#view 253,141 20x20
+                            ImageNode#image 256,144 14x14
+                          TextNode#name 281,143 99x16 "broken.jpg"
+                        TextNode#text 392,143 156x16 ""
+                        TextNode#text 560,143 84x16 "300 bytes"
+                        TextNode#text 656,143 124x16 "JPEG image"
+                    Node#row 237,166 563x30
+                      Node#view 243,166 551x30
+                        Node#view 253,171 127x20
+                          Node#view 253,171 20x20
+                            ImageNode#image 256,174 14x14
+                          TextNode#name 281,173 99x16 "lossy.webp"
+                        TextNode#text 392,173 156x16 ""
+                        TextNode#text 560,173 84x16 "1 KB"
+                        TextNode#text 656,173 124x16 "WebP image"
+                    Node#row 237,196 563x30
+                      Node#view 243,196 551x30
+                        Node#view 253,201 127x20
+                          Node#view 253,201 20x20
+                            ImageNode#image 256,204 14x14
+                          TextNode#name 281,203 99x16 "notes.txt"
+                        TextNode#text 392,203 156x16 ""
+                        TextNode#text 560,203 84x16 "13 bytes"
+                        TextNode#text 656,203 124x16 "Plain text"
+                    Node#row 237,226 563x30
+                      Node#view 243,226 551x30
+                        Node#view 253,231 127x20
+                          Node#view 253,231 20x20
+                            ImageNode#image 256,234 14x14
+                          TextNode#name 281,233 99x16 "photo 2.jpg"
+                        TextNode#text 392,233 156x16 ""
+                        TextNode#text 560,233 84x16 "202 KB"
+                        TextNode#text 656,233 124x16 "JPEG image"
+                    Node#row 237,256 563x30
+                      Node#view 243,256 551x30
+                        Node#view 253,261 127x20
+                          Node#view 253,261 20x20
+                            ImageNode#image 256,264 14x14
+                          TextNode#name 281,263 99x16 "photo 10.jpg"
+                        TextNode#text 392,263 156x16 ""
+                        TextNode#text 560,263 84x16 "702 bytes"
+                        TextNode#text 656,263 124x16 "JPEG image"
+                    Spacer#after 237,286 563x6
               Node#pathbar 237,668 563x32
                 Node#view 241,669 503x32
                   PathBarNode#pathbar 241,669 503x32
