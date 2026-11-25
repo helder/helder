@@ -22,11 +22,26 @@ class Bench {
 		{name: "bench frame", about: "tests/3d's scenes timed, first frame and after", run: () -> scenes("FrameBench")},
 		{name: "bench async", about: "helder.async's tasks, timers, switches and locks", run: () -> program("AsyncBench", cps(["src"]))},
 		{name: "bench watch", about: "the watchers' cost a tick on a large tree", run: () -> program("WatchBench", cps(["src"]))},
+		{name: "bench parallel", about: "one kernel as scalar, SIMD lanes, jobs and GPU compute (docs/design/parallel.md)", run: parallel},
 		{name: "bench soft", about: "the CPU's canvas against the GPU on the same scenes", run: () -> {
 			program("SoftBench", uiCp());
 			run(exePath("bin/bench/SoftBench", HOST), [], ["HELDER_SOFT" => "1"]);
 		}}
 	];
+
+	// the Parallel prototype (tests/bench/ParallelBench.hx): PARALLEL_GPU=0
+	// the CPU's forms only; PARALLEL_SOFT=1 also the CPU back end's compute
+	// (today's soft_cs, as the "gpu" columns)
+	static function parallel() {
+		var cp = cps(["src", "tests/bench", "tests/bench/parallel"]).concat(["-main", "ParallelBench"]);
+		var out = 'bin/bench/$HOST/ParallelBench';
+		native(out, cp, HOST);
+		run(exePath(out, HOST), Sys.getEnv("PARALLEL_GPU") == "0" ? ["cpu"] : []);
+		if (Sys.getEnv("PARALLEL_SOFT") == "1") {
+			native(out + "-soft", cp.concat(["-D", "helder.soft", "-D", "helder.headless"]), HOST);
+			run(exePath(out + "-soft", HOST), []);
+		}
+	}
 
 	// a bench of tests/bench built natively and run
 	static function program(main:String, cp:Array<String>) {
