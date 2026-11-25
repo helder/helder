@@ -3,7 +3,7 @@ package helder.pack;
 import haxe.io.Bytes;
 import helder.test.Test;
 
-// The desktop releases' archives: Deflate's raw stream and gzip's file
+// The desktop releases' archives: deflate's raw stream (helder.image.Deflate) and gzip's file
 // inflated back (haxe.zip's inflate), Zip's deflated entries read back,
 // Tar's ustar headers (names, modes, sizes, kinds, the checksum, a long
 // name split into its prefix), the same bytes for the same input.
@@ -36,10 +36,10 @@ function tests() {
 	}
 
 	test("deflate: raw and gzip, inflated back", () -> {
-		var raw = Deflate.raw(text);
+		var raw = helder.image.Deflate.raw(text);
 		assert(raw.length < text.length / 4, "a text shrinks");
 		equals(inflate(raw, text.length).compare(text), 0);
-		var gz = Deflate.gzip(text);
+		var gz = Tar.gzip(text);
 		equals([gz.get(0), gz.get(1), gz.get(2)], [0x1f, 0x8b, 8]);
 		equals(gz.getInt32(gz.length - 8), haxe.crypto.Crc32.make(text));
 		equals(gz.getInt32(gz.length - 4), text.length);

@@ -37,7 +37,7 @@ class PdfWriter {
 		objects[id] = Bytes.ofString(s);
 
 	function stream(id:Int, dict:String, data:Bytes, compress = true) {
-		var body = compress ? helder.image.PngEncoder.zlib(data) : data;
+		var body = compress ? helder.image.Deflate.zlib(data) : data;
 		var b = new BytesBuffer();
 		b.addString('<< $dict${compress ? " /Filter /FlateDecode" : ""} /Length ${body.length} >>\nstream\n');
 		b.addBytes(body, 0, body.length);

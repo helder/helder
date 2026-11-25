@@ -71,9 +71,26 @@ class Tar {
 		return out.toBytes();
 	}
 
-	// the archive gzipped (Deflate.gzip)
+	// the archive gzipped (gzip)
 	public static function gz(entries:Array<TarEntry>):Bytes
-		return Deflate.gzip(write(entries));
+		return gzip(write(entries));
+
+	// a .gz file of data (no name, no time: the same input gives the same bytes)
+	public static function gzip(data:Bytes):Bytes {
+		var body = helder.image.Deflate.raw(data);
+		var out = new Buf(body.length + 18);
+		out.u8(0x1f);
+		out.u8(0x8b);
+		out.u8(8); // deflate
+		out.u8(0); // flags
+		out.u32(0); // mtime
+		out.u8(0); // extra flags
+		out.u8(3); // Unix
+		out.bytes(body);
+		out.u32(haxe.crypto.Crc32.make(data));
+		out.u32(data.length);
+		return out.toBytes();
+	}
 }
 
 // a file (data), a directory (neither data nor link), or a symbolic link (link: its target)
