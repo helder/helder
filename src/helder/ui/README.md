@@ -641,7 +641,7 @@ Their parts are slots the look styles (`Look.base`'s parts, a look's
 
 `helder.ui.actions`, modelled on Zed's GPUI. An action is a value of an
 enum an app or a library declares (`enum ViewerAction { Next; ZoomTo(percent:Float); }`),
-its namespace given by a definition (src/helder/compiler/DESIGN.md 4):
+its namespace given by a definition (src/helder/compiler/README.md 4):
 `actions("viewer", ViewerAction)`, `viewer::ZoomTo` in a keymap. Its
 handler (`ActionsDefinition`, TypeScript's the same) checks it when the
 program is built: the namespace an identifier, a string literal, declared
@@ -1200,7 +1200,7 @@ Windows, `WebViews` in a browser; none on Linux and Android, where
 everything is drawn); a
 `PlatformEditor` is one text editor, `PlatformMenuItem` a menu's item as
 the platform takes it. The AppKit and Win32 calls they make beside
-helder.os's are theirs (`AkMsg`, `UkMsg`, `Win32`).
+helder.os's are theirs (`helder.os.apple.objc.Msg`, `Win32`).
 
 ### The web view
 

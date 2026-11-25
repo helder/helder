@@ -4,7 +4,7 @@ package helder.gfx.shader;
 // functions; helder.typescript's, TypeScript's) makes of its stages and
 // the functions they call, the handler (ShaderDefinition) checks and the
 // emitters (Glsl, Wgsl, Msl, Hlsl) print. The kernel of definitions
-// (helder.definition.Kernel) for shaders. Typed
+// (helder.compiler.Kernel) for shaders. Typed
 // and structured (no gotos): values of scalar, vector, matrix and struct
 // types, locals assigned in statements, calls to functions that are not
 // recursive. Names are already the emitted ones (Names avoids every

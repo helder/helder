@@ -1,11 +1,11 @@
 package helder.ui.view;
 
-import helder.markup.Plan;
-import helder.markup.Syntax;
+import helder.view.Plan;
+import helder.view.Syntax;
 import helder.ui.*;
 import helder.view.Flow.Mountable;
 
-// Markup interpreted: a parsed literal (helder.markup.Syntax) made into
+// Markup interpreted: a parsed literal (helder.view.Syntax) made into
 // helder.ui's nodes at run time, in this process, with no build (the
 // studio's design files: apps/studio/DESIGN.md). A third Target of the same
 // Plan as the macro's and TypeScript's, so that what

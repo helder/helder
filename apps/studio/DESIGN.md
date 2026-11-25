@@ -18,11 +18,11 @@ process, with no build: a design file.
 
 - **A design file** (`*.helder`, the extension still open) is helder's
   markup and nothing else: the syntax of a literal in `.hx` and `.tsx`,
-  parsed by helder.markup.Syntax, so that taking a part of it into code
+  parsed by helder.view.Syntax, so that taking a part of it into code
   is a move, not a translation. One language for both: neither Haxe's
   nor TypeScript's.
 - **Interpreted in the studio, compiled everywhere else.** The studio
-  renders a design file by running helder.markup.Plan's mount steps
+  renders a design file by running helder.view.Plan's mount steps
   directly (the runtime emitter of the shared markup planner) against helder.ui's
   renderer, in the studio's process: an edit shows the same frame. A
   build compiles it through the markup macro like any literal: no

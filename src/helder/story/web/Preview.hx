@@ -14,7 +14,7 @@ import hxmc.unsafe.*;
 // to an OffscreenCanvas of the worker's, at the screen's size, and leaves
 // as an ImageBitmap posted to the page (the studio's), which draws it with
 // its own renderer. The page speaks the devtools protocol to it as the
-// worker's messages (src/helder/devtools/README.md, JSON-RPC lines), each
+// worker's messages (src/helder/dev/README.md, JSON-RPC lines), each
 // request about a screen naming it (params.screen):
 //
 //   Host.show {screens, focused, scale}  the screens in view, the one zoomed into (drawn every frame, at scale pixels a point)
@@ -23,7 +23,7 @@ import hxmc.unsafe.*;
 //   Ui.nodesAt {screen, file, line, col}
 //   Hot.literals {set}               live literals patched (every screen: one program)
 //
-// and anything else the program's agent answers (helder.devtools.Agent),
+// and anything else the program's agent answers (helder.dev.Agent),
 // with that screen's context current. It tells Host.ready {screens} once
 // running, Host.frame {screen, version, width, height} with each frame's
 // bitmap beside it (worker.mjs: the message's bitmap), and Hot.patched
@@ -39,8 +39,8 @@ class Preview {
 		var h = new Host(stories, rt);
 		host = h;
 		#if hxmc.dev
-		helder.devtools.Agent.serve(send);
-		helder.devtools.Agent.notify("Host.ready", {screens: helder.story.HostAgent.list(h)});
+		helder.dev.Agent.serve(send);
+		helder.dev.Agent.notify("Host.ready", {screens: helder.story.HostAgent.list(h)});
 		#end
 		PreviewWeb.start(Callback.addr(turn));
 	}
@@ -66,7 +66,7 @@ class Preview {
 		if (m == null || m.method == null) return;
 		#if hxmc.dev
 		var hs = host;
-		if (hs != null && !helder.story.HostAgent.receive(hs, m)) helder.devtools.Agent.dispatch(m);
+		if (hs != null && !helder.story.HostAgent.receive(hs, m)) helder.dev.Agent.dispatch(m);
 		#end
 	}
 

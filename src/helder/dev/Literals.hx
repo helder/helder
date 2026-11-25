@@ -5,7 +5,7 @@ package helder.dev;
 // props, text, the values of a ternary's branches in an attribute, a
 // Color.rgb's channel — read from a slot table, so that `helder dev` (or the
 // studio) patches them in the running program without a build. The markup
-// planner (helder.markup.Plan, Haxe's markup and TSX alike) writes each
+// planner (helder.view.Plan, Haxe's markup and TSX alike) writes each
 // such literal as a read of its slot:
 //
 //   Literals.string(id, "#3b82f6", anchor)     Literals.int(id, 24, anchor)
@@ -26,7 +26,7 @@ package helder.dev;
 // is kept only while the literal's compiled value is the one it replaced
 // (a source changed there wins).
 //
-// Over the devtools protocol (helder.devtools.Agent), the method
+// Over the devtools protocol (helder.dev.Agent), the method
 // `Hot.literals`: `{}` lists the slots, `{set: [{id, value} | {id, source}]}`
 // patches them (value: JSON of the slot's type; source: the literal as
 // written, quotes and all, or a text's raw run) and answers `{set, stale,
@@ -82,7 +82,7 @@ class Literals {
 	static function start() {
 		if (started) return;
 		started = true;
-		helder.devtools.Agent.method("Hot.literals", call);
+		helder.dev.Agent.method("Hot.literals", call);
 		Hot.at("", () -> {
 			var kept:Null<Array<String>> = Hot.load("helder.literals", "helder.literals.1");
 			if (kept != null) {
@@ -159,7 +159,7 @@ class Literals {
 	static function framed() {
 		if (patchedAt < 0) return;
 		var ms = Math.round((haxe.Timer.stamp() - patchedAt) * 10000) / 10;
-		helder.devtools.Agent.notify("Hot.patched", {ms: ms, ids: patchedIds});
+		helder.dev.Agent.notify("Hot.patched", {ms: ms, ids: patchedIds});
 		patchedAt = -1;
 		patchedIds = [];
 	}
@@ -208,8 +208,8 @@ private class Slot {
 			return Std.isOfType(base, Int) ? Std.int(n) : n;
 		}
 		// (a text: JSX's whitespace rule, its entities)
-		var c = helder.markup.Syntax.Whitespace.clean(source);
-		return c == null ? "" : helder.markup.Syntax.Entities.decode(c);
+		var c = helder.view.Syntax.Whitespace.clean(source);
+		return c == null ? "" : helder.view.Syntax.Entities.decode(c);
 	}
 
 	static function unquote(t:String):String {

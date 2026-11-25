@@ -9,7 +9,7 @@ import sys.io.File;
 using StringTools;
 
 // `helder inspect [--tree] [--log] [--frames] [--state]`: a small tool on
-// the devtools protocol (src/helder/devtools/README.md), connected to a
+// the devtools protocol (src/helder/dev/README.md), connected to a
 // running `helder dev` (bin/dev/devtools.json, from here up, or --port):
 // the ui tree and the state Hot keeps printed once, the log (from what
 // helder dev kept) and the frames' stats streamed until the dev server

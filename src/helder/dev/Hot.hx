@@ -267,7 +267,7 @@ class Hot {
 				if (fd >= 0 && hxmc.NativeNet.connect(fd, new sys.net.Host(at.substr(0, at.lastIndexOf(":"))).ip, Std.parseInt(at.substr(at.lastIndexOf(":") + 1)) ?? 0) >= 0) {
 					hxmc.NativeNet.setBlocking(fd, false);
 					socket = fd;
-					helder.devtools.Agent.start();
+					helder.dev.Agent.start();
 				} else log("no dev server at " + at);
 			}
 		}
@@ -322,7 +322,7 @@ class Hot {
 			try d.f() catch (e:Dynamic) log("a dispose function failed: " + Std.string(e));
 			frame = savedFrame;
 		}
-		helder.devtools.Agent.dispose();
+		helder.dev.Agent.dispose();
 		done = true;
 	}
 
@@ -368,9 +368,9 @@ class Hot {
 		// (what the program printed, in the terminal as it prints it: its output is a pipe)
 		if (hxmc.Platform.os() != 3) Sys.stdout().flush();
 		if (socket < 0) return !done;
-		helder.devtools.Agent.turn();
+		helder.dev.Agent.turn();
 		if (inbuf == null) inbuf = haxe.io.Bytes.alloc(4096);
-		var buf = inbuf, own = helder.devtools.Agent.begin();
+		var buf = inbuf, own = helder.dev.Agent.begin();
 		while (true) {
 			var n = hxmc.NativeNet.recv(socket, buf, 0, buf.length);
 			if (n == 0 || (n < 0 && !hxmc.NativeNet.blocked())) {
@@ -379,7 +379,7 @@ class Hot {
 				hxmc.NativeNet.close(socket);
 				socket = -1;
 				if (Sys.getEnv("HXMC_DEV_EXIT_WITH_SERVER") == "1") Sys.exit(0);
-				helder.devtools.Agent.end(own);
+				helder.dev.Agent.end(own);
 				return !done;
 			}
 			if (n < 0) break;
@@ -393,7 +393,7 @@ class Hot {
 			// (helder dev's protocol: a reload is Runtime.reload, the rest the agent's)
 			if (m != null && m.jsonrpc != null) {
 				if (m.method != "Runtime.reload") {
-					helder.devtools.Agent.receive(m);
+					helder.dev.Agent.receive(m);
 					continue;
 				}
 				reloadId = m.id;
@@ -425,7 +425,7 @@ class Hot {
 				Sys.exit(0);
 			}
 		}
-		helder.devtools.Agent.end(own);
+		helder.dev.Agent.end(own);
 		#end
 		return !done;
 	}
@@ -454,7 +454,7 @@ class Hot {
 	@:noCompletion public static var afterFrame:Null<Void->Void> = null;
 
 	@:noCompletion public static function framed() {
-		helder.devtools.Agent.frame();
+		helder.dev.Agent.frame();
 		if (afterFrame != null) afterFrame();
 		if (settled) return;
 		init();
@@ -469,7 +469,7 @@ class Hot {
 			restored = new Map();
 		}
 		#if (target.name == "hxmc")
-		if (hxmc.Platform.os() == 3) DevWeb.frame() else if (helder.devtools.Agent.on) helder.devtools.Agent.notify("Runtime.ready", {startedAt: startedAt, ms: Math.round((haxe.Timer.stamp() - startStamp) * 10000) / 10}) else send('{"type":"frame"}');
+		if (hxmc.Platform.os() == 3) DevWeb.frame() else if (helder.dev.Agent.on) helder.dev.Agent.notify("Runtime.ready", {startedAt: startedAt, ms: Math.round((haxe.Timer.stamp() - startStamp) * 10000) / 10}) else send('{"type":"frame"}');
 		#end
 	}
 
@@ -499,7 +499,7 @@ class Hot {
 	}
 	#end
 
-	// a line to the dev server (helder.devtools.Agent's messages)
+	// a line to the dev server (helder.dev.Agent's messages)
 	@:noCompletion public static function sendLine(line:String)
 		if (hxmc.Platform.os() == 3) sendDevtools(haxe.io.Bytes.ofString(line)) else send(line);
 
@@ -513,7 +513,7 @@ class Hot {
 			hxmc.unsafe.BytesPtr.copyIn(b, 0, p, n);
 		});
 		var m:Dynamic = try haxe.Json.parse(b.toString()) catch (_:Dynamic) null;
-		if (m != null) helder.devtools.Agent.receive(m);
+		if (m != null) helder.dev.Agent.receive(m);
 		return 0;
 	}
 

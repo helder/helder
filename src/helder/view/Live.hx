@@ -1,4 +1,4 @@
-package helder.markup;
+package helder.view;
 
 // Live literals' compile-time half (helder.dev.Literals is the program's),
 // shared by Haxe's markup macro and TypeScript's lowering: which literals

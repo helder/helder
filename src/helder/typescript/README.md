@@ -195,7 +195,7 @@ not declared) and the module's declaration class (`__module`). TSX is helder.vie
 `src/helder/gfx/typescript.mjs`), compiled with the program: the shader
 math as CPU code (Vec2, Vec3, Vec4, Mat4, Texture2D, ShaderMath's builtins
 by their names; the operators as methods, `a.mul(b)`) and
-`shader({vertex, fragment})`, a definition (src/helder/compiler/DESIGN.md).
+`shader({vertex, fragment})`, a definition (src/helder/compiler/README.md).
 Its call is compiled when the program is (`lower/Definitions.hx`): the
 argument's kernel tree from the AST, its stages lowered to helder.gfx's
 shader IR by their annotations (type aliases of object types are the
@@ -219,7 +219,7 @@ function of the lowering's own calls it there, by its number, through
 `helder.jobs.script.Entry`). `image(path)`, `font`, `model`, `sound` and `bytes` from `helder/asset`,
 and `import icon from "./icon.png" with {type: "image"}`, are Haxe's
 `Asset.*` (the file found and bundled when the build starts: `TsAssets`).
-`helder/platform` (src/helder/platform/index.ts) is the build's target as
+`helder/native/platform` (src/helder/native/platform.ts) is the build's target as
 constants: `platform.os` (linux, macos, windows, wasi, android, ios),
 `platform.target` (hxmc's name) and `platform.arm` are literals where they
 are read, and so is a condition of them (`===`, `!==`, `!`, `&&`, `||`):
@@ -291,7 +291,7 @@ functions. Pointers are numbers; `native.string`, `native.bytes`,
   given, and aborts on hxmc's reserved one).
 
 Each is refused at its line where its system is not (objc but on Apple's,
-com but on Windows, jni but on Android: a platform test of helder/platform
+com but on Windows, jni but on Android: a platform test of helder/native/platform
 leaves the call out elsewhere). `tests/typescript/native.mjs` (the
 typescript-native lane, in the typescript lane too): libc.ts (getpid,
 strlen, memset into a buffer, strdup and strchr, libm) natively,
@@ -416,7 +416,7 @@ whose node parent is (its class's `@:rendered`). The `Interop` functions are
 where values cross.
 
 **TSX** (`lower/Tsx.hx`) goes through helder.markup's planner
-(`helder.markup.Plan`), its TypeScript target, so a literal
+(`helder.view.Plan`), its TypeScript target, so a literal
 means what the same Haxe markup means: renderer boundaries, components,
 neutral elements, keys, refs and handlers, and holes that read bound
 (3.3): a hole or an attribute whose expression may read, a call or a read

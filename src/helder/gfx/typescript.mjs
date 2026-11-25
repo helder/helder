@@ -4,7 +4,7 @@
 // each vector's componentwise add, sub, mul and div (a vector or a number),
 // neg and swizzles of 2 to 4 components; Mat4's mul (a matrix or a vector);
 // ShaderMath's builtins by the same names. shader(...) is a definition
-// (src/helder/compiler/DESIGN.md): the compiler checks and compiles its
+// (src/helder/compiler/README.md): the compiler checks and compiles its
 // stages at build time (helder.typescript.lower's TS adapter, the handler
 // helder.gfx.shader.ShaderDefinition shared with Haxe) and passes what it
 // made as its second argument.

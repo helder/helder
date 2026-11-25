@@ -1,8 +1,8 @@
 package helder.dev;
 
-import helder.definition.Kernel;
+import helder.compiler.Kernel;
 
-// keep(key, () -> initial)'s handler (src/helder/compiler/DESIGN.md 4), the
+// keep(key, () -> initial)'s handler (src/helder/compiler/README.md 4), the
 // same for both languages (Haxe's helder.dev.Keep, TypeScript's helder/dev):
 // its arguments, a key literal and a function of no arguments making the
 // initial value, checked at their positions. What each adapter generates of

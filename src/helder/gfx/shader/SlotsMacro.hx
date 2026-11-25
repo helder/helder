@@ -5,8 +5,8 @@ import haxe.io.Bytes;
 import haxe.macro.Context;
 import haxe.macro.Expr;
 import haxe.macro.Type;
-import helder.definition.HaxeAdapter;
-import helder.definition.Kernel;
+import helder.compiler.HaxeAdapter;
+import helder.compiler.Kernel;
 import helder.gfx.shader.ShaderDefinition;
 
 using haxe.macro.Tools;
