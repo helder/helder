@@ -226,6 +226,8 @@ class UiWindow {
 		// (an inset title bar: a press's answer the ui's, its drag regions and window buttons)
 		if (titlebar != Standard) window.titlebarAt = (x, y) -> ui.titleHit(x / scale, y / scale);
 		ui.dark = dark.peek();
+		// (a hand over what is pressed, as web pages have it)
+		if (Platform.os() == 3) ui.pressCursor = Pointer;
 		nativeScroll(scrolling);
 		// (a touch drag the program's where it scrolls something: the page's otherwise)
 		window.scrollsAt = (x, y, dx, dy) -> ui.scrollsAt(x / scale, y / scale, dx / scale, dy / scale);

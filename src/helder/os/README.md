@@ -37,7 +37,9 @@ App.run(() -> {
 X11 or Wayland on Linux (the glibc mode, `-D hxmc.libc=glibc`; Wayland
 when `WAYLAND_DISPLAY` is set and it connects, `HELDER_X11=1` X11's), Cocoa on macOS,
 Win32 on Windows, a canvas in the browser (wasm32-wasi: `App.run` returns
-and `requestAnimationFrame` runs the loop). `Event` is one object, refilled
+and `requestAnimationFrame` runs the loop; a canvas resized is drawn in its
+`ResizeObserver`, before the paint, so that the frame laying out its new
+size shows it rather than the old one stretched). `Event` is one object, refilled
 for each event: keys as X11 KeySyms, `TextInput` characters (and an input
 method's `TextEditing`), the mouse in
 pixels from the top left, `Scroll` in pixels, `Resize`, `ScaleChange`,
@@ -55,7 +57,18 @@ in order, and what the program reads at once (the pixel ratio, the soft
 keyboard, media queries, `localStorage`) is the page's as it last told it.
 Each of the worker's frames waits for the page's frame that delivered its
 input, 4 ms at most, so input reaches the same frame as on the page's
-thread, and a page busy with its own scripts holds no frame back. It fits
+thread, and a page busy with its own scripts holds no frame back; a resize
+is told at the page's `resize` event, before its layout, and the worker's
+frame waiting for the marker resizes the canvas and draws it then (a frame
+a frame, the newest size: a burst's sizes, each a new drawing buffer, made
+once). The page shows the worker's frames as they come, so a resized one
+can come late: on a GPU 0–2 of ~90 frames of a drag, none more than a frame
+late (`tests/ui/web-resize.mjs`, which checks that with Chromium on a GPU:
+`CHROMIUM_ARGS`). CI's browser lanes have no GPU (SwiftShader, whose
+headless frame times are no GPU's either), so there the test reports the
+timing and checks only what holds on any GPU: the last size drawn, no size
+drawn that the page did not lay out, no resize shown cleared, the worker
+drawing on. It fits
 in a browser with module workers and OffscreenCanvas, when the module
 imports nothing only a page has (audio's AudioContext, helder.web's DOM,
 helder.media's `<video>`, helder.canvas's Canvas 2D) and with one window;
