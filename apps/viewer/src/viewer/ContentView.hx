@@ -6,6 +6,7 @@ import helder.ui.VirtualScroll;
 import helder.ui.controls.Look;
 import helder.ui.controls.Props.PathSegment;
 import helder.ui.controls.Standard;
+import helder.ui.widgets.WindowButtons;
 import helder.ui.menu.Menu.MenuItem;
 import helder.ui.menu.Menus;
 import helder.ui.view.UiFlow.VirtualList;
@@ -42,7 +43,9 @@ class ContentView implements Markup {
 
 	static function toolbar(x:Explorer, tablet:Read<Bool>):View {
 		var b = x.browser, title:Null<Node> = null, viewButton:Null<Node> = null;
+		// (a tablet's, no sidebar left of it: macOS's buttons at its start, kept clear)
 		return <view tag="toolbar" direction="row" align-items="center" column-gap={6} height={tablet() ? 52 : Shell.BAR} shrink={0} padding="0 8" drag-region
+			padding-left={tablet() && WindowButtons.side() == "start" ? Shell.BUTTONS : 8}
 			borders="0 0 1 0" border-color={Look.ref.line}>
 			<Show when={tablet()}>
 				<Standard.Button tag="sidebar-toggle" variant="ghost" icon={Glyphs.get("sidebar")} label="Sidebar" onPress={() -> x.sidebarOpen(true)}/>

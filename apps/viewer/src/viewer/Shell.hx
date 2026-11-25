@@ -27,6 +27,11 @@ import viewer.ViewerActions;
 class Shell implements Markup {
 	// the toolbar's height, the window's buttons' row (macOS: the sidebar's top)
 	public static inline var BAR = 40;
+	// (macOS's buttons, left of a bar at the window's left edge: what the bar keeps clear)
+	public static inline var BUTTONS = 86;
+	// the window's least size (a desktop's: the tablet's shell at its narrowest, never a phone's)
+	public static inline var MIN_WIDTH = 640;
+	public static inline var MIN_HEIGHT = 400;
 
 	// helder's controls' look in the system's font, the browser's parts in its tokens
 	public static final look = Look.base.with({
@@ -254,7 +259,7 @@ class Shell implements Markup {
 			}}
 			ref={w -> {
 				window = w;
-				if (!phone) w.window.setMinSize(640, 400);
+				if (!phone) w.window.setMinSize(MIN_WIDTH, MIN_HEIGHT);
 				var placed = store != null && store.exists("x") && store.exists("y");
 				if (placed) w.window.moveTo(num("x", 0), num("y", 0));
 				asked = {x: placed ? num("x", 0) : null, y: placed ? num("y", 0) : null, width: num("width", 1180), height: num("height", 780)};
