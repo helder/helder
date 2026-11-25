@@ -557,11 +557,16 @@ initializes again), and `DELETE /mcp` with it ends the session.
 **A project starts working.** An empty folder opened in the studio (the
 Untitled one, or any) becomes the starter (`Starter`): the smallest
 TypeScript program that builds and shows on the canvas (`main.tsx`,
-`app.tsx`, `app.story.tsx` with one screen: a soft orb on the dark
-ground, breathing, until the agent makes the app; a `tsconfig.json` mapping
-helder's modules to the helder the studio was built with when no package
-resolves them, and TypeScript's checker found beside it). The blank sheet
-stays until the first prompt; then its frame rises onto the canvas, built.
+`app.tsx`, `app.story.tsx` with one plain screen; a `tsconfig.json`
+mapping helder's modules to the helder the studio was built with when no
+package resolves them, and TypeScript's checker found beside it). Until
+the agent changes the project the canvas shows the studio's orb (`Orb`):
+a sphere of light in the agent's colour (the current blue for the
+studio's own tools), its surface slowly moving, breathing, brighter while
+a turn runs; drawn by a part shader of the studio's (helder.ui's
+PartShader: one pass of one triangle, shown as one quad), over the blank
+sheet and an empty canvas. The agent's first edit fades it out
+(arrive-style) and the frames rise onto the canvas, built.
 What a project is (TypeScript or Haxe, its main, whether it has a program)
 is read again whenever a story or a main is made or changes (`revive`), so
 a folder that starts empty or changes kind comes alive: its screens shown,

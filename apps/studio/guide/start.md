@@ -18,29 +18,15 @@ A new project is the starter: a TypeScript helder program.
 | `tsconfig.json` | where helder's modules are (leave it) |
 | `*.helder` | design files: frames and groups the studio draws itself |
 
-`app.tsx` is the starter's screen, a breathing orb that says something is
-coming: replace it with the app (keep `App` as its view's name, or change
-`main.tsx` and `app.story.tsx` with it).
+`app.tsx` is a plain placeholder: replace it with the app (keep `App` as
+its view's name, or change `main.tsx` and `app.story.tsx` with it). Until
+your first change the canvas shows the studio's own "something is coming"
+orb, not this screen.
 
 ```tsx file=app.tsx
-import { signal, onCleanup } from "helder/view";
-import { Clock } from "helder/ui";
-
-// The starter's screen until the app is made: a soft orb on the dark
-// ground, breathing (a 5 s breath: its glow swells and settles)
 export function App() {
-	const breath = signal(0);
-	let alive = true;
-	onCleanup(() => alive = false);
-	Clock.add(t => {
-		breath(0.5 - 0.5 * Math.cos(t / 5 * Math.PI * 2));
-		return alive;
-	});
-	return <view grow={1} align-items="center" justify="center" background="#0f0f11">
-		<view position="absolute" width={380} height={380} opacity={0.35 + breath() * 0.35} transform={`scale(${0.9 + breath() * 0.12})`}
-			background-image="radial-gradient(circle closest-side, rgba(129,140,248,0.4) 0%, rgba(129,140,248,0.12) 50%, rgba(129,140,248,0) 100%)"/>
-		<view width={180} height={180} opacity={0.85 + breath() * 0.15} transform={`scale(${0.96 + breath() * 0.05})`}
-			background-image="radial-gradient(circle closest-side, #f5f3ff 0%, #c7d2fe 22%, #818cf8 52%, rgba(99,102,241,0.3) 78%, rgba(99,102,241,0) 100%)"/>
+	return <view grow={1} align-items="center" justify="center" background="#ffffff">
+		<text font-size={14} color="#71717a">App</text>
 	</view>;
 }
 ```

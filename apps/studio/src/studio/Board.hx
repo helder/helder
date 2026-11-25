@@ -72,7 +72,7 @@ class Board implements Markup {
 				if (g.state == Ended) studio.log("pinched", {k: studio.camera.k});
 			}}>
 			{watch ? dots(studio) : null}
-			<Show when={studio.mode() != "stories" && (studio.classic || !Watch.blank(studio))}>
+			<Show when={studio.mode() != "stories" && (studio.classic || !Watch.blank(studio) && !studio.waiting())}>
 				<view tag="world" position="absolute" left={0} top={0} width={1} height={1} transform-origin="left top" transform={transform(studio)}>
 					<For each={studio.layout.screens()} by={(r:Rect) -> r.name + "@" + studio.revived.peek()}>{(r:Read<Rect>) -> {
 						var info = studio.project.screen(r().name);
