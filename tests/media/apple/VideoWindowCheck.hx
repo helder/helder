@@ -220,7 +220,7 @@ class VideoWindowCheck {
 			step++;
 			var p = video.player;
 			switch step {
-				case 10 if (p == null || !p.loaded):
+				case 10 if (p == null || !p.loaded()):
 					step = 9;
 				case 10:
 					video.seek(0.45);

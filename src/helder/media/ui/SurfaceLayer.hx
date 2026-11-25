@@ -103,7 +103,7 @@ class SurfaceLayer {
 				decoder.output(window);
 				// (paused: no frame would come onto it; the one due decoded
 				// again, at the player's time: a seek asked for is kept)
-				if (!p.playing && p.shown != null) p.seek(p.time);
+				if (!p.playing() && p.shown != null) p.seek(p.time());
 			}
 		}
 		var f = p.update();

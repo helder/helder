@@ -72,7 +72,7 @@ class MediaView {
 		// (what the controls show, as the player goes: its time, not the
 		// signal's, whose write lands after onTime)
 		function shown() {
-			var p = video.player, d = p == null ? 0.0 : p.duration, t = p == null ? 0.0 : p.time;
+			var p = video.player, d = p == null ? 0.0 : p.duration(), t = p == null ? 0.0 : p.time();
 			scrub.duration = d;
 			scrub.show(t);
 			clockText.text = clock(scrub.time) + " / " + clock(d);
@@ -88,7 +88,7 @@ class MediaView {
 		video.onLoaded = () -> {
 			var p = video.player, v = p.video, a = p.audio, s = video.picture();
 			audio.style.display = v == null ? Flex : None;
-			viewer.described(v == null ? clock(p.duration) : '${s.width}×${s.height} · ${clock(p.duration)}',
+			viewer.described(v == null ? clock(p.duration()) : '${s.width}×${s.height} · ${clock(p.duration())}',
 				[for (t in [v, a]) if (t != null) Std.string(t.codec)].join(" · "));
 			shown();
 		};
@@ -114,9 +114,9 @@ class MediaView {
 			var p = video.player, th = thumbs;
 			if (p == null || p.video == null || th == null) return;
 			thumb.style.left = scrub.node.width * k - Thumbs.WIDTH / 2 - 3;
-			th.at(k * p.duration, img -> {
+			th.at(k * p.duration(), img -> {
 				picture.image = img;
-				at.text = clock(k * p.duration);
+				at.text = clock(k * p.duration());
 				thumb.style.display = img == null ? None : Flex;
 			});
 		};

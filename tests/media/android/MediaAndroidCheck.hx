@@ -264,8 +264,8 @@ class MediaAndroidCheck {
 		McVideo.readable = true;
 		var p = Player.open(source("h264-aac.mp4"), {silent: true});
 		var t0 = haxe.Timer.stamp();
-		while (!p.loaded && p.error == null && haxe.Timer.stamp() - t0 < 2) Async.delay(0.002);
-		check("the player loaded", p.loaded && p.duration == 1, '${p.error} ${p.duration}');
+		while (!p.loaded() && p.error() == null && haxe.Timer.stamp() - t0 < 2) Async.delay(0.002);
+		check("the player loaded", p.loaded() && p.duration() == 1, '${p.error()} ${p.duration()}');
 		var crcs:Array<Int> = videos["h264-aac.mp4"].crcs;
 		function at(what:String, f:Null<VideoFrame>, time:Float, i:Int)
 			check('h264-aac.mp4: $what: the frame at $time', f != null && f.time == time && crc(f) == crcs[i], f == null ? "none" : '${f.time}');
@@ -302,7 +302,7 @@ class MediaAndroidCheck {
 		var p = Player.open(source("h264-aac.mp4"));
 		var ended = false, shows = [], late = 0.0, t0 = haxe.Timer.stamp();
 		p.onEnded = () -> ended = true;
-		while (!p.loaded && haxe.Timer.stamp() - t0 < 2) Async.delay(0.002);
+		while (!p.loaded() && haxe.Timer.stamp() - t0 < 2) Async.delay(0.002);
 		var heard = @:privateAccess p.out != null;
 		p.play();
 		var last:Null<VideoFrame> = null;
@@ -311,13 +311,13 @@ class MediaAndroidCheck {
 			if (f != null && f != last) {
 				last = f;
 				shows.push(f.time);
-				var off = p.time - f.time;
+				var off = p.time() - f.time;
 				if (off < -1e-6 || off > late) late = Math.max(late, off < 0 ? -off + 1 : off);
 			}
 			Async.delay(0.002);
 		}
-		if (p.error != null) check("played: no error", false, p.error);
-		var position = p.time, ring = @:privateAccess p.ring, written = ring == null ? 0 : ring.written;
+		if (p.error() != null) check("played: no error", false, p.error());
+		var position = p.time(), ring = @:privateAccess p.ring, written = ring == null ? 0 : ring.written;
 		p.close();
 		Sys.println('MediaAndroidCheck: played on ${heard ? "AAudio" : "the monotonic clock (no audio output)"}');
 		check("played: each frame once, in order", shows.join(",") == [for (i in 0...10) i / 10].join(","), shows.join(","));

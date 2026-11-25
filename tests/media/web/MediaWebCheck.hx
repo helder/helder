@@ -325,7 +325,7 @@ class MediaWebCheck {
 			Async.delay(0.004);
 		}
 		check('$f: dragged: the frame at ${pts[k]} first', first == pts[k] && ok, '$first');
-		check('$f: dragged: the time where it was let go', pl.time == pts[k] + dt / 2, '${pl.time}');
+		check('$f: dragged: the time where it was let go', pl.time() == pts[k] + dt / 2, '${pl.time()}');
 		pl.close();
 	}
 
@@ -363,7 +363,7 @@ class MediaWebCheck {
 		var p = Player.open(WebSource.of("tests/media/" + f));
 		var ended = false, shows = [], late = 0.0, t0 = haxe.Timer.stamp();
 		p.onEnded = () -> ended = true;
-		while (p.update() == null && p.error == null && haxe.Timer.stamp() - t0 < 2) Async.delay(0.004);
+		while (p.update() == null && p.error() == null && haxe.Timer.stamp() - t0 < 2) Async.delay(0.004);
 		p.play();
 		var last:Null<VideoFrame> = null;
 		while (!ended && haxe.Timer.stamp() - t0 < 5) {
@@ -371,14 +371,14 @@ class MediaWebCheck {
 			if (fr != null && fr != last) {
 				last = fr;
 				shows.push(fr.time);
-				var off = p.time - fr.time;
+				var off = p.time() - fr.time;
 				if (off < -1e-6 || off > late) late = Math.max(late, off < 0 ? -off + 1 : off);
 			}
 			Async.delay(0.004);
 		}
-		var position = p.time, heard = @:privateAccess p.ring.read, outputs = @:privateAccess p.out != null;
+		var position = p.time(), heard = @:privateAccess p.ring.read, outputs = @:privateAccess p.out != null;
 		p.close();
-		check("played: on the page's audio output", outputs, '${p.error}');
+		check("played: on the page's audio output", outputs, '${p.error()}');
 		check("played: each frame once, in order", shows.join(",") == [for (i in 0...10) i / 10].join(","), shows.join(","));
 		check("played: each shown within a frame of the clock", late < 0.1 + 0.02, 'at most ${Math.round(late * 1000)} ms after its time');
 		check("played: ended, the clock at the end", ended && Math.abs(position - 1) < 0.1, '$position');
@@ -395,7 +395,7 @@ class MediaWebCheck {
 		if (!ok) return Sys.println('skipped: autoplay: $f not decoded here');
 		var p = Player.open(WebSource.of("tests/media/" + f)), t0 = haxe.Timer.stamp();
 		p.muted = true;
-		while (!p.loaded && p.error == null && haxe.Timer.stamp() - t0 < 2) Async.delay(0.004);
+		while (!p.loaded() && p.error() == null && haxe.Timer.stamp() - t0 < 2) Async.delay(0.004);
 		p.play();
 		var last = 0.0;
 		while (haxe.Timer.stamp() - t0 < 3 && last < 0.5) {
@@ -407,14 +407,14 @@ class MediaWebCheck {
 		p.close();
 		var p = Player.open(WebSource.of("tests/media/" + f));
 		t0 = haxe.Timer.stamp();
-		while (!p.loaded && p.error == null && haxe.Timer.stamp() - t0 < 2) Async.delay(0.004);
+		while (!p.loaded() && p.error() == null && haxe.Timer.stamp() - t0 < 2) Async.delay(0.004);
 		p.play();
 		t0 = haxe.Timer.stamp();
 		while (haxe.Timer.stamp() - t0 < 0.6) {
 			p.update();
 			Async.delay(0.01);
 		}
-		check("autoplay: with sound, it waits for a gesture", p.time < 0.1, '${p.time}');
+		check("autoplay: with sound, it waits for a gesture", p.time() < 0.1, '${p.time()}');
 		p.close();
 	}
 
@@ -425,9 +425,9 @@ class MediaWebCheck {
 		var p = Player.open(WebSource.of("tests/media/apple/vp9-yuv.webm"));
 		WebElement.forced = false;
 		var t0 = haxe.Timer.stamp();
-		while (!p.loaded && p.error == null && haxe.Timer.stamp() - t0 < 3) Async.delay(0.004);
-		if (p.error != null && p.error.indexOf("does not play") >= 0) return Sys.println('skipped: element: ${p.error}');
-		check("element: loaded, its duration", p.loaded && Math.abs(p.duration - 1) < 0.05, '${p.error} ${p.duration}');
+		while (!p.loaded() && p.error() == null && haxe.Timer.stamp() - t0 < 3) Async.delay(0.004);
+		if (p.error() != null && p.error().indexOf("does not play") >= 0) return Sys.println('skipped: element: ${p.error()}');
+		check("element: loaded, its duration", p.loaded() && Math.abs(p.duration() - 1) < 0.05, '${p.error()} ${p.duration()}');
 		p.muted = true;
 		p.play();
 		var times = [];
@@ -441,9 +441,9 @@ class MediaWebCheck {
 		p.seek(0.25);
 		var fr = null;
 		t0 = haxe.Timer.stamp();
-		while (haxe.Timer.stamp() - t0 < 2 && Math.abs(p.time - 0.25) > 0.06) Async.delay(0.01);
+		while (haxe.Timer.stamp() - t0 < 2 && Math.abs(p.time() - 0.25) > 0.06) Async.delay(0.01);
 		fr = p.update();
-		check("element: seek(0.25)", Math.abs(p.time - 0.25) <= 0.06, '${p.time}');
+		check("element: seek(0.25)", Math.abs(p.time() - 0.25) <= 0.06, '${p.time()}');
 		var device = helder.gfx.Device.create(helder.os.Surface.headless(128, 96)), vt = new VideoTexture(device);
 		var ok = fr != null && vt.prepare(fr, 0), px = ok ? readBack(vt) : haxe.io.Bytes.alloc(0), lit = 0;
 		for (i in 0...px.length >> 2) if (px.get(i * 4) + px.get(i * 4 + 1) + px.get(i * 4 + 2) > 60) lit++;

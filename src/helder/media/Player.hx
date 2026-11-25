@@ -3,6 +3,9 @@ package helder.media;
 import helder.async.Async;
 import helder.os.audio.Audio;
 import hxmc.unsafe.*;
+import helder.view.graph.Graph;
+import helder.view.graph.Read;
+import helder.view.graph.Signal;
 
 typedef PlayerOptions = {
 	// the audio output (helder.os.audio.AudioConfig's device: "file:PATH" in tests)
@@ -38,13 +41,15 @@ class Player {
 	// an audio track this system does not decode, played without it (Vorbis
 	// where helder's decoder is not linked: VorbisDecoder.link; null: none)
 	public var unheard(default, null):Null<MediaTrack>;
-	// seconds (0 until loaded)
-	public var duration(default, null) = 0.0;
-	public var loaded(default, null) = false;
-	public var error(default, null):Null<String>;
-	public var ended(default, null) = false;
-	public var playing(get, never):Bool;
-	public var time(get, never):Float;
+	// the state, Reads (helder.view.graph: a hole or effect that reads one
+	// follows it): seconds (0 until loaded), loaded, the error (null: none),
+	// ended, playing, the time (seconds: the clock's, read when asked)
+	public final duration:Read<Float>;
+	public final loaded:Read<Bool>;
+	public final error:Read<Null<String>>;
+	public final ended:Read<Bool>;
+	public final playing:Read<Bool>;
+	public final time:Read<Float>;
 	// the frame shown at the last update (null: none yet)
 	public var shown(default, null):Null<VideoFrame>;
 	public var rate(default, set) = 1.0;
@@ -58,6 +63,14 @@ class Player {
 	public var onFrame:Null<Void->Void>;
 
 	final clock = new Playback();
+	// (the Reads' values and their signals: state when duration, loaded,
+	// error or ended change; tick at a play, a pause, a seek, an update)
+	var durationNow = 0.0;
+	var loadedNow = false;
+	var errorNow:Null<String>;
+	var endedNow = false;
+	final state:Signal<Int> = Graph.signal(0);
+	final tick:Signal<Int> = Graph.signal(0);
 	final options:PlayerOptions;
 	final source:ByteSource;
 	var vdec:Null<VideoDecoder>;
@@ -115,14 +128,42 @@ class Player {
 	function new(source:ByteSource, options:PlayerOptions) {
 		this.source = source;
 		this.options = options;
+		duration = () -> {
+			state();
+			durationNow;
+		};
+		loaded = () -> {
+			state();
+			loadedNow;
+		};
+		error = () -> {
+			state();
+			errorNow;
+		};
+		ended = () -> {
+			state();
+			endedNow;
+		};
+		playing = () -> {
+			tick();
+			clock.playing;
+		};
+		time = () -> {
+			tick();
+			timeNow();
+		};
 		live.push(this);
 		Async.launch(_ -> run());
 	}
 
-	function get_playing():Bool
-		return clock.playing;
+	// (the Reads told: what read them reads again)
+	inline function changed()
+		state(state.peek() + 1);
 
-	function get_time():Float {
+	inline function ticked()
+		tick(tick.peek() + 1);
+
+	function timeNow():Float {
 		#if (hxmc.target == "wasm32-wasi")
 		if (element != null) return element.time;
 		#end
@@ -132,17 +173,17 @@ class Player {
 	// (unmuted after playing on without its output: the output again, from where it is)
 	function set_muted(m:Bool):Bool {
 		muted = m;
-		if (!m && out == null && adec != null && options.silent != true && !quiet && loaded && !closed) {
+		if (!m && out == null && adec != null && options.silent != true && !quiet && loadedNow && !closed) {
 			out = output(adec.rate);
-			if (out != null) seek(time);
+			if (out != null) seek(timeNow());
 		}
 		return m;
 	}
 
 	public function play() {
-		if (playing || closed) return;
-		if (ended) {
-			ended = false;
+		if (clock.playing || closed) return;
+		if (endedNow) {
+			endedNow = false;
 			seek(0);
 		}
 		resync();
@@ -154,15 +195,18 @@ class Player {
 		if (out != null) out.start();
 		playAt = haxe.Timer.stamp();
 		readAt = ring == null ? 0 : ring.read;
+		changed();
+		ticked();
 	}
 
 	public function pause() {
-		if (!playing) return;
+		if (!clock.playing) return;
 		clock.pause();
 		sounding = false;
 		#if (hxmc.target == "wasm32-wasi")
 		if (element != null) element.pause();
 		#end
+		ticked();
 	}
 
 	// to time (seconds): exact, the frame due then (decoded from the
@@ -170,9 +214,9 @@ class Player {
 	// before it, sooner
 	public function seek(time:Float, exact = true) {
 		if (closed) return;
-		asked = Math.max(0, Math.min(time, duration > 0 ? duration : time));
+		asked = Math.max(0, Math.min(time, durationNow > 0 ? durationNow : time));
 		this.exact = exact;
-		ended = false;
+		endedNow = false;
 		stepping = 0;
 		clock.seek(asked);
 		#if (hxmc.target == "wasm32-wasi")
@@ -181,6 +225,8 @@ class Player {
 			asked = -1e300;
 		}
 		#end
+		changed();
+		ticked();
 	}
 
 	// a frame on (1) or back (-1), paused
@@ -210,7 +256,7 @@ class Player {
 			out = output(adec.rate);
 			if (out != null) {
 				resync();
-				if (playing) out.start();
+				if (clock.playing) out.start();
 			}
 		}
 		return r;
@@ -227,6 +273,7 @@ class Player {
 	// update keeps it, its caller must not release it)
 	public function update():Null<VideoFrame> {
 		updates++;
+		ticked();
 		while (retired.length > 0 && updates - retiredAt[0] > 3) {
 			retired.shift().dispose();
 			retiredAt.shift();
@@ -237,7 +284,7 @@ class Player {
 		// (playing, muted, its output giving nothing: a page before its first
 		// gesture, whose audio waits for one; the pictures go on, on the
 		// monotonic clock, the output opened again when unmuted)
-		if (playing && primed && muted && out != null && ring != null && ring.read == readAt && playAt > 0 && haxe.Timer.stamp() - playAt > 0.3) {
+		if (clock.playing && primed && muted && out != null && ring != null && ring.read == readAt && playAt > 0 && haxe.Timer.stamp() - playAt > 0.3) {
 			out.close();
 			out = null;
 			clock.audio(0, 0);
@@ -246,7 +293,7 @@ class Player {
 		// (a seek not begun yet: what was decoded before it is not shown, a
 		// drag's keyframe after its exact release)
 		if (stepping > 0 || asked > -1e299) return shown;
-		if (playing && !primed) clock.seek(from);
+		if (clock.playing && !primed) clock.seek(from);
 		var settled = drained() ? frames.length : frames.length - REORDER;
 		times.resize(0);
 		for (i in 0...settled) times.push(frames[i].time);
@@ -264,12 +311,12 @@ class Player {
 		// (all the audio decoded: whether it ends before the video)
 		var a = adec, r = ring, v = video;
 		if (eof && flushed && a != null && a.pending == 0 && r != null && v != null)
-			pads = ringTime + r.written / a.rate < (v.duration > 0 ? v.duration : duration) - 1e-3;
-		if (playing && eof && flushed && frames.length == 0 && (vdec == null || vdec.pending == 0) && (adec == null || adec.pending == 0)
+			pads = ringTime + r.written / a.rate < (v.duration > 0 ? v.duration : durationNow) - 1e-3;
+		if (clock.playing && eof && flushed && frames.length == 0 && (vdec == null || vdec.pending == 0) && (adec == null || adec.pending == 0)
 			// (no output (none on the machine, a muted page's let go): the ring is drained by none, the monotonic clock ends it)
 			&& (ring == null || out == null || ring.available() == 0)) {
 			var end = ring != null && adec != null ? ringTime + ring.written / adec.rate : 0.0;
-			if (video != null) end = Math.max(end, Math.max(duration, last));
+			if (video != null) end = Math.max(end, Math.max(durationNow, last));
 			if (t >= end - 1e-3) finish();
 		}
 		return shown;
@@ -286,7 +333,7 @@ class Player {
 			shown = f;
 			if (onFrame != null) onFrame();
 		}
-		if (playing && e.ended) finish();
+		if (clock.playing && e.ended) finish();
 		return shown;
 	}
 	#end
@@ -312,7 +359,9 @@ class Player {
 		}
 		clock.pause();
 		sounding = false;
-		ended = true;
+		endedNow = true;
+		changed();
+		ticked();
 		if (onEnded != null) onEnded();
 	}
 
@@ -364,14 +413,15 @@ class Player {
 					if (pre < 1e299) @:privateAccess m.seekTrack(audio.index, pre);
 					if (first) {
 						first = false;
-						loaded = true;
+						loadedNow = true;
+						changed();
 						if (onLoaded != null) onLoaded();
 					}
 					continue;
 				}
 				if (stepping > 0 && stepped()) continue;
 				if (!wants()) {
-					Async.delay(playing || stepping > 0 ? 0.004 : 0.02);
+					Async.delay(clock.playing || stepping > 0 ? 0.004 : 0.02);
 					continue;
 				}
 				var p = m.next();
@@ -379,8 +429,9 @@ class Player {
 			}
 		} catch (e:Dynamic) {
 			if (closed) return;
-			error = Std.string(e is haxe.Exception ? (e : haxe.Exception).message : e);
-			if (onError != null) onError(error);
+			errorNow = Std.string(e is haxe.Exception ? (e : haxe.Exception).message : e);
+			changed();
+			if (onError != null) onError(errorNow);
 		}
 	}
 
@@ -397,9 +448,10 @@ class Player {
 		video = v;
 		var s = Lambda.find(m.seek(0), s -> s.track == v);
 		e.frame = s != null && s.packet != null && s.packet.duration > 0 ? s.packet.duration / v.timescale : 1 / 30;
-		duration = m.duration > 0 ? m.duration : e.duration;
+		durationNow = m.duration > 0 ? m.duration : e.duration;
 		e.rate(rate);
-		loaded = true;
+		loadedNow = true;
+		changed();
 		if (onLoaded != null) onLoaded();
 		return true;
 	}
@@ -422,7 +474,7 @@ class Player {
 			}
 		}
 		if (video == null && audio == null) throw new MediaError(Decoders.missing() ?? "nothing this system decodes");
-		duration = m.duration > 0 ? m.duration : Math.max(video != null ? video.duration : 0, audio != null ? audio.duration : 0);
+		durationNow = m.duration > 0 ? m.duration : Math.max(video != null ? video.duration : 0, audio != null ? audio.duration : 0);
 		if (adec != null) {
 			// (two seconds, and room for a packet's 16384 frames over the
 			// first that decodes asks for: a low rate's, 8 kHz's, too)
@@ -557,7 +609,7 @@ class Player {
 		}
 		// (a decoder that holds frames back, WebKit's and Firefox's: fed on until one settles)
 		var wantV = v != null && (frames.length + v.pending < AHEAD || stepping > 0 || frames.length <= REORDER && v.pending < HELD);
-		var wantA = a != null && r != null && r.room() > 16384 && (r.available() / a.rate < AUDIO_AHEAD || !playing && v == null);
+		var wantA = a != null && r != null && r.room() > 16384 && (r.available() / a.rate < AUDIO_AHEAD || !clock.playing && v == null);
 		return wantV || wantA;
 	}
 

@@ -157,7 +157,7 @@ class SampleLayer {
 			last = f;
 			enqueue(f);
 		}
-		var t = p.time;
+		var t = p.time();
 		if (f != null && t < f.time) t = f.time;
 		if (t != at) {
 			at = t;

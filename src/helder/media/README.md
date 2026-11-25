@@ -282,7 +282,9 @@ starts in time with the sound; frames late after it are skipped.
 its keyframe; else the keyframe, sooner), `step(±1)` (on: the next frame
 decoded; back: a seek to just before the one shown), `rate` (the output at
 the rate times faster: higher, as tape), `volume`, `muted`, `loop`;
-`onLoaded`, `onEnded`, `onError`. Audio after a seek starts 0.1 s before
+`onLoaded`, `onEnded`, `onError`. Its state is Reads (helder.view.graph,
+as helder's other state: `p.time()`, followed where a hole or effect reads
+it): `duration`, `loaded`, `error`, `ended`, `playing`, `time`. Audio after a seek starts 0.1 s before
 (a lossy codec's first frames overlap the packet before theirs; Opus's
 SeekPreRoll), decoded, not heard; it plays from the packet's time, a
 packet that decodes to fewer frames than it lasts lost them at its start

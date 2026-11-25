@@ -257,8 +257,8 @@ class MediaLinuxCheck {
 	@:coroutine static function seeks(videos:DynamicAccess<Dynamic>) {
 		var p = Player.open(source("h264-aac.mp4"), {silent: true});
 		var t0 = haxe.Timer.stamp();
-		while (!p.loaded && p.error == null && haxe.Timer.stamp() - t0 < 2) Async.delay(0.002);
-		check("the player loaded", p.loaded && p.duration == 1, '${p.error} ${p.duration}');
+		while (!p.loaded() && p.error() == null && haxe.Timer.stamp() - t0 < 2) Async.delay(0.002);
+		check("the player loaded", p.loaded() && p.duration() == 1, '${p.error()} ${p.duration()}');
 		var crcs:Array<Int> = videos["h264-aac.mp4"].crcs;
 		function at(what:String, f:Null<VideoFrame>, time:Float, i:Int)
 			check('h264-aac.mp4: $what: the frame at $time', f != null && f.time == time && crc(f) == crcs[i], f == null ? "none" : '${f.time}');
@@ -295,9 +295,9 @@ class MediaLinuxCheck {
 		var p = Player.open(new FileSource("tests/media/h264-aac.mp4"), {device: 'file:$raw'});
 		var ended = false, shows = [], late = 0.0, t0 = haxe.Timer.stamp();
 		p.onEnded = () -> ended = true;
-		while (!p.loaded && p.error == null && haxe.Timer.stamp() - t0 < 2) Async.delay(0.002);
+		while (!p.loaded() && p.error() == null && haxe.Timer.stamp() - t0 < 2) Async.delay(0.002);
 		var heard = @:privateAccess p.out != null;
-		check("played: through ALSA's file output", heard, p.error ?? "");
+		check("played: through ALSA's file output", heard, p.error() ?? "");
 		p.play();
 		var last:Null<VideoFrame> = null;
 		while (!ended && haxe.Timer.stamp() - t0 < 5) {
@@ -305,13 +305,13 @@ class MediaLinuxCheck {
 			if (f != null && f != last) {
 				last = f;
 				shows.push(f.time);
-				var off = p.time - f.time;
+				var off = p.time() - f.time;
 				if (off < -1e-6 || off > late) late = Math.max(late, off < 0 ? -off + 1 : off);
 			}
 			Async.delay(0.002);
 		}
-		if (p.error != null) check("played: no error", false, p.error);
-		var position = p.time;
+		if (p.error() != null) check("played: no error", false, p.error());
+		var position = p.time();
 		p.close();
 		check("played: each frame once, in order", shows.join(",") == [for (i in 0...10) i / 10].join(","), shows.join(","));
 		check("played: each shown within a frame of the clock", late < 0.1 + 0.01, 'at most ${Math.round(late * 1000)} ms after its time');

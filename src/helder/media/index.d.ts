@@ -30,13 +30,15 @@ export declare class Player {
 	// an audio track this system does not decode, played without it (Vorbis
 	// where helder's decoder is not linked: VorbisDecoder.link; null: none)
 	readonly unheard: unknown | null;
-	// seconds (0 until loaded)
-	readonly duration: number;
-	readonly loaded: boolean;
-	readonly error: string | null;
-	readonly ended: boolean;
-	readonly playing: boolean;
-	readonly time: number;
+	// the state, Reads (helder.view.graph: a hole or effect that reads one
+	// follows it): seconds (0 until loaded), loaded, the error (null: none),
+	// ended, playing, the time (seconds: the clock's, read when asked)
+	readonly duration: Read<number>;
+	readonly loaded: Read<boolean>;
+	readonly error: Read<string | null>;
+	readonly ended: Read<boolean>;
+	readonly playing: Read<boolean>;
+	readonly time: Read<number>;
 	// the frame shown at the last update (null: none yet)
 	readonly shown: unknown | null;
 	rate: number;
