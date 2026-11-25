@@ -4,43 +4,46 @@ package helder.ui.view;
 import helder.ui.*;
 import helder.image.Image;
 import helder.image.AnimatedImage;
+import helder.ui.access.Role;
 #end
 
 // helder.view's renderer for helder.ui's nodes (helder.ui.Node names it:
 // @:rendered; a <Surface>'s children, UiView): the tree that the
 // drawn backend (helder.ui.draw) displays.
 //
-// Intrinsic elements: view (a Node), text (a TextNode of its children's
-// text; elements in it are its spans: span, b, i, or text again), scroll (a
-// Node with Overflow Scroll), image (an ImageNode: src, an Image, an
-// AnimatedImage, played, or an Svg, drawn in the node's color; object-position
-// ("left top", CSS's), its place; fit, "fill",
-// "contain", "cover" or "none"; mirrored, flipped right to left), icon (an
-// image, its Svg), field and field:textarea (a text field, one line or
-// several: helder.ui.widgets' TextField and TextArea; value, placeholder,
-// type, rows, readonly, maxlength, spellcheck, keyboard, enterkey,
-// autocapitalize, autocorrect, autocomplete; onSubmit, its Enter; onInput, its text changed by its
-// user); view:button,
-// view:label... and text:p, text:h2... (a view, a text: the element of that
-// name where a page's renderer realises them, helder.web's); elements registers more. Their
-// attributes: Style properties (StyleAttrs: direction="row", padding={8},
-// background="#3b82f6"; style={StyleProps} for several), the events
-// (onClick, onPress (a click, or Enter or Space: Node.onActivate), onPointerDown, onPointerUp, onPointerMove, onPointerEnter,
-// onPointerLeave, onPointerCancel, onLostPointerCapture, onWheel, onKeyDown, onKeyUp, onTextInput, onComposition,
-// onFocus, onBlur, onFocusIn, onFocusOut, the drag events, onResize (its
-// laid-out size changed: Event.target's width and height): Event -> Void;
-// the gestures, onTap, onLongPress, onPan (pan-axis "x" or "y", pan-min-pointers),
-// onPinch, onScale: a recogniser on the node (helder.ui.gesture), its
-// handler given it, a Tap, a Pan, a Scale; declared by NodeEvents, which
-// markup checks handlers against: @:events);
-// a node's own handler, a field's editing, after the markup's unless it
-// prevented the default), focusable, autofocus, selectable,
-// drag-data, tag, and what the node is to assistive technology (Semantics:
-// role, label, description, href, checked, selected, expanded, level, disabled,
-// value-now, value-min, value-max, value-text, pos-in-set, set-size, hidden), and what a theme
-// styles it as (Rule: slot, variant, size, data-* and aria-* attributes,
-// data-state="checked"). A text node holds
-// text: its text children are its text, its elements its spans.
+// Its elements (helder.view.Vocabulary): view (a Node), text (a TextNode
+// of its children's text; elements in it are its spans: text again,
+// strong, em, code), scroll (a Node with Overflow Scroll), image (an
+// ImageNode: src, an Image, an AnimatedImage, played, or an Svg, drawn in
+// the node's color; objectPosition ("left top", CSS's), its place;
+// objectFit, "fill", "contain", "cover" or "none"; mirrored, flipped right
+// to left), icon (an image, its Svg), field and textarea (a text field, one
+// line or several: helder.ui.widgets' TextField and TextArea; value,
+// placeholder, type, rows, readOnly, maxLength, spellCheck, keyboard,
+// enterKeyHint, autoCapitalize, autoCorrect, autoComplete; onSubmit, its
+// Enter; onInput, its text changed by its user), glass, webview, video
+// (helder.media's, element_video); and HTML's names, each a view or a text
+// that is natively what it is (made: button a Button, focusable, pressed by
+// Enter or Space; a a Link, h2 a Heading of level 2, li a ListItem, nav a
+// landmark). Their attributes: Style properties (StyleAttrs, CSS's names
+// in camel: flexDirection="row", padding={8}, background="#3b82f6";
+// style={StyleProps} for several), the events (onPress (a click, or Enter
+// or Space: Node.onPress), onPointerDown, onPointerUp, onPointerMove,
+// onPointerEnter, onPointerLeave, onPointerCancel, onLostPointerCapture,
+// onWheel, onKeyDown, onKeyUp, onTextInput, onComposition, onFocus, onBlur,
+// onFocusIn, onFocusOut, the drag events, onResize (its laid-out size
+// changed: Event.target's width and height): Event -> Void; the gestures,
+// onTap, onLongPress, onPan (panAxis "x" or "y", panMinPointers), onPinch,
+// onScale: a recogniser on the node (helder.ui.gesture), its handler given
+// it, a Tap, a Pan, a Scale; declared by NodeEvents, which markup checks
+// handlers against: @:events; a node's own handler, a field's editing,
+// after the markup's unless it prevented the default), focusable,
+// autoFocus, tabIndex, selectable, dragData, tag, hidden (not rendered),
+// what the node is to assistive technology (role, href, ARIA's
+// attributes: aria-label, aria-checked, aria-valuenow... Semantics), and
+// what a theme styles it as (Rule: slot, variant, size, class, data-* and
+// aria-* attributes, data-state="checked"). A text node holds text: its
+// text children are its text, its elements its spans.
 //
 // Pay for what is used: markup's literal tags and attribute names are
 // resolved at compile time (createElement inline, setProperty and setter
@@ -107,17 +110,8 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 	public static inline function createElement(tag:String):Node
 		return switch tag {
 			case "view": new Node("view");
+			// (a text in a text is one of its spans)
 			case "text": new TextNode("", "text");
-			// (spans in a text: plain, bold, italic)
-			case "span": new TextNode("", "span");
-			case "b":
-				var t = new TextNode("", "b");
-				t.style.fontWeight = 700;
-				t;
-			case "i":
-				var t = new TextNode("", "i");
-				t.style.italic = true;
-				t;
 			case "scroll":
 				var n = new Node("scroll");
 				n.style.overflow = Scroll;
@@ -126,29 +120,75 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 			case "icon": new ImageNode(null, "icon");
 			// (a text field, one line or several: native where the window's policy says, EditableText)
 			case "field": new helder.ui.widgets.TextField();
-			case "field:textarea": new helder.ui.widgets.TextArea();
+			case "textarea": new helder.ui.widgets.TextArea();
 			// (the system's web view where the window has one: helder.ui.platform.WebView)
 			case "webview": new helder.ui.platform.WebView();
 			// (Liquid Glass: the system's where it has one, else drawn)
 			case "glass": new Glass();
-			case "glass-group": new GlassGroup();
-			// (the neutral elements' DOM names: a view or text here, their element in a page)
-			case t if (StringTools.startsWith(t, "view:")):
-				var n = new Node(t.substr(5));
-				n.legend = t == "view:legend";
-				n;
-			case t if (StringTools.startsWith(t, "text:")):
-				var n = new TextNode("", t.substr(5));
-				n.legend = t == "text:legend";
-				n;
+			// (HTML's names, helder.view.Vocabulary's: a view or a text, what each is natively its own)
+			case "button" | "nav" | "main" | "section" | "header" | "footer" | "article" | "aside" | "form" | "ul" | "ol" | "li" | "fieldset": made(new Node(tag));
+			case "p" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "label" | "legend" | "a" | "strong" | "em" | "code": made(new TextNode("", tag));
 			case _: registered(tag);
 		}
 
+	// an element of HTML's name made as it is natively (Vocabulary.TAGS): its role
+	// (an explicit role wins, set after), a button focusable and pressed by
+	// Enter and Space (Ui's), a heading's level; headings, strong, em and
+	// code a slot of their own, which the controls' look styles (Base)
+	static function made(n:Node):Node {
+		var role:Null<helder.ui.access.Role> = switch n.tag {
+			case "button": Role.Button;
+			case "nav": Role.Navigation;
+			case "main": Role.Main;
+			case "section": Role.Region;
+			case "header": Role.Banner;
+			case "footer": Role.ContentInfo;
+			case "article": Role.Article;
+			case "aside": Role.Complementary;
+			case "form": Role.Form;
+			case "ul" | "ol": Role.List;
+			case "li": Role.ListItem;
+			case "fieldset": Role.Group;
+			case "h1" | "h2" | "h3" | "h4" | "h5" | "h6": Role.Heading;
+			case "label": Role.Label;
+			case "a": Role.Link;
+			case _: null;
+		}
+		if (role != null) semantics(n).role = role;
+		switch n.tag {
+			case "button": n.focusable = true;
+			case "legend": n.legend = true;
+			case "h1" | "h2" | "h3" | "h4" | "h5" | "h6":
+				semantics(n).level = Std.parseInt(n.tag.substr(1));
+				n.slot = n.tag;
+			case "strong" | "em" | "code": n.slot = n.tag;
+			case _:
+		}
+		return n;
+	}
+
+	// (another package's element, made by a function of the renderer's own
+	// where markup names it (element_video); else its maker registered here)
 	static function registered(tag:String):Node {
 		var make = elements.get(tag);
-		if (make == null) throw 'helder.ui: no element <$tag> (NodeRenderer.elements)';
+		if (make == null) {
+			var hint = helder.view.Vocabulary.tag(tag);
+			throw hint != null ? hint : 'helder.ui: <$tag> is helder.media\'s (its package not in the program)';
+		}
 		return make();
 	}
+	#end
+
+	// <video>: helder.media's VideoNode, linked only where markup names it,
+	// disposed with the owner that made it
+	public static macro function element_video():haxe.macro.Expr
+		return macro {
+			var v = new helder.media.ui.VideoNode();
+			helder.view.graph.Graph.onCleanup(v.dispose);
+			(v : helder.ui.Node);
+		};
+
+	#if !macro
 
 	public static inline function createText(text:String):Node
 		return new TextNode(text);
@@ -213,15 +253,18 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 		if (v != null) n.style.set(v);
 
 	// Its own attributes (AttrMacro: an @:attribute function, named as the
-	// attribute or in kebab-case), then Style's (StyleAttrs), data-* and aria-*
-	// (a theme's states: data-state="checked", data-disabled={true}; false or
-	// null removes it); setAttribute, the one taking any name, is made from them
+	// attribute, or as @:attribute("aria-label") gives it: helder.view.Vocabulary's
+	// names, camel as React Native writes them), then Style's (StyleAttrs),
+	// data-* (a theme's states: data-state="checked", data-disabled={true};
+	// false or null removes it) and ARIA's (the node's Semantics, and a
+	// theme's states as data-* are); setAttribute, the one taking any name,
+	// is made from them
 
 	@:attribute static function focusable(n:Node, name:String, v:Dynamic)
 		n.focusable = v == true || v == "true";
 
 	// takes the focus once in a window (Node.autofocus)
-	@:attribute static function autofocus(n:Node, name:String, v:Dynamic)
+	@:attribute static function autoFocus(n:Node, name:String, v:Dynamic)
 		n.autofocus = v == true || v == "true";
 
 	// what it is to the keymap (helder.ui.actions.KeyContext: "Editor mode=full")
@@ -266,7 +309,6 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 	@:attribute static function states(n:Node, name:String, v:Dynamic)
 		if (v != null) States.apply(n, v);
 
-	// (null: its tag as it is)
 	// a Pan's options (onPan's: made here when it is not yet): "x", "y" or
 	// "both"; the pointers down before it begins
 	@:attribute static function panAxis(n:Node, name:String, v:Dynamic)
@@ -291,8 +333,8 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 	// motion (helder.ui.motion): for it and its subtree, motion="snappy|default|calm" (the
 	// palette's tokens, a theme's StyleSheet.motion over them), "0.3 0.15" (a spring's
 	// duration and bounce), "ease-out 0.2s" (a tween), {duration, bounce} or a MotionSpec;
-	// per property class over it, motion-layout, motion-opacity, motion-color,
-	// motion-transform, motion-radius, motion-presence; lead and trail (the edge in the
+	// per property class over it, motionLayout, motionOpacity, motionColor,
+	// motionTransform, motionRadius, motionPresence; lead and trail (the edge in the
 	// direction of travel, the other); instant (its subtree's changes without motion);
 	// matched="id" (flies from or to its counterpart); ride="trailing" (kept against its
 	// parent's right and bottom edges: "x" or "y" one of them)
@@ -355,11 +397,16 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 		if (v != null) n.tag = v;
 
 	// (what UI tests find it by: Semantics.identifier, as a page's element's id;
-	// Node.find takes tag. A label's for, html-for: none here)
+	// Node.find takes tag)
 	@:attribute static function id(n:Node, name:String, v:Dynamic)
 		semantics(n).identifier = v == null || v == false ? null : Std.string(v);
 
-	@:attribute static function htmlFor(n:Node, name:String, v:Dynamic) {}
+	// (a label's for: a page's, none here; class a page's CSS's, a theme's
+	// data here as data-* is: Rules' "class=x")
+	@:attribute("for") static function htmlFor(n:Node, name:String, v:Dynamic) {}
+
+	@:attribute("class") static function className(n:Node, name:String, v:Dynamic)
+		n.setAttr("class", v == null || v == false || v == "" ? null : Std.string(v));
 
 	// (what a theme styles it as: Rule)
 	@:attribute static function slot(n:Node, name:String, v:Dynamic)
@@ -385,14 +432,40 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 	public static function setData(n:Node, name:String, v:Dynamic)
 		n.setAttr(name, v == null || v == false ? null : v == true ? "" : Std.string(v));
 
+	// an ARIA attribute: the node's Semantics where it is one of them
+	// (Vocabulary.ARIA), and a theme's state as data-* is ("aria-selected=true")
+	public static function setAria(n:Node, name:String, v:Dynamic) {
+		switch name {
+			case "aria-label": semantics(n).label = v == null ? null : Std.string(v);
+			case "aria-description": semantics(n).description = v == null ? null : Std.string(v);
+			case "aria-checked" | "aria-pressed":
+				semantics(n).checked = v == null ? null : v == true || v == "true";
+				semantics(n).mixed = v == "mixed";
+			case "aria-selected": semantics(n).selected = v == null ? null : v == true || v == "true";
+			case "aria-expanded": semantics(n).expanded = v == null ? null : v == true || v == "true";
+			case "aria-hidden": semantics(n).hidden = v == true || v == "true";
+			case "aria-disabled": semantics(n).disabled = v == true || v == "true";
+			case "aria-invalid": semantics(n).invalid = v == true || v == "true";
+			case "aria-required": semantics(n).required = v == true || v == "true";
+			case "aria-modal": semantics(n).modal = v == true || v == "true";
+			case "aria-multiselectable": semantics(n).multiselectable = v == true || v == "true";
+			case "aria-current": semantics(n).current = v != null && v != false && v != "false";
+			case "aria-live": semantics(n).live = v == null || v == "off" ? Off : v == "assertive" ? Assertive : v == "polite" ? Polite : v;
+			case "aria-level": semantics(n).level = v == null ? null : Std.int(number(v));
+			case "aria-posinset": semantics(n).posInSet = v == null ? 0 : Std.int(number(v));
+			case "aria-setsize": semantics(n).setSize = v == null ? 0 : Std.int(number(v));
+			case "aria-valuenow": semantics(n).valueNow = number(v);
+			case "aria-valuemin": semantics(n).valueMin = number(v);
+			case "aria-valuemax": semantics(n).valueMax = number(v);
+			case "aria-valuetext": semantics(n).valueText = v == null ? null : Std.string(v);
+			case _:
+		}
+		setData(n, name, v == true ? "true" : v == false && name != "aria-hidden" ? "false" : v);
+	}
+
+	// a role as ARIA writes it, which wins over the element's own
 	@:attribute static function role(n:Node, name:String, v:Dynamic)
 		semantics(n).role = roleOf(v);
-
-	@:attribute static function label(n:Node, name:String, v:Dynamic)
-		semantics(n).label = v == null ? null : Std.string(v);
-
-	@:attribute static function description(n:Node, name:String, v:Dynamic)
-		semantics(n).description = v == null ? null : Std.string(v);
 
 	@:attribute static function href(n:Node, name:String, v:Dynamic) {
 		var sem = semantics(n);
@@ -400,65 +473,24 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 		if (sem.role == null && v != null) sem.role = Link;
 	}
 
-	@:attribute static function checked(n:Node, name:String, v:Dynamic) {
-		semantics(n).checked = v == null ? null : v == true || v == "true";
-		semantics(n).mixed = v == "mixed";
-	}
-
-	// (a toggle button's: checked, as ARIA's pressed)
-	@:attribute static function pressed(n:Node, name:String, v:Dynamic)
-		checked(n, name, v);
-
-	@:attribute static function selected(n:Node, name:String, v:Dynamic)
-		semantics(n).selected = v == null ? null : v == true || v == "true";
-
-	@:attribute static function live(n:Node, name:String, v:Dynamic)
-		semantics(n).live = v == null || v == "off" ? Off : v == "assertive" ? Assertive : v == "polite" ? Polite : v;
-
-	@:attribute static function multiselectable(n:Node, name:String, v:Dynamic)
-		semantics(n).multiselectable = v == true || v == "true";
-
-	@:attribute static function current(n:Node, name:String, v:Dynamic)
-		semantics(n).current = v == true || v == "true" || v == "page";
-
-	@:attribute static function expanded(n:Node, name:String, v:Dynamic)
-		semantics(n).expanded = v == null ? null : v == true || v == "true";
-
-	@:attribute static function level(n:Node, name:String, v:Dynamic)
-		semantics(n).level = v == null ? null : Std.int(number(v));
-
-	@:attribute static function posInSet(n:Node, name:String, v:Dynamic)
-		semantics(n).posInSet = v == null ? 0 : Std.int(number(v));
-
-	@:attribute static function setSize(n:Node, name:String, v:Dynamic)
-		semantics(n).setSize = v == null ? 0 : Std.int(number(v));
-
+	// (HTML's disabled and required: the node's, as aria-disabled and aria-required)
 	@:attribute static function disabled(n:Node, name:String, v:Dynamic)
 		semantics(n).disabled = v == true || v == "true";
-
-	@:attribute static function invalid(n:Node, name:String, v:Dynamic)
-		semantics(n).invalid = v == true || v == "true";
 
 	@:attribute static function required(n:Node, name:String, v:Dynamic)
 		semantics(n).required = v == true || v == "true";
 
-	@:attribute static function modal(n:Node, name:String, v:Dynamic)
-		semantics(n).modal = v == true || v == "true";
+	// not rendered, as HTML's hidden (display: none; its subtree left out of
+	// assistive technology's tree too); false: shown, as a flex box
+	@:attribute static function hidden(n:Node, name:String, v:Dynamic) {
+		var on = v == true || v == "true" || v == "";
+		if (on) n.style.display = None else if (n.style.display == None) n.style.display = Flex;
+	}
 
-	@:attribute static function valueNow(n:Node, name:String, v:Dynamic)
-		semantics(n).valueNow = number(v);
-
-	@:attribute static function valueMin(n:Node, name:String, v:Dynamic)
-		semantics(n).valueMin = number(v);
-
-	@:attribute static function valueMax(n:Node, name:String, v:Dynamic)
-		semantics(n).valueMax = number(v);
-
-	@:attribute static function hidden(n:Node, name:String, v:Dynamic)
-		semantics(n).hidden = v == true || v == "true";
-
-	@:attribute static function valueText(n:Node, name:String, v:Dynamic)
-		semantics(n).valueText = v == null ? null : Std.string(v);
+	// (a view's: the glass inside it drawn together, nearer than this many
+	// points merged: helder.ui.GlassGroup; null, none)
+	@:attribute static function glassSpacing(n:Node, name:String, v:Dynamic)
+		n.glassSpacing = v == null || v == false ? null : Std.isOfType(v, String) ? Std.parseFloat(v) : v;
 
 	@:attribute static function src(n:Node, name:String, v:Dynamic) {
 		// (a web view's: its URL, or a path of its content's origin)
@@ -466,7 +498,10 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 			(cast n : helder.ui.platform.WebView).src = v == null ? null : Std.string(v);
 			return;
 		}
-		if (!Std.isOfType(n, ImageNode)) noAttribute(n, name);
+		if (!Std.isOfType(n, ImageNode)) {
+			if (!n.setOwn(name, v)) noAttribute(n, name);
+			return;
+		}
 		// (an animation: its image, played)
 		if (Std.isOfType(v, AnimatedImage)) {
 			var anim:AnimatedImage = v;
@@ -496,8 +531,7 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 	@:attribute static function backGesture(n:Node, name:String, v:Dynamic)
 		webView(n, name).backGesture = !(v == false || v == "false");
 
-	// (glass's, <glass>: the colour it leans to, whether it answers a press;
-	// <glass-group>'s: how near its glass merges)
+	// (glass's, <glass>: the colour it leans to, whether it answers a press)
 	@:attribute static function tint(n:Node, name:String, v:Dynamic) {
 		if (!Std.isOfType(n, Glass)) noAttribute(n, name);
 		(cast n : Glass).tint = v == null ? null : @:privateAccess StyleAttrs.colorOf(v);
@@ -506,11 +540,6 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 	@:attribute static function interactive(n:Node, name:String, v:Dynamic) {
 		if (!Std.isOfType(n, Glass)) noAttribute(n, name);
 		(cast n : Glass).interactive = v == true || v == "true" || v == "";
-	}
-
-	@:attribute static function spacing(n:Node, name:String, v:Dynamic) {
-		if (!Std.isOfType(n, GlassGroup)) noAttribute(n, name);
-		(cast n : GlassGroup).spacing = v == null ? 0 : Std.isOfType(v, String) ? Std.parseFloat(v) : v;
 	}
 
 	static function webView(n:Node, name:String):helder.ui.platform.WebView {
@@ -531,21 +560,44 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 	@:attribute static function objectPosition(n:Node, name:String, v:Dynamic)
 		if (Std.isOfType(n, ImageNode)) (cast n : ImageNode).position(v) else noAttribute(n, name);
 
-	@:attribute static function fit(n:Node, name:String, v:Dynamic) {
-		if (!Std.isOfType(n, ImageNode)) noAttribute(n, name);
-		(cast n : ImageNode).fit = Std.isOfType(v, String) ? switch (v : String).toLowerCase() {
+	// (an image's, a video's: CSS's object-fit)
+	@:attribute static function objectFit(n:Node, name:String, v:Dynamic) {
+		var fit:ImageFit = Std.isOfType(v, String) ? switch (v : String).toLowerCase() {
 			case "fill": Fill;
 			case "contain": Contain;
 			case "cover": Cover;
 			case "none": ImageFit.None;
-			case _: throw 'helder.ui: fit="$v" is not fill, contain, cover or none';
+			case _: throw 'helder.ui: objectFit="$v" is not fill, contain, cover or none';
 		} : v;
+		if (Std.isOfType(n, ImageNode)) (cast n : ImageNode).fit = fit else if (!n.setOwn(name, fit)) noAttribute(n, name);
 	}
 
-	// (a field's, <field> and <field:textarea>: its text (set from outside, as
+	// (a video's (<video>, helder.media's VideoNode: Node.setOwn), set by its node)
+	@:attribute static function autoPlay(n:Node, name:String, v:Dynamic)
+		byNode(n, name, v);
+
+	@:attribute static function loop(n:Node, name:String, v:Dynamic)
+		byNode(n, name, v);
+
+	@:attribute static function muted(n:Node, name:String, v:Dynamic)
+		byNode(n, name, v);
+
+	@:attribute static function volume(n:Node, name:String, v:Dynamic)
+		byNode(n, name, v);
+
+	@:attribute static function playbackRate(n:Node, name:String, v:Dynamic)
+		byNode(n, name, v);
+
+	@:attribute static function layer(n:Node, name:String, v:Dynamic)
+		byNode(n, name, v);
+
+	static function byNode(n:Node, name:String, v:Dynamic)
+		if (!n.setOwn(name, v)) noAttribute(n, name);
+
+	// (a field's, <field> and <textarea>: its text (set from outside, as
 	// an input's value: the caret at its end when it changes), placeholder,
-	// type (password: shown as dots), rows, readonly, maxlength; inputmode and
-	// autocomplete a page's keyboard's and autofill's, none here)
+	// type (password: shown as dots), rows, readOnly, maxLength; inputMode
+	// a page's keyboard's, none here)
 	@:attribute static function value(n:Node, name:String, v:Dynamic) {
 		var f = field(n, name), s = v == null ? "" : Std.string(v);
 		if (f.text == s) return;
@@ -567,34 +619,34 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 		n.markDirty();
 	}
 
-	@:attribute static function readonly(n:Node, name:String, v:Dynamic)
+	@:attribute static function readOnly(n:Node, name:String, v:Dynamic)
 		field(n, name).readOnly = v == true || v == "true";
 
-	@:attribute static function maxlength(n:Node, name:String, v:Dynamic)
+	@:attribute static function maxLength(n:Node, name:String, v:Dynamic)
 		field(n, name).maxLength = v == null ? -1 : Std.int(number(v));
 
-	// (spellcheck: the platform's checker on the field's words, a text area's by default)
-	@:attribute static function spellcheck(n:Node, name:String, v:Dynamic)
+	// (spellCheck: the platform's checker on the field's words, a text area's by default)
+	@:attribute static function spellCheck(n:Node, name:String, v:Dynamic)
 		field(n, name).spellcheck = v == true || v == "true" || v == "";
 
-	@:attribute static function inputmode(n:Node, name:String, v:Dynamic)
+	@:attribute static function inputMode(n:Node, name:String, v:Dynamic)
 		field(n, name);
 
-	@:attribute static function autocomplete(n:Node, name:String, v:Dynamic)
+	@:attribute static function autoComplete(n:Node, name:String, v:Dynamic)
 		field(n, name).autocomplete = v == null ? "" : Std.string(v);
 
 	// (the system's keyboard for it, helder.os.TextKind: keyboard="email",
-	// enterkey="next", autocapitalize="none", autocorrect={false})
+	// enterKeyHint="next", autoCapitalize="none", autoCorrect={false})
 	@:attribute static function keyboard(n:Node, name:String, v:Dynamic)
 		field(n, name).keyboard = v == null ? Text : helder.os.TextKind.Keyboard.parse(v);
 
-	@:attribute static function enterkey(n:Node, name:String, v:Dynamic)
+	@:attribute static function enterKeyHint(n:Node, name:String, v:Dynamic)
 		field(n, name).enterkey = v == null ? Default : helder.os.TextKind.EnterKey.parse(v);
 
-	@:attribute static function autocapitalize(n:Node, name:String, v:Dynamic)
+	@:attribute static function autoCapitalize(n:Node, name:String, v:Dynamic)
 		field(n, name).autocapitalize = v == null ? null : helder.os.TextKind.Capitalize.parse(v);
 
-	@:attribute static function autocorrect(n:Node, name:String, v:Dynamic)
+	@:attribute static function autoCorrect(n:Node, name:String, v:Dynamic)
 		field(n, name).autocorrect = v == null ? null : v == true || v == "true" || v == "on" || v == "";
 
 	static function field(n:Node, name:String):helder.ui.widgets.EditableText {
@@ -635,8 +687,7 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 	public static function listen(n:Node, name:String, v:Dynamic) {
 		var h:Null<Event->Void> = v;
 		switch name {
-			case "onClick": n.onClick = own(h, n.onClick);
-			case "onPress": n.onActivate = h;
+			case "onPress": n.onPress = h;
 			case "onPointerDown": n.onPointerDown = own(h, n.onPointerDown);
 			case "onPointerUp": n.onPointerUp = own(h, n.onPointerUp);
 			case "onPointerMove": n.onPointerMove = own(h, n.onPointerMove);
@@ -651,7 +702,7 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 			case "onTextInput": n.onTextInput = own(h, n.onTextInput);
 			case "onInput": n.onInput = h;
 			case "onSubmit":
-				if (!Std.isOfType(n, helder.ui.widgets.TextField)) throw 'helder.ui: <${n.tag}> has no event onSubmit';
+				if (!Std.isOfType(n, helder.ui.widgets.TextField)) throw 'helder.ui: <${n.tag}> has no event onSubmit (a <field>\'s)';
 				(cast n : helder.ui.widgets.TextField).onSubmit = h == null ? null : t -> {
 					var e = Event.of(Submit, n, 0, 0);
 					e.text = t;
@@ -683,7 +734,9 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 			case "onLoadError": webView(n, name).onLoadError = v;
 			case "onConsole": webView(n, name).onConsole = v;
 			case "onCrash": webView(n, name).onCrash = v;
-			case _: throw 'helder.ui: no event $name';
+			// (another element's own: its node's, a video's onEnded)
+			case _ if (n.listenOwn(name, v)):
+			case _: throw helder.view.Vocabulary.event(n.tag, name) ?? 'helder.ui: <${n.tag}> has no event $name';
 		}
 	}
 

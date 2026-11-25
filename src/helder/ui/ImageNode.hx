@@ -294,7 +294,7 @@ class ImageNode extends Node {
 			+ Math.max(Math.max(s.padding.left, s.padding.right), Math.max(s.padding.top, s.padding.bottom));
 		var flip = mirrored && rtl();
 		if (flip) canvas.pushTransform(-1, 0, 0, 1, 2 * x + width, 0);
-		canvas.image(image, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], Math.max(0, s.radius - inset), s.corners == null ? null : s.cornerRadii().grow(-inset));
+		canvas.image(image, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], Math.max(0, s.borderRadius - inset), s.corners == null ? null : s.cornerRadii().grow(-inset));
 		if (flip) canvas.popTransform();
 	}
 }

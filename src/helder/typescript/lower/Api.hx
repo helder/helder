@@ -177,7 +177,7 @@ class MRenderer {
 	public function attributeError(name:String, value:Null<String>):Null<String> {
 		if (setters == null || setters.fallback == null) return null;
 		var known = setters.names.exists(name) || Lambda.exists([for (p in setters.prefixes.keys()) p], p -> StringTools.startsWith(name, p));
-		if (!known) return helder.ui.view.AttrNames.unknown(name, [for (n in setters.names.keys()) n]);
+		if (!known) return helder.ui.view.AttrNames.unknown(name);
 		var e = setters.values.get(name);
 		if (value != null && e != null && e.keys.indexOf(helder.ui.view.AttrNames.key(value)) < 0) return helder.ui.view.AttrNames.badValue(name, value, e.type, e.keys);
 		return null;

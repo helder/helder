@@ -60,7 +60,7 @@ class CodeEditor extends Node {
 		super("code-editor");
 		model = new CodeModel(text);
 		view = new CodeView(model);
-		style.grow = 1;
+		style.flexGrow = 1;
 		style.minHeight = 0;
 		style.minWidth = 0;
 		style.overflow = Hidden;
@@ -487,10 +487,10 @@ class CodeEditor extends Node {
 		p.style.right = 18;
 		p.style.padding = 4;
 		p.style.rowGap = 4;
-		p.style.radius = 6;
+		p.style.borderRadius = 6;
 		p.style.borderWidth = 1;
 		p.style.fontSize = 13;
-		p.style.shadow = ({y: 2, blur: 8, color: Color.rgba(0, 0.15)} : Shadow);
+		p.style.boxShadow = ({y: 2, blur: 8, color: Color.rgba(0, 0.15)} : Shadow);
 		p.keyContext = helder.ui.actions.KeyContext.parse("CodeFind");
 		p.semantics = {role: helder.ui.access.Role.Group, label: label};
 		return p;
@@ -510,7 +510,7 @@ class CodeEditor extends Node {
 
 	function row(tag:String, kids:Array<Node>):Node {
 		var r = new Node(tag);
-		r.style.direction = Row;
+		r.style.flexDirection = Row;
 		r.style.columnGap = 4;
 		r.style.alignItems = Center;
 		for (k in kids)
@@ -526,7 +526,7 @@ class CodeEditor extends Node {
 		f.style.width = w;
 		f.style.padding = [3, 6, 3, 6];
 		f.style.borderWidth = 1;
-		f.style.radius = 4;
+		f.style.borderRadius = 4;
 		return f;
 	}
 
@@ -535,7 +535,7 @@ class CodeEditor extends Node {
 		b.focusable = true;
 		b.semantics = {role: helder.ui.access.Role.Button, label: label};
 		b.style.padding = [2, 6, 2, 6];
-		b.style.radius = 4;
+		b.style.borderRadius = 4;
 		b.style.cursor = Pointer;
 		b.onClick = _ -> press();
 		b.append(new TextNode(text));

@@ -37,12 +37,12 @@ class Style {
 	public var position(default, set):Position = Relative;
 
 	// the main axis (Column, as React Native and Yoga: a UI stacks)
-	public var direction(default, set):Direction = Column;
+	public var flexDirection(default, set):Direction = Column;
 
 	// items flow into more lines when the main size is too small
-	public var wrap(default, set):Bool = false;
+	public var flexWrap(default, set):Bool = false;
 
-	public var justify(default, set):Justify = Normal;
+	public var justifyContent(default, set):Justify = Normal;
 
 	// the children's default alignment across the main axis
 	public var alignItems(default, set):Align = Stretch;
@@ -78,13 +78,13 @@ class Style {
 	public var justifySelf(get, set):Align;
 
 	// flex-grow
-	public var grow(default, set):Float = 0;
+	public var flexGrow(default, set):Float = 0;
 
 	// flex-shrink
-	public var shrink(default, set):Float = 1;
+	public var flexShrink(default, set):Float = 1;
 
 	// flex-basis (Auto: the main size, else the content's)
-	public var basis(default, set):Dim = DimValue.Auto;
+	public var flexBasis(default, set):Dim = DimValue.Auto;
 
 	// grow, shrink and basis at once (CSS's flex shorthand): a number n is n 1 0%,
 	// as CSS's; markup also "none" (0 0 auto), "auto" (1 1 auto), "2 0 40px"
@@ -168,7 +168,7 @@ class Style {
 	public var borderStyle(get, set):Null<BorderStyle>;
 
 	// the corners' radius
-	public var radius(default, set):Float = 0;
+	public var borderRadius(default, set):Float = 0;
 
 	// each corner's (CSS's border-radius with several values; null: radius on all four)
 	public var corners(get, set):Null<CornersValue>;
@@ -182,7 +182,7 @@ class Style {
 	public var backgroundImage(get, set):Null<Gradient>;
 
 	// under the background (null: none)
-	public var shadow(get, set):Null<Shadow>;
+	public var boxShadow(get, set):Null<Shadow>;
 
 	// a line around the border box, over the node's content: outlineWidth
 	// wide (0: none), outlineOffset outside it (negative: inside), in
@@ -241,7 +241,8 @@ class Style {
 	// 400 regular, 700 bold
 	public var fontWeight(default, set):Null<Int> = null;
 
-	public var italic(default, set):Null<Bool> = null;
+	// normal or italic (CSS's font-style)
+	public var fontStyle(default, set):Null<FontStyle> = null;
 
 	// a multiple of the font size (inherited as the multiple), or pixels
 	// (lineHeightPx, CSS's line-height: 24px, inherited as the pixels;
@@ -272,7 +273,7 @@ class Style {
 	// the inline direction, inherited (null: the parent's; Ltr at the root):
 	// Rtl mirrors rows, columns' cross axis, grids' columns and text's
 	// default alignment; margins, padding and offsets stay physical
-	public var dir(get, set):Null<Dir>;
+	public var direction(get, set):Null<Dir>;
 
 	// whether it is seen, inherited (null: the parent's; Visible at the
 	// root): Hidden keeps its place but draws, hits, focuses and shows
@@ -323,7 +324,7 @@ class Style {
 	public var textOverflow(get, set):TextOverflow;
 
 	// a text's lines at most (0: any), the last ending in an ellipsis when cut (CSS's line-clamp; not inherited)
-	public var maxLines(get, set):Int;
+	public var lineClamp(get, set):Int;
 
 	// the lines drawn with the text in this node and its descendants, in
 	// this node's colour (TextDecoration's flags; 0: none; not inherited,
@@ -416,8 +417,8 @@ class Style {
 	inline function get_backgroundImage():Null<Gradient>
 		return rare == null ? null : rare.backgroundImage;
 
-	inline function get_shadow():Null<Shadow>
-		return themed == null ? null : themed.shadow;
+	inline function get_boxShadow():Null<Shadow>
+		return themed == null ? null : themed.boxShadow;
 
 	inline function get_outlineWidth():Float
 		return themed == null ? 0 : themed.outlineWidth;
@@ -446,11 +447,11 @@ class Style {
 	inline function get_letterSpacingEm():Null<Float>
 		return rare == null ? null : rare.letterSpacingEm;
 
-	inline function get_maxLines():Int
-		return rare == null ? 0 : rare.maxLines;
+	inline function get_lineClamp():Int
+		return rare == null ? 0 : rare.lineClamp;
 
-	inline function get_dir():Null<Dir>
-		return rare == null ? null : rare.dir;
+	inline function get_direction():Null<Dir>
+		return rare == null ? null : rare.direction;
 
 	inline function get_userSelect():Null<UserSelect>
 		return themed == null ? null : themed.userSelect;
@@ -612,8 +613,8 @@ class Style {
 	// ring's offset over its shadow (null: none)
 	public function paintedShadows():Null<Array<Shadow>> {
 		var r = themed;
-		if (r == null || r.ringWidth <= 0 && r.ringOffsetWidth <= 0) return r == null || r.shadow == null ? null : r.shadow.painted();
-		var all = r.shadow == null ? [] : r.shadow.painted();
+		if (r == null || r.ringWidth <= 0 && r.ringOffsetWidth <= 0) return r == null || r.boxShadow == null ? null : r.boxShadow.painted();
+		var all = r.boxShadow == null ? [] : r.boxShadow.painted();
 		if (r.ringWidth > 0)
 			all.push({spread: r.ringWidth + r.ringOffsetWidth, color: r.ringColor ?? node.textColor(), inset: r.ringInset});
 		if (r.ringOffsetWidth > 0) all.push({spread: r.ringOffsetWidth, color: r.ringOffsetColor, inset: r.ringInset});
@@ -740,7 +741,7 @@ class Style {
 		if (p == null) return null;
 		return switch name {
 			case "opacity" if (p.opacity != null && p.opacity.moving()): p.opacity.target;
-			case "radius" if (p.radius != null && p.radius.moving()): p.radius.target;
+			case "borderRadius" if (p.radius != null && p.radius.moving()): p.radius.target;
 			case "background" if (p.background != null && p.background.moving()): p.background.target;
 			case "borderColor" if (p.border != null && p.border.moving()): p.border.target;
 			case "color" if (p.color != null && p.color.moving()): p.colorTo;
@@ -837,23 +838,23 @@ class Style {
 		return v;
 	}
 
-	function set_direction(v:Direction):Direction {
-		if (v == direction) return v;
-		direction = v;
+	function set_flexDirection(v:Direction):Direction {
+		if (v == flexDirection) return v;
+		flexDirection = v;
 		node.styleChanged(true);
 		return v;
 	}
 
-	function set_wrap(v:Bool):Bool {
-		if (v == wrap) return v;
-		wrap = v;
+	function set_flexWrap(v:Bool):Bool {
+		if (v == flexWrap) return v;
+		flexWrap = v;
 		node.styleChanged(true);
 		return v;
 	}
 
-	function set_justify(v:Justify):Justify {
-		if (v == justify) return v;
-		justify = v;
+	function set_justifyContent(v:Justify):Justify {
+		if (v == justifyContent) return v;
+		justifyContent = v;
 		node.styleChanged(true);
 		return v;
 	}
@@ -888,9 +889,9 @@ class Style {
 		return v;
 	}
 
-	function set_dir(v:Null<Dir>):Null<Dir> {
-		if (v == dir) return v;
-		more().dir = v;
+	function set_direction(v:Null<Dir>):Null<Dir> {
+		if (v == direction) return v;
+		more().direction = v;
 		node.styleChanged(true);
 		// (inherited: every container under it lays out again, its rules for rtl hold or not)
 		@:privateAccess node.dirChanged();
@@ -966,9 +967,9 @@ class Style {
 		return v;
 	}
 
-	function set_maxLines(v:Int):Int {
-		if (v == maxLines) return v;
-		more().maxLines = v;
+	function set_lineClamp(v:Int):Int {
+		if (v == lineClamp) return v;
+		more().lineClamp = v;
 		node.styleChanged(true);
 		return v;
 	}
@@ -1057,16 +1058,16 @@ class Style {
 		return v;
 	}
 
-	function set_grow(v:Float):Float {
-		if (v == grow) return v;
-		grow = v;
+	function set_flexGrow(v:Float):Float {
+		if (v == flexGrow) return v;
+		flexGrow = v;
 		node.styleChanged(true);
 		return v;
 	}
 
-	function set_shrink(v:Float):Float {
-		if (v == shrink) return v;
-		shrink = v;
+	function set_flexShrink(v:Float):Float {
+		if (v == flexShrink) return v;
+		flexShrink = v;
 		node.styleChanged(true);
 		return v;
 	}
@@ -1082,15 +1083,15 @@ class Style {
 	}
 
 	function set_flex(v:Float):Float {
-		grow = v;
-		shrink = 1;
-		basis = DimValue.Percent(0);
+		flexGrow = v;
+		flexShrink = 1;
+		flexBasis = DimValue.Percent(0);
 		return v;
 	}
 
-	function set_basis(v:Dim):Dim {
-		if (v == basis) return v;
-		basis = v;
+	function set_flexBasis(v:Dim):Dim {
+		if (v == flexBasis) return v;
+		flexBasis = v;
 		node.styleChanged(true);
 		return v;
 	}
@@ -1259,7 +1260,7 @@ class Style {
 
 	// the corners as drawn: corners, else radius on each
 	public function cornerRadii():Corners
-		return corners != null ? corners : Corners.all(radius);
+		return corners != null ? corners : Corners.all(borderRadius);
 
 	// whether the corners or the border's sides differ (drawn by Canvas.rect's corners and sides)
 	public function irregular():Bool
@@ -1379,10 +1380,10 @@ class Style {
 		return v;
 	}
 
-	function set_radius(v:Float):Float {
-		if (helder.ui.motion.Motions.on && helder.ui.motion.Motions.moveFloat(node, helder.ui.motion.Motions.RADIUS, radius, v)) return v;
-		if (v == radius) return v;
-		radius = v;
+	function set_borderRadius(v:Float):Float {
+		if (helder.ui.motion.Motions.on && helder.ui.motion.Motions.moveFloat(node, helder.ui.motion.Motions.RADIUS, borderRadius, v)) return v;
+		if (v == borderRadius) return v;
+		borderRadius = v;
 		node.styleChanged(false);
 		return v;
 	}
@@ -1439,10 +1440,10 @@ class Style {
 		node.styleChanged(false);
 	}
 
-	function set_shadow(v:Null<Shadow>):Null<Shadow> {
-		if (themed != null && themed.transition != null && eases("shadow", shadow, v)) return v;
-		if (v == shadow) return v;
-		theming().shadow = v;
+	function set_boxShadow(v:Null<Shadow>):Null<Shadow> {
+		if (themed != null && themed.transition != null && eases("boxShadow", boxShadow, v)) return v;
+		if (v == boxShadow) return v;
+		theming().boxShadow = v;
 		// (how far outside its box a shadow draws: the paint's culling widens bounds by the most seen)
 		var sh = v;
 		while (sh != null) {
@@ -1484,9 +1485,9 @@ class Style {
 		return v;
 	}
 
-	function set_italic(v:Null<Bool>):Null<Bool> {
-		if (v == italic) return v;
-		italic = v;
+	function set_fontStyle(v:Null<FontStyle>):Null<FontStyle> {
+		if (v == fontStyle) return v;
+		fontStyle = v;
 		node.styleChanged(true);
 		return v;
 	}
@@ -1581,15 +1582,15 @@ class Style {
 	public function set(p:StyleProps):Style {
 		if (p.display != null) display = p.display;
 		if (p.position != null) position = p.position;
-		if (p.direction != null) direction = p.direction;
-		if (p.wrap != null) wrap = p.wrap;
-		if (p.justify != null) justify = p.justify;
+		if (p.flexDirection != null) flexDirection = p.flexDirection;
+		if (p.flexWrap != null) flexWrap = p.flexWrap;
+		if (p.justifyContent != null) justifyContent = p.justifyContent;
 		if (p.alignItems != null) alignItems = p.alignItems;
 		if (p.alignSelf != null) alignSelf = p.alignSelf;
 		if (p.alignContent != null) alignContent = p.alignContent;
-		if (p.grow != null) grow = p.grow;
-		if (p.shrink != null) shrink = p.shrink;
-		if (p.basis != null) basis = p.basis;
+		if (p.flexGrow != null) flexGrow = p.flexGrow;
+		if (p.flexShrink != null) flexShrink = p.flexShrink;
+		if (p.flexBasis != null) flexBasis = p.flexBasis;
 		if (p.width != null) width = p.width;
 		if (p.height != null) height = p.height;
 		if (p.minWidth != null) minWidth = p.minWidth;
@@ -1621,11 +1622,11 @@ class Style {
 		if (p.background != null) background = p.background;
 		if (p.backgroundImage != null) backgroundImage = p.backgroundImage;
 		if (p.borderColor != null) borderColor = p.borderColor;
-		if (p.radius != null) radius = p.radius;
+		if (p.borderRadius != null) borderRadius = p.borderRadius;
 		if (p.corners != null) corners = p.corners;
 		if (p.opacity != null) opacity = p.opacity;
 		if (p.cursor != null) cursor = p.cursor;
-		if (p.shadow != null) shadow = p.shadow;
+		if (p.boxShadow != null) boxShadow = p.boxShadow;
 		if (p.outlineWidth != null) outlineWidth = p.outlineWidth;
 		if (p.outlineOffset != null) outlineOffset = p.outlineOffset;
 		if (p.outlineColor != null) outlineColor = p.outlineColor;
@@ -1635,14 +1636,14 @@ class Style {
 		if (p.fontFamily != null) fontFamily = p.fontFamily;
 		if (p.fontSize != null) fontSize = p.fontSize;
 		if (p.fontWeight != null) fontWeight = p.fontWeight;
-		if (p.italic != null) italic = p.italic;
+		if (p.fontStyle != null) fontStyle = p.fontStyle;
 		if (p.lineHeight != null) lineHeight = p.lineHeight;
 		if (p.letterSpacing != null) letterSpacing = p.letterSpacing;
 		if (p.wordSpacing != null) wordSpacing = p.wordSpacing;
 		if (p.lineHeightPx != null) lineHeightPx = p.lineHeightPx;
 		if (p.letterSpacingEm != null) letterSpacingEm = p.letterSpacingEm;
 		if (p.textAlign != null) textAlign = p.textAlign;
-		if (p.dir != null) dir = p.dir;
+		if (p.direction != null) direction = p.direction;
 		if (p.visibility != null) visibility = p.visibility;
 		if (p.outlineStyle != null) outlineStyle = p.outlineStyle;
 		if (p.borderStyle != null) borderStyle = p.borderStyle;
@@ -1679,7 +1680,7 @@ class Style {
 		if (p.textDecorationColor != null) textDecorationColor = p.textDecorationColor;
 		if (p.textDecorationThickness != null) textDecorationThickness = p.textDecorationThickness;
 		if (p.textUnderlineOffset != null) textUnderlineOffset = p.textUnderlineOffset;
-		if (p.maxLines != null) maxLines = p.maxLines;
+		if (p.lineClamp != null) lineClamp = p.lineClamp;
 		if (p.gridTemplateColumns != null) gridTemplateColumns = p.gridTemplateColumns;
 		if (p.gridTemplateRows != null) gridTemplateRows = p.gridTemplateRows;
 		if (p.gridAutoColumns != null) gridAutoColumns = p.gridAutoColumns;
@@ -1715,8 +1716,8 @@ private class StyleRare {
 	public var wordSpacing:Null<Float> = null;
 	public var lineHeightPx:Null<Float> = null;
 	public var letterSpacingEm:Null<Float> = null;
-	public var maxLines:Int = 0;
-	public var dir:Null<Dir> = null;
+	public var lineClamp:Int = 0;
+	public var direction:Null<Dir> = null;
 	public var visibility:Null<Visibility> = null;
 	public var fieldSizing:Null<FieldSizing> = null;
 	public var scrollbarWidth:Null<ScrollbarWidth> = null;
@@ -1756,7 +1757,7 @@ private class StyleThemed {
 	public var pointerEvents:Null<PointerEvents> = null;
 	public var textWrap:Null<TextWrap> = null;
 	public var zIndex:Int = 0;
-	public var shadow:Null<Shadow> = null;
+	public var boxShadow:Null<Shadow> = null;
 	public var outlineWidth:Float = 0;
 	public var outlineOffset:Float = 0;
 	public var outlineColor:Null<Color> = null;

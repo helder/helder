@@ -457,7 +457,7 @@ class VirtualScroll extends Node {
 	// (row i made at slot k)
 	function make(i:Int, k:Int) {
 		var n = new Node("row");
-		n.style.shrink = 0;
+		n.style.flexShrink = 0;
 		if (!Math.isNaN(fixedHeight)) n.style.height = fixedHeight;
 		var s = new VirtualRow(i, n);
 		slots.insert(k, s);
@@ -583,7 +583,7 @@ private class Spacer extends Node {
 
 	public function new(tag:String) {
 		super(tag);
-		style.shrink = 0;
+		style.flexShrink = 0;
 	}
 
 	@:noCompletion override public function hasContent():Bool

@@ -585,7 +585,7 @@ private class MirrorNode extends Node {
 		style.overflowY = e.scrollsY ? Overflow.Scroll : Overflow.Hidden;
 		if (e.rtl != rtlNow) {
 			rtlNow = e.rtl;
-			style.dir = e.rtl ? Dir.Rtl : null;
+			style.direction = e.rtl ? Dir.Rtl : null;
 		}
 	}
 }

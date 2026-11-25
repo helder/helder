@@ -181,10 +181,10 @@ class TextNode extends Node {
 	function topOffset(p:Paragraph, height:Float):Float {
 		var s = style, free = height - p.height;
 		if (free <= 0) return 0;
-		var row = s.direction == Row || s.direction == RowReverse;
+		var row = s.flexDirection == Row || s.flexDirection == RowReverse;
 		return switch s.display {
 			case Grid | Flex if (row || s.display == Grid): s.alignItems == Center ? free / 2 : s.alignItems == End ? free : 0;
-			case Flex: s.justify == Center ? free / 2 : s.justify == End ? free : 0;
+			case Flex: s.justifyContent == Center ? free / 2 : s.justifyContent == End ? free : 0;
 			case _: 0;
 		}
 	}
@@ -213,7 +213,7 @@ class TextNode extends Node {
 	@:noCompletion public function layoutText(engine:TextEngine, maxWidth:Float):Paragraph {
 		var f = font(), text = shownText();
 		var rich = children.length > 0 ? spanned() : null;
-		var shown = rich != null ? rich.text : text, spans = rich != null ? rich.spans : null, clamp = style.maxLines;
+		var shown = rich != null ? rich.text : text, spans = rich != null ? rich.spans : null, clamp = style.lineClamp;
 		// (spans: their fonts in the key; and the lines' limit)
 		var justify = textAlign() == Justify;
 		// (a direction set: its paragraphs in it)
@@ -322,7 +322,7 @@ class TextNode extends Node {
 	// the text, its spans' fonts, the lines' limit, justification, direction)
 	function paragraphKey(text:String, rich:Null<{text:String, spans:Array<TextSpan>, colors:Array<Color>, key:String}>, justify:Bool, d:Null<Dir>):String {
 		if (rich != null) text = rich.text + "\u0000" + rich.key;
-		if (style.maxLines > 0) text += "\u0001" + style.maxLines;
+		if (style.lineClamp > 0) text += "\u0001" + style.lineClamp;
 		if (justify) text += "\u0002";
 		if (d != null) text += "\u0003" + (d == Rtl ? 1 : 0);
 		return text;

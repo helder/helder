@@ -114,8 +114,8 @@ class CodeView extends Node {
 		CodeActions.declare();
 		addFont();
 		focusable = true;
-		style.grow = 1;
-		style.shrink = 1;
+		style.flexGrow = 1;
+		style.flexShrink = 1;
 		style.minHeight = 0;
 		style.minWidth = 0;
 		style.overflow = Hidden;
