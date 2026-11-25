@@ -123,7 +123,8 @@ class Shell implements Markup {
 	// container): never stopped for lack of one
 	public static function fallbackFont() {
 		var fonts = helder.text.SystemFonts.get();
-		if (fonts.match("sans-serif") == null) fonts.add(helder.asset.Asset.embed("fonts/DejaVuSans-viewer.ttf"));
+		// (the faces found first: a match loads and parses the system's font, tens of ms, only to know there is one)
+		if (fonts.families().length == 0 && fonts.match("sans-serif") == null) fonts.add(helder.asset.Asset.embed("fonts/DejaVuSans-viewer.ttf"));
 	}
 
 	#if (hxmc.target != "wasm32-wasi")

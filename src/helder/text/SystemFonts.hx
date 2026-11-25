@@ -353,10 +353,14 @@ class SystemFonts {
 		// fonts added: a program's fallback tested as on a bare system)
 		var none = Sys.getEnv("HELDER_NO_SYSTEM_FONTS");
 		if (none != null && none != "" && none != "0") return;
-		var seen = new Map<String, Bool>();
+		// (the faces a last scan found, while its directories are as they were)
+		var file = cachePath();
+		if (file != null && readCache(file)) return;
+		var seen = new Map<String, Bool>(), walked = [];
 		function walk(dir:String, depth:Int) {
 			if (depth > 6 || seen.exists(dir)) return;
 			seen.set(dir, true);
+			walked.push(dir);
 			var entries = try sys.FileSystem.readDirectory(dir) catch (e:Dynamic) null;
 			if (entries == null) return;
 			entries.sort(Reflect.compare);
@@ -371,6 +375,67 @@ class SystemFonts {
 		}
 		for (d in directories())
 			walk(d, 0);
+		if (file != null) writeCache(file, walked);
+	}
+
+	// --- the scan kept: the faces found, with the times of the directories
+	// walked (each one's, its files' added or removed), so that a launch
+	// reads one small file instead of every font's (on a Mac about 75 ms):
+	// "helder-fonts 1", then "d <time> <dir>" and "f <index> <weight>
+	// <italic> <min> <max> <family> <subfamily> <path>", tab-separated
+
+	// (the app's cache (helder.os.Paths); none for HELDER_FONT_DIRS' own, nor on the web or Eval)
+	static function cachePath():Null<String> {
+		#if (target.name == "hxmc" && hxmc.target != "wasm32-wasi")
+		if (only() != null) return null;
+		var d = try helder.os.Paths.cache() catch (_:Dynamic) null;
+		return d == null ? null : d + "/helder-fonts.txt";
+		#else
+		return null;
+		#end
+	}
+
+	static function stamp(dir:String):String
+		return try Std.string(sys.FileSystem.stat(dir).mtime.getTime()) catch (_:Dynamic) "-";
+
+	function readCache(file:String):Bool {
+		var text = try sys.io.File.getContent(file) catch (_:Dynamic) null;
+		if (text == null) return false;
+		var lines = text.split("\n");
+		if (lines[0] != "helder-fonts 1") return false;
+		var found = [];
+		for (l in lines.slice(1)) {
+			var c = l.split("\t");
+			if (c[0] == "d") {
+				if (c.length != 3 || stamp(c[2]) != c[1]) return false;
+			} else if (c[0] == "f" && c.length == 9) {
+				var fi = new FaceInfo(c[8], Std.parseInt(c[1]), c[6], c[7], Std.parseInt(c[2]), c[3] == "1");
+				fi.minWeight = Std.parseInt(c[4]);
+				fi.maxWeight = Std.parseInt(c[5]);
+				found.push(fi);
+			}
+		}
+		for (fi in found)
+			faces.push(fi);
+		return true;
+	}
+
+	function writeCache(file:String, walked:Array<String>) {
+		var b = new StringBuf();
+		b.add("helder-fonts 1\n");
+		for (d in walked)
+			b.add('d\t${stamp(d)}\t$d\n');
+		for (fi in faces)
+			if (!StringTools.startsWith(fi.path, "added:"))
+				b.add('f\t${fi.index}\t${fi.weight}\t${fi.italic ? 1 : 0}\t${fi.minWeight}\t${fi.maxWeight}\t${fi.family}\t${fi.subfamily}\t${fi.path}\n');
+		// (written whole, then put in place: another process may be reading it)
+		var tmp = file + "." + Std.random(0x7FFFFFFF);
+		try {
+			sys.io.File.saveContent(tmp, b.toString());
+			sys.FileSystem.rename(tmp, file);
+		} catch (_:Dynamic) {
+			try sys.FileSystem.deleteFile(tmp) catch (_:Dynamic) {}
+		}
 	}
 }
 
@@ -402,26 +467,27 @@ class FaceInfo {
 		var f = try sys.io.File.read(path, true) catch (e:Dynamic) null;
 		if (f == null) return out;
 		try {
-			f.bigEndian = true;
-			var tag = f.readString(4);
+			// (each header read whole, its fields from the bytes: a read a field
+			// was a system call a byte, for every font of the system)
+			inline function u32(b:Bytes, p:Int):Int
+				return (b.get(p) << 24) | (b.get(p + 1) << 16) | (b.get(p + 2) << 8) | b.get(p + 3);
+			var head = f.read(12);
 			var offsets = [0];
-			if (tag == "ttcf") {
-				f.readInt32();
-				var n = f.readInt32();
-				offsets = [for (_ in 0...n) f.readInt32()];
+			if (head.getString(0, 4) == "ttcf") {
+				var n = u32(head, 8), table = f.read(n * 4);
+				offsets = [for (k in 0...n) u32(table, k * 4)];
 			}
 			for (i in 0...offsets.length) {
 				f.seek(offsets[i], SeekBegin);
-				var version = f.readInt32();
+				var h = f.read(12), version = u32(h, 0);
 				// (TrueType's, 'true', 'OTTO': CFF's)
 				if (version != 0x00010000 && version != 0x74727565 && version != 0x4F54544F) continue;
-				var n = f.readUInt16();
-				f.read(6);
+				var n = (h.get(4) << 8) | h.get(5);
+				var dir = f.read(n * 16);
 				var name = -1, nameLen = 0, os2 = -1, os2Len = 0, fvar = -1, fvarLen = 0;
-				for (_ in 0...n) {
-					var t = f.readString(4);
-					f.readInt32();
-					var off = f.readInt32(), len = f.readInt32();
+				for (k in 0...n) {
+					var t = dir.getString(k * 16, 4);
+					var off = u32(dir, k * 16 + 8), len = u32(dir, k * 16 + 12);
 					if (t == "name") {
 						name = off;
 						nameLen = len;
