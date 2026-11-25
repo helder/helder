@@ -469,8 +469,9 @@ class MacWindow {
 	}
 
 	// (Window.backdrop: an NSVisualEffectView behind the window, its
-	// material hudWindow 13 or underWindowBackground 21, or an
-	// NSGlassEffectView (macOS 26), filling the content view under the layer's)
+	// material hudWindow 13, underWindowBackground 21 or sidebar 7 (its
+	// state following the window's, as Finder's), or an NSGlassEffectView
+	// (macOS 26), filling the content view under the layer's)
 	var effect = Ptr.nil();
 
 	function setBackdrop(b:WindowBackdrop):Bool
@@ -487,10 +488,10 @@ class MacWindow {
 			effect = Msg.idRect(Msg.id(cls, ObjC.sel("alloc")), ObjC.sel("initWithFrame:"), Msg.rect(content, ObjC.sel("bounds")));
 			Msg.vInt(effect, ObjC.sel("setAutoresizingMask:"), 18);
 			if (b != Glass) {
-				// (behind the window, always active)
+				// (behind the window, always active; a sidebar's as the window is)
 				Msg.vInt(effect, ObjC.sel("setBlendingMode:"), 0);
-				Msg.vInt(effect, ObjC.sel("setMaterial:"), b == Blur ? 13 : 21);
-				Msg.vInt(effect, ObjC.sel("setState:"), 1);
+				Msg.vInt(effect, ObjC.sel("setMaterial:"), b == Blur ? 13 : b == Sidebar ? 7 : 21);
+				Msg.vInt(effect, ObjC.sel("setState:"), b == Sidebar ? 0 : 1);
 			}
 			// (NSWindowBelow -1: under every view of the content's)
 			Msg.vPtrIntPtr(content, ObjC.sel("addSubview:positioned:relativeTo:"), effect, -1, Ptr.nil());

@@ -9,7 +9,9 @@ browser engine and no runtime to install.
 - **A browser of folders.** A sidebar of your places (Home, Desktop,
   Documents, Downloads, Pictures, Movies, Music) and drives, one level at a
   time: a folder's subfolders, the one you are in highlighted, › to go
-  deeper, the drive's free space at the foot. A toolbar with back and
+  deeper, the drive's free space at the foot. The sidebar is the
+  system's material, as Finder's is: macOS's sidebar, Windows 11's Mica,
+  KDE's blur (opaque with Reduce Transparency, and elsewhere). A toolbar with back and
   forward, the folder's name (its menu lists the folders enclosing it),
   search, the View menu (the order, folders first, hidden files) and the
   inspector; the path along the bottom, each folder a button and each

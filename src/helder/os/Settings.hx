@@ -10,6 +10,7 @@ import hxmc.Platform;
 typedef SettingsValues = {
 	var textScale:Float;
 	var reducedMotion:Bool;
+	var reducedTransparency:Bool;
 	var contrast:Contrast;
 	var dark:Bool;
 	var orientation:Null<Orientation>;
@@ -30,6 +31,7 @@ enum abstract Orientation(String) to String {
 class Settings {
 	@:typescript public static var textScale(get, never):Read<Float>;
 	@:typescript public static var reducedMotion(get, never):Read<Bool>;
+	@:typescript public static var reducedTransparency(get, never):Read<Bool>;
 	@:typescript public static var contrast(get, never):Read<Contrast>;
 	@:typescript public static var dark(get, never):Read<Bool>;
 	@:typescript public static var orientation(get, never):Read<Null<Orientation>>;
@@ -53,6 +55,7 @@ class Settings {
 
 	static function get_textScale():Read<Float> return current().textScale;
 	static function get_reducedMotion():Read<Bool> return current().reducedMotion;
+	static function get_reducedTransparency():Read<Bool> return current().reducedTransparency;
 	static function get_contrast():Read<Contrast> return current().contrast;
 	static function get_dark():Read<Bool> return current().dark;
 	static function get_orientation():Read<Null<Orientation>> return current().orientation;
@@ -61,6 +64,7 @@ class Settings {
 		var v = values(), s = state;
 		if (s.textScale.peek() != v.textScale) s.textScale(v.textScale);
 		if (s.reducedMotion.peek() != v.reducedMotion) s.reducedMotion(v.reducedMotion);
+		if (s.reducedTransparency.peek() != v.reducedTransparency) s.reducedTransparency(v.reducedTransparency);
 		if (s.contrast.peek() != v.contrast) s.contrast(v.contrast);
 		if (s.dark.peek() != v.dark) s.dark(v.dark);
 		if (s.orientation.peek() != v.orientation) s.orientation(v.orientation);
@@ -76,7 +80,7 @@ class Settings {
 	#end
 
 	static function values():SettingsValues {
-		var v:SettingsValues = {textScale: 1, reducedMotion: false, contrast: Normal, dark: false, orientation: null};
+		var v:SettingsValues = {textScale: 1, reducedMotion: false, reducedTransparency: false, contrast: Normal, dark: false, orientation: null};
 		#if (target.name == "hxmc")
 		#if helder.headless
 		v.dark = App.prefersDark();
@@ -131,6 +135,7 @@ class Settings {
 private class SettingsState {
 	public final textScale:helder.view.graph.Signal<Float>;
 	public final reducedMotion:helder.view.graph.Signal<Bool>;
+	public final reducedTransparency:helder.view.graph.Signal<Bool>;
 	public final contrast:helder.view.graph.Signal<Contrast>;
 	public final dark:helder.view.graph.Signal<Bool>;
 	public final orientation:helder.view.graph.Signal<Null<Orientation>>;
@@ -138,6 +143,7 @@ private class SettingsState {
 	public function new(v:SettingsValues) {
 		textScale = Graph.signal(v.textScale);
 		reducedMotion = Graph.signal(v.reducedMotion);
+		reducedTransparency = Graph.signal(v.reducedTransparency);
 		contrast = Graph.signal(v.contrast);
 		dark = Graph.signal(v.dark);
 		orientation = Graph.signal(v.orientation);

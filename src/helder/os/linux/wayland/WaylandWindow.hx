@@ -873,7 +873,7 @@ class WaylandWindow {
 	}
 
 	// (Window.backdrop: KDE's blur behind the whole surface, from the next
-	// commit; blur and mica alike, no glass; none where the compositor has no blur)
+	// commit; blur, mica and sidebar alike, no glass; none where the compositor has no blur)
 	var blur:OrgKdeKwinBlur = Ptr.nil();
 
 	function setBackdrop(b:WindowBackdrop):Bool {
