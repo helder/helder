@@ -74,7 +74,7 @@ class Natives {
 				if (!given.exists("fns")) fail(n, "native.c: fns, the functions, is missing");
 				for (x in functions(given.get("fns"), kind, "fns")) fn(x.name, cFunction(lib, x.name, x.fn), x.fn);
 			case "objc":
-				if (os != 1) fail(n, "native.objc: Objective-C is Apple's (macOS, iOS): call it under a platform test (helder/platform)");
+				if (os != 1) fail(n, "native.objc: Objective-C is Apple's (macOS, iOS): call it under a platform test (helder/native/platform)");
 				var name = string(given.get("class"), "class", kind, false);
 				if (name == null) fail(n, "native.objc: class, the class's name, is missing");
 				var lib = string(given.get("lib"), "lib", kind, true);
@@ -83,7 +83,7 @@ class Natives {
 				for (x in functions(given.get("methods"), kind, "methods")) fn(x.name, objcMessage(name, x.name, x.fn, false), x.fn);
 				add("class", n, b.temp(objcClass(name)));
 			case "com":
-				if (os != 2) fail(n, "native.com: COM is Windows': call it under a platform test (helder/platform)");
+				if (os != 2) fail(n, "native.com: COM is Windows': call it under a platform test (helder/native/platform)");
 				var iid = string(given.get("iid"), "iid", kind, false);
 				if (iid == null) fail(n, "native.com: iid, the interface's IID, is missing");
 				guidText(iid, given.get("iid"));
@@ -119,7 +119,7 @@ class Natives {
 					fn("create", comCreate(guid(clsid), iidAt, n), n);
 				}
 			case "jni":
-				if (code != 9 && code != 10) fail(n, "native.jni: JNI is Android's: call it under a platform test (helder/platform)");
+				if (code != 9 && code != 10) fail(n, "native.jni: JNI is Android's: call it under a platform test (helder/native/platform)");
 				var name = string(given.get("class"), "class", kind, false);
 				if (name == null) fail(n, "native.jni: class, the Java class's name, is missing");
 				var cls = cached("jclass", () -> call(script("jniClass"), [EStr(StringTools.replace(name, "/", "."))]));

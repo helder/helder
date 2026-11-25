@@ -7,7 +7,7 @@ using StringTools;
 
 // Whether a saved file changed only its live literals' values (helder dev:
 // patched, nothing built). The build that made the running program wrote
-// each source's live literals (helder.markup.Live's table, -D
+// each source's live literals (helder.view.Live's table, -D
 // helder.literals=<dir>: <dir>/<md5 of the source>.json, their byte spans
 // and forms); helder dev keeps that source (Sources), and compares a save
 // with it: the text between the spans the same, each span a literal of the
@@ -17,14 +17,14 @@ using StringTools;
 // moved what follows it.
 class LiteralEdit {
 	// the changes from built to now (empty: none), null when anything but a live literal changed (why: said)
-	public static function diff(built:String, now:String, entries:Array<helder.markup.Live.Entry>, ?why:String->Void):Null<Array<{id:String, source:String}>> {
+	public static function diff(built:String, now:String, entries:Array<helder.view.Live.Entry>, ?why:String->Void):Null<Array<{id:String, source:String}>> {
 		var list = entries.copy();
 		list.sort((a, b) -> a.start - b.start);
 		var out = [], pos = 0, q = 0, last = -1;
 		function fail(at:Int, what:String):Null<Array<{id:String, source:String}>> {
 			var w = why;
 			if (w != null) {
-				var p = helder.markup.Live.lineColumn(now, at < now.length ? at : now.length);
+				var p = helder.view.Live.lineColumn(now, at < now.length ? at : now.length);
 				w('line ${p.line}: $what');
 			}
 			return null;
@@ -41,7 +41,7 @@ class LiteralEdit {
 				case _: now.substr(q, old.length) == old ? old : null;
 			}
 			if (next == null) return fail(q, 'the ${e.form} literal ${old.length > 24 ? old.substr(0, 24) + "..." : old} is no longer one');
-			if (e.form == "text" && helder.markup.Syntax.Whitespace.clean(next) == null) return fail(q, "a text emptied");
+			if (e.form == "text" && helder.view.Syntax.Whitespace.clean(next) == null) return fail(q, "a text emptied");
 			if (next != old) out.push({id: e.id, source: next});
 			q += next.length;
 			pos = e.end;
@@ -92,12 +92,12 @@ class LiteralEdit {
 }
 
 // The sources the running program was built from, with their live
-// literals' tables (helder.markup.Live's, in dir): kept after each build,
+// literals' tables (helder.view.Live's, in dir): kept after each build,
 // a save compared with them (LiteralEdit.diff). The patches sent since,
 // by id, so that a value set back to the built one is sent too.
 class Sources {
 	public final dir:String;
-	final built = new Map<String, {content:String, entries:Array<helder.markup.Live.Entry>}>();
+	final built = new Map<String, {content:String, entries:Array<helder.view.Live.Entry>}>();
 	final sent = new Map<String, String>();
 
 	public function new(dir:String)

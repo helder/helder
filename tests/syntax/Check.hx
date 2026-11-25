@@ -1,4 +1,4 @@
-import helder.markup.Syntax;
+import helder.view.Syntax;
 import helder.syntax.Cst;
 import helder.syntax.Document;
 import helder.syntax.Edits;
@@ -16,7 +16,7 @@ using StringTools;
 //   random edits of its elements read again and undone, byte for byte;
 //   each read structurally (its brackets and markup) but the ones listed
 //   in FLAT, which do not balance (a reject's unbalanced "{");
-// - each Haxe markup literal read as helder.markup.Syntax's parser (the
+// - each Haxe markup literal read as helder.view.Syntax's parser (the
 //   macro's) reads it: the same elements, names and attributes, in order;
 // - the time a read takes, a file of 2000 lines and more (a few ms natively).
 //   Check [--quiet]
@@ -218,7 +218,7 @@ class Check {
 		return 'at $k: ' + haxe.Json.stringify(a.substr(k, 40)) + " against " + haxe.Json.stringify(b.substr(k, 40));
 	}
 
-	// each top literal of a Haxe file against helder.markup.Syntax's parser: the literals compared
+	// each top literal of a Haxe file against helder.view.Syntax's parser: the literals compared
 	static function againstParser(path:String, doc:Document):Int {
 		var n = 0;
 		for (e in doc.elements()) {

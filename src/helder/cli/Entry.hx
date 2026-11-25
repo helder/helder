@@ -264,37 +264,12 @@ class Entry {
 		var t = target == "web" ? "wasm32-wasi" : target;
 		out = out.concat(["-main", main, "-D", 'hxmc.target=$t']).concat(Os.define(t));
 		if (target.startsWith("linux-")) out = out.concat(["-D", "hxmc.libc=glibc"]);
-		// (iOS's frameworks, typed: hx-objc's externs, helder's dependency)
-		if (target.startsWith("ios-")) for (c in externs("apple-uikit")) out = out.concat(["-cp", c]);
 		// (legacy exception handling: every browser with WebGPU has it, those with WebGL2 since 2021)
 		if (target == "web") out = out.concat(["-D", "hxmc.wasm-eh=legacy"]);
 		out = out.concat(defines).concat(Compiler.markup(defines));
 		// (assets named by path: found under the class paths, else the project)
 		out = out.concat(["-D", "helder.root=" + FileSystem.fullPath(root).split("\\").join("/")]);
 		if (hxml != null) out.push(hxml);
-		return out;
-	}
-
-	// an hx-objc library's class path and its dependencies', from helder's
-	// node_modules up as node finds them (hoisted or helder's own)
-	function externs(name:String):Array<String> {
-		var out = [];
-		function find(from:String, pkg:String) {
-			var d = from;
-			while (true) {
-				var dir = '$d/node_modules/@hx-objc/$pkg';
-				if (FileSystem.exists('$dir/package.json')) {
-					if (!out.contains('$dir/src')) out.push('$dir/src');
-					var deps:Dynamic = haxe.Json.parse(File.getContent('$dir/package.json')).dependencies;
-					if (deps != null) for (dep in Reflect.fields(deps)) if (dep.startsWith("@hx-objc/")) find(dir, dep.substr(9));
-					return;
-				}
-				var up = Path.directory(d);
-				if (up == d || up == "") throw 'no @hx-objc/$pkg: install helder\'s dependencies';
-				d = up;
-			}
-		}
-		find(FileSystem.fullPath(helder), name);
 		return out;
 	}
 

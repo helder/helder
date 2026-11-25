@@ -16,7 +16,7 @@ edit of live literals' values patches the running preview without a build.
 `protocol.d.ts` has the messages; `client.mjs` wraps them as promises:
 
 ```js
-import {CompilerClient} from 'helder/src/helder/compiler/web/client.mjs'
+import {CompilerClient} from 'helder/compiler/web/client'
 const c = new CompilerClient(new Worker(new URL('worker.mjs', base), {type: 'module'}))
 await c.init()                                    // {protocol, versions, threads, persistent, ms, bytes}
 await c.write({'/work/app/main.tsx': text, '/work/app/package.json': '{}'})
@@ -77,7 +77,7 @@ the running one's place with its state (Hot's snapshot), as helder dev's
 page does.
 
 ```js
-import {Preview} from 'helder/src/helder/compiler/web/preview.mjs'
+import {Preview} from 'helder/compiler/web/preview'
 const preview = new Preview({base: '/helder/src/helder/', fonts: [inter]})
 await preview.run(await c.build('/work/app'))
 c.running = request => preview.devtools(request)

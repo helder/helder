@@ -71,9 +71,9 @@ hosted web releases and store uploads.
 | [cli](src/helder/cli/README.md), [pack](src/helder/pack/README.md), [test](src/helder/test/README.md) | the `helder` command, APKs and app bundles without an SDK, tests |
 | [store](src/helder/store/README.md) | in-app purchases on Apple platforms and Android |
 | [story](src/helder/story/README.md), [headless](src/helder/headless/README.md) | screens in isolation, scripted runs and snapshots |
-| [dev](src/helder/dev/README.md), [devtools](src/helder/devtools/README.md) | live reload, preserved state, logs and inspection |
+| [dev](src/helder/dev/README.md) | live reload, preserved state, logs and inspection |
 | [typescript](src/helder/typescript/README.md), [compiler](src/helder/compiler/README.md), [syntax](src/helder/syntax/README.md) | TypeScript and Haxe builds, source parsing and edits |
-| [native](src/helder/native/README.md), [platform](src/helder/platform/README.md) | native calls and compile-time target checks from TypeScript |
+| [native](src/helder/native/README.md) | native calls and compile-time target checks from TypeScript |
 
 ## Working on helder
 

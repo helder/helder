@@ -1,8 +1,8 @@
 package helder.jobs;
 
-import helder.definition.Kernel;
+import helder.compiler.Kernel;
 
-// job(f)'s handler (src/helder/compiler/DESIGN.md 4), the same for both
+// job(f)'s handler (src/helder/compiler/README.md 4), the same for both
 // languages (Haxe's Jobs.job: Sendable; TypeScript's helder/jobs:
 // helder.typescript.lower's Definitions): f's input, result and the
 // module-level constants it reads (TypeScript's: a worker's instance has

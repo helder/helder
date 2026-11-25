@@ -3,12 +3,12 @@ package helder.dev;
 import haxe.macro.Expr;
 #if macro
 import haxe.macro.Context;
-import helder.definition.HaxeAdapter;
-import helder.definition.Kernel;
+import helder.compiler.HaxeAdapter;
+import helder.compiler.Kernel;
 #end
 
 // keep(key, () -> initial): a value kept as it is across a reload under
-// `helder dev` (fast refresh), a definition (src/helder/compiler/DESIGN.md
+// `helder dev` (fast refresh), a definition (src/helder/compiler/README.md
 // 4; its handler KeepDefinition, TypeScript's helder/dev the same):
 //
 //   import helder.dev.Keep;

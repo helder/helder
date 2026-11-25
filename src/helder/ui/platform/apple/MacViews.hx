@@ -30,13 +30,13 @@ class MacViews implements helder.ui.platform.PlatformViews {
 	// an NSFont for a ui Font (its family, else the system's; bold from 600, italic)
 	@:allow(helder.ui) static function nsFont(f:Font):Ptr {
 		var name = ObjC.str(f.family);
-		var nf = AkMsg.idPtrFloat(ObjC.cls("NSFont"), ObjC.sel("fontWithName:size:"), name, f.size);
+		var nf = Msg.idPtrFloat(ObjC.cls("NSFont"), ObjC.sel("fontWithName:size:"), name, f.size);
 		ObjC.release(name);
-		if (nf.isNull()) nf = AkMsg.idFloat(ObjC.cls("NSFont"), ObjC.sel("systemFontOfSize:"), f.size);
-		var fm = AkMsg.id(ObjC.cls("NSFontManager"), ObjC.sel("sharedFontManager"));
+		if (nf.isNull()) nf = Msg.idFloat(ObjC.cls("NSFont"), ObjC.sel("systemFontOfSize:"), f.size);
+		var fm = Msg.id(ObjC.cls("NSFontManager"), ObjC.sel("sharedFontManager"));
 		// (NSFontTraitMask: italic 1, bold 2)
-		if (f.weight >= 600) nf = AkMsg.idPtrInt(fm, ObjC.sel("convertFont:toHaveTrait:"), nf, 2);
-		if (f.italic) nf = AkMsg.idPtrInt(fm, ObjC.sel("convertFont:toHaveTrait:"), nf, 1);
+		if (f.weight >= 600) nf = Msg.idPtrInt(fm, ObjC.sel("convertFont:toHaveTrait:"), nf, 2);
+		if (f.italic) nf = Msg.idPtrInt(fm, ObjC.sel("convertFont:toHaveTrait:"), nf, 1);
 		return nf;
 	}
 
@@ -230,11 +230,11 @@ class MacViews implements helder.ui.platform.PlatformViews {
 							Msg.vPtr(item, ObjC.sel("setTarget:"), app);
 							Msg.vBool(item, ObjC.sel("setEnabled:"), true);
 						}
-						AkMsg.vPtrInt(own, ObjC.sel("insertItem:atIndex:"), item, 0);
+						Msg.vPtrInt(own, ObjC.sel("insertItem:atIndex:"), item, 0);
 						placed.push(item);
 						var sep = Msg.id(ObjC.cls("NSMenuItem"), ObjC.sel("separatorItem"));
 						Runtime.objc_retain(sep);
-						AkMsg.vPtrInt(own, ObjC.sel("insertItem:atIndex:"), sep, 1);
+						Msg.vPtrInt(own, ObjC.sel("insertItem:atIndex:"), sep, 1);
 						placed.push(sep);
 						continue;
 					}
@@ -263,7 +263,7 @@ class MacViews implements helder.ui.platform.PlatformViews {
 				var item = Msg.id(Msg.id(ObjC.cls("NSMenuItem"), ObjC.sel("alloc")), ObjC.sel("init"));
 				Msg.vPtr(item, ObjC.sel("setSubmenu:"), sub);
 				ObjC.release(sub);
-				AkMsg.vPtrInt(main, ObjC.sel("insertItem:atIndex:"), item, 1 + k++);
+				Msg.vPtrInt(main, ObjC.sel("insertItem:atIndex:"), item, 1 + k++);
 				barItems.push(item);
 			}
 			return true;
@@ -294,7 +294,7 @@ class MacViews implements helder.ui.platform.PlatformViews {
 		var responder = Msg.id(Msg.id(app, ObjC.sel("keyWindow")), ObjC.sel("firstResponder"));
 		var s = Arena.scopedValue(a -> Runtime.sel_registerName(a.cstring(sel)));
 		if (responder.isNull() || !Msg.bPtr(responder, ObjC.sel("respondsToSelector:"), s)) return false;
-		return AkMsg.bPtrPtrPtr(app, ObjC.sel("sendAction:to:from:"), s, Ptr.nil(), item);
+		return Msg.bPtrPtrPtr(app, ObjC.sel("sendAction:to:from:"), s, Ptr.nil(), item);
 	}
 
 	// (an NSMenu of the items: enabled as given, checked as NSControlStateValueOn)
@@ -358,7 +358,7 @@ class MacViews implements helder.ui.platform.PlatformViews {
 					pt.value.x = p.x;
 					pt.value.y = flipped ? p.y : b.size.height - p.y;
 					shown = m;
-					AkMsg.bPtrPointPtr(m, ObjC.sel("popUpMenuPositioningItem:atLocation:inView:"), Ptr.nil(), pt.value, view);
+					Msg.bPtrPointPtr(m, ObjC.sel("popUpMenuPositioningItem:atLocation:inView:"), Ptr.nil(), pt.value, view);
 					shown = Ptr.nil();
 				});
 				ObjC.release(m);
@@ -532,7 +532,7 @@ class MacEditor implements helder.ui.platform.PlatformEditor {
 		helder.os.OsThread.run(() -> {
 			if (secret != secure) remake(secret);
 			Msg.vPtr(field, ObjC.sel("setFont:"), MacViews.nsFont(font));
-			Msg.vPtr(field, ObjC.sel("setTextColor:"), AkMsg.idFloat4(ObjC.cls("NSColor"), ObjC.sel("colorWithSRGBRed:green:blue:alpha:"), color.r / 255,
+			Msg.vPtr(field, ObjC.sel("setTextColor:"), Msg.idFloat4(ObjC.cls("NSColor"), ObjC.sel("colorWithSRGBRed:green:blue:alpha:"), color.r / 255,
 				color.g / 255, color.b / 255, color.a / 255));
 			// (NSTextAlignment: left 0, right 1, center 2, justified 3)
 			Msg.vInt(field, ObjC.sel("setAlignment:"), align == Center ? 2 : align == Right ? 1 : align == Justify ? 3 : 0);
@@ -643,7 +643,7 @@ class MacAreaEditor extends MacEditor {
 	override public function setStyle(font:Font, color:Color, background:Color, placeholder:String, placeholderColor:Color, align:TextAlign, secret:Bool) {
 		helder.os.OsThread.run(() -> {
 			Msg.vPtr(field, ObjC.sel("setFont:"), MacViews.nsFont(font));
-			Msg.vPtr(field, ObjC.sel("setTextColor:"), AkMsg.idFloat4(ObjC.cls("NSColor"), ObjC.sel("colorWithSRGBRed:green:blue:alpha:"), color.r / 255,
+			Msg.vPtr(field, ObjC.sel("setTextColor:"), Msg.idFloat4(ObjC.cls("NSColor"), ObjC.sel("colorWithSRGBRed:green:blue:alpha:"), color.r / 255,
 				color.g / 255, color.b / 255, color.a / 255));
 			Msg.vInt(field, ObjC.sel("setAlignment:"), align == Center ? 2 : align == Right ? 1 : align == Justify ? 3 : 0);
 		});

@@ -2,7 +2,6 @@ package helder.ui.platform.apple;
 
 import helder.os.apple.objc.*;
 import helder.ui.platform.PlatformWebView;
-import helder.ui.platform.apple.WkMsg;
 import hxmc.Platform;
 import hxmc.unsafe.*;
 
@@ -86,14 +85,14 @@ class WebView implements helder.ui.platform.PlatformWebView {
 			lock.acquire();
 			posted.push(s);
 			lock.release();
-			WkMsg.vPtrPtrBool(delegate, ObjC.sel("performSelectorOnMainThread:withObject:waitUntilDone:"), ObjC.sel("hxmcPosted:"), Ptr.nil(), false);
+			Msg.vPtrPtrBool(delegate, ObjC.sel("performSelectorOnMainThread:withObject:waitUntilDone:"), ObjC.sel("hxmcPosted:"), Ptr.nil(), false);
 		};
 		if (options.zoom != true)
 			js += 'document.addEventListener("DOMContentLoaded",function(){var m=document.querySelector("meta[name=viewport]");'
 				+ 'if(!m){m=document.createElement("meta");m.name="viewport";m.content="width=device-width, initial-scale=1";document.head.appendChild(m);}'
 				+ 'if(m.content.indexOf("user-scalable")<0)m.content+=", maximum-scale=1, user-scalable=no";});';
 		var src = ObjC.str(js);
-		var script = WkMsg.idPtrIntBool(Msg.id(ObjC.cls("WKUserScript"), ObjC.sel("alloc")), ObjC.sel("initWithSource:injectionTime:forMainFrameOnly:"), src, 0, true);
+		var script = Msg.idPtrIntBool(Msg.id(ObjC.cls("WKUserScript"), ObjC.sel("alloc")), ObjC.sel("initWithSource:injectionTime:forMainFrameOnly:"), src, 0, true);
 		ObjC.release(src);
 		Msg.vPtr(ucc, ObjC.sel("addUserScript:"), script);
 		ObjC.release(script);
@@ -107,18 +106,18 @@ class WebView implements helder.ui.platform.PlatformWebView {
 			Msg.vInt(config, ObjC.sel("setMediaTypesRequiringUserActionForPlayback:"), 0);
 		}
 		var alloc = Msg.id(ObjC.cls("WKWebView"), ObjC.sel("alloc")), init = ObjC.sel("initWithFrame:configuration:");
-		if (fullScreen) web = WkMsg.idRectPtr(alloc, init, Msg.rect(Msg.id(ObjC.cls("UIScreen"), ObjC.sel("mainScreen")), ObjC.sel("bounds")), config) else
+		if (fullScreen) web = Msg.idRectPtr(alloc, init, Msg.rect(Msg.id(ObjC.cls("UIScreen"), ObjC.sel("mainScreen")), ObjC.sel("bounds")), config) else
 			web = Arena.scopedValue(a -> {
 				var r = a.make(CGRect);
 				r.value.size.width = 1;
 				r.value.size.height = 1;
-				WkMsg.idRectPtr(alloc, init, r.value, config);
+				Msg.idRectPtr(alloc, init, r.value, config);
 			});
 		ObjC.release(config);
 		Msg.vPtr(web, ObjC.sel("setNavigationDelegate:"), delegate);
 		for (k in ["title", "estimatedProgress", "URL"]) {
 			var key = ObjC.str(k);
-			WkMsg.vPtrPtrIntPtr(web, ObjC.sel("addObserver:forKeyPath:options:context:"), delegate, key, 1, Ptr.nil());
+			Msg.vPtrPtrIntPtr(web, ObjC.sel("addObserver:forKeyPath:options:context:"), delegate, key, 1, Ptr.nil());
 			ObjC.release(key);
 		}
 		Msg.vBool(web, ObjC.sel("setAllowsBackForwardNavigationGestures:"), options.backGesture != false);
@@ -355,8 +354,8 @@ class WebView implements helder.ui.platform.PlatformWebView {
 		Runtime.class_replaceMethod(d, ObjC.sel("hxmcPosted:"), Callback.addr(postedOnMain), Mem.cstr("v@:@"));
 		Runtime.class_replaceMethod(d, ObjC.sel("observeValueForKeyPath:ofObject:change:context:"), Callback.addr(observed), Mem.cstr("v@:@@@^v"));
 		for (p in ["WKNavigationDelegate", "WKScriptMessageHandler", "WKURLSchemeHandler"]) {
-			var proto = Arena.scopedValue(a -> ObjcProtocols.objc_getProtocol(a.cstring(p)));
-			if (!proto.isNull()) ObjcProtocols.class_addProtocol(d, proto);
+			var proto = Arena.scopedValue(a -> Runtime.objc_getProtocol(a.cstring(p)));
+			if (!proto.isNull()) Runtime.class_addProtocol(d, proto);
 		}
 		if (fresh) Runtime.objc_registerClassPair(d);
 		delegateClass = d;
@@ -453,7 +452,7 @@ class WebView implements helder.ui.platform.PlatformWebView {
 				v.push(e);
 			case "estimatedProgress":
 				var e = new helder.ui.platform.WebViewEvent(Progress);
-				e.progress = WkMsg.f(object, ObjC.sel("estimatedProgress"));
+				e.progress = Msg.f(object, ObjC.sel("estimatedProgress"));
 				v.push(e);
 			case "URL":
 				var e = new helder.ui.platform.WebViewEvent(UrlChange);
@@ -485,7 +484,7 @@ class WebView implements helder.ui.platform.PlatformWebView {
 		for (k => val in r.headers)
 			set(k, val);
 		var version = ObjC.str("HTTP/1.1");
-		var response = WkMsg.idPtrIntPtrPtr(Msg.id(ObjC.cls("NSHTTPURLResponse"), ObjC.sel("alloc")), ObjC.sel("initWithURL:statusCode:HTTPVersion:headerFields:"), url,
+		var response = Msg.idPtrIntPtrPtr(Msg.id(ObjC.cls("NSHTTPURLResponse"), ObjC.sel("alloc")), ObjC.sel("initWithURL:statusCode:HTTPVersion:headerFields:"), url,
 			r.status, version, dict);
 		ObjC.release(version);
 		Msg.vPtr(task, ObjC.sel("didReceiveResponse:"), response);
@@ -542,23 +541,23 @@ class WebView implements helder.ui.platform.PlatformWebView {
 
 	// a CGImage's pixels: RGBA8, straight alpha
 	static function pixels(img:Ptr):helder.ui.platform.PlatformWebView.WebSnapshot {
-		var w = WkCG.CGImageGetWidth(img).toInt(), h = WkCG.CGImageGetHeight(img).toInt();
+		var w = CG.CGImageGetWidth(img).toInt(), h = CG.CGImageGetHeight(img).toInt();
 		var n = w * h * 4, buf = LibC.malloc((n : Int64));
 		LibC.memset(buf, 0, (n : Int64));
-		var space = WkCG.CGColorSpaceCreateDeviceRGB();
+		var space = CG.CGColorSpaceCreateDeviceRGB();
 		// (kCGImageAlphaPremultipliedLast: R G B A)
-		var ctx = WkCG.CGBitmapContextCreate(buf, w, h, 8, w * 4, space, 1);
+		var ctx = CG.CGBitmapContextCreate(buf, w, h, 8, w * 4, space, 1);
 		Arena.scoped(a -> {
 			var r = a.make(CGRect);
 			r.value.size.width = w;
 			r.value.size.height = h;
-			WkCG.CGContextDrawImage(ctx, r.value, img);
+			CG.CGContextDrawImage(ctx, r.value, img);
 		});
 		var out = haxe.io.Bytes.alloc(n);
 		BytesPtr.copyIn(out, 0, buf, n);
 		LibC.free(buf);
-		WkCG.CGContextRelease(ctx);
-		WkCG.CGColorSpaceRelease(space);
+		CG.CGContextRelease(ctx);
+		CG.CGColorSpaceRelease(space);
 		unpremultiply(out);
 		return {width: w, height: h, pixels: out};
 	}
@@ -575,4 +574,14 @@ class WebView implements helder.ui.platform.PlatformWebView {
 			i += 4;
 		}
 	}
+}
+
+@:hxmc.c @:hxmc.lib("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics") private extern class CG {
+	static function CGImageGetWidth(img:Ptr):Int64;
+	static function CGImageGetHeight(img:Ptr):Int64;
+	static function CGColorSpaceCreateDeviceRGB():Ptr;
+	static function CGColorSpaceRelease(space:Ptr):Void;
+	static function CGBitmapContextCreate(data:Ptr, w:Int64, h:Int64, bits:Int64, stride:Int64, space:Ptr, info:Int):Ptr;
+	static function CGContextDrawImage(ctx:Ptr, rect:CGRect, img:Ptr):Void;
+	static function CGContextRelease(ctx:Ptr):Void;
 }

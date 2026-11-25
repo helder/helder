@@ -52,7 +52,7 @@ abstract class Statements extends Functions {
 			case KindExpressionStatement: expr(n.expression());
 			case KindReturnStatement: emitReturn(n.expression() == null ? null : valueFor(n.expression(), b.f.ret));
 			case KindIfStatement if (platform.constant(n.expression()) != null):
-				// (a condition of helder/platform's constants: only the branch taken is
+				// (a condition of helder/native/platform's constants: only the branch taken is
 				// lowered, so what only the other is calls is not reached)
 				var s = Platform.truthy(platform.constant(n.expression())) ? n.thenStatement() : n.elseStatement();
 				b.out.push(SIf(ECast(TBool, EInt(1)), b.block(() -> statement(s)), Vector.fromArrayCopy([])));

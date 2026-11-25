@@ -6,7 +6,7 @@
 // takes, so what only another platform's branch calls is not linked (Haxe's
 // `#if`):
 //
-//   import { platform } from "helder/platform";
+//   import { platform } from "helder/native/platform";
 //
 //   if (platform.os === "windows") useWin32();   // not in a Linux build
 //   else if (platform.os === "macos") useCocoa();

@@ -1,9 +1,9 @@
 package helder.asset;
 
-import helder.definition.Kernel;
+import helder.compiler.Kernel;
 
 // image(path), font, model, sound, bytes and embed's handler (src/helder/
-// compiler/DESIGN.md 4), the same for both languages (Haxe's Asset.image...
+// compiler/README.md 4), the same for both languages (Haxe's Asset.image...
 // through AssetDefinition, TypeScript's helder/asset through
 // helder.typescript.lower's Definitions): the argument a path literal
 // (anything else rejected as not static by the adapter, or as what it is
