@@ -123,6 +123,11 @@ class Layout {
 		var w = known(knownW) ? knownW : bw ? Math.NaN : clamp(s.width.intrinsic() ? intrinsicWidth(n, s.width, parentW, availW) : s.width.resolve(parentW), minW, maxW);
 		var h = known(knownH) ? knownH : bh ? Math.NaN : clamp(s.height.resolve(parentH), minH, maxH);
 		var ar = nr ? 0 : s.aspectRatio;
+		// (its width auto and its max-width less than the room: its fit-content width
+		// within its min and max now, so that its content (a wrapped text) is laid out
+		// at the width it gets, not at the room's, one line short)
+		if (!known(w) && !bw && ar <= 0 && s.width == DimValue.Auto && known(availW) && maxW < availW)
+			w = clamp(intrinsicWidth(n, DimValue.FitContent, parentW, availW), minW, maxW);
 		if (ar > 0) {
 			if (!known(w) && known(h)) {
 				w = clamp(h * ar, minW, maxW);
