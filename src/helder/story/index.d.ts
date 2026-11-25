@@ -4,7 +4,8 @@
 // nothing in a release build), each story's view made from its Controls;
 // tree(story), its tree mounted headless as helder test snapshots it
 // (its markup helder.ui's: the neutral elements, its renderer); screens
-// (stories), the studio's program of a project's screens (Screens); shots
+// (stories), the studio's program of a project's screens (Screens); play
+// (story), one in a window of its own (the studio's Play); shots
 // (stories), helder publish's program of its screenshots (StoreShots).
 //
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
@@ -12,7 +13,7 @@
 import "helder/ui";
 import type {Signal, View} from "helder/view";
 
-declare const __haxe: {Controls: "helder.story.Story.Controls", story: "helder.story.Stories.define", tree: "helder.story.Stories.tree", screens: "helder.story.Screens.run", shots: "helder.story.StoreShots.run", __module: "helder.story.TypeScript"};
+declare const __haxe: {Controls: "helder.story.Story.Controls", story: "helder.story.Stories.define", tree: "helder.story.Stories.tree", screens: "helder.story.Screens.run", play: "helder.story.Screens.play", shots: "helder.story.StoreShots.run", __module: "helder.story.TypeScript"};
 
 export declare class Story {
 	private readonly story: never;
@@ -20,7 +21,7 @@ export declare class Story {
 
 // story({...})'s fields, as a TypeScript program gives them (helder/story:
 // Stories.define, the definition checked them where they are written)
-export type StoryDef = { name: string; render: (arg0: Controls) => View; seed?: number; width?: number; height?: number; store?: boolean; caption?: string; background?: number; color?: number; feature?: boolean };
+export type StoryDef = { name: string; render: (arg0: Controls) => View; seed?: number; width?: number; height?: number; loop?: number; store?: boolean; caption?: string; background?: number; color?: number; feature?: boolean };
 
 // A story's controls: each a signal its view reads, recorded with its name
 // and kind for an editor (the values a store screenshot uses are their
@@ -67,6 +68,11 @@ export declare function story(def: StoryDef): Story;
 export declare function tree(s: Story, width?: number, height?: number): string;
 
 export declare function screens(stories: Story[]): void;
+// one story in a window of its own, at its size, live, its input its own:
+// the studio's Play (`helder dev` on a main of it, rebuilt in place)
+//
+//   import { play } from "helder/story"; import { serve } from "./pong.story"; play(serve);
+export declare function play(story: Story): void;
 
 // (TypeScript's shots(stories): main over them; helder/story)
 export declare function shots(stories: Story[]): void;

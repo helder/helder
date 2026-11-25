@@ -251,8 +251,26 @@ On a design's frame the canvas edits the markup directly
 
 ## Play
 
-The toolbar's Play (`Play.hx`) runs what is selected, else the app from
-its start; the target beside it says where; Stop or Escape ends it.
+**The watched shell's canvas is a storyboard of stills.** Each story's
+frame shows its moment (helder.story.Host's stills: brought there as a
+store screenshot is, its `Controls.play` frame by frame, else its
+transitions for 2 s of its clock, then not run; a live literal, a rebuild
+still draw it again). A story with `loop: <seconds>` (`story({..., loop:
+2})`, at most 30) plays that long from its moment while its frame is
+hovered, then from its moment again, watch-only (no input reaches it), and
+is its still again when the pointer leaves; such frames have a small loop
+mark by their caption. Play opens a window of its own: the header's Play
+the app (the frame aimed at, when one is), a double click on a frame that
+screen, live, its input its own, at its size. It is `helder dev` on it (a
+TypeScript story: a main of it the studio writes, `.helder-play.tsx` at
+the project's root, `play(story)` from helder/story; the app: the
+project), so it rebuilds in place as the project changes, its state kept,
+while the agent works; closing the window ends it, another Play replaces
+it. A headless run says what it would open (`play-window`).
+
+In the old shell (`--classic`) the toolbar's Play (`Play.hx`) runs what is
+selected, else the app from its start; the target beside it says where;
+Stop or Escape ends it.
 
 - **In the studio** (the default; the browser's only target): a story
   full size (fitted when it does not fit) and live: the pointer's, the

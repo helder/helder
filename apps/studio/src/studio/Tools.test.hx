@@ -66,16 +66,21 @@ function tests() {
 			});
 			s.tools.call("project.patch", {path: "app.tsx", text: 'export function App() {\n\treturn <view grow={1} background="#0e1424"><text color="#9fd3ff">Pond</text></view>;\n}\n'}, "a");
 			s.tools.call("project.patch", {path: "main.tsx", text: 'import { UiWindow, Surface } from "helder/ui";\nimport { App } from "./app";\n\nUiWindow.run(<Surface title="Pond" width={320} height={480}><App/></Surface>);\n'}, "a");
-			s.tools.call("project.patch", {path: "app.story.tsx", text: 'import { story } from "helder/story";\nimport { App } from "./app";\n\nexport const pond = story({ name: "Pond/Start", width: 320, height: 480, render: () => <App/> });\n'}, "a");
+			s.tools.call("project.patch", {path: "app.story.tsx", text: 'import { story } from "helder/story";\nimport { App } from "./app";\n\nexport const pond = story({ name: "Pond/Start", width: 320, height: 480, render: () => <App/> });\nexport const ripple = story({ name: "Pond/Ripple", width: 320, height: 480, loop: 1.5, render: () => <App/> });\n'}, "a");
 			equals(s.project.typescript, true);
 			equals(s.previews != null, true);
-			equals([for (x in s.project.live()) x.name], ["Pond/Start"]);
+			equals([for (x in s.project.live()) x.name], ["Pond/Start", "Pond/Ripple"]);
+			equals([for (x in s.project.live()) x.loop], [null, 1.5]);
 			var t0 = haxe.Timer.stamp();
 			while (s.previews.busy() && haxe.Timer.stamp() - t0 < 120)
 				helder.async.Async.delay(0.1);
 			equals(s.previews.screen("Pond/Start").version > 0, true);
 			var c:Dynamic = haxe.Json.parse(s.tools.call("build.check", {}, "a").content[0].text);
 			equals(c.ok, true);
+			// (Play: the story in a window of its own, a main of it beside the project's files)
+			var entry = s.playEntry(s.project.screen("Pond/Start"));
+			equals(haxe.io.Path.withoutDirectory(entry), Studio.PLAY);
+			equals(sys.io.File.getContent(entry).indexOf('import { pond } from "./app.story";\n\nplay(pond);') > 0, true);
 			done = true;
 			s.stop();
 		})).timeout(180);

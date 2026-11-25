@@ -49,6 +49,9 @@ class WebPreviews {
 	var shown = "";
 	// (the last show asked: told again to a host once it is ready, a new build's too)
 	var showWanted:Null<{names:Array<String>, focused:Null<String>, scale:Float}> = null;
+	// the screens stills (the watched canvas: each at its moment, not run), the one running its loop (hovered; null: none)
+	public var stills = false;
+	public var looping:Null<String> = null;
 	// (since when the page draws for a build's reload: -1, not)
 	var drawingSince = -1.0;
 	final pending = new Map<Int, Dynamic->Void>();
@@ -171,7 +174,7 @@ class WebPreviews {
 				// the new one is told what to show, since what waited may ask the new one again)
 				var ask = pending.copy();
 				pending.clear();
-				if (showWanted != null) send("Host.show", {screens: showWanted.names, focused: showWanted.focused, scale: showWanted.scale}, null);
+				if (showWanted != null) send("Host.show", {screens: showWanted.names, focused: showWanted.focused, scale: showWanted.scale, stills: stills, loop: looping}, null);
 				answerAll(ask, "the preview started again");
 			case "Hot.patched":
 				for (s in screens)
@@ -222,11 +225,11 @@ class WebPreviews {
 	// frames kept) and the one zoomed into, drawn at scale pixels a point
 	// (the canvas' zoom: its frames as sharp as the studio shows them)
 	public function show(names:Array<String>, focused:Null<String>, scale = 1.0) {
-		var key = names.join("\n") + "\t" + (focused ?? "") + "\t" + scale;
+		var key = names.join("\n") + "\t" + (focused ?? "") + "\t" + scale + "\t" + stills + "\t" + (looping ?? "");
 		if (key == shown) return;
 		shown = key;
 		showWanted = {names: names, focused: focused, scale: scale};
-		if (order.length > 0) send("Host.show", {screens: names, focused: focused, scale: scale}, null);
+		if (order.length > 0) send("Host.show", {screens: names, focused: focused, scale: scale, stills: stills, loop: looping}, null);
 	}
 
 	function send(method:String, params:Dynamic, done:Null<Dynamic->Void>) {

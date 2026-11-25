@@ -45,7 +45,7 @@ import helder.view.graph.Signal;
 	var render:Expr = s.render.source;
 	if (s.render.params.length == 0) render = macro(_ : helder.story.Story.Controls) -> $render();
 	var shot = s.store ? macro {caption: $v{s.caption}, background: $v{s.background}, color: $v{s.color}, feature: $v{s.feature}} : macro null;
-	return macro @:pos(Context.currentPos()) new helder.story.Story($v{s.name}, $render, $v{s.seed}, $shot, $v{s.width}, $v{s.height});
+	return macro @:pos(Context.currentPos()) new helder.story.Story($v{s.name}, $render, $v{s.seed}, $shot, $v{s.width}, $v{s.height}, $v{s.loop});
 }
 
 #if !macro
@@ -62,14 +62,18 @@ class Story {
 	// studio's screen of it (helder.story.Screens)
 	public final width:Null<Int>;
 	public final height:Null<Int>;
+	// seconds of its clock from its moment played while the studio's frame of
+	// it is hovered (null: a still alone)
+	public final loop:Null<Float>;
 
-	public function new(name:String, build:Controls->View, seed = 1, ?screenshot:StoreOptions, ?width:Int, ?height:Int, ?pos:PosInfos) {
+	public function new(name:String, build:Controls->View, seed = 1, ?screenshot:StoreOptions, ?width:Int, ?height:Int, ?loop:Float, ?pos:PosInfos) {
 		this.name = name;
 		this.build = build;
 		this.seed = seed;
 		this.screenshot = screenshot;
 		this.width = width;
 		this.height = height;
+		this.loop = loop;
 		this.pos = pos;
 	}
 
@@ -96,6 +100,7 @@ typedef StoryDef = {
 	?seed:Int,
 	?width:Int,
 	?height:Int,
+	?loop:Float,
 	?store:Bool,
 	?caption:String,
 	?background:Int,

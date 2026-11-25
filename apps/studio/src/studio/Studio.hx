@@ -32,6 +32,8 @@ class Studio {
 	// when the program started (Main's first line): the cold start's measure
 	public static var processStart = haxe.Timer.stamp();
 
+	// the frame under the pointer (its loop played: Host.loop; null: none)
+	public final hovered:Signal<Null<String>> = signal(null);
 	// the project was an empty folder, the starter's now (the blank sheet until the first prompt)
 	public final starter:Bool;
 	// (the blank sheet gone with the first prompt: the canvas fitted again once the chat is beside it)
@@ -552,6 +554,10 @@ class Studio {
 			pr.show(names, live, Math.min(Math.min(3 * k, most), (Main.window == null ? 1.0 : Main.window.renderer.scale) * k));
 			return;
 		}
+		// (the watched canvas: stills, the hovered frame's loop running; the old shell's frames live)
+		pr.stills = !classic;
+		var h = hovered.peek(), info = h == null || classic || !names.contains(h) ? null : project.screen(h);
+		pr.looping = info?.loop == null ? null : h;
 		pr.show(names, mode.peek() == "stories" ? null : focused.peek(), focused.peek() == null ? 1 : focusScale);
 	}
 
@@ -809,9 +815,18 @@ class Studio {
 		}
 	}
 
-	// Play: what is selected, else the app from its start (Play's notes)
+	// Play: what is selected, else the app from its start (Play's notes);
+	// the watched shell's: in a window of its own (playWindow)
 	public function play() {
 		if (project == null) return;
+		// (the watched shell: the frame aimed at, else the app, in a window of its own)
+		if (!classic) {
+			var f = focused.peek(), info = f == null ? null : project.screen(f);
+			if (info == null || !info.source.match(Design(_))) {
+				playWindow(info?.name);
+				return;
+			}
+		}
 		var t = target.peek();
 		if (t != "studio") {
 			launch(t);
@@ -882,6 +897,73 @@ class Studio {
 		previews.request(s, "Story.set", {name: name, value: value}, _ -> previews.request(s, "Story.controls", {}, r -> playControls(r?.controls ?? [])));
 		log("control", {name: name, value: value});
 	}
+
+	// a screen played in a window of its own, live, its input its own, at its
+	// size (the watched shell's Play, a double click on its frame): `helder
+	// dev` on it, rebuilt in place as the project changes (its state kept),
+	// so the user plays on while the agent works; closing it is closing the
+	// window, a second Play the first one's window replaced. A story of a
+	// TypeScript project: a main of it (.helder-play.tsx, beside the
+	// project's files so that helder dev watches them: play(story)); the app
+	// (name null: the header's Play with no frame aimed at, the app's frame),
+	// or a Haxe project's story: the app. Headless (a check's run): told, not opened.
+	public function playWindow(name:Null<String>) {
+		#if !(hxmc.target == "wasm32-wasi")
+		var info = name == null ? null : project.screen(name);
+		if (name != null && info == null) return;
+		var entry = info == null ? project.dir : playEntry(info);
+		var label = info?.label ?? project.name;
+		var cli = Sys.getEnv("HELDER_CLI") ?? "helder";
+		var args = ["dev", entry];
+		log("play-window", {screen: name, args: args});
+		#if helder.headless
+		message('would play $label in a window: helder ${args.join(" ")}');
+		#else
+		var was = targetProcess;
+		targetProcess = null;
+		if (was != null) was.kill();
+		var p = try new Process(cli, args, {cwd: project.dir}) catch (e:Dynamic) {
+			message('helder dev did not start: $e');
+			null;
+		}
+		if (p == null) return;
+		p.closeStdin();
+		targetProcess = p;
+		message('playing $label in a window');
+		Async.launch(_ -> {
+			var r = new Reader(p.stdout), line;
+			try while ((line = r.readLine()) != null) {} catch (_:haxe.Exception) {}
+		});
+		Async.launch(_ -> {
+			var r = new Reader(p.stderr), line;
+			try while ((line = r.readLine()) != null) {} catch (_:haxe.Exception) {}
+		});
+		Async.launch(_ -> {
+			p.wait();
+			if (targetProcess == p) targetProcess = null;
+		});
+		#end
+		#end
+	}
+
+	// what helder dev runs to play a screen: a TypeScript story's main (written:
+	// PLAY, play(story)), else the project (its app)
+	public function playEntry(info:ScreenInfo):String {
+		switch info.source {
+			case Story(binding) if (project.typescript && binding != null):
+				var rel = info.file.substr(project.dir.length + 1);
+				rel = "./" + rel.substr(0, rel.lastIndexOf("."));
+				var entry = project.dir + "/" + PLAY;
+				Files.save(entry, '// helder studio\'s Play: ${info.name} in a window of its own (written by the studio, run by helder dev)\n'
+					+ 'import { play } from "helder/story";\nimport { $binding } from "$rel";\n\nplay($binding);\n');
+				return entry;
+			case _:
+				return project.dir;
+		}
+	}
+
+	// (the main a story's window plays, at the project's root: helder dev watches the folder of its entry)
+	public static inline var PLAY = ".helder-play.tsx";
 
 	// another target: `helder dev` on the project (a window; Android's
 	// phone; the web, its page opened in the system's browser), its output
