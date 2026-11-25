@@ -11,7 +11,7 @@ import helder.view.View;
 // (Host.loop) run from its moment, from it again after its loop, a still
 // again when let go; a screen out of view drawn once, after those in view
 function tests() {
-	test("stills at their moments; the loop runs from it, again, and stops", () -> {
+	var stills = test("stills at their moments; the loop runs from it, again, and stops", () -> {
 		var ticks = 0;
 		var s = new Story("Clock/count", c -> {
 			Clock.add(_ -> {
@@ -43,7 +43,7 @@ function tests() {
 		host.frame(21);
 		equals(ticks, 123);
 	});
-	test("out of view: drawn once, after those in view", () -> {
+	var outOfView = test("out of view: drawn once, after those in view", () -> {
 		var a = new Story("A", _ -> View.view(<view/>), 1, null, 100, 100);
 		var b = new Story("B", _ -> View.view(<view/>), 1, null, 100, 100);
 		var host = new Host([a, b], new HeadlessHost());
@@ -57,4 +57,9 @@ function tests() {
 		equals(host.frame(2), 0);
 		equals(host.busy(), false);
 	});
+	// (as wasm32-wasi the host's device is the browser's WebGPU or WebGL2, which node has not)
+	#if (hxmc.target == "wasm32-wasi")
+	stills.skip();
+	outOfView.skip();
+	#end
 }
