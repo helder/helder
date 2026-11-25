@@ -1,6 +1,7 @@
 // A scripted ACP agent for the studio's tests (apps/studio/src/studio/AcpAgent.test.hx):
 // newline-delimited JSON-RPC on stdin/stdout, as the Agent Client Protocol's
-// agents speak it. Prompts: "edit" streams text, a thought, a tool call, a
+// agents speak it. Prompts: "markdown" streams a Markdown reply in small
+// chunks; "edit" streams text, a thought, a tool call, a
 // plan, asks permission, reads and writes app.helder (and a file outside the
 // project), then reports what the client answered; "wait" streams a chunk,
 // asks permission and waits for session/cancel; "die" logs to stderr and exits.
@@ -31,6 +32,14 @@ async function prompt(id, p) {
   if (text.startsWith('die')) {
     process.stderr.write('fake: about to die\n')
     process.exit(3)
+  }
+  if (text.startsWith('markdown')) {
+    const reply = 'Changed the **title**:\n\n- read `app.helder`\n- patched it\n\n```ts\nlet a = 1\n```\n\nSee [app.helder](app.helder#L2) or [helder](https://helder.build).'
+    update(s, {sessionUpdate: 'agent_thought_chunk', content: {type: 'text', text: 'The title is in app.helder.'}})
+    for (let i = 0; i < reply.length; i += 7)
+      update(s, {sessionUpdate: 'agent_message_chunk', content: {type: 'text', text: reply.slice(i, i + 7)}})
+    send({id, result: {stopReason: 'end_turn'}})
+    return
   }
   if (text.startsWith('wait')) {
     update(s, {sessionUpdate: 'agent_message_chunk', content: {type: 'text', text: 'waiting '}})

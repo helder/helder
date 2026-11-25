@@ -1173,14 +1173,38 @@ class Studio {
 		decorate();
 	}
 
-	// a file in the code view (the command field's, the sidebar's), nothing selected
-	public function openCode(file:String) {
+	// a file in the code view (the command field's, the sidebar's, a link's), nothing selected; at a line (1-based)
+	public function openCode(file:String, ?line:Int) {
 		selection(null);
 		others([]);
 		focused(null);
 		shown(file);
 		load(file);
 		setMode("code");
+		if (line == null) return;
+		var text = docs.get(file).text, at = 0;
+		for (_ in 1...line) {
+			var n = text.indexOf("\n", at);
+			if (n < 0) break;
+			at = n + 1;
+		}
+		editor.revealRange(at, at, true);
+	}
+
+	// a link of the agent's reply: a web or mail address in the browser, a
+	// file of the project in the code view (at its line: "#L12", ":12")
+	public function follow(href:String) {
+		var h = href.trim();
+		if (~/^(https?|mailto):/i.match(h)) {
+			helder.os.Links.open(h, false);
+			return;
+		}
+		var l = project == null ? null : FileLink.parse(h, project.dir);
+		if (l == null || !Files.exists(l.path) || Files.isDirectory(l.path)) {
+			message('$href: not a file of the project');
+			return;
+		}
+		openCode(l.path, l.line);
 	}
 
 	// a file of the tree opened in its view: a design or story file's page
@@ -1385,7 +1409,8 @@ class Studio {
 					case _:
 				}
 		});
-		hold(() -> answered, "the agent's reply", a == local ? 30 : 300);
+		// (a question for the user lets the script go on: its answer is the script's)
+		hold(() -> answered || turnNow?.ask != null, "the agent's reply", a == local ? 30 : 300);
 	}
 
 	// the last build's errors, "file:line: message" (none: it did not fail)

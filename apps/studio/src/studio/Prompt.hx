@@ -1,5 +1,7 @@
 package studio;
 
+import helder.markdown.Markdown;
+import helder.markdown.MarkdownView;
 import helder.ui.*;
 import helder.view.*;
 import helder.view.Flow.*;
@@ -77,13 +79,23 @@ class Prompt implements Markup {
 					<text color={c("fg3")} font-size={Theme.SMALL}>{t().status}</text>
 				</view>
 			}</For>
-			<Show when={turn().text != ""}>
-				<text tag="turn-text" color={c("fg")} font-size={Theme.SMALL}>{turn().text}</text>
+			<Show when={turn().thought != ""}>
+				<text tag="turn-thought" color={c("fg3")} font-size={Theme.SMALL} max-lines={3} text-overflow="ellipsis">{turn().thought}</text>
 			</Show>
+			{reply(studio)}
 			<Show when={turn().error == null && turn().text == ""}>
 				<text color={c("fg3")} font-size={Theme.SMALL}>{turn().end == null ? "…" : 'ended: ${turn().end}'}</text>
 			</Show>
 		</scroll>;
+	}
+
+	// the reply's text as Markdown, kept as it streams (MarkdownView.update:
+	// the blocks before the last stay); its look Theme's markdown-* parts
+	static function reply(studio:Studio):MarkdownView {
+		var v = new MarkdownView({doc: Markdown.parse(""), scroll: false, codeFont: Theme.CODE, codeSize: Theme.CODE_SIZE, onLink: studio.follow});
+		v.tag = "turn-text";
+		effect(() -> studio.turn()?.text ?? "", text -> v.update(Markdown.parse(text)));
+		return v;
 	}
 
 	// (centred between the panels)

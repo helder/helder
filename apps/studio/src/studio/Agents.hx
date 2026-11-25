@@ -11,6 +11,7 @@ using StringTools;
 //   codex    Codex's adapter (codex-acp, else npx -y @agentclientprotocol/codex-acp)
 //   gemini   gemini --experimental-acp (Gemini CLI; newer ones also take --acp)
 //   local    none: the studio's tools alone (LocalAgent)
+//   any other ACP agent by its command line ("node my-agent.mjs", "/path/to/agent --acp")
 //
 // The one used: --agent, else HELDER_STUDIO_AGENT, else the first of claude,
 // codex and gemini whose CLI is on the PATH, else local.
@@ -20,7 +21,12 @@ class Agents {
 	// the agent of that name (null: the default), how it starts (null: local)
 	public static function command(name:Null<String>):Null<AgentCommand> {
 		if (name == "local") return null;
-		if (name != null && !names.contains(name)) throw '$name: not an agent (${names.join(", ")})';
+		if (name != null && !names.contains(name)) {
+			var words = name.split(" ").filter(w -> w != "");
+			if (words.length < 2 && !name.contains("/")) throw '$name: not an agent (${names.join(", ")}, or a command line)';
+			var last = words[words.length - 1];
+			return run(haxe.io.Path.withoutExtension(haxe.io.Path.withoutDirectory(last)), words[0], words.slice(1));
+		}
 		var tried = name == null ? ["claude", "codex", "gemini"] : [name];
 		for (n in tried) {
 			var c = of(n, name == null);

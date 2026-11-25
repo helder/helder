@@ -408,6 +408,7 @@ Agent Client Protocol (ACP: JSON-RPC on the agent's stdin and stdout,
 | `codex` | `codex-acp`, else `npx -y @agentclientprotocol/codex-acp` | `codex-acp` or `codex` is |
 | `gemini` | `gemini --experimental-acp` (newer Gemini CLIs also take `--acp`) | `gemini` is |
 | `local` | none: the studio's tools alone | none of them is |
+| a command line | any other ACP agent: `--agent "node my-agent.mjs"` | never |
 
 `--agent`, else `HELDER_STUDIO_AGENT`, else the first found in that order
 (a headless run: `local` unless one is named); the studio says which at
@@ -417,9 +418,12 @@ has `run.snap`, `run.tree`, `build.check` beside its own tools. A prompt
 carries the screen in focus and the selection's `file:line`, and the
 screen's last frame as an image when the agent takes images.
 
-Above the bar its turn streams in: its text, the tools it calls (each
-with its status), its plan, and what it asks permission for, as buttons;
-Stop cancels the turn. What it reads is the files as the studio has them,
+Above the bar its turn streams in: its reply as Markdown (helder.markdown's
+MarkdownView, updated as each chunk comes: the blocks before the last
+kept), its thinking dim, the tools it calls (each with its status), its
+plan, and what it asks permission for, as buttons; Stop cancels the turn.
+A link in the reply opens in the browser, a file of the project's (`app.tsx`,
+`app.tsx:12`, `app.tsx#L12`) in the code view at its line. What it reads is the files as the studio has them,
 unsaved edits too; what it writes goes through the studio's history, one
 entry a file written: shown on the canvas at once (a live literal
 patched, else built) and undone like any other edit. Paths outside the
