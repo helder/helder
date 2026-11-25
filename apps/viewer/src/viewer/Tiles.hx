@@ -34,6 +34,9 @@ class Tiles implements Markup {
 	static inline var KEEP = 300;
 	static final RAW = ["dng", "cr2", "cr3", "nef", "arw", "raf", "orf", "rw2"];
 
+	// the thumbnails asked for and not yet made (Timing's: the visible tiles' made)
+	public static var waiting(default, null) = 0;
+
 	static final kept = new Map<String, Image>();
 	static final order:Array<String> = [];
 	static var serial = 0;
@@ -45,11 +48,19 @@ class Tiles implements Markup {
 		var s = Graph.signalOf(({image: have, waiting: have == null && t != null && local != null && Kinds.viewable(e) && !FolderModel.isMarkdown(e.name)} : Thumb),
 			{ownedWrite: true});
 		if (!s.peek().waiting) return s;
+		var pending = true;
+		waiting++;
 		var ticket = t.request(local, e.size, e.modified, Thumbnails.SIDE, -(++serial), img -> {
+			if (pending) waiting--;
+			pending = false;
 			if (img != null) keep(key, img);
 			s({image: img, waiting: false});
 		});
-		Graph.onCleanup(() -> t.cancel(ticket));
+		Graph.onCleanup(() -> {
+			if (pending) waiting--;
+			pending = false;
+			t.cancel(ticket);
+		});
 		return s;
 	}
 

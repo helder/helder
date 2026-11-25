@@ -126,6 +126,7 @@ class Browser {
 		return {dir: dir.value, selected: selected.value, scroll: scrolled()};
 
 	function load(path:String, select:String, at:Float) {
+		Timing.going(path);
 		stop();
 		offset = at;
 		dir(path);
@@ -156,7 +157,10 @@ class Browser {
 		if (b.error != null) error(b.error);
 		all = all.concat(b.entries);
 		total(all.length);
-		items(Listing.merge(items.value, b.entries, order.value, hidden.value, query.value));
+		var t0 = Timing.on ? haxe.Timer.stamp() : 0.0;
+		var merged = Listing.merge(items.value, b.entries, order.value, hidden.value, query.value);
+		if (Timing.on) Timing.mark('batch ${b.entries.length}${b.done ? " done" : ""} merged in ${Math.round((haxe.Timer.stamp() - t0) * 10000) / 10} ms');
+		items(merged);
 		if (keep != "" && entry(keep) != null) {
 			select(keep);
 			keep = "";
