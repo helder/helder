@@ -18,12 +18,12 @@ class Fixtures implements Markup {
 		return m;
 	}
 
-	// an explorer of them, decoding at once on this thread
-	public static function explorer(?dirs:Array<String>):Explorer {
+	// an explorer of them, decoding at once on this thread (volumes: the sidebar's devices)
+	public static function explorer(?dirs:Array<String>, ?volumes:Array<helder.os.Places.Volume>):Explorer {
 		Kinds.utc = true;
 		Tiles.forget();
 		var m = files(dirs ?? ["tests/fixtures/folder", "tests/fixtures/pdf"]);
-		var x = new Explorer(m, (path, side, done) -> done(Decode.file({path: path, side: side})), [], [], Preview.now, null, (path, done) -> done(m.text(path)));
+		var x = new Explorer(m, (path, side, done) -> done(Decode.file({path: path, side: side})), [], volumes ?? [], Preview.now, null, (path, done) -> done(m.text(path)));
 		// (a document's pictures measured at once, as its text is read)
 		x.viewer.measure = (paths, done) -> done([for (p in paths) FileSystem.exists(p) ? helder.image.Image.size(File.getBytes(p)) : null]);
 		return x;
@@ -98,6 +98,9 @@ class Fixtures implements Markup {
 	// (the phone stories' markup: on Windows a story file's own isn't processed)
 	public static function phone(x:Explorer, at:viewer.Phone.PhoneState->Void):View
 		return <helder.ui.controls.Standard.Themed look={Shell.look}><Phone.Root x={x} at={at}/></helder.ui.controls.Standard.Themed>;
+
+	// (a disk of 494 GB, 45.3 free, holding the fixtures: the sidebar's capacity card)
+	public static final DISK:helder.os.Places.Volume = {name: "Macintosh HD", path: "tests", total: 494e9, free: 45.3e9, removable: false, network: false, root: true};
 
 	public static function tile(name:String):View
 		return <view grow={1}>{Tiles.large({name: name, kind: File, size: 0, modified: 0, created: 0})}</view>;

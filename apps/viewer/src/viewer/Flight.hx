@@ -23,7 +23,8 @@ import helder.view.graph.Graph.*;
 // on to, one still coming held for. No tile (a file opened by its path,
 // one gone from the folder), no picture or reduced motion: the fade alone.
 class Flight implements Markup {
-	public static final CURVE = Curve.tween(0.22, Transition.EASE_OUT);
+	// (160 ms, a quick start easing out long: snappy, as Quick Look's)
+	public static final CURVE = Curve.tween(0.16, [0.2, 0.8, 0.2, 1]);
 	// (how long a tile or the full view is waited for, a decode held for)
 	static inline var WAIT = 0.25;
 	static inline var HOLD = 1.0;
