@@ -23,13 +23,26 @@ interface Grants {
 // to confirm).
 class GrantFiles implements Files {
 	public var trash(default, null):Null<String->Null<String>> = null;
-	public var rename(default, null):Null<(from:String, to:String)->Void> = null;
+	public var rename(default, null):Null<(from:String, to:String)->Void>;
+	public var makeFolder(default, null):Null<String->Void>;
+	public var copy(default, null):Null<(from:String, to:String)->Void>;
 
 	final grants:Grants;
 	final entries = new Map<String, Entry>();
 
 	public function new(?grants:Grants) {
 		this.grants = grants ?? new SystemGrants();
+		// (where a grant's files are on disk (iOS's): changed there; else, as
+		// Android's documents, they cannot be, and say so)
+		rename = (from, to) -> disk(from, to, (a, b) -> {
+			if (sys.FileSystem.exists(b)) throw "already there";
+			sys.FileSystem.rename(a, b);
+		});
+		makeFolder = path -> disk(path, path, (a, _) -> sys.FileSystem.createDirectory(a));
+		copy = (from, to) -> disk(from, to, (a, b) -> {
+			if (sys.FileSystem.exists(b)) throw "already there";
+			Disk.copy(a, b);
+		});
 		for (g in this.grants.granted())
 			add(g);
 	}
@@ -63,6 +76,12 @@ class GrantFiles implements Files {
 	public function open(path:String):ByteSource {
 		var at = split(path);
 		return grants.open(at.grant, at.path);
+	}
+
+	function disk(from:String, to:String, f:(String, String)->Void) {
+		var a = localPath(from), b = localPath(to);
+		if (a == null || b == null) throw "not possible in this folder";
+		f(a, b);
 	}
 
 	public function localPath(path:String):Null<String> {

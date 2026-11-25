@@ -11,6 +11,7 @@ import helder.ui.actions.Keymap;
 class SelectionInput {
 	public var onActivate:Null<Array<Int>->Void>;
 	public var selectMode(default, set) = false;
+	// (a right press: the item's index and where; -1 on empty space)
 	public var onContextMenu:Null<(Int, Float, Float)->Void>;
 	public var textOf:Null<Int->String>;
 	public var onEmptyClick:Null<Void->Void>;
@@ -122,8 +123,9 @@ class SelectionInput {
 	function down(e:Event) {
 		if (e.defaultPrevented || !e.isPrimary) return;
 		var i = itemAt(e.target);
-		if (e.button == 3 && i >= 0 && onContextMenu != null) {
-			if (!selection.has(selection.keyOf(i))) selection.select(i);
+		if (e.button == 3 && onContextMenu != null) {
+			// (on empty space: -1, the selection let go, as Finder's)
+			if (i < 0) selection.clear() else if (!selection.has(selection.keyOf(i))) selection.select(i);
 			onContextMenu(i, e.x, e.y);
 			return;
 		}

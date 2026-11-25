@@ -28,7 +28,22 @@ class MemoryFiles implements Files {
 			return to;
 		};
 		rename = (from, to) -> move(from, to);
+		makeFolder = path -> {
+			if (items.exists(path)) throw "already there";
+			add(path + "/");
+		};
+		copy = (from, to) -> {
+			if (items.exists(to)) throw "already there";
+			for (p in [for (p in items.keys()) p])
+				if (p == from || StringTools.startsWith(p, from + "/")) {
+					var e = items.get(p), at = to + p.substr(from.length);
+					add(e.entry.kind == Folder ? at + "/" : at, e.bytes, e.entry.modified);
+				}
+		};
 	}
+
+	public var makeFolder(default, null):Null<String->Void>;
+	public var copy(default, null):Null<(from:String, to:String)->Void>;
 
 	// a file (its folders made), or a folder when bytes is null and the
 	// path ends in "/"
@@ -111,11 +126,17 @@ class MemoryFiles implements Files {
 	function children(dir:String):Array<Entry>
 		return [for (p => e in items) if (parent(p) == dir) e.entry];
 
+	// (a file, or a folder and what is in it)
 	function move(from:String, to:String) {
 		var e = items.get(from);
 		if (e == null) throw "No such file";
-		items.remove(from);
-		add(to, e.bytes, e.entry.modified);
+		if (items.exists(to)) throw "already there";
+		for (p in [for (p in items.keys()) p])
+			if (p == from || StringTools.startsWith(p, from + "/")) {
+				var m = items.get(p), at = to + p.substr(from.length);
+				items.remove(p);
+				add(m.entry.kind == Folder ? at + "/" : at, m.bytes, m.entry.modified);
+			}
 	}
 
 	static function parent(path:String):Null<String> {

@@ -33,4 +33,22 @@ interface Files {
 	// when there is no trash)
 	var trash(default, null):Null<String->Null<String>>;
 	var rename(default, null):Null<(from:String, to:String)->Void>;
+	// a folder made (New Folder), a file or folder copied with what is in it
+	// (a drop with Option, Alt: a copy); null where they cannot be; they throw
+	// when they fail
+	var makeFolder(default, null):Null<String->Void>;
+	var copy(default, null):Null<(from:String, to:String)->Void>;
+}
+
+// (what a disk's Files share: a file, or a folder and what is in it, copied)
+class Disk {
+	public static function copy(from:String, to:String) {
+		if (!sys.FileSystem.isDirectory(from)) {
+			sys.io.File.copy(from, to);
+			return;
+		}
+		sys.FileSystem.createDirectory(to);
+		for (n in sys.FileSystem.readDirectory(from))
+			copy(from + "/" + n, to + "/" + n);
+	}
 }

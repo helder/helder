@@ -7,7 +7,8 @@ import viewer.Files;
 // The browser without a window, on MemoryFiles: navigation and its
 // history, the sidebar's level for a folder, the order, the filter and
 // folders first, listings in batches with the selection kept, a file
-// opened full size and back, the trash and its undo, several selected
+// opened full size and back, the trash and its undo, several selected,
+// a new folder, a rename, files moved and copied into a folder
 function tests() {
 	describe("Browser", () -> {
 		test("navigation and history", () -> {
@@ -169,6 +170,51 @@ function tests() {
 			assert(b.undo());
 			equals(names(b), ["Trips", "a.jpg", "b.png", "notes.txt"]);
 			equals(b.picked(), ["a.jpg", "b.png"]);
+		});
+		test("a new folder: untitled, numbered, selected and renamed in place", () -> {
+			var b = new Browser(tree());
+			b.go("/Users/ben/Pictures");
+			equals(b.newFolder(), "untitled folder");
+			equals([b.selected.value, b.renaming.value], ["untitled folder", "untitled folder"]);
+			equals(b.newFolder(), "untitled folder 2");
+			equals(b.entry("untitled folder 2")?.kind, Folder);
+		});
+		test("a rename: refused names, a name taken, undone", () -> {
+			var files = tree();
+			var b = new Browser(files);
+			b.go("/Users/ben/Pictures");
+			b.renaming("a.jpg");
+			equals(b.rename("a.jpg", " c.jpg "), null);
+			equals(b.renaming.value, "");
+			equals(names(b), ["Trips", "b.png", "c.jpg", "notes.txt"]);
+			equals(b.selected.value, "c.jpg");
+			equals(b.rename("c.jpg", "b.png"), '"b.png" is already in this folder');
+			equals(b.notice.value, '"b.png" is already in this folder');
+			equals(b.rename("c.jpg", "x/y"), '"x/y" is not a name a file can have');
+			assert(b.undo());
+			equals(names(b), ["Trips", "a.jpg", "b.png", "notes.txt"]);
+			equals(files.stat("/Users/ben/Pictures/c.jpg"), null);
+		});
+		test("files moved into a folder, copied, undone; the folder itself left out", () -> {
+			var files = tree();
+			var b = new Browser(files);
+			b.go("/Users/ben/Pictures");
+			var t = "/Users/ben/Pictures/Trips";
+			equals(b.transfer(["/Users/ben/Pictures/a.jpg", "/Users/ben/Pictures/b.png", t], t, false), 2);
+			equals(names(b), ["Trips", "notes.txt"]);
+			equals(files.stat(t + "/a.jpg") != null, true);
+			assert(b.undo());
+			equals(names(b), ["Trips", "a.jpg", "b.png", "notes.txt"]);
+			equals(files.stat(t + "/a.jpg"), null);
+			// (a copy: both; already there: nothing)
+			equals(b.transfer(["/Users/ben/Pictures/notes.txt"], t + "/Iceland", true), 1);
+			equals(names(b), ["Trips", "a.jpg", "b.png", "notes.txt"]);
+			equals(files.stat(t + "/Iceland/notes.txt")?.size, 10);
+			equals(b.transfer([t + "/Iceland/x.jpg"], t + "/Iceland", false), 0);
+			// (a folder moved with what is in it)
+			equals(b.transfer([t + "/Iceland"], "/Users/ben/Pictures", false), 1);
+			equals(files.stat("/Users/ben/Pictures/Iceland/x.jpg") != null, true);
+			equals(names(b), ["Iceland", "Trips", "a.jpg", "b.png", "notes.txt"]);
 		});
 	});
 }

@@ -14,6 +14,8 @@ import viewer.Files;
 class WebFiles implements Files {
 	public var trash(default, null):Null<String->Null<String>> = null;
 	public var rename(default, null):Null<(from:String, to:String)->Void> = null;
+	public var makeFolder(default, null):Null<String->Void> = null;
+	public var copy(default, null):Null<(from:String, to:String)->Void> = null;
 
 	// the folders opened and dropped
 	public final grants = new GrantFiles();
