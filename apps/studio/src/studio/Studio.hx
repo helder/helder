@@ -38,6 +38,13 @@ class Studio {
 	public final starter:Bool;
 	// (the blank sheet gone with the first prompt: the canvas fitted again once the chat is beside it)
 	var unveiled = false;
+	// an agent changed the project (an edit, a file made): the canvas has something of its
+	public final touched = signal(false);
+
+	// the canvas has nothing of the agent's yet (nothing on it, or the starter's
+	// alone): the orb shows, the starter's frame hidden under it
+	public function waiting():Bool
+		return project == null || project.screens.length == 0 || (starter && !touched());
 	// (read again when what the project is changes: revive)
 	public var project(default, null):Null<Project>;
 	public var previews(default, null):Null<Previews>;
@@ -356,8 +363,10 @@ class Studio {
 
 	// a file made (an agent's project.patch of a path not there, an ACP agent's
 	// write): one entry of the history (its undo: gone)
-	public function create(file:String, text:String, ?by:String)
+	public function create(file:String, text:String, ?by:String) {
+		touched(true);
 		docs.create(file, text, project == null || !file.startsWith(project.dir + "/") ? file : file.substr(project.dir.length + 1), "agent", by);
+	}
 
 	// a file a made file's undo took back: deleted, its frames or stories gone
 	function gone(file:String) {
@@ -1393,6 +1402,7 @@ class Studio {
 	// history entry by its name): the agent there (Presence: its lines, its
 	// frame when it named none), what it made marked (Marks)
 	function agentEdited(file:String, tx:Transaction) {
+		touched(true);
 		var by = docs.nextUndo()?.by;
 		if (by == null || project == null) return;
 		var p = presence.named(by) ?? presence.arrive("acp:" + by, by);

@@ -26,6 +26,11 @@ class Watch implements Markup {
 				<Show when={!blank(studio) && studio.talk.open()}>{Chat.view(studio)}</Show>
 				<view tag="canvas" grow={1} min-width={0}>
 					<view position="absolute" inset={0}>{Board.view(studio)}</view>
+					<Show when={!studio.classic && studio.waiting()}>
+						<view tag="orb" position="absolute" inset={0} align-items="center" justify="center" pointer-events="none" transition="fade scale(1.06)">
+							<view width={440} height={440} margin-top={blank(studio) ? -440 : 0}>{orb(studio)}</view>
+						</view>
+					</Show>
 					{CodePanel.view(studio)}
 					<Show when={blank(studio)}>
 						<view tag="blank" position="absolute" inset={0} align-items="center" justify="center" pointer-events="none">
@@ -40,6 +45,14 @@ class Watch implements Markup {
 				</view>
 			</view>
 		</view>;
+
+	// (the orb: the agent's colour, the current blue for the studio's own tools; brighter while a turn runs)
+	static function orb(studio:Studio):Node {
+		var n = Orb.node(() -> studio.agentName() == "Studio" ? "#3b82f6" : studio.agentColour(), () -> Chat.working(studio));
+		n.style.width = 440;
+		n.style.height = 440;
+		return n;
+	}
 
 	// a blank sheet: nothing on the canvas, nothing asked yet
 	public static function blank(studio:Studio):Bool
