@@ -28,6 +28,9 @@ Flex: `direction` (`column`, `row`), `grow`, `shrink`, `align-items`,
 `left`, `top`, `right`, `bottom`. Text: `font-size`, `font-weight`,
 `color`, `text-align`, `max-lines`.
 
+A shadow or a glow: `shadow="0 8 24 rgba(0,0,0,0.15)"` (x, y, blur,
+colour; several comma-separated; `0 0 16 #22d3ee` glows).
+
 ## State, lists, conditions, events
 
 ```tsx file=list.tsx
@@ -70,3 +73,33 @@ export function List() {
   `onPointerDown`/`Move`/`Up` (`e.x`, `e.y` in the window; `e.localX`,
   `e.localY` in the node), `onKeyDown`/`Up` (`e.key`: `Key.ENTER`, `Key.LEFT`,
   a letter's character code: `"a".charCodeAt(0)`), `onInput` (`e.text`).
+
+## Data and dates
+
+- HTTP: `Client.request(url, {method, headers, text})` from `helder/async`
+  (there is no `fetch`): `await` it, then `res.status`, `res.text()`
+  (`JSON.parse` it). Fetch in the app, never in a story: pose stories with
+  data.
+- `Date` works: `new Date()`, `Date.now()`, `getDay()`, `getDate()`,
+  `getMonth()`, `getFullYear()`, `toISOString()`. Write day and month
+  names yourself (no `Intl` or locale options).
+
+```tsx file=today.tsx
+import { Client } from "helder/async";
+
+const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+export async function temperature(): Promise<number> {
+	const res = await Client.request("https://api.open-meteo.com/v1/forecast?latitude=51.05&longitude=3.72&current=temperature_2m");
+	if (res.status !== 200) throw new Error(`forecast: ${res.status}`);
+	return JSON.parse(res.text()).current.temperature_2m;
+}
+
+export function Today(props: { temp: number; date: Date }) {
+	const d = props.date;
+	return <view padding="16 20" radius={12} background="#ffffff" shadow="0 8 24 rgba(0,0,0,0.12)" row-gap={4}>
+		<text font-size={13} color="#71717a">{`${days[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`}</text>
+		<text font-size={32} font-weight={600} color="#18181b">{`${Math.round(props.temp)}°`}</text>
+	</view>;
+}
+```

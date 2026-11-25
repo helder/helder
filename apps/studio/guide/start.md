@@ -1,8 +1,7 @@
 # Start
 
-The user watches the canvas. Put something on it within your first few
-tool calls: sketch the screens as design frames (instant, nothing built),
-then make them real in code. Don't explore the repository: this guide and
+The user watches the canvas. Put something real on it within your first
+few tool calls: the app's first view and a story of it. Don't explore the repository: this guide and
 its topics have what you need (`studio.guide {topic}`: ui, game, design,
 assets).
 
@@ -72,19 +71,21 @@ runs, in a window of its own, live.
 ## The loop
 
 1. `studio.focus`: what the user looks at. Then `studio.working {note}`.
-2. Sketch: frames in a design file (`studio.guide {topic: "design"}`), a
-   `<Group>` of them for a comparison or a question. They show at once.
-3. Ask only when a choice matters: `studio.ask` with options pointing at
-   the frames (`frame: "sketches.helder#Dusk"`); keep working meanwhile.
-4. Make it real, a step at a time so the canvas grows with the work:
+2. Ask only when a choice matters: draw the options as frames in a
+   `<Group>` titled with the question (`studio.guide {topic: "design"}`),
+   then `studio.ask` with options pointing at them (`frame:
+   "sketches.helder#Dusk"`), without wait; keep working meanwhile. A
+   prompt with no clear subject: 2-3 directions, asked so, and start on
+   the first.
+3. Make it real, a step at a time so the canvas grows with the work:
    first something that draws and a story of it, then one concept per
    step (a small `project.patch`, `build.check`, the screen updating),
    new stories as their moments exist. Each step real, no scaffolding;
    one build per concept, not per line. `{path, text}` makes a new file
    (its folders too).
-5. Look: `run.snap {screen: "App/Start"}`, `run.tree` for nodes and their
+4. Look: `run.snap {screen: "App/Start"}`, `run.tree` for nodes and their
    `file:line`; `build.check` before you say it works.
-6. `studio.done {note}`.
+5. `studio.done {note}`.
 
 ## What each edit costs
 
