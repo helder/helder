@@ -1,51 +1,27 @@
-# A job's start after its checkout: node and bun, the compilers' caches
-# restored, bun install (and Playwright's Chromium, cached, where asked).
-# The caches (actions/cache):
-# - hxmc's module cache (~/.cache/hxmc, ~/Library/Caches/hxmc,
-#   %LOCALAPPDATA%\hxmc\cache): typed modules and objects, content-addressed
-#   per tool build (hxmc's CacheDir.hx; it trims itself past 1 GB);
-# - helder's (~/.cache/helder, ...): helder's compiler and its web build,
-#   each in a directory per hash of its sources and hxmc's version
-#   (src/helder/compiler/build.mjs), the dev host, the fetched runtime objects;
-# - a job's own (extra): what it makes that checks itself against its
-#   inputs (studio-web's bin/compiler-web: its brotli files reused only for
-#   the same bytes, src/helder/compiler/web/build.mjs).
-# All are keyed by what they are made from, so a restored entry is reused
-# only where it still fits; the key is the OS, the job, @hxmc/cli's version
-# (the compiler: a new one starts cold, nothing older is restored), the
-# lockfile, then the sources (unchanged sources: the same key, nothing saved
-# again). A job saves it at its end with .github/actions/save when `save`
-# says so: on main (a push, the nightly, a run by hand), where every pull
-# request finds it; a pull request saves only when it restored nothing (a
-# new hxmc), else each of its pushes added a set of every job's (GBs) to the
-# repository's 10 GB, and main's own were evicted first.
+# The compiler caches are content-addressed. Key the archive by OS and
+# architecture, compiler version, lockfile and source tree so an old
+# archive can warm a changed tree. Only one job per OS refreshes it.
 name: setup
-description: node, bun, the compilers' caches, bun install
+description: Set up Node, Bun and shared compiler caches
 inputs:
-  cache:
-    description: the cache's name (the job's)
-    required: true
+  cache-writer:
+    description: Whether this job refreshes the compiler cache on main
+    default: 'false'
   node-version:
-    description: node's version
+    description: Node version
     default: '22'
-  extra:
-    description: the job's own paths cached with the compilers' (one a line)
-    default: ''
   playwright:
-    description: Playwright's version, installed with its Chromium (cached) and Chromium's system packages
+    description: Playwright version, with Chromium and its system packages
     default: ''
 outputs:
   key:
-    description: the cache's key
+    description: Compiler cache key
     value: ${{ steps.key.outputs.key }}
   prefix:
-    description: the key's part without the sources (the job's caches on main pruned to the newest)
+    description: OS and architecture prefix used for pruning
     value: ${{ steps.key.outputs.prefix }}
-  hit:
-    description: the key restored exactly
-    value: ${{ steps.restore.outputs.cache-hit }}
   save:
-    description: whether the job's end saves the caches (.github/actions/save)
+    description: Whether to refresh the compiler cache
     value: ${{ steps.save.outputs.save }}
 runs:
   using: composite
@@ -54,19 +30,32 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
     - uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: '1.4.5'
+    - if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        # Also applies to the apt commands launched by Playwright.
+        echo 'Acquire::Retries "3";' | sudo tee /etc/apt/apt.conf.d/80-helder-retries
+        mapfile -t mesa < <(dpkg-query -W -f='${Package}\t${source:Package}\t${db:Status-Status}\n' |
+          awk '$2 == "mesa" && $3 == "installed" {print $1}')
+        if (( ${#mesa[@]} )); then sudo apt-mark hold "${mesa[@]}"; fi
     - id: key
       shell: bash
       run: |
         hxmc=$(node -p "require('./package.json').dependencies['@hxmc/cli']")
-        prefix="${{ runner.os }}-${{ runner.arch }}-${{ inputs.cache }}-hxmc-$hxmc"
-        # (git's hashes of the commit's files, not hashFiles: that one reads
-        # every file, and timed out on a Mac busy booting its simulator)
-        lock=$(git rev-parse HEAD:bun.lock | cut -c1-16)
-        sources=$(git rev-parse HEAD:src HEAD:tests HEAD:examples HEAD:apps HEAD:docs/examples HEAD:site | git hash-object --stdin | cut -c1-16)
-        echo "hxmc=$hxmc" >> "$GITHUB_OUTPUT"
-        echo "lock=$lock" >> "$GITHUB_OUTPUT"
+        prefix="modules-${{ runner.os }}-${{ runner.arch }}-"
+        toolchain="${prefix}hxmc-$hxmc-"
+        revision=$(git rev-parse HEAD:bun.lock HEAD:src HEAD:tests HEAD:examples HEAD:apps HEAD:docs/examples HEAD:site | git hash-object --stdin)
+        case "$RUNNER_OS" in
+          Linux) legacy=examples ;;
+          macOS) legacy=desktop-macos ;;
+          Windows) legacy=desktop-windows ;;
+        esac
         echo "prefix=$prefix" >> "$GITHUB_OUTPUT"
-        echo "key=$prefix-$lock-$sources" >> "$GITHUB_OUTPUT"
+        echo "toolchain=$toolchain" >> "$GITHUB_OUTPUT"
+        echo "key=$toolchain$revision" >> "$GITHUB_OUTPUT"
+        echo "legacy=${{ runner.os }}-${{ runner.arch }}-$legacy-hxmc-$hxmc-" >> "$GITHUB_OUTPUT"
     - id: restore
       uses: actions/cache/restore@v6
       with:
@@ -77,25 +66,16 @@ runs:
           ~/Library/Caches/helder
           ~/AppData/Local/hxmc/cache
           ~/AppData/Local/helder
-          ${{ inputs.extra }}
         key: ${{ steps.key.outputs.key }}
         restore-keys: |
-          ${{ steps.key.outputs.prefix }}-${{ steps.key.outputs.lock }}-
-          ${{ steps.key.outputs.prefix }}-
+          ${{ steps.key.outputs.toolchain }}
+          ${{ steps.key.outputs.legacy }}
     - id: save
       shell: bash
       run: |
-        # (saved: not restored exactly, and on main, or on a pull request that found nothing)
-        save=false
-        if [ "${{ steps.restore.outputs.cache-hit }}" != true ]; then
-          if [ "${{ github.event_name }}" != pull_request ] || [ -z "${{ steps.restore.outputs.cache-matched-key }}" ]; then save=true; fi
-        fi
-        echo "save=$save" >> "$GITHUB_OUTPUT"
-        echo "cache: ${{ steps.restore.outputs.cache-matched-key || 'none' }} (hit: ${{ steps.restore.outputs.cache-hit || 'false' }}; saved at the end: $save)"
+        echo "save=${{ inputs.cache-writer == 'true' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && steps.restore.outputs.cache-hit != 'true' }}" >> "$GITHUB_OUTPUT"
     - shell: bash
       run: bun install --frozen-lockfile
-    # (Playwright: its browsers, ~/.cache/ms-playwright, cached by its version
-    # alone: they are its; Chromium's system packages installed each time)
     - id: pw-restore
       if: inputs.playwright != ''
       uses: actions/cache/restore@v6
@@ -106,10 +86,14 @@ runs:
       shell: bash
       run: |
         bun add --no-save playwright@${{ inputs.playwright }}
-        bunx playwright install --with-deps chromium > /dev/null
-    - if: inputs.playwright != '' && steps.pw-restore.outputs.cache-hit != 'true'
+        if [ "${{ steps.pw-restore.outputs.cache-hit }}" = true ]; then
+          bunx playwright install-deps chromium > /dev/null
+        else
+          bunx playwright install --with-deps chromium > /dev/null
+        fi
+    - if: inputs.playwright != '' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && steps.pw-restore.outputs.cache-hit != 'true'
       uses: actions/cache/save@v6
       continue-on-error: true
       with:
         path: ~/.cache/ms-playwright
-        key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ inputs.playwright }}
+        key: ${{ steps.pw-restore.outputs.cache-primary-key }}

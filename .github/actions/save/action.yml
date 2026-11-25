@@ -1,25 +1,26 @@
-# The compilers' caches saved at a job's end (.github/actions/setup restored
-# them; its `save` output says when): helder's compiler builds of other
-# sources than the newest two dropped first (each is tens of MB; hxmc's
-# module cache trims itself). On main, the job's older entries there are
-# deleted once this one is saved: one a job, the newest, not one a merge
-# until the repository's 10 GB evicts what pull requests need.
 name: save
-description: the compilers' caches saved
+description: Refresh the shared compiler cache on main
 inputs:
   key:
-    description: the setup step's key
+    description: Compiler cache key
     required: true
   prefix:
-    description: the setup step's prefix (main's older entries of it deleted)
-    default: ''
-  extra:
-    description: the setup step's extra paths, the same
-    default: ''
+    description: OS and architecture prefix used for pruning
+    required: true
 runs:
   using: composite
   steps:
-    - shell: bash
+    - id: current
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        head=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
+        if [ "$head" = "$GITHUB_SHA" ]; then
+          echo "save=true" >> "$GITHUB_OUTPUT"
+        fi
+    - if: steps.current.outputs.save == 'true'
+      shell: bash
       run: |
         for d in ~/.cache/helder ~/Library/Caches/helder ~/AppData/Local/helder/cache; do
           for k in compiler compiler-web; do
@@ -27,8 +28,10 @@ runs:
             ls -1td "$d/$k"/*/ 2> /dev/null | tail -n +3 | xargs -r rm -rf
           done
         done
-        du -sh ~/.cache/hxmc ~/.cache/helder ~/Library/Caches/hxmc ~/Library/Caches/helder ~/AppData/Local/hxmc/cache ~/AppData/Local/helder 2> /dev/null || true
-    - uses: actions/cache/save@v6
+    - id: save
+      if: steps.current.outputs.save == 'true'
+      uses: actions/cache/save@v6
+      continue-on-error: true
       with:
         path: |
           ~/.cache/hxmc
@@ -37,17 +40,20 @@ runs:
           ~/Library/Caches/helder
           ~/AppData/Local/hxmc/cache
           ~/AppData/Local/helder
-          ${{ inputs.extra }}
         key: ${{ inputs.key }}
-    - if: github.ref == 'refs/heads/main' && inputs.prefix != ''
+    - if: steps.save.outcome == 'success'
       shell: bash
       continue-on-error: true
       env:
         GH_TOKEN: ${{ github.token }}
+        CACHE_KEY: ${{ inputs.key }}
+        CACHE_PREFIX: ${{ inputs.prefix }}
       run: |
-        # (the job's entries on main, of any compiler, but the one just saved)
-        prefix="${{ inputs.prefix }}"
-        gh cache list --repo "${{ github.repository }}" --ref refs/heads/main --key "${prefix%%-hxmc-*}-hxmc-" --limit 100 --json id,key \
-          --jq '.[] | select(.key != "${{ inputs.key }}") | .id' | while read -r id; do
-          gh cache delete "$id" --repo "${{ github.repository }}" && echo "deleted main's older cache $id"
-        done
+        entries=$(gh cache list --repo "$GITHUB_REPOSITORY" --ref refs/heads/main --key "$CACHE_PREFIX" --limit 100 --json id,key)
+        # Confirm the new cache exists and this run still has main's tip.
+        # Query the deletion candidates before checking the tip.
+        jq -e --arg key "$CACHE_KEY" 'any(.[]; .key == $key)' <<< "$entries" > /dev/null || exit 0
+        head=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
+        [ "$head" = "$GITHUB_SHA" ] || exit 0
+        jq -r --arg key "$CACHE_KEY" '.[] | select(.key != $key) | .id' <<< "$entries" |
+          while read -r id; do gh cache delete "$id" --repo "$GITHUB_REPOSITORY"; done
