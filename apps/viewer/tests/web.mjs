@@ -107,42 +107,76 @@ try {
 	await page.waitForTimeout(3000);
 	await page.screenshot({ path: path.join(out, 'web-markdown.png') });
 	await page.keyboard.press('Escape');
-	// (a sound and a video: at most one plays, the one shown; none once left: the next file, closed)
-	// (least: one that is to play, given up to 10 s to start; else 1.5 s to stop)
-	const plays = async (what, most, least = 0) => {
-		const count = () => page.evaluate(() => window.playing());
-		if (least > 0) await page.waitForFunction((n) => window.playing().elements + window.playing().outputs >= n, least, { timeout: 10000 }).catch(() => {});
-		else await page.waitForTimeout(1500);
-		const p = await count();
-		if (p.elements + p.outputs > most || p.elements + p.outputs < least) fail(`${what}: ${JSON.stringify(p)} playing (${await page.title()})`);
+	// (a sound and a video: at most one plays, none once left (the next file,
+	// closed); one with sound shown is heard once (one output given sound, or
+	// an element) when the viewer says it plays (its button "Pause"), which a
+	// browser without the codec (Chromium's open builds: no AAC, no H.264)
+	// never does; the Opus one, More/Bells.webm, plays in every Chromium)
+	const heard = [];
+	const playing = () => page.evaluate(() => {
+		const p = window.playing();
+		return { n: p.elements + p.outputs, started: [...document.querySelectorAll('canvas [role=button]')].some((b) => b.getAttribute('aria-label') === 'Pause') };
+	});
+	const left = async (what) => {
+		await page.waitForTimeout(1500);
+		const p = await playing();
+		if (p.n > 0) fail(`${what}: ${p.n} playing (${await page.title()})`);
 	};
-	const open = async (name, title) => {
-		await page.waitForFunction(() => document.title === 'Samples', null, { timeout: 30000 }).catch(async () => fail('not at Samples: ' + (await page.title())));
+	// (sound: it has an audio track, so one playing is heard; must: it plays wherever the check runs)
+	const shown = async (what, sound, must = false) => {
+		// (up to 10 s to start: decoded, its output resumed)
+		await page.waitForFunction(() => window.playing().elements + window.playing().outputs > 0
+			|| [...document.querySelectorAll('canvas [role=button]')].some((b) => b.getAttribute('aria-label') === 'Pause'), null, { timeout: 10000 }).catch(() => {});
+		if (sound) await page.waitForTimeout(500);
+		const p = await playing();
+		if (p.n > 1) fail(`${what}: ${p.n} playing (${await page.title()})`);
+		if (must && !p.started) fail(`${what}: not playing (${await page.title()})`);
+		if (p.started && sound && p.n !== 1) fail(`${what}: playing, ${p.n} heard (${await page.title()})`);
+		heard.push(`${what} ${p.started ? 'played' : 'not played here'}`);
+	};
+	const open = async (name, title, folder = 'Samples') => {
+		await page.waitForFunction((f) => document.title === f, folder, { timeout: 30000 }).catch(async () => fail(`not at ${folder}: ` + (await page.title())));
 		await page.mouse.click(600, 400);
 		await page.keyboard.type(name);
 		await page.keyboard.press('Enter');
 		await page.waitForFunction((t) => document.title.startsWith(t), title, { timeout: 30000 }).catch(async () => fail(`${name} not shown: ` + (await page.title())));
 	};
+	const away = async (key, from) => {
+		await page.keyboard.press(key);
+		await page.waitForFunction((f) => !document.title.startsWith(f), from, { timeout: 30000 }).catch(async () => fail(`${key}: still ${await page.title()}`));
+	};
 	await open('Chimes', 'Chimes.m4a · ');
-	await plays('Chimes.m4a shown', 1, 1);
-	await page.keyboard.press('PageDown');
-	await page.waitForFunction(() => !document.title.startsWith('Chimes.m4a'), null, { timeout: 30000 });
-	await plays('the next file', 0);
+	await shown('Chimes.m4a', true);
+	await away('PageDown', 'Chimes.m4a');
+	await left('the file after Chimes.m4a');
 	await page.keyboard.press('PageUp');
 	await page.waitForFunction(() => document.title.startsWith('Chimes.m4a'), null, { timeout: 30000 });
-	await plays('Chimes.m4a again', 1);
-	await page.keyboard.press('Escape');
-	await plays('closed', 0);
+	await shown('Chimes.m4a again', true);
+	await away('Escape', 'Chimes.m4a');
+	await left('Chimes.m4a closed');
 	// (the video's frames on swiftshader's WebGPU: Dawn cannot import a decoded
 	// VideoFrame (copyExternalImageToTexture's external texture is invalid),
 	// those errors of this step only set aside; the frames are not what is checked here)
 	const before = errors.length;
 	await open('Starlings.mp4', 'Starlings.mp4 · ');
-	await plays('Starlings.mp4 shown', 1);
-	await page.keyboard.press('Escape');
-	await plays('closed again', 0);
+	await shown('Starlings.mp4', false);
+	await away('Escape', 'Starlings.mp4');
+	await left('Starlings.mp4 closed');
 	const imported = /WebGPU: \[Invalid (Texture|TextureView|ExternalTexture)/;
 	errors.splice(before, errors.length - before, ...errors.slice(before).filter((e) => !imported.test(e)));
+	// (Opus in WebM: plays wherever the check runs; left for the next file, then for the folder above)
+	await open('More', 'More');
+	await open('Bells', 'Bells.webm · ', 'More');
+	await shown('Bells.webm', true, true);
+	await away('PageDown', 'Bells.webm');
+	await left('the file after Bells.webm');
+	await page.keyboard.press('PageUp');
+	await page.waitForFunction(() => document.title.startsWith('Bells.webm'), null, { timeout: 30000 });
+	await shown('Bells.webm again', true, true);
+	await away('Escape', 'Bells.webm');
+	await left('Bells.webm closed');
+	await page.keyboard.press('ControlOrMeta+BracketLeft');
+	await page.waitForFunction(() => document.title === 'Samples', null, { timeout: 30000 }).catch(async () => fail('not back at Samples: ' + (await page.title())));
 	// (files dropped on the page: a folder "Dropped" of them, a photo of it opened)
 	await page.evaluate(async () => {
 		const dt = new DataTransfer();
@@ -178,7 +212,7 @@ try {
 	await page.waitForTimeout(3000);
 	await page.screenshot({ path: path.join(out, 'web-folder.png') });
 	if (errors.length > 0) fail(errors.join('\n'));
-	console.log(`viewer (web): at Samples, the PDF shown (${pdf}), the Markdown sample, a sound and a video left (none playing), a drop and a folder opened`);
+	console.log(`viewer (web): at Samples, the PDF shown (${pdf}), the Markdown sample, media left with none playing (${heard.join(', ')}), a drop and a folder opened`);
 } finally {
 	await browser.close();
 	server.close();

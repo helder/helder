@@ -57,7 +57,8 @@ class MediaView {
 		levels.append(level);
 		volume.append(levels);
 		var row = box({direction: Row, alignItems: Center, columnGap: 10});
-		row.append(button(play, "Play", toggle));
+		var playing = button(play, "Play", toggle);
+		row.append(playing);
 		row.append(clockText);
 		row.append(box({grow: 1}));
 		row.append(button(mute, "Mute", toggleMute));
@@ -74,6 +75,9 @@ class MediaView {
 			scrub.show(t);
 			clockText.text = clock(scrub.time) + " / " + clock(d);
 			play.kind = video.playing.peek() ? "pause" : "play";
+			// (its name what it does: Pause while it plays, a screen reader's and the web check's)
+			var label = video.playing.peek() ? "Pause" : "Play";
+			if (playing.semantics.label != label) playing.semantics = {role: helder.ui.access.Role.Button, label: label};
 			mute.kind = video.muted ? "muted" : "sound";
 			level.style.width = video.muted ? 0 : 80 * video.volume;
 		}
