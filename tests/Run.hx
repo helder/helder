@@ -539,7 +539,8 @@ class Run {
 				{entry: "tests/os/AndroidTouchTest.hx", name: "AndroidTouchTest"},
 				{entry: "tests/ui/AndroidLayersTest.hx", name: "AndroidLayersTest"},
 				{entry: "tests/media/android/MediaAndroidTest.hx", name: "MediaAndroidTest"},
-				{entry: "tests/media/android/VideoStill.hx", name: "VideoStill"}
+				{entry: "tests/media/android/VideoStill.hx", name: "VideoStill"},
+				{entry: "tests/os/FoldersCheck.hx", name: "FoldersCheck"}
 			]) run(h, ["build", build.entry, "--target", "android-x86_64", "-o", 'bin/pack/${build.name}.apk'], env);
 		}
 		if (buildOnly) return;
@@ -551,6 +552,7 @@ class Run {
 			["sh", "tests/ui/android-layers.sh", "bin/pack/AndroidLayersTest.apk", "bin/pack/android-layers"],
 			["sh", "tests/media/android/android.sh", "bin/pack/MediaAndroidTest.apk", "bin/pack/VideoStill.apk", "bin/pack/android-media"],
 			["sh", "tests/typescript/native/android.sh", h, "bin/pack/android-ts"],
+			["sh", "tests/os/folders-android.sh", "bin/pack/FoldersCheck.apk", "bin/pack/android-folders"],
 			["sh", "tests/platform/webview-android.sh", h, "bin/pack/android-webview"],
 			["sh", "tests/pack/jvm.sh", "bin/pack/android-jvm"],
 			["sh", "tests/pack/billing.sh", h, "bin/pack/android-billing"]

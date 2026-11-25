@@ -2,7 +2,6 @@ package viewer;
 
 #if (hxmc.target == "wasm32-wasi")
 import helder.async.Async;
-import helder.os.web.WebFolders;
 import helder.ui.draw.UiWindow;
 import helder.ui.draw.UiWindow.Surface;
 import helder.view.*;
@@ -10,8 +9,9 @@ import helder.view.*;
 // The viewer in a browser (viewer.helder.run): the page is its window. It
 // opens on the sample folder (Samples, bundled beside the page); Open
 // folder shows one of the user's where the browser can pick one (the File
-// System Access API: Chromium's), and a folder or files dropped on the
-// page are shown the same way, each a place of the sidebar's by its name.
+// System Access API: Chromium's; helder.os.Folders), and a folder or
+// files dropped on the page (WebFolders' own) are shown the same way, each
+// a place of the sidebar's by its name (Shell.addFolder, showFolder).
 // Read only, in the browser alone (WebFiles): no trash, no system apps, no
 // drag out, no second window to hand files to. The decodes, previews and
 // thumbnails (kept in memory: Tiles) are helder.jobs' jobs in Web Workers,
@@ -27,17 +27,9 @@ class WebShell implements Markup {
 		x.thumbnails = new Thumbnails(files);
 		helder.ui.menu.Menus.appName = "Viewer";
 		ViewerActions.defaults(helder.ui.actions.Keymap.global);
-		function show(folder:Int) {
-			if (folder == 0) return;
-			var path = files.mount(folder);
-			x.sidebar.add({kind: Pictures, name: path, path: path});
-			x.close();
-			x.choose(path);
-			helder.view.graph.Graph.flush();
-		}
-		if (WebFolders.available()) x.openFolder = () -> Async.launch(_ -> show(WebFolders.pick()));
+		if (helder.os.Folders.available()) x.openFolder = () -> Shell.addFolder(x, files.grants);
 		viewer.openDialog = () -> if (x.openFolder != null) x.openFolder();
-		WebFolders.onDrop(show);
+		helder.os.web.WebFolders.onDrop(g -> Shell.showFolder(x, files.grants, g));
 		x.browser.go(Samples.ROOT);
 		UiWindow.run(<Surface title={() -> x.full() ? viewer.title() : x.sidebar.title(x.browser.dir())}
 			background={() -> "#" + StringTools.hex(ViewerView.canvas(UiWindow.dark()), 6)} ref={w -> {

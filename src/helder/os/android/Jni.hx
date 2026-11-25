@@ -247,8 +247,8 @@ class Jni {
 		return r;
 	}
 
-	public static function staticBool(cls:Ptr, m:Ptr):Bool {
-		var r = JniEnv.CallStaticBooleanMethodA(env, cls, m, set(0, 0, 0, 0)) & 0xff;
+	public static function staticBool(cls:Ptr, m:Ptr, a:Int64 = 0, b:Int64 = 0, c:Int64 = 0, d:Int64 = 0):Bool {
+		var r = JniEnv.CallStaticBooleanMethodA(env, cls, m, set(a, b, c, d)) & 0xff;
 		check();
 		return r != 0;
 	}
