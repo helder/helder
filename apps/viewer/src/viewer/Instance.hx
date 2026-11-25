@@ -11,10 +11,12 @@ import helder.async.*;
 // opens what it is handed and raises its window.
 class Instance {
 	static inline var STORE = "helder-viewer-instance";
+	// (the shell's store directory, null: the platform's)
+	public static var dir:Null<String> = null;
 
 	// the running viewer given the path (absolute); true when it took it
 	@:coroutine public static function handOver(path:String):Bool {
-		var store = try helder.os.Store.open(STORE) catch (_:Dynamic) null;
+		var store = try helder.os.Store.open(STORE, dir) catch (_:Dynamic) null;
 		if (store == null || !store.exists("port")) return false;
 		var port = Std.parseInt(store.get("port")), token = store.get("token");
 		if (port == null || token == null) return false;
@@ -33,7 +35,7 @@ class Instance {
 		var server = try Server.listen("127.0.0.1", 0) catch (_:Dynamic) null;
 		if (server == null) return;
 		var token = Std.string(Std.random(0x7FFFFFFF)) + Std.string(Std.random(0x7FFFFFFF));
-		var store = try helder.os.Store.open(STORE) catch (_:Dynamic) null;
+		var store = try helder.os.Store.open(STORE, dir) catch (_:Dynamic) null;
 		if (store != null) {
 			store.set("port", Std.string(server.port));
 			store.set("token", token);
@@ -55,7 +57,7 @@ class Instance {
 
 	// (closing: the next launch is the first)
 	public static function leave() {
-		var store = try helder.os.Store.open(STORE) catch (_:Dynamic) null;
+		var store = try helder.os.Store.open(STORE, dir) catch (_:Dynamic) null;
 		if (store != null) store.clear();
 	}
 }
