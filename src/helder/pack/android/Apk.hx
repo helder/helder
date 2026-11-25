@@ -46,6 +46,7 @@ class Apk {
 	public static inline var THEME_TRANSLUCENT = 0x01030010;
 
 	// the authority of org.hxmc.Files, after the package
+	// (helder.os.android.Share has it too, as a literal: an app does not load the packer)
 	public static inline var FILES = ".hxmc.files";
 
 	// the ABI's directory in the APK
