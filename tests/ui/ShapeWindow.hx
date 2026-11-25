@@ -57,13 +57,14 @@ class ShapeWindow {
 				if (u.needsFrame() || step < 40) u.frame();
 			w.device.settle();
 			if (step == 14) frame(w);
-			// (macOS: each window ordered front at its first frame, the one behind's may come later: this one in front again)
-			#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
-			if (step == 30 && desk != null) w.window.raise();
-			#end
 			// (the window server's after some of its frames)
 			if (step == 40) {
 				Sys.sleep(0.3);
+				// (macOS: each window ordered front at its first frame, or 500 ms after it is made: the one
+				// behind's may come after this one's; this one in front again, past both)
+				#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
+				if (desk != null) w.window.raise();
+				#end
 				system(w, desk);
 				if (w.window.transparent) inputs(w);
 				backdrops(w);
