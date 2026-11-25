@@ -169,7 +169,7 @@ Ctrl is Cmd on macOS.
 | PDF: next, previous page | `]`, `[` |
 | PDF: first, last page | Home, End |
 | PDF: go to page | G or Ctrl+G, type the number, Enter |
-| PDF: zoom | `+`, `-`; Ctrl and the wheel, a pinch, about the pointer; `0` fitted to the width, `1` 100% |
+| PDF: zoom | `+`, `-`; Ctrl and the wheel, a pinch, about the pointer; `0` fitted as it opened, `1` 100% (96 dpi) |
 | Markdown: scroll | the wheel or a trackpad; Page Down or Space, Page Up or Backspace a screen; Down, Up a line; Home, End the top and the end |
 | Markdown: the source | Ctrl+U, or Source in the bar; again for the document |
 | Full screen | F11 or Enter (Ctrl+Cmd+F on macOS); Escape leaves it |
@@ -364,9 +364,12 @@ hidden files, the inspector and the status line are kept between runs
   `PdfView.hx`): a PDF as pdf.js shows one by default: its pages down one
   column, centred, 12 points apart, a white sheet each with a soft shadow
   on the canvas, their offsets a `HeightIndex`'s (the pages' sizes in points
-  known first: `PdfPages.sizes`, on a job), fitted to the width until
-  zoomed (Ctrl and the wheel, a pinch, about the pointer: the point under
-  it stays; `+`, `-` about the middle; 100% a point a point). Only the
+  known first: `PdfPages.sizes`, on a job), at pdf.js's "auto" zoom until
+  zoomed (fitted to the width, at most 125% of the actual size, so a wide
+  window's column stays a page wide, an A4 page some 990 points; a
+  landscape document fitted whole; Ctrl and the wheel, a pinch, about the
+  pointer: the point under it stays; `+`, `-` about the middle; 100% its
+  points at 96 dpi, as pdf.js's). Only the
   pages in view and one each side are made, and drawn: those in view
   first, two at a time, at the size shown in device pixels (again larger
   when a zoom needs it, the smaller drawing shown meanwhile; again smaller
