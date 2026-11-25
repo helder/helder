@@ -5,14 +5,16 @@
 // Enter submits the field; Tab and Shift+Tab move the program's focus
 // between the editors and the drawn widgets (the page's focus following);
 // a newline typed in the text area; the program's own change shown in the
-// editor; an editor hidden while the select's list covers it, shown again
+// editor; an editor hidden while the select's list covers it (or, the
+// window's layers the page's, stacked under the list's layer), shown again
 // when it closes; Tab from a drawn field (its host drawn, typed in through
 // the window's text input) into a native one, which keeps the focus; the
 // field's keyboard as its input's inputmode, enterkeyhint, autocapitalize,
 // autocorrect and spellcheck; the soft keyboard (the visual viewport
 // shorter than the window, as a phone's keyboard leaves it: a stand-in,
-// headless Chromium shows none) as the window's keyboard.
-//   node tests/ui/web-field.mjs <WebField.wasm> [screenshot.png]
+// headless Chromium shows none) as the window's keyboard. With worker, the
+// same with the program in a worker (browser.mjs's option worker).
+//   node tests/ui/web-field.mjs <WebField.wasm> [screenshot.png] [worker]
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -23,11 +25,15 @@ const require = createRequire(import.meta.url);
 let pw;
 try { pw = require('playwright'); } catch { pw = require(path.join(process.execPath, '../../lib/node_modules/playwright')); }
 const here = path.dirname(fileURLToPath(import.meta.url));
-const [wasm, shot] = process.argv.slice(2);
+// (worker: the program in a worker, the page passing input on)
+const args = process.argv.slice(2), worker = args.includes('worker');
+const [wasm, shot] = args.filter((a) => a !== 'worker');
 const files = {
 	'/field.wasm': wasm,
 	'/os/browser.mjs': path.join(here, '../../src/helder/os/browser.mjs'),
 	'/os/imports.mjs': path.join(here, '../../src/helder/os/imports.mjs'),
+	'/os/thread.mjs': path.join(here, '../../src/helder/os/thread.mjs'),
+	'/os/worker.mjs': path.join(here, '../../src/helder/os/worker.mjs'),
 	'/gfx/imports.mjs': path.join(here, '../../src/helder/gfx/imports.mjs'),
 	'/text/imports.mjs': path.join(here, '../../src/helder/text/imports.mjs'),
 	'/ui/imports.mjs': path.join(here, '../../src/helder/ui/imports.mjs'),
@@ -40,8 +46,8 @@ const page = `<!doctype html><title>Fields</title><body style="margin:0">
 <script type="module">
 import { run } from './os/browser.mjs';
 window.log = [];
-window.start = async () => {
-	window.r = run('field.wasm', { imports: ['os/imports.mjs', 'gfx/imports.mjs', 'text/imports.mjs', 'ui/imports.mjs'], canvas: 'c', gfx: 'webgl2',
+window.start = async (worker) => {
+	window.r = run('field.wasm', { imports: ['os/imports.mjs', 'gfx/imports.mjs', 'text/imports.mjs', 'ui/imports.mjs'], canvas: 'c', gfx: 'webgl2', worker,
 		fonts: ['Inter.ttf'], stdout: (s) => window.log.push(s), stderr: (s) => window.log.push('stderr: ' + s) });
 	window.result = await window.r;
 };
@@ -64,9 +70,17 @@ const errors = [];
 p.on('pageerror', (e) => errors.push(e.message));
 p.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 await p.goto(url);
-await p.evaluate(() => window.start());
+await p.evaluate((w) => window.start(w), worker);
 await p.waitForFunction(() => window.log.some((l) => l.startsWith('boxes ')), null, { timeout: 15000 });
-const settle = () => p.waitForTimeout(150);
+// (then a frame drawn: headless Chromium holds the page's frames back a few hundred ms at times, as a text field takes the focus)
+const settle = async () => {
+	await p.waitForTimeout(150);
+	await p.evaluate(() => {
+		const r = window.result.host.gfx.readPixels();
+		window.result.host.os.redraw();
+		return r.then(() => 0);
+	});
+};
 await settle();
 // the latest line: the boxes (centres, in the page) and the state
 const state = async () => {
@@ -88,8 +102,12 @@ const state = async () => {
 const editor = (tag) => p.evaluate((t) => {
 	const e = document.querySelector(t);
 	if (!e) return null;
-	const r = e.getBoundingClientRect();
-	return { x: r.x, y: r.y, w: r.width, h: r.height, shown: getComputedStyle(e).display !== 'none', value: e.value, focused: document.activeElement === e, font: getComputedStyle(e).fontFamily };
+	const r = e.getBoundingClientRect(), cx = r.x + r.width / 2, cy = r.y + r.height / 2;
+	// (stacked among the window's layers, helder.ui's WebLayers: a layer over it there, at its centre)
+	const l = e.parentNode, z = Number(e.style.zIndex) || 0;
+	const under = l && l.hxmcScroller === undefined && [...l.children].some((o) => o !== e && o.tagName === 'DIV' && Number(o.style.zIndex) > z && o.style.display !== 'none'
+		&& (({ left, top, right, bottom }) => cx >= left && cx < right && cy >= top && cy < bottom)(o.getBoundingClientRect()));
+	return { x: r.x, y: r.y, w: r.width, h: r.height, shown: getComputedStyle(e).display !== 'none', value: e.value, focused: document.activeElement === e, font: getComputedStyle(e).fontFamily, under };
 }, tag);
 const results = [];
 const check = (what, ok, detail) => results.push({ what, ok, detail });
@@ -143,7 +161,7 @@ check('the program\'s change in the editor', input.value === 'Reset', JSON.strin
 await p.mouse.click(m.fruit.x + m.fruit.w / 2, m.fruit.y + m.fruit.h / 2);
 await settle();
 input = await editor('input[data-hxmc-editor]');
-check('covered by the select\'s list: hidden', !input.shown, JSON.stringify(input));
+check('covered by the select\'s list: hidden, or under its layer', !input.shown || input.under, JSON.stringify(input));
 await p.keyboard.press('Escape');
 await settle();
 input = await editor('input[data-hxmc-editor]');
@@ -173,8 +191,9 @@ await p.waitForTimeout(300);
 check('and back: none', s.keyboard === '0', JSON.stringify(s));
 check('no errors', errors.length === 0, errors.join(' | '));
 const failed = results.filter((r) => !r.ok);
-for (const r of failed) console.log(`web-field.mjs: FAIL: ${r.what}: ${r.detail}`);
-console.log(`web-field.mjs: ${results.length} checks` + (failed.length ? `, ${failed.length} FAILED` : ', ok'));
+const mode = worker ? ' (in a worker)' : '';
+for (const r of failed) console.log(`web-field.mjs${mode}: FAIL: ${r.what}: ${r.detail}`);
+console.log(`web-field.mjs${mode}: ${results.length} checks` + (failed.length ? `, ${failed.length} FAILED` : ', ok'));
 await browser.close();
 server.close();
 process.exit(failed.length ? 1 : 0);

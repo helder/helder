@@ -34,6 +34,8 @@ class Soft {
 	static inline var ABI_MASK = 16;
 	static inline var ABI_UNIFORMS = 24;
 	static inline var ABI_TEXTURES = 24 + 8 * 16;
+	static inline var ABI_STORAGE = 24 + 16 * 16;
+	static inline var ABI_IMAGES = 24 + 16 * 16 + 8 * 16;
 
 	final prog:SProgram;
 	final prefix:String;
@@ -50,6 +52,9 @@ class Soft {
 	final scalarStructs = new Map<SStruct, String>();
 	final discards = new Map<SFunction, Bool>();
 
+	// (a compute stage's storage layouts: each element type's)
+	final storage:Array<SStorage> = [];
+
 	public function new(prog:SProgram, prefix:String, pack:Array<String>, module:String) {
 		this.prog = prog;
 		this.prefix = prefix;
@@ -65,6 +70,72 @@ class Soft {
 
 	public static function enabled():Bool
 		return Context.defined("helder.soft") && Context.definedValue("target.name") == "hxmc";
+
+	// a compute stage's form (compute({size, main})): its entry, ShaderCode's
+	// soft field. Each call runs 4 invocations, a lane each
+	public static function compute(c:SCompute, prefix:String, pack:Array<String>, module:String):{soft:Soft, code:Expr} {
+		var s = new Soft(new SProgram(c.entry, c.entry, c.entry.uniforms, c.entry.textures), prefix, pack, module);
+		for (b in c.storage)
+			s.storage.push(b);
+		var cs = s.entry(c.entry, false);
+		s.flush();
+		return {soft: s, code: macro {entry: $i{cs}(), varyings: 0}};
+	}
+
+	// (the std430 layout of a storage buffer of t: any of the stage's of that element)
+	function layout(t:SType):SStorage {
+		for (b in storage)
+			if (Names.same(b.element, t)) return b;
+		return Context.error('soft: no storage of ${Names.typeName(t)}', pos);
+	}
+
+	// element i of the storage buffer at b (its binding), of type t, as
+	// lanes (each lane its i) or a scalar (i shared)
+	public function storageRead(t:SType, b:Expr, i:Expr, lanes:Bool):Expr {
+		var l = layout(t);
+		function read(t:SType, off:Int):Expr
+			return switch t {
+				case TFloat: lanes ? macro helder.gfx.soft.Buffers.f32($b, $i, $v{l.stride}, $v{off}) : macro helder.gfx.soft.Buffers.f32At($b, $i, $v{l.stride}, $v{off});
+				case TInt: lanes ? macro helder.gfx.soft.Buffers.i32($b, $i, $v{l.stride}, $v{off}) : macro helder.gfx.soft.Buffers.i32At($b, $i, $v{l.stride}, $v{off});
+				case TBool: lanes ? macro helder.gfx.soft.Buffers.i32($b, $i, $v{l.stride}, $v{off}).ne(helder.gfx.soft.LaneInt.splat(0)) : macro helder.gfx.soft.Buffers.i32At($b,
+						$i, $v{l.stride}, $v{off}) != 0;
+				case TVec(n):
+					{expr: haxe.macro.Expr.ExprDef.ENew({pack: lanes ? SOFT : SHADER, name: (lanes ? 'Lane' : 'Vec') + n}, [for (k in 0...n) read(TFloat, off + 4 * k)]), pos: pos};
+				// (std430: four Vec4 columns)
+				case TMat4:
+					{expr: haxe.macro.Expr.ExprDef.ENew({pack: lanes ? SOFT : SHADER, name: lanes ? "LaneMat" : "Mat4"}, [for (k in 0...4) read(TVec(4), off + 16 * k)]), pos: pos};
+				case t: Context.error('soft: a storage element of ${Names.typeName(t)}', pos);
+			}
+		return switch t {
+			case TStruct(st):
+				var tp:TypePath = {pack: pack, name: lanes ? laneStruct(st) : scalarStruct(st)};
+				{expr: haxe.macro.Expr.ExprDef.ENew(tp, [for (k in 0...st.fields.length) read(st.fields[k].type, l.offsets[k])]), pos: pos};
+			case _: read(t, 0);
+		}
+	}
+
+	// element i of the storage buffer at b set to v (lanes) where m's lanes are
+	public function storageWrite(t:SType, b:Expr, i:Expr, v:Expr):Expr {
+		var l = layout(t);
+		function write(t:SType, off:Int, v:Expr):Array<Expr>
+			return switch t {
+				case TFloat: [macro helder.gfx.soft.Buffers.setF32($b, $i, $v{l.stride}, $v{off}, $v, m)];
+				case TInt: [macro helder.gfx.soft.Buffers.setI32($b, $i, $v{l.stride}, $v{off}, $v, m)];
+				case TBool: [macro helder.gfx.soft.Buffers.setI32($b, $i, $v{l.stride}, $v{off},
+					helder.gfx.soft.LaneInt.select($v, helder.gfx.soft.LaneInt.splat(1), helder.gfx.soft.LaneInt.splat(0)), m)];
+				case TVec(n): [for (k in 0...n) for (x in write(TFloat, off + 4 * k, Soft.dot(v, "xyzw".charAt(k)))) x];
+				case TMat4: [for (k in 0...4) for (x in write(TVec(4), off + 16 * k, Soft.dot(v, "c" + k))) x];
+				case t: Context.error('soft: a storage element of ${Names.typeName(t)}', pos);
+			}
+		var out = switch t {
+			case TStruct(st): [for (k in 0...st.fields.length) for (x in write(st.fields[k].type, l.offsets[k], Soft.dot(macro sv, "f_" + st.fields[k].name))) x];
+			case _: write(t, 0, macro sv);
+		}
+		return macro {
+			var sv = $v;
+			$b{out};
+		};
+	}
 
 	// the stages' entries and ShaderCode's soft fields for each
 	public function stages():{vertex:Expr, fragment:Expr} {
@@ -148,9 +219,9 @@ class Soft {
 	static function isTexture(t:SType):Bool
 		return Textures.isTexture(t);
 
-	// (values held by address: a uniform block's bytes, a texture's record)
+	// (values held by address: a uniform block's bytes, a texture's record, a storage buffer's binding, a storage texture's record)
 	function isPtr(t:SType):Bool
-		return isTexture(t) || isBlock(t);
+		return isTexture(t) || isBlock(t) || t.match(TStorage(_, _) | TImage(_));
 
 	function laneType(t:SType):ComplexType
 		return switch t {
@@ -408,7 +479,7 @@ class Soft {
 			case EBinop(_, a, b): u(a) && u(b);
 			case ECond(c, a, b): u(c) && u(a) && u(b);
 			case ENew(args): !e.t.match(TStruct(_)) && Lambda.foreach(args, u);
-			case EBuiltin("discard", _): false;
+			case EBuiltin("discard" | "atomicAdd" | "atomicMin" | "atomicMax" | "textureStore", _): false;
 			case EBuiltin(_, args): Lambda.foreach(args, u);
 			case ECall(f, args): !mayDiscard(f) && !f.ret.match(TStruct(_)) && Lambda.foreach(args, u);
 		}
@@ -531,8 +602,8 @@ class Soft {
 
 	// a stage's entry, the GC-free callback the back end calls: its name's address getter
 	function entry(e:SEntry, scalar:Bool):String {
-		var fragment = e.stage == Fragment;
-		var name = "soft_" + (fragment ? "fs" : "vs") + (scalar ? "_ref" : "");
+		var fragment = e.stage == Fragment, compute = e.stage == Compute;
+		var name = "soft_" + (compute ? "cs" : fragment ? "fs" : "vs") + (scalar ? "_ref" : "");
 		var fn = func(e.fn, fragment, scalar);
 		var body:Array<Expr> = [
 			(macro var input = hxmc.unsafe.Mem.getPtr(c, $v{ABI_IN})),
@@ -546,7 +617,8 @@ class Soft {
 			resources.push(switch r {
 				case RUniform(u): macro hxmc.unsafe.Mem.getPtr(c, $v{ABI_UNIFORMS + 8 * u.binding});
 				case RTexture(t): macro hxmc.unsafe.Mem.getPtr(c, $v{ABI_TEXTURES + 8 * t.slot});
-				case _: Context.error("soft: a render stage's storage", pos);
+				case RStorage(b): macro hxmc.unsafe.Mem.getPtr(c, $v{ABI_STORAGE + 8 * b.slot});
+				case RImage(m): macro hxmc.unsafe.Mem.getPtr(c, $v{ABI_IMAGES + 8 * m.slot});
 			});
 		// the input's fields from its lanes: the vertex's attributes at 64
 		// bytes a location (4 components, 16 bytes each), the varyings' position
@@ -554,7 +626,7 @@ class Soft {
 		var inFields:Array<{type:SType, at:Int}> = [], at = 0;
 		for (i in 0...e.input.fields.length) {
 			var f = e.input.fields[i];
-			if (!fragment) inFields.push({type: f.type, at: 64 * i}) else if (f.position) inFields.push({type: f.type, at: 0}) else {
+			if (compute) inFields.push({type: f.type, at: 16 * i}) else if (!fragment) inFields.push({type: f.type, at: 64 * i}) else if (f.position) inFields.push({type: f.type, at: 0}) else {
 				inFields.push({type: f.type, at: 64 + 16 * at});
 				at += components(f.type);
 			}
@@ -564,6 +636,7 @@ class Soft {
 				return lane == null ? macro helder.gfx.soft.Lane.load(input, $v{o}) : macro(hxmc.unsafe.Mem.getF32(input, $v{o + 4 * lane}) : Float);
 			return switch t {
 				case TFloat: one(off);
+				case TInt: lane == null ? macro helder.gfx.soft.LaneInt.of(hxmc.simd.I32x4.loadPtr(input, $v{off})) : macro hxmc.unsafe.Mem.getI32(input, $v{off + 4 * lane});
 				case TVec(n):
 					var cs = [for (k in 0...n) one(off + 16 * k)];
 					{expr: haxe.macro.Expr.ExprDef.ENew({pack: lane == null ? SOFT : SHADER, name: lane == null ? 'Lane$n' : 'Vec$n'}, cs), pos: pos};
@@ -589,6 +662,7 @@ class Soft {
 			return macro new $tp($a{args});
 		}
 		function outputs(r:Expr, lane:Null<Int>):Array<Expr> {
+			if (compute) return [];
 			if (fragment) return store(TVec(4), r, 0, lane);
 			var out = [], k = 0;
 			for (f in prog.varyings.fields)
@@ -603,7 +677,7 @@ class Soft {
 		if (!scalar) {
 			var args = [macro helder.gfx.soft.LaneBool.ofMask(lanes), inputOf(null)].concat(resources);
 			if (mayDiscard(e.fn)) args.push(macro kill);
-			body.push(macro var r = $i{fn}($a{args}));
+			body.push(compute ? macro $i{fn}($a{args}) : macro var r = $i{fn}($a{args}));
 			body = body.concat(outputs(macro r, null));
 			body.push(macro return lanes & ~hxmc.unsafe.Mem.getI32(kill, 0));
 		} else {
@@ -732,6 +806,12 @@ class Soft {
 
 	@:allow(helder.gfx.shader.Fn) function splatOf(t:SType, e:Expr):Expr
 		return splat(t, e);
+
+	@:allow(helder.gfx.shader.Fn) function readStorage(t:SType, b:Expr, i:Expr, lanes:Bool):Expr
+		return storageRead(t, b, i, lanes);
+
+	@:allow(helder.gfx.shader.Fn) function writeStorage(t:SType, b:Expr, i:Expr, v:Expr):Expr
+		return storageWrite(t, b, i, v);
 
 	@:allow(helder.gfx.shader.Fn) function blockLanesOf(s:SStruct, p:Expr, n:String, comps:Null<String>):Null<Expr>
 		return blockLanes(s, p, n, comps);
@@ -924,7 +1004,11 @@ class Fn {
 			case SContinue:
 				var l = loops[loops.length - 1];
 				l.lanes ? [macro $i{l.cont} = $i{l.cont} | m, macro m = helder.gfx.soft.LaneBool.none()] : [macro continue];
-			case SStore(_, _, _): Context.error("soft: a render stage's storage", pos);
+			case SStore(b, i, v):
+				switch b.t {
+					case TStorage(t, _): [soft.writeStorage(t, sx(b), lane(i), lane(v))];
+					case _: Context.error("soft: a store into what is not a storage buffer", pos);
+				}
 		}
 
 	function divergesHere(ss:Array<SStmt>, d:Int):Bool {
@@ -967,6 +1051,11 @@ class Fn {
 					case EField(b, n) if (soft.blockType(b.t)):
 						switch b.t {
 							case TStruct(s): soft.blockArray(s, sx(b), n, sx(i), false);
+							case _: throw "soft";
+						}
+					case _ if (x.t.match(TStorage(_, _))):
+						switch x.t {
+							case TStorage(t, _): soft.readStorage(t, sx(x), sx(i), false);
 							case _: throw "soft";
 						}
 					case _: Context.error("soft: an index into what is not a uniform block's array", pos);
@@ -1129,6 +1218,11 @@ class Fn {
 							case TStruct(s): soft.blockArray(s, sx(b), n, lane(i), true);
 							case _: throw "soft";
 						}
+					case _ if (x.t.match(TStorage(_, _))):
+						switch x.t {
+							case TStorage(t, _): soft.readStorage(t, sx(x), lane(i), true);
+							case _: throw "soft";
+						}
 					case _: Context.error("soft: an index into what is not a uniform block's array", pos);
 				}
 			case EUnop(Neg, x): macro - ${lane(x)};
@@ -1195,6 +1289,11 @@ class Fn {
 				var xs = [for (i in 0...args.length) i == 0 ? sx(args[i]) : lane(args[i])];
 				sampler(name, args, xs, false);
 			case "discard": Context.error("soft: discard in an expression", pos);
+			// (the compute stage's: lane by lane, where m's lanes are)
+			case "atomicAdd" | "atomicMin" | "atomicMax":
+				var op = name == "atomicAdd" ? 0 : name == "atomicMin" ? 1 : 2;
+				macro helder.gfx.soft.Buffers.atomic(${sx(args[0])}, ${lane(args[1])}, ${lane(args[2])}, m, $v{op});
+			case "textureStore": macro helder.gfx.soft.Buffers.store(${sx(args[0])}, ${lane(args[1])}, ${lane(args[2])}, ${lane(args[3])}, m);
 			case _: macro $p{["helder", "gfx", "soft", "Lanes", name]}($a{[for (a in args) lane(a)]});
 		}
 }

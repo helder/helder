@@ -12,6 +12,8 @@ class GlassGroup extends Node {
 	public var spacing(default, set) = 0.0;
 
 	@:allow(helder.ui.Glass) var native:Null<GlassNative> = null;
+	// (its drawing's, helder.ui.draw.GlassPass: a GPU's, natively)
+	@:allow(helder.ui.GlassDraw) var pass:Any = null;
 
 	public function new()
 		super("glass-group");

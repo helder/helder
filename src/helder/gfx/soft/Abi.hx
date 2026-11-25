@@ -7,7 +7,8 @@ package helder.gfx.soft;
 // output's (a vertex's position, then its varyings' components; a
 // fragment's colour), the lanes to shade (bits), and the uniform blocks'
 // and the texture bindings' addresses by slot. The entry returns the lanes
-// left (a fragment's discarded ones taken out).
+// left (a fragment's discarded ones taken out). A compute stage's input is
+// its invocations' ids (ComputeInput's fields, 4 lanes each), its output none.
 class Abi {
 	public static inline var IN = 0;
 	public static inline var OUT = 8;
@@ -15,6 +16,11 @@ class Abi {
 	public static inline var UNIFORMS = 24;
 	public static inline var TEXTURES = 24 + 8 * 16;
 	public static inline var SIZE = 24 + 16 * 16;
+	// a compute stage's: its storage buffers' bindings (Buffers) and storage
+	// textures' records (SoftTexture) by slot after the render stages' context
+	public static inline var STORAGE = SIZE;
+	public static inline var IMAGES = SIZE + 8 * 16;
+	public static inline var COMPUTE_SIZE = SIZE + 16 * 16;
 	// the most varying components after the position a stage has here
 	public static inline var MAX_VARYINGS = 60;
 }

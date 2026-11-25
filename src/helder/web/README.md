@@ -130,7 +130,8 @@ files it reads before main, fetched with the module);
 browsers start audio only after one). Once it runs, its element's
 `data-gfx` names the graphics API it draws with. `hxmcWasmOptions[id]`, set
 by a page or a test before the island loads, adds to the runner's options
-(`args`, `gfx`).
+(`args`, `gfx`; `worker: false`: the program on the page's thread, not in
+a Web Worker where it fits: helder.os's README).
 
 ## A ui program on the page: `<Surface>`
 

@@ -164,6 +164,8 @@ class D3D11Backend {
 	var latency = Ptr.nil();
 	var waited = false;
 	var occluded = false;
+	// (the last Present's HRESULT: a test's probes)
+	@:noCompletion public var presentResult(default, null) = 0;
 
 	static inline var MAX_SLOTS = 8;
 
@@ -1484,6 +1486,7 @@ class D3D11Backend {
 		});
 		waited = false;
 		occluded = hr == D3D.DXGI_STATUS_OCCLUDED;
+		presentResult = hr;
 		if (hr == D3D.DXGI_ERROR_DEVICE_REMOVED || hr == D3D.DXGI_ERROR_DEVICE_RESET)
 			check(ID3D11Device.GetDeviceRemovedReason(device), "Present: the device was removed");
 	}

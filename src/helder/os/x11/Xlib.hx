@@ -61,6 +61,13 @@ import hxmc.unsafe.*;
 	// an XImage* of the window's pixels (ZPixmap: 32 bits per pixel on a 24-bit visual)
 	static function XGetImage(d:Ptr, drawable:Int64, x:Int, y:Int, width:Int, height:Int, planes:Int64, format:Int):Ptr<XImage>;
 	static function XDestroyImage(image:Ptr<XImage>):Int;
+	// (a frame shown without a GPU: helder.os.x11.X11Blit)
+	static function XDefaultVisual(d:Ptr, screen:Int):Ptr;
+	static function XDefaultDepth(d:Ptr, screen:Int):Int;
+	static function XCreateGC(d:Ptr, drawable:Int64, mask:Int64, values:Ptr):Ptr;
+	static function XFreeGC(d:Ptr, gc:Ptr):Int;
+	static function XCreateImage(d:Ptr, visual:Ptr, depth:Int, format:Int, offset:Int, data:Ptr, width:Int, height:Int, pad:Int, stride:Int):Ptr<XImage>;
+	static function XPutImage(d:Ptr, drawable:Int64, gc:Ptr, image:Ptr<XImage>, sx:Int, sy:Int, dx:Int, dy:Int, w:Int, h:Int):Int;
 	// selections (the clipboard): owning one, asking its owner for it, the
 	// properties its text travels in
 	static function XSetSelectionOwner(d:Ptr, selection:Int64, owner:Int64, time:Int64):Int;

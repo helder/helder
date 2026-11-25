@@ -12,7 +12,8 @@ typedef Row = {name:String, path:String, deeper:Bool};
 // volume's top: the volume itself); a place chosen shows its own level;
 // "›" goes a level deeper without moving the folder shown.
 class Sidebar {
-	public final places:Array<Place>;
+	// (a cell: the web's grow by the folders opened)
+	public final places:Cell<Array<Place>>;
 	public final volumes:Array<Volume>;
 	// the level ("" the overview), its subfolders as they are read
 	public final level = new Cell("");
@@ -23,9 +24,13 @@ class Sidebar {
 
 	public function new(files:Files, places:Array<Place>, volumes:Array<Volume>) {
 		this.files = files;
-		this.places = places;
+		this.places = new Cell(places);
 		this.volumes = volumes;
 	}
+
+	// a place of its own (the web's: a folder opened, by its name)
+	public function add(p:Place)
+		places(places.value.concat([p]));
 
 	// the level for a folder shown: its parent; a volume's top, itself
 	public function levelFor(dir:String):String {
@@ -87,7 +92,7 @@ class Sidebar {
 
 	// a folder's name as the sidebar says it: a place's, a volume's, else its own
 	public function title(path:String):String {
-		for (p in places)
+		for (p in places.value)
 			if (Browser.normalize(p.path) == path) return p.name;
 		for (v in volumes)
 			if (Browser.normalize(v.path) == path) return v.name;
@@ -116,7 +121,7 @@ class Sidebar {
 	// the place a path is a place's, or inside (Pictures for Pictures/Trips)
 	public function placeOf(path:String):Null<Place> {
 		var best:Null<Place> = null, at = -1;
-		for (p in places) {
+		for (p in places.value) {
 			var pp = Browser.normalize(p.path);
 			if ((path == pp || StringTools.startsWith(path, pp + "/") || StringTools.startsWith(path, pp + "\\")) && pp.length > at) {
 				best = p;

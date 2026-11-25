@@ -96,6 +96,8 @@ class WinLayersWindow {
 			Sys.exit(1);
 		}
 		var presents:Array<Float> = [], offsets:Array<Float> = [], plock = new sys.thread.Mutex();
+		// (each compositor frame's timing, printed for a phase whose pace failed)
+		if (c != null) c.probe = [];
 		if (c != null) c.onFrame = t -> {
 			var o = c.offsets(list);
 			plock.acquire();
@@ -131,6 +133,7 @@ class WinLayersWindow {
 			var median = gaps.length > 0 ? gaps[Std.int(gaps.length / 2)] : 1.0;
 			check('$what: frames presented while the program was blocked 300 ms', during.length >= 10, during.length + " frames");
 			check('$what: at the display\'s pace', gaps.length > 0 && median < 0.03, "median gap " + Math.round(median * 10000) / 10 + " ms");
+			if (!(gaps.length > 0 && median < 0.03) && c != null) probes(what, c, from - 0.05, to);
 			if (dc != null) {
 				var d = [for (i in 0...4) Math.round((dc.timing[i] - t0[i]) * 1000)];
 				say('$what: the render thread: showing ${d[0]} ms, drawing ${d[1]}, waiting for the last commit ${d[2]}, for DWM\'s next composition ${d[3]}, frames ${layers.frames - f0}');
@@ -401,6 +404,25 @@ class WinLayersWindow {
 			if (w.needsFrame()) w.frame() else App.wait(0.004);
 			w.device.settle();
 		}, e -> if (e.kind == helder.os.Event.EventKind.Close) w.close() else w.handle(e));
+	}
+
+	// (the compositor's frames from t0 to t1, ms from t0: when the render
+	// thread came to each (due: right after the last frame's end if that one
+	// was paced, else half a period after it, or the program's turn after
+	// input), the swap chain's wait, its end, paced, the 1 ms timer, Present's HRESULT)
+	static function probes(what:String, c:Compositor, t0:Float, t1:Float) {
+		var p = @:privateAccess c.lock;
+		p.acquire();
+		var a = c.probe.copy();
+		p.release();
+		var n = Compositor.PROBE, ms = (t:Float) -> Math.round((t - t0) * 10000) / 10;
+		say('$what: probes (ms from the phase; came, last end, last paced, waited, end, paced, 1 ms timer, Present 0x)');
+		var i = 0;
+		while (i + n <= a.length) {
+			if (a[i] >= t0 && a[i] <= t1)
+				say('  ${ms(a[i])} ${ms(a[i + 1])} ${a[i + 2]} ${Math.round(a[i + 3] * 10) / 10} ${a[i + 4] < 0 ? "turn" : "" + ms(a[i + 4])} ${a[i + 5]} ${a[i + 6]} ${StringTools.hex(Std.int(a[i + 7]))}');
+			i += n;
+		}
 	}
 
 	// (the process's CPU time, ms: its kernel's and user's)

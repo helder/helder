@@ -1,6 +1,10 @@
 package helder.ui.draw;
 
 import helder.os.DragOperation;
+#if (hxmc.target == "wasm32-wasi")
+// (the browser's: the program's frames on the page's layers alone)
+import helder.ui.draw.WebCompositor as Compositor;
+#end
 import helder.ui.platform.*;
 import helder.gfx.*;
 import helder.os.App;
@@ -103,10 +107,10 @@ class UiWindow {
 	public var device(default, null):Device;
 	public var renderer(default, null):Renderer;
 	#end
-	#if helder.headless
-	// the CPU's canvas where it draws a headless run (helder.ui.draw.soft:
-	// -D helder.soft, which links no GPU; HELDER_SOFT=1; or no GPU device to
-	// be made), else null
+	#if (helder.headless || helder.soft)
+	// the CPU's canvas where it draws a headless run or a -D helder.soft
+	// window (helder.ui.draw.soft: no GPU linked; HELDER_SOFT=1; or no GPU
+	// device to be made), else null
 	public var soft(default, null):Null<helder.ui.draw.soft.SoftCanvas> = null;
 	#end
 	// its pixels a point (the renderer's scale), from its first frame
@@ -179,14 +183,15 @@ class UiWindow {
 		window = new helder.os.Window(title, width, height, titlebar, transparent);
 		// (Android: text fields get the soft keyboard and the input method)
 		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) helder.os.android.TextInput.enable(); #end
-		#if (helder.soft && !helder.headless)
-		throw "UiWindow: -D helder.soft draws a headless build's (-D helder.headless)";
-		#end
-		#if helder.headless
+		#if (helder.headless || helder.soft)
 		if (helder.ui.draw.soft.SoftCanvas.wanted() #if !helder.soft || (device = gpu(window.surface, antialias)) == null #end) {
 			soft = new helder.ui.draw.soft.SoftCanvas();
 			soft.groups = true;
 			soft.steps = true;
+			// (a window's frame kept, what changed drawn and shown: helder.os.Blit)
+			#if !helder.headless
+			soft.keep = true;
+			#end
 		} else
 		#end
 		{
@@ -194,6 +199,10 @@ class UiWindow {
 			// (Windows: the swap chain made for DirectComposition where the window's layers will be the system's)
 			#if ((!helder.os || helder.os == "windows") && !helder.headless && hxmc.target != "wasm32-wasi")
 			if (Platform.os() == 2) helder.gfx.d3d11.D3D11Backend.compose = DcLayers.asked();
+			#end
+			// (the browser's layers: the window's canvas of premultiplied alpha, its layers' pixels read from it)
+			#if ((!helder.os || helder.os == "web") && !helder.headless)
+			if (Platform.os() == 3 && WebLayers.wanted()) WebLayers.transparent(window.surface.handle.toI64().toInt());
 			#end
 			#if !helder.headless device = Device.create(window.surface, {antialias: antialias, thread: true}); #end
 			renderer = new Renderer(device);
@@ -259,6 +268,17 @@ class UiWindow {
 		// (helder dev's host, at a hand-over: what the system keeps of this build's code given back)
 		helder.dev.Hot.onDispose(handOver);
 		#end
+		// (the browser as the compositor: the window's layers canvases of the page, its scrollers' content in their scroll views)
+		#if ((!helder.os || helder.os == "web") && !helder.headless && !helder.soft)
+		if (Platform.os() == 3 && WebLayers.wanted() && ui.nativeScroll) {
+			var c = new Compositor(device);
+			if (c.layers != null) {
+				compositor = c;
+				ui.layered = LayerSplit.slots();
+				(cast c.layers : WebLayers).viewOf = n -> webScroll == null ? null : (cast webScroll : WebScroll).viewOf(n);
+			}
+		}
+		#end
 		#if (!helder.headless && !helder.soft && hxmc.target != "wasm32-wasi")
 		// (the compositor: scrolling at the display's rate while the program is busy)
 		// (iOS's own scroll views: their offsets to it as they move, IosScroll)
@@ -277,7 +297,7 @@ class UiWindow {
 		#end
 	}
 
-	#if (!helder.headless && !helder.soft && hxmc.target != "wasm32-wasi")
+	#if (!helder.headless && !helder.soft)
 	// the window's compositor (null: none, scrolling the program's alone)
 	public var compositor(default, null):Null<Compositor> = null;
 
@@ -376,7 +396,7 @@ class UiWindow {
 			if (iosScroll == null) {
 				if (!ui.nativeScroll) return;
 				iosScroll = new IosScroll(window, ui);
-				#if (!helder.headless && !helder.soft && hxmc.target != "wasm32-wasi")
+				#if (!helder.headless && !helder.soft)
 				(cast iosScroll : IosScroll).compositor = compositor;
 				#end
 			}
@@ -403,7 +423,7 @@ class UiWindow {
 
 	// (the compositor's glides and springs: the program's frames follow them, as they would its own)
 	inline function mirrorMoves():Bool {
-		#if (!helder.headless && !helder.soft && hxmc.target != "wasm32-wasi")
+		#if (!helder.headless && !helder.soft)
 		return compositor != null && compositor.moving();
 		#else
 		return false;
@@ -433,7 +453,7 @@ class UiWindow {
 		var at = ui.controlsAt;
 		if (at != null && at.ui == ui) ui.window.placeControls(at.absX, at.absY);
 		// (the system's layers turned off: the window's own frame, now)
-		#if (!helder.headless && !helder.soft && hxmc.target != "wasm32-wasi")
+		#if (!helder.headless && !helder.soft)
 		if (compositor != null && compositor.layers != null && compositor.layers.redraw) redraw = true;
 		#end
 		// (the clock ticked, nothing changed: the last frame stands, as drawn;
@@ -445,12 +465,12 @@ class UiWindow {
 			return;
 		}
 		// (the system's layers drawn from the compositor's state after the frame, but for a frame read back)
-		#if helder.headless
+		#if (helder.headless || helder.soft)
 		if (soft != null) return softFrame(w, h, s);
 		#end
 		#if !helder.soft
 		var planes = false;
-		#if (!helder.headless && !helder.soft && hxmc.target != "wasm32-wasi")
+		#if (!helder.headless && !helder.soft)
 		if (compositor != null) {
 			planes = compositor.planes() && capture == null;
 			compositor.quiet(planes);
@@ -479,7 +499,7 @@ class UiWindow {
 		renderer.flash = damage == "flash";
 		renderer.background = bg;
 		renderer.begin(device.width, device.height);
-		#if (!helder.headless && !helder.soft && hxmc.target != "wasm32-wasi")
+		#if (!helder.headless && !helder.soft)
 		var c = capture == null ? compositor : null;
 		if (c != null) c.begin(renderer);
 		#end
@@ -499,13 +519,13 @@ class UiWindow {
 		}
 		// (what the frame kept changed, told the system: none, a pixel's worth; all of it after the compositor's)
 		var whole = renderer.drawn >= device.width * device.height;
-		#if (!helder.headless && !helder.soft && hxmc.target != "wasm32-wasi")
+		#if (!helder.headless && !helder.soft)
 		if (compositor != null && compositor.drewSince) whole = true;
 		if (c != null) c.end(ui, renderer);
 		#end
 		if (renderer.keep) device.damaged(whole ? null : renderer.regions.length > 0 ? renderer.regions : [0, 0, 1, 1]);
 		device.endFrame();
-		#if (!helder.headless && !helder.soft && hxmc.target != "wasm32-wasi")
+		#if (!helder.headless && !helder.soft)
 		presents = !planes;
 		if (compositor != null && capture == null) compositor.present(planes);
 		#end
@@ -582,7 +602,7 @@ class UiWindow {
 
 	// (the glyph atlas it draws with: the renderer's, the CPU's canvas')
 	function atlas():helder.text.GlyphAtlas {
-		#if helder.headless
+		#if (helder.headless || helder.soft)
 		if (soft != null) return soft.atlas;
 		#end
 		#if helder.soft
@@ -592,7 +612,7 @@ class UiWindow {
 		#end
 	}
 
-	#if helder.headless
+	#if (helder.headless || helder.soft)
 	// (a device, where one can be made: none, the CPU's canvas draws)
 	#if !helder.soft
 	static function gpu(surface:helder.os.Surface, antialias:Bool):Null<Device>
@@ -618,7 +638,11 @@ class UiWindow {
 			c.readPixels(capture);
 			capture = null;
 		}
+		#if helder.headless
 		helder.headless.Headless.run.present(window.surface, w, h, c.readPixels);
+		#else
+		c.present(window.surface);
+		#end
 		updateTextInput();
 		sendAccess();
 		syncScroll();
@@ -848,7 +872,7 @@ class UiWindow {
 		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2 && winAccess != null) (cast winAccess : WinAccess).dispose(); #end
 		#if ((!helder.os || helder.os == "linux") && !helder.soft) if (Platform.os() == 0 && Platform.target() < 9 && linuxAccess != null) (cast linuxAccess : LinuxAccess).dispose(); #end
 		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9 && androidAccess != null) (cast androidAccess : AndroidAccess).dispose(); #end
-		#if (!helder.headless && !helder.soft && hxmc.target != "wasm32-wasi")
+		#if (!helder.headless && !helder.soft)
 		if (compositor != null) compositor.dispose();
 		compositor = null;
 		#end
@@ -900,7 +924,7 @@ class UiWindow {
 				if (w.device != null) w.device.settle();
 			#end
 			if (!drew) {
-				#if (!helder.headless && !helder.soft && hxmc.target != "wasm32-wasi")
+				#if (!helder.headless && !helder.soft)
 				for (w in open)
 					if (w.compositor != null) w.compositor.rest();
 				#end

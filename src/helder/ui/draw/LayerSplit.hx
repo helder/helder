@@ -1,6 +1,5 @@
 package helder.ui.draw;
 
-#if (hxmc.target != "wasm32-wasi")
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.ui.Node;
@@ -216,7 +215,7 @@ class LayerSplit {
 		}
 		// (each item's candidate: a scroller's top frame k, a mover nf + m, -1 none)
 		var cands = nf + nm, first = [for (_ in 0...cands) -1], last = [for (_ in 0...cands) -1], count = [for (_ in 0...cands) 0];
-		var ok = [for (c in 0...cands) c < nf ? f.parents[c] < 0 : f.moverParent(c - nf) < 0 && f.moverData[(c - nf) * CompositeFrame.MOVER + 2] == 0
+		var ok = [for (c in 0...cands) c < nf ? f.parents[c] < 0 && fits(f, c) : f.moverParent(c - nf) < 0 && f.moverData[(c - nf) * CompositeFrame.MOVER + 2] == 0
 			&& f.moverData[(c - nf) * CompositeFrame.MOVER + 1] < 0 && !unfit.exists(moverKeys.get(f.movers[c - nf].node))];
 		// (a scroller's clip: x0, y0, x1, y1, its corners' radii, set once seen)
 		var clips = [for (_ in 0...cands * 8) 0.0], clipped = [for (_ in 0...cands) false], why = [for (_ in 0...cands) ""];
@@ -401,7 +400,7 @@ class LayerSplit {
 		for (u in units)
 			u.follow = u.slots.copy();
 		lock.release();
-		single = off || units.length == 0 && !flat;
+		single = off || units.length == 0 && !flat || f.backdrops > 0;
 		for (k in 0...nf)
 			free[k] = unitOf[top[k]] >= 0;
 		for (key in [for (k in kept.keys()) k])
@@ -531,6 +530,10 @@ class LayerSplit {
 			if (order[groupPlace[k]] == null) groupPlace[k] = 0;
 	}
 
+	// (whether the system can take top-level scroller frame c's content as a layer of its own)
+	function fits(f:CompositeFrame, c:Int):Bool
+		return true;
+
 	function moverKey(n:Node):MoverKey {
 		var k = moverKeys.get(n);
 		if (k == null) moverKeys.set(n, k = new MoverKey(n));
@@ -551,4 +554,3 @@ private class MoverKey {
 	public function new(n:Node)
 		node = n;
 }
-#end

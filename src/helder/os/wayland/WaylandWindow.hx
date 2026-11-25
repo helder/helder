@@ -208,8 +208,10 @@ class WaylandWindow {
 	static function connect():Bool {
 		var err = WaylandClient.load("libwayland-client.so.0");
 		if (err != null) throw err;
+		#if !helder.soft
 		err = WaylandEgl.load("libwayland-egl.so.1");
 		if (err != null) throw err;
+		#end
 		display = WaylandClient.wl_display_connect(Ptr.nil());
 		if (display.isNull()) throw "cannot connect to " + Sys.getEnv("WAYLAND_DISPLAY");
 		// (the program on a thread of its own: the pointer's and the keyboard's
@@ -829,14 +831,23 @@ class WaylandWindow {
 		var tries = 0;
 		while (!configured && tries++ < 50 && WaylandClient.wl_display_roundtrip(display) >= 0) {}
 		var bw = bufferW(), bh = bufferH();
+		#if helder.soft
+		// (frames from the CPU: wl_shm buffers on the wl_surface itself, helder.os.Blit)
+		surface = new Surface(Wayland, display, wlSurface, bw, bh);
+		#else
 		egl = WaylandEgl.wl_egl_window_create(wlSurface, bw, bh);
 		surface = new Surface(Wayland, display, egl, bw, bh);
-		// (EGL's buffers are ARGB8888, premultiplied, and no opaque region is set: the compositor blends them)
+		#end
+		// (EGL's buffers are ARGB8888, premultiplied, as Blit's wl_shm ones, and no opaque region is set: the compositor blends them)
 		surface.see(owner.clear);
 		applyScale();
 		drawBar();
 		WaylandClient.wl_display_flush(display);
 	}
+
+	// (the compositor's wl_shm: helder.os.wayland.WaylandBlit's buffers)
+	@:allow(helder.os.wayland.WaylandBlit) static function sharedMemory():WlShm
+		return shm;
 
 	static function appId():String {
 		var p = haxe.io.Path.withoutDirectory(Sys.programPath());
@@ -865,7 +876,7 @@ class WaylandWindow {
 	// commit; blur and mica alike, no glass; none where the compositor has no blur)
 	var blur:OrgKdeKwinBlur = Ptr.nil();
 
-	function setBackdrop(b:Backdrop):Bool {
+	function setBackdrop(b:WindowBackdrop):Bool {
 		if (blurs.isNull() || b == Glass) return b == None;
 		if (!blur.isNull()) {
 			blur.release();
@@ -924,7 +935,9 @@ class WaylandWindow {
 	function sizeChanged() {
 		if (surface == null) return;
 		var bw = bufferW(), bh = bufferH();
+		#if !helder.soft
 		WaylandEgl.wl_egl_window_resize(egl, bw, bh, 0, 0);
+		#end
 		applyScale();
 		if (bw != surface.width || bh != surface.height) {
 			surface.resized(bw, bh);
@@ -1107,7 +1120,11 @@ class WaylandWindow {
 		if (!decoration.isNull()) decoration.destroy();
 		if (!viewport.isNull()) viewport.destroy();
 		if (!fractionalScale.isNull()) fractionalScale.destroy();
+		#if helder.soft
+		if (surface != null) Blit.forget(surface);
+		#else
 		if (!egl.isNull()) WaylandEgl.wl_egl_window_destroy(egl);
+		#end
 		toplevel.destroy();
 		xdgSurface.destroy();
 		wlSurface.destroy();

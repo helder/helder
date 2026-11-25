@@ -363,7 +363,7 @@ class Win32Window {
 	// DWMSBT_NONE 1, MAINWINDOW 2 (Mica), TRANSIENTWINDOW 3 (Acrylic); the
 	// frame extended over the client area (MARGINS -1), the backdrop behind
 	// it all; no glass)
-	function setBackdrop(b:Backdrop):Bool {
+	function setBackdrop(b:WindowBackdrop):Bool {
 		if (b == Glass) return false;
 		return OsThread.get(() -> Arena.scopedValue(a -> {
 			var m:Ptr<Int32> = a.alloc(16), v:Ptr<Int32> = a.alloc(4);
@@ -883,9 +883,27 @@ class Win32Window {
 				e.kind = Close;
 				dispatch(e);
 				return 0;
+			#if helder.soft
+			// (a frame drawn on the CPU: GDI keeps none, so the window's last
+			// frame painted again where Windows asks, PrintWindow's too)
+			case WM.PAINT:
+				Arena.scoped(a -> {
+					var ps = a.alloc(72);
+					var dc = User32.BeginPaint(hwnd, ps);
+					Blit.repaint(w.surface, dc);
+					User32.EndPaint(hwnd, ps);
+				});
+				return 0;
+			case 0x0318: // WM_PRINTCLIENT
+				Blit.repaint(w.surface, Ptr.ofI64(wParam));
+				return 0;
+			case 0x0014: // WM_ERASEBKGND: the frame covers it
+				return 1;
+			#else
 			case WM.PAINT:
 				// (DefWindowProc validates the window)
 				e.kind = Redraw;
+			#end
 			case WM.SIZE:
 				// (no loop yet, a size set before App.run: told at its first poll)
 				if (w.measure()) {

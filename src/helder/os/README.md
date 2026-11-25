@@ -43,6 +43,26 @@ method's `TextEditing`), the mouse in
 pixels from the top left, `Scroll` in pixels, `Resize`, `ScaleChange`,
 and every pointer's events (below).
 
+In the browser the program runs in a Web Worker where it fits (the page
+`helder build --target web` writes, and WebAssembly islands:
+`browser.mjs`'s option `worker`, `'auto'`; `?thread=page` on the page,
+`worker: false` to `run`, keep it on the page's thread). The first window's
+canvas gives its control to the worker (`transferControlToOffscreen`), the
+program draws on it there, and the page keeps the element: its listeners
+post input to the worker, the calls only a page can make (text fields, the
+accessibility mirror, history, the clipboard, the cursor) are made there
+in order, and what the program reads at once (the pixel ratio, the soft
+keyboard, media queries, `localStorage`) is the page's as it last told it.
+Each of the worker's frames waits for the page's frame that delivered its
+input, 4 ms at most, so input reaches the same frame as on the page's
+thread, and a page busy with its own scripts holds no frame back. It fits
+in a browser with module workers and OffscreenCanvas, when the module
+imports nothing only a page has (audio's AudioContext, helder.web's DOM,
+helder.media's `<video>`, helder.canvas's Canvas 2D) and with one window;
+`helder dev`'s builds, swapped in place, stay on the page's thread. The
+details are in `src/helder/os/thread.mjs`; `bun run test thread-web`
+compares both threads in Chromium, Firefox and WebKit.
+
 On Android (`helder build --target android`: an APK, helder.pack.android)
 the window is the activity's (full screen, one per app; `new Window` waits
 for it): the program runs on a thread of its own, `App.run` draws while the
@@ -290,7 +310,7 @@ window.shadow = false;  // no system shadow (macOS, Windows)
 ```
 
 ```haxe
-window.backdrop = Blur;  // helder.os.Backdrop; None after where the system has none
+window.backdrop = Blur;  // helder.os.WindowBackdrop; None after where the system has none
 window.input([x, y, width, height]);  // where it takes the pointer (pixels); elsewhere what is behind it does
 window.input(null);                   // everywhere (the default)
 ```
@@ -407,6 +427,18 @@ helder.webmanifest's `file_handlers`). Tests: the window lane
 .desktop file read back; application:openURLs: reaching App.onOpen), the
 dbus lane (tests/os/DBusTest.hx: a real dbus-daemon, the portal's
 OpenFile against a stand-in portal).
+
+In a browser there are no paths: `helder.os.web.WebFolders` gives a page
+the user's folders instead, read only. `pick()` (a coroutine) shows the
+File System Access API's `showDirectoryPicker` where the browser has one
+(`available()`: Chromium's), `onDrop(f)` hands over what is dropped on the
+page (a folder's handle; its entry where there are no handles; files, as a
+folder "Dropped" of them). A folder is a handle; `list(folder, batch)`
+reads its entries 500 at a time (a file's size and date from its `File`),
+each subfolder a handle of its own, each file's `File` given to
+helder.media under a name (`host.blob`: `WebSource.blob`, `ofBlob`). The
+viewer's web build (apps/viewer: `WebFiles`) is its user and its test
+(`apps/viewer/tests/web.mjs`: a drop, a tree of handles the page makes).
 
 ### The system's image decoders
 

@@ -42,6 +42,8 @@ const files = {
 	'/web/imports.mjs': pkg('web/imports.mjs'),
 	'/os/browser.mjs': pkg('os/browser.mjs'),
 	'/os/imports.mjs': pkg('os/imports.mjs'),
+	'/os/thread.mjs': pkg('os/thread.mjs'),
+	'/os/worker.mjs': pkg('os/worker.mjs'),
 	'/async/imports.mjs': pkg('async/imports.mjs'),
 	'/gfx/imports.mjs': pkg('gfx/imports.mjs'),
 	'/text/imports.mjs': pkg('text/imports.mjs'),
@@ -188,10 +190,10 @@ function check(what, ok, detail) {
 	await p.waitForSelector('#cube[data-hydrated]', { state: 'attached', timeout: 30000 }).catch(() => {});
 	const cube = await p.evaluate(async () => {
 		const r = await window.hxmcWasm.cube;
-		return { backend: r.host.gfx.backend, exit: r.host.exitCode };
+		return { backend: r.host.gfx.backend, exit: r.host.exitCode, worker: !!r.host.worker };
 	}).catch((e) => ({ error: e.message }));
 	check('a dropped fetch is tried once more', fetches >= 2, fetches);
-	check('the cube runs once in view', requested.includes('/cube.wasm') && ['webgpu', 'webgl2'].includes(cube.backend) && cube.exit === null, cube);
+	check('the cube runs once in view, in a worker', requested.includes('/cube.wasm') && ['webgpu', 'webgl2'].includes(cube.backend) && cube.exit === null && cube.worker, cube);
 	// ui's <Surface> in the page: its program on the page's canvas, the canvas's size the page's styles, followed
 	await p.locator('#counter-ui').scrollIntoViewIfNeeded();
 	await p.waitForSelector('#counter-ui[data-hydrated]', { state: 'attached', timeout: 30000 }).catch(() => {});
@@ -201,11 +203,11 @@ function check(what, ok, detail) {
 	});
 	const surface = await p.evaluate(async () => {
 		const r = await window.hxmcWasm['counter-ui'];
-		return { backend: r.host.gfx.backend, exit: r.host.exitCode };
+		return { backend: r.host.gfx.backend, exit: r.host.exitCode, worker: !!r.host.worker };
 	}).catch((e) => ({ error: e.message }));
 	await p.waitForTimeout(300);
 	const s0 = await size();
-	check('a ui <Surface> runs on the page', ['webgpu', 'webgl2'].includes(surface.backend) && surface.exit === null && s0.w === s0.cw && s0.h === s0.ch && s0.w > 0, { surface, s0 });
+	check('a ui <Surface> runs on the page, in a worker', ['webgpu', 'webgl2'].includes(surface.backend) && surface.exit === null && surface.worker && s0.w === s0.cw && s0.h === s0.ch && s0.w > 0, { surface, s0 });
 	await p.evaluate(() => (document.querySelector('#counter-ui').style.width = '400px'));
 	await p.waitForTimeout(300);
 	const s1 = await size();

@@ -243,6 +243,8 @@ export default async function (host) {
 			for (const g of contexts) g.getExtension('WEBGL_lose_context')?.loseContext();
 			contexts.length = 0;
 		},
+		// (whether a readPixels waits for the next frame: helder.ui's WebLayers draws that one whole on the canvas)
+		reading: () => captures.length > 0 || (current?.captures.length ?? 0) > 0,
 		readPixels() {
 			if (current) {
 				if (current.offscreen) return Promise.resolve(read(current));
@@ -403,8 +405,9 @@ export default async function (host) {
 			const context = handles.get(canvas).getContext('webgpu');
 			const format = navigator.gpu.getPreferredCanvasFormat();
 			// (COPY_SRC: readPixels; configured alike by an earlier instance: as it is, its last frame shown;
-			// a transparent window's alpha premultiplied, the page through it)
-			const c = configured.get(context), alphaMode = alpha ? 'premultiplied' : 'opaque';
+			// a transparent window's alpha premultiplied, the page through it, as a
+			// window of layers read from it, helder.ui's WebLayers: hxmcAlpha)
+			const c = configured.get(context), alphaMode = alpha || handles.get(canvas).hxmcAlpha ? 'premultiplied' : 'opaque';
 			if (!c || c.device !== device || c.format !== format || c.alphaMode !== alphaMode) {
 				context.configure({ device, format, usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC, alphaMode });
 				configured.set(context, { device, format, alphaMode });
@@ -866,7 +869,7 @@ export default async function (host) {
 			const c = offscreen ? (typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(width, height) : Object.assign(document.createElement('canvas'), { width, height })) : handles.get(canvas);
 			// (a canvas: presented after each frame's task, read back at swap;
 			// offscreen: nothing presents it, read back at any time)
-			const g = c.getContext('webgl2', { antialias: !offscreen && !!(host.options.antialias ?? antialias), alpha: !!alpha, premultipliedAlpha: true, depth: true, preserveDrawingBuffer: offscreen });
+			const g = c.getContext('webgl2', { antialias: !offscreen && !!(host.options.antialias ?? antialias), alpha: !!alpha || (!offscreen && !!c.hxmcAlpha), premultipliedAlpha: true, depth: true, preserveDrawingBuffer: offscreen });
 			if (!g) return 0;
 			// (RGBA16F and R32F render targets; RGBA16F alone where only half
 			// floats are: some phones' WebGL2)
