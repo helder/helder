@@ -67,6 +67,7 @@ class Compiler {
 			os(com, actx);
 			dev(com);
 			nullSafety(actx);
+			analyzer(com, actx);
 			views(com, actx);
 			if (typing != null) typing(com, actx);
 			// (a compilation server's parse replaces hxmc's: around it again)
@@ -196,6 +197,16 @@ class Compiler {
 	static function views(com:context.Common.CommonContext, actx:compiler.ParsedArg.ArgContext) {
 		if (Lambda.exists(com.classPaths.asStringList(), p -> FileSystem.exists(Path.join([p, "helder/view/HostMacro.hx"]))))
 			actx.configMacros.push("helder.view.HostMacro.init()");
+	}
+
+	// Haxe's analyzer off for hxmc's builds (unless -D helder.analyzer):
+	// without analyzer-optimize (which nothing defines) it takes each
+	// function to its graph and back, fusing temporaries, and hxmc's own IR
+	// passes run after it anyway. A build's own init macro's way:
+	// @:analyzer(ignore) on every type.
+	static function analyzer(com:context.Common.CommonContext, actx:compiler.ParsedArg.ArgContext) {
+		if (!com.platform.match(CustomTarget("hxmc")) || core.Define.rawDefined(com.defines, "helder.analyzer")) return;
+		actx.configMacros.push('addGlobalMetadata("", "@:analyzer(ignore)", true, true, false)');
 	}
 
 	static function nullSafety(actx:compiler.ParsedArg.ArgContext) {
