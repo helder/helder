@@ -12,6 +12,7 @@
 # (android-layers.mjs).
 #   sh tests/ui/android-layers.sh <AndroidLayersTest.apk> [out dir]
 set -u
+. "$(dirname "$0")/../os/android-input.sh"
 apk=$1
 out=${2:-.}
 pkg=org.helder.androidlayerstest

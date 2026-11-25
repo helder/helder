@@ -5,7 +5,7 @@
 // examples' pages, and behind the docs' menu there; then the
 // Play button of every demo pressed (or of the ids given): each started (data-hydrated, the
 // graphics API it draws with in data-gfx), its canvas drawn (it looks
-// different from before; a sound only started), no console errors. Then
+// drawn in more than one colour; a sound only started), no console errors. Then
 // the docs (bin/site/docs): every page, its sidebar, pictures, language
 // tabs and live example (started once in view), the old addresses sent
 // on, the search. With a
@@ -101,11 +101,10 @@ try {
 	}
 	for (const id of play) {
 		await page.goto(url + 'examples/');
-		const island = page.locator(`#play-${id}`), canvas = island.locator('canvas');
+		const island = page.locator(`#play-${id}`);
 		await island.scrollIntoViewIfNeeded();
 		// (a sound has no canvas: started, nothing drawn)
-		const drawn = (await canvas.count()) > 0;
-		const before = drawn ? await canvas.screenshot() : null;
+		const drawn = (await island.locator('canvas').count()) > 0;
 		await island.locator('button.play').click();
 		await page.waitForFunction((id) => {
 			const el = document.getElementById('play-' + id);
@@ -116,9 +115,8 @@ try {
 		if (!drawn || error !== null) continue;
 		check(!!gfx, `${id} draws with ${gfx}`);
 		await island.scrollIntoViewIfNeeded();
-		await renderedFrames(island);
-		const after = await canvas.screenshot();
-		check(!before.equals(after), `${id}'s canvas drawn`);
+		const colours = await renderedFrames(island);
+		check(colours > 1, `${id}'s canvas drawn (${colours} colours)`);
 		if (shots) {
 			await page.screenshot({ path: path.join(shots, `site-desktop-${id}.png`) });
 			await page.setViewportSize({ width: 390, height: 844 });
@@ -190,8 +188,7 @@ async function checkDocs(page) {
 			check(error === null, `${p.url}: ${id} started once in view${error ? ': ' + error : ''}`);
 			if (sound || error !== null) continue;
 			// (started once in view, so there is no frame from before it ran: a frame of more than a few colours is drawn)
-			await renderedFrames(island);
-			const colours = await colourCount(page, await island.locator('canvas').screenshot());
+			const colours = await renderedFrames(island);
 			check(colours > 8, `${p.url}: ${id}'s canvas drawn (${colours} colours)`);
 			if (shots) await page.screenshot({ path: path.join(shots, `docs-${id}.png`) });
 		}
@@ -226,19 +223,27 @@ async function checkDocs(page) {
 // Readback resolves once a canvas frame has rendered, including in a worker.
 // Request each frame separately so an idle scene redraws and a slow GPU can catch up.
 async function renderedFrames(island) {
-	await island.evaluate(async (el) => {
+	return island.evaluate(async (el) => {
 		const { host } = await globalThis.hxmcWasm[el.id];
 		let timer;
 		try {
-			await Promise.race([
+			return await Promise.race([
 				(async () => {
+					let pixels;
 					for (let n = 0; n < 3; n++) {
 						const frame = host.gfx.readPixels();
 						host.os.redraw();
-						await frame;
+						pixels = await frame;
 					}
 					// Let the browser composite the canvas before Playwright captures it.
 					await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+					const { data, width, height } = pixels;
+					const colours = new Set();
+					for (let y = 0; y < height; y += 4) for (let x = 0; x < width; x += 4) {
+						const i = (y * width + x) * 4;
+						colours.add((data[i] << 16) | (data[i + 1] << 8) | data[i + 2]);
+					}
+					return colours.size;
 				})(),
 				new Promise((_, reject) => {
 					timer = setTimeout(() => reject(new Error(`${el.id}: timed out waiting for three rendered frames`)), 60000);
@@ -248,26 +253,6 @@ async function renderedFrames(island) {
 			clearTimeout(timer);
 		}
 	});
-}
-
-// how many colours a PNG has, sampled on a grid (decoded by the page)
-async function colourCount(page, png) {
-	return page.evaluate(async (data) => {
-		const img = new Image();
-		img.src = 'data:image/png;base64,' + data;
-		await img.decode();
-		const c = document.createElement('canvas');
-		c.width = img.width;
-		c.height = img.height;
-		const g = c.getContext('2d');
-		g.drawImage(img, 0, 0);
-		const px = g.getImageData(0, 0, c.width, c.height).data, seen = new Set();
-		for (let y = 0; y < c.height; y += 4) for (let x = 0; x < c.width; x += 4) {
-			const k = (y * c.width + x) * 4;
-			seen.add((px[k] << 16) | (px[k + 1] << 8) | px[k + 2]);
-		}
-		return seen.size;
-	}, png.toString('base64'));
 }
 
 // on an iPhone (Playwright's iPhone 13: 390x844 at 3x, touch, its user
