@@ -421,6 +421,89 @@ function tests() {
 			equals(x.browser.dir.value, "/home/three");
 			assert(Lambda.exists(x.sidebar.rows.value, r -> r.path == "/home/three"));
 		});
+		function sideRow(ui:Ui, name:String):Null<Node> {
+			var found:Null<Node> = null;
+			function walk(c:Node) {
+				if (found == null && c.slot == "side-row" && texts(c).contains(name)) found = c;
+				for (k in c.children)
+					walk(k);
+			}
+			walk(ui.root.find("sidebar"));
+			return found;
+		}
+		// (the folder 3 shown, its level scrolled a little)
+		function sidebarScrolled():{x:Explorer, ui:Ui, frame:Void->Void, scroll:Node} {
+			var w = shown("/home/folder 3"), ui = w.ui;
+			var scroll = ui.root.find("sidebar").find("scroll");
+			ui.wheel(scroll.absX + 40, scroll.absY + 40, 0, 120);
+			w.frame();
+			assert(scroll.scrollY > 0, "the level scrolled");
+			return {x: w.x, ui: ui, frame: w.frame, scroll: scroll};
+		}
+		function folderNames(x:Explorer):Array<String>
+			return [for (r in x.sidebar.rows.value) r.name];
+		test("a sibling folder trashed by its sidebar menu: no navigation, the level and its scroll kept; undo puts its row back", () -> {
+			var w = sidebarScrolled(), ui = w.ui, x = w.x, at = w.scroll.scrollY;
+			var row = sideRow(ui, "folder 9");
+			notEquals(row, null);
+			var cx = row.absX + 30, cy = row.absY + row.height / 2;
+			// (the right click: the menu, and no press on the row, which would go into it)
+			ui.pointerDown(cx, cy, 3);
+			ui.pointerUp(cx, cy, 3);
+			w.frame();
+			assert(texts(ui.overlay).contains(ViewerActions.trashLabel()), 'the menu: ${texts(ui.overlay)}');
+			equals(x.browser.dir.value, "/home/folder 3");
+			ui.keyDown(helder.ui.Key.ESCAPE, 0);
+			w.frame();
+			// (its Move to Trash, as the menu dispatches it)
+			assert(x.perform(TrashFolder("/home/folder 9")));
+			w.frame();
+			equals(x.files.stat("/home/folder 9"), null);
+			equals(x.browser.dir.value, "/home/folder 3");
+			equals(x.sidebar.level.value, "/home");
+			equals(folderNames(x).length, 29);
+			assert(!folderNames(x).contains("folder 9"), "its row gone");
+			equals(w.scroll.scrollY, at);
+			assert(x.perform(UndoTrash));
+			w.frame();
+			equals(x.files.stat("/home/folder 9")?.kind, Folder);
+			equals(x.browser.dir.value, "/home/folder 3");
+			equals(x.sidebar.level.value, "/home");
+			equals(folderNames(x).indexOf("folder 9"), 9);
+			equals(w.scroll.scrollY, at);
+		});
+		test("the folder shown trashed from the sidebar: its parent shown, at the level that shows it; undo", () -> {
+			var w = shown("/home/folder 0/sub"), x = w.x;
+			equals(x.sidebar.level.value, "/home/folder 0");
+			assert(x.perform(TrashFolder("/home/folder 0/sub")));
+			w.frame();
+			equals(x.browser.dir.value, "/home/folder 0");
+			equals(x.sidebar.level.value, "/home");
+			equals(x.browser.entry("sub"), null);
+			assert(x.perform(UndoTrash));
+			w.frame();
+			equals(x.browser.dir.value, "/home/folder 0");
+			equals(x.browser.entry("sub")?.kind, Folder);
+		});
+		test("a sibling folder renamed from the sidebar: in place, no navigation, the scroll kept; undone", () -> {
+			var w = sidebarScrolled(), x = w.x, at = w.scroll.scrollY;
+			assert(x.perform(RenameFolder("/home/folder 9")));
+			w.frame();
+			equals(x.renameFolder("/home/folder 9", "folder 9b"), null);
+			w.frame();
+			equals(x.browser.dir.value, "/home/folder 3");
+			equals(x.sidebar.level.value, "/home");
+			equals(folderNames(x).length, 30);
+			equals(folderNames(x)[9], "folder 9b");
+			notEquals(sideRow(w.ui, "folder 9b"), null);
+			equals(w.scroll.scrollY, at);
+			assert(x.perform(UndoTrash));
+			w.frame();
+			equals(folderNames(x)[9], "folder 9");
+			assert(!folderNames(x).contains("folder 9b"), "the new name gone");
+			equals(x.browser.dir.value, "/home/folder 3");
+			equals(w.scroll.scrollY, at);
+		});
 	});
 }
 

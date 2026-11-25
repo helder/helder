@@ -195,6 +195,16 @@ function tests() {
 			assert(!ui.pointerDown(275, 25, 1, 3, Touch), "the root");
 			equals(ui.captureOf(2), (world : Node));
 		});
+		test("a right click clicks, but presses nothing (a context menu's); the left presses", () -> {
+			var pressed = 0;
+			a.onActivate = _ -> pressed++;
+			ui.pointerDown(50, 25, 3);
+			ui.pointerUp(50, 25, 3);
+			equals(pressed, 0);
+			ui.pointerDown(50, 25, 1);
+			ui.pointerUp(50, 25, 1);
+			equals(pressed, 1);
+		});
 	});
 }
 

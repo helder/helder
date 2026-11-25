@@ -2575,9 +2575,11 @@ class Ui extends ScrollHost {
 				case _: null;
 			}
 			if (h != null) h(e.at(n));
-			// (a press: after the click, or Enter or Space the key handlers left; a link's Enter only, as a browser's)
+			// (a press: after the click of the primary button (a right click is a
+			// context menu's, as a browser's), or Enter or Space the key handlers
+			// left; a link's Enter only, as a browser's)
 			var press = n.onActivate;
-			if (press != null && !e.stopped && (e.type == Click || e.type == KeyDown && !e.defaultPrevented
+			if (press != null && !e.stopped && (e.type == Click && e.button <= 1 || e.type == KeyDown && !e.defaultPrevented
 				&& (e.key == Key.ENTER || e.key == Key.SPACE && (n.semantics == null || n.semantics.role != helder.ui.access.Role.Link)))) {
 				if (e.type == KeyDown) e.preventDefault();
 				press(e.at(n));
