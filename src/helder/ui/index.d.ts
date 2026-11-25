@@ -286,7 +286,8 @@ export declare class Key {
 // before it (splice), so the content does not move; at the very top it
 // stays at the top (rows put in above the first come into view). scrollToIndex (start,
 // center, end or the nearest edge: auto) goes to a row made or not, held
-// there while its rows are measured; focusIndex makes the row, scrolls to
+// there while its rows are measured, within the insets (a bar over the
+// top, a padding: the row shown with their room); focusIndex makes the row, scrolls to
 // it and focuses it. The rows are a listbox's options to assistive
 // technology (rowRole), each its place among all (posInSet, setSize). The
 // keyboard on a row (its focus within the list): Up and Down, Page Up and
