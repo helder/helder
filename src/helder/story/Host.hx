@@ -183,18 +183,24 @@ class Host {
 
 	// a screen's frame as data (FrameWriter's: the studio's stills, its
 	// frames file), on the host's background as drawn; null: not built
-	// fps: a loop story's loop too, its frames from its moment on its clock
-	// (as hovered, Host.loop), the screen built again after (its moment);
-	// none when a pass draws in it (played live)
+	// (a pass's box: its picture, read back from the GPU). fps: a loop
+	// story's loop too, its frames from its moment on its clock (as hovered,
+	// Host.loop), the screen built again after (its moment); none when a
+	// pass draws in it (played live)
 	public function written(s:HostScreen, fps = 0):Null<FrameWriter.Frame> {
 		var ui = s.ui;
 		if (ui == null) return null;
 		var w = new FrameWriter();
+		// (a pass's box its picture at CAPTURE pixels a point: the screen drawn
+		// so into the runtime's surface, the writer painted in that frame's
+		// wake, the passes' textures read back as it left them)
+		var k = Math.max(CAPTURE, s.scale);
+		if (captured(s, k)) w.gpu(renderer);
 		w.rect(0, 0, s.width, s.height, 0, background, 0, 0);
 		s.context.run(() -> ui.paint(w));
+		renderer.scale = ui.scale = s.scale;
 		var loop:Float = s.story.loop ?? 0;
 		if (fps <= 0 || loop <= 0) return w.frame();
-		var passes = w.passes;
 		w.loop(fps);
 		s.reset();
 		s.mount();
@@ -210,9 +216,32 @@ class Host {
 			});
 		}
 		s.reset();
-		var out = w.frame();
-		if (w.passes > passes) out.loop = null;
-		return out;
+		return w.frame();
+	}
+
+	// pixels a point of a still's passes' pictures (Host.written)
+	public static inline var CAPTURE = 2.0;
+
+	// (a screen drawn at k pixels a point into the runtime's surface, not handed over: whether it was)
+	function captured(s:HostScreen, k:Float):Bool {
+		var ui = s.ui;
+		if (ui == null) return false;
+		var w = Math.round(s.width * k), h = Math.round(s.height * k), surface = runtime.surface;
+		if (surface.width != w || surface.height != h) @:privateAccess surface.resized(w, h);
+		var enc = device.beginFrame();
+		if (enc == null) return false;
+		renderer.scale = k;
+		ui.scale = k;
+		s.context.run(() -> {
+			renderer.begin(device.width, device.height);
+			ui.paint(renderer);
+			renderer.prepare(enc);
+		});
+		enc.beginPass(pass);
+		renderer.end(enc);
+		enc.endPass();
+		device.endFrame();
+		return true;
 	}
 
 	// whether anything shown would draw in the next turn (else the loop may sleep until the next event or timer)

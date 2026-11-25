@@ -382,6 +382,9 @@ class Renderer implements TextureCanvas {
 			if (r != null) r.recording = l;
 			return r;
 		}
+		// (a frame written as data after this renderer's: its passes' boxes their pictures)
+		var w = Std.downcast(c, FrameWriter);
+		if (w != null) return w.host == null ? null : of(w.host);
 		var r = Std.downcast(c, Renderer);
 		if (r != null) r.recording = null;
 		return r;
