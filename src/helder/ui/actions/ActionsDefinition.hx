@@ -1,11 +1,11 @@
 package helder.ui.actions;
 
-import helder.definition.Kernel;
+import helder.compiler.Kernel;
 import helder.ui.actions.JsonType;
 
 using StringTools;
 
-// actions(namespace, ...)'s handler (src/helder/compiler/DESIGN.md 4), the
+// actions(namespace, ...)'s handler (src/helder/compiler/README.md 4), the
 // same for both languages: Haxe's `actions("viewer", ViewerAction)` (an
 // enum's constructors: ActionsMacro) and TypeScript's `actions("viewer",
 // {next() {}, zoomTo(percent: number) { return {percent}; }})` (an

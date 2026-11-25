@@ -2,7 +2,8 @@ package helder.os.apple.objc;
 
 import hxmc.unsafe.*;
 
-// objc_msgSend, one typed C call per shape (Sender; AppKit's and UIKit's): a message is
+// objc_msgSend, one typed C call per shape (Sender; AppKit's, UIKit's,
+// WebKit's and Metal's): a message is
 // `Msg.idPtr(receiver, ObjC.sel("initWithUTF8String:"), cstring)`. Names: the
 // result (id, v: void, i: an NSInteger or NSUInteger, b: BOOL, f: a double,
 // or a struct), then the arguments. Structs go by value (arm64: hxmc's
@@ -100,4 +101,31 @@ class Msg {
 	static function pointPtr(self:Ptr, sel:Ptr, a:Ptr):CGPoint;
 	static function pointPoint(self:Ptr, sel:Ptr, p:CGPoint):CGPoint;
 	static function insets(self:Ptr, sel:Ptr):UIEdgeInsets;
+	static function idPtrFloat(self:Ptr, sel:Ptr, a:Ptr, b:Float):Ptr;
+	static function idFloat4(self:Ptr, sel:Ptr, a:Float, b:Float, c:Float, d:Float):Ptr;
+	static function bPtrPointPtr(self:Ptr, sel:Ptr, a:Ptr, p:CGPoint, b:Ptr):Bool;
+	static function vPtrInt(self:Ptr, sel:Ptr, a:Ptr, b:Int64):Void;
+	static function iPtrPtr(self:Ptr, sel:Ptr, a:Ptr, b:Ptr):Int64;
+	static function vInsets(self:Ptr, sel:Ptr, a:UIEdgeInsets):Void;
+	static function vPtrPtrInt(self:Ptr, sel:Ptr, a:Ptr, b:Ptr, c:Int64):Void;
+	static function idFloatFloat(self:Ptr, sel:Ptr, a:Float, b:Float):Ptr;
+	static function idPtrIntBool(self:Ptr, sel:Ptr, a:Ptr, b:Int64, c:Bool):Ptr;
+	static function idPtrIntPtrPtr(self:Ptr, sel:Ptr, a:Ptr, b:Int64, c:Ptr, d:Ptr):Ptr;
+	static function idRectPtr(self:Ptr, sel:Ptr, r:CGRect, a:Ptr):Ptr;
+	static function vPtrPtrIntPtr(self:Ptr, sel:Ptr, a:Ptr, b:Ptr, c:Int64, d:Ptr):Void;
+	static function vPtrPtrBool(self:Ptr, sel:Ptr, a:Ptr, b:Ptr, c:Bool):Void;
+	static function size(self:Ptr, sel:Ptr):CGSize;
+	static function idPtrPtrInt(self:Ptr, sel:Ptr, a:Ptr, b:Ptr, c:Int64):Ptr;
+	static function vClear(self:Ptr, sel:Ptr, c:MTLClearColor):Void;
+	static function vViewport(self:Ptr, sel:Ptr, v:MTLViewport):Void;
+	static function vRegionIntIntPtrIntInt(self:Ptr, sel:Ptr, r:MTLRegion, level:Int64, slice:Int64, bytes:Ptr, bytesPerRow:Int64, bytesPerImage:Int64):Void;
+	static function vRegionIntPtrInt(self:Ptr, sel:Ptr, r:MTLRegion, level:Int64, bytes:Ptr, bytesPerRow:Int64):Void;
+	static function vIntIntIntInt(self:Ptr, sel:Ptr, a:Int64, b:Int64, c:Int64, d:Int64):Void;
+	static function vIntIntIntPtrIntIntIntInt(self:Ptr, sel:Ptr, a:Int64, b:Int64, c:Int64, d:Ptr, e:Int64, f:Int64, g:Int64, h:Int64):Void;
+	static function vSizeSize(self:Ptr, sel:Ptr, a:MTLSize, b:MTLSize):Void;
+	static function vPtrIntSize(self:Ptr, sel:Ptr, a:Ptr, b:Int64, c:MTLSize):Void;
+	static function vIntPtrInt(self:Ptr, sel:Ptr, a:Int64, b:Ptr, c:Int64):Void;
+	static function vIntIntPtrIntPtrInt(self:Ptr, sel:Ptr, a:Int64, b:Int64, c:Ptr, d:Int64, e:Ptr, f:Int64):Void;
+	static function vCopy(self:Ptr, sel:Ptr, texture:Ptr, slice:Int64, level:Int64, origin:MTLOrigin, size:MTLSize, buffer:Ptr, offset:Int64,
+		bytesPerRow:Int64, bytesPerImage:Int64):Void;
 }

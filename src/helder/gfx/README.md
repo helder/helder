@@ -269,7 +269,7 @@ own code is GC code (a kernel's discipline would let collections skip it).
 ## Shaders
 
 Shaders are Haxe (`helder.gfx.shader`): a definition, `shader({vertex,
-fragment})` (src/helder/compiler/DESIGN.md), of functions on the math types
+fragment})` (src/helder/compiler/README.md), of functions on the math types
 (`Vec2`, `Vec3`, `Vec4`, `Mat4`, swizzles, operators, `ShaderMath`'s
 builtins), structs of them (`@:structInit` classes, typedefs of anonymous
 structures) and `Texture2D` parameters (`sample(t, uv)`: in the fragment

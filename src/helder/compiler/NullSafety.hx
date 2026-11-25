@@ -8,9 +8,7 @@ class NullSafety {
 	public static final packages:Map<String, String> = [
 		"helder.asset" => "Strict",
 		"helder.compiler" => "Strict",
-		"helder.definition" => "Strict",
 		"helder.dev" => "Strict",
-		"helder.devtools" => "Strict",
 		"helder.jobs" => "Strict",
 		"helder.native" => "Strict",
 		"helder.physics" => "Strict",

@@ -5,8 +5,8 @@ import haxe.macro.Context;
 import haxe.macro.Expr;
 import haxe.macro.Type;
 import haxe.macro.TypeTools;
-import helder.definition.HaxeAdapter;
-import helder.definition.Kernel;
+import helder.compiler.HaxeAdapter;
+import helder.compiler.Kernel;
 import helder.ui.actions.ActionsDefinition;
 import helder.ui.actions.JsonType;
 

@@ -1,7 +1,7 @@
 package helder.story;
 
 #if hxmc.dev
-import helder.devtools.Agent;
+import helder.dev.Agent;
 import helder.story.Host;
 
 // The preview host's half of the devtools protocol (the studio's

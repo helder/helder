@@ -1,6 +1,6 @@
 package helder.typescript.lower;
 
-import helder.definition.Kernel;
+import helder.compiler.Kernel;
 import helder.asset.AssetCheck;
 import helder.dev.KeepDefinition;
 import helder.jobs.JobDefinition;
@@ -17,7 +17,7 @@ import helder.typescript.check.Project;
 
 using StringTools;
 
-// Definitions in TypeScript (src/helder/compiler/DESIGN.md 2): a call of a
+// Definitions in TypeScript (src/helder/compiler/README.md 2): a call of a
 // function helder declares as one (helder/gfx's shader: `@definition` in
 // its declaration, the handler of the same name) is compiled when the
 // program is: its argument's kernel tree made here from the checked AST

@@ -5,7 +5,7 @@ import helder.typescript.check.Kind;
 import helder.typescript.check.Kind.*;
 import helder.typescript.lower.Definitions.Scope;
 
-// helder/platform's `platform` (src/helder/platform/index.ts): the target a
+// helder/native/platform's `platform` (src/helder/native/platform.ts): the target a
 // program is built for, as constants folded where the program is compiled,
 // as Haxe's Platform.os() and Platform.target() are (hxmc.ir.Lower.targetConst):
 // `platform.os`, `platform.target` and `platform.arm` are literals, and a
@@ -33,11 +33,11 @@ class Platform {
 			|| hxmc.ir.Lower.targetPlatform == 1 || hxmc.ir.Lower.targetPlatform == 2 ? "ios" : target.split("-")[0];
 	}
 
-	// whether n reads helder/platform's platform (an identifier imported from it)
+	// whether n reads helder/native/platform's platform (an identifier imported from it)
 	static function isPlatform(n:Node):Bool {
 		if (n.kind != KindIdentifier) return false;
 		var from = Scope.imported(n.file, n.text);
-		return from != null && from.module == "helder/platform" && from.name == "platform";
+		return from != null && from.module == "helder/native/platform" && from.name == "platform";
 	}
 
 	// a field of platform: its value

@@ -69,14 +69,15 @@
     "./native": {
       "types": "./src/helder/native/index.ts"
     },
-    "./platform": {
-      "types": "./src/helder/platform/index.ts"
+    "./native/platform": {
+      "types": "./src/helder/native/platform.ts"
     },
+    "./compiler/web/client": "./src/helder/compiler/web/client.mjs",
+    "./compiler/web/preview": "./src/helder/compiler/web/preview.mjs",
     "./test": {
       "types": "./src/helder/test/index.ts"
     },
-    "./package.json": "./package.json",
-    "./*": "./*"
+    "./package.json": "./package.json"
   },
   "haxe": {
     "name": "helder",
@@ -92,7 +93,6 @@
     "site:visuals": "node site/visuals.mjs"
   },
   "dependencies": {
-    "@hx-objc/apple-uikit": "github:hx-objc/apple-uikit#27.2.0",
     "@hxmc/cli": "0.1.0-nightly.20261123.717d9f7"
   },
   "peerDependencies": {

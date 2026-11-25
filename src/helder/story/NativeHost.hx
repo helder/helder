@@ -42,7 +42,7 @@ class NativeHost {
 		var frames = new SharedFrames(Sys.getEnv("HELDER_STUDIO_FRAMES"), Sys.getEnv("HELDER_STUDIO_COPY") == "1");
 		var host = new Host(stories, frames);
 		frames.host = host;
-		helder.devtools.Agent.route = m -> HostAgent.receive(host, m);
+		helder.dev.Agent.route = m -> HostAgent.receive(host, m);
 		HostAgent.onRelease = frames.release;
 		HostAgent.onSnap = frames.snap;
 		// (the connection made and the hello sent first)
@@ -56,7 +56,7 @@ class NativeHost {
 		}
 		helder.dev.Hot.onSnapshot(() -> helder.dev.Hot.save("helder.story.mounted", [for (s in host.screens) if (s.ui != null) s.name],
 			helder.dev.Hot.typeOf((_ : Array<String>))));
-		helder.devtools.Agent.notify("Host.ready", {screens: HostAgent.list(host), sharing: frames.sharing(host.device)});
+		helder.dev.Agent.notify("Host.ready", {screens: HostAgent.list(host), sharing: frames.sharing(host.device)});
 		while (true) {
 			helder.dev.Hot.poll();
 			var drawn = host.frame(haxe.Timer.stamp());
@@ -174,7 +174,7 @@ class SharedFrames implements HostRuntime {
 		f.held = true;
 		told.set(i, f);
 		#if hxmc.dev
-		helder.devtools.Agent.notify("Host.frame", {
+		helder.dev.Agent.notify("Host.frame", {
 			screen: i,
 			version: s.version,
 			width: s.width,

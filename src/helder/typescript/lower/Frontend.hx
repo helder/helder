@@ -129,7 +129,7 @@ class Frontend extends ApiCalls {
 		for (m in modules) {
 			enter(m);
 			// (a function only ever called by name, not exported, has no value: what
-			// only it calls is reached only from its calls, so a branch helder/platform
+			// only it calls is reached only from its calls, so a branch helder/native/platform
 			// leaves out leaves it out)
 			var values = valueNames(m.file);
 			for (name in functions.keys())
@@ -155,8 +155,8 @@ class Frontend extends ApiCalls {
 		});
 		// (its agnostic literals' code for each renderer, set first)
 		if (tsx != null) body = Vector.fromArrayCopy(tsx.install().concat(body.toArray()));
-		// (live literals: the sources' tables, helder.markup.Live)
-		helder.markup.Live.flush();
+		// (live literals: the sources' tables, helder.view.Live)
+		helder.view.Live.flush();
 		if (jobs.length > 0) jobCalls();
 		// (generic functions' copies for numbers the program called, and those they call)
 		while (pendingCopies.length > 0) {
