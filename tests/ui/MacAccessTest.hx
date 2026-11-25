@@ -1,6 +1,6 @@
 import helder.os.apple.objc.*;
 import helder.ui.*;
-import helder.ui.draw.UiWindow;
+import helder.ui.UiWindow;
 import helder.view.*;
 import helder.view.graph.Graph.*;
 import helder.view.Flow.*;
@@ -64,7 +64,7 @@ class MacAccessTest implements Markup {
 			// (assistive technology and the fields asking AppKit as the system does: on the main thread)
 			helder.os.OsThread.run(() -> switch step {
 					case 0:
-						var ma:Null<helder.ui.draw.MacAccess> = cast @:privateAccess w.macAccess;
+						var ma:Null<helder.ui.access.apple.MacAccess> = cast @:privateAccess w.macAccess;
 						check("no tree before a question", ma != null && @:privateAccess ma.tree == null);
 						elements = children(view);
 						var shape = [for (e in elements) str(e, "accessibilityRole") + ":" + (str(e, "accessibilityRole") == "AXStaticText" ? str(e, "accessibilityValue") : str(e, "accessibilityLabel"))];
@@ -94,28 +94,28 @@ class MacAccessTest implements Markup {
 								'${volume()} ' + str(elements[3], "accessibilityValue"));
 							check("the focused element", Msg.id(view, ObjC.sel("accessibilityFocusedUIElement")) == elements[3]);
 						}
-						var eds:Array<helder.ui.platform.MacViews.MacEditor> = @:privateAccess helder.ui.platform.MacViews.editors;
+						var eds:Array<helder.ui.platform.apple.MacViews.MacEditor> = @:privateAccess helder.ui.platform.apple.MacViews.editors;
 						check("the field native: one NSTextField", eds.length == 1, "" + eds.length);
 						name("Ada");
 						flush();
 						step = 2;
 					case 2:
-						var eds:Array<helder.ui.platform.MacViews.MacEditor> = @:privateAccess helder.ui.platform.MacViews.editors;
+						var eds:Array<helder.ui.platform.apple.MacViews.MacEditor> = @:privateAccess helder.ui.platform.apple.MacViews.editors;
 						if (eds.length == 1) {
 							var field = @:privateAccess eds[0].field;
 							check("the program's text in the NSTextField", @:privateAccess eds[0].text() == "Ada", @:privateAccess eds[0].text());
 							var t = ObjC.str("Adax");
 							Msg.vPtr(field, ObjC.sel("setStringValue:"), t);
 							var note = Msg.idPtrPtr(ObjC.cls("NSNotification"), ObjC.sel("notificationWithName:object:"), t, field);
-							Msg.vPtr(@:privateAccess helder.ui.platform.MacViews.delegate, ObjC.sel("controlTextDidChange:"), note);
+							Msg.vPtr(@:privateAccess helder.ui.platform.apple.MacViews.delegate, ObjC.sel("controlTextDidChange:"), note);
 							w.ui.setFocus(w.root.find("name"));
 						}
 						step = 3;
 					case 3:
 						check("an edit in the NSTextField, the field's signal follows", name() == "Adax", name());
-						var eds:Array<helder.ui.platform.MacViews.MacEditor> = @:privateAccess helder.ui.platform.MacViews.editors;
+						var eds:Array<helder.ui.platform.apple.MacViews.MacEditor> = @:privateAccess helder.ui.platform.apple.MacViews.editors;
 						if (eds.length == 1)
-							Msg.idPtrPtrPtr(@:privateAccess helder.ui.platform.MacViews.delegate, ObjC.sel("control:textView:doCommandBySelector:"), @:privateAccess eds[0].field,
+							Msg.idPtrPtrPtr(@:privateAccess helder.ui.platform.apple.MacViews.delegate, ObjC.sel("control:textView:doCommandBySelector:"), @:privateAccess eds[0].field,
 								Ptr.nil(), ObjC.sel("insertTab:"));
 						step = 4;
 					case 4:
@@ -123,7 +123,7 @@ class MacAccessTest implements Markup {
 						(cast w.root.find("name") : helder.ui.widgets.EditableText).secret = true;
 						step = 5;
 					case 5:
-						var eds:Array<helder.ui.platform.MacViews.MacEditor> = @:privateAccess helder.ui.platform.MacViews.editors;
+						var eds:Array<helder.ui.platform.apple.MacViews.MacEditor> = @:privateAccess helder.ui.platform.apple.MacViews.editors;
 						if (eds.length == 1) {
 							var field = @:privateAccess eds[0].field;
 							check("a password: an NSSecureTextField", str(field, "class") == "NSSecureTextField", str(field, "class"));
@@ -135,7 +135,7 @@ class MacAccessTest implements Markup {
 						flush();
 						step = 6;
 					case 6:
-						var areas = [for (e in (@:privateAccess helder.ui.platform.MacViews.editors : Array<helder.ui.platform.MacViews.MacEditor>)) if (Std.isOfType(e, helder.ui.platform.MacViews.MacAreaEditor)) e];
+						var areas = [for (e in (@:privateAccess helder.ui.platform.apple.MacViews.editors : Array<helder.ui.platform.apple.MacViews.MacEditor>)) if (Std.isOfType(e, helder.ui.platform.apple.MacViews.MacAreaEditor)) e];
 						check("the text area native: an NSTextView", areas.length == 1 && str(@:privateAccess areas[0].field, "class") == "NSTextView",
 							"" + areas.length);
 						if (areas.length == 1) {
@@ -144,7 +144,7 @@ class MacAccessTest implements Markup {
 							var t = ObjC.str("Line\nTwo");
 							Msg.vPtr(tv, ObjC.sel("setString:"), t);
 							var note = Msg.idPtrPtr(ObjC.cls("NSNotification"), ObjC.sel("notificationWithName:object:"), t, tv);
-							Msg.vPtr(@:privateAccess helder.ui.platform.MacViews.delegate, ObjC.sel("textDidChange:"), note);
+							Msg.vPtr(@:privateAccess helder.ui.platform.apple.MacViews.delegate, ObjC.sel("textDidChange:"), note);
 						}
 						step = 7;
 					case 7:

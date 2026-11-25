@@ -16,8 +16,8 @@ import helder.scene.render.Material;
 import helder.scene.render.Renderer;
 import helder.scene.view.SceneEvent;
 import helder.scene.view.SceneTags.*;
-import helder.ui.draw.UiWindow;
-import helder.ui.draw.UiWindow.Surface;
+import helder.ui.UiWindow;
+import helder.ui.UiWindow.Surface;
 import helder.view.*;
 import helder.view.graph.Graph.*;
 

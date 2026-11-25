@@ -243,7 +243,7 @@ export default async function (host) {
 			for (const g of contexts) g.getExtension('WEBGL_lose_context')?.loseContext();
 			contexts.length = 0;
 		},
-		// (whether a readPixels waits for the next frame: helder.ui's WebLayers draws that one whole on the canvas)
+		// (whether a readPixels waits for the next frame: helder.ui's web.Layers draws that one whole on the canvas)
 		reading: () => captures.length > 0 || (current?.captures.length ?? 0) > 0,
 		readPixels() {
 			if (current) {
@@ -406,7 +406,7 @@ export default async function (host) {
 			const format = navigator.gpu.getPreferredCanvasFormat();
 			// (COPY_SRC: readPixels; configured alike by an earlier instance: as it is, its last frame shown;
 			// a transparent window's alpha premultiplied, the page through it, as a
-			// window of layers read from it, helder.ui's WebLayers: hxmcAlpha)
+			// window of layers read from it, helder.ui's web.Layers: hxmcAlpha)
 			const c = configured.get(context), alphaMode = alpha || handles.get(canvas).hxmcAlpha ? 'premultiplied' : 'opaque';
 			if (!c || c.device !== device || c.format !== format || c.alphaMode !== alphaMode) {
 				context.configure({ device, format, usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC, alphaMode });

@@ -1,5 +1,5 @@
 import helder.ui.*;
-import helder.ui.draw.UiWindow;
+import helder.ui.UiWindow;
 import helder.view.Render;
 
 // AccessFixture's controls in a browser (web-access.mjs: wasm32-wasi in

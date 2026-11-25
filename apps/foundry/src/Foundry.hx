@@ -1,8 +1,8 @@
 // Foundry (apps/foundry/README.md): a font made by drawing it, agents drawing too over MCP
 import helder.ui.actions.Actions;
 import helder.ui.actions.Keymap;
-import helder.ui.draw.UiWindow;
-import helder.ui.draw.UiWindow.Surface;
+import helder.ui.UiWindow;
+import helder.ui.UiWindow.Surface;
 import helder.ui.menu.Menu;
 import helder.ui.view.UiFlow.MenuBarView;
 import helder.ui.widgets.Theme;

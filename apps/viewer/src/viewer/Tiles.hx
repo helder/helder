@@ -3,7 +3,7 @@ package viewer;
 import helder.image.Image;
 import helder.ui.Node;
 import helder.ui.controls.Look;
-import helder.ui.draw.UiWindow;
+import helder.ui.UiWindow;
 import helder.view.*;
 import helder.view.Flow.*;
 import helder.view.graph.Graph;

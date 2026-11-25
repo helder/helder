@@ -15,7 +15,7 @@ import hxmc.unsafe.*;
 // helder.os's dialogs (FileDialog, xdg-desktop-portal's FileChooser) need;
 // or not (poll: what came, without waiting; callLater: a call whose reply is
 // not waited for), as a service answering in a program's loop does
-// (helder.ui's AT-SPI adapter, LinuxAccess).
+// (helder.ui's AT-SPI adapter, linux.Access).
 @:hxmc.unsafe(gc)
 class DBus {
 	public static inline var METHOD_CALL = 1;

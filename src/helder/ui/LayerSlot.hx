@@ -9,7 +9,7 @@ private typedef Ptr = Dynamic;
 
 // A system layer of a node's own between what helder draws:
 // where the system composites the window's layers (macOS and iOS:
-// helder.ui.draw.CaLayers), placed at the node's box in its paint order,
+// helder.ui.layers.apple.Layers), placed at the node's box in its paint order,
 // clipped by the scrollers around it (rounded ones too), under what is
 // drawn over it, moved with its scroller and its transform in each frame's
 // transaction. A layer (a CALayer: a video's, one drawn by the node itself)

@@ -248,7 +248,7 @@ class SampleLayer {
 		#end
 	}
 
-	// (its layer out of the tree by CaLayers, in a transaction after the
+	// (its layer out of the tree by apple.Layers, in a transaction after the
 	// frame that no longer has the slot, which still names it: let go of a
 	// second later, not before)
 	public function dispose() {

@@ -72,7 +72,7 @@ class WebShell implements WebViewListener {
 			backGesture: options.backGesture
 		};
 		#if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
-		var v = AppleWebView.fullScreen(o, () -> {});
+		var v = helder.ui.platform.apple.WebView.fullScreen(o, () -> {});
 		view = v;
 		v.listen(this);
 		first();
@@ -83,8 +83,8 @@ class WebShell implements WebViewListener {
 		}
 		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
 		// (the APK's activity draws views: org.hxmc.Activity)
-		new AndroidWebView.AndroidContent();
-		var v = new AndroidWebView(o, () -> 1.0, () -> {}, true);
+		new helder.ui.platform.android.AndroidWebView.AndroidContent();
+		var v = new helder.ui.platform.android.AndroidWebView(o, () -> 1.0, () -> {}, true);
 		view = v;
 		v.listen(this);
 		first();
@@ -93,7 +93,7 @@ class WebShell implements WebViewListener {
 			v.poll();
 		}
 		#else
-		var w = new helder.ui.draw.UiWindow(options.title ?? "", options.width ?? 1024, options.height ?? 768);
+		var w = new helder.ui.UiWindow(options.title ?? "", options.width ?? 1024, options.height ?? 768);
 		var n = new WebView();
 		n.content = options.content;
 		n.inspectable = options.inspectable;
@@ -105,7 +105,7 @@ class WebShell implements WebViewListener {
 		if (options.html != null) n.html = options.html else if (options.src != null) n.src = options.src;
 		node = n;
 		w.root.insert(n, w.root.children.length);
-		helder.ui.draw.UiWindow.run();
+		helder.ui.UiWindow.run();
 		#end
 	}
 }

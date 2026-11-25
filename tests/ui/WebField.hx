@@ -1,5 +1,5 @@
 import helder.ui.*;
-import helder.ui.draw.UiWindow;
+import helder.ui.UiWindow;
 import helder.ui.view.UiFlow.*;
 import helder.view.*;
 import helder.view.Flow.*;

@@ -10,7 +10,7 @@ import sys.io.File;
 // default; the system's AVSampleBufferDisplayLayer in a slot, asked
 // for), each run its own process: seeked to a
 // frame, played (its time moving), paused (its picture still), the
-// scroller moved. Drawn: helder's frames read back (UiWindow.capture): the
+// scroller moved. Drawn: helder's frames read back (helder.ui.UiWindow.capture): the
 // frame shown, the popup over it, another frame once played, the same
 // while paused, moved and cut by the scroller. The system's layer:
 // rendering, no error, placed at the node's box in the window and moved
@@ -180,7 +180,7 @@ class VideoWindow {
 	}
 
 	static function scene(mode:String, dir:String) {
-		var w = new UiWindow("VideoWindow", 400, 300);
+		var w = new helder.ui.UiWindow("VideoWindow", 400, 300);
 		w.root.style.set({background: 0xFFF4F4F4, paddingTop: 30, paddingLeft: 20});
 		var list = new Node();
 		list.style.set({overflow: Scroll, width: 240, height: 240, rowGap: 2, background: 0xFFFFFFFF});
@@ -315,7 +315,7 @@ class VideoWindow {
 		});
 	}
 
-	static function capture(w:UiWindow, dir:String, name:String) {
+	static function capture(w:helder.ui.UiWindow, dir:String, name:String) {
 		w.device.settle();
 		Sys.sleep(0.15);
 		var view = w.window.surface.handle;

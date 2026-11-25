@@ -43,7 +43,7 @@ import hxmc.unsafe.*;
 // binds them at each dispatch that follows a change and unbinds them at
 // endCompute (so that draws may read them: Direct3D 11 orders the rest);
 // readBuffer copies a range into a staging buffer and maps it.
-// The system's layers (helder.ui.draw.DcLayers): a window asked to be
+// The system's layers (helder.ui.layers.windows.Layers): a window asked to be
 // composed (compose) has its swap chain made for composition, the content
 // of a visual of a DirectComposition target on the window (DcRoot), the
 // layers' visuals over it; a frame may be drawn into a surface of theirs

@@ -3,8 +3,8 @@ import helder.media.MemorySource;
 import helder.media.ui.MediaTags.*;
 import helder.media.ui.VideoNode;
 import helder.ui.Clock;
-import helder.ui.draw.UiWindow;
-import helder.ui.draw.UiWindow.Surface;
+import helder.ui.UiWindow;
+import helder.ui.UiWindow.Surface;
 import helder.view.*;
 import hxmc.unsafe.*;
 

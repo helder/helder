@@ -1,8 +1,8 @@
 import helder.ui.*;
-import helder.ui.draw.UiWindow;
+import helder.ui.UiWindow;
 import helder.view.*;
 
-// helder.ui's accessibility on Linux (LinuxAccess; bun run test ui-draw, under
+// helder.ui's accessibility on Linux (linux.Access; bun run test ui-draw, under
 // Xvfb and a D-Bus session with AT-SPI's bus): AccessFixture's controls in a
 // window titled "fixture", whose tree AtspiProbe, another process, reads
 // through libatspi (what Orca uses) and acts on, last pressing its Save
@@ -19,7 +19,7 @@ class LinuxAccessTest {
 		var frames = 0, lazy = false;
 		w.onFrame = () -> {
 			if (frames++ == 0) {
-				var la:Null<helder.ui.draw.LinuxAccess> = cast @:privateAccess w.linuxAccess;
+				var la:Null<helder.ui.access.linux.Access> = cast @:privateAccess w.linuxAccess;
 				lazy = la != null && @:privateAccess la.tree == null;
 			}
 			if (f.saved > 0 || haxe.Timer.stamp() - start > 30) w.close();

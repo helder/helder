@@ -27,7 +27,7 @@ class Backdrop {
 	public var fy = 0.0;
 	public var scale = 1.0;
 	// (the host's own: the Renderer's render target, its quads)
-	@:allow(helder.ui.draw) var held:Any = null;
+	@:allow(helder.ui) var held:Any = null;
 
 	public function new() {}
 

@@ -13,9 +13,9 @@ import helder.ui.draw.*;
 //   same window: the same pixels;
 // - stress: textures and buffers made, written from arrays reused at once,
 //   read back, destroyed while frames are on their way, the window resized
-//   meanwhile; then a UiWindow closed with a frame on its way: nothing left
+//   meanwhile; then a helder.ui.UiWindow closed with a frame on its way: nothing left
 //   in the back end's tables, the device's texture bytes back to 0;
-// - --time n: a UiWindow of 400 rows scrolled a pixel a frame, n frames
+// - --time n: a helder.ui.UiWindow of 400 rows scrolled a pixel a frame, n frames
 //   each way: frame times, and the time from a frame's start (its events
 //   handled) to its present returning (input to present), printed; with
 //   --work ms, that much of the program's own work after each frame.
@@ -184,9 +184,9 @@ class RenderThreadTest {
 		device.dispose();
 	}
 
-	// (a UiWindow closed right after a frame handed to the render thread)
+	// (a helder.ui.UiWindow closed right after a frame handed to the render thread)
 	static function closing() {
-		var w = new UiWindow("RenderThreadTest", W, H);
+		var w = new helder.ui.UiWindow("RenderThreadTest", W, H);
 		var node = new Node();
 		node.style.set({width: 100, height: 50, background: 0xFF3B82F6});
 		w.root.append(node);
@@ -199,7 +199,7 @@ class RenderThreadTest {
 	}
 
 	static function time(n:Int, work:Float) {
-		var w = new UiWindow("RenderThreadTest", 800, 600);
+		var w = new helder.ui.UiWindow("RenderThreadTest", 800, 600);
 		var list = new Node();
 		list.style.set({overflow: Scroll, height: 600, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
 		for (i in 0...400) {
@@ -223,7 +223,7 @@ class RenderThreadTest {
 			// (the program's own work after a frame: an app's, accessibility's, a job's reply)
 			var until = Timer.stamp() + work;
 			while (Timer.stamp() < until) {}
-			// (as UiWindow.run does, before the next events)
+			// (as helder.ui.UiWindow.run does, before the next events)
 			w.device.settle();
 			starts.push(t0);
 			if (++k == n) {

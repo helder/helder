@@ -1,7 +1,7 @@
 import helder.ui.Key;
 import helder.ui.actions.Actions;
 import helder.ui.actions.Keymap;
-import helder.ui.draw.UiWindow;
+import helder.ui.UiWindow;
 import helder.ui.menu.DrawnMenu;
 import helder.ui.menu.Menu;
 import helder.ui.menu.Menus;
@@ -125,11 +125,11 @@ class MenuTest {
 		check("windows: a role's label", text(file, 3) == "Quit MenuTest", text(file, 3));
 		check("windows: checked", WinMenu.GetMenuState(view, 0, 0x400) & 8 != 0);
 		check("windows: disabled (grayed)", WinMenu.GetMenuState(view, 1, 0x400) & 1 != 0);
-		// (a context menu's HMENU, as WinViews tracks it)
+		// (a context menu's HMENU, as windows.Views tracks it)
 		var a = [];
 		var items = Menus.resolve(w.ui, [Item("Tile", Tile), Separator, Item("Open…", Open)], null, a);
 		var p = WinMenu.CreatePopupMenu();
-		@:privateAccess helder.ui.platform.WinViews.fill(p, items);
+		@:privateAccess helder.ui.platform.windows.Views.fill(p, items);
 		check("windows: a context menu's items", WinMenu.GetMenuItemCount(p) == 3 && text(p, 2) == "Open…\tCtrl+O", text(p, 2));
 		WinMenu.DestroyMenu(p);
 		#end
@@ -179,7 +179,7 @@ class MenuTest {
 		// (a context menu's NSMenu, as MacViews pops it up)
 		var a = [];
 		var items = Menus.resolve(w.ui, [Item("Tile", Tile), Separator, Item("Open…", Open)], null, a);
-		var m = @:privateAccess helder.ui.platform.MacViews.nsMenu(items);
+		var m = @:privateAccess helder.ui.platform.apple.MacViews.nsMenu(items);
 		check("cocoa: a context menu's items", helder.os.apple.objc.Msg.i(m, helder.os.apple.objc.ObjC.sel("numberOfItems")) == 3 && title(item(m, 2)) == "Open…");
 		helder.os.apple.objc.ObjC.release(m);
 		#end

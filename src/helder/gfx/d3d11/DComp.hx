@@ -97,7 +97,7 @@ class IDCompositionRectangleClip {
 }
 
 // A window composed by DirectComposition (D3D11Backend, for the system's
-// layers: helder.ui.draw.DcLayers): its target (under the window's child
+// layers: helder.ui.layers.windows.Layers): its target (under the window's child
 // windows: a native field stays over what is drawn, as before), a root
 // visual, under it the window's own visual (its swap chain's frames) and
 // what goes over that (the layers' stack)

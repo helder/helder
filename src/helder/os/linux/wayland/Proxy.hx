@@ -14,7 +14,7 @@ class Proxy {
 	public static var recorder:Null<(proxy:Ptr, opcode:Int, iface:Ptr, version:Int, flags:Int, args:Ptr<Int64>, count:Int) -> Ptr> = null;
 	static final dispatchers:Array<Null<Dispatcher>> = [null];
 	static final free:Array<Int> = [];
-	// (proxies listened to on more than one thread: the render thread's queue, helder.ui.draw.WlLayers)
+	// (proxies listened to on more than one thread: the render thread's queue, helder.ui.layers.linux.Layers)
 	static final lock = new sys.thread.Mutex();
 
 	public static function marshal(proxy:Ptr, opcode:Int, iface:Ptr, version:Int, flags:Int, args:Ptr<Int64>, count:Int):Ptr {

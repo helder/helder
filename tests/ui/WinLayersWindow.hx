@@ -6,7 +6,7 @@ import helder.ui.*;
 import helder.ui.draw.*;
 import hxmc.unsafe.*;
 
-// Windows' system layers (helder.ui.draw.DcLayers, DirectComposition) in
+// Windows' system layers (helder.ui.layers.windows.Layers, DirectComposition) in
 // a real window (the window lane, CI's desktop-windows job): a list with
 // a system layer in a row, a rounded scroller, a box that moves. The
 // program blocks 300 ms while the wheel scrolls the list (SendInput), then
@@ -45,7 +45,7 @@ class WinLayersWindow {
 			Sys.exit(2);
 		}
 		sys.FileSystem.createDirectory(dir);
-		var w = new UiWindow("WinLayersWindow", 400, 300);
+		var w = new helder.ui.UiWindow("WinLayersWindow", 400, 300);
 		var root = w.root;
 		root.style.set({direction: Column, background: 0xFFFFFFFF});
 		var header = new Node();
@@ -87,7 +87,7 @@ class WinLayersWindow {
 		mover.style.transition = Transition.parse("transform 1.5s linear, opacity 1.5s linear");
 		root.append(mover);
 		var c = w.compositor;
-		var layers = c == null ? null : c.layers, dc = layers == null ? null : Std.downcast(layers, DcLayers);
+		var layers = c == null ? null : c.layers, dc = layers == null ? null : Std.downcast(layers, helder.ui.layers.windows.Layers);
 		strict = mode != "stall";
 		say('start: $mode, compositor ${c != null}, system layers ${layers != null}');
 		if (mode != "textured" && dc == null) {
@@ -419,12 +419,12 @@ class WinLayersWindow {
 	// was paced, else half a period after it, or the program's turn after
 	// input), the swap chain's wait, its end, paced, the 1 ms timer, Present's HRESULT)
 	// (the compositor's frames drawn from t0 to t1, each its PROBE values)
-	static function probed(c:Compositor, t0:Float, t1:Float):Array<Array<Float>> {
+	static function probed(c:helder.ui.layers.Compositor, t0:Float, t1:Float):Array<Array<Float>> {
 		var p = @:privateAccess c.lock;
 		p.acquire();
 		var a = c.probe.copy();
 		p.release();
-		var n = Compositor.PROBE;
+		var n = helder.ui.layers.Compositor.PROBE;
 		return [for (i in 0...Std.int(a.length / n)) if (a[i * n] >= t0 && a[i * n] <= t1) a.slice(i * n, i * n + n)];
 	}
 
@@ -435,7 +435,7 @@ class WinLayersWindow {
 	}
 
 	// (a phase's frames: how many, their quads, the pixels they cover, their GPU time, their swap chain's wait)
-	static function summary(what:String, c:Compositor, t0:Float, t1:Float) {
+	static function summary(what:String, c:helder.ui.layers.Compositor, t0:Float, t1:Float) {
 		var f = [for (p in probed(c, t0, t1)) if (p[4] >= 0) p];
 		say('$what: the compositor\'s ${f.length} frames, medians: ${middle([for (p in f) p[9]])} quads, ${middle([for (p in f) p[10]])}k pixels covered, '
 			+ 'GPU ${middle([for (p in f) p[8]])} ms, the swap chain\'s wait ${middle([for (p in f) p[3]])} ms${f.length > 0 && f[0][11] == 1 ? " (a software adapter)" : ""}');
@@ -451,7 +451,7 @@ class WinLayersWindow {
 	// on a GPU the display's pace is the check's. The lock's
 	// signatures fail wherever they show: frames not paced, OCCLUDED, the
 	// time before the wait (a coarse timer). Why, else null)
-	static function gpuBound(c:Compositor, t0:Float, t1:Float):Null<String> {
+	static function gpuBound(c:helder.ui.layers.Compositor, t0:Float, t1:Float):Null<String> {
 		var f = [for (p in probed(c, t0, t1)) if (p[4] >= 0) p];
 		if (f.length < 3 || f[0][11] != 1) return null;
 		var period = @:privateAccess c.period * 1000;
@@ -464,7 +464,7 @@ class WinLayersWindow {
 		return 'each frame paced and presented, the swap chain\'s wait $wait ms of a ${Math.round(period * 10) / 10} ms period';
 	}
 
-	static function probes(what:String, c:Compositor, t0:Float, t1:Float) {
+	static function probes(what:String, c:helder.ui.layers.Compositor, t0:Float, t1:Float) {
 		var ms = (t:Float) -> Math.round((t - t0) * 10000) / 10;
 		say('$what: probes (ms from the phase; came, last end, last paced, waited, end, paced, 1 ms timer, Present 0x, GPU ms, quads, k pixels)');
 		for (p in probed(c, t0, t1))

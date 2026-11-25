@@ -1,5 +1,5 @@
 import helder.ui.*;
-import helder.ui.draw.UiWindow;
+import helder.ui.UiWindow;
 import helder.ui.widgets.EditableText;
 import helder.view.*;
 #if (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
@@ -147,7 +147,7 @@ class TextInputCheck implements Markup {
 
 	#if (hxmc.target == "ios-sim-arm64" || hxmc.target == "ios-arm64")
 	static function native(tag:String):hxmc.unsafe.Ptr
-		return @:privateAccess (cast field(tag).editor : helder.ui.platform.IosViews.IosEditor).view;
+		return @:privateAccess (cast field(tag).editor : helder.ui.platform.apple.IosViews.IosEditor).view;
 
 	static function str(s:String):hxmc.unsafe.Ptr
 		return helder.os.apple.objc.ObjC.str(s);

@@ -124,7 +124,7 @@ class GLBackend {
 	var frameTarget = 0;
 	var framed = false;
 	// the window's frames render only into targets, nothing to swap (the
-	// system's layers are drawn from them after: helder.ui.draw.ScLayers)
+	// system's layers are drawn from them after: helder.ui.layers.android.Layers)
 	public var quiet = false;
 	// (imageTexture's: textures on a buffer of the system's, fenced, not finished)
 	final fenced = new Map<Int, Bool>();
@@ -1023,7 +1023,7 @@ class GLBackend {
 
 	// ---- a buffer of the system's as a render target (Android's
 	// AHardwareBuffer through EGL_ANDROID_get_native_client_buffer:
-	// helder.ui.draw.ScLayers), its frames fenced, not finished
+	// helder.ui.layers.android.Layers), its frames fenced, not finished
 
 	#if (hxmc.target != "wasm32-wasi")
 	// the EGL display, and an extension's function (nil: none)
@@ -1088,7 +1088,7 @@ class GLBackend {
 
 	// frameInto's texture's x, y, w x h read into dst (rows of stride
 	// bytes, top to bottom, at their place): a buffer of the system's in
-	// memory (helder.ui.draw.WlLayers' wl_shm)
+	// memory (helder.ui.layers.linux.Layers' wl_shm)
 	public function readInto(x:Int, y:Int, w:Int, h:Int, dst:Ptr, stride:Int) {
 		use();
 		beginPass({colors: [{load: Load}]});

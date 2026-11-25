@@ -5,8 +5,8 @@
 import helder.syntax.Document;
 import helder.ui.*;
 import helder.ui.code.CodeEditor;
-import helder.ui.draw.UiWindow;
-import helder.ui.draw.UiWindow.Surface;
+import helder.ui.UiWindow;
+import helder.ui.UiWindow.Surface;
 import helder.view.*;
 
 // A code editor (helder.ui.code.CodeEditor) on a TSX file: the file given

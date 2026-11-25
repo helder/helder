@@ -4,7 +4,7 @@ import helder.os.*;
 import helder.ui.*;
 import helder.ui.draw.*;
 
-// Wayland's system layers (helder.ui.draw.WlLayers, subsurfaces) in a
+// Wayland's system layers (helder.ui.layers.linux.Layers, subsurfaces) in a
 // real window under a headless weston (the wayland lane, tests/os/wayland.sh;
 // its kiosk shell, the output the window's size: the window at its corner): a list with a system layer in a row, a rounded scroller, a
 // square box that moves. A finger flings the list and the program blocks
@@ -47,7 +47,7 @@ class WaylandLayersWindow {
 			Sys.exit(2);
 		}
 		sys.FileSystem.createDirectory(dir);
-		var w = new UiWindow("WaylandLayersWindow", 400, 300);
+		var w = new helder.ui.UiWindow("WaylandLayersWindow", 400, 300);
 		var root = w.root;
 		root.style.set({direction: Column, background: 0xFFFFFFFF});
 		var header = new Node();
@@ -90,7 +90,7 @@ class WaylandLayersWindow {
 		mover.style.transition = Transition.parse("transform 1.5s linear");
 		root.append(mover);
 		var c = w.compositor;
-		var layers = c == null ? null : c.layers, wl = layers == null ? null : Std.downcast(layers, WlLayers);
+		var layers = c == null ? null : c.layers, wl = layers == null ? null : Std.downcast(layers, helder.ui.layers.linux.Layers);
 		strict = mode != "stall";
 		say('start: $mode, compositor ${c != null}, system layers ${layers != null}');
 		if (c == null || mode != "textured" && wl == null) {
@@ -231,7 +231,7 @@ class WaylandLayersWindow {
 						var was = strict;
 						strict = mode == "layers";
 						var units = @:privateAccess layers.units;
-						var scrolls = [for (u in units) if (u.kind == LayerPlane.SCROLL) u], movers = [for (u in units) if (u.kind == LayerPlane.MOVER) u];
+						var scrolls = [for (u in units) if (u.kind == helder.ui.layers.LayerPlane.SCROLL) u], movers = [for (u in units) if (u.kind == helder.ui.layers.LayerPlane.MOVER) u];
 						check("the list on a layer of its own", Lambda.exists(scrolls, u -> u.key == list), '${units.length} units, ${scrolls.length} scrollers\', the rest drawn: ${layers.reasons}');
 						check("the rounded scroller drawn", !Lambda.exists(scrolls, u -> u.key == round), "rounds false");
 						strict = was;
@@ -261,7 +261,7 @@ class WaylandLayersWindow {
 				case 4 if (step - at >= 3 && (c.due() >= 0 || step - at > 60)):
 					blocked("an animation", () -> {});
 					if (live()) {
-						var was = strict, movers = [for (u in @:privateAccess layers.units) if (u.kind == LayerPlane.MOVER) u];
+						var was = strict, movers = [for (u in @:privateAccess layers.units) if (u.kind == helder.ui.layers.LayerPlane.MOVER) u];
 						strict = mode == "layers";
 						check("the box on a layer of its own while it moves", movers.length == 1, '${movers.length} movers\'');
 						strict = was;
@@ -390,7 +390,7 @@ class WaylandLayersWindow {
 		return png;
 	}
 
-	static function touch(w:UiWindow, kind:helder.os.Event.EventKind, x:Float, y:Float, ms:Float) {
+	static function touch(w:helder.ui.UiWindow, kind:helder.os.Event.EventKind, x:Float, y:Float, ms:Float) {
 		var e = new helder.os.Event(), p = @:privateAccess new Pointer(1), s = w.window.scale;
 		@:privateAccess {
 			p.type = Touch;

@@ -161,7 +161,7 @@ adb shell am force-stop $gid
 
 # helder.ui's accessibility (tests/ui/AndroidAccessCheck.hx: AccessFixture's
 # controls): the window's tree as uiautomator reads it (the content view's
-# virtual views, AndroidAccess's AccessibilityNodeProvider), each control
+# virtual views, android.Access's AccessibilityNodeProvider), each control
 # with its class, text or description and states.
 aid=org.helder.androidaccesscheck
 "$helder" build tests/ui/AndroidAccessCheck.hx --target android-x86_64 -o "$out/AndroidAccessCheck.apk"

@@ -7,14 +7,14 @@ import helder.gfx.d3d11.DComp;
 import helder.os.windows.Com;
 import helder.ui.ImageFit;
 import helder.ui.LayerSlot;
-import helder.ui.draw.DcLayers;
-import helder.ui.draw.UiWindow;
+import helder.ui.layers.windows.Layers;
+import helder.ui.UiWindow;
 import hxmc.unsafe.*;
 
 // A video shown by Windows' compositor (SampleLayer's on Windows, in a
-// window of system layers: helder.ui.draw.DcLayers): a DirectComposition
-// surface of the picture's size (as DcLayers' own layers are), the content
-// of a visual under the node's slot (DcLayers.visualFor), scaled and
+// window of system layers: helder.ui.layers.windows.Layers): a DirectComposition
+// surface of the picture's size (as Layers' own layers are), the content
+// of a visual under the node's slot (Layers.visualFor), scaled and
 // centred as fit says, cut by the slot's clip. Each frame is drawn into it
 // and committed as it falls due on the player's clock, so DWM shows it at
 // its next composition and helder draws nothing for it. The frame is
@@ -24,7 +24,7 @@ import hxmc.unsafe.*;
 // frame was presented the node draws them (showing). null where the window
 // has no system layers or before they showed a frame.
 @:hxmc.unsafe(gc)
-@:access(helder.ui.draw.DcLayers)
+@:access(helder.ui.layers.windows.Layers)
 class WinLayer {
 	public final slot:LayerSlot;
 	public var fit:ImageFit = Contain;
@@ -32,7 +32,7 @@ class WinLayer {
 	public var showing(default, null) = false;
 
 	final owner:VideoNode;
-	final layers:DcLayers;
+	final layers:Layers;
 	final device:helder.gfx.Device;
 	// (the render thread's: the visual in the slot's, its surface, its size)
 	var inner = Ptr.nil();
@@ -46,16 +46,16 @@ class WinLayer {
 	public static function make(owner:VideoNode):Null<WinLayer> {
 		var p = owner.player, ui = owner.ui;
 		if (p == null || p.video == null || ui == null) return null;
-		var layers:Null<DcLayers> = null;
+		var layers:Null<Layers> = null;
 		for (w in @:privateAccess UiWindow.open)
-			if (w.ui == ui && w.compositor != null) layers = Std.downcast(w.compositor.layers, DcLayers);
+			if (w.ui == ui && w.compositor != null) layers = Std.downcast(w.compositor.layers, Layers);
 		if (layers == null || layers.frames == 0) return null;
 		var v = layers.visualFor();
 		if (v.isNull()) return null;
 		return new WinLayer(owner, layers, v);
 	}
 
-	function new(owner:VideoNode, layers:DcLayers, visual:Ptr) {
+	function new(owner:VideoNode, layers:Layers, visual:Ptr) {
 		this.owner = owner;
 		this.layers = layers;
 		device = layers.device;
@@ -114,7 +114,7 @@ class WinLayer {
 		drop(visual, dc);
 		Arena.scoped(a -> {
 			var out:Ptr<Ptr> = a.alloc(8);
-			// (premultiplied, as DcLayers' layers are: every pixel opaque)
+			// (premultiplied, as Layers' layers are: every pixel opaque)
 			var hr = IDCompositionDevice.CreateSurface(dc, w, h, D3D.FORMAT_R8G8B8A8_UNORM, D3D.ALPHA_MODE_PREMULTIPLIED, out);
 			if (hr < 0) {
 				Sys.println('helder.media: no surface for the video\'s layer (CreateSurface 0x${StringTools.hex(hr, 8)})');
@@ -205,7 +205,7 @@ class WinLayer {
 	}
 
 	// (the visual out of the slot's and the surface let go; the slot's
-	// visual a second later, once DcLayers' commit no longer names it)
+	// visual a second later, once Layers' commit no longer names it)
 	public function dispose() {
 		var visual = slot.handle, dc = layers.dev, d = device;
 		d.inOrder(_ -> drop(visual, dc));

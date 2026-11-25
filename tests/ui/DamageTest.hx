@@ -310,8 +310,8 @@ class DamageTest {
 		check('scale $scale: a scroll offset set by the program, its tiles drawn again at rest', off == 0, '$off pixels differ$first');
 	}
 
-	// (the system layers' buffers drawn only where they changed (LayerPlane:
-	// cut, as CaLayers and ScLayers draw them) against drawn whole: two
+	// (the system layers' buffers drawn only where they changed (helder.ui.layers.LayerPlane:
+	// cut, as apple.Layers and android.Layers draw them) against drawn whole: two
 	// stacks given the same changes, the window's layer of each drawn from
 	// its compositor's frame onto its frame, one whole each frame, the other
 	// its last frame loaded and only the rectangles that changed drawn over
@@ -583,12 +583,12 @@ class Sidebar {
 typedef Made = {ui:Ui, scrollers:Array<Node>, rows:Array<Node>, card:Node, field:TextField, popup:Popup, title:TextNode};
 
 // (a window's stack as the system layers see it: its program's frames
-// composed (Compositor), split (LayerSplit), the window's layer drawn
+// composed (helder.ui.layers.Compositor), split (helder.ui.layers.LayerSplit), the window's layer drawn
 // onto the frame from them, whole or only where it changed)
-@:access(helder.ui.draw.LayerSplit)
-@:access(helder.ui.draw.LayerPlane)
-@:access(helder.ui.draw.CompositeFrame)
-@:access(helder.ui.draw.Compositor)
+@:access(helder.ui.layers.LayerSplit)
+@:access(helder.ui.layers.LayerPlane)
+@:access(helder.ui.layers.CompositeFrame)
+@:access(helder.ui.layers.Compositor)
 @:access(helder.ui.draw.Renderer)
 class PlaneStack {
 	public final w:Int;
@@ -596,7 +596,7 @@ class PlaneStack {
 	public final pixels:Bytes;
 	final device:Device;
 	final r:Renderer;
-	final c:Compositor;
+	final c:helder.ui.layers.Compositor;
 	final ui:Ui;
 	final split = new PlaneSplit();
 	final title = new TextNode("Header");
@@ -635,7 +635,7 @@ class PlaneStack {
 			list.append(row);
 		}
 		ui.root.append(list);
-		c = new Compositor(device);
+		c = new helder.ui.layers.Compositor(device);
 	}
 
 	public function change(op:Int, j:Int, f:Int) {
@@ -689,12 +689,12 @@ class PlaneStack {
 		return drawn;
 	}
 
-	// (its quads onto the frame, as ScLayers draws them into a buffer)
-	function draw(f:CompositeFrame, p:LayerPlane, parts:Bool) {
+	// (its quads onto the frame, as android.Layers draws them into a buffer)
+	function draw(f:helder.ui.layers.CompositeFrame, p:helder.ui.layers.LayerPlane, parts:Bool) {
 		var bytes = parts ? p.cutBytes : p.bytes, len = parts ? p.cutLen : p.len;
 		if (buffer == null || room < len) {
 			if (buffer != null) device.destroyBuffer(buffer);
-			room = len * 2 + CompositeFrame.STRIDE;
+			room = len * 2 + helder.ui.layers.CompositeFrame.STRIDE;
 			buffer = device.createBuffer({size: room, usage: Vertex});
 		}
 		device.writeBuffer(buffer, 0, bytes, 0, len);
@@ -709,14 +709,14 @@ class PlaneStack {
 			enc.setTexture(f.imageSlot, f.blank, f.sampler);
 			enc.setVertexBuffer(1, buffer, 0);
 			enc.drawIndexed(6, p.clears);
-			from = p.clears * CompositeFrame.STRIDE;
+			from = p.clears * helder.ui.layers.CompositeFrame.STRIDE;
 		}
 		enc.setPipeline(f.pipeline);
 		var runs = parts ? p.cutRuns : p.runs, textures = parts ? p.cutTextures : p.runTextures, k = 0;
 		while (k < runs.length) {
 			var t = textures[k >> 1];
 			enc.setTexture(f.imageSlot, t == null ? f.blank : t, f.sampler);
-			enc.setVertexBuffer(1, buffer, from + runs[k] * CompositeFrame.STRIDE);
+			enc.setVertexBuffer(1, buffer, from + runs[k] * helder.ui.layers.CompositeFrame.STRIDE);
 			enc.drawIndexed(6, runs[k + 1]);
 			k += 2;
 		}
@@ -730,11 +730,11 @@ class PlaneStack {
 	}
 }
 
-// (the split alone: its layers LayerPlane's own, nothing of a system's)
-private class PlaneSplit extends LayerSplit {
+// (the split alone: its layers helder.ui.layers.LayerPlane's own, nothing of a system's)
+private class PlaneSplit extends helder.ui.layers.LayerSplit {
 	public function new()
-		super(new LayerPlane(LayerPlane.BASE, null));
+		super(new helder.ui.layers.LayerPlane(helder.ui.layers.LayerPlane.BASE, null));
 
-	override function plane(kind:Int, key:Dynamic):LayerPlane
-		return new LayerPlane(kind, key);
+	override function plane(kind:Int, key:Dynamic):helder.ui.layers.LayerPlane
+		return new helder.ui.layers.LayerPlane(kind, key);
 }

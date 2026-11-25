@@ -4,7 +4,7 @@ import helder.canvas.Matrix;
 import helder.ui.motion.Track;
 
 // A node whose transform and opacity the compositor moves between the
-// program's frames (Layers' step 4b, helder.ui.draw.Compositor): one with a
+// program's frames (Layers' step 4b, helder.ui.layers.Compositor): one with a
 // layer of its own (its transform or opacity moving: a transition, a
 // spring, a tween, its presence), or a sticky node in a scroller. Taken on
 // the program's thread as its frame is drawn (of): each part of its

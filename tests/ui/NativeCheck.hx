@@ -11,7 +11,7 @@ import helder.ui.widgets.TextField;
 // Elsewhere (no native fields) skipped.
 @:hxmc.unsafe(gc)
 class NativeCheck {
-	public static function run(w:UiWindow, list:Node) {
+	public static function run(w:helder.ui.UiWindow, list:Node) {
 		var c = w.compositor;
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
 		if (c == null || !Inject.supported) {
@@ -73,7 +73,7 @@ class NativeCheck {
 
 	// (the field's top in the window's layout pixels; null: hidden)
 	static function frameTop(f:TextField):Null<Float> @:privateAccess {
-		var e:helder.ui.platform.WinViews.WinEditor = cast f.editor;
+		var e:helder.ui.platform.windows.Views.WinEditor = cast f.editor;
 		if (e == null) return null;
 		var k = e.views.scale();
 		return OsThread.get(() -> {
@@ -93,7 +93,7 @@ class NativeCheck {
 
 	// (the field's top in the window's points, y down; null: hidden)
 	static function frameTop(f:TextField):Null<Float> @:privateAccess {
-		var e:helder.ui.platform.MacViews.MacEditor = cast f.editor;
+		var e:helder.ui.platform.apple.MacViews.MacEditor = cast f.editor;
 		if (e == null) return null;
 		return OsThread.get(() -> {
 			var v = e.field, c = e.views.content();

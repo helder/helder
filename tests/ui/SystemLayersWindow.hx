@@ -5,7 +5,7 @@ import helder.ui.platform.WebView;
 import helder.ui.widgets.TextField;
 import sys.io.File;
 
-// The system's layers in a real window (helder.ui.draw.CaLayers; macOS,
+// The system's layers in a real window (helder.ui.layers.apple.Layers; macOS,
 // bun run test ui-draw): one scene run twice on a clock of its own (each
 // frame a 60th of a second, so both runs draw the same frames), once
 // composited by Core Animation and once by the textured compositor
@@ -176,10 +176,10 @@ class SystemLayersWindow {
 		var frame = 0;
 		var clock = () -> 1000 + frame / 60;
 		if (dir != null) {
-			UiWindow.clock = clock;
+			helder.ui.UiWindow.clock = clock;
 			Ui.now = clock;
 		}
-		var w = new UiWindow("SystemLayersWindow", 400, 300);
+		var w = new helder.ui.UiWindow("SystemLayersWindow", 400, 300);
 		w.root.style.set({direction: Row, background: 0xFFF4F4F4});
 		var list = new Node();
 		list.style.set({overflow: Scroll, width: 240, height: 300, rowGap: 2, padding: 4, background: 0xFFFFFFFF, radius: rounded ? 10 : 0});
@@ -304,7 +304,7 @@ class SystemLayersWindow {
 	// Animation's layers present at once, the switch in a transaction; once
 	// still, the window captured and its frame read back, which must match)
 	static function swap() {
-		var w = new UiWindow("SystemLayersWindow swap", 400, 300);
+		var w = new helder.ui.UiWindow("SystemLayersWindow swap", 400, 300);
 		w.root.style.set({direction: Row, background: 0xFFF4F4F5, fontSize: 13});
 		var side = new Node(), box = new Node();
 		side.style.set({width: 160, shrink: 0, padding: 8, rowGap: 10, overflow: Hidden});
@@ -407,7 +407,7 @@ class SystemLayersWindow {
 	// then the program busy past the wait for a step, the window's content
 	// kept at its top left meanwhile)
 	static function resize() {
-		var w = new UiWindow("SystemLayersWindow resize", 400, 300);
+		var w = new helder.ui.UiWindow("SystemLayersWindow resize", 400, 300);
 		w.root.style.set({direction: Row, background: 0xFFF4F4F5});
 		var list = new Node(), side = new Node(), mark = new Node();
 		list.style.set({overflow: Scroll, width: 160, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
@@ -528,7 +528,7 @@ class SystemLayersWindow {
 		});
 	}
 
-	static function loaded(w:UiWindow):Bool {
+	static function loaded(w:helder.ui.UiWindow):Bool {
 		var found = true;
 		function walk(n:Node) {
 			if (Std.isOfType(n, WebView)) {
@@ -548,7 +548,7 @@ class SystemLayersWindow {
 	// own, a scroller, a native field and a system layer in it; frames
 	// drawn for a second, Core Animation handed none of its NaN)
 	static function lost() {
-		var w = new UiWindow("SystemLayersWindow NaN", 300, 200);
+		var w = new helder.ui.UiWindow("SystemLayersWindow NaN", 300, 200);
 		w.root.style.set({background: 0xFFF4F4F4});
 		var fine = new Node();
 		fine.style.set({overflow: Scroll, height: 150, background: 0xFFFFFFFF});
@@ -602,7 +602,7 @@ class SystemLayersWindow {
 
 	// (s seconds of a steady scroll, or of a layer moving on its own (anim):
 	// the process's CPU time, its GPU time, WindowServer's CPU time)
-	static function time(w:UiWindow, list:Node, mover:Node, s:Float, anim:Bool) {
+	static function time(w:helder.ui.UiWindow, list:Node, mover:Node, s:Float, anim:Bool) {
 		var t0 = 0.0, cpu0 = 0.0, gpu0 = 0.0, ws0 = 0.0, frames = 0, step = 0;
 		var mb = () -> {
 			var v = 0.0;
@@ -662,7 +662,7 @@ class SystemLayersWindow {
 	}
 
 	// (the window's content, its pixels as the display shows them, into dir/name.raw)
-	static function capture(w:UiWindow, dir:String, name:String) {
+	static function capture(w:helder.ui.UiWindow, dir:String, name:String) {
 		w.device.settle();
 		// (what was committed on the screen: the window server shows it a frame or two later)
 		Sys.sleep(0.15);

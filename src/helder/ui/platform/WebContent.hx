@@ -46,7 +46,7 @@ class WebContent {
 	public var local = #if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64" || hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64") true #else false #end;
 	var server:Null<WebServer> = null;
 	// (WebServer's POSTs to /__helder/post: a bridge's messages, on its threads)
-	@:allow(helder.ui.platform) var onPost:Null<String->Void> = null;
+	@:allow(helder.ui) var onPost:Null<String->Void> = null;
 
 	final serve:String->Null<WebResponse>;
 	// bytes posted to the page (WebView.postBytes): fetched once from /__helder/bytes/<id>
@@ -162,7 +162,7 @@ class WebContent {
 	}
 
 	// (WebView.postBytes) bytes kept for the page to fetch once: their path
-	@:allow(helder.ui.platform) function keep(b:Bytes):String {
+	@:allow(helder.ui) function keep(b:Bytes):String {
 		lock.acquire();
 		var id = nextPosted++;
 		posted.set(id, b);

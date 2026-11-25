@@ -67,7 +67,7 @@ class AndroidWindow {
 	@:allow(helder.os.android) static var textContextHook:Null<(text:String, start:Int, end:Int) -> Void> = null;
 	@:allow(helder.os.android) static var textEvents:Null<((kind:EventKind, text:String, a:Int, b:Int) -> Void)->Void> = null;
 	// what else hands the program's thread its events at each pump (a web
-	// view's, helder.ui.platform.AndroidWebView: woken by MainThread.wake)
+	// view's, helder.ui.platform.android.AndroidWebView: woken by MainThread.wake)
 	public static final pumped:Array<Void->Void> = [];
 	// a pad's keys and motion (Gamepads, once enabled: AndroidGamepads); a
 	// key it takes is no UI key (true: handled)
@@ -465,7 +465,7 @@ class AndroidWindow {
 
 	// (the UI thread's, as Activity.onInput copied record r: its pointers
 	// routed to the window's compositor at once, so that scrolling goes on
-	// while the program is busy (helder.ui.draw.Compositor), the answers
+	// while the program is busy (helder.ui.layers.Compositor), the answers
 	// kept in the record for the program's events of it (send). Pointers of
 	// its own, by the system's ids: Pointers' slots are the program's,
 	// filled as it takes each record)

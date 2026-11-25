@@ -3,7 +3,7 @@ import helder.os.*;
 import helder.ui.*;
 import helder.ui.draw.*;
 
-// The compositor's scrolling in a real window (helder.ui.draw.Compositor;
+// The compositor's scrolling in a real window (helder.ui.layers.Compositor;
 // bun run test ui-draw; Linux: Xvfb, and weston for Wayland): a list of
 // 300 rows flung by a finger, then the program blocked for 300 ms, scroll
 // input injected meanwhile where the main thread reads it (Inject): the
@@ -27,7 +27,7 @@ class AsyncScrollWindow {
 
 	static function main() {
 		var a = Sys.args(), l = a.indexOf("--latency"), k = a.indexOf("--work"), p = a.indexOf("--pace");
-		var w = new UiWindow("AsyncScrollWindow", 400, 300);
+		var w = new helder.ui.UiWindow("AsyncScrollWindow", 400, 300);
 		var list = new Node();
 		list.style.set({overflow: Scroll, height: 300, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
 		for (i in 0...300) {
@@ -128,7 +128,7 @@ class AsyncScrollWindow {
 		}, e -> w.handle(e));
 	}
 
-	static function touch(w:UiWindow, kind:helder.os.Event.EventKind, x:Float, y:Float, ms:Float) {
+	static function touch(w:helder.ui.UiWindow, kind:helder.os.Event.EventKind, x:Float, y:Float, ms:Float) {
 		var e = new helder.os.Event(), p = @:privateAccess new Pointer(1), s = w.window.scale;
 		@:privateAccess {
 			p.type = Touch;

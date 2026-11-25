@@ -1,5 +1,5 @@
 import helder.ui.*;
-import helder.ui.draw.UiWindow;
+import helder.ui.UiWindow;
 
 // The browser as the compositor (web-layers.mjs: wasm32-wasi in headless
 // Chromium): a 400x300 window, a header over a list of 60 rows (its

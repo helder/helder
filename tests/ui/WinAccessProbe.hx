@@ -532,7 +532,7 @@ class WinAccessProbe {
 		var saw = [for (k in 0...11) seen(k)];
 		// (the focus's handler gets ours; the scoped ones, property, structure
 		// and automation events under the window's element, get none on
-		// CI's Windows though WinAccess raises them, each S_OK: AccessApp's
+		// CI's Windows though windows.Access raises them, each S_OK: AccessApp's
 		// log; their counts printed, an open question)
 		if (events) {
 			check("events: the focus changed", saw[0] > 0, saw.join(","));

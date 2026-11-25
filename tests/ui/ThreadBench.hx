@@ -1,5 +1,5 @@
 import helder.ui.*;
-import helder.ui.draw.UiWindow;
+import helder.ui.UiWindow;
 
 // The program on the page's thread against the program in a worker
 // (thread-bench.mjs): a 480x360 window of 200 rows, a dot following the

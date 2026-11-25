@@ -14,7 +14,7 @@ import helder.ui.draw.*;
 // frames (HELDER_ASYNC_SCROLL=0: the synchronous path's); on a display
 // kept awake (caffeinate -d on macOS), its presents waiting for the vsync.
 class Pacing {
-	public static function run(w:UiWindow, pace:Float, work:Float):Int {
+	public static function run(w:helder.ui.UiWindow, pace:Float, work:Float):Int {
 		var spin = new Node();
 		spin.style.set({position: Absolute, left: 120, top: 90, width: 90, height: 60, radius: 10, background: 0xFF2A7AE2});
 		spin.style.transform = Transform.parse("translate(0px, 0px) rotate(0deg)");

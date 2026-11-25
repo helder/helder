@@ -1,7 +1,7 @@
 package helder.ui;
 
 // Where a Ui's widgets copy text to and paste it from (Ui.clipboard): the
-// system's in a window (helder.ui.draw.UiWindow), a MemoryClipboard otherwise.
+// system's in a window (helder.ui.UiWindow), a MemoryClipboard otherwise.
 // read may answer later (X11, the browser): the callback gets the text, or
 // null when there is none.
 interface ClipboardHost {

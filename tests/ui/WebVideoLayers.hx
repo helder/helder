@@ -1,6 +1,6 @@
 import helder.media.ui.VideoNode;
 import helder.ui.*;
-import helder.ui.draw.UiWindow;
+import helder.ui.UiWindow;
 
 // A video between the browser's layers (web-video-layers.mjs: wasm32-wasi
 // in headless Chromium): a 400x300 window, a <Video> of long.webm on its

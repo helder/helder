@@ -1,5 +1,5 @@
 import helder.ui.*;
-import helder.ui.draw.UiWindow;
+import helder.ui.UiWindow;
 
 // The browser's scroll views driving the scrollers (web-scroll.mjs:
 // wasm32-wasi in headless Chromium): a 400x300 window whose page scrolls

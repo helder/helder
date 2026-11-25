@@ -1,6 +1,6 @@
 import haxe.io.Bytes;
 import helder.asset.Asset;
-import helder.ui.draw.UiWindow;
+import helder.ui.UiWindow;
 import helder.ui.platform.*;
 import helder.ui.platform.PlatformWebView;
 import helder.ui.platform.WebContent;

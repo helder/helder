@@ -1,6 +1,6 @@
 import helder.os.*;
 import helder.os.linux.wayland.WaylandWindow;
-import helder.ui.draw.UiWindow;
+import helder.ui.UiWindow;
 import hxmc.unsafe.*;
 
 // helder.os on Wayland (`bun run test wayland`: under a headless weston,

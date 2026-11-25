@@ -29,7 +29,7 @@ import helder.pack.android.Dex;
 //   code and the action; handled when non-zero).
 // - org.hxmc.AccessProvider and org.hxmc.AccessDelegate: an
 //   AccessibilityNodeProvider and a View.AccessibilityDelegate whose
-//   methods are natives (helder.ui.draw.AndroidAccess registers them): a
+//   methods are natives (helder.ui.access.android.Access registers them): a
 //   drawn window's accessibility tree as the content view's virtual views.
 // - org.hxmc.WebClient(int id), org.hxmc.WebChrome(int id): a
 //   WebViewClient and a WebChromeClient whose callbacks call their static
@@ -46,7 +46,7 @@ import helder.pack.android.Dex;
 // - org.hxmc.WebBridge(int id): the object a page reaches as a JavaScript
 //   interface, its post(String) @JavascriptInterface calling the static
 //   native post(id, message), on the WebView's JavaBridge thread
-//   (helder.ui.platform.AndroidWebView).
+//   (helder.ui.platform.android.AndroidWebView).
 // - org.hxmc.Editor(Context): a View that is a text editor
 //   (onCheckIsTextEditor), never drawn, the input method's for a drawn field
 //   (helder.os.android.TextInput): its onCreateInputConnection (the field's
@@ -246,7 +246,7 @@ class Glue {
 		};
 
 	// org.hxmc.AccessProvider: an AccessibilityNodeProvider whose methods are
-	// natives (helder.ui.draw.AndroidAccess's): a drawn window's nodes as
+	// natives (helder.ui.access.android.Access's): a drawn window's nodes as
 	// virtual views
 	static function accessProvider():DexClass
 		return {

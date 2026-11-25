@@ -1,7 +1,7 @@
 package helder.ui;
 
 // A platform's own scrollbars, drawn into the tree (Ui.scrollbarArt, with a
-// ScrollbarLook of the platform's: macOS's, helder.ui.draw.MacScrollbarArt):
+// ScrollbarLook of the platform's: macOS's, helder.ui.platform.apple.MacScrollbarArt):
 // their sizes, and their track and thumb drawn where the Ui places them. The
 // Ui keeps their state (where the thumb is, its fading, its drag).
 interface ScrollbarArt {
