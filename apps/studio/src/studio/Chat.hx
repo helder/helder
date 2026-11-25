@@ -29,6 +29,7 @@ class Chat implements Markup {
 			<scroll tag="chat-log" grow={1} min-height={0} padding="18 18 8" row-gap={14} font-size={Theme.CHAT_SIZE} color={c("ink2")}
 				ref={(n:Node) -> log = n}>
 				<For each={[for (i in 0...studio.talk.turns().length) i]}>{(i:Read<Int>) -> turn(studio, i())}</For>
+				<For each={studio.marks.changes().filter(c -> c.turn < 0)} by={(c:Marks.Changed) -> c.id}>{(c:Read<Marks.Changed>) -> change(studio, c)}</For>
 				<For each={studio.questions.all().filter(q -> q.turn < 0)} by={(q:Questions.Question) -> q.id}>{(q:Read<Questions.Question>) -> Asks.card(studio, q)}</For>
 			</scroll>
 			<view padding="12 14 14" row-gap={8} shrink={0}>
@@ -109,11 +110,23 @@ class Chat implements Markup {
 				</view>
 			</Show>
 			<Show when={t().build != null || t().error != null}>{failure(studio, t)}</Show>
+			<For each={studio.marks.changes().filter(c -> c.turn == i)} by={(c:Marks.Changed) -> c.id}>{(c:Read<Marks.Changed>) -> change(studio, c)}</For>
 			<Show when={t().ask != null}>{card(studio, t)}</Show>
 			<For each={studio.questions.all().filter(q -> q.turn == i)} by={(q:Questions.Question) -> q.id}>{(q:Read<Questions.Question>) -> Asks.card(studio, q)}</For>
 			<For each={studio.inbox.notes().filter(n -> n.turn == i && n.kind == "direction")} by={(n:Inbox.Note) -> n.id}>{(n:Read<Inbox.Note>) -> note(n)}</For>
 		</view>;
 	}
+
+	// an agent's edits of a file: "Changed app.helder · Undo" (Undo while its last is the one undo takes)
+	static function change(studio:Studio, x:Read<Marks.Changed>):View
+		return <view tag={"chat-change-" + x().id} direction="row" align-items="center" column-gap={6} font-size={12} color={c("ink3")}>
+			<view width={6} height={6} radius={3} shrink={0} background={Color.parse(x().colour)}/>
+			<text min-width={0} shrink={1} max-lines={1} text-overflow="ellipsis">{'${x().by} changed ${x().file}' + (x().count > 1 ? ' (${x().count} edits)' : "")}</text>
+			<Show when={x().entry != null && studio.docs.nextUndo() == x().entry}>
+				<text shrink={0}>·</text>
+				<text tag="chat-change-undo" shrink={0} color={c("ink")} cursor="pointer" onClick={_ -> studio.undo()}>Undo</text>
+			</Show>
+		</view>;
 
 	// the reply's Markdown, kept as it streams (MarkdownView.update), its chips the studio's
 	static function reply(studio:Studio, t:Void->Turn):MarkdownView {

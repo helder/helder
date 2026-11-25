@@ -373,6 +373,7 @@ class Studio {
 		if (key != playRect && (playRect = key) != "")
 			log("player", {rect: [r.x, r.y, r.width, r.height], stage: [stageWidth, stageHeight], compact: compactNow});
 		showVisible();
+		if (marks.anyFresh()) marks.inView(layout.inView());
 		designs.follow(openedAt > 0 ? openedAt : startedAt);
 		if (coverPath != null && !covering) cover(coverPath);
 	}
