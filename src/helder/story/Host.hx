@@ -21,9 +21,10 @@ import helder.view.Render;
 // focused one (focus: the screen zoomed into) draws every frame; the
 // others when something in them changed (their Ui asks for a frame, their
 // clock animates). A screen hidden is suspended (its clock and timers
-// stop) and keeps its last frame where it was shown (the studio's), and a
-// screen never shown is never built: a project of fifty screens builds the
-// ones in view.
+// stop) and keeps its last frame where it was shown (the studio's). A
+// screen out of view is built and drawn once all the same, one a turn while
+// nothing in view draws (a still drawn again when it changes): every screen
+// has a frame to show, snap or keep, none of them waited on in view.
 //
 // Stills (stills: the studio's canvas, a storyboard): each screen built is
 // brought to its moment (Stories.settle: its Controls.play, its transitions)
@@ -88,6 +89,7 @@ class Host {
 			var on = names.contains(s.name);
 			if (on && !s.visible) s.redraw = true;
 			s.visible = on;
+			if (on) s.seen = true;
 			s.context.suspended = !on;
 		}
 	}
@@ -163,8 +165,21 @@ class Host {
 				drawn++;
 			}
 		}
-		return drawn;
+		if (drawn > 0) return drawn;
+		for (s in screens)
+			if (aside(s)) {
+				s.mount();
+				var ui = s.ui, v = s.version;
+				if (ui != null) s.context.run(() -> ui.update());
+				draw(s, true);
+				return s.version > v ? 1 : 0;
+			}
+		return 0;
 	}
+
+	// (out of view: never drawn, or a still that changed; not the looping one)
+	function aside(s:HostScreen):Bool
+		return !s.visible && s != looping && (s.version == 0 || stills && (s.ui == null || s.redraw || s.ui.needsFrame));
 
 	// a screen's frame as data (FrameWriter's: the studio's stills, its
 	// frames file), on the host's background as drawn; null: not built
@@ -203,7 +218,7 @@ class Host {
 	// whether anything shown would draw in the next turn (else the loop may sleep until the next event or timer)
 	public function busy():Bool {
 		for (s in screens)
-			if (s.visible && (s.ui == null || s.redraw || s.ui.needsFrame || runs(s) && (s == focused || s.context.animating))) return true;
+			if (s.visible && (s.ui == null || s.redraw || s.ui.needsFrame || runs(s) && (s == focused || s.context.animating)) || aside(s)) return true;
 		return false;
 	}
 
@@ -266,6 +281,8 @@ class HostScreen {
 	public var ui(default, null):Null<Ui> = null;
 	public var controls(default, null):Null<Controls> = null;
 	public var visible = false;
+	// whether it was ever in view (its state kept across a reload: built again before the first frame)
+	public var seen = false;
 	// its frames' pixels per point (the host's, or its focus's)
 	public var scale:Float;
 	// frames drawn

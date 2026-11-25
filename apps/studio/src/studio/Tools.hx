@@ -347,9 +347,9 @@ class Tools implements Mcp.Target {
 			};
 		}
 		var s = screenOf(args.screen);
+		#if (hxmc.target == "wasm32-wasi")
 		var img = s.image.peek();
 		if (img == null) throw '${s.info.name} has no frame yet';
-		#if (hxmc.target == "wasm32-wasi")
 		// (a frame of the preview host's is the browser's: its bitmap, the page's to make a PNG of)
 		if (!img.hasPixels) return {
 			content: [
@@ -361,9 +361,9 @@ class Tools implements Mcp.Target {
 		var out = "(not written)";
 		var png = helder.image.PngEncoder.encode(img.pixels, img.width, img.height, true);
 		#else
-		// (a texture the host shares: read back there)
-		img = studio.previews.pixels(s);
-		if (img == null) throw '${s.info.name}: its frame could not be read';
+		// (a texture the host shares: read back there; a frame on its way, out of view or a build's, waited for)
+		var img = studio.previews.pixels(s);
+		if (img == null) throw '${s.info.name} has no frame yet';
 		var png = helder.image.PngEncoder.encode(img.pixels, img.width, img.height, true);
 		var out = written(png, args.path, s.slug);
 		#end

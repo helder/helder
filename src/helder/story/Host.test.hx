@@ -9,7 +9,7 @@ import helder.view.View;
 // the studio's canvas of stills (Host.still): each screen brought to its
 // moment and left there, its clock not run; the hovered one's loop
 // (Host.loop) run from its moment, from it again after its loop, a still
-// again when let go
+// again when let go; a screen out of view drawn once, after those in view
 function tests() {
 	test("stills at their moments; the loop runs from it, again, and stops", () -> {
 		var ticks = 0;
@@ -42,5 +42,19 @@ function tests() {
 		host.frame(20);
 		host.frame(21);
 		equals(ticks, 123);
+	});
+	test("out of view: drawn once, after those in view", () -> {
+		var a = new Story("A", _ -> View.view(<view/>), 1, null, 100, 100);
+		var b = new Story("B", _ -> View.view(<view/>), 1, null, 100, 100);
+		var host = new Host([a, b], new HeadlessHost());
+		host.still(true);
+		host.show(["A"]);
+		equals(host.frame(0), 1);
+		equals([for (x in host.screens) x.version], [1, 0]);
+		equals(host.busy(), true);
+		equals(host.frame(1), 1);
+		equals([for (x in host.screens) x.version], [1, 1]);
+		equals(host.frame(2), 0);
+		equals(host.busy(), false);
 	});
 }

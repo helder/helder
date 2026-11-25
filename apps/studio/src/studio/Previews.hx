@@ -31,9 +31,10 @@ typedef Previews = studio.web.WebPreviews;
 // studio's socket speaking the devtools protocol, src/helder/dev/
 // README.md; HXMC_DEV_SNAPSHOT: its state across a rebuild). Every story
 // is mounted in it as a root of its own with a context of its own
-// (helder.ui.ScreenContext); only the screens in the canvas' view draw (the
-// one zoomed into every frame, at the canvas' scale), the others suspended
-// with their last frames here. Each frame is a GPU texture the host drew
+// (helder.ui.ScreenContext); the screens in the canvas' view draw (the
+// one zoomed into every frame, at the canvas' scale), the others once each
+// when nothing in view draws (a still again when it changes), suspended
+// with their last frames here; only those in view are waited on. Each frame is a GPU texture the host drew
 // and this process opens and composites as an image (helder.gfx's shared
 // textures: an IOSurface, a DXGI texture, a dma-buf; Image.ofShared, the
 // renderer's own texture handling), or where the GPU shares none
@@ -220,11 +221,22 @@ class Previews {
 	// whether every screen shows a frame (its still from the file counts,
 	// not a dimmed one: the program's on its way)
 	public function allShown():Bool
-		return !Lambda.exists(screens, s -> s.version == 0 && (s.still.peek() == null || s.stale.peek()) && !s.crashed) || failed;
+		return !Lambda.exists(screens, unshown) || failed;
 
-	// whether work is in flight (a build, a reload, screens not shown yet)
+	// whether work is in flight (a build, a reload, screens in view not
+	// shown yet: those out of view come when the host has drawn them, never waited on)
 	public function busy():Bool
-		return building || rebuilding || again || reloading || (!failed && !allShown());
+		return status.peek() == "starting" || building || rebuilding || again || reloading || (!failed && Lambda.exists(screens, s -> inView(s) && unshown(s)));
+
+	function unshown(s:Screen):Bool
+		return s.version == 0 && (s.still.peek() == null || s.stale.peek()) && !s.crashed;
+
+	function inView(s:Screen):Bool
+		return showWanted != null && showWanted.names.contains(s.info.name);
+
+	// (the screens in view reloaded: the others' frames come as the host draws them)
+	function reloaded()
+		if (!Lambda.exists(screens, x -> x.reloading && inView(x))) reloading = false;
 
 	// ms since the screens' program started (-1: none)
 	public function sinceHost():Float
@@ -476,18 +488,17 @@ class Previews {
 				c.answered(m);
 				continue;
 			}
-			switch (m.method : String) {
+			// (a message the studio could not take: said, the host kept, not ended with the connection)
+			try switch (m.method : String) {
 				case "Host.ready":
 					var list:Array<Dynamic> = m.params.screens;
 					order = [for (x in list) screen(x.name)];
 					sharing = m.params.sharing;
 					connection = c;
 					onLog('studio: the screens\' host is running (${order.length} screens, frames: $sharing)');
-					// (what is in view, told again: those draw; the others keep their last frames, suspended)
+					// (what is in view, told again: those draw first, the others after, once each)
 					if (showWanted != null) c.request("Host.show", {screens: showWanted.names, focused: showWanted.focused, scale: showWanted.scale, stills: stills, loop: looping}, _ -> {});
-					for (s in screens)
-						if (s.version > 0 && (showWanted == null || !showWanted.names.contains(s.info.name))) s.reloading = false;
-					if (!Lambda.exists(screens, x -> x.reloading)) reloading = false;
+					reloaded();
 				case "Host.frame":
 					frame(m.params);
 				case "Headless.frame":
@@ -498,7 +509,8 @@ class Previews {
 					for (s in screens)
 						s.patchedMs = m.params.ms;
 				case _:
-			}
+			} catch (e:haxe.Exception)
+				onLog('studio: the host\'s ${m.method} not taken: ${e.message}\n${e.stack}');
 		} catch (_:haxe.Exception) {}
 		if (connection == c) connection = null;
 		c.closed = true;
@@ -535,7 +547,8 @@ class Previews {
 		} else {
 			var next = Image.ofShared(handle, w, h);
 			if (img == null) s.image(next) else img.replace(next);
-			var shown = s.image.peek();
+			// (a signal's write lands at the event's end: two frames in one, the first not peeked yet)
+			var shown = img ?? next;
 			// (the target shown before: given back once the canvas drew this one twice, the GPU done with the old)
 			if (s.buffer != 0 && s.buffer != buffer) releasing.push({screen: index, buffer: s.buffer, img: shown, mark: shown.drawn, at: haxe.Timer.stamp()});
 			s.buffer = buffer;
@@ -558,7 +571,7 @@ class Previews {
 		s.reloading = false;
 		if (s.crashed) s.crashed = false;
 		if (first) s.shownAt = haxe.Timer.stamp();
-		if (!Lambda.exists(screens, x -> x.reloading)) reloading = false;
+		reloaded();
 		if (onFrame != null) onFrame(s);
 	}
 
@@ -644,6 +657,10 @@ class Previews {
 	// a build, then the host reloaded from its snapshot
 	@:coroutine public function rebuild(task:Node, changed:Array<String>):Bool {
 		if ((idle || first) && !woken()) return !failed;
+		// (the compiler still starting: an edit made as the program first starts)
+		while (service == null && status.peek() == "starting" && !stopping)
+			Async.delay(0.01);
+		if (service == null) return false;
 		// (one build at a time: the compiler's service is one; an edit during
 		// a build is built after it, every source told, and waits for it)
 		if (building || rebuilding) {
@@ -722,11 +739,11 @@ class Previews {
 	// a screen's last frame's pixels (the image's own; a texture's read back
 	// by the host: Host.snap), or null
 	@:coroutine public function pixels(s:Screen):Null<Image> {
-		// (drawn from the file: the program's frame waited for)
-		if (s.image.peek() == null && (idle || connection == null)) {
+		// (drawn from the file, out of view, a build's reload on its way: the program's frame waited for)
+		if (s.image.peek() == null || s.reloading) {
 			wake();
 			var t0 = haxe.Timer.stamp();
-			while (s.image.peek() == null && !failed && !stopping && haxe.Timer.stamp() - t0 < 120)
+			while ((s.image.peek() == null || s.reloading) && !s.crashed && !failed && !stopping && haxe.Timer.stamp() - t0 < 45)
 				Async.delay(0.02);
 		}
 		var img = s.image.peek();

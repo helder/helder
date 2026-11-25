@@ -53,14 +53,16 @@ class NativeHost {
 		HostAgent.onSnap = frames.snap;
 		// (the connection made and the hello sent first)
 		helder.dev.Hot.poll();
-		// (a reload: the screens the last build had built, built again before the first frame, so that
-		// their state comes back, shown or not; the snapshot keeps which)
+		// (a reload: the screens the last build had built and shown, built again before the first
+		// frame, so that their state comes back, in view or not; the snapshot keeps which)
 		var kept:Null<Array<String>> = helder.dev.Hot.load("helder.story.mounted", helder.dev.Hot.typeOf((_ : Array<String>)));
 		if (kept != null) for (n in kept) {
 			var s = host.screen(n);
-			if (s != null) s.mount();
+			if (s == null) continue;
+			s.seen = true;
+			s.mount();
 		}
-		helder.dev.Hot.onSnapshot(() -> helder.dev.Hot.save("helder.story.mounted", [for (s in host.screens) if (s.ui != null) s.name],
+		helder.dev.Hot.onSnapshot(() -> helder.dev.Hot.save("helder.story.mounted", [for (s in host.screens) if (s.ui != null && s.seen) s.name],
 			helder.dev.Hot.typeOf((_ : Array<String>))));
 		helder.dev.Agent.notify("Host.ready", {screens: HostAgent.list(host), sharing: frames.sharing(host.device)});
 		// (a still's frames: written once it settled, not each it drew on its way)
