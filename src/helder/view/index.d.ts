@@ -86,6 +86,10 @@ export declare class View {
 // options of a signal and a memo
 export type NodeOptions<T> = { equals?: (arg0: T, arg1: T) => boolean; unobserved?: () => void; ownedWrite?: boolean };
 
+// a root's content (Root): a literal expected as one holds components only,
+// a component returning one is a root (<Surface>), no renderer's markup
+export type RootView = unknown;
+
 // Mounting content: render and insert go to the runtime (ViewRuntime) of the
 // renderer whose nodes parent is, chosen by its type when compiling (its
 // class's @:rendered, HostMacro.rendererOf); what is mounted there is made

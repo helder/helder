@@ -15,7 +15,8 @@ package helder.ui;
 @:typescript.classes(helder.ui.controls.Eased, helder.ui.controls.Look,
 	helder.ui.controls.Press, helder.ui.controls.Standard, helder.ui.controls.Toggle)
 @:typescript.classes(helder.ui.code.CodeAction.CodeActions, helder.ui.code.CodeCompletion,
-	helder.ui.code.CodeEditor, helder.ui.code.CodeLanguage.SyntaxLanguage,
+	helder.ui.code.CodeEditor, helder.ui.code.CodeLanguage,
+	helder.ui.code.CodeLanguage.SyntaxLanguage,
 	helder.ui.code.CodeLanguage.CodeLanguages, helder.ui.code.CodeModel.Sel,
 	helder.ui.code.CodeModel.Decoration, helder.ui.code.CodeModel.CodeDiagnostic,
 	helder.ui.code.CodeModel, helder.ui.code.CodeTheme, helder.ui.code.CodeView,

@@ -8,7 +8,7 @@
 import type {Image} from "helder/asset";
 import type {Read, RootView, Signal, View} from "helder/view";
 
-declare const __haxe: {Svg: "helder.canvas.Svg", UiWindow: "helder.ui.draw.UiWindow", Event: "helder.ui.Event", Key: "helder.ui.Key", VirtualScroll: "helder.ui.VirtualScroll", Selection: "helder.ui.Selection", GridScroll: "helder.ui.GridScroll", Clock: "helder.ui.Clock", WebViewEvent: "helder.ui.platform.WebViewEvent", WebContent: "helder.ui.platform.WebContent", WebResponse: "helder.ui.platform.WebResponse", Node: "helder.ui.Node", TextNode: "helder.ui.TextNode", UiFlow: "helder.ui.view.UiFlow", SafeArea: "helder.ui.SafeArea", Router: "helder.ui.nav.Router", Controls: "helder.ui.widgets.Controls", DataGrid: "helder.ui.widgets.DataGrid", EditableText: "helder.ui.widgets.EditableText", GridColumn: "helder.ui.widgets.GridColumn", GridTheme: "helder.ui.widgets.GridTheme", Icons: "helder.ui.widgets.Icons", Pager: "helder.ui.widgets.Pager", TextArea: "helder.ui.widgets.TextArea", TextField: "helder.ui.widgets.TextField", Theme: "helder.ui.widgets.Theme", WindowButtons: "helder.ui.widgets.WindowButtons", Eased: "helder.ui.controls.Eased", Look: "helder.ui.controls.Look", Press: "helder.ui.controls.Press", Standard: "helder.ui.controls.Standard", Toggle: "helder.ui.controls.Toggle", CodeActions: "helder.ui.code.CodeAction.CodeActions", CodeCompletion: "helder.ui.code.CodeCompletion", CodeEditor: "helder.ui.code.CodeEditor", SyntaxLanguage: "helder.ui.code.CodeLanguage.SyntaxLanguage", CodeLanguages: "helder.ui.code.CodeLanguage.CodeLanguages", Sel: "helder.ui.code.CodeModel.Sel", Decoration: "helder.ui.code.CodeModel.Decoration", CodeDiagnostic: "helder.ui.code.CodeModel.CodeDiagnostic", CodeModel: "helder.ui.code.CodeModel", CodeTheme: "helder.ui.code.CodeTheme", CodeView: "helder.ui.code.CodeView", Rope: "helder.ui.code.Rope", SqlLanguage: "helder.ui.code.SqlLanguage", Screens: "helder.ui.nav.Screens", __module: "helder.ui.TypeScript"};
+declare const __haxe: {Svg: "helder.canvas.Svg", UiWindow: "helder.ui.draw.UiWindow", Event: "helder.ui.Event", Key: "helder.ui.Key", VirtualScroll: "helder.ui.VirtualScroll", Selection: "helder.ui.Selection", GridScroll: "helder.ui.GridScroll", Clock: "helder.ui.Clock", WebViewEvent: "helder.ui.platform.WebViewEvent", WebContent: "helder.ui.platform.WebContent", WebResponse: "helder.ui.platform.WebResponse", Node: "helder.ui.Node", TextNode: "helder.ui.TextNode", UiFlow: "helder.ui.view.UiFlow", SafeArea: "helder.ui.SafeArea", Router: "helder.ui.nav.Router", Controls: "helder.ui.widgets.Controls", DataGrid: "helder.ui.widgets.DataGrid", EditableText: "helder.ui.widgets.EditableText", GridColumn: "helder.ui.widgets.GridColumn", GridTheme: "helder.ui.widgets.GridTheme", Icons: "helder.ui.widgets.Icons", Pager: "helder.ui.widgets.Pager", TextArea: "helder.ui.widgets.TextArea", TextField: "helder.ui.widgets.TextField", Theme: "helder.ui.widgets.Theme", WindowButtons: "helder.ui.widgets.WindowButtons", Eased: "helder.ui.controls.Eased", Look: "helder.ui.controls.Look", Press: "helder.ui.controls.Press", Standard: "helder.ui.controls.Standard", Toggle: "helder.ui.controls.Toggle", CodeActions: "helder.ui.code.CodeAction.CodeActions", CodeCompletion: "helder.ui.code.CodeCompletion", CodeEditor: "helder.ui.code.CodeEditor", CodeLanguage: "helder.ui.code.CodeLanguage", SyntaxLanguage: "helder.ui.code.CodeLanguage.SyntaxLanguage", CodeLanguages: "helder.ui.code.CodeLanguage.CodeLanguages", Sel: "helder.ui.code.CodeModel.Sel", Decoration: "helder.ui.code.CodeModel.Decoration", CodeDiagnostic: "helder.ui.code.CodeModel.CodeDiagnostic", CodeModel: "helder.ui.code.CodeModel", CodeTheme: "helder.ui.code.CodeTheme", CodeView: "helder.ui.code.CodeView", Rope: "helder.ui.code.Rope", SqlLanguage: "helder.ui.code.SqlLanguage", Screens: "helder.ui.nav.Screens", __module: "helder.ui.TypeScript"};
 
 // An SVG document for icons and drawings: parsed once (Svg.parse), drawn
 // into an Image at any size (the Image's drawing: this, for a writer's vectors; render: the viewBox fitted as
@@ -1473,6 +1473,23 @@ export declare class CodeEditor extends Node {
 	goToLine(line: number, column?: number): void;
 }
 
+// What highlights a language's lines in a code editor (CodeModel): a line
+// read from the state at its start, its tokens appended to out (start, end,
+// class: helder.syntax.TokenClass, relative to the line, in order) and the
+// next line's state returned. States are Ints that are equal when what is
+// open at a line's start is the same: the editor reads again only from an
+// edited line until a line's state is the one it had. Languages are
+// registered by file extension (CodeLanguages); TypeScript, TSX and Haxe
+// are helder.syntax's Lexer.
+export declare interface CodeLanguage {
+	// its name ("tsx", "haxe")
+	name(): string;
+	startState(): number;
+	tokenize(line: string, state: number, out: number[]): number;
+	// what starts a line comment ("//"; null: none)
+	lineComment(): string | null;
+}
+
 // helder.syntax's Lexer as a CodeLanguage (TypeScript, TSX, Haxe, design files)
 export declare class SyntaxLanguage {
 	constructor(lang: number);
@@ -1487,9 +1504,9 @@ export declare class SyntaxLanguage {
 // register adds more
 export declare class CodeLanguages {
 	// a language for files ending in .ext (made fresh for each editor: a language may keep state)
-	static register(ext: string, make: () => unknown): void;
+	static register(ext: string, make: () => CodeLanguage): void;
 	// the language of a path by its extension (null: none, plain text)
-	static forPath(path: string): unknown | null;
+	static forPath(path: string): CodeLanguage | null;
 }
 
 // A selection: anchor (where it started) to head (the caret); goal: the
@@ -1546,7 +1563,7 @@ export declare class CodeDiagnostic {
 // (helder.syntax's Change: offsets of the text before, in order), given to
 // onChange as they are: a Transaction's.
 declare class CodeModel {
-	constructor(text?: string, language?: unknown);
+	constructor(text?: string, language?: CodeLanguage);
 	static readonly EDIT: number;
 	static readonly TYPE: number;
 	static readonly DELETE: number;
@@ -1555,7 +1572,7 @@ declare class CodeModel {
 	static map(pos: number, changes: unknown[], assoc: number): number;
 	static isWordChar(c: number): boolean;
 	readonly rope: Rope;
-	language: unknown | null;
+	language: CodeLanguage | null;
 	// the selections, in order and not overlapping; primary: the one the view follows
 	readonly sels: Sel[];
 	readonly primary: Sel;
