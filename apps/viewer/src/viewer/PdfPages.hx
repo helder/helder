@@ -110,14 +110,12 @@ class PdfPages {
 		}
 	}
 
-	#if (hxmc.target == "wasm32-wasi")
-	// the web's: the file's bytes read through the browser's files, its sizes
-	// on the page (Decode.onPage)
-	@:coroutine public static function read(files:WebFiles, path:String):PdfSizes {
-		var b = try files.bytes(path) catch (_:Dynamic) null;
+	// the file's bytes read through files (the web's, a phone's documents),
+	// its sizes here (the web: on the page, Decode.onPage)
+	@:coroutine public static function read(files:Files, path:String):PdfSizes {
+		var b = try FileBytes.read(files, path) catch (_:Dynamic) null;
 		return b == null ? {sizes: [], fileSize: 0, error: "The PDF could not be read"} : sizesIn({path: path, bytes: b});
 	}
-	#end
 
 	// how many pages the document at path has, when it is open (-1: not)
 	public static function pagesOf(path:String):Int {

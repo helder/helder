@@ -151,17 +151,22 @@ class Shell implements Markup {
 		#end
 		// (a decode's IDCT, upsampling and colours over two threads: the pool decodes two files at once)
 		helder.image.JpegDecoder.threads = 2;
-		var x = new Explorer(new NativeFiles(), jobDecode, phone ? phonePlaces() : helder.os.Places.user(), phone ? [] : helder.os.Places.volumes(), null,
-			jobSizes);
 		#if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64" || hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
-		// (Open in…: the system's share sheet, the files themselves)
+		// (a phone: its Documents and the folders the user gave it, the places;
+		// Add a folder the system's picker; Open in… the share sheet, the files themselves)
+		var grants = new GrantFiles();
+		var x = phoneExplorer(new PhoneFiles(new NativeFiles(), grants), grants);
+		x.openFolder = () -> addFolder(x, grants);
+		x.addFolder = x.openFolder;
 		x.share = paths -> Async.launch(_ -> helder.os.Share.share({files: paths}));
+		#else
+		var x = new Explorer(new NativeFiles(), jobDecode, helder.os.Places.user(), helder.os.Places.volumes(), null, jobSizes);
+		x.reveal = reveal;
+		x.openDefault = openDefault;
 		#end
 		var viewer = x.viewer;
 		viewer.mod = mac ? "Cmd" : "Ctrl";
-		x.reveal = reveal;
 		x.thumbnails = try new Thumbnails() catch (_:Dynamic) null;
-		x.openDefault = openDefault;
 		// (the keymap: secondary as this platform's; the user's file over the defaults, beside the store)
 		helder.ui.actions.Keymap.mac = mac;
 		helder.ui.menu.Menus.appName = "Viewer";
@@ -186,8 +191,9 @@ class Shell implements Markup {
 			x.start(paths[0]);
 			helder.view.graph.Graph.flush();
 		};
-		// (Ctrl+O: the system's dialog, the file picked opened in its folder)
+		// (Ctrl+O: the system's dialog, the file picked opened in its folder; a phone's: Add Folder)
 		viewer.openDialog = () -> {
+			if (x.openFolder != null) return x.openFolder();
 			if (!helder.os.FileDialog.available() || helder.os.App.windows.length == 0) return;
 			var picked = helder.os.FileDialog.open(helder.os.App.windows[0], "Open an image", [{name: "Images", extensions: [for (t in TYPES) for (x in t.extensions) x]}]);
 			if (picked != null) x.start(picked);
@@ -246,6 +252,21 @@ class Shell implements Markup {
 		</Surface>);
 	}
 
+	// (a phone's explorer: its Documents and its grants; a file on disk
+	// (Documents', iOS's grants') decoded as the desktop's are, one that is
+	// not (Android's documents) from its bytes)
+	static function phoneExplorer(files:Files, grants:GrantFiles):Explorer
+		return new Explorer(files, (key, side, done) -> {
+			var k = Decode.parseKey(key), local = files.localPath(k.path);
+			Async.launch(_ -> done(local != null ? Decode.job(Decode.key(local, k.page), side) : Decode.read(files, key, side)));
+		}, phonePlaces().concat(grants.places()), [], (path, done) -> {
+			var local = files.localPath(path);
+			local != null ? Preview.request(local, done) : Preview.read(files, path, done);
+		}, (path, done) -> {
+			var local = files.localPath(path);
+			local != null ? jobSizes(local, done) : Async.launch(_ -> done(PdfPages.read(files, path)));
+		});
+
 	// (a PDF's pages' sizes on a pool's thread: the document opened there, kept for its pages)
 	static function jobSizes(path:String, done:PdfPages.PdfSizes->Void)
 		Async.launch(_ -> helder.jobs.Jobs.job(PdfPages.sizesOf).run(path)).onCompletion((r, _) ->
@@ -303,8 +324,8 @@ class Shell implements Markup {
 		x.viewer.statusOn(store.get("status") == "1");
 	}
 
-	// (a phone's places: the app's own documents folder, until its folder
-	// access lands, the folders the person adds with Explorer.addFolder)
+	// (a phone's own place: the app's documents folder, which the system's
+	// Files app shows as the app's; the folders the user adds come after)
 	static function phonePlaces():Array<helder.os.Places.Place> {
 		var d = helder.os.Paths.documents();
 		return d == null ? [] : [{kind: Documents, name: "Documents", path: d}];
@@ -321,6 +342,23 @@ class Shell implements Markup {
 	}
 
 	#end
+
+	// a folder the user picks in the system's picker (helder.os.Folders: a
+	// phone's, the browser's) kept and shown: the shell's Add Folder
+	public static function addFolder(x:Explorer, grants:GrantFiles)
+		Async.launch(_ -> {
+			var g = helder.os.Folders.pick();
+			if (g != null) showFolder(x, grants, g);
+		});
+
+	// a folder granted (picked, dropped) shown, a place of the sidebar's
+	public static function showFolder(x:Explorer, grants:GrantFiles, g:helder.os.Folders.FolderGrant) {
+		var path = grants.add(g);
+		if (!Lambda.exists(x.sidebar.places.value, p -> p.path == path)) x.sidebar.add({kind: Pictures, name: g.name, path: path});
+		x.close();
+		x.choose(path);
+		helder.view.graph.Graph.flush();
+	}
 
 	// the actions on the root (its key context "Viewer", with browser or
 	// full, fullscreen, pdf, media, goto and about while they are;

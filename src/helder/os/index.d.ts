@@ -1,15 +1,15 @@
 // helder.os for TypeScript programs (helder.typescript): what an app keeps
 // between runs (Store), the platform's settings, locale and app services
 // (Settings, Locale, Format, Plural, Network, Share, Permissions,
-// Notifications, Photos, Location, Biometrics, Paths, Places, Trash, DeviceInfo,
-// StatusBar), the program's arguments and environment (args(), env(name):
+// Notifications, Photos, Location, Biometrics, Paths, Places, Trash, Folders,
+// DeviceInfo, StatusBar), the program's arguments and environment (args(), env(name):
 // Sys's). Its windows, events and App are helder/scene's.
 //
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 import type {Read} from "helder/view";
 
-declare const __haxe: {Store: "helder.os.Store", Settings: "helder.os.Settings", Locale: "helder.os.Locale", Format: "helder.os.Format", Plural: "helder.os.Plural", Network: "helder.os.Network", Share: "helder.os.Share", Permissions: "helder.os.Permissions", Notifications: "helder.os.Notifications", Photos: "helder.os.Photos", Location: "helder.os.Location", Biometrics: "helder.os.Biometrics", Paths: "helder.os.Paths", Places: "helder.os.Places", Trash: "helder.os.Trash", DeviceInfo: "helder.os.DeviceInfo", StatusBar: "helder.os.StatusBar", args: "Sys.args", env: "Sys.getEnv", __module: "helder.os.TypeScript"};
+declare const __haxe: {Store: "helder.os.Store", Settings: "helder.os.Settings", Locale: "helder.os.Locale", Format: "helder.os.Format", Plural: "helder.os.Plural", Network: "helder.os.Network", Share: "helder.os.Share", Permissions: "helder.os.Permissions", Notifications: "helder.os.Notifications", Photos: "helder.os.Photos", Location: "helder.os.Location", Biometrics: "helder.os.Biometrics", Paths: "helder.os.Paths", Places: "helder.os.Places", Trash: "helder.os.Trash", Folders: "helder.os.Folders", DeviceInfo: "helder.os.DeviceInfo", StatusBar: "helder.os.StatusBar", args: "Sys.args", env: "Sys.getEnv", __module: "helder.os.TypeScript"};
 
 export type Contrast = "normal" | "more" | "less" | "custom";
 
@@ -44,6 +44,13 @@ export type PlaceKind = "Home" | "Desktop" | "Documents" | "Downloads" | "Pictur
 export type Place = { kind: PlaceKind; name: string; path: string };
 
 export type Volume = { name: string; path: string; total: number; free: number; removable: boolean; network: boolean; root: boolean };
+
+// a folder the user gave the app: its id (kept across launches; the web:
+// the page's while it is open) and its name
+export type FolderGrant = { id: string; name: string };
+
+// a folder's entry: its size in bytes, modified in seconds since the epoch (0: not known)
+export type FolderEntry = { name: string; folder: boolean; size: number; modified: number };
 
 // A small key-value store kept between runs: an app's settings, a game's
 // save. Strings by key, read into memory when opened, written through at
@@ -207,6 +214,36 @@ export declare class Trash {
 	static available(): boolean;
 	// Answers the item's new path where the system gives it. Throws on failure.
 	static move(path: string): string | null;
+}
+
+// Folders the user gives the app in the system's folder picker, where an
+// app has no paths of its own to browse: iOS's (UIDocumentPickerViewController
+// of folders: On My iPhone, iCloud Drive, an external drive, a server, any
+// Files provider; a security-scoped bookmark kept), Android's (the Storage
+// Access Framework's document tree, its permission kept; never all of the
+// storage), the web's (the File System Access API's showDirectoryPicker:
+// helder.os.web.WebFolders, read only, kept while the page is). The grants
+// picked stay until forgotten (iOS and Android: the store
+// "helder-folders"); inside one a path is relative, "" the folder itself,
+// "Trips/2024" a folder inside it. Desktops have none: their programs
+// read paths (Places, FileDialog), and a sandboxed Mac app's bookmarks
+// are not here yet.
+export declare class Folders {
+	static available(): boolean;
+	// the system's folder picker: the folder picked, kept; null when cancelled
+	static pick(): Promise<FolderGrant | null>;
+	// the folders kept, in the order picked
+	static granted(): FolderGrant[];
+	// the folder no longer kept (Android: its permission given back)
+	static forget(id: string): void;
+	// the item on disk, where it is one (iOS's, readable while the app runs);
+	// null elsewhere (Android's documents, the web's)
+	static file(grant: string, path: string): string | null;
+	// the file or folder deleted: true when it went to a trash it can be put
+	// back from (iOS: FileManager's trashItem, where the provider has one),
+	// false when it is gone (Android's documents have no trash); throws when
+	// it was not deleted (the web: read only)
+	static delete(grant: string, path: string): boolean;
 }
 
 // What the app runs on: the model ("iPhone16,1", "Pixel 4a", "Mac14,2"),
