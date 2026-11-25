@@ -168,7 +168,7 @@ function tests() {
 			press(ui, find(ui, "tile-photo 2.jpg"), LongPress.DURATION + 0.1);
 			equals(x.full.value, false);
 			var menu = ui.overlay.find("touch-menu");
-			equals([for (n in menu.children) text(n)], ["Open", "Get Info", "Copy", "Select", ViewerActions.trashLabel()]);
+			equals([for (n in menu.children) n.slot == "touch-menu-separator" ? "-" : text(n)], ["Open", "Get Info", "Copy", "Select", "-", ViewerActions.trashLabel()]);
 			press(ui, ui.overlay.find("menu-Get Info"));
 			equals(x.browser.selected.value, "photo 2.jpg");
 			equals(text(ui.overlay.find("inspector-name")), "photo 2.jpg");

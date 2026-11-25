@@ -826,7 +826,9 @@ instead. `tests/os/MenuCheck.hx` reads each
 platform's back (the window lane); `src/helder/ui/menu/Menus.test.hx` the
 model and the drawn menus.
 
-On touch a context menu opens by a long press: `ContextMenu.attach(node,
+On touch a context menu opens by a long press (the mouse's held still
+too, in a Compact window only: on a desktop's layout a held click stays a
+click): `ContextMenu.attach(node,
 items, ?preview, ?destructive)` makes the model's items when it opens,
 lifts the `preview` (a view of the caller's: the node's look again, larger)
 where the node is, over the window blurred by a glass, the menu under it
@@ -839,7 +841,8 @@ such a menu of plain choices (the back button's list of screens), and
 platform: iOS's own UIContextMenuInteraction is not used (its preview and
 its menu would be the system's views over helder's layer, out of reach of
 its look and its tests). Slots: `touch-menu`, `touch-menu-item`,
-`touch-menu-item-danger`, `touch-menu-preview`.
+`touch-menu-item-danger`, `touch-menu-separator` (a group's hairline),
+`touch-menu-preview`.
 
 ```haxe
 <view ref={n -> ContextMenu.attach(n, () -> [Item("Open", Open), Separator, Item("Move to Trash", Trash)],
