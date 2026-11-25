@@ -12,7 +12,7 @@ runs:
       run: |
         for d in ~/.cache/helder ~/Library/Caches/helder ~/AppData/Local/helder/cache; do
           for k in compiler compiler-web; do
-            ls -1td "$d/$k"/*/ 2> /dev/null | tail -n +3 | xargs -r rm -rf
+            { ls -1td "$d/$k"/*/ 2> /dev/null || true; } | tail -n +3 | xargs -r rm -rf
           done
         done
         cd ~
