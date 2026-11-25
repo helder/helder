@@ -163,6 +163,23 @@ function tests() {
 			ui.pointerUp(grid.absX + 40, grid.absY + 40, 1);
 			equals(grid.find("marquee"), null);
 		});
+		test("the View menu: open as the mouse goes down, closed by a press on its button", () -> {
+			var x = Fixtures.explorer(), ui = new Ui(new StoryText(), 1100, 700);
+			Render.render(Fixtures.themed(x, true), ui.root);
+			x.start(dir);
+			helder.view.graph.Graph.flush();
+			ui.update();
+			var button = ui.root.find("view-menu"), at = {x: button.absX + 8, y: button.absY + 8};
+			ui.pointerDown(at.x, at.y, 1);
+			ui.update();
+			equals(ui.overlay.children.length, 1);
+			ui.pointerUp(at.x, at.y, 1);
+			equals(ui.overlay.children.length, 1);
+			ui.pointerDown(at.x, at.y, 1);
+			ui.pointerUp(at.x, at.y, 1);
+			ui.update();
+			equals(ui.overlay.children.length, 0);
+		});
 		test("what a broken file says", () -> {
 			equals(Decode.decode(haxe.io.Bytes.alloc(0)).error, "The file is empty");
 			var bad = Decode.decode(haxe.io.Bytes.ofString("%PDF-1.4\nnonsense"));

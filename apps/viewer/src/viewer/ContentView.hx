@@ -41,7 +41,7 @@ class ContentView implements Markup {
 	// --- the toolbar
 
 	static function toolbar(x:Explorer, tablet:Read<Bool>):View {
-		var b = x.browser, title:Null<Node> = null, viewButton:Null<Node> = null;
+		var b = x.browser;
 		return <view tag="toolbar" direction="row" align-items="center" column-gap={6} height={tablet() ? 52 : Shell.BAR} shrink={0} padding="0 8" drag-region
 			borders="0 0 1 0" border-color={Look.ref.line}>
 			<Show when={tablet()}>
@@ -54,7 +54,7 @@ class ContentView implements Markup {
 					onPress={() -> b.goForward()}/>
 			</view>
 			<view:button tag="folder-title" slot="title-button" role="button" focusable label={() -> x.sidebar.title(b.dir()) + ", show enclosing folders"}
-				ref={(n:Node) -> title = n} onPress={() -> if (title != null) enclosing(x, title)}>
+				ref={(n:Node) -> Menus.button(n, () -> enclosing(x))}>
 				<text max-lines={1} text-overflow="ellipsis">{() -> x.sidebar.title(b.dir())}</text>
 				<image src={Glyphs.get("down")} width={14} height={14} shrink={0} color={Look.ref.fg3}/>
 			</view:button>
@@ -67,8 +67,7 @@ class ContentView implements Markup {
 				<Standard.Button tag="search" variant="ghost" size="sm" icon={Glyphs.get("search")} label="Search" onPress={() -> b.searching(true)}/>
 			</Show>
 			<Show when={b.searching()}>{search(x)}</Show>
-			<view:button tag="view-menu" slot="tool" role="button" focusable label="View options" ref={(n:Node) -> viewButton = n}
-				onPress={() -> if (viewButton != null) popup(viewButton, ViewerActions.view())}>
+			<view:button tag="view-menu" slot="tool" role="button" focusable label="View options" ref={(n:Node) -> Menus.button(n, ViewerActions.view)}>
 				<image src={() -> Glyphs.get(b.layout() == Grid ? "grid" : "list")} width={16} height={16}/>
 				<image src={Glyphs.get("down")} width={12} height={12}/>
 			</view:button>
@@ -108,11 +107,11 @@ class ContentView implements Markup {
 	}
 
 	// (the folder's title's menu: the folders enclosing it, nearest first)
-	static function enclosing(x:Explorer, at:Node) {
+	static function enclosing(x:Explorer):Array<MenuItem> {
 		var up = Browser.ancestry(x.browser.dir.value);
 		up.pop();
 		up.reverse();
-		popup(at, [for (p in up) Item(x.sidebar.title(p), Go(p))]);
+		return [for (p in up) Item(x.sidebar.title(p), Go(p))];
 	}
 
 	static function popup(at:Node, items:Array<MenuItem>) {

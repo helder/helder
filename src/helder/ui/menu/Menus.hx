@@ -78,7 +78,7 @@ class Menus {
 	// says native for "context-menu" (macOS's, Windows'): its tracking takes
 	// the press's release; the press that closes a Windows menu also reaches
 	// the window after it, and is taken there
-	public static function button(n:Node, items:Void->Array<MenuItem>) {
+	public static function button(n:Node, items:Void->Array<MenuItem>):Void {
 		var drawn:Null<DrawnMenu> = null, native = false, closed = -1.0;
 		if (n.semantics == null) n.semantics = {};
 		n.semantics.expanded = false;
