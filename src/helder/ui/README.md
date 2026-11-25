@@ -551,11 +551,12 @@ are as they were. Cells (slot `grid-cell`) and a selection's rows carry
 
 ## Navigation
 
-`Router` (helder.ui) holds screens by path as a stack, `Stack` shows it
-(examples/navigation):
+`Router` (helder.ui.nav) holds screens by path as a stack, `Stack` shows it
+(examples/navigation); Haxe's `Routes` is a Router whose routes' params are
+typed by their paths:
 
 ```haxe
-final nav = new Router();
+final nav = new Routes();
 nav.route("/", _ -> <Home/>)
 	.route("/product/:id", p -> <Product id={p.id}/>)   // p:{id:String}
 	.fallback(path -> <NotFound path={path}/>);

@@ -8,7 +8,7 @@
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 import type {View} from "helder/view";
 
-declare const __haxe: {Script: "helder.test.Script", Entry: "helder.test.Runner.Entry", UiScript: "helder.test.UiScript", __module: "helder.test.TypeScript"};
+declare const __haxe: {Script: "helder.test.Script", Entry: "helder.test.Runner.Entry", UiScript: "helder.test.UiScript", PropertyScript: "helder.test.PropertyScript", Choices: "helder.test.Choices", __module: "helder.test.TypeScript"};
 
 // helder.test's runner for TypeScript test files (helder/test, its
 // index.ts, over runner.d.ts: helder.test.TypeScript): the same
@@ -59,6 +59,55 @@ export declare class UiScript {
 	static layout(ui: unknown): void;
 	// each keystroke of keys typed ("ctrl-k ctrl-s"), through the keymap
 	static type(ui: unknown, keys: string): void;
+}
+
+// helder/test's properties for TypeScript (its index.ts: Gen, property,
+// stateful, assume): the generators of helder.test.Gen as functions of a
+// case's Choices, and a property's run through Property. A TypeScript body
+// or step returns null when it passed, "" when it stopped (its failure
+// recorded), else its error's text; one that caught a Rejected or an
+// Overran (assume, a filter, a sequence run out) has it thrown again here.
+// Options a property doesn't set are null.
+export declare class PropertyScript {
+	static int(min: number, max: number): ((arg0: Choices) => number);
+	static float(min: number, max: number): ((arg0: Choices) => number);
+	static bool(): ((arg0: Choices) => boolean);
+	static char(nul: boolean): ((arg0: Choices) => string);
+	// an index into n items, shrinking to 0 (pick, oneOf)
+	static index(n: number): ((arg0: Choices) => number);
+	// min to max items drawn by item, each one given to add (an array's)
+	static items(c: Choices, item: (arg0: Choices) => any, min: number, max: number, add: (arg0: any) => void): void;
+	// (a TypeScript catch took a Rejected or an Overran)
+	static pending(): boolean;
+	static reject(): void;
+	static property(gen: (arg0: Choices) => any, body: (arg0: any) => string | null, show: (arg0: any) => string, cases: number | null, seconds: number | null, seed: number | null, replay: string | null, at: string): void;
+	// a machine of count steps, its system kept by the TypeScript side
+	// (a value through Dynamic is a copy): step i's name, its run (its result
+	// as a body's), whether it can run
+	static stateful(setup: () => void, count: number, name: (arg0: number) => string, run: (arg0: number, arg1: Choices) => string | null, when: (arg0: number) => boolean, check: () => string | null, teardown: () => void, show: (arg0: any) => string, cases: number | null, seconds: number | null, seed: number | null, replay: string | null, steps: number | null, at: string): void;
+}
+
+// A property's test case as the choices it made (Hypothesis' choice
+// sequence): each draw reads one or more ints, each in 0...=bound, made at
+// random when generating and read back when replaying a sequence. Shrinking
+// edits the sequence (Property), so 0 is each choice's simplest value and
+// the generators (Gen) map it to theirs: an int's 0 or its bound nearest
+// to it, an array's end, a pick's first item.
+export declare class Choices {
+	// the most choices a case makes: past it the case is overran (a
+	// recursion's bound in the last resort)
+	static readonly MAX: number;
+	// a value of g (a Gen), drawn from these choices
+	draw<T>(g: (arg0: Choices) => T): T;
+	// a choice in 0...=bound, shrinking to 0 (when generating: a fifth of
+	// them 0, bound or small, else uniform)
+	choice(bound: number): number;
+	// true with probability p when generating (a choice of 0 or 1, false shrunk to)
+	weighted(p: number): boolean;
+	// text shown with a failing case (a stateful step's name and arguments)
+	note(text: string): void;
+	// the case is left out (assume, filter): rejected, not failed
+	reject(): any;
 }
 
 export {};

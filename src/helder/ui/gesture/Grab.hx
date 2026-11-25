@@ -11,9 +11,9 @@ import helder.os.PointerType;
 // tx, ty from the press), Ended at the release, Cancelled when the pointer
 // is. A game's shot from its ball, a handle on a canvas:
 //
-//   var shot = box.addGesture(new Press((x, y) -> nearBall(x, y)));
+//   var shot = box.addGesture(new Grab((x, y) -> nearBall(x, y)));
 //   shot.onGesture = g -> if (g.state == Ended) fire(g.tx, g.ty);
-class Press extends Gesture {
+class Grab extends Gesture {
 	// whether a press at x, y (its node's points) is claimed (all of the node: always)
 	public var within:(x:Float, y:Float) -> Bool;
 	// the mouse's button it takes (1 the left; 0 any)

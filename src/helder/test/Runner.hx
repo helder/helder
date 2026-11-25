@@ -31,7 +31,9 @@ class Runner {
 	static final root = new Group(null, "");
 	static var group:Group = root;
 	static var current:Null<Case>;
-	static var checks = 0;
+	@:allow(helder.test) static var checks = 0;
+	// (a property's case running: its failures, kept apart)
+	@:allow(helder.test) static var capture:Null<Array<String>>;
 	// linked path => real path (PosInfos' and stacks' file names)
 	static final paths = new Map<String, String>();
 	static final steps:Array<(next:() -> Void) -> Void> = [];
@@ -256,7 +258,7 @@ class Runner {
 	// a failure of the running test (or of the file's registration)
 	@:allow(helder.test) static function failure(message:String, pos:PosInfos) {
 		var f = '${file(pos.fileName)}:${pos.lineNumber}: $message';
-		if (current != null) current.failures.push(f) else {
+		if (capture != null) capture.push(f) else if (current != null) current.failures.push(f) else {
 			var c = new Case(group, "(registering)", Sync(() -> {}));
 			c.failures.push(f);
 		}
@@ -288,12 +290,12 @@ class Runner {
 			current.failures.push('timed out after $seconds s');
 		}
 
-	static function error(x:haxe.Exception):String {
+	@:allow(helder.test) static function error(x:haxe.Exception):String {
 		var out = ['error: ${x.message}'];
 		// (the frames above the runner's, at most five)
 		for (s in x.stack) switch s {
 			case FilePos(_, f, line, _):
-				if (f.endsWith("helder/test/Runner.hx") || f.endsWith("helder/test/AsyncBody.hx") || out.length > 5) break;
+				if (f.endsWith("helder/test/Runner.hx") || f.endsWith("helder/test/AsyncBody.hx") || f.endsWith("helder/test/Property.hx") || out.length > 5) break;
 				out.push('  at ${file(f)}:$line');
 			case _:
 		}
