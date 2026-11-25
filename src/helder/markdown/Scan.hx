@@ -7,6 +7,15 @@ using StringTools;
 // backslash escapes, entities, and HTML's tags as CommonMark reads them
 // (raw HTML is kept as text, but where a tag ends still decides the rest)
 class Scan {
+	// the parsers' loop turns, every one (the tests' measure of linear time:
+	// a count, unlike a clock, the same on a loaded machine)
+	@:noCompletion public static var steps = 0;
+
+	@:noCompletion public static inline function tick():Bool {
+		steps++;
+		return true;
+	}
+
 	public static inline function at(s:String, i:Int):Int
 		return i < s.length ? s.fastCodeAt(i) : -1;
 
@@ -42,7 +51,7 @@ class Scan {
 	public static function unescape(s:String):String {
 		if (s.indexOf("\\") < 0 && s.indexOf("&") < 0) return s;
 		var out = new StringBuf(), i = 0, n = s.length;
-		while (i < n) {
+		while (Scan.tick() && i < n) {
 			var c = s.fastCodeAt(i);
 			if (c == "\\".code && i + 1 < n && isAsciiPunct(s.fastCodeAt(i + 1))) {
 				out.addChar(s.fastCodeAt(i + 1));
@@ -69,7 +78,7 @@ class Scan {
 			var hex = at(s, j) == "x".code || at(s, j) == "X".code;
 			if (hex) j++;
 			var start = j, v = 0;
-			while (j < s.length && j - start < (hex ? 6 : 7)) {
+			while (Scan.tick() && (j < s.length && j - start < (hex ? 6 : 7))) {
 				var c = s.fastCodeAt(j), d = isDigit(c) ? c - 48 : hex && c >= 97 && c <= 102 ? c - 87 : hex && c >= 65 && c <= 70 ? c - 55 : -1;
 				if (d < 0) break;
 				v = v * (hex ? 16 : 10) + d;
@@ -82,7 +91,7 @@ class Scan {
 			return j + 1;
 		}
 		var start = j;
-		while (j < s.length && j - start < 32 && isAlnum(s.fastCodeAt(j)))
+		while (Scan.tick() && j < s.length && j - start < 32 && isAlnum(s.fastCodeAt(j)))
 			j++;
 		if (j == start || at(s, j) != ";".code || !isAlpha(s.fastCodeAt(start))) return -1;
 		var text = Entities.named(s.substring(start, j));
@@ -97,25 +106,26 @@ class Scan {
 	public static function openTag(s:String, i:Int):Int {
 		var j = i + 1;
 		if (!isAlpha(at(s, j))) return -1;
-		while (isAlnum(at(s, j)) || at(s, j) == "-".code)
+		while (Scan.tick() && (isAlnum(at(s, j)) || at(s, j) == "-".code))
 			j++;
 		while (true) {
+			Scan.tick();
 			var w = j;
-			while (isTagSpace(at(s, j)))
+			while (Scan.tick() && isTagSpace(at(s, j)))
 				j++;
 			var c = at(s, j);
 			if (c == ">".code) return j + 1;
 			if (c == "/".code) return at(s, j + 1) == ">".code ? j + 2 : -1;
 			// an attribute needs whitespace before it
 			if (j == w || !(isAlpha(c) || c == "_".code || c == ":".code)) return -1;
-			while (isAlnum(at(s, j)) || at(s, j) == "_".code || at(s, j) == ".".code || at(s, j) == ":".code || at(s, j) == "-".code)
+			while (Scan.tick() && (isAlnum(at(s, j)) || at(s, j) == "_".code || at(s, j) == ".".code || at(s, j) == ":".code || at(s, j) == "-".code))
 				j++;
 			var k = j;
-			while (isTagSpace(at(s, k)))
+			while (Scan.tick() && isTagSpace(at(s, k)))
 				k++;
 			if (at(s, k) != "=".code) continue;
 			k++;
-			while (isTagSpace(at(s, k)))
+			while (Scan.tick() && isTagSpace(at(s, k)))
 				k++;
 			var q = at(s, k);
 			if (q == "\"".code || q == "'".code) {
@@ -124,7 +134,7 @@ class Scan {
 				j = close + 1;
 			} else {
 				var v = k;
-				while (k < s.length) {
+				while (Scan.tick() && k < s.length) {
 					var d = s.fastCodeAt(k);
 					if (d <= 32 || d == "\"".code || d == "'".code || d == "=".code || d == "<".code || d == ">".code || d == "`".code) break;
 					k++;
@@ -139,9 +149,9 @@ class Scan {
 	public static function closeTag(s:String, i:Int):Int {
 		if (at(s, i + 1) != "/".code || !isAlpha(at(s, i + 2))) return -1;
 		var j = i + 3;
-		while (isAlnum(at(s, j)) || at(s, j) == "-".code)
+		while (Scan.tick() && (isAlnum(at(s, j)) || at(s, j) == "-".code))
 			j++;
-		while (isTagSpace(at(s, j)))
+		while (Scan.tick() && isTagSpace(at(s, j)))
 			j++;
 		return at(s, j) == ">".code ? j + 1 : -1;
 	}

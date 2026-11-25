@@ -17,7 +17,7 @@ class Autolinks {
 			return;
 		}
 		var i = 0, from = 0;
-		while (i < t.length) {
+		while (Scan.tick() && i < t.length) {
 			var c = t.fastCodeAt(i);
 			var start = i, end = -1, prefix = "";
 			if ((c == "w".code || c == "h".code || c == "f".code) && boundary(t, i)) {
@@ -31,12 +31,12 @@ class Autolinks {
 				}
 			} else if (c == "@".code) {
 				var l = i;
-				while (l > from && isLocal(t.fastCodeAt(l - 1)))
+				while (Scan.tick() && l > from && isLocal(t.fastCodeAt(l - 1)))
 					l--;
 				var d = i + 1;
-				while (d < t.length && (isAlnum(t.fastCodeAt(d)) || t.fastCodeAt(d) == "-".code || t.fastCodeAt(d) == "_".code || t.fastCodeAt(d) == ".".code))
+				while (Scan.tick() && (d < t.length && (isAlnum(t.fastCodeAt(d)) || t.fastCodeAt(d) == "-".code || t.fastCodeAt(d) == "_".code || t.fastCodeAt(d) == ".".code)))
 					d++;
-				while (d > i + 1 && t.fastCodeAt(d - 1) == ".".code)
+				while (Scan.tick() && d > i + 1 && t.fastCodeAt(d - 1) == ".".code)
 					d--;
 				var host = t.substring(i + 1, d);
 				var last = d > i + 1 ? t.fastCodeAt(d - 1) : 0;
@@ -68,7 +68,7 @@ class Autolinks {
 	// the end of a valid domain at i (i: none)
 	static function domain(t:String, i:Int):Int {
 		var j = i, periods = 0, lastUnder = false, prevUnder = false, segUnder = false;
-		while (j < t.length) {
+		while (Scan.tick() && j < t.length) {
 			var c = t.fastCodeAt(j);
 			if (c == ".".code) {
 				if (j + 1 >= t.length || !(isAlnum(t.fastCodeAt(j + 1)) || t.fastCodeAt(j + 1) == "-".code || t.fastCodeAt(j + 1) == "_".code)) break;
@@ -86,25 +86,26 @@ class Autolinks {
 
 	static function path(t:String, i:Int):Int {
 		var j = i;
-		while (j < t.length && !isWhite(t.fastCodeAt(j)) && t.fastCodeAt(j) != "<".code)
+		while (Scan.tick() && j < t.length && !isWhite(t.fastCodeAt(j)) && t.fastCodeAt(j) != "<".code)
 			j++;
 		return j;
 	}
 
 	static function trail(t:String, start:Int, end:Int):Int {
-		while (end > start) {
+		while (Scan.tick() && end > start) {
 			var c = t.fastCodeAt(end - 1);
 			if ("?!.,:*_~'\"".indexOf(String.fromCharCode(c)) >= 0) end--;
 			else if (c == ")".code) {
 				var open = 0, close = 0;
 				for (k in start...end) {
+					Scan.tick();
 					var d = t.fastCodeAt(k);
 					if (d == "(".code) open++ else if (d == ")".code) close++;
 				}
 				if (close > open) end-- else break;
 			} else if (c == ";".code) {
 				var k = end - 2;
-				while (k > start && isAlnum(t.fastCodeAt(k)))
+				while (Scan.tick() && k > start && isAlnum(t.fastCodeAt(k)))
 					k--;
 				if (k < end - 2 && t.fastCodeAt(k) == "&".code) end = k else break;
 			} else break;

@@ -45,7 +45,7 @@ class Inlines {
 		tickNext = new Map();
 		noComment = noPi = noCdata = noDecl = false;
 		var root = new INode(KRoot);
-		while (pos < s.length)
+		while (Scan.tick() && pos < s.length)
 			step(root);
 		emphasis(null);
 		return convert(root, false, 0);
@@ -80,7 +80,7 @@ class Inlines {
 
 	function string(block:INode):Bool {
 		var start = pos;
-		while (pos < s.length && !special(s.fastCodeAt(pos)))
+		while (Scan.tick() && pos < s.length && !special(s.fastCodeAt(pos)))
 			pos++;
 		if (pos == start) return false;
 		block.add(INode.ofText(s.substring(start, pos)));
@@ -93,12 +93,12 @@ class Inlines {
 		if (last != null && last.kind == KText && last.text.endsWith(" ")) {
 			var t = last.text, hard = t.length >= 2 && t.fastCodeAt(t.length - 2) == " ".code;
 			var e = t.length;
-			while (e > 0 && t.fastCodeAt(e - 1) == " ".code)
+			while (Scan.tick() && e > 0 && t.fastCodeAt(e - 1) == " ".code)
 				e--;
 			last.text = t.substr(0, e);
 			block.add(new INode(hard ? KHard : KSoft));
 		} else block.add(new INode(KSoft));
-		while (pos < s.length && isSpaceOrTab(s.fastCodeAt(pos)))
+		while (Scan.tick() && pos < s.length && isSpaceOrTab(s.fastCodeAt(pos)))
 			pos++;
 		return true;
 	}
@@ -109,7 +109,7 @@ class Inlines {
 		if (c == "\n".code) {
 			pos++;
 			block.add(new INode(KHard));
-			while (pos < s.length && isSpaceOrTab(s.fastCodeAt(pos)))
+			while (Scan.tick() && pos < s.length && isSpaceOrTab(s.fastCodeAt(pos)))
 				pos++;
 		} else if (c >= 0 && isAsciiPunct(c)) {
 			block.add(INode.ofText(String.fromCharCode(c)));
@@ -120,7 +120,7 @@ class Inlines {
 
 	function backticks(block:INode):Bool {
 		var start = pos;
-		while (at(s, pos) == "`".code)
+		while (Scan.tick() && at(s, pos) == "`".code)
 			pos++;
 		var n = pos - start, after = pos;
 		var close = closingTicks(n, after);
@@ -144,10 +144,10 @@ class Inlines {
 		if (ticks == null) {
 			var m = new Map<Int, Array<Int>>();
 			var i = 0;
-			while (i < s.length) {
+			while (Scan.tick() && i < s.length) {
 				if (s.fastCodeAt(i) == "`".code) {
 					var j = i;
-					while (at(s, j) == "`".code)
+					while (Scan.tick() && at(s, j) == "`".code)
 						j++;
 					var l = j - i;
 					var list = m.get(l);
@@ -161,7 +161,7 @@ class Inlines {
 		var list = ticks.get(n);
 		if (list == null) return -1;
 		var k = tickNext.exists(n) ? tickNext.get(n) : 0;
-		while (k < list.length && list[k] < from)
+		while (Scan.tick() && k < list.length && list[k] < from)
 			k++;
 		tickNext.set(n, k);
 		return k < list.length ? list[k] : -1;
@@ -171,7 +171,7 @@ class Inlines {
 
 	function delim(c:Int, block:INode):Bool {
 		var start = pos;
-		while (at(s, pos) == c)
+		while (Scan.tick() && at(s, pos) == c)
 			pos++;
 		var n = pos - start;
 		var before = start == 0 ? -1 : s.fastCodeAt(start - 1), after = at(s, pos);
@@ -205,9 +205,9 @@ class Inlines {
 	function emphasis(bottom:Null<Delim>) {
 		var bottoms:Array<Null<Delim>> = [for (_ in 0...16) bottom];
 		var closer = delims;
-		while (closer != null && closer.prev != bottom)
+		while (Scan.tick() && closer != null && closer.prev != bottom)
 			closer = closer.prev;
-		while (closer != null) {
+		while (Scan.tick() && closer != null) {
 			if (!closer.close) {
 				closer = closer.next;
 				continue;
@@ -215,7 +215,7 @@ class Inlines {
 			var cc = closer.c;
 			var index = cc == "~".code ? 12 + (closer.orig == 1 ? 0 : 1) : (cc == "_".code ? 0 : 6) + (closer.open ? 3 : 0) + closer.orig % 3;
 			var opener = closer.prev, found = false;
-			while (opener != null && opener != bottom && opener != bottoms[index]) {
+			while (Scan.tick() && opener != null && opener != bottom && opener != bottoms[index]) {
 				if (opener.c == cc && opener.open) {
 					if (cc == "~".code) {
 						if (opener.num == closer.num) {
@@ -242,7 +242,7 @@ class Inlines {
 				cn.text = cn.text.substr(0, cn.text.length - use);
 				var wrap = new INode(cc == "~".code ? KStrike : use == 1 ? KEmph : KStrong);
 				var t = on.next;
-				while (t != null && t != cn) {
+				while (Scan.tick() && t != null && t != cn) {
 					var next = t.next;
 					t.unlink();
 					wrap.add(t);
@@ -268,7 +268,7 @@ class Inlines {
 				if (!old.open) removeDelim(old);
 			}
 		}
-		while (delims != null && delims != bottom)
+		while (Scan.tick() && delims != null && delims != bottom)
 			removeDelim(delims);
 	}
 
@@ -349,7 +349,7 @@ class Inlines {
 		node.href = href;
 		node.title = title;
 		var t = opener.node.next;
-		while (t != null) {
+		while (Scan.tick() && t != null) {
 			var next = t.next;
 			t.unlink();
 			node.add(t);
@@ -362,7 +362,7 @@ class Inlines {
 		// (no links in links: the openers before this one are spent)
 		if (!opener.image) {
 			var o = brackets;
-			while (o != null) {
+			while (Scan.tick() && o != null) {
 				if (!o.image) o.active = false;
 				o = o.prev;
 			}
@@ -372,11 +372,11 @@ class Inlines {
 
 	// spaces, at most one line end, spaces
 	function spnl() {
-		while (isSpaceOrTab(at(s, pos)))
+		while (Scan.tick() && isSpaceOrTab(at(s, pos)))
 			pos++;
 		if (at(s, pos) == "\n".code) {
 			pos++;
-			while (isSpaceOrTab(at(s, pos)))
+			while (Scan.tick() && isSpaceOrTab(at(s, pos)))
 				pos++;
 		}
 	}
@@ -385,7 +385,7 @@ class Inlines {
 	function label():Int {
 		if (at(s, pos) != "[".code) return 0;
 		var j = pos + 1;
-		while (j < s.length) {
+		while (Scan.tick() && j < s.length) {
 			var c = s.fastCodeAt(j);
 			if (c == "\\".code && j + 1 < s.length) {
 				j += 2;
@@ -405,7 +405,7 @@ class Inlines {
 	function destination():Null<String> {
 		if (at(s, pos) == "<".code) {
 			var j = pos + 1;
-			while (j < s.length) {
+			while (Scan.tick() && j < s.length) {
 				var c = s.fastCodeAt(j);
 				if (c == "\\".code && j + 1 < s.length && isAsciiPunct(s.fastCodeAt(j + 1))) {
 					j += 2;
@@ -422,7 +422,7 @@ class Inlines {
 			return null;
 		}
 		var start = pos, depth = 0;
-		while (pos < s.length) {
+		while (Scan.tick() && pos < s.length) {
 			var c = s.fastCodeAt(pos);
 			if (c == "\\".code && pos + 1 < s.length && isAsciiPunct(s.fastCodeAt(pos + 1))) pos += 2;
 			else if (c == "(".code) {
@@ -448,7 +448,7 @@ class Inlines {
 		var close = q == "(".code ? ")".code : q;
 		if (q != "\"".code && q != "'".code && q != "(".code) return null;
 		var j = pos + 1;
-		while (j < s.length) {
+		while (Scan.tick() && j < s.length) {
 			var c = s.fastCodeAt(j);
 			if (c == "\\".code && j + 1 < s.length) {
 				j += 2;
@@ -495,7 +495,7 @@ class Inlines {
 
 	function lineEnd():Bool {
 		var j = pos;
-		while (isSpaceOrTab(at(s, j)))
+		while (Scan.tick() && isSpaceOrTab(at(s, j)))
 			j++;
 		var c = at(s, j);
 		if (c != -1 && c != "\n".code) return false;
@@ -508,6 +508,7 @@ class Inlines {
 		var inner = raw.substring(1, raw.length - 1).trim();
 		var out = new StringBuf(), space = false;
 		for (i in 0...inner.length) {
+			Scan.tick();
 			var c = inner.fastCodeAt(i);
 			if (c == 32 || c == 9 || c == 10 || c == 13) space = true else {
 				if (space) out.add(" ");
@@ -526,11 +527,11 @@ class Inlines {
 		// <scheme:...>
 		if (isAlpha(at(s, j))) {
 			var k = j + 1;
-			while (isAlnum(at(s, k)) || at(s, k) == "+".code || at(s, k) == ".".code || at(s, k) == "-".code)
+			while (Scan.tick() && (isAlnum(at(s, k)) || at(s, k) == "+".code || at(s, k) == ".".code || at(s, k) == "-".code))
 				k++;
 			if (k - j >= 2 && k - j <= 32 && at(s, k) == ":".code) {
 				k++;
-				while (k < s.length) {
+				while (Scan.tick() && k < s.length) {
 					var c = s.fastCodeAt(k);
 					if (c <= 32 || c == "<".code || c == ">".code) break;
 					k++;
@@ -545,14 +546,15 @@ class Inlines {
 		}
 		// <me@example.com>
 		var k = j;
-		while (k < s.length && isEmailLocal(s.fastCodeAt(k)))
+		while (Scan.tick() && k < s.length && isEmailLocal(s.fastCodeAt(k)))
 			k++;
 		if (k == j || at(s, k) != "@".code) return false;
 		k++;
 		var labels = 0;
 		while (true) {
+			Scan.tick();
 			var l = k;
-			while (isAlnum(at(s, k)) || at(s, k) == "-".code)
+			while (Scan.tick() && (isAlnum(at(s, k)) || at(s, k) == "-".code))
 				k++;
 			if (k == l || k - l > 63 || at(s, l) == "-".code || at(s, k - 1) == "-".code) return false;
 			labels++;
@@ -632,7 +634,7 @@ class Inlines {
 			}
 		}
 		var c = n.first;
-		while (c != null) {
+		while (Scan.tick() && c != null) {
 			switch c.kind {
 				case KText:
 					if (c.text != "") {
@@ -662,7 +664,7 @@ class Inlines {
 
 	static function flat(n:INode):String {
 		var out = new StringBuf(), stack = [n.first];
-		while (stack.length > 0) {
+		while (Scan.tick() && stack.length > 0) {
 			var c = stack.pop();
 			if (c == null) continue;
 			stack.push(c.next);
