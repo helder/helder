@@ -108,9 +108,12 @@ try {
 	await page.screenshot({ path: path.join(out, 'web-markdown.png') });
 	await page.keyboard.press('Escape');
 	// (a sound and a video: at most one plays, the one shown; none once left: the next file, closed)
+	// (least: one that is to play, given up to 10 s to start; else 1.5 s to stop)
 	const plays = async (what, most, least = 0) => {
-		await page.waitForTimeout(1500);
-		const p = await page.evaluate(() => window.playing());
+		const count = () => page.evaluate(() => window.playing());
+		if (least > 0) await page.waitForFunction((n) => window.playing().elements + window.playing().outputs >= n, least, { timeout: 10000 }).catch(() => {});
+		else await page.waitForTimeout(1500);
+		const p = await count();
 		if (p.elements + p.outputs > most || p.elements + p.outputs < least) fail(`${what}: ${JSON.stringify(p)} playing (${await page.title()})`);
 	};
 	const open = async (name, title) => {
@@ -130,10 +133,16 @@ try {
 	await plays('Chimes.m4a again', 1);
 	await page.keyboard.press('Escape');
 	await plays('closed', 0);
+	// (the video's frames on swiftshader's WebGPU: Dawn cannot import a decoded
+	// VideoFrame (copyExternalImageToTexture's external texture is invalid),
+	// those errors of this step only set aside; the frames are not what is checked here)
+	const before = errors.length;
 	await open('Starlings.mp4', 'Starlings.mp4 · ');
 	await plays('Starlings.mp4 shown', 1);
 	await page.keyboard.press('Escape');
 	await plays('closed again', 0);
+	const imported = /WebGPU: \[Invalid (Texture|TextureView|ExternalTexture)/;
+	errors.splice(before, errors.length - before, ...errors.slice(before).filter((e) => !imported.test(e)));
 	// (files dropped on the page: a folder "Dropped" of them, a photo of it opened)
 	await page.evaluate(async () => {
 		const dt = new DataTransfer();
