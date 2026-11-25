@@ -43,20 +43,44 @@ class Studio {
 	// an agent changed the project (an edit, a file made): the canvas has something of its
 	public final touched = signal(false);
 	// the canvas has nothing of the agent's yet (nothing on it, or the starter's
-	// alone): after the first prompt its places held (Watch's queued blocks),
-	// the starter's frame hidden
-	// (the agent's first change: the canvas' frames rise into the places the blocks held)
+	// alone): after the first prompt its places held (Watch's queued blocks)
+	// until a frame of the agent's draws (a design's, a story's of its own),
+	// the starter's frame never shown (Starter.own)
 	var touchedNow = false;
+	// (the agent's first frame drawn: the canvas' frames rise into the places the blocks held)
+	var rose = false;
 
 	function touch() {
 		if (touchedNow) return;
 		touchedNow = true;
 		touched(true);
-		if (starter && project != null) marks.rise([for (s in project.screens) s.name]);
+		rise();
 	}
 
-	public function waiting():Bool
-		return project == null || project.screens.length == 0 || (starter && !touched());
+	function rise() {
+		if (rose || !starter || !touchedNow || waiting()) return;
+		rose = true;
+		marks.rise([for (s in layout.screens()) s.name]);
+	}
+
+	public function waiting():Bool {
+		revived();
+		var p = project;
+		if (p == null) return true;
+		if (!starter) return p.screens.length == 0;
+		return !touched() || !Lambda.exists(p.screens, i -> !starterOwn(i.name) && shows(i));
+	}
+
+	// (a frame the canvas can show: a design's, a story's with a frame or a still)
+	function shows(i:Project.ScreenInfo):Bool {
+		if (i.source.match(Design(_))) return true;
+		var s = previews?.screen(i.name);
+		return s != null && (s.image() != null || s.still() != null);
+	}
+
+	// whether a screen is the starter's own, never shown (Starter.own)
+	public function starterOwn(name:String):Bool
+		return starter && project != null && Starter.own(project.dir, docs, name);
 	// (read again when what the project is changes: revive)
 	public var project(default, null):Null<Project>;
 	public var previews(default, null):Null<Previews>;
@@ -380,13 +404,23 @@ class Studio {
 		docs.create(file, text, project == null || !file.startsWith(project.dir + "/") ? file : file.substr(project.dir.length + 1), "agent", by);
 	}
 
-	// a file a made file's undo took back: deleted, its frames or stories gone
+	// a file deleted (an agent's project.patch {delete}): one entry of the history (its undo: back)
+	public function remove(file:String, ?by:String) {
+		touch();
+		log("removed", {file: file, by: by});
+		docs.remove(file, project == null || !file.startsWith(project.dir + "/") ? file : file.substr(project.dir.length + 1), by);
+	}
+
+	// a file gone (a made file's undo, a removal): deleted, its frames or
+	// stories gone, the program built without it
 	function gone(file:String) {
+		previews?.forget(file);
 		Files.remove(file);
 		if (project == null) return;
 		if (file.endsWith(".helder")) framesChanged(file, project.design(file, null));
 		else if (Project.isStory(file)) storiesChanged(file, null);
-		if (shaping(file)) revive();
+		if (shaping(file) && revive()) return;
+		if (previews != null && !file.endsWith(".helder")) rebuild(file, true);
 	}
 
 	// (a file that can change what the project is: a story, its main, a package's or helder's file)
@@ -1282,6 +1316,7 @@ class Studio {
 		var ui = Main.window?.ui;
 		if (ui != null) ui.requestFrame();
 		if (s.version == 1) log("screen-shown", {screen: s.info.name});
+		rise();
 		if (previews.looping == s.info.name) loopShown(s.info.name, "live");
 		allShown();
 		var m = measuring;
@@ -1446,7 +1481,10 @@ class Studio {
 			selection(next);
 		}
 		if (others.peek().length > 0 && others.peek()[0].file == file) others([for (o in others.peek()) {var n:Selection = Reflect.copy(o); n.start = tx.map(o.start, 1); n;}]);
-		if (file.endsWith(".helder") && project != null) framesChanged(file, project.design(file, docs.get(file).text));
+		if (file.endsWith(".helder") && project != null) {
+			framesChanged(file, project.design(file, docs.get(file).text));
+			rise();
+		}
 		if (origin != "code" && codeFile.peek() == file) {
 			applyingToEditor = true;
 			var changes = [for (c in tx.changes) new helder.syntax.Transaction.Change(c.start, c.end, c.text)];
@@ -2079,7 +2117,7 @@ class Layout {
 			return s == null ? {w: i.width + 0.0, h: i.height + 0.0} : {w: s.width() + 0.0, h: s.height() + 0.0};
 		}
 		function shown(i:Project.ScreenInfo):Bool
-			return i.source.match(Design(_)) || pr?.screen(i.name) != null;
+			return (i.source.match(Design(_)) || pr?.screen(i.name) != null) && !studio.starterOwn(i.name);
 		// (below the design frames: a story or the app placed by hand leaves the others where they were)
 		var y = 0.0;
 		for (f in p.flows())

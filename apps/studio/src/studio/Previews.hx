@@ -146,6 +146,8 @@ class Previews {
 
 	// (the frames file's reading, timed: said at the start)
 	var read = "";
+	// (start called: its compiler, its first build on their way)
+	var started = false;
 
 	static inline function ms(s:Float):Float
 		return Math.round(s * 10000) / 10;
@@ -226,7 +228,7 @@ class Previews {
 	// whether work is in flight (a build, a reload, screens in view not
 	// shown yet: those out of view come when the host has drawn them, never waited on)
 	public function busy():Bool
-		return status.peek() == "starting" || building || rebuilding || again || reloading || (!failed && Lambda.exists(screens, s -> inView(s) && unshown(s)));
+		return started && status.peek() == "starting" || building || rebuilding || again || reloading || (!failed && Lambda.exists(screens, s -> inView(s) && unshown(s)));
 
 	function unshown(s:Screen):Bool
 		return s.version == 0 && (s.still.peek() == null || s.stale.peek()) && !s.crashed;
@@ -245,6 +247,7 @@ class Previews {
 	// the compiler, the socket, the first build, the host started (every
 	// screen drawn from the file: once woken)
 	@:coroutine public function start(task:Node) {
+		started = true;
 		if (read != "") onLog('studio: $read');
 		if (fresh()) {
 			idle = true;
@@ -330,6 +333,10 @@ class Previews {
 	public function write(path:String, text:String) {
 		if (building) writes.set(path, text) else sys.io.File.saveContent(path, text);
 	}
+
+	// (a file deleted: not written after the build in progress)
+	public function forget(path:String)
+		writes.remove(path);
 
 	function flushWrites() {
 		for (p => t in writes) sys.io.File.saveContent(p, t);
@@ -559,7 +566,8 @@ class Previews {
 	// a still the host settled: kept under the files its program was made of
 	function tookStill(p:Dynamic) {
 		var s = order[Std.int(p.screen)], path:String = p.path;
-		if (s != null && running != null) kept.took(s.info.name, s.info.file, path, running);
+		// (a still of a story whose file went since: not kept)
+		if (s != null && running != null && FileSystem.exists(s.info.file)) kept.took(s.info.name, s.info.file, path, running);
 		if (s != null && p.loopFrames > 0) onLog('studio: ${s.info.name}\'s loop kept: ${p.loopFrames} frames, ${p.loopBytes} B before deflate');
 		try FileSystem.deleteFile(path) catch (_:Dynamic) {}
 	}

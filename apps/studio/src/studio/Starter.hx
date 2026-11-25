@@ -26,6 +26,16 @@ class Starter {
 		#end
 	}
 
+	// whether a screen is the starter's own: its story, its files as written
+	// (an agent that makes it its own, editing them, has it shown)
+	public static function own(dir:String, docs:Docs, name:String):Bool {
+		if (name != "App/Start") return false;
+		docs.version();
+		function is(f:String, text:String):Bool
+			return docs.has('$dir/$f') && docs.get('$dir/$f').text == text;
+		return is("app.story.tsx", STORY) && is("app.tsx", APP);
+	}
+
 	// (nothing in it but dot files)
 	public static function empty(dir:String):Bool
 		return Files.isDirectory(dir) && !Lambda.exists(Files.list(dir), n -> !n.startsWith("."));

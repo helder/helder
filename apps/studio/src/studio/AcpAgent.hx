@@ -131,7 +131,8 @@ class AcpAgent implements Agent {
 			if (url != null && !http) Sys.println('studio: ${command.name} takes no MCP server over HTTP: the studio\'s tools are not its');
 			var s:Dynamic = try a.request("session/new", {
 				cwd: work.dir,
-				mcpServers: url != null && http ? [{type: "http", name: "helder-studio", url: url, headers: []}] : []
+				mcpServers: url != null && http ? [{type: "http", name: "helder-studio", url: url, headers: []}] : [],
+				_meta: SESSION
 			}) catch (e:AcpError) {
 				var methods:Array<Dynamic> = init?.authMethods ?? [];
 				if (e.code != -32000 || methods.length == 0) throw e;
@@ -144,6 +145,13 @@ class AcpAgent implements Agent {
 		}
 		return a;
 	}
+
+	// (Claude Code's session options, claude-agent-acp's: its own shell and
+	// file writes not its, the project changed through the studio's tools;
+	// another agent ignores them)
+	public static final DENIED = ["Bash", "Write", "Edit", "NotebookEdit"];
+
+	static final SESSION:Dynamic = {claudeCode: {options: {disallowedTools: DENIED}}};
 
 	function failure(e:Exception):String {
 		var a = acp;

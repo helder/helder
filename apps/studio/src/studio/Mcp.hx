@@ -22,6 +22,11 @@ using StringTools;
 // one anonymous agent's ("Agent"), an unknown one a 404 (the client
 // initializes again), DELETE ends it.
 class Mcp {
+	// (the studio's tools, each always in Claude Code's prompt: no tool search
+	// before the first of them, anthropic/alwaysLoad)
+	static function listed():Array<Dynamic>
+		return [for (t in Tools.list) {name: t.name, description: t.description, inputSchema: t.inputSchema, _meta: {"anthropic/alwaysLoad": true}}];
+
 	public static inline var VERSION = "2025-06-18";
 	public static inline var PORT = 7340;
 	public static inline var ANONYMOUS = "anonymous";
@@ -121,7 +126,7 @@ class Mcp {
 					instructions: Instructions.text
 				};
 			case "ping": {};
-			case "tools/list": {tools: Tools.list};
+			case "tools/list": {tools: listed()};
 			case "tools/call":
 				var name:String = m.params?.name;
 				target.tool(name, m.params?.arguments, agent);

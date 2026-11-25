@@ -35,7 +35,10 @@ function tests() {
 		}));
 		test("without a session the one anonymous agent; an unknown one 404; DELETE leaves", async(() -> {
 			var s = make();
-			equals(post(s.mcp, {jsonrpc: "2.0", id: 1, method: "tools/list"}).status, 200);
+			var listed = post(s.mcp, {jsonrpc: "2.0", id: 1, method: "tools/list"});
+			equals(listed.status, 200);
+			var tools:Array<Dynamic> = Json.parse(listed.body.toString()).result.tools;
+			equals([tools.length, Lambda.count(tools, t -> Reflect.field(t._meta, "anthropic/alwaysLoad") == true)], [Tools.list.length, Tools.list.length]);
 			equals([for (p in s.agents.list()) p.name], ["Agent"]);
 			equals(post(s.mcp, {jsonrpc: "2.0", id: 1, method: "ping"}, "nope").status, 404);
 			var id = post(s.mcp, init("cursor")).headers.get("mcp-session-id");
