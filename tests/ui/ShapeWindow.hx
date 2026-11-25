@@ -12,7 +12,7 @@ import helder.os.x11.Xlib;
 // shows, where a test can see it: macOS's capture of the window (its own:
 // no permission, though a machine may give empty ones), Windows' screen
 // over an opaque green window behind it (a plain one of GDI's; --behind
-// helder: a helder window, its state told, not checked), X11's 32-bit pixels and the
+// helder: a helder window), X11's 32-bit pixels and the
 // screen composed over a green window (where a compositing manager runs;
 // else opaque, said so), weston's screenshot over its green background.
 //   ShapeWindow [--transparent no]: the system can't (X11 without a
@@ -72,7 +72,7 @@ class ShapeWindow {
 				system(w, desk);
 				if (w.window.transparent) inputs(w);
 				backdrops(w);
-				if (w.window.transparent && (desk != null || behindPlain()) && !helderBehind && Click.can()) {
+				if (w.window.transparent && (desk != null || behindPlain()) && Click.can()) {
 					clicking = true;
 					end = 70;
 				}
@@ -398,12 +398,7 @@ class ShapeWindow {
 			var c = Screen.pixel(Math.round(p.x * k + x * k), Math.round(p.y * k + y * k));
 			return [c & 0xFF, c >> 8 & 0xFF, c >> 16 & 0xFF];
 		}
-		// (a helder window behind: its state told, the screen's pixels told, not checked)
-		if (helderBehind) {
-			Sys.println('ShapeWindow: behind a helder window, the screen: ${at(10, 10)} ${at(80, 70)} ${at(150, 70)} (told, not checked)');
-			return;
-		}
-		screen("the screen", at);
+		screen(helderBehind ? "the screen over a helder window" : "the screen", at);
 		#elseif (hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64")
 		if (w.window.surface.kind == X11) x11(w) else wayland(w);
 		#end

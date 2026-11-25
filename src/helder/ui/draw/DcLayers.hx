@@ -573,8 +573,7 @@ class DcLayers extends LayerSplit {
 		IDCompositionVisual.RemoveAllVisuals(dc.root);
 		IDCompositionVisual.AddVisual(dc.root, dc.window, 1, Ptr.nil());
 		var hr = IDCompositionDevice.Commit(dev);
-		for (p in all())
-			(cast p : DcPlane).free()();
+		freeAll();
 		kept.clear();
 		overs.clear();
 		gone.resize(0);
@@ -584,9 +583,16 @@ class DcLayers extends LayerSplit {
 		Sys.println('helder.ui: system layers off: the window\'s own frame shown, the layers taken out of the tree (commit 0x${StringTools.hex(hr, 8)})');
 	}
 
-	override public function dispose() {
-		for (p in all())
+	// (each layer let go, the system layers' first: a box is taken out of its
+	// scroller's clip, which must not be let go before)
+	function freeAll() {
+		var ps = all();
+		for (p in ps.filter(p -> p.kind == LayerPlane.SLOT).concat(ps.filter(p -> p.kind != LayerPlane.SLOT)))
 			(cast p : DcPlane).free()();
+	}
+
+	override public function dispose() {
+		freeAll();
 		kept.clear();
 		overs.clear();
 		if (!stack.isNull()) {
