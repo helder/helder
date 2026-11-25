@@ -124,10 +124,12 @@ import './probe.js';
 import { run } from './os/browser.mjs';
 window.log = [];
 window.frames = [];
+window.ran = [];
 window.resizes = [];
 const loop = (t) => {
 	requestAnimationFrame(loop);
 	window.frames.push(performance.timeOrigin + t);
+	window.ran.push(performance.timeOrigin + performance.now());
 };
 requestAnimationFrame(loop);
 window.start = async (gfx, worker) => {
@@ -200,7 +202,7 @@ for (const worker of [false, true]) for (const gfx of ['webgpu', 'webgl2']) {
 			const r = window.resizes[window.resizes.length - 1], d = window.drawn[window.drawn.length - 1];
 			return r && d && r[1] === d[1] && r[2] === d[2];
 		}, null, { timeout: 5000 }).catch(() => {});
-		const { frames, resizes, drawn, trace } = await p.evaluate(() => ({ frames: window.frames, resizes: window.resizes, drawn: window.drawn, trace: window.trace }));
+		const { frames, ran, resizes, drawn, trace } = await p.evaluate(() => ({ frames: window.frames, ran: window.ran, resizes: window.resizes, drawn: window.drawn, trace: window.trace }));
 		const times = [];
 		for (let i = 0; i < frames.length - 1; i++) if (frames[i] >= t0) times.push(frames[i + 1] - frames[i]);
 		let shown = 0, stale = 0;
@@ -233,8 +235,10 @@ for (const worker of [false, true]) for (const gfx of ['webgpu', 'webgl2']) {
 		const last = resizes[resizes.length - 1], end = drawn[drawn.length - 1];
 		const settled = !!end && end[1] === last[1] && end[2] === last[2];
 		// (none drawn at a size the page had not laid out by the end of its frame: on
-		// the page's thread the program draws in its observer, before the test's)
-		const by = (t) => frames.find((f) => f > t) ?? Infinity;
+		// the page's thread the program draws in its observer, before the test's;
+		// the frame ends when the next one's callbacks run, not at its timestamp,
+		// its begin, which comes before the last frame's observers when late)
+		const by = (t) => ran.find((f) => f > t) ?? Infinity;
 		const odd = drawn.filter((d) => d[0] > t0 && !resizes.some((r) => r[0] <= by(d[0]) && r[1] === d[1] && r[2] === d[2])).length;
 		// (a worker's canvas resized and not drawn within 50 ms: shown cleared)
 		const sets = trace.filter((e) => e[0] > t0 && e[1].startsWith('canvas.'));

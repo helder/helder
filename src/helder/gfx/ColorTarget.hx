@@ -24,4 +24,16 @@ class ClearValue {
 		var k = t.clear;
 		if (k == null || k.x != r || k.y != g || k.z != b || k.w != a) t.clear = new Vec4(r, g, b, a);
 	}
+
+	// (r, g, b, a) from made, the last few clears; else a new one kept there
+	public static function of(made:Array<Null<Vec4>>, r:Float, g:Float, b:Float, a:Float):Null<Vec4> {
+		for (i in 0...made.length) {
+			var k = made[i];
+			if (k != null && k.x == r && k.y == g && k.z == b && k.w == a) return k;
+		}
+		var k:Null<Vec4> = new Vec4(r, g, b, a);
+		if (made.length == 8) made.shift();
+		made.push(k);
+		return k;
+	}
 }

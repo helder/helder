@@ -328,7 +328,7 @@ async function recolour(pg, x, y, tap) {
 	await ready(pg);
 	check(await event(pg, 'designs-shown'), 'an #import= link opened as a project of OPFS, its frame shown');
 	const names = await pg.waitForFunction(() => document.modelContext.tools.size >= 11 && [...document.modelContext.tools.keys()], null, { timeout: 10000 }).then((h) => h.jsonValue(), () => []);
-	check(names.length === 11 && ['project.read', 'project.patch', 'build.check', 'run.snap', 'run.tree', 'studio.focus', 'studio.working', 'studio.done', 'project.create', 'project.list', 'project.open'].every((n) => names.includes(n)), 'WebMCP: the tools registered: ' + names.join(', '));
+	check(names.length === 13 && ['project.read', 'project.patch', 'build.check', 'run.snap', 'run.tree', 'studio.focus', 'studio.working', 'studio.done', 'studio.ask', 'studio.inbox', 'project.create', 'project.list', 'project.open'].every((n) => names.includes(n)), 'WebMCP: the tools registered: ' + names.join(', '));
 	const run = (name, args) => pg.evaluate(([n, a]) => document.modelContext.tools.get(n).execute(a), [name, args]);
 	const read = await run('project.read', { path: 'app.helder' });
 	check(read.content[0].text === design, 'project.read: the file');
