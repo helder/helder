@@ -1,27 +1,28 @@
 // helder.test snapshots: `helder test -u` rewrites them
 
---- story Web/Samples: Web/Samples (117 lines)
+--- story Web/Samples: Web/Samples (118 lines)
 Node#root 0,0 390x844
   Node#view 0,0 390x844
     Node#window 0,0 390x844
       Node#browser 0,0 390x844
         Node#sidebar 0,0 236x844
-          Node#view 10,8 216x836
-            Node#view 10,8 216x30
-              Node#level-back 12,10 74x26
-                ImageNode#image 14,16 14x14
-                TextNode#text 30,16 48x15 "Overview"
-              Node#view 88,23 104x0
-              Node#level-home 194,8 30x30
-                ImageNode#image 201,15 16x16
-            Node#view 10,44 216x21
-              TextNode#level-title 18,46 53x19 "Samples"
-              Node#view 79,55 85x0
-              TextNode#text 172,48 46x15 "1 folder"
-            Node#scroll 10,71 216x773
-              Node#button 10,71 216x28
-                ImageNode#image 18,77 16x16
-                TextNode#text 42,77 176x16 "More"
+          Node#sidebar-body 10,8 216x836
+            Node#view 10,8 216x836
+              Node#view 10,8 216x30
+                Node#level-back 12,10 74x26
+                  ImageNode#image 14,16 14x14
+                  TextNode#text 30,16 48x15 "Overview"
+                Node#view 88,23 104x0
+                Node#level-home 194,8 30x30
+                  ImageNode#image 201,15 16x16
+              Node#view 10,44 216x21
+                TextNode#level-title 18,46 53x19 "Samples"
+                Node#view 79,55 85x0
+                TextNode#text 172,48 46x15 "1 folder"
+              Node#scroll 10,71 216x773
+                Node#button 10,71 216x28
+                  ImageNode#image 18,77 16x16
+                  TextNode#text 42,77 176x16 "More"
         Node#view 236,0 154x844
           Node#main 236,0 1x844
             Node#toolbar 237,0 16x40
@@ -45,47 +46,47 @@ Node#root 0,0 390x844
               Node#list 237,40 0x772
                 GridScroll#grid 237,40 0x772
                   Spacer#before 237,40 0x12
-                  Node#row 237,52 24x170
-                    Node#cell 249,52 0x166
-                      Node#view 249,52 8x167
-                        Node#view 195,56 116x116
-                          ImageNode#image 205,75 96x78
-                        TextNode#text 235,178 37x18 "More"
-                        TextNode#text 236,197 34x14 "Folder"
-                  Node#row 237,222 24x170
-                    Node#cell 249,222 0x166
-                      Node#view 249,222 8x167
-                        Node#view 195,226 116x116
-                          Node#view 199,230 108x108
-                            ImageNode#image 199,230 108x108
-                        TextNode#text 216,348 74x18 "About Viewer.pdf"
-                        TextNode#text 244,367 18x14 "182 KB"
-                  Node#row 237,392 24x170
-                    Node#cell 249,392 0x166
-                      Node#view 249,392 8x167
-                        Node#view 195,396 116x116
-                          Node#view 217,408 72x92
-                            ImageNode#image 241,436 24x24
-                            TextNode#text 241,475 24x14 "M4A"
-                        TextNode#text 216,518 74x18 "Chimes.m4a"
-                        TextNode#text 247,537 12x14 "91 KB"
-                  Node#row 237,562 24x170
-                    Node#cell 249,562 0x166
-                      Node#view 249,562 8x167
-                        Node#view 195,566 116x116
-                          Node#view 199,570 108x108
-                            ImageNode#image 199,570 108x108
-                        TextNode#text 210,688 87x18 "Dusk panorama.jpg"
-                        TextNode#text 244,707 18x14 "293 KB"
-                  Node#row 237,732 24x170
-                    Node#cell 249,732 0x166
-                      Node#view 249,732 8x167
-                        Node#view 195,736 116x116
-                          Node#view 199,740 108x108
-                            ImageNode#image 199,740 108x108
-                        TextNode#text 203,858 100x18 "Mandelbrot.jpg"
-                        TextNode#text 244,877 18x14 "370 KB"
-                  Spacer#after 237,902 0x862
+                  Node#row 237,52 24x164
+                    Node#cell 249,52 0x160
+                      Node#view 249,52 8x160
+                        Node#view 208,56 90x90
+                          ImageNode#image 216,71 75x61
+                        TextNode#text 235,152 37x33 "More"
+                        TextNode#text 236,186 34x15 "Folder"
+                  Node#row 237,216 24x164
+                    Node#cell 249,216 0x160
+                      Node#view 249,216 8x160
+                        Node#view 208,220 90x90
+                          Node#view 211,223 84x84
+                            ImageNode#image 211,223 84x84
+                        TextNode#text 216,316 74x33 "About Viewer.pdf"
+                        TextNode#text 244,350 18x15 "182 KB"
+                  Node#row 237,380 24x164
+                    Node#cell 249,380 0x160
+                      Node#view 249,380 8x160
+                        Node#view 208,384 90x90
+                          Node#view 225,393 56x72
+                            ImageNode#image 241,411 24x24
+                            TextNode#text 241,440 24x14 "M4A"
+                        TextNode#text 216,480 74x33 "Chimes.m4a"
+                        TextNode#text 247,514 12x15 "91 KB"
+                  Node#row 237,544 24x164
+                    Node#cell 249,544 0x160
+                      Node#view 249,544 8x160
+                        Node#view 208,548 90x90
+                          Node#view 211,551 84x84
+                            ImageNode#image 211,551 84x84
+                        TextNode#text 210,644 87x33 "Dusk panorama.jpg"
+                        TextNode#text 244,678 18x15 "293 KB"
+                  Node#row 237,708 24x164
+                    Node#cell 249,708 0x160
+                      Node#view 249,708 8x160
+                        Node#view 208,712 90x90
+                          Node#view 211,715 84x84
+                            ImageNode#image 211,715 84x84
+                        TextNode#text 203,808 100x33 "Mandelbrot.jpg"
+                        TextNode#text 244,842 18x15 "370 KB"
+                  Spacer#after 237,872 0x832
             Node#pathbar 237,812 12x32
               Node#view 241,813 0x32
                 PathBarNode#pathbar 241,813 12x32
