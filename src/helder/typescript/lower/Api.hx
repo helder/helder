@@ -309,6 +309,9 @@ class Api {
 		// (the classes it names, or has values of: their keeps)
 		for (sf in project.files) for (i in 1...sf.count) {
 			var n = sf.node(i);
+			// A re-export forwards the symbol. Only its consumers use the class.
+			if (n.kind == KindExportSpecifier || n.parent?.kind == KindExportSpecifier)
+				continue;
 			var c:Null<ForeignClass> = null;
 			if (sf.kindAt(i) == KindIdentifier) switch of(n) {
 				case FClass(k) | FStatic(k, _): c = k;
