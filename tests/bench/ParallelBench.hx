@@ -24,6 +24,8 @@ import ParallelShaders;
 //   gpu      compute(): the step dispatched, then 32 bytes read back (the
 //            wait for it); gpu x10: ten dispatches a frame, a tenth of it;
 //            sync: an empty frame and the same read (the floor under gpu);
+//            upload: the CPU's bytes written to the buffer, then sync (what
+//            a CPU step pays to have its particles drawn);
 //            +read: the whole buffer read back after it; +write+read: the
 //            CPU's bytes uploaded first too
 //
@@ -62,7 +64,7 @@ class ParallelBench {
 		check(device, 1003, 64);
 		var rows:Array<Array<String>> = [];
 		var names = ["today", "scalar", "vec", "lanes", "jobs"];
-		if (device != null) names = names.concat(["gpu", "gpu x10", "sync", "gpu +read", "gpu +write+read"]);
+		if (device != null) names = names.concat(["gpu", "gpu x10", "sync", "upload", "gpu +read", "gpu +write+read"]);
 		// (PARALLEL_N="1000 5000": these sizes; PARALLEL_FORMS="lanes,gpu": these forms)
 		var given = Sys.getEnv("PARALLEL_N"), only = Sys.getEnv("PARALLEL_FORMS");
 		var sizes = given == null ? SIZES : [for (x in given.split(" ")) if (x != "") Std.parseInt(x)];
@@ -235,7 +237,7 @@ class ParallelBench {
 	static function measure(name:String, n:Int, device:Null<Device>):Float {
 		var start = initial(n);
 		var best = 1e30;
-		if (name.startsWith("gpu") || name == "sync") {
+		if (name.startsWith("gpu") || name == "sync" || name == "upload") {
 			var g = new Gpu(device, start);
 			var small = Bytes.alloc(32), all = Bytes.alloc(start.length);
 			function once():Float {
@@ -246,6 +248,10 @@ class ParallelBench {
 						device.readBuffer(g.buffer, 0, small);
 					case "gpu x10":
 						g.steps(10);
+						device.readBuffer(g.buffer, 0, small);
+					case "upload":
+						device.writeBuffer(g.buffer, 0, all);
+						g.steps(0);
 						device.readBuffer(g.buffer, 0, small);
 					case "sync":
 						g.steps(0);
