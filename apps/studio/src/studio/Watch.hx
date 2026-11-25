@@ -28,7 +28,7 @@ class Watch implements Markup {
 					<view position="absolute" inset={0}>{Board.view(studio)}</view>
 					<Show when={!studio.classic && studio.waiting()}>
 						<view tag="orb" position="absolute" inset={0} align-items="center" justify="center" pointer-events="none" transition="fade scale(1.06)">
-							<view width={440} height={440} margin-top={blank(studio) ? -440 : 0}>{orb(studio)}</view>
+							<view width={ORB} height={ORB} margin-top={blank(studio) ? -360 : 0}>{orb(studio)}</view>
 						</view>
 					</Show>
 					{CodePanel.view(studio)}
@@ -46,11 +46,14 @@ class Watch implements Markup {
 			</view>
 		</view>;
 
-	// (the orb: the agent's colour, the current blue for the studio's own tools; brighter while a turn runs)
+	// (the orb: free on the ground, no box drawn; its glow room enough to fade into the dots)
+	static inline var ORB = 560;
+
+	// (the orb: the agent's colour, the current blue for the studio's own tools; quickened while a turn runs, pulsed by its work)
 	static function orb(studio:Studio):Node {
-		var n = Orb.node(() -> studio.agentName() == "Studio" ? "#3b82f6" : studio.agentColour(), () -> Chat.working(studio));
-		n.style.width = 440;
-		n.style.height = 440;
+		var n = Orb.node(() -> studio.agentName() == "Studio" ? "#3b82f6" : studio.agentColour(), () -> Chat.working(studio), () -> studio.activity.peek());
+		n.style.width = ORB;
+		n.style.height = ORB;
 		return n;
 	}
 

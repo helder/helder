@@ -4,7 +4,8 @@
 // the studio's MCP server (studio.ask, as an MCP agent named claude-code);
 // "work" streams a plan, a thought, a Markdown
 // reply with chips and five tool calls (the last running), then waits for
-// session/cancel; "think" only thinks, until session/cancel; "The user says…" (the inbox's notes) is noted; "markdown" streams a Markdown reply in small
+// session/cancel; "think" only thinks, until session/cancel; "pulse" calls a tool every
+// 600 ms, ten times, then waits for session/cancel; "The user says…" (the inbox's notes) is noted; "markdown" streams a Markdown reply in small
 // chunks; "edit" streams text, a thought, a tool call, a
 // plan, asks permission, reads and writes app.helder (and a file outside the
 // project), then reports what the client answered; "wait" streams a chunk,
@@ -85,6 +86,16 @@ async function prompt(id, p) {
     for (let i = 0; i < reply.length; i += 7)
       update(s, {sessionUpdate: 'agent_message_chunk', content: {type: 'text', text: reply.slice(i, i + 7)}})
     send({id, result: {stopReason: 'end_turn'}})
+    return
+  }
+  if (text.startsWith('pulse')) {
+    update(s, {sessionUpdate: 'agent_thought_chunk', content: {type: 'text', text: 'Working.'}})
+    for (let k = 0; k < 10; k++) {
+      await new Promise(resolve => setTimeout(resolve, 600))
+      update(s, {sessionUpdate: 'tool_call', toolCallId: 'p' + k, title: 'step ' + k, kind: 'edit', status: 'completed'})
+    }
+    await new Promise(resolve => (cancelled = resolve))
+    send({id, result: {stopReason: 'cancelled'}})
     return
   }
   if (text.startsWith('think')) {

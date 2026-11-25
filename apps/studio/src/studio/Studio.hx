@@ -40,6 +40,8 @@ class Studio {
 	var unveiled = false;
 	// an agent changed the project (an edit, a file made): the canvas has something of its
 	public final touched = signal(false);
+	// the agents' work as it happens: bumped by each tool call of the prompt's agent and each agent's edit (the orb pulses)
+	public final activity = signal(0);
 
 	// the canvas has nothing of the agent's yet (nothing on it, or the starter's
 	// alone): the orb shows, the starter's frame hidden under it
@@ -1403,6 +1405,7 @@ class Studio {
 	// frame when it named none), what it made marked (Marks)
 	function agentEdited(file:String, tx:Transaction) {
 		touched(true);
+		activity(v -> v + 1);
 		var by = docs.nextUndo()?.by;
 		if (by == null || project == null) return;
 		var p = presence.named(by) ?? presence.arrive("acp:" + by, by);
@@ -1916,7 +1919,9 @@ class Studio {
 				}
 				setTurn(Turns.add(turnNow ?? Turns.start(p), e));
 				switch e {
-					case Tool(id, title, _, status): log("agent-tool", {id: id, title: title, status: status});
+					case Tool(id, title, _, status):
+						log("agent-tool", {id: id, title: title, status: status});
+						activity(v -> v + 1);
 					// (a permission ask: the chat's card, as studio.ask's; an answer in
 					// the user's words cancels it and goes to the agent as a note)
 					case Ask(question, options, _) if (!classic):
