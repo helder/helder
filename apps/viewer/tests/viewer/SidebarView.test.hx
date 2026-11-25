@@ -138,6 +138,24 @@ function tests() {
 			change(() -> x.sidebar.show("tests/fixtures"), ["level-bar", "level-home"]);
 			equals(ui.root.find("level-back").style.opacity, 1.0);
 		});
+		test("the window declares no motion: its frames walked once", () -> {
+			var m = mount(), ui = m.ui, x = m.x;
+			// (a declaration (motion, matched, ride, a presence's transition) turns on
+			// helder.ui's motions for the window, each frame walked twice for them)
+			function declared(n:helder.ui.Node):Array<String> {
+				var t = n.style.transition, out = n.motion != null || n.matched != null || n.ride != 0 || t != null && t.presence != null ? [n.tag] : [];
+				for (c in n.children)
+					out = out.concat(declared(c));
+				return out;
+			}
+			for (l in ["tests", "", "tests/fixtures"]) {
+				x.sidebar.show(l);
+				frame(ui);
+				for (_ in 0...30)
+					at(ui, 1 / 60);
+				equals(declared(ui.root), []);
+			}
+		});
 		test("clicked again on the way: turned from where it is, not restarted", () -> {
 			var m = mount(), ui = m.ui, x = m.x;
 			x.sidebar.back();
@@ -433,7 +451,7 @@ private class Levels {
 
 	// (the back row's label as shown)
 	public function back():String
-		return text(ui.root.find("level-back"));
+		return text(ui.root.find("level-back-label"));
 
 	// (a folder's row of the level shown, clicked dx points right of its middle)
 	public function click(name:String, dx:Float) {

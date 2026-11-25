@@ -10,7 +10,7 @@ Node#root 0,0 390x844
             Node#level-back 12,10 74x26
               ImageNode#image 14,16 14x14
               Node#view 30,16 48x15
-                TextNode#text 30,16 48x15 "Overview"
+                TextNode#level-back-label 30,16 48x15 "Overview"
             Node#view 88,23 104x0
             Node#level-home 194,8 30x30
               ImageNode#image 201,15 16x16

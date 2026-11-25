@@ -124,17 +124,52 @@ class SidebarView implements Markup {
 
 	// (the bar over the levels, still while they slide (a navigation bar's):
 	// the back row to the level above, its label cross-faded in place, gone
-	// at the overview by a fade; the overview's button, never moved)
+	// at the overview by a fade; the overview's button, never moved. Its
+	// fades on tracks of its own, as the panes' moves: a declared motion
+	// (motion-opacity, transition) turns on helder.ui's motions for the
+	// whole window, each of its frames then walked twice)
 	static function bar(x:Explorer):View {
-		var s = x.sidebar;
+		var s = x.sidebar, node:Null<Node> = null, ticking = false;
 		function top():Bool
 			return s.level() == "";
-		return <view tag="level-bar" direction="row" align-items="center" padding="0 2" column-gap={2} shrink={0}>
+		var row = new helder.ui.motion.Track(s.level.value == "" ? 0 : 1, 1e-3), mix = new helder.ui.motion.Track(1, 1e-3);
+		var shown = signal(row.value), crossed = signal(1.0), label = signal(s.level.value == "" ? "" : s.backLabel()), last = signal("");
+		function step(t:Float):Bool {
+			row.sample(t);
+			mix.sample(t);
+			shown(row.value);
+			crossed(mix.value);
+			return ticking = row.moving() || mix.moving();
+		}
+		renderEffect(() -> [s.level(), s.backLabel()], v -> {
+			var at = v[0] != "", now = node != null && node.ui != null, fade = helder.ui.motion.Curve.REDUCED_FADE;
+			if (now) row.animate(-1, at ? 1 : 0, fade) else row.set(at ? 1 : 0);
+			// (another label: the last fading out over it; from the overview, the row's fade alone)
+			if (at && v[1] != label.peek()) {
+				if (now && label.peek() != "" && row.target > 0 && row.value > 0) {
+					last(label.peek());
+					mix.set(0);
+					mix.animate(-1, 1, fade);
+				} else mix.set(1);
+				label(v[1]);
+			}
+			if (!now) {
+				shown(row.value);
+				crossed(mix.value);
+			} else if (!ticking) {
+				ticking = true;
+				helder.ui.Clock.addFor(node, step);
+			}
+		});
+		return <view tag="level-bar" direction="row" align-items="center" padding="0 2" column-gap={2} shrink={0} ref={(n:Node) -> node = n}>
 			<view:button slot="side-back" tag="level-back" role="button" focusable={!top()} label={() -> "Back to " + s.backLabel()}
-				shrink={1} min-width={0} opacity={top() ? 0 : 1} motion-opacity="fade" pointer-events={top() ? "none" : "auto"} onPress={() -> if (s.level.value != "") s.back()}>
+				shrink={1} min-width={0} opacity={shown()} pointer-events={top() ? "none" : "auto"} onPress={() -> if (s.level.value != "") s.back()}>
 				<image src={Glyphs.get("back")} width={14} height={14} shrink={0}/>
 				<view shrink={1} min-width={0}>
-					<For each={() -> [top() ? "" : s.backLabel()]}>{l -> <text transition="fade" max-lines={1} text-overflow="ellipsis">{l.peek()}</text>}</For>
+					<text tag="level-back-label" opacity={crossed()} max-lines={1} text-overflow="ellipsis">{label()}</text>
+					<Show when={crossed() < 1}>
+						<text position="absolute" left={0} top={0} opacity={1 - crossed()} max-lines={1}>{last()}</text>
+					</Show>
 				</view>
 			</view:button>
 			<view grow={1}/>
