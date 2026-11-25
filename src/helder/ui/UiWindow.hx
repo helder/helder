@@ -918,6 +918,14 @@ class UiWindow {
 	// the app loop: every UiWindow's frames and events until the last closes
 	// (on the web it returns, the frames going on); content, when given, opened first
 	@:typescript public static function run(?content:RootView) {
+		// (what was launched before the windows started now (a folder's listing
+		// handed to the jobs' pool), not at the loop's first turn: it is done
+		// while the system makes the window (on a Mac 100 ms), there for the
+		// first frame; not headless, whose turns are its virtual clock's)
+		#if !helder.headless
+		var l = helder.async.Driven.MainLoop.main;
+		if (l != null && !l.turning) l.turn(0);
+		#end
 		if (content != null) Render.open(content);
 		App.run(() -> {
 			var now = #if helder.headless helder.async.Time.now #else haxe.Timer.stamp() #end;

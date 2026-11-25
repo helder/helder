@@ -285,11 +285,18 @@ Finder the same way, on the screen.
 | open a 24 MP JPEG (3.5 MB) full size | 435 | 576 |
 | open a HEIC (1.1 MB), a PDF's first page | 224, 217 | 370, 234 |
 
-A launch's time: 190 ms before `main` runs (the 9.5 MB executable loaded),
-20 ms to the folder asked for, 170 ms making the window and its GPU device,
-110 ms to the first frame (the listing's result is delivered on the window's
-loop, so it lands with it), and the rows a frame later. A folder of 10,000
-entries: read in 61 ms, of which 31 ms sorting its batches in.
+A launch, measured again at a load average of 2 (`… finder.mjs startup`,
+`--cold` with the home's caches emptied; ms after the spawn, median / p90):
+the folder of 350 entries' rows at 168–188 / 179–203 (cold 202 / 219),
+its thumbnails at 191–215; before the fonts' scan was kept and the
+listing started ahead of the window, 272–292 / 295–304 (cold 284 / 296).
+Where it goes now: 9 ms to `main` (the fonts' faces read from the cache's
+one file, not every font's headers), 8 ms to the window asked for (its
+folder's listing started then, done while the window is made), 43 ms
+loading AppKit, 15 ms its menus, 26 ms its window, 22 ms its run loop's
+start, then the first frame with the rows: 12 ms laying out, 16 ms
+painting, 9 ms the GPU's. A folder of 10,000 entries: read in 61 ms, of
+which 31 ms sorting its batches in.
 
 ## Releasing
 

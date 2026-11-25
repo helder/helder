@@ -11,6 +11,7 @@
 // are there; it opens windows on the screen and takes the focus, so it runs
 // on its own, all at once, its windows closed after.
 //   node apps/viewer/tests/bench/finder.mjs viewer [out dir] [--runs n]   (the viewer: apps/viewer/bin/macos-arm64/viewer, built)
+//   node apps/viewer/tests/bench/finder.mjs startup [out dir] [--runs n] [--cold]   (a launch's phases alone; VIEWER=<exe>: another build's)
 //   node apps/viewer/tests/bench/finder.mjs finder [out dir] [--runs n]   (Finder: on the screen)
 //   node apps/viewer/tests/bench/finder.mjs report [out dir]              (the table, from both)
 import { spawn, execFileSync } from 'node:child_process';
@@ -81,7 +82,8 @@ const stats = (xs) => {
 };
 
 // --- the viewer
-const exe = path.join(viewerDir, 'bin/macos-arm64/viewer');
+// (VIEWER: another build's, a before's)
+const exe = process.env.VIEWER ?? path.join(viewerDir, 'bin/macos-arm64/viewer');
 const home = path.join(out, 'home'), log = path.join(out, 'timing.log');
 const env = { ...process.env, HELDER_HOME: home, HELDER_BACKGROUND: '1', HELDER_VIEWER_TIMING: log };
 
@@ -229,6 +231,30 @@ function summary(r) {
 	return lines.join('\n');
 }
 
+// a launch's phases alone, warm (the second launch on; --cold: each with the
+// home's cache emptied, the thumbnails' and the fonts' found): spawn → main, → the
+// window asked for (run), → made, → its first frame, → the folder's rows, →
+// thumbnails; the listing read (batch done), all in ms after the spawn
+async function startup() {
+	if (!fs.existsSync(exe)) throw new Error('no viewer: nice -n 20 bun run helder build apps/viewer');
+	fixtures();
+	const ph = { main: [], run: [], made: [], read: [], window: [], rows: [], thumbs: [] };
+	const cold = args.includes('--cold');
+	for (let k = 0; k <= runs; k++) {
+		if (cold) fs.rmSync(path.join(home, 'cache'), { recursive: true, force: true });
+		const from = size(), at = launch(F.f350);
+		const m = await until(from, (m) => m.some((x) => x.kind === 'thumbs'));
+		await quit();
+		if (k === 0) continue;
+		const start = after(m, 'start'), epoch = (x) => (x ? x.t - start.t + +start.rest - at : NaN);
+		ph.main.push(+start.rest - at);
+		for (const kind of ['run', 'made', 'window', 'rows', 'thumbs']) ph[kind].push(epoch(after(m, kind)));
+		ph.read.push(epoch(m.find((x) => x.kind === 'batch' && x.rest.includes('done'))));
+	}
+	const line = Object.entries(ph).map(([k, v]) => `${k} ${stats(v).median}/${stats(v).p90}`).join('  ');
+	console.log(`startup (${cold ? 'cold' : 'warm'}, ${runs} runs, median/p90 ms after the spawn; load ${os.loadavg().map((x) => x.toFixed(1)).join(' ')}): ${line}`);
+}
+
 // --- Finder (finder.js: AppleScript's JavaScript, System Events' accessibility tree)
 async function finder() {
 	fixtures();
@@ -269,6 +295,7 @@ function table(v, f) {
 }
 
 if (what === 'viewer') await viewer();
+else if (what === 'startup') await startup();
 else if (what === 'finder') await finder();
 else if (what === 'report') {
 	const v = JSON.parse(fs.readFileSync(path.join(out, 'viewer.json'), 'utf8'));
