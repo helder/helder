@@ -27,11 +27,21 @@ using StringTools;
 class Board implements Markup {
 	public static function view(studio:Studio):View {
 		var stage:Null<Node> = null, panned = false, watch = !studio.classic;
-		return <view tag="stage" grow={1} min-width={0} overflow="hidden" cursor="default" background={c(watch ? "ground" : "canvas")} ref={n -> {
+		return <view tag="stage" grow={1} min-width={0} overflow="hidden" cursor={watch ? studio.camera.hand() : (Default : Cursor)} background={c(watch ? "ground" : "canvas")} ref={n -> {
 			stage = n;
 			studio.stageNode = n;
 		}}
-			onPointerDown={_ -> panned = false}
+			focusable={watch} onPointerDown={e -> {
+				panned = false;
+				// (the watched canvas takes the keys when pressed, from the chat's field too: Space shows the hand)
+				if (watch) e.current.focus(false);
+			}}
+			onPointerEnter={e -> if (watch && e.current.ui?.focus == null) e.current.focus(false)}
+			onKeyDown={e -> if (watch && e.key == Key.SPACE) {
+				studio.camera.held(true);
+				e.preventDefault();
+			}} onKeyUp={e -> if (watch && e.key == Key.SPACE) studio.camera.held(false)}
+			onBlur={_ -> studio.camera.held(false)}
 			onClick={e -> if (watch && !panned) studio.aimAt(e.localX, e.localY) else if (studio.mode() != "stories" && !panned) studio.clickStage(e.localX, e.localY, e.mods & Mods.SHIFT != 0)}
 			onWheel={e -> {
 				// (a pinch's deltaY is -100 ln of its scale, as browsers make it:
@@ -49,6 +59,7 @@ class Board implements Markup {
 				panned = true;
 				if (watch) {
 					studio.camera.panBy(g.dx, g.dy);
+					studio.camera.dragging(g.state != Ended && g.state != Cancelled);
 					return;
 				}
 				if (g.state == Began) d.begin(g.x - g.tx, g.y - g.ty);
@@ -77,6 +88,8 @@ class Board implements Markup {
 
 	// (the ground's dots, following the camera)
 	static function dots(studio:Studio):Node {
+		// (the hand's changes told to checks)
+		effect(() -> studio.camera.hand(), h -> studio.log("hand", {cursor: (cast h : String)}));
 		var d = new Dots(studio.camera, c("dots"));
 		d.style.position = Absolute;
 		d.style.inset = 0;

@@ -42,8 +42,9 @@ user watches it on a canvas that is theirs (`Watch`):
   while it works is a note for it (`Inbox`: "sent while working", then
   "seen"), not a new prompt: carried by its next tool call to the
   studio, or, over ACP, sent as the next prompt when its turn ends.
-- **The canvas** (`Board`, watched): every frame as before, panned and
-  zoomed; a click makes a frame the prompt's focus (a quiet ring), a
+- **The canvas** (`Board`, watched): every frame as before, panned (a
+  drag, any button; an open hand while Space is held over it, a closed
+  one while it pans) and zoomed; a click makes a frame the prompt's focus (a quiet ring), a
   double click plays it. Nothing on it is selected, dragged or edited:
   every input is the chat's.
 

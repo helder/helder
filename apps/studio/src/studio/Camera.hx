@@ -15,6 +15,14 @@ class Camera {
 	public var y(default, null) = 0.0;
 	public var k(default, null) = 1.0;
 	public final changed = signal(0);
+	// the hand over the watched canvas: Space held (ready to pan: an open
+	// hand), a drag panning it (a closed one)
+	public final held = signal(false);
+	public final dragging = signal(false);
+
+	// that hand as a cursor: closed while panning, open while Space is held, else the arrow
+	public function hand():helder.ui.Cursor
+		return dragging() ? Grabbing : held() ? Grab : Default;
 
 	// (where it flies: the view's x, y and the scale's log, each an analytic track, helder.ui.motion's)
 	final fx = new Track(0, 0.05);
