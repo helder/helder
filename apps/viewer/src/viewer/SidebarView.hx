@@ -31,14 +31,16 @@ class SidebarView implements Markup {
 		return <scroll tag="overview" grow={1} min-height={0} row-gap={12} padding-bottom={10}>
 			<view row-gap={1}>
 				<text slot="side-head">Locations</text>
-				{[for (p in s.places) row(p.name, Glyphs.place(p.kind), () -> b.dir() == Browser.normalize(p.path),
-					() -> StringTools.startsWith(b.dir(), Browser.normalize(p.path) + "/"), "", () -> x.choose(p.path))]}
+				<For each={() -> s.places()}>{p -> row(p().name, Glyphs.place(p().kind), () -> b.dir() == Browser.normalize(p().path),
+					() -> StringTools.startsWith(b.dir(), Browser.normalize(p().path) + "/"), "", () -> x.choose(p().path))}</For>
 			</view>
-			<view row-gap={1}>
-				<text slot="side-head">Devices</text>
-				{[for (v in s.volumes) row(v.name, Glyphs.volume(v), () -> b.dir() == Browser.normalize(v.path), () -> false,
-					v.root && v.total > 0 ? Kinds.size(v.free) + " free" : "", () -> x.choose(v.path))]}
-			</view>
+			<Show when={s.volumes.length > 0}>
+				<view row-gap={1}>
+					<text slot="side-head">Devices</text>
+					{[for (v in s.volumes) row(v.name, Glyphs.volume(v), () -> b.dir() == Browser.normalize(v.path), () -> false,
+						v.root && v.total > 0 ? Kinds.size(v.free) + " free" : "", () -> x.choose(v.path))]}
+				</view>
+			</Show>
 		</scroll>;
 	}
 

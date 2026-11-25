@@ -280,6 +280,9 @@ class X11Window {
 		queueLock.release();
 		if (!ic.isNull()) Xlib.XDestroyIC(ic);
 		ic = Ptr.nil();
+		#if helder.soft
+		Blit.forget(surface);
+		#end
 		Xlib.XDestroyWindow(display, id);
 		Xlib.XFlush(display);
 		for (r in clipboardReads.copy())
@@ -323,7 +326,7 @@ class X11Window {
 	// (Window.backdrop: KDE's blur behind the window, its whole area
 	// (_KDE_NET_WM_BLUR_BEHIND_REGION empty); blur and mica alike, no glass;
 	// none where no one made the atom: KWin does)
-	function setBackdrop(b:Backdrop):Bool {
+	function setBackdrop(b:WindowBackdrop):Bool {
 		if (b == Glass) return false;
 		var atom = Arena.scopedValue(a -> Xlib.XInternAtom(display, a.cstring("_KDE_NET_WM_BLUR_BEHIND_REGION"), 1));
 		if (atom == 0) return b == None;
@@ -821,6 +824,10 @@ class X11Window {
 					if (s.value.selection == XdndSelection) w.dropArrived(s, e) else w.selectionArrived(xev);
 				case X.Expose:
 					var x:Ptr<XExposeEvent> = xev;
+					// (a frame drawn on the CPU: the server keeps none, the last one put again)
+					#if helder.soft
+					if (x.value.count == 0) Blit.repaint(w.surface, Ptr.nil());
+					#end
 					if (x.value.count == 0) e.kind = Redraw;
 				case X.ConfigureNotify:
 					var c:Ptr<XConfigureEvent> = xev;

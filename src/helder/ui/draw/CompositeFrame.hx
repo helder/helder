@@ -100,6 +100,9 @@ class CompositeFrame {
 	var sampler:Null<Sampler> = null;
 	// (whether it was filled: a frame drew it)
 	public var ready(default, null) = false;
+	// the backdrops drawn (helder.ui.Glass's): what they read moves with what
+	// is under them, so the program draws such a frame, onto the window's own layer
+	public var backdrops = 0;
 	// the textures a frame drew into or uploaded (tiles rastered, groups,
 	// images, a scene's): what samples them is drawn again by the system's layers
 	public final fresh:Array<Texture> = [];
@@ -150,6 +153,7 @@ class CompositeFrame {
 		slots.resize(0);
 		slotData.resize(0);
 		fresh.resize(0);
+		backdrops = 0;
 		ready = false;
 	}
 

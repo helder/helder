@@ -49,6 +49,9 @@ abstract Impl(Native) {
 	public inline function paces():Bool
 		return #if (helder.os == "windows" && !helder.soft) this.paces() #else false #end;
 
+	public inline function presentResult():Int
+		return #if (helder.os == "windows" && !helder.soft) this.presentResult #else 0 #end;
+
 	// (the back end's context let go by this thread, used by the render thread from now on: GL's)
 	public inline function detach()
 		#if (helder.os == "linux" || helder.os == "android") this.detach() #else {} #end;
@@ -208,6 +211,9 @@ abstract Impl(Any) {
 
 	public inline function paces():Bool
 		return Platform.os() == 2 && d3d().paces();
+
+	public inline function presentResult():Int
+		return Platform.os() == 2 ? d3d().presentResult : 0;
 
 	public inline function readPixels(dst:haxe.io.Bytes)
 		Platform.os() == 1 ? mtl().readPixels(dst) : Platform.os() == 2 ? d3d().readPixels(dst) : Platform.os() != 3 ? gl().readPixels(dst) : webgl() ? gl().readPixels(dst) : wgpu().readPixels(dst);

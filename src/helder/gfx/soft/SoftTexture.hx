@@ -51,7 +51,7 @@ class SoftTexture {
 		if (levels > 16) levels = 16;
 		var kind = kindOf(format), size = texel(kind) * samples;
 		var r:Ptr = LibC.malloc(SIZE);
-		Mem.zero(r, SIZE);
+		LibC.memset(r, 0, SIZE);
 		var off = 0;
 		for (l in 0...levels) {
 			var lw = w >> l > 0 ? w >> l : 1, lh = h >> l > 0 ? h >> l : 1;
@@ -61,7 +61,7 @@ class SoftTexture {
 		}
 		var data:Ptr = LibC.malloc(((off > 0 ? off : 16) : I64));
 		if (data.isNull()) throw "helder.gfx: out of memory for a texture of " + off + " bytes";
-		Mem.zero(data, (off : I64));
+		LibC.memset(data, 0, (off : I64));
 		Mem.setPtr(r, DATA, data);
 		Mem.setI32(r, WIDTH, w);
 		Mem.setI32(r, HEIGHT, h);

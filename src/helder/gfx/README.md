@@ -522,13 +522,35 @@ write them from any thread with no copies. Textures: every
 `TextureFormat` (R8 and RG8 as RGBA8, half floats as floats, BC1, BC3 and
 the ASTC helder's encoder writes decoded when written, another ASTC block
 magenta), nearest, linear and trilinear, repeat, clamp and mirror, cubes
-filtered within a face (not across its edge), no anisotropy (helder's
+filtered across their faces' edges (seamless, as
+GL_TEXTURE_CUBE_MAP_SEAMLESS), no anisotropy (helder's
 samplers have none). MSAA: 4 samples at the standard positions, the pixel
-shaded once, resolved at the pass's end. Not here: the compute tier
-(`has` is false: helder.scene's fallbacks, as WebGL2's), shared textures,
-showing a window's frame, shaders without a CPU form (TypeScript's
-`shader(...)` and materials: JSON, no Haxe to emit; they draw nothing);
-lines and points are a pixel-wide quad.
+shaded once, resolved at the pass's end. Compute stages have the same
+form (`soft_cs`: 4 invocations a call, a lane each, their ids
+ComputeInput's fields), run on the calling thread workgroup by workgroup
+(so that atomics come in the same order on every machine): storage buffers
+read and written by element (std430), an index past a buffer read as 0 and
+written nowhere, atomics lane by lane, a storage texture's texel written
+in its format (`Buffers`); `has` is true for Compute, StorageTextures and
+Indirect, and helder.scene takes its compute paths (clustered lights,
+instance culling, prefiltering), whose frames are its fallbacks'. Not
+here: shared textures, shaders without a CPU form (TypeScript's
+`shader(...)` and materials: JSON, compiled straight to hxmc's IR, no
+Haxe for the macro to emit them from; they draw nothing); lines and points
+are a pixel-wide quad.
+
+A window's frame is shown by the system's own path, no GPU API
+(`helder.os.Blit`, at `endFrame`, where `damaged` said it changed): X11 an
+XImage, through MIT-SHM where the server is this machine's (else
+XPutImage); Wayland two wl_shm buffers on the window's wl_surface (no
+wl_egl_window in a `-D helder.soft` build); macOS a CGImage as the
+contents of the view's layer (a plain CALayer, in the screen's colour
+space: shown unconverted, as an untagged Metal layer's); Windows
+StretchDIBits into the window's DC; the web putImageData into the canvas's
+2D context. Built without `helder.headless`, a `-D helder.soft` program
+opens windows as any (on Linux glibc then, not static), smaller than its
+GPU build (counter: macOS 3.88 MB against 4.11, Linux 3.67 against 4.35,
+Windows 3.46 against 3.97), and the web's imports no GL or GPU module.
 
 Against the GPUs, tests/3d's 76 scenes and tests/gfx's 10 frames (`bun
 run test gfx-soft`, GfxTest's rule): all within it of their goldens

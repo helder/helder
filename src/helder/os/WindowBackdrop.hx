@@ -5,7 +5,7 @@ package helder.os;
 // KDE's blur); "mica", the desktop's colours, faint (Windows 11's Mica,
 // macOS's under-window vibrancy, KDE's blur); "glass", macOS 26's Liquid
 // Glass; "none".
-enum abstract Backdrop(String) to String {
+enum abstract WindowBackdrop(String) to String {
 	var None = "none";
 	var Blur = "blur";
 	var Mica = "mica";

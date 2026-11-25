@@ -97,7 +97,7 @@ class ViewerView implements Markup {
 			</view>
 			<view tag="stage" grow={1} min-height={0}>
 				{image}
-				<Show when={viewer.media() != ""}>{MediaView.make(viewer)}</Show>
+				<Show when={viewer.media() != ""}>{MediaView.make(viewer, x.files)}</Show>
 				<Show when={viewer.pdf() != null}>{() -> {
 					var d = viewer.pdf();
 					d == null ? null : PdfView.make(d);

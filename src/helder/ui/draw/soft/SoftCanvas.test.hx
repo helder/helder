@@ -60,6 +60,32 @@ function tests() {
 			equals(pixel(c, 4, 10), 0xFFFFFFFF);
 		});
 
+		test("a kept frame: only what was damaged drawn, and told", () -> {
+			var c = new SoftCanvas();
+			c.keep = true;
+			var d = new helder.ui.draw.Damage();
+			// (the first frame: all of it, whatever was damaged)
+			c.begin(16, 16, Color.WHITE);
+			d.add(0, 0, 4, 4);
+			c.damage(d);
+			c.redraw(0);
+			c.rect(0, 0, 16, 16, 0, Color.BLACK, 0, 0);
+			c.redraw(-1);
+			equals(pixel(c, 12, 12), 0xFF000000);
+			equals(c.regions, null);
+			// (then the rectangle alone)
+			c.begin(16, 16, Color.WHITE);
+			d.clear();
+			d.add(0, 0, 4, 4);
+			c.damage(d);
+			c.redraw(0);
+			c.rect(0, 0, 16, 16, 0, Color.rgb(0xFF0000), 0, 0);
+			c.redraw(-1);
+			equals(pixel(c, 2, 2), 0xFF0000FF);
+			equals(pixel(c, 12, 12), 0xFF000000);
+			equals(c.regions.join(","), "0,0,4,4");
+		});
+
 		test("a group past a megabyte, frame after frame", () -> {
 			var c = new SoftCanvas();
 			c.groups = true;

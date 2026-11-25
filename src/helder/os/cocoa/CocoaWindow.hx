@@ -128,7 +128,8 @@ class CocoaWindow {
 		Msg.vInt(view, ObjC.sel("setAutoresizingMask:"), 18); // (width and height sizable)
 		Msg.vPtr(content, ObjC.sel("addSubview:"), view);
 		// a layer-hosting view: the layer first, then wantsLayer
-		layer = Runtime.objc_retain(Msg.id(ObjC.cls("CAMetalLayer"), ObjC.sel("layer")));
+		// (-D helder.soft: a plain layer, the CPU's frames its contents: helder.os.Blit)
+		layer = Runtime.objc_retain(Msg.id(ObjC.cls(#if helder.soft "CALayer" #else "CAMetalLayer" #end), ObjC.sel("layer")));
 		// (a drawable of another size than the view's, between a resize and its
 		// frame: shown as it is, not stretched)
 		var gravity = ObjC.str("topLeft");
@@ -326,7 +327,9 @@ class CocoaWindow {
 		Msg.vFloat(layer, ObjC.sel("setContentsScale:"), scale);
 		size.value.width = w;
 		size.value.height = h;
+		#if !helder.soft
 		Msg.vSize(layer, ObjC.sel("setDrawableSize:"), size.value);
+		#end
 		if (w == surface.width && h == surface.height) return false;
 		surface.resized(w, h);
 		return true;
@@ -357,6 +360,9 @@ class CocoaWindow {
 				LibC.free(size);
 				return;
 			}
+			#end
+			#if helder.soft
+			Blit.forget(surface);
 			#end
 			Msg.vPtr(window, ObjC.sel("setDelegate:"), Ptr.nil());
 			Msg.v(window, ObjC.sel("close"));
@@ -448,7 +454,7 @@ class CocoaWindow {
 	// NSGlassEffectView (macOS 26), filling the content view under the layer's)
 	var effect = Ptr.nil();
 
-	function setBackdrop(b:Backdrop):Bool
+	function setBackdrop(b:WindowBackdrop):Bool
 		return OsThread.get(() -> {
 			if (!effect.isNull()) {
 				Msg.v(effect, ObjC.sel("removeFromSuperview"));
@@ -567,19 +573,43 @@ class CocoaWindow {
 	// delegate at once)
 	var pending = false;
 
-	function resized() {
+	function resized(live = false) {
 		if (onEvent == null) {
 			pending = true;
 			return;
 		}
 		pending = false;
 		layoutControls();
-		var e = event;
+		var e = live ? new Event() : event;
 		e.kind = Resize;
 		e.window = owner;
 		e.x = surface.width;
 		e.y = surface.height;
-		dispatch(e);
+		if (!live) {
+			dispatch(e);
+			return;
+		}
+		// (a live resize's: handed to the program with its frame, in the call
+		// the main thread waits for at most LIVE_WAIT, not waited out first)
+		Window.routed(e);
+		owing.acquire();
+		owed = [for (o in owed) if (o.window != owner) o];
+		owed.push(e);
+		owing.release();
+	}
+
+	// (the live resize's Resize events not delivered yet, the newest of each window)
+	static var owed:Array<Event> = [];
+	static final owing = new sys.thread.Mutex();
+
+	// (on the program's thread)
+	static function deliver(f:Event->Void) {
+		owing.acquire();
+		var es = owed;
+		owed = [];
+		owing.release();
+		for (e in es)
+			f(e);
 	}
 
 	function setCursor(c:Cursor) {
@@ -729,8 +759,11 @@ class CocoaWindow {
 		if (w != null) return w;
 		var type = Msg.i(ev, ObjC.sel("type")).toInt();
 		if (type != NS.ScrollWheel && type != NS.MouseMoved && type != NS.LeftMouseDown && type != NS.LeftMouseUp && type != NS.LeftMouseDragged) return null;
-		var p = Msg.point(ev, ObjC.sel("locationInWindow"));
-		for (o in open) {
+		// (the frontmost window there that takes the mouse: one over another, a transparent one passing it through)
+		var p = Msg.point(ev, ObjC.sel("locationInWindow")), ordered = Msg.id(app, ObjC.sel("orderedWindows"));
+		for (i in 0...Msg.i(ordered, ObjC.sel("count")).toInt()) {
+			var o = find(Msg.idInt(ordered, ObjC.sel("objectAtIndex:"), i));
+			if (o == null || Msg.b(o.window, ObjC.sel("ignoresMouseEvents"))) continue;
 			var r = Msg.rect(o.window, ObjC.sel("frame"));
 			if (p.x >= r.origin.x && p.y >= r.origin.y && p.x < r.origin.x + r.size.width && p.y < r.origin.y + r.size.height) return o;
 		}
@@ -800,13 +833,24 @@ class CocoaWindow {
 	}
 
 	@:hxmc.callback static function didResize(self:Ptr, cmd:Ptr, note:Ptr):Void {
+		var t = haxe.Timer.stamp();
+		resizedLive(note);
+		held += haxe.Timer.stamp() - t;
+	}
+
+	// (the main thread's time in a live resize's callbacks, and its frames given up on: the resize check's)
+	static var held = 0.0;
+	static var late = 0;
+
+	static function resizedLive(note:Ptr) {
 		var w = find(Msg.id(note, ObjC.sel("object")));
 		if (w != null) w.keepControls();
 		if (w == null || !w.measure()) return;
-		w.resized();
+		var live = w.surface.resizing || Msg.b(w.window, ObjC.sel("inLiveResize"));
+		w.resized(live);
 		// (a drag of the window's edge runs AppKit's own loop until the mouse is up, and
 		// App.run draws nothing: a frame at the new size from here, as Win32Window's timer)
-		if (w.surface.resizing || Msg.b(w.window, ObjC.sel("inLiveResize"))) liveFrame(Ptr.nil(), Ptr.nil(), Ptr.nil());
+		if (live && !frameLive()) late++;
 	}
 
 	// (a live resize's frame waited for so long at most: presented in the
@@ -840,8 +884,21 @@ class CocoaWindow {
 		timer = Ptr.nil();
 	}
 
-	@:hxmc.callback static function liveFrame(self:Ptr, cmd:Ptr, t:Ptr):Void
-		if (onFrame != null && App.windows.length > 0) OsThread.within(onFrame, LIVE_WAIT);
+	@:hxmc.callback static function liveFrame(self:Ptr, cmd:Ptr, t:Ptr):Void {
+		var s = haxe.Timer.stamp();
+		frameLive();
+		held += haxe.Timer.stamp() - s;
+	}
+
+	static function frameLive():Bool
+		return onFrame == null || App.windows.length == 0 || OsThread.within(step, LIVE_WAIT);
+
+	// (a call given up on runs later: it delivers what is owed by then)
+	static function step() {
+		var f = onEvent;
+		if (f != null) deliver(f);
+		onFrame();
+	}
 
 	// waits for an event (left in the queue for poll), or seconds
 	static function wait(seconds:Float) {
@@ -856,6 +913,7 @@ class CocoaWindow {
 
 	// dispatches the pending events
 	static function poll(onFrame:Void->Void, onEvent:Event->Void) {
+		deliver(onEvent);
 		helder.os.OsThread.run(() -> {
 			CocoaWindow.onFrame = onFrame;
 			CocoaWindow.onEvent = onEvent;

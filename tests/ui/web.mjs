@@ -8,7 +8,9 @@
 // Input.imeSetComposition: drawn in the field, cancelled, then committed
 // and added); then its pixels compared with
 // todo.png (TodoTest's frame: our own text rasterizer, so the glyphs are
-// the same; the GPUs' edges may differ a little).
+// the same; the GPUs' edges may differ a little). Then all of it again
+// with the program in a worker (browser.mjs's option worker), its pixels
+// the page's thread's exactly.
 //   node tests/ui/web.mjs <WebTodo.wasm> [out dir]
 import { createServer } from 'node:http';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -27,6 +29,8 @@ const files = {
 	'/todo.wasm': wasm,
 	'/os/browser.mjs': path.join(here, '../../src/helder/os/browser.mjs'),
 	'/os/imports.mjs': path.join(here, '../../src/helder/os/imports.mjs'),
+	'/os/thread.mjs': path.join(here, '../../src/helder/os/thread.mjs'),
+	'/os/worker.mjs': path.join(here, '../../src/helder/os/worker.mjs'),
 	'/gfx/imports.mjs': path.join(here, '../../src/helder/gfx/imports.mjs'),
 	'/text/imports.mjs': path.join(here, '../../src/helder/text/imports.mjs'),
 	'/ui/imports.mjs': path.join(here, '../../src/helder/ui/imports.mjs'),
@@ -42,11 +46,11 @@ const page = `<!doctype html><title>Todo</title><body style="margin:0">
 import { run } from './os/browser.mjs';
 import { decode, compare } from './compare.mjs';
 window.log = [];
-window.start = async (gfx) => {
-	window.r = run('todo.wasm', { imports: ['os/imports.mjs', 'gfx/imports.mjs', 'text/imports.mjs', 'ui/imports.mjs'], canvas: 'c', gfx,
+window.start = async (gfx, worker) => {
+	window.r = run('todo.wasm', { imports: ['os/imports.mjs', 'gfx/imports.mjs', 'text/imports.mjs', 'ui/imports.mjs'], canvas: 'c', gfx, worker,
 		fonts: ['DejaVuSans.ttf', 'DejaVuSans-Bold.ttf'], stdout: (s) => window.log.push(s), stderr: (s) => window.log.push('stderr: ' + s) });
 	window.result = await window.r;
-	return window.result.host.gfx.backend;
+	return window.result.host.gfx.backend + (window.result.host.worker ? ' in a worker' : '');
 };
 window.check = async () => {
 	// (the next frame's pixels: the program draws one when asked)
@@ -82,14 +86,17 @@ const url = `http://localhost:${server.address().port}/`;
 const browser = await pw.chromium.launch({ args: CHROMIUM_ARGS });
 console.log(`web.mjs: chromium ${browser.version()}`);
 let failed = 0;
-for (const gfx of ['webgpu', 'webgl2']) {
+// (the page's thread, then the program in a worker, its pixels the page's)
+const stills = {};
+for (const [gfx, worker] of [['webgpu', false], ['webgl2', false], ['webgpu', true], ['webgl2', true]]) {
+	const mode = gfx + (worker ? ' in a worker' : '');
 	const p = await browser.newPage({ viewport: { width: 500, height: 600 }, hasTouch: true });
 	await p.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: url });
 	const errors = [];
 	p.on('pageerror', (e) => errors.push(e.message));
 	p.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 	await p.goto(url);
-	const backend = await p.evaluate((g) => window.start(g), gfx);
+	const backend = await p.evaluate(([g, w]) => window.start(g, w), [gfx, worker]);
 	// the latest boxes the program printed
 	const boxes = async () => {
 		const log = await p.evaluate(() => window.log);
@@ -139,6 +146,9 @@ for (const gfx of ['webgpu', 'webgl2']) {
 	const { line } = await boxes();
 	const state = line.split(' | ').slice(1, 3).join(' | ');
 	const r = await p.evaluate(() => window.check());
+	const pixels = await p.evaluate(() => window.pixels.join(','));
+	if (!worker) stills[gfx] = pixels;
+	const same = !worker || stills[gfx] === pixels;
 	// (over a button, its cursor a pointer by WebTodo's rule: Window.cursor set the canvas's CSS cursor)
 	const cursor = await p.evaluate(() => document.querySelector('canvas').style.cursor);
 	// the accessibility tree: roles, names, states (Chromium's own, through
@@ -232,14 +242,14 @@ for (const gfx of ['webgpu', 'webgl2']) {
 			g.putImageData(new ImageData(new Uint8ClampedArray(window.pixels), 420, 480), 0, 0);
 			return Array.from(new Uint8Array(await (await c.convertToBlob()).arrayBuffer()));
 		});
-		await writeFile(path.join(out, `todo-${gfx}.png`), Buffer.from(png));
+		await writeFile(path.join(out, `todo-${gfx}${worker ? '-worker' : ''}.png`), Buffer.from(png));
 	}
-	const ok = r.ok && state === '2 items left | 3' && cursor === 'pointer' && cut === 'Ship it' && missing.length === 0 && activated === '1 item left' && ime && wheel === 'wheel 127.5' && touched && appearance && errors.length === 0 && backend === gfx;
+	const ok = r.ok && state === '2 items left | 3' && cursor === 'pointer' && cut === 'Ship it' && missing.length === 0 && activated === '1 item left' && ime && wheel === 'wheel 127.5' && touched && appearance && errors.length === 0 && backend === mode && same;
 	if (!ok) failed++;
-	console.log(`web.mjs: ${gfx}: ${r.text}; state: ${state}; cursor: ${cursor}; cut: ${cut}; access: ${missing.length ? 'missing ' + missing.join(', ') : 'ok'}, activated: ${activated}; input method: ${ime ? 'ok' : `${typing}, composed ${composed !== before}, cancelled ${cancelled === before}, committed ${committed}`}; ${wheel}; appearance: ${appearance ? 'ok' : lightBefore + ', then ' + darkAfter}; touch: ${touched ? 'ok' : dragged + ', ' + tapped + ', flicked ' + flicked}${ok ? '' : ' FAILED'}`);
+	console.log(`web.mjs: ${mode}: ${r.text}${same ? '' : '; not the page\'s pixels'}; state: ${state}; cursor: ${cursor}; cut: ${cut}; access: ${missing.length ? 'missing ' + missing.join(', ') : 'ok'}, activated: ${activated}; input method: ${ime ? 'ok' : `${typing}, composed ${composed !== before}, cancelled ${cancelled === before}, committed ${committed}`}; ${wheel}; appearance: ${appearance ? 'ok' : lightBefore + ', then ' + darkAfter}; touch: ${touched ? 'ok' : dragged + ', ' + tapped + ', flicked ' + flicked}${ok ? '' : ' FAILED'}`);
 	if (missing.length) console.log(aria);
 	for (const e of errors) console.log('  error: ' + e);
-	if (backend !== gfx) console.log('  on ' + backend);
+	if (backend !== mode) console.log('  on ' + backend);
 	await p.close();
 }
 await browser.close();

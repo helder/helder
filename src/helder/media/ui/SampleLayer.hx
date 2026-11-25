@@ -17,8 +17,9 @@ import hxmc.unsafe.*;
 // main thread (OsThread: posted, the sample buffers made on the program's). Fit is
 // the layer's video gravity, the layer clipping to its bounds. On Android
 // a SurfaceLayer (MediaCodec onto a SurfaceControl in the slot), on Windows
-// a WinLayer (a DirectComposition surface in the slot's visual). make: null where the
-// system has none.
+// a WinLayer (a DirectComposition surface in the slot's visual), in a
+// browser a WebSample (a canvas of the page). make: null where the system
+// has none.
 @:hxmc.unsafe(gc)
 class SampleLayer {
 	public final slot:LayerSlot;
@@ -33,6 +34,9 @@ class SampleLayer {
 	#end
 	#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi" && !helder.soft)
 	var windows:Null<WinLayer>;
+	#end
+	#if (hxmc.target == "wasm32-wasi")
+	var web:Null<WebSample>;
 	#end
 
 	public static function make(owner:VideoNode):Null<SampleLayer> {
@@ -57,7 +61,15 @@ class SampleLayer {
 			return l;
 		}
 		#end
+		#if (hxmc.target == "wasm32-wasi")
+		var s = WebSample.make(owner);
+		if (s == null) return null;
+		var l = new SampleLayer(s.slot);
+		l.web = s;
+		return l;
+		#else
 		return null;
+		#end
 	}
 
 	function new(?slot:LayerSlot) {
@@ -94,6 +106,9 @@ class SampleLayer {
 		#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi" && !helder.soft)
 		if (windows != null) windows.fit = f;
 		#end
+		#if (hxmc.target == "wasm32-wasi")
+		if (web != null) web.fit(f);
+		#end
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		var name = switch f {
 			case Cover: "AVLayerVideoGravityResizeAspectFill";
@@ -119,6 +134,9 @@ class SampleLayer {
 		#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi" && !helder.soft)
 		if (windows != null) return windows.showing;
 		#end
+		#if (hxmc.target == "wasm32-wasi")
+		if (web != null) return web.showing;
+		#end
 		return true;
 	}
 
@@ -129,6 +147,9 @@ class SampleLayer {
 		#end
 		#if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi" && !helder.soft)
 		if (windows != null) return windows.feed(p);
+		#end
+		#if (hxmc.target == "wasm32-wasi")
+		if (web != null) return web.feed(p);
 		#end
 		var f = p.update();
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
@@ -218,6 +239,9 @@ class SampleLayer {
 	public function clear() {
 		last = null;
 		at = -1;
+		#if (hxmc.target == "wasm32-wasi")
+		if (web != null) web.clear();
+		#end
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		var l = layer;
 		if (!l.isNull()) helder.os.OsThread.post(() -> Msg.v(l, ObjC.sel("flushAndRemoveImage")));
@@ -239,6 +263,9 @@ class SampleLayer {
 			windows.dispose();
 			return;
 		}
+		#end
+		#if (hxmc.target == "wasm32-wasi")
+		if (web != null) web.dispose();
 		#end
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		var l = layer, tb = timebase;

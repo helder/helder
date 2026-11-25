@@ -23,10 +23,15 @@
 // box is the theme's), in the field's font and colour. Edits, focus and the
 // keys it leaves to the program (Tab, Escape; Enter, Up and Down on one
 // line) are queued for the module.
+// The program in a worker (src/helder/os/thread.mjs): the calls in PAGE
+// are made by this module's page half (export page), its events posted
+// to the worker's queues.
 // (a keyboard's inputmode)
 const MODES = { number: 'numeric', phone: 'tel' };
+// (an editor's number as a system layer: helder.ui.platform.WebEditor's EDITOR)
+const EDITOR = 1 << 24;
 
-export default function (host) {
+export default function ui(host) {
 	const editors = new Map();
 	const editorEvents = [];
 	let nextEditor = 1;
@@ -80,18 +85,53 @@ export default function (host) {
 		c.hxmcForward?.(l);
 		return l;
 	}
+	// a scroll view's popups over it left out of it (clip-path: neither
+	// drawn, its scrollbar with it, nor hit there): the page draws it over the
+	// canvas, and so over what the tree draws above it; one holding a layer
+	// of the window's (layers_apply) is not cut, which would cut its content:
+	// clear elements over it take the input there instead (hxmcBlock: the
+	// canvas's, as over the canvas)
+	function cover(s, l) {
+		const c = s.covers ?? [], k = s.k;
+		for (const b of s.blocks ?? []) b.remove();
+		s.blocks = [];
+		if (s.hosting) {
+			s.clip = '';
+			s.e.style.clipPath = '';
+			const r = s.e.getBoundingClientRect(), o = l.getBoundingClientRect();
+			for (let i = 0; i < c.length; i += 4) {
+				const b = document.createElement('div');
+				b.hxmcBlock = true;
+				b.style.cssText = `position:absolute;left:${r.left - o.left + c[i] * k}px;top:${r.top - o.top + c[i + 1] * k}px;width:${c[i + 2] * k}px;height:${c[i + 3] * k}px;z-index:100000;pointer-events:auto;`;
+				l.appendChild(b);
+				s.blocks.push(b);
+			}
+			return;
+		}
+		// (its own outline far out: the holes are what count, whatever its size becomes)
+		let d = '';
+		for (let i = 0; i < c.length; i += 4)
+			d += ` M${c[i] * k} ${c[i + 1] * k}h${c[i + 2] * k}v${c[i + 3] * k}h${-c[i + 2] * k}Z`;
+		s.clip = d ? `path(evenodd, "M-100000 -100000H100000V100000H-100000Z${d}")` : '';
+		s.e.style.clipPath = s.clip;
+	}
 	// per canvas: its views by id ({e: the scroller, s: its spacer}); the scrolls they made, queued
 	const scrollers = new Map();
 	const scrolled = [];
-	// (an editor's event: queued, and a frame asked for, which polls it)
-	const queue = (ev) => {
-		editorEvents.push(ev);
-		host.os?.redraw();
+	// an event for the program (a string: a handle there), the page half's
+	// posted to it in its worker; an editor's or a scroll's asks for a
+	// frame, which polls it
+	const lists = { editor: editorEvents, scrolled, actions: null };
+	const send = (name, ev) => {
+		if (host.program) host.program.post({ type: 'queue', mod: 'hxmc_ui', name, ev });
+		else lists[name].push(ev.map((x) => (typeof x === 'string' ? host.handles.add(x) : x)));
+		if (name !== 'actions') host.os?.redraw();
 	};
+	const queue = (ev) => send('editor', ev);
 	const EDITOR_KEYS = { Tab: 0xff09, Escape: 0xff1b, Enter: 0xff0d, ArrowUp: 0xff52, ArrowDown: 0xff54 };
 	// per canvas: the mirror's root, its elements by node id
 	const mirrors = new Map();
-	const actions = [];
+	const actions = (lists.actions = []);
 	// (focus() of ours: not an action)
 	let focusing = false;
 
@@ -112,11 +152,11 @@ export default function (host) {
 			e = document.createElement('div');
 			e.id = 'hxmc-access-' + id;
 			e.addEventListener('click', (ev) => {
-				actions.push([id, 0]);
+				send('actions', [id, 0]);
 				ev.stopPropagation();
 			});
 			e.addEventListener('focus', () => {
-				if (!focusing) actions.push([id, 1]);
+				if (!focusing) send('actions', [id, 1]);
 			});
 			m.elements.set(id, e);
 		}
@@ -220,10 +260,11 @@ export default function (host) {
 			}
 		},
 		// a native text editor over the canvas: its handle
-		editor_create(canvas, multiline) {
+		// (given: its handle, the program's in a worker)
+		editor_create(canvas, multiline, given) {
 			const c = host.handles.get(canvas);
 			const e = document.createElement(multiline ? 'textarea' : 'input');
-			const h = nextEditor++;
+			const h = given ?? nextEditor++;
 			if (!multiline) e.type = 'text';
 			e.id = 'hxmc-editor-' + h;
 			e.setAttribute('data-hxmc-editor', '');
@@ -233,8 +274,10 @@ export default function (host) {
 			layer(c).appendChild(e);
 			const ed = { e, c, style, multiline, focusing: false };
 			editors.set(h, ed);
+			// (a layer of the window's where the page's are its: WebViews' EDITOR | h)
+			slotted.set(EDITOR | h, e);
 			const mods = (ev) => (ev.shiftKey ? 1 : 0) | (ev.ctrlKey ? 2 : 0) | (ev.altKey ? 4 : 0) | (ev.metaKey ? 8 : 0);
-			e.addEventListener('input', () => queue([h, 1, e.selectionStart ?? 0, e.selectionEnd ?? 0, host.handles.add(e.value)]));
+			e.addEventListener('input', () => queue([h, 1, e.selectionStart ?? 0, e.selectionEnd ?? 0, e.value]));
 			e.addEventListener('focus', () => ed.focusing || queue([h, 2, 0, 0, 0]));
 			e.addEventListener('blur', () => ed.focusing || queue([h, 3, 0, 0, 0]));
 			e.addEventListener('keydown', (ev) => {
@@ -272,7 +315,7 @@ export default function (host) {
 		editor_place(h, x, y, w, hh, shown) {
 			const ed = editors.get(h), r = ed.c.getBoundingClientRect();
 			const ratio = Math.min(devicePixelRatio, host.options.maxPixelRatio ?? Infinity);
-			const k = r.width / Math.max(1, Math.round(ed.c.width / ratio));
+			const k = r.width / Math.max(1, Math.round((ed.c.hxmcBuf ?? ed.c).width / ratio));
 			const s = ed.e.style;
 			layer(ed.c).fit();
 			s.display = shown ? '' : 'none';
@@ -301,6 +344,7 @@ export default function (host) {
 		editor_dispose(h) {
 			const ed = editors.get(h);
 			if (!ed) return;
+			slotted.delete(EDITOR | h);
 			if (document.activeElement === ed.e) ed.c.focus({ preventScroll: true });
 			ed.e.remove();
 			ed.style.remove();
@@ -339,8 +383,7 @@ export default function (host) {
 						// stop the program's glide where it was a frame ago)
 						if (s.setX !== undefined && Math.abs(e.scrollLeft - s.setX) <= 1 && Math.abs(e.scrollTop - s.setY) <= 1) return;
 						// (its own scroll: the offsets in ui points, 1/256ths)
-						scrolled.push([s.id, Math.round(e.scrollLeft / s.k * 256), Math.round(e.scrollTop / s.k * 256)]);
-						host.os?.redraw();
+						send('scrolled', [s.id, Math.round(e.scrollLeft / s.k * 256), Math.round(e.scrollTop / s.k * 256)]);
 					}, { passive: true });
 					views.set(v.i, s);
 				}
@@ -364,13 +407,8 @@ export default function (host) {
 				// the popups over it left out of it (clip-path: neither drawn, its scrollbar with it, nor hit there):
 				// the page draws it over the canvas, and so over what the tree draws above it
 				if (v.c) {
-					// (its own outline far out: the holes are what count, whatever its size becomes)
-					const c = v.c;
-					let d = '';
-					for (let i = 0; i < c.length; i += 4)
-						d += ` M${c[i] * k} ${c[i + 1] * k}h${c[i + 2] * k}v${c[i + 3] * k}h${-c[i + 2] * k}Z`;
-					s.clip = d ? `path(evenodd, "M-100000 -100000H100000V100000H-100000Z${d}")` : '';
-					s.e.style.clipPath = s.clip;
+					s.covers = v.c;
+					cover(s, l);
 				}
 				if (v.o) {
 					s.e.scrollLeft = v.o[0] * k;
@@ -396,5 +434,202 @@ export default function (host) {
 			return 1;
 		},
 	};
+	// the window's layers (src/helder/ui/draw/WebLayers.hx): the bitmaps
+	// read from the canvas since the last update, then each update once its
+	// bitmaps are read, in order, to the page (layers_apply)
+	let snaps = [], updates = Promise.resolve();
+	hxmc_ui.layers_alpha = (canvas) => (host.handles.get(canvas).hxmcAlpha = true);
+	hxmc_ui.layers_reading = () => (host.gfx?.reading?.() ? 1 : 0);
+	// a node's system layer (WebSample's): a canvas of the page, by number;
+	// a frame shown on it read into an ImageBitmap here (the browser's
+	// VideoFrame, or a <video>'s), shown on the page
+	let slotIds = 0;
+	const page = (name) => (host.page ? host.page.forward('hxmc_ui', name, '') : hxmc_ui[name]);
+	hxmc_ui.layers_slot = (canvas) => {
+		const id = ++slotIds;
+		page('layers_slot_make')(canvas, id);
+		return id;
+	};
+	hxmc_ui.layers_slot_fit = (canvas, id, fit) => page('layers_slot_set')(canvas, id, fit, []);
+	hxmc_ui.layers_slot_free = (canvas, id) => page('layers_slot_set')(canvas, id, -1, []);
+	hxmc_ui.layers_slot_frame = (canvas, id, h) => {
+		const o = h ? host.handles.get(h) : null;
+		if (!o) return page('layers_slot_set')(canvas, id, -2, []);
+		updates = updates.then(() => createImageBitmap(o.bitmap)).then((b) => page('layers_slot_set')(canvas, id, -3, [b]), () => {});
+	};
+	// (the page half's: each slot's canvas, by number)
+	const slotted = new Map();
+	hxmc_ui.layers_slot_make = (canvas, id) => {
+		const e = document.createElement('canvas');
+		e.style.cssText = 'position:absolute;pointer-events:none;object-fit:contain;display:none;';
+		e.hxmcContext = e.getContext('bitmaprenderer');
+		slotted.set(id, e);
+	};
+	// (fit: ImageFit (Fill, Contain, Cover, None); -1 gone, -2 nothing shown, -3 the bitmap shown)
+	hxmc_ui.layers_slot_set = (canvas, id, fit, bitmaps) => {
+		const e = slotted.get(id);
+		if (!e) return;
+		if (fit === -1) {
+			e.remove();
+			slotted.delete(id);
+		} else if (fit === -2) {
+			e.hxmcContext.transferFromImageBitmap(null);
+		} else if (fit === -3) {
+			e.width = bitmaps[0].width;
+			e.height = bitmaps[0].height;
+			e.hxmcContext.transferFromImageBitmap(bitmaps[0]);
+		} else e.style.objectFit = ['fill', 'contain', 'cover', 'none'][fit] ?? 'contain';
+	};
+	// (WebGPU: the canvas's texture now copied on the GPU into a scratch
+	// OffscreenCanvas of the same device, its bitmap taken at once: what a
+	// canvas element gives createImageBitmap mid-task differs by version,
+	// Chromium 141's not the texture drawn; WebGL2: the canvas as it is now)
+	let scratch = null;
+	const snap = (c, w, h) => {
+		const device = host.gfx?.backend === 'webgpu' ? host.gfx.device : null;
+		if (!device) return createImageBitmap(c, 0, 0, w, h);
+		const t = c.getContext('webgpu').getCurrentTexture();
+		if (!scratch || scratch.format !== t.format) {
+			scratch = { canvas: new OffscreenCanvas(w, h), format: t.format };
+			scratch.context = scratch.canvas.getContext('webgpu');
+			scratch.context.configure({ device, format: t.format, alphaMode: 'premultiplied', usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT });
+		}
+		const s = scratch.canvas;
+		if (s.width !== w) s.width = w;
+		if (s.height !== h) s.height = h;
+		const e = device.createCommandEncoder();
+		e.copyTextureToTexture({ texture: t }, { texture: scratch.context.getCurrentTexture() }, [w, h]);
+		device.queue.submit([e.finish()]);
+		return Promise.resolve(s.transferToImageBitmap());
+	};
+	hxmc_ui.layers_snap = (canvas, w, h) => snaps.push(snap(host.handles.get(canvas), w, h)) - 1;
+	hxmc_ui.layers_update = (canvas, json) => {
+		// (when: its moving layers' animations start from this moment, the page's time)
+		const list = snaps, u = host.string(json), at = performance.timeOrigin + performance.now();
+		snaps = [];
+		const apply = host.page ? host.page.forward('hxmc_ui', 'layers_apply', '') : hxmc_ui.layers_apply;
+		updates = updates.then(() => Promise.all(list)).then((bitmaps) => apply(canvas, u, bitmaps, at), (e) => console.error('helder.ui: a layer not read:', e));
+	};
+	// the page half: each layer a box of canvases (its tiles, bitmaprenderer's),
+	// a scroller's content in its scroll view's spacer (scrolled by the
+	// browser), the others in the layer of scroll views, stacked by z
+	const layered = new Map();
+	hxmc_ui.layers_apply = (canvas, json, bitmaps, at) => {
+		const c = host.handles.get(canvas), u = JSON.parse(json), l = scrollLayer(c), views = scrollers.get(canvas);
+		let all = layered.get(canvas);
+		if (!all) layered.set(canvas, (all = new Map()));
+		// (CSS pixels a point)
+		const k = (c.getBoundingClientRect().width / Math.max(1, (c.hxmcBuf ?? c).width)) * u.s, px = k / u.s;
+		for (const id of u.r) {
+			if (!all.get(id)?.slot) all.get(id)?.e.remove();
+			all.delete(id);
+		}
+		const seen = new Set();
+		for (const v of u.l) {
+			seen.add(v.i);
+			// (a node's system layer: its canvas at its box, cut by its clip, in its scroll view's content where its scroller's is a layer)
+			if (v.s) {
+				const e = slotted.get(v.s), s = v.v ? views?.get(v.v) : null, into = s ? s.spacer : l;
+				if (!e) continue;
+				if (e.parentNode !== into) into.appendChild(e);
+				// (an editor: its box in points scaled to the page's, as editor_place has it, its font in points)
+				const st = e.style, [x0, y0, x1, y1] = v.c, q = e.tagName === 'CANVAS' ? k : 1;
+				st.display = v.on ? '' : 'none';
+				st.left = v.x * k + 'px';
+				st.top = v.y * k + 'px';
+				st.width = v.w * q + 'px';
+				st.height = v.h * q + 'px';
+				if (q === 1) {
+					st.transformOrigin = '0 0';
+					st.transform = Math.abs(k - 1) < 1e-3 ? '' : 'scale(' + k + ')';
+				}
+				st.zIndex = s ? 1 : v.z;
+				st.clipPath = `inset(${(y0 - v.y) * q}px ${(v.x + v.w - x1) * q}px ${(v.y + v.h - y1) * q}px ${(x0 - v.x) * q}px)`;
+				all.set(v.i, { e, tiles: [], view: null, slot: true });
+				continue;
+			}
+			let a = all.get(v.i);
+			if (!a) {
+				const e = document.createElement('div');
+				e.style.cssText = 'position:absolute;pointer-events:none;overflow:hidden;';
+				all.set(v.i, (a = { e, tiles: [], view: null }));
+			}
+			const s = v.v ? views?.get(v.v) : null, into = s ? s.spacer : l;
+			if (a.e.parentNode !== into) into.appendChild(a.e);
+			if (a.view !== s) {
+				if (a.view) {
+					a.view.hosting = false;
+					a.view.e.style.zIndex = '';
+					cover(a.view, l);
+				}
+				a.view = s;
+				if (s) {
+					s.hosting = true;
+					cover(s, l);
+				}
+			}
+			if (s) s.e.style.zIndex = v.z;
+			const st = a.e.style;
+			st.display = '';
+			st.left = v.x * k + 'px';
+			st.top = v.y * k + 'px';
+			st.width = v.w * k + 'px';
+			st.height = v.h * k + 'px';
+			st.zIndex = s ? '' : v.z;
+			// (a moving layer: its transform about the frame's origin, its opacity, from the program's samples a frame apart)
+			if (v.m) {
+				const kf = [];
+				for (let i = 0; i < v.m.length; i += 7) {
+					const m = v.m;
+					kf.push({ transform: `matrix(${m[i]},${m[i + 1]},${m[i + 2]},${m[i + 3]},${m[i + 4] * px},${m[i + 5] * px})`, opacity: m[i + 6] });
+				}
+				st.transformOrigin = `${-v.x * k}px ${-v.y * k}px`;
+				a.anim?.cancel();
+				a.anim = null;
+				st.transform = kf[kf.length - 1].transform;
+				st.opacity = kf[kf.length - 1].opacity;
+				if (kf.length > 1) {
+					a.anim = a.e.animate(kf, { duration: (kf.length - 1) * 1000 / 60, fill: 'both' });
+					a.anim.currentTime = Math.max(0, performance.timeOrigin + performance.now() - at);
+				}
+			}
+			for (const [n, w, h, b] of v.t) {
+				let t = a.tiles[n];
+				if (!t) {
+					t = a.tiles[n] = document.createElement('canvas');
+					t.style.cssText = 'position:absolute;';
+					t.hxmcContext = t.getContext('bitmaprenderer');
+					a.e.appendChild(t);
+				}
+				t.width = w;
+				t.height = h;
+				t.hxmcContext.transferFromImageBitmap(bitmaps[b]);
+				t.style.left = (n % v.c) * v.tw * px + 'px';
+				t.style.top = Math.floor(n / v.c) * v.th * px + 'px';
+				t.style.width = w * px + 'px';
+				t.style.height = h * px + 'px';
+			}
+			for (const t of a.tiles.splice(v.n)) t?.remove();
+		}
+		for (const [id, a] of all) if (!seen.has(id)) a.e.style.display = 'none';
+		for (const [id, a] of all) if (a.slot && !seen.has(id)) all.delete(id);
+	};
+	// the program in a worker: the page's calls forwarded, the page half's events queued here
+	if (host.page) {
+		for (const [k, sig] of Object.entries(PAGE)) hxmc_ui[k] = host.page.forward('hxmc_ui', k, sig);
+		const create = hxmc_ui.editor_create;
+		hxmc_ui.editor_create = (canvas, multiline) => {
+			const h = nextEditor++;
+			create(canvas, multiline, h);
+			return h;
+		};
+		host.page.on('queue', (m) => m.mod === 'hxmc_ui' && lists[m.name].push(m.ev.map((x) => (typeof x === 'string' ? host.handles.add(x) : x))));
+	}
 	return { hxmc_ui };
 }
+
+// the calls the page runs for a program in a worker (os/imports.mjs's PAGE)
+const PAGE = { access_update: 'ns', editor_create: '', editor_text: 'ns', editor_select: '', editor_kind: 'nsss', editor_place: '', editor_style: 'nsss',
+	editor_focus: '', editor_dispose: '', scroll_update: 'ns' };
+
+export { ui as page };

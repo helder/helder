@@ -7,9 +7,11 @@ import helder.ui.Node;
 // Files dragged out of the browser to other apps (Ui.dragFiles: the
 // system's drag): a press on an entry moved 4 points carries the
 // selection (or the entry alone, when it is not selected), its picture the
-// entry's thumbnail; a move a target made shows when the folder is read again.
+// entry's thumbnail; a move a target made shows when the folder is read
+// again. (The web's files are on no disk: none dragged out there.)
 class DragOut {
 	public static function from(x:Explorer, n:Node, name:Void->String) {
+		#if (hxmc.target != "wasm32-wasi")
 		var fromX = 0.0, fromY = 0.0, gone = false;
 		n.onPointerDown = e -> {
 			fromX = e.x;
@@ -23,8 +25,10 @@ class DragOut {
 			gone = true;
 			try start(x, n, name()) catch (_:Dynamic) {}
 		};
+		#end
 	}
 
+	#if (hxmc.target != "wasm32-wasi")
 	static function start(x:Explorer, n:Node, which:String) {
 		var b = x.browser, picked = b.picked();
 		var names = picked.contains(which) ? picked : [which];
@@ -39,4 +43,5 @@ class DragOut {
 		n.ui.dragFiles(paths, image, image == null ? 0 : image.width / 2, image == null ? 0 : image.height / 2, [Copy, Move],
 			op -> if (op == Move) b.refresh());
 	}
+	#end
 }
