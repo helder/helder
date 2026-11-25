@@ -138,8 +138,8 @@ class Soft {
 			}
 		return switch t {
 			case TStruct(st):
-				var tp:TypePath = {pack: pack, name: lanes ? laneStruct(st) : scalarStruct(st)};
-				{expr: haxe.macro.Expr.ExprDef.ENew(tp, [for (k in 0...st.fields.length) read(st.fields[k].type, l.offsets[k])]), pos: pos};
+				var xs = [for (k in 0...st.fields.length) read(st.fields[k].type, l.offsets[k])];
+				lanes ? laneMake(st, xs) : {expr: haxe.macro.Expr.ExprDef.ENew({pack: pack, name: scalarStruct(st)}, xs), pos: pos};
 			case _: read(t, 0);
 		}
 	}
@@ -216,9 +216,7 @@ class Soft {
 				case t: Context.error('soft: a storage element of ${Names.typeName(t)}', pos);
 			}
 		var value = switch t {
-			case TStruct(st):
-				var tp:TypePath = {pack: pack, name: laneStruct(st)};
-				{expr: haxe.macro.Expr.ExprDef.ENew(tp, [for (k in 0...st.fields.length) read(st.fields[k].type, l.offsets[k])]), pos: pos};
+			case TStruct(st): laneMake(st, [for (k in 0...st.fields.length) read(st.fields[k].type, l.offsets[k])]);
 			case _: read(t, 0);
 		}
 		return macro {
@@ -229,8 +227,9 @@ class Soft {
 	}
 
 	// element i set to v (lanes) where m's lanes are, i's lanes consecutive:
-	// all four as rows (rowsRead's), else lane by lane (storageWrite's)
-	public function rowsWrite(t:SType, b:Expr, i:Expr, v:Expr):Expr {
+	// all four as rows (rowsRead's), else lane by lane (storageWrite's); full:
+	// m all of them (the range form's whole groups, funcFull's)
+	public function rowsWrite(t:SType, b:Expr, i:Expr, v:Expr, full = false):Expr {
 		var l = layout(t), s = l.stride;
 		function write(t:SType, off:Int, v:Expr):Array<Expr>
 			return switch t {
@@ -248,6 +247,12 @@ class Soft {
 			case TStruct(st): [for (k in 0...st.fields.length) for (x in write(st.fields[k].type, l.offsets[k], Soft.dot(macro rv, "f_" + st.fields[k].name))) x];
 			case _: write(t, 0, macro rv);
 		}
+		if (full) return macro {
+			var rv = $v;
+			var rd = hxmc.unsafe.Mem.getPtr($b, 0);
+			var ro = $i.get(0) * $v{s};
+			$b{out};
+		};
 		var scattered = storageWrite(t, b, i, macro rv);
 		return macro {
 			var rv = $v;
@@ -371,38 +376,59 @@ class Soft {
 			case t: Context.error('soft: no scalar of ${Names.typeName(t)}', pos);
 		}
 
-	// a struct's lanes: a field each, its lanes
+	// a struct's lanes: a field each, its lanes. Made by make(fields...), a
+	// static inline function storing each field into a value of an empty
+	// constructor: no constructor call takes the value's address (hxmc's
+	// inliner keeps a constructor of large struct arguments a call, and its
+	// Sroa then keeps the value in memory: the range form measured 1.8x
+	// slower so)
 	function laneStruct(s:SStruct):String {
 		var name = laneStructs.get(s);
 		if (name != null) return name;
 		name = prefix + "_" + s.name + "_l";
 		laneStructs.set(s, name);
-		var fs:Array<Field> = [for (f in s.fields) {name: "f_" + f.name, access: [APublic, AFinal], kind: FVar(laneType(f.type)), pos: pos}];
+		var fs:Array<Field> = [for (f in s.fields) {name: "f_" + f.name, access: [APublic], kind: FVar(laneType(f.type)), pos: pos}];
 		var args = [for (f in s.fields) {name: "a_" + f.name, type: laneType(f.type)}];
+		var self = TPath({pack: pack, name: name}), tp:TypePath = {pack: pack, name: name};
 		fs.push({
 			name: "new",
 			access: [APublic, AInline],
-			kind: FFun({args: args, ret: null, expr: macro $b{[for (f in s.fields) {var n = "f_" + f.name, a = "a_" + f.name; macro this.$n = $i{a};}]}}),
+			kind: FFun({args: [], ret: null, expr: macro {}}),
 			pos: pos
 		});
-		var self = TPath({pack: pack, name: name}), tp:TypePath = {pack: pack, name: name};
+		var stores = [for (f in s.fields) {var n = "f_" + f.name, a = "a_" + f.name; macro r.$n = $i{a};}];
+		fs.push({
+			name: "make",
+			access: [APublic, AStatic, AInline],
+			kind: FFun({args: args, ret: self, expr: macro {
+				var r = new $tp();
+				$b{stores};
+				return r;
+			}}),
+			pos: pos
+		});
+		var make = macro $p{pack.concat([name, "make"])};
 		var sel = [for (f in s.fields) select(f.type, macro m, Soft.dot(macro a, "f_" + f.name), Soft.dot(macro b, "f_" + f.name))];
 		var zeros = [for (f in s.fields) zero(f.type)];
 		fs.push({
 			name: "select",
 			access: [APublic, AStatic, AInline],
-			kind: FFun({args: [{name: "m", type: laneType(TBool)}, {name: "a", type: self}, {name: "b", type: self}], ret: self, expr: macro return new $tp($a{sel})}),
+			kind: FFun({args: [{name: "m", type: laneType(TBool)}, {name: "a", type: self}, {name: "b", type: self}], ret: self, expr: macro return $make($a{sel})}),
 			pos: pos
 		});
 		fs.push({
 			name: "zero",
 			access: [APublic, AStatic, AInline],
-			kind: FFun({args: [], ret: self, expr: macro return new $tp($a{zeros})}),
+			kind: FFun({args: [], ret: self, expr: macro return $make($a{zeros})}),
 			pos: pos
 		});
 		define(name, fs);
 		return name;
 	}
+
+	// a struct's lanes of its fields' (laneStruct's make)
+	function laneMake(s:SStruct, args:Array<Expr>):Expr
+		return macro $p{pack.concat([laneStruct(s), "make"])}($a{args});
 
 	function scalarStruct(s:SStruct):String {
 		var name = scalarStructs.get(s);
@@ -715,6 +741,21 @@ class Soft {
 		return n;
 	}
 
+	// (helder.parallel's range form) a stage function's lanes for calls whose
+	// lanes are all there: its rows written whole, no masked path (whose
+	// calls cost its loop registers): its name
+	public function funcFull(f:SFunction):String {
+		var name = "l_full_" + f.name;
+		if (made.exists(name)) return name;
+		made.set(name, true);
+		pending.push(() -> {
+			var fn = new Fn(this, f, false, false);
+			fn.full = true;
+			fields.push(fn.field(name));
+		});
+		return name;
+	}
+
 	// a function's lane form (or, scalar, its scalar form) for a stage: its name
 	function func(f:SFunction, fragment:Bool, scalar:Bool, phased = false):String {
 		var name = (scalar ? "s_" : "l_") + (fragment ? "f_" : "v_") + f.name;
@@ -797,7 +838,8 @@ class Soft {
 		}
 		function inputOf(lane:Null<Int>):Expr {
 			var args = [for (f in inFields) load(f.type, f.at, lane)];
-			var tp:TypePath = {pack: pack, name: lane == null ? laneStruct(e.input) : scalarStruct(e.input)};
+			if (lane == null) return laneMake(e.input, args);
+			var tp:TypePath = {pack: pack, name: scalarStruct(e.input)};
 			return macro new $tp($a{args});
 		}
 		function outputs(r:Expr, lane:Null<Int>):Array<Expr> {
@@ -894,8 +936,8 @@ class Soft {
 			case [TMat4, _]:
 				parts([for (k in 0...4) {name: "c" + k, type: TVec(4)}], xs -> lanes ? macro new helder.gfx.soft.LaneMat($a{xs}) : macro new helder.math.Mat4($a{xs}));
 			case [TStruct(st), _]:
-				var tp:TypePath = {pack: pack, name: lanes ? laneStruct(st) : scalarStruct(st)};
-				parts([for (f in st.fields) {name: "f_" + f.name, type: f.type}], xs -> {expr: haxe.macro.Expr.ExprDef.ENew(tp, xs), pos: pos});
+				// (lanes: laneStruct's make, its constructor of no fields)
+				parts([for (f in st.fields) {name: "f_" + f.name, type: f.type}], xs -> lanes ? laneMake(st, xs) : {expr: haxe.macro.Expr.ExprDef.ENew({pack: pack, name: scalarStruct(st)}, xs), pos: pos});
 			case [t, _]: Context.error('soft: a ${Names.typeName(t)} kept across a barrier', pos);
 		}
 	}
@@ -1020,6 +1062,9 @@ class Soft {
 	@:allow(helder.gfx.shader.Fn) function spillOf(t:SType, lanes:Bool, p:Expr, off:Int, v:Null<Expr>):{bytes:Int, load:Expr, store:Array<Expr>}
 		return spill(t, lanes, p, off, v);
 
+	@:allow(helder.gfx.shader.Fn) function laneMakeOf(s:SStruct, args:Array<Expr>):Expr
+		return laneMake(s, args);
+
 	@:allow(helder.gfx.shader.Fn) function scalarStructPath(s:SStruct):TypePath
 		return {pack: pack, name: scalarStruct(s)};
 }
@@ -1034,6 +1079,8 @@ class Fn {
 	final uniform:Map<SVar, Bool>;
 	final pos:Position;
 	final discards:Bool;
+	// (Soft.funcFull's: every lane there)
+	public var full = false;
 	// the locals' depths of lane tests they were declared at
 	final declared = new Map<SVar, Int>();
 	var depth = 0;
@@ -1314,7 +1361,8 @@ class Fn {
 			case SStore(b, i, v):
 				switch b.t {
 					case TStorage(t, _) | TWorkgroup(t) if (scalar): [soft.storageWriteAt(t, sx(b), sx(i), sx(v))];
-					case TStorage(t, _) if (soft.isRow(i)): [soft.rowsWrite(t, sx(b), lx(i), lane(v))];
+					// (whole rows only where every lane is: outside tests of lanes, before a return under one)
+					case TStorage(t, _) if (soft.isRow(i)): [soft.rowsWrite(t, sx(b), lx(i), lane(v), full && depth == 0 && !returned)];
 					case TStorage(t, _) | TWorkgroup(t): [soft.writeStorage(t, sx(b), lane(i), lane(v))];
 					case _: Context.error("soft: a store into what is not a storage buffer", pos);
 				}
@@ -1437,8 +1485,8 @@ class Fn {
 				var cols = [for (a in args) conv(a)];
 				scalarForm ? macro new helder.math.Mat4($a{cols}) : macro new helder.gfx.soft.LaneMat($a{cols});
 			case TStruct(s):
-				var tp = scalarForm ? soft.scalarStructPath(s) : soft.laneStructPath(s);
-				{expr: haxe.macro.Expr.ExprDef.ENew(tp, [for (a in args) conv(a)]), pos: pos};
+				var xs = [for (a in args) conv(a)];
+				scalarForm ? {expr: haxe.macro.Expr.ExprDef.ENew(soft.scalarStructPath(s), xs), pos: pos} : soft.laneMakeOf(s, xs);
 			case t: Context.error('soft: a constructor of ${Names.typeName(t)}', pos);
 		}
 	}

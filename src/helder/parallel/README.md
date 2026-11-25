@@ -214,10 +214,27 @@ is read: particles the GPU draws cost an upload a frame after a CPU step
 
 `today` is examples/fountain's CPU fallback (the compute stage's main over
 an Array), `hand` the prototype's lanes written by hand (the same bits as
-`simd`). The generated lanes are 3x the hand-written ones: Soft's lane
-values are structs (a Particle's two Vec4s, a Vec3's three lanes), which
-hxmc keeps in memory more than the hand form's F32x4 locals; closing that
-is the emitter's next step. Jobs is under the hand lanes from 3,000 items.
+`simd`). The CPU columns of that table predate the lanes form's
+struct values made without constructor calls; measured since at 0-6%
+load, the Simd form against the hand-written lanes, before and after:
+
+| N | hand | simd before | simd now | jobs now |
+|---:|---:|---:|---:|---:|
+| 1,000 | 1.8 | 5.9 | 3.4 | 5.2 |
+| 10,000 | 18 | 56.1 | 25.8 | 9.3 |
+| 100,000 | 180 | 558 | 256 | 58 |
+| 1,000,000 | 3078 | 5735 | 3739 | 1068 |
+
+What closed most of it: hxmc inlines by size, and a lane struct's
+constructor of large struct arguments (a Particle's two Lane4s) stayed a
+call, which kept every struct value in memory (its Sroa promotes no slot
+a call takes); Soft now builds them with an inlined `make` (an empty
+constructor and field stores). And the whole groups of 4 call a copy of
+the body without the masked scatter (Soft.funcFull: its calls cost the
+loop its registers); the last few the masked one. What is left (1.4x,
+1.9x at 1,000 items) is register moves and constants made each turn: no
+memory traffic remains in the loop. Jobs is under the hand lanes from
+3,000 items.
 
 ## Tests
 
