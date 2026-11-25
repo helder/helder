@@ -10,8 +10,7 @@ function tests() {
 		#if !(hxmc.target == "wasm32-wasi")
 		test("the starter's canvas waits, until the agent's first change", () -> {
 			// (outside any package: the starter's own tsconfig, as an Untitled folder's)
-			var dir = haxe.io.Path.normalize((Sys.getEnv("TMPDIR") ?? "/tmp") + "/helder-queued-test-" + Std.int(haxe.Timer.stamp() * 1000));
-			helder.cli.TestCommand.mkdirs(dir);
+			var dir = Temp.dir("helder-queued-test");
 			// (as Main does: the helder this studio was built from, for a project without one)
 			if ((Sys.getEnv("HELDER_SRC") ?? "") == "") Sys.putEnv("HELDER_SRC", BuildInfo.helderSrc());
 			var s = new Studio(dir, {starter: true});
@@ -21,6 +20,7 @@ function tests() {
 			helder.view.graph.Graph.flush();
 			equals(s.project.screens.length, 1);
 			assert(!s.waiting());
+			Temp.remove(dir);
 		});
 		test("a project's frames: nothing held", () -> {
 			var dir = "bin/queued-test-design";
