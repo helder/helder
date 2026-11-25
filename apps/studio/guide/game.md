@@ -138,3 +138,4 @@ UiWindow.run(
 - Pointer: `onPointerMove` (`e.localX`, `e.localY`) on the view.
 - Many objects: one signal holding an array, `For` over it.
 - Randomness that repeats in a story: its `c.random()` (its seed's).
+- A 3D game: the same, its scene in markup (`studio.guide {topic: "3d"}`).
