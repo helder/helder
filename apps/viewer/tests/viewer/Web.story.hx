@@ -15,6 +15,7 @@ final samples = story({
 		var x = Fixtures.samples();
 		x.browser.go(Samples.ROOT);
 		Fixtures.thumbnails(x);
-		Shell.view(x);
+		// (the desktop's shell, as the page is drawn: the tree is taken at a phone's size)
+		Shell.view(x, () -> helder.ui.SizeClass.Expanded);
 	}
 });

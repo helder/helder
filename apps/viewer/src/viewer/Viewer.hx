@@ -494,6 +494,13 @@ class Viewer {
 		changed();
 	}
 
+	// a pinch's step: the zoom by factor about (x, y)
+	public function pinch(factor:Float, x:Float, y:Float) {
+		if (shown == null || doc != null) return;
+		camera.zoomBy(factor, x, y);
+		changed();
+	}
+
 	public function pan(dx:Float, dy:Float) {
 		camera.pan(dx, dy);
 		changed();

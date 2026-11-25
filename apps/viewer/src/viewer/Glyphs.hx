@@ -34,6 +34,11 @@ class Glyphs {
 		"calendar" => '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
 		"lock" => '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
 		"x" => '<path d="M18 6 6 18M6 6l12 12"/>',
+		"sidebar" => '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/>',
+		"share" => '<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="m16 6-4-4-4 4"/><path d="M12 2v13"/>',
+		"copy" => '<rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+		"plus" => '<path d="M5 12h14M12 5v14"/>',
+		"clock" => '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
 		"play" => '<path d="M7 4.5v15a1 1 0 0 0 1.5.9l12-7.5a1 1 0 0 0 0-1.8l-12-7.5A1 1 0 0 0 7 4.5z" fill="currentColor" stroke="none"/>'
 	];
 

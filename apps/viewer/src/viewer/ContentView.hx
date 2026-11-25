@@ -13,6 +13,7 @@ import helder.ui.view.UiFlow.VirtualGrid;
 import helder.view.*;
 import helder.view.Flow.*;
 import helder.view.graph.Graph.*;
+import helder.view.graph.Read;
 import viewer.Files;
 import viewer.ViewerActions;
 
@@ -26,21 +27,26 @@ class ContentView implements Markup {
 	// the path bar's height, the sidebar's volume foot's too (one line across)
 	public static inline var FOOT = 32;
 
-	public static function make(x:Explorer):View {
+	// (medium: a tablet's, its sidebar a button's, its inspector a sheet's, no path bar)
+	public static function make(x:Explorer, ?medium:Read<Bool>):View {
+		var tablet:Read<Bool> = medium ?? () -> false;
 		return <view tag="main" slot="panel" grow={1} min-width={0} direction="column" overflow="hidden"
 			borders="0 0 0 1" border-color={Look.ref.line}>
-			{toolbar(x)}
-			{content(x)}
-			{pathBar(x)}
+			{toolbar(x, tablet)}
+			{content(x, tablet)}
+			<Show when={!tablet()}>{pathBar(x)}</Show>
 		</view>;
 	}
 
 	// --- the toolbar
 
-	static function toolbar(x:Explorer):View {
+	static function toolbar(x:Explorer, tablet:Read<Bool>):View {
 		var b = x.browser, title:Null<Node> = null, viewButton:Null<Node> = null;
-		return <view tag="toolbar" direction="row" align-items="center" column-gap={6} height={Shell.BAR} shrink={0} padding="0 8" drag-region
+		return <view tag="toolbar" direction="row" align-items="center" column-gap={6} height={tablet() ? 52 : Shell.BAR} shrink={0} padding="0 8" drag-region
 			borders="0 0 1 0" border-color={Look.ref.line}>
+			<Show when={tablet()}>
+				<Standard.Button tag="sidebar-toggle" variant="ghost" icon={Glyphs.get("sidebar")} label="Sidebar" onPress={() -> x.sidebarOpen(true)}/>
+			</Show>
 			<view direction="row" column-gap={2}>
 				<Standard.Button tag="back" variant="ghost" size="sm" icon={Glyphs.get("back")} label="Back" disabled={() -> !b.canBack()}
 					onPress={() -> b.goBack()}/>
@@ -66,8 +72,16 @@ class ContentView implements Markup {
 				<image src={() -> Glyphs.get(b.layout() == Grid ? "grid" : "list")} width={16} height={16}/>
 				<image src={Glyphs.get("down")} width={12} height={12}/>
 			</view:button>
-			<Standard.Button tag="inspector-toggle" variant="ghost" size="sm" icon={Glyphs.get("info")} label="Inspector" selected={() -> b.inspector()}
-				onPress={() -> b.inspector(!b.inspector.value)}/>
+			<Show when={!tablet()}>
+				<Standard.Button tag="inspector-toggle" variant="ghost" size="sm" icon={Glyphs.get("info")} label="Inspector" selected={() -> b.inspector()}
+					onPress={() -> b.inspector(!b.inspector.value)}/>
+			</Show>
+			<Show when={tablet()}>
+				<view ref={(n:Node) -> x.infoAnchor = n}>
+					<Standard.Button tag="info-toggle" variant="ghost" icon={Glyphs.get("info")} label="Get Info" selected={() -> x.infoOpen()}
+						onPress={() -> x.infoOpen(!x.infoOpen.value)}/>
+				</view>
+			</Show>
 		</view>;
 	}
 
@@ -109,7 +123,7 @@ class ContentView implements Markup {
 
 	// --- the folder
 
-	static function content(x:Explorer):View {
+	static function content(x:Explorer, tablet:Read<Bool>):View {
 		var b = x.browser;
 		// (still reading after 300 ms with nothing to show: the skeleton)
 		var slow = signal(false), since = -1.0;
@@ -130,7 +144,7 @@ class ContentView implements Markup {
 			});
 		});
 		return <view tag="content" grow={1} min-height={0}>
-			{list(x)}
+			{list(x, tablet)}
 			<Show when={b.error() != ""}>{States.error(x)}</Show>
 			<Show when={b.error() == "" && !b.reading() && b.total() == 0}>{States.empty(x)}</Show>
 			<Show when={b.error() == "" && b.query() != "" && b.items().length == 0 && !b.reading()}>{States.noResults(x)}</Show>
@@ -140,7 +154,7 @@ class ContentView implements Markup {
 
 	// (the list or the grid, sharing the browser's selection: their own
 	// keys, presses, marquee and type-ahead; the selected kept in view)
-	static function list(x:Explorer):View {
+	static function list(x:Explorer, tablet:Read<Bool>):View {
 		var b = x.browser, scroller:Null<VirtualScroll> = null;
 		effect(() -> b.selection.version(), _ -> b.selectionChanged());
 		effect(() -> b.selected(), v -> {
@@ -180,7 +194,7 @@ class ContentView implements Markup {
 			<Show when={b.layout() == Grid}>
 				<VirtualGrid tag="grid" each={() -> b.items()} by={(e:Entry) -> e.name} cellWidth={Tiles.CELL_WIDTH} cellHeight={Tiles.CELL_HEIGHT}
 					gap={4} padding={12} selection={b.selection} label="Files" textOf={(e:Entry) -> e.name} onActivate={activate} onContextMenu={menu}
-					ref={v -> made(v)}>{(e, i) -> Tiles.cell(x, e)}</VirtualGrid>
+					ref={v -> made(v)}>{(e, i) -> tablet() ? Phone.pressed(x, e, Tiles.cell(x, e)) : Tiles.cell(x, e)}</VirtualGrid>
 			</Show>
 		</view>;
 	}

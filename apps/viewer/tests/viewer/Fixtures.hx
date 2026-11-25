@@ -21,6 +21,7 @@ class Fixtures implements Markup {
 	// an explorer of them, decoding at once on this thread
 	public static function explorer(?dirs:Array<String>):Explorer {
 		Kinds.utc = true;
+		Tiles.forget();
 		var m = files(dirs ?? ["tests/fixtures/folder", "tests/fixtures/pdf"]);
 		return new Explorer(m, (path, side, done) -> done(Decode.file({path: path, side: side})), [], [], Preview.now, null, (path, done) -> done(m.text(path)));
 	}
@@ -36,6 +37,7 @@ class Fixtures implements Markup {
 	// which only some machines decode, so its counts are the same everywhere)
 	public static function samples(?keep:String->Bool):Explorer {
 		Kinds.utc = true;
+		Tiles.forget();
 		var m = new MemoryFiles(), bytes = new Map<String, haxe.io.Bytes>();
 		for (f in Samples.FILES) {
 			if (keep != null && !keep(f.file)) continue;
@@ -66,5 +68,12 @@ class Fixtures implements Markup {
 	// the window's content, dark or light, at a laptop's size (the stories'
 	// trees are taken in a phone's whatever a story's width: Stories.tree)
 	public static function themed(x:Explorer, dark:Bool):View
-		return <view width={1100} height={700} shrink={0} ref={(n:Node) -> if (n.ui != null) n.ui.dark = dark}>{Shell.view(x)}</view>;
+		return <view width={1100} height={700} shrink={0} ref={(n:Node) -> if (n.ui != null) n.ui.dark = dark}>{Shell.view(x, () -> helder.ui.SizeClass.Expanded)}</view>;
+
+	// (the phone stories' markup: on Windows a story file's own isn't processed)
+	public static function phone(x:Explorer, at:viewer.Phone.PhoneState->Void):View
+		return <helder.ui.controls.Standard.Themed look={Shell.look}><Phone.Root x={x} at={at}/></helder.ui.controls.Standard.Themed>;
+
+	public static function tile(name:String):View
+		return <view grow={1}>{Tiles.large({name: name, kind: File, size: 0, modified: 0, created: 0})}</view>;
 }

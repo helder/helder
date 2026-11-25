@@ -62,6 +62,24 @@ function tests() {
 			equals(x.sidebar.places.value.length, 3);
 		});
 	});
+	describe("PhoneFiles", () -> {
+		test("the app's folder by its path, a grant by its id; no trash in a grant", async(() -> {
+			var disk = new MemoryFiles();
+			disk.add("/docs/");
+			disk.add("/docs/x.jpg", Bytes.ofString("xy"));
+			var grants = new GrantFiles(new FakeGrants()), f = new PhoneFiles(disk, grants);
+			equals(f.stat("/docs/x.jpg").size, 2);
+			equals(f.stat("g1").kind, Folder);
+			listed(grants, "g1", []);
+			equals(f.localPath("g1/a.jpg"), "/disk/Trip/a.jpg");
+			equals(FileBytes.read(f, "g1/a.jpg").toString(), "abc");
+			var failed = false;
+			try f.trash("g1/a.jpg") catch (_:Dynamic) failed = true;
+			equals(failed, true);
+			f.trash("/docs/x.jpg");
+			equals(disk.stat("/docs/x.jpg"), null);
+		}));
+	});
 }
 
 // (a listing's entries, its batches' sizes pushed to batches)

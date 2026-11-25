@@ -552,6 +552,7 @@ class Run {
 			["sh", "tests/ui/android-layers.sh", "bin/pack/AndroidLayersTest.apk", "bin/pack/android-layers"],
 			["sh", "tests/media/android/android.sh", "bin/pack/MediaAndroidTest.apk", "bin/pack/VideoStill.apk", "bin/pack/android-media"],
 			["sh", "tests/typescript/native/android.sh", h, "bin/pack/android-ts"],
+			["sh", "tests/pack/viewer-android.sh", h, "bin/pack/android-viewer"],
 			["sh", "tests/os/folders-android.sh", "bin/pack/FoldersCheck.apk", "bin/pack/android-folders"],
 			["sh", "tests/platform/webview-android.sh", h, "bin/pack/android-webview"],
 			["sh", "tests/pack/jvm.sh", "bin/pack/android-jvm"],
@@ -571,9 +572,11 @@ class Run {
 		var hello = ["sh", "tests/pack/ios.sh", h, "bin/pack/ios"];
 		var webview = ["sh", "tests/platform/webview-ios.sh", h, "bin/pack/ios-webview"];
 		var text = ["sh", "tests/platform/textinput-ios.sh", h, "bin/pack/ios-textinput"];
+		// (the viewer's phone shell: its Documents browsed)
+		var viewer = ["sh", "tests/pack/viewer-ios.sh", h, "bin/pack/ios-viewer"];
 		var builds = [];
 		if (pack) builds = builds.concat([hello, webview]);
-		if (gfx) builds = builds.concat([text, [h, "build", "tests/gfx/ios", "--target", "ios-sim", "-o", app],
+		if (gfx) builds = builds.concat([text, viewer, [h, "build", "tests/gfx/ios", "--target", "ios-sim", "-o", app],
 			[h, "build", "tests/gfx/SimTap.hx", "-o", tap]]);
 		function execute() {
 			if (!usePrebuilt) {
@@ -599,7 +602,7 @@ class Run {
 			}
 			if (buildOnly) return;
 			var checks = pack ? [hello, webview] : [];
-			if (gfx) checks = checks.concat([["sh", "tests/gfx/ios.sh", app, "bin/pack/ios-gfx", tap], text]);
+			if (gfx) checks = checks.concat([["sh", "tests/gfx/ios.sh", app, "bin/pack/ios-gfx", tap], text, viewer]);
 			deviceChecks(checks, ["HELDER_IOS_SIMULATOR" => udid, "IOS_PREBUILT" => "1"]);
 		}
 		try execute() catch (e:haxe.Exception) {

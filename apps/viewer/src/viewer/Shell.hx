@@ -11,6 +11,8 @@ import helder.ui.widgets.WindowButtons.WindowControls;
 import helder.view.*;
 import helder.view.Flow.*;
 import helder.view.graph.Graph.*;
+import helder.view.graph.Read;
+import helder.ui.SizeClass;
 import helder.ui.view.UiFlow.MenuBarView;
 import viewer.Decode.Decoded;
 import viewer.ViewerActions;
@@ -119,7 +121,9 @@ class Shell implements Markup {
 
 	#if (hxmc.target != "wasm32-wasi")
 	public static function main(args:Array<String>) {
-		var mac = hxmc.Platform.os() == 1;
+		var mac = hxmc.Platform.os() == 1, phone = Phone.mobile();
+		// (a phone: one app, no other to hand files to)
+		if (phone) args = args.concat(["--new"]);
 		var store = try helder.os.Store.open("helder-viewer") catch (_:Dynamic) null;
 		inline function num(k:String, d:Int):Int {
 			var v = store == null ? null : Std.parseInt(store.get(k) ?? "");
@@ -178,10 +182,13 @@ class Shell implements Markup {
 		// (a decode's IDCT, upsampling and colours over two threads: the pool decodes two files at once)
 		helder.image.JpegDecoder.threads = 2;
 		#if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64" || hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
-		// (a phone: the folders the user gave it, the places; Add Folder the picker's)
+		// (a phone: its Documents and the folders the user gave it, the places;
+		// Add a folder the system's picker; Open in… the share sheet, the files themselves)
 		var grants = new GrantFiles();
-		var x = phone(grants);
+		var x = phoneExplorer(new PhoneFiles(new NativeFiles(), grants), grants);
 		x.openFolder = () -> addFolder(x, grants);
+		x.addFolder = x.openFolder;
+		x.share = paths -> Async.launch(_ -> helder.os.Share.share({files: paths}));
 		#else
 		var x = new Explorer(new NativeFiles(), jobDecode, helder.os.Places.user(), helder.os.Places.volumes(), null, jobSizes);
 		x.reveal = reveal;
@@ -200,12 +207,13 @@ class Shell implements Markup {
 		var recent = store == null || store.get("recent") == null ? [] : [for (r in store.get("recent").split("\n")) if (r != "") r];
 		var bar:Null<helder.ui.menu.Menus.MenuBar> = null;
 		var places = [for (p in x.sidebar.places.value) {name: p.name, path: p.path}];
+		x.recent(recent);
+		var opened = viewer.onOpened;
 		viewer.onOpened = p -> {
-			recent.remove(p);
-			recent.unshift(p);
-			if (recent.length > 8) recent.resize(8);
+			if (opened != null) opened(p);
+			recent = x.recent.value;
 			if (store != null) store.set("recent", recent.join("\n"));
-			if (bar != null) bar.setMenus(ViewerActions.menus(recent, places));
+			if (bar != null) bar.setMenus(ViewerActions.menus(recent.slice(0, 8), places));
 		};
 		restore(store, x);
 		// (macOS's: Finder's "Open With", the Dock's icon)
@@ -246,7 +254,7 @@ class Shell implements Markup {
 			}}
 			ref={w -> {
 				window = w;
-				w.window.setMinSize(640, 400);
+				if (!phone) w.window.setMinSize(640, 400);
 				var placed = store != null && store.exists("x") && store.exists("y");
 				if (placed) w.window.moveTo(num("x", 0), num("y", 0));
 				asked = {x: placed ? num("x", 0) : null, y: placed ? num("y", 0) : null, width: num("width", 1180), height: num("height", 780)};
@@ -269,23 +277,24 @@ class Shell implements Markup {
 					w.close();
 				});
 			}}>
-			<MenuBarView menus={ViewerActions.menus(recent, places)} ref={b -> bar = b}/>
+			{phone ? null : <MenuBarView menus={ViewerActions.menus(recent.slice(0, 8), places)} ref={b -> bar = b}/>}
 			{view(x)}
 		</Surface>);
 	}
 
-	// (a phone's explorer of its grants: a file on disk (iOS's) decoded as
-	// the desktop's are, one that is not (Android's documents) from its bytes)
-	static function phone(grants:GrantFiles):Explorer
-		return new Explorer(grants, (key, side, done) -> {
-			var k = Decode.parseKey(key), local = grants.localPath(k.path);
-			Async.launch(_ -> done(local != null ? Decode.job(Decode.key(local, k.page), side) : Decode.read(grants, key, side)));
-		}, grants.places(), [], (path, done) -> {
-			var local = grants.localPath(path);
-			local != null ? Preview.request(local, done) : Preview.read(grants, path, done);
+	// (a phone's explorer: its Documents and its grants; a file on disk
+	// (Documents', iOS's grants') decoded as the desktop's are, one that is
+	// not (Android's documents) from its bytes)
+	static function phoneExplorer(files:Files, grants:GrantFiles):Explorer
+		return new Explorer(files, (key, side, done) -> {
+			var k = Decode.parseKey(key), local = files.localPath(k.path);
+			Async.launch(_ -> done(local != null ? Decode.job(Decode.key(local, k.page), side) : Decode.read(files, key, side)));
+		}, phonePlaces().concat(grants.places()), [], (path, done) -> {
+			var local = files.localPath(path);
+			local != null ? Preview.request(local, done) : Preview.read(files, path, done);
 		}, (path, done) -> {
-			var local = grants.localPath(path);
-			local != null ? jobSizes(local, done) : Async.launch(_ -> done(PdfPages.read(grants, path)));
+			var local = files.localPath(path);
+			local != null ? jobSizes(local, done) : Async.launch(_ -> done(PdfPages.read(files, path)));
 		});
 
 	// (a PDF's pages' sizes on a pool's thread: the document opened there, kept for its pages)
@@ -345,11 +354,18 @@ class Shell implements Markup {
 		x.viewer.statusOn(store.get("status") == "1");
 	}
 
+	// (a phone's own place: the app's documents folder, which the system's
+	// Files app shows as the app's; the folders the user adds come after)
+	static function phonePlaces():Array<helder.os.Places.Place> {
+		var d = helder.os.Paths.documents();
+		return d == null ? [] : [{kind: Documents, name: "Documents", path: d}];
+	}
+
 	// (where a start without a path opens: the last folder (its selection kept), else Pictures, else home)
 	static function home(store:Null<helder.os.Store>, x:Explorer):String {
 		var last = store == null ? null : store.get("dir");
 		if (last != null && x.files.stat(last)?.kind == Folder) return last;
-		for (kind in [helder.os.Places.PlaceKind.Pictures, helder.os.Places.PlaceKind.Home])
+		for (kind in [helder.os.Places.PlaceKind.Pictures, helder.os.Places.PlaceKind.Home, helder.os.Places.PlaceKind.Documents])
 			for (p in x.sidebar.places.value)
 				if (p.kind == kind) return p.path;
 		return Sys.getCwd();
@@ -438,31 +454,45 @@ class Shell implements Markup {
 
 	#end
 
-	// the window's content: the browser, or a file full size over it (to
-	// assistive technology the one shown alone)
-	public static function view(x:Explorer):View {
-		var b = x.browser;
+	// the window's content by the screen's size class (size: the class it
+	// is drawn for, else the window's): on a phone (Compact) Phone's stack;
+	// on a tablet (Medium) the browser with its sidebar over the folder and
+	// its inspector in a sheet, no path bar; else (Expanded) the browser,
+	// or a file full size over it (to assistive technology the one shown
+	// alone)
+	public static function view(x:Explorer, ?size:Read<SizeClass>):View {
+		var cls:Read<SizeClass> = size ?? () -> SizeClass.current();
+		return <Standard.Themed look={look}>
+			<Switch>
+				<Match when={cls() == Compact}><Phone.Root x={x}/></Match>
+				<Match when={true}><Desktop x={x} medium={() -> cls() == Medium}/></Match>
+			</Switch>
+		</Standard.Themed>;
+	}
+
+	static function Desktop(props:{x:Explorer, medium:Read<Bool>}):View {
+		var x = props.x, b = x.browser, medium = props.medium;
 		// (a large folder, not watched: read again when the pointer comes back to the window)
 		function back()
 			if (!x.full.value && b.total.value >= Browser.WATCH_BELOW && !b.reading.value) b.refresh();
-		return <Standard.Themed look={look}>
-			<view tag="window" grow={1} background={Look.ref.canvas} color={Look.ref.fg} font-family="system-ui" font-size={13} onPointerEnter={back}>
-				<view tag="browser" grow={1} direction="row" hidden={x.full()}>
-					{SidebarView.make(x)}
-					<view grow={1} min-width={0} direction="row" padding-top={WindowButtons.side() == "end" ? 32 : 0}>
-						{ContentView.make(x)}
-						<Show when={b.inspector()}>{InspectorView.make(x)}</Show>
-					</view>
+		return <view tag="window" grow={1} background={Look.ref.canvas} color={Look.ref.fg} font-family="system-ui" font-size={13} onPointerEnter={back}>
+			<view tag="browser" grow={1} direction="row" hidden={x.full()}>
+				<Show when={!medium()}>{SidebarView.make(x)}</Show>
+				<view grow={1} min-width={0} direction="row" padding-top={WindowButtons.side() == "end" ? 32 : 0}>
+					{ContentView.make(x, medium)}
+					<Show when={b.inspector() && !medium()}>{InspectorView.make(x)}</Show>
 				</view>
-				{ViewerView.make(x)}
-				<Show when={WindowButtons.side() == "end"}>
-					<view position="absolute" top={0} left={SidebarView.WIDTH} right={0} height={Shell.BAR} drag-region display={x.full() ? "none" : "flex"}/>
-				</Show>
-				<view tag="window-start" position="absolute" top={0} left={16} height={Shell.BAR} direction="row" align-items="center"><WindowControls side="start"/></view>
-				<view tag="window-end" position="absolute" top={0} right={0} direction="row"><WindowControls side="end"/></view>
-				<Show when={x.viewer.aboutOpen()}>{about(x.viewer)}</Show>
 			</view>
-		</Standard.Themed>;
+			<Show when={medium()}>{Tablet.make(x)}</Show>
+			{ViewerView.make(x)}
+			<Show when={WindowButtons.side() == "end"}>
+				<view position="absolute" top={0} left={medium() ? 0 : SidebarView.WIDTH} right={0} height={Shell.BAR} drag-region
+					display={x.full() ? "none" : "flex"}/>
+			</Show>
+			<view tag="window-start" position="absolute" top={0} left={16} height={Shell.BAR} direction="row" align-items="center"><WindowControls side="start"/></view>
+			<view tag="window-end" position="absolute" top={0} right={0} direction="row"><WindowControls side="end"/></view>
+			<Show when={x.viewer.aboutOpen()}>{about(x.viewer)}</Show>
+		</view>;
 	}
 
 	static function about(viewer:Viewer):View
