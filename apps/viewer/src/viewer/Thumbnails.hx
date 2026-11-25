@@ -327,7 +327,7 @@ class Thumbnails {
 				#if (hxmc.target == "wasm32-wasi")
 				null;
 				#else
-				var img = FolderModel.MEDIA.contains(ext) ? Thumbs.poster(path, side) : null;
+				var img = FolderModel.media().contains(ext) ? Thumbs.poster(path, side) : null;
 				img == null ? null : {width: img.width, height: img.height, rgba: img.pixels};
 				#end
 		}

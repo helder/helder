@@ -101,7 +101,7 @@ class Shell implements Markup {
 		{mime: "image/heic", extensions: ["heic", "heif"]},
 		{mime: "image/avif", extensions: ["avif"]}
 	].concat(helder.media.Decoders.available() ? [
-		// (helder.media's, where the system decodes them: FolderModel.MEDIA)
+		// (helder.media's, where the system decodes them: FolderModel.media())
 		{mime: "video/mp4", extensions: ["mp4", "m4v"]},
 		{mime: "video/quicktime", extensions: ["mov"]},
 		{mime: "video/webm", extensions: ["webm"]},
