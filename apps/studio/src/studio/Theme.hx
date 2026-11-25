@@ -91,6 +91,9 @@ class Theme {
 	public static inline var CARD = 12;
 	public static inline var CHIP = 6;
 	public static inline var DOTS = 24;
+	// a <Group>'s frames apart, its title's size (Board)
+	public static inline var GROUP_GAP = 28;
+	public static inline var GROUP_TITLE = 15;
 	// the chat's type: 13 points, a line of 1.55
 	public static inline var CHAT_SIZE = 13;
 

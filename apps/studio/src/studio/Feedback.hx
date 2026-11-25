@@ -29,6 +29,10 @@ class Feedback implements Markup {
 					width={frame(studio, p().screen).w} height={frame(studio, p().screen).h} radius={3} opacity={p().working ? 1 : 0} transition="opacity 0.3s"
 					shadow={breath(studio, p().colour)}/>
 			}</For>
+			<For each={picked(studio)} by={(p:{screen:String, colour:String}) -> p.screen}>{(p:Read<{screen:String, colour:String}>) ->
+				<view tag={"picked-" + Shell.slug(p().screen)} position="absolute" left={frame(studio, p().screen).x} top={frame(studio, p().screen).y}
+					width={frame(studio, p().screen).w} height={frame(studio, p().screen).h} radius={3} shadow={Shadow.parse('0 0 0 2px ${p().colour}')}/>
+			}</For>
 			<For each={studio.marks.touches()} by={(t:Touch) -> t.id}>{(t:Read<Touch>) ->
 				<view tag="touch" position="absolute" left={touchBox(studio, t()).x} top={touchBox(studio, t()).y} width={touchBox(studio, t()).w}
 					height={touchBox(studio, t()).h} radius={2} shadow={flash(studio, t())}/>
@@ -166,6 +170,16 @@ class Feedback implements Markup {
 			for (p in pr.peers())
 				if (p.screen == screen && (p.working || (p.doneAt > 0 && pr.now() - p.doneAt < Marks.DONE && studio.marks.time() >= 0))) p
 		];
+	}
+
+	// (the frames picked in the chat's last questions: ringed here too)
+	static function picked(studio:Studio):Array<{screen:String, colour:String}> {
+		var last = studio.talk.turns().length - 1, out:Array<{screen:String, colour:String}> = [];
+		for (q in studio.questions.all())
+			if (q.turn < 0 || q.turn == last)
+				for (o in q.options)
+					if (o.screen != null && q.picked.contains(o.id) && !Lambda.exists(out, x -> x.screen == o.screen)) out.push({screen: o.screen, colour: q.colour});
+		return out;
 	}
 
 	// (the agents whose frame is on the canvas)

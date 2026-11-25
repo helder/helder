@@ -57,6 +57,8 @@ class Studio {
 	// the chat's turns, the code panel (Watch's shell); what the user tells the agent while it works
 	public final talk = new Conversation();
 	public final inbox = new Inbox();
+	// the agents' questions (studio.ask: the chat's cards, answered there; the answers the inbox's)
+	public final questions:Questions;
 
 	function setTurn(t:Null<Turn>, fresh = false) {
 		turnNow = t;
@@ -174,7 +176,12 @@ class Studio {
 		designs = new Designs(this);
 		layout = new Layout(this);
 		marks = new Marks(this);
+		questions = new Questions(this);
 		if (p != null) marks.saw([for (s in p.screens) s.name]);
+		groupAt = (file, title) -> {
+			var g = Lambda.find(layout.groups(), g -> g.file == file && g.title == title);
+			g == null ? null : {x: g.x, y: g.y, w: g.w, h: g.h};
+		}
 		tools = new Tools(this);
 		drag = new Drag(this);
 		tree = p == null ? null : new FileTree(p);
@@ -1627,6 +1634,13 @@ class Studio {
 	public function ask(prompt:String, said = true) {
 		var p = prompt.trim();
 		if (p == "") return;
+		// (after a question's "Something else…": its answer, the user's words)
+		var q = questions.answeringNow();
+		if (q != null && said) {
+			questions.reply(q, p);
+			log("replied-to", {question: q, text: p});
+			return;
+		}
 		// (typed while a turn runs: a direction, the inbox's, not a prompt)
 		if (Turns.running(turnNow)) {
 			inbox.direct(p, talk.list().length - 1);
@@ -1765,11 +1779,12 @@ class Layout {
 			for (i in f.screens)
 				if (i.at != null && i.source.match(Design(_))) y = Math.max(y, i.at.y + size(i).h + Theme.FLOW_GAP);
 		for (f in p.flows()) {
-			var x = 0.0, tall = 0.0, row = false, last:Null<{x:Float, y:Float, w:Float}> = null;
+			var x = 0.0, tall = 0.0, row = false, last:Null<{x:Float, y:Float, w:Float, group:Null<String>}> = null;
 			for (i in f.screens) {
 				if (!shown(i)) continue;
 				var z = size(i), at = i.at;
-				if (at == null && last != null) at = {x: last.x + last.w + Theme.SCREEN_GAP, y: last.y};
+				// (a group's frames side by side, closer than frames apart)
+				if (at == null && last != null) at = {x: last.x + last.w + (i.group != null && i.group == last.group ? Theme.GROUP_GAP : Theme.SCREEN_GAP), y: last.y};
 				if (at == null) {
 					at = {x: x, y: y};
 					x += z.w + Theme.SCREEN_GAP;
@@ -1777,7 +1792,7 @@ class Layout {
 					row = true;
 				}
 				out.push({name: i.name, flow: f.name, x: at.x, y: at.y, w: z.w, h: z.h});
-				last = {x: at.x, y: at.y, w: z.w};
+				last = {x: at.x, y: at.y, w: z.w, group: i.group};
 			}
 			if (row) y += tall + Theme.FLOW_GAP;
 		}
@@ -1786,6 +1801,27 @@ class Layout {
 
 	public function rect(name:String):Null<{name:String, flow:String, x:Float, y:Float, w:Float, h:Float}>
 		return Lambda.find(screens(), s -> s.name == name);
+
+	// a design file's groups where they are: each its title and its frames' box (the world's points)
+	public function groups():Array<{file:String, title:String, x:Float, y:Float, w:Float, h:Float}> {
+		var p = studio.project, out:Array<{file:String, title:String, x:Float, y:Float, w:Float, h:Float}> = [];
+		if (p == null) return out;
+		var all = screens();
+		for (i in p.screens) {
+			if (i.group == null) continue;
+			var r = Lambda.find(all, s -> s.name == i.name);
+			if (r == null) continue;
+			var g = Lambda.find(out, g -> g.file == i.file && g.title == i.group);
+			if (g == null) out.push({file: i.file, title: i.group, x: r.x, y: r.y, w: r.w, h: r.h}) else {
+				var x1 = Math.max(g.x + g.w, r.x + r.w), y1 = Math.max(g.y + g.h, r.y + r.h);
+				g.x = Math.min(g.x, r.x);
+				g.y = Math.min(g.y, r.y);
+				g.w = x1 - g.x;
+				g.h = y1 - g.y;
+			}
+		}
+		return out;
+	}
 
 	// the screens the stage shows now (any part of them)
 	public function inView():Array<String> {

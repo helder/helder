@@ -12,9 +12,14 @@ using StringTools;
 // before it is drawn: canvas:* attributes, <note> elements. A frame is drawn
 // as a view of its size, its own attributes but its name and the editor's
 // its style, so that the frame itself is selected and edited as any node.
+// <Group title="Which start screen?" canvas:at="x y">...frames...</Group>
+// is a titled region of frames side by side (Layout: 28 apart, the title
+// above); groups don't nest (a group's own groups are read as its frames').
 class DesignFile {
 	// the file's text read; a thrown message: not one root of markup
 	public final frames:Array<Frame> = [];
+	// its groups, in the order written (their frames' group: the title)
+	public final groups:Array<Region> = [];
 	// the places of the frames drawn by the program: <Frame story="file#name"
 	// canvas:at="x y"/> (a story's: its file from this one's folder, its
 	// export's or its own name), <Frame app canvas:at="x y"/> (the app's)
@@ -29,8 +34,18 @@ class DesignFile {
 			case PElement(_, _, children, _) | PFragment(children): children;
 			case _: [];
 		}
+		read(kids, lead, null);
+	}
+
+	function read(kids:Array<PNode>, lead:Int, group:Null<String>)
 		for (k in kids)
 			switch k.kind {
+				case PElement("Group", attrs, children, at) if (group == null):
+					var title = value(attrs, "title") ?? 'Group ${groups.length + 1}';
+					groups.push({title: title, at: point(attrs), start: lead + at - 1});
+					read(children, lead, title);
+				case PElement("Group", _, children, _):
+					read(children, lead, group);
 				case PElement("Frame", attrs, children, at) if (value(attrs, "story") != null || Lambda.exists(attrs, a -> a.name == "app")):
 					places.push({ref: value(attrs, "story") ?? "app", at: point(attrs), start: lead + at - 1, cover: flag(attrs, "cover")});
 				case PElement("Frame", attrs, children, at):
@@ -42,11 +57,11 @@ class DesignFile {
 						start: lead + at - 1,
 						cover: flag(attrs, "cover"),
 						root: {kind: PElement("view", [for (a in attrs) if (shown(a.name)) a].concat(sized(attrs, at)), strip(children), at)},
-						base: lead
+						base: lead,
+						group: group
 					});
 				case _:
 			}
-	}
 
 	// (canvas:at's point; null: none)
 	static function point(attrs:Array<PAttr>):Null<{x:Float, y:Float}> {
@@ -109,6 +124,13 @@ typedef Place = {
 	cover:Bool,
 }
 
+// (a titled region of frames: where (canvas:at; null: after what is before it), its element's offset)
+typedef Region = {
+	title:String,
+	at:Null<{x:Float, y:Float}>,
+	start:Int,
+}
+
 typedef Frame = {
 	name:String,
 	width:Int,
@@ -122,4 +144,6 @@ typedef Frame = {
 	// what is drawn: a view of its size, its content; the offset of its text in the file
 	root:PNode,
 	base:Int,
+	// the group's title it is in (null: none)
+	group:Null<String>,
 }
