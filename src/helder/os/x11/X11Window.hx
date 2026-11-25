@@ -303,6 +303,26 @@ class X11Window {
 		}
 	}
 
+	// where it takes the pointer (Window.input: x, y, width, height in
+	// pixels; null: everywhere): its input shape (XShape's ShapeInput),
+	// elsewhere the pointer the windows' under it
+	function setInput(rects:Null<Array<Int>>) {
+		if (!XShape.ok) {
+			Sys.println("helder.os: no libXext: the window takes the pointer everywhere");
+			return;
+		}
+		if (rects == null) {
+			// (no mask: the window's bounds again)
+			XShape.XShapeCombineMask(display, id, 2, 0, 0, 0, 0);
+		} else Arena.scoped(a -> {
+			var n = rects.length >> 2, r:Ptr<UInt16> = a.alloc(8 * n + 8);
+			for (i in 0...n * 4)
+				r[i] = Std.int(Math.max(-32768, Math.min(32767, rects[i]))) & 0xFFFF;
+			XShape.XShapeCombineRectangles(display, id, 2, 0, 0, r, n, 0, 0);
+		});
+		Xlib.XFlush(display);
+	}
+
 	// (a transparent window's visual, 0: opaque)
 	var visual = 0;
 

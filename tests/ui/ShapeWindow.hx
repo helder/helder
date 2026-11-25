@@ -36,14 +36,18 @@ class ShapeWindow {
 		var box = new Node(), half = new Node();
 		box.style.set({position: Absolute, left: 50, top: 40, width: 60, height: 60, background: 0xFFFF0000});
 		half.style.set({position: Absolute, left: 130, top: 40, width: 40, height: 60, background: 0x800000FF});
+		// (drawn, its clicks passing through: pointer-events none)
+		var bar = new Node();
+		bar.style.set({position: Absolute, left: 10, top: 115, width: 180, height: 20, background: 0xFFFFFF00, pointerEvents: None});
 		w.root.append(box);
 		w.root.append(half);
+		w.root.append(bar);
 		// (both at one place: the window behind's own move not yet done)
 		if (desk != null) w.window.moveTo(200, 200);
 		#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
 		if (desk == null) w.window.moveTo(200, 200);
 		#end
-		var step = 0, all = desk == null ? [w] : [desk, w];
+		var step = 0, all = desk == null ? [w] : [desk, w], end = 40, downs = [0, 0];
 		App.run(() -> {
 			if (++step == 12) {
 				check(w.window.transparent == (expect == "yes"), 'transparent: ${w.window.transparent}, ${expect == "yes" ? "asked for and composed so" : "not here: opaque"}');
@@ -53,17 +57,64 @@ class ShapeWindow {
 				if (u.needsFrame() || step < 40) u.frame();
 			w.device.settle();
 			if (step == 14) frame(w);
+			// (macOS: each window ordered front at its first frame, the one behind's may come later: this one in front again)
+			#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
+			if (step == 30 && desk != null) w.window.raise();
+			#end
 			// (the window server's after some of its frames)
 			if (step == 40) {
 				Sys.sleep(0.3);
 				system(w, desk);
+				if (w.window.transparent) inputs(w);
+				if (w.window.transparent && (desk != null || behindPlain()) && !helderBehind && Click.can()) end = 70;
+			}
+			// (a click on the box: its own; then where it is clear: the window
+			// behind's, which it activates and raises, so it comes last)
+			for (i => at in [[80.0, 70.0], [10.0, 10.0]]) {
+				var s0 = 41 + i * 14, through = i == 1;
+				// (twice: a runner's first posted move was seen dropped)
+				if (step == s0 || step == s0 + 2) Click.move(w.window, at[0], at[1]);
+				if (step == s0 + 4) {
+					downs = [0, 0];
+					#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+					Plain.downs = 0;
+					Plain.styles(w.window.surface.handle);
+					#elseif (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
+					macState(w);
+					#end
+					Click.press(w.window, at[0], at[1]);
+				}
+				if (step == s0 + 12) {
+					#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+					downs[0] += Plain.downs;
+					#end
+					check(through ? downs[0] >= 1 && downs[1] == 0 : downs[1] >= 1 && downs[0] == 0,
+						'a click ${through ? "where it is clear: the window behind's" : "on the box: its own"} (presses: behind ${downs[0]}, it ${downs[1]})');
+				}
+			}
+			if (step == end) {
 				Sys.println("ShapeWindow: " + (failed == 0 ? "ok" : '$failed FAILED'));
 				for (u in all)
 					u.close();
 				Sys.exit(failed > 0 ? 1 : 0);
 			}
-		}, e -> for (u in all) if (u.window == e.window) u.handle(e));
+		}, e -> {
+			if (e.kind == MouseDown) downs[e.window == w.window ? 1 : 0]++;
+			for (u in all)
+				if (u.window == e.window) u.handle(e);
+		});
 		Sys.exit(failed > 0 ? 1 : 0);
+	}
+
+	// (where it takes the pointer: the boxes it draws, in pixels, not the bar of pointer-events none)
+	static function inputs(w:UiWindow) {
+		var k = w.scale, r = w.window.inputRects;
+		function box(x:Float, y:Float, bw:Float, bh:Float):Array<Int> {
+			var x0 = Math.floor(x * k), y0 = Math.floor(y * k);
+			return [x0, y0, Math.ceil((x + bw) * k) - x0, Math.ceil((y + bh) * k) - y0];
+		}
+		var want = box(50, 40, 60, 60).concat(box(130, 40, 40, 60));
+		check(r != null && r.join(" ") == want.join(" "), 'its input: what it draws, the bar of pointer-events none left out (${r == null ? "everywhere" : r.join(" ")}, of ${want.join(" ")})');
 	}
 
 	// (the frame read back, RGBA: at points x, y)
@@ -101,11 +152,44 @@ class ShapeWindow {
 
 	// (X11, and Windows' --behind helder: an opaque helder window of a known
 	// colour, under the transparent one; Windows' otherwise a plain window
-	// of GDI's: Plain)
+	// of GDI's: Plain; the clicks through the transparent one, macOS's too;
+	// none on Wayland, which places them)
 	static final helderBehind = Sys.args().indexOf("--behind") >= 0 && Sys.args()[Sys.args().indexOf("--behind") + 1] == "helder";
 
+	#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
+	// (the window at a press: whether it ignores the mouse, where it finds the pointer)
+	static function macState(w:UiWindow) {
+		var view = w.window.surface.handle;
+		Sys.println(OsThread.get(() -> {
+			var win = helder.os.objc.Msg.id(view, helder.os.objc.ObjC.sel("window"));
+			var o = helder.os.objc.Msg.point(win, helder.os.objc.ObjC.sel("mouseLocationOutsideOfEventStream"));
+			var p = helder.os.objc.Msg.pointPointPtr(view, helder.os.objc.ObjC.sel("convertPoint:fromView:"), o, hxmc.unsafe.Ptr.nil());
+			var b = helder.os.objc.Msg.rect(view, helder.os.objc.ObjC.sel("bounds"));
+			var g = helder.os.objc.Msg.point(helder.os.objc.ObjC.cls("NSEvent"), helder.os.objc.ObjC.sel("mouseLocation"));
+			// (the window server's window there, and ours front to back)
+			var M = helder.os.objc.Msg, S = helder.os.objc.ObjC;
+			var at = M.iPointInt(S.cls("NSWindow"), S.sel("windowNumberAtPoint:belowWindowWithWindowNumber:"), g, 0).toInt();
+			var ordered = M.id(M.id(S.cls("NSApplication"), S.sel("sharedApplication")), S.sel("orderedWindows"));
+			var order = [for (i in 0...M.i(ordered, S.sel("count")).toInt()) {
+				var o = M.idInt(ordered, S.sel("objectAtIndex:"), i);
+				M.i(o, S.sel("windowNumber")).toInt() + (M.b(o, S.sel("ignoresMouseEvents")) ? " (ignores)" : "") + " level " + M.i(o, S.sel("level")).toInt();
+			}];
+			Sys.println('ShapeWindow: at the press: the window server\'s window there ${at}, this one ${M.i(win, S.sel("windowNumber")).toInt()}, ours front to back ${order.join(", ")}');
+			'ShapeWindow: at the press: ignores the mouse ${helder.os.objc.Msg.b(win, helder.os.objc.ObjC.sel("ignoresMouseEvents"))}, the pointer in the view at ${p.x}, ${b.size.height - p.y} points (the screen\'s ${g.x}, ${g.y}), its input ${w.window.inputRects}, its scale ${w.window.scale}';
+		}));
+	}
+	#end
+
+	static function behindPlain():Bool {
+		#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+		return !Plain.hwnd.isNull();
+		#else
+		return false;
+		#end
+	}
+
 	static function behind():Null<UiWindow> {
-		#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64" || hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64")
+		#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64" || hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64" || hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 		if (Sys.systemName() == "Linux" && Sys.getEnv("WAYLAND_DISPLAY") != null && Sys.getEnv("HELDER_X11") != "1") return null;
 		#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
 		if (!helderBehind) {
@@ -226,6 +310,82 @@ class ShapeWindow {
 	#end
 }
 
+// (a click at x, y points of a window, the system's own: the pointer moved
+// there first, then pressed and let go. macOS: CGEventPost (the HID's,
+// where a test may: CI, or SHAPE_INPUT=1, as it moves the user's pointer);
+// Windows: SetCursorPos, SendInput (the same); X11: XTest; not on Wayland)
+@:hxmc.unsafe(gc)
+class Click {
+	public static function can():Bool {
+		#if (hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64")
+		return Sys.getEnv("WAYLAND_DISPLAY") == null && Xtst.ok;
+		#else
+		var ok = Sys.getEnv("GITHUB_ACTIONS") == "true" || Sys.getEnv("SHAPE_INPUT") == "1";
+		if (!ok) Sys.println("ShapeWindow: clicks not sent (they move the pointer; CI or SHAPE_INPUT=1): skipped");
+		return ok;
+		#end
+	}
+
+	public static function move(w:Window, x:Float, y:Float)
+		send(w, x, y, 0);
+
+	public static function press(w:Window, x:Float, y:Float) {
+		send(w, x, y, 1);
+		Sys.sleep(0.05);
+		send(w, x, y, 2);
+	}
+
+	// (0: a move, 1: the left button down, 2: up)
+	static function send(w:Window, x:Float, y:Float, what:Int) {
+		var p = w.position();
+		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
+		var at:hxmc.unsafe.Ptr<helder.os.objc.CGPoint> = hxmc.unsafe.LibC.malloc(16);
+		at.value.x = p.x + x;
+		at.value.y = p.y + y;
+		var ev = TapCG.CGEventCreateMouseEvent(hxmc.unsafe.Ptr.nil(), [5, 1, 2][what], at.value, 0);
+		TapCG.CGEventPost(0, ev);
+		SystemLayersWindow.CF.CFRelease(ev);
+		hxmc.unsafe.LibC.free(at);
+		#elseif (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+		var k = w.scale;
+		if (what == 0) {
+			ScreenDc.SetCursorPos(Math.round((p.x + x) * k), Math.round((p.y + y) * k));
+			return;
+		}
+		// (INPUT_MOUSE, MOUSEINPUT: dx, dy, mouseData, dwFlags LEFTDOWN 2 or LEFTUP 4)
+		var input:hxmc.unsafe.Ptr<hxmc.unsafe.Int32> = hxmc.unsafe.LibC.malloc(40);
+		hxmc.unsafe.LibC.memset(cast input, 0, 40);
+		input[0] = 0;
+		input[5] = what == 1 ? 2 : 4;
+		ScreenDc.SendInput(1, cast input, 40);
+		hxmc.unsafe.LibC.free(cast input);
+		#elseif (hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64")
+		var d = w.surface.display;
+		if (what == 0) Xtst.XTestFakeMotionEvent(d, -1, p.x + Math.round(x), p.y + Math.round(y), 0) else Xtst.XTestFakeButtonEvent(d, 1, what == 1 ? 1 : 0, 0);
+		Xlib.XFlush(d);
+		#end
+	}
+}
+
+#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
+@:hxmc.c @:hxmc.lib("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics") extern class TapCG {
+	static function CGEventCreateMouseEvent(source:hxmc.unsafe.Ptr, type:Int, p:helder.os.objc.CGPoint, button:Int):hxmc.unsafe.Ptr;
+	static function CGEventPost(tap:Int, ev:hxmc.unsafe.Ptr):Void;
+}
+#end
+
+#if (hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64")
+// (libXtst, loaded when there)
+@:build(helder.os.Dl.build())
+@:hxmc.unsafe(gc)
+class Xtst {
+	static function XTestFakeMotionEvent(d:hxmc.unsafe.Ptr, screen:Int, x:Int, y:Int, delay:haxe.Int64):Int;
+	static function XTestFakeButtonEvent(d:hxmc.unsafe.Ptr, button:Int, press:Int, delay:haxe.Int64):Int;
+
+	public static final ok = load("libXtst.so.6") == null;
+}
+#end
+
 #if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
 // (a plain window behind the transparent one: no swap chain, its class's
 // brush green (0x00BBGGRR) painting it; made on the main thread, whose loop
@@ -252,8 +412,25 @@ class Plain {
 				hxmc.unsafe.Ptr.nil(), hxmc.unsafe.Ptr.nil(), instance, hxmc.unsafe.Ptr.nil());
 		}));
 
-	@:hxmc.callback static function proc(hwnd:hxmc.unsafe.Ptr, message:Int, wParam:haxe.Int64, lParam:haxe.Int64):haxe.Int64
+	// (its presses: WM_LBUTTONDOWN)
+	public static var downs = 0;
+
+	@:hxmc.callback static function proc(hwnd:hxmc.unsafe.Ptr, message:Int, wParam:haxe.Int64, lParam:haxe.Int64):haxe.Int64 {
+		if (message == 0x0201) downs++;
 		return helder.os.win32.User32.User32.DefWindowProcW(hwnd, message, wParam, lParam);
+	}
+
+	// (the transparent window's extended styles and the cursor at a press: WS_EX_LAYERED and TRANSPARENT while it passes)
+	public static function styles(top:hxmc.unsafe.Ptr)
+		OsThread.get(() -> hxmc.unsafe.Arena.scopedValue(a -> {
+			var p = a.make(helder.os.win32.User32.POINT);
+			ScreenDc.GetCursorPos(p);
+			var c = {x: p.value.x, y: p.value.y};
+			helder.os.win32.User32.User32.ScreenToClient(top, p);
+			var ex = ScreenDc.GetWindowLongPtrW(top, -20).toI64();
+			Sys.println('ShapeWindow: at the press the cursor at ${c.x}, ${c.y} (in it ${p.value.x}, ${p.value.y}), its extended style 0x${StringTools.hex(ex.toInt())}');
+			0;
+		}));
 
 	public static function state(under:hxmc.unsafe.Ptr, top:hxmc.unsafe.Ptr, occluded:Null<Bool>)
 		OsThread.get(() -> hxmc.unsafe.Arena.scopedValue(a -> {
@@ -297,6 +474,10 @@ class Screen {
 @:hxmc.c @:hxmc.lib("user32") extern class ScreenDc {
 	static function GetDC(hwnd:hxmc.unsafe.Ptr):hxmc.unsafe.Ptr;
 	static function ReleaseDC(hwnd:hxmc.unsafe.Ptr, dc:hxmc.unsafe.Ptr):Int;
+	static function SetCursorPos(x:Int, y:Int):Int;
+	static function GetCursorPos(p:hxmc.unsafe.Ptr<helder.os.win32.User32.POINT>):Int;
+	static function GetWindowLongPtrW(hwnd:hxmc.unsafe.Ptr, index:Int):hxmc.unsafe.Ptr;
+	static function SendInput(count:Int, inputs:hxmc.unsafe.Ptr, size:Int):Int;
 	static function GetWindow(hwnd:hxmc.unsafe.Ptr, cmd:Int):hxmc.unsafe.Ptr;
 	static function IsWindowVisible(hwnd:hxmc.unsafe.Ptr):Int;
 	static function IsIconic(hwnd:hxmc.unsafe.Ptr):Int;

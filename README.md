@@ -181,8 +181,8 @@ in `compute()`; GPU particles, cloth and soft bodies as its first users.
 
 Windows of any shape: a transparent background is in (premultiplied
 alpha: macOS, Wayland, Windows through DirectComposition, X11 with a
-compositing manager, the browser's canvas); next clicks passing through
-clear pixels, and the system's materials behind them (macOS vibrancy and glass, Windows 11 Mica
+compositing manager, the browser's canvas), and clicks passing through
+what it doesn't draw; next the system's materials behind them (macOS vibrancy and glass, Windows 11 Mica
 and Acrylic, KDE's blur). Its first user, an example app: a time tracker
 drawn on the screen's right edge, nothing behind it, full height within
 the work area (menu bar, notch, dock and taskbar kept clear), scrolling

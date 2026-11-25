@@ -78,6 +78,7 @@ class Msg {
 	static function bIntPtr(self:Ptr, sel:Ptr, a:Int64, b:Ptr):Bool;
 	static function i(self:Ptr, sel:Ptr):Int64;
 	static function iInt(self:Ptr, sel:Ptr, a:Int64):Int64;
+	static function iPointInt(self:Ptr, sel:Ptr, p:CGPoint, a:Int64):Int64;
 	static function iPtr(self:Ptr, sel:Ptr, a:Ptr):Int64;
 	static function u16Int(self:Ptr, sel:Ptr, a:Int64):UInt16;
 	static function f(self:Ptr, sel:Ptr):Float;

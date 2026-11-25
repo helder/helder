@@ -315,6 +315,46 @@ class Win32Window {
 		}));
 	}
 
+	// where it takes the pointer (Window.input: x, y, width, height in
+	// pixels; null: everywhere). Elsewhere WM_NCHITTEST answers HTTRANSPARENT,
+	// which passes a press to this thread's windows alone; for other apps'
+	// the window is WS_EX_LAYERED | WS_EX_TRANSPARENT while the pointer is
+	// there (as found at each poll)
+	var taking:Null<Array<Int>> = null;
+	var passing = false;
+
+	function setInput(rects:Null<Array<Int>>)
+		OsThread.run(() -> {
+			taking = rects;
+			track();
+		});
+
+	function takes(x:Int, y:Int):Bool {
+		var r = taking;
+		if (r == null) return true;
+		var i = 0;
+		while (i + 3 < r.length) {
+			if (x >= r[i] && y >= r[i + 1] && x < r[i] + r[i + 2] && y < r[i + 1] + r[i + 3]) return true;
+			i += 4;
+		}
+		return false;
+	}
+
+	function track() {
+		var pass = taking != null && Arena.scopedValue(a -> {
+			var p = a.make(POINT);
+			User32.GetCursorPos(p);
+			User32.ScreenToClient(hwnd, p);
+			!takes(p.value.x, p.value.y);
+		});
+		if (pass == passing) return;
+		passing = pass;
+		// (GWL_EXSTYLE; WS_EX_LAYERED 0x80000, WS_EX_TRANSPARENT 0x20; LWA_ALPHA, all of it: its pixels as they are)
+		var ex = User32.GetWindowLongPtrW(hwnd, -20).toI64();
+		User32.SetWindowLongPtrW(hwnd, -20, Ptr.ofI64(pass ? ex | 0x80020 : ex & ~(0x80020 : Int64)));
+		if (pass) User32.SetLayeredWindowAttributes(hwnd, 0, 255, 2);
+	}
+
 	// the frame's shadow (DWMWA_NCRENDERING_POLICY: DWMNCRP_DISABLED 1, its frame not drawn by DWM: no shadow; DWMNCRP_ENABLED 2)
 	var shadow = true;
 
@@ -345,6 +385,16 @@ class Win32Window {
 	}
 
 	// an inset title bar's answer at a point of the screen: the window's edges, the app's regions and buttons
+	// (a message's screen point, in the client area's pixels)
+	function client(lParam:Int64):{x:Int, y:Int}
+		return Arena.scopedValue(a -> {
+			var p = a.make(POINT);
+			p.value.x = lParam.toInt() << 16 >> 16;
+			p.value.y = lParam.toInt() >> 16;
+			User32.ScreenToClient(hwnd, p);
+			{x: p.value.x, y: p.value.y};
+		});
+
 	function titleHit(lParam:Int64):TitleHit
 		return Arena.scopedValue(a -> {
 			var p = a.make(POINT);
@@ -536,6 +586,8 @@ class Win32Window {
 	static function pollNow(onFrame:Void->Void, onEvent:Event->Void) {
 		Win32Window.onFrame = onFrame;
 		Win32Window.onEvent = onEvent;
+		for (w in open)
+			w.track();
 		// (the windows polled before the last frame: drawn by it, shown now)
 		for (w in open)
 			if (w.hidden) {
@@ -750,6 +802,8 @@ class Win32Window {
 				r.value.bottom -= fy;
 				if (User32.IsZoomed(hwnd) != 0) r.value.top += fy;
 				return 0;
+			case 0x0084 if (w.taking != null && !w.takes(w.client(lParam).x, w.client(lParam).y)): // WM_NCHITTEST outside its input
+				return -1; // (HTTRANSPARENT)
 			case 0x0084 if (w.owner.titlebar == Inset && !w.fullscreen): // WM_NCHITTEST
 				var d = User32.DefWindowProcW(hwnd, message, wParam, lParam);
 				if (d.toInt() != WM.HTCLIENT) return d;

@@ -35,6 +35,8 @@ import hxmc.unsafe.*;
 	static function GetClientRect(hwnd:Ptr, r:Ptr<RECT>):Int;
 	static function AdjustWindowRectEx(r:Ptr<RECT>, style:Int, menu:Int, exStyle:Int):Int;
 	static function ScreenToClient(hwnd:Ptr, p:Ptr<POINT>):Int;
+	static function GetCursorPos(p:Ptr<POINT>):Int;
+	static function SetLayeredWindowAttributes(hwnd:Ptr, key:Int, alpha:Int, flags:Int):Int;
 	static function GetKeyState(key:Int):Int;
 	static function GetAsyncKeyState(key:Int):Int16;
 	static function ClientToScreen(hwnd:Ptr, p:Ptr<POINT>):Int;
