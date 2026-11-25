@@ -2,7 +2,7 @@ package viewer;
 
 using StringTools;
 
-// The images (and videos) of one folder as the viewer steps through them:
+// The images (and videos, Markdown documents) of one folder as the viewer steps through them:
 // the browser's list (its order and filter: Browser.viewable), the one
 // shown, next and previous wrapping, the neighbours by distance (what to
 // prefetch). The list given again (the browser's watch) keeps the one shown
@@ -14,6 +14,8 @@ class FolderModel {
 	public static final EXTENSIONS = ["png", "apng", "jpg", "jpeg", "jfif", "gif", "webp", "pdf"].concat(#if (hxmc.target == "wasm32-wasi") [] #else SYSTEM ? helder.os.SystemImages.EXTENSIONS : [] #end);
 	// (video and audio, where the system decodes them: helder.media)
 	public static final MEDIA = helder.media.Decoders.available() ? ["mp4", "mov", "m4v", "webm", "mkv", "m4a", "mp3", "flac", "mka"] : [];
+	// (Markdown documents: helder.markdown, everywhere)
+	public static final MARKDOWN = ["md", "markdown", "mdown"];
 
 	public var dir(default, null) = "";
 	public var files(default, null):Array<String> = [];
@@ -48,6 +50,11 @@ class FolderModel {
 		return dot > 0 && MEDIA.contains(name.substr(dot + 1).toLowerCase());
 	}
 
+	public static function isMarkdown(name:String):Bool {
+		var dot = name.lastIndexOf(".");
+		return dot > 0 && MARKDOWN.contains(name.substr(dot + 1).toLowerCase());
+	}
+
 	// the folder's files (in order), the one named shown
 	public function set(dir:String, names:Array<String>, name:String) {
 		this.dir = dir;
@@ -71,7 +78,7 @@ class FolderModel {
 	public function setEntries(names:Array<String>, ?keep:String) {
 		var before = index;
 		var wanted = keep;
-		files = [for (n in names) if (isImage(n) || isMedia(n) || n == wanted) n];
+		files = [for (n in names) if (isImage(n) || isMedia(n) || isMarkdown(n) || n == wanted) n];
 		files.sort(compare);
 		index = wanted != null ? files.indexOf(wanted) : -1;
 		if (index < 0 && files.length > 0) index = before < 0 ? 0 : Std.int(Math.min(before, files.length - 1));

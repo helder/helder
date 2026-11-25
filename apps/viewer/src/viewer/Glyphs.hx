@@ -13,6 +13,7 @@ class Glyphs {
 		"up" => '<path d="m18 15-6-6-6 6"/>',
 		"spin" => '<path d="M21 12a9 9 0 1 1-6.22-8.56"/>',
 		"check" => '<path d="M20 6 9 17l-5-5"/>',
+		"code" => '<path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/>',
 		"search" => '<circle cx="11" cy="11" r="7.5"/><path d="m21 21-4.3-4.3"/>',
 		"grid" => '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/>',
 		"list" => '<path d="M3 6h.01M3 12h.01M3 18h.01M8 6h13M8 12h13M8 18h13"/>',

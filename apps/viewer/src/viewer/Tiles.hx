@@ -18,7 +18,8 @@ typedef Thumb = {image:Null<Image>, waiting:Bool};
 // there is one (thumbnail: Thumbnails' queue, newest asked first, the
 // request cancelled when its cell goes; the last ones kept in memory),
 // else its glyph (the folder's picture, a page with the file's extension,
-// an image's, a video's, an audio file's, a PDF's); and the grid's cell.
+// an image's, a video's, an audio file's, a PDF's), a Markdown document's
+// page with its first heading; and the grid's cell.
 class Tiles implements Markup {
 	public static inline var CELL_WIDTH = 136;
 	public static inline var CELL_HEIGHT = 166;
@@ -34,7 +35,8 @@ class Tiles implements Markup {
 	public static function thumbnail(x:Explorer, e:Entry):Signal<Thumb> {
 		var path = x.browser.path(e.name), key = path + "\x00" + e.size + "\x00" + e.modified;
 		var have = kept.get(key), t = x.thumbnails, local = t == null ? null : t.of(x.files, path);
-		var s = Graph.signalOf(({image: have, waiting: have == null && t != null && local != null && Kinds.viewable(e)} : Thumb), {ownedWrite: true});
+		var s = Graph.signalOf(({image: have, waiting: have == null && t != null && local != null && Kinds.viewable(e) && !FolderModel.isMarkdown(e.name)} : Thumb),
+			{ownedWrite: true});
 		if (!s.peek().waiting) return s;
 		var ticket = t.request(local, e.size, e.modified, Thumbnails.SIDE, -(++serial), img -> {
 			if (img != null) keep(key, img);
@@ -48,10 +50,11 @@ class Tiles implements Markup {
 	public static function cached(x:Explorer, e:Entry):Null<Image>
 		return kept.get(x.browser.path(e.name) + "\x00" + e.size + "\x00" + e.modified);
 
-	// the thumbnails kept let go (tests)
+	// the thumbnails and titles kept let go (tests: each explorer's own)
 	public static function forget() {
 		kept.clear();
 		order.resize(0);
+		titles.clear();
 	}
 
 	// a thumbnail made for an entry, kept (the queue's; tests)
@@ -113,8 +116,43 @@ class Tiles implements Markup {
 					</Show>
 				</view>
 			</Show>
-			<Show when={t().image == null && !t().waiting}>{large(e)}</Show>
+			<Show when={t().image == null && !t().waiting}>{FolderModel.isMarkdown(e.name) ? document(x, e) : large(e)}</Show>
 		</>;
+	}
+
+	// (the first headings of the documents seen, by file: read once)
+	static final titles = new Map<String, String>();
+
+	// a Markdown document's tile: a page with its first heading's text (the
+	// name while it is read, or without one), over a few lines' shapes
+	static function document(x:Explorer, e:Entry):View {
+		var title = heading(x, e);
+		return <view tag="document-tile" width={84} height={108} radius={6} background={Look.ref.raised} border-width={1} border-color={Look.ref.edge}
+			padding="11 9" row-gap={5} overflow="hidden" shadow="0 1px 2px rgba(0,0,0,0.25)">
+			<text tag="document-title" font-size={9.5} font-weight={700} line-height={1.2} max-lines={4} text-overflow="ellipsis" color={Look.ref.fg}
+				shrink={0}>{title}</text>
+			{[for (w in ["100%", "88%", "94%", "62%", "90%", "76%"]) <view height={2.5} shrink={0} radius={1} width={w} background={Look.ref.line}/>]}
+			<text position="absolute" bottom={8} left={9} font-size={8.5} font-weight={700} color="#ffffff" padding="1 4" radius={3}
+				background={Kinds.tint("md")}>MD</text>
+		</view>;
+	}
+
+	// (a document's first heading, its name until read)
+	static function heading(x:Explorer, e:Entry):Signal<String> {
+		var path = x.browser.path(e.name), key = path + "\x00" + e.size + "\x00" + e.modified;
+		var fallback = haxe.io.Path.withoutExtension(e.name), have = titles.get(key);
+		var s = Graph.signalOf(have ?? fallback, {ownedWrite: true});
+		if (have != null) return s;
+		var live = true;
+		Graph.onCleanup(() -> live = false);
+		x.read(path, text -> {
+			// (its start alone: a title is near the top)
+			var t = text == null ? null : MarkdownDoc.title(helder.markdown.Markdown.parse(text.length > 16384 ? text.substr(0, 16384) : text));
+			if (Lambda.count(titles) > 2000) titles.clear();
+			titles.set(key, t ?? fallback);
+			if (live) s(t ?? fallback);
+		});
+		return s;
 	}
 
 	// a large picture: the folder's, or a page with the file's extension

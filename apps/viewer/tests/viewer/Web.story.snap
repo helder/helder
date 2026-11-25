@@ -85,7 +85,7 @@ Node#root 0,0 390x844
                             ImageNode#image 199,740 108x108
                         TextNode#text 203,858 100x18 "Mandelbrot.jpg"
                         TextNode#text 244,877 18x14 "370 KB"
-                  Spacer#after 237,902 0x692
+                  Spacer#after 237,902 0x862
             Node#pathbar 237,812 12x32
               Node#view 241,813 0x32
                 PathBarNode#pathbar 241,813 12x32
@@ -93,14 +93,14 @@ Node#root 0,0 390x844
                     Node#pathbar-current 247,817 12x24
                       ImageNode#image 253,822 14x14
                       TextNode#text 271,821 0x15 "Samples"
-              TextNode#count 241,814 36x30 "9 items"
+              TextNode#count 241,814 36x30 "10 items"
           Node#inspector 237,0 300x844
             Node#view 238,0 299x844
               Node#view 252,14 271x220
                 ImageNode#image 340,85 96x78
               Node#view 238,234 299x47
                 TextNode#text 363,246 49x18 "Samples"
-                TextNode#text 367,266 42x15 "9 items"
+                TextNode#text 364,266 48x15 "10 items"
       Node#viewer 0,0 390x844
         Node#viewer-bar 0,0 390x52
           Node#back-pill 14,11 106x30

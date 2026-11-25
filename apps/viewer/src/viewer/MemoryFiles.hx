@@ -93,6 +93,12 @@ class MemoryFiles implements Files {
 		return new helder.media.MemorySource(e.bytes);
 	}
 
+	// a file's text, at once (the tests' Explorer.read; null: none)
+	public function text(path:String):Null<String> {
+		var e = items.get(path);
+		return e == null || e.entry.kind == Folder ? null : e.bytes.toString();
+	}
+
 	public function localPath(path:String):Null<String>
 		return null;
 

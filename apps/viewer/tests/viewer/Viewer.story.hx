@@ -6,7 +6,8 @@ import helder.view.*;
 
 // The browser and the viewer, at a laptop's size: the folder as a grid
 // and as a list, dark and light; several selected; a PDF's column scrolled
-// between two pages; the inspector of a photo and of a PDF; a photo full size
+// between two pages; a Markdown document, dark and light; the inspector of
+// a photo, of a PDF and of a Markdown document; a photo full size
 // with its back pill, an error in its place, the status line; an empty
 // folder, one that cannot be read, a search with no results (their trees
 // in Viewer.story.snap)
@@ -108,6 +109,23 @@ final pdf = story({
 	}
 });
 
+final markdownDark = story({name: "Viewer/Markdown, dark", width: 1100, height: 700, render: c -> themed(welcome(), true)});
+
+final markdownLight = story({name: "Viewer/Markdown, light", width: 1100, height: 700, render: c -> themed(welcome(), false)});
+
+final inspectorMarkdown = story({
+	name: "Browser/inspector, a Markdown document",
+	width: 1100,
+	height: 700,
+	render: c -> {
+		var x = Fixtures.samples();
+		x.browser.go(Samples.ROOT);
+		x.browser.inspector(true);
+		x.browser.select("Welcome.md");
+		themed(x, false);
+	}
+});
+
 final status = story({
 	name: "Viewer/status line",
 	width: 1100,
@@ -118,6 +136,15 @@ final status = story({
 		themed(x, true);
 	}
 });
+
+// (the web build's Markdown sample full size: headings, a list, a table, code, a picture of its folder)
+private function welcome():Explorer {
+	// (by extension: FolderModel.isMedia is empty where nothing decodes them)
+	var x = Fixtures.samples(name -> !~/\.(mp4|mov|m4v|webm|mkv|m4a|mp3|flac|mka)$/i.match(name));
+	x.browser.go(Samples.ROOT);
+	x.open("Welcome.md");
+	return x;
+}
 
 // (the fixture folder browsed, decoded at once)
 private function browse():Explorer {

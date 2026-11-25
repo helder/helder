@@ -15,7 +15,8 @@ import viewer.ViewerActions;
 
 // The inspector (300 points, Mod+I): the selected file's preview in a box
 // 220 high (an image fitted, a PDF's first page with its page count, a
-// video's keyframe with its duration, else its glyph), its name, kind and
+// video's keyframe with its duration, a Markdown document's first screen
+// with its words and headings, else its glyph), its name, kind and
 // size, Open, Show in folder, Move to Trash and More, and its details:
 // what is known without opening any file but this one. Nothing selected:
 // the folder's own.
@@ -183,6 +184,7 @@ class InspectorView implements Markup {
 
 	// (the box's content: the picture fitted, a PDF's count, a video's duration; else the glyph)
 	static function picture(x:Explorer, e:Entry, s:Null<Shown>):View {
+		if (s != null && s.markdown != null) return page(s.markdown);
 		var img = s == null ? null : s.image;
 		if (img == null) img = Tiles.cached(x, e);
 		if (img == null) return Tiles.large(e);
@@ -202,8 +204,21 @@ class InspectorView implements Markup {
 		</view>;
 	}
 
+	// (a Markdown document's first screen: its first blocks laid out on a
+	// page 600 points wide, shown at 0.38, as tall as an image's box)
+	static function page(d:MarkdownDoc):View {
+		var k = 0.38, w = 600, h = Math.round(188 / k);
+		var view = new helder.markdown.MarkdownView({doc: d.doc, scroll: false, blocks: 12});
+		return <view tag="preview-page" width={Math.round(w * k)} height={188} radius={4} overflow="hidden" background={Look.ref.canvas}
+			shadow="0 4px 16px rgba(0,0,0,0.4)">
+			<view position="absolute" left={0} top={0} width={w} height={h} padding="22 0 0 0" transform={'scale($k)'} transform-origin="0 0"
+				pointer-events="none">{view}</view>
+		</view>;
+	}
+
 	public static function subtitle(e:Entry, s:Null<Shown>):String {
 		var kind = Kinds.kind(e);
+		if (s != null && s.markdown != null) return '$kind · ${Kinds.count(s.markdown.words)} words';
 		if (s != null && s.pages > 1) return '$kind · ${s.pages} pages';
 		if (s != null && s.duration > 0) return '$kind · ${clock(s.duration)}';
 		return e.kind == Folder ? kind : '$kind · ${Kinds.size(e.size)}';
@@ -220,6 +235,10 @@ class InspectorView implements Markup {
 		}
 		if (s != null && s.pages > 1) out.push({k: "Pages", v: Std.string(s.pages)});
 		if (s != null && s.duration > 0) out.push({k: "Duration", v: clock(s.duration)});
+		if (s != null && s.markdown != null) {
+			out.push({k: "Words", v: Kinds.count(s.markdown.words)});
+			out.push({k: "Headings", v: Std.string(s.markdown.headings)});
+		}
 		if (e.modified > 0) out.push({k: "Modified", v: Kinds.date(e.modified)});
 		if (e.created > 0) out.push({k: "Created", v: Kinds.date(e.created)});
 		return out;

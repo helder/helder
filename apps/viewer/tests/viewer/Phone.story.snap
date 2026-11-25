@@ -33,7 +33,7 @@ Node#root 0,0 390x844
           Node#view 0,0 390x844
         TextNode#text 0,0 1x1 ""
 
---- story Phone/Folder: Phone/Folder (136 lines)
+--- story Phone/Folder: Phone/Folder (146 lines)
 Node#root 0,0 390x844
   Node#view 0,0 390x844
     Node#phone 0,0 390x844
@@ -139,11 +139,21 @@ Node#root 0,0 390x844
                             TextNode#text 306,589 24x14 "MP4"
                         TextNode#text 269,628 97x18 "Starlings.mp4"
                         TextNode#text 266,646 103x15 "24 Nov 2026, 12:00"
-                Spacer#after 0,676 390x66
+                Node#row 0,676 390x164
+                  Node#cell 16,676 113x154
+                    Node#view 16,676 113x154
+                      Node#tile-Welcome.md 16,676 113x154
+                        Node#view 16,676 112x112
+                          Node#view 36,686 72x92
+                            ImageNode#image 60,714 24x24
+                            TextNode#text 63,753 19x14 "MD"
+                        TextNode#text 34,792 77x18 "Welcome.md"
+                        TextNode#text 21,810 103x15 "24 Nov 2026, 12:00"
+                Spacer#after 0,840 390x66
             Node#view 0,44 390x124
               Node#view 0,44 390x124
                 TextNode#text 0,44 390x50 "Samples"
-                TextNode#text 0,88 390x26 "9 items"
+                TextNode#text 0,88 390x26 "10 items"
                 Node#search 16,114 358x38
                   ImageNode#image 26,125 17x17
                   TextField#search-field 50,123 314x21 ""
@@ -171,7 +181,7 @@ Node#root 0,0 390x844
           Node#view 0,0 390x844
         TextNode#text 0,0 1x1 "Samples"
 
---- story Phone/Full size: Phone/Full size (162 lines)
+--- story Phone/Full size: Phone/Full size (172 lines)
 Node#root 0,0 390x844
   Node#view 0,0 390x844
     Node#phone 0,0 390x844
@@ -277,11 +287,21 @@ Node#root 0,0 390x844
                             TextNode#text 306,589 24x14 "MP4"
                         TextNode#text 269,628 97x18 "Starlings.mp4"
                         TextNode#text 266,646 103x15 "24 Nov 2026, 12:00"
-                Spacer#after 0,676 390x66
+                Node#row 0,676 390x164
+                  Node#cell 16,676 113x154
+                    Node#view 16,676 113x154
+                      Node#tile-Welcome.md 16,676 113x154
+                        Node#view 16,676 112x112
+                          Node#view 36,686 72x92
+                            ImageNode#image 60,714 24x24
+                            TextNode#text 63,753 19x14 "MD"
+                        TextNode#text 34,792 77x18 "Welcome.md"
+                        TextNode#text 21,810 103x15 "24 Nov 2026, 12:00"
+                Spacer#after 0,840 390x66
             Node#view 0,44 390x124
               Node#view 0,44 390x124
                 TextNode#text 0,44 390x50 "Samples"
-                TextNode#text 0,88 390x26 "9 items"
+                TextNode#text 0,88 390x26 "10 items"
                 Node#search 16,114 358x38
                   ImageNode#image 26,125 17x17
                   TextField#search-field 50,123 314x21 ""
@@ -335,7 +355,7 @@ Node#root 0,0 390x844
           Node#view 0,0 390x844
         TextNode#text 0,0 1x1 "Samples"
 
---- story Phone/Info: Phone/Info (162 lines)
+--- story Phone/Info: Phone/Info (172 lines)
 Node#root 0,0 390x844
   Node#view 0,0 390x844
     Node#phone 0,0 390x844
@@ -441,11 +461,21 @@ Node#root 0,0 390x844
                             TextNode#text 306,589 24x14 "MP4"
                         TextNode#text 269,628 97x18 "Starlings.mp4"
                         TextNode#text 266,646 103x15 "24 Nov 2026, 12:00"
-                Spacer#after 0,676 390x66
+                Node#row 0,676 390x164
+                  Node#cell 16,676 113x154
+                    Node#view 16,676 113x154
+                      Node#tile-Welcome.md 16,676 113x154
+                        Node#view 16,676 112x112
+                          Node#view 36,686 72x92
+                            ImageNode#image 60,714 24x24
+                            TextNode#text 63,753 19x14 "MD"
+                        TextNode#text 34,792 77x18 "Welcome.md"
+                        TextNode#text 21,810 103x15 "24 Nov 2026, 12:00"
+                Spacer#after 0,840 390x66
             Node#view 0,44 390x124
               Node#view 0,44 390x124
                 TextNode#text 0,44 390x50 "Samples"
-                TextNode#text 0,88 390x26 "9 items"
+                TextNode#text 0,88 390x26 "10 items"
                 Node#search 16,114 358x38
                   ImageNode#image 26,125 17x17
                   TextField#search-field 50,123 314x21 ""
@@ -499,7 +529,7 @@ Node#root 0,0 390x844
           Node#view 0,0 390x844
         TextNode#text 0,0 1x1 "Samples"
 
---- story Phone/List: Phone/List (143 lines)
+--- story Phone/List: Phone/List (153 lines)
 Node#root 0,0 390x844
   Node#view 0,0 390x844
     Node#phone 0,0 390x844
@@ -612,11 +642,21 @@ Node#root 0,0 390x844
                       Node#view 70,676 304x38
                         TextNode#text 70,676 304x20 "Starlings.mp4"
                         TextNode#text 70,698 304x16 "24 Nov 2026, 12:00 · 1.0 MB"
-                Spacer#after 0,726 390x50
+                Node#row 0,726 390x62
+                  Node#view 0,726 390x62
+                    Node#view 0,726 390x62
+                      Node#view 16,736 42x42
+                        Node#view 1,736 72x42
+                          ImageNode#image 25,739 24x24
+                          TextNode#text 27,753 20x14 "MD"
+                      Node#view 70,738 304x38
+                        TextNode#text 70,738 304x20 "Welcome.md"
+                        TextNode#text 70,760 304x16 "24 Nov 2026, 12:00 · 1 KB"
+                Spacer#after 0,788 390x50
             Node#view 0,44 390x124
               Node#view 0,44 390x124
                 TextNode#text 0,44 390x50 "Samples"
-                TextNode#text 0,88 390x26 "9 items"
+                TextNode#text 0,88 390x26 "10 items"
                 Node#search 16,114 358x38
                   ImageNode#image 26,125 17x17
                   TextField#search-field 50,123 314x21 ""
@@ -644,7 +684,7 @@ Node#root 0,0 390x844
           Node#view 0,0 390x844
         TextNode#text 0,0 1x1 "More"
 
---- story Phone/Long press: Phone/Long press (136 lines)
+--- story Phone/Long press: Phone/Long press (146 lines)
 Node#root 0,0 390x844
   Node#view 0,0 390x844
     Node#phone 0,0 390x844
@@ -750,11 +790,21 @@ Node#root 0,0 390x844
                             TextNode#text 306,589 24x14 "MP4"
                         TextNode#text 269,628 97x18 "Starlings.mp4"
                         TextNode#text 266,646 103x15 "24 Nov 2026, 12:00"
-                Spacer#after 0,676 390x66
+                Node#row 0,676 390x164
+                  Node#cell 16,676 113x154
+                    Node#view 16,676 113x154
+                      Node#tile-Welcome.md 16,676 113x154
+                        Node#view 16,676 112x112
+                          Node#view 36,686 72x92
+                            ImageNode#image 60,714 24x24
+                            TextNode#text 63,753 19x14 "MD"
+                        TextNode#text 34,792 77x18 "Welcome.md"
+                        TextNode#text 21,810 103x15 "24 Nov 2026, 12:00"
+                Spacer#after 0,840 390x66
             Node#view 0,44 390x124
               Node#view 0,44 390x124
                 TextNode#text 0,44 390x50 "Samples"
-                TextNode#text 0,88 390x26 "9 items"
+                TextNode#text 0,88 390x26 "10 items"
                 Node#search 16,114 358x38
                   ImageNode#image 26,125 17x17
                   TextField#search-field 50,123 314x21 ""
@@ -782,7 +832,7 @@ Node#root 0,0 390x844
           Node#view 0,0 390x844
         TextNode#text 0,0 1x1 "Samples"
 
---- story Phone/PDF: Phone/PDF (171 lines)
+--- story Phone/PDF: Phone/PDF (181 lines)
 Node#root 0,0 390x844
   Node#view 0,0 390x844
     Node#phone 0,0 390x844
@@ -888,11 +938,21 @@ Node#root 0,0 390x844
                             TextNode#text 306,589 24x14 "MP4"
                         TextNode#text 269,628 97x18 "Starlings.mp4"
                         TextNode#text 266,646 103x15 "24 Nov 2026, 12:00"
-                Spacer#after 0,676 390x66
+                Node#row 0,676 390x164
+                  Node#cell 16,676 113x154
+                    Node#view 16,676 113x154
+                      Node#tile-Welcome.md 16,676 113x154
+                        Node#view 16,676 112x112
+                          Node#view 36,686 72x92
+                            ImageNode#image 60,714 24x24
+                            TextNode#text 63,753 19x14 "MD"
+                        TextNode#text 34,792 77x18 "Welcome.md"
+                        TextNode#text 21,810 103x15 "24 Nov 2026, 12:00"
+                Spacer#after 0,840 390x66
             Node#view 0,44 390x124
               Node#view 0,44 390x124
                 TextNode#text 0,44 390x50 "Samples"
-                TextNode#text 0,88 390x26 "9 items"
+                TextNode#text 0,88 390x26 "10 items"
                 Node#search 16,114 358x38
                   ImageNode#image 26,125 17x17
                   TextField#search-field 50,123 314x21 ""
@@ -955,7 +1015,7 @@ Node#root 0,0 390x844
           Node#view 0,0 390x844
         TextNode#text 0,0 1x1 "1 / 3"
 
---- story Phone/Select: Phone/Select (147 lines)
+--- story Phone/Select: Phone/Select (158 lines)
 Node#root 0,0 390x844
   Node#view 0,0 390x844
     Node#phone 0,0 390x844
@@ -1073,11 +1133,22 @@ Node#root 0,0 390x844
                           Node#pick 344,594 24x24
                         TextNode#text 269,628 97x18 "Starlings.mp4"
                         TextNode#text 266,646 103x15 "24 Nov 2026, 12:00"
-                Spacer#after 0,676 390x72
+                Node#row 0,676 390x164
+                  Node#cell 16,676 113x154
+                    Node#view 16,676 113x154
+                      Node#tile-Welcome.md 16,676 113x154
+                        Node#view 16,676 112x112
+                          Node#view 36,686 72x92
+                            ImageNode#image 60,714 24x24
+                            TextNode#text 63,753 19x14 "MD"
+                          Node#pick 98,758 24x24
+                        TextNode#text 34,792 77x18 "Welcome.md"
+                        TextNode#text 21,810 103x15 "24 Nov 2026, 12:00"
+                Spacer#after 0,840 390x72
             Node#view 0,44 390x124
               Node#view 0,44 390x124
                 TextNode#text 0,44 390x50 "3 Selected"
-                TextNode#text 0,88 390x26 "9 items"
+                TextNode#text 0,88 390x26 "10 items"
                 Node#search 16,114 358x38
                   ImageNode#image 26,125 17x17
                   TextField#search-field 50,123 314x21 ""
@@ -1104,7 +1175,7 @@ Node#root 0,0 390x844
           Node#view 0,0 390x844
         TextNode#text 0,0 1x1 "3 Selected"
 
---- story Tablet/Folder, sidebar: Tablet/Folder, sidebar (145 lines)
+--- story Tablet/Folder, sidebar: Tablet/Folder, sidebar (160 lines)
 Node#root 0,0 390x844
   Node#view 0,0 390x844
     Node#window 0,0 390x844
@@ -1213,6 +1284,21 @@ Node#root 0,0 390x844
                               TextNode#text 91,827 24x14 "MP4"
                           TextNode#text 57,870 93x18 "Starlings.mp4"
                           TextNode#text 86,889 35x14 "1.0 MB"
+                    Node#cell 198,744 180x166
+                      Node#view 198,744 180x167
+                        Node#view 198,744 180x167
+                          Node#view 230,748 116x116
+                            Node#document-tile 246,752 84x108
+                              TextNode#document-title 256,764 64x23 "Welcome to Viewer"
+                              Node#view 256,792 64x2
+                              Node#view 256,799 56x3
+                              Node#view 256,807 60x2
+                              Node#view 256,814 39x3
+                              Node#view 256,822 57x2
+                              Node#view 256,829 48x3
+                              TextNode#text 256,838 16x13 "MD"
+                          TextNode#text 251,870 74x18 "Welcome.md"
+                          TextNode#text 276,889 23x14 "1 KB"
                   Spacer#after 1,914 389x12
       Node#drawer-edge 0,0 20x844
       Node#drawer-scrim 0,0 390x844

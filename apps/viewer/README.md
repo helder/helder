@@ -1,7 +1,7 @@
 # Viewer
 
 A fast image viewer and file browser for Windows, macOS, Linux and the
-web. Browse your folders, see what is in them, and open any image, PDF or
+web. Browse your folders, see what is in them, and open any image, PDF, Markdown document or
 video full size; step through the folder from there and come back to where
 you were. It is a single small program built on helder alone, with no
 browser engine and no runtime to install.
@@ -43,6 +43,13 @@ browser engine and no runtime to install.
   through, fitted to the window's width, each drawn at the size it is
   shown (sharp again after a zoom) as it comes into view, a tag with the
   page you are on, and straight to a page by its number.
+- **Markdown documents** (`.md`, `.markdown`, `.mdown`) as a readable
+  column: headings, lists and task lists, tables, quotes, code
+  highlighted, pictures from the same folder. A link to a heading scrolls
+  there, a link to another file of yours opens it in the viewer, a web
+  address opens in your browser; Source shows the text itself. The grid
+  shows a document's first heading, the inspector its first screen, its
+  words and headings.
 - **Video and audio** on macOS: MP4, MOV, M4V, WebM, MKV, M4A, MP3 and
   FLAC (H.264, HEVC, VP9 and AV1 where the Mac's hardware decodes them;
   AAC, MP3, FLAC, ALAC, Opus, Vorbis) play in the folder beside the
@@ -57,7 +64,7 @@ browser engine and no runtime to install.
 
 [viewer.helder.run](https://viewer.helder.run) is the same viewer in the
 browser. It opens on a sample folder (photos of several shapes, a PDF, a
-video, a sound, a folder inside). In Chromium-based browsers (Chrome, Edge,
+Markdown page, a video, a sound, a folder inside). In Chromium-based browsers (Chrome, Edge,
 Opera, Brave) Open folder shows a folder of your own, read in the browser
 and sent nowhere; in any browser you can drop a folder or files on the page.
 What only a desktop does is not there: the trash, Show in Finder, Open with,
@@ -163,6 +170,8 @@ Ctrl is Cmd on macOS.
 | PDF: first, last page | Home, End |
 | PDF: go to page | G or Ctrl+G, type the number, Enter |
 | PDF: zoom | `+`, `-`; Ctrl and the wheel, a pinch, about the pointer; `0` fitted to the width, `1` 100% |
+| Markdown: scroll | the wheel or a trackpad; Page Down or Space, Page Up or Backspace a screen; Down, Up a line; Home, End the top and the end |
+| Markdown: the source | Ctrl+U, or Source in the bar; again for the document |
 | Full screen | F11 or Enter (Ctrl+Cmd+F on macOS); Escape leaves it |
 | Status line | I: the zoom, the size, the format, the page, the place in the folder |
 | Video: play, pause | Space or K; next, previous file: Down, Up, Page Down, Page Up |
@@ -198,6 +207,7 @@ The file is read again when it changes. The actions are listed in
 | GIF | everywhere | animations played |
 | WebP | everywhere | lossy, lossless, animated; EXIF orientation applied |
 | PDF | everywhere | every page; JPEG 2000 and CCITT images; password-protected files are not opened |
+| Markdown (.md, .markdown, .mdown) | everywhere | CommonMark and GitHub's tables, task lists, strikethrough and autolinks (helder.markdown); raw HTML shown as text; pictures of the computer's files, not the web's |
 | TIFF, HEIC/HEIF, AVIF | Windows, macOS; Linux with libtiff, libheif, libavif | the first frame |
 | RAW (DNG, CR2, CR3, NEF, ARW, RAF, ORF, RW2) | where the system has the camera's codec; Linux with libraw | |
 
@@ -372,6 +382,26 @@ hidden files, the inspector and the status line are kept between runs
   budget; a changed file is opened again. The key context `pdf` (a PDF
   shown) gives Page Down, Space, Up, Down, `[`, `]`, Home and End to the
   column, Left and Right stay the folder's; `goto` is the go to page card's.
+- **MarkdownDoc**, **MarkdownPage** (`MarkdownDoc.hx`, `MarkdownPage.hx`):
+  a Markdown document read through Files (`Explorer.read`: on the loop,
+  the web's from its Blobs and the samples), parsed by helder.markdown,
+  its words and headings counted, and shown in a `MarkdownView` styled by
+  the shell's look (its `markdown-*` parts: a column 760 points at most,
+  centred, the system's font, code in JetBrains Mono, light or dark), or
+  its source in a read-only `CodeView`. Its links: `#id` scrolls to the
+  heading; a path is `Explorer.follow`'s (resolved against the
+  document's folder: a file the viewer shows opened in its folder, its
+  files stepped through, `other.md#usage` at that heading; a folder
+  browsed; another file the system's app's); `http`, `https` and `mailto`
+  are helder.os's `Links.open` (the browser; a new tab on the web). Its
+  pictures are decoded as the viewer decodes a file (`Viewer.decode`, at
+  most 1600 a side), at most the column's width; a web address's is not
+  fetched, its alt text shown. The key context `markdown` (a document
+  shown) gives Page Down, Space, Up, Down, Home and End to the column and
+  Mod+U to the source. The grid's tile is a page with the document's
+  first heading (`Tiles`: read once, its first 16 KB, no rendering), the
+  inspector's preview its first twelve blocks laid out 600 points wide
+  and shown at 0.38.
 - **Version** (`Version.hx`): `helder.json`'s version, read at
   compile time, the about card's and `--version`'s.
 - **ViewCamera** (`ViewCamera.hx`): the scale (device pixels per image
@@ -436,6 +466,11 @@ watch, a file opened full size and back, the trash and its undo,
 several selected), `FolderModel.test.hx` (natural order, wrapping, the
 browser's list given again), `DecodeCache.test.hx` (the order, two at a time, eviction by
 distance, a budget too small for every neighbour, a changed file),
+`Markdown.test.hx` (on MemoryFiles, tests/fixtures/markdown: a document
+opened among its folder's files, its column, its picture decoded and a
+remote one's alt text, its links: an anchor, another document at a
+heading of it, a web address, a missing file; the keys scrolling, the
+source by Mod+U and back, the inspector's preview and the grid's tiles),
 `ViewCamera.test.hx` (the fit, zooms about the cursor and their stops,
 the steps, the double click, pans, the glide), `Samples.test.hx` (the web
 build's sample folder as its browser has it: at Samples, its files and
@@ -450,8 +485,8 @@ it, go to page, the zoom), `Pdf.test.hx` (the pages' places at a zoom,
 the pages a scroll shows and draws, go to page's scroll, a zoom kept
 about its point, a page that cannot be drawn),
 `Viewer.story.hx` (the grid and the list dark and light, several
-selected, the inspector of a photo and of a PDF, an empty folder, a missing one, no results, a file full size, a
-PDF's column scrolled between two pages,
+selected, the inspector of a photo, of a PDF and of a Markdown document, an empty folder, a missing one, no results, a file full size, a
+PDF's column scrolled between two pages, the Markdown sample dark and light,
 an error in its place, the status line; their trees in
 `Viewer.story.snap`). EXIF's reader is
 helder.image's (`src/helder/image/Exif.test.hx`), the drops helder.os's
@@ -459,7 +494,8 @@ helder.image's (`src/helder/image/Exif.test.hx`), the drops helder.os's
 real window on the GPU (Linux under Xvfb; `GFX_TARGET=windows-x86_64`
 under Wine), the fixtures' photo opened, decoded on helder.jobs and
 shown full size, closed after 3 s (`--exit-after`: the title and state
-printed, or the folder and its count while browsing), a 9000x2000 PNG in tiles
+printed, or the folder and its count while browsing), a PDF's first page, a
+Markdown document (tests/fixtures/markdown), a 9000x2000 PNG in tiles
 (`tests/bigpng.mjs`), then again with no system font
 found (`HELDER_NO_SYSTEM_FONTS=1`: helder.text looks for none, and the
 viewer adds its own, `fonts/DejaVuSans-viewer.ttf`, a 41 KB subset of
@@ -469,7 +505,7 @@ jobs).
 
 `bun run test ui-web` builds the viewer for the web too and runs it in
 headless Chromium (`tests/web.mjs`): the browser at Samples, the PDF
-opened, files dropped on the page, Open folder on a tree of handles the
+opened, the Markdown sample opened, files dropped on the page, Open folder on a tree of handles the
 page makes; no error on the page.
 
 `bun run test viewer-package`: the three releases built by `helder build
@@ -527,7 +563,8 @@ them).
 Renaming, dropping files into a folder (a drop opens it), tabs, a date
 scrubber, EXIF's camera details, a thumbnail size. On Linux, libraw's and HEVC's paths (HEIC needs libheif's libde265 plugin)
 have no fixture in the tests; colour management; a PDF's password
-(no prompt), its text selection and search; the window's maximised state
+(no prompt), its text selection and search; a Markdown document's find (Mod+F)
+and its pictures from the web; the window's maximised state
 (helder.os has no call for it); an X11 window's class (WM_CLASS: helder.os
 sets none, so an X11 desktop matches the window to its menu entry by its
 title alone; Wayland's app_id is the program's name, `StartupWMClass` in
