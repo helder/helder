@@ -52,6 +52,11 @@ export type FolderGrant = { id: string; name: string };
 // a folder's entry: its size in bytes, modified in seconds since the epoch (0: not known)
 export type FolderEntry = { name: string; folder: boolean; size: number; modified: number };
 
+// A rectangle: its corner (x, y) and its size, in the units of what gives
+// it (a window's pixels, a node's points). A structure: a frame's or a
+// gesture's code that asks every move fills one it keeps (Node.rectInto)
+export type Rect = { x: number; y: number; width: number; height: number };
+
 // A small key-value store kept between runs: an app's settings, a game's
 // save. Strings by key, read into memory when opened, written through at
 // each change (set, remove, clear), where the platform keeps an app's data:

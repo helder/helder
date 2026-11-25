@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Rect;
 import helder.gfx.shader.Vec4;
 
 import helder.os.DragOperation;
@@ -539,7 +540,7 @@ class UiWindow {
 		if (compositor != null && compositor.drewSince) whole = true;
 		if (c != null) c.end(ui, renderer);
 		#end
-		if (renderer.keep) device.damaged(whole ? null : renderer.regions.length > 0 ? renderer.regions : [0, 0, 1, 1]);
+		if (renderer.keep) device.damaged(whole ? null : damageRects(renderer.regions));
 		device.endFrame();
 		#if (!helder.headless && !helder.soft)
 		presents = !planes;
@@ -567,6 +568,31 @@ class UiWindow {
 	public var clickThrough = true;
 	var taken = "";
 
+	// (the kept frame's regions, x0, y0, x1, y1 each, as rectangles: kept
+	// and filled again, a frame allocates nothing; none, a pixel's worth)
+	final damages:Array<Rect> = [];
+	final damageList:Array<Rect> = [];
+
+	function damageRects(regions:Array<Int>):Array<Rect> {
+		var n = regions.length >> 2;
+		damageList.resize(0);
+		for (i in 0...(n == 0 ? 1 : n)) {
+			if (i == damages.length) damages.push({x: 0.0, y: 0.0, width: 0.0, height: 0.0});
+			var d = damages[i];
+			if (n == 0) {
+				d.x = d.y = 0;
+				d.width = d.height = 1;
+			} else {
+				d.x = regions[4 * i];
+				d.y = regions[4 * i + 1];
+				d.width = regions[4 * i + 2] - d.x;
+				d.height = regions[4 * i + 3] - d.y;
+			}
+			damageList.push(d);
+		}
+		return damageList;
+	}
+
 	function inputs() {
 		var out:Array<Int> = [];
 		boxes(ui.root, 0, 0, out);
@@ -586,7 +612,7 @@ class UiWindow {
 		var key = out.join(" ");
 		if (key == taken) return;
 		taken = key;
-		window.input(out);
+		window.input([for (i in 0...out.length >> 2) {x: out[4 * i], y: out[4 * i + 1], width: out[4 * i + 2], height: out[4 * i + 3]}]);
 	}
 
 	// (n's box where it draws and the pointer finds it, else its children's;
@@ -689,15 +715,15 @@ class UiWindow {
 	}
 
 	// an inset title bar's free area in UI pixels (env(titlebar-area-*), the first window's), when it changed
-	var titlebarShown:Null<helder.ui.TitlebarArea> = null;
+	var titlebarShown:Null<Rect> = null;
 
 	function titlebarArea() {
 		if (open[0] != this || window.titlebar != Inset) return;
 		var a = window.titlebarArea(), k = scale;
 		// (a headless run standing in for the web page, helder.run's screenshot: no title bar, as a browser has it)
 		#if helder.headless if (Sys.getEnv("HELDER_CONTROLS") == "none") a = null; #end
-		var t = a == null ? null : new helder.ui.TitlebarArea(a.x / k, a.y / k, a.width / k, a.height / k);
-		if (helder.ui.TitlebarArea.same(t, titlebarShown)) return;
+		var t = a == null ? null : {x: a.x / k, y: a.y / k, width: a.width / k, height: a.height / k};
+		if (SafeArea.same(t, titlebarShown)) return;
 		titlebarShown = t;
 		helder.ui.SafeArea.setTitlebar(t);
 		ui.requestFrame();
@@ -1024,10 +1050,10 @@ class OsWindow implements WindowHost {
 		return Platform.os() == 2 ? "windows" : "linux";
 	}
 
-	public function systemControls():Null<Bounds> {
+	public function systemControls():Null<Rect> {
 		var c = w.window.systemControls(), k = w.scale;
 		if (c == null) return null;
-		var b = new Bounds();
+		var b = {x: 0.0, y: 0.0, width: 0.0, height: 0.0};
 		b.x = c.x / k;
 		b.y = c.y / k;
 		b.width = c.width / k;

@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Rect;
 import helder.canvas.Svg.SvgCanvas;
 import helder.canvas.Svg.SvgParse;
 import helder.ui.Paint;
@@ -104,7 +105,7 @@ class Path {
 	}
 
 	// what its points and control points cover (an empty path: all zero)
-	public function bounds():{x:Float, y:Float, width:Float, height:Float} {
+	public function bounds():Rect {
 		var x0 = Math.POSITIVE_INFINITY, y0 = Math.POSITIVE_INFINITY, x1 = Math.NEGATIVE_INFINITY, y1 = Math.NEGATIVE_INFINITY;
 		var i = 0;
 		inline function at(x:Float, y:Float) {

@@ -393,7 +393,7 @@ class X11Window {
 
 	// (Window.workArea: the window manager's _NET_WORKAREA, the current
 	// desktop's first; without one the screen)
-	function workArea():{x:Int, y:Int, width:Int, height:Int} {
+	function workArea():Rect {
 		var p = Arena.scopedValue(a -> sourceProperty(Xlib.XDefaultRootWindow(display), Xlib.XInternAtom(display, a.cstring("_NET_WORKAREA"), 0)));
 		if (p != null && p.format == 32 && p.bytes.length >= 32)
 			return {x: p.bytes.getInt32(0), y: p.bytes.getInt32(8), width: p.bytes.getInt32(16), height: p.bytes.getInt32(24)};

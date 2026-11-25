@@ -258,7 +258,7 @@ class Window {
 	// Window Controls Overlay's titlebar-area-*): macOS's right of its
 	// buttons, elsewhere the top bar but the drawn buttons' width at the
 	// right (TitleBars); null when not inset, or full screen
-	public function titlebarArea():Null<{x:Int, y:Int, width:Int, height:Int}> {
+	public function titlebarArea():Null<Rect> {
 		if (titlebar != Inset || closed || fullscreen) return null;
 		var c = systemControls();
 		if (c != null) {
@@ -275,7 +275,7 @@ class Window {
 	// pixels (macOS's three, where they are now); null where the app draws
 	// its own (TitleBars' sizes), or not inset. A headless run of a macOS
 	// build has them where macOS puts them
-	public function systemControls():Null<{x:Int, y:Int, width:Int, height:Int}> {
+	public function systemControls():Null<Rect> {
 		if (titlebar != Inset || closed) return null;
 		// (nested: only a constant condition drops the other targets' code)
 		if (Platform.os() == 1) {
@@ -369,20 +369,21 @@ class Window {
 		return on;
 	}
 
-	// where it takes the pointer and clicks: rectangles in pixels (x, y,
-	// width, height each); elsewhere they go to what is behind it (another
+	// where it takes the pointer and clicks: rectangles in pixels; elsewhere they go to what is behind it (another
 	// window, another app's). Null (the default): everywhere; [] nowhere.
 	// helder.ui gives a transparent window's from what it draws. macOS:
 	// ignoresMouseEvents, by where the pointer is at each poll; Windows:
 	// WM_NCHITTEST's HTTRANSPARENT and, while the pointer is outside them,
 	// WS_EX_TRANSPARENT; Wayland: the input region; X11: the input shape;
 	// nothing elsewhere
-	public var inputRects(default, null):Null<Array<Int>> = null;
+	public var inputRects(default, null):Null<Array<Rect>> = null;
 
-	public function input(rects:Null<Array<Int>>) {
+	public function input(rects:Null<Array<Rect>>) {
 		if (closed) return;
-		inputRects = rects == null ? null : rects.copy();
+		inputRects = rects == null ? null : [for (r in rects) {x: r.x, y: r.y, width: r.width, height: r.height}];
 		if (HEADLESS) return;
+		// (the systems' own: x, y, width, height in whole pixels, one after another)
+		var inputRects = rects == null ? null : [for (r in rects) for (v in [r.x, r.y, r.width, r.height]) Math.round(v)];
 		if (Platform.apple() >= 1) {} else
 		#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) mac().setInput(inputRects) else #end
 		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) win().setInput(inputRects) else #end
@@ -455,7 +456,7 @@ class Window {
 	// notch, the Dock (macOS's visibleFrame, safeAreaInsets), the task bar
 	// (Windows' rcWork), the panels (X11's _NET_WORKAREA); null where a
 	// window has no place of its own (Wayland, the browser, phones)
-	public function workArea():Null<{x:Int, y:Int, width:Int, height:Int}>
+	public function workArea():Null<Rect>
 		return
 			closed ? null :
 			#if (!helder.os || helder.headless) HEADLESS ? {x: 0, y: 0, width: headless().width, height: headless().height} : #end

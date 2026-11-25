@@ -271,7 +271,7 @@ class SceneBox extends helder.ui.Node {
 	}
 
 	// (pick's, filled each time: Node.windowBoundsInto, Camera.rayInto)
-	final pickBounds = new helder.ui.Bounds();
+	final pickBounds = {x: 0.0, y: 0.0, width: 0.0, height: 0.0};
 	final pickRay = new helder.scene.Camera.CameraRay();
 
 	// (a hovering pointer's hit)

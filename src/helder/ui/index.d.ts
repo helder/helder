@@ -6,6 +6,7 @@
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 import type {Image} from "helder/asset";
+import type {Rect} from "helder/os";
 import type {Read, RootView, Signal, View} from "helder/view";
 
 declare const __haxe: {UiWindow: "helder.ui.UiWindow", Event: "helder.ui.Event", Key: "helder.ui.Key", VirtualScroll: "helder.ui.VirtualScroll", Selection: "helder.ui.Selection", GridScroll: "helder.ui.GridScroll", Clock: "helder.ui.Clock", WebViewEvent: "helder.ui.platform.WebViewEvent", WebContent: "helder.ui.platform.WebContent", WebResponse: "helder.ui.platform.WebResponse", Node: "helder.ui.Node", TextNode: "helder.ui.TextNode", UiFlow: "helder.ui.view.UiFlow", SafeArea: "helder.ui.SafeArea", Router: "helder.ui.nav.Router", Controls: "helder.ui.widgets.Controls", DataGrid: "helder.ui.widgets.DataGrid", EditableText: "helder.ui.widgets.EditableText", GridColumn: "helder.ui.widgets.GridColumn", GridTheme: "helder.ui.widgets.GridTheme", Icons: "helder.ui.widgets.Icons", Pager: "helder.ui.widgets.Pager", TextArea: "helder.ui.widgets.TextArea", TextField: "helder.ui.widgets.TextField", Theme: "helder.ui.widgets.Theme", WindowButtons: "helder.ui.widgets.WindowButtons", Eased: "helder.ui.controls.Eased", Look: "helder.ui.controls.Look", Press: "helder.ui.controls.Press", Standard: "helder.ui.controls.Standard", Toggle: "helder.ui.controls.Toggle", CodeActions: "helder.ui.code.CodeAction.CodeActions", CodeCompletion: "helder.ui.code.CodeCompletion", CodeEditor: "helder.ui.code.CodeEditor", CodeLanguage: "helder.ui.code.CodeLanguage", SyntaxLanguage: "helder.ui.code.CodeLanguage.SyntaxLanguage", CodeLanguages: "helder.ui.code.CodeLanguage.CodeLanguages", Sel: "helder.ui.code.CodeModel.Sel", Decoration: "helder.ui.code.CodeModel.Decoration", CodeDiagnostic: "helder.ui.code.CodeModel.CodeDiagnostic", CodeModel: "helder.ui.code.CodeModel", CodeTheme: "helder.ui.code.CodeTheme", CodeView: "helder.ui.code.CodeView", Rope: "helder.ui.code.Rope", SqlLanguage: "helder.ui.code.SqlLanguage", tone: "helder.ui.controls.Look.tone", Surface: "helder.ui.UiWindow.Surface", VirtualList: "helder.ui.view.UiFlow.VirtualList", VirtualGrid: "helder.ui.view.UiFlow.VirtualGrid", Stack: "helder.ui.nav.Screens.Stack", NavScreen: "helder.ui.nav.Bar.NavScreen", NavButton: "helder.ui.nav.Bar.NavButton", Sheet: "helder.ui.nav.Sheets.Sheet", pager: "helder.ui.widgets.Pager.create", windowControlsSide: "helder.ui.widgets.WindowButtons.side", Popover: "helder.ui.view.UiFlow.Popover", MenuBarView: "helder.ui.view.UiFlow.MenuBarView", Slider: "helder.ui.widgets.Controls.Slider", Segmented: "helder.ui.widgets.Controls.Segmented", Tip: "helder.ui.widgets.Controls.Tip", Pages: "helder.ui.widgets.Pager.Pages", WindowControls: "helder.ui.widgets.WindowButtons.WindowControls", Button: "helder.ui.controls.Standard.Button", PathBar: "helder.ui.controls.Standard.PathBar", Checkbox: "helder.ui.controls.Standard.Checkbox", Switch: "helder.ui.controls.Standard.Switch", Themed: "helder.ui.controls.Standard.Themed", __module: "helder.ui.TypeScript"};
@@ -651,7 +652,7 @@ export declare class Node {
 	localX(windowX: number, windowY: number): number;
 	localY(windowX: number, windowY: number): number;
 	focus(visible?: boolean): void;
-	rect(): { x: number; y: number; width: number; height: number };
+	rect(): Rect;
 	scrollIntoView(): void;
 	// (a press's pointer: the pressed node's until released (Ui.capture), this one's now;
 	// in a pointer event's handler, that pointer: a finger's, a pen's)
@@ -669,10 +670,10 @@ export declare class Node {
 	// the border box where it is drawn, in window pixels: its ancestors'
 	// scrolling taken off, through the transforms (its own too; the bounds
 	// of the box they turn)
-	windowBounds(): { x: number; y: number; width: number; height: number };
+	windowBounds(): Rect;
 	// windowBounds, written into out (returned): its corners in locals, no
 	// array or box made (a transformed ancestor's matrix still is: transformMatrix)
-	windowBoundsInto(out: unknown): unknown;
+	windowBoundsInto(out: Rect): Rect;
 	// the transform (Style.transform about Style.transformOrigin) in window
 	// pixels, as Canvas.pushTransform takes it; null: none
 	transformMatrix(): unknown | null;
@@ -685,7 +686,7 @@ export declare class Node {
 	accessText(): { start: number; end: number; caret: number; readOnly: boolean } | null;
 	// where text is typed into it (its caret, window pixels, after a paint):
 	// an input method's place; null: it takes no text
-	textInputArea(): { x: number; y: number; width: number; height: number } | null;
+	textInputArea(): Rect | null;
 	// the text around its caret, for an input method (Window.textContext:
 	// its text, the selection in UTF-16 indices, its kind); null: none to give
 	textContext(): { text: string; start: number; end: number; multiline: boolean; secret: boolean } | null;
@@ -808,7 +809,7 @@ export declare function MenuBarView(props: { menus: Menu[]; ref?: (arg0: unknown
 // Code reads insets() (a signal: what reads it in an effect or a reactive
 // attribute follows it). env(titlebar-area-x), -y, -width and -height are an
 // inset title bar's area free of the window's buttons (the Window Controls
-// Overlay's: helder.os's Window.titlebarArea, TitlebarArea), bound the same
+// Overlay's: helder.os's Window.titlebarArea), bound the same
 // way; without one (not inset, the browser, a phone) the fallback, else 0.
 export declare class SafeArea {
 	// top, right, bottom, left in UI pixels (the current screen's:
@@ -819,7 +820,7 @@ export declare class SafeArea {
 	// is up
 	static readonly keyboard: Signal<number>;
 	// an inset title bar's area (the current screen's; null: none)
-	static readonly titlebar: Signal<unknown | null>;
+	static readonly titlebar: Signal<Rect | null>;
 }
 
 // Screens by path, kept as a stack (helder.ui.Stack shows it): routes are
@@ -986,7 +987,7 @@ export declare class DataGrid extends Node {
 	// a column as wide as its title and the cells in view
 	fitColumn(col: number): void;
 	// a cell's box in window pixels (as it is scrolled now)
-	cellBounds(row: number, col: number): { x: number; y: number; width: number; height: number };
+	cellBounds(row: number, col: number): Rect;
 	// a view kept earlier (scroll, cursor) given back
 	restore(top: number, left: number, row: number, col: number): void;
 	// the grid's editor over a cell, its text the cell's (or typed: replacing it)
@@ -1046,7 +1047,7 @@ export declare class EditableText extends TextNode {
 	accessText(): { start: number; end: number; caret: number; readOnly: boolean } | null;
 	// (native: the editor takes it, not the window's text input)
 	takesText(): boolean;
-	textInputArea(): { x: number; y: number; width: number; height: number } | null;
+	textInputArea(): Rect | null;
 	textContext(): { text: string; start: number; end: number; multiline: boolean; secret: boolean } | null;
 	// (an input method's edit: as typed, over that range)
 	replaceText(start: number, end: number, s: string): void;
@@ -1829,7 +1830,7 @@ export declare class CodeView extends Node {
 	offsetAt(lx: number, ly: number): number;
 	// the composition now (empty: none), its caret: shown at the primary caret, not typed
 	compose(s: string, at: number): void;
-	textInputArea(): { x: number; y: number; width: number; height: number } | null;
+	textInputArea(): Rect | null;
 	// (the caret's line and the primary selection in it, for the input method)
 	textContext(): { text: string; start: number; end: number; multiline: boolean; secret: boolean } | null;
 	// (an input method's edit of the caret's line: start...end of it replaced)

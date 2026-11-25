@@ -55,7 +55,7 @@ class Motions {
 	// (the Ui updates so far: a matched source kept for the next one)
 	static var updates = 0;
 	static final sources:Array<Source> = [];
-	static final scratch = new Bounds();
+	static final scratch = {x: 0.0, y: 0.0, width: 0.0, height: 0.0};
 
 	public static function enable()
 		on = true;

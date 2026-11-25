@@ -1,5 +1,6 @@
 package viewer;
 
+import helder.os.Rect;
 import helder.async.Async;
 import helder.ui.Node;
 import helder.ui.controls.Look;
@@ -367,7 +368,7 @@ class Shell implements Markup {
 	// in the window (Windows'), a frame the place counts or not; kept the
 	// same at the next start, so that size and place do not creep run by run)
 	static var asked:Null<{x:Null<Int>, y:Null<Int>, width:Int, height:Int}> = null;
-	static var offset:Null<{x:Int, y:Int, width:Int, height:Int}> = null;
+	static var offset:Null<Rect> = null;
 
 	static function save(store:Null<helder.os.Store>, w:Null<UiWindow>, x:Explorer) {
 		if (store == null) return;

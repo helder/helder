@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Rect;
 import helder.view.graph.Graph;
 import helder.view.graph.Signal;
 import helder.async.Errors;
@@ -39,7 +40,7 @@ class ScreenContext {
 	// the safe area its markup reads (SafeArea.insets), in UI pixels
 	public final safeArea:Signal<Edges>;
 	// an inset title bar's area free of the window's buttons (env(titlebar-area-*); null: not inset)
-	public final titlebarArea:Signal<Null<TitlebarArea>>;
+	public final titlebarArea:Signal<Null<Rect>>;
 	// dark or light: a host gives it to the screen's Ui (Ui.dark)
 	public final dark:Signal<Bool>;
 	// its surface's width and height in points and its size class
@@ -75,7 +76,7 @@ class ScreenContext {
 		this.name = name;
 		this.keymap = keymap ?? new helder.ui.actions.Keymap();
 		safeArea = Graph.signalOf(Edges.ZERO, {ownedWrite: true});
-		titlebarArea = Graph.signalOf((null : Null<TitlebarArea>), {ownedWrite: true});
+		titlebarArea = Graph.signalOf((null : Null<Rect>), {ownedWrite: true});
 		dark = Graph.signalOf(true, {ownedWrite: true});
 		width = Graph.signalOf(0.0, {ownedWrite: true});
 		height = Graph.signalOf(0.0, {ownedWrite: true});

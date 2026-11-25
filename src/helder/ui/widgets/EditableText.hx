@@ -1,5 +1,6 @@
 package helder.ui.widgets;
 
+import helder.os.Rect;
 import helder.gfx.Color;
 import helder.ui.platform.*;
 import helder.ui.*;
@@ -325,7 +326,7 @@ class EditableText extends TextNode implements PlatformEditorListener {
 	override public function takesText():Bool
 		return !editorShown;
 
-	override public function textInputArea():Null<{x:Float, y:Float, width:Float, height:Float}>
+	override public function textInputArea():Null<Rect>
 		return focused && !editorShown && !Math.isNaN(caretX) ? {x: caretX, y: caretY, width: 1.0, height: caretHeight} : null;
 
 	override public function textContext():Null<{text:String, start:Int, end:Int, multiline:Bool, secret:Bool}>

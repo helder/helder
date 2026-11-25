@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Rect;
 import helder.os.DragOperation;
 import helder.test.Test;
 
@@ -69,7 +70,7 @@ private class Host implements WindowHost {
 	public function controls():String
 		return "";
 
-	public function systemControls():Null<Bounds>
+	public function systemControls():Null<Rect>
 		return null;
 
 	public function placeControls(x:Float, y:Float) {}

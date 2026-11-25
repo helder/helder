@@ -1,5 +1,6 @@
 package helder.ui.motion;
 
+import helder.os.Rect;
 import helder.gfx.Color;
 import helder.test.Test;
 import helder.ui.*;
@@ -425,7 +426,7 @@ private function tick(ui:Ui, c:Rec, t:Float) {
 private function now():Float
 	return Clock.now + 1;
 
-private function bounds(n:Node):{x:Float, y:Float, width:Float, height:Float}
+private function bounds(n:Node):Rect
 	return n.windowBounds();
 
 private function box(w:Float, h:Float):Node {

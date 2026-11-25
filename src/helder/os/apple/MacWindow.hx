@@ -515,7 +515,7 @@ class MacWindow {
 	// (Window.workArea: the screen's visibleFrame, clear of the menu bar
 	// and the Dock, and of a notch's top inset (safeAreaInsets, macOS 12 on);
 	// points from the main screen's top left)
-	function workArea():{x:Int, y:Int, width:Int, height:Int}
+	function workArea():Rect
 		return OsThread.get(() -> {
 			var screen = Msg.id(window, ObjC.sel("screen"));
 			if (screen.isNull()) screen = Msg.id(ObjC.cls("NSScreen"), ObjC.sel("mainScreen"));
@@ -523,7 +523,7 @@ class MacWindow {
 			var top = v.origin.y + v.size.height;
 			if (Msg.bPtr(screen, ObjC.sel("respondsToSelector:"), ObjC.sel("safeAreaInsets"))) top = Math.min(top, f.origin.y + f.size.height - insetTop(screen));
 			var h = screenHeight();
-			{x: Math.ceil(v.origin.x), y: Math.ceil(h - top), width: Math.floor(v.size.width), height: Math.floor(top - v.origin.y)};
+			({x: Math.ceil(v.origin.x), y: Math.ceil(h - top), width: Math.floor(v.size.width), height: Math.floor(top - v.origin.y)} : Rect);
 		});
 
 	// (NSEdgeInsets' top: four doubles, top first, returned in registers)
@@ -1152,10 +1152,10 @@ class MacWindow {
 		return Msg.idInt(window, ObjC.sel("standardWindowButton:"), i);
 
 	// the three buttons' box in the content's pixels (null: none, full screen)
-	function controls():Null<{x:Int, y:Int, width:Int, height:Int}>
+	function controls():Null<Rect>
 		return OsThread.get(controlsNow);
 
-	function controlsNow():Null<{x:Int, y:Int, width:Int, height:Int}> {
+	function controlsNow():Null<Rect> {
 		if (isFullscreen()) return null;
 		var close = systemButton(0), zoom = systemButton(2);
 		if (close.isNull() || zoom.isNull()) return null;

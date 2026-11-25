@@ -1,5 +1,7 @@
 package studio;
 
+import helder.os.Rect;
+
 // Snapping a box being moved or resized on the canvas: its moving edges
 // (and its centre, when the whole box moves) to the lines of the boxes
 // around it (their edges and centres: a frame's and its siblings', or the
@@ -54,7 +56,7 @@ class Snap {
 	}
 }
 
-typedef Box = {x:Float, y:Float, width:Float, height:Float};
+typedef Box = Rect;
 typedef Edges = {left:Bool, right:Bool, top:Bool, bottom:Bool};
 // a line drawn while snapped: vertical at x = at from y = from to to, or horizontal
 typedef Guide = {vertical:Bool, at:Float, from:Float, to:Float};

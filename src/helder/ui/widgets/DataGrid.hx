@@ -1,5 +1,6 @@
 package helder.ui.widgets;
 
+import helder.os.Rect;
 import helder.gfx.Color;
 import helder.ui.access.Role;
 
@@ -608,7 +609,7 @@ class DataGrid extends Node {
 		return columns[col].align == Right ? lefts[col] + 4 + ARROW / 2 : lefts[col + 1] - 4 - ARROW / 2;
 
 	// a cell's box in window pixels (as it is scrolled now)
-	public function cellBounds(row:Int, col:Int):{x:Float, y:Float, width:Float, height:Float} {
+	public function cellBounds(row:Int, col:Int):Rect {
 		var b = windowBounds();
 		return {
 			x: b.x + gutterW + lefts[col] - scrollLeft,

@@ -85,7 +85,7 @@ class TransformGizmo implements SceneBox.SceneControl {
 	var startScale = new Vec3(1, 1, 1);
 	var startWorldRotation = Quat.identity();
 	// (the box's bounds and the view's ray, filled in place)
-	final bounds = new helder.ui.Bounds();
+	final bounds = {x: 0.0, y: 0.0, width: 0.0, height: 0.0};
 	final ray = new helder.scene.Camera.CameraRay();
 
 	static inline var RING = 48;

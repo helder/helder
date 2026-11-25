@@ -1,5 +1,6 @@
 package studio;
 
+import helder.os.Rect;
 import helder.gfx.shader.Vec4;
 
 import helder.ui.*;
@@ -205,7 +206,7 @@ class Designs {
 	}
 
 	// a node's box in its frame (its points)
-	public function box(name:String, n:Node):{x:Float, y:Float, width:Float, height:Float} {
+	public function box(name:String, n:Node):Rect {
 		var d = drawn.get(name);
 		var root = d == null || d.nodes.length == 0 ? n : d.nodes[0];
 		return {x: n.absX - root.absX, y: n.absY - root.absY, width: n.width, height: n.height};

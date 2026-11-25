@@ -1,5 +1,6 @@
 package studio;
 
+import helder.os.Rect;
 import helder.gfx.Color;
 import helder.async.*;
 import helder.ui.*;
@@ -65,7 +66,7 @@ class Marks implements Markup {
 	}
 
 	// (outlined at once, then faded out and let go)
-	function add(colour:String, screen:String, found:Array<{x:Float, y:Float, width:Float, height:Float}>) {
+	function add(colour:String, screen:String, found:Array<Rect>) {
 		if (found.length == 0) return;
 		var made:Array<Touch> = [for (b in found.slice(0, 24)) {id: next++, colour: colour, screen: screen, x: b.x, y: b.y, w: b.width, h: b.height, on: true}];
 		var ids = [for (m in made) m.id];

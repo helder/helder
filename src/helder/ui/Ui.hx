@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Rect;
 import helder.gfx.Color;
 import helder.os.DragOperation;
 import helder.ui.platform.*;
@@ -2414,7 +2415,7 @@ class Ui extends ScrollHost {
 
 	// where text is typed now (the focused node's caret, window pixels): the
 	// input method's place; null: the focus takes no text
-	public function textInputArea():Null<{x:Float, y:Float, width:Float, height:Float}>
+	public function textInputArea():Null<Rect>
 		return focus == null ? null : focus.textInputArea();
 
 	// the modifier a modifier key is (0: none)

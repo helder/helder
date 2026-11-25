@@ -1,5 +1,6 @@
 package viewer;
 
+import helder.os.Rect;
 import helder.image.Image;
 import helder.story.StoryText;
 import helder.test.Test;
@@ -46,7 +47,7 @@ function tests() {
 			Clock.tick(t);
 			frame(ui);
 		}
-		function box(ui:Ui):Null<{x:Float, y:Float, width:Float, height:Float}> {
+		function box(ui:Ui):Null<Rect> {
 			var n = ui.root.find("zoom");
 			return n == null ? null : n.windowBounds();
 		}

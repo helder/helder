@@ -29,7 +29,7 @@ class TextSelector {
 	// (a scroller dragged past: stepping, its last step's time)
 	var scrolling = false;
 	var stepAt = -1.0;
-	final bounds = new Bounds();
+	final bounds = {x: 0.0, y: 0.0, width: 0.0, height: 0.0};
 
 	function new(ui:Ui)
 		this.ui = ui;

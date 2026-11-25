@@ -1,5 +1,6 @@
 package viewer;
 
+import helder.os.Rect;
 import helder.image.Image;
 import helder.ui.Clock;
 import helder.ui.Node;
@@ -10,8 +11,6 @@ import helder.ui.motion.Track;
 import helder.view.*;
 import helder.view.Flow.*;
 import helder.view.graph.Graph.*;
-
-typedef Rect = {x:Float, y:Float, width:Float, height:Float};
 
 // A file opening from its tile and closing into it, as Quick Look and
 // photo apps do: its thumbnail (a document's page where it has none)
