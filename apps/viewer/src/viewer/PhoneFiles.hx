@@ -9,6 +9,8 @@ import viewer.Files;
 class PhoneFiles implements Files {
 	public var trash(default, null):Null<String->Null<String>>;
 	public var rename(default, null):Null<(from:String, to:String)->Void>;
+	public var makeFolder(default, null):Null<String->Void>;
+	public var copy(default, null):Null<(from:String, to:String)->Void>;
 
 	final disk:Files;
 	final grants:GrantFiles;
@@ -26,6 +28,16 @@ class PhoneFiles implements Files {
 		rename = (from, to) -> {
 			var r = of(from).rename;
 			if (r != null) r(from, to);
+		};
+		makeFolder = path -> {
+			var m = of(path).makeFolder;
+			if (m == null) throw "not possible here";
+			m(path);
+		};
+		copy = (from, to) -> {
+			var c = of(to).copy;
+			if (c == null || of(from) != of(to)) throw "not possible here";
+			c(from, to);
 		};
 	}
 

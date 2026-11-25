@@ -14,10 +14,24 @@ class NativeFiles implements Files {
 
 	public var trash(default, null):Null<String->Null<String>>;
 	public var rename(default, null):Null<(from:String, to:String)->Void>;
+	public var makeFolder(default, null):Null<String->Void>;
+	public var copy(default, null):Null<(from:String, to:String)->Void>;
 
 	public function new() {
 		trash = helder.os.Trash.available() ? p -> helder.os.Trash.move(p) : null;
-		rename = (from, to) -> sys.FileSystem.rename(from, to);
+		rename = (from, to) -> {
+			// (never over another: the system's rename would replace a file)
+			if (sys.FileSystem.exists(to)) throw '"${haxe.io.Path.withoutDirectory(to)}" is already there';
+			sys.FileSystem.rename(from, to);
+		};
+		makeFolder = path -> {
+			if (sys.FileSystem.exists(path)) throw '"${haxe.io.Path.withoutDirectory(path)}" is already there';
+			sys.FileSystem.createDirectory(path);
+		};
+		copy = (from, to) -> {
+			if (sys.FileSystem.exists(to)) throw '"${haxe.io.Path.withoutDirectory(to)}" is already there';
+			Disk.copy(from, to);
+		};
 	}
 
 	public function list(dir:String, batch:Batch->Void):Void->Void {

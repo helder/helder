@@ -191,7 +191,11 @@ class Phone implements Markup {
 		var p = props.p, x = p.x, b = x.browser, path = props.path, nav = use(Bar.here);
 		var here = () -> b.dir.value == path;
 		var last:Array<Entry> = [];
-		var items = memo(() -> b.dir() == path && !(b.reading() && b.items().length == 0 && last.length > 0) ? (last = b.items()) : last);
+		var items = memo(() -> {
+			var now = b.items();
+			// (another folder's entries, kept while this one is read: not this screen's)
+			b.dir() == path && !b.stale && !(b.reading() && now.length == 0 && last.length > 0) ? (last = now) : last;
+		});
 		effect(() -> b.selection.version(), _ -> b.selectionChanged());
 		var list:Null<helder.ui.VirtualScroll> = null;
 		function scroller(v:helder.ui.VirtualScroll) {

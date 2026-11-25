@@ -22,6 +22,19 @@ browser engine and no runtime to install.
   first. Select several with Shift and Ctrl (Cmd), Ctrl+A, or a marquee
   drawn from empty space, and drag them out to other apps: a file
   manager, mail, chat, a browser's upload.
+- **Files moved and named in place.** Drag the selection onto a folder's
+  tile or row, or a folder in the sidebar, to move it there (hold Option,
+  Alt, to copy); the folder lights up while the files are over it.
+  Files dropped from another app onto a folder, or onto the folder shown,
+  are copied in. A right click on empty space has New Folder (an
+  "untitled folder", selected and named in place), the View menu, Show in
+  Finder and Get Info; on a sidebar folder, Open, Rename, Move to Trash,
+  Show in Finder and Copy Path. A name is edited in place (Enter keeps
+  it, Escape gives it up). Undo puts back a trash, a rename or a move;
+  what could not be done says why in the path bar a few seconds.
+- **No empty list between folders**: the last folder's entries and the
+  sidebar's level stay until the new folder's first are read (or 0.15 s,
+  then the reading state).
 - **Scrollbars that keep out of the way**: overlay ones on every system
   (macOS's even when a connected mouse makes the system show them
   always; thin ones on Windows, Linux and the web), shown while you
@@ -179,6 +192,8 @@ Ctrl is Cmd on macOS.
 | Move, select | the arrows (in the grid across and down), Home, End, Page Up and Down; type a name's first letters |
 | Select several | Shift with a click or the arrows; Ctrl with a click (Cmd on macOS); Ctrl+A; a drag from empty space |
 | Drag out to another app | drag the selected files |
+| Move into a folder, copy | drag onto it; hold Alt (Option) to copy |
+| New folder, rename | Ctrl+Shift+N; File > Rename… or a right click |
 | Open (a folder: go in; a file: full size) | Enter, a double click; Cmd+Down on macOS |
 | Back, forward | Ctrl+[ and Ctrl+], Alt+Left and Alt+Right |
 | The enclosing folder | Ctrl+Up |
@@ -187,7 +202,7 @@ Ctrl is Cmd on macOS.
 | The inspector | Ctrl+I |
 | Type a path | Ctrl+L, then Enter |
 | Show hidden files | Ctrl+Shift+. |
-| Move to Trash (Recycle Bin), put back | Delete or Ctrl+Backspace; Ctrl+Z |
+| Move to Trash (Recycle Bin), put back | Delete or Ctrl+Backspace; Ctrl+Z (a rename or a move too) |
 | Copy the file's path | Ctrl+Shift+C; a right click has Show in Folder and Open with Default App too |
 
 | Full size | |
@@ -322,7 +337,8 @@ hidden files, the inspector and the status line are kept between runs
   changes goes through one, a stand-in for hxmc's asynchronous file system
   to come: `list` (a folder's entries in batches of 2,000: name, kind,
   size, dates), `stat`, `open` (a `ByteSource`), `localPath`, `watch`,
-  `trash` and `rename`. **NativeFiles** reads a folder on helder.jobs'
+  `trash`, `rename`, `makeFolder` and `copy` (each null where it cannot
+  be done). **NativeFiles** reads a folder on helder.jobs'
   pool (its names, then a stat of each, sent back over a channel), its
   watch lists it again every 2 s; **MemoryFiles** is the tests';
   **WebFiles** the web's (below).
@@ -334,7 +350,9 @@ hidden files, the inspector and the status line are kept between runs
   sort and the watch (a folder of fewer than 5,000 entries every 2 s, a
   larger one when the pointer comes back to the window: helder.os has no
   focus event), type-ahead, the trash and its undo (a rename back from
-  where the trash put it, where the system says). Its state is `Cell`s:
+  where the trash put it, where the system says), a new folder, a rename
+  and files moved or copied into a folder (`transfer`), their undo, and a
+  short `notice` of what could not be done. Its state is `Cell`s:
   read back at once by the model, signals for the window.
 - **Sidebar** (`Sidebar.hx`): the overview (helder.os's `Places.user()`
   and `Places.volumes()`) or a folder's level: its subfolders, each with
@@ -344,8 +362,13 @@ hidden files, the inspector and the status line are kept between runs
 - The selection is helder.ui's `Selection` (by name), the grid its
   `VirtualGrid` and the list its `VirtualList`, both with that selection's
   keys, presses, marquee and type-ahead; a drag of an entry (4 points)
-  starts the system's drag of the selected files (`DragOut.hx`:
-  `Ui.dragFiles`, the entry's thumbnail its picture).
+  is helder.ui's drag of the selected files, their picture following the
+  pointer (`DragOut.hx`), onto a folder of the window (`Drops.hx`: the
+  folder's tile, row, sidebar row or the list itself, marked while the
+  drag is over it); out of the window it becomes the system's
+  (`Ui.dragFiles`, the entry's thumbnail its picture). The system's drop
+  of another app's files is hit-tested to the same folders. A name is
+  edited by `NameField.hx`.
 - **Explorer** (`Explorer.hx`) is the browser and the viewer without a
   window: a file opened full size from the browser (the viewer's list
   the browser's viewable files in its order, again when it changes), back
@@ -501,7 +524,8 @@ Eval the camera's maths): `tests/viewer/Browser.test.hx` (on MemoryFiles: naviga
 and history, the sidebar's level for a folder, the orders, folders first,
 hidden files and the filter, batches merged with the selection kept, the
 watch, a file opened full size and back, the trash and its undo,
-several selected), `FolderModel.test.hx` (natural order, wrapping, the
+several selected, a new folder, a rename refused and undone, files
+moved and copied into a folder and undone), `FolderModel.test.hx` (natural order, wrapping, the
 browser's list given again), `DecodeCache.test.hx` (the order, two at a time, eviction by
 distance, a budget too small for every neighbour, a changed file),
 `Markdown.test.hx` (on MemoryFiles, tests/fixtures/markdown: a document
@@ -536,7 +560,11 @@ in the list and the grid; a folder read in batches that each sort above
 the last, still at its top; the full-size viewer closed with the folder
 where it was and the last file in view; scrolled to the end by the
 scroll and by End, the last row whole above the path bar with room, each
-row's text inside its row),
+row's text inside its row; between folders the old entries and level
+until the new are read; a right press on empty space and its menu, a new
+folder named in place; a file dragged onto a folder's tile, marked,
+moved and undone; another app's files dropped on a tile and on the
+space; a sidebar folder's menu and its rename),
 `Viewer.story.hx` (the grid and the list dark and light, several
 selected, the inspector of a photo, of a PDF and of a Markdown document, a marquee
 being dragged over the grid, an empty folder, a missing one, no results, a file full size, a

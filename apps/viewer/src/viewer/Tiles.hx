@@ -103,13 +103,21 @@ class Tiles implements Markup {
 			b.selection.version();
 			return b.selection.has(e().name);
 		}
-		return <view slot="grid-tile" grow={1} align-items="center" row-gap={6} padding="4 4 8 4" ref={(n:Node) -> DragOut.from(x, n, () -> e().name)}>
+		return <view slot="grid-tile" grow={1} align-items="center" row-gap={6} padding="4 4 8 4" ref={(n:Node) -> {
+			DragOut.from(x, n, () -> e().name);
+			Drops.folder(x, n, () -> e().kind == Folder ? b.path(e().name) : null);
+		}}>
 			<view slot="thumb-box" data-selected={on() && e().kind == Folder} width={box} height={box} shrink={0} align-items="center" justify="center"
 				opacity={x.zoom.flying() == x.browser.path(e().name) ? 0 : 1}>
 				{() -> picture(x, e(), on, k)}
 			</view>
-			<text slot="name-pill" data-selected={on()} max-width={width - 8} max-lines={2} text-overflow="middle" text-align="center"
-				dir={helder.ui.Dir.Ltr}>{e().name}</text>
+			<Show when={b.renaming() == e().name}>{() -> <view width={width - 8} height={20} direction="row">
+				{NameField.field(e().name, t -> b.rename(e().name, t), () -> b.renaming(""), true)}
+			</view>}</Show>
+			<Show when={b.renaming() != e().name}>
+				<text slot="name-pill" data-selected={on()} max-width={width - 8} max-lines={2} text-overflow="middle" text-align="center"
+					dir={helder.ui.Dir.Ltr}>{e().name}</text>
+			</Show>
 			<text font-size={11.5} color={Look.ref.fg3} margin-top={-5} max-lines={1}>{e().kind == Folder ? "Folder" : Kinds.size(e().size)}</text>
 		</view>;
 	}

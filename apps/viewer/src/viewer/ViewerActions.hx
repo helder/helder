@@ -30,6 +30,16 @@ enum ViewerAction {
 	EditPath;
 	Trash;
 	UndoTrash;
+	// the folder shown: a folder made in it, an entry renamed, its info, it in Finder
+	NewFolder;
+	Rename;
+	GetInfo;
+	RevealFolder;
+	// a sidebar's folder
+	RenameFolder(path:String);
+	TrashFolder(path:String);
+	RevealPath(path:String);
+	CopyPathOf(path:String);
 	// the full-size viewer
 	Close;
 	Next;
@@ -97,6 +107,7 @@ class ViewerActions {
 		keymap.bind("delete", Trash, typing);
 		keymap.bind("secondary-backspace", Trash, typing);
 		keymap.bind("secondary-z", UndoTrash, typing);
+		keymap.bind("secondary-shift-n", NewFolder, browser);
 		keymap.bind("secondary-shift-c", CopyPath, browser);
 		// (a file full size: today's keys)
 		var here = "Viewer && full && !goto && !about";
@@ -179,8 +190,10 @@ class ViewerActions {
 		var go:Array<MenuItem> = [Item("Back", Back), Item("Forward", Forward), Item("Enclosing Folder", Enclosing)];
 		if (places.length > 0) go = go.concat([Separator]).concat([for (p in places) Item(p.name, Go(p.path))]);
 		return [
-			{label: "File", items: open.concat([Item("Open Selected", OpenSelected), Separator, Item(trashLabel(), Trash), Separator, Role(Quit)])},
-			{label: "Edit", items: [Item("Undo " + trashLabel(), UndoTrash), Separator, Item("Copy Path", CopyPath), Item("Find", Search)]},
+			{label: "File", items: open.concat([Item("Open Selected", OpenSelected), Item("New Folder", NewFolder), Item("Rename…", Rename), Separator,
+				Item(trashLabel(), Trash), Separator, Role(Quit)])},
+			// (Undo: a trash, a rename, a move into a folder)
+			{label: "Edit", items: [Item("Undo", UndoTrash), Separator, Item("Copy Path", CopyPath), Item("Find", Search)]},
 			{
 				label: "View",
 				items: [
@@ -212,9 +225,22 @@ class ViewerActions {
 
 	// a file's context menu in the browser, and the inspector's More
 	public static final entry:Array<MenuItem> = LOCAL ? [
-		Item("Open", OpenSelected), Item(reveal(), ShowInFolder), Item("Open with Default App", OpenWithDefault), Separator, Item("Copy Path", CopyPath),
-		Separator, Item(trashLabel(), Trash)
+		Item("Open", OpenSelected), Item(reveal(), ShowInFolder), Item("Open with Default App", OpenWithDefault), Separator, Item("Rename…", Rename),
+		Item("Copy Path", CopyPath), Separator, Item(trashLabel(), Trash)
 	] : [Item("Open", OpenSelected)];
+
+	// the folder's empty space's context menu
+	public static function background():Array<MenuItem>
+		return LOCAL ? [
+			Item("New Folder", NewFolder), Separator, Submenu("View", view()), Separator, Item(reveal(), RevealFolder), Item("Get Info", GetInfo)
+		] : [Submenu("View", view())];
+
+	// a sidebar folder's context menu
+	public static function sidebarFolder(path:String):Array<MenuItem>
+		return LOCAL ? [
+			Item("Open", Go(path)), Separator, Item("Rename…", RenameFolder(path)), Item(trashLabel(), TrashFolder(path)), Separator,
+			Item(reveal(), RevealPath(path)), Item("Copy Path", CopyPathOf(path))
+		] : [Item("Open", Go(path))];
 
 	public static final more:Array<MenuItem> = LOCAL ? [Item("Copy Path", CopyPath), Item("Open with Default App", OpenWithDefault)] : [];
 
