@@ -88,7 +88,7 @@ class Start implements Markup {
 				ws.say('Could not read that font ($e)');
 			}
 		}
-		return <Popover open={ws.starting} modal placement="center" backdrop={Color.rgba(0, 0.5)} onDismiss={() -> ws.starting(false)}>
+		return <Popover open={ws.starting} modal placement="center" scrim={Color.rgba(0, 0.5)} onDismiss={() -> ws.starting(false)}>
 			<view tag="start" role="dialog" aria-label="Start a font" width={860} padding={28} rowGap={20} borderRadius={Theme.RADIUS_M + 4} background={c("bg")}
 				borderWidth={1} borderColor={c("edge")} boxShadow={Theme.popover()}>
 				<view rowGap={6}>

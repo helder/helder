@@ -460,7 +460,7 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
 - **Popups**: `Popup` nodes are layers over the tree (`Ui.open`, `Ui.close`:
   children of `Ui.overlay`, drawn and hit after the tree, not clipped by
   it), anchored to a node (below, above, beside; flipped and kept in the
-  window), in a corner of the window (notifications), at a point (a context menu) or modal (a backdrop, the focus kept inside); a press outside or
+  window), in a corner of the window (notifications), at a point (a context menu) or modal (a scrim, the focus kept inside); a press outside or
   Escape asks them to close. An anchored popup follows its anchor, placed
   again every layout (the window resized, the anchor scrolled): a
   popover (`UiFlow.Popover`, `Sheet`'s popover on a wide screen). A menu

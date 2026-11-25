@@ -839,9 +839,9 @@ export declare function VirtualGrid<T>(props: VirtualGridProps<T>): unknown;
 // it in), placed by placement ("below", "above", "right", "left",
 // "center"; gap pixels away), modal or not; onDismiss when a click
 // outside (unless dismissOnOutside is false) or Escape asks it to close; onOpen once it is open (to move
-// the focus into it); a modal one's backdrop its colour; the popup's
+// the focus into it); a modal one's scrim its colour; the popup's
 // slot for a theme (Node.slot). Its content is rendered once, kept while closed.
-export declare function Popover(props: { open: Read<boolean>; anchor?: Node; placement?: Placement; gap?: number; modal?: boolean; backdrop?: Color; slot?: string; onDismiss?: () => void; dismissOnOutside?: boolean; onOpen?: (arg0: unknown) => void; at?: () => { x: number; y: number }; tag?: string; children?: unknown }): unknown;
+export declare function Popover(props: { open: Read<boolean>; anchor?: Node; placement?: Placement; gap?: number; modal?: boolean; scrim?: Color; slot?: string; onDismiss?: () => void; dismissOnOutside?: boolean; onOpen?: (arg0: unknown) => void; at?: () => { x: number; y: number }; tag?: string; children?: unknown }): unknown;
 // the window's menu bar (helder.ui.menu.MenuBar): the platform's, or
 // drawn here (put it first in the window's content); ref: the bar
 export declare function MenuBarView(props: { menus: Menu[]; ref?: (arg0: unknown) => void }): unknown;
