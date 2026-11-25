@@ -210,7 +210,7 @@ export type LightShadow = { size?: number; bias?: number; normalBias?: number; r
 
 // what Lines are made with (each optional): 2 pixels wide, mitred, butt
 // ends, solid, depth tested, opaque, tone mapped, none drawn
-export type LinesOptions = { segments?: boolean; width?: number; widthUnits?: LineUnits; join?: LineJoin; cap?: LineCap; dash?: number; gap?: number; dashOffset?: number; closed?: boolean; onTop?: boolean; transparent?: boolean; toneMapped?: boolean; count?: number };
+export type LinesOptions = { segments?: boolean; width?: number; widthUnits?: LineUnits; join?: LineJoin; cap?: LineCap; dash?: number; gap?: number; dashOffset?: number; closed?: boolean; overlay?: boolean; transparent?: boolean; toneMapped?: boolean; count?: number };
 
 // LocalShadows' options (shadows.local(options))
 export type LocalShadowsOptions = { atlas?: number; maxLocal?: number; tileSize?: number };
@@ -1945,7 +1945,7 @@ export declare class Occlusion {
 //   dash, gap    a dashed line (lengths in the line's own units along it;
 //                0: solid), dashOffset moving the dashes along (animated:
 //                a marching line)
-//   onTop        drawn over everything (not depth tested), after the
+//   overlay      drawn over everything (not depth tested), after the
 //                scene; else depth tested against it
 //   transparent  blended by its colours' alpha, after the see-through
 //                surfaces (not written to depth)
@@ -1984,7 +1984,7 @@ export declare class Lines {
 	dashOffset: number;
 	// a polyline's last point joined back to its first
 	closed: boolean;
-	onTop: boolean;
+	overlay: boolean;
 	transparent: boolean;
 	toneMapped: boolean;
 	visible: boolean;
@@ -2012,7 +2012,7 @@ export declare class Lines {
 // LineRenderer.of(renderer)): each shown node's lines one instanced draw
 // (LineShader: a segment an instance), the depth-tested opaque ones after
 // the opaque surfaces (AfterOpaque), the see-through ones (transparent)
-// after the see-through surfaces, those drawn over everything (onTop) last
+// after the see-through surfaces, those drawn over everything (overlay) last
 // (AfterTransparent). Their points are uploaded once changed; nothing is
 // allocated a frame. DebugDraw draws through it.
 export declare class LineRenderer {
@@ -2031,15 +2031,15 @@ export declare class LineRenderer {
 // written into a ring of segments, drawn by the DebugDraw feature
 // (renderer.use(new DebugDraw())) as one draw of lines through the
 // renderer's LineRenderer, another for those drawn over everything
-// (onTop), then cleared: nothing to keep or remove, and nothing allocated
+// (overlay), then cleared: nothing to keep or remove, and nothing allocated
 // a frame. A colour is 0xRRGGBB as a page writes it (shown as written: not
 // lit, fogged or tone mapped).
 //
 //   DebugDraw.line(a, b, 0xFF4040);
 //   DebugDraw.aabb(mesh.bounds, 0x40FF40);
-//   DebugDraw.onTop = true;               // the calls from here on over everything
+//   DebugDraw.overlay = true;             // the calls from here on over everything
 //   DebugDraw.axes(player.worldMatrix(), 0.5);
-//   DebugDraw.onTop = false;
+//   DebugDraw.overlay = false;
 //
 // Debug's calls are these, compiled out of a release build (helder build's
 // -D helder.release) unless -D helder.debugdraw: their arguments not
@@ -2057,7 +2057,7 @@ export declare class DebugDraw {
 	static capacity: number;
 	static readonly dropped: number;
 	// whether the calls from here on are drawn over everything (not depth tested)
-	static onTop: boolean;
+	static overlay: boolean;
 	// the renderer's DebugDraw, made and turned on when it has none
 	static of(renderer: Renderer): DebugDraw;
 	// a segment from a to b

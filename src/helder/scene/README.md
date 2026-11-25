@@ -1412,7 +1412,7 @@ they changed.
   `Round` or `Square`; `closed` joins the last point back to the first.
 - **`dash`** and **`gap`**: a dashed line, lengths in the line's own
   units along it, `dashOffset` moving them (a marching line).
-- **`onTop`**: drawn over everything, after the scene, not depth tested;
+- **`overlay`**: drawn over everything, after the scene, not depth tested;
   else depth tested and written. **`transparent`**: blended by the
   colours' alpha, after the see-through surfaces (not written to depth);
   an opaque line ignores alpha.
@@ -1655,14 +1655,14 @@ Debug.line(a, b, 0xFF4040);
 Debug.ray(origin, velocity, 0.5);
 Debug.aabb(mesh.bounds);
 Debug.sphere(target, 2);
-Debug.onTop(true);  Debug.axes(player.worldMatrix(), 0.5);  Debug.onTop(false);
+Debug.overlay(true);  Debug.axes(player.worldMatrix(), 0.5);  Debug.overlay(false);
 ```
 
 `Debug`'s calls draw lines for one frame from anywhere (Bevy's gizmos):
 nothing to keep or remove, and nothing allocated, written into a ring of
 segments that the `DebugDraw` feature draws through a `LineRenderer`
 ([Lines](#lines)), one draw depth tested and one over everything
-(`Debug.onTop`), then clears. A colour is `0xRRGGBB` as written, not lit,
+(`Debug.overlay`), then clears. A colour is `0xRRGGBB` as written, not lit,
 fogged or tone mapped. The calls: `line`, `ray` (an arrow's head at its
 end), `arrow`, `aabb`, `boxOf(matrix, min, max)` (a turned box: a node's
 bounds), `sphere`, `circle`, `cross3`, `axes(matrix, size)`, `grid`,

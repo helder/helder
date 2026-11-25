@@ -16,15 +16,15 @@ import helder.scene.math.MathTools;
 // written into a ring of segments, drawn by the DebugDraw feature
 // (renderer.use(new DebugDraw())) as one draw of lines through the
 // renderer's LineRenderer, another for those drawn over everything
-// (onTop), then cleared: nothing to keep or remove, and nothing allocated
+// (overlay), then cleared: nothing to keep or remove, and nothing allocated
 // a frame. A colour is 0xRRGGBB as a page writes it (shown as written: not
 // lit, fogged or tone mapped).
 //
 //   DebugDraw.line(a, b, 0xFF4040);
 //   DebugDraw.aabb(mesh.bounds, 0x40FF40);
-//   DebugDraw.onTop = true;               // the calls from here on over everything
+//   DebugDraw.overlay = true;             // the calls from here on over everything
 //   DebugDraw.axes(player.worldMatrix(), 0.5);
-//   DebugDraw.onTop = false;
+//   DebugDraw.overlay = false;
 //
 // Debug's calls are these, compiled out of a release build (helder build's
 // -D helder.release) unless -D helder.debugdraw: their arguments not
@@ -41,7 +41,7 @@ class DebugDraw implements RenderFeature {
 	public static var capacity = 16384;
 	public static var dropped(default, null) = 0;
 	// whether the calls from here on are drawn over everything (not depth tested)
-	public static var onTop = false;
+	public static var overlay = false;
 
 	// (two rings: depth tested, on top; a segment's a and b, then its colour: 9 floats)
 	static inline var FIELDS = 9;
@@ -57,7 +57,7 @@ class DebugDraw implements RenderFeature {
 	public function new(?options:{?width:Float}) {
 		var n = capacity * 2;
 		tested = new Lines(n, {segments: true, toneMapped: false, cap: Round});
-		over = new Lines(n, {segments: true, toneMapped: false, cap: Round, onTop: true});
+		over = new Lines(n, {segments: true, toneMapped: false, cap: Round, overlay: true});
 		width = options?.width ?? 2.0;
 	}
 
@@ -128,10 +128,10 @@ class DebugDraw implements RenderFeature {
 		over.dispose(lines.device);
 	}
 
-	// (a segment into the ring onTop picks)
+	// (a segment into the ring overlay picks)
 	static function segment(ax:Float, ay:Float, az:Float, bx:Float, by:Float, bz:Float, color:Int) {
 		if (rings == null) rings = [new Vector(capacity * FIELDS), new Vector(capacity * FIELDS)];
-		var ring = onTop ? 1 : 0, n = counts[ring];
+		var ring = overlay ? 1 : 0, n = counts[ring];
 		if (n >= capacity) {
 			dropped++;
 			return;

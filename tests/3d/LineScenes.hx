@@ -79,7 +79,7 @@ class LineScenes {
 					ring.setPoint(i, 1.6 + Math.cos(a) * 1.1, 0.9, -0.6 + Math.sin(a) * 1.1, 1, 0.85, 0.2);
 				}
 				// (over everything: through the pillar)
-				var over = Lines.attach(world.node("over"), new Lines(2, {width: 4, onTop: true, toneMapped: false}));
+				var over = Lines.attach(world.node("over"), new Lines(2, {width: 4, overlay: true, toneMapped: false}));
 				over.count = 2;
 				over.setPoint(0, 0.6, 0.5, -1.6, 1, 0.2, 0.6);
 				over.setPoint(1, 2.8, 1.3, 0.4, 1, 0.2, 0.6);
@@ -130,9 +130,9 @@ class LineScenes {
 					Debug.light(spot);
 					Debug.skeleton(skin);
 					Debug.path(curve, 24);
-					Debug.onTop(true);
+					Debug.overlay(true);
 					Debug.line(new Vec3(0.2, 0.4, -1.8), new Vec3(1.4, 0.4, -0.6), 0xFFFFFF);
-					Debug.onTop(false);
+					Debug.overlay(false);
 				};
 				Scenes.probe = () -> {
 					var segments = debug.drawn;

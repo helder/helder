@@ -50,7 +50,7 @@ class LinesDemo {
 		road.setPoint(1, 0.8, 0.02, -12, 0.3, 0.8, 1);
 		// a ring round the pillar, hidden behind it; a line over everything
 		var ring = Lines.attach(world.node("ring"), new Lines(48, {width: 4, closed: true}));
-		var over = Lines.attach(world.node("over"), new Lines(2, {width: 3, onTop: true}));
+		var over = Lines.attach(world.node("over"), new Lines(2, {width: 3, overlay: true}));
 		// #endregion
 		var pillar = world.node("pillar");
 		pillar.position = new Vec3(1.8, 0.9, -1.2);

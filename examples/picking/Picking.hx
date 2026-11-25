@@ -72,7 +72,7 @@ class Picking implements Markup {
 			paint.baseColorTexture = texture;
 		}
 		// (a ring of 32 points, round the cursor)
-		var cursor = new Lines(32, {width: 3, closed: true, onTop: true, toneMapped: false});
+		var cursor = new Lines(32, {width: 3, closed: true, overlay: true, toneMapped: false});
 		function place(e:SceneEvent) {
 			var n = e.normal, p = e.point + e.normal * 0.01;
 			var a = Math.abs(n.x) < 0.9 ? new Vec3(1, 0, 0) : new Vec3(0, 1, 0);

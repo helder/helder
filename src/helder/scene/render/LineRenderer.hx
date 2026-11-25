@@ -10,7 +10,7 @@ import helder.scene.render.LineShader;
 // LineRenderer.of(renderer)): each shown node's lines one instanced draw
 // (LineShader: a segment an instance), the depth-tested opaque ones after
 // the opaque surfaces (AfterOpaque), the see-through ones (transparent)
-// after the see-through surfaces, those drawn over everything (onTop) last
+// after the see-through surfaces, those drawn over everything (overlay) last
 // (AfterTransparent). Their points are uploaded once changed; nothing is
 // allocated a frame. DebugDraw draws through it.
 class LineRenderer implements RenderFeature {
@@ -26,7 +26,7 @@ class LineRenderer implements RenderFeature {
 		viewProj: Mat4.identity(), model: Mat4.identity(), viewport: new Vec4(0, 0, 0, 0), style: new Vec4(0, 0, 0, 0), dash: new Vec4(0, 0, 0, 0),
 		fog: new Vec4(0, 0, 0, 0), fogShape: new Vec4(0, 0, 0, 0), eye: new Vec4(0, 0, 0, 0)
 	};
-	// (by segments, then onTop, then transparent: made when first drawn)
+	// (by segments, then overlay, then transparent: made when first drawn)
 	final pipelines:Array<Null<Pipeline>> = [for (_ in 0...8) null];
 	var renderer:Null<Renderer> = null;
 	// what runs before the frame's lines (DebugDraw's: the helpers, its rings into its lines)
@@ -104,12 +104,12 @@ class LineRenderer implements RenderFeature {
 		var store = world.store(Lines.KIND);
 		for (k in 0...store.length) {
 			var node = store.nodeAt(k), l = store.valueAt(k);
-			var s = l.onTop ? 2 : l.transparent ? 1 : 0;
+			var s = l.overlay ? 2 : l.transparent ? 1 : 0;
 			if (s != stage || !l.visible || !node.shown() || !world.inTree(node)) continue;
 			draw(enc, frame, l, node.worldMatrix());
 		}
 		for (l in extras)
-			if ((l.onTop ? 2 : l.transparent ? 1 : 0) == stage && l.visible) draw(enc, frame, l, Mat4.identity());
+			if ((l.overlay ? 2 : l.transparent ? 1 : 0) == stage && l.visible) draw(enc, frame, l, Mat4.identity());
 	}
 
 
@@ -128,7 +128,7 @@ class LineRenderer implements RenderFeature {
 		b.dash = new Vec4(l.dash > 0 ? l.dash : 0, l.gap, l.dashOffset, l.toneMapped ? 1 : 0);
 		b.fog = Fog.colorOf(frame.fog);
 		b.fogShape = Fog.shapeOf(frame.fog);
-		b.eye = new Vec4(frame.eye.x, frame.eye.y, frame.eye.z, l.transparent || l.onTop ? 1 : 0);
+		b.eye = new Vec4(frame.eye.x, frame.eye.y, frame.eye.z, l.transparent || l.overlay ? 1 : 0);
 		LineShader.params.view.write(b, viewBytes);
 		enc.setPipeline(pipeline(l));
 		enc.setUniforms(LineShader.uniforms[0].binding, viewBytes);
@@ -148,14 +148,14 @@ class LineRenderer implements RenderFeature {
 	}
 
 	function pipeline(l:Lines):Pipeline {
-		var k = (l.segments ? 4 : 0) + (l.onTop ? 2 : 0) + (l.transparent ? 1 : 0);
+		var k = (l.segments ? 4 : 0) + (l.overlay ? 2 : 0) + (l.transparent ? 1 : 0);
 		var p = pipelines[k];
 		if (p != null) return p;
 		var d = LineShader.pipeline({
 			cull: None,
-			depthCompare: l.onTop ? Always : Less,
-			depthWrite: !l.onTop && !l.transparent,
-			blend: l.transparent || l.onTop ? Premultiplied : Opaque
+			depthCompare: l.overlay ? Always : Less,
+			depthWrite: !l.overlay && !l.transparent,
+			blend: l.transparent || l.overlay ? Premultiplied : Opaque
 		});
 		// (the corners, then four views of the points: the one before, the
 		// segment's two, the one after; segments' a pair an instance)

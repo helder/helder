@@ -92,7 +92,7 @@ class TransformGizmo implements SceneBox.SceneControl {
 
 	public function new(box:SceneBox, ?node:Node) {
 		this.box = box;
-		lines = new Lines(512, {segments: true, width: 3, onTop: true, toneMapped: false, cap: Round});
+		lines = new Lines(512, {segments: true, width: 3, overlay: true, toneMapped: false, cap: Round});
 		handles = box.world.node("transform-gizmo");
 		Lines.attach(handles, lines);
 		box.withRenderer(r -> helder.scene.render.LineRenderer.of(r));

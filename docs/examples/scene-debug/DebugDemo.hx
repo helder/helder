@@ -68,9 +68,9 @@ class DebugDemo {
 			DebugDraw.sphere(p, 0.35, 0x4080FF);
 			// (a ray from the ball down to the floor, where it lands marked over everything)
 			DebugDraw.ray(p, new Vec3(0, -1, 0), p.y);
-			DebugDraw.onTop = true;
+			DebugDraw.overlay = true;
 			DebugDraw.cross3(new Vec3(p.x, 0, p.z), 0.3, 0xFFFFFF);
-			DebugDraw.onTop = false;
+			DebugDraw.overlay = false;
 			// #endregion
 			var enc = device.beginFrame();
 			if (enc == null) return;

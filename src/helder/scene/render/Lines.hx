@@ -19,7 +19,7 @@ import helder.scene.Node;
 //   dash, gap    a dashed line (lengths in the line's own units along it;
 //                0: solid), dashOffset moving the dashes along (animated:
 //                a marching line)
-//   onTop        drawn over everything (not depth tested), after the
+//   overlay      drawn over everything (not depth tested), after the
 //                scene; else depth tested against it
 //   transparent  blended by its colours' alpha, after the see-through
 //                surfaces (not written to depth)
@@ -61,7 +61,7 @@ class Lines {
 	public var dashOffset:Float;
 	// a polyline's last point joined back to its first
 	public var closed:Bool;
-	public var onTop:Bool;
+	public var overlay:Bool;
 	public var transparent:Bool;
 	public var toneMapped:Bool;
 	public var visible = true;
@@ -89,7 +89,7 @@ class Lines {
 		gap = options?.gap ?? 0.0;
 		dashOffset = options?.dashOffset ?? 0.0;
 		closed = options?.closed ?? false;
-		onTop = options?.onTop ?? false;
+		overlay = options?.overlay ?? false;
 		transparent = options?.transparent ?? false;
 		toneMapped = options?.toneMapped ?? true;
 		points = new haxe.ds.Vector(capacity * FIELDS);
@@ -239,7 +239,7 @@ typedef LinesOptions = {
 	?gap:Float,
 	?dashOffset:Float,
 	?closed:Bool,
-	?onTop:Bool,
+	?overlay:Bool,
 	?transparent:Bool,
 	?toneMapped:Bool,
 	?count:Int
