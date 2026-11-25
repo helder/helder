@@ -18,8 +18,9 @@ import hxmc.unsafe.Ptr;
 // blend the two levels about it. Bilinear filtering weighs the four texels
 // about the point by its fraction in float (GPUs' 8 bits of sub-texel
 // precision aside); a cube's face is the direction's largest component
-// (TextureCube.faceOf, the CPU's own), filtered within it (clamped at its
-// edges, not across to the next face). No anisotropy: helder's samplers
+// (TextureCube.faceOf, the CPU's own), filtered across its edges as GPUs
+// filter a seamless cube: a texel past one read from the face its centre
+// falls on (at a corner, the nearer of the two). No anisotropy: helder's samplers
 // have none. Reads only memory outside the collector's heap: tiles sample
 // on any thread.
 @:hxmc.unsafe(gc)
@@ -40,8 +41,11 @@ class Sample {
 
 	public static function cubeAt(b:Ptr, dir:Vec3, level:Float):Vec4 {
 		var f = TextureCube.faceOf(dir);
-		return at(b, Std.int(f.x), f.y, f.z, level, 1);
+		return at(b, Std.int(f.x), f.y, f.z, level, CUBE);
 	}
+
+	// (a cube's wrap: past a face's edge, the next face's texels: seamless)
+	static inline var CUBE = 3;
 
 	// ---- lanes
 
@@ -275,15 +279,41 @@ class Sample {
 		if (!linear) return texel(t, base, w, wrapped(Math.floor(u * w), w, wrap), wrapped(Math.floor(v * h), h, wrap));
 		var x = u * w - 0.5, y = v * h - 0.5;
 		var x0 = Math.floor(x), y0 = Math.floor(y), fx = x - x0, fy = y - y0;
+		if (wrap == CUBE) {
+			var a = edge(t, level, layer, w, x0, y0), b = edge(t, level, layer, w, x0 + 1, y0), c = edge(t, level, layer, w, x0, y0 + 1),
+				d = edge(t, level, layer, w, x0 + 1, y0 + 1);
+			var top = a + (b - a) * fx, bottom = c + (d - c) * fx;
+			return top + (bottom - top) * fy;
+		}
 		var xa = wrapped(x0, w, wrap), xb = wrapped(x0 + 1, w, wrap), ya = wrapped(y0, h, wrap), yb = wrapped(y0 + 1, h, wrap);
 		var a = texel(t, base, w, xa, ya), b = texel(t, base, w, xb, ya), c = texel(t, base, w, xa, yb), d = texel(t, base, w, xb, yb);
 		var top = a + (b - a) * fx, bottom = c + (d - c) * fx;
 		return top + (bottom - top) * fy;
 	}
 
+	// (texel x, y of a cube's face, n wide: past its edge, the texel of the
+	// face the texel's centre falls on, turned to a direction again)
+	static function edge(t:Ptr, level:Int, face:Int, n:Int, x:Int, y:Int):Vec4 {
+		if (x >= 0 && y >= 0 && x < n && y < n) return texel(t, SoftTexture.at(t, level, face), n, x, y);
+		var s = (x + 0.5) / n * 2 - 1, c = (y + 0.5) / n * 2 - 1;
+		var d = switch face {
+			case 0: new Vec3(1, -c, -s);
+			case 1: new Vec3(-1, -c, s);
+			case 2: new Vec3(s, 1, c);
+			case 3: new Vec3(s, -1, -c);
+			case 4: new Vec3(s, -c, 1);
+			case _: new Vec3(-s, -c, -1);
+		}
+		var f = TextureCube.faceOf(d), g = Std.int(f.x);
+		var fx = Std.int(f.y * n), fy = Std.int(f.z * n);
+		fx = fx < 0 ? 0 : fx >= n ? n - 1 : fx;
+		fy = fy < 0 ? 0 : fy >= n ? n - 1 : fy;
+		return texel(t, SoftTexture.at(t, level, g), n, fx, fy);
+	}
+
 	static inline function wrapped(i:Int, n:Int, wrap:Int):Int
 		return switch wrap {
-			case 1: i < 0 ? 0 : i >= n ? n - 1 : i;
+			case 1 | 3: i < 0 ? 0 : i >= n ? n - 1 : i;
 			case 2:
 				var k = i % (2 * n);
 				if (k < 0) k += 2 * n;
