@@ -65,6 +65,11 @@ class Decoders {
 	// helder's own Vorbis decoder, once linked (VorbisDecoder.link)
 	@:allow(helder.media.VorbisDecoder) static var vorbis:Null<MediaTrack->AudioDecoder>;
 
+	// whether helder's own Vorbis decoder is linked (VorbisDecoder.link):
+	// Vorbis plays here whatever the system has
+	public static function hasVorbis():Bool
+		return vorbis != null;
+
 	public static function video(t:MediaTrack):Null<VideoDecoder> {
 		#if (!helder.os || helder.os == "macos" || helder.os == "ios")
 		if (Platform.os() == 1 && helder.media.apple.VtDecoder.supports(t.codec)) return new helder.media.apple.VtDecoder(t);

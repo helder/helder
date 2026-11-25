@@ -13,7 +13,13 @@ class FolderModel {
 	public static final SYSTEM = #if (hxmc.target == "wasm32-wasi") false #else helder.os.SystemImages.available() #end;
 	public static final EXTENSIONS = ["png", "apng", "jpg", "jpeg", "jfif", "gif", "webp", "pdf"].concat(#if (hxmc.target == "wasm32-wasi") [] #else SYSTEM ? helder.os.SystemImages.EXTENSIONS : [] #end);
 	// (video and audio, where the system decodes them: helder.media)
-	public static final MEDIA = helder.media.Decoders.available() ? ["mp4", "mov", "m4v", "webm", "mkv", "m4a", "mp3", "flac", "mka"] : [];
+	static final MEDIA = ["mp4", "mov", "m4v", "webm", "mkv", "m4a", "mp3", "flac", "mka"];
+	static final VORBIS = ["webm", "mka"];
+
+	// what plays here: helder.media's types where the system decodes them;
+	// else, helder's own Vorbis decoder linked (the tests'), its containers
+	public static function media():Array<String>
+		return helder.media.Decoders.available() ? MEDIA : helder.media.Decoders.hasVorbis() ? VORBIS : [];
 	// (Markdown documents: helder.markdown, everywhere)
 	public static final MARKDOWN = ["md", "markdown", "mdown"];
 
@@ -47,7 +53,7 @@ class FolderModel {
 
 	public static function isMedia(name:String):Bool {
 		var dot = name.lastIndexOf(".");
-		return dot > 0 && MEDIA.contains(name.substr(dot + 1).toLowerCase());
+		return dot > 0 && media().contains(name.substr(dot + 1).toLowerCase());
 	}
 
 	public static function isMarkdown(name:String):Bool {

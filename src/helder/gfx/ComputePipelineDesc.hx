@@ -5,6 +5,6 @@ typedef ComputePipelineDesc = {
 	// ComputeShader's pipeline(): Device.createComputePipeline compiles it);
 	// its ShaderCode.workgroupSize is the workgroup's size (Metal's
 	// dispatches give it)
-	?shader:Shader,
+	?shader:ShaderModule,
 	?program:ShaderCode
 }

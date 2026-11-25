@@ -1,13 +1,13 @@
-package helder.ui;
+package helder.ui.nav;
 
 import helder.test.Test;
 import helder.view.graph.Graph;
 
-// Router: paths matched in order, params typed by the path, the query, the
+// Routes: paths matched in order, params typed by the path, the query, the
 // fallback; go, back, replace, reset and open on the stack
 function tests() {
-	function nav():Router {
-		return new Router()
+	function nav():Routes {
+		return new Routes()
 			.route("/", _ -> <text>home</text>)
 			.route("/product/:id", p -> {
 				var id:String = p.id;
@@ -16,9 +16,9 @@ function tests() {
 			.route("/a/:x/b/:y", p -> <text>{p.x + p.y}</text>)
 			.fallback(path -> <text>{"missing " + path}</text>);
 	}
-	function paths(r:Router):String
+	function paths(r:Routes):String
 		return [for (e in (r : helder.ui.nav.Router).entries.peek()) e.path].join(" ");
-	describe("Router", () -> {
+	describe("Routes", () -> {
 		test("paths, params and the query", () -> {
 			var r = nav();
 			r.go("/product/3?tab=specs&q=a%20b");
@@ -35,7 +35,7 @@ function tests() {
 			equals(paths(r), "/ /product/3 /a/1/b/2 /nowhere/x");
 		});
 		test("no route and no fallback: an error", () -> {
-			var r = new Router().route("/", _ -> <text>home</text>);
+			var r = new Routes().route("/", _ -> <text>home</text>);
 			equals(try {
 				r.go("/x");
 				"";

@@ -212,7 +212,7 @@ class Tools implements Mcp.Target {
 		var t0 = haxe.Timer.stamp();
 		Async.delay(0.02);
 		while (pr != null && pr.busy() && haxe.Timer.stamp() - t0 < 120) Async.delay(0.02);
-		var diags = pr == null ? [] : [for (d in pr.diagnostics.peek()) d];
+		var diags = pr == null ? [] : [for (d in pr.latest) d];
 		var colour = agent == null ? null : studio.presence.peer(agent)?.colour;
 		if (colour != null) studio.marks.touched(colour, f, ranges);
 		return {

@@ -1,6 +1,6 @@
 // helder/markdown from TypeScript (the test lane: natively and as
 // wasm32-wasi): a document parsed, its front matter, its headings' ids, a
-// view of it.
+// view of it, updated.
 import { describe, test, assert, equals } from "helder/test";
 import { Markdown, MarkdownView } from "helder/markdown";
 
@@ -14,5 +14,8 @@ describe("helder/markdown", () => {
 		equals(view.headings(), ["hello-there", "again"]);
 		assert(view.scroller !== null);
 		equals(new MarkdownView({ doc, scroll: false, blocks: 1 }).scroller, null);
+		view.update(Markdown.parse("# Hello there\n\nMore."));
+		equals(view.headings(), ["hello-there"]);
+		equals(view.doc.blocks.length, 2);
 	});
 });

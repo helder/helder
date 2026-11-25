@@ -33,7 +33,7 @@ typedef SurfaceProps = {
 	// (a first value not opaque, "transparent" or a colour's alpha: a
 	// transparent window, what is behind it seen through: Window's)
 	?background:helder.view.graph.Read<Dynamic>,
-	// the system's material behind the window ("blur", "mica", "glass":
+	// the system's material behind the window ("blur", "mica", "sidebar", "glass":
 	// helder.os's Backdrop, where the system has it), seen through a clear or
 	// half-clear background; one makes the window transparent
 	?backdrop:helder.view.graph.Read<String>,
@@ -226,6 +226,8 @@ class UiWindow {
 		// (an inset title bar: a press's answer the ui's, its drag regions and window buttons)
 		if (titlebar != Standard) window.titlebarAt = (x, y) -> ui.titleHit(x / scale, y / scale);
 		ui.dark = dark.peek();
+		// (a hand over what is pressed, as web pages have it)
+		if (Platform.os() == 3) ui.pressCursor = Pointer;
 		nativeScroll(scrolling);
 		// (a touch drag the program's where it scrolls something: the page's otherwise)
 		window.scrollsAt = (x, y, dx, dy) -> ui.scrollsAt(x / scale, y / scale, dx / scale, dy / scale);
@@ -450,6 +452,7 @@ class UiWindow {
 		#if !helder.soft if (renderer != null) renderer.scale = scale; #end
 		ui.resize(w / scale, h / scale);
 		ui.scale = scale;
+		ui.active = window.active;
 		ui.live = window.surface.resizing;
 		if (!ui.live && ui.stretched.length > 0) {
 			for (n in ui.stretched)

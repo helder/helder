@@ -42,7 +42,7 @@ class Script {
 
 	// StandardAction's actions (standard::Quit...)
 	public static function standard():ActionSpace<Dynamic>
-		return cast Standard.declare();
+		return cast Actions.standard();
 
 	// a space's actions as the definition's output describes them (JSON)
 	public static function info(space:ActionSpace<Dynamic>):String

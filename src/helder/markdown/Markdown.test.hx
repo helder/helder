@@ -1,6 +1,7 @@
 package helder.markdown;
 
 import helder.markdown.Doc;
+import helder.test.Gen;
 import helder.test.Test;
 
 using StringTools;
@@ -13,7 +14,10 @@ using StringTools;
 // cmark-gfm's examples of its extensions (tables, task lists,
 // strikethrough, autolinks; its tag filter is moot, raw HTML being text).
 // Each rendered to HTML as commonmark.js renders it (Html, below). Then
-// the tree itself, and pathological inputs parsed in linear time.
+// the tree itself, and pathological inputs parsed in linear time; then
+// properties: any text (Markdown's marks and runs of them, any characters)
+// parses within a bound of steps a character, and plain text's paragraph
+// is that text.
 @:test.interp
 function tests() {
 	describe("Markdown", () -> {
@@ -91,7 +95,41 @@ function tests() {
 			equals(superlinear, []);
 		});
 	});
+	describe("properties", () -> {
+		test("any text parses, in steps bounded by its length", () -> property(MARKDOWN, text -> {
+			var from = Scan.steps, t0 = haxe.Timer.stamp();
+			Markdown.parse(text);
+			var steps = Scan.steps - from;
+			// (a bound of steps, the same anywhere; and seconds, against a stall the count misses)
+			assert(steps <= 40 * text.length + 400, '$steps steps for ${text.length} characters');
+			assert(haxe.Timer.stamp() - t0 < 2, "over 2 s");
+		}, {cases: 300}));
+		test("plain text's paragraph: that text", () -> property(PLAIN, text -> switch Markdown.parse(text).blocks {
+			case [Paragraph(content)]: equals(Markdown.plain(content), text);
+			case b: fail('not a paragraph: $b');
+		}));
+	});
 }
+
+// (Markdown's marks, a mark's runs (nesting, openers left open), words and any characters, NUL included)
+private final MARKS = [
+	"*", "_", "**", "__", "~~", "`", "```", "~~~", "[", "]", "(", ")", "![", "](", "]: ", "<", ">", "<!--", "-->", "<a ", "</a>", "<?", "<![CDATA[",
+	"#", "# ", "###### ", "- ", "* ", "+ ", "1. ", "9) ", "> ", "\n", "\n\n", "    ", "\t", "  \n", "|", "| - |", "|:-:|", "---", "===", "\\",
+	"&amp;", "&#", "&#x", ";", "http://a.b/c", "www.a.b", "a@b.c", "[x]: /u", "[x]", "- [ ] ", "- [x] ", "\r\n", "\r", "a", " ", "foo", "\"", "'"
+];
+
+private final MARKDOWN:Gen<String> = array(oneOf([
+	pick(MARKS),
+	string(char(true), 1, 6),
+	c -> StringTools.lpad("", c.draw(pick(MARKS)), c.draw(int(1, 400))),
+	c -> [for (k in 0...c.draw(int(1, 60))) StringTools.lpad("", " ", k * c.draw(int(0, 4))) + c.draw(pick(["- a", "> a", "1. a", "* a"]))].join("\n")
+]), 0, 200).map(p -> p.join(""));
+
+// (words of letters and digits, other scripts' and emoji's, a space apart: no markup)
+private final PLAIN:Gen<String> = array(string(oneOf([
+	pick("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".split("")),
+	pick(["é", "ß", "中", "א", "ا", "ж", "😀", "👍🏽", "e\u0301"])
+]), 1, 12), 1, 30).map(w -> w.join(" "));
 
 // CommonMark's examples: name, Markdown, HTML
 final SPEC:Array<Array<String>> = [

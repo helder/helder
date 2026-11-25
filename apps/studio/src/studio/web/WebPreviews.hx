@@ -34,9 +34,12 @@ class WebPreviews {
 	public final screens:Array<Screen>;
 	public final status = signal("starting");
 	public final diagnostics:Signal<Array<Diagnostic>> = signal([]);
+	// (the last build's, as a plain value: a signal's write lands at the event's end)
+	public var latest(default, null):Array<Diagnostic> = [];
 	public final buildMs = signal(0);
 	public var onFrame:Null<Screen->Void> = null;
 	public var onLog:String->Void = s -> Sys.println(s);
+	public var onBuilt:Null<(ok:Bool, why:String, diagnostics:Array<Diagnostic>) -> Void> = null;
 	public var failed(default, null) = false;
 	// the host's screens by index (Host.ready's order)
 	var order:Array<Screen> = [];
@@ -65,6 +68,10 @@ class WebPreviews {
 
 	public function screen(name:String):Null<Screen>
 		return Lambda.find(screens, s -> s.info.name == name);
+
+	// (Previews.follow's)
+	public function follow()
+		Screen.follow(screens, project.live());
 
 	public function allShown():Bool
 		return !Lambda.exists(screens, s -> s.version == 0 && !s.crashed) || failed;
@@ -235,6 +242,7 @@ class WebPreviews {
 
 	// a save from the code view: its live literals patched, else a build's (the compiler's worker)
 	@:coroutine public function saved(task:Node, file:String, ?literalsOnly:Bool):String {
+		if (failed && literalsOnly != true) return rebuild(task, [file]) ? "built" : "failed";
 		var why = null;
 		var patches = literalPatches(file, studio.Files.read(file), w -> why = w);
 		if (patches != null && patches.length == 0) return "unchanged";
@@ -289,7 +297,7 @@ class WebPreviews {
 	// copied in as modules), the host started again from its state; without
 	// that worker: saved, not built
 	@:coroutine public function rebuild(task:Node, changed:Array<String>):Bool {
-		diagnostics([]);
+		diagnostics(latest = []);
 		var gen = '${project.dir}/.studio/gen';
 		var modules = [];
 		for (f in [for (s in project.screens) s.file]) {
@@ -322,10 +330,12 @@ class WebPreviews {
 		buildMs(Math.round((haxe.Timer.stamp() - t0) * 1000));
 		helder.view.graph.Graph.flush();
 		var ds:Array<Diagnostic> = r == null || r.diagnostics == null ? [] : r.diagnostics;
-		diagnostics([for (d in ds) d.file == null ? d : {file: project.real(d.file), line: d.line, column: d.column, endColumn: d.endColumn, severity: d.severity, message: d.message}]);
+		ds = [for (d in ds) d.file == null ? d : {file: project.real(d.file), line: d.line, column: d.column, endColumn: d.endColumn, severity: d.severity, message: d.message}];
+		diagnostics(latest = ds);
 		if (r == null || r.ok != true) {
 			setStatus("failed");
 			onLog('studio: the build failed: ' + (r?.why ?? r?.messages ?? "no answer"));
+			if (onBuilt != null) onBuilt(false, r?.why ?? "the build failed", ds);
 			return false;
 		}
 		// (the build's paths: the compiler's, /work/<name>/..., for each of the project's files)
@@ -351,6 +361,7 @@ class WebPreviews {
 			s.reloading = true;
 		drawingSince = haxe.Timer.stamp();
 		setStatus("running");
+		if (onBuilt != null) onBuilt(true, "", ds);
 		return true;
 	}
 

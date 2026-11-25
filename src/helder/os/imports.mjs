@@ -581,6 +581,10 @@ export default function os(host) {
 	let query = 0;
 	// the next frame's requestAnimationFrame
 	let frameId = 0;
+	// (a resize's frame now, start's, so that the frame laying out the new
+	// size shows it, not the old one stretched: on the page's thread one
+	// outside the animation frames; in a worker the one waiting, if any)
+	let frameNow = null;
 	let keyboardAt = 0;
 	// App.backDepth's history entry (one of the page's own, state
 	// {helderBack: 1}, while want: the app deep): pushed, or on its way out
@@ -617,6 +621,20 @@ export default function os(host) {
 		const vv = globalThis.visualViewport;
 		return vv ? Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop)) : 0;
 	};
+	// (in a worker: the windows' canvases resized to the newest sizes the
+	// page told, before a frame; only what changed, as setting either
+	// reallocates the drawing buffer)
+	function resizeNext() {
+		for (const h of windows) {
+			const c = host.handles.get(h), n = c.hxmcNext;
+			if (!n) continue;
+			c.hxmcNext = null;
+			if (c.width === n[0] && c.height === n[1]) continue;
+			if (c.width !== n[0]) c.width = n[0];
+			if (c.height !== n[1]) c.height = n[1];
+			push([h, RESIZE, 0, n[0], n[1], 0, 0]);
+		}
+	}
 	// (whether the page's styles leave a canvas's displayed size its buffer's: told before its control went to a worker)
 	function unsized(c) {
 		if (c.hxmcUnsized !== undefined) return c.hxmcUnsized;
@@ -667,7 +685,7 @@ export default function os(host) {
 		const check = () => {
 			if (stopped) return;
 			requestAnimationFrame(check);
-			program.post({ type: 'frame' });
+			program.post({ type: 'frame', at: performance.timeOrigin + performance.now() });
 			if (pixelRatio() !== ratio) {
 				tell({ ratio: (ratio = pixelRatio()) });
 				for (const h of windows) {
@@ -700,10 +718,15 @@ export default function os(host) {
 		page.on('event', (m) => push(m.ev));
 		page.on('size', (m) => {
 			const c = host.handles.get(m.h);
-			if (!c || (c.width === m.w && c.height === m.hh)) return;
-			c.width = m.w;
-			c.height = m.hh;
-			push([m.h, RESIZE, 0, m.w, m.hh, 0, 0]);
+			if (!c) return;
+			// (the newest kept, the canvas resized by the next frame: a resize
+			// reallocates its drawing buffer, tens of ms under a software GL,
+			// so that sizes come in while one is made, each made in turn. Drawn
+			// by the frame waiting for the page's marker, at once: the page
+			// shows the old frame stretched until a new one comes; never a frame
+			// more, so that a burst of sizes draws the newest once)
+			c.hxmcNext = [m.w, m.hh];
+			frameNow?.();
 		});
 		page.on('state', (m) => {
 			const t = m.state;
@@ -882,15 +905,28 @@ export default function os(host) {
 			if (hw) host.handles.set(hw, c);
 			program?.post({ type: 'size', h, w: bw, hh: bh });
 			// (its displayed size followed: the page's styles, a ResizeObserver
-			// telling the next frame, or at once the worker)
+			// drawing a frame at once (its callbacks come after the animation
+			// frames' and before the paint: a frame later the page would show the
+			// old one stretched), or telling the worker)
 			c.hxmcResized = true;
 			c.hxmcSize = new ResizeObserver(() => {
 				c.hxmcResized = true;
 				if (program) sync(h);
+				else if (frameNow && sync(h)) {
+					push([h, RESIZE, 0, b.width, b.height, 0, 0]);
+					frameNow();
+				}
 			});
 			c.hxmcSize.observe(c);
 			sync(h);
 			c.hxmcOff = listen(c, h);
+			// (in a worker: the page's resize told at once, its layout read then,
+			// before the frame's animation frames: the worker draws while the page
+			// lays out, rather than from the ResizeObserver's after it, a frame on)
+			if (program) addEventListener('resize', () => {
+				c.hxmcResized = true;
+				sync(h);
+			}, { signal: c.hxmcOff.signal });
 			c.hxmcSeen = new IntersectionObserver(([e]) => {
 				c.hxmcShown = e.isIntersecting;
 				program?.post({ type: 'state', state: { shown: { [h]: e.isIntersecting } } });
@@ -1323,8 +1359,10 @@ export default function os(host) {
 				clearTimeout(timer);
 				f?.();
 			};
-			if (page) page.on('frame', () => {
-				marked = performance.now();
+			// (marked at the page's time of its frame: one that came late, the
+			// worker busy, is not this frame's, whose resize may be on its way)
+			if (page) page.on('frame', (m) => {
+				marked = (m.at ?? performance.timeOrigin + performance.now()) - performance.timeOrigin;
 				if (due) go();
 			});
 			const raf = !page ? requestAnimationFrame : (f) => later(() => {
@@ -1333,10 +1371,16 @@ export default function os(host) {
 				else timer = setTimeout(go, 4);
 			});
 			const shown = (h) => (page ? page.state.shown[h] : host.handles.get(h).hxmcShown);
+			const hidden = () => windows.size > 0 && [...windows].every((h) => shown(h) === false);
 			const tick = () => {
 				frameId = 0;
 				if (stopped) return;
-				if (windows.size > 0 && [...windows].every((h) => shown(h) === false)) return (frameId = raf(tick));
+				if (hidden()) return (frameId = raf(tick));
+				if (step()) frameId = raf(tick);
+			};
+			// (false once the program asks for no more)
+			const step = () => {
+				if (page) resizeNext();
 				// (in a worker the page tells these as they change)
 				if (!page && pixelRatio() !== ratio) {
 					ratio = pixelRatio();
@@ -1363,10 +1407,18 @@ export default function os(host) {
 					stopped = true;
 					if (!host.options.onError) throw e;
 					host.options.onError(e);
-					return;
+					return false;
 				}
 				if (host.exitCode && host.options.onError) host.options.onError(new Error('the program exited with code ' + host.exitCode));
-				if (more) frameId = raf(tick);
+				return more;
+			};
+			// (in a worker, one a step outside its animation frames was a frame
+			// more each step: under a slow GL, CI's SwiftShader, a burst of
+			// resizes stalled it for frames)
+			frameNow = page ? () => due && go() : () => {
+				if (stopped || hidden()) return;
+				// (the animation frames go on: one asked for already, else from here)
+				if (step() && !frameId) frameId = raf(tick);
 			};
 			frameId = raf(tick);
 		},

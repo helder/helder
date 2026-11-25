@@ -121,6 +121,9 @@ class Theme {
 		"sand" => Color.parse("#dcc994"),
 		"rose" => Color.parse("#dba7b6"),
 		"red" => Color.parse("#ec8383"),
+		// a failed build (its chip by each live frame's caption): the red, on a tint of it
+		"error" => Color.parse("#ec8383"),
+		"error-soft" => Color.parse("rgba(236, 131, 131, 0.16)"),
 	]));
 
 	// files' icons by kind (FileView.hue): the code's hues, a design's violet,

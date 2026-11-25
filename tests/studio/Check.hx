@@ -43,6 +43,12 @@ using StringTools;
 // dragged from the tree onto the Home frame (an <image src> of its path,
 // its size the image's); a file dropped from the system on the assets
 // folder's row copied into it.
+// Then a story file changed under the studio (tests/Run.hx's studioStories:
+// a copy of examples/ts-todo driven over MCP): its exports renamed, a story
+// renamed and one added, the screens following them, built, the new one
+// shown; a story file written on disk, its screen shown; a type error in
+// app.tsx shown as the build's failure (its first error, app.tsx:line), then
+// cleared by the fix.
 // The measurements (cold start to the first frame, the project's screens
 // all shown, an inspector's change to the program's frame) printed.
 class Check {
@@ -79,6 +85,7 @@ class Check {
 		free(events('$dir/free.jsonl'), '$dir/free');
 		phone(events('$dir/phone.jsonl'));
 		files(File.getContent("tests/studio/design/app.helder"), File.getContent('$dir/files/app.helder'), events('$dir/files.jsonl'), '$dir/files');
+		stories(events('$dir/stories.jsonl'));
 		Sys.println("studio: | | cold start to first frame | open to all screens shown | inspector change to the program's frame |");
 		for (r in rows) Sys.println('studio: | ${r.app} | ${r.first} ms | ${r.shown} ms | ${r.patch} ms (${r.frames} studio frame(s)) |');
 		Sys.println('studio: $checks checks' + (failed == 0 ? ", ok" : ', $failed FAILED'));
@@ -155,6 +162,28 @@ class Check {
 		check('free: Play runs the selected story in the studio', play != null && play.kind == "story" && play.screen == "Todo/Three items" && play.target == "studio", Json.stringify(play));
 		check('free: a tap in the player is the story\'s (Call Ana removed), Escape stops',
 			stopped != null && (stopped.texts : Array<String>).contains("Buy milk") && !(stopped.texts : Array<String>).contains("Call Ana"), Json.stringify(stopped));
+	}
+
+	static function stories(ev:Array<Dynamic>) {
+		function all(name:String):Array<Dynamic>
+			return [for (e in ev) if (e.event == name) e];
+		var read = all("stories");
+		var first:Dynamic = read[0], extra:Dynamic = read[1];
+		check('stories: the exports renamed, a story renamed and one added: the screens follow',
+			first != null && (first.screens : Array<String>).join(", ") == "Todo/Empty, Todo/Three items, Todo/All done, Phone/Three items, Todo/One item",
+			Json.stringify(first));
+		var after = ev.filter(e -> e.event == "built" && ev.indexOf(e) > ev.indexOf(first));
+		check('stories: then built, every source', after.length > 0 && after[0].ok == true, Json.stringify(after[0]));
+		var shown = [for (e in all("screen-shown")) e.screen];
+		check('stories: the new screens shown', shown.contains("Todo/One item") && shown.contains("Todo/All done") && shown.contains("Extra/Blank"), shown.join(", "));
+		check('stories: a story file written on disk read', extra != null && (extra.file : String).endsWith("extra.story.tsx")
+			&& (extra.screens : Array<String>).contains("Extra/Blank"), Json.stringify(extra));
+		var failures = all("failure");
+		var failed:Dynamic = Lambda.find(failures, e -> e.cleared != true);
+		check('stories: a type error: the build\'s failure, app.tsx:88', failed != null && failed.at == "app.tsx:88" && failed.errors >= 1, Json.stringify(failures));
+		var cleared:Dynamic = Lambda.find(failures, e -> e.cleared == true && ev.indexOf(e) > ev.indexOf(failed));
+		check('stories: fixed: the failure cleared', failed != null && cleared != null, Json.stringify(failures));
+		check('stories: no failure before the type error', failures.length > 0 && failures[0] == failed, Json.stringify(failures));
 	}
 
 	static function phone(ev:Array<Dynamic>) {

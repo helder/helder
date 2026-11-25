@@ -52,13 +52,19 @@ export declare class Markdown {
 // its blocks, a long document's rows out of view too, copied with a blank
 // line between blocks and a line between list items (markers not in it).
 // Spacing between nested blocks is their container's row-gap (a quote's,
-// an item body's, a list's).
+// an item body's, a list's). update(doc) shows another doc (a reply as it
+// streams in): the rows of the blocks it shares with the last kept.
 export declare class MarkdownView extends Node {
 	constructor(props: MarkdownProps);
 	static readonly VIRTUAL: number;
 	readonly doc: Doc;
 	// the scroller (a VirtualScroll past VIRTUAL blocks; null with scroll false)
 	readonly scroller: Node | null;
+	// another doc shown (the same text grown: a reply streamed): the rows of
+	// the first blocks equal to the last doc's kept (their nodes, a selection
+	// in them, the scroll), the rest made again; a long document's
+	// (VirtualScroll) made again whole
+	update(next: Doc): void;
 	// the heading with this id (a link's "#id", Markdown.slug's) brought to the view's top; false: none
 	scrollToHeading(id: string): boolean;
 	// the headings' ids, in order

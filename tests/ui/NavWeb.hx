@@ -1,4 +1,4 @@
-import helder.ui.Router;
+import helder.ui.nav.Routes;
 import helder.ui.Stack;
 import helder.ui.UiWindow;
 import helder.view.*;
@@ -10,7 +10,7 @@ import helder.view.*;
 class NavWeb implements Markup {
 	static function main() {
 		var w = new UiWindow("NavWeb", 200, 120);
-		final nav = new Router();
+		final nav = new Routes();
 		nav.route("/", _ -> <view tag="home" grow={1}/>).route("/item/:id", p -> <view tag={"item-" + p.id} grow={1}/>);
 		Render.render(<Stack router={nav} transition={None}/>, w.root);
 		var n = 0, last = "";
