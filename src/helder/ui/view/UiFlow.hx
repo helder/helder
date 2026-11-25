@@ -23,7 +23,7 @@ class UiFlow {
 	// outside (unless dismissOnOutside is false) or Escape asks it to close; onOpen once it is open (to move
 	// the focus into it); a modal one's backdrop its colour; the popup's
 	// slot for a theme (Node.slot). Its content is rendered once, kept while closed.
-	public static function Popover(props:{open:Read<Bool>, ?anchor:Node, ?placement:String, ?gap:Float, ?modal:Bool, ?backdrop:Color, ?slot:String,
+	public static function Popover(props:{open:Read<Bool>, ?anchor:Node, ?placement:helder.ui.Placement, ?gap:Float, ?modal:Bool, ?backdrop:Color, ?slot:String,
 			?onDismiss:Void->Void, ?dismissOnOutside:Bool, ?onOpen:helder.ui.Popup->Void, ?at:Void->{x:Float, y:Float}, ?tag:String, ?children:Any}):Any
 		return new PopoverMount(props);
 
@@ -69,24 +69,25 @@ class UiFlow {
 }
 
 typedef VirtualListProps<T> = {
-	each:Read<Array<T>>,
-	children:(Read<T>, Int)->Any,
-	?by:T->Dynamic,
-	?keyed:Bool,
-	?estimate:Float,
-	?itemHeight:Float,
-	?height:Float,
-	?overscan:Int,
-	?keep:Int,
-	?selected:Signal<Dynamic>,
-	?onActivate:EitherType<T->Void, Array<Int>->Void>,
-	?label:String,
-	?ref:VirtualScroll->Void,
-	?tag:String,
-	?selection:Selection,
-	?selectMode:Read<Bool>,
-	?onContextMenu:(Int, Float, Float)->Void,
-	?textOf:T->String
+	var each:Read<Array<T>>;
+	var children:(Read<T>, Int)->Any;
+	@:typescript.type("(item: T) => string | number") var ?by:T->Dynamic;
+	var ?keyed:Bool;
+	var ?estimate:Float;
+	var ?itemHeight:Float;
+	var ?height:Float;
+	var ?overscan:Int;
+	var ?keep:Int;
+	// (the selected row's key: by's, else its item where keyed, else its index)
+	@:typescript.type("Signal<T | string | number | null>") var ?selected:Signal<Dynamic>;
+	var ?onActivate:EitherType<T->Void, Array<Int>->Void>;
+	var ?label:String;
+	var ?ref:VirtualScroll->Void;
+	var ?tag:String;
+	var ?selection:Selection;
+	var ?selectMode:Read<Bool>;
+	var ?onContextMenu:(Int, Float, Float)->Void;
+	var ?textOf:T->String;
 }
 
 typedef VirtualGridProps<T> = {
@@ -157,7 +158,7 @@ private class VirtualCells<T> implements Mountable<Node> {
 // the marker's Ui while open is true
 @:renderer(helder.ui.view.NodeRenderer)
 class PopoverMount implements Mountable<Node> {
-	final props:{open:Read<Bool>, ?anchor:Node, ?placement:String, ?gap:Float, ?modal:Bool, ?backdrop:Color, ?slot:String, ?onDismiss:Void->Void,
+	final props:{open:Read<Bool>, ?anchor:Node, ?placement:helder.ui.Placement, ?gap:Float, ?modal:Bool, ?backdrop:Color, ?slot:String, ?onDismiss:Void->Void,
 		?dismissOnOutside:Bool, ?onOpen:helder.ui.Popup->Void, ?at:Void->{x:Float, y:Float}, ?tag:String, ?children:Any};
 
 	public function new(props)

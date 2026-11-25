@@ -406,7 +406,7 @@ class IosWindow {
 	// a key without a character: its KeyDown and KeyUp
 	function press(key:Int) {
 		var e = event;
-		for (kind in [KeyDown, KeyUp]) {
+		for (kind in [EventKind.KeyDown, EventKind.KeyUp]) {
 			e.kind = kind;
 			e.window = owner;
 			e.key = key;

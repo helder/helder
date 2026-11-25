@@ -3,7 +3,7 @@ package helder.scene.view;
 import helder.gfx.shader.Vec3;
 import helder.gfx.shader.Vec4;
 import helder.scene.render.PostProcess;
-import helder.scene.render.PostProcess.ToneMap;
+import helder.scene.render.ToneMap;
 import helder.scene.view.SceneRenderer.SceneNode;
 import helder.view.Render;
 import helder.view.graph.Graph;
@@ -125,7 +125,7 @@ class EffectTags {
 	// FXAA in the composite (post.antialias Fxaa)
 	public static function Fxaa(props:{}):SceneNode {
 		var box = boxOf("Fxaa");
-		return effect(box, "fxaa", p -> p.antialias = helder.scene.render.PostProcess.Antialias.Fxaa, p -> p.antialias = helder.scene.render.PostProcess.Antialias.None);
+		return effect(box, "fxaa", p -> p.antialias = helder.scene.render.Antialias.Fxaa, p -> p.antialias = helder.scene.render.Antialias.None);
 	}
 
 	// SMAA (helder.scene.render.Smaa): edges and their blending weights,

@@ -93,7 +93,7 @@ class Instancing {
 		// #region instanced-mesh
 		set = new InstancedMesh(rock, MAX_INSTANCES, count);
 		for (i in 0...MAX_INSTANCES)
-			set.setColor(i, tints[i].x, tints[i].y, tints[i].z);
+			set.setColor(i, new Vec3(tints[i].x, tints[i].y, tints[i].z));
 		InstancedMesh.attach(world.node("belt"), set);
 		// #endregion
 		// (a planet in the middle)

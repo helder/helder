@@ -395,11 +395,11 @@ class AndroidLayersTest {
 			}
 			if (w.needsFrame()) w.frame() else App.wait(0.004);
 			w.device.settle();
-		}, e -> if (e.kind == helder.os.Event.EventKind.Close) w.close() else w.handle(e));
+		}, e -> if (e.kind == helder.os.EventKind.Close) w.close() else w.handle(e));
 	}
 
 	// (a touch's event as the system's would come, routed first; what the compositor answered)
-	static function touch(w:helder.ui.UiWindow, kind:helder.os.Event.EventKind, x:Float, y:Float, ms:Float):Int {
+	static function touch(w:helder.ui.UiWindow, kind:helder.os.EventKind, x:Float, y:Float, ms:Float):Int {
 		var e = new helder.os.Event(), p = @:privateAccess new Pointer(1), s = w.window.scale;
 		@:privateAccess {
 			p.type = Touch;

@@ -1,5 +1,6 @@
 package helder.scene.render;
 
+import helder.gfx.shader.Vec3;
 import haxe.io.Bytes;
 import helder.gfx.Buffer;
 import helder.gfx.Device;
@@ -172,11 +173,11 @@ class InstancedMesh {
 	}
 
 	// instance i's colour (linear rgb, times the material's base colour)
-	public function setColor(i:Int, r:Float, g:Float, b:Float) {
+	public function setColor(i:Int, color:Vec3) {
 		var o = i * STRIDE;
-		data.setFloat(o + 12, r - 1);
-		data.setFloat(o + 28, g - 1);
-		data.setFloat(o + 44, b - 1);
+		data.setFloat(o + 12, color.x - 1);
+		data.setFloat(o + 28, color.y - 1);
+		data.setFloat(o + 44, color.z - 1);
 		touch();
 	}
 

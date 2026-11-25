@@ -83,6 +83,9 @@ export declare class View {
 	private readonly view: never;
 }
 
+// For's props: each keyed by by (its key a string or a number), else by the item where keyed
+export type ForProps<T> = { each: Read<T[]>; keyed?: boolean; by?: (item: T) => string | number; children: (arg0: Read<T>) => unknown };
+
 // options of a signal and a memo
 export type NodeOptions<T> = { equals?: (arg0: T, arg1: T) => boolean; unobserved?: () => void; ownedWrite?: boolean };
 
@@ -91,7 +94,7 @@ export type NodeOptions<T> = { equals?: (arg0: T, arg1: T) => boolean; unobserve
 export type RootView = unknown;
 
 // renders content into parent (its root: dispose removes it and stops its effects)
-export declare const render: (content: unknown, parent: unknown) => () => void;
+export declare const render: (content: View, parent: object) => () => void;
 // inserts content into parent before a node (null: at the end); the nodes made
 export declare const insert: (content: unknown, parent: unknown, before: unknown) => unknown[];
 
@@ -123,7 +126,7 @@ export declare function isPending(fn: () => unknown): boolean;
 
 export declare function flush(): void;
 
-export declare function For<T>(props: { each: Read<T[]>; keyed?: boolean; by?: (arg0: T) => any; children: (arg0: Read<T>) => unknown }): unknown;
+export declare function For<T>(props: ForProps<T>): unknown;
 export declare function Repeat(props: { count: Read<number>; children: (arg0: number) => unknown }): unknown;
 export declare function Show<T>(props: { when: Read<T>; fallback?: unknown; children?: unknown }): unknown;
 export declare function Switch(props: { fallback?: unknown; children?: unknown }): unknown;

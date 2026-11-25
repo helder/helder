@@ -19,7 +19,7 @@ class InputTest {
 
 	static final e = new Event();
 
-	static function send(kind:helder.os.Event.EventKind, key = 0, button = 0, x = 0, y = 0) {
+	static function send(kind:helder.os.EventKind, key = 0, button = 0, x = 0, y = 0) {
 		e.kind = kind;
 		e.key = key;
 		e.button = button;

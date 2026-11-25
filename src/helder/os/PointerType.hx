@@ -7,4 +7,7 @@ enum abstract PointerType(String) {
 	var Mouse = "mouse";
 	var Touch = "touch";
 	var Pen = "pen";
+
+	@:noCompletion @:from static macro function ofString(e:haxe.macro.Expr.ExprOf<String>):haxe.macro.Expr
+		return helder.os.Literal.of(e);
 }

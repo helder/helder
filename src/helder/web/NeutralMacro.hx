@@ -177,8 +177,8 @@ class NeutralMacro {
 		if (n == "onSubmit" && isField(t)) return macro @:pos(name.pos) helder.web.Neutral.submit($el, $h);
 		if (!EVENTS.exists(n)) return Context.error('helder.web: <$t>\'s event $n has no DOM form (NeutralMacro)', name.pos);
 		var e = EVENTS[n], type = e.type;
-		if (e.dom == "keydown" || e.dom == "keyup") return macro @:pos(name.pos) helder.web.Neutral.onKey($el, $v{e.dom}, $h, helder.ui.Event.EventType.$type);
-		return macro @:pos(name.pos) helder.web.Neutral.on($el, $v{e.dom}, $h, helder.ui.Event.EventType.$type);
+		if (e.dom == "keydown" || e.dom == "keyup") return macro @:pos(name.pos) helder.web.Neutral.onKey($el, $v{e.dom}, $h, helder.ui.EventType.$type);
+		return macro @:pos(name.pos) helder.web.Neutral.on($el, $v{e.dom}, $h, helder.ui.EventType.$type);
 	}
 
 	static function literal(e:Expr):String

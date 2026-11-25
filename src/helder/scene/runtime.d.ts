@@ -27,7 +27,75 @@ import type {Mat4, Quat, Vec2, Vec3, Vec4} from "helder/gfx";
 import type {Node} from "helder/scene";
 import type {Read} from "helder/view";
 
-declare const __haxe: {World: "helder.scene.World", Camera: "helder.scene.Camera", Light: "helder.scene.render.Light", Renderer: "helder.scene.render.Renderer", Shadows: "helder.scene.render.Shadows", Fog: "helder.scene.render.Fog", Material: "helder.scene.render.Material", UvTransform: "helder.scene.render.Material.UvTransform", Physical: "helder.scene.render.Physical", Transmission: "helder.scene.render.Transmission", MeshRenderer: "helder.scene.render.MeshRenderer", Shapes: "helder.scene.render.Shapes", Geometry: "helder.scene.render.Geometry", VertexData: "helder.scene.render.VertexData", Curve3: "helder.scene.math.Curve3", InstancedMesh: "helder.scene.render.InstancedMesh", Sprites: "helder.scene.render.Sprites", Model: "helder.scene.render.Model", MaterialShader: "helder.scene.render.MaterialShader", PostProcess: "helder.scene.render.PostProcess", Ssao: "helder.scene.render.Ssao", Dof: "helder.scene.render.Dof", Outline: "helder.scene.render.Outline", Lut: "helder.scene.render.Lut", ViewBuffers: "helder.scene.render.ViewBuffers", Ssr: "helder.scene.render.Ssr", MotionBlur: "helder.scene.render.MotionBlur", GodRays: "helder.scene.render.GodRays", Taa: "helder.scene.render.Taa", Smaa: "helder.scene.render.Smaa", Occlusion: "helder.scene.render.Occlusion", Lines: "helder.scene.render.Lines", LineRenderer: "helder.scene.render.LineRenderer", DebugDraw: "helder.scene.render.DebugDraw", Helper: "helder.scene.render.Helper", AxesHelper: "helder.scene.render.AxesHelper", GridHelper: "helder.scene.render.GridHelper", BoundsHelper: "helder.scene.render.BoundsHelper", LightHelper: "helder.scene.render.LightHelper", CameraHelper: "helder.scene.render.CameraHelper", SkeletonHelper: "helder.scene.render.SkeletonHelper", Hit: "helder.scene.render.Hit", HitList: "helder.scene.render.Hit.HitList", RaycastOptions: "helder.scene.render.Hit.RaycastOptions", Raycaster: "helder.scene.render.Raycaster", Bvh: "helder.scene.render.Bvh", Text3D: "helder.scene.render.Text3D", ClusteredLights: "helder.scene.render.ClusteredLights", Clusters: "helder.scene.render.Clusters", Lod: "helder.scene.render.Lod", InstanceCulling: "helder.scene.render.InstanceCulling", Environment: "helder.scene.render.Environment", Sh: "helder.scene.render.Sh", LightProbe: "helder.scene.render.LightProbe", ProbeGrid: "helder.scene.render.ProbeGrid", ReflectionProbe: "helder.scene.render.ReflectionProbe", Probes: "helder.scene.render.Probes", Lightmap: "helder.scene.render.Lightmap", Lightmaps: "helder.scene.render.Lightmaps", AreaLights: "helder.scene.render.AreaLights", InputMap: "helder.scene.input.InputMap", Bindings: "helder.scene.input.Bindings", FixedStep: "helder.scene.FixedStep", Device: "helder.gfx.Device", Surface: "helder.os.Surface", Window: "helder.os.Window", App: "helder.os.App", Event: "helder.os.Event", Script: "helder.scene.Script", __module: "helder.scene.TypeScript"};
+declare const __haxe: {World: "helder.scene.World", Camera: "helder.scene.Camera", CameraRay: "helder.scene.Camera.CameraRay", Aabb: "helder.scene.math.Aabb", Light: "helder.scene.render.Light", Renderer: "helder.scene.render.Renderer", Shadows: "helder.scene.render.Shadows", Fog: "helder.scene.render.Fog", Material: "helder.scene.render.Material", UvTransform: "helder.scene.render.Material.UvTransform", Physical: "helder.scene.render.Physical", Transmission: "helder.scene.render.Transmission", MeshRenderer: "helder.scene.render.MeshRenderer", Shapes: "helder.scene.render.Shapes", Geometry: "helder.scene.render.Geometry", VertexData: "helder.scene.render.VertexData", Curve3: "helder.scene.math.Curve3", InstancedMesh: "helder.scene.render.InstancedMesh", Sprites: "helder.scene.render.Sprites", Model: "helder.scene.render.Model", MaterialShader: "helder.scene.render.MaterialShader", PostProcess: "helder.scene.render.PostProcess", Ssao: "helder.scene.render.Ssao", Dof: "helder.scene.render.Dof", Outline: "helder.scene.render.Outline", Lut: "helder.scene.render.Lut", ViewBuffers: "helder.scene.render.ViewBuffers", Ssr: "helder.scene.render.Ssr", MotionBlur: "helder.scene.render.MotionBlur", GodRays: "helder.scene.render.GodRays", Taa: "helder.scene.render.Taa", Smaa: "helder.scene.render.Smaa", Occlusion: "helder.scene.render.Occlusion", Lines: "helder.scene.render.Lines", LineRenderer: "helder.scene.render.LineRenderer", DebugDraw: "helder.scene.render.DebugDraw", Helper: "helder.scene.render.Helper", AxesHelper: "helder.scene.render.AxesHelper", GridHelper: "helder.scene.render.GridHelper", BoundsHelper: "helder.scene.render.BoundsHelper", LightHelper: "helder.scene.render.LightHelper", CameraHelper: "helder.scene.render.CameraHelper", SkeletonHelper: "helder.scene.render.SkeletonHelper", Hit: "helder.scene.render.Hit", HitList: "helder.scene.render.Hit.HitList", RaycastOptions: "helder.scene.render.Hit.RaycastOptions", Raycaster: "helder.scene.render.Raycaster", Bvh: "helder.scene.render.Bvh", Text3D: "helder.scene.render.Text3D", ClusteredLights: "helder.scene.render.ClusteredLights", Clusters: "helder.scene.render.Clusters", Lod: "helder.scene.render.Lod", InstanceCulling: "helder.scene.render.InstanceCulling", Environment: "helder.scene.render.Environment", Sh: "helder.scene.render.Sh", LightProbe: "helder.scene.render.LightProbe", ProbeGrid: "helder.scene.render.ProbeGrid", ReflectionProbe: "helder.scene.render.ReflectionProbe", Probes: "helder.scene.render.Probes", Lightmap: "helder.scene.render.Lightmap", Lightmaps: "helder.scene.render.Lightmaps", AreaLights: "helder.scene.render.AreaLights", InputMap: "helder.scene.input.InputMap", Bindings: "helder.scene.input.Bindings", FixedStep: "helder.scene.FixedStep", Device: "helder.gfx.Device", Surface: "helder.os.Surface", Window: "helder.os.Window", App: "helder.os.App", Event: "helder.os.Event", Script: "helder.scene.Script", __module: "helder.scene.TypeScript"};
+
+// a handle (Buffer); TypeScript's a number of its own kind
+export type Texture = number & {readonly textureBrand: never};
+
+// A shader: what shader({vertex, fragment}) makes (ShaderMath.shader, a
+// definition: README.md in src/helder/compiler), its stages' functions
+// compiled at build time:
+//
+//   @:structInit @:publicFields class Vertex { var pos:Vec2; var color:Vec3; }
+//   @:structInit @:publicFields class Varyings { var pos:Vec4; var color:Vec3; }
+//
+//   final TriangleShader = shader({
+//     vertex: function(v:Vertex):Varyings return {pos: position(vec4(v.pos, 0, 1)), color: v.color},
+//     fragment: function(i:Varyings):Vec4 return vec4(i.color, 1)
+//   });
+//   device.createPipeline(TriangleShader.pipeline({topology: Triangles}));
+//
+// The vertex function takes a vertex (its fields are the vertex buffer's
+// attributes, in order) and returns the varyings, one of them built
+// position(...): the clip-space position; the fragment function takes the
+// same varyings (its first parameter's type may be left out) and returns
+// the colour. Either may take one more parameter, an object of parameters
+// (an anonymous structure: function(i:Varyings, p:{cam:Camera, image:Texture2D})),
+// whose fields, read as p.cam, are uniform blocks (structs of scalars,
+// vectors and matrices) and textures (Texture2D, read with sample(t, uv)),
+// each at a slot (Encoder.setUniforms, setTexture): 0, 1, ... in order of
+// appearance, the vertex stage's first, a block shared by both stages (the
+// same struct) or a texture (the same name) once. Structs
+// are @:structInit classes (objects in CPU code, whose math-type fields are
+// stored inline, so that vertex Arrays hold them as they are) or typedefs
+// of anonymous structures. The functions they call are any static or
+// module-level functions of the same kinds of values (helpers, as the
+// stages are: they run as CPU code too). The shader has:
+//
+//   vertexCode, fragmentCode   the stages' ShaderCode, in the languages of
+//                              the target (-D helder.gfx.shaders=glsl,wgsl,msl,hlsl
+//                              or all to choose)
+//   layout                     the vertex buffer's layout (Float32 attributes,
+//                              packed in the vertex type's order)
+//   uniforms                   the uniform blocks: name, binding (the slot), size (std140)
+//   textures                   the textures: the parameter's name, binding (the slot)
+//   pipeline(?options)         a PipelineDesc of all three (Device.createPipeline
+//                              compiles the code)
+//   vertexBytes(vertices)      the vertex buffer's contents
+//   params.<name>              a field of the stages' objects of parameters:
+//                              a uniform block's writer (UniformWriter:
+//                              .write(u, bytes, offset), std140) or a
+//                              texture's slot (TextureSlot: .binding)
+//   vertex, fragment           the stages as CPU code
+//   uniformBytes(), uniformBinding, bind(encoder)
+//                              the block of the uniform(...)s the stages
+//                              read (ShaderMath.uniform), their values now
+//
+// (Each shader is a class of its own extending Shader, made by the
+// definition beside its module: <Module>_<name>, its stages' fields of
+// their exact function types, which hxmc calls directly.)
+//
+// The conventions, the same on every back end (WebGPU's, D3D's and
+// Metal's; the GLSL makes GL match): the position is in clip space, x
+// right and y up, z from 0 (near) to w (far), its front faces counter-
+// clockwise; in the fragment stage it is the fragment's position in pixels
+// from the target's top left (pixel centres at .5) and its depth (0..1) in
+// z; a texture's v = 0 is its first row, the top (TextureDesc), and
+// readPixels returns rows top to bottom. Mat4's perspective and
+// orthographic projections map to this clip space.
+export declare class Shader<V, P> {
+	private readonly shader: never;
+}
 
 // What a node draws (node.mesh): primitives, each a vertex buffer in the
 // renderer's layout (PbrVertex: position, normal, uv; 32 bytes a vertex),
@@ -107,8 +175,6 @@ export type SpriteMode = "spherical" | "axis" | "fixed";
 // how a see-through material is blended over what is behind (Material.blend)
 export type MaterialBlend = "none" | "alpha" | "additive" | "premultiplied" | "multiply";
 
-export type AnyShader = unknown;
-
 export type BoxOptions = { flat?: boolean; tangents?: boolean; width?: number; height?: number; depth?: number; widthSegments?: number; heightSegments?: number; depthSegments?: number };
 
 export type CapsuleOptions = { flat?: boolean; tangents?: boolean; radius?: number; height?: number; capSegments?: number; radialSegments?: number; heightSegments?: number };
@@ -154,17 +220,17 @@ export type LocalShadowsOptions = { atlas?: number; maxLocal?: number; tileSize?
 export type LodLevel = { mesh: Mesh; until?: number };
 
 // Material.matcap's: also the matcap, a lit sphere's picture (sRGB)
-export type MatcapOptions = { name?: string; color?: Vec4; texture?: number; metallic?: number; roughness?: number; emissive?: Vec3; doubleSided?: boolean; blend?: MaterialBlend; alphaCutoff?: number; fog?: boolean; castShadows?: boolean; toneMapped?: boolean; matcap: number };
+export type MatcapOptions = { name?: string; color?: Vec4; texture?: Texture; metallic?: number; roughness?: number; emissive?: Vec3; doubleSided?: boolean; blend?: MaterialBlend; alphaCutoff?: number; fog?: boolean; castShadows?: boolean; toneMapped?: boolean; matcap: Texture };
 
 // what a material is made from (Material's factories): each field the
 // material's of the same meaning, its default where not given (color the
 // base colour, linear; texture the base colour's, sRGB)
-export type MaterialOptions = { name?: string; color?: Vec4; texture?: number; metallic?: number; roughness?: number; emissive?: Vec3; doubleSided?: boolean; blend?: MaterialBlend; alphaCutoff?: number; fog?: boolean; castShadows?: boolean; toneMapped?: boolean };
+export type MaterialOptions = { name?: string; color?: Vec4; texture?: Texture; metallic?: number; roughness?: number; emissive?: Vec3; doubleSided?: boolean; blend?: MaterialBlend; alphaCutoff?: number; fog?: boolean; castShadows?: boolean; toneMapped?: boolean };
 
 export type MotionBlurOptions = { strength?: number; samples?: number; max?: number; objects?: boolean };
 
 // Material.phong's: also three's shininess (30 by default)
-export type PhongOptions = { name?: string; color?: Vec4; texture?: number; metallic?: number; roughness?: number; emissive?: Vec3; doubleSided?: boolean; blend?: MaterialBlend; alphaCutoff?: number; fog?: boolean; castShadows?: boolean; toneMapped?: boolean; shininess?: number };
+export type PhongOptions = { name?: string; color?: Vec4; texture?: Texture; metallic?: number; roughness?: number; emissive?: Vec3; doubleSided?: boolean; blend?: MaterialBlend; alphaCutoff?: number; fog?: boolean; castShadows?: boolean; toneMapped?: boolean; shininess?: number };
 
 export type PlaneOptions = { flat?: boolean; tangents?: boolean; width?: number; height?: number; widthSegments?: number; heightSegments?: number };
 
@@ -199,7 +265,7 @@ export type Text3DOptions = { size?: number; depth?: number; bevelSize?: number;
 export type TextGeometryOptions = { size?: number; depth?: number; bevelSize?: number; bevelSegments?: number; lineHeight?: number; letterSpacing?: number; align?: number; tolerance?: number; flat?: boolean; tangents?: boolean };
 
 // Material.toon's: also its bands and its shade
-export type ToonOptions = { name?: string; color?: Vec4; texture?: number; metallic?: number; roughness?: number; emissive?: Vec3; doubleSided?: boolean; blend?: MaterialBlend; alphaCutoff?: number; fog?: boolean; castShadows?: boolean; toneMapped?: boolean; steps?: number; shade?: Vec3 };
+export type ToonOptions = { name?: string; color?: Vec4; texture?: Texture; metallic?: number; roughness?: number; emissive?: Vec3; doubleSided?: boolean; blend?: MaterialBlend; alphaCutoff?: number; fog?: boolean; castShadows?: boolean; toneMapped?: boolean; steps?: number; shade?: Vec3 };
 
 export type TorusKnotOptions = { flat?: boolean; tangents?: boolean; radius?: number; tube?: number; tubularSegments?: number; radialSegments?: number; p?: number; q?: number };
 
@@ -274,7 +340,40 @@ export declare class Camera {
 	// scene's space: from the near plane, dir of unit length
 	ray(x: number, y: number, aspect: number): { origin: Vec3; dir: Vec3 };
 	// ray, written into out (returned): no object made
-	rayInto(x: number, y: number, aspect: number, out: unknown): unknown;
+	rayInto(x: number, y: number, aspect: number, out: CameraRay): CameraRay;
+}
+
+// a ray through the view to fill (Camera.rayInto): its origin on the near
+// plane, its dir of unit length
+export declare class CameraRay {
+	constructor();
+	origin: Vec3;
+	dir: Vec3;
+}
+
+// An axis-aligned box, min to max (an empty one: min above max, Aabb.empty),
+// immutable as the math types are.
+export declare class Aabb {
+	constructor(min: Vec3, max: Vec3);
+	static empty(): Aabb;
+	// the box around points given as x, y, z triples
+	static ofPoints(xyz: number[]): Aabb;
+	// An axis-aligned box, min to max (an empty one: min above max, Aabb.empty),
+	// immutable as the math types are.
+	readonly min: Vec3;
+	readonly max: Vec3;
+	isEmpty(): boolean;
+	center(): Vec3;
+	size(): Vec3;
+	union(b: Aabb): Aabb;
+	contains(p: Vec3): boolean;
+	intersects(b: Aabb): boolean;
+	// the box around this one transformed by m (Arvo's: the centre moved,
+	// the extent through the matrix's absolute values)
+	transform(m: Mat4): Aabb;
+	// the distance along dir (any length: in its units) from origin to the
+	// box, 0 from inside; -1 when the ray misses it (the slab test)
+	ray(origin: Vec3, dir: Vec3): number;
 }
 
 // A light, a component of a node, as glTF's KHR_lights_punctual and
@@ -464,7 +563,7 @@ export declare class Renderer {
 	// (multisampled, samples > 1: color and depth of those samples, color
 	// resolved into resolve, a single-sampled RGBA8 render target)
 	// (layer: color's, a cube's face or a 2D array's layer)
-	drawInto(enc: Encoder, world: World, camera: Camera, color: number, depth: number, width: number, height: number, resolve?: number, layer?: number): void;
+	drawInto(enc: Encoder, world: World, camera: Camera, color: Texture, depth: Texture, width: number, height: number, resolve?: Texture, layer?: number): void;
 	// what the frame's hooks get: the camera's view, the light (FrameInfo)
 	readonly frame: unknown;
 	// f runs at a point of each frame: BeforeOpaque, AfterOpaque and
@@ -546,7 +645,7 @@ export declare class Shadows {
 	// the point and spot lights' shadows (local: null without)
 	readonly locals: unknown | null;
 	// the atlas (made again, wider, when a local light first casts) and its size
-	readonly atlas: number;
+	readonly atlas: Texture;
 	readonly atlasWidth: number;
 	readonly atlasHeight: number;
 	// the last frame's draws into the atlas (every tile's: a primitive's
@@ -663,15 +762,15 @@ export declare class Material {
 	metallic: number;
 	roughness: number;
 	emissive: Vec3;
-	baseColorTexture: number | null;
+	baseColorTexture: Texture | null;
 	// glTF's other maps: roughness (green) and metallic (blue), times the
 	// factors; emitted colour (sRGB), times emissive; ambient occlusion (red)
-	metallicRoughnessTexture: number | null;
-	emissiveTexture: number | null;
-	occlusionTexture: number | null;
+	metallicRoughnessTexture: Texture | null;
+	emissiveTexture: Texture | null;
+	occlusionTexture: Texture | null;
 	// a tangent-space normal map (drawn with NormalMaps, on primitives with
 	// tangents), its x and y scaled by normalScale
-	normalTexture: number | null;
+	normalTexture: Texture | null;
 	normalScale: number;
 	doubleSided: boolean;
 	// how its textures are read (null: the renderer's: linear, mip-mapped,
@@ -744,9 +843,9 @@ export declare class Material {
 	// (its x and y scaled by clearcoatNormalScale; else the geometry's normal)
 	clearcoat: number;
 	clearcoatRoughness: number;
-	clearcoatTexture: number | null;
-	clearcoatRoughnessTexture: number | null;
-	clearcoatNormalTexture: number | null;
+	clearcoatTexture: Texture | null;
+	clearcoatRoughnessTexture: Texture | null;
+	clearcoatNormalTexture: Texture | null;
 	clearcoatNormalScale: number;
 	// how much of the light goes through it (KHR_materials_transmission, 0
 	// to 1; transmissionTexture's red times it): its diffuse light replaced
@@ -756,13 +855,13 @@ export declare class Material {
 	// what is behind refracted through it (the opaque frame with
 	// Transmission, else the environment), blurred by its roughness
 	transmission: number;
-	transmissionTexture: number | null;
+	transmissionTexture: Texture | null;
 	// its volume (KHR_materials_volume, a physical shader's): how thick it
 	// is (in its node's units, 0: thin; thicknessTexture's green times it),
 	// and the light it absorbs on the way through: attenuationColor reached
 	// at attenuationDistance (0: none, glTF's infinity), Beer's law
 	thickness: number;
-	thicknessTexture: number | null;
+	thicknessTexture: Texture | null;
 	attenuationColor: Vec3;
 	attenuationDistance: number;
 	// its index of refraction (KHR_materials_ior: 1.5, a dielectric's 0.04
@@ -773,15 +872,15 @@ export declare class Material {
 	ior: number;
 	specularFactor: number;
 	specularColor: Vec3;
-	specularTexture: number | null;
-	specularColorTexture: number | null;
+	specularTexture: Texture | null;
+	specularColorTexture: Texture | null;
 	// a sheen over it (KHR_materials_sheen, cloth's and velvet's: black for
 	// none), its colour (linear; sheenColorTexture's, sRGB, times it) and
 	// roughness (sheenRoughnessTexture's alpha times it); a physical shader's
 	sheenColor: Vec3;
 	sheenRoughness: number;
-	sheenColorTexture: number | null;
-	sheenRoughnessTexture: number | null;
+	sheenColorTexture: Texture | null;
+	sheenRoughnessTexture: Texture | null;
 	// a thin film over it (KHR_materials_iridescence: soap bubbles, oil):
 	// how much (iridescenceTexture's red times it), the film's index of
 	// refraction and thickness in nanometres (iridescenceThicknessTexture's
@@ -790,8 +889,8 @@ export declare class Material {
 	iridescenceIor: number;
 	iridescenceThicknessMinimum: number;
 	iridescenceThicknessMaximum: number;
-	iridescenceTexture: number | null;
-	iridescenceThicknessTexture: number | null;
+	iridescenceTexture: Texture | null;
+	iridescenceThicknessTexture: Texture | null;
 	// its highlight stretched (KHR_materials_anisotropy: brushed metal):
 	// how much (0 to 1), along the tangent turned by anisotropyRotation
 	// (radians), or anisotropyTexture's direction (red and green) and
@@ -799,7 +898,7 @@ export declare class Material {
 	// tangents (NormalMaps); a physical shader's
 	anisotropy: number;
 	anisotropyRotation: number;
-	anisotropyTexture: number | null;
+	anisotropyTexture: Texture | null;
 	// the toon model's (Material.toon): bands of each light's n.l (1 or
 	// more), and the shaded side's share of the albedo (linear)
 	steps: number;
@@ -879,7 +978,7 @@ export declare class Transmission {
 	// the frame's pass (pass, into textures of width x height texels of
 	// format) ended, its colour so far copied (resolved) and its mips made,
 	// the pass begun again where it was; returns the copy
-	capture(enc: Encoder, pass: { colors: Array<{ load: number; clear?: Vec4; texture?: number; resolve?: number; layer?: number }>; depth?: { load: number; clear?: number; texture?: number }; queries?: number }, width: number, height: number, format: number): number;
+	capture(enc: Encoder, pass: { colors: Array<{ load: number; clear?: Vec4; texture?: Texture; resolve?: Texture; layer?: number }>; depth?: { load: number; clear?: number; texture?: Texture }; queries?: number }, width: number, height: number, format: number): Texture;
 	// the copy's mip levels below its first (the roughest's)
 	levels(): number;
 	dispose(): void;
@@ -999,7 +1098,7 @@ export declare class Geometry {
 // the vertices are as any other's. An immutable value: read with
 // position(i), normal(i), uv(i), index(k); transformed makes another.
 export declare class VertexData {
-	constructor(vertices: Uint8Array, indices: Uint8Array, wide: boolean, count: number, skinned: boolean, bounds: unknown, tangents?: Uint8Array);
+	constructor(vertices: Uint8Array, indices: Uint8Array, wide: boolean, count: number, skinned: boolean, bounds: Aabb, tangents?: Uint8Array);
 	// normals null: computed from the triangles (smooth where vertices are
 	// shared); indices null: 0, 1, 2, ...
 	static make(positions: number[], normals: number[] | null, uvs: number[] | null, indices: number[] | null, joints?: number[], weights?: number[], tangents?: number[]): VertexData;
@@ -1021,7 +1120,7 @@ export declare class VertexData {
 	readonly wide: boolean;
 	readonly count: number;
 	readonly skinned: boolean;
-	readonly bounds: unknown;
+	readonly bounds: Aabb;
 	readonly tangents: Uint8Array | null;
 	// the vertices there are (count is the indices')
 	readonly vertexCount: number;
@@ -1131,7 +1230,7 @@ export declare class InstancedMesh {
 	// (empty: unknown): the renderer culls the whole set by them and
 	// Shadows fits its map to them; without, the set is always drawn and
 	// casts into a map fitted to the other casters
-	bounds: unknown;
+	bounds: Aabb;
 	// whether it casts shadows (Shadows; its materials' castShadows too)
 	castShadows: boolean;
 	// its levels of detail (InstanceCulling: each instance drawn at the one
@@ -1152,7 +1251,7 @@ export declare class InstancedMesh {
 	// instance i's world matrix (affine: any scale, uneven too), its colour kept
 	setMatrix(i: number, m: Mat4): void;
 	// instance i's colour (linear rgb, times the material's base colour)
-	setColor(i: number, r: number, g: number, b: number): void;
+	setColor(i: number, color: Vec3): void;
 	// instance i's position (axis 0, 1, 2: x, y, z), as written
 	position(i: number, axis: number): number;
 	// instance i's colour channel (0, 1, 2: r, g, b)
@@ -1227,7 +1326,7 @@ export declare class Sprites extends InstancedMesh {
 	// (column + columns * row)
 	setCell(i: number, cell: number): void;
 	// sprite i's colour (linear rgb, times the material's base colour)
-	setColor(i: number, r: number, g: number, b: number): void;
+	setColor(i: number, color: Vec3): void;
 	// sprite i's field: 0 to 2 its position, 3 and 4 its size, 5 its
 	// rotation, 6 its cell, 7 to 9 its colour
 	get(i: number, field: number): number;
@@ -1309,19 +1408,19 @@ export declare class MaterialShader {
 	// a definition: helder.typescript.lower's Definitions compiles the same
 	// variants and passes them here, JSON)
 	static script(json: string): MaterialShader;
-	readonly plain: AnyShader;
-	readonly normalMapped: AnyShader | null;
-	readonly skinned: AnyShader;
-	readonly instanced: AnyShader;
-	readonly instancedNormalMapped: AnyShader | null;
+	readonly plain: Shader<unknown, unknown>;
+	readonly normalMapped: Shader<unknown, unknown> | null;
+	readonly skinned: Shader<unknown, unknown>;
+	readonly instanced: Shader<unknown, unknown>;
+	readonly instancedNormalMapped: Shader<unknown, unknown> | null;
 	// the view buffers' (ViewBuffers): plain and instanced; null, the
 	// standard material's (its position, normal, roughness and alpha slots
 	// as they are)
-	readonly prepass: AnyShader | null;
+	readonly prepass: Shader<unknown, unknown> | null;
 	// the view buffers' (ViewBuffers): plain and instanced; null, the
 	// standard material's (its position, normal, roughness and alpha slots
 	// as they are)
-	readonly prepassInstanced: AnyShader | null;
+	readonly prepassInstanced: Shader<unknown, unknown> | null;
 	// the blocks of the material's own: its parameter's name, its slot, in
 	// each variant (in the order above; -1: not in it)
 	readonly blocks: Array<{ name: string; bindings: number[] }>;
@@ -1447,13 +1546,13 @@ export declare class PostProcess {
 	// the run's context, for its stages (PostStage's prepare and bind): the
 	// scene's light it was given (linear, RGBA16F, its alpha the scene's
 	// coverage) and its size in pixels; null and 0 outside a run
-	readonly source: number | null;
+	readonly source: Texture | null;
 	readonly width: number;
 	readonly height: number;
 	// a stage of the program's own (PostStage: its shader's first texture
 	// the image so far, its first block bytes): after those before it at its
 	// point (AfterComposite: tone mapped; BeforeComposite: in linear light)
-	add<V, P>(shader: unknown, bytes?: Uint8Array, point?: number): unknown;
+	add<V, P>(shader: Shader<V, P>, bytes?: Uint8Array, point?: number): unknown;
 	// a cut: the history temporal antialiasing gathers let go (a camera
 	// jumped, a scene changed), the next frame alone
 	resetHistory(): void;
@@ -1462,7 +1561,7 @@ export declare class PostProcess {
 	// (the output format's render target of that size, or with stages any
 	// size; null: the frame, a PostProcess made for it); time: seconds, the
 	// grain's
-	run(enc: Encoder, source: number, target: number | null, width: number, height: number, time?: number): void;
+	run(enc: Encoder, source: Texture, target: Texture | null, width: number, height: number, time?: number): void;
 	dispose(): void;
 }
 
@@ -1495,7 +1594,7 @@ export declare class Ssao {
 	// when they are at half, else half theirs), blurred up to theirs
 	halfRes: boolean;
 	// the last frame's occlusion (R8, the view buffers' size; red 1 open, 0 occluded)
-	readonly texture: number | null;
+	readonly texture: Texture | null;
 }
 
 // Depth of field, a PostProcess's (post.dof): a circle of confusion from
@@ -1545,7 +1644,7 @@ export declare class Dof {
 	// the taps of the blur's disc (16 for phones, 24, 32)
 	samples: number;
 	// the last frame's blur (RGBA16F, half the frame's size)
-	readonly texture: number | null;
+	readonly texture: Texture | null;
 }
 
 // Outlines around selected nodes, a PostProcess's (post.outline): the
@@ -1604,7 +1703,7 @@ export declare class Lut {
 	// how much of it (0: none, 1: the table's)
 	strength: number;
 	// the strip (RGBA8, size * size by size)
-	readonly texture: number;
+	readonly texture: Texture;
 	dispose(): void;
 }
 
@@ -1649,10 +1748,10 @@ export declare class ViewBuffers {
 	// the last frame's motion (RGBA16F, their size: xy this pixel's point's
 	// uv now less the frame before's, z 1 where a surface wrote it; null:
 	// velocity off)
-	readonly motion: number | null;
+	readonly motion: Texture | null;
 	// the last prepass's targets and their size
-	readonly depth: number;
-	readonly normals: number;
+	readonly depth: Texture;
+	readonly normals: Texture;
 	readonly width: number;
 	readonly height: number;
 	// the last prepass's draws
@@ -1705,7 +1804,7 @@ export declare class Ssr {
 	// at half the frame's size (a quarter of the rays)
 	halfRes: boolean;
 	// the last frame's reflections (RGBA16F: rgb the light hit, a its weight)
-	readonly texture: number | null;
+	readonly texture: Texture | null;
 }
 
 // Motion blur, a PostProcess's (post.motionBlur = new MotionBlur({...})):
@@ -1759,7 +1858,7 @@ export declare class GodRays {
 	// how tight the glow is about the sun (more: only near it)
 	falloff: number;
 	// the last frame's shafts (RGBA16F, a quarter of the frame's size)
-	readonly texture: number | null;
+	readonly texture: Texture | null;
 }
 
 // Temporal antialiasing, a PostProcess's (post.taa = new Taa()): the
@@ -1894,7 +1993,8 @@ export declare class Lines {
 	// point i at x, y, z (the node's frame), of the linear colour r, g, b and alpha a
 	setPoint(i: number, x: number, y: number, z: number, r?: number, g?: number, b?: number, a?: number): void;
 	setPosition(i: number, x: number, y: number, z: number): void;
-	setColor(i: number, r: number, g: number, b: number, a?: number): void;
+	// point i's colour (linear rgb, and its alpha)
+	setColor(i: number, color: Vec4): void;
 	// point i's field: 0 to 2 its position, 3 to 6 its colour
 	get(i: number, field: number): number;
 	// the segments drawn (instances of LineRenderer's draw)
@@ -1967,7 +2067,7 @@ export declare class DebugDraw {
 	// an arrow from a to b
 	static arrow(a: Vec3, b: Vec3, color?: number): void;
 	// a box's twelve edges (in the world)
-	static aabb(box: unknown, color?: number): void;
+	static aabb(box: Aabb, color?: number): void;
 	// the box min to max moved by m (an oriented box: a node's bounds through its world matrix)
 	static boxOf(m: Mat4, min: Vec3, max: Vec3, color?: number): void;
 	// a circle about center facing normal
@@ -2463,7 +2563,7 @@ export declare class InstanceCulling {
 export declare class Environment {
 	// texture: mip-mapped (Images.mipmapped's), width twice its height; or
 	// a prefiltered atlas of rows levels (prefiltered), width its width
-	constructor(device: Device, texture: number, width: number, rows?: number);
+	constructor(device: Device, texture: Texture, width: number, rows?: number);
 	// an encoded image's environment (Images.decode must read it); null when it cannot
 	static fromImage(device: Device, mime: string, bytes: Uint8Array): Environment | null;
 	// a prefiltered atlas's environment (levels rows of roughness and the
@@ -2478,7 +2578,7 @@ export declare class Environment {
 	// an encoded image's environment prefiltered by helder (prefilter; Images.decode must read it); null when it cannot
 	static prefilterImage(device: Device, mime: string, bytes: Uint8Array, options?: { size?: number; levels?: number; samples?: number }): Environment | null;
 	readonly device: Device;
-	readonly texture: number;
+	readonly texture: Texture;
 	// the mip levels below the first (the map's width 2^levels)
 	readonly levels: number;
 	// how bright the environment is, as light (1: its colours)
@@ -2696,7 +2796,7 @@ export declare class Probes {
 	// captures done so far
 	readonly captures: number;
 	// the atlas (Prefilter's: a column of rows a probe)
-	readonly atlas: number;
+	readonly atlas: Texture;
 	attach(renderer: Renderer): void;
 	dispose(): void;
 }
@@ -2714,11 +2814,11 @@ export declare class Probes {
 // tool's (Blender's, another's atlas).
 //   Lightmap.attach(node, new Lightmap(baked, new Vec4(0, 0, 0.5, 0.5)));
 export declare class Lightmap {
-	constructor(texture: number, rect?: Vec4, srgb?: boolean);
+	constructor(texture: Texture, rect?: Vec4, srgb?: boolean);
 	// lightmap on node (a node has one)
 	static attach(node: Node, lightmap: Lightmap): Lightmap;
 	static of(node: Node): Lightmap | null;
-	texture: number;
+	texture: Texture;
 	rect: Vec4;
 	intensity: number;
 	mode: LightmapMode;
@@ -2755,7 +2855,7 @@ export declare class AreaLights {
 	constructor(device: Device);
 	readonly device: Device;
 	// the tables (RGBA16F, 64 x 128)
-	readonly ltc: number;
+	readonly ltc: Texture;
 	attach(renderer: Renderer): void;
 	dispose(): void;
 }

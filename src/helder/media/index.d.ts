@@ -8,7 +8,7 @@
 import type {ImageFit, Node} from "helder/ui";
 import type {Read, Signal} from "helder/view";
 
-declare const __haxe: {Player: "helder.media.Player", VideoNode: "helder.media.ui.VideoNode", FileSource: "helder.media.FileSource", MemorySource: "helder.media.MemorySource", Video: "helder.media.ui.MediaTags.Video", __module: "helder.media.TypeScript"};
+declare const __haxe: {Player: "helder.media.Player", ByteSource: "helder.media.ByteSource", VideoNode: "helder.media.ui.VideoNode", FileSource: "helder.media.FileSource", MemorySource: "helder.media.MemorySource", Video: "helder.media.ui.MediaTags.Video", __module: "helder.media.TypeScript"};
 
 export type PlayerOptions = { device?: string; silent?: boolean };
 
@@ -23,7 +23,7 @@ export type PlayerOptions = { device?: string; silent?: boolean };
 //   p.onLoaded = () -> p.play();
 //   // each frame: var f = p.update(); draw f (helder.media.ui.VideoTexture)
 export declare class Player {
-	static open(source: unknown, options?: PlayerOptions): Player;
+	static open(source: ByteSource, options?: PlayerOptions): Player;
 	readonly media: unknown | null;
 	readonly video: unknown | null;
 	readonly audio: unknown | null;
@@ -59,6 +59,16 @@ export declare class Player {
 	// the frame to show now: the latest due of those decoded (a frame:
 	// update keeps it, its caller must not release it)
 	update(): unknown | null;
+	close(): void;
+}
+
+// A file's bytes at any offset, awaited: what the demuxers read, a box or
+// a cluster at a time, never the whole file. read puts at most len bytes
+// at offset into b from pos and returns how many (fewer only at the end,
+// 0 past it); size is the bytes in all, -1 while not known.
+export declare interface ByteSource {
+	readonly size: number;
+	read(offset: number, b: Uint8Array, pos: number, len: number): Promise<number>;
 	close(): void;
 }
 
@@ -99,7 +109,7 @@ export declare class VideoNode extends Node {
 	// each frame it plays, and after a seek or a step: the time
 	onTime: ((arg0: number) => void) | null;
 	// what it plays: a path (in a browser: a URL) or a ByteSource (a file's bytes: a MemorySource; null: nothing)
-	open(src: any | null): void;
+	open(src: string | ByteSource | null): void;
 	play(): void;
 	pause(): void;
 	// to t seconds (exact: the frame due then; else its keyframe, sooner)
@@ -130,6 +140,6 @@ export declare class MemorySource {
 	close(): void;
 }
 
-export declare function Video(props: { src?: any; fit?: any; autoplay?: boolean; loop?: boolean; muted?: Read<boolean>; volume?: Read<number>; rate?: Read<number>; layer?: boolean; grow?: number; width?: Read<any>; height?: Read<any>; style?: any; onLoaded?: () => void; onEnded?: () => void; onError?: (arg0: string) => void; onTime?: (arg0: number) => void; ref?: (arg0: VideoNode) => void }): Node;
+export declare function Video(props: { src?: Read<string | ByteSource>; fit?: ImageFit; autoplay?: boolean; loop?: boolean; muted?: Read<boolean>; volume?: Read<number>; rate?: Read<number>; layer?: boolean; grow?: number; width?: Read<unknown>; height?: Read<unknown>; onLoaded?: () => void; onEnded?: () => void; onError?: (arg0: string) => void; onTime?: (arg0: number) => void; ref?: (arg0: VideoNode) => void }): Node;
 
 export {};

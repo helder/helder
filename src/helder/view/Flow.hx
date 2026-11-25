@@ -34,7 +34,7 @@ import helder.view.graph.Context;
 // until it lands (Graph.isPending says one is on its way). Its children
 // are made once: what reads a value not ready waits inside the graph.
 class Flow {
-	public static function For<T>(props:{each:Read<Array<T>>, ?keyed:Bool, ?by:T->Dynamic, children:Read<T>->Any}):Any
+	public static function For<T>(props:ForProps<T>):Any
 		return new ForList(cast Read.of(props.each), props.keyed != false || props.by != null, cast props.children, cast props.by);
 
 	public static function Repeat(props:{count:Read<Int>, children:Int->Any}):Any {
@@ -160,4 +160,12 @@ class Deferred {
 
 	public function new(factory:Void->Any)
 		this.factory = factory;
+}
+
+// For's props: each keyed by by (its key a string or a number), else by the item where keyed
+typedef ForProps<T> = {
+	var each:Read<Array<T>>;
+	var ?keyed:Bool;
+	@:typescript.type("(item: T) => string | number") var ?by:T->Dynamic;
+	var children:Read<T>->Any;
 }

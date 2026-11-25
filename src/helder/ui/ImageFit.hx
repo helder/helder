@@ -10,4 +10,7 @@ enum abstract ImageFit(String) {
 	var Cover = "cover";
 	// at its own size, centred (cut where larger)
 	var None = "none";
+
+	@:noCompletion @:from static macro function ofString(e:haxe.macro.Expr.ExprOf<String>):haxe.macro.Expr
+		return helder.os.Literal.of(e);
 }

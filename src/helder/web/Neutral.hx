@@ -2,7 +2,7 @@ package helder.web;
 
 #if js
 import helder.os.Mods;
-import helder.ui.Event.EventType;
+import helder.ui.EventType;
 import helder.ui.Key;
 import js.html.Element;
 

@@ -12,15 +12,3 @@ typedef Stroke = {
 	?dashes:Array<Float>,
 	?dashOffset:Float
 }
-
-enum abstract LineCap(String) {
-	var Butt = "butt";
-	var Round = "round";
-	var Square = "square";
-}
-
-enum abstract LineJoin(String) {
-	var Miter = "miter";
-	var Round = "round";
-	var Bevel = "bevel";
-}

@@ -35,4 +35,7 @@ enum abstract Cursor(String) {
 			case Grabbing: 9;
 			case _: 0;
 		}
+
+	@:noCompletion @:from static macro function ofString(e:haxe.macro.Expr.ExprOf<String>):haxe.macro.Expr
+		return helder.os.Literal.of(e);
 }

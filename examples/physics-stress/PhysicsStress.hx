@@ -96,8 +96,8 @@ class PhysicsStress {
 		crates.count = boxes.length;
 		var k = rand(), g = 0.75 + rand() * 0.25;
 		// (crates' woods, a few painted)
-		if (k < 0.12) crates.setColor(i, 0.2 * g, 0.5 * g, 0.9 * g) else if (k < 0.2) crates.setColor(i, 0.95 * g, 0.75 * g, 0.2 * g)
-		else crates.setColor(i, 0.78 * g, 0.55 * g, 0.32 * g);
+		if (k < 0.12) crates.setColor(i, new Vec3(0.2 * g, 0.5 * g, 0.9 * g)) else if (k < 0.2) crates.setColor(i, new Vec3(0.95 * g, 0.75 * g, 0.2 * g))
+		else crates.setColor(i, new Vec3(0.78 * g, 0.55 * g, 0.32 * g));
 	}
 
 	// a hundred more, dropped from above in a heap

@@ -139,6 +139,12 @@ class TypeEmitter {
 						}
 				}
 			case TAbstract(_.get() => ab, params):
+				// (a declared abstract by its name, its text in its declaration: Texture)
+				var named = ab.params.length == 0 && ab.meta.has(":typescript.type") ? writer.declared(ab) : null;
+				if (named != null) {
+					write(named);
+					return;
+				}
 				var t = template(ab.meta, [for (p in ab.params) p.name], params, writer);
 				if (t != null) {
 					write(t);

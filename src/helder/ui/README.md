@@ -289,8 +289,8 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
     pointer's moves; else the nearest scroller that can move that way,
     as the wheel's) and draws at the offsets they report
     (`Ui.nativeScrolled`); a touch stops one gliding without a click.
-    `<Surface scrolling="helder">`, or `UiWindow.scrolling = false` for
-    every window, keeps helder's own drag and glide.
+    `UiWindow.scrolling = false` keeps helder's own drag and glide in
+    every window.
   - Gestures (`helder.ui.gesture`): recognisers on nodes competing for
     each pointer in an arena (Flutter's model): at a press the recognisers
     from the node pressed up to the root join, the innermost first (the

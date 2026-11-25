@@ -19,7 +19,7 @@ class Render {
 	@:noCompletion public static var pass = 0;
 
 	// renders content into parent (its root: dispose removes it and stops its effects)
-	@:typescript @:typescript.mount @:typescript.type("(content: unknown, parent: unknown) => () => void")
+	@:typescript @:typescript.mount @:typescript.type("(content: View, parent: object) => () => void")
 	public static macro function render(content:Expr, parent:Expr):Expr {
 		var r = rendererFor(parent);
 		var rt = HostMacro.runtime(r);

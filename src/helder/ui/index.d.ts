@@ -9,7 +9,7 @@ import type {Image} from "helder/asset";
 import type {PointerType, Rect} from "helder/os";
 import type {Read, RootView, Signal, View} from "helder/view";
 
-declare const __haxe: {UiWindow: "helder.ui.UiWindow", Event: "helder.ui.Event", Key: "helder.ui.Key", VirtualScroll: "helder.ui.VirtualScroll", Selection: "helder.ui.Selection", GridScroll: "helder.ui.GridScroll", Clock: "helder.ui.Clock", WebViewEvent: "helder.ui.platform.WebViewEvent", WebContent: "helder.ui.platform.WebContent", WebResponse: "helder.ui.platform.WebResponse", Node: "helder.ui.Node", TextNode: "helder.ui.TextNode", UiFlow: "helder.ui.view.UiFlow", SafeArea: "helder.ui.SafeArea", Router: "helder.ui.nav.Router", Controls: "helder.ui.widgets.Controls", DataGrid: "helder.ui.widgets.DataGrid", EditableText: "helder.ui.widgets.EditableText", GridColumn: "helder.ui.widgets.GridColumn", GridTheme: "helder.ui.widgets.GridTheme", Icons: "helder.ui.widgets.Icons", Pager: "helder.ui.widgets.Pager", TextArea: "helder.ui.widgets.TextArea", TextField: "helder.ui.widgets.TextField", Theme: "helder.ui.widgets.Theme", WindowButtons: "helder.ui.widgets.WindowButtons", Eased: "helder.ui.controls.Eased", Look: "helder.ui.controls.Look", Press: "helder.ui.controls.Press", Standard: "helder.ui.controls.Standard", Toggle: "helder.ui.controls.Toggle", CodeActions: "helder.ui.code.CodeAction.CodeActions", CodeCompletion: "helder.ui.code.CodeCompletion", CodeEditor: "helder.ui.code.CodeEditor", CodeLanguage: "helder.ui.code.CodeLanguage", SyntaxLanguage: "helder.ui.code.CodeLanguage.SyntaxLanguage", CodeLanguages: "helder.ui.code.CodeLanguage.CodeLanguages", Sel: "helder.ui.code.CodeModel.Sel", Decoration: "helder.ui.code.CodeModel.Decoration", CodeDiagnostic: "helder.ui.code.CodeModel.CodeDiagnostic", CodeModel: "helder.ui.code.CodeModel", CodeTheme: "helder.ui.code.CodeTheme", CodeView: "helder.ui.code.CodeView", Rope: "helder.ui.code.Rope", SqlLanguage: "helder.ui.code.SqlLanguage", tone: "helder.ui.controls.Look.tone", Surface: "helder.ui.UiWindow.Surface", VirtualList: "helder.ui.view.UiFlow.VirtualList", VirtualGrid: "helder.ui.view.UiFlow.VirtualGrid", Stack: "helder.ui.nav.Screens.Stack", NavScreen: "helder.ui.nav.Bar.NavScreen", NavButton: "helder.ui.nav.Bar.NavButton", Sheet: "helder.ui.nav.Sheets.Sheet", pager: "helder.ui.widgets.Pager.create", windowControlsSide: "helder.ui.widgets.WindowButtons.side", Popover: "helder.ui.view.UiFlow.Popover", MenuBarView: "helder.ui.view.UiFlow.MenuBarView", Slider: "helder.ui.widgets.Controls.Slider", Segmented: "helder.ui.widgets.Controls.Segmented", Tip: "helder.ui.widgets.Controls.Tip", Pages: "helder.ui.widgets.Pager.Pages", WindowControls: "helder.ui.widgets.WindowButtons.WindowControls", Button: "helder.ui.controls.Standard.Button", PathBar: "helder.ui.controls.Standard.PathBar", Checkbox: "helder.ui.controls.Standard.Checkbox", Switch: "helder.ui.controls.Standard.Switch", Themed: "helder.ui.controls.Standard.Themed", __module: "helder.ui.TypeScript"};
+declare const __haxe: {UiWindow: "helder.ui.UiWindow", Event: "helder.ui.Event", Key: "helder.ui.Key", VirtualScroll: "helder.ui.VirtualScroll", Selection: "helder.ui.Selection", GridScroll: "helder.ui.GridScroll", Clock: "helder.ui.Clock", WebViewEvent: "helder.ui.platform.WebViewEvent", WebContent: "helder.ui.platform.WebContent", WebResponse: "helder.ui.platform.WebResponse", Edges: "helder.ui.Edges", Node: "helder.ui.Node", TextNode: "helder.ui.TextNode", UiFlow: "helder.ui.view.UiFlow", SafeArea: "helder.ui.SafeArea", Router: "helder.ui.nav.Router", Controls: "helder.ui.widgets.Controls", DataGrid: "helder.ui.widgets.DataGrid", EditableText: "helder.ui.widgets.EditableText", GridColumn: "helder.ui.widgets.GridColumn", GridTheme: "helder.ui.widgets.GridTheme", Icons: "helder.ui.widgets.Icons", Pager: "helder.ui.widgets.Pager", TextArea: "helder.ui.widgets.TextArea", TextField: "helder.ui.widgets.TextField", Theme: "helder.ui.widgets.Theme", WindowButtons: "helder.ui.widgets.WindowButtons", Eased: "helder.ui.controls.Eased", Look: "helder.ui.controls.Look", Press: "helder.ui.controls.Press", Standard: "helder.ui.controls.Standard", Toggle: "helder.ui.controls.Toggle", CodeActions: "helder.ui.code.CodeAction.CodeActions", CodeCompletion: "helder.ui.code.CodeCompletion", CodeEditor: "helder.ui.code.CodeEditor", CodeLanguage: "helder.ui.code.CodeLanguage", SyntaxLanguage: "helder.ui.code.CodeLanguage.SyntaxLanguage", CodeLanguages: "helder.ui.code.CodeLanguage.CodeLanguages", Sel: "helder.ui.code.CodeModel.Sel", Decoration: "helder.ui.code.CodeModel.Decoration", CodeDiagnostic: "helder.ui.code.CodeModel.CodeDiagnostic", CodeModel: "helder.ui.code.CodeModel", CodeTheme: "helder.ui.code.CodeTheme", CodeView: "helder.ui.code.CodeView", Rope: "helder.ui.code.Rope", SqlLanguage: "helder.ui.code.SqlLanguage", tone: "helder.ui.controls.Look.tone", Surface: "helder.ui.UiWindow.Surface", VirtualList: "helder.ui.view.UiFlow.VirtualList", VirtualGrid: "helder.ui.view.UiFlow.VirtualGrid", Stack: "helder.ui.nav.Screens.Stack", NavScreen: "helder.ui.nav.Bar.NavScreen", NavButton: "helder.ui.nav.Bar.NavButton", Sheet: "helder.ui.nav.Sheets.Sheet", pager: "helder.ui.widgets.Pager.create", windowControlsSide: "helder.ui.widgets.WindowButtons.side", Popover: "helder.ui.view.UiFlow.Popover", MenuBarView: "helder.ui.view.UiFlow.MenuBarView", Slider: "helder.ui.widgets.Controls.Slider", Segmented: "helder.ui.widgets.Controls.Segmented", Tip: "helder.ui.widgets.Controls.Tip", Pages: "helder.ui.widgets.Pager.Pages", WindowControls: "helder.ui.widgets.WindowButtons.WindowControls", Button: "helder.ui.controls.Standard.Button", PathBar: "helder.ui.controls.Standard.PathBar", Checkbox: "helder.ui.controls.Standard.Checkbox", Switch: "helder.ui.controls.Standard.Switch", Themed: "helder.ui.controls.Standard.Themed", __module: "helder.ui.TypeScript"};
 
 // A colour as 0xAARRGGBB (straight alpha), helder's one colour: ui's,
 // canvas' and sprite's (TypeScript's Color: a number or a CSS string).
@@ -41,6 +41,20 @@ export type PointerEvents = "auto" | "none";
 // what a menu shows an action as, from the handler that would take it
 export type ActionState = "unhandled" | "disabled" | "enabled" | "checked" | "unchecked";
 
+export type Placement = "below" | "above" | "right" | "left" | "center" | "manual" | "point" | "top-left" | "top-right" | "bottom-left" | "bottom-right";
+
+// One menu model for the menu bar and context menus (Menus): items bound
+// to actions (helder.ui.actions), each shown with the keys the keymap binds
+// to it and enabled or checked as the handler that would take it says
+// (Ui.actionState, from the focus, or the node a context menu is for);
+// separators, submenus, and roles: the standard items each platform has
+// (StandardAction's, in the platform's place where it has one: macOS's
+// application menu for About and Quit, its Window menu; its text editors'
+// copy: and paste:).
+export declare class MenuItem {
+	private readonly menuItem: never;
+}
+
 // An SVG document for icons and drawings: parsed once (Svg.parse), drawn
 // into an Image at any size (the Image's drawing: this, for a writer's vectors; render: the viewBox fitted as
 // preserveAspectRatio says, xMidYMid meet by default). The static subset
@@ -60,7 +74,7 @@ export declare class Svg {
 	private readonly svg: never;
 }
 
-export type VirtualListProps<T> = { each: Read<T[]>; children: (arg0: Read<T>, arg1: number) => unknown; by?: (arg0: T) => any; keyed?: boolean; estimate?: number; itemHeight?: number; height?: number; overscan?: number; keep?: number; selected?: Signal<any>; onActivate?: ((arg0: T) => void) | ((arg0: number[]) => void); label?: string; ref?: (arg0: VirtualScroll) => void; tag?: string; selection?: Selection; selectMode?: Read<boolean>; onContextMenu?: (arg0: number, arg1: number, arg2: number) => void; textOf?: (arg0: T) => string };
+export type VirtualListProps<T> = { each: Read<T[]>; children: (arg0: Read<T>, arg1: number) => unknown; by?: (item: T) => string | number; keyed?: boolean; estimate?: number; itemHeight?: number; height?: number; overscan?: number; keep?: number; selected?: Signal<T | string | number | null>; onActivate?: ((arg0: T) => void) | ((arg0: number[]) => void); label?: string; ref?: (arg0: VirtualScroll) => void; tag?: string; selection?: Selection; selectMode?: Read<boolean>; onContextMenu?: (arg0: number, arg1: number, arg2: number) => void; textOf?: (arg0: T) => string };
 
 // (a route's params as its path names them: "/product/:id" gives {id: string})
 export type RouteParams<P> = P extends `${string}:${infer K}/${infer R}` ? {[k in K]: string} & RouteParams<`/${R}`> : P extends `${string}:${infer K}` ? {[k in K]: string} : {};
@@ -113,7 +127,7 @@ export type Completions = { from: number; items: Completion[] };
 
 // a menu of the menu bar; role Window: the window menu (macOS's: its own
 // items after Minimize, Zoom and Close)
-export type Menu = { label: string; items: unknown[]; role?: "about" | "quit" | "hide" | "undo" | "redo" | "cut" | "copy" | "paste" | "select-all" | "minimize" | "zoom" | "fullscreen" | "close" | "window" };
+export type Menu = { label: string; items: MenuItem[]; role?: "about" | "quit" | "hide" | "undo" | "redo" | "cut" | "copy" | "paste" | "select-all" | "minimize" | "zoom" | "fullscreen" | "close" | "window" };
 
 export type PathBarProps = { segments: Read<PathSegment[]>; onNavigate: (arg0: number) => void; onSubmit: (arg0: string) => void; onSeparator?: (index: number, anchor: Node) => void; editable?: boolean; text?: Read<string>; editing?: Signal<boolean>; size?: 'sm' | 'md'; tag?: string; label?: string };
 
@@ -156,7 +170,7 @@ export type Rule = { slot: string; variant?: string; size?: string; when?: strin
 export type StyleSheet = { rules: Rule[]; light?: unknown; dark?: unknown; lengths?: unknown; markers?: unknown; motion?: unknown };
 
 // <Surface>'s props (UiWindow.Surface)
-export type SurfaceProps = { title?: Read<string>; width?: Read<number>; height?: Read<number>; theme?: Read<any>; background?: Read<any>; backdrop?: Read<string>; clickThrough?: boolean; dark?: Read<boolean>; onClose?: () => void; onDrop?: (files: string[], x: number, y: number) => void; ref?: (arg0: UiWindow) => void; antialias?: boolean; titlebar?: string; onTop?: Read<boolean>; taskbar?: Read<boolean>; fontSmoothing?: Read<string>; scrolling?: string; scrollbars?: string; children?: UiView };
+export type SurfaceProps = { title?: Read<string>; width?: Read<number>; height?: Read<number>; theme?: Read<StyleSheet>; background?: Read<Color>; backdrop?: Read<"none" | "blur" | "mica" | "sidebar" | "glass">; clickThrough?: Read<boolean>; shadow?: Read<boolean>; dark?: Read<boolean>; onClose?: () => void; onDrop?: (files: string[], x: number, y: number) => void; ref?: (arg0: UiWindow) => void; antialias?: boolean; titlebar?: "standard" | "inset" | "none"; scrollbars?: string; onTop?: Read<boolean>; taskbar?: Read<boolean>; children?: UiView };
 
 export type SwitchProps<V> = { label: string; checked?: Read<boolean>; onChange?: (arg0: boolean) => void; disabled?: Read<boolean>; variant?: import('./style').Axis<V, 'switch_variant'>; size?: import('./style').Axis<V, 'switch_size'>; tag?: string };
 
@@ -208,12 +222,18 @@ export declare class UiWindow {
 	// the app loop: every UiWindow's frames and events until the last closes
 	// (on the web it returns, the frames going on); content, when given, opened first
 	static run(content?: RootView): void;
+	// (a background as Surface takes it: a Color, or a string Color.parse
+	// reads, markup's background="#333333", which taken as the Int it is not
+	// was 0: transparent black)
 	// <Surface>: a window (a canvas on the web), its children rendered into its ui's root; closed with its owner
 	static Surface(props: SurfaceProps): View;
 	// (once: a <Surface>'s owner closes it too)
 	close(): void;
 }
 
+// (a background as Surface takes it: a Color, or a string Color.parse
+// reads, markup's background="#333333", which taken as the Int it is not
+// was 0: transparent black)
 // <Surface>: a window (a canvas on the web), its children rendered into its ui's root; closed with its owner
 export declare function Surface(props: SurfaceProps): View;
 
@@ -488,6 +508,24 @@ export declare class WebResponse {
 	mime: string;
 	readonly headers: unknown;
 	body: Uint8Array;
+}
+
+// Four lengths in pixels: padding, margin (EdgesValue converts to them).
+// A margin may be AUTO (NaN; "auto" in markup): CSS's auto margin.
+export declare class Edges {
+	constructor(top: number, right: number, bottom: number, left: number);
+	static readonly ZERO: Edges;
+	// an auto margin: the free space along a flex line, the room left across it, in a grid
+	// area or between an absolute box's offsets shared among a box's auto margins
+	static readonly AUTO: number;
+	// Four lengths in pixels: padding, margin (EdgesValue converts to them).
+	// A margin may be AUTO (NaN; "auto" in markup): CSS's auto margin.
+	top: number;
+	right: number;
+	bottom: number;
+	left: number;
+	readonly horizontal: number;
+	readonly vertical: number;
 }
 
 // A node of the UI tree: a box laid out by its parent's flexbox (Layout),
@@ -800,7 +838,7 @@ export declare function VirtualGrid<T>(props: VirtualGridProps<T>): unknown;
 // outside (unless dismissOnOutside is false) or Escape asks it to close; onOpen once it is open (to move
 // the focus into it); a modal one's backdrop its colour; the popup's
 // slot for a theme (Node.slot). Its content is rendered once, kept while closed.
-export declare function Popover(props: { open: Read<boolean>; anchor?: Node; placement?: string; gap?: number; modal?: boolean; backdrop?: Color; slot?: string; onDismiss?: () => void; dismissOnOutside?: boolean; onOpen?: (arg0: unknown) => void; at?: () => { x: number; y: number }; tag?: string; children?: unknown }): unknown;
+export declare function Popover(props: { open: Read<boolean>; anchor?: Node; placement?: Placement; gap?: number; modal?: boolean; backdrop?: Color; slot?: string; onDismiss?: () => void; dismissOnOutside?: boolean; onOpen?: (arg0: unknown) => void; at?: () => { x: number; y: number }; tag?: string; children?: unknown }): unknown;
 // the window's menu bar (helder.ui.menu.MenuBar): the platform's, or
 // drawn here (put it first in the window's content); ref: the bar
 export declare function MenuBarView(props: { menus: Menu[]; ref?: (arg0: unknown) => void }): unknown;
@@ -823,7 +861,7 @@ export declare function MenuBarView(props: { menus: Menu[]; ref?: (arg0: unknown
 export declare class SafeArea {
 	// top, right, bottom, left in UI pixels (the current screen's:
 	// helder.ui.ScreenContext, a story host's screens each their own)
-	static readonly insets: Signal<unknown>;
+	static readonly insets: Read<Edges>;
 	// the main window's soft keyboard over it, in UI pixels (0 while hidden;
 	// helder.os.Window.keyboard): the insets' bottom is at least this while it
 	// is up
@@ -882,7 +920,7 @@ export declare function Segmented(props: { label: string; value: Read<string>; o
 // What a control does, said under it once the pointer rests on it (half
 // a second), with its shortcut beside it: for a button that shows only an
 // icon. A press or the pointer leaving hides it. Slots: "tip", "kbd".
-export declare function Tip(props: { label: string; keys?: string; placement?: string; children?: unknown }): View;
+export declare function Tip(props: { label: string; keys?: string; placement?: Placement; children?: unknown }): View;
 
 // A grid of many rows, drawn (a table browser's, a spreadsheet's): only
 // the cells in view are laid out and drawn, their text cut with an
@@ -1219,7 +1257,7 @@ export declare class Theme {
 	// whether the colours given inline are the dark ones (read by c: a hole
 	// that reads it follows it)
 	static appearance: (() => boolean);
-	static c(name: string): Color;
+	static c(name: keyof Tokens): Color;
 	// the one shadow, of what floats
 	static popover(): string;
 	static readonly sheet: StyleSheet;

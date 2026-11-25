@@ -3,7 +3,7 @@ package helder.scene.render;
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.gfx.shader.Vec4;
-import helder.scene.render.Dof.DofMode;
+import helder.scene.render.DofMode;
 import helder.scene.render.EffectShaders;
 import helder.scene.render.DofShader;
 import helder.scene.render.PostEffects;

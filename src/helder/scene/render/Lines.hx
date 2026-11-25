@@ -1,5 +1,6 @@
 package helder.scene.render;
 
+import helder.gfx.shader.Vec4;
 import haxe.io.Bytes;
 import helder.gfx.Buffer;
 import helder.scene.Node;
@@ -135,12 +136,13 @@ class Lines {
 		dirty = true;
 	}
 
-	public function setColor(i:Int, r:Float, g:Float, b:Float, a = 1.0) {
+	// point i's colour (linear rgb, and its alpha)
+	public function setColor(i:Int, color:Vec4) {
 		var o = i * FIELDS;
-		points[o + 3] = r;
-		points[o + 4] = g;
-		points[o + 5] = b;
-		points[o + 6] = a;
+		points[o + 3] = color.x;
+		points[o + 4] = color.y;
+		points[o + 5] = color.z;
+		points[o + 6] = color.w;
 		dirty = true;
 	}
 
@@ -223,26 +225,6 @@ class Lines {
 		if (buffer == Buffer.NONE) buffer = device.createBuffer({size: records.length, usage: Vertex});
 		if (written > 0) device.writeBuffer(buffer, 0, records, 0, written * RECORD);
 	}
-}
-
-// a line's width: in pixels on the screen, or in the world's units
-enum abstract LineUnits(String) {
-	var Pixels = "pixels";
-	var World = "world";
-}
-
-// where a polyline's segments meet
-enum abstract LineJoin(String) {
-	var Miter = "miter";
-	var Round = "round";
-	var Bevel = "bevel";
-}
-
-// a line's ends
-enum abstract LineCap(String) {
-	var Butt = "butt";
-	var Round = "round";
-	var Square = "square";
 }
 
 // what Lines are made with (each optional): 2 pixels wide, mitred, butt

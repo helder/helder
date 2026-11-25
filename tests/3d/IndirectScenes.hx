@@ -4,7 +4,7 @@ import helder.gfx.shader.Vec3;
 import helder.gfx.shader.Vec4;
 import helder.scene.*;
 import helder.scene.render.*;
-import helder.scene.render.Lightmap.LightmapMode;
+import helder.scene.render.LightmapMode;
 
 // Indirect light reference frames: indirect light (Scenes):
 //   sh          the environment frame's spheres (mirror to rough, metal and

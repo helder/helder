@@ -20,7 +20,7 @@ import helder.web.HtmlNode;
 // them; regions carry the markers hydration reads (HtmlNode).
 class Static {
 	// content as HTML
-	public static function render(content:Any):String {
+	public static function render(@:typescript.type("View") content:Any):String {
 		var root = new HtmlNode(Root, "#root");
 		var dispose = Render.render(content, root);
 		var html = root.innerHtml();

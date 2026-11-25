@@ -205,4 +205,5 @@ class MaterialShader {
 	}
 }
 
+@:typescript.type("Shader<unknown, unknown>")
 typedef AnyShader = helder.gfx.shader.Shader<Dynamic, Dynamic>;

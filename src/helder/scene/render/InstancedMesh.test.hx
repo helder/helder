@@ -17,7 +17,7 @@ function tests() {
 			var set = new InstancedMesh(new Mesh(), 4);
 			var q = Quat.axisAngle(new Vec3(0.6, 0.8, 0), 0.7);
 			set.setTransform(2, 1, -2, 3, q.x, q.y, q.z, q.w, 1.5);
-			set.setColor(2, 0.25, 0.5, 2);
+			set.setColor(2, new Vec3(0.25, 0.5, 2));
 			var m = MathTools.compose(new Vec3(1, -2, 3), q, new Vec3(1.5, 1.5, 1.5));
 			for (c in 0...4) {
 				var col = MathTools.col(m, c);
@@ -35,7 +35,7 @@ function tests() {
 		});
 		test("setMatrix and setPosition keep the colour", () -> {
 			var set = new InstancedMesh(new Mesh(), 2);
-			set.setColor(0, 0.1, 0.2, 0.3);
+			set.setColor(0, new Vec3(0.1, 0.2, 0.3));
 			set.setMatrix(0, MathTools.compose(new Vec3(4, 5, 6), Quat.identity(), new Vec3(2, 2, 2)));
 			set.setPosition(0, 7, 8, 9);
 			approx(set.color(0, 2), 0.3, 1e-6);
@@ -63,7 +63,7 @@ function tests() {
 				for (i in 0...set.count) {
 					var a = t + i * 0.01, s = Math.sin(a * 0.5), c = Math.cos(a * 0.5);
 					set.setTransform(i, i, a, -i, 0, s, 0, c, 1);
-					set.setColor(i, s, c, 1);
+					set.setColor(i, new Vec3(s, c, 1));
 					set.setCustom(i, 0, a);
 				}
 			}

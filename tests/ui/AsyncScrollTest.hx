@@ -445,7 +445,7 @@ class AsyncScrollTest {
 		return e;
 	}
 
-	static function touch(kind:helder.os.Event.EventKind, x:Float, y:Float, frame:Int):OsEvent {
+	static function touch(kind:helder.os.EventKind, x:Float, y:Float, frame:Int):OsEvent {
 		var e = new OsEvent();
 		e.kind = kind;
 		var p = @:privateAccess new Pointer(1);
@@ -460,7 +460,7 @@ class AsyncScrollTest {
 		return e;
 	}
 
-	static function mouse(kind:helder.os.Event.EventKind, x:Float, y:Float):OsEvent {
+	static function mouse(kind:helder.os.EventKind, x:Float, y:Float):OsEvent {
 		var e = new OsEvent();
 		e.kind = kind;
 		e.x = Std.int(x);
