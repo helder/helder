@@ -27,6 +27,8 @@ class Blocks {
 	var column = 0;
 	var nextNonspace = 0;
 	var nextNonspaceColumn = 0;
+	var scanned = -1;
+	var scanFrom = 0;
 	var indent = 0;
 	var indented = false;
 	var blank = false;
@@ -62,6 +64,16 @@ class Blocks {
 	// --- the line's position
 
 	function findNextNonspace() {
+		// (the line's spaces scanned once: each open container asks again, and
+		// rescanning them made deep nesting cubic; between where that scan
+		// began and its stop there are only spaces, so the stop holds)
+		if (scanned == lineNumber && offset >= scanFrom && offset <= nextNonspace) {
+			indent = nextNonspaceColumn - column;
+			indented = indent >= 4;
+			return;
+		}
+		scanned = lineNumber;
+		scanFrom = offset;
 		var i = offset, cols = column, c = -1;
 		while (i < line.length) {
 			c = line.fastCodeAt(i);
