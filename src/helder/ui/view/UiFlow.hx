@@ -48,7 +48,8 @@ class UiFlow {
 	// onActivate (Enter, Space) given its item. Its child function gets a
 	// row's item (a Read) and its index when made; ref the VirtualScroll
 	// (scrollToIndex, focusIndex, the window). With a Selection the callback
-	// takes the selected indices (Enter or double click); by still keys rows.
+	// takes the selected indices (Enter or double click); by still keys rows;
+	// selectMode as VirtualGrid's.
 	@:typescript.type('<T, S extends Selection | undefined = undefined>(props: Omit<VirtualListProps<T>, "selection" | "onActivate"> & {selection?: S; onActivate?: (value: S extends Selection ? number[] : T) => void}) => unknown')
 	public static function VirtualList<T>(props:VirtualListProps<T>):Any
 		return new VirtualRows<T>(props);
@@ -59,7 +60,8 @@ class UiFlow {
 	// its item written. A Selection (its own unless given; ref: the
 	// GridScroll's) with the keyboard, presses and a marquee from empty
 	// space; onActivate given the selected indices (Enter, double click),
-	// onContextMenu an item and where; textOf: type-ahead.
+	// onContextMenu an item and where; textOf: type-ahead; selectMode: a
+	// press toggles, a drag sideways selects a run (a phone's Select).
 	public static function VirtualGrid<T>(props:VirtualGridProps<T>):Any
 		return new VirtualCells<T>(props);
 
@@ -81,6 +83,7 @@ typedef VirtualListProps<T> = {
 	?ref:VirtualScroll->Void,
 	?tag:String,
 	?selection:Selection,
+	?selectMode:Read<Bool>,
 	?onContextMenu:(Int, Float, Float)->Void,
 	?textOf:T->String
 }
@@ -94,6 +97,7 @@ typedef VirtualGridProps<T> = {
 	?gap:Float,
 	?padding:Float,
 	?selection:Selection,
+	?selectMode:Read<Bool>,
 	?textOf:T->String,
 	?onActivate:Array<Int>->Void,
 	?onContextMenu:(index:Int, x:Float, y:Float)->Void,
@@ -117,6 +121,10 @@ private class VirtualCells<T> implements Mountable<Node> {
 		grid.input.onContextMenu = p.onContextMenu;
 		if (p.textOf != null) grid.input.textOf = i -> p.textOf(items[i]);
 		if (p.label != null) grid.semantics.label = p.label;
+		if (p.selectMode != null) {
+			var mode:Read<Bool> = Read.of(p.selectMode);
+			Graph.renderEffect(() -> mode(), (on:Bool) -> grid.selectMode = on);
+		}
 		grid.onMakeCell = (i, node) -> {
 			var o = new Owner(home);
 			var cell = helder.view.graph.Node.signal(items[i], {ownedWrite: true});
@@ -253,6 +261,10 @@ class VirtualRows<T> implements Mountable<Node> {
 			});
 			input.onActivate = cast p.onActivate;
 			input.onContextMenu = p.onContextMenu;
+			if (p.selectMode != null) {
+				var mode:Read<Bool> = Read.of(p.selectMode);
+				Graph.renderEffect(() -> mode(), (on:Bool) -> input.selectMode = on);
+			}
 			if (p.textOf != null) input.textOf = i -> p.textOf(items[i]);
 		} else {
 			v.onRowActive = i -> if (selected != null) selected(keyOf(i));

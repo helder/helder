@@ -8,10 +8,10 @@ import helder.view.graph.Signal;
 // Screens by path, kept as a stack (helder.ui.Stack shows it): routes are
 // matched in the order they were added, a segment ":name" taking any one
 // segment (its value given to the route, decoded), the fallback any path
-// none matched. go pushes, back pops (false at the root), replace swaps
-// the top, reset starts a new stack, open a link's (a full URL or a path):
-// the root and the matched route. Each entry's screen is made once, when
-// it is pushed. Haxe's helder.ui.Router types a route's params by its path.
+// none matched. go pushes, back pops (false at the root; backTo several),
+// replace swaps the top, reset starts a new stack, open a link's (a full
+// URL or a path): the root and the matched route. Each entry's screen is
+// made once, when it is pushed. Haxe's helder.ui.Router types a route's params by its path.
 class Router {
 	// the top's path (without its query), how many entries are above the root, the top's query
 	public final path:Read<String>;
@@ -66,6 +66,13 @@ class Router {
 	public function back():Bool {
 		if (stack.length <= 1) return false;
 		commit(stack.slice(0, -1));
+		return true;
+	}
+
+	// pops to the entry depth entries above the root (0: the root): whether it moved
+	public function backTo(depth:Int):Bool {
+		if (depth < 0 || depth >= stack.length - 1) return false;
+		commit(stack.slice(0, depth + 1));
 		return true;
 	}
 

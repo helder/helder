@@ -1,0 +1,355 @@
+// helder.test snapshots: `helder test -u` rewrites them
+
+--- story Compact/large title: Compact/large title (46 lines)
+Node#root 0,0 390x844
+  Node#stack 0,0 390x844
+    Node#screen 0,0 390x844
+      Node#nav-screen 0,0 390x844
+        Node#nav-scroll 0,0 390x844
+          Node#view 0,44 390x124
+            TextNode#text 0,44 390x50 "Fruit"
+            TextNode#text 0,88 390x26 "13 kinds"
+            Node#view 16,114 358x38
+              TextNode#text 26,123 51x21 "Search"
+          Node#view 0,168 390x650
+            Node#view 0,168 390x50
+              TextNode#text 16,183 43x21 "Apple"
+            Node#view 0,218 390x50
+              TextNode#text 16,233 51x21 "Banana"
+            Node#view 0,268 390x50
+              TextNode#text 16,283 51x21 "Cherry"
+            Node#view 0,318 390x50
+              TextNode#text 16,333 34x21 "Date"
+            Node#view 0,368 390x50
+              TextNode#text 16,383 85x21 "Elderberry"
+            Node#view 0,418 390x50
+              TextNode#text 16,433 26x21 "Fig"
+            Node#view 0,468 390x50
+              TextNode#text 16,483 43x21 "Grape"
+            Node#view 0,518 390x50
+              TextNode#text 16,533 34x21 "Kiwi"
+            Node#view 0,568 390x50
+              TextNode#text 16,583 43x21 "Lemon"
+            Node#view 0,618 390x50
+              TextNode#text 16,633 43x21 "Mango"
+            Node#view 0,668 390x50
+              TextNode#text 16,683 51x21 "Orange"
+            Node#view 0,718 390x50
+              TextNode#text 16,733 34x21 "Pear"
+            Node#view 0,768 390x50
+              TextNode#text 16,783 51x21 "Quince"
+        Node#view 0,0 390x44
+          Node#view 0,0 390x44
+          Node#view 0,0 390x44
+            Node#view 8,22 303x0
+            Node#button 311,0 71x44
+              TextNode#text 321,11 51x22 "Select"
+            TextNode#nav-title 96,11 198x22 "Fruit"
+      Node#view 0,0 390x844
+    TextNode#text 0,0 1x1 ""
+
+--- story Compact/long press menu: Compact/long press menu (14 lines)
+Node#root 0,0 390x844
+  Node#nav-screen 0,0 390x844
+    Node#nav-scroll 0,0 390x844
+      Node#view 0,44 390x54
+        TextNode#text 0,44 390x50 "Fruit"
+      Node#view 0,98 390x121
+        Node#tile-0 16,102 113x113
+        Node#tile-1 139,102 112x113
+        Node#tile-2 261,102 113x113
+    Node#view 0,0 390x44
+      Node#view 0,0 390x44
+      Node#view 0,0 390x44
+        Node#view 8,22 374x0
+        TextNode#nav-title 96,11 198x22 "Fruit"
+
+--- story Compact/pushed: Compact/pushed (71 lines)
+Node#root 0,0 390x844
+  Node#stack 0,0 390x844
+    Node#screen 0,0 390x844
+      Node#nav-screen 0,0 390x844
+        Node#nav-scroll 0,0 390x844
+          Node#view 0,44 390x124
+            TextNode#text 0,44 390x50 "Fruit"
+            TextNode#text 0,88 390x26 "13 kinds"
+            Node#view 16,114 358x38
+              TextNode#text 26,123 51x21 "Search"
+          Node#view 0,168 390x650
+            Node#view 0,168 390x50
+              TextNode#text 16,183 43x21 "Apple"
+            Node#view 0,218 390x50
+              TextNode#text 16,233 51x21 "Banana"
+            Node#view 0,268 390x50
+              TextNode#text 16,283 51x21 "Cherry"
+            Node#view 0,318 390x50
+              TextNode#text 16,333 34x21 "Date"
+            Node#view 0,368 390x50
+              TextNode#text 16,383 85x21 "Elderberry"
+            Node#view 0,418 390x50
+              TextNode#text 16,433 26x21 "Fig"
+            Node#view 0,468 390x50
+              TextNode#text 16,483 43x21 "Grape"
+            Node#view 0,518 390x50
+              TextNode#text 16,533 34x21 "Kiwi"
+            Node#view 0,568 390x50
+              TextNode#text 16,583 43x21 "Lemon"
+            Node#view 0,618 390x50
+              TextNode#text 16,633 43x21 "Mango"
+            Node#view 0,668 390x50
+              TextNode#text 16,683 51x21 "Orange"
+            Node#view 0,718 390x50
+              TextNode#text 16,733 34x21 "Pear"
+            Node#view 0,768 390x50
+              TextNode#text 16,783 51x21 "Quince"
+        Node#view 0,0 390x44
+          Node#view 0,0 390x44
+          Node#view 0,0 390x44
+            Node#view 8,22 303x0
+            Node#button 311,0 71x44
+              TextNode#text 321,11 51x22 "Select"
+            TextNode#nav-title 96,11 198x22 "Fruit"
+      Node#view 0,0 390x844
+    Node#screen 0,0 390x844
+      Node#nav-screen 0,0 390x844
+        Node#nav-scroll 0,0 390x844
+          Node#view 0,44 390x125
+            TextNode#text 16,60 358x60 "C"
+            TextNode#text 16,132 358x21 "A cherry."
+        Node#view 0,0 390x44
+          Node#view 0,0 390x44
+          Node#view 0,0 390x44
+            Node#nav-back 8,0 77x44
+              ImageNode#image 8,10 24x24
+              TextNode#text 34,11 43x22 "Fruit"
+            Node#view 85,22 235x0
+            Node#button 320,0 62x44
+              TextNode#text 330,11 42x22 "Share"
+            TextNode#nav-title 96,11 198x22 "Cherry"
+        Node#view 0,788 390x56
+          Node#view 0,788 390x56
+            Node#button 12,794 88x44
+              TextNode#text 22,805 68x22 "Open in…"
+            Node#button 181,794 54x44
+              TextNode#text 191,805 34x22 "Info"
+            Node#button 316,794 62x44
+              TextNode#text 326,805 42x22 "Trash"
+      Node#view 0,0 390x844
+    TextNode#text 0,0 1x1 ""
+
+--- story Compact/scrolled: Compact/scrolled (46 lines)
+Node#root 0,0 390x844
+  Node#stack 0,0 390x844
+    Node#screen 0,0 390x844
+      Node#nav-screen 0,0 390x844
+        Node#nav-scroll 0,0 390x844
+          Node#view 0,44 390x124
+            TextNode#text 0,44 390x50 "Fruit"
+            TextNode#text 0,88 390x26 "13 kinds"
+            Node#view 16,114 358x38
+              TextNode#text 26,123 51x21 "Search"
+          Node#view 0,168 390x650
+            Node#view 0,168 390x50
+              TextNode#text 16,183 43x21 "Apple"
+            Node#view 0,218 390x50
+              TextNode#text 16,233 51x21 "Banana"
+            Node#view 0,268 390x50
+              TextNode#text 16,283 51x21 "Cherry"
+            Node#view 0,318 390x50
+              TextNode#text 16,333 34x21 "Date"
+            Node#view 0,368 390x50
+              TextNode#text 16,383 85x21 "Elderberry"
+            Node#view 0,418 390x50
+              TextNode#text 16,433 26x21 "Fig"
+            Node#view 0,468 390x50
+              TextNode#text 16,483 43x21 "Grape"
+            Node#view 0,518 390x50
+              TextNode#text 16,533 34x21 "Kiwi"
+            Node#view 0,568 390x50
+              TextNode#text 16,583 43x21 "Lemon"
+            Node#view 0,618 390x50
+              TextNode#text 16,633 43x21 "Mango"
+            Node#view 0,668 390x50
+              TextNode#text 16,683 51x21 "Orange"
+            Node#view 0,718 390x50
+              TextNode#text 16,733 34x21 "Pear"
+            Node#view 0,768 390x50
+              TextNode#text 16,783 51x21 "Quince"
+        Node#view 0,0 390x44
+          Node#view 0,0 390x44
+          Node#view 0,0 390x44
+            Node#view 8,22 303x0
+            Node#button 311,0 71x44
+              TextNode#text 321,11 51x22 "Select"
+            TextNode#nav-title 96,11 198x22 "Fruit"
+      Node#view 0,0 390x844
+    TextNode#text 0,0 1x1 ""
+
+--- story Compact/select mode: Compact/select mode (77 lines)
+Node#root 0,0 390x844
+  Node#nav-screen 0,0 390x844
+    GridScroll#virtual-grid 0,0 390x844
+      Spacer#before 0,0 390x56
+      Node#row 0,56 390x134
+        Node#cell 12,56 119x130
+          Node#view 12,56 119x140
+            Node#view 16,60 111x111
+            TextNode#text 55,175 33x17 "Apple"
+        Node#cell 135,56 120x130
+          Node#view 135,56 120x140
+            Node#view 139,60 112x111
+            TextNode#text 175,175 39x17 "Banana"
+        Node#cell 259,56 119x130
+          Node#view 259,56 119x140
+            Node#view 263,60 111x111
+            TextNode#text 299,175 39x17 "Cherry"
+      Node#row 0,190 390x134
+        Node#cell 12,190 119x130
+          Node#view 12,190 119x140
+            Node#view 16,194 111x111
+            TextNode#text 59,309 26x17 "Date"
+        Node#cell 135,190 120x130
+          Node#view 135,190 120x140
+            Node#view 139,194 112x111
+            TextNode#text 162,309 65x17 "Elderberry"
+        Node#cell 259,190 119x130
+          Node#view 259,190 119x140
+            Node#view 263,194 111x111
+            TextNode#text 309,309 19x17 "Fig"
+      Node#row 0,324 390x134
+        Node#cell 12,324 119x130
+          Node#view 12,324 119x140
+            Node#view 16,328 111x111
+            TextNode#text 55,443 33x17 "Grape"
+        Node#cell 135,324 120x130
+          Node#view 135,324 120x140
+            Node#view 139,328 112x111
+            TextNode#text 182,443 26x17 "Kiwi"
+        Node#cell 259,324 119x130
+          Node#view 259,324 119x140
+            Node#view 263,328 111x111
+            TextNode#text 302,443 33x17 "Lemon"
+      Node#row 0,458 390x134
+        Node#cell 12,458 119x130
+          Node#view 12,458 119x140
+            Node#view 16,462 111x111
+            TextNode#text 55,577 33x17 "Mango"
+        Node#cell 135,458 120x130
+          Node#view 135,458 120x140
+            Node#view 139,462 112x111
+            TextNode#text 175,577 39x17 "Orange"
+        Node#cell 259,458 119x130
+          Node#view 259,458 119x140
+            Node#view 263,462 111x111
+            TextNode#text 305,577 26x17 "Pear"
+      Node#row 0,592 390x134
+        Node#cell 12,592 119x130
+          Node#view 12,592 119x140
+            Node#view 16,596 111x111
+            TextNode#text 52,711 39x17 "Quince"
+      Spacer#after 0,726 390x68
+    Node#view 0,0 390x44
+      Node#view 0,0 390x44
+      Node#view 0,0 390x44
+        Node#view 8,22 320x0
+        Node#button 328,0 54x44
+          TextNode#text 338,11 34x22 "Done"
+        TextNode#nav-title 96,11 198x22 "Select Items"
+    Node#view 0,788 390x56
+      Node#view 0,788 390x56
+        Node#button 12,794 88x44
+          TextNode#text 22,805 68x22 "Open in…"
+        Node#button 181,794 54x44
+          TextNode#text 191,805 34x22 "Info"
+        Node#button 316,794 62x44
+          TextNode#text 326,805 42x22 "Trash"
+
+--- story Compact/sheet, medium: Compact/sheet, medium (47 lines)
+Node#root 0,0 390x844
+  Node#view 0,0 390x844
+    Node#stack 0,0 390x844
+      Node#screen 0,0 390x844
+        Node#nav-screen 0,0 390x844
+          Node#nav-scroll 0,0 390x844
+            Node#view 0,44 390x124
+              TextNode#text 0,44 390x50 "Fruit"
+              TextNode#text 0,88 390x26 "13 kinds"
+              Node#view 16,114 358x38
+                TextNode#text 26,123 51x21 "Search"
+            Node#view 0,168 390x650
+              Node#view 0,168 390x50
+                TextNode#text 16,183 43x21 "Apple"
+              Node#view 0,218 390x50
+                TextNode#text 16,233 51x21 "Banana"
+              Node#view 0,268 390x50
+                TextNode#text 16,283 51x21 "Cherry"
+              Node#view 0,318 390x50
+                TextNode#text 16,333 34x21 "Date"
+              Node#view 0,368 390x50
+                TextNode#text 16,383 85x21 "Elderberry"
+              Node#view 0,418 390x50
+                TextNode#text 16,433 26x21 "Fig"
+              Node#view 0,468 390x50
+                TextNode#text 16,483 43x21 "Grape"
+              Node#view 0,518 390x50
+                TextNode#text 16,533 34x21 "Kiwi"
+              Node#view 0,568 390x50
+                TextNode#text 16,583 43x21 "Lemon"
+              Node#view 0,618 390x50
+                TextNode#text 16,633 43x21 "Mango"
+              Node#view 0,668 390x50
+                TextNode#text 16,683 51x21 "Orange"
+              Node#view 0,718 390x50
+                TextNode#text 16,733 34x21 "Pear"
+              Node#view 0,768 390x50
+                TextNode#text 16,783 51x21 "Quince"
+          Node#view 0,0 390x44
+            Node#view 0,0 390x44
+            Node#view 0,0 390x44
+              Node#view 8,22 303x0
+              Node#button 311,0 71x44
+                TextNode#text 321,11 51x22 "Select"
+              TextNode#nav-title 96,11 198x22 "Fruit"
+        Node#view 0,0 390x844
+      TextNode#text 0,0 1x1 ""
+
+--- story Medium/sheet as a popover: Medium/sheet as a popover (39 lines)
+Node#root 0,0 390x844
+  Node#view 0,0 390x844
+    Node#nav-screen 0,0 390x844
+      Node#nav-scroll 0,0 390x844
+        Node#view 0,44 390x650
+          Node#view 0,44 390x50
+            TextNode#text 16,58 43x22 "Apple"
+          Node#view 0,94 390x50
+            TextNode#text 16,108 51x22 "Banana"
+          Node#view 0,144 390x50
+            TextNode#text 16,158 51x22 "Cherry"
+          Node#view 0,194 390x50
+            TextNode#text 16,208 34x22 "Date"
+          Node#view 0,244 390x50
+            TextNode#text 16,258 85x22 "Elderberry"
+          Node#view 0,294 390x50
+            TextNode#text 16,308 26x22 "Fig"
+          Node#view 0,344 390x50
+            TextNode#text 16,358 43x22 "Grape"
+          Node#view 0,394 390x50
+            TextNode#text 16,408 34x22 "Kiwi"
+          Node#view 0,444 390x50
+            TextNode#text 16,458 43x22 "Lemon"
+          Node#view 0,494 390x50
+            TextNode#text 16,508 43x22 "Mango"
+          Node#view 0,544 390x50
+            TextNode#text 16,558 51x22 "Orange"
+          Node#view 0,594 390x50
+            TextNode#text 16,608 34x22 "Pear"
+          Node#view 0,644 390x50
+            TextNode#text 16,658 51x22 "Quince"
+      Node#view 0,0 390x44
+        Node#view 0,0 390x44
+        Node#view 0,0 390x44
+          Node#view 8,22 320x0
+          Node#view 328,0 54x44
+            Node#button 328,0 54x44
+              TextNode#text 338,11 34x22 "Info"
+          TextNode#nav-title 96,11 198x22 "Fruit"

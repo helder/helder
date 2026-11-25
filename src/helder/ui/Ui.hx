@@ -267,6 +267,7 @@ class Ui extends ScrollHost {
 		this.text = text;
 		this.width = width;
 		this.height = height;
+		claim();
 		root = new Node("root");
 		root.attach(this);
 		overlay = new Node("overlay");
@@ -290,6 +291,7 @@ class Ui extends ScrollHost {
 		var was = breakpoint(this.width);
 		this.width = width;
 		this.height = height;
+		context.resized(this, width, height);
 		root.markDirty();
 		overlay.markDirty();
 		// (across a breakpoint: the rules for sm, md... hold or not)
@@ -297,6 +299,13 @@ class Ui extends ScrollHost {
 			Rules.restyleTree(root);
 			Rules.restyleTree(overlay);
 		}
+	}
+
+	// its width the screen's (ScreenContext.width, SizeClass.current): a new
+	// Ui's, a window's first (UiWindow)
+	@:noCompletion public function claim() {
+		context.surface = this;
+		context.resized(this, width, height);
 	}
 
 	// Tailwind's breakpoints (sm, md, lg, xl, 2xl: the window at least so wide, in pixels)
@@ -362,6 +371,17 @@ class Ui extends ScrollHost {
 			if (overlay.inkStale) refreshInk(overlay);
 		}
 		tellResized();
+		// (what an onResize changed in the layout (a bar's height a scroller's
+		// inset): laid out again before the frame, as a ResizeObserver's loop,
+		// SETTLES times at most)
+		var again = 0;
+		while (@:privateAccess root.dirty && again++ < SETTLES) {
+			helder.view.graph.Graph.flush();
+			flushRestyles();
+			Layout.run(root, width, height, text, rounded);
+			if (root.inkStale) refreshInk(root);
+			tellResized();
+		}
 		// (the scrollers whose extents may have changed)
 		for (n in rounded)
 			if (!@:privateAccess trackpad.holds(n) && !mirrorHeld.exists(n)) Scrolling.clamp(n);

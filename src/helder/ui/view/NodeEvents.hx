@@ -1,6 +1,7 @@
 package helder.ui.view;
 
 import helder.ui.Event;
+import helder.ui.gesture.LongPress;
 import helder.ui.gesture.Pan;
 import helder.ui.gesture.Scale;
 import helder.ui.gesture.Tap;
@@ -41,10 +42,13 @@ typedef NodeEvents = {
 	onDragLeave:Event,
 	onDrop:Event,
 	onDragEnd:Event,
-	// its laid-out size changed, and first laid out (target: its width and height); ui's only
+	// its laid-out size changed, and first laid out (target: its width and
+	// height); what it changes in the layout is laid out again before the
+	// frame is drawn (a ResizeObserver's loop); ui's only
 	onResize:Event,
 	// the gestures (helder.ui.gesture): the recogniser itself, reused
 	onTap:Tap,
+	onLongPress:LongPress,
 	onPan:Pan,
 	// (two pointers' Scale; onScale's from one)
 	onPinch:Scale,

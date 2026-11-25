@@ -18,7 +18,47 @@ import helder.ui.controls.Variant;
 @:typescript.hide
 class Base {
 	public static function look():Look<BaseVariants>
-		return Look.make(["button" => [t -> button(t)], "checkbox" => [t -> checkbox(t)], "switch" => [t -> toggle(t)], "pathbar" => [t -> pathBar(t)]]);
+		return Look.make(["button" => [t -> button(t)], "checkbox" => [t -> checkbox(t)], "switch" => [t -> toggle(t)], "pathbar" => [t -> pathBar(t)]],
+			touch());
+
+	// (the touch pieces' parts, a slot each: helder.ui.nav's bars and sheets,
+	// helder.ui.menu's touch menu; 44-point targets, the system's type sizes
+	// of iOS: 17 for a bar's title and a row, 32 for a large title)
+	static function touch():Map<String, Array<Refs->Dynamic>> {
+		var parts = new Map<String, Array<Refs->Dynamic>>();
+		function part(slot:String, f:Refs->PartStyle)
+			parts.set(slot, [t -> f(t)]);
+		var item = (t:Refs) -> ({
+			direction: Row, alignItems: Center, justify: Center, minWidth: 44, height: 44, padding: [0, 10], radius: 22, color: t.fg,
+			fontSize: 17, cursor: Pointer, pressed: {opacity: 0.5}, disabled: {opacity: t.disabledOpacity}, focus: ring(t)
+		} : PartStyle);
+		part("nav-screen", t -> {background: t.canvas, color: t.fg, fontSize: 17});
+		part("nav-bar-fill", t -> {background: t.surface, opacity: 0.92});
+		part("nav-title", t -> {fontSize: 17, fontWeight: 600, textAlign: Center, textWrap: NoWrap, textOverflow: Ellipsis});
+		part("nav-large", t -> {padding: [0, 0, 4, 0]});
+		part("nav-large-title", t -> {fontSize: 32, fontWeight: 700, letterSpacing: -0.6, padding: [2, 16, 8, 16], textWrap: NoWrap, textOverflow: Ellipsis});
+		part("nav-subtitle", t -> {fontSize: 13, color: t.fg3, padding: [0, 16, 10, 16], margin: [-6, 0, 0, 0]});
+		part("nav-back", t -> {
+			direction: Row, alignItems: Center, height: 44, minWidth: 44, maxWidth: 140, padding: [0, 8, 0, 0], columnGap: 2, color: t.fg, fontSize: 17,
+			cursor: Pointer, pressed: {opacity: 0.5}, focus: ring(t)
+		});
+		part("nav-back-title", t -> {textWrap: NoWrap, textOverflow: Ellipsis, minWidth: 0, shrink: 1});
+		part("nav-item", item);
+		part("nav-bottom", t -> {background: t.surface});
+		part("sheet-scrim", t -> {background: t.scrim});
+		part("sheet", t -> {background: t.raised, color: t.fg, radius: 14, shadow: lifted(0.25), padding: [6, 0, 0, 0]});
+		part("sheet-grabber", t -> {width: 36, height: 5, radius: 3, background: t.edge, alignSelf: Center, margin: [0, 0, 8, 0], focus: ring(t)});
+		part("sheet-popover", t -> {background: t.raised, color: t.fg, radius: t.radiusPanel, shadow: lifted(0.2), padding: [8, 0], overflow: Hidden});
+		part("touch-menu-preview", t -> {radius: 12, shadow: lifted(0.3)});
+		part("touch-menu", t -> {background: t.raised, color: t.fg, radius: 13, shadow: lifted(0.3)});
+		var row = (t:Refs, danger:Bool) -> ({
+			direction: Row, alignItems: Center, height: 44, padding: [0, 16], columnGap: 12, fontSize: 16, color: danger ? t.danger : t.fg,
+			cursor: Pointer, borderColor: t.line, pressed: {background: t.press}, disabled: {opacity: t.disabledOpacity}, focus: {background: t.hover}
+		} : PartStyle);
+		part("touch-menu-item", t -> row(t, false));
+		part("touch-menu-item-danger", t -> row(t, true));
+		return parts;
+	}
 
 	static final CLEAR = Color.TRANSPARENT;
 

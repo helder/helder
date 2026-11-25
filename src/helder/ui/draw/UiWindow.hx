@@ -239,6 +239,8 @@ class UiWindow {
 		{};
 		#end
 		open.push(this);
+		// (the size class is the first window's: a second one, an inspector's, leaves it)
+		if (open[0] != this) open[0].ui.claim();
 		#if helder.headless
 		// (a headless run: the ui's events and clock the run's virtual time, the first window's nodes its tree)
 		Ui.now = () -> helder.headless.Time.now;

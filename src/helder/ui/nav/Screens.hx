@@ -31,6 +31,9 @@ enum abstract StackTransition(String) to String {
 // history: an entry a push); on iOS's slide a drag from the left edge
 // pops it as it goes.
 class Screens implements Markup {
+	// the screen a component is mounted in and its stack (a NavScreen's bar reads it)
+	public static final here:helder.view.graph.Context<Null<Here>> = context((null : Null<Here>));
+
 	public static function Stack(props:{router:Router, ?transition:StackTransition}):UiView {
 		var s = new StackState(props.router, props.transition ?? platform());
 		return <view tag="stack" grow={1} position="relative" overflow="hidden" ref={n -> s.attach(n)}>
@@ -42,7 +45,7 @@ class Screens implements Markup {
 	static function row(s:Screen, stack:StackState):UiView
 		return <view tag="screen" position="absolute" left={0} top={0} right={0} bottom={0} instant transform={s.transform(stack.kind)} opacity={s.opacity(stack.kind)}
 			visibility={s.hidden() ? "hidden" : "visible"} pointer-events={s.busy() ? "none" : "auto"} ref={n -> s.node = n}>
-			{s.entry.view}
+			<Provider context={here} value={new Here(stack, s)}>{s.entry.view}</Provider>
 			<view position="absolute" left={0} top={0} right={0} bottom={0} pointer-events="none" background={s.shade(stack.kind)}/>
 		</view>;
 
@@ -64,6 +67,31 @@ enum abstract Kind(Int) {
 	var Still;
 }
 
+// A screen of a stack, as what is mounted in it sees it: its title (a
+// NavScreen's, for the back button above it), the screens below it
+@:noCompletion class Here {
+	public final stack:StackState;
+	public final screen:Screen;
+
+	public function new(stack, screen) {
+		this.stack = stack;
+		this.screen = screen;
+	}
+
+	// the screens below it, the nearest first (their titles: the back
+	// button's and its long press's menu)
+	public function below():Array<Screen> {
+		var list = stack.screens(), i = list.indexOf(screen);
+		return i <= 0 ? [] : [for (k in 0...i) list[i - 1 - k]].filter(s -> !s.leaving);
+	}
+
+	// pops to the screen below it k down (0: the nearest)
+	public function back(k = 0) {
+		var list = stack.screens(), i = list.indexOf(screen);
+		stack.router.backTo(Std.int(Math.max(0, i - 1 - k)));
+	}
+}
+
 // One screen: its entry, where it is (at: 1 in place, 0 out to the right;
 // cover: 1 covered by the one above)
 class Screen {
@@ -74,6 +102,8 @@ class Screen {
 	public final coverValue = signalOf(0.0, {ownedWrite: true});
 	public final hidden = signalOf(false, {ownedWrite: true});
 	public final busy = signalOf(false, {ownedWrite: true});
+	// its title, its NavScreen's (the back button's of the one above)
+	public final title = signalOf("", {ownedWrite: true});
 	public var node:Null<Node> = null;
 	public var leaving = false;
 
@@ -127,7 +157,7 @@ class StackState {
 	public final screens = signalOf(([] : Array<Screen>), {ownedWrite: true});
 	public final said = signalOf("", {ownedWrite: true});
 	public var kind(default, null):Kind;
-	final router:Router;
+	@:allow(helder.ui.nav) final router:Router;
 	final transition:StackTransition;
 	var node:Null<Node> = null;
 	var edge:Null<EdgePan> = null;
@@ -173,7 +203,7 @@ class StackState {
 		node = n;
 		var g = edge = n.addGesture(new EdgePan());
 		g.onGesture = swipe;
-		g.enabled = kind == Ios && list.length > 1;
+		g.enabled = swipes() && list.length > 1;
 		onCleanup(() -> n.removeGesture(g));
 	}
 
@@ -247,7 +277,7 @@ class StackState {
 			tick();
 		}
 		fling = null;
-		if (edge != null) edge.enabled = kind == Ios && entries.length > 1;
+		if (edge != null) edge.enabled = swipes() && entries.length > 1;
 		screens(list.copy());
 	}
 
@@ -256,6 +286,17 @@ class StackState {
 		while (i-- > 0)
 			if (!list[i].leaving) return list[i];
 		return null;
+	}
+
+	// (iOS's swipe back: its slide's, and under reduced motion a fade that
+	// follows the finger as the slide would)
+	function swipes():Bool {
+		if (kind == Ios) return true;
+		if (kind != Reduced || transition != Slide) return false;
+		#if (target.name == "hxmc")
+		if (Platform.target() >= 9) return false;
+		#end
+		return true;
 	}
 
 	function curveOf():Curve
@@ -319,7 +360,7 @@ class StackState {
 		var below = i > 0 ? list[i - 1] : null;
 		var w = n.width <= 0 ? 1 : n.width;
 		switch g.state {
-			case Began | Changed if (kind == Ios && below != null):
+			case Began | Changed if (swipes() && below != null):
 				dragging = true;
 				var k = 1 - Math.max(0, Math.min(1, g.tx / w));
 				now.at.set(k);

@@ -515,7 +515,12 @@ edges; Shift or Cmd/Ctrl at its start adds to the selection, a click on
 empty space clears it. To assistive technology a grid of rows of
 multi-selectable cells, each with its place among all.
 
-`VirtualList` takes the same `selection`, `onActivate` (then given the
+Select mode (`selectMode`, a `Read<Bool>`; `GridScroll.selectMode`) is a
+phone's Select: a press toggles its item and nothing is activated, a drag
+sideways from an item selects the run to the item under the finger (all
+off if the first was on), a vertical one still scrolls.
+
+`VirtualList` takes the same `selection`, `selectMode`, `onActivate` (then given the
 selected indices), `onContextMenu` and `textOf`, in one dimension;
 without a `selection` its `selected` key and `onActivate` given an item
 are as they were. Cells (slot `grid-cell`) and a selection's rows carry
@@ -566,8 +571,69 @@ nav.path(); nav.depth(); nav.query();                  // Reads of the top
   one below to 90%), and elsewhere a fade (150 ms with an 8 px slide).
   An explicit `Slide` is iOS's off Android. Reduced motion
   (`Settings.reducedMotion`, `Clock.reducedMotion`): a 150 ms fade
-  for a slide or a fade (`None` stays none). Screens are see-through unless their content
+  for a slide or a fade (`None` stays none); the edge's drag still follows
+  the finger there, as a fade. Screens are see-through unless their content
   has a background: give a screen's root one under a slide.
+
+### Phones and tablets
+
+`SizeClass.current` is how much room the screen has, from its surface's
+width in points (`ScreenContext.width`, and `height`: the window's, the
+first one's when there are several; a story's): `Compact` under 600 (a phone, a narrow
+browser tab), `Medium` to 1024 (a tablet upright, a foldable, split view),
+`Expanded` from 1024 (a tablet on its side, a desktop). It is a signal, so
+a shell that switches on it follows a rotation or a resize:
+
+```haxe
+<Switch>
+	<Match when={SizeClass.current() == Compact}><Phone/></Match>
+	<Match when={true}><Desktop/></Match>
+</Switch>
+```
+
+`NavScreen` is a Stack's screen with iOS's bars: its `title`, `large`
+(the large title over the content, scrolling with it and moving into the
+bar as it goes under; `subtitle` under it), the back button titled by the
+screen below (a long press: a menu of all the screens below, any of them
+popped to: `Router.backTo`), `leading` and `trailing` items (`NavButton`:
+an icon or a label, 44 points at least), a `header` under the large title
+(a search field), a `bottom` bar (a toolbar, tabs) over the content, and
+`bars={false}` to fade them out (a photo's tap). The content scrolls in a
+scroller of the screen's, its top and bottom left for the bars and the
+safe area; content with its own (a `VirtualGrid`) says `scrolls={false}`
+and hands its scroller over, `use(Bar.here).scroller(grid)` (a
+`VirtualScroll`'s `insets(top, bottom)`: the room before its first row and
+after its last):
+
+```haxe
+nav.route("/", _ -> <NavScreen title="Photos" large subtitle="120 items" header={<Search/>}
+	trailing={<NavButton label="Select" onPress={select}/>}><Albums/></NavScreen>);
+```
+
+`Sheet` is a bottom sheet: a panel from the bottom edge over a scrim,
+resting at its `detents` (`Medium`, about half the window; `Large`, all
+but a strip at the top; `detent` the one it is at), a grabber on top
+(pressed: the next detent), dragged between them and down to dismiss
+(`onDismiss`, by distance or speed; the scrim and Escape too). A drag on
+content that scrolls is the content's until it is at its top. Under
+reduced motion it fades. With an `anchor` on a Medium or Expanded screen
+it is a popover from that node instead (`popover={false}`: always a
+sheet):
+
+```haxe
+<Sheet open={info} detents={[Medium, Large]} anchor={() -> infoButton} onDismiss={() -> info(false)}>
+	<Inspector file={file}/>
+</Sheet>
+```
+
+Their parts are slots the look styles (`Look.base`'s parts, a look's
+`parts` over them): `nav-screen`, `nav-bar`, `nav-bar-fill`, `nav-title`,
+`nav-large`, `nav-large-title`, `nav-subtitle`, `nav-back`,
+`nav-back-title`, `nav-item`, `nav-bottom`; `sheet-scrim`, `sheet`,
+`sheet-grabber`, `sheet-popover`. In TypeScript: `NavScreen`,
+`NavButton`, `Sheet` and the types `SizeClass`, `Detent` from
+`helder/ui`. `src/helder/ui/nav/Nav.test.hx` drives them headless,
+`Nav.story.hx` shows each at a phone's and a tablet's size.
 
 ## Actions and keymaps
 
@@ -664,7 +730,8 @@ markup:
 
 ## Menus
 
-`helder.ui.menu`: one model for the menu bar and context menus. A
+`helder.ui.menu`: one model for the menu bar and context menus (and for
+touch: below). A
 `MenuItem` is `Item(label, action)`, `Separator`, `Submenu(label, items)`
 or `Role(role)` (About, Quit, Hide, Undo, Redo, Cut, Copy, Paste,
 SelectAll, Minimize, Zoom, Fullscreen, CloseWindow: `StandardAction`'s);
@@ -692,6 +759,26 @@ focus given back when they close. `tests/os/MenuTest.hx` reads each
 platform's back (the window lane); `src/helder/ui/menu/Menus.test.hx` the
 model and the drawn menus.
 
+On touch a context menu opens by a long press: `ContextMenu.attach(node,
+items, ?preview, ?destructive)` makes the model's items when it opens,
+lifts the `preview` (a view of the caller's: the node's look again, larger)
+where the node is, over the window blurred by a glass, the menu under it
+(above it where there is no room, the preview moved up to fit), with
+`Haptics.tap`; a right click on the node is `Menus.popup` at the pointer.
+A choice dispatches from the node as any menu's does; `destructive` says
+which actions are drawn red. `TouchMenu.open(ui, choices, rect)` shows
+such a menu of plain choices (the back button's list of screens), and
+`TouchMenu.choices` turns the model into them. helder draws it on every
+platform: iOS's own UIContextMenuInteraction is not used (its preview and
+its menu would be the system's views over helder's layer, out of reach of
+its look and its tests). Slots: `touch-menu`, `touch-menu-item`,
+`touch-menu-item-danger`, `touch-menu-preview`.
+
+```haxe
+<view ref={n -> ContextMenu.attach(n, () -> [Item("Open", Open), Separator, Item("Move to Trash", Trash)],
+	() -> <Thumb file={file} size={240}/>, a -> a == Trash)}/>
+```
+
 ## Markup
 
 Intrinsic elements: `view` (a box), `text` (a run of text), `scroll` (a box
@@ -711,9 +798,11 @@ Attributes:
   `onLostPointerCapture`, `onWheel`, `onKeyDown`, `onKeyUp`,
   `onTextInput`, `onFocus`, `onBlur`, `onFocusIn`, `onFocusOut` (bubbling) (an `Event -> Void`);
   `onPress` (`Node.onActivate`: a click, or Enter or Space unless `onKeyDown`
-  took it, as a DOM button's click); the gestures `onTap`, `onPan`
+  took it, as a DOM button's click); the gestures `onTap`, `onLongPress`
+  (held still half a second: it wins the press then), `onPan`
   (`pan-axis="x"`, `pan-min-pointers`), `onPinch`, `onScale` (a
-  recogniser made on the node, given to its handler: a `Tap`, a `Pan`, a
+  recogniser made on the node, given to its handler: a `Tap`, a
+  `LongPress`, a `Pan`, a
   `Scale`). `helder.ui.view.NodeEvents` declares them (NodeRenderer's
   `@:events`, the neutral elements' in every renderer), and markup checks
   each handler against it: a function of its event or of none
