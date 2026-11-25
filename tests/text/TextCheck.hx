@@ -704,7 +704,7 @@ class TextCheck {
 		check("sample: fits", y < H, '$y');
 		var png = Png.encode(img, W, H);
 		if (bless) {
-			sys.io.File.saveBytes(golden, png);
+			sys.io.File.saveBytes(golden, Png.golden(img, W, H));
 			Sys.println("TextCheck: blessed " + golden);
 			return;
 		}

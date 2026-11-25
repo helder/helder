@@ -235,15 +235,17 @@ class Studio {
 	}
 
 	// the demos' stills: [name, entry, script or "", the program's arguments, times (seconds or mark:<name>)]
-	static final DEMO_SHOTS:Array<{name:String, entry:String, script:String, flags:Array<String>, args:Array<String>, at:Array<String>}> = [
+	// (scale: half by default; a quarter for the stills that are mostly noise,
+	// a large golden at half that shows no more)
+	static final DEMO_SHOTS:Array<{name:String, entry:String, script:String, flags:Array<String>, args:Array<String>, at:Array<String>, ?scale:Float}> = [
 		{name: "showreel-title", entry: "examples/showreel", script: "", flags: [], args: ["--scene", "title"], at: ["3.4"]},
 		{name: "showreel-launch", entry: "examples/showreel", script: "", flags: [], args: ["--scene", "launch"], at: ["1.0", "7.0"]},
 		{name: "showreel-zoom", entry: "examples/showreel", script: "", flags: [], args: ["--scene", "zoom"], at: ["2.4"]},
 		{name: "showreel-odometer", entry: "examples/showreel", script: "", flags: ["--reduced-motion"], args: ["--scene", "odometer"], at: ["0.5"]},
 		{name: "showreel-million", entry: "examples/showreel", script: "", flags: [], args: ["--scene", "million"], at: ["2.2"]},
 		{name: "showreel-type", entry: "examples/showreel", script: "", flags: [], args: ["--scene", "type"], at: ["3.0"]},
-		{name: "showreel-material", entry: "examples/showreel", script: "", flags: [], args: ["--scene", "material"], at: ["4.0"]},
-		{name: "showreel-canvas", entry: "examples/showreel", script: "", flags: [], args: ["--scene", "canvas"], at: ["3.0"]},
+		{name: "showreel-material", entry: "examples/showreel", script: "", flags: [], args: ["--scene", "material"], at: ["4.0"], scale: 0.25},
+		{name: "showreel-canvas", entry: "examples/showreel", script: "", flags: [], args: ["--scene", "canvas"], at: ["3.0"], scale: 0.25},
 		{name: "showreel-theme", entry: "examples/showreel", script: "", flags: [], args: ["--scene", "theme"], at: ["3.6"]},
 		{name: "fx", entry: "examples/fx", script: "", flags: [], args: [], at: ["1.0"]},
 		{name: "fx-tour", entry: "examples/fx", script: "", flags: [], args: ["--tour"], at: ["9.6"]},
@@ -260,7 +262,7 @@ class Studio {
 		for (d in DEMO_SHOTS) {
 			// (on the CPU but fx's: its effects hash noise with sin, which every
 			// implementation computes apart, so its goldens are the GPU's)
-			var args = ["run", "--headless"].concat(d.name.startsWith("fx") ? [] : ["--soft"]).concat([d.entry, "--scale", "0.5"])
+			var args = ["run", "--headless"].concat(d.name.startsWith("fx") ? [] : ["--soft"]).concat([d.entry, "--scale", Std.string(d.scale ?? 0.5)])
 				.concat(d.flags);
 			if (d.script != "") args = args.concat(["--script", d.script]);
 			for (t in d.at)
