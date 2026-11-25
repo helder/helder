@@ -777,8 +777,8 @@ jobs:
   # main's module caches: every job's files (.github/actions/save) laid over
   # the OS's last entry, trimmed by hxmc (least recently used first, past
   # HXMC_CACHE_SIZE: an hxmc build, the CLI's, with its last trim's time
-  # removed), saved as the OS's one entry while the run is still main's
-  # newest, the older entries deleted.
+  # removed), saved as the OS's one entry, the older entries deleted (a run
+  # that ends after a newer one's: its merge restored first, still warm).
   cache:
     needs: [changes, headless, typescript, examples, site, site-check, fuzz, gfx, gfx-3d, gfx-apps, browser, studio-web, android, ios-simulator, ios-signing, desktop-macos, desktop-windows]
     if: ${{ !cancelled() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && needs.changes.outputs.code == 'true' }}
@@ -824,10 +824,9 @@ jobs:
             done
           done
           (cd ~ && du -sh $dirs)
-          head=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
-          [ "$head" != "$GITHUB_SHA" ] || echo "newest=true" >> "$GITHUB_OUTPUT"
+          echo "merged=true" >> "$GITHUB_OUTPUT"
       - id: save
-        if: steps.merge.outputs.newest == 'true'
+        if: steps.merge.outputs.merged == 'true'
         uses: actions/cache/save@v6
         with:
           path: |
@@ -842,10 +841,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # (an older hxmc's too)
+          # (all but the newest saved, this run's or a later one's; an older
+          # hxmc's too)
           prefix="${{ steps.key.outputs.prefix }}"
-          gh cache list --repo "$GITHUB_REPOSITORY" --ref refs/heads/main --key "${prefix%%hxmc-*}" --limit 100 --json id,key \
-            --jq '.[] | select(.key != "${{ steps.key.outputs.key }}") | .id' | while read -r id; do
+          gh cache list --repo "$GITHUB_REPOSITORY" --ref refs/heads/main --key "${prefix%%hxmc-*}" --limit 100 --sort created_at --order desc --json id \
+            --jq '.[1:][] | .id' | while read -r id; do
             gh cache delete "$id" --repo "$GITHUB_REPOSITORY"
           done
 
