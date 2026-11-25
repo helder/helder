@@ -1210,7 +1210,7 @@ class Ui extends ScrollHost {
 		var be = s.borderEdges, bordered = be.top + be.right + be.bottom + be.left > 0 && s.borderColor.a > 0;
 		var borderStyle:BorderStyle = s.borderStyle ?? Solid;
 		// (the padding box's corners: each less the wider side meeting there)
-		var padR = Math.max(0, s.radius - s.borderWidth), padC:Null<Corners> = null;
+		var padR = Math.max(0, s.borderRadius - s.borderWidth), padC:Null<Corners> = null;
 		if (cs != null || sides != null) {
 			var c = s.cornerRadii();
 			padC = new Corners(Math.max(0, c.topLeft - Math.max(be.left, be.top)), Math.max(0, c.topRight - Math.max(be.top, be.right)),
@@ -1224,7 +1224,7 @@ class Ui extends ScrollHost {
 			for (sh in shadows) {
 				if (sh.inset) continue;
 				var o = sh.spread;
-				canvas.shadow(n.absX + sh.x - o, n.absY + sh.y - o, nw + 2 * o, nh + 2 * o, s.radius > 0 ? Math.max(0, s.radius + o) : 0, sh.color,
+				canvas.shadow(n.absX + sh.x - o, n.absY + sh.y - o, nw + 2 * o, nh + 2 * o, s.borderRadius > 0 ? Math.max(0, s.borderRadius + o) : 0, sh.color,
 					sh.blur, cs == null ? null : new Corners(cs.topLeft > 0 ? Math.max(0, cs.topLeft + o) : 0, cs.topRight > 0 ? Math.max(0, cs.topRight + o) : 0,
 						cs.bottomRight > 0 ? Math.max(0, cs.bottomRight + o) : 0, cs.bottomLeft > 0 ? Math.max(0, cs.bottomLeft + o) : 0), opaque ? null : [sh.x, sh.y, o]);
 			}
@@ -1232,15 +1232,15 @@ class Ui extends ScrollHost {
 			// (nothing of its own)
 		} else if (s.backgroundImage != null && nw > 0 && nh > 0) {
 			// (the colour, the gradient over it, then the border over both)
-			if (s.background.a > 0) canvas.rect(n.absX, n.absY, nw, nh, s.radius, s.background, 0, 0, cs);
-			canvas.image(n.backgroundImage(scale), n.absX, n.absY, nw, nh, 0, 0, 1, 1, s.radius, cs);
-			if (bordered) canvas.rect(n.absX, n.absY, nw, nh, s.radius, Color.TRANSPARENT, s.borderWidth, s.borderColor, cs, sides, borderStyle);
+			if (s.background.a > 0) canvas.rect(n.absX, n.absY, nw, nh, s.borderRadius, s.background, 0, 0, cs);
+			canvas.image(n.backgroundImage(scale), n.absX, n.absY, nw, nh, 0, 0, 1, 1, s.borderRadius, cs);
+			if (bordered) canvas.rect(n.absX, n.absY, nw, nh, s.borderRadius, Color.TRANSPARENT, s.borderWidth, s.borderColor, cs, sides, borderStyle);
 		} else if (s.background.a > 0 && s.borderColor.a < 255 && be.top + be.right + be.bottom + be.left > 0) {
 			// (the background under the border too, as CSS's background-clip: border-box, seen through a translucent one)
-			canvas.rect(n.absX, n.absY, nw, nh, s.radius, s.background, 0, 0, cs);
-			if (bordered) canvas.rect(n.absX, n.absY, nw, nh, s.radius, Color.TRANSPARENT, s.borderWidth, s.borderColor, cs, sides, borderStyle);
+			canvas.rect(n.absX, n.absY, nw, nh, s.borderRadius, s.background, 0, 0, cs);
+			if (bordered) canvas.rect(n.absX, n.absY, nw, nh, s.borderRadius, Color.TRANSPARENT, s.borderWidth, s.borderColor, cs, sides, borderStyle);
 		} else if (s.background.a > 0 || bordered)
-			canvas.rect(n.absX, n.absY, nw, nh, s.radius, s.background, s.borderWidth, s.borderColor, cs, sides, borderStyle);
+			canvas.rect(n.absX, n.absY, nw, nh, s.borderRadius, s.background, s.borderWidth, s.borderColor, cs, sides, borderStyle);
 		// (the shadows inside: in the padding box, over the background)
 		if (shadows != null)
 			for (sh in shadows)
@@ -1251,7 +1251,7 @@ class Ui extends ScrollHost {
 		var cover = p != null && p.flying && n.width > 0 && n.height > 0;
 		if (cover) {
 			var k = Math.max(nw / n.width, nh / n.height);
-			canvas.pushClip(n.absX, n.absY, nw, nh, s.radius, cs);
+			canvas.pushClip(n.absX, n.absY, nw, nh, s.borderRadius, cs);
 			canvas.pushTransform(k, 0, 0, k, n.absX + nw / 2 - k * (n.absX + n.width / 2), n.absY + nh / 2 - k * (n.absY + n.height / 2));
 			w.all();
 			if (dl != null) dl.cullAll();
@@ -1343,14 +1343,14 @@ class Ui extends ScrollHost {
 		// (its outline over its content, the focus ring over that)
 		if (s.outlineWidth > 0 && !hidden && s.outlineStyle != None) {
 			var o = s.outlineOffset + s.outlineWidth;
-			canvas.rect(n.absX - o, n.absY - o, nw + 2 * o, nh + 2 * o, s.radius > 0 ? Math.max(0, s.radius + o) : 0, Color.TRANSPARENT,
+			canvas.rect(n.absX - o, n.absY - o, nw + 2 * o, nh + 2 * o, s.borderRadius > 0 ? Math.max(0, s.borderRadius + o) : 0, Color.TRANSPARENT,
 				s.outlineWidth, s.outlineColor ?? n.textColor(), cs == null ? null : new Corners(cs.topLeft > 0 ? Math.max(0, cs.topLeft + o) : 0,
 					cs.topRight > 0 ? Math.max(0, cs.topRight + o) : 0, cs.bottomRight > 0 ? Math.max(0, cs.bottomRight + o) : 0,
 					cs.bottomLeft > 0 ? Math.max(0, cs.bottomLeft + o) : 0), null, s.outlineStyle == Dashed ? Dashed : s.outlineStyle == Dotted ? Dotted : Solid);
 		}
 		if (n == focus && focusVisible && focusRingWidth > 0 && !hidden && (s.outlineStyle == null || s.outlineStyle == Auto)) {
 			var o = focusRingOffset + focusRingWidth;
-			canvas.rect(n.absX - o, n.absY - o, nw + 2 * o, nh + 2 * o, s.radius > 0 ? s.radius + o : 0, Color.TRANSPARENT, focusRingWidth,
+			canvas.rect(n.absX - o, n.absY - o, nw + 2 * o, nh + 2 * o, s.borderRadius > 0 ? s.borderRadius + o : 0, Color.TRANSPARENT, focusRingWidth,
 				focusRingColor, cs == null ? null : new Corners(cs.topLeft > 0 ? cs.topLeft + o : 0, cs.topRight > 0 ? cs.topRight + o : 0,
 					cs.bottomRight > 0 ? cs.bottomRight + o : 0, cs.bottomLeft > 0 ? cs.bottomLeft + o : 0));
 		}
@@ -2533,7 +2533,7 @@ class Ui extends ScrollHost {
 		var n = hit(x, y);
 		while (n != null) {
 			if (n.titleHit != helder.os.TitleBar.TitleHit.Content) return n.titleHit;
-			if (n.focusable || n.onClick != null || n.onActivate != null || n.onPointerDown != null || n.onDragStart != null) return helder.os.TitleBar.TitleHit.Content;
+			if (n.focusable || n.onClick != null || n.onPress != null || n.onPointerDown != null || n.onDragStart != null) return helder.os.TitleBar.TitleHit.Content;
 			n = n.parent;
 		}
 		return helder.os.TitleBar.TitleHit.Content;
@@ -2578,7 +2578,7 @@ class Ui extends ScrollHost {
 			// (a press: after the click of the primary button (a right click is a
 			// context menu's, as a browser's), or Enter or Space the key handlers
 			// left; a link's Enter only, as a browser's)
-			var press = n.onActivate;
+			var press = n.onPress;
 			if (press != null && !e.stopped && (e.type == Click && e.button <= 1 || e.type == KeyDown && !e.defaultPrevented
 				&& (e.key == Key.ENTER || e.key == Key.SPACE && (n.semantics == null || n.semantics.role != helder.ui.access.Role.Link)))) {
 				if (e.type == KeyDown) e.preventDefault();
@@ -2656,10 +2656,10 @@ class Ui extends ScrollHost {
 		return Default;
 	}
 
-	// (a button's element (view:button, a link's view:a), what has an
-	// onPress (Node.onActivate), or what assistive technology is told is pressed)
+	// (a button's element (button, a link's a), what has an
+	// onPress (Node.onPress), or what assistive technology is told is pressed)
 	static function pressable(n:Node):Bool {
-		if (n.tag == "button" || n.tag == "a" || n.onActivate != null) return true;
+		if (n.tag == "button" || n.tag == "a" || n.onPress != null) return true;
 		var s = n.semantics;
 		if (s == null) return false;
 		if (s.href != null) return true;
