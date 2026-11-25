@@ -1,6 +1,6 @@
 {
   "events": [
-    {"t": 0.2, "type": "tap", "tag": "draft"},
+    {"t": 0.2, "type": "tap", "tag": "draft", "wait": true},
     {"t": 0.3, "type": "type", "text": "Buy milk"},
     {"t": 0.4, "type": "key", "name": "Enter"},
     {"t": 0.5, "type": "type", "text": "Write the docs", "every": 0.02},
