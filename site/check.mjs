@@ -191,8 +191,8 @@ async function checkDocs(page) {
 			const error = await island.getAttribute('data-error');
 			check(error === null, `${p.url}: ${id} started once in view${error ? ': ' + error : ''}`);
 			if (sound || error !== null) continue;
-			// (started once in view, so there is no frame from before it ran: a frame of more than a few colours is drawn)
-			const colours = await renderedFrames(island);
+			// (started once in view, so there is no frame from before it ran: a frame of more than a few colours is drawn, frames read until one is)
+			const colours = await renderedFrames(island, 8);
 			check(colours > 8, `${p.url}: ${id}'s canvas drawn (${colours} colours)`);
 			if (shots) await shot(page, `docs-${id}.png`);
 		}
@@ -236,37 +236,47 @@ async function shot(page, name, options = {}) {
 
 // Readback resolves once a canvas frame has rendered, including in a worker.
 // Request each frame separately so an idle scene redraws and a slow GPU can catch up.
-async function renderedFrames(island) {
-	return island.evaluate(async (el) => {
+// Three frames at least; with more (the colours a drawn frame has more
+// than), frames on until one has them or 45 s pass: an animation's
+// first frames may not show its content yet (the fountain's 65536 drops
+// all born at its nozzle on the first step: 6 to 8 colours three frames
+// in on CI, thousands a second later), and a canvas that never draws
+// more still fails. The last frame's colours
+async function renderedFrames(island, more = 0) {
+	return island.evaluate(async (el, more) => {
 		const { host } = await globalThis.hxmcWasm[el.id];
+		const count = ({ data, width, height }) => {
+			const colours = new Set();
+			for (let y = 0; y < height; y += 4) for (let x = 0; x < width; x += 4) {
+				const i = (y * width + x) * 4;
+				colours.add((data[i] << 16) | (data[i + 1] << 8) | data[i + 2]);
+			}
+			return colours.size;
+		};
 		let timer;
 		try {
 			return await Promise.race([
 				(async () => {
-					let pixels;
-					for (let n = 0; n < 3; n++) {
+					const t0 = performance.now();
+					let colours = 0;
+					for (let n = 0; n < 3 || (colours <= more && performance.now() - t0 < 45000); n++) {
 						const frame = host.gfx.readPixels();
 						host.os.redraw();
-						pixels = await frame;
+						const pixels = await frame;
+						if (n >= 2) colours = count(pixels);
 					}
 					// Let the browser composite the canvas before Playwright captures it.
 					await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-					const { data, width, height } = pixels;
-					const colours = new Set();
-					for (let y = 0; y < height; y += 4) for (let x = 0; x < width; x += 4) {
-						const i = (y * width + x) * 4;
-						colours.add((data[i] << 16) | (data[i + 1] << 8) | data[i + 2]);
-					}
-					return colours.size;
+					return colours;
 				})(),
 				new Promise((_, reject) => {
-					timer = setTimeout(() => reject(new Error(`${el.id}: timed out waiting for three rendered frames`)), 60000);
+					timer = setTimeout(() => reject(new Error(`${el.id}: timed out waiting for rendered frames`)), 90000);
 				}),
 			]);
 		} finally {
 			clearTimeout(timer);
 		}
-	});
+	}, more);
 }
 
 // on an iPhone (Playwright's iPhone 13: 390x844 at 3x, touch, its user
