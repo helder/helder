@@ -4,7 +4,7 @@ import sys.io.File;
 
 using StringTools;
 
-// The headless-run lane's checks (bun run test headless-run; tests/Run.hx
+// The headless-run lane's checks (bun run test headless-run; tests/lanes/Studio.hx
 // ran `helder run --headless` twice into <dir>/1 and <dir>/2 first): the
 // todo examples' trees (Haxe's and TypeScript's, the same script: items
 // added by Enter and by the Add button, one toggled by its role and

@@ -1,5 +1,5 @@
 // examples/ts-scene's scenes drawn headless from TypeScript (the 3d lane:
-// tests/Run.hx's scene), each frame against a golden image by RenderTest's
+// tests/lanes/Scene.hx's scene), each frame against a golden image by RenderTest's
 // rule (FrameCheck):
 //   glow     examples/glow's scene in TypeScript: Haxe's frame, glow.png
 //   tsscene  the Showcase (the sample model, a point light, glowing

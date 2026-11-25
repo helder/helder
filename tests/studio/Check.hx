@@ -4,7 +4,7 @@ import sys.io.File;
 
 using StringTools;
 
-// The studio lane's checks (tests/Run.hx: studio): helder studio (apps/studio)
+// The studio lane's checks (tests/lanes/Studio.hx: studio): helder studio (apps/studio)
 // run headless on copies of examples/todo and examples/ts-todo by
 // tests/studio/edit.json, its events (--events: JSON lines) and frames here:
 // - every screen shown, a screen zoomed into, the title clicked and selected
