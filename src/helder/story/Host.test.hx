@@ -43,6 +43,20 @@ function tests() {
 		host.frame(21);
 		equals(ticks, 123);
 	});
+	var throws = test("a screen that throws: its failure, the others drawn", () -> {
+		var a = new Story("A", _ -> View.view(<view/>), 1, null, 100, 100);
+		var b = new Story("B", _ -> throw "boom", 1, null, 100, 100);
+		var host = new Host([a, b], new HeadlessHost());
+		var told = [];
+		host.onFailure = s -> told.push(s.name);
+		host.show(["A", "B"]);
+		equals(host.frame(0), 1);
+		equals(told, ["B"]);
+		equals([for (x in host.screens) x.failure?.message], [null, "boom"]);
+		equals([for (x in host.screens) x.version], [1, 0]);
+		equals(host.frame(1), 0);
+		equals(told, ["B"]);
+	});
 	var outOfView = test("out of view: drawn once, after those in view", () -> {
 		var a = new Story("A", _ -> View.view(<view/>), 1, null, 100, 100);
 		var b = new Story("B", _ -> View.view(<view/>), 1, null, 100, 100);
@@ -61,5 +75,6 @@ function tests() {
 	#if (hxmc.target == "wasm32-wasi")
 	stills.skip();
 	outOfView.skip();
+	throws.skip();
 	#end
 }

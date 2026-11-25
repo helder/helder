@@ -19,7 +19,7 @@ function tests() {
 			var w = workspace();
 			var agent = new AcpAgent(fake(), w);
 			var sel = {screen: "Home", file: w.dir + "/app.helder", start: w.docs.get(w.dir + "/app.helder").text.indexOf("<text"), tag: "text"};
-			var events = turn(agent, "edit", {screen: "Home", selection: sel, problems: ["app.tsx:3: oops"]}, true);
+			var events = turn(agent, "edit", {screen: "Home", selection: sel, problems: ["app.tsx:3: oops"], crashes: ["App/Bad: app.tsx:7: boom"]}, true);
 			agent.close();
 			var kinds = [for (e in events) e.getName()];
 			equals(kinds, ["Text", "Thought", "Text", "Steps", "Tool", "Ask", "Tool", "Tool", "Text", "Done"]);
@@ -41,6 +41,7 @@ function tests() {
 			equals(["Bash", "Write", "Agent", "Task", "Workflow", "Monitor"].filter(t -> !AcpAgent.DENIED.contains(t)), []);
 			equals(report.link, "app.helder:2");
 			equals(report.problems, "The studio's last build failed:\n- app.tsx:3: oops");
+			equals(report.crashes, "It builds, but these screens threw when the studio ran them:\n- App/Bad: app.tsx:7: boom");
 			var f = w.dir + "/app.helder";
 			equals(w.docs.get(f).text, "<frame>\n\t<text>Hi</text>\n</frame>\n");
 			var e = w.docs.undo();

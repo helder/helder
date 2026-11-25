@@ -34,4 +34,6 @@ typedef AgentContext = {
 	selection:Null<{screen:String, file:String, start:Int, tag:String}>,
 	// the studio's last build's errors ("file:line: message"; none: it built)
 	problems:Array<String>,
+	// the screens that threw when the studio ran them ("screen: file:line: why")
+	?crashes:Array<String>,
 }

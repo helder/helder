@@ -27,6 +27,8 @@ import hxmc.unsafe.*;
 //                                          frame of it for STILL seconds): a frames file of its
 //                                          screen alone (helder.ui.draw.FrameArchive), its key "";
 //                                          a loop story's loop recorded with it (LOOP_FPS)
+//   Host.failed {screen, message, at}      a screen threw (where in the project's sources, when
+//                                          its stack says): passed over, the others go on
 //   Hot.patched                            a patch's first frame (helder.dev)
 //
 // and a frame's target is drawn into again once the studio sends
@@ -55,16 +57,22 @@ class NativeHost {
 		helder.dev.Hot.poll();
 		// (a reload: the screens the last build had built and shown, built again before the first
 		// frame, so that their state comes back, in view or not; the snapshot keeps which)
+		// (the screens told before any is built: a failure names one of them)
+		helder.dev.Agent.notify("Host.ready", {screens: HostAgent.list(host), sharing: frames.sharing(host.device)});
+		// (a screen that throws: its failure told, the others go on)
+		host.onFailure = s -> helder.dev.Agent.notify("Host.failed", {screen: host.screens.indexOf(s), message: s.failure?.message, at: s.failure?.at});
 		var kept:Null<Array<String>> = helder.dev.Hot.load("helder.story.mounted", helder.dev.Hot.typeOf((_ : Array<String>)));
 		if (kept != null) for (n in kept) {
 			var s = host.screen(n);
 			if (s == null) continue;
 			s.seen = true;
-			s.mount();
+			host.guard(s, () -> {
+				s.mount();
+				false;
+			});
 		}
 		helder.dev.Hot.onSnapshot(() -> helder.dev.Hot.save("helder.story.mounted", [for (s in host.screens) if (s.ui != null && s.seen) s.name],
 			helder.dev.Hot.typeOf((_ : Array<String>))));
-		helder.dev.Agent.notify("Host.ready", {screens: HostAgent.list(host), sharing: frames.sharing(host.device)});
 		// (a still's frames: written once it settled, not each it drew on its way)
 		var due = new Map<String, Float>();
 		host.onFrame = s -> if (host.stills && s != host.looping) due.set(s.name, haxe.Timer.stamp());
@@ -76,7 +84,10 @@ class NativeHost {
 			for (name in [for (n => at in due) if (now - at > STILL) n]) {
 				due.remove(name);
 				var s = host.screen(name);
-				if (s != null && host.stills && s != host.looping) frames.still(s);
+				if (s != null && host.stills && s != host.looping && s.failure == null) host.guard(s, () -> {
+					frames.still(s);
+					false;
+				});
 			}
 			// (nothing due: a nap, the next timer's or the studio's next message's latency)
 			if (drawn == 0) Sys.sleep(host.busy() ? 0.001 : Math.max(0.001, Math.min(0.004, host.nextTimer() - haxe.Timer.stamp())));

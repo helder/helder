@@ -597,7 +597,7 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 	}
 
 	static function noAttribute(n:Node, name:String):Dynamic
-		throw 'helder.ui: <${n.tag}> has no attribute $name';
+		throw new helder.view.MarkupError('helder.ui: <${n.tag}> has no attribute $name', #if ((hxmc.dev || helder.headless) && !macro) n.source #else null #end);
 
 	static function semantics(n:Node):helder.ui.access.Semantics {
 		if (n.semantics == null) n.semantics = {};

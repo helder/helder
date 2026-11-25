@@ -172,7 +172,8 @@ async function prompt(id, p) {
     denied,
     session: options,
     link: link?.name ?? null,
-    problems: p.prompt.find(b => b.type === 'text' && b.text.startsWith("The studio's last build failed"))?.text ?? null
+    problems: p.prompt.find(b => b.type === 'text' && b.text.startsWith("The studio's last build failed"))?.text ?? null,
+    crashes: p.prompt.find(b => b.type === 'text' && b.text.startsWith("It builds, but"))?.text ?? null
   }
   update(s, {sessionUpdate: 'agent_message_chunk', content: {type: 'text', text: JSON.stringify(report)}})
   send({id, result: {stopReason: 'end_turn'}})

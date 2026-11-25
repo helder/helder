@@ -44,7 +44,7 @@ class Tools implements Mcp.Target {
 		},
 		{
 			name: "project.patch",
-			description: "Edit a file of the project: each edit's old text (once in the file) replaced by its new text, or the whole text given, or the file deleted (delete: true, e.g. the starter's app.tsx and app.story.tsx once unused). The edit goes through the studio's history (undoable); live literals' values are patched in the running screens at once, anything else rebuilds. Answers what happened and the build's diagnostics.",
+			description: "Edit a file of the project: each edit's old text (once in the file) replaced by its new text, or the whole text given, or the file deleted (delete: true, e.g. the starter's app.tsx and app.story.tsx once unused). The edit goes through the studio's history (undoable); live literals' values are patched in the running screens at once, anything else rebuilds. Answers what happened, the build's diagnostics, and the screens that threw when run (crashed: \"screen: file:line: why\").",
 			inputSchema: {
 				type: "object",
 				properties: {
@@ -163,7 +163,11 @@ class Tools implements Mcp.Target {
 				var pr = studio.previews;
 				if (pr == null) throw "no project open";
 				var r = pr.check();
-				text(Json.stringify({ok: r.ok, ms: r.ms, diagnostics: r.diagnostics}, "  "));
+				var out:Dynamic = {ok: r.ok, ms: r.ms, diagnostics: r.diagnostics};
+				// (it types; what threw when the studio ran it, beside)
+				var crashed = studio.crashes();
+				if (crashed.length > 0) out.crashed = crashed;
+				text(Json.stringify(out, "  "));
 			case "run.snap": snap(args);
 			case "run.tree": text(Json.stringify(tree(args.screen), "  "));
 			case "studio.focus":
@@ -296,12 +300,18 @@ class Tools implements Mcp.Target {
 		var t0 = haxe.Timer.stamp();
 		Async.delay(0.02);
 		while (pr != null && pr.busy() && haxe.Timer.stamp() - t0 < 120) Async.delay(0.02);
+		// (a host running: the screens out of view a moment longer, one that throws said here)
+		var t1 = haxe.Timer.stamp();
+		while (pr != null && pr.sinceHost() >= 0 && !pr.failed && !pr.allShown() && haxe.Timer.stamp() - t1 < 3) Async.delay(0.02);
 		var diags = pr == null ? [] : [for (d in pr.latest) d];
-		return {
-			result: pr == null ? "saved" : pr.failed ? "failed" : studio.message.peek().startsWith("patched") ? "patched" : "built",
+		var crashed = pr == null || pr.failed ? [] : studio.crashes();
+		var out:Dynamic = {
+			result: pr == null ? "saved" : pr.failed ? "failed" : crashed.length > 0 ? "crashed" : studio.message.peek().startsWith("patched") ? "patched" : "built",
 			message: studio.message.peek(),
 			diagnostics: diags
 		};
+		if (crashed.length > 0) out.crashed = crashed;
+		return out;
 	}
 
 	function screenOf(name:Null<String>):Screen {
@@ -370,6 +380,7 @@ class Tools implements Mcp.Target {
 		#else
 		// (a texture the host shares: read back there; a frame on its way, out of view or a build's, waited for)
 		var img = studio.previews.pixels(s);
+		if (s.crashed) throw '${s.info.name} crashed: ${s.report.peek()}';
 		if (img == null) throw '${s.info.name} has no frame yet';
 		var png = helder.image.PngEncoder.encode(img.pixels, img.width, img.height, true);
 		var out = written(png, args.path, s.slug);
