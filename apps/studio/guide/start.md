@@ -20,8 +20,8 @@ A new project is the starter: a TypeScript helder program.
 
 `app.tsx` is a plain placeholder: replace it with the app (keep `App` as
 its view's name, or change `main.tsx` and `app.story.tsx` with it). Until
-your first change the canvas shows the studio's own "something is coming"
-orb, not this screen.
+your first change the canvas holds the places of your first frames, not
+this screen.
 
 ```tsx file=app.tsx
 export function App() {

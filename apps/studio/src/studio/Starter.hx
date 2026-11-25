@@ -6,7 +6,7 @@ using StringTools;
 // Untitled one): the smallest TypeScript helder program that builds and
 // shows on the canvas, so that the agent starts from something that works:
 // main.tsx (the app's window), app.tsx (its view, plain: until the agent
-// makes the app the canvas shows the studio's orb, Orb), app.story.tsx
+// changes the project the canvas holds its places: Watch's queued blocks), app.story.tsx
 // (one screen, the canvas' frame), tsconfig.json (helder's modules where they
 // are: config). A TypeScript project outside a package with helder in it
 // gets that tsconfig.json too, when it has none (an agent's first main.tsx).
