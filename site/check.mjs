@@ -15,10 +15,11 @@
 //   node site/check.mjs [screenshots dir] [ids to play...]   (default: every demo)
 // SITE_NO_WEBGPU=1: the pages without navigator.gpu (WebGL2's path), as a
 // Chromium without WebGPU sees them.
-// SITE_SHARD=<i>/<n>: every n-th demo and docs page from the i-th (CI's
+// --shard i/n: every n-th demo and docs page from the i-th (CI's
 // check jobs, a machine each: two SwiftShader browsers on one machine's
 // cores starved each other's frames); the index's and the search's
 // checks on every shard, the phone's on the first.
+import { takeShard } from '../tests/shard.mjs';
 import { createServer } from 'node:http';
 import { readFile, mkdir } from 'node:fs/promises';
 import fs from 'node:fs';
@@ -31,11 +32,12 @@ let pw;
 try { pw = require('playwright'); } catch { pw = require(path.join(process.execPath, '../../lib/node_modules/playwright')); }
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dir = path.join(root, 'bin/site');
-const [shots, ...ids] = process.argv.slice(2);
+const args = process.argv.slice(2);
+const [shard, shards] = takeShard(args);
+const [shots, ...ids] = args;
 const site = JSON.parse(fs.readFileSync(path.join(root, 'bin/site-build/examples.json'), 'utf8'));
 // (the index's examples: docs/examples' are played in their pages, below)
 const listed = site.examples.filter((e) => !e.docs);
-const [shard, shards] = (process.env.SITE_SHARD ?? '0/1').split('/').map(Number);
 const mine = (_, k) => k % shards === shard;
 const play = (ids.length ? ids.filter((id) => !site.examples.find((e) => e.id === id)?.docs) : listed.filter((e) => e.demo).map((e) => e.id)).filter(mine);
 if (shards > 1) console.log(`site/check.mjs: shard ${shard} of ${shards}: ${play.length} demos`);

@@ -16,24 +16,29 @@
 # with the owner's account (src/helder/pack/README.md).
 set -eu
 out=bin/pack/signing
-rm -rf "$out" bin/pack/project
+rm -rf "$out"
 mkdir -p "$out"
 export PATH="$PWD/node_modules/.bin:$PATH"
 node tests/pack/runtime.mjs bin/pack/rt
-haxe -cp src -main helder.cli.Cli --custom-target hxmc=bin/cli/helder
-cp -R tests/pack/project bin/pack/project
-mkdir -p bin/pack/project/node_modules/helder
-printf '{"name": "helder", "haxe": {"name": "helder", "classPath": "%s"}}' "$PWD/src" > bin/pack/project/node_modules/helder/package.json
+if [ "$#" -gt 0 ]; then
+  helder=$1
+else
+  node src/helder/cli/run.mjs help > /dev/null
+  helder=bin/cli/helder
+fi
+cp -R tests/pack/project "$out/project"
+mkdir -p "$out/project/node_modules/helder"
+printf '{"name": "helder", "haxe": {"name": "helder", "classPath": "%s"}}' "$PWD/src" > "$out/project/node_modules/helder"/package.json
 HXMC_RT_DIR="$PWD/bin/pack/rt" HELDER_CACHE="$PWD/bin/pack/cache" \
   HELDER_IOS_CERTIFICATE=tests/pack/signing/cert.pem HELDER_IOS_KEY=tests/pack/signing/key.pem \
   HELDER_IOS_PROFILE=tests/pack/signing/test.mobileprovision \
-  bin/cli/helder build bin/pack/project --target ios --release -o "$out/Packed.ipa"
+  "$helder" build "$out/project" --target ios --release -o "$out/Packed.ipa"
 # (and an app with helder's HelderStore.framework, helder.store's: signed
 # by the same identity, nested)
 HXMC_RT_DIR="$PWD/bin/pack/rt" HELDER_CACHE="$PWD/bin/pack/cache" \
   HELDER_IOS_CERTIFICATE=tests/pack/signing/cert.pem HELDER_IOS_KEY=tests/pack/signing/key.pem \
   HELDER_IOS_PROFILE=tests/pack/signing/test.mobileprovision \
-  bin/cli/helder build tests/store/StoreCheck.hx --target ios --release -o "$out/Store/Store.ipa"
+  "$helder" build tests/store/StoreCheck.hx --target ios --release -o "$out/Store/Store.ipa"
 (cd "$out" && unzip -q Packed.ipa && cd Store && unzip -q Store.ipa)
 app="$out/Payload/Packed.app"
 sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain tests/pack/signing/ca.pem

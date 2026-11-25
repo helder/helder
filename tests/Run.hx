@@ -60,6 +60,11 @@ class Run {
 		{name: "viewer", about: "helder's image viewer (apps/viewer): its tests (the folder model, the decode cache, the camera's maths, a scripted run of the shell headless, the web build's sample folder, its stories) natively and on Eval; its build for this machine (its web build: ui-web)", run: viewerApp},
 		{name: "viewer-window", about: "the viewer in a real window on the GPU (GFX_TARGET's build: Linux under Xvfb, Windows under Wine from another host): a photo of the fixtures opened, decoded on helder.jobs and shown, closed after 3 s (--exit-after); again with no system font found (HELDER_NO_SYSTEM_FONTS=1: its own fallback font); a 9000x2000 PNG (apps/viewer/tests/bigpng.mjs) shown in tiles; macOS: a video of tests/media played", run: viewerWindow},
 		{name: "viewer-app", about: "macOS: the viewer as a universal app bundle (helder build --target macos: arm64 and x86_64, Info.plist's CFBundleDocumentTypes from helder.json's fileHandlers), plutil and lipo's checks, then `open -a` with a file: Launch Services' open request reaching App.onOpen", run: viewerBundle},
+		{name: "apps", about: "build Foundry and Tables, including their source type checks", run: apps},
+		{name: "android-device", about: "Android packaging and UI tests on the device or emulator selected by adb", run: androidDevice},
+		{name: "ios-device", about: "iOS tests on a shared simulator (use --shard 0/2 for packaging and web view or --shard 1/2 for graphics and text input)", run: iosDevice},
+		{name: "webview-macos", about: "WKWebView in a drawn window on macOS", run: () -> run("sh", ["tests/platform/webview-macos.sh", helderCli(), "bin/pack/macos-webview"])},
+		{name: "signing", about: "iOS distribution signing verified by Apple's tools on macOS", run: signing},
 		{name: "store", about: "macOS: helder.store in an app bundle (helder build --target macos of tests/store/StoreCheck.hx): HelderStore.dylib in Contents/Frameworks, the bundle through codesign --verify --deep --strict, then run, each slice (x86_64 under Rosetta where there is one): the library loaded, StoreKit's products of an id it does not sell an empty list, owned() answered; iOS's: tests/pack/ios.sh", run: store},
 		{name: "viewer-package", about: "the viewer's releases (helder build --package: helder.cli.Desktop, helder.pack): Linux's .tar.gz and Flatpak manifest (on Linux), Windows' zip signed by tests/pack/signing's throwaway identity, macOS's universal .app in a zip, ad hoc; checked on Eval (tests/pack/DesktopCheck.hx: the tarball's entries, the .desktop file, the icons, the metainfo; the .exe's GUI subsystem, resources, checksum and Authenticode digest; the bundle's seal and each slice's signature), then by osslsigncode verify, desktop-file-validate and appstreamcli where installed, codesign --verify on a Mac; the runtime objects of the other desktops fetched by tests/pack/runtime.mjs --desktop", run: viewerPackage},
 		{name: "system-text", about: "helder.text on the platform's own stack (tests/text/SystemTextTest.hx, natively: Linux's fontconfig, HarfBuzz and FreeType, Windows' DirectWrite, macOS's Core Text): each script's fallback face, a family found, Devanagari, Bengali and Tamil shaped (reordered and split vowels), TextLayout through it, glyphs rasterised; each script drawn with the platform's engine and helder's (bin/text/system-<os>.png; GFX_TARGET=windows-x86_64 from Linux: under Wine)", run: systemText},
@@ -80,7 +85,7 @@ class Run {
 		{name: "pdf", about: "helder.pdf: page 1 of each corpus PDF (tests/pdf/corpus, made by ReportLab, pypdf, LibreOffice and by hand: tests/pdf/corpus.py: the standard 14 fonts, Type 1, TrueType, Type 3, RC4, AES-128 and AES-256, object streams, a shading, a tiling pattern, an inline image, a damaged xref) drawn natively against pdf.js's (tests/pdf/ref, pdfjs.mjs): of the 3x3 blocks either inks at most 10% off, of the page 2%, and its text (Pdf.text) against pdf.js's getTextContent (check.mjs: bin/pdf/report.md); its crypto and limits are the test lane's (src/helder/pdf/*.test.hx)", run: pdfLane},
 		{name: "pdf-fuzz", about: "helder.pdf under a time-boxed mutation fuzzer (tests/pdf/Fuzz.hx, natively): the corpus mutated, each mutant opened and drawn under small limits, ending in pixels or a PdfError (FUZZ_SECONDS, FUZZ_SEED)", run: pdfFuzz},
 		{name: "declarations", about: "the generated TypeScript declarations for helder, the tests, platform and scene", run: declarations},
-		{name: "typescript", about: "helder.typescript (TypeScript through tsgo straight to hxmc IR): the IR checks, then every program of tests/typescript compiled by tsc and run on node, and by helder's compiler (helder.compiler, with this frontend) natively and as wasm32-wasi, the outputs compared; the programs it must reject", run: () -> run(NODE, ["tests/typescript/run.mjs"])},
+		{name: "typescript", about: "helder.typescript (TypeScript through tsgo straight to hxmc IR): the IR checks, then every program of tests/typescript compiled by tsc and run on node, and by helder's compiler (helder.compiler, with this frontend) natively and as wasm32-wasi, the outputs compared; the programs it must reject", run: () -> run(NODE, ["tests/typescript/run.mjs"].concat(shardArgs()).concat(workerCount == null ? [] : ["--jobs", Std.string(workerCount)]))},
 		{name: "typescript-native", about: "helder/native's definitions where their systems are (tests/typescript/native.mjs; the typescript lane runs it too): native.c (libc and libm on Linux, natively, static and glibc; Core Foundation on a Mac), native.objc (Foundation's NSProcessInfo and NSString on a Mac), native.com (WIC's factory, a bitmap's size read back, on Windows; on Linux under Wine with Windows' runtime objects), each refused where its system is not; native.jni's on Android is the android job's (tests/typescript/native/android.sh)", run: () -> run(NODE, ["tests/typescript/native.mjs"])},
 		{name: "examples", about: "every example (Haxe, TypeScript) of examples/ and docs/examples/ (the docs' own) built by `helder build <file>` (--target web for the web) with no other flags, not run: for web (wasm32-wasi), and those on a canvas or playing a sound natively too", run: examples},
 		{name: "3d", about: "helder.scene and helder.physics: unit tests on Eval, natively and as wasm32-wasi, input actions, the renderer's frames against golden images (Mesa), helder/scene's from TypeScript (tests/3d/ts/frames.ts)", run: scene},
@@ -120,12 +125,38 @@ class Run {
 		{name: "dev-host", about: "helder dev's host (helder.dev.DevHost): three builds of a program as shared libraries swapped in one process and window (tests/os/dev/dev-host.mjs); DEV_HOST_TARGETS (comma-separated) cross-compiles for others too (windows-x86_64: run under Wine; macos-*: built only)", run: devHost},
 	];
 
+	static var shardIndex = 0;
+	static var shardTotal = 1;
+	static var workerCount:Null<Int> = null;
+	static var buildOnly = false;
+	static var usePrebuilt = false;
+
+	static function shardArgs():Array<String>
+		return ["--shard", '$shardIndex/$shardTotal'];
+
 	static function main() {
 		// (helder.text's own engine for every lane's program: goldens the same on every OS; system-text's the platform's)
 		if (Sys.getEnv("HELDER_TEXT_ENGINE") == null) Sys.putEnv("HELDER_TEXT_ENGINE", "helder");
 		// (no helder build server kept warm: the lanes' builds, many at once, each its own compiler; BuildServer)
 		if (Sys.getEnv("HELDER_BUILD_SERVER") == null) Sys.putEnv("HELDER_BUILD_SERVER", "0");
+		if (Sys.getEnv("HELDER_BACKGROUND") == null) Sys.putEnv("HELDER_BACKGROUND", "1");
 		var args = Sys.args();
+		buildOnly = args.remove("--build-only");
+		usePrebuilt = args.remove("--prebuilt");
+		var ix = args.indexOf("--shard");
+		if (ix >= 0) {
+			var spec = args[ix + 1] ?? "";
+			var m = ~/^(\d+)\/([1-9]\d*)$/;
+			if (m.match(spec)) {
+				shardIndex = Std.parseInt(m.matched(1)) ?? -1;
+				shardTotal = Std.parseInt(m.matched(2)) ?? -1;
+			} else shardTotal = 0;
+			args.splice(ix, 2);
+			if (shardIndex < 0 || shardIndex >= shardTotal || args.contains("--shard")) {
+				Sys.stderr().writeString("--shard expects a zero-based index and total, for example --shard 0/2\n");
+				Sys.exit(2);
+			}
+		}
 		var keepGoing = args.remove("-k");
 		var skipped = [];
 		while (args.indexOf("-x") >= 0) {
@@ -134,16 +165,29 @@ class Run {
 			args.splice(i, 2);
 		}
 		var jobs = 1;
-		if (args.indexOf("-j") >= 0) {
-			var i = args.indexOf("-j");
-			jobs = Std.parseInt(args[i + 1] ?? "") ?? cpus();
+		var i = args.indexOf("--jobs");
+		if (i < 0) i = args.indexOf("-j");
+		if (i >= 0) {
+			workerCount = jobs = Std.parseInt(args[i + 1] ?? "") ?? cpus();
+			if (jobs < 1) {
+				Sys.stderr().writeString("--jobs must be positive\n");
+				Sys.exit(2);
+			}
 			args.splice(i, 2);
 		}
 		if (args.length == 0) args = ["headless"];
 		if (args.contains("help")) {
-			Sys.println("bun run test [-k] <lane> ...\n");
+			Sys.println("bun run test [-k] [--jobs n] [--shard i/n] <lane> ...\n");
 			for (l in LANES) Sys.println("  " + l.name.rpad(" ", 15) + " " + l.about);
 			return;
+		}
+		if (buildOnly && usePrebuilt || (buildOnly || usePrebuilt) && Lambda.exists(args, a -> a != "android-device" && a != "ios-device")) {
+			Sys.stderr().writeString("--build-only and --prebuilt are mutually exclusive device lane options\n");
+			Sys.exit(2);
+		}
+		if (shardTotal > 1 && Lambda.exists(args, a -> a != "typescript" && a != "3d-web" && a != "ios-device")) {
+			Sys.stderr().writeString("--shard is supported by typescript, 3d-web and ios-device\n");
+			Sys.exit(2);
 		}
 		// (headless as its lanes, each run on its own: with -k every one runs
 		// and each failure is reported, not the first alone)
@@ -203,7 +247,8 @@ class Run {
 						mutex.release();
 						if (l == null) break;
 						var s = Sys.time();
-						var p = new Process(TOOL, ["-cp", "tests", "--run", "Run", l]);
+						var opts = buildOnly ? ["--build-only"] : usePrebuilt ? ["--prebuilt"] : [];
+						var p = new Process(TOOL, ["-cp", "tests", "--run", "Run", l].concat(shardArgs()).concat(opts));
 						var r = drain(p);
 						var code = p.exitCode();
 						p.close();
@@ -452,6 +497,116 @@ class Run {
 		native('bin/os/$GFX_TARGET/AppLoopTest', cps(["src", "tests/os"]).concat(["-main", "AppLoopTest"]), GFX_TARGET);
 		var exe = exePath('bin/os/$GFX_TARGET/AppLoopTest', GFX_TARGET);
 		if (GFX_TARGET.startsWith("linux-")) shell('$XVFB -a ' + exe) else run(exe, []);
+	}
+
+	static function signing() {
+		var h = FileSystem.fullPath(helderCli());
+		if (Sys.getEnv("PACK_PREBUILT") == "1")
+			interp(cps(["src", "tests/pack"]), "PackCheck", IOS_BUNDLES);
+		run("sh", ["tests/pack/signing/verify.sh", h]);
+	}
+
+	static function apps() {
+		var h = helderCli();
+		run(h, ["build", "apps/foundry", "-o", exePath("bin/ci-apps/Foundry", HOST)]);
+		run("bun", ["install", "--frozen-lockfile", "--cwd", "apps/tables"]);
+		run(h, ["build", "apps/tables", "-o", exePath("bin/ci-apps/Tables", HOST)]);
+	}
+
+	static function deviceChecks(checks:Array<Array<String>>, ?env:Map<String, String>) {
+		var failed = [];
+		for (check in checks) try {
+			run(check[0], check.slice(1), env);
+		} catch (e:Failed) {
+			Sys.println(e.message);
+			failed.push(check[1]);
+		}
+		if (failed.length > 0) throw new Failed("device checks failed: " + failed.join(", "));
+	}
+
+	static function androidDevice() {
+		var h = helderCli();
+		mkdirs("bin/pack/rt");
+		mkdirs("bin/pack/cache");
+		var env = [
+			"HXMC_RT_DIR" => Sys.getEnv("HXMC_RT_DIR") ?? FileSystem.fullPath("bin/pack/rt"),
+			"HELDER_CACHE" => Sys.getEnv("HELDER_CACHE") ?? FileSystem.fullPath("bin/pack/cache")
+		];
+		if (!usePrebuilt) {
+			run(NODE, ["tests/pack/runtime.mjs", env["HXMC_RT_DIR"]]);
+			for (build in [
+				{entry: "tests/gfx/android", name: "AndroidTest"},
+				{entry: "tests/os/AndroidTouchTest.hx", name: "AndroidTouchTest"},
+				{entry: "tests/ui/AndroidLayersTest.hx", name: "AndroidLayersTest"},
+				{entry: "tests/media/android/MediaAndroidTest.hx", name: "MediaAndroidTest"},
+				{entry: "tests/media/android/VideoStill.hx", name: "VideoStill"},
+				{entry: "tests/os/FoldersCheck.hx", name: "FoldersCheck"}
+			]) run(h, ["build", build.entry, "--target", "android-x86_64", "-o", 'bin/pack/${build.name}.apk'], env);
+		}
+		if (buildOnly) return;
+		deviceChecks([
+			["sh", "tests/pack/android.sh", h, "bin/pack/android"],
+			[NODE, "tests/os/dev/dev-android.mjs", h, "bin/pack/dev-emulator"],
+			["sh", "tests/gfx/android.sh", "bin/pack/AndroidTest.apk", "bin/pack/android-gfx"],
+			["sh", "tests/os/android-touch.sh", "bin/pack/AndroidTouchTest.apk", "bin/pack/android-gfx"],
+			["sh", "tests/ui/android-layers.sh", "bin/pack/AndroidLayersTest.apk", "bin/pack/android-layers"],
+			["sh", "tests/media/android/android.sh", "bin/pack/MediaAndroidTest.apk", "bin/pack/VideoStill.apk", "bin/pack/android-media"],
+			["sh", "tests/typescript/native/android.sh", h, "bin/pack/android-ts"],
+			["sh", "tests/os/folders-android.sh", "bin/pack/FoldersCheck.apk", "bin/pack/android-folders"],
+			["sh", "tests/platform/webview-android.sh", h, "bin/pack/android-webview"],
+			["sh", "tests/pack/jvm.sh", "bin/pack/android-jvm"],
+			["sh", "tests/pack/billing.sh", h, "bin/pack/android-billing"]
+		], env);
+	}
+
+	static function iosDevice() {
+		if (Sys.systemName() != "Mac") throw new Failed("the ios-device lane needs macOS and Xcode");
+		if (shardTotal > 2) throw new Failed("ios-device supports at most two shards");
+		var h = helderCli(), udid = Sys.getEnv("HELDER_IOS_SIMULATOR");
+		var own = !buildOnly && (udid == null || udid == "");
+		if (own) udid = output("sh", ["tests/pack/simulator.sh", "create", "helder-test"]).trim();
+		var pack = shardTotal == 1 || shardIndex == 0;
+		var gfx = shardTotal == 1 || shardIndex == 1;
+		var app = "bin/pack/IosTest.app", tap = Path.join([Sys.getCwd(), "bin/pack/SimTap"]);
+		var hello = ["sh", "tests/pack/ios.sh", h, "bin/pack/ios"];
+		var webview = ["sh", "tests/platform/webview-ios.sh", h, "bin/pack/ios-webview"];
+		var text = ["sh", "tests/platform/textinput-ios.sh", h, "bin/pack/ios-textinput"];
+		var builds = [];
+		if (pack) builds = builds.concat([hello, webview]);
+		if (gfx) builds = builds.concat([text, [h, "build", "tests/gfx/ios", "--target", "ios-sim", "-o", app],
+			[h, "build", "tests/gfx/SimTap.hx", "-o", tap]]);
+		function execute() {
+			if (!usePrebuilt) {
+				// Separate commands build separate apps while the simulator boots.
+				var saved = Sys.getEnv("IOS_BUILD_ONLY");
+				Sys.putEnv("IOS_BUILD_ONLY", "1");
+				var workers = [for (check in builds) {name: check[1], process: new Process(check[0], check.slice(1))}];
+				Sys.putEnv("IOS_BUILD_ONLY", saved);
+				var errors = [];
+				var results = new sys.thread.Deque<{name:String, code:Int, out:String}>();
+				for (worker in workers) sys.thread.Thread.create(() -> {
+					var log = drain(worker.process);
+					var code = worker.process.exitCode();
+					worker.process.close();
+					results.add({name: worker.name, code: code, out: log.out + log.err});
+				});
+				for (_ in workers) {
+					var result = results.pop(true);
+					Sys.print(result.out);
+					if (result.code != 0) errors.push(result.name);
+				}
+				if (errors.length > 0) throw new Failed("iOS builds failed: " + errors.join(", "));
+			}
+			if (buildOnly) return;
+			var checks = pack ? [hello, webview] : [];
+			if (gfx) checks = checks.concat([["sh", "tests/gfx/ios.sh", app, "bin/pack/ios-gfx", tap], text]);
+			deviceChecks(checks, ["HELDER_IOS_SIMULATOR" => udid, "IOS_PREBUILT" => "1"]);
+		}
+		try execute() catch (e:haxe.Exception) {
+			if (own) run("sh", ["tests/pack/simulator.sh", "delete", udid]);
+			throw e;
+		}
+		if (own) run("sh", ["tests/pack/simulator.sh", "delete", udid]);
 	}
 
 	// (the viewer's own tests from its directory, its project: helder test there)
@@ -1001,6 +1156,16 @@ class Run {
 	// machine, tests/pack/runtime.mjs fetches them (Android's from the
 	// release @hxmc/cli's package.json names); the builds' HXMC_RT_DIR.
 	// The debug key made in a cache of its own, on first use)
+	static final IOS_BUNDLES = [
+		"bin/pack/Packed-signed.ipa@org.helder.packcheck@signed@encryption@entitlements@landscape@fullscreen@icons",
+		"bin/pack/Hello-signed.ipa@org.helder.Hello@signed",
+		"bin/pack/Hello.ipa@org.helder.Hello", "bin/pack/Hello.app",
+		"bin/pack/project/bin/ios-sim/Packed.app@org.helder.packcheck@entitlements@landscape@fullscreen@icons",
+		"bin/pack/Screen.app@org.helder.Screen", 'bin/pack/Checksum.app@org.helder.Checksum@$ASSETS',
+		'bin/pack/Checksum.ipa@org.helder.Checksum@$ASSETS'
+	];
+
+
 	static function packLane() {
 		var h = helderCli();
 		run(NODE, ["tests/pack/runtime.mjs", "bin/pack/rt"]);
@@ -1108,10 +1273,7 @@ class Run {
 			partial.set("HELDER_IOS_KEY", '$signing/key.pem');
 			expect(h, ["build", "tests/pack/Hello.hx", "--target", "ios", "-o", "bin/pack/Unsigned.ipa"], partial,
 				"signing for the App Store takes a certificate and its key (HELDER_IOS_IDENTITY: both in one PEM): HELDER_IOS_CERTIFICATE", 1);
-			checks = checks.concat(["bin/pack/Packed-signed.ipa@org.helder.packcheck@signed@encryption@entitlements@landscape@fullscreen@icons",
-				"bin/pack/Hello-signed.ipa@org.helder.Hello@signed"]);
-			checks = checks.concat(["bin/pack/Hello.ipa@org.helder.Hello", "bin/pack/Hello.app", "bin/pack/project/bin/ios-sim/Packed.app@org.helder.packcheck@entitlements@landscape@fullscreen@icons", "bin/pack/Screen.app@org.helder.Screen",
-				'bin/pack/Checksum.app@org.helder.Checksum@$ASSETS', 'bin/pack/Checksum.ipa@org.helder.Checksum@$ASSETS']);
+			checks = checks.concat(IOS_BUNDLES);
 		}
 		if (checks.length > 0) interp(cps(["src", "tests/pack"]), "PackCheck", checks);
 		// (a phone's tools stood in for: helder run, the dev loop's protocol)
@@ -1727,7 +1889,7 @@ class Run {
 		// browser.mjs before main; Lazy's at run time)
 		rmrf("bin/3d/assets");
 		wasm("bin/3d/SceneWebTest.wasm", sceneCp().concat(["-main", "SceneWebTest", "-D", "helder.asset.out=bin/3d/SceneWebTest.wasm"]));
-		run(NODE, ["tests/3d/web.mjs", "bin/3d/SceneWebTest.wasm", "bin/3d"]);
+		run(NODE, ["tests/3d/web.mjs", "bin/3d/SceneWebTest.wasm", "bin/3d"].concat(shardArgs()));
 	}
 
 	static function compilerWeb() {
@@ -2389,7 +2551,7 @@ class Run {
 
 	// each item in a thread, half the cores' worth at once (each build is parallel itself)
 	static function parallel<T>(items:Array<T>, f:T->Void) {
-		var jobs = Std.parseInt(Sys.getEnv("JOBS") ?? "") ?? Std.int(Math.max(1, cpus() / 2));
+		var jobs = workerCount ?? Std.int(Math.max(1, cpus() / 2));
 		var queue = items.copy();
 		var mutex = new sys.thread.Mutex();
 		var done = new sys.thread.Lock();
