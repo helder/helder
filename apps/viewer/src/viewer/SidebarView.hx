@@ -9,19 +9,20 @@ import helder.view.*;
 import helder.view.Flow.*;
 import helder.view.graph.Graph.*;
 
-// The sidebar (236 points): the overview (Locations, Devices) or a
-// folder's level (a back row, its title, its subfolders, its volume's
-// capacity at the foot), one level at a time (Sidebar), going between
-// levels as a navigation push: the new level slides in from its side (a
-// deeper one from the right, an enclosing one from the left) as the old
-// one slides out the other way, both together, clipped to the sidebar, on
-// the picture's flight's spring (Flight.SPRING) at whole-point offsets, its
-// tail ended within a device pixel; clicked again on the way, each pane
-// turns from where it is, as fast (the one going back to: the one still
-// sliding out). Its rows are there before it moves (Sidebar keeps a level
-// until its new one's are read); the one going keeps its own. Reduced
-// motion: a cross-fade. On macOS its top holds the window's buttons (the
-// shell's WindowControls over it).
+// The sidebar (236 points): a bar that stays (the back row to the level
+// above, the overview's button), the overview (Locations, Devices) or a
+// folder's level (its title, its subfolders), one level at a time
+// (Sidebar), and its volume's capacity at the foot, which stays too. Going
+// between levels is a navigation push of the levels alone: the new one
+// slides in from its side (a deeper one from the right, an enclosing one
+// from the left) as the old one slides out the other way, both together,
+// clipped to the sidebar, on the picture's flight's spring (Flight.SPRING)
+// at whole-point offsets, its tail ended within a device pixel; clicked
+// again on the way, two levels at most, the one coming replaced or each
+// turned from where it is. Its rows are there before it moves (Sidebar
+// keeps a level until its new one's are read); the one going keeps its
+// own. Reduced motion: a cross-fade. On macOS its top holds the window's
+// buttons (the shell's WindowControls over it).
 class SidebarView implements Markup {
 	public static inline var WIDTH = 236;
 
@@ -103,6 +104,7 @@ class SidebarView implements Markup {
 		return <view tag="sidebar" width={WIDTH} shrink={0} padding="0 10" row-gap={6} overflow="hidden"
 			padding-top={WindowButtons.side() == "start" ? 0 : 8}>
 			<Show when={WindowButtons.side() == "start"}><view height={Shell.BAR} shrink={0} drag-region/></Show>
+			{bar(x)}
 			<view tag="sidebar-body" grow={1} min-height={0} ref={(n:Node) -> {
 				body = n;
 				// (shown a tenth of a second: levels from now on pushed)
@@ -116,6 +118,27 @@ class SidebarView implements Markup {
 			}}>
 				<For each={panes}>{p -> pane(x, p.peek())}</For>
 			</view>
+			{foot(x)}
+		</view>;
+	}
+
+	// (the bar over the levels, still while they slide (a navigation bar's):
+	// the back row to the level above, its label cross-faded in place, gone
+	// at the overview by a fade; the overview's button, never moved)
+	static function bar(x:Explorer):View {
+		var s = x.sidebar;
+		function top():Bool
+			return s.level() == "";
+		return <view tag="level-bar" direction="row" align-items="center" padding="0 2" column-gap={2} shrink={0}>
+			<view:button slot="side-back" tag="level-back" role="button" focusable={!top()} label={() -> "Back to " + s.backLabelOf(s.level())}
+				shrink={1} min-width={0} opacity={top() ? 0 : 1} motion-opacity="fade" pointer-events={top() ? "none" : "auto"} onPress={() -> if (s.level.value != "") s.back()}>
+				<image src={Glyphs.get("back")} width={14} height={14} shrink={0}/>
+				<view shrink={1} min-width={0}>
+					<For each={() -> [top() ? "" : s.backLabelOf(s.level())]}>{l -> <text transition="fade" max-lines={1} text-overflow="ellipsis">{l.peek()}</text>}</For>
+				</view>
+			</view:button>
+			<view grow={1}/>
+			<Standard.Button tag="level-home" variant="ghost" size="sm" icon={Glyphs.get("home")} label="Overview" onPress={() -> s.show("")}/>
 		</view>;
 	}
 
@@ -147,15 +170,6 @@ class SidebarView implements Markup {
 	static function level(x:Explorer, p:Pane):View {
 		var s = x.sidebar, b = x.browser;
 		return <view grow={1} min-height={0} row-gap={6}>
-			<view direction="row" align-items="center" padding="0 2" column-gap={2}>
-				<view:button slot="side-back" tag="level-back" role="button" focusable label={"Back to " + s.backLabelOf(p.level)}
-					onPress={() -> s.back()}>
-					<image src={Glyphs.get("back")} width={14} height={14}/>
-					<text max-lines={1} text-overflow="ellipsis">{s.backLabelOf(p.level)}</text>
-				</view:button>
-				<view grow={1}/>
-				<Standard.Button tag="level-home" variant="ghost" size="sm" icon={Glyphs.get("home")} label="Overview" onPress={() -> s.show("")}/>
-			</view>
 			<view direction="row" align-items="center" column-gap={8} padding="2 8 0 8">
 				<text tag="level-title" font-size={15} font-weight={600} max-lines={1} text-overflow="ellipsis" shrink={1}>{() -> s.title(p.level)}</text>
 				<view grow={1}/>
@@ -164,7 +178,6 @@ class SidebarView implements Markup {
 			<scroll grow={1} min-height={0} row-gap={1}>
 				<For each={() -> p.rows()}>{r -> folderRow(x, r())}</For>
 			</scroll>
-			{foot(x, p.level)}
 		</view>;
 	}
 
@@ -204,10 +217,10 @@ class SidebarView implements Markup {
 	// (the level's volume: a card inset from the sidebar's edges, its name
 	// and how full it is, a short bar of what is used, "45.3 GB free of 494
 	// GB" under it; a card's, so that it can't read as a scrollbar)
-	static function foot(x:Explorer, at:String):View {
+	static function foot(x:Explorer):View {
 		var s = x.sidebar;
 		function vol():Null<Volume>
-			return at == "" ? null : s.volumeOf(at);
+			return s.level() == "" ? null : s.volumeOf(s.level());
 		function used():Float {
 			var v = vol();
 			return v == null || v.total <= 0 ? 0 : Math.max(0, Math.min(1, 1 - v.free / v.total));

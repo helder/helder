@@ -1,22 +1,23 @@
 // helder.test snapshots: `helder test -u` rewrites them
 
---- story Browser/empty: Browser/empty (87 lines)
+--- story Browser/empty: Browser/empty (88 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
       Node#window 0,0 1100x700
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
-            Node#sidebar-body 10,8 216x692
-              Node#sidebar-pane 10,8 216x692
-                Node#view 10,8 216x692
-                  Node#view 10,8 216x30
-                    Node#level-back 12,10 74x26
-                      ImageNode#image 14,16 14x14
-                      TextNode#text 30,16 48x15 "Overview"
-                    Node#view 88,23 104x0
-                    Node#level-home 194,8 30x30
-                      ImageNode#image 201,15 16x16
+            Node#level-bar 10,8 216x30
+              Node#level-back 12,10 74x26
+                ImageNode#image 14,16 14x14
+                Node#view 30,16 48x15
+                  TextNode#text 30,16 48x15 "Overview"
+              Node#view 88,23 104x0
+              Node#level-home 194,8 30x30
+                ImageNode#image 201,15 16x16
+            Node#sidebar-body 10,44 216x656
+              Node#sidebar-pane 10,44 216x656
+                Node#view 10,44 216x656
                   Node#view 10,44 216x21
                     TextNode#level-title 18,46 8x19 "/"
                     Node#view 34,55 130x0
@@ -89,23 +90,24 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/grid, dark: Browser/grid, dark (148 lines)
+--- story Browser/grid, dark: Browser/grid, dark (149 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
       Node#window 0,0 1100x700
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
-            Node#sidebar-body 10,8 216x692
-              Node#sidebar-pane 10,8 216x692
-                Node#view 10,8 216x692
-                  Node#view 10,8 216x30
-                    Node#level-back 12,10 56x26
-                      ImageNode#image 14,16 14x14
-                      TextNode#text 30,16 30x15 "tests"
-                    Node#view 70,23 122x0
-                    Node#level-home 194,8 30x30
-                      ImageNode#image 201,15 16x16
+            Node#level-bar 10,8 216x30
+              Node#level-back 12,10 56x26
+                ImageNode#image 14,16 14x14
+                Node#view 30,16 30x15
+                  TextNode#text 30,16 30x15 "tests"
+              Node#view 70,23 122x0
+              Node#level-home 194,8 30x30
+                ImageNode#image 201,15 16x16
+            Node#sidebar-body 10,44 216x656
+              Node#sidebar-pane 10,44 216x656
+                Node#view 10,44 216x656
                   Node#view 10,44 216x21
                     TextNode#level-title 18,46 60x19 "fixtures"
                     Node#view 86,55 72x0
@@ -239,23 +241,24 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/grid, light: Browser/grid, light (148 lines)
+--- story Browser/grid, light: Browser/grid, light (149 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
       Node#window 0,0 1100x700
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
-            Node#sidebar-body 10,8 216x692
-              Node#sidebar-pane 10,8 216x692
-                Node#view 10,8 216x692
-                  Node#view 10,8 216x30
-                    Node#level-back 12,10 56x26
-                      ImageNode#image 14,16 14x14
-                      TextNode#text 30,16 30x15 "tests"
-                    Node#view 70,23 122x0
-                    Node#level-home 194,8 30x30
-                      ImageNode#image 201,15 16x16
+            Node#level-bar 10,8 216x30
+              Node#level-back 12,10 56x26
+                ImageNode#image 14,16 14x14
+                Node#view 30,16 30x15
+                  TextNode#text 30,16 30x15 "tests"
+              Node#view 70,23 122x0
+              Node#level-home 194,8 30x30
+                ImageNode#image 201,15 16x16
+            Node#sidebar-body 10,44 216x656
+              Node#sidebar-pane 10,44 216x656
+                Node#view 10,44 216x656
                   Node#view 10,44 216x21
                     TextNode#level-title 18,46 60x19 "fixtures"
                     Node#view 86,55 72x0
@@ -389,23 +392,24 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/inspector, PDF: Browser/inspector, PDF (121 lines)
+--- story Browser/inspector, PDF: Browser/inspector, PDF (122 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
       Node#window 0,0 1100x700
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
-            Node#sidebar-body 10,8 216x692
-              Node#sidebar-pane 10,8 216x692
-                Node#view 10,8 216x692
-                  Node#view 10,8 216x30
-                    Node#level-back 12,10 56x26
-                      ImageNode#image 14,16 14x14
-                      TextNode#text 30,16 30x15 "tests"
-                    Node#view 70,23 122x0
-                    Node#level-home 194,8 30x30
-                      ImageNode#image 201,15 16x16
+            Node#level-bar 10,8 216x30
+              Node#level-back 12,10 56x26
+                ImageNode#image 14,16 14x14
+                Node#view 30,16 30x15
+                  TextNode#text 30,16 30x15 "tests"
+              Node#view 70,23 122x0
+              Node#level-home 194,8 30x30
+                ImageNode#image 201,15 16x16
+            Node#sidebar-body 10,44 216x656
+              Node#sidebar-pane 10,44 216x656
+                Node#view 10,44 216x656
                   Node#view 10,44 216x21
                     TextNode#level-title 18,46 60x19 "fixtures"
                     Node#view 86,55 78x0
@@ -512,23 +516,24 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/inspector, a Markdown document: Browser/inspector, a Markdown document (326 lines)
+--- story Browser/inspector, a Markdown document: Browser/inspector, a Markdown document (327 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
       Node#window 0,0 1100x700
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
-            Node#sidebar-body 10,8 216x692
-              Node#sidebar-pane 10,8 216x692
-                Node#view 10,8 216x692
-                  Node#view 10,8 216x30
-                    Node#level-back 12,10 74x26
-                      ImageNode#image 14,16 14x14
-                      TextNode#text 30,16 48x15 "Overview"
-                    Node#view 88,23 104x0
-                    Node#level-home 194,8 30x30
-                      ImageNode#image 201,15 16x16
+            Node#level-bar 10,8 216x30
+              Node#level-back 12,10 74x26
+                ImageNode#image 14,16 14x14
+                Node#view 30,16 48x15
+                  TextNode#text 30,16 48x15 "Overview"
+              Node#view 88,23 104x0
+              Node#level-home 194,8 30x30
+                ImageNode#image 201,15 16x16
+            Node#sidebar-body 10,44 216x656
+              Node#sidebar-pane 10,44 216x656
+                Node#view 10,44 216x656
                   Node#view 10,44 216x21
                     TextNode#level-title 18,46 53x19 "Samples"
                     Node#view 79,55 85x0
@@ -840,23 +845,24 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/inspector, photo: Browser/inspector, photo (172 lines)
+--- story Browser/inspector, photo: Browser/inspector, photo (173 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
       Node#window 0,0 1100x700
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
-            Node#sidebar-body 10,8 216x692
-              Node#sidebar-pane 10,8 216x692
-                Node#view 10,8 216x692
-                  Node#view 10,8 216x30
-                    Node#level-back 12,10 56x26
-                      ImageNode#image 14,16 14x14
-                      TextNode#text 30,16 30x15 "tests"
-                    Node#view 70,23 122x0
-                    Node#level-home 194,8 30x30
-                      ImageNode#image 201,15 16x16
+            Node#level-bar 10,8 216x30
+              Node#level-back 12,10 56x26
+                ImageNode#image 14,16 14x14
+                Node#view 30,16 30x15
+                  TextNode#text 30,16 30x15 "tests"
+              Node#view 70,23 122x0
+              Node#level-home 194,8 30x30
+                ImageNode#image 201,15 16x16
+            Node#sidebar-body 10,44 216x656
+              Node#sidebar-pane 10,44 216x656
+                Node#view 10,44 216x656
                   Node#view 10,44 216x21
                     TextNode#level-title 18,46 60x19 "fixtures"
                     Node#view 86,55 72x0
@@ -1014,23 +1020,24 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/list, dark: Browser/list, dark (164 lines)
+--- story Browser/list, dark: Browser/list, dark (165 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
       Node#window 0,0 1100x700
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
-            Node#sidebar-body 10,8 216x692
-              Node#sidebar-pane 10,8 216x692
-                Node#view 10,8 216x692
-                  Node#view 10,8 216x30
-                    Node#level-back 12,10 56x26
-                      ImageNode#image 14,16 14x14
-                      TextNode#text 30,16 30x15 "tests"
-                    Node#view 70,23 122x0
-                    Node#level-home 194,8 30x30
-                      ImageNode#image 201,15 16x16
+            Node#level-bar 10,8 216x30
+              Node#level-back 12,10 56x26
+                ImageNode#image 14,16 14x14
+                Node#view 30,16 30x15
+                  TextNode#text 30,16 30x15 "tests"
+              Node#view 70,23 122x0
+              Node#level-home 194,8 30x30
+                ImageNode#image 201,15 16x16
+            Node#sidebar-body 10,44 216x656
+              Node#sidebar-pane 10,44 216x656
+                Node#view 10,44 216x656
                   Node#view 10,44 216x21
                     TextNode#level-title 18,46 60x19 "fixtures"
                     Node#view 86,55 72x0
@@ -1180,23 +1187,24 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/list, light: Browser/list, light (164 lines)
+--- story Browser/list, light: Browser/list, light (165 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
       Node#window 0,0 1100x700
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
-            Node#sidebar-body 10,8 216x692
-              Node#sidebar-pane 10,8 216x692
-                Node#view 10,8 216x692
-                  Node#view 10,8 216x30
-                    Node#level-back 12,10 56x26
-                      ImageNode#image 14,16 14x14
-                      TextNode#text 30,16 30x15 "tests"
-                    Node#view 70,23 122x0
-                    Node#level-home 194,8 30x30
-                      ImageNode#image 201,15 16x16
+            Node#level-bar 10,8 216x30
+              Node#level-back 12,10 56x26
+                ImageNode#image 14,16 14x14
+                Node#view 30,16 30x15
+                  TextNode#text 30,16 30x15 "tests"
+              Node#view 70,23 122x0
+              Node#level-home 194,8 30x30
+                ImageNode#image 201,15 16x16
+            Node#sidebar-body 10,44 216x656
+              Node#sidebar-pane 10,44 216x656
+                Node#view 10,44 216x656
                   Node#view 10,44 216x21
                     TextNode#level-title 18,46 60x19 "fixtures"
                     Node#view 86,55 72x0
@@ -1346,7 +1354,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/marquee: Browser/marquee (178 lines)
+--- story Browser/marquee: Browser/marquee (179 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -1354,16 +1362,17 @@ Node#root 0,0 390x844
         Node#window 0,0 1100x700
           Node#browser 0,0 1100x700
             Node#sidebar 0,0 236x700
-              Node#sidebar-body 10,8 216x692
-                Node#sidebar-pane 10,8 216x692
-                  Node#view 10,8 216x692
-                    Node#view 10,8 216x30
-                      Node#level-back 12,10 56x26
-                        ImageNode#image 14,16 14x14
-                        TextNode#text 30,16 30x15 "tests"
-                      Node#view 70,23 122x0
-                      Node#level-home 194,8 30x30
-                        ImageNode#image 201,15 16x16
+              Node#level-bar 10,8 216x30
+                Node#level-back 12,10 56x26
+                  ImageNode#image 14,16 14x14
+                  Node#view 30,16 30x15
+                    TextNode#text 30,16 30x15 "tests"
+                Node#view 70,23 122x0
+                Node#level-home 194,8 30x30
+                  ImageNode#image 201,15 16x16
+              Node#sidebar-body 10,44 216x656
+                Node#sidebar-pane 10,44 216x656
+                  Node#view 10,44 216x656
                     Node#view 10,44 216x21
                       TextNode#level-title 18,46 60x19 "fixtures"
                       Node#view 86,55 72x0
@@ -1526,23 +1535,24 @@ Node#root 0,0 390x844
           Node#window-start 16,0 0x40
           Node#window-end 1100,0 0x0
 
---- story Browser/missing folder: Browser/missing folder (90 lines)
+--- story Browser/missing folder: Browser/missing folder (91 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
       Node#window 0,0 1100x700
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
-            Node#sidebar-body 10,8 216x692
-              Node#sidebar-pane 10,8 216x692
-                Node#view 10,8 216x692
-                  Node#view 10,8 216x30
-                    Node#level-back 12,10 32x26
-                      ImageNode#image 14,16 14x14
-                      TextNode#text 30,16 6x15 "/"
-                    Node#view 46,23 146x0
-                    Node#level-home 194,8 30x30
-                      ImageNode#image 201,15 16x16
+            Node#level-bar 10,8 216x30
+              Node#level-back 12,10 32x26
+                ImageNode#image 14,16 14x14
+                Node#view 30,16 6x15
+                  TextNode#text 30,16 6x15 "/"
+              Node#view 46,23 146x0
+              Node#level-home 194,8 30x30
+                ImageNode#image 201,15 16x16
+            Node#sidebar-body 10,44 216x656
+              Node#sidebar-pane 10,44 216x656
+                Node#view 10,44 216x656
                   Node#view 10,44 216x21
                     TextNode#level-title 18,46 30x19 "here"
                     Node#view 56,55 154x0
@@ -1618,23 +1628,24 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/no results: Browser/no results (97 lines)
+--- story Browser/no results: Browser/no results (98 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
       Node#window 0,0 1100x700
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
-            Node#sidebar-body 10,8 216x692
-              Node#sidebar-pane 10,8 216x692
-                Node#view 10,8 216x692
-                  Node#view 10,8 216x30
-                    Node#level-back 12,10 56x26
-                      ImageNode#image 14,16 14x14
-                      TextNode#text 30,16 30x15 "tests"
-                    Node#view 70,23 122x0
-                    Node#level-home 194,8 30x30
-                      ImageNode#image 201,15 16x16
+            Node#level-bar 10,8 216x30
+              Node#level-back 12,10 56x26
+                ImageNode#image 14,16 14x14
+                Node#view 30,16 30x15
+                  TextNode#text 30,16 30x15 "tests"
+              Node#view 70,23 122x0
+              Node#level-home 194,8 30x30
+                ImageNode#image 201,15 16x16
+            Node#sidebar-body 10,44 216x656
+              Node#sidebar-pane 10,44 216x656
+                Node#view 10,44 216x656
                   Node#view 10,44 216x21
                     TextNode#level-title 18,46 60x19 "fixtures"
                     Node#view 86,55 72x0
@@ -1717,23 +1728,24 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/search focused, dark: Browser/search focused, dark (149 lines)
+--- story Browser/search focused, dark: Browser/search focused, dark (150 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
       Node#window 0,0 1100x700
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
-            Node#sidebar-body 10,8 216x692
-              Node#sidebar-pane 10,8 216x692
-                Node#view 10,8 216x692
-                  Node#view 10,8 216x30
-                    Node#level-back 12,10 56x26
-                      ImageNode#image 14,16 14x14
-                      TextNode#text 30,16 30x15 "tests"
-                    Node#view 70,23 122x0
-                    Node#level-home 194,8 30x30
-                      ImageNode#image 201,15 16x16
+            Node#level-bar 10,8 216x30
+              Node#level-back 12,10 56x26
+                ImageNode#image 14,16 14x14
+                Node#view 30,16 30x15
+                  TextNode#text 30,16 30x15 "tests"
+              Node#view 70,23 122x0
+              Node#level-home 194,8 30x30
+                ImageNode#image 201,15 16x16
+            Node#sidebar-body 10,44 216x656
+              Node#sidebar-pane 10,44 216x656
+                Node#view 10,44 216x656
                   Node#view 10,44 216x21
                     TextNode#level-title 18,46 60x19 "fixtures"
                     Node#view 86,55 72x0
@@ -1868,23 +1880,24 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/search focused, light: Browser/search focused, light (149 lines)
+--- story Browser/search focused, light: Browser/search focused, light (150 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
       Node#window 0,0 1100x700
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
-            Node#sidebar-body 10,8 216x692
-              Node#sidebar-pane 10,8 216x692
-                Node#view 10,8 216x692
-                  Node#view 10,8 216x30
-                    Node#level-back 12,10 56x26
-                      ImageNode#image 14,16 14x14
-                      TextNode#text 30,16 30x15 "tests"
-                    Node#view 70,23 122x0
-                    Node#level-home 194,8 30x30
-                      ImageNode#image 201,15 16x16
+            Node#level-bar 10,8 216x30
+              Node#level-back 12,10 56x26
+                ImageNode#image 14,16 14x14
+                Node#view 30,16 30x15
+                  TextNode#text 30,16 30x15 "tests"
+              Node#view 70,23 122x0
+              Node#level-home 194,8 30x30
+                ImageNode#image 201,15 16x16
+            Node#sidebar-body 10,44 216x656
+              Node#sidebar-pane 10,44 216x656
+                Node#view 10,44 216x656
                   Node#view 10,44 216x21
                     TextNode#level-title 18,46 60x19 "fixtures"
                     Node#view 86,55 72x0
@@ -2019,23 +2032,24 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/several selected: Browser/several selected (176 lines)
+--- story Browser/several selected: Browser/several selected (177 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
       Node#window 0,0 1100x700
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
-            Node#sidebar-body 10,8 216x692
-              Node#sidebar-pane 10,8 216x692
-                Node#view 10,8 216x692
-                  Node#view 10,8 216x30
-                    Node#level-back 12,10 56x26
-                      ImageNode#image 14,16 14x14
-                      TextNode#text 30,16 30x15 "tests"
-                    Node#view 70,23 122x0
-                    Node#level-home 194,8 30x30
-                      ImageNode#image 201,15 16x16
+            Node#level-bar 10,8 216x30
+              Node#level-back 12,10 56x26
+                ImageNode#image 14,16 14x14
+                Node#view 30,16 30x15
+                  TextNode#text 30,16 30x15 "tests"
+              Node#view 70,23 122x0
+              Node#level-home 194,8 30x30
+                ImageNode#image 201,15 16x16
+            Node#sidebar-body 10,44 216x656
+              Node#sidebar-pane 10,44 216x656
+                Node#view 10,44 216x656
                   Node#view 10,44 216x21
                     TextNode#level-title 18,46 60x19 "fixtures"
                     Node#view 86,55 72x0
@@ -2197,23 +2211,24 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/sidebar's volume: Browser/sidebar's volume (157 lines)
+--- story Browser/sidebar's volume: Browser/sidebar's volume (158 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
       Node#window 0,0 1100x700
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
-            Node#sidebar-body 10,8 216x692
-              Node#sidebar-pane 10,8 216x692
-                Node#view 10,8 216x692
-                  Node#view 10,8 216x30
-                    Node#level-back 12,10 98x26
-                      ImageNode#image 14,16 14x14
-                      TextNode#text 30,16 72x15 "Macintosh HD"
-                    Node#view 112,23 80x0
-                    Node#level-home 194,8 30x30
-                      ImageNode#image 201,15 16x16
+            Node#level-bar 10,8 216x30
+              Node#level-back 12,10 98x26
+                ImageNode#image 14,16 14x14
+                Node#view 30,16 72x15
+                  TextNode#text 30,16 72x15 "Macintosh HD"
+              Node#view 112,23 80x0
+              Node#level-home 194,8 30x30
+                ImageNode#image 201,15 16x16
+            Node#sidebar-body 10,44 216x579
+              Node#sidebar-pane 10,44 216x579
+                Node#view 10,44 216x579
                   Node#view 10,44 216x21
                     TextNode#level-title 18,46 60x19 "fixtures"
                     Node#view 86,55 72x0
@@ -2225,14 +2240,14 @@ Node#root 0,0 390x844
                     Node#button 10,100 216x28
                       ImageNode#image 18,106 16x16
                       TextNode#text 42,106 176x16 "pdf"
-                  Node#capacity 10,629 216x61
-                    Node#view 20,637 196x15
-                      ImageNode#image 20,637 15x15
-                      TextNode#capacity-name 42,637 149x15 "Macintosh HD"
-                      TextNode#capacity-used 198,637 18x15 "91%"
-                    Node#capacity-bar 20,658 196x4
-                      Node#view 20,658 178x4
-                    TextNode#capacity-free 20,668 196x14 "45.3 GB free of 494.0 GB"
+            Node#capacity 10,629 216x61
+              Node#view 20,637 196x15
+                ImageNode#image 20,637 15x15
+                TextNode#capacity-name 42,637 149x15 "Macintosh HD"
+                TextNode#capacity-used 198,637 18x15 "91%"
+              Node#capacity-bar 20,658 196x4
+                Node#view 20,658 178x4
+              TextNode#capacity-free 20,668 196x14 "45.3 GB free of 494.0 GB"
           Node#view 236,0 864x700
             Node#main 236,0 564x700
               Node#toolbar 237,0 563x40
@@ -2356,23 +2371,24 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Viewer/Markdown, dark: Viewer/Markdown, dark (441 lines)
+--- story Viewer/Markdown, dark: Viewer/Markdown, dark (442 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
       Node#window 0,0 1100x700
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
-            Node#sidebar-body 10,8 216x692
-              Node#sidebar-pane 10,8 216x692
-                Node#view 10,8 216x692
-                  Node#view 10,8 216x30
-                    Node#level-back 12,10 74x26
-                      ImageNode#image 14,16 14x14
-                      TextNode#text 30,16 48x15 "Overview"
-                    Node#view 88,23 104x0
-                    Node#level-home 194,8 30x30
-                      ImageNode#image 201,15 16x16
+            Node#level-bar 10,8 216x30
+              Node#level-back 12,10 74x26
+                ImageNode#image 14,16 14x14
+                Node#view 30,16 48x15
+                  TextNode#text 30,16 48x15 "Overview"
+              Node#view 88,23 104x0
+              Node#level-home 194,8 30x30
+                ImageNode#image 201,15 16x16
+            Node#sidebar-body 10,44 216x656
+              Node#sidebar-pane 10,44 216x656
+                Node#view 10,44 216x656
                   Node#view 10,44 216x21
                     TextNode#level-title 18,46 53x19 "Samples"
                     Node#view 79,55 85x0
@@ -2799,23 +2815,24 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Viewer/Markdown, light: Viewer/Markdown, light (441 lines)
+--- story Viewer/Markdown, light: Viewer/Markdown, light (442 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
       Node#window 0,0 1100x700
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
-            Node#sidebar-body 10,8 216x692
-              Node#sidebar-pane 10,8 216x692
-                Node#view 10,8 216x692
-                  Node#view 10,8 216x30
-                    Node#level-back 12,10 74x26
-                      ImageNode#image 14,16 14x14
-                      TextNode#text 30,16 48x15 "Overview"
-                    Node#view 88,23 104x0
-                    Node#level-home 194,8 30x30
-                      ImageNode#image 201,15 16x16
+            Node#level-bar 10,8 216x30
+              Node#level-back 12,10 74x26
+                ImageNode#image 14,16 14x14
+                Node#view 30,16 48x15
+                  TextNode#text 30,16 48x15 "Overview"
+              Node#view 88,23 104x0
+              Node#level-home 194,8 30x30
+                ImageNode#image 201,15 16x16
+            Node#sidebar-body 10,44 216x656
+              Node#sidebar-pane 10,44 216x656
+                Node#view 10,44 216x656
                   Node#view 10,44 216x21
                     TextNode#level-title 18,46 53x19 "Samples"
                     Node#view 79,55 85x0
@@ -3242,23 +3259,24 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Viewer/PDF, between two pages: Viewer/PDF, between two pages (128 lines)
+--- story Viewer/PDF, between two pages: Viewer/PDF, between two pages (129 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
       Node#window 0,0 1100x700
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
-            Node#sidebar-body 10,8 216x692
-              Node#sidebar-pane 10,8 216x692
-                Node#view 10,8 216x692
-                  Node#view 10,8 216x30
-                    Node#level-back 12,10 56x26
-                      ImageNode#image 14,16 14x14
-                      TextNode#text 30,16 30x15 "tests"
-                    Node#view 70,23 122x0
-                    Node#level-home 194,8 30x30
-                      ImageNode#image 201,15 16x16
+            Node#level-bar 10,8 216x30
+              Node#level-back 12,10 56x26
+                ImageNode#image 14,16 14x14
+                Node#view 30,16 30x15
+                  TextNode#text 30,16 30x15 "tests"
+              Node#view 70,23 122x0
+              Node#level-home 194,8 30x30
+                ImageNode#image 201,15 16x16
+            Node#sidebar-body 10,44 216x656
+              Node#sidebar-pane 10,44 216x656
+                Node#view 10,44 216x656
                   Node#view 10,44 216x21
                     TextNode#level-title 18,46 60x19 "fixtures"
                     Node#view 86,55 78x0
@@ -3372,23 +3390,24 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Viewer/error: Viewer/error (170 lines)
+--- story Viewer/error: Viewer/error (171 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
       Node#window 0,0 1100x700
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
-            Node#sidebar-body 10,8 216x692
-              Node#sidebar-pane 10,8 216x692
-                Node#view 10,8 216x692
-                  Node#view 10,8 216x30
-                    Node#level-back 12,10 56x26
-                      ImageNode#image 14,16 14x14
-                      TextNode#text 30,16 30x15 "tests"
-                    Node#view 70,23 122x0
-                    Node#level-home 194,8 30x30
-                      ImageNode#image 201,15 16x16
+            Node#level-bar 10,8 216x30
+              Node#level-back 12,10 56x26
+                ImageNode#image 14,16 14x14
+                Node#view 30,16 30x15
+                  TextNode#text 30,16 30x15 "tests"
+              Node#view 70,23 122x0
+              Node#level-home 194,8 30x30
+                ImageNode#image 201,15 16x16
+            Node#sidebar-body 10,44 216x656
+              Node#sidebar-pane 10,44 216x656
+                Node#view 10,44 216x656
                   Node#view 10,44 216x21
                     TextNode#level-title 18,46 60x19 "fixtures"
                     Node#view 86,55 72x0
@@ -3544,23 +3563,24 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Viewer/fit: Viewer/fit (170 lines)
+--- story Viewer/fit: Viewer/fit (171 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
       Node#window 0,0 1100x700
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
-            Node#sidebar-body 10,8 216x692
-              Node#sidebar-pane 10,8 216x692
-                Node#view 10,8 216x692
-                  Node#view 10,8 216x30
-                    Node#level-back 12,10 56x26
-                      ImageNode#image 14,16 14x14
-                      TextNode#text 30,16 30x15 "tests"
-                    Node#view 70,23 122x0
-                    Node#level-home 194,8 30x30
-                      ImageNode#image 201,15 16x16
+            Node#level-bar 10,8 216x30
+              Node#level-back 12,10 56x26
+                ImageNode#image 14,16 14x14
+                Node#view 30,16 30x15
+                  TextNode#text 30,16 30x15 "tests"
+              Node#view 70,23 122x0
+              Node#level-home 194,8 30x30
+                ImageNode#image 201,15 16x16
+            Node#sidebar-body 10,44 216x656
+              Node#sidebar-pane 10,44 216x656
+                Node#view 10,44 216x656
                   Node#view 10,44 216x21
                     TextNode#level-title 18,46 60x19 "fixtures"
                     Node#view 86,55 72x0
@@ -3716,23 +3736,24 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Viewer/status line: Viewer/status line (172 lines)
+--- story Viewer/status line: Viewer/status line (173 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
       Node#window 0,0 1100x700
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
-            Node#sidebar-body 10,8 216x692
-              Node#sidebar-pane 10,8 216x692
-                Node#view 10,8 216x692
-                  Node#view 10,8 216x30
-                    Node#level-back 12,10 56x26
-                      ImageNode#image 14,16 14x14
-                      TextNode#text 30,16 30x15 "tests"
-                    Node#view 70,23 122x0
-                    Node#level-home 194,8 30x30
-                      ImageNode#image 201,15 16x16
+            Node#level-bar 10,8 216x30
+              Node#level-back 12,10 56x26
+                ImageNode#image 14,16 14x14
+                Node#view 30,16 30x15
+                  TextNode#text 30,16 30x15 "tests"
+              Node#view 70,23 122x0
+              Node#level-home 194,8 30x30
+                ImageNode#image 201,15 16x16
+            Node#sidebar-body 10,44 216x656
+              Node#sidebar-pane 10,44 216x656
+                Node#view 10,44 216x656
                   Node#view 10,44 216x21
                     TextNode#level-title 18,46 60x19 "fixtures"
                     Node#view 86,55 72x0

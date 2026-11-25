@@ -10,7 +10,9 @@ import helder.view.Render;
 import helder.view.graph.Graph;
 
 // The sidebar: its volume's card (its name, how full, what is free of
-// what); going between levels as a push, both panes together on the
+// what); going between levels as a push of the levels alone (the bar over
+// them, its back row's chevron and the overview's button, and the foot's
+// card where they were on every frame), both panes together on the
 // spring at whole-point offsets, settled soon, the old one gone after;
 // clicked again on the way, turned from where they are (no third pane, no
 // restart); clicked fast, a burst of levels: two at most on screen, the
@@ -95,6 +97,43 @@ function tests() {
 			equals(panes(ui).length, 1);
 			equals(panes(ui)[0].x, 0.0);
 			equals(panes(ui)[0].title, "Macintosh HD");
+		});
+		test("the bar and the foot stay: the same frames on every frame of a level change", () -> {
+			var m = mount(), ui = m.ui, x = m.x;
+			function rect(tag:String):String {
+				var n = ui.root.find(tag);
+				if (n == null) return tag + ": none";
+				var b = n.windowBounds();
+				return '$tag: ${b.x} ${b.y} ${b.width} ${b.height}';
+			}
+			// (the back row's chevron: its first child)
+			function chevron():String {
+				var b = ui.root.find("level-back").children[0].windowBounds();
+				return 'chevron: ${b.x} ${b.y} ${b.width} ${b.height}';
+			}
+			function change(go:() -> Void, still:Array<String>) {
+				function frames():Array<String>
+					return [for (t in still) rect(t)].concat([chevron()]);
+				var first = frames(), n = 0;
+				go();
+				frame(ui);
+				equals(frames(), first);
+				at(ui, 0);
+				while ((panes(ui).length > 1 || n < 2) && n++ < 60) {
+					at(ui, 1 / 60);
+					equals(frames(), first);
+				}
+				assert(n < 60, "settled");
+			}
+			// (within the volume: the foot's card too)
+			change(() -> x.sidebar.back(), ["level-bar", "level-home", "capacity"]);
+			equals(x.sidebar.level.value, "tests");
+			change(() -> x.sidebar.show("tests/fixtures"), ["level-bar", "level-home", "capacity"]);
+			// (to the overview: the back row faded where it is, the overview's button put)
+			change(() -> x.sidebar.show(""), ["level-bar", "level-home"]);
+			equals(ui.root.find("level-back").style.opacity, 0.0);
+			change(() -> x.sidebar.show("tests/fixtures"), ["level-bar", "level-home"]);
+			equals(ui.root.find("level-back").style.opacity, 1.0);
 		});
 		test("clicked again on the way: turned from where it is, not restarted", () -> {
 			var m = mount(), ui = m.ui, x = m.x;
