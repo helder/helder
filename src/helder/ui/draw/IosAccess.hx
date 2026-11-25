@@ -1,13 +1,13 @@
 package helder.ui.draw;
 
-import helder.os.objc.*;
+import helder.os.apple.objc.*;
 import helder.ui.access.AccessNode;
 import helder.ui.access.AccessTree;
 import helder.ui.access.Role;
 import hxmc.unsafe.*;
 
 // A UiWindow's accessibility tree on iOS (UIAccessibility), for VoiceOver,
-// Switch Control and UI tests: the window's view (UIKitWindow's) is an
+// Switch Control and UI tests: the window's view (IosWindow's) is an
 // accessibility container, not an element (methods added to its class at
 // run time: isAccessibilityElement, accessibilityElements), whose elements
 // are UIAccessibilityElements of a class made here (HxmcAccessibleElement:

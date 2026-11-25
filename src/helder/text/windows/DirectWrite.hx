@@ -2,7 +2,7 @@ package helder.text.windows;
 
 import hxmc.unsafe.*;
 import helder.text.Shaping;
-import helder.os.win32.Com;
+import helder.os.windows.Com;
 
 // Windows' text stack behind helder.text, DirectWrite through COM: the
 // shared IDWriteFactory; the system font collection for a family's face
@@ -493,7 +493,7 @@ class Analysis {
 }
 
 // (the interfaces' vtables: IUnknown 0-2, then each base's methods, in the headers' order)
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IDWriteFactory {
 	@:slot(3) static function GetSystemFontCollection(self:Ptr, out:Ptr<Ptr>, check:Int):Int;
@@ -510,13 +510,13 @@ class IDWriteFactory {
 	@:slot(44) static function CreateInMemoryFontFileLoader(self:Ptr, out:Ptr<Ptr>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IDWriteInMemoryFontFileLoader {
 	@:slot(4) static function CreateInMemoryFontFileReference(self:Ptr, factory:Ptr, data:Ptr, size:Int, owner:Ptr, out:Ptr<Ptr>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IDWriteFontFile {
 	@:slot(3) static function GetReferenceKey(self:Ptr, key:Ptr<Ptr>, size:Ptr):Int;
@@ -524,47 +524,47 @@ class IDWriteFontFile {
 	@:slot(5) static function Analyze(self:Ptr, supported:Ptr, fileType:Ptr, faceType:Ptr, faces:Ptr):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IDWriteLocalFontFileLoader {
 	@:slot(4) static function GetFilePathLengthFromKey(self:Ptr, key:Ptr, size:Int, len:Ptr):Int;
 	@:slot(5) static function GetFilePathFromKey(self:Ptr, key:Ptr, size:Int, path:Ptr, len:Int):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IDWriteFontFace {
 	@:slot(4) static function GetFiles(self:Ptr, n:Ptr, files:Ptr<Ptr>):Int;
 	@:slot(5) static function GetIndex(self:Ptr):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IDWriteFont {
 	@:slot(13) static function CreateFontFace(self:Ptr, out:Ptr<Ptr>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IDWriteFontCollection {
 	@:slot(4) static function GetFontFamily(self:Ptr, index:Int, out:Ptr<Ptr>):Int;
 	@:slot(5) static function FindFamilyName(self:Ptr, name:Ptr, index:Ptr, exists:Ptr):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IDWriteFontFamily {
 	@:slot(7) static function GetFirstMatchingFont(self:Ptr, weight:Int, stretch:Int, style:Int, out:Ptr<Ptr>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IDWriteFontFallback {
 	@:slot(3) static function MapCharacters(self:Ptr, source:Ptr, pos:Int, len:Int, collection:Ptr, family:Ptr, weight:Int, style:Int, stretch:Int, mapped:Ptr,
 		font:Ptr<Ptr>, scale:Ptr):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IDWriteTextAnalyzer {
 	@:slot(3) static function AnalyzeScript(self:Ptr, source:Ptr, pos:Int, len:Int, sink:Ptr):Int;
@@ -574,7 +574,7 @@ class IDWriteTextAnalyzer {
 		em:Float32, sideways:Int, rtl:Int, script:Ptr, locale:Ptr, features:Ptr, featureLengths:Ptr, featureRanges:Int, advances:Ptr, offsets:Ptr):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IDWriteRenderingParams {
 	@:slot(3) static function GetGamma(self:Ptr):Float32;
@@ -582,7 +582,7 @@ class IDWriteRenderingParams {
 	@:slot(8) static function GetGrayscaleEnhancedContrast(self:Ptr):Float32;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IDWriteGlyphRunAnalysis {
 	@:slot(3) static function GetAlphaTextureBounds(self:Ptr, type:Int, rect:Ptr):Int;

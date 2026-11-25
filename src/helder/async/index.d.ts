@@ -15,10 +15,10 @@ export type RequestOptions = { method?: string; headers?: unknown; body?: Uint8A
 // An HTTP/1.1 client on helder.async's TCP (one connection a request): the
 // body read by Content-Length, chunked or until the server closes. No
 // redirects, no compression asked for. An https URL goes to the system's
-// stack where there is one: NSURLSession on macOS and iOS (AppleHttp: its
+// stack where there is one: NSURLSession on macOS and iOS (helder.async.http.apple.Http: its
 // TLS, redirects, HTTP/2 and cache); elsewhere natively this client over
 // mbedtls's TLS (TlsSocket: the system's roots, or the ca given); in the
-// browser the page's fetch for every url (WebHttp).
+// browser the page's fetch for every url (helder.async.http.web.Http).
 //
 //   var res = Client.request("http://127.0.0.1:4983/", {method: "POST", body: '{"type":"init"}',
 //     headers: ["content-type" => "application/json"]});

@@ -196,14 +196,14 @@ final class RenderThread {
 	// (Apple: the autorelease pool around what runs outside a frame)
 	inline function pooled() {
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
-		if (pool.isNull()) pool = helder.os.objc.Runtime.objc_autoreleasePoolPush();
+		if (pool.isNull()) pool = helder.os.apple.objc.Runtime.objc_autoreleasePoolPush();
 		#end
 	}
 
 	function drain() {
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
 		if (!pool.isNull()) {
-			helder.os.objc.Runtime.objc_autoreleasePoolPop(pool);
+			helder.os.apple.objc.Runtime.objc_autoreleasePoolPop(pool);
 			pool = Ptr.nil();
 		}
 		#end

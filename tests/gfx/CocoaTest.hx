@@ -1,6 +1,6 @@
 import haxe.io.Bytes;
 import helder.os.Window;
-import helder.os.objc.*;
+import helder.os.apple.objc.*;
 import hxmc.unsafe.*;
 
 // GfxTest's window mode on macOS: the close button pressed (performClose:,
@@ -11,7 +11,7 @@ import hxmc.unsafe.*;
 // X11 does), and they come back as rendered.
 class CocoaTest {
 	public static function prepare(w:Window) {
-		// (-D helder.soft: a plain layer, its contents in the screen's space already: helder.os.cocoa.CocoaBlit)
+		// (-D helder.soft: a plain layer, its contents in the screen's space already: helder.os.apple.MacBlit)
 		#if helder.soft
 		return;
 		#end
@@ -83,8 +83,8 @@ class CocoaTest {
 	}
 }
 
-// the messages CocoaTest sends (helder.os.objc.Sender)
-@:build(helder.os.objc.Sender.build())
+// the messages CocoaTest sends (helder.os.apple.objc.Sender)
+@:build(helder.os.apple.objc.Sender.build())
 class TestMsg {
 	static function keyEvent(self:Ptr, sel:Ptr, type:Int64, location:CGPoint, flags:Int64, time:Float, window:Int64, context:Ptr, chars:Ptr, raw:Ptr,
 		repeat:Bool, code:Int64):Ptr;
@@ -92,7 +92,7 @@ class TestMsg {
 }
 
 #if helder.soft
-// (-D helder.soft: the layer's contents as helder.os.cocoa.CocoaBlit set them, RGBA, read back)
+// (-D helder.soft: the layer's contents as helder.os.apple.MacBlit set them, RGBA, read back)
 @:hxmc.unsafe(gc) function contents(w:Window, width:Int, height:Int):Null<Bytes> {
 	var img = Msg.id(w.surface.display, ObjC.sel("contents"));
 	if (img.isNull() || CG.CGImageGetWidth(img).toInt() != width || CG.CGImageGetHeight(img).toInt() != height) return null;

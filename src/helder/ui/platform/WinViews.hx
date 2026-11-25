@@ -1,6 +1,6 @@
 package helder.ui.platform;
 
-import helder.os.win32.User32;
+import helder.os.windows.User32;
 import helder.ui.*;
 import helder.ui.platform.Win32;
 import hxmc.unsafe.*;
@@ -60,7 +60,7 @@ class WinViews implements PlatformViews {
 		this.hwnd = hwnd;
 		this.ui = ui;
 		this.scale = scale;
-		helder.os.win32.Win32Window.editColors = colors;
+		helder.os.windows.WinWindow.editColors = colors;
 	}
 
 	public function editor(multiline:Bool):Null<PlatformEditor>
@@ -106,7 +106,7 @@ class WinViews implements PlatformViews {
 				Arena.scoped(a -> WinEdit.AppendMenuW(bar, 0x10, sub.toI64(), a.wstring(StringTools.replace(m.label, "&", "&&"))));
 			}
 			barChosen = chosen;
-			helder.os.win32.Win32Window.command = command;
+			helder.os.windows.WinWindow.command = command;
 		}
 		WinEdit.SetMenu(hwnd, bar);
 		WinEdit.DrawMenuBar(hwnd);
@@ -175,7 +175,7 @@ class WinViews implements PlatformViews {
 				var m = WinEdit.CreatePopupMenu();
 				fill(m, p.items);
 				var at = Arena.scopedValue(a -> {
-					var pt = a.make(helder.os.win32.User32.POINT);
+					var pt = a.make(helder.os.windows.User32.POINT);
 					pt.value.x = Math.round(p.x * k);
 					pt.value.y = Math.round(p.y * k);
 					User32.ClientToScreen(hwnd, pt);

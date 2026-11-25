@@ -1,7 +1,7 @@
 package helder.gfx.d3d11;
 
 import hxmc.unsafe.*;
-import helder.os.win32.Com.IUnknown;
+import helder.os.windows.Com.IUnknown;
 
 // Direct3D 11, DXGI and the HLSL compiler: the system's C functions, then
 // the COM interfaces the back end calls (Com: a method is its vtable slot
@@ -19,7 +19,7 @@ import helder.os.win32.Com.IUnknown;
 		errors:Ptr<Ptr>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class ID3D11Device {
 	@:slot(3) static function CreateBuffer(self:Ptr, desc:Ptr<D3D11_BUFFER_DESC>, data:Ptr<D3D11_SUBRESOURCE_DATA>, out:Ptr<Ptr>):Int;
@@ -46,7 +46,7 @@ class ID3D11Device {
 	@:slot(40) static function GetImmediateContext(self:Ptr, out:Ptr<Ptr>):Void;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class ID3D11DeviceContext {
 	@:slot(7) static function VSSetConstantBuffers(self:Ptr, start:Int, count:Int, buffers:Ptr<Ptr>):Void;
@@ -98,7 +98,7 @@ class ID3D11DeviceContext {
 }
 
 // (Direct3D 11.1: constant buffers at offsets, in 16-byte constants, 16 of them at a time)
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class ID3D11DeviceContext1 {
 	@:slot(119) static function VSSetConstantBuffers1(self:Ptr, start:Int, count:Int, buffers:Ptr<Ptr>, first:Ptr<Int32>, num:Ptr<Int32>):Void;
@@ -106,14 +106,14 @@ class ID3D11DeviceContext1 {
 	@:slot(124) static function CSSetConstantBuffers1(self:Ptr, start:Int, count:Int, buffers:Ptr<Ptr>, first:Ptr<Int32>, num:Ptr<Int32>):Void;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class ID3DBlob {
 	@:slot(3) static function GetBufferPointer(self:Ptr):Ptr;
 	@:slot(4) static function GetBufferSize(self:Ptr):Int64;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class ID3D11Texture2D {
 	@:slot(3) static function GetDevice(self:Ptr, out:Ptr<Ptr>):Void;
@@ -121,27 +121,27 @@ class ID3D11Texture2D {
 }
 
 // (shared textures: a texture's legacy shared handle, its keyed mutex)
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IDXGIResource {
 	@:slot(8) static function GetSharedHandle(self:Ptr, out:Ptr<Ptr>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IDXGIKeyedMutex {
 	@:slot(8) static function AcquireSync(self:Ptr, key:Int64, ms:Int):Int;
 	@:slot(9) static function ReleaseSync(self:Ptr, key:Int64):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IDXGIDevice {
 	@:slot(7) static function GetAdapter(self:Ptr, out:Ptr<Ptr>):Int;
 }
 
 // (IDXGIObject::GetParent: the adapter's factory)
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IDXGIAdapter {
 	@:slot(6) static function GetParent(self:Ptr, iid:Ptr, out:Ptr<Ptr>):Int;
@@ -149,7 +149,7 @@ class IDXGIAdapter {
 	@:slot(8) static function GetDesc(self:Ptr, desc:Ptr<Int32>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IDXGIFactory2 {
 	@:slot(8) static function MakeWindowAssociation(self:Ptr, hwnd:Ptr, flags:Int):Int;
@@ -159,7 +159,7 @@ class IDXGIFactory2 {
 	@:slot(24) static function CreateSwapChainForComposition(self:Ptr, device:Ptr, desc:Ptr<DXGI_SWAP_CHAIN_DESC1>, output:Ptr, out:Ptr<Ptr>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IDXGISwapChain1 {
 	@:slot(8) static function Present(self:Ptr, interval:Int, flags:Int):Int;
@@ -171,7 +171,7 @@ class IDXGISwapChain1 {
 
 // (made with FRAME_LATENCY_WAITABLE_OBJECT: the frames it queues at most, and
 // the object signalled as each leaves the queue for the screen)
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IDXGISwapChain2 {
 	@:slot(31) static function SetMaximumFrameLatency(self:Ptr, frames:Int):Int;

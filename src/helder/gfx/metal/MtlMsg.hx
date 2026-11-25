@@ -1,12 +1,12 @@
 package helder.gfx.metal;
 
 import helder.gfx.metal.Metal;
-import helder.os.objc.CGSize;
+import helder.os.apple.objc.CGSize;
 import hxmc.unsafe.*;
 
-// Metal's shapes of objc_msgSend (helder.os.objc.Sender; the names as in
-// helder.os.objc.Msg), the ones with Metal's structs
-@:build(helder.os.objc.Sender.build())
+// Metal's shapes of objc_msgSend (helder.os.apple.objc.Sender; the names as in
+// helder.os.apple.objc.Msg), the ones with Metal's structs
+@:build(helder.os.apple.objc.Sender.build())
 @:hxmc.unsafe(gc)
 class MtlMsg {
 	static function size(self:Ptr, sel:Ptr):CGSize;

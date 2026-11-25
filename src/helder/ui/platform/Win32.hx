@@ -3,7 +3,7 @@ package helder.ui.platform;
 import hxmc.unsafe.*;
 
 // The user32 and gdi32 calls WinViews makes beside those of
-// helder.os.win32 (whose structs it shares).
+// helder.os.windows (whose structs it shares).
 @:hxmc.c @:hxmc.lib("user32") extern class W32 {
 	static function CreateWindowExW(exStyle:Int, cls:Ptr, title:Ptr, style:Int, x:Int, y:Int, width:Int, height:Int, parent:Ptr, menu:Ptr,
 		instance:Ptr, param:Ptr):Ptr;

@@ -1,6 +1,6 @@
 import helder.os.*;
 import helder.os.TitleBar;
-import helder.os.objc.*;
+import helder.os.apple.objc.*;
 import hxmc.Platform;
 import hxmc.unsafe.*;
 
@@ -39,7 +39,7 @@ class TitleBarTest {
 				if (Platform.os() == 1) mac(window);
 				// (the hit tests sent on the window's thread, the main one: helder.os.OsThread)
 				if (Platform.os() == 2) helder.os.OsThread.run(() -> windows(window));
-				if (Platform.os() == 0 && !Std.isOfType(@:privateAccess window.native, helder.os.wayland.WaylandWindow)) x11(window);
+				if (Platform.os() == 0 && !Std.isOfType(@:privateAccess window.native, helder.os.linux.wayland.WaylandWindow)) x11(window);
 				window.resize(500, 320);
 			} else if (step == 1 && frames > 12) {
 				step = 2;
@@ -59,7 +59,7 @@ class TitleBarTest {
 	}
 
 	static function mac(window:Window) {
-		var c:helder.os.cocoa.CocoaWindow = cast @:privateAccess window.native;
+		var c:helder.os.apple.MacWindow = cast @:privateAccess window.native;
 		var ns:Ptr = @:privateAccess c.window;
 		var mask = Msg.i(ns, ObjC.sel("styleMask")).toInt();
 		check("macOS: a full-size content view", mask & (1 << 15) != 0, '$mask');
@@ -90,14 +90,14 @@ class TitleBarTest {
 	}
 
 	static function windows(window:Window) {
-		var w:helder.os.win32.Win32Window = cast @:privateAccess window.native;
+		var w:helder.os.windows.WinWindow = cast @:privateAccess window.native;
 		var hwnd:Ptr = @:privateAccess w.hwnd;
 		Arena.scoped(a -> {
-			var c = a.make(helder.os.win32.User32.POINT);
-			helder.os.win32.User32.ClientToScreen(hwnd, c);
+			var c = a.make(helder.os.windows.User32.POINT);
+			helder.os.windows.User32.ClientToScreen(hwnd, c);
 			function hit(x:Int, y:Int):Int {
 				var lp:Int64 = ((c.value.y + y) & 0xFFFF) << 16 | ((c.value.x + x) & 0xFFFF);
-				return helder.os.win32.User32.SendMessageW(hwnd, 0x0084, 0, lp).toInt();
+				return helder.os.windows.User32.SendMessageW(hwnd, 0x0084, 0, lp).toInt();
 			}
 			var k = window.scale;
 			check("Windows: a drag region is HTCAPTION", hit(Math.round(100 * k), Math.round(20 * k)) == 2);
@@ -108,8 +108,8 @@ class TitleBarTest {
 	}
 
 	static function x11(window:Window) {
-		var w:helder.os.x11.X11Window = cast @:privateAccess window.native;
-		var hints = @:privateAccess w.takeProperty(helder.os.x11.Xlib.XInternAtom(@:privateAccess helder.os.x11.X11Window.display, Mem.cstr("_MOTIF_WM_HINTS"), 0), false);
+		var w:helder.os.linux.x11.X11Window = cast @:privateAccess window.native;
+		var hints = @:privateAccess w.takeProperty(helder.os.linux.x11.Xlib.XInternAtom(@:privateAccess helder.os.linux.x11.X11Window.display, Mem.cstr("_MOTIF_WM_HINTS"), 0), false);
 		check("X11: undecorated (Motif's hints)", hints != null && hints.format == 32 && hints.bytes.getInt32(0) == 2 && hints.bytes.getInt32(16) == 0,
 			hints == null ? "none" : '${hints.bytes.getInt32(0)} ${hints.bytes.getInt32(16)}');
 	}

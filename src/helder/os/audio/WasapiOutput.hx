@@ -1,7 +1,7 @@
 package helder.os.audio;
 
 import helder.os.audio.Wasapi;
-import helder.os.win32.Com;
+import helder.os.windows.Com;
 import hxmc.unsafe.*;
 import sys.thread.Lock;
 import sys.thread.Thread;

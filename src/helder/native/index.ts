@@ -37,7 +37,7 @@
 // class, each function's key its selector (each _ a colon:
 // initWithUTF8String_ is initWithUTF8String:; a quoted key as it is), sent
 // through objc_msgSend's address with the signature its annotations give
-// (Haxe's helder.os.objc.Msg); statics to the class (objc_getClass), methods
+// (Haxe's helder.os.apple.objc.Msg); statics to the class (objc_getClass), methods
 // to their first argument (the receiver, an id); lib a library loaded with
 // the program (the framework the class is in); `class` the class's id.
 //
@@ -51,7 +51,7 @@
 // native.com({iid, clsid?, base?, methods}): a COM interface, its methods the
 // vtable's slots in order after the base's (IUnknown's three: base 3, the
 // default; an interface's own after its bases'), each taking the interface's
-// pointer first (Haxe's helder.os.win32.Com, VTable); QueryInterface, AddRef
+// pointer first (Haxe's helder.os.windows.Com, VTable); QueryInterface, AddRef
 // and Release are its first three; `iid` the IID in C's memory (a pointer);
 // with clsid, create() makes an object of the class by the interface
 // (CoInitializeEx, CoCreateInstance: a failure thrown with its HRESULT).

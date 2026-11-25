@@ -4,7 +4,7 @@ package helder.os;
 import helder.os.android.Jni;
 #end
 #if (!helder.os || helder.os == "macos" || helder.os == "ios")
-import helder.os.objc.*;
+import helder.os.apple.objc.*;
 #end
 #if (!helder.os || helder.os == "web")
 import helder.os.web.Dom;
@@ -58,7 +58,7 @@ class Links {
 			if (Platform.apple() == 0) ok = Msg.bPtr(Msg.id(ObjC.cls("NSWorkspace"), ObjC.sel("sharedWorkspace")), ObjC.sel("openURL:"), u);
 			#if (!helder.os || helder.os == "ios")
 			else {
-				var host = helder.os.uikit.UIKitWindow.controllerNow();
+				var host = helder.os.apple.IosWindow.controllerNow();
 				var safari = inApp && !host.isNull() ? safariClass() : Ptr.nil();
 				// (SFSafariViewController takes http and https only)
 				var web = StringTools.startsWith(url, "https://") || StringTools.startsWith(url, "http://");

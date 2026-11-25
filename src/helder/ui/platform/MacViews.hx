@@ -1,6 +1,6 @@
 package helder.ui.platform;
 
-import helder.os.objc.*;
+import helder.os.apple.objc.*;
 import helder.ui.*;
 import hxmc.unsafe.*;
 
@@ -354,7 +354,7 @@ class MacViews implements PlatformViews {
 				// (the view's points, y up)
 				var b = Msg.rect(view, ObjC.sel("bounds")), flipped = Msg.b(view, ObjC.sel("isFlipped"));
 				Arena.scoped(a -> {
-					var pt = a.make(helder.os.objc.CGPoint);
+					var pt = a.make(helder.os.apple.objc.CGPoint);
 					pt.value.x = p.x;
 					pt.value.y = flipped ? p.y : b.size.height - p.y;
 					shown = m;

@@ -3,7 +3,7 @@ import hxmc.unsafe.*;
 // Scroll input put where the system's comes in, from a thread of its own,
 // while the program is busy (AsyncScrollWindow): a wheel's pixels every
 // 16 ms at the window's middle. macOS: NSEvents made from CGEvents, posted
-// to the application's queue, which the main thread reads (CocoaWindow's
+// to the application's queue, which the main thread reads (MacWindow's
 // pump); X11: wheel presses sent to the window by a connection of its
 // own; Windows: a wheel's notches from SendInput, the cursor at the
 // window's middle (the window under it gets them); elsewhere
@@ -40,19 +40,19 @@ class Inject {
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 		var view = w.surface.handle;
 		var at = helder.os.OsThread.get(() -> {
-			var win = helder.os.objc.Msg.id(view, helder.os.objc.ObjC.sel("window"));
-			var r = helder.os.objc.Msg.rect(win, helder.os.objc.ObjC.sel("frame"));
-			var screen = helder.os.objc.Msg.id(win, helder.os.objc.ObjC.sel("screen"));
-			var s = helder.os.objc.Msg.rect(screen, helder.os.objc.ObjC.sel("frame"));
-			[helder.os.objc.Msg.i(win, helder.os.objc.ObjC.sel("windowNumber")).toInt() * 1.0, r.origin.x + r.size.width / 2,
+			var win = helder.os.apple.objc.Msg.id(view, helder.os.apple.objc.ObjC.sel("window"));
+			var r = helder.os.apple.objc.Msg.rect(win, helder.os.apple.objc.ObjC.sel("frame"));
+			var screen = helder.os.apple.objc.Msg.id(win, helder.os.apple.objc.ObjC.sel("screen"));
+			var s = helder.os.apple.objc.Msg.rect(screen, helder.os.apple.objc.ObjC.sel("frame"));
+			[helder.os.apple.objc.Msg.i(win, helder.os.apple.objc.ObjC.sel("windowNumber")).toInt() * 1.0, r.origin.x + r.size.width / 2,
 				s.size.height - (r.origin.y + r.size.height / 2)];
 		});
 		sys.thread.Thread.create(() -> {
-			var until = haxe.Timer.stamp() + ms / 1000, app = helder.os.objc.Msg.id(helder.os.objc.ObjC.cls("NSApplication"), helder.os.objc.ObjC.sel("sharedApplication"));
+			var until = haxe.Timer.stamp() + ms / 1000, app = helder.os.apple.objc.Msg.id(helder.os.apple.objc.ObjC.cls("NSApplication"), helder.os.apple.objc.ObjC.sel("sharedApplication"));
 			while (haxe.Timer.stamp() < until) {
-				var pool = helder.os.objc.Runtime.objc_autoreleasePoolPush();
+				var pool = helder.os.apple.objc.Runtime.objc_autoreleasePoolPush();
 				var cg = CG.CGEventCreateScrollWheelEvent2(Ptr.nil(), 0, 1, -12, 0, 0);
-				var p:Ptr<helder.os.objc.CGPoint> = LibC.malloc(16);
+				var p:Ptr<helder.os.apple.objc.CGPoint> = LibC.malloc(16);
 				p.value.x = at[1];
 				p.value.y = at[2];
 				CG.CGEventSetLocation(cg, p.value);
@@ -63,7 +63,7 @@ class Inject {
 				CG.CGEventPostToPid(Libc.getpid(), cg);
 				i.sent++;
 				CF.CFRelease(cg);
-				helder.os.objc.Runtime.objc_autoreleasePoolPop(pool);
+				helder.os.apple.objc.Runtime.objc_autoreleasePoolPop(pool);
 				Sys.sleep(every);
 			}
 			i.done.release();
@@ -72,14 +72,14 @@ class Inject {
 		// (X11: wheel presses sent to the window from a connection of its own, as another client would)
 		var id = w.surface.handle.toI64(), cx = Std.int(w.width / 2), cy = Std.int(w.height / 2);
 		sys.thread.Thread.create(() -> {
-			var d = helder.os.x11.Xlib.XOpenDisplay(Ptr.nil());
+			var d = helder.os.linux.x11.Xlib.XOpenDisplay(Ptr.nil());
 			var until = haxe.Timer.stamp() + ms / 1000;
 			var raw:Ptr = LibC.malloc(192);
 			while (!d.isNull() && haxe.Timer.stamp() < until) {
 				if (onSent != null) onSent(haxe.Timer.stamp());
 				for (press in [true, false]) {
 					LibC.memset(raw, 0, 192);
-					var b:Ptr<helder.os.x11.Xlib.XKeyEvent> = raw;
+					var b:Ptr<helder.os.linux.x11.Xlib.XKeyEvent> = raw;
 					b.value.type = press ? 4 : 5;
 					b.value.display = d;
 					b.value.window = id;
@@ -87,14 +87,14 @@ class Inject {
 					b.value.y = cy;
 					b.value.keycode = 5;
 					b.value.same_screen = 1;
-					helder.os.x11.Xlib.XSendEvent(d, id, 0, 0, raw);
+					helder.os.linux.x11.Xlib.XSendEvent(d, id, 0, 0, raw);
 				}
-				helder.os.x11.Xlib.XFlush(d);
+				helder.os.linux.x11.Xlib.XFlush(d);
 				i.sent++;
 				Sys.sleep(every);
 			}
 			LibC.free(raw);
-			if (!d.isNull()) helder.os.x11.Xlib.XCloseDisplay(d);
+			if (!d.isNull()) helder.os.linux.x11.Xlib.XCloseDisplay(d);
 			i.done.release();
 		});
 		#elseif (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
@@ -103,7 +103,7 @@ class Inject {
 			var p:Ptr<Int32> = LibC.malloc(8);
 			p[0] = cx;
 			p[1] = cy;
-			helder.os.win32.User32.ClientToScreen(hwnd, cast p);
+			helder.os.windows.User32.ClientToScreen(hwnd, cast p);
 			WinInput.SetCursorPos(p[0], p[1]);
 			LibC.free(cast p);
 			// (INPUT: INPUT_MOUSE, then MOUSEINPUT: dx, dy, mouseData, dwFlags MOUSEEVENTF_WHEEL, time, dwExtraInfo)
@@ -133,7 +133,7 @@ class Inject {
 #if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
 @:hxmc.c @:hxmc.lib("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics") private extern class CG {
 	static function CGEventCreateScrollWheelEvent2(source:Ptr, units:Int, count:Int, wheel1:Int, wheel2:Int, wheel3:Int):Ptr;
-	static function CGEventSetLocation(e:Ptr, p:helder.os.objc.CGPoint):Void;
+	static function CGEventSetLocation(e:Ptr, p:helder.os.apple.objc.CGPoint):Void;
 	static function CGEventSetIntegerValueField(e:Ptr, field:Int, value:Int64):Void;
 	static function CGEventPostToPid(pid:Int, e:Ptr):Void;
 }

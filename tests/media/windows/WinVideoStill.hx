@@ -4,7 +4,7 @@ import helder.media.MemorySource;
 import helder.media.ui.MediaTags.*;
 import helder.media.ui.VideoNode;
 import helder.os.OsThread;
-import helder.os.win32.User32;
+import helder.os.windows.User32;
 import helder.ui.Clock;
 import helder.ui.draw.UiWindow;
 import helder.ui.draw.UiWindow.Surface;

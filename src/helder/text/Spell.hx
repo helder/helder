@@ -46,8 +46,8 @@ class Spell {
 				#end
 			}
 			#end
-			#if (!helder.os || helder.os == "windows") if (hxmc.Platform.os() == 2) return helder.text.windows.WinSpell.create(lang); #end
-			#if (!helder.os || helder.os == "macos") if (hxmc.Platform.os() == 1) return helder.text.mac.MacSpell.create(lang); #end
+			#if (!helder.os || helder.os == "windows") if (hxmc.Platform.os() == 2) return helder.text.windows.Spell.create(lang); #end
+			#if (!helder.os || helder.os == "macos") if (hxmc.Platform.os() == 1) return helder.text.apple.Spell.create(lang); #end
 		}
 		#end
 		return null;

@@ -149,29 +149,29 @@ class MenuTest {
 
 	static function cocoa(w:UiWindow, bar:MenuBar) {
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
-		var app = helder.os.objc.Msg.id(helder.os.objc.ObjC.cls("NSApplication"), helder.os.objc.ObjC.sel("sharedApplication"));
-		var main = helder.os.objc.Msg.id(app, helder.os.objc.ObjC.sel("mainMenu"));
+		var app = helder.os.apple.objc.Msg.id(helder.os.apple.objc.ObjC.cls("NSApplication"), helder.os.apple.objc.ObjC.sel("sharedApplication"));
+		var main = helder.os.apple.objc.Msg.id(app, helder.os.apple.objc.ObjC.sel("mainMenu"));
 		check("cocoa: the platform's bar", bar.native);
-		var n = helder.os.objc.Msg.i(main, helder.os.objc.ObjC.sel("numberOfItems")).toInt();
+		var n = helder.os.apple.objc.Msg.i(main, helder.os.apple.objc.ObjC.sel("numberOfItems")).toInt();
 		check("cocoa: the application's menu, File, View, Window", n == 4, "" + n);
 		function sub(i:Int):Ptr
-			return helder.os.objc.Msg.id(helder.os.objc.Msg.idInt(main, helder.os.objc.ObjC.sel("itemAtIndex:"), i), helder.os.objc.ObjC.sel("submenu"));
+			return helder.os.apple.objc.Msg.id(helder.os.apple.objc.Msg.idInt(main, helder.os.apple.objc.ObjC.sel("itemAtIndex:"), i), helder.os.apple.objc.ObjC.sel("submenu"));
 		function item(m:Ptr, i:Int):Ptr
-			return helder.os.objc.Msg.idInt(m, helder.os.objc.ObjC.sel("itemAtIndex:"), i);
+			return helder.os.apple.objc.Msg.idInt(m, helder.os.apple.objc.ObjC.sel("itemAtIndex:"), i);
 		function title(it:Ptr):String
-			return helder.os.objc.ObjC.string(helder.os.objc.Msg.id(it, helder.os.objc.ObjC.sel("title"))) ?? "";
+			return helder.os.apple.objc.ObjC.string(helder.os.apple.objc.Msg.id(it, helder.os.apple.objc.ObjC.sel("title"))) ?? "";
 		var own = sub(0), file = sub(1), view = sub(2);
 		check("cocoa: About first in the application's menu", title(item(own, 0)) == "About MenuTest", title(item(own, 0)));
 		var open = item(file, 0);
 		check("cocoa: File's Open…, Quit left to the application's menu", title(open) == "Open…"
-			&& helder.os.objc.Msg.i(file, helder.os.objc.ObjC.sel("numberOfItems")) == 1, title(open));
+			&& helder.os.apple.objc.Msg.i(file, helder.os.apple.objc.ObjC.sel("numberOfItems")) == 1, title(open));
 		check("cocoa: its key equivalent, Command",
-			helder.os.objc.ObjC.string(helder.os.objc.Msg.id(open, helder.os.objc.ObjC.sel("keyEquivalent"))) == "o"
-			&& helder.os.objc.Msg.i(open, helder.os.objc.ObjC.sel("keyEquivalentModifierMask")) == 1 << 20);
-		check("cocoa: checked", helder.os.objc.Msg.i(item(view, 0), helder.os.objc.ObjC.sel("state")) == 1);
-		check("cocoa: disabled", !helder.os.objc.Msg.b(item(view, 1), helder.os.objc.ObjC.sel("isEnabled")));
-		var windows = helder.os.objc.Msg.id(app, helder.os.objc.ObjC.sel("windowsMenu"));
-		var count = helder.os.objc.Msg.i(windows, helder.os.objc.ObjC.sel("numberOfItems")).toInt();
+			helder.os.apple.objc.ObjC.string(helder.os.apple.objc.Msg.id(open, helder.os.apple.objc.ObjC.sel("keyEquivalent"))) == "o"
+			&& helder.os.apple.objc.Msg.i(open, helder.os.apple.objc.ObjC.sel("keyEquivalentModifierMask")) == 1 << 20);
+		check("cocoa: checked", helder.os.apple.objc.Msg.i(item(view, 0), helder.os.apple.objc.ObjC.sel("state")) == 1);
+		check("cocoa: disabled", !helder.os.apple.objc.Msg.b(item(view, 1), helder.os.apple.objc.ObjC.sel("isEnabled")));
+		var windows = helder.os.apple.objc.Msg.id(app, helder.os.apple.objc.ObjC.sel("windowsMenu"));
+		var count = helder.os.apple.objc.Msg.i(windows, helder.os.apple.objc.ObjC.sel("numberOfItems")).toInt();
 		var found = false;
 		for (i in 0...count)
 			if (title(item(windows, i)) == "Tile") found = true;
@@ -180,8 +180,8 @@ class MenuTest {
 		var a = [];
 		var items = Menus.resolve(w.ui, [Item("Tile", Tile), Separator, Item("Open…", Open)], null, a);
 		var m = @:privateAccess helder.ui.platform.MacViews.nsMenu(items);
-		check("cocoa: a context menu's items", helder.os.objc.Msg.i(m, helder.os.objc.ObjC.sel("numberOfItems")) == 3 && title(item(m, 2)) == "Open…");
-		helder.os.objc.ObjC.release(m);
+		check("cocoa: a context menu's items", helder.os.apple.objc.Msg.i(m, helder.os.apple.objc.ObjC.sel("numberOfItems")) == 3 && title(item(m, 2)) == "Open…");
+		helder.os.apple.objc.ObjC.release(m);
 		#end
 	}
 }

@@ -1,6 +1,6 @@
 import haxe.io.Bytes;
 import helder.os.Window;
-import helder.os.win32.User32;
+import helder.os.windows.User32;
 import hxmc.unsafe.*;
 
 // GfxTest's window mode on Windows: the close button pressed (WM_CLOSE,

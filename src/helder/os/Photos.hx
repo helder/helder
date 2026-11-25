@@ -17,11 +17,11 @@ class Photos {
 		#if helder.headless
 		return null;
 		#elseif (hxmc.target == "wasm32-wasi")
-		return helder.os.web.WebPhotos.take(front);
+		return helder.os.web.Photos.take(front);
 		#elseif (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
-		return CameraApple.take(front);
+		return helder.os.apple.Camera.take(front);
 		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
-		return helder.os.android.AndroidCamera.take(front);
+		return helder.os.android.Camera.take(front);
 		#else
 		return null;
 		#end
@@ -34,9 +34,9 @@ class Photos {
 		#if helder.headless
 		return [];
 		#elseif (hxmc.target == "wasm32-wasi")
-		return helder.os.web.WebPhotos.pick(max);
+		return helder.os.web.Photos.pick(max);
 		#elseif (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
-		return PhotosApple.pick(max);
+		return helder.os.apple.ApplePhotos.pick(max);
 		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
 		return helder.os.android.AndroidPhotos.pick(max);
 		#elseif (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")

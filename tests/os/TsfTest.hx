@@ -1,11 +1,11 @@
 import helder.os.*;
-import helder.os.win32.Com;
-import helder.os.win32.Tsf;
-import helder.os.win32.Tsf.IUnknownQi;
-import helder.os.win32.User32;
+import helder.os.windows.Com;
+import helder.os.windows.Tsf;
+import helder.os.windows.Tsf.IUnknownQi;
+import helder.os.windows.User32;
 import hxmc.unsafe.*;
 
-// Windows' Text Services Framework for drawn text fields (helder.os.win32.Tsf;
+// Windows' Text Services Framework for drawn text fields (helder.os.windows.Tsf;
 // the window lane, on Windows and under Wine): the test is the input method
 // (a TIP), the window's text store its document. Through msctf itself: the
 // thread manager activated, the context pushed and the store's sink advised,
@@ -74,7 +74,7 @@ class TsfTest {
 		window.startTextInput(10, 20, 1, 16);
 		window.textContext("hello", 5, 5);
 		var native = @:privateAccess window.native;
-		var tsf:Null<Tsf> = cast @:privateAccess (cast native : helder.os.win32.Win32Window).tsf;
+		var tsf:Null<Tsf> = cast @:privateAccess (cast native : helder.os.windows.WinWindow).tsf;
 		if (noTsf) {
 			check("HELDER_NO_TSF: no text store (IMM32's windows)", tsf == null && !Tsf.available());
 			window.stopTextInput();
@@ -399,34 +399,34 @@ class FakeView {
 	}
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class ITfContext {
 	@:slot(3) static function RequestEditSession(self:Ptr, client:Int, session:Ptr, flags:Int, hr:Ptr<Int32>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class ITfInsertAtSelection {
 	@:slot(3) static function InsertTextAtSelection(self:Ptr, ec:Int, flags:Int, text:Ptr, n:Int, range:Ptr<Ptr>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class ITfContextComposition {
 	@:slot(3) static function StartComposition(self:Ptr, ec:Int, range:Ptr, sink:Ptr, out:Ptr<Ptr>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class ITfComposition {
 	@:slot(6) static function EndComposition(self:Ptr, ec:Int):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class IOwnerSink {
 	@:slot(3) static function OnStartComposition(self:Ptr, view:Ptr, ok:Ptr<Int32>):Int;
 	@:slot(5) static function OnEndComposition(self:Ptr, view:Ptr):Int;
 }
 
 // (the store's ITextStoreACP, called as TSF calls it)
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class IStore {
 	@:slot(8) static function GetSelection(self:Ptr, index:Int, count:Int, sel:Ptr, got:Ptr<Int32>):Int;
 	@:slot(10) static function GetText(self:Ptr, start:Int, end:Int, plain:Ptr, want:Int, got:Ptr<Int32>, runs:Ptr, wantRuns:Int, gotRuns:Ptr<Int32>,

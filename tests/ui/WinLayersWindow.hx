@@ -1,7 +1,7 @@
 import haxe.Timer;
 import haxe.io.Bytes;
 import helder.os.*;
-import helder.os.win32.User32;
+import helder.os.windows.User32;
 import helder.ui.*;
 import helder.ui.draw.*;
 import hxmc.unsafe.*;

@@ -18,7 +18,7 @@ enum abstract BiometricKind(String) to String {
 class Biometrics {
 	@:typescript public static function kind():BiometricKind {
 		#if (target.name == "hxmc" && !helder.headless)
-		#if (!helder.os || helder.os == "macos" || helder.os == "ios") if (Platform.os() == Platform.MACOS) return BiometricsApple.kind(); #end
+		#if (!helder.os || helder.os == "macos" || helder.os == "ios") if (Platform.os() == Platform.MACOS) return helder.os.apple.Biometrics.kind(); #end
 		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) return helder.os.android.AndroidBiometrics.kind(); #end
 		#end
 		return None;
@@ -29,7 +29,7 @@ class Biometrics {
 		#if helder.headless
 		return false;
 		#elseif (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
-		return BiometricsApple.verify(reason);
+		return helder.os.apple.Biometrics.verify(reason);
 		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
 		return helder.os.android.AndroidBiometrics.verify(reason);
 		#else

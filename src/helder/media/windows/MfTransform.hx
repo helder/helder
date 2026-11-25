@@ -3,7 +3,7 @@ package helder.media.windows;
 #if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi")
 import haxe.io.Bytes;
 import helder.media.windows.Mf;
-import helder.os.win32.Com;
+import helder.os.windows.Com;
 import hxmc.unsafe.*;
 
 // A Media Foundation decoder (an MFT of the system's, synchronous) driven

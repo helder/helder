@@ -57,10 +57,10 @@ class Network {
 		return Other;
 		#else
 		#if (!helder.os || helder.os == "web") if (Platform.os() == Platform.WASI) return web(helder.os.web.Dom.network()); #end
-		#if (!helder.os || helder.os == "macos" || helder.os == "ios") if (Platform.os() == Platform.MACOS) return NetworkApple.kind(); #end
-		#if (!helder.os || helder.os == "windows") if (Platform.os() == Platform.WINDOWS) return NetworkDesktop.windows(); #end
+		#if (!helder.os || helder.os == "macos" || helder.os == "ios") if (Platform.os() == Platform.MACOS) return helder.os.apple.AppleNetwork.kind(); #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == Platform.WINDOWS) return helder.os.windows.Network.kind(); #end
 		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) return helder.os.android.AndroidNetwork.kind(); #end
-		#if (!helder.os || helder.os == "linux") return NetworkDesktop.linux(); #else throw "unreachable"; #end
+		#if (!helder.os || helder.os == "linux") return helder.os.linux.Network.kind(); #else throw "unreachable"; #end
 		#end
 		#elseif js
 		return web(js.Syntax.code("!globalThis.navigator || navigator.onLine === false ? 0 : 1 + Math.max(0, ['wifi', 'cellular', 'ethernet'].indexOf(navigator.connection?.type) + 1)"));

@@ -35,7 +35,7 @@ class Folders {
 		#elseif (hxmc.target == "wasm32-wasi")
 		return helder.os.web.WebFolders.pick();
 		#elseif (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
-		return FoldersApple.pick();
+		return helder.os.apple.AppleFolders.pick();
 		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
 		return helder.os.android.AndroidFolders.pick();
 		#else
@@ -47,7 +47,7 @@ class Folders {
 	@:typescript public static function granted():Array<FolderGrant>
 		return #if helder.headless []
 		#elseif (hxmc.target == "wasm32-wasi") helder.os.web.WebFolders.granted()
-		#elseif (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64") FoldersApple.granted()
+		#elseif (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64") helder.os.apple.AppleFolders.granted()
 		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64") helder.os.android.AndroidFolders.granted()
 		#else [] #end;
 
@@ -57,7 +57,7 @@ class Folders {
 		#elseif (hxmc.target == "wasm32-wasi")
 		helder.os.web.WebFolders.forget(id);
 		#elseif (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
-		FoldersApple.forget(id);
+		helder.os.apple.AppleFolders.forget(id);
 		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
 		helder.os.android.AndroidFolders.forget(id);
 		#end
@@ -72,7 +72,7 @@ class Folders {
 		#elseif (hxmc.target == "wasm32-wasi")
 		return helder.os.web.WebFolders.list(grant, path, batch);
 		#elseif (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
-		return FoldersApple.list(grant, path, batch);
+		return helder.os.apple.AppleFolders.list(grant, path, batch);
 		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
 		return helder.os.android.AndroidFolders.list(grant, path, batch);
 		#else
@@ -84,14 +84,14 @@ class Folders {
 	public static function open(grant:String, path:String):helder.media.ByteSource
 		return #if helder.headless throw "Folders: unavailable"
 		#elseif (hxmc.target == "wasm32-wasi") helder.os.web.WebFolders.open(grant, path)
-		#elseif (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64") FoldersApple.open(grant, path)
+		#elseif (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64") helder.os.apple.AppleFolders.open(grant, path)
 		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64") helder.os.android.AndroidFolders.open(grant, path)
 		#else throw "Folders: unavailable" #end;
 
 	// the item on disk, where it is one (iOS's, readable while the app runs);
 	// null elsewhere (Android's documents, the web's)
 	@:typescript public static function file(grant:String, path:String):Null<String>
-		return #if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64") #if helder.headless null #else FoldersApple.file(grant, path) #end
+		return #if (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64") #if helder.headless null #else helder.os.apple.AppleFolders.file(grant, path) #end
 		#else null #end;
 
 	// the file or folder deleted: true when it went to a trash it can be put
@@ -101,7 +101,7 @@ class Folders {
 	@:typescript public static function delete(grant:String, path:String):Bool {
 		if (path == "") throw "Folders: not the folder itself";
 		return #if helder.headless throw "Folders: unavailable"
-		#elseif (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64") FoldersApple.delete(grant, path)
+		#elseif (hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64") helder.os.apple.AppleFolders.delete(grant, path)
 		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64") helder.os.android.AndroidFolders.delete(grant, path)
 		#else throw "Folders: read only" #end;
 	}

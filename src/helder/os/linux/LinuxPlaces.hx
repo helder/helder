@@ -1,7 +1,6 @@
 package helder.os.linux;
 
 #if (hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64")
-import helder.os.PathsDesktop;
 import helder.os.Places;
 import helder.os.Places.Place;
 import helder.os.Places.Volume;
@@ -27,7 +26,7 @@ class LinuxPlaces {
 		var defaults = ["", "/Desktop", "/Documents", "/Downloads", "/Pictures", "/Videos", "/Music"];
 		var result:Array<Place> = [];
 		for (i in 0...keys.length) {
-			var path = i == 0 ? home : PathsDesktop.userDir(dirs, "XDG_" + keys[i] + "_DIR", home);
+			var path = i == 0 ? home : Paths.userDir(dirs, "XDG_" + keys[i] + "_DIR", home);
 			if (path == null && home.startsWith("/")) path = home + defaults[i];
 			// (a folder set to $HOME itself is disabled)
 			if (path == null || !path.startsWith("/") || i > 0 && haxe.io.Path.removeTrailingSlashes(path) == haxe.io.Path.removeTrailingSlashes(home) || !Places.directory(path)) continue;

@@ -8,10 +8,10 @@ import helder.async.*;
 // An HTTP/1.1 client on helder.async's TCP (one connection a request): the
 // body read by Content-Length, chunked or until the server closes. No
 // redirects, no compression asked for. An https URL goes to the system's
-// stack where there is one: NSURLSession on macOS and iOS (AppleHttp: its
+// stack where there is one: NSURLSession on macOS and iOS (helder.async.http.apple.Http: its
 // TLS, redirects, HTTP/2 and cache); elsewhere natively this client over
 // mbedtls's TLS (TlsSocket: the system's roots, or the ca given); in the
-// browser the page's fetch for every url (WebHttp).
+// browser the page's fetch for every url (helder.async.http.web.Http).
 //
 //   var res = Client.request("http://127.0.0.1:4983/", {method: "POST", body: '{"type":"init"}',
 //     headers: ["content-type" => "application/json"]});
@@ -20,20 +20,20 @@ class Client {
 	@:coroutine public static function request(url:String, ?options:RequestOptions):Reply {
 		// (the browser: its fetch, for every url: no sockets there)
 		#if (hxmc.target == "wasm32-wasi")
-		return WebHttp.request(url, options);
+		return helder.async.http.web.Http.request(url, options);
 		#end
 		// (Windows: WinHTTP, http and https, the system's proxies and certificates; a ca given: helder's own TLS)
 		#if (target.name == "hxmc" && (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64"))
-		if (options?.ca == null) return WinHttp.request(url, options);
+		if (options?.ca == null) return helder.async.http.windows.Http.request(url, options);
 		#end
 		// (Android: HttpURLConnection, the app's network security config; a ca given: helder's own TLS)
 		#if (target.name == "hxmc" && (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64"))
-		if (options?.ca == null) return AndroidHttp.request(url, options);
+		if (options?.ca == null) return helder.async.http.android.Http.request(url, options);
 		#end
-		// (https: the system's stack where there is one; macOS and iOS: AppleHttp)
+		// (https: the system's stack where there is one; macOS and iOS: helder.async.http.apple.Http)
 		if (StringTools.startsWith(url, "https://")) {
 			#if (target.name == "hxmc" && (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64"))
-			if (options?.ca == null) return AppleHttp.request(url, options);
+			if (options?.ca == null) return helder.async.http.apple.Http.request(url, options);
 			#elseif (target.name != "hxmc" || hxmc.target == "wasm32-wasi")
 			throw new Exception('https needs a native target here: $url');
 			#end

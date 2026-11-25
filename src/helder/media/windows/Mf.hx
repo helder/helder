@@ -1,7 +1,7 @@
 package helder.media.windows;
 
 #if ((!helder.os || helder.os == "windows") && hxmc.target != "wasm32-wasi")
-import helder.os.win32.Com;
+import helder.os.windows.Com;
 import hxmc.unsafe.*;
 
 // Media Foundation (mfplat.dll), loaded at run time: Windows' N editions
@@ -101,7 +101,7 @@ class MfId {
 	public static final ID3D10Multithread = Com.guid(0x9b7e4e00, 0x342c, 0x4106, [0xa1, 0x9f, 0x4f, 0x27, 0x04, 0xf6, 0x89, 0xf0]);
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IMFAttributes {
 	@:slot(7) static function GetUINT32(self:Ptr, key:Ptr, out:Ptr<Int32>):Int;
@@ -114,7 +114,7 @@ class IMFAttributes {
 	@:slot(26) static function SetBlob(self:Ptr, key:Ptr, data:Ptr, size:Int):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IMFSample {
 	@:slot(35) static function GetSampleTime(self:Ptr, out:Ptr<Int64>):Int;
@@ -125,7 +125,7 @@ class IMFSample {
 	@:slot(42) static function AddBuffer(self:Ptr, b:Ptr):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IMFMediaBuffer {
 	@:slot(3) static function Lock(self:Ptr, data:Ptr<Ptr>, max:Ptr<Int32>, current:Ptr<Int32>):Int;
@@ -134,39 +134,39 @@ class IMFMediaBuffer {
 	@:slot(6) static function SetCurrentLength(self:Ptr, n:Int):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IMF2DBuffer {
 	@:slot(3) static function Lock2D(self:Ptr, scan0:Ptr<Ptr>, pitch:Ptr<Int32>):Int;
 	@:slot(4) static function Unlock2D(self:Ptr):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IMFDXGIBuffer {
 	@:slot(3) static function GetResource(self:Ptr, iid:Ptr, out:Ptr<Ptr>):Int;
 	@:slot(4) static function GetSubresourceIndex(self:Ptr, out:Ptr<Int32>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IMFActivate {
 	@:slot(33) static function ActivateObject(self:Ptr, iid:Ptr, out:Ptr<Ptr>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IMFDXGIDeviceManager {
 	@:slot(7) static function ResetDevice(self:Ptr, device:Ptr, token:Int):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class ID3D10Multithread {
 	@:slot(5) static function SetMultithreadProtected(self:Ptr, on:Int):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 @:hxmc.unsafe(gc)
 class IMFTransform {
 	// (MFT_INPUT_STREAM_INFO and MFT_OUTPUT_STREAM_INFO: flags, size, alignment ...)

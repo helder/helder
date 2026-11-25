@@ -202,69 +202,69 @@ class WinPatternsTest {
 	}
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class Unknown {
 	@:slot(0) static function QueryInterface(o:Ptr, iid:Ptr, out:Ptr<Ptr>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class Simple {
 	@:slot(4) static function GetPatternProvider(o:Ptr, id:Int, out:Ptr<Ptr>):Int;
 	@:slot(5) static function GetPropertyValue(o:Ptr, id:Int, v:Ptr):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class Fragment {
 	@:slot(3) static function Navigate(o:Ptr, dir:Int, out:Ptr<Ptr>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class Grid {
 	@:slot(3) static function GetItem(o:Ptr, row:Int, col:Int, out:Ptr<Ptr>):Int;
 	@:slot(4) static function get_RowCount(o:Ptr, out:Ptr<Int32>):Int;
 	@:slot(5) static function get_ColumnCount(o:Ptr, out:Ptr<Int32>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class GridItem {
 	@:slot(3) static function get_Row(o:Ptr, out:Ptr<Int32>):Int;
 	@:slot(4) static function get_Column(o:Ptr, out:Ptr<Int32>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class Table {
 	@:slot(4) static function GetColumnHeaders(o:Ptr, out:Ptr<Ptr>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class SelectionItem {
 	@:slot(3) static function Select(o:Ptr):Int;
 	@:slot(6) static function get_IsSelected(o:Ptr, out:Ptr<Int32>):Int;
 	@:slot(7) static function get_SelectionContainer(o:Ptr, out:Ptr<Ptr>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class ExpandCollapse {
 	@:slot(3) static function Expand(o:Ptr):Int;
 	@:slot(5) static function get_State(o:Ptr, out:Ptr<Int32>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class RangeValue {
 	@:slot(3) static function SetValue(o:Ptr, v:Float):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class ScrollItem {
 	@:slot(3) static function ScrollIntoView(o:Ptr):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class Text {
 	@:slot(7) static function get_DocumentRange(o:Ptr, out:Ptr<Ptr>):Int;
 }
 
-@:build(helder.os.win32.Com.build())
+@:build(helder.os.windows.Com.build())
 class TextRange {
 	@:slot(6) static function ExpandToEnclosingUnit(o:Ptr, unit:Int):Int;
 	@:slot(8) static function FindText(o:Ptr, s:Ptr, backward:Int, ignoreCase:Int, out:Ptr<Ptr>):Int;

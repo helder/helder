@@ -19,7 +19,7 @@ import hxmc.unsafe.*;
 // on Windows (.dll). What a build gave the system that calls its code (a
 // window procedure, an Objective-C class's methods, UI Automation
 // providers, child windows) is taken back or handed on at its dispose
-// (helder.dev.Hot.onDispose: Win32Window, CocoaWindow, UiWindow), before
+// (helder.dev.Hot.onDispose: WinWindow, MacWindow, UiWindow), before
 // the host closes it. Built once and cached by `helder dev`
 // (helder.cli.DevCommand; -D hxmc.libc=glibc on Linux).
 class DevHost {

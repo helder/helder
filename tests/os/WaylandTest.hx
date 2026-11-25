@@ -1,5 +1,5 @@
 import helder.os.*;
-import helder.os.wayland.WaylandWindow;
+import helder.os.linux.wayland.WaylandWindow;
 import helder.ui.draw.UiWindow;
 import hxmc.unsafe.*;
 
@@ -49,15 +49,15 @@ class WaylandTest {
 				Clipboard.read(w.window, t -> read = t);
 				check("the clipboard: its own text", read == "wayland ✓", read);
 				// (text-input-v3 where the compositor has it: enabled, its state sent, no protocol error)
-				var ti:Null<helder.os.wayland.WaylandTextInput> = @:privateAccess WaylandWindow.textInput;
+				var ti:Null<helder.os.linux.wayland.WaylandTextInput> = @:privateAccess WaylandWindow.textInput;
 				if (ti == null) Sys.println("WaylandTest: no zwp_text_input_manager_v3 here: text-input-v3 not checked under this compositor (WaylandTextInput.test.hx is)");
 				else {
 					w.window.startTextInput(20, 30, 1, 16);
 					w.window.textContext("héllo", 2, 2);
 					w.window.stopTextInput();
 					var d = @:privateAccess WaylandWindow.display;
-					helder.os.wayland.WaylandClient.wl_display_roundtrip(d);
-					check("text-input-v3: enabled, its state, disabled: no protocol error", helder.os.wayland.WaylandClient.wl_display_get_error(d) == 0);
+					helder.os.linux.wayland.WaylandClient.wl_display_roundtrip(d);
+					check("text-input-v3: enabled, its state, disabled: no protocol error", helder.os.linux.wayland.WaylandClient.wl_display_get_error(d) == 0);
 				}
 				w.window.fullscreen = true;
 				phase = 2;

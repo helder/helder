@@ -482,7 +482,7 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: bin/pack/cache/maven
-          key: maven-${{ hashFiles('src/helder/pack/android/Maven.hx', 'tests/pack/jvm/JvmFixture.hx', 'src/helder/store/PurchasesAndroid.hx') }}
+          key: maven-${{ hashFiles('src/helder/pack/android/Maven.hx', 'tests/pack/jvm/JvmFixture.hx', 'src/helder/store/android/AndroidPurchases.hx') }}
           restore-keys: maven-
       - name: The CLI, Android's runtime objects, the device tests' apps (bun run test android-device --build-only)
         env:

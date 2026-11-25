@@ -358,7 +358,7 @@ class SystemLayersWindow {
 					show(k % 2 == 0, k);
 				case 9:
 					var view = w.window.surface.handle;
-					var id = OsThread.get(() -> helder.os.objc.Msg.i(helder.os.objc.Msg.id(view, helder.os.objc.ObjC.sel("window")), helder.os.objc.ObjC.sel("windowNumber")).toInt());
+					var id = OsThread.get(() -> helder.os.apple.objc.Msg.i(helder.os.apple.objc.Msg.id(view, helder.os.apple.objc.ObjC.sel("window")), helder.os.apple.objc.ObjC.sel("windowNumber")).toInt());
 					Sys.sleep(0.1);
 					shot = Capture.window(id);
 					H = Std.int(w.window.height);
@@ -424,12 +424,12 @@ class SystemLayersWindow {
 			log.push([step, pw, ph, sw, sh, main ? 1 : 0]);
 			lock.release();
 		};
-		var handle = w.window.surface.handle, nsw = OsThread.get(() -> helder.os.objc.Msg.id(handle, helder.os.objc.ObjC.sel("window")));
+		var handle = w.window.surface.handle, nsw = OsThread.get(() -> helder.os.apple.objc.Msg.id(handle, helder.os.apple.objc.ObjC.sel("window")));
 		function tell(name:String)
 			OsThread.run(() -> {
-				var s = helder.os.objc.ObjC.str(name), c = helder.os.objc.Msg.id(helder.os.objc.ObjC.cls("NSNotificationCenter"), helder.os.objc.ObjC.sel("defaultCenter"));
-				helder.os.objc.Msg.vPtrPtr(c, helder.os.objc.ObjC.sel("postNotificationName:object:"), s, nsw);
-				helder.os.objc.ObjC.release(s);
+				var s = helder.os.apple.objc.ObjC.str(name), c = helder.os.apple.objc.Msg.id(helder.os.apple.objc.ObjC.cls("NSNotificationCenter"), helder.os.apple.objc.ObjC.sel("defaultCenter"));
+				helder.os.apple.objc.Msg.vPtrPtr(c, helder.os.apple.objc.ObjC.sel("postNotificationName:object:"), s, nsw);
+				helder.os.apple.objc.ObjC.release(s);
 			});
 		var steps = 24, frames = 0, scripting = false, busy = 0.0, stale = 0, synced = 0, shifted = -1, held = 0.0, total = 0.0;
 		var late:Array<Int> = [], arrived = 0;
@@ -450,12 +450,12 @@ class SystemLayersWindow {
 					lock.release();
 					var ww = 400 + 9 * (i + 1), hh = 300 + 7 * (i + 1);
 					OsThread.run(() -> hxmc.unsafe.Arena.scoped(a -> {
-						var old = helder.os.objc.Msg.rect(nsw, helder.os.objc.ObjC.sel("frame")), c = a.make(helder.os.objc.CGRect);
+						var old = helder.os.apple.objc.Msg.rect(nsw, helder.os.apple.objc.ObjC.sel("frame")), c = a.make(helder.os.apple.objc.CGRect);
 						c.value.origin.x = 0;
 						c.value.origin.y = 0;
 						c.value.size.width = ww;
 						c.value.size.height = hh;
-						var f = helder.os.objc.Msg.rectRect(nsw, helder.os.objc.ObjC.sel("frameRectForContentRect:"), c.value);
+						var f = helder.os.apple.objc.Msg.rectRect(nsw, helder.os.apple.objc.ObjC.sel("frameRectForContentRect:"), c.value);
 						// (its top left kept, as a drag of its bottom right edge does; y up)
 						c.value.origin.x = old.origin.x;
 						c.value.origin.y = old.origin.y + old.size.height - f.size.height;
@@ -463,18 +463,18 @@ class SystemLayersWindow {
 						c.value.size.height = f.size.height;
 						// (the last step: the program busy past the wait from its Resize on, its frame later still, the window's last frame shown at its top left)
 						if (i == steps) busy = 0.3;
-						var t0 = haxe.Timer.stamp(), h0 = @:privateAccess helder.os.cocoa.CocoaWindow.held, l0 = @:privateAccess helder.os.cocoa.CocoaWindow.late;
-						helder.os.objc.Msg.vRectBool(nsw, helder.os.objc.ObjC.sel("setFrame:display:"), c.value, true);
+						var t0 = haxe.Timer.stamp(), h0 = @:privateAccess helder.os.apple.MacWindow.held, l0 = @:privateAccess helder.os.apple.MacWindow.late;
+						helder.os.apple.objc.Msg.vRectBool(nsw, helder.os.apple.objc.ObjC.sel("setFrame:display:"), c.value, true);
 						// (helder's callbacks timed, not AppKit's own work around them: once
 						// 0.2 s of setFrame:display: on CI's VMs with 7 ms in helder's)
-						held = Math.max(held, @:privateAccess helder.os.cocoa.CocoaWindow.held - h0);
+						held = Math.max(held, @:privateAccess helder.os.apple.MacWindow.held - h0);
 						total = Math.max(total, haxe.Timer.stamp() - t0);
-						if (i < steps && @:privateAccess helder.os.cocoa.CocoaWindow.late > l0) late.push(i);
+						if (i < steps && @:privateAccess helder.os.apple.MacWindow.late > l0) late.push(i);
 						// (committed, as the run loop does between a drag's events; the frame given up on: what the screen shows meanwhile)
-						helder.os.objc.Msg.v(helder.os.objc.ObjC.cls("CATransaction"), helder.os.objc.ObjC.sel("flush"));
+						helder.os.apple.objc.Msg.v(helder.os.apple.objc.ObjC.cls("CATransaction"), helder.os.apple.objc.ObjC.sel("flush"));
 						if (i < steps) return;
 						Sys.sleep(0.12);
-						var id = helder.os.objc.Msg.i(nsw, helder.os.objc.ObjC.sel("windowNumber")).toInt(), img = Capture.window(id);
+						var id = helder.os.apple.objc.Msg.i(nsw, helder.os.apple.objc.ObjC.sel("windowNumber")).toInt(), img = Capture.window(id);
 						if (img == null) return;
 						// (the content's top left, 2 points in: the mark's red, unless the layers moved off the window's top)
 						var k = Std.int(w.window.width / ww), top = img.height - Std.int(w.window.height), o = ((top + 2 * k) * img.width + (img.width - Std.int(w.window.width)) / 2 + 2 * k) * 4;
@@ -508,7 +508,7 @@ class SystemLayersWindow {
 				var n = log.length;
 				lock.release();
 				var mode = w.compositor != null && w.compositor.layers != null ? "Core Animation's layers" : "the window's layer";
-				// (the main thread held by the busy program no longer than CocoaWindow's wait, a frame's time
+				// (the main thread held by the busy program no longer than MacWindow's wait, a frame's time
 				// over it; most steps in the transaction, else the check would hold for a program always late)
 				var given = steps - synced, ok = stale == 0 && arrived == given && synced >= steps / 2 && shifted <= 0 && held < 0.2;
 				Sys.println('SystemLayersWindow: ${ok ? "ok" : "FAIL"}: a live resize of $steps steps on $mode: $n frames presented, $stale at a size not the window\'s, '
@@ -652,9 +652,9 @@ class SystemLayersWindow {
 	// (a CALayer of one colour, sRGB)
 	static function solidLayer(r:Float, g:Float, b:Float):hxmc.unsafe.Ptr {
 		var l = OsThread.get(() -> {
-			var l = helder.os.objc.Runtime.objc_retain(helder.os.objc.Msg.id(helder.os.objc.ObjC.cls("CALayer"), helder.os.objc.ObjC.sel("layer")));
+			var l = helder.os.apple.objc.Runtime.objc_retain(helder.os.apple.objc.Msg.id(helder.os.apple.objc.ObjC.cls("CALayer"), helder.os.apple.objc.ObjC.sel("layer")));
 			var c = CG.CGColorCreateSRGB(r, g, b, 1);
-			helder.os.objc.Msg.vPtr(l, helder.os.objc.ObjC.sel("setBackgroundColor:"), c);
+			helder.os.apple.objc.Msg.vPtr(l, helder.os.apple.objc.ObjC.sel("setBackgroundColor:"), c);
 			CG.CGColorRelease(c);
 			l;
 		});
@@ -667,7 +667,7 @@ class SystemLayersWindow {
 		// (what was committed on the screen: the window server shows it a frame or two later)
 		Sys.sleep(0.15);
 		var view = w.window.surface.handle;
-		var id = OsThread.get(() -> helder.os.objc.Msg.i(helder.os.objc.Msg.id(view, helder.os.objc.ObjC.sel("window")), helder.os.objc.ObjC.sel("windowNumber")).toInt());
+		var id = OsThread.get(() -> helder.os.apple.objc.Msg.i(helder.os.apple.objc.Msg.id(view, helder.os.apple.objc.ObjC.sel("window")), helder.os.apple.objc.ObjC.sel("windowNumber")).toInt());
 		var img = Capture.window(id);
 		if (img == null) return;
 		// (the content only: the title bar shows what is behind it)
@@ -685,7 +685,7 @@ class SystemLayersWindow {
 class Capture {
 	public static function window(id:Int):Null<{width:Int, height:Int, pixels:haxe.io.Bytes}> {
 		var img = hxmc.unsafe.Arena.scopedValue(a -> {
-			var r = a.make(helder.os.objc.CGRect);
+			var r = a.make(helder.os.apple.objc.CGRect);
 			// (CGRectNull: the window's own bounds)
 			r.value.origin.x = Math.POSITIVE_INFINITY;
 			r.value.origin.y = Math.POSITIVE_INFINITY;
@@ -714,7 +714,7 @@ class Capture {
 }
 
 @:hxmc.c @:hxmc.lib("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics") extern class CG {
-	static function CGWindowListCreateImage(r:helder.os.objc.CGRect, list:hxmc.unsafe.UInt32, id:hxmc.unsafe.UInt32, image:hxmc.unsafe.UInt32):hxmc.unsafe.Ptr;
+	static function CGWindowListCreateImage(r:helder.os.apple.objc.CGRect, list:hxmc.unsafe.UInt32, id:hxmc.unsafe.UInt32, image:hxmc.unsafe.UInt32):hxmc.unsafe.Ptr;
 	static function CGImageGetWidth(i:hxmc.unsafe.Ptr):hxmc.unsafe.Int64;
 	static function CGImageGetHeight(i:hxmc.unsafe.Ptr):hxmc.unsafe.Int64;
 	static function CGImageGetBytesPerRow(i:hxmc.unsafe.Ptr):hxmc.unsafe.Int64;

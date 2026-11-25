@@ -38,7 +38,7 @@ touches no account. With none, `products` gives an empty list.
 
 ## Google Play
 
-`PurchasesAndroid`: Play Billing 9.1.0 (`com.android.billingclient`),
+`android/AndroidPurchases`: Play Billing 9.1.0 (`com.android.billingclient`),
 fetched, shrunk to its keep list and translated into the APK when the
 program uses `Purchases` (helder.pack.android's Maven libraries: no
 Gradle, SDK or JDK); its manifest brings the `BILLING` permission and the
@@ -106,7 +106,7 @@ A program that uses `Purchases` gets it in its bundle by use
 iOS's `Frameworks/HelderStore.framework` (the App Store takes no loose
 library), macOS's `Contents/Frameworks/HelderStore.dylib`, signed by
 helder's own signer as the app is (ad hoc, or the app's identity) and
-sealed in the app's CodeResources. `PurchasesApple` opens it with
+sealed in the app's CodeResources. `ApplePurchases` opens it with
 `dlopen` (`@executable_path`) when the class is first used, and starts
 listening to `Transaction.updates` then. Its answers come on StoreKit's
 threads (hxmc's blocks attach them) and resume the caller's coroutine on

@@ -269,7 +269,7 @@ functions. Pointers are numbers; `native.string`, `native.bytes`,
   the module its host imports it from.
 - `native.objc({class, lib, statics, methods})`: messages through
   objc_msgSend's address (dlsym's), one indirect C signature per shape as
-  helder.os.objc.Msg's, to the class (objc_getClass) or the first argument;
+  helder.os.apple.objc.Msg's, to the class (objc_getClass) or the first argument;
   a key's selector its name with each `_` a colon (a quoted key as it is);
   the class and the selectors found once; `lib` a framework loaded with
   the program.

@@ -154,7 +154,7 @@ for `ws://` and `wss://`), and a server's over a connection of its own
 
 A client's `https` (`Client.request`) and its WebSockets
 (`WebSocket.open`, `ws` and `wss`) use the system's stack where it has one:
-NSURLSession on macOS and iOS (`AppleHttp`, `AppleWebSocket`: its
+NSURLSession on macOS and iOS (`apple/Http`, `AppleWebSocket`: its
 `NSURLSessionWebSocketTask`, a ping telling whether it opened). Elsewhere natively they run over `TlsSocket`: TLS by
 mbedtls, which hxmc's runtime has on every native target. Its handshake,
 reads and writes are coroutines on the loop, like a `Socket`'s: mbedtls
@@ -162,13 +162,13 @@ reads and writes two buffers of its own instead of the socket. A client
 checks the server's certificate against the system's roots and its name
 (`ca`, PEM, trusts others: a test's); a server presents its certificate
 and key (`TlsSocket.server(socket, cert, key)`). In the browser
-(`WebHttp`) every request is the page's `fetch` and every WebSocket the
+(`web/Http`) every request is the page's `fetch` and every WebSocket the
 page's own (a url relative to the page; its http as ws). On Windows
-`Client.request` and `WebSocket.open` are WinHTTP's (`WinHttp`,
+`Client.request` and `WebSocket.open` are WinHTTP's (`windows/Http`,
 `WinWebSocket`: Schannel's TLS, the system's certificates and proxies;
 its callbacks, on the system's threads, only note each step's end, which
 the loop polls). On Android a request is `HttpURLConnection`'s
-(`AndroidHttp`: a thread per request, attached to the VM; the app's
+(`android/Http`: a thread per request, attached to the VM; the app's
 network security config applies, so plain http needs `"cleartext":
 true`), and a WebSocket helder's own frames over a Java `Socket`
 (`AndroidSocket`: an `SSLSocket` for wss, the system's TLS and

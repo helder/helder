@@ -103,7 +103,7 @@ class GlassWindow {
 		// (the glass's material settles over a few of the window server's frames)
 		Sys.sleep(0.6);
 		var view = w.window.surface.handle;
-		var id = OsThread.get(() -> helder.os.objc.Msg.i(helder.os.objc.Msg.id(view, helder.os.objc.ObjC.sel("window")), helder.os.objc.ObjC.sel("windowNumber")).toInt());
+		var id = OsThread.get(() -> helder.os.apple.objc.Msg.i(helder.os.apple.objc.Msg.id(view, helder.os.apple.objc.ObjC.sel("window")), helder.os.apple.objc.ObjC.sel("windowNumber")).toInt());
 		var img = SystemLayersWindow.Capture.window(id);
 		if (img == null) throw "GlassWindow: no window capture";
 		var h = Math.round(w.window.height * Scale.of(w)), row = img.width * 4, top = img.height - h;
@@ -128,7 +128,7 @@ class GlassWindow {
 	static function views(w:UiWindow, grouped = false):Array<Array<Float>> {
 		var view = w.window.surface.handle;
 		return OsThread.get(() -> {
-			var M = helder.os.objc.Msg, O = helder.os.objc.ObjC, out = [];
+			var M = helder.os.apple.objc.Msg, O = helder.os.apple.objc.ObjC, out = [];
 			var glassClass = O.cls("NSGlassEffectView"), passive = O.cls("HxmcPassiveView"), container = O.cls("NSGlassEffectContainerView");
 			function walk(v:hxmc.unsafe.Ptr) {
 				var subs = M.id(v, O.sel("subviews")), n = M.i(subs, O.sel("count")).toInt();

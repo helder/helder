@@ -74,9 +74,9 @@ class Purchases {
 	// pay is known only once connected: true at first, false after)
 	@:typescript public static function available():Bool {
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
-		return PurchasesApple.load();
+		return helder.store.apple.ApplePurchases.load();
 		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
-		return PurchasesAndroid.available();
+		return helder.store.android.AndroidPurchases.available();
 		#else
 		return false;
 		#end
@@ -84,9 +84,9 @@ class Purchases {
 
 	@:typescript @:coroutine public static function products(ids:Array<String>):Array<Product> {
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
-		return [for (p in PurchasesApple.products(ids.join("\n"))) product(p)];
+		return [for (p in helder.store.apple.ApplePurchases.products(ids.join("\n"))) product(p)];
 		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
-		return PurchasesAndroid.products(ids);
+		return helder.store.android.AndroidPurchases.products(ids);
 		#else
 		throw none();
 		#end
@@ -96,10 +96,10 @@ class Purchases {
 	@:typescript @:coroutine public static function purchase(id:String, ?options:{?account:String}):PurchaseResult {
 		var account = options?.account ?? "";
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
-		var r = PurchasesApple.purchase(id, account);
+		var r = helder.store.apple.ApplePurchases.purchase(id, account);
 		return r.code == 2 ? {state: Pending} : r.code == 3 ? {state: Cancelled} : {state: Purchased, purchase: of(haxe.Json.parse(r.text))};
 		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
-		return PurchasesAndroid.purchase(id, account);
+		return helder.store.android.AndroidPurchases.purchase(id, account);
 		#else
 		throw none();
 		#end
@@ -108,9 +108,9 @@ class Purchases {
 	// what the user owns now: non-consumables, active subscriptions
 	@:typescript @:coroutine public static function owned():Array<Purchase> {
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
-		return [for (p in PurchasesApple.owned()) of(p)];
+		return [for (p in helder.store.apple.ApplePurchases.owned()) of(p)];
 		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
-		return PurchasesAndroid.owned();
+		return helder.store.android.AndroidPurchases.owned();
 		#else
 		throw none();
 		#end
@@ -120,9 +120,9 @@ class Purchases {
 	@:typescript @:coroutine public static function finish(p:Purchase):Void {
 		var id = p.id;
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
-		PurchasesApple.finish(id);
+		helder.store.apple.ApplePurchases.finish(id);
 		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
-		PurchasesAndroid.finish(p);
+		helder.store.android.AndroidPurchases.finish(p);
 		#else
 		throw none();
 		#end
@@ -132,9 +132,9 @@ class Purchases {
 	@:typescript @:coroutine public static function consume(p:Purchase):Void {
 		var id = p.id;
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
-		PurchasesApple.finish(id);
+		helder.store.apple.ApplePurchases.finish(id);
 		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
-		PurchasesAndroid.consume(p);
+		helder.store.android.AndroidPurchases.consume(p);
 		#else
 		throw none();
 		#end
@@ -145,9 +145,9 @@ class Purchases {
 	// button's; owned() after it
 	@:typescript @:coroutine public static function restore():Void {
 		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64" || hxmc.target == "ios-arm64" || hxmc.target == "ios-sim-arm64")
-		PurchasesApple.sync();
+		helder.store.apple.ApplePurchases.sync();
 		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
-		PurchasesAndroid.restore();
+		helder.store.android.AndroidPurchases.restore();
 		#else
 		throw none();
 		#end

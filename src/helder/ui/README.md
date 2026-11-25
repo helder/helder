@@ -239,7 +239,7 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
     the browser's wheel, trackpad and scroll chaining, iOS's status bar
     tap. A finger's drag elsewhere is still helder's own. Android has no
     scroll views under the tree: there helder's drag glides by Android's
-    physics, ported as Chromium and Flutter port them (`AndroidFling`:
+    physics, ported as Chromium and Flutter port them (`helder.os.android.Fling`:
     a least-squares speed, OverScroller's spline), and stretches past an
     end as Android 12's (`Stretch`, `Ui.stretch`: Flutter's curve and
     spring, a scale anchored at that end). On Linux's Wayland a
@@ -1604,7 +1604,7 @@ field, underlined, until committed. In the browser keys then go through a
 transparent textarea at the caret, which input methods compose in
 (`TextEditing` events), on macOS through a text view at the caret
 (`NSTextInputClient`: input methods and dead keys); on Windows through
-the Text Services Framework (`helder.os.win32.Tsf`: a text store whose
+the Text Services Framework (`helder.os.windows.Tsf`: a text store whose
 document is the field's text and selection, `Window.textContext`; the
 composition drawn in the field, the candidate window placed below the
 caret through `GetTextExt`; where TSF is not there, IMM32's own windows at

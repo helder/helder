@@ -4,20 +4,20 @@ package helder.os;
 import helder.os.android.AndroidWindow;
 #end
 #if (!helder.os || helder.os == "macos")
-import helder.os.cocoa.CocoaWindow;
+import helder.os.apple.MacWindow;
 #end
 #if (!helder.os || helder.os == "ios")
-import helder.os.uikit.UIKitWindow;
+import helder.os.apple.IosWindow;
 #end
 #if (!helder.os || helder.os == "web")
 import helder.os.web.CanvasWindow;
 #end
 #if (!helder.os || helder.os == "windows")
-import helder.os.win32.Win32Window;
+import helder.os.windows.WinWindow;
 #end
 #if ((!helder.os || helder.os == "linux") && !helder.headless)
-import helder.os.x11.X11Window;
-import helder.os.wayland.WaylandWindow;
+import helder.os.linux.x11.X11Window;
+import helder.os.linux.wayland.WaylandWindow;
 #end
 import helder.os.TitleBar;
 import helder.view.graph.Graph;
@@ -27,14 +27,14 @@ import hxmc.Platform;
 
 // A top-level window, its size in points (pixels on X11). Its Surface
 // carries the native handles for helder.gfx, its size in pixels. Cocoa on
-// macOS (helder.os.cocoa.CocoaWindow), Win32 on Windows
-// (helder.os.win32.Win32Window), a canvas in the browser (WebAssembly:
+// macOS (helder.os.apple.MacWindow), Win32 on Windows
+// (helder.os.windows.WinWindow), a canvas in the browser (WebAssembly:
 // helder.os.web.CanvasWindow, its size in CSS pixels), X11 elsewhere
-// (helder.os.x11.X11Window); on Android the activity's window
+// (helder.os.linux.x11.X11Window); on Android the activity's window
 // (helder.os.android.AndroidWindow: full screen, one per app, the size and
-// title the system's), on iOS a UIWindow (helder.os.uikit.UIKitWindow: the
+// title the system's), on iOS a UIWindow (helder.os.apple.IosWindow: the
 // same); on Linux with WAYLAND_DISPLAY set, Wayland's
-// (helder.os.wayland.WaylandWindow; X11 where it cannot connect, or HELDER_X11=1).
+// (helder.os.linux.wayland.WaylandWindow; X11 where it cannot connect, or HELDER_X11=1).
 class Window {
 	@:typescript public final surface:Surface;
 	// its title bar's text (the browser: the page's title)
@@ -55,9 +55,9 @@ class Window {
 		return cast native;
 	#end
 
-	#if (!helder.os || helder.os == "ios") inline function ios():UIKitWindow return cast native; #end
-	#if (!helder.os || helder.os == "macos") inline function mac():CocoaWindow return cast native; #end
-	#if (!helder.os || helder.os == "windows") inline function win():Win32Window return cast native; #end
+	#if (!helder.os || helder.os == "ios") inline function ios():IosWindow return cast native; #end
+	#if (!helder.os || helder.os == "macos") inline function mac():MacWindow return cast native; #end
+	#if (!helder.os || helder.os == "windows") inline function win():WinWindow return cast native; #end
 	#if (!helder.os || helder.os == "web") inline function web():CanvasWindow return cast native; #end
 	#if (!helder.os || helder.os == "android") inline function android():AndroidWindow return cast native; #end
 	#if ((!helder.os || helder.os == "linux") && !helder.headless)
@@ -89,9 +89,9 @@ class Window {
 		}
 		#end
 		native =
-			#if (!helder.os || helder.os == "ios") Platform.apple() >= 1 ? UIKitWindow.make(this, title, width, height) : #end
-			#if (!helder.os || helder.os == "macos") Platform.os() == 1 ? CocoaWindow.make(this, title, width, height) : #end
-			#if (!helder.os || helder.os == "windows") Platform.os() == 2 ? Win32Window.make(this, title, width, height) : #end
+			#if (!helder.os || helder.os == "ios") Platform.apple() >= 1 ? IosWindow.make(this, title, width, height) : #end
+			#if (!helder.os || helder.os == "macos") Platform.os() == 1 ? MacWindow.make(this, title, width, height) : #end
+			#if (!helder.os || helder.os == "windows") Platform.os() == 2 ? WinWindow.make(this, title, width, height) : #end
 			#if (!helder.os || helder.os == "web") Platform.os() == 3 ? new CanvasWindow(this, title, width, height) : #end
 			#if (!helder.os || helder.os == "android") Platform.target() >= 9 ? new AndroidWindow(this, title, width, height) : #end
 			#if ((!helder.os || helder.os == "linux") && !helder.headless) WaylandWindow.active() ? new WaylandWindow(this, title, width, height) : new X11Window(this, title, width, height) #else throw "unreachable" #end;
@@ -510,7 +510,7 @@ class Window {
 	// its composition and candidates there. In the browser keys then reach an
 	// input element of the page, on macOS through a text view (NSTextInputClient)
 	// at the caret: their compositions as TextEditing events; on Windows
-	// through TSF (helder.os.win32.Tsf: its document the field's,
+	// through TSF (helder.os.windows.Tsf: its document the field's,
 	// textContext), the composition as TextEditing, the candidates below the
 	// caret (where TSF is not there, the IME's own windows placed: imm32);
 	// on Wayland through text-input-unstable-v3 (WaylandTextInput: the

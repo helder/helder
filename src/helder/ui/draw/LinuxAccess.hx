@@ -383,11 +383,11 @@ class LinuxAccess {
 		var k = ui.width > 0 ? window.surface.width / ui.width : 1.0;
 		var ox = 0, oy = 0;
 		// (X11's screen; Wayland has none: the window's)
-		if (coords == 0 && Std.isOfType(@:privateAccess window.native, helder.os.x11.X11Window)) {
+		if (coords == 0 && Std.isOfType(@:privateAccess window.native, helder.os.linux.x11.X11Window)) {
 			var d = window.surface.display;
 			Arena.scoped(a -> {
 				var x:Ptr<Int32> = a.alloc(4), y:Ptr<Int32> = a.alloc(4), child:Ptr<Int64> = a.alloc(8);
-				if (helder.os.x11.Xlib.XTranslateCoordinates(d, window.surface.handle.toI64(), helder.os.x11.Xlib.XDefaultRootWindow(d), 0, 0, x, y, child) != 0) {
+				if (helder.os.linux.x11.Xlib.XTranslateCoordinates(d, window.surface.handle.toI64(), helder.os.linux.x11.Xlib.XDefaultRootWindow(d), 0, 0, x, y, child) != 0) {
 					ox = x.value;
 					oy = y.value;
 				}

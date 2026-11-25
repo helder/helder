@@ -96,9 +96,9 @@ class FoldersCheck {
 		sys.FileSystem.createDirectory(dir + "/Sub");
 		sys.io.File.saveContent(dir + "/a.txt", "hello");
 		sys.io.File.saveContent(dir + "/Sub/b.txt", "bye");
-		var g = helder.os.FoldersApple.grant(dir);
+		var g = helder.os.apple.AppleFolders.grant(dir);
 		// (as at the next launch: the bookmark resolved again)
-		@:privateAccess helder.os.FoldersApple.resolved.clear();
+		@:privateAccess helder.os.apple.AppleFolders.resolved.clear();
 		return g;
 		#else
 		Sys.println("folders: picking");

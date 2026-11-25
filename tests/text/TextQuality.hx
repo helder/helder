@@ -165,7 +165,7 @@ class TextQuality {
 		var cs = cases();
 		for (scale in SCALES) {
 			var w = Std.int(WIDTH * scale), h = Std.int(sheetHeight(cs) * scale);
-			var runs:Array<helder.text.mac.CoreText.SheetRun> = [];
+			var runs:Array<helder.text.apple.CoreText.SheetRun> = [];
 			for (c in cs) {
 				var gs = glyphs(c, scale);
 				runs.push({path: c.font.path, face: 0, size: c.size, ids: [for (g in gs) g.id], xs: [for (g in gs) g.x], ys: [for (g in gs) (g.y : Float)]});
@@ -173,7 +173,7 @@ class TextQuality {
 			for (smooth in [true, false])
 				for (p in PAIRS) {
 					if (!smooth && !p.flat) continue;
-					var green = helder.text.mac.CoreText.sheet(w, h, scale, p.bg, p.fg, smooth, runs);
+					var green = helder.text.apple.CoreText.sheet(w, h, scale, p.bg, p.fg, smooth, runs);
 					var name = '$dir/${smooth ? "" : "flat-"}${p.name}-${Std.int(scale)}x.png';
 					File.saveBytes(name, grey(green, w, h));
 					Sys.println('TextQuality: $name');

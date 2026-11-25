@@ -97,10 +97,10 @@ class NativeCheck {
 		if (e == null) return null;
 		return OsThread.get(() -> {
 			var v = e.field, c = e.views.content();
-			if (helder.os.objc.Msg.b(v, helder.os.objc.ObjC.sel("isHidden"))) return null;
+			if (helder.os.apple.objc.Msg.b(v, helder.os.apple.objc.ObjC.sel("isHidden"))) return null;
 			// (in the window's content view, through a host where it is in the system's layer tree)
-			var r = helder.os.objc.Msg.rectRectPtr(v, helder.os.objc.ObjC.sel("convertRect:toView:"), helder.os.objc.Msg.rect(v, helder.os.objc.ObjC.sel("bounds")), c);
-			var b = helder.os.objc.Msg.rect(c, helder.os.objc.ObjC.sel("bounds"));
+			var r = helder.os.apple.objc.Msg.rectRectPtr(v, helder.os.apple.objc.ObjC.sel("convertRect:toView:"), helder.os.apple.objc.Msg.rect(v, helder.os.apple.objc.ObjC.sel("bounds")), c);
+			var b = helder.os.apple.objc.Msg.rect(c, helder.os.apple.objc.ObjC.sel("bounds"));
 			var top:Null<Float> = b.size.height - r.origin.y - r.size.height;
 			return top;
 		});

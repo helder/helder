@@ -76,10 +76,10 @@ class WebShell implements WebViewListener {
 		view = v;
 		v.listen(this);
 		first();
-		var mode = helder.os.objc.ObjC.str("kCFRunLoopDefaultMode");
+		var mode = helder.os.apple.objc.ObjC.str("kCFRunLoopDefaultMode");
 		while (true) {
 			v.poll();
-			helder.os.uikit.UIKitApp.CF.CFRunLoopRunInMode(mode, 1, true);
+			helder.os.apple.IosApp.CF.CFRunLoopRunInMode(mode, 1, true);
 		}
 		#elseif (hxmc.target == "android-arm64" || hxmc.target == "android-x86_64")
 		// (the APK's activity draws views: org.hxmc.Activity)

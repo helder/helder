@@ -4,7 +4,7 @@ package helder.media.ui;
 import helder.gfx.d3d11.D3D11;
 import helder.gfx.d3d11.D3D11Backend;
 import helder.gfx.d3d11.DComp;
-import helder.os.win32.Com;
+import helder.os.windows.Com;
 import helder.ui.ImageFit;
 import helder.ui.LayerSlot;
 import helder.ui.draw.DcLayers;

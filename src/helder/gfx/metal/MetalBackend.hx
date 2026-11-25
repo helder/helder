@@ -3,7 +3,7 @@ package helder.gfx.metal;
 import helder.gfx.*;
 import helder.gfx.metal.Metal;
 import helder.os.Surface;
-import helder.os.objc.*;
+import helder.os.apple.objc.*;
 import hxmc.unsafe.*;
 
 // The Metal back end (macOS): the system's default device and a command

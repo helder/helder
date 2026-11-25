@@ -4,7 +4,7 @@ package helder.ui.draw;
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.gfx.metal.MetalBackend;
-import helder.os.objc.*;
+import helder.os.apple.objc.*;
 import hxmc.unsafe.*;
 
 // The system's compositor on macOS and iOS (Layers' step 5): a window's
@@ -346,7 +346,7 @@ class CaLayers extends LayerSplit {
 			// (macOS: the hosting view's layer is y up; the layers are placed top
 			// down, kept at its top as it resizes (kCALayerMinYMargin) until a
 			// frame of the new size places them: as the window's own frame is
-			// (CocoaWindow's contentsGravity))
+			// (MacWindow's contentsGravity))
 			if (!ios) {
 				Msg.vBool(st, ObjC.sel("setGeometryFlipped:"), true);
 				Msg.vInt(st, ObjC.sel("setAutoresizingMask:"), 8);
@@ -925,8 +925,8 @@ private class S {
 	public static final setHidden = ObjC.sel("setHidden:");
 }
 
-// (the message shapes beside Msg's: helder.os.objc.Sender)
-@:build(helder.os.objc.Sender.build())
+// (the message shapes beside Msg's: helder.os.apple.objc.Sender)
+@:build(helder.os.apple.objc.Sender.build())
 @:hxmc.unsafe(gc)
 private class CaMsg {
 	static function vAffine(self:Ptr, sel:Ptr, t:CGAffineTransform):Void;
