@@ -71,13 +71,13 @@ window.diff = async (a, b, x0, y0, x1, y1) => {
 		}
 	return n;
 };
-// (the next frame read back, a hash)
+// (the next frame read back, a hash, less the right 20 points: the list's scrollbar, the page's where they overlay)
 window.read = async () => {
 	const pixels = window.result.host.gfx.readPixels();
 	window.result.host.os.redraw();
-	const d = (await pixels).data;
+	const { data: d, width: w } = await pixels, edge = Math.round(w * 380 / 400);
 	let h = 0;
-	for (let i = 0; i < d.length; i++) h = (Math.imul(h, 31) + d[i]) | 0;
+	for (let i = 0; i < d.length; i++) if ((i >> 2) % w < edge) h = (Math.imul(h, 31) + d[i]) | 0;
 	return h;
 };
 // (the list's scroll view and what its layer shows: the tiles in its spacer)
@@ -131,8 +131,9 @@ async function compare(p, name, a, b, r) {
 	return n;
 }
 const state = async (p) => (await p.evaluate(() => window.log)).filter((l) => l.startsWith('layers ')).pop();
-// (the list's rows, less its scrollbar's edge, where helder draws its thumb)
-const LIST = [0, 40, 380, 300];
+// (the list's rows, less its scrollbar's edge, where helder draws its thumb; the
+// window less that edge: the page's own scrollbars there where they overlay)
+const LIST = [0, 40, 380, 300], FRAME = [0, 0, 380, 300];
 
 try {
 	for (const gfx of engine === 'chromium' ? ['webgpu', 'webgl2'] : ['webgl2'])
@@ -145,8 +146,21 @@ try {
 			check(`${mode}: the list's content in its scroll view, in tiles; the button over it a layer`, l.tiles >= 2 && l.over >= 1, JSON.stringify(l));
 			const flat = await q.evaluate(() => window.layers());
 			check(`${mode}: flat: none`, flat.tiles === 0 && flat.over === 0, JSON.stringify(flat));
+			// (the list's scrollbars: the browser's own where they overlay, its view holding the list's layer; else drawn)
+			const bars = await p.evaluate(() => {
+				const d = Object.assign(document.createElement('div'), { style: 'position:absolute;width:50px;height:50px;overflow:scroll' });
+				document.body.appendChild(d);
+				const overlay = d.offsetWidth === d.clientWidth;
+				d.remove();
+				const v = [...document.querySelector('canvas').hxmcScrolls.querySelectorAll('div')].find((e) => e.hxmcScroller);
+				return { overlay, width: v.style.scrollbarWidth };
+			});
+			const said = await state(p), flatSaid = await state(q);
+			check(`${mode}: the list's scrollbars the browser's where they overlay, else drawn`, bars.overlay ? bars.width === 'auto' && said.includes('bars=page')
+				: bars.width === 'none' && said.includes('bars=drawn'), `${JSON.stringify(bars)}, ${said}`);
+			check(`${mode}: flat: drawn`, flatSaid.includes('bars=drawn'), flatSaid);
 			const a = await shot(p), b = await shot(q);
-			let n = await compare(p, `${mode} still`, a, b, [0, 0, 400, 300]);
+			let n = await compare(p, `${mode} still`, a, b, FRAME);
 			check(`${mode}: shown as the flat window shows it`, n <= 40, `${n} pixels differ`);
 			const [ra, rb] = [await p.evaluate(() => window.read()), await q.evaluate(() => window.read())];
 			check(`${mode}: a frame read back drawn whole, as the flat window's`, ra === rb, `${ra} and ${rb}`);
@@ -157,8 +171,8 @@ try {
 			}
 			await p.waitForTimeout(600);
 			const s0 = await state(p), s1 = await state(q);
-			n = await compare(p, `${mode} scrolled`, await shot(p), await shot(q), [0, 0, 400, 300]);
-			check(`${mode}: scrolled, shown as the flat window shows it`, s0 === s1 && s0.includes('list=300') && n <= 40, `${s0}, flat ${s1}; ${n} pixels differ`);
+			n = await compare(p, `${mode} scrolled`, await shot(p), await shot(q), FRAME);
+			check(`${mode}: scrolled, shown as the flat window shows it`, s0.split(' | ')[0] === s1.split(' | ')[0] && s0.includes('list=300') && n <= 40, `${s0}, flat ${s1}; ${n} pixels differ`);
 			if (worker) {
 				// (the program busy: the browser scrolls the list's layer, the program draws nothing)
 				await p.mouse.click(200, 20);

@@ -115,6 +115,28 @@ export default function ui(host) {
 		s.clip = d ? `path(evenodd, "M-100000 -100000H100000V100000H-100000Z${d}")` : '';
 		s.e.style.clipPath = s.clip;
 	}
+	// (whether the browser's scrollbars overlay the content, taking no room: asked once)
+	let overlay = null;
+	const overlays = () => (overlay ??= (() => {
+		const d = document.createElement('div');
+		d.style.cssText = 'position:absolute;visibility:hidden;width:100px;height:100px;overflow:scroll;';
+		document.body.appendChild(d);
+		const w = d.offsetWidth - d.clientWidth;
+		d.remove();
+		return w === 0;
+	})());
+	// a view holding its scroller's content as a layer (stacked in paint
+	// order, its bars no longer over everything), its bars wanted, where the
+	// browser's overlay: the browser's own, moving and bouncing with its
+	// scroll; the program told (-id, as a scroll), drawing none for it
+	function showBars(s) {
+		const on = !!(s.hosting && s.bars && overlays());
+		s.e.style.scrollbarWidth = on ? 'auto' : 'none';
+		s.e.classList.toggle('hxmc-nobar', !on);
+		if (on === !!s.native) return;
+		s.native = on;
+		send('scrolled', [-s.id, on ? 1 : 0, 0]);
+	}
 	// per canvas: its views by id ({e: the scroller, s: its spacer}); the scrolls they made, queued
 	const scrollers = new Map();
 	const scrolled = [];
@@ -397,6 +419,8 @@ export default function ui(host) {
 						// (its scrollbars helder's, drawn in order with the tree; Safari before 18.2 knows no scrollbar-width)
 						'pointer-events:' + (covered ? 'none' : 'auto') + ';scrollbar-width:none;';
 					e.classList.add('hxmc-nobar');
+					s.bars = !!bars;
+					showBars(s);
 					e.style.clipPath = s.clip ?? '';
 					s.spacer.style.width = cw * k + 'px';
 					s.spacer.style.height = ch * k + 'px';
@@ -557,6 +581,7 @@ export default function ui(host) {
 			const s = v.v ? views?.get(v.v) : null, into = s ? s.spacer : l;
 			if (a.e.parentNode !== into) into.appendChild(a.e);
 			if (a.view !== s) {
+				const old = a.view;
 				if (a.view) {
 					a.view.hosting = false;
 					a.view.e.style.zIndex = '';
@@ -567,6 +592,7 @@ export default function ui(host) {
 					s.hosting = true;
 					cover(s, l);
 				}
+				for (const t of [old, s]) if (t) showBars(t);
 			}
 			if (s) s.e.style.zIndex = v.z;
 			const st = a.e.style;

@@ -1932,8 +1932,13 @@ task, once all are read. The canvas has premultiplied alpha for it. A
 popup over a scroll view holding a layer leaves the view whole (a
 clip-path would cut its content) and takes the input there through a
 clear element. A frame the page reads back (`host.gfx.readPixels`) is
-drawn whole onto the canvas, as the reference draws it. Rounded scrollers
-and scrollers with a sticky node in them stay drawn for now. Off with
+drawn whole onto the canvas, as the reference draws it. A scroll view
+holding its scroller's content, stacked in paint order now, shows the
+browser's own scrollbars where they overlay the content (macOS, iOS,
+Android; a scroller whose bars are wanted), so its thumb moves and
+Safari's rubber band bounces with the browser's scroll, helder drawing
+none for it (`Ui.barsOf`); elsewhere helder's thumbs stay. Rounded
+scrollers and scrollers with a sticky node in them stay drawn for now. Off with
 `HELDER_SYSTEM_LAYERS=0`, the flat split with `=flat` (run's option
 `env`). `tests/ui/web-layers.mjs` (the ui-web lane) runs a list taller
 than the window on WebGPU and WebGL2, on the page's thread and in a
