@@ -37,9 +37,12 @@ runs:
       run: |
         # Also applies to the apt commands launched by Playwright.
         echo 'Acquire::Retries "3";' | sudo tee /etc/apt/apt.conf.d/80-helder-retries
-        mapfile -t mesa < <(dpkg-query -W -f='${Package}\t${source:Package}\t${db:Status-Status}\n' |
-          awk '$2 == "mesa" && $3 == "installed" {print $1}')
-        if (( ${#mesa[@]} )); then sudo apt-mark hold "${mesa[@]}"; fi
+        # Make the image's Mesa versions APT candidates, even when a package
+        # such as libegl-mesa0 or libgbm1 is named explicitly by an install.
+        dpkg-query -W -f='${binary:Package}\t${source:Package}\t${db:Status-Status}\t${Version}\n' |
+          awk '$2 == "mesa" && $3 == "installed" {
+            printf "Package: %s\nPin: version %s\nPin-Priority: 1001\n\n", $1, $4
+          }' | sudo tee /etc/apt/preferences.d/helder-mesa
     - id: key
       shell: bash
       run: |
