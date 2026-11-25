@@ -161,6 +161,15 @@ class ShapeWindow {
 			var p = helder.os.objc.Msg.pointPointPtr(view, helder.os.objc.ObjC.sel("convertPoint:fromView:"), o, hxmc.unsafe.Ptr.nil());
 			var b = helder.os.objc.Msg.rect(view, helder.os.objc.ObjC.sel("bounds"));
 			var g = helder.os.objc.Msg.point(helder.os.objc.ObjC.cls("NSEvent"), helder.os.objc.ObjC.sel("mouseLocation"));
+			// (the window server's window there, and ours front to back)
+			var M = helder.os.objc.Msg, S = helder.os.objc.ObjC;
+			var at = M.iPointInt(S.cls("NSWindow"), S.sel("windowNumberAtPoint:belowWindowWithWindowNumber:"), g, 0).toInt();
+			var ordered = M.id(M.id(S.cls("NSApplication"), S.sel("sharedApplication")), S.sel("orderedWindows"));
+			var order = [for (i in 0...M.i(ordered, S.sel("count")).toInt()) {
+				var o = M.idInt(ordered, S.sel("objectAtIndex:"), i);
+				M.i(o, S.sel("windowNumber")).toInt() + (M.b(o, S.sel("ignoresMouseEvents")) ? " (ignores)" : "") + " level " + M.i(o, S.sel("level")).toInt();
+			}];
+			Sys.println('ShapeWindow: at the press: the window server\'s window there ${at}, this one ${M.i(win, S.sel("windowNumber")).toInt()}, ours front to back ${order.join(", ")}');
 			'ShapeWindow: at the press: ignores the mouse ${helder.os.objc.Msg.b(win, helder.os.objc.ObjC.sel("ignoresMouseEvents"))}, the pointer in the view at ${p.x}, ${b.size.height - p.y} points (the screen\'s ${g.x}, ${g.y}), its input ${w.window.inputRects}, its scale ${w.window.scale}';
 		}));
 	}
