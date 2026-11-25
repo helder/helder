@@ -67,6 +67,8 @@ class MacWindow {
 
 	function new(owner:Window, title:String, width:Int, height:Int) {
 		this.owner = owner;
+		// (not key until AppKit says so: windowDidBecomeKey; one kept in the background never is)
+		@:privateAccess owner.active = false;
 		if (app.isNull()) start();
 		rect = LibC.malloc(32);
 		size = LibC.malloc(16);
@@ -1196,7 +1198,15 @@ class MacWindow {
 
 	@:hxmc.callback static function didChangeKey(self:Ptr, cmd:Ptr, note:Ptr):Void {
 		var w = find(Msg.id(note, ObjC.sel("object")));
-		if (w != null) w.keepControls();
+		if (w == null) return;
+		w.keepControls();
+		var key = Msg.b(w.window, ObjC.sel("isKeyWindow"));
+		if (key == w.owner.active) return;
+		@:privateAccess w.owner.active = key;
+		var e = event;
+		e.kind = Redraw;
+		e.window = w.owner;
+		dispatch(e);
 	}
 
 	// (the close button where layoutControls put it, in the window: AppKit moves

@@ -9,17 +9,24 @@ import helder.ui.draw.GlassShader;
 
 // Liquid Glass drawn (helder.ui.Glass's, a GlassGroup's: GlassShader): its
 // backdrop handed to the canvas where it paints (Backdrop), its passes
-// recorded after it (GpuHost.beforePass: blurred along x, then y, then the
-// glass), the glass's texture drawn in its place (TextureCanvas.gpuTexture),
-// over its box and its shadow's margin. Its look in points, tuned against
-// the system's (tests/ui/GlassTest.hx: macOS 26's NSGlassEffectView).
+// recorded after it (GpuHost.beforePass: brought down to a half or a
+// quarter of its size, blurred along x, then y, then the glass), the
+// glass's texture drawn in its place (TextureCanvas.gpuTexture), over its
+// box and its shadow's margin. Its look in points, tuned against the
+// system's on screen (tests/ui/GlassKinds.hx: macOS 26's NSGlassEffectView).
 class GlassPass {
-	// the look, regular and clear: the blur's sigma, the rim's displacement,
+	// the look, regular and clear, in a key window and not: the blur's sigma, the rim's displacement,
 	// the bevel's width, the rim light's width and strength, the frost, the
 	// saturation, the brightness, the clear glass's blur share, the shadow's
-	// alpha, blur and offset, the light's dark-side share (points, shares)
-	public static var regular = [12.7, 27.5, 39.4, 1.5, 0.35, 0.53, 2.06, 0.97, 1, 0.12, 6, 2, 0.6];
-	public static var clear = [26.4, 30.9, 21, 1.5, 0.35, 0.21, 1.3, 1.06, 0.18, 0.08, 6, 2, 0.6];
+	// alpha, blur and offset, the light's dark-side share, the tint's share,
+	// the frost added out of a key window, the edge's darkening, a group's
+	// smoothing (its spacing's share) (points, shares)
+	public static var regular = [13.1, 4, 12, 0.55, 0.15, 0.55, 2.0, 1.0, 1, 0.05, 6, 2, 0.6, 0.95, 0, 0.075, 0.925];
+	// (regular glass out of a key window: flatter, more frosted, untinted, no rim light nor shadow)
+	public static var regularInactive = [17.3, 6.4, 14.4, 1.05, 0.35, 0.43, 1.5, 1.0, 1, 0.12, 5.8, 2, 0.6, 0.5, 0, 0.1, 0.925];
+	public static var clear = [16.0, 3, 10.9, 1.05, 0.35, 0.19, 1.15, 1.0, 0.03, 0.08, 6, 2, 0.6, 0.95, 0, 0.1, 0.925];
+	// (clear glass out of a key window: the system's a dimmed blur, as regular's but darker)
+	public static var clearInactive = [12.4, 0, 15.6, 1.05, 0.35, 0.5, 2.09, 0.85, 0.98, 0.08, 6, 2, 0.6, 0.5, 0, 0.1, 0.925];
 
 	static final pipelines = new haxe.ds.ObjectMap<Device, Array<Pipeline>>();
 	static final triangles = new haxe.ds.ObjectMap<Device, Buffer>();
@@ -27,6 +34,7 @@ class GlassPass {
 
 	public final backdrop = new Backdrop();
 	final id = -(++ids) - 5000000;
+	final downBytes = Bytes.alloc(32);
 	final blurBytes = [Bytes.alloc(32), Bytes.alloc(32)];
 	final bytes = Bytes.alloc(GLASS_BYTES);
 	final retired:Array<Texture> = [];
@@ -35,6 +43,7 @@ class GlassPass {
 	var out:Null<Texture> = null;
 	var blurA:Null<Texture> = null;
 	var blurB:Null<Texture> = null;
+	var blurC:Null<Texture> = null;
 	var bw = 0;
 	var bh = 0;
 	var ow = 0;
@@ -50,21 +59,23 @@ class GlassPass {
 	var press = 0.0;
 	var pointerX = 0.0;
 	var pointerY = 0.0;
+	var active = true;
 
-	static inline var GLASS_BYTES = 9 * 16 + 16 * 16;
+	static inline var GLASS_BYTES = 11 * 16 + 16 * 16;
 	static inline var MAX = 8;
 
 	public function new() {}
 
 	// the glass's shapes (x, y, w, h, radius each, in the canvas's coordinates;
-	// at most 8) drawn on canvas: false where it has no GPU (drawn plainly)
+	// at most 8) drawn on canvas (active: in a key window): false where it has no GPU (drawn plainly)
 	public function draw(canvas:helder.ui.Canvas, shapes:Array<Float>, clear:Bool, tint:Null<Color>, dark:Bool, spacing:Float, press:Float, pointerX:Float,
-			pointerY:Float):Bool {
+			pointerY:Float, active = true):Bool {
 		var g = Std.downcast(canvas, TextureCanvas), r = GpuHost.of(canvas);
 		if (g == null || r == null || shapes.length == 0) return false;
 		if (device != r.device) ready(r.device);
 		this.shapes = shapes;
-		look = clear ? GlassPass.clear : regular;
+		this.active = active;
+		look = clear ? (active ? GlassPass.clear : clearInactive) : active ? regular : regularInactive;
 		this.dark = dark;
 		this.tint = tint ?? 0;
 		this.spacing = spacing;
@@ -111,9 +122,9 @@ class GlassPass {
 		device = d;
 		var p = pipelines.get(d);
 		if (p == null) {
-			var b = GlassBlur.pipeline({}), q = GlassShader.pipeline({});
-			b.colorFormat = q.colorFormat = RGBA8;
-			pipelines.set(d, p = [d.createPipeline(b), d.createPipeline(q)]);
+			var b = GlassBlur.pipeline({}), q = GlassShader.pipeline({}), w = GlassDown.pipeline({});
+			b.colorFormat = q.colorFormat = w.colorFormat = RGBA8;
+			pipelines.set(d, p = [d.createPipeline(b), d.createPipeline(q), d.createPipeline(w)]);
 		}
 		if (!triangles.exists(d)) {
 			var v = GlassShader.vertexBytes([{pos: new Vec2(-1, -1)}, {pos: new Vec2(3, -1)}, {pos: new Vec2(-1, 3)}]);
@@ -136,28 +147,38 @@ class GlassPass {
 			return b.fx + (x - b.x) * s;
 		inline function fy(y:Float)
 			return b.fy + (y - b.y) * s;
-		// (blurred at a half or a quarter of its size: sigma in those texels, 8 at most)
-		var sigma = k[0] * s, f = sigma > 16 ? 4 : 2;
+		// (brought down to a half or a quarter of its size, each texel its
+		// block's mean; blurred there, sigma in those texels, 8 at most)
+		var sigma = k[0] * s, f = sigma > 12 ? 4 : 2;
 		var w = Std.int(Math.max(1, Math.ceil(b.pw / f))), h = Std.int(Math.max(1, Math.ceil(b.ph / f)));
 		if (blurA == null || w > bw || h > bh) {
 			if (blurA != null) {
 				retire(blurA);
 				retire(blurB);
+				retire(blurC);
 			}
 			bw = Math.ceil(w / 32) * 32;
 			bh = Math.ceil(h / 32) * 32;
 			blurA = d.createTexture({width: bw, height: bh, renderTarget: true});
 			blurB = d.createTexture({width: bw, height: bh, renderTarget: true});
+			blurC = d.createTexture({width: bw, height: bh, renderTarget: true});
 		}
 		var bs = Math.min(sigma / f, 8);
-		GlassBlur.params.blur.write({map: new Vec4(0, 0, bw * f / b.tw, bh * f / b.th), step: new Vec4(f / b.tw, 0, bs, 0)}, blurBytes[0]);
+		// (a target texel's centre at its block's: the source's uv of it, the taps a texel either side of that)
+		GlassDown.params.down.write({map: new Vec4(0, 0, bw * f / b.tw, bh * f / b.th), step: new Vec4(1 / b.tw, 1 / b.th, f / 2, 0)}, downBytes);
+		GlassBlur.params.blur.write({map: new Vec4(0, 0, 1, 1), step: new Vec4(1 / bw, 0, bs, 0)}, blurBytes[0]);
 		GlassBlur.params.blur.write({map: new Vec4(0, 0, 1, 1), step: new Vec4(0, 1 / bh, bs, 0)}, blurBytes[1]);
-		for (j in 0...2) {
-			enc.beginPass({colors: [{load: Clear, clear: new helder.gfx.Color(0, 0, 0, 0), texture: j == 0 ? blurA : blurB}]});
-			enc.setPipeline(p[0]);
+		for (j in 0...3) {
+			enc.beginPass({colors: [{load: Clear, clear: new helder.gfx.Color(0, 0, 0, 0), texture: j == 0 ? blurA : j == 1 ? blurB : blurC}]});
+			enc.setPipeline(p[j == 0 ? 2 : 0]);
 			enc.setVertexBuffer(0, triangle);
-			enc.setUniforms(GlassBlur.params.blur.block.binding, blurBytes[j]);
-			enc.setTexture(GlassBlur.params.source.binding, j == 0 ? t : blurA, sampler);
+			if (j == 0) {
+				enc.setUniforms(GlassDown.params.down.block.binding, downBytes);
+				enc.setTexture(GlassDown.params.source.binding, t, sampler);
+			} else {
+				enc.setUniforms(GlassBlur.params.blur.block.binding, blurBytes[j - 1]);
+				enc.setTexture(GlassBlur.params.source.binding, j == 1 ? blurA : blurB, sampler);
+			}
 			enc.draw(3);
 			enc.endPass();
 		}
@@ -172,12 +193,14 @@ class GlassPass {
 			out: new Vec4(fx(ox), fy(oy), ow, oh),
 			capture: new Vec4(b.px, b.py, b.tw, b.th),
 			blurred: new Vec4(f, f, bw, bh),
-			shape: new Vec4(rects.length, Math.max(spacing * s, 0.001), look == GlassPass.clear ? 1 : 0, dark ? 1 : 0),
+			shape: new Vec4(rects.length, Math.max(spacing * s * k[16], 0.001), look == GlassPass.clear || look == clearInactive ? 1 : 0, dark ? 1 : 0),
 			tint: new Vec4(c.r / 255, c.g / 255, c.b / 255, c.a / 255),
 			lens: new Vec4(k[1] * s, k[2] * s, k[3] * s, k[4]),
 			tone: new Vec4(k[5], k[6], k[7], k[8]),
 			shadow: new Vec4(k[9], k[10] * s, k[11] * s, k[12]),
 			press: new Vec4(fx(pointerX), fy(pointerY), press, 40 * s),
+			state: new Vec4(active ? 1 : 0, k[13], k[14], 1),
+			edge: new Vec4(k[15], 0, 0, 0),
 			rects: rects,
 			radii: radii
 		}, bytes);
@@ -186,7 +209,7 @@ class GlassPass {
 		enc.setVertexBuffer(0, triangle);
 		enc.setUniforms(GlassShader.params.glass.block.binding, bytes);
 		enc.setTexture(GlassShader.params.backdrop.binding, t, sampler);
-		enc.setTexture(GlassShader.params.blurred.binding, blurB, sampler);
+		enc.setTexture(GlassShader.params.blurred.binding, blurC, sampler);
 		enc.draw(3);
 		enc.endPass();
 	}

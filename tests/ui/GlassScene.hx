@@ -1,9 +1,8 @@
 import helder.ui.*;
 
-// Glass over the backgrounds Liquid Glass is compared on (GlassWindow: the
-// system's, GlassTest: drawn): stripes, a gradient, text, a photo; on each
-// a regular capsule with a label, clear glass with rounded corners, and a
-// tinted regular circle; with group, two glass merging in a <glass-group>.
+// Glass over backgrounds (GlassWindow: the system's, GlassTest: drawn):
+// stripes, a gradient, text, a photo; on each a regular capsule with a
+// label, clear glass with rounded corners, and a tinted regular circle; with group, two glass merging in a <glass-group>.
 // Its text in helder's own Inter (embedded): the same glyphs on every
 // machine, whatever fonts it has. 400 x 300 points.
 class GlassScene {
@@ -70,13 +69,6 @@ class GlassScene {
 			root.append(gg);
 		}
 		return [capsule, clear, tinted];
-	}
-
-	// the glass as the reference tool takes it (tests/ui/glass-reference.swift): x,y,w,h,radius,style,tint
-	public static function spec(g:Glass):String {
-		var t = g.tint;
-		return [g.absX, g.absY, g.width, g.height, g.radius(), g.clear ? 1 : 0].join(",") + ","
-			+ (t == null ? "-" : "#" + StringTools.hex(t & 0xFFFFFF, 6) + StringTools.hex(t.a, 2));
 	}
 
 	// a glass's box in pixels at scale k: x0, y0, x1, y1
