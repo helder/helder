@@ -44,6 +44,10 @@ class Preview {
 			return () -> stopped = true;
 		}
 		Async.launch(_ -> {
+			#if (hxmc.target == "wasm32-wasi")
+			// (a PDF's first page on the page, read as it needs)
+			if (Viewer.isPdf(path)) return try fitted(Decode.read(files, path, SIDE, true)) catch (e:Dynamic) failed(e);
+			#end
 			var b = try FileBytes.read(files, path) catch (_:Dynamic) null;
 			b == null ? null : Decode.onPage(b) ? decodeBytes({path: path, bytes: b}) : helder.jobs.Jobs.job(decodeBytes).run({path: path, bytes: b});
 		}).onCompletion((r, _) -> if (!stopped && r != null) done(shown(r)));
@@ -59,7 +63,7 @@ class Preview {
 
 	// (on the pool: the decode, its pixels copied out, fitted)
 	static function decode(path:String):{width:Int, height:Int, pw:Int, ph:Int, rgba:Null<Bytes>, pages:Int, format:String, error:Null<String>} {
-		return try fitted(Decode.file({path: path, side: SIDE})) catch (e:Dynamic) failed(e);
+		return try fitted(Decode.file({path: path, side: SIDE, first: true})) catch (e:Dynamic) failed(e);
 	}
 	#end
 

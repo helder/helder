@@ -18,6 +18,11 @@ class PdfLimits {
 	// the decoded images and page contents a document keeps for its pages drawn again (bytes, least
 	// recently used out first; 0 keeps none): Bitmaps, or on the web the browser's images
 	public var imageCache = 64 << 20;
+	// a file read through a PdfSource (Pdf.openSource): read in blocks of
+	// readBlock bytes, readCache bytes of them kept (the parser's many small
+	// reads not each a read of the file)
+	public var readBlock = 65536;
+	public var readCache = 4 << 20;
 
 	public function new() {}
 
