@@ -46,6 +46,9 @@ class Hosted {
 	public static inline var ACTIVITY_SLOTS = 24;
 	public static inline var ANDROID_WINDOW = 40;
 	public static inline var ANDROID_WINDOW_SLOTS = 8;
+	// the program's argv (the host's, its library's path left out) and its count
+	public static inline var ARGV = DevHost.ARGV;
+	public static inline var ARGC = DevHost.ARGC;
 	// the next build's library: a C string at DevHost.NEXT (empty: none, the host ends)
 	static inline var NEXT = DevHost.NEXT;
 	static inline var NEXT_BYTES = DevHost.NEXT_BYTES;
@@ -79,6 +82,15 @@ class Hosted {
 			state = b;
 		}
 		return state;
+	}
+
+	// the program's Sys.args(): the runtime's argv set here, not main's
+	// (Windows' runtime takes the process's command line, the host's, instead;
+	// Android, iOS: no host's argv, main's kept)
+	static function __init__() {
+		if (state.isNull() || get(ARGV).isNull()) return;
+		Mem.setPtr(Mem.sym("rt_argv"), 0, get(ARGV));
+		Mem.setI32(Mem.sym("rt_argc"), 0, Mem.getI32(state, ARGC * 8));
 	}
 
 	// this build hands over to the library at path (Hot, at a reload)
