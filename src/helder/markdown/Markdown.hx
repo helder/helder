@@ -24,7 +24,7 @@ class Markdown {
 		var top = firstLine(body);
 		if (body.substr(0, top).rtrim() == "---") {
 			var i = next(body, top);
-			while (i < body.length) {
+			while (Scan.tick() && i < body.length) {
 				var e = firstLineFrom(body, i), l = body.substring(i, e).rtrim();
 				if (l == "---" || l == "...") {
 					front = body.substring(next(body, top), i);
@@ -58,6 +58,7 @@ class Markdown {
 	public static function slug(text:String):String {
 		var out = new StringBuf(), lower = text.trim().toLowerCase();
 		for (k in 0...lower.length) {
+			Scan.tick();
 			var c = lower.fastCodeAt(k);
 			if (c == " ".code || c == "\t".code) out.add("-");
 			else if (c == "-".code || c == "_".code || !Scan.isPunct(c) && c > 32) out.addChar(c);
@@ -70,7 +71,7 @@ class Markdown {
 
 	static function firstLineFrom(s:String, i:Int):Int {
 		var j = i;
-		while (j < s.length && s.fastCodeAt(j) != 10 && s.fastCodeAt(j) != 13)
+		while (Scan.tick() && j < s.length && s.fastCodeAt(j) != 10 && s.fastCodeAt(j) != 13)
 			j++;
 		return j;
 	}

@@ -13,7 +13,7 @@ using StringTools;
 // cmark-gfm's examples of its extensions (tables, task lists,
 // strikethrough, autolinks; its tag filter is moot, raw HTML being text).
 // Each rendered to HTML as commonmark.js renders it (Html, below). Then
-// the tree itself, and pathological inputs parsed in bounded time.
+// the tree itself, and pathological inputs parsed in linear time.
 @:test.interp
 function tests() {
 	describe("Markdown", () -> {
@@ -58,31 +58,37 @@ function tests() {
 			}), "a b <i>c</i>");
 		});
 		test("pathological inputs stay linear", () -> {
-			var inputs = [
-				"nested quotes" => "".lpad(">", 1000) + " a\n",
-				"nested lists" => [for (k in 0...300) "".lpad(" ", k * 2) + "- a"].join("\n"),
-				"stars" => "".lpad("*", 10000),
-				"star words" => [for (_ in 0...10000) "*a"].join(" "),
-				"underscores" => [for (_ in 0...10000) "_a"].join(""),
-				"strong openers" => [for (_ in 0...5000) "**a"].join(" ") + [for (_ in 0...5000) "a**"].join(" "),
-				"brackets" => "".lpad("[", 10000) + "".lpad("]", 10000),
-				"open links" => [for (_ in 0...10000) "[a]("].join(""),
-				"images" => [for (_ in 0...10000) "![a"].join(""),
-				"backticks" => [for (k in 1...2000) "".lpad("`", k % 50 + 1) + "a"].join(""),
-				"comments" => [for (_ in 0...10000) "<!--"].join(""),
-				"tags" => [for (_ in 0...10000) "<a "].join(""),
-				"references" => [for (k in 0...5000) '[$k]: /u$k'].join("\n") + "\n\n" + [for (k in 0...5000) '[$k]'].join(" "),
-				"table" => "a|b\n-|-\n" + [for (_ in 0...10000) "c|d"].join("\n"),
-				"autolinks" => [for (_ in 0...10000) "www.a.b@"].join(" ")
+			// (each at a quarter of its size and whole, n: the parsers' loop
+			// turns, Scan.steps, a character's the same at both; quadratic
+			// work in the input's length is 4 times as many)
+			var inputs:Map<String, Int->String> = [
+				"nested quotes" => n -> "".lpad(">", 250 * n) + " a\n",
+				"nested lists" => n -> [for (k in 0...75 * n) "".lpad(" ", k * 2) + "- a"].join("\n"),
+				"stars" => n -> "".lpad("*", 2500 * n),
+				"star words" => n -> [for (_ in 0...2500 * n) "*a"].join(" "),
+				"underscores" => n -> [for (_ in 0...2500 * n) "_a"].join(""),
+				"strong openers" => n -> [for (_ in 0...1250 * n) "**a"].join(" ") + [for (_ in 0...1250 * n) "a**"].join(" "),
+				"brackets" => n -> "".lpad("[", 2500 * n) + "".lpad("]", 2500 * n),
+				"open links" => n -> [for (_ in 0...2500 * n) "[a]("].join(""),
+				"images" => n -> [for (_ in 0...2500 * n) "![a"].join(""),
+				"backticks" => n -> [for (k in 1...500 * n) "".lpad("`", k % 50 + 1) + "a"].join(""),
+				"comments" => n -> [for (_ in 0...2500 * n) "<!--"].join(""),
+				"tags" => n -> [for (_ in 0...2500 * n) "<a "].join(""),
+				"references" => n -> [for (k in 0...1250 * n) '[$k]: /u$k'].join("\n") + "\n\n" + [for (k in 0...1250 * n) '[$k]'].join(" "),
+				"table" => n -> "a|b\n-|-\n" + [for (_ in 0...2500 * n) "c|d"].join("\n"),
+				"autolinks" => n -> [for (_ in 0...2500 * n) "www.a.b@"].join(" ")
 			];
-			var slow = [];
-			for (name => text in inputs) {
-				var t0 = haxe.Timer.stamp();
+			function perChar(text:String) {
+				var from = Scan.steps;
 				Markdown.parse(text);
-				var t = haxe.Timer.stamp() - t0;
-				if (t > 2) slow.push('$name ${Math.round(t * 1000)} ms');
+				return (Scan.steps - from) / text.length;
 			}
-			equals(slow, []);
+			var superlinear = [];
+			for (name => make in inputs) {
+				var small = perChar(make(1)), whole = perChar(make(4));
+				if (whole > small * 1.5) superlinear.push('$name: ${Math.round(small)} to ${Math.round(whole)} steps a character');
+			}
+			equals(superlinear, []);
 		});
 	});
 }

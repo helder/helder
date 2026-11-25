@@ -45,9 +45,9 @@ class Blocks {
 
 	public function parse(text:String):Array<Block> {
 		var i = 0, n = text.length;
-		while (i < n) {
+		while (Scan.tick() && i < n) {
 			var j = i;
-			while (j < n) {
+			while (Scan.tick() && j < n) {
 				var c = text.fastCodeAt(j);
 				if (c == 10 || c == 13) break;
 				j++;
@@ -56,7 +56,7 @@ class Blocks {
 			if (j < n && text.fastCodeAt(j) == 13 && j + 1 < n && text.fastCodeAt(j + 1) == 10) j++;
 			i = j + 1;
 		}
-		while (tip != null)
+		while (Scan.tick() && tip != null)
 			finalize(tip);
 		return blocks(doc);
 	}
@@ -75,7 +75,7 @@ class Blocks {
 		scanned = lineNumber;
 		scanFrom = offset;
 		var i = offset, cols = column, c = -1;
-		while (i < line.length) {
+		while (Scan.tick() && i < line.length) {
 			c = line.fastCodeAt(i);
 			if (c == 32) {
 				i++;
@@ -99,7 +99,7 @@ class Blocks {
 	}
 
 	function advance(count:Int, columns:Bool) {
-		while (count > 0 && offset < line.length) {
+		while (Scan.tick() && count > 0 && offset < line.length) {
 			if (line.fastCodeAt(offset) == 9) {
 				var toTab = 4 - column % 4;
 				if (columns) {
@@ -133,7 +133,7 @@ class Blocks {
 	}
 
 	function addChild(kind:BKind, at:Int):BNode {
-		while (!canContain(tip.kind, kind))
+		while (Scan.tick() && !canContain(tip.kind, kind))
 			finalize(tip);
 		var b = new BNode(kind, lineNumber);
 		tip.append(b);
@@ -143,7 +143,7 @@ class Blocks {
 
 	function closeUnmatched() {
 		if (allClosed) return;
-		while (oldtip != lastMatched) {
+		while (Scan.tick() && oldtip != lastMatched) {
 			var parent = oldtip.parent;
 			finalize(oldtip);
 			oldtip = parent;
@@ -172,7 +172,7 @@ class Blocks {
 		lineNumber++;
 		line = text.indexOf("\x00") >= 0 ? text.replace("\x00", "\u{FFFD}") : text;
 		var matched = true;
-		while (container.children.length > 0) {
+		while (Scan.tick() && container.children.length > 0) {
 			var last = container.children[container.children.length - 1];
 			if (!last.open) break;
 			container = last;
@@ -192,7 +192,7 @@ class Blocks {
 		allClosed = container == oldtip;
 		lastMatched = container;
 		var leaf = container.kind != KPara && container.kind != KTable && acceptsLines(container.kind);
-		while (!leaf) {
+		while (Scan.tick() && !leaf) {
 			findNextNonspace();
 			if (!indented && !maybeSpecial(at(line, nextNonspace))) {
 				advanceNextNonspace();
@@ -216,7 +216,7 @@ class Blocks {
 		// (a quote's lines are never blank; a fence's blanks and an empty item's first line do not make a list loose)
 		var lastBlank = blank && !(t == KQuote || (t == KCode && container.fenced) || (t == KItem && container.children.length == 0 && container.startLine == lineNumber));
 		var c = container;
-		while (c != null) {
+		while (Scan.tick() && c != null) {
 			c.lastLineBlank = lastBlank;
 			c = c.parent;
 		}
@@ -257,10 +257,10 @@ class Blocks {
 				if (b.fenced) {
 					if (indent <= 3 && at(line, nextNonspace) == b.fenceChar) {
 						var j = nextNonspace;
-						while (at(line, j) == b.fenceChar)
+						while (Scan.tick() && at(line, j) == b.fenceChar)
 							j++;
 						var k = j;
-						while (isSpaceOrTab(at(line, k)))
+						while (Scan.tick() && isSpaceOrTab(at(line, k)))
 							k++;
 						if (j - nextNonspace >= b.fenceLength && k >= line.length) {
 							finalize(b);
@@ -268,7 +268,7 @@ class Blocks {
 						}
 					}
 					var i = b.fenceOffset;
-					while (i > 0 && isSpaceOrTab(at(line, offset))) {
+					while (Scan.tick() && i > 0 && isSpaceOrTab(at(line, offset))) {
 						advance(1, true);
 						i--;
 					}
@@ -319,7 +319,7 @@ class Blocks {
 
 	function atx():Bool {
 		var j = nextNonspace, level = 0;
-		while (at(line, j) == "#".code)
+		while (Scan.tick() && at(line, j) == "#".code)
 			j++;
 		level = j - nextNonspace;
 		if (level > 6 || (j < line.length && !isSpaceOrTab(at(line, j)))) return false;
@@ -331,7 +331,7 @@ class Blocks {
 		// (the closing #s: after a space, or all there is)
 		var t = line.substr(offset).trim();
 		var e = t.length;
-		while (e > 0 && t.fastCodeAt(e - 1) == "#".code)
+		while (Scan.tick() && e > 0 && t.fastCodeAt(e - 1) == "#".code)
 			e--;
 		if (e == 0) t = "" else if (e < t.length && isSpaceOrTab(t.fastCodeAt(e - 1))) t = t.substr(0, e).rtrim();
 		h.text = t;
@@ -341,7 +341,7 @@ class Blocks {
 
 	function fence():Bool {
 		var c = at(line, nextNonspace), j = nextNonspace;
-		while (at(line, j) == c)
+		while (Scan.tick() && at(line, j) == c)
 			j++;
 		var n = j - nextNonspace;
 		if (n < 3) return false;
@@ -361,6 +361,7 @@ class Blocks {
 	function rule():Bool {
 		var c = at(line, nextNonspace), count = 0;
 		for (j in nextNonspace...line.length) {
+			Scan.tick();
 			var d = line.fastCodeAt(j);
 			if (d == c) count++ else if (!isSpaceOrTab(d)) return false;
 		}
@@ -373,9 +374,9 @@ class Blocks {
 
 	function setext(para:BNode):Bool {
 		var c = at(line, nextNonspace), j = nextNonspace;
-		while (at(line, j) == c)
+		while (Scan.tick() && at(line, j) == c)
 			j++;
-		while (isSpaceOrTab(at(line, j)))
+		while (Scan.tick() && isSpaceOrTab(at(line, j)))
 			j++;
 		if (j < line.length) return false;
 		closeUnmatched();
@@ -393,7 +394,7 @@ class Blocks {
 	// a paragraph's start's reference definitions taken (refs), the rest returned
 	function takeRefs(text:String):String {
 		var at = 0;
-		while (Scan.at(text, at) == "[".code) {
+		while (Scan.tick() && Scan.at(text, at) == "[".code) {
 			var end = inlines.reference(text, at);
 			if (end == at) break;
 			at = end;
@@ -443,7 +444,7 @@ class Blocks {
 		var r = row.trim();
 		if (r.startsWith("|")) r = r.substr(1);
 		var cells = [], cell = new StringBuf(), i = 0, any = false;
-		while (i < r.length) {
+		while (Scan.tick() && i < r.length) {
 			var c = r.fastCodeAt(i);
 			if (c == "\\".code && at(r, i + 1) == "|".code) {
 				cell.add("|");
@@ -476,7 +477,7 @@ class Blocks {
 			len = 1;
 		} else if (isDigit(c)) {
 			var j = rest;
-			while (isDigit(at(line, j)) && j - rest < 10)
+			while (Scan.tick() && isDigit(at(line, j)) && j - rest < 10)
 				j++;
 			var d = at(line, j);
 			if (j - rest > 9 || (d != ".".code && d != ")".code)) return false;
@@ -497,7 +498,7 @@ class Blocks {
 		do {
 			advance(1, true);
 			next = at(line, offset);
-		} while (column - spacesCol < 5 && isSpaceOrTab(next));
+		} while (Scan.tick() && column - spacesCol < 5 && isSpaceOrTab(next));
 		var blankItem = at(line, offset) == -1;
 		var after = column - spacesCol, padding = 0;
 		if (after >= 5 || after < 1 || blankItem) {
@@ -560,7 +561,7 @@ class Blocks {
 
 	static function tagName(s:String, from:Int):String {
 		var j = from;
-		while (isAlnum(at(s, j)))
+		while (Scan.tick() && isAlnum(at(s, j)))
 			j++;
 		return s.substring(from, j);
 	}
@@ -596,7 +597,7 @@ class Blocks {
 					b.text = [for (k in 1...b.lines.length) b.lines[k] + "\n"].join("");
 				} else {
 					var n = b.lines.length;
-					while (n > 0 && b.lines[n - 1].trim() == "")
+					while (Scan.tick() && n > 0 && b.lines[n - 1].trim() == "")
 						n--;
 					b.text = [for (k in 0...n) b.lines[k] + "\n"].join("");
 				}
@@ -628,7 +629,7 @@ class Blocks {
 
 	static function endsWithBlank(b:BNode):Bool {
 		var x = b;
-		while (x != null) {
+		while (Scan.tick() && x != null) {
 			if (x.lastLineBlank) return true;
 			if (!x.lastLineChecked && (x.kind == KList || x.kind == KItem)) {
 				x.lastLineChecked = true;
