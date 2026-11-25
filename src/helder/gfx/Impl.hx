@@ -52,6 +52,13 @@ abstract Impl(Native) {
 	public inline function presentResult():Int
 		return #if (helder.os == "windows" && !helder.soft) this.presentResult #else 0 #end;
 
+	// (a test's: the window's frames' GPU time, timed from now on: Direct3D 11's; -1 none)
+	public inline function gpuTime():Float
+		return #if (helder.os == "windows" && !helder.soft) this.gpuTime() #else -1 #end;
+
+	public inline function software():Bool
+		return #if (helder.os == "windows" && !helder.soft) this.software #else false #end;
+
 	// (the back end's context let go by this thread, used by the render thread from now on: GL's)
 	public inline function detach()
 		#if (helder.os == "linux" || helder.os == "android") this.detach() #else {} #end;
@@ -214,6 +221,12 @@ abstract Impl(Any) {
 
 	public inline function presentResult():Int
 		return Platform.os() == 2 ? d3d().presentResult : 0;
+
+	public inline function gpuTime():Float
+		return Platform.os() == 2 ? d3d().gpuTime() : -1;
+
+	public inline function software():Bool
+		return Platform.os() == 2 && d3d().software;
 
 	public inline function readPixels(dst:haxe.io.Bytes)
 		Platform.os() == 1 ? mtl().readPixels(dst) : Platform.os() == 2 ? d3d().readPixels(dst) : Platform.os() != 3 ? gl().readPixels(dst) : webgl() ? gl().readPixels(dst) : wgpu().readPixels(dst);

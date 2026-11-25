@@ -132,8 +132,16 @@ class WinLayersWindow {
 			gaps.sort(Reflect.compare);
 			var median = gaps.length > 0 ? gaps[Std.int(gaps.length / 2)] : 1.0;
 			check('$what: frames presented while the program was blocked 300 ms', during.length >= 10, during.length + " frames");
-			check('$what: at the display\'s pace', gaps.length > 0 && median < 0.03, "median gap " + Math.round(median * 10000) / 10 + " ms");
-			if (!(gaps.length > 0 && median < 0.03) && c != null) probes(what, c, from - 0.05, to);
+			var paced = gaps.length > 0 && median < 0.03, gap = "median gap " + Math.round(median * 10000) / 10 + " ms";
+			var bound = paced || c == null ? null : gpuBound(c, from, to);
+			if (bound == null) check('$what: at the display\'s pace', paced, gap) else {
+				var was = strict;
+				strict = false;
+				check('$what: at the display\'s pace', false, '$gap: bound by the software adapter\'s GPU, $bound');
+				strict = was;
+			}
+			if (c != null) summary(what, c, from, to);
+			if (!paced && c != null) probes(what, c, from - 0.05, to);
 			if (dc != null) {
 				var d = [for (i in 0...4) Math.round((dc.timing[i] - t0[i]) * 1000)];
 				say('$what: the render thread: showing ${d[0]} ms, drawing ${d[1]}, waiting for the last commit ${d[2]}, for DWM\'s next composition ${d[3]}, frames ${layers.frames - f0}');
@@ -410,19 +418,56 @@ class WinLayersWindow {
 	// thread came to each (due: right after the last frame's end if that one
 	// was paced, else half a period after it, or the program's turn after
 	// input), the swap chain's wait, its end, paced, the 1 ms timer, Present's HRESULT)
-	static function probes(what:String, c:Compositor, t0:Float, t1:Float) {
+	// (the compositor's frames drawn from t0 to t1, each its PROBE values)
+	static function probed(c:Compositor, t0:Float, t1:Float):Array<Array<Float>> {
 		var p = @:privateAccess c.lock;
 		p.acquire();
 		var a = c.probe.copy();
 		p.release();
-		var n = Compositor.PROBE, ms = (t:Float) -> Math.round((t - t0) * 10000) / 10;
-		say('$what: probes (ms from the phase; came, last end, last paced, waited, end, paced, 1 ms timer, Present 0x)');
-		var i = 0;
-		while (i + n <= a.length) {
-			if (a[i] >= t0 && a[i] <= t1)
-				say('  ${ms(a[i])} ${ms(a[i + 1])} ${a[i + 2]} ${Math.round(a[i + 3] * 10) / 10} ${a[i + 4] < 0 ? "turn" : "" + ms(a[i + 4])} ${a[i + 5]} ${a[i + 6]} ${StringTools.hex(Std.int(a[i + 7]))}');
-			i += n;
+		var n = Compositor.PROBE;
+		return [for (i in 0...Std.int(a.length / n)) if (a[i * n] >= t0 && a[i * n] <= t1) a.slice(i * n, i * n + n)];
+	}
+
+	static function middle(v:Array<Float>):Float {
+		if (v.length == 0) return -1;
+		v.sort(Reflect.compare);
+		return Math.round(v[v.length >> 1] * 10) / 10;
+	}
+
+	// (a phase's frames: how many, their quads, the pixels they cover, their GPU time, their swap chain's wait)
+	static function summary(what:String, c:Compositor, t0:Float, t1:Float) {
+		var f = [for (p in probed(c, t0, t1)) if (p[4] >= 0) p];
+		say('$what: the compositor\'s ${f.length} frames, medians: ${middle([for (p in f) p[9]])} quads, ${middle([for (p in f) p[10]])}k pixels covered, '
+			+ 'GPU ${middle([for (p in f) p[8]])} ms, the swap chain\'s wait ${middle([for (p in f) p[3]])} ms${f.length > 0 && f[0][11] == 1 ? " (a software adapter)" : ""}');
+	}
+
+	// (a phase slower than the display's pace whose frames were all on time:
+	// each paced (its swap chain's wait the one before it) and presented
+	// (Present's S_OK, not OCCLUDED), the time in that wait itself, over
+	// most of a period: what the adapter's GPU took to show the last one.
+	// Only Microsoft's software adapter's (WARP, the Basic Render Driver:
+	// CI's runners, their GPU work on the CPU's threads after Present) is
+	// let go so; on a GPU the display's pace is the check's. The lock's
+	// signatures fail wherever they show: frames not paced, OCCLUDED, the
+	// time before the wait (a coarse timer). Why, else null)
+	static function gpuBound(c:Compositor, t0:Float, t1:Float):Null<String> {
+		var f = [for (p in probed(c, t0, t1)) if (p[4] >= 0) p];
+		if (f.length < 3 || f[0][11] != 1) return null;
+		var period = @:privateAccess c.period * 1000;
+		for (i in 0...f.length) {
+			var p = f[i];
+			if (p[7] != 0 || p[5] != 1 || (i > 0 && p[2] != 1)) return null;
 		}
+		var wait = middle([for (p in f) p[3]]);
+		if (wait < period * 0.75) return null;
+		return 'each frame paced and presented, the swap chain\'s wait $wait ms of a ${Math.round(period * 10) / 10} ms period';
+	}
+
+	static function probes(what:String, c:Compositor, t0:Float, t1:Float) {
+		var ms = (t:Float) -> Math.round((t - t0) * 10000) / 10;
+		say('$what: probes (ms from the phase; came, last end, last paced, waited, end, paced, 1 ms timer, Present 0x, GPU ms, quads, k pixels)');
+		for (p in probed(c, t0, t1))
+			say('  ${ms(p[0])} ${ms(p[1])} ${p[2]} ${Math.round(p[3] * 10) / 10} ${p[4] < 0 ? "turn" : "" + ms(p[4])} ${p[5]} ${p[6]} ${StringTools.hex(Std.int(p[7]))} ${Math.round(p[8] * 10) / 10} ${p[9]} ${Math.round(p[10])}');
 	}
 
 	// (the process's CPU time, ms: its kernel's and user's)
