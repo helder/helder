@@ -459,7 +459,7 @@ class Studio {
 			hold(() -> pr.allShown(), "the screens' first frames", 300);
 		}
 		revived(v -> v + 1);
-		if (marks.saw([for (s in p.screens) s.name])) firstFrames();
+		if (marks.saw([for (s in p.screens) s.name])) framesCame();
 		log("revived", {typescript: p.typescript, entry: p.entry?.main, screens: [for (s in p.screens) s.name]});
 		return true;
 		#end
@@ -739,23 +739,44 @@ class Studio {
 		}
 	}
 
-	// (the first new frames came (an agent's: the watched shell's): the canvas framed once, in the next
-	// frame, every frame at most 1:1, unless the user moved it already: the
-	// studio's first framing, never the agent moving the camera)
+	// (new frames came (the watched shell's): every frame fitted, in the next
+	// frame, at most 1:1, until the user first moves the camera: the studio's
+	// framing, never the agent moving it. After a question is answered, the
+	// project's real frames alone, not the design frames (the options) that
+	// asked it, once there are some)
 	var framing = false;
-	var framedOnce = false;
+	var real = false;
 
-	function firstFrames() {
-		if (framedOnce || classic) return;
-		framedOnce = true;
-		framing = true;
+	function framesCame()
+		if (!classic) framing = true;
+
+	// a question answered (Questions): the real frames from now on, framed now
+	public function answered() {
+		real = true;
+		framesCame();
 	}
 
 	function frameAll() {
-		var b = layout.bounds(), i = insets();
+		var b = frameBox(layout.screens(), n -> project?.screen(n)?.source.match(Design(_)) ?? false, real), i = insets();
+		if (b == null) return;
 		var v = Camera.fit(b.x, b.y, b.w, b.h, stageWidth, stageHeight, 28, i.right, i.bottom, i.top + Theme.TITLES, i.left, 1);
 		camera.fly(v.x, v.y, v.k);
 		log("framed", {k: v.k});
+	}
+
+	// the box the framing fits: every frame's, or (real) the program's frames' when there are some, not a design's
+	public static function frameBox(rs:Array<{name:String, x:Float, y:Float, w:Float, h:Float}>, design:String->Bool, real:Bool):Null<{x:Float, y:Float, w:Float, h:Float}> {
+		var live = rs.filter(r -> !design(r.name));
+		if (real && live.length > 0) rs = live;
+		if (rs.length == 0) return null;
+		var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+		for (r in rs) {
+			x0 = Math.min(x0, r.x);
+			y0 = Math.min(y0, r.y);
+			x1 = Math.max(x1, r.x + r.w);
+			y1 = Math.max(y1, r.y + r.h);
+		}
+		return {x: x0, y: y0, w: x1 - x0, h: y1 - y0};
 	}
 
 	// the view for what is in focus (fly: on the spring)
@@ -1549,7 +1570,7 @@ class Studio {
 		if (renamed.length > 0) others([]);
 		if (f != null && project.screen(f) == null) focus(null);
 		log("frames", {file: file, frames: [for (s in project.screens) if (s.file == file) s.name], renamed: renamed});
-		if (marks.saw([for (s in project.screens) s.name])) firstFrames();
+		if (marks.saw([for (s in project.screens) s.name])) framesCame();
 	}
 
 	// (natively) the design and story files on disk watched, a second apart:
@@ -1704,7 +1725,7 @@ class Studio {
 		}
 		if (f != null && project.screen(f) == null) focus(null, false);
 		log("stories", {file: file, screens: [for (s in project.live()) s.name]});
-		if (marks.saw([for (s in project.screens) s.name])) firstFrames();
+		if (marks.saw([for (s in project.screens) s.name])) framesCame();
 		return true;
 	}
 
