@@ -86,13 +86,9 @@ class Chat implements Markup {
 		return t.length > 0 && Turns.running(t[t.length - 1]);
 	}
 
-	// (in a row: its width settled before its height, which a column's
-	// item of a max-width measures at the column's width, one line short)
 	static function bubble(text:String):View
-		return <view direction="row" justify="flex-end" align-self="stretch">
-			<view tag="chat-you" max-width={260} shrink={1} min-width={0} padding="8 12" radius={Theme.CARD} background={c("bubble")}>
-				<text color={c("ink")} font-size={Theme.CHAT_SIZE} line-height={1.55}>{text}</text>
-			</view>
+		return <view tag="chat-you" align-self="flex-end" max-width={260} padding="8 12" radius={Theme.CARD} background={c("bubble")}>
+			<text color={c("ink")} font-size={Theme.CHAT_SIZE} line-height={1.55}>{text}</text>
 		</view>;
 
 	// a note the user sent while the agent worked: its bubble, marked; "seen" once delivered
