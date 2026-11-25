@@ -60,10 +60,14 @@ class ShapeWindow {
 			// (the window server's after some of its frames)
 			if (step == 40) {
 				Sys.sleep(0.3);
-				// (macOS: each window ordered front at its first frame, or 500 ms after it is made: the one
-				// behind's may come after this one's; this one in front again, past both)
+				// (macOS: each window ordered front at its first frame, or 500 ms after it is made, the one
+				// behind's maybe after this one's, another app's window maybe over both: their levels set,
+				// over other apps' windows, this one over the one behind)
 				#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
-				if (desk != null) w.window.raise();
+				if (desk != null) {
+					level(desk.window, 3);
+					level(w.window, 4);
+				}
 				#end
 				system(w, desk);
 				if (w.window.transparent) inputs(w);
@@ -227,6 +231,16 @@ class ShapeWindow {
 	static final helderBehind = Sys.args().indexOf("--behind") >= 0 && Sys.args()[Sys.args().indexOf("--behind") + 1] == "helder";
 
 	#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
+	static function level(win:Window, n:Int) {
+		var view = win.surface.handle;
+		OsThread.get(() -> {
+			var w = helder.os.objc.Msg.id(view, helder.os.objc.ObjC.sel("window"));
+			helder.os.objc.Msg.vInt(w, helder.os.objc.ObjC.sel("setLevel:"), n);
+			helder.os.objc.Msg.v(w, helder.os.objc.ObjC.sel("orderFrontRegardless"));
+			0;
+		});
+	}
+
 	// (the window at a press: whether it ignores the mouse, where it finds the pointer)
 	static function macState(w:UiWindow) {
 		var view = w.window.surface.handle;
