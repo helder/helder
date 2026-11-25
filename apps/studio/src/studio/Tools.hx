@@ -53,7 +53,7 @@ class Tools implements Mcp.Target {
 						type: "array",
 						items: {type: "object", properties: {old: {type: "string"}, "new": {type: "string"}}, required: ["old", "new"]}
 					},
-					text: {type: "string", description: "the file's whole new text (instead of edits)"}
+					text: {type: "string", description: "the file's whole new text, for a new file or a rewrite (never together with edits)"}
 				},
 				required: ["path"]
 			}
@@ -185,6 +185,8 @@ class Tools implements Mcp.Target {
 		var f = path(args.path);
 		var doc = studio.docs.get(f);
 		var base = doc.text, changes = [];
+		// (a whole text sent beside edits is an agent's slip: it once wiped a file)
+		if (args.text != null && args.edits != null) throw "text or edits, not both";
 		if (args.text != null) changes.push(new helder.syntax.Transaction.Change(0, base.length, args.text));
 		else {
 			var edits:Array<Dynamic> = args.edits ?? [];

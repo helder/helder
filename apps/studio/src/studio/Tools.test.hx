@@ -25,6 +25,9 @@ function tests() {
 			equals(s.presence.peer("a").working, false);
 			s.undo();
 			equals(s.docs.nextUndo(), null);
+			var both = s.tools.call("project.patch", {path: "app.helder", text: "x", edits: []}, "a");
+			equals(both.isError, true);
+			equals(sys.io.File.getContent('$dir/app.helder').indexOf("todos") >= 0, true);
 		}));
 		#end
 	});
