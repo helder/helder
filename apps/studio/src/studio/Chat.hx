@@ -134,7 +134,7 @@ class Chat implements Markup {
 				<view tag="chat-thinking" direction="row" align-items="center" column-gap={8}>
 					<view tag="chat-thinking-mark" width={8} height={8} radius={4} background={Color.parse(studio.agentColour())}
 						ref={(n:Node) -> Watch.pulse(n, () -> Turns.running(t()))}/>
-					<text color={c("dim")} font-size={12}>{studio.agentStarting() ? 'Starting ${studio.agentName()}…' : t().thought != "" ? "Thinking…" : ""}</text>
+					<text tag="chat-status" color={c("dim")} font-size={12} max-lines={1} text-overflow="ellipsis">{status(studio, t())}</text>
 				</view>
 			</Show>
 			<Show when={t().build != null || t().error != null}>{failure(studio, t)}</Show>
@@ -152,6 +152,15 @@ class Chat implements Markup {
 	static function after(t:Turn, notes:Array<Inbox.Note>, id:Int):String {
 		var k = Lambda.findIndex(notes, n -> n.id == id);
 		return k < 0 ? "" : Turns.split(t.text, notes.map(n -> n.at))[k + 1];
+	}
+
+	// (the turn's one dim line until its first words: starting, what the agent
+	// says it is about to do (studio.working's note, its status), else thinking)
+	public static function status(studio:Studio, t:Turn):String {
+		if (studio.agentStarting()) return 'Starting ${studio.agentName()}…';
+		var name = studio.agentName(), peers = studio.presence.peers().filter(p -> p.working && p.status != "");
+		var p = Lambda.find(peers, p -> p.name == name) ?? peers[0];
+		return p != null ? p.status : t.thought != "" ? "Thinking…" : "";
 	}
 
 	// (a turn's changes: one a file)
