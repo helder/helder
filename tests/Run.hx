@@ -674,6 +674,16 @@ class Run {
 		said = File.getContent(out);
 		Sys.print(said);
 		if (said.indexOf("viewer: doc.md · 1 / 3 (shown") < 0) throw new Failed('the viewer did not show the Markdown document: $said');
+		// (a folder among 40: the sidebar's level of them scrolls, not pushing the window's content past its bottom)
+		for (i in 0...40)
+			mkdirs('bin/viewer/many/folder $i');
+		File.saveContent("bin/viewer/many/folder 0/a.txt", "a");
+		var many = '$wine$exe --new --exit-after 3 "bin/viewer/many/folder 0"';
+		if (Sys.systemName() == "Linux") shell('$XVFB -a $many > $out') else shell('$many > $out');
+		said = File.getContent(out);
+		Sys.print(said);
+		var ends = ~/ends at ([0-9]+) of ([0-9]+)/;
+		if (!ends.match(said) || ends.matched(1) != ends.matched(2)) throw new Failed('the window\'s content does not end at its bottom: $said');
 		// (macOS: a video, played by helder.media on VideoToolbox; a video alone, so nothing is heard)
 		if (GFX_TARGET.startsWith("macos-") && HOST.startsWith("macos-")) {
 			shell('$exe --new --exit-after 2 tests/media/hevc.mp4 > $out');

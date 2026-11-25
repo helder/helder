@@ -722,6 +722,22 @@ class MarkupTest implements Markup {
 		again = shown().filter(n -> idOf(n) == topId)[0];
 		check("virtual rows: rows taken out above the view: nothing moves", again != null && drawnY(again) == topY && l.count == 1000001,
 			again == null ? "gone" : '${drawnY(again)} $topY');
+		// (at the very top: rows put in above the first come into view, the view stays at the top)
+		l.scrollY = 0;
+		ui.update();
+		next = items().copy();
+		for (k in 0...5)
+			next.insert(0, 3000000 + k);
+		items(next);
+		flush();
+		ui.update();
+		check("virtual rows: at the top, rows put in above the first: still at the top", l.scrollY == 0 && idOf(shown()[0]) == 3000004,
+			'${l.scrollY} ${idOf(shown()[0])}');
+		next = items().copy();
+		next.splice(0, 5);
+		items(next);
+		flush();
+		ui.update();
 		// (a jump to the last row: made, measured, its end at the view's)
 		l.scrollToIndex(l.count - 1, "end");
 		ui.update();

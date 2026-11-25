@@ -96,6 +96,6 @@ class Standard implements Markup {
 		// a look for what it holds: its sheet, and the look its controls draw with
 	public static function Themed(props:{look:Look<Dynamic>, ?children:Any}):UiView {
 		Graph.setContext(Look.context, props.look);
-		return <view grow={1} ref={(n:Node) -> n.theme = props.look.sheet()}>{props.children}</view>;
+		return <view grow={1} min-height={0} min-width={0} ref={(n:Node) -> n.theme = props.look.sheet()}>{props.children}</view>;
 	}
 }

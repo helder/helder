@@ -11,8 +11,9 @@ browser engine and no runtime to install.
   time: a folder's subfolders, the one you are in highlighted, › to go
   deeper, the drive's free space at the foot. A toolbar with back and
   forward, the folder's name (its menu lists the folders enclosing it),
-  search, the View menu (the order, folders first, hidden files) and the
-  inspector; the path along the bottom, each folder a button and each
+  search, the View menu (the order, folders first, hidden files: a menu
+  button, opened as the mouse goes down, an item picked by dragging onto
+  it and letting go) and the inspector; the path along the bottom, each folder a button and each
   separator a menu of that folder's subfolders.
 - **A grid of thumbnails, or a list** (name, date, size, kind; sorted by
   its header). Thumbnails come from the viewer's own cache, the nearest
@@ -28,6 +29,9 @@ browser engine and no runtime to install.
   them, their kinds and total size), its kind and size,
   Open, Show in Finder (Explorer, the file manager), Move to Trash (put
   back with Undo) and its details: dimensions, pages, duration, dates.
+  Kept while the selected file is the same one (its path, size and
+  modified time): a search's keystrokes, a sort or a batch read in change
+  the list, not the inspector, whose preview is decoded once.
 - **Opens** PNG and APNG, JPEG, GIF, WebP and PDF on every system, and
   TIFF, HEIC/HEIF, AVIF and camera RAW files where the system has their
   codecs (Windows' WIC, macOS's ImageIO, Linux's libtiff, libheif,
@@ -484,8 +488,13 @@ and list, the inspector, search; a PDF's column: the keys scrolling
 it, go to page, the zoom), `Pdf.test.hx` (the pages' places at a zoom,
 the pages a scroll shows and draws, go to page's scroll, a zoom kept
 about its point, a page that cannot be drawn),
+`Inspector.test.hx` (a search's keystrokes: the selected file's preview
+asked for once, its picture and details kept), `Window.test.hx` (a
+folder among 30, at desktop sizes: the panels and the path bar end at
+the window's bottom, the sidebar's level scrolls),
 `Viewer.story.hx` (the grid and the list dark and light, several
-selected, the inspector of a photo, of a PDF and of a Markdown document, an empty folder, a missing one, no results, a file full size, a
+selected, the inspector of a photo, of a PDF and of a Markdown document, a marquee
+being dragged over the grid, an empty folder, a missing one, no results, a file full size, a
 PDF's column scrolled between two pages, the Markdown sample dark and light,
 an error in its place, the status line; their trees in
 `Viewer.story.snap`). EXIF's reader is
@@ -494,8 +503,10 @@ helder.image's (`src/helder/image/Exif.test.hx`), the drops helder.os's
 real window on the GPU (Linux under Xvfb; `GFX_TARGET=windows-x86_64`
 under Wine), the fixtures' photo opened, decoded on helder.jobs and
 shown full size, closed after 3 s (`--exit-after`: the title and state
-printed, or the folder and its count while browsing), a PDF's first page, a
-Markdown document (tests/fixtures/markdown), a 9000x2000 PNG in tiles
+printed, or the folder, its count and where the panels end against the
+window's height while browsing), a PDF's first page, a
+Markdown document (tests/fixtures/markdown), a folder among 40 (its
+panels ending at the window's bottom), a 9000x2000 PNG in tiles
 (`tests/bigpng.mjs`), then again with no system font
 found (`HELDER_NO_SYSTEM_FONTS=1`: helder.text looks for none, and the
 viewer adds its own, `fonts/DejaVuSans-viewer.ttf`, a 41 KB subset of

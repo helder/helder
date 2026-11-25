@@ -268,7 +268,7 @@ class Shell implements Markup {
 				if (exitAfter >= 0) Async.launch(_ -> {
 					Async.delay(exitAfter);
 					var line = x.full.value ? 'viewer: ${viewer.title.peek()} (${viewer.state.peek()}${viewer.message.peek() == "" ? "" : ": " + viewer.message.peek()}, ${viewer.camera.percent()}%, ${w.window.width}x${w.window.height})'
-						: 'viewer: ${x.sidebar.title(x.browser.dir.value)} (browsing, ${ContentView.count(x)}, ${w.window.width}x${w.window.height})';
+						: 'viewer: ${x.sidebar.title(x.browser.dir.value)} (browsing, ${ContentView.count(x)}, ${w.window.width}x${w.window.height}, ${ends(w.ui)})';
 					Sys.println(line);
 					if (report != null) try sys.io.File.saveContent(report, line + "\n") catch (_:Dynamic) {}
 					save(store, w, x);
@@ -280,6 +280,17 @@ class Shell implements Markup {
 			{phone ? null : <MenuBarView menus={ViewerActions.menus(recent.slice(0, 8), places)} ref={b -> bar = b}/>}
 			{view(x)}
 		</Surface>);
+	}
+
+	// (where the browser's panels end against the window's bottom, the
+	// window lane's check: a column's content may not push it further)
+	static function ends(ui:helder.ui.Ui):String {
+		var low = 0.0;
+		for (t in ["sidebar", "main", "pathbar", "inspector"]) {
+			var n = ui.root.find(t);
+			if (n != null) low = Math.max(low, n.absY + n.height);
+		}
+		return 'ends at ${Math.round(low)} of ${Math.round(ui.height)}';
 	}
 
 	// (a phone's explorer: its Documents and its grants; a file on disk
@@ -475,8 +486,8 @@ class Shell implements Markup {
 		// (a large folder, not watched: read again when the pointer comes back to the window)
 		function back()
 			if (!x.full.value && b.total.value >= Browser.WATCH_BELOW && !b.reading.value) b.refresh();
-		return <view tag="window" grow={1} background={Look.ref.canvas} color={Look.ref.fg} font-family="system-ui" font-size={13} onPointerEnter={back}>
-			<view tag="browser" grow={1} direction="row" hidden={x.full()}>
+		return <view tag="window" grow={1} min-height={0} background={Look.ref.canvas} color={Look.ref.fg} font-family="system-ui" font-size={13} onPointerEnter={back}>
+			<view tag="browser" grow={1} min-height={0} direction="row" hidden={x.full()}>
 				<Show when={!medium()}>{SidebarView.make(x)}</Show>
 				<view grow={1} min-width={0} direction="row" padding-top={WindowButtons.side() == "end" ? 32 : 0}>
 					{ContentView.make(x, medium)}

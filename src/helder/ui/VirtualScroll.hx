@@ -16,7 +16,8 @@ import helder.ui.access.Semantics;
 //
 // The scroll is anchored to a row: the first in view and how far into it,
 // kept through measures, a new estimate and rows put in or taken out
-// before it (splice), so the content does not move. scrollToIndex (start,
+// before it (splice), so the content does not move; at the very top it
+// stays at the top (rows put in above the first come into view). scrollToIndex (start,
 // center, end or the nearest edge: auto) goes to a row made or not, held
 // there while its rows are measured; focusIndex makes the row, scrolls to
 // it and focuses it. The rows are a listbox's options to assistive
@@ -175,7 +176,11 @@ class VirtualScroll extends Node {
 			slots.sort((a, b) -> a.index - b.index);
 			reorder(1, [for (s in slots) s.node]);
 		}
-		var a = map(anchorRow);
+		// (at the very top it stays there, as a browser's scroll anchoring takes
+		// no anchor at offset 0: rows coming in above the first, a folder read
+		// in batches, would carry the view down with that row)
+		var top = anchorRow == 0 && anchorDelta <= 0 && target < 0;
+		var a = top ? 0 : map(anchorRow);
 		// (its row taken out: the row now where it was, among those put there, else the next)
 		if (a < 0) {
 			var k = anchorRow - start;
