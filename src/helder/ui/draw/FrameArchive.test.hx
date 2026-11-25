@@ -41,8 +41,43 @@ function tests() {
 			a.add("scene", "k", 220, 120, w.frame());
 			var again = new FrameWriter(), placeholder = new FrameWriter();
 			FrameArchive.decode(a.encode()).list("scene").replay(again);
-			GpuPlaceholder.draw(placeholder, 10, 20, 200, 100);
+			placeholder.rect(10, 20, 200, 100, 0, GpuPlaceholder.COLOR, 0, 0);
 			equals(again.frame().bytes.toHex(), placeholder.frame().bytes.toHex());
+			// (drawn by a node on a writer: its box, the writer told)
+			var w = new FrameWriter();
+			GpuPlaceholder.draw(w, 10, 20, 200, 100);
+			equals(w.passes, 1);
+		});
+		test("a loop's frames as steps from the last: kept ops' numbers, come and gone ops whole", () -> {
+			var frames = [], w = new FrameWriter();
+			w.rect(0, 0, 10, 10, 0, 0xFF000000, 0, 0);
+			w.loop(30);
+			for (f in 0...70) {
+				if (f > 0) w.next();
+				w.rect(0, 0, 100, 100, 0, 0xFFFFFFFF, 0, 0);
+				if (f % 7 < 3) w.rect(5, 5, 20, 20, 4, 0xFF00FF00, 0, 0);
+				w.pushOpacity(f / 70);
+				w.rect(f * 1.5, 40 + 1 / 3, 10, 10, 2, 0xFFFF0000, 0, 0);
+				w.popOpacity();
+				w.rect(90, 90, 5, 5, 0, 0xFF0000FF, 0, 0);
+				frames.push(f);
+			}
+			var a = new FrameArchive();
+			a.add("l", "k", 100, 100, w.frame());
+			var b = FrameArchive.decode(a.encode()), l = b.loop("l");
+			equals({fps: l.fps, n: l.lists.length}, {fps: 30, n: 70});
+			// (each frame read back is the frame painted)
+			for (f in frames) {
+				var want = new FrameWriter(), got = new FrameWriter();
+				want.rect(0, 0, 100, 100, 0, 0xFFFFFFFF, 0, 0);
+				if (f % 7 < 3) want.rect(5, 5, 20, 20, 4, 0xFF00FF00, 0, 0);
+				want.pushOpacity(f / 70);
+				want.rect(f * 1.5, 40 + 1 / 3, 10, 10, 2, 0xFFFF0000, 0, 0);
+				want.popOpacity();
+				want.rect(90, 90, 5, 5, 0, 0xFF0000FF, 0, 0);
+				l.lists[f].replay(got);
+				equals(got.frame().bytes.toHex(), want.frame().bytes.toHex());
+			}
 		});
 		#if (target.name == "hxmc" && hxmc.target != "wasm32-wasi")
 		final stories:Array<{name:String, w:Int, h:Int, mount:Node->(() -> Void)}> = [
@@ -63,6 +98,31 @@ function tests() {
 				Render.render(Fixture.own(), root);
 			}}
 		];
+		test("a loop replayed as drawn, frame by frame", () -> {
+			var g = new Golden(320, 200), t = helder.view.graph.Graph.signal(0);
+			var dispose = Render.render(Fixture.moving(t), g.ui.root);
+			g.ui.update();
+			var w = new FrameWriter();
+			g.ui.paint(w);
+			w.loop(30);
+			var lives = [];
+			for (f in 0...64) {
+				if (f > 0) w.next();
+				t(f);
+				helder.view.graph.Graph.flush();
+				g.ui.update();
+				g.ui.paint(w);
+				if (f % 9 == 0) lives.push({f: f, px: g.live()});
+			}
+			var a = new FrameArchive();
+			a.add("moving", "k", 320, 200, w.frame());
+			var l = FrameArchive.decode(a.encode()).loop("moving");
+			equals(l.lists.length, 64);
+			var off = [for (s in lives) differ(s.px, g.replay(l.lists[s.f]))];
+			dispose();
+			g.dispose();
+			equals(off, [for (_ in lives) 0]);
+		});
 		for (s in stories)
 			test("replayed as drawn: " + s.name, () -> {
 				var g = new Golden(s.w, s.h);
@@ -271,6 +331,15 @@ private class Fixture implements helder.view.Markup {
 				<text>dashed border</text>
 			</view>
 			<view width={300} height={30} border-width="0 0 4 0" border-color="#0ea5e9" background="#f1f5f9"/>
+		</view>;
+
+	// (a box moving, a counter, a badge that comes and goes, a bar filling)
+	public static function moving(t:helder.view.graph.Signal<Int>)
+		return <view width={320} height={200} padding={16} gap={10} background="#0f172a">
+			<view width={40} height={40} radius={8} background="#38bdf8" transform={'translate(${t() * 3.5}px, 0px)'}/>
+			<text color="#ffffff" font-size={18}>{"Score " + Std.int(t() / 8)}</text>
+			{t() % 20 < 8 ? <view width={60} height={20} radius={10} background="#f59e0b"/> : null}
+			<view width={280} height={8} radius={4} background="#1e293b"><view width={t() * 4.25} height={8} radius={4} background="#22c55e"/></view>
 		</view>;
 
 	public static function own()

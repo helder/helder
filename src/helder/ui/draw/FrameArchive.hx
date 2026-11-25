@@ -13,6 +13,7 @@ import helder.text.SystemFonts;
 import helder.ui.Drawing.ImageDrawing;
 import helder.ui.draw.FrameStreams.FrameInput;
 import helder.ui.draw.FrameWriter.Frame;
+import helder.ui.draw.FrameWriter.FrameLoopData;
 import helder.ui.draw.FrameWriter.FontRef;
 import helder.ui.draw.FrameWriter.ImageRef;
 
@@ -28,9 +29,10 @@ import helder.ui.draw.FrameWriter.ImageRef;
 // The file: "HFRM", its version, then chunks (a tag, a varint length, its
 // bytes; one of a tag not known skipped): "BLOB" (an image's or a font's
 // bytes, its hash first, then 1 when they are deflated) and one "BODY"
-// (deflated: the font table, the screens).
+// (deflated: the font table, the screens, each its frame and its loop's:
+// FrameLoop's deltas at its fps).
 class FrameArchive {
-	public static inline var VERSION = 2;
+	public static inline var VERSION = 3;
 
 	final screens = new Map<String, Screen>();
 	final order:Array<String> = [];
@@ -62,6 +64,7 @@ class FrameArchive {
 			width: width,
 			height: height,
 			bytes: frame.bytes,
+			loop: frame.loop,
 			fonts: [
 				for (f in frame.fonts) {
 					hash: f.hash,
@@ -97,7 +100,7 @@ class FrameArchive {
 		for (i in s.images)
 			if (!blobs.exists(i.hash) && from.blobs.exists(i.hash)) blobs.set(i.hash, from.blobs.get(i.hash));
 		if (!screens.exists(name)) order.push(name);
-		screens.set(name, {key: key, width: s.width, height: s.height, bytes: s.bytes, fonts: s.fonts, images: s.images});
+		screens.set(name, {key: key, width: s.width, height: s.height, bytes: s.bytes, loop: s.loop, fonts: s.fonts, images: s.images});
 	}
 
 	public function remove(name:String) {
@@ -113,6 +116,21 @@ class FrameArchive {
 		var fonts = [for (f in s.fonts) font(f)];
 		if (fonts.contains(null)) return null;
 		return FrameReader.read(s.bytes, cast fonts, [for (i in s.images) image(i)]);
+	}
+
+	// whether a screen has a loop stored
+	public function looped(name:String):Bool
+		return screens.get(name)?.loop != null;
+
+	// a screen's loop: its fps and its frames recorded into lists; null when
+	// it has none (one with a pass plays live) or a font it draws is not here
+	public function loop(name:String):Null<{fps:Int, lists:Array<DisplayList>}> {
+		var s = screens.get(name);
+		if (s == null || s.loop == null) return null;
+		var fonts = [for (f in s.fonts) font(f)];
+		if (fonts.contains(null)) return null;
+		var images = [for (i in s.images) image(i)];
+		return {fps: s.loop.fps, lists: [for (recs in FrameLoop.decode(s.loop.frames)) FrameReader.read(FrameStreams.of(recs), cast fonts, images)]};
 	}
 
 	public function encode():Bytes {
@@ -167,6 +185,14 @@ class FrameArchive {
 			}
 			o.uint(s.bytes.length);
 			o.ints.add(s.bytes);
+			o.uint(s.loop == null ? 0 : s.loop.fps);
+			if (s.loop != null) {
+				o.uint(s.loop.frames.length);
+				for (f in s.loop.frames) {
+					o.uint(f.length);
+					o.ints.add(f);
+				}
+			}
 		}
 		chunk(out, "BODY", Deflate.zlib(o.bytes()));
 		return out.getBytes();
@@ -226,9 +252,10 @@ class FrameArchive {
 				}
 			];
 			var n = Std.int(r.uint());
-			var bytes = r.raw(n);
+			var bytes = r.raw(n), fps = Std.int(r.uint());
+			var loop = fps == 0 ? null : {fps: fps, frames: [for (_ in 0...Std.int(r.uint())) r.raw(Std.int(r.uint()))]};
 			order.push(name);
-			screens.set(name, {key: key, width: width, height: height, bytes: bytes, fonts: fonts, images: images});
+			screens.set(name, {key: key, width: width, height: height, bytes: bytes, loop: loop, fonts: fonts, images: images});
 		}
 	}
 
@@ -369,6 +396,7 @@ private typedef Screen = {
 	width:Float,
 	height:Float,
 	bytes:Bytes,
+	loop:Null<FrameLoopData>,
 	fonts:Array<FontRef>,
 	images:Array<ImageRef>
 }

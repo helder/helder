@@ -168,13 +168,36 @@ class Host {
 
 	// a screen's frame as data (FrameWriter's: the studio's stills, its
 	// frames file), on the host's background as drawn; null: not built
-	public function written(s:HostScreen):Null<FrameWriter.Frame> {
+	// fps: a loop story's loop too, its frames from its moment on its clock
+	// (as hovered, Host.loop), the screen built again after (its moment);
+	// none when a pass draws in it (played live)
+	public function written(s:HostScreen, fps = 0):Null<FrameWriter.Frame> {
 		var ui = s.ui;
 		if (ui == null) return null;
 		var w = new FrameWriter();
 		w.rect(0, 0, s.width, s.height, 0, background, 0, 0);
 		s.context.run(() -> ui.paint(w));
-		return w.frame();
+		var loop:Float = s.story.loop ?? 0;
+		if (fps <= 0 || loop <= 0) return w.frame();
+		var passes = w.passes;
+		w.loop(fps);
+		s.reset();
+		s.mount();
+		var u = s.ui;
+		if (u == null) return w.frame();
+		for (f in 0...Math.ceil(loop * fps)) {
+			if (f > 0) w.next();
+			w.rect(0, 0, s.width, s.height, 0, background, 0, 0);
+			s.context.run(() -> {
+				if (f > 0) Clock.tick(s.moment + f / fps);
+				u.update();
+				u.paint(w);
+			});
+		}
+		s.reset();
+		var out = w.frame();
+		if (w.passes > passes) out.loop = null;
+		return out;
 	}
 
 	// whether anything shown would draw in the next turn (else the loop may sleep until the next event or timer)

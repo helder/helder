@@ -24,20 +24,52 @@ import helder.ui.draw.DrawText.DrawParagraph;
 //   ui.paint(w);
 //   archive.add(name, key, ui.width, ui.height, w.frame());
 class FrameWriter implements TextureCanvas {
-	final out = new FrameStreams();
-	// (this frame's fonts and images, by their index in it)
+	var out = new FrameStreams();
+	// (this frame's fonts and images, by their index in it: its loop's too)
 	final fonts:Array<FontFile> = [];
 	final images:Array<Image> = [];
+	// the passes drawn (a pass's box, a placeholder's: what a frame of data cannot show)
+	public var passes(default, null) = 0;
+	// (a loop after the still: its fps, the still's streams, its frames' records)
+	var fps = 0;
+	var still:Null<Bytes> = null;
+	final loopFrames:Array<Array<FrameStreams.FrameRec>> = [];
 
 	public function new() {}
 
-	// what was painted: its streams, the fonts and images they name
+	// what was painted: its streams, the fonts and images they name, its loop's frames
 	public function frame():Frame {
+		if (fps > 0) loopFrames.push(out.records());
 		return {
-			bytes: out.bytes(),
+			bytes: still ?? out.bytes(),
 			fonts: [for (f in fonts) FrameArchive.fontRef(f)],
-			images: [for (i in images) FrameArchive.imageRef(i)]
+			images: [for (i in images) FrameArchive.imageRef(i)],
+			loop: fps > 0 && loopFrames.length > 0 ? {fps: fps, frames: FrameLoop.encode(loopFrames)} : null
 		};
+	}
+
+	// the still painted: what is painted next is its loop's first frame, at fps
+	public function loop(fps:Int) {
+		still = out.bytes();
+		this.fps = fps;
+		out = new FrameStreams(true);
+	}
+
+	// (a pass recorded into a list painted onto it)
+	public function passed()
+		passes++;
+
+	// a loop's next frame (after loop's first)
+	public function next() {
+		loopFrames.push(out.records());
+		out = new FrameStreams(true);
+	}
+
+	// (a pass's box drawn by a node that draws on the GPU: GpuPlaceholder's)
+	public function placeholder(x:Float, y:Float, w:Float, h:Float) {
+		passed();
+		out.op(FrameOp.PLACEHOLDER);
+		box(x, y, w, h);
 	}
 
 	public function translate(dx:Float, dy:Float) {
@@ -176,10 +208,8 @@ class FrameWriter implements TextureCanvas {
 	}
 
 	// (what a pass draws: its box; read back, a placeholder)
-	public function gpuTexture(t:Texture, id:Int, x:Float, y:Float, w:Float, h:Float, radius:Float = 0.0, ?corners:Corners) {
-		out.op(FrameOp.PLACEHOLDER);
-		box(x, y, w, h);
-	}
+	public function gpuTexture(t:Texture, id:Int, x:Float, y:Float, w:Float, h:Float, radius:Float = 0.0, ?corners:Corners)
+		placeholder(x, y, w, h);
 
 	public function pass(f:Any) {}
 
@@ -343,7 +373,11 @@ typedef Frame = {
 	bytes:Bytes,
 	fonts:Array<FontRef>,
 	images:Array<ImageRef>,
+	// (its loop: its fps, its frames as FrameLoop's deltas)
+	?loop:Null<FrameLoopData>,
 }
+
+typedef FrameLoopData = {fps:Int, frames:Array<Bytes>};
 
 // a font by reference: its file's hash, where it was read from (null: bytes
 // given, data them), its face, its engine (Shaping's) and a variable one's

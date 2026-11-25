@@ -37,6 +37,26 @@ class Stills {
 			null;
 		}
 
+	// a screen's loop from the file (decoded once: its lists kept), null: none
+	public function loop(name:String):Null<{fps:Int, lists:Array<DisplayList>, ms:Float}> {
+		if (!archive.looped(name)) return null;
+		var l = loops.get(name);
+		if (l != null) return l;
+		var t0 = haxe.Timer.stamp();
+		var d = try archive.loop(name) catch (e:Dynamic) {
+			Sys.println('studio: $FILE: $name\'s loop: $e');
+			null;
+		}
+		if (d == null) return null;
+		loops.set(name, l = {fps: d.fps, lists: d.lists, ms: Math.round((haxe.Timer.stamp() - t0) * 10000) / 10});
+		return l;
+	}
+
+	final loops = new Map<String, {fps:Int, lists:Array<DisplayList>, ms:Float}>();
+
+	public function looped(name:String):Bool
+		return archive.looped(name);
+
 	public function size(name:String):Null<{width:Float, height:Float}>
 		return archive.size(name);
 
@@ -50,6 +70,7 @@ class Stills {
 		var one = b == null ? null : FrameArchive.decode(b);
 		if (one == null) return;
 		archive.take(one, name, sources.key(file, name));
+		loops.remove(name);
 		dirty = true;
 	}
 

@@ -34,6 +34,8 @@ class Studio {
 
 	// the frame under the pointer (its loop played: Host.loop; null: none)
 	public final hovered:Signal<Null<String>> = signal(null);
+	// (when the frame hovered last was, for its loop's first frame: measured)
+	var hoverAt = -1.0;
 	// the project was an empty folder, the starter's now (the blank sheet until the first prompt)
 	public final starter:Bool;
 	// (the blank sheet gone with the first prompt: the canvas fitted again once the chat is beside it)
@@ -1256,6 +1258,7 @@ class Studio {
 		var ui = Main.window?.ui;
 		if (ui != null) ui.requestFrame();
 		if (s.version == 1) log("screen-shown", {screen: s.info.name});
+		if (previews.looping == s.info.name) loopShown(s.info.name, "live");
 		allShown();
 		var m = measuring;
 		if (m != null && m.screen == s && s.version > m.version) {
@@ -1266,6 +1269,21 @@ class Studio {
 			log("patch-shown", {ms: ms, frames: frames - m.frame, programMs: s.patchedMs, label: m.label, color: color, version: s.version});
 		}
 		if (focused.peek() == s.info.name && selection.peek() != null) refreshSelection();
+	}
+
+	// a frame the pointer came onto
+	public function hover(name:String) {
+		hoverAt = haxe.Timer.stamp();
+		hovered(name);
+	}
+
+	// a hovered loop's first frame shown (from: "file", or "live": the program's), its time since the hover
+	public function loopShown(name:String, from:String) {
+		if (hoverAt < 0 || hovered.peek() != name) return;
+		var ms = Math.round((haxe.Timer.stamp() - hoverAt) * 10000) / 10;
+		hoverAt = -1;
+		Sys.println('studio: $name\'s loop shown $ms ms after the hover ($from)');
+		log("loop-shown", {screen: name, ms: ms, from: from});
 	}
 
 	// (every screen showing a frame, the program's or its still from the frames file: told once)

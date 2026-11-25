@@ -1635,7 +1635,13 @@ stored) and images (the file, else PNG pixels, an SVG icon or a gradient
 as its data) once by hash, deflated. `list(name)` records one into a
 `DisplayList` (`FrameReader`), whose text is a `RunParagraph` the GPU and
 CPU renderers draw as the paragraph it came from: replayed, the same
-pixels, at any scale its glyphs rasterized anew.
+pixels, at any scale its glyphs rasterized anew. A loop (a story's, from
+its moment: `FrameWriter.loop`, `next`) is kept with its still as
+`FrameLoop` deltas: each frame from the last as `DisplayList.diff` sees
+two recordings, the ops alike at both ends kept with only their changed
+numbers as steps, the ops between whole, a key frame every 30;
+`loop(name)` gives its frames' lists and fps. A frame in which a pass
+draws (`passes`) cannot be kept as data: such a loop is played live.
 
 ### On the CPU
 
