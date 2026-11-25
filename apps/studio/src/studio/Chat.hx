@@ -4,6 +4,7 @@ import helder.gfx.Color;
 import helder.markdown.Markdown;
 import helder.markdown.MarkdownView;
 import helder.ui.*;
+import helder.ui.view.UiFlow.Popover;
 import helder.view.*;
 import helder.view.Flow.*;
 import helder.view.graph.Graph.*;
@@ -19,9 +20,10 @@ using StringTools;
 // while it thinks, its last tools as lines (the ones before folded), a
 // failed build's row, its question as a card, what the user said while it
 // worked (the inbox's notes: "sent while working", then "seen"); at the
-// bottom the questions waiting, what it is doing (Stop while it works) and
-// the input, with the agent's chip and its menu. Every input of the
-// studio's is here: the canvas is to watch.
+// bottom the questions waiting (a quiet strip) and the input, with the
+// agent's chip (its menu a popup above it) and send, which while the agent
+// works is its mark, pulsing in its colour (a press stops it). Every input
+// of the studio's is here: the canvas is to watch.
 class Chat implements Markup {
 	public static function view(studio:Studio):View {
 		// (the log follows what comes while it is at its end: a reply, a card, a note)
@@ -45,12 +47,11 @@ class Chat implements Markup {
 			<view padding="12 14 14" row-gap={8} shrink={0}>
 				<Show when={studio.talk.questions() > 0}>
 					<view:button tag="chat-questions" role="button" label="The questions for you" direction="row" align-items="center" column-gap={6}
-						cursor="pointer" color={c("ink3")} onPress={() -> toEnd()}>
-						<view width={6} height={6} radius={3} background={Color.parse(waiter(studio).colour)}/>
-						<text font-size={12}>{questions(studio.talk.questions())}</text>
+						cursor="pointer" color={c("dim")} onPress={() -> toEnd()}>
+						<view width={5} height={5} radius={3} background={Color.parse(waiter(studio).colour)}/>
+						<text font-size={11}>{questions(studio.talk.questions())}</text>
 					</view:button>
 				</Show>
-				<Show when={working(studio) || studio.talk.waits()}>{status(studio)}</Show>
 				{input(studio, false)}
 			</view>
 		</view>;
@@ -189,23 +190,11 @@ class Chat implements Markup {
 		</view>;
 	}
 
-	// what the agent does: working (Stop), or waiting for the user
-	static function status(studio:Studio):View
-		return <view tag="chat-status" direction="row" align-items="center" column-gap={8} font-size={12} color={c("ink3")}>
-			<view width={8} height={8} radius={4} background={Color.parse(studio.talk.waits() ? waiter(studio).colour : studio.agentColour())}/>
-			<text grow={1}>{studio.talk.waits() ? waiter(studio).name + " waits for you" : studio.agentName() + " is working"}</text>
-			<Show when={working(studio)}>
-				<view:button tag="chat-stop" role="button" label="Stop" focusable height={24} padding="0 10" radius={Theme.CHIP} background={c("bubble")}
-					color={c("ink2")} justify="center" cursor="pointer" onPress={() -> studio.stopTurn()}>
-					<text font-size={12}>Stop</text>
-				</view:button>
-			</Show>
-		</view>;
-
 	// the input: the prompt (blank: the sheet's first, bigger), the agent's
-	// chip (its menu: the agents found), send; Enter sends (while the agent
-	// works: steering, the next prompt). Glows in the agent's colour while it
-	// waits for the user.
+	// chip (its menu: the agents found, a popup above it), send; Enter sends
+	// (while the agent works: a note for it). While it works, with nothing
+	// typed, send is the agent's mark, pulsing (a press stops the turn).
+	// Glows in the asker's colour while a question waits.
 	public static function input(studio:Studio, blank:Bool):View {
 		var text = signal(""), menu = signal(false);
 		function send() {
@@ -219,7 +208,7 @@ class Chat implements Markup {
 			border-color={studio.talk.waits() ? Color.parse(waiter(studio).colour) : c(blank ? "hair" : "hair2")}
 			shadow={blank ? "0 24 80 rgba(0,0,0,0.35)" : "none"}>
 			<field tag="prompt" slot="ask-input" label="Prompt" value={text} min-height={blank ? 48 : 22} font-size={blank ? 16 : Theme.CHAT_SIZE}
-				placeholder={blank ? "What do you want to make?" : working(studio) ? "Steer while it works…" : "Reply…"} ref={(n:Node) -> studio.talk.field = n}
+				placeholder={blank ? "What do you want to make?" : "Reply…"} ref={(n:Node) -> studio.talk.field = n}
 				onInput={e -> text(e.text)} onKeyDown={e -> if (e.key == Key.ENTER) send()}/>
 			<view direction="row" align-items="center" column-gap={8}>
 				<view:button tag="agent-chip" role="button" label={"The agent: " + studio.agentName()} focusable direction="row" align-items="center"
@@ -228,21 +217,29 @@ class Chat implements Markup {
 					<view width={blank ? 8 : 6} height={blank ? 8 : 6} radius={4} background={Color.parse(studio.agentColour())}/>
 					<text font-size={blank ? 12 : 11}>{studio.agentName()}</text>
 					<image src={Icons.chevronDown} width={Theme.ICON_XS} height={Theme.ICON_XS} color={c("ink3")}/>
+					<Popover open={menu} placement="above" gap={6} onDismiss={() -> menu(false)}>{agents(studio, menu)}</Popover>
 				</view:button>
 				<view grow={1}/>
-				<view:button tag="send" role="button" label="Send" focusable width={blank ? 32 : 28} height={blank ? 32 : 28} radius={8}
-					background={text() == "" ? c("hair2") : c("ink")} color={text() == "" ? c("ink3") : c("ground")} align-items="center" justify="center"
-					cursor="pointer" onPress={send}>
-					<image src={Icons.arrowUp} width={Theme.ICON_S} height={Theme.ICON_S}/>
-				</view:button>
+				<Show when={working(studio) && text() == ""} fallback={
+					<view:button tag="send" role="button" label="Send" focusable width={blank ? 32 : 28} height={blank ? 32 : 28} radius={8}
+						background={text() == "" ? c("hair2") : c("ink")} color={text() == "" ? c("ink3") : c("ground")} align-items="center" justify="center"
+						cursor="pointer" onPress={send}>
+						<image src={Icons.arrowUp} width={Theme.ICON_S} height={Theme.ICON_S}/>
+					</view:button>
+				}>
+					<view:button tag="chat-stop" role="button" label={studio.agentName() + " is working: stop"} focusable width={28} height={28} radius={8}
+						background={c("hair2")} align-items="center" justify="center" cursor="pointer" onPress={() -> studio.stopTurn()}>
+						<view tag="chat-working" width={10} height={10} radius={5} background={Color.parse(studio.agentColour())}
+							ref={(n:Node) -> Watch.pulse(n, () -> working(studio))}/>
+					</view:button>
+				</Show>
 			</view>
-			<Show when={menu()}>{agents(studio, menu)}</Show>
 		</view>;
 	}
 
 	// the agents found (Agents), the one in use marked; another taken for the next prompt
 	static function agents(studio:Studio, menu:helder.view.graph.Signal<Bool>):View
-		return <view tag="agent-menu" slot="floating" padding={4} row-gap={2} align-self="flex-start" min-width={180}>
+		return <view tag="agent-menu" slot="floating" padding={4} row-gap={2} min-width={180} shadow={Theme.POPOVER}>
 			<For each={Agents.found()}>{(id:Read<String>) ->
 				<view:button tag={"agent-" + id()} slot="menu-item" role="button" label={Agents.label(id())} focusable
 					data-on={Agents.label(id()) == studio.agentName() ? "true" : "false"} onPress={() -> {

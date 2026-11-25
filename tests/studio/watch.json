@@ -1,5 +1,8 @@
 {
   "events": [
+    {"t": 0.3, "type": "tap", "tag": "agent-chip"},
+    {"t": 0.4, "type": "mark", "name": "menu"},
+    {"t": 0.45, "type": "key", "name": "Escape"},
     {"t": 0.5, "type": "tap", "tag": "prompt"},
     {"t": 0.6, "type": "type", "text": "work"},
     {"t": 0.7, "type": "key", "name": "Enter"},

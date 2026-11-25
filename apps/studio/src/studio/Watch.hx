@@ -82,7 +82,7 @@ class Watch implements Markup {
 	}
 
 	// a node's opacity breathing while on() (1.4 s), still otherwise
-	static function pulse(n:Node, on:Void->Bool) {
+	public static function pulse(n:Node, on:Void->Bool) {
 		var running = false;
 		effect(() -> on(), (yes:Bool) -> {
 			if (!yes || running) return;
