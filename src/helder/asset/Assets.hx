@@ -160,7 +160,7 @@ class Assets {
 		#if (hxmc.target == "wasm32-wasi")
 		DevWebAssets.asset_register(hxmc.unsafe.Callback.addr(webChanged));
 		#elseif (target.name == "hxmc")
-		helder.devtools.Agent.method("Assets.changed", p -> {
+		helder.dev.Agent.method("Assets.changed", p -> {
 			changed(p.key);
 			return {};
 		});

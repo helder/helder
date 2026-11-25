@@ -3,10 +3,10 @@ package helder.view;
 #if macro
 import haxe.macro.Context;
 import haxe.macro.Expr;
-import helder.markup.Live;
-import helder.markup.Plan.LiveAt;
+import helder.view.Live;
+import helder.view.Plan.LiveAt;
 
-// Live literals in Haxe's markup (helder.markup.Live, helder.dev.Literals):
+// Live literals in Haxe's markup (helder.view.Live, helder.dev.Literals):
 // HaxeTarget's live and liveIn. In a dev build (-D hxmc.dev, not
 // helder.release) a literal the planner marks live is read from its slot,
 // helder.dev.Literals.string/int/float/bool(id, value, anchor), its place

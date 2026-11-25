@@ -21,7 +21,7 @@ enum abstract Lang(Int) {
 // the token before; markup where an expression starts, by the rules of
 // the language's own parser: TSX's "<" after an operator, an opening
 // bracket, a keyword (return, yield...) or nothing, and Haxe's as
-// helder.markup.Syntax reads a literal (Parser.markupAt: not after a value,
+// helder.view.Syntax reads a literal (Parser.markupAt: not after a value,
 // a name or a number, but after return, throw, else, do, untyped, a
 // condition's ")" or metadata). Markup that does not read as markup (a
 // generic arrow `<T,>() =>` in TSX, a comparison) is read again as
@@ -448,7 +448,7 @@ class Scanner {
 	function markupSpace():Null<Node>
 		return trivia();
 
-	// a tag's or an attribute's name, as helder.markup.Syntax reads it: letters, "_", ":", then digits, "-", "." too
+	// a tag's or an attribute's name, as helder.view.Syntax reads it: letters, "_", ":", then digits, "-", "." too
 	function readName():Null<Node> {
 		var start = i;
 		while (i < s.length) {

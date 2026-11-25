@@ -1,9 +1,9 @@
 package helder.story;
 
-import helder.definition.Kernel;
+import helder.compiler.Kernel;
 
 // story({name, render, seed, width, height, store, caption, background, color, feature})'s handler
-// (src/helder/compiler/DESIGN.md 4), the same for both languages (Haxe's
+// (src/helder/compiler/README.md 4), the same for both languages (Haxe's
 // helder.story.Story.story, TypeScript's helder/story): the fields checked
 // at their positions, each a literal but render, a function of the story's
 // controls making its view; width and height its size in points (the

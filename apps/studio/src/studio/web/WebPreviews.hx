@@ -51,7 +51,7 @@ class WebPreviews {
 	final pending = new Map<Int, Dynamic->Void>();
 	var nextId = 1;
 	// the live literals' tables the preview was built with, by the project's path; the patches sent since
-	final built = new Map<String, {content:String, entries:Array<helder.markup.Live.Entry>}>();
+	final built = new Map<String, {content:String, entries:Array<helder.view.Live.Entry>}>();
 	final sent = new Map<String, String>();
 	// the program's start (ms), from the page's start event
 	public var startMs(default, null) = -1.0;
@@ -343,7 +343,7 @@ class WebPreviews {
 			var text = try studio.Files.read(file) catch (_:Dynamic) null;
 			if (text != null && haxe.crypto.Md5.encode(text) == t.name) {
 				built.set(file, {content: text, entries: t.entries});
-				for (e in (t.entries : Array<helder.markup.Live.Entry>))
+				for (e in (t.entries : Array<helder.view.Live.Entry>))
 					sent.remove(e.id);
 			}
 		}

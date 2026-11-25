@@ -124,7 +124,7 @@ its file's path and its name (`app.helder#Home`), so that no story's
   `canvas:at` in its flow's row (else after the one before). `canvas:*`
   attributes and `<note>` are the editor's: dropped before it is drawn.
 - **Interpreted, in the studio's process** (helder.ui.view.Interpreter: a
-  Target of helder.markup.Plan, the compiler's planner, its steps run at
+  Target of helder.view.Plan, the compiler's planner, its steps run at
   once against NodeRenderer's run-time functions), into nodes in the
   canvas' world beside the stories' images, under ui's defaults rather
   than the studio's theme. The same literal compiled makes the same tree
@@ -289,7 +289,7 @@ opens and closes it.
   (its pixels a point in halves, up to 3), the others at 1x when something
   in them changes; a screen out of view is suspended and its last frame
   kept.
-- **The devtools protocol on the dev connection** (src/helder/devtools,
+- **The devtools protocol on the dev connection** (src/helder/dev,
   helder.story.HostAgent): `Host.show` (the screens in view, the one
   selected, its scale), `Host.frame` and `Host.release` (the frames'
   textures), `Ui.getTree` and `Ui.nodesAt` naming a screen, live literals
