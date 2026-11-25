@@ -156,7 +156,23 @@ class AcpAgent implements Agent {
 		"SendToProject", "SendToProjectContext", "Skill"
 	];
 
-	static final SESSION:Dynamic = {claudeCode: {options: {disallowedTools: DENIED}}};
+	// (Claude Code's built-ins the session has: reading the project, its plan)
+	public static final TOOLS = ["Read", "Glob", "Grep", "TodoWrite"];
+
+	// (the session apart from the user's own Claude Code: only the studio's MCP
+	// server, no claude.ai connectors, no settings of theirs, so no plugins,
+	// hooks or CLAUDE.md of theirs; DENIED as well, should TOOLS be read otherwise)
+	static final SESSION:Dynamic = {
+		claudeCode: {
+			options: {
+				tools: TOOLS,
+				disallowedTools: DENIED,
+				strictMcpConfig: true,
+				settingSources: [],
+				settings: {disableClaudeAiConnectors: true, disableAllHooks: true}
+			}
+		}
+	};
 
 	function failure(e:Exception):String {
 		var a = acp;
