@@ -51,13 +51,24 @@ class GlassWindow {
 			}
 		}
 		show();
+		var input:Null<Input> = null;
 		App.run(() -> {
 			step++;
-			if (step == 10) {
+			if (input != null) {
+				var ok = input.step(step);
+				if (ok != null) {
+					if (!ok) failed++;
+					Sys.println("GlassWindow: " + (failed == 0 ? "ok" : '$failed FAILED'));
+					w.close();
+					Sys.exit(failed == 0 ? 0 : 1);
+					return;
+				}
+			} else if (step == 10) {
 				var k = w.window.width > 0 ? Scale.of(w) : 1.0;
 				if (!@:privateAccess w.ui.layered || @:privateAccess glass[0].systemLayer == null) {
-					Sys.println('GlassWindow: no system glass here (${@:privateAccess w.ui.layered ? "macOS before 26" : "the window\'s layers are not the system\'s"}): skipped');
-					w.close();
+					Sys.println('GlassWindow: no system glass here (${@:privateAccess w.ui.layered ? "macOS before 26" : "the window\'s layers are not the system\'s"}): its views skipped, the input under drawn glass');
+					step = 0;
+					input = new Input(w);
 					return;
 				}
 				var px = capture(w);
@@ -85,6 +96,9 @@ class GlassWindow {
 				if (at < scenes.length) {
 					step = 0;
 					show();
+				} else if (dir == null) {
+					step = 0;
+					input = new Input(w);
 				} else {
 					Sys.println("GlassWindow: " + (failed == 0 ? "ok" : '$failed FAILED'));
 					w.close();
@@ -151,6 +165,122 @@ class GlassWindow {
 }
 
 #if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
+// (input in a window with glass, the system's or drawn (the window's
+// layers not the system's), sent to this process alone by Inject.at, CI's
+// or HELDER_TEST_INPUT=1's: a list of rows under a glass button and a
+// group of two scrolled where no glass is; a scroll over the button, a
+// press on it and one on the group's second glass: each reaching helder's
+// view under the passive hosts)
+@:hxmc.unsafe(gc)
+private class Input {
+	final w:helder.ui.UiWindow;
+	final list = new Node();
+	final button = new Glass();
+	final grouped = new Glass();
+	var presses = 0;
+	var wheels = 0;
+	var before = 0;
+
+	public function new(w:helder.ui.UiWindow) {
+		this.w = w;
+		while (w.root.children.length > 0)
+			w.root.remove(w.root.children[0]);
+		var r = new Node();
+		r.style.set({width: GlassScene.W, height: GlassScene.H, background: 0xFFFFFFFF});
+		r.onWheel = _ -> wheels++;
+		list.style.set({overflow: Scroll, height: GlassScene.H, rowGap: 4, padding: 4});
+		for (i in 0...60) {
+			var row = new Node();
+			row.style.set({height: 30, shrink: 0, background: i % 2 == 0 ? 0xFF2F7FE8 : 0xFFE8463A});
+			list.append(row);
+		}
+		r.append(list);
+		button.interactive = true;
+		button.style.set({position: Absolute, left: 40, top: 40, width: 120, height: 50});
+		button.onClick = _ -> presses++;
+		r.append(button);
+		var g = new GlassGroup();
+		g.spacing = 12;
+		g.style.set({position: Absolute, left: 240, top: 40, direction: Row, columnGap: 6});
+		var first = new Glass();
+		first.style.set({width: 50, height: 50});
+		grouped.interactive = true;
+		grouped.style.set({width: 50, height: 50});
+		grouped.onClick = _ -> presses += 10;
+		g.append(first);
+		g.append(grouped);
+		r.append(g);
+		w.root.append(r);
+	}
+
+	var passed = true;
+
+	function check(ok:Bool, what:String):Bool {
+		Sys.println('GlassWindow: ${ok ? "ok" : "FAIL"}: $what');
+		if (!ok) passed = false;
+		return ok;
+	}
+
+	// (n's middle, in points)
+	function middle(n:Node):Array<Float> {
+		var k = w.window.width / w.device.surface.width;
+		return [(n.absX + n.width / 2) * k, (n.absY + n.height / 2) * k];
+	}
+
+	// (the view AppKit's hit test finds at x, y points of the content: "" if
+	// neither a glass view nor a passive host nor in one, else its class)
+	function hit(x:Float, y:Float):String {
+		var view = w.window.surface.handle;
+		return OsThread.get(() -> {
+			var M = helder.os.apple.objc.Msg, O = helder.os.apple.objc.ObjC;
+			var content = M.id(M.id(view, O.sel("window")), O.sel("contentView"));
+			var p:hxmc.unsafe.Ptr<helder.os.apple.objc.CGPoint> = hxmc.unsafe.LibC.malloc(16);
+			p.value.x = x;
+			p.value.y = M.rect(content, O.sel("frame")).size.height - y;
+			var v = M.idPoint(M.id(content, O.sel("superview")), O.sel("hitTest:"), p.value), found = "";
+			hxmc.unsafe.LibC.free(p);
+			while (!v.isNull() && found == "") {
+				for (c in [O.cls("NSGlassEffectView"), O.cls("NSGlassEffectContainerView"), O.cls("HxmcPassiveView")])
+					if (!c.isNull() && M.bPtr(v, O.sel("isKindOfClass:"), c)) found = helder.os.apple.objc.ObjC.string(M.id(v, O.sel("className")));
+				v = M.id(v, O.sel("superview"));
+			}
+			found;
+		});
+	}
+
+	// at step n: whether all passed, once done, else null
+	public function step(n:Int):Null<Bool> {
+		switch n {
+			case 10:
+				if (!Inject.at(w.window, 200, 200, false, 6)) {
+					Sys.println("GlassWindow: input not sent (CI's, or HELDER_TEST_INPUT=1): skipped");
+					return true;
+				}
+			case 30:
+				if (!check(list.scrollY > 0, 'a scroll where no glass is reaches the list under it: scrolled ${list.scrollY}')) return false;
+			case 50:
+				before = wheels;
+				var m = middle(button);
+				Inject.at(w.window, m[0], m[1], false, 6);
+			case 80:
+				if (!check(wheels > before, 'a scroll over the glass button reaches helder: ${wheels - before} wheel events at the root')) return false;
+				var m = middle(button);
+				Inject.at(w.window, m[0], m[1], true);
+			case 90:
+				for (g in [button, grouped]) {
+					var m = middle(g), hit = hit(m[0], m[1]);
+					check(hit == "", 'AppKit\'s hit test at a glass: ${hit == "" ? "no glass view, no host" : hit}');
+				}
+				var m = middle(grouped);
+				Inject.at(w.window, m[0], m[1], true);
+			case 110:
+				check(presses == 11, 'a press on the glass button and one on a group\'s glass reach helder: $presses (of 11: 1 and 10)');
+				return passed;
+		}
+		return null;
+	}
+}
+
 private class Scale {
 	// (the window's pixels a point)
 	public static function of(w:helder.ui.UiWindow):Float

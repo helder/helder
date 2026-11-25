@@ -1,7 +1,7 @@
 package helder.os.headless;
 
 // A window of a headless run (a build with -D helder.headless,
-// helder.headless.Headless): no system's window, a headless Surface of its
+// helder.os.headless.Headless): no system's window, a headless Surface of its
 // size in points times the run's scale (helder.gfx renders offscreen into
 // it: Mesa's llvmpipe on Linux, Metal or WARP elsewhere), its events the
 // run's script's (Headless.poll). The run's --size, when given, is its
@@ -23,7 +23,7 @@ class HeadlessWindow {
 
 	public function new(window:Window, width:Int, height:Int) {
 		this.window = window;
-		var run = helder.headless.Headless.run;
+		var run = helder.os.headless.Headless.run;
 		scale = run.scale;
 		if (run.width > 0) {
 			width = run.width;
@@ -49,6 +49,6 @@ class HeadlessWindow {
 		e.window = window;
 		e.x = surface.width;
 		e.y = surface.height;
-		helder.headless.Headless.run.post(e);
+		helder.os.headless.Headless.run.post(e);
 	}
 }

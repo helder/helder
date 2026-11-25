@@ -890,7 +890,7 @@ helder run --headless --soft examples/todo --snap out.png   # drawn on the CPU, 
 - **The build**: `-D helder.headless` into `bin/headless/<name>` (a
   release build's otherwise; a build without the define has none of it:
   each hook is behind it, or behind a constant that folds). Its options go
-  to it as JSON in `HELDER_HEADLESS`, which is what `helder.headless.Headless`
+  to it as JSON in `HELDER_HEADLESS`, which is what `helder.os.headless.Headless`
   reads (the built program runs headless again with the same variable).
   With `--headless`, `-o/--out` is the frames' directory.
 - **The windows**: helder.os's `Window` is a `HeadlessWindow`: a headless
@@ -915,7 +915,7 @@ helder run --headless --soft examples/todo --snap out.png   # drawn on the CPU, 
   run or the user's own copy of the app kept changes nothing; the run
   keeps nothing).
 - **The clock**: `App.run` never waits: each turn is frame n at n / fps
-  seconds (`--fps`, 60) of a virtual clock (`helder.headless.Time`), which
+  seconds (`--fps`, 60) of a virtual clock (`helder.async.Time`), which
   `App.frame`, helder.ui's `Clock` and events (`Ui.now`), Pointers'
   times and helder.async's timers read; the script's events due by a
   frame are handled before it, each at its own time. The run ends at the

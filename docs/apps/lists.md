@@ -35,7 +35,7 @@ var todos = signal(new Array<Todo>());
 </scroll>
 ```
 
-Inside `<For>`, `item` is a function: call it to read the current item. A scroller in a column needs `min-height={0}` beside `grow={1}`, as in CSS, or it grows to fit everything.
+Inside `<For>`, `item` is a function: call it to read the current item. A scroller's own minimum height is 0, as in CSS, but every box between it and the sized column that grows with `grow={1}` needs `min-height={0}` too, or that box grows to fit everything the scroller holds and nothing scrolls (browsers do the same).
 
 ## What else
 
