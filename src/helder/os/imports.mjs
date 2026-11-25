@@ -685,7 +685,7 @@ export default function os(host) {
 		const check = () => {
 			if (stopped) return;
 			requestAnimationFrame(check);
-			program.post({ type: 'frame' });
+			program.post({ type: 'frame', at: performance.timeOrigin + performance.now() });
 			if (pixelRatio() !== ratio) {
 				tell({ ratio: (ratio = pixelRatio()) });
 				for (const h of windows) {
@@ -1359,8 +1359,10 @@ export default function os(host) {
 				clearTimeout(timer);
 				f?.();
 			};
-			if (page) page.on('frame', () => {
-				marked = performance.now();
+			// (marked at the page's time of its frame: one that came late, the
+			// worker busy, is not this frame's, whose resize may be on its way)
+			if (page) page.on('frame', (m) => {
+				marked = (m.at ?? performance.timeOrigin + performance.now()) - performance.timeOrigin;
 				if (due) go();
 			});
 			const raf = !page ? requestAnimationFrame : (f) => later(() => {

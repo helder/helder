@@ -61,7 +61,9 @@ thread, and a page busy with its own scripts holds no frame back; a resize
 is told at the page's `resize` event, before its layout, and the worker's
 frame waiting for the marker resizes the canvas and draws it then (a frame
 a frame, the newest size: a burst's sizes, each a new drawing buffer, made
-once). It fits
+once). The page shows the worker's frames as they come, so a resized one
+can come late: on a GPU 0–2 of ~90 frames of a drag, on CI's SwiftShader
+4–6 of 30, each less than a frame late (`tests/ui/web-resize.mjs`). It fits
 in a browser with module workers and OffscreenCanvas, when the module
 imports nothing only a page has (audio's AudioContext, helder.web's DOM,
 helder.media's `<video>`, helder.canvas's Canvas 2D) and with one window;
