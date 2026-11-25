@@ -2,6 +2,8 @@
 
 HTTP requests and WebSockets go through each platform's own network stack, so they get its TLS, its certificates, its proxies and its rules. In the browser they are the page's own `fetch` and WebSocket. On a desktop you can also serve HTTP and WebSockets yourself.
 
+<Terminal command="helder run examples/async-dev -- public 8080" src="networking.txt"/>
+
 | Platform | Requests | WebSockets |
 |---|---|---|
 | macOS, iOS | NSURLSession | NSURLSession |
@@ -11,25 +13,25 @@ HTTP requests and WebSockets go through each platform's own network stack, so th
 | Web | `fetch` | the browser's WebSocket |
 
 ```ts
-import { Client, WebSocket } from "helder/async";
+import {Client, WebSocket} from 'helder/async'
 
-const res = await Client.request("https://api.example.com/items");
-const items = JSON.parse(res.text());
+const res = await Client.request('https://api.example.com/items')
+const items = JSON.parse(res.text())
 
-const ws = await WebSocket.open("wss://chat.example.com/room");
-await ws.send("hello");
-const reply = await ws.receive();
+const ws = await WebSocket.open('wss://chat.example.com/room')
+await ws.send('hello')
+const reply = await ws.receive()
 ```
 
 ```haxe
 import helder.async.http.*;
 
 // in a coroutine: no await
-var res = Client.request("https://api.example.com/items");
+var res = Client.request('https://api.example.com/items');
 var items = haxe.Json.parse(res.text());
 
-var ws = WebSocket.open("wss://chat.example.com/room");
-ws.send("hello");
+var ws = WebSocket.open('wss://chat.example.com/room');
+ws.send('hello');
 var reply = ws.receive();
 ```
 

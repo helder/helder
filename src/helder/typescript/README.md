@@ -345,7 +345,7 @@ values), the renderers its markup reaches that its types do not name
 program's own Haxe classes are declared the same way (tests/view's
 TestTypeScript).
 
-**The manifest** (`api/Manifest.hx`, the format there; DESIGN.md 7.3): the
+**The manifest** (`api/Manifest.hx`, the format there): the
 declaration class's build macro writes its module's manifest, from the
 Haxe types, as the class's metadata (`@:helder.manifest`, JSON): each
 class's members (methods, fields, properties' accessors, inline constants'
@@ -416,7 +416,7 @@ whose node parent is (its class's `@:rendered`). The `Interop` functions are
 where values cross.
 
 **TSX** (`lower/Tsx.hx`) goes through helder.markup's planner
-(`helder.markup.Plan`, DESIGN.md 7.2), its TypeScript target, so a literal
+(`helder.markup.Plan`), its TypeScript target, so a literal
 means what the same Haxe markup means: renderer boundaries, components,
 neutral elements, keys, refs and handlers, and holes that read bound
 (3.3): a hole or an attribute whose expression may read, a call or a read
@@ -484,8 +484,6 @@ BigInt64Array), `process` and node's other globals.
 
 ## What is built
 
-helder.view's DESIGN.md §7, as built:
-
 - **TSX through the shared markup planner**: helder.markup's `Plan<E>`
   compiles Haxe's markup (`MarkupMacro.HaxeTarget`) and TSX (`lower/Tsx.hx`'s
   `TsTarget`) with the same decisions, so the two read the same, the
@@ -510,7 +508,7 @@ function Checkbox(props: {checked: Signal<boolean>, label: string}) {
 }
 ```
 
-**Async** (DESIGN.md 7.4): a program of helder's API with promises or
+**Async:** a program of helder's API with promises or
 timers runs its event loop on helder.async's (`Interop.hostLoop`: its
 microtasks a checkpoint on the loop, its timers the loop's), which
 helder.os's App turns between its frames and which commits helder.view's

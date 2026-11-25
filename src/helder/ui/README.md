@@ -31,8 +31,8 @@ bun run helder dev examples/counter/Counter.hx   # or build; --target web for a 
 `Render.render(content, node)` mounts markup into a node of your own (a
 `UiWindow`'s `root`, a test's `Ui`).
 
-[GUIDE.md](GUIDE.md) walks through building an app: components, state,
-lists, popups, your own nodes, each platform, tests.
+[Views and signals](/docs/apps/views.md) starts the app guide, with
+pages for layout, lists, controls, interaction and windows.
 `examples/todo/Todo.hx` is a complete app (a text field, a keyed
 list, checkboxes, filters), `examples/mail/Mail.hx` a larger one (a
 toolbar, folders, messages sorted by column, search, shortcuts, undo, dark
@@ -393,10 +393,9 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
   group) and `Tip` (a tooltip: what a control does and its shortcut, under
   it once the pointer rests there, for a button that shows only an icon).
 - **`helder.ui.controls`**: the standard controls, `Button`, `Checkbox`
-  and `Switch` so far, their behaviour (`Press`, `Toggle`) and their
+  `Switch` and `PathBar`, their behaviour (`Press`, `Toggle`) and their
   looks (`Look`): "Controls" below. Others (menus, tabs) are still views
-  with a role, `focusable` and `onPress`, as in the examples and
-  `GUIDE.md`. A
+  with a role, `focusable` and `onPress`, as in the examples. A
   `UiWindow`'s `Ui.dark` follows the system's appearance
   (`helder.os.App.prefersDark`: the browser's colour scheme, macOS's,
   Windows', GTK's settings).
@@ -828,10 +827,12 @@ name up at run time and links them all.
 
 `helder.ui.controls` holds the standard controls, drawn by helder in one
 look on every platform: `Button`, `Checkbox` (`indeterminate` too),
-`Switch` and `PathBar`. The rest of the set and its design are in
-[docs/design/controls.md](/docs/design/controls.md). Each control is its
-behaviour (`Press`, `Toggle`), its parts (nodes bound by `ref`), and a
-look's recipe for it (`Look`).
+`Switch` and `PathBar`. Each control has its behaviour (`Press`,
+`Toggle`), its named parts (nodes bound by `ref`), and a look's recipe
+for those parts. Behaviour owns the keys, focus and accessibility
+state. Recipes compile once per look into rules, and a custom renderer
+can bind the same parts to its own nodes. Typed refs also keep markup's
+attribute lookup on the compile-time path.
 
 ```haxe
 import helder.ui.controls.Look;

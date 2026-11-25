@@ -360,11 +360,12 @@ instances, targets, mips, formats) on each back end (`bun run test gfx`, `bun ru
 A tier above the render stages every back end has: `Device.has(Compute)`
 (and `StorageTextures`, `Indirect`, the same devices today) says whether
 the device runs compute stages. WebGPU, Metal, Direct3D 11 at feature
-level 11_0 (`cs_5_0`) and a GL ES 3.1 context (Android's native floor:
-the manifest asks for it; Mesa's) do; WebGL2 and a GL ES 3.0 context do
-not, and a program takes the render stages' path there (`examples/fountain`
-runs its compute stage's function on the CPU). Without compute,
-`createComputePipeline` and storage buffers throw.
+level 11_0 (`cs_5_0`), GL ES 3.1 (Android's native floor) and the
+[CPU back end](#on-the-cpu) all run compute. The CPU back end runs Haxe
+compute stages four invocations at a time and supports storage buffers
+and textures. On WebGL2 and GL ES 3.0, use a render-stage path or run
+the compute function on the CPU as `examples/fountain` does.
+`createComputePipeline` and storage buffers throw on those devices.
 
 ```haxe
 @:structInit @:publicFields class Particle { var pos:Vec4; var vel:Vec4; }

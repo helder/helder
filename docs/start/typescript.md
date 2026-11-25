@@ -7,14 +7,14 @@ Write helder apps in TypeScript or in Haxe: both compile to the same native code
 The same component in both. Every sample in these docs with a TypeScript and a Haxe version has a switch, and your choice is remembered.
 
 ```tsx
-import { signal } from "helder/view";
+import {signal} from 'helder/view'
 
-function Toggle(props: { label: string }) {
-  const on = signal(false);
-  return <view:button role="switch" checked={on()} padding="6 12" radius={6}
-    background={on() ? "#18181b" : "#e4e4e7"}
-    color={on() ? "#fafafa" : "#18181b"}
-    onPress={() => on(v => !v)}>{props.label}</view:button>;
+function Toggle(props: {label: string}) {
+  const on = signal(false)
+  return <view:button role='switch' checked={on()} padding='6 12' radius={6}
+    background={on() ? '#18181b' : '#e4e4e7'}
+    color={on() ? '#fafafa' : '#18181b'}
+    onPress={() => on(v => !v)}>{props.label}</view:button>
 }
 ```
 
@@ -25,9 +25,9 @@ import helder.view.graph.Graph.*;
 class Toggles implements Markup {
   static function Toggle(props:{label:String}):View {
     var on = signal(false);
-    return <view:button role="switch" checked={on()} padding="6 12" radius={6}
-      background={on() ? "#18181b" : "#e4e4e7"}
-      color={on() ? "#fafafa" : "#18181b"}
+    return <view:button role='switch' checked={on()} padding='6 12' radius={6}
+      background={on() ? '#18181b' : '#e4e4e7'}
+      color={on() ? '#fafafa' : '#18181b'}
       onPress={() -> on(v -> !v)}>{props.label}</view:button>;
   }
 }

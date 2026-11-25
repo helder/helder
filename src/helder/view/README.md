@@ -1,7 +1,7 @@
 # helder.view
 
 Signals and JSX-like markup for Haxe and TypeScript, on every target:
-Solid 2's reactive graph (helder.view.graph, DESIGN.md) and markup
+a reactive graph based on Solid 2 (helder.view.graph) and markup
 literals compiled to direct calls on a renderer, with no virtual DOM.
 `helder.ui` renders it into its nodes, drawn or native.
 
@@ -28,7 +28,7 @@ function main() {
 The same in TypeScript (TSX), but for `const` and `=>`: helder.typescript
 compiles TSX through the same planner (helder.markup), its declarations
 (index.d.ts) generated from these classes' types (`TypeScript.hx`, the
-module's declaration: DESIGN.md 7).
+module's declaration).
 
 ## Signals
 
@@ -60,6 +60,13 @@ to an effect allocates nothing (tests/view/graph/Alloc.test.hx).
 
 `Read<T>` is a prop that reads: a constant, a signal, a memo or a
 function, each read by calling it (`props.step()`).
+
+The commit runs computation and application in separate passes.
+Computations discover their dependencies before render effects apply
+changes to the tree. A boundary can hold a branch with pending work
+while the rest of the graph commits. The last committed value remains
+available through `latest`, and ownership ties the branch's cleanup
+and async work to its lifetime.
 
 ## Markup
 
@@ -187,7 +194,7 @@ declares its own with types and metadata the macro reads:
   `helder.web.DomEvents`, `helder.scene.view.SceneEvents`; a field `on`
   types custom events, `on:name`); markup checks handlers against it. Data,
   not code: helder.typescript's manifest and its declarations read it
-  (DESIGN.md 7.3). Without it any `on*` name is taken, its event unknown.
+  (see [TypeScript declarations](../typescript/README.md)). Without it any `on*` name is taken, its event unknown.
 
 The macro compiles each literal when it is typed (an expression macro,
 `View.literal`; the `Markup` build macro only wraps the literals) and

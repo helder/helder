@@ -2,13 +2,15 @@
 
 `<Surface>` is a window. Its props set its title, size, theme, title bar and background.
 
+<Image src="windows.webp" alt="A round clock with 10:24 in white" caption="A round clock drawn in a transparent Surface, captured over black."/>
+
 ## Transparent windows
 
 A background that isn't opaque makes the window transparent: what is behind it shows through the pixels the app leaves clear, and half-transparent ones blend over it.
 
 ```tsx
-<Surface title="Clock" width={240} height={240} background="transparent">
-  <view width={200} height={200} radius={100} background="#18181bdd"/>
+<Surface title='Clock' width={240} height={240} background='transparent'>
+  <view width={200} height={200} radius={100} background='#18181bdd'/>
 </Surface>
 ```
 
@@ -19,7 +21,7 @@ Works on macOS, Windows (through DirectComposition), Wayland, X11 with a composi
 `backdrop` puts the system's material behind the window, seen through its clear and half-clear pixels: `"blur"` (macOS vibrancy, Windows 11 Acrylic, KDE's blur), `"mica"` (Windows 11 Mica, macOS's window vibrancy, KDE's blur) or `"glass"` (macOS 26). It makes the window transparent. Where the system has no such material, nothing is drawn behind; `window.backdrop` then reads `None`.
 
 ```tsx
-<Surface title="Notes" width={320} height={400} backdrop="blur">
+<Surface title='Notes' width={320} height={400} backdrop='blur'>
   <text padding={16}>Over a blur of what is behind</text>
 </Surface>
 ```
@@ -29,9 +31,9 @@ Works on macOS, Windows (through DirectComposition), Wayland, X11 with a composi
 A transparent window takes clicks only where it draws something; elsewhere they go to whatever is behind it. Mark drawn content as click-through with `pointer-events="none"`, or keep every click with `<Surface clickThrough={false}>`.
 
 ```tsx
-<Surface background="transparent">
-  <view width={200} height={40} background="#18181bcc" pointer-events="none">
-    <text color="#ffffff">A label the pointer goes through</text>
+<Surface background='transparent'>
+  <view width={200} height={40} background='#18181bcc' pointer-events='none'>
+    <text color='#ffffff'>A label the pointer goes through</text>
   </view>
 </Surface>
 ```
@@ -49,5 +51,12 @@ window.moveTo(a.x + a.width - 120, a.y);
 ```
 
 Wayland has no way for a window to ask for any of these, except no title bar.
+
+## What else
+
+- **Clear pixels:** leave a gap in your drawing to see and click the window behind it.
+- **Drawn overlays:** put `pointer-events='none'` on a label or other decoration so clicks pass through it.
+- **Work area:** place edge tools inside `window.workArea()` to keep the system bars clear.
+- **Fallbacks:** the window can tell you which transparency and backdrop the system applied.
 
 <Reference to="os,ui"/>

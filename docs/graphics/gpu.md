@@ -7,25 +7,25 @@ Under everything sits `helder.gfx`: one small GPU API over Metal, Direct3D 11, O
 A shader is a vertex and a fragment function over vector types. Its uniforms, textures and vertex layout come from the function's types.
 
 ```ts
-import { shader, position, sample, vec4 } from "helder/gfx";
-import type { Vec2, Vec4, Texture2D } from "helder/gfx";
+import {shader, position, sample, vec4} from 'helder/gfx'
+import type {Vec2, Vec4, Texture2D} from 'helder/gfx'
 
-type Vertex = { pos: Vec2; uv: Vec2 };
-type Varyings = { pos: Vec4; uv: Vec2 };
-type Tint = { color: Vec4 };
+type Vertex = {pos: Vec2, uv: Vec2}
+type Varyings = {pos: Vec4, uv: Vec2}
+type Tint = {color: Vec4}
 
 export const Sprite = shader({
   vertex: (v: Vertex): Varyings =>
-    ({ pos: position(vec4(v.pos, 0, 1)), uv: v.uv }),
-  fragment: (i: Varyings, p: { tint: Tint; image: Texture2D }): Vec4 =>
-    sample(p.image, i.uv).mul(p.tint.color),
-});
+    ({pos: position(vec4(v.pos, 0, 1)), uv: v.uv}),
+  fragment: (i: Varyings, p: {tint: Tint, image: Texture2D}): Vec4 =>
+    sample(p.image, i.uv).mul(p.tint.color)
+})
 ```
 
 ```haxe
-@:structInit @:publicFields class Vertex { var pos:Vec2; var uv:Vec2; }
-@:structInit @:publicFields class Varyings { var pos:Vec4; var uv:Vec2; }
-@:structInit @:publicFields class Tint { var color:Vec4; }
+@:structInit @:publicFields class Vertex {var pos:Vec2; var uv:Vec2;}
+@:structInit @:publicFields class Varyings {var pos:Vec4; var uv:Vec2;}
+@:structInit @:publicFields class Tint {var color:Vec4;}
 
 final Sprite = shader({
   vertex: function(v:Vertex):Varyings
@@ -37,7 +37,7 @@ final Sprite = shader({
 
 ## What else
 
-- **Compute:** compute stages with storage buffers and atomics on WebGPU, Metal, Direct3D 11 and OpenGL ES 3.1, with a CPU fallback for WebGL2 ([Murmuration](https://helder.build/examples/#murmuration) steers half a million birds this way).
+- **Compute:** compute stages with storage buffers and atomics on WebGPU, Metal, Direct3D 11 and OpenGL ES 3.1 and the CPU back end, with a CPU fallback for WebGL2 ([Murmuration](https://helder.build/examples/#murmuration) steers half a million birds this way).
 - **The API:** buffers, textures in every portable format, render targets, mip maps, instanced and indirect draws, occlusion queries.
 - **Shared textures** between processes, through IOSurface and DXGI.
 - **No surprises:** pipelines are immutable, handles are integers, and a steady frame allocates nothing.
