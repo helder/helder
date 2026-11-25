@@ -2,6 +2,7 @@ package helder.test;
 
 import haxe.PosInfos;
 import haxe.coro.Coroutine;
+import helder.test.Property;
 import helder.test.Runner;
 
 // helder.test's API, module-level functions (`import helder.test.Test;`):
@@ -42,6 +43,22 @@ function beforeAll(body:Body)
 // once after its last
 function afterAll(body:Body)
 	Runner.hook(3, body);
+
+// --- properties: body run on values of gen (helder.test.Gen), each
+// case's failures its assertions' (or what it threw); the first failing
+// case shrunk and reported smallest, with its seed and choices to replay
+
+// body holds for gen's values (100 cases, else options.cases)
+function property<T>(gen:Gen<T>, body:T->Void, ?options:PropertyOptions, ?pos:PosInfos)
+	Property.check(gen, body, null, options, pos);
+
+// steps of m drawn and run on its system, its check holding after each
+function stateful<S>(m:Machine<S>, ?options:PropertyOptions, ?pos:PosInfos)
+	Property.stateful(m, options, pos);
+
+// the case left out when cond is false (rejected, not failed)
+function assume(cond:Bool)
+	if (!cond) throw Property.control = new helder.test.Choices.Rejected();
 
 // --- assertions: a failure is recorded and the test goes on, except for
 // require and fail, which stop it

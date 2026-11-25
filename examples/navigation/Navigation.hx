@@ -2,14 +2,14 @@
 // summary: Screens by path on a stack: a list, a detail screen, settings; the system's back, transitions, URLs
 // tags: ui, navigation
 // demo: canvas 390x640
-import helder.ui.Router;
+import helder.ui.nav.Routes;
 import helder.ui.Stack;
 import helder.ui.UiWindow;
 import helder.ui.UiWindow.Surface;
 import helder.view.*;
 import helder.view.graph.Graph.*;
 
-// A list, a detail screen and a settings screen on a Router's stack: a
+// A list, a detail screen and a settings screen on a Routes's stack: a
 // press pushes, the header's back (or the system's: Android's back,
 // Escape, the browser's) pops, iOS's drag from the left edge too. In a
 // browser each screen is a URL (/fruit/3), kept by a reload.
@@ -18,7 +18,7 @@ class Navigation implements Markup {
 	static final compact = signal(false);
 
 	static function main() {
-		final nav = new Router();
+		final nav = new Routes();
 		nav.route("/", _ -> <List nav={nav}/>)
 			.route("/fruit/:id", p -> <Detail nav={nav} id={Std.parseInt(p.id) ?? 0}/>)
 			.route("/settings", _ -> <Settings nav={nav}/>)
@@ -30,7 +30,7 @@ class Navigation implements Markup {
 		</Surface>);
 	}
 
-	static function Screen(props:{nav:Router, title:String, ?root:Bool, ?action:View, children:View}):View
+	static function Screen(props:{nav:Routes, title:String, ?root:Bool, ?action:View, children:View}):View
 		return <view tag="page" grow={1} background="#ffffff">
 			<view direction="row" align-items="center" padding="10 12" column-gap={8} border-width="0 0 1 0" border-color="#e4e4e7">
 				{props.root != true ? <view:button tag="back" role="button" label="Back" focusable padding="6 10" radius={6} cursor="pointer"
@@ -41,7 +41,7 @@ class Navigation implements Markup {
 			<scroll grow={1} basis={0} padding={12} row-gap={compact() ? 2 : 8}>{props.children}</scroll>
 		</view>;
 
-	static function List(props:{nav:Router}):View {
+	static function List(props:{nav:Routes}):View {
 		var nav = props.nav;
 		return <Screen nav={nav} title="Fruit" root action={<view:button tag="settings" role="button" focusable padding="6 10" radius={6} cursor="pointer"
 			onPress={() -> nav.go("/settings")}>Settings</view:button>}>
@@ -50,7 +50,7 @@ class Navigation implements Markup {
 		</Screen>;
 	}
 
-	static function Detail(props:{nav:Router, id:Int}):View {
+	static function Detail(props:{nav:Routes, id:Int}):View {
 		var name = fruits[props.id] ?? "?", count = signal(0);
 		return <Screen nav={props.nav} title={name}>
 			<text font-size={48}>{name.charAt(0)}</text>
@@ -62,7 +62,7 @@ class Navigation implements Markup {
 		</Screen>;
 	}
 
-	static function Settings(props:{nav:Router}):View
+	static function Settings(props:{nav:Routes}):View
 		return <Screen nav={props.nav} title="Settings">
 			<view:button tag="compact" role="switch" checked={compact} focusable direction="row" padding="12 12" radius={8} background="#f4f4f5"
 				cursor="pointer" onPress={() -> compact(c -> !c)}>

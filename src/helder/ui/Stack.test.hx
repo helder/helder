@@ -13,8 +13,8 @@ import helder.view.graph.Graph;
 // deep (App.back, App.backDepth), the app's own onBack again at the root
 // and once it is gone
 function tests() {
-	function nav():Router
-		return new Router()
+	function nav():helder.ui.nav.Routes
+		return new helder.ui.nav.Routes()
 			.route("/", _ -> <view tag="home" focusable/>)
 			.route("/item/:id", p -> <view tag={"item-" + p.id} focusable/>);
 	function shown(ui:Ui):String

@@ -6,6 +6,6 @@ package helder.test;
 // `*.test.hx` (helder.test.Script). A program imports helder/test, not
 // this module.
 @:typescript("helder/test/runner", "runner.d.ts")
-@:typescript.classes(helder.test.Script, helder.test.Runner.Entry, helder.test.UiScript)
+@:typescript.classes(helder.test.Script, helder.test.Runner.Entry, helder.test.UiScript, helder.test.PropertyScript, helder.test.Choices)
 @:build(helder.typescript.api.Manifest.build())
 class TypeScript {}

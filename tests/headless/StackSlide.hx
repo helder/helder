@@ -1,4 +1,4 @@
-import helder.ui.Router;
+import helder.ui.nav.Routes;
 import helder.ui.Stack;
 import helder.ui.UiWindow;
 import helder.ui.UiWindow.Surface;
@@ -9,7 +9,7 @@ import helder.view.*;
 // edge drag let go short (it springs back) and past half (it pops)
 class StackSlide implements Markup {
 	static function main() {
-		final nav = new Router();
+		final nav = new Routes();
 		nav.route("/", _ -> <view tag="list" grow={1} background="#ffffff" padding={12} row-gap={8}>
 			{[for (i in 0...5) <view:button tag={"item-" + i} role="button" focusable padding={12} background="#f4f4f5" onPress={() -> nav.go("/item/" + i)}>
 				{"Item " + i}</view:button>]}

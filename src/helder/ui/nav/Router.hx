@@ -13,7 +13,7 @@ import helder.view.graph.Signal;
 // back pops (false at the root; backTo several),
 // replace swaps the top, reset starts a new stack, open a link's (a full
 // URL or a path): the root and the matched route. Each entry's screen is
-// made once, when it is pushed. Haxe's helder.ui.Router types a route's params by its path.
+// made once, when it is pushed. Haxe's helder.ui.nav.Routes types a route's params by its path.
 class Router {
 	// the top's path (without its query), how many entries are above the root, the top's query
 	public final path:Read<String>;
