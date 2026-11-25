@@ -1,5 +1,5 @@
 // a story's name is static (in TypeScript: story-not-static.tsx).
-// expect: story: title is not static
+// expect: definitions); write each story as a literal story({name, width, height, render}) at the module's top level
 import helder.story.Story;
 
 class RejectStoryNotStatic {

@@ -90,7 +90,8 @@ class HaxeAdapter implements Adapter {
 
 	function notStatic(e:Expr):Dynamic
 		return error(haxe.macro.ExprTools.toString(e)
-			+ " is not static (a definition takes literals, object and array literals, functions, and module-level constants and definitions)",
+			+ " is not static (a definition takes literals, object and array literals, functions, and module-level constants and definitions)"
+			+ (what == "story" ? "; write each story as a literal story({name, width, height, render}) at the module's top level: no helper, no spread, shared code inside render" : ""),
 			e.pos);
 }
 #end
