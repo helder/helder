@@ -42,6 +42,8 @@ class CoreAudioOutput {
 	final path:Null<String>;
 	var quit = false;
 	final done = new Lock();
+	// (the audio thread ended, its last period in the ring: the "file:" renderer drains after it)
+	var produced = new Lock();
 	var error:Null<String>;
 
 	function new(owner:Audio, device:Null<String>) {
@@ -156,6 +158,7 @@ class CoreAudioOutput {
 		Atomic.store32(ring.add(WRITTEN), 0);
 		// (the ring full before the unit starts)
 		while (produce()) {}
+		produced = new Lock();
 		Thread.create(run);
 		if (path != null) Thread.create(renderFile) else check(AudioToolbox.AudioOutputUnitStart(unit), "AudioOutputUnitStart");
 	}
@@ -183,23 +186,34 @@ class CoreAudioOutput {
 		} catch (e:Dynamic) {
 			error = Std.string(e);
 		}
+		produced.release();
 		done.release();
 	}
 
 	// "file:": the generic unit rendered a period at a time, at the clock's
-	// pace, into the file
+	// pace, into the file. Stopped, it renders what the ring still holds
+	// (after the audio thread's last period, unpaced) before the file is
+	// closed: the file holds all the callback gave. (A device plays its
+	// ring out on its own clock; this one lags it on a busy machine, the
+	// player's clock not waiting: MediaAppleCheck's played clip closed at
+	// its end with its last period, 320 of its 8000 frames, still in the
+	// ring, dropped)
 	function renderFile() {
 		var n = owner.frames, count = n * owner.channels;
 		var out = sys.io.File.write(path);
 		var bytes = haxe.io.Bytes.alloc(count * 4);
 		var list = LibC.malloc(24), time = LibC.malloc(64), flags:Ptr<Int32> = LibC.malloc(4);
 		var target:Ptr<Float32> = LibC.malloc((count * 4 : Int64));
-		var rendered = 0, t0 = Sys.time();
+		var rendered = 0, t0 = Sys.time(), draining = false;
 		try {
-			while (!quit) {
+			while (true) {
 				while (!quit && Atomic.load32(ring.add(WRITTEN)) - Atomic.load32(ring.add(READ)) < n)
 					Sys.sleep(0.001);
-				if (quit) break;
+				if (quit && !draining) {
+					produced.wait();
+					draining = true;
+				}
+				if (draining && Atomic.load32(ring.add(WRITTEN)) - Atomic.load32(ring.add(READ)) < n) break;
 				Mem.setI32(list, 0, 1); // mNumberBuffers
 				Mem.setI32(list, 8, owner.channels);
 				Mem.setI32(list, 12, count * 4);
@@ -216,7 +230,7 @@ class CoreAudioOutput {
 				out.writeBytes(bytes, 0, bytes.length);
 				rendered += n;
 				var wait = t0 + rendered / owner.sampleRate - Sys.time();
-				if (wait > 0) Sys.sleep(wait);
+				if (wait > 0 && !draining) Sys.sleep(wait);
 			}
 		} catch (e:Dynamic) {
 			error = Std.string(e);
