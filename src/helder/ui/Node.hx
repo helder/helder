@@ -1369,6 +1369,10 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		var g = style.backgroundImage, area = width * height * scale * scale;
 		var k = area > GRADIENT_PIXELS ? scale * Math.sqrt(GRADIENT_PIXELS / area) : scale;
 		var w = Std.int(Math.max(1, Math.round(width * k))), h = Std.int(Math.max(1, Math.round(height * k)));
+		if (gradientImage != null && gradientOf == g && gradientScale == scale && (gradientW != w || gradientH != h) && ui != null && ui.live) {
+			if (ui.stretched.indexOf(this) < 0) ui.stretched.push(this);
+			return gradientImage;
+		}
 		if (gradientImage == null || gradientOf != g || gradientW != w || gradientH != h || gradientScale != scale) {
 			gradientImage = g.render(w, h, k);
 			gradientOf = g;

@@ -419,6 +419,12 @@ class Ui extends ScrollHost {
 			dirtyAll(c);
 	}
 
+	// (a live resize, the window's edge dragged: a gradient's image kept from
+	// the last size, stretched, not made again at each (its CPU's 60 ms a
+	// frame for a few cards' at 2x); the nodes drawn so, made again after it)
+	@:allow(helder) var live = false;
+	@:allow(helder) final stretched:Array<Node> = [];
+
 	// the nodes that may be native (EditableText: they join while in the tree)
 	var natives:Array<Node> = [];
 	// (the window's layers the system's, the nodes' views in its tree: LayerSlot)

@@ -423,7 +423,7 @@ class UiWindow {
 
 	// there is something new to draw
 	public function needsFrame():Bool
-		return redraw || ui.needsFrame || Clock.active || ScreenContext.main.nextTimer() <= #if helder.headless helder.async.Time.now #else haxe.Timer.stamp() #end || capture != null || window.width != drawnW || window.height != drawnH || window.scale != drawnScale
+		return redraw || ui.needsFrame || (ui.stretched.length > 0 && !window.surface.resizing) || Clock.active || ScreenContext.main.nextTimer() <= #if helder.headless helder.async.Time.now #else haxe.Timer.stamp() #end || capture != null || window.width != drawnW || window.height != drawnH || window.scale != drawnScale
 			|| (Ui.accessEpoch != accessSent && accessListening()) || accessPending() || mirrorMoves();
 
 	// (the compositor's glides and springs: the program's frames follow them, as they would its own)
@@ -451,6 +451,12 @@ class UiWindow {
 		#if !helder.soft if (renderer != null) renderer.scale = scale; #end
 		ui.resize(w / scale, h / scale);
 		ui.scale = scale;
+		ui.live = window.surface.resizing;
+		if (!ui.live && ui.stretched.length > 0) {
+			for (n in ui.stretched)
+				n.paintChanged();
+			ui.stretched.resize(0);
+		}
 		keyboard();
 		safeArea();
 		titlebarArea();
