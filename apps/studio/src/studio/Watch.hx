@@ -85,9 +85,13 @@ class Watch implements Markup {
 				<text font-size={Theme.CHAT_SIZE} max-lines={1}>{studio.project?.name ?? "helder studio"}</text>
 			</view>
 			<view grow={1}/>
-			<Show when={studio.layout.screens().length > 0}>{play(studio)}</Show>
+			<Show when={playable(studio)}>{play(studio)}</Show>
 			<Show when={WindowButtons.side() == "end"}><WindowControls side="end"/></Show>
 		</view>;
+
+	// (a frame to play: not on the blank sheet, nor while the first frames' places are held)
+	static function playable(studio:Studio):Bool
+		return studio.layout.screens().length > 0 && !blank(studio) && !studio.waiting();
 
 	// Play: the frame aimed at, else the app (Studio.play), in the canvas' place
 	static function play(studio:Studio):View

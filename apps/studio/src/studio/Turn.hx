@@ -19,6 +19,8 @@ typedef Turn = {
 	error:Null<String>,
 	// the studio's build failed after it: its first error
 	build:Null<String>,
+	// a tool ran since its last text (the next text a new paragraph)
+	?gap:Bool,
 }
 
 class Turns {
@@ -29,10 +31,13 @@ class Turns {
 		var n:Turn = Reflect.copy(t);
 		switch e {
 			case Text(c):
-				n.text = t.text + c;
+				// (a message after a tool call: the agent's next, its own paragraph)
+				n.text = t.gap == true && t.text != "" && !t.text.endsWith("\n\n") ? t.text + "\n\n" + c : t.text + c;
+				n.gap = false;
 			case Thought(c):
 				n.thought = t.thought + c;
 			case Tool(id, title, kind, status):
+				n.gap = true;
 				var known = Lambda.find(t.tools, x -> x.id == id);
 				n.tools = known == null ? t.tools.concat([{id: id, title: title, kind: kind, status: status}]) : [
 					for (x in t.tools)
@@ -70,6 +75,18 @@ class Turns {
 		var n:Turn = Reflect.copy(t);
 		n.ask = null;
 		return n;
+	}
+
+	// (a reply cut at places in it, in order: the chat's notes in its flow)
+	public static function split(text:String, at:Array<Int>):Array<String> {
+		var out = [], from = 0;
+		for (a in at) {
+			var to = Std.int(Math.max(from, Math.min(a, text.length)));
+			out.push(text.substring(from, to));
+			from = to;
+		}
+		out.push(text.substr(from));
+		return out;
 	}
 
 	public static function running(t:Null<Turn>):Bool

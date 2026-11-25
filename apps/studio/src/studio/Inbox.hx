@@ -16,13 +16,14 @@ class Inbox {
 
 	public function new() {}
 
-	// a direction (turn: the one it was sent during, for the chat)
-	public function direct(text:String, turn:Int):Note
-		return add({id: ++next, kind: "direction", text: text, turn: turn, delivered: false});
+	// a direction (turn: the one it was sent during, at: how much of its reply
+	// there was then, for the chat: the note in its flow)
+	public function direct(text:String, turn:Int, at = 0):Note
+		return add({id: ++next, kind: "direction", text: text, turn: turn, delivered: false, at: at});
 
 	// an answer to a question
 	public function answer(text:String, turn:Int):Note
-		return add({id: ++next, kind: "answer", text: text, turn: turn, delivered: false});
+		return add({id: ++next, kind: "answer", text: text, turn: turn, delivered: false, at: 0});
 
 	function add(n:Note):Note {
 		set(all.concat([n]));
@@ -39,7 +40,7 @@ class Inbox {
 	// the notes not delivered yet, now delivered
 	public function take():Array<Note> {
 		var out = pending();
-		if (out.length > 0) set([for (n in all) out.contains(n) ? ({id: n.id, kind: n.kind, text: n.text, turn: n.turn, delivered: true} : Note) : n]);
+		if (out.length > 0) set([for (n in all) out.contains(n) ? ({id: n.id, kind: n.kind, text: n.text, turn: n.turn, delivered: true, at: n.at} : Note) : n]);
 		return out;
 	}
 
@@ -60,4 +61,6 @@ typedef Note = {
 	text:String,
 	turn:Int,
 	delivered:Bool,
+	// (a direction's place in its turn's reply)
+	at:Int,
 }

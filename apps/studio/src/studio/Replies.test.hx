@@ -5,7 +5,7 @@ import helder.test.Test;
 import studio.Replies.Spot;
 
 // The chat's reading of a reply: chips for screens and the project's
-// files, a code span naming a file a chip, tools folded past the last few
+// files, a code span naming a file a chip, lines folded past the last few
 function tests() {
 	describe("Replies", () -> {
 		test("chips: a screen's, a file's, else a link", () -> {
@@ -22,11 +22,10 @@ function tests() {
 			var d = Replies.parse("Drawn in `pond.helder:41`, not `x + 1`.", "/p", f -> f == "/p/pond.helder");
 			equals(d.blocks, [Paragraph([Text("Drawn in "), Link("pond.helder:41", "", [Text("pond.helder:41")]), Text(", not "), CodeSpan("x + 1"), Text(".")])]);
 		});
-		test("tools: the last few, the rest folded", () -> {
-			equals(Replies.tools([1, 2, 3, 4], false), {folded: 0, shown: [1, 2, 3, 4]});
-			equals(Replies.tools([1, 2, 3, 4, 5, 6], false), {folded: 3, shown: [4, 5, 6]});
-			equals(Replies.tools([1, 2, 3, 4, 5, 6], true).shown.length, 6);
-			equals([Replies.mark("completed"), Replies.mark("in_progress"), Replies.mark("failed")], ["✓", "◌", "✗"]);
+		test("lines: the last few, the rest folded", () -> {
+			equals(Replies.fold([1, 2, 3, 4], false), {folded: 0, shown: [1, 2, 3, 4]});
+			equals(Replies.fold([1, 2, 3, 4, 5, 6], false), {folded: 3, shown: [4, 5, 6]});
+			equals(Replies.fold([1, 2, 3, 4, 5, 6], true).shown.length, 6);
 		});
 	});
 }
