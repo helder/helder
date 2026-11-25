@@ -25,4 +25,19 @@ class Screens {
 		helder.story.NativeHost.run(list);
 		#end
 	}
+
+	// one story in a window of its own, at its size, live, its input its own:
+	// the studio's Play (`helder dev` on a main of it, rebuilt in place)
+	//
+	//   import { play } from "helder/story"; import { serve } from "./pong.story"; play(serve);
+	public static function play(story:Story) {
+		if (story == null) throw "helder.story.Screens.play: no story (a release build has none)";
+		var c = new Controls(story.seed);
+		helder.ui.UiWindow.run(helder.ui.UiWindow.Surface({
+			title: story.name,
+			width: story.width ?? Stories.WIDTH,
+			height: story.height ?? Stories.HEIGHT,
+			children: story.build(c)
+		}));
+	}
 }

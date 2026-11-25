@@ -31,6 +31,7 @@ class Icons {
 	public static final penTool = load(Asset.embed("icons/pen-tool.svg"));
 	public static final play = load(Asset.embed("icons/play.svg"));
 	public static final redo = load(Asset.embed("icons/redo-2.svg"));
+	public static final repeat = load(Asset.embed("icons/repeat.svg"));
 	public static final ruler = load(Asset.embed("icons/ruler.svg"));
 	public static final scan = load(Asset.embed("icons/scan.svg"));
 	public static final search = load(Asset.embed("icons/search.svg"));

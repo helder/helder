@@ -23,7 +23,14 @@ import helder.view.Render;
 // clock animates). A screen hidden is suspended (its clock and timers
 // stop) and keeps its last frame where it was shown (the studio's), and a
 // screen never shown is never built: a project of fifty screens builds the
-// ones in view. All screens draw with one GPU device, one Renderer and one
+// ones in view.
+//
+// Stills (stills: the studio's canvas, a storyboard): each screen built is
+// brought to its moment (Stories.settle: its Controls.play, its transitions)
+// and stays there, its clock not ticked (what changes it, a live literal, an
+// event, still draws). The one looping (loop: the frame hovered, a story
+// with a loop) runs live from its moment for its loop's seconds, then from
+// its moment again; let go, it is its still again. All screens draw with one GPU device, one Renderer and one
 // text engine (their glyph atlas and image pages shared), each frame into
 // the runtime's target at the screen's size, handed over as it is drawn.
 //
@@ -48,6 +55,9 @@ class Host {
 	// the colour under a screen's tree (a window's default, as UiWindow's)
 	public var background:Color = Color.rgb(0xF4F4F5);
 	public var focused(default, null):Null<HostScreen> = null;
+	// screens are stills (their moments, not run); the one running its loop (null: none)
+	public var stills(default, null) = false;
+	public var looping(default, null):Null<HostScreen> = null;
 	// frames drawn, of every screen
 	public var frames(default, null) = 0;
 	// told: a screen's frame drawn and handed over
@@ -82,6 +92,30 @@ class Host {
 		}
 	}
 
+	// stills or not (a screen already built: brought to its moment, or run from it)
+	public function still(on:Bool) {
+		if (on == stills) return;
+		stills = on;
+		for (s in screens)
+			if (s.ui != null) s.reset();
+	}
+
+	// the screen running its loop from its moment (null, or a story without
+	// a loop: none); the one before its still again
+	public function loop(name:Null<String>) {
+		var next = name == null ? null : screen(name);
+		if (next != null && next.story.loop == null) next = null;
+		if (next == looping) return;
+		var was = looping;
+		looping = next;
+		if (was != null && was.ui != null) was.reset();
+		if (next != null && next.ui != null) next.reset();
+	}
+
+	// whether a screen's clock runs: not a still's
+	inline function runs(s:HostScreen):Bool
+		return !stills || s == looping;
+
 	// the screen drawn every frame (null: none; every one shown draws on
 	// change), at its own pixels per point (the studio's zoom into it: its
 	// frames sharp at the canvas' scale; the others at the host's)
@@ -106,14 +140,25 @@ class Host {
 		for (s in screens) {
 			if (!s.visible) continue;
 			s.mount();
+			// (a loop: its clock from its moment, its loop's seconds, then again)
+			if (s == looping) {
+				var loop:Float = s.story.loop ?? 0;
+				if (s.loopFrom < 0) s.loopFrom = now;
+				if (now - s.loopFrom > loop) {
+					s.reset();
+					s.mount();
+					s.loopFrom = now;
+				}
+			}
 			var ui = s.ui;
 			if (ui == null) continue;
+			var running = runs(s);
 			var changed = s.context.run(() -> {
-				Clock.tick(now);
+				if (running) Clock.tick(s == looping ? s.moment + now - s.loopFrom : now);
 				ui.update();
-				ui.needsFrame || s.context.animating;
+				ui.needsFrame || running && s.context.animating;
 			});
-			if (changed || s.redraw || s == focused) {
+			if (changed || s.redraw || (s == focused && running)) {
 				draw(s, changed || s.redraw);
 				drawn++;
 			}
@@ -124,7 +169,7 @@ class Host {
 	// whether anything shown would draw in the next turn (else the loop may sleep until the next event or timer)
 	public function busy():Bool {
 		for (s in screens)
-			if (s.visible && (s.ui == null || s.redraw || s == focused || s.ui.needsFrame || s.context.animating)) return true;
+			if (s.visible && (s.ui == null || s.redraw || s.ui.needsFrame || runs(s) && (s == focused || s.context.animating))) return true;
 		return false;
 	}
 
@@ -195,6 +240,11 @@ class HostScreen {
 	@:allow(helder.story.Host) var redraw = true;
 	// when it was built (haxe.Timer.stamp; -1: not yet)
 	public var mountedAt(default, null) = -1.0;
+	// its clock's time at its moment (a still's), and when its loop began (the host's time; -1: not yet)
+	public var moment(default, null) = 0.0;
+	@:allow(helder.story.Host) var loopFrom = -1.0;
+	// (its view's owner let go: reset)
+	var unrender:Null<Void->Void> = null;
 
 	public function new(host:Host, story:Story) {
 		this.host = host;
@@ -215,10 +265,54 @@ class HostScreen {
 			var u = new Ui(host.text, width, height);
 			u.dark = context.dark.peek();
 			ui = u;
-			controls = new Controls(story.seed);
-			Render.render(story.build(controls), u.root);
+			var c = new Controls(story.seed);
+			controls = c;
+			unrender = Render.render(story.build(c), u.root);
+			// (a still, or a loop's start: brought to its moment; one that never settles is left where it got)
+			if (host.stills) bring(u, c);
+			moment = Clock.now;
 			true;
 		}));
+		redraw = true;
+	}
+
+	// (a still's moment: its Controls.play run frame by frame, 60 a second of
+	// its clock, at most a minute; else its transitions run on for 2 s of its
+	// clock at most: Stories.settle's Clock.finish would run a game's endless
+	// step a hundred thousand times)
+	static function bring(ui:Ui, c:Controls) {
+		helder.view.graph.Graph.flush();
+		var start = Clock.now, t = start;
+		if (c.settled()) {
+			while (Clock.active && t < start + 2) {
+				t += 0.1;
+				Clock.tick(t);
+				ui.update();
+			}
+			return;
+		}
+		var frames = 0;
+		while (!c.settled() && frames < 60 * Stories.FPS) {
+			frames++;
+			Clock.tick(start + frames / Stories.FPS);
+			ui.update();
+		}
+	}
+
+	// let go and built again at its next turn (from its clock's start: its moment again)
+	public function reset() {
+		if (ui == null) return;
+		context.run(() -> {
+			if (unrender != null) unrender();
+			if (controls != null) controls.dispose();
+		});
+		unrender = null;
+		@:privateAccess context.steps.resize(0);
+		@:privateAccess context.timers.resize(0);
+		@:privateAccess context.now = 0;
+		ui = null;
+		loopFrom = -1;
+		redraw = true;
 	}
 
 	// something to do in it (an event's handling, a devtools method): f with its context current
