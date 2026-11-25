@@ -74,6 +74,8 @@ class ShapeWindow {
 					#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
 					Plain.downs = 0;
 					Plain.styles(w.window.surface.handle);
+					#elseif (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
+					macState(w);
 					#end
 					Click.press(w.window, at[0], at[1]);
 				}
@@ -148,6 +150,21 @@ class ShapeWindow {
 	// of GDI's: Plain; the clicks through the transparent one, macOS's too;
 	// none on Wayland, which places them)
 	static final helderBehind = Sys.args().indexOf("--behind") >= 0 && Sys.args()[Sys.args().indexOf("--behind") + 1] == "helder";
+
+	#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
+	// (the window at a press: whether it ignores the mouse, where it finds the pointer)
+	static function macState(w:UiWindow) {
+		var view = w.window.surface.handle;
+		Sys.println(OsThread.get(() -> {
+			var win = helder.os.objc.Msg.id(view, helder.os.objc.ObjC.sel("window"));
+			var o = helder.os.objc.Msg.point(win, helder.os.objc.ObjC.sel("mouseLocationOutsideOfEventStream"));
+			var p = helder.os.objc.Msg.pointPointPtr(view, helder.os.objc.ObjC.sel("convertPoint:fromView:"), o, hxmc.unsafe.Ptr.nil());
+			var b = helder.os.objc.Msg.rect(view, helder.os.objc.ObjC.sel("bounds"));
+			var g = helder.os.objc.Msg.point(helder.os.objc.ObjC.cls("NSEvent"), helder.os.objc.ObjC.sel("mouseLocation"));
+			'ShapeWindow: at the press: ignores the mouse ${helder.os.objc.Msg.b(win, helder.os.objc.ObjC.sel("ignoresMouseEvents"))}, the pointer in the view at ${p.x}, ${b.size.height - p.y} points (the screen\'s ${g.x}, ${g.y}), its input ${w.window.inputRects}, its scale ${w.window.scale}';
+		}));
+	}
+	#end
 
 	static function behindPlain():Bool {
 		#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
