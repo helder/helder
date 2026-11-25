@@ -50,7 +50,7 @@ function tests() {
 			equals(text(ui, "capacity-name"), "Macintosh HD");
 			equals(text(ui, "capacity-used"), "91%");
 			equals(text(ui, "capacity-free"), "45.3 GB free of 494.0 GB");
-			assert(ui.root.find("capacity").style.radius > 0, "a card's corners");
+			assert(ui.root.find("capacity").style.borderRadius > 0, "a card's corners");
 		});
 		test("a deeper level from the right, an enclosing one from the left", () -> {
 			var m = mount(), ui = m.ui, x = m.x;

@@ -43,12 +43,12 @@ class DragOut {
 		ghost.style.set({pointerEvents: None, opacity: 0.85, alignItems: Center});
 		if (image != null) {
 			var pic = new helder.ui.ImageNode(image);
-			pic.style.set({width: image.width, height: image.height, radius: 6});
+			pic.style.set({width: image.width, height: image.height, borderRadius: 6});
 			ghost.append(pic);
 		}
 		if (count > 1) {
 			var badge = new helder.ui.TextNode(Std.string(count));
-			badge.style.set({position: Absolute, right: -6, top: -6, minWidth: 20, height: 20, padding: [0, 6], radius: 10, background: 0xFFFF3B30,
+			badge.style.set({position: Absolute, right: -6, top: -6, minWidth: 20, height: 20, padding: [0, 6], borderRadius: 10, background: 0xFFFF3B30,
 				color: 0xFFFFFFFF, fontSize: 12, fontWeight: 600, textAlign: Center});
 			ghost.append(badge);
 		}

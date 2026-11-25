@@ -10,10 +10,10 @@ import helder.view.*;
 class StackSlide implements Markup {
 	static function main() {
 		final nav = new Routes();
-		nav.route("/", _ -> <view tag="list" grow={1} background="#ffffff" padding={12} row-gap={8}>
-			{[for (i in 0...5) <view:button tag={"item-" + i} role="button" focusable padding={12} background="#f4f4f5" onPress={() -> nav.go("/item/" + i)}>
-				{"Item " + i}</view:button>]}
-		</view>).route("/item/:id", p -> <view tag={"detail-" + p.id} grow={1} background="#ffffff" padding={12}><text>{"Detail " + p.id}</text></view>);
+		nav.route("/", _ -> <view tag="list" flexGrow={1} background="#ffffff" padding={12} rowGap={8}>
+			{[for (i in 0...5) <button tag={"item-" + i} padding={12} background="#f4f4f5" onPress={() -> nav.go("/item/" + i)}>
+				{"Item " + i}</button>]}
+		</view>).route("/item/:id", p -> <view tag={"detail-" + p.id} flexGrow={1} background="#ffffff" padding={12}><text>{"Detail " + p.id}</text></view>);
 		UiWindow.run(<Surface title="Stack" width={320} height={480}>
 			<Stack router={nav} transition={Slide}/>
 		</Surface>);

@@ -57,7 +57,7 @@ class Drops {
 		}
 		if (m != null) return;
 		m = new Node("drop-mark");
-		m.style.set({position: Absolute, left: 0, top: 0, right: 0, bottom: 0, pointerEvents: None, radius: n.style.radius,
+		m.style.set({position: Absolute, left: 0, top: 0, right: 0, bottom: 0, pointerEvents: None, borderRadius: n.style.borderRadius,
 			background: 0x220A84FF, borderWidth: 2, borderColor: 0xFF0A84FF});
 		n.append(m);
 	}

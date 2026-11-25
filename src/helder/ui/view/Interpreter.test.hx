@@ -63,7 +63,7 @@ function compiled(v:helder.view.View):Node {
 function dump(n:Node):String {
 	var s = n.style;
 	var text = Std.isOfType(n, TextNode) ? "(" + (cast n : TextNode).text + ")" : "";
-	var self = n.tag + text + ' ${n.x},${n.y} ${n.width}x${n.height} ${hex(s.background)} ${s.color == null ? "-" : hex(s.color)} ${s.fontSize} ${s.fontWeight} ${s.radius}';
+	var self = n.tag + text + ' ${n.x},${n.y} ${n.width}x${n.height} ${hex(s.background)} ${s.color == null ? "-" : hex(s.color)} ${s.fontSize} ${s.fontWeight} ${s.borderRadius}';
 	return self + (n.children.length == 0 ? "" : " [" + [for (c in n.children) dump(c)].join(", ") + "]");
 }
 
@@ -75,20 +75,20 @@ private class Fixture implements helder.view.Markup {
 		return [
 			{
 				name: "a view's layout and fill",
-				text: '<view width={120} height={80} padding="8 12" background="#3b82f6" radius={6}/>',
-				view: <view width={120} height={80} padding="8 12" background="#3b82f6" radius={6}/>
+				text: '<view width={120} height={80} padding="8 12" background="#3b82f6" borderRadius={6}/>',
+				view: <view width={120} height={80} padding="8 12" background="#3b82f6" borderRadius={6}/>
 			},
 			{
 				name: "a row of views, a gap",
-				text: '<view direction="row" gap={10} padding={4}><view width={20} height={20} background="#ef4444"/><view grow={1} height={30}/></view>',
-				view: <view direction="row" gap={10} padding={4}><view width={20} height={20} background="#ef4444"/><view grow={1} height={30}/></view>
+				text: '<view flexDirection="row" gap={10} padding={4}><view width={20} height={20} background="#ef4444"/><view flexGrow={1} height={30}/></view>',
+				view: <view flexDirection="row" gap={10} padding={4}><view width={20} height={20} background="#ef4444"/><view flexGrow={1} height={30}/></view>
 			},
 			{
 				name: "a text's style and text, entities, whitespace",
-				text: '<text font-size={28} font-weight={700} color="#3b82f6">
+				text: '<text fontSize={28} fontWeight={700} color="#3b82f6">
 					todos &amp; more
 				</text>',
-				view: <text font-size={28} font-weight={700} color="#3b82f6">
+				view: <text fontSize={28} fontWeight={700} color="#3b82f6">
 					todos &amp; more
 				</text>
 			},
@@ -99,13 +99,13 @@ private class Fixture implements helder.view.Markup {
 			},
 			{
 				name: "text beside elements, spans",
-				text: '<view padding={2}>before<text>a <b>bold</b> word</text>after</view>',
-				view: <view padding={2}>before<text>a <b>bold</b> word</text>after</view>
+				text: '<view padding={2}>before<text>a <strong>bold</strong> word</text>after</view>',
+				view: <view padding={2}>before<text>a <strong>bold</strong> word</text>after</view>
 			},
 			{
 				name: "a fragment, neutral elements, flags",
-				text: '<><view:button focusable padding={6}><text>Go</text></view:button><scroll height={40}/></>',
-				view: <><view:button focusable padding={6}><text>Go</text></view:button><scroll height={40}/></>
+				text: '<><button padding={6}><text>Go</text></button><scroll height={40}/></>',
+				view: <><button padding={6}><text>Go</text></button><scroll height={40}/></>
 			}
 		];
 }

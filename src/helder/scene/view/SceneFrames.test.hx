@@ -196,7 +196,7 @@ private class Fixture implements helder.view.Markup {
 	// (code: a renderer set up in code, a scene not of markup alone)
 	public static function toy(spin:helder.view.graph.Read<Float>, markup:Bool)
 		return <view width={240} height={160} background="#0f172a">
-			<Scene grow={1} antialias={false} setup={markup ? null : (r -> {})}>
+			<Scene flexGrow={1} antialias={false} setup={markup ? null : (r -> {})}>
 				<camera position={new Vec3(0, 2.2, 6)} rotation={Quat.fromEuler(-0.35, 0, 0)} fov={0.8}/>
 				<directionalLight intensity={1.6} rotation={Quat.fromEuler(-0.9, 0.6, 0)}/>
 				<pointLight position={new Vec3(-2, 1.5, 2)} intensity={4} range={10}/>
@@ -213,6 +213,6 @@ private class Fixture implements helder.view.Markup {
 					<standardMaterial color={new Vec4(0.5, 0.85, 0.6, 1)} metallic={0.3} roughness={0.3}/>
 				</mesh>
 			</Scene>
-			<text color="#ffffff" font-size={14}>over the scene</text>
+			<text color="#ffffff" fontSize={14}>over the scene</text>
 		</view>;
 }

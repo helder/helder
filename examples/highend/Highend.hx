@@ -48,8 +48,8 @@ class Highend implements Markup {
 		sun.lookAt(new Vec3(-0.15, -0.3, 1));
 		Light.attach(sun, Light.directional(new Vec3(1, 0.85, 0.65), 1.4));
 		UiWindow.run(<Surface title="High-end effects" width={760} height={440}>
-			<view direction="row" grow={1}>
-				<Scene world={world} camera={camera} grow={1} setup={r -> {
+			<view flexDirection="row" flexGrow={1}>
+				<Scene world={world} camera={camera} flexGrow={1} setup={r -> {
 					var sky = new Sky(r.device);
 					sky.zenith = new Vec3(0.05, 0.08, 0.18);
 					sky.horizon = new Vec3(0.9, 0.6, 0.4);
@@ -80,8 +80,8 @@ class Highend implements Markup {
 					<TransformGizmo of={world.root.find(picked())} mode={mode} snap={0.1}/>
 					<mesh shape="box" position={new Vec3(0, 5.2, -6)} scale={new Vec3(10, 0.5, 0.6)} color={new Vec4(0.35, 0.3, 0.28, 1)}/>
 				</Scene>
-				<view width={190} padding={14} row-gap={6} background="#18181b" color="#fafafa" font-size={13}>
-					<text font-size={15}>High-end effects</text>
+				<view width={190} padding={14} rowGap={6} background="#18181b" color="#fafafa" fontSize={13}>
+					<text fontSize={15}>High-end effects</text>
 					<Toggle label="Reflections (SSR)" on={() -> ssr()} flip={() -> ssr(!ssr())}/>
 					<Toggle label="God rays" on={() -> rays()} flip={() -> rays(!rays())}/>
 					<Toggle label="Motion blur" on={() -> blur()} flip={() -> blur(!blur())}/>
@@ -108,8 +108,8 @@ class Highend implements Markup {
 
 	// a switch in the panel: a dot lit while on, flipped by a press
 	static function Toggle(props:{label:String, on:Void->Bool, flip:Void->Void}):View
-		return <view role="switch" direction="row" column-gap={8} align-items="center" padding="4 6" radius={4} background="#27272a" onPress={props.flip}>
-			<view width={12} height={12} radius={6} background={props.on() ? "#facc15" : "#52525b"}/>
+		return <view role="switch" flexDirection="row" columnGap={8} alignItems="center" padding="4 6" borderRadius={4} background="#27272a" onPress={props.flip}>
+			<view width={12} height={12} borderRadius={6} background={props.on() ? "#facc15" : "#52525b"}/>
 			<text>{props.label}</text>
 		</view>;
 }

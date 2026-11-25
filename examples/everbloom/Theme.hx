@@ -56,55 +56,55 @@ class Theme implements Markup {
 	// $45.00, in the sale colour with the compare-at price struck through when it is higher
 	public static function Price(props:{price:Money, ?compareAt:Money, ?size:Float}):View {
 		var size = props.size ?? 15;
-		return <view direction="row" column-gap={6} align-items="baseline">
-			<text font-size={size} font-weight={700} color={props.compareAt != null ? SALE : TEXT}>{props.price.toString()}</text>
+		return <view flexDirection="row" columnGap={6} alignItems="baseline">
+			<text fontSize={size} fontWeight={700} color={props.compareAt != null ? SALE : TEXT}>{props.price.toString()}</text>
 			<Show when={props.compareAt != null}>
-				<text font-size={13} color={MUTED} text-decoration={TextDecoration.LineThrough}>{props.compareAt?.toString() ?? ""}</text>
+				<text fontSize={13} color={MUTED} textDecoration={TextDecoration.LineThrough}>{props.compareAt?.toString() ?? ""}</text>
 			</Show>
 		</view>;
 	}
 
 	// an image of the API's at a width, cover-cropped into its frame (the surface colour until it lands)
 	public static function Picture(props:{url:Null<String>, width:Int, ?w:Dynamic, ?h:Dynamic, ?ratio:Float, ?radius:Float}):View
-		return <image src={Img.of(props.url, props.width)} fit="cover" width={props.w} height={props.h} aspect-ratio={props.ratio} radius={props.radius ?? 8}
-			background={SURFACE} hidden/>;
+		return <image src={Img.of(props.url, props.width)} objectFit="cover" width={props.w} height={props.h} aspectRatio={props.ratio} borderRadius={props.radius ?? 8}
+			background={SURFACE} aria-hidden/>;
 
 	// a grid's or a carousel's card: the image (3:4), the title (two lines at most), the price
 	public static function Card(props:{product:Product, id:String, onOpen:Product->Void, ?width:Float}):View {
 		var p = props.product;
-		return <view:button id={props.id} role="button" label={p.title} focusable width={props.width} grow={props.width == null ? 1 : 0}
-			basis={props.width == null ? 0 : null} min-width={0} shrink={props.width == null ? 1 : 0} row-gap={8} onPress={() -> props.onOpen(p)}>
+		return <button id={props.id} aria-label={p.title} width={props.width} flexGrow={props.width == null ? 1 : 0}
+			flexBasis={props.width == null ? 0 : null} minWidth={0} flexShrink={props.width == null ? 1 : 0} rowGap={8} onPress={() -> props.onOpen(p)}>
 			<Picture url={p.image} width={480} ratio={0.75}/>
-			<text font-size={14} line-height="18px" max-lines={2} text-overflow="ellipsis">{p.title}</text>
+			<text fontSize={14} lineHeight="18px" lineClamp={2} textOverflow="ellipsis">{p.title}</text>
 			<Price price={p.price} compareAt={p.compareAt}/>
-		</view:button>;
+		</button>;
 	}
 
 	public static function Button(props:{label:String, onPress:Void->Void, ?id:String, ?secondary:Bool, ?disabled:Read<Bool>, ?height:Float}):View
-		return <view:button id={props.id} role="button" focusable disabled={props.disabled != null && props.disabled()} height={props.height ?? 52}
-			padding="0 24" radius={12} align-items="center" justify="center" background={props.secondary == true ? BACKGROUND : TEXT}
-			border-width={props.secondary == true ? 1 : 0} border-color={TEXT} opacity={props.disabled != null && props.disabled() ? 0.5 : 1}
+		return <button id={props.id} disabled={props.disabled != null && props.disabled()} height={props.height ?? 52}
+			padding="0 24" borderRadius={12} alignItems="center" justifyContent="center" background={props.secondary == true ? BACKGROUND : TEXT}
+			borderWidth={props.secondary == true ? 1 : 0} borderColor={TEXT} opacity={props.disabled != null && props.disabled() ? 0.5 : 1}
 			onPress={() -> if (props.disabled == null || !props.disabled.peek()) props.onPress()}>
-			<text font-size={16} font-weight={600} color={props.secondary == true ? TEXT : "#ffffff"}>{props.label}</text>
-		</view:button>;
+			<text fontSize={16} fontWeight={600} color={props.secondary == true ? TEXT : "#ffffff"}>{props.label}</text>
+		</button>;
 
 	// (States.dc.html's error: the glyph, the title, the hint, Retry)
 	public static function Failed(props:{onRetry:Void->Void}):View
-		return <view grow={1} align-items="center" justify="center" row-gap={12} padding="0 32">
+		return <view flexGrow={1} alignItems="center" justifyContent="center" rowGap={12} padding="0 32">
 			{icon(ERROR, 48, MUTED)}
-			<text font-size={17} font-weight={700}>Couldn't load products</text>
-			<text font-size={15} line-height="22px" color={MUTED} text-align="center">Check your connection and try again.</text>
-			<view margin-top={8}><Button id="error-retry" label="Retry" secondary height={48} onPress={props.onRetry}/></view>
+			<text fontSize={17} fontWeight={700}>Couldn't load products</text>
+			<text fontSize={15} lineHeight="22px" color={MUTED} textAlign="center">Check your connection and try again.</text>
+			<view marginTop={8}><Button id="error-retry" label="Retry" secondary height={48} onPress={props.onRetry}/></view>
 		</view>;
 
 	public static function Spinner():View
-		return <view padding={24} align-items="center" role="progressbar" label="Loading">
-			<view width={24} height={24} radius={12} border-width={3} border-color={BORDER} borders="3" />
+		return <view padding={24} alignItems="center" role="progressbar" aria-label="Loading">
+			<view width={24} height={24} borderRadius={12} borderWidth={3} borderColor={BORDER} borders="3" />
 		</view>;
 
 	// the round back button (over a product's image) or a nav bar's
 	public static function Back(props:{?round:Bool}):View
-		return <view:button id="back" role="button" label="Back" focusable width={props.round == true ? 40 : 44} height={props.round == true ? 40 : 44}
-			radius={props.round == true ? 20 : 0} background={props.round == true ? BACKGROUND : null} align-items="center" justify="center"
-			onPress={() -> Everbloom.back()}>{icon(BACK, 24, TEXT)}</view:button>;
+		return <button id="back" aria-label="Back" width={props.round == true ? 40 : 44} height={props.round == true ? 40 : 44}
+			borderRadius={props.round == true ? 20 : 0} background={props.round == true ? BACKGROUND : null} alignItems="center" justifyContent="center"
+			onPress={() -> Everbloom.back()}>{icon(BACK, 24, TEXT)}</button>;
 }

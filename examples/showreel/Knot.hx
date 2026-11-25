@@ -153,18 +153,18 @@ class Knot implements Markup {
 	public static function view(t:Read<Float>):View {
 		make();
 		effect(() -> t(), x -> look(x));
-		return <view grow={1} background={NIGHT} color={INK} font-family="Inter">
-			<Scene grow={1} world={world} camera={camera} hdr animate setup={setup}/>
-			<view position="absolute" left={56} bottom={48} row-gap={10} width={520}>
+		return <view flexGrow={1} background={NIGHT} color={INK} fontFamily="Inter">
+			<Scene flexGrow={1} world={world} camera={camera} hdr animate setup={setup}/>
+			<view position="absolute" left={56} bottom={48} rowGap={10} width={520}>
 				<Show when={() -> at(t(), 0.5)}>
-					<view row-gap={10} transition="fade slide-up(20)">
-						<text font-size={14} color={MUTED} font-weight={600} letter-spacing={1.6}>HELDER.SCENE · HDR · BLOOM</text>
-						<text font-family="Inter Display" font-size={44} font-weight={700} letter-spacing={-1} line-height={1.05}>Light along a knot</text>
+					<view rowGap={10} transition="fade slide-up(20)">
+						<text fontSize={14} color={MUTED} fontWeight={600} letterSpacing={1.6}>HELDER.SCENE · HDR · BLOOM</text>
+						<text fontFamily="Inter Display" fontSize={44} fontWeight={700} letterSpacing={-1} lineHeight={1.05}>Light along a knot</text>
 					</view>
 				</Show>
 				<Show when={() -> at(t(), 1.4)}>
-					<view padding="14 16" radius={12} background="#0b0d16cc" border-width={1} border-color={LINE} transition="fade slide-up(20)">
-						<For each={CODE} keyed={false}>{line -> <text font-family="JetBrains Mono" font-size={13} line-height={1.55} color="#c9d1f5" text-wrap="nowrap">{line()}</text>}</For>
+					<view padding="14 16" borderRadius={12} background="#0b0d16cc" borderWidth={1} borderColor={LINE} transition="fade slide-up(20)">
+						<For each={CODE} keyed={false}>{line -> <text fontFamily="JetBrains Mono" fontSize={13} lineHeight={1.55} color="#c9d1f5" textWrap="nowrap">{line()}</text>}</For>
 					</view>
 				</Show>
 			</view>

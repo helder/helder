@@ -5,7 +5,7 @@ import helder.ui.*;
 import helder.ui.draw.*;
 import sys.io.File;
 
-// A <Video> in a real window (the window lane, macOS): in a scroller, a
+// A <video> in a real window (the window lane, macOS): in a scroller, a
 // popup over part of it, shown both ways (VideoNode: drawn by helder, the
 // default; the system's AVSampleBufferDisplayLayer in a slot, asked
 // for), each run its own process: seeked to a
@@ -186,10 +186,10 @@ class VideoWindowCheck {
 		list.style.set({overflow: Scroll, width: 240, height: 240, rowGap: 2, background: 0xFFFFFFFF});
 		var video = new VideoNode();
 		video.layer = mode != "drawn";
-		video.style.set({width: 192, height: 144, shrink: 0});
+		video.style.set({width: 192, height: 144, flexShrink: 0});
 		for (i in 0...30) {
 			var row = new Node();
-			row.style.set({height: 20, shrink: 0, background: i % 2 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF});
+			row.style.set({height: 20, flexShrink: 0, background: i % 2 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF});
 			list.append(row);
 			if (i == 2) list.append(video);
 		}

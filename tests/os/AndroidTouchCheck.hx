@@ -29,15 +29,15 @@ class AndroidTouchCheck {
 		Sys.println("AndroidTouchCheck: start");
 		var w = new UiWindow("AndroidTouchCheck", 0, 0);
 		var root = w.root;
-		root.style.set({direction: Column});
+		root.style.set({flexDirection: Column});
 		var header = new Node("header");
-		header.style.set({height: 160, shrink: 0, background: Color.rgb(0x18181B)});
+		header.style.set({height: 160, flexShrink: 0, background: Color.rgb(0x18181B)});
 		root.append(header);
 		var list = new Node("list");
-		list.style.set({grow: 1, minHeight: 0, overflow: Scroll});
+		list.style.set({flexGrow: 1, minHeight: 0, overflow: Scroll});
 		for (i in 0...200) {
 			var row = new Node("row" + i);
-			row.style.set({height: 48, shrink: 0, background: Color.rgb(i % 2 == 0 ? 0xF4F4F5 : 0xD4D4D8)});
+			row.style.set({height: 48, flexShrink: 0, background: Color.rgb(i % 2 == 0 ? 0xF4F4F5 : 0xD4D4D8)});
 			list.append(row);
 		}
 		root.append(list);

@@ -102,6 +102,6 @@ class Neon extends helder.ui.Node {
 			drawn = key;
 			render(w, h, on);
 		}
-		g.image(image, x, y, width, height, 0, 0, 1, 1, style.radius);
+		g.image(image, x, y, width, height, 0, 0, 1, 1, style.borderRadius);
 	}
 }

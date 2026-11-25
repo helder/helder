@@ -40,5 +40,5 @@ function tests() {
 
 private class Fixture implements helder.view.Markup {
 	public static function text(s:String, width:Float, lines:Int)
-		return <view><text tag="name" width={width} font-size={10} max-lines={lines} text-overflow="middle">{s}</text></view>;
+		return <view><text tag="name" width={width} fontSize={10} lineClamp={lines} textOverflow="middle">{s}</text></view>;
 }

@@ -48,14 +48,14 @@ const apps = {
 		entry: 'Todo.hx', files: ['examples/todo/Todo.hx'], file: 'Todo.hx',
 		literal: (s, i) => s.replace(/color="#[0-9a-f]{6}">todos/, `color="${i % 2 ? '#ef4444' : '#3b82f6'}">todos`),
 		body: (s) => swap(s, 'var toggle = () -> props.checked(c -> !c);', 'var toggle = () -> {\n\t\t\tprops.checked(c -> !c);\n\t\t};'),
-		component: (s, i) => s.replace('\tpublic function view():View {', `\tstatic function Badge${i}(props:{label:String}):View\n\t\treturn <text color="#71717a" font-size={12}>{props.label}</text>;\n\n\tpublic function view():View {`)
+		component: (s, i) => s.replace('\tpublic function view():View {', `\tstatic function Badge${i}(props:{label:String}):View\n\t\treturn <text color="#71717a" fontSize={12}>{props.label}</text>;\n\n\tpublic function view():View {`)
 			.replace('color="#3b82f6">todos</text>', `color="#3b82f6">todos</text>\n\t\t\t<Badge${i} label="badge ${i}"/>`).replace(/color="#ef4444">todos<\/text>/, `color="#ef4444">todos</text>\n\t\t\t<Badge${i} label="badge ${i}"/>`),
 	},
 	'ts-todo': {
 		entry: '.', files: ['examples/ts-todo/app.tsx', 'examples/ts-todo/main.tsx', 'examples/ts-todo/todos.ts'], file: 'app.tsx',
 		literal: (s, i) => s.replace(/color="#[0-9a-f]{6}">todos/, `color="${i % 2 ? '#ef4444' : '#3b82f6'}">todos`),
 		body: (s) => swap(s, 'onPress={() => props.onClick()}', 'onPress={() => { props.onClick(); }}'),
-		component: (s, i) => s.replace('export function App(', `function Badge${i}(props: { label: string }) {\n\treturn <text color="#71717a" font-size={12}>{props.label}</text>;\n}\n\nexport function App(`)
+		component: (s, i) => s.replace('export function App(', `function Badge${i}(props: { label: string }) {\n\treturn <text color="#71717a" fontSize={12}>{props.label}</text>;\n}\n\nexport function App(`)
 			.replace(/(color="#[0-9a-f]{6}">todos<\/text>)/, `$1\n\t\t<Badge${i} label="badge ${i}"/>`),
 	},
 };

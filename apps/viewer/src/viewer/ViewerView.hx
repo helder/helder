@@ -14,6 +14,7 @@ import helder.view.graph.Graph.*;
 // document's column, a message in place of the image (loading, an
 // error), the status line (I) and the go to page card. Fullscreen: the
 // bar hidden.
+@:renderer(helder.ui.view.NodeRenderer)
 class ViewerView implements Markup {
 	public static inline var BAR = 52;
 
@@ -25,34 +26,34 @@ class ViewerView implements Markup {
 
 	public static function make(x:Explorer):View {
 		var viewer = x.viewer;
-		return <view tag="viewer" position="absolute" inset={0} background={Look.ref.canvas} color={Look.ref.fg} font-size={13}
-			opacity={x.zoom.shown()} pointer-events={x.full() ? "auto" : "none"} hidden={!x.full()}>
-			<view tag="viewer-bar" direction="row" align-items="center" column-gap={8} height={BAR} shrink={0} drag-region
-				padding-left={WindowButtons.side() == "start" ? Shell.BUTTONS : 14} padding-right={WindowButtons.side() == "end" ? 152 : 14}
+		return <view tag="viewer" position="absolute" inset={0} background={Look.ref.canvas} color={Look.ref.fg} fontSize={13}
+			opacity={x.zoom.shown()} pointerEvents={x.full() ? "auto" : "none"} aria-hidden={!x.full()}>
+			<view tag="viewer-bar" flexDirection="row" alignItems="center" columnGap={8} height={BAR} flexShrink={0} dragRegion
+				paddingLeft={WindowButtons.side() == "start" ? Shell.BUTTONS : 14} paddingRight={WindowButtons.side() == "end" ? 152 : 14}
 				display={viewer.fullscreen() ? "none" : "flex"}>
-				<view:button tag="back-pill" role="button" focusable label={() -> "Back to " + x.sidebar.title(x.browser.dir())} direction="row"
-					align-items="center" column-gap={6} height={30} padding="0 12 0 6" radius={8} background={Look.ref.fill} color={Look.ref.fg}
-					font-weight={500} shrink={1} min-width={0} onPress={() -> x.close()}>
-					<image src={Glyphs.get("back")} width={16} height={16} shrink={0}/>
-					<image src={() -> Glyphs.get(x.browser.layout() == Grid ? "grid" : "list")} width={14} height={14} shrink={0}/>
-					<text max-lines={1} text-overflow="ellipsis">{() -> x.sidebar.title(x.browser.dir())}</text>
-				</view:button>
-				<text tag="viewer-title" grow={1} shrink={1} min-width={0} text-align="center" max-lines={1} text-overflow="ellipsis" color={Look.ref.fg2}
-					dir={helder.ui.Dir.Ltr}>{viewer.title}</text>
+				<button tag="back-pill" aria-label={() -> "Back to " + x.sidebar.title(x.browser.dir())} flexDirection="row"
+					alignItems="center" columnGap={6} height={30} padding="0 12 0 6" borderRadius={8} background={Look.ref.fill} color={Look.ref.fg}
+					fontWeight={500} flexShrink={1} minWidth={0} onPress={() -> x.close()}>
+					<image src={Glyphs.get("back")} width={16} height={16} flexShrink={0}/>
+					<image src={() -> Glyphs.get(x.browser.layout() == Grid ? "grid" : "list")} width={14} height={14} flexShrink={0}/>
+					<text lineClamp={1} textOverflow="ellipsis">{() -> x.sidebar.title(x.browser.dir())}</text>
+				</button>
+				<text tag="viewer-title" flexGrow={1} flexShrink={1} minWidth={0} textAlign="center" lineClamp={1} textOverflow="ellipsis" color={Look.ref.fg2}
+					direction={helder.ui.Dir.Ltr}>{viewer.title}</text>
 				<Show when={viewer.markdown() != null}>
-					<view:button tag="viewer-source" role="button" focusable label="Show Source" data-selected={viewer.markdown()?.source() == true}
-						direction="row" align-items="center" column-gap={5} height={30} padding="0 10 0 8" radius={8}
+					<button tag="viewer-source" aria-label="Show Source" data-selected={viewer.markdown()?.source() == true}
+						flexDirection="row" alignItems="center" columnGap={5} height={30} padding="0 10 0 8" borderRadius={8}
 						background={viewer.markdown()?.source() == true ? Look.ref.fill : null} color={Look.ref.fg2}
 						onPress={() -> x.perform(ToggleSource)}>
 						<image src={Glyphs.get("code")} width={16} height={16}/>
 						<text>Source</text>
-					</view:button>
+					</button>
 				</Show>
 				<Show when={x.files.trash != null}>
-					<view:button tag="viewer-trash" role="button" focusable label={ViewerActions.trashLabel()} width={30} height={30} radius={8}
-						align-items="center" justify="center" color={Look.ref.fg2} onPress={() -> x.perform(Trash)}>
+					<button tag="viewer-trash" aria-label={ViewerActions.trashLabel()} width={30} height={30} borderRadius={8}
+						alignItems="center" justifyContent="center" color={Look.ref.fg2} onPress={() -> x.perform(Trash)}>
 						<image src={Glyphs.get("trash")} width={16} height={16}/>
-					</view:button>
+					</button>
 				</Show>
 			</view>
 			{stage(x)}
@@ -117,8 +118,8 @@ class ViewerView implements Markup {
 			});
 		});
 		// (the file over the status line, not under it: the media bar, the PDF's column, the picture all above it)
-		return <view tag="stage" grow={1} min-height={0}>
-			<view tag="stage-content" grow={1} min-height={0}>
+		return <view tag="stage" flexGrow={1} minHeight={0}>
+			<view tag="stage-content" flexGrow={1} minHeight={0}>
 				{image}
 				<Show when={viewer.media() != ""}>{MediaView.make(viewer, x.files)}</Show>
 				<Show when={viewer.pdf() != null}>{() -> {
@@ -130,29 +131,29 @@ class ViewerView implements Markup {
 					d == null ? null : MarkdownPage.make(x, d);
 				}}</Show>
 				<Show when={viewer.state() != Shown && (viewer.state() != Loading || slow()) && x.zoom.flying() == ""}>
-					<view tag="message" position="absolute" inset={0} align-items="center" justify="center" row-gap={8} padding={24} pointer-events="none">
-						<text tag="title" font-size={17} color={viewer.state() == Failed ? Look.ref.danger : Look.ref.fg} text-align="center">{viewer.message}</text>
-						<text tag="detail" color={Look.ref.fg3} text-align="center">{viewer.detail}</text>
+					<view tag="message" position="absolute" inset={0} alignItems="center" justifyContent="center" rowGap={8} padding={24} pointerEvents="none">
+						<text tag="title" fontSize={17} color={viewer.state() == Failed ? Look.ref.danger : Look.ref.fg} textAlign="center">{viewer.message}</text>
+						<text tag="detail" color={Look.ref.fg3} textAlign="center">{viewer.detail}</text>
 					</view>
 				</Show>
 				<Show when={viewer.gotoOpen()}>{goTo(viewer)}</Show>
 			</view>
 			<Show when={viewer.statusOn() && viewer.status() != ""}>
-				<view tag="status" shrink={0} padding="6 12" background={Look.ref.raised} borders="1 0 0 0" border-color={Look.ref.line} direction="row">
-					<text shrink={1} min-width={0} max-lines={1} text-overflow="ellipsis" color={Look.ref.fg2}>{viewer.status}</text>
+				<view tag="status" flexShrink={0} padding="6 12" background={Look.ref.raised} borders="1 0 0 0" borderColor={Look.ref.line} flexDirection="row">
+					<text flexShrink={1} minWidth={0} lineClamp={1} textOverflow="ellipsis" color={Look.ref.fg2}>{viewer.status}</text>
 				</view>
 			</Show>
 		</view>;
 	}
 
 	static function goTo(viewer:Viewer):View
-		return <view tag="goto-backdrop" position="absolute" inset={0} background={Look.ref.scrim} align-items="center" justify="center"
-			onClick={_ -> viewer.gotoOpen(false)}>
-			<view tag="goto" width={260} padding={12} row-gap={8} radius={10} background={Look.ref.raised} border-width={1} border-color={Look.ref.edge}
-				shadow="0 8px 30px rgba(0, 0, 0, 0.25)" onClick={e -> e.stop()}>
+		return <view tag="goto-backdrop" position="absolute" inset={0} background={Look.ref.scrim} alignItems="center" justifyContent="center"
+			onPress={_ -> viewer.gotoOpen(false)}>
+			<view tag="goto" width={260} padding={12} rowGap={8} borderRadius={10} background={Look.ref.raised} borderWidth={1} borderColor={Look.ref.edge}
+				boxShadow="0 8px 30px rgba(0, 0, 0, 0.25)" onPress={e -> e.stop()}>
 				<text color={Look.ref.fg3}>{"Go to page (1–" + viewer.pagesSignal() + ")"}</text>
-				<field tag="goto-field" value={viewer.gotoText} placeholder={Std.string(viewer.pageSignal() + 1)} label="Page number" height={28} padding="0 8"
-					radius={6} background={Look.ref.well} border-width={1} border-color={Look.ref.edge} onInput={e -> viewer.gotoText(e.text)}
+				<field tag="goto-field" value={viewer.gotoText} placeholder={Std.string(viewer.pageSignal() + 1)} aria-label="Page number" height={28} padding="0 8"
+					borderRadius={6} background={Look.ref.well} borderWidth={1} borderColor={Look.ref.edge} onInput={e -> viewer.gotoText(e.text)}
 					onKeyDown={e -> if (e.key == helder.ui.Key.ENTER) {
 						viewer.goToTyped((cast e.current : helder.ui.widgets.TextField).text);
 						e.stop();

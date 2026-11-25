@@ -52,9 +52,9 @@ private class Fixture {
 		Ui.now = () -> 0;
 		ui = new Ui(new helder.story.StoryText(), 400, 300);
 		var g:Null<GridScroll> = null;
-		close = Render.render(<view grow={1}>
+		close = Render.render(<view flexGrow={1}>
 			<VirtualGrid each={items} by={f -> f} cellWidth={90} cellHeight={70} ref={r -> g = r}>
-				{(f, i) -> <view grow={1}/>}
+				{(f, i) -> <view flexGrow={1}/>}
 			</VirtualGrid>
 		</view>, ui.root);
 		grid = g;

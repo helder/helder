@@ -147,8 +147,8 @@ class DataGrid extends Node {
 	public function new(?tag:String) {
 		super(tag ?? "data-grid");
 		focusable = true;
-		style.grow = 1;
-		style.shrink = 1;
+		style.flexGrow = 1;
+		style.flexShrink = 1;
 		style.minHeight = 0;
 		style.minWidth = 0;
 		style.overflow = Hidden;

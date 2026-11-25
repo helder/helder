@@ -3,7 +3,7 @@ import helder.ui.*;
 
 // Glass over backgrounds (GlassWindowCheck: the system's, GlassCheck: drawn):
 // stripes, a gradient, text, a photo; on each a regular capsule with a
-// label, clear glass with rounded corners, and a tinted regular circle; with group, two glass merging in a <glass-group>.
+// label, clear glass with rounded corners, and a tinted regular circle; with group, two glass merging in a view with glassSpacing.
 // Its text in helder's own Inter (embedded): the same glyphs on every
 // machine, whatever fonts it has. 400 x 300 points.
 class GlassScene {

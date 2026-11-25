@@ -167,16 +167,16 @@ class ControlsGallery implements Markup {
 
 	static function gallery(look:Look<Dynamic>):View
 		return <Standard.Themed look={look}>
-			<view grow={1} padding={16} row-gap={4} background={Look.ref.canvas} color={Look.ref.fg} font-family="Inter" font-size={13}>
-				<view direction="row" height={24} align-items="center">
+			<view flexGrow={1} padding={16} rowGap={4} background={Look.ref.canvas} color={Look.ref.fg} fontFamily="Inter" fontSize={13}>
+				<view flexDirection="row" height={24} alignItems="center">
 					<view width={100}/>
 					{[for (s in STATES) <text width={128} color={Look.ref.fg3}>{s}</text>]}
 				</view>
-				{[for (row in ROWS) <view direction="row" align-items="center" min-height={48}>
+				{[for (row in ROWS) <view flexDirection="row" alignItems="center" minHeight={48}>
 					<text width={100} color={Look.ref.fg3}>{row.label}</text>
-					{[for (s in STATES) <view width={128} direction="row">{control(row.tag, s)}</view>]}
+					{[for (s in STATES) <view width={128} flexDirection="row">{control(row.tag, s)}</view>]}
 				</view>]}
-				<view direction="row" align-items="center" min-height={56} column-gap={12}>
+				<view flexDirection="row" alignItems="center" minHeight={56} columnGap={12}>
 					<text width={88} color={Look.ref.fg3}>sizes</text>
 					<Standard.Button tag="size-sm" variant="primary" size="sm">Small</Standard.Button>
 					<Standard.Button tag="size-md" variant="primary">Medium</Standard.Button>
@@ -184,7 +184,7 @@ class ControlsGallery implements Markup {
 					<Standard.Button tag="size-icon" icon={Icons.svg("search")} label="Search"/>
 					<Standard.Button tag="inspector" icon={Icons.svg("panel-left")} variant="ghost" label="Inspector" selected={true}/>
 				</view>
-				<view direction="row" align-items="center">
+				<view flexDirection="row" alignItems="center">
 					<text width={100} color={Look.ref.fg3}>path bar</text>
 					<view width={330}>
 						<Standard.PathBar segments={location()} onNavigate={_ -> {}} onSubmit={_ -> {}}/>

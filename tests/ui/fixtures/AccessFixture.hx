@@ -29,30 +29,30 @@ class AccessFixture implements Markup {
 	public function new() {}
 
 	public function view():View
-		return <view tag="fixture" padding={8} row-gap={4} align-items="start">
+		return <view tag="fixture" padding={8} rowGap={4} alignItems="start">
 			<text>Settings</text>
-			<Button tag="save" label="Save" onClick={() -> saved++}/>
+			<Button tag="save" label="Save" onPress={() -> saved++}/>
 			<Checkbox tag="remember" checked={checked} label="Remember"/>
 			<Slider tag="volume" value={volume} step={0.1} label="Volume"/>
-			<field tag="name" value={name} placeholder="Name" label="Name" onInput={e -> name(e.text)} width={120}/>
-			<field tag="code" value={"X1"} readonly label="Code" width={60}/>
-			<field:textarea tag="notes" value={notes} label="Notes" onInput={e -> notes(e.text)} width={120}/>
-			<view:button tag="more" role="button" expanded={open} focusable onPress={() -> open(o -> !o)}>More</view:button>
+			<field tag="name" value={name} placeholder="Name" aria-label="Name" onInput={e -> name(e.text)} width={120}/>
+			<field tag="code" value={"X1"} readOnly aria-label="Code" width={60}/>
+			<textarea tag="notes" value={notes} aria-label="Notes" onInput={e -> notes(e.text)} width={120}/>
+			<button tag="more" aria-expanded={open} onPress={() -> open(o -> !o)}>More</button>
 			<Show when={open}><text tag="extra">Extra</text></Show>
-			<view tag="fruits" role="list" label="Fruits" direction="row" column-gap={6}>
+			<view tag="fruits" role="list" aria-label="Fruits" flexDirection="row" columnGap={6}>
 				<view role="listitem">Apple</view><view role="listitem">Pear</view><view role="listitem">Plum</view>
 			</view>
-			<view tag="table" role="grid" label="Mail">
-				<view role="row" direction="row" column-gap={6}><view role="columnheader">From</view><view role="columnheader">Subject</view></view>
-				<Repeat count={2}>{i -> <view tag={"row" + i} role="row" direction="row" column-gap={6} focusable selected={() -> row() == i}
-					onClick={_ -> row(i)}>
+			<view tag="table" role="grid" aria-label="Mail">
+				<view role="row" flexDirection="row" columnGap={6}><view role="columnheader">From</view><view role="columnheader">Subject</view></view>
+				<Repeat count={2}>{i -> <view tag={"row" + i} role="row" flexDirection="row" columnGap={6} focusable aria-selected={() -> row() == i}
+					onPress={_ -> row(i)}>
 					<view role="cell">{["Ann", "Bob"][i]}</view><view role="cell">{["Hello", "Lunch"][i]}</view>
 				</view>}</Repeat>
 			</view>
-			<view tag="tabs" role="tablist" direction="row" column-gap={6}>
-				<Repeat count={2}>{i -> <view:button role="tab" focusable selected={() -> tab() == i} onPress={() -> tab(i)}>{["General", "Advanced"][i]}</view:button>}</Repeat>
+			<view tag="tabs" role="tablist" flexDirection="row" columnGap={6}>
+				<Repeat count={2}>{i -> <button role="tab" aria-selected={() -> tab() == i} onPress={() -> tab(i)}>{["General", "Advanced"][i]}</button>}</Repeat>
 			</view>
-			<view tag="status" live="polite"><text>{status}</text></view>
+			<view tag="status" aria-live="polite"><text>{status}</text></view>
 			<view tag="scroller" id="scroller" overflow="scroll" height={20} width={80}>
 				<text>First</text><text>Second</text><text tag="last">Last</text>
 			</view>

@@ -40,10 +40,10 @@ class Screens implements Markup {
 
 	// (the safe area's top, then a bar of 44)
 	public static function NavBar(props:{title:String}):View
-		return <view padding-top="env(safe-area-inset-top)" shrink={0}>
-			<view height={44} padding="0 8" direction="row" align-items="center">
+		return <view paddingTop="env(safe-area-inset-top)" flexShrink={0}>
+			<view height={44} padding="0 8" flexDirection="row" alignItems="center">
 				<Back/>
-				<text grow={1} basis={0} min-width={0} font-size={17} font-weight={600} text-align="center" max-lines={1} text-overflow="ellipsis">{props.title}</text>
+				<text flexGrow={1} flexBasis={0} minWidth={0} fontSize={17} fontWeight={600} textAlign="center" lineClamp={1} textOverflow="ellipsis">{props.title}</text>
 				<view width={44}/>
 			</view>
 		</view>;
@@ -163,10 +163,10 @@ class HomeScreen implements Markup {
 	}
 
 	public function view():View
-		return <view grow={1} min-height={0}>
-			<Show when={!failed()} fallback={<view grow={1} padding-top="env(safe-area-inset-top)">{header()}<Failed onRetry={load}/></view>}>
-				<scroll id="home-scroll" grow={1} min-height={0} scrollbar-width="none">
-					<view padding-top="env(safe-area-inset-top)" padding-bottom={24}>
+		return <view flexGrow={1} minHeight={0}>
+			<Show when={!failed()} fallback={<view flexGrow={1} paddingTop="env(safe-area-inset-top)">{header()}<Failed onRetry={load}/></view>}>
+				<scroll id="home-scroll" flexGrow={1} minHeight={0} scrollbarWidth="none">
+					<view paddingTop="env(safe-area-inset-top)" paddingBottom={24}>
 						{header()}
 						<Show when={data() != null} fallback={skeleton()}>{content(data())}</Show>
 					</view>
@@ -175,61 +175,61 @@ class HomeScreen implements Markup {
 		</view>;
 
 	static function header():View
-		return <view height={44} padding="0 16" justify="center"><text font-size={22} font-weight={700} letter-spacing={-0.4}>Everbloom</text></view>;
+		return <view height={44} padding="0 16" justifyContent="center"><text fontSize={22} fontWeight={700} letterSpacing={-0.4}>Everbloom</text></view>;
 
 	// (States.dc.html's Home loading)
 	static function skeleton():View
 		return <view>
-			<view direction="row" column-gap={8} padding="8 16 12">
-				<Repeat count={4}>{i -> <view width={[52, 110, 96, 80][i]} height={36} radius={18} background={SKELETON}/>}</Repeat>
+			<view flexDirection="row" columnGap={8} padding="8 16 12">
+				<Repeat count={4}>{i -> <view width={[52, 110, 96, 80][i]} height={36} borderRadius={18} background={SKELETON}/>}</Repeat>
 			</view>
-			<view margin="4 16 0" height={240} radius={12} background={SKELETON}/>
-			<view padding="28 16 12"><view width={120} height={18} radius={4} background={SKELETON}/></view>
-			<view direction="row" column-gap={12} padding="0 16">
-				<Repeat count={3}>{_ -> <view width={140} height={175} shrink={0} radius={8} background={SKELETON}/>}</Repeat>
+			<view margin="4 16 0" height={240} borderRadius={12} background={SKELETON}/>
+			<view padding="28 16 12"><view width={120} height={18} borderRadius={4} background={SKELETON}/></view>
+			<view flexDirection="row" columnGap={12} padding="0 16">
+				<Repeat count={3}>{_ -> <view width={140} height={175} flexShrink={0} borderRadius={8} background={SKELETON}/>}</Repeat>
 			</view>
 		</view>;
 
 	static function content(d:HomeData):View {
 		var featured = d.collections[0];
 		return <view>
-			<scroll direction="row" scrollbar-width="none" column-gap={8} padding="8 16 12" shrink={0} role="navigation" label="Collections">
-				<Repeat count={d.collections.length}>{i -> <view:button id={"collection-chip-" + i} role="button" focusable shrink={0} height={36}
-					padding="0 14" radius={18} background={SURFACE} justify="center" onPress={() -> Screens.openCollection(d.collections[i])}>
-					<text font-size={14} font-weight={500} text-wrap="nowrap">{d.collections[i].title}</text>
-				</view:button>}</Repeat>
+			<scroll flexDirection="row" scrollbarWidth="none" columnGap={8} padding="8 16 12" flexShrink={0} role="navigation" aria-label="Collections">
+				<Repeat count={d.collections.length}>{i -> <button id={"collection-chip-" + i} flexShrink={0} height={36}
+					padding="0 14" borderRadius={18} background={SURFACE} justifyContent="center" onPress={() -> Screens.openCollection(d.collections[i])}>
+					<text fontSize={14} fontWeight={500} textWrap="nowrap">{d.collections[i].title}</text>
+				</button>}</Repeat>
 			</scroll>
 			<Show when={featured != null}>
-				<view:button id="featured-collection" role="button" label={featured.title} focusable margin="4 16 0" height={240} radius={12}
+				<button id="featured-collection" aria-label={featured.title} margin="4 16 0" height={240} borderRadius={12}
 					overflow="hidden" background={SURFACE} onPress={() -> Screens.openCollection(featured)}>
 					<Picture url={featured.image} width={1080} w="100%" h={240} radius={12}/>
-					<view position="absolute" left={0} right={0} bottom={0} padding={16} row-gap={2} background="rgba(28,27,25,0.72)">
-						<text color="#ffffff" font-size={12} font-weight={600} letter-spacing={0.6}>FEATURED COLLECTION</text>
-						<text color="#ffffff" font-size={20} font-weight={700}>{featured.title}</text>
-						<text color="#ffffff" font-size={14}>Shop now</text>
+					<view position="absolute" left={0} right={0} bottom={0} padding={16} rowGap={2} background="rgba(28,27,25,0.72)">
+						<text color="#ffffff" fontSize={12} fontWeight={600} letterSpacing={0.6}>FEATURED COLLECTION</text>
+						<text color="#ffffff" fontSize={20} fontWeight={700}>{featured.title}</text>
+						<text color="#ffffff" fontSize={14}>Shop now</text>
 					</view>
-				</view:button>
+				</button>
 			</Show>
 			<view padding="28 0 0">
-				<text padding="0 16 12" font-size={17} font-weight={700} role="heading">Collections</text>
-				<scroll direction="row" scrollbar-width="none" column-gap={12} padding="0 16" shrink={0}>
+				<text padding="0 16 12" fontSize={17} fontWeight={700} role="heading">Collections</text>
+				<scroll flexDirection="row" scrollbarWidth="none" columnGap={12} padding="0 16" flexShrink={0}>
 					<Repeat count={d.collections.length}>{i -> {
 						var c = d.collections[i];
-						<view:button id={"collection-card-" + i} role="button" label={c.title} focusable shrink={0} width={140} row-gap={8}
+						<button id={"collection-card-" + i} aria-label={c.title} flexShrink={0} width={140} rowGap={8}
 							onPress={() -> Screens.openCollection(c)}>
 							<Picture url={c.image} width={480} w={140} h={175}/>
-							<text font-size={14} font-weight={600} line-height="18px">{c.title}</text>
-						</view:button>;
+							<text fontSize={14} fontWeight={600} lineHeight="18px">{c.title}</text>
+						</button>;
 					}}</Repeat>
 				</scroll>
 			</view>
-			<view padding="28 16 0" row-gap={12}>
-				<text font-size={17} font-weight={700} role="heading">Best sellers</text>
-				<view row-gap={20}>
-					<Repeat count={Math.ceil(d.bestSellers.length / 2)}>{r -> <view direction="row" column-gap={12} align-items="start">
+			<view padding="28 16 0" rowGap={12}>
+				<text fontSize={17} fontWeight={700} role="heading">Best sellers</text>
+				<view rowGap={20}>
+					<Repeat count={Math.ceil(d.bestSellers.length / 2)}>{r -> <view flexDirection="row" columnGap={12} alignItems="start">
 						<Card product={d.bestSellers[r * 2]} id={"best-seller-" + (r * 2)} onOpen={Screens.openProduct}/>
 						{d.bestSellers.length > r * 2 + 1 ? <Card product={d.bestSellers[r * 2 + 1]} id={"best-seller-" + (r * 2 + 1)}
-							onOpen={Screens.openProduct}/> : <view grow={1} basis={0}/>}
+							onOpen={Screens.openProduct}/> : <view flexGrow={1} flexBasis={0}/>}
 					</view>}</Repeat>
 				</view>
 			</view>
@@ -270,7 +270,7 @@ class CollectionScreen implements Markup {
 	}
 
 	public function view():View
-		return <view grow={1}>
+		return <view flexGrow={1}>
 			<Screens.NavBar title={collection.title}/>
 			<Show when={!(paged.failed() && paged.first())} fallback={<Failed onRetry={paged.retry}/>}>
 				<VirtualList tag="grid" each={() -> paged.rows(true)} by={Paged.key} estimate={300} overscan={2} label={collection.title} ref={l -> {
@@ -279,14 +279,14 @@ class CollectionScreen implements Markup {
 					paged.watch(l);
 				}}>{(row:Read<Row>, _) -> switch row() {
 					case Head: head();
-					case Pair(i, a, b): <view direction="row" column-gap={12} padding="0 16 20" align-items="start">
+					case Pair(i, a, b): <view flexDirection="row" columnGap={12} padding="0 16 20" alignItems="start">
 							<Card product={a} id={"product-card-" + i} onOpen={Screens.openProduct}/>
-							{b == null ? <view grow={1} basis={0}/> : <Card product={b} id={"product-card-" + (i + 1)} onOpen={Screens.openProduct}/>}
+							{b == null ? <view flexGrow={1} flexBasis={0}/> : <Card product={b} id={"product-card-" + (i + 1)} onOpen={Screens.openProduct}/>}
 						</view>;
-					case End: <view padding-bottom={16}>
+					case End: <view paddingBottom={16}>
 							<Show when={paged.loading()}>{Spinner()}</Show>
 							<Show when={paged.failed() && !paged.first()}>
-								<view align-items="center" padding={12}><Button id="error-retry" label="Retry" secondary height={40} onPress={paged.retry}/></view>
+								<view alignItems="center" padding={12}><Button id="error-retry" label="Retry" secondary height={40} onPress={paged.retry}/></view>
 							</Show>
 						</view>;
 				}}</VirtualList>
@@ -296,14 +296,14 @@ class CollectionScreen implements Markup {
 	function head():View
 		return <view>
 			<Show when={(paged.description() ?? "") != ""}>
-				<text padding="4 16 0" font-size={14} line-height="20px" color={MUTED}>{paged.description() ?? ""}</text>
+				<text padding="4 16 0" fontSize={14} lineHeight="20px" color={MUTED}>{paged.description() ?? ""}</text>
 			</Show>
-			<scroll direction="row" scrollbar-width="none" column-gap={8} padding="12 16" role="radiogroup" label="Sort">
-				<Repeat count={SORTS.length}>{i -> <view:button id={SORTS[i].id} role="radio" checked={sort() == i} focusable shrink={0} height={32}
-					padding="0 12" radius={16} border-width={1} border-color={sort() == i ? TEXT : BORDER} background={sort() == i ? TEXT : BACKGROUND}
-					justify="center" onPress={() -> pick(i)}>
-					<text font-size={13} font-weight={sort() == i ? 600 : 500} color={sort() == i ? "#ffffff" : TEXT} text-wrap="nowrap">{SORTS[i].label}</text>
-				</view:button>}</Repeat>
+			<scroll flexDirection="row" scrollbarWidth="none" columnGap={8} padding="12 16" role="radiogroup" aria-label="Sort">
+				<Repeat count={SORTS.length}>{i -> <button id={SORTS[i].id} role="radio" aria-checked={sort() == i} flexShrink={0} height={32}
+					padding="0 12" borderRadius={16} borderWidth={1} borderColor={sort() == i ? TEXT : BORDER} background={sort() == i ? TEXT : BACKGROUND}
+					justifyContent="center" onPress={() -> pick(i)}>
+					<text fontSize={13} fontWeight={sort() == i ? 600 : 500} color={sort() == i ? "#ffffff" : TEXT} textWrap="nowrap">{SORTS[i].label}</text>
+				</button>}</Repeat>
 			</scroll>
 		</view>;
 }
@@ -364,53 +364,53 @@ class ProductScreen implements Markup {
 	}
 
 	public function view():View
-		return <view grow={1} min-height={0}>
-			<Show when={data() != null} fallback={<view grow={1}>
-				<view padding="calc(env(safe-area-inset-top) + 4px) 12 0" shrink={0}><Back round/></view>
-				<Show when={failed()} fallback={<view grow={1} justify="center">{Spinner()}</view>}><Failed onRetry={load}/></Show>
+		return <view flexGrow={1} minHeight={0}>
+			<Show when={data() != null} fallback={<view flexGrow={1}>
+				<view padding="calc(env(safe-area-inset-top) + 4px) 12 0" flexShrink={0}><Back round/></view>
+				<Show when={failed()} fallback={<view flexGrow={1} justifyContent="center">{Spinner()}</view>}><Failed onRetry={load}/></Show>
 			</view>}>{content(data())}</Show>
 		</view>;
 
 	function content(d:ProductDetail):View {
 		var options = [for (o in d.options) if (!(o.name == "Title" && o.values.length == 1 && o.values[0] == "Default Title")) o];
-		return <view grow={1} min-height={0}>
-			<scroll grow={1} min-height={0}>
-				<view padding-bottom={32}>
+		return <view flexGrow={1} minHeight={0}>
+			<scroll flexGrow={1} minHeight={0}>
+				<view paddingBottom={32}>
 					<view>
 						<Carousel images={d.images}/>
 						<view position="absolute" left={12} top="calc(env(safe-area-inset-top) + 4px)"><Back round/></view>
 					</view>
-					<view padding="20 16 0" row-gap={6}>
-						<text font-size={22} line-height="28px" font-weight={700} role="heading">{d.title}</text>
+					<view padding="20 16 0" rowGap={6}>
+						<text fontSize={22} lineHeight="28px" fontWeight={700} role="heading">{d.title}</text>
 						<Show when={variant() != null}><Price price={variant().price} compareAt={variant().compareAt} size={20}/></Show>
 					</view>
 					<For each={options}>{(o:Read<Option>) -> {
 						var opt = o();
-						<view padding="24 16 0" row-gap={12}>
-							<view direction="row">
-								<text font-size={15} font-weight={600} padding-right={4}>{opt.name + ":"}</text>
-								<text font-size={15} color={MUTED}>{variant()?.options.get(opt.name) ?? ""}</text>
+						<view padding="24 16 0" rowGap={12}>
+							<view flexDirection="row">
+								<text fontSize={15} fontWeight={600} paddingRight={4}>{opt.name + ":"}</text>
+								<text fontSize={15} color={MUTED}>{variant()?.options.get(opt.name) ?? ""}</text>
 							</view>
-							<view direction="row" wrap column-gap={8} row-gap={8}>
+							<view flexDirection="row" flexWrap columnGap={8} rowGap={8}>
 								<For each={opt.values}>{(value:Read<String>) -> {
 									var val = value(), on = () -> variant()?.options.get(opt.name) == val;
-									<view:button id={"option-" + opt.name + "-" + val} role="button" pressed={on()} focusable min-width={56} height={44}
-										padding="0 16" radius={12} border-width={on() ? 2 : 1} border-color={on() ? TEXT : BORDER} align-items="center"
-										justify="center" onPress={() -> choose(opt.name, val)}>
-										<text font-size={15} font-weight={on() ? 600 : 500}>{val}</text>
-									</view:button>;
+									<button id={"option-" + opt.name + "-" + val} aria-pressed={on()} minWidth={56} height={44}
+										padding="0 16" borderRadius={12} borderWidth={on() ? 2 : 1} borderColor={on() ? TEXT : BORDER} alignItems="center"
+										justifyContent="center" onPress={() -> choose(opt.name, val)}>
+										<text fontSize={15} fontWeight={on() ? 600 : 500}>{val}</text>
+									</button>;
 								}}</For>
 							</view>
 						</view>;
 					}}</For>
-					<view padding="24 16 0" row-gap={8}>
-						<text font-size={15} font-weight={600} role="heading">Description</text>
-						<text font-size={15} line-height="22px" color={BODY}>{d.description}</text>
+					<view padding="24 16 0" rowGap={8}>
+						<text fontSize={15} fontWeight={600} role="heading">Description</text>
+						<text fontSize={15} lineHeight="22px" color={BODY}>{d.description}</text>
 					</view>
 					<Show when={d.recommendations.length > 0}>
-						<view padding="32 0 0" row-gap={12}>
-							<text padding="0 16" font-size={17} font-weight={700} role="heading">You may also like</text>
-							<scroll direction="row" scrollbar-width="none" column-gap={12} padding="0 16">
+						<view padding="32 0 0" rowGap={12}>
+							<text padding="0 16" fontSize={17} fontWeight={700} role="heading">You may also like</text>
+							<scroll flexDirection="row" scrollbarWidth="none" columnGap={12} padding="0 16">
 								<Repeat count={d.recommendations.length}>{i -> <Card product={d.recommendations[i]} id={"recommendation-" + i} width={140}
 									onOpen={Screens.openProduct}/>}</Repeat>
 							</scroll>
@@ -418,7 +418,7 @@ class ProductScreen implements Markup {
 					</Show>
 				</view>
 			</scroll>
-			<view padding="12 16" padding-bottom="max(12px, env(safe-area-inset-bottom))" borders="1 0 0 0" border-color={BORDER} background={BACKGROUND}>
+			<view padding="12 16" paddingBottom="max(12px, env(safe-area-inset-bottom))" borders="1 0 0 0" borderColor={BORDER} background={BACKGROUND}>
 				<Button id="add-to-cart" label={"Add to cart · " + (variant()?.price.toString() ?? "")} disabled={() -> adding() || Everbloom.cartBusy()}
 					onPress={add}/>
 			</view>
@@ -433,15 +433,15 @@ class ProductScreen implements Markup {
 		var page = signal(0), n = props.images.length;
 		var pager = new Pager(page, n == 0 ? 1 : n, p -> page(p));
 		var slides:Array<View> = [for (url in props.images) slide(url)];
-		var pages:View = n == 0 ? <view aspect-ratio={0.75}/> : <Pager.Pages pager={pager} slides={slides}/>;
+		var pages:View = n == 0 ? <view aspectRatio={0.75}/> : <Pager.Pages pager={pager} slides={slides}/>;
 		return <view id="product-carousel" background={SURFACE}>
 			{pages}
 			<Show when={n > 1}>
-				<view position="absolute" left={0} right={0} bottom={12} direction="row" justify="center" column-gap={4}>
-					<Repeat count={n}>{i -> <view:button role="button" label={"Show image " + (i + 1)} focusable width={24} height={24} align-items="center"
-						justify="center" onPress={() -> page(i)}>
-						<view width={8} height={8} radius={4} background={page() == i ? TEXT : "rgba(255,255,255,0.8)"}/>
-					</view:button>}</Repeat>
+				<view position="absolute" left={0} right={0} bottom={12} flexDirection="row" justifyContent="center" columnGap={4}>
+					<Repeat count={n}>{i -> <button aria-label={"Show image " + (i + 1)} width={24} height={24} alignItems="center"
+						justifyContent="center" onPress={() -> page(i)}>
+						<view width={8} height={8} borderRadius={4} background={page() == i ? TEXT : "rgba(255,255,255,0.8)"}/>
+					</button>}</Repeat>
 				</view>
 			</Show>
 		</view>;
@@ -489,19 +489,19 @@ class SearchScreen implements Markup {
 		return [for (i => p in paged.products()) ({i: i, p: p} : Hit)];
 
 	public function view():View
-		return <view grow={1} padding-top="env(safe-area-inset-top)">
-			<view padding="4 16 12" shrink={0}>
-				<view height={44} radius={12} background={SURFACE} direction="row" align-items="center" column-gap={8} padding="0 12">
+		return <view flexGrow={1} paddingTop="env(safe-area-inset-top)">
+			<view padding="4 16 12" flexShrink={0}>
+				<view height={44} borderRadius={12} background={SURFACE} flexDirection="row" alignItems="center" columnGap={8} padding="0 12">
 					{icon(SEARCH, 20, MUTED)}
-					<field id="search-input" grow={1} min-width={0} font-size={16} value={query} placeholder="Search products" label="Search products"
-						background="transparent" border-width={0} onInput={e -> input(e.text)}/>
+					<field id="search-input" flexGrow={1} minWidth={0} fontSize={16} value={query} placeholder="Search products" aria-label="Search products"
+						background="transparent" borderWidth={0} onInput={e -> input(e.text)}/>
 				</view>
 			</view>
-			<Show when={StringTools.trim(query()) != ""} fallback={<text padding="48 32" font-size={15} line-height="22px" color={MUTED}
-				text-align="center">Search across 995 products by name.</text>}>
+			<Show when={StringTools.trim(query()) != ""} fallback={<text padding="48 32" fontSize={15} lineHeight="22px" color={MUTED}
+				textAlign="center">Search across 995 products by name.</text>}>
 				<Show when={!(paged.failed() && paged.first())} fallback={<Failed onRetry={paged.retry}/>}>
 					<Show when={paged.total() != null}>
-						<text padding="4 16 8" font-size={13} color={MUTED} shrink={0}>{(paged.total() ?? 0) + " results"}</text>
+						<text padding="4 16 8" fontSize={13} color={MUTED} flexShrink={0}>{(paged.total() ?? 0) + " results"}</text>
 					</Show>
 					<Show when={!paged.first()} fallback={Spinner()}>
 						<VirtualList tag="results" each={hits} by={x -> x.i} estimate={101} overscan={4}
@@ -510,14 +510,14 @@ class SearchScreen implements Markup {
 								paged.watch(l);
 							}}>{(item:Read<Hit>, _) -> {
 							var x = item();
-							<view:button id={"search-result-" + x.i} role="button" label={x.p.title} focusable direction="row" column-gap={12}
-								align-items="center" padding="8 16" onPress={() -> Screens.openProduct(x.p)}>
+							<button id={"search-result-" + x.i} aria-label={x.p.title} flexDirection="row" columnGap={12}
+								alignItems="center" padding="8 16" onPress={() -> Screens.openProduct(x.p)}>
 								<Picture url={x.p.image} width={240} w={64} h={85}/>
-								<view grow={1} min-width={0} row-gap={4}>
-									<text font-size={15} line-height="20px">{x.p.title}</text>
+								<view flexGrow={1} minWidth={0} rowGap={4}>
+									<text fontSize={15} lineHeight="20px">{x.p.title}</text>
 									<Price price={x.p.price} compareAt={x.p.compareAt}/>
 								</view>
-							</view:button>;
+							</button>;
 						}}</VirtualList>
 					</Show>
 				</Show>
@@ -527,38 +527,38 @@ class SearchScreen implements Markup {
 
 class CartScreen implements Markup {
 	public static function view():View
-		return <view grow={1} padding-top="env(safe-area-inset-top)">
-			<view height={44} padding="0 16" justify="center" shrink={0}><text font-size={22} font-weight={700} role="heading">Cart</text></view>
+		return <view flexGrow={1} paddingTop="env(safe-area-inset-top)">
+			<view height={44} padding="0 16" justifyContent="center" flexShrink={0}><text fontSize={22} fontWeight={700} role="heading">Cart</text></view>
 			<Show when={(Everbloom.cart()?.lines.length ?? 0) > 0} fallback={empty()}>
-				<scroll grow={1} min-height={0}>
+				<scroll flexGrow={1} minHeight={0}>
 					<view padding="0 16">
 						<For each={Everbloom.cart()?.lines ?? []} keyed={false}>{(line:Read<CartLine>) -> {
 							var i = (Everbloom.cart()?.lines ?? []).indexOf(line());
-							<view id={"cart-line-" + i} direction="row" column-gap={12} padding="16 0" borders="0 0 1 0" border-color={BORDER}>
+							<view id={"cart-line-" + i} flexDirection="row" columnGap={12} padding="16 0" borders="0 0 1 0" borderColor={BORDER}>
 								<Picture url={line().image} width={240} w={80} h={107}/>
-								<view grow={1} min-width={0} row-gap={4}>
-									<text font-size={15} line-height="20px" font-weight={600}>{line().title}</text>
-									<Show when={line().variant != "Default Title"}><text font-size={13} color={MUTED}>{line().variant}</text></Show>
-									<view grow={1}/>
-									<view direction="row" align-items="center" justify="space-between">
-										<view direction="row" align-items="center" height={36} radius={12} border-width={1} border-color={BORDER}>
+								<view flexGrow={1} minWidth={0} rowGap={4}>
+									<text fontSize={15} lineHeight="20px" fontWeight={600}>{line().title}</text>
+									<Show when={line().variant != "Default Title"}><text fontSize={13} color={MUTED}>{line().variant}</text></Show>
+									<view flexGrow={1}/>
+									<view flexDirection="row" alignItems="center" justifyContent="space-between">
+										<view flexDirection="row" alignItems="center" height={36} borderRadius={12} borderWidth={1} borderColor={BORDER}>
 											{stepper("qty-dec-" + i, "Decrease quantity", Theme.MINUS, () -> Everbloom.updateLine(line().id, line().quantity - 1))}
-											<text min-width={24} text-align="center" font-size={15} font-weight={600} live="polite">{Std.string(line().quantity)}</text>
+											<text minWidth={24} textAlign="center" fontSize={15} fontWeight={600} aria-live="polite">{Std.string(line().quantity)}</text>
 											{stepper("qty-inc-" + i, "Increase quantity", Theme.PLUS, () -> Everbloom.updateLine(line().id, line().quantity + 1))}
 										</view>
-										<text font-size={15} font-weight={700}>{line().total.toString()}</text>
+										<text fontSize={15} fontWeight={700}>{line().total.toString()}</text>
 									</view>
 								</view>
 							</view>;
 						}}</For>
 					</view>
 				</scroll>
-				<view padding={16} row-gap={12} borders="1 0 0 0" border-color={BORDER} shrink={0}>
-					<view direction="row" justify="space-between" align-items="baseline">
-						<text font-size={15}>Subtotal</text>
-						<text id="cart-subtotal" font-size={17} font-weight={700}>{Everbloom.cart()?.subtotal.toString() ?? ""}</text>
+				<view padding={16} rowGap={12} borders="1 0 0 0" borderColor={BORDER} flexShrink={0}>
+					<view flexDirection="row" justifyContent="space-between" alignItems="baseline">
+						<text fontSize={15}>Subtotal</text>
+						<text id="cart-subtotal" fontSize={17} fontWeight={700}>{Everbloom.cart()?.subtotal.toString() ?? ""}</text>
 					</view>
-					<text font-size={13} color={MUTED}>Taxes and shipping are calculated at checkout.</text>
+					<text fontSize={13} color={MUTED}>Taxes and shipping are calculated at checkout.</text>
 					<Button id="checkout" label="Check out" onPress={() -> {
 						var c = Everbloom.cart.peek();
 						if (c != null && c.checkoutUrl != "") Links.open(Api.absolute(c.checkoutUrl));
@@ -568,15 +568,15 @@ class CartScreen implements Markup {
 		</view>;
 
 	static function stepper(id:String, label:String, glyph:Theme.Icon, f:Void->Void):View
-		return <view:button id={id} role="button" label={label} focusable width={36} height={34} align-items="center" justify="center"
-			disabled={Everbloom.cartBusy()} onPress={() -> if (!Everbloom.cartBusy.peek()) f()}>{icon(glyph, 16, TEXT)}</view:button>;
+		return <button id={id} aria-label={label} width={36} height={34} alignItems="center" justifyContent="center"
+			disabled={Everbloom.cartBusy()} onPress={() -> if (!Everbloom.cartBusy.peek()) f()}>{icon(glyph, 16, TEXT)}</button>;
 
 	// (States.dc.html's empty cart)
 	static function empty():View
-		return <view grow={1} align-items="center" justify="center" row-gap={12} padding="0 32">
+		return <view flexGrow={1} alignItems="center" justifyContent="center" rowGap={12} padding="0 32">
 			{icon(Theme.CART, 48, MUTED)}
-			<text font-size={17} font-weight={700}>Your cart is empty</text>
-			<text font-size={15} line-height="22px" color={MUTED} text-align="center">Items you add will appear here.</text>
-			<view margin-top={8}><Button label="Start shopping" height={48} onPress={() -> Everbloom.tab(0)}/></view>
+			<text fontSize={17} fontWeight={700}>Your cart is empty</text>
+			<text fontSize={15} lineHeight="22px" color={MUTED} textAlign="center">Items you add will appear here.</text>
+			<view marginTop={8}><Button label="Start shopping" height={48} onPress={() -> Everbloom.tab(0)}/></view>
 		</view>;
 }

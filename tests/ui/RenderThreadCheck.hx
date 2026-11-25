@@ -205,9 +205,9 @@ class RenderThreadCheck {
 		list.style.set({overflow: Scroll, height: 600, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
 		for (i in 0...400) {
 			var row = new Node();
-			row.style.set({direction: Row, padding: 3, columnGap: 6, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center, radius: 4});
+			row.style.set({flexDirection: Row, padding: 3, columnGap: 6, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center, borderRadius: 4});
 			var box = new Node();
-			box.style.set({width: 12, height: 12, background: 0xFF000000 | (i * 40503) & 0xFFFFFF, radius: 6});
+			box.style.set({width: 12, height: 12, background: 0xFF000000 | (i * 40503) & 0xFFFFFF, borderRadius: 6});
 			row.append(box);
 			row.append(new TextNode("Row " + i + " with a label of a few words"));
 			list.append(row);

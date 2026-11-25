@@ -11,7 +11,7 @@ import { UiProbe } from "./ui-probe";
 const saved = signal(0), terms = signal(false), dark = signal(true);
 const root = UiProbe.root(320, 240);
 render(
-	<view padding={8} row-gap={8}>
+	<view padding={8} rowGap={8}>
 		<Button tag="save" variant="primary" onPress={() => saved(n => n + 1)}>Save</Button>
 		<Button tag="cancel">Cancel</Button>
 		<Checkbox tag="terms" label="Accept the terms" checked={terms} onChange={terms}/>
@@ -34,7 +34,7 @@ console.log(UiProbe.dump());
 // a rendering of the program's: a lamp for every checkbox, its behaviour and access kept
 function Lamp(props: CheckboxProps<any>) {
 	const t = Toggle.of(props, "checkbox");
-	return <view tag="lamp" ref={(n: Node) => t.root(n)} direction="row" column-gap={4}>
+	return <view tag="lamp" ref={(n: Node) => t.root(n)} flexDirection="row" columnGap={4}>
 		<view ref={t.part("bulb")} width={12} height={12}/>
 		<text>{() => (t.checked() ? "on: " : "off: ") + props.label}</text>
 	</view>;
@@ -43,13 +43,13 @@ function Lamp(props: CheckboxProps<any>) {
 const look = Look.base.with({
 	tokens: { accent: tone("#e11d48") },
 	button: t => ({ variants: { variant: { soft: { root: { background: t.accentSoft, color: t.accentInk, padding: "0 20" } } } } }),
-	switch: () => ({ knob: { radius: 3 } }),
+	switch: () => ({ knob: { borderRadius: 3 } }),
 	render: { checkbox: Lamp }
 });
 const porch = signal(false);
 render(
 	<Themed look={look}>
-		<view padding={8} row-gap={8}>
+		<view padding={8} rowGap={8}>
 			<look.Button tag="go" variant="primary">Go</look.Button>
 			<look.Button tag="soft" variant="soft">Soft</look.Button>
 			<Checkbox label="Porch" checked={porch} onChange={porch}/>

@@ -63,9 +63,9 @@ function insertAbove() {
 	items(next);
 }
 
-function Button(props: { tag: string; label: string; onClick: () => void }) {
-	return <view:button tag={props.tag} role="button" focusable cursor="pointer" padding="4 10" radius={6} background="#18181b" color="#fafafa"
-		onPress={() => props.onClick()}>{props.label}</view:button>;
+function Button(props: { tag: string; label: string; onPress: () => void }) {
+	return <button tag={props.tag} cursor="pointer" padding="4 10" borderRadius={6} background="#18181b" color="#fafafa"
+		onPress={() => props.onPress()}>{props.label}</button>;
 }
 
 // a row: a day's header, or a message (its author's initial, name and number, its text)
@@ -73,31 +73,31 @@ function Row(props: { id: Read<number> }) {
 	const id = untrack(() => props.id());
 	if (isDay(id))
 		return <view tag="day" padding="6 16" background="#f4f4f5">
-			<text font-size={11} font-weight={700} color="#71717a">{"Day " + thousands((id / 200 | 0) + 1)}</text>
+			<text fontSize={11} fontWeight={700} color="#71717a">{"Day " + thousands((id / 200 | 0) + 1)}</text>
 		</view>;
 	const name = author(id);
-	return <view tag="message" direction="row" column-gap={10} padding="8 16" background={selected() === id ? "#dbeafe" : "#ffffff"}>
-		<view width={32} height={32} radius={16} shrink={0} background={id >= COUNT ? "#18181b" : COLORS[hash(id + 3) % COLORS.length]} align-items="center"
-			justify="center"><text color="#ffffff" font-weight={700}>{name.charAt(0)}</text></view>
-		<view grow={1} shrink={1} min-width={0} row-gap={2}>
-			<view direction="row" column-gap={6}><text font-weight={700}>{name}</text><text color="#a1a1aa">{"#" + thousands(id)}</text></view>
+	return <view tag="message" flexDirection="row" columnGap={10} padding="8 16" background={selected() === id ? "#dbeafe" : "#ffffff"}>
+		<view width={32} height={32} borderRadius={16} flexShrink={0} background={id >= COUNT ? "#18181b" : COLORS[hash(id + 3) % COLORS.length]} alignItems="center"
+			justifyContent="center"><text color="#ffffff" fontWeight={700}>{name.charAt(0)}</text></view>
+		<view flexGrow={1} flexShrink={1} minWidth={0} rowGap={2}>
+			<view flexDirection="row" columnGap={6}><text fontWeight={700}>{name}</text><text color="#a1a1aa">{"#" + thousands(id)}</text></view>
 			<text color="#3f3f46">{message(id)}</text>
 		</view>
 	</view>;
 }
 
 function App() {
-	return <view grow={1} background="#fafafa" font-size={13} color="#18181b">
-		<view tag="toolbar" direction="row" align-items="center" column-gap={6} padding="8 12" background="#ffffff">
-			<text tag="title" grow={1} font-weight={700}>A million rows</text>
-			<Button tag="top" label="Top" onClick={() => { if (list) list.focusIndex(0); }}/>
-			<Button tag="middle" label="Middle" onClick={() => { if (list) list.scrollToIndex(items().length / 2 | 0, "start"); }}/>
-			<Button tag="end" label="End" onClick={() => { if (list) list.focusIndex(items().length - 1); }}/>
-			<Button tag="insert" label="Insert" onClick={insertAbove}/>
+	return <view flexGrow={1} background="#fafafa" fontSize={13} color="#18181b">
+		<view tag="toolbar" flexDirection="row" alignItems="center" columnGap={6} padding="8 12" background="#ffffff">
+			<text tag="title" flexGrow={1} fontWeight={700}>A million rows</text>
+			<Button tag="top" label="Top" onPress={() => { if (list) list.focusIndex(0); }}/>
+			<Button tag="middle" label="Middle" onPress={() => { if (list) list.scrollToIndex(items().length / 2 | 0, "start"); }}/>
+			<Button tag="end" label="End" onPress={() => { if (list) list.focusIndex(items().length - 1); }}/>
+			<Button tag="insert" label="Insert" onPress={insertAbove}/>
 		</view>
 		<VirtualList tag="rows" each={items} estimate={52} selected={selected as Signal<any>} label="Messages" ref={(l: VirtualScroll) => { list = l; }}>{
 			(id: Read<number>, i: number) => <Row id={id}/>}</VirtualList>
-		<view tag="status" direction="row" padding="6 12" background="#ffffff">
+		<view tag="status" flexDirection="row" padding="6 12" background="#ffffff">
 			<text tag="status-text" color="#71717a">{thousands(items().length) + " rows" + (selected() === null ? "" : " · #" + thousands(selected()) + " selected")}</text>
 		</view>
 	</view>;

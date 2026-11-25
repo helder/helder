@@ -111,9 +111,9 @@ private class Owned {
 		r.scale = ui.scale = 2;
 		r.background = 0xFFFFFFFF;
 		var row = new helder.ui.Node();
-		row.style.set({direction: Row, width: W, height: H, alignItems: Start});
-		node.style.set({width: 300, height: 200, shrink: 0});
-		side.style.set({direction: Row, columnGap: 2});
+		row.style.set({flexDirection: Row, width: W, height: H, alignItems: Start});
+		node.style.set({width: 300, height: 200, flexShrink: 0});
+		side.style.set({flexDirection: Row, columnGap: 2});
 		row.append(node);
 		row.append(text);
 		row.append(side);
@@ -260,11 +260,11 @@ private class Grid {
 		r.background = 0xFFFFFFFF;
 		r.tileBudget = 12 * Renderer.TILE * Renderer.TILE * 4;
 		var row = new helder.ui.Node(), side = new helder.ui.Node();
-		row.style.set({direction: Row, width: W, height: H, columnGap: 40});
-		list.style.set({overflow: Scroll, width: GRID, height: H, rowGap: 2, padding: 4, background: 0xFFFFFFFF, shrink: 0});
+		row.style.set({flexDirection: Row, width: W, height: H, columnGap: 40});
+		list.style.set({overflow: Scroll, width: GRID, height: H, rowGap: 2, padding: 4, background: 0xFFFFFFFF, flexShrink: 0});
 		for (i in 0...60) {
 			var item = new helder.ui.Node(), badge = new helder.ui.Node(), img = swatch(i);
-			item.style.set({direction: Row, padding: 3, columnGap: 6, alignItems: Center, shrink: 0});
+			item.style.set({flexDirection: Row, padding: 3, columnGap: 6, alignItems: Center, flexShrink: 0});
 			badge.style.set({width: 40, opacity: 0.5, background: 0xFF2060C0});
 			badge.append(new helder.ui.TextNode("new"));
 			rows.push({node: item, image: img});
@@ -273,8 +273,8 @@ private class Grid {
 			item.append(badge);
 			list.append(item);
 		}
-		side.style.set({width: 80, height: H, shrink: 0});
-		notes.style.set({overflow: Scroll, height: H - 40, padding: 8, background: 0xFFEEEEEE, shrink: 0});
+		side.style.set({width: 80, height: H, flexShrink: 0});
+		notes.style.set({overflow: Scroll, height: H - 40, padding: 8, background: 0xFFEEEEEE, flexShrink: 0});
 		for (i in 0...400)
 			notes.append(new helder.ui.TextNode("Note " + i));
 		side.append(label);

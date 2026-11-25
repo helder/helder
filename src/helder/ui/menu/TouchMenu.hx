@@ -127,11 +127,11 @@ class TouchMenu implements Markup {
 	static function Layer(props:{at:Placed, choices:Array<Choice>, preview:Null<Any>, blur:Bool, onPick:Choice->Void, onClose:Void->Void}):UiView {
 		var a = props.at;
 		return <view tag="touch-menu-layer" position="absolute" left={0} top={0} right={0} bottom={0} onKeyDown={e -> if (e.key == Key.ESCAPE) props.onClose()}>
-			{props.blur ? <glass slot="touch-menu-backdrop" position="absolute" left={0} top={0} right={0} bottom={0} radius={0} tint="#00000040" transition="fade"
-				onClick={_ -> props.onClose()}/> : <view tag="touch-menu-backdrop" position="absolute" left={0} top={0} right={0} bottom={0}
-				onClick={_ -> props.onClose()}/>}
+			{props.blur ? <glass slot="touch-menu-backdrop" position="absolute" left={0} top={0} right={0} bottom={0} borderRadius={0} tint="#00000040" transition="fade"
+				onPress={_ -> props.onClose()}/> : <view tag="touch-menu-backdrop" position="absolute" left={0} top={0} right={0} bottom={0}
+				onPress={_ -> props.onClose()}/>}
 			{props.preview != null ? <view slot="touch-menu-preview" position="absolute" left={a.px} top={a.py} width={a.pw} height={a.ph} overflow="hidden"
-				transition="fade scale" onClick={_ -> props.onClose()}>{props.preview}</view> : null}
+				transition="fade scale" onPress={_ -> props.onClose()}>{props.preview}</view> : null}
 			<view slot="touch-menu" tag="touch-menu" role="menu" position="absolute" left={a.mx} top={a.my} width={a.mw} overflow="hidden" transition="fade scale">
 				{[for (c in props.choices) <Item choice={c} onPick={props.onPick}/>]}
 			</view>
@@ -141,15 +141,15 @@ class TouchMenu implements Markup {
 	static function Item(props:{choice:Choice, onPick:Choice->Void}):UiView {
 		var c = props.choice;
 		return <>
-			{c.separated == true ? <view slot="touch-menu-separator" role="separator" height={1} margin="4 0" shrink={0}/> : null}
-			<view:button slot={c.destructive == true ? "touch-menu-item-danger" : "touch-menu-item"} tag={"menu-" + c.label} role="menuitem"
-				label={c.label} focusable={c.disabled != true} data-selected={c.checked == true}
+			{c.separated == true ? <view slot="touch-menu-separator" role="separator" height={1} margin="4 0" flexShrink={0}/> : null}
+			<button slot={c.destructive == true ? "touch-menu-item-danger" : "touch-menu-item"} tag={"menu-" + c.label} role="menuitem"
+				aria-label={c.label} focusable={c.disabled != true} data-selected={c.checked == true}
 				data-disabled={c.disabled == true}
 				onPress={() -> if (c.disabled != true) props.onPick(c)}>
-				<text grow={1}>{c.label}</text>
+				<text flexGrow={1}>{c.label}</text>
 				{c.checked == true ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
 					width={18} height={18}><path d="M20 6 9 17l-5-5"/></svg> : null}
-			</view:button>
+			</button>
 		</>;
 	}
 }

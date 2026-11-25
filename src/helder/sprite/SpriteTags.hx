@@ -7,12 +7,12 @@ import helder.view.graph.Graph;
 // The tag for a SpriteBox in ui's markup, imported with
 // import helder.sprite.SpriteTags.*:
 //
-//   <view grow={1} onTap={tap} onPinch={pinch}>
-//     <Sprites grow={1} animate onReady={b -> sheet = b.add(image)} onDraw={draw}/>
+//   <view flexGrow={1} onTap={tap} onPinch={pinch}>
+//     <Sprites flexGrow={1} animate onReady={b -> sheet = b.add(image)} onDraw={draw}/>
 //   </view>
 class SpriteTags {
 	public static function Sprites(props:{
-		?grow:Float,
+		?flexGrow:Float,
 		?width:helder.view.graph.Read<Dynamic>,
 		?height:helder.view.graph.Read<Dynamic>,
 		?style:Dynamic,
@@ -29,7 +29,7 @@ class SpriteTags {
 		if (props.density != null) box.density = props.density;
 		box.onReady = props.onReady;
 		box.onDraw = props.onDraw;
-		if (props.grow != null) NodeRenderer.setProperty(box, "grow", props.grow);
+		if (props.flexGrow != null) NodeRenderer.setProperty(box, "flexGrow", props.flexGrow);
 		if (props.width != null) bind(box, "width", props.width);
 		if (props.height != null) bind(box, "height", props.height);
 		if (props.style != null) NodeRenderer.setStyle(box, props.style);

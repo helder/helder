@@ -10,10 +10,10 @@ class WebCursorPage implements Markup {
 	static function main() {
 		var w = new UiWindow("Cursor", 400, 100);
 		w.ui.policy["text-field"] = Host.Drawn;
-		Render.render(<view direction="row" align-items="center" column-gap={8} padding={8}>
-			<view:button tag="save" padding={8} onPress={() -> {}}>Save</view:button>
+		Render.render(<view flexDirection="row" alignItems="center" columnGap={8} padding={8}>
+			<button tag="save" padding={8} onPress={() -> {}}>Save</button>
 			<view tag="off" role="button" disabled padding={8}>Off</view>
-			<view tag="link" href="https://helder.build" padding={8}>Docs</view>
+			<a tag="link" href="https://helder.build" padding={8}>Docs</a>
 			<field tag="field" width={80}/>
 			<text tag="plain">Plain</text>
 		</view>, w.root);

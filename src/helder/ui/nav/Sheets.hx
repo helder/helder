@@ -59,19 +59,19 @@ class Sheets implements Markup {
 		return <view tag={s.props.tag ?? "sheet-layer"} position="absolute" left={0} top={0} right={0} bottom={0}
 			onKeyDown={e -> if (e.key == Key.ESCAPE) s.dismiss(0)}>
 			<view slot="sheet-scrim" tag="sheet-scrim" position="absolute" left={0} top={0} right={0} bottom={0} opacity={s.scrim()}
-				onClick={_ -> s.dismiss(0)}/>
-			<view slot="sheet" tag="sheet" role="dialog" label={s.props.label} modal position="absolute" left={0} right={0} bottom={0}
-				height={s.full()} transform={"translateY(" + s.offset() + "px)"} opacity={s.alpha()} padding-bottom="env(safe-area-inset-bottom)"
+				onPress={_ -> s.dismiss(0)}/>
+			<view slot="sheet" tag="sheet" role="dialog" aria-label={s.props.label} aria-modal position="absolute" left={0} right={0} bottom={0}
+				height={s.full()} transform={"translateY(" + s.offset() + "px)"} opacity={s.alpha()} paddingBottom="env(safe-area-inset-bottom)"
 				ref={(n:Node) -> s.attach(n)}>
-				<view slot="sheet-grabber" tag="sheet-grabber" role="button" label="Resize" focusable onPress={() -> s.cycle()}/>
-				<view grow={1} min-height={0}>{props.children}</view>
+				<view slot="sheet-grabber" tag="sheet-grabber" role="button" aria-label="Resize" focusable onPress={() -> s.cycle()}/>
+				<view flexGrow={1} minHeight={0}>{props.children}</view>
 			</view>
 		</view>;
 	}
 
 	@:noCompletion public static function Floating(props:{s:SheetState, children:Any}):UiView
-		return <view slot="sheet-popover" tag={props.s.props.tag ?? "sheet-popover"} role="dialog" label={props.s.props.label} width={POPOVER}
-			max-height={props.s.full()} onKeyDown={e -> if (e.key == Key.ESCAPE) props.s.dismiss(0)}>{props.children}</view>;
+		return <view slot="sheet-popover" tag={props.s.props.tag ?? "sheet-popover"} role="dialog" aria-label={props.s.props.label} width={POPOVER}
+			maxHeight={props.s.full()} onKeyDown={e -> if (e.key == Key.ESCAPE) props.s.dismiss(0)}>{props.children}</view>;
 }
 
 // A sheet's place: its height shown (the detent's, as dragged), the scrim

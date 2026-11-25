@@ -20,6 +20,7 @@ typedef Thumb = {image:Null<Image>, waiting:Bool};
 // else its glyph (the folder's picture, a page with the file's extension,
 // an image's, a video's, an audio file's, a PDF's), a Markdown document's
 // page with its first heading; and the grid's cell.
+@:renderer(helder.ui.view.NodeRenderer)
 class Tiles implements Markup {
 	// the grid's cells: a desktop's, the picture's box 90 points (a little
 	// over Finder's 64-point icons), its name in two lines; a tablet's (a
@@ -88,7 +89,7 @@ class Tiles implements Markup {
 
 	// the list's 20-point picture
 	public static function mini(x:Explorer, e:Read<Entry>):View {
-		return <view width={20} height={20} shrink={0} align-items="center" justify="center" opacity={x.zoom.flying() == x.browser.path(e().name) ? 0 : 1}
+		return <view width={20} height={20} flexShrink={0} alignItems="center" justifyContent="center" opacity={x.zoom.flying() == x.browser.path(e().name) ? 0 : 1}
 			ref={(n:Node) -> x.zoom.tile(n, x.browser.path(e().name))}>
 			{() -> {
 				var f = e();
@@ -100,7 +101,7 @@ class Tiles implements Markup {
 	static function glyph(x:Explorer, e:Entry):View {
 		var t = thumbnail(x, e);
 		return <>
-			<Show when={t().image != null}><image src={t().image} width={20} height={15} fit="cover" radius={2}/></Show>
+			<Show when={t().image != null}><image src={t().image} width={20} height={15} objectFit="cover" borderRadius={2}/></Show>
 			<Show when={t().image == null}><image src={Glyphs.get(Glyphs.of(Kinds.glyph(e)))} width={14} height={14} color={Look.ref.fg3}/></Show>
 		</>;
 	}
@@ -114,22 +115,22 @@ class Tiles implements Markup {
 			b.selection.version();
 			return b.selection.has(e().name);
 		}
-		return <view slot="grid-tile" grow={1} align-items="center" row-gap={6} padding="4 4 8 4" ref={(n:Node) -> {
+		return <view slot="grid-tile" flexGrow={1} alignItems="center" rowGap={6} padding="4 4 8 4" ref={(n:Node) -> {
 			DragOut.from(x, n, () -> e().name);
 			Drops.folder(x, n, () -> e().kind == Folder ? b.path(e().name) : null);
 		}}>
-			<view slot="thumb-box" data-selected={on() && e().kind == Folder} width={box} height={box} shrink={0} align-items="center" justify="center"
+			<view slot="thumb-box" data-selected={on() && e().kind == Folder} width={box} height={box} flexShrink={0} alignItems="center" justifyContent="center"
 				opacity={x.zoom.flying() == x.browser.path(e().name) ? 0 : 1}>
 				{() -> picture(x, e(), on, k)}
 			</view>
-			<Show when={b.renaming() == e().name}>{() -> <view width={width - 8} height={20} direction="row">
+			<Show when={b.renaming() == e().name}>{() -> <view width={width - 8} height={20} flexDirection="row">
 				{NameField.field(e().name, t -> b.rename(e().name, t), () -> b.renaming(""), true)}
 			</view>}</Show>
 			<Show when={b.renaming() != e().name}>
-				<text slot="name-pill" data-selected={on()} max-width={width - 8} max-lines={2} text-overflow="middle" text-align="center"
-					dir={helder.ui.Dir.Ltr}>{e().name}</text>
+				<text slot="name-pill" data-selected={on()} maxWidth={width - 8} lineClamp={2} textOverflow="middle" textAlign="center"
+					direction={helder.ui.Dir.Ltr}>{e().name}</text>
 			</Show>
-			<text font-size={11.5} color={Look.ref.fg3} margin-top={-5} max-lines={1}>{e().kind == Folder ? "Folder" : Kinds.size(e().size)}</text>
+			<text fontSize={11.5} color={Look.ref.fg3} marginTop={-5} lineClamp={1}>{e().kind == Folder ? "Folder" : Kinds.size(e().size)}</text>
 		</view>;
 	}
 
@@ -140,11 +141,11 @@ class Tiles implements Markup {
 		var t = thumbnail(x, e), raw = RAW.contains(Kinds.extension(e.name)), side = px(108);
 		return <>
 			<Show when={t().image != null || t().waiting}>
-				<view slot="photo" data-selected={on()} width={side} height={side} overflow="hidden" shadow="0 1px 3px rgba(0,0,0,0.35)"
+				<view slot="photo" data-selected={on()} width={side} height={side} overflow="hidden" boxShadow="0 1px 3px rgba(0,0,0,0.35)"
 					ref={(n:Node) -> x.zoom.tile(n, x.browser.path(e.name))}>
-					<Show when={t().image != null}><image src={t().image} width={side} height={side} fit="cover"/></Show>
+					<Show when={t().image != null}><image src={t().image} width={side} height={side} objectFit="cover"/></Show>
 					<Show when={raw}>
-						<text position="absolute" left={4} top={4} font-size={9.5} font-weight={700} padding="0 4" radius={3} background="rgba(0,0,0,0.55)"
+						<text position="absolute" left={4} top={4} fontSize={9.5} fontWeight={700} padding="0 4" borderRadius={3} background="rgba(0,0,0,0.55)"
 							color="#ffffff">RAW</text>
 					</Show>
 				</view>
@@ -160,12 +161,12 @@ class Tiles implements Markup {
 	// name while it is read, or without one), over a few lines' shapes
 	static function document(x:Explorer, e:Entry, k:Float):View {
 		var title = heading(x, e);
-		return <view tag="document-tile" width={Math.round(84 * k)} height={Math.round(108 * k)} radius={6} background={Look.ref.raised} border-width={1} border-color={Look.ref.edge}
-			padding="11 9" row-gap={5} overflow="hidden" shadow="0 1px 2px rgba(0,0,0,0.25)" ref={(n:Node) -> x.zoom.tile(n, x.browser.path(e.name))}>
-			<text tag="document-title" font-size={9.5} font-weight={700} line-height={1.2} max-lines={4} text-overflow="ellipsis" color={Look.ref.fg}
-				shrink={0}>{title}</text>
-			{[for (w in ["100%", "88%", "94%", "62%", "90%", "76%"]) <view height={2.5} shrink={0} radius={1} width={w} background={Look.ref.line}/>]}
-			<text position="absolute" bottom={8} left={9} font-size={8.5} font-weight={700} color="#ffffff" padding="1 4" radius={3}
+		return <view tag="document-tile" width={Math.round(84 * k)} height={Math.round(108 * k)} borderRadius={6} background={Look.ref.raised} borderWidth={1} borderColor={Look.ref.edge}
+			padding="11 9" rowGap={5} overflow="hidden" boxShadow="0 1px 2px rgba(0,0,0,0.25)" ref={(n:Node) -> x.zoom.tile(n, x.browser.path(e.name))}>
+			<text tag="document-title" fontSize={9.5} fontWeight={700} lineHeight={1.2} lineClamp={4} textOverflow="ellipsis" color={Look.ref.fg}
+				flexShrink={0}>{title}</text>
+			{[for (w in ["100%", "88%", "94%", "62%", "90%", "76%"]) <view height={2.5} flexShrink={0} borderRadius={1} width={w} background={Look.ref.line}/>]}
+			<text position="absolute" bottom={8} left={9} fontSize={8.5} fontWeight={700} color="#ffffff" padding="1 4" borderRadius={3}
 				background={Kinds.tint("md")}>MD</text>
 		</view>;
 	}
@@ -193,11 +194,11 @@ class Tiles implements Markup {
 	public static function large(e:Entry, ?mark:Node->Void, k = 1.0):View {
 		if (e.kind == Folder) return <image src={Glyphs.folder(UiWindow.dark())} width={Math.round(96 * k)} height={Math.round(78 * k)}/>;
 		var ext = Kinds.extension(e.name).toUpperCase();
-		return <view width={Math.round(72 * k)} height={Math.round(92 * k)} radius={7} background={Look.ref.raised} border-width={1} border-color={Look.ref.edge} align-items="center"
-			justify="center" shadow="0 1px 2px rgba(0,0,0,0.25)" ref={(n:Node) -> if (mark != null) mark(n)}>
-			<image src={Glyphs.get(Glyphs.of(Kinds.glyph(e)))} width={24} height={24} color={Look.ref.fg3} margin-top={-12}/>
+		return <view width={Math.round(72 * k)} height={Math.round(92 * k)} borderRadius={7} background={Look.ref.raised} borderWidth={1} borderColor={Look.ref.edge} alignItems="center"
+			justifyContent="center" boxShadow="0 1px 2px rgba(0,0,0,0.25)" ref={(n:Node) -> if (mark != null) mark(n)}>
+			<image src={Glyphs.get(Glyphs.of(Kinds.glyph(e)))} width={24} height={24} color={Look.ref.fg3} marginTop={-12}/>
 			<Show when={ext != ""}>
-				<text position="absolute" bottom={10} font-size={9.5} font-weight={700} color="#ffffff" padding="1 5" radius={3}
+				<text position="absolute" bottom={10} fontSize={9.5} fontWeight={700} color="#ffffff" padding="1 5" borderRadius={3}
 					background={Kinds.tint(ext.toLowerCase())}>{ext}</text>
 			</Show>
 		</view>;

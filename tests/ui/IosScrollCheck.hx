@@ -24,13 +24,13 @@ class IosScrollCheck {
 		var w = new helder.ui.UiWindow("IosScrollCheck", 0, 0);
 		var field = new TextField();
 		field.host = Native;
-		field.style.set({height: 40, shrink: 0, margin: 60});
+		field.style.set({height: 40, flexShrink: 0, margin: 60});
 		w.root.append(field);
 		var list = new Node();
-		list.style.set({overflow: Scroll, grow: 1, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
+		list.style.set({overflow: Scroll, flexGrow: 1, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
 		for (i in 0...200) {
 			var row = new Node();
-			row.style.set({height: 40, shrink: 0, background: i % 2 == 0 ? 0xFFEFF6FF : 0xFFFFE0E0});
+			row.style.set({height: 40, flexShrink: 0, background: i % 2 == 0 ? 0xFFEFF6FF : 0xFFFFE0E0});
 			row.append(new TextNode("Row " + i));
 			list.append(row);
 		}

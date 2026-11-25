@@ -51,8 +51,8 @@ class Postfx implements Markup {
 		sun.rotation = Quat.fromEuler(-0.9, 0.6, 0);
 		Light.attach(sun, Light.directional(new Vec3(1, 0.96, 0.9), 1.6));
 		UiWindow.run(<Surface title="Post effects" width={760} height={440}>
-			<view direction="row" grow={1}>
-				<Scene world={world} camera={camera} grow={1}>
+			<view flexDirection="row" flexGrow={1}>
+				<Scene world={world} camera={camera} flexGrow={1}>
 					<Effects bloom={bloom() ? 0.05 : 0.0} toneMap={AgX} vignette={0.2}>
 						<Show when={ao()}><Ssao radius={0.6} intensity={1.4} samples={6}/></Show>
 						<Show when={lens() == "focus"}><Dof distance={6.5} aperture={0.03}/></Show>
@@ -71,8 +71,8 @@ class Postfx implements Markup {
 					<Shape name="cube" shape="box" at={new Vec3(2.4, 0.25, -1.4)} size={0.5} color={new Vec4(0.35, 0.6, 0.35, 1)} picked={picked}/>
 					<mesh shape="sphere" size={2.2} position={new Vec3(-3.2, 1.1, -18)} color={new Vec4(0.35, 0.6, 0.35, 1)}/>
 				</Scene>
-				<view width={190} padding={14} row-gap={6} background="#18181b" color="#fafafa" font-size={13}>
-					<text font-size={15}>Post effects</text>
+				<view width={190} padding={14} rowGap={6} background="#18181b" color="#fafafa" fontSize={13}>
+					<text fontSize={15}>Post effects</text>
 					<Toggle label="Ambient occlusion" on={() -> ao()} flip={() -> ao(!ao())}/>
 					<Toggle label="Lens: focus" on={() -> lens() == "focus"} flip={() -> lens(lens() == "focus" ? "none" : "focus")}/>
 					<Toggle label="Lens: tilt-shift" on={() -> lens() == "tilt"} flip={() -> lens(lens() == "tilt" ? "none" : "tilt")}/>
@@ -93,8 +93,8 @@ class Postfx implements Markup {
 
 	// a switch in the panel: a dot lit while on, flipped by a press
 	static function Toggle(props:{label:String, on:Void->Bool, flip:Void->Void}):View
-		return <view role="switch" direction="row" column-gap={8} align-items="center" padding="4 6" radius={4} background="#27272a" onPress={props.flip}>
-			<view width={12} height={12} radius={6} background={props.on() ? "#facc15" : "#52525b"}/>
+		return <view role="switch" flexDirection="row" columnGap={8} alignItems="center" padding="4 6" borderRadius={4} background="#27272a" onPress={props.flip}>
+			<view width={12} height={12} borderRadius={6} background={props.on() ? "#facc15" : "#52525b"}/>
 			<text>{props.label}</text>
 		</view>;
 

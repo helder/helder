@@ -111,25 +111,25 @@ class GltfShowcase implements Markup {
 			true;
 		});
 		UiWindow.run(<Surface title="glTF sample models" width={960} height={600}>
-			<view grow={1} direction="row" background="#101014" color="#ececf1">
-				<view width={190} padding={14} row-gap={6} background="#18181d">
-					<text font-size={15} font-weight={700}>Model</text>
+			<view flexGrow={1} flexDirection="row" background="#101014" color="#ececf1">
+				<view width={190} padding={14} rowGap={6} background="#18181d">
+					<text fontSize={15} fontWeight={700}>Model</text>
 					{[for (k in 0...Showcase.MODELS.length) <Pick label={Showcase.MODELS[k].name} on={() -> model() == k} onPress={() -> load(k)}/>]}
-					<text font-size={15} font-weight={700} margin-top={10}>Environment</text>
+					<text fontSize={15} fontWeight={700} marginTop={10}>Environment</text>
 					{[for (k in 0...Showcase.ENVIRONMENTS.length) <Pick label={Showcase.ENVIRONMENTS[k].label} on={() -> env() == k} onPress={() -> {
 						env(k);
 						if (renderer != null) show.environment(renderer, k);
 					}}/>]}
 				</view>
-				<view grow={1}>
-					<Scene grow={1} world={show.world} camera={show.camera} hdr animate setup={r -> renderer = r}>
+				<view flexGrow={1}>
+					<Scene flexGrow={1} world={show.world} camera={show.camera} hdr animate setup={r -> renderer = r}>
 						<OrbitControls ref={o -> orbit = o} damping={0.15}/>
 					</Scene>
-					<view position="absolute" left={12} top={10} pointer-events="none" row-gap={2} padding="6 10" radius={8} background="#000000a0">
-						<text font-size={13}>{status}</text>
-						<text font-size={12} color="#a1a1ad">{numbers}</text>
+					<view position="absolute" left={12} top={10} pointerEvents="none" rowGap={2} padding="6 10" borderRadius={8} background="#000000a0">
+						<text fontSize={13}>{status}</text>
+						<text fontSize={12} color="#a1a1ad">{numbers}</text>
 					</view>
-					<text position="absolute" left={12} bottom={8} right={12} font-size={11} color="#c4c4cc" pointer-events="none" padding="4 8" radius={6} background="#000000a0">{Showcase.MODELS[model()].name + ": "
+					<text position="absolute" left={12} bottom={8} right={12} fontSize={11} color="#c4c4cc" pointerEvents="none" padding="4 8" borderRadius={6} background="#000000a0">{Showcase.MODELS[model()].name + ": "
 						+ Showcase.MODELS[model()].credit + " · KhronosGroup/glTF-Sample-Assets · panoramas: Poly Haven (CC0)"}</text>
 				</view>
 			</view>
@@ -137,8 +137,8 @@ class GltfShowcase implements Markup {
 	}
 
 	static function Pick(props:{label:String, on:Void->Bool, onPress:Void->Void}):View
-		return <view:button role="button" focusable cursor="pointer" padding="5 10" radius={6} background={props.on() ? "#2f4f9e" : "#24242b"}
-			onPress={props.onPress}><text font-size={13}>{props.label}</text></view:button>;
+		return <button cursor="pointer" padding="5 10" borderRadius={6} background={props.on() ? "#2f4f9e" : "#24242b"}
+			onPress={props.onPress}><text fontSize={13}>{props.label}</text></button>;
 
 	// model k fetched (shown when it is here)
 	static function load(k:Int) {

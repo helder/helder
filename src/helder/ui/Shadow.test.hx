@@ -40,16 +40,16 @@ function tests() {
 private class Fixture implements helder.view.Markup {
 	public static function plain()
 		return <view width={240} height={60} padding="20 12" background="#000000">
-			<text color="#ffffff" font-size={16}>Hi</text>
+			<text color="#ffffff" fontSize={16}>Hi</text>
 		</view>;
 
 	public static function textShadow()
 		return <view width={240} height={60} padding="20 12" background="#000000">
-			<text color="#ffffff" font-size={16} text-shadow="0 0 8 #22d3ee">Hi</text>
+			<text color="#ffffff" fontSize={16} textShadow="0 0 8 #22d3ee">Hi</text>
 		</view>;
 
 	public static function boxShadow()
 		return <view width={240} height={60} padding="20 12" background="#000000">
-			<text color="#ffffff" font-size={16} shadow="0 0 8 #22d3ee">Hi</text>
+			<text color="#ffffff" fontSize={16} boxShadow="0 0 8 #22d3ee">Hi</text>
 		</view>;
 }

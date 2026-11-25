@@ -133,8 +133,8 @@ class Sponza implements Markup {
 			true;
 		});
 		UiWindow.run(<Surface title="Sponza" width={960} height={600}>
-			<view grow={1} background="#101014" color="#ececf1">
-				<Scene grow={1} world={world} camera={camera} hdr animate setup={r -> renderer = r}/>
+			<view flexGrow={1} background="#101014" color="#ececf1">
+				<Scene flexGrow={1} world={world} camera={camera} hdr animate setup={r -> renderer = r}/>
 				<view position="absolute" left={0} top={0} right={0} bottom={0} focusable cursor="grab" onPointerDown={e -> {
 					dragging = true;
 					lastX = e.x;
@@ -149,15 +149,15 @@ class Sponza implements Markup {
 					held.set(e.key, true);
 					if (moveKey(e.key)) take();
 				}} onKeyUp={e -> held.remove(e.key)}/>
-				<view position="absolute" left={12} top={10} pointer-events="none" row-gap={2} padding="6 10" radius={8} background="#000000a0">
-					<text font-size={13}>{status}</text>
-					<text font-size={12} color="#c4c4cc">{numbers}</text>
+				<view position="absolute" left={12} top={10} pointerEvents="none" rowGap={2} padding="6 10" borderRadius={8} background="#000000a0">
+					<text fontSize={13}>{status}</text>
+					<text fontSize={12} color="#c4c4cc">{numbers}</text>
 				</view>
-				<view position="absolute" right={12} top={10} direction="row" column-gap={8}>
-					<view:button role="button" focusable cursor="pointer" padding="5 12" radius={6} background={flying() ? "#2f4f9e" : "#24242b"}
-						onPress={() -> flying(true)}><text font-size={13}>Fly-through</text></view:button>
+				<view position="absolute" right={12} top={10} flexDirection="row" columnGap={8}>
+					<button cursor="pointer" padding="5 12" borderRadius={6} background={flying() ? "#2f4f9e" : "#24242b"}
+						onPress={() -> flying(true)}><text fontSize={13}>Fly-through</text></button>
 				</view>
-				<text position="absolute" left={12} bottom={8} font-size={11} color="#c4c4cc" pointer-events="none" padding="4 8" radius={6} background="#000000a0">
+				<text position="absolute" left={12} bottom={8} fontSize={11} color="#c4c4cc" pointerEvents="none" padding="4 8" borderRadius={6} background="#000000a0">
 					Sponza: Crytek (CRYENGINE Limited License Agreement), glTF-Sample-Assets · drag to look, WASD or the arrows to move, Q and E down and up
 				</text>
 			</view>

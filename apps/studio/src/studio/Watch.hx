@@ -18,24 +18,25 @@ import studio.Theme.c;
 // the canvas, nothing asked yet) is the dots and one prompt in the middle;
 // the first prompt moves it into the chat (matched: it flies there) as the
 // column slides in.
+@:renderer(helder.ui.view.NodeRenderer)
 class Watch implements Markup {
 	public static function view(studio:Studio):View
-		return <view tag="watch" position="absolute" inset={0} background={c("ground")} color={c("ink")} font-family={Theme.UI} font-size={Theme.BODY}>
+		return <view tag="watch" position="absolute" inset={0} background={c("ground")} color={c("ink")} fontFamily={Theme.UI} fontSize={Theme.BODY}>
 			{header(studio)}
-			<view direction="row" grow={1} min-height={0}>
+			<view flexDirection="row" flexGrow={1} minHeight={0}>
 				<Show when={!blank(studio) && studio.talk.open()}>{Chat.view(studio)}</Show>
-				<view tag="canvas" grow={1} min-width={0}>
+				<view tag="canvas" flexGrow={1} minWidth={0}>
 					<view position="absolute" inset={0}>{Board.view(studio)}</view>
 					<Show when={!studio.classic && !blank(studio) && studio.waiting()}>{blocks(studio)}</Show>
 					{CodePanel.view(studio)}
 					<Show when={blank(studio)}>
-						<view tag="blank" position="absolute" inset={0} align-items="center" justify="center" pointer-events="none">
-							<view width={Theme.BLANK} max-width="90%" margin-top={-40} pointer-events="auto">{Chat.input(studio, true)}</view>
+						<view tag="blank" position="absolute" inset={0} alignItems="center" justifyContent="center" pointerEvents="none">
+							<view width={Theme.BLANK} maxWidth="90%" marginTop={-40} pointerEvents="auto">{Chat.input(studio, true)}</view>
 						</view>
 					</Show>
 					<Show when={studio.playing() != null}>
 						<view tag="player-card" position="absolute" inset={0} background={c("ground")} transition="fade scale(0.98)" motion="snappy">
-							<view grow={1} min-height={0} instant>{Play.view(studio)}</view>
+							<view flexGrow={1} minHeight={0} instant>{Play.view(studio)}</view>
 						</view>
 					</Show>
 				</view>
@@ -50,10 +51,10 @@ class Watch implements Markup {
 
 	static function blocks(studio:Studio):View {
 		studio.marks.hold();
-		return <view tag="queued" position="absolute" inset={0} direction="row" align-items="center" justify="center" column-gap={24} pointer-events="none"
+		return <view tag="queued" position="absolute" inset={0} flexDirection="row" alignItems="center" justifyContent="center" columnGap={24} pointerEvents="none"
 			transition="fade">
 			<For each={[0, 1, 2]}>{(k:Read<Int>) ->
-				<view tag={"queued-" + k()} width={BLOCK_W} height={BLOCK_H} radius={Theme.CARD} overflow="hidden" shrink={0} background={c("skeleton")}>
+				<view tag={"queued-" + k()} width={BLOCK_W} height={BLOCK_H} borderRadius={Theme.CARD} overflow="hidden" flexShrink={0} background={c("skeleton")}>
 					<For each={[for (j in 0...STRIPES) j]}>{(j:Read<Int>) ->
 						<view position="absolute" top={0} bottom={0} width={SWEEP / STRIPES + 1} left={sweep(studio) + j() * SWEEP / STRIPES}
 							background={c("shimmer")} opacity={1 - Math.abs((j() + 0.5) / STRIPES * 2 - 1)}/>
@@ -76,15 +77,15 @@ class Watch implements Markup {
 		return studio.talk.turns().length == 0 && (studio.layout.screens().length == 0 || studio.starter);
 
 	static function header(studio:Studio):View
-		return <view tag="header" drag-region height={Theme.HEADER} shrink={0} direction="row" align-items="center" column-gap={8}
-			padding={'0 ${WindowButtons.side() == "end" ? 0 : 12} 0 12'} border-width="0 0 1 0" border-color={c("hair")}>
+		return <view tag="header" dragRegion height={Theme.HEADER} flexShrink={0} flexDirection="row" alignItems="center" columnGap={8}
+			padding={'0 ${WindowButtons.side() == "end" ? 0 : 12} 0 12'} borderWidth="0 0 1 0" borderColor={c("hair")}>
 			<Show when={WindowButtons.side() == "start"}><WindowControls/></Show>
-			<view tag="tab" direction="row" align-items="center" column-gap={8} height={28} padding="0 12" radius={7} background={c("tab")}>
-				<view tag="tab-dot" width={6} height={6} radius={3} background={Color.parse(dot(studio))} ref={(n:Node) -> pulse(n, () -> busy(studio))}
-					outline-width={studio.talk.questions() > 0 ? 1.5 : 0} outline-offset={1.5} outline-color={Color.parse(dot(studio))}/>
-				<text font-size={Theme.CHAT_SIZE} max-lines={1}>{studio.project?.name ?? "helder studio"}</text>
+			<view tag="tab" flexDirection="row" alignItems="center" columnGap={8} height={28} padding="0 12" borderRadius={7} background={c("tab")}>
+				<view tag="tab-dot" width={6} height={6} borderRadius={3} background={Color.parse(dot(studio))} ref={(n:Node) -> pulse(n, () -> busy(studio))}
+					outlineWidth={studio.talk.questions() > 0 ? 1.5 : 0} outlineOffset={1.5} outlineColor={Color.parse(dot(studio))}/>
+				<text fontSize={Theme.CHAT_SIZE} lineClamp={1}>{studio.project?.name ?? "helder studio"}</text>
 			</view>
-			<view grow={1}/>
+			<view flexGrow={1}/>
 			<Show when={playable(studio)}>{play(studio)}</Show>
 			<Show when={WindowButtons.side() == "end"}><WindowControls side="end"/></Show>
 		</view>;
@@ -95,12 +96,12 @@ class Watch implements Markup {
 
 	// Play: the frame aimed at, else the app (Studio.play), in the canvas' place
 	static function play(studio:Studio):View
-		return <view:button tag="play" role="button" label={studio.playing() == null ? "Play" : "Stop"} focusable direction="row" align-items="center"
-				column-gap={6} height={28} padding="0 12" radius={8} background={c("ink")} color={c("ground")} cursor="pointer"
+		return <button tag="play" aria-label={studio.playing() == null ? "Play" : "Stop"} flexDirection="row" alignItems="center"
+				columnGap={6} height={28} padding="0 12" borderRadius={8} background={c("ink")} color={c("ground")} cursor="pointer"
 				onPress={() -> if (studio.playing.peek() != null) studio.stopPlay() else studio.play()}>
 				<image src={studio.playing() == null ? Icons.play : Icons.element} width={Theme.ICON_XS} height={Theme.ICON_XS}/>
-				<text font-size={12} font-weight={Theme.MEDIUM}>{studio.playing() == null ? "Play" : "Stop"}</text>
-			</view:button>;
+				<text fontSize={12} fontWeight={Theme.MEDIUM}>{studio.playing() == null ? "Play" : "Stop"}</text>
+			</button>;
 
 	// (an agent works: the prompt's turn runs, or one over MCP says it does;
 	// a question for the user holds the dot still, ringed)

@@ -90,7 +90,7 @@ class MarkdownView extends Node {
 			}
 			return;
 		}
-		style.grow = 1;
+		style.flexGrow = 1;
 		style.overflow = Hidden;
 		if (shown.length > VIRTUAL) {
 			var v = new VirtualScroll("markdown-scroll", 80);
@@ -121,7 +121,7 @@ class MarkdownView extends Node {
 			scroller = s;
 		}
 		scroller.slot = "markdown-scroll";
-		scroller.style.grow = 1;
+		scroller.style.flexGrow = 1;
 		scroller.style.minHeight = 0;
 		scroller.style.alignItems = Center;
 		append(scroller);
@@ -259,27 +259,27 @@ class MarkdownView extends Node {
 		for (k in 0...items.length) {
 			var it = items[k];
 			var item = node("markdown-item");
-			item.style.direction = Row;
+			item.style.flexDirection = Row;
 			item.semantics = ({role: ListItem} : Semantics);
 			if (it.task != null) {
 				var box = node("markdown-task");
 				box.setAttr("data-state", it.task ? "checked" : "unchecked");
 				box.semantics = ({role: CheckBox, checked: it.task} : Semantics);
-				box.style.shrink = 0;
+				box.style.flexShrink = 0;
 				box.style.alignItems = Center;
-				box.style.justify = Center;
+				box.style.justifyContent = Center;
 				box.style.userSelect = None;
 				if (it.task) box.append(new TextNode("✓", "markdown-task-mark"));
 				item.append(box);
 			} else {
 				var marker = new TextNode(ordered ? '${start + k}.' : BULLETS[(listDepth - 1) % BULLETS.length], "markdown-marker");
 				marker.slot = "markdown-marker";
-				marker.style.shrink = 0;
+				marker.style.flexShrink = 0;
 				marker.style.userSelect = None;
 				item.append(marker);
 			}
 			var body = container("markdown-item-body", it.blocks);
-			body.style.grow = 1;
+			body.style.flexGrow = 1;
 			body.style.minWidth = 0;
 			item.append(body);
 			l.append(item);
@@ -308,7 +308,7 @@ class MarkdownView extends Node {
 		var size = props.codeSize ?? 13;
 		v.fontSize = size;
 		v.lineHeight = Math.round(size * 1.5);
-		v.style.grow = 0;
+		v.style.flexGrow = 0;
 		v.style.height = model.lineCount * v.lineHeight;
 		v.semantics = ({role: MultilineTextInput, label: lang == "" ? "Code" : lang} : Semantics);
 		box.append(v);
@@ -353,8 +353,8 @@ class MarkdownView extends Node {
 	function paragraph(content:Array<Inline>):Node {
 		if (!content.exists(hasImage)) return text(content, "markdown-p");
 		var p = node("markdown-p");
-		p.style.direction = Row;
-		p.style.wrap = true;
+		p.style.flexDirection = Row;
+		p.style.flexWrap = true;
 		p.style.alignItems = End;
 		var run:Array<Inline> = [];
 		function flush() {
@@ -420,7 +420,7 @@ class MarkdownView extends Node {
 			case HardBreak: into.append(new TextNode("\n"));
 			case Emphasis(c):
 				var s = span(into, "markdown-em", c);
-				s.style.italic = true;
+				s.style.fontStyle = Italic;
 			case Strong(c):
 				var s = span(into, "markdown-strong", c);
 				s.style.fontWeight = 700;
@@ -476,11 +476,11 @@ class MarkdownView extends Node {
 		{slot: "markdown-list", when: ["data-tight"], style: {rowGap: 2}},
 		{slot: "markdown-item-body", style: {rowGap: 8}},
 		{slot: "markdown-marker", style: {minWidth: 22, paddingRight: 6, lineHeight: 1.5}},
-		{slot: "markdown-task", style: {width: 14, height: 14, margin: [4, 8, 0, 0], radius: 3, borderWidth: 1, borderColor: helder.gfx.Color.rgb(0x818B98),
+		{slot: "markdown-task", style: {width: 14, height: 14, margin: [4, 8, 0, 0], borderRadius: 3, borderWidth: 1, borderColor: helder.gfx.Color.rgb(0x818B98),
 			fontSize: 10}},
 		{slot: "markdown-task", when: ["data-state=checked"], style: {background: helder.gfx.Color.rgb(0x0969DA), borderColor: helder.gfx.Color.rgb(0x0969DA),
 			color: helder.gfx.Color.rgb(0xFFFFFF)}},
-		{slot: "markdown-code", style: {padding: [12, 12, 12, 0], radius: 6, background: helder.gfx.Color.rgb(0xF6F8FA)}},
+		{slot: "markdown-code", style: {padding: [12, 12, 12, 0], borderRadius: 6, background: helder.gfx.Color.rgb(0xF6F8FA)}},
 		{slot: "markdown-code-span", style: {fontFamily: "JetBrains Mono", fontSize: 13, background: helder.gfx.Color.rgba(0x818B98, 0.15)}},
 		{slot: "markdown-link", style: {color: helder.gfx.Color.rgb(0x0969DA), textDecoration: 1}},
 		{slot: "markdown-table", style: {borders: [1, 0, 0, 1], borderColor: helder.gfx.Color.rgb(0xD1D9E0)}},
@@ -488,6 +488,6 @@ class MarkdownView extends Node {
 		{slot: "markdown-td", style: {padding: [6, 12], borders: [0, 1, 1, 0], borderColor: helder.gfx.Color.rgb(0xD1D9E0)}},
 		{slot: "markdown-rule", style: {height: 2, background: helder.gfx.Color.rgb(0xD1D9E0)}},
 		{slot: "markdown-html", style: {fontFamily: "JetBrains Mono", fontSize: 13, color: helder.gfx.Color.rgb(0x59636E)}},
-		{slot: "markdown-image-alt", style: {color: helder.gfx.Color.rgb(0x59636E), italic: true}}
+		{slot: "markdown-image-alt", style: {color: helder.gfx.Color.rgb(0x59636E), fontStyle: Italic}}
 	];
 }

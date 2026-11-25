@@ -9,7 +9,7 @@ class Boxes implements helder.view.Markup {
 	static function main() {
 		var ui = new Ui(new NoText(), 320, 200);
 		var row = new Node("row");
-		row.style.direction = Row;
+		row.style.flexDirection = Row;
 		row.style.padding = 8;
 		row.style.background = Color.rgb(0x18181b);
 		for (i in 0...3) {
@@ -19,7 +19,7 @@ class Boxes implements helder.view.Markup {
 			row.append(b);
 		}
 		ui.root.append(row);
-		helder.view.Render.render(<view tag="marked" direction="row">
+		helder.view.Render.render(<view tag="marked" flexDirection="row">
 			<view tag="cell" width={20} height={20}/><view tag="cell" width={20} height={20}/>
 		</view>, ui.root);
 		trace("v1 boxes");

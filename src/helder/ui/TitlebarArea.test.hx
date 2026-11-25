@@ -136,21 +136,21 @@ private class Host implements WindowHost {
 private class Fixture implements helder.view.Markup {
 	public static function dark()
 		return <view tag="page" background="#000000" color="#eeeeee">
-			<view tag="bar" direction="row"><view grow={1}/><WindowControls/></view>
+			<view tag="bar" flexDirection="row"><view flexGrow={1}/><WindowControls/></view>
 		</view>;
 
 	public static function ends()
-		return <view tag="page" direction="row">
-			<view tag="left" direction="row" width={200} drag-region><WindowControls tag="start-controls" side="start"/></view>
-			<view grow={1}/>
-			<view tag="right" direction="row" width={200} drag-region><view grow={1}/><WindowControls tag="end-controls" side="end"/></view>
+		return <view tag="page" flexDirection="row">
+			<view tag="left" flexDirection="row" width={200} dragRegion><WindowControls tag="start-controls" side="start"/></view>
+			<view flexGrow={1}/>
+			<view tag="right" flexDirection="row" width={200} dragRegion><view flexGrow={1}/><WindowControls tag="end-controls" side="end"/></view>
 		</view>;
 
 	public static function bar()
 		return <view tag="page">
-			<view tag="bar" direction="row" align-items="center" drag-region padding-left="env(titlebar-area-x, 12px)" height="env(titlebar-area-height, 40px)">
-				<view tag="button" width={60} height={20} onClick={_ -> {}}/>
-				<view grow={1}/>
+			<view tag="bar" flexDirection="row" alignItems="center" dragRegion paddingLeft="env(titlebar-area-x, 12px)" height="env(titlebar-area-height, 40px)">
+				<view tag="button" width={60} height={20} onPress={_ -> {}}/>
+				<view flexGrow={1}/>
 				<WindowControls/>
 			</view>
 		</view>;

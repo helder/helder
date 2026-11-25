@@ -20,6 +20,7 @@ import viewer.ViewerActions;
 // size, Open, Show in folder, Move to Trash and More, and its details:
 // what is known without opening any file but this one. Nothing selected:
 // the folder's own.
+@:renderer(helder.ui.view.NodeRenderer)
 class InspectorView implements Markup {
 	public static inline var WIDTH = 300;
 	public static inline var BOX = 220;
@@ -60,8 +61,8 @@ class InspectorView implements Markup {
 			if (k != "") stop = x.preview(k.substr(0, k.indexOf("\t")), s -> shown(s));
 		});
 		onCleanup(() -> if (stop != null) stop());
-		return <view tag="inspector" slot="panel" width={fill ? "100%" : WIDTH} grow={fill ? 1 : 0} shrink={0} overflow="hidden"
-			borders={fill ? "0 0 0 0" : "0 0 0 1"} border-color={Look.ref.line}>
+		return <view tag="inspector" slot="panel" width={fill ? "100%" : WIDTH} flexGrow={fill ? 1 : 0} flexShrink={0} overflow="hidden"
+			borders={fill ? "0 0 0 0" : "0 0 0 1"} borderColor={Look.ref.line}>
 			<Show when={many() != ""}>{() -> {
 				many();
 				var all = untrack(several);
@@ -82,16 +83,16 @@ class InspectorView implements Markup {
 
 	static function file(x:Explorer, e:Entry, shown:Signal<Null<Shown>>):View {
 		var more:Null<Node> = null;
-		return <view grow={1} min-height={0}>
-			<view tag="preview" height={BOX} shrink={0} margin="14 14 0 14" radius={10} background={Look.ref.well} align-items="center" justify="center"
+		return <view flexGrow={1} minHeight={0}>
+			<view tag="preview" height={BOX} flexShrink={0} margin="14 14 0 14" borderRadius={10} background={Look.ref.well} alignItems="center" justifyContent="center"
 				overflow="hidden">
 				{() -> picture(x, e, shown())}
 			</view>
-			<view padding="12 16 0 16" align-items="center" row-gap={2}>
-				<text tag="inspector-name" font-size={14} font-weight={600} max-lines={1} text-overflow="ellipsis" text-align="center">{e.name}</text>
-				<text tag="inspector-kind" font-size={12} color={Look.ref.fg3} max-lines={1}>{() -> subtitle(e, shown())}</text>
+			<view padding="12 16 0 16" alignItems="center" rowGap={2}>
+				<text tag="inspector-name" fontSize={14} fontWeight={600} lineClamp={1} textOverflow="ellipsis" textAlign="center">{e.name}</text>
+				<text tag="inspector-kind" fontSize={12} color={Look.ref.fg3} lineClamp={1}>{() -> subtitle(e, shown())}</text>
 			</view>
-			<view direction="row" justify="center" column-gap={6} padding="12 16 14 16">
+			<view flexDirection="row" justifyContent="center" columnGap={6} padding="12 16 14 16">
 				<Standard.Button tag="open" variant="primary" size="sm" onPress={() -> x.open(e.name)}>Open</Standard.Button>
 				<Show when={ViewerActions.LOCAL}>
 					<Standard.Button tag="reveal" size="sm" icon={Glyphs.get("folder")} label={ViewerActions.reveal()} onPress={() -> x.perform(ShowInFolder)}/>
@@ -108,14 +109,14 @@ class InspectorView implements Markup {
 					</view>
 				</Show>
 			</view>
-			<view tag="details" padding="10 16 6 16" borders="1 0 0 0" border-color={Look.ref.line}>
-				<view direction="row" align-items="center" column-gap={6} height={24}>
+			<view tag="details" padding="10 16 6 16" borders="1 0 0 0" borderColor={Look.ref.line}>
+				<view flexDirection="row" alignItems="center" columnGap={6} height={24}>
 					<image src={Glyphs.get("info")} width={14} height={14} color={Look.ref.fg3}/>
-					<text font-size={11} font-weight={600} color={Look.ref.fg3}>DETAILS</text>
+					<text fontSize={11} fontWeight={600} color={Look.ref.fg3}>DETAILS</text>
 				</view>
-				{() -> [for (kv in details(e, shown())) <view direction="row" justify="space-between" column-gap={12} height={24} align-items="center" font-size={12.5}>
-					<text color={Look.ref.fg3} shrink={0}>{kv.k}</text>
-					<text max-lines={1} text-overflow="ellipsis" text-align="right" shrink={1}>{kv.v}</text>
+				{() -> [for (kv in details(e, shown())) <view flexDirection="row" justifyContent="space-between" columnGap={12} height={24} alignItems="center" fontSize={12.5}>
+					<text color={Look.ref.fg3} flexShrink={0}>{kv.k}</text>
+					<text lineClamp={1} textOverflow="ellipsis" textAlign="right" flexShrink={1}>{kv.v}</text>
 				</view>]}
 			</view>
 		</view>;
@@ -137,16 +138,16 @@ class InspectorView implements Markup {
 			{e: all.length > 2 ? all[2] : null, t: "translate(62px, 4px) rotate(8deg)", side: 132},
 			{e: all[0], t: "none", side: 140}
 		];
-		return <view grow={1} min-height={0}>
-			<view tag="preview" height={BOX} shrink={0} margin="14 14 0 14" radius={10} background={Look.ref.well} align-items="center" justify="center"
+		return <view flexGrow={1} minHeight={0}>
+			<view tag="preview" height={BOX} flexShrink={0} margin="14 14 0 14" borderRadius={10} background={Look.ref.well} alignItems="center" justifyContent="center"
 				overflow="hidden">
 				{[for (f in fan) if (f.e != null) card(x, f.e, f.side, f.t)]}
 			</view>
-			<view padding="12 16 0 16" align-items="center" row-gap={2}>
-				<text tag="inspector-name" font-size={14} font-weight={600}>{Kinds.items(all.length)}</text>
-				<text tag="inspector-kind" font-size={12} color={Look.ref.fg3} max-lines={1}>{(Lambda.count(kinds) == 1 ? Kinds.kind(all[0]) + " · " : "") + Kinds.size(size)}</text>
+			<view padding="12 16 0 16" alignItems="center" rowGap={2}>
+				<text tag="inspector-name" fontSize={14} fontWeight={600}>{Kinds.items(all.length)}</text>
+				<text tag="inspector-kind" fontSize={12} color={Look.ref.fg3} lineClamp={1}>{(Lambda.count(kinds) == 1 ? Kinds.kind(all[0]) + " · " : "") + Kinds.size(size)}</text>
 			</view>
-			<view direction="row" justify="center" column-gap={6} padding="12 16 14 16">
+			<view flexDirection="row" justifyContent="center" columnGap={6} padding="12 16 14 16">
 				<Standard.Button tag="open" variant="primary" size="sm" onPress={() -> x.open()}>{"Open " + all.length}</Standard.Button>
 				<Show when={ViewerActions.LOCAL}>
 					<Standard.Button tag="reveal" size="sm" icon={Glyphs.get("folder")} label={ViewerActions.reveal()} onPress={() -> x.perform(ShowInFolder)}/>
@@ -155,15 +156,15 @@ class InspectorView implements Markup {
 					<Standard.Button tag="trash" size="sm" icon={Glyphs.get("trash")} label={ViewerActions.trashLabel()} onPress={() -> x.perform(Trash)}/>
 				</Show>
 			</view>
-			<view tag="details" padding="10 16 6 16" borders="1 0 0 0" border-color={Look.ref.line}>
-				<view direction="row" align-items="center" column-gap={6} height={24}>
+			<view tag="details" padding="10 16 6 16" borders="1 0 0 0" borderColor={Look.ref.line}>
+				<view flexDirection="row" alignItems="center" columnGap={6} height={24}>
 					<image src={Glyphs.get("info")} width={14} height={14} color={Look.ref.fg3}/>
-					<text font-size={11} font-weight={600} color={Look.ref.fg3}>SELECTION</text>
+					<text fontSize={11} fontWeight={600} color={Look.ref.fg3}>SELECTION</text>
 				</view>
 				{[for (kv in [{k: "Total size", v: Kinds.size(size)}, {k: "Kinds", v: kindText.join(", ")}])
-					<view direction="row" justify="space-between" column-gap={12} height={24} align-items="center" font-size={12.5}>
-						<text color={Look.ref.fg3} shrink={0}>{kv.k}</text>
-						<text max-lines={1} text-overflow="ellipsis" text-align="right" shrink={1}>{kv.v}</text>
+					<view flexDirection="row" justifyContent="space-between" columnGap={12} height={24} alignItems="center" fontSize={12.5}>
+						<text color={Look.ref.fg3} flexShrink={0}>{kv.k}</text>
+						<text lineClamp={1} textOverflow="ellipsis" textAlign="right" flexShrink={1}>{kv.v}</text>
 					</view>]}
 			</view>
 		</view>;
@@ -172,9 +173,9 @@ class InspectorView implements Markup {
 	// (a card of the stack: the thumbnail, else the glyph, on a white mat)
 	static function card(x:Explorer, e:Entry, side:Float, transform:String):View {
 		var t = Tiles.thumbnail(x, e);
-		return <view position="absolute" width={side} height={side} radius={8} padding={3} background="#ffffff" transform={transform}
-			shadow="0 4px 14px rgba(0,0,0,0.22)" align-items="center" justify="center" overflow="hidden">
-			<Show when={t().image != null}><image src={t().image} width={side - 6} height={side - 6} fit="cover" radius={6}/></Show>
+		return <view position="absolute" width={side} height={side} borderRadius={8} padding={3} background="#ffffff" transform={transform}
+			boxShadow="0 4px 14px rgba(0,0,0,0.22)" alignItems="center" justifyContent="center" overflow="hidden">
+			<Show when={t().image != null}><image src={t().image} width={side - 6} height={side - 6} objectFit="cover" borderRadius={6}/></Show>
 			<Show when={t().image == null}>{Tiles.large(e)}</Show>
 		</view>;
 	}
@@ -185,13 +186,13 @@ class InspectorView implements Markup {
 	// (nothing selected: the folder's picture, its name, how many items)
 	static function folder(x:Explorer):View {
 		var b = x.browser;
-		return <view grow={1}>
-			<view height={BOX} shrink={0} margin="14 14 0 14" radius={10} background={Look.ref.well} align-items="center" justify="center">
+		return <view flexGrow={1}>
+			<view height={BOX} flexShrink={0} margin="14 14 0 14" borderRadius={10} background={Look.ref.well} alignItems="center" justifyContent="center">
 				{Tiles.large({name: "", kind: Folder, size: 0, modified: 0, created: 0})}
 			</view>
-			<view padding="12 16 0 16" align-items="center" row-gap={2}>
-				<text font-size={14} font-weight={600} max-lines={1} text-overflow="ellipsis">{() -> x.sidebar.title(b.dir())}</text>
-				<text font-size={12} color={Look.ref.fg3}>{() -> b.reading() ? "Reading…" : Kinds.items(b.items().length)}</text>
+			<view padding="12 16 0 16" alignItems="center" rowGap={2}>
+				<text fontSize={14} fontWeight={600} lineClamp={1} textOverflow="ellipsis">{() -> x.sidebar.title(b.dir())}</text>
+				<text fontSize={12} color={Look.ref.fg3}>{() -> b.reading() ? "Reading…" : Kinds.items(b.items().length)}</text>
 			</view>
 		</view>;
 	}
@@ -206,14 +207,14 @@ class InspectorView implements Markup {
 		var w = Math.round(img.width * k), h = Math.round(img.height * k);
 		// (the thumbnail while the preview comes: nothing known of it yet; a Show's children are made with it)
 		var pages = s == null ? 0 : s.pages, duration = s == null ? 0.0 : s.duration;
-		return <view align-items="center" justify="center" width="100%" height="100%">
-			<image tag="preview-image" src={img} width={w} height={h} radius={4} shadow="0 4px 16px rgba(0,0,0,0.4)"/>
+		return <view alignItems="center" justifyContent="center" width="100%" height="100%">
+			<image tag="preview-image" src={img} width={w} height={h} borderRadius={4} boxShadow="0 4px 16px rgba(0,0,0,0.4)"/>
 			<Show when={pages > 1}>
-				<text tag="pages" position="absolute" bottom={8} padding="2 8" radius={9} background="rgba(10,10,10,0.6)" color="#ffffff" font-size={11.5}>{'1 / $pages'}</text>
+				<text tag="pages" position="absolute" bottom={8} padding="2 8" borderRadius={9} background="rgba(10,10,10,0.6)" color="#ffffff" fontSize={11.5}>{'1 / $pages'}</text>
 			</Show>
 			<Show when={duration > 0}>
-				<text tag="duration" position="absolute" right={10} bottom={10} padding="0 5" radius={4} background="rgba(0,0,0,0.62)" color="#ffffff"
-					font-size={10.5} font-weight={600}>{clock(duration)}</text>
+				<text tag="duration" position="absolute" right={10} bottom={10} padding="0 5" borderRadius={4} background="rgba(0,0,0,0.62)" color="#ffffff"
+					fontSize={10.5} fontWeight={600}>{clock(duration)}</text>
 			</Show>
 		</view>;
 	}
@@ -223,10 +224,10 @@ class InspectorView implements Markup {
 	static function page(d:MarkdownDoc):View {
 		var k = 0.38, w = 600, h = Math.round(188 / k);
 		var view = new helder.markdown.MarkdownView({doc: d.doc, scroll: false, blocks: 12});
-		return <view tag="preview-page" width={Math.round(w * k)} height={188} radius={4} overflow="hidden" background={Look.ref.canvas}
-			shadow="0 4px 16px rgba(0,0,0,0.4)">
-			<view position="absolute" left={0} top={0} width={w} height={h} padding="22 0 0 0" transform={'scale($k)'} transform-origin="0 0"
-				pointer-events="none">{view}</view>
+		return <view tag="preview-page" width={Math.round(w * k)} height={188} borderRadius={4} overflow="hidden" background={Look.ref.canvas}
+			boxShadow="0 4px 16px rgba(0,0,0,0.4)">
+			<view position="absolute" left={0} top={0} width={w} height={h} padding="22 0 0 0" transform={'scale($k)'} transformOrigin="0 0"
+				pointerEvents="none">{view}</view>
 		</view>;
 	}
 

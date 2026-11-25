@@ -36,17 +36,17 @@ class Screens implements Markup {
 
 	public static function Stack(props:{router:Router, ?transition:StackTransition}):UiView {
 		var s = new StackState(props.router, props.transition ?? platform());
-		return <view tag="stack" grow={1} position="relative" overflow="hidden" ref={n -> s.attach(n)}>
+		return <view tag="stack" flexGrow={1} position="relative" overflow="hidden" ref={n -> s.attach(n)}>
 			<For each={s.screens}>{r -> row(r.peek(), s)}</For>
-			<text position="absolute" width={1} height={1} overflow="hidden" opacity={0} pointer-events="none" live="polite">{s.said()}</text>
+			<text position="absolute" width={1} height={1} overflow="hidden" opacity={0} pointerEvents="none" aria-live="polite">{s.said()}</text>
 		</view>;
 	}
 
 	static function row(s:Screen, stack:StackState):UiView
 		return <view tag="screen" position="absolute" left={0} top={0} right={0} bottom={0} instant transform={s.transform(stack.kind)} opacity={s.opacity(stack.kind)}
-			visibility={s.hidden() ? "hidden" : "visible"} pointer-events={s.busy() ? "none" : "auto"} ref={n -> s.node = n}>
+			visibility={s.hidden() ? "hidden" : "visible"} pointerEvents={s.busy() ? "none" : "auto"} ref={n -> s.node = n}>
 			<Provider context={here} value={new Here(stack, s)}>{s.entry.view}</Provider>
-			<view position="absolute" left={0} top={0} right={0} bottom={0} pointer-events="none" background={s.shade(stack.kind)}/>
+			<view position="absolute" left={0} top={0} right={0} bottom={0} pointerEvents="none" background={s.shade(stack.kind)}/>
 		</view>;
 
 	// (the platform's: iOS's and macOS's slide, Android's, else a fade)

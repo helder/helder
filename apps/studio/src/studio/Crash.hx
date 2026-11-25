@@ -15,6 +15,7 @@ using StringTools;
 // the module has no stacks of its own (no frame records in WebAssembly):
 // an error out of an event ends it, and the page shows its frames instead
 // (studio.mjs's crashed).
+@:renderer(helder.ui.view.NodeRenderer)
 class Crash implements Markup {
 	public final message:String;
 	// the file and line it was thrown at ("" when unknown)
@@ -41,24 +42,24 @@ class Crash implements Markup {
 	}
 
 	public static function view(studio:Studio, crash:Crash, reload:Void->Void):View
-		return <view tag="crash-layer" slot="floating" position="absolute" inset={0} align-items="center" justify="center" padding={16}
+		return <view tag="crash-layer" slot="floating" position="absolute" inset={0} alignItems="center" justifyContent="center" padding={16}
 			background="rgba(11,11,13,0.72)">
-			<view tag="crash" role="alertdialog" label="The studio stopped" width={560} max-width="100%" max-height="100%" padding={16} row-gap={10}
-				background={c("bg")} radius={Theme.RADIUS_M} shadow={Theme.POPOVER} border-width={1} border-color={c("line")}>
-				<text font-size={13} font-weight={Theme.MEDIUM}>The studio stopped what it was doing</text>
+			<view tag="crash" role="alertdialog" aria-label="The studio stopped" width={560} maxWidth="100%" maxHeight="100%" padding={16} rowGap={10}
+				background={c("bg")} borderRadius={Theme.RADIUS_M} boxShadow={Theme.POPOVER} borderWidth={1} borderColor={c("line")}>
+				<text fontSize={13} fontWeight={Theme.MEDIUM}>The studio stopped what it was doing</text>
 				<text color={c("red")}>{crash.message}</text>
 				<Show when={crash.where != ""}>
-					<text font-family={Theme.CODE} font-size={Theme.SMALL} color={c("fg2")}>{crash.where}</text>
+					<text fontFamily={Theme.CODE} fontSize={Theme.SMALL} color={c("fg2")}>{crash.where}</text>
 				</Show>
 				<Show when={crash.stack != ""}>
-					<scroll max-height={240} min-height={0} padding={8} radius={Theme.RADIUS} background={c("canvas")}>
-						<text font-family={Theme.CODE} font-size={Theme.SMALL} color={c("fg3")}>{crash.stack}</text>
+					<scroll maxHeight={240} minHeight={0} padding={8} borderRadius={Theme.RADIUS} background={c("canvas")}>
+						<text fontFamily={Theme.CODE} fontSize={Theme.SMALL} color={c("fg3")}>{crash.stack}</text>
 					</scroll>
 				</Show>
-				<view direction="row" justify="end" column-gap={8}>
-					<view:button tag="crash-reload" slot="primary" role="button" label="Reload" focusable onPress={reload}>
+				<view flexDirection="row" justifyContent="end" columnGap={8}>
+					<button tag="crash-reload" slot="primary" aria-label="Reload" onPress={reload}>
 						<text>Reload</text>
-					</view:button>
+					</button>
 				</view>
 			</view>
 		</view>;

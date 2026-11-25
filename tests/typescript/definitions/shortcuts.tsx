@@ -44,7 +44,7 @@ const keymap = new Keymap().bind("n", Viewer.next(), "Viewer").bind("ctrl-k ctrl
 keymap.setUser(`[{"context": "Viewer", "bindings": {"2": ["viewer::ZoomTo", 200], "m": ["viewer::Move", {"x": 3, "y": 4}],
 	"o": ["viewer::Open", ["a.png", ["x", "y"]]], "1": null}}]`);
 setKeymap(ui, keymap);
-mount(ui, <view key-context="Viewer" actions={[handle(Viewer, a => {
+mount(ui, <view keyContext="Viewer" actions={[handle(Viewer, a => {
 	log.push(show(a));
 	if (a.type === "zoomTo") zoomed = !zoomed;
 	return a.type !== "open";

@@ -10,6 +10,7 @@ import helder.view.graph.Graph.*;
 // over the folder (the toolbar's button, a swipe from the left edge; a
 // place chosen or the scrim pressed closes it), the inspector a sheet, a
 // popover from the toolbar's Get Info button
+@:renderer(helder.ui.view.NodeRenderer)
 class Tablet implements Markup {
 	public static inline var DRAWER = 300;
 	// (a swipe from within this of the left edge opens the drawer)
@@ -24,12 +25,12 @@ class Tablet implements Markup {
 			x.sidebarOpen(false);
 		});
 		return <>
-			<view tag="drawer-edge" position="absolute" left={0} top={0} bottom={0} width={EDGE} display={x.full() ? "none" : "flex"} pan-axis="x"
+			<view tag="drawer-edge" position="absolute" left={0} top={0} bottom={0} width={EDGE} display={x.full() ? "none" : "flex"} panAxis="x"
 				onPan={g -> if (g.state == Ended && (g.tx > 40 || g.vx > 400)) x.sidebarOpen(true)}/>
 			<Show when={x.sidebarOpen() && !x.full()}>
-				<view tag="drawer-scrim" position="absolute" inset={0} background={Look.ref.scrim} transition="fade" onClick={_ -> x.sidebarOpen(false)}/>
+				<view tag="drawer-scrim" position="absolute" inset={0} background={Look.ref.scrim} transition="fade" onPress={_ -> x.sidebarOpen(false)}/>
 				<view tag="drawer" slot="panel" position="absolute" left={0} top={0} bottom={0} width={DRAWER} padding="8 12 0 20"
-					padding-top="calc(env(safe-area-inset-top) + 8px)" shadow="0 10px 40px rgba(0,0,0,0.3)" transition="fade slide-right" pan-axis="x"
+					paddingTop="calc(env(safe-area-inset-top) + 8px)" boxShadow="0 10px 40px rgba(0,0,0,0.3)" transition="fade slide-right" panAxis="x"
 					onPan={g -> if (g.state == Ended && (g.tx < -60 || g.vx < -400)) x.sidebarOpen(false)}>{SidebarView.make(x)}</view>
 			</Show>
 			<Sheet open={() -> x.infoOpen() && !x.full()} detents={[Medium, Large]} anchor={() -> x.infoAnchor} label="Info"

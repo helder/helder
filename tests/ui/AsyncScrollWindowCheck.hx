@@ -32,7 +32,7 @@ class AsyncScrollWindowCheck {
 		list.style.set({overflow: Scroll, height: 300, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
 		for (i in 0...300) {
 			var row = new Node();
-			row.style.set({direction: Row, padding: 3, columnGap: 6, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
+			row.style.set({flexDirection: Row, padding: 3, columnGap: 6, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center});
 			var box = new Node();
 			box.style.set({width: 12, height: 12, background: 0xFF000000 | ((i * 40503) & 0xFFFFFF)});
 			row.append(box);

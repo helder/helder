@@ -76,7 +76,7 @@ class AsyncScrollCheck {
 		list.style.set({width: 300, height: 200, overflow: Scroll});
 		for (i in 0...100) {
 			var row = new Node();
-			row.style.set({height: 20, shrink: 0});
+			row.style.set({height: 20, flexShrink: 0});
 			list.append(row);
 		}
 		ui.root.append(list);
@@ -205,11 +205,11 @@ class AsyncScrollCheck {
 				var heads = [];
 				for (i in 0...6) {
 					var sec = new Node(), head = new Node();
-					head.style.set({position: Sticky, top: 0, height: 24, shrink: 0});
+					head.style.set({position: Sticky, top: 0, height: 24, flexShrink: 0});
 					sec.append(head);
 					for (j in 0...5) {
 						var r = new Node();
-						r.style.set({height: 30, shrink: 0});
+						r.style.set({height: 30, flexShrink: 0});
 						sec.append(r);
 					}
 					list.append(sec);
@@ -307,26 +307,26 @@ class AsyncScrollCheck {
 	static function tree(ui:Ui):Array<Node> {
 		var page = new Node("page"), inner = new Node("inner"), slider = new Node("slider"), hears = new Node("hears");
 		page.style.set({width: 300, height: 200, overflow: Scroll});
-		inner.style.set({height: 100, shrink: 0, overflow: Scroll});
+		inner.style.set({height: 100, flexShrink: 0, overflow: Scroll});
 		for (i in 0...10) {
 			var r = new Node("i" + i);
-			r.style.set({height: 30, shrink: 0});
+			r.style.set({height: 30, flexShrink: 0});
 			inner.append(r);
 		}
-		slider.style.set({height: 40, shrink: 0});
+		slider.style.set({height: 40, flexShrink: 0});
 		slider.onPointerDown = e -> {
 			slider.capture();
 			slid = e.x;
 		};
 		slider.onPointerMove = e -> slid = e.x;
-		hears.style.set({height: 40, shrink: 0});
+		hears.style.set({height: 40, flexShrink: 0});
 		hears.onWheel = e -> wheels++;
 		page.append(inner);
 		page.append(slider);
 		page.append(hears);
 		for (i in 0...40) {
 			var r = new Node("r" + i);
-			r.style.set({height: 30, shrink: 0});
+			r.style.set({height: 30, flexShrink: 0});
 			page.append(r);
 		}
 		ui.root.append(page);
@@ -540,9 +540,9 @@ class AsyncScrollCheck {
 		list.style.set({overflow: Scroll, height: H, rowGap: 2, padding: 4, background: 0xFFFFFFFF});
 		for (i in 0...120) {
 			var row = new Node();
-			row.style.set({direction: Row, padding: 3, columnGap: 6, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center, shrink: 0});
+			row.style.set({flexDirection: Row, padding: 3, columnGap: 6, background: i % 3 == 0 ? 0xFFEFF6FF : 0xFFFFFFFF, alignItems: Center, flexShrink: 0});
 			var box = new Node();
-			box.style.set({width: 12, height: 12, background: 0xFF000000 | ((i * 40503) & 0xFFFFFF), radius: 3});
+			box.style.set({width: 12, height: 12, background: 0xFF000000 | ((i * 40503) & 0xFFFFFF), borderRadius: 3});
 			row.append(box);
 			row.append(new TextNode("Row " + i + " of the compositor's frames"));
 			list.append(row);
@@ -613,28 +613,28 @@ class AsyncScrollCheck {
 		list.style.set({overflow: Scroll, height: H, padding: 4, background: 0xFFFFFFFF});
 		for (i in 0...12) {
 			var sec = new Node(), head = new Node();
-			head.style.set({position: Sticky, top: 0, height: 22, padding: 3, shrink: 0, background: 0xFFDDE6F0});
+			head.style.set({position: Sticky, top: 0, height: 22, padding: 3, flexShrink: 0, background: 0xFFDDE6F0});
 			head.append(new TextNode("Section " + i));
 			sec.append(head);
 			for (j in 0...4) {
 				var row = new Node();
-				row.style.set({height: 26, padding: 3, shrink: 0, background: j % 2 == 0 ? 0xFFFFFFFF : 0xFFF6F6F6});
+				row.style.set({height: 26, padding: 3, flexShrink: 0, background: j % 2 == 0 ? 0xFFFFFFFF : 0xFFF6F6F6});
 				row.append(new TextNode("Row " + j + " of section " + i));
 				sec.append(row);
 			}
 			list.append(sec);
 		}
 		var spin = new Node();
-		spin.style.set({position: Absolute, left: 200, top: 60, width: 70, height: 50, radius: 8, background: 0xFF2A7AE2});
+		spin.style.set({position: Absolute, left: 200, top: 60, width: 70, height: 50, borderRadius: 8, background: 0xFF2A7AE2});
 		spin.style.transform = Transform.parse("translate(0px, 0px) rotate(0deg)");
 		spin.style.transition = Transition.parse("transform 0.5s ease-in-out, opacity 0.5s linear");
 		// (a card whose children overlap: faded whole, as CSS's opacity and the program's group fade it)
 		var card = new Node();
-		card.style.set({position: Absolute, left: 150, top: 150, width: 130, height: 70, radius: 10, padding: 8, background: 0xFFFFE08A});
+		card.style.set({position: Absolute, left: 150, top: 150, width: 130, height: 70, borderRadius: 10, padding: 8, background: 0xFFFFE08A});
 		card.style.transition = Transition.parse("opacity 0.6s linear");
 		for (i in 0...3) {
 			var b = new Node();
-			b.style.set({position: Absolute, left: 10 + i * 30, top: 10 + i * 8, width: 50, height: 40, radius: 6, background: [0xFFE2462A, 0xFF2AA84A, 0xFF2A62E2][i]});
+			b.style.set({position: Absolute, left: 10 + i * 30, top: 10 + i * 8, width: 50, height: 40, borderRadius: 6, background: [0xFFE2462A, 0xFF2AA84A, 0xFF2A62E2][i]});
 			card.append(b);
 		}
 		card.append(new TextNode("overlapping"));

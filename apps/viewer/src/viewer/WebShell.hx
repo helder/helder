@@ -16,6 +16,7 @@ import helder.view.*;
 // drag out, no second window to hand files to. The decodes, previews and
 // thumbnails (kept in memory: Tiles) are helder.jobs' jobs in Web Workers,
 // of bytes read on the page.
+@:renderer(helder.ui.view.NodeRenderer)
 class WebShell implements Markup {
 	public static function main() {
 		var files = new WebFiles();

@@ -18,8 +18,8 @@ import helder.view.Render;
 // The boundary tags between helder.ui and helder.scene (react-three-fiber's
 // <Canvas>, drei's <Html>), imported with import helder.scene.view.SceneTags.*:
 //
-//   <view direction="row" grow={1}>
-//     <Scene grow={1} camera={camera}>
+//   <view flexDirection="row" flexGrow={1}>
+//     <Scene flexGrow={1} camera={camera}>
 //       <node position={pos}><mesh shape="box" onClick={e -> picked.value = e.node.name}/></node>
 //       <light kind="point" intensity={6.0}/>
 //       <Ui><text>Hello</text></Ui>
@@ -41,11 +41,11 @@ class SceneTags {
 	// (the box a scene's markup is drawn in, for <Ui>)
 	public static final BOX = new helder.view.graph.Context<Null<SceneBox>>(null, true);
 
-	// a box (ui's: grow, width, height, style...) of world as camera sees it
+	// a box (ui's: flexGrow, width, height, style...) of world as camera sees it
 	public static function Scene(props:{
 		?world:World,
 		?camera:Camera,
-		?grow:Float,
+		?flexGrow:Float,
 		?width:helder.view.graph.Read<Dynamic>,
 		?height:helder.view.graph.Read<Dynamic>,
 		?style:Dynamic,
@@ -73,7 +73,7 @@ class SceneTags {
 			Render.isReactive(v) ? Graph.renderEffect(() -> (Render.read(v) : Float), (k:Float) -> box.density = k) : box.density = Render.read(v);
 		}
 		if (props.setup != null) box.onRenderer = props.setup;
-		if (props.grow != null) NodeRenderer.setProperty(box, "grow", props.grow);
+		if (props.flexGrow != null) NodeRenderer.setProperty(box, "flexGrow", props.flexGrow);
 		if (props.width != null) bind(box, "width", props.width);
 		if (props.height != null) bind(box, "height", props.height);
 		if (props.style != null) NodeRenderer.setStyle(box, props.style);

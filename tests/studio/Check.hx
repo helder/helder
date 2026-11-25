@@ -142,8 +142,8 @@ class Check {
 			for (c in (e.changes : Array<Dynamic>))
 				text = text.substr(0, c.start) + c.text + text.substr(c.end);
 		check('$app: the edits replayed give the file', text == final_);
-		var expected = original.replace('<text font-size={28} font-weight={700} color="#3b82f6">todos',
-			'<text tag="title" font-size={28} font-weight={700} color="#ef4444">todos');
+		var expected = original.replace('<text fontSize={28} fontWeight={700} color="#3b82f6">todos',
+			'<text tag="title" fontSize={28} fontWeight={700} color="#ef4444">todos');
 		check('$app: the file: the original with the colour and the tag alone', final_ == expected);
 		return {app: app, first: ff?.ms, shown: shown?.ms, patch: p?.ms, frames: p?.frames};
 	}
@@ -270,7 +270,7 @@ class Check {
 		var moved:Dynamic = drags[0];
 		var frameEdits = [for (k in 0...edits.length) if (edits[k].frame <= (moved?.frame ?? -1)) k];
 		var afterMove = frameEdits.length == 0 ? "" : texts[frameEdits[frameEdits.length - 1] + 1];
-		var at = ~/canvas:at="(-?[0-9]+) 0" background="#f8fafc" padding="56 24 24" row-gap/;
+		var at = ~/canvas:at="(-?[0-9]+) 0" background="#f8fafc" padding="56 24 24" rowGap/;
 		check('design: the frame moved by its caption, snapped (canvas:at="x 0")', moved != null && moved.kind == "frame moved" && moved.snapped >= 1
 			&& at.match(afterMove) && Std.parseInt(at.matched(1)) < 0 && afterMove == original.replace('canvas:at="0 0"', 'canvas:at="${at.matched(1)} 0"'),
 			Json.stringify(moved));

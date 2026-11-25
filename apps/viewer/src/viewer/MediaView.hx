@@ -32,7 +32,7 @@ class MediaView {
 		// (an audio file: its name where the picture would be)
 		var name = new TextNode("");
 		name.style.set({fontSize: 17, color: t.fg3});
-		var audio = box({position: Absolute, left: 0, top: 0, right: 0, bottom: 0, alignItems: Center, justify: Center, pointerEvents: None, display: None});
+		var audio = box({position: Absolute, left: 0, top: 0, right: 0, bottom: 0, alignItems: Center, justifyContent: Center, pointerEvents: None, display: None});
 		audio.append(name);
 		root.append(audio);
 		var bar = box({position: Absolute, left: 0, right: 0, bottom: 0, padding: [6, 12, 10, 12], rowGap: 6, background: t.raised, borderColor: t.line,
@@ -43,10 +43,10 @@ class MediaView {
 			if (refresh != null) refresh();
 		});
 		// (the thumbnail over the scrub bar, within the stage's content: never over the status line under it)
-		var thumb = box({position: Absolute, bottom: 26, padding: 3, radius: 6, background: t.raised, borderWidth: 1, borderColor: t.edge,
+		var thumb = box({position: Absolute, bottom: 26, padding: 3, borderRadius: 6, background: t.raised, borderWidth: 1, borderColor: t.edge,
 			pointerEvents: None, alignItems: Center, rowGap: 2, display: None});
 		var picture = new ImageNode();
-		picture.style.set({width: Thumbs.WIDTH, radius: 3});
+		picture.style.set({width: Thumbs.WIDTH, borderRadius: 3});
 		var at = new TextNode("");
 		at.style.set({color: t.fg2, fontSize: 11});
 		thumb.append(picture);
@@ -54,15 +54,15 @@ class MediaView {
 		scrub.node.append(thumb);
 		var play = new MediaIcon("play"), mute = new MediaIcon("sound"), clockText = new TextNode("0:00 / 0:00");
 		clockText.style.color = t.fg2;
-		var volume = box({width: 80, height: 14, justify: Center}), levels = box({height: 4, radius: 2, background: t.fill});
-		var level = box({height: 4, radius: 2, background: t.fg, width: 80});
+		var volume = box({width: 80, height: 14, justifyContent: Center}), levels = box({height: 4, borderRadius: 2, background: t.fill});
+		var level = box({height: 4, borderRadius: 2, background: t.fg, width: 80});
 		levels.append(level);
 		volume.append(levels);
-		var row = box({direction: Row, alignItems: Center, columnGap: 10});
+		var row = box({flexDirection: Row, alignItems: Center, columnGap: 10});
 		var playing = button(play, "Play", toggle);
 		row.append(playing);
 		row.append(clockText);
-		row.append(box({grow: 1}));
+		row.append(box({flexGrow: 1}));
 		row.append(button(mute, "Mute", toggleMute));
 		row.append(volume);
 		bar.append(scrub.node);
@@ -149,10 +149,10 @@ class MediaView {
 	}
 
 	static function button(icon:MediaIcon, label:String, press:Void->Void):Node {
-		var b = box({width: 28, height: 28, radius: 6, alignItems: Center, justify: Center});
+		var b = box({width: 28, height: 28, borderRadius: 6, alignItems: Center, justifyContent: Center});
 		b.semantics = {role: helder.ui.access.Role.Button, label: label};
 		b.focusable = true;
-		b.onActivate = _ -> press();
+		b.onPress = _ -> press();
 		icon.style.set({width: 18, height: 18, color: helder.ui.controls.Look.ref.fg});
 		b.append(icon);
 		return b;

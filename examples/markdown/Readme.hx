@@ -23,7 +23,7 @@ class Readme implements Markup {
 			doc: Markdown.parse(text),
 			onLink: href -> if (StringTools.startsWith(href, "#")) view.scrollToHeading(href.substr(1)) else trace(href)
 		});
-		UiWindow.run(<Surface title="Markdown" width={760} height={640}><view grow={1} background="#ffffff" color="#1f2328">{view}</view></Surface>);
+		UiWindow.run(<Surface title="Markdown" width={760} height={640}><view flexGrow={1} background="#ffffff" color="#1f2328">{view}</view></Surface>);
 	}
 
 	static final SAMPLE = "# helder.markdown

@@ -85,9 +85,9 @@ class SurfaceCheck implements Markup {
 		var hdrCamera = Camera.attach(hdrEye, Camera.perspective(0.8, 0.1, 100));
 		var dispose = Render.open(<>
 			<Surface title={title} width={320} height={200} background={0xFFFFFFFF} ref={w -> windows.push(w)}>
-				<view direction="row" grow={1}>
+				<view flexDirection="row" flexGrow={1}>
 					<view width={120}><text tag="label">{picked}</text><Sprites width={100} height={20} density={0.5} ref={b -> sprites = b}/></view>
-					<Scene world={world} camera={camera} grow={1} scale={0.5} pick="triangles" ref={b -> box = b}>
+					<Scene world={world} camera={camera} flexGrow={1} scale={0.5} pick="triangles" ref={b -> box = b}>
 						<lines of={path} position={new Vec3(0, -1.2, 0)}/>
 						<axesHelper size={0.5}/>
 						<text3d font={face} text={label} size={0.3} billboard position={new Vec3(0, 1.1, 0)}/>
@@ -110,7 +110,7 @@ class SurfaceCheck implements Markup {
 			</Surface>
 			<Show when={second}><Surface title="two" width={160} height={100} background={0xFFFFFFFF} ref={w -> windows.push(w)}>
 				<text>two</text>
-				<Scene world={hdrWorld} camera={hdrCamera} grow={1} hdr setup={setup} ref={b -> hdrBox = b}/>
+				<Scene world={hdrWorld} camera={hdrCamera} flexGrow={1} hdr setup={setup} ref={b -> hdrBox = b}/>
 			</Surface></Show>
 		</>);
 		check("two windows", windows.length == 2 && windows[0].window.title == "one" && windows[1].window.title == "two",

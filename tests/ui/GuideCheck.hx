@@ -47,17 +47,17 @@ class GuideCheck implements Markup {
 	// --- the guide's code ---
 
 	// "Components"
-	static function Button(props:{label:String, onClick:Void->Void, ?tag:String, ?variant:String}):View
+	static function Button(props:{label:String, onPress:Void->Void, ?tag:String, ?variant:String}):View
 		return <button tag={props.tag} slot="button" variant={props.variant}
-			onPress={() -> props.onClick()}>{props.label}</button>;
+			onPress={() -> props.onPress()}>{props.label}</button>;
 
 	static function Stepper(props:{label:String, value:Signal<Int>, ?step:Int}):View {
 		var step = props.step ?? 1;
 		return <view flexDirection="row" alignItems="center" columnGap={8}>
 			<text flexGrow={1}>{props.label}</text>
-			<Button tag="minus" label="-" onClick={() -> props.value(v -> v - step)}/>
+			<Button tag="minus" label="-" onPress={() -> props.value(v -> v - step)}/>
 			<text minWidth={32} textAlign="center">{props.value}</text>
-			<Button tag="plus" label="+" onClick={() -> props.value(v -> v + step)}/>
+			<Button tag="plus" label="+" onPress={() -> props.value(v -> v + step)}/>
 		</view>;
 	}
 
@@ -109,13 +109,13 @@ class GuideCheck implements Markup {
 	static function Confirm(props:{onYes:Void->Void}):View {
 		var open = signal(false);
 		return <view>
-			<Button tag="delete" label="Delete" onClick={() -> open(true)}/>
+			<Button tag="delete" label="Delete" onPress={() -> open(true)}/>
 			<Popover open={open} modal placement="center" onDismiss={() -> open(false)}>
 				<view role="dialog" aria-label="Delete this file?" padding={16} rowGap={12} borderRadius={8} background="#ffffff">
 					<text fontWeight={700}>Delete this file?</text>
 					<view flexDirection="row" columnGap={8} justifyContent="end">
-						<Button tag="no" label="Cancel" onClick={() -> open(false)}/>
-						<Button tag="yes" label="Delete" onClick={() -> {
+						<Button tag="no" label="Cancel" onPress={() -> open(false)}/>
+						<Button tag="yes" label="Delete" onPress={() -> {
 							open(false);
 							props.onYes();
 						}}/>
@@ -240,8 +240,7 @@ class GuideCheck implements Markup {
 			<view tag="d" background={() -> on() ? "#22c55e" : "#e4e4e7"}/>
 			<view tag="e" height={height} overflow="hidden"><text>Hello</text></view>
 			<view tag="banner" height={48} borderRadius={8} background="linear-gradient(to right, #6366f1, rgb(236 72 153))"/>
-			<view tag="f" role="button" aria-label="Close" focusable onPress={_ -> close()}
-				onKeyDown={e -> if (e.key == Key.ENTER || e.key == Key.SPACE) close()}><text>×</text></view>
+			<view tag="f" role="button" aria-label="Close" focusable onPress={_ -> close()}><text>×</text></view>
 		</view>, ui.root);
 		count(5);
 		flush();
@@ -360,7 +359,7 @@ class GuideCheck implements Markup {
 
 	static function themes() {
 		var ui = window();
-		Render.render(<view alignItems="start"><Button tag="themed" label="Themed" onClick={() -> {}}/><Button tag="outlined" label="Outlined" variant="outline" onClick={() -> {}}/></view>, ui.root);
+		Render.render(<view alignItems="start"><Button tag="themed" label="Themed" onPress={() -> {}}/><Button tag="outlined" label="Outlined" variant="outline" onPress={() -> {}}/></view>, ui.root);
 		ui.update();
 		var b = ui.root.find("themed"), o = ui.root.find("outlined");
 		var unstyled = b.style.background == Color.TRANSPARENT && b.style.borderWidth == 0;
@@ -384,16 +383,16 @@ class GuideCheck implements Markup {
 	static final SEARCH = Svg.parse('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
 		stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>');
 
-	static function SearchButton(props:{onClick:Void->Void}):View
+	static function SearchButton(props:{onPress:Void->Void}):View
 		return <view tag="search" role="button" aria-label="Search" focusable flexDirection="row" columnGap={6} alignItems="center"
-			color="#2563eb" onPress={_ -> props.onClick()}>
+			color="#2563eb" onPress={_ -> props.onPress()}>
 			<image src={SEARCH} width={16} height={16}/>
 			<text>Search</text>
 		</view>;
 
 	static function icons() {
 		var ui = window(), clicks = 0;
-		Render.render(<SearchButton onClick={() -> clicks++}/>, ui.root);
+		Render.render(<SearchButton onPress={() -> clicks++}/>, ui.root);
 		ui.update();
 		ui.paint(new Recording());
 		var b = ui.root.find("search"), img:ImageNode = cast b.children[0];
@@ -436,7 +435,7 @@ class GuideCheck implements Markup {
 	// "Text fields": drawn on the desktop, spellcheck asked or a text area's, native asked
 	static function Compose(props:{subject:Signal<String>, body:Signal<String>}):View
 		return <view rowGap={8}>
-			<field aria-label="Subject" value={props.subject} spellCheck="true" onInput={e -> props.subject(e.text)}/>
+			<field aria-label="Subject" value={props.subject} spellCheck={true} onInput={e -> props.subject(e.text)}/>
 			<textarea aria-label="Body" value={props.body} onInput={e -> props.body(e.text)}/>
 			<field type="password" aria-label="Password" host="native"/>
 		</view>;

@@ -8,7 +8,7 @@ import { Scene } from "helder/scene/view";
 import { vec3, vec4, Quat } from "helder/gfx";
 
 UiWindow.run(<Surface title="Props" width={320} height={240}>
-	<Scene grow={1}>
+	<Scene flexGrow={1}>
 		<directionalLight intensity={2} rotation={Quat.fromEuler(-0.7, 0.3, 0)}/>
 		<mesh position={vec3(1.4, 0, 0)}>
 			<sphereGeometry radius={0.8}/>

@@ -274,49 +274,49 @@ private class Shapes extends Node {
 private class Fixture implements helder.view.Markup {
 	public static function todo()
 		return <view width={390} height={520} background="#f8fafc" padding={20} gap={12}>
-			<text font-size={28} font-weight={700} color="#0f172a">Today</text>
-			<view direction="row" gap={8}>
-				<view grow={1} height={40} radius={10} background="#ffffff" border-width={1} border-color="#e2e8f0" padding="0 12" justify="center">
+			<text fontSize={28} fontWeight={700} color="#0f172a">Today</text>
+			<view flexDirection="row" gap={8}>
+				<view flexGrow={1} height={40} borderRadius={10} background="#ffffff" borderWidth={1} borderColor="#e2e8f0" padding="0 12" justifyContent="center">
 					<text color="#94a3b8">What needs doing?</text>
 				</view>
-				<view width={72} height={40} radius={10} background="#2563eb" align-items="center" justify="center">
-					<text color="#ffffff" font-weight={600}>Add</text>
+				<view width={72} height={40} borderRadius={10} background="#2563eb" alignItems="center" justifyContent="center">
+					<text color="#ffffff" fontWeight={600}>Add</text>
 				</view>
 			</view>
 			{[for (i => t in ["Buy oat milk", "Water the ferns", "Call the plumber about the leaking tap in the upstairs bathroom", "Book train tickets", "Reply to Ada"]) row(t, i % 2 == 1)]}
-			<text color="#64748b" font-size={13}>3 of 5 left</text>
+			<text color="#64748b" fontSize={13}>3 of 5 left</text>
 		</view>;
 
 	static function row(t:String, done:Bool)
-		return <view direction="row" gap={10} align-items="center" padding="10 12" radius={12} background="#ffffff" shadow="0 1 3 #0000001a">
-			<view width={20} height={20} radius={6} border-width={2} border-color={done ? "#16a34a" : "#cbd5e1"} background={done ? "#16a34a" : "#ffffff"}/>
-			<text grow={1} shrink={1} color={done ? "#94a3b8" : "#0f172a"} text-decoration={done ? "line-through" : "none"}>{t}</text>
+		return <view flexDirection="row" gap={10} alignItems="center" padding="10 12" borderRadius={12} background="#ffffff" boxShadow="0 1 3 #0000001a">
+			<view width={20} height={20} borderRadius={6} borderWidth={2} borderColor={done ? "#16a34a" : "#cbd5e1"} background={done ? "#16a34a" : "#ffffff"}/>
+			<text flexGrow={1} flexShrink={1} color={done ? "#94a3b8" : "#0f172a"} textDecoration={done ? "line-through" : "none"}>{t}</text>
 		</view>;
 
 	public static function text()
 		return <view width={420} padding={16} gap={10} background="#ffffff">
-			<text font-size={22} font-weight={700}>A heading, then paragraphs</text>
-			<text line-height={1.5} color="#334155">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</text>
-			<text italic text-align="center" color="#7c3aed" font-size={15}>Centred, italic: the quick brown fox jumps over the lazy dog</text>
-			<text text-align="right" font-weight={300} letter-spacing={1.5}>Right, light, spaced</text>
-			<text font-size={11} color="#475569">{"Small print: 0123456789 ÀÉÎÕÜ ñ ß æ ø — “quotes” …"}</text>
-			<text font-size={40} font-weight={800} color="#0f172a">Big 48px</text>
-			<text font-family="monospace" font-size={13}>let x = frames.map(f => f.key)</text>
-			<text text-shadow="0 2 4 #00000066" font-size={20} color="#ffffff" background="#1e293b" padding={8}>A text shadow</text>
-			<text text-decoration="underline" color="#2563eb">An underlined link</text>
+			<text fontSize={22} fontWeight={700}>A heading, then paragraphs</text>
+			<text lineHeight={1.5} color="#334155">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</text>
+			<text fontStyle="italic" textAlign="center" color="#7c3aed" fontSize={15}>Centred, italic: the quick brown fox jumps over the lazy dog</text>
+			<text textAlign="right" fontWeight={300} letterSpacing={1.5}>Right, light, spaced</text>
+			<text fontSize={11} color="#475569">{"Small print: 0123456789 ÀÉÎÕÜ ñ ß æ ø — “quotes” …"}</text>
+			<text fontSize={40} fontWeight={800} color="#0f172a">Big 48px</text>
+			<text fontFamily="monospace" fontSize={13}>let x = frames.map(f => f.key)</text>
+			<text textShadow="0 2 4 #00000066" fontSize={20} color="#ffffff" background="#1e293b" padding={8}>A text shadow</text>
+			<text textDecoration="underline" color="#2563eb">An underlined link</text>
 		</view>;
 
 	public static function gradients()
-		return <view width={360} padding={12} gap={12} direction="row" wrap="wrap">
-			<view width={100} height={80} radius={12} background="linear-gradient(135deg, #6366f1, #ec4899)"/>
-			<view width={100} height={80} radius={40} background="radial-gradient(circle at 30% 30%, #fde68a, #f97316 60%, #7c2d12)"/>
+		return <view width={360} padding={12} gap={12} flexDirection="row" flexWrap="wrap">
+			<view width={100} height={80} borderRadius={12} background="linear-gradient(135deg, #6366f1, #ec4899)"/>
+			<view width={100} height={80} borderRadius={40} background="radial-gradient(circle at 30% 30%, #fde68a, #f97316 60%, #7c2d12)"/>
 			<view width={100} height={80} background="repeating-linear-gradient(45deg, #e2e8f0 0 10px, #94a3b8 10px 20px)"/>
-			<view width={100} height={80} radius={8} background="linear-gradient(to bottom, #00000000, #000000aa)"/>
-			<view width={220} height={80} radius={16} background="radial-gradient(ellipse farthest-corner, #22d3ee, #1e40af)"/>
+			<view width={100} height={80} borderRadius={8} background="linear-gradient(to bottom, #00000000, #000000aa)"/>
+			<view width={220} height={80} borderRadius={16} background="radial-gradient(ellipse farthest-corner, #22d3ee, #1e40af)"/>
 		</view>;
 
 	public static function icons()
-		return <view direction="row" gap={12} padding={12} align-items="center">
+		return <view flexDirection="row" gap={12} padding={12} alignItems="center">
 			<svg viewBox="0 0 24 24" width={24} height={24}><path d="M12 2l3 7h7l-5.5 4 2 7-6.5-4.5L5.5 20l2-7L2 9h7z" fill="#f59e0b"/></svg>
 			<svg viewBox="0 0 24 24" width={40} height={40}><circle cx="12" cy="12" r="9" fill="none" stroke="#0ea5e9" stroke-width="2"/><path d="M8 12l3 3 5-6" fill="none" stroke="#0ea5e9" stroke-width="2" stroke-linecap="round"/></svg>
 			<svg viewBox="0 0 10 10" width={64} height={64}><defs><linearGradient id="g"><stop offset="0" stop-color="#10b981"/><stop offset="1" stop-color="#3b82f6"/></linearGradient></defs><rect x="1" y="1" width="8" height="8" rx="2" fill="url(#g)"/></svg>
@@ -324,51 +324,51 @@ private class Fixture implements helder.view.Markup {
 		</view>;
 
 	public static function images()
-		return <view direction="row" gap={12} padding={12}>
+		return <view flexDirection="row" gap={12} padding={12}>
 			<image src={Pictures.pixels()} width={96} height={96}/>
-			<image src={Pictures.file()} width={120} height={80} radius={16}/>
-			<image src={Pictures.file()} width={40} height={40} radius={20}/>
+			<image src={Pictures.file()} width={120} height={80} borderRadius={16}/>
+			<image src={Pictures.file()} width={40} height={40} borderRadius={20}/>
 		</view>;
 
 	public static function layers()
 		return <view width={360} height={300} padding={16} gap={12}>
-			<view width={200} height={70} radius={20} overflow="hidden" background="#e0e7ff">
+			<view width={200} height={70} borderRadius={20} overflow="hidden" background="#e0e7ff">
 				<view width={260} height={30} background="#4f46e5" transform="translate(-20px, 20px) rotate(-8deg)"/>
 				<text color="#1e1b4b">clipped and turned</text>
 			</view>
-			<view direction="row" gap={12}>
+			<view flexDirection="row" gap={12}>
 				<view width={80} height={80} background="#ef4444" opacity={0.5}/>
-				<view width={80} height={80} background="#22c55e" opacity={0.7} radius={8} transform="scale(0.8) rotate(12deg)">
+				<view width={80} height={80} background="#22c55e" opacity={0.7} borderRadius={8} transform="scale(0.8) rotate(12deg)">
 					<view width={40} height={40} background="#14532d" opacity={0.5}/>
 				</view>
-				<view width={80} height={80} radius={40} overflow="hidden" background="#fde047">
-					<text font-size={30} font-weight={700}>Oo</text>
+				<view width={80} height={80} borderRadius={40} overflow="hidden" background="#fde047">
+					<text fontSize={30} fontWeight={700}>Oo</text>
 				</view>
 			</view>
-			<view width={300} height={60} border-width={2} border-style="dashed" border-color="#64748b" radius={12} padding={8}>
+			<view width={300} height={60} borderWidth={2} borderStyle="dashed" borderColor="#64748b" borderRadius={12} padding={8}>
 				<text>dashed border</text>
 			</view>
-			<view width={300} height={30} border-width="0 0 4 0" border-color="#0ea5e9" background="#f1f5f9"/>
+			<view width={300} height={30} borderWidth="0 0 4 0" borderColor="#0ea5e9" background="#f1f5f9"/>
 		</view>;
 
 	// (a box moving, a counter, a badge that comes and goes, a bar filling)
 	public static function moving(t:helder.view.graph.Signal<Int>)
 		return <view width={320} height={200} padding={16} gap={10} background="#0f172a">
-			<view width={40} height={40} radius={8} background="#38bdf8" transform={'translate(${t() * 3.5}px, 0px)'}/>
-			<text color="#ffffff" font-size={18}>{"Score " + Std.int(t() / 8)}</text>
-			{t() % 20 < 8 ? <view width={60} height={20} radius={10} background="#f59e0b"/> : null}
-			<view width={280} height={8} radius={4} background="#1e293b"><view width={t() * 4.25} height={8} radius={4} background="#22c55e"/></view>
+			<view width={40} height={40} borderRadius={8} background="#38bdf8" transform={'translate(${t() * 3.5}px, 0px)'}/>
+			<text color="#ffffff" fontSize={18}>{"Score " + Std.int(t() / 8)}</text>
+			{t() % 20 < 8 ? <view width={60} height={20} borderRadius={10} background="#f59e0b"/> : null}
+			<view width={280} height={8} borderRadius={4} background="#1e293b"><view width={t() * 4.25} height={8} borderRadius={4} background="#22c55e"/></view>
 		</view>;
 
 	public static function own()
-		return <view padding={12}><text font-family="Inter" font-size={24} font-weight={600}>Inter, stored</text></view>;
+		return <view padding={12}><text fontFamily="Inter" fontSize={24} fontWeight={600}>Inter, stored</text></view>;
 
 	public static function shadows()
-		return <view width={360} height={260} padding={24} gap={24} direction="row" wrap="wrap" background="#f1f5f9">
-			<view width={90} height={90} radius={12} background="#ffffff" shadow="0 10 25 #0000002e"/>
-			<view width={90} height={90} radius={45} background="#ffffff" shadow="0 0 0 4 #3b82f6, 0 8 16 #1e3a8a66"/>
-			<view width={90} height={90} radius={12} background="#e2e8f0" shadow="inset 0 2 6 #00000055"/>
-			<view width={140} height={60} radius="4 20 4 20" background="#fef3c7" shadow="6 6 0 #92400e"/>
+		return <view width={360} height={260} padding={24} gap={24} flexDirection="row" flexWrap="wrap" background="#f1f5f9">
+			<view width={90} height={90} borderRadius={12} background="#ffffff" boxShadow="0 10 25 #0000002e"/>
+			<view width={90} height={90} borderRadius={45} background="#ffffff" boxShadow="0 0 0 4 #3b82f6, 0 8 16 #1e3a8a66"/>
+			<view width={90} height={90} borderRadius={12} background="#e2e8f0" boxShadow="inset 0 2 6 #00000055"/>
+			<view width={140} height={60} borderRadius="4 20 4 20" background="#fef3c7" boxShadow="6 6 0 #92400e"/>
 		</view>;
 }
 

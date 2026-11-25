@@ -100,9 +100,9 @@ export async function temperature(): Promise<number> {
 
 export function Today(props: { temp: number; date: Date }) {
 	const d = props.date;
-	return <view padding="16 20" radius={12} background="#ffffff" shadow="0 8 24 rgba(0,0,0,0.12)" row-gap={4}>
-		<text font-size={13} color="#71717a">{`${days[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`}</text>
-		<text font-size={32} font-weight={600} color="#18181b">{`${Math.round(props.temp)}°`}</text>
+	return <view padding="16 20" borderRadius={12} background="#ffffff" boxShadow="0 8 24 rgba(0,0,0,0.12)" rowGap={4}>
+		<text fontSize={13} color="#71717a">{`${days[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`}</text>
+		<text fontSize={32} fontWeight={600} color="#18181b">{`${Math.round(props.temp)}°`}</text>
 	</view>;
 }
 ```
