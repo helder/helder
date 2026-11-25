@@ -29,6 +29,7 @@ class Chat implements Markup {
 			<scroll tag="chat-log" grow={1} min-height={0} padding="18 18 8" row-gap={14} font-size={Theme.CHAT_SIZE} color={c("ink2")}
 				ref={(n:Node) -> log = n}>
 				<For each={[for (i in 0...studio.talk.turns().length) i]}>{(i:Read<Int>) -> turn(studio, i())}</For>
+				<For each={studio.questions.all().filter(q -> q.turn < 0)} by={(q:Questions.Question) -> q.id}>{(q:Read<Questions.Question>) -> Asks.card(studio, q)}</For>
 			</scroll>
 			<view padding="12 14 14" row-gap={8} shrink={0}>
 				<Show when={studio.talk.questions() > 0}>
@@ -109,6 +110,7 @@ class Chat implements Markup {
 			</Show>
 			<Show when={t().build != null || t().error != null}>{failure(studio, t)}</Show>
 			<Show when={t().ask != null}>{card(studio, t)}</Show>
+			<For each={studio.questions.all().filter(q -> q.turn == i)} by={(q:Questions.Question) -> q.id}>{(q:Read<Questions.Question>) -> Asks.card(studio, q)}</For>
 			<For each={studio.inbox.notes().filter(n -> n.turn == i && n.kind == "direction")} by={(n:Inbox.Note) -> n.id}>{(n:Read<Inbox.Note>) -> note(n)}</For>
 		</view>;
 	}

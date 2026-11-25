@@ -92,6 +92,39 @@ class Tools implements Mcp.Target {
 			description: "Say you finished: one line on what changed. Your marks on the canvas fade.",
 			inputSchema: {type: "object", properties: {note: {type: "string"}}}
 		},
+		{
+			name: "studio.ask",
+			description: "Ask the user a question in the chat. Options point at what is on the canvas (frame: <file>#<name> of a design file's frame, screen: a screen's name, image: a project path), or are text alone; the chat shows them as thumbnails and the user picks there. Draw visual options first (frames in a <Group title=\"the question\"> of a design file), then ask. Returns {id} at once: keep working; the answer arrives appended to a later tool result (or call studio.inbox). wait: true blocks until answered (up to 10 minutes, then {pending: true}); {id} alone waits for an earlier question.",
+			inputSchema: {
+				type: "object",
+				properties: {
+					question: {type: "string"},
+					options: {
+						type: "array",
+						items: {
+							type: "object",
+							properties: {
+								id: {type: "string"},
+								label: {type: "string"},
+								note: {type: "string"},
+								frame: {type: "string", description: "a design file's frame, <file>#<name>"},
+								screen: {type: "string"},
+								image: {type: "string"}
+							},
+							required: ["label"]
+						}
+					},
+					multiple: {type: "boolean"},
+					wait: {type: "boolean"},
+					id: {type: "string", description: "an earlier question's id: wait for its answer"}
+				}
+			}
+		},
+		{
+			name: "studio.inbox",
+			description: "What the user said since you last heard (answers to your questions, direction typed while you work). It also arrives appended to every tool result.",
+			inputSchema: {type: "object", properties: {}}
+		},
 	];
 
 	public function agents():Presence
@@ -102,6 +135,14 @@ class Tools implements Mcp.Target {
 
 	// a tool called: its content (MCP's: [{type: text, text} | {type: image, data, mimeType}]) and whether it failed
 	@:coroutine public function call(name:String, args:Dynamic, ?agent:String):{content:Array<Dynamic>, isError:Bool} {
+		var r = run(name, args, agent);
+		// (an agent's result carries what the user said since: the inbox's notes, delivered)
+		if (agent == null || name == "studio.inbox") return r;
+		var notes = studio.inbox.take();
+		return notes.length == 0 ? r : {content: r.content.concat([{type: "text", text: Inbox.text(notes)}]), isError: r.isError};
+	}
+
+	@:coroutine function run(name:String, args:Dynamic, agent:Null<String>):{content:Array<Dynamic>, isError:Bool} {
 		if (args == null) args = {};
 		if (agent != null) {
 			// (its path as the project's, the way the studio names files)
@@ -130,9 +171,33 @@ class Tools implements Mcp.Target {
 			case "studio.done":
 				if (agent != null) studio.presence.done(agent, args.note);
 				text("ok");
+			case "studio.ask": text(Json.stringify(ask(args, agent), "  "));
+			case "studio.inbox":
+				var notes = studio.inbox.take();
+				text(notes.length == 0 ? "Nothing new from the user." : Inbox.text(notes));
 			case _: throw 'no tool $name';
 		} catch (e:Dynamic) {content: [{type: "text", text: Std.string(e)}], isError: true};
 	}
+
+	// a question asked (its id at once), or waited for (wait, or an earlier one's id)
+	@:coroutine function ask(args:Dynamic, agent:Null<String>):Dynamic {
+		var qs = studio.questions;
+		var q = args.id != null ? qs.get(args.id) : qs.ask(agent == null ? null : studio.presence.peer(agent), args.question, args.options, args.multiple == true);
+		if (q == null) throw 'no question ${args.id}';
+		if (args.id == null && args.wait != true) return {id: q.id};
+		if (q.answered) return {id: q.id, picked: q.picked, text: q.text};
+		qs.wait(q.id);
+		var t0 = haxe.Timer.stamp();
+		while (!(qs.get(q.id)?.answered ?? true) && haxe.Timer.stamp() - t0 < WAIT)
+			Async.delay(0.1);
+		var a = qs.get(q.id);
+		if (a != null && a.answered) return {id: q.id, picked: a.picked, text: a.text};
+		qs.wait(q.id, false);
+		return {id: q.id, answer: null, pending: true};
+	}
+
+	// (the longest a call waits for an answer, seconds)
+	public static var WAIT = 600.0;
 
 	static function text(s:String):{content:Array<Dynamic>, isError:Bool}
 		return {content: [{type: "text", text: s}], isError: false};

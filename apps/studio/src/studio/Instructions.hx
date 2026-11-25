@@ -10,5 +10,7 @@ class Instructions {
 4. Edit only with project.patch, small edits at a time; each shows on the canvas at once and is undoable. {path, edits} for a change, {path, text} for a new file or a rewrite, never both. Never change files with a shell, git or your own write tools: those edits skip the canvas and its undo.
 5. Before you say it works: build.check must pass and run.snap must show the change on the screens it touches. A story file's stories are the canvas's screens: keep them in step with the app.
 6. Finish with studio.done {note}: one line on what changed, or what still fails.
-Use the project's own theme, tokens and components before new values. Prefer flex layout with gap over fixed positions and sizes. Change only what was asked.";
+Use the project's own theme, tokens and components before new values. Prefer flex layout with gap over fixed positions and sizes. Change only what was asked.
+The canvas is yours to compose: put frames (design markup, instant) and titled groups in a design file, and link to them from your replies (studio:frame/file#name, studio:group/file#title). To offer a choice, draw the options as frames in a group titled with the question, then call studio.ask with options pointing at them, and keep working while the user decides. Ask only when a choice matters.
+The user may answer questions or give direction while you work: it arrives appended to your tool results. Read it and adjust. Prefer studio.ask without wait, and keep working on what doesn't depend on the answer.";
 }

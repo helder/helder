@@ -127,6 +127,10 @@ class Board implements Markup {
 				<text tag="flow-title" position="absolute" left={sx(studio, f().x)} top={sy(studio, f().y) - 50} font-size={Theme.SMALL} font-weight={Theme.MEDIUM}
 					color={c("fg3")} opacity={titleShown(studio, f().y) ? 1 : 0}>{f().name}</text>
 			}</For>
+			<For each={studio.layout.groups()} by={(g:GroupRect) -> g.file + "#" + g.title}>{(g:Read<GroupRect>) ->
+				<text tag={"group-" + Shell.slug(g().title)} position="absolute" left={sx(studio, g().x)} top={sy(studio, g().y) - 52} font-size={Theme.GROUP_TITLE}
+					font-weight={Theme.MEDIUM} color={c("ink")} max-lines={1} text-wrap="nowrap">{g().title}</text>
+			}</For>
 			<For each={studio.layout.screens()} by={(r:Rect) -> r.name}>{(r:Read<Rect>) ->
 				<view tag={"caption-" + Shell.slug(r().name)} position="absolute" left={sx(studio, r().x) - 4} top={sy(studio, r().y) - 22} height={18} padding="0 4"
 					direction="row" align-items="center" column-gap={6} max-width={frameWidth(studio, r()) + 8}>
@@ -246,9 +250,13 @@ class Board implements Markup {
 	}
 
 	static function flows(studio:Studio):Array<{name:String, x:Float, y:Float}> {
-		var out:Array<{name:String, x:Float, y:Float}> = [];
+		var out:Array<{name:String, x:Float, y:Float}> = [], seen = [];
+		// (a page whose first frame is a group's: the group's title says it)
 		for (r in studio.layout.screens())
-			if (!Lambda.exists(out, f -> f.name == r.flow)) out.push({name: r.flow, x: r.x, y: r.y});
+			if (!seen.contains(r.flow)) {
+				seen.push(r.flow);
+				if (studio.project?.screen(r.name)?.group == null) out.push({name: r.flow, x: r.x, y: r.y});
+			}
 		return out;
 	}
 
@@ -269,3 +277,4 @@ class Board implements Markup {
 }
 
 private typedef Rect = {name:String, flow:String, x:Float, y:Float, w:Float, h:Float};
+private typedef GroupRect = {file:String, title:String, x:Float, y:Float, w:Float, h:Float};

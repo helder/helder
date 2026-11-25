@@ -51,6 +51,20 @@ class Designs {
 		return made;
 	}
 
+	// a frame's content again, apart from the canvas' (a question's thumbnail:
+	// not the frame's drawn nodes, which the canvas' boxes are read from)
+	public function copy(name:String):Any {
+		studio.docs.version();
+		studio.project.version();
+		var info = studio.project.screen(name);
+		var k = info == null ? -1 : switch info.source {
+			case Design(k): k;
+			case _: -1;
+		}
+		var r = k < 0 ? null : file(info.file);
+		return r == null || r.design == null || k >= r.design.frames.length ? "" : interpret(info.file, r.design.frames[k]);
+	}
+
 	function interpret(file:String, fr:DesignFile.Frame):Interpreted
 		return new Interpreted(fr.root, fr.base, src -> image(haxe.io.Path.normalize(haxe.io.Path.directory(file) + "/" + src)));
 

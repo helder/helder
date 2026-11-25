@@ -153,6 +153,14 @@ path, its frames its screens, before the stories' flows. A frame's id is
 its file's path and its name (`app.helder#Home`), so that no story's
 `Flow/Screen` is one.
 
+A `<Group title="Which start screen?" canvas:at="x y">` of frames is a
+titled region: its frames side by side, 28 apart, from its place (else
+after what is before it), its title above them (15 points, medium).
+Groups don't nest. The agent composes the canvas with frames and groups
+(a sketch, a comparison, a question's options) and links to them from the
+chat (`studio:frame/<file>#<name>`, `studio:group/<file>#<title>`: a
+click flies there).
+
 ```
 <Design>
 	<Frame name="Home" width={390} height={844} canvas:at="0 0" background="#f8fafc" padding={24}>
@@ -513,6 +521,19 @@ initializes again), and `DELETE /mcp` with it ends the session.
 | `studio.focus {}` | what the user looks at: the project (name, dir), the screen in focus, the node selected (its tag, `file:line`, box) and the screens in view |
 | `studio.working {note, screen?, path?}` | what the agent is about to do: the note its status |
 | `studio.done {note?}` | the agent finished: its marks fade, the note its status |
+| `studio.ask {question, options: [{id?, label, note?, frame?, screen?, image?}], multiple?, wait?}` | a question in the chat: options pointing at the canvas (`frame`: `<file>#<name>`, `screen`, `image`) or text alone; `{id}` at once (the answer comes with a later result), `wait: true` blocks (10 minutes, then `{pending: true}`), `{id}` alone waits for an earlier one |
+| `studio.inbox {}` | what the user said since (answers, direction typed while the agent works) |
+
+**Questions and the inbox.** A question (`Questions`) is a card in the
+chat (`Asks`): its options as thumbnails of the frames they point at (or
+an image; text options as buttons), "See them on the canvas" when they
+share a group, "Something else…" (the input's next message is the answer).
+The user picks in the card alone; the picked frame is ringed in the card
+and on the canvas. Answers and what the user types while the agent works
+are notes of the inbox (`Studio.inbox`): every tool result an agent gets
+carries the notes not delivered yet as a last text block ("The user
+answered "Which start screen?": Dusk. (picked: dusk)", "The user says:
+make the fisher a fox."), then they are delivered (the chat's "seen").
 
 **Presence** (`Presence`): the studio knows each agent here, its colour
 (one of six, in order of arrival, freed when it leaves), the screen it is

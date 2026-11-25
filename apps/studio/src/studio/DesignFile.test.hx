@@ -15,6 +15,13 @@ function tests() {
 			equals([for (p in d.places) p.at], [{x: 1130.0, y: 744.0}, {x: -500.0, y: 20.0}, null]);
 			equals(text.substr(d.places[1].start, 10), "<Frame app");
 		});
+		test("a group: its title and place, its frames its", () -> {
+			var d = new DesignFile('<Design>\n\t<Frame name="A"/>\n\t<Group title="Which start?" canvas:at="0 1200">\n\t\t<Frame name="Dawn"/>\n\t\t<Frame name="Dusk"/>\n\t</Group>\n</Design>\n');
+			equals([for (f in d.frames) f.name], ["A", "Dawn", "Dusk"]);
+			equals([for (f in d.frames) f.group], [null, "Which start?", "Which start?"]);
+			equals([for (g in d.groups) g.title], ["Which start?"]);
+			equals(d.groups[0].at, {x: 0.0, y: 1200.0});
+		});
 		test("the cover flag, not a style", () -> {
 			var d = new DesignFile('<Design>\n\t<Frame name="A"/>\n\t<Frame name="B" cover/>\n\t<Frame story="a.story.hx#x" cover={false}/>\n\t<Frame app cover/>\n</Design>\n');
 			equals([for (f in d.frames) f.cover], [false, true]);

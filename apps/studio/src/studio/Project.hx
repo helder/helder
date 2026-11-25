@@ -211,6 +211,9 @@ class Project {
 			// (two frames of one name: the second's id its own)
 			while (Lambda.exists(out, s -> s.label == label))
 				label = '${fr.name} ${++n}';
+			// (a group's frames placed by it: its first at the group's place, the others after it)
+			var g = fr.group == null ? null : Lambda.find(d.groups, g -> g.title == fr.group);
+			var first = g != null && !Lambda.exists(out, s -> s.group == fr.group);
 			out.push({
 				name: page + "#" + label,
 				flow: page,
@@ -219,9 +222,10 @@ class Project {
 				height: fr.height,
 				file: file,
 				source: Design(k),
-				at: fr.at,
+				at: g == null ? fr.at : first ? g.at ?? fr.at : null,
 				start: fr.start,
-				cover: fr.cover
+				cover: fr.cover,
+				group: fr.group
 			});
 		}
 		return out;
@@ -323,7 +327,8 @@ class Project {
 		if (a.length != b.length) return false;
 		for (k in 0...a.length) {
 			var x = a[k], y = b[k];
-			if (x.name != y.name || x.width != y.width || x.height != y.height || x.start != y.start || x.at?.x != y.at?.x || x.at?.y != y.at?.y) return false;
+			if (x.name != y.name || x.width != y.width || x.height != y.height || x.start != y.start || x.at?.x != y.at?.x || x.at?.y != y.at?.y
+				|| x.group != y.group) return false;
 		}
 		return true;
 	}
@@ -507,6 +512,8 @@ typedef ScreenInfo = {
 	?place:Null<{file:String, start:Int}>,
 	// (its <Frame> flagged cover)
 	?cover:Bool,
+	// (a design's frame in a <Group>: its title)
+	?group:Null<String>,
 }
 
 // What a screen's content is: a story of the program (the name it is bound
