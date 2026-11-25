@@ -1,6 +1,8 @@
 // A scripted ACP agent for the studio's tests (apps/studio/src/studio/AcpAgent.test.hx):
 // newline-delimited JSON-RPC on stdin/stdout, as the Agent Client Protocol's
-// agents speak it. Prompts: "work" streams a plan, a thought, a Markdown
+// agents speak it. Prompts: "ask" asks a question of several picks over
+// the studio's MCP server (studio.ask, as an MCP agent named claude-code);
+// "work" streams a plan, a thought, a Markdown
 // reply with chips and five tool calls (the last running), then waits for
 // session/cancel; "The user says…" (the inbox's notes) is noted; "markdown" streams a Markdown reply in small
 // chunks; "edit" streams text, a thought, a tool call, a
@@ -11,7 +13,7 @@ import {createInterface} from 'node:readline'
 
 let next = 0
 const waiting = new Map()
-let cwd = '', servers = [], cancelled = null
+let cwd = '', servers = [], mcp = null, cancelled = null
 
 function send(m) {
   process.stdout.write(JSON.stringify({jsonrpc: '2.0', ...m}) + '\n')
@@ -37,6 +39,25 @@ async function prompt(id, p) {
   }
   if (text.startsWith('The user says')) {
     update(s, {sessionUpdate: 'agent_message_chunk', content: {type: 'text', text: 'Noted: ' + text.slice(14)}})
+    send({id, result: {stopReason: 'end_turn'}})
+    return
+  }
+  if (text.startsWith('ask') && mcp) {
+    // (as an MCP agent of its own, Claude Code's name: studio.ask, several picks; the answer comes later)
+    const headers = {'content-type': 'application/json', accept: 'application/json, text/event-stream'}
+    const call = async (body, session) => {
+      const r = await fetch(mcp, {method: 'POST', headers: session ? {...headers, 'mcp-session-id': session} : headers, body: JSON.stringify({jsonrpc: '2.0', ...body})})
+      await r.text()
+      return r.headers.get('mcp-session-id')
+    }
+    const session = await call({id: 1, method: 'initialize', params: {protocolVersion: '2025-06-18', capabilities: {}, clientInfo: {name: 'claude-code', version: '1'}}})
+    await call({method: 'notifications/initialized'}, session)
+    await call({id: 2, method: 'tools/call', params: {name: 'studio.ask', arguments: {
+      question: 'Which rows should glow?',
+      options: [{id: 'done', label: 'Done rows'}, {id: 'open', label: 'Open rows'}, {id: 'new', label: 'New rows'}],
+      multiple: true
+    }}}, session)
+    update(s, {sessionUpdate: 'agent_message_chunk', content: {type: 'text', text: 'Asked which rows should glow.'}})
     send({id, result: {stopReason: 'end_turn'}})
     return
   }
@@ -138,6 +159,7 @@ lines.on('line', line => {
     case 'session/new':
       cwd = m.params.cwd
       servers = m.params.mcpServers.map(s => s.type + ' ' + s.name + ' ' + s.url)
+      mcp = m.params.mcpServers[0]?.url ?? null
       return send({id: m.id, result: {sessionId: 's1'}})
     case 'session/prompt':
       return void prompt(m.id, m.params)

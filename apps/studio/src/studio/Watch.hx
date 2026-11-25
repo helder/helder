@@ -20,7 +20,7 @@ import studio.Theme.c;
 // column slides in.
 class Watch implements Markup {
 	public static function view(studio:Studio):View
-		return <view tag="watch" grow={1} background={c("ground")} color={c("ink")} font-family={Theme.UI} font-size={Theme.BODY}>
+		return <view tag="watch" position="absolute" inset={0} background={c("ground")} color={c("ink")} font-family={Theme.UI} font-size={Theme.BODY}>
 			{header(studio)}
 			<view direction="row" grow={1} min-height={0}>
 				<Show when={!blank(studio) && studio.talk.open()}>{Chat.view(studio)}</Show>
@@ -75,6 +75,7 @@ class Watch implements Markup {
 
 	// (the tab's dot: the working agent's colour, the prompt's agent's when none works)
 	static function dot(studio:Studio):String {
+		if (studio.talk.waits()) return Chat.waiter(studio).colour;
 		if (Chat.working(studio)) return studio.agentColour();
 		var p = Lambda.find(studio.presence.peers(), p -> p.working);
 		return p != null ? p.colour : studio.agentColour();

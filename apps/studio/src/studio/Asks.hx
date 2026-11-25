@@ -71,9 +71,11 @@ class Asks implements Markup {
 						}}>See them on the canvas</text>
 					</Show>
 					<view grow={1}/>
-					<Show when={q().multiple && q().picked.length > 0}>
-						<view:button tag="ask-send" role="button" label="Send" focusable height={26} padding="0 10" radius={7} justify="center" cursor="pointer"
-							background={c("ink")} color={c("ground")} onPress={() -> studio.questions.send(q().id)}>
+					<Show when={q().multiple}>
+						<view:button tag="ask-send" role="button" label="Send" focusable height={26} padding="0 10" radius={7} justify="center"
+							cursor={q().picked.length > 0 ? "pointer" : "default"} data-disabled={q().picked.length > 0 ? "false" : "true"}
+							background={q().picked.length > 0 ? c("ink") : c("hair2")} color={q().picked.length > 0 ? c("ground") : c("ink3")}
+							onPress={() -> studio.questions.send(q().id)}>
 							<text font-size={12} font-weight={Theme.MEDIUM}>Send</text>
 						</view:button>
 					</Show>

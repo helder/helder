@@ -199,7 +199,8 @@ class Check {
 	// streamed, a note sent while it worked (a direction, not a prompt),
 	// delivered as the next prompt once the turn was stopped; the chat put
 	// away and back; a question answered in its card (reaching the agent),
-	// stopped; a frame aimed at by a click
+	// stopped; a frame aimed at by a click; an MCP agent's question of
+	// several picks, two picked in its card and sent
 	static function acp(ev:Array<Dynamic>) {
 		var replies = ev.filter(e -> e.event == "replied");
 		function reply(p:String):Dynamic
@@ -211,6 +212,9 @@ class Check {
 		check('acp: the chat put away and back', [for (e in ev) if (e.event == "chat") e.open].join(",") == "false,true");
 		check('acp: the question answered in the card, then stopped', wait != null && wait.reply == "waiting selected" && wait.end == "cancelled", Json.stringify(wait));
 		check('acp: a frame aimed at', Lambda.exists(ev, e -> e.event == "aimed" && e.screen != null));
+		var several:Dynamic = Lambda.find(ev, e -> e.event == "answered" && e.question == "Which rows should glow?");
+		check('acp: an MCP agent\'s question of several picks: two picked, sent', several != null && (several.picked : Array<String>).join(",") == "done,new",
+			Json.stringify(several));
 	}
 
 	static function files(original:String, final_:String, ev:Array<Dynamic>, dir:String) {

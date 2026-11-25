@@ -233,6 +233,12 @@ class Studio {
 		return Agents.colour(agentId());
 	}
 
+	// (the prompt's agent as a question's asker: its Presence's name and colour when it is there)
+	function asker():{name:String, colour:String} {
+		var p = presence.named(agentName());
+		return {name: agentName(), colour: p?.colour ?? agentColour()};
+	}
+
 	function agentId():String {
 		#if (hxmc.target == "wasm32-wasi")
 		return "local";
@@ -1655,8 +1661,9 @@ class Studio {
 		}
 		var a = LocalAgent.tool(p) != null ? local : agent;
 		setTurn(Turns.start(said ? p : ""), true);
-		var answered = false, heard = -1.0;
+		var answered = false, heard = -1.0, asked:Null<String> = null;
 		function end(e:Agent.AgentEvent) {
+			if (asked != null) questions.close(asked);
 			var t = Turns.add(turnNow ?? Turns.start(p), e);
 			var ps = a == local ? [] : problems();
 			if (ps.length > 0) t = Turns.broken(t, ps[0]);
@@ -1685,6 +1692,15 @@ class Studio {
 				setTurn(Turns.add(turnNow ?? Turns.start(p), e));
 				switch e {
 					case Tool(id, title, _, status): log("agent-tool", {id: id, title: title, status: status});
+					// (a permission ask: the chat's card, as studio.ask's; an answer in
+					// the user's words cancels it and goes to the agent as a note)
+					case Ask(question, options, _) if (!classic):
+						if (asked != null) questions.close(asked);
+						asked = questions.permission(asker(), question, options, (picked, text) -> {
+							var i = picked.length == 0 ? -1 : Std.parseInt(picked[0]) ?? -1;
+							answer(i);
+							if (i < 0 && text != null) inbox.direct(text, talk.list().length - 1);
+						}).id;
 					case _:
 				}
 		});
