@@ -2,6 +2,7 @@
 // newline-delimited JSON-RPC on stdin/stdout, as the Agent Client Protocol's
 // agents speak it. Prompts: "ask" asks a question of several picks over
 // the studio's MCP server (studio.ask, as an MCP agent named claude-code);
+// "note" says what it is about to do (studio.working) and only thinks;
 // "work" streams a plan, a thought, a Markdown
 // reply with chips and five tool calls (the last running), a message after
 // them, then waits for
@@ -31,6 +32,19 @@ function update(sessionId, update) {
   send({method: 'session/update', params: {sessionId, update}})
 }
 
+// (the studio's MCP server, as an MCP agent of its own, Claude Code's name)
+async function studio() {
+  const headers = {'content-type': 'application/json', accept: 'application/json, text/event-stream'}
+  const call = async (body, session) => {
+    const r = await fetch(mcp, {method: 'POST', headers: session ? {...headers, 'mcp-session-id': session} : headers, body: JSON.stringify({jsonrpc: '2.0', ...body})})
+    await r.text()
+    return r.headers.get('mcp-session-id')
+  }
+  const session = await call({id: 1, method: 'initialize', params: {protocolVersion: '2025-06-18', capabilities: {}, clientInfo: {name: 'claude-code', version: '1'}}})
+  await call({method: 'notifications/initialized'}, session)
+  return {call, session}
+}
+
 async function prompt(id, p) {
   const s = p.sessionId
   const text = p.prompt.filter(b => b.type === 'text').map(b => b.text).join('\n')
@@ -44,16 +58,18 @@ async function prompt(id, p) {
     send({id, result: {stopReason: 'end_turn'}})
     return
   }
+  if (text.startsWith('note') && mcp) {
+    // (what it is about to do, over MCP, then only thinking: no words until session/cancel)
+    const {call, session} = await studio()
+    await call({id: 2, method: 'tools/call', params: {name: 'studio.working', arguments: {note: 'Sketching the court'}}}, session)
+    update(s, {sessionUpdate: 'agent_thought_chunk', content: {type: 'text', text: 'A court first.'}})
+    await new Promise(resolve => (cancelled = resolve))
+    send({id, result: {stopReason: 'cancelled'}})
+    return
+  }
   if (text.startsWith('ask') && mcp) {
     // (as an MCP agent of its own, Claude Code's name: studio.ask, several picks; the answer comes later)
-    const headers = {'content-type': 'application/json', accept: 'application/json, text/event-stream'}
-    const call = async (body, session) => {
-      const r = await fetch(mcp, {method: 'POST', headers: session ? {...headers, 'mcp-session-id': session} : headers, body: JSON.stringify({jsonrpc: '2.0', ...body})})
-      await r.text()
-      return r.headers.get('mcp-session-id')
-    }
-    const session = await call({id: 1, method: 'initialize', params: {protocolVersion: '2025-06-18', capabilities: {}, clientInfo: {name: 'claude-code', version: '1'}}})
-    await call({method: 'notifications/initialized'}, session)
+    const {call, session} = await studio()
     await call({id: 2, method: 'tools/call', params: {name: 'studio.ask', arguments: {
       question: 'Which rows should glow?',
       options: [{id: 'done', label: 'Done rows'}, {id: 'open', label: 'Open rows'}, {id: 'new', label: 'New rows'}],
