@@ -139,6 +139,61 @@ function tests() {
 					}
 				}
 			});
+		// (the user's recording: the grid blank on still frames after a file
+		// was opened and closed, drawn again on frames the pointer moved over
+		// a tile)
+		test("after a file opened and closed: the grid whole, every idle frame the same", () -> {
+			var t = 0.0;
+			Ui.now = () -> t;
+			var files = new MemoryFiles();
+			files.add("/pictures/");
+			for (i in 0...9)
+				files.add('/pictures/img$i.png', haxe.io.Bytes.alloc(10));
+			var x = new Explorer(files, (_, _, _) -> {}, [], [], Preview.now);
+			x.start("/pictures");
+			for (e in x.browser.items.value)
+				Tiles.remember(x, e, new helder.image.Image(4, 3, haxe.io.Bytes.alloc(48)));
+			var ui = new Ui(new StoryText(), 1212, 592), log = new Log();
+			Render.render(Shell.view(x), ui.root);
+			Shell.attach(ui.root, x);
+			var asked = 0;
+			function tick() {
+				t += 1 / 60;
+				Clock.tick(t);
+				Graph.flush();
+				ui.update();
+				if (ui.needsFrame) {
+					asked++;
+					ui.paint(new Nothing());
+				}
+			}
+			for (_ in 0...30)
+				tick();
+			x.view("img4.png");
+			for (_ in 0...90)
+				tick();
+			x.close();
+			for (_ in 0...120)
+				tick();
+			var grid = ui.root.find("grid"), browser = ui.root.find("browser");
+			equals(x.full.value, false);
+			assert(browser.visible() && browser.style.opacity == 1, 'the browser shown: ${browser.visible()} ${browser.style.opacity}');
+			equals([for (c in cells(grid)) if (c.slot == "grid-tile" && c.visible()) c].length, 9);
+			// (still: nothing asked for, and what a frame would draw the same each time, every tile's picture whole)
+			asked = 0;
+			var frames = [for (_ in 0...5) {
+				tick();
+				log.lines.resize(0);
+				ui.paint(log);
+				log.lines.join("\n");
+			}];
+			equals(asked, 0);
+			for (f in frames)
+				equals(f, frames[0]);
+			// (the nine tiles' and the inspector's, of the file selected as it closed)
+			equals([for (l in frames[0].split("\n")) if (StringTools.startsWith(l, "image 4x3")) l].length, 10);
+			assert(frames[0].indexOf("alpha 0 ") < 0, "nothing at opacity 0");
+		});
 		test("the sidebar scrolls: the wheel over it, its last row shown", () -> {
 			Ui.now = () -> 0.0;
 			var x = Fixtures.explorer();
@@ -236,4 +291,24 @@ private class Nothing implements helder.ui.Canvas {
 
 	public function textShadow(p:helder.ui.Paragraph, x:Float, y:Float, width:Float, align:helder.ui.TextAlign, color:helder.ui.Color, blur:Float,
 		?colors:Array<helder.ui.Color>) {}
+}
+
+// (what is drawn, as lines: each picture and text with the opacity it is drawn at)
+private class Log extends Nothing {
+	public final lines:Array<String> = [];
+	final alphas:Array<Float> = [1];
+
+	override public function pushOpacity(alpha:Float)
+		alphas.push(alphas[alphas.length - 1] * alpha);
+
+	override public function popOpacity()
+		alphas.pop();
+
+	override public function image(img:helder.image.Image, x:Float, y:Float, w:Float, h:Float, u0:Float, v0:Float, u1:Float, v1:Float, radius:Float,
+			?corners:helder.ui.Corners)
+		lines.push('image ${img.width}x${img.height} alpha ${alphas[alphas.length - 1]} at $x,$y ${w}x$h');
+
+	override public function text(p:helder.ui.Paragraph, x:Float, y:Float, width:Float, align:helder.ui.TextAlign, color:helder.ui.Color,
+			?colors:Array<helder.ui.Color>)
+		lines.push('text alpha ${alphas[alphas.length - 1]} at $x,$y');
 }
