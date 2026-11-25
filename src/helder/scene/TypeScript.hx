@@ -21,7 +21,7 @@ package helder.scene;
 // actions (InputMap, Bindings), a fixed simulation step, and what a scene is
 // drawn with: a window, its device (or a headless one), the app's loop. A
 // program imports helder/scene, not this module.
-@:typescript("helder/scene/runtime", "runtime.d.ts")
+@:typescript("helder/scene", "runtime.d.ts")
 @:typescript.classes(helder.scene.World, helder.scene.Camera, helder.scene.render.Light, helder.scene.render.Renderer, helder.scene.render.Shadows, helder.scene.render.Fog, helder.scene.render.Material,
 	helder.scene.render.Material.UvTransform, helder.scene.render.Physical, helder.scene.render.Transmission,
 	helder.scene.render.MeshRenderer, helder.scene.render.Shapes, helder.scene.render.Geometry, helder.scene.render.VertexData, helder.scene.math.Curve3,

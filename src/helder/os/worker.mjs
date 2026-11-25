@@ -28,7 +28,10 @@ const page = {
 	forward: (mod, name, sig) => (...a) => {
 		const h = page.host;
 		const args = a.map((x, i) => (sig[i] === 's' ? (x ? h.string(x) : null) : sig[i] === 'b' ? h.bytes(x, a[i + 1]).slice() : x));
-		for (const x of args) if (x instanceof Uint8Array) transfer.push(x.buffer);
+		for (const x of args) {
+			if (x instanceof Uint8Array) transfer.push(x.buffer);
+			if (Array.isArray(x)) for (const y of x) if (y instanceof ImageBitmap) transfer.push(y);
+		}
 		if (!calls.length) queueMicrotask(flush);
 		calls.push([mod, name, args]);
 	},

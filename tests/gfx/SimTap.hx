@@ -12,6 +12,10 @@ import hxmc.unsafe.*;
 //   SimTap [fx fy [tx ty [hold]]]   (default 0.5 0.55: the screen's middle, under the title bar)
 class SimTap {
 	static function main() {
+		if (Sys.getEnv("GITHUB_ACTIONS") != "true" && Sys.getEnv("HELDER_TEST_INPUT") != "1") {
+			Sys.println("SimTap: input needs CI or HELDER_TEST_INPUT=1");
+			Sys.exit(1);
+		}
 		var args = Sys.args();
 		var fx = args.length > 1 ? Std.parseFloat(args[0]) : 0.5, fy = args.length > 1 ? Std.parseFloat(args[1]) : 0.55;
 		var tx = args.length > 3 ? Std.parseFloat(args[2]) : fx, ty = args.length > 3 ? Std.parseFloat(args[3]) : fy;

@@ -19,7 +19,7 @@ import helder.scene.Node;
 // Unlike DebugDraw's calls, helpers are not compiled out of a release build:
 // a program attaching one wants it.
 class Helper {
-	public static final KIND = new StoreKind<Helper>("helper");
+	@:noCompletion public static final KIND = new StoreKind<Helper>("helper");
 
 	// whether it is drawn
 	public var visible = true;

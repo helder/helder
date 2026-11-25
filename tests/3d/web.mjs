@@ -8,9 +8,10 @@
 // SCENES_WINDOW=a,b: those scenes in the window too, the others headless
 // alone (CI's pull requests: the window's path, the canvas and the
 // browser's loop, is the scene's own in few; every scene's in both on main);
-// SCENES_SHARD=<i>/<n>: every n-th run from the i-th (CI's jobs, a machine
+// --shard i/n: every n-th run from the i-th (CI's jobs, a machine
 // each: runs at once on one machine's cores starved SwiftShader's frames,
 // a window's 3 frames near their 10 s); one run at a time.
+import { takeShard } from '../shard.mjs';
 import { createServer } from 'node:http';
 import { readFile, writeFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -21,7 +22,9 @@ const require = createRequire(import.meta.url);
 let pw;
 try { pw = require('playwright'); } catch { pw = require(path.join(process.execPath, '../../lib/node_modules/playwright')); }
 const here = path.dirname(fileURLToPath(import.meta.url));
-const [wasm, out] = process.argv.slice(2);
+const args = process.argv.slice(2);
+const [shard, shards] = takeShard(args);
+const [wasm, out] = args;
 if (!wasm) {
 	console.error('usage: node web.mjs <SceneWebTest.wasm> [out dir]');
 	process.exit(2);
@@ -91,7 +94,6 @@ const server = createServer(async (req, res) => {
 	}
 }).listen(0);
 const url = `http://localhost:${server.address().port}/`;
-const [shard, shards] = (process.env.SCENES_SHARD ?? '0/1').split('/').map(Number);
 const windowed = process.env.SCENES_WINDOW ? process.env.SCENES_WINDOW.split(',') : null;
 // (a lazy scene in a window only: headless, main draws once, before its files load)
 const runs = scenes.flatMap((s) => [[s, 'webgpu', 'headless'], [s, 'webgpu', 'window'], [s, 'webgl2', 'headless'], [s, 'webgl2', 'window']])

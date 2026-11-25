@@ -30,6 +30,9 @@ npx helder publish --testflight   # App Store Connect
 npx helder publish --dry-run      # what would change, nothing uploaded
 ```
 
+`share` gives you a temporary preview link. Use `publish --run` for the
+project's permanent page, or `--dry-run` to check the steps before an upload.
+
 ## What else
 
 - **Setup:** `helder setup` makes the stores' keys and certificates through their APIs and lists what is left to do by hand.

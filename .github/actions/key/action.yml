@@ -1,0 +1,25 @@
+# The module cache's key: one entry per OS and architecture, for a compiler
+# version, keyed by the tree. hxmc's and helder's caches are content-addressed,
+# so an older tree's entry (the prefix) warms a changed one.
+name: key
+description: the module cache's key
+outputs:
+  key:
+    description: the key
+    value: ${{ steps.key.outputs.key }}
+  prefix:
+    description: the key without the tree (older entries)
+    value: ${{ steps.key.outputs.prefix }}
+runs:
+  using: composite
+  steps:
+    - id: key
+      shell: bash
+      run: |
+        hxmc=$(node -p "require('./package.json').dependencies['@hxmc/cli']")
+        prefix="modules-${{ runner.os }}-${{ runner.arch }}-hxmc-$hxmc-"
+        # (git's hashes of the commit's files, not hashFiles: that one reads
+        # every file, and timed out on a Mac busy booting its simulator)
+        tree=$(git rev-parse HEAD:bun.lock HEAD:src HEAD:tests HEAD:examples HEAD:apps HEAD:docs/examples HEAD:site | git hash-object --stdin | cut -c1-16)
+        echo "prefix=$prefix" >> "$GITHUB_OUTPUT"
+        echo "key=$prefix$tree" >> "$GITHUB_OUTPUT"

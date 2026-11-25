@@ -11,6 +11,10 @@ import hxmc.unsafe.*;
 // X11 does), and they come back as rendered.
 class CocoaTest {
 	public static function prepare(w:Window) {
+		// (-D helder.soft: a plain layer, its contents in the screen's space already: helder.os.cocoa.CocoaBlit)
+		#if helder.soft
+		return;
+		#end
 		var screen = Msg.id(Msg.id(w.surface.handle, ObjC.sel("window")), ObjC.sel("screen"));
 		var space = Msg.id(Msg.id(screen, ObjC.sel("colorSpace")), ObjC.sel("CGColorSpace"));
 		Msg.vPtr(w.surface.display, ObjC.sel("setColorspace:"), space);
@@ -39,6 +43,9 @@ class CocoaTest {
 	// the content's pixels as RGBA, rows top to bottom; alpha below 255 where
 	// the window server shows none of it (the rounded corners). null: no capture
 	public static function capture(w:Window, width:Int, height:Int):Null<Bytes> {
+		#if helder.soft
+		return contents(w, width, height);
+		#end
 		var window = Msg.id(w.surface.handle, ObjC.sel("window"));
 		var id = Msg.i(window, ObjC.sel("windowNumber")).toInt();
 		var img = Arena.scopedValue(a -> {
@@ -83,6 +90,19 @@ class TestMsg {
 		repeat:Bool, code:Int64):Ptr;
 	static function vPtrBool(self:Ptr, sel:Ptr, a:Ptr, b:Bool):Void;
 }
+
+#if helder.soft
+// (-D helder.soft: the layer's contents as helder.os.cocoa.CocoaBlit set them, RGBA, read back)
+@:hxmc.unsafe(gc) function contents(w:Window, width:Int, height:Int):Null<Bytes> {
+	var img = Msg.id(w.surface.display, ObjC.sel("contents"));
+	if (img.isNull() || CG.CGImageGetWidth(img).toInt() != width || CG.CGImageGetHeight(img).toInt() != height) return null;
+	var data = CG.CGDataProviderCopyData(CG.CGImageGetDataProvider(img));
+	var rgba = Bytes.alloc(width * height * 4);
+	BytesPtr.copyIn(rgba, 0, CF.CFDataGetBytePtr(data), width * height * 4);
+	CF.CFRelease(data);
+	return rgba;
+}
+#end
 
 @:hxmc.c @:hxmc.lib("/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics") extern class CG {
 	static function CGWindowListCreateImage(bounds:CGRect, listOption:Int, window:Int, imageOption:Int):Ptr;

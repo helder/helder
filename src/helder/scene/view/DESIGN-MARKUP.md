@@ -9,10 +9,9 @@ scenes is built on: the element model, reactivity, events, assets,
 composition, a standard library, the two languages, performance and the
 known gaps. An implementation plan ends it.
 
-It is a design. Nothing in it is built yet. Its phases start after
-DESIGN-3D.md's phases 4 to 6 are merged, because several tags here are
-those phases' classes (lights at scale, probes, the complete glTF
-materials). Every claim about helder below was read from the source at
+This is the original design. See the [README](README.md) for what
+ships and the API as built. The plan builds on clustered lights,
+indirect light and glTF materials in [helder.scene](../README.md). Every claim about helder below was read from the source at
 origin/main c7e9c050, and the file is named where it matters. Claims about
 other systems cite the sources at the end, as [n].
 
@@ -26,7 +25,7 @@ worth a tag. What it must avoid are the costs those choices hide.
 
 ## 0. Where helder starts
 
-**What exists** (src/helder/scene/view, docs/scene/markup.md):
+**What exists** (src/helder/scene/view, docs/graphics/3d.md):
 
 - **`<Scene>`** (`SceneTags.Scene`) is a ui node: a box in ui's layout
   drawing a `World` into a texture of its size. Its children are scene
@@ -54,8 +53,7 @@ worth a tag. What it must avoid are the costs those choices hide.
   made when first picked at). A box picking by bounds links no raycaster.
 - **TypeScript.** The same markup is written in TSX (helder.typescript),
   through the same planner (helder.markup). The declarations come from
-  the manifest each renderer's metadata makes (src/helder/view/DESIGN.md
-  7.3).
+  the manifest each renderer's metadata makes (src/helder/view/README.md).
 
 **What the prototype does that the foundations must change.** These were
 read from `SceneRenderer.hx`, `SceneBox.hx`, `SceneTags.hx` and the
@@ -93,8 +91,8 @@ examples:
    after ui's layout, and writes the overlay's `style.left` and `top`.
    Those are laid out by the next frame.
 8. **Hand-written tags.** `SceneRenderer.hx` (585 lines) and
-   `SceneProps.hx` list each tag and prop by hand. DESIGN-3D.md's
-   convention 7 says they are generated from the classes.
+   `SceneProps.hx` list each tag and prop by hand. The plan calls
+   for generating them from the classes.
 
 None of these is hard to fix. They are listed because the foundations
 below exist to make each of them impossible by construction, not to patch
@@ -320,7 +318,7 @@ and writes:
 - one typed setter per prop (section 3.1), so only used props link;
 - the tag's entry in the renderer's props type (`SceneProps`, today
   hand-written), from which the compile-time checks and the TypeScript
-  declarations come (`JSX.IntrinsicElements`, DESIGN.md 7.3);
+  declarations come (`JSX.IntrinsicElements`);
 - its slots for children (section 2.3).
 
 ```haxe
@@ -337,7 +335,7 @@ The names are three.js's, as r3f writes them (`<pointLight>`,
 camelCased three.js class names [1], so anyone who knows r3f
 reads helder's markup at once. A component of a node (a light, a camera, a
 mesh renderer, a probe, an LOD set) is a tag that makes a node and attaches
-the component to it, keeping DESIGN-3D.md's convention 2: components are
+the component to it, so components are
 `StoreKind`s, not node subclasses. `<pointLight position={p}/>` is a node
 with a light, as r3f's `<pointLight>` is an Object3D.
 
@@ -777,7 +775,7 @@ Preloading is the default for `Model.of` (read before main), and
 `Asset.model(path).load()` starts one early: drei's `useGLTF.preload`
 [18]. drei's `<Preload>` also compiles materials ahead, because
 otherwise they compile "only when they hit the frustrum" [26];
-helder's are compiled at build time (DESIGN-3D.md, convention 5).
+helder's are compiled at build time.
 
 ### 5.3 Reloading
 
@@ -868,9 +866,9 @@ helpers, of which a few are in nearly every r3f project (OrbitControls,
 Environment, useGLTF, Html, Text, ContactShadows, Bounds, Instances)
 [11] [18] [17] [19] [13]
 [16] [14]. helder's is `helder.scene.view.extras`
-(`import helder.scene.view.Extras.*`), Threlte's name for the same thing
-[42]: capitalized components over the 3D API, each its own
-function, so an unused one is not linked.
+(`import helder.scene.view.Extras.*`), borrowing Threlte's name [42].
+Each capitalized component over the 3D API is a separate function.
+Programs link just the ones they use.
 
 It is not a drei clone. helder is both a ui framework and a game
 framework, so an extra earns its place by making a real app of either
@@ -890,7 +888,7 @@ the one it shortens:
 | --- | --- | --- | --- |
 | `<model>` (5.1) | `useGLTF`, `<Clone>`, gltfjsx | `Model` | both |
 | `<Bounds fit clip observe margin>`, `fitCamera(box, nodes)` | `<Bounds>`, `useBounds` | `Aabb`, the camera | both |
-| `<Environment preset file background blur intensity>` | `<Environment>` | `Environment`, `Sky` (and DESIGN-3D phase 5's prefilter) | both |
+| `<Environment preset file background blur intensity>` | `<Environment>` | `Environment`, `Sky` (and the environment prefilter) | both |
 | `<ContactShadows opacity blur far resolution>` | `<ContactShadows>` | a depth pass from below into a blurred texture on a plane (works on the GL ES 3.0 floor) | both |
 | `<Ui>` in the world, made exact (7.2, 10.2) | `<Html>`, `<Html transform>`, uikit | ui, the box's depth, render targets | both |
 | `<OrbitControls>`, `<TransformGizmo>` (exist) | `<OrbitControls>`, `<TransformControls>` | the arena | both |
@@ -990,7 +988,7 @@ menus need:
 | theming: the environment, the clear colour and materials' colours following ui's light and dark theme | | ui's theme |
 | drawing on demand by default (3.4), measured for battery: an idle box records no pass | r3f's `frameloop="demand"` | 3.4 |
 | scroll- and layout-linked 3D: a `<Scene>` reading ui's scroll and its own transitions (`progress={scroll()}`) | drei's `<ScrollControls>` | ui's scroll and motion signals |
-| `<Lod>` | `<Detailed>` | DESIGN-3D phase 4's `Lod` |
+| `<Lod>` | `<Detailed>` | `Lod` |
 | `<Loading>` (exists), `Assets.progress` | `<Suspense>`, `<Loader>`, `useProgress`, `<Preload>` | helder.asset |
 | `<Stats>` | `<Stats>`, `<StatsGl>`, r3f-perf | `--stats`' counters |
 
@@ -1023,7 +1021,7 @@ configured.
 
 drei's materials that exist for three.js's limits
 (`MeshReflectorMaterial`, where helder has `Ssr`; `MeshTransmissionMaterial`,
-where DESIGN-3D phase 6 has `Transmission`), its camera-shake and scroll
+where helder.scene has `Transmission`), its camera-shake and scroll
 helpers (an `onFrame` each), and leva (helder's studio has an inspector
 that edits the literal, README.md phase 6) [30].
 
@@ -1037,7 +1035,7 @@ with signals where markup reads them.
 ## 8. One model in Haxe and TSX
 
 - **The same tags.** The generator writes the props type the manifest
-  reads (DESIGN.md 7.3), so the TSX declarations
+  reads , so the TSX declarations
   (`JSX.IntrinsicElements` for `SceneRenderer`) are generated, never
   written: a tag added in Haxe is in TSX in the same build.
 - **Checked when compiling, both.** Haxe checks a prop's name today and its
@@ -1102,7 +1100,7 @@ number, not a claim.
 
 ### 9.3 Per-frame allocation rules
 
-Every per-frame path keeps DESIGN-3D.md's convention 4 (nothing allocated
+Every per-frame path keeps the renderer's allocation rule (nothing allocated
 per frame), and the benchmark checks it. In markup that means:
 
 1. no closure made per frame (a binding's closure is made once, when the
@@ -1201,10 +1199,8 @@ static meshes and one with a listener build one BVH.
 
 ## 11. Implementation plan, in phases
 
-These start after DESIGN-3D.md's phases 4 to 6 are merged. Each phase
-lists its tests, its example and its docs page. The docs pages are under
-`docs/scene/` (the README of `src/helder/scene/view` generated from them,
-site/docs/readme.mjs), and each example plays in its page.
+Each phase records its proposed tests and examples. The current guide is
+in [3D graphics](/docs/graphics/3d.md).
 
 ### Phase M0: the baseline
 
@@ -1225,7 +1221,7 @@ Tests: the bench lane. Docs: none (the results file).
 - examples/highend's `mirror` signal removed: an inline `Quat`.
 
 Tests: 10.1's; `tests/view/reject` for a prop's wrong type; the bench
-again. Docs: docs/scene/markup.md's Status rewritten (no "struct values
+again. Docs: docs/graphics/3d.md's Status rewritten (no "struct values
 through a Signal").
 
 ### Phase M2: lifetimes, demand drawing, `onFrame`
@@ -1242,7 +1238,7 @@ through a Signal").
 Tests: the leak test passing; a box idle for 100 frames records no pass
 (`--stats`); an `onFrame` unmounted stops; GcStats on a frame of each.
 Docs: "Motion and onFrame" and "When a scene draws" sections in
-docs/scene/markup.md.
+docs/graphics/3d.md.
 
 ### Phase M3: the tag generator
 
@@ -1250,7 +1246,7 @@ docs/scene/markup.md.
   elements, setters, `SceneProps` and the TSX declarations generated.
 - Typed slots (2.3) replacing `part()`'s names.
 - Users' `@:tag` classes as components (2.5).
-- DESIGN-3D phases 4 to 6's classes tagged: the clustered lights' kinds,
+- Lighting and material classes tagged: the clustered lights' kinds,
   `rectAreaLight`, `reflectionProbe`, `lightProbe`, `Lod`, the physical
   material's options.
 
@@ -1258,7 +1254,7 @@ Tests: the generated list equal to today's (a golden of tags and props);
 rejects (a child that fills no slot, a slot filled twice, an unknown
 slot); `tests/typescript/definitions` (the declarations checked); the size
 check per family. Example: `examples/turntable` (a user's tag). Docs: "Your
-own tags" in docs/scene/markup.md; each tag's props listed on its page
+own tags" in docs/graphics/3d.md; each tag's props listed on its page
 (generated).
 
 ### Phase M4: events, picking, `<Ui>`
@@ -1349,7 +1345,7 @@ apps section.
 
 Tests: a render texture's frame. Example: `examples/arcade` (a screen in
 the world showing another world). Docs: "Composition" in
-docs/scene/markup.md.
+docs/graphics/3d.md.
 
 The benchmark (M0) runs again at the end of each phase, and its results
 file keeps each phase's row.

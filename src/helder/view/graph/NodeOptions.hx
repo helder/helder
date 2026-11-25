@@ -6,6 +6,6 @@ typedef NodeOptions<T> = {
 	?equals:(T, T) -> Bool,
 	// called when its last reader goes
 	?unobserved:Void->Void,
-	// (a signal) writable inside a computation (DESIGN.md 6, 3)
+	// (a signal) writable inside a computation (view's README, Signals)
 	?ownedWrite:Bool,
 }

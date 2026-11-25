@@ -14,7 +14,7 @@ import helder.scene.math.MathTools;
 // glTF's) into an R32F texture of 16 columns, a row per joint, which the
 // skinned shader reads (four joints a vertex, weighted).
 class Skin {
-	public static final KIND = new StoreKind<Skin>("skin");
+	@:noCompletion public static final KIND = new StoreKind<Skin>("skin");
 
 	public final joints:Array<Node>;
 	// 16 floats a joint, column by column

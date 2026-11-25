@@ -191,7 +191,9 @@ class OsThread {
 				nest--;
 				return false;
 			}
-			mainWake.wait(left);
+			// (in short waits: one timed wait of 0.1 s woke up to 0.1 s late on
+			// CI's macOS VMs, 2 ms ones a few ms at most)
+			mainWake.wait(Math.min(left, 0.002));
 		}
 		nest--;
 		if (c.error != null) throw c.error;
@@ -253,9 +255,13 @@ class OsThread {
 		if (failure != null) throw failure;
 	}
 
+	// (a frame's handoffs allocate nothing: their Calls are reused)
+	static final spare:Array<Call> = [];
+
 	static function call(f:Void->Void, to:Array<Call>, wake:Lock, mine:Array<Call>, myWake:Lock) {
-		var c = new Call(f, myWake);
 		mutex.acquire();
+		var c = spare.pop();
+		if (c == null) c = new Call(f, myWake) else c.reuse(f, myWake);
 		to.push(c);
 		var w = to == toMain && waiting;
 		mutex.release();
@@ -269,7 +275,12 @@ class OsThread {
 			if (done) break;
 			myWake.wait();
 		}
-		if (c.error != null) throw c.error;
+		var error = c.error;
+		c.reuse(null, null);
+		mutex.acquire();
+		spare.push(c);
+		mutex.release();
+		if (error != null) throw error;
 	}
 
 	static function drain(inbox:Array<Call>) {
@@ -289,18 +300,19 @@ class OsThread {
 			if (failed != null && c.error == null) c.error = failed;
 			mutex.acquire();
 			c.done = true;
-			var left = c.left;
+			// (read before the waiter, seeing it done, reuses it)
+			var left = c.left, wake = c.wake, error = c.error;
 			mutex.release();
-			if (c.wake != null) c.wake.release();
+			if (wake != null) wake.release();
 			// (no one waits for it any more: its error is this thread's)
-			if (left && c.error != null) throw c.error;
+			if (left && error != null) throw error;
 		}
 	}
 }
 
 private class Call {
-	public final f:Void->Void;
-	public final wake:Null<Lock>;
+	public var f:Null<Void->Void>;
+	public var wake:Null<Lock>;
 	public var done = false;
 	// (within's, given up on: no one waits for it)
 	public var left = false;
@@ -309,5 +321,12 @@ private class Call {
 	public function new(f, wake) {
 		this.f = f;
 		this.wake = wake;
+	}
+
+	public function reuse(f, wake) {
+		this.f = f;
+		this.wake = wake;
+		done = left = false;
+		error = null;
 	}
 }

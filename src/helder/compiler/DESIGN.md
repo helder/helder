@@ -14,9 +14,9 @@ argument is a plain object literal of fields and arrow functions:
 
 ```ts
 export const Sky = shader({
-	vertex: (v: {pos: Vec2}) => ({clip: vec4(v.pos, 0.9999, 1), ndc: v.pos}),
-	fragment: (i, p: {sky: SkyParams}) => vec4(color(i, p.sky), 1),
-});
+  vertex: (v: {pos: Vec2}) => ({clip: vec4(v.pos, 0.9999, 1), ndc: v.pos}),
+  fragment: (i, p: {sky: SkyParams}) => vec4(color(i, p.sky), 1)
+})
 ```
 
 ```haxe
@@ -118,22 +118,22 @@ TS checked node ─► TS adapter  ──┘
 ## 3. Shaders
 
 ```ts
-import {shader, vec4, mix, normalize, pow, clamp, type Vec2, type Vec4, type Mat4} from "helder/gfx";
+import {shader, vec4, mix, normalize, pow, clamp, type Vec2, type Vec4, type Mat4} from 'helder/gfx'
 
-type SkyParams = {invViewProj: Mat4, eye: Vec4, horizon: Vec4, zenith: Vec4};
+type SkyParams = {invViewProj: Mat4, eye: Vec4, horizon: Vec4, zenith: Vec4}
 
 export const Sky = shader({
-	vertex: (v: {pos: Vec2}) => ({clip: position(vec4(v.pos, 0.9999, 1)), ndc: v.pos}),
-	fragment: (i, p: {sky: SkyParams}) => {
-		const far = p.sky.invViewProj.mul(vec4(i.ndc, 1, 1));
-		const d = normalize(far.xyz.div(far.w).sub(p.sky.eye.xyz));
-		return vec4(mix(p.sky.horizon.xyz, p.sky.zenith.xyz, pow(clamp(d.y, 0, 1), 0.5)), 1);
-	},
-});
+  vertex: (v: {pos: Vec2}) => ({clip: position(vec4(v.pos, 0.9999, 1)), ndc: v.pos}),
+  fragment: (i, p: {sky: SkyParams}) => {
+    const far = p.sky.invViewProj.mul(vec4(i.ndc, 1, 1))
+    const d = normalize(far.xyz.div(far.w).sub(p.sky.eye.xyz))
+    return vec4(mix(p.sky.horizon.xyz, p.sky.zenith.xyz, pow(clamp(d.y, 0, 1), 0.5)), 1)
+  }
+})
 
-device.createPipeline(Sky.pipeline({blend: "alpha"}));
-Sky.params.sky.write({invViewProj, eye, horizon, zenith}, bytes);   // std140
-Sky.vertexBytes([{pos: vec2(0, 0)}, ...]);
+device.createPipeline(Sky.pipeline({blend: 'alpha'}))
+Sky.params.sky.write({invViewProj, eye, horizon, zenith}, bytes)   // std140
+Sky.vertexBytes([{pos: vec2(0, 0)}, ...])
 ```
 
 **Stages:**
@@ -193,19 +193,19 @@ functions a caller may replace, each with a default.
 
 ```ts
 export const lit = slots({
-	options: {tinted: false},
-	vertex: (v: Vertex, p: {view: View}, m: Lit): Varyings => ...,
-	fragment: (i: Varyings, p: LitParams, m: Lit) => {
-		const s: Surface = {uv: i.uv, base: vec3(i.uv, 1)};
-		return vec4(m.color(s, p).add(m.emissive(s, p)), 1);   // the slots
-	},
-	color: baseColor,     // a module-level function: (s: Surface, p: {tint: Tint}) => Vec3
-	emissive: noLight,
-});
+  options: {tinted: false},
+  vertex: (v: Vertex, p: {view: View}, m: Lit): Varyings => ...,
+  fragment: (i: Varyings, p: LitParams, m: Lit) => {
+    const s: Surface = {uv: i.uv, base: vec3(i.uv, 1)}
+    return vec4(m.color(s, p).add(m.emissive(s, p)), 1)   // the slots
+  },
+  color: baseColor,     // a module-level function: (s: Surface, p: {tint: Tint}) => Vec3
+  emissive: noLight
+})
 
 export const Glow = lit.with({
-	emissive: (s: Surface, p: {time: Time}) => vec3(0.2, 0.6, 1).mul(sin(p.time.seconds.x) * 0.5 + 0.5),
-}).variant({tinted: true});
+  emissive: (s: Surface, p: {time: Time}) => vec3(0.2, 0.6, 1).mul(sin(p.time.seconds.x) * 0.5 + 0.5)
+}).variant({tinted: true})
 ```
 
 - **The object:** the stages take it as their third parameter, `m`:
@@ -242,7 +242,7 @@ export const Glow = lit.with({
 A slot object's options are plain fields with static values:
 
 ```ts
-const Lit = pbr.variant({normalMap: true, instanced: true});
+const Lit = pbr.variant({normalMap: true, instanced: true})
 ```
 
 - A variant is a definition: compiled at build time, a `Shader`.
@@ -272,8 +272,8 @@ without a compiler at run time.
 ### Inferred uniforms (optional sugar)
 
 ```ts
-export const time = uniform(0);     // a uniform value, set from the CPU: time.value = t
-const Pulse = shader({vertex: ..., fragment: (i) => vec4(sin(time.value), 0, 0, 1)});
+export const time = uniform(0)     // a uniform value, set from the CPU: time.value = t
+const Pulse = shader({vertex: ..., fragment: i => vec4(sin(time.value), 0, 0, 1)})
 ```
 
 A shader that reads a `uniform(...)`'s `value` (a module-level constant,

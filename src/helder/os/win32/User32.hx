@@ -35,6 +35,9 @@ import hxmc.unsafe.*;
 	static function GetClientRect(hwnd:Ptr, r:Ptr<RECT>):Int;
 	static function AdjustWindowRectEx(r:Ptr<RECT>, style:Int, menu:Int, exStyle:Int):Int;
 	static function ScreenToClient(hwnd:Ptr, p:Ptr<POINT>):Int;
+	static function GetCursorPos(p:Ptr<POINT>):Int;
+	static function IsWindowVisible(hwnd:Ptr):Int;
+	static function SetLayeredWindowAttributes(hwnd:Ptr, key:Int, alpha:Int, flags:Int):Int;
 	static function GetKeyState(key:Int):Int;
 	static function GetAsyncKeyState(key:Int):Int16;
 	static function ClientToScreen(hwnd:Ptr, p:Ptr<POINT>):Int;
@@ -60,6 +63,9 @@ import hxmc.unsafe.*;
 	static function GetSystemMetricsForDpi(index:Int, dpi:Int):Int;
 	static function IsZoomed(hwnd:Ptr):Int;
 	static function GetDC(hwnd:Ptr):Ptr;
+	// (a CPU-drawn frame painted again: helder.os.win32.Win32Blit; PAINTSTRUCT, 72 bytes, its DC first)
+	static function BeginPaint(hwnd:Ptr, ps:Ptr):Ptr;
+	static function EndPaint(hwnd:Ptr, ps:Ptr):Int;
 	static function ReleaseDC(hwnd:Ptr, dc:Ptr):Int;
 	static function PrintWindow(hwnd:Ptr, dc:Ptr, flags:Int):Int;
 }
@@ -68,6 +74,7 @@ import hxmc.unsafe.*;
 // (the window's frame as the desktop window manager draws it: its shadow, its backdrop)
 @:hxmc.c @:hxmc.lib("dwmapi") extern class Dwmapi {
 	static function DwmSetWindowAttribute(hwnd:Ptr, attribute:Int, value:Ptr, size:Int):Int;
+	static function DwmExtendFrameIntoClientArea(hwnd:Ptr, margins:Ptr):Int;
 }
 
 @:hxmc.c @:hxmc.lib("shell32") extern class Shell32 {
@@ -113,6 +120,9 @@ import hxmc.unsafe.*;
 	static function DeleteObject(o:Ptr):Int;
 	static function BitBlt(dst:Ptr, x:Int, y:Int, w:Int, h:Int, src:Ptr, sx:Int, sy:Int, rop:Int):Int;
 	static function GdiFlush():Int;
+	// (a frame shown without a GPU: helder.os.win32.Win32Blit)
+	static function StretchDIBits(dc:Ptr, x:Int, y:Int, w:Int, h:Int, sx:Int, sy:Int, sw:Int, sh:Int, bits:Ptr, info:Ptr<BITMAPINFOHEADER>, usage:Int,
+		rop:Int):Int;
 }
 
 class WM {

@@ -10,7 +10,7 @@ import helder.ui.platform.PlatformMenuItem;
 
 // helder.ui.actions for TypeScript programs (helder/ui/actions:
 // src/helder/ui/actions/index.ts, which a program imports; this is its
-// runtime, helder/ui/actions/runtime). A program's actions are objects,
+// runtime, its runtime.d.ts). A program's actions are objects,
 // {type: "zoomTo", percent: 100}, made and recognised by index.ts's
 // functions (each space's form: which action a value is, its arguments, a
 // value of them), and its spaces Haxe's (ActionSpace): a definition's
@@ -119,37 +119,17 @@ class Script {
 	public static function bindings(keymap:Keymap):Array<String>
 		return [for (b in keymap.bindings()) b.toString()];
 
-	// on macOS secondary is Command (Keymap.mac, known at start)
-	public static function setMac(mac:Bool):Void
-		Keymap.mac = mac;
-
 	// --- windows and dispatch
 
 	// the Ui a node is in (a ref's, once mounted: its window's), null: none
 	public static function uiOf(node:Node):Null<Ui>
 		return node.ui;
 
-	// a Ui of no window (tests), its text helder's own (helder.story's, the same on every system)
-	public static function headless(width:Float, height:Float):Ui {
-		helder.text.Shaping.engine = helder.text.Shaping.HELDER;
-		return new Ui(new helder.story.StoryText(), width, height);
-	}
-
 	public static function root(ui:Ui):Node
 		return ui.root;
 
-	// content rendered into its root and laid out (dispose removes it)
-	public static function mount(ui:Ui, content:helder.view.View):Void->Void {
-		var dispose = helder.view.Render.render(content, ui.root);
-		ui.update();
-		return dispose;
-	}
-
 	public static function setKeymap(ui:Ui, keymap:Keymap):Void
 		ui.keymap = keymap;
-
-	public static function layout(ui:Ui):Void
-		ui.update();
 
 	// the focus given to node
 	public static function focus(node:Node):Void
@@ -158,11 +138,6 @@ class Script {
 	// the node of a tag under node (the first, depth first), null: none
 	public static function find(node:Node, tag:String):Null<Node>
 		return node.find(tag);
-
-	// each keystroke of keys typed ("ctrl-k ctrl-s"), through the keymap
-	public static function type(ui:Ui, keys:String):Void
-		for (k in Keystroke.sequence(keys))
-			ui.keyDown(k.key, k.held());
 
 	// action dispatched from the focus (or from), true: a handler took it
 	public static function dispatch(ui:Ui, action:Dynamic, ?from:Node):Bool

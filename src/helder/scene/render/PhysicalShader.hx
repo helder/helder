@@ -5,7 +5,7 @@ import haxe.macro.Context;
 import haxe.macro.Expr;
 #end
 
-// The physical materials' shaders (DESIGN-3D.md 1.3): pbr with the glTF
+// The physical materials' shaders: pbr with the glTF
 // material extensions a material uses as its options (PbrOptions' sheen,
 // specular, clearcoat, transmission, iridescence, anisotropy), its direct
 // and indirect slots the physical ones (PbrShader's physicalDirect and

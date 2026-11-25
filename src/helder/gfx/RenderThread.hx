@@ -36,7 +36,7 @@ final class RenderThread {
 	// (Apple: the autorelease pool around what runs outside a frame; a frame's own is the back end's)
 	var pool = Ptr.nil();
 	// (Windows: the system's timer at 1 ms while idle work is due)
-	var fine = false;
+	@:noCompletion public static var fine(default, null) = false;
 
 	function new() {}
 

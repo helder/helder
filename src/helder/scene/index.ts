@@ -1,7 +1,7 @@
 // helder.scene for TypeScript: a World of Nodes (src/helder/scene/README.md),
 // cameras, lights, meshes and materials, glTF models, the renderer, input
 // actions, and what a scene is drawn with (a window, its device, the app's
-// loop: helder/scene/runtime, helder's Haxe classes), with Node, a class of
+// loop: runtime.d.ts, helder's Haxe classes), with Node, a class of
 // the program's over a node's handle:
 //
 //   import { World, Camera, Light, Renderer, Window, Device, App } from "helder/scene";
@@ -34,14 +34,34 @@
 //   const bytes = new Uint8Array(32);
 //   Glow.apply(orb, {glow: bytes});          // orb.shader, its block
 //   Glow.params.glow.write({color: vec4(1, 0.5, 0.2, 1), time: vec4(t, 0, 0, 0)}, bytes);
-import { Script, MaterialShader, type Material } from "helder/scene/runtime";
+import {Script, MaterialShader, type Material} from './runtime';
 import {
 	UniformWriter, TextureSlot, type Mat4, type Quat, type Vec3, type Params, type Slots, type SlotsDef, type ShaderCode, type VertexBufferLayout,
 	type UniformBlock, type TextureBinding,
 } from "helder/gfx";
-import type { World } from "helder/scene/runtime";
+import type { World } from './runtime';
 
-export * from "helder/scene/runtime";
+export {
+  Mesh, Encoder, Binding, World, Camera, Light, Renderer, Shadows, Fog,
+  Material, UvTransform, Physical, Transmission, MeshRenderer, Shapes,
+  Geometry, VertexData, Curve3, InstancedMesh, Sprites, Model, PostProcess,
+  Ssao, Dof, Outline, Lut, ViewBuffers, Ssr, MotionBlur, GodRays, Taa, Smaa,
+  Occlusion, Lines, LineRenderer, DebugDraw, Helper, AxesHelper, GridHelper,
+  BoundsHelper, LightHelper, CameraHelper, SkeletonHelper, Hit, HitList,
+  RaycastOptions, Raycaster, Bvh, Text3D, ClusteredLights, Clusters, Lod,
+  InstanceCulling, Environment, Sh, LightProbe, ProbeGrid, ReflectionProbe,
+  Probes, Lightmap, Lightmaps, AreaLights, InputMap, Bindings, FixedStep,
+  Device, Surface, Window, App, Event
+} from './runtime'
+export type {
+  MaterialShader, BoxOptions, CapsuleOptions, CircleOptions, ClusteredOptions,
+  ConeOptions, CylinderOptions, ExtrudeOptions, Frames, GodRaysOptions,
+  GridOptions, LatheOptions, LightShadow, LinesOptions, LocalShadowsOptions,
+  LodLevel, MatcapOptions, MaterialOptions, MotionBlurOptions, PhongOptions,
+  PlaneOptions, RingOptions, SmaaOptions, SphereOptions, SpritesOptions,
+  SsaoOptions, SsrOptions, TaaOptions, Text3DOptions, TextGeometryOptions,
+  ToonOptions, TorusKnotOptions, TorusOptions, TubeOptions
+} from './runtime'
 export {
 	pbr, pbrColor, pbrAlpha, pbrNormal, pbrRoughness, pbrMetalness, pbrEmissive, pbrPosition, pbrDirect, pbrIndirect, reflectance, litSurface, daylight,
 	sunLight, localLight, ambientAt, physicalDirect, physicalIndirect, physicalMetalness, physicalRoughness, physicalEmissive, uvSetOf, layerMap, iorF0,
@@ -74,7 +94,10 @@ export type MaterialVariant = {
 };
 
 /** @definition material */
-export function material<D extends SlotsDef, X>(def: Slots<D, X>, generated?: string): MaterialOf<X> {
+export function material<D extends SlotsDef, X>(def: Slots<D, X>): MaterialOf<X>
+export function material<D extends SlotsDef, X>(
+  def: Slots<D, X>, generated?: string
+): MaterialOf<X> {
 	if (generated === undefined) throw new Error("material: a definition, compiled by helder's compiler (its slot object static)");
 	const g = JSON.parse(generated);
 	const params: {[parameter: string]: UniformWriter<any> | TextureSlot} = {};

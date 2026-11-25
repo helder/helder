@@ -2,7 +2,7 @@ package helder.view.graph;
 
 import helder.view.graph.Awaitable.NotReady;
 
-// The core of `<Loading>` (Graph.loadingBoundary; DESIGN.md 2, Holds,
+// The core of `<Loading>` (Graph.loadingBoundary; view's README, Holds,
 // Solid 2's F-4 and F-5): armed until it has shown content, it catches
 // what is pending under it (its content read directly, a render effect of
 // its content that reads a value not ready): no transaction waits for

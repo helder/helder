@@ -5,7 +5,7 @@
 // examples' pages, and behind the docs' menu there; then the
 // Play button of every demo pressed (or of the ids given): each started (data-hydrated, the
 // graphics API it draws with in data-gfx), its canvas drawn (it looks
-// different from before; a sound only started), no console errors. Then
+// different from before once it rendered frames; a sound only started), no console errors. Then
 // the docs (bin/site/docs): every page, its sidebar, pictures, language
 // tabs and live example (started once in view), the old addresses sent
 // on, the search. With a
@@ -15,10 +15,11 @@
 //   node site/check.mjs [screenshots dir] [ids to play...]   (default: every demo)
 // SITE_NO_WEBGPU=1: the pages without navigator.gpu (WebGL2's path), as a
 // Chromium without WebGPU sees them.
-// SITE_SHARD=<i>/<n>: every n-th demo and docs page from the i-th (CI's
+// --shard i/n: every n-th demo and docs page from the i-th (CI's
 // check jobs, a machine each: two SwiftShader browsers on one machine's
 // cores starved each other's frames); the index's and the search's
 // checks on every shard, the phone's on the first.
+import { takeShard } from '../tests/shard.mjs';
 import { createServer } from 'node:http';
 import { readFile, mkdir } from 'node:fs/promises';
 import fs from 'node:fs';
@@ -31,11 +32,12 @@ let pw;
 try { pw = require('playwright'); } catch { pw = require(path.join(process.execPath, '../../lib/node_modules/playwright')); }
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dir = path.join(root, 'bin/site');
-const [shots, ...ids] = process.argv.slice(2);
+const args = process.argv.slice(2);
+const [shard, shards] = takeShard(args);
+const [shots, ...ids] = args;
 const site = JSON.parse(fs.readFileSync(path.join(root, 'bin/site-build/examples.json'), 'utf8'));
 // (the index's examples: docs/examples' are played in their pages, below)
 const listed = site.examples.filter((e) => !e.docs);
-const [shard, shards] = (process.env.SITE_SHARD ?? '0/1').split('/').map(Number);
 const mine = (_, k) => k % shards === shard;
 const play = (ids.length ? ids.filter((id) => !site.examples.find((e) => e.id === id)?.docs) : listed.filter((e) => e.demo).map((e) => e.id)).filter(mine);
 if (shards > 1) console.log(`site/check.mjs: shard ${shard} of ${shards}: ${play.length} demos`);
@@ -84,10 +86,10 @@ try {
 	}
 	if (shots) {
 		await mkdir(shots, { recursive: true });
-		await page.screenshot({ path: path.join(shots, 'site-desktop.png') });
+		await shot(page, 'site-desktop.png');
 		await page.setViewportSize({ width: 390, height: 844 });
-		await page.screenshot({ path: path.join(shots, 'site-phone.png') });
-		await page.screenshot({ path: path.join(shots, 'site-phone-full.png'), fullPage: true });
+		await shot(page, 'site-phone.png');
+		await shot(page, 'site-phone-full.png', { fullPage: true });
 		await page.setViewportSize({ width: 1280, height: 900 });
 	}
 	// (each demo alone in the page, loaded again: the heavy ones, a million
@@ -113,18 +115,18 @@ try {
 		}, id, { timeout: 60000 });
 		const error = await island.getAttribute('data-error'), gfx = await island.getAttribute('data-gfx');
 		check(error === null, `${id} started${error ? ': ' + error : ''}`);
-		if (!drawn) continue;
+		if (!drawn || error !== null) continue;
 		check(!!gfx, `${id} draws with ${gfx}`);
-		await page.waitForTimeout(1500);
 		await island.scrollIntoViewIfNeeded();
-		const after = await canvas.screenshot();
-		check(!before.equals(after), `${id}'s canvas drawn`);
+		// (a frame's colours are no test here: a game may open on a dark screen)
+		await renderedFrames(island);
+		check(!before.equals(await canvas.screenshot()), `${id}'s canvas drawn`);
 		if (shots) {
-			await page.screenshot({ path: path.join(shots, `site-desktop-${id}.png`) });
+			await shot(page, `site-desktop-${id}.png`);
 			await page.setViewportSize({ width: 390, height: 844 });
-			await page.waitForTimeout(800);
 			await island.scrollIntoViewIfNeeded();
-			await page.screenshot({ path: path.join(shots, `site-phone-${id}.png`) });
+			await renderedFrames(island);
+			await shot(page, `site-phone-${id}.png`);
 			await page.setViewportSize({ width: 1280, height: 900 });
 		}
 		// (an example of fetched data, heavy: stopped once out of view, data-stop="offscreen")
@@ -165,7 +167,8 @@ async function checkDocs(page) {
 		// (the pictures of <Image>: a live example's poster is hidden once it draws)
 		for (const img of await page.locator('main .still img').all()) {
 			await img.scrollIntoViewIfNeeded();
-			check(await img.evaluate(i => i.complete && i.naturalWidth > 0), `${p.url}: ${await img.getAttribute('src')} shown`);
+			const decoded = await img.evaluate(i => i.decode().then(() => i.naturalWidth > 0, () => false));
+			check(decoded, `${p.url}: ${await img.getAttribute('src')} shown`);
 		}
 		const langs = page.locator('.langs');
 		if (await langs.count()) {
@@ -187,12 +190,11 @@ async function checkDocs(page) {
 			}, id, { timeout: 60000 });
 			const error = await island.getAttribute('data-error');
 			check(error === null, `${p.url}: ${id} started once in view${error ? ': ' + error : ''}`);
-			if (sound) continue;
+			if (sound || error !== null) continue;
 			// (started once in view, so there is no frame from before it ran: a frame of more than a few colours is drawn)
-			await page.waitForTimeout(1500);
-			const colours = await colourCount(page, await island.locator('canvas').screenshot());
+			const colours = await renderedFrames(island);
 			check(colours > 8, `${p.url}: ${id}'s canvas drawn (${colours} colours)`);
-			if (shots) await page.screenshot({ path: path.join(shots, `docs-${id}.png`) });
+			if (shots) await shot(page, `docs-${id}.png`);
 		}
 	}
 	// (Haxe chosen on one page: the next page's samples open in Haxe)
@@ -222,24 +224,49 @@ async function checkDocs(page) {
 		'Escape closes results and returns focus to search');
 }
 
-// how many colours a PNG has, sampled on a grid (decoded by the page)
-async function colourCount(page, png) {
-	return page.evaluate(async (data) => {
-		const img = new Image();
-		img.src = 'data:image/png;base64,' + data;
-		await img.decode();
-		const c = document.createElement('canvas');
-		c.width = img.width;
-		c.height = img.height;
-		const g = c.getContext('2d');
-		g.drawImage(img, 0, 0);
-		const px = g.getImageData(0, 0, c.width, c.height).data, seen = new Set();
-		for (let y = 0; y < c.height; y += 4) for (let x = 0; x < c.width; x += 4) {
-			const k = (y * c.width + x) * 4;
-			seen.add((px[k] << 16) | (px[k + 1] << 8) | px[k + 2]);
+// a screenshot for the artifacts, not a check: one that times out (a heavy
+// demo starving SwiftShader's frames) is noted and the check goes on
+async function shot(page, name, options = {}) {
+	try {
+		await page.screenshot({ path: path.join(shots, name), ...options });
+	} catch (e) {
+		console.log(`site/check.mjs: no screenshot ${name}: ${e.message.split('\n')[0]}`);
+	}
+}
+
+// Readback resolves once a canvas frame has rendered, including in a worker.
+// Request each frame separately so an idle scene redraws and a slow GPU can catch up.
+async function renderedFrames(island) {
+	return island.evaluate(async (el) => {
+		const { host } = await globalThis.hxmcWasm[el.id];
+		let timer;
+		try {
+			return await Promise.race([
+				(async () => {
+					let pixels;
+					for (let n = 0; n < 3; n++) {
+						const frame = host.gfx.readPixels();
+						host.os.redraw();
+						pixels = await frame;
+					}
+					// Let the browser composite the canvas before Playwright captures it.
+					await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+					const { data, width, height } = pixels;
+					const colours = new Set();
+					for (let y = 0; y < height; y += 4) for (let x = 0; x < width; x += 4) {
+						const i = (y * width + x) * 4;
+						colours.add((data[i] << 16) | (data[i + 1] << 8) | data[i + 2]);
+					}
+					return colours.size;
+				})(),
+				new Promise((_, reject) => {
+					timer = setTimeout(() => reject(new Error(`${el.id}: timed out waiting for three rendered frames`)), 60000);
+				}),
+			]);
+		} finally {
+			clearTimeout(timer);
 		}
-		return seen.size;
-	}, png.toString('base64'));
+	});
 }
 
 // on an iPhone (Playwright's iPhone 13: 390x844 at 3x, touch, its user
@@ -257,19 +284,19 @@ async function checkPhone(shots) {
 		const links = await visible('.top nav a');
 		check(['Examples', 'Docs', 'GitHub'].every((l) => links.includes(l)), `phone, ${at}: the top bar's links (${links.join(', ')})`);
 		check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `phone, ${at}: no sideways scroll`);
-		if (shots) await page.screenshot({ path: path.join(shots, `phone-${name}.png`) });
+		if (shots) await shot(page, `phone-${name}.png`);
 	}
 	const docs = JSON.parse(fs.readFileSync(path.join(dir, 'docs/search.json'), 'utf8'));
 	await page.goto(url + docs[1].url);
 	check((await visible('.top nav a')).length === 0, `phone, ${docs[1].url}: the top bar's links hidden`);
 	check(await page.locator('.menu').isVisible(), `phone, ${docs[1].url}: the menu shown`);
 	check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `phone, ${docs[1].url}: no sideways scroll`);
-	if (shots) await page.screenshot({ path: path.join(shots, 'phone-docs.png') });
+	if (shots) await shot(page, 'phone-docs.png');
 	await page.locator('.menu').tap();
 	const inMenu = await visible('.sidebar .links a');
 	check(['Examples', 'GitHub'].every((l) => inMenu.includes(l)) && (await page.locator('.sidebar ul a').first().isVisible()),
 		`phone, ${docs[1].url}: the menu holds the site's links (${inMenu.join(', ')}) and the pages`);
-	if (shots) await page.screenshot({ path: path.join(shots, 'phone-docs-menu.png') });
+	if (shots) await shot(page, 'phone-docs-menu.png');
 	await context.close();
 }
 
@@ -289,7 +316,7 @@ async function phone(page, shots, id) {
 	}, id);
 	check(full.el && full.w === 390 && full.h === 844, `${id} full screen: the stage the full screen element, its canvas ${full.w}x${full.h}`);
 	check(full.bw === Math.round(full.w * full.dpr) && full.bh === Math.round(full.h * full.dpr), `${id} full screen: the canvas's buffer ${full.bw}x${full.bh} (its size times ${full.dpr})`);
-	if (shots) await page.screenshot({ path: path.join(shots, `${id}-fullscreen.png`) });
+	if (shots) await shot(page, `${id}-fullscreen.png`);
 	await page.locator(`#${id} button.exit`).click();
 	await page.waitForTimeout(800);
 	check(await page.evaluate((id) => !document.fullscreenElement && !document.querySelector(`#${id} .stage.expanded`), id), `${id} full screen: left by Exit`);
@@ -318,7 +345,7 @@ async function phone(page, shots, id) {
 	await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 	await page.waitForTimeout(500);
 	check(await page.evaluate(() => scrollY) === ex.scroll, `${id} expanded: a touch drag did not scroll the page`);
-	if (shots) await page.screenshot({ path: path.join(shots, `${id}-expanded.png`) });
+	if (shots) await shot(page, `${id}-expanded.png`);
 	await page.locator(`#${id} button.exit`).click();
 	await page.waitForTimeout(500);
 	check(await page.evaluate((id) => !document.querySelector(`#${id} .stage.expanded`) && !document.documentElement.classList.contains('playing'), id), `${id} expanded: left by Exit`);

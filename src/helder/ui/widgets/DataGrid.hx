@@ -243,15 +243,15 @@ class DataGrid extends Node {
 	inline function repaint()
 		if (ui != null) ui.requestFrame();
 
-	override public function hasContent():Bool
+	@:noCompletion override public function hasContent():Bool
 		return true;
 
-	override public function measureContent(engine:TextEngine, knownWidth:Float, knownHeight:Float, availWidth:Float, availHeight:Float):Size {
+	@:noCompletion override public function measureContent(engine:TextEngine, knownWidth:Float, knownHeight:Float, availWidth:Float, availHeight:Float):Size {
 		var w = !Math.isNaN(knownWidth) ? knownWidth : !Math.isNaN(availWidth) ? availWidth : 640;
 		return new Size(w, !Math.isNaN(knownHeight) ? knownHeight : headerHeight + rowHeight * 4);
 	}
 
-	override public function minContentWidth(engine:TextEngine):Float
+	@:noCompletion override public function minContentWidth(engine:TextEngine):Float
 		return 0;
 
 	// ---- the selection
@@ -758,7 +758,7 @@ class DataGrid extends Node {
 		return p;
 	}
 
-	override public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {
+	@:noCompletion override public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {
 		if (ui == null) return;
 		var engine = ui.text;
 		gridTheme.resolve(sheet(), ui.dark);

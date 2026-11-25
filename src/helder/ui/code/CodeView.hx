@@ -200,16 +200,16 @@ class CodeView extends Node {
 		return v;
 	}
 
-	override public function hasContent():Bool
+	@:noCompletion override public function hasContent():Bool
 		return true;
 
-	override public function measureContent(engine:TextEngine, knownWidth:Float, knownHeight:Float, availWidth:Float, availHeight:Float):Size {
+	@:noCompletion override public function measureContent(engine:TextEngine, knownWidth:Float, knownHeight:Float, availWidth:Float, availHeight:Float):Size {
 		// (as wide as it is given, three lines high: it grows into the room it has)
 		var w = !Math.isNaN(knownWidth) ? knownWidth : !Math.isNaN(availWidth) ? availWidth : 480;
 		return new Size(w, !Math.isNaN(knownHeight) ? knownHeight : lineHeight * 3);
 	}
 
-	override public function minContentWidth(engine:TextEngine):Float
+	@:noCompletion override public function minContentWidth(engine:TextEngine):Float
 		return 0;
 
 	// (keys that type are its: not shortcuts, not the window's scrolling)
@@ -401,7 +401,7 @@ class CodeView extends Node {
 
 	// ---- paint
 
-	override public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {
+	@:noCompletion override public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {
 		if (ui == null) return;
 		var engine = ui.text;
 		codeTheme.resolve(sheet(), ui.dark);
@@ -865,7 +865,7 @@ class CodeView extends Node {
 	override public function accessText():Null<{start:Int, end:Int, caret:Int, readOnly:Bool}>
 		return {start: model.primary.from, end: model.primary.to, caret: model.primary.head, readOnly: model.readOnly};
 
-	override public function accessSetValue(value:String):Bool {
+	@:noCompletion override public function accessSetValue(value:String):Bool {
 		if (model.readOnly) return false;
 		model.selectAll();
 		model.insert(value);

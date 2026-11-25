@@ -3,7 +3,7 @@ package helder.test;
 import helder.test.Runner;
 
 // helder.test's runner for TypeScript test files (helder/test, its
-// index.ts, over helder/test/runner: helder.test.TypeScript): the same
+// index.ts, over runner.d.ts: helder.test.TypeScript): the same
 // groups, hooks, filters, snapshots and report as `*.test.hx`'s. Each step
 // of a TypeScript test is started with its timeout and calls done once:
 // with null, with the error's text, or stopped (require and fail, their

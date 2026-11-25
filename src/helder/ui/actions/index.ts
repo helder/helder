@@ -29,7 +29,7 @@
 // a node's handlers, its ancestors', the window's, the app's), shown by its
 // menus with their keys and their handlers' states. `Standard` is
 // StandardAction's (standard::Quit, standard::Copy...).
-import { Script } from "helder/ui/actions/runtime";
+import { Script } from './runtime';
 
 // an action's arguments (a method's), as an object (its result)
 type Method = (...args: any[]) => object | void;
@@ -110,7 +110,12 @@ function constructors(info: Info, make: (i: number, args: unknown[]) => unknown,
 }
 
 // a program's actions: a definition (its argument an object literal of methods)
-export function actions<const D extends ActionsDef>(namespace: string, def: D, generated?: string): Actions<D> {
+export function actions<const D extends ActionsDef>(
+  namespace: string, def: D
+): Actions<D>
+export function actions<const D extends ActionsDef>(
+  namespace: string, def: D, generated?: string
+): Actions<D> {
 	if (generated === undefined) throw new Error("actions: a definition, compiled by helder's compiler (its argument an object literal)");
 	const info: Info = JSON.parse(generated);
 	const f = form(info);
@@ -225,11 +230,6 @@ export class Keymap {
 	}
 }
 
-// whether secondary is Command (macOS: a window sets it) rather than Control
-export function setMac(mac: boolean): void {
-	Script.setMac(mac);
-}
-
 // A window's Ui (helder.ui.Ui), where actions are dispatched
 export type Ui = { readonly __ui: true };
 
@@ -238,23 +238,11 @@ export function uiOf(node: unknown): Ui | null {
 	return Script.uiOf(node as any) as any;
 }
 
-// a Ui of no window (tests), its root to render into, its keymap
-export function headless(width: number, height: number): Ui {
-	return Script.headless(width, height) as any;
-}
 export function rootOf(ui: Ui): unknown {
 	return Script.root(ui as any);
 }
-// content (TSX) rendered into its root and laid out, removed by the function returned
-export function mount(ui: Ui, content: unknown): () => void {
-	return Script.mount(ui as any, content as any);
-}
 export function setKeymap(ui: Ui, keymap: Keymap): void {
 	Script.setKeymap(ui as any, keymap.keymap as any);
-}
-// its layout updated (a headless one's)
-export function update(ui: Ui): void {
-	Script.layout(ui as any);
 }
 // the focus given to a node (a ref's)
 export function focus(node: unknown): void {
@@ -263,10 +251,6 @@ export function focus(node: unknown): void {
 // the first node under node with a tag (depth first), null: none
 export function find(node: unknown, tag: string): unknown {
 	return Script.find(node as any, tag);
-}
-// each keystroke of keys typed into the Ui ("ctrl-k ctrl-s"), through its keymap
-export function press(ui: Ui, keys: string): void {
-	Script.type(ui as any, keys);
 }
 // an action dispatched from the focus (or from), true: a handler took it
 export function dispatch(ui: Ui, action: Action, from?: unknown): boolean {

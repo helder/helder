@@ -63,7 +63,11 @@ wait_for() {
 . "$(dirname "$0")/../pack/simulator.sh"
 simulator hxmc-ios-test
 # (the Simulator app's window: what SimTap clicks)
-open -a Simulator --args -CurrentDeviceUDID "$udid"
+if [ "${GITHUB_ACTIONS:-}" != true ] && [ "${HELDER_TEST_INPUT:-}" != 1 ] && [ -n "$tap" ]; then
+	echo "ios.sh: real taps skipped (set HELDER_TEST_INPUT=1 to enable them)"
+	tap=
+fi
+[ -z "$tap" ] || open -a Simulator --args -CurrentDeviceUDID "$udid"
 xcrun simctl install "$udid" "$app"
 check "install" $?
 rm -f "$stdout" "$out/stderr.txt"

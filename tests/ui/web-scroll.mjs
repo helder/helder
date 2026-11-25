@@ -118,7 +118,8 @@ try { for (worker of [false, true]) {
 		// cut out of it, where a wheel is the popup's, not the page's)
 		const view = () => p.evaluate(() => {
 			const e = [...document.querySelector('canvas').hxmcScrolls.querySelectorAll('div')].find((d) => d.hxmcScroller);
-			return { events: e.style.pointerEvents, bar: e.classList.contains('hxmc-nobar'), clip: e.style.clipPath, top: e.scrollTop };
+			const blocks = [...document.querySelector('canvas').hxmcScrolls.children].filter((b) => b.hxmcBlock).length;
+			return { events: e.style.pointerEvents, bar: e.classList.contains('hxmc-nobar'), clip: e.style.clipPath, top: e.scrollTop, blocks };
 		});
 		await p.keyboard.press('Home');
 		s = await state(p);
@@ -126,7 +127,8 @@ try { for (worker of [false, true]) {
 		await p.keyboard.press('m');
 		await p.waitForTimeout(300);
 		let v = await view();
-		check('under a popup: input kept, the popup cut out', v.events === 'auto' && v.clip.includes('path(evenodd'), JSON.stringify(v));
+		// (cut out by a clip-path; or, the view holding the page's content layer, which a clip would cut too, a clear element over it there)
+		check('under a popup: input kept, the popup cut out', v.events === 'auto' && (v.clip.includes('path(evenodd') || v.blocks === 1), JSON.stringify(v));
 		await p.waitForTimeout(300);
 		const at = (await state(p)).page;
 		await p.mouse.move(200, 150);
@@ -140,7 +142,7 @@ try { for (worker of [false, true]) {
 		await p.keyboard.press('Escape');
 		await p.waitForTimeout(300);
 		v = await view();
-		check('the popup closed: nothing cut out', v.clip === '' || v.clip === 'none', JSON.stringify(v));
+		check('the popup closed: nothing cut out', (v.clip === '' || v.clip === 'none') && v.blocks === 0, JSON.stringify(v));
 		await ctx.close();
 	}
 	// a phone's swipes

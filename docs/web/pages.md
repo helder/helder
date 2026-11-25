@@ -7,25 +7,25 @@ The same components that draw your app can render a web page: to static HTML whe
 A page is markup written to a file when you build. An island marks where a program runs in it, and when it starts.
 
 ```tsx
-import { Static, Island } from "helder/web";
+import {Static, Island} from 'helder/web'
 
-Static.write("bin/site/index.html", Static.document(<html lang="en">
-  <head><script src="loader.js" defer></script></head>
+Static.write('bin/site/index.html', Static.document(<html lang='en'>
+  <head><script src='loader.js' defer></script></head>
   <body>
     <h1>Palette study</h1>
-    <Island.Wasm src="palette.wasm" load="visible" width={480} height={288}/>
+    <Island.Wasm src='palette.wasm' load='visible' width={480} height={288}/>
   </body>
-</html>));
+</html>))
 ```
 
 ```haxe
 class Site implements Markup {
   static function main() {
-    Static.write("bin/site/index.html", Static.document(<html lang="en">
-      <head><script src="loader.js" defer></script></head>
+    Static.write('bin/site/index.html', Static.document(<html lang='en'>
+      <head><script src='loader.js' defer></script></head>
       <body>
         <h1>Palette study</h1>
-        <Island.Wasm src="palette.wasm" load={Visible}
+        <Island.Wasm src='palette.wasm' load={Visible}
           width={480} height={288}/>
       </body>
     </html>));
