@@ -20,13 +20,12 @@ import helder.view.graph.Graph.*;
 class MediaView {
 	// the node shown (the shell's actions reach it), null while none
 	public static var current(default, null):Null<VideoNode>;
-	static var thumbs:Null<Thumbs>;
 
 	public static function make(viewer:Viewer, files:Files):Node {
 		// (the look's colours: light or dark as the window)
 		var t = helder.ui.controls.Look.ref;
 		var root = box({position: Absolute, left: 0, top: 0, right: 0, bottom: 0});
-		var video = current = new VideoNode();
+		var video = current = new VideoNode(), thumbs:Null<Thumbs> = null;
 		video.autoplay = true;
 		video.style.set({position: Absolute, left: 0, top: 0, right: 0, bottom: 0});
 		root.append(video);
@@ -94,6 +93,14 @@ class MediaView {
 			thumbs = path == "" ? null : new Thumbs(() -> files.open(path));
 			name.text = haxe.io.Path.withoutDirectory(path);
 			video.open(path == "" ? null : files.open(path));
+		});
+		// (made again each time a file is shown (Show's children): the one
+		// left lets go of its player, which else plays on unseen)
+		onCleanup(() -> {
+			video.dispose();
+			if (thumbs != null) thumbs.close();
+			thumbs = null;
+			if (current == video) current = null;
 		});
 
 		// (the thumbnail where the pointer is)

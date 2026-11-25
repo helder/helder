@@ -106,9 +106,13 @@ class Player {
 	public static function open(source:ByteSource, ?options:PlayerOptions):Player
 		return new Player(source, options ?? {});
 
+	// (the players not closed: a test's count of those playing, none unseen)
+	static final live:Array<Player> = [];
+
 	function new(source:ByteSource, options:PlayerOptions) {
 		this.source = source;
 		this.options = options;
+		live.push(this);
 		Async.launch(_ -> run());
 	}
 
@@ -612,6 +616,7 @@ class Player {
 	public function close() {
 		if (closed) return;
 		closed = true;
+		live.remove(this);
 		#if (hxmc.target == "wasm32-wasi")
 		if (element != null) element.close();
 		#end

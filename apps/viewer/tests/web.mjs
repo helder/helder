@@ -3,7 +3,9 @@
 // browser at Samples (the page's title, the count its accessibility mirror
 // says: as many as the samples beside the page),
 // then the PDF opened (type-ahead, Enter) and its first page shown, the
-// Markdown sample opened and its text there; files
+// Markdown sample opened and its text there; a sound and a video opened,
+// at most one playing, the one shown, none once left (the next file,
+// closed: no <audio> or <video> playing, no audio output given sound); files
 // dropped on the page (a folder "Dropped" of them, a photo opened); Open
 // folder on a tree of handles of the page's own (showDirectoryPicker's
 // stand-in), its subfolder entered; no error on the page or in the console.
@@ -41,6 +43,33 @@ try {
 	const page = await browser.newPage({ viewport: { width: 1180, height: 760 } });
 	page.on('pageerror', (e) => errors.push('page: ' + e.message));
 	page.on('console', (m) => { if (process.env.DEBUG) console.log(m.type(), m.text()); if (m.type() === 'error') errors.push('console: ' + m.text()); });
+	// (what plays: <audio> and <video> elements playing a source, and the audio outputs
+	// (AudioWorklet nodes) given sound in the last 300 ms in a running context)
+	await page.addInitScript(() => {
+		const nodes = [], elements = [];
+		const Worklet = window.AudioWorkletNode;
+		if (Worklet) window.AudioWorkletNode = class extends Worklet {
+			constructor(...a) {
+				super(...a);
+				const n = { node: this, heard: -1e9 }, post = this.port.postMessage.bind(this.port);
+				nodes.push(n);
+				this.port.postMessage = (m, t) => {
+					if (m instanceof Float32Array && m.some((x) => Math.abs(x) > 1e-4)) n.heard = performance.now();
+					return post(m, t);
+				};
+			}
+		};
+		const create = document.createElement.bind(document);
+		document.createElement = (t, ...a) => {
+			const e = create(t, ...a);
+			if (/^(audio|video)$/i.test(t)) elements.push(e);
+			return e;
+		};
+		window.playing = () => ({
+			elements: [...elements, ...document.querySelectorAll('audio, video')].filter((e, i, all) => all.indexOf(e) === i && !e.paused && e.src !== '').length,
+			outputs: nodes.filter((n) => n.node.context.state === 'running' && performance.now() - n.heard < 300).length
+		});
+	});
 	await page.goto(`http://localhost:${port}/`);
 	await page.waitForFunction(() => document.title === 'Samples', null, { timeout: 60000 }).catch(() => fail(`not at Samples: "${'' + errors}"`));
 	// (the canvas's mirror for assistive technology: the count, the files' names)
@@ -78,6 +107,33 @@ try {
 	await page.waitForTimeout(3000);
 	await page.screenshot({ path: path.join(out, 'web-markdown.png') });
 	await page.keyboard.press('Escape');
+	// (a sound and a video: at most one plays, the one shown; none once left: the next file, closed)
+	const plays = async (what, most, least = 0) => {
+		await page.waitForTimeout(1500);
+		const p = await page.evaluate(() => window.playing());
+		if (p.elements + p.outputs > most || p.elements + p.outputs < least) fail(`${what}: ${JSON.stringify(p)} playing (${await page.title()})`);
+	};
+	const open = async (name, title) => {
+		await page.waitForFunction(() => document.title === 'Samples', null, { timeout: 30000 }).catch(async () => fail('not at Samples: ' + (await page.title())));
+		await page.mouse.click(600, 400);
+		await page.keyboard.type(name);
+		await page.keyboard.press('Enter');
+		await page.waitForFunction((t) => document.title.startsWith(t), title, { timeout: 30000 }).catch(async () => fail(`${name} not shown: ` + (await page.title())));
+	};
+	await open('Chimes', 'Chimes.m4a · ');
+	await plays('Chimes.m4a shown', 1, 1);
+	await page.keyboard.press('PageDown');
+	await page.waitForFunction(() => !document.title.startsWith('Chimes.m4a'), null, { timeout: 30000 });
+	await plays('the next file', 0);
+	await page.keyboard.press('PageUp');
+	await page.waitForFunction(() => document.title.startsWith('Chimes.m4a'), null, { timeout: 30000 });
+	await plays('Chimes.m4a again', 1);
+	await page.keyboard.press('Escape');
+	await plays('closed', 0);
+	await open('Starlings.mp4', 'Starlings.mp4 · ');
+	await plays('Starlings.mp4 shown', 1);
+	await page.keyboard.press('Escape');
+	await plays('closed again', 0);
 	// (files dropped on the page: a folder "Dropped" of them, a photo of it opened)
 	await page.evaluate(async () => {
 		const dt = new DataTransfer();
@@ -113,7 +169,7 @@ try {
 	await page.waitForTimeout(3000);
 	await page.screenshot({ path: path.join(out, 'web-folder.png') });
 	if (errors.length > 0) fail(errors.join('\n'));
-	console.log(`viewer (web): at Samples, the PDF shown (${pdf}), the Markdown sample, a drop and a folder opened`);
+	console.log(`viewer (web): at Samples, the PDF shown (${pdf}), the Markdown sample, a sound and a video left (none playing), a drop and a folder opened`);
 } finally {
 	await browser.close();
 	server.close();
