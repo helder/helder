@@ -1084,6 +1084,25 @@ class Run {
 			expect(h, ["devices"], ["PATH" => FileSystem.fullPath("bin/cli/path/adb"), "ADB" => ""], "emulator-5554  Pixel 7");
 		}
 		run(h, ["build", "examples/counter/Counter.hx"]);
+		// (outside the checkout, no node_modules above it, a fresh cache, no
+		// HXMC_RT_DIR from the launcher this runs under: helder's compiler,
+		// alone in the cache, finds the platform package's runtime objects;
+		// the compiler copied in, not built again)
+		var tmp = (Sys.getEnv("RUNNER_TEMP") ?? Sys.getEnv("TMPDIR") ?? Sys.getEnv("TEMP") ?? "/tmp").split("\\").join("/");
+		var fresh = '$tmp/helder-fresh-${Std.random(1 << 30)}', compiler = Path.directory(StringTools.trim(output(NODE, ["src/helder/compiler/build.mjs", "--quiet"])));
+		copy(compiler, '$fresh/cache/compiler/${Path.withoutDirectory(compiler)}');
+		if (!HOST.startsWith("windows-")) run("chmod", ["-R", "+x", '$fresh/cache/compiler']);
+		File.copy("examples/counter/Counter.hx", '$fresh/Counter.hx');
+		var here = Sys.getCwd(), cli = FileSystem.fullPath(h);
+		Sys.setCwd(fresh);
+		// (the directory made here, outside bin/: removed by removeTree, not rmrf)
+		try run(cli, ["build", "Counter.hx"], ["HELDER_CACHE" => '$fresh/cache', "HXMC_RT_DIR" => ""]) catch (e:Failed) {
+			Sys.setCwd(here);
+			removeTree(fresh);
+			throw e;
+		}
+		Sys.setCwd(here);
+		removeTree(fresh);
 		run(h, ["build", "--target", "web", "examples/counter"]);
 		// (its imports the browser's and WASI's only: no other system's library reached, #83)
 		run(NODE, ["tests/cli/imports.mjs", "bin/web/Counter.wasm"]);
