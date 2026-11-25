@@ -386,6 +386,33 @@ class Window {
 		#if ((!helder.os || helder.os == "linux") && !helder.headless) (Std.isOfType(native, WaylandWindow) ? wayland().setInput(inputRects) : x11().setInput(inputRects)); #else {} #end
 	}
 
+	// the system's material behind a transparent window, seen through its
+	// clear and half-clear pixels (WindowBackdrop): macOS's NSVisualEffectView
+	// (blur, mica) or NSGlassEffectView (glass, macOS 26) under its layer;
+	// Windows 11's DWMWA_SYSTEMBACKDROP_TYPE (Acrylic, Mica); KDE's blur
+	// (Wayland's org_kde_kwin_blur, X11's _KDE_NET_WM_BLUR_BEHIND_REGION).
+	// What the system has: None where it has none of it, or the window is
+	// not transparent
+	public var backdrop(default, set):WindowBackdrop = None;
+
+	function set_backdrop(b:WindowBackdrop):WindowBackdrop {
+		if (closed || HEADLESS || b == backdrop) return backdrop;
+		if (b != None && !transparent) return backdrop = None;
+		// (one the system lacks: the last one taken away too)
+		if (applied(b)) return backdrop = b;
+		applied(None);
+		return backdrop = None;
+	}
+
+	function applied(b:WindowBackdrop):Bool
+		return
+			Platform.apple() >= 1 ? false :
+			#if (!helder.os || helder.os == "macos") Platform.os() == 1 ? mac().setBackdrop(b) : #end
+			#if (!helder.os || helder.os == "windows") Platform.os() == 2 ? win().setBackdrop(b) : #end
+			Platform.os() == 3 ? false :
+			Platform.target() >= 9 ? false :
+			#if ((!helder.os || helder.os == "linux") && !helder.headless) (Std.isOfType(native, WaylandWindow) ? wayland().setBackdrop(b) : x11().setBackdrop(b)) #else false #end;
+
 	// the pointer's shape over the window (Auto: Default)
 	public var cursor(default, set):Cursor = Default;
 

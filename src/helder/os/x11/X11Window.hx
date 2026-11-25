@@ -323,6 +323,18 @@ class X11Window {
 		Xlib.XFlush(display);
 	}
 
+	// (Window.backdrop: KDE's blur behind the window, its whole area
+	// (_KDE_NET_WM_BLUR_BEHIND_REGION empty); blur and mica alike, no glass;
+	// none where no one made the atom: KWin does)
+	function setBackdrop(b:WindowBackdrop):Bool {
+		if (b == Glass) return false;
+		var atom = Arena.scopedValue(a -> Xlib.XInternAtom(display, a.cstring("_KDE_NET_WM_BLUR_BEHIND_REGION"), 1));
+		if (atom == 0) return b == None;
+		if (b == None) Xlib.XDeleteProperty(display, id, atom) else Arena.scoped(a -> Xlib.XChangeProperty(display, id, atom, X.XA_CARDINAL, 32, X.PropModeReplace, a.alloc(8), 0));
+		Xlib.XFlush(display);
+		return true;
+	}
+
 	// (a transparent window's visual, 0: opaque)
 	var visual = 0;
 

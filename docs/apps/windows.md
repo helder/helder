@@ -14,6 +14,16 @@ A background that isn't opaque makes the window transparent: what is behind it s
 
 Works on macOS, Windows (through DirectComposition), Wayland, X11 with a compositing manager, and in the browser (the canvas's alpha). Where the system can't do it, the window stays opaque. From Haxe, `new Window(title, width, height, Standard, true)` asks for one, `window.transparent` tells whether it is, and `window.shadow = false` takes the system's shadow away (macOS, Windows).
 
+## Materials
+
+`backdrop` puts the system's material behind the window, seen through its clear and half-clear pixels: `"blur"` (macOS vibrancy, Windows 11 Acrylic, KDE's blur), `"mica"` (Windows 11 Mica, macOS's window vibrancy, KDE's blur) or `"glass"` (macOS 26). It makes the window transparent. Where the system has no such material, nothing is drawn behind; `window.backdrop` then reads `None`.
+
+```tsx
+<Surface title="Notes" width={320} height={400} backdrop="blur">
+  <text padding={16}>Over a blur of what is behind</text>
+</Surface>
+```
+
 ## Clicks through
 
 A transparent window takes clicks only where it draws something; elsewhere they go to whatever is behind it. Mark drawn content as click-through with `pointer-events="none"`, or keep every click with `<Surface clickThrough={false}>`.

@@ -449,6 +449,35 @@ class CocoaWindow {
 		if (on == Msg.b(window, ObjC.sel("ignoresMouseEvents"))) Msg.vBool(window, ObjC.sel("setIgnoresMouseEvents:"), !on);
 	}
 
+	// (Window.backdrop: an NSVisualEffectView behind the window, its
+	// material hudWindow 13 or underWindowBackground 21, or an
+	// NSGlassEffectView (macOS 26), filling the content view under the layer's)
+	var effect = Ptr.nil();
+
+	function setBackdrop(b:WindowBackdrop):Bool
+		return OsThread.get(() -> {
+			if (!effect.isNull()) {
+				Msg.v(effect, ObjC.sel("removeFromSuperview"));
+				Runtime.objc_release(effect);
+				effect = Ptr.nil();
+			}
+			if (b == None) return true;
+			var cls = b == Glass ? ObjC.cls("NSGlassEffectView") : ObjC.cls("NSVisualEffectView");
+			if (cls.isNull()) return false;
+			var content = Msg.id(window, ObjC.sel("contentView"));
+			effect = Msg.idRect(Msg.id(cls, ObjC.sel("alloc")), ObjC.sel("initWithFrame:"), Msg.rect(content, ObjC.sel("bounds")));
+			Msg.vInt(effect, ObjC.sel("setAutoresizingMask:"), 18);
+			if (b != Glass) {
+				// (behind the window, always active)
+				Msg.vInt(effect, ObjC.sel("setBlendingMode:"), 0);
+				Msg.vInt(effect, ObjC.sel("setMaterial:"), b == Blur ? 13 : 21);
+				Msg.vInt(effect, ObjC.sel("setState:"), 1);
+			}
+			// (NSWindowBelow -1: under every view of the content's)
+			Msg.vPtrIntPtr(content, ObjC.sel("addSubview:positioned:relativeTo:"), effect, -1, Ptr.nil());
+			return true;
+		});
+
 	// (the system's shadow: a transparent window's follows its pixels, made again as they change shape: invalidate)
 	function shadow():Bool
 		return OsThread.get(() -> Msg.b(window, ObjC.sel("hasShadow")));

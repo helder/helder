@@ -355,6 +355,23 @@ class Win32Window {
 		if (pass) User32.SetLayeredWindowAttributes(hwnd, 0, 255, 2);
 	}
 
+	// (Window.backdrop: DWMWA_SYSTEMBACKDROP_TYPE 38, Windows 11 22H2 on:
+	// DWMSBT_NONE 1, MAINWINDOW 2 (Mica), TRANSIENTWINDOW 3 (Acrylic); the
+	// frame extended over the client area (MARGINS -1), the backdrop behind
+	// it all; no glass)
+	function setBackdrop(b:WindowBackdrop):Bool {
+		if (b == Glass) return false;
+		return OsThread.get(() -> Arena.scopedValue(a -> {
+			var m:Ptr<Int32> = a.alloc(16), v:Ptr<Int32> = a.alloc(4);
+			for (i in 0...4)
+				m[i] = b == None ? 0 : -1;
+			v.value = b == None ? 1 : b == Blur ? 3 : 2;
+			var ok = Dwmapi.DwmSetWindowAttribute(hwnd, 38, v, 4) >= 0;
+			if (ok) Dwmapi.DwmExtendFrameIntoClientArea(hwnd, m);
+			ok;
+		}));
+	}
+
 	// the frame's shadow (DWMWA_NCRENDERING_POLICY: DWMNCRP_DISABLED 1, its frame not drawn by DWM: no shadow; DWMNCRP_ENABLED 2)
 	var shadow = true;
 

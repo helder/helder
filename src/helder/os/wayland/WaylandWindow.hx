@@ -13,6 +13,7 @@ import helder.os.wayland.protocol.TextInputUnstableV3Protocol;
 import helder.os.wayland.protocol.PresentationTimeProtocol;
 import helder.os.wayland.protocol.SinglePixelBufferV1Protocol;
 import helder.os.wayland.protocol.LinuxDmabufV1Protocol;
+import helder.os.wayland.protocol.BlurProtocol;
 import hxmc.unsafe.*;
 
 // helder.os.Window on Wayland (Linux with WAYLAND_DISPLAY set and
@@ -59,6 +60,8 @@ class WaylandWindow {
 	static var dataManager:WlDataDeviceManager = Ptr.nil();
 	static var dataDevice:WlDataDevice = Ptr.nil();
 	static var decorations:ZxdgDecorationManagerV1 = Ptr.nil();
+	// (KDE's blur behind a surface, where the compositor has it: KWin)
+	static var blurs:OrgKdeKwinBlurManager = Ptr.nil();
 	static var viewporter:WpViewporter = Ptr.nil();
 	static var fractional:WpFractionalScaleManagerV1 = Ptr.nil();
 	static var cursorShapes:WpCursorShapeManagerV1 = Ptr.nil();
@@ -272,6 +275,7 @@ class WaylandWindow {
 				o.listen(e);
 			case "wl_data_device_manager": dataManager = bind(name, WlDataDeviceManager.iface, version, 3);
 			case "zxdg_decoration_manager_v1": decorations = bind(name, ZxdgDecorationManagerV1.iface, version, 1);
+			case "org_kde_kwin_blur_manager": blurs = bind(name, OrgKdeKwinBlurManager.iface, version, 1);
 			case "wp_viewporter": viewporter = bind(name, WpViewporter.iface, version, 1);
 			case "wp_fractional_scale_manager_v1": fractional = bind(name, WpFractionalScaleManagerV1.iface, version, 1);
 			case "wp_cursor_shape_manager_v1": cursorShapes = bind(name, WpCursorShapeManagerV1.iface, version, 1);
@@ -866,6 +870,26 @@ class WaylandWindow {
 		}
 		wlSurface.setInputRegion(r);
 		r.destroy();
+	}
+
+	// (Window.backdrop: KDE's blur behind the whole surface, from the next
+	// commit; blur and mica alike, no glass; none where the compositor has no blur)
+	var blur:OrgKdeKwinBlur = Ptr.nil();
+
+	function setBackdrop(b:WindowBackdrop):Bool {
+		if (blurs.isNull() || b == Glass) return b == None;
+		if (!blur.isNull()) {
+			blur.release();
+			blur = Ptr.nil();
+		}
+		if (b == None) {
+			blurs.unset(wlSurface);
+			return true;
+		}
+		blur = blurs.create(wlSurface);
+		blur.setRegion(Ptr.nil());
+		blur.commit();
+		return true;
 	}
 
 	inline function scale():Float

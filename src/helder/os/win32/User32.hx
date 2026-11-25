@@ -73,6 +73,7 @@ import hxmc.unsafe.*;
 // (the window's frame as the desktop window manager draws it: its shadow, its backdrop)
 @:hxmc.c @:hxmc.lib("dwmapi") extern class Dwmapi {
 	static function DwmSetWindowAttribute(hwnd:Ptr, attribute:Int, value:Ptr, size:Int):Int;
+	static function DwmExtendFrameIntoClientArea(hwnd:Ptr, margins:Ptr):Int;
 }
 
 @:hxmc.c @:hxmc.lib("shell32") extern class Shell32 {

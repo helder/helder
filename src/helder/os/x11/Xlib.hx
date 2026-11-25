@@ -125,6 +125,7 @@ class X {
 	public static inline var PropertyNewValue = 0;
 	public static inline var PropertyDelete = 1;
 	public static inline var PropModeReplace = 0;
+	public static inline var XA_CARDINAL = 6;
 	public static inline var AnyPropertyType = 0;
 	public static inline var XA_ATOM = 4;
 	public static inline var XA_STRING = 31;

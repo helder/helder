@@ -57,15 +57,21 @@ class ShapeWindow {
 				if (u.needsFrame() || step < 40) u.frame();
 			w.device.settle();
 			if (step == 14) frame(w);
-			// (macOS: each window ordered front at its first frame, the one behind's may come later: this one in front again)
-			#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
-			if (step == 30 && desk != null) w.window.raise();
-			#end
 			// (the window server's after some of its frames)
 			if (step == 40) {
 				Sys.sleep(0.3);
+				// (macOS: each window ordered front at its first frame, or 500 ms after it is made, the one
+				// behind's maybe after this one's, another app's window maybe over both: their levels set,
+				// over other apps' windows, this one over the one behind)
+				#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
+				if (desk != null) {
+					level(desk.window, 3);
+					level(w.window, 4);
+				}
+				#end
 				system(w, desk);
 				if (w.window.transparent) inputs(w);
+				backdrops(w);
 				if (w.window.transparent && (desk != null || behindPlain()) && !helderBehind && Click.can()) end = 70;
 			}
 			// (a click on the box: its own; then where it is clear: the window
@@ -104,6 +110,74 @@ class ShapeWindow {
 				if (u.window == e.window) u.handle(e);
 		});
 		Sys.exit(failed > 0 ? 1 : 0);
+	}
+
+	// (the system's material behind it, as the system tells: macOS's view
+	// under the layer's, Windows' DWMWA_SYSTEMBACKDROP_TYPE, X11's property
+	// (the atom made first, as KWin does); none where the system has none)
+	static function backdrops(w:UiWindow) {
+		var win = w.window;
+		if (!win.transparent) {
+			win.backdrop = WindowBackdrop.Blur;
+			check(win.backdrop == WindowBackdrop.None, "backdrop: none on an opaque window");
+			return;
+		}
+		#if (hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64")
+		// (X11: none without KWin's atom; then the atom made, as KWin does, and the property set)
+		if (win.surface.kind == X11) {
+			win.backdrop = WindowBackdrop.Blur;
+			check(win.backdrop == WindowBackdrop.None, "backdrop: none on X11 without KWin");
+			hxmc.unsafe.Arena.scoped(a -> Xlib.XInternAtom(win.surface.display, a.cstring("_KDE_NET_WM_BLUR_BEHIND_REGION"), 0));
+		}
+		#end
+		for (b in [WindowBackdrop.Blur, WindowBackdrop.Mica, WindowBackdrop.Glass]) {
+			win.backdrop = b;
+			var got = win.backdrop, seen = shows(win, b);
+			if (got == WindowBackdrop.None) check(seen == null || seen == WindowBackdrop.None, 'backdrop $b: not here, none left (${seen ?? "none to read"})');
+			else check(seen == b, 'backdrop $b: the system\'s ($seen)');
+		}
+		win.backdrop = WindowBackdrop.None;
+		var left = shows(win, WindowBackdrop.None);
+		check(win.backdrop == WindowBackdrop.None && (left == null || left == WindowBackdrop.None), "backdrop none: the system's gone");
+	}
+
+	// (the backdrop the system has for the window, as its APIs say; null: none to read)
+	static function shows(win:Window, asked:WindowBackdrop):Null<WindowBackdrop> {
+		#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
+		var view = win.surface.handle;
+		return OsThread.get(() -> {
+			var content = helder.os.objc.Msg.id(helder.os.objc.Msg.id(view, helder.os.objc.ObjC.sel("window")), helder.os.objc.ObjC.sel("contentView"));
+			var subs = helder.os.objc.Msg.id(content, helder.os.objc.ObjC.sel("subviews"));
+			var first = helder.os.objc.Msg.idInt(subs, helder.os.objc.ObjC.sel("objectAtIndex:"), 0);
+			var name = helder.os.objc.ObjC.string(helder.os.objc.Msg.id(helder.os.objc.Msg.id(first, helder.os.objc.ObjC.sel("className")), helder.os.objc.ObjC.sel("description")));
+			if (name == "NSGlassEffectView") return WindowBackdrop.Glass;
+			if (name != "NSVisualEffectView") return WindowBackdrop.None;
+			var m = helder.os.objc.Msg.i(first, helder.os.objc.ObjC.sel("material")).toInt();
+			var behind = helder.os.objc.Msg.i(first, helder.os.objc.ObjC.sel("blendingMode")).toInt() == 0;
+			return !behind ? WindowBackdrop.None : m == 13 ? WindowBackdrop.Blur : m == 21 ? WindowBackdrop.Mica : WindowBackdrop.None;
+		});
+		#elseif (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
+		var v:hxmc.unsafe.Ptr<hxmc.unsafe.Int32> = hxmc.unsafe.LibC.malloc(4);
+		v.value = 0;
+		var hr = ScreenDwm.DwmGetWindowAttribute(win.surface.handle, 38, cast v, 4), t = v.value;
+		hxmc.unsafe.LibC.free(cast v);
+		return hr < 0 ? null : t == 3 ? WindowBackdrop.Blur : t == 2 ? WindowBackdrop.Mica : WindowBackdrop.None;
+		#elseif (hxmc.target == "linux-x86_64" || hxmc.target == "linux-arm64")
+		if (win.surface.kind != X11) return null;
+		var d = win.surface.display;
+		var atom = hxmc.unsafe.Arena.scopedValue(a -> Xlib.XInternAtom(d, a.cstring("_KDE_NET_WM_BLUR_BEHIND_REGION"), 1));
+		if (atom == 0) return null;
+		return hxmc.unsafe.Arena.scopedValue(a -> {
+			var type:hxmc.unsafe.Ptr<haxe.Int64> = a.alloc(8), format:hxmc.unsafe.Ptr<hxmc.unsafe.Int32> = a.alloc(4), n:hxmc.unsafe.Ptr<haxe.Int64> = a.alloc(8),
+				after:hxmc.unsafe.Ptr<haxe.Int64> = a.alloc(8), data:hxmc.unsafe.Ptr<hxmc.unsafe.Ptr> = a.alloc(8);
+			type.value = 0;
+			Xlib.XGetWindowProperty(d, win.surface.handle.toI64(), atom, 0, 16, 0, 0, type, format, n, after, data);
+			if (!data.value.isNull()) Xlib.XFree(data.value);
+			type.value == X.XA_CARDINAL ? asked : WindowBackdrop.None;
+		});
+		#else
+		return null;
+		#end
 	}
 
 	// (where it takes the pointer: the boxes it draws, in pixels, not the bar of pointer-events none)
@@ -157,6 +231,16 @@ class ShapeWindow {
 	static final helderBehind = Sys.args().indexOf("--behind") >= 0 && Sys.args()[Sys.args().indexOf("--behind") + 1] == "helder";
 
 	#if (hxmc.target == "macos-arm64" || hxmc.target == "macos-x86_64")
+	static function level(win:Window, n:Int) {
+		var view = win.surface.handle;
+		OsThread.get(() -> {
+			var w = helder.os.objc.Msg.id(view, helder.os.objc.ObjC.sel("window"));
+			helder.os.objc.Msg.vInt(w, helder.os.objc.ObjC.sel("setLevel:"), n);
+			helder.os.objc.Msg.v(w, helder.os.objc.ObjC.sel("orderFrontRegardless"));
+			0;
+		});
+	}
+
 	// (the window at a press: whether it ignores the mouse, where it finds the pointer)
 	static function macState(w:UiWindow) {
 		var view = w.window.surface.handle;
@@ -482,6 +566,10 @@ class Screen {
 	static function IsWindowVisible(hwnd:hxmc.unsafe.Ptr):Int;
 	static function IsIconic(hwnd:hxmc.unsafe.Ptr):Int;
 	static function PrintWindow(hwnd:hxmc.unsafe.Ptr, dc:hxmc.unsafe.Ptr, flags:Int):Int;
+}
+
+@:hxmc.c @:hxmc.lib("dwmapi") extern class ScreenDwm {
+	static function DwmGetWindowAttribute(hwnd:hxmc.unsafe.Ptr, attribute:Int, value:hxmc.unsafe.Ptr, size:Int):Int;
 }
 
 @:hxmc.c @:hxmc.lib("gdi32") extern class ScreenPixel {
