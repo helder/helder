@@ -1,3 +1,4 @@
+import helder.gfx.shader.Vec4;
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.os.*;
@@ -58,7 +59,7 @@ class DamageTest {
 		Sys.exit(failed == 0 ? 0 : 1);
 	}
 
-	static final pass:PassDesc = {colors: [{load: Clear, clear: new helder.gfx.Color(1, 1, 1)}]};
+	static final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(1, 1, 1, 1)}]};
 
 	// (a frame drawn as a window draws it: the passes before, the frame's pass; read back)
 	static function frame(device:Device, ui:Ui, r:Renderer, w:Int, h:Int, pixels:Bytes) {
@@ -699,7 +700,7 @@ class PlaneStack {
 		}
 		device.writeBuffer(buffer, 0, bytes, 0, len);
 		var bg:Int = f.background, enc = device.beginFrame();
-		enc.beginPass({colors: [{load: parts ? Load : Clear, clear: new helder.gfx.Color((bg >> 16 & 0xFF) / 255, (bg >> 8 & 0xFF) / 255, (bg & 0xFF) / 255)}]});
+		enc.beginPass({colors: [{load: parts ? Load : Clear, clear: new Vec4((bg >> 16 & 0xFF) / 255, (bg >> 8 & 0xFF) / 255, (bg & 0xFF) / 255, 1)}]});
 		enc.setVertexBuffer(0, f.corners);
 		enc.setIndexBuffer(f.indices, UInt32);
 		enc.setTexture(f.atlasSlot, f.atlas, f.sampler);

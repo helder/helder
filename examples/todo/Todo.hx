@@ -2,6 +2,8 @@
 // summary: A todo list in markup: signals, a keyed list, a text field, checkboxes and filters
 // tags: ui, view, text input
 // demo: canvas 480x560
+
+import helder.gfx.Color;
 import helder.ui.*;
 import helder.ui.UiWindow;
 import helder.ui.UiWindow.Surface;

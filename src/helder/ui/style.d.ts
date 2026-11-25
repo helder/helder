@@ -5,12 +5,10 @@
 // Then the looks' recipes (helder.ui.controls.Recipe), their patches, and
 // the variants a patch adds to its look (Look.with's types).
 import type {View} from 'helder/view';
-import type {Refs, Tokens, ButtonProps, CheckboxProps, SwitchProps} from './index';
+import type {Color, Refs, Tokens, ButtonProps, CheckboxProps, SwitchProps} from './index';
 
 // a length: points, or a string as CSS writes one ('50%', 'auto', '12px')
 export type Length = number | string;
-// a colour: a token reference's or a colour's bits (helder.ui.Color), or as CSS writes one ('#3b82f6', 'oklch(0.6 0.18 258)', 'var(--accent)')
-export type ColorValue = number | string;
 
 export type StyleProps = {
 	display?: 'flex' | 'none' | 'grid' | 'block';
@@ -52,19 +50,19 @@ export type StyleProps = {
 	overflow?: 'visible' | 'hidden' | 'scroll';
 	overflowX?: 'visible' | 'hidden' | 'scroll';
 	overflowY?: 'visible' | 'hidden' | 'scroll';
-	background?: ColorValue;
+	background?: Color;
 	letterSpacing?: number;
 	letterSpacingEm?: number;
 	wordSpacing?: number;
 	textDecoration?: 'none' | 'underline' | 'overline' | 'line-through' | (string & {});
 	textShadow?: string;
-	textDecorationColor?: ColorValue;
+	textDecorationColor?: Color;
 	textDecorationThickness?: Length;
 	textUnderlineOffset?: Length;
 	backgroundImage?: string;
 	transform?: string;
 	transformOrigin?: string | Length[];
-	borderColor?: ColorValue;
+	borderColor?: Color;
 	radius?: number | string | number[];
 	corners?: number | string | number[];
 	opacity?: number;
@@ -80,17 +78,17 @@ export type StyleProps = {
 	breakAfter?: 'auto' | 'avoid' | 'avoid-page' | 'page' | 'left' | 'right' | 'avoid-column' | 'column';
 	breakInside?: 'auto' | 'avoid' | 'avoid-page' | 'page' | 'left' | 'right' | 'avoid-column' | 'column';
 	page?: string;
-	scrollbarColor?: ColorValue;
-	scrollbarTrackColor?: ColorValue;
+	scrollbarColor?: Color;
+	scrollbarTrackColor?: Color;
 	ringWidth?: number;
-	ringColor?: ColorValue;
+	ringColor?: Color;
 	ringOffsetWidth?: number;
-	ringOffsetColor?: ColorValue;
+	ringOffsetColor?: Color;
 	ringInset?: boolean;
 	outlineWidth?: number;
 	outlineOffset?: number;
-	outlineColor?: ColorValue;
-	color?: ColorValue;
+	outlineColor?: Color;
+	color?: Color;
 	fontFamily?: string;
 	fontSize?: number;
 	fontWeight?: number;

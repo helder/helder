@@ -1,7 +1,7 @@
 package helder.ui;
 
 import helder.test.Test;
-import helder.ui.Color;
+import helder.gfx.Color;
 
 // A <Surface>'s background as markup gives it: a string ("#333333")
 // parsed, a Color as it is

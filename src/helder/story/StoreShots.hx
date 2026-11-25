@@ -1,5 +1,7 @@
 package helder.story;
 
+import helder.gfx.shader.Vec4;
+
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.story.Story;
@@ -174,7 +176,7 @@ class StoreShots implements Markup {
 			ui.paint(r);
 			// (the passes a texture drawn needs, a <Scene>'s, before the frame's)
 			r.prepare(enc);
-			enc.beginPass({colors: [{load: Clear, clear: new helder.gfx.Color(1, 1, 1)}]});
+			enc.beginPass({colors: [{load: Clear, clear: new Vec4(1, 1, 1, 1)}]});
 			r.end(enc);
 			enc.endPass();
 			device.readPixels(pixels);

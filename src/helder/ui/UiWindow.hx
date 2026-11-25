@@ -1,5 +1,7 @@
 package helder.ui;
 
+import helder.gfx.shader.Vec4;
+
 import helder.os.DragOperation;
 #if (hxmc.target == "wasm32-wasi")
 // (the browser's: the program's frames on the page's layers alone)
@@ -9,7 +11,8 @@ import helder.ui.layers.Compositor;
 #end
 import helder.ui.platform.*;
 import helder.gfx.*;
-import helder.ui.Color;
+import helder.gfx.ColorTarget.ClearValue;
+import helder.gfx.Color;
 import helder.os.App;
 import helder.os.Event as OsEvent;
 import helder.os.TitleBar;
@@ -173,7 +176,7 @@ class UiWindow {
 	var bars = scrollbars;
 	// the text input area last given to the window ("": off)
 	var typing = "";
-	final pass:PassDesc = {colors: [{load: Clear, clear: new helder.gfx.Color(1, 1, 1)}]};
+	final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(1, 1, 1, 1)}]};
 	var buttons = 0;
 	// (whether its layers are drawn from tiles: helder.ui.draw.Renderer.tiles, but for a frame read back)
 	var tiled = false;
@@ -502,14 +505,8 @@ class UiWindow {
 		drawnH = h;
 		drawnScale = s;
 		// (premultiplied, as every pixel drawn; opaque where the window is)
-		var c = pass.colors[0].clear, bg = shown();
-		@:privateAccess {
-			var a = bg.a / 255;
-			c.r = bg.r / 255 * a;
-			c.g = bg.g / 255 * a;
-			c.b = bg.b / 255 * a;
-			c.a = a;
-		}
+		var bg = shown(), a = bg.a / 255;
+		ClearValue.set(pass.colors[0], bg.r / 255 * a, bg.g / 255 * a, bg.b / 255 * a, a);
 		// (painted first: the passes a texture drawn needs, a <Scene>'s, recorded before the frame's)
 		renderer.tiles = tiled && capture == null;
 		// (a see-through background drawn whole each frame: a damaged

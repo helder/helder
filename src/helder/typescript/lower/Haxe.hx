@@ -147,6 +147,9 @@ class Haxe {
 				ELocal(l);
 			case HAbstract(path, _, _, _) if (path == NODE):
 				nodeToHaxe(e, where);
+			case HAbstract(path, _, _, _) if (path == COLOR):
+				// (a number as it is, a CSS string parsed)
+				from == TF64 ? EConv(F2I, e) : from == TI32 ? e : call(interop("color"), [any(e), EStr(where)]);
 			case HNull(x) if (mathOf(x) != null && to.match(TRef(RObj(_)))):
 				// (an optional math value: its struct's box, or null)
 				var box = switch to {
@@ -191,6 +194,8 @@ class Haxe {
 			// given back as they are)
 			case HRead(x) if (opaque(x)):
 				b.coerce(call(interop("readerOf"), [any(e)]), to);
+			case HRead(HAbstract(path, _, _, _)) if (path == COLOR):
+				b.coerce(call(interop("colorReader"), [any(e), EStr(where)]), to);
 			case HRead(_):
 				b.coerce(call(interop("reader"), [any(e)]), to);
 			case HBytes(_):
@@ -365,6 +370,12 @@ class Haxe {
 			case [TVoid, _]: b.runtime("getUndefined", []);
 			case [TStruct(_), _] if (mathOf(t) != null): mathToJs(e, mathOf(t));
 			case [TI32, _] if (isNode(t)): nodeToJs(e);
+			case [TI32, _] if (isColor(t)):
+				// (unsigned, as a program writes one: 0xff3366ff)
+				var v = b.temp(e), l = b.local("color", TF64);
+				b.out.push(SSet(l, EConv(I2F, v)));
+				b.out.push(SIf(EBin(Lt, v, EInt(0)), b.block(() -> b.out.push(SSet(l, EBin(FAdd, ELocal(l), EF64(4294967296.0))))), b.block(() -> {})));
+				ELocal(l);
 			case [TI32, _]: EConv(I2F, e);
 			case [TF64 | TBool, _]: e;
 			case [TRef(RStr), _]: e;
@@ -471,6 +482,15 @@ class Haxe {
 	// program's: an object of its id, the handle), both ways by its id
 	// (Declarations names it so); Node.NONE is a Node of id 0
 	public static inline var NODE = "helder.scene.Node";
+	// helder.gfx.Color: a number or a CSS string (Interop.color)
+	public static inline var COLOR = "helder.gfx.Color";
+
+	static function isColor(t:HType):Bool
+		return switch t {
+			case HNull(x): isColor(x);
+			case HAbstract(path, _, _, _): path == COLOR;
+			case _: false;
+		}
 
 	static function isNode(t:HType):Bool
 		return switch t {

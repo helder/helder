@@ -33,7 +33,7 @@ class Primitives {
 		var shadows = new Shadows(device, 2048);
 		shadows.soft(0.06, 12, 0.04);
 		renderer = new Renderer(device).use(shadows);
-		renderer.clearColor = new Color(0.06, 0.07, 0.09);
+		renderer.clearColor = new Vec4(0.06, 0.07, 0.09, 1);
 
 		// the shapes: each generator at sizes that fit a cell, with three's
 		// parameter names (each optional: three's defaults otherwise)

@@ -1,7 +1,7 @@
 package helder.ui.draw;
 
 import helder.ui.Canvas;
-import helder.ui.Color;
+import helder.gfx.Color;
 
 // What a node drawn on the GPU (a part's shader, a <Scene>, a sprite box)
 // draws on a canvas with no GPU behind it (the CPU's, soft.SoftCanvas): a

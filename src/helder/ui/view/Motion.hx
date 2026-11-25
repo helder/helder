@@ -1,7 +1,7 @@
 package helder.ui.view;
 
 import helder.ui.Clock;
-import helder.ui.Color;
+import helder.gfx.Color;
 import helder.view.graph.Signal;
 import helder.view.graph.Graph.*;
 

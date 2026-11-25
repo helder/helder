@@ -1,5 +1,6 @@
 package helder.ui.widgets;
 
+import helder.gfx.Color;
 import helder.ui.access.Role;
 
 // A grid of many rows, drawn (a table browser's, a spreadsheet's): only

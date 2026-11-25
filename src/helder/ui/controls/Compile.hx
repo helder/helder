@@ -75,7 +75,7 @@ import helder.ui.controls.Tokens;
 				part.add(call(f, refs));
 			emit(rules, name, part, [], null, null, null, null);
 		}
-		var light = new Map<String, helder.ui.Color>(), dark = new Map<String, helder.ui.Color>();
+		var light = new Map<String, helder.gfx.Color>(), dark = new Map<String, helder.gfx.Color>();
 		var tones = TokenSet.tones(tokens);
 		for (k in 0...tones.length) {
 			var t = tones[k];

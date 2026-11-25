@@ -29,7 +29,6 @@ final class Replay {
 	public var onEndFrame:Null<Void->Void> = null;
 
 	var scratch = Bytes.alloc(4096);
-	final clear = new Color(0, 0, 0);
 	final color:ColorTarget = {load: Clear};
 	final depth:DepthTarget = {load: Clear};
 	final pass:PassDesc;
@@ -131,13 +130,8 @@ final class Replay {
 				var flags = c.next();
 				color.load = cast c.next();
 				if (flags & 1 != 0) {
-					@:privateAccess {
-						clear.r = c.nextFloat();
-						clear.g = c.nextFloat();
-						clear.b = c.nextFloat();
-						clear.a = c.nextFloat();
-					}
-					color.clear = clear;
+					var r = c.nextFloat(), g = c.nextFloat(), b = c.nextFloat();
+					ColorTarget.ClearValue.set(color, r, g, b, c.nextFloat());
 				} else
 					color.clear = null;
 				var t = c.next(), r = c.next(), layer = c.next();

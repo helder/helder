@@ -406,7 +406,7 @@ export declare class Renderer {
 	// null: none), taken by the standard material, Sky, Environment and
 	// GpuParticles; a material opts out with Material.fog
 	fog: Fog | null;
-	clearColor: unknown;
+	clearColor: Vec4;
 	// the last draw's draws in its main pass and primitives culled
 	// (statistics); its shadow maps' draws (Shadows: every cascade's; 0
 	// without); every renderer's by pass in helder.gfx.FrameCounts
@@ -874,7 +874,7 @@ export declare class Transmission {
 	// the frame's pass (pass, into textures of width x height texels of
 	// format) ended, its colour so far copied (resolved) and its mips made,
 	// the pass begun again where it was; returns the copy
-	capture(enc: Encoder, pass: { colors: Array<{ load: number; clear?: unknown; texture?: number; resolve?: number; layer?: number }>; depth?: { load: number; clear?: number; texture?: number }; queries?: number }, width: number, height: number, format: number): number;
+	capture(enc: Encoder, pass: { colors: Array<{ load: number; clear?: Vec4; texture?: number; resolve?: number; layer?: number }>; depth?: { load: number; clear?: number; texture?: number }; queries?: number }, width: number, height: number, format: number): number;
 	// the copy's mip levels below its first (the roughest's)
 	levels(): number;
 	dispose(): void;

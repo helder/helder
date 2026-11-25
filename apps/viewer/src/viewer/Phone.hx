@@ -52,8 +52,8 @@ class Phone implements Markup {
 	// (the list's rows)
 	public static inline var ROW = 62.0;
 	// (the check's ring and its wash over a picture, whatever the theme)
-	static final WHITE = helder.ui.Color.parse("#ffffff");
-	static final SHADE = helder.ui.Color.parse("rgba(0,0,0,0.25)");
+	static final WHITE = helder.gfx.Color.parse("#ffffff");
+	static final SHADE = helder.gfx.Color.parse("rgba(0,0,0,0.25)");
 
 	// (at: the state once made, a story's to bring it to its moment)
 	public static function Root(props:{x:Explorer, ?at:PhoneState->Void}):View {
@@ -239,7 +239,7 @@ class Phone implements Markup {
 		}
 		return <view tag={"tile-" + e().name} grow={1} align-items="center" row-gap={4} onTap={_ -> if (!p.selecting.peek()) p.open(e().name)}>
 			<view slot="photo" data-selected={on() && p.selecting()} width={side} height={side} shrink={0} align-items="center" justify="center" radius={9}
-				background={e().kind == Folder ? helder.ui.Color.TRANSPARENT : Look.ref.fill} overflow="hidden"
+				background={e().kind == Folder ? helder.gfx.Color.TRANSPARENT : Look.ref.fill} overflow="hidden"
 				opacity={x.zoom.flying() == x.browser.path(e().name) ? 0 : 1} ref={(n:Node) -> x.zoom.tile(n, x.browser.path(e().name))}>
 				{() -> square(x, e(), side)}
 				<Show when={p.selecting()}>
@@ -272,7 +272,7 @@ class Phone implements Markup {
 			return x.browser.selection.has(e().name);
 		}
 		return <view direction="row" align-items="center" column-gap={12} height={ROW} padding="0 16" grow={1}
-			background={on() && p.selecting() ? Look.ref.accentSoft : helder.ui.Color.TRANSPARENT} onTap={_ -> if (!p.selecting.peek()) p.open(e().name)}>
+			background={on() && p.selecting() ? Look.ref.accentSoft : helder.gfx.Color.TRANSPARENT} onTap={_ -> if (!p.selecting.peek()) p.open(e().name)}>
 			<view width={42} height={42} align-items="center" justify="center" radius={6} overflow="hidden"
 				opacity={x.zoom.flying() == x.browser.path(e().name) ? 0 : 1} ref={(n:Node) -> x.zoom.tile(n, x.browser.path(e().name))}>{() -> square(x, e(), 42)}</view>
 			<view grow={1} min-width={0} row-gap={2}>

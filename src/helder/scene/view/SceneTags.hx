@@ -198,7 +198,7 @@ class SceneTags {
 	// which InputMap bind): at rest at left, bottom (points from the lower
 	// left), where the thumb holds it once it does; the pointer goes through
 	// it (StickNode)
-	public static function Stick(props:{bind:helder.scene.input.VirtualStick, ?left:Float, ?bottom:Float, ?color:helder.ui.Color, ?knob:helder.ui.Color}):helder.ui.Node {
+	public static function Stick(props:{bind:helder.scene.input.VirtualStick, ?left:Float, ?bottom:Float, ?color:helder.gfx.Color, ?knob:helder.gfx.Color}):helder.ui.Node {
 		var n = new StickNode(props.bind);
 		if (props.left != null) n.restLeft = props.left;
 		if (props.bottom != null) n.restBottom = props.bottom;

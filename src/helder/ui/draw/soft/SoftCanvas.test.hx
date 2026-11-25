@@ -1,7 +1,7 @@
 package helder.ui.draw.soft;
 
 import helder.test.Test;
-import helder.ui.Color;
+import helder.gfx.Color;
 
 // The CPU's canvas: a rectangle's pixels, its edge's coverage, a rounded
 // clip, an opacity group drawn as one, nothing outside what is drawn

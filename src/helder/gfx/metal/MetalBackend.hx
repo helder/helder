@@ -708,10 +708,10 @@ class MetalBackend {
 		Msg.vInt(attachment, S.setStoreAction, resolve ? MTL.StoreActionStoreAndMultisampleResolve : into ? MTL.StoreActionMultisampleResolve : MTL.StoreActionStore);
 		if (c.load == Clear) {
 			var k = c.clear;
-			clear.value.red = k == null ? 0 : k.r;
-			clear.value.green = k == null ? 0 : k.g;
-			clear.value.blue = k == null ? 0 : k.b;
-			clear.value.alpha = k == null ? 1 : k.a;
+			clear.value.red = k == null ? 0 : k.x;
+			clear.value.green = k == null ? 0 : k.y;
+			clear.value.blue = k == null ? 0 : k.z;
+			clear.value.alpha = k == null ? 1 : k.w;
 			Msg.vClear(attachment, S.setClearColor, clear.value);
 		}
 		Msg.vPtr(depthAttachment, S.setTexture, depthTexture);

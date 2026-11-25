@@ -1,3 +1,4 @@
+import helder.gfx.shader.Vec4;
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.gfx.shader.ShaderMath.*;
@@ -10,7 +11,7 @@ class Palette {
 	final quad:Buffer;
 	final pipeline:Pipeline;
 	final bytes = Bytes.alloc(PaletteShader.uniforms[0].size);
-	final pass:PassDesc = {colors: [{load: Clear, clear: new Color(0.125, 0.125, 0.125)}]};
+	final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0.125, 0.125, 0.125, 1)}]};
 
 	public function new(device:Device) {
 		var data = PaletteShader.vertexBytes([

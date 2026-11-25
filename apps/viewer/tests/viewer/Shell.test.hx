@@ -371,13 +371,13 @@ private class Nothing implements helder.ui.Canvas {
 
 	public function popTransform() {}
 
-	public function rect(x:Float, y:Float, w:Float, h:Float, radius:Float, fill:helder.ui.Color, borderWidth:Float, border:helder.ui.Color,
+	public function rect(x:Float, y:Float, w:Float, h:Float, radius:Float, fill:helder.gfx.Color, borderWidth:Float, border:helder.gfx.Color,
 		?corners:helder.ui.Corners, ?sides:helder.ui.Edges, style:helder.ui.BorderStyle = Solid) {}
 
-	public function shadow(x:Float, y:Float, w:Float, h:Float, radius:Float, color:helder.ui.Color, blur:Float, ?corners:helder.ui.Corners,
+	public function shadow(x:Float, y:Float, w:Float, h:Float, radius:Float, color:helder.gfx.Color, blur:Float, ?corners:helder.ui.Corners,
 		?offset:Array<Float>) {}
 
-	public function insetShadow(x:Float, y:Float, w:Float, h:Float, radius:Float, color:helder.ui.Color, blur:Float, dx:Float, dy:Float, spread:Float,
+	public function insetShadow(x:Float, y:Float, w:Float, h:Float, radius:Float, color:helder.gfx.Color, blur:Float, dx:Float, dy:Float, spread:Float,
 		?corners:helder.ui.Corners) {}
 
 	public function path(p:helder.ui.Path, fill:Null<helder.ui.Paint>, ?stroke:helder.ui.Stroke) {}
@@ -385,11 +385,11 @@ private class Nothing implements helder.ui.Canvas {
 	public function image(img:helder.image.Image, x:Float, y:Float, w:Float, h:Float, u0:Float, v0:Float, u1:Float, v1:Float, radius:Float,
 		?corners:helder.ui.Corners) {}
 
-	public function text(p:helder.ui.Paragraph, x:Float, y:Float, width:Float, align:helder.ui.TextAlign, color:helder.ui.Color,
-		?colors:Array<helder.ui.Color>) {}
+	public function text(p:helder.ui.Paragraph, x:Float, y:Float, width:Float, align:helder.ui.TextAlign, color:helder.gfx.Color,
+		?colors:Array<helder.gfx.Color>) {}
 
-	public function textShadow(p:helder.ui.Paragraph, x:Float, y:Float, width:Float, align:helder.ui.TextAlign, color:helder.ui.Color, blur:Float,
-		?colors:Array<helder.ui.Color>) {}
+	public function textShadow(p:helder.ui.Paragraph, x:Float, y:Float, width:Float, align:helder.ui.TextAlign, color:helder.gfx.Color, blur:Float,
+		?colors:Array<helder.gfx.Color>) {}
 }
 
 // (what is drawn, as lines: each picture and text with the opacity it is drawn at)
@@ -407,7 +407,7 @@ private class Log extends Nothing {
 			?corners:helder.ui.Corners)
 		lines.push('image ${img.width}x${img.height} alpha ${alphas[alphas.length - 1]} at $x,$y ${w}x$h');
 
-	override public function text(p:helder.ui.Paragraph, x:Float, y:Float, width:Float, align:helder.ui.TextAlign, color:helder.ui.Color,
-			?colors:Array<helder.ui.Color>)
+	override public function text(p:helder.ui.Paragraph, x:Float, y:Float, width:Float, align:helder.ui.TextAlign, color:helder.gfx.Color,
+			?colors:Array<helder.gfx.Color>)
 		lines.push('text alpha ${alphas[alphas.length - 1]} at $x,$y');
 }

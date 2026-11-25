@@ -1,3 +1,4 @@
+import helder.gfx.shader.Vec4;
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.os.*;
@@ -79,7 +80,7 @@ class ControlsBench implements Markup {
 	}
 
 	static var updated = 0.0;
-	static final pass:PassDesc = {colors: [{load: Clear, clear: new helder.gfx.Color(1, 1, 1)}]};
+	static final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(1, 1, 1, 1)}]};
 
 	static function frame(device:Device, r:Renderer, ui:Ui) {
 		var before = hxmc.GcStats.threadBytesAllocated();

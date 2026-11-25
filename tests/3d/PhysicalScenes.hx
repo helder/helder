@@ -40,7 +40,7 @@ class PhysicalScenes {
 		env.intensity = 6.055;
 		env.background = false;
 		r.use(env);
-		r.clearColor = new Color(0.02, 0.02, 0.025, 1);
+		r.clearColor = new Vec4(0.02, 0.02, 0.025, 1);
 		r.sunDirection = new Vec3(-0.5, 0.7, 0.6);
 		r.sunColor = new Vec3(1.5, 1.45, 1.4);
 		var world = new World();

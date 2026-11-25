@@ -1,3 +1,4 @@
+import helder.gfx.shader.Vec4;
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.os.*;
@@ -68,7 +69,7 @@ class StressTest implements Markup {
 		var device = Device.create(Surface.headless(W, H));
 		var ui = new Ui(new DrawText(), W, H);
 		var r = new Renderer(device);
-		var pass:PassDesc = {colors: [{load: Clear, clear: new helder.gfx.Color(1, 1, 1)}]};
+		var pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(1, 1, 1, 1)}]};
 		var pixels = Bytes.alloc(W * H * 4);
 		var times:Array<String> = [];
 		var t = haxe.Timer.stamp();

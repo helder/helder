@@ -1,7 +1,10 @@
 package helder.ui.draw;
 
+import helder.gfx.shader.Vec4;
+
 import haxe.io.Bytes;
 import helder.gfx.*;
+import helder.gfx.ColorTarget.ClearValue;
 import helder.text.GlyphAtlas;
 import helder.ui.*;
 import helder.ui.Paint;
@@ -491,13 +494,8 @@ class Renderer implements TextureCanvas {
 			}
 		}
 		// (over the frame's background; in a group, over nothing)
-		var c = g.pass.colors[0].clear, bg = batch == quads || batch == kept.batch ? background : Color.TRANSPARENT;
-		@:privateAccess {
-			c.r = bg.r / 255;
-			c.g = bg.g / 255;
-			c.b = bg.b / 255;
-			c.a = bg.a / 255;
-		}
+		var bg = batch == quads || batch == kept.batch ? background : Color.TRANSPARENT;
+		ClearValue.set(g.pass.colors[0], bg.r / 255, bg.g / 255, bg.b / 255, bg.a / 255);
 		if (groupPipeline == null) {
 			var d = UiShader.pipeline({blend: Premultiplied});
 			d.layout = layout();
@@ -703,13 +701,8 @@ class Renderer implements TextureCanvas {
 		var g = k.group;
 		g.open(device, TILE, TILE);
 		g.frame = frames;
-		var c = g.pass.colors[0].clear, b:Color = l.scroll ? l.backdrop : 0;
-		@:privateAccess {
-			c.r = b.r / 255;
-			c.g = b.g / 255;
-			c.b = b.b / 255;
-			c.a = b.a / 255;
-		}
+		var b:Color = l.scroll ? l.backdrop : 0;
+		ClearValue.set(g.pass.colors[0], b.r / 255, b.g / 255, b.b / 255, b.a / 255);
 		var s = scale, x0 = i * TILE, y0 = j * TILE;
 		k.content = l.content;
 		k.stamp = l.stamp;
@@ -1092,7 +1085,7 @@ class Renderer implements TextureCanvas {
 	var cutY1 = 0.0;
 	var whole = false;
 	var damaged:Null<Damage> = null;
-	final keptPass:PassDesc = {colors: [{load: Load, clear: new helder.gfx.Color(1, 1, 1)}]};
+	final keptPass:PassDesc = {colors: [{load: Load, clear: new Vec4(1, 1, 1, 1)}]};
 	var frameW = 1.0;
 	var frameH = 1.0;
 
@@ -1178,12 +1171,7 @@ class Renderer implements TextureCanvas {
 	// (the rectangles drawn into the frame kept, in a pass of their own)
 	function paste(enc:Encoder) {
 		var c = background, k = kept, p = keptPass.colors[0];
-		@:privateAccess {
-			p.clear.r = c.r / 255;
-			p.clear.g = c.g / 255;
-			p.clear.b = c.b / 255;
-			p.clear.a = 1;
-		}
+		ClearValue.set(p, c.r / 255, c.g / 255, c.b / 255, 1);
 		p.load = whole ? Clear : Load;
 		render(enc, k, keptPass);
 	}
@@ -2176,7 +2164,7 @@ private class Group {
 	public final id = -(0x40000000 + ++ids);
 	public final batch = new QuadBatch(@:privateAccess Renderer.STRIDE, 64, true);
 	public final textures:Array<Null<Texture>> = [];
-	public final pass:PassDesc = {colors: [{load: Clear, clear: new helder.gfx.Color(0, 0, 0, 0)}]};
+	public final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0, 0, 0, 0)}]};
 	public var texture:Null<Texture> = null;
 	public var textureWidth = 0;
 	public var textureHeight = 0;

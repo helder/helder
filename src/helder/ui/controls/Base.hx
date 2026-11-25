@@ -1,6 +1,6 @@
 package helder.ui.controls;
 
-import helder.ui.Color;
+import helder.gfx.Color;
 import helder.ui.Shadow;
 import helder.ui.Transform;
 import helder.ui.controls.Recipe;

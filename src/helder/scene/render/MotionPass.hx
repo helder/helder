@@ -1,5 +1,7 @@
 package helder.scene.render;
 
+import helder.gfx.shader.Vec4;
+
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.gfx.shader.Mat4;
@@ -27,7 +29,7 @@ class MotionPass implements RenderFeature.MotionSource {
 	// (the blocks as written, kept: nothing allocated per draw)
 	final frameBlock:VelocityFrame = {viewProj: Mat4.identity(), current: Mat4.identity(), previous: Mat4.identity()};
 	final objectBlock:VelocityObject = {model: Mat4.identity(), previous: Mat4.identity()};
-	final pass:PassDesc = {colors: [{load: Clear, clear: new Color(0, 0, 0, 0)}], depth: {load: Clear}};
+	final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0, 0, 0, 0)}], depth: {load: Clear}};
 	final plainFrame:Int;
 	final plainObject:Int;
 	final instancedFrame:Int;

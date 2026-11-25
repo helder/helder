@@ -1,5 +1,7 @@
 package studio;
 
+import helder.gfx.shader.Vec4;
+
 import helder.ui.*;
 import helder.ui.view.Interpreter.Interpreted;
 import studio.Project;
@@ -125,7 +127,7 @@ class Designs {
 			r.scale = scale;
 			var px = haxe.io.Bytes.alloc(w * h * 4);
 			var enc = device.beginFrame();
-			enc.beginPass({colors: [{load: Clear, clear: new helder.gfx.Color(1, 1, 1)}]});
+			enc.beginPass({colors: [{load: Clear, clear: new Vec4(1, 1, 1, 1)}]});
 			r.begin(w, h);
 			o.ui.paint(r);
 			r.end(enc);
@@ -165,7 +167,7 @@ class Designs {
 		snapping = true;
 		win.renderer.nextPass(enc -> {
 			if (late) return;
-			enc.beginPass({colors: [{load: Clear, clear: new helder.gfx.Color(1, 1, 1), texture: t}]});
+			enc.beginPass({colors: [{load: Clear, clear: new Vec4(1, 1, 1, 1), texture: t}]});
 			r.begin(w, h);
 			o.ui.paint(r);
 			r.end(enc);

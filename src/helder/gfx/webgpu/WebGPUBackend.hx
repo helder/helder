@@ -209,7 +209,7 @@ class WebGPUBackend {
 		var queries = p.queries == null ? 0 : p.queries.id();
 		var layer = c.layer == null ? 0 : c.layer;
 		if (k == null) WebGPU.pass_begin(color, resolve, cast c.load, 0, 0, 0, 1, depthTexture, cast depthLoad, depth, queries, layer) else
-			WebGPU.pass_begin(color, resolve, cast c.load, k.r, k.g, k.b, k.a, depthTexture, cast depthLoad, depth, queries, layer);
+			WebGPU.pass_begin(color, resolve, cast c.load, k.x, k.y, k.z, k.w, depthTexture, cast depthLoad, depth, queries, layer);
 	}
 
 	// ---- occlusion queries (the JavaScript side's: query_set)

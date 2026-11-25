@@ -2,6 +2,8 @@
 // summary: helder.ui.code: a large TSX file highlighted as it is edited, multi-cursor, find and replace, diagnostics and decorations
 // tags: ui, text input, code
 // demo: canvas 900x640
+
+import helder.gfx.Color;
 import helder.syntax.Document;
 import helder.ui.*;
 import helder.ui.code.CodeEditor;

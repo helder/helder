@@ -1,6 +1,5 @@
 package helder.canvas;
 
-import helder.canvas.Paint.Rgba;
 
 // How a drawn pixel (premultiplied, its coverage already in) combines
 // with the one under it: d = op(s, d). Porter-Duff's operators share one
@@ -16,7 +15,7 @@ interface Blender {
 	// -1 - (fa * 4 + fb) for Porter-Duff's, 0 to 10 the separable modes in
 	// Blend's order, 11 to 14 hue, saturation, color, luminosity
 	var code(get, never):Int;
-	function blend(s:Rgba, d:Rgba):Void;
+	function blend(s:Pixel, d:Pixel):Void;
 }
 
 class Blend {
@@ -228,7 +227,7 @@ final class PorterDuff implements Blender {
 	static inline function factor(f:Int, other:Float):Float
 		return f == ZERO ? 0 : f == ONE ? 1 : f == ALPHA ? other : 1 - other;
 
-	public function blend(s:Rgba, d:Rgba) {
+	public function blend(s:Pixel, d:Pixel) {
 		var ka = factor(fa, d.a), kb = factor(fb, s.a);
 		d.r = s.r * ka + d.r * kb;
 		d.g = s.g * ka + d.g * kb;
@@ -260,7 +259,7 @@ abstract class Separable implements Blender {
 
 	abstract function channel(cb:Float, cs:Float):Float;
 
-	public function blend(s:Rgba, d:Rgba) {
+	public function blend(s:Pixel, d:Pixel) {
 		var as = s.a, ab = d.a;
 		if (as <= 0) return;
 		if (ab <= 0) {
@@ -477,7 +476,7 @@ final class NonSeparable implements Blender {
 		} else this.r = this.g = this.b = 0;
 	}
 
-	public function blend(s:Rgba, d:Rgba) {
+	public function blend(s:Pixel, d:Pixel) {
 		var as = s.a, ab = d.a;
 		if (as <= 0) return;
 		if (ab <= 0) {
@@ -506,4 +505,15 @@ final class NonSeparable implements Blender {
 		d.b = s.b * (1 - ab) + d.b * (1 - as) + both * b;
 		d.a = as + ab - both;
 	}
+}
+
+// A pixel in floats, premultiplied: a blend mode's operands (scratch the
+// canvas fills, not a colour: helder.gfx.Color is that)
+final class Pixel {
+	public var r = 0.0;
+	public var g = 0.0;
+	public var b = 0.0;
+	public var a = 0.0;
+
+	public function new() {}
 }

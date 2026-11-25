@@ -24,7 +24,7 @@ class DebugDemo {
 		var window = new Window("Debug drawing", 640, 400);
 		var device = Device.create(window.surface);
 		var renderer = new Renderer(device);
-		renderer.clearColor = new Color(0.05, 0.06, 0.08);
+		renderer.clearColor = new Vec4(0.05, 0.06, 0.08, 1);
 		// #region helpers
 		renderer.use(new DebugDraw());
 		var world = new World("debug");

@@ -29,7 +29,7 @@ class Lights {
 		var device = Device.create(window.surface);
 		var shadows = new Shadows(device, 1024).local({atlas: 1024, maxLocal: 2});
 		var renderer = new Renderer(device).use(shadows).use(new ClusteredLights(device, {maxLights: 256}));
-		renderer.clearColor = new Color(0.01, 0.012, 0.025);
+		renderer.clearColor = new Vec4(0.01, 0.012, 0.025, 1);
 		renderer.sky = new Vec3(0.025, 0.03, 0.05);
 		renderer.ground = new Vec3(0.01, 0.01, 0.012);
 

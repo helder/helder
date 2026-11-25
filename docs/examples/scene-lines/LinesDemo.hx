@@ -24,7 +24,7 @@ class LinesDemo {
 		var window = new Window("Lines", 640, 400);
 		var device = Device.create(window.surface);
 		var renderer = new Renderer(device);
-		renderer.clearColor = new Color(0.06, 0.07, 0.1);
+		renderer.clearColor = new Vec4(0.06, 0.07, 0.1, 1);
 		// #region lines
 		renderer.use(new LineRenderer(device));
 		var world = new World("lines");

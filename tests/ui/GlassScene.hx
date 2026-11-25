@@ -1,3 +1,4 @@
+import helder.gfx.Color;
 import helder.ui.*;
 
 // Glass over backgrounds (GlassWindow: the system's, GlassTest: drawn):

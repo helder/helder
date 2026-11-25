@@ -1,9 +1,10 @@
 package helder.canvas;
 
+import helder.gfx.Color;
 import haxe.ds.Vector;
 import haxe.io.Bytes;
 import helder.canvas.Blend.Blender;
-import helder.canvas.Paint.Rgba;
+import helder.canvas.Blend.Pixel;
 import helder.canvas.Paint.Shader;
 import hxmc.simd.I32x4;
 import hxmc.simd.U16x8;
@@ -36,8 +37,8 @@ final class Canvas implements Painter {
 	// a row's coverage, a span's shaded colours
 	final cov:Bytes;
 	final span:Vector<Float>;
-	final src = new Rgba();
-	final dst = new Rgba();
+	final src = new Pixel();
+	final dst = new Pixel();
 	final inverse = new Matrix();
 	final scratch = new Path();
 	var image:Null<Pattern> = null;
@@ -217,7 +218,7 @@ final class Canvas implements Painter {
 	final erase = new Paint(0xFF000000);
 
 	// everything transparent, the clip and transform aside
-	public function clear(color = 0) {
+	public function clear(color:Color = 0) {
 		var p = premultiplied(color);
 		for (i in 0...width * height)
 			target.setInt32(i * 4, p);

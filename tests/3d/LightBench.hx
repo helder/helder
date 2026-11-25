@@ -67,7 +67,7 @@ class LightBench {
 
 	static function make(name:String, device:Device, aspect:Float):{renderer:Renderer, draw:Encoder->Void, note:Void->String} {
 		var r = new Renderer(device);
-		r.clearColor = new Color(0.02, 0.025, 0.04);
+		r.clearColor = new Vec4(0.02, 0.025, 0.04, 1);
 		r.sky = new Vec3(0.05, 0.055, 0.07);
 		r.ground = new Vec3(0.03, 0.03, 0.03);
 		var world = new World();

@@ -1,3 +1,4 @@
+import helder.gfx.Color;
 import helder.os.*;
 import helder.ui.*;
 import helder.ui.draw.*;

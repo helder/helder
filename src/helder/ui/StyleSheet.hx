@@ -1,5 +1,7 @@
 package helder.ui;
 
+import helder.gfx.Color;
+
 // A theme: its rules (Rule) and the colours their token references name,
 // light and dark (names without the dashes: "primary", "ring"). Installed
 // per window (Ui.theme) or for a subtree (Node.theme, the nearest

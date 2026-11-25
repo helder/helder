@@ -1,5 +1,6 @@
 package helder.canvas;
 
+import helder.gfx.Color;
 import haxe.io.Bytes;
 import helder.canvas.Blend.Blender;
 
@@ -26,7 +27,7 @@ interface Painter {
 	function fill(path:Path, paint:Paint, evenOdd:Bool = false):Void;
 	function stroke(path:Path, style:Stroke, paint:Paint):Void;
 	function clearRect(x:Float, y:Float, w:Float, h:Float):Void;
-	function clear(color:Int = 0):Void;
+	function clear(color:Color = 0):Void;
 	function drawImage(img:Bitmap, sx:Float, sy:Float, sw:Float, sh:Float, dx:Float, dy:Float, dw:Float, dh:Float, paint:Paint, smooth:Bool = true):Void;
 	// straight RGBA in and out (getImageData's, putImageData's)
 	function readPixels(out:Bytes, x:Int, y:Int, w:Int, h:Int):Void;

@@ -107,7 +107,7 @@ stored as it is; shaders and blend modes compose in floats.
 against Chromium in helder.ui's tests; helder.ui's `Svg` and the CLI's
 icons) draws through it: its groups' opacities as layers, its clip paths
 as clips, its gradients (spread included) as shaders, its strokes as
-`Stroke`, its colours CSS's (`CssColor`: the grammar helder.ui's `Color`
+`Stroke`, its colours CSS's (`helder.gfx.CssColor`: the grammar of helder.gfx's `Color`
 and the DOM facade read too). helder.ui's `Path.render` draws on it; its CSS gradients
 (`Gradient.render`) are this one's shaders (`premultiplied`: stops mixed
 as CSS mixes them), their rows shaded without a canvas.

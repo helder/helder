@@ -1,5 +1,6 @@
 package helder.canvas.doc;
 
+import helder.gfx.Color;
 import haxe.io.Bytes;
 import helder.canvas.Blend.Blender;
 
@@ -91,7 +92,7 @@ class Tee implements Painter {
 		b.clearRect(x, y, w, h);
 	}
 
-	public function clear(color = 0) {
+	public function clear(color:Color = 0) {
 		a.clear(color);
 		b.clear(color);
 	}

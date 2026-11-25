@@ -1,7 +1,7 @@
 package helder.ui.motion;
 
 import helder.canvas.Matrix;
-import helder.ui.Color;
+import helder.gfx.Color;
 import helder.ui.ScreenContext;
 import helder.async.Errors;
 

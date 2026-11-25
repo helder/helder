@@ -1,5 +1,6 @@
 package helder.canvas;
 
+import helder.gfx.Color;
 import haxe.ds.Vector;
 
 // An image filter applied to a layer's pixels (premultiplied) before it is
@@ -78,9 +79,9 @@ final class DropShadow implements Filter {
 	public final dx:Float;
 	public final dy:Float;
 	public final sigma:Float;
-	public final color:Int;
+	public final color:Color;
 
-	public function new(dx:Float, dy:Float, sigma:Float, color:Int) {
+	public function new(dx:Float, dy:Float, sigma:Float, color:Color) {
 		this.dx = dx;
 		this.dy = dy;
 		this.sigma = sigma;
@@ -208,9 +209,9 @@ final class ColorMatrix implements Filter {
 // moved by the offset, then itself
 final class Shadow implements Filter {
 	public final sigma:Float;
-	public final color:Int;
+	public final color:Color;
 
-	public function new(sigma:Float, color:Int) {
+	public function new(sigma:Float, color:Color) {
 		this.sigma = sigma;
 		this.color = color;
 	}

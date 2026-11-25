@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.gfx.Color;
 import helder.os.DragOperation;
 import helder.ui.platform.*;
 import helder.ui.draw.Damage;

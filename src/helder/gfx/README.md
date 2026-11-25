@@ -30,7 +30,7 @@ var pipeline = device.createPipeline(CubeShader.pipeline({
 }));
 
 var enc = device.beginFrame();                        // null: no frame now (a hidden window)
-enc.beginPass({colors: [{load: Clear, clear: new Color(0.1, 0.1, 0.12)}], depth: {load: Clear}});
+enc.beginPass({colors: [{load: Clear, clear: new Vec4(0.1, 0.1, 0.12, 1)}], depth: {load: Clear}});
 enc.setPipeline(pipeline);
 CubeShader.params.cam.write({mvp: mvp, model: model}, bytes); // a uniform block's std140 bytes
 enc.setUniforms(0, bytes);                            // its slot: into the frame's uniform ring

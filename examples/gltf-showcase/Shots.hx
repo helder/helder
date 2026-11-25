@@ -1,3 +1,4 @@
+import helder.gfx.shader.Vec4;
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.image.PngEncoder;
@@ -33,7 +34,7 @@ class Shots {
 		// (a plain grey behind the models, as the sample viewer's renders)
 		for (e in show.environments)
 			e.background = false;
-		renderer.clearColor = new Color(0.25, 0.25, 0.25, 1);
+		renderer.clearColor = new Vec4(0.25, 0.25, 0.25, 1);
 		var post = new PostProcess(device, RGBA8, true);
 		post.bloom = 0.02;
 		var color = device.createTexture({width: size, height: size, format: RGBA16F, renderTarget: true});

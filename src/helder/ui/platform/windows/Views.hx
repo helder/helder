@@ -1,5 +1,6 @@
 package helder.ui.platform.windows;
 
+import helder.gfx.Color;
 import helder.os.windows.User32;
 import helder.ui.*;
 import helder.ui.platform.windows.Win32;

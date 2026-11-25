@@ -18,7 +18,7 @@ class GodRaysPass implements PostPass {
 	var pipeline:Null<Pipeline> = null;
 	final bytes = Bytes.alloc(GodRaysShader.uniforms[0].size);
 	final block:GodRaysParams = {sun: new Vec4(0, 0, 0, 0), p: new Vec4(0, 0, 0, 0), size: new Vec4(0, 0, 0, 0)};
-	final pass:PassDesc = {colors: [{load: Clear, clear: new Color(0, 0, 0, 0)}]};
+	final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0, 0, 0, 0)}]};
 	var w = 0;
 	var h = 0;
 	// (the sun's fade this frame: 0 behind the camera)

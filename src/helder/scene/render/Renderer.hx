@@ -91,7 +91,7 @@ class Renderer {
 	// null: none), taken by the standard material, Sky, Environment and
 	// GpuParticles; a material opts out with Material.fog
 	public var fog:Null<Fog> = null;
-	public var clearColor = new Color(0.07, 0.08, 0.1);
+	public var clearColor = new Vec4(0.07, 0.08, 0.1, 1);
 	// the last draw's draws in its main pass and primitives culled
 	// (statistics); its shadow maps' draws (Shadows: every cascade's; 0
 	// without); every renderer's by pass in helder.gfx.FrameCounts

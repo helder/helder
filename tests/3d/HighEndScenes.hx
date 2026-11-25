@@ -35,7 +35,7 @@ class HighEndScenes {
 	public static function make(name:String, device:Device):Encoder->Void {
 		var r = new Renderer(device, true, 1, true);
 		Scenes.renderer = r;
-		r.clearColor = new Color(0.02, 0.03, 0.06, 1);
+		r.clearColor = new Vec4(0.02, 0.03, 0.06, 1);
 		r.sunColor = new Vec3(1.6, 1.5, 1.35);
 		r.sunDirection = new Vec3(-0.5, 0.9, 0.35);
 		r.sky = new Vec3(0.45, 0.52, 0.66);
@@ -299,7 +299,7 @@ class Show {
 			triangle = device.createBuffer({size: v.length, usage: Vertex, data: v});
 			sampler = device.createSampler({filter: Nearest, wrap: Clamp});
 		}
-		enc.beginPass({colors: [{load: Clear, clear: new Color(0, 0, 0, 1)}]});
+		enc.beginPass({colors: [{load: Clear, clear: new Vec4(0, 0, 0, 1)}]});
 		enc.setPipeline(pipeline);
 		enc.setTexture(ShowColorShader.textures[0].binding, t, sampler);
 		enc.setVertexBuffer(0, triangle);

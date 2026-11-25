@@ -2,7 +2,7 @@ package helder.scene.view;
 
 import helder.scene.input.VirtualStick;
 import helder.ui.Canvas;
-import helder.ui.Color;
+import helder.gfx.Color;
 
 // <Stick>'s node: a VirtualStick drawn over the window (helder.ui), its base
 // a ring of its radius and its knob a disc, where the thumb holds it, else

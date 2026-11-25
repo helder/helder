@@ -1312,10 +1312,10 @@ class D3D11Backend {
 		ID3D11DeviceContext.RSSetViewports(context, 1, viewport);
 		if (c.load != Load && (offscreen || onto.isNull())) {
 			var k = c.clear;
-			clear[0] = k == null ? 0 : k.r;
-			clear[1] = k == null ? 0 : k.g;
-			clear[2] = k == null ? 0 : k.b;
-			clear[3] = k == null ? 1 : k.a;
+			clear[0] = k == null ? 0 : k.x;
+			clear[1] = k == null ? 0 : k.y;
+			clear[2] = k == null ? 0 : k.z;
+			clear[3] = k == null ? 1 : k.w;
 			ID3D11DeviceContext.ClearRenderTargetView(context, rtv, clear);
 		}
 		if (d != null && d.load != Load) ID3D11DeviceContext.ClearDepthStencilView(context, dsv, D3D.CLEAR_DEPTH, d.clear == null ? 1 : d.clear, 0);

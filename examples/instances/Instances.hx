@@ -2,6 +2,8 @@
 // summary: Sixty-three shapes in three instanced draws: a vertex buffer for the shapes, an instance buffer for where, how big, how turned and what colour
 // tags: gfx, shaders, instancing
 // demo: canvas 512x384
+
+import helder.gfx.shader.Vec4;
 import InstancesShader;
 import haxe.io.Bytes;
 import helder.gfx.*;
@@ -49,7 +51,7 @@ class Instances {
 	final indices:Buffer;
 	final instances:Buffer;
 	final pipeline:Pipeline;
-	final pass:PassDesc = {colors: [{load: Clear, clear: new Color(0.1, 0.1, 0.12)}]};
+	final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0.1, 0.1, 0.12, 1)}]};
 	final field = Bytes.alloc(16);
 
 	public function new(device:Device) {

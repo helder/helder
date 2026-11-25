@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.gfx.Color;
 import helder.image.Image;
 
 // A node showing an Image in its content box, as fit says (Fill by

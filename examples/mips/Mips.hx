@@ -38,7 +38,7 @@ class Mips {
 	final checks:Texture;
 	final levels:Texture;
 	final trilinear:Sampler;
-	final pass:PassDesc = {colors: [{load: Clear, clear: new Color(0.1, 0.1, 0.12)}], depth: {load: Clear}};
+	final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0.1, 0.1, 0.12, 1)}], depth: {load: Clear}};
 	final camera = Bytes.alloc(64);
 	final swatch = [for (_ in 0...4) Bytes.alloc(16)];
 

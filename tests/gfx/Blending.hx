@@ -30,7 +30,7 @@ class Blending {
 
 	final quad:Buffer;
 	final pipelines:Array<Pipeline>;
-	final pass:PassDesc = {colors: [{load: Clear, clear: new Color(0.125, 0.125, 0.125)}]};
+	final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0.125, 0.125, 0.125, 1)}]};
 
 	public function new(device:Device) {
 		var c = vec4(0.5, 0.25, 0, 0.5);

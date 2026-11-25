@@ -1,3 +1,4 @@
+import helder.gfx.shader.Vec4;
 import helder.gfx.*;
 import helder.gfx.shader.Vec3;
 import helder.os.*;
@@ -45,11 +46,11 @@ class Size {
 	static function main() {
 		var window = new Window("Size", 320, 240);
 		var device = Device.create(window.surface);
-		var pass:PassDesc = {colors: [{load: Clear, clear: new Color(0.1, 0.1, 0.12)}]};
+		var pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0.1, 0.1, 0.12, 1)}]};
 		#if (size_level >= 1)
 		var q = helder.scene.math.Quat.axisAngle(new Vec3(0, 1, 0), 0.3);
 		var m = helder.scene.math.MathTools.inverse(q.toMat4());
-		pass.colors[0].clear = new Color(m.c0.x * 0.1, 0.1, 0.12);
+		pass.colors[0].clear = new Vec4(m.c0.x * 0.1, 0.1, 0.12, 1);
 		#end
 		#if (size_level >= 2)
 		var world = new helder.scene.World();

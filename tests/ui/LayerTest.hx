@@ -1,3 +1,4 @@
+import helder.gfx.shader.Vec4;
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.os.*;
@@ -38,7 +39,7 @@ class LayerTest {
 			uis[k].scale = scale;
 		}
 		rs[1].tiles = true;
-		var pass:PassDesc = {colors: [{load: Clear, clear: new helder.gfx.Color(1, 1, 1)}]};
+		var pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(1, 1, 1, 1)}]};
 		var pixels = [Bytes.alloc(w * h * 4), Bytes.alloc(w * h * 4)], whole = true;
 		function frame() {
 			for (k in 0...2) {

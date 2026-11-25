@@ -33,7 +33,7 @@ class Fountain {
 	final pipeline:Pipeline;
 	final spray:Null<ComputePipeline>;
 	final step = Bytes.alloc(Spray.params.step.block.size);
-	final pass:PassDesc = {colors: [{load: Clear, clear: new Color(0.02, 0.03, 0.06)}]};
+	final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0.02, 0.03, 0.06, 1)}]};
 	// the step (the uniform block's value, written each frame); the CPU's
 	// fallback: the drops, their bytes and the ids it calls Spray.main with
 	final cpu:Array<Drop> = [];

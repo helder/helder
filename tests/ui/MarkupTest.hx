@@ -1,3 +1,4 @@
+import helder.gfx.Color;
 import helder.ui.*;
 import helder.ui.actions.Keymap;
 import helder.view.*;

@@ -1,5 +1,7 @@
 package helder.ui;
 
+import helder.gfx.Color;
+
 // A run of text: measured and wrapped by the Ui's TextEngine to the width
 // its parent gives it (the content box), with the node's inherited font,
 // colour and alignment. Its children, when it has some, are spans: TextNodes

@@ -25,7 +25,7 @@ class Levels {
 		var window = new Window("Levels of detail", 640, 400);
 		var device = Device.create(window.surface);
 		var renderer = new Renderer(device);
-		renderer.clearColor = new Color(0.55, 0.65, 0.8);
+		renderer.clearColor = new Vec4(0.55, 0.65, 0.8, 1);
 		renderer.sky = new Vec3(0.45, 0.5, 0.6);
 		var world = new World("lod");
 		var sun = world.node("sun");

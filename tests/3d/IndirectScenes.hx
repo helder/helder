@@ -64,7 +64,7 @@ class IndirectScenes {
 			case "probes":
 				var r = new Renderer(device);
 				Scenes.renderer = r;
-				r.clearColor = new Color(0.01, 0.01, 0.015);
+				r.clearColor = new Vec4(0.01, 0.01, 0.015, 1);
 				r.sunColor = new Vec3(0, 0, 0);
 				r.sky = new Vec3(0.02, 0.02, 0.03);
 				r.ground = new Vec3(0.01, 0.01, 0.01);
@@ -118,7 +118,7 @@ class IndirectScenes {
 			case "arealight":
 				var r = new Renderer(device);
 				Scenes.renderer = r;
-				r.clearColor = new Color(0.01, 0.01, 0.015);
+				r.clearColor = new Vec4(0.01, 0.01, 0.015, 1);
 				r.sunColor = new Vec3(0, 0, 0);
 				r.sky = new Vec3(0.015, 0.015, 0.02);
 				r.ground = new Vec3(0.01, 0.01, 0.01);
@@ -151,7 +151,7 @@ class IndirectScenes {
 			case "lightmap":
 				var r = new Renderer(device).use(new Lightmaps(device));
 				Scenes.renderer = r;
-				r.clearColor = new Color(0.02, 0.025, 0.04);
+				r.clearColor = new Vec4(0.02, 0.025, 0.04, 1);
 				r.sky = new Vec3(0.3, 0.32, 0.4);
 				r.ground = new Vec3(0.3, 0.32, 0.4);
 				var sun = world.node("sun");

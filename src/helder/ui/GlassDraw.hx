@@ -1,5 +1,7 @@
 package helder.ui;
 
+import helder.gfx.Color;
+
 // Glass drawn where it is not the system's (Glass, GlassGroup): by its
 // shader where the canvas has a GPU (helder.ui.draw.GlassPass), else a
 // light fill and rim over a soft shadow (a PDF, a canvas with no GPU, Eval)

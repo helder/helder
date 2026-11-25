@@ -1,7 +1,8 @@
+import helder.gfx.shader.Vec4;
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.os.Surface;
-import helder.ui.Color;
+import helder.gfx.Color;
 import helder.ui.draw.Renderer;
 
 // helder.gfx's shared textures between two processes (the gfx-shared lane;
@@ -37,7 +38,7 @@ class SharedTexture {
 		r.rect(0, 0, W / 2, H / 2, 0, Color.rgb(swapped ? 0x00ff00 : 0xff0000), 0, Color.rgb(0));
 		r.rect(W / 2, H / 2, W / 2, H / 2, 0, Color.rgb(swapped ? 0xff0000 : 0x00ff00), 0, Color.rgb(0));
 		r.prepare(enc);
-		enc.beginPass({colors: [{load: Clear, clear: new helder.gfx.Color(0, 0, 1)}]});
+		enc.beginPass({colors: [{load: Clear, clear: new Vec4(0, 0, 1, 1)}]});
 		r.end(enc);
 		enc.endPass();
 		device.endFrame();
@@ -94,7 +95,7 @@ class SharedTexture {
 			r.begin(W, H);
 			r.gpuTexture(t, -1, 0, 0, W, H);
 			r.prepare(enc);
-			enc.beginPass({colors: [{load: Clear, clear: new helder.gfx.Color(0, 0, 0)}]});
+			enc.beginPass({colors: [{load: Clear, clear: new Vec4(0, 0, 0, 1)}]});
 			r.end(enc);
 			enc.endPass();
 			device.readPixels(px);

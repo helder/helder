@@ -26,7 +26,7 @@ class SpotAndPoint {
 		var shadows = new Shadows(device, 1024).local({atlas: 1024, maxLocal: 3});
 		var renderer = new Renderer(device).use(shadows);
 		// #endregion
-		renderer.clearColor = new Color(0.03, 0.03, 0.05);
+		renderer.clearColor = new Vec4(0.03, 0.03, 0.05, 1);
 		renderer.sky = new Vec3(0.05, 0.06, 0.09);
 		renderer.ground = new Vec3(0.03, 0.03, 0.03);
 

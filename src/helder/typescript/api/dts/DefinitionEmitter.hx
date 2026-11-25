@@ -229,6 +229,8 @@ class DefinitionEmitter {
 			if (values != null && values.length > 0) return [for (v in values) haxe.Json.stringify(v)].join(' | ');
 		}
 		var from = [for (f in ab.from) if (f.field == null) type(f.t) else switch Context.follow(f.field.type) {
+			// (a macro's: the type of its expression)
+			case TFun([{t: TType(_.get() => {name: "ExprOf"}, [t])}], _): type(t);
 			case TFun(args, _) if (args.length > 0): type(args[0].t);
 			case _: continue;
 		}].filter(s -> s != "unknown");

@@ -2,6 +2,8 @@
 // summary: Every portable texture format, written from bytes and rendered into, side by side; depth textures rendered and sampled
 // tags: gfx, shaders, textures, render targets
 // demo: canvas 512x384
+
+import helder.gfx.shader.Vec4;
 import FormatsShader;
 import haxe.io.Bytes;
 import helder.gfx.*;
@@ -47,7 +49,7 @@ class Formats {
 	final pipelines:Array<Pipeline> = [];
 	final colorTile = Bytes.alloc(16);
 	final greyTile = Bytes.alloc(16);
-	final pass:PassDesc = {colors: [{load: Clear, clear: new Color(0.1, 0.1, 0.12)}]};
+	final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0.1, 0.1, 0.12, 1)}]};
 
 	public function new(device:Device) {
 		this.device = device;

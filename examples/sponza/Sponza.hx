@@ -3,6 +3,8 @@
 // tags: 3d, gltf, pbr, hdr, shadows, compressed textures, assets
 // demo: canvas 960x600
 // data: models
+
+import helder.gfx.shader.Vec4;
 import helder.asset.Asset;
 import helder.gfx.shader.Vec3;
 import helder.async.Async;
@@ -76,7 +78,7 @@ class Sponza implements Markup {
 			var r = renderer;
 			if (r != null && r != prepared) {
 				prepared = r;
-				r.clearColor = new helder.gfx.Color(0.6, 0.7, 0.9, 1);
+				r.clearColor = new Vec4(0.6, 0.7, 0.9, 1);
 				r.use(new NormalMaps(r.device));
 				var s = Shadows.cascaded(r.device, 2048, 14);
 				s.strength = 0.9;

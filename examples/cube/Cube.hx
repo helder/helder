@@ -48,7 +48,7 @@ class Cube {
 	// what the cube's faces show (Targets.hx: a render target)
 	public var texture:Texture;
 	final sampler:Sampler;
-	final pass:PassDesc = {colors: [{load: Clear, clear: new Color(0.1, 0.1, 0.12)}], depth: {load: Clear}};
+	final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0.1, 0.1, 0.12, 1)}], depth: {load: Clear}};
 	// the uniform blocks' bytes, written each frame
 	final camera = Bytes.alloc(128);
 	final ground = Bytes.alloc(64);

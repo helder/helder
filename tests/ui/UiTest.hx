@@ -1,3 +1,4 @@
+import helder.gfx.Color;
 import helder.ui.*;
 import helder.ui.platform.*;
 import helder.ui.DimValue;

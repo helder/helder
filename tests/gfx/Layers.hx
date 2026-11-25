@@ -1,3 +1,4 @@
+import helder.gfx.shader.Vec4;
 import haxe.io.Bytes;
 import helder.gfx.*;
 import helder.gfx.shader.Vec2;
@@ -22,8 +23,8 @@ class Layers {
 	final layers:Texture;
 	final drawnLayers:Texture;
 	final sampler:Sampler;
-	final pass:PassDesc = {colors: [{load: Clear, clear: new Color(0, 0, 0)}]};
-	final into:PassDesc = {colors: [{load: Clear, clear: new Color(0, 0, 0)}]};
+	final pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0, 0, 0, 1)}]};
+	final into:PassDesc = {colors: [{load: Clear, clear: new Vec4(0, 0, 0, 1)}]};
 
 	public function new(device:Device) {
 		var full = LayersShader.vertexBytes([for (p in [[-1, -1], [1, -1], [1, 1], [-1, -1], [1, 1], [-1, 1]]) ({pos: new Vec2(p[0], p[1])} : LayersVertex)]);
@@ -64,7 +65,7 @@ class Layers {
 		c.texture = drawn;
 		for (f in 0...6) {
 			c.layer = f;
-			c.clear = new Color(FACES[f][0] * 0.5, FACES[f][1] * 0.5, FACES[f][2] * 0.5);
+			c.clear = new Vec4(FACES[f][0] * 0.5, FACES[f][1] * 0.5, FACES[f][2] * 0.5, 1);
 			enc.beginPass(into);
 			if (f == 0) {
 				enc.setPipeline(marking);
@@ -76,7 +77,7 @@ class Layers {
 		c.texture = drawnLayers;
 		for (k in 0...2) {
 			c.layer = k;
-			c.clear = new Color(DRAWN_LAYERS[k][0], DRAWN_LAYERS[k][1], DRAWN_LAYERS[k][2]);
+			c.clear = new Vec4(DRAWN_LAYERS[k][0], DRAWN_LAYERS[k][1], DRAWN_LAYERS[k][2], 1);
 			enc.beginPass(into);
 			enc.endPass();
 		}

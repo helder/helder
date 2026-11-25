@@ -1,5 +1,6 @@
 package helder.ui.draw;
 
+import helder.gfx.Color;
 import helder.gfx.Texture;
 import helder.image.Image;
 import helder.ui.*;

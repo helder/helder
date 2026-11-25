@@ -1,5 +1,6 @@
 package studio;
 
+import helder.gfx.Color;
 import helder.ui.*;
 import helder.ui.gesture.Gesture;
 import helder.view.*;

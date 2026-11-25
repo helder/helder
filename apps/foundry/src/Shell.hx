@@ -1,3 +1,4 @@
+import helder.gfx.Color;
 import Model;
 import helder.ui.*;
 import helder.ui.widgets.Controls.Segmented;

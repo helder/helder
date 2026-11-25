@@ -63,7 +63,7 @@ class Instancing {
 	public function new(device:Device) {
 		this.device = device;
 		renderer = new Renderer(device);
-		renderer.clearColor = new Color(0.01, 0.012, 0.03);
+		renderer.clearColor = new Vec4(0.01, 0.012, 0.03, 1);
 		renderer.sky = new Vec3(0.08, 0.09, 0.14);
 		renderer.ground = new Vec3(0.03, 0.025, 0.02);
 		renderer.sunColor = new Vec3(3.2, 3.0, 2.7);

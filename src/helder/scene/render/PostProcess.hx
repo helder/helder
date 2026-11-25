@@ -168,7 +168,7 @@ class PostProcess {
 	final heights:Array<Int> = [];
 	final clearPasses:Array<PassDesc> = [];
 	final loadPasses:Array<PassDesc> = [];
-	final outPass:PassDesc = {colors: [{load: Clear, clear: new Color(0, 0, 0, 0)}]};
+	final outPass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0, 0, 0, 0)}]};
 	var chainW = 0;
 	var chainH = 0;
 	var chainBase = 0;
@@ -336,7 +336,7 @@ class PostProcess {
 			chain.push(t);
 			widths.push(w);
 			heights.push(h);
-			clearPasses.push({colors: [{load: Clear, clear: new Color(0, 0, 0, 0), texture: t}]});
+			clearPasses.push({colors: [{load: Clear, clear: new Vec4(0, 0, 0, 0), texture: t}]});
 			loadPasses.push({colors: [{load: Load, texture: t}]});
 			if (w == 1 && h == 1) break;
 		}
@@ -528,7 +528,7 @@ class PostProcess {
 		for (_ in 0...2) {
 			var t = device.createTexture({width: width, height: height, renderTarget: true});
 			between.push(t);
-			betweenPasses.push({colors: [{load: Clear, clear: new Color(0, 0, 0, 0), texture: t}]});
+			betweenPasses.push({colors: [{load: Clear, clear: new Vec4(0, 0, 0, 0), texture: t}]});
 		}
 	}
 
@@ -541,7 +541,7 @@ class PostProcess {
 		for (_ in 0...2) {
 			var t = device.createTexture({width: width, height: height, format: RGBA16F, renderTarget: true});
 			linearTargets.push(t);
-			linearPasses.push({colors: [{load: Clear, clear: new Color(0, 0, 0, 0), texture: t}]});
+			linearPasses.push({colors: [{load: Clear, clear: new Vec4(0, 0, 0, 0), texture: t}]});
 		}
 	}
 

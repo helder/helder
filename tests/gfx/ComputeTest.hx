@@ -130,7 +130,7 @@ class ComputeTest {
 		var moveStep = Bytes.alloc(Move.params.step.block.size), sizeBlock = Bytes.alloc(Gradient.params.size.block.size);
 		Move.params.step.write({dt: 1, count: count}, moveStep);
 		Gradient.params.size.write({width: IMAGE, height: IMAGE}, sizeBlock);
-		var black = new Color(0, 0, 0, 1);
+		var black = new Vec4(0, 0, 0, 1);
 		var pass:PassDesc = {colors: [{load: Clear, clear: black}]};
 
 		function frame(enc:Encoder) {

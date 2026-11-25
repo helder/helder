@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.gfx.Color;
 import helder.ui.Event;
 import helder.canvas.Matrix;
 import helder.image.Image;

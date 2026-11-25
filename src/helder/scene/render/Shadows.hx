@@ -136,7 +136,7 @@ class Shadows implements RenderFeature implements RenderFeature.ShadowSource {
 			k += 4;
 		}
 		corners = device.createBuffer({size: q.length, usage: Vertex, data: q});
-		pass = {colors: [{load: Clear, clear: new Color(1, 1, 1, 1)}], depth: {load: Clear}};
+		pass = {colors: [{load: Clear, clear: new Vec4(1, 1, 1, 1)}], depth: {load: Clear}};
 		atlas = cast 0;
 		depth = cast 0;
 		makeAtlas(size, size);

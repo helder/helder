@@ -74,7 +74,7 @@ class TouchMenu implements Markup {
 			?theme:helder.ui.StyleSheet, ?onClose:Void->Void):Popup {
 		var p = new Popup("touch-menu-layer");
 		p.modal = true;
-		p.style.background = helder.ui.Color.TRANSPARENT;
+		p.style.background = helder.gfx.Color.TRANSPARENT;
 		if (theme != null) p.theme = theme;
 		var dispose:Null<Void->Void> = null;
 		function close() {
