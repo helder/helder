@@ -1,7 +1,7 @@
 package helder.gfx;
 
 // a handle (Buffer)
-abstract Shader(Int) {
+abstract ShaderModule(Int) {
 	@:allow(helder.gfx) inline function new(id:Int)
 		this = id;
 

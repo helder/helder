@@ -8,7 +8,7 @@ import helder.ui.view.NodeRenderer;
 // drag taking a press from a tap, a Pan inside a scroller winning first
 // (along its axis only), a pinch and a Scale with a finger joining
 // without a jump, the mouse feeding the arena, cancels, a node leaving the
-// tree, markup's attributes making the recognisers; a Press claiming a
+// tree, markup's attributes making the recognisers; a Grab claiming a
 // press inside its region at once.
 function tests() {
 	describe("gestures", () -> {
@@ -123,11 +123,11 @@ function tests() {
 			ui.pointerUp(120, 130, 1, 2);
 			equals(list.scrollY, 0.0);
 		});
-		test("a Press claims a press inside its region at once: the Scale beside it and the scroller lose it", () -> {
+		test("a Grab claims a press inside its region at once: the Scale beside it and the scroller lose it", () -> {
 			var scale = card.addGesture(new Scale());
 			scale.onGesture = report("scale");
 			// (the card's left half, its first 50 points)
-			var press = card.addGesture(new Press((x, y) -> x < 50));
+			var press = card.addGesture(new Grab((x, y) -> x < 50));
 			press.onGesture = g -> log.push('press ${stateName(g.state)} ${press.startX},${press.startY} ${Math.round(g.tx)},${Math.round(g.ty)}');
 			// (inside: won at the press, no slop; its moves its own)
 			ui.pointerDown(20, 30, 1, 1, Touch);

@@ -3,8 +3,8 @@ package helder.gfx;
 typedef PipelineDesc = {
 	// the stages' shaders, or instead their code (a shader class's
 	// pipeline(): Device.createPipeline compiles it)
-	?vertex:Shader,
-	?fragment:Shader,
+	?vertex:ShaderModule,
+	?fragment:ShaderModule,
 	?program:{vertex:ShaderCode, fragment:ShaderCode},
 	layout:Array<VertexBufferLayout>,
 	?topology:Topology,
