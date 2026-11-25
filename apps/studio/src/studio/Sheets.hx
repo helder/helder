@@ -86,7 +86,7 @@ class Sheets implements Markup {
 			case _: null;
 		}
 
-	// the prompt: its line, the agent's last reply under it
+	// the prompt: its line, the turn under it
 	static function ask(studio:Studio):View {
 		var text = signal("");
 		function send() {
@@ -99,7 +99,7 @@ class Sheets implements Markup {
 				<field tag="prompt" slot="ask-input" label="Prompt" value={text} placeholder={studio.context().label} onInput={e -> text(e.text)}
 					onKeyDown={e -> if (e.key == Key.ENTER) send()}/>
 			</view>
-			<text tag="ask-reply" color={c("fg3")} font-size={Theme.SMALL}>{studio.reply()}</text>
+			<Show when={studio.turn() != null}>{Prompt.transcript(studio)}</Show>
 		</view>;
 	}
 }

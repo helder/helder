@@ -1,0 +1,68 @@
+package studio;
+
+import studio.Agent.AgentEvent;
+
+using StringTools;
+
+// The prompt's turn as the prompt bar shows it, folded from the agent's
+// events (Turn.add: a new value each time): the reply streamed so far, the
+// tools called (each by its id, its last title and status), the plan, the
+// question waiting for the user, how it ended (null: it runs).
+typedef Turn = {
+	prompt:String,
+	text:String,
+	thought:String,
+	tools:Array<{id:String, title:String, kind:String, status:String}>,
+	steps:Array<{text:String, done:Bool}>,
+	ask:Null<{question:String, options:Array<String>, answer:Int->Void}>,
+	end:Null<String>,
+	error:Null<String>,
+}
+
+class Turns {
+	public static function start(prompt:String):Turn
+		return {prompt: prompt, text: "", thought: "", tools: [], steps: [], ask: null, end: null, error: null};
+
+	public static function add(t:Turn, e:AgentEvent):Turn {
+		var n:Turn = Reflect.copy(t);
+		switch e {
+			case Text(c):
+				n.text = t.text + c;
+			case Thought(c):
+				n.thought = t.thought + c;
+			case Tool(id, title, kind, status):
+				var known = Lambda.find(t.tools, x -> x.id == id);
+				n.tools = known == null ? t.tools.concat([{id: id, title: title, kind: kind, status: status}]) : [
+					for (x in t.tools)
+						x.id != id ? x : {
+							id: id,
+							title: title == "" ? x.title : title,
+							kind: kind == "" ? x.kind : kind,
+							status: status == "" ? x.status : status
+						}
+				];
+			case Steps(steps):
+				n.steps = steps;
+			case Ask(q, options, answer):
+				n.ask = {question: q, options: options, answer: answer};
+			case Done(reason):
+				n.end = reason;
+				n.ask = null;
+			case Failed(message):
+				n.end = "failed";
+				n.error = message;
+				n.ask = null;
+		}
+		return n;
+	}
+
+	// (its question answered: gone from the bar)
+	public static function answered(t:Turn):Turn {
+		var n:Turn = Reflect.copy(t);
+		n.ask = null;
+		return n;
+	}
+
+	public static function running(t:Null<Turn>):Bool
+		return t != null && t.end == null;
+}

@@ -13,6 +13,7 @@ import helder.view.graph.Graph.*;
 import helder.view.graph.Signal;
 import studio.Previews;
 import studio.Project;
+import studio.Turn;
 
 using StringTools;
 
@@ -43,7 +44,18 @@ class Studio {
 	public final tree:Null<FileTree>;
 	// the file shown: in its viewer (mode "file": an image, a font...), the code view's, a design's page
 	public final shown:Signal<Null<String>> = signal(null);
+	// the prompt's agent (Agents: the user's own over ACP, else the studio's
+	// tools alone), the turn it runs or ran last (the prompt bar's transcript)
 	public final agent:Agent;
+	final local:LocalAgent;
+	public final turn:Signal<Null<Turn>> = signal(null);
+	// (the turn as just changed: the signal's write lands at the event's end)
+	var turnNow:Null<Turn> = null;
+
+	function setTurn(t:Null<Turn>) {
+		turnNow = t;
+		turn(t);
+	}
 	public var mcp(default, null):Null<Mcp> = null;
 	// "design" (the canvas), "code" (the code view beside the screen), "stories" (the list)
 	public final mode = signal("design");
@@ -93,9 +105,8 @@ class Studio {
 	// view's making (Reload: made again, the project and previews kept)
 	public final crash:Signal<Null<Crash>> = signal(null);
 	public final made = signal(0);
-	// the status line's message, the agent's last reply
+	// the status line's message
 	public final message = signal("");
-	public final reply = signal("");
 	// the stage's size (points): what fits a view; its node; bumped when it changes
 	public var stageWidth(default, null) = 0.0;
 	public var stageHeight(default, null) = 0.0;
@@ -126,7 +137,7 @@ class Studio {
 	var covering = false;
 	var covered = false;
 
-	public function new(dir:Null<String>, options:{?events:String, ?mcpPort:Int, ?holdWhile:String, ?cover:String}) {
+	public function new(dir:Null<String>, options:{?events:String, ?mcpPort:Int, ?holdWhile:String, ?cover:String, ?agent:String}) {
 		current = this;
 		startedAt = processStart;
 		var p:Null<Project> = null;
@@ -150,7 +161,8 @@ class Studio {
 		tools = new Tools(this);
 		drag = new Drag(this);
 		tree = p == null ? null : new FileTree(p);
-		agent = new Agent.LocalAgent(this);
+		local = new LocalAgent(this);
+		agent = agentOf(options.cover == null ? options.agent : "local");
 		editor = new CodeEditor("", null);
 		editor.view.fontFamily = Theme.CODE;
 		editor.view.fontSize = Theme.CODE_SIZE;
@@ -172,6 +184,36 @@ class Studio {
 		#end
 		coverPath = options.cover;
 		if (coverPath != null) hold(() -> covered, "the cover", 600);
+	}
+
+	// (the one chosen, else the first found; a headless run's local unless one is named)
+	function agentOf(name:Null<String>):Agent {
+		#if !(hxmc.target == "wasm32-wasi")
+		#if helder.headless
+		name ??= "local";
+		#end
+		var c = try Agents.command(name) catch (e:Dynamic) {
+			Sys.println('studio: $e');
+			null;
+		}
+		var p = project;
+		if (c != null && p != null) {
+			Sys.println('studio: the agent: ${c.name} (${c.cmd} ${c.args.join(" ")})');
+			var self = this;
+			return new AcpAgent(c, {dir: p.dir, docs: docs, mcp: () -> self.mcp?.url, snap: screen -> self.snapOf(screen)});
+		}
+		Sys.println("studio: the agent: local (the studio's tools alone: /tree, /snap, /check, /read)");
+		#end
+		return local;
+	}
+
+	// (a screen's last frame for the agent: run.snap's PNG)
+	@:coroutine function snapOf(screen:String):Null<String> {
+		var r = tools.call("run.snap", {screen: screen});
+		if (r.isError) return null;
+		for (c in r.content)
+			if (c.type == "image" && c.data != "") return c.data;
+		return null;
 	}
 
 	// the project opened: the compiler, the screens' program built and started, the MCP server
@@ -1047,7 +1089,7 @@ class Studio {
 					continue;
 				}
 				var d = docs.get(f);
-				if (d.text != text) docs.apply(f, new Transaction([difference(d.text, text)], null, d.text), "the file changed on disk", "disk");
+				if (d.text != text) docs.apply(f, new Transaction([Docs.difference(d.text, text)], null, d.text), "the file changed on disk", "disk");
 			}
 			for (f in [for (k in stamps.keys()) k])
 				if (!now.contains(f)) {
@@ -1056,18 +1098,6 @@ class Studio {
 				}
 		}
 		#end
-	}
-
-	// (the one range where a and b differ, as a change of a: what is the same before and after it kept)
-	static function difference(a:String, b:String):Change {
-		var s = 0, ea = a.length, eb = b.length;
-		while (s < ea && s < eb && StringTools.fastCodeAt(a, s) == StringTools.fastCodeAt(b, s))
-			s++;
-		while (ea > s && eb > s && StringTools.fastCodeAt(a, ea - 1) == StringTools.fastCodeAt(b, eb - 1)) {
-			ea--;
-			eb--;
-		}
-		return new Change(s, ea, b.substring(s, eb));
 	}
 
 	// the program told of a file's text: its live literals patched now (the
@@ -1322,19 +1352,48 @@ class Studio {
 		return {label: s == null ? "Ask about the whole app…" : 'Ask about ${s.label}…', scope: scope, screen: name, selection: sel};
 	}
 
+	// a prompt to the agent (the studio's own /tree, /snap, /check, /read to
+	// its tools), its events folded into the turn; one turn at a time
 	public function ask(prompt:String) {
-		if (prompt.trim() == "") return;
-		reply("…");
+		var p = prompt.trim();
+		if (p == "" || Turns.running(turnNow)) return;
+		var a = LocalAgent.tool(p) != null ? local : agent;
+		setTurn(Turns.start(p));
 		var answered = false;
-		agent.ask(prompt, {screen: focused.peek(), selection: selection.peek()}, r -> {
-			reply(r);
-			answered = true;
-			log("replied", {prompt: prompt, reply: r});
+		a.ask(p, {screen: focused.peek(), selection: selection.peek()}, e -> {
+			var t = Turns.add(turnNow ?? Turns.start(p), e);
+			setTurn(t);
+			switch e {
+				case Tool(id, title, _, status): log("agent-tool", {id: id, title: title, status: status});
+				case Done(_) | Failed(_):
+					answered = true;
+					var r = t.error ?? t.text;
+					log("replied", {prompt: p, reply: r, end: t.end});
+				case _:
+			}
 		});
-		hold(() -> answered, "the agent's reply", 30);
+		hold(() -> answered, "the agent's reply", a == local ? 30 : 300);
+	}
+
+	// the turn stopped (the prompt bar's Stop)
+	public function stopTurn()
+		if (Turns.running(turnNow)) agent.cancel();
+
+	// the last turn gone from the prompt bar
+	public function clearTurn()
+		if (!Turns.running(turnNow)) setTurn(null);
+
+	// the agent's question answered: an option's index
+	public function answer(i:Int) {
+		var t = turnNow;
+		if (t == null || t.ask == null) return;
+		var a = t.ask.answer;
+		setTurn(Turns.answered(t));
+		a(i);
 	}
 
 	@:coroutine public function stop() {
+		agent.close();
 		stopPlay();
 		if (previews != null) previews.stop();
 		#if !(hxmc.target == "wasm32-wasi")

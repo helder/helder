@@ -3,6 +3,7 @@ package studio;
 import helder.syntax.Document;
 import helder.syntax.Scanner.Lang;
 import helder.syntax.Transaction;
+import helder.syntax.Transaction.Change;
 import helder.view.graph.Graph.*;
 
 // The project's files as the studio edits them: each open file's text and
@@ -78,6 +79,18 @@ class Docs {
 	// the next edit starts an entry of its own (a gesture ended)
 	public function close()
 		if (undos.length > 0) undos[undos.length - 1].group = null;
+
+	// (the one range where a and b differ, as a change of a: what is the same before and after it kept)
+	public static function difference(a:String, b:String):Change {
+		var s = 0, ea = a.length, eb = b.length;
+		while (s < ea && s < eb && StringTools.fastCodeAt(a, s) == StringTools.fastCodeAt(b, s))
+			s++;
+		while (ea > s && eb > s && StringTools.fastCodeAt(a, ea - 1) == StringTools.fastCodeAt(b, eb - 1)) {
+			ea--;
+			eb--;
+		}
+		return new Change(s, ea, b.substring(s, eb));
+	}
 
 	function changed(path:String, tx:Transaction, origin:String) {
 		canUndo(undos.length > 0);

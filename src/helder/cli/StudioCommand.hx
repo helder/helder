@@ -7,7 +7,7 @@ import sys.FileSystem;
 
 using StringTools;
 
-// `helder studio [project] [--mcp-port <n>]`: helder studio (apps/studio,
+// `helder studio [project] [--mcp-port <n>] [--agent <name>]`: helder studio (apps/studio,
 // beside helder's src/) built for this machine when a source of it changed,
 // then run on the project (the directory given, else this one) in a window
 // of its own. The project's program is never in the studio's process: the
@@ -36,6 +36,8 @@ class StudioCommand {
 		var args = [FileSystem.fullPath(dir)];
 		var port = o.value("mcp-port");
 		if (port != null) args = args.concat(["--mcp-port", port]);
+		var agent = o.value("agent");
+		if (agent != null) args = args.concat(["--agent", agent]);
 		// (the studio's Play runs `helder dev` with this helder)
 		var env = Sys.environment();
 		env.set("HELDER_CLI", Sys.programPath());
