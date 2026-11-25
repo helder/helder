@@ -7,8 +7,10 @@ description: the job's module cache handed to the cache job
 runs:
   using: composite
   steps:
+    # (never the job's failure: a cache not handed over is only slower)
     - id: tar
       shell: bash
+      continue-on-error: true
       run: |
         for d in ~/.cache/helder ~/Library/Caches/helder ~/AppData/Local/helder/cache; do
           for k in compiler compiler-web; do
@@ -17,11 +19,16 @@ runs:
         done
         cd ~
         dirs=$(ls -d .cache/hxmc .cache/helder Library/Caches/hxmc Library/Caches/helder AppData/Local/hxmc/cache AppData/Local/helder 2> /dev/null || true)
+        [ -n "$dirs" ] || exit 0
         find $dirs -type f -newer "$RUNNER_TEMP/modules-restored" > "$RUNNER_TEMP/modules.txt"
-        tar -cf "$RUNNER_TEMP/modules.tar" -T "$RUNNER_TEMP/modules.txt"
-        du -sh $dirs "$RUNNER_TEMP/modules.tar"
+        [ -s "$RUNNER_TEMP/modules.txt" ] || exit 0
+        # (relative names: Windows' tar takes D:\ for a remote host)
+        cd "$RUNNER_TEMP"
+        tar -C ~ -cf modules.tar -T modules.txt
+        du -sh modules.tar
         echo "name=modules-$RUNNER_OS-$GITHUB_JOB-$RANDOM$RANDOM" >> "$GITHUB_OUTPUT"
-    - uses: actions/upload-artifact@v7
+    - if: steps.tar.outputs.name != ''
+      uses: actions/upload-artifact@v7
       continue-on-error: true
       with:
         name: ${{ steps.tar.outputs.name }}

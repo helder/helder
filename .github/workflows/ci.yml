@@ -805,7 +805,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          for t in "$RUNNER_TEMP"/modules/*/modules.tar; do tar -xf "$t" -C ~; done
+          # (relative names: Windows' tar takes D:\ for a remote host)
+          cd "$RUNNER_TEMP/modules"
+          for t in */modules.tar; do tar -C ~ -xf "$t"; done
           cd ~
           dirs=$(ls -d .cache/hxmc .cache/helder Library/Caches/hxmc Library/Caches/helder AppData/Local/hxmc/cache AppData/Local/helder 2> /dev/null || true)
           du -sh $dirs
