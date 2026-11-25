@@ -242,7 +242,7 @@ class NodeRenderer #if !macro implements helder.view.Renders<Node> #end {
 	}
 
 	@:attribute static function selectable(n:Node, name:String, v:Dynamic)
-		if (Std.isOfType(n, TextNode)) (cast n : TextNode).selectable = v == true || v == "true" else noAttribute(n, name);
+		n.selectable = v == true || v == "true";
 
 	@:attribute static function dragData(n:Node, name:String, v:Dynamic)
 		n.dragData = v;

@@ -148,7 +148,7 @@ class Ui extends ScrollHost {
 		var id = dispatching < 0 ? 0 : dispatching;
 		if (window == null || !window.dragFiles(paths, image, offsetX, offsetY, allowed, done)) return false;
 		if (id == 0) {
-			selecting = false;
+			selector.selecting = false;
 			dragSource = null;
 			if (dragging != null) endDrag(false, pointerX, pointerY);
 		}
@@ -274,13 +274,19 @@ class Ui extends ScrollHost {
 		overlay.attach(this);
 		touchScroll = @:privateAccess new TouchScroll(this);
 		walker = new UiWalk(this);
-		// (Copy: the selected text, while there is some)
+		selector = new TextSelector(this);
+		// (Copy: the selected text, while there is some; Select All: a selectable scope's, the focus in it)
 		on(helder.ui.actions.Actions.StandardAction, a -> switch a {
-			case Copy if (selectedText() != ""):
+			case Copy if (textSelection != null && !textSelection.collapsed()):
 				clipboard.write(selectedText());
 				true;
+			case SelectAll: selector.selectAll();
 			case _: false;
-		}, a -> a == Copy && selectedText() != "" ? Enabled : Unhandled);
+		}, a -> switch a {
+			case Copy if (textSelection != null && !textSelection.collapsed()): Enabled;
+			case SelectAll if (selector.keyScope() != null): Enabled;
+			case _: Unhandled;
+		});
 		#if hxmc.dev
 		DevTree.add(this);
 		#end
@@ -418,6 +424,12 @@ class Ui extends ScrollHost {
 		for (c in n.children)
 			dirtyAll(c);
 	}
+
+	// (a live resize, the window's edge dragged: a gradient's image kept from
+	// the last size, stretched, not made again at each (its CPU's 60 ms a
+	// frame for a few cards' at 2x); the nodes drawn so, made again after it)
+	@:allow(helder) var live = false;
+	@:allow(helder) final stretched:Array<Node> = [];
 
 	// the nodes that may be native (EditableText: they join while in the tree)
 	var natives:Array<Node> = [];
@@ -1435,14 +1447,7 @@ class Ui extends ScrollHost {
 		if (id != 0) return touchMove(id, x, y, pressure);
 		pointerX = x;
 		pointerY = y;
-		if (selecting && textSelection != null) {
-			var c = textSelection.node.textIndexAt(x, y);
-			if (c != textSelection.caret) {
-				textSelection.caret = c;
-				textSelection.node.layerChanged();
-				requestFrame();
-			}
-		}
+		selector.move(x, y);
 		if (drag != null) {
 			if (dragMirrored) return;
 			var n = drag, t = Scrolling.track(n, dragX), view = Scrolling.viewSize(n, dragX), content = dragX ? n.contentWidth : n.contentHeight;
@@ -1559,16 +1564,18 @@ class Ui extends ScrollHost {
 			focusVisible = false;
 			requestFrame();
 		}
-		selectAt(target, x, y, button);
 		setHover(target);
 		if (target == null) {
+			selector.press(null, x, y, button, mods);
 			setFocus(null);
 			return false;
 		}
+		// (a scrollbar's press keeps a selection)
 		if (Scrolling.scrollbarDown(this, target, x, y)) {
 			dragMirrored = routed == ScrollMirror.TAKEN;
 			return true;
 		}
+		selector.press(target, x, y, button, mods);
 		capture = target;
 		dragSource = target;
 		while (dragSource != null && dragSource.dragData == null)
@@ -1587,6 +1594,8 @@ class Ui extends ScrollHost {
 				f = f.parent;
 			setFocus(f, false);
 		}
+		// (the keys the selection the press made takes while the focus stays)
+		if (selector.made) selector.owner = focus;
 		if (capture != null) openArena(0, target, Mouse, button, x, y, false);
 		return owns(target);
 	}
@@ -1605,7 +1614,7 @@ class Ui extends ScrollHost {
 		if (id != 0) return touchUp(id, x, y);
 		pointerX = x;
 		pointerY = y;
-		selecting = false;
+		var selected = selector.release();
 		if (drag != null) {
 			drag = null;
 			dragMirrored = false;
@@ -1634,8 +1643,8 @@ class Ui extends ScrollHost {
 			closeArena(0, false);
 		}
 		if (pressed != null) lose(pressed, 0, x, y);
-		// a click: released over the node it went down on (or inside it)
-		if (pressed != null && target != null && contains(pressed, target)) {
+		// a click: released over the node it went down on (or inside it), not a drag selecting its text
+		if (pressed != null && target != null && contains(pressed, target) && !selected) {
 			var c = Event.of(Click, pressed, x, y);
 			c.button = button;
 			c.mods = mods;
@@ -1690,8 +1699,8 @@ class Ui extends ScrollHost {
 		}
 		// (a press elsewhere drops a selection; a finger's drag scrolls, it selects nothing)
 		if (primary) {
-			selectAt(target, x, y, 1);
-			selecting = false;
+			selector.press(target, x, y, 1, 0);
+			selector.selecting = false;
 		}
 		if (target == null) {
 			if (primary) setFocus(null);
@@ -1981,17 +1990,13 @@ class Ui extends ScrollHost {
 
 	// --- keyboard ---
 
-	// the text selected in a selectable TextNode (null: none), anchor to
-	// caret (UTF-16 indices of its whole text); a press elsewhere drops it
-	public var textSelection(default, null):Null<{node:TextNode, anchor:Int, caret:Int}> = null;
+	// the text selected (null: none; TextSelection, its scope's texts; a
+	// press elsewhere drops it); selectText sets it
+	public var textSelection(default, null):Null<TextSelection> = null;
 	// what a selection is painted with
 	public var selectionColor:Color = Color.rgba(0x3b82f6, 0.3);
-	// (a drag selecting; the clicks in a row and the last one's time and place)
-	var selecting = false;
-	var selClicks = 0;
-	var selAt = -1e9;
-	var selX = 0.0;
-	var selY = 0.0;
+	// (the pointer's and keys' selecting)
+	final selector:TextSelector;
 	// the time (seconds; tests replace it)
 	public static var now:Void->Float = haxe.Timer.stamp;
 
@@ -2023,57 +2028,27 @@ class Ui extends ScrollHost {
 		return false;
 	}
 
-	// the selected text (empty: none)
-	public function selectedText():String {
-		var s = textSelection;
-		if (s == null || s.anchor == s.caret) return "";
-		return s.node.allText().substring(Std.int(Math.min(s.anchor, s.caret)), Std.int(Math.max(s.anchor, s.caret)));
-	}
-
-	// a press on a selectable text (or a span of one): the selection starts,
-	// a word on a double click, all of it on a triple; elsewhere it is dropped
-	function selectAt(target:Null<Node>, x:Float, y:Float, button:Int) {
-		var t:Null<TextNode> = null, n = target;
-		// (a text selectable by its own flag, or by user-select text or all; none: not)
-		while (n != null) {
-			if (Std.isOfType(n, TextNode)) {
-				var u = n.userSelect();
-				if (u == Text || u == All || (cast n : TextNode).selectable && n.style.userSelect != None) t = cast n;
-			}
-			n = n.parent;
+	// sets textSelection (null: none), the texts drawn with it drawn again
+	public function selectText(s:Null<TextSelection>) {
+		var was = textSelection;
+		if (was == s) return;
+		textSelection = s;
+		// (the texts drawn with it: between where the focus was and is, or what either covers)
+		function mark(scope:Node, from:TextPoint, to:TextPoint)
+			TextSelection.texts(scope, from, to, TextSelection.MADE, (n, _) -> n.layerChanged());
+		if (was != null && s != null && was.scope == s.scope && was.anchor.equals(s.anchor)) {
+			var c = TextPoint.compare(was.focus, s.focus) <= 0;
+			mark(s.scope, c ? was.focus : s.focus, c ? s.focus : was.focus);
+		} else {
+			if (was != null && !was.collapsed()) mark(was.scope, was.start(), was.end());
+			if (s != null && !s.collapsed()) mark(s.scope, s.start(), s.end());
 		}
-		if (textSelection != null) textSelection.node.layerChanged();
-		if (t == null || button != 1) {
-			if (textSelection != null) {
-				textSelection = null;
-				requestFrame();
-			}
-			return;
-		}
-		var i = t.textIndexAt(x, y), time = now();
-		selClicks = time - selAt < 0.45 && Math.abs(x - selX) < 5 && Math.abs(y - selY) < 5 ? selClicks + 1 : 1;
-		selAt = time;
-		selX = x;
-		selY = y;
-		var text = t.allText();
-		if (selClicks == 2) {
-			// (a word: letters, digits and marks around the index; else the one character)
-			inline function word(c:Int):Bool
-				return c == "_".code || (c >= "0".code && c <= "9".code) || (c >= "a".code && c <= "z".code) || (c >= "A".code && c <= "Z".code) || c > 0x7F
-					&& c != 0xA0 && c != 0x3000;
-			var a = i, b = i;
-			while (a > 0 && word(StringTools.fastCodeAt(text, a - 1)))
-				a--;
-			while (b < text.length && word(StringTools.fastCodeAt(text, b)))
-				b++;
-			if (a == b && b < text.length) b++;
-			textSelection = {node: t, anchor: a, caret: b};
-		} else if (selClicks >= 3 || t.userSelect() == All) textSelection = {node: t, anchor: 0, caret: text.length};
-		else textSelection = {node: t, anchor: i, caret: i};
-		selecting = selClicks == 1 && t.userSelect() != All;
-		t.layerChanged();
 		requestFrame();
 	}
+
+	// the selected text (empty: none)
+	public function selectedText():String
+		return textSelection == null || textSelection.collapsed() ? "" : textSelection.text();
 
 	// --- actions (helder.ui.actions) ---
 
@@ -2264,11 +2239,16 @@ class Ui extends ScrollHost {
 			}
 		}
 		if (!e.defaultPrevented && !e.stopped && runKeymap(key, mods)) return;
+		// (Shift and the arrows, Mod+A: the text selection's, the focus in its scope)
+		if (!e.defaultPrevented && !e.stopped && selector.key(key, mods)) return;
 		if (!e.defaultPrevented && !e.stopped && (routed == ScrollMirror.TAKEN || Scrolling.keyScroll(this, key, mods))) return;
 		// (Control or Command and C: the selected text copied, when the focus took no such key)
-		if (!e.defaultPrevented && !e.stopped && (key == "c".code || key == "C".code) && mods & (Key.MOD_CONTROL | Key.MOD_META) != 0 && selectedText() != "") {
-			clipboard.write(selectedText());
-			return;
+		if (!e.defaultPrevented && !e.stopped && (key == "c".code || key == "C".code) && mods & (Key.MOD_CONTROL | Key.MOD_META) != 0) {
+			var t = selectedText();
+			if (t != "") {
+				clipboard.write(t);
+				return;
+			}
 		}
 		if (!e.defaultPrevented && key == Key.TAB) {
 			// (shown before the focus moves: its handlers see it)
@@ -2630,6 +2610,8 @@ class Ui extends ScrollHost {
 		while (n != null) {
 			if (n.style.cursor != Auto) return n.style.cursor;
 			if (pressCursor != Auto && pressable(n)) return n.semantics?.disabled == true ? Default : pressCursor;
+			// (a text of a selectable scope: the text's, as a browser's over text)
+			if (Std.isOfType(n, TextNode) && !Std.isOfType(n.parent, TextNode) && n.userSelect() != None && n.selectionScope() != null) return Text;
 			n = n.parent;
 		}
 		return Default;

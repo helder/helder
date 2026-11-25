@@ -15,8 +15,10 @@ using StringTools;
 // A Markdown document full size (MarkdownDoc): the document in a column
 // (helder.markdown's MarkdownView, styled by the shell's look: its
 // markdown parts), or its source in a read-only CodeView (Mod+U, the bar's
-// button). Its links: "#id" scrolls to that heading, the rest are
-// Explorer.follow's (a file the viewer shows, a folder, a web address);
+// button). Its text is one selection (MarkdownView's: Mod+C copies it,
+// Mod+A selects the document once pressed in). Its links: "#id" scrolls
+// to that heading, the rest are Explorer.follow's (a file the viewer
+// shows, a folder, a web address);
 // its images: a relative path decoded as the viewer decodes its files
 // (through Files), at most the column's width; a remote one is not
 // fetched (its alt text in its place).

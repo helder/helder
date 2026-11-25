@@ -199,9 +199,32 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
     Markup's `<svg>` is such an image, its drawing read when compiled (as
     `Svg.parse` of a constant: `SvgBuild`), so the program links no parser;
     `Svg.read` reads a string made when the program runs.
-  - A `TextNode` that is `selectable` takes a selection from the pointer (a
-    drag, a double click: a word, a triple: all), painted under its text
-    (`Ui.textSelection`, `Ui.selectionColor`) and copied by Mod+C.
+  - Text selection, as a browser's: a node that is `selectable` (markup
+    `selectable`) is a scope whose texts share one selection
+    (`Ui.textSelection`, a `TextSelection`: its scope and an anchor and a
+    focus, each a `TextPoint`, a text by its path from the scope and an
+    index in it); a selectable `TextNode` alone is a scope of its own text
+    and spans, a text of user-select `Text` or `All` too. Its texts are its
+    TextNodes and what else has text of its own (a `CodeView`), in the
+    tree's order, those of user-select `None` left out. A press starts it
+    (off the texts but in the scope: at the nearest), a drag moves its
+    focus from one text into the next (past the last: its end; past a
+    scroller's edge: the scroller stepped, faster the farther), a double
+    click selects a word, a triple a line, a drag after either goes by
+    words or lines, Shift extends it; a drag that selected text clicks
+    nothing (a link it began on not followed). Shift and the arrows move
+    its focus (a character, a line, on into the next text). Each text paints
+    its part under its glyphs (`Ui.selectionColor`); Mod+C (and Copy)
+    copies `selectedText()`: the parts joined with a blank line between
+    blocks, a line between list items (`ListItem`) and a table's rows, a
+    tab between a row's cells (`Cell`); Mod+A (and Select All) selects all
+    of the scope the focus is in, or the selection's while the focus is
+    where its press left it (otherwise the key is not taken). A
+    `VirtualScroll`'s rows are a path's steps by index, so a selection
+    keeps its rows let go and made again, and copying makes the rows it
+    covers that are not made for their text alone (`onMakeRow` given a row
+    with no parent). `Ui.selectText(s)` sets it (`TextSelection.between`,
+    `TextSelection.all`; null: none).
   - `Ui` dispatches pointer, wheel, key and text events to nodes (bubbling
     to ancestors), tracks hover and press, moves the focus (click, Tab,
     Shift+Tab; a ring shows when the keyboard moved it) and scrolls

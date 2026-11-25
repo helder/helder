@@ -12,7 +12,10 @@ import helder.markdown.MarkdownView.MarkdownProps;
 // MarkdownView headless: each block in its slot, a link's press, images
 // asked for and their alt text without one, a long document's rows made in
 // part and a heading scrolled to, spans in spans drawn once (by their
-// text: Ui.drawNode), the first blocks alone without a scroller
+// text: Ui.drawNode), the first blocks alone without a scroller; its text
+// selected as one document (a drag across paragraphs, a list and a code
+// block, copied; a table's cells; a word and a line in the code; a long
+// document's rows let go and made again under it, all of it copied)
 function tests() {
 	function slots(n:Node, out:Array<String>):Array<String> {
 		if (n.slot != null && n.slot != "markdown-row") out.push(n.slot);
@@ -81,6 +84,91 @@ function tests() {
 			var texts = new Texts();
 			t.ui.paint(texts);
 			equals(texts.count, 1);
+		});
+		// (where index i of a text is, in the window: its caret's middle)
+		function point(n:Node, i:Int):{x:Float, y:Float} {
+			var c = n.selectableCaret(i);
+			return {x: c.x + 0.5, y: c.y + c.height / 2};
+		}
+		function all(n:Node, slot:String, out:Array<Node>):Array<Node> {
+			if (n.slot == slot) out.push(n);
+			for (c in n.children)
+				all(c, slot, out);
+			return out;
+		}
+		// (Mod: Command on a Mac, Control elsewhere)
+		function mod():Int
+			return helder.ui.actions.Keymap.mac ? helder.ui.Key.MOD_META : helder.ui.Key.MOD_CONTROL;
+		function drag(ui:Ui, a:{x:Float, y:Float}, b:{x:Float, y:Float}) {
+			ui.pointerDown(a.x, a.y, 1);
+			ui.pointerMove(b.x, b.y);
+			ui.pointerUp(b.x, b.y, 1);
+		}
+		test("a drag across paragraphs, a list and a code block: one selection, copied", () -> {
+			var t = view("# Title\n\nFirst para.\n\n- one\n- two\n\n```\ncode line\n```\n\nLast one.\n");
+			var ps = all(t.view, "markdown-p", []);
+			drag(t.ui, point(ps[0], 0), point(ps[3], 2));
+			equals(t.ui.selectedText(), "First para.\n\none\ntwo\n\ncode line\n\nLa");
+			var code:CodeView = cast t.view.find("code-view");
+			equals(t.ui.textSelection.rangeIn(code, code.model.length), {start: 0, end: 9});
+			equals(code.model.primary.empty(), true);
+			// (a marker is not in it, the cursor over text the text's)
+			assert(t.ui.textSelection.rangeIn(t.view.find("markdown-marker"), 1) == null);
+			t.ui.pointerMove(point(ps[0], 2).x, point(ps[0], 2).y);
+			equals(t.ui.cursor(), helder.ui.Cursor.Text);
+		});
+		test("a table's cells: a tab between, a line after a row", () -> {
+			var t = view("| a | b |\n|---|---|\n| 1 | 2 |\n\nafter\n");
+			var c = all(t.view, "markdown-th", []);
+			t.ui.pointerDown(point(c[0], 0).x, point(c[0], 0).y, 1);
+			t.ui.pointerUp(point(c[0], 0).x, point(c[0], 0).y, 1);
+			t.ui.keyDown("a".code, mod());
+			equals(t.ui.selectedText(), "a\tb\n1\t2\n\nafter");
+		});
+		test("a link's click still follows it; a drag from it selects", () -> {
+			var pressed = [];
+			var t = view("go [elsewhere now](other.md)\n", {onLink: (h:String) -> pressed.push(h)});
+			var p = t.view.find("markdown-p");
+			drag(t.ui, point(p, 4), point(p, 9));
+			equals(t.ui.selectedText(), "lsewh");
+			equals(pressed, []);
+			helder.ui.Ui.now = () -> 100.0;
+			drag(t.ui, point(p, 5), point(p, 5));
+			helder.ui.Ui.now = haxe.Timer.stamp;
+			equals(pressed, ["other.md"]);
+		});
+		test("a long document: rows let go and made again under the selection, all of it copied", () -> {
+			var text = [for (k in 0...1000) 'Paragraph $k.'].join("\n\n");
+			var t = view(text);
+			var list:VirtualScroll = cast t.view.scroller;
+			list.keep = 0;
+			var first = all(t.view, "markdown-p", [])[2];
+			t.ui.pointerDown(point(first, 0).x, point(first, 0).y, 1);
+			t.ui.pointerUp(point(first, 0).x, point(first, 0).y, 1);
+			list.scrollToIndex(500, "start");
+			t.ui.update();
+			var far:Null<Node> = null;
+			for (p in all(t.view, "markdown-p", []))
+				if ((cast p : TextNode).allText() == "Paragraph 500.") far = p;
+			@:privateAccess t.ui.mods = helder.ui.Key.MOD_SHIFT;
+			t.ui.pointerDown(point(far, 4).x, point(far, 4).y, 1);
+			t.ui.pointerUp(point(far, 4).x, point(far, 4).y, 1);
+			@:privateAccess t.ui.mods = 0;
+			var copied = t.ui.selectedText().split("\n\n");
+			equals(copied.length, 499);
+			equals(copied[0], "Paragraph 2.");
+			equals(copied[1], "Paragraph 3.");
+			equals(copied[498], "Para");
+			assert(list.dropped > 0);
+			list.scrollToIndex(0, "start");
+			t.ui.update();
+			var again = all(t.view, "markdown-p", [])[2];
+			assert(again != first);
+			equals(t.ui.textSelection.rangeIn(again, 13), {start: 0, end: 13});
+			t.ui.keyDown("a".code, mod());
+			var whole = t.ui.selectedText();
+			assert(StringTools.startsWith(whole, "Paragraph 0.\n\nParagraph 1.\n\n"));
+			assert(StringTools.endsWith(whole, "Paragraph 998.\n\nParagraph 999."));
 		});
 		test("the first blocks alone, without a scroller", () -> {
 			var v = view("# A\n\nb\n\nc\n\nd\n", {scroll: false, blocks: 2}).view;

@@ -42,8 +42,11 @@ typedef MarkdownProps = {
 // info string, CodeLanguages; plain text otherwise), -table, -th, -td,
 // -rule, -html (raw HTML, as text), -image-alt; in text -em, -strong,
 // -del, -code-span, -link. Links call onLink; images ask image for a node.
-// Text is selectable; spacing between nested blocks is their container's
-// row-gap (a quote's, an item body's, a list's).
+// It is one selectable scope (Node.selectable): a selection runs across
+// its blocks, a long document's rows out of view too, copied with a blank
+// line between blocks and a line between list items (markers not in it).
+// Spacing between nested blocks is their container's row-gap (a quote's,
+// an item body's, a list's).
 class MarkdownView extends Node {
 	public static inline var VIRTUAL = 300;
 
@@ -59,12 +62,15 @@ class MarkdownView extends Node {
 	final anchors = new Map<String, Int>();
 	final ids:Array<String> = [];
 	var listDepth = 0;
+	// (a row made for its text alone: no image asked for)
+	var textOnly = false;
 
 	public function new(props:MarkdownProps) {
 		super("markdown");
 		this.props = props;
 		doc = props.doc;
 		slot = "markdown";
+		selectable = true;
 		Rules.addBase("markdown", BASE);
 		shown = props.blocks == null ? doc.blocks : doc.blocks.slice(0, props.blocks);
 		for (i in 0...shown.length)
@@ -89,7 +95,9 @@ class MarkdownView extends Node {
 			v.onKeyDown = null;
 			v.onMakeRow = (i, r) -> {
 				r.slot = "markdown-row";
+				textOnly = r.parent == null;
 				r.append(block(shown[i]));
+				textOnly = false;
 				return null;
 			};
 			v.onDropRow = (r, _) -> r.removeChildren();
@@ -168,7 +176,6 @@ class MarkdownView extends Node {
 			case Html(text):
 				var t = new TextNode(text, "markdown-html");
 				t.slot = "markdown-html";
-				t.selectable = true;
 				t;
 		}
 
@@ -202,12 +209,14 @@ class MarkdownView extends Node {
 				box.style.shrink = 0;
 				box.style.alignItems = Center;
 				box.style.justify = Center;
+				box.style.userSelect = None;
 				if (it.task) box.append(new TextNode("✓", "markdown-task-mark"));
 				item.append(box);
 			} else {
 				var marker = new TextNode(ordered ? '${start + k}.' : BULLETS[(listDepth - 1) % BULLETS.length], "markdown-marker");
 				marker.slot = "markdown-marker";
 				marker.style.shrink = 0;
+				marker.style.userSelect = None;
 				item.append(marker);
 			}
 			var body = container("markdown-item-body", it.blocks);
@@ -234,6 +243,8 @@ class MarkdownView extends Node {
 		v.indentGuides = false;
 		v.currentLine = false;
 		v.background = false;
+		// (its text the document's selection's: no focus, no selection of its own)
+		v.focusable = false;
 		if (props.codeFont != null) v.fontFamily = props.codeFont;
 		var size = props.codeSize ?? 13;
 		v.fontSize = size;
@@ -317,6 +328,7 @@ class MarkdownView extends Node {
 		}
 
 	function image(src:String, alt:String, href:Null<String>):Node {
+		if (textOnly && props.image != null) return new Node("markdown-image");
 		var n = props.image == null ? null : props.image(src, alt);
 		if (n == null) {
 			var t = new TextNode(alt == "" ? src : alt, "markdown-image-alt");
@@ -337,7 +349,6 @@ class MarkdownView extends Node {
 	function text(content:Array<Inline>, slot:String):TextNode {
 		var t = new TextNode("", slot);
 		t.slot = slot;
-		t.selectable = true;
 		spans(content, t);
 		if (t.children.length == 0) t.text = "";
 		return t;
