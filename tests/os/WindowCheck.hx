@@ -27,7 +27,7 @@ class WindowCheck {
 	}
 
 	static function main() {
-		var window = new Window("WindowCheck", 200, 150);
+		var window = new Window({title: "WindowCheck", width: 200, height: 150});
 		var dropped:Null<{files:Array<String>, x:Int, y:Int}> = null;
 		var start = haxe.Timer.stamp(), step = 0, frames = 0;
 		// (macOS gives a path's characters decomposed, as its file systems

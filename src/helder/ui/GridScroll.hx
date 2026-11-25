@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Edges;
 import helder.os.Mods;
 import helder.ui.access.Role;
 import helder.view.graph.Graph;

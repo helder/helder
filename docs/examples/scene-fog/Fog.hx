@@ -20,7 +20,7 @@ import helder.scene.render.*;
 //   helder run docs/examples/scene-fog
 class Fog {
 	static function main() {
-		var window = new Window("Fog", 640, 400);
+		var window = new Window({title: "Fog", width: 640, height: 400});
 		var device = Device.create(window.surface);
 		var renderer = new Renderer(device, true, 1, true);   // offscreen, HDR
 		renderer.sunDirection = new Vec3(1, 0.25, -0.4);

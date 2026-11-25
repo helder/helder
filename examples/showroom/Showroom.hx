@@ -27,7 +27,7 @@ import helder.scene.render.*;
 //     -cp examples -main Showroom --custom-target hxmc=showroom -D hxmc.libc=glibc
 class Showroom {
 	static function main() {
-		var window = new Window("Showroom", 640, 480);
+		var window = new Window({title: "Showroom", width: 640, height: 480});
 		var device = Device.create(window.surface);
 		Images.decode = Images.png;
 		var renderer = new Renderer(device).use(new NormalMaps(device)).use(Shadows.cascaded(device, 1024, 6));

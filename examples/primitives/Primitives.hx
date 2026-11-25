@@ -135,7 +135,7 @@ class Primitives {
 	}
 
 	static function main() {
-		var window = new Window("Primitives", 800, 560);
+		var window = new Window({title: "Primitives", width: 800, height: 560});
 		var device = Device.create(window.surface);
 		var scene = new Primitives(device);
 		// (the frames' clock: the display's, or a headless run's virtual one)

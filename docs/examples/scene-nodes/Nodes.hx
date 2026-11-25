@@ -21,7 +21,7 @@ import helder.scene.render.*;
 //   helder run docs/examples/scene-nodes
 class Nodes {
 	static function main() {
-		var window = new Window("World and nodes", 640, 400);
+		var window = new Window({title: "World and nodes", width: 640, height: 400});
 		var device = Device.create(window.surface);
 		var renderer = new Renderer(device);
 		renderer.sky = new Vec3(0.05, 0.06, 0.1);

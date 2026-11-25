@@ -23,7 +23,7 @@ class ManyLights {
 	static inline var LIGHTS = 160;
 
 	static function main() {
-		var window = new Window("Many lights", 640, 400);
+		var window = new Window({title: "Many lights", width: 640, height: 400});
 		var device = Device.create(window.surface);
 		var renderer = new Renderer(device);
 		renderer.clearColor = new Vec4(0.02, 0.02, 0.035, 1);

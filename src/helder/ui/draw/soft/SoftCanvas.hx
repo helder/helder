@@ -1,5 +1,6 @@
 package helder.ui.draw.soft;
 
+import helder.os.Edges;
 import helder.gfx.Color;
 import haxe.io.Bytes;
 import helder.canvas.Bitmap;

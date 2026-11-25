@@ -18,7 +18,7 @@ import helder.scene.render.*;
 //   helder run docs/examples/scene-environment
 class Sky {
 	static function main() {
-		var window = new Window("An environment prefiltered by helder", 640, 400);
+		var window = new Window({title: "An environment prefiltered by helder", width: 640, height: 400});
 		var device = Device.create(window.surface);
 		var renderer = new Renderer(device);
 		var world = new World("environment");

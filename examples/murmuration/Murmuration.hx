@@ -300,7 +300,7 @@ class Murmuration {
 	static function main() {
 		var args = Sys.args(), b = args.indexOf("--bench");
 		if (b >= 0) return bench(Std.parseInt(args[b + 1] ?? "1920") ?? 1920, Std.parseInt(args[b + 2] ?? "1080") ?? 1080);
-		var window = new Window("Murmuration", 1280, 720);
+		var window = new Window({title: "Murmuration", width: 1280, height: 720});
 		var m = new Murmuration(Device.create(window.surface));
 		// (--birds n: at most n fly, as helder.build's homepage asks)
 		var cap = args.indexOf("--birds");

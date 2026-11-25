@@ -74,12 +74,13 @@ class Window {
 	// (transparent as it was asked for: what the platform's window reads)
 	@:allow(helder.os) final clear:Bool;
 
-	// (transparent: its pixels' alpha shows what is behind it, premultiplied;
-	// where the system cannot, opaque: see transparent)
-	@:typescript public function new(title:String, width:Int, height:Int, titlebar:TitleBar = Standard, transparent = false) {
+	// a window made from its options (WindowOptions: its title, its size, its
+	// title bar, whether it is transparent)
+	@:typescript public function new(options:WindowOptions) {
+		var title = options.title, width = options.width, height = options.height;
 		this.title = title;
-		this.titlebar = titlebar;
-		clear = transparent;
+		this.titlebar = options.titlebar ?? Standard;
+		clear = options.transparent == true;
 		#if (!helder.os || helder.headless)
 		if (HEADLESS) {
 			native = new helder.os.headless.HeadlessWindow(this, width, height);
@@ -143,19 +144,19 @@ class Window {
 	// CSS's env(safe-area-inset-*) (iOS: the view's safeAreaInsets; Android:
 	// the window's insets, its bars and cutout; 0 elsewhere); a Resize event
 	// follows a change (a rotation, the bars hidden)
-	public var safeTop(get, never):Int;
-	public var safeLeft(get, never):Int;
-	public var safeBottom(get, never):Int;
-	public var safeRight(get, never):Int;
+	public var safe(get, never):Edges;
 
-	function get_safeTop():Int
+	function get_safe():Edges
+		return new Edges(safeTop(), safeRight(), safeBottom(), safeLeft());
+
+	function safeTop():Int
 		return
 			HEADLESS ? 0 :
 			#if (!helder.os || helder.os == "ios") Platform.apple() >= 1 ? ios().safeTop : #end
 			#if (!helder.os || helder.os == "android") Platform.target() >= 9 ? android().safeTop : #end
 			0;
 
-	function get_safeLeft():Int
+	function safeLeft():Int
 		return
 			HEADLESS ? 0 :
 			#if (!helder.os || helder.os == "ios") Platform.apple() >= 1 ? ios().safeLeft : #end
@@ -164,7 +165,7 @@ class Window {
 
 	// (the keyboard up: the larger of the bottom inset and its height, so that
 	// a layout clear of the safe area is clear of the keyboard)
-	function get_safeBottom():Int {
+	function safeBottom():Int {
 		var b =
 			HEADLESS ? 0 :
 			#if (!helder.os || helder.os == "ios") Platform.apple() >= 1 ? ios().safeBottom : #end
@@ -194,7 +195,7 @@ class Window {
 		keyboardHeight(points);
 	}
 
-	function get_safeRight():Int
+	function safeRight():Int
 		return
 			HEADLESS ? 0 :
 			#if (!helder.os || helder.os == "ios") Platform.apple() >= 1 ? ios().safeRight : #end
@@ -375,13 +376,13 @@ class Window {
 	// ignoresMouseEvents, by where the pointer is at each poll; Windows:
 	// WM_NCHITTEST's HTTRANSPARENT and, while the pointer is outside them,
 	// WS_EX_TRANSPARENT; Wayland: the input region; X11: the input shape;
-	// nothing elsewhere
-	public var inputRects(default, null):Null<Array<Rect>> = null;
+	// nothing elsewhere. (Read: a copy of what was given.)
+	public var input(default, set):Null<Array<Rect>> = null;
 
-	public function input(rects:Null<Array<Rect>>) {
-		if (closed) return;
-		inputRects = rects == null ? null : [for (r in rects) {x: r.x, y: r.y, width: r.width, height: r.height}];
-		if (HEADLESS) return;
+	function set_input(rects:Null<Array<Rect>>):Null<Array<Rect>> {
+		if (closed) return input;
+		input = rects == null ? null : [for (r in rects) {x: r.x, y: r.y, width: r.width, height: r.height}];
+		if (HEADLESS) return input;
 		// (the systems' own: x, y, width, height in whole pixels, one after another)
 		var inputRects = rects == null ? null : [for (r in rects) for (v in [r.x, r.y, r.width, r.height]) Math.round(v)];
 		if (Platform.apple() >= 1) {} else
@@ -390,6 +391,7 @@ class Window {
 		if (Platform.os() == 3) {} else
 		if (Platform.target() >= 9) {} else
 		#if ((!helder.os || helder.os == "linux") && !helder.headless) (Std.isOfType(native, WaylandWindow) ? wayland().setInput(inputRects) : x11().setInput(inputRects)); #else {} #end
+		return input;
 	}
 
 	// the system's material behind a transparent window, seen through its
@@ -699,4 +701,18 @@ class Window {
 		#if ((!helder.os || helder.os == "linux") && !helder.headless) (Std.isOfType(native, WaylandWindow) ? wayland().destroy() : x11().destroy()); #else {} #end
 		App.windows.remove(this);
 	}
+}
+
+// what a Window is made with: its title; its size in points (0 and 0: the
+// whole screen, on phones and the web); its title bar (TitleBar: the
+// system's, the default; inset; none); whether it is transparent (its
+// pixels' alpha shows what is behind it, premultiplied; where the system
+// cannot, opaque: Window.transparent). What changes later is Window's
+// own (title, backdrop, onTop, shadow, cursor...).
+typedef WindowOptions = {
+	var title:String;
+	var width:Int;
+	var height:Int;
+	@:optional var titlebar:TitleBar;
+	@:optional var transparent:Bool;
 }

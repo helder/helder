@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Edges;
 import helder.os.Rect;
 import helder.view.graph.Graph;
 import helder.view.graph.Signal;
@@ -12,7 +13,7 @@ import helder.view.graph.Signal;
 // padding="calc(env(safe-area-inset-top) + 8px) 16px", margin-bottom="max(12px,
 // env(safe-area-inset-bottom))". calc(), max() and min() of pixels fold to
 // one length; a percentage in calc() stays for Dim's. The insets are
-// UiWindow's first window's (a phone has one: Window.safeTop..., over the
+// UiWindow's first window's (a phone has one: Window.safe.top..., over the
 // UI's scale), each frame they changed; Ui.safeArea has each window's own.
 // Code reads insets() (a signal: what reads it in an effect or a reactive
 // attribute follows it). env(titlebar-area-x), -y, -width and -height are an

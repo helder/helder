@@ -25,7 +25,7 @@ class WindowCheck {
 	}
 
 	static function main() {
-		var w = new Window("hxmc", 200, 100);
+		var w = new Window({title: "hxmc", width: 200, height: 100});
 		var title = "Fenêtre ✓";
 		w.title = title;
 		w.resize(300, 150);

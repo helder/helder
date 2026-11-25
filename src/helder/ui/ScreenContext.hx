@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Edges;
 import helder.os.Rect;
 import helder.view.graph.Graph;
 import helder.view.graph.Signal;

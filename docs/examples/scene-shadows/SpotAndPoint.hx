@@ -20,7 +20,7 @@ import helder.scene.render.*;
 //   helder run docs/examples/scene-shadows
 class SpotAndPoint {
 	static function main() {
-		var window = new Window("Spot and point shadows", 640, 400);
+		var window = new Window({title: "Spot and point shadows", width: 640, height: 400});
 		var device = Device.create(window.surface);
 		// #region shadows
 		var shadows = new Shadows(device, 1024).local({atlas: 1024, maxLocal: 3});

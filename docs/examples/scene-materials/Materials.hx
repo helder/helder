@@ -22,7 +22,7 @@ import helder.scene.render.*;
 //   helder run docs/examples/scene-materials
 class Materials {
 	static function main() {
-		var window = new Window("Materials", 640, 400);
+		var window = new Window({title: "Materials", width: 640, height: 400});
 		var device = Device.create(window.surface);
 		Images.decode = Images.png;
 		var renderer = new Renderer(device);

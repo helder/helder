@@ -24,6 +24,7 @@
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 import type {Asset, FontFile, Image} from "helder/asset";
 import type {Mat4, Quat, Vec2, Vec3, Vec4} from "helder/math";
+import type {WindowOptions} from "helder/os";
 import type {Node} from "helder/scene";
 import type {Read} from "helder/view";
 
@@ -3032,9 +3033,9 @@ export declare class Surface {
 // same); on Linux with WAYLAND_DISPLAY set, Wayland's
 // (helder.os.linux.wayland.WaylandWindow; X11 where it cannot connect, or HELDER_X11=1).
 export declare class Window {
-	// (transparent: its pixels' alpha shows what is behind it, premultiplied;
-	// where the system cannot, opaque: see transparent)
-	constructor(title: string, width: number, height: number, titlebar?: "standard" | "inset" | "none", transparent?: boolean);
+	// a window made from its options (WindowOptions: its title, its size, its
+	// title bar, whether it is transparent)
+	constructor(options: WindowOptions);
 	readonly surface: Surface;
 	// its title bar's text (the browser: the page's title)
 	title: string;

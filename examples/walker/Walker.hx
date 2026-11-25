@@ -82,7 +82,7 @@ class Walker {
 		renderer.draw(enc, world, camera);
 
 	static function main() {
-		var window = new Window("Walker", 640, 480);
+		var window = new Window({title: "Walker", width: 640, height: 480});
 		var device = Device.create(window.surface);
 		var scene = new Walker(device);
 		var actions = new InputMap();

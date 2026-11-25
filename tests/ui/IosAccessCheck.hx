@@ -33,7 +33,7 @@ class IosAccessCheck {
 
 	static function main() {
 		Sys.println("access: started");
-		var w = new UiWindow("fixture", 400, 640);
+		var w = new UiWindow({title: "fixture", width: 400, height: 640});
 		var f = new AccessFixture();
 		Render.render(f.view(), w.root);
 		var frames = 0, step = 0, els:Array<Ptr> = [];

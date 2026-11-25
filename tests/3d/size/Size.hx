@@ -44,7 +44,7 @@ import helder.os.*;
 // -D size_local (Shadows' point and spot lights' tiles: LocalShadows)
 class Size {
 	static function main() {
-		var window = new Window("Size", 320, 240);
+		var window = new Window({title: "Size", width: 320, height: 240});
 		var device = Device.create(window.surface);
 		var pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(0.1, 0.1, 0.12, 1)}]};
 		#if (size_level >= 1)

@@ -1,5 +1,6 @@
 package helder.ui.draw;
 
+import helder.os.Edges;
 import helder.math.Vec4;
 
 import haxe.io.Bytes;

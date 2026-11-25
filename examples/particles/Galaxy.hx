@@ -136,7 +136,7 @@ class Galaxy {
 
 	static function main() {
 		var begun = Sys.time(), firstFrame = -1.0, printed = 0.0;
-		var window = new Window("GPU particles", 640, 480);
+		var window = new Window({title: "GPU particles", width: 640, height: 480});
 		var device = Device.create(window.surface);
 		var galaxy = new Galaxy(device);
 		var overlay = new Overlay(device), stats = new FrameStats(120), recent = new FrameStats(30);

@@ -143,7 +143,7 @@ class PhysicsStress {
 
 	static function main() {
 		var begun = Sys.time(), firstFrame = -1.0, printed = 0.0;
-		var window = new Window("Physics stress", 640, 480);
+		var window = new Window({title: "Physics stress", width: 640, height: 480});
 		var device = Device.create(window.surface);
 		var demo = new PhysicsStress(device);
 		var overlay = new Overlay(device), stats = new FrameStats(120);

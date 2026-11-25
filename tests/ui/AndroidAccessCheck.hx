@@ -15,7 +15,7 @@ class AndroidAccessCheck {
 		helder.os.android.Activity.link();
 		#end
 		Sys.println("access: started");
-		var w = new UiWindow("fixture", 400, 640);
+		var w = new UiWindow({title: "fixture", width: 400, height: 640});
 		Sys.println("access: a window");
 		var f = new AccessFixture();
 		Render.render(f.view(), w.root);

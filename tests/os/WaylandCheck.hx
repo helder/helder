@@ -23,7 +23,7 @@ class WaylandCheck {
 	static function main() {
 		var scale = Sys.args().length > 0 ? Std.parseInt(Sys.args()[0]) : 1;
 		check("Wayland chosen (WAYLAND_DISPLAY=" + Sys.getEnv("WAYLAND_DISPLAY") + ")", WaylandWindow.active());
-		var w = new UiWindow("WaylandCheck", 320, 200);
+		var w = new UiWindow({title: "WaylandCheck", width: 320, height: 200});
 		w.background = helder.gfx.Color.rgb(0x2050A0);
 		var native:WaylandWindow = @:privateAccess w.window.native;
 		check("the surface: a wl_egl_window on the wl_display", w.window.surface.kind == Wayland && !w.window.surface.handle.isNull());

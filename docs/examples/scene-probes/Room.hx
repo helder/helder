@@ -22,7 +22,7 @@ import helder.scene.render.*;
 //   helder run docs/examples/scene-probes
 class Room {
 	static function main() {
-		var window = new Window("Probes and area lights", 640, 400);
+		var window = new Window({title: "Probes and area lights", width: 640, height: 400});
 		var device = Device.create(window.surface);
 		var renderer = new Renderer(device);
 		renderer.clearColor = new Vec4(0.01, 0.01, 0.015, 1);

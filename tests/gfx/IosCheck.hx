@@ -44,8 +44,8 @@ class IosCheck {
 		device.endFrame();
 		device.dispose();
 		GfxCheck.compareBytes("cube, ios headless", pixels, Embed.file("tests/gfx/cube.png"));
-		var w = new Window("IosCheck", 0, 0);
-		Sys.println('IosCheck: window ${w.width}x${w.height}, scale ${w.scale}, safe area ${w.safeTop},${w.safeLeft},${w.safeBottom},${w.safeRight}');
+		var w = new Window({title: "IosCheck", width: 0, height: 0});
+		Sys.println('IosCheck: window ${w.width}x${w.height}, scale ${w.scale}, safe area ${Std.int(w.safe.top)},${Std.int(w.safe.left)},${Std.int(w.safe.bottom)},${Std.int(w.safe.right)}');
 		var device = Device.create(w.surface);
 		var cube = new Cube(device);
 		var spin = new Spin(Spin.SPEED), last = Sys.time(), frames = 0, lit = false;
@@ -111,7 +111,7 @@ class IosCheck {
 					+ '${moves.length - 1} moves in ${Math.round(up - moves[0].t)} ms');
 				moves = [];
 			}
-			if (e.kind == Resize) Sys.println('IosCheck: safe area ${w.safeTop},${w.safeLeft},${w.safeBottom},${w.safeRight}');
+			if (e.kind == Resize) Sys.println('IosCheck: safe area ${Std.int(w.safe.top)},${Std.int(w.safe.left)},${Std.int(w.safe.bottom)},${Std.int(w.safe.right)}');
 		});
 		Sys.println("IosCheck: done");
 	}

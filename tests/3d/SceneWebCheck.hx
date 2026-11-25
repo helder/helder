@@ -19,7 +19,7 @@ class SceneWebCheck {
 			Sys.println('SceneWebCheck: headless: ${device.width}x${device.height} (${name(device.backend)})');
 			return;
 		}
-		var w = new Window("SceneWebCheck", 256, 192);
+		var w = new Window({title: "SceneWebCheck", width: 256, height: 192});
 		var device = Device.create(w.surface);
 		var draw = Scenes.make(scene, device);
 		var frames = 0;

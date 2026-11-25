@@ -120,7 +120,7 @@ class Fountain {
 	}
 
 	static function main() {
-		var window = new Window("Fountain", 640, 480);
+		var window = new Window({title: "Fountain", width: 640, height: 480});
 		var fountain = new Fountain(Device.create(window.surface));
 		Sys.println("Fountain: " + fountain.count + " drops, " + (fountain.compute ? "moved by a compute stage" : "moved on the CPU (no compute here)"));
 		App.run(fountain.frame, e -> switch e.kind {

@@ -80,7 +80,7 @@ class Falling {
 		renderer.draw(enc, world, camera);
 
 	static function main() {
-		var window = new Window("Falling", 640, 480);
+		var window = new Window({title: "Falling", width: 640, height: 480});
 		var device = Device.create(window.surface);
 		var scene = new Falling(device);
 		// (the frame's stages: physics at the fixed rate)

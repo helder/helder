@@ -88,7 +88,7 @@ class UiDrawCheck {
 
 	#if !(helder.soft && helder.headless)
 	static function window(golden:String, out:String) {
-		var w = new helder.ui.UiWindow("UiDrawCheck", W, H);
+		var w = new helder.ui.UiWindow({title: "UiDrawCheck", width: W, height: H});
 		Sample.build(w.root);
 		var pixels = Bytes.alloc(W * H * 4);
 		var frames = 0;

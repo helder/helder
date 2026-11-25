@@ -4,7 +4,7 @@ import hxmc.Platform;
 
 class SettingsCheck {
 	static function main() {
-		var w = new Window("SettingsCheck", 240, 320);
+		var w = new Window({title: "SettingsCheck", width: 240, height: 320});
 		var start = haxe.Timer.stamp();
 		var original = Settings.orientation();
 		var ready = false, copied = false;

@@ -225,7 +225,7 @@ class Instancing {
 
 	static function main() {
 		var begun = Sys.time(), firstFrame = -1.0, printed = 0.0;
-		var window = new Window("Instancing stress", 640, 480);
+		var window = new Window({title: "Instancing stress", width: 640, height: 480});
 		var device = Device.create(window.surface);
 		var demo = new Instancing(device);
 		var overlay = new Overlay(device), stats = new FrameStats(120);

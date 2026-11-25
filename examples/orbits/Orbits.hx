@@ -83,7 +83,7 @@ class Orbits {
 		renderer.draw(enc, world, camera);
 
 	static function main() {
-		var window = new Window("Orbits", 640, 480);
+		var window = new Window({title: "Orbits", width: 640, height: 480});
 		var device = Device.create(window.surface);
 		var orbits = new Orbits(device);
 		// (the debug overlay, drawn with helder.ui: frame times and draws; O toggles it)

@@ -22,10 +22,10 @@ class TwoWindowsCheck {
 	static function main() {
 		#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
 		var see = Sys.args().indexOf("transparent") >= 0;
-		var g = new helder.ui.UiWindow("TwoWindowsCheck green", 300, 200, null, false);
+		var g = new helder.ui.UiWindow({title: "TwoWindowsCheck green", width: 300, height: 200, antialias: false});
 		g.background = Color.rgb(0x00FF00);
 		g.window.moveTo(100, 100);
-		var o = new helder.ui.UiWindow("TwoWindowsCheck " + (see ? "transparent" : "blue"), 200, 150, null, false, Standard, see);
+		var o = new helder.ui.UiWindow({title: "TwoWindowsCheck " + (see ? "transparent" : "blue"), width: 200, height: 150, antialias: false, titlebar: Standard, transparent: see});
 		if (see) {
 			o.background = Color.TRANSPARENT;
 			var box = new Node();

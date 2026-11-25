@@ -180,7 +180,7 @@ class VideoWindowCheck {
 	}
 
 	static function scene(mode:String, dir:String) {
-		var w = new helder.ui.UiWindow("VideoWindowCheck", 400, 300);
+		var w = new helder.ui.UiWindow({title: "VideoWindowCheck", width: 400, height: 300});
 		w.root.style.set({background: 0xFFF4F4F4, paddingTop: 30, paddingLeft: 20});
 		var list = new Node();
 		list.style.set({overflow: Scroll, width: 240, height: 240, rowGap: 2, background: 0xFFFFFFFF});

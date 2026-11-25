@@ -9,7 +9,7 @@
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 import type {Read} from "helder/view";
 
-declare const __haxe: {Store: "helder.os.Store", Settings: "helder.os.Settings", Locale: "helder.os.Locale", Format: "helder.os.Format", Plural: "helder.os.Plural", Network: "helder.os.Network", Share: "helder.os.Share", Permissions: "helder.os.Permissions", Notifications: "helder.os.Notifications", Photos: "helder.os.Photos", Location: "helder.os.Location", Biometrics: "helder.os.Biometrics", Paths: "helder.os.Paths", Places: "helder.os.Places", Trash: "helder.os.Trash", Folders: "helder.os.Folders", DeviceInfo: "helder.os.DeviceInfo", StatusBar: "helder.os.StatusBar", args: "Sys.args", env: "Sys.getEnv", __module: "helder.os.TypeScript"};
+declare const __haxe: {Edges: "helder.os.Edges", Store: "helder.os.Store", Settings: "helder.os.Settings", Locale: "helder.os.Locale", Format: "helder.os.Format", Plural: "helder.os.Plural", Network: "helder.os.Network", Share: "helder.os.Share", Permissions: "helder.os.Permissions", Notifications: "helder.os.Notifications", Photos: "helder.os.Photos", Location: "helder.os.Location", Biometrics: "helder.os.Biometrics", Paths: "helder.os.Paths", Places: "helder.os.Places", Trash: "helder.os.Trash", Folders: "helder.os.Folders", DeviceInfo: "helder.os.DeviceInfo", StatusBar: "helder.os.StatusBar", args: "Sys.args", env: "Sys.getEnv", __module: "helder.os.TypeScript"};
 
 // What a pointer is (Pointer.type): the mouse (or a trackpad's cursor), a
 // finger on a touch screen, a pen or stylus. Kept apart so that gestures can
@@ -72,6 +72,36 @@ export type FolderEntry = { name: string; folder: boolean; size: number; modifie
 // it (a window's pixels, a node's points). A structure: a frame's or a
 // gesture's code that asks every move fills one it keeps (Node.rectInto)
 export type Rect = { x: number; y: number; width: number; height: number };
+
+// what a Window is made with: its title; its size in points (0 and 0: the
+// whole screen, on phones and the web); its title bar (TitleBar: the
+// system's, the default; inset; none); whether it is transparent (its
+// pixels' alpha shows what is behind it, premultiplied; where the system
+// cannot, opaque: Window.transparent). What changes later is Window's
+// own (title, backdrop, onTop, shadow, cursor...).
+export type WindowOptions = { title: string; width: number; height: number; titlebar?: "standard" | "inset" | "none"; transparent?: boolean };
+
+// Four lengths from a box's edges, in the units of what gives them (a
+// window's safe area in pixels, Window.safe; helder.ui's padding and
+// margin in points, EdgesValue converting to them). A margin may be AUTO
+// (NaN; "auto" in markup): CSS's auto margin.
+export declare class Edges {
+	constructor(top: number, right: number, bottom: number, left: number);
+	static readonly ZERO: Edges;
+	// an auto margin: the free space along a flex line, the room left across it, in a grid
+	// area or between an absolute box's offsets shared among a box's auto margins
+	static readonly AUTO: number;
+	// Four lengths from a box's edges, in the units of what gives them (a
+	// window's safe area in pixels, Window.safe; helder.ui's padding and
+	// margin in points, EdgesValue converting to them). A margin may be AUTO
+	// (NaN; "auto" in markup): CSS's auto margin.
+	top: number;
+	right: number;
+	bottom: number;
+	left: number;
+	readonly horizontal: number;
+	readonly vertical: number;
+}
 
 // A small key-value store kept between runs: an app's settings, a game's
 // save. Strings by key, read into memory when opened, written through at

@@ -121,7 +121,7 @@ class Instances {
 
 	static function main() {
 		var args = Sys.args(), still = args.indexOf("--time");
-		var window = new Window("Instances", 640, 480);
+		var window = new Window({title: "Instances", width: 640, height: 480});
 		var instances = new Instances(Device.create(window.surface));
 		var start = Sys.time();
 		App.run(() -> instances.frame(still >= 0 ? Std.parseFloat(args[still + 1]) : Sys.time() - start), e -> switch e.kind {

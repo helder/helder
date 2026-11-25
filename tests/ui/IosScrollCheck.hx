@@ -21,7 +21,7 @@ class IosScrollCheck {
 	}
 
 	public static function run() {
-		var w = new helder.ui.UiWindow("IosScrollCheck", 0, 0);
+		var w = new helder.ui.UiWindow({title: "IosScrollCheck", width: 0, height: 0});
 		var field = new TextField();
 		field.host = Native;
 		field.style.set({height: 40, flexShrink: 0, margin: 60});

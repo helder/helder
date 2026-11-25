@@ -77,7 +77,7 @@ class CanvasWindow {
 	static function main() {
 		var args = Sys.args();
 		if (args.length > 1 && args[0] == "--shot") shot = args[1];
-		window = new Window("Canvas", W, H);
+		window = new Window({title: "Canvas", width: W, height: H});
 		var app = new CanvasWindow(helder.gfx.Device.create(window.surface));
 		App.run(app.frame, e -> switch e.kind {
 			case Close: window.close();

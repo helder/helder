@@ -73,7 +73,7 @@ class Chains {
 		renderer.draw(enc, world, camera);
 
 	static function main() {
-		var window = new Window("Chains", 640, 480);
+		var window = new Window({title: "Chains", width: 640, height: 480});
 		var device = Device.create(window.surface);
 		var scene = new Chains(device);
 		var stages = new Stages(new FixedStep(1 / 60)), last = Sys.time();

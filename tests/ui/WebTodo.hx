@@ -13,7 +13,7 @@ import helder.view.Render;
 // scrolling the root heard (pixels, added up).
 class WebTodo {
 	static function main() {
-		var w = new UiWindow("Todo", 420, 480);
+		var w = new UiWindow({title: "Todo", width: 420, height: 480});
 		// (its fields drawn: web.mjs types into the canvas, input methods included; web-field.mjs has the native editors)
 		w.ui.policy["text-field"] = Host.Drawn;
 		// (its buttons' cursor a pointer: what Window.cursor gives the canvas over one)

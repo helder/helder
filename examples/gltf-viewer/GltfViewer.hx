@@ -25,7 +25,7 @@ import helder.scene.render.*;
 //     -main GltfViewer --custom-target hxmc=viewer -D hxmc.libc=glibc
 class GltfViewer {
 	static function main() {
-		var window = new Window("glTF scene", 640, 480);
+		var window = new Window({title: "glTF scene", width: 640, height: 480});
 		var device = Device.create(window.surface, {antialias: true});
 		var renderer = new Renderer(device).use(new Shadows(device)).use(new Sky(device));
 		var world = new World();

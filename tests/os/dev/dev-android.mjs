@@ -52,7 +52,7 @@ class Counter {
 	static function main() {
 		var state = keep("state", () -> {count: 0});
 		if (!Hot.reloading) state.count = 3;
-		var w = new Window("Counter", 320, 480);
+		var w = new Window({title: "Counter", width: 320, height: 480});
 		var device = Device.create(w.surface);
 		var cube = new Cube(device);
 		var frames = 0;

@@ -16,7 +16,7 @@ import { Showcase } from "./scene";
 
 async function main() {
 	const sample = await loaded(model("examples/gltf-viewer/sample.glb"));
-	const window = new Window("TypeScript scene", 640, 480);
+	const window = new Window({title: "TypeScript scene", width: 640, height: 480});
 	const device = Device.create(window.surface);
 	const scene = new Showcase(device, sample);
 	const actions = new InputMap();

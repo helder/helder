@@ -21,7 +21,7 @@ import helder.scene.render.ToneMap;
 //   helder run docs/examples/scene-post
 class Post {
 	static function main() {
-		var window = new Window("HDR and post-processing", 640, 400);
+		var window = new Window({title: "HDR and post-processing", width: 640, height: 400});
 		var device = Device.create(window.surface);
 		var renderer = new Renderer(device, true, 1, true);
 		renderer.sunColor = new Vec3(1.2, 1.15, 1.1);

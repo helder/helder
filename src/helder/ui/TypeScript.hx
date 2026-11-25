@@ -6,7 +6,7 @@ package helder.ui;
 // button...) take any attribute, their handlers given ui's events.
 @:typescript("helder/ui")
 @:typescript.classes(helder.ui.UiWindow, helder.ui.Event, helder.ui.Key, helder.ui.VirtualScroll, helder.ui.Selection, helder.ui.GridScroll, helder.ui.Clock, helder.ui.platform.WebViewEvent, helder.ui.platform.WebContent, helder.ui.platform.WebResponse)
-@:typescript.classes(helder.ui.Edges, helder.ui.Node, helder.ui.TextNode, helder.ui.view.UiFlow, helder.ui.SafeArea, helder.ui.nav.Router)
+@:typescript.classes(helder.ui.Node, helder.ui.TextNode, helder.ui.view.UiFlow, helder.ui.SafeArea, helder.ui.nav.Router)
 @:typescript.classes(helder.ui.widgets.Controls, helder.ui.widgets.DataGrid,
 	helder.ui.widgets.EditableText, helder.ui.widgets.GridColumn,
 	helder.ui.widgets.GridTheme, helder.ui.widgets.Icons, helder.ui.widgets.Pager,

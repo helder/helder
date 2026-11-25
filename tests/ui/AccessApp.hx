@@ -24,7 +24,7 @@ class AccessApp implements Markup {
 			case "guide": [480, 640];
 			case _: [400, 640];
 		}
-		var w = new UiWindow(which, size[0], size[1]);
+		var w = new UiWindow({title: which, width: size[0], height: size[1]});
 		#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64")
 		// (the events UI Automation is given, printed: HELDER_ACCESS_LOG)
 		if (Sys.getEnv("HELDER_ACCESS_LOG") != null) helder.ui.access.windows.Access.log = s -> {

@@ -9,7 +9,7 @@ import helder.view.*;
 // push makes, the history's back popping and a reload restoring the screen
 class NavWebCheck implements Markup {
 	static function main() {
-		var w = new UiWindow("NavWebCheck", 200, 120);
+		var w = new UiWindow({title: "NavWebCheck", width: 200, height: 120});
 		final nav = new Routes();
 		nav.route("/", _ -> <view tag="home" flexGrow={1}/>).route("/item/:id", p -> <view tag={"item-" + p.id} flexGrow={1}/>);
 		Render.render(<Stack router={nav} transition={None}/>, w.root);

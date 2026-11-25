@@ -26,7 +26,7 @@ class Lights {
 	static inline var FIREFLIES = 76;
 
 	static function main() {
-		var window = new Window("Lights at night", 800, 480);
+		var window = new Window({title: "Lights at night", width: 800, height: 480});
 		var device = Device.create(window.surface);
 		var shadows = new Shadows(device, 1024).local({atlas: 1024, maxLocal: 2});
 		var renderer = new Renderer(device).use(shadows).use(new ClusteredLights(device, {maxLights: 256}));

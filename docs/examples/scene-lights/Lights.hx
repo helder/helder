@@ -20,7 +20,7 @@ import helder.scene.render.*;
 //   helder run docs/examples/scene-lights
 class Lights {
 	static function main() {
-		var window = new Window("Lights and shadows", 640, 400);
+		var window = new Window({title: "Lights and shadows", width: 640, height: 400});
 		var device = Device.create(window.surface);
 		var shadows = new Shadows(device, 2048).soft(0.25, 16, 0.08);
 		var renderer = new Renderer(device).use(shadows).use(new Sky(device));

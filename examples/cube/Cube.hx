@@ -154,7 +154,7 @@ class Cube {
 
 	static function main() {
 		var args = Sys.args(), still = args.indexOf("--angle");
-		var window = new Window("Cube", 640, 480);
+		var window = new Window({title: "Cube", width: 640, height: 480});
 		var cube = new Cube(Device.create(window.surface));
 		var spin = new Spin(still >= 0 ? 0 : Spin.SPEED), angle = still >= 0 ? Std.parseFloat(args[still + 1]) : 0.0;
 		var last = Sys.time();

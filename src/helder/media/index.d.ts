@@ -6,7 +6,7 @@
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 import type {ImageFit, Node} from "helder/ui";
-import type {Signal} from "helder/view";
+import type {Read, Signal} from "helder/view";
 
 declare const __haxe: {Player: "helder.media.Player", ByteSource: "helder.media.ByteSource", VideoNode: "helder.media.ui.VideoNode", FileSource: "helder.media.FileSource", MemorySource: "helder.media.MemorySource", __module: "helder.media.TypeScript"};
 

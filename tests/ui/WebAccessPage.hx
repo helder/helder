@@ -9,7 +9,7 @@ import fixtures.AccessFixture;
 // volume=0.5").
 class WebAccessPage {
 	static function main() {
-		var w = new UiWindow("fixture", 400, 640);
+		var w = new UiWindow({title: "fixture", width: 400, height: 640});
 		w.ui.policy["text-field"] = Host.Drawn;
 		var f = new AccessFixture();
 		Render.render(f.view(), w.root);

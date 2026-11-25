@@ -1,5 +1,6 @@
 package helder.ui;
 
+import helder.os.Edges;
 import helder.os.Rect;
 import helder.math.Vec4;
 
@@ -23,6 +24,17 @@ import helder.ui.view.UiView;
 import helder.view.graph.Graph;
 import helder.view.Render;
 import helder.view.RootView;
+
+// what a UiWindow is made with: helder.os's WindowOptions (its title, size,
+// title bar, transparent: the background's alpha showing what is behind the
+// window), the text engine (default: helder.text's, DrawText) and antialias
+// (default true: the device's frames multisampled, 4 samples a pixel, where
+// the GPU has them)
+typedef UiWindowOptions = {
+	> helder.os.Window.WindowOptions,
+	@:optional var text:TextEngine;
+	@:optional var antialias:Bool;
+}
 
 // <Surface>'s props (UiWindow.Surface)
 typedef SurfaceProps = {
@@ -177,12 +189,11 @@ class UiWindow {
 	// (HELDER_DAMAGE: "full" draws each frame whole, "flash" shows what each frame drew: helder.ui.draw.Renderer.keep)
 	static final damage = Sys.getEnv("HELDER_DAMAGE") ?? "";
 
-	// (antialias: the device's frames multisampled, 4 samples a pixel, where
-	// the GPU has them; transparent: helder.os's, the background's alpha
-	// showing what is behind the window)
-	public function new(title:String, width:Int, height:Int, ?text:TextEngine, antialias = true, titlebar:helder.os.TitleBar = Standard,
-			transparent = false) {
-		window = new helder.os.Window(title, width, height, titlebar, transparent);
+	// a window and its Ui from its options (UiWindowOptions: helder.os's
+	// WindowOptions, the text engine, antialias)
+	public function new(options:UiWindowOptions) {
+		var width = options.width, height = options.height, text = options.text, antialias = options.antialias != false;
+		window = new helder.os.Window({title: options.title, width: width, height: height, titlebar: options.titlebar, transparent: options.transparent});
 		// (Android: text fields get the soft keyboard and the input method)
 		#if (!helder.os || helder.os == "android") if (Platform.target() >= 9) helder.os.android.TextInput.enable(); #end
 		#if (helder.headless || helder.soft)
@@ -224,7 +235,7 @@ class UiWindow {
 		ui.clipboard = new SystemClipboard(window);
 		ui.window = new OsWindow(this);
 		// (an inset title bar: a press's answer the ui's, its drag regions and window buttons)
-		if (titlebar != Standard) window.titlebarAt = (x, y) -> ui.titleHit(x / scale, y / scale);
+		if (window.titlebar != Standard) window.titlebarAt = (x, y) -> ui.titleHit(x / scale, y / scale);
 		ui.dark = helder.os.Settings.dark.peek();
 		if (!appearance) {
 			appearance = true;
@@ -616,7 +627,7 @@ class UiWindow {
 		var key = out.join(" ");
 		if (key == taken) return;
 		taken = key;
-		window.input([for (i in 0...out.length >> 2) {x: out[4 * i], y: out[4 * i + 1], width: out[4 * i + 2], height: out[4 * i + 3]}]);
+		window.input = [for (i in 0...out.length >> 2) {x: out[4 * i], y: out[4 * i + 1], width: out[4 * i + 2], height: out[4 * i + 3]}];
 	}
 
 	// (n's box where it draws and the pointer finds it, else its children's;
@@ -700,9 +711,9 @@ class UiWindow {
 	// env(safe-area-inset-*) from the first window's (SafeArea), when it changed
 	function safeArea() {
 		var k = scale, s = ui.safeArea;
-		var t = window.safeTop / k, r = window.safeRight / k, b = window.safeBottom / k, l = window.safeLeft / k;
+		var t = window.safe.top / k, r = window.safe.right / k, b = window.safe.bottom / k, l = window.safe.left / k;
 		if (s.top != t || s.right != r || s.bottom != b || s.left != l) {
-			ui.safeArea = new helder.ui.Edges(t, r, b, l);
+			ui.safeArea = new helder.os.Edges(t, r, b, l);
 			ui.requestFrame();
 		}
 		if (open[0] == this) helder.ui.SafeArea.set(t, r, b, l);
@@ -991,8 +1002,7 @@ class UiWindow {
 		var title:Null<String> = Render.read(props.title);
 		var bg:Null<Color> = props.background == null ? null : props.background();
 		var backdrop:Null<helder.os.WindowBackdrop> = props.backdrop == null ? null : props.backdrop();
-		var w = new UiWindow(title ?? "helder", width ?? (web ? 0 : 800), height ?? (web ? 0 : 600), null, props.antialias != false,
-			props.titlebar ?? Standard, (bg != null && bg.a < 255) || (backdrop != null && backdrop != None));
+		var w = new UiWindow({title: title ?? "helder", width: width ?? (web ? 0 : 800), height: height ?? (web ? 0 : 600), antialias: props.antialias != false, titlebar: props.titlebar ?? Standard, transparent: (bg != null && bg.a < 255) || (backdrop != null && backdrop != None)});
 		// (a backdrop seen through a clear background, unless one is given)
 		if (bg == null && backdrop != null && backdrop != None) w.background = Color.TRANSPARENT;
 		if (props.backdrop != null) Graph.renderEffect(() -> props.backdrop(), v -> w.window.backdrop = v);

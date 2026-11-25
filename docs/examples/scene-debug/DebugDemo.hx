@@ -22,7 +22,7 @@ import helder.scene.render.*;
 //   helder run docs/examples/scene-debug
 class DebugDemo {
 	static function main() {
-		var window = new Window("Debug drawing", 640, 400);
+		var window = new Window({title: "Debug drawing", width: 640, height: 400});
 		var device = Device.create(window.surface);
 		var renderer = new Renderer(device);
 		renderer.clearColor = new Vec4(0.05, 0.06, 0.08, 1);

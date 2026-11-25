@@ -103,12 +103,12 @@ class GfxCheck {
 	}
 
 	static function window(name:String, golden:String, out:String, frames:Int):Bool {
-		var w = new Window("GfxCheck", WIDTH, HEIGHT);
+		var w = new Window({title: "GfxCheck", width: WIDTH, height: HEIGHT});
 		// (a Retina display: the window's size is in points)
 		if (w.width != WIDTH) {
 			var s = w.scale;
 			w.close();
-			w = new Window("GfxCheck", Math.round(WIDTH / s), Math.round(HEIGHT / s));
+			w = new Window({title: "GfxCheck", width: Math.round(WIDTH / s), height: Math.round(HEIGHT / s)});
 		}
 		if (Platform.os() == 1) CocoaCheck.prepare(w);
 		var device = Device.create(w.surface);

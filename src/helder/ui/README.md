@@ -955,7 +955,7 @@ indicator leave clear) is CSS's `env()`: a literal attribute naming
 `env(safe-area-inset-top)` (`-right`, `-bottom`, `-left`; a fallback after
 a comma for a name it does not know) is bound to the main window's insets
 in UI pixels (`SafeArea.insets`, a signal; UiWindow sets it from
-`helder.os.Window.safeTop`... over the scale) and set again when they
+`helder.os.Window.safe.top`... over the scale) and set again when they
 change (a rotation, the bars hidden): `padding-top="env(safe-area-inset-top)"`,
 `padding="calc(env(safe-area-inset-top) + 8px) 16px"`,
 `margin-bottom="max(12px, env(safe-area-inset-bottom))"` (`calc()`,

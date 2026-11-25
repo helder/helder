@@ -156,7 +156,7 @@ class Formats {
 	}
 
 	static function main() {
-		var window = new Window("Texture formats", 640, 480);
+		var window = new Window({title: "Texture formats", width: 640, height: 480});
 		var formats = new Formats(Device.create(window.surface));
 		App.run(() -> {
 			var enc = formats.device.beginFrame();

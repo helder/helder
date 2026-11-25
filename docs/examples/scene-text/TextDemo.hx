@@ -23,7 +23,7 @@ import helder.text.FontFile;
 //   helder run docs/examples/scene-text
 class TextDemo {
 	static function main() {
-		var window = new Window("Text in the world", 640, 400);
+		var window = new Window({title: "Text in the world", width: 640, height: 400});
 		var device = Device.create(window.surface);
 		var renderer = new Renderer(device);
 		renderer.clearColor = new Vec4(0.08, 0.1, 0.14, 1);

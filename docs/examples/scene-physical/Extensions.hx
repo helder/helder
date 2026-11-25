@@ -24,7 +24,7 @@ import helder.scene.render.*;
 //   helder run docs/examples/scene-physical
 class Extensions {
 	static function main() {
-		var window = new Window("glTF material extensions", 640, 400);
+		var window = new Window({title: "glTF material extensions", width: 640, height: 400});
 		var device = Device.create(window.surface);
 		Images.decode = Images.png;
 		// #region features

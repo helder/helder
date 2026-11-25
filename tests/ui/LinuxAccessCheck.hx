@@ -13,7 +13,7 @@ import fixtures.AccessFixture;
 //   LinuxAccessCheck   (with AtspiCheck fixture running)
 class LinuxAccessCheck {
 	static function main() {
-		var w = new UiWindow("fixture", 400, 640);
+		var w = new UiWindow({title: "fixture", width: 400, height: 640});
 		var f = new AccessFixture();
 		Render.render(f.view(), w.root);
 		var start = haxe.Timer.stamp();

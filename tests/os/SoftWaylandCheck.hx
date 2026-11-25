@@ -8,7 +8,7 @@ import helder.os.*;
 // holding the window's colour where the window is.
 class SoftWaylandCheck {
 	static function main() {
-		var w = new Window("SoftWaylandCheck", 160, 120);
+		var w = new Window({title: "SoftWaylandCheck", width: 160, height: 120});
 		var device = Device.create(w.surface);
 		var pass:PassDesc = {colors: [{load: Clear, clear: new Vec4(1, 0, 1, 1)}]};
 		var frames = 0, start = haxe.Timer.stamp(), ok = false, tries = 0, last = 0.0;

@@ -1,3 +1,4 @@
+import helder.os.Edges;
 import helder.gfx.Color;
 import haxe.io.Bytes;
 import helder.ui.*;
