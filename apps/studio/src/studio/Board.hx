@@ -135,6 +135,7 @@ class Board implements Markup {
 			<For each={guides(studio)}>{(g:Read<{x:Float, y:Float, w:Float, h:Float}>) ->
 				<view tag="guide" position="absolute" left={g().x} top={g().y} width={g().w} height={g().h} background={c("sel")}/>
 			}</For>
+			{Marks.canvas(studio)}
 		</view>;
 	}
 

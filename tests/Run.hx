@@ -74,7 +74,7 @@ class Run {
 		{name: "system-images", about: "helder.os's system decoders (tests/os/SystemImagesTest.hx: Windows' WIC, macOS's ImageIO): a TIFF of a known gradient, plain and LZW, its pixels and straight alpha; macOS: a HEIC made by sips, whole and at a side; ImageLimits before any pixel; a file that is no image (GFX_TARGET=windows-x86_64 from Linux: under Wine); macOS: helder.media's decoders (tests/media/apple/MediaAppleTest.hx: VideoToolbox's frames and AudioToolbox's samples against ffmpeg's, exact seeks and steps, a clip played through CoreAudio's file output, frames to RGB on Metal); Windows: Media Foundation's (tests/media/windows/MediaWindowsTest.hx: frames and samples against ffmpeg's, seeks and steps, a clip played, frames to RGB on Direct3D 11 and for the system layer); Linux: libavcodec's and VAAPI's where a driver is (tests/media/linux/MediaLinuxTest.hx: frames and samples against ffmpeg's, seeks and steps, a clip played through ALSA's file output, frames to RGB on GL)", run: systemImages},
 		{name: "dbus", about: "helder.os's D-Bus client against a real dbus-daemon (Linux: dbus-run-session): Hello, ListNames, a service's half, then xdg-desktop-portal's FileChooser OpenFile against a stand-in portal (its arguments, its Response's URI as the path picked; tests/os/DBusTest.hx)", run: dbus},
 		{name: "async-web", about: "helder.async's browser loop (wasm32-wasi) in headless Chromium: timers, tasks, cancellation, fetches", run: asyncWeb},
-		{name: "test", about: "`helder test` (src/helder/cli) built natively, then every *.test.hx (helder.test) natively and as wasm32-wasi (node), and on Eval those that opt in (@:test.interp); every *.test.ts(x) (helder/test) natively and as wasm32-wasi, src/'s and examples/ts-todo's; apps/studio's (its canvas' snapping, its ACP client against a scripted agent on node)", run: helderTest},
+		{name: "test", about: "`helder test` (src/helder/cli) built natively, then every *.test.hx (helder.test) natively and as wasm32-wasi (node), and on Eval those that opt in (@:test.interp); every *.test.ts(x) (helder/test) natively and as wasm32-wasi, src/'s and examples/ts-todo's; apps/studio's (its canvas' snapping, its MCP server's sessions and routes, the agents' presence, an agent's patch in the history, its ACP client against a scripted agent on node)", run: helderTest},
 		{name: "cli", about: "`helder build`, `run`, `dev` and `devices` (src/helder/cli): the grammar's errors and help, an example by file and by directory, a project, natively and for web (--target web); helder devices without adb and with a stand-in one; the dev loop natively (with the dev host and without) and for web without a window or a browser, and its exit policy: a crash keeps it up, the program closed ends it (tests/cli/dev.mjs, tests/cli/closer)", run: cli},
 		{name: "asset", about: "helder.asset: the paths Asset's macros reject (tests/asset/reject), then `helder build tests/asset/Checksum.hx` for this machine (its files in the executable: run alone in an empty directory, their sizes and CRC-32s) and for the web (exactly the referenced files beside the page, the module run under node reading them); Android's and iOS's bundles are the pack lane's", run: assetLane},
 		{name: "pack", about: "Android and iOS packaging (helder.pack): `helder build --target android, android-x86_64, ios, ios-sim` of tests/pack/Hello.hx, tests/pack/Screen.hx and of a project with an app's options (landscape, fullscreen), checked without a device (tests/pack/PackCheck.hx: the zip's layout and 16 KB alignment, the manifest, the library's ELF, the v2 signature recomputed and verified by openssl or apksigner; the bundle, Info.plist, the Mach-O's build version and code signature, its slots; Assets.car against Apple actool's structure; an .ipa signed for distribution with tests/pack/signing's throwaway identity, RSA and P-256, its CMS verified by openssl); helder run and the dev loop's protocol against stand-in adb and xcrun (tests/pack/dev.mjs); the runtime objects fetched by tests/pack/runtime.mjs (PACK_REQUIRE=1: missing ones a failure)", run: packLane},
@@ -676,6 +676,16 @@ class Run {
 		said = File.getContent(out);
 		Sys.print(said);
 		if (said.indexOf("viewer: doc.md · 1 / 3 (shown") < 0) throw new Failed('the viewer did not show the Markdown document: $said');
+		// (a folder among 40: the sidebar's level of them scrolls, not pushing the window's content past its bottom)
+		for (i in 0...40)
+			mkdirs('bin/viewer/many/folder $i');
+		File.saveContent("bin/viewer/many/folder 0/a.txt", "a");
+		var many = '$wine$exe --new --exit-after 3 "bin/viewer/many/folder 0"';
+		if (Sys.systemName() == "Linux") shell('$XVFB -a $many > $out') else shell('$many > $out');
+		said = File.getContent(out);
+		Sys.print(said);
+		var ends = ~/ends at ([0-9]+) of ([0-9]+)/;
+		if (!ends.match(said) || ends.matched(1) != ends.matched(2)) throw new Failed('the window\'s content does not end at its bottom: $said');
 		// (macOS: a video, played by helder.media on VideoToolbox; a video alone, so nothing is heard)
 		if (GFX_TARGET.startsWith("macos-") && HOST.startsWith("macos-")) {
 			shell('$exe --new --exit-after 2 tests/media/hevc.mp4 > $out');
@@ -715,21 +725,22 @@ class Run {
 		viewerStoreKept(kept);
 	}
 
-	// (the viewer's runs keep what they keep in a store of their own
-	// (HELDER_VIEWER_STORE, its launches' and their shells'), not the user's:
+	// (the viewer's runs keep what they keep in a home of their own
+	// (HELDER_HOME: its store, its thumbnails' cache; its launches' and their
+	// shells', --store where Launch Services passes no environment), not the user's:
 	// a test's folders and recent files out of theirs, a second launch
 	// handing its file to the test's viewer, not to the user's; the user's
 	// own store as it was before: its file's size and time)
 	static function viewerStore():{dir:String, user:String} {
-		var dir = FileSystem.fullPath("bin") + "/viewer-store";
+		var dir = FileSystem.fullPath("bin") + "/viewer-home";
 		rmrf(dir);
 		mkdirs(dir);
-		Sys.putEnv("HELDER_VIEWER_STORE", dir);
+		Sys.putEnv("HELDER_HOME", dir);
 		return {dir: dir, user: userViewerStore()};
 	}
 
 	static function viewerStoreKept(kept:{dir:String, user:String}) {
-		if (!FileSystem.exists(kept.dir + "/helder-viewer.json")) throw new Failed('the viewer kept nothing in its test store ${kept.dir}');
+		if (!FileSystem.exists(kept.dir + "/data/helder-viewer/store.json")) throw new Failed('the viewer kept nothing in its test home ${kept.dir}');
 		var now = userViewerStore();
 		if (now != kept.user) throw new Failed('the viewer\'s runs changed the user\'s own store: $now, was ${kept.user}');
 	}

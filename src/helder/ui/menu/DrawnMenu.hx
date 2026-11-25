@@ -14,9 +14,13 @@ import helder.ui.Ui;
 // past separators and disabled rows), Home, End, Right a submenu (Left
 // back; from the bar: the next or previous menu), Enter or Space chooses,
 // Escape closes the innermost; a letter the next row it begins. The
-// pointer: hover highlights (a submenu opened under it), a click chooses,
-// a press outside closes them all. The focus is in the menu while it is
-// open and goes back where it was when it closes (Popup's returnFocus).
+// pointer: hover highlights (a submenu opened under it), a click chooses;
+// the press that opened it held, dragged onto a row and let go there
+// chooses it too (release: macOS's and Windows' menus'); a press outside
+// closes them all and goes no further, and so does a window's resize
+// (Popup.menu). The focus is in the menu while it is open and goes back
+// where it was when it closes (Popup's returnFocus).
+@:access(helder.ui.Ui)
 class DrawnMenu {
 	public final popup:Popup;
 	public final ui:Ui;
@@ -72,6 +76,7 @@ class DrawnMenu {
 		});
 		popup.style.shadow = helder.ui.Shadow.parse("0 4px 16px rgba(0, 0, 0, 0.35)");
 		popup.semantics = {role: helder.ui.access.Role.Menu};
+		popup.menu = true;
 		popup.onDismiss = () -> close(false);
 		popup.onKeyDown = key;
 		for (i in 0...items.length) {
@@ -124,7 +129,8 @@ class DrawnMenu {
 
 	// highlights row i (open: a submenu opened), the focus there
 	function highlight(i:Int, open:Bool) {
-		if (i == active && (child != null || !open)) return;
+		// (a row it left as it closed, hovered after: the focus not taken back)
+		if (closed || i == active && (child != null || !open)) return;
 		if (active >= 0 && rows[active] != null) rows[active].style.background = 0;
 		active = i;
 		var row = rows[i];
@@ -209,6 +215,27 @@ class DrawnMenu {
 			if (onClosed != null) onClosed();
 		}
 		if (current == this) current = null;
+	}
+
+	// the press that opened it let go at x, y (window pixels): on a row of
+	// it or of its submenus, that row chosen; on its anchor, it stays open
+	// (a click); elsewhere outside it, it closes
+	public function release(x:Float, y:Float) {
+		if (closed) return;
+		var t = ui.hit(x, y), m:Null<DrawnMenu> = this;
+		if (t == null) {
+			close(false);
+			return;
+		}
+		while (m != null) {
+			if (Ui.contains(m.popup, t)) {
+				for (i in 0...m.rows.length)
+					if (m.rows[i] != null && Ui.contains(m.rows[i], t)) m.activate(i);
+				return;
+			}
+			m = m.child;
+		}
+		if (popup.anchor == null || !Ui.contains(popup.anchor, t)) close(false);
 	}
 
 	public var isOpen(get, never):Bool;

@@ -14,7 +14,9 @@ import hxmc.Platform;
 //   LSSupportsOpeningDocumentsInPlace, set by use), the app's folder of
 //   Android's shared storage, the desktop's Documents.
 // The desktop's data and cache are under the app's name (macOS: its bundle
-// id; else the executable's name).
+// id; else the executable's name). HELDER_HOME=dir puts them under dir
+// instead (dir/data/<name>, dir/cache/<name>): a test's run of an app,
+// which keeps out of the user's own (their settings, its Store's).
 class Paths {
 	static inline var TEMP = 0;
 	static inline var DOCUMENTS = 9;
@@ -36,6 +38,10 @@ class Paths {
 	// (which: NSSearchPathDirectory's numbers, the other systems' mapped from
 	// them; app: the desktop's folder under data and cache, helder.os.Store's)
 	@:allow(helder.os) static function find(which:Int, ?app:String):Null<String> {
+		#if (target.name == "hxmc" && hxmc.target != "wasm32-wasi")
+		var own = Sys.getEnv("HELDER_HOME");
+		if (own != null && own != "" && (which == DATA || which == CACHE)) return own + (which == DATA ? "/data/" : "/cache/") + (app ?? name());
+		#end
 		// (each system's branch by its define, not Platform: a static Linux
 		// executable's must not link Android's activity or Apple's runtime)
 		#if (target.name != "hxmc" || hxmc.target == "wasm32-wasi")

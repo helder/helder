@@ -18,6 +18,8 @@ typedef PartStyle = {
 	?hover:PartStyle,
 	?pressed:PartStyle,
 	?focus:PartStyle,
+	// (what holds the focus within it: a composite field's box, ringed as one)
+	?focusWithin:PartStyle,
 	?disabled:PartStyle,
 	?checked:PartStyle,
 	?mixed:PartStyle,

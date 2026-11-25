@@ -38,23 +38,24 @@ class Docs {
 	}
 
 	// an edit: tx (against the file's text now) applied, recorded (group: an
-	// entry it merges with while the last entry is of that group)
-	public function apply(path:String, tx:Transaction, label:String, origin:String, ?group:String) {
+	// entry it merges with while the last entry is of that group; by: the
+	// agent who made it, null the user)
+	public function apply(path:String, tx:Transaction, label:String, origin:String, ?group:String, ?by:String) {
 		if (tx.changes.length == 0) return;
 		var f = get(path);
 		var before = f.text;
 		f.set(tx.apply(before));
 		var last = undos.length > 0 ? undos[undos.length - 1] : null;
-		if (group != null && last != null && last.group == group && last.file == path) {
+		if (group != null && last != null && last.group == group && last.file == path && last.by == by) {
 			last.tx = last.tx.then(tx, last.before);
 			last.after = f.text;
-		} else undos.push({file: path, tx: tx, label: label, group: group, before: before, after: f.text});
+		} else undos.push({file: path, tx: tx, label: label, group: group, by: by, before: before, after: f.text});
 		redos.resize(0);
 		changed(path, tx, origin);
 	}
 
-	// the last edit undone (null: none), its label
-	public function undo():Null<String> {
+	// the last edit undone (null: none)
+	public function undo():Null<Entry> {
 		var e = undos.pop();
 		if (e == null) return null;
 		var f = get(e.file);
@@ -62,10 +63,10 @@ class Docs {
 		f.set(e.before);
 		redos.push(e);
 		changed(e.file, back, "undo");
-		return e.label;
+		return e;
 	}
 
-	public function redo():Null<String> {
+	public function redo():Null<Entry> {
 		var e = redos.pop();
 		if (e == null) return null;
 		var f = get(e.file);
@@ -73,7 +74,18 @@ class Docs {
 		f.set(e.after);
 		undos.push(e);
 		changed(e.file, tx, "redo");
-		return e.label;
+		return e;
+	}
+
+	// the entries undo and redo take next (read in a view: followed)
+	public function nextUndo():Null<Entry> {
+		version();
+		return undos.length == 0 ? null : undos[undos.length - 1];
+	}
+
+	public function nextRedo():Null<Entry> {
+		version();
+		return redos.length == 0 ? null : redos[redos.length - 1];
 	}
 
 	// the next edit starts an entry of its own (a gesture ended)
@@ -132,6 +144,8 @@ typedef Entry = {
 	tx:Transaction,
 	label:String,
 	group:Null<String>,
+	// the agent who made it (Presence's name; null: the user)
+	by:Null<String>,
 	// the file's text before and after it
 	before:String,
 	after:String,
