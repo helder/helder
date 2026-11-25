@@ -75,7 +75,18 @@ class Viewer {
 	// the PDF shown now (pdf's value before its signal's write lands)
 	public function document():Null<PdfDoc>
 		return doc;
-	final decode:(path:String, side:Int, done:Decoded->Void) -> Void;
+
+	// a Markdown document shown (MarkdownDoc, MarkdownPage), null while none;
+	// its text read by read (Explorer's: through its Files)
+	public final markdown:Signal<Null<MarkdownDoc>> = Graph.signal((null : Null<MarkdownDoc>));
+	var md:Null<MarkdownDoc> = null;
+	public var read:(path:String, done:Null<String>->Void) -> Void = (_, done) -> done(null);
+
+	// the Markdown document shown now (markdown's value before its signal's write lands)
+	public function markdownDoc():Null<MarkdownDoc>
+		return md;
+	// a file's or a PDF page's decode (Decode.key), the cache's; a document's images' (MarkdownPage: theirs to release)
+	public final decode:(path:String, side:Int, done:Decoded->Void) -> Void;
 	final sizes:(path:String, done:PdfSizes->Void) -> Void;
 
 	// decode: a file's or a PDF page's decode at a side (Decode.key); sizes:
@@ -115,10 +126,11 @@ class Viewer {
 		refresh();
 	}
 
-	// files changed on disk: decoded again
+	// files changed on disk: decoded again, a document read again
 	public function modified(paths:Array<String>) {
 		for (p in paths)
 			cache.dropFile(p);
+		if (md != null && paths.contains(md.path)) dropMarkdown();
 		if (folder.current != null && paths.contains(folder.current)) refresh();
 	}
 
@@ -134,6 +146,7 @@ class Viewer {
 	public function release() {
 		closed = true;
 		dropPdf();
+		dropMarkdown();
 		cache.clear();
 		shown = null;
 		shownPath = "";
@@ -220,16 +233,21 @@ class Viewer {
 		var around = folder.around(prefetch);
 		if (around.length == 0) return [];
 		var cur = folder.path(around[0]);
-		var out = FolderModel.isMedia(cur) || isPdf(cur) ? [] : [cur];
+		var out = !decoded(cur) ? [] : [cur];
 		for (i in around.slice(1))
-			if (!FolderModel.isMedia(folder.files[i]) && !isPdf(folder.files[i])) out.push(folder.path(i));
+			if (decoded(folder.files[i])) out.push(folder.path(i));
 		return out;
 	}
+
+	// (an image decoded by the cache: not a video, an audio file, a PDF nor a document)
+	static function decoded(name:String):Bool
+		return !FolderModel.isMedia(name) && !isPdf(name) && !FolderModel.isMarkdown(name);
 
 	function show() {
 		if (closed) return;
 		var path = key();
 		if (path == null) return;
+		if (!FolderModel.isMarkdown(folder.name)) dropMarkdown();
 		// (a video or an audio file: the shell's player shows it, nothing decoded here)
 		if (FolderModel.isMedia(folder.name)) {
 			shown = null;
@@ -245,6 +263,11 @@ class Viewer {
 		media("");
 		if (isPdf(folder.name)) {
 			showPdf(path);
+			return;
+		}
+		if (FolderModel.isMarkdown(folder.name)) {
+			dropPdf();
+			showMarkdown(path);
 			return;
 		}
 		dropPdf();
@@ -316,6 +339,49 @@ class Viewer {
 		});
 	}
 
+	// (a Markdown document: its text read and parsed, then shown)
+	function showMarkdown(path:String) {
+		if (md != null && md.path == path) {
+			updateTitle();
+			return;
+		}
+		dropMarkdown();
+		shown = null;
+		shownPath = path;
+		state(Loading);
+		message("Loading " + folder.name + "…");
+		detail("");
+		updateTitle();
+		read(path, text -> {
+			if (closed || folder.current != path || md != null) return;
+			if (text == null) {
+				state(Failed);
+				message("The file cannot be read");
+				detail(folder.name + " · Markdown");
+				updateTitle();
+				return;
+			}
+			var d = new MarkdownDoc(path, text);
+			d.anchor = anchor;
+			anchor = null;
+			md = d;
+			markdown(d);
+			state(Shown);
+			message("");
+			detail("");
+			updateTitle();
+		});
+	}
+
+	// a heading the next document opened shows first (a link's "#id")
+	public var anchor:Null<String> = null;
+
+	function dropMarkdown() {
+		if (md == null) return;
+		md = null;
+		markdown(null);
+	}
+
 	function dropPdf() {
 		if (doc == null) return;
 		doc = null;
@@ -342,6 +408,11 @@ class Viewer {
 			if (mediaInfo != "") parts.push(mediaInfo);
 			title(parts.join(" · "));
 			status(parts.join(" · ") + (mediaStatus == "" ? "" : " · " + mediaStatus));
+			return;
+		}
+		if (md != null) {
+			title(parts.join(" · "));
+			status('${Kinds.count(md.words)} words · Markdown · ${size(md.size)} · ${folder.index + 1} / $n');
 			return;
 		}
 		var paged = doc != null ? 'page ${page + 1} / ${pages}' : "";
@@ -470,8 +541,20 @@ class Viewer {
 			case ToggleStatus: statusOn(!statusOn.peek());
 			case NextPage: nextPage();
 			case PreviousPage: previousPage();
+			case FirstPage | LastPage if (md != null): md.end(a == FirstPage ? -1 : 1);
 			case FirstPage: toPage(0);
 			case LastPage: toPage(pages - 1);
+			case ScrollDown | ScrollUp | LineDown | LineUp if (md != null):
+				switch a {
+					case ScrollDown: md.screens(1);
+					case ScrollUp: md.screens(-1);
+					case LineDown: md.lines(1);
+					case _: md.lines(-1);
+				}
+			case ToggleSource:
+				var m = md;
+				if (m == null) return false;
+				m.source(!m.source.peek());
 			case ScrollDown | ScrollUp | LineDown | LineUp:
 				var d = doc;
 				if (d == null) return false;
@@ -496,9 +579,11 @@ class Viewer {
 	public function actionState(a:ViewerAction):helder.ui.actions.Actions.ActionState
 		return switch a {
 			case Next | Previous | First | Last: folder.index >= 0 ? Enabled : Disabled;
-			case ZoomIn | ZoomOut | Fit | ActualSize: state.peek() == Shown || doc != null ? Enabled : Disabled;
+			case ZoomIn | ZoomOut | Fit | ActualSize: (state.peek() == Shown && md == null) || doc != null ? Enabled : Disabled;
+			case FirstPage | LastPage if (md != null): Enabled;
 			case NextPage | LastPage: page + 1 < pages ? Enabled : Disabled;
-			case ScrollDown | ScrollUp | LineDown | LineUp: doc != null ? Enabled : Disabled;
+			case ScrollDown | ScrollUp | LineDown | LineUp: doc != null || md != null ? Enabled : Disabled;
+			case ToggleSource: md == null ? Disabled : md.source.peek() ? Checked : Unchecked;
 			case PreviousPage | FirstPage: page > 0 && pages > 1 ? Enabled : Disabled;
 			case GoToPage: pages > 1 ? Enabled : Disabled;
 			case CopyPath | ShowInFolder | OpenWithDefault: shownPath != "" || folder.current != null ? Enabled : Disabled;

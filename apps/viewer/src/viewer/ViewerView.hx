@@ -8,9 +8,10 @@ import helder.view.*;
 import helder.view.Flow.*;
 import helder.view.graph.Graph.*;
 
-// A file full size: its bar (the back pill "‹ folder", the title, Move
-// to Trash), then the image view on the dark background, the player of a
-// video or an audio file, a message in place of the image (loading, an
+// A file full size: its bar (the back pill "‹ folder", the title, a
+// Markdown document's Source, Move to Trash), then the image view on the
+// dark background, the player of a video or an audio file, a Markdown
+// document's column, a message in place of the image (loading, an
 // error), the status line (I) and the go to page card. Fullscreen: the
 // bar hidden.
 class ViewerView implements Markup {
@@ -88,6 +89,15 @@ class ViewerView implements Markup {
 				</view:button>
 				<text tag="viewer-title" grow={1} shrink={1} min-width={0} text-align="center" max-lines={1} text-overflow="ellipsis" color={Look.ref.fg2}
 					dir={helder.ui.Dir.Ltr}>{viewer.title}</text>
+				<Show when={viewer.markdown() != null}>
+					<view:button tag="viewer-source" role="button" focusable label="Show Source" data-selected={viewer.markdown()?.source() == true}
+						direction="row" align-items="center" column-gap={5} height={30} padding="0 10 0 8" radius={8}
+						background={viewer.markdown()?.source() == true ? Look.ref.fill : null} color={Look.ref.fg2}
+						onPress={() -> x.perform(ToggleSource)}>
+						<image src={Glyphs.get("code")} width={16} height={16}/>
+						<text>Source</text>
+					</view:button>
+				</Show>
 				<Show when={x.files.trash != null}>
 					<view:button tag="viewer-trash" role="button" focusable label={ViewerActions.trashLabel()} width={30} height={30} radius={8}
 						align-items="center" justify="center" color={Look.ref.fg2} onPress={() -> x.perform(Trash)}>
@@ -101,6 +111,10 @@ class ViewerView implements Markup {
 				<Show when={viewer.pdf() != null}>{() -> {
 					var d = viewer.pdf();
 					d == null ? null : PdfView.make(d);
+				}}</Show>
+				<Show when={viewer.markdown() != null}>{() -> {
+					var d = viewer.markdown();
+					d == null ? null : MarkdownPage.make(x, d);
 				}}</Show>
 				<Show when={viewer.state() != Shown && (viewer.state() != Loading || slow())}>
 					<view tag="message" position="absolute" inset={0} align-items="center" justify="center" row-gap={8} padding={24} pointer-events="none">

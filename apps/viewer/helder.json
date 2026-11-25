@@ -19,6 +19,7 @@
         "image/gif": [".gif"],
         "image/webp": [".webp"],
         "application/pdf": [".pdf"],
+        "text/markdown": [".md", ".markdown", ".mdown"],
         "image/tiff": [".tif", ".tiff"],
         "image/heic": [".heic", ".heif"],
         "image/avif": [".avif"]

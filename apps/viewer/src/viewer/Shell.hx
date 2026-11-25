@@ -53,7 +53,36 @@ class Shell implements Markup {
 			photo: t -> {radius: 8, background: t.fill, selected: {ringWidth: 2.5, ringColor: t.accent, ringOffsetWidth: 2, ringOffsetColor: t.surface}},
 			"name-pill": t -> {fontSize: 12.5, padding: [1, 6, 1, 6], radius: 5, color: t.fg, selected: {background: t.accent, color: t.accentFg, fontWeight: 500}},
 			"list-row": t -> {direction: Row, alignItems: Center, columnGap: 12, height: 30, margin: [0, 6], padding: [0, 14, 0, 10], radius: 7,
-				color: t.fg2, hover: {background: t.hover}, selected: {background: t.accent, color: t.accentFg, hover: {background: t.accent}}}
+				color: t.fg2, hover: {background: t.hover}, selected: {background: t.accent, color: t.accentFg, hover: {background: t.accent}}},
+			// (a Markdown document: a column of about 70 characters, 760 points at most, centred; MarkdownView's parts)
+			"markdown": t -> {background: t.canvas, color: t.fg},
+			"markdown-scroll": t -> {padding: [36, 0, 56, 0]},
+			"markdown-row": t -> {width: "100%", maxWidth: 760, padding: [0, 40, 14, 40]},
+			"markdown-h1": t -> {fontSize: 28, fontWeight: 650, lineHeight: 1.25, margin: [6, 0, 2, 0], padding: [0, 0, 8, 0], borders: [0, 0, 1, 0],
+				borderColor: t.line},
+			"markdown-h2": t -> {fontSize: 21, fontWeight: 650, lineHeight: 1.3, margin: [10, 0, 0, 0], padding: [0, 0, 6, 0], borders: [0, 0, 1, 0],
+				borderColor: t.line},
+			"markdown-h3": t -> {fontSize: 17, fontWeight: 650, lineHeight: 1.35, marginTop: 6},
+			"markdown-h4": t -> {fontSize: 15, fontWeight: 650, marginTop: 4},
+			"markdown-h5": t -> {fontSize: 14, fontWeight: 650},
+			"markdown-h6": t -> {fontSize: 13, fontWeight: 650, color: t.fg2},
+			"markdown-p": t -> {fontSize: 15, lineHeight: 1.6},
+			"markdown-quote": t -> {rowGap: 10, padding: [2, 0, 2, 16], borders: [0, 0, 0, 3], borderColor: t.edgeStrong, color: t.fg2},
+			"markdown-list": t -> {rowGap: 6},
+			"markdown-item-body": t -> {rowGap: 6},
+			"markdown-marker": t -> {minWidth: 24, paddingRight: 6, fontSize: 15, lineHeight: 1.6, color: t.fg2},
+			"markdown-task": t -> {width: 15, height: 15, margin: [5, 9, 0, 0], radius: 4, borderWidth: 1.5, borderColor: t.edgeStrong, fontSize: 10,
+				fontWeight: 700, checked: {background: t.accent, borderColor: t.accent, color: t.accentFg}},
+			"markdown-code": t -> {padding: [12, 14, 12, 0], radius: 8, background: t.fill},
+			"markdown-code-span": t -> {fontFamily: "JetBrains Mono", fontSize: 13.5, color: t.fg},
+			"markdown-link": t -> {color: t.info, cursor: Pointer, hover: {textDecoration: 1}},
+			"markdown-table": t -> {borders: [1, 0, 0, 1], borderColor: t.line},
+			"markdown-th": t -> {fontSize: 14, fontWeight: 600, padding: [7, 12], borders: [0, 1, 1, 0], borderColor: t.line, background: t.fill},
+			"markdown-td": t -> {fontSize: 14, lineHeight: 1.45, padding: [7, 12], borders: [0, 1, 1, 0], borderColor: t.line},
+			"markdown-rule": t -> {height: 1, margin: [8, 0], background: t.line},
+			"markdown-html": t -> {fontFamily: "JetBrains Mono", fontSize: 12.5, color: t.fg3},
+			"markdown-image": t -> {radius: 6},
+			"markdown-image-alt": t -> {fontSize: 13, italic: true, color: t.fg3, padding: [4, 10], radius: 6, background: t.fill}
 		}
 	});
 
@@ -64,6 +93,7 @@ class Shell implements Markup {
 		{mime: "image/gif", extensions: ["gif"]},
 		{mime: "image/webp", extensions: ["webp"]},
 		{mime: "application/pdf", extensions: ["pdf"]},
+		{mime: "text/markdown", extensions: ["md", "markdown", "mdown"]},
 		// (the system's decoders': WIC, ImageIO, Linux's libtiff, libheif and libavif where installed)
 		{mime: "image/tiff", extensions: ["tif", "tiff"]},
 		{mime: "image/heic", extensions: ["heic", "heif"]},
@@ -345,13 +375,14 @@ class Shell implements Markup {
 	}
 
 	// the actions on the root (its key context "Viewer", with browser or
-	// full, fullscreen, pdf, media, goto and about while they are;
+	// full, fullscreen, pdf, markdown, media, goto and about while they are;
 	// ViewerActions' default keymap in the app's)
 	public static function attach(root:Node, x:Explorer) {
 		ViewerActions.defaults(helder.ui.actions.Keymap.global);
 		var viewer = x.viewer;
 		renderEffect(() -> "Viewer" + (x.full() ? " full" : " browser") + (viewer.fullscreen() ? " fullscreen" : "")
-			+ (x.full() && viewer.pdf() != null ? " pdf" : "") + (x.full() && viewer.media() != "" ? " media" : "") + (viewer.gotoOpen() ? " goto" : "")
+			+ (x.full() && viewer.pdf() != null ? " pdf" : "") + (x.full() && viewer.markdown() != null ? " markdown" : "")
+			+ (x.full() && viewer.media() != "" ? " media" : "") + (viewer.gotoOpen() ? " goto" : "")
 			+ (viewer.aboutOpen() ? " about" : ""),
 			c -> root.keyContext = helder.ui.actions.KeyContext.parse(c));
 		x.copy = p -> if (root.ui != null) root.ui.clipboard.write(p);

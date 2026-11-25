@@ -7,6 +7,8 @@ import viewer.Listing;
 import helder.ui.actions.Actions.ActionState;
 import viewer.ViewerActions;
 
+using StringTools;
+
 // The file browser and its full-size viewer without a window: a folder
 // browsed, a file opened full size from it (the viewer stepping through
 // the browser's list, in its order), the sidebar following the folder,
@@ -31,18 +33,27 @@ class Explorer {
 	public var thumbnails:Null<Thumbnails> = null;
 	// the list's focus on its selection (the shell's, once the list is made)
 	public var focusList:Null<Void->Void> = null;
-	// the inspector's preview of a file (Preview.request; tests: Preview.now)
+	// the inspector's preview of a file (Preview.request; tests: Preview.now;
+	// a Markdown document's: its text read and parsed)
 	public final preview:(path:String, done:Preview.Shown->Void)->(Void->Void);
+	// a file's text (a Markdown document's: read through files, by default on the loop)
+	public final read:(path:String, done:Null<String>->Void)->Void;
+	// a web address opened (a document's link): the system's browser, a new tab on the web
+	public var openUrl:String->Bool = url -> helder.os.Links.open(url, false);
 
 	var choosing = false;
 
 	public function new(files:Files, decode:(path:String, side:Int, done:Decoded->Void) -> Void, ?places:Array<Place>, ?volumes:Array<Volume>,
-			?preview:(path:String, done:Preview.Shown->Void)->(Void->Void), ?pdfSizes:(path:String, done:PdfPages.PdfSizes->Void)->Void) {
+			?preview:(path:String, done:Preview.Shown->Void)->(Void->Void), ?pdfSizes:(path:String, done:PdfPages.PdfSizes->Void)->Void,
+			?read:(path:String, done:Null<String>->Void)->Void) {
 		this.files = files;
-		this.preview = preview ?? #if (hxmc.target == "wasm32-wasi") (_, _) -> () -> {} #else Preview.request #end;
+		this.read = read ?? (path, done) -> readAll(files, path, done);
+		var pictures = preview ?? #if (hxmc.target == "wasm32-wasi") (_, _) -> () -> {} #else Preview.request #end;
+		this.preview = (path, done) -> FolderModel.isMarkdown(path) ? markdownPreview(path, done) : pictures(path, done);
 		browser = new Browser(files);
 		sidebar = new Sidebar(files, places ?? [], volumes ?? []);
 		viewer = new Viewer(decode, null, pdfSizes);
+		viewer.read = this.read;
 		browser.onDir = d -> {
 			if (!choosing) sidebar.follow(d);
 			// (another folder: the decodes of the last let go)
@@ -85,6 +96,100 @@ class Explorer {
 		}
 		return true;
 	}
+
+	// a link of the Markdown document at from followed (its anchors are the
+	// page's): a file the viewer shows opened full size in its folder (its
+	// files stepped through; "other.md#usage" at that heading), a folder
+	// browsed, another file the system's app's, a web or mail address the
+	// browser's; false: nothing there
+	public function follow(from:String, href:String):Bool {
+		var h = StringTools.trim(href);
+		if (h == "" || h.startsWith("#")) return false;
+		var scheme = schemeOf(h);
+		if (scheme != null) {
+			return (scheme == "http" || scheme == "https" || scheme == "mailto") && openUrl(h);
+		}
+		var hash = h.indexOf("#"), anchor = hash >= 0 ? h.substr(hash + 1) : null;
+		var part = hash >= 0 ? h.substr(0, hash) : h;
+		if (part.indexOf("?") >= 0) part = part.substr(0, part.indexOf("?"));
+		var target = resolve(Browser.parent(from) ?? "", try StringTools.urlDecode(part) catch (_:Dynamic) part);
+		var e = files.stat(target);
+		if (e == null) return false;
+		if (e.kind == Folder) {
+			close();
+			browser.go(target);
+			return true;
+		}
+		if (!Kinds.viewable(e)) {
+			var local = files.localPath(target);
+			if (local == null || openDefault == null) return false;
+			openDefault(local);
+			return true;
+		}
+		var dir = Browser.parent(target) ?? target, name = Browser.name(target);
+		viewer.anchor = anchor;
+		browser.go(dir, name);
+		view(name);
+		return true;
+	}
+
+	// a path relative to a folder ("../a/b.md"), or absolute ("/x")
+	public static function resolve(dir:String, rel:String):String {
+		if (rel.startsWith("/") || (rel.length > 2 && rel.charAt(1) == ":" && (rel.charAt(2) == "/" || rel.charAt(2) == "\\"))) return Browser.normalize(rel);
+		var at = dir;
+		for (seg in rel.replace("\\", "/").split("/"))
+			switch seg {
+				case "" | ".":
+				case "..": at = Browser.parent(at) ?? at;
+				case s: at = FolderModel.join(at, s);
+			}
+		return Browser.normalize(at);
+	}
+
+	// (a URL's scheme, lower case: "https"; null: a path. One letter is a Windows drive)
+	static function schemeOf(h:String):Null<String> {
+		var colon = h.indexOf(":");
+		if (colon < 2) return null;
+		for (i in 0...colon) {
+			var c = h.charCodeAt(i);
+			var ok = (c >= "a".code && c <= "z".code) || (c >= "A".code && c <= "Z".code) || (i > 0 && ((c >= "0".code && c <= "9".code) || c == "+".code || c == ".".code || c == "-".code));
+			if (!ok) return null;
+		}
+		return h.substr(0, colon).toLowerCase();
+	}
+
+	// (a Markdown document's preview: the inspector shows its first screen, its words and headings)
+	function markdownPreview(path:String, done:Preview.Shown->Void):Void->Void {
+		var stopped = false;
+		read(path, text -> if (!stopped) done({
+			image: null,
+			width: 0,
+			height: 0,
+			pages: 0,
+			duration: 0,
+			format: "Markdown",
+			error: text == null ? "The file cannot be read" : null,
+			markdown: text == null ? null : new MarkdownDoc(path, text)
+		}));
+		return () -> stopped = true;
+	}
+
+	// (a file's bytes through files, on the loop, as text)
+	static function readAll(files:Files, path:String, done:Null<String>->Void)
+		helder.async.Async.launch(_ -> {
+			var s = files.open(path), out = new haxe.io.BytesBuffer(), chunk = haxe.io.Bytes.alloc(65536), at = 0.0, n = 0;
+			try {
+				while ((n = s.read(at, chunk, 0, chunk.length)) > 0) {
+					out.addBytes(chunk, 0, n);
+					at += n;
+				}
+			} catch (e:Dynamic) {
+				s.close();
+				throw e;
+			}
+			s.close();
+			out.getBytes().toString();
+		}).onCompletion((r, _) -> done(r));
 
 	// a file of the folder full size, the viewer's list the browser's viewable files
 	public function view(name:String) {
@@ -193,7 +298,7 @@ class Explorer {
 			case CopyPath | ShowInFolder | OpenWithDefault: on(target() != null);
 			case Search | EditPath: on(!full.value);
 			case Next | Previous | First | Last | ZoomIn | ZoomOut | Fit | ActualSize | NextPage | PreviousPage | FirstPage | LastPage | GoToPage | ScrollDown
-				| ScrollUp | LineDown | LineUp | PlayPause
+				| ScrollUp | LineDown | LineUp | ToggleSource | PlayPause
 				| StepForward | StepBack | ToggleMute | ToggleFullscreen | LeaveFullscreen | ToggleStatus | Close:
 				full.value ? viewer.actionState(a) : Disabled;
 			case _: Enabled;

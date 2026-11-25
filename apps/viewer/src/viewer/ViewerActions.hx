@@ -51,6 +51,7 @@ enum ViewerAction {
 	ScrollUp;
 	LineDown;
 	LineUp;
+	ToggleSource;
 	GoToPage;
 	CloseGoTo;
 	CloseAbout;
@@ -69,7 +70,8 @@ class ViewerActions {
 	// the viewer's default bindings, in keymap (once): the root's context is
 	// "Viewer", with browser while the browser shows and full while a file
 	// is open full size; fullscreen while it is, pdf while a document of
-	// several pages is shown, media while a video or an audio file is, goto
+	// several pages is shown, markdown while a Markdown document is, media
+	// while a video or an audio file is, goto
 	// while its go to page card is open, search in the search field
 	public static function defaults(keymap:Keymap) {
 		if (declared) return;
@@ -139,6 +141,20 @@ class ViewerActions {
 			keymap.bind(k, LastPage, pdf);
 		keymap.bind("secondary-g", GoToPage, pdf);
 		keymap.bind("g", GoToPage, pdf);
+		// (a Markdown document, one column as a PDF's: a screen, a line, its top
+		// and end; Mod+U its source, as a browser's; Left and Right the folder's)
+		var markdown = "Viewer && full && markdown && !goto && !about";
+		for (k in ["pagedown", "space"])
+			keymap.bind(k, ScrollDown, markdown);
+		for (k in ["pageup", "backspace", "shift-space"])
+			keymap.bind(k, ScrollUp, markdown);
+		keymap.bind("down", LineDown, markdown);
+		keymap.bind("up", LineUp, markdown);
+		for (k in ["home", "secondary-home"])
+			keymap.bind(k, FirstPage, markdown);
+		for (k in ["end", "secondary-end"])
+			keymap.bind(k, LastPage, markdown);
+		keymap.bind("secondary-u", ToggleSource, markdown);
 		// (a video or audio file: Space plays and pauses, the arrows across and , and . step a frame, M mutes; Up and Down still the folder's)
 		var media = "Viewer && full && media && !goto && !about";
 		for (k in ["space", "k"])
@@ -172,7 +188,7 @@ class ViewerActions {
 					Item("Folders First", FoldersFirst), Item("Show Hidden Files", ShowHidden), Separator, Item("Inspector", ToggleInspector),
 					Item("Edit Path", EditPath), Separator, Item("Fit", Fit), Item("Actual Size", ActualSize), Item("Zoom In", ZoomIn),
 					Item("Zoom Out", ZoomOut), Separator, Item("Previous", Previous), Item("Next", Next), Separator, Item("Previous Page", PreviousPage),
-					Item("Next Page", NextPage), Item("Go to Page…", GoToPage), Separator, Item("Play or Pause", PlayPause), Item("Next Frame", StepForward),
+					Item("Next Page", NextPage), Item("Go to Page…", GoToPage), Item("Show Source", ToggleSource), Separator, Item("Play or Pause", PlayPause), Item("Next Frame", StepForward),
 					Item("Previous Frame", StepBack), Item("Mute", ToggleMute), Separator, Item("Full Screen", ToggleFullscreen), Item("Status Line", ToggleStatus)
 				]
 			},
