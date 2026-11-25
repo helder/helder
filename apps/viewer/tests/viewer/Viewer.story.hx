@@ -39,22 +39,8 @@ final marquee = story({
 	width: 1100,
 	height: 700,
 	render: c -> {
-		var x = browse(), frames = 0;
 		c.settled(false);
-		<view width={1100} height={700} shrink={0} ref={(n:Node) -> helder.ui.Clock.add(_ -> {
-			var grid = n.ui == null ? null : n.ui.root.find("grid");
-			if (grid == null || grid.height == 0) return true;
-			var bottom = grid.absY + grid.height - 20, right = grid.absX + grid.width - 20;
-			switch frames++ {
-				case 0: n.ui.pointerDown(right, bottom, 1);
-				case 1: n.ui.pointerMove(right - 100, bottom - 100);
-				case _:
-					n.ui.pointerMove(grid.absX + 120, grid.absY + 60);
-					c.settled(true);
-					return false;
-			}
-			true;
-		})}>{themed(x, true)}</view>;
+		Fixtures.marquee(browse(), () -> c.settled(true));
 	}
 });
 

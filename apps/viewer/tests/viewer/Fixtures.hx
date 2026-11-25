@@ -70,6 +70,26 @@ class Fixtures implements Markup {
 	public static function themed(x:Explorer, dark:Bool):View
 		return <view width={1100} height={700} shrink={0} ref={(n:Node) -> if (n.ui != null) n.ui.dark = dark}>{Shell.view(x, () -> helder.ui.SizeClass.Expanded)}</view>;
 
+	// (the browser, dark, with a marquee dragged from under the grid's cells
+	// up over its first row, frame by frame as a mouse would; done once it is)
+	public static function marquee(x:Explorer, done:Void->Void):View {
+		var frames = 0;
+		return <view width={1100} height={700} shrink={0} ref={(n:Node) -> helder.ui.Clock.add(_ -> {
+			var grid = n.ui == null ? null : n.ui.root.find("grid");
+			if (grid == null || grid.height == 0) return true;
+			var bottom = grid.absY + grid.height - 20, right = grid.absX + grid.width - 20;
+			switch frames++ {
+				case 0: n.ui.pointerDown(right, bottom, 1);
+				case 1: n.ui.pointerMove(right - 100, bottom - 100);
+				case _:
+					n.ui.pointerMove(grid.absX + 120, grid.absY + 60);
+					done();
+					return false;
+			}
+			true;
+		})}>{themed(x, true)}</view>;
+	}
+
 	// (the phone stories' markup: on Windows a story file's own isn't processed)
 	public static function phone(x:Explorer, at:viewer.Phone.PhoneState->Void):View
 		return <helder.ui.controls.Standard.Themed look={Shell.look}><Phone.Root x={x} at={at}/></helder.ui.controls.Standard.Themed>;
