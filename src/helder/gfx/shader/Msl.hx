@@ -17,7 +17,9 @@ import helder.gfx.shader.Ir;
 // (device T* when it is written; an RWStorage<Int> device atomic_int*,
 // read and written atomically, relaxed), passed on to the stage's
 // function, a storage texture `texture2d<float, access::write> img_<n>
-// [[texture(n)]]`.
+// [[texture(n)]]`; its workgroup memory `threadgroup T wg_<k>[n]` in the
+// entry point, passed on as `threadgroup T*`; its subgroups Metal's SIMD
+// groups (simd_sum ..., thread_index_in_simdgroup and the others).
 class Msl extends Emit {
 	override function header(e:SEntry) {
 		line("#include <metal_stdlib>");
@@ -41,6 +43,7 @@ class Msl extends Emit {
 			case TStorage(TInt, true): "device atomic_int*";
 			case TStorage(t, w): (w ? "device " : "const device ") + type(t) + "*";
 			case TImage(_): "texture2d<float, access::write>";
+			case TWorkgroup(t): "threadgroup " + type(t) + "*";
 		}
 
 	// (MSL passes its buffers on: parameters, not globals)
@@ -74,9 +77,17 @@ class Msl extends Emit {
 				case RStorage(s): '${type(TStorage(s.element, s.write))} sb_${s.slot} [[buffer(${s.slot})]]';
 				case RImage(m): '${type(TImage(m.format))} img_${m.slot} [[texture(${m.slot})]]';
 			});
-		var args = Emit.computeArgs(e, uniformValue, t -> 'tex_${t.slot}, smp_${t.slot}', s -> 'sb_${s.slot}', m -> 'img_${m.slot}');
-		var ids = "int(gid.x), int(gid.y), int(gid.z), int(lid.x), int(lid.y), int(lid.z), int(lidx), int(grp.x), int(grp.y), int(grp.z)";
+		if (native())
+			params = params.concat([
+				"uint sgl [[thread_index_in_simdgroup]]", "uint sgs [[threads_per_simdgroup]]", "uint sgi [[simdgroup_index_in_threadgroup]]",
+				"uint sgn [[simdgroups_per_threadgroup]]"
+			]);
+		var args = Emit.computeArgs(e, uniformValue, t -> 'tex_${t.slot}, smp_${t.slot}', s -> 'sb_${s.slot}', m -> 'img_${m.slot}').concat([for (s in c.shared) 'wg_${s.index}']);
+		var ids = "int(gid.x), int(gid.y), int(gid.z), int(lid.x), int(lid.y), int(lid.z), int(lidx), int(grp.x), int(grp.y), int(grp.z)"
+			+ subgroupIds(native() ? ["int(sgl)", "int(sgs)", "int(sgi)", "int(sgn)"] : null, "int(lidx)");
 		line('kernel void main0(${params.join(", ")}) {');
+		for (s in c.shared)
+			line('\tthreadgroup ${type(s.element)} wg_${s.index}[${s.length}];');
 		line('\t${e.fn.name}(' + ['${e.input.name}{$ids}'].concat(args).join(", ") + ");");
 		line("}");
 	}
@@ -131,6 +142,13 @@ class Msl extends Emit {
 			case "atomicAdd" | "atomicMin" | "atomicMax":
 				"atomic_fetch_" + name.substr(6).toLowerCase() + "_explicit(&" + operand(args[0]) + "[" + expr(args[1]) + "], " + expr(args[2]) + ", memory_order_relaxed)";
 			case "textureStore": operand(args[0]) + ".write(" + expr(args[3]) + ", uint2(" + expr(args[1]) + ", " + expr(args[2]) + "))";
+			case "barrier": "threadgroup_barrier(mem_flags::mem_threadgroup)";
+			case "subgroupAdd": super.builtin("simd_sum", args, t);
+			case "subgroupMin": super.builtin("simd_min", args, t);
+			case "subgroupMax": super.builtin("simd_max", args, t);
+			case "subgroupAll": super.builtin("simd_all", args, t);
+			case "subgroupAny": super.builtin("simd_any", args, t);
+			case "subgroupBroadcast" | "subgroupShuffle": (name == "subgroupBroadcast" ? "simd_broadcast(" : "simd_shuffle(") + expr(args[0]) + ", ushort(" + expr(args[1]) + "))";
 			case _: super.builtin(name == "inversesqrt" ? "rsqrt" : name, args, t);
 		}
 

@@ -48,6 +48,10 @@ class Lower implements ShaderAdapter {
 	final positionLocals = new Map<Int, Bool>();
 	// the stage's object of parameters (its fields are its parameters: p.frame)
 	var paramsObject:Null<{id:Int, name:String, fields:Map<String, SVar>}>;
+	// a compute stage's object of workgroup memory, its third parameter (w.part)
+	var workgroupObject:Null<{id:Int, name:String, fields:Map<String, SVar>}>;
+	// where the calls of barrier() and the subgroup operations are written
+	final builtins = new haxe.ds.ObjectMap<SExpr, Position>();
 	// a slot object's variant (useSlots): its options and slots; the stage's
 	// third parameter (the object: -1 none); the slots lowered; the loop
 	// variables of unrolled loops (constants)
@@ -92,6 +96,9 @@ class Lower implements ShaderAdapter {
 
 	public function uniforms():Null<SStruct>
 		return uniformBlock;
+
+	public function posOf(e:SExpr):Null<KPos>
+		return builtins.get(e);
 
 	public function useSlots(use:SlotsUse)
 		slots = use;
@@ -157,11 +164,12 @@ class Lower implements ShaderAdapter {
 	// the slot object's type gives it: direct(s, l, p)'s two; a stage's one)
 	function lower(key:String, name:String, tf:TFunc, pos:Position, kind = Plain, inputs = 1):SFunction {
 		active.push(key);
-		var saved = {fn: fn, locals: locals, names: localNames, object: paramsObject, self: slotsSelf, kind: this.kind};
+		var saved = {fn: fn, locals: locals, names: localNames, object: paramsObject, shared: workgroupObject, self: slotsSelf, kind: this.kind};
 		this.kind = kind;
 		locals = new Map();
 		localNames = new Map();
 		paramsObject = null;
+		workgroupObject = null;
 		slotsSelf = -1;
 		var vs = [];
 		var params = [], fields = [];
@@ -172,6 +180,9 @@ class Lower implements ShaderAdapter {
 			slotsSelf = tf.args[2].v.id;
 			count = 2;
 		}
+		// (a compute stage's third parameter: its object of workgroup memory)
+		var shared = kind == Stage && slots == null && count == 3 && computeInput(tf.args[0].v.t) ? tf.args[2].v : null;
+		if (shared != null) count = 2;
 		if (kind != Slot) inputs = 1;
 		if (stage && count > inputs + 1)
 			error(inputs > 1 ? 'a slot takes its $inputs inputs and one object of parameters ({frame: Frame, image: Texture2D}), not ${count - inputs}' : 'a ${kind == Slot ? "slot" : "stage"} takes its input and one object of parameters ({frame: Frame, image: Texture2D}), not ${count - 1}',
@@ -197,8 +208,23 @@ class Lower implements ShaderAdapter {
 				fields.push(f.name);
 			}
 		}
+		var workgroup = [];
+		if (shared != null) {
+			var a = anonOf(shared.t);
+			if (a == null) error('${shared.name}: a compute stage\'s workgroup memory is an object of Workgroup<T> fields ({part: Workgroup<Float>}), not a ${shared.t.toString()}', pos);
+			workgroupObject = {id: shared.id, name: shared.name, fields: new Map()};
+			for (f in sortedFields(a)) {
+				var t = type(f.type, f.pos);
+				if (!t.match(TWorkgroup(_))) error('${shared.name}.${f.name}: workgroup memory is of Workgroup<T> fields, not a ${Names.typeName(t)}', f.pos);
+				var s = declareNamed(f.name, t, f.pos, vs, true);
+				workgroupObject.fields.set(f.name, s);
+				params.push(s);
+				workgroup.push({name: f.name, length: workgroupLength(f)});
+			}
+		}
 		var f = new SFunction(names.global(name), params, type(tf.t, pos));
 		f.fields = fields;
+		f.workgroup = workgroup;
 		if (Textures.isTexture(f.ret)) error('$name: a texture is not a result (pass the parameter on)', pos);
 		fn = f;
 		vars.set(f, vs);
@@ -209,6 +235,7 @@ class Lower implements ShaderAdapter {
 		locals = saved.locals;
 		localNames = saved.names;
 		paramsObject = saved.object;
+		workgroupObject = saved.shared;
 		slotsSelf = saved.self;
 		this.kind = saved.kind;
 		active.pop();
@@ -228,11 +255,31 @@ class Lower implements ShaderAdapter {
 		if (Textures.isTexture(t) && !param) error('$name: a texture is a parameter, not a local', pos);
 		if (t.match(TStorage(_, _) | TImage(_)) && (!param || kind != Stage))
 			error('$name: a ${Names.typeName(t)} is a parameter of a compute stage (its object of parameters), read and written there', pos);
+		if (t.match(TWorkgroup(_)) && (!param || kind != Stage))
+			error('$name: a ${Names.typeName(t)} is a compute stage\'s workgroup memory (its third parameter\'s field), read and written there', pos);
 		var s = new SVar(Names.unique(Names.sanitize(name), n -> !localNames.exists(n) && (!Textures.isTexture(t) || !localNames.exists(n + "_smp"))), t);
 		localNames.set(s.name, true);
 		if (Textures.isTexture(t)) localNames.set(s.name + "_smp", true);
 		list.push(s);
 		return s;
+	}
+
+	static function computeInput(t:Type):Bool
+		return switch t.follow() {
+			case TInst(c, []): path(c.get()) == SHADER_PACK + ".ComputeInput";
+			case _: false;
+		}
+
+	// a workgroup memory field's length: its @:length(n), else 0 (the workgroup's)
+	function workgroupLength(f:ClassField):Int {
+		var m = f.meta.extract(":length");
+		if (m.length == 0) return 0;
+		var n = m[0].params.length == 1 ? switch m[0].params[0].expr {
+			case EConst(CInt(s)): Std.parseInt(s);
+			case _: 0;
+		} : 0;
+		if (n == null || n < 1) error('${f.name}: a workgroup memory field\'s @:length(n) is a literal above 0', f.pos);
+		return n;
 	}
 
 	// a storage texture's format: its field's @:format(RGBA8 | RGBA16F | R32F), RGBA8 by default (TextureFormat's values)
@@ -300,6 +347,8 @@ class Lower implements ShaderAdapter {
 					// (a compute stage's storage buffers)
 					case [SHADER_PACK, "Storage"]: TStorage(type(params[0], pos), false);
 					case [SHADER_PACK, "RWStorage"]: TStorage(type(params[0], pos), true);
+					// (a compute stage's workgroup memory)
+					case [SHADER_PACK, "Workgroup"]: TWorkgroup(type(params[0], pos));
 					case ["", "Null"]: error('${t.toString()}: a nullable type is not a shader type', pos);
 					case _: error('${t.toString()} is not a shader type (Float, Int, Bool, Vec2, Vec3, Vec4, Mat4 and structs of them)', pos);
 				}
@@ -562,7 +611,7 @@ class Lower implements ShaderAdapter {
 			case _:
 				var x = expr(e, out);
 				switch x.e {
-					case ECall(_) | EBuiltin("discard" | "atomicAdd" | "atomicMin" | "atomicMax" | "textureStore", _):
+					case ECall(_) | EBuiltin("discard" | "atomicAdd" | "atomicMin" | "atomicMax" | "textureStore" | "barrier", _):
 						out.push(SEval(x));
 					case _:
 				}
@@ -592,7 +641,7 @@ class Lower implements ShaderAdapter {
 				var s = locals.get(v.id);
 				if (s == null) error('${v.name} is not a local of this function', e.pos);
 				if (Textures.isTexture(s.type)) error('${v.name}: a texture parameter is not assigned', e.pos);
-				if (s.type.match(TStorage(_, _) | TImage(_))) error('${v.name}: a storage parameter is not assigned (its elements are: ${v.name}[i] = x)', e.pos);
+				if (s.type.match(TStorage(_, _) | TImage(_) | TWorkgroup(_))) error('${v.name}: a storage parameter is not assigned (its elements are: ${v.name}[i] = x)', e.pos);
 				s.assigned = true;
 				s;
 			case TParenthesis(x) | TMeta(_, x): target(x);
@@ -620,6 +669,8 @@ class Lower implements ShaderAdapter {
 			case TLocal(v):
 				if (paramsObject != null && v.id == paramsObject.id)
 					error('${v.name}, the stage\'s parameters, is read by its fields (${v.name}.name): it is no shader value', e.pos);
+				if (workgroupObject != null && v.id == workgroupObject.id)
+					error('${v.name}, the stage\'s workgroup memory, is read by its fields (${v.name}.part[i]): it is no shader value', e.pos);
 				var s = locals.get(v.id);
 				if (s == null) error('${v.name} is not a local of this function (a closure?)', e.pos);
 				local(s);
@@ -662,7 +713,7 @@ class Lower implements ShaderAdapter {
 			case TIf(c, a, b) if (b != null):
 				var t = type(e.t, e.pos);
 				if (Textures.isTexture(t)) error("a texture is chosen by no condition (pass the parameter on)", e.pos);
-				if (t.match(TStorage(_, _) | TImage(_))) error("a storage buffer or texture is chosen by no condition", e.pos);
+				if (t.match(TStorage(_, _) | TImage(_) | TWorkgroup(_))) error("a storage buffer, texture or workgroup memory is chosen by no condition", e.pos);
 				var cond = coerce(expr(c, out), TBool, c.pos);
 				// (a variant's choice by a constant: the branch it takes alone)
 				switch cond.e {
@@ -696,6 +747,7 @@ class Lower implements ShaderAdapter {
 			case TField(x, FAnon(cf)):
 				switch strip(x).expr {
 					case TLocal(v) if (paramsObject != null && v.id == paramsObject.id): local(paramsObject.fields.get(cf.get().name));
+					case TLocal(v) if (workgroupObject != null && v.id == workgroupObject.id): local(workgroupObject.fields.get(cf.get().name));
 					case TField({expr: TLocal(v)}, FAnon(o)) if (v.id == slotsSelf && o.get().name == "options"): option(cf.get().name, e);
 					case TLocal(v) if (v.id == slotsSelf): error('${v.name}.${cf.get().name}: the slot object is read as ${v.name}.options.<name> and called as ${v.name}.<slot>(s, p)', e.pos);
 					case _: field(x, null, cf.get(), e, out);
@@ -867,6 +919,16 @@ class Lower implements ShaderAdapter {
 		var p = path(c);
 		if (p == SHADER_PACK + ".ShaderMath") {
 			if (cf.name == "position") error("position(...) marks a field of the varyings where the vertex stage builds them ({clip: position(...), ...})", e.pos);
+			if (cf.name == "barrier" || Subgroups.isOp(cf.name)) {
+				// (the compute stage's own: checked where they are, Uniformity)
+				if (kind != Stage) error('${cf.name}(): in the compute function itself, not in a function it calls (every invocation of the workgroup reaches it there)', e.pos);
+				var xs = [for (i in 0...args.length) i == 1 ? coerce(expr(args[i], out), TInt, args[i].pos) : expr(args[i], out)];
+				if (xs.length > 0 && cf.name != "subgroupAll" && cf.name != "subgroupAny" && !xs[0].t.match(TFloat | TInt | TVec(_)))
+					error('${cf.name}: of a Float, an Int or a vector, not a ${Names.typeName(xs[0].t)}', args[0].pos);
+				var x:SExpr = {e: EBuiltin(cf.name, xs), t: xs.length > 0 && cf.name != "subgroupAll" && cf.name != "subgroupAny" ? xs[0].t : t};
+				builtins.set(x, e.pos);
+				return x;
+			}
 			var xs = lowered();
 			return switch cf.name {
 				case "vec2" | "vec3" | "vec4": {e: ENew(xs), t: t};
@@ -894,7 +956,7 @@ class Lower implements ShaderAdapter {
 			}
 		}
 		switch c.kind {
-			case KAbstractImpl(a) if (a.get().pack.join(".") == SHADER_PACK && (a.get().name == "Storage" || a.get().name == "RWStorage")):
+			case KAbstractImpl(a) if (a.get().pack.join(".") == SHADER_PACK && (a.get().name == "Storage" || a.get().name == "RWStorage" || a.get().name == "Workgroup")):
 				// (a storage buffer's element read, b[i], or written, b[i] = v: SStore, its value the expression's)
 				var b = expr(args[0], out);
 				return switch cf.name {
@@ -949,7 +1011,7 @@ class Lower implements ShaderAdapter {
 		var g = func(c, cf, e.pos);
 		var xs = [for (i in 0...args.length) coerce(expr(args[i], out), g.params[i].type, args[i].pos)];
 		for (x in xs)
-			if (x.t.match(TStorage(_, _) | TImage(_)))
+			if (x.t.match(TStorage(_, _) | TImage(_) | TWorkgroup(_)))
 				error('${cf.name}: a ${Names.typeName(x.t)} is read and written in the compute function itself, not passed on (GLSL\'s buffers are no parameters)', e.pos);
 		return {e: ECall(g, xs), t: g.ret};
 	}

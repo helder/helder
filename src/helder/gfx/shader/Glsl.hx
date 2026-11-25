@@ -21,7 +21,9 @@ import helder.gfx.shader.Ir;
 // buffer sb_<slot>_block { T data[]; } sb_<slot>` (n: its index, the
 // written ones first: GL ES 3.1 has 4 bindings at least), a storage
 // texture `layout(binding = n, <format>) writeonly uniform highp image2D
-// img_<slot>` (n: its image unit).
+// img_<slot>` (n: its image unit); its workgroup memory `shared T
+// wg_<k>[n]`; its subgroups GL_KHR_shader_subgroup's (the extensions of the
+// operations it calls, gl_SubgroupInvocationID and the others).
 class Glsl extends Emit {
 	// structs made through make_<Struct> functions instead of their
 	// constructors (as Hlsl): the shader compiler of Android's emulator
@@ -87,6 +89,7 @@ class Glsl extends Emit {
 			case TArray(t, n): type(t) + "[" + n + "]";
 			case TStorage(t, _): type(t);
 			case TImage(_): "image2D";
+			case TWorkgroup(t): type(t);
 		}
 
 	override function builtin(name:String, args:Array<SExpr>, t:SType):String
@@ -103,17 +106,31 @@ class Glsl extends Emit {
 			case "atan2": super.builtin("atan", args, t);
 			case "atomicAdd" | "atomicMin" | "atomicMax": name + "(" + load(args[0], args[1]) + ", " + expr(args[2]) + ")";
 			case "textureStore": "imageStore(" + expr(args[0]) + ", ivec2(" + expr(args[1]) + ", " + expr(args[2]) + "), " + expr(args[3]) + ")";
+			// (the shared memory's writes made visible, then the workgroup waits)
+			case "barrier": "memoryBarrierShared(); barrier()";
+			case "subgroupBroadcast" | "subgroupShuffle": name + "(" + expr(args[0]) + ", uint(" + expr(args[1]) + "))";
 			case _: super.builtin(name, args, t);
 		}
 
 	override function load(b:SExpr, i:SExpr):String
-		return operand(b) + ".data[" + expr(i) + "]";
+		return b.t.match(TWorkgroup(_)) ? super.load(b, i) : operand(b) + ".data[" + expr(i) + "]";
 
 	override function store(b:SExpr, i:SExpr, v:SExpr):String
-		return operand(b) + ".data[" + expr(i) + "] = " + expr(v) + ";";
+		return b.t.match(TWorkgroup(_)) ? super.store(b, i, v) : operand(b) + ".data[" + expr(i) + "] = " + expr(v) + ";";
 
 	override function computeHeader(c:SCompute) {
 		line("#version 310 es");
+		if (native()) {
+			var ops = Subgroups.used(c.entry.fn).ops;
+			line("#extension GL_KHR_shader_subgroup_basic : require");
+			for (x in [
+				{ext: "vote", ops: ["subgroupAll", "subgroupAny"]},
+				{ext: "arithmetic", ops: ["subgroupAdd", "subgroupMin", "subgroupMax"]},
+				{ext: "ballot", ops: ["subgroupBroadcast"]},
+				{ext: "shuffle", ops: ["subgroupShuffle"]}
+			])
+				if (Lambda.exists(x.ops, o -> ops.contains(o))) line('#extension GL_KHR_shader_subgroup_${x.ext} : require');
+		}
 		line('layout(local_size_x = ${c.size[0]}, local_size_y = ${c.size[1]}, local_size_z = ${c.size[2]}) in;');
 		line("precision highp float;");
 		line("precision highp int;");
@@ -121,6 +138,10 @@ class Glsl extends Emit {
 		precisions(c.entry);
 		if (c.images.length > 0) line("precision highp image2D;");
 	}
+
+	override function workgroup(c:SCompute)
+		for (s in c.shared)
+			line('shared ${type(s.element)} wg_${s.index}[${s.length}];');
 
 	static function imageFormat(f:Int):String
 		return f == 4 ? "rgba16f" : f == 5 ? "r32f" : "rgba8";
@@ -146,7 +167,8 @@ class Glsl extends Emit {
 		for (t in e.textures)
 			line('layout(binding = ${t.slot}) uniform ${type(Emit.textureType(t))} tex_${t.slot};');
 		var args = Emit.computeArgs(e, u -> make(u.struct.name) + "(" + [for (f in u.struct.fields) 'u_${u.binding}.${f.name}'].join(", ") + ")", t -> 'tex_${t.slot}', s -> null, m -> null);
-		var ids = "int(gl_GlobalInvocationID.x), int(gl_GlobalInvocationID.y), int(gl_GlobalInvocationID.z), int(gl_LocalInvocationID.x), int(gl_LocalInvocationID.y), int(gl_LocalInvocationID.z), int(gl_LocalInvocationIndex), int(gl_WorkGroupID.x), int(gl_WorkGroupID.y), int(gl_WorkGroupID.z)";
+		var ids = "int(gl_GlobalInvocationID.x), int(gl_GlobalInvocationID.y), int(gl_GlobalInvocationID.z), int(gl_LocalInvocationID.x), int(gl_LocalInvocationID.y), int(gl_LocalInvocationID.z), int(gl_LocalInvocationIndex), int(gl_WorkGroupID.x), int(gl_WorkGroupID.y), int(gl_WorkGroupID.z)"
+			+ subgroupIds(native() ? ["int(gl_SubgroupInvocationID)", "int(gl_SubgroupSize)", "int(gl_SubgroupID)", "int(gl_NumSubgroups)"] : null, "int(gl_LocalInvocationIndex)");
 		line("void main() {");
 		line('\t${e.fn.name}(' + [make(e.input.name) + "(" + ids + ")"].concat(args).join(", ") + ");");
 		line("}");

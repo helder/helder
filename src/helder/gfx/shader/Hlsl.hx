@@ -19,7 +19,9 @@ import helder.gfx.shader.Ir;
 // its index among the stage's UAVs), its elements loaded and stored at
 // their std430 offsets by sb_<n>_load and sb_<n>_store (asfloat, asuint),
 // its Ints' atomics sb_<n>_atomicAdd ... (Interlocked*); a storage texture
-// `RWTexture2D<float4> img_<n> : register(uk)` (R32F: float).
+// `RWTexture2D<float4> img_<n> : register(uk)` (R32F: float); its workgroup
+// memory `groupshared T wg_<k>[n]`. cs_5_0 has no subgroups (SM 6.0's wave
+// intrinsics are D3D12's): a stage using them is emulated only.
 class Hlsl extends Emit {
 	override function type(t:SType):String
 		return switch t {
@@ -36,13 +38,18 @@ class Hlsl extends Emit {
 			case TArray(t, _): type(t);
 			case TStorage(_, w): w ? "RWByteAddressBuffer" : "ByteAddressBuffer";
 			case TImage(f): f == 5 ? "RWTexture2D<float>" : "RWTexture2D<float4>";
+			case TWorkgroup(t): type(t);
 		}
 
 	override function load(b:SExpr, i:SExpr):String
-		return operand(b) + "_load(" + expr(i) + ")";
+		return b.t.match(TWorkgroup(_)) ? super.load(b, i) : operand(b) + "_load(" + expr(i) + ")";
 
 	override function store(b:SExpr, i:SExpr, v:SExpr):String
-		return operand(b) + "_store(" + expr(i) + ", " + expr(v) + ");";
+		return b.t.match(TWorkgroup(_)) ? super.store(b, i, v) : operand(b) + "_store(" + expr(i) + ", " + expr(v) + ");";
+
+	override function workgroup(c:SCompute)
+		for (s in c.shared)
+			line('groupshared ${decl(s.element, 'wg_${s.index}')}[${s.length}];');
 
 	override function computeHeader(c:SCompute) {}
 
@@ -115,7 +122,7 @@ class Hlsl extends Emit {
 			line('SamplerState smp_${t.slot} : register(s${t.slot});');
 		}
 		var args = Emit.computeArgs(e, u -> 'make_${u.struct.name}(' + [for (f in u.struct.fields) 'u_${u.binding}_${f.name}'].join(", ") + ")", t -> 'tex_${t.slot}, smp_${t.slot}', s -> null, m -> null);
-		var ids = "int(gid.x), int(gid.y), int(gid.z), int(lid.x), int(lid.y), int(lid.z), int(lidx), int(grp.x), int(grp.y), int(grp.z)";
+		var ids = "int(gid.x), int(gid.y), int(gid.z), int(lid.x), int(lid.y), int(lid.z), int(lidx), int(grp.x), int(grp.y), int(grp.z)" + subgroupIds(null, "int(lidx)");
 		line('[numthreads(${c.size.join(", ")})]');
 		line("void main(uint3 gid : SV_DispatchThreadID, uint3 lid : SV_GroupThreadID, uint lidx : SV_GroupIndex, uint3 grp : SV_GroupID) {");
 		line('\t${e.fn.name}(' + ['make_${e.input.name}($ids)'].concat(args).join(", ") + ");");
@@ -173,6 +180,8 @@ class Hlsl extends Emit {
 			case "sample": operand(args[0]) + ".SampleLevel(" + expr(args[0]) + "_smp, " + expr(args[1]) + ", 0.0)";
 			case "sampleLevel": operand(args[0]) + ".SampleLevel(" + expr(args[0]) + "_smp, " + expr(args[1]) + ", " + expr(args[2]) + ")";
 			case "atomicAdd" | "atomicMin" | "atomicMax": operand(args[0]) + "_" + name + "(" + expr(args[1]) + ", " + expr(args[2]) + ")";
+			case "barrier": "GroupMemoryBarrierWithGroupSync()";
+			case name if (Subgroups.isOp(name)): throw "hlsl: subgroups are emulated in cs_5_0";
 			case "textureStore":
 				operand(args[0]) + "[uint2(" + expr(args[1]) + ", " + expr(args[2]) + ")] = " + (args[0].t.match(TImage(5)) ? operand(args[3]) + ".x" : expr(args[3]));
 			// (an int: back to floats)

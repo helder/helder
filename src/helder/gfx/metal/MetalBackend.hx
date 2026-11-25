@@ -482,8 +482,14 @@ class MetalBackend {
 
 	// ---- the compute tier
 
-	public function has(f:Feature):Bool
-		return true;
+	// (subgroups: MSL's SIMD-group reductions and permutes, Apple7 (A14) and Mac2 GPUs)
+	public function has(f:Feature):Bool {
+		if (f != Subgroups) return true;
+		if (simd < 0) simd = Msg.bInt(device, ObjC.sel("supportsFamily:"), 1007) || Msg.bInt(device, ObjC.sel("supportsFamily:"), 2002) ? 1 : 0;
+		return simd == 1;
+	}
+
+	var simd = -1;
 
 	public function createComputePipeline(shader:Int):Int {
 		var size = workgroups.get(shader);

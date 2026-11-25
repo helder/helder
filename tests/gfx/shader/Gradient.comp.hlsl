@@ -9,8 +9,12 @@ struct ComputeInput {
 	int groupX;
 	int groupY;
 	int groupZ;
+	int subgroupLane;
+	int subgroupSize;
+	int subgroupIndex;
+	int subgroups;
 };
-ComputeInput make_ComputeInput(int f0, int f1, int f2, int f3, int f4, int f5, int f6, int f7, int f8, int f9) {
+ComputeInput make_ComputeInput(int f0, int f1, int f2, int f3, int f4, int f5, int f6, int f7, int f8, int f9, int f10, int f11, int f12, int f13) {
 	ComputeInput s;
 	s.x = f0;
 	s.y = f1;
@@ -22,6 +26,10 @@ ComputeInput make_ComputeInput(int f0, int f1, int f2, int f3, int f4, int f5, i
 	s.groupX = f7;
 	s.groupY = f8;
 	s.groupZ = f9;
+	s.subgroupLane = f10;
+	s.subgroupSize = f11;
+	s.subgroupIndex = f12;
+	s.subgroups = f13;
 	return s;
 }
 struct GradientSize {
@@ -47,5 +55,5 @@ cbuffer GradientSize_block : register(b0) {
 };
 [numthreads(8, 8, 1)]
 void main(uint3 gid : SV_DispatchThreadID, uint3 lid : SV_GroupThreadID, uint lidx : SV_GroupIndex, uint3 grp : SV_GroupID) {
-	cs(make_ComputeInput(int(gid.x), int(gid.y), int(gid.z), int(lid.x), int(lid.y), int(lid.z), int(lidx), int(grp.x), int(grp.y), int(grp.z)), make_GradientSize(u_0_width, u_0_height));
+	cs(make_ComputeInput(int(gid.x), int(gid.y), int(gid.z), int(lid.x), int(lid.y), int(lid.z), int(lidx), int(grp.x), int(grp.y), int(grp.z), int(lidx) & 3, 4, int(lidx) >> 2, 16), make_GradientSize(u_0_width, u_0_height));
 }

@@ -14,6 +14,10 @@ struct ComputeInput {
 	int groupX;
 	int groupY;
 	int groupZ;
+	int subgroupLane;
+	int subgroupSize;
+	int subgroupIndex;
+	int subgroups;
 };
 struct GradientSize {
 	int width;
@@ -31,5 +35,5 @@ layout(std140, binding = 0) uniform GradientSize_block {
 	int height;
 } u_0;
 void main() {
-	cs(ComputeInput(int(gl_GlobalInvocationID.x), int(gl_GlobalInvocationID.y), int(gl_GlobalInvocationID.z), int(gl_LocalInvocationID.x), int(gl_LocalInvocationID.y), int(gl_LocalInvocationID.z), int(gl_LocalInvocationIndex), int(gl_WorkGroupID.x), int(gl_WorkGroupID.y), int(gl_WorkGroupID.z)), GradientSize(u_0.width, u_0.height));
+	cs(ComputeInput(int(gl_GlobalInvocationID.x), int(gl_GlobalInvocationID.y), int(gl_GlobalInvocationID.z), int(gl_LocalInvocationID.x), int(gl_LocalInvocationID.y), int(gl_LocalInvocationID.z), int(gl_LocalInvocationIndex), int(gl_WorkGroupID.x), int(gl_WorkGroupID.y), int(gl_WorkGroupID.z), int(gl_LocalInvocationIndex) & 3, 4, int(gl_LocalInvocationIndex) >> 2, 16), GradientSize(u_0.width, u_0.height));
 }

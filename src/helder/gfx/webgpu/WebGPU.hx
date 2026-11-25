@@ -35,6 +35,8 @@ import hxmc.unsafe.*;
 	static function supports(format:Int):Int;
 	// the device's maxTextureDimension2D
 	static function max_texture():Int;
+	// 1: the device has the subgroups feature (asked for with it where the adapter has it)
+	static function subgroups():Int;
 	// the texture (RGBA8 or RGBA8Srgb, the image's size) filled from a
 	// browser image (helder_image's), at once when it is decoded, else once
 	// it is; its levels after the first generated then; release 1: the

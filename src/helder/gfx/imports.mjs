@@ -108,7 +108,7 @@ export default async function (host) {
 		if (host.options.gpu) ({ adapter, device } = host.options.gpu);
 		else {
 			adapter = host.options.gfx !== 'webgl2' && navigator.gpu && (await navigator.gpu.requestAdapter());
-			device = adapter ? await adapter.requestDevice({ requiredFeatures: [...new Set(FEATURES)].filter((f) => adapter.features.has(f)) }) : null;
+			device = adapter ? await adapter.requestDevice({ requiredFeatures: [...new Set([...FEATURES, 'subgroups'])].filter((f) => adapter.features.has(f)) }) : null;
 		}
 	} catch (e) {
 		console.error('helder.gfx: no WebGPU device:', e);
@@ -451,6 +451,8 @@ export default async function (host) {
 		write_texture: (h, x, y, w, height, level, layer, data) => write(handles.get(h), x, y, w, height, level, data, layer),
 		// 1: the device samples the TextureFormat (the compressed ones: their features)
 		max_texture: () => (device ? device.limits.maxTextureDimension2D : 8192),
+		// 1: a compute stage's subgroups are WGSL's (the feature asked for with the device; else emulated)
+		subgroups: () => (device && device.features.has('subgroups') ? 1 : 0),
 		supports: (format) => (!compressed(format) || (device && device.features.has(FEATURES[format - BC1])) ? 1 : 0),
 		generate_mips(h) {
 			const t = handles.get(h), { texture } = t;

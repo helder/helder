@@ -262,9 +262,7 @@ class ShaderMacro {
 		var main = Lambda.find(fields, f -> f.field == "main").expr;
 		var mainType = [for (t in lower.stageTypes) t][0].toComplexType();
 		var codeFields:Array<ObjectField> = [for (x in out.code) {field: x.language, expr: macro $v{x.text}}];
-		codeFields.push({
-			field: "bindings",
-			expr: macro [
+		var bindings = macro [
 				$a{
 					[
 						for (b in out.bindings)
@@ -279,9 +277,12 @@ class ShaderMacro {
 							}
 					]
 				}
-			]
-		});
+			];
+		codeFields.push({field: "bindings", expr: bindings});
 		codeFields.push({field: "workgroupSize", expr: macro $v{c.size}});
+		// (its subgroups made of workgroup memory, for the devices without them)
+		if (out.emulated != null)
+			codeFields.push({field: "emulated", expr: {expr: EObjectDecl([for (x in out.emulated) {field: x.language, expr: macro $v{x.text}}]), pos: pos}});
 		// (-D helder.soft: the stage's form for the CPU back end, Soft)
 		var softForm = Soft.enabled() ? Soft.compute(c, Context.getLocalModule().split(".").pop() + "_" + (Context.getLocalMethod() ?? "compute") + "_"
 			+ haxe.crypto.Md5.encode([for (x in out.code) x.text].join("")).substr(0, 8),

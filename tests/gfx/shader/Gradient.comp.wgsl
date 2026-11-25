@@ -9,6 +9,10 @@ struct ComputeInput {
 	groupX: i32,
 	groupY: i32,
 	groupZ: i32,
+	subgroupLane: i32,
+	subgroupSize: i32,
+	subgroupIndex: i32,
+	subgroups: i32,
 }
 struct GradientSize {
 	width: i32,
@@ -23,5 +27,5 @@ fn cs(id: ComputeInput, size: GradientSize) {
 }
 @group(0) @binding(0) var<uniform> u_0: GradientSize;
 @compute @workgroup_size(8, 8, 1) fn main(@builtin(global_invocation_id) gid: vec3u, @builtin(local_invocation_id) lid: vec3u, @builtin(local_invocation_index) lidx: u32, @builtin(workgroup_id) grp: vec3u) {
-	cs(ComputeInput(i32(gid.x), i32(gid.y), i32(gid.z), i32(lid.x), i32(lid.y), i32(lid.z), i32(lidx), i32(grp.x), i32(grp.y), i32(grp.z)), u_0);
+	cs(ComputeInput(i32(gid.x), i32(gid.y), i32(gid.z), i32(lid.x), i32(lid.y), i32(lid.z), i32(lidx), i32(grp.x), i32(grp.y), i32(grp.z), i32(lidx) & 3, 4, i32(lidx) >> 2, 16), u_0);
 }

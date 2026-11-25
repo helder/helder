@@ -25,6 +25,10 @@ package helder.gfx;
 // MSL's [[buffer(n)]], HLSL's register(tn) read or register(u<index>)
 // written, WGSL's @binding(n); a storage texture GLSL's image unit index,
 // MSL's [[texture(n)]], HLSL's register(u<index>), WGSL's @binding(n).
+// A stage using subgroups has a second form, emulated: its subgroup
+// operations made of workgroup memory and barriers, for the devices
+// without them (Feature.Subgroups: Device.createShader takes it there;
+// D3D11's cs_5_0 has only that one, its hlsl; on the CPU the same).
 typedef ShaderCode = {
 	?glsl:String,
 	?msl:String,
@@ -32,10 +36,31 @@ typedef ShaderCode = {
 	?wgsl:String,
 	?bindings:Array<ShaderBinding>,
 	// (a compute stage's) its workgroup's size: x, y, z
-	?workgroupSize:Array<Int>
+	?workgroupSize:Array<Int>,
+	// (a compute stage's using subgroups) its texts without them
+	// (emulatedForm: its code; its bindings and size the same)
+	?emulated:{?glsl:String, ?msl:String, ?hlsl:String, ?wgsl:String}
 	#if helder.soft
 	// (the CPU back end's: -D helder.soft builds alone, where the shader
 	// definitions emit it)
 	, ?soft:SoftCode
 	#end
+}
+
+// a compute stage's code in its second form (emulated's texts, the rest
+// the same), else the code itself
+function emulatedForm(c:ShaderCode):ShaderCode {
+	var e = c.emulated;
+	if (e == null) return c;
+	return {
+		glsl: e.glsl,
+		msl: e.msl,
+		hlsl: e.hlsl,
+		wgsl: e.wgsl,
+		bindings: c.bindings,
+		workgroupSize: c.workgroupSize
+		#if helder.soft
+		, soft: c.soft
+		#end
+	};
 }

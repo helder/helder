@@ -42,7 +42,7 @@ class SoftBackend {
 	final bufferSizes:Array<Int> = [];
 	final textures:Array<Ptr> = [];
 	final samplers:Array<Int> = [];
-	final shaders:Array<Null<{entry:Ptr, varyings:Int, stage:Stage, size:Array<Int>}>> = [];
+	final shaders:Array<Null<{entry:Ptr, varyings:Int, stage:Stage, size:Array<Int>, workgroup:Int, frame:Int}>> = [];
 	final pipelines:Array<SoftPipeline> = [];
 	final queries:Array<Ptr> = [];
 	final queryCounts:Array<Int> = [];
@@ -79,10 +79,13 @@ class SoftBackend {
 	var vertsSize = 0;
 	final clip:Ptr;
 	// the compute tier's: pipelines, the one set, its context, ids and storage bindings
-	final computes:Array<{entry:Ptr, size:Array<Int>}> = [];
-	var computing:Null<{entry:Ptr, size:Array<Int>}> = null;
+	final computes:Array<{entry:Ptr, size:Array<Int>, workgroup:Int, frame:Int}> = [];
+	var computing:Null<{entry:Ptr, size:Array<Int>, workgroup:Int, frame:Int}> = null;
 	final cctx:Ptr;
 	final cin:Ptr;
+	// (a workgroup's memory, its calls' frames: grown to the largest pipeline's)
+	var shared = Ptr.nil();
+	var sharedSize = 0;
 	final storage:Ptr;
 
 	public function new(surface:Surface, antialias:Bool) {
@@ -98,7 +101,7 @@ class SoftBackend {
 		clip = LibC.malloc(2 * 16 * 4 * (4 + Abi.MAX_VARYINGS) + 3 * 4 * (4 + Abi.MAX_VARYINGS));
 		cctx = LibC.malloc(Abi.COMPUTE_SIZE);
 		LibC.memset(cctx, 0, Abi.COMPUTE_SIZE);
-		cin = LibC.malloc(16 * 10);
+		cin = LibC.malloc(16 * 14);
 		storage = LibC.malloc(Buffers.SIZE * 16);
 		LibC.memset(storage, 0, Buffers.SIZE * 16);
 		resize(surface.width, surface.height);
@@ -228,7 +231,14 @@ class SoftBackend {
 
 	public function createShader(d:ShaderDesc):Int {
 		var s = d.code.soft;
-		shaders.push(s == null ? null : {entry: Ptr.ofI64(s.entry), varyings: s.varyings, stage: d.stage, size: d.code.workgroupSize});
+		shaders.push(s == null ? null : {
+			entry: Ptr.ofI64(s.entry),
+			varyings: s.varyings,
+			stage: d.stage,
+			size: d.code.workgroupSize,
+			workgroup: s.workgroup ?? 0,
+			frame: s.frame ?? 0
+		});
 		return shaders.length;
 	}
 
@@ -850,7 +860,7 @@ class SoftBackend {
 		var s = shader <= 0 || shader > shaders.length ? null : shaders[shader - 1];
 		if (s == null) throw "helder.gfx: createComputePipeline: a shader without its CPU form";
 		var size = s.size == null ? [1, 1, 1] : [for (k in 0...3) k < s.size.length ? s.size[k] : 1];
-		computes.push({entry: s.entry, size: size});
+		computes.push({entry: s.entry, size: size, workgroup: s.workgroup, frame: s.frame});
 		return computes.length;
 	}
 
@@ -871,38 +881,61 @@ class SoftBackend {
 	public function setStorageTexture(slot:Int, id:Int)
 		if (slot >= 0 && slot < 16) Mem.setPtr(cctx, Abi.IMAGES + 8 * slot, texture(id));
 
+	// (a workgroup's memory zeroed at its start; with barriers its phases
+	// each over the workgroup's calls before the next, the call returning
+	// the next phase, -1 the end, each call's frame its own)
 	public function dispatch(x:Int, y:Int, z:Int) {
 		var c = computing;
 		if (c == null || x <= 0 || y <= 0 || z <= 0) return;
 		LibC.memcpy(cctx.add(Abi.UNIFORMS), bound, 256);
 		Mem.setPtr(cctx, Abi.IN, cin);
-		var sx = c.size[0], sy = c.size[1], sz = c.size[2], n = sx * sy * sz;
+		var sx = c.size[0], sy = c.size[1], sz = c.size[2], n = sx * sy * sz, calls = (n + 3) >> 2;
+		var need = c.workgroup + calls * c.frame;
+		if (need > sharedSize) {
+			if (!shared.isNull()) LibC.free(shared);
+			shared = LibC.malloc(need);
+			sharedSize = need;
+		}
+		var frames = shared.add(c.workgroup);
+		Mem.setPtr(cctx, Abi.WORKGROUP, shared);
 		for (gz in 0...z)
 			for (gy in 0...y)
 				for (gx in 0...x) {
-					var k = 0;
-					while (k < n) {
-						var lanes = n - k < 4 ? n - k : 4;
-						for (l in 0...4) {
-							// (a lane past the workgroup: the last one's ids, masked out)
-							var i = k + (l < lanes ? l : lanes - 1), lx = i % sx, ly = Std.int(i / sx) % sy, lz = Std.int(i / (sx * sy));
-							// (ComputeInput's fields in order: x, y, z, localX, localY, localZ, localIndex, groupX, groupY, groupZ)
-							inline function set(f:Int, v:Int)
-								Mem.setI32(cin, 16 * f + 4 * l, v);
-							set(0, gx * sx + lx);
-							set(1, gy * sy + ly);
-							set(2, gz * sz + lz);
-							set(3, lx);
-							set(4, ly);
-							set(5, lz);
-							set(6, i);
-							set(7, gx);
-							set(8, gy);
-							set(9, gz);
+					if (c.workgroup > 0) LibC.memset(shared, 0, c.workgroup);
+					var phase = 0;
+					while (phase >= 0) {
+						var next = -1, k = 0;
+						while (k < n) {
+							var lanes = n - k < 4 ? n - k : 4;
+							for (l in 0...4) {
+								// (a lane past the workgroup: the last one's ids, masked out)
+								var i = k + (l < lanes ? l : lanes - 1), lx = i % sx, ly = Std.int(i / sx) % sy, lz = Std.int(i / (sx * sy));
+								// (ComputeInput's fields in order: x, y, z, localX, localY, localZ, localIndex,
+								// groupX, groupY, groupZ, subgroupLane, subgroupSize, subgroupIndex, subgroups)
+								inline function set(f:Int, v:Int)
+									Mem.setI32(cin, 16 * f + 4 * l, v);
+								set(0, gx * sx + lx);
+								set(1, gy * sy + ly);
+								set(2, gz * sz + lz);
+								set(3, lx);
+								set(4, ly);
+								set(5, lz);
+								set(6, i);
+								set(7, gx);
+								set(8, gy);
+								set(9, gz);
+								set(10, i & 3);
+								set(11, 4);
+								set(12, k >> 2);
+								set(13, calls);
+							}
+							Mem.setI32(cctx, Abi.MASK, (1 << lanes) - 1);
+							Mem.setPtr(cctx, Abi.FRAME, frames.add((k >> 2) * c.frame));
+							Mem.setI32(cctx, Abi.PHASE, phase);
+							next = Raster.Fragment.call(c.entry, cctx);
+							k += 4;
 						}
-						Mem.setI32(cctx, Abi.MASK, (1 << lanes) - 1);
-						Raster.Fragment.call(c.entry, cctx);
-						k += 4;
+						phase = next;
 					}
 				}
 	}
@@ -931,6 +964,9 @@ class SoftBackend {
 		return false;
 
 	public function dispose() {
+		if (!shared.isNull()) LibC.free(shared);
+		shared = Ptr.nil();
+		sharedSize = 0;
 		for (b in buffers)
 			if (!b.isNull()) LibC.free(b);
 		for (t in textures)
