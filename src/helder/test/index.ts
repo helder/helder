@@ -22,9 +22,35 @@
 // `.snap` beside it (Foo.test.ts's Foo.test.snap; `helder test -u`
 // rewrites it). TSX mounts headless with helder/story's `tree`, its
 // tree as text, which a snapshot keeps.
-import { Script, Entry } from "helder/test/runner";
+import {Script, Entry, UiScript} from './runner'
+import type {Ui} from 'helder/ui/actions'
 
 export type { Entry };
+
+// whether secondary is Command (macOS: a window sets it) rather than Control
+export function setMac(mac: boolean): void {
+  UiScript.setMac(mac)
+}
+
+// a Ui of no window (tests), its root to render into, its keymap
+export function headless(width: number, height: number): Ui {
+  return UiScript.headless(width, height) as any
+}
+
+// content (TSX) rendered into its root and laid out, removed by the function returned
+export function mount(ui: Ui, content: unknown): () => void {
+  return UiScript.mount(ui as any, content as any)
+}
+
+// its layout updated (a headless one's)
+export function update(ui: Ui): void {
+  UiScript.layout(ui as any)
+}
+
+// each keystroke of keys typed into the Ui ("ctrl-k ctrl-s"), through its keymap
+export function press(ui: Ui, keys: string): void {
+  UiScript.type(ui as any, keys)
+}
 
 // (thrown by require and fail: the test stops, its failure recorded)
 class Stop extends Error {}

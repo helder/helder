@@ -1,7 +1,7 @@
 // helder.view for TypeScript programs (helder.typescript): signals,
 // computations, markup (TSX) and its control flow, on helder.view.graph
-// (DESIGN.md). Each class is the Haxe class `__haxe` names; a function is one
-// of a class's statics (typeof Class.name), called directly by the compiled
+// (its README). Each class is the Haxe class `__haxe` names; a function is one
+// of a class's statics (`__haxe` names it), called directly by the compiled
 // program, its values converted by the types Haxe declares (the manifest,
 // typescript's README); a signal, a memo or a Read comes to the program as a
 // function.
@@ -9,7 +9,7 @@
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 
-declare const __haxe: {View: "helder.view.View", Render: "helder.view.Render", Graph: "helder.view.graph.Graph", Scheduler: "helder.view.graph.Scheduler", Flow: "helder.view.Flow", __module: "helder.view.TypeScript"};
+declare const __haxe: {render: "helder.view.Render.render", insert: "helder.view.Render.insert", signal: "helder.view.graph.Graph.signalValue", memo: "helder.view.graph.Graph.memo", effect: "helder.view.graph.Graph.effect", renderEffect: "helder.view.graph.Graph.renderEffect", flush: "helder.view.graph.Scheduler.flush", untrack: "helder.view.graph.Graph.untrack", root: "helder.view.graph.Graph.root", onCleanup: "helder.view.graph.Graph.onCleanup", onSettled: "helder.view.graph.Graph.onSettled", isPending: "helder.view.graph.Graph.isPending", For: "helder.view.Flow.For", Repeat: "helder.view.Flow.Repeat", Show: "helder.view.Flow.Show", Switch: "helder.view.Flow.Switch", Match: "helder.view.Flow.Match", Loading: "helder.view.Flow.Loading", Errored: "helder.view.Flow.Errored", __module: "helder.view.TypeScript"};
 
 // A value in the graph (view's README, Signals): called to read it (tracked inside
 // a computation), called with a value to write it, with a function to
@@ -90,134 +90,46 @@ export type NodeOptions<T> = { equals?: (arg0: T, arg1: T) => boolean; unobserve
 // a component returning one is a root (<Surface>), no renderer's markup
 export type RootView = unknown;
 
-// Mounting content: render and insert go to the runtime (ViewRuntime) of the
-// renderer whose nodes parent is, chosen by its type when compiling (its
-// class's @:rendered, HostMacro.rendererOf); what is mounted there is made
-// by that renderer, components and all, and a literal given here is
-// compiled for it. A component that makes a node of one renderer and
-// renders into it with another is a boundary (<Scene>: a ui node, scene
-// nodes in it); content passes through it unchanged. open mounts content
-// with no parent: a program's root, components making roots of their own
-// (<Surface>s).
-export declare class Render {
-	// renders content into parent (its root: dispose removes it and stops its effects)
-	static render: (content: unknown, parent: unknown) => () => void;
-	// inserts content into parent before a node (null: at the end); the nodes made
-	static insert: (content: unknown, parent: unknown, before: unknown) => unknown[];
-}
+// renders content into parent (its root: dispose removes it and stops its effects)
+export declare const render: (content: unknown, parent: unknown) => () => void;
+// inserts content into parent before a node (null: at the end); the nodes made
+export declare const insert: (content: unknown, parent: unknown, before: unknown) => unknown[];
 
-// helder.view's reactive graph: Solid 2's semantics on a
-// runtime of helder's own. Signals hold values, memos derive them, effects
-// run in two halves (compute tracked, apply after the commit). Writes are
-// deferred: committed together at the next flush (the loop's task ending,
-// or flush()), reads seeing the committed value until then. Computations
-// form an ownership tree: those made while another runs belong to it and
-// are disposed before it runs again.
-//
-//   var count = signal(0);
-//   var double = memo(() -> count() * 2);
-//   effect(() -> double(), v -> trace(v));
-//   count(c -> c + 1);
-export declare class Graph {
-	// (a value's signal, as TypeScript's signal(v) calls it: index.d.ts)
-	static signalValue<T>(value: T extends Function ? never : T): Signal<T>;
-	static memo<T>(fn: (prev: T | null) => T | PromiseLike<T>, options?: NodeOptions<T>): Memo<T>;
-	// compute runs now and again when what it read changes; apply after the
-	// commit, given its value and the previous one (the first: at the next
-	// flush); error, when given, takes compute's errors (else the nearest
-	// error boundary, else flush throws them)
-	static effect<T>(compute: (prev: T | null) => T | PromiseLike<T>, apply: (value: T, prev: T | null) => void | (() => void), error?: (arg0: any) => void): void;
-	// as effect, its apply in the render phase: before every effect's
-	static renderEffect<T>(compute: (prev: T | null) => T | PromiseLike<T>, apply: (value: T, prev: T | null) => void | (() => void), error?: (arg0: any) => void): void;
-	// fn run once the current commit has landed (its applies done), not
-	// tracked: after the nodes being rendered are in the tree (Solid 2's
-	// onSettled, onMount's successor); disposed with the current owner
-	static onSettled(fn: () => void): void;
-	// a new ownership tree, owned by the current owner if any: fn gets its dispose
-	static root<T>(fn: (dispose: () => void) => T): T;
-	// fn's reads not tracked
-	static untrack<T>(fn: () => T): T;
-	// fn runs when the current owner is disposed or runs again
-	static onCleanup(fn: () => void): void;
-	// whether what fn reads has a new value on its way (a held change, an
-	// async answer to a new question): looks ahead of the hold, never holds
-	// it; a first load gives no verdict (false; tracked, it suspends as the
-	// read would); an error in fn is false
-	static isPending(fn: () => unknown): boolean;
-}
+// (a value's signal, as TypeScript's signal(v) calls it: index.d.ts)
+export declare function signal<T>(value: T extends Function ? never : T): Signal<T>;
+export declare function memo<T>(fn: (prev: T | null) => T | PromiseLike<T>, options?: NodeOptions<T>): Memo<T>;
+// compute runs now and again when what it read changes; apply after the
+// commit, given its value and the previous one (the first: at the next
+// flush); error, when given, takes compute's errors (else the nearest
+// error boundary, else flush throws them)
+export declare function effect<T>(compute: (prev: T | null) => T | PromiseLike<T>, apply: (value: T, prev: T | null) => void | (() => void), error?: (arg0: any) => void): void;
+// as effect, its apply in the render phase: before every effect's
+export declare function renderEffect<T>(compute: (prev: T | null) => T | PromiseLike<T>, apply: (value: T, prev: T | null) => void | (() => void), error?: (arg0: any) => void): void;
+// fn's reads not tracked
+export declare function untrack<T>(fn: () => T): T;
+// a new ownership tree, owned by the current owner if any: fn gets its dispose
+export declare function root<T>(fn: (dispose: () => void) => T): T;
+// fn runs when the current owner is disposed or runs again
+export declare function onCleanup(fn: () => void): void;
+// fn run once the current commit has landed (its applies done), not
+// tracked: after the nodes being rendered are in the tree (Solid 2's
+// onSettled, onMount's successor); disposed with the current owner
+export declare function onSettled(fn: () => void): void;
+// whether what fn reads has a new value on its way (a held change, an
+// async answer to a new question): looks ahead of the hold, never holds
+// it; a first load gives no verdict (false; tracked, it suspends as the
+// read would); an error in fn is false
+export declare function isPending(fn: () => unknown): boolean;
 
-export declare const signal: typeof Graph.signalValue;
-export declare const memo: typeof Graph.memo;
-export declare const effect: typeof Graph.effect;
-export declare const renderEffect: typeof Graph.renderEffect;
-export declare const untrack: typeof Graph.untrack;
-export declare const root: typeof Graph.root;
-export declare const onCleanup: typeof Graph.onCleanup;
-export declare const onSettled: typeof Graph.onSettled;
-export declare const isPending: typeof Graph.isPending;
+export declare function flush(): void;
 
-// When writes are committed and effects run (view's README,
-// Holds). A write queues its node; a flush stages the pending
-// writes in a transaction, runs what they make stale for it (owned memos,
-// then render effects' computes, then the others', parents first), and
-// settles it: committed when nothing it renders waits (its effects'
-// applies then, render effects first), else parked until its async lands.
-// An async answer lands into the transaction that asked, the same way. A
-// flush comes from flush(), or, after a write outside one, from `later`
-// (helder.async's loop: when the task running ends, as Solid 2's
-// microtask; unset, nothing flushes until flush() is called).
-export declare class Scheduler {
-	static flush(): void;
-}
-
-export declare const flush: typeof Scheduler.flush;
-
-// Control flow components for markup (import helder.view.Flow.*), Solid 2's:
-//
-//   <For each={todos}>{t -> <Item todo={t}/>}</For>
-//   <For each={names} keyed={false}>{name -> <text>{name()}</text>}</For>
-//   <For each={fleets} by={f -> f.id}>{f -> <Token fleet={f}/>}</For>
-//   <Repeat count={3}>{i -> <dot/>}</Repeat>
-//   <Show when={count() > 0} fallback="none">{...}</Show>
-//   <Switch fallback="other"><Match when={a()}>A</Match><Match when={b()}>B</Match></Switch>
-//   <Provider context={theme} value={dark}>{...}</Provider>
-//   <Errored fallback={(e, reset) -> ...}>{...}</Errored>
-//   <Loading fallback={<text>loading</text>}>{...}</Loading>
-//
-// For's row is its child function, given the item as a Read: keyed by the
-// item itself (the default), a row is kept and moved while its item is in
-// the list, its Read the item; by={item -> id}, by what it gives (items
-// made anew each time, records of the same thing): a row is kept and moved
-// while an item of its key is in the list, its Read the latest such item;
-// keyed={false}, a row per index, its Read what is at that index (Solid
-// 1's Index). Repeat makes a row per number
-// below count. Show and Switch render a branch again only when the branch
-// chosen changes (not on every change of what chooses it): `when` is
-// truthy when not null and not false. Provider sets a context for its
-// children (Graph.use). Errored shows fallback instead of its children
-// when making them throws, or a computation inside them does later; reset
-// tries again. Loading shows fallback instead of its children while what
-// they read on their first load is pending (an async memo, helder.asset's
-// Asset); once it has shown them it keeps them shown, a later change held
-// until it lands (Graph.isPending says one is on its way). Its children
-// are made once: what reads a value not ready waits inside the graph.
-export declare class Flow {
-	static For<T>(props: { each: Read<T[]>; keyed?: boolean; by?: (arg0: T) => any; children: (arg0: Read<T>) => unknown }): unknown;
-	static Repeat(props: { count: Read<number>; children: (arg0: number) => unknown }): unknown;
-	static Show<T>(props: { when: Read<T>; fallback?: unknown; children?: unknown }): unknown;
-	static Match<T>(props: { when: Read<T>; children?: unknown }): unknown;
-	static Switch(props: { fallback?: unknown; children?: unknown }): unknown;
-	static Errored(props: { fallback: (error: any, reset: () => void) => unknown; children?: unknown }): unknown;
-	static Loading(props: { fallback?: unknown; children?: unknown }): unknown;
-}
-
-export declare const For: typeof Flow.For;
-export declare const Repeat: typeof Flow.Repeat;
-export declare const Show: typeof Flow.Show;
-export declare const Switch: typeof Flow.Switch;
-export declare const Match: typeof Flow.Match;
-export declare const Loading: typeof Flow.Loading;
-export declare const Errored: typeof Flow.Errored;
+export declare function For<T>(props: { each: Read<T[]>; keyed?: boolean; by?: (arg0: T) => any; children: (arg0: Read<T>) => unknown }): unknown;
+export declare function Repeat(props: { count: Read<number>; children: (arg0: number) => unknown }): unknown;
+export declare function Show<T>(props: { when: Read<T>; fallback?: unknown; children?: unknown }): unknown;
+export declare function Switch(props: { fallback?: unknown; children?: unknown }): unknown;
+export declare function Match<T>(props: { when: Read<T>; children?: unknown }): unknown;
+export declare function Loading(props: { fallback?: unknown; children?: unknown }): unknown;
+export declare function Errored(props: { fallback: (error: any, reset: () => void) => unknown; children?: unknown }): unknown;
 
 declare global {
 	namespace JSX {
@@ -235,3 +147,5 @@ declare global {
 		}
 	}
 }
+
+export {};

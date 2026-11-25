@@ -47,3 +47,5 @@ export declare class MathProbe {
 	// moved by d: where it is now
 	moved(d: Vec3): Vec3;
 }
+
+export {};

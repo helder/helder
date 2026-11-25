@@ -220,10 +220,10 @@ the program reaches, the static one among them).
 `site/index.tsx`, the examples' page, is one:
 
 ```tsx
-import { Static, Island } from "helder/web";
-Static.write("bin/site/index.html", Static.document(<html lang="en">
-	<body><Island.Wasm src="cube.wasm" load="click" width={512} height={384}><button>Play</button></Island.Wasm></body>
-</html>));
+import {Static, Island} from 'helder/web'
+Static.write('bin/site/index.html', Static.document(<html lang="en">
+  <body><Island.Wasm src="cube.wasm" load="click" width={512} height={384}><button>Play</button></Island.Wasm></body>
+</html>))
 ```
 
 ## Example and tests

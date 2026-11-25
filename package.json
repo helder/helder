@@ -27,9 +27,6 @@
     "./ui/actions": {
       "types": "./src/helder/ui/actions/index.ts"
     },
-    "./ui/actions/runtime": {
-      "types": "./src/helder/ui/actions/runtime.d.ts"
-    },
     "./web": {
       "types": "./src/helder/web/index.d.ts"
     },
@@ -66,23 +63,14 @@
     "./scene": {
       "types": "./src/helder/scene/index.ts"
     },
-    "./scene/runtime": {
-      "types": "./src/helder/scene/runtime.d.ts"
-    },
     "./native": {
       "types": "./src/helder/native/index.ts"
-    },
-    "./native/runtime": {
-      "types": "./src/helder/native/runtime.d.ts"
     },
     "./platform": {
       "types": "./src/helder/platform/index.ts"
     },
     "./test": {
       "types": "./src/helder/test/index.ts"
-    },
-    "./test/runner": {
-      "types": "./src/helder/test/runner.d.ts"
     },
     "./package.json": "./package.json",
     "./*": "./*"

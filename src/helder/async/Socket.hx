@@ -12,7 +12,7 @@ import sys.net.Socket as NetSocket;
 //   var line = new Reader(s).readLine();
 //   s.close();
 class Socket implements Source implements Sink {
-	public final handle:Handle;
+	@:noCompletion public final handle:Handle;
 
 	function new(s:NetSocket) {
 		s.setBlocking(false);

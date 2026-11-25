@@ -17,7 +17,7 @@ import helder.typescript.api.dts.TypeEmitter;
 //   write(["frames.FramesTypeScript"], true, [...])  // helder's modules (known) naming what they declare
 //
 // A file declares the module's classes (`declare class`, each the Haxe class
-// `__haxe` names), its functions (`const f: typeof Class.f`), its
+// `__haxe` names), its functions (`function f`, the static `__haxe` names), its
 // interfaces and type aliases (abstracts: Signal, Read; enum abstracts:
 // Load), and its part of JSX: helder/view's namespace (Element, a
 // renderer's elements as any tag), the neutral elements' attributes and
@@ -69,7 +69,7 @@ class Declarations {
 		var out = new Map();
 		for (m in api.modules) {
 			for (c in m.classes)
-				out.set(key(c.cls), {module: m, name: c.cls.name});
+				if (c.only == null) out.set(key(c.cls), {module: m, name: c.cls.name});
 			for (t in m.types) {
 				var b = base(t);
 				if (b != null) out.set(key(b), {module: m, name: b.name});
@@ -168,9 +168,19 @@ class Declarations {
 				}
 			}
 			if (d == null) return null;
+			if (d.module != m && !exported(d.module, d.name)) return null;
 			if (d.module != m) {
-				var names = imports.get(d.module.name);
-				if (names == null) imports.set(d.module.name, names = []);
+				var specifier = d.module.name;
+				// A library type reference can use the runtime declaration directly.
+				// Going through its public .ts module would also load that module's code.
+				if (StringTools.startsWith(m.name, "helder/")
+					&& d.module.file == "runtime.d.ts") {
+					var up = [for (_ in 1...m.name.split("/").length) ".."];
+					var down = specifier.split("/").slice(1);
+					specifier = up.concat(down).concat(["runtime"]).join("/");
+				}
+				var names = imports.get(specifier);
+				if (names == null) imports.set(specifier, names = []);
 				if (names.indexOf(d.name) < 0) names.push(d.name);
 			}
 			return d.name;
@@ -181,7 +191,10 @@ class Declarations {
 			case _: throw "unreachable";
 		}
 		// (the declarations first: their imports are known after)
-		var haxeNames = [for (c in m.opaque.concat(m.classes)) c.cls.name + ": " + haxe.Json.stringify(c.type)];
+		var haxeNames = [for (c in m.opaque.concat(m.classes)) if (c.only == null)
+			c.cls.name + ": " + haxe.Json.stringify(c.type)];
+		for (f in m.functions)
+			haxeNames.push(f.alias + ": " + haxe.Json.stringify(f.cls.type + "." + f.field));
 		haxeNames.push("__module: " + haxe.Json.stringify(m.decl));
 		e.line('declare const __haxe: {' + haxeNames.join(", ") + '};');
 		for (t in m.types) {
@@ -201,12 +214,15 @@ class Declarations {
 			e.emitTypedef(t.name, t.type);
 		}
 		for (c in m.classes) {
-			e.line();
-			e.emitClass(c.cls.name, c.cls, c.statics, c.members, c.ctor);
+			var open = exported(m, c.cls.name);
+			if (c.only == null) {
+				e.line();
+				e.emitClass(c.cls.name, c.cls, open ? c.statics : [], c.members, c.ctor, open);
+			}
 			var fs = [for (f in m.functions) if (f.cls == c) f];
 			if (fs.length > 0) e.line();
 			for (f in fs)
-				e.emitFunction(f.alias, c.cls.name, f.field);
+				e.emitFunction(f.alias, [for (x in c.cls.statics.get()) if (x.name == f.field) x][0]);
 		}
 		for (j in m.jsx) {
 			e.line();
@@ -217,10 +233,12 @@ class Declarations {
 			}
 		}
 		var head = [for (r in m.references) '/// <reference path="./$r" />'];
-		head = head.concat([for (l in Docs.of(decl.pos)) "//" + (l == "" ? "" : " " + l)]);
+		head = head.concat([for (l in Docs.of(decl.meta.extract(":typescript")[0].pos)) "//" + (l == "" ? "" : " " + l)]);
 		head.push("//");
 		head.push("// Generated from helder's Haxe types (helder.typescript.api.Declarations: node");
 		head.push("// src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.");
+		for (k in m.imports)
+			head.push('import ' + haxe.Json.stringify(k) + ';');
 		var names = [for (k in imports.keys()) k];
 		names.sort(Reflect.compare);
 		for (k in names) {
@@ -228,8 +246,13 @@ class Declarations {
 			list.sort(Reflect.compare);
 			head.push('import type {' + list.join(", ") + '} from ' + haxe.Json.stringify(k) + ';');
 		}
-		return head.join("\n") + "\n\n" + e.toString();
+		return head.join("\n") + "\n\n" + e.toString() + "\nexport {};\n";
 	}
+
+	// (a class its module exports: not a function's host, not internal)
+	static function exported(m:ApiModule, name:String):Bool
+		return m.internal.indexOf(name) < 0
+			&& !Lambda.exists(m.classes, c -> c.cls.name == name && c.only != null);
 
 	// helder/view's JSX: TSX's values are Views, a component any function of
 	// its props, a prop of a type made from other values (Read) taking them at

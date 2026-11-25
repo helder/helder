@@ -4,9 +4,10 @@
 // focus up to a TSX handler; StandardAction's beside them; names, labels,
 // the JSON's actions and a menu's items with their keys and states.
 import {
-	actions, type ActionOf, handle, Keymap, Standard, headless, mount, rootOf, setKeymap, find, focus, press, dispatch, stateOf,
+	actions, type ActionOf, handle, Keymap, Standard, rootOf, setKeymap, find, focus, dispatch, stateOf,
 	actionName, parseAction, sameAction, item, separator, role, resolve, MenuBar, Enabled, Disabled, Checked, Unchecked
 } from "helder/ui/actions";
+import {headless, mount, press} from 'helder/test'
 
 export const Viewer = actions("viewer", {
 	next() {},

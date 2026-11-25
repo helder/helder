@@ -480,9 +480,9 @@ import helder.ui.view.UiFlow.VirtualGrid;
 ```
 
 ```tsx
-import { Selection, VirtualGrid } from "helder/ui";
+import {Selection, VirtualGrid} from 'helder/ui'
 
-const picked = new Selection(i => files()[i].path, () => files().length);
+const picked = new Selection(i => files()[i].path, () => files().length)
 <VirtualGrid each={files} by={f => f.path} cellWidth={120} cellHeight={90}
   selection={picked} textOf={f => f.name} onActivate={open} label="Files">
   {file => <text>{file().name}</text>}
@@ -600,21 +600,21 @@ types the action as (a type has no parameter names), and the bodies never
 run. It is plain TypeScript, checked by tsgo as it is written:
 
 ```tsx
-import { actions, type ActionOf, handle, Keymap } from "helder/ui/actions";
+import {actions, type ActionOf, handle, Keymap} from 'helder/ui/actions'
 
-export const Viewer = actions("viewer", {
-	next() {},
-	zoomTo(percent: number) { return { percent }; },
-});
-export type ViewerAction = ActionOf<typeof Viewer>;   // {type: "next"} | {type: "zoomTo", percent: number}
+export const Viewer = actions('viewer', {
+  next() {},
+  zoomTo(percent: number) { return {percent} }
+})
+export type ViewerAction = ActionOf<typeof Viewer>   // {type: 'next'} | {type: 'zoomTo', percent: number}
 
-Keymap.global.bind("1", Viewer.zoomTo(100), "Viewer");
+Keymap.global.bind('1', Viewer.zoomTo(100), 'Viewer')
 <view key-context="Viewer" actions={handle(Viewer, a => {
-	switch (a.type) {
-		case "next": next(); return true;
-		case "zoomTo": zoom(a.percent); return true;
-	}
-}, a => a.type === "next" && last() ? Disabled : Enabled)}>...</view>
+  switch (a.type) {
+    case 'next': next(); return true
+    case 'zoomTo': zoom(a.percent); return true
+  }
+}, a => a.type === 'next' && last() ? Disabled : Enabled)}>...</view>
 ```
 
 `Viewer.zoomTo(100)` makes a value, `{type: "zoomTo", percent: 100}`; a
@@ -846,7 +846,7 @@ import helder.ui.controls.Standard;
 ```
 
 ```tsx
-import { Button, Checkbox, Switch, Themed, Look } from "helder/ui";
+import {Button, Checkbox, Switch, Themed, Look} from 'helder/ui'
 
 <Themed look={Look.base}>
   <Button variant="primary" onPress={save}>Save</Button>
@@ -976,12 +976,12 @@ static final look = Look.base.with({
 
 ```ts
 const look = Look.base.with({
-  accent: "violet",
-  tokens: { radius: 6 },
-  button: t => ({ variants: { variant: { soft: { root: { background: t.accentSoft, color: t.accentInk } } } } }),
-  switch: () => ({ knob: { radius: 3 } }),
-  render: { switch: Lamp }
-});
+  accent: 'violet',
+  tokens: {radius: 6},
+  button: t => ({variants: {variant: {soft: {root: {background: t.accentSoft, color: t.accentInk}}}}}),
+  switch: () => ({knob: {radius: 3}}),
+  render: {switch: Lamp}
+})
 ```
 
 - **Typed variants.** A look's type names its variants and sizes, the

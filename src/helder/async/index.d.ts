@@ -8,7 +8,7 @@
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 
-declare const __haxe: {Client: "helder.async.http.Client", Reply: "helder.async.http.Client.Reply", Url: "helder.async.http.Client.Url", Http: "helder.async.http.Http", Request: "helder.async.http.Http.Request", Response: "helder.async.http.Http.Response", WebSocket: "helder.async.http.WebSocket", Tasks: "helder.async.Tasks", __module: "helder.async.TypeScript"};
+declare const __haxe: {Client: "helder.async.http.Client", Reply: "helder.async.http.Client.Reply", Url: "helder.async.http.Client.Url", Http: "helder.async.http.Http", Request: "helder.async.http.Http.Request", Response: "helder.async.http.Http.Response", WebSocket: "helder.async.http.WebSocket", delay: "helder.async.Tasks.delay", readBytes: "helder.async.Tasks.bytes", __module: "helder.async.TypeScript"};
 
 export type RequestOptions = { method?: string; headers?: unknown; body?: Uint8Array; text?: string; contentType?: string; ca?: string };
 
@@ -56,7 +56,6 @@ export declare class Url {
 //   var server = Server.listen("127.0.0.1", 8080);
 //   Http.serve(server, req -> Http.file("public", req.path) ?? Response.text("not found", 404));
 export declare class Http {
-	static serve(server: unknown, handler: any): Promise<unknown>;
 	// the file at root + path (its index.html for a directory), as a response
 	// with its type; null when there is none (or the path leaves root)
 	static file(root: string, path: string): Response | null;
@@ -64,8 +63,6 @@ export declare class Http {
 }
 
 export declare class Request {
-	// the next request on the connection; null at its end
-	static read(s: unknown, r: unknown): Promise<Request | null>;
 	readonly method: string;
 	// decoded, without the query
 	readonly path: string;
@@ -74,8 +71,6 @@ export declare class Request {
 	// names in lower case
 	readonly headers: unknown;
 	readonly body: Uint8Array;
-	readonly socket: unknown;
-	readonly reader: unknown;
 	header(name: string): string | null;
 	keepAlive(): boolean;
 }
@@ -87,7 +82,6 @@ export declare class Response {
 	// names in lower case
 	readonly headers: unknown;
 	body: Uint8Array;
-	write(s: unknown, head: boolean, keepAlive: boolean): Promise<unknown>;
 }
 
 // A WebSocket (RFC 6455) on a connection: a server's, from an HTTP request
@@ -107,9 +101,6 @@ export declare class WebSocket {
 	static wants(req: Request): boolean;
 	// the request's connection taken over (Http.serve's handler returns null after)
 	static upgrade(req: Request): Promise<WebSocket>;
-	// a server's WebSocket on a connection of its own (TLS on an accepted
-	// socket: TlsSocket.server): the upgrade request read from io, answered
-	static accept(io: unknown, out: unknown, shut: () => void): Promise<WebSocket>;
 	// a client's WebSocket to host:port at path (ws)
 	static connect(host: string, port: number, path?: string): Promise<WebSocket>;
 	// a client's WebSocket to a ws or wss url: the system's stack where there
@@ -120,21 +111,15 @@ export declare class WebSocket {
 	readonly closed: boolean;
 	// the next message; null once closed
 	receive(): Promise<string | null>;
-	send(text: string): Promise<unknown>;
-	ping(): Promise<unknown>;
+	send(text: string): Promise<void>;
+	ping(): Promise<void>;
 	// a close sent (the other side's answer ends receive), the connection closed
-	close(code?: number): Promise<unknown>;
+	close(code?: number): Promise<void>;
 }
 
-// helder.async for code that has no coroutines (a TypeScript program,
-// helder/async): each a task started now on this thread's loop, which
-// TypeScript awaits as a promise (cancelling the promise cancels it).
-export declare class Tasks {
-	// done after that many seconds
-	static delay(seconds: number): Promise<unknown>;
-	// a file's bytes: natively read, in the browser fetched (Fetch.bytes)
-	static bytes(path: string): Promise<Uint8Array>;
-}
+// done after that many seconds
+export declare function delay(seconds: number): Promise<void>;
+// a file's bytes: natively read, in the browser fetched (Fetch.bytes)
+export declare function readBytes(path: string): Promise<Uint8Array>;
 
-export declare const delay: typeof Tasks.delay;
-export declare const readBytes: typeof Tasks.bytes;
+export {};

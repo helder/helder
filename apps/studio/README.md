@@ -93,8 +93,8 @@ anywhere under the project's directory but `bin/` and `node_modules/`
 
 ```tsx
 // examples/ts-todo/app.story.tsx
-export const empty = story({ name: "Todo/Empty", width: 480, height: 560, render: () => <App/> });
-export const phone = story({ name: "Phone/Three items", render: () => { todos(three); return <App/>; } });
+export const empty = story({name: 'Todo/Empty', width: 480, height: 560, render: () => <App/>})
+export const phone = story({name: 'Phone/Three items', render: () => {todos(three); return <App/>}})
 ```
 
 The stories are read from their text (helder.syntax) when the project

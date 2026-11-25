@@ -25,7 +25,7 @@ import helder.scene.StoreKind;
 // off (HLOD). The level is the last camera's: a world drawn by several
 // cameras keeps one level a node.
 class Lod {
-	public static final KIND = new StoreKind<Lod>("lod");
+	@:noCompletion public static final KIND = new StoreKind<Lod>("lod");
 	public static final RANGE = new StoreKind<VisibleRange>("visibleRange");
 
 	public final levels:Array<LodLevel>;

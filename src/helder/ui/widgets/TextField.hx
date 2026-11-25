@@ -44,17 +44,17 @@ class TextField extends EditableText {
 		return scroll > 0 ? 0 : alignShift(p.width, width);
 
 	// (a field shrinks: its text scrolls)
-	override public function minContentWidth(engine:TextEngine):Float
+	@:noCompletion override public function minContentWidth(engine:TextEngine):Float
 		return 1;
 
 	// one line: as wide as it is given (the text scrolls in it), as high as a line
-	override public function measureContent(engine:TextEngine, knownWidth:Float, knownHeight:Float, availWidth:Float, availHeight:Float):Size {
+	@:noCompletion override public function measureContent(engine:TextEngine, knownWidth:Float, knownHeight:Float, availWidth:Float, availHeight:Float):Size {
 		var p = layoutText(engine, Math.NaN);
 		var w = Math.isNaN(knownWidth) ? (Math.isNaN(availWidth) ? p.width : Math.min(p.width, availWidth)) : knownWidth;
 		return new Size(Math.max(w, 1), Math.max(p.height, font().size * font().lineHeight));
 	}
 
-	override public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {
+	@:noCompletion override public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {
 		if (ui == null || !drawsText()) return;
 		var p = layoutText(ui.text, Math.NaN);
 		var cx = p.caret(shownCaret()).x;

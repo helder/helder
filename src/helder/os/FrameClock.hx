@@ -31,7 +31,7 @@ class FrameClock {
 	public function new() {}
 
 	// a frame at t (s); fromDisplay: a vsync's time
-	public function tick(t:Float, fromDisplay:Bool) {
+	@:noCompletion public function tick(t:Float, fromDisplay:Bool) {
 		vsync = fromDisplay;
 		if (fresh) {
 			delta = period;

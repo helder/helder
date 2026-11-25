@@ -5,13 +5,12 @@
 // Generated from helder's Haxe types (helder.typescript.api.Declarations: node
 // src/helder/typescript/api/declarations.mjs); edit the Haxe, not this file.
 import type {Menu, Node, PlatformMenuItem} from "helder/ui";
-import type {View} from "helder/view";
 
 declare const __haxe: {Script: "helder.ui.actions.Script", __module: "helder.ui.actions.TypeScript"};
 
 // helder.ui.actions for TypeScript programs (helder/ui/actions:
 // src/helder/ui/actions/index.ts, which a program imports; this is its
-// runtime, helder/ui/actions/runtime). A program's actions are objects,
+// runtime, its runtime.d.ts). A program's actions are objects,
 // {type: "zoomTo", percent: 100}, made and recognised by index.ts's
 // functions (each space's form: which action a value is, its arguments, a
 // value of them), and its spaces Haxe's (ActionSpace): a definition's
@@ -56,23 +55,14 @@ export declare class Script {
 	static label(keymap: unknown, action: any, context?: string): string | null;
 	// the keymap's bindings as text ("ctrl-k ctrl-s -> viewer::Next in Editor")
 	static bindings(keymap: unknown): string[];
-	// on macOS secondary is Command (Keymap.mac, known at start)
-	static setMac(mac: boolean): void;
 	// the Ui a node is in (a ref's, once mounted: its window's), null: none
 	static uiOf(node: Node): unknown | null;
-	// a Ui of no window (tests), its text helder's own (helder.story's, the same on every system)
-	static headless(width: number, height: number): unknown;
 	static root(ui: unknown): Node;
-	// content rendered into its root and laid out (dispose removes it)
-	static mount(ui: unknown, content: View): (() => void);
 	static setKeymap(ui: unknown, keymap: unknown): void;
-	static layout(ui: unknown): void;
 	// the focus given to node
 	static focus(node: Node): void;
 	// the node of a tag under node (the first, depth first), null: none
 	static find(node: Node, tag: string): Node | null;
-	// each keystroke of keys typed ("ctrl-k ctrl-s"), through the keymap
-	static type(ui: unknown, keys: string): void;
 	// action dispatched from the focus (or from), true: a handler took it
 	static dispatch(ui: unknown, action: any, from?: Node): boolean;
 	// what a menu shows action as from the focus (or from): ActionState
@@ -92,3 +82,5 @@ export declare class Script {
 	static menuBar(ui: unknown, menus: Menu[]): unknown;
 	static setMenus(bar: unknown, menus: Menu[]): void;
 }
+
+export {};

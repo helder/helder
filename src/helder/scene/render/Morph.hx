@@ -14,7 +14,7 @@ import helder.scene.World;
 // weights change (the renderer asks before it draws: Morph.update), then
 // written to the GPU. Its mesh is the node's own (instances bend apart).
 class Morph {
-	public static final KIND = new StoreKind<Morph>("morph");
+	@:noCompletion public static final KIND = new StoreKind<Morph>("morph");
 
 	final device:Device;
 	final prims:Array<MorphPrimitive>;

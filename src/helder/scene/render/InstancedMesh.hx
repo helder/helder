@@ -32,7 +32,7 @@ import helder.scene.math.Aabb;
 // colour's channel less 1, the last column's w 1), so a program can also
 // write it directly (data.setFloat, then changed()).
 class InstancedMesh {
-	public static final KIND = new StoreKind<InstancedMesh>("instanced");
+	@:noCompletion public static final KIND = new StoreKind<InstancedMesh>("instanced");
 	// bytes an instance in data
 	public static inline var STRIDE = 64;
 

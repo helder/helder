@@ -4,7 +4,7 @@
 // declarations' JSX), components of the program's, a Read prop given a
 // constant or bound to what its value reads, For, Show, holes and
 // attributes that read bound; examples/ts-todo's shape.
-import { signal, memo, For, Show, Render, Signal, Read } from "helder/view";
+import { signal, memo, For, Show, render, Signal, Read } from "helder/view";
 import { Settings, Network, Permissions, Share, Notifications, Photos, Location, Biometrics, Paths, DeviceInfo, StatusBar } from "helder/os";
 import { CodeEditor, Event, Key, Node } from "helder/ui";
 import { UiProbe } from "./ui-probe";
@@ -48,7 +48,7 @@ function Checkbox(props: { checked: Signal<boolean>; label: string; tag: string 
 const left = memo(() => todos().filter(i => !i.done()).length);
 
 const root = UiProbe.root(480, 560);
-Render.render(
+render(
 	<view grow={1} padding={24} row-gap={14}>
 		<text font-size={28}>todos</text>
 		<view direction="row" column-gap={8}>
@@ -80,7 +80,7 @@ UiProbe.click("filter-done");
 console.log(UiProbe.dump());
 // a literal attribute naming env(): bound to the safe area (SafeArea), as Haxe's markup
 const safe = UiProbe.root(390, 844);
-Render.render(
+render(
 	<view tag="page" padding-left="calc(env(safe-area-inset-left) + 16px)">
 		<view tag="bar" padding-top="env(safe-area-inset-top)" padding-bottom="max(12px, env(safe-area-inset-bottom))"/>
 	</view>,
@@ -94,7 +94,7 @@ console.log(UiProbe.padding("bar"), "|", UiProbe.padding("page"));
 // a ref held as Node | null: its members read and called through ?.
 let held: Node | null = null;
 const holder = (): Node | null => held;
-Render.render(<view tag="held" focusable ref={(n: Node) => (held = n)}/>, UiProbe.root(200, 100));
+render(<view tag="held" focusable ref={(n: Node) => (held = n)}/>, UiProbe.root(200, 100));
 console.log(holder()?.tag, holder()?.focused);
 holder()?.focus(false);
 console.log(holder()?.focused);

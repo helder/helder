@@ -32,6 +32,7 @@ enum abstract TitleHit(Int) to Int {
 	var BottomRight = 12;
 }
 
+@:noCompletion
 class TitleBars {
 	// the title bar's height and the drawn buttons' width, in points
 	// (Windows' caption, 32, its buttons 46 wide; Linux's, GNOME's

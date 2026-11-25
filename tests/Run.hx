@@ -79,6 +79,7 @@ class Run {
 		{name: "canvas-doc", about: "helder.canvas's documents (helder.canvas.doc): the reference scenes recorded by the DOM facade (tests/canvas/render-doc.ts) as one multi-page PDF (PdfWriter) and an SVG each (SvgWriter), the PDF drawn by poppler (pdftoppm, where installed) and the SVGs by Chromium (doc.mjs), against the CPU back end's pixels (compare.mjs: bin/canvas/pdf-report.md, svg-report.md; composite's unbounded operators and the dots of zero-length subpaths have no vector form; shadows and filters are not written yet)", run: canvasDoc},
 		{name: "pdf", about: "helder.pdf: page 1 of each corpus PDF (tests/pdf/corpus, made by ReportLab, pypdf, LibreOffice and by hand: tests/pdf/corpus.py: the standard 14 fonts, Type 1, TrueType, Type 3, RC4, AES-128 and AES-256, object streams, a shading, a tiling pattern, an inline image, a damaged xref) drawn natively against pdf.js's (tests/pdf/ref, pdfjs.mjs): of the 3x3 blocks either inks at most 10% off, of the page 2%, and its text (Pdf.text) against pdf.js's getTextContent (check.mjs: bin/pdf/report.md); its crypto and limits are the test lane's (src/helder/pdf/*.test.hx)", run: pdfLane},
 		{name: "pdf-fuzz", about: "helder.pdf under a time-boxed mutation fuzzer (tests/pdf/Fuzz.hx, natively): the corpus mutated, each mutant opened and drawn under small limits, ending in pixels or a PdfError (FUZZ_SECONDS, FUZZ_SEED)", run: pdfFuzz},
+		{name: "declarations", about: "the generated TypeScript declarations for helder, the tests, platform and scene", run: declarations},
 		{name: "typescript", about: "helder.typescript (TypeScript through tsgo straight to hxmc IR): the IR checks, then every program of tests/typescript compiled by tsc and run on node, and by helder's compiler (helder.compiler, with this frontend) natively and as wasm32-wasi, the outputs compared; the programs it must reject", run: () -> run(NODE, ["tests/typescript/run.mjs"])},
 		{name: "typescript-native", about: "helder/native's definitions where their systems are (tests/typescript/native.mjs; the typescript lane runs it too): native.c (libc and libm on Linux, natively, static and glibc; Core Foundation on a Mac), native.objc (Foundation's NSProcessInfo and NSString on a Mac), native.com (WIC's factory, a bitmap's size read back, on Windows; on Linux under Wine with Windows' runtime objects), each refused where its system is not; native.jni's on Android is the android job's (tests/typescript/native/android.sh)", run: () -> run(NODE, ["tests/typescript/native.mjs"])},
 		{name: "examples", about: "every example (Haxe, TypeScript) of examples/ and docs/examples/ (the docs' own) built by `helder build <file>` (--target web for the web) with no other flags, not run: for web (wasm32-wasi), and those on a canvas or playing a sound natively too", run: examples},
@@ -1355,14 +1356,25 @@ class Run {
 		}
 	}
 
+	static function declarations() {
+		var check = ["src/helder/typescript/api/declarations.mjs", "--check"];
+		run(NODE, check);
+		run(NODE, check.concat(["--cp", "tests/view", "--cp", "tests/ui",
+			"TestTypeScript", "UiTypeScript"]));
+		run(NODE, check.concat(["--cp", "tests/typescript/platform", "PlatformTypeScript"]));
+		run(NODE, check.concat(sceneTsPaths()).concat(["frames.FramesTypeScript"]));
+	}
+
+	static function sceneTsPaths():Array<String>
+		return [for (d in ["tests/3d/ts", "tests/gfx"].concat(GFX_EXAMPLES))
+			for (a in ["--cp", d]) a];
+
 	// helder/scene from TypeScript (tests/3d/ts/frames.ts, examples/ts-scene's
-	// scenes): its module's declarations as FramesTypeScript makes them, then
-	// its frames headless as RenderTest's, glow against Haxe's glow.png,
+	// scenes): its frames headless as RenderTest's, glow against Haxe's glow.png,
 	// tsscene against tsscene.png (which check.sh's Haxe twin matches too)
 	static function sceneTs(t:String) {
 		var compiler = StringTools.trim(output(NODE, ["src/helder/compiler/build.mjs", "--quiet"]));
-		var cp = [for (d in ["tests/3d/ts", "tests/gfx"].concat(GFX_EXAMPLES)) for (a in ["--cp", d]) a];
-		run(NODE, ["src/helder/typescript/api/declarations.mjs", "--check"].concat(cp).concat(["helder.asset.TypeScript", "helder.scene.TypeScript", "frames.FramesTypeScript"]));
+		var cp = sceneTsPaths();
 		var exe = exePath('bin/3d/$t/ts-frames', t);
 		mkdirs(Path.directory(exe));
 		run(compiler, ["tests/3d/ts/frames.ts", "-o", exe].concat(cp).concat(targetArgs(t)));

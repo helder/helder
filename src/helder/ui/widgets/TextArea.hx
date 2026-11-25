@@ -89,7 +89,7 @@ class TextArea extends EditableText {
 	}
 
 	// as wide as it is given (its text wrapped to that), rows lines high (or its lines', at least one)
-	override public function measureContent(engine:TextEngine, knownWidth:Float, knownHeight:Float, availWidth:Float, availHeight:Float):Size {
+	@:noCompletion override public function measureContent(engine:TextEngine, knownWidth:Float, knownHeight:Float, availWidth:Float, availHeight:Float):Size {
 		var w = Math.isNaN(knownWidth) ? availWidth : knownWidth;
 		var p = layoutText(engine, w);
 		if (Math.isNaN(w)) w = p.width;
@@ -98,13 +98,13 @@ class TextArea extends EditableText {
 		return new Size(Math.max(w, 1), Math.isNaN(knownHeight) ? h : knownHeight);
 	}
 
-	override public function minContentWidth(engine:TextEngine):Float
+	@:noCompletion override public function minContentWidth(engine:TextEngine):Float
 		return 0;
 
 	override function hostKind():String
 		return "text-area";
 
-	override public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {
+	@:noCompletion override public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {
 		if (ui == null || !drawsText()) return;
 		var p = layoutText(ui.text, width);
 		var lh = lineHeight();

@@ -866,9 +866,9 @@ helpers, of which a few are in nearly every r3f project (OrbitControls,
 Environment, useGLTF, Html, Text, ContactShadows, Bounds, Instances)
 [11] [18] [17] [19] [13]
 [16] [14]. helder's is `helder.scene.view.extras`
-(`import helder.scene.view.Extras.*`), Threlte's name for the same thing
-[42]: capitalized components over the 3D API, each its own
-function, so an unused one is not linked.
+(`import helder.scene.view.Extras.*`), borrowing Threlte's name [42].
+Each capitalized component over the 3D API is a separate function.
+Programs link just the ones they use.
 
 It is not a drei clone. helder is both a ui framework and a game
 framework, so an extra earns its place by making a real app of either

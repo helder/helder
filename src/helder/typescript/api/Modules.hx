@@ -19,6 +19,7 @@ import haxe.macro.Type;
 //                                                        // a class's static as a function of the module
 //                                                        // (a declared class's capitalised statics, its
 //                                                        // components, are its module's by their names)
+//   @:typescript.internal(Name, ...)                  // local classes retained for aliases and signatures
 //   @:typescript.types(helder.view.graph.Signal, ...)   // abstracts (interfaces, unions) and opaque classes
 //   @:typescript.imports("helder/view")                  // modules whose types it names
 //   @:typescript.references("imports.d.ts")              // files beside it it references (ambient modules)
@@ -83,6 +84,8 @@ class Modules {
 				mod.functions.push({alias: f.name, cls: cls, field: f.name});
 			}
 		}
+		for (e in metaParams(c, ":typescript.internal"))
+			mod.internal.push(haxe.macro.ExprTools.toString(e));
 		for (e in metaParams(c, ":typescript.types")) {
 			var path = haxe.macro.ExprTools.toString(e);
 			var t = Context.getType(path);
@@ -222,6 +225,7 @@ class ApiModule {
 	public final classes:Array<ApiClass> = [];
 	public final functions:Array<{alias:String, cls:ApiClass, field:String}> = [];
 	public final types:Array<Type> = [];
+	public final internal:Array<String> = [];
 	public final imports:Array<String> = [];
 	// declaration files beside it it references (/// <reference path>: ambient modules)
 	public final references:Array<String> = [];
@@ -268,20 +272,21 @@ class ApiClass {
 	// @:noCompletion ones aside, in a module's class), or the statics listed
 	public function refresh() {
 		var c = ref.get();
-		function pick(fields:Array<ClassField>):Array<ClassField> {
-			if (only != null) return [for (f in fields) if (only.indexOf(f.name) >= 0) f];
-			var pub = [for (f in fields) if (f.isPublic) f];
-			if (module == null) return pub;
-			var marked = [for (f in pub) if (f.meta.has(":typescript")) f];
-			return marked.length > 0 ? marked : [for (f in pub) if (!f.meta.has(":noCompletion")) f];
-		}
+		function visible(f:ClassField)
+			return f.isPublic && !f.meta.has(":noCompletion");
 		var all = c.statics.get().concat(c.fields.get());
-		var anyMarked = module != null && only == null && Lambda.exists(all, f -> f.isPublic && f.meta.has(":typescript"));
+		var marked = module != null && only == null
+			&& Lambda.exists(all, f -> visible(f) && f.meta.has(":typescript"));
+		function pick(fields:Array<ClassField>):Array<ClassField>
+			return [for (f in fields) if (only != null
+				? only.indexOf(f.name) >= 0
+				: visible(f) && (!marked || f.meta.has(":typescript"))) f];
 		statics = pick(c.statics.get());
-		members = only != null ? [] : anyMarked ? [for (f in c.fields.get()) if (f.isPublic && f.meta.has(":typescript")) f] : pick(c.fields.get());
-		if (anyMarked) statics = [for (f in c.statics.get()) if (f.isPublic && f.meta.has(":typescript")) f];
-		ctor = only != null || c.constructor == null || !c.constructor.get().isPublic || c.isInterface
-			|| (anyMarked && !c.constructor.get().meta.has(":typescript")) ? null : c.constructor.get();
+		members = only != null ? [] : pick(c.fields.get());
+		ctor = only != null || c.constructor == null || c.isInterface
+			|| !visible(c.constructor.get())
+			|| (marked && !c.constructor.get().meta.has(":typescript"))
+			? null : c.constructor.get();
 	}
 }
 #end

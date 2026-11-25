@@ -304,7 +304,7 @@ class SystemImages {
 // (WIC's interfaces: IUnknown 0-2, then each's own, in the headers' order)
 @:build(helder.os.win32.Com.build())
 @:hxmc.unsafe(gc)
-class IWICImagingFactory {
+private class IWICImagingFactory {
 	@:slot(3) static function CreateDecoderFromFilename(self:Ptr, name:Ptr, vendor:Ptr, access:Int, options:Int, out:Ptr<Ptr>):Int;
 	@:slot(10) static function CreateFormatConverter(self:Ptr, out:Ptr<Ptr>):Int;
 	@:slot(11) static function CreateBitmapScaler(self:Ptr, out:Ptr<Ptr>):Int;
@@ -312,26 +312,26 @@ class IWICImagingFactory {
 
 @:build(helder.os.win32.Com.build())
 @:hxmc.unsafe(gc)
-class IWICBitmapDecoder {
+private class IWICBitmapDecoder {
 	@:slot(13) static function GetFrame(self:Ptr, index:Int, out:Ptr<Ptr>):Int;
 }
 
 @:build(helder.os.win32.Com.build())
 @:hxmc.unsafe(gc)
-class IWICBitmapFrameDecode {
+private class IWICBitmapFrameDecode {
 	@:slot(8) static function GetMetadataQueryReader(self:Ptr, out:Ptr<Ptr>):Int;
 	@:slot(10) static function GetThumbnail(self:Ptr, out:Ptr<Ptr>):Int;
 }
 
 @:build(helder.os.win32.Com.build())
 @:hxmc.unsafe(gc)
-class IWICMetadataQueryReader {
+private class IWICMetadataQueryReader {
 	@:slot(5) static function GetMetadataByName(self:Ptr, name:Ptr, value:Ptr):Int;
 }
 
 @:build(helder.os.win32.Com.build())
 @:hxmc.unsafe(gc)
-class IWICBitmapSource {
+private class IWICBitmapSource {
 	@:slot(3) static function GetSize(self:Ptr, w:Ptr, h:Ptr):Int;
 	@:slot(7) static function CopyPixels(self:Ptr, rect:Ptr, stride:Int, size:Int, buffer:Ptr):Int;
 }
@@ -344,7 +344,7 @@ private class IWICBitmapScaler {
 
 @:build(helder.os.win32.Com.build())
 @:hxmc.unsafe(gc)
-class IWICFormatConverter {
+private class IWICFormatConverter {
 	@:slot(8) static function Initialize(self:Ptr, source:Ptr, format:Ptr, dither:Int, palette:Ptr, alpha:Float, paletteType:Int):Int;
 }
 

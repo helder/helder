@@ -4,13 +4,13 @@
 // a variant of its own, a part, a rendering replaced), its own variant
 // checked by the types (the @ts-expect-error below: the base look has no
 // "soft"), styles written as markup writes them ('0 20').
-import { signal, Render } from "helder/view";
+import { signal, render } from "helder/view";
 import { Button, Checkbox, Switch, PathBar, Themed, Look, tone, Toggle, Key, Node, type CheckboxProps, type PathSegment } from "helder/ui";
 import { UiProbe } from "./ui-probe";
 
 const saved = signal(0), terms = signal(false), dark = signal(true);
 const root = UiProbe.root(320, 240);
-Render.render(
+render(
 	<view padding={8} row-gap={8}>
 		<Button tag="save" variant="primary" onPress={() => saved(n => n + 1)}>Save</Button>
 		<Button tag="cancel">Cancel</Button>
@@ -47,7 +47,7 @@ const look = Look.base.with({
 	render: { checkbox: Lamp }
 });
 const porch = signal(false);
-Render.render(
+render(
 	<Themed look={look}>
 		<view padding={8} row-gap={8}>
 			<look.Button tag="go" variant="primary">Go</look.Button>
@@ -71,7 +71,7 @@ console.log(typeof never);
 const path = signal<PathSegment[]>([{label: "Home"}, {label: "Pictures"}]);
 const editing = signal(false);
 let visited = -1, separator = "", submitted = "";
-Render.render(
+render(
 	<PathBar tag="location" segments={path} size="md" editing={editing} text="/Home/Pictures"
 		onNavigate={i => { visited = i; }}
 		onSeparator={(i, anchor) => { separator = i + " " + anchor.slot; }}

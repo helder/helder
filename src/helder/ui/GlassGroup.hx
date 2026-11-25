@@ -36,10 +36,10 @@ class GlassGroup extends Node {
 		return out;
 	}
 
-	override public function hasContent():Bool
+	@:noCompletion override public function hasContent():Bool
 		return true;
 
-	override public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {
+	@:noCompletion override public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {
 		if (systemLayer != null) return;
 		GlassDraw.group(canvas, this);
 	}

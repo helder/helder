@@ -58,7 +58,7 @@ import helder.ui.controls.Look;
 		};
 	}
 
-	override public function hasContent():Bool
+	@:noCompletion override public function hasContent():Bool
 		return true;
 
 	function ready(d:Device) {
@@ -76,7 +76,7 @@ import helder.ui.controls.Look;
 		}
 	}
 
-	override public function paintContent(canvas:helder.ui.Canvas, x:Float, y:Float, width:Float, height:Float) {
+	@:noCompletion override public function paintContent(canvas:helder.ui.Canvas, x:Float, y:Float, width:Float, height:Float) {
 		var g = Std.downcast(canvas, helder.ui.draw.TextureCanvas), r = helder.ui.draw.GpuHost.of(canvas);
 		if (g == null || r == null) return helder.ui.draw.GpuPlaceholder.draw(canvas, x, y, width, height);
 		if (pipeline == null) ready(r.device);

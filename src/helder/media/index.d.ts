@@ -8,7 +8,7 @@
 import type {Node} from "helder/ui";
 import type {Read, Signal} from "helder/view";
 
-declare const __haxe: {Player: "helder.media.Player", VideoNode: "helder.media.ui.VideoNode", FileSource: "helder.media.FileSource", MemorySource: "helder.media.MemorySource", MediaTags: "helder.media.ui.MediaTags", __module: "helder.media.TypeScript"};
+declare const __haxe: {Player: "helder.media.Player", VideoNode: "helder.media.ui.VideoNode", FileSource: "helder.media.FileSource", MemorySource: "helder.media.MemorySource", Video: "helder.media.ui.MediaTags.Video", __module: "helder.media.TypeScript"};
 
 export type PlayerOptions = { device?: string; silent?: boolean };
 
@@ -108,9 +108,6 @@ export declare class VideoNode extends Node {
 	step(n: number): void;
 	// the picture's size upright (0 x 0 before it is loaded)
 	picture(): { width: number; height: number };
-	hasContent(): boolean;
-	measureContent(engine: unknown, knownWidth: number, knownHeight: number, availWidth: number, availHeight: number): unknown;
-	paintContent(canvas: unknown, x: number, y: number, width: number, height: number): void;
 	// lets go of the player and what shows it
 	dispose(): void;
 }
@@ -133,20 +130,6 @@ export declare class MemorySource {
 	close(): void;
 }
 
-// helder.media's markup, imported with import helder.media.ui.MediaTags.*:
-//
-//   <Video src="clip.mp4" fit="cover" autoplay loop muted grow={1} ref={v -> video = v}/>
-//
-// layer={true}: the system's AVSampleBufferDisplayLayer where the window
-// has system layers, not helder's drawing (VideoNode.layer)
-//
-// <Video> is a box of helder.ui's showing a video (VideoNode): src a path
-// or a helder.media.ByteSource (a file's bytes: a MemorySource; a signal:
-// another file when it changes); its player's controls are the node's
-// (ref): play, pause, seek, step, and its time, duration and playing
-// signals. An audio file plays the same way without a box (helder.media.Player).
-export declare class MediaTags {
-	static Video(props: { src?: any; fit?: any; autoplay?: boolean; loop?: boolean; muted?: Read<boolean>; volume?: Read<number>; rate?: Read<number>; layer?: boolean; grow?: number; width?: Read<any>; height?: Read<any>; style?: any; onLoaded?: () => void; onEnded?: () => void; onError?: (arg0: string) => void; onTime?: (arg0: number) => void; ref?: (arg0: VideoNode) => void }): Node;
-}
+export declare function Video(props: { src?: any; fit?: any; autoplay?: boolean; loop?: boolean; muted?: Read<boolean>; volume?: Read<number>; rate?: Read<number>; layer?: boolean; grow?: number; width?: Read<any>; height?: Read<any>; style?: any; onLoaded?: () => void; onEnded?: () => void; onError?: (arg0: string) => void; onTime?: (arg0: number) => void; ref?: (arg0: VideoNode) => void }): Node;
 
-export declare const Video: typeof MediaTags.Video;
+export {};
