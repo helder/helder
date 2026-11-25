@@ -1178,7 +1178,7 @@ Node#root 0,0 390x844
           Node#view 0,0 390x844
         TextNode#text 0,0 1x1 "3 Selected"
 
---- story Tablet/Folder, sidebar: Tablet/Folder, sidebar (162 lines)
+--- story Tablet/Folder, sidebar: Tablet/Folder, sidebar (163 lines)
 Node#root 0,0 390x844
   Node#view 0,0 390x844
     Node#window 0,0 390x844
@@ -1306,24 +1306,25 @@ Node#root 0,0 390x844
       Node#drawer-edge 0,0 20x844
       Node#drawer-scrim 0,0 390x844
       Node#drawer 0,0 300x844
-        Node#sidebar 20,8 236x99
-          Node#sidebar-body 30,16 216x91
-            Node#view 30,16 216x91
-              Node#view 30,16 216x30
-                Node#level-back 32,18 74x26
-                  ImageNode#image 34,24 14x14
-                  TextNode#text 50,24 48x15 "Overview"
-                Node#view 108,31 104x0
-                Node#level-home 214,16 30x30
-                  ImageNode#image 221,23 16x16
-              Node#view 30,52 216x21
-                TextNode#level-title 38,54 53x19 "Samples"
-                Node#view 99,63 85x0
-                TextNode#text 192,56 46x15 "1 folder"
-              Node#scroll 30,79 216x28
-                Node#button 30,79 216x28
-                  ImageNode#image 38,85 16x16
-                  TextNode#text 62,85 176x16 "More"
+        Node#sidebar 20,8 236x8
+          Node#sidebar-body 30,16 216x0
+            Node#sidebar-pane 30,16 216x0
+              Node#view 30,16 216x0
+                Node#view 30,16 216x30
+                  Node#level-back 32,18 74x26
+                    ImageNode#image 34,24 14x14
+                    TextNode#text 50,24 48x15 "Overview"
+                  Node#view 108,31 104x0
+                  Node#level-home 214,16 30x30
+                    ImageNode#image 221,23 16x16
+                Node#view 30,52 216x21
+                  TextNode#level-title 38,54 53x19 "Samples"
+                  Node#view 99,63 85x0
+                  TextNode#text 192,56 46x15 "1 folder"
+                Node#scroll 30,79 216x0
+                  Node#button 30,79 216x28
+                    ImageNode#image 38,85 16x16
+                    TextNode#text 62,85 176x16 "More"
       Node#viewer 0,0 390x844
         Node#viewer-bar 0,0 390x52
           Node#back-pill 14,11 106x30

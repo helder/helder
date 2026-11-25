@@ -110,8 +110,11 @@ class Sidebar {
 		show(l == "" || isVolume(l) ? "" : Browser.parent(l) ?? "");
 	}
 
-	public function backLabel():String {
-		var l = level.value;
+	public function backLabel():String
+		return backLabelOf(level.value);
+
+	// (the back row's label at level l)
+	public function backLabelOf(l:String):String {
 		if (l == "" || isVolume(l)) return "Overview";
 		var p = Browser.parent(l);
 		return p == null ? "Overview" : title(p);

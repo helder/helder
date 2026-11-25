@@ -554,8 +554,7 @@ class Shell implements Markup {
 			if (!x.full.value && b.total.value >= Browser.WATCH_BELOW && !b.reading.value) b.refresh();
 		return <view tag="window" grow={1} min-height={0} background={clear() ? ("transparent" : Dynamic) : Look.ref.canvas} color={Look.ref.fg} font-family="system-ui" font-size={13} onPointerEnter={back}
 			ref={(n:Node) -> x.zoom.attach(n)}>
-			<view tag="browser" grow={1} min-height={0} direction="row" hidden={x.full()}
-				transform={x.zoom.flying() != "" ? "scale(" + (1 - Flight.DEPTH_SCALE * x.zoom.shown()) + ")" : "none"}>
+			<view tag="browser" grow={1} min-height={0} direction="row" hidden={x.full()}>
 				<Show when={!medium()}>{SidebarView.make(x)}</Show>
 				<view grow={1} min-width={0} direction="row" padding-top={WindowButtons.side() == "end" ? 32 : 0}
 					background={clear() ? Look.ref.canvas : null}>
@@ -564,9 +563,6 @@ class Shell implements Markup {
 				</view>
 			</view>
 			<Show when={medium()}>{Tablet.make(x)}</Show>
-			<Show when={x.zoom.flying() != ""}>
-				<view tag="depth" position="absolute" inset={0} pointer-events="none" background="#000000" opacity={Flight.DEPTH_DIM * x.zoom.shown()}/>
-			</Show>
 			{ViewerView.make(x)}
 			{Flight.layer(x.zoom)}
 			<Show when={WindowButtons.side() == "end"}>

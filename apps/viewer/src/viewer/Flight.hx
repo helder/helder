@@ -21,14 +21,19 @@ import helder.view.graph.Graph.*;
 // start, settling soft, under 1% over), uncropping as it grows (the tile's
 // square cover crop opening to the picture's own shape), its corners the
 // tile's to none, a shadow while it is lifted, the sharp decode faded in
-// over the thumbnail as soon as it is there; the browser behind a little
-// smaller and darker (DEPTH_*), the viewer fading in over it. Closed,
-// back into the tile of the file shown last, scrolled into view first.
-// One progress (0 the tile, 1 full size) carries it all, its velocity
-// kept: closed mid-flight it turns back from where it is and as fast; the
-// rects it flies between are springs of their own, so that a decode
-// landing elsewhere than the thumbnail guessed, a file stepped to, a tile
-// scrolled to are flown on to, never jumped to. A gesture moves it with
+// over the thumbnail as soon as it is there; the folder behind it darker
+// (DEPTH_DIM: the sidebar and the bars still), the viewer fading in over
+// it. Closed, back into the tile of the file shown last, scrolled into
+// view first. One progress (0 the tile, 1 full size) carries it all, its
+// velocity kept: closed mid-flight it turns back from where it is and as
+// fast. Where it lands is the file's own: its size as its header says
+// (measured before it leaves the tile), never a picture shown before;
+// a file stepped to, a PDF's page laid out are flown on to, never jumped
+// to. It goes with its tile: opening, from wherever the tile is now;
+// closing, the tile moved (a scroll) once it is under way, the flight
+// ends there and the tile itself is shown. A spring's tail ends at once
+// within a device pixel (no crawl); the picture is drawn at fractions of
+// a pixel on the way (a transform of its box, laid out whole). A gesture moves it with
 // the fingers (a pinch out on a tile, a pinch in at the fit or a swipe
 // down full size; a phone's swipe down) and lets it go into the spring
 // with its speed, on to the end it was going to or back. The tile hides
@@ -36,17 +41,18 @@ import helder.view.graph.Graph.*;
 // No tile (a file opened by its path, one gone from the folder), no
 // picture or reduced motion: the viewer's fade alone (reduced: a short one).
 class Flight implements Markup {
-	// (SwiftUI's response and bounce: 0.6% over, settled by its thresholds)
-	public static final SPRING = Curve.spring(0.36, 0.15);
+	// (SwiftUI's response and bounce: quick, 0.06% over; ended within a device pixel, snap)
+	public static final SPRING = Curve.spring(0.25, 0.08);
 	// (the sharp picture over its thumbnail)
 	static final SHARPEN = Curve.tween(0.12, Transition.EASE_OUT);
-	// the browser behind the file full size: this much smaller, this much darker
-	public static inline var DEPTH_SCALE = 0.03;
+	// the folder behind the file full size: this much darker
 	public static inline var DEPTH_DIM = 0.18;
 	// (how long a tile is waited for; a decode held for; a wheel's gesture let go after)
 	static inline var WAIT = 0.25;
 	static inline var HOLD = 1.0;
 	static inline var IDLE = 0.15;
+	// (how long it waits on its tile for the file's size)
+	static inline var SIZE_WAIT = 0.12;
 	// (a Markdown document's column: Shell's markdown-row)
 	static inline var COLUMN = 760.0;
 	// (a sharp picture made of a decode no larger than this many pixels)
@@ -85,6 +91,10 @@ class Flight implements Markup {
 	var since = -1.0;
 	var r0 = 0.0;
 	var sharpTried = false;
+	// (the files' sizes as their headers say; the one asked for now, and since when)
+	final sizes = new Map<String, {width:Int, height:Int}>();
+	var sizing = "";
+	var begun = -1.0;
 	// (a gesture's: its kind ("pinch", "swipe", "drag": a phone's), where
 	// it began, how far, its last time, its speed, what its end does)
 	var gesture = "";
@@ -162,6 +172,7 @@ class Flight implements Markup {
 	// (a new flight of path's picture: from its tile (full null) or from full size)
 	function start(path:String, img:Null<Image>, from:Null<Rect>) {
 		this.path = path;
+		measure(path);
 		var t = tileAt(path), f = from ?? fileAt(path, img);
 		tileKnown = t != null;
 		// (a tile not shown yet: it grows out of, or shrinks into, the picture's middle until it is)
@@ -169,6 +180,7 @@ class Flight implements Markup {
 		set(large, f ?? t);
 		r0 = tileRadius(path);
 		since = -1;
+		begun = -1;
 		sharpTried = false;
 		sharp(null);
 		clear.set(0);
@@ -186,6 +198,20 @@ class Flight implements Markup {
 		place();
 	}
 
+	// (an image's size from its header, before it leaves its tile: where it lands from the first frame)
+	function measure(path:String) {
+		if (document(path) || sizes.exists(path) || FolderModel.isMedia(path)) return;
+		sizing = path;
+		x.viewer.measure([path], got -> {
+			if (got.length > 0 && got[0] != null) sizes.set(path, got[0]);
+			if (sizing == path) sizing = "";
+			if (this.path == path && flying.peek() != "") {
+				var f = fileAt(path, image.peek());
+				if (f != null && p.value < 0.02) set(large, f);
+			}
+		});
+	}
+
 	function run() {
 		if (running) return;
 		running = true;
@@ -194,7 +220,14 @@ class Flight implements Markup {
 	}
 
 	function step(t:Float):Bool {
-		if (gesture == "") p.sample(t) else {
+		if (begun < 0) begun = t;
+		// (on its tile until the file's size is known, a moment at most)
+		var waiting = sizing != "" && sizing == path && opening && t - begun < SIZE_WAIT;
+		if (gesture == "" && !waiting) {
+			p.sample(t);
+			// (a fade alone: ended within a step of opacity's 255)
+			snap(p, flying.peek() != "" ? span() : 255);
+		} else if (gesture != "") {
 			// (a gesture's speed: what its moves did since the last frame; a wheel's still a while: let go)
 			if (lastAt >= 0 && t > lastAt) speed = speed * 0.5 + (p.value - lastP) / (t - lastAt) * 0.5;
 			lastAt = t;
@@ -222,9 +255,20 @@ class Flight implements Markup {
 			flying(path);
 		}
 		var f = fileAt(path, image.peek()), g = tileAt(path);
-		if (f != null) goal(large, f, t);
+		// (where it lands: sprung to when it moves on the way, set while it is still on its tile)
+		if (f != null) {
+			if (p.value < 0.02 && opening) set(large, f) else goal(large, f, t);
+		}
 		if (g != null) {
-			goal(small, g, t);
+			// (its tile moved, a scroll, closing under way: the tile itself from now on, no picture left over it)
+			if (tileKnown && !opening && t - since > 0.1 && apart(g, small)) {
+				p.set(0);
+				shown(0);
+				land();
+				return;
+			}
+			// (opening, or the tile first found: with it as it is)
+			if (opening || tileKnown) set(small, g) else goal(small, g, t);
 			tileKnown = true;
 		}
 		// (no tile to close into: the fade alone)
@@ -232,9 +276,12 @@ class Flight implements Markup {
 			land();
 			return;
 		}
+		var d = root.ui == null ? 1.0 : root.ui.scale;
 		for (k in 0...4) {
 			small[k].sample(t);
 			large[k].sample(t);
+			snap(small[k], d);
+			snap(large[k], d);
 		}
 		// (the sharp picture as soon as it is decoded; closing, the thumbnail's again near the tile)
 		if (!sharpTried && opening && decodedFor(path)) {
@@ -274,7 +321,7 @@ class Flight implements Markup {
 		// (lifted most half way, none at either end)
 		lift(Math.max(0, Math.min(1, 4 * k * (1 - k))));
 		var img = image.peek();
-		if (img != null) crop(cover(r.width, r.height, img.width, img.height));
+		if (img != null) crop(cover(Math.max(1, Math.round(r.width)), Math.max(1, Math.round(r.height)), img.width, img.height));
 		sharpness(clear.value);
 		// (a document's page into its column: it gives way to it)
 		page(1 - Math.max(0, Math.min(1, k)));
@@ -428,6 +475,30 @@ class Flight implements Markup {
 		tr[3].set(r.height);
 	}
 
+	// (a spring's tail ended: within a device pixel, or slow within two, at its target at once (scale: device pixels a unit))
+	static function snap(tr:Track, scale:Float) {
+		if (!tr.moving()) return;
+		var left = Math.abs(tr.target - tr.value) * scale, speed = Math.abs(tr.velocity) * scale;
+		if (left < 1 || left < 2 && speed < 30) tr.set(tr.target);
+	}
+
+	// (the progress's span in device pixels: the farthest any edge goes)
+	function span():Float {
+		var d = root == null || root.ui == null ? 1.0 : root.ui.scale, m = 1.0;
+		for (k in 0...4)
+			m = Math.max(m, Math.abs(large[k].value - small[k].value));
+		return m * d;
+	}
+
+	// (r apart from where the springs go by over half a point)
+	static function apart(r:Rect, tr:Array<Track>):Bool
+		return Math.abs(tr[0].target - r.x) > 0.5 || Math.abs(tr[1].target - r.y) > 0.5 || Math.abs(tr[2].target - r.width) > 0.5
+			|| Math.abs(tr[3].target - r.height) > 0.5;
+
+	// where it lands now (in the window's points)
+	public function landing():Rect
+		return rect(large);
+
 	static function goal(tr:Array<Track>, r:Rect, t:Float) {
 		var v = [r.x, r.y, r.width, r.height];
 		for (k in 0...4)
@@ -491,6 +562,13 @@ class Flight implements Markup {
 			var p = pageOf(s.parent, b);
 			if (p != null && x.viewer.folder.current == path) return p;
 		} else if (decodedFor(path)) return imageAt(s, b);
+		// (its header's size: fitted, never above 100%)
+		var known = sizes.get(path);
+		if (known != null && known.width > 0 && known.height > 0) {
+			var d = s.ui.scale, f = Math.min(1, Math.min(b.width * d / known.width, b.height * d / known.height));
+			var w = known.width * f / d, h = known.height * f / d;
+			return {x: b.x + (b.width - w) / 2, y: b.y + (b.height - h) / 2, width: w, height: h};
+		}
 		var w = img == null ? 1.0 : img.width, h = img == null ? 1.4142 : img.height;
 		var k = Math.min(b.width / w, b.height / h);
 		// (a thumbnail smaller than its side is the whole image: at its own size)
@@ -544,11 +622,16 @@ class Flight implements Markup {
 		return Viewer.isPdf(path) || FolderModel.isMarkdown(path);
 
 	// the picture in flight, over everything in the root: its box (corners,
-	// shadow) clipping the thumbnail and the sharp picture, each covering it
+	// shadow) clipping the thumbnail and the sharp picture, each covering it;
+	// laid out in whole points, moved and sized the rest of the way by its
+	// transform (its quad drawn at fractions of a pixel: no 1-pixel steps)
 	public static function layer(z:Flight):View
 		return <Show when={z.flying() != ""}>
-			<view tag="zoom" position="absolute" left={z.box().x} top={z.box().y} width={z.box().width} height={z.box().height} radius={z.radius()}
-				overflow="hidden" pointer-events="none"
+			<view tag="zoom" position="absolute" left={Math.floor(z.box().x)} top={Math.floor(z.box().y)} width={Math.max(1, Math.round(z.box().width))}
+				height={Math.max(1, Math.round(z.box().height))} transform-origin="0 0" transform={() -> {
+					var b = z.box(), w = Math.max(1, Math.round(b.width)), h = Math.max(1, Math.round(b.height));
+					'translate(${b.x - Math.floor(b.x)}px, ${b.y - Math.floor(b.y)}px) scale(${b.width / w}, ${b.height / h})';
+				}} radius={z.radius()} overflow="hidden" pointer-events="none"
 				shadow={() -> '0 ${Math.round(14 * z.lift())}px ${Math.round(44 * z.lift())}px rgba(0,0,0,${Math.round(35 * z.lift()) / 100})'}>
 				<Show when={z.image() != null}>
 					<image tag="zoom-thumb" src={z.image()} position="absolute" left={z.crop().x} top={z.crop().y} width={z.crop().width}

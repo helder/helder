@@ -146,12 +146,16 @@ class ContentView implements Markup {
 				return false;
 			});
 		});
+		// (a picture flying from it: the folder darker behind, depth, the sidebar and the bars still)
 		return <view tag="content" grow={1} min-height={0}>
 			{list(x, tablet)}
 			<Show when={b.error() != ""}>{States.error(x)}</Show>
 			<Show when={b.error() == "" && !b.reading() && b.total() == 0}>{States.empty(x)}</Show>
 			<Show when={b.error() == "" && b.query() != "" && b.items().length == 0 && !b.reading()}>{States.noResults(x)}</Show>
 			<Show when={slow()}>{States.slow(x)}</Show>
+			<Show when={x.zoom.flying() != ""}>
+				<view tag="depth" position="absolute" inset={0} pointer-events="none" background="#000000" opacity={Flight.DEPTH_DIM * x.zoom.shown()}/>
+			</Show>
 		</view>;
 	}
 

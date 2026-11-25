@@ -1,6 +1,6 @@
 // helder.test snapshots: `helder test -u` rewrites them
 
---- story Browser/empty: Browser/empty (86 lines)
+--- story Browser/empty: Browser/empty (87 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -8,22 +8,23 @@ Node#root 0,0 390x844
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
             Node#sidebar-body 10,8 216x692
-              Node#view 10,8 216x692
-                Node#view 10,8 216x30
-                  Node#level-back 12,10 74x26
-                    ImageNode#image 14,16 14x14
-                    TextNode#text 30,16 48x15 "Overview"
-                  Node#view 88,23 104x0
-                  Node#level-home 194,8 30x30
-                    ImageNode#image 201,15 16x16
-                Node#view 10,44 216x21
-                  TextNode#level-title 18,46 8x19 "/"
-                  Node#view 34,55 130x0
-                  TextNode#text 172,48 46x15 "1 folder"
-                Node#scroll 10,71 216x629
-                  Node#button 10,71 216x28
-                    ImageNode#image 18,77 16x16
-                    TextNode#text 42,77 176x16 "empty"
+              Node#sidebar-pane 10,8 216x692
+                Node#view 10,8 216x692
+                  Node#view 10,8 216x30
+                    Node#level-back 12,10 74x26
+                      ImageNode#image 14,16 14x14
+                      TextNode#text 30,16 48x15 "Overview"
+                    Node#view 88,23 104x0
+                    Node#level-home 194,8 30x30
+                      ImageNode#image 201,15 16x16
+                  Node#view 10,44 216x21
+                    TextNode#level-title 18,46 8x19 "/"
+                    Node#view 34,55 130x0
+                    TextNode#text 172,48 46x15 "1 folder"
+                  Node#scroll 10,71 216x629
+                    Node#button 10,71 216x28
+                      ImageNode#image 18,77 16x16
+                      TextNode#text 42,77 176x16 "empty"
           Node#view 236,0 864x700
             Node#main 236,0 564x700
               Node#toolbar 237,0 563x40
@@ -88,7 +89,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/grid, dark: Browser/grid, dark (147 lines)
+--- story Browser/grid, dark: Browser/grid, dark (148 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -96,25 +97,26 @@ Node#root 0,0 390x844
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
             Node#sidebar-body 10,8 216x692
-              Node#view 10,8 216x692
-                Node#view 10,8 216x30
-                  Node#level-back 12,10 56x26
-                    ImageNode#image 14,16 14x14
-                    TextNode#text 30,16 30x15 "tests"
-                  Node#view 70,23 122x0
-                  Node#level-home 194,8 30x30
-                    ImageNode#image 201,15 16x16
-                Node#view 10,44 216x21
-                  TextNode#level-title 18,46 60x19 "fixtures"
-                  Node#view 86,55 72x0
-                  TextNode#text 166,48 52x15 "2 folders"
-                Node#scroll 10,71 216x629
-                  Node#button 10,71 216x28
-                    ImageNode#image 18,77 16x16
-                    TextNode#text 42,77 176x16 "folder"
-                  Node#button 10,100 216x28
-                    ImageNode#image 18,106 16x16
-                    TextNode#text 42,106 176x16 "pdf"
+              Node#sidebar-pane 10,8 216x692
+                Node#view 10,8 216x692
+                  Node#view 10,8 216x30
+                    Node#level-back 12,10 56x26
+                      ImageNode#image 14,16 14x14
+                      TextNode#text 30,16 30x15 "tests"
+                    Node#view 70,23 122x0
+                    Node#level-home 194,8 30x30
+                      ImageNode#image 201,15 16x16
+                  Node#view 10,44 216x21
+                    TextNode#level-title 18,46 60x19 "fixtures"
+                    Node#view 86,55 72x0
+                    TextNode#text 166,48 52x15 "2 folders"
+                  Node#scroll 10,71 216x629
+                    Node#button 10,71 216x28
+                      ImageNode#image 18,77 16x16
+                      TextNode#text 42,77 176x16 "folder"
+                    Node#button 10,100 216x28
+                      ImageNode#image 18,106 16x16
+                      TextNode#text 42,106 176x16 "pdf"
           Node#view 236,0 864x700
             Node#main 236,0 564x700
               Node#toolbar 237,0 563x40
@@ -237,7 +239,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/grid, light: Browser/grid, light (147 lines)
+--- story Browser/grid, light: Browser/grid, light (148 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -245,25 +247,26 @@ Node#root 0,0 390x844
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
             Node#sidebar-body 10,8 216x692
-              Node#view 10,8 216x692
-                Node#view 10,8 216x30
-                  Node#level-back 12,10 56x26
-                    ImageNode#image 14,16 14x14
-                    TextNode#text 30,16 30x15 "tests"
-                  Node#view 70,23 122x0
-                  Node#level-home 194,8 30x30
-                    ImageNode#image 201,15 16x16
-                Node#view 10,44 216x21
-                  TextNode#level-title 18,46 60x19 "fixtures"
-                  Node#view 86,55 72x0
-                  TextNode#text 166,48 52x15 "2 folders"
-                Node#scroll 10,71 216x629
-                  Node#button 10,71 216x28
-                    ImageNode#image 18,77 16x16
-                    TextNode#text 42,77 176x16 "folder"
-                  Node#button 10,100 216x28
-                    ImageNode#image 18,106 16x16
-                    TextNode#text 42,106 176x16 "pdf"
+              Node#sidebar-pane 10,8 216x692
+                Node#view 10,8 216x692
+                  Node#view 10,8 216x30
+                    Node#level-back 12,10 56x26
+                      ImageNode#image 14,16 14x14
+                      TextNode#text 30,16 30x15 "tests"
+                    Node#view 70,23 122x0
+                    Node#level-home 194,8 30x30
+                      ImageNode#image 201,15 16x16
+                  Node#view 10,44 216x21
+                    TextNode#level-title 18,46 60x19 "fixtures"
+                    Node#view 86,55 72x0
+                    TextNode#text 166,48 52x15 "2 folders"
+                  Node#scroll 10,71 216x629
+                    Node#button 10,71 216x28
+                      ImageNode#image 18,77 16x16
+                      TextNode#text 42,77 176x16 "folder"
+                    Node#button 10,100 216x28
+                      ImageNode#image 18,106 16x16
+                      TextNode#text 42,106 176x16 "pdf"
           Node#view 236,0 864x700
             Node#main 236,0 564x700
               Node#toolbar 237,0 563x40
@@ -386,7 +389,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/inspector, PDF: Browser/inspector, PDF (120 lines)
+--- story Browser/inspector, PDF: Browser/inspector, PDF (121 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -394,22 +397,23 @@ Node#root 0,0 390x844
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
             Node#sidebar-body 10,8 216x692
-              Node#view 10,8 216x692
-                Node#view 10,8 216x30
-                  Node#level-back 12,10 56x26
-                    ImageNode#image 14,16 14x14
-                    TextNode#text 30,16 30x15 "tests"
-                  Node#view 70,23 122x0
-                  Node#level-home 194,8 30x30
-                    ImageNode#image 201,15 16x16
-                Node#view 10,44 216x21
-                  TextNode#level-title 18,46 60x19 "fixtures"
-                  Node#view 86,55 78x0
-                  TextNode#text 172,48 46x15 "1 folder"
-                Node#scroll 10,71 216x629
-                  Node#button 10,71 216x28
-                    ImageNode#image 18,77 16x16
-                    TextNode#text 42,77 176x16 "pdf"
+              Node#sidebar-pane 10,8 216x692
+                Node#view 10,8 216x692
+                  Node#view 10,8 216x30
+                    Node#level-back 12,10 56x26
+                      ImageNode#image 14,16 14x14
+                      TextNode#text 30,16 30x15 "tests"
+                    Node#view 70,23 122x0
+                    Node#level-home 194,8 30x30
+                      ImageNode#image 201,15 16x16
+                  Node#view 10,44 216x21
+                    TextNode#level-title 18,46 60x19 "fixtures"
+                    Node#view 86,55 78x0
+                    TextNode#text 172,48 46x15 "1 folder"
+                  Node#scroll 10,71 216x629
+                    Node#button 10,71 216x28
+                      ImageNode#image 18,77 16x16
+                      TextNode#text 42,77 176x16 "pdf"
           Node#view 236,0 864x700
             Node#main 236,0 564x700
               Node#toolbar 237,0 563x40
@@ -508,7 +512,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/inspector, a Markdown document: Browser/inspector, a Markdown document (325 lines)
+--- story Browser/inspector, a Markdown document: Browser/inspector, a Markdown document (326 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -516,22 +520,23 @@ Node#root 0,0 390x844
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
             Node#sidebar-body 10,8 216x692
-              Node#view 10,8 216x692
-                Node#view 10,8 216x30
-                  Node#level-back 12,10 74x26
-                    ImageNode#image 14,16 14x14
-                    TextNode#text 30,16 48x15 "Overview"
-                  Node#view 88,23 104x0
-                  Node#level-home 194,8 30x30
-                    ImageNode#image 201,15 16x16
-                Node#view 10,44 216x21
-                  TextNode#level-title 18,46 53x19 "Samples"
-                  Node#view 79,55 85x0
-                  TextNode#text 172,48 46x15 "1 folder"
-                Node#scroll 10,71 216x629
-                  Node#button 10,71 216x28
-                    ImageNode#image 18,77 16x16
-                    TextNode#text 42,77 176x16 "More"
+              Node#sidebar-pane 10,8 216x692
+                Node#view 10,8 216x692
+                  Node#view 10,8 216x30
+                    Node#level-back 12,10 74x26
+                      ImageNode#image 14,16 14x14
+                      TextNode#text 30,16 48x15 "Overview"
+                    Node#view 88,23 104x0
+                    Node#level-home 194,8 30x30
+                      ImageNode#image 201,15 16x16
+                  Node#view 10,44 216x21
+                    TextNode#level-title 18,46 53x19 "Samples"
+                    Node#view 79,55 85x0
+                    TextNode#text 172,48 46x15 "1 folder"
+                  Node#scroll 10,71 216x629
+                    Node#button 10,71 216x28
+                      ImageNode#image 18,77 16x16
+                      TextNode#text 42,77 176x16 "More"
           Node#view 236,0 864x700
             Node#main 236,0 564x700
               Node#toolbar 237,0 563x40
@@ -835,7 +840,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/inspector, photo: Browser/inspector, photo (171 lines)
+--- story Browser/inspector, photo: Browser/inspector, photo (172 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -843,25 +848,26 @@ Node#root 0,0 390x844
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
             Node#sidebar-body 10,8 216x692
-              Node#view 10,8 216x692
-                Node#view 10,8 216x30
-                  Node#level-back 12,10 56x26
-                    ImageNode#image 14,16 14x14
-                    TextNode#text 30,16 30x15 "tests"
-                  Node#view 70,23 122x0
-                  Node#level-home 194,8 30x30
-                    ImageNode#image 201,15 16x16
-                Node#view 10,44 216x21
-                  TextNode#level-title 18,46 60x19 "fixtures"
-                  Node#view 86,55 72x0
-                  TextNode#text 166,48 52x15 "2 folders"
-                Node#scroll 10,71 216x629
-                  Node#button 10,71 216x28
-                    ImageNode#image 18,77 16x16
-                    TextNode#text 42,77 176x16 "folder"
-                  Node#button 10,100 216x28
-                    ImageNode#image 18,106 16x16
-                    TextNode#text 42,106 176x16 "pdf"
+              Node#sidebar-pane 10,8 216x692
+                Node#view 10,8 216x692
+                  Node#view 10,8 216x30
+                    Node#level-back 12,10 56x26
+                      ImageNode#image 14,16 14x14
+                      TextNode#text 30,16 30x15 "tests"
+                    Node#view 70,23 122x0
+                    Node#level-home 194,8 30x30
+                      ImageNode#image 201,15 16x16
+                  Node#view 10,44 216x21
+                    TextNode#level-title 18,46 60x19 "fixtures"
+                    Node#view 86,55 72x0
+                    TextNode#text 166,48 52x15 "2 folders"
+                  Node#scroll 10,71 216x629
+                    Node#button 10,71 216x28
+                      ImageNode#image 18,77 16x16
+                      TextNode#text 42,77 176x16 "folder"
+                    Node#button 10,100 216x28
+                      ImageNode#image 18,106 16x16
+                      TextNode#text 42,106 176x16 "pdf"
           Node#view 236,0 864x700
             Node#main 236,0 564x700
               Node#toolbar 237,0 563x40
@@ -1008,7 +1014,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/list, dark: Browser/list, dark (163 lines)
+--- story Browser/list, dark: Browser/list, dark (164 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -1016,337 +1022,7 @@ Node#root 0,0 390x844
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
             Node#sidebar-body 10,8 216x692
-              Node#view 10,8 216x692
-                Node#view 10,8 216x30
-                  Node#level-back 12,10 56x26
-                    ImageNode#image 14,16 14x14
-                    TextNode#text 30,16 30x15 "tests"
-                  Node#view 70,23 122x0
-                  Node#level-home 194,8 30x30
-                    ImageNode#image 201,15 16x16
-                Node#view 10,44 216x21
-                  TextNode#level-title 18,46 60x19 "fixtures"
-                  Node#view 86,55 72x0
-                  TextNode#text 166,48 52x15 "2 folders"
-                Node#scroll 10,71 216x629
-                  Node#button 10,71 216x28
-                    ImageNode#image 18,77 16x16
-                    TextNode#text 42,77 176x16 "folder"
-                  Node#button 10,100 216x28
-                    ImageNode#image 18,106 16x16
-                    TextNode#text 42,106 176x16 "pdf"
-          Node#view 236,0 864x700
-            Node#main 236,0 564x700
-              Node#toolbar 237,0 563x40
-                Node#view 245,5 62x30
-                  Node#back 245,5 30x30
-                    ImageNode#image 252,12 16x16
-                  Node#forward 277,5 30x30
-                    ImageNode#image 284,12 16x16
-                Node#folder-title 313,5 74x30
-                  TextNode#text 321,11 42x17 "folder"
-                  ImageNode#image 367,13 14x14
-                Node#view 393,20 280x0
-                Node#search 679,5 30x30
-                  ImageNode#image 686,12 16x16
-                Node#view-menu 715,5 41x30
-                  ImageNode#image 722,12 16x16
-                  ImageNode#image 740,14 12x12
-                Node#inspector-toggle 762,5 30x30
-                  ImageNode#image 769,12 16x16
-              Node#content 237,40 563x628
-                Node#list 237,40 563x628
-                  Node#list-head 237,40 563x30
-                    Node#view 253,40 127x30
-                      Node#button 281,40 99x30
-                        TextNode#text 281,47 23x15 "Name"
-                        ImageNode#image 308,49 12x12
-                    Node#button 392,40 156x30
-                      TextNode#text 392,47 75x15 "Date modified"
-                    Node#button 560,40 84x30
-                      TextNode#text 621,47 23x15 "Size"
-                    Node#button 656,40 124x30
-                      TextNode#text 656,47 23x15 "Kind"
-                  VirtualScroll#rows 237,70 563x598
-                    Spacer#before 237,70 563x6
-                    Node#row 237,76 563x30
-                      Node#view 243,76 551x30
-                        Node#view 253,81 127x20
-                          Node#view 253,81 20x20
-                            ImageNode#image 256,84 14x14
-                          TextNode#name 281,83 99x16 "alpha.png"
-                        TextNode#text 392,83 156x16 ""
-                        TextNode#text 560,83 84x16 "530 bytes"
-                        TextNode#text 656,83 124x16 "PNG image"
-                    Node#row 237,106 563x30
-                      Node#view 243,106 551x30
-                        Node#view 253,111 127x20
-                          Node#view 253,111 20x20
-                            ImageNode#image 256,114 14x14
-                          TextNode#name 281,113 99x16 "anim.gif"
-                        TextNode#text 392,113 156x16 ""
-                        TextNode#text 560,113 84x16 "3 KB"
-                        TextNode#text 656,113 124x16 "GIF image"
-                    Node#row 237,136 563x30
-                      Node#view 243,136 551x30
-                        Node#view 253,141 127x20
-                          Node#view 253,141 20x20
-                            ImageNode#image 256,144 14x14
-                          TextNode#name 281,143 99x16 "broken.jpg"
-                        TextNode#text 392,143 156x16 ""
-                        TextNode#text 560,143 84x16 "300 bytes"
-                        TextNode#text 656,143 124x16 "JPEG image"
-                    Node#row 237,166 563x30
-                      Node#view 243,166 551x30
-                        Node#view 253,171 127x20
-                          Node#view 253,171 20x20
-                            ImageNode#image 256,174 14x14
-                          TextNode#name 281,173 99x16 "lossy.webp"
-                        TextNode#text 392,173 156x16 ""
-                        TextNode#text 560,173 84x16 "1 KB"
-                        TextNode#text 656,173 124x16 "WebP image"
-                    Node#row 237,196 563x30
-                      Node#view 243,196 551x30
-                        Node#view 253,201 127x20
-                          Node#view 253,201 20x20
-                            ImageNode#image 256,204 14x14
-                          TextNode#name 281,203 99x16 "notes.txt"
-                        TextNode#text 392,203 156x16 ""
-                        TextNode#text 560,203 84x16 "13 bytes"
-                        TextNode#text 656,203 124x16 "Plain text"
-                    Node#row 237,226 563x30
-                      Node#view 243,226 551x30
-                        Node#view 253,231 127x20
-                          Node#view 253,231 20x20
-                            ImageNode#image 256,234 14x14
-                          TextNode#name 281,233 99x16 "photo 2.jpg"
-                        TextNode#text 392,233 156x16 ""
-                        TextNode#text 560,233 84x16 "202 KB"
-                        TextNode#text 656,233 124x16 "JPEG image"
-                    Node#row 237,256 563x30
-                      Node#view 243,256 551x30
-                        Node#view 253,261 127x20
-                          Node#view 253,261 20x20
-                            ImageNode#image 256,264 14x14
-                          TextNode#name 281,263 99x16 "photo 10.jpg"
-                        TextNode#text 392,263 156x16 ""
-                        TextNode#text 560,263 84x16 "702 bytes"
-                        TextNode#text 656,263 124x16 "JPEG image"
-                    Spacer#after 237,286 563x6
-              Node#pathbar 237,668 563x32
-                Node#view 241,669 503x32
-                  PathBarNode#pathbar 241,669 503x32
-                    Node#pathbar-segments 247,673 491x24
-                      Node#pathbar-segment 247,673 42x24
-                        TextNode#text 253,677 30x15 "tests"
-                      Node#pathbar-separator 289,673 11x24
-                        ImageNode#image 289,679 11x11
-                      Node#pathbar-segment 300,673 60x24
-                        TextNode#text 306,677 48x15 "fixtures"
-                      Node#pathbar-separator 360,673 11x24
-                        ImageNode#image 360,679 11x11
-                      Node#pathbar-current 371,673 48x24
-                        TextNode#text 377,677 36x15 "folder"
-                TextNode#count 744,677 48x15 "7 items"
-            Node#inspector 800,0 300x700
-              Node#view 801,0 299x700
-                Node#view 815,14 271x220
-                  ImageNode#image 903,85 96x78
-                Node#view 801,234 299x47
-                  TextNode#text 930,246 42x18 "folder"
-                  TextNode#text 930,266 42x15 "7 items"
-        Node#viewer 0,0 1100x700
-          Node#viewer-bar 0,0 1100x52
-            Node#back-pill 14,11 99x30
-              ImageNode#image 20,18 16x16
-              ImageNode#image 42,19 14x14
-              TextNode#text 62,18 39x16 "folder"
-            TextNode#viewer-title 121,18 927x16 "Viewer"
-            Node#viewer-trash 1056,11 30x30
-              ImageNode#image 1063,18 16x16
-          Node#stage 0,52 1100x648
-            Node#stage-content 0,52 1100x648
-              ImageView#photo 0,52 1100x648
-              Node#message 0,52 1100x648
-                TextNode#title 495,353 110x22 "No image open"
-                TextNode#detail 550,383 0x16 ""
-        Node#window-start 16,0 0x40
-        Node#window-end 1100,0 0x0
-
---- story Browser/list, light: Browser/list, light (163 lines)
-Node#root 0,0 390x844
-  Node#view 0,0 1100x700
-    Node#view 0,0 1100x700
-      Node#window 0,0 1100x700
-        Node#browser 0,0 1100x700
-          Node#sidebar 0,0 236x700
-            Node#sidebar-body 10,8 216x692
-              Node#view 10,8 216x692
-                Node#view 10,8 216x30
-                  Node#level-back 12,10 56x26
-                    ImageNode#image 14,16 14x14
-                    TextNode#text 30,16 30x15 "tests"
-                  Node#view 70,23 122x0
-                  Node#level-home 194,8 30x30
-                    ImageNode#image 201,15 16x16
-                Node#view 10,44 216x21
-                  TextNode#level-title 18,46 60x19 "fixtures"
-                  Node#view 86,55 72x0
-                  TextNode#text 166,48 52x15 "2 folders"
-                Node#scroll 10,71 216x629
-                  Node#button 10,71 216x28
-                    ImageNode#image 18,77 16x16
-                    TextNode#text 42,77 176x16 "folder"
-                  Node#button 10,100 216x28
-                    ImageNode#image 18,106 16x16
-                    TextNode#text 42,106 176x16 "pdf"
-          Node#view 236,0 864x700
-            Node#main 236,0 564x700
-              Node#toolbar 237,0 563x40
-                Node#view 245,5 62x30
-                  Node#back 245,5 30x30
-                    ImageNode#image 252,12 16x16
-                  Node#forward 277,5 30x30
-                    ImageNode#image 284,12 16x16
-                Node#folder-title 313,5 74x30
-                  TextNode#text 321,11 42x17 "folder"
-                  ImageNode#image 367,13 14x14
-                Node#view 393,20 280x0
-                Node#search 679,5 30x30
-                  ImageNode#image 686,12 16x16
-                Node#view-menu 715,5 41x30
-                  ImageNode#image 722,12 16x16
-                  ImageNode#image 740,14 12x12
-                Node#inspector-toggle 762,5 30x30
-                  ImageNode#image 769,12 16x16
-              Node#content 237,40 563x628
-                Node#list 237,40 563x628
-                  Node#list-head 237,40 563x30
-                    Node#view 253,40 127x30
-                      Node#button 281,40 99x30
-                        TextNode#text 281,47 23x15 "Name"
-                        ImageNode#image 308,49 12x12
-                    Node#button 392,40 156x30
-                      TextNode#text 392,47 75x15 "Date modified"
-                    Node#button 560,40 84x30
-                      TextNode#text 621,47 23x15 "Size"
-                    Node#button 656,40 124x30
-                      TextNode#text 656,47 23x15 "Kind"
-                  VirtualScroll#rows 237,70 563x598
-                    Spacer#before 237,70 563x6
-                    Node#row 237,76 563x30
-                      Node#view 243,76 551x30
-                        Node#view 253,81 127x20
-                          Node#view 253,81 20x20
-                            ImageNode#image 256,84 14x14
-                          TextNode#name 281,83 99x16 "alpha.png"
-                        TextNode#text 392,83 156x16 ""
-                        TextNode#text 560,83 84x16 "530 bytes"
-                        TextNode#text 656,83 124x16 "PNG image"
-                    Node#row 237,106 563x30
-                      Node#view 243,106 551x30
-                        Node#view 253,111 127x20
-                          Node#view 253,111 20x20
-                            ImageNode#image 256,114 14x14
-                          TextNode#name 281,113 99x16 "anim.gif"
-                        TextNode#text 392,113 156x16 ""
-                        TextNode#text 560,113 84x16 "3 KB"
-                        TextNode#text 656,113 124x16 "GIF image"
-                    Node#row 237,136 563x30
-                      Node#view 243,136 551x30
-                        Node#view 253,141 127x20
-                          Node#view 253,141 20x20
-                            ImageNode#image 256,144 14x14
-                          TextNode#name 281,143 99x16 "broken.jpg"
-                        TextNode#text 392,143 156x16 ""
-                        TextNode#text 560,143 84x16 "300 bytes"
-                        TextNode#text 656,143 124x16 "JPEG image"
-                    Node#row 237,166 563x30
-                      Node#view 243,166 551x30
-                        Node#view 253,171 127x20
-                          Node#view 253,171 20x20
-                            ImageNode#image 256,174 14x14
-                          TextNode#name 281,173 99x16 "lossy.webp"
-                        TextNode#text 392,173 156x16 ""
-                        TextNode#text 560,173 84x16 "1 KB"
-                        TextNode#text 656,173 124x16 "WebP image"
-                    Node#row 237,196 563x30
-                      Node#view 243,196 551x30
-                        Node#view 253,201 127x20
-                          Node#view 253,201 20x20
-                            ImageNode#image 256,204 14x14
-                          TextNode#name 281,203 99x16 "notes.txt"
-                        TextNode#text 392,203 156x16 ""
-                        TextNode#text 560,203 84x16 "13 bytes"
-                        TextNode#text 656,203 124x16 "Plain text"
-                    Node#row 237,226 563x30
-                      Node#view 243,226 551x30
-                        Node#view 253,231 127x20
-                          Node#view 253,231 20x20
-                            ImageNode#image 256,234 14x14
-                          TextNode#name 281,233 99x16 "photo 2.jpg"
-                        TextNode#text 392,233 156x16 ""
-                        TextNode#text 560,233 84x16 "202 KB"
-                        TextNode#text 656,233 124x16 "JPEG image"
-                    Node#row 237,256 563x30
-                      Node#view 243,256 551x30
-                        Node#view 253,261 127x20
-                          Node#view 253,261 20x20
-                            ImageNode#image 256,264 14x14
-                          TextNode#name 281,263 99x16 "photo 10.jpg"
-                        TextNode#text 392,263 156x16 ""
-                        TextNode#text 560,263 84x16 "702 bytes"
-                        TextNode#text 656,263 124x16 "JPEG image"
-                    Spacer#after 237,286 563x6
-              Node#pathbar 237,668 563x32
-                Node#view 241,669 503x32
-                  PathBarNode#pathbar 241,669 503x32
-                    Node#pathbar-segments 247,673 491x24
-                      Node#pathbar-segment 247,673 42x24
-                        TextNode#text 253,677 30x15 "tests"
-                      Node#pathbar-separator 289,673 11x24
-                        ImageNode#image 289,679 11x11
-                      Node#pathbar-segment 300,673 60x24
-                        TextNode#text 306,677 48x15 "fixtures"
-                      Node#pathbar-separator 360,673 11x24
-                        ImageNode#image 360,679 11x11
-                      Node#pathbar-current 371,673 48x24
-                        TextNode#text 377,677 36x15 "folder"
-                TextNode#count 744,677 48x15 "7 items"
-            Node#inspector 800,0 300x700
-              Node#view 801,0 299x700
-                Node#view 815,14 271x220
-                  ImageNode#image 903,85 96x78
-                Node#view 801,234 299x47
-                  TextNode#text 930,246 42x18 "folder"
-                  TextNode#text 930,266 42x15 "7 items"
-        Node#viewer 0,0 1100x700
-          Node#viewer-bar 0,0 1100x52
-            Node#back-pill 14,11 99x30
-              ImageNode#image 20,18 16x16
-              ImageNode#image 42,19 14x14
-              TextNode#text 62,18 39x16 "folder"
-            TextNode#viewer-title 121,18 927x16 "Viewer"
-            Node#viewer-trash 1056,11 30x30
-              ImageNode#image 1063,18 16x16
-          Node#stage 0,52 1100x648
-            Node#stage-content 0,52 1100x648
-              ImageView#photo 0,52 1100x648
-              Node#message 0,52 1100x648
-                TextNode#title 495,353 110x22 "No image open"
-                TextNode#detail 550,383 0x16 ""
-        Node#window-start 16,0 0x40
-        Node#window-end 1100,0 0x0
-
---- story Browser/marquee: Browser/marquee (177 lines)
-Node#root 0,0 390x844
-  Node#view 0,0 1100x700
-    Node#view 0,0 1100x700
-      Node#view 0,0 1100x700
-        Node#window 0,0 1100x700
-          Node#browser 0,0 1100x700
-            Node#sidebar 0,0 236x700
-              Node#sidebar-body 10,8 216x692
+              Node#sidebar-pane 10,8 216x692
                 Node#view 10,8 216x692
                   Node#view 10,8 216x30
                     Node#level-back 12,10 56x26
@@ -1366,6 +1042,343 @@ Node#root 0,0 390x844
                     Node#button 10,100 216x28
                       ImageNode#image 18,106 16x16
                       TextNode#text 42,106 176x16 "pdf"
+          Node#view 236,0 864x700
+            Node#main 236,0 564x700
+              Node#toolbar 237,0 563x40
+                Node#view 245,5 62x30
+                  Node#back 245,5 30x30
+                    ImageNode#image 252,12 16x16
+                  Node#forward 277,5 30x30
+                    ImageNode#image 284,12 16x16
+                Node#folder-title 313,5 74x30
+                  TextNode#text 321,11 42x17 "folder"
+                  ImageNode#image 367,13 14x14
+                Node#view 393,20 280x0
+                Node#search 679,5 30x30
+                  ImageNode#image 686,12 16x16
+                Node#view-menu 715,5 41x30
+                  ImageNode#image 722,12 16x16
+                  ImageNode#image 740,14 12x12
+                Node#inspector-toggle 762,5 30x30
+                  ImageNode#image 769,12 16x16
+              Node#content 237,40 563x628
+                Node#list 237,40 563x628
+                  Node#list-head 237,40 563x30
+                    Node#view 253,40 127x30
+                      Node#button 281,40 99x30
+                        TextNode#text 281,47 23x15 "Name"
+                        ImageNode#image 308,49 12x12
+                    Node#button 392,40 156x30
+                      TextNode#text 392,47 75x15 "Date modified"
+                    Node#button 560,40 84x30
+                      TextNode#text 621,47 23x15 "Size"
+                    Node#button 656,40 124x30
+                      TextNode#text 656,47 23x15 "Kind"
+                  VirtualScroll#rows 237,70 563x598
+                    Spacer#before 237,70 563x6
+                    Node#row 237,76 563x30
+                      Node#view 243,76 551x30
+                        Node#view 253,81 127x20
+                          Node#view 253,81 20x20
+                            ImageNode#image 256,84 14x14
+                          TextNode#name 281,83 99x16 "alpha.png"
+                        TextNode#text 392,83 156x16 ""
+                        TextNode#text 560,83 84x16 "530 bytes"
+                        TextNode#text 656,83 124x16 "PNG image"
+                    Node#row 237,106 563x30
+                      Node#view 243,106 551x30
+                        Node#view 253,111 127x20
+                          Node#view 253,111 20x20
+                            ImageNode#image 256,114 14x14
+                          TextNode#name 281,113 99x16 "anim.gif"
+                        TextNode#text 392,113 156x16 ""
+                        TextNode#text 560,113 84x16 "3 KB"
+                        TextNode#text 656,113 124x16 "GIF image"
+                    Node#row 237,136 563x30
+                      Node#view 243,136 551x30
+                        Node#view 253,141 127x20
+                          Node#view 253,141 20x20
+                            ImageNode#image 256,144 14x14
+                          TextNode#name 281,143 99x16 "broken.jpg"
+                        TextNode#text 392,143 156x16 ""
+                        TextNode#text 560,143 84x16 "300 bytes"
+                        TextNode#text 656,143 124x16 "JPEG image"
+                    Node#row 237,166 563x30
+                      Node#view 243,166 551x30
+                        Node#view 253,171 127x20
+                          Node#view 253,171 20x20
+                            ImageNode#image 256,174 14x14
+                          TextNode#name 281,173 99x16 "lossy.webp"
+                        TextNode#text 392,173 156x16 ""
+                        TextNode#text 560,173 84x16 "1 KB"
+                        TextNode#text 656,173 124x16 "WebP image"
+                    Node#row 237,196 563x30
+                      Node#view 243,196 551x30
+                        Node#view 253,201 127x20
+                          Node#view 253,201 20x20
+                            ImageNode#image 256,204 14x14
+                          TextNode#name 281,203 99x16 "notes.txt"
+                        TextNode#text 392,203 156x16 ""
+                        TextNode#text 560,203 84x16 "13 bytes"
+                        TextNode#text 656,203 124x16 "Plain text"
+                    Node#row 237,226 563x30
+                      Node#view 243,226 551x30
+                        Node#view 253,231 127x20
+                          Node#view 253,231 20x20
+                            ImageNode#image 256,234 14x14
+                          TextNode#name 281,233 99x16 "photo 2.jpg"
+                        TextNode#text 392,233 156x16 ""
+                        TextNode#text 560,233 84x16 "202 KB"
+                        TextNode#text 656,233 124x16 "JPEG image"
+                    Node#row 237,256 563x30
+                      Node#view 243,256 551x30
+                        Node#view 253,261 127x20
+                          Node#view 253,261 20x20
+                            ImageNode#image 256,264 14x14
+                          TextNode#name 281,263 99x16 "photo 10.jpg"
+                        TextNode#text 392,263 156x16 ""
+                        TextNode#text 560,263 84x16 "702 bytes"
+                        TextNode#text 656,263 124x16 "JPEG image"
+                    Spacer#after 237,286 563x6
+              Node#pathbar 237,668 563x32
+                Node#view 241,669 503x32
+                  PathBarNode#pathbar 241,669 503x32
+                    Node#pathbar-segments 247,673 491x24
+                      Node#pathbar-segment 247,673 42x24
+                        TextNode#text 253,677 30x15 "tests"
+                      Node#pathbar-separator 289,673 11x24
+                        ImageNode#image 289,679 11x11
+                      Node#pathbar-segment 300,673 60x24
+                        TextNode#text 306,677 48x15 "fixtures"
+                      Node#pathbar-separator 360,673 11x24
+                        ImageNode#image 360,679 11x11
+                      Node#pathbar-current 371,673 48x24
+                        TextNode#text 377,677 36x15 "folder"
+                TextNode#count 744,677 48x15 "7 items"
+            Node#inspector 800,0 300x700
+              Node#view 801,0 299x700
+                Node#view 815,14 271x220
+                  ImageNode#image 903,85 96x78
+                Node#view 801,234 299x47
+                  TextNode#text 930,246 42x18 "folder"
+                  TextNode#text 930,266 42x15 "7 items"
+        Node#viewer 0,0 1100x700
+          Node#viewer-bar 0,0 1100x52
+            Node#back-pill 14,11 99x30
+              ImageNode#image 20,18 16x16
+              ImageNode#image 42,19 14x14
+              TextNode#text 62,18 39x16 "folder"
+            TextNode#viewer-title 121,18 927x16 "Viewer"
+            Node#viewer-trash 1056,11 30x30
+              ImageNode#image 1063,18 16x16
+          Node#stage 0,52 1100x648
+            Node#stage-content 0,52 1100x648
+              ImageView#photo 0,52 1100x648
+              Node#message 0,52 1100x648
+                TextNode#title 495,353 110x22 "No image open"
+                TextNode#detail 550,383 0x16 ""
+        Node#window-start 16,0 0x40
+        Node#window-end 1100,0 0x0
+
+--- story Browser/list, light: Browser/list, light (164 lines)
+Node#root 0,0 390x844
+  Node#view 0,0 1100x700
+    Node#view 0,0 1100x700
+      Node#window 0,0 1100x700
+        Node#browser 0,0 1100x700
+          Node#sidebar 0,0 236x700
+            Node#sidebar-body 10,8 216x692
+              Node#sidebar-pane 10,8 216x692
+                Node#view 10,8 216x692
+                  Node#view 10,8 216x30
+                    Node#level-back 12,10 56x26
+                      ImageNode#image 14,16 14x14
+                      TextNode#text 30,16 30x15 "tests"
+                    Node#view 70,23 122x0
+                    Node#level-home 194,8 30x30
+                      ImageNode#image 201,15 16x16
+                  Node#view 10,44 216x21
+                    TextNode#level-title 18,46 60x19 "fixtures"
+                    Node#view 86,55 72x0
+                    TextNode#text 166,48 52x15 "2 folders"
+                  Node#scroll 10,71 216x629
+                    Node#button 10,71 216x28
+                      ImageNode#image 18,77 16x16
+                      TextNode#text 42,77 176x16 "folder"
+                    Node#button 10,100 216x28
+                      ImageNode#image 18,106 16x16
+                      TextNode#text 42,106 176x16 "pdf"
+          Node#view 236,0 864x700
+            Node#main 236,0 564x700
+              Node#toolbar 237,0 563x40
+                Node#view 245,5 62x30
+                  Node#back 245,5 30x30
+                    ImageNode#image 252,12 16x16
+                  Node#forward 277,5 30x30
+                    ImageNode#image 284,12 16x16
+                Node#folder-title 313,5 74x30
+                  TextNode#text 321,11 42x17 "folder"
+                  ImageNode#image 367,13 14x14
+                Node#view 393,20 280x0
+                Node#search 679,5 30x30
+                  ImageNode#image 686,12 16x16
+                Node#view-menu 715,5 41x30
+                  ImageNode#image 722,12 16x16
+                  ImageNode#image 740,14 12x12
+                Node#inspector-toggle 762,5 30x30
+                  ImageNode#image 769,12 16x16
+              Node#content 237,40 563x628
+                Node#list 237,40 563x628
+                  Node#list-head 237,40 563x30
+                    Node#view 253,40 127x30
+                      Node#button 281,40 99x30
+                        TextNode#text 281,47 23x15 "Name"
+                        ImageNode#image 308,49 12x12
+                    Node#button 392,40 156x30
+                      TextNode#text 392,47 75x15 "Date modified"
+                    Node#button 560,40 84x30
+                      TextNode#text 621,47 23x15 "Size"
+                    Node#button 656,40 124x30
+                      TextNode#text 656,47 23x15 "Kind"
+                  VirtualScroll#rows 237,70 563x598
+                    Spacer#before 237,70 563x6
+                    Node#row 237,76 563x30
+                      Node#view 243,76 551x30
+                        Node#view 253,81 127x20
+                          Node#view 253,81 20x20
+                            ImageNode#image 256,84 14x14
+                          TextNode#name 281,83 99x16 "alpha.png"
+                        TextNode#text 392,83 156x16 ""
+                        TextNode#text 560,83 84x16 "530 bytes"
+                        TextNode#text 656,83 124x16 "PNG image"
+                    Node#row 237,106 563x30
+                      Node#view 243,106 551x30
+                        Node#view 253,111 127x20
+                          Node#view 253,111 20x20
+                            ImageNode#image 256,114 14x14
+                          TextNode#name 281,113 99x16 "anim.gif"
+                        TextNode#text 392,113 156x16 ""
+                        TextNode#text 560,113 84x16 "3 KB"
+                        TextNode#text 656,113 124x16 "GIF image"
+                    Node#row 237,136 563x30
+                      Node#view 243,136 551x30
+                        Node#view 253,141 127x20
+                          Node#view 253,141 20x20
+                            ImageNode#image 256,144 14x14
+                          TextNode#name 281,143 99x16 "broken.jpg"
+                        TextNode#text 392,143 156x16 ""
+                        TextNode#text 560,143 84x16 "300 bytes"
+                        TextNode#text 656,143 124x16 "JPEG image"
+                    Node#row 237,166 563x30
+                      Node#view 243,166 551x30
+                        Node#view 253,171 127x20
+                          Node#view 253,171 20x20
+                            ImageNode#image 256,174 14x14
+                          TextNode#name 281,173 99x16 "lossy.webp"
+                        TextNode#text 392,173 156x16 ""
+                        TextNode#text 560,173 84x16 "1 KB"
+                        TextNode#text 656,173 124x16 "WebP image"
+                    Node#row 237,196 563x30
+                      Node#view 243,196 551x30
+                        Node#view 253,201 127x20
+                          Node#view 253,201 20x20
+                            ImageNode#image 256,204 14x14
+                          TextNode#name 281,203 99x16 "notes.txt"
+                        TextNode#text 392,203 156x16 ""
+                        TextNode#text 560,203 84x16 "13 bytes"
+                        TextNode#text 656,203 124x16 "Plain text"
+                    Node#row 237,226 563x30
+                      Node#view 243,226 551x30
+                        Node#view 253,231 127x20
+                          Node#view 253,231 20x20
+                            ImageNode#image 256,234 14x14
+                          TextNode#name 281,233 99x16 "photo 2.jpg"
+                        TextNode#text 392,233 156x16 ""
+                        TextNode#text 560,233 84x16 "202 KB"
+                        TextNode#text 656,233 124x16 "JPEG image"
+                    Node#row 237,256 563x30
+                      Node#view 243,256 551x30
+                        Node#view 253,261 127x20
+                          Node#view 253,261 20x20
+                            ImageNode#image 256,264 14x14
+                          TextNode#name 281,263 99x16 "photo 10.jpg"
+                        TextNode#text 392,263 156x16 ""
+                        TextNode#text 560,263 84x16 "702 bytes"
+                        TextNode#text 656,263 124x16 "JPEG image"
+                    Spacer#after 237,286 563x6
+              Node#pathbar 237,668 563x32
+                Node#view 241,669 503x32
+                  PathBarNode#pathbar 241,669 503x32
+                    Node#pathbar-segments 247,673 491x24
+                      Node#pathbar-segment 247,673 42x24
+                        TextNode#text 253,677 30x15 "tests"
+                      Node#pathbar-separator 289,673 11x24
+                        ImageNode#image 289,679 11x11
+                      Node#pathbar-segment 300,673 60x24
+                        TextNode#text 306,677 48x15 "fixtures"
+                      Node#pathbar-separator 360,673 11x24
+                        ImageNode#image 360,679 11x11
+                      Node#pathbar-current 371,673 48x24
+                        TextNode#text 377,677 36x15 "folder"
+                TextNode#count 744,677 48x15 "7 items"
+            Node#inspector 800,0 300x700
+              Node#view 801,0 299x700
+                Node#view 815,14 271x220
+                  ImageNode#image 903,85 96x78
+                Node#view 801,234 299x47
+                  TextNode#text 930,246 42x18 "folder"
+                  TextNode#text 930,266 42x15 "7 items"
+        Node#viewer 0,0 1100x700
+          Node#viewer-bar 0,0 1100x52
+            Node#back-pill 14,11 99x30
+              ImageNode#image 20,18 16x16
+              ImageNode#image 42,19 14x14
+              TextNode#text 62,18 39x16 "folder"
+            TextNode#viewer-title 121,18 927x16 "Viewer"
+            Node#viewer-trash 1056,11 30x30
+              ImageNode#image 1063,18 16x16
+          Node#stage 0,52 1100x648
+            Node#stage-content 0,52 1100x648
+              ImageView#photo 0,52 1100x648
+              Node#message 0,52 1100x648
+                TextNode#title 495,353 110x22 "No image open"
+                TextNode#detail 550,383 0x16 ""
+        Node#window-start 16,0 0x40
+        Node#window-end 1100,0 0x0
+
+--- story Browser/marquee: Browser/marquee (182 lines)
+Node#root 0,0 390x844
+  Node#view 0,0 1100x700
+    Node#view 0,0 1100x700
+      Node#view 0,0 1100x700
+        Node#window 0,0 1100x700
+          Node#browser 0,0 1100x700
+            Node#sidebar 0,0 236x700
+              Node#sidebar-body 10,8 216x692
+                Node#sidebar-pane 10,8 216x692
+                  Node#overview 10,8 216x692
+                    Node#view 10,8 216x24
+                      TextNode#text 10,8 216x24 "Locations"
+                Node#sidebar-pane 10,8 216x692
+                  Node#view 10,8 216x692
+                    Node#view 10,8 216x30
+                      Node#level-back 12,10 56x26
+                        ImageNode#image 14,16 14x14
+                        TextNode#text 30,16 30x15 "tests"
+                      Node#view 70,23 122x0
+                      Node#level-home 194,8 30x30
+                        ImageNode#image 201,15 16x16
+                    Node#view 10,44 216x21
+                      TextNode#level-title 18,46 60x19 "fixtures"
+                      Node#view 86,55 72x0
+                      TextNode#text 166,48 52x15 "2 folders"
+                    Node#scroll 10,71 216x629
+                      Node#button 10,71 216x28
+                        ImageNode#image 18,77 16x16
+                        TextNode#text 42,77 176x16 "folder"
+                      Node#button 10,100 216x28
+                        ImageNode#image 18,106 16x16
+                        TextNode#text 42,106 176x16 "pdf"
             Node#view 236,0 864x700
               Node#main 236,0 564x700
                 Node#toolbar 237,0 563x40
@@ -1517,7 +1530,7 @@ Node#root 0,0 390x844
           Node#window-start 16,0 0x40
           Node#window-end 1100,0 0x0
 
---- story Browser/missing folder: Browser/missing folder (89 lines)
+--- story Browser/missing folder: Browser/missing folder (90 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -1525,19 +1538,20 @@ Node#root 0,0 390x844
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
             Node#sidebar-body 10,8 216x692
-              Node#view 10,8 216x692
-                Node#view 10,8 216x30
-                  Node#level-back 12,10 32x26
-                    ImageNode#image 14,16 14x14
-                    TextNode#text 30,16 6x15 "/"
-                  Node#view 46,23 146x0
-                  Node#level-home 194,8 30x30
-                    ImageNode#image 201,15 16x16
-                Node#view 10,44 216x21
-                  TextNode#level-title 18,46 30x19 "here"
-                  Node#view 56,55 154x0
-                  TextNode#text 218,48 0x15 ""
-                Node#scroll 10,71 216x629
+              Node#sidebar-pane 10,8 216x692
+                Node#view 10,8 216x692
+                  Node#view 10,8 216x30
+                    Node#level-back 12,10 32x26
+                      ImageNode#image 14,16 14x14
+                      TextNode#text 30,16 6x15 "/"
+                    Node#view 46,23 146x0
+                    Node#level-home 194,8 30x30
+                      ImageNode#image 201,15 16x16
+                  Node#view 10,44 216x21
+                    TextNode#level-title 18,46 30x19 "here"
+                    Node#view 56,55 154x0
+                    TextNode#text 218,48 0x15 ""
+                  Node#scroll 10,71 216x629
           Node#view 236,0 864x700
             Node#main 236,0 564x700
               Node#toolbar 237,0 563x40
@@ -1608,7 +1622,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/no results: Browser/no results (96 lines)
+--- story Browser/no results: Browser/no results (97 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -1616,25 +1630,26 @@ Node#root 0,0 390x844
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
             Node#sidebar-body 10,8 216x692
-              Node#view 10,8 216x692
-                Node#view 10,8 216x30
-                  Node#level-back 12,10 56x26
-                    ImageNode#image 14,16 14x14
-                    TextNode#text 30,16 30x15 "tests"
-                  Node#view 70,23 122x0
-                  Node#level-home 194,8 30x30
-                    ImageNode#image 201,15 16x16
-                Node#view 10,44 216x21
-                  TextNode#level-title 18,46 60x19 "fixtures"
-                  Node#view 86,55 72x0
-                  TextNode#text 166,48 52x15 "2 folders"
-                Node#scroll 10,71 216x629
-                  Node#button 10,71 216x28
-                    ImageNode#image 18,77 16x16
-                    TextNode#text 42,77 176x16 "folder"
-                  Node#button 10,100 216x28
-                    ImageNode#image 18,106 16x16
-                    TextNode#text 42,106 176x16 "pdf"
+              Node#sidebar-pane 10,8 216x692
+                Node#view 10,8 216x692
+                  Node#view 10,8 216x30
+                    Node#level-back 12,10 56x26
+                      ImageNode#image 14,16 14x14
+                      TextNode#text 30,16 30x15 "tests"
+                    Node#view 70,23 122x0
+                    Node#level-home 194,8 30x30
+                      ImageNode#image 201,15 16x16
+                  Node#view 10,44 216x21
+                    TextNode#level-title 18,46 60x19 "fixtures"
+                    Node#view 86,55 72x0
+                    TextNode#text 166,48 52x15 "2 folders"
+                  Node#scroll 10,71 216x629
+                    Node#button 10,71 216x28
+                      ImageNode#image 18,77 16x16
+                      TextNode#text 42,77 176x16 "folder"
+                    Node#button 10,100 216x28
+                      ImageNode#image 18,106 16x16
+                      TextNode#text 42,106 176x16 "pdf"
           Node#view 236,0 864x700
             Node#main 236,0 564x700
               Node#toolbar 237,0 563x40
@@ -1706,7 +1721,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/search focused, dark: Browser/search focused, dark (148 lines)
+--- story Browser/search focused, dark: Browser/search focused, dark (149 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -1714,25 +1729,26 @@ Node#root 0,0 390x844
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
             Node#sidebar-body 10,8 216x692
-              Node#view 10,8 216x692
-                Node#view 10,8 216x30
-                  Node#level-back 12,10 56x26
-                    ImageNode#image 14,16 14x14
-                    TextNode#text 30,16 30x15 "tests"
-                  Node#view 70,23 122x0
-                  Node#level-home 194,8 30x30
-                    ImageNode#image 201,15 16x16
-                Node#view 10,44 216x21
-                  TextNode#level-title 18,46 60x19 "fixtures"
-                  Node#view 86,55 72x0
-                  TextNode#text 166,48 52x15 "2 folders"
-                Node#scroll 10,71 216x629
-                  Node#button 10,71 216x28
-                    ImageNode#image 18,77 16x16
-                    TextNode#text 42,77 176x16 "folder"
-                  Node#button 10,100 216x28
-                    ImageNode#image 18,106 16x16
-                    TextNode#text 42,106 176x16 "pdf"
+              Node#sidebar-pane 10,8 216x692
+                Node#view 10,8 216x692
+                  Node#view 10,8 216x30
+                    Node#level-back 12,10 56x26
+                      ImageNode#image 14,16 14x14
+                      TextNode#text 30,16 30x15 "tests"
+                    Node#view 70,23 122x0
+                    Node#level-home 194,8 30x30
+                      ImageNode#image 201,15 16x16
+                  Node#view 10,44 216x21
+                    TextNode#level-title 18,46 60x19 "fixtures"
+                    Node#view 86,55 72x0
+                    TextNode#text 166,48 52x15 "2 folders"
+                  Node#scroll 10,71 216x629
+                    Node#button 10,71 216x28
+                      ImageNode#image 18,77 16x16
+                      TextNode#text 42,77 176x16 "folder"
+                    Node#button 10,100 216x28
+                      ImageNode#image 18,106 16x16
+                      TextNode#text 42,106 176x16 "pdf"
           Node#view 236,0 864x700
             Node#main 236,0 564x700
               Node#toolbar 237,0 563x40
@@ -1856,7 +1872,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/search focused, light: Browser/search focused, light (148 lines)
+--- story Browser/search focused, light: Browser/search focused, light (149 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -1864,25 +1880,26 @@ Node#root 0,0 390x844
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
             Node#sidebar-body 10,8 216x692
-              Node#view 10,8 216x692
-                Node#view 10,8 216x30
-                  Node#level-back 12,10 56x26
-                    ImageNode#image 14,16 14x14
-                    TextNode#text 30,16 30x15 "tests"
-                  Node#view 70,23 122x0
-                  Node#level-home 194,8 30x30
-                    ImageNode#image 201,15 16x16
-                Node#view 10,44 216x21
-                  TextNode#level-title 18,46 60x19 "fixtures"
-                  Node#view 86,55 72x0
-                  TextNode#text 166,48 52x15 "2 folders"
-                Node#scroll 10,71 216x629
-                  Node#button 10,71 216x28
-                    ImageNode#image 18,77 16x16
-                    TextNode#text 42,77 176x16 "folder"
-                  Node#button 10,100 216x28
-                    ImageNode#image 18,106 16x16
-                    TextNode#text 42,106 176x16 "pdf"
+              Node#sidebar-pane 10,8 216x692
+                Node#view 10,8 216x692
+                  Node#view 10,8 216x30
+                    Node#level-back 12,10 56x26
+                      ImageNode#image 14,16 14x14
+                      TextNode#text 30,16 30x15 "tests"
+                    Node#view 70,23 122x0
+                    Node#level-home 194,8 30x30
+                      ImageNode#image 201,15 16x16
+                  Node#view 10,44 216x21
+                    TextNode#level-title 18,46 60x19 "fixtures"
+                    Node#view 86,55 72x0
+                    TextNode#text 166,48 52x15 "2 folders"
+                  Node#scroll 10,71 216x629
+                    Node#button 10,71 216x28
+                      ImageNode#image 18,77 16x16
+                      TextNode#text 42,77 176x16 "folder"
+                    Node#button 10,100 216x28
+                      ImageNode#image 18,106 16x16
+                      TextNode#text 42,106 176x16 "pdf"
           Node#view 236,0 864x700
             Node#main 236,0 564x700
               Node#toolbar 237,0 563x40
@@ -2006,7 +2023,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/several selected: Browser/several selected (175 lines)
+--- story Browser/several selected: Browser/several selected (176 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -2014,25 +2031,26 @@ Node#root 0,0 390x844
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
             Node#sidebar-body 10,8 216x692
-              Node#view 10,8 216x692
-                Node#view 10,8 216x30
-                  Node#level-back 12,10 56x26
-                    ImageNode#image 14,16 14x14
-                    TextNode#text 30,16 30x15 "tests"
-                  Node#view 70,23 122x0
-                  Node#level-home 194,8 30x30
-                    ImageNode#image 201,15 16x16
-                Node#view 10,44 216x21
-                  TextNode#level-title 18,46 60x19 "fixtures"
-                  Node#view 86,55 72x0
-                  TextNode#text 166,48 52x15 "2 folders"
-                Node#scroll 10,71 216x629
-                  Node#button 10,71 216x28
-                    ImageNode#image 18,77 16x16
-                    TextNode#text 42,77 176x16 "folder"
-                  Node#button 10,100 216x28
-                    ImageNode#image 18,106 16x16
-                    TextNode#text 42,106 176x16 "pdf"
+              Node#sidebar-pane 10,8 216x692
+                Node#view 10,8 216x692
+                  Node#view 10,8 216x30
+                    Node#level-back 12,10 56x26
+                      ImageNode#image 14,16 14x14
+                      TextNode#text 30,16 30x15 "tests"
+                    Node#view 70,23 122x0
+                    Node#level-home 194,8 30x30
+                      ImageNode#image 201,15 16x16
+                  Node#view 10,44 216x21
+                    TextNode#level-title 18,46 60x19 "fixtures"
+                    Node#view 86,55 72x0
+                    TextNode#text 166,48 52x15 "2 folders"
+                  Node#scroll 10,71 216x629
+                    Node#button 10,71 216x28
+                      ImageNode#image 18,77 16x16
+                      TextNode#text 42,77 176x16 "folder"
+                    Node#button 10,100 216x28
+                      ImageNode#image 18,106 16x16
+                      TextNode#text 42,106 176x16 "pdf"
           Node#view 236,0 864x700
             Node#main 236,0 564x700
               Node#toolbar 237,0 563x40
@@ -2183,7 +2201,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Browser/sidebar's volume: Browser/sidebar's volume (156 lines)
+--- story Browser/sidebar's volume: Browser/sidebar's volume (157 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -2191,33 +2209,34 @@ Node#root 0,0 390x844
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
             Node#sidebar-body 10,8 216x692
-              Node#view 10,8 216x692
-                Node#view 10,8 216x30
-                  Node#level-back 12,10 98x26
-                    ImageNode#image 14,16 14x14
-                    TextNode#text 30,16 72x15 "Macintosh HD"
-                  Node#view 112,23 80x0
-                  Node#level-home 194,8 30x30
-                    ImageNode#image 201,15 16x16
-                Node#view 10,44 216x21
-                  TextNode#level-title 18,46 60x19 "fixtures"
-                  Node#view 86,55 72x0
-                  TextNode#text 166,48 52x15 "2 folders"
-                Node#scroll 10,71 216x552
-                  Node#button 10,71 216x28
-                    ImageNode#image 18,77 16x16
-                    TextNode#text 42,77 176x16 "folder"
-                  Node#button 10,100 216x28
-                    ImageNode#image 18,106 16x16
-                    TextNode#text 42,106 176x16 "pdf"
-                Node#capacity 10,629 216x61
-                  Node#view 20,637 196x15
-                    ImageNode#image 20,637 15x15
-                    TextNode#capacity-name 42,637 149x15 "Macintosh HD"
-                    TextNode#capacity-used 198,637 18x15 "91%"
-                  Node#capacity-bar 20,658 196x4
-                    Node#view 20,658 178x4
-                  TextNode#capacity-free 20,668 196x14 "45.3 GB free of 494.0 GB"
+              Node#sidebar-pane 10,8 216x692
+                Node#view 10,8 216x692
+                  Node#view 10,8 216x30
+                    Node#level-back 12,10 98x26
+                      ImageNode#image 14,16 14x14
+                      TextNode#text 30,16 72x15 "Macintosh HD"
+                    Node#view 112,23 80x0
+                    Node#level-home 194,8 30x30
+                      ImageNode#image 201,15 16x16
+                  Node#view 10,44 216x21
+                    TextNode#level-title 18,46 60x19 "fixtures"
+                    Node#view 86,55 72x0
+                    TextNode#text 166,48 52x15 "2 folders"
+                  Node#scroll 10,71 216x552
+                    Node#button 10,71 216x28
+                      ImageNode#image 18,77 16x16
+                      TextNode#text 42,77 176x16 "folder"
+                    Node#button 10,100 216x28
+                      ImageNode#image 18,106 16x16
+                      TextNode#text 42,106 176x16 "pdf"
+                  Node#capacity 10,629 216x61
+                    Node#view 20,637 196x15
+                      ImageNode#image 20,637 15x15
+                      TextNode#capacity-name 42,637 149x15 "Macintosh HD"
+                      TextNode#capacity-used 198,637 18x15 "91%"
+                    Node#capacity-bar 20,658 196x4
+                      Node#view 20,658 178x4
+                    TextNode#capacity-free 20,668 196x14 "45.3 GB free of 494.0 GB"
           Node#view 236,0 864x700
             Node#main 236,0 564x700
               Node#toolbar 237,0 563x40
@@ -2341,7 +2360,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Viewer/Markdown, dark: Viewer/Markdown, dark (440 lines)
+--- story Viewer/Markdown, dark: Viewer/Markdown, dark (441 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -2349,22 +2368,23 @@ Node#root 0,0 390x844
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
             Node#sidebar-body 10,8 216x692
-              Node#view 10,8 216x692
-                Node#view 10,8 216x30
-                  Node#level-back 12,10 74x26
-                    ImageNode#image 14,16 14x14
-                    TextNode#text 30,16 48x15 "Overview"
-                  Node#view 88,23 104x0
-                  Node#level-home 194,8 30x30
-                    ImageNode#image 201,15 16x16
-                Node#view 10,44 216x21
-                  TextNode#level-title 18,46 53x19 "Samples"
-                  Node#view 79,55 85x0
-                  TextNode#text 172,48 46x15 "1 folder"
-                Node#scroll 10,71 216x629
-                  Node#button 10,71 216x28
-                    ImageNode#image 18,77 16x16
-                    TextNode#text 42,77 176x16 "More"
+              Node#sidebar-pane 10,8 216x692
+                Node#view 10,8 216x692
+                  Node#view 10,8 216x30
+                    Node#level-back 12,10 74x26
+                      ImageNode#image 14,16 14x14
+                      TextNode#text 30,16 48x15 "Overview"
+                    Node#view 88,23 104x0
+                    Node#level-home 194,8 30x30
+                      ImageNode#image 201,15 16x16
+                  Node#view 10,44 216x21
+                    TextNode#level-title 18,46 53x19 "Samples"
+                    Node#view 79,55 85x0
+                    TextNode#text 172,48 46x15 "1 folder"
+                  Node#scroll 10,71 216x629
+                    Node#button 10,71 216x28
+                      ImageNode#image 18,77 16x16
+                      TextNode#text 42,77 176x16 "More"
           Node#view 236,0 864x700
             Node#main 236,0 564x700
               Node#toolbar 237,0 563x40
@@ -2783,7 +2803,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Viewer/Markdown, light: Viewer/Markdown, light (440 lines)
+--- story Viewer/Markdown, light: Viewer/Markdown, light (441 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -2791,22 +2811,23 @@ Node#root 0,0 390x844
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
             Node#sidebar-body 10,8 216x692
-              Node#view 10,8 216x692
-                Node#view 10,8 216x30
-                  Node#level-back 12,10 74x26
-                    ImageNode#image 14,16 14x14
-                    TextNode#text 30,16 48x15 "Overview"
-                  Node#view 88,23 104x0
-                  Node#level-home 194,8 30x30
-                    ImageNode#image 201,15 16x16
-                Node#view 10,44 216x21
-                  TextNode#level-title 18,46 53x19 "Samples"
-                  Node#view 79,55 85x0
-                  TextNode#text 172,48 46x15 "1 folder"
-                Node#scroll 10,71 216x629
-                  Node#button 10,71 216x28
-                    ImageNode#image 18,77 16x16
-                    TextNode#text 42,77 176x16 "More"
+              Node#sidebar-pane 10,8 216x692
+                Node#view 10,8 216x692
+                  Node#view 10,8 216x30
+                    Node#level-back 12,10 74x26
+                      ImageNode#image 14,16 14x14
+                      TextNode#text 30,16 48x15 "Overview"
+                    Node#view 88,23 104x0
+                    Node#level-home 194,8 30x30
+                      ImageNode#image 201,15 16x16
+                  Node#view 10,44 216x21
+                    TextNode#level-title 18,46 53x19 "Samples"
+                    Node#view 79,55 85x0
+                    TextNode#text 172,48 46x15 "1 folder"
+                  Node#scroll 10,71 216x629
+                    Node#button 10,71 216x28
+                      ImageNode#image 18,77 16x16
+                      TextNode#text 42,77 176x16 "More"
           Node#view 236,0 864x700
             Node#main 236,0 564x700
               Node#toolbar 237,0 563x40
@@ -3225,7 +3246,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Viewer/PDF, between two pages: Viewer/PDF, between two pages (127 lines)
+--- story Viewer/PDF, between two pages: Viewer/PDF, between two pages (128 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -3233,22 +3254,23 @@ Node#root 0,0 390x844
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
             Node#sidebar-body 10,8 216x692
-              Node#view 10,8 216x692
-                Node#view 10,8 216x30
-                  Node#level-back 12,10 56x26
-                    ImageNode#image 14,16 14x14
-                    TextNode#text 30,16 30x15 "tests"
-                  Node#view 70,23 122x0
-                  Node#level-home 194,8 30x30
-                    ImageNode#image 201,15 16x16
-                Node#view 10,44 216x21
-                  TextNode#level-title 18,46 60x19 "fixtures"
-                  Node#view 86,55 78x0
-                  TextNode#text 172,48 46x15 "1 folder"
-                Node#scroll 10,71 216x629
-                  Node#button 10,71 216x28
-                    ImageNode#image 18,77 16x16
-                    TextNode#text 42,77 176x16 "pdf"
+              Node#sidebar-pane 10,8 216x692
+                Node#view 10,8 216x692
+                  Node#view 10,8 216x30
+                    Node#level-back 12,10 56x26
+                      ImageNode#image 14,16 14x14
+                      TextNode#text 30,16 30x15 "tests"
+                    Node#view 70,23 122x0
+                    Node#level-home 194,8 30x30
+                      ImageNode#image 201,15 16x16
+                  Node#view 10,44 216x21
+                    TextNode#level-title 18,46 60x19 "fixtures"
+                    Node#view 86,55 78x0
+                    TextNode#text 172,48 46x15 "1 folder"
+                  Node#scroll 10,71 216x629
+                    Node#button 10,71 216x28
+                      ImageNode#image 18,77 16x16
+                      TextNode#text 42,77 176x16 "pdf"
           Node#view 236,0 864x700
             Node#main 236,0 564x700
               Node#toolbar 237,0 563x40
@@ -3354,7 +3376,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Viewer/error: Viewer/error (169 lines)
+--- story Viewer/error: Viewer/error (170 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -3362,25 +3384,26 @@ Node#root 0,0 390x844
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
             Node#sidebar-body 10,8 216x692
-              Node#view 10,8 216x692
-                Node#view 10,8 216x30
-                  Node#level-back 12,10 56x26
-                    ImageNode#image 14,16 14x14
-                    TextNode#text 30,16 30x15 "tests"
-                  Node#view 70,23 122x0
-                  Node#level-home 194,8 30x30
-                    ImageNode#image 201,15 16x16
-                Node#view 10,44 216x21
-                  TextNode#level-title 18,46 60x19 "fixtures"
-                  Node#view 86,55 72x0
-                  TextNode#text 166,48 52x15 "2 folders"
-                Node#scroll 10,71 216x629
-                  Node#button 10,71 216x28
-                    ImageNode#image 18,77 16x16
-                    TextNode#text 42,77 176x16 "folder"
-                  Node#button 10,100 216x28
-                    ImageNode#image 18,106 16x16
-                    TextNode#text 42,106 176x16 "pdf"
+              Node#sidebar-pane 10,8 216x692
+                Node#view 10,8 216x692
+                  Node#view 10,8 216x30
+                    Node#level-back 12,10 56x26
+                      ImageNode#image 14,16 14x14
+                      TextNode#text 30,16 30x15 "tests"
+                    Node#view 70,23 122x0
+                    Node#level-home 194,8 30x30
+                      ImageNode#image 201,15 16x16
+                  Node#view 10,44 216x21
+                    TextNode#level-title 18,46 60x19 "fixtures"
+                    Node#view 86,55 72x0
+                    TextNode#text 166,48 52x15 "2 folders"
+                  Node#scroll 10,71 216x629
+                    Node#button 10,71 216x28
+                      ImageNode#image 18,77 16x16
+                      TextNode#text 42,77 176x16 "folder"
+                    Node#button 10,100 216x28
+                      ImageNode#image 18,106 16x16
+                      TextNode#text 42,106 176x16 "pdf"
           Node#view 236,0 864x700
             Node#main 236,0 564x700
               Node#toolbar 237,0 563x40
@@ -3525,7 +3548,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Viewer/fit: Viewer/fit (169 lines)
+--- story Viewer/fit: Viewer/fit (170 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -3533,25 +3556,26 @@ Node#root 0,0 390x844
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
             Node#sidebar-body 10,8 216x692
-              Node#view 10,8 216x692
-                Node#view 10,8 216x30
-                  Node#level-back 12,10 56x26
-                    ImageNode#image 14,16 14x14
-                    TextNode#text 30,16 30x15 "tests"
-                  Node#view 70,23 122x0
-                  Node#level-home 194,8 30x30
-                    ImageNode#image 201,15 16x16
-                Node#view 10,44 216x21
-                  TextNode#level-title 18,46 60x19 "fixtures"
-                  Node#view 86,55 72x0
-                  TextNode#text 166,48 52x15 "2 folders"
-                Node#scroll 10,71 216x629
-                  Node#button 10,71 216x28
-                    ImageNode#image 18,77 16x16
-                    TextNode#text 42,77 176x16 "folder"
-                  Node#button 10,100 216x28
-                    ImageNode#image 18,106 16x16
-                    TextNode#text 42,106 176x16 "pdf"
+              Node#sidebar-pane 10,8 216x692
+                Node#view 10,8 216x692
+                  Node#view 10,8 216x30
+                    Node#level-back 12,10 56x26
+                      ImageNode#image 14,16 14x14
+                      TextNode#text 30,16 30x15 "tests"
+                    Node#view 70,23 122x0
+                    Node#level-home 194,8 30x30
+                      ImageNode#image 201,15 16x16
+                  Node#view 10,44 216x21
+                    TextNode#level-title 18,46 60x19 "fixtures"
+                    Node#view 86,55 72x0
+                    TextNode#text 166,48 52x15 "2 folders"
+                  Node#scroll 10,71 216x629
+                    Node#button 10,71 216x28
+                      ImageNode#image 18,77 16x16
+                      TextNode#text 42,77 176x16 "folder"
+                    Node#button 10,100 216x28
+                      ImageNode#image 18,106 16x16
+                      TextNode#text 42,106 176x16 "pdf"
           Node#view 236,0 864x700
             Node#main 236,0 564x700
               Node#toolbar 237,0 563x40
@@ -3696,7 +3720,7 @@ Node#root 0,0 390x844
         Node#window-start 16,0 0x40
         Node#window-end 1100,0 0x0
 
---- story Viewer/status line: Viewer/status line (171 lines)
+--- story Viewer/status line: Viewer/status line (172 lines)
 Node#root 0,0 390x844
   Node#view 0,0 1100x700
     Node#view 0,0 1100x700
@@ -3704,25 +3728,26 @@ Node#root 0,0 390x844
         Node#browser 0,0 1100x700
           Node#sidebar 0,0 236x700
             Node#sidebar-body 10,8 216x692
-              Node#view 10,8 216x692
-                Node#view 10,8 216x30
-                  Node#level-back 12,10 56x26
-                    ImageNode#image 14,16 14x14
-                    TextNode#text 30,16 30x15 "tests"
-                  Node#view 70,23 122x0
-                  Node#level-home 194,8 30x30
-                    ImageNode#image 201,15 16x16
-                Node#view 10,44 216x21
-                  TextNode#level-title 18,46 60x19 "fixtures"
-                  Node#view 86,55 72x0
-                  TextNode#text 166,48 52x15 "2 folders"
-                Node#scroll 10,71 216x629
-                  Node#button 10,71 216x28
-                    ImageNode#image 18,77 16x16
-                    TextNode#text 42,77 176x16 "folder"
-                  Node#button 10,100 216x28
-                    ImageNode#image 18,106 16x16
-                    TextNode#text 42,106 176x16 "pdf"
+              Node#sidebar-pane 10,8 216x692
+                Node#view 10,8 216x692
+                  Node#view 10,8 216x30
+                    Node#level-back 12,10 56x26
+                      ImageNode#image 14,16 14x14
+                      TextNode#text 30,16 30x15 "tests"
+                    Node#view 70,23 122x0
+                    Node#level-home 194,8 30x30
+                      ImageNode#image 201,15 16x16
+                  Node#view 10,44 216x21
+                    TextNode#level-title 18,46 60x19 "fixtures"
+                    Node#view 86,55 72x0
+                    TextNode#text 166,48 52x15 "2 folders"
+                  Node#scroll 10,71 216x629
+                    Node#button 10,71 216x28
+                      ImageNode#image 18,77 16x16
+                      TextNode#text 42,77 176x16 "folder"
+                    Node#button 10,100 216x28
+                      ImageNode#image 18,106 16x16
+                      TextNode#text 42,106 176x16 "pdf"
           Node#view 236,0 864x700
             Node#main 236,0 564x700
               Node#toolbar 237,0 563x40
