@@ -798,7 +798,8 @@ class DevCommand {
 		var dir = '${e.root}/bin/dev/${e.target}', named = '$dir/${App.ios(e.name, e.config).label}';
 		try {
 			TestCommand.mkdirs(dir);
-			if (FileSystem.exists(named) && FileSystem.stat(named).size == FileSystem.stat(host).size) return named;
+			// (the same host: a link to it, or a copy keeping its time; a size alone matched a host built again from a small change)
+			if (FileSystem.exists(named) && same(FileSystem.stat(named), FileSystem.stat(host))) return named;
 			if (FileSystem.exists(named)) FileSystem.deleteFile(named);
 			// (a link costs nothing; another disk: a copy)
 			if (Sys.command("ln", [host, named]) != 0 && Sys.command("cp", ["-p", host, named]) != 0) return host;
@@ -806,6 +807,9 @@ class DevCommand {
 		} catch (_:Dynamic)
 			return host;
 	}
+
+	static function same(a:sys.FileStat, b:sys.FileStat):Bool
+		return a.size == b.size && a.mtime.getTime() == b.mtime.getTime();
 
 	// (the app's icon for the Dock while it runs unbundled: the manifest's, as a
 	// PNG beside the build, its path in HELDER_APP_ICON for helder.os; made once)
