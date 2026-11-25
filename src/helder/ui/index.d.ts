@@ -1257,7 +1257,7 @@ export declare class Theme {
 	// whether the colours given inline are the dark ones (read by c: a hole
 	// that reads it follows it)
 	static appearance: (() => boolean);
-	static c(name: keyof Tokens): Color;
+	static c(name: string): Color;
 	// the one shadow, of what floats
 	static popover(): string;
 	static readonly sheet: StyleSheet;

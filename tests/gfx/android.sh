@@ -28,7 +28,7 @@
 set -u
 apk=$1
 out=${2:-.}
-pkg=org.helder.androidtest
+pkg=org.helder.androidcheck
 mkdir -p "$out"
 log="$out/logcat.txt"
 failed=0

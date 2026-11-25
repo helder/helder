@@ -208,12 +208,12 @@ class JobsWork {
 
 	// (the line fault throws at; a try: a function of its own, never inlined)
 	public static final faultAt = line() + 3;
-	public static function fault(x:Int):Int {
+	@:nullSafety(Off) public static function fault(x:Int):Int {
 		var none:Null<JobsBox> = try x > 0 ? null : new JobsBox() catch (_:Dynamic) null;
 		return none.n;
 	}
 
-	static function line(?p:haxe.PosInfos):Int
+	@:nullSafety(Off) static function line(?p:haxe.PosInfos):Int
 		return p.lineNumber;
 
 	public static function count(p:{n:Int, out:Channel<{i:Int, s:String}>}):Void {

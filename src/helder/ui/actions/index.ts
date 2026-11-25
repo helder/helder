@@ -30,7 +30,7 @@
 // menus with their keys and their handlers' states. `Standard` is
 // StandardAction's (standard::Quit, standard::Copy...).
 import { Script } from './runtime';
-import type { ActionState } from 'helder/ui';
+import type { ActionState, Menu, MenuItem, PlatformMenuItem } from 'helder/ui';
 
 // an action's arguments (a method's), as an object (its result)
 type Method = (...args: any[]) => object | void;
@@ -259,20 +259,9 @@ export function stateOf(ui: Ui, action: Action, from?: unknown): ActionState {
 
 // Menus (helder.ui.menu): items bound to actions, each shown with its keys
 // and its handler's state; separators, submenus, and the standard items
-// each platform has (roles: "about", "quit", "copy", "paste"...)
-export type MenuItem = { readonly __menuItem: true };
-export type Menu = { label: string; items: MenuItem[]; role?: "window" };
-// what a platform's menu is given (helder.ui.platform.PlatformMenuItem)
-export type PlatformMenuItem = {
-	id: number;
-	label: string;
-	shortcut?: string;
-	disabled?: boolean;
-	checked?: boolean;
-	separator?: boolean;
-	items?: PlatformMenuItem[];
-	role?: string;
-};
+// each platform has (roles: "about", "quit", "copy", "paste"...). helder/ui's
+// own types, so its MenuBarView takes these menus
+export type { Menu, MenuItem, PlatformMenuItem };
 
 export function item(label: string, action: Action): MenuItem {
 	return Script.item(label, action) as any;

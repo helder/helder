@@ -16,7 +16,7 @@ import helder.ui.UiWindow;
 // program's offset at the release is the compositor's, its glide begun:
 // at least the travel. Checked once it settled; Back closes.
 //   helder build tests/os/AndroidTouchCheck.hx --target android-x86_64 -o AndroidTouchCheck.apk
-//   (the app org.helder.androidtouchtest)
+//   (the app org.helder.androidtouchcheck)
 class AndroidTouchCheck {
 	static var failed = 0;
 
