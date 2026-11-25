@@ -72,6 +72,12 @@ class Soft {
 	var shared:Array<SShared> = [];
 	public var frame = 0;
 
+	// (helder.parallel's kernels) the locals whose lanes a call holds
+	// consecutively (the item's index and its copies: the range form calls 4
+	// items in a row), their storage elements read and written as rows
+	// (rowsRead)
+	public final rows = new Map<SVar, Bool>();
+
 	public function new(prog:SProgram, prefix:String, pack:Array<String>, module:String) {
 		this.prog = prog;
 		this.prefix = prefix;
@@ -158,6 +164,98 @@ class Soft {
 		return macro {
 			var sv = $v;
 			$b{out};
+		};
+	}
+
+	// element i of the storage buffer at b set to v, one element (the scalar form's)
+	public function storageWriteAt(t:SType, b:Expr, i:Expr, v:Expr):Expr {
+		var l = layout(t);
+		function write(t:SType, off:Int, v:Expr):Array<Expr>
+			return switch t {
+				case TFloat: [macro helder.gfx.soft.Buffers.setF32At($b, $i, $v{l.stride}, $v{off}, $v)];
+				case TInt: [macro helder.gfx.soft.Buffers.setI32At($b, $i, $v{l.stride}, $v{off}, $v)];
+				case TBool: [macro helder.gfx.soft.Buffers.setI32At($b, $i, $v{l.stride}, $v{off}, $v ? 1 : 0)];
+				case TVec(n): [for (k in 0...n) for (x in write(TFloat, off + 4 * k, Soft.dot(v, "xyzw".charAt(k)))) x];
+				case TMat4: [for (k in 0...4) for (x in write(TVec(4), off + 16 * k, Soft.dot(v, "c" + k))) x];
+				case t: Context.error('soft: a storage element of ${Names.typeName(t)}', pos);
+			}
+		var out = switch t {
+			case TStruct(st): [for (k in 0...st.fields.length) for (x in write(st.fields[k].type, l.offsets[k], Soft.dot(macro sv, "f_" + st.fields[k].name))) x];
+			case _: write(t, 0, macro sv);
+		}
+		return macro {
+			var sv = $v;
+			$b{out};
+		};
+	}
+
+	// whether an index is a row index (rows: its lanes consecutive)
+	public function isRow(i:SExpr):Bool
+		return switch i.e {
+			case ELocal(v): rows.exists(v);
+			case _: false;
+		}
+
+	// element i's lanes when i's lanes are consecutive (from i.get(0)): a
+	// Float or Int element one 128-bit load, a Vec4 at a 16-byte offset (a
+	// Mat4's columns) four loads transposed (Rows), other fields lane by
+	// lane; no bounds check (helder.parallel's range form: its items are
+	// there, the buffer padded to 4 elements)
+	public function rowsRead(t:SType, b:Expr, i:Expr):Expr {
+		var l = layout(t), s = l.stride;
+		function read(t:SType, off:Int):Expr
+			return switch t {
+				case TFloat if (s == 4): macro helder.gfx.soft.Lane.load(rd, ro);
+				case TInt if (s == 4): macro helder.gfx.soft.LaneInt.of(hxmc.simd.I32x4.loadPtr(rd, ro));
+				case TFloat: macro helder.gfx.soft.Rows.f32(rd, ro + $v{off}, $v{s});
+				case TInt: macro helder.gfx.soft.Rows.i32(rd, ro + $v{off}, $v{s});
+				case TBool: macro helder.gfx.soft.Rows.i32(rd, ro + $v{off}, $v{s}).ne(helder.gfx.soft.LaneInt.splat(0));
+				case TVec(4) if (off % 16 == 0): macro helder.gfx.soft.Rows.vec4(rd, ro + $v{off}, $v{s});
+				case TVec(n): {expr: haxe.macro.Expr.ExprDef.ENew({pack: SOFT, name: 'Lane$n'}, [for (k in 0...n) read(TFloat, off + 4 * k)]), pos: pos};
+				case TMat4: {expr: haxe.macro.Expr.ExprDef.ENew({pack: SOFT, name: "LaneMat"}, [for (k in 0...4) read(TVec(4), off + 16 * k)]), pos: pos};
+				case t: Context.error('soft: a storage element of ${Names.typeName(t)}', pos);
+			}
+		var value = switch t {
+			case TStruct(st):
+				var tp:TypePath = {pack: pack, name: laneStruct(st)};
+				{expr: haxe.macro.Expr.ExprDef.ENew(tp, [for (k in 0...st.fields.length) read(st.fields[k].type, l.offsets[k])]), pos: pos};
+			case _: read(t, 0);
+		}
+		return macro {
+			var rd = hxmc.unsafe.Mem.getPtr($b, 0);
+			var ro = $i.get(0) * $v{s};
+			$value;
+		};
+	}
+
+	// element i set to v (lanes) where m's lanes are, i's lanes consecutive:
+	// all four as rows (rowsRead's), else lane by lane (storageWrite's)
+	public function rowsWrite(t:SType, b:Expr, i:Expr, v:Expr):Expr {
+		var l = layout(t), s = l.stride;
+		function write(t:SType, off:Int, v:Expr):Array<Expr>
+			return switch t {
+				case TFloat if (s == 4): [macro $v.store(rd, ro)];
+				case TInt if (s == 4): [macro $v.bits().storePtr(rd, ro)];
+				case TFloat: [macro helder.gfx.soft.Rows.setF32(rd, ro + $v{off}, $v{s}, $v)];
+				case TInt: [macro helder.gfx.soft.Rows.setI32(rd, ro + $v{off}, $v{s}, $v)];
+				case TBool: [macro helder.gfx.soft.Rows.setI32(rd, ro + $v{off}, $v{s}, helder.gfx.soft.LaneInt.select($v, helder.gfx.soft.LaneInt.splat(1), helder.gfx.soft.LaneInt.splat(0)))];
+				case TVec(4) if (off % 16 == 0): [macro helder.gfx.soft.Rows.setVec4(rd, ro + $v{off}, $v{s}, $v)];
+				case TVec(n): [for (k in 0...n) for (x in write(TFloat, off + 4 * k, Soft.dot(v, "xyzw".charAt(k)))) x];
+				case TMat4: [for (k in 0...4) for (x in write(TVec(4), off + 16 * k, Soft.dot(v, "c" + k))) x];
+				case t: Context.error('soft: a storage element of ${Names.typeName(t)}', pos);
+			}
+		var out = switch t {
+			case TStruct(st): [for (k in 0...st.fields.length) for (x in write(st.fields[k].type, l.offsets[k], Soft.dot(macro rv, "f_" + st.fields[k].name))) x];
+			case _: write(t, 0, macro rv);
+		}
+		var scattered = storageWrite(t, b, i, macro rv);
+		return macro {
+			var rv = $v;
+			if (m.all()) {
+				var rd = hxmc.unsafe.Mem.getPtr($b, 0);
+				var ro = $i.get(0) * $v{s};
+				$b{out};
+			} else $scattered;
 		};
 	}
 
@@ -1215,6 +1313,8 @@ class Fn {
 				l.lanes ? [macro $i{l.cont} = $i{l.cont} | m, macro m = helder.gfx.soft.LaneBool.none()] : [macro continue];
 			case SStore(b, i, v):
 				switch b.t {
+					case TStorage(t, _) | TWorkgroup(t) if (scalar): [soft.storageWriteAt(t, sx(b), sx(i), sx(v))];
+					case TStorage(t, _) if (soft.isRow(i)): [soft.rowsWrite(t, sx(b), lx(i), lane(v))];
 					case TStorage(t, _) | TWorkgroup(t): [soft.writeStorage(t, sx(b), lane(i), lane(v))];
 					case _: Context.error("soft: a store into what is not a storage buffer", pos);
 				}
@@ -1429,6 +1529,7 @@ class Fn {
 						}
 					case _ if (x.t.match(TStorage(_, _) | TWorkgroup(_))):
 						switch x.t {
+							case TStorage(t, _) if (soft.isRow(i)): soft.rowsRead(t, sx(x), lx(i));
 							case TStorage(t, _) | TWorkgroup(t): soft.readStorage(t, sx(x), lane(i), true);
 							case _: throw "soft";
 						}

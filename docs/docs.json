@@ -42,6 +42,7 @@
 			"title": "Games",
 			"pages": [
 				"physics",
+				"parallel",
 				"input",
 				"sound"
 			]

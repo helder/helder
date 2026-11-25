@@ -22,6 +22,7 @@ class Bench {
 		{name: "bench frame", about: "tests/3d's scenes timed, first frame and after", run: () -> scenes("FrameBench")},
 		{name: "bench async", about: "helder.async's tasks, timers, switches and locks", run: () -> program("AsyncBench", cps(["src"]))},
 		{name: "bench watch", about: "the watchers' cost a tick on a large tree", run: () -> program("WatchBench", cps(["src"]))},
+		{name: "bench parallel", about: "helder.parallel's forms on a particle step (docs/design/parallel.md)", run: () -> program("ParallelBench", cps(["src", "tests/bench/parallel"]))},
 		{name: "bench soft", about: "the CPU's canvas against the GPU on the same scenes", run: () -> {
 			program("SoftBench", uiCp());
 			run(exePath("bin/bench/SoftBench", HOST), [], ["HELDER_SOFT" => "1"]);

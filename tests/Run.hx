@@ -26,7 +26,7 @@ using StringTools;
 // bunx playwright install chromium); the gfx, ui-draw and 3d lanes Mesa and
 // Xvfb on Linux.
 class Run {
-	static final HEADLESS = ["view", "text", "image", "ui", "layout-conformance", "gfx-shader", "async", "header-check", "jobs", "test", "os", "cli", "asset", "pack", "devtools", "typescript", "examples", "viewer", "canvas", "pdf", "syntax", "text-quality", "ui-soft", "gfx-soft"];
+	static final HEADLESS = ["view", "text", "image", "ui", "layout-conformance", "gfx-shader", "async", "header-check", "jobs", "parallel", "test", "os", "cli", "asset", "pack", "devtools", "typescript", "examples", "viewer", "canvas", "pdf", "syntax", "text-quality", "ui-soft", "gfx-soft"];
 
 	static final LANES:Array<Lane> = [{name: "headless", about: "the lanes that need no GPU, display or browser", run: () -> for (l in HEADLESS) lane(l)}]
 		.concat(View.LANES).concat(Text.LANES).concat(Image.LANES).concat(Canvas.LANES).concat(Async.LANES).concat(Os.LANES).concat(Viewer.LANES).concat(Pack.LANES).concat(Cli.LANES).concat(Gfx.LANES).concat(Scene.LANES).concat(Studio.LANES).concat(Bench.LANES);

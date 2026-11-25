@@ -38,6 +38,17 @@ class Buffers {
 	public static function i32(b:Ptr, i:LaneInt, stride:Int, off:Int):LaneInt
 		return LaneInt.make(i32At(b, i.get(0), stride, off), i32At(b, i.get(1), stride, off), i32At(b, i.get(2), stride, off), i32At(b, i.get(3), stride, off));
 
+	// (one element's field set: the scalar form's)
+	public static inline function setF32At(b:Ptr, i:Int, stride:Int, off:Int, v:Float) {
+		var o = at(b, i, stride, off);
+		if (o >= 0) Mem.setF32(Mem.getPtr(b, DATA), o, v);
+	}
+
+	public static inline function setI32At(b:Ptr, i:Int, stride:Int, off:Int, v:Int) {
+		var o = at(b, i, stride, off);
+		if (o >= 0) Mem.setI32(Mem.getPtr(b, DATA), o, v);
+	}
+
 	// (hxmc.simd's lanes read by constants: each lane written in turn)
 	public static function setF32(b:Ptr, i:LaneInt, stride:Int, off:Int, v:Lane, m:LaneBool) {
 		inline function one(l:Int) {
