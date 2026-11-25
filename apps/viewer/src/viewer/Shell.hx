@@ -504,9 +504,9 @@ class Shell implements Markup {
 		// (a large folder, not watched: read again when the pointer comes back to the window)
 		function back()
 			if (!x.full.value && b.total.value >= Browser.WATCH_BELOW && !b.reading.value) b.refresh();
-		return <view tag="window" grow={1} background={clear() ? ("transparent" : Dynamic) : Look.ref.canvas} color={Look.ref.fg} font-family="system-ui" font-size={13} onPointerEnter={back}
+		return <view tag="window" grow={1} min-height={0} background={clear() ? ("transparent" : Dynamic) : Look.ref.canvas} color={Look.ref.fg} font-family="system-ui" font-size={13} onPointerEnter={back}
 			ref={(n:Node) -> x.zoom.attach(n)}>
-			<view tag="browser" grow={1} direction="row" hidden={x.full()}>
+			<view tag="browser" grow={1} min-height={0} direction="row" hidden={x.full()}>
 				<Show when={!medium()}>{SidebarView.make(x)}</Show>
 				<view grow={1} min-width={0} direction="row" padding-top={WindowButtons.side() == "end" ? 32 : 0}
 					background={clear() ? Look.ref.canvas : null}>

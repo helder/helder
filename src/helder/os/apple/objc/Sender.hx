@@ -9,7 +9,7 @@ import haxe.macro.Expr;
 // result in C types), turned into a C call through objc_msgSend's address
 // (c_<name>, @:hxmc.indirect: in a safe region, since Cocoa calls back into
 // Haxe from inside many messages) and an inline wrapper of the declared name.
-// Any class can take it: Msg has AppKit's shapes, helder.gfx.metal.MtlMsg Metal's.
+// Any class can take it: Msg has the shapes helder sends.
 class Sender {
 	public static function build():Array<Field> {
 		var out:Array<Field> = [];

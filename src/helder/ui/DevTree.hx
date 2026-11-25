@@ -1,9 +1,9 @@
 package helder.ui;
 
 #if (hxmc.dev && !macro)
-// The devtools' Ui domain (src/helder/devtools/README.md), in dev builds:
+// The devtools' Ui domain (src/helder/dev/README.md), in dev builds:
 // each Ui made registers here (Ui's constructor), the first one the method
-// Ui.getTree with helder.devtools.Agent. A snapshot is each Ui's root and
+// Ui.getTree with helder.dev.Agent. A snapshot is each Ui's root and
 // overlay as plain data: a node's id (kept while the node is in a tree:
 // the same node, the same id; not across a reload), tag, box (window
 // pixels, after the last update), a few style fields and a text node's text.
@@ -17,8 +17,8 @@ class DevTree {
 
 	public static function add(ui:Ui) {
 		if (uis.length == 0) {
-			helder.devtools.Agent.method("Ui.getTree", _ -> tree());
-			helder.devtools.Agent.method("Ui.nodesAt", p -> nodesAt(p));
+			helder.dev.Agent.method("Ui.getTree", _ -> tree());
+			helder.dev.Agent.method("Ui.nodesAt", p -> nodesAt(p));
 		}
 		uis.push(ui);
 		if (uis.length > KEPT) uis.shift();

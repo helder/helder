@@ -1,6 +1,6 @@
 package studio;
 
-import helder.markup.Syntax;
+import helder.view.Syntax;
 
 using StringTools;
 

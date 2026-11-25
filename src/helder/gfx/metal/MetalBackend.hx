@@ -233,7 +233,7 @@ class MetalBackend {
 		Msg.vInt(d, ObjC.sel("setWidth:"), w);
 		Msg.vInt(d, ObjC.sel("setHeight:"), h);
 		Msg.vInt(d, ObjC.sel("setUsage:"), usage);
-		var t = MtlMsg.idPtrPtrInt(device, ObjC.sel("newTextureWithDescriptor:iosurface:plane:"), d, surf, plane);
+		var t = Msg.idPtrPtrInt(device, ObjC.sel("newTextureWithDescriptor:iosurface:plane:"), d, surf, plane);
 		Runtime.objc_release(d);
 		return t;
 	}
@@ -400,10 +400,10 @@ class MetalBackend {
 		// (compressed: rows of blocks)
 		var bytes = f.levelBytes(w, h), row = f.compressed ? ((w + 3) >> 2) * f.blockBytes : w * n;
 		if (info.cube || info.array)
-			Arena.scoped(a -> MtlMsg.vRegionIntIntPtrIntInt(t, ObjC.sel("replaceRegion:mipmapLevel:slice:withBytes:bytesPerRow:bytesPerImage:"), region.value, level, layer,
+			Arena.scoped(a -> Msg.vRegionIntIntPtrIntInt(t, ObjC.sel("replaceRegion:mipmapLevel:slice:withBytes:bytesPerRow:bytesPerImage:"), region.value, level, layer,
 				a.copyBytes(data, dataOffset, bytes), row, bytes));
 		else
-			Arena.scoped(a -> MtlMsg.vRegionIntPtrInt(t, ObjC.sel("replaceRegion:mipmapLevel:withBytes:bytesPerRow:"), region.value, level, a.copyBytes(data, dataOffset, bytes), row));
+			Arena.scoped(a -> Msg.vRegionIntPtrInt(t, ObjC.sel("replaceRegion:mipmapLevel:withBytes:bytesPerRow:"), region.value, level, a.copyBytes(data, dataOffset, bytes), row));
 	}
 
 	// a blit in the frame's command buffer (between its passes), else in one of its own
@@ -520,20 +520,20 @@ class MetalBackend {
 	}
 
 	public function setStorage(slot:Int, id:Int)
-		MtlMsg.vPtrIntInt(computeEnc, S.setBuffer, buffers[id - 1], 0, slot);
+		Msg.vPtrIntInt(computeEnc, S.setBuffer, buffers[id - 1], 0, slot);
 
 	public function setStorageTexture(slot:Int, id:Int)
-		MtlMsg.vPtrInt(computeEnc, S.setTextureAt, textures[id - 1], slot);
+		Msg.vPtrInt(computeEnc, S.setTextureAt, textures[id - 1], slot);
 
 	public function dispatch(x:Int, y:Int, z:Int) {
 		groupSize.value.width = x;
 		groupSize.value.height = y;
 		groupSize.value.depth = z;
-		MtlMsg.vSizeSize(computeEnc, S.dispatchThreadgroups, groupSize.value, threadSize.value);
+		Msg.vSizeSize(computeEnc, S.dispatchThreadgroups, groupSize.value, threadSize.value);
 	}
 
 	public function dispatchIndirect(id:Int, offset:Int)
-		MtlMsg.vPtrIntSize(computeEnc, S.dispatchThreadgroupsWithIndirectBuffer, buffers[id - 1], offset, threadSize.value);
+		Msg.vPtrIntSize(computeEnc, S.dispatchThreadgroupsWithIndirectBuffer, buffers[id - 1], offset, threadSize.value);
 
 	public function endCompute() {
 		Msg.v(computeEnc, S.endEncoding);
@@ -550,10 +550,10 @@ class MetalBackend {
 	}
 
 	public function drawIndirect(id:Int, offset:Int)
-		MtlMsg.vIntPtrInt(enc, S.drawPrimitivesIndirect, pipeline.topology, buffers[id - 1], offset);
+		Msg.vIntPtrInt(enc, S.drawPrimitivesIndirect, pipeline.topology, buffers[id - 1], offset);
 
 	public function drawIndexedIndirect(id:Int, offset:Int)
-		MtlMsg.vIntIntPtrIntPtrInt(enc, S.drawIndexedPrimitivesIndirect, pipeline.topology, itype, ibuf, ioffset, buffers[id - 1], offset);
+		Msg.vIntIntPtrIntPtrInt(enc, S.drawIndexedPrimitivesIndirect, pipeline.topology, itype, ibuf, ioffset, buffers[id - 1], offset);
 
 	// the work so far committed and waited for (a frame's: it goes on in a new command buffer), then the shared memory read
 	public function readBuffer(id:Int, offset:Int, dst:haxe.io.Bytes, dstOffset:Int, size:Int) {
@@ -661,7 +661,7 @@ class MetalBackend {
 			height = targetHeight;
 		} else if (quiet) {
 			// (no drawable: the system's layers are drawn from what this frame renders into targets)
-			var sz = MtlMsg.size(layer, S.drawableSize);
+			var sz = Msg.size(layer, S.drawableSize);
 			texture = Ptr.nil();
 			width = Std.int(sz.width);
 			height = Std.int(sz.height);
@@ -712,7 +712,7 @@ class MetalBackend {
 			clear.value.green = k == null ? 0 : k.g;
 			clear.value.blue = k == null ? 0 : k.b;
 			clear.value.alpha = k == null ? 1 : k.a;
-			MtlMsg.vClear(attachment, S.setClearColor, clear.value);
+			Msg.vClear(attachment, S.setClearColor, clear.value);
 		}
 		Msg.vPtr(depthAttachment, S.setTexture, depthTexture);
 		Msg.vInt(depthAttachment, S.setLoadAction, d == null || d.load == Load ? MTL.LoadActionLoad : MTL.LoadActionClear);
@@ -728,7 +728,7 @@ class MetalBackend {
 		viewport.value.height = h;
 		viewport.value.znear = 0;
 		viewport.value.zfar = 1;
-		MtlMsg.vViewport(enc, S.setViewport, viewport.value);
+		Msg.vViewport(enc, S.setViewport, viewport.value);
 		// (GL's front faces)
 		Msg.vInt(enc, S.setFrontFacingWinding, MTL.WindingCounterClockwise);
 		pipeline = null;
@@ -745,7 +745,7 @@ class MetalBackend {
 	}
 
 	public function setVertexBuffer(slot:Int, id:Int, offset:Int)
-		MtlMsg.vPtrIntInt(enc, S.setVertexBuffer, buffers[id - 1], offset, VERTEX_BUFFERS + slot);
+		Msg.vPtrIntInt(enc, S.setVertexBuffer, buffers[id - 1], offset, VERTEX_BUFFERS + slot);
 
 	public function setUniforms(slot:Int, data:haxe.io.Bytes, offset:Int, size:Int) {
 		if (offset < 0 || size < 0 || offset + size > data.length) throw "helder.gfx: setUniforms: outside the data";
@@ -753,27 +753,27 @@ class MetalBackend {
 		// (a copy first: the Bytes may move during a message)
 		LibC.memcpy(uniforms, BytesPtr.of(data, offset, size), (size : Int64));
 		if (!computeEnc.isNull()) {
-			MtlMsg.vPtrIntInt(computeEnc, S.setBytes, uniforms, size, slot);
+			Msg.vPtrIntInt(computeEnc, S.setBytes, uniforms, size, slot);
 			return;
 		}
-		MtlMsg.vPtrIntInt(enc, S.setVertexBytes, uniforms, size, slot);
-		MtlMsg.vPtrIntInt(enc, S.setFragmentBytes, uniforms, size, slot);
+		Msg.vPtrIntInt(enc, S.setVertexBytes, uniforms, size, slot);
+		Msg.vPtrIntInt(enc, S.setFragmentBytes, uniforms, size, slot);
 	}
 
 	public function draw(vertices:Int, instances:Int, first:Int)
-		MtlMsg.vIntIntIntInt(enc, S.drawPrimitives, pipeline.topology, first, vertices, instances);
+		Msg.vIntIntIntInt(enc, S.drawPrimitives, pipeline.topology, first, vertices, instances);
 
 	public function setTexture(slot:Int, texture:Int, sampler:Int) {
 		var t = textures[texture - 1], s = samplers[sampler - 1];
 		if (!computeEnc.isNull()) {
-			MtlMsg.vPtrInt(computeEnc, S.setTextureAt, t, slot);
-			MtlMsg.vPtrInt(computeEnc, S.setSamplerState, s, slot);
+			Msg.vPtrInt(computeEnc, S.setTextureAt, t, slot);
+			Msg.vPtrInt(computeEnc, S.setSamplerState, s, slot);
 			return;
 		}
-		MtlMsg.vPtrInt(enc, S.setVertexTexture, t, slot);
-		MtlMsg.vPtrInt(enc, S.setFragmentTexture, t, slot);
-		MtlMsg.vPtrInt(enc, S.setVertexSamplerState, s, slot);
-		MtlMsg.vPtrInt(enc, S.setFragmentSamplerState, s, slot);
+		Msg.vPtrInt(enc, S.setVertexTexture, t, slot);
+		Msg.vPtrInt(enc, S.setFragmentTexture, t, slot);
+		Msg.vPtrInt(enc, S.setVertexSamplerState, s, slot);
+		Msg.vPtrInt(enc, S.setFragmentSamplerState, s, slot);
 	}
 
 	public function setIndexBuffer(id:Int, format:IndexFormat, offset:Int) {
@@ -784,7 +784,7 @@ class MetalBackend {
 
 	public function drawIndexed(count:Int, instances:Int, first:Int, baseVertex:Int) {
 		var at = ioffset + first * (itype == MTL.IndexTypeUInt16 ? 2 : 4);
-		MtlMsg.vIntIntIntPtrIntIntIntInt(enc, S.drawIndexedPrimitives, pipeline.topology, count, itype, ibuf, at, instances, baseVertex, 0);
+		Msg.vIntIntIntPtrIntIntIntInt(enc, S.drawIndexedPrimitives, pipeline.topology, count, itype, ibuf, at, instances, baseVertex, 0);
 	}
 
 	public function endPass() {
@@ -983,7 +983,7 @@ class MetalBackend {
 		size.value.width = width;
 		size.value.height = height;
 		size.value.depth = 1;
-		MtlMsg.vCopy(blit, ObjC.sel("copyFromTexture:sourceSlice:sourceLevel:sourceOrigin:sourceSize:toBuffer:destinationOffset:destinationBytesPerRow:destinationBytesPerImage:"),
+		Msg.vCopy(blit, ObjC.sel("copyFromTexture:sourceSlice:sourceLevel:sourceOrigin:sourceSize:toBuffer:destinationOffset:destinationBytesPerRow:destinationBytesPerImage:"),
 			texture, 0, 0, origin.value, size.value, readback, 0, row, n);
 		Msg.v(blit, S.endEncoding);
 		Msg.v(cmd, S.commit);
