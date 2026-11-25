@@ -57,6 +57,9 @@ class Browser {
 	// the entries changed (the viewer's list follows them); files changed on disk named
 	public var onItems:Null<Void->Void> = null;
 	public var onModified:Null<Array<String>->Void> = null;
+	// an entry moved (renamed, trashed, put back, moved into a folder: to
+	// null when gone; from null when new), so that the sidebar's rows follow
+	public var onMoved:Null<(from:Null<String>, to:Null<String>)->Void> = null;
 
 	var all:Array<Entry> = [];
 	var stopList:Null<Void->Void> = null;
@@ -64,7 +67,8 @@ class Browser {
 	var keep = "";
 	final back:Array<Place> = [];
 	final forward:Array<Place> = [];
-	final undone:Array<Array<{from:String, to:String}>> = [];
+	// (the undo's groups; stay: put back without going to their folder, the sidebar's)
+	final undone:Array<{moves:Array<{from:String, to:String}>, stay:Bool}> = [];
 
 	public function new(files:Files) {
 		this.files = files;
@@ -313,26 +317,34 @@ class Browser {
 			}
 			gone.set(name, true);
 			if (to != null) group.push({from: from, to: to});
+			told(from, to);
 		}
 		var n = Lambda.count(gone);
 		if (n == 0) return 0;
-		if (group.length > 0) undone.push(group);
+		record(group);
 		rescan([for (e in all) if (!gone.exists(e.name)) e]);
-		canUndo(undone.length > 0 && files.rename != null);
 		return n;
 	}
 
 	// the last trashed, renamed or moved put back where they were, selected
+	// (the sidebar's, stay: where they were, the folder shown not left)
 	public function undo():Bool {
-		var group = undone.pop(), rename = files.rename;
+		var last = undone.pop(), rename = files.rename;
 		canUndo(undone.length > 0 && rename != null);
-		if (group == null || rename == null) return false;
-		var back = [for (u in group) if (try {
+		if (last == null || rename == null) return false;
+		var group = [for (u in last.moves) if (try {
 			rename(u.to, u.from);
 			true;
-		} catch (_:Dynamic) false) u.from];
-		if (back.length == 0) return false;
-		var d = parent(back[0]);
+		} catch (_:Dynamic) false) u];
+		if (group.length == 0) return false;
+		if (last.stay) {
+			for (u in group)
+				moved(u.to, u.from);
+			return true;
+		}
+		for (u in group)
+			told(u.to, u.from);
+		var back = [for (u in group) u.from], d = parent(back[0]);
 		if (d == dir.value) {
 			// (a rename's or a move's new name in this folder goes too)
 			var names = [for (p in back) name(p) => true];
@@ -368,6 +380,7 @@ class Browser {
 			return null;
 		}
 		var made = files.stat(path(name)) ?? ({name: name, kind: Folder, size: 0, modified: Date.now().getTime() / 1000, created: 0} : Entry);
+		told(null, path(name));
 		rescan(all.concat([made]));
 		select(name);
 		renaming(name);
@@ -385,8 +398,8 @@ class Browser {
 		if (move == null || was == null) return fail("Names cannot be changed here");
 		if (Lambda.exists(all, e -> e.name == to)) return fail('"$to" is already in this folder');
 		try move(path(name), path(to)) catch (e:Dynamic) return fail('"$name" could not be renamed: $e');
-		undone.push([{from: path(name), to: path(to)}]);
-		canUndo(true);
+		record([{from: path(name), to: path(to)}]);
+		told(path(name), path(to));
 		var now = files.stat(path(to)) ?? ({name: to, kind: was.kind, size: was.size, modified: was.modified, created: was.created} : Entry);
 		rescan([for (e in all) if (e.name != name) e].concat([now]));
 		select(to);
@@ -412,21 +425,37 @@ class Browser {
 				act(p, to);
 				done.push({from: p, to: to});
 				if (!copying) group.push({from: p, to: to});
+				told(copying ? null : p, to);
 			} catch (e:Dynamic) {
 				failed ??= '"${name(p)}" could not be ${copying ? "copied" : "moved"}: $e';
 			}
 		}
 		if (failed != null) fail(failed);
-		if (group.length > 0) {
-			undone.push(group);
-			canUndo(true);
-		}
+		record(group);
 		// (the folder shown, what left it and what came in)
 		var d = dir.value, gone = [for (m in done) if (!copying && parent(m.from) == d) name(m.from) => true];
 		var came = [for (m in done) if (parent(m.to) == d) files.stat(m.to)].filter(e -> e != null);
 		if (Lambda.count(gone) > 0 || came.length > 0) rescan([for (e in all) if (!gone.exists(e.name)) e].concat(came));
 		return done.length;
 	}
+
+	// an entry moved by others (the sidebar's rename and trash: to null when
+	// gone), the folder shown and the sidebar told
+	public function moved(from:Null<String>, to:Null<String>) {
+		var d = dir.value, gone = from != null && parent(from) == d ? name(from) : null;
+		var came = to != null && parent(to) == d ? files.stat(to) : null;
+		if (gone != null || came != null) rescan([for (e in all) if (e.name != gone && (came == null || e.name != came.name)) e].concat(came == null ? [] : [came]));
+		told(from, to);
+	}
+
+	// moves Undo puts back (stay: without going to their folder)
+	public function record(moves:Array<{from:String, to:String}>, stay = false) {
+		if (moves.length > 0) undone.push({moves: moves, stay: stay});
+		canUndo(undone.length > 0 && files.rename != null);
+	}
+
+	inline function told(from:Null<String>, to:Null<String>)
+		if (onMoved != null) onMoved(from, to);
 
 	// (why something could not be done, in notice for a few seconds: null, to return)
 	public function fail(why:String):Null<String> {

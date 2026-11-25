@@ -78,6 +78,7 @@ class Explorer {
 		};
 		browser.onItems = () -> if (full.value) viewer.relist(browser.viewable());
 		browser.onModified = paths -> viewer.modified(paths);
+		browser.onMoved = (from, to) -> sidebar.moved(from, to);
 		viewer.onOpened = p -> {
 			var r = recent.value.filter(q -> q != p);
 			r.unshift(p);
@@ -296,22 +297,27 @@ class Explorer {
 		var now = FolderModel.join(up, to);
 		if (files.stat(now) != null) return browser.fail('"$to" is already there');
 		try move(path, now) catch (e:Dynamic) return browser.fail('"${Browser.name(path)}" could not be renamed: $e');
+		// (the row renamed in place; the folder shown followed only when it is that one or inside it)
+		browser.record([{from: path, to: now}], true);
+		browser.moved(path, now);
 		var d = browser.dir.value;
 		if (d == path || StringTools.startsWith(d, path + "/")) browser.go(now + d.substr(path.length));
-		sidebar.reload();
 		return null;
 	}
 
 	function trashFolder(path:String):Bool {
-		var move = files.trash;
+		var move = files.trash, to:Null<String> = null;
 		if (move == null) return false;
-		try move(path) catch (e:Dynamic) {
+		try to = move(path) catch (e:Dynamic) {
 			browser.fail('"${Browser.name(path)}" could not be moved to the trash: $e');
 			return false;
 		}
+		// (its row gone, the level kept; the folder shown left for its parent
+		// only when it is that one or inside it)
+		if (to != null) browser.record([{from: path, to: to}], true);
+		browser.moved(path, null);
 		var d = browser.dir.value, up = Browser.parent(path);
 		if ((d == path || StringTools.startsWith(d, path + "/")) && up != null) browser.go(up);
-		sidebar.reload();
 		return true;
 	}
 

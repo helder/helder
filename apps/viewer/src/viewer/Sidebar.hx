@@ -83,11 +83,24 @@ class Sidebar {
 	// the folder renamed in place (its path; "" none)
 	public final renaming = new Cell("");
 
-	// the level read again (a folder of it renamed, made, trashed)
-	public function reload() {
-		var l = target;
-		target = "\x00";
-		show(l);
+	// a folder moved (renamed, trashed, put back, made: from null when new,
+	// to null when gone): its row in the level shown, in place, the level
+	// and its scroll kept (no listing again)
+	public function moved(from:Null<String>, to:Null<String>) {
+		var l = level.value;
+		if (l == "" || target != l) return;
+		if (from != null) from = Browser.normalize(from);
+		var was = from == null ? null : Lambda.find(rows.value, r -> r.path == from);
+		var e = to == null || Browser.parent(to) != l ? null : files.stat(to);
+		var come = e != null && e.kind == Folder && !Kinds.hidden(e.name);
+		if (was == null && !come) return;
+		var r = [for (r in rows.value) if (r.path != from) r];
+		if (come) {
+			var path = FolderModel.join(l, e.name);
+			if (!Lambda.exists(r, q -> q.path == path)) r.push({name: e.name, path: path, deeper: was?.deeper ?? false});
+			r.sort((a, b) -> FolderModel.compare(a.name, b.name));
+		}
+		rows(r);
 	}
 
 	// (whether a row has subfolders of its own, for its "›": its listing stopped at the first)

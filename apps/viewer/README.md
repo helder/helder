@@ -29,7 +29,9 @@ browser engine and no runtime to install.
   are copied in. A right click on empty space has New Folder (an
   "untitled folder", selected and named in place), the View menu, Show in
   Finder and Get Info; on a sidebar folder, Open, Rename, Move to Trash,
-  Show in Finder and Copy Path. A name is edited in place (Enter keeps
+  Show in Finder and Copy Path (the sidebar stays where it is: the row
+  renamed or gone in place, the folder shown left only when it is the one
+  trashed or inside it). A name is edited in place (Enter keeps
   it, Escape gives it up). Undo puts back a trash, a rename or a move;
   what could not be done says why in the path bar a few seconds.
 - **No empty list between folders**: the last folder's entries and the
@@ -610,7 +612,9 @@ row's text inside its row; between folders the old entries and level
 until the new are read; a right press on empty space and its menu, a new
 folder named in place; a file dragged onto a folder's tile, marked,
 moved and undone; another app's files dropped on a tile and on the
-space; a sidebar folder's menu and its rename),
+space; a sidebar folder's menu and its rename; a sibling trashed and renamed
+from the sidebar with no navigation, the level and its scroll kept, and
+undone in place; the folder shown trashed from the sidebar: its parent),
 `Viewer.story.hx` (the grid and the list dark and light, several
 selected, the inspector of a photo, of a PDF and of a Markdown document, a marquee
 being dragged over the grid, an empty folder, a missing one, no results, a file full size, a
