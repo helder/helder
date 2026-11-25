@@ -73,6 +73,13 @@ class Compositor implements RenderIdle {
 	// Windows' 15.6 ms tick, or two of them after a slow draw (WARP's): the
 	// next vblank missed, the frames locked at half the display's rate)
 	var paced = false;
+	// (a test's, when set: each frame's timing, PROBE values: when the
+	// render thread came to it, the last frame's end, whether that one was
+	// paced, the swap chain's wait (ms), the frame's end (-1: the program's
+	// turn after the wait), whether it is paced, the 1 ms timer on, Present's
+	// HRESULT)
+	@:noCompletion public var probe:Null<Array<Float>> = null;
+	@:noCompletion public static inline var PROBE = 8;
 	// (the render thread's: the overlay bars' last moves and how far they
 	// show, per frame; the time its last frame was drawn at, Ui.now's)
 	final barAt:Array<Float> = [];
@@ -373,12 +380,15 @@ class Compositor implements RenderIdle {
 		// (onto the window's swap chain: until it takes the frame without
 		// queueing it (Device.waitFrame), then sampled; the program's, if it
 		// drained meanwhile)
+		var last = drew, was = paced, w0 = haxe.Timer.stamp(), waited = 0.0;
 		if (layers == null || layers.single) {
 			lock.release();
 			r.impl.waitFrame();
+			waited = haxe.Timer.stamp() - w0;
 			lock.acquire();
 			if (haxe.Timer.stamp() - drained < period * 0.6) {
 				lock.release();
+				probed(t, last, was, waited, -1, r);
 				return;
 			}
 			at = Ui.now();
@@ -413,9 +423,19 @@ class Compositor implements RenderIdle {
 		var at = haxe.Timer.stamp(), d = at - drew;
 		if (d > 0.002 && d < period * 1.5) period = period * 0.9 + d * 0.1;
 		drew = at;
+		probed(t, last, was, waited, at, r);
 		drewSince = true;
 		count++;
 		if (onFrame != null) onFrame(drew);
+	}
+
+	function probed(t:Float, last:Float, was:Bool, waited:Float, end:Float, r:Replay) {
+		var p = probe;
+		if (p == null) return;
+		lock.acquire();
+		for (v in [t, last, was ? 1 : 0, waited * 1000, end, paced ? 1 : 0, RenderThread.fine ? 1 : 0, r.impl.presentResult()])
+			p.push(v);
+		lock.release();
 	}
 
 	// (the mirror's offsets of f's scrollers into now, at t: whether they
