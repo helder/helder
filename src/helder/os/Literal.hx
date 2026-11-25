@@ -34,7 +34,8 @@ class Literal {
 	}
 
 	// (a literal Haxe typed before the cast, a ternary's branch in a
-	// closure: a stored typed expression, a block of the one constant)
+	// closure: a stored typed expression, a block of the one constant; in a
+	// dev build markup's literal is a live one, Literals.string(id, value, anchor))
 	static function string(e:Expr):Null<String> {
 		return switch e.expr {
 			case EConst(CString(s, _)): s;
@@ -48,6 +49,7 @@ class Literal {
 		return switch e.expr {
 			case TConst(TString(s)): s;
 			case TParenthesis(i) | TMeta(_, i) | TCast(i, null) | TBlock([i]): typed(i);
+			case TCall({expr: TField(_, FStatic(_.get() => {pack: ["helder", "dev"], name: "Literals"}, _.get() => {name: "string"}))}, [_, v, _]): typed(v);
 			case _: null;
 		}
 	}
