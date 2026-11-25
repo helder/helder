@@ -25,7 +25,7 @@
 //
 //   node site/build.mjs [out]      (default bin/site)
 //
-// 1. the examples: each directory's programs with a header (as tests/Run.hx's
+// 1. the examples: each directory's programs with a header (as tests/lanes/Cli.hx's
 //    examples lane reads them: `// title:`, `// summary:`, `// tags:`,
 //    `// demo:`), a .hx file or a TypeScript directory's main.ts(x);
 // 2. those whose demo is `canvas WxH` or `sound` built for the web
@@ -99,7 +99,7 @@ function demoOf(s) {
 	return null;
 }
 
-// the examples, by directory (their ids as tests/Run.hx's examples lane names them);
+// the examples, by directory (their ids as tests/lanes/Cli.hx's examples lane names them);
 // then docs/examples' (the docs' own, not on the index: docs: true), a
 // directory's Haxe program its entry and its main.ts, when it has one, its
 // TypeScript twin (alt: shown beside it in the docs, built by the examples lane)

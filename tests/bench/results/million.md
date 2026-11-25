@@ -8,7 +8,7 @@ measures it two ways, 2026-11-07, a 4-core VM shared with other builds.
 ## The whole frame: `helder run --headless --stats`
 
 A 480x640 window, the real renderer on Mesa's llvmpipe (a GPU in
-software). The script (written by tests/Run.hx's millionBench) turns the
+software). The script (written by tests/lanes/Bench.hx's millionBench) turns the
 wheel 60 px a frame for 400 frames (rows made the first time), then back
 and forth over 1,200 px for 400 (rows made before: shown again, none
 made), taps End and Top 20 times (a jump: the rows there made and

@@ -3,7 +3,7 @@ import sys.io.File;
 
 using StringTools;
 
-// The demos lane's check (bun run test demos; tests/Run.hx ran each demo
+// The demos lane's check (bun run test demos; tests/lanes/Studio.hx ran each demo
 // headless at half scale into <dir> first): each still against its golden
 // here (Linux: llvmpipe; the demos' own Inter, so no system font is
 // involved), within a tolerance: at most 2% of the pixels off by more than

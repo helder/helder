@@ -16,7 +16,7 @@ using StringTools;
 // renamed; a definition's field), each edit's text changed only in the
 // span expected (the first and last bytes that differ inside it), undone
 // by its inverse byte for byte, the whole read again structurally; then
-// (tests/Run.hx) each built and run headless, and here their --tree
+// (tests/lanes/Text.hx) each built and run headless, and here their --tree
 // checked for each change: a colour, a node added, moved, wrapped, gone,
 // a component's new name in the source map.
 //   Examples prepare <out>

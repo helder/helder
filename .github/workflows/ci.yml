@@ -31,7 +31,7 @@
 #   Chromium (the viewer's web build among ui-web's; touch, jobs and async
 #   on the web; 3d-web's scenes a job of their own); helder studio built for the web (studio-web) and helder's
 #   toolchain as wasm in a worker there (compiler-web), one build of it for both;
-# - android: the android-device lane (tests/Run.hx; its apps built first,
+# - android: the android-device lane (tests/lanes/Pack.hx; its apps built first,
 #   --build-only, then run on the emulator, --prebuilt): tests/pack/Hello.hx (helder run, adb), the
 #   screen fixture (tests/pack/Screen.hx: its window, safe area and the
 #   display's frames, a rotation, the background), helder dev's loop there
