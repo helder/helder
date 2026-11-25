@@ -177,6 +177,7 @@ class Cli {
 
 	// (Linux: under Xvfb, a Windows build's Wine too)
 	static function devHost() {
+		run(NODE, ["tests/os/dev/dev-args.mjs", "node_modules/.bin/haxe", "bin/dev-args"]);
 		var targets = [HOST].concat([for (t in (Sys.getEnv("DEV_HOST_TARGETS") ?? "").split(",")) if (t != "" && t != HOST) t]);
 		for (t in targets) {
 			var args = 'tests/os/dev/dev-host.mjs node_modules/.bin/haxe bin/dev-host/$t $t';

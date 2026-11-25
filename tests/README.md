@@ -135,7 +135,7 @@ test bench <name> ...` the ones named.
 | `examples` | every example (Haxe, TypeScript) of examples/ and docs/examples/ (the docs' own) built by `helder build <file>` (--target web for the web) with no other flags, not run: for web (wasm32-wasi), and those on a canvas or playing a sound natively too |
 | `dev` | the dev loop: helder.dev.Hot and view's signals across a reload, then `haxe --dev` in Chromium and natively |
 | `edit-loop` | the edit loop's times (tests/edit-loop/edit-loop.mjs): `helder dev` warm on copies of examples/todo and examples/ts-todo in a window (Linux: Xvfb), a literal, a component's body and a new component edited, each timed from the save to the new frame and split by where the time went (the watcher, tsgo, typing, lowering, codegen, link, the reload, the first frame): bin/edit-loop/results.md |
-| `dev-host` | helder dev's host (helder.dev.DevHost): three builds of a program as shared libraries swapped in one process and window (tests/os/dev/dev-host.mjs); DEV_HOST_TARGETS (comma-separated) cross-compiles for others too (windows-x86_64: run under Wine; macos-*: built only) |
+| `dev-host` | helder dev's host (helder.dev.DevHost): three builds of a program as shared libraries swapped in one process and window (tests/os/dev/dev-host.mjs), each given the host's arguments as its Sys.args() (tests/os/dev/dev-args.mjs); DEV_HOST_TARGETS (comma-separated) cross-compiles for others too (windows-x86_64: run under Wine; macos-*: built only) |
 
 ## Canvas (lanes/Canvas.hx)
 
