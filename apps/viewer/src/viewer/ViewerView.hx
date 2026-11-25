@@ -69,6 +69,9 @@ class ViewerView implements Markup {
 		image.onContextMenu = (px, py) -> if (image.ui != null) helder.ui.menu.Menus.popup(image.ui, ViewerActions.context, px, py, image);
 		image.focusable = true;
 		x.zoom.view(image);
+		// (a pinch in at the fit, a swipe down: closed following the fingers, Flight; else the viewer's)
+		var wheel = image.onWheel;
+		image.onWheel = e -> if (x.zoom.fullWheel(e)) e.preventDefault() else if (wheel != null) wheel(e);
 		// (its picture in flight: the image under it not drawn)
 		renderEffect(() -> x.zoom.flying() != "", on -> image.veiled = on);
 		renderEffect(() -> UiWindow.dark(), d -> image.background = canvas(d));
