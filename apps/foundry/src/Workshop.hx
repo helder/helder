@@ -71,7 +71,7 @@ class Workshop {
 		face = signal(latest);
 		starting(loaded == null);
 		appearance(store.get("appearance") ?? "system");
-		dark = memo(() -> appearance() == "dark" || appearance() == "system" && helder.ui.UiWindow.dark());
+		dark = memo(() -> appearance() == "dark" || appearance() == "system" && helder.os.Settings.dark());
 		// (saved a moment after the last change: a drag saves once)
 		var timer:Null<haxe.Timer> = null;
 		// (the draft font at most ten times a second while a drag edits, and at its end)

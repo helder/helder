@@ -1,5 +1,6 @@
 package viewer;
 
+import helder.os.Settings;
 import helder.image.Image;
 import helder.ui.Node;
 import helder.ui.controls.Look;
@@ -93,7 +94,7 @@ class Tiles implements Markup {
 			ref={(n:Node) -> x.zoom.tile(n, x.browser.path(e().name))}>
 			{() -> {
 				var f = e();
-				f.kind == Folder ? <image src={Glyphs.folder(UiWindow.dark())} width={18} height={15}/> : glyph(x, f);
+				f.kind == Folder ? <image src={Glyphs.folder(Settings.dark())} width={18} height={15}/> : glyph(x, f);
 			}}
 		</view>;
 	}
@@ -138,7 +139,7 @@ class Tiles implements Markup {
 	static function picture(x:Explorer, e:Entry, on:Void->Bool, k:Float):View {
 		inline function px(v:Float):Float
 			return Math.round(v * k);
-		if (e.kind == Folder) return <image src={Glyphs.folder(UiWindow.dark())} width={px(96)} height={px(78)}/>;
+		if (e.kind == Folder) return <image src={Glyphs.folder(Settings.dark())} width={px(96)} height={px(78)}/>;
 		var t = thumbnail(x, e), raw = RAW.contains(Kinds.extension(e.name)), side = px(108);
 		return <>
 			<Show when={t().image != null || t().waiting}>
@@ -193,7 +194,7 @@ class Tiles implements Markup {
 	// a large picture: the folder's, or a page with the file's extension
 	// (mark: its page's node, the zoom's tile; k: its size's factor)
 	public static function large(e:Entry, ?mark:Node->Void, k = 1.0):View {
-		if (e.kind == Folder) return <image src={Glyphs.folder(UiWindow.dark())} width={Math.round(96 * k)} height={Math.round(78 * k)}/>;
+		if (e.kind == Folder) return <image src={Glyphs.folder(Settings.dark())} width={Math.round(96 * k)} height={Math.round(78 * k)}/>;
 		var ext = Kinds.extension(e.name).toUpperCase();
 		return <view width={Math.round(72 * k)} height={Math.round(92 * k)} borderRadius={7} background={Look.ref.raised} borderWidth={1} borderColor={Look.ref.edge} alignItems="center"
 			justifyContent="center" boxShadow="0 1px 2px rgba(0,0,0,0.25)" ref={(n:Node) -> if (mark != null) mark(n)}>

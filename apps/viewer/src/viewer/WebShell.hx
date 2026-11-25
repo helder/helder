@@ -1,5 +1,7 @@
 package viewer;
 
+import helder.os.Settings;
+
 #if (hxmc.target == "wasm32-wasi")
 import helder.async.Async;
 import helder.ui.UiWindow;
@@ -33,7 +35,7 @@ class WebShell implements Markup {
 		helder.os.web.WebFolders.onDrop(g -> Shell.showFolder(x, files.grants, g));
 		x.browser.go(Samples.ROOT);
 		UiWindow.run(<Surface title={() -> x.full() ? viewer.title() : x.sidebar.title(x.browser.dir())}
-			scrollbars="overlay" background={() -> "#" + StringTools.hex(ViewerView.canvas(UiWindow.dark()), 6)} ref={w -> {
+			scrollbars="overlay" background={() -> "#" + StringTools.hex(ViewerView.canvas(Settings.dark()), 6)} ref={w -> {
 				Shell.attach(w.ui.root, x);
 				helder.view.graph.Graph.effect(() -> viewer.fullscreen(), on -> w.window.fullscreen = on);
 			}}>

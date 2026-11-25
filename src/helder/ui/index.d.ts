@@ -216,9 +216,6 @@ export type VirtualGridProps<T> = { each: Read<T[]>; children: (arg0: Read<T>, a
 // In a page's markup (helder.web's DOM or static renderer) a <Surface> is
 // helder.web's: a canvas running a wasm program whose root is this one.
 export declare class UiWindow {
-	// whether the system's appearance is dark (App.prefersDark), asked again
-	// every second while the loop runs; each window's Ui.dark follows it
-	static readonly dark: Signal<boolean>;
 	// the app loop: every UiWindow's frames and events until the last closes
 	// (on the web it returns, the frames going on); content, when given, opened first
 	static run(content?: RootView): void;
@@ -1230,7 +1227,8 @@ export declare class TextField extends EditableText {
 // tokens: in light the page is the lightest level and panels sit on a
 // faint grey canvas, the accent a shade deeper to keep its contrast. The
 // sheet's colours follow the window's appearance; c's, which markup reads
-// inline, follow appearance (an app points it at its windows': UiWindow.dark).
+// inline, the screen's (ScreenContext.dark: the system's, or the <Surface
+// dark> given).
 //
 // Its parts by slot (a field's and its input's variant "tall": several
 // lines, as tall as the text): "panel", "section", "section-head", "nav-item"
@@ -1257,9 +1255,6 @@ export declare class Theme {
 	static readonly POPOVER: string;
 	static readonly dark: unknown;
 	static readonly light: unknown;
-	// whether the colours given inline are the dark ones (read by c: a hole
-	// that reads it follows it)
-	static appearance: (() => boolean);
 	static c(name: string): Color;
 	// the one shadow, of what floats
 	static popover(): string;

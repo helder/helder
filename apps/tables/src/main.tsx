@@ -48,8 +48,6 @@ Keymap.global.bind("secondary-s", Do.save())
 const given = args().length > 0 && !args()[0].startsWith("--") ? args()[0] : null;
 const app = new Tables(given === null ? "http://127.0.0.1:4983/" : given.startsWith("http") ? given : "http://" + given);
 app.focusFilter = focusFilter;
-// (the colours given inline follow the appearance chosen, as the sheet's do)
-Theme.appearance = () => app.dark();
 // (an error nothing caught: said in the status bar, the app going on)
 App.onError = (e, source) => {
 	console.log(`tables: ${source}: ${e instanceof Error ? e.stack : e}`);

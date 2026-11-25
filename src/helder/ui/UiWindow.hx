@@ -47,7 +47,7 @@ typedef SurfaceProps = {
 	?clickThrough:helder.view.graph.Read<Bool>,
 	// the system's shadow around the window (helder.os's Window.shadow)
 	?shadow:helder.view.graph.Read<Bool>,
-	// dark or light (default: the system's appearance, UiWindow.dark)
+	// dark or light (default: the system's appearance, helder.os's Settings.dark)
 	?dark:helder.view.graph.Read<Bool>,
 	// the window closed by its user (default: closed)
 	?onClose:Void->Void,
@@ -128,10 +128,12 @@ class UiWindow {
 	// how long the loop sleeps at most with nothing to draw (seconds): what
 	// changes the UI from outside its events shows within it
 	@:noCompletion public static var idleWait = 0.1;
-	// whether the system's appearance is dark (App.prefersDark), asked again
-	// every second while the loop runs; each window's Ui.dark follows it
-	@:typescript public static final dark:helder.view.graph.Signal<Bool> = Graph.signalOf(App.prefersDark(), {ownedWrite: true});
-	static var darkAsked = 0.0;
+	// (the keymap file and the scroll bars' look, asked again every second while the loop runs)
+	static var polled = 0.0;
+	// (the windows that follow the system's appearance, Settings.dark: every
+	// one but a <Surface dark={...}>'s; the effect made with the first)
+	var followsSystem = true;
+	static var appearance = false;
 
 	static final open:Array<UiWindow> = [];
 	// the last frame drawn: its size and scale (a change needs a frame)
@@ -223,7 +225,18 @@ class UiWindow {
 		ui.window = new OsWindow(this);
 		// (an inset title bar: a press's answer the ui's, its drag regions and window buttons)
 		if (titlebar != Standard) window.titlebarAt = (x, y) -> ui.titleHit(x / scale, y / scale);
-		ui.dark = dark.peek();
+		ui.dark = helder.os.Settings.dark.peek();
+		if (!appearance) {
+			appearance = true;
+			ScreenContext.main.dark(ui.dark);
+			Graph.root(_ -> Graph.effect(() -> helder.os.Settings.dark(), d -> {
+				var all = true;
+				for (w in open)
+					if (w.followsSystem) w.ui.dark = d else all = false;
+				// (the screen's, Theme.c's: unless a window says its own)
+				if (all) ScreenContext.main.dark(d);
+			}));
+		}
 		// (a hand over what is pressed, as web pages have it)
 		if (Platform.os() == 3) ui.pressCursor = Pointer;
 		nativeScroll(scrolling);
@@ -929,8 +942,8 @@ class UiWindow {
 		if (content != null) Render.open(content);
 		App.run(() -> {
 			var now = #if helder.headless helder.async.Time.now #else haxe.Timer.stamp() #end;
-			if (now - darkAsked > 1) {
-				darkAsked = now;
+			if (now - polled > 1) {
+				polled = now;
 				// (the user's keymap file, read again when it changed: the menus' labels too)
 				if (helder.ui.actions.Keymap.global.poll()) for (w in open)
 					w.ui.requestFrame();
@@ -942,12 +955,6 @@ class UiWindow {
 						w.ui.scrollbarLook = overlay ? MacOverlay : MacLegacy;
 						w.ui.requestFrame();
 					}
-				var d = App.prefersDark();
-				if (d != dark.peek()) {
-					dark(d);
-					for (w in open)
-						w.ui.dark = d;
-				}
 			}
 			var drew = false;
 			for (w in open.copy())
@@ -998,7 +1005,14 @@ class UiWindow {
 			w.background = v;
 			w.ui.requestFrame();
 		});
-		if (props.dark != null) Graph.renderEffect(() -> Render.read(props.dark), v -> w.ui.dark = v);
+		if (props.dark != null) {
+			w.followsSystem = false;
+			Graph.renderEffect(() -> Render.read(props.dark), v -> {
+				w.ui.dark = v;
+				// (what Theme.c and the screen's others read: this window's)
+				ScreenContext.main.dark(v);
+			});
+		}
 		if (props.clickThrough != null) Graph.renderEffect(() -> props.clickThrough(), v -> {
 			w.clickThrough = v;
 			w.ui.requestFrame();

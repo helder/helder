@@ -67,7 +67,7 @@ class UiDrawCheck {
 				}
 			var ok = dark > 400;
 			Sys.println('UiDrawCheck: smoke: the font ${face.family} ${face.subfamily}, $dark dark pixels in the paragraph: ' + (ok ? "ok" : "FAIL"));
-			Sys.println('UiDrawCheck: smoke: the system\'s appearance ' + (App.prefersDark() ? "dark" : "light"));
+			Sys.println('UiDrawCheck: smoke: the system\'s appearance ' + (Settings.dark.peek() ? "dark" : "light"));
 			Sys.exit(ok ? 0 : 1);
 		}
 		Sys.exit(compare(pixels, golden) && runs(ui) ? 0 : 1);

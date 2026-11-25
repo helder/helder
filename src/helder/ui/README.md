@@ -428,8 +428,9 @@ mode), both styled by a small `StyleSheet` of their own. They run natively on Li
   looks (`Look`): "Controls" below. Others (menus, tabs) are still views
   with a role, `focusable` and `onPress`, as in the examples. A
   `UiWindow`'s `Ui.dark` follows the system's appearance
-  (`helder.os.App.prefersDark`: the browser's colour scheme, macOS's,
-  Windows', GTK's settings).
+  (`helder.os.Settings.dark`: the browser's colour scheme, macOS's,
+  Windows', GTK's settings), or a `<Surface dark={...}>`'s own; `Theme.c`
+  reads the screen's (`ScreenContext.dark`).
 - **`helder.ui.code`**: a code editor. `CodeModel` is its document: a
   rope (`Rope`: chunks of at most 1 KB with their lengths, UTF-8 lengths
   and line breaks; line and offset lookups and UTF-16/UTF-8 mapping by
