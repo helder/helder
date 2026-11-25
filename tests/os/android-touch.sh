@@ -8,7 +8,6 @@
 # started), gliding on once let go; Back closes the window.
 #   sh tests/os/android-touch.sh <AndroidTouchTest.apk> [out dir]
 set -u
-. "$(dirname "$0")/../os/android-input.sh"
 apk=$1
 out=${2:-.}
 mkdir -p "$out"

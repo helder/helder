@@ -8,7 +8,6 @@
 # image decoders last.
 #   sh tests/pack/android.sh <helder> [out dir]
 set -u
-. "$(dirname "$0")/../os/android-input.sh"
 helder=$1
 out=$(mkdir -p "${2:-bin/pack/android}" && cd "${2:-bin/pack/android}" && pwd)
 id=org.helder.hello

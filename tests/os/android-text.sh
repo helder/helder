@@ -7,7 +7,6 @@
 #     and TextInput; off hides it.
 #   sh tests/os/android-text.sh <AndroidTextTest.apk> [out dir]
 set -u
-. "$(dirname "$0")/../os/android-input.sh"
 text=$1
 out=${2:-.}
 mkdir -p "$out"

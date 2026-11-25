@@ -15,11 +15,6 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-if (process.env.GITHUB_ACTIONS !== 'true' && process.env.HELDER_TEST_INPUT !== '1') {
-	console.error('android-swipe.mjs: Android input needs CI or HELDER_TEST_INPUT=1');
-	process.exit(2);
-}
-
 const [x0, y0, x1, y1] = process.argv.slice(2, 6).map(Number);
 const moves = Number(process.argv[6] ?? 8);
 const adb = (...args) => execFileSync('adb', args, { encoding: 'utf8' });

@@ -26,7 +26,6 @@
 #     returns.
 #   sh tests/gfx/android.sh <AndroidTest.apk> [out dir]
 set -u
-. "$(dirname "$0")/../os/android-input.sh"
 apk=$1
 out=${2:-.}
 pkg=org.helder.androidtest

@@ -195,16 +195,29 @@ class UIKitWindow {
 		CF.CFRunLoopStop(CF.CFRunLoopGetMain());
 	}
 
-	// (the link's state the main thread's: OsThread)
-	static function vsynced():Bool
-		return OsThread.get(() -> due);
+	// a turn's frame (the link's state the main thread's, OsThread): 0 none
+	// to draw (no window, suspended or inactive), 1 the vsync's (its time
+	// taken: vsyncTaken), 2 not come yet. One handoff and static functions
+	// with static arguments: the loop's frames allocate nothing
+	static function next():Int {
+		OsThread.run(nextNow);
+		return nextState;
+	}
 
-	// the vsync's frame drawn now: its time
-	static function takeVsync():Float
-		return OsThread.get(() -> {
+	static var nextState = 0;
+	static var vsyncTaken = 0.0;
+
+	static function nextNow() {
+		if (current == null || suspended || inactive) {
+			nextState = 0;
+		} else if (due) {
 			due = false;
-			vsyncAt;
-		});
+			vsyncTaken = vsyncAt;
+			nextState = 1;
+		} else {
+			nextState = 2;
+		}
+	}
 
 	// the link running: a callback at the next vsync
 	static function requestVsync()
@@ -606,26 +619,35 @@ class UIKitWindow {
 	}
 
 	// whether a frame can be drawn now (active: not in the background, nor inactive)
-	static function drawable():Bool
-		return OsThread.get(() -> current != null && !suspended && !inactive);
-
 	// the run loop's pending sources, without waiting (the view's and the
 	// delegate's callbacks come from inside); served from inside a callout
 	// (a callback waiting for the program: OsThread.nested), what came
 	// meanwhile only, the run loop not run again inside UIKit's own call
-	static function poll(onEvent:Event->Void)
-		OsThread.run(() -> {
-			UIKitWindow.onEvent = onEvent;
-			if (mode.isNull() || OsThread.nested()) return;
-			while (CF.CFRunLoopRunInMode(mode, 0, true) == 4) {}
-		});
+	static function poll(onEvent:Event->Void) {
+		polled = onEvent;
+		OsThread.run(pollNow);
+	}
+
+	// (the program's arguments, the main thread's to read in the handoff)
+	static var polled:Null<Event->Void>;
+	static var waited = 0.0;
+
+	static function pollNow() {
+		onEvent = polled;
+		if (mode.isNull() || OsThread.nested()) return;
+		while (CF.CFRunLoopRunInMode(mode, 0, true) == 4) {}
+	}
 
 	// waits for a source of the run loop, or seconds (< 0: no limit)
-	static function wait(seconds:Float)
-		OsThread.run(() -> {
-			if (mode.isNull() || OsThread.nested()) return;
-			CF.CFRunLoopRunInMode(mode, seconds < 0 ? 1e9 : seconds, true);
-		});
+	static function wait(seconds:Float) {
+		waited = seconds;
+		OsThread.run(waitNow);
+	}
+
+	static function waitNow() {
+		if (mode.isNull() || OsThread.nested()) return;
+		CF.CFRunLoopRunInMode(mode, waited < 0 ? 1e9 : waited, true);
+	}
 
 	// the main thread's wait while the program runs on: the run loop turned
 	// (UIKit's touches, layout, scroll views and animations), until a
