@@ -152,6 +152,7 @@ class Questions {
 		if (answering == q.id) replyTo(null);
 		if (n.reply != null) n.reply(n.picked, n.text) else if (!n.waited) studio.inbox.answer(said(n), n.turn);
 		studio.log("answered", {question: n.question, picked: n.picked, text: n.text});
+		studio.answered();
 	}
 
 	// (a frame or a screen named as the project names it: <file>#<name>, Flow/Screen)
