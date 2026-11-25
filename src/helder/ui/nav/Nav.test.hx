@@ -22,7 +22,7 @@ import helder.view.graph.Graph.*;
 // screen below, its long press's menu popping several, the large title
 // moving into the bar as the content scrolls); a sheet opened to its
 // detent, dragged to the other and down to dismiss; a long press winning
-// over the click; select mode's taps and its run
+// over the click, the mouse's in a Compact window only; select mode's taps and its run
 function tests() {
 	var t = 0.0;
 	function ui(w:Float, h:Float):Ui {
@@ -216,6 +216,30 @@ function tests() {
 			press(u, layer.find("menu-Open"));
 			equals(log, ["Open"]);
 			equals(u.overlay.children.length, 0);
+		});
+		test("the mouse held still: the touch menu in a Compact window only (a desktop's held click stays a click); a group's line", () -> {
+			for (size in [{w: 390.0, menu: true}, {w: 820.0, menu: false}, {w: 1400.0, menu: false}]) {
+				var u = ui(size.w, 600), clicks = 0;
+				var n = new Node("row");
+				n.style.height = 100;
+				n.onActivate = _ -> clicks++;
+				u.root.append(n);
+				helder.ui.menu.ContextMenu.attach(n, () -> [Item("Open", Open), Separator, Item("Move to Trash", Trash)]);
+				u.update();
+				u.pointerDown(20, 50, 1);
+				t += 0.8;
+				Clock.tick(Clock.now + 0.8);
+				u.pointerUp(20, 50, 1);
+				Graph.flush();
+				u.update();
+				var layer = u.overlay.find("touch-menu-layer");
+				equals('${size.w}: ${layer != null} ${clicks}', '${size.w}: ${size.menu} ${size.menu ? 0 : 1}');
+				if (layer == null) continue;
+				var items = layer.find("touch-menu").children;
+				equals([for (c in items) c.slot], ["touch-menu-item", "touch-menu-separator", "touch-menu-item"]);
+				var line = items[1];
+				equals([line.height, line.y - items[0].y - items[0].height, items[2].y - line.y - line.height], [1.0, 4.0, 4.0]);
+			}
 		});
 	});
 	describe("select mode", () -> {

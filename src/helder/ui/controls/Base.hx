@@ -59,6 +59,7 @@ class Base {
 		} : PartStyle);
 		part("touch-menu-item", t -> row(t, false));
 		part("touch-menu-item-danger", t -> row(t, true));
+		part("touch-menu-separator", t -> {background: t.line});
 		part("grid-marquee", t -> {background: t.accentSoft, borderWidth: 1, borderColor: t.accent, radius: 3});
 		// (a composite field, an icon and a text field in a box (a search
 		// field): one ring round the box at its radius while what is in it
