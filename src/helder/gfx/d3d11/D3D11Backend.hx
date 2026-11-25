@@ -164,6 +164,79 @@ class D3D11Backend {
 	var latency = Ptr.nil();
 	var waited = false;
 	var occluded = false;
+	// (the last Present's HRESULT: a test's probes)
+	@:noCompletion public var presentResult(default, null) = 0;
+	// (whether the adapter is Microsoft's software one: WARP, the Basic
+	// Render Driver of a machine without a GPU's, as CI's runners)
+	@:noCompletion public var software(default, null) = false;
+	// (a test's: each window frame's GPU time, timestamps after its wait and
+	// before its present (WARP's: its threads' work), read a few frames later
+	// without waiting: the last one read, ms; -1 none. Taken once asked)
+	var timed = false;
+	var stamps:Array<Ptr> = [];
+	var stampBusy:Array<Bool> = [];
+	var stampAt = 0;
+	// (begun: a frame left unpresented (quiet, a target's) ends it with the next presented)
+	var stampOpen = false;
+	var gpu = -1.0;
+
+	@:noCompletion public function gpuTime():Float {
+		if (!timed) {
+			timed = true;
+			if (queryBytes.isNull()) queryBytes = LibC.malloc(16);
+			// (per slot: a disjoint query, then the frame's two timestamps)
+			for (i in 0...12) {
+				queryBytes.value = i % 3 == 0 ? 3 : 2;
+				queryBytes.offset(1).value = 0;
+				if (ID3D11Device.CreateQuery(device, queryBytes, scratch) < 0) {
+					for (q in stamps)
+						Com.release(q);
+					stamps = [];
+					return -1;
+				}
+				stamps.push(scratch.value);
+			}
+			stampBusy = [false, false, false, false];
+		}
+		return gpu;
+	}
+
+	function stampBegin() {
+		if (stamps.length == 0 || stampOpen) return;
+		var k = stampAt % 4;
+		if (stampBusy[k]) stampRead(k);
+		if (stampBusy[k]) return;
+		ID3D11DeviceContext.Begin(context, stamps[3 * k]);
+		ID3D11DeviceContext.End(context, stamps[3 * k + 1]);
+		stampOpen = true;
+	}
+
+	function stampEnd() {
+		if (!stampOpen) return;
+		stampOpen = false;
+		var k = stampAt % 4;
+		ID3D11DeviceContext.End(context, stamps[3 * k + 2]);
+		ID3D11DeviceContext.End(context, stamps[3 * k]);
+		stampBusy[k] = true;
+		stampAt++;
+		for (i in 1...4)
+			if (stampBusy[(k + i) % 4]) stampRead((k + i) % 4);
+	}
+
+	function stampRead(k:Int) {
+		var b = queryBytes, s = stamps;
+		inline function u64(i:Int):Float
+			return b[i + 1] * 4294967296.0 + (b[i] < 0 ? b[i] + 4294967296.0 : b[i]);
+		// (D3D11_QUERY_DATA_TIMESTAMP_DISJOINT: the frequency, then whether disjoint)
+		if (ID3D11DeviceContext.GetData(context, s[3 * k], b, 16, 1) != 0) return;
+		var freq = u64(0), disjoint = b[2] != 0;
+		if (ID3D11DeviceContext.GetData(context, s[3 * k + 1], b, 8, 1) != 0) return;
+		var t0 = u64(0);
+		if (ID3D11DeviceContext.GetData(context, s[3 * k + 2], b, 8, 1) != 0) return;
+		var t1 = u64(0);
+		stampBusy[k] = false;
+		if (!disjoint && freq > 0) gpu = (t1 - t0) / freq * 1000;
+	}
 
 	static inline var MAX_SLOTS = 8;
 
@@ -185,7 +258,8 @@ class D3D11Backend {
 		nils = LibC.malloc(8 * 16);
 		LibC.memset(nils, 0, 8 * 16);
 		var level:Ptr<Int32> = scratch.offset(2).raw();
-		var composed = compose && surface.kind == Win32;
+		// (a transparent window's too: its alpha is DirectComposition's to compose)
+		var composed = (compose || surface.transparent) && surface.kind == Win32;
 		compose = false;
 		#if hxmc.dev_host
 		// (the host keeps the swap chain, not a composition of this build's)
@@ -468,6 +542,10 @@ class D3D11Backend {
 		var hr = IDXGIDevice.GetAdapter(dxgi, scratch);
 		check(hr, "IDXGIDevice::GetAdapter");
 		var adapter = scratch.value;
+		Arena.scoped(a -> {
+			var desc:Ptr<Int32> = a.alloc(320);
+			if (IDXGIAdapter.GetDesc(adapter, desc) >= 0) software = desc[64] == 0x1414;
+		});
 		hr = IDXGIAdapter.GetParent(adapter, IID.IDXGIFactory2, scratch);
 		Com.release(adapter);
 		check(hr, "IDXGIAdapter::GetParent(IDXGIFactory2)");
@@ -490,7 +568,7 @@ class D3D11Backend {
 			d.value.Flags = D3D.SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 			var root = composed ? DcRoot.make(dxgi, surface.handle) : null;
 			if (root != null) {
-				d.value.AlphaMode = D3D.ALPHA_MODE_IGNORE;
+				d.value.AlphaMode = surface.transparent ? D3D.ALPHA_MODE_PREMULTIPLIED : D3D.ALPHA_MODE_IGNORE;
 				var hr = IDXGIFactory2.CreateSwapChainForComposition(factory, device, d, Ptr.nil(), scratch);
 				if (hr >= 0 && IDCompositionVisual.SetContent(root.window, scratch.value) >= 0 && IDCompositionDevice.Commit(root.device) >= 0) {
 					composition = root;
@@ -500,6 +578,8 @@ class D3D11Backend {
 				if (hr >= 0) Com.release(scratch.value);
 				root.dispose();
 				d.value.AlphaMode = 0;
+				if (surface.transparent) Sys.println("helder.gfx: the window opaque: no DirectComposition for its alpha");
+				surface.see(false);
 			}
 			var hr = IDXGIFactory2.CreateSwapChainForHwnd(factory, device, surface.handle, d, Ptr.nil(), Ptr.nil(), scratch);
 			if (hr >= 0) IDXGIFactory2.MakeWindowAssociation(factory, surface.handle, D3D.MWA_NO_ALT_ENTER);
@@ -1182,6 +1262,7 @@ class D3D11Backend {
 			return true;
 		}
 		waitFrame();
+		if (timed) stampBegin();
 		target = chainTarget;
 		view = chainView;
 		width = chainWidth;
@@ -1465,6 +1546,7 @@ class D3D11Backend {
 			return;
 		}
 		resolve();
+		if (timed) stampEnd();
 		// (vsync; a lost device is not recovered yet; what changed told DXGI: Device.damaged)
 		var r = damage, n = r == null ? 0 : Std.int(r.length / 4);
 		damage = null;
@@ -1481,6 +1563,7 @@ class D3D11Backend {
 		});
 		waited = false;
 		occluded = hr == D3D.DXGI_STATUS_OCCLUDED;
+		presentResult = hr;
 		if (hr == D3D.DXGI_ERROR_DEVICE_REMOVED || hr == D3D.DXGI_ERROR_DEVICE_RESET)
 			check(ID3D11Device.GetDeviceRemovedReason(device), "Present: the device was removed");
 	}

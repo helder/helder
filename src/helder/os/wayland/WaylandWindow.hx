@@ -13,6 +13,7 @@ import helder.os.wayland.protocol.TextInputUnstableV3Protocol;
 import helder.os.wayland.protocol.PresentationTimeProtocol;
 import helder.os.wayland.protocol.SinglePixelBufferV1Protocol;
 import helder.os.wayland.protocol.LinuxDmabufV1Protocol;
+import helder.os.wayland.protocol.BlurProtocol;
 import hxmc.unsafe.*;
 
 // helder.os.Window on Wayland (Linux with WAYLAND_DISPLAY set and
@@ -59,6 +60,8 @@ class WaylandWindow {
 	static var dataManager:WlDataDeviceManager = Ptr.nil();
 	static var dataDevice:WlDataDevice = Ptr.nil();
 	static var decorations:ZxdgDecorationManagerV1 = Ptr.nil();
+	// (KDE's blur behind a surface, where the compositor has it: KWin)
+	static var blurs:OrgKdeKwinBlurManager = Ptr.nil();
 	static var viewporter:WpViewporter = Ptr.nil();
 	static var fractional:WpFractionalScaleManagerV1 = Ptr.nil();
 	static var cursorShapes:WpCursorShapeManagerV1 = Ptr.nil();
@@ -205,8 +208,10 @@ class WaylandWindow {
 	static function connect():Bool {
 		var err = WaylandClient.load("libwayland-client.so.0");
 		if (err != null) throw err;
+		#if !helder.soft
 		err = WaylandEgl.load("libwayland-egl.so.1");
 		if (err != null) throw err;
+		#end
 		display = WaylandClient.wl_display_connect(Ptr.nil());
 		if (display.isNull()) throw "cannot connect to " + Sys.getEnv("WAYLAND_DISPLAY");
 		// (the program on a thread of its own: the pointer's and the keyboard's
@@ -270,6 +275,7 @@ class WaylandWindow {
 				o.listen(e);
 			case "wl_data_device_manager": dataManager = bind(name, WlDataDeviceManager.iface, version, 3);
 			case "zxdg_decoration_manager_v1": decorations = bind(name, ZxdgDecorationManagerV1.iface, version, 1);
+			case "org_kde_kwin_blur_manager": blurs = bind(name, OrgKdeKwinBlurManager.iface, version, 1);
 			case "wp_viewporter": viewporter = bind(name, WpViewporter.iface, version, 1);
 			case "wp_fractional_scale_manager_v1": fractional = bind(name, WpFractionalScaleManagerV1.iface, version, 1);
 			case "wp_cursor_shape_manager_v1": cursorShapes = bind(name, WpCursorShapeManagerV1.iface, version, 1);
@@ -802,8 +808,8 @@ class WaylandWindow {
 		listeners.push(toplevel.listen(te));
 		toplevel.setTitle(title);
 		toplevel.setAppId(appId());
-		if (owner.titlebar == Inset) drawsBar = false;
-		if (!decorations.isNull() && owner.titlebar != Inset) {
+		if (owner.titlebar != Standard) drawsBar = false;
+		if (!decorations.isNull() && owner.titlebar == Standard) {
 			decoration = decorations.getToplevelDecoration(toplevel);
 			var de = new ZxdgToplevelDecorationV1Events();
 			de.configure = mode -> {
@@ -825,16 +831,65 @@ class WaylandWindow {
 		var tries = 0;
 		while (!configured && tries++ < 50 && WaylandClient.wl_display_roundtrip(display) >= 0) {}
 		var bw = bufferW(), bh = bufferH();
+		#if helder.soft
+		// (frames from the CPU: wl_shm buffers on the wl_surface itself, helder.os.Blit)
+		surface = new Surface(Wayland, display, wlSurface, bw, bh);
+		#else
 		egl = WaylandEgl.wl_egl_window_create(wlSurface, bw, bh);
 		surface = new Surface(Wayland, display, egl, bw, bh);
+		#end
+		// (EGL's buffers are ARGB8888, premultiplied, as Blit's wl_shm ones, and no opaque region is set: the compositor blends them)
+		surface.see(owner.clear);
 		applyScale();
 		drawBar();
 		WaylandClient.wl_display_flush(display);
 	}
 
+	// (the compositor's wl_shm: helder.os.wayland.WaylandBlit's buffers)
+	@:allow(helder.os.wayland.WaylandBlit) static function sharedMemory():WlShm
+		return shm;
+
 	static function appId():String {
 		var p = haxe.io.Path.withoutDirectory(Sys.programPath());
 		return p == "" ? "helder" : haxe.io.Path.withoutExtension(p);
+	}
+
+	// where it takes the pointer (Window.input: x, y, width, height in
+	// pixels; null: everywhere): the surface's input region, in points,
+	// from the next commit (the next frame's)
+	function setInput(rects:Null<Array<Int>>) {
+		if (rects == null) {
+			wlSurface.setInputRegion(Ptr.nil());
+			return;
+		}
+		var r = compositor.createRegion(), k = scale(), i = 0;
+		while (i + 3 < rects.length) {
+			var x0 = Math.floor(rects[i] / k), y0 = Math.floor(rects[i + 1] / k);
+			r.add(x0, y0, Math.ceil((rects[i] + rects[i + 2]) / k) - x0, Math.ceil((rects[i + 1] + rects[i + 3]) / k) - y0);
+			i += 4;
+		}
+		wlSurface.setInputRegion(r);
+		r.destroy();
+	}
+
+	// (Window.backdrop: KDE's blur behind the whole surface, from the next
+	// commit; blur and mica alike, no glass; none where the compositor has no blur)
+	var blur:OrgKdeKwinBlur = Ptr.nil();
+
+	function setBackdrop(b:WindowBackdrop):Bool {
+		if (blurs.isNull() || b == Glass) return b == None;
+		if (!blur.isNull()) {
+			blur.release();
+			blur = Ptr.nil();
+		}
+		if (b == None) {
+			blurs.unset(wlSurface);
+			return true;
+		}
+		blur = blurs.create(wlSurface);
+		blur.setRegion(Ptr.nil());
+		blur.commit();
+		return true;
 	}
 
 	inline function scale():Float
@@ -880,7 +935,9 @@ class WaylandWindow {
 	function sizeChanged() {
 		if (surface == null) return;
 		var bw = bufferW(), bh = bufferH();
+		#if !helder.soft
 		WaylandEgl.wl_egl_window_resize(egl, bw, bh, 0, 0);
+		#end
 		applyScale();
 		if (bw != surface.width || bh != surface.height) {
 			surface.resized(bw, bh);
@@ -906,7 +963,7 @@ class WaylandWindow {
 	// a drag region moves (a double press maximises; the right button the
 	// compositor's window menu). True: the compositor's, not the app's
 	function titlePress(button:Int, serial:Int):Bool {
-		if (owner.titlebar != Inset || (button != 0x110 && button != 0x111)) return false;
+		if (owner.titlebar == Standard || (button != 0x110 && button != 0x111)) return false;
 		var k = scale(), x = Math.round(px * k), y = Math.round(py * k);
 		var app = owner.titlebarAt == null ? Content : owner.titlebarAt(x, y);
 		var h = TitleBars.hit(px, py, pointsW, pointsH, 6, !maximized && !fullscreen, app);
@@ -1063,7 +1120,11 @@ class WaylandWindow {
 		if (!decoration.isNull()) decoration.destroy();
 		if (!viewport.isNull()) viewport.destroy();
 		if (!fractionalScale.isNull()) fractionalScale.destroy();
+		#if helder.soft
+		if (surface != null) Blit.forget(surface);
+		#else
 		if (!egl.isNull()) WaylandEgl.wl_egl_window_destroy(egl);
+		#end
 		toplevel.destroy();
 		xdgSurface.destroy();
 		wlSurface.destroy();

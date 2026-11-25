@@ -10,10 +10,10 @@ package helder.story;
 // (stories), helder publish's program of its screenshots (StoreShots).
 @:typescript("helder/story")
 @:typescript.classes(helder.story.Story.Controls)
+@:typescript.internal(Controls)
 @:typescript.types(helder.story.Story)
 @:typescript.functions(story = helder.story.Stories.define, tree = helder.story.Stories.tree, screens = helder.story.Screens.run, shots = helder.story.StoreShots.run)
-@:typescript.imports("helder/view")
-@:typescript.jsx(neutral)
+@:typescript.imports("helder/ui")
 @:typescript.renderers(helder.ui.view.NodeRenderer)
 @:build(helder.typescript.api.Manifest.build())
 class TypeScript {}

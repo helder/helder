@@ -1,6 +1,6 @@
 package helder.view.graph;
 
-// An effect's second half (DESIGN.md 2, Effects in two halves): given the
+// An effect's second half (view's README, Effects in two halves): given the
 // value its compute returned and the previous one (null on the first
 // run), it may return a cleanup, run before the next apply and when the
 // effect is disposed.

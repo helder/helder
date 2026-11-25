@@ -307,7 +307,8 @@ export default function os(host) {
 			c.addEventListener(type, f, { ...o, signal: off.signal });
 			if (FORWARD.has(type)) forwarded.push([type, f, o]);
 		};
-		const over = (e) => e.currentTarget !== c;
+		// (over a scroll view; not a clear element taking a popup's input there for the canvas: hxmcBlock, ui's)
+		const over = (e) => e.currentTarget !== c && !e.target.hxmcBlock;
 		const bar = (e) => over(e) && e.target.hxmcScroller === true;
 		// (a pointer no longer active, a synthetic event's: NotFoundError, and the press goes on uncaptured)
 		const capture = (e) => {
@@ -916,6 +917,12 @@ export default function os(host) {
 		},
 		width: (h) => host.handles.get(h).width,
 		height: (h) => host.handles.get(h).height,
+		// a frame drawn on the CPU (helder.os.Blit, -D helder.soft: no WebGL context) into the canvas's 2D context
+		put_pixels(h, p, w, ht) {
+			const c = host.handles.get(h);
+			const x = c.hxmc2d || (c.hxmc2d = c.getContext('2d'));
+			x.putImageData(new ImageData(new Uint8ClampedArray(host.memory().buffer, p, 4 * w * ht).slice(), w, ht), 0, 0);
+		},
 		scale: () => pixelRatio(),
 		// the soft keyboard over the page (CSS pixels): the layout viewport's
 		// height the visual viewport leaves below it (0 where the keyboard

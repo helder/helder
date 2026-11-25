@@ -108,7 +108,7 @@ class Async {
 
 	// the current coroutine's context
 	@:coroutine(transformed)
-	public static function context(completion:IContinuation<Any>):SuspensionResult<Context> {
+	@:noCompletion public static function context(completion:IContinuation<Any>):SuspensionResult<Context> {
 		stale(completion);
 		return SuspensionResult.withResult(completion.context);
 	}
@@ -116,7 +116,7 @@ class Async {
 	// the current coroutine suspended until f's continuation is resumed (at
 	// once if f resumes it; later through the loop)
 	@:coroutine(transformed)
-	public static function suspend<T>(completion:IContinuation<T>, f:IContinuation<T>->Void):SuspensionResult<T> {
+	@:noCompletion public static function suspend<T>(completion:IContinuation<T>, f:IContinuation<T>->Void):SuspensionResult<T> {
 		stale(completion);
 		var s = new Suspension(completion);
 		f(s);
@@ -127,7 +127,7 @@ class Async {
 	// CancellationException), after the function f returned is called
 	// (undoing what it started; null: nothing to undo)
 	@:coroutine(transformed)
-	public static function suspendCancellable<T>(completion:IContinuation<T>, f:IContinuation<T>->Null<CancellationException->Void>):SuspensionResult<T> {
+	@:noCompletion public static function suspendCancellable<T>(completion:IContinuation<T>, f:IContinuation<T>->Null<CancellationException->Void>):SuspensionResult<T> {
 		stale(completion);
 		var token = completion.context.get(CancellationToken.key);
 		var c = token?.cancellationException;
@@ -139,7 +139,7 @@ class Async {
 	}
 
 	// cont resumed on its loop, after what runs now (through its dispatcher)
-	public static function resumeLater<T>(cont:IContinuation<T>, result:Null<T>, error:Null<Exception>) {
+	@:noCompletion public static function resumeLater<T>(cont:IContinuation<T>, result:Null<T>, error:Null<Exception>) {
 		var d = cont.context.get(Dispatcher);
 		var r = new Resumption(cont, result, error);
 		if (d != null) d.dispatch(r) else r.onDispatch();
@@ -152,7 +152,7 @@ class Async {
 		if (c is BaseContinuation) (cast c : BaseContinuation<Dynamic>).error = null;
 
 	// the loop a context's coroutine resumes on
-	public static function loopOf(c:Context):Loop {
+	@:noCompletion public static function loopOf(c:Context):Loop {
 		var d = c.get(Dispatcher);
 		return d is Loop ? cast d : Loop.current();
 	}

@@ -52,7 +52,7 @@ class Task<T> extends Node implements IContinuation<T> implements IDispatchObjec
 	}
 
 	// (dispatched: the body starts, unless the parent is cancelling)
-	public function onDispatch() {
+	@:noCompletion public function onDispatch() {
 		if (started) return;
 		started = true;
 		if (parent != null && parent.error != null && error == null) error = new CancellationException();
@@ -65,7 +65,7 @@ class Task<T> extends Node implements IContinuation<T> implements IDispatchObjec
 	}
 
 	// (the body's completion)
-	public function resume(result:Null<T>, error:Null<Exception>) {
+	@:noCompletion public function resume(result:Null<T>, error:Null<Exception>) {
 		finished = true;
 		if (error != null) fail(error) else this.result = result;
 		check();

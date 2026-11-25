@@ -27,7 +27,7 @@ import hxmc.unsafe.*;
 @:hxmc.unsafe(gc)
 class Links {
 	// how many were asked for: for tests
-	public static var opened(default, null) = 0;
+	@:noCompletion public static var opened(default, null) = 0;
 
 	public static function open(url:String, inApp = true):Bool {
 		opened++;

@@ -200,10 +200,10 @@ class VideoNode extends Node {
 		return {width: turned ? v.height : v.width, height: turned ? v.width : v.height};
 	}
 
-	override public function hasContent():Bool
+	@:noCompletion override public function hasContent():Bool
 		return true;
 
-	override public function measureContent(engine:TextEngine, knownWidth:Float, knownHeight:Float, availWidth:Float, availHeight:Float):helder.ui.Size {
+	@:noCompletion override public function measureContent(engine:TextEngine, knownWidth:Float, knownHeight:Float, availWidth:Float, availHeight:Float):helder.ui.Size {
 		var s = picture(), iw = s.width, ih = s.height;
 		var kw = !Math.isNaN(knownWidth), kh = !Math.isNaN(knownHeight);
 		if (iw == 0 || ih == 0) return new helder.ui.Size(kw ? knownWidth : 0, kh ? knownHeight : 0);
@@ -251,7 +251,7 @@ class VideoNode extends Node {
 	// (its content box as last painted: a system layer's fit, Android's)
 	@:allow(helder.media.ui) final box = [0.0, 0.0];
 
-	override public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {
+	@:noCompletion override public function paintContent(canvas:Canvas, x:Float, y:Float, width:Float, height:Float) {
 		box[0] = width;
 		box[1] = height;
 		var p = player;

@@ -5,16 +5,16 @@
 <Example id="ts-million"/>
 
 ```tsx
-import { signal, For, Show } from "helder/view";
+import {signal, For, Show} from 'helder/view'
 
-const todos = signal<Array<{ id: number; title: string }>>([]);
+const todos = signal<Array<{id: number, title: string}>>([])
 
-<scroll grow={1} min-height={0} row-gap={6}>
+const list = <scroll grow={1} min-height={0} row-gap={6}>
   <For each={todos} by={t => t.id}>{item =>
     <text>{item().title}</text>
   }</For>
   <Show when={todos().length === 0}>
-    <text color="#a1a1aa">Nothing here.</text>
+    <text color='#a1a1aa'>Nothing here.</text>
   </Show>
 </scroll>
 ```
@@ -30,7 +30,7 @@ var todos = signal(new Array<Todo>());
     <text>{item().title}</text>
   }</For>
   <Show when={todos().length == 0}>
-    <text color="#a1a1aa">Nothing here.</text>
+    <text color='#a1a1aa'>Nothing here.</text>
   </Show>
 </scroll>
 ```

@@ -16,8 +16,10 @@
 				"layout",
 				"text",
 				"controls",
+				"interactions",
 				"lists",
 				"navigation",
+				"windows",
 				"services",
 				"purchases"
 			]

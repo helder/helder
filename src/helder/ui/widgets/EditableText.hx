@@ -309,7 +309,7 @@ class EditableText extends TextNode implements PlatformEditorListener {
 	override public function accessText():Null<{start:Int, end:Int, caret:Int, readOnly:Bool}>
 		return {start: selectionStart, end: selectionEnd, caret: caret, readOnly: readOnly};
 
-	override public function accessSetValue(value:String):Bool {
+	@:noCompletion override public function accessSetValue(value:String):Bool {
 		if (readOnly) return false;
 		select(0, text.length);
 		replace(value);

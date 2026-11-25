@@ -1,7 +1,7 @@
 package helder.view.graph;
 
-// When writes are committed and effects run (DESIGN.md 2, Writes and
-// commits; Holds). A write queues its node; a flush stages the pending
+// When writes are committed and effects run (view's README,
+// Holds). A write queues its node; a flush stages the pending
 // writes in a transaction, runs what they make stale for it (owned memos,
 // then render effects' computes, then the others', parents first), and
 // settles it: committed when nothing it renders waits (its effects'

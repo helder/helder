@@ -16,7 +16,7 @@ import helder.image.Image;
 // (helder.view's markup: its renderer, NodeRenderer)
 @:rendered(helder.ui.view.NodeRenderer)
 class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) implements helder.view.Source.Located #end { #if ((hxmc.dev || helder.headless) && !macro) public var source:Null<helder.view.Source> = null; public var sourceComponent:Null<helder.view.Source.SourceComponent> = null; #end
-	public final style:Style;
+	@:noCompletion public final style:Style;
 	public var parent(default, null):Null<Node>;
 	// (a leaf's: one empty array shared by all, replaced by its own when a child comes)
 	public var children(default, null):Array<Node> = NO_CHILDREN;
@@ -25,7 +25,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	// a name for debugging and markup (the element's name)
 	public var tag:String;
 	// the Ui this node's tree is attached to (null: detached)
-	public var ui(default, null):Null<Ui>;
+	@:noCompletion public var ui(default, null):Null<Ui>;
 
 	// the layout's result (Layout): relative to the parent, then absolute; rounded
 	public var x(default, null) = 0.0;
@@ -113,11 +113,11 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	public var size(default, set):Null<String> = null;
 	public var theme(default, set):Null<StyleSheet> = null;
 	// what draws the controls of this subtree (Host: Auto, the parent's; Ui.hostOf)
-	public var host:Host = Auto;
+	@:noCompletion public var host:Host = Auto;
 	// what it is to the keymap (helder.ui.actions: "Editor mode=full"; markup's key-context)
 	public var keyContext:Null<helder.ui.actions.KeyContext> = null;
 	// its handlers of actions dispatched through it (on; markup's actions)
-	public var actionHandlers:Null<Array<helder.ui.actions.Actions.ActionHandler>> = null;
+	@:noCompletion public var actionHandlers:Null<Array<helder.ui.actions.Actions.ActionHandler>> = null;
 	// Tab's order among the focusable (as the DOM's tabindex): those above 0
 	// first, in its order, then 0's in tree order; below 0: focusable by a
 	// click or focus(), passed over by Tab
@@ -128,17 +128,17 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	// (instant); kept against its parent's trailing edges while the parent's
 	// size moves (ride: 1 across, 2 down, 3 both; markup's ride="trailing")
 	public var motion(default, set):Null<helder.ui.motion.MotionSpec> = null;
-	public var matched(default, set):Null<String> = null;
+	@:noCompletion public var matched(default, set):Null<String> = null;
 	public var instant = false;
 	// what a press on it is to an inset title bar (markup's drag-region: Drag;
 	// WindowControls' buttons theirs), its ancestors' when Content (Ui.titleHit)
-	public var titleHit:helder.os.TitleBar.TitleHit = helder.os.TitleBar.TitleHit.Content;
-	public var ride(default, set) = 0;
+	@:noCompletion public var titleHit:helder.os.TitleBar.TitleHit = helder.os.TitleBar.TitleHit.Content;
+	@:noCompletion public var ride(default, set) = 0;
 	// its presented state: the tracks of what moves of it (made when first needed)
-	public var present(default, null):Null<helder.ui.motion.Present> = null;
+	@:noCompletion public var present(default, null):Null<helder.ui.motion.Present> = null;
 	// its children that left and are still drawn until their exits settle (Motions), and a leaving node's old parent
-	public var exits(default, null):Null<Array<Node>> = null;
-	public var leftFrom(default, null):Null<Node> = null;
+	@:noCompletion public var exits(default, null):Null<Array<Node>> = null;
+	@:noCompletion public var leftFrom(default, null):Null<Node> = null;
 	// (inserted into a drawn parent: it enters as it is first drawn, Motions.enter)
 	var entering = false;
 
@@ -759,7 +759,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	function refocusNative() {}
 
 	// the layout of this node (and so of its ancestors) must be redone
-	public function markDirty() {
+	@:noCompletion public function markDirty() {
 		Ui.accessEpoch++;
 		fontCache = null;
 		textBits = -1;
@@ -931,7 +931,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	inline function inheritsFrom():Null<Node>
 		return ui != null && this == ui.overlay && ui.body != null ? ui.body : parent != null ? parent : leftFrom;
 
-	public function font():Font {
+	@:noCompletion public function font():Font {
 		if (fontCache != null) return fontCache;
 		// (unset: NaN, -1; no boxes)
 		var family:Null<String> = null, size = Math.NaN, weight = -1, italic = -1, lh = Math.NaN, ls = Math.NaN, ws = Math.NaN;
@@ -985,7 +985,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	var fontCache:Null<Font> = null;
 
 	// the text shadows its text casts (Style.textShadow, inherited; null: none)
-	public function textShadow():Null<Shadow> {
+	@:noCompletion public function textShadow():Null<Shadow> {
 		var n = this;
 		while (n != null) {
 			var sh = n.style.textShadow;
@@ -1145,7 +1145,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		return windowBounds();
 
 	// rect, written into out (returned): nothing made (windowBoundsInto)
-	public inline function rectInto(out:Bounds):Bounds
+	@:noCompletion public inline function rectInto(out:Bounds):Bounds
 		return windowBoundsInto(out);
 
 	public function scrollIntoView()
@@ -1316,11 +1316,11 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 
 	// the content's size for the given content-box constraints (NaN: unknown
 	// or unbounded)
-	public function measureContent(text:TextEngine, knownWidth:Float, knownHeight:Float, availWidth:Float, availHeight:Float):Size
+	@:noCompletion public function measureContent(text:TextEngine, knownWidth:Float, knownHeight:Float, availWidth:Float, availHeight:Float):Size
 		return Size.ZERO;
 
 	// assistive technology sets its value (a text input's text): false when it has none
-	public function accessSetValue(value:String):Bool
+	@:noCompletion public function accessSetValue(value:String):Bool
 		return false;
 
 	// a text input's value for assistive technology when it is not a
@@ -1384,11 +1384,11 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 		return false;
 
 	// whether its children are part of its content (a TextNode's spans), not boxes laid out
-	public function contentOwnsChildren():Bool
+	@:noCompletion public function contentOwnsChildren():Bool
 		return false;
 
 	// the content's min-content width (its widest unbreakable part)
-	public function minContentWidth(text:TextEngine):Float
+	@:noCompletion public function minContentWidth(text:TextEngine):Float
 		return measureContent(text, Math.NaN, Math.NaN, 0, Math.NaN).width;
 
 	// draws the content in its content box at (x, y), in window pixels
@@ -1567,7 +1567,7 @@ class Node implements Part #if ((hxmc.dev || helder.headless) && !macro) impleme
 	}
 
 	// its content's size where it may draw past its content box (Size.NONE: none)
-	public function contentInk():Size
+	@:noCompletion public function contentInk():Size
 		return Size.NONE;
 
 	// the first descendant (or this) with the tag, depth first

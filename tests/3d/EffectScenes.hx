@@ -7,8 +7,7 @@ import helder.scene.render.*;
 import helder.scene.render.PostProcess;
 import StageShaders;
 
-// The view buffers' and post's effects' frames (Scenes, phase 2 of
-// src/helder/scene/DESIGN-3D.md), one courtyard drawn in HDR through a
+// Post-processing reference frames: one courtyard drawn in HDR through a
 // PostProcess into the frame (renderer.post: the view buffers its effects
 // ask for drawn by the renderer):
 //   prepass    the view buffers themselves (ViewBuffers): depth on the

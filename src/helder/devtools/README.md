@@ -4,9 +4,9 @@ The devtools protocol, and the agent that speaks it in the program: one
 message format on the dev connection, for reloads, logs and the tools.
 JSON-RPC 2.0 as the Chrome DevTools Protocol and Dart's VM service have
 it: methods in domains (`Runtime`, `Log`, `Frame`, `Ui`; libraries add
-their own) that cost nothing until a tool enables them. A first slice:
-`helder dev` (src/helder/cli) is the relay, `helder inspect` the client
-that proves it; the VS Code extension (README, phase 3) comes later.
+their own) that cost nothing until a tool enables them.
+`helder dev` (src/helder/cli) is the relay and `helder inspect` its
+command-line client.
 
 ```
 program (agent) ──JSON lines──▶ helder dev ◀──WebSocket── tools (helder inspect, ...)

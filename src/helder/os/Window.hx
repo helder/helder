@@ -68,13 +68,18 @@ class Window {
 		return cast native;
 	#end
 
-	// the system's title bar, or the content under it (TitleBar: "inset",
+	// the system's title bar, none (TitleBar: "none", borderless), or the content under it (TitleBar: "inset",
 	// the window's buttons in the app's layout); given when it is made
 	public final titlebar:TitleBar;
+	// (transparent as it was asked for: what the platform's window reads)
+	@:allow(helder.os) final clear:Bool;
 
-	@:typescript public function new(title:String, width:Int, height:Int, titlebar:TitleBar = Standard) {
+	// (transparent: its pixels' alpha shows what is behind it, premultiplied;
+	// where the system cannot, opaque: see transparent)
+	@:typescript public function new(title:String, width:Int, height:Int, titlebar:TitleBar = Standard, transparent = false) {
 		this.title = title;
 		this.titlebar = titlebar;
+		clear = transparent;
 		#if (!helder.os || helder.headless)
 		if (HEADLESS) {
 			native = new helder.os.headless.HeadlessWindow(this, width, height);
@@ -99,6 +104,15 @@ class Window {
 			#if ((!helder.os || helder.os == "linux") && !helder.headless) (Std.isOfType(native, WaylandWindow) ? wayland().surface : x11().surface) #else throw "unreachable" #end;
 		App.windows.push(this);
 	}
+
+	// whether what is behind it shows through its clear pixels: asked for
+	// when made, and the system composes it so (macOS, Windows through
+	// DirectComposition, Wayland, X11 with a compositing manager, the
+	// browser's canvas); false where it was not asked for or cannot be
+	@:typescript public var transparent(get, never):Bool;
+
+	inline function get_transparent()
+		return surface.transparent;
 
 	// the surface's size in pixels
 	@:typescript public var width(get, never):Int;
@@ -166,7 +180,7 @@ class Window {
 	// area's bottom following it; keyboardDuration is its animation's
 	// seconds where the system gives them (iOS's), else 0
 	@:typescript public var keyboard(get, never):Read<Float>;
-	public var keyboardDuration(default, null) = 0.0;
+	@:noCompletion public var keyboardDuration(default, null) = 0.0;
 
 	final keyboardHeight:Signal<Float> = Graph.signal(0.0);
 
@@ -219,7 +233,7 @@ class Window {
 	// pan-y): true, the drag is the program's (its pointer's moves, the page
 	// held still); false, or null (not asked), the page pans (the pointer
 	// cancelled: PointerCancel). Elsewhere every drag is the program's
-	public var scrollsAt:Null<(x:Int, y:Int, dx:Float, dy:Float) -> Bool> = null;
+	@:noCompletion public var scrollsAt:Null<(x:Int, y:Int, dx:Float, dy:Float) -> Bool> = null;
 
 	// an inset title bar's answer for a press at x, y (pixels): a drag
 	// region, one of the app's window buttons, or the content's (null: the
@@ -227,7 +241,7 @@ class Window {
 	// (macOS: a drag then performWindowDragWithEvent:, a double click the
 	// zoom; Wayland's and X11's moves), and on Windows for each
 	// WM_NCHITTEST (HTCAPTION, HTMAXBUTTON for its snap layouts)
-	public var titlebarAt:Null<(x:Int, y:Int) -> TitleHit> = null;
+	@:noCompletion public var titlebarAt:Null<(x:Int, y:Int) -> TitleHit> = null;
 
 	// each input event as it is read, before the program gets it (helder.ui's
 	// compositor: Event.routed set; where the main thread reads input while
@@ -279,7 +293,7 @@ class Window {
 
 	// the system's buttons' top left moved to x, y (pixels: macOS's, again
 	// after each resize; nothing elsewhere)
-	public function placeControls(x:Int, y:Int) {
+	@:noCompletion public function placeControls(x:Int, y:Int) {
 		if (titlebar != Inset || closed) return;
 		if (Platform.os() == 1) {
 			if (Platform.apple() >= 1) {} else
@@ -328,6 +342,125 @@ class Window {
 		return on;
 	}
 
+	// the system's shadow around it (macOS's, following a transparent
+	// window's pixels; Windows' around its frame): true by default, false
+	// none; elsewhere the window manager's, always false here
+	public var shadow(get, set):Bool;
+
+	function get_shadow():Bool
+		return
+			closed || HEADLESS ? false :
+			Platform.apple() >= 1 ? false :
+			#if (!helder.os || helder.os == "macos") Platform.os() == 1 ? mac().shadow() : #end
+			#if (!helder.os || helder.os == "windows") Platform.os() == 2 ? win().shadow : #end
+			false;
+
+	function set_shadow(on:Bool):Bool {
+		if (closed || HEADLESS) return on;
+		if (Platform.apple() >= 1) {} else
+		#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) mac().setShadow(on) else #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) win().setShadow(on) else #end
+		{};
+		return on;
+	}
+
+	// where it takes the pointer and clicks: rectangles in pixels (x, y,
+	// width, height each); elsewhere they go to what is behind it (another
+	// window, another app's). Null (the default): everywhere; [] nowhere.
+	// helder.ui gives a transparent window's from what it draws. macOS:
+	// ignoresMouseEvents, by where the pointer is at each poll; Windows:
+	// WM_NCHITTEST's HTTRANSPARENT and, while the pointer is outside them,
+	// WS_EX_TRANSPARENT; Wayland: the input region; X11: the input shape;
+	// nothing elsewhere
+	public var inputRects(default, null):Null<Array<Int>> = null;
+
+	public function input(rects:Null<Array<Int>>) {
+		if (closed) return;
+		inputRects = rects == null ? null : rects.copy();
+		if (HEADLESS) return;
+		if (Platform.apple() >= 1) {} else
+		#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) mac().setInput(inputRects) else #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) win().setInput(inputRects) else #end
+		if (Platform.os() == 3) {} else
+		if (Platform.target() >= 9) {} else
+		#if ((!helder.os || helder.os == "linux") && !helder.headless) (Std.isOfType(native, WaylandWindow) ? wayland().setInput(inputRects) : x11().setInput(inputRects)); #else {} #end
+	}
+
+	// the system's material behind a transparent window, seen through its
+	// clear and half-clear pixels (WindowBackdrop): macOS's NSVisualEffectView
+	// (blur, mica) or NSGlassEffectView (glass, macOS 26) under its layer;
+	// Windows 11's DWMWA_SYSTEMBACKDROP_TYPE (Acrylic, Mica); KDE's blur
+	// (Wayland's org_kde_kwin_blur, X11's _KDE_NET_WM_BLUR_BEHIND_REGION).
+	// What the system has: None where it has none of it, or the window is
+	// not transparent
+	public var backdrop(default, set):WindowBackdrop = None;
+
+	function set_backdrop(b:WindowBackdrop):WindowBackdrop {
+		if (closed || HEADLESS || b == backdrop) return backdrop;
+		if (b != None && !transparent) return backdrop = None;
+		// (one the system lacks: the last one taken away too)
+		if (applied(b)) return backdrop = b;
+		applied(None);
+		return backdrop = None;
+	}
+
+	function applied(b:WindowBackdrop):Bool
+		return
+			Platform.apple() >= 1 ? false :
+			#if (!helder.os || helder.os == "macos") Platform.os() == 1 ? mac().setBackdrop(b) : #end
+			#if (!helder.os || helder.os == "windows") Platform.os() == 2 ? win().setBackdrop(b) : #end
+			Platform.os() == 3 ? false :
+			Platform.target() >= 9 ? false :
+			#if ((!helder.os || helder.os == "linux") && !helder.headless) (Std.isOfType(native, WaylandWindow) ? wayland().setBackdrop(b) : x11().setBackdrop(b)) #else false #end;
+
+	// over every other window, whichever has the focus (macOS's floating
+	// level, Windows' HWND_TOPMOST, X11's _NET_WM_STATE_ABOVE); Wayland has
+	// no way to ask, false there
+	public var onTop(default, set) = false;
+
+	function set_onTop(on:Bool):Bool {
+		if (closed || HEADLESS || on == onTop) return onTop;
+		if (Platform.apple() >= 1 || Platform.os() == 3 || Platform.target() >= 9) return false;
+		#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) mac().setOnTop(on) else #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) win().setOnTop(on) else #end
+		#if ((!helder.os || helder.os == "linux") && !helder.headless) if (Std.isOfType(native, WaylandWindow)) return false else x11().setState("_NET_WM_STATE_ABOVE", on); #else {} #end
+		return onTop = on;
+	}
+
+	// among the windows the task bar and the window switcher show (true by
+	// default); false: out of them (Windows' WS_EX_TOOLWINDOW, X11's
+	// _NET_WM_STATE_SKIP_TASKBAR and SKIP_PAGER, macOS's Window menu and
+	// window cycle: the Dock's icon is the app's); Wayland can't, true there
+	public var taskbar(default, set) = true;
+
+	function set_taskbar(on:Bool):Bool {
+		if (closed || HEADLESS || on == taskbar) return taskbar;
+		if (Platform.apple() >= 1 || Platform.os() == 3 || Platform.target() >= 9) return true;
+		#if (!helder.os || helder.os == "macos") if (Platform.os() == 1) mac().setTaskbar(on) else #end
+		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) win().setTaskbar(on) else #end
+		#if ((!helder.os || helder.os == "linux") && !helder.headless) if (Std.isOfType(native, WaylandWindow)) return true else {
+			x11().setState("_NET_WM_STATE_SKIP_TASKBAR", !on);
+			x11().setState("_NET_WM_STATE_SKIP_PAGER", !on);
+		} #else {} #end
+		return taskbar = on;
+	}
+
+	// the part of its screen windows go in, in points from the screen's top
+	// left as position (pixels on X11): the screen less the menu bar, a
+	// notch, the Dock (macOS's visibleFrame, safeAreaInsets), the task bar
+	// (Windows' rcWork), the panels (X11's _NET_WORKAREA); null where a
+	// window has no place of its own (Wayland, the browser, phones)
+	public function workArea():Null<{x:Int, y:Int, width:Int, height:Int}>
+		return
+			closed ? null :
+			#if (!helder.os || helder.headless) HEADLESS ? {x: 0, y: 0, width: headless().width, height: headless().height} : #end
+			Platform.apple() >= 1 ? null :
+			#if (!helder.os || helder.os == "macos") Platform.os() == 1 ? mac().workArea() : #end
+			#if (!helder.os || helder.os == "windows") Platform.os() == 2 ? win().workArea() : #end
+			Platform.os() == 3 ? null :
+			Platform.target() >= 9 ? null :
+			#if ((!helder.os || helder.os == "linux") && !helder.headless) (Std.isOfType(native, WaylandWindow) ? null : x11().workArea()) #else null #end;
+
 	// the pointer's shape over the window (Auto: Default)
 	public var cursor(default, set):Cursor = Default;
 
@@ -370,7 +503,7 @@ class Window {
 
 	// whether text is typed into it now (startTextInput until stopTextInput:
 	// a text field focused, ui's UiWindow), when Escape is the field's, not App.onBack's
-	public var typing(default, null) = false;
+	@:noCompletion public var typing(default, null) = false;
 
 	// where text is typed now (a text field's caret: x, y, width, height in
 	// pixels from the top left), until stopTextInput: an input method shows
@@ -386,7 +519,7 @@ class Window {
 	// Android shows the soft keyboard, its input method through a hidden
 	// EditText (helder.os.android.TextInput, once enabled), compositions as
 	// TextEditing; iOS its keyboard, the view's UIKeyInput (no compositions)
-	public function startTextInput(x:Int, y:Int, width:Int, height:Int) {
+	@:noCompletion public function startTextInput(x:Int, y:Int, width:Int, height:Int) {
 		if (closed) return;
 		typing = true;
 		#if (!helder.os || helder.headless) if (HEADLESS) helder.headless.Headless.run.textInputAt(x, y, width, height) else #end
@@ -406,7 +539,7 @@ class Window {
 	// methods told) its kind. Given after startTextInput, again whenever it
 	// changes; the input method's edits of it come as TextReplace (and
 	// TextInput, TextEditing, TextSelect). Nothing elsewhere
-	public function textContext(text:String, start:Int, end:Int, multiline = false, secret = false) {
+	@:noCompletion public function textContext(text:String, start:Int, end:Int, multiline = false, secret = false) {
 		if (closed || !typing || HEADLESS) return;
 		#if (!helder.os || helder.os == "windows") if (Platform.os() == 2) win().textContext(secret ? "" : text, secret ? 0 : start, secret ? 0 : end) else #end
 		#if ((!helder.os || helder.os == "linux") && !helder.headless) if (Platform.os() == 0 && Platform.target() < 9 && Std.isOfType(native, WaylandWindow)) wayland().textContext(text, start, end, multiline, secret) else #end
@@ -418,14 +551,14 @@ class Window {
 	// key, capitalisation, corrections), given before startTextInput and
 	// whenever it changes: iOS's keyboard (the view's UITextInputTraits) and
 	// Android's EditorInfo for a drawn field; nothing elsewhere
-	public function textKind(kind:TextKind) {
+	@:noCompletion public function textKind(kind:TextKind) {
 		if (closed || HEADLESS) return;
 		#if (!helder.os || helder.os == "ios") if (Platform.apple() >= 1) ios().setKind(kind) else #end
 		#if (!helder.os || helder.os == "android") if (Platform.os() == 0 && Platform.target() >= 9) android().textKind(kind) else #end
 		{};
 	}
 
-	public function stopTextInput() {
+	@:noCompletion public function stopTextInput() {
 		typing = false;
 		if (closed || HEADLESS) return;
 		#if (!helder.os || helder.os == "web") if (Platform.os() == 3) web().textInput(false, 0, 0, 0, 0) else #end

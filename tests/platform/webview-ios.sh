@@ -69,9 +69,13 @@ run() {
 		i=$((i + 1))
 	done
 	if ! grep -q "webview:" "$out/$base.txt"; then
-		echo "webview-ios.sh: $base: no output; launched again"
+		echo "webview-ios.sh: $base: first launch failed (no output after 30 s); retrying once"
+		cp "$out/$base.txt" "$out/$base-first-launch.txt"
+		cat "$out/$base-first-launch.txt"
 		report
-		kill $console > /dev/null 2>&1
+		xcrun simctl terminate "$udid" "$id" > /dev/null 2>&1
+		kill "$console" > /dev/null 2>&1
+		wait "$console" 2>/dev/null
 		launch "$@"
 	fi
 	# (from outside the web view, the Mac's curl: the simulator's loopback is the Mac's; its

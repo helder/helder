@@ -1,7 +1,7 @@
 // story({...}) in TypeScript (Fleet.hx prints the same): stories of a card
 // built from their controls, one a store screenshot with its seed, each
 // mounted headless and its tree printed as helder test snapshots it.
-import {story, tree, type Controls} from "helder/story";
+import {story, tree} from "helder/story";
 import {Show, type Signal} from "helder/view";
 
 function card(title: Signal<string>, ships: Signal<number>, warning?: Signal<boolean>) {
@@ -13,7 +13,7 @@ function card(title: Signal<string>, ships: Signal<number>, warning?: Signal<boo
 }
 
 export const plain = story({name: "Card/plain", render: (c) => card(c.text("title", "Fleet"), c.number("ships", 3))});
-export const many = story({name: "Card/many", render: (c: Controls) => card(c.text("title", "Armada"), c.number("ships", 42), c.bool("warning", true))});
+export const many = story({name: "Card/many", render: c => card(c.text("title", "Armada"), c.number("ships", 42), c.bool("warning", true))});
 export const fleet = story({
 	name: "Store/fleet",
 	store: true,

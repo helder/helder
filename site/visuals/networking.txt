@@ -1,0 +1,6 @@
+listening on http://127.0.0.1:8080/
+
+GET /index.html  → serves public/index.html
+GET /ws          → upgrades to WebSocket
+file saved       → {"changed":["public/index.html"]}
+GET /quit        → bye

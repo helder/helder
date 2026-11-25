@@ -109,7 +109,8 @@ class X11Window {
 			}
 		}
 		#else
-		id = Xlib.XCreateSimpleWindow(display, Xlib.XRootWindow(display, screen), 0, 0, width, height, 0, black, black);
+		id = owner.clear ? clearWindow(screen, width, height) : 0;
+		if (id == 0) id = Xlib.XCreateSimpleWindow(display, Xlib.XRootWindow(display, screen), 0, 0, width, height, 0, black, black);
 		#end
 		Arena.scoped(a -> {
 			Xlib.XStoreName(display, id, a.cstring(title));
@@ -119,7 +120,7 @@ class X11Window {
 		});
 		// (inset: no decorations, Motif's hints asked of the window manager:
 		// flags MWM_HINTS_DECORATIONS, decorations 0)
-		if (owner.titlebar == Inset) Arena.scoped(a -> {
+		if (owner.titlebar != Standard) Arena.scoped(a -> {
 			var hints:Ptr<Int64> = a.alloc(40);
 			for (i in 0...5)
 				hints[i] = 0;
@@ -143,6 +144,7 @@ class X11Window {
 		}
 		Xlib.XFlush(display);
 		surface = new Surface(X11, display, Ptr.ofI64(id), width, height);
+		if (visual != 0) surface.see(true, visual);
 		queueLock.acquire();
 		open.push(this);
 		queueLock.release();
@@ -278,6 +280,9 @@ class X11Window {
 		queueLock.release();
 		if (!ic.isNull()) Xlib.XDestroyIC(ic);
 		ic = Ptr.nil();
+		#if helder.soft
+		Blit.forget(surface);
+		#end
 		Xlib.XDestroyWindow(display, id);
 		Xlib.XFlush(display);
 		for (r in clipboardReads.copy())
@@ -297,6 +302,63 @@ class X11Window {
 			readLock.release();
 		}
 	}
+
+	// where it takes the pointer (Window.input: x, y, width, height in
+	// pixels; null: everywhere): its input shape (XShape's ShapeInput),
+	// elsewhere the pointer the windows' under it
+	function setInput(rects:Null<Array<Int>>) {
+		if (!XShape.ok) {
+			Sys.println("helder.os: no libXext: the window takes the pointer everywhere");
+			return;
+		}
+		if (rects == null) {
+			// (no mask: the window's bounds again)
+			XShape.XShapeCombineMask(display, id, 2, 0, 0, 0, 0);
+		} else Arena.scoped(a -> {
+			var n = rects.length >> 2, r:Ptr<UInt16> = a.alloc(8 * n + 8);
+			for (i in 0...n * 4)
+				r[i] = Std.int(Math.max(-32768, Math.min(32767, rects[i]))) & 0xFFFF;
+			XShape.XShapeCombineRectangles(display, id, 2, 0, 0, r, n, 0, 0);
+		});
+		Xlib.XFlush(display);
+	}
+
+	// (Window.backdrop: KDE's blur behind the window, its whole area
+	// (_KDE_NET_WM_BLUR_BEHIND_REGION empty); blur and mica alike, no glass;
+	// none where no one made the atom: KWin does)
+	function setBackdrop(b:WindowBackdrop):Bool {
+		if (b == Glass) return false;
+		var atom = Arena.scopedValue(a -> Xlib.XInternAtom(display, a.cstring("_KDE_NET_WM_BLUR_BEHIND_REGION"), 1));
+		if (atom == 0) return b == None;
+		if (b == None) Xlib.XDeleteProperty(display, id, atom) else Arena.scoped(a -> Xlib.XChangeProperty(display, id, atom, X.XA_CARDINAL, 32, X.PropModeReplace, a.alloc(8), 0));
+		Xlib.XFlush(display);
+		return true;
+	}
+
+	// (a transparent window's visual, 0: opaque)
+	var visual = 0;
+
+	// (a window of a 32-bit ARGB visual where a compositing manager runs
+	// (_NET_WM_CM_S0 owned): its alpha composed; 0: none, opaque then)
+	function clearWindow(screen:Int, width:Int, height:Int):Int64
+		return Arena.scopedValue(a -> {
+			if (Xlib.XGetSelectionOwner(display, Xlib.XInternAtom(display, a.cstring("_NET_WM_CM_S" + screen), 0)) == 0) {
+				Sys.println("helder.os: no compositing manager on X11: the window opaque");
+				return (0 : Int64);
+			}
+			var info:Ptr<Int64> = a.alloc(64);
+			// (TrueColor 4)
+			if (Xlib.XMatchVisualInfo(display, screen, 32, 4, info) == 0) {
+				Sys.println("helder.os: no 32-bit visual on X11: the window opaque");
+				return (0 : Int64);
+			}
+			var v = Ptr.ofI64(info[0]), root = Xlib.XRootWindow(display, screen), at:Ptr<Int64> = a.alloc(112);
+			LibC.memset(at, 0, 112);
+			at[12] = Xlib.XCreateColormap(display, root, v, 0);
+			visual = haxe.Int64.toInt(info[1]);
+			// (CWBackPixel, CWBorderPixel, CWColormap; InputOutput 1)
+			return Xlib.XCreateWindow(display, root, 0, 0, width, height, 0, 32, 1, v, (1 << 1) | (1 << 3) | (1 << 13), at);
+		});
 
 	// the title: WM_NAME (Latin-1 for old window managers) and _NET_WM_NAME (UTF-8)
 	function setTitle(t:String)
@@ -322,6 +384,23 @@ class X11Window {
 		Xlib.XFlush(display);
 	}
 
+	// (Window.onTop, taskbar: an EWMH state asked of the window manager, added or removed)
+	function setState(name:String, on:Bool) {
+		Arena.scoped(a -> sendMessage(Xlib.XDefaultRootWindow(display), id, NET_WM_STATE, on ? 1 : 0, Xlib.XInternAtom(display, a.cstring(name), 0), 0, 1, 0,
+			X.SubstructureRedirectMask | X.SubstructureNotifyMask));
+		Xlib.XFlush(display);
+	}
+
+	// (Window.workArea: the window manager's _NET_WORKAREA, the current
+	// desktop's first; without one the screen)
+	function workArea():{x:Int, y:Int, width:Int, height:Int} {
+		var p = Arena.scopedValue(a -> sourceProperty(Xlib.XDefaultRootWindow(display), Xlib.XInternAtom(display, a.cstring("_NET_WORKAREA"), 0)));
+		if (p != null && p.format == 32 && p.bytes.length >= 32)
+			return {x: p.bytes.getInt32(0), y: p.bytes.getInt32(8), width: p.bytes.getInt32(16), height: p.bytes.getInt32(24)};
+		var s = Xlib.XDefaultScreen(display);
+		return {x: 0, y: 0, width: Xlib.XDisplayWidth(display, s), height: Xlib.XDisplayHeight(display, s)};
+	}
+
 	function minimize() {
 		Xlib.XIconifyWindow(display, id, Xlib.XDefaultScreen(display));
 		Xlib.XFlush(display);
@@ -341,7 +420,7 @@ class X11Window {
 	// application), a double press on a drag region maximising. True: the
 	// window manager's, not the app's
 	function titlePress(x:Int, y:Int, rx:Int, ry:Int):Bool {
-		if (owner.titlebar != Inset) return false;
+		if (owner.titlebar == Standard) return false;
 		var app = owner.titlebarAt == null ? Content : owner.titlebarAt(x, y);
 		var h = TitleBars.hit(x, y, surface.width, surface.height, 6, !maximized && !fullscreen, app);
 		var d = TitleBars.x11(h);
@@ -762,6 +841,10 @@ class X11Window {
 					if (s.value.selection == XdndSelection) w.dropArrived(s, e) else w.selectionArrived(xev);
 				case X.Expose:
 					var x:Ptr<XExposeEvent> = xev;
+					// (a frame drawn on the CPU: the server keeps none, the last one put again)
+					#if helder.soft
+					if (x.value.count == 0) Blit.repaint(w.surface, Ptr.nil());
+					#end
 					if (x.value.count == 0) e.kind = Redraw;
 				case X.ConfigureNotify:
 					var c:Ptr<XConfigureEvent> = xev;

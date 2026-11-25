@@ -1180,10 +1180,10 @@ class CodeModel {
 		return (a == 0 || !isWordChar(codeAt(a - 1))) && (b >= rope.length || !isWordChar(codeAt(b)));
 
 	// the matches replaced (start, end pairs; one edit, undone as one)
-	public function replaceMatches(matches:Array<Int>, with:String):Bool {
+	public function replaceMatches(matches:Array<Int>, replacement:String):Bool {
 		var changes = [], k = 0;
 		while (k + 1 < matches.length) {
-			changes.push(new Change(matches[k], matches[k + 1], with));
+			changes.push(new Change(matches[k], matches[k + 1], replacement));
 			k += 2;
 		}
 		return apply(changes, null, EDIT);

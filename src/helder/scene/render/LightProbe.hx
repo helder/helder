@@ -12,7 +12,7 @@ import helder.scene.Node;
 // only, a draw's (its centre's) and evaluated at its vertices: nothing
 // per pixel.
 class LightProbe {
-	public static final KIND = new StoreKind<LightProbe>("lightProbe");
+	@:noCompletion public static final KIND = new StoreKind<LightProbe>("lightProbe");
 
 	public var sh:Sh;
 	// how far it reaches (scene units)

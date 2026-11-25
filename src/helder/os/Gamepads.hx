@@ -53,7 +53,7 @@ class Gamepads {
 		return i >= 0 && i < MAX && a >= 0 && a < AXES ? axes[i][a] : 0;
 
 	// pad i fed by the program (null: given back to the device)
-	public static function set(i:Int, ?pressed:Array<Bool>, ?sticks:Array<Float>) {
+	@:noCompletion public static function set(i:Int, ?pressed:Array<Bool>, ?sticks:Array<Float>) {
 		if (i < 0 || i >= MAX) return;
 		virtual[i] = pressed != null || sticks != null;
 		live[i] = virtual[i];
@@ -66,7 +66,7 @@ class Gamepads {
 	// the devices read again, once enabled (a program that never calls
 	// enable links no device code: a few tens of KB, and in the browser
 	// imports a test under node's WASI does not have)
-	public static function poll() {
+	@:noCompletion public static function poll() {
 		if (devices != null) devices();
 	}
 

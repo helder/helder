@@ -15,7 +15,15 @@ import hxmc.unsafe.*;
 	static function XBlackPixel(d:Ptr, screen:Int):Int64;
 	static function XCreateSimpleWindow(d:Ptr, parent:Int64, x:Int, y:Int, width:Int, height:Int, borderWidth:Int, border:Int64,
 		background:Int64):Int64;
+	// (a transparent window's: a 32-bit TrueColor visual, its colormap; XVisualInfo's visual at 0, visualid at 8;
+	// XSetWindowAttributes' background_pixel at 8, border_pixel at 24, colormap at 96, 112 bytes)
+	static function XMatchVisualInfo(d:Ptr, screen:Int, depth:Int, cls:Int, info:Ptr):Int;
+	static function XCreateColormap(d:Ptr, w:Int64, visual:Ptr, alloc:Int):Int64;
+	static function XCreateWindow(d:Ptr, parent:Int64, x:Int, y:Int, width:Int, height:Int, borderWidth:Int, depth:Int, cls:Int, visual:Ptr,
+		mask:Int64, attributes:Ptr):Int64;
 	static function XDestroyWindow(d:Ptr, w:Int64):Int;
+	static function XDisplayWidth(d:Ptr, screen:Int):Int;
+	static function XDisplayHeight(d:Ptr, screen:Int):Int;
 	static function XStoreName(d:Ptr, w:Int64, name:Ptr):Int;
 	static function XResizeWindow(d:Ptr, w:Int64, width:Int, height:Int):Int;
 	static function XMoveWindow(d:Ptr, w:Int64, x:Int, y:Int):Int;
@@ -53,6 +61,13 @@ import hxmc.unsafe.*;
 	// an XImage* of the window's pixels (ZPixmap: 32 bits per pixel on a 24-bit visual)
 	static function XGetImage(d:Ptr, drawable:Int64, x:Int, y:Int, width:Int, height:Int, planes:Int64, format:Int):Ptr<XImage>;
 	static function XDestroyImage(image:Ptr<XImage>):Int;
+	// (a frame shown without a GPU: helder.os.x11.X11Blit)
+	static function XDefaultVisual(d:Ptr, screen:Int):Ptr;
+	static function XDefaultDepth(d:Ptr, screen:Int):Int;
+	static function XCreateGC(d:Ptr, drawable:Int64, mask:Int64, values:Ptr):Ptr;
+	static function XFreeGC(d:Ptr, gc:Ptr):Int;
+	static function XCreateImage(d:Ptr, visual:Ptr, depth:Int, format:Int, offset:Int, data:Ptr, width:Int, height:Int, pad:Int, stride:Int):Ptr<XImage>;
+	static function XPutImage(d:Ptr, drawable:Int64, gc:Ptr, image:Ptr<XImage>, sx:Int, sy:Int, dx:Int, dy:Int, w:Int, h:Int):Int;
 	// selections (the clipboard): owning one, asking its owner for it, the
 	// properties its text travels in
 	static function XSetSelectionOwner(d:Ptr, selection:Int64, owner:Int64, time:Int64):Int;
@@ -112,6 +127,7 @@ class X {
 	public static inline var PropertyNewValue = 0;
 	public static inline var PropertyDelete = 1;
 	public static inline var PropModeReplace = 0;
+	public static inline var XA_CARDINAL = 6;
 	public static inline var AnyPropertyType = 0;
 	public static inline var XA_ATOM = 4;
 	public static inline var XA_STRING = 31;
@@ -272,4 +288,16 @@ class X {
 	var depth:Int32;
 	var bytes_per_line:Int32;
 	var bits_per_pixel:Int32;
+}
+
+// libXext's shape extension (loaded when first wanted: a window's input
+// region, Window.input): ShapeInput 2, ShapeSet 0, rectangles of shorts
+// (x, y, width, height), Unsorted 0
+@:build(helder.os.Dl.build())
+@:hxmc.unsafe(gc)
+class XShape {
+	static function XShapeCombineRectangles(d:Ptr, w:Int64, kind:Int, x:Int, y:Int, rects:Ptr, n:Int, op:Int, ordering:Int):Void;
+	static function XShapeCombineMask(d:Ptr, w:Int64, kind:Int, x:Int, y:Int, mask:Int64, op:Int):Void;
+
+	public static final ok = load("libXext.so.6") == null;
 }

@@ -1,6 +1,6 @@
 package helder.view.graph;
 
-// A prop that reads (DESIGN.md 3.2): a constant, a signal, a memo or a
+// A prop that reads (view's README, Signals): a constant, a signal, a memo or a
 // function, each read by calling it (`props.step()`), tracked as what it
 // reads is. Markup binds a prop of this type the way Solid binds props: a
 // hole that may read (3.3) is given as a function of it, so the component

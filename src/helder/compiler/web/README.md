@@ -16,15 +16,15 @@ edit of live literals' values patches the running preview without a build.
 `protocol.d.ts` has the messages; `client.mjs` wraps them as promises:
 
 ```js
-import { CompilerClient } from 'helder/src/helder/compiler/web/client.mjs';
-const c = new CompilerClient(new Worker(new URL('worker.mjs', base), { type: 'module' }));
-await c.init();                                    // {protocol, versions, threads, persistent, ms, bytes}
-await c.write({ '/work/app/main.tsx': text, '/work/app/package.json': '{}' });
-const d = await c.check('/work/app');               // {ok, diagnostics, ms}
-const b = await c.build('/work/app');               // {ok, diagnostics, messages, printed, ms, out, wasm}
-c.running = (request) => preview.devtools(request); // the preview's devtools (preview.mjs)
-const e = await c.edit({ '/work/app/main.tsx': saved }); // {kind: 'patched' | 'unchanged' | 'build', ...}
-if (e.kind === 'build') await c.build('/work/app');
+import {CompilerClient} from 'helder/src/helder/compiler/web/client.mjs'
+const c = new CompilerClient(new Worker(new URL('worker.mjs', base), {type: 'module'}))
+await c.init()                                    // {protocol, versions, threads, persistent, ms, bytes}
+await c.write({'/work/app/main.tsx': text, '/work/app/package.json': '{}'})
+const d = await c.check('/work/app')               // {ok, diagnostics, ms}
+const b = await c.build('/work/app')               // {ok, diagnostics, messages, printed, ms, out, wasm}
+c.running = request => preview.devtools(request) // the preview's devtools (preview.mjs)
+const e = await c.edit({'/work/app/main.tsx': saved}) // {kind: 'patched' | 'unchanged' | 'build', ...}
+if (e.kind === 'build') await c.build('/work/app')
 ```
 
 | Request | Does | Reply |
@@ -77,12 +77,12 @@ the running one's place with its state (Hot's snapshot), as helder dev's
 page does.
 
 ```js
-import { Preview } from 'helder/src/helder/compiler/web/preview.mjs';
-const preview = new Preview({ base: '/helder/src/helder/', fonts: [inter] });
-await preview.run(await c.build('/work/app'));
-c.running = (request) => preview.devtools(request);
-const e = await c.edit({ '/work/app/main.tsx': saved });
-if (e.kind === 'build') await preview.swap(await c.build('/work/app'));
+import {Preview} from 'helder/src/helder/compiler/web/preview.mjs'
+const preview = new Preview({base: '/helder/src/helder/', fonts: [inter]})
+await preview.run(await c.build('/work/app'))
+c.running = request => preview.devtools(request)
+const e = await c.edit({'/work/app/main.tsx': saved})
+if (e.kind === 'build') await preview.swap(await c.build('/work/app'))
 ```
 
 ## Building and testing

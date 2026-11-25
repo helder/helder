@@ -29,7 +29,7 @@ import helder.view.graph.Read;
 // is a compile error, and an effect never named is not linked. A prop
 // bound to a signal follows it (the effect's field set, nothing made
 // again). The tags are capitalized (components): an element's props are
-// set by name at run time, and would link every effect (DESIGN-3D.md 3.1).
+// set by name at run time, and would link every effect.
 // Their names are the effects' classes': where both are imported, write
 // the class's path (helder.scene.render.Outline.select).
 class EffectTags {

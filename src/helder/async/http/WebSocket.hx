@@ -63,7 +63,7 @@ class WebSocket {
 
 	// a server's WebSocket on a connection of its own (TLS on an accepted
 	// socket: TlsSocket.server): the upgrade request read from io, answered
-	@:coroutine public static function accept(io:helder.async.Stream.Source, out:helder.async.Stream.Sink, shut:() -> Void):WebSocket {
+	@:noCompletion @:coroutine public static function accept(io:helder.async.Stream.Source, out:helder.async.Stream.Sink, shut:() -> Void):WebSocket {
 		var r = new Reader(io), key:Null<String> = null;
 		var line = r.readLine();
 		if (line == null) throw new Exception("no WebSocket request");

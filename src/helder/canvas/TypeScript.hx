@@ -10,6 +10,6 @@ package helder.canvas;
 @:typescript.classes(helder.canvas.dom.Canvas, helder.canvas.dom.CanvasRenderingContext2D, helder.canvas.dom.Path2D, helder.canvas.dom.CanvasGradient,
 	helder.canvas.dom.CanvasPattern, helder.canvas.dom.ImageData, helder.canvas.dom.DOMMatrix, helder.canvas.dom.Image, helder.canvas.dom.TextMetrics,
 	helder.canvas.dom.FontLibrary)
-@:typescript.functions(loadImage = helder.canvas.dom.Image.load, useGpu = helder.canvas.gpu.Gpu.use, useWeb = helder.canvas.web.Web.use)
+@:typescript.functions(loadImage = helder.canvas.dom.Image.ImageLoader.load, useGpu = helder.canvas.gpu.Gpu.use, useWeb = helder.canvas.web.Web.use)
 @:build(helder.typescript.api.Manifest.build())
 class TypeScript {}
