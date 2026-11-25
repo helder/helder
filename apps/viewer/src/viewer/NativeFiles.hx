@@ -135,6 +135,9 @@ class NativeFiles implements Files {
 			size: folder ? 0 : s[9],
 			modified: s[3],
 			created: hxmc.Platform.os() == 2 ? s[4] : 0
+			#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64" || (!hxmc.target && helder.os == "windows"))
+			, hidden: WinAttributes.hidden(path)
+			#end
 		};
 	}
 
@@ -144,3 +147,15 @@ class NativeFiles implements Files {
 		return s == null ? "missing" : Std.int(s[10]) & 0xF000 != 0x4000 ? "notfolder" : "denied";
 	}
 }
+
+#if (hxmc.target == "windows-x86_64" || hxmc.target == "windows-arm64" || (!hxmc.target && helder.os == "windows"))
+// (what Explorer hides while hidden items are not shown: FILE_ATTRIBUTE_HIDDEN 2
+// or SYSTEM 4; INVALID_FILE_ATTRIBUTES -1, not known, shown)
+@:hxmc.unsafe(gc)
+class WinAttributes {
+	public static function hidden(path:String):Bool {
+		var a = hxmc.unsafe.Arena.scopedValue(a -> helder.os.windows.User32.Kernel32.GetFileAttributesW(a.wstring(path)));
+		return a != -1 && a & 6 != 0;
+	}
+}
+#end

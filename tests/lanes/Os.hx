@@ -177,6 +177,11 @@ class Os {
 			native('bin/ui/$GFX_TARGET/GlassCheck', uiCp().concat(["-main", "GlassCheck"]), GFX_TARGET);
 			run(exePath('bin/ui/$GFX_TARGET/GlassCheck', GFX_TARGET), ["--smoke"]);
 		}
+		// (Windows: the frame dark wherever the ui is, the system's flip and a <Surface dark> alike: tests/ui/DarkFrameCheck.hx)
+		if (GFX_TARGET.startsWith("windows-") && HOST.startsWith("windows-")) {
+			native('bin/ui/$GFX_TARGET/DarkFrameCheck', uiCp().concat(["-main", "DarkFrameCheck"]), GFX_TARGET);
+			run(exePath('bin/ui/$GFX_TARGET/DarkFrameCheck', GFX_TARGET), []);
+		}
 		// (an inset title bar: tests/os/TitleBarCheck.hx)
 		native('bin/os/$GFX_TARGET/TitleBarCheck', cps(["src", "tests/os"]).concat(["-main", "TitleBarCheck"]), GFX_TARGET);
 		var bar = exePath('bin/os/$GFX_TARGET/TitleBarCheck', GFX_TARGET);

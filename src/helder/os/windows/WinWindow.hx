@@ -376,6 +376,14 @@ class WinWindow {
 		}));
 	}
 
+	// (Window.dark: DWMWA_USE_IMMERSIVE_DARK_MODE 20, Windows 10 20H1 on; before, nothing)
+	function setDark(on:Bool)
+		OsThread.run(() -> Arena.scoped(a -> {
+			var v:Ptr<Int32> = a.alloc(4);
+			v.value = on ? 1 : 0;
+			Dwmapi.DwmSetWindowAttribute(hwnd, 20, v, 4);
+		}));
+
 	// (Window.onTop: HWND_TOPMOST -1, HWND_NOTOPMOST -2; SWP_NOMOVE, NOSIZE, NOACTIVATE)
 	function setOnTop(on:Bool)
 		OsThread.run(() -> User32.SetWindowPos(hwnd, Ptr.ofI64(on ? -1 : -2), 0, 0, 0, 0, 0x2 | 0x1 | 0x10));

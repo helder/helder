@@ -22,6 +22,10 @@ import helder.view.graph.Graph.*;
 // Linux's at the end), the other nothing.
 //   <view dragRegion><WindowControls side="start"/><text>Project</text></view>
 //   <view dragRegion><text>Inspector</text><view flexGrow={1}/><WindowControls side="end"/></view>
+// height: the drawn buttons' (32 by default, Windows' caption): a bar's
+// own height, so that they fill it from the window's top edge as Windows
+// 11's do in a taller title bar (WinUI's, Explorer's); their hit areas and
+// snap layouts follow.
 class WindowButtons implements Markup {
 	// the side of the window the system puts its buttons: "start" (macOS's,
 	// at the left: env(titlebar-area-x) after them), "end" (Windows', Linux's),
@@ -32,15 +36,15 @@ class WindowButtons implements Markup {
 		return t == null ? null : t.x > 0 ? "start" : "end";
 	}
 
-	public static function WindowControls(props:{?tag:String, ?side:String}):View {
+	public static function WindowControls(props:{?tag:String, ?side:String, ?height:Float}):View {
 		if (props.side != null) {
 			var at = props.side;
-			return <Show when={side() == at}>{controls(props.tag)}</Show>;
+			return <Show when={side() == at}>{controls(props.tag, props.height)}</Show>;
 		}
-		return controls(props.tag);
+		return controls(props.tag, props.height);
 	}
 
-	static function controls(tag:Null<String>):View {
+	static function controls(tag:Null<String>, height:Null<Float>):View {
 		tag = tag ?? "window-controls";
 		var kind = signal("none"), size = signal({w: 0.0, h: 0.0}), node:Null<Node> = null;
 		onCleanup(() -> if (node != null && node.ui != null && node.ui.controlsAt == node) node.ui.controlsAt = null);
@@ -59,7 +63,7 @@ class WindowButtons implements Markup {
 				}
 				kind(k);
 			}}>
-			{kind() == "system" ? standIns() : kind() == "none" ? null : buttons(kind() == "linux")}
+			{kind() == "system" ? standIns() : kind() == "none" ? null : buttons(kind() == "linux", height)}
 		</view>;
 	}
 
@@ -74,8 +78,8 @@ class WindowButtons implements Markup {
 		#end
 	}
 
-	static function buttons(linux:Bool):View {
-		var w = helder.os.TitleBar.TitleBars.button(linux), h = helder.os.TitleBar.TitleBars.HEIGHT;
+	static function buttons(linux:Bool, height:Null<Float>):View {
+		var w = helder.os.TitleBar.TitleBars.button(linux), h:Float = height ?? helder.os.TitleBar.TitleBars.HEIGHT;
 		var row:Null<Node> = null;
 		// (maximised: the restore glyph, as the system's; read again when the
 		// title bar's area changes, which a maximise or a restore resizes)
@@ -126,7 +130,7 @@ class WindowButtons implements Markup {
 		return restoreSvgs[i];
 	}
 
-	static function button(tag:String, label:String, hit:TitleHit, w:Int, h:Int, linux:Bool, press:Node->Void, glyph:View):View {
+	static function button(tag:String, label:String, hit:TitleHit, w:Int, h:Float, linux:Bool, press:Node->Void, glyph:View):View {
 		var over = signal(false), node:Null<Node> = null;
 		var close = hit == Close;
 		return <view tag={tag} role="button" aria-label={label} width={w} height={h} alignItems="center" justifyContent="center"
